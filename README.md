@@ -6,7 +6,8 @@
 ## 소개
 MMORPG 서버 구조를 직접 설계 및 구현한 프로젝트입니다.
 C++ 기반 게임 서버 / Redis 인증 / NodeJS 로그인 서버 / Unity 클라이언트로 구성됩니다.
-- ![image.png](attachment:d0e1dd0f-971e-4267-9dda-f83a3a1a9d13:image.png)
+<img width="1314" height="681" alt="image" src="https://github.com/user-attachments/assets/ab3488ac-d810-4348-8f43-3952c55f8abe" />
+
 
 ## 주요 특징
 - IOCP + RingBuffer 기반 TCP 서버
