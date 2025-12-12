@@ -1,0 +1,47 @@
+﻿#pragma once
+
+#include <thread>
+#include <queue>
+#include <condition_variable>
+
+#include "Config.h"
+namespace Core {
+    class ILogger;
+    class IPacketView;
+    class AsyncHandler;
+    // 게임틱 단위로 처리되지 않는 (zone 상태와 관련 없는) 요청 처리
+    class AsyncThreadPool {
+        std::vector<std::thread> m_threads;
+        std::queue<std::shared_ptr<IPacketView>> m_workQueue;
+        std::queue<uint64_t> m_disconnectQueue;
+        std::mutex m_mutex;
+        std::condition_variable m_cv;
+        std::atomic<bool> m_running = false;
+        
+        AsyncHandler* handler;
+        ILogger* logger;
+        void Initialize(ILogger* l, AsyncHandler* h) {
+            logger = l;
+            handler = h;
+        }
+        void Start();
+        void Stop();
+        bool IsReady() {
+            if (logger == nullptr)
+                return false;
+            if (m_threads.size() != ASYNC_THREADPOOL_SIZE)
+                return false;
+            if (handler == nullptr)
+                return false;
+            return true;
+        }
+        void WorkFunc();
+        friend class Initializer;
+    public:
+        ~AsyncThreadPool() {
+            Stop();
+        }
+        void EnqueueWork(std::shared_ptr<IPacketView> pv);
+        void EnqueueDisconnect(uint64_t sessionID);
+    };
+}
