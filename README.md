@@ -10,12 +10,12 @@ C++ 기반 게임 서버 / Redis 인증 / NodeJS 로그인 서버 / Unity 클라
 
 
 ## 주요 특징
-- IOCP + RingBuffer 기반 TCP 서버
-- Full / Delta Snapshot 동기화
-- Zone 단위 게임 상태 처리
-- Redis 인증 서버
-- 샤딩 기반 캐시 서버 + LRU & Flush 스케줄러
-- 메시지 큐 기반 비동기 처리
+- IOCP 기반 비동기 네트워크 구조
+- RingBuffer 기반 TCP 패킷 처리
+- Session & Internal Entity 분리 설계
+- Full/Delta Snapshot 상태 동기화
+- Zone 기반 스레드 모델 및 Tick 시스템
+- Sharding + LRU 캐시 서버
 
 ## 코드 구조
 - NetLibrary : IOCP, Session, ClientContext
