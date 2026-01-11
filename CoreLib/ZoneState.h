@@ -23,7 +23,7 @@ namespace Core {
         uint16_t lastZone;
         char charName[MAX_CHARNAME_LEN];
         // 장비, 룬, 스킬 등 실시간 로직이 들어감
-        // 장비, 룬, 스킬 변경 등은 비시뮬레이션 작업으로, AsyncHandler를 통해 이루어짐
+        // 장비, 룬, 스킬 변경 등은 비시뮬레이션 작업으로, noneZoneHandler를 통해 이루어짐
         // 캐시가 무효화되어도 해당 로직의 빈도가 게임 틱에 비하면 무시될 수준
         
         // --  내부 정보
@@ -56,8 +56,7 @@ namespace Core {
         std::mutex m_mutex;
 
         std::queue<ChatMessage> m_chatQueue;
-        // asynHandler에서 enqueue하고, deltaSnapshot 시점에 체크, 동적할당 비용은 async 로직에서만 발생
-        // 동적할당을 없앨려면 dirty_list 처럼 사용
+        // noneZoneHandler에서 enqueue하고, deltaSnapshot 시점에 체크
         std::mutex m_chatMutex;
         
         std::vector<uint64_t> m_sessionSnapshot;

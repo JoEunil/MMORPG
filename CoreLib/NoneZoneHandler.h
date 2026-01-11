@@ -14,7 +14,7 @@ namespace Core {
     class IMessageQueue;
     class StateManager;
     class LobbyZone;
-    class AsyncHandler{
+    class NoneZoneHandler{
         void Initialize(IIOCP* i, ILogger* l, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby);
         bool IsReady();
         void CheckSession(IPacketView* p);

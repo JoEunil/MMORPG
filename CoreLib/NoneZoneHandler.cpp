@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "AsyncHandler.h"
+#include "NoneZoneHandler.h"
 
 #include "PacketTypes.h"
 #include "IPacketView.h"
@@ -22,7 +22,7 @@ namespace Core {
     static StateManager* stateManager;
     // 콜백에서 쓰기 위함
 
-    void AsyncHandler::Initialize(IIOCP* i, ILogger* l, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby) {
+    void NoneZoneHandler::Initialize(IIOCP* i, ILogger* l, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby) {
         iocp = i;
         logger = l;
         auth = s;
@@ -33,7 +33,7 @@ namespace Core {
         lobbyZone = lobby;
     }
 
-    bool AsyncHandler::IsReady() {
+    bool NoneZoneHandler::IsReady() {
         if (iocp == nullptr) return false;
         if (logger == nullptr) return false;
         if (auth == nullptr) return false;
@@ -46,7 +46,7 @@ namespace Core {
         return true;
     }
 
-    void AsyncHandler::Process(IPacketView* p) {
+    void NoneZoneHandler::Process(IPacketView* p) {
         PacketHeader* h = parseHeader(p->GetPtr());
         uint16_t zoneID = 0;
         if (p->GetOpcode() != OP::AUTH ) {
@@ -80,7 +80,7 @@ namespace Core {
         
     }
 
-    void AsyncHandler::Disconnect(uint64_t sessionID) {
+    void NoneZoneHandler::Disconnect(uint64_t sessionID) {
         stateManager->Disconnect(sessionID);
     }
 
@@ -89,7 +89,7 @@ namespace Core {
         iocp->SendData(sessionID, writer->WriteAuthResponse(resStatus));
     }
 
-    void AsyncHandler::CheckSession(IPacketView* p) {
+    void NoneZoneHandler::CheckSession(IPacketView* p) {
         AuthRequestBody* body = parseBody<AuthRequestBody>(p->GetPtr());
         SessionCallbackData* privdata = new SessionCallbackData;
         privdata->sessionID = p->GetSessionID();
@@ -99,7 +99,7 @@ namespace Core {
         auth->CheckSession(privdata);
     }
 
-    void AsyncHandler::GetCharacterList(IPacketView* p) {
+    void NoneZoneHandler::GetCharacterList(IPacketView* p) {
         Message* msg = messagePool->Acquire();
         MsgStruct<MsgCharacterListReqBody>* st = reinterpret_cast<MsgStruct<MsgCharacterListReqBody>*>(msg->GetBuffer());
         
@@ -112,7 +112,7 @@ namespace Core {
         messagePool->Return(msg);
     }
 
-    void AsyncHandler::GetCharacterState(IPacketView* p) {
+    void NoneZoneHandler::GetCharacterState(IPacketView* p) {
         Message* msg = messagePool->Acquire();
         MsgStruct<MsgCharacterStateReqBody>* st = reinterpret_cast<MsgStruct<MsgCharacterStateReqBody>*>(msg->GetBuffer());
         
@@ -129,26 +129,7 @@ namespace Core {
         messagePool->Return(msg);
     }
 
-    //void AsyncHandler::UpdateInventory(IPacketView* p) {
-    //    auto charID = stateManager->GetCharacterID(p->GetSessionID());
-    //    if (charID <= 0)
-    //        return ;
-    //    Message* msg = messagePool->Acquire();
-    //    MsgStruct<MsgInventoryUpdateBody>* st = reinterpret_cast<MsgStruct<MsgInventoryUpdateBody>*>(msg->GetBuffer());
-    //    auto packetBody = parseBody<InventoryUpdateBody>(p->GetPtr());
-    //    st->header.sessionID = p->GetSessionID();
-    //    st->header.messageType = MSG_INVENTORY_UPDATE;
-    //    st->body.characterID = charID;
-    //    st->body.change = packetBody->change;
-    //    st->body.op = packetBody->op;
-    //    st->body.itemID = packetBody->itemID;
-
-    //    msg->SetLength(sizeof(MsgStruct<MsgInventoryUpdateBody>));
-    //    messageQueue->EnqueueMessage(msg);
-    //    messagePool->Return(msg);
-    //}
-
-    void AsyncHandler::GetInventory(IPacketView* p) {
+    void NoneZoneHandler::GetInventory(IPacketView* p) {
         auto charID = stateManager->GetCharacterID(p->GetSessionID());
         if (charID <= 0)
             return ;
@@ -164,7 +145,7 @@ namespace Core {
         messagePool->Return(msg);
     }
 
-    void AsyncHandler::Chat(IPacketView* p) {
+    void NoneZoneHandler::Chat(IPacketView* p) {
         auto body = parseBody<ChatRequestBody>(p->GetPtr());
         uint8_t* startPtr = p->GetPtr() + sizeof(PacketStruct<ChatRequestBody>);
         auto session = p->GetSessionID();
@@ -176,7 +157,7 @@ namespace Core {
         zone->EnqueueChat(msg);
     }
 
-    void AsyncHandler::ZoneChange(IPacketView* p) {
+    void NoneZoneHandler::ZoneChange(IPacketView* p) {
         auto body = parseBody<ZoneChangeBody>(p->GetPtr());
         auto session = p->GetSessionID();
         auto zoneID = stateManager->GetZoneID(session);
@@ -242,7 +223,7 @@ namespace Core {
             iocp->SendData(session, writer->WriteZoneChangeSucess(destZone, zoneInternalID, temp.x, temp.y));
     }
 
-    void AsyncHandler::Pong(IPacketView* p) {
+    void NoneZoneHandler::Pong(IPacketView* p) {
         stateManager->Pong(p->GetSessionID());
     }
 }

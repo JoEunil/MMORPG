@@ -1,22 +1,22 @@
-#pragma once
-#include "AsyncThreadPool.h"
+﻿#pragma once
+#include "NoneZoneThreadPool.h"
 #include "ZoneThreadSet.h"
 #include "IPacketView.h"
 #include "IPacketDispatcher.h"
 #include "StateManager.h"
 
 namespace Core {
-    class AsyncThreadPool;
+    class NoneZoneThreadPool;
     class ZoneThreadSet;
     class IPacketView;
     class ILogger;
     class PacketDispatcher : public IPacketDispatcher {
-        AsyncThreadPool* asyncThreadPool;
+        NoneZoneThreadPool* noneZoneThreadPool;
         ZoneThreadSet*  zoneThreadSet;
         ILogger* logger;
         StateManager* stateManager;
-        void Initialize(AsyncThreadPool* a, ZoneThreadSet* z, ILogger* l, StateManager* s) {
-            asyncThreadPool = a;
+        void Initialize(NoneZoneThreadPool* a, ZoneThreadSet* z, ILogger* l, StateManager* s) {
+            noneZoneThreadPool = a;
             zoneThreadSet = z;
             logger = l;
             stateManager = s;
@@ -24,7 +24,7 @@ namespace Core {
         bool IsReady() {
             if (logger == nullptr) return false;
             if (stateManager == nullptr) return false;
-            if (asyncThreadPool == nullptr || zoneThreadSet == nullptr)
+            if (noneZoneThreadPool == nullptr || zoneThreadSet == nullptr)
                 return false;
             return true;
         }

@@ -15,8 +15,8 @@
 #include "BroadcastThreadPool.h"
 #include "ZoneHandler.h"
 #include "ZoneThreadSet.h"
-#include "AsyncHandler.h"
-#include "AsyncThreadPool.h"
+#include "NoneZoneHandler.h"
+#include "NoneZoneThreadPool.h"
 #include "PacketDispatcher.h"
 #include "LobbyZone.h"
 namespace Core {
@@ -29,8 +29,8 @@ namespace Core {
         BroadcastThreadPool broadcastPool;
         ZoneHandler zoneHandler;
         ZoneThreadSet zoneThreadSet;
-        AsyncHandler asyncHandler;
-        AsyncThreadPool asyncThreadPool;
+        NoneZoneHandler noneZoneHandler;
+        NoneZoneThreadPool noneZoneThreadPool;
         PacketDispatcher packetDispatcher;
         LobbyZone lobbyZone;
         
@@ -47,7 +47,7 @@ namespace Core {
         void InjectDependencies1(IIOCP* iocp, ILogger* logger,IPacketPool* packetPool, IPacketPool* bigPacketPool) {
             broadcastPool.Initialize(iocp, &stateManager);
             lobbyZone.Initialize(logger, &stateManager);
-            asyncThreadPool.Initialize(logger , &asyncHandler);
+            noneZoneThreadPool.Initialize(logger , &noneZoneHandler);
             zoneThreadSet.Initialize(&zoneHandler, logger);
             zoneThreadSet.Start();
             writer.Initialize(packetPool, bigPacketPool);
@@ -59,12 +59,12 @@ namespace Core {
         void InjectDependencies2(IIOCP* iocp, ILogger* logger, ISessionAuth* session, IMessageQueue* sendMQ, IPacketPool* packetPool) {
             stateManager.Initialize(sendMQ, iocp, &msgPool, packetPool, &lobbyZone);
             stateManager.PingStart();
-            packetDispatcher.Initialize(&asyncThreadPool, &zoneThreadSet, logger, &stateManager);
-            asyncThreadPool.Start();
+            packetDispatcher.Initialize(&noneZoneThreadPool, &zoneThreadSet, logger, &stateManager);
+            noneZoneThreadPool.Start();
             broadcastPool.Start();
             ZoneState::Initialize(logger, &broadcastPool, &writer, &stateManager);
             zoneHandler.Initialize(logger, &stateManager);
-            asyncHandler.Initialize(iocp, logger, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone);
+            noneZoneHandler.Initialize(iocp, logger, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone);
         }
         
         bool CheckReady(ILogger* logger) {

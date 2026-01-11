@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include "PacketDispatcher.h"
-#include "AsyncThreadPool.h"
+#include "NoneZoneThreadPool.h"
 #include "ZoneThreadSet.h"
 #include "IPacketView.h"
 #include "PacketTypes.h"
@@ -23,11 +23,11 @@ namespace Core {
             }
             zoneThreadSet->EnqueueWork(pv, zoneID);
         } else {
-            asyncThreadPool->EnqueueWork(pv);
+            noneZoneThreadPool->EnqueueWork(pv);
         }
     }
     void PacketDispatcher::Disconnect(uint64_t sessionID) {
         std::cout << "dispatcher disconnect\n";
-        asyncThreadPool->EnqueueDisconnect(sessionID);
+        noneZoneThreadPool->EnqueueDisconnect(sessionID);
     }
 }

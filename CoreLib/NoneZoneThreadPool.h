@@ -8,9 +8,9 @@
 namespace Core {
     class ILogger;
     class IPacketView;
-    class AsyncHandler;
+    class NoneZoneHandler;
     // 게임틱 단위로 처리되지 않는 (zone 상태와 관련 없는) 요청 처리
-    class AsyncThreadPool {
+    class NoneZoneThreadPool {
         std::vector<std::thread> m_threads;
         std::queue<std::shared_ptr<IPacketView>> m_workQueue;
         std::queue<uint64_t> m_disconnectQueue;
@@ -18,9 +18,9 @@ namespace Core {
         std::condition_variable m_cv;
         std::atomic<bool> m_running = false;
         
-        AsyncHandler* handler;
+        NoneZoneHandler* handler;
         ILogger* logger;
-        void Initialize(ILogger* l, AsyncHandler* h) {
+        void Initialize(ILogger* l, NoneZoneHandler* h) {
             logger = l;
             handler = h;
         }
@@ -38,7 +38,7 @@ namespace Core {
         void WorkFunc();
         friend class Initializer;
     public:
-        ~AsyncThreadPool() {
+        ~NoneZoneThreadPool() {
             Stop();
         }
         void EnqueueWork(std::shared_ptr<IPacketView> pv);
