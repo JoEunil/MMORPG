@@ -29,26 +29,32 @@ namespace Base {
 		std::atomic<uint64_t> m_tail;
 
 		uint16_t m_capacity;
-		void Initialize(uint16_t QSize) {
+		uint16_t m_mask;
+
+	public:
+		// Q 사이즈는 2의 거듭제곱이어야 한다.
+		// 모듈러 연산을 & 연산한번으로 하기 위함
+		LockFreeQueue(uint16_t QSize) : m_capacity(QSize), m_mask(QSize-1) {
+			assert((m_capacity >= 2) &&((m_capacity & (m_capacity - 1)) == 0));
+			// 2 거듭제곱 체크
+
 			m_queue.resize(QSize);
 			m_capacity = QSize;
 			for (int i = 0; i < m_capacity; i++)
 			{
-				m_queue[i] = i;
+				m_queue[i].seq = i;
 			}
 		}
-
-	public:
 		bool push(T& data) {
 			while (true)
 			{
 				auto tail = m_tail.load();
-				auto idx = tail % m_capacity;
+				auto idx = tail & m_mask;
 				auto seq = m_queue[idx].seq.load(std::memory_order_acquire);
 				int64_t diff = static_cast<int64_t>(seq) - static_cast<int64_t>(tail);
 
 				if (diff == 0) {
-					if (m_tail.compare_exchange_weak(tail, (tail +1)% m_capacity)) {
+					if (m_tail.compare_exchange_weak(tail, (tail +1) & m_mask)) {
 						// true 인 경우 tail 점유 성공, CAS로 race condition 해결 
 						m_queue[idx].data = data;
 						m_queue[idx].seq.store(tail + 1, std::memory_order_release); // 순서 바뀌면 안됨, release로 data가 write된 상태 관측 보장.
@@ -71,11 +77,11 @@ namespace Base {
 			while (true)
 			{
 				auto head = m_head.load();
-				auto idx = head % m_capacity;
+				auto idx = head & m_mask;
 				auto seq = m_queue[idx].seq.load(std::memory_order_acquire);
 				int64_t diff = static_cast<int64_t>(seq) - static_cast<int64_t>(head + 1);
 				if (diff == 0) {
-					if (m_head.compare_exchange_weak(head, (head + 1) % m_capacity)) {
+					if (m_head.compare_exchange_weak(head, (head + 1) & m_mask)) {
 						auto res = m_queue[idx].data;
 						m_queue[idx].seq.store(head + m_capacity + 1, std::memory_order_release);
 						out = res;

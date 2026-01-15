@@ -4,9 +4,7 @@
 
 namespace Base {
     [[noreturn]] inline void unreachable() {
-#ifndef NDEBUG
         assert(false && "Unreachable");
-#endif
         std::abort();
         // SIGABRT 시그널 발생
         // 즉시 프로세스 종료
