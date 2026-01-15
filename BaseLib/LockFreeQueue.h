@@ -14,20 +14,19 @@ namespace Base {
 
 	template<typename T>
 	struct Cell{
-		std::atomic<uint32_t> seq;
-		T* data;
+		std::atomic<uint64_t> seq;
+		T data;
 	};
 	template<typename T>
 	class LockFreeQueue {
-
 		alignas(std::hardware_destructive_interference_size);
 		std::vector<Cell<T>> m_queue;
 
 		alignas(std::hardware_destructive_interference_size);
-		std::atomic<uint32_t> m_head;
+		std::atomic<uint64_t> m_head;
 
 		alignas(std::hardware_destructive_interference_size);
-		std::atomic<uint32_t> m_tail;
+		std::atomic<uint64_t> m_tail;
 
 		uint16_t m_capacity;
 		void Initialize(uint16_t QSize) {
@@ -40,13 +39,13 @@ namespace Base {
 		}
 
 	public:
-		bool push(T* data) {
+		bool push(T& data) {
 			while (true)
 			{
 				auto tail = m_tail.load();
 				auto idx = tail % m_capacity;
 				auto seq = m_queue[idx].seq.load(std::memory_order_acquire);
-				auto diff = seq - tail;
+				int64_t diff = static_cast<int64_t>(seq) - static_cast<int64_t>(tail);
 
 				if (diff == 0) {
 					if (m_tail.compare_exchange_weak(tail, (tail +1)% m_capacity)) {
@@ -68,30 +67,31 @@ namespace Base {
 			return false;
 		}
 
-		T* pop() {
+		bool pop(T& out) {
 			while (true)
 			{
 				auto head = m_head.load();
 				auto idx = head % m_capacity;
 				auto seq = m_queue[idx].seq.load(std::memory_order_acquire);
-				auto diff = seq - (head + 1);
+				int64_t diff = static_cast<int64_t>(seq) - static_cast<int64_t>(head + 1);
 				if (diff == 0) {
 					if (m_head.compare_exchange_weak(head, (head + 1) % m_capacity)) {
 						auto res = m_queue[idx].data;
 						m_queue[idx].seq.store(head + m_capacity + 1, std::memory_order_release);
-						return res;
+						out = res;
+						return true;
 					}
 					continue;
 				}
 
 				if (diff < 0) {
 					// empty
-					return nullptr;
+					return false;
 				}
 			}
 			// critical error
 			unreachable();
-			return nullptr;
+			return false;
 		}
 	};
 }
