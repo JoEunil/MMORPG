@@ -139,6 +139,7 @@
     <ClInclude Include="Exeption.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="LockFreeQueue.h" />
+    <ClInclude Include="LockFreeQueueSP.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="SpinLockGuard.h" />
   </ItemGroup>
