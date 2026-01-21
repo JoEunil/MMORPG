@@ -284,18 +284,28 @@ namespace Net {
 
     void IOCP::CleanUpSocket(SOCKET clientSocket)
     {
-        logger->LogInfo(std::format("Disconnect {}", clientSocket));
-        netHandler->OnDisConnect(clientSocket); // session 제거 -> send 작업도 block
-        CancelIoEx((HANDLE)clientSocket, nullptr); // pending IO를 즉시 취소
-        closesocket(clientSocket);
+        if (netHandler->OnDisConnect(clientSocket))
+        {
+            // Race condition이 발생할 수 있는 지점이지만,
+            // NetHandler가 Disconnect를 단일 책임으로 관리하여 멱등성이 보장됨.
+            // 중복으로 CleanUp 요청이 와도 최초 1회만 true를 반환함.
+            logger->LogInfo(std::format("Disconnect {}", clientSocket));
+            CancelIoEx((HANDLE)clientSocket, nullptr); // pending IO를 즉시 취소
+            closesocket(clientSocket);
+        }
     }
 
 
     void IOCP::SendData(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet)
     {
-        SOCKET clientSocket = SessionManager::Instance().GetSocket(sessionID);
+        // Send 중 socket close와의 race condition은 발생할 수 있음.
+        // 그러나 WSASend 실패 / IO 취소는 정상적인 종료 경로
+        // 중복 close나 메모리 손상은 발생하지 않음.
+        // 이 경로에 mutex를 사용하면 성능에 영향이 커서 의도적으로 허용함.
+        
+        SOCKET clientSocket = sessionManager->GetSocket(sessionID);
         if (clientSocket == INVALID_SOCKET) {
-            logger->LogError("trye send to INVALID SOCKET");
+            logger->LogWarn("try send to INVALID SOCKET");
             return;
         }
         DWORD dwBytesSent = 0;
@@ -313,9 +323,17 @@ namespace Net {
             if (err != WSA_IO_PENDING)
             {
                 overlappedExPool->Return(pOverlappedEx);
-                logger->LogError("WSASend failed: " + std::to_string(clientSocket) + " "  + std::to_string(err));
+                logger->LogWarn("WSASend failed: " + std::to_string(clientSocket) + " "  + std::to_string(err));
             }
         }
 
+    }
+
+    void IOCP::AbortSocket(uint64_t sessionID) {
+        std::cout << "Abort Socket \n";
+        SOCKET clientSocket = sessionManager->GetSocket(sessionID);
+        if (clientSocket == INVALID_SOCKET)
+            return;
+        CleanUpSocket(clientSocket); 
     }
 }

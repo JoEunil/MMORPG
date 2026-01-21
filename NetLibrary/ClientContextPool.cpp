@@ -1,4 +1,4 @@
-#include "pch.h"
+癤�#include "pch.h"
 #include "ClientContextPool.h"
 
 #include "ClientContext.h"
@@ -87,7 +87,5 @@ namespace Net {
         m_workingCnt.fetch_sub(1);
         context->Disconnect();
         m_tempQ.push(std::move(context));
-        // context에서 작업 완료를 기다릴 필요 없음. context와 게임 로직 처리는 별개.
-        // 안전하게 종료하기 위해 packet 처리 완료 후 RingBuffer가 제거되게 하면 됨. Pool에 반납할 떄에는 상관 없음.
     }
 }

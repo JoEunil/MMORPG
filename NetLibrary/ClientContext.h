@@ -4,10 +4,11 @@
 #include <cstdint>
 
 #include <CoreLib/PacketTypes.h>
-#include <CoreLib/PacketDispatcher.h>
 
 #include "RingBuffer.h"
+#include "NetPacketFilter.h"
 #include "Config.h"
+#include "TrafficFloodDetector.h"
 
 namespace Core {
     class IPacketDispatcher;
@@ -28,33 +29,34 @@ namespace Net {
         uint16_t m_rear = m_capacity - 1;
         bool m_last_op = RELEASE;
         uint16_t m_capacity = 0;
-
+        
         SOCKET m_sock;
+        
+        std::atomic<uint8_t> m_sessionPingCount; // 누적 시 종료 (half-open)
+        std::atomic<uint64_t> m_rtt;
+
         uint64_t m_sessionID = 0;
         // 네트워크(소켓) -> 게임 로직(세션)
 
         std::atomic<bool> m_connected = false;
         std::atomic<int16_t> m_workingCnt = int16_t(0); // buffer 조각(패킷)을 점유하고 있는 작업의 수
+        std::atomic<bool> m_flood = false;
+        TrafficFloodDetector m_floodDetector;
+        std::atomic<bool> m_gameSession = true;
+        // recv가 한번씩 발생하고, recv 완료 후 다음 recv 호출이 이루어지기 때문에 atomic 플래그 하나로 충분
+        // 경합 상황이면 flag 상태를 여러개로 나누고, CAS 함수가 필요했을 것.
+        // 다음 recv에서 flood가 무조건 걸리도록 release, acquire만 잘 걸어주면 됨.
+
         uint16_t m_releaseIdx = 0;
         std::vector<std::pair<uint16_t, uint16_t>> m_releaseQ;
-        // sequence % RELEASE_Q_SIZE를 index로 사용해서 queue 처럼 사용
+        // sequence % RELEASE_Q_SIZE를 index로 사용해서 ring Queue로 사용
 
         mutable std::mutex m_mutex;
-        inline static Core::IPacketDispatcher* packetDispatcher;
-
-        static void Initialize(Core::IPacketDispatcher* p) {
-            packetDispatcher = p;
-        };
-        static bool IsReady() {
-            return packetDispatcher != nullptr;
-        }
 
         uint16_t GetLen();
         std::tuple<uint16_t, uint16_t, uint8_t> ParseHeader();
         bool DequeueRecvQ();
         void EnqueueReleaseQ(uint32_t seq, uint16_t front, uint16_t rear);
-
-        friend class Initializer;
 
     public:
         ClientContext() {
@@ -84,11 +86,42 @@ namespace Net {
             m_rear = m_capacity - 1;
         }
         void Disconnect() {
-            std::cout << "client context disconnect\n";
             m_connected.store(false);
             if (!m_connected.load() && m_workingCnt.load() <= 0) {
-                packetDispatcher->Disconnect(m_sessionID);
+                NetPacketFilter::Disconnect(m_sessionID);
             }
+        }
+
+        uint8_t SendPing(std::chrono::steady_clock::time_point now) {
+            NetPacketFilter::Ping(m_sessionID, m_rtt.load(std::memory_order_relaxed), now);
+            return m_sessionPingCount.fetch_add(1) + 1;
+        }
+        void PongReceived() {
+            m_sessionPingCount.store(0);
+        }
+        
+        bool NetStatus() {
+            if (m_connected.load() == false)
+                return false;
+            if (m_sessionPingCount.load(std::memory_order_relaxed) > PING_COUNT_LIMIT)
+                return false;
+            return true;
+        }
+        
+        uint64_t GetRtt() {
+            // race condition 안중요함, 틀려도 되는 데이터
+            return m_rtt.load(std::memory_order_relaxed);
+        }
+        void SetRtt(uint64_t rtt) {
+            m_rtt.store(rtt, std::memory_order_relaxed);
+        }
+
+        bool FloodCheck() {
+            return m_flood.load(std::memory_order_acquire);
+        }
+
+        bool CheckGameSession() {
+            return m_gameSession.load(std::memory_order_acquire);
         }
     };
 }

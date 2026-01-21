@@ -12,6 +12,10 @@
 #include "ClientContext.h"
 #include "ClientContextPool.h"
 #include "PacketPool.h"
+#include "NetPacketFilter.h"
+#include "IAbortSocket.h"
+#include "PingManager.h"
+#include "SessionManager.h"
 
 #include <CoreLib/ILogger.h>
 #include <CoreLib/IIocp.h>
@@ -30,27 +34,32 @@ namespace Net {
         std::mutex mutex; 
         PacketPool packetPool { TARGET_PACKETPOOL_SIZE, MAX_PACKETPOOL_SIZE, MIN_PACKETPOOL_SIZE };
         PacketPool bigPacketPool{ TARGET_BPACKETPOOL_SIZE, MAX_BPACKETPOOL_SIZE, MIN_BPACKETPOOL_SIZE };
+        PingManager pingManager;
+        SessionManager sessionManager;
 
-        void CleanUp1() {
-            iocp.StopReceive();
-        }
-        
     public:
         void Initialize() {
             overlappedExPool.Initialize();
             clientContextPool.Initialize();
             packetPool.Initialize();
             bigPacketPool.Initialize();
-            netHandler.Initialize(&clientContextPool);
+            sessionManager.Initialize();
+            netHandler.Initialize(&clientContextPool, &sessionManager, &iocp);
+        }
+        void CleanUp1() {
+            pingManager.StopPing();
+            iocp.StopReceive();
         }
         void CleanUp2() {
             iocp.CleanUp();
         }
         
         void InjectDependencies(Core::ILogger* l, Core::IPacketDispatcher* packetDispatcher) {
-            iocp.Initialize(l, &overlappedExPool, &netHandler, &fatalError, &cv);
-            ClientContext::Initialize(packetDispatcher);
+            iocp.Initialize(l, &overlappedExPool, &netHandler, &sessionManager, &fatalError, &cv);
+            pingManager.Initialize(static_cast<IAbortSocket*>(&iocp), &sessionManager);
+            NetPacketFilter::Initialize(packetDispatcher);
             iocp.Start();
+            pingManager.PingStart();
         }
         
         Core::IIOCP* GetIOCP() {
