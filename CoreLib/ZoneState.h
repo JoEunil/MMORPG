@@ -7,6 +7,7 @@
 #include <vector>
 #include <queue>
 #include <unordered_map>
+
 #include "Config.h"
 
 namespace Core {
@@ -53,6 +54,7 @@ namespace Core {
         std::unordered_map<uint64_t, uint16_t> m_sessionToIndex; // 자신의 캐릭터를 컨트롤 할 때
         std::unordered_map<uint64_t, uint16_t> m_InternalIDToIndex; // 다른 캐릭터와 상호작용할 때
         std::vector<uint64_t> m_dirty_list; // session 담기
+        std::vector<std::pair<uint64_t, uint16_t>> m_cheatList;  // Cheat 탐지해서 배치처리하는 용도, stack
         std::mutex m_mutex;
 
         std::queue<ChatMessage> m_chatQueue;
@@ -89,13 +91,17 @@ namespace Core {
             m_zoneID = zone;
             m_chars.reserve(MAX_ZONE_CAPACITY);
             m_dirty_list.reserve(MAX_ZONE_CAPACITY);
+            m_sessionSnapshot.reserve(MAX_ZONE_CAPACITY);
+            m_sessionToIndex.reserve(MAX_ZONE_CAPACITY);
+            m_InternalIDToIndex.reserve(MAX_ZONE_CAPACITY);
+            m_cheatList.reserve(MAX_ZONE_CAPACITY);
+
             int x = (zone-1) % ZONE_HORIZON;
             int y = (zone-1) / ZONE_HORIZON;
             m_area.x_min = x * ZONE_SIZE - TRANSITION_BUFFER;
             m_area.x_max = (x + 1) * ZONE_SIZE + TRANSITION_BUFFER;
             m_area.y_min = y * ZONE_SIZE - TRANSITION_BUFFER;
             m_area.y_max = (y + 1) * ZONE_SIZE + TRANSITION_BUFFER;
-            m_sessionSnapshot.reserve(MAX_ZONE_CAPACITY);
         }
 
         uint64_t ImmigrateChar(uint64_t sessionID, CharacterState& user);
@@ -108,5 +114,6 @@ namespace Core {
             std::lock_guard<std::mutex> lock(m_chatMutex);
             m_chatQueue.push(msg);
         }
+        void FlushCheat();
     };
 }

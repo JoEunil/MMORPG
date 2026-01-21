@@ -23,7 +23,6 @@ namespace Core {
         void GetInventory(IPacketView* p);
         void Chat(IPacketView* p);
         void ZoneChange(IPacketView* p);
-        void Pong(IPacketView* p);
         ISessionAuth* auth;
         IDBCache* cache;
         MessagePool* messagePool;
@@ -34,5 +33,6 @@ namespace Core {
     public:
         void Process(IPacketView* p);
         void Disconnect(uint64_t sessionID);
+        void Ping(uint64_t sessionID, uint64_t rtt, std::chrono::steady_clock::time_point now);
     };
 }

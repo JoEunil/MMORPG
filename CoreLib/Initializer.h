@@ -49,7 +49,6 @@ namespace Core {
             lobbyZone.Initialize(logger, &stateManager);
             noneZoneThreadPool.Initialize(logger , &noneZoneHandler);
             zoneThreadSet.Initialize(&zoneHandler, logger);
-            zoneThreadSet.Start();
             writer.Initialize(packetPool, bigPacketPool);
             mqHandler.Initialize(iocp, logger, &writer, &lobbyZone, &msgPool);
             recvMQ.Initialize(&mqHandler, &msgPool);
@@ -58,13 +57,13 @@ namespace Core {
         
         void InjectDependencies2(IIOCP* iocp, ILogger* logger, ISessionAuth* session, IMessageQueue* sendMQ, IPacketPool* packetPool) {
             stateManager.Initialize(sendMQ, iocp, &msgPool, packetPool, &lobbyZone);
-            stateManager.PingStart();
             packetDispatcher.Initialize(&noneZoneThreadPool, &zoneThreadSet, logger, &stateManager);
             noneZoneThreadPool.Start();
             broadcastPool.Start();
             ZoneState::Initialize(logger, &broadcastPool, &writer, &stateManager);
             zoneHandler.Initialize(logger, &stateManager);
             noneZoneHandler.Initialize(iocp, logger, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone);
+            zoneThreadSet.Start();
         }
         
         bool CheckReady(ILogger* logger) {
@@ -122,7 +121,6 @@ namespace Core {
         
         void CleanUp1() {
             broadcastPool.Stop();
-            stateManager.StopPing();
             zoneThreadSet.Stop();
         }
         void CleanUp2() {

@@ -2,7 +2,6 @@
 #include "NoneZoneThreadPool.h"
 #include "ILogger.h"
 #include "IPacketView.h"
-#include "NoneZoneHandler.h"
 #include <iostream>
 
 
@@ -11,8 +10,8 @@ namespace Core {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_running.store(true);
 
-        m_threads.resize(ASYNC_THREADPOOL_SIZE);
-        for (int i = 0; i < ASYNC_THREADPOOL_SIZE; i++)
+        m_threads.resize(NONE_ZONE_THREADPOOL_SIZE);
+        for (int i = 0; i < NONE_ZONE_THREADPOOL_SIZE; i++)
         {
             m_threads[i] = std::thread(&NoneZoneThreadPool::WorkFunc, this);
         }

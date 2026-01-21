@@ -33,7 +33,7 @@ namespace Core {
                 handler->Process(work.get(), zoneID); // 게임 상태 업데이트 처리
                 localQueue.pop();
             }
-
+            handler->FlushCheat(zoneID);
             auto now = std::chrono::steady_clock::now();
             auto deltaSnapshotElapsed = now - lastDeltaSnapshot;
             auto fullSnapshotElapsed = now - lastFullSnapshot;

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <thread>
 #include <memory>
@@ -44,6 +44,6 @@ namespace Core {
         ~ZoneThreadSet() {
             Stop();
         }
-        void EnqueueWork(std::shared_ptr<IPacketView> pv, uint16_t zoneID);// 공용 큐에 작업 추가, 해시(zoneID)로 작업 분배
+        void EnqueueWork(std::shared_ptr<IPacketView> pv, uint16_t zoneID);// 공용 큐에 작업 추가
     };
 }
