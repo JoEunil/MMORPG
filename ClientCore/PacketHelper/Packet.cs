@@ -228,6 +228,20 @@ namespace ClientCore.PacketHelper
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_ZONE_CAPACITY)]
         public FullStateField[] states;
     }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct Ping
+    {
+        public ulong serverTimeNs;
+        public ulong rtt;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct Pong
+    {
+        public ulong serverTimeNs;
+    }
+
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct STPacket<T> where T : struct
     {

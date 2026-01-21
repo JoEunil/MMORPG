@@ -52,7 +52,7 @@ namespace ClientCore.Network
                         HandleInventoryRes(Packet.Deserialize<InventoryResBody>(header, buffer));
                         break;
                     case OP_CODE.PING:
-                        _viewModel.Pong();
+                        HandlePing(Packet.Deserialize<Ping>(header, buffer));
                         break;
                     default:
                        ErrorLog("Invalid opcode" + header.opcode + header.flags);
@@ -101,7 +101,10 @@ namespace ClientCore.Network
         {
             _viewModel.FullReceived(res.Item1, res.Item2);
         }
-
+        public void HandlePing(STPacket<Ping> packet)
+        {
+            _viewModel.PingReceived(packet.body.serverTimeNs, packet.body.rtt);
+        }
         private void WriteLog(string msg)
         {
             _viewModel.Log(msg);

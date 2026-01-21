@@ -73,6 +73,7 @@ public struct InventoryItemView
         event Action<ushort, DeltaUpdateField[]> OnDeltaReceived;
         event Action<ushort, FullStateField[]> OnFullReceived;
         event Action OnZoneChageFailed;
+        event Action<ulong> OnPingReceived;
         Task Login(string id, string pwd);
         void Enter(ulong charID);
         void Chat(string message);
@@ -92,7 +93,7 @@ public struct InventoryItemView
         void ZoneChageReceived(byte resStatus, ushort zoneID, ulong zoneInternalID, float x, float y);
         void DeltaReceived(ushort count, PacketHelper.DeltaUpdateField[] updates);
         void FullReceived(ushort count, PacketHelper.FullStateField[] states);
-        void Pong();
+        void PingReceived(ulong servertimeNs, ulong rtt);
         void Error(string msg);
         void Log(string msg);
     }
@@ -153,7 +154,7 @@ namespace ClientCore.Services
 
         void Chat(string message);
         void Move(byte dir, float speed);
-        void Pong();
+        void Pong(ulong serverTimeNs);
         void ZoneChange(byte op);
         void Log(string msg);
     }
