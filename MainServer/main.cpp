@@ -55,6 +55,7 @@ int main(int argc, char* argv[]) {
         }
         std::cout << "서버 종료" << std::endl;
         serverLogger.LogInfo("server stop");
+        net.CleanUp1();
         core.CleanUp1();
         cache.CleanUp1();
         core.CleanUp2();
