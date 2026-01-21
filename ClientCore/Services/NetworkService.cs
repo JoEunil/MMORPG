@@ -90,11 +90,11 @@ namespace ClientCore.Services
             }
         }
 
-        public void Pong()
+        public void Pong(ulong serverTimeNs)
         {
             try
             {
-                _sock.Send(PacketBuilder.CreatePongPacket());
+                _sock.Send(PacketBuilder.CreatePongPacket(serverTimeNs));
             }
             catch (Exception ex)
             {

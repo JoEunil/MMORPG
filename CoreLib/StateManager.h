@@ -6,6 +6,7 @@
 #include <thread>
 #include <atomic>
 #include <array>
+#include <chrono>
 
 #include "IMessageQueue.h"
 #include "MessageTypes.h"
@@ -24,20 +25,20 @@ namespace Core {
         uint16_t zoneID = 0;
         uint64_t userID = 0;
         uint64_t characterID = 0;
-        uint8_t pingFailCnt = 0;
+        uint16_t cheatCount = 0;
+        std::chrono::steady_clock::time_point lastCheatTime;
+        bool authenticated = false;
     };
 
-    struct SesssionShard {
+    struct SessionShard {
         std::shared_mutex smutex;
         std::unordered_map<uint64_t, SessionData> sessionMap;
     };
     class LobbyZone;
     class StateManager {
         std::unordered_map<uint16_t, std::unique_ptr<Core::ZoneState>> m_states;
-        std::array<SesssionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
+        std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
         
-        std::thread m_pingThread;
-        std::atomic<bool> m_running = false;
         
         MessagePool* messagePool;
         IMessageQueue* mq;
@@ -51,7 +52,7 @@ namespace Core {
                 m_states.emplace(zoneID, std::make_unique<ZoneState>(zoneID));
             }
             for (auto& shard: m_shards)
-                shard.sessionMap.reserve(MAX_USER_CAPACITY);
+                shard.sessionMap.reserve(MAX_USER_CAPACITY / SHARD_SIZE);
             mq = m;
             messagePool = mp;
             lobbyZone = lobby;
@@ -60,27 +61,14 @@ namespace Core {
         }
         
         bool IsReady() {
-            if (m_shards.size() != SHARD_SIZE) return false;
             if (mq == nullptr) return false;
             if (messagePool == nullptr) return false;
             if (lobbyZone == nullptr) return false;
             return true;
         }
         
-        void PingFunc();
-        void PingStart() {
-            m_pingThread = std::thread(&StateManager::PingFunc, this);
-        }
-        
-        void StopPing() {
-            m_running.store(false);
-            if (m_pingThread.joinable())
-                m_pingThread.join();
-        }
-
         
         void CleanUp() {
-            StopPing();
             for (auto& shard : m_shards)
             {
                 std::unique_lock<std::shared_mutex> lock(shard.smutex);
@@ -119,7 +107,7 @@ namespace Core {
             return it != m_states.end() ? it->second.get() : nullptr;
         }
 
-        void AddSession(uint64_t sessionID, uint64_t userID) {
+        void AddSession(uint64_t sessionID, uint64_t userID, bool authenticated) {
             auto& shard = m_shards[sessionID % SHARD_SIZE];
             std::unique_lock<std::shared_mutex> lock(shard.smutex);
             auto& map = shard.sessionMap;
@@ -127,15 +115,17 @@ namespace Core {
             if (it != map.end())
                 return ;
             map[sessionID].userID = userID;
-            map[sessionID].zoneID = 0;
+            map[sessionID].zoneID = 0; // lobby
             map[sessionID].characterID = 0;
-            map[sessionID].pingFailCnt = 0;
+            map[sessionID].cheatCount = 0;
+            map[sessionID].lastCheatTime = std::chrono::steady_clock::now();
+            map[sessionID].authenticated = authenticated;
             // character load 안한 상태
         }
         
         uint64_t GetUserID(uint64_t sessionID) {
             auto& shard = m_shards[sessionID % SHARD_SIZE];
-            std::unique_lock<std::shared_mutex> lock(shard.smutex);
+            std::shared_lock<std::shared_mutex> lock(shard.smutex);
             
             auto it = shard.sessionMap.find(sessionID);
             if (it == shard.sessionMap.end())
@@ -184,19 +174,38 @@ namespace Core {
             return it->second.zoneID;
         }
 
-
+        uint8_t HealthCheck(uint64_t sessionID) {
+            auto& shard = m_shards[sessionID % SHARD_SIZE];
+            std::shared_lock<std::shared_mutex> lock(shard.smutex);
+            auto it = shard.sessionMap.find(sessionID);
+            uint8_t res = 0; 
+            if (it == shard.sessionMap.end())
+            {
+                return res;
+            }
+            res |= MASK_EXIST;
+            if (it->second.authenticated)
+                res |= MASK_AUTHENTICATED; 
+            if (it->second.cheatCount <= MAX_CHEAT_COUNT)
+                res |= MASK_NOT_CHEAT; 
+            return res;
+        }
         void Disconnect(uint64_t sessionID);
         void EnqueueDisconnectMsg(CharacterState& temp, uint64_t sessionID);
 
-        void Pong (uint64_t sessionID) {
+        void Cheat(uint64_t sessionID, uint16_t cheat, std::chrono::steady_clock::time_point time) {
             auto& shard = m_shards[sessionID % SHARD_SIZE];
             std::unique_lock<std::shared_mutex> lock(shard.smutex);
             auto it = shard.sessionMap.find(sessionID);
-            if (it == shard.sessionMap.end()) {
-                std::cout << "pong session not found\n";
-                return;
+            if (it != shard.sessionMap.end())
+            {
+                auto before = it->second.lastCheatTime;
+                it->second.lastCheatTime = time;
+                if (it->second.lastCheatTime - before > CHEAT_FLUSH_TIME) {
+                    it->second.cheatCount = 0;
+                }
+                it->second.cheatCount += cheat;
             }
-            it->second.pingFailCnt = 0;
         }
     };
 }

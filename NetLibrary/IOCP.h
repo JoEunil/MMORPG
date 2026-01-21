@@ -13,9 +13,10 @@
 #include <thread>
 #include <atomic>
 #include <cstdint>
-
 #include <CoreLib/IIOCP.h>
 #include <CoreLib/Ilogger.h>
+
+#include "IAbortSocket.h"
 #include "Config.h"
 
 namespace Core {
@@ -26,25 +27,29 @@ namespace Core {
 namespace Net {
     class NetHandler;
     class OverlappedExPool;
+    class SessionManager;
 
-    class IOCP : public Core::IIOCP {
+    class IOCP : public Core::IIOCP, public IAbortSocket {
         HANDLE m_hIOCP;
         std::vector<std::thread> m_threads;
         SOCKET m_listenSock;
         LPFN_ACCEPTEX m_lpfnAcceptEx = nullptr; // AcceptEx 함수를 담을 함수 포인터
         std::atomic<bool> m_isRunning = false;
         std::atomic<bool> m_receiving = false;
-        
+
         std::atomic<bool>* fatalError;
         std::condition_variable* cv;
         Core::ILogger* logger;
+
         OverlappedExPool* overlappedExPool;
         NetHandler* netHandler;
+        SessionManager* sessionManager;
         
-        void Initialize(Core::ILogger* l, OverlappedExPool* o, NetHandler* n, std::atomic<bool>* f, std::condition_variable* c) {
+        void Initialize(Core::ILogger* l, OverlappedExPool* o, NetHandler* n, SessionManager* s, std::atomic<bool>* f, std::condition_variable* c) {
             logger = l;
             overlappedExPool = o;
             netHandler = n;
+            sessionManager = s;
             fatalError = f;
             cv = c;
         }
@@ -91,5 +96,7 @@ namespace Net {
             CleanUp();
         }
         void SendData(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet) override;
+
+        void AbortSocket(uint64_t session) override;
     };
 }

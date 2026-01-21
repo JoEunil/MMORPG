@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <cstdint>
 
 #include "MessageTypes.h"
@@ -41,6 +41,10 @@ namespace Core {
         void BroadcastFullState(uint16_t zoneID) {
             auto zoneState = stateManager->GetZone(zoneID);
             zoneState->FullSnapshot();
+        }
+        void FlushCheat(uint16_t zoneID) {
+            auto zoneState = stateManager->GetZone(zoneID);
+            zoneState->FlushCheat();
         }
     };
 }

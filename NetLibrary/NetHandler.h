@@ -11,24 +11,29 @@
 namespace Net {
     class ClientContextPool;
     class ClientContext;
+    class SessionManager;
+    class IAbortSocket;
     class NetHandler {
         std::unordered_map<SOCKET, std::unique_ptr<ClientContext>> m_socketMap;
         mutable std::shared_mutex m_smutex;
         std::atomic<int> m_connectionCnt = 0;
         ClientContextPool* contextPool;
-
+        SessionManager* sessionManager;
+        IAbortSocket* abortSocket;
         bool IsReady() const {
             return contextPool != nullptr;
         }
-        void Initialize(ClientContextPool* p) {
+        void Initialize(ClientContextPool* p, SessionManager* s, IAbortSocket* a) {
             contextPool = p;
+            sessionManager = s;
+            abortSocket = a;
         }
         
         friend class Initializer;
     public:
         bool OnAccept(SOCKET sock);
         void OnRecv(SOCKET sock, uint8_t* buf, uint16_t len) const;
-        void OnDisConnect(SOCKET sock);
+        bool OnDisConnect(SOCKET sock);
         ClientContext* GetContext(SOCKET sock) const {
             std::shared_lock<std::shared_mutex> lock(m_smutex);
             auto it = m_socketMap.find(sock);

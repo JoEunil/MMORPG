@@ -22,6 +22,30 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ExternalLib", "ExternalLib\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CacheLib", "CacheLib\CacheLib.vcxproj", "{C76D26F8-548E-4AF9-BDD3-E4E7657ECD50}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BaseLib", "BaseLib\BaseLib.vcxproj", "{1EBFC4A8-22E7-4752-BC34-B968F89DC757}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "솔루션 항목", "솔루션 항목", "{2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Concept", "Concept", "{C8D5274F-AC00-46C7-1F8D-E88E81087A52}"
+	ProjectSection(SolutionItems) = preProject
+		memory_order.md = memory_order.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Design", "Design", "{F0F87F94-7836-4275-9E8B-AF797CBC0540}"
+	ProjectSection(SolutionItems) = preProject
+		FloodDetect.md = FloodDetect.md
+		PingLoop.md = PingLoop.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A67903F-5C0B-4FD6-876B-B0088C77C6B6}"
+	ProjectSection(SolutionItems) = preProject
+		images\FloodCheckFlowChart.png = images\FloodCheckFlowChart.png
+		images\IOCPWorkerThreadRecv.png = images\IOCPWorkerThreadRecv.png
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -170,9 +194,30 @@ Global
 		{C76D26F8-548E-4AF9-BDD3-E4E7657ECD50}.Release|x64.Build.0 = Release|x64
 		{C76D26F8-548E-4AF9-BDD3-E4E7657ECD50}.Release|x86.ActiveCfg = Release|Win32
 		{C76D26F8-548E-4AF9-BDD3-E4E7657ECD50}.Release|x86.Build.0 = Release|Win32
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Debug|Any CPU.Build.0 = Debug|x64
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Debug|ARM64.ActiveCfg = Debug|x64
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Debug|ARM64.Build.0 = Debug|x64
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Debug|x64.ActiveCfg = Debug|x64
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Debug|x64.Build.0 = Debug|x64
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Debug|x86.ActiveCfg = Debug|Win32
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Debug|x86.Build.0 = Debug|Win32
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Release|Any CPU.ActiveCfg = Release|x64
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Release|Any CPU.Build.0 = Release|x64
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Release|ARM64.ActiveCfg = Release|x64
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Release|ARM64.Build.0 = Release|x64
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Release|x64.ActiveCfg = Release|x64
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Release|x64.Build.0 = Release|x64
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Release|x86.ActiveCfg = Release|Win32
+		{1EBFC4A8-22E7-4752-BC34-B968F89DC757}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{C8D5274F-AC00-46C7-1F8D-E88E81087A52} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
+		{F0F87F94-7836-4275-9E8B-AF797CBC0540} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
+		{1A67903F-5C0B-4FD6-876B-B0088C77C6B6} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1D7E6752-8BC7-4122-B538-33B39EB8EA38}

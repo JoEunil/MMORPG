@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <chrono>
+#include <CoreLib/PacketTypes.h>
 
 namespace Net {
 	inline constexpr const uint8_t IOCP_THREADPOOL_SIZE = 4; // IOCP 워커
@@ -27,10 +28,20 @@ namespace Net {
 	inline constexpr const uint16_t TARGET_CONTEXTPOOL_SIZE = 100;
 	inline constexpr const uint16_t FLUSH_CONTEXTPOOL = 50;
 
-	inline constexpr const uint16_t RING_BUFFER_SIZE = 1024;
-	inline constexpr const uint16_t RECV_BUFFER_SIZE = 128;
-	inline constexpr const uint16_t MAX_PACKET_LEN = 1024; // PacketPool에서 미리 할당할 패킷 크기
+	inline constexpr const uint16_t RECV_BUFFER_SIZE = 1024;  // MTU 고려. 내부에서 buffer를 패킷으로 조각내서 처리하기 때문에 buffer 수신은 한번에 크게 읽어서 시스템 콜 비용 절감.
+	inline constexpr const uint16_t RING_BUFFER_SIZE = RECV_BUFFER_SIZE * 16; // 서버 수신 패킷은 크기가 작아서 충분, ring buffer에 남은 버퍼공간 반납하는 로직도 있어서 안전함.
+	inline constexpr const uint16_t MAX_PACKET_LEN = 4096; // PacketPool에서 미리 할당할 패킷 크기, 대용량 상태 동기화 패킷 처리를 위해 4KB로 설정
 
 	inline constexpr const uint8_t MAX_ACCEPT_BUFFER_CNT = 10;
 
+	inline constexpr const uint16_t SHARD_SIZE = 10;
+	inline constexpr const uint8_t PING_COUNT_LIMIT = 5;
+
+	inline constexpr const uint16_t PING_STACK_RESERVE = 1000; 
+	inline constexpr const uint8_t PING_LOOP_WAIT = 1;
+
+
+	constexpr const uint32_t RECV_WINDOW = 20;
+	constexpr const uint32_t BYTE_THRESHOLD = RECV_WINDOW* RECV_BUFFER_SIZE * 0.8;
+	constexpr const uint32_t MIN_BYTE_PER_WINDOW = sizeof(Core::PacketHeader) * RECV_WINDOW * 0.8;
 }

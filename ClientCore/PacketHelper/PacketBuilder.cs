@@ -143,7 +143,7 @@ namespace ClientCore.PacketHelper
             };
             return Packet.SerializeHeaderOnly(header);
         }
-        internal static byte[] CreatePongPacket()
+        internal static byte[] CreatePongPacket(ulong serverTimeNs)
         {
             var header = new PacketHeader
             {
@@ -152,7 +152,19 @@ namespace ClientCore.PacketHelper
                 opcode = (byte)OP_CODE.PONG,
                 flags = 0x00,
             };
-            return Packet.SerializeHeaderOnly(header);
+
+            var body = new Pong
+            {
+                serverTimeNs = serverTimeNs
+            };
+
+            var packet = new STPacket<Pong>
+            {
+                header = header,
+                body = body
+            };
+
+            return Packet.Serialize(packet);
         }
     }
 }

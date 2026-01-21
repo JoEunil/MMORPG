@@ -44,6 +44,7 @@ namespace Cache {
         if (!res || !res->next()) {
             st->body.resStatus = 0;
             st->body.count = 0;
+            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterListResBody>));
             messageQ->EnqueueMessage(msg);
             connectionPool->Return(conn);
             return;
@@ -82,6 +83,7 @@ namespace Cache {
         
         if (!res || !res->next()) {
             st->body.resStatus = 0;
+            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterStateResBody>));
             messageQ->EnqueueMessage(msg);
             connectionPool->Return(conn);
             return;
@@ -123,6 +125,7 @@ namespace Cache {
 
             if (!res) {
                 st->body.resStatus = 0;
+                msg->SetLength(sizeof(Core::MsgStruct<Core::MsgInventoryResBody>));
                 messageQ->EnqueueMessage(msg);
                 return;
             }

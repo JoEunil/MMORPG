@@ -3,12 +3,11 @@
 #include <thread>
 #include <queue>
 #include <condition_variable>
-
+#include "NoneZoneHandler.h"
 #include "Config.h"
 namespace Core {
     class ILogger;
     class IPacketView;
-    class NoneZoneHandler;
     // 게임틱 단위로 처리되지 않는 (zone 상태와 관련 없는) 요청 처리
     class NoneZoneThreadPool {
         std::vector<std::thread> m_threads;
@@ -29,7 +28,7 @@ namespace Core {
         bool IsReady() {
             if (logger == nullptr)
                 return false;
-            if (m_threads.size() != ASYNC_THREADPOOL_SIZE)
+            if (m_threads.size() != NONE_ZONE_THREADPOOL_SIZE)
                 return false;
             if (handler == nullptr)
                 return false;
@@ -43,5 +42,8 @@ namespace Core {
         }
         void EnqueueWork(std::shared_ptr<IPacketView> pv);
         void EnqueueDisconnect(uint64_t sessionID);
+        void Ping(uint64_t sessionID, uint64_t rtt, std::chrono::steady_clock::time_point now) {
+            handler->Ping(sessionID, rtt, now);
+        }
     };
 }

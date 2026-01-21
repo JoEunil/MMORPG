@@ -70,9 +70,6 @@ namespace Core {
             case OP::ZONE_CHANGE:
                 ZoneChange(p);
                 break;
-            case OP::PONG:
-                Pong(p);
-                break;
             default:
                 logger->LogInfo(std::format("Async handler UnDefined OPCODE {} {}, session {}, flag {}, magic {}", p->GetOpcode(), h->opcode, p->GetSessionID(), h->flags, h->magic));
                 break;
@@ -85,7 +82,7 @@ namespace Core {
     }
 
     static void ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID) {
-        stateManager->AddSession(sessionID, userID);
+        stateManager->AddSession(sessionID, userID, resStatus == RES_STATUS::SUCCESS);
         iocp->SendData(sessionID, writer->WriteAuthResponse(resStatus));
     }
 
@@ -223,7 +220,9 @@ namespace Core {
             iocp->SendData(session, writer->WriteZoneChangeSucess(destZone, zoneInternalID, temp.x, temp.y));
     }
 
-    void NoneZoneHandler::Pong(IPacketView* p) {
-        stateManager->Pong(p->GetSessionID());
+
+    //  --- Thread: PingManager ----
+    void NoneZoneHandler::Ping(uint64_t sessionID, uint64_t rtt, std::chrono::steady_clock::time_point now) {
+        iocp->SendData(sessionID, writer->GetPingPacket(rtt, now));
     }
 }

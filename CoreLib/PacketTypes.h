@@ -7,6 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 18;
 
     enum OP : uint16_t {
         AUTH = 1,
@@ -40,6 +41,11 @@ namespace Core {
         DOWN = 2,
         LEFT = 3,
         RIGHT = 4,
+    };
+
+    enum RES_STATUS : uint8_t {
+        FAILED = 0,
+        SUCCESS = 1,
     };
 
 #pragma pack(push, 1)
@@ -176,6 +182,7 @@ namespace Core {
 
     struct Ping {
         uint64_t serverTimeNs; // std::chrono::steady_clock::now().time_since_epoch().count()
+        uint64_t rtt;
     };
 
     struct Pong {

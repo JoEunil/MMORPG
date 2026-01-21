@@ -159,4 +159,14 @@ namespace Core {
             character.dirtyBit |= 0x40; // y
         m_dirty_list.push_back(sessionID);
     }
+
+
+    void ZoneState::FlushCheat() {
+        // now()가 무거워서 근사값으로 처리
+        auto timePoint = std::chrono::steady_clock::now();
+        for (auto [session, cheat]: m_cheatList)
+        {
+            stateManager->Cheat(session, cheat, timePoint);
+        }
+    }
 }

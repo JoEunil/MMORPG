@@ -28,6 +28,7 @@ namespace ClientCore
         public event Action<ushort, DeltaUpdateField[]> OnDeltaReceived;
         public event Action<ushort, FullStateField[]> OnFullReceived;
         public event Action OnZoneChageFailed;
+        public event Action<ulong> OnPingReceived;
 
         internal ViewModel(INetworkService network, IViewDataModel viewData, ILogger logger, IMainThreadDispatcher threadDispatcher)
         {
@@ -176,9 +177,13 @@ namespace ClientCore
                 OnFullReceived?.Invoke(count, states);
             });
         }
-        public void Pong()
+        public void PingReceived(ulong servertimeNs, ulong rtt)
         {
-            _network.Pong();
+            _threadDispatcher.Post(() =>
+            {
+                OnPingReceived?.Invoke(rtt);
+            });
+            _network.Pong(servertimeNs);
         }
 
         public void Error(string msg)

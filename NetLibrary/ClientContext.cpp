@@ -45,15 +45,21 @@ namespace Net {
             return false;
         auto [magic, packetLen, opcode] = ParseHeader();
 
+        // 2차 패킷 검증
+
         if (magic != Core::MAGIC)
         {
-            std::cout << "m_front " << m_front << " m_rear " << m_rear << "Length " << GetLen() << std::endl;
-            std::cout << "magic check" << magic << " " << Core::MAGIC << std::endl;
-            Disconnect();
             return false;
         }
+
+        if (opcode == 0 or opcode > Core::MAX_DEFINED_OPCODE)
+        {
+            return false;
+        }
+
         if (GetLen() < packetLen)
             return false;
+
 
         PacketView* packet = new PacketView;
         if (m_rear < m_front and m_capacity - m_front < packetLen)
@@ -79,9 +85,13 @@ namespace Net {
         m_last_op = RELEASE;
         lock.unlock();
         m_workingCnt.fetch_add(1);
-        packetDispatcher->Process(pv);
+
+        if (!NetPacketFilter::TryDispatch(pv, *this)) {
+            m_gameSession.store(false, std::memory_order_release);
+            return true;
+        }
         // dispatcher에서 threadPool로 넘기지 못하는경우 ReleaseBuffer가 이 스레드에서 실행되어 unlock 하지 않으면 deadlock 발생
-        return true;
+        return false;
     }
 
     void ClientContext::EnqueueReleaseQ(uint32_t seq, uint16_t front, uint16_t rear) {
@@ -113,12 +123,17 @@ namespace Net {
         m_workingCnt.fetch_sub(1);
 
         if (!m_connected.load() && m_workingCnt.load() == 0) {
-            std::cout << "Release Buffer Disconnect " << m_connected.load() << " " << m_workingCnt.load() << std::endl;
-            packetDispatcher->Disconnect(m_sessionID);
+            NetPacketFilter::Disconnect(m_sessionID);
         }
     }
 
     bool ClientContext::EnqueueRecvQ(uint8_t* ptr, size_t len) {
+        // flood 지표 업데이트
+        if (m_floodDetector.ByteReceived(len)) {
+            m_flood.store(true, std::memory_order_release);
+            // 다음 Recv에서 Flood 체크 넘어가지 않도록 release, acquire로 시점 보장.
+        }
+
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             uint16_t front = ptr - m_startPtr;

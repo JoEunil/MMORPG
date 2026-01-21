@@ -23,7 +23,7 @@ namespace Core {
 
     inline constexpr const uint16_t MAX_INVENTORY_ITEMS = 10;
     inline constexpr const uint8_t BROADCAST_THREADPOOL_SIZE = 2;
-    inline constexpr const uint16_t ASYNC_THREADPOOL_SIZE = 3;
+    inline constexpr const uint16_t NONE_ZONE_THREADPOOL_SIZE = 3;
     
     inline constexpr const uint16_t SHARD_SIZE = 8; // stateManager의 session - zone 매핑 샤드, 접근하는 스레드풀 크기의 2~4배 정도
 
@@ -48,4 +48,16 @@ namespace Core {
     inline constexpr const auto FULL_SNAPSHOT_TICK = std::chrono::milliseconds(1000);
     inline constexpr const auto DELTA_SNAPSHOT_TICK = std::chrono::milliseconds(50);
     inline constexpr const auto GAME_TICK = std::chrono::milliseconds(50);
+
+    inline constexpr const uint16_t MAX_CHEAT_COUNT = 5; // 최대 허용 치트 점수
+    inline constexpr const uint8_t  MASK_EXIST = 1 << 0; 
+    inline constexpr const uint8_t  MASK_AUTHENTICATED = 1 << 1;
+    inline constexpr const uint8_t  MASK_NOT_CHEAT = 1 << 2;
+    // - 일반적인 비정상 패킷 1회 발생 시 바로 끊지 않음
+    // - 크리티컬한 경우, 점수를 높게 줘서 즉시 Disconnect 가능
+
+
+   inline constexpr const std::chrono::steady_clock::duration CHEAT_FLUSH_TIME = std::chrono::seconds(2);
+   // stateManager에서 Cheat Count flush할 시간.
+   // 네트워크 문제에 의해 증가된 cheat count 정리하기 위함.. 
 }
