@@ -84,16 +84,7 @@
     <ClInclude Include="ZoneThreadSet.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="AsyncThreadPool.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="ZoneHandler.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="AsyncHandler.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="IPacketDispatcher.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="LobbyZone.h">
@@ -101,6 +92,15 @@
     </ClInclude>
     <ClInclude Include="PacketDispatcher.h">
       <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="NoneZoneHandler.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="NoneZoneThreadPool.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="IPacketDispatcher.h">
+      <Filter>Interface</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -131,16 +131,16 @@
     <ClCompile Include="ZoneThreadSet.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="AsyncThreadPool.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="ZoneHandler.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="AsyncHandler.cpp">
+    <ClCompile Include="PacketDispatcher.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="PacketDispatcher.cpp">
+    <ClCompile Include="NoneZoneHandler.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="NoneZoneThreadPool.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

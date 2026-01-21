@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -224,6 +224,10 @@
     <None Include="NetLibrary.vcxproj.user" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="TrafficFloodDetector.h" />
+    <ClInclude Include="PingManager.h" />
+    <ClInclude Include="IAbortSocket.h" />
+    <ClInclude Include="NetPacketFilter.h" />
     <ClInclude Include="SessionManager.h" />
     <ClInclude Include="ClientContext.h" />
     <ClInclude Include="ClientContextPool.h" />
@@ -242,7 +246,9 @@
     <ClCompile Include="ClientContextPool.cpp" />
     <ClCompile Include="IOCP.cpp" />
     <ClInclude Include="NetHandler.h" />
+    <ClCompile Include="NetPacketFilter.cpp" />
     <ClCompile Include="OverlappedExPool.cpp" />
+    <ClCompile Include="PingManager.cpp" />
     <ClCompile Include="RingBuffer.cpp" />
     <ClCompile Include="PacketPool.cpp" />
     <ClInclude Include="PacketPool.h" />
@@ -257,6 +263,9 @@
     <ClInclude Include="STOverlappedEx.h" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\BaseLib\BaseLib.vcxproj">
+      <Project>{1ebfc4a8-22e7-4752-bc34-b968f89dc757}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\CoreLib\CoreLib.vcxproj">
       <Project>{38477bea-387b-4a18-b6ca-8dce0a9cfea7}</Project>
     </ProjectReference>
