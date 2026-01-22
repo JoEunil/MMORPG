@@ -102,6 +102,9 @@
     <ClInclude Include="IPacketDispatcher.h">
       <Filter>Interface</Filter>
     </ClInclude>
+    <ClInclude Include="IPingPacketWriter.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">

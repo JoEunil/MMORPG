@@ -232,14 +232,14 @@ namespace ClientCore.PacketHelper
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct Ping
     {
-        public ulong serverTimeNs;
+        public ulong serverTimeMs;
         public ulong rtt;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct Pong
     {
-        public ulong serverTimeNs;
+        public ulong serverTimeMs;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

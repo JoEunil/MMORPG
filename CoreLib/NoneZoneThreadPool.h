@@ -42,8 +42,5 @@ namespace Core {
         }
         void EnqueueWork(std::shared_ptr<IPacketView> pv);
         void EnqueueDisconnect(uint64_t sessionID);
-        void Ping(uint64_t sessionID, uint64_t rtt, std::chrono::steady_clock::time_point now) {
-            handler->Ping(sessionID, rtt, now);
-        }
     };
 }

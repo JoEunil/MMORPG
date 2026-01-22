@@ -92,8 +92,8 @@ namespace Net {
             }
         }
 
-        uint8_t SendPing(std::chrono::steady_clock::time_point now) {
-            NetPacketFilter::Ping(m_sessionID, m_rtt.load(std::memory_order_relaxed), now);
+        uint8_t SendPing(uint64_t nowMs) {
+            NetPacketFilter::Ping(m_sessionID, m_rtt.load(std::memory_order_relaxed), nowMs);
             return m_sessionPingCount.fetch_add(1) + 1;
         }
         void PongReceived() {

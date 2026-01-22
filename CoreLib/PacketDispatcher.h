@@ -5,7 +5,8 @@
 #include "IPacketDispatcher.h"
 #include "StateManager.h"
 #include "PacketTypes.h"
-
+#include "IPingPacketWriter.h"
+#include "IIOCP.h"
 namespace Core {
     class ILogger;
     class PacketDispatcher : public IPacketDispatcher {
@@ -13,17 +14,23 @@ namespace Core {
         ZoneThreadSet*  zoneThreadSet;
         ILogger* logger;
         StateManager* stateManager;
-        void Initialize(NoneZoneThreadPool* a, ZoneThreadSet* z, ILogger* l, StateManager* s) {
+        IPingPacketWriter* writer;
+        IIOCP* iocp;
+        void Initialize(NoneZoneThreadPool* a, ZoneThreadSet* z, ILogger* l, StateManager* s, IPingPacketWriter* w, IIOCP* i) {
             noneZoneThreadPool = a;
             zoneThreadSet = z;
             logger = l;
             stateManager = s;
+            writer = w;
+            iocp = i;
         }
         bool IsReady() {
             if (logger == nullptr) return false;
             if (stateManager == nullptr) return false;
             if (noneZoneThreadPool == nullptr || zoneThreadSet == nullptr)
                 return false;
+            if (writer == nullptr) return false;
+            if (iocp == nullptr) return false;
             return true;
         }
         friend class Initializer;
@@ -33,16 +40,13 @@ namespace Core {
         uint8_t HealthCheck(uint64_t sessionID) override {
            return stateManager->HealthCheck(sessionID);
         }
-        uint64_t GetRTT(std::shared_ptr<IPacketView> pv) override {
+        uint64_t GetRTT(std::shared_ptr<IPacketView> pv, uint64_t now) override {
             Pong* body = parseBody<Pong>(pv->GetPtr());
-            auto now = std::chrono::steady_clock::now();
-            auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                now.time_since_epoch()
-            ).count();
-            return ns - body->serverTimeNs;
+            return now - body->serverTimeMs;
         }
-        void Ping(uint64_t sessionID, uint64_t rtt, std::chrono::steady_clock::time_point now) override {
-            noneZoneThreadPool->Ping(sessionID, rtt, now);
+        void Ping(uint64_t sessionID, uint64_t rtt, uint64_t nowMs) override {
+            auto packet = writer->GetPingPacket(rtt, nowMs);
+            iocp->SendData(sessionID, packet);
         }
     };
 }

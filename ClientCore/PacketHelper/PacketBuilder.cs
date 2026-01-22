@@ -143,7 +143,7 @@ namespace ClientCore.PacketHelper
             };
             return Packet.SerializeHeaderOnly(header);
         }
-        internal static byte[] CreatePongPacket(ulong serverTimeNs)
+        internal static byte[] CreatePongPacket(ulong serverTimeMs)
         {
             var header = new PacketHeader
             {
@@ -155,7 +155,7 @@ namespace ClientCore.PacketHelper
 
             var body = new Pong
             {
-                serverTimeNs = serverTimeNs
+                serverTimeMs = serverTimeMs
             };
 
             var packet = new STPacket<Pong>

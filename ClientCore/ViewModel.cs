@@ -177,13 +177,13 @@ namespace ClientCore
                 OnFullReceived?.Invoke(count, states);
             });
         }
-        public void PingReceived(ulong servertimeNs, ulong rtt)
+        public void PingReceived(ulong servertimeMs, ulong rtt)
         {
             _threadDispatcher.Post(() =>
             {
                 OnPingReceived?.Invoke(rtt);
             });
-            _network.Pong(servertimeNs);
+            _network.Pong(servertimeMs);
         }
 
         public void Error(string msg)

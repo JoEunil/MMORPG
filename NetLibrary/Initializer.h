@@ -16,6 +16,7 @@
 #include "IAbortSocket.h"
 #include "PingManager.h"
 #include "SessionManager.h"
+#include "NetTimer.h"
 
 #include <CoreLib/ILogger.h>
 #include <CoreLib/IIocp.h>
@@ -39,6 +40,7 @@ namespace Net {
 
     public:
         void Initialize() {
+            NetTimer::StartThread();
             overlappedExPool.Initialize();
             clientContextPool.Initialize();
             packetPool.Initialize();
@@ -52,6 +54,7 @@ namespace Net {
         }
         void CleanUp2() {
             iocp.CleanUp();
+            NetTimer::Stop();
         }
         
         void InjectDependencies(Core::ILogger* l, Core::IPacketDispatcher* packetDispatcher) {

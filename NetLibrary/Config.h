@@ -38,7 +38,7 @@ namespace Net {
 	inline constexpr const uint8_t PING_COUNT_LIMIT = 5;
 
 	inline constexpr const uint16_t PING_STACK_RESERVE = 1000; 
-	inline constexpr const uint8_t PING_LOOP_WAIT = 1;
+	inline constexpr const std::chrono::seconds PING_LOOP_WAIT = std::chrono::seconds(1);
 
 
 	constexpr const uint32_t RECV_WINDOW = 20;

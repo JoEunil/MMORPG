@@ -107,7 +107,7 @@ class TrafficFloodDetector {
 	}; 
 ```
 
-### Count 기반 Fixed Womdpw 방식(최종 선택)
+#### Count 기반 Fixed Window 방식(최종 선택)
 * 개념 
 	* 시간 기준을 제거하고, 수신 횟수(RECV_WINDOW)를 기준으로 트래픽을 근사 측정함.
 * 특징 
@@ -141,7 +141,7 @@ class TrafficFloodDetector {
 
 [TrafficFloodDetector.h](NetLibrary/TrafficFloodDetector.h)
 
-### EMWA 
+#### EMWA 
 * 개념
 	* 지수 가중 이동 평균을 이용하여 최근 데이터에 높은 가중치를 부여하여 트래픽 변화를 유연하게 대응하는 방식.
 * 미도입 사유

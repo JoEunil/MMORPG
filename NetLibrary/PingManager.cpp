@@ -14,7 +14,7 @@ namespace Net {
                 this->HandleAbort(s, r);
                 });
 
-            std::this_thread::sleep_for(std::chrono::seconds(PING_LOOP_WAIT));
+            std::this_thread::sleep_for(PING_LOOP_WAIT);
         }
     }
 
