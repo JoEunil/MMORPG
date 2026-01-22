@@ -55,7 +55,7 @@ namespace ClientCore.Network
                         HandlePing(Packet.Deserialize<Ping>(header, buffer));
                         break;
                     default:
-                       ErrorLog("Invalid opcode" + header.opcode + header.flags);
+                        ErrorLog("Invalid opcode" + header.opcode + header.flags);
                         break;
                 }
             }
@@ -66,9 +66,9 @@ namespace ClientCore.Network
         }
         private void HandleChat(STPacket<ChatFloodBody> packet, string[] messages)
         {
-            for (int i = 0;i < packet.body.chatCnt; i++) 
+            for (int i = 0; i < packet.body.chatCnt; i++)
             {
-                var sender = packet.body.entities[i].zoneInternalID; 
+                var sender = packet.body.entities[i].zoneInternalID;
                 _viewModel.ChatReceived(sender, messages[i]);
                 ErrorLog("chat " + messages[i]);
             }
@@ -83,7 +83,7 @@ namespace ClientCore.Network
         }
         private void HandleEnterRes(STPacket<EnterWorldResponseBody> packet)
         {
-            _viewModel.EnterReceived(packet.body.resStatus, packet.body.name, packet.body.level, packet.body. exp, packet.body.hp, packet.body.mp, packet.body.dir, packet.body.startX, packet.body.startY, packet.body.currentZone);
+            _viewModel.EnterReceived(packet.body.resStatus, packet.body.name, packet.body.level, packet.body.exp, packet.body.hp, packet.body.mp, packet.body.dir, packet.body.startX, packet.body.startY, packet.body.currentZone);
         }
         private void HandleInventoryRes(STPacket<InventoryResBody> packet)
         {
@@ -103,7 +103,7 @@ namespace ClientCore.Network
         }
         public void HandlePing(STPacket<Ping> packet)
         {
-            _viewModel.PingReceived(packet.body.serverTimeNs, packet.body.rtt);
+            _viewModel.PingReceived(packet.body.serverTimeMs, packet.body.rtt);
         }
         private void WriteLog(string msg)
         {
@@ -116,4 +116,5 @@ namespace ClientCore.Network
         }
 
     }
+
 }

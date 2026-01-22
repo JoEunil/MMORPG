@@ -33,6 +33,6 @@ namespace Core {
     public:
         void Process(IPacketView* p);
         void Disconnect(uint64_t sessionID);
-        void Ping(uint64_t sessionID, uint64_t rtt, std::chrono::steady_clock::time_point now);
+        void Ping(uint64_t sessionID, uint64_t rtt, uint64_t nowMs);
     };
 }

@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "NetPacketFilter.h"
 #include "ClientContext.h"
+#include "NetTimer.h"
 
 #include <CoreLib/IPacketView.h>
 #include <CoreLib/IPacketDispatcher.h>
@@ -39,7 +40,7 @@ namespace Net {
         case Core::OP::PONG: 
             {
                 std::cout << "Pong\n";
-                uint64_t rtt = packetDispatcher->GetRTT(pv);
+                uint64_t rtt = packetDispatcher->GetRTT(pv, NetTimer::GetTimeMS());
                 ctx.PongReceived();
                 ctx.SetRtt(rtt);
             }

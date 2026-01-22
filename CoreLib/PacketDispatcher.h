@@ -33,16 +33,12 @@ namespace Core {
         uint8_t HealthCheck(uint64_t sessionID) override {
            return stateManager->HealthCheck(sessionID);
         }
-        uint64_t GetRTT(std::shared_ptr<IPacketView> pv) override {
+        uint64_t GetRTT(std::shared_ptr<IPacketView> pv, uint64_t now) override {
             Pong* body = parseBody<Pong>(pv->GetPtr());
-            auto now = std::chrono::steady_clock::now();
-            auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                now.time_since_epoch()
-            ).count();
-            return ns - body->serverTimeNs;
+            return now - body->serverTimeMs;
         }
-        void Ping(uint64_t sessionID, uint64_t rtt, std::chrono::steady_clock::time_point now) override {
-            noneZoneThreadPool->Ping(sessionID, rtt, now);
+        void Ping(uint64_t sessionID, uint64_t rtt, uint64_t nowMs) override {
+            noneZoneThreadPool->Ping(sessionID, rtt, nowMs);
         }
     };
 }

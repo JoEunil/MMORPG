@@ -69,16 +69,13 @@ namespace Core {
         std::shared_ptr<IPacket> WriteZoneChangeFailed();
         std::shared_ptr<IPacket> WriteZoneChangeSucess(uint16_t zoneID, uint64_t zoneInternalID, float x, float y);
 
-        std::shared_ptr<IPacket> GetPingPacket(uint64_t rtt, std::chrono::steady_clock::time_point now) {
+        std::shared_ptr<IPacket> GetPingPacket(uint64_t rtt,uint64_t nowMs) {
             auto p = packetPool->Acquire();
             auto p_st = reinterpret_cast<PacketStruct<Ping>*>(p->GetBuffer());
             p_st->header.length = sizeof(PacketHeader) + sizeof(Ping);
             p_st->header.opcode = OP::PING;
             p_st->header.flags = 0x00;
-            auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                now.time_since_epoch()
-            ).count();
-            p_st->body.serverTimeNs = static_cast<uint64_t>(ns);
+            p_st->body.serverTimeMs = static_cast<uint64_t>(nowMs);
             p_st->body.rtt = rtt;
             p->SetLength(sizeof(PacketHeader) + sizeof(Ping));
             return p;

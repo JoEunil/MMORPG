@@ -181,12 +181,12 @@ namespace Core {
     };
 
     struct Ping {
-        uint64_t serverTimeNs; // std::chrono::steady_clock::now().time_since_epoch().count()
+        uint64_t serverTimeMs; 
         uint64_t rtt;
     };
 
     struct Pong {
-        uint64_t serverTimeNs; // 클라이언트는 그대로 return
+        uint64_t serverTimeMs; // 클라이언트는 그대로 return
     };
     
 #pragma pack(pop)

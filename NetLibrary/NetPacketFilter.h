@@ -24,8 +24,8 @@ namespace Net {
         static void Disconnect(uint64_t sessionID) {
             packetDispatcher->Disconnect(sessionID);
         }
-        static void Ping(uint64_t sessionID, uint64_t rtt, std::chrono::steady_clock::time_point now) {
-            packetDispatcher->Ping(sessionID, rtt, now);
+        static void Ping(uint64_t sessionID, uint64_t rtt, uint64_t nowMs) {
+            packetDispatcher->Ping(sessionID, rtt, nowMs);
         }
     };
 

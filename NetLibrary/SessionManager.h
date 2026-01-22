@@ -7,6 +7,7 @@
 #include <functional>
 
 #include "ClientContext.h"
+#include "NetTimer.h"
 
 namespace Net{
     struct ContextShard {
@@ -73,7 +74,8 @@ namespace Net{
                             copyList[idx++] = { sessionID, ctx };
                     }
                 }
-                auto now = std::chrono::steady_clock::now();
+                auto now = NetTimer::GetTimeMS();
+
                 for (int j = 0; j < idx; j++) {
                     auto& [sessionID, ctx] = copyList[j];
                     try {

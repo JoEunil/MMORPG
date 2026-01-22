@@ -93,7 +93,7 @@ public struct InventoryItemView
         void ZoneChageReceived(byte resStatus, ushort zoneID, ulong zoneInternalID, float x, float y);
         void DeltaReceived(ushort count, PacketHelper.DeltaUpdateField[] updates);
         void FullReceived(ushort count, PacketHelper.FullStateField[] states);
-        void PingReceived(ulong servertimeNs, ulong rtt);
+        void PingReceived(ulong servertimeMs, ulong rtt);
         void Error(string msg);
         void Log(string msg);
     }
@@ -154,7 +154,7 @@ namespace ClientCore.Services
 
         void Chat(string message);
         void Move(byte dir, float speed);
-        void Pong(ulong serverTimeNs);
+        void Pong(ulong serverTimeMs);
         void ZoneChange(byte op);
         void Log(string msg);
     }
