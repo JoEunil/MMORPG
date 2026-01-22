@@ -161,6 +161,7 @@
     <ClInclude Include="PacketTypes.h" />
     <ClInclude Include="PacketWriter.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="IPingPacketWriter.h" />
     <ClInclude Include="StateManager.h" />
     <ClInclude Include="ZoneHandler.h" />
     <ClInclude Include="ZoneState.h" />

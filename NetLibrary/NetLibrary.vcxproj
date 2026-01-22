@@ -224,6 +224,7 @@
     <None Include="NetLibrary.vcxproj.user" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="NetTimer.h" />
     <ClInclude Include="TrafficFloodDetector.h" />
     <ClInclude Include="PingManager.h" />
     <ClInclude Include="IAbortSocket.h" />

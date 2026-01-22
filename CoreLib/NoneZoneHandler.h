@@ -33,6 +33,5 @@ namespace Core {
     public:
         void Process(IPacketView* p);
         void Disconnect(uint64_t sessionID);
-        void Ping(uint64_t sessionID, uint64_t rtt, uint64_t nowMs);
     };
 }

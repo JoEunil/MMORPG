@@ -219,10 +219,4 @@ namespace Core {
         else
             iocp->SendData(session, writer->WriteZoneChangeSucess(destZone, zoneInternalID, temp.x, temp.y));
     }
-
-
-    //  --- Thread: PingManager ----
-    void NoneZoneHandler::Ping(uint64_t sessionID, uint64_t rtt, uint64_t nowMs) {
-        iocp->SendData(sessionID, writer->GetPingPacket(rtt, nowMs));
-    }
 }

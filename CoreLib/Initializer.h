@@ -19,6 +19,8 @@
 #include "NoneZoneThreadPool.h"
 #include "PacketDispatcher.h"
 #include "LobbyZone.h"
+#include "IPingPacketWriter.h"
+
 namespace Core {
     class Initializer {
         InMemoryQueue recvMQ;
@@ -57,7 +59,7 @@ namespace Core {
         
         void InjectDependencies2(IIOCP* iocp, ILogger* logger, ISessionAuth* session, IMessageQueue* sendMQ, IPacketPool* packetPool) {
             stateManager.Initialize(sendMQ, iocp, &msgPool, packetPool, &lobbyZone);
-            packetDispatcher.Initialize(&noneZoneThreadPool, &zoneThreadSet, logger, &stateManager);
+            packetDispatcher.Initialize(&noneZoneThreadPool, &zoneThreadSet, logger, &stateManager, static_cast<IPingPacketWriter*>(&writer), iocp);
             noneZoneThreadPool.Start();
             broadcastPool.Start();
             ZoneState::Initialize(logger, &broadcastPool, &writer, &stateManager);
@@ -118,7 +120,7 @@ namespace Core {
         IMessageQueue* GetMessageQueue() {
             return static_cast<IMessageQueue*>(&recvMQ);
         }
-        
+
         void CleanUp1() {
             broadcastPool.Stop();
             zoneThreadSet.Stop();

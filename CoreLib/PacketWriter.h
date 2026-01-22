@@ -1,16 +1,19 @@
 ﻿#pragma once
 #include <memory>
+#include <chrono>
+
 #include "MessageTypes.h"
 #include "ZoneState.h"
 #include "IPacketPool.h"
 #include "PacketTypes.h"
 #include "IPacket.h"
-#include <chrono>
+#include "IPingPacketWriter.h"
+
 
 namespace Core {
     class IPacket;
     class PacketTypes;
-    class PacketWriter {
+    class PacketWriter : public IPingPacketWriter{
         IPacketPool* packetPool;
         IPacketPool* bigPacketPool;
 
@@ -69,7 +72,7 @@ namespace Core {
         std::shared_ptr<IPacket> WriteZoneChangeFailed();
         std::shared_ptr<IPacket> WriteZoneChangeSucess(uint16_t zoneID, uint64_t zoneInternalID, float x, float y);
 
-        std::shared_ptr<IPacket> GetPingPacket(uint64_t rtt,uint64_t nowMs) {
+        std::shared_ptr<IPacket> GetPingPacket(uint64_t rtt,uint64_t nowMs) override {
             auto p = packetPool->Acquire();
             auto p_st = reinterpret_cast<PacketStruct<Ping>*>(p->GetBuffer());
             p_st->header.length = sizeof(PacketHeader) + sizeof(Ping);
