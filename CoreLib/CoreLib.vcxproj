@@ -111,7 +111,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)NetLibary;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -130,7 +130,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)NetLibary;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -140,6 +140,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="ChatThreadPool.h" />
     <ClInclude Include="NoneZoneHandler.h" />
     <ClInclude Include="NoneZoneThreadPool.h" />
     <ClInclude Include="BroadcastThreadPool.h" />
@@ -168,6 +169,7 @@
     <ClInclude Include="ZoneThreadSet.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ChatThreadPool.cpp" />
     <ClCompile Include="NoneZoneHandler.cpp" />
     <ClCompile Include="NoneZoneThreadPool.cpp" />
     <ClCompile Include="BroadcastThreadPool.cpp" />
@@ -190,6 +192,11 @@
     </ClCompile>
     <ClCompile Include="StateManager.cpp" />
     <ClCompile Include="ZoneState.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\BaseLib\BaseLib.vcxproj">
+      <Project>{1ebfc4a8-22e7-4752-bc34-b968f89dc757}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

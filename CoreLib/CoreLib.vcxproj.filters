@@ -105,6 +105,9 @@
     <ClInclude Include="IPingPacketWriter.h">
       <Filter>Interface</Filter>
     </ClInclude>
+    <ClInclude Include="ChatThreadPool.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -128,9 +131,6 @@
     <ClCompile Include="StateManager.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="BroadcastThreadPool.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="ZoneThreadSet.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -144,6 +144,12 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="NoneZoneThreadPool.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="BroadcastThreadPool.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ChatThreadPool.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

@@ -39,11 +39,6 @@ namespace Core {
     class PacketWriter;
     class StateManager;
 
-    struct ChatMessage {
-        uint64_t senderSessionID;
-        std::string message;
-    };
-
     struct ZoneArea {
         float x_min, x_max;
         float y_min, y_max;
@@ -56,10 +51,6 @@ namespace Core {
         std::vector<uint64_t> m_dirty_list; // session 담기
         std::vector<std::pair<uint64_t, uint16_t>> m_cheatList;  // Cheat 탐지해서 배치처리하는 용도, stack
         std::mutex m_mutex;
-
-        std::queue<ChatMessage> m_chatQueue;
-        // noneZoneHandler에서 enqueue하고, deltaSnapshot 시점에 체크
-        std::mutex m_chatMutex;
         
         std::vector<uint64_t> m_sessionSnapshot;
         std::mutex m_sessionSnapshotMutex;
@@ -110,10 +101,6 @@ namespace Core {
         void DeltaSnapshot();
         void FullSnapshot();
         void Move(uint64_t sessionID, uint8_t dir, float speed);
-        void EnqueueChat(ChatMessage& msg) {
-            std::lock_guard<std::mutex> lock(m_chatMutex);
-            m_chatQueue.push(msg);
-        }
         void FlushCheat();
     };
 }

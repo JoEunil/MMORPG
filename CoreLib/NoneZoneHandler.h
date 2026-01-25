@@ -14,8 +14,9 @@ namespace Core {
     class IMessageQueue;
     class StateManager;
     class LobbyZone;
+    class ChatThreadPool;
     class NoneZoneHandler{
-        void Initialize(IIOCP* i, ILogger* l, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby);
+        void Initialize(IIOCP* i, ILogger* l, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c);
         bool IsReady();
         void CheckSession(IPacketView* p);
         void GetCharacterList(IPacketView* p);
@@ -28,6 +29,7 @@ namespace Core {
         MessagePool* messagePool;
         IMessageQueue* messageQueue;
         LobbyZone* lobbyZone;
+        ChatThreadPool* chat;
         friend class Initializer;
         
     public:

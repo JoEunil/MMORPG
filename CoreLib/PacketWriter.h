@@ -35,8 +35,9 @@ namespace Core {
         std::shared_ptr<IPacket> WriteEnterWorldResponse(MsgCharacterStateResBody* body);
         std::shared_ptr<IPacket> WriteInventoryResponse(MsgInventoryResBody* body);
         std::shared_ptr<IPacket> WriteInventoryUpdateResponse(MsgInventoryUpdateResBody* body);
-        std::shared_ptr<IPacket> GetInitialChatPacket();
-        void WriteChatPacketField(std::shared_ptr<IPacket> p, uint64_t sender, std::string& message);
+        std::shared_ptr<IPacket> GetChatWhisperPacket(uint64_t sender, std::string& userName, std::string& message);
+        std::shared_ptr<IPacket> GetInitialChatBatchPacket();
+        uint16_t WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, std::string& userName, std::string& message);
         
         // 인라인 최적화 기대
         std::shared_ptr<IPacket> GetInitialDeltaPacket() {
@@ -70,7 +71,7 @@ namespace Core {
         std::shared_ptr<IPacket> GetInitialFullPacket();
         void WriteFullField(std::shared_ptr<IPacket> p, CharacterState& state);
         std::shared_ptr<IPacket> WriteZoneChangeFailed();
-        std::shared_ptr<IPacket> WriteZoneChangeSucess(uint16_t zoneID, uint64_t zoneInternalID, float x, float y);
+        std::shared_ptr<IPacket> WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint64_t zoneInternalID, float x, float y);
 
         std::shared_ptr<IPacket> GetPingPacket(uint64_t rtt,uint64_t nowMs) override {
             auto p = packetPool->Acquire();

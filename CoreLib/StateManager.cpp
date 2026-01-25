@@ -2,6 +2,7 @@
 #include "StateManager.h"
 #include "Initializer.h"
 #include "LobbyZone.h"
+#include "ChatThreadPool.h"
 #include <iostream>
 
 namespace Core {
@@ -24,6 +25,8 @@ namespace Core {
         if (m_states[it->second.zoneID]->EmigrateChar(sessionID, temp)) {
             shard.sessionMap.erase(it);
             lock.unlock();
+            chat->EnqueueZoneLeave(sessionID, it->second.zoneID);
+            chat->DeleteChatSession(sessionID, it->second.zoneID);
             EnqueueDisconnectMsg(temp, sessionID);
         }
     }

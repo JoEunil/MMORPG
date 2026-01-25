@@ -94,10 +94,26 @@ namespace Core {
         return p;
     }
 
-    std::shared_ptr<IPacket> PacketWriter::GetInitialChatPacket() {
+    std::shared_ptr<IPacket> PacketWriter::GetChatWhisperPacket(uint64_t sender, std::string& userName, std::string& message) {
+        auto p = packetPool->Acquire();
+        auto p_st = reinterpret_cast<PacketStruct<ChatWhisperBody>*>(p->GetBuffer());
+        p_st->header.length = sizeof(PacketHeader) + sizeof(ChatWhisperBody);
+        p->SetLength(p_st->header.length);
+        p_st->header.opcode = OP::CHAT_WHISPER;
+        p_st->header.magic = MAGIC;
+        p_st->header.flags = 0x00;
+        memcpy(p_st->body.name, userName.data(), userName.length());
+        p_st->body.senderChatID = sender;
+        p_st->body.messageLen = message.length();
+        uint8_t* msgStart = reinterpret_cast<uint8_t*>(p->GetBuffer()) + sizeof(PacketStruct<ChatWhisperBody>);
+        memcpy(msgStart, message.data(), message.length());
+        return p;
+    }
+
+    std::shared_ptr<IPacket> PacketWriter::GetInitialChatBatchPacket() {
         auto p = bigPacketPool->Acquire();
-        auto p_st = reinterpret_cast<PacketStruct<ChatFloodBody>*>(p->GetBuffer());
-        p_st->header.length = sizeof(PacketHeader) + sizeof(ChatFloodBody);
+        auto p_st = reinterpret_cast<PacketStruct<ChatBatchNotifyBody>*>(p->GetBuffer());
+        p_st->header.length = sizeof(PacketHeader) + sizeof(ChatBatchNotifyBody);
         p->SetLength(p_st->header.length);
         p_st->header.opcode = OP::CHAT_BROADCAST;
         p_st->header.magic = MAGIC;
@@ -107,19 +123,21 @@ namespace Core {
         return p;
     }
 
-    void PacketWriter::WriteChatPacketField(std::shared_ptr<IPacket> p, uint64_t sender, std::string& message) {
-        auto p_st = reinterpret_cast<PacketStruct<ChatFloodBody>*>(p->GetBuffer());
+    uint16_t PacketWriter::WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, std::string& userName, std::string& message) {
+        auto p_st = reinterpret_cast<PacketStruct<ChatBatchNotifyBody>*>(p->GetBuffer());
         p_st->header.length += message.length();
         p->SetLength(p_st->header.length);
         
-        uint8_t* msgStart = reinterpret_cast<uint8_t*>(p->GetBuffer()) + sizeof(PacketStruct<ChatFloodBody>) + p_st->body.totalMessageLength;
+        uint8_t* msgStart = reinterpret_cast<uint8_t*>(p->GetBuffer()) + sizeof(PacketStruct<ChatBatchNotifyBody>) + p_st->body.totalMessageLength;
         memcpy(msgStart, message.data(), message.length());
 
-        p_st->body.entities[p_st->body.chatCnt].zoneInternalID = sender;
+        p_st->body.entities[p_st->body.chatCnt].senderChatID = sender;
         p_st->body.entities[p_st->body.chatCnt].offset = p_st->body.totalMessageLength;
         p_st->body.entities[p_st->body.chatCnt].messageLength = message.length();
+        memcpy(p_st->body.entities[p_st->body.chatCnt].name, userName.data(), userName.length());
         p_st->body.chatCnt++;
         p_st->body.totalMessageLength += message.length();
+        return p_st->body.chatCnt;
     }
 
     std::shared_ptr<IPacket> PacketWriter::GetInitialFullPacket() {
@@ -165,7 +183,7 @@ namespace Core {
         return p;
     }
 
-    std::shared_ptr<IPacket> PacketWriter::WriteZoneChangeSucess(uint16_t zoneID, uint64_t zoneInternalID, float x, float y) {
+    std::shared_ptr<IPacket> PacketWriter::WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint64_t zoneInternalID, float x, float y) {
         auto p = packetPool->Acquire();
         auto p_st = reinterpret_cast<PacketStruct<ZoneChangeResponseBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(ZoneChangeResponseBody);
@@ -176,6 +194,7 @@ namespace Core {
         p_st->header.flags |= FLAG_SIMULATION;
         p_st->body.resStatus = 1;
         p_st->body.zoneID = zoneID;
+        p_st->body.chatID = chatID;
         p_st->body.startX = x;
         p_st->body.startY = y;
         p_st->body.zoneInternalID = zoneInternalID;

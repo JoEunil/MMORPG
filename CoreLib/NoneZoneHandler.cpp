@@ -13,6 +13,7 @@
 #include "IMessageQueue.h"
 #include "StateManager.h"
 #include "LobbyZone.h"
+#include "ChatThreadPool.h"
 #include "Config.h"
 
 namespace Core {
@@ -22,7 +23,7 @@ namespace Core {
     static StateManager* stateManager;
     // 콜백에서 쓰기 위함
 
-    void NoneZoneHandler::Initialize(IIOCP* i, ILogger* l, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby) {
+    void NoneZoneHandler::Initialize(IIOCP* i, ILogger* l, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c) {
         iocp = i;
         logger = l;
         auth = s;
@@ -31,6 +32,7 @@ namespace Core {
         messageQueue = mq;
         stateManager = manager;
         lobbyZone = lobby;
+        chat = c;
     }
 
     bool NoneZoneHandler::IsReady() {
@@ -148,10 +150,19 @@ namespace Core {
         auto session = p->GetSessionID();
         auto zoneID = stateManager->GetZoneID(session);
         auto zone = stateManager->GetZone(zoneID);
-        ChatMessage msg;
-        msg.senderSessionID = session;
-        msg.message = std::string(reinterpret_cast<char*>(startPtr), body->messageLength);
-        zone->EnqueueChat(msg);
+        ChatEvent event;
+        event.type = ChatEventType::CHAT;
+        event.senderSessionID = session;
+        event.key.scope = body->scope;
+        switch (body->scope) {
+        case CHAT_SCOPE::Whisper:
+            event.key.id = body->targetChatID;
+            break;
+        case CHAT_SCOPE::Zone:
+            event.key.id = static_cast<uint64_t>(zoneID);
+        }
+        event.message = std::string(reinterpret_cast<char*>(startPtr), body->messageLength);
+        chat->EnqueueChat(event);
     }
 
     void NoneZoneHandler::ZoneChange(IPacketView* p) {
@@ -185,8 +196,11 @@ namespace Core {
                     iocp->SendData(session, writer->WriteZoneChangeFailed());
                     logger->LogError("ImmigrateChar Failed");
                 }
-                else 
-                    iocp->SendData(session, writer->WriteZoneChangeSucess(temp.lastZone, zoneInternalID, temp.x, temp.y));
+                else {
+                    uint64_t chatID = chat->AddChatSession(session, temp.lastZone, std::string(temp.charName));
+                    chat->EnqueueZoneJoin(session, temp.lastZone);
+                    iocp->SendData(session, writer->WriteZoneChangeSucess(temp.lastZone, chatID, zoneInternalID, temp.x, temp.y));
+                }
                 break;
             }
             case ZONE_CHANGE::UP : destZone = zoneID + ZONE_HORIZON; break;
@@ -216,7 +230,10 @@ namespace Core {
             iocp->SendData(session, writer->WriteZoneChangeFailed());
             return;
         }
-        else
-            iocp->SendData(session, writer->WriteZoneChangeSucess(destZone, zoneInternalID, temp.x, temp.y));
+        else {
+            iocp->SendData(session, writer->WriteZoneChangeSucess(destZone, 0, zoneInternalID, temp.x, temp.y));
+            chat->EnqueueZoneLeave(session, zoneID);
+            chat->EnqueueZoneJoin(session, destZone);
+        }
     }
 }
