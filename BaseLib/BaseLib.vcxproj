@@ -110,6 +110,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -139,7 +140,6 @@
     <ClInclude Include="Exeption.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="LockFreeQueue.h" />
-    <ClInclude Include="LockFreeQueueSP.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="SpinLockGuard.h" />
   </ItemGroup>

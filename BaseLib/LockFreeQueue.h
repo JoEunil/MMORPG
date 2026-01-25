@@ -1,8 +1,9 @@
 ﻿#pragma once
-#include <vector>
+#include <array>
 #include <cstdint>
 #include <atomic>
 #include <cassert>
+#include <new>
 
 #include "Exeption.h"
 
@@ -17,30 +18,26 @@ namespace Base {
 		std::atomic<uint64_t> seq;
 		T data;
 	};
-	template<typename T>
+	template<typename T, size_t QSize>
 	class LockFreeQueue {
-		alignas(std::hardware_destructive_interference_size);
-		std::vector<Cell<T>> m_queue;
+		
+		std::array<Cell<T>, QSize> m_queue alignas(std::hardware_destructive_interference_size);
+		// vector는 seq가 atomic이기 때문에 사용할 수 없음(copy, move가 안돼서)
 
-		alignas(std::hardware_destructive_interference_size);
-		std::atomic<uint64_t> m_head;
+		std::atomic<uint64_t> m_head alignas(std::hardware_destructive_interference_size);
 
-		alignas(std::hardware_destructive_interference_size);
-		std::atomic<uint64_t> m_tail;
+		std::atomic<uint64_t> m_tail alignas(std::hardware_destructive_interference_size);
 
-		uint16_t m_capacity;
 		uint16_t m_mask;
 
 	public:
 		// Q 사이즈는 2의 거듭제곱이어야 한다.
 		// 모듈러 연산을 & 연산한번으로 하기 위함
-		LockFreeQueue(uint16_t QSize) : m_capacity(QSize), m_mask(QSize-1) {
-			assert((m_capacity >= 2) &&((m_capacity & (m_capacity - 1)) == 0));
+		LockFreeQueue() : m_mask(QSize-1) {
+			assert((QSize >= 2) &&((QSize & (QSize - 1)) == 0));
 			// 2 거듭제곱 체크
 
-			m_queue.resize(QSize);
-			m_capacity = QSize;
-			for (int i = 0; i < m_capacity; i++)
+			for (int i = 0; i < QSize; i++)
 			{
 				m_queue[i].seq = i;
 			}
@@ -83,7 +80,7 @@ namespace Base {
 				if (diff == 0) {
 					if (m_head.compare_exchange_weak(head, (head + 1) & m_mask)) {
 						auto res = m_queue[idx].data;
-						m_queue[idx].seq.store(head + m_capacity + 1, std::memory_order_release);
+						m_queue[idx].seq.store(head + QSize + 1, std::memory_order_release);
 						out = res;
 						return true;
 					}
