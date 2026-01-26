@@ -7,7 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
-    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 18;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 20;
 
     enum OP : uint16_t {
         AUTH = 1,

@@ -49,11 +49,15 @@ namespace Net {
 
         if (magic != Core::MAGIC)
         {
+            std::cout << "Magic Error" << '\n';
+            m_gameSession.store(false, std::memory_order_release);
             return false;
         }
 
         if (opcode == 0 or opcode > Core::MAX_DEFINED_OPCODE)
         {
+            std::cout << "undefined opcode" << '\n';
+            m_gameSession.store(false, std::memory_order_release);
             return false;
         }
 

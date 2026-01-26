@@ -28,7 +28,7 @@ namespace Core {
             // db에서 load 후 변경되지 않은 상태
             std::lock_guard lock(m_mutex);
             auto it = m_chars.find(sessionID);
-            if (it != m_chars.end()) {
+            if (it == m_chars.end()) {
                 logger->LogWarn(std::format("Character State not exist in LobbyZone, session: {}", sessionID));
                 return;
             }
