@@ -1,12 +1,12 @@
-﻿using System;
+﻿using ClientCore.PacketHelper;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using System.Runtime.InteropServices;
-
 using static ClientCore.Config;
-using ClientCore.PacketHelper;
+using static ClientCore.PacketHelper.Packet;
 
 namespace ClientCore.PacketHelper
 {
@@ -24,17 +24,18 @@ namespace ClientCore.PacketHelper
 
         ACTION = 9,                 // 이동 + 공격 + 스킬 사용 등 행동 패킷
         CHAT = 10,
-        CHAT_BROADCAST = 11,
+        CHAT_WHISPER = 11,
+        CHAT_BROADCAST = 12,
 
-        ZONE_CHANGE = 12,
-        ZONE_CHANGE_RESPONSE = 13,
+        ZONE_CHANGE = 13,
+        ZONE_CHANGE_RESPONSE = 14,
 
-        INVENTORY_UPDATE = 14,
-        INVENTORY_REQ = 15,
-        INVENTORY_RES = 16,
-        
-        PING = 17, // 서버 송신
-        PONG = 18, // 클라이언트 송신
+        INVENTORY_UPDATE = 15,
+        INVENTORY_UPDATE_RES = 16,
+        INVENTORY_REQ = 17,
+        INVENTORY_RES = 18,
+        PING = 19, // 서버 송신
+        PONG = 20, // 클라이언트 송신
     }
     
     public enum ZONE_CHANGE : byte
@@ -45,6 +46,12 @@ namespace ClientCore.PacketHelper
         LEFT = 3,
         RIGHT = 4
     }
+    public enum CHAT_SCOPE : byte
+    {
+        Global = 0,
+        Zone = 1,
+        Whisper = 2,
+    };
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct PacketHeader
@@ -152,6 +159,7 @@ namespace ClientCore.PacketHelper
     {
         public byte resStatus;
         public ushort zoneID;
+        public ulong chatID;
         public ulong zoneInternalID;
         public float startX;
         public float startY;
@@ -159,26 +167,41 @@ namespace ClientCore.PacketHelper
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ChatRequestBody
     {
-        public ushort messageLength; 
+        public CHAT_SCOPE scope;
+        public ushort messageLength;
+        public ulong targetChatID;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct ChatFloodEntity
+    public struct ChatWhisperBody
     {
-        public ulong zoneInternalID;
+        public short messageLen;
+        public ulong senderChatID;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_CHARNAME_LEN)]
+        public byte[] name;
+    };// + raw char*
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct ChatEntity
+    {
+        public ulong senderChatID; // sender
         public ushort offset;
         public ushort messageLength;
-    }
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_CHARNAME_LEN)]
+        public byte[] name;
+    };
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public struct ChatFloodBody
+    public struct ChatBatchNotifyBody
     {
         public ushort chatCnt;
         public ushort totalMessageLength;
-
+        public CHAT_SCOPE scope;
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_CHAT_PACKET)]
-        public ChatFloodEntity[] entities;
-    }
+        public ChatEntity[] entities;
+    };
+
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ActionRequestBody
@@ -314,7 +337,7 @@ namespace ClientCore.PacketHelper
             return arr;
         }
 
-        internal static byte[] SerializeChatPacket(PacketHeader header, ChatRequestBody body, string message)
+        internal static byte[] SerializeChatPacket(PacketHeader header, ChatRequestBody body, string message, byte scope, ulong targetID)
         {
             byte[] messageBytes = EncodingHelper.EncodeUtf8(message+'\0');
             // c# 문자열에는 \0가 안붙어서 c스타일 문자열로 바꿔주기 위해 \0 붙임
@@ -324,6 +347,8 @@ namespace ClientCore.PacketHelper
             int totalSize = Marshal.SizeOf<PacketHeader>() + bodySize + messageBytes.Length;
             header.length = (ushort)totalSize;
             body.messageLength = (ushort)messageBytes.Length;
+            body.scope = (CHAT_SCOPE)scope;
+            body.targetChatID = targetID;
 
             byte[] bodyBytes = new byte[bodySize];
 
@@ -377,25 +402,64 @@ namespace ClientCore.PacketHelper
                 Marshal.FreeHGlobal(headerPtr);
             }
         }
-        internal static (STPacket<ChatFloodBody> packet, string[] messages) DeserializeChatFlood(PacketHeader header, byte[] buffer)
+        public struct Message 
+        {
+            public byte scope;
+            public ulong senderID;
+            public string senderName;
+            public string message;
+        }
+
+        internal static Message DeserializeChatWhisper(PacketHeader header, byte[] buffer)
         {
             int headerSize = Marshal.SizeOf<PacketHeader>();
-            int fixedBodySize = Marshal.SizeOf<ChatFloodBody>();
+            int fixedBodySize = Marshal.SizeOf<ChatWhisperBody>();
 
             if (buffer.Length < headerSize + fixedBodySize)
                 throw new ArgumentException("Byte array too small");
-        
-            STPacket<ChatFloodBody> packet = new STPacket<ChatFloodBody>();
+
+            STPacket<ChatWhisperBody> packet = new STPacket<ChatWhisperBody>();
             packet.header = header;
 
             // 고정 필드만 읽기
             byte[] bodyBytes = new byte[fixedBodySize];
             Array.Copy(buffer, headerSize, bodyBytes, 0, fixedBodySize);
-            packet.body = ByteArrayToStructure<ChatFloodBody>(bodyBytes);
+            packet.body = ByteArrayToStructure<ChatWhisperBody>(bodyBytes);
 
             // 메시지 배열 읽기
             int messageOffset = headerSize + fixedBodySize;
-            string[] messages = new string[packet.body.chatCnt];
+            Message message = new Message();
+
+            if (messageOffset + packet.body.messageLen > buffer.Length)
+                throw new ArgumentException("Message length or offset exceeds buffer size messageLen:"  + packet.body.messageLen + " bufferLen: " + buffer.Length);
+
+            message.scope = (byte)CHAT_SCOPE.Whisper;
+            message.senderID = packet.body.senderChatID;
+            message.senderName = EncodingHelper.DecodeUtf8(packet.body.name).TrimEnd('\0');
+            message.message = EncodingHelper.DecodeUtf8(buffer, messageOffset, packet.body.messageLen).TrimEnd('\0');
+            
+
+            return message;
+        }
+        internal static  Message[] DeserializeChatBatch(PacketHeader header, byte[] buffer)
+        {
+            int headerSize = Marshal.SizeOf<PacketHeader>();
+            int fixedBodySize = Marshal.SizeOf<ChatBatchNotifyBody>();
+
+            if (buffer.Length < headerSize + fixedBodySize)
+                throw new ArgumentException("Byte array too small");
+        
+            STPacket<ChatBatchNotifyBody> packet = new STPacket<ChatBatchNotifyBody>();
+            packet.header = header;
+
+            // 고정 필드만 읽기
+            byte[] bodyBytes = new byte[fixedBodySize];
+            Array.Copy(buffer, headerSize, bodyBytes, 0, fixedBodySize);
+            packet.body = ByteArrayToStructure<ChatBatchNotifyBody>(bodyBytes);
+
+            // 메시지 배열 읽기
+            int messageOffset = headerSize + fixedBodySize;
+            Message[] messages = new Message[packet.body.chatCnt];
 
             for (int i = 0; i < packet.body.chatCnt; i++)
             {
@@ -404,10 +468,13 @@ namespace ClientCore.PacketHelper
                 if (messageOffset + entity.offset + entity.messageLength > buffer.Length)
                     throw new ArgumentException("Message length or offset exceeds buffer size" + messageOffset + " " + entity.offset + " " + entity.messageLength + " "  +  buffer.Length);
 
-                messages[i] = Encoding.UTF8.GetString(buffer, messageOffset + entity.offset, entity.messageLength).TrimEnd('\0');
+                messages[i].scope = (byte)packet.body.scope;
+                messages[i].senderID = entity.senderChatID;
+                messages[i].senderName = EncodingHelper.DecodeUtf8(entity.name).TrimEnd('\0');
+                messages[i].message = EncodingHelper.DecodeUtf8(buffer, messageOffset + entity.offset, entity.messageLength).TrimEnd('\0');
             }
 
-            return (packet, messages);
+            return messages;
         }
 
         // 고정 길이 패킷

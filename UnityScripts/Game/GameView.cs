@@ -4,6 +4,7 @@ using NUnit.Framework.Internal;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using static UnityEngine.PlayerLoop.PreUpdate;
 
 public class GameView : MonoBehaviour
 {
@@ -20,16 +21,23 @@ public class GameView : MonoBehaviour
         _viewModel = CoreManager.Instance.VM;
         _viewData = CoreManager.Instance.VD;
 
+        testUI.SetPing(0);
         _viewModel.OnZoneChageReceived += ZoneChange;
         _viewModel.OnDeltaReceived += DeltaUpdate;
         _viewModel.OnFullReceived += FullState;
+        _viewModel.OnPingReceived += PingUpdate;
     }
-    void ZoneChange(ushort zoneID, ulong InternalId, float x, float y)
+    void ZoneChange(ushort zoneID, ulong chatID, ulong InternalId, float x, float y)
     {
         testUI.SetZoneID(zoneID);
         playerManager.ZoneChange(InternalId, x, y);
         _fulllStateRecived = false;
+        if (_zoneChangeReceived == false)
+        {
+            playerManager.SetChatID(chatID);
+        }
         _zoneChangeReceived = true;
+
         trigger.ResetTrigger((int)zoneID);
     }
 
@@ -46,5 +54,9 @@ public class GameView : MonoBehaviour
             playerManager.UpdateAllPlayers(count, data);
             _fulllStateRecived = true;
         }
+    }
+    void PingUpdate(ulong rtt)
+    {
+        testUI.SetPing(rtt);
     }
 }

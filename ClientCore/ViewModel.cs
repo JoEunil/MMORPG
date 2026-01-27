@@ -3,6 +3,7 @@ using ClientCore.PacketHelper;
 using ClientCore.Services;
 using System;
 using System.Drawing;
+using System.Net.Http;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
@@ -15,16 +16,12 @@ namespace ClientCore
         private readonly IViewDataModel _viewData;
         private readonly ILogger _logger;
         private readonly IMainThreadDispatcher _threadDispatcher;
-        // 게임 Scene은 런타임에 변경되기 때문에 의존성 주입해서 쓰기에는 부적합,
-        //
-        //
-        //
-        // 을 UI에서 구독해서 처리
+
         public event Action<bool> OnEnterSuccess;
         public event Action<bool> OnCharacterListReceived;
-        public event Action<ulong, string> OnChatReceived;
+        public event Action<byte, ulong, string, string> OnChatReceived;
         public event Action<bool> OnInventoryReceived;
-        public event Action<ushort, ulong, float, float> OnZoneChageReceived;
+        public event Action<ushort, ulong, ulong, float, float> OnZoneChageReceived;
         public event Action<ushort, DeltaUpdateField[]> OnDeltaReceived;
         public event Action<ushort, FullStateField[]> OnFullReceived;
         public event Action OnZoneChageFailed;
@@ -70,9 +67,9 @@ namespace ClientCore
             _network.Enter(charID);
         }
 
-        public void Chat(string message)
+        public void Chat(string message, byte scope, ulong targetID)
         {
-            _network.Chat(message);
+            _network.Chat(message, scope, targetID);
         }
         public void ZoneChange(int op)
         {
@@ -127,11 +124,11 @@ namespace ClientCore
 
         }
 
-        public void ChatReceived(ulong sender, string message)
+        public void ChatReceived(Packet.Message message)
         {
             _threadDispatcher.Post(() =>
             {
-                OnChatReceived?.Invoke(sender, message);
+                OnChatReceived?.Invoke(message.scope, message.senderID, message.senderName, message.message);
             });
         }
 
@@ -148,13 +145,13 @@ namespace ClientCore
             });
         }
 
-        public void ZoneChageReceived(byte resStatus, ushort zoneID,  ulong zoneInternalID, float x, float y)
+        public void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, ulong zoneInternalID, float x, float y)
         {
             bool success = resStatus != 0;
             if (success)
                 _threadDispatcher.Post(() =>
                 {
-                    OnZoneChageReceived?.Invoke(zoneID, zoneInternalID, x, y);
+                    OnZoneChageReceived?.Invoke(zoneID, chatID, zoneInternalID, x, y);
                 });
             else
             {

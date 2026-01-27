@@ -55,11 +55,11 @@ namespace ClientCore.Services
             }
         }
 
-        public void Chat(string message)
+        public void Chat(string message, byte scope, ulong targetID)
         {
             try
             {
-                _sock.Send(PacketBuilder.CreateChatPacket(message));
+                _sock.Send(PacketBuilder.CreateChatPacket(message, scope, targetID));
             }
             catch (Exception ex)
             {
