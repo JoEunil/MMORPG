@@ -26,6 +26,9 @@ namespace Core {
         uint64_t userID = 0;
         uint64_t characterID = 0;
         uint16_t cheatCount = 0;
+        //uint64_t guildID = 0;  
+        //uint64_t partyID = 0; 
+        // session의 guild, party는 여기서 1차로 관리. 
         std::chrono::steady_clock::time_point lastCheatTime;
         bool authenticated = false;
     };
@@ -35,6 +38,7 @@ namespace Core {
         std::unordered_map<uint64_t, SessionData> sessionMap;
     };
     class LobbyZone;
+    class ChatThreadPool;
     class StateManager {
         std::unordered_map<uint16_t, std::unique_ptr<Core::ZoneState>> m_states;
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
@@ -45,8 +49,9 @@ namespace Core {
         IIOCP* iocp;
         IPacketPool* packetPool;
         LobbyZone* lobbyZone;
-        
-        void Initialize(IMessageQueue* m, IIOCP* io, MessagePool* mp, IPacketPool* pp, LobbyZone* lobby) {
+        ChatThreadPool* chat;
+
+        void Initialize(IMessageQueue* m, IIOCP* io, MessagePool* mp, IPacketPool* pp, LobbyZone* lobby, ChatThreadPool* c) {
             m_states.reserve(ZONE_COUNT);
             for (int zoneID = 1; zoneID <= ZONE_COUNT; zoneID++) {
                 m_states.emplace(zoneID, std::make_unique<ZoneState>(zoneID));
@@ -58,12 +63,14 @@ namespace Core {
             lobbyZone = lobby;
             packetPool = pp;
             iocp = io;
+            chat = c;
         }
         
         bool IsReady() {
             if (mq == nullptr) return false;
             if (messagePool == nullptr) return false;
             if (lobbyZone == nullptr) return false;
+            if (chat == nullptr) return false;
             return true;
         }
         

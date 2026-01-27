@@ -67,16 +67,16 @@ public struct InventoryItemView
     {
         event Action<bool> OnEnterSuccess;
         event Action<bool> OnCharacterListReceived;
-        event Action<ulong, string> OnChatReceived;
+        event Action<byte, ulong, string, string> OnChatReceived;
         event Action<bool> OnInventoryReceived;
-        event Action<ushort, ulong, float, float> OnZoneChageReceived;
+        event Action<ushort, ulong, ulong, float, float> OnZoneChageReceived;
         event Action<ushort, DeltaUpdateField[]> OnDeltaReceived;
         event Action<ushort, FullStateField[]> OnFullReceived;
         event Action OnZoneChageFailed;
         event Action<ulong> OnPingReceived;
         Task Login(string id, string pwd);
         void Enter(ulong charID);
-        void Chat(string message);
+        void Chat(string message, byte scope, ulong targetID);
         void Error(string msg);
         void Log(string msg);
         void ZoneChange(int op);
@@ -88,9 +88,9 @@ public struct InventoryItemView
         void AuthReceived(byte status);
         void ChatacterListReceived(byte resStatus, ushort ount, PacketHelper.CharacterInfo[] characters);
         void EnterReceived(byte resStatus, byte[] name, ushort level, uint exp, short hp, short mp, byte dir, float startX, float startY, ushort CurrentZone);
-        void ChatReceived(ulong sender, string message);
+        void ChatReceived(Packet.Message message);
         void InventoryReceived(byte resStatus, PacketHelper.InventoryItem[] items);
-        void ZoneChageReceived(byte resStatus, ushort zoneID, ulong zoneInternalID, float x, float y);
+        void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, ulong zoneInternalID, float x, float y);
         void DeltaReceived(ushort count, PacketHelper.DeltaUpdateField[] updates);
         void FullReceived(ushort count, PacketHelper.FullStateField[] states);
         void PingReceived(ulong servertimeMs, ulong rtt);
@@ -152,7 +152,7 @@ namespace ClientCore.Services
         void CharacterList();
         void Enter(ulong charID);
 
-        void Chat(string message);
+        void Chat(string message, byte scope, ulong targetID);
         void Move(byte dir, float speed);
         void Pong(ulong serverTimeMs);
         void ZoneChange(byte op);

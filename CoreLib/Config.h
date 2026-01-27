@@ -60,4 +60,5 @@ namespace Core {
    inline constexpr const std::chrono::steady_clock::duration CHEAT_FLUSH_TIME = std::chrono::seconds(2);
    // stateManager에서 Cheat Count flush할 시간.
    // 네트워크 문제에 의해 증가된 cheat count 정리하기 위함.. 
+   inline constexpr const uint16_t CHAT_QUEUE_SIZE = 512;
 }

@@ -20,6 +20,7 @@
 #include "PacketDispatcher.h"
 #include "LobbyZone.h"
 #include "IPingPacketWriter.h"
+#include "ChatThreadPool.h"
 
 namespace Core {
     class Initializer {
@@ -35,7 +36,7 @@ namespace Core {
         NoneZoneThreadPool noneZoneThreadPool;
         PacketDispatcher packetDispatcher;
         LobbyZone lobbyZone;
-        
+        ChatThreadPool chat;
 
     public:
         void Initialize() {
@@ -55,17 +56,19 @@ namespace Core {
             mqHandler.Initialize(iocp, logger, &writer, &lobbyZone, &msgPool);
             recvMQ.Initialize(&mqHandler, &msgPool);
             recvMQ.Start();
+            chat.Initialize(iocp, &writer);
         }
         
         void InjectDependencies2(IIOCP* iocp, ILogger* logger, ISessionAuth* session, IMessageQueue* sendMQ, IPacketPool* packetPool) {
-            stateManager.Initialize(sendMQ, iocp, &msgPool, packetPool, &lobbyZone);
+            stateManager.Initialize(sendMQ, iocp, &msgPool, packetPool, &lobbyZone, &chat);
             packetDispatcher.Initialize(&noneZoneThreadPool, &zoneThreadSet, logger, &stateManager, static_cast<IPingPacketWriter*>(&writer), iocp);
             noneZoneThreadPool.Start();
             broadcastPool.Start();
             ZoneState::Initialize(logger, &broadcastPool, &writer, &stateManager);
             zoneHandler.Initialize(logger, &stateManager);
-            noneZoneHandler.Initialize(iocp, logger, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone);
+            noneZoneHandler.Initialize(iocp, logger, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone, &chat);
             zoneThreadSet.Start();
+            chat.Start();
         }
         
         bool CheckReady(ILogger* logger) {
@@ -110,6 +113,9 @@ namespace Core {
                 logger->LogError("check ready failed, stateManager");
                 return false;
             }
+            if (!chat.IsReady()) {
+                logger->LogError("check ready failed, chatThreadPool");
+            }
             logger->LogWarn("Core check ready success");
         }
 
@@ -124,6 +130,7 @@ namespace Core {
         void CleanUp1() {
             broadcastPool.Stop();
             zoneThreadSet.Stop();
+            chat.Stop();
         }
         void CleanUp2() {
             recvMQ.Stop();

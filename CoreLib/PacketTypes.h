@@ -7,7 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
-    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 18;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 20;
 
     enum OP : uint16_t {
         AUTH = 1,
@@ -22,17 +22,18 @@ namespace Core {
 
         ACTION = 9,                 // 이동 + 공격 + 스킬 사용 등 행동 패킷
         CHAT = 10,
-        CHAT_BROADCAST = 11,
+        CHAT_WHISPER = 11,
+        CHAT_BROADCAST = 12,
 
-        ZONE_CHANGE = 12,
-        ZONE_CHANGE_RESPONSE = 13,
+        ZONE_CHANGE = 13,
+        ZONE_CHANGE_RESPONSE = 14,
 
-        INVENTORY_UPDATE = 14,
-        INVENTORY_UPDATE_RES = 15,
-        INVENTORY_REQ = 16,
-        INVENTORY_RES = 17,
-        PING = 17, // 서버 송신
-        PONG = 18, // 클라이언트 송신
+        INVENTORY_UPDATE = 15,
+        INVENTORY_UPDATE_RES = 16,
+        INVENTORY_REQ = 17,
+        INVENTORY_RES = 18,
+        PING = 19, // 서버 송신
+        PONG = 20, // 클라이언트 송신
     };
 
     enum ZONE_CHANGE: uint8_t {
@@ -46,6 +47,14 @@ namespace Core {
     enum RES_STATUS : uint8_t {
         FAILED = 0,
         SUCCESS = 1,
+    };
+
+    enum class CHAT_SCOPE : uint8_t {
+        Global,
+        Zone,
+        Whisper,
+        //Party,
+        //Guild
     };
 
 #pragma pack(push, 1)
@@ -121,24 +130,35 @@ namespace Core {
     struct ZoneChangeResponseBody {
         uint8_t resStatus;
         uint16_t zoneID;
+        uint64_t chatID;
         uint64_t zoneInternalID;
         float startX, startY;
     };
 
     struct ChatRequestBody {
+        CHAT_SCOPE scope;
         uint16_t messageLength;
+        uint64_t targetChatID; // whisper, group은 서버 authoratative
     }; // + raw char*
 
-    struct ChatFloodEntity {
-        uint64_t zoneInternalID; // sender
+    struct ChatWhisperBody {
+        uint16_t messageLen;
+        uint64_t senderChatID;
+        uint8_t name[MAX_CHARNAME_LEN];
+    };// + raw char*
+
+    struct ChatEntity {
+        uint64_t senderChatID; // sender
         uint16_t offset;
         uint16_t messageLength;
+        uint8_t name[MAX_CHARNAME_LEN];
     };
 
-    struct ChatFloodBody {
+    struct ChatBatchNotifyBody {
         uint16_t chatCnt;
         uint16_t totalMessageLength;
-        ChatFloodEntity entities[MAX_CHAT_PACKET];
+        CHAT_SCOPE scope;
+        ChatEntity entities[MAX_CHAT_PACKET];
     }; // message 이어붙여서 쓰기
 
 

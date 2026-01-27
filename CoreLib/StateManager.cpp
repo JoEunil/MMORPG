@@ -2,6 +2,7 @@
 #include "StateManager.h"
 #include "Initializer.h"
 #include "LobbyZone.h"
+#include "ChatThreadPool.h"
 #include <iostream>
 
 namespace Core {
@@ -22,8 +23,11 @@ namespace Core {
         CharacterState temp;
         std::cout << " Disconnect zone: " << std::to_string(it->second.zoneID) << "session: " << sessionID << std::endl;
         if (m_states[it->second.zoneID]->EmigrateChar(sessionID, temp)) {
+            auto zoneID = it->second.zoneID;
             shard.sessionMap.erase(it);
             lock.unlock();
+            chat->EnqueueZoneLeave(sessionID, zoneID);
+            chat->DeleteChatSession(sessionID, zoneID);
             EnqueueDisconnectMsg(temp, sessionID);
         }
     }

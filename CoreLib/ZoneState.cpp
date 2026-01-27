@@ -51,23 +51,6 @@ namespace Core {
     }
 
     void ZoneState::DeltaSnapshot() {
-        {
-            std::lock_guard<std::mutex> lock(m_chatMutex);
-            int loop = MAX_CHAT_PACKET;
-            if (m_chatQueue.size() > 0) {
-                auto packet = writer->GetInitialChatPacket();
-                while (loop-- && m_chatQueue.size() > 0) {
-                    auto& chat = m_chatQueue.front();
-                    auto it = m_sessionToIndex.find(chat.senderSessionID);
-                    if (it != m_sessionToIndex.end())
-                        writer->WriteChatPacketField(packet, m_chars[it->second].zoneInternalID, chat.message);
-                    m_chatQueue.pop();
-                }
-                logger->LogError(std::format("Chat Packet zone {} Length {} ", m_zoneID, packet->GetLength()));
-                broadcast->EnqueueWork(packet, m_zoneID);
-            }
-        }
-        
         std::lock_guard<std::mutex> lock (m_mutex);
         if (m_dirty_list.size() == 0)
             return;

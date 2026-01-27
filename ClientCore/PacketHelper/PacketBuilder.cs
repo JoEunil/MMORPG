@@ -36,7 +36,7 @@ namespace ClientCore.PacketHelper
 
             return Packet.Serialize(packet);
         }
-        internal static byte[] CreateChatPacket(string message)
+        internal static byte[] CreateChatPacket(string message, byte scope, ulong targetID)
         {
             var header = new PacketHeader {
                 magic = 0xABCD,
@@ -45,7 +45,7 @@ namespace ClientCore.PacketHelper
                 flags = 0x00, 
             };
             var body = new ChatRequestBody();
-            return Packet.SerializeChatPacket(header, body, message);
+            return Packet.SerializeChatPacket(header, body, message, scope, targetID);
         }
 
 

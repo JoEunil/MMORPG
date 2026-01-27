@@ -6,6 +6,7 @@ class TestUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI zoneID;
     [SerializeField] private TextMeshProUGUI UserCnt;
     [SerializeField] private TextMeshProUGUI position;
+    [SerializeField] private TextMeshProUGUI ping;
 
     private void Awake()
     {
@@ -24,5 +25,9 @@ class TestUI : MonoBehaviour
     public void SetPosition(float x, float y)
     {
         position.text = "x: " + x + ", Y: " + y;
+    }
+    public void SetPing(ulong rtt)
+    {
+        ping.text = "Ping(rtt): " + (int)(rtt) + " ms";
     }
 }

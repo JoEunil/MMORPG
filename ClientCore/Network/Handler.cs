@@ -4,6 +4,7 @@ using ClientCore.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
@@ -11,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using static ClientCore.Config;
+using static ClientCore.PacketHelper.Packet;
 
 namespace ClientCore.Network
 {
@@ -35,9 +37,11 @@ namespace ClientCore.Network
                 }
                 switch ((OP_CODE)header.opcode)
                 {
+                    case OP_CODE.CHAT_WHISPER:
+                        HandleChatWhisper(Packet.DeserializeChatWhisper(header, buffer));
+                        break;
                     case OP_CODE.CHAT_BROADCAST:
-                        (STPacket<ChatFloodBody> packet, string[] messages) = Packet.DeserializeChatFlood(header, buffer);
-                        HandleChat(packet, messages);
+                        HandleChatBatch(Packet.DeserializeChatBatch(header, buffer));
                         break;
                     case OP_CODE.AUTH_RESPONSE:
                         HandleAuthRes(Packet.Deserialize<AuthResponseBody>(header, buffer));
@@ -64,13 +68,15 @@ namespace ClientCore.Network
                 ErrorLog(e.Message);
             }
         }
-        private void HandleChat(STPacket<ChatFloodBody> packet, string[] messages)
+        private void HandleChatWhisper(Message message)
         {
-            for (int i = 0; i < packet.body.chatCnt; i++)
+            _viewModel.ChatReceived(message);
+        }
+        private void HandleChatBatch(Message[] messages)
+        {
+            foreach (Message message in messages)
             {
-                var sender = packet.body.entities[i].zoneInternalID;
-                _viewModel.ChatReceived(sender, messages[i]);
-                ErrorLog("chat " + messages[i]);
+                _viewModel.ChatReceived(message);
             }
         }
         private void HandleAuthRes(STPacket<AuthResponseBody> packet)
@@ -91,7 +97,7 @@ namespace ClientCore.Network
         }
         public void HandleZoneChangeRes(STPacket<ZoneChangeResponseBody> packet)
         {
-            _viewModel.ZoneChageReceived(packet.body.resStatus, packet.body.zoneID, packet.body.zoneInternalID, packet.body.startX, packet.body.startY);
+            _viewModel.ZoneChageReceived(packet.body.resStatus, packet.body.zoneID, packet.body.chatID, packet.body.zoneInternalID, packet.body.startX, packet.body.startY);
         }
         public void HandleDeltaUpdate((ushort, DeltaUpdateField[]) res)
         {

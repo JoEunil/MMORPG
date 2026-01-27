@@ -15,8 +15,18 @@ public class PlayerManager : MonoBehaviour
     [SerializeField] private GameObject playerPrefab;
     [SerializeField] private PlayerState _myPlayerState;
     [SerializeField] private MyHeroControl _myPlayerControl;
+    private ulong _chatID = 0;
 
     bool _myPlayerInitialized = false;
+
+    public void SetChatID(ulong chatID)
+    {
+        _chatID = chatID;
+    }
+    public ulong GetChatID()
+    {
+        return _chatID;
+    }
     public ulong GetMyPlayerID()
     {
         return _myPlayerState.zoneInternalID;
