@@ -97,7 +97,7 @@ namespace Core {
     std::shared_ptr<IPacket> PacketWriter::GetChatWhisperPacket(uint64_t sender, std::string& userName, std::string& message) {
         auto p = packetPool->Acquire();
         auto p_st = reinterpret_cast<PacketStruct<ChatWhisperBody>*>(p->GetBuffer());
-        p_st->header.length = sizeof(PacketHeader) + sizeof(ChatWhisperBody);
+        p_st->header.length = sizeof(PacketHeader) + sizeof(ChatWhisperBody) + message.length();
         p->SetLength(p_st->header.length);
         p_st->header.opcode = OP::CHAT_WHISPER;
         p_st->header.magic = MAGIC;
@@ -110,7 +110,7 @@ namespace Core {
         return p;
     }
 
-    std::shared_ptr<IPacket> PacketWriter::GetInitialChatBatchPacket() {
+    std::shared_ptr<IPacket> PacketWriter::GetInitialChatBatchPacket(CHAT_SCOPE scope) {
         auto p = bigPacketPool->Acquire();
         auto p_st = reinterpret_cast<PacketStruct<ChatBatchNotifyBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(ChatBatchNotifyBody);
@@ -118,6 +118,7 @@ namespace Core {
         p_st->header.opcode = OP::CHAT_BROADCAST;
         p_st->header.magic = MAGIC;
         p_st->header.flags = 0x00;
+        p_st->body.scope = scope;
         p_st->body.chatCnt = 0;
         p_st->body.totalMessageLength = 0;
         return p;

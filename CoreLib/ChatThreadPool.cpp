@@ -30,7 +30,7 @@ namespace Core {
                 }
                 auto chatID = it->second.chatID;
                 auto userName = it->second.userName;
-
+                
                 switch (curr.type)
                 {
                 case ChatEventType::CHAT:
@@ -106,6 +106,7 @@ namespace Core {
                 return;
             }
             SendPacket(it->second, packet);
+            SendPacket(curr.senderSessionID, packet);
         }
 
         auto it = tempPackets.find(curr.key);
@@ -113,11 +114,11 @@ namespace Core {
             uint16_t count = writer->WriteChatBatchPacketField(it->second, chatID, userName, curr.message);
             if (count == MAX_CHAT_PACKET) {
                 SendPacketGroup(it->first, it->second);
-                tempPackets[curr.key] = writer->GetInitialChatBatchPacket();
+                tempPackets[curr.key] = writer->GetInitialChatBatchPacket(curr.key.scope);
             }
         }
         else {
-            tempPackets[curr.key] = writer->GetInitialChatBatchPacket();
+            tempPackets[curr.key] = writer->GetInitialChatBatchPacket(curr.key.scope);
             int count = writer->WriteChatBatchPacketField(tempPackets[curr.key], chatID, userName, curr.message);
         }
     }

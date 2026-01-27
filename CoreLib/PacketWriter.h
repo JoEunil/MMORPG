@@ -36,7 +36,7 @@ namespace Core {
         std::shared_ptr<IPacket> WriteInventoryResponse(MsgInventoryResBody* body);
         std::shared_ptr<IPacket> WriteInventoryUpdateResponse(MsgInventoryUpdateResBody* body);
         std::shared_ptr<IPacket> GetChatWhisperPacket(uint64_t sender, std::string& userName, std::string& message);
-        std::shared_ptr<IPacket> GetInitialChatBatchPacket();
+        std::shared_ptr<IPacket> GetInitialChatBatchPacket(CHAT_SCOPE scope);
         uint16_t WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, std::string& userName, std::string& message);
         
         // 인라인 최적화 기대
