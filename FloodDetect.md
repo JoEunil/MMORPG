@@ -1,6 +1,6 @@
-﻿## Flood 탐지  
+﻿# Flood 탐지  
 
-### 목적
+## 1.목적
 과도한 트래픽 (m_bytes > BYTE_THRESHOLD): 정상적인 패킷 형태를 띠고 있지만, 너무 많은 양의 데이터를 보내 대역폭을 점유하려는 시도      
 Tiny 패킷 (m_bytes < MIN_BYTE_PER_WINDOW): 데이터 양은 적지만, 수천 번의 수신 이벤트를 발생시켜 서버의 CPU(Worker Thread)를 고갈시키려는 시도
 
@@ -8,7 +8,7 @@ L4 스위치 (Outer Layer): 비정상 IP 및 Gbps 단위의 대규모 대역폭 
 -> PC방 같이 공유IP를 사용하는 환경이 있어 엄격한 기준을 적용시키지 못함.
 FloodDetector (Inner Layer): 세션 단위 정밀 차단 및 Tiny Packet을 이용한 CPU 고갈 공격 대응.
 
-### 요구사항
+## 2. 요구사항
 1. 즉각적인 차단: 다음 수신 작업이 추가적으로 발생하지 않도록 차단해야한다.
 2. 저비용 연산 (Hot Path): 매 수신마다 호출되는 핵심 경로이므로, std::now() 등 무거운 연산을 지양한다.
 
@@ -18,7 +18,7 @@ FloodDetector (Inner Layer): 세션 단위 정밀 차단 및 Tiny Packet을 이�
 ![이미지 로드 실패](images/IOCPWorkerThreadRecv.png)
 > IOCP 워커스레드 내부 동작 구조
 
-#### 왜 NetHandler에서 Flood를 처리해야하는가?  
+### 왜 NetHandler에서 Flood를 처리해야하는가?  
 *ClientContext는 TCP 스트림을 패킷 단위로 잘라내는 로직을 담당
 1. 호출 스택 오염  
 AbortSocket() 호출 시 ClientContext의 종료 처리 메서드를 수행하게 됨.
@@ -30,8 +30,8 @@ AbortSocket() 호출 시 ClientContext의 종료 처리 메서드를 수행하�
 2. DoS 방어의 효율성  
 가장 앞단인 NetHandler에서 즉시 차단하는 것은 시스템 자원을 보호하는 가장 효과적인 전략
 
-### 구현
-#### sliding window 방식  
+## 3. 구현
+### sliding window 방식  
 * 개념 
 	* 단위 시간당 수신 바이트의 정밀한 측정을 위해 Ring Queue와 누적합을 활용함.  
 * 특징 
@@ -73,7 +73,7 @@ class TrafficFloodDetector {
 };
 ```  
 
-#### Fixed window 방식
+### Fixed window 방식
 * 개념 
 	* 특정 시간 구간(Window)을 설정하고, 해당 구간 내 수신 합계만 체크하여 로직을 단순화함
 * 특징 
@@ -107,7 +107,7 @@ class TrafficFloodDetector {
 	}; 
 ```
 
-#### Count 기반 Fixed Window 방식(최종 선택)
+### Count 기반 Fixed Window 방식(최종 선택)
 * 개념 
 	* 시간 기준을 제거하고, 수신 횟수(RECV_WINDOW)를 기준으로 트래픽을 근사 측정함.
 * 특징 
@@ -141,7 +141,7 @@ class TrafficFloodDetector {
 
 [TrafficFloodDetector.h](NetLibrary/TrafficFloodDetector.h)
 
-#### EMWA 
+### EMWA 
 * 개념
 	* 지수 가중 이동 평균을 이용하여 최근 데이터에 높은 가중치를 부여하여 트래픽 변화를 유연하게 대응하는 방식.
 * 미도입 사유
