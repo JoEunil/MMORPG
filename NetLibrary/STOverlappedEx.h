@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <memory>
 #include "Packet.h"
-
+#include "PacketPool.h"
 namespace Net {
     enum class IOOperation : uint8_t
     {
@@ -19,6 +19,7 @@ namespace Net {
         WSABUF          wsaBuf;           // 버퍼 정보를 담는 구조체,
         //버퍼 크기와 버퍼 포인터를 담고 있음, 버퍼 관리는 send는 PacketPool, recv는 ClientContext에서
         IOOperation op;
-        std::shared_ptr<Packet> sharedPacket;
+        std::unique_ptr<Packet> uniquePacket; // 단일 대상 send 
+        std::shared_ptr<Packet> sharedPacket; // 여러 대상 send
     };
 }

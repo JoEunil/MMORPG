@@ -8,6 +8,7 @@
 namespace Core {
     class IPacketDispatcher {
     public:
+        virtual ~IPacketDispatcher() = default;
         virtual void Process(std::shared_ptr<IPacketView> pv) = 0;
         virtual void Disconnect(uint64_t sessionID) = 0;
         virtual uint8_t HealthCheck(uint64_t sessionID) = 0;

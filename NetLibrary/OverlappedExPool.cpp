@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include "OverlappedExPool.h"
+#include "PacketPool.h"
 
 namespace Net {
 	OverlappedExPool::~OverlappedExPool() {
@@ -63,6 +64,12 @@ namespace Net {
 	}
 
 	void OverlappedExPool::Return(STOverlappedEx* r) {
+		if (r->sharedPacket) {
+			r->sharedPacket.reset();
+		}
+		if (r->uniquePacket) {
+			packetPool->Return(r->uniquePacket.release());
+		}
 		std::lock_guard<std::mutex> lock(m_mutex);
 		m_overlappedPool.push_back(r);
 		Adjust();
