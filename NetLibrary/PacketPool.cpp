@@ -18,7 +18,7 @@ namespace Net {
         std::lock_guard<std::mutex> lock(m_mutex);
         for (int i = 0; i < m_targetPool; i++)
         {
-            Packet* packet = new Packet(MAX_PACKET_LEN);
+            Packet* packet = new Packet(MAX_PACKET_LEN, this);
             m_packets.push_back(packet);
         };
     }
@@ -41,7 +41,7 @@ namespace Net {
 		if (current < m_minPool) {
 			while (current < m_targetPool)
 			{
-				Packet* packet = new Packet(MAX_PACKET_LEN);
+				Packet* packet = new Packet(MAX_PACKET_LEN, this);
 				m_packets.push_back(packet);
 				current++;
 			}
@@ -74,6 +74,19 @@ namespace Net {
 
 		// 커스텀 deleter: delete 대신 PacketPool에 반환
 		return std::shared_ptr<Packet>(rawPacket, [this](Packet* p) { this->Return(p); });
+	}
+
+	std::unique_ptr<Core::IPacket> PacketPool::AcquireUnique()
+	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+		if (m_packets.empty()) {
+			return nullptr;
+		}
+		Packet* rawPacket = m_packets.back();
+		m_packets.pop_back();
+		Adjust();
+		// unique_ptr은 커스텀 deleter 사용 복잡성과, std::function의 비용 때문에 직접 Return 호출해서 사용.
+		return std::unique_ptr<Packet>(rawPacket);
 	}
 
 	void PacketPool::Return(Core::IPacket* packet) {

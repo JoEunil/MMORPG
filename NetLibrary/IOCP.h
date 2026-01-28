@@ -96,6 +96,7 @@ namespace Net {
             CleanUp();
         }
         void SendData(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet) override;
+        void SendDataUnique(uint64_t sessionID, std::unique_ptr<Core::IPacket> packet) override;
 
         void AbortSocket(uint64_t session) override;
     };

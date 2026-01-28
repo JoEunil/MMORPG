@@ -178,7 +178,6 @@ namespace Net {
                 }
                 break;
             case IOOperation::SEND:
-                pOverlappedEx->sharedPacket.reset(); // 참조 카운트 1감소
                 break;
             case IOOperation::ACCEPT:
                 logger->LogInfo(std::format("Accept {}", clientSocket));
@@ -324,6 +323,33 @@ namespace Net {
             {
                 overlappedExPool->Return(pOverlappedEx);
                 logger->LogWarn("WSASend failed: " + std::to_string(clientSocket) + " "  + std::to_string(err));
+            }
+        }
+
+    }
+
+    void IOCP::SendDataUnique(uint64_t sessionID, std::unique_ptr<Core::IPacket> packet)
+    {
+        SOCKET clientSocket = sessionManager->GetSocket(sessionID);
+        if (clientSocket == INVALID_SOCKET) {
+            logger->LogWarn("try send to INVALID SOCKET");
+            return;
+        }
+        DWORD dwBytesSent = 0;
+        STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
+        pOverlappedEx->op = IOOperation::SEND;
+        pOverlappedEx->clientSocket = clientSocket;
+        pOverlappedEx->wsaBuf.buf = reinterpret_cast<char*>(packet->GetBuffer());
+        pOverlappedEx->wsaBuf.len = packet->GetLength();
+        pOverlappedEx->uniquePacket = std::unique_ptr<Packet>(static_cast<Packet*>(packet.release()));
+        int result = WSASend(clientSocket, &pOverlappedEx->wsaBuf, 1, &dwBytesSent, 0, &pOverlappedEx->wsaOverlapped, NULL);
+        if (result == SOCKET_ERROR)
+        {
+            int err = WSAGetLastError();
+            if (err != WSA_IO_PENDING)
+            {
+                overlappedExPool->Return(pOverlappedEx);
+                logger->LogWarn("WSASend failed: " + std::to_string(clientSocket) + " " + std::to_string(err));
             }
         }
 

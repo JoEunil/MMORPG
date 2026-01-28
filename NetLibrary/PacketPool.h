@@ -35,6 +35,7 @@ namespace Net {
         }
         ~PacketPool();
         std::shared_ptr<Core::IPacket> Acquire() override;
+        std::unique_ptr<Core::IPacket> AcquireUnique() override;
         void Return(Core::IPacket* packet) override;
     };
 }
