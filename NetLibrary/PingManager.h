@@ -3,9 +3,16 @@
 #include <cstdint>
 #include <unordered_map>
 
+#include "NetPacketFilter.h"
 #include "IAbortSocket.h"
 namespace Net {
     class SessionManager;
+    struct PingStruct {
+        SOCKET socket;
+        uint64_t session;
+        uint64_t rtt;
+        bool isAlive;
+    };
     class PingManager {
         std::thread m_pingThread;
         std::atomic<bool> m_running = false;
@@ -19,7 +26,8 @@ namespace Net {
         }
 
         void PingFunc();
-        void HandleAbort(uint64_t session, bool result);
+        void SendPing(uint64_t session, uint64_t rtt, uint64_t nowMs);
+
         void PingStart() {
             m_pingThread = std::thread(&PingManager::PingFunc, this);
         }
@@ -34,8 +42,6 @@ namespace Net {
             StopPing();
         }
         friend class Initializer;
-
     public:
-        void ReceivePong(uint64_t sessionID);
     };
 }

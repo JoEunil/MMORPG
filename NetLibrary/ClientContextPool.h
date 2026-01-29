@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <deque>
 #include <queue>
@@ -10,8 +10,8 @@
 namespace Net {
     class ClientContext;
     class ClientContextPool {
-        std::deque<std::unique_ptr<ClientContext>> m_contexts;
-        std::queue<std::unique_ptr<ClientContext>> m_tempQ;
+        std::deque<ClientContext*> m_contexts;
+        std::queue<ClientContext*> m_tempQ;
         
         std::mutex m_mutex;
         bool m_running = false;
@@ -24,13 +24,12 @@ namespace Net {
         void Stop();
         
         void FlushPending();
-        void Adjust();
         void Increase(uint16_t currentSize);
         void Decrease(uint16_t currentSize);
         
         friend class Initializer;
 public:
-        std::unique_ptr<ClientContext> Acquire(SOCKET sock, uint64_t session);
-        void Return(std::unique_ptr<ClientContext> context);
+        ClientContext* Acquire(uint64_t session);
+        void Return(ClientContext* context);
     };
 }

@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include "NetPacketFilter.h"
-#include "ClientContext.h"
+#include "SessionManager.h"
 #include "NetTimer.h"
 
 #include <CoreLib/IPacketView.h>
@@ -8,7 +8,7 @@
 #include <CoreLib/Config.h>
 
 namespace Net {
-    bool NetPacketFilter::TryDispatch(std::shared_ptr<Core::IPacketView> pv, ClientContext& ctx) {        
+    bool NetPacketFilter::TryDispatch(std::shared_ptr<Core::IPacketView> pv) {        
         // 3차 패킷 검증
         auto session = pv->GetSessionID();
         auto op = pv->GetOpcode();
@@ -41,8 +41,7 @@ namespace Net {
             {
                 std::cout << "Pong\n";
                 uint64_t rtt = packetDispatcher->GetRTT(pv, NetTimer::GetTimeMS());
-                ctx.PongReceived();
-                ctx.SetRtt(rtt);
+                sessionManager->PongReceived(session, rtt);
             }
             break;
         default:

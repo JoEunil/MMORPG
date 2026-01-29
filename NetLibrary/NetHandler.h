@@ -6,39 +6,60 @@
 #include <shared_mutex>
 #include <atomic>
 #include <array>
+#include "SessionManager.h"
+#include "IAbortSocket.h"
+#include "ClientContext.h"
 #include "Config.h"
 
 namespace Net {
-    class ClientContextPool;
-    class ClientContext;
-    class SessionManager;
-    class IAbortSocket;
     class NetHandler {
-        std::unordered_map<SOCKET, std::unique_ptr<ClientContext>> m_socketMap;
-        mutable std::shared_mutex m_smutex;
         std::atomic<int> m_connectionCnt = 0;
-        ClientContextPool* contextPool;
         SessionManager* sessionManager;
         IAbortSocket* abortSocket;
         bool IsReady() const {
-            return contextPool != nullptr;
+            if (sessionManager == nullptr)
+                return false;
+            if (abortSocket == nullptr)
+                return false;
+            return true;
         }
-        void Initialize(ClientContextPool* p, SessionManager* s, IAbortSocket* a) {
-            contextPool = p;
+        void Initialize(SessionManager* s, IAbortSocket* a) {
             sessionManager = s;
             abortSocket = a;
         }
         
         friend class Initializer;
     public:
-        bool OnAccept(SOCKET sock);
-        void OnRecv(SOCKET sock, uint8_t* buf, uint16_t len) const;
-        bool OnDisConnect(SOCKET sock);
-        ClientContext* GetContext(SOCKET sock) const {
-            std::shared_lock<std::shared_mutex> lock(m_smutex);
-            auto it = m_socketMap.find(sock);
-            return it == m_socketMap.end() ? it->second.get() : nullptr;
+        bool OnAccept(SOCKET sock) const {
+            return sessionManager->AddSession(sock);
         }
-        uint16_t AllocateBuffer(SOCKET sock, uint8_t*& buff) const;
+        void OnRecv(SOCKET sock, uint8_t* buf, uint16_t len) const {
+            sessionManager->UpdateFlood(sock, len);
+            if (!sessionManager->CheckSession(sock)) {
+                abortSocket->AbortSocket(sock);
+                return;
+            }
+            uint64_t session = sessionManager->GetSession(sock);
+            if (!sessionManager->BufferReceived(session, buf, len)) {
+                sessionManager->SetContextInvalid(sock);
+            }
+
+        }
+        bool OnDisConnect(SOCKET sock) const {
+            return sessionManager->Disconnect(sock);
+        }
+        uint16_t AllocateBuffer(SOCKET sock, uint8_t*& buf) const {
+            uint64_t session = sessionManager->GetSession(sock);
+            if (session == 0) {
+                std::cout << "Invalid Session\n";
+                return 0;
+            }
+            ClientContext* ctx = sessionManager->GetContext(session);
+            if (ctx == nullptr) {
+                std::cout << "Invalid ctx\n";
+                return 0;
+            }
+            return ctx->AllocateRecvBuffer(buf);
+        }
     };
 }

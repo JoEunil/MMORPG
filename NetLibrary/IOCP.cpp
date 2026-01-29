@@ -355,9 +355,8 @@ namespace Net {
 
     }
 
-    void IOCP::AbortSocket(uint64_t sessionID) {
+    void IOCP::AbortSocket(SOCKET clientSocket) {
         std::cout << "Abort Socket \n";
-        SOCKET clientSocket = sessionManager->GetSocket(sessionID);
         if (clientSocket == INVALID_SOCKET)
             return;
         CleanUpSocket(clientSocket); 

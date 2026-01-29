@@ -40,7 +40,6 @@ namespace Net {
     }
 
     bool ClientContext::DequeueRecvQ() {
-        std::unique_lock<std::mutex> lock(m_mutex);
         if (GetLen() < sizeof(Core::PacketHeader))
             return false;
         auto [magic, packetLen, opcode] = ParseHeader();
@@ -87,23 +86,40 @@ namespace Net {
 
         m_front = (m_front + packetLen) % m_capacity;
         m_last_op = RELEASE;
-        lock.unlock();
         m_workingCnt.fetch_add(1);
 
-        if (!NetPacketFilter::TryDispatch(pv, *this)) {
+        if (!NetPacketFilter::TryDispatch(pv)) {
             m_gameSession.store(false, std::memory_order_release);
-            return true;
+            return false;
         }
-        // dispatcher에서 threadPool로 넘기지 못하는경우 ReleaseBuffer가 이 스레드에서 실행되어 unlock 하지 않으면 deadlock 발생
-        return false;
+        return true;
+    }
+    uint16_t ClientContext::AllocateRecvBuffer(uint8_t*& buffer) {
+        BufferFragment temp;
+        uint16_t len = m_buffer.TryAcquireBuffer(temp);
+        buffer = temp.startPtr + temp.front;
+        return len;
+    }
+
+
+    bool ClientContext::EnqueueRecvQ(uint8_t* ptr, size_t len) {
+        uint16_t front = ptr - m_startPtr;
+        if (front != (m_rear + 1) % m_capacity)
+            return false;
+        uint16_t rear = m_rear + len;
+        rear %= m_capacity;
+        m_buffer.ReleaseLeftOver(rear + 1);
+        m_rear = rear;
+
+        m_last_op = ACQUIRE;
+        while (DequeueRecvQ()) {}
+        return true;
     }
 
     void ClientContext::EnqueueReleaseQ(uint32_t seq, uint16_t front, uint16_t rear) {
-        std::lock_guard<std::mutex> lock(m_mutex);
-
         m_releaseQ[seq % RELEASE_Q_SIZE] = std::make_pair(front, rear);
+        std::lock_guard<std::mutex> lock(m_releaseMutex);
         auto current = m_releaseQ[m_releaseIdx];
-
         while (current != EMPTY_PAIR and m_buffer.Release(current.first, current.second))
         {
             m_releaseQ[m_releaseIdx] = std::make_pair(EMPTY_SLOT, EMPTY_SLOT);
@@ -111,14 +127,6 @@ namespace Net {
             m_releaseIdx %= RELEASE_Q_SIZE;
             current = m_releaseQ[m_releaseIdx];
         }
-    }
-
-    uint16_t ClientContext::AllocateRecvBuffer(uint8_t*& buffer) {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        BufferFragment temp;
-        uint16_t len = m_buffer.TryAcquireBuffer(temp);
-        buffer = temp.startPtr + temp.front;
-        return len;
     }
 
     void ClientContext::ReleaseBuffer(PacketView* pv) {
@@ -129,28 +137,5 @@ namespace Net {
         if (!m_connected.load() && m_workingCnt.load() == 0) {
             NetPacketFilter::Disconnect(m_sessionID);
         }
-    }
-
-    bool ClientContext::EnqueueRecvQ(uint8_t* ptr, size_t len) {
-        // flood 지표 업데이트
-        if (m_floodDetector.ByteReceived(len)) {
-            m_flood.store(true, std::memory_order_release);
-            // 다음 Recv에서 Flood 체크 넘어가지 않도록 release, acquire로 시점 보장.
-        }
-
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            uint16_t front = ptr - m_startPtr;
-            if (front != (m_rear + 1) % m_capacity)
-                return false;
-            uint16_t rear = m_rear + len;
-            rear %= m_capacity;
-            m_buffer.ReleaseLeftOver(rear + 1);
-            m_rear = rear;
-
-            m_last_op = ACQUIRE;
-        }
-        while (DequeueRecvQ()) {}
-        return true;
     }
 }
