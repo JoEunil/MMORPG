@@ -225,6 +225,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="NetTimer.h" />
+    <ClInclude Include="SessionState.h" />
     <ClInclude Include="TrafficFloodDetector.h" />
     <ClInclude Include="PingManager.h" />
     <ClInclude Include="IAbortSocket.h" />
@@ -242,10 +243,10 @@
     <ClInclude Include="RingBuffer.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="NetHandler.cpp" />
     <ClCompile Include="ClientContext.cpp" />
     <ClCompile Include="ClientContextPool.cpp" />
     <ClCompile Include="IOCP.cpp" />
+    <ClCompile Include="SessionManager.cpp" />
     <ClInclude Include="NetHandler.h" />
     <ClCompile Include="NetPacketFilter.cpp" />
     <ClCompile Include="OverlappedExPool.cpp" />

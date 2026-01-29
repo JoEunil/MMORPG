@@ -6,104 +6,137 @@
 #include <unordered_map>
 #include <functional>
 
+#include "SessionState.h"
 #include "ClientContext.h"
-#include "NetTimer.h"
+
+#include <BaseLib/SpinLockGuard.h>
 
 namespace Net{
-    struct ContextShard {
-        std::mutex mutex;
-        std::unordered_map<uint64_t, ClientContext*> contextMap;
-        // lock contension 줄이기 위함
+    // 네트워크 레벨의 공유 자료구조를 담기 때문에 shard를 통해 lock contension을 줄이고
+    // spin lock을 적용해 lock으로 인한 context switching을 줄인다.
+    // critical section이 매우 짧아야 한다.
+    struct StateShard {
+        std::atomic_flag flag;
+        std::unordered_map<SOCKET, SessionState> stateMap; // socket -> sessionState
     };
-    class LobbyZone;
-    class SessionManager{
-        // sesionManager 추가, 삭제는 netHandler에서
-        std::atomic<uint64_t> m_sessionID = 0;
-        std::array<ContextShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
+    struct ContextShard {
+        std::atomic_flag flag;
+        std::unordered_map<uint64_t, SOCKET> socketMap; // session -> socket 조회용도, Context는 Recv시에만 접근하도록
+        std::unordered_map<uint64_t, ClientContext*> contextMap; // session -> context
+    };
+    struct PingStruct;
+    class ClientContextPool;
 
-        void Initialize() {
-            for (int i = 0; i < SHARD_SIZE; i++)
+    class SessionManager{
+        std::atomic<uint64_t> m_connectionCnt = 0;
+        std::atomic<uint64_t> m_sessionGenerator = 1;
+        std::array<StateShard, SESSION_SHARD_SIZE> m_stateShards;
+        std::array<ContextShard, SESSION_SHARD_SIZE> m_contextShards;
+        // AddSession과 Disconnect에 의해서만 추가, 제거가 처리됨.
+        // 외부에서 절대 참조할 수 없도록 해야함
+
+        void Initialize(ClientContextPool* c) {
+            for (int i = 0; i < SESSION_SHARD_SIZE; i++)
             {
-                auto& shard = m_shards[i];
-                shard.contextMap.reserve(MAX_CLIENT_CONNECTION / SHARD_SIZE);
+                auto& shard = m_stateShards[i];
+                shard.stateMap.reserve(MAX_CLIENT_CONNECTION / SESSION_SHARD_SIZE);
             }
+            for (int i = 0; i < SESSION_SHARD_SIZE; i++)
+            {
+                auto& shard = m_contextShards[i];
+                shard.contextMap.reserve(MAX_CLIENT_CONNECTION / SESSION_SHARD_SIZE);
+            }
+            contextPool = c;
         }
 
+        ClientContextPool* contextPool;
         friend class Initializer;
 
     public:
-        uint64_t GetSessionID() {
-            return m_sessionID.fetch_add(1)+1;
-        }
         
-        void SetContext(ClientContext* ctx) {
-            auto& shard = m_shards[ctx->GetSessionID() % SHARD_SIZE];
-            std::lock_guard<std::mutex> lock(shard.mutex);
-            shard.contextMap[ctx->GetSessionID()] = ctx;
+        // state 
+        bool AddSession(SOCKET sock);
+        bool CheckSession(SOCKET sock) {
+            auto& shard = m_stateShards[sock & SESSION_SHARD_MASK];
+            Base::SpinLockGuard lock(shard.flag);
+            auto it = shard.stateMap.find(sock);
+            if (it == shard.stateMap.end())
+                return false;
+            return it->second.CheckSession();
         }
+
+        uint64_t GetSession(SOCKET sock) {
+            auto& shard = m_stateShards[sock & SESSION_SHARD_MASK];
+            Base::SpinLockGuard lock(shard.flag);
+            auto it = shard.stateMap.find(sock);
+            if (it == shard.stateMap.end())
+                return 0;
+            return it->second.GetSessionID();
+        }
+
+        void GetSessionSnapshot(int shardID, std::vector<PingStruct>& out);
+
+        void SetContextInvalid(SOCKET sock) {
+            auto& shard = m_stateShards[sock & SESSION_SHARD_MASK];
+            Base::SpinLockGuard lock(shard.flag);
+            auto it = shard.stateMap.find(sock);
+            if (it != shard.stateMap.end())
+                it->second.SetContextInvalid();
+        }
+        void UpdateFlood(SOCKET sock, uint16_t byte) {
+            auto& shard = m_stateShards[sock & SESSION_SHARD_MASK];
+            Base::SpinLockGuard lock(shard.flag);
+            auto it = shard.stateMap.find(sock);
+            if (it != shard.stateMap.end())
+                it->second.BufferReceived(byte);
+        }
+        // context
         ClientContext* GetContext(uint64_t s) {
-            auto& shard = m_shards[s % SHARD_SIZE];
-            std::lock_guard<std::mutex> lock(shard.mutex);
+            auto& shard = m_contextShards[s & SESSION_SHARD_MASK];
+            Base::SpinLockGuard lock(shard.flag);
             auto it = shard.contextMap.find(s);
             return it != shard.contextMap.end() ? it->second : nullptr;
         }
         SOCKET GetSocket(uint64_t s) {
-            auto& shard = m_shards[s % SHARD_SIZE];
-            std::lock_guard<std::mutex> lock(shard.mutex);
-            auto it = shard.contextMap.find(s);
-            return it != shard.contextMap.end() ? it->second->GetSocket() : INVALID_SOCKET;
+            auto& shard = m_contextShards[s & SESSION_SHARD_MASK];
+            Base::SpinLockGuard lock(shard.flag);
+            auto it = shard.socketMap.find(s);
+            return it != shard.socketMap.end() ? it->second : INVALID_SOCKET;
         }
-        void Disconnect(uint64_t s) {
-            auto& shard = m_shards[s % SHARD_SIZE];
-            std::lock_guard<std::mutex> lock(shard.mutex);
-            shard.contextMap.erase(s);
 
-        }
-        void ForEachShard(std::function<void(uint64_t, bool)> f) {
-            constexpr size_t MAX_SHARD_SESSION = Core::MAX_USER_CAPACITY / SHARD_SIZE;
-            std::array<std::pair<uint64_t, ClientContext*>, MAX_SHARD_SESSION> copyList;
-            // heap allocation 없이 stack 사용.
-            // 단일 스레드 접근이라 캐시 지역성도 좋음
-            for (int i = 0; i < SHARD_SIZE; i++) {
-                auto& shard = m_shards[i];
-                int idx = 0;
-                {
-                    std::lock_guard<std::mutex> lock(shard.mutex);
-                    for (auto& [sessionID, ctx] : shard.contextMap) {
-                        if (ctx)
-                            copyList[idx++] = { sessionID, ctx };
-                    }
-                }
-                auto now = NetTimer::GetTimeMS();
-
-                for (int j = 0; j < idx; j++) {
-                    auto& [sessionID, ctx] = copyList[j];
-                    try {
-                        if (!ctx) continue;
-                        bool res = ctx->NetStatus();
-                        if (res) 
-                            ctx->SendPing(now);
-                        f(sessionID, res);
-                    }
-                    catch (...) {
-                        // SendPing() 호출 흐름에서 다시 SessionMananger로 돌아와 조회하기 때문에(iocp에서 session->socket 변환)
-                        // deadlock이 발생해서, copyList 사용해서 lock 하지 않은 상태로 Send 처리.
-                        // 하지만 copyList에서 context의 수명을 보장할 수 없어서, dangling 포인터 문제가 발생한다.
-                        // 임시로 try - catch 문으로 사용
-                        // Send 전용으로 워커 스레드풀을 만들기에는 Send 작업이 비동기IO 기반이라 짧고,
-                        // 굳이 Context Switching만 발생한다고 생각해서 
-                        // copyList에 socket을 담아서 한번에 처리. (socket은 invalid socket 체크 로직 때문에 안전함)
-                        
-                        // Ping 로직에서 기존 패킷 처리 경로를 따르다보니 전달자가 너무 많아져서 Dead Lock이 발생할 수 있는 흐름을 놓쳤음
-                        // -> Ping 전용 PacketWriter Interface를 만들어서 예외적으로 직통 경로 만들어줘서 처리.
-                    }
-                }
+        bool BufferReceived(uint64_t session, uint8_t* buf, uint16_t len) {
+            auto& shard = m_contextShards[session & SESSION_SHARD_MASK];
+            Base::SpinLockGuard lock(shard.flag);
+            auto it = shard.contextMap.find(session);
+            if (it == shard.contextMap.end()) {
+                return false;
+            }
+            else {
+                return it->second->EnqueueRecvQ(buf, len);
             }
         }
-        void Pong(uint64_t s) {
-            auto& shard = m_shards[s % SHARD_SIZE];
-            std::lock_guard<std::mutex> lock(shard.mutex);
-            shard.contextMap[s]->PongReceived();
+
+        void PongReceived(uint64_t s, uint64_t rtt) {
+            SOCKET sock;
+            {
+                auto& shard = m_contextShards[s & SESSION_SHARD_MASK];
+                Base::SpinLockGuard lock(shard.flag);
+                auto it = shard.socketMap.find(s);
+                if (it == shard.socketMap.end())
+                    return;
+                sock = it->second;
+                if (sock == INVALID_SOCKET)
+                    return;
+            }
+            {
+                auto& shard = m_stateShards[sock & SESSION_SHARD_MASK];
+                Base::SpinLockGuard lock(shard.flag);
+                auto it = shard.stateMap.find(sock);
+                if (it == shard.stateMap.end())
+                    return;
+                it->second.PongReceived(rtt);
+            }
         }
+        bool Disconnect(SOCKET sock);
     };
 }

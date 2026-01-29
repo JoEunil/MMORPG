@@ -34,7 +34,8 @@ namespace Net {
 
 	inline constexpr const uint8_t MAX_ACCEPT_BUFFER_CNT = 10;
 
-	inline constexpr const uint16_t SHARD_SIZE = 10;
+	inline constexpr const uint16_t SESSION_SHARD_SIZE = 16;
+	inline constexpr const uint16_t SESSION_SHARD_MASK = SESSION_SHARD_SIZE-1;
 	inline constexpr const uint8_t PING_COUNT_LIMIT = 5;
 
 	inline constexpr const uint16_t PING_STACK_RESERVE = 1000; 
@@ -44,4 +45,10 @@ namespace Net {
 	constexpr const uint32_t RECV_WINDOW = 20;
 	constexpr const uint32_t BYTE_THRESHOLD = RECV_WINDOW* RECV_BUFFER_SIZE * 0.8;
 	constexpr const uint32_t MIN_BYTE_PER_WINDOW = sizeof(Core::PacketHeader) * RECV_WINDOW * 0.8;
+
+	template <typename T>
+	constexpr bool IsPowerOfTwo(T x) {
+		return x != 0 && (x & (x - 1)) == 0;
+	}
+	static_assert(IsPowerOfTwo(SESSION_SHARD_SIZE), "SESION_SHARD_SIZE must be a power of two");
 }

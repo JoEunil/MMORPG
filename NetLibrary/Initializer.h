@@ -45,8 +45,8 @@ namespace Net {
             clientContextPool.Initialize();
             packetPool.Initialize();
             bigPacketPool.Initialize();
-            sessionManager.Initialize();
-            netHandler.Initialize(&clientContextPool, &sessionManager, &iocp);
+            sessionManager.Initialize(&clientContextPool);
+            netHandler.Initialize(&sessionManager, &iocp);
         }
         void CleanUp1() {
             pingManager.StopPing();
@@ -60,7 +60,7 @@ namespace Net {
         void InjectDependencies(Core::ILogger* l, Core::IPacketDispatcher* packetDispatcher) {
             iocp.Initialize(l, &overlappedExPool, &netHandler, &sessionManager, &fatalError, &cv);
             pingManager.Initialize(static_cast<IAbortSocket*>(&iocp), &sessionManager);
-            NetPacketFilter::Initialize(packetDispatcher);
+            NetPacketFilter::Initialize(packetDispatcher, &sessionManager);
             iocp.Start();
             pingManager.PingStart();
         }
