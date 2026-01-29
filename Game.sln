@@ -37,6 +37,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Concept", "Concept", "{C8D5
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Design", "Design", "{F0F87F94-7836-4275-9E8B-AF797CBC0540}"
 	ProjectSection(SolutionItems) = preProject
+		ClientContext.md = ClientContext.md
 		FloodDetect.md = FloodDetect.md
 		PingLoop.md = PingLoop.md
 	EndProjectSection
@@ -45,11 +46,19 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 	ProjectSection(SolutionItems) = preProject
 		images\FloodCheckFlowChart.png = images\FloodCheckFlowChart.png
 		images\IOCPWorkerThreadRecv.png = images\IOCPWorkerThreadRecv.png
+		images\SessionManagerDeadLock1.png = images\SessionManagerDeadLock1.png
+		images\SessionManagerDeadLock2.png = images\SessionManagerDeadLock2.png
+		images\TCP&UDP.png = images\TCP&UDP.png
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Gif", "Gif", "{1EAD1855-C4A5-4C63-AC48-2766B77829DD}"
 	ProjectSection(SolutionItems) = preProject
 		images\WindowTimerResolution.gif = images\WindowTimerResolution.gif
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Debug", "Debug", "{04961DE9-96A0-4081-AB5A-BAF900334FF2}"
+	ProjectSection(SolutionItems) = preProject
+		SessionManagerDeadLock.md = SessionManagerDeadLock.md
 	EndProjectSection
 EndProject
 Global
@@ -225,6 +234,7 @@ Global
 		{F0F87F94-7836-4275-9E8B-AF797CBC0540} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 		{1A67903F-5C0B-4FD6-876B-B0088C77C6B6} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 		{1EAD1855-C4A5-4C63-AC48-2766B77829DD} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
+		{04961DE9-96A0-4081-AB5A-BAF900334FF2} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1D7E6752-8BC7-4122-B538-33B39EB8EA38}
