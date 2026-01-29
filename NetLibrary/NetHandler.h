@@ -39,22 +39,20 @@ namespace Net {
                 abortSocket->AbortSocket(sock);
                 return;
             }
-            uint64_t session = sessionManager->GetSession(sock);
-            if (!sessionManager->BufferReceived(session, buf, len)) {
+            auto ctx = sessionManager->GetContext(sock);
+            if (!ctx->CheckGameSession()) {
                 sessionManager->SetContextInvalid(sock);
+                abortSocket->AbortSocket(sock);
+                return;
             }
+            ctx->EnqueueRecvQ(buf, len);
 
         }
         bool OnDisConnect(SOCKET sock) const {
             return sessionManager->Disconnect(sock);
         }
         uint16_t AllocateBuffer(SOCKET sock, uint8_t*& buf) const {
-            uint64_t session = sessionManager->GetSession(sock);
-            if (session == 0) {
-                std::cout << "Invalid Session\n";
-                return 0;
-            }
-            ClientContext* ctx = sessionManager->GetContext(session);
+            ClientContext* ctx = sessionManager->GetContext(sock);
             if (ctx == nullptr) {
                 std::cout << "Invalid ctx\n";
                 return 0;
