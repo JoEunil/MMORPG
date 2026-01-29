@@ -26,6 +26,7 @@ namespace Core {
     inline constexpr const uint16_t NONE_ZONE_THREADPOOL_SIZE = 3;
     
     inline constexpr const uint16_t SHARD_SIZE = 8; // stateManager의 session - zone 매핑 샤드, 접근하는 스레드풀 크기의 2~4배 정도
+    inline constexpr const uint16_t SHARD_SIZE_MASK = SHARD_SIZE - 1;
 
     inline constexpr const uint16_t TARGET_DELTA_SNAPSHOT_POOL_SIZE = 50;
     inline constexpr const uint16_t MAX_DELTA_SNAPSHOT_POOL_SIZE = 100;
@@ -61,4 +62,10 @@ namespace Core {
    // stateManager에서 Cheat Count flush할 시간.
    // 네트워크 문제에 의해 증가된 cheat count 정리하기 위함.. 
    inline constexpr const uint16_t CHAT_QUEUE_SIZE = 512;
+
+   template <typename T>
+   constexpr bool IsPowerOfTwo(T x) {
+       return x != 0 && (x & (x - 1)) == 0;
+   }
+   static_assert(IsPowerOfTwo(SHARD_SIZE), "SHARD_SIZE must be a power of two");
 }

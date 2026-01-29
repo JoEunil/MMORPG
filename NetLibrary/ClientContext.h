@@ -15,7 +15,6 @@ namespace Core {
 }
 
 namespace Net {
-    inline const uint16_t RELEASE_Q_SIZE = RING_BUFFER_SIZE / sizeof(Core::PacketHeader) + 2;
     inline const uint16_t EMPTY_SLOT = RING_BUFFER_SIZE;
     inline const std::pair<uint16_t, uint16_t> EMPTY_PAIR{ EMPTY_SLOT, EMPTY_SLOT };
     class PacketView;
@@ -25,9 +24,8 @@ namespace Net {
         RingBuffer m_buffer;
         uint8_t* m_startPtr;
         uint16_t m_front = 0;
-        uint16_t m_rear = m_capacity - 1;
+        uint16_t m_rear = RING_BUFFER_SIZE - 1;
         bool m_last_op = RELEASE;
-        uint16_t m_capacity = 0;
         uint64_t m_sessionID = 0;
 
         std::atomic<bool> m_connected = false;
@@ -47,11 +45,10 @@ namespace Net {
     public:
         ClientContext() {
             m_buffer.Initialize();
-            m_capacity = RING_BUFFER_SIZE;
             m_startPtr = m_buffer.GetStartPtr();
             m_releaseQ.resize(RELEASE_Q_SIZE, { EMPTY_SLOT, EMPTY_SLOT });
             m_front = 0;
-            m_rear = m_capacity - 1;
+            m_rear = RING_BUFFER_SIZE - 1;
             m_last_op = RELEASE;
         }
 
@@ -65,7 +62,7 @@ namespace Net {
             m_startPtr = m_buffer.GetStartPtr();
             m_seq = 0;
             m_front = 0;
-            m_rear = m_capacity - 1;
+            m_rear = RING_BUFFER_SIZE - 1;
             m_connected.store(true, std::memory_order_release);
             m_workingCnt.store(0, std::memory_order_release);
             m_gameSession.store(true, std::memory_order_release);

@@ -115,7 +115,7 @@ namespace Core {
         }
 
         void AddSession(uint64_t sessionID, uint64_t userID, bool authenticated) {
-            auto& shard = m_shards[sessionID % SHARD_SIZE];
+            auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::unique_lock<std::shared_mutex> lock(shard.smutex);
             auto& map = shard.sessionMap;
             auto it = map.find(sessionID);
@@ -131,7 +131,7 @@ namespace Core {
         }
         
         uint64_t GetUserID(uint64_t sessionID) {
-            auto& shard = m_shards[sessionID % SHARD_SIZE];
+            auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);
             
             auto it = shard.sessionMap.find(sessionID);
@@ -141,7 +141,7 @@ namespace Core {
         }
 
         void SetCharacterID(uint64_t sessionID, uint64_t characterID) {
-            auto& shard = m_shards[sessionID % SHARD_SIZE];
+            auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::unique_lock<std::shared_mutex> lock(shard.smutex);
             
             auto it = shard.sessionMap.find(sessionID);
@@ -151,7 +151,7 @@ namespace Core {
         }
         
         uint64_t GetCharacterID(uint64_t sessionID) {
-            auto& shard = m_shards[sessionID % SHARD_SIZE];
+            auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);
             
             auto it = shard.sessionMap.find(sessionID);
@@ -161,7 +161,7 @@ namespace Core {
         }
         
         void SetZoneID(uint64_t sessionID, uint16_t dest) {
-            auto& shard = m_shards[sessionID % SHARD_SIZE];
+            auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::unique_lock<std::shared_mutex> lock(shard.smutex);
             
             auto it = shard.sessionMap.find(sessionID);
@@ -171,7 +171,7 @@ namespace Core {
         }
         
         int16_t GetZoneID(uint64_t sessionID) {
-            auto& shard = m_shards[sessionID % SHARD_SIZE];
+            auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);
             auto it = shard.sessionMap.find(sessionID);
             if (it == shard.sessionMap.end())
@@ -182,7 +182,7 @@ namespace Core {
         }
 
         uint8_t HealthCheck(uint64_t sessionID) {
-            auto& shard = m_shards[sessionID % SHARD_SIZE];
+            auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);
             auto it = shard.sessionMap.find(sessionID);
             uint8_t res = 0; 
@@ -201,7 +201,7 @@ namespace Core {
         void EnqueueDisconnectMsg(CharacterState& temp, uint64_t sessionID);
 
         void Cheat(uint64_t sessionID, uint16_t cheat, std::chrono::steady_clock::time_point time) {
-            auto& shard = m_shards[sessionID % SHARD_SIZE];
+            auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::unique_lock<std::shared_mutex> lock(shard.smutex);
             auto it = shard.sessionMap.find(sessionID);
             if (it != shard.sessionMap.end())
