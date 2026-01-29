@@ -8,7 +8,7 @@
 #include <CoreLib/Config.h>
 
 namespace Net {
-    bool NetPacketFilter::TryDispatch(std::shared_ptr<Core::IPacketView> pv) {        
+    bool NetPacketFilter::TryDispatch(std::unique_ptr<Core::IPacketView, Core::PacketDeleter> pv) {        
         // 3차 패킷 검증
         auto session = pv->GetSessionID();
         auto op = pv->GetOpcode();
@@ -17,7 +17,7 @@ namespace Net {
 
         if (!(health & Core::MASK_EXIST)) {
             std::cout << "session not exist";
-            packetDispatcher->Process(pv);
+            packetDispatcher->Process(std::move(pv));
             return true;
         }
         if (!(health & Core::MASK_NOT_CHEAT)) {
@@ -40,13 +40,13 @@ namespace Net {
         case Core::OP::PONG: 
             {
                 std::cout << "Pong\n";
-                uint64_t rtt = packetDispatcher->GetRTT(pv, NetTimer::GetTimeMS());
+                uint64_t rtt = packetDispatcher->GetRTT(std::move(pv), NetTimer::GetTimeMS());
                 sessionManager->PongReceived(session, rtt);
             }
             break;
         default:
             std::cout << "dispatch " << (int)op << '\n';
-            packetDispatcher->Process(pv);
+            packetDispatcher->Process(std::move(pv));
             break;
         }
 

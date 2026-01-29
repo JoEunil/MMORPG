@@ -16,7 +16,7 @@ namespace Core {
     class IPacketView;
     struct Thread {
         std::thread thread;
-        std::queue<std::shared_ptr<IPacketView>> workQueue; // 개별 작업 큐
+        std::queue<std::unique_ptr<IPacketView, PacketDeleter>> workQueue; // 개별 작업 큐
         // lock-free queue쓰면 성능 향상
         std::mutex mutex;
         std::atomic<bool> running = false;
@@ -44,6 +44,6 @@ namespace Core {
         ~ZoneThreadSet() {
             Stop();
         }
-        void EnqueueWork(std::shared_ptr<IPacketView> pv, uint16_t zoneID);// 공용 큐에 작업 추가
+        void EnqueueWork(std::unique_ptr<IPacketView, PacketDeleter> pv, uint16_t zoneID);// 공용 큐에 작업 추가
     };
 }

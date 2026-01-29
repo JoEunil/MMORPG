@@ -80,15 +80,15 @@ namespace Net {
         packet->SetFront(m_front);
         packet->SetRear((m_front + packetLen - 1) & RING_BUFFER_SIZE_MASK);
         packet->SetOpcode(opcode);
+        packet->SetOwner(this);
 
-        auto deleter = [this](Core::IPacketView* p) {this->ReleaseBuffer(static_cast<PacketView*>(p)); delete p; }; // lambda custom deleter
-        std::shared_ptr<Core::IPacketView> pv(static_cast<Core::IPacketView*>(packet), deleter);
+       std::unique_ptr<Core::IPacketView, Core::PacketDeleter> pv(static_cast<Core::IPacketView*>(packet), Core::PacketDeleter{});
 
         m_front = (m_front + packetLen) & RING_BUFFER_SIZE_MASK;
         m_last_op = RELEASE;
         m_workingCnt.fetch_add(1);
 
-        if (!NetPacketFilter::TryDispatch(pv)) {
+        if (!NetPacketFilter::TryDispatch(std::move(pv))) {
             m_gameSession.store(false, std::memory_order_release);
             return false;
         }

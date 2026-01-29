@@ -5,7 +5,7 @@
 #include "ILogger.h"
 
 namespace Core {
-    void PacketDispatcher::Process(std::shared_ptr<IPacketView> pv) {
+    void PacketDispatcher::Process(std::unique_ptr<IPacketView, PacketDeleter> pv) {
         PacketHeader* h = parseHeader(pv->GetPtr());
         
         uint64_t sessionID = pv->GetSessionID();
@@ -18,9 +18,9 @@ namespace Core {
                 logger->LogWarn(std::format("Invalid ZoneID, sessionID: {}", pv->GetSessionID()));
                 return;
             }
-            zoneThreadSet->EnqueueWork(pv, zoneID);
+            zoneThreadSet->EnqueueWork(std::move(pv), zoneID);
         } else {
-            noneZoneThreadPool->EnqueueWork(pv);
+            noneZoneThreadPool->EnqueueWork(std::move(pv));
         }
     }
     void PacketDispatcher::Disconnect(uint64_t sessionID) {

@@ -35,12 +35,12 @@ namespace Core {
         }
         friend class Initializer;
     public:
-        void Process(std::shared_ptr<IPacketView> pv) override;
+        void Process(std::unique_ptr<IPacketView, PacketDeleter> pv) override;
         void Disconnect(uint64_t sessionID) override;
         uint8_t HealthCheck(uint64_t sessionID) override {
            return stateManager->HealthCheck(sessionID);
         }
-        uint64_t GetRTT(std::shared_ptr<IPacketView> pv, uint64_t now) override {
+        uint64_t GetRTT(std::unique_ptr<IPacketView, PacketDeleter> pv, uint64_t now) override {
             Pong* body = parseBody<Pong>(pv->GetPtr());
             return now - body->serverTimeMs;
         }

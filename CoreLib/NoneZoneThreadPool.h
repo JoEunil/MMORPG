@@ -4,14 +4,14 @@
 #include <queue>
 #include <condition_variable>
 #include "NoneZoneHandler.h"
+#include "IPacketView.h"
 #include "Config.h"
 namespace Core {
     class ILogger;
-    class IPacketView;
     // 게임틱 단위로 처리되지 않는 (zone 상태와 관련 없는) 요청 처리
     class NoneZoneThreadPool {
         std::vector<std::thread> m_threads;
-        std::queue<std::shared_ptr<IPacketView>> m_workQueue;
+        std::queue<std::unique_ptr<IPacketView, PacketDeleter>> m_workQueue;
         std::queue<uint64_t> m_disconnectQueue;
         std::mutex m_mutex;
         std::condition_variable m_cv;
@@ -40,7 +40,7 @@ namespace Core {
         ~NoneZoneThreadPool() {
             Stop();
         }
-        void EnqueueWork(std::shared_ptr<IPacketView> pv);
+        void EnqueueWork(std::unique_ptr<IPacketView, PacketDeleter> pv);
         void EnqueueDisconnect(uint64_t sessionID);
     };
 }

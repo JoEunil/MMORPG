@@ -40,7 +40,7 @@ namespace Core {
                 continue; 
             }
             if (!m_workQueue.empty()) {
-                auto work = m_workQueue.front();
+                auto work = std::move(m_workQueue.front());
                 m_workQueue.pop();
                 lock.unlock();
                 handler->Process(work.get());
@@ -49,9 +49,9 @@ namespace Core {
         }
     }
 
-    void NoneZoneThreadPool::EnqueueWork(std::shared_ptr<IPacketView> pv) {
+    void NoneZoneThreadPool::EnqueueWork(std::unique_ptr<IPacketView, PacketDeleter> pv) {
         std::lock_guard<std::mutex> lock(m_mutex);
-        m_workQueue.push(pv);
+        m_workQueue.push(std::move(pv));
         m_cv.notify_one();
     }
 
