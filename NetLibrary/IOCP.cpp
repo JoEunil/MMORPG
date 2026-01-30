@@ -224,7 +224,12 @@ namespace Net {
         pOverlappedEx->op = IOOperation::ACCEPT;
         pOverlappedEx->clientSocket = clientSocket;
         pOverlappedEx->wsaBuf.buf = overlappedExPool->AcquireAcceptBuffer();
-
+        if (pOverlappedEx->wsaBuf.buf == nullptr) {
+            // PREPOSTED_ACCEPT 만큼만 PostAccept가 유지되기 때문에 발생할 일이 없음. Accept가 실패될 순 있어도 PostAccept가 실패될 순 없음
+            logger->LogError("Failed to acquire Accept Buffer");
+            overlappedExPool->Return(pOverlappedEx);
+            return;
+        }
         DWORD bytesReceived = 0;
         BOOL bRet = m_lpfnAcceptEx(
             m_listenSock,

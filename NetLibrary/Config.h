@@ -54,8 +54,6 @@ namespace Net {
 	inline constexpr const uint16_t RELEASE_Q_SIZE = NextPowerOf2(RELEASE_Q_SIZE_MIN);
 	inline constexpr const uint16_t RELEASE_Q_SIZE_MASK = RELEASE_Q_SIZE - 1;
 
-	inline constexpr const uint8_t MAX_ACCEPT_BUFFER_CNT = 10;
-
 	inline constexpr const uint16_t SESSION_SHARD_SIZE = 16;
 	inline constexpr const uint16_t SESSION_SHARD_MASK = SESSION_SHARD_SIZE-1;
 	inline constexpr const uint8_t PING_COUNT_LIMIT = 5;

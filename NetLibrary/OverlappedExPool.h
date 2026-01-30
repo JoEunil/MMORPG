@@ -2,7 +2,7 @@
 #include <deque>
 #include <mutex>
 #include <cstdint>
-#include <queue>
+#include <vector>
 #include "STOverlappedEx.h"
 #include "Config.h"
 
@@ -13,7 +13,7 @@ namespace Net {
     class OverlappedExPool {
         std::deque<STOverlappedEx*> m_overlappedPool;
 
-        std::queue<char*> m_acceptBuffers;
+        std::vector<char*> m_acceptBuffers; // LIFO로 관리하면 충분
         std::mutex m_bufMutex;
         std::mutex m_mutex;
         
@@ -32,13 +32,16 @@ namespace Net {
         void Return(STOverlappedEx*);
         char* AcquireAcceptBuffer() {
             std::lock_guard<std::mutex> lock(m_bufMutex);
-            auto buf = m_acceptBuffers.front();
-            m_acceptBuffers.pop();
+            if (m_acceptBuffers.empty()) {
+                return nullptr;
+            }
+            auto buf = m_acceptBuffers.back();
+            m_acceptBuffers.pop_back();
             return buf;
         }
         void ReturnAcceptBuf(char*  buf) {
             std::lock_guard<std::mutex> lock(m_bufMutex);
-            m_acceptBuffers.push(buf);
+            m_acceptBuffers.push_back(buf);
         }
     };
 }
