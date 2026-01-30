@@ -56,16 +56,28 @@ namespace Core {
     inline constexpr const uint8_t  MASK_NOT_CHEAT = 1 << 2;
     // - 일반적인 비정상 패킷 1회 발생 시 바로 끊지 않음
     // - 크리티컬한 경우, 점수를 높게 줘서 즉시 Disconnect 가능
+    
 
 
    inline constexpr const std::chrono::steady_clock::duration CHEAT_FLUSH_TIME = std::chrono::seconds(2);
    // stateManager에서 Cheat Count flush할 시간.
    // 네트워크 문제에 의해 증가된 cheat count 정리하기 위함.. 
    inline constexpr const uint16_t CHAT_QUEUE_SIZE = 512;
+   inline constexpr const uint16_t  BROADCAST_QUEUE_SIZE = 512;
+   inline constexpr const uint16_t  DISCONNECT_QUEUE_SIZE = 8192;
+
+   inline constexpr const uint32_t  ZONE_QUEUE_SIZE = 8192;  // zone 당 최대 2000명으로 가정, 한 틱에 요청이 1개만 있어야 되지만 넉넉히 4개로 설정
+   inline constexpr const uint32_t  NONE_ZONE_QUEUE_SIZE = 16384; // 최대 5000명의 채널 유저로 가정 유저당 3개 요청까지 허용.
+
 
    template <typename T>
    constexpr bool IsPowerOfTwo(T x) {
        return x != 0 && (x & (x - 1)) == 0;
    }
    static_assert(IsPowerOfTwo(SHARD_SIZE), "SHARD_SIZE must be a power of two");
+   static_assert(IsPowerOfTwo(CHAT_QUEUE_SIZE), "CHAT_QUEUE_SIZE must be a power of two");
+   static_assert(IsPowerOfTwo(BROADCAST_QUEUE_SIZE), "BROADCAST_QUEUE_SIZE must be a power of two");
+   static_assert(IsPowerOfTwo(DISCONNECT_QUEUE_SIZE), "DISCONNECT_QUEUE_SIZE must be a power of two");
+   static_assert(IsPowerOfTwo(ZONE_QUEUE_SIZE), "ZONE_QUEUE_SIZE must be a power of two");
+   static_assert(IsPowerOfTwo(NONE_ZONE_QUEUE_SIZE), "NONE_ZONE_QUEUE_SIZE must be a power of two");
 }

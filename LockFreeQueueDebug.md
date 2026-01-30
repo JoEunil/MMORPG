@@ -16,7 +16,6 @@
 - 큐가 full일 경우, Producer는 yield를 수행하며 Consumer가 pop을 수행.
 - Consumer가 먼저 큐를 비워 counter == 0이 되면 종료 조건 충족.
 - 모든 push/pop 완료 후 counter == 0
-- push가 전부 수행되지 않더라도 조건(counter == 0)을 만족하면 종료됨
 
 ## 테스트 결과
 유닛테스트 통과 실패.

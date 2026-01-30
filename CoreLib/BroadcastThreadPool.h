@@ -4,9 +4,9 @@
 #include <thread>
 #include <condition_variable>
 #include <mutex>
-#include <queue>
 #include <vector>
 
+#include <BaseLib/LockFreeQueueSP.h>
 #include "Config.h"
 
 namespace Core {
@@ -15,10 +15,8 @@ namespace Core {
     class StateManager;
     class BroadcastThreadPool {
         std::vector<std::thread> m_threads;
-        std::queue<std::pair<std::shared_ptr<IPacket>, uint16_t>> m_sharedQueue;
+        Base::LockFreeQueueSP<std::shared_ptr<IPacket>, BROADCAST_QUEUE_SIZE> m_workQ;
 
-        std::condition_variable m_cv;
-        std::mutex m_mutex;
         std::atomic<bool> m_running = false;
         
         IIOCP* iocp;
