@@ -5,7 +5,7 @@
 #include "ILogger.h"
 
 namespace Core {
-    void PacketDispatcher::Process(std::unique_ptr<IPacketView, PacketDeleter> pv) {
+    void PacketDispatcher::Process(std::unique_ptr<IPacketView, PacketViewDeleter> pv) {
         PacketHeader* h = parseHeader(pv->GetPtr());
         
         uint64_t sessionID = pv->GetSessionID();

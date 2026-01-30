@@ -8,7 +8,7 @@
 #include <CoreLib/Config.h>
 
 namespace Net {
-    bool NetPacketFilter::TryDispatch(std::unique_ptr<Core::IPacketView, Core::PacketDeleter> pv) {        
+    bool NetPacketFilter::TryDispatch(std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv) {        
         // 3차 패킷 검증
         auto session = pv->GetSessionID();
         auto op = pv->GetOpcode();

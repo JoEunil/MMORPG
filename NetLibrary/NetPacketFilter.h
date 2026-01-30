@@ -22,7 +22,7 @@ namespace Net {
         friend class Initializer;
 
     public:
-        static bool TryDispatch(std::unique_ptr<Core::IPacketView, Core::PacketDeleter> pv);
+        static bool TryDispatch(std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv);
         static void Disconnect(uint64_t sessionID) {
             packetDispatcher->Disconnect(sessionID);
         }

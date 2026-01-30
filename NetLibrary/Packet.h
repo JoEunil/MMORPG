@@ -5,10 +5,9 @@
 
 #include <CoreLib/PacketTypes.h>
 #include <CoreLib/IPacket.h>
-
+#include "PacketPool.h"
 
 namespace Net {
-    class PacketPool;
     class Packet : public Core::IPacket {
         uint8_t* m_buffer;
         uint16_t m_length; // data length
@@ -54,6 +53,11 @@ namespace Net {
             delete[] m_buffer;
         }
 
+        void Release() override {
+            if (owner)
+                owner->Return(this);
+            delete this;
+        }
         uint8_t* GetBuffer() override { return m_buffer; }
         uint16_t GetLength() override { return m_length; }
         void SetLength(uint16_t len) { m_length = len; }

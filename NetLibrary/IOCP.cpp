@@ -328,7 +328,7 @@ namespace Net {
 
     }
 
-    void IOCP::SendDataUnique(uint64_t sessionID, std::unique_ptr<Core::IPacket> packet)
+    void IOCP::SendDataUnique(uint64_t sessionID, std::unique_ptr<Core::IPacket, Core::PacketDeleter> packet)
     {
         SOCKET clientSocket = sessionManager->GetSocket(sessionID);
         if (clientSocket == INVALID_SOCKET) {

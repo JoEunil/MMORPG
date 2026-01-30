@@ -76,7 +76,7 @@ namespace Net {
 		return std::shared_ptr<Packet>(rawPacket, [this](Packet* p) { this->Return(p); });
 	}
 
-	std::unique_ptr<Core::IPacket> PacketPool::AcquireUnique()
+	std::unique_ptr<Core::IPacket, Core::PacketDeleter> PacketPool::AcquireUnique()
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
 		if (m_packets.empty()) {
@@ -85,8 +85,8 @@ namespace Net {
 		Packet* rawPacket = m_packets.back();
 		m_packets.pop_back();
 		Adjust();
-		// unique_ptr은 커스텀 deleter 사용 복잡성과, std::function의 비용 때문에 직접 Return 호출해서 사용.
-		return std::unique_ptr<Packet>(rawPacket);
+
+		return std::unique_ptr<Packet, Core::PacketDeleter>(rawPacket);
 	}
 
 	void PacketPool::Return(Core::IPacket* packet) {

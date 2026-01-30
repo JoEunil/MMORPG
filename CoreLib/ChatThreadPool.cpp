@@ -69,8 +69,8 @@ namespace Core {
             }
         }
     }
-    void ChatThreadPool::SendPacket(uint64_t session, std::shared_ptr<IPacket> p) {
-        iocp->SendData(session, p);
+    void ChatThreadPool::SendPacketUnique(uint64_t session, std::unique_ptr<IPacket, PacketDeleter> p) {
+        iocp->SendDataUnique(session, std::move(p));
     }
     void ChatThreadPool::SendPacketGroup(ChatDestKey key, std::shared_ptr<IPacket> packet) {
         switch (key.scope)
@@ -105,8 +105,9 @@ namespace Core {
                 // whisper dest user not exist
                 return;
             }
-            SendPacket(it->second, packet);
-            SendPacket(curr.senderSessionID, packet);
+            SendPacketUnique(it->second, std::move(packet));
+            auto senderPacket = writer->GetChatWhisperPacket(chatID, userName, curr.message);
+            SendPacketUnique(curr.senderSessionID, std::move(packet));
         }
 
         auto it = tempPackets.find(curr.key);

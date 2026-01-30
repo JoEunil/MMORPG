@@ -12,7 +12,7 @@ namespace Core {
         virtual uint8_t GetOpcode() const = 0;
         virtual void Release() = 0;
     };
-    struct PacketDeleter {
+    struct PacketViewDeleter {
         void operator()(IPacketView* p) const {
             p->Release();
         }

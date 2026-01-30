@@ -4,11 +4,9 @@
 #include <mutex>
 #include <cstdint>
 
+#include <CoreLib/IPacket.h>
 #include <CoreLib/IPacketPool.h>
 
-namespace Core {
-    class IPacket;
-}
 namespace Net {
     class Packet;
     class PacketPool : public Core::IPacketPool {
@@ -35,7 +33,7 @@ namespace Net {
         }
         ~PacketPool();
         std::shared_ptr<Core::IPacket> Acquire() override;
-        std::unique_ptr<Core::IPacket> AcquireUnique() override;
+        std::unique_ptr<Core::IPacket, Core::PacketDeleter> AcquireUnique() override;
         void Return(Core::IPacket* packet) override;
     };
 }

@@ -49,7 +49,7 @@ namespace Core {
         }
     }
 
-    void NoneZoneThreadPool::EnqueueWork(std::unique_ptr<IPacketView, PacketDeleter> pv) {
+    void NoneZoneThreadPool::EnqueueWork(std::unique_ptr<IPacketView, PacketViewDeleter> pv) {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_workQueue.push(std::move(pv));
         m_cv.notify_one();

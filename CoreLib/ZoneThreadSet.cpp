@@ -14,7 +14,7 @@
 
 namespace Core {
     void ZoneThreadSet::WorkerFunc(Thread* t, int zoneID) {
-        std::queue<std::unique_ptr<IPacketView, PacketDeleter>> localQueue;
+        std::queue<std::unique_ptr<IPacketView, PacketViewDeleter>> localQueue;
         auto lastTick = std::chrono::steady_clock::now();
         auto lastDeltaSnapshot = lastTick;
         auto lastFullSnapshot = lastTick;
@@ -121,7 +121,7 @@ namespace Core {
         }
     }
 
-    void ZoneThreadSet::EnqueueWork(std::unique_ptr<Core::IPacketView, PacketDeleter> pv, uint16_t zoneID) {
+    void ZoneThreadSet::EnqueueWork(std::unique_ptr<Core::IPacketView, PacketViewDeleter> pv, uint16_t zoneID) {
         Thread& t = m_threads[zoneID-1];
         std::lock_guard<std::mutex> lock(t.mutex);
         t.workQueue.emplace(std::move(pv));

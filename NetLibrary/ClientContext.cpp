@@ -82,7 +82,7 @@ namespace Net {
         packet->SetOpcode(opcode);
         packet->SetOwner(this);
 
-       std::unique_ptr<Core::IPacketView, Core::PacketDeleter> pv(static_cast<Core::IPacketView*>(packet), Core::PacketDeleter{});
+       std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv(static_cast<Core::IPacketView*>(packet), Core::PacketViewDeleter{});
 
         m_front = (m_front + packetLen) & RING_BUFFER_SIZE_MASK;
         m_last_op = RELEASE;
