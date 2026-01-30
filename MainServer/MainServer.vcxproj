@@ -216,6 +216,7 @@ xcopy /Y "$(SolutionDir)External\libevent\bin\Release\*.dll" "$(OutDir)"</Comman
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="main.h" />
+    <ClInclude Include="UnitTest.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="editorconifg" />

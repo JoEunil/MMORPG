@@ -1,18 +1,20 @@
 ﻿#pragma once
 
-#include <deque>
-#include <queue>
 #include <atomic>
 #include <mutex>
 #include <memory>
 #include <winsock2.h>    
+#include <cstdint>
+
+#include <BaseLib/RingQueue.h>
+#include "Config.h"
 
 namespace Net {
     class ClientContext;
     class ClientContextPool {
-        std::deque<ClientContext*> m_contexts;
-        std::queue<ClientContext*> m_tempQ;
-        
+        std::vector<ClientContext*> m_contexts; // LIFO
+        Base::RingQueue<ClientContext*, NextPowerOf2(MAX_CLIENT_CONNECTION * 3)> m_flushQ; // ring queue, FIFO
+
         std::mutex m_mutex;
         bool m_running = false;
         std::atomic<int> m_workingCnt = 0;

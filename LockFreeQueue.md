@@ -149,3 +149,6 @@ https://github.com/couchbase/phosphor/blob/master/thirdparty/dvyukov/include/dvy
 - 큐의 size()를 제공하지 않는다.
 	- size 계산 자체가 race condition을 유발할 수 있으며,
 	- consumer 쪽에서도 적절한 wait / retry 정책이 필요하다
+
+## 단위 테스트  
+[LockFreeQueueDebug](LockFreeQueueDebug.md)

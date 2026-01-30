@@ -46,6 +46,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 	ProjectSection(SolutionItems) = preProject
 		images\FloodCheckFlowChart.png = images\FloodCheckFlowChart.png
 		images\IOCPWorkerThreadRecv.png = images\IOCPWorkerThreadRecv.png
+		images\LockFreeQueue1.png = images\LockFreeQueue1.png
+		images\LockFreeQueue2.png = images\LockFreeQueue2.png
+		images\LockFreeQueue3.png = images\LockFreeQueue3.png
+		images\LockFreeQueue4.png = images\LockFreeQueue4.png
 		images\SessionManagerDeadLock1.png = images\SessionManagerDeadLock1.png
 		images\SessionManagerDeadLock2.png = images\SessionManagerDeadLock2.png
 		images\TCP&UDP.png = images\TCP&UDP.png
@@ -58,6 +62,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Gif", "Gif", "{1EAD1855-C4A
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Debug", "Debug", "{04961DE9-96A0-4081-AB5A-BAF900334FF2}"
 	ProjectSection(SolutionItems) = preProject
+		LockFreeQueueDebug.md = LockFreeQueueDebug.md
 		SessionManagerDeadLock.md = SessionManagerDeadLock.md
 	EndProjectSection
 EndProject

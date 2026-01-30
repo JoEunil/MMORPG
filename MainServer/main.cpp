@@ -15,8 +15,11 @@
 #include <External/spdlog/spdlog.h>
 
 #include <mysqlconn/include/mysql/jdbc.h>
+#include "UnitTest.h"
+
 
 int main(int argc, char* argv[]) {
+    LockFreeQueueTest();
     ST_WSA_INITIALIZER wsa; // winsock 초기화
 
     SetConsoleOutputCP(CP_UTF8);

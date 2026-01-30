@@ -165,9 +165,13 @@ PacketView
 
 ### 개념
 - [memory_order](memory_order.md)
-  메모리 재배치 개념, memory_order 옵션 종류, SpinLock 적용 예시
-
+- [LockFreeQueue](LockFreeQueue.md)
+- 
 ### 설계
 - [FloodDetect](FloodDetect.md) 
 - [PingLoop](PingLoop.md) 
 - [ClientContext](ClientContext.md) 
+
+### 디버그
+- [SessionManagerDeadLock](SessionManagerDeadLock.md)
+- [LockFreeQueueDebug](LockFreeQueueDebug.md)

@@ -11,22 +11,19 @@ namespace Net {
 	inline constexpr const uint16_t LISTEN_PORT = 9999;
     inline constexpr const uint16_t PREPOSTED_ACCEPTS = 10; //worker threadpool * 2~4
 
-	inline constexpr const uint16_t MAX_PACKETPOOL_SIZE = 200;
-	inline constexpr const uint16_t MIN_PACKETPOOL_SIZE = 50;
-	inline constexpr const uint16_t TARGET_PACKETPOOL_SIZE = 100;
+	inline constexpr const uint16_t MAX_PACKETPOOL_SIZE = MAX_CLIENT_CONNECTION * 150;
+	inline constexpr const uint16_t MIN_PACKETPOOL_SIZE = MAX_CLIENT_CONNECTION;
+	inline constexpr const uint16_t TARGET_PACKETPOOL_SIZE = MAX_CLIENT_CONNECTION * 50;
 
-	inline constexpr const uint16_t MAX_BPACKETPOOL_SIZE = 200;
-	inline constexpr const uint16_t MIN_BPACKETPOOL_SIZE = 50;
-	inline constexpr const uint16_t TARGET_BPACKETPOOL_SIZE = 100;
+	inline constexpr const uint16_t MAX_BPACKETPOOL_SIZE = 15000;
+	inline constexpr const uint16_t MIN_BPACKETPOOL_SIZE = 200;
+	inline constexpr const uint16_t TARGET_BPACKETPOOL_SIZE = 5000;
 
-	inline constexpr const uint16_t MAX_OVERLAPPEDPOOL_SIZE = 200;
-	inline constexpr const uint16_t MIN_OVERLAPPEDPOOL_SIZE = 50;
-	inline constexpr const uint16_t TARGET_OVERLAPPEDPOOL_SIZE = 100;
+	inline constexpr const uint16_t MAX_OVERLAPPEDPOOL_SIZE = MAX_CLIENT_CONNECTION * 12;
+	inline constexpr const uint16_t MIN_OVERLAPPEDPOOL_SIZE = MAX_CLIENT_CONNECTION * 2;
+	inline constexpr const uint16_t TARGET_OVERLAPPEDPOOL_SIZE = MAX_CLIENT_CONNECTION * 6;
 
-	inline constexpr const uint16_t MAX_CONTEXTPOOL_SIZE = 200;
-	inline constexpr const uint16_t MIN_CONTEXTPOOL_SIZE = 50;
-	inline constexpr const uint16_t TARGET_CONTEXTPOOL_SIZE = 100;
-	inline constexpr const uint16_t FLUSH_CONTEXTPOOL = 50;
+	inline constexpr const uint16_t FLUSH_CONTEXTPOOL = 500;
 
 	// 가장 가까운 2의 거듭제곱 계산
 	// 원리:
@@ -58,7 +55,6 @@ namespace Net {
 	inline constexpr const uint16_t SESSION_SHARD_MASK = SESSION_SHARD_SIZE-1;
 	inline constexpr const uint8_t PING_COUNT_LIMIT = 5;
 
-	inline constexpr const uint16_t PING_STACK_RESERVE = 1000; 
 	inline constexpr const std::chrono::seconds PING_LOOP_WAIT = std::chrono::seconds(1);
 
 

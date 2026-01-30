@@ -36,22 +36,23 @@ namespace Base {
 		LockFreeQueue() : m_mask(QSize-1) {
 			assert((QSize >= 2) &&((QSize & (QSize - 1)) == 0));
 			// 2 거듭제곱 체크
-
+			m_head.store(0);
+			m_tail.store(0);
 			for (int i = 0; i < QSize; i++)
 			{
-				m_queue[i].seq = i;
+				m_queue[i].seq.store(i, std::memory_order_relaxed);
 			}
 		}
 		bool push(T& data) {
 			while (true)
 			{
-				auto tail = m_tail.load();
+ 				auto tail = m_tail.load();
 				auto idx = tail & m_mask;
 				auto seq = m_queue[idx].seq.load(std::memory_order_acquire);
 				int64_t diff = static_cast<int64_t>(seq) - static_cast<int64_t>(tail);
 
 				if (diff == 0) {
-					if (m_tail.compare_exchange_weak(tail, (tail +1) & m_mask)) {
+					if (m_tail.compare_exchange_weak(tail, tail +1)) {
 						// true 인 경우 tail 점유 성공, CAS로 race condition 해결 
 						m_queue[idx].data = data;
 						m_queue[idx].seq.store(tail + 1, std::memory_order_release); // 순서 바뀌면 안됨, release로 data가 write된 상태 관측 보장.
@@ -78,9 +79,9 @@ namespace Base {
 				auto seq = m_queue[idx].seq.load(std::memory_order_acquire);
 				int64_t diff = static_cast<int64_t>(seq) - static_cast<int64_t>(head + 1);
 				if (diff == 0) {
-					if (m_head.compare_exchange_weak(head, (head + 1) & m_mask)) {
+					if (m_head.compare_exchange_weak(head, head + 1)) {
 						auto res = m_queue[idx].data;
-						m_queue[idx].seq.store(head + QSize + 1, std::memory_order_release);
+						m_queue[idx].seq.store(head + QSize, std::memory_order_release);
 						out = res;
 						return true;
 					}
