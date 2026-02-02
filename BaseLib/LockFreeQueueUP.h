@@ -26,7 +26,7 @@ namespace Base {
 			T data;
 		};
 
-		std::array<Cell, QSize> m_queue alignas(std::hardware_destructive_interference_size);
+		std::unique_ptr <Cell[]> m_queue alignas(std::hardware_destructive_interference_size);
 
 		std::atomic<uint64_t> m_head alignas(std::hardware_destructive_interference_size);
 
@@ -39,6 +39,7 @@ namespace Base {
 			assert((QSize >= 2) && ((QSize & (QSize - 1)) == 0));
 			m_head.store(0);
 			m_tail.store(0);
+			m_queue = std::make_unique<Cell[]>(QSize);
 			for (int i = 0; i < QSize; i++)
 			{
 				m_queue[i].seq.store(i, std::memory_order_relaxed);

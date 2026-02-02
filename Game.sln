@@ -31,6 +31,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "솔루션 항목", "솔루�
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Concept", "Concept", "{C8D5274F-AC00-46C7-1F8D-E88E81087A52}"
 	ProjectSection(SolutionItems) = preProject
+		IOCP&epoll.md = IOCP&epoll.md
 		LockFreeQueue.md = LockFreeQueue.md
 		memory_order.md = memory_order.md
 	EndProjectSection
@@ -52,6 +53,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 		images\LockFreeQueue4.png = images\LockFreeQueue4.png
 		images\SessionManagerDeadLock1.png = images\SessionManagerDeadLock1.png
 		images\SessionManagerDeadLock2.png = images\SessionManagerDeadLock2.png
+		images\StackOverflow.png = images\StackOverflow.png
 		images\TCP&UDP.png = images\TCP&UDP.png
 	EndProjectSection
 EndProject

@@ -19,7 +19,7 @@ namespace Base {
 			std::atomic<uint64_t> seq;
 			T data;
 		};
-		std::array < Cell , QSize > m_queue alignas(std::hardware_destructive_interference_size);
+		std::unique_ptr <Cell[]> m_queue alignas(std::hardware_destructive_interference_size);
 		// vector는 seq가 atomic이기 때문에 사용할 수 없음(copy, move가 안돼서)
 
 		std::atomic<uint64_t> m_head alignas(std::hardware_destructive_interference_size);
@@ -36,6 +36,7 @@ namespace Base {
 			// 2 거듭제곱 체크
 			m_head.store(0);
 			m_tail.store(0);
+			m_queue = std::make_unique<Cell[]>(QSize);
 			for (int i = 0; i < QSize; i++)
 			{
 				m_queue[i].seq.store(i, std::memory_order_relaxed);
