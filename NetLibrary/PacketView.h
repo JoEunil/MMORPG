@@ -3,6 +3,7 @@
 #include <vector>
 #include <cstdint>
 #include <CoreLib/IPacketView.h>
+#include "ClientContext.h"
 
 namespace Net {
 	class PacketView : public Core::IPacketView
@@ -19,8 +20,13 @@ namespace Net {
 		int16_t m_rear;
 		uint16_t m_length = 0;
 		std::vector<uint8_t> m_copiedBuffer;
-
+		ClientContext* owner;
 	public:
+		void Release() override {
+			if (owner)
+				owner->ReleaseBuffer(this);
+			delete this;
+		}
 		void JoinBuffer(uint8_t* ptr1, uint16_t length1, uint8_t* ptr2, uint16_t length2) {
 			m_copiedBuffer.clear();
 			m_copiedBuffer.reserve(length1 + length2);
@@ -38,6 +44,7 @@ namespace Net {
 		void SetFront(int16_t front) { m_front = front; }
 		void SetRear(int16_t rear) { m_rear = rear; }
 		void SetOpcode(uint8_t opcode) { m_opcode = opcode; }
+		void SetOwner(ClientContext* o) { owner = o; }
 		bool IsCopied() const { return m_isCopied; }
 
 		uint32_t GetSeq() const { return m_seq; }

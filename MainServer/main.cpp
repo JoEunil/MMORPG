@@ -16,6 +16,7 @@
 
 #include <mysqlconn/include/mysql/jdbc.h>
 
+
 int main(int argc, char* argv[]) {
     ST_WSA_INITIALIZER wsa; // winsock 초기화
 

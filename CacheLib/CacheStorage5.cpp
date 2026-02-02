@@ -9,7 +9,7 @@ namespace Cache {
         Key key;
         Result res;
         key.characterID = body->characterID;
-        if (!TryGet(key.characterID % SHARD_SIZE, key, res))
+        if (!TryGet(key.characterID & SHARD_SIZE_MASK, key, res))
             return false;
 
         auto st = reinterpret_cast<Core::MsgStruct<Core::MsgInventoryResBody>*>(msg->GetBuffer());
@@ -37,7 +37,7 @@ namespace Cache {
         }
         blobStream->read(reinterpret_cast<char*>(&res.data), sizeof(res.data));
         key.characterID = r->getUInt64("char_id");
-        Insert(key.characterID % SHARD_SIZE, key, res);
+        Insert(key.characterID & SHARD_SIZE_MASK, key, res);
 
         return true;
     }
@@ -57,7 +57,7 @@ namespace Cache {
 
         Key key;
         key.characterID = st->body.characterID;
-        uint16_t shardID = key.characterID % SHARD_SIZE;
+        uint16_t shardID = key.characterID & SHARD_SIZE_MASK;
         auto& shard = m_shards[shardID];
         std::unique_lock<std::shared_mutex> lock1(shard.dataMutex);
         auto iter = shard.cache_data.find(key);

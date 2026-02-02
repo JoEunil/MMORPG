@@ -12,19 +12,19 @@
 namespace Net {
     uint16_t ClientContext::GetLen()
     {
-        if (m_last_op == RELEASE && m_front == (m_rear+1)%m_capacity)
+        if (m_last_op == RELEASE && m_front == ((m_rear+1)&RING_BUFFER_SIZE_MASK))
             return 0;
         if (m_front <= m_rear)
             return m_rear - m_front + 1;
-        return m_capacity - m_front + m_rear + 1;
+        return RING_BUFFER_SIZE - m_front + m_rear + 1;
     }
 
     std::tuple<uint16_t, uint16_t, uint8_t> ClientContext::ParseHeader() {
         uint8_t tempBuffer[sizeof(Core::PacketHeader)];
         uint8_t* bufferPtr;
         Core::PacketHeader* h;
-        if (m_rear < m_front and m_capacity - m_front < sizeof(Core::PacketHeader)) {
-            int firstPart = m_capacity - m_front;
+        if (m_rear < m_front and RING_BUFFER_SIZE - m_front < sizeof(Core::PacketHeader)) {
+            int firstPart = RING_BUFFER_SIZE - m_front;
             int secondPart = sizeof(Core::PacketHeader) - firstPart;
 
             std::memcpy(tempBuffer, m_startPtr + m_front, firstPart);
@@ -65,9 +65,9 @@ namespace Net {
 
 
         PacketView* packet = new PacketView;
-        if (m_rear < m_front and m_capacity - m_front < packetLen)
+        if (m_rear < m_front and RING_BUFFER_SIZE - m_front < packetLen)
         {
-            int firstPart = m_capacity - m_front;
+            int firstPart = RING_BUFFER_SIZE - m_front;
             int secondPart = packetLen - firstPart;
             packet->JoinBuffer(m_startPtr + m_front, firstPart, m_startPtr, secondPart);
         }
@@ -78,17 +78,17 @@ namespace Net {
         packet->SetSessionId(m_sessionID);
         packet->SetSeq(m_seq++);
         packet->SetFront(m_front);
-        packet->SetRear((m_front + packetLen - 1) % m_capacity);
+        packet->SetRear((m_front + packetLen - 1) & RING_BUFFER_SIZE_MASK);
         packet->SetOpcode(opcode);
+        packet->SetOwner(this);
 
-        auto deleter = [this](Core::IPacketView* p) {this->ReleaseBuffer(static_cast<PacketView*>(p)); delete p; }; // lambda custom deleter
-        std::shared_ptr<Core::IPacketView> pv(static_cast<Core::IPacketView*>(packet), deleter);
+       std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv(static_cast<Core::IPacketView*>(packet), Core::PacketViewDeleter{});
 
-        m_front = (m_front + packetLen) % m_capacity;
+        m_front = (m_front + packetLen) & RING_BUFFER_SIZE_MASK;
         m_last_op = RELEASE;
         m_workingCnt.fetch_add(1);
 
-        if (!NetPacketFilter::TryDispatch(pv)) {
+        if (!NetPacketFilter::TryDispatch(std::move(pv))) {
             m_gameSession.store(false, std::memory_order_release);
             return false;
         }
@@ -104,10 +104,10 @@ namespace Net {
 
     bool ClientContext::EnqueueRecvQ(uint8_t* ptr, size_t len) {
         uint16_t front = ptr - m_startPtr;
-        if (front != (m_rear + 1) % m_capacity)
+        if (front != ((m_rear + 1) & RING_BUFFER_SIZE_MASK))
             return false;
         uint16_t rear = m_rear + len;
-        rear %= m_capacity;
+        rear &= RING_BUFFER_SIZE_MASK;
         m_buffer.ReleaseLeftOver(rear + 1);
         m_rear = rear;
 
@@ -117,14 +117,14 @@ namespace Net {
     }
 
     void ClientContext::EnqueueReleaseQ(uint32_t seq, uint16_t front, uint16_t rear) {
-        m_releaseQ[seq % RELEASE_Q_SIZE] = std::make_pair(front, rear);
+        m_releaseQ[seq & RELEASE_Q_SIZE_MASK] = std::make_pair(front, rear);
         std::lock_guard<std::mutex> lock(m_releaseMutex);
         auto current = m_releaseQ[m_releaseIdx];
         while (current != EMPTY_PAIR and m_buffer.Release(current.first, current.second))
         {
             m_releaseQ[m_releaseIdx] = std::make_pair(EMPTY_SLOT, EMPTY_SLOT);
             m_releaseIdx++;
-            m_releaseIdx %= RELEASE_Q_SIZE;
+            m_releaseIdx &= RELEASE_Q_SIZE_MASK;
             current = m_releaseQ[m_releaseIdx];
         }
     }

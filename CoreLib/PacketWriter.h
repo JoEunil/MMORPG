@@ -30,12 +30,12 @@ namespace Core {
         
         friend class Initializer;
     public:
-        std::shared_ptr<IPacket> WriteAuthResponse(uint8_t resStatus);
-        std::shared_ptr<IPacket> WriteCharacterListResponse(MsgCharacterListResBody* body);
-        std::shared_ptr<IPacket> WriteEnterWorldResponse(MsgCharacterStateResBody* body);
-        std::shared_ptr<IPacket> WriteInventoryResponse(MsgInventoryResBody* body);
-        std::shared_ptr<IPacket> WriteInventoryUpdateResponse(MsgInventoryUpdateResBody* body);
-        std::shared_ptr<IPacket> GetChatWhisperPacket(uint64_t sender, std::string& userName, std::string& message);
+        std::unique_ptr<IPacket, PacketDeleter> WriteAuthResponse(uint8_t resStatus);
+        std::unique_ptr<IPacket, PacketDeleter>  WriteCharacterListResponse(MsgCharacterListResBody* body);
+        std::unique_ptr<IPacket, PacketDeleter>  WriteEnterWorldResponse(MsgCharacterStateResBody* body);
+        std::unique_ptr<IPacket, PacketDeleter>  WriteInventoryResponse(MsgInventoryResBody* body);
+        std::unique_ptr<IPacket, PacketDeleter>  WriteInventoryUpdateResponse(MsgInventoryUpdateResBody* body);
+        std::unique_ptr<IPacket, PacketDeleter>  GetChatWhisperPacket(uint64_t sender, std::string& userName, std::string& message);
         std::shared_ptr<IPacket> GetInitialChatBatchPacket(CHAT_SCOPE scope);
         uint16_t WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, std::string& userName, std::string& message);
         
@@ -70,11 +70,11 @@ namespace Core {
         
         std::shared_ptr<IPacket> GetInitialFullPacket();
         void WriteFullField(std::shared_ptr<IPacket> p, CharacterState& state);
-        std::shared_ptr<IPacket> WriteZoneChangeFailed();
-        std::shared_ptr<IPacket> WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint64_t zoneInternalID, float x, float y);
+        std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeFailed();
+        std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint64_t zoneInternalID, float x, float y);
 
-        std::shared_ptr<IPacket> GetPingPacket(uint64_t rtt,uint64_t nowMs) override {
-            auto p = packetPool->Acquire();
+        std::unique_ptr<IPacket, PacketDeleter>  GetPingPacket(uint64_t rtt,uint64_t nowMs) override {
+            auto p = packetPool->AcquireUnique();
             auto p_st = reinterpret_cast<PacketStruct<Ping>*>(p->GetBuffer());
             p_st->header.length = sizeof(PacketHeader) + sizeof(Ping);
             p_st->header.opcode = OP::PING;

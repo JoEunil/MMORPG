@@ -10,7 +10,9 @@ namespace Cache {
     inline constexpr const char* DB_DB = "game";
 
     inline constexpr const size_t MAX_CACHE_SIZE = 1024;
-    inline constexpr const uint16_t SHARD_SIZE = 10;
+    inline constexpr const uint16_t SHARD_SIZE = 16;
+    inline constexpr const uint16_t SHARD_SIZE_MASK = SHARD_SIZE - 1;
+
     inline constexpr const char* QUERY_1 = "SELECT  * FROM v_user_characters WHERE user_id = ? and channel_id = ?";
     inline constexpr const char* QUERY_2 = "INSERT INTO characters (user_id, channel_id, name, zone_id, inventory, deleted_at) \
 VALUES (?, ?, ?, ?, ?, NULL);";
@@ -34,5 +36,10 @@ VALUES (?, ?, ?, ?, ?, NULL);";
 
     inline constexpr const uint8_t MQ_THREADPOOL_SIZE = 3;
     
-        
+
+    template <typename T>
+    constexpr bool IsPowerOfTwo(T x) {
+        return x != 0 && (x & (x - 1)) == 0;
+    }
+    static_assert(IsPowerOfTwo(SHARD_SIZE), "(cache)SHARD_SIZE must be a power of two");
 }

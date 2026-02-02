@@ -170,7 +170,7 @@ namespace Core {
     struct DeltaUpdateField {
         uint64_t zoneInternalID;   
         uint16_t fieldID;
-        uint64_t fieldVal; // field에 맞는 타입으로 변환 해서 사용
+        uint32_t fieldVal; // field에 맞는 타입으로 변환 해서 사용
     };
 
     struct DeltaSnapshotBody {

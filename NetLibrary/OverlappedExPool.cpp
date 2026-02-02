@@ -18,8 +18,8 @@ namespace Net {
         {
             m_overlappedPool.emplace_back(new STOverlappedEx());
         }
-		for (int i = 0; i < MAX_ACCEPT_BUFFER_CNT; i++)
-			m_acceptBuffers.push(new char[ACCEPT_BUFFER_SIZE]);
+		for (int i = 0; i < PREPOSTED_ACCEPTS * 3; i++)
+			m_acceptBuffers.emplace_back(new char[ACCEPT_BUFFER_SIZE]);
     }
 	void OverlappedExPool::Adjust()
 	{
@@ -64,12 +64,9 @@ namespace Net {
 	}
 
 	void OverlappedExPool::Return(STOverlappedEx* r) {
-		if (r->sharedPacket) {
-			r->sharedPacket.reset();
-		}
-		if (r->uniquePacket) {
-			packetPool->Return(r->uniquePacket.release());
-		}
+		r->sharedPacket.reset();
+		r->uniquePacket.reset();
+		// nullptr도 안전
 		std::lock_guard<std::mutex> lock(m_mutex);
 		m_overlappedPool.push_back(r);
 		Adjust();

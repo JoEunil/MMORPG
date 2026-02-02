@@ -143,9 +143,20 @@ https://github.com/couchbase/phosphor/blob/master/thirdparty/dvyukov/include/dvy
 ### 주의사항 
 - 큐 크기는 모듈러 연산 최적화를 위해 2의 거듭제곱으로 사용한다.
 - Cell 내부의 seq는 std::atomic이므로 복사 및 이동 연산이 불가능하다.
-- 이로 인해 내부적으로 복사/이동을 사용하는 std::vector는 사용할 수 없다.
-- std::array를 사용하며, 큐 크기는 컴파일 타임에 결정되도록 템플릿 인자로 전달한다.
+- 이로 인해 내부적으로 복사/이동을 사용하는 std::vector는 사용할 수 없다
+- ~~std::array를 사용하며~~, 큐 크기는 컴파일 타임에 결정되도록 템플릿 인자로 전달한다.
 - push는 큐가 가득 찬 경우 false를 반환하므로, 중요한 데이터의 경우 back-off 정책이 필요하다.
 - 큐의 size()를 제공하지 않는다.
 	- size 계산 자체가 race condition을 유발할 수 있으며,
 	- consumer 쪽에서도 적절한 wait / retry 정책이 필요하다
+- LockFree큐는 empty(), size() 메서드를 제공하지 않기 때문에, 별도의 종료 로직이 필요하다.
+  
+![이미지 로드 실패](images/StackOverflow.png)
+- 테스트 환경에서 위와 같이 스택오버플로우(0xc0000fd)가 발생한다.
+- LockFree큐에서 array를 사용해서 stack overflow가 발생한 것이다.
+- C스타일 배열을 unique_ptr로 감싸서 heap 메모리를 사용하면 해결된다.
+- 또한, Lock-Free 큐의 본질은 여러 스레드가 공유하는 자원을 안전하게 관리하는 것이므로, 
+  큐를 heap에 올려서 안정적으로 공유 메모리를 사용하는 것이 목적과 부합한다.
+
+## 단위 테스트  
+[LockFreeQueueDebug](LockFreeQueueDebug.md)

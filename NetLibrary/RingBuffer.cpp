@@ -10,7 +10,7 @@ namespace Net {
 			return m_last_op == RELEASE ? RECV_BUFFER_SIZE : 0;
 		if (m_tail < m_head)
 			return std::min<int16_t>(static_cast<int16_t>(RECV_BUFFER_SIZE), static_cast<int16_t>(m_head - m_tail));
-		return std::min<int16_t>(static_cast<int16_t>(RECV_BUFFER_SIZE), static_cast<int16_t>(m_capacity - m_tail));
+		return std::min<int16_t>(static_cast<int16_t>(RECV_BUFFER_SIZE), static_cast<int16_t>(RING_BUFFER_SIZE - m_tail));
 	}
 
 	int16_t RingBuffer::TryAcquireBuffer(BufferFragment& res)
@@ -19,9 +19,9 @@ namespace Net {
 		res.startPtr = m_buffer.data();
 		res.front = m_tail;
 		res.rear = m_tail + len - 1;
-		res.rear %= m_capacity;
+		res.rear &= RING_BUFFER_SIZE_MASK;
 		m_tail = res.rear + 1;
-		m_tail %= m_capacity;
+		m_tail &= RING_BUFFER_SIZE_MASK;
 		m_last_op = ACQUIRE;
 		return len;
 	}
@@ -33,7 +33,7 @@ namespace Net {
 		if (front != m_head)
 			return false;
 		m_head = rear + 1;
-		m_head %= m_capacity;
+		m_head &= RING_BUFFER_SIZE_MASK;
 		m_last_op = RELEASE;
 		return true;
 	}
@@ -42,7 +42,7 @@ namespace Net {
 	{
 		// 수신 후 남은 버퍼 공간만큼 앞으로 당기기
 		m_tail = notWr;
-		m_tail %= m_capacity;
+		m_tail &= RING_BUFFER_SIZE_MASK;
 		m_last_op = RELEASE;
 	}
 

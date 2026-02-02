@@ -7,7 +7,7 @@
 
 namespace Core {
     void StateManager::Disconnect(uint64_t sessionID) {
-        auto& shard = m_shards[sessionID % SHARD_SIZE];
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock<std::shared_mutex> lock(shard.smutex);
         auto it = shard.sessionMap.find(sessionID);
         if (it == shard.sessionMap.end())
