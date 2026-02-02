@@ -56,11 +56,10 @@ namespace Net {
         void Release() override {
             if (owner)
                 owner->Return(this);
-            delete this;
         }
         uint8_t* GetBuffer() override { return m_buffer; }
         uint16_t GetLength() override { return m_length; }
-        void SetLength(uint16_t len) { m_length = len; }
+        void SetLength(uint16_t len) override { m_length = len; }
         PacketPool* GetOwner() {return owner;}
     };
 

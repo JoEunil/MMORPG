@@ -36,10 +36,10 @@ namespace Core {
     inline constexpr const uint16_t MAX_FULL_SNAPSHOT_POOL_SIZE = 100;
     inline constexpr const uint16_t MIN_FULL_SNAPSHOT_POOL_SIZE = 20;
 
-    inline constexpr const uint16_t MAX_ZONE_CAPACITY = 2000;
+    inline constexpr const uint16_t MAX_ZONE_CAPACITY = 500;
     inline constexpr const uint16_t MAX_USER_CAPACITY = 5000;
     inline constexpr const uint16_t MAX_CHAT_PACKET = 10;
-    inline constexpr const uint16_t DELTA_UPDATE_COUNT = 2000;
+    inline constexpr const uint16_t DELTA_UPDATE_COUNT = 1000;
 
     inline constexpr const float ZONE_SIZE = 100.0f;     // zone 한 칸 크기
     inline constexpr const int ZONE_HORIZON = 3; // 3x3
@@ -66,8 +66,8 @@ namespace Core {
    inline constexpr const uint16_t  BROADCAST_QUEUE_SIZE = 512;
    inline constexpr const uint16_t  DISCONNECT_QUEUE_SIZE = 8192;
 
-   inline constexpr const uint32_t  ZONE_QUEUE_SIZE = 8192;  // zone 당 최대 2000명으로 가정, 한 틱에 요청이 1개만 있어야 되지만 넉넉히 4개로 설정
-   inline constexpr const uint32_t  NONE_ZONE_QUEUE_SIZE = 16384; // 최대 5000명의 채널 유저로 가정 유저당 3개 요청까지 허용.
+   inline constexpr const uint32_t  NONE_ZONE_QUEUE_SIZE = 8192;
+   inline constexpr const uint32_t  ZONE_QUEUE_SIZE = 16384;  
 
 
    template <typename T>

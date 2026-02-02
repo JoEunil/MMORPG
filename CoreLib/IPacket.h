@@ -14,7 +14,7 @@ namespace Core {
 
         // Core 에서만 사용
         void SetZone(uint16_t z) {
-            m_zoneID = 0;
+            m_zoneID = z;
         }
         uint16_t GetZone() {
             return m_zoneID;

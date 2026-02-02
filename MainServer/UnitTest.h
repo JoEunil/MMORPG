@@ -2,6 +2,8 @@
 
 #include <iostream>
 #include <cassert>
+#include <thread>
+#include <vector>
 
 #include <BaseLib/RingQueue.h>
 #include <BaseLib/LockFreeQueue.h>

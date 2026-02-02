@@ -17,7 +17,7 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter>  PacketWriter::WriteCharacterListResponse(MsgCharacterListResBody* body) {
-        auto p = packetPool->AcquireUnique();
+        auto p = bigPacketPool->AcquireUnique();
         auto p_st = reinterpret_cast<PacketStruct<CharacterListResponseBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(CharacterListResponseBody);
         p->SetLength(p_st->header.length);

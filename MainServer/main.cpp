@@ -15,7 +15,6 @@
 #include <External/spdlog/spdlog.h>
 
 #include <mysqlconn/include/mysql/jdbc.h>
-#include "UnitTest.h"
 
 
 int main(int argc, char* argv[]) {

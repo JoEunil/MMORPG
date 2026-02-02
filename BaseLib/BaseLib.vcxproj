@@ -142,6 +142,7 @@
     <ClInclude Include="LockFreeQueue.h" />
     <ClInclude Include="LockFreeQueueSP.h" />
     <ClInclude Include="LockFreeQueueUP.h" />
+    <ClInclude Include="ObjectPool.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="RingQueue.h" />
     <ClInclude Include="SpinLockGuard.h" />

@@ -215,7 +215,7 @@ namespace ClientCore.PacketHelper
     {
         public ulong zoneInternalID;
         public ushort fieldID;
-        public ulong fieldVal;
+        public uint fieldVal;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

@@ -11,13 +11,16 @@ namespace Net {
 	inline constexpr const uint16_t LISTEN_PORT = 9999;
     inline constexpr const uint16_t PREPOSTED_ACCEPTS = 10; //worker threadpool * 2~4
 
-	inline constexpr const uint16_t MAX_PACKETPOOL_SIZE = MAX_CLIENT_CONNECTION * 150;
-	inline constexpr const uint16_t MIN_PACKETPOOL_SIZE = MAX_CLIENT_CONNECTION;
-	inline constexpr const uint16_t TARGET_PACKETPOOL_SIZE = MAX_CLIENT_CONNECTION * 50;
+	inline constexpr const uint32_t NORMAL_PACKET_LENGTH = 512;
+	inline constexpr const uint32_t BIG_PACKET_LENGTH = 4096;
 
-	inline constexpr const uint16_t MAX_BPACKETPOOL_SIZE = 15000;
-	inline constexpr const uint16_t MIN_BPACKETPOOL_SIZE = 200;
-	inline constexpr const uint16_t TARGET_BPACKETPOOL_SIZE = 5000;
+	inline constexpr const uint32_t MAX_PACKETPOOL_SIZE = MAX_CLIENT_CONNECTION * 150;
+	inline constexpr const uint32_t MIN_PACKETPOOL_SIZE = MAX_CLIENT_CONNECTION;
+	inline constexpr const uint32_t TARGET_PACKETPOOL_SIZE = MAX_CLIENT_CONNECTION * 50;
+
+	inline constexpr const uint32_t MAX_BPACKETPOOL_SIZE = 15000;
+	inline constexpr const uint32_t MIN_BPACKETPOOL_SIZE = 200;
+	inline constexpr const uint32_t TARGET_BPACKETPOOL_SIZE = 5000;
 
 	inline constexpr const uint16_t MAX_OVERLAPPEDPOOL_SIZE = MAX_CLIENT_CONNECTION * 12;
 	inline constexpr const uint16_t MIN_OVERLAPPEDPOOL_SIZE = MAX_CLIENT_CONNECTION * 2;

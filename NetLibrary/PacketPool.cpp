@@ -18,14 +18,13 @@ namespace Net {
         std::lock_guard<std::mutex> lock(m_mutex);
         for (int i = 0; i < m_targetPool; i++)
         {
-            Packet* packet = new Packet(MAX_PACKET_LEN, this);
-            m_packets.push_back(packet);
+            m_packets.emplace_back(new Packet(m_packetLen, this));
         };
     }
 
 	void PacketPool::Adjust()
 	{
-		uint16_t current = m_packets.size();
+		uint32_t current = m_packets.size();
 
 		if (current > m_maxPool) {
 			Decrease(current);
@@ -35,20 +34,20 @@ namespace Net {
 		}
 	}
 
-	void PacketPool::Increase(uint16_t& size) {
+	void PacketPool::Increase(uint32_t& size) {
 		auto current = m_packets.size();
 
 		if (current < m_minPool) {
 			while (current < m_targetPool)
 			{
-				Packet* packet = new Packet(MAX_PACKET_LEN, this);
+				Packet* packet = new Packet(m_packetLen, this);
 				m_packets.push_back(packet);
 				current++;
 			}
 		}
 	}
 
-	void PacketPool::Decrease(uint16_t& size) {
+	void PacketPool::Decrease(uint32_t& size) {
 		auto current = m_packets.size();
 
 		if (current > m_maxPool) {
@@ -73,7 +72,7 @@ namespace Net {
 		Adjust();
 
 		// 커스텀 deleter: delete 대신 PacketPool에 반환
-		return std::shared_ptr<Packet>(rawPacket, [this](Packet* p) { this->Return(p); });
+		return std::shared_ptr<Core::IPacket>(rawPacket, [this](Packet* p) { this->Return(p); });
 	}
 
 	std::unique_ptr<Core::IPacket, Core::PacketDeleter> PacketPool::AcquireUnique()
@@ -86,7 +85,7 @@ namespace Net {
 		m_packets.pop_back();
 		Adjust();
 
-		return std::unique_ptr<Packet, Core::PacketDeleter>(rawPacket);
+		return std::unique_ptr<Core::IPacket, Core::PacketDeleter>(rawPacket);
 	}
 
 	void PacketPool::Return(Core::IPacket* packet) {
