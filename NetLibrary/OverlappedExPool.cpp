@@ -27,10 +27,10 @@ namespace Net {
 	{
 		size_t current = m_overlappedPool.size();
 	
-		if (current > MAX_OVERLAPPEDPOOL_SIZE) {
+		if (current >= MAX_OVERLAPPEDPOOL_SIZE) {
 			Decrease(current);
 		}
-		if (current < MIN_OVERLAPPEDPOOL_SIZE) {
+		if (current <= MIN_OVERLAPPEDPOOL_SIZE) {
 			Increase(current);
 		}
 	}
@@ -47,7 +47,7 @@ namespace Net {
 	void OverlappedExPool::Decrease(uint16_t currentSize) {
 		while (currentSize > TARGET_OVERLAPPEDPOOL_SIZE)
 		{
-			STOverlappedEx* temp = m_overlappedPool.front();
+			STOverlappedEx* temp = m_overlappedPool.back();
 			m_overlappedPool.pop_back();
 			delete temp;
 			currentSize--;

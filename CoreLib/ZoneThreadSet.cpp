@@ -22,10 +22,13 @@ namespace Core {
         logger->LogInfo(std::format("zone thread started id {}", zoneID));
         while (t->running) {
             auto packet = std::move(t->workQueue.pop());
-            while(packet != nullptr)
+            const size_t MAX_PACKETS_PER_TICK = 2000;
+            size_t processed = 0;
+            while(packet != nullptr && processed < MAX_PACKETS_PER_TICK)
             {
                 handler->Process(packet.get(), zoneID); // 게임 상태 업데이트 처리
                 packet = t->workQueue.pop();
+                processed++;
             }
             handler->FlushCheat(zoneID);
             auto now = std::chrono::steady_clock::now();
@@ -45,14 +48,14 @@ namespace Core {
 
             #ifdef _DEBUG
             auto delay = tickElapsed - GAME_TICK;
-            if (delay > std::chrono::milliseconds(10)) {
+            if (delay > std::chrono::milliseconds(50)) {
                 logger->LogWarn(std::format("zone: {}, tick delayed: {}", zoneID, std::chrono::duration_cast<std::chrono::milliseconds>(delay)));
             }
             #endif
 
-            // --- 틱 간격 유지 ---
-            if (tickElapsed < GAME_TICK) {
-                std::this_thread::sleep_for(GAME_TICK - tickElapsed);
+            auto sleepDur = GAME_TICK - tickElapsed;
+            if (sleepDur > std::chrono::milliseconds(15)) {
+                std::this_thread::sleep_for(sleepDur);
             }
                 
             lastTick += GAME_TICK; // 틱 지연 보정

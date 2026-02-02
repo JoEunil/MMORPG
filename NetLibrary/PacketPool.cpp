@@ -27,10 +27,10 @@ namespace Net {
 	{
 		uint32_t current = m_packets.size();
 
-		if (current > m_maxPool) {
+		if (current >= m_maxPool) {
 			Decrease(current);
 		}
-		if (current < m_minPool) {
+		if (current <= m_minPool) {
 			Increase(current);
 		}
 	}
@@ -38,7 +38,7 @@ namespace Net {
 	void PacketPool::Increase(uint32_t& size) {
 		auto current = m_packets.size();
 
-		if (current < m_minPool) {
+		if (current <= m_minPool) {
 			while (current < m_targetPool)
 			{
 				Packet* packet = new Packet(m_packetLen, this);
@@ -51,10 +51,10 @@ namespace Net {
 	void PacketPool::Decrease(uint32_t& size) {
 		auto current = m_packets.size();
 
-		if (current > m_maxPool) {
+		if (current >= m_maxPool) {
 			while (current > m_targetPool)
 			{
-				Packet* temp = m_packets.front();
+				Packet* temp = m_packets.back();
 				m_packets.pop_back();
 				delete temp;
 				current--;
