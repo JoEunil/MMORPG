@@ -8,6 +8,7 @@
 namespace Core {
 	void MessagePool::Initialize() {
 		std::lock_guard<std::mutex> lock(m_mutex);
+		m_messages.reserve(MAX_MSGPOOL_SIZE);
 		for (int i = 0; i < TARGET_MSGPOOL_SIZE; i++)
 		{
 			Message* message = new Message(MESSGAGE_LEN);
@@ -54,7 +55,7 @@ namespace Core {
 			while (current > TARGET_MSGPOOL_SIZE)
 			{
 				Message* temp = m_messages.front();
-				m_messages.pop_front();
+				m_messages.pop_back();
 				delete temp;
 				current--;
 			}

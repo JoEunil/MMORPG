@@ -8,7 +8,7 @@ namespace Core {
     class Message;
     class MessagePool{
         uint16_t m_remains;
-        std::deque<Message*> m_messages;
+        std::vector<Message*> m_messages;
         std::mutex m_mutex;
 
         void Initialize();

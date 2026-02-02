@@ -16,6 +16,7 @@ namespace Net {
 
     void PacketPool::Initialize() {
         std::lock_guard<std::mutex> lock(m_mutex);
+		m_packets.reserve(m_maxPool);
         for (int i = 0; i < m_targetPool; i++)
         {
             m_packets.emplace_back(new Packet(m_packetLen, this));
@@ -54,7 +55,7 @@ namespace Net {
 			while (current > m_targetPool)
 			{
 				Packet* temp = m_packets.front();
-				m_packets.pop_front();
+				m_packets.pop_back();
 				delete temp;
 				current--;
 			}

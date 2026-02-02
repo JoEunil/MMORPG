@@ -14,6 +14,8 @@ namespace Net {
 
     void OverlappedExPool::Initialize() {
         std::lock_guard<std::mutex> lock(m_mutex);
+		m_overlappedPool.reserve(MAX_OVERLAPPEDPOOL_SIZE);
+		m_acceptBuffers.reserve(PREPOSTED_ACCEPTS*3);
         for (int i = 0; i < TARGET_OVERLAPPEDPOOL_SIZE; i++)
         {
             m_overlappedPool.emplace_back(new STOverlappedEx());
@@ -37,7 +39,7 @@ namespace Net {
 		while (currentSize < TARGET_OVERLAPPEDPOOL_SIZE)
 		{
 			STOverlappedEx* temp = new STOverlappedEx;
-			m_overlappedPool.push_front(temp);
+			m_overlappedPool.push_back(temp);
 			currentSize++;
 		}
 	}
@@ -46,7 +48,7 @@ namespace Net {
 		while (currentSize > TARGET_OVERLAPPEDPOOL_SIZE)
 		{
 			STOverlappedEx* temp = m_overlappedPool.front();
-			m_overlappedPool.pop_front();
+			m_overlappedPool.pop_back();
 			delete temp;
 			currentSize--;
 		}

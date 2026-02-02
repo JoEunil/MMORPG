@@ -26,6 +26,10 @@ namespace Net {
 	inline constexpr const uint16_t MIN_OVERLAPPEDPOOL_SIZE = MAX_CLIENT_CONNECTION * 2;
 	inline constexpr const uint16_t TARGET_OVERLAPPEDPOOL_SIZE = MAX_CLIENT_CONNECTION * 6;
 
+	inline constexpr const uint32_t MAX_PACKETVIEWPOOL_SIZE = 15000;
+	inline constexpr const uint32_t MIN_PACKETVIEWPOOL_SIZE = 200;
+	inline constexpr const uint32_t TARGET_PACKETVIEWPOOL_SIZE = 5000;
+
 	inline constexpr const uint16_t FLUSH_CONTEXTPOOL = 500;
 
 	// 가장 가까운 2의 거듭제곱 계산
