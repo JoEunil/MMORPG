@@ -3,13 +3,11 @@
 #include <vector>
 #include <cstdint>
 #include <CoreLib/IPacketView.h>
-#include "ClientContext.h"
 
 namespace Net {
+	class ClientContext;
 	class PacketView : public Core::IPacketView
 	{
-		// 생성/소멸에 의해 병목이 생길 경우 PacketViewPool 사용.
-
 		bool m_isCopied = false;           // true이면 wrap-around 때문에 memcpy로 생성된 버퍼
 		uint8_t m_opcode;
 		uint8_t* m_startPtr;      // 실제 데이터 포인터 (RingBuffer 내부 OR copiedBuffer)
@@ -22,11 +20,45 @@ namespace Net {
 		std::vector<uint8_t> m_copiedBuffer;
 		ClientContext* owner;
 	public:
-		void Release() override {
-			if (owner)
-				owner->ReleaseBuffer(this);
-			delete this;
+		PacketView() {
+			m_isCopied = false;
+			m_opcode = 0;
+			m_startPtr = nullptr;
+			m_sessionId = 0;
+			m_seq = 0;
+			m_front = 0;
+			m_rear = 0;
+			m_length = 0;
+			m_copiedBuffer.reserve(64);
+			owner = nullptr;
 		}
+
+		PacketView(const PacketView&) = delete;            // 복사 생성자 금지
+		PacketView& operator=(const PacketView&) = delete; // 복사 대입 금지
+		PacketView(PacketView&& other) noexcept
+			: m_isCopied(other.m_isCopied),
+			m_opcode(other.m_opcode),
+			m_startPtr(other.m_startPtr),
+			m_sessionId(other.m_sessionId),
+			m_seq(other.m_seq),
+			m_front(other.m_front),
+			m_rear(other.m_rear),
+			m_length(other.m_length),
+			m_copiedBuffer(std::move(other.m_copiedBuffer)),
+			owner(other.owner)
+		{
+			// 원본 초기화
+			other.m_isCopied = false;
+			other.m_startPtr = nullptr;
+			other.m_sessionId = 0;
+			other.m_seq = 0;
+			other.m_front = 0;
+			other.m_rear = 0;
+			other.m_length = 0;
+			other.owner = nullptr;
+		}
+
+		void Release() override;
 		void JoinBuffer(uint8_t* ptr1, uint16_t length1, uint8_t* ptr2, uint16_t length2) {
 			m_copiedBuffer.clear();
 			m_copiedBuffer.reserve(length1 + length2);

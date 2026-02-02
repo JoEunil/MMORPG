@@ -177,6 +177,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -246,6 +247,7 @@
     <ClCompile Include="ClientContext.cpp" />
     <ClCompile Include="ClientContextPool.cpp" />
     <ClCompile Include="IOCP.cpp" />
+    <ClCompile Include="PacketView.cpp" />
     <ClCompile Include="SessionManager.cpp" />
     <ClInclude Include="NetHandler.h" />
     <ClCompile Include="NetPacketFilter.cpp" />

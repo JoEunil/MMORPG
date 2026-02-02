@@ -8,7 +8,7 @@ namespace Core {
     class Message;
     class MessagePool{
         uint16_t m_remains;
-        std::deque<Message*> m_messages;
+        std::vector<Message*> m_messages;
         std::mutex m_mutex;
 
         void Initialize();
@@ -16,8 +16,8 @@ namespace Core {
             return m_messages.size() > 0;
         }
         void Adjust();
-        void Increase(uint16_t& size); // 풀 늘리기
-        void Decrease(uint16_t& size); // 풀 줄이기
+        void Increase(); // 풀 늘리기
+        void Decrease(); // 풀 줄이기
         
         friend class Initializer;
     public:

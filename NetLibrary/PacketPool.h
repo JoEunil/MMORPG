@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <deque>
+#include <vector>
 #include <mutex>
 #include <cstdint>
 
@@ -11,7 +11,7 @@ namespace Net {
     class Packet;
     class PacketPool : public Core::IPacketPool {
         uint32_t m_remains;
-        std::deque<Packet*> m_packets;
+        std::vector<Packet*> m_packets;
         // Pool 요청, 해제가 빈도가 잦기 때문에 raw pointer로 관리
         std::mutex m_mutex;
         

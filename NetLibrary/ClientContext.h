@@ -3,12 +3,15 @@
 #include <mutex>
 #include <cstdint>
 
-#include <CoreLib/PacketTypes.h>
-
 #include "RingBuffer.h"
 #include "NetPacketFilter.h"
-#include "Config.h"
 #include "TrafficFloodDetector.h"
+#include "PacketView.h"
+#include "Config.h"
+
+#include <CoreLib/PacketTypes.h>
+#include <BaseLib/ObjectPool.h>
+
 
 namespace Core {
     class IPacketDispatcher;
@@ -17,7 +20,6 @@ namespace Core {
 namespace Net {
     inline const uint16_t EMPTY_SLOT = RING_BUFFER_SIZE;
     inline const std::pair<uint16_t, uint16_t> EMPTY_PAIR{ EMPTY_SLOT, EMPTY_SLOT };
-    class PacketView;
     class ClientContext {
         uint32_t m_seq = 0;
 
@@ -37,13 +39,15 @@ namespace Net {
         std::vector<std::pair<uint16_t, uint16_t>> m_releaseQ;
         // sequence % RELEASE_Q_SIZE를 index로 사용해서 ring Queue로 사용
 
+        inline static Base::ObjectPool<PacketView> packetViewPool{ TARGET_PACKETVIEWPOOL_SIZE, MAX_PACKETVIEWPOOL_SIZE, MIN_PACKETVIEWPOOL_SIZE };
+
         uint16_t GetLen();
         std::tuple<uint16_t, uint16_t, uint8_t> ParseHeader();
         bool DequeueRecvQ();
         void EnqueueReleaseQ(uint32_t seq, uint16_t front, uint16_t rear);
 
     public:
-        ClientContext() {
+        ClientContext(){
             m_buffer.Initialize();
             m_startPtr = m_buffer.GetStartPtr();
             m_releaseQ.resize(RELEASE_Q_SIZE, { EMPTY_SLOT, EMPTY_SLOT });

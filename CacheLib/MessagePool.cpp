@@ -1,4 +1,4 @@
-#include "MessagePool.h"
+﻿#include "MessagePool.h"
 #include "Config.h"
 
 #include <CoreLib/Message.h>
@@ -25,17 +25,11 @@ namespace Cache {
 
     void MessagePool::Adjust()
     {
-        uint16_t current = m_messages.size();
-
-        if (current > MAX_MSGPOOL_SIZE) {
-            Decrease(current);
-        }
-        if (current < MIN_MSGPOOL_SIZE) {
-            Increase(current);
-        }
+        Decrease(current);
+        Increase(current);
     }
 
-    void MessagePool::Increase(uint16_t& size) {
+    void MessagePool::Increase() {
         auto current = m_messages.size();
 
         if (current < MIN_MSGPOOL_SIZE) {
@@ -48,14 +42,14 @@ namespace Cache {
         }
     }
 
-    void MessagePool::Decrease(uint16_t& size) {
+    void MessagePool::Decrease() {
         auto current = m_messages.size();
 
         if (current > MAX_MSGPOOL_SIZE) {
             while (current > TARGET_MSGPOOL_SIZE)
             {
-                Core::Message* temp = m_messages.front();
-                m_messages.pop_front();
+                Core::Message* temp = m_messages.back();
+                m_messages.pop_back();
                 delete temp;
                 current--;
             }

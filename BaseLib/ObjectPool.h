@@ -1,4 +1,7 @@
 ﻿#pragma once
+#define WIN32_LEAN_AND_MEAN  // windows.h 포함 전에 정의
+#undef min                  // Windows 매크로 제거
+#undef max                  // Windows 매크로 제거
 #include <mutex>
 #include <cstdint>
 #include <vector>
@@ -31,10 +34,10 @@ namespace Base {
             }
         }
     public:
-        ObjectPool(size_t target, size_t min, size_t max)
+        ObjectPool(size_t target, size_t maximum, size_t minimum) : target(target), max(maximum), min(minimum)
         {
             objects.reserve(max);
-            for (int i = 0; i < target; i++) 
+            for (int i = 0; i < target; i++)
             {
                 objects.emplace_back(new T);
             }

@@ -11,7 +11,7 @@ namespace Net {
     static constexpr size_t ACCEPT_BUFFER_SIZE = (sizeof(SOCKADDR_IN) + 16) * 2;
     class PacketPool;
     class OverlappedExPool {
-        std::deque<STOverlappedEx*> m_overlappedPool;
+        std::vector<STOverlappedEx*> m_overlappedPool;
 
         std::vector<char*> m_acceptBuffers; // LIFO로 관리하면 충분
         std::mutex m_bufMutex;

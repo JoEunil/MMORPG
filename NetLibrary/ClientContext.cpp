@@ -1,7 +1,6 @@
 ﻿#include "pch.h"
 #include "ClientContext.h"
 
-#include "PacketView.h"
 #include "Config.h"
 
 #include <CoreLib/PacketTypes.h>
@@ -64,7 +63,7 @@ namespace Net {
             return false;
 
 
-        PacketView* packet = new PacketView;
+        PacketView* packet = packetViewPool.Acquire();
         if (m_rear < m_front and RING_BUFFER_SIZE - m_front < packetLen)
         {
             int firstPart = RING_BUFFER_SIZE - m_front;
@@ -133,7 +132,7 @@ namespace Net {
         if (m_connected.load())
             EnqueueReleaseQ(pv->GetSeq(), pv->GetFront(), pv->GetRear());
         m_workingCnt.fetch_sub(1);
-
+        packetViewPool.Return(pv);
         if (!m_connected.load() && m_workingCnt.load() == 0) {
             NetPacketFilter::Disconnect(m_sessionID);
         }
