@@ -47,9 +47,9 @@ namespace Net {
 		n++;
 		return n;
 	}
-	inline constexpr const uint16_t RECV_BUFFER_SIZE = 1024;  // MTU 고려. 내부에서 buffer를 패킷으로 조각내서 처리하기 때문에 buffer 수신은 한번에 크게 읽어서 시스템 콜 비용 절감.
-	inline constexpr const uint16_t RING_BUFFER_SIZE_MIN = RECV_BUFFER_SIZE * 16; // 서버 수신 패킷은 크기가 작아서 충분, ring buffer에 남은 버퍼공간 반납하는 로직도 있어서 안전함.
-	inline constexpr const uint16_t RING_BUFFER_SIZE = NextPowerOf2(RING_BUFFER_SIZE_MIN); // 1024, 15로 테스트했을 떄 15360 -> 16384 변환 확인
+	inline constexpr const uint16_t RECV_BUFFER_SIZE = 128;  
+	inline constexpr const uint16_t RING_BUFFER_SIZE_MIN = RECV_BUFFER_SIZE* 16; // 서버 수신 패킷은 크기가 작아서 충분, ring buffer에 남은 버퍼공간 반납하는 로직도 있어서 안전함.
+	inline constexpr const uint16_t RING_BUFFER_SIZE = NextPowerOf2(RING_BUFFER_SIZE_MIN);
 	inline constexpr const uint16_t RING_BUFFER_SIZE_MASK = RING_BUFFER_SIZE - 1;
 	inline constexpr const uint16_t MAX_PACKET_LEN = 4096; // PacketPool에서 미리 할당할 패킷 크기, 대용량 상태 동기화 패킷 처리를 위해 4KB로 설정
 
