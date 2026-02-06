@@ -15,6 +15,7 @@ namespace Core {
     void ZoneHandler::ProcessAction(ActionRequestBody* body, uint64_t sessionID, uint16_t zoneID) {
         auto zoneState = stateManager->GetZone(zoneID);
         zoneState->Move(sessionID, body->dir, body->speed);
+        zoneState->DirtyCheck(sessionID);
     }
 
     void ZoneHandler::Process(IPacketView* p, uint16_t zoneID) {

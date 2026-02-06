@@ -4,27 +4,46 @@
 #include "ZoneState.h"
 #include "IIOCP.h"
 #include "StateManager.h"
-
+#include "ZoneArea.h"
+#include <BaseLib/TripleBufferAdvanced.h>
 namespace Core {
     void BroadcastThreadPool::ThreadFunc() {
-        std::vector<uint64_t> sessions;
-        sessions.reserve(MAX_ZONE_CAPACITY);
         while (m_running.load())
         {
-            auto work = m_workQ.pop();
-            if (work == nullptr) {
+            std::vector<std::shared_ptr<IPacket>> packets;
+            if (!m_workQ.pop(packets)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 // back-off
                 continue;
             }
-            auto packet = work;
-            auto zoneID = work->GetZone();
-            auto zone = stateManager->GetZone(zoneID);
-            zone->GetSessionSnapshot(sessions);
-            for (auto session : sessions)
+            uint64_t zoneID = 0;
+            ZoneState* zone = nullptr;
+            for (auto& packet : packets)
             {
-                iocp->SendData(session, packet);
+                if (packet != nullptr)
+                {
+                    zoneID = packet->GetZone();
+                    if (zoneID == 0)
+                        continue;
+                    zone = stateManager->GetZone(zoneID);
+                    break;
+                }
             }
+
+            if (zone == nullptr)
+                return;
+            Base::BufferReader<std::vector<std::vector<uint64_t>>> reader = zone->GetSessionSnaphot();
+            auto& vec = *reader.data;
+            for (int i =0 ;i < CELLS_X*CELLS_Y; i++)
+            {
+                if (packets[i] == nullptr)
+                    continue;
+                for (auto session : vec[i])
+                {
+                    iocp->SendData(session, packets[i]);
+                }
+            }
+
         }
     }
 
@@ -47,10 +66,14 @@ namespace Core {
         }
     }
 
-    void BroadcastThreadPool::EnqueueWork(std::shared_ptr<IPacket> packet, uint16_t zoneID) {
+    void BroadcastThreadPool::EnqueueWork(std::vector<std::shared_ptr<IPacket>> packets, uint16_t zoneID) {
         if (m_running.load()) {
-            packet->SetZone(zoneID);
-            m_workQ.push(packet);
+            for (auto& packet : packets) {
+                if (packet == nullptr)
+                    continue;
+                packet->SetZone(zoneID);
+            }
+            m_workQ.push(packets);
             // 실패 시 drop
         }
     }

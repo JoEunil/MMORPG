@@ -19,8 +19,8 @@ VALUES (?, ?, ?, ?, ?, NULL);";
     //INSERT INTO characters(user_id, channel_id, name, zone_id, inventory, deleted_at)
     //    VALUES(3, 1, 'KnightArthur', 1001, UNHEX(REPEAT('00', 2404)), NULL);
     // 현재 inventory struct 기준으로 300개 item으로 초기화
-    inline constexpr const char* QUERY_3 = "SELECT char_id, name, level, exp, hp, mp, dir, zone_id, inventory, last_pos_x, last_pos_y FROM characters WHERE char_id = ?";
-    inline constexpr const char* QUERY_4 = "UPDATE characters SET level = ?, exp = ?, hp = ?, mp = ?, dir =?, last_pos_x = ?, last_pos_y = ?, zone_id = ? WHERE char_id = ?;";
+    inline constexpr const char* QUERY_3 = "SELECT char_id, name, attack, level, exp, hp, mp, max_hp, max_mp, dir, zone_id, inventory, last_pos_x, last_pos_y FROM characters WHERE char_id = ?";
+    inline constexpr const char* QUERY_4 = "UPDATE characters SET attack = ?, level = ?, exp = ?, hp = ?, mp = ?, max_hp = ?, max_mp = ?, dir =?, last_pos_x = ?, last_pos_y = ?, zone_id = ? WHERE char_id = ?;";
     inline constexpr const char* QUERY_5 = "SELECT inventory FROM characters WHERE char_id = ?";
     inline constexpr const char* QUERY_6 = "UPDATE characters SET inventory = ? WHERE char_id = ?;";
 

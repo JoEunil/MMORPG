@@ -42,6 +42,8 @@ namespace Core {
         st->body.exp = temp.exp;
         st->body.hp = temp.hp;
         st->body.mp = temp.mp;
+        st->body.maxHp = temp.maxHp;
+        st->body.maxMp = temp.maxMp;
         st->body.dir = temp.dir;
         st->body.x = temp.x;
         st->body.y = temp.y;

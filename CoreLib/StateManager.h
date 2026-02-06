@@ -89,6 +89,7 @@ namespace Core {
                     st->header.sessionID = session;
                     st->header.messageType = MSG_CHARACTER_STATE_UPDATE;
                     st->body.charID = temp.characterID;
+                    st->body.attack = temp.attack;
                     st->body.level = temp.level;
                     st->body.exp = temp.exp;
                     st->body.hp = temp.hp;

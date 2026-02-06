@@ -39,7 +39,6 @@ namespace Core {
         std::shared_ptr<IPacket> GetInitialChatBatchPacket(CHAT_SCOPE scope);
         uint16_t WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, std::string& userName, std::string& message);
         
-        // 인라인 최적화 기대
         std::shared_ptr<IPacket> GetInitialDeltaPacket() {
             auto p = bigPacketPool->Acquire();
             auto p_st = reinterpret_cast<PacketStruct<DeltaSnapshotBody>*>(p->GetBuffer());

@@ -46,6 +46,10 @@ namespace Core {
             auto zoneState = stateManager->GetZone(zoneID);
             zoneState->FlushCheat();
         }
+        void UpdateMonster(uint16_t zoneID) {
+            auto zoneState = stateManager->GetZone(zoneID);
+            zoneState->UpdateMonster();
+        }
     };
 }
 

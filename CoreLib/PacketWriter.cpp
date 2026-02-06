@@ -45,11 +45,14 @@ namespace Core {
         p_st->header.flags = 0x00;
         p_st->body.resStatus = body->resStatus;
         std::memcpy(p_st->body.name, body->name, sizeof(p_st->body.name));
-        p_st->body.level = body->level;
         p_st->body.currentZone = body->currentZone;
-        p_st->body.exp = body->exp;
         p_st->body.hp = body->hp;
         p_st->body.mp = body->mp;
+        p_st->body.maxHp = body->maxHp;
+        p_st->body.maxMp = body->maxHp;
+        p_st->body.attack = body->attack;
+        p_st->body.exp = body->exp;
+        p_st->body.level = body->level;
         p_st->body.dir = body->dir;
         p_st->body.startX = body->startX;
         p_st->body.startY = body->startY;
@@ -163,8 +166,10 @@ namespace Core {
         slot.zoneInternalID = state.zoneInternalID;
         slot.hp = state.hp;
         slot.mp = state.mp;
-        slot.level = state.level;
+        slot.maxHp = state.maxHp;
+        slot.maxMp = state.maxMp;
         slot.exp = state.exp;
+        slot.level = state.level;
         slot.dir = state.dir;
         slot.x = state.x;
         slot.y = state.y;

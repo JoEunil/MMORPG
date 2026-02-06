@@ -30,6 +30,7 @@ namespace Core {
                 packet = t->workQueue.pop();
                 processed++;
             }
+            handler->UpdateMonster(zoneID);
             handler->FlushCheat(zoneID);
             auto now = std::chrono::steady_clock::now();
             auto deltaSnapshotElapsed = now - lastDeltaSnapshot;

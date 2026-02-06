@@ -81,7 +81,6 @@ namespace Net {
             return m_gameSession.load(std::memory_order_acquire);
         }
 
-        // race condition
         void ReleaseBuffer(PacketView* pv);
         bool EnqueueRecvQ(uint8_t* ptr, size_t len);
     };
