@@ -31,7 +31,7 @@ namespace Core {
             }
 
             if (zone == nullptr)
-                return;
+                continue;
             Base::BufferReader<std::vector<std::vector<uint64_t>>> reader = zone->GetSessionSnaphot();
             auto& vec = *reader.data;
             for (int i =0 ;i < CELLS_X*CELLS_Y; i++)

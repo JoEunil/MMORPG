@@ -73,7 +73,7 @@ namespace Core {
                 ZoneChange(p);
                 break;
             default:
-                logger->LogInfo(std::format("Async handler UnDefined OPCODE {} {}, session {}, flag {}, magic {}", p->GetOpcode(), h->opcode, p->GetSessionID(), h->flags, h->magic));
+                logger->LogInfo(std::format("None Zone handler UnDefined OPCODE {} {}, session {}, flag {}, magic {}", p->GetOpcode(), h->opcode, p->GetSessionID(), h->flags, h->magic));
                 break;
         }
         
@@ -195,11 +195,13 @@ namespace Core {
                         Disconnect(session);
                     iocp->SendData(session, writer->WriteZoneChangeFailed());
                     logger->LogError("ImmigrateChar Failed");
+                    return;
                 }
                 else {
                     uint64_t chatID = chat->AddChatSession(session, temp.lastZone, std::string(temp.charName));
                     chat->EnqueueZoneJoin(session, temp.lastZone);
                     iocp->SendData(session, writer->WriteZoneChangeSucess(temp.lastZone, chatID, zoneInternalID, temp.x, temp.y));
+                    return;
                 }
                 break;
             }

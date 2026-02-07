@@ -44,13 +44,16 @@ namespace Core {
         //client에서는 full snapshot 받을 때 까지 로딩 화면
         CharacterState temp;
         if (body->resStatus != 0) {
-            temp.level = body->level;
             std::memcpy(temp.charName, body->name, MAX_CHARNAME_LEN);
             temp.characterID = body->charID;
             temp.dir = body->dir;
+            temp.attack = body->attack;
+            temp.level = body->level;
             temp.exp = body->exp;
             temp.hp = body ->hp;
             temp.mp = body ->mp;
+            temp.maxHp = body->maxHp;
+            temp.maxMp = body->maxMp;
             temp.lastZone = body->currentZone;
             temp.sessionID = sessionID;
             temp.x = body->startX;

@@ -12,8 +12,8 @@ namespace Core {
     inline constexpr const float TRANSITION_BUFFER = 5.0f; // 겹치는 영역
 
     static constexpr int CELL_SIZE = 22; // 5 * 5
-    static constexpr int CELLS_X = ZONE_SIZE / CELL_SIZE;
-    static constexpr int CELLS_Y = ZONE_SIZE / CELL_SIZE;
+    static constexpr int CELLS_X = (TRANSITION_BUFFER * 2 + ZONE_SIZE) / CELL_SIZE;
+    static constexpr int CELLS_Y = (TRANSITION_BUFFER * 2 + ZONE_SIZE) / CELL_SIZE;
     static constexpr int CELL_CAPACITY = MAX_ZONE_CAPACITY / (CELLS_X * CELLS_Y) * 2;
 
     struct CellArea {

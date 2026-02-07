@@ -95,7 +95,7 @@ namespace Core {
         }
         void DeltaSnapshot();
         void FullSnapshot();
-        void Move(uint64_t sessionID, uint8_t dir, float speed);
+        bool Move(uint64_t sessionID, uint8_t dir, float speed);
         void DirtyCheck(uint64_t sessionID);
         void FlushCheat();
         void UpdateMonster();

@@ -14,9 +14,14 @@ namespace Core {
         auto& vec = m_cells[character.cellY][character.cellX].charSessions;
         uint16_t deleteIdx = character.cellIdx;
 
-        uint64_t session = vec.back();
-        vec[deleteIdx] = session;
-        
+        uint64_t swapSession = vec.back();
+        vec[deleteIdx] = swapSession;
+
+        if (deleteIdx != vec.size() - 1) {
+            auto& swappedChar = m_chars[m_sessionToIndex[swapSession]];
+            swappedChar.cellIdx = deleteIdx;
+        }
+
         vec.pop_back();
     }
 
@@ -100,7 +105,7 @@ namespace Core {
         {
             for (int j = 0; j < CELLS_X; j++)
             {
-                int idx = i * CELLS_Y + j;
+                int idx = i * CELLS_X + j;
                 packets[idx] = writer->GetInitialDeltaPacket();
             }
         }
@@ -110,11 +115,13 @@ namespace Core {
             for (int j = 0; j < CELLS_X; j++)
             {
                 auto& cell = m_cells[i][j];
-                int idx = i * CELLS_Y + j;
+                int idx = i * CELLS_X + j;
                 int loop = DELTA_UPDATE_COUNT;
-                while (loop-- && cell.dirtyChar.size() > 0)
+
+                bool wroteField = false; 
+                while (!cell.dirtyChar.empty() && loop--)
                 {
-                    auto& internalID = cell.dirtyChar.front();
+                    auto& internalID = cell.dirtyChar.back();
                     auto it = m_InternalIDToIndex.find(internalID);
                     if (it != m_InternalIDToIndex.end()) {
                         auto& character = m_chars[it->second];
@@ -139,8 +146,8 @@ namespace Core {
                             writer->WriteDeltaField(packets[idx], character.zoneInternalID, 8, character.y);
                         character.dirtyBit = 0x00;
                     }
-                    cell.dirtyChar.front() = cell.dirtyChar.back();
                     cell.dirtyChar.pop_back();
+                    wroteField = true;
                 }
 
                 while (loop-- && cell.dirtyMonster.size() > 0)
@@ -148,7 +155,7 @@ namespace Core {
 
                 }
 
-                if (loop == DELTA_UPDATE_COUNT) {
+                if (!wroteField) {
                     packets[idx].reset();
                     packets[idx] = nullptr;
                 }
@@ -172,7 +179,7 @@ namespace Core {
         {
             for (int j = 0; j < CELLS_X; j++)
             {
-                int idx = i * CELLS_Y + j;
+                int idx = i * CELLS_X + j;
                 packets[idx] = writer->GetInitialFullPacket();
             }
         }
@@ -184,7 +191,7 @@ namespace Core {
                 auto& cell = m_cells[i][j];
                 cell.dirtyChar.clear();
                 cell.dirtyMonster.clear();
-                int idx = i * CELLS_Y + j;
+                int idx = i * CELLS_X + j;
                 for (auto& session : cell.charSessions)
                 {
                     auto& character = m_chars[m_sessionToIndex[session]];
@@ -199,9 +206,11 @@ namespace Core {
         broadcast->EnqueueWork(packets, m_zoneID);
     }
 
-    void ZoneState::Move(uint64_t sessionID, uint8_t dir, float speed) {
+    bool ZoneState::Move(uint64_t sessionID, uint8_t dir, float speed) {
         float x = 0;
         float y = 0;
+        if (speed > 1 || speed < 0)
+            return false;
         switch(dir) {
             case 0: y = speed; break;
             case 1: y = -speed; break;
@@ -212,7 +221,7 @@ namespace Core {
         std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_sessionToIndex.find(sessionID);
         if (it == m_sessionToIndex.end()) {
-            return;
+            return false;
         }
         auto& character = m_chars[it->second];
         // move 영역 제한
@@ -224,7 +233,7 @@ namespace Core {
         character.x += x;
         character.y += y;
         character.dir = dir;
-        character.dirtyBit |= 0x10; // dir
+        character.dirtyBit |= 0x40; // dir
         if (x)
             character.dirtyBit |= 0x80; // x
         if (y)
@@ -242,9 +251,11 @@ namespace Core {
             RemoveFromCell(character);
             AddToCell(character, newX, newY);
         }
+        return true;
     }
 
     void ZoneState::DirtyCheck(uint64_t sessionID) {
+        std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_sessionToIndex.find(sessionID);
         if (it == m_sessionToIndex.end()) {
             return;
@@ -254,6 +265,7 @@ namespace Core {
     }
 
     void ZoneState::FlushCheat() {
+        std::lock_guard<std::mutex> lock(m_mutex);
         // now()가 무거워서 근사값으로 처리
         auto timePoint = std::chrono::steady_clock::now();
         for (auto [session, cheat]: m_cheatList)

@@ -27,7 +27,7 @@ namespace Core {
         uint16_t skill2_id;
 
         uint16_t lastZone;
-        uint8_t dirtyBit = 0x00; // 변경된 필드 표시
+        uint32_t dirtyBit = 0x00; // 변경된 필드 표시
 
         uint64_t sessionID;
         uint64_t characterID;

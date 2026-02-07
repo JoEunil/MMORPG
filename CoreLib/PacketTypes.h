@@ -95,10 +95,13 @@ namespace Core {
     struct EnterWorldResponseBody {
         uint8_t resStatus;
         uint8_t name[MAX_CHARNAME_LEN];
+        uint16_t attack; // 기본 공격력
         uint16_t level;
         uint32_t exp;
-        int16_t hp;
-        int16_t mp;
+        int hp;
+        int mp;
+        int maxHp;
+        int maxMp;
         uint8_t dir;
         float startX, startY;
         uint16_t currentZone;
@@ -182,10 +185,12 @@ namespace Core {
         uint64_t zoneInternalID;
         int hp; // 0
         int mp; // 1
-        uint16_t level; // 2
-        uint32_t exp; // 3
-        uint8_t dir;  // 4
-        float x, y; // 5
+        int maxHp; // 2
+        int maxMp; // 3
+        uint32_t exp; // 4
+        uint16_t level; // 5
+        uint8_t dir;  // 6
+        float x, y; // 7, 8
         char charName[MAX_CHARNAME_LEN];
     };
 
