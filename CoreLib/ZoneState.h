@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-
 #include <shared_mutex>
 #include <cstdint>
 #include <memory>
@@ -8,11 +7,13 @@
 #include <queue>
 #include <unordered_map>
 #include <array>
+#include <optional>
 
 #include "CharacterState.h"
-#include "ZoneArea.h"
+#include "Cell.h"
 #include "MonsterState.h"
 #include "Config.h"
+#include "SkillData.h"
 
 #include <BaseLib/TripleBufferAdvanced.h>
 
@@ -21,21 +22,27 @@ namespace Core {
     class ILogger;
     class BroadcastThreadPool;
     class PacketWriter;
-    class StateManager;
+    class StateManager; 
+
+    struct SkillRequest {
+        uint64_t sessionID;
+        uint8_t skillSlot;
+        const Data::SkillData& skillInfo;
+    }; 
+
     class ZoneState {
         std::vector<CharacterState> m_chars;
         std::unordered_map<uint64_t, uint16_t> m_sessionToIndex; // 자신의 캐릭터를 컨트롤 할 때
         std::unordered_map<uint64_t, uint16_t> m_InternalIDToIndex; // 다른 캐릭터와 상호작용할 때
-
         std::vector<MonsterState> m_monsters; // id = index, 죽은 몬스터는 제거하지 않고 틱 단위로 처리.
 
         std::vector<std::pair<uint64_t, uint16_t>> m_cheatList;  // Cheat 탐지해서 배치처리하는 용도, stack
         std::mutex m_mutex;
 
         std::atomic<uint64_t> m_internalIdGenerator= 1; // 각각 character에 ID 부여
+        uint64_t m_deltaTickCounter;
         uint16_t m_zoneID;
         ZoneArea m_area;
-
         std::array<std::array<Cell, CELLS_X>, CELLS_Y> m_cells;
 
         Base::TripleBufferAdvanced<std::vector<std::vector<uint64_t>>> tripleBuffer;
@@ -76,28 +83,40 @@ namespace Core {
             auto back1 = new std::vector<std::vector<uint64_t>>(CELLS_X * CELLS_Y);
             auto back2 = new std::vector<std::vector<uint64_t>>(CELLS_X * CELLS_Y);
             sessionSnapshotWriter = new std::vector<std::vector<uint64_t>>(CELLS_X * CELLS_Y);
-            for (auto& cell : *back1) {
-                cell.reserve(CELL_CAPACITY); 
+            for (auto& c : *back1) {
+                c.reserve(CELL_CAPACITY);
             }
-            for (auto& cell : *back2) {
-                cell.reserve(CELL_CAPACITY);
+            for (auto& c : *back2) {
+                c.reserve(CELL_CAPACITY);
             }
-            for (auto& cell : *sessionSnapshotWriter) {
-                cell.reserve(CELL_CAPACITY);
+            for (auto& c : *sessionSnapshotWriter) {
+                c.reserve(CELL_CAPACITY);
             }
             tripleBuffer.Init(back1, back2);
-        }
 
+            m_monsters.reserve(MAX_MONSTER_COUNT);
+        }
+        void InitializeMonster();
         uint64_t ImmigrateChar(uint64_t sessionID, CharacterState& user);
         bool EmigrateChar(uint64_t sessionID, CharacterState& o);
         Base::BufferReader<std::vector<std::vector<uint64_t>>> GetSessionSnaphot() {
             return tripleBuffer.Read();
         }
         void DeltaSnapshot();
+        void DeltaSnapshotMonster();
         void FullSnapshot();
-        bool Move(uint64_t sessionID, uint8_t dir, float speed);
+        void FullSnapshotMonster();
+        void ActionSnapshot();
+        void Move(uint64_t sessionID, uint8_t dir, float speed);
+        void Skill(uint64_t sessionID, uint8_t skillSlot);
         void DirtyCheck(uint64_t sessionID);
         void FlushCheat();
         void UpdateMonster();
+        void SkillCoolDown();
+        void ApplySkill();
+        void PopSkill(int idx, std::vector<ActiveSkill>& list);
+        void ProcessCellActiveSkills(Cell& cell);
+        void ApplyHit(std::optional<std::reference_wrapper<CharacterState>> caster, ActiveSkill& skill, Cell& cell);
+
     };
 }

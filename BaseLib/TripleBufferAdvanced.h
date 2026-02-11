@@ -11,11 +11,12 @@ namespace Base {
 	class TripleBufferAdvanced {
 		T* back1; 
 		T* back2; // reader 가 참조
-		std::atomic<uint8_t> flag = 0;
-		// 상위 1비트는 상태 표시 , 이전 비트는 counter
-		// 최상위 비트 1: back1 swap 중
-		// 최상위 비트 0: back1 사용 가능
-		// 하위 7비트: read counter, back2 사용 가능 여부.
+		std::atomic<uint16_t> flag = 0;
+		// 상위 2비트는 상태 표시 , 이전 비트는 counter
+		// 첫번째 비트: back1, back2 lock
+		// 두번째 비트 : back2가 최신 상태인지, (write 시 1, back1-back2 swap 시 0)
+		// 하위 비트: read counte
+		// 두번째 비트만 1 일 때 back1-back2 swap
 
 	public:
 		void Init(T* b1, T* b2) {
@@ -23,12 +24,11 @@ namespace Base {
 			back2 = b2;
 		}
 		void Write(T* write) {
-			// (flag & 128)
 			while (true)
 			{
-				uint8_t old_flag = flag.load(std::memory_order_relaxed);
-				uint8_t flagNotUsing = old_flag & 127;
-				uint8_t flagUsing = old_flag | 128;
+				uint16_t old_flag = flag.load(std::memory_order_relaxed);
+				uint16_t flagNotUsing = old_flag & (0x8000-1); // mask: 001111...
+				uint16_t flagUsing = old_flag | 0x8000;
 				if (flag.compare_exchange_weak(flagNotUsing, flagUsing, std::memory_order_acq_rel, std::memory_order_relaxed))
 					break;
 			}
@@ -39,10 +39,9 @@ namespace Base {
 			// back1 swap 종료, flag release 
 			while (true)
 			{
-				uint8_t old_flag = flag.load(std::memory_order_relaxed);
-				uint8_t flagNotUsing = old_flag & 127;
-				uint8_t flagUsing = old_flag | 128;
-				if (flag.compare_exchange_weak(flagUsing, flagNotUsing, std::memory_order_acq_rel, std::memory_order_relaxed))
+				uint16_t old_flag = flag.load(std::memory_order_relaxed);
+				uint16_t flagNotUsing = old_flag & (0x4000 - 1);
+				if (flag.compare_exchange_weak(old_flag, flagNotUsing, std::memory_order_acq_rel, std::memory_order_relaxed))
 					break;
 			}
 		}
@@ -50,11 +49,15 @@ namespace Base {
 		BufferReader<T> Read() {
 			T* read_ptr = nullptr;
 
-			uint8_t new_flag;
+			uint16_t new_flag;
 			while (true) {
-				uint8_t old_flag = flag.load(std::memory_order_relaxed);
-				if ((old_flag & 0x80) == 0) { // 최신 + not reading
-					new_flag = 0x80;          // swap 진행
+				uint16_t old_flag = flag.load(std::memory_order_relaxed);
+				if (old_flag == 0) { // 최신 + not reading
+					new_flag = 0x8000;          // swap 진행
+				}
+				else if (old_flag & 0x8000) { 
+					// write 일 때에도 block 되지만, back swap일 때 새로운 read block 하기 위함.
+					continue;
 				}
 				else {
 					new_flag = old_flag + 1;  // 단순 reader count 증가
@@ -66,9 +69,9 @@ namespace Base {
 				// CAS 실패하면 old_flag가 갱신됨 → 다시 계산
 			}
 
-			if (new_flag == 0x80) {
+			if (new_flag == 0x8000) {
 				std::swap(back1, back2);
-				flag.store(1, std::memory_order_release); // swap 끝
+				flag.store(0x4000 + 1, std::memory_order_release);
 			}
 
 			read_ptr = back2;

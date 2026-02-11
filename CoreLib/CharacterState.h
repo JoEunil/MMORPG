@@ -3,6 +3,10 @@
 #include "Config.h"
 
 namespace Core {
+    struct SkillSlotEntry {
+        uint16_t skillID;
+        uint32_t skillCoolDownTick;
+    };
     struct CharacterState {
         uint64_t zoneInternalID; // zone 내부에서 사용하는 id
         int hp; // 0
@@ -20,11 +24,8 @@ namespace Core {
         uint16_t cellIdx;
 
         uint16_t attack; // 기본 공격력
-        uint32_t skill0_coolDown; // 평타
-        uint32_t skill1_coolDown;
-        uint32_t skill2_coolDown;
-        uint16_t skill1_id;
-        uint16_t skill2_id;
+        uint8_t skillSlotCnt; 
+        std::vector<SkillSlotEntry> skillSlot;
 
         uint16_t lastZone;
         uint32_t dirtyBit = 0x00; // 변경된 필드 표시

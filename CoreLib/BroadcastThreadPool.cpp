@@ -4,7 +4,7 @@
 #include "ZoneState.h"
 #include "IIOCP.h"
 #include "StateManager.h"
-#include "ZoneArea.h"
+#include "Cell.h"
 #include <BaseLib/TripleBufferAdvanced.h>
 namespace Core {
     void BroadcastThreadPool::ThreadFunc() {

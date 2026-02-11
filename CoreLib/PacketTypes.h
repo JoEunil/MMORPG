@@ -7,7 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
-    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 20;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 23;
 
     enum OP : uint16_t {
         AUTH = 1,
@@ -19,21 +19,24 @@ namespace Core {
 
         ZONE_FULL_STATE_BROADCAST = 7,
         ZONE_DELTA_UPDATE_BROADCAST = 8,
+        MONSTER_FULL_STATE_BROADCAST = 9,
+        MONSTER_DELTA_UPDATE_BROADCAST = 10,
 
-        ACTION = 9,                 // 이동 + 공격 + 스킬 사용 등 행동 패킷
-        CHAT = 10,
-        CHAT_WHISPER = 11,
-        CHAT_BROADCAST = 12,
+        ACTION = 11,                 // 이동 + 공격 + 스킬 사용 등 행동 패킷
+        ACTION_RESULT = 12,              
+        CHAT = 13,
+        CHAT_WHISPER = 14,
+        CHAT_BROADCAST = 15,
 
-        ZONE_CHANGE = 13,
-        ZONE_CHANGE_RESPONSE = 14,
+        ZONE_CHANGE = 16,
+        ZONE_CHANGE_RESPONSE = 17,
 
-        INVENTORY_UPDATE = 15,
-        INVENTORY_UPDATE_RES = 16,
-        INVENTORY_REQ = 17,
-        INVENTORY_RES = 18,
-        PING = 19, // 서버 송신
-        PONG = 20, // 클라이언트 송신
+        INVENTORY_UPDATE = 18,
+        INVENTORY_UPDATE_RES = 19,
+        INVENTORY_REQ = 20,
+        INVENTORY_RES = 21,
+        PING = 22, // 서버 송신
+        PONG = 23, // 클라이언트 송신
     };
 
     enum ZONE_CHANGE: uint8_t {
@@ -168,6 +171,22 @@ namespace Core {
     struct ActionRequestBody {
         uint8_t dir; // 상, 하, 좌, 우
         float speed;
+        uint8_t skillSlot;
+    };
+
+    struct ActionResultField {
+        uint8_t casterType;//  0 캐릭터, 1 몬스터
+        uint64_t casterId;
+        uint8_t skillSlot;
+        uint8_t dir;
+        float x, y; // 시전 위치
+        uint32_t skillId;
+        uint16_t skillPhase;
+    };
+
+    struct ActionResultBody {
+        uint16_t count;
+        ActionResultField actions[ACTION_RESULT_COUNT];
     };
 
     struct DeltaUpdateField {
@@ -197,6 +216,32 @@ namespace Core {
     struct FullSnapshotBody {
         uint16_t count;
         FullStateField states[MAX_ZONE_CAPACITY];
+    };
+
+    struct MonsterDeltaField {
+        uint16_t monsterId;
+        uint16_t fieldId;   // HP, PosX, PosY 등
+        uint32_t fieldVal;
+    };
+
+    struct MonsterDeltaSnapshotBody {
+        uint16_t count;
+        MonsterDeltaField updates[MAX_MONSTER_DELTA];
+    };
+
+    struct MonsterFullField {
+        uint16_t internalId;
+        int hp;
+        int maxHp;
+        uint32_t attacked; // 피격 데미지(UI 용)
+        float x, y;
+        uint8_t dir;
+        uint16_t monsterId;
+    };
+
+    struct MonsterFullSnapshotBody {
+        uint16_t count;
+        MonsterFullField states[MAX_MONSTER_COUNT];
     };
 
     template<typename T>

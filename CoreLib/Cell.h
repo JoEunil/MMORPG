@@ -16,6 +16,30 @@ namespace Core {
     static constexpr int CELLS_Y = (TRANSITION_BUFFER * 2 + ZONE_SIZE) / CELL_SIZE;
     static constexpr int CELL_CAPACITY = MAX_ZONE_CAPACITY / (CELLS_X * CELLS_Y) * 2;
 
+    struct ActionResult {
+        uint8_t casterType;
+        uint64_t zoneInternalId;
+        uint16_t monsterId;
+        uint8_t skillSlot;
+        uint8_t dir;
+        float x, y;
+        uint32_t skilIId;
+        uint16_t skillPhase;
+    };
+
+    struct ActiveSkill {
+        uint8_t casterType;
+        uint64_t sessionId; // ActionResult 송신용 
+        uint64_t zoneInternalId;
+        uint16_t monsterId;
+        uint8_t skillSlot;
+        uint8_t dir;
+        float x, y;
+        uint32_t skillId;
+        uint16_t currentPhase;
+        uint32_t currentTick;        // 현재 진행중인 틱
+    };
+
     struct CellArea {
         float x_min, x_max;
         float y_min, y_max;
@@ -26,6 +50,8 @@ namespace Core {
         std::vector<uint16_t> monsterIndexes;
         std::vector<uint64_t> dirtyChar;   // Cell 단위 dirty list
         std::vector<uint16_t> dirtyMonster; 
+        std::vector< ActionResult> actionResults; // 스킬 이펙트 처리
+        std::vector<ActiveSkill> activeSkills; // 시전 중인 스킬 리스트, timeline에 의해 이펙트 처리 요청 및 데미지 적용.
         CellArea area;
     };
 
@@ -59,6 +85,7 @@ namespace Core {
                 cell.monsterIndexes.reserve(CELL_CAPACITY);
                 cell.dirtyChar.reserve(CELL_CAPACITY);
                 cell.dirtyMonster.reserve(CELL_CAPACITY);
+                cell.actionResults.reserve(CELL_CAPACITY);
             }
         }
     }

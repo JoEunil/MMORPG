@@ -176,6 +176,66 @@ namespace Core {
         std::memcpy(p_st->body.states[p_st->body.count-1].charName, state.charName, MAX_CHARNAME_LEN);
     }
 
+    std::shared_ptr<IPacket> PacketWriter::GetInitialMonsterFullPacket() {
+        auto p = bigPacketPool->Acquire();
+        auto p_st = reinterpret_cast<PacketStruct<MonsterFullSnapshotBody>*>(p->GetBuffer());
+        p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
+        p->SetLength(p_st->header.length);
+        p_st->header.opcode = OP::MONSTER_FULL_STATE_BROADCAST;
+        p_st->header.magic = MAGIC;
+        p_st->header.flags = 0x00;
+        p_st->header.flags |= FLAG_SIMULATION;
+        p_st->body.count = 0;
+        return p;
+    }
+
+    void PacketWriter::WriteMonsterFullField(std::shared_ptr<IPacket> p, MonsterState& state) {
+        auto p_st = reinterpret_cast<PacketStruct<MonsterFullSnapshotBody>*>(p->GetBuffer());
+        p_st->header.length += sizeof(MonsterFullField);
+        p->SetLength(p_st->header.length);
+        p_st->body.count++;
+        auto& slot = p_st->body.states[p_st->body.count - 1];
+        slot.internalId = state.internalID;
+        slot.hp = state.hp;
+        slot.dir = state.dir;
+        slot.x = state.x;
+        slot.y = state.y;
+        slot.attacked = state.attacked;
+        slot.monsterId = state.data->id;
+    }
+
+    std::shared_ptr<IPacket> PacketWriter::GetInitialActionPacket() {
+        auto p = bigPacketPool->Acquire();
+        auto p_st = reinterpret_cast<PacketStruct<ActionResultBody>*>(p->GetBuffer());
+        p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
+        p->SetLength(p_st->header.length);
+        p_st->header.opcode = OP::ACTION_RESULT;
+        p_st->header.magic = MAGIC;
+        p_st->header.flags = 0x00;
+        p_st->header.flags |= FLAG_SIMULATION;
+        p_st->body.count = 0;
+        return p;
+    }
+
+    void PacketWriter::WriteActionField(std::shared_ptr<IPacket> p, ActionResult& state) {
+        auto p_st = reinterpret_cast<PacketStruct<ActionResultBody>*>(p->GetBuffer());
+        p_st->header.length += sizeof(ActionResultField);
+        p->SetLength(p_st->header.length);
+        p_st->body.count++;
+        auto& action = p_st->body.actions[p_st->body.count - 1];
+        action.casterType = state.casterType;
+        if (state.casterType == 0)
+            action.casterId = state.zoneInternalId;
+        else
+            action.casterId = static_cast<uint64_t>(state.monsterId);
+        action.dir = state.dir;
+        action.x = state.x;
+        action.y = state.y;
+        action.skillSlot = state.skillSlot;
+        action.skillId = state.skilIId;
+        action.skillPhase = state.skillPhase;
+    }
+
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeFailed() {
         auto p = packetPool->AcquireUnique();
         auto p_st = reinterpret_cast<PacketStruct<ZoneChangeResponseBody>*>(p->GetBuffer());

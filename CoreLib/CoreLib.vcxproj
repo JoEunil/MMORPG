@@ -140,7 +140,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CharacterState.h" />
     <ClInclude Include="ChatThreadPool.h" />
+    <ClInclude Include="MonsterData.h" />
+    <ClInclude Include="MonsterState.h" />
     <ClInclude Include="NoneZoneHandler.h" />
     <ClInclude Include="NoneZoneThreadPool.h" />
     <ClInclude Include="BroadcastThreadPool.h" />
@@ -163,7 +166,9 @@
     <ClInclude Include="PacketWriter.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="IPingPacketWriter.h" />
+    <ClInclude Include="SkillData.h" />
     <ClInclude Include="StateManager.h" />
+    <ClInclude Include="Cell.h" />
     <ClInclude Include="ZoneHandler.h" />
     <ClInclude Include="ZoneState.h" />
     <ClInclude Include="ZoneThreadSet.h" />
@@ -174,7 +179,13 @@
     <ClCompile Include="NoneZoneThreadPool.cpp" />
     <ClCompile Include="BroadcastThreadPool.cpp" />
     <ClCompile Include="PacketDispatcher.cpp" />
+    <ClCompile Include="SkillData.cpp" />
+    <ClCompile Include="SkillData_Range.cpp" />
     <ClCompile Include="ZoneHandler.cpp" />
+    <ClCompile Include="ZoneState_Actions.cpp" />
+    <ClCompile Include="ZoneState_Monsters.cpp" />
+    <ClCompile Include="ZoneState_Skills.cpp" />
+    <ClCompile Include="ZoneState_Snapshots.cpp" />
     <ClCompile Include="ZoneThreadSet.cpp" />
     <ClInclude Include="IMessageQueue.h">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>

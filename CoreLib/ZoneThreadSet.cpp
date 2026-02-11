@@ -20,7 +20,9 @@ namespace Core {
         auto lastFullSnapshot = lastTick;
 
         logger->LogInfo(std::format("zone thread started id {}", zoneID));
+        handler->SpawnMonster(zoneID);
         while (t->running) {
+            handler->SkillCoolDown(zoneID);
             auto packet = std::move(t->workQueue.pop());
             const size_t MAX_PACKETS_PER_TICK = 2000;
             size_t processed = 0;
@@ -30,6 +32,7 @@ namespace Core {
                 packet = t->workQueue.pop();
                 processed++;
             }
+            handler->ApplySkill(zoneID);
             handler->UpdateMonster(zoneID);
             handler->FlushCheat(zoneID);
             auto now = std::chrono::steady_clock::now();

@@ -36,6 +36,11 @@ namespace Core {
     inline constexpr const uint16_t MAX_FULL_SNAPSHOT_POOL_SIZE = 100;
     inline constexpr const uint16_t MIN_FULL_SNAPSHOT_POOL_SIZE = 20;
 
+
+    inline constexpr const uint16_t ACTION_RESULT_COUNT = 500;
+    inline constexpr const uint16_t MAX_MONSTER_COUNT = 1000;
+    inline constexpr const uint16_t MAX_MONSTER_DELTA = 3000;
+
     inline constexpr const uint16_t MAX_ZONE_CAPACITY = 500;
     inline constexpr const uint16_t MAX_USER_CAPACITY = 5000;
     inline constexpr const uint16_t MAX_CHAT_PACKET = 10;

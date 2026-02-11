@@ -1,7 +1,6 @@
 ﻿#include "pch.h"
 #include "ZoneState.h"
 #include "IPacket.h"
-#include "Initializer.h"
 #include "ILogger.h"
 #include "PacketWriter.h"
 #include "StateManager.h"
@@ -31,6 +30,11 @@ namespace Core {
         character.cellIdx = vec.size() - 1;
         character.cellX = x;
         character.cellY = y;
+        // 임시로 스킬 고정
+        character.skillSlotCnt = 3;
+        character.skillSlot.push_back(SkillSlotEntry(0, 0));
+        character.skillSlot.push_back(SkillSlotEntry(1, 0));
+        character.skillSlot.push_back(SkillSlotEntry(2, 0));
         std::cout << "add Cell: " << character.cellIdx <<  " x " << (int)x << " y " << (int)y << "\n";
     }
 
@@ -80,190 +84,6 @@ namespace Core {
         return true;
     }
 
-    void ZoneState::UpdateSessionSnapshot() {
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
-                int idx = i * CELLS_X + j;
-                (*sessionSnapshotWriter)[idx].clear();
-                for (auto& session : m_cells[i][j].charSessions)
-                    (*sessionSnapshotWriter)[idx].push_back(session);
-            }
-        }
-        tripleBuffer.Write(sessionSnapshotWriter);
-    }
-
-    void ZoneState::DeltaSnapshot() {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        UpdateSessionSnapshot();
-
-        std::vector<std::shared_ptr<IPacket>> packets;
-        packets.resize(CELLS_X * CELLS_Y);
-
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
-                int idx = i * CELLS_X + j;
-                packets[idx] = writer->GetInitialDeltaPacket();
-            }
-        }
-
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
-                auto& cell = m_cells[i][j];
-                int idx = i * CELLS_X + j;
-                int loop = DELTA_UPDATE_COUNT;
-
-                bool wroteField = false; 
-                while (!cell.dirtyChar.empty() && loop--)
-                {
-                    auto& internalID = cell.dirtyChar.back();
-                    auto it = m_InternalIDToIndex.find(internalID);
-                    if (it != m_InternalIDToIndex.end()) {
-                        auto& character = m_chars[it->second];
-                        auto& bit = character.dirtyBit;
-                        if (bit & 0x01)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 0, character.hp);
-                        if (bit & 0x02)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 1, character.mp);
-                        if (bit & 0x04)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 2, character.maxHp);
-                        if (bit & 0x08)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 3, character.maxMp);
-                        if (bit & 0x10)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 4, character.exp);
-                        if (bit & 0x20)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 5, character.level);
-                        if (bit & 0x40)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 6, character.dir);
-                        if (bit & 0x80)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 7, character.x);
-                        if (bit & 0x100)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 8, character.y);
-                        character.dirtyBit = 0x00;
-                    }
-                    cell.dirtyChar.pop_back();
-                    wroteField = true;
-                }
-
-                while (loop-- && cell.dirtyMonster.size() > 0)
-                {
-
-                }
-
-                if (!wroteField) {
-                    packets[idx].reset();
-                    packets[idx] = nullptr;
-                }
-            }
-
-
-        }
-        
-        broadcast->EnqueueWork(packets, m_zoneID);
-    }
-
-    void ZoneState::FullSnapshot() {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        UpdateSessionSnapshot();
-        if (m_chars.empty())
-            return;
-        std::vector<std::shared_ptr<IPacket>> packets;
-        packets.resize(CELLS_X * CELLS_Y);
-
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
-                int idx = i * CELLS_X + j;
-                packets[idx] = writer->GetInitialFullPacket();
-            }
-        }
-
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
-                auto& cell = m_cells[i][j];
-                cell.dirtyChar.clear();
-                cell.dirtyMonster.clear();
-                int idx = i * CELLS_X + j;
-                for (auto& session : cell.charSessions)
-                {
-                    auto& character = m_chars[m_sessionToIndex[session]];
-                    writer->WriteFullField(packets[idx], character);
-                }
-                for (auto& mon : cell.monsterIndexes)
-                {
-
-                }
-            }
-        }
-        broadcast->EnqueueWork(packets, m_zoneID);
-    }
-
-    bool ZoneState::Move(uint64_t sessionID, uint8_t dir, float speed) {
-        float x = 0;
-        float y = 0;
-        if (speed > 1 || speed < 0)
-            return false;
-        switch(dir) {
-            case 0: y = speed; break;
-            case 1: y = -speed; break;
-            case 2: x = -speed; break;
-            case 3: x = speed; break;
-        }
-        
-        std::lock_guard<std::mutex> lock(m_mutex);
-        auto it = m_sessionToIndex.find(sessionID);
-        if (it == m_sessionToIndex.end()) {
-            return false;
-        }
-        auto& character = m_chars[it->second];
-        // move 영역 제한
-        if (character.x + x > m_area.x_max) x = 0;
-        if (character.x + x < m_area.x_min) x = 0;
-        if (character.y + y > m_area.y_max) y = 0;
-        if (character.y + y < m_area.y_min) y = 0;
-        
-        character.x += x;
-        character.y += y;
-        character.dir = dir;
-        character.dirtyBit |= 0x40; // dir
-        if (x)
-            character.dirtyBit |= 0x80; // x
-        if (y)
-            character.dirtyBit |= 0x100; // y
-
-
-        auto [newX, newY] = GetCell(character.x, character.y, m_area);
-
-        uint16_t oldX = character.cellX;
-        uint16_t oldY = character.cellY;
-        uint16_t oldIdx = character.cellIdx;
-        // cell 변경 발생할 경우만
-        if (newX != oldX || newY != oldY)
-        {
-            RemoveFromCell(character);
-            AddToCell(character, newX, newY);
-        }
-        return true;
-    }
-
-    void ZoneState::DirtyCheck(uint64_t sessionID) {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        auto it = m_sessionToIndex.find(sessionID);
-        if (it == m_sessionToIndex.end()) {
-            return;
-        }
-        auto& character = m_chars[it->second];
-        m_cells[character.cellY][character.cellX].dirtyChar.push_back(character.zoneInternalID);
-    }
-
     void ZoneState::FlushCheat() {
         std::lock_guard<std::mutex> lock(m_mutex);
         // now()가 무거워서 근사값으로 처리
@@ -272,10 +92,5 @@ namespace Core {
         {
             stateManager->Cheat(session, cheat, timePoint);
         }
-    }
-
-
-    void ZoneState::UpdateMonster() {
-
     }
 }

@@ -16,6 +16,9 @@
     <Filter Include="Cache">
       <UniqueIdentifier>{0444013b-42f7-456f-b6a1-a94f682ec414}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Data">
+      <UniqueIdentifier>{412850a0-70ca-4b69-9a40-dbf019f24972}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Interface">
       <UniqueIdentifier>{78a706b3-8ee5-412f-9ccd-6af5f0d8ca90}</UniqueIdentifier>
     </Filter>
@@ -108,6 +111,21 @@
     <ClInclude Include="ChatThreadPool.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="MonsterState.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="CharacterState.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="SkillData.h">
+      <Filter>Data</Filter>
+    </ClInclude>
+    <ClInclude Include="MonsterData.h">
+      <Filter>Data</Filter>
+    </ClInclude>
+    <ClInclude Include="Cell.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -151,6 +169,24 @@
     </ClCompile>
     <ClCompile Include="ChatThreadPool.cpp">
       <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ZoneState_Skills.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ZoneState_Actions.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ZoneState_Monsters.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ZoneState_Snapshots.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="SkillData.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="SkillData_Range.cpp">
+      <Filter>Data</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
