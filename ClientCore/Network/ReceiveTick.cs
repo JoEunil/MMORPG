@@ -62,9 +62,18 @@ namespace ClientCore.Network
                         case OP_CODE.ZONE_FULL_STATE_BROADCAST:
                             _handler.HandleFullState(Packet.DeserializeVariablePacket<FullStateField>(header, curr));
                             break;
-                    }
+                        case OP_CODE.MONSTER_DELTA_UPDATE_BROADCAST:
+                            _handler.HandleMonsterDelta(Packet.DeserializeVariablePacket<MonsterDeltaField>(header, curr));
+                            break;
+                        case OP_CODE.MONSTER_FULL_STATE_BROADCAST:
+                            _handler.HandleMonsterFull(Packet.DeserializeVariablePacket<MonsterFullField>(header, curr));
+                            break;
+                        case OP_CODE.ACTION_RESULT:
+                            _handler.HandleActionReult(Packet.DeserializeVariablePacket<ActionResultField>(header, curr));
+                            break;
+                        }
                 }
-                int sleepTime = RECV_TICK - (int)(sw.ElapsedMilliseconds - tickStart);
+                int sleepTime = GAME_TICK - (int)(sw.ElapsedMilliseconds - tickStart);
                 if (sleepTime > 0)
                 {
                     Thread.Sleep(sleepTime);

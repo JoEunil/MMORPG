@@ -24,6 +24,9 @@ namespace ClientCore
         public event Action<ushort, ulong, ulong, float, float> OnZoneChageReceived;
         public event Action<ushort, DeltaUpdateField[]> OnDeltaReceived;
         public event Action<ushort, FullStateField[]> OnFullReceived;
+        public event Action<ushort, MonsterDeltaField[]> OnMonsterDeltaReceived;
+        public event Action<ushort, MonsterFullField[]> OnMonsterFullReceived;
+        public event Action<ushort, ActionResultField[]> OnActionResultReceived;
         public event Action OnZoneChageFailed;
         public event Action<ulong> OnPingReceived;
 
@@ -79,10 +82,10 @@ namespace ClientCore
         // Client Tick 루프
         public void SendUpdate()
         {
-            var res = _viewData.GetMoveState();
+            var res = _viewData.GetActionState();
             if (res.Item1 == true)
             {
-                _network.Move(res.Item2, res.Item3);
+                _network.Action(res.Item2, res.Item3, res.Item4);
             }
         }
 
@@ -110,7 +113,7 @@ namespace ClientCore
             });
         }
 
-        public void EnterReceived(byte resStatus, byte[] name, ushort level, uint exp, short hp, short mp, byte dir, float startX, float startY, ushort currentZone)
+        public void EnterReceived(byte resStatus, byte[] name, ushort attack, ushort level, uint exp, int hp, int mp, int maxHP, int maxMP, byte dir, float startX, float startY, ushort currentZone)
         {
             bool success = resStatus != 0;
             if (success)
@@ -172,6 +175,27 @@ namespace ClientCore
             _threadDispatcher.Post(() =>
             {
                 OnFullReceived?.Invoke(count, states);
+            });
+        }
+       public void MonsterDeltaReceived(ushort count, PacketHelper.MonsterDeltaField[] updates)
+        {
+            _threadDispatcher.Post(() =>
+            {
+                OnMonsterDeltaReceived?.Invoke(count, updates);
+            });
+        }
+        public void MonsterFullReceived(ushort count, PacketHelper.MonsterFullField[] states)
+        {
+            _threadDispatcher.Post(() =>
+            {
+                OnMonsterFullReceived?.Invoke(count, states);
+            });
+        }
+        public void ActionResultReceived(ushort count, PacketHelper.ActionResultField[] actions)
+        {
+            _threadDispatcher.Post(() =>
+            {
+                OnActionResultReceived?.Invoke(count, actions);
             });
         }
         public void PingReceived(ulong servertimeMs, ulong rtt)

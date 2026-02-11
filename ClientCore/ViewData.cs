@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using static ClientCore.Config;
 
 namespace ClientCore
 {
@@ -27,22 +28,32 @@ namespace ClientCore
         }
 
         private readonly object _lockMove = new object();
-        private MoveData _moveState;
+        private ActionData _actionState;
         public void UpdateMove(byte dir, float speed)
         {
             lock (_lockMove)
             {
-                _moveState.dir = dir;
-                _moveState.speed = speed;
-                _moveState.dirty = true;
+                _actionState.dir = dir;
+                _actionState.speed = speed;
+                _actionState.dirty = true;
             }
         }
-        public (bool, byte, float) GetMoveState()
+        public void UpdateSkill(byte skillSlot)
         {
             lock (_lockMove)
             {
-                var res = (_moveState.dirty, _moveState.dir, _moveState.speed);
-                _moveState.dirty = false;
+                _actionState.waitSkillSlot = skillSlot;
+                _actionState.dirty = true;
+            }
+        }
+        public (bool, byte, float, byte) GetActionState()
+        {
+            lock (_lockMove)
+            {
+                var res = (_actionState.dirty, _actionState.dir, _actionState.speed, _actionState.waitSkillSlot);
+                _actionState.waitSkillSlot = NONE_SKILL;
+                _actionState.speed = 0;
+                _actionState.dirty = false;
                 return res;
             }
         }

@@ -6,8 +6,7 @@ namespace ClientCore
 {
     internal class Config
     {
-        public const int GAME_TICK = 50;
-        public const int RECV_TICK = 25;
+        public const int GAME_TICK = 50; // 1 tick: 50ms, 20fps
 
         // service
         public const string LOGIN_SERVER_ADDR = "http://127.0.0.1:3000/auth/login";
@@ -24,6 +23,9 @@ namespace ClientCore
         internal const ushort MAGIC = 0x1234;
         internal const byte FLAG_SIMULATION = 0x01;
         internal const int DELTA_UPDATE_COUNT = 1000;
-        
+        internal const int ACTION_RESULT_COUNT = 500;
+        internal const int MAX_MONSTER_DELTA = 3000;
+        internal const int MAX_MONSTER_COUNT = 1000;
+        internal const byte NONE_SKILL = 255;
     }
 }
