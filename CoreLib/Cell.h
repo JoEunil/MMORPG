@@ -49,7 +49,6 @@ namespace Core {
         std::vector<uint64_t> charSessions;
         std::vector<uint16_t> monsterIndexes;
         std::vector<uint64_t> dirtyChar;   // Cell 단위 dirty list
-        std::vector<uint16_t> dirtyMonster; 
         std::vector< ActionResult> actionResults; // 스킬 이펙트 처리
         std::vector<ActiveSkill> activeSkills; // 시전 중인 스킬 리스트, timeline에 의해 이펙트 처리 요청 및 데미지 적용.
         CellArea area;
@@ -84,7 +83,6 @@ namespace Core {
                 cell.charSessions.reserve(CELL_CAPACITY);
                 cell.monsterIndexes.reserve(CELL_CAPACITY);
                 cell.dirtyChar.reserve(CELL_CAPACITY);
-                cell.dirtyMonster.reserve(CELL_CAPACITY);
                 cell.actionResults.reserve(CELL_CAPACITY);
             }
         }

@@ -55,7 +55,6 @@ namespace Core {
             m_states.reserve(ZONE_COUNT);
             for (int zoneID = 1; zoneID <= ZONE_COUNT; zoneID++) {
                 m_states.emplace(zoneID, std::make_unique<ZoneState>(zoneID));
-                m_states[zoneID]->InitializeMonster();
             }
             for (auto& shard: m_shards)
                 shard.sessionMap.reserve(MAX_USER_CAPACITY / SHARD_SIZE);

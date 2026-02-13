@@ -149,21 +149,15 @@ namespace Core {
             for (int j = 0; j < CELLS_X; j++)
             {
                 auto& cell = m_cells[i][j];
-                cell.dirtyChar.clear();
-                cell.dirtyMonster.clear();
                 int idx = i * CELLS_X + j;
-                int loop = DELTA_UPDATE_COUNT;
+                int loop = DELTA_UPDATE_COUNT*2;
 
-                bool wroteField = false;
-                while (!cell.dirtyMonster.empty() && loop--)
+                for (int k =0 ; k < cell.monsterIndexes.size() && loop--; k++)
                 {
-                    auto& monsterIdx = cell.dirtyMonster.back();
-                    if (monsterIdx >= m_monsters.size()) {
-                        cell.dirtyMonster.pop_back();
-                        continue;
-                    }
-                    auto& monster = m_monsters[monsterIdx];
+                    auto& monster = m_monsters[cell.monsterIndexes[k]];
                     auto& bit = monster.dirtyBit;
+                    if (bit == 0x00)
+                        continue;
                     if (bit & 0x01)
                         writer->WriteMonsterDeltaField(packets[idx], monster.internalID, 0, monster.hp);
                     if (bit & 0x02)
@@ -174,14 +168,7 @@ namespace Core {
                         writer->WriteMonsterDeltaField(packets[idx], monster.internalID, 3, monster.dir);
                     monster.dirtyBit = 0x00;
                     monster.attacked = 0;
-                    cell.dirtyMonster.pop_back();
-                    wroteField = true;
-                }
-
-                if (!wroteField) {
-                    packets[idx].reset();
-                }
-                
+                }            
             }
         }
         broadcast->EnqueueWork(packets, m_zoneID);
@@ -207,10 +194,11 @@ namespace Core {
             {
                 auto& cell = m_cells[i][j];
                 int idx = i * CELLS_X + j;
-                cell.dirtyMonster.clear();
 
                 for (auto& monsterIdx : cell.monsterIndexes)
                 {
+                    if (m_monsters[monsterIdx].hp == 0)
+                        continue;
                     writer->WriteMonsterFullField(packets[idx], m_monsters[monsterIdx]);
                     m_monsters[monsterIdx].attacked = 0;
                     m_monsters[monsterIdx].dirtyBit = 0x0;

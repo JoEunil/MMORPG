@@ -219,7 +219,7 @@ namespace Core {
     };
 
     struct MonsterDeltaField {
-        uint16_t monsterId;
+        uint16_t internalId;
         uint16_t fieldId;   // HP, PosX, PosY 등
         uint32_t fieldVal;
     };

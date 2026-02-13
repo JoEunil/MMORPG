@@ -197,6 +197,7 @@ namespace Core {
         auto& slot = p_st->body.states[p_st->body.count - 1];
         slot.internalId = state.internalID;
         slot.hp = state.hp;
+        slot.maxHp = state.data->maxHp;
         slot.dir = state.dir;
         slot.x = state.x;
         slot.y = state.y;

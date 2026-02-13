@@ -38,6 +38,7 @@ namespace Data {
             {
                 SkillPhase{ 0, 0, {SkillRangeType::None, 0, 0}, 0 },  // charging
                 SkillPhase{ 20, 1, {SkillRangeType::Boss1_1, 10.0f, 30}, 100 }, // hit 1
+                SkillPhase{ 10, 0, {SkillRangeType::None, 0, 0}, 0 },  // charging
                 SkillPhase{ 20, 1, {SkillRangeType::Boss1_2, 10.0f, 30}, 100 } // hit 2
             }
         },
@@ -48,9 +49,14 @@ namespace Data {
             {
                 SkillPhase{ 0, 0, {SkillRangeType::None, 0, 0}, 0 },  // charging
                 SkillPhase{ 20, 1, {SkillRangeType::Boss2, 5.0f, 0}, 100 }, // hit 1
+                SkillPhase{ 0, 0, {SkillRangeType::None, 0, 0}, 0 },  // charging
                 SkillPhase{ 20, 1, {SkillRangeType::Boss2, 10.0f, 5.0f}, 100 }, // hit 2
+                SkillPhase{ 0, 0, {SkillRangeType::None, 0, 0}, 0 },  // charging
                 SkillPhase{ 20, 1, {SkillRangeType::Boss2, 15.0f, 10.0f}, 100 }, // hit 3 
+                SkillPhase{ 0, 0, {SkillRangeType::None, 0, 0}, 0 },  // charging
                 SkillPhase{ 20, 1, {SkillRangeType::Boss2, 20.0f, 15.0f}, 100 }, // hit 4 
+                SkillPhase{ 0, 0, {SkillRangeType::None, 0, 0}, 0 },  // charging
+                SkillPhase{ 20, 1, {SkillRangeType::Boss2, 25.0f, 20.0f}, 100 }, // hit 5
             }
         },
     };

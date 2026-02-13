@@ -14,18 +14,44 @@ namespace Core {
         uint8_t dirtyBit = 0x00;
 
 
+        float spawnX, spawnY;
         uint64_t aggro;
+        uint32_t aggroTick;
         uint8_t cellX;
         uint8_t cellY;
-
-        void Initialize(const Data::MonsterData* data, float x, float y) {
-            this->data = data;
-            this->hp = data->maxHp;
-
-            this->x = x;
-            this->y = y;
-            dir = 0;
+        uint32_t respawnTick;
+        uint64_t tick;
+        uint16_t skillStep;
+        uint8_t phase;
+        
+        void Initialize(uint16_t monsterID , uint16_t id, float posX, float posY, uint8_t CellX, uint8_t CellY) {
+            data = &Data::monsters[monsterID];
+            hp = data->maxHp;
+            respawnTick = data->respawn;
+            internalID = id;
+            x = posX;
+            y = posY;
+            spawnX = x;
+            spawnY = y;
+            dir = 1;
             aggro = 0;
+            aggroTick = 0;
+            tick = 0;
+            skillStep = 0;
+            phase = 0;
+            cellX = CellX;
+            cellY = CellY;
+        }
+
+        void Respawn() {
+            hp = data->maxHp;
+
+            x = spawnX;
+            y = spawnY;
+            dir = 1;
+            aggro = 0;
+            aggroTick = 0;
+            respawnTick = data->respawn;
         }
     };
 }

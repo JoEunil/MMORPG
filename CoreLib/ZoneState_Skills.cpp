@@ -1,6 +1,8 @@
 ﻿#include "pch.h"
 #include "ZoneState.h"
 #include <optional>
+#include <iostream>
+
 
 namespace Core {
 	void ZoneState::SkillCoolDown() {
@@ -17,7 +19,7 @@ namespace Core {
 			for (int j = 0; j < CELLS_X; j++)
 			{
 				auto& cell = m_cells[i][j];
-				for (auto skill : cell.activeSkills)
+				for (auto& skill : cell.activeSkills)
 				{
 					skill.currentTick++;
 				}
@@ -60,10 +62,11 @@ namespace Core {
 				caster = m_chars[it->second];
 			}
 			else {
-				m_monsters[skill.monsterId].hp == 0;
-
-				k--;
-				continue;
+				if (m_monsters[skill.monsterId].hp == 0) {
+					PopSkill(k, cell.activeSkills);
+					k--;
+					continue;
+				}
 			}
 			auto actionID = skillData.phases[skill.currentPhase].actionID;
 			if (actionID == 1)
@@ -77,7 +80,7 @@ namespace Core {
 			skill.x,
 			skill.y,
 			skill.skillId,
-			skill.currentPhase,   // status          
+			skill.currentPhase,            
 				});
 			if (++skill.currentPhase >= skillData.phases.size()) {
 				PopSkill(k, cell.activeSkills);
@@ -99,23 +102,28 @@ namespace Core {
 			{
 				if (m_monsters[mon].hp == 0)
 					continue;
-					if (phase.range.InRange(skill.dir, skill.x, skill.y, m_monsters[mon].x, m_monsters[mon].y))
-					{
-						auto damage = caster.attack * phase.attack;
-						if (skillData.flags & 0x01) {
-							// critical 적용..
-							damage *= 2;
-						}
-						m_monsters[mon].hp -= damage;
-						if (m_monsters[mon].hp <= 0)
-							m_monsters[mon].hp = 0;
-						m_monsters[mon].aggro = caster.zoneInternalID;
-
-						m_monsters[mon].dirtyBit |= 0x01; // hp
-						cell.dirtyMonster.push_back(mon);
-						if (!AOE)
-							break;
+				if (phase.range.InRange(skill.dir, skill.x, skill.y, m_monsters[mon].x, m_monsters[mon].y))
+				{
+					auto damage = caster.attack * phase.attack;
+					if (skillData.flags & 0x01) {
+						// critical 적용..
+						damage *= 2;
 					}
+					m_monsters[mon].hp -= damage;
+					if (m_monsters[mon].hp <= 0) {
+						m_monsters[mon].hp = 0;
+						// 일단 막타 친 사람만 보상.. 
+						// 보스몬스터의 경우 hitter list로 보상 분배하도록 처리해야됨.
+						caster.exp += m_monsters[mon].data->reward.exp;
+						caster.dirtyBit |= 0x10; // exp
+						cell.dirtyChar.push_back(caster.zoneInternalID);
+					}
+					m_monsters[mon].aggro = caster.zoneInternalID;
+					m_monsters[mon].aggroTick = 0;
+					m_monsters[mon].dirtyBit |= 0x01; // hp
+					if (!AOE)
+						break;
+				}
 			}
 		}
 		else { // 몬스터 -> 캐릭터
@@ -136,7 +144,8 @@ namespace Core {
 					character.hp -= damage;
 					if (character.hp <= 0)
 						character.hp = 0;
-					
+					else 
+						caster.aggroTick = 0; // 공격시에도 어그로 틱 초기화.
 					character.dirtyBit |= 0x01; // hp
 					cell.dirtyChar.push_back(character.zoneInternalID);
 					if (!AOE)

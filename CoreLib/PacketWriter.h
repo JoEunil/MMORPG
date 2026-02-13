@@ -88,7 +88,7 @@ namespace Core {
             p->SetLength(p_st->header.length);
             p_st->body.count++;
             auto& slot = p_st->body.updates[p_st->body.count - 1];
-            slot.monsterId = internalID;
+            slot.internalId = internalID;
             slot.fieldId = fieldID;
 
             std::memset(&slot.fieldVal, 0, sizeof(slot.fieldVal)); // 나머지 바이트 초기화

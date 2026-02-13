@@ -77,6 +77,7 @@ namespace Core {
             m_sessionToIndex.reserve(MAX_ZONE_CAPACITY);
             m_InternalIDToIndex.reserve(MAX_ZONE_CAPACITY);
             m_cheatList.reserve(MAX_ZONE_CAPACITY);
+            m_deltaTickCounter = 0;
 
             ZoneInit(m_area, m_zoneID);
             CellInit(m_cells, m_area);
@@ -117,6 +118,7 @@ namespace Core {
         void PopSkill(int idx, std::vector<ActiveSkill>& list);
         void ProcessCellActiveSkills(Cell& cell);
         void ApplyHit(std::optional<std::reference_wrapper<CharacterState>> caster, ActiveSkill& skill, Cell& cell);
-
+        void MoveToward(MonsterState& monster, CharacterState& character);
+        void MoveAround(MonsterState& monster);
     };
 }

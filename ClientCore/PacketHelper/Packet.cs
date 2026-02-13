@@ -284,7 +284,7 @@ namespace ClientCore.PacketHelper
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct MonsterDeltaField
     {
-        public ushort monsterId;
+        public ushort internalId;
         public ushort fieldId;
         public uint fieldVal;
     }
@@ -303,7 +303,7 @@ namespace ClientCore.PacketHelper
     {
         public ushort internalId;
         public int hp;
-        public int mp;
+        public int maxHp;
         public uint attacked;
         public float x;
         public float y;
