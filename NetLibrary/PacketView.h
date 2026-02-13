@@ -95,5 +95,17 @@ namespace Net {
 			return m_rear - m_front + 1;
 		}
 		uint8_t GetOpcode() const override { return m_opcode; }
+		void Clear() {
+			m_isCopied = false;
+			m_opcode = 0;
+			m_startPtr = nullptr;
+			m_sessionId = 0;
+			m_seq = 0;
+			m_front = 0;
+			m_rear = 0;
+			m_length = 0;
+			m_copiedBuffer.clear();
+			owner = nullptr;
+		}
 	};
 }

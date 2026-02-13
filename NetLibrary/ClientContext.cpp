@@ -42,7 +42,6 @@ namespace Net {
         if (GetLen() < sizeof(Core::PacketHeader))
             return false;
         auto [magic, packetLen, opcode] = ParseHeader();
-
         // 2차 패킷 검증
 
         if (magic != Core::MAGIC)
@@ -64,14 +63,15 @@ namespace Net {
 
 
         PacketView* packet = packetViewPool.Acquire();
-        if (m_rear < m_front and RING_BUFFER_SIZE - m_front < packetLen)
+        packet->Clear();
+        if (RING_BUFFER_SIZE - m_front < packetLen)
         {
             int firstPart = RING_BUFFER_SIZE - m_front;
             int secondPart = packetLen - firstPart;
             packet->JoinBuffer(m_startPtr + m_front, firstPart, m_startPtr, secondPart);
         }
         else {
-            packet->SetStartPtr(m_buffer.GetStartPtr());
+            packet->SetStartPtr(m_startPtr);
         }
 
         packet->SetSessionId(m_sessionID);
@@ -132,6 +132,7 @@ namespace Net {
         if (m_connected.load())
             EnqueueReleaseQ(pv->GetSeq(), pv->GetFront(), pv->GetRear());
         m_workingCnt.fetch_sub(1);
+        pv->Clear();
         packetViewPool.Return(pv);
         if (!m_connected.load() && m_workingCnt.load() == 0) {
             NetPacketFilter::Disconnect(m_sessionID);

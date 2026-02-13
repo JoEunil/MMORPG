@@ -69,12 +69,13 @@ namespace ClientCore.PacketHelper
             return Packet.Serialize(packet);
         }
 
-        internal static byte[] CreateActionPacket(byte dir, float speed)
+        internal static byte[] CreateActionPacket(byte dir, float speed, byte skillSlot)
         {
             var body = new ActionRequestBody
             {
                 dir = dir,
-                speed = speed
+                speed = speed,
+                skillSlot = skillSlot
             };
 
             var header = new PacketHeader

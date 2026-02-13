@@ -37,14 +37,34 @@ namespace Core {
         void BroadcastDeltaState(uint16_t zoneID) {
             auto zoneState = stateManager->GetZone(zoneID);
             zoneState->DeltaSnapshot();
+            zoneState->DeltaSnapshotMonster();
+            zoneState->ActionSnapshot();
         }
         void BroadcastFullState(uint16_t zoneID) {
             auto zoneState = stateManager->GetZone(zoneID);
             zoneState->FullSnapshot();
+            zoneState->FullSnapshotMonster();
+            zoneState->ActionSnapshot();
         }
         void FlushCheat(uint16_t zoneID) {
             auto zoneState = stateManager->GetZone(zoneID);
             zoneState->FlushCheat();
+        }
+        void UpdateMonster(uint16_t zoneID) {
+            auto zoneState = stateManager->GetZone(zoneID);
+            zoneState->UpdateMonster();
+        }
+        void SkillCoolDown(uint16_t zoneID) {
+            auto zoneState = stateManager->GetZone(zoneID);
+            zoneState->SkillCoolDown();
+        }
+        void ApplySkill(uint16_t zoneID) {
+            auto zoneState = stateManager->GetZone(zoneID);
+            zoneState->ApplySkill();
+        }
+        void SpawnMonster(uint16_t zoneID) {
+            auto zoneState = stateManager->GetZone(zoneID);
+            zoneState->InitializeMonster();
         }
     };
 }

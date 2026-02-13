@@ -21,21 +21,24 @@ namespace ClientCore.PacketHelper
 
         ZONE_FULL_STATE_BROADCAST = 7,
         ZONE_DELTA_UPDATE_BROADCAST = 8,
+        MONSTER_FULL_STATE_BROADCAST = 9,
+        MONSTER_DELTA_UPDATE_BROADCAST = 10,
 
-        ACTION = 9,                 // 이동 + 공격 + 스킬 사용 등 행동 패킷
-        CHAT = 10,
-        CHAT_WHISPER = 11,
-        CHAT_BROADCAST = 12,
+        ACTION = 11,                 // 이동 + 공격 + 스킬 사용 등 행동 패킷
+        ACTION_RESULT = 12,
+        CHAT = 13,
+        CHAT_WHISPER = 14,
+        CHAT_BROADCAST = 15,
 
-        ZONE_CHANGE = 13,
-        ZONE_CHANGE_RESPONSE = 14,
+        ZONE_CHANGE = 16,
+        ZONE_CHANGE_RESPONSE = 17,
 
-        INVENTORY_UPDATE = 15,
-        INVENTORY_UPDATE_RES = 16,
-        INVENTORY_REQ = 17,
-        INVENTORY_RES = 18,
-        PING = 19, // 서버 송신
-        PONG = 20, // 클라이언트 송신
+        INVENTORY_UPDATE = 18,
+        INVENTORY_UPDATE_RES = 19,
+        INVENTORY_REQ = 20,
+        INVENTORY_RES = 21,
+        PING = 22, // 서버 송신
+        PONG = 23, // 클라이언트 송신
     }
     
     public enum ZONE_CHANGE : byte
@@ -112,10 +115,13 @@ namespace ClientCore.PacketHelper
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_CHARNAME_LEN)]
         public byte[] name;
 
+        public ushort attack;
         public ushort level;
         public uint exp;
-        public short hp;
-        public short mp;
+        public int hp;
+        public int mp;
+        public int maxHp;
+        public int maxMp;
         public byte dir;
         public float startX;
         public float startY;
@@ -208,6 +214,27 @@ namespace ClientCore.PacketHelper
     {
         public byte dir;
         public float speed;
+        public byte skillSlot;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct ActionResultField
+    {
+        public byte casterType;
+        public ulong casterId;
+        public byte skillSlot;
+        public byte dir;
+        public float x, y;
+        public uint skillId;
+        public ushort skillPhase;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct ActionResultBody
+    {
+        public ushort count;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = ACTION_RESULT_COUNT)]
+        public ActionResultField[] actions;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -233,8 +260,10 @@ namespace ClientCore.PacketHelper
         public ulong zoneInternalID;
         public int hp;
         public int mp;
-        public ushort level;
+        public int maxHp;
+        public int maxMp;
         public uint exp;
+        public ushort level;
         public byte dir;
         public float x;
         public float y;
@@ -250,6 +279,45 @@ namespace ClientCore.PacketHelper
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_ZONE_CAPACITY)]
         public FullStateField[] states;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct MonsterDeltaField
+    {
+        public ushort internalId;
+        public ushort fieldId;
+        public uint fieldVal;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct MonsterDeltaSnapshotBody
+    {
+        public ushort count;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_MONSTER_DELTA)]
+        public MonsterDeltaField[] updates;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct MonsterFullField
+    {
+        public ushort internalId;
+        public int hp;
+        public int maxHp;
+        public uint attacked;
+        public float x;
+        public float y;
+        public byte dir;
+        public ushort monsterId;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct MonsterFullSnapshotBody
+    {
+        public ushort count;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_MONSTER_COUNT)]
+        public MonsterFullField[] states;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

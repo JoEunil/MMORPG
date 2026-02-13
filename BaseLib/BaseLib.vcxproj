@@ -144,8 +144,10 @@
     <ClInclude Include="LockFreeQueueUP.h" />
     <ClInclude Include="ObjectPool.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="TripleBufferAdvanced.h" />
     <ClInclude Include="RingQueue.h" />
     <ClInclude Include="SpinLockGuard.h" />
+    <ClInclude Include="TripleBuffer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">

@@ -55,10 +55,13 @@ namespace Core {
         uint8_t resStatus;
         uint64_t charID;
         uint8_t name[MAX_CHARNAME_LEN];
+        uint16_t attack; // 기본 공격력
         uint16_t level;
         uint32_t exp;
-        int16_t hp;
-        int16_t mp;
+        int hp;
+        int mp;
+        int maxHp;
+        int maxMp;
         uint8_t dir;
         float startX, startY;
         uint8_t currentZone;
@@ -66,10 +69,13 @@ namespace Core {
 
     struct MsgCharacterStateUpdateBody {
         uint64_t charID;
+        uint16_t attack; // 기본 공격력
         uint16_t level;
         uint32_t exp;
-        int16_t hp;
-        int16_t mp;
+        int hp;
+        int mp;
+        int maxHp;
+        int maxMp;
         uint8_t dir;
         float x, y;
         uint8_t lastZone;

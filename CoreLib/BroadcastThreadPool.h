@@ -6,7 +6,7 @@
 #include <mutex>
 #include <vector>
 
-#include <BaseLib/LockFreeQueueSP.h>
+#include <BaseLib/LockFreeQueue.h>
 #include "Config.h"
 
 namespace Core {
@@ -15,7 +15,7 @@ namespace Core {
     class StateManager;
     class BroadcastThreadPool {
         std::vector<std::thread> m_threads;
-        Base::LockFreeQueueSP<std::shared_ptr<IPacket>, BROADCAST_QUEUE_SIZE> m_workQ;
+        Base::LockFreeQueue<std::vector<std::shared_ptr<IPacket>>, BROADCAST_QUEUE_SIZE> m_workQ;
 
         std::atomic<bool> m_running = false;
         
@@ -46,7 +46,7 @@ namespace Core {
             Stop();
         }
 
-        void EnqueueWork(std::shared_ptr<Core::IPacket> work, uint16_t zoneID);
+        void EnqueueWork(std::vector<std::shared_ptr<Core::IPacket>> work, uint16_t zoneID);
     };
 
 }

@@ -82,21 +82,27 @@ namespace Cache {
         st->header.messageType = Core::MSG_CHARACTER_STATE_RES;
         
         if (!res || !res->next()) {
+            std::cout << " status = 0   " << body->characterID << " \n";
             st->body.resStatus = 0;
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterStateResBody>));
             messageQ->EnqueueMessage(msg);
-            connectionPool->Return(conn);
             return;
         }
         st->body.charID = res->getUInt64("char_id");
         st->body.resStatus = 1;
         std::string name = res->getString("name");
-        std::memset(st->body.name, 0, name.size());
+
+        std::memset(st->body.name, 0, sizeof(st->body.name));
         std::memcpy(st->body.name, name.c_str(), std::min(name.size(), sizeof(st->body.name) - 1));
+        st->body.name[sizeof(st->body.name) - 1] = '\0';
+
+        st->body.attack = res->getUInt("attack");
         st->body.level = res->getUInt("level");
         st->body.exp = res->getInt64("exp");
-        st->body.hp = res->getInt64("hp");
-        st->body.mp = res->getInt64("mp");
+        st->body.hp = res->getInt("hp");
+        st->body.mp = res->getInt("mp");
+        st->body.maxHp = res->getInt("max_hp");
+        st->body.maxMp = res->getInt("max_mp");
         st->body.dir = res->getInt("dir");
         st->body.currentZone = res->getUInt("zone_id");
         st->body.startX = res->getDouble("last_pos_x");
@@ -111,7 +117,7 @@ namespace Cache {
     void Handler::CharacterStateUpdate(Core::Message* msg, uint64_t sessionID, Core::MsgCharacterStateUpdateBody* body) {
         DBConnection* conn = connectionPool->Acquire();
         logger->LogInfo(std::format("state update {} {}", body->x, body->y));
-        auto res = conn->ExecuteUpdate(4, body->level, body->exp, body->hp, body->mp, body->dir, body->x, body->y, body->lastZone, body->charID);
+        auto res = conn->ExecuteUpdate(4, body->attack, body->level, body->exp, body->hp, body->mp, body->maxHp, body->maxMp, body->dir, body->x, body->y, body->lastZone, body->charID);
         connectionPool->Return(conn);
     }
 

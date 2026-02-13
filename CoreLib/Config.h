@@ -36,15 +36,15 @@ namespace Core {
     inline constexpr const uint16_t MAX_FULL_SNAPSHOT_POOL_SIZE = 100;
     inline constexpr const uint16_t MIN_FULL_SNAPSHOT_POOL_SIZE = 20;
 
+
+    inline constexpr const uint16_t ACTION_RESULT_COUNT = 500;
+    inline constexpr const uint16_t MAX_MONSTER_COUNT = 1000;
+    inline constexpr const uint16_t MAX_MONSTER_DELTA = 3000;
+
     inline constexpr const uint16_t MAX_ZONE_CAPACITY = 500;
     inline constexpr const uint16_t MAX_USER_CAPACITY = 5000;
     inline constexpr const uint16_t MAX_CHAT_PACKET = 10;
     inline constexpr const uint16_t DELTA_UPDATE_COUNT = 1000;
-
-    inline constexpr const float ZONE_SIZE = 100.0f;     // zone 한 칸 크기
-    inline constexpr const int ZONE_HORIZON = 3; // 3x3
-    inline constexpr const int ZONE_VERTICAL = 3;
-    inline constexpr const float TRANSITION_BUFFER = 5.0f; // 겹치는 영역
 
     inline constexpr const auto FULL_SNAPSHOT_TICK = std::chrono::milliseconds(1000);
     inline constexpr const auto DELTA_SNAPSHOT_TICK = std::chrono::milliseconds(50);

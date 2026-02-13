@@ -25,8 +25,8 @@ namespace Cache {
 
     void MessagePool::Adjust()
     {
-        Decrease(current);
-        Increase(current);
+        Decrease();
+        Increase();
     }
 
     void MessagePool::Increase() {

@@ -148,17 +148,20 @@ namespace Net {
                 logger->LogError("Close Signal Received ");
                 break;
             }
+
+            STOverlappedEx* pOverlappedEx = reinterpret_cast<STOverlappedEx*>(pOverlapped);
+            WSABUF pBuffer = pOverlappedEx->wsaBuf;
+            SOCKET clientSocket = pOverlappedEx->clientSocket;
+
             if (result == FALSE)
             {
                 DWORD err = GetLastError();
                 overlappedExPool->Return(reinterpret_cast<STOverlappedEx*>(pOverlapped));
+                CleanUpSocket(clientSocket);
                 logger->LogError("GetQueuedCompletionStatus failed with error code: " + std::to_string(err));
                 continue;
             }
 
-            STOverlappedEx* pOverlappedEx = reinterpret_cast<STOverlappedEx*>(pOverlapped);
-            WSABUF pBuffer = pOverlappedEx->wsaBuf;
-            SOCKET clientSocket = pOverlappedEx ->clientSocket;
 
             switch (pOverlappedEx->op) {
             case IOOperation::RECV:

@@ -39,13 +39,11 @@ namespace Net {
         {
         case Core::OP::PONG: 
             {
-                std::cout << "Pong\n";
                 uint64_t rtt = packetDispatcher->GetRTT(std::move(pv), NetTimer::GetTimeMS());
                 sessionManager->PongReceived(session, rtt);
             }
             break;
         default:
-            std::cout << "dispatch " << (int)op << '\n';
             packetDispatcher->Process(std::move(pv));
             break;
         }

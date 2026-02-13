@@ -48,6 +48,7 @@ namespace Core {
         }
         
         bool EmigrateChar(uint64_t sessionID, CharacterState& o){
+            std::lock_guard lock(m_mutex);
             auto it = m_chars.find(sessionID);
             if (it == m_chars.end()) {
                 logger->LogError(std::format("EmigrageChar Failed sessionID not exists in lobby zone! sessionID={}", sessionID));

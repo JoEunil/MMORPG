@@ -89,7 +89,7 @@ namespace ClientCore.Network
         }
         private void HandleEnterRes(STPacket<EnterWorldResponseBody> packet)
         {
-            _viewModel.EnterReceived(packet.body.resStatus, packet.body.name, packet.body.level, packet.body.exp, packet.body.hp, packet.body.mp, packet.body.dir, packet.body.startX, packet.body.startY, packet.body.currentZone);
+            _viewModel.EnterReceived(packet.body.resStatus, packet.body.name, packet.body.attack, packet.body.level, packet.body.exp, packet.body.hp, packet.body.mp, packet.body.maxHp, packet.body.maxMp, packet.body.dir, packet.body.startX, packet.body.startY, packet.body.currentZone);
         }
         private void HandleInventoryRes(STPacket<InventoryResBody> packet)
         {
@@ -106,6 +106,18 @@ namespace ClientCore.Network
         public void HandleFullState((ushort, FullStateField[]) res)
         {
             _viewModel.FullReceived(res.Item1, res.Item2);
+        } 
+        public void HandleMonsterDelta((ushort, MonsterDeltaField[]) res)
+        {
+            _viewModel.MonsterDeltaReceived(res.Item1, res.Item2);
+        }
+        public void HandleMonsterFull((ushort, MonsterFullField[]) res)
+        {
+            _viewModel.MonsterFullReceived(res.Item1, res.Item2);
+        }
+        public void HandleActionReult((ushort, ActionResultField[]) res)
+        {
+            _viewModel.ActionResultReceived(res.Item1, res.Item2);
         }
         public void HandlePing(STPacket<Ping> packet)
         {
