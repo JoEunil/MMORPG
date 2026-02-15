@@ -6,7 +6,6 @@
 #include "MessageTypes.h"
 
 namespace Core {
-    class ILogger;
     class PacketWriter;
     class Message;
     class MessagePool;
@@ -15,20 +14,18 @@ namespace Core {
     
     class MessageQueueHandler {
         // 캐시 or db 요청 결과 처리
-        ILogger* logger;
         PacketWriter* writer;
         IIOCP* iocp;
         LobbyZone* lobbyZone;
         MessagePool* messagePool;
-        void Initialize(IIOCP* i, ILogger* l, PacketWriter* w, LobbyZone* lo, MessagePool* msgPool) noexcept {
+        void Initialize(IIOCP* i, PacketWriter* w, LobbyZone* lo, MessagePool* msgPool) noexcept {
             iocp = i;
-            logger = l;
             writer = w;
             lobbyZone = lo;
             messagePool = msgPool;
         }
         bool IsReady() {
-            if (iocp == nullptr || logger == nullptr || writer == nullptr)
+            if (iocp == nullptr || writer == nullptr)
                 return false;
             return true;
         }

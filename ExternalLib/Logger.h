@@ -3,13 +3,14 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/async.h>
 #include <spdlog/sinks/basic_file_sink.h>
-
+#include <nlohmann/json.hpp>
 #include <string>
 #include <memory>
 #include <atomic>
+#include <thread>
 
 #include <CoreLib/ILogger.h>
-
+#include "JsonUtility.h"
 #include "Config.h"
 
 namespace External {
@@ -40,13 +41,13 @@ namespace External {
 
         void LogError(const std::string& msg) {
             if (m_running.load()) {
-                m_logger->error(msg);
+                m_logger->info(msg);
             }
         }
 
         void LogWarn(const std::string& msg) {
             if (m_running.load()) {
-                m_logger->warn(msg);
+                m_logger->info(msg);
             }
         }
     };

@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "PacketTypes.h"
+#include "LoggerGlobal.h"
 #include "Config.h"
 #include <CoreLib/IPacket.h>
 #include <BaseLib/LockFreeQueue.h>
@@ -47,6 +48,7 @@ namespace Core {
     
     class IIOCP;
     class PacketWriter;
+    class CorePerfCollector;
     class ChatThreadPool {
 		// Chat 패킷 처리. 확장 및 성능을 위해 Zone Thread와 분리.
         // Chat 확장성을 위해 사용. (전채 채널 채팅, 귓속말, 채팅창을 통한 상호작용 등)
@@ -81,19 +83,24 @@ namespace Core {
             }   
         };
 
-        void Initialize(IIOCP* i, PacketWriter* w) {
+        void Initialize(IIOCP* i, PacketWriter* w, CorePerfCollector* p) {
             iocp = i;
             writer = w;
+            perfCollector = p;
             m_sessionChatIdMap.reserve(MAX_USER_CAPACITY);
             m_zoneMembers.resize(ZONE_COUNT);
             m_chatIdGenerater.store(1);
         }
 
         bool IsReady() {
-            if (iocp == nullptr)
+            if (iocp == nullptr) {
+                sysLogger->LogError("chat thread", "iocp not initialized");
                 return false;
-            if (writer == nullptr)
+            }
+            if (writer == nullptr) {
+                sysLogger->LogError("chat thread", "writer not initialized");
                 return false;
+            }
             return true;
         }
         void Start() {
@@ -125,6 +132,7 @@ namespace Core {
 
         PacketWriter* writer;
         IIOCP* iocp;
+        CorePerfCollector* perfCollector;
         friend class Initializer;
 
     public:

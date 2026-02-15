@@ -9,7 +9,8 @@
 #include "ZoneHandler.h"
 #include "IPacketView.h"
 #include "PacketTypes.h"
-#include "ILogger.h"
+#include "LoggerGlobal.h"
+#include "CorePerfCollector.h"
 #include "Config.h"
 
 namespace Core {
@@ -19,7 +20,11 @@ namespace Core {
         auto lastDeltaSnapshot = lastTick;
         auto lastFullSnapshot = lastTick;
 
-        logger->LogInfo(std::format("zone thread started id {}", zoneID));
+        auto tid = std::this_thread::get_id();
+        std::stringstream ss;
+        ss << tid;
+        sysLogger->LogInfo("zone thread", "zone thread started", "threadID", ss.str());
+
         handler->SpawnMonster(zoneID);
         while (t->running) {
             handler->SkillCoolDown(zoneID);
@@ -32,6 +37,7 @@ namespace Core {
                 packet = t->workQueue.pop();
                 processed++;
             }
+            perfCollector->AddPacketProcessCnt(zoneID, processed);
             handler->ApplySkill(zoneID);
             handler->UpdateMonster(zoneID);
             handler->FlushCheat(zoneID);
@@ -50,12 +56,10 @@ namespace Core {
             now = std::chrono::steady_clock::now();
             auto tickElapsed = now - lastTick;
 
-            #ifdef _DEBUG
             auto delay = tickElapsed - GAME_TICK;
             if (delay > std::chrono::milliseconds(50)) {
-                logger->LogWarn(std::format("zone: {}, tick delayed: {}", zoneID, std::chrono::duration_cast<std::chrono::milliseconds>(delay)));
+                sysLogger->LogWarn("zone thread", "tick delayed", "zoneID",  zoneID, "delay", std::chrono::duration_cast<std::chrono::milliseconds>(delay).count());
             }
-            #endif
 
             auto sleepDur = GAME_TICK - tickElapsed;
             if (sleepDur > std::chrono::milliseconds(15)) {
@@ -80,14 +84,14 @@ namespace Core {
             DWORD_PTR prevMask = SetThreadAffinityMask((HANDLE)m_threads[i].thread.native_handle(), mask); // 스레드 코어 고정
             
             if (prevMask == 0) {
-                logger->LogError("Failed to set thread affinity for zone " + std::to_string(i+1));
+                sysLogger->LogError("zone thread", "Failed to set thread affinity", "zoneID", i+1);
             }
             
             //thread 우선순위 설정, std::thread에서는 할 수없어서 win32 API 통해서
             HANDLE h = (HANDLE)m_threads[i].thread.native_handle();
             // HIGH PRIORITY
             if (!::SetThreadPriority(h, THREAD_PRIORITY_HIGHEST)) {
-                logger->LogError("Failed to set priority, zone {} thread" + std::to_string(i+1));
+                sysLogger->LogError("zone thread", "Failed to set priority", "zoneID", i + 1);
             }
             
         }
@@ -100,6 +104,7 @@ namespace Core {
             if (t.thread.joinable())
                 t.thread.join();
         }
+        sysLogger->LogInfo("zone thread", "zone thread stopped");
     }
 
     void ZoneThreadSet::EnqueueWork(std::unique_ptr<Core::IPacketView, PacketViewDeleter> pv, uint16_t zoneID) {

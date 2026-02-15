@@ -5,6 +5,7 @@
 #include <vector>
 #include "STOverlappedEx.h"
 #include "Config.h"
+#include <CoreLib/LoggerGlobal.h>
 
 
 namespace Net {

@@ -19,8 +19,7 @@ namespace Cache {
         DBConnectionPool* connectionPool;
         CacheStorage5* cache_5;
         Core::ILogger* logger;
-        void Initialize(Core::ILogger* l, Core::IMessageQueue* mq,  MessagePool* mp, DBConnectionPool* conn, CacheStorage5* c) {
-            logger = l;
+        void Initialize(Core::IMessageQueue* mq,  MessagePool* mp, DBConnectionPool* conn, CacheStorage5* c) {
             messageQ = mq;
             messagePool = mp;
             connectionPool = conn;

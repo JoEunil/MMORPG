@@ -39,6 +39,7 @@ namespace Core {
 			}
 		}
 	}
+
 	void ZoneState::PopSkill(int idx, std::vector<ActiveSkill>& list) {
 		std::swap(list[idx], list.back());
 		list.pop_back();
@@ -91,8 +92,9 @@ namespace Core {
 			skill.currentTick = 0;
 		}
 	}
+
 	void ZoneState::ApplyHit(std::optional<std::reference_wrapper<CharacterState>> c, ActiveSkill& skill, Cell& cell) {
-		
+		perfCollector->AddHitCnt(m_zoneID);
 		auto& skillData = Data::skillList[skill.skillId];
 		auto& phase = skillData.phases[skill.currentPhase];
 		bool AOE = skillData.flags & 0x02; // 광역기

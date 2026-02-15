@@ -20,7 +20,6 @@ namespace External {
             spdlog::thread_pool(),
             spdlog::async_overflow_policy::block
         );
-        m_logger->set_pattern("[%Y-%m-%d %H:%M:%S] [%l] %v");
         m_logger->set_level(spdlog::level::info);
         // 출력할 로그의 최소 레벨 기준
         m_logger->flush_on(spdlog::level::warn);

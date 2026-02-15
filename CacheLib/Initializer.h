@@ -7,8 +7,8 @@
 #include "CacheStorage.h"
 #include "InmemoryQueue.h"
 #include "Handler.h"
-#include <CoreLib/Ilogger.h>
 #include <CoreLib/IMessageQueue.h>
+#include <CoreLib/LoggerGlobal.h>
 
 namespace Cache {
 	class Initializer {
@@ -34,36 +34,29 @@ namespace Cache {
             dispatcher.Initialize(&flush, &cache_5);
         }
         
-        void InjectDependencies(Core::IMessageQueue* sendMQ, Core::ILogger* logger)
+        void InjectDependencies(Core::IMessageQueue* sendMQ)
         {
-            handler.Initialize(logger, sendMQ, &msgPool, &connectionPool, &cache_5);
+            handler.Initialize(sendMQ, &msgPool, &connectionPool, &cache_5);
             recvMQ.Initialize(&handler, &msgPool);
             recvMQ.Start();
         }
         
-        bool CheckReady(Core::ILogger* logger) {
-            logger->LogInfo("Cache check ready start");
+        bool CheckReady() {
             if (!dispatcher.IsReady()) {
-                logger->LogError("check ready failed, dispatcher");
                 return false;
             }
             if (!flush.IsReady()) {
-                logger->LogError("check ready failed, flush");
                 return false;
             }
             if (!msgPool.IsReady()) {
-                logger->LogError("check ready failed, remsgPoolcvMQ");
                 return false;
             }
             if (!recvMQ.IsReady()) {
-                logger->LogError("check ready failed, recvMQ");
                 return false;
             }
             if (!cache_5.IsReady()) {
-                logger->LogError("check ready failed, cache_5");
                 return false;
             }
-            logger->LogWarn("Cache check ready success");
         }
         
         void CleanUp1() {

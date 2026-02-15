@@ -7,8 +7,6 @@
 #include "MessageQueueHandler.h"
 #include "ZoneState.h"
 #include "PacketWriter.h"
-
-#include "ILogger.h"
 #include "IIOCP.h"
 #include "IMessageQueue.h"
 #include "StateManager.h"
@@ -21,6 +19,8 @@
 #include "LobbyZone.h"
 #include "IPingPacketWriter.h"
 #include "ChatThreadPool.h"
+
+#include "LoggerGlobal.h"
 
 namespace Core {
     class Initializer {
@@ -37,6 +37,7 @@ namespace Core {
         PacketDispatcher packetDispatcher;
         LobbyZone lobbyZone;
         ChatThreadPool chat;
+        CorePerfCollector perfCollector;
 
     public:
         void Initialize() {
@@ -47,76 +48,70 @@ namespace Core {
             CleanUp2();
         }
         
-        void InjectDependencies1(IIOCP* iocp, ILogger* logger,IPacketPool* packetPool, IPacketPool* bigPacketPool) {
-            broadcastPool.Initialize(iocp, &stateManager);
-            lobbyZone.Initialize(logger, &stateManager);
-            noneZoneThreadPool.Initialize(logger , &noneZoneHandler);
-            zoneThreadSet.Initialize(&zoneHandler, logger);
+        void InjectDependencies1(IIOCP* iocp, IPacketPool* packetPool, IPacketPool* bigPacketPool) {
+            perfCollector.Initialize();
+            broadcastPool.Initialize(iocp, &stateManager, &perfCollector);
+            lobbyZone.Initialize(& stateManager);
+            noneZoneThreadPool.Initialize( &noneZoneHandler);
+            zoneThreadSet.Initialize(&zoneHandler, &perfCollector);
             writer.Initialize(packetPool, bigPacketPool);
-            mqHandler.Initialize(iocp, logger, &writer, &lobbyZone, &msgPool);
+            mqHandler.Initialize(iocp, &writer, &lobbyZone, &msgPool);
             recvMQ.Initialize(&mqHandler, &msgPool);
             recvMQ.Start();
-            chat.Initialize(iocp, &writer);
+            chat.Initialize(iocp, &writer, &perfCollector);
         }
         
-        void InjectDependencies2(IIOCP* iocp, ILogger* logger, ISessionAuth* session, IMessageQueue* sendMQ, IPacketPool* packetPool) {
+        void InjectDependencies2(IIOCP* iocp, ISessionAuth* session, IMessageQueue* sendMQ, IPacketPool* packetPool) {
             stateManager.Initialize(sendMQ, iocp, &msgPool, packetPool, &lobbyZone, &chat);
-            packetDispatcher.Initialize(&noneZoneThreadPool, &zoneThreadSet, logger, &stateManager, static_cast<IPingPacketWriter*>(&writer), iocp);
+            packetDispatcher.Initialize(&noneZoneThreadPool, &zoneThreadSet, &stateManager, static_cast<IPingPacketWriter*>(&writer), iocp);
             noneZoneThreadPool.Start();
             broadcastPool.Start();
-            ZoneState::Initialize(logger, &broadcastPool, &writer, &stateManager);
-            zoneHandler.Initialize(logger, &stateManager);
-            noneZoneHandler.Initialize(iocp, logger, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone, &chat);
+            ZoneState::Initialize(&broadcastPool, &writer, &stateManager, &perfCollector);
+            zoneHandler.Initialize(&stateManager);
+            noneZoneHandler.Initialize(iocp, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone, &chat);
             zoneThreadSet.Start();
             chat.Start();
+            perfCollector.Start();
         }
         
-        bool CheckReady(ILogger* logger) {
-            logger->LogInfo("Core check ready start");
+        bool CheckReady() {
             if (!writer.IsReady()) {
-                logger->LogError("check ready failed, writer");
                 return false;
             }
             if (!msgPool.IsReady()) {
-                logger->LogError("check ready failed, msgPool");
                 return false;
             }
             if (!mqHandler.IsReady()) {
-                logger->LogError("check ready failed, mqHandler");
                 return false;
             }
             if (!recvMQ.IsReady()) {
-                logger->LogError("check ready failed, recvMQ, CoreLib");
                 return false;
             }
             if (!zoneHandler.IsReady()) {
-                logger->LogError("check ready failed, ZoneHandler");
                 return false;
             }
             if (!ZoneState::IsReady()) {
-                logger->LogError("check ready failed, ZoneState");
                 return false;
             }
             if (!broadcastPool.IsReady()) {
-                logger->LogError("check ready failed, broadcastPool");
                 return false;
             }
             if (!zoneThreadSet.IsReady()) {
-                logger->LogError("check ready failed, zoneThreadSet");
                 return false;
             }
             if (!lobbyZone.IsReady()) {
-                logger->LogError("check ready failed, lobbyZone");
                 return false;
             }
             if (!stateManager.IsReady()) {
-                logger->LogError("check ready failed, stateManager");
                 return false;
             }
             if (!chat.IsReady()) {
-                logger->LogError("check ready failed, chatThreadPool");
+                return false;
             }
-            logger->LogWarn("Core check ready success");
+            if (!perfCollector.IsReady()) {
+                return false;
+            }
+            return true;
         }
 
         IPacketDispatcher* GetPacketDispatcher() {

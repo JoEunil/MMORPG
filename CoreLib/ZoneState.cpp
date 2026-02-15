@@ -4,12 +4,10 @@
 #include "ILogger.h"
 #include "PacketWriter.h"
 #include "StateManager.h"
-
-#include <iostream>
+#include "LoggerGlobal.h"
 
 namespace Core {
     void ZoneState::RemoveFromCell(CharacterState& character) {
-        std::cout << "remove Cell: " << character.cellIdx << " x " << (int)character.cellX << " y " << (int)character.cellY << "\n";
         auto& vec = m_cells[character.cellY][character.cellX].charSessions;
         uint16_t deleteIdx = character.cellIdx;
 
@@ -35,7 +33,6 @@ namespace Core {
         character.skillSlot.push_back(SkillSlotEntry(0, 0));
         character.skillSlot.push_back(SkillSlotEntry(1, 0));
         character.skillSlot.push_back(SkillSlotEntry(2, 0));
-        std::cout << "add Cell: " << character.cellIdx <<  " x " << (int)x << " y " << (int)y << "\n";
     }
 
     uint64_t ZoneState::ImmigrateChar(uint64_t sessionID, CharacterState& state) {
@@ -44,11 +41,13 @@ namespace Core {
         std::lock_guard<std::mutex> lock(m_mutex);
         
         uint16_t index = static_cast<uint16_t>(m_chars.size());
-        if(index >= MAX_ZONE_CAPACITY)
+        if (index >= MAX_ZONE_CAPACITY) {
+            errorLogger->LogError("zone state", "zone full", "zoneID", m_zoneID, "sessionID", sessionID, "index", index);
             return 0;
+        }
         auto it = m_sessionToIndex.find(sessionID);
         if (it != m_sessionToIndex.end()) {
-            logger->LogError(std::format("ImmigrageChar Failed sessionID already exists in zone {}! sessionID={}", m_zoneID, sessionID));
+            errorLogger->LogError("zone state", "ImmigrageChar Failed sessionID already exists","zoneID", m_zoneID, "sessionID", sessionID);
             return 0;
         }
         auto [x, y] = GetCell(state.x, state.y, m_area);
@@ -57,7 +56,6 @@ namespace Core {
         m_chars.push_back(state);
         m_sessionToIndex[sessionID] = index;
         m_InternalIDToIndex[state.zoneInternalID] = index;
-        std::cout << "immigrate zone: " << m_zoneID << " x " << x << " y " << y << "\n";
         stateManager->SetZoneID(sessionID, m_zoneID);
         
         return state.zoneInternalID;
@@ -67,7 +65,7 @@ namespace Core {
         std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_sessionToIndex.find(sessionID);
         if (it == m_sessionToIndex.end()){
-            logger->LogError(std::format("EmigrageChar Failed sessionID not exists in zone {}! sessionID={}",m_zoneID, sessionID));
+            errorLogger->LogError("zone state", "EmigrageChar Failed sessionID not exists", "zoneID", m_zoneID, "sessionID", sessionID);
             return false;
         }
         o = m_chars[it->second]; // out 복사
@@ -80,7 +78,6 @@ namespace Core {
         m_chars.pop_back();
         m_sessionToIndex.erase(sessionID); 
         m_InternalIDToIndex.erase(o.zoneInternalID); 
-        logger->LogInfo("After EmigrateChar, chars.size=" + std::to_string(m_chars.size()));
         return true;
     }
 

@@ -2,7 +2,7 @@
 #include "PacketDispatcher.h"
 #include "PacketTypes.h"
 #include "StateManager.h"
-#include "ILogger.h"
+#include "LoggerGlobal.h"
 
 namespace Core {
     void PacketDispatcher::Process(std::unique_ptr<IPacketView, PacketViewDeleter> pv) {
@@ -15,7 +15,7 @@ namespace Core {
         if (isSimulation) {
             int16_t zoneID = stateManager->GetZoneID(sessionID);
             if (zoneID <= 0) {
-                logger->LogWarn(std::format("Invalid ZoneID, sessionID: {}", pv->GetSessionID()));
+                errorLogger->LogWarn("packet dispatcher", "Invalid ZoneID", "zoneID", zoneID, "sessionID", pv->GetSessionID());
                 return;
             }
             zoneThreadSet->EnqueueWork(std::move(pv), zoneID);

@@ -14,12 +14,12 @@
 #include "MonsterState.h"
 #include "Config.h"
 #include "SkillData.h"
-
+#include "CorePerfCollector.h"
 #include <BaseLib/TripleBufferAdvanced.h>
+#include <CoreLib/LoggerGlobal.h>
 
 namespace Core {
     class IPacket;
-    class ILogger;
     class BroadcastThreadPool;
     class PacketWriter;
     class StateManager; 
@@ -44,25 +44,30 @@ namespace Core {
         uint16_t m_zoneID;
         ZoneArea m_area;
         std::array<std::array<Cell, CELLS_X>, CELLS_Y> m_cells;
+        std::atomic<uint32_t>m_userCnt;
 
         Base::TripleBufferAdvanced<std::vector<std::vector<uint64_t>>> tripleBuffer;
         std::vector<std::vector<uint64_t>>* sessionSnapshotWriter;
 
         inline static BroadcastThreadPool* broadcast;
-        inline static ILogger* logger;
         inline static PacketWriter* writer;
         inline static StateManager* stateManager;
-        static void Initialize(ILogger* l, BroadcastThreadPool* b, PacketWriter* p, StateManager* s) {
-            logger = l;
+        inline static CorePerfCollector* perfCollector;
+        static void Initialize(BroadcastThreadPool* b, PacketWriter* p, StateManager* s, CorePerfCollector* pc) {
             broadcast = b;
             writer = p;
             stateManager = s;
+            perfCollector = pc;
         }
         static bool IsReady() {
-            if (broadcast == nullptr)
+            if (broadcast == nullptr) {
+                sysLogger->LogError("zone state", "broadcast not initialized");
                 return false;
-            if(writer == nullptr)
+            }
+            if(writer == nullptr) {
+                sysLogger->LogError("zone state", "writer not initialized");
                 return false;
+            }
             return true;
         }
 
@@ -96,6 +101,7 @@ namespace Core {
             tripleBuffer.Init(back1, back2);
 
             m_monsters.reserve(MAX_MONSTER_COUNT);
+            m_userCnt.store(0, std::memory_order_relaxed);
         }
         void InitializeMonster();
         uint64_t ImmigrateChar(uint64_t sessionID, CharacterState& user);
@@ -120,5 +126,8 @@ namespace Core {
         void ApplyHit(std::optional<std::reference_wrapper<CharacterState>> caster, ActiveSkill& skill, Cell& cell);
         void MoveToward(MonsterState& monster, CharacterState& character);
         void MoveAround(MonsterState& monster);
+        uint32_t GetUserCnt() {
+            return m_userCnt.load(std::memory_order_relaxed);
+        }
     };
 }

@@ -25,13 +25,13 @@ int main(int argc, char* argv[]) {
     std::cout << " 서버 시작" << std::endl;
     External::Logger::Initialize();
 
-    Core::sysLogger = std::unique_ptr<External::Logger>();
+    Core::sysLogger = std::make_unique<External::Logger>();
     Core::sysLogger->CreateSink("system.log");
-    Core::gameLogger = std::unique_ptr<External::Logger>();
+    Core::gameLogger = std::make_unique<External::Logger>();
     Core::gameLogger->CreateSink("game.log");
-    Core::errorLogger = std::unique_ptr<External::Logger>();
+    Core::errorLogger = std::make_unique<External::Logger>();
     Core::errorLogger->CreateSink("error.log");
-    Core::perfLogger = std::unique_ptr<External::Logger>();
+    Core::perfLogger = std::make_unique<External::Logger>();
     Core::perfLogger->CreateSink("perf.log");
     try {
         External::SessionAuth auth;

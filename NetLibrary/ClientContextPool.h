@@ -6,6 +6,7 @@
 #include <winsock2.h>    
 #include <cstdint>
 
+#include <CoreLib/LoggerGlobal.h>
 #include <BaseLib/RingQueue.h>
 #include "Config.h"
 

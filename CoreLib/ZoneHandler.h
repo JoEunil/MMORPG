@@ -7,7 +7,6 @@
 #include "PacketTypes.h"
 
 namespace Core {
-    class ILogger;
     class ISessionAuth;
     class IPacketView;
     class IIOCP;
@@ -16,17 +15,17 @@ namespace Core {
     class IMessageQueue;
 
     class ZoneHandler {
-        ILogger* logger;
         StateManager* stateManager;
         
-        void Initialize(ILogger* l, StateManager* m) {
-            logger = l;
+        void Initialize(StateManager* m) {
             stateManager = m;
         }
 
         bool IsReady() {
-            if (logger == nullptr) return false;
-            if (stateManager == nullptr) return false;
+            if (stateManager == nullptr) {
+                sysLogger->LogError("zone handler", "stateManager not initialized");
+                return false;
+            }
             return true;
         }
         

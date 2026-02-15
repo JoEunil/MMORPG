@@ -6,6 +6,7 @@
 
 #include <CoreLib/IPacket.h>
 #include <CoreLib/IPacketPool.h>
+#include <CoreLib/LoggerGlobal.h>
 
 namespace Net {
     class Packet;

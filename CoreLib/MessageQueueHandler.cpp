@@ -3,16 +3,16 @@
 #include "Message.h"
 #include "MessageTypes.h"
 #include "MessagePool.h"
-#include "ILogger.h"
 #include "IIOCP.h"
 #include "PacketWriter.h"
 #include "LobbyZone.h"
+#include "LoggerGlobal.h"
 #include "Config.h"
 
 namespace Core {
     void MessageQueueHandler::Process(Message* msg) {
         if (msg == nullptr) {
-            logger->LogError("MessageQueueHandler: Invlid Message");
+            errorLogger->LogError("mq handler", "Invlid Message");
             return;
         }
         MsgHeader* header = parseMsgHeader(msg->GetBuffer());
@@ -30,13 +30,12 @@ namespace Core {
             InventoryUpdateResponse(header->sessionID, parseMsgBody<MsgInventoryUpdateResBody>(msg->GetBuffer()));
             break;
         default:
-            logger->LogError(std::format("MessageQueueHandler: undefined message type {}", header->messageType));
+            errorLogger->LogError("mq handler", "invalid message type");
         }
         messagePool->Return(msg);
     }
 
     void MessageQueueHandler::CharacterListResponse(uint64_t sessionID, MsgCharacterListResBody* body) {
-        logger->LogError("CharacterList received");
         iocp->SendData(sessionID, writer->WriteCharacterListResponse(body));
     }
 
@@ -59,7 +58,7 @@ namespace Core {
             temp.x = body->startX;
             temp.y = body->startY;
             if (!lobbyZone->ImmigrateChar(sessionID, temp)) {
-                logger->LogError("Immigrate to LobbyZone Failed");
+                return;
             }
         }
 

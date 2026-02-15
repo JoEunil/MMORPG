@@ -34,6 +34,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Concept", "Concept", "{C8D5
 		IOCP&epoll.md = IOCP&epoll.md
 		LockFreeQueue.md = LockFreeQueue.md
 		memory_order.md = memory_order.md
+		Monster.md = Monster.md
+		Skill.md = Skill.md
+		StructuredLogging.md = StructuredLogging.md
 		TripleBuffer.md = TripleBuffer.md
 	EndProjectSection
 EndProject

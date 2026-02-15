@@ -14,7 +14,6 @@ namespace External {
         redisAsyncContext* m_context = nullptr;
         struct event_base* m_eventBase = nullptr;
         std::thread m_thread;
-        Logger* logger;
     public:
         ~SessionAuth() {
             if (m_context) {
@@ -28,7 +27,7 @@ namespace External {
                 m_thread.join();
             }
          }
-        void Initialize(Logger* logger);
+        void Initialize();
         void CheckSession(Core::SessionCallbackData* privdata) override;
     };
 }

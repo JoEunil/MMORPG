@@ -3,7 +3,6 @@
 
 #include "PacketTypes.h"
 #include "IPacketView.h"
-#include "ILogger.h"
 #include "ISessionAuth.h"
 #include "IIOCP.h"
 #include "PacketWriter.h"
@@ -14,18 +13,17 @@
 #include "StateManager.h"
 #include "LobbyZone.h"
 #include "ChatThreadPool.h"
+#include "LoggerGlobal.h"
 #include "Config.h"
 
 namespace Core {
     static IIOCP* iocp;
-    static PacketWriter* writer;
-    static ILogger* logger;
+    static PacketWriter* writer;\
     static StateManager* stateManager;
     // 콜백에서 쓰기 위함
 
-    void NoneZoneHandler::Initialize(IIOCP* i, ILogger* l, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c) {
+    void NoneZoneHandler::Initialize(IIOCP* i, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c) {
         iocp = i;
-        logger = l;
         auth = s;
         writer = p;
         messagePool = m;
@@ -37,7 +35,6 @@ namespace Core {
 
     bool NoneZoneHandler::IsReady() {
         if (iocp == nullptr) return false;
-        if (logger == nullptr) return false;
         if (auth == nullptr) return false;
         if (writer == nullptr) return false;
         if (messagePool == nullptr) return false;
@@ -73,7 +70,7 @@ namespace Core {
                 ZoneChange(p);
                 break;
             default:
-                logger->LogInfo(std::format("None Zone handler UnDefined OPCODE {} {}, session {}, flag {}, magic {}", p->GetOpcode(), h->opcode, p->GetSessionID(), h->flags, h->magic));
+                errorLogger->LogInfo("none zone handler",  "UnDefined OPCODE", "opcode", p->GetOpcode(),"header opcode", h->opcode,"sessionId", p->GetSessionID());
                 break;
         }
         
@@ -175,13 +172,13 @@ namespace Core {
         {
             case ZONE_CHANGE::ENTER : {
                 if (zoneID != 0) {
-                    logger->LogError("ZoneID != 0");
+                    errorLogger->LogError("none zone handler", "zone enter failed ZoneID != 0", "session", session, "zoneID", zoneID);
                     iocp->SendData(session, writer->WriteZoneChangeFailed());
                     return;
                 }
                 CharacterState temp;
                 if (!lobbyZone->EmigrateChar(session, temp)) {
-                    logger->LogError("EmigrateChar Failed");
+                    errorLogger->LogError("none zone handler", "EmigrateChar from LobbyZone failed", "session", session);
                     iocp->SendData(session, writer->WriteZoneChangeFailed());
                     return;
                 }
@@ -194,7 +191,7 @@ namespace Core {
                     if (!lobbyZone->ImmigrateChar(session, temp)) // 다시 Lobby Zone으로
                         Disconnect(session);
                     iocp->SendData(session, writer->WriteZoneChangeFailed());
-                    logger->LogError("ImmigrateChar Failed");
+                    errorLogger->LogError("none zone handler", "ImmigrateChar Failed", "session", session, "zone", zoneID);
                     return;
                 }
                 else {

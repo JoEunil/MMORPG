@@ -35,6 +35,10 @@ namespace Net {
                 Core::sysLogger->LogError("net perf", "overlappedPool not initialized");
                 return false;
             }
+            if (contextPool == nullptr) {
+                Core::sysLogger->LogError("net perf", "contextPool not initialized");
+                return false;
+            }
             return true;
         }
         SessionManager* sessionManager;
@@ -44,7 +48,7 @@ namespace Net {
         friend class Initializer;
     public:
         void Start() {
-            m_thread = std::thread(ThreadFunc);
+            m_thread = std::thread(&NetPerfCollector::ThreadFunc, this);
         }
         void Stop() {
             m_running.store(false, std::memory_order_relaxed);
@@ -55,7 +59,9 @@ namespace Net {
         void ThreadFunc() {
             m_running.store(true, std::memory_order_relaxed);
             auto tid = std::this_thread::get_id();
-            Core::sysLogger->LogInfo("net perf", "Net perf collector thread started", "threadID", tid);
+            std::stringstream ss;
+            ss << tid;
+            Core::sysLogger->LogInfo("net perf", "Net perf collector thread started", "threadID", ss.str());
             while (m_running.load(std::memory_order_relaxed)) 
             {
                 Flush();
@@ -70,20 +76,31 @@ namespace Net {
             auto cPool = contextPool->GetContextPoolSize();
             auto working = contextPool->GetWorkingCnt();
             auto flush = contextPool->GetFlushQueueSize();
-            for (int i = 0; i < IOCP_THREADPOOL_SIZE; i++)
-            {
-                m_recvCount[i].load(std::memory_order_relaxed);
-            }
-            jitter.load(std::memory_order_relaxed);
-            Core::perfLogger->LogInfo("net perf", "perf log per sec", "connection", connection);
-            for (int i = 0; i < IOCP_THREADPOOL_SIZE; i++)
-            {
-                m_recvCount[i].store(0,std::memory_order_relaxed);
-            }
+            auto jit = jitter.load(std::memory_order_relaxed);
             jitter.store(0, std::memory_order_relaxed);
+            Core::perfLogger->LogInfo(
+                "net perf",
+                "perf log per sec",
+                "connection", connection,
+                "packetPool", pPool,
+                "overlappedPool", oPool,
+                "contextPool", cPool,
+                "workingCnt", working,
+                "flushQueue", flush,
+                "jitter", jit
+            );
+            for (int i = 0; i < IOCP_THREADPOOL_SIZE; i++)
+            {
+                Core::perfLogger->LogInfo("net perf", "iocp worker log per sec", "index", i, "recv", m_recvCount[i].load(std::memory_order_relaxed));
+                m_recvCount[i].store(0, std::memory_order_relaxed);
+            }
         }
         
         void AddRecvCnt(int index) {
+            if (index >= IOCP_THREADPOOL_SIZE) {
+                Core::errorLogger->LogInfo("net perf", "AddRecvCnt index out of bound", "index", index);
+                return;
+            }
             m_recvCount[index].fetch_add(1, std::memory_order_relaxed);
         }
         void AddJitterCnt() {

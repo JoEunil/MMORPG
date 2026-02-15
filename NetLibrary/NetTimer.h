@@ -22,7 +22,9 @@ namespace Net {
 		static void ThreadFunc() {
 			m_running.store(true, std::memory_order_relaxed);
 			auto tid = std::this_thread::get_id();
-			Core::sysLogger->LogInfo("net timer", "Net timer thread started", "threadID", tid);
+			std::stringstream ss;
+			ss << tid;
+			Core::sysLogger->LogInfo("net timer", "Net timer thread started", "threadID", ss.str());
 			while (m_running.load()) {
 				auto now = std::chrono::steady_clock::now();
 				uint64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();

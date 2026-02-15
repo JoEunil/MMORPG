@@ -126,6 +126,12 @@
     <ClInclude Include="Cell.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="LoggerGlobal.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="CorePerfCollector.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -187,6 +193,9 @@
     </ClCompile>
     <ClCompile Include="SkillData_Range.cpp">
       <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="LoggerGlobal.cpp">
+      <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

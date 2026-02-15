@@ -90,7 +90,7 @@ namespace Net {
         m_threads.resize(IOCP_THREADPOOL_SIZE);
         for (int i = 0; i < IOCP_THREADPOOL_SIZE; i++)
         {
-            m_threads[i] = std::thread(&IOCP::WorkerThreadFunc, i, this);
+            m_threads[i] = std::thread(&IOCP::WorkerThreadFunc, this, i);
             HANDLE h = (HANDLE)m_threads[i].native_handle();
             // zone 스레드보다는 우선순위 낮고, 다른 스레드풀 보다는 우선순위 높게
             if (!::SetThreadPriority(h, THREAD_PRIORITY_ABOVE_NORMAL)) {
@@ -133,7 +133,9 @@ namespace Net {
     void IOCP::WorkerThreadFunc(const int index)
     {
         auto tid = std::this_thread::get_id();
-        Core::sysLogger->LogInfo("iocp", "iocp worker thread started", "threadID", tid, "thread index", index);
+        std::stringstream ss;
+        ss << tid;
+        Core::sysLogger->LogInfo("iocp", "iocp worker thread started", "threadID", ss.str(), "thread index", index);
 
         int current_thread = GetCurrentThreadId();
         while (m_isRunning.load())

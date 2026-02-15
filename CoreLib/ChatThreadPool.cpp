@@ -2,15 +2,21 @@
 #include "ChatThreadPool.h"
 #include "IIOCP.h"
 #include "PacketWriter.h"
+#include "CorePerfCollector.h"
 
 namespace Core {
     void ChatThreadPool::ThreadFunc() {
+        auto tid = std::this_thread::get_id();
+        std::stringstream ss;
+        ss << tid;
+        sysLogger->LogInfo("chat thread", "chat thread started", "threadID", ss.str());
         m_running.store(true);
         std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash> tempPackets;
         tempPackets.reserve(100);
 
         while (m_running)
         {
+            perfCollector->ChatTick();
             int loop = 100; 
             bool processed = false;
             ChatEvent curr;
@@ -51,6 +57,7 @@ namespace Core {
                     //case ChatEventType::PARTY_JOIN: break;
                     //case ChatEventType::PARTY_LEAVE: break;
                 default:
+                    errorLogger->LogInfo("chat thread", "undefined chat event", "chatID", chatID);
                     break;
                    // "undefined chat event type"
                 }
@@ -102,14 +109,20 @@ namespace Core {
             uint64_t& destChatID = curr.key.id;
             auto it = m_chatIdSessionMap.find(destChatID);
             if (it == m_chatIdSessionMap.end()) {
-                // whisper dest user not exist
                 return;
             }
             SendPacketUnique(it->second, std::move(packet));
             auto senderPacket = writer->GetChatWhisperPacket(chatID, userName, curr.message);
             SendPacketUnique(curr.senderSessionID, std::move(packet));
+            perfCollector->AddChatSend(2);
+            return;
         }
-
+        if (curr.key.scope == CHAT_SCOPE::Global) {
+            perfCollector->AddChatSend(m_chatIdSessionMap.size());
+        }
+        if (curr.key.scope == CHAT_SCOPE::Zone) {
+            perfCollector->AddChatSend(m_zoneMembers[curr.key.id].size());
+        }
         auto it = tempPackets.find(curr.key);
         if (it != tempPackets.end()) {
             uint16_t count = writer->WriteChatBatchPacketField(it->second, chatID, userName, curr.message);
@@ -129,7 +142,7 @@ namespace Core {
     void ChatThreadPool::ProcessAddSession(uint64_t sessionID, uint64_t chatID, uint16_t zoneID, std::string& userName) {
         auto it = m_sessionChatIdMap.find(sessionID);
         if (it != m_sessionChatIdMap.end()) {
-            // "Chat ID exist in map";
+            errorLogger->LogInfo("chat thread", "chatID already exist", "chatID", chatID, "session", sessionID);
             return;
         }
         auto& node = m_sessionChatIdMap[sessionID];
@@ -141,7 +154,7 @@ namespace Core {
     void ChatThreadPool::ProcessDeleteSession(uint64_t sessionID, uint16_t zoneID) {
         auto it = m_sessionChatIdMap.find(sessionID);
         if (it == m_sessionChatIdMap.end()) {
-           // "Chat ID doesn't exist in map";
+            errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
             return;
         }
         m_chatIdSessionMap.erase(it->second.chatID);
@@ -150,7 +163,7 @@ namespace Core {
     void ChatThreadPool::ProcessZoneJoin(uint64_t sessionID, uint16_t zoneID) {
         auto it = m_zoneMembers[zoneID-1].find(sessionID);
         if (it != m_zoneMembers[zoneID-1].end()) {
-            // "session already exist in zone"
+            errorLogger->LogInfo("chat thread", "session already exist in zone", "session", sessionID, "zoneID", zoneID);
             return;
         }
         m_zoneMembers[zoneID-1].insert(sessionID);
@@ -158,7 +171,7 @@ namespace Core {
     void ChatThreadPool::ProcessZoneLeave(uint64_t sessionID, uint16_t zoneID) {
         auto it = m_zoneMembers[zoneID-1].find(sessionID);
         if (it == m_zoneMembers[zoneID-1].end()) {
-            // "session dosen't exist in zone"
+            errorLogger->LogInfo("chat thread", "session doesn't exist", "session", sessionID, "zoneID", zoneID);
             return;
         }
         m_zoneMembers[zoneID-1].erase(sessionID);
