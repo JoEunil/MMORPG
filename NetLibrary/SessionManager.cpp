@@ -32,6 +32,7 @@ namespace Net {
             Base::SpinLockGuard lock(shard.flag);
             shard.socketMap[session] = sock;
         }
+        Core::gameLogger->LogInfo("net session", "Session added", "sessionID", session, "socket", sock);
         return true;
     }
 
@@ -66,6 +67,7 @@ namespace Net {
             shard.socketMap.erase(session);
         }
         m_connectionCnt.fetch_sub(1);
+        Core::gameLogger->LogInfo("net session", "Session disconnected", "sessionID", session, "socket", sock);
         return true;
     }
 

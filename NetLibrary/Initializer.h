@@ -17,6 +17,7 @@
 #include "PingManager.h"
 #include "SessionManager.h"
 #include "NetTimer.h"
+#include "NetPerfCollector.h"
 
 #include <CoreLib/ILogger.h>
 #include <CoreLib/IIocp.h>
@@ -37,7 +38,7 @@ namespace Net {
         PacketPool bigPacketPool{ TARGET_BPACKETPOOL_SIZE, MAX_BPACKETPOOL_SIZE, MIN_BPACKETPOOL_SIZE, BIG_PACKET_LENGTH};
         PingManager pingManager;
         SessionManager sessionManager;
-
+        NetPerfCollector perfCollector;
     public:
         void Initialize() {
             NetTimer::StartThread();
@@ -47,6 +48,7 @@ namespace Net {
             bigPacketPool.Initialize();
             sessionManager.Initialize(&clientContextPool);
             netHandler.Initialize(&sessionManager, &iocp);
+            perfCollector.Initialize(&sessionManager, &packetPool, &overlappedExPool,&clientContextPool);
         }
         void CleanUp1() {
             pingManager.StopPing();
@@ -57,12 +59,13 @@ namespace Net {
             NetTimer::Stop();
         }
         
-        void InjectDependencies(Core::ILogger* l, Core::IPacketDispatcher* packetDispatcher) {
-            iocp.Initialize(l, &overlappedExPool, &netHandler, &sessionManager, &fatalError, &cv);
+        void InjectDependencies(Core::IPacketDispatcher* packetDispatcher) {
+            iocp.Initialize(&overlappedExPool, &netHandler, &sessionManager, &fatalError, &cv, &perfCollector);
             pingManager.Initialize(static_cast<IAbortSocket*>(&iocp), &sessionManager);
-            NetPacketFilter::Initialize(packetDispatcher, &sessionManager);
+            NetPacketFilter::Initialize(packetDispatcher, &sessionManager, &perfCollector);
             iocp.Start();
             pingManager.PingStart();
+            perfCollector.Start();
         }
         
         Core::IIOCP* GetIOCP() {
@@ -77,37 +80,36 @@ namespace Net {
             return static_cast<Core::IPacketPool*>(&bigPacketPool);
         }
 
-        bool CheckReady(Core::ILogger* logger) {
-            logger->LogInfo("Net check ready start");
+        bool CheckReady() {
             if (!overlappedExPool.IsReady()) {
-                logger->LogError("check ready failed, overlappedExPool");
                 return false;
             }
             if (!clientContextPool.IsReady()) {
-                logger->LogError("check ready failed, clientContextPool");
                 return false;
             }
             if (!packetPool.IsReady()) {
-                logger->LogError("check ready failed, packetPool");
                 return false;
             }
             if (!iocp.IsReady()) {
-                logger->LogError("check ready failed, iocp");
                 return false;
             }
             if (!netHandler.IsReady()) {
-                logger->LogError("check ready failed, netHandler");
                 return false;
             }
-            logger->LogWarn("Net check ready success");
+            if (!pingManager.IsReady()) {
+                return false;
+            }
+            if (!perfCollector.IsReady()) {
+                return false;
+            }
             return true;
         }
 
-        void WaitCloseSignal(Core::ILogger* logger) {
+        void WaitCloseSignal() {
             std::unique_lock<std::mutex> lock(mutex);
             while (true) {
                 if (fatalError.load()) {
-                    logger->LogError("Fatal error 발생, 서버 종료\n");
+                    Core::errorLogger->LogError("signal", "Fatal error Occured");
                     break;
                 }
 
@@ -115,8 +117,7 @@ namespace Net {
                 if (_kbhit()) {
                     char ch = _getch();
                     if (ch == 'q' || ch == 'Q') {
-                        logger->LogWarn("종료 입력 감지\n");
-                        std::cout << "서버 종료 신호 수신" << std::endl;
+                        Core::sysLogger->LogWarn("signal", "Close signal received");
                         break;
                     }
                 }

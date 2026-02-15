@@ -4,6 +4,7 @@
 #include "Config.h"
 
 #include <CoreLib/IPacket.h>
+#include <CoreLib/LoggerGlobal.h>
 
 namespace Net {
 	PacketPool::~PacketPool() {
@@ -45,6 +46,7 @@ namespace Net {
 				m_packets.push_back(packet);
 				current++;
 			}
+			Core::sysLogger->LogInfo("packet pool", "Pool increased");
 		}
 	}
 
@@ -59,6 +61,7 @@ namespace Net {
 				delete temp;
 				current--;
 			}
+			Core::sysLogger->LogInfo("packet pool", "Pool decreased");
 		}
 	}
 

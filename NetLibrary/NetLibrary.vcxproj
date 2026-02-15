@@ -225,6 +225,7 @@
     <None Include="NetLibrary.vcxproj.user" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="NetPerfCollector.h" />
     <ClInclude Include="NetTimer.h" />
     <ClInclude Include="SessionState.h" />
     <ClInclude Include="TrafficFloodDetector.h" />

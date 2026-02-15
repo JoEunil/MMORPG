@@ -50,6 +50,17 @@ namespace Net{
             contextPool = c;
         }
 
+        bool IsReady() {
+            if (contextPool == nullptr) {
+                Core::sysLogger->LogError("net session", "contextPool not initialized");
+                return false;
+            }
+            if (m_sessionShard.size() != SESSION_SHARD_SIZE) {
+                Core::sysLogger->LogError("net session", "contextPool not initialized");
+                return false;
+            }
+            return true;
+        }
         ClientContextPool* contextPool;
         friend class Initializer;
 
@@ -117,5 +128,8 @@ namespace Net{
         }
         bool AddSession(SOCKET sock);
         bool Disconnect(SOCKET sock);
+        uint32_t GetConnectionCnt() {
+            return m_connectionCnt.load(std::memory_order_relaxed);
+        }
     };
 }

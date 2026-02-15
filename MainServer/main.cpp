@@ -8,7 +8,7 @@
 #include <CoreLib/Initializer.h>
 #include <CacheLib/Initializer.h>
 
-#include <CoreLib/ILogger.h>
+#include <CoreLib/LoggerGlobal.h>
 
 #include <ExternalLib/Logger.h>
 #include <ExternalLib/SessionAuth.h>
@@ -24,18 +24,18 @@ int main(int argc, char* argv[]) {
     SetConsoleCP(CP_UTF8);
     std::cout << " 서버 시작" << std::endl;
     External::Logger::Initialize();
-    External::Logger iocpLogger, netLogger, coreLogger, cacheLogger, authLogger, serverLogger;
-    iocpLogger.CreateSink("iocp");
-    coreLogger.CreateSink("core");
-    cacheLogger.CreateSink("cache");
-    authLogger.CreateSink("auth");
-    serverLogger.CreateSink("server_lifecycle");
 
-    serverLogger.LogInfo("Server start");
+    Core::sysLogger = std::unique_ptr<External::Logger>();
+    Core::sysLogger->CreateSink("system.log");
+    Core::gameLogger = std::unique_ptr<External::Logger>();
+    Core::gameLogger->CreateSink("game.log");
+    Core::errorLogger = std::unique_ptr<External::Logger>();
+    Core::errorLogger->CreateSink("error.log");
+    Core::perfLogger = std::unique_ptr<External::Logger>();
+    Core::perfLogger->CreateSink("perf.log");
     try {
-
         External::SessionAuth auth;
-        auth.Initialize(&authLogger);
+        auth.Initialize();
 
         Core::Initializer core;
         Net::Initializer net;
@@ -45,17 +45,17 @@ int main(int argc, char* argv[]) {
         core.Initialize();
         net.Initialize();
 
-        core.InjectDependencies1(net.GetIOCP(), &coreLogger, net.GetPacketPool(), net.GetBigPacketPool());
-        cache.InjectDependencies(core.GetMessageQueue(), &cacheLogger);
-        core.InjectDependencies2(net.GetIOCP(), &coreLogger, &auth, cache.GetMessageQueue(), net.GetPacketPool());
-        net.InjectDependencies(&iocpLogger, core.GetPacketDispatcher());
+        core.InjectDependencies1(net.GetIOCP(), net.GetPacketPool(), net.GetBigPacketPool());
+        cache.InjectDependencies(core.GetMessageQueue());
+        core.InjectDependencies2(net.GetIOCP(), &auth, cache.GetMessageQueue(), net.GetPacketPool());
+        net.InjectDependencies(core.GetPacketDispatcher());
 
-        if (net.CheckReady(&serverLogger) && core.CheckReady(&serverLogger) && cache.CheckReady(&serverLogger)) {
+        if (net.CheckReady() && core.CheckReady() && cache.CheckReady()) {
             std::cout << "서버 준비 완료" << std::endl;
-            net.WaitCloseSignal(&serverLogger);
+            net.WaitCloseSignal();
         }
         std::cout << "서버 종료" << std::endl;
-        serverLogger.LogInfo("server stop");
+        Core::sysLogger->LogInfo("server stop");
         net.CleanUp1();
         core.CleanUp1();
         cache.CleanUp1();
@@ -65,12 +65,12 @@ int main(int argc, char* argv[]) {
     }
     catch (const std::exception& e) {
         std::cerr << "Standard exception: " << e.what() << std::endl;
-        serverLogger.LogError(std::format("exception: {}", e.what()));
+        Core::errorLogger->LogError(std::format("exception: {}", e.what()));
         return 0;
     }
     catch (...) {
         std::cerr << "Unknown exception caught in main()" << std::endl;
-        serverLogger.LogError(std::format("undefined excetion"));
+        Core::errorLogger->LogError(std::format("undefined excetion"));
         return 0;
     }
     return 0;

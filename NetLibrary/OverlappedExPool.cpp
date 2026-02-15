@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "OverlappedExPool.h"
 #include "PacketPool.h"
+#include <CoreLib/LoggerGlobal.h>
 
 namespace Net {
 	OverlappedExPool::~OverlappedExPool() {
@@ -29,9 +30,11 @@ namespace Net {
 	
 		if (current >= MAX_OVERLAPPEDPOOL_SIZE) {
 			Decrease(current);
+			Core::sysLogger->LogInfo("overlapped pool", "Pool increased");
 		}
 		if (current <= MIN_OVERLAPPEDPOOL_SIZE) {
 			Increase(current);
+			Core::sysLogger->LogInfo("overlapped pool", "Pool decreased");
 		}
 	}
 

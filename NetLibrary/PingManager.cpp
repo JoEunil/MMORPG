@@ -9,6 +9,8 @@
 
 namespace Net {
     void PingManager::PingFunc() {
+        auto tid = std::this_thread::get_id();
+        Core::sysLogger->LogInfo( "ping manager", "Ping thread started", "threadID", tid);
         m_running.store(true);
         std::vector<PingStruct> clientList;
         // socket, session, rtt
