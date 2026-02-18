@@ -57,6 +57,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 		images\LockFreeQueue2.png = images\LockFreeQueue2.png
 		images\LockFreeQueue3.png = images\LockFreeQueue3.png
 		images\LockFreeQueue4.png = images\LockFreeQueue4.png
+		images\monitoring.png = images\monitoring.png
 		images\SessionManagerDeadLock1.png = images\SessionManagerDeadLock1.png
 		images\SessionManagerDeadLock2.png = images\SessionManagerDeadLock2.png
 		images\StackOverflow.png = images\StackOverflow.png
