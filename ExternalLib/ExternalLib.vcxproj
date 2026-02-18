@@ -140,6 +140,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Config.h" />
+    <ClInclude Include="JsonUtility.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="SessionAuth.h" />
   </ItemGroup>

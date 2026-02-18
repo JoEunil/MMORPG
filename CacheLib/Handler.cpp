@@ -3,7 +3,7 @@
 #include <CoreLib/Message.h>
 #include <CoreLib/MessageTypes.h>
 #include <CoreLib/IMessageQueue.h>
-#include <CoreLib/ILogger.h>
+#include <CoreLib/LoggerGlobal.h>
 
 #include "DBConnectionPool.h"
 #include "MessagePool.h"
@@ -82,7 +82,6 @@ namespace Cache {
         st->header.messageType = Core::MSG_CHARACTER_STATE_RES;
         
         if (!res || !res->next()) {
-            std::cout << " status = 0   " << body->characterID << " \n";
             st->body.resStatus = 0;
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterStateResBody>));
             messageQ->EnqueueMessage(msg);
@@ -116,7 +115,7 @@ namespace Cache {
 
     void Handler::CharacterStateUpdate(Core::Message* msg, uint64_t sessionID, Core::MsgCharacterStateUpdateBody* body) {
         DBConnection* conn = connectionPool->Acquire();
-        logger->LogInfo(std::format("state update {} {}", body->x, body->y));
+        Core::gameLogger->LogInfo("cache handler", "character state update", "sessionID", sessionID);
         auto res = conn->ExecuteUpdate(4, body->attack, body->level, body->exp, body->hp, body->mp, body->maxHp, body->maxMp, body->dir, body->x, body->y, body->lastZone, body->charID);
         connectionPool->Return(conn);
     }

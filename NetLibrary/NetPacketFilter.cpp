@@ -6,6 +6,7 @@
 #include <CoreLib/IPacketView.h>
 #include <CoreLib/IPacketDispatcher.h>
 #include <CoreLib/Config.h>
+#include "NetPerfCollector.h"
 
 namespace Net {
     bool NetPacketFilter::TryDispatch(std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv) {        
@@ -16,16 +17,17 @@ namespace Net {
         uint8_t health = packetDispatcher->HealthCheck(session);
 
         if (!(health & Core::MASK_EXIST)) {
-            std::cout << "session not exist";
+            Core::gameLogger->LogWarn("net filter", "session not exist", "session", session);
             packetDispatcher->Process(std::move(pv));
             return true;
         }
         if (!(health & Core::MASK_NOT_CHEAT)) {
+            Core::gameLogger->LogWarn("net filter", "cheat detect", "session", session);
             std::cout << "cheat detect";
             return false;
         }
         if (!(health & Core::MASK_AUTHENTICATED)) {
-            std::cout << "session not authenticated";
+            Core::gameLogger->LogWarn("net filter", "session not authenticated", "session", session);
             switch (op) {
             case ::Core::OP::AUTH: 
                 return true;
@@ -40,6 +42,8 @@ namespace Net {
         case Core::OP::PONG: 
             {
                 uint64_t rtt = packetDispatcher->GetRTT(std::move(pv), NetTimer::GetTimeMS());
+                if (rtt > 200)
+                    perfCollector->AddJitterCnt();
                 sessionManager->PongReceived(session, rtt);
             }
             break;

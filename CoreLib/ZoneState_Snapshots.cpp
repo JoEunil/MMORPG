@@ -25,7 +25,7 @@ namespace Core {
     void ZoneState::DeltaSnapshot() {
         std::lock_guard<std::mutex> lock(m_mutex);
         UpdateSessionSnapshot();
-
+        m_userCnt.store(m_chars.size(), std::memory_order_relaxed);
         std::vector<std::shared_ptr<IPacket>> packets;
         packets.resize(CELLS_X * CELLS_Y);
 
@@ -80,6 +80,7 @@ namespace Core {
                     wroteField = true;
                 }
 
+                perfCollector->AddMonsterDeltaFieldCnt(m_zoneID, DELTA_UPDATE_COUNT - loop);
                 if (!wroteField) {
                     packets[idx].reset();
                 }
@@ -115,6 +116,7 @@ namespace Core {
                 auto& cell = m_cells[i][j];
                 cell.dirtyChar.clear();
                 int idx = i * CELLS_X + j;
+                perfCollector->AddMonsterDeltaFieldCnt(m_zoneID, cell.charSessions.size());
                 for (auto& session : cell.charSessions)
                 {
                     auto& character = m_chars[m_sessionToIndex[session]];
@@ -168,7 +170,8 @@ namespace Core {
                         writer->WriteMonsterDeltaField(packets[idx], monster.internalID, 3, monster.dir);
                     monster.dirtyBit = 0x00;
                     monster.attacked = 0;
-                }            
+                }
+                perfCollector->AddMonsterDeltaFieldCnt(m_zoneID, DELTA_UPDATE_COUNT * 2 - loop);
             }
         }
         broadcast->EnqueueWork(packets, m_zoneID);
@@ -195,6 +198,7 @@ namespace Core {
                 auto& cell = m_cells[i][j];
                 int idx = i * CELLS_X + j;
 
+                perfCollector->AddMonsterDeltaFieldCnt(m_zoneID, cell.monsterIndexes.size());
                 for (auto& monsterIdx : cell.monsterIndexes)
                 {
                     if (m_monsters[monsterIdx].hp == 0)
@@ -229,7 +233,7 @@ namespace Core {
                 bool wroteField = false;
                 auto& cell = m_cells[i][j];
                 int idx = i * CELLS_X + j;
-
+                perfCollector->AddActionFieldCnt(m_zoneID, cell.actionResults.size());
                 for (auto& actionRes: cell.actionResults)
                 {
                     writer->WriteActionField(packets[idx], actionRes);

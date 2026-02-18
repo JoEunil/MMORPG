@@ -14,21 +14,20 @@
 #include <atomic>
 #include <cstdint>
 #include <CoreLib/IIOCP.h>
-#include <CoreLib/Ilogger.h>
+#include <CoreLib/LoggerGlobal.h>
 
 #include "IAbortSocket.h"
 #include "Config.h"
 
 namespace Core {
     class IPacket;
-    class ILogger;
 }
 
 namespace Net {
     class NetHandler;
     class OverlappedExPool;
     class SessionManager;
-
+    class NetPerfCollector;
     class IOCP : public Core::IIOCP, public IAbortSocket {
         HANDLE m_hIOCP;
         std::vector<std::thread> m_threads;
@@ -39,44 +38,51 @@ namespace Net {
 
         std::atomic<bool>* fatalError;
         std::condition_variable* cv;
-        Core::ILogger* logger;
 
         OverlappedExPool* overlappedExPool;
         NetHandler* netHandler;
         SessionManager* sessionManager;
-        
-        void Initialize(Core::ILogger* l, OverlappedExPool* o, NetHandler* n, SessionManager* s, std::atomic<bool>* f, std::condition_variable* c) {
-            logger = l;
+        NetPerfCollector* perfCollector;
+        void Initialize(OverlappedExPool* o, NetHandler* n, SessionManager* s, std::atomic<bool>* f, std::condition_variable* c, NetPerfCollector* p) {
             overlappedExPool = o;
             netHandler = n;
             sessionManager = s;
             fatalError = f;
             cv = c;
+            perfCollector = p;
         }
         bool IsReady() {
             if (!m_isRunning.load()) {
-                logger->LogError("m_isRunning");
+                Core::sysLogger->LogError("iocp", "not running");
+                return false;
+            }
+            if (!m_receiving.load()) {
+                Core::sysLogger->LogError("iocp", "not receiving");
                 return false;
             }
             if (overlappedExPool == nullptr) {
-                logger->LogError("overlappedExPool");
+                Core::sysLogger->LogError("iocp", "overlappedExPool not initialized");
                 return false;
             }
             if (netHandler == nullptr) {
-                logger->LogError("netHandler");
+                Core::sysLogger->LogError("iocp", "netHandler not initialized");
                 return false;
             }
             if (fatalError == nullptr) {
-                logger->LogError("fatalError");
+                Core::sysLogger->LogError("iocp", "fatalError not initialized");
                 return false;
             }
             if (cv == nullptr) {
-                logger->LogError("cv");
+                Core::sysLogger->LogError("iocp", "cv not initialized");
+                return false;
+            }
+            if (perfCollector == nullptr) {
+                Core::sysLogger->LogError("iocp", "perfCollector not initialized");
                 return false;
             }
            return true;
         }
-        void WorkerThreadFunc();
+        void WorkerThreadFunc(int index);
         bool CreateListenSocket();
         bool CreateWorkerThread();
         

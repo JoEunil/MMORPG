@@ -1,23 +1,26 @@
 ﻿#include "pch.h"
 #include "IOCP.h"
-#include <CoreLib/ILogger.h>
+#include <CoreLib/LoggerGlobal.h>
 #include <CoreLib/IPacket.h>
 #include "OverlappedExPool.h"
 #include "NetHandler.h"
 #include "Packet.h"
 #include "SessionManager.h"
+#include "NetPerfCollector.h"
 
 namespace Net {
     void IOCP::Start()
     {
         if (!CreateListenSocket()) {
-            logger->LogError("Create Listen socket Failed");
             return;
         }
         m_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 0);
         // IOCP 핸들 생성
 
-        CreateIoCompletionPort((HANDLE)m_listenSock, m_hIOCP, (ULONG_PTR)m_listenSock, 0);
+        if (CreateIoCompletionPort((HANDLE)m_listenSock, m_hIOCP, (ULONG_PTR)m_listenSock, 0) == NULL) {
+            Core::errorLogger->LogError("iocp", "Failed to associate listen socket with IOCP");
+            return;
+        }
         // 서버 소켓을 IOCP 큐에 등록 (AcceptEx)
 
         GUID guidAcceptEx = WSAID_ACCEPTEX;
@@ -36,13 +39,12 @@ namespace Net {
         );
         // AcceptEx 함수 포인터를 가져오기
         if (result == SOCKET_ERROR) {
-            logger->LogError("AcceptEx ioctl failed");
+            Core::errorLogger->LogError("iocp", "AcceptEx ioctl failed");
             return;
         }
-        m_isRunning.store(true);
 
         if (!CreateWorkerThread()) {
-            logger->LogError("Worker thread creation failed.");
+            Core::errorLogger->LogError("iocp", "Worker thread creation failed.");
             return;
         }
 
@@ -58,7 +60,7 @@ namespace Net {
         // 서버 소켓 생성
         m_listenSock = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
         if (m_listenSock == INVALID_SOCKET) {
-            logger->LogError("Server socket creation failed.");
+            Core::errorLogger->LogError("iocp", "Create Listen socket Failed");
             return false;
         }
         // 서버 소켓 바인딩
@@ -69,29 +71,30 @@ namespace Net {
         serverAddr.sin_port = htons((UINT16)LISTEN_PORT);
 
         if (bind(m_listenSock, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-            logger->LogError("Server socket bind failed.");
+            Core::errorLogger->LogError("iocp", "Server socket bind failed.");
             return false;
         }
 
-        logger->LogInfo("Server socket bind success.");
+        Core::sysLogger->LogInfo("iocp", "Server socket bind success.");
         // 서버 소켓 리스닝
         if (listen(m_listenSock, SOMAXCONN) == SOCKET_ERROR) {
-            logger->LogError("Server socket listen failed.");
+            Core::errorLogger->LogError("iocp", "Server socket listen failed.");
             return false;
         }
-        logger->LogInfo("Server socket listen success.");
+        Core::sysLogger->LogInfo("iocp", "Server socket listen success.");
         return true;
     }
     //Waiting Thread Queue에서 대기할 쓰레드들 생성
     bool IOCP::CreateWorkerThread() {
+        m_isRunning.store(true);
         m_threads.resize(IOCP_THREADPOOL_SIZE);
         for (int i = 0; i < IOCP_THREADPOOL_SIZE; i++)
         {
-            m_threads[i] = std::thread(&IOCP::WorkerThreadFunc, this);
+            m_threads[i] = std::thread(&IOCP::WorkerThreadFunc, this, i);
             HANDLE h = (HANDLE)m_threads[i].native_handle();
             // zone 스레드보다는 우선순위 낮고, 다른 스레드풀 보다는 우선순위 높게
             if (!::SetThreadPriority(h, THREAD_PRIORITY_ABOVE_NORMAL)) {
-                logger->LogError("Failed to set priority, zone {} thread" + std::to_string(i + 1));
+                Core::errorLogger->LogError("iocp", "Failed to set priority", "zone_id", i + 1);
             }
         }
         return true;
@@ -100,7 +103,7 @@ namespace Net {
     void IOCP::CleanUp()
     {
         m_isRunning.store(false);
-        logger->LogError("IOCP CleanUp");
+        Core::sysLogger->LogInfo("iocp", "IOCP CleanUp");
 
         // 소켓 리소스 해제
         if (m_listenSock != INVALID_SOCKET) {
@@ -110,7 +113,7 @@ namespace Net {
         // 워커 스레드 수 만큼 더미 작업을 보냄
         for (int i = 0; i < IOCP_THREADPOOL_SIZE; i++) {
             if (!PostQueuedCompletionStatus(m_hIOCP, 0, 0, nullptr)) {
-                logger->LogError("Failed to post dummy completion status.");
+                Core::errorLogger->LogError("iocp", "Failed to post dummy completion status.", "thread index", i);
             }
         }
 
@@ -119,6 +122,7 @@ namespace Net {
                 //joinable == false -> already joined or detatched
                 thread.join();
             }
+            Core::sysLogger->LogInfo("iocp", "iocp worker threads stopped");
         }
         // IOCP 객체 닫기
         if (m_hIOCP != NULL) {
@@ -126,8 +130,13 @@ namespace Net {
         }
     }
 
-    void IOCP::WorkerThreadFunc()
+    void IOCP::WorkerThreadFunc(const int index)
     {
+        auto tid = std::this_thread::get_id();
+        std::stringstream ss;
+        ss << tid;
+        Core::sysLogger->LogInfo("iocp", "iocp worker thread started", "threadID", ss.str(), "thread index", index);
+
         int current_thread = GetCurrentThreadId();
         while (m_isRunning.load())
         {
@@ -144,8 +153,8 @@ namespace Net {
             // 블로킹 함수라서 작업이 들어올 떄까지 기다린다.
             if (result && pOverlapped == nullptr)
             {
+                Core::sysLogger->LogInfo("iocp", "Close Signa Received");
                 // IOCP 종료 신호
-                logger->LogError("Close Signal Received ");
                 break;
             }
 
@@ -157,8 +166,8 @@ namespace Net {
             {
                 DWORD err = GetLastError();
                 overlappedExPool->Return(reinterpret_cast<STOverlappedEx*>(pOverlapped));
+                Core::errorLogger->LogWarn("iocp", "GetQueuedCompletionStatus failed", "error code", std::to_string(err), "socket", clientSocket);
                 CleanUpSocket(clientSocket);
-                logger->LogError("GetQueuedCompletionStatus failed with error code: " + std::to_string(err));
                 continue;
             }
 
@@ -168,22 +177,20 @@ namespace Net {
                 if (!m_receiving.load())
                     break;
                 if (bytesTransferred == 0) {
-                    logger->LogWarn(std::format("bytesTransferred == 0, socket: {}", clientSocket));
                     CleanUpSocket(clientSocket);
                     break;
                 }
-
+                perfCollector->AddRecvCnt(index);
                 netHandler->OnRecv(clientSocket, reinterpret_cast<uint8_t*>(pOverlappedEx->wsaBuf.buf), bytesTransferred);
 
                 if (!PostRecv(clientSocket)) {
-                    logger->LogWarn("Post Receive Failed");
+                    Core::errorLogger->LogWarn("iocp", "Post Receive Failed(recv)", "socket", clientSocket);
                     CleanUpSocket(clientSocket);
                 }
                 break;
             case IOOperation::SEND:
                 break;
             case IOOperation::ACCEPT:
-                logger->LogInfo(std::format("Accept {}", clientSocket));
                 // completion key는 listen 소켓
                 if (!m_receiving.load())
                     break;
@@ -201,7 +208,7 @@ namespace Net {
                 }
 
                 if (!PostRecv(clientSocket)) {
-                    logger->LogWarn("Post Receive Failed(accept)");
+                    Core::errorLogger->LogWarn("iocp", "Post Receive Failed(accept)", "socket", clientSocket);
                     CleanUpSocket(clientSocket);
                 }
                 PostAccept();
@@ -211,14 +218,13 @@ namespace Net {
             }
             overlappedExPool->Return(pOverlappedEx);
         }
-        std::cout << "iocp thread stopped \n";
     }
 
     void IOCP::PostAccept()
     {
         SOCKET clientSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
         if (clientSocket == INVALID_SOCKET) {
-            logger->LogError("Create client socket failed");
+            Core::errorLogger->LogWarn("iocp", "failed to create client socket");
             return;
         }
 
@@ -229,7 +235,7 @@ namespace Net {
         pOverlappedEx->wsaBuf.buf = overlappedExPool->AcquireAcceptBuffer();
         if (pOverlappedEx->wsaBuf.buf == nullptr) {
             // PREPOSTED_ACCEPT 만큼만 PostAccept가 유지되기 때문에 발생할 일이 없음. Accept가 실패될 순 있어도 PostAccept가 실패될 순 없음
-            logger->LogError("Failed to acquire Accept Buffer");
+            Core::errorLogger->LogError("iocp", "Failed to acquire Accept Buffer");
             overlappedExPool->Return(pOverlappedEx);
             return;
         }
@@ -248,11 +254,11 @@ namespace Net {
         if (bRet == FALSE) {
             int err = WSAGetLastError();
             if (err != ERROR_IO_PENDING) {
-                //logger->LogError("Critical: failed to post AcceptEx. Shutting down server." + std::to_string(err));
+                Core::errorLogger->LogError("iocp", "Critical: failed to post AcceptEx", "error", err);
 
-                //m_isRunning.store(false);
-                //fatalError->store(true);
-                //cv->notify_one();
+                m_isRunning.store(false);
+                fatalError->store(true);
+                cv->notify_one();
 
                 overlappedExPool->Return(pOverlappedEx);
                 closesocket(clientSocket);
@@ -272,7 +278,7 @@ namespace Net {
         pOverlappedEx->wsaBuf.len = netHandler->AllocateBuffer(clientSocket, buf);
         pOverlappedEx->wsaBuf.buf = reinterpret_cast<char*>(buf);
         if (pOverlappedEx->wsaBuf.len == 0) {
-            logger->LogError("can't allocate buffer - socket:" + std::to_string(clientSocket));
+            Core::errorLogger->LogWarn("iocp", "can't allocate buffer", "socket", clientSocket);
             return false;
         }
 
@@ -281,7 +287,7 @@ namespace Net {
         if (result == SOCKET_ERROR) {
             int err = WSAGetLastError();
             if (err != WSA_IO_PENDING) {
-                logger->LogError("WSAGetLastError " + std::to_string(clientSocket) + " " + std::to_string(err));
+                Core::errorLogger->LogError("iocp", "WSAGetLastError ", "socket", clientSocket, "error message", std::to_string(err));
                 overlappedExPool->Return(pOverlappedEx);
                 return false;
             }
@@ -296,8 +302,11 @@ namespace Net {
             // Race condition이 발생할 수 있는 지점이지만,
             // NetHandler가 Disconnect를 단일 책임으로 관리하여 멱등성이 보장됨.
             // 중복으로 CleanUp 요청이 와도 최초 1회만 true를 반환함.
-            logger->LogInfo(std::format("Disconnect {}", clientSocket));
-            CancelIoEx((HANDLE)clientSocket, nullptr); // pending IO를 즉시 취소
+            Core::sysLogger->LogInfo("iocp", "Disconnect", "socket", clientSocket);
+            if (!CancelIoEx((HANDLE)clientSocket, nullptr)) {
+                int err = GetLastError();
+                Core::errorLogger->LogWarn("iocp", "CancelIoEx failed", "socket", clientSocket, "error", err);
+            } // pending IO를 즉시 취소
             closesocket(clientSocket);
         }
     }
@@ -312,7 +321,8 @@ namespace Net {
         
         SOCKET clientSocket = sessionManager->GetSocket(sessionID);
         if (clientSocket == INVALID_SOCKET) {
-            logger->LogWarn("try send to INVALID SOCKET");
+            //Core::errorLogger->LogWarn("iocp", "try send to INVALID SOCKET", "session" , sessionID); 
+            // 정상 실행 흐름에서 발생 가능하고, 발생 빈도가 매우 높다.
             return;
         }
         DWORD dwBytesSent = 0;
@@ -330,7 +340,7 @@ namespace Net {
             if (err != WSA_IO_PENDING)
             {
                 overlappedExPool->Return(pOverlappedEx);
-                logger->LogWarn("WSASend failed: " + std::to_string(clientSocket) + " "  + std::to_string(err));
+                Core::errorLogger->LogWarn("iocp", "WSASend failed: ","socket", clientSocket, "error message", std::to_string(err));
             }
         }
 
@@ -340,7 +350,7 @@ namespace Net {
     {
         SOCKET clientSocket = sessionManager->GetSocket(sessionID);
         if (clientSocket == INVALID_SOCKET) {
-            logger->LogWarn("try send to INVALID SOCKET");
+            //Core::errorLogger->LogWarn("iocp", "try send to INVALID SOCKET", "session", sessionID);
             return;
         }
         DWORD dwBytesSent = 0;
@@ -357,14 +367,13 @@ namespace Net {
             if (err != WSA_IO_PENDING)
             {
                 overlappedExPool->Return(pOverlappedEx);
-                logger->LogWarn("WSASend failed: " + std::to_string(clientSocket) + " " + std::to_string(err));
+                Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", clientSocket, "error message", std::to_string(err));
             }
         }
 
     }
 
     void IOCP::AbortSocket(SOCKET clientSocket) {
-        std::cout << "Abort Socket \n";
         if (clientSocket == INVALID_SOCKET)
             return;
         CleanUpSocket(clientSocket); 

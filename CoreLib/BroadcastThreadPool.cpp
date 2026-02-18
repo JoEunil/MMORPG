@@ -8,6 +8,10 @@
 #include <BaseLib/TripleBufferAdvanced.h>
 namespace Core {
     void BroadcastThreadPool::ThreadFunc() {
+        auto tid = std::this_thread::get_id();
+        std::stringstream ss;
+        ss << tid;
+        sysLogger->LogInfo("broadcast thread", "broadcast thread started", "threadID", ss.str());
         while (m_running.load())
         {
             std::vector<std::shared_ptr<IPacket>> packets;
@@ -16,6 +20,7 @@ namespace Core {
                 // back-off
                 continue;
             }
+            perfCollector->AddBroadcastPopCnt();
             uint64_t zoneID = 0;
             ZoneState* zone = nullptr;
             for (auto& packet : packets)
@@ -33,9 +38,11 @@ namespace Core {
             if (zone == nullptr)
                 continue;
             Base::BufferReader<std::vector<std::vector<uint64_t>>> reader = zone->GetSessionSnaphot();
-            auto& vec = *reader.data;
+            auto& vec = *reader.data; 
+            size_t sentCount = 0;
             for (int i =0 ;i < CELLS_X*CELLS_Y; i++)
             {
+                sentCount += vec[i].size();
                 if (packets[i] == nullptr)
                     continue;
                 for (auto session : vec[i])
@@ -43,7 +50,7 @@ namespace Core {
                     iocp->SendData(session, packets[i]);
                 }
             }
-
+            perfCollector->AddBroadcastSendCnt(sentCount);
         }
     }
 
@@ -67,7 +74,9 @@ namespace Core {
     }
 
     void BroadcastThreadPool::EnqueueWork(std::vector<std::shared_ptr<IPacket>> packets, uint16_t zoneID) {
+        perfCollector->AddBroadcastEnqueueCnt();
         if (m_running.load()) {
+            
             for (auto& packet : packets) {
                 if (packet == nullptr)
                     continue;

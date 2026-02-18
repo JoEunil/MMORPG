@@ -2,7 +2,6 @@
 #include "ZoneHandler.h"
 
 #include "IPacketView.h"
-#include "ILogger.h"
 #include "ISessionAuth.h"
 #include "IIOCP.h"
 #include "IMessageQueue.h"
@@ -10,6 +9,7 @@
 #include "ZoneState.h"
 #include "Message.h"
 #include "MessagePool.h"
+#include "LoggerGlobal.h"
 
 namespace Core {
     void ZoneHandler::ProcessAction(ActionRequestBody* body, uint64_t sessionID, uint16_t zoneID) {
@@ -29,7 +29,7 @@ namespace Core {
                 ProcessAction(parseBody<ActionRequestBody>(p->GetPtr()), p->GetSessionID(), zoneID);
                 break;
             default:
-                logger->LogInfo(std::format("zone handler UnDefined OPCODE {}, {}, session {}, flag {}, magic {}", p->GetOpcode(), h->opcode,  p->GetSessionID(), h->flags, h->magic));
+                errorLogger->LogInfo("zone Handler", "UnDefined OPCODE", "zone", zoneID, "opcode", p->GetOpcode(), "session", p->GetSessionID());
                 break;
         }
     }

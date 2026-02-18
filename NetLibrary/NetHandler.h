@@ -17,10 +17,14 @@ namespace Net {
         SessionManager* sessionManager;
         IAbortSocket* abortSocket;
         bool IsReady() const {
-            if (sessionManager == nullptr)
+            if (sessionManager == nullptr) {
+                Core::sysLogger->LogError("net handler", "sessionManager not initialized");
                 return false;
-            if (abortSocket == nullptr)
+            }
+            if (abortSocket == nullptr) {
+                Core::sysLogger->LogError("net handler", "abortSocket not initialized");
                 return false;
+            }
             return true;
         }
         void Initialize(SessionManager* s, IAbortSocket* a) {
@@ -54,7 +58,6 @@ namespace Net {
         uint16_t AllocateBuffer(SOCKET sock, uint8_t*& buf) const {
             ClientContext* ctx = sessionManager->GetContext(sock);
             if (ctx == nullptr) {
-                std::cout << "Invalid ctx\n";
                 return 0;
             }
             return ctx->AllocateRecvBuffer(buf);

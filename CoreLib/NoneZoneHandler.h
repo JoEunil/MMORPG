@@ -16,7 +16,7 @@ namespace Core {
     class LobbyZone;
     class ChatThreadPool;
     class NoneZoneHandler{
-        void Initialize(IIOCP* i, ILogger* l, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c);
+        void Initialize(IIOCP* i, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c);
         bool IsReady();
         void CheckSession(IPacketView* p);
         void GetCharacterList(IPacketView* p);

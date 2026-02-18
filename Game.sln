@@ -34,6 +34,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Concept", "Concept", "{C8D5
 		IOCP&epoll.md = IOCP&epoll.md
 		LockFreeQueue.md = LockFreeQueue.md
 		memory_order.md = memory_order.md
+		Monster.md = Monster.md
+		Skill.md = Skill.md
+		StructuredLogging.md = StructuredLogging.md
 		TripleBuffer.md = TripleBuffer.md
 	EndProjectSection
 EndProject
@@ -47,11 +50,14 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A67903F-5C0B-4FD6-876B-B0088C77C6B6}"
 	ProjectSection(SolutionItems) = preProject
 		images\FloodCheckFlowChart.png = images\FloodCheckFlowChart.png
+		images\flushQueue1.png = images\flushQueue1.png
+		images\flushQueue2.png = images\flushQueue2.png
 		images\IOCPWorkerThreadRecv.png = images\IOCPWorkerThreadRecv.png
 		images\LockFreeQueue1.png = images\LockFreeQueue1.png
 		images\LockFreeQueue2.png = images\LockFreeQueue2.png
 		images\LockFreeQueue3.png = images\LockFreeQueue3.png
 		images\LockFreeQueue4.png = images\LockFreeQueue4.png
+		images\monitoring.png = images\monitoring.png
 		images\SessionManagerDeadLock1.png = images\SessionManagerDeadLock1.png
 		images\SessionManagerDeadLock2.png = images\SessionManagerDeadLock2.png
 		images\StackOverflow.png = images\StackOverflow.png

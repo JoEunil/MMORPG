@@ -8,6 +8,7 @@
 #include "NetPacketFilter.h"
 #include "Config.h"
 
+#include <CoreLib/LoggerGlobal.h>
 namespace Net {
     class SessionState {
         uint64_t m_sessionID = 0;
@@ -24,10 +25,14 @@ namespace Net {
         // 다음 recv에서 flood가 무조건 걸리도록 release, acquire만 잘 걸어주면 됨.
 
         bool NetStatus() {
-            if (m_contextStatus == false)
+            if (m_contextStatus == false) {
+                Core::gameLogger->LogWarn("net session", "context invalid", "sessionID", m_sessionID);
                 return false;
-            if (m_sessionPingCount > PING_COUNT_LIMIT)
+            }
+            if (m_sessionPingCount > PING_COUNT_LIMIT) {
+                Core::gameLogger->LogWarn("net session", "ping count exceed", "sessionID", m_sessionID, "pingCount", m_sessionPingCount);
                 return false;
+            }
             return true;
         }
         bool FloodCheck() {
@@ -49,8 +54,10 @@ namespace Net {
         bool CheckSession() {
             if (!NetStatus())
                 return false;
-            if (FloodCheck())
+            if (FloodCheck()) {
+                Core::gameLogger->LogWarn("net session", "Net Traffic Flood", "sessionID", m_sessionID);
                 return false;
+            }
             return true;
         }
 

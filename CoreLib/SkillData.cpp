@@ -15,7 +15,7 @@ namespace Data {
         },
          // 원형 스킬 광역기
         SkillData{
-            1, 0,
+            1, 2,
             20, 120,
             {
                 SkillPhase{ 0, 0, {SkillRangeType::None, 0, 0}, 0 },  // charging
@@ -24,7 +24,7 @@ namespace Data {
         },
         // 바라보는 방향 직사각형
         SkillData{
-            2, 0,
+            2, 2,
             20, 80,
             {
                 SkillPhase{ 0, 0, {SkillRangeType::None, 0, 0}, 0 },  // charging
@@ -33,7 +33,7 @@ namespace Data {
         },
         //보스 스킬 1 방사형
         SkillData{
-                3, 0,
+                3, 2,
                 0, 0,
             {
                 SkillPhase{ 0, 0, {SkillRangeType::None, 0, 0}, 0 },  // charging
@@ -44,7 +44,7 @@ namespace Data {
         },
         // 보스 스킬 2 파동형
         SkillData{
-                4, 0,
+                4, 2,
                 0, 0,
             {
                 SkillPhase{ 0, 0, {SkillRangeType::None, 0, 0}, 0 },  // charging

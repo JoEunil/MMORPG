@@ -7,39 +7,51 @@
 #include <vector>
 
 #include <BaseLib/LockFreeQueue.h>
+#include "LoggerGlobal.h"
 #include "Config.h"
 
 namespace Core {
     class IIOCP;
     class IPacket;
     class StateManager;
+    class CorePerfCollector;
     class BroadcastThreadPool {
         std::vector<std::thread> m_threads;
         Base::LockFreeQueue<std::vector<std::shared_ptr<IPacket>>, BROADCAST_QUEUE_SIZE> m_workQ;
 
         std::atomic<bool> m_running = false;
-        
-        IIOCP* iocp;
-        StateManager* stateManager;
-
-        void Initialize(IIOCP* i, StateManager* s) {
+        void Initialize(IIOCP* i, StateManager* s, CorePerfCollector* p) {
             iocp = i;
             stateManager = s;
+            perfCollector = p;
         }
         bool IsReady() const {
-            if (iocp == nullptr)
+            if (m_threads.size() != BROADCAST_THREADPOOL_SIZE) {
+                sysLogger->LogError("broadcast thread", "m_threads not initialized");
                 return false;
-            if (!m_running.load())
+            }
+            if (!m_running.load()) {
+                sysLogger->LogError("broadcast thread", "not running");
                 return false;
-            if (m_threads.size() != BROADCAST_THREADPOOL_SIZE)
+            }
+            if (iocp == nullptr) {
+                sysLogger->LogError("broadcast thread", "iocp not initialized");
                 return false;
+            }
+            if (perfCollector == nullptr) {
+                sysLogger->LogError("broadcast thread", "perfCollector not initialized");
+                return false;
+            }
             return true;
         }
 
         void ThreadFunc();
         void Start();
         void Stop();
-        
+
+        IIOCP* iocp;
+        StateManager* stateManager;
+        CorePerfCollector* perfCollector;
         friend class Initializer;
     public:
         ~BroadcastThreadPool() {

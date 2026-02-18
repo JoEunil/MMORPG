@@ -8,8 +8,8 @@
 #include "Config.h"
 #include <BaseLib/LockFreeQueue.h>
 #include <BaseLib/LockFreeQueueUP.h>
+#include "LoggerGlobal.h"
 namespace Core {
-    class ILogger;
     // 게임틱 단위로 처리되지 않는 (zone 상태와 관련 없는) 요청 처리
     class NoneZoneThreadPool {
         std::vector<std::thread> m_threads;
@@ -19,20 +19,20 @@ namespace Core {
         std::atomic<bool> m_running = false;
         
         NoneZoneHandler* handler;
-        ILogger* logger;
-        void Initialize(ILogger* l, NoneZoneHandler* h) {
-            logger = l;
+        void Initialize(NoneZoneHandler* h) {
             handler = h;
         }
         void Start();
         void Stop();
         bool IsReady() {
-            if (logger == nullptr)
+            if (m_threads.size() != NONE_ZONE_THREADPOOL_SIZE) {
+                sysLogger->LogError("none zone thread", "m_threads not initialized");
                 return false;
-            if (m_threads.size() != NONE_ZONE_THREADPOOL_SIZE)
+            }
+            if (handler == nullptr) {
+                sysLogger->LogError("none zone thread", "handler not initialized");
                 return false;
-            if (handler == nullptr)
-                return false;
+            }
             return true;
         }
         void WorkFunc();

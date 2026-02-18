@@ -3,13 +3,14 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/async.h>
 #include <spdlog/sinks/basic_file_sink.h>
-
+#include <nlohmann/json.hpp>
 #include <string>
 #include <memory>
 #include <atomic>
+#include <thread>
 
 #include <CoreLib/ILogger.h>
-
+#include "JsonUtility.h"
 #include "Config.h"
 
 namespace External {
@@ -32,21 +33,26 @@ namespace External {
         }
         void CreateSink(const std::string& logFileName);
 
-        void LogInfo(const std::string& msg) {
+        void LogInfo(const std::string& msg) override {
             if (m_running.load()) {
                 m_logger->info(msg);
             }
         }
 
-        void LogError(const std::string& msg) {
+        void LogError(const std::string& msg) override {
             if (m_running.load()) {
-                m_logger->error(msg);
+                m_logger->info(msg);
             }
         }
 
-        void LogWarn(const std::string& msg) {
+        void LogWarn(const std::string& msg) override {
             if (m_running.load()) {
-                m_logger->warn(msg);
+                m_logger->info(msg);
+            }
+        }
+        void Flush() override {
+            if (m_running.load())  {
+                m_logger->flush();
             }
         }
     };

@@ -6,6 +6,7 @@
 #include <winsock2.h>    
 #include <cstdint>
 
+#include <CoreLib/LoggerGlobal.h>
 #include <BaseLib/RingQueue.h>
 #include "Config.h"
 
@@ -21,7 +22,11 @@ namespace Net {
         
         void Initialize();
         bool IsReady() const {
-            return m_running;
+            if (!m_running) {
+                Core::errorLogger->LogError("context pool", "not running");
+                return false;
+            }
+            return true;
         }
         void Stop();
         
@@ -31,6 +36,14 @@ namespace Net {
         
         friend class Initializer;
 public:
+        uint32_t GetFlushQueueSize() {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_flushQ.size();
+        }
+        uint32_t GetContextPoolSize() {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return m_contexts.size();
+        }
         ClientContext* Acquire(uint64_t session);
         void Return(ClientContext* context);
     };

@@ -111,7 +111,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)External;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -130,7 +130,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)External;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -142,6 +142,8 @@
   <ItemGroup>
     <ClInclude Include="CharacterState.h" />
     <ClInclude Include="ChatThreadPool.h" />
+    <ClInclude Include="CorePerfCollector.h" />
+    <ClInclude Include="LoggerGlobal.h" />
     <ClInclude Include="MonsterData.h" />
     <ClInclude Include="MonsterState.h" />
     <ClInclude Include="NoneZoneHandler.h" />
@@ -175,6 +177,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChatThreadPool.cpp" />
+    <ClCompile Include="LoggerGlobal.cpp" />
     <ClCompile Include="NoneZoneHandler.cpp" />
     <ClCompile Include="NoneZoneThreadPool.cpp" />
     <ClCompile Include="BroadcastThreadPool.cpp" />

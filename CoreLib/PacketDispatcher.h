@@ -12,20 +12,17 @@ namespace Core {
     class PacketDispatcher : public IPacketDispatcher {
         NoneZoneThreadPool* noneZoneThreadPool;
         ZoneThreadSet*  zoneThreadSet;
-        ILogger* logger;
         StateManager* stateManager;
         IPingPacketWriter* writer;
         IIOCP* iocp;
-        void Initialize(NoneZoneThreadPool* a, ZoneThreadSet* z, ILogger* l, StateManager* s, IPingPacketWriter* w, IIOCP* i) {
+        void Initialize(NoneZoneThreadPool* a, ZoneThreadSet* z, StateManager* s, IPingPacketWriter* w, IIOCP* i) {
             noneZoneThreadPool = a;
             zoneThreadSet = z;
-            logger = l;
             stateManager = s;
             writer = w;
             iocp = i;
         }
         bool IsReady() {
-            if (logger == nullptr) return false;
             if (stateManager == nullptr) return false;
             if (noneZoneThreadPool == nullptr || zoneThreadSet == nullptr)
                 return false;

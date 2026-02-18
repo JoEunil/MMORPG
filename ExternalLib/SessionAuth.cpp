@@ -3,11 +3,11 @@
 #include <thread>
 #include "Config.h"
 #include "Logger.h"
-#include <iostream>
-namespace External {
-    void SessionAuth::Initialize(Logger* l) {
-        logger = l;
 
+#include <CoreLib/LoggerGlobal.h>
+
+namespace External {
+    void SessionAuth::Initialize() {
         evthread_use_windows_threads(); // event_base를 multi-thread safe 모드로
 
         // 이벤트 루프 생성
@@ -16,10 +16,8 @@ namespace External {
         // 비동기 컨텍스트 생성
         m_context = redisAsyncConnect(REDIS_AUTH_HOST, REDIS_AUTH_PORT);
         if (m_context->err) {
-            logger->LogError(std::format("Redis connect failed: {}",  m_context->errstr));
-            std::cout << "Redis connect failed: " << m_context->errstr << "\n";
-        }
-        logger->LogInfo("try connect Redis");
+            Core::sysLogger->LogError(std::format("Redis connect failed: {}",  m_context->errstr));
+        };
 
         m_context->data = this;
 
@@ -31,14 +29,14 @@ namespace External {
             // c 라이브러리라서 객체 포인터를 넘겨줄 수가 없음.
             auto self = reinterpret_cast<SessionAuth*>(c->data);
             if (status != REDIS_OK) {
-                self->logger->LogError(std::string("Redis(session) connect error: ") + c->errstr);
+                Core::sysLogger->LogError(std::string("Redis(session) connect error: ") + c->errstr);
                 return ;
             }
-            self->logger->LogError("Connected to Redis!(session)");
+            Core::sysLogger->LogError("Connected to Redis!(session)");
         });
         redisAsyncSetDisconnectCallback(m_context, [](const redisAsyncContext* c, int status) {
             auto self = reinterpret_cast<SessionAuth*>(c->data);
-            self->logger->LogError(std::string("Redis(session) connect error: ") + std::to_string(status));
+            Core::sysLogger->LogError(std::string("Redis(session) connect error: ") + std::to_string(status));
         });
         m_thread = std::thread([this]() {
             event_base_dispatch(m_eventBase);
@@ -46,7 +44,6 @@ namespace External {
     }
 
     static void RedisCallback(redisAsyncContext* c, void* r, void* privdata) {
-        std::cout << "Callback"<< '\n';
         uint8_t res = 0;
 
         auto* reply = static_cast<redisReply*>(r);
@@ -54,7 +51,6 @@ namespace External {
 
         if (reply && reply->type == REDIS_REPLY_STRING && std::memcmp(reply->str, data->sessionToken.data(), reply->len) == 0)
             res = 1;
-        std::cout << data->sessionID << " " << (int)res << '\n';
         data->callbackFunc(data->sessionID, res, data->userID);
         delete data;
     }
@@ -66,7 +62,6 @@ namespace External {
 
     void EventCallback(evutil_socket_t, short, void* arg) {
         auto* ev = static_cast<CommandEvent*>(arg);
-        std::cout << "Event Callback!" << std::endl;
         redisAsyncCommand(ev->ctx, RedisCallback, ev->data, "GET %llu", ev->data->userID);
         delete ev; // CommandEvent 해제
     }

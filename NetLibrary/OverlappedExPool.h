@@ -5,6 +5,7 @@
 #include <vector>
 #include "STOverlappedEx.h"
 #include "Config.h"
+#include <CoreLib/LoggerGlobal.h>
 
 
 namespace Net {
@@ -20,7 +21,11 @@ namespace Net {
         ~OverlappedExPool();
         void Initialize();
         bool IsReady() {
-            return m_overlappedPool.size() > 0;
+            if (m_overlappedPool.empty()) {
+                Core::sysLogger->LogError("ovelapped pool", "m_overlappedPool not initialized");
+                return false;
+            }
+            return true;
         }
         void Adjust();
         void Increase(uint16_t currentSize);
@@ -42,6 +47,10 @@ namespace Net {
         void ReturnAcceptBuf(char*  buf) {
             std::lock_guard<std::mutex> lock(m_bufMutex);
             m_acceptBuffers.push_back(buf);
+        }
+        uint32_t GetPoolSize() {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            return static_cast<uint32_t>(m_overlappedPool.size());
         }
     };
 }

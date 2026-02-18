@@ -12,16 +12,13 @@ namespace Core {
         auto it = shard.sessionMap.find(sessionID);
         if (it == shard.sessionMap.end())
         {
-            std::cout << "Session already Disconnected " << std::to_string(sessionID) << std::endl;
             return;
         }
         if (it->second.zoneID == 0) {
             lobbyZone->Disconnect(sessionID);
-            std::cout << "Zone == lobbyZone " << std::to_string(sessionID) << std::endl;
             return;
         }
         CharacterState temp;
-        std::cout << " Disconnect zone: " << std::to_string(it->second.zoneID) << "session: " << sessionID << std::endl;
         if (m_states[it->second.zoneID]->EmigrateChar(sessionID, temp)) {
             auto zoneID = it->second.zoneID;
             shard.sessionMap.erase(it);
@@ -33,6 +30,7 @@ namespace Core {
     }
     void StateManager::EnqueueDisconnectMsg(CharacterState& temp, uint64_t sessionID)
     {
+        gameLogger->LogInfo("state manager", "Enqueue Disconnect", "sessionID", sessionID);
         Message* msg = messagePool->Acquire();
         auto st = reinterpret_cast<MsgStruct<MsgCharacterStateUpdateBody>*>(msg->GetBuffer());
         st->header.sessionID = sessionID;

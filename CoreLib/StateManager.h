@@ -129,6 +129,7 @@ namespace Core {
             map[sessionID].lastCheatTime = std::chrono::steady_clock::now();
             map[sessionID].authenticated = authenticated;
             // character load 안한 상태
+            Core::gameLogger->LogInfo("state manager", "AddSession",  "session", sessionID,  "userID", userID);
         }
         
         uint64_t GetUserID(uint64_t sessionID) {
@@ -149,6 +150,7 @@ namespace Core {
             if (it == shard.sessionMap.end())
                 return ;
             it->second.characterID = characterID;
+            Core::gameLogger->LogInfo("state manager", "SetCharacterID", "session", sessionID, "characterID", characterID);
         }
         
         uint64_t GetCharacterID(uint64_t sessionID) {

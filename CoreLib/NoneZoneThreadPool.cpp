@@ -1,6 +1,5 @@
 ﻿#include "pch.h"
 #include "NoneZoneThreadPool.h"
-#include "ILogger.h"
 #include "IPacketView.h"
 #include <iostream>
 
@@ -23,9 +22,14 @@ namespace Core {
             if (t.joinable())
                 t.join();
         }
+        sysLogger->LogInfo("none zone thread", "none zone thread stopped");
     }
 
     void NoneZoneThreadPool::WorkFunc() {
+        auto tid = std::this_thread::get_id();
+        std::stringstream ss;
+        ss << tid;
+        sysLogger->LogInfo("none zone thread", "none zone thread started", "threadID", ss.str());
         while (m_running.load())
         {
             bool empty = true;

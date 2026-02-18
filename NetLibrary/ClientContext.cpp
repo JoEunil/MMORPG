@@ -6,6 +6,7 @@
 #include <CoreLib/PacketTypes.h>
 #include <CoreLib/IPacketView.h>
 #include <CoreLib/Config.h>
+#include <CoreLib/LoggerGlobal.h>
 
 
 namespace Net {
@@ -46,14 +47,14 @@ namespace Net {
 
         if (magic != Core::MAGIC)
         {
-            std::cout << "Magic Error" << '\n';
+            Core::gameLogger->LogWarn("context", "packet Magic invalid", "session", m_sessionID, "magic", magic);
             m_gameSession.store(false, std::memory_order_release);
             return false;
         }
 
         if (opcode == 0 or opcode > Core::MAX_DEFINED_OPCODE)
         {
-            std::cout << "undefined opcode" << '\n';
+            Core::gameLogger->LogWarn("context", "undefined opcode", "session", m_sessionID, "opcode", opcode);
             m_gameSession.store(false, std::memory_order_release);
             return false;
         }
