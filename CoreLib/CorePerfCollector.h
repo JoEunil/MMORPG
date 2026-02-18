@@ -177,6 +177,10 @@ namespace Core {
                 curr.monsterDeltaFieldCount.store(0, std::memory_order_relaxed);
                 curr.monsterFullFieldCount.store(0, std::memory_order_relaxed);
             }
+            sysLogger->Flush();
+            errorLogger->Flush();
+            perfLogger->Flush();
+            gameLogger->Flush();
         }
     };
 }

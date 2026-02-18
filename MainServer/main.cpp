@@ -16,7 +16,6 @@
 
 #include <mysqlconn/include/mysql/jdbc.h>
 
-
 int main(int argc, char* argv[]) {
     ST_WSA_INITIALIZER wsa; // winsock 초기화
 
@@ -26,13 +25,13 @@ int main(int argc, char* argv[]) {
     External::Logger::Initialize();
 
     Core::sysLogger = std::make_unique<External::Logger>();
-    Core::sysLogger->CreateSink("system.log");
+    Core::sysLogger->CreateSink("system");
     Core::gameLogger = std::make_unique<External::Logger>();
-    Core::gameLogger->CreateSink("game.log");
+    Core::gameLogger->CreateSink("game");
     Core::errorLogger = std::make_unique<External::Logger>();
-    Core::errorLogger->CreateSink("error.log");
+    Core::errorLogger->CreateSink("error");
     Core::perfLogger = std::make_unique<External::Logger>();
-    Core::perfLogger->CreateSink("perf.log");
+    Core::perfLogger->CreateSink("perf");
     try {
         External::SessionAuth auth;
         auth.Initialize();

@@ -50,6 +50,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A67903F-5C0B-4FD6-876B-B0088C77C6B6}"
 	ProjectSection(SolutionItems) = preProject
 		images\FloodCheckFlowChart.png = images\FloodCheckFlowChart.png
+		images\flushQueue1.png = images\flushQueue1.png
+		images\flushQueue2.png = images\flushQueue2.png
 		images\IOCPWorkerThreadRecv.png = images\IOCPWorkerThreadRecv.png
 		images\LockFreeQueue1.png = images\LockFreeQueue1.png
 		images\LockFreeQueue2.png = images\LockFreeQueue2.png

@@ -36,9 +36,6 @@ namespace Net {
         
         friend class Initializer;
 public:
-        uint32_t GetWorkingCnt() {
-            return m_workingCnt.load(std::memory_order_relaxed);
-        }
         uint32_t GetFlushQueueSize() {
             std::lock_guard<std::mutex> lock(m_mutex);
             return m_flushQ.size();

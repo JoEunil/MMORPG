@@ -46,6 +46,7 @@ namespace Net {
                 if (it == shard.stateMap.end()) {
                     return false;
                 }
+                session = it->second.GetSessionID();
                 shard.stateMap.erase(it);
             }
             {
@@ -54,6 +55,7 @@ namespace Net {
                     return true;
                 }
                 it->second->Disconnect();
+                contextPool->Return(it->second);
                 shard.contextMap.erase(it);
             }
         }

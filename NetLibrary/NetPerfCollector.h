@@ -74,7 +74,6 @@ namespace Net {
             auto pPool = packetPool->GetPoolSize();
             auto oPool = overlappedPool->GetPoolSize();
             auto cPool = contextPool->GetContextPoolSize();
-            auto working = contextPool->GetWorkingCnt();
             auto flush = contextPool->GetFlushQueueSize();
             auto jit = jitter.load(std::memory_order_relaxed);
             jitter.store(0, std::memory_order_relaxed);
@@ -85,7 +84,6 @@ namespace Net {
                 "packetPool", pPool,
                 "overlappedPool", oPool,
                 "contextPool", cPool,
-                "workingCnt", working,
                 "flushQueue", flush,
                 "jitter", jit
             );
@@ -94,6 +92,7 @@ namespace Net {
                 Core::perfLogger->LogInfo("net perf", "iocp worker log per sec", "index", i, "recv", m_recvCount[i].load(std::memory_order_relaxed));
                 m_recvCount[i].store(0, std::memory_order_relaxed);
             }
+            Core::perfLogger->Flush();
         }
         
         void AddRecvCnt(int index) {

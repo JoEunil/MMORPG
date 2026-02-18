@@ -12,6 +12,7 @@ namespace Core {
         virtual void LogInfo(const std::string& msg) = 0;
         virtual void LogError(const std::string& msg) = 0;
         virtual void LogWarn(const std::string& msg) = 0;
+        virtual void Flush() = 0;
 
         template <typename... Args>
         void LogInfo(const std::string& event, const std::string& msg, Args&&... args) {
