@@ -14,8 +14,8 @@ namespace Core {
         sysLogger->LogInfo("broadcast thread", "broadcast thread started", "threadID", ss.str());
         while (m_running.load())
         {
-            std::vector<std::shared_ptr<IPacket>> packets;
-            if (!m_workQ.pop(packets)) {
+            auto packets = std::move(m_workQ.pop());
+            if (!packets) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 // back-off
                 continue;
@@ -23,7 +23,7 @@ namespace Core {
             perfCollector->AddBroadcastPopCnt();
             uint64_t zoneID = 0;
             ZoneState* zone = nullptr;
-            for (auto& packet : packets)
+            for (auto& packet : *packets)
             {
                 if (packet != nullptr)
                 {
@@ -43,11 +43,11 @@ namespace Core {
             for (int i =0 ;i < CELLS_X*CELLS_Y; i++)
             {
                 sentCount += vec[i].size();
-                if (packets[i] == nullptr)
+                if ((*packets)[i] == nullptr)
                     continue;
                 for (auto session : vec[i])
                 {
-                    iocp->SendData(session, packets[i]);
+                    iocp->SendData(session, (*packets)[i]);
                 }
             }
             perfCollector->AddBroadcastSendCnt(sentCount);
@@ -82,7 +82,7 @@ namespace Core {
                     continue;
                 packet->SetZone(zoneID);
             }
-            m_workQ.push(packets);
+            m_workQ.push(std::make_unique<std::vector<std::shared_ptr<IPacket>>>(packets));
             // 실패 시 drop
         }
     }

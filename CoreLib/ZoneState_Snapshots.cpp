@@ -80,7 +80,7 @@ namespace Core {
                     wroteField = true;
                 }
 
-                perfCollector->AddMonsterDeltaFieldCnt(m_zoneID, DELTA_UPDATE_COUNT - loop);
+                perfCollector->AddDeltaFieldCnt(m_zoneID, DELTA_UPDATE_COUNT - loop);
                 if (!wroteField) {
                     packets[idx].reset();
                 }
@@ -95,6 +95,7 @@ namespace Core {
     void ZoneState::FullSnapshot() {
         std::lock_guard<std::mutex> lock(m_mutex);
         UpdateSessionSnapshot();
+        perfCollector->UpdateClientCnt(m_zoneID, m_chars.size());
         if (m_chars.empty())
             return;
         std::vector<std::shared_ptr<IPacket>> packets;
@@ -116,7 +117,6 @@ namespace Core {
                 auto& cell = m_cells[i][j];
                 cell.dirtyChar.clear();
                 int idx = i * CELLS_X + j;
-                perfCollector->AddMonsterDeltaFieldCnt(m_zoneID, cell.charSessions.size());
                 for (auto& session : cell.charSessions)
                 {
                     auto& character = m_chars[m_sessionToIndex[session]];
@@ -181,6 +181,7 @@ namespace Core {
         std::lock_guard<std::mutex> lock(m_mutex);
         std::vector<std::shared_ptr<IPacket>> packets;
         packets.resize(CELLS_X * CELLS_Y);
+        perfCollector->UpdateMonsterCnt(m_zoneID, m_monsters.size());
 
         for (int i = 0; i < CELLS_Y; i++)
         {
@@ -198,7 +199,6 @@ namespace Core {
                 auto& cell = m_cells[i][j];
                 int idx = i * CELLS_X + j;
 
-                perfCollector->AddMonsterDeltaFieldCnt(m_zoneID, cell.monsterIndexes.size());
                 for (auto& monsterIdx : cell.monsterIndexes)
                 {
                     if (m_monsters[monsterIdx].hp == 0)

@@ -98,6 +98,8 @@ namespace Net {
         BufferFragment temp;
         uint16_t len = m_buffer.TryAcquireBuffer(temp);
         buffer = temp.startPtr + temp.front;
+        if (len == 0)
+            Core::errorLogger->LogError("context", "can't allocate buffer", "sessionID", m_sessionID, "front", m_front, "rear", m_rear);
         return len;
     }
 
@@ -130,12 +132,12 @@ namespace Net {
     }
 
     void ClientContext::ReleaseBuffer(PacketView* pv) {
-        if (m_connected.load())
+        if (m_connected.load(std::memory_order_relaxed))
             EnqueueReleaseQ(pv->GetSeq(), pv->GetFront(), pv->GetRear());
-        m_workingCnt.fetch_sub(1);
+        m_workingCnt.fetch_sub(1, std::memory_order_acq_rel);
         pv->Clear();
         packetViewPool.Return(pv);
-        if (!m_connected.load() && m_workingCnt.load() == 0) {
+        if (!m_connected.load(std::memory_order_acquire) && m_workingCnt.load(std::memory_order_acquire) == 0) {
             NetPacketFilter::Disconnect(m_sessionID);
         }
     }

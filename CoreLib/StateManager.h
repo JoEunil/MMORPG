@@ -194,10 +194,16 @@ namespace Core {
                 return res;
             }
             res |= MASK_EXIST;
-            if (it->second.authenticated)
-                res |= MASK_AUTHENTICATED; 
-            if (it->second.cheatCount <= MAX_CHEAT_COUNT)
-                res |= MASK_NOT_CHEAT; 
+            if (it->second.authenticated) {
+                res |= MASK_AUTHENTICATED;
+            } else {
+                errorLogger->LogError("state manager", "not authenticated", "sessionID", sessionID);
+            }
+            if (it->second.cheatCount <= MAX_CHEAT_COUNT) {
+                res |= MASK_NOT_CHEAT;
+            } else {
+                errorLogger->LogError("state manager", "cheat detected", "sessionID", sessionID, "cheatCount", it->second.cheatCount);
+            }
             return res;
         }
         void Disconnect(uint64_t sessionID);

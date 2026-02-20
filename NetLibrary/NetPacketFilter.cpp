@@ -17,13 +17,16 @@ namespace Net {
         uint8_t health = packetDispatcher->HealthCheck(session);
 
         if (!(health & Core::MASK_EXIST)) {
+            if (op == Core::OP::AUTH) {
+                packetDispatcher->Process(std::move(pv));
+                return true;
+            }
             Core::gameLogger->LogWarn("net filter", "session not exist", "session", session);
-            packetDispatcher->Process(std::move(pv));
-            return true;
+            return false;
         }
+
         if (!(health & Core::MASK_NOT_CHEAT)) {
             Core::gameLogger->LogWarn("net filter", "cheat detect", "session", session);
-            std::cout << "cheat detect";
             return false;
         }
         if (!(health & Core::MASK_AUTHENTICATED)) {

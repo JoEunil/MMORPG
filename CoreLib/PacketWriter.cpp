@@ -139,6 +139,7 @@ namespace Core {
         p_st->body.entities[p_st->body.chatCnt].offset = p_st->body.totalMessageLength;
         p_st->body.entities[p_st->body.chatCnt].messageLength = message.length();
         memcpy(p_st->body.entities[p_st->body.chatCnt].name, userName.data(), userName.length());
+        p_st->body.entities[p_st->body.chatCnt].name[userName.length()] = '\0';
         p_st->body.chatCnt++;
         p_st->body.totalMessageLength += message.length();
         return p_st->body.chatCnt;

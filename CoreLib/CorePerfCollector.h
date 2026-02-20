@@ -12,16 +12,14 @@ namespace Core {
         std::atomic<uint64_t> tick;
         std::atomic<uint64_t> actionFieldCount;
         std::atomic<uint64_t> deltaFieldCount; 
-        std::atomic<uint64_t> fullFieldCount;
+        std::atomic<uint64_t> characterCount;
         std::atomic<uint64_t> monsterDeltaFieldCount;
-        std::atomic<uint64_t> monsterFullFieldCount; 
+        std::atomic<uint64_t> monsterCount; 
         std::atomic<uint64_t> hitCount; 
     };
 
     class CorePerfCollector {
         std::array<ZonePerfData,ZONE_COUNT> zones;
-        std::atomic<uint64_t> zoneWorkEnqueue;
-        std::atomic<uint64_t> chatTick;
         std::atomic<uint64_t> chatSendCnt;
         std::atomic<uint64_t> broadcastEnqueuCnt;
         std::atomic<uint64_t> broadcastPopCnt;
@@ -30,8 +28,6 @@ namespace Core {
         std::atomic<bool> m_running;
 
         void Initialize() {
-            zoneWorkEnqueue.store(0, std::memory_order_relaxed);
-            chatTick.store(0, std::memory_order_relaxed);
             chatSendCnt.store(0, std::memory_order_relaxed);
             broadcastEnqueuCnt.store(0, std::memory_order_relaxed);
             broadcastPopCnt.store(0, std::memory_order_relaxed);
@@ -41,9 +37,9 @@ namespace Core {
                 zones[i].tick.store(0, std::memory_order_relaxed);
                 zones[i].actionFieldCount.store(0, std::memory_order_relaxed);
                 zones[i].deltaFieldCount.store(0, std::memory_order_relaxed);
-                zones[i].fullFieldCount.store(0, std::memory_order_relaxed);
+                zones[i].characterCount.store(0, std::memory_order_relaxed);
                 zones[i].monsterDeltaFieldCount.store(0, std::memory_order_relaxed);
-                zones[i].monsterFullFieldCount.store(0, std::memory_order_relaxed);
+                zones[i].monsterCount.store(0, std::memory_order_relaxed);
                 zones[i].hitCount.store(0, std::memory_order_relaxed);
             }
         }
@@ -73,9 +69,6 @@ namespace Core {
                 std::this_thread::sleep_for(std::chrono::seconds(1));
             }
         }
-        void AddZoneEnqueueCnt() {
-            zoneWorkEnqueue.fetch_add(1, std::memory_order_release);
-        }
         void AddPacketProcessCnt(uint16_t zoneID, size_t cnt) {
             if (zoneID-1 >= ZONE_COUNT) {
                 errorLogger->LogInfo("core perf", "AddPacketProcessCnt zoneID out of bound", "zoneID", zoneID);
@@ -99,12 +92,12 @@ namespace Core {
             }
             zones[zoneID - 1].deltaFieldCount.fetch_add(cnt, std::memory_order_relaxed);
         }
-        void AddFullFieldCnt(uint16_t zoneID, size_t cnt) {
+        void UpdateClientCnt(uint16_t zoneID, size_t cnt) {
             if (zoneID-1 >= ZONE_COUNT) {
                 errorLogger->LogInfo("core perf", "AddFullPacketCnt zoneID out of bound", "zoneID", zoneID);
                 return;
             }
-            zones[zoneID - 1].fullFieldCount.fetch_add(cnt, std::memory_order_relaxed);
+            zones[zoneID - 1].characterCount.store(cnt, std::memory_order_relaxed);
         }
         void AddMonsterDeltaFieldCnt(uint16_t zoneID, size_t cnt) {
             if (zoneID-1 >= ZONE_COUNT) {
@@ -113,12 +106,12 @@ namespace Core {
             }
             zones[zoneID - 1].monsterDeltaFieldCount.fetch_add(cnt, std::memory_order_relaxed);
         }
-        void AddMonsterFullFieldCnt(uint16_t zoneID, size_t cnt) {
+        void UpdateMonsterCnt(uint16_t zoneID, size_t cnt) {
             if (zoneID-1 >= ZONE_COUNT) {
                 errorLogger->LogInfo("core perf", "AddMonsterFullPacketCnt zoneID out of bound", "zoneID", zoneID);
                 return;
             }
-            zones[zoneID - 1].monsterFullFieldCount.fetch_add(cnt, std::memory_order_relaxed);
+            zones[zoneID - 1].monsterCount.store(cnt, std::memory_order_relaxed);
         }
         void AddHitCnt(uint16_t zoneID) {
             if (zoneID-1 >= ZONE_COUNT) {
@@ -126,9 +119,6 @@ namespace Core {
                 return;
             }
             zones[zoneID - 1].hitCount.fetch_add(1, std::memory_order_relaxed);
-        }
-        void ChatTick() {
-            chatTick.fetch_add(1, std::memory_order_relaxed);
         }
         void AddChatSend(size_t cnt) {
             chatSendCnt.fetch_add(cnt, std::memory_order_relaxed);
@@ -143,10 +133,6 @@ namespace Core {
             broadcastSendCnt.fetch_add(cnt, std::memory_order_relaxed);
         }
         void Flush() {
-            auto TzoneWorkEnqueue = zoneWorkEnqueue.load(std::memory_order_relaxed);
-            zoneWorkEnqueue.store(0, std::memory_order_relaxed);
-            auto TchatTick = chatTick.load(std::memory_order_relaxed);
-            chatTick.store(0, std::memory_order_relaxed);
             auto TchatSendCnt = chatSendCnt.load(std::memory_order_relaxed);
             chatSendCnt.store(0, std::memory_order_relaxed);
             auto TbroadcastEnqueuCnt = broadcastEnqueuCnt.load(std::memory_order_relaxed);
@@ -155,8 +141,8 @@ namespace Core {
             broadcastPopCnt.store(0, std::memory_order_relaxed);
             auto TbroadcastSendCnt = broadcastSendCnt.load(std::memory_order_relaxed);
             broadcastSendCnt.store(0, std::memory_order_relaxed);
-            perfLogger->LogInfo("core perf", "perf log per sec", "zoneWorkEnqueue", TzoneWorkEnqueue, 
-            "chatTick", TchatTick, "broadcastEnqueuCnt", TbroadcastEnqueuCnt, "broadcastPopCnt", TbroadcastPopCnt,
+            perfLogger->LogInfo("core perf", "perf log per sec", "chatSendCnt", TchatSendCnt,
+            "broadcastEnqueuCnt", TbroadcastEnqueuCnt, "broadcastPopCnt", TbroadcastPopCnt,
             "broadcastSendCnt", TbroadcastSendCnt);
             for (int i = 0; i < ZONE_COUNT; i++)
             {
@@ -166,16 +152,17 @@ namespace Core {
                     "tick", curr.tick.load(std::memory_order_relaxed),
                     "actionFieldCount", curr.actionFieldCount.load(std::memory_order_relaxed),
                     "deltaFieldCount", curr.deltaFieldCount.load(std::memory_order_relaxed),
-                    "fullFieldCount", curr.fullFieldCount.load(std::memory_order_relaxed),
+                    "characterCount", curr.characterCount.load(std::memory_order_relaxed),
                     "monsterDeltaFieldCount", curr.monsterDeltaFieldCount.load(std::memory_order_relaxed),
-                    "monsterFullFieldCount", curr.monsterFullFieldCount.load(std::memory_order_relaxed));
+                    "monsterCount", curr.monsterCount.load(std::memory_order_relaxed),
+                    "hitCount", curr.hitCount.load(std::memory_order_relaxed)
+                );
                 curr.packetProcessed.store(0, std::memory_order_relaxed);
                 curr.tick.store(0, std::memory_order_relaxed);
                 curr.actionFieldCount.store(0, std::memory_order_relaxed);
                 curr.deltaFieldCount.store(0, std::memory_order_relaxed);
-                curr.fullFieldCount.store(0, std::memory_order_relaxed);
                 curr.monsterDeltaFieldCount.store(0, std::memory_order_relaxed);
-                curr.monsterFullFieldCount.store(0, std::memory_order_relaxed);
+                curr.hitCount.store(0, std::memory_order_relaxed);
             }
             sysLogger->Flush();
             errorLogger->Flush();

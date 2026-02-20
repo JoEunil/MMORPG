@@ -57,7 +57,7 @@ namespace Base {
 					if (m_tail.compare_exchange_weak(tail, tail + 1)) {
 						m_queue[idx].data = std::move(data);
 						m_queue[idx].seq.store(tail + 1, std::memory_order_release); 
-						return nullptr;
+						return T{};
 					}
 					continue;
 				}

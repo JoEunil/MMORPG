@@ -260,6 +260,7 @@ namespace Net {
                 fatalError->store(true);
                 cv->notify_one();
 
+                overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf.buf);
                 overlappedExPool->Return(pOverlappedEx);
                 closesocket(clientSocket);
             }
@@ -279,6 +280,7 @@ namespace Net {
         pOverlappedEx->wsaBuf.buf = reinterpret_cast<char*>(buf);
         if (pOverlappedEx->wsaBuf.len == 0) {
             Core::errorLogger->LogWarn("iocp", "can't allocate buffer", "socket", clientSocket);
+            overlappedExPool->Return(pOverlappedEx);
             return false;
         }
 
@@ -331,7 +333,7 @@ namespace Net {
         pOverlappedEx->clientSocket = clientSocket;
         pOverlappedEx->wsaBuf.buf = reinterpret_cast<char*>(packet->GetBuffer()); // 다른 타입이지만, 메모리 표현은 동일 -> reinter cast
         pOverlappedEx->wsaBuf.len = packet->GetLength();
-        pOverlappedEx->sharedPacket = std::static_pointer_cast<Packet>(packet);
+        pOverlappedEx->sharedPacket = packet;
         // 상속관계 타입 변환은 static cast, 컴파일 타임에 변환되어 런타임에 비용 0
         int result = WSASend(clientSocket, &pOverlappedEx->wsaBuf, 1, &dwBytesSent, 0, &pOverlappedEx->wsaOverlapped, NULL);
         if (result == SOCKET_ERROR)
@@ -359,7 +361,7 @@ namespace Net {
         pOverlappedEx->clientSocket = clientSocket;
         pOverlappedEx->wsaBuf.buf = reinterpret_cast<char*>(packet->GetBuffer());
         pOverlappedEx->wsaBuf.len = packet->GetLength();
-        pOverlappedEx->uniquePacket = std::unique_ptr<Packet>(static_cast<Packet*>(packet.release()));
+        pOverlappedEx->uniquePacket = std::move(packet);
         int result = WSASend(clientSocket, &pOverlappedEx->wsaBuf, 1, &dwBytesSent, 0, &pOverlappedEx->wsaOverlapped, NULL);
         if (result == SOCKET_ERROR)
         {

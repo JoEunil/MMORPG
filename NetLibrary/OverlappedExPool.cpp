@@ -30,11 +30,11 @@ namespace Net {
 	
 		if (current >= MAX_OVERLAPPEDPOOL_SIZE) {
 			Decrease(current);
-			Core::sysLogger->LogInfo("overlapped pool", "Pool increased");
+			Core::sysLogger->LogInfo("overlapped pool", "Pool Decreased");
 		}
 		if (current <= MIN_OVERLAPPEDPOOL_SIZE) {
 			Increase(current);
-			Core::sysLogger->LogInfo("overlapped pool", "Pool decreased");
+			Core::sysLogger->LogInfo("overlapped pool", "Pool Increased");
 		}
 	}
 

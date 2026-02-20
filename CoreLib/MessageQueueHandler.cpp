@@ -36,7 +36,7 @@ namespace Core {
     }
 
     void MessageQueueHandler::CharacterListResponse(uint64_t sessionID, MsgCharacterListResBody* body) {
-        iocp->SendData(sessionID, writer->WriteCharacterListResponse(body));
+        iocp->SendDataUnique(sessionID, std::move(writer->WriteCharacterListResponse(body)));
     }
 
     void MessageQueueHandler::CharacterStateResponse(uint64_t sessionID, MsgCharacterStateResBody* body) {
@@ -63,14 +63,14 @@ namespace Core {
         }
 
 
-        iocp->SendData(sessionID, writer->WriteEnterWorldResponse(body));
+        iocp->SendDataUnique(sessionID, std::move(writer->WriteEnterWorldResponse(body)));
     }
 
     void MessageQueueHandler::InventoryResponse(uint64_t sessionID, MsgInventoryResBody* body) {
-        iocp->SendData(sessionID, writer->WriteInventoryResponse(body));
+        iocp->SendDataUnique(sessionID, std::move(writer->WriteInventoryResponse(body)));
     }
 
     void MessageQueueHandler::InventoryUpdateResponse(uint64_t sessionID, MsgInventoryUpdateResBody* body) {
-        iocp->SendData(sessionID, writer->WriteInventoryUpdateResponse(body));
+        iocp->SendDataUnique(sessionID, std::move(writer->WriteInventoryUpdateResponse(body)));
     }
 }

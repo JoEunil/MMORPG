@@ -17,7 +17,7 @@ namespace Core {
         }
 
         if (speed > 1) {
-            m_cheatList.push_back({ sessionID, 100 });
+            m_cheatList.push_back({ sessionID, 1 });
             return;
         }
 
@@ -72,7 +72,7 @@ namespace Core {
         }
         auto& character = m_chars[it->second];
         if (skillSlot > (character.skillSlotCnt - 1)) {
-            m_cheatList.push_back({ sessionID, 100 });
+            m_cheatList.push_back({ sessionID, 1 });
             return;
         }
         auto& skill = character.skillSlot[skillSlot];

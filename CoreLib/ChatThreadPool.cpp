@@ -16,7 +16,6 @@ namespace Core {
 
         while (m_running)
         {
-            perfCollector->ChatTick();
             int loop = 100; 
             bool processed = false;
             ChatEvent curr;
@@ -27,7 +26,7 @@ namespace Core {
                 {
                 case ChatEventType::SESSION_ADD:
                     ProcessAddSession(curr.senderSessionID, curr.senderChatID, static_cast<uint16_t>(curr.key.id), curr.message);
-                    break;
+                    continue;
                 }
 
                 auto it = m_sessionChatIdMap.find(curr.senderSessionID);
@@ -57,7 +56,7 @@ namespace Core {
                     //case ChatEventType::PARTY_JOIN: break;
                     //case ChatEventType::PARTY_LEAVE: break;
                 default:
-                    errorLogger->LogInfo("chat thread", "undefined chat event", "chatID", chatID);
+                    errorLogger->LogInfo("chat thread", "undefined chat event", "chatID", chatID, "chat event type", (int)curr.type);
                     break;
                    // "undefined chat event type"
                 }
@@ -68,7 +67,6 @@ namespace Core {
             }
 
             tempPackets.clear();
-
             if (!processed) {
                 // busy spin 방지용 sleep
                 // batch 처리량과 응답latency 간 trade-off 조절 (TPS 측정 기준)
@@ -121,7 +119,7 @@ namespace Core {
             perfCollector->AddChatSend(m_chatIdSessionMap.size());
         }
         if (curr.key.scope == CHAT_SCOPE::Zone) {
-            perfCollector->AddChatSend(m_zoneMembers[curr.key.id].size());
+            perfCollector->AddChatSend(m_zoneMembers[curr.key.id - 1].size());
         }
         auto it = tempPackets.find(curr.key);
         if (it != tempPackets.end()) {
