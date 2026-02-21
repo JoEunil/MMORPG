@@ -59,6 +59,37 @@ namespace Core {
         float y_min, y_max;
     };
 
+    inline std::array<std::vector<int>, CELLS_X* CELLS_Y> AOI;
+
+    inline void InitAOI()
+    {
+        for (int i = 0; i < CELLS_Y; ++i)
+        {
+            for (int j = 0; j < CELLS_X; ++j)
+            {
+                int idx = i * CELLS_X + j;
+                AOI[idx].clear();
+
+                // 3x3 AOI → 인접 Cell만 적용
+                for (int dy = -1; dy <= 1; ++dy)
+                {
+                    for (int dx = -1; dx <= 1; ++dx)
+                    {
+                        int nx = j + dx;
+                        int ny = i + dy;
+
+                        // grid 범위 체크
+                        if (nx < 0 || nx >= CELLS_X) continue;
+                        if (ny < 0 || ny >= CELLS_Y) continue;
+
+                        int nIndex = ny * CELLS_X + nx;
+                        AOI[idx].push_back(nIndex);
+                    }
+                }
+            }
+        }
+    }
+
     inline void ZoneInit(ZoneArea& z, uint16_t zone) {
         int x = (zone - 1) % ZONE_HORIZON;
         int y = (zone - 1) / ZONE_HORIZON;

@@ -26,15 +26,18 @@ namespace Core {
         std::lock_guard<std::mutex> lock(m_mutex);
         UpdateSessionSnapshot();
         m_userCnt.store(m_chars.size(), std::memory_order_relaxed);
-        std::vector<std::shared_ptr<IPacket>> packets;
-        packets.resize(CELLS_X * CELLS_Y);
+        std::vector<std::shared_ptr<IPacket>> chunks;
+        std::vector<std::shared_ptr<IPacket>> headers;
+        chunks.resize(CELLS_X * CELLS_Y);
+        headers.resize(CELLS_X * CELLS_Y);
 
         for (int i = 0; i < CELLS_Y; i++)
         {
             for (int j = 0; j < CELLS_X; j++)
             {
                 int idx = i * CELLS_X + j;
-                packets[idx] = writer->GetInitialDeltaPacket();
+                chunks[idx] = writer->GetInitialChunk();
+                headers[idx] = writer->GetDeltaHeader();
             }
         }
 
@@ -57,23 +60,23 @@ namespace Core {
                             continue;
                         auto& bit = character.dirtyBit;
                         if (bit & 0x01)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 0, character.hp);
+                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 0, character.hp);
                         if (bit & 0x02)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 1, character.mp);
+                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 1, character.mp);
                         if (bit & 0x04)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 2, character.maxHp);
+                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 2, character.maxHp);
                         if (bit & 0x08)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 3, character.maxMp);
+                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 3, character.maxMp);
                         if (bit & 0x10)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 4, character.exp);
+                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 4, character.exp);
                         if (bit & 0x20)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 5, character.level);
+                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 5, character.level);
                         if (bit & 0x40)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 6, character.dir);
+                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 6, character.dir);
                         if (bit & 0x80)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 7, character.x);
+                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 7, character.x);
                         if (bit & 0x100)
-                            writer->WriteDeltaField(packets[idx], character.zoneInternalID, 8, character.y);
+                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 8, character.y);
                         character.dirtyBit = 0x00;
                     }
                     cell.dirtyChar.pop_back();
@@ -82,14 +85,14 @@ namespace Core {
 
                 perfCollector->AddDeltaFieldCnt(m_zoneID, DELTA_UPDATE_COUNT - loop);
                 if (!wroteField) {
-                    packets[idx].reset();
+                    chunks[idx].reset();
                 }
             }
 
 
         }
 
-        broadcast->EnqueueWork(packets, m_zoneID);
+        broadcast->EnqueueWork(headers, chunks, m_zoneID);
     }
 
     void ZoneState::FullSnapshot() {
@@ -98,15 +101,18 @@ namespace Core {
         perfCollector->UpdateClientCnt(m_zoneID, m_chars.size());
         if (m_chars.empty())
             return;
-        std::vector<std::shared_ptr<IPacket>> packets;
-        packets.resize(CELLS_X * CELLS_Y);
+        std::vector<std::shared_ptr<IPacket>> chunks;
+        std::vector<std::shared_ptr<IPacket>> headers;
+        chunks.resize(CELLS_X * CELLS_Y);
+        headers.resize(CELLS_X * CELLS_Y);
 
         for (int i = 0; i < CELLS_Y; i++)
         {
             for (int j = 0; j < CELLS_X; j++)
             {
                 int idx = i * CELLS_X + j;
-                packets[idx] = writer->GetInitialFullPacket();
+                chunks[idx] = writer->GetInitialChunk();
+                headers[idx] = writer->GetFullHeader();
             }
         }
 
@@ -120,11 +126,11 @@ namespace Core {
                 for (auto& session : cell.charSessions)
                 {
                     auto& character = m_chars[m_sessionToIndex[session]];
-                    writer->WriteFullField(packets[idx], character);
+                    writer->WriteFullField(chunks[idx], character);
                 }
             }
         }
-        broadcast->EnqueueWork(packets, m_zoneID);
+        broadcast->EnqueueWork(headers, chunks, m_zoneID);
     }
 
     void ZoneState::DeltaSnapshotMonster() {
@@ -134,15 +140,18 @@ namespace Core {
             return;
         }
         std::lock_guard<std::mutex> lock(m_mutex);
-        std::vector<std::shared_ptr<IPacket>> packets;
-        packets.resize(CELLS_X * CELLS_Y);
+        std::vector<std::shared_ptr<IPacket>> chunks;
+        std::vector<std::shared_ptr<IPacket>> headers;
+        chunks.resize(CELLS_X * CELLS_Y);
+        headers.resize(CELLS_X * CELLS_Y);
 
         for (int i = 0; i < CELLS_Y; i++)
         {
             for (int j = 0; j < CELLS_X; j++)
             {
                 int idx = i * CELLS_X + j;
-                packets[idx] = writer->GetInitialMonsterDeltaPacket();
+                chunks[idx] = writer->GetInitialChunk();
+                headers[idx] = writer->GetMonsterDeltaHeader();
             }
         }
 
@@ -161,26 +170,28 @@ namespace Core {
                     if (bit == 0x00)
                         continue;
                     if (bit & 0x01)
-                        writer->WriteMonsterDeltaField(packets[idx], monster.internalID, 0, monster.hp);
+                        writer->WriteMonsterDeltaField(chunks[idx], monster.internalID, 0, monster.hp);
                     if (bit & 0x02)
-                        writer->WriteMonsterDeltaField(packets[idx], monster.internalID, 1, monster.x);
+                        writer->WriteMonsterDeltaField(chunks[idx], monster.internalID, 1, monster.x);
                     if (bit & 0x04)
-                        writer->WriteMonsterDeltaField(packets[idx], monster.internalID, 2, monster.y);
+                        writer->WriteMonsterDeltaField(chunks[idx], monster.internalID, 2, monster.y);
                     if (bit & 0x08)
-                        writer->WriteMonsterDeltaField(packets[idx], monster.internalID, 3, monster.dir);
+                        writer->WriteMonsterDeltaField(chunks[idx], monster.internalID, 3, monster.dir);
                     monster.dirtyBit = 0x00;
                     monster.attacked = 0;
                 }
                 perfCollector->AddMonsterDeltaFieldCnt(m_zoneID, DELTA_UPDATE_COUNT * 2 - loop);
             }
         }
-        broadcast->EnqueueWork(packets, m_zoneID);
+        broadcast->EnqueueWork(headers, chunks, m_zoneID);
     }
 
     void ZoneState::FullSnapshotMonster() {
         std::lock_guard<std::mutex> lock(m_mutex);
-        std::vector<std::shared_ptr<IPacket>> packets;
-        packets.resize(CELLS_X * CELLS_Y);
+        std::vector<std::shared_ptr<IPacket>> chunks;
+        std::vector<std::shared_ptr<IPacket>> headers;
+        chunks.resize(CELLS_X * CELLS_Y);
+        headers.resize(CELLS_X * CELLS_Y);
         perfCollector->UpdateMonsterCnt(m_zoneID, m_monsters.size());
 
         for (int i = 0; i < CELLS_Y; i++)
@@ -188,7 +199,8 @@ namespace Core {
             for (int j = 0; j < CELLS_X; j++)
             {
                 int idx = i * CELLS_X + j;
-                packets[idx] = writer->GetInitialMonsterFullPacket();
+                chunks[idx] = writer->GetInitialChunk();
+                headers[idx] = writer->GetMonsterFullHeader();
             }
         }
 
@@ -203,26 +215,29 @@ namespace Core {
                 {
                     if (m_monsters[monsterIdx].hp == 0)
                         continue;
-                    writer->WriteMonsterFullField(packets[idx], m_monsters[monsterIdx]);
+                    writer->WriteMonsterFullField(chunks[idx], m_monsters[monsterIdx]);
                     m_monsters[monsterIdx].attacked = 0;
                     m_monsters[monsterIdx].dirtyBit = 0x0;
                 }
             }
         }
-        broadcast->EnqueueWork(packets, m_zoneID);
+        broadcast->EnqueueWork(headers, chunks, m_zoneID);
     }
 
     void ZoneState::ActionSnapshot() {
         std::lock_guard<std::mutex> lock(m_mutex);
-        std::vector<std::shared_ptr<IPacket>> packets;
-        packets.resize(CELLS_X * CELLS_Y);
+        std::vector<std::shared_ptr<IPacket>> chunks;
+        std::vector<std::shared_ptr<IPacket>> headers;
+        chunks.resize(CELLS_X * CELLS_Y);
+        headers.resize(CELLS_X * CELLS_Y);
 
         for (int i = 0; i < CELLS_Y; i++)
         {
             for (int j = 0; j < CELLS_X; j++)
             {
                 int idx = i * CELLS_X + j;
-                packets[idx] = writer->GetInitialActionPacket();
+                chunks[idx] = writer->GetInitialChunk();
+                headers[idx] = writer->GetActionHeader();
             }
         }
 
@@ -236,14 +251,14 @@ namespace Core {
                 perfCollector->AddActionFieldCnt(m_zoneID, cell.actionResults.size());
                 for (auto& actionRes: cell.actionResults)
                 {
-                    writer->WriteActionField(packets[idx], actionRes);
+                    writer->WriteActionField(chunks[idx], actionRes);
                     wroteField = true;
                 }
                 cell.actionResults.clear();
                 if (!wroteField)
-                    packets[idx].reset();
+                    chunks[idx].reset();
             }
         }
-        broadcast->EnqueueWork(packets, m_zoneID);
+        broadcast->EnqueueWork(headers, chunks, m_zoneID);
     }
 }

@@ -20,34 +20,37 @@ namespace Core {
                 // back-off
                 continue;
             }
+            auto headers = packets->first;
+            auto chunks = packets->second;
+            std::vector<std::vector<std::shared_ptr<IPacket>>> currChunks;
+            currChunks.resize(CELLS_X * CELLS_Y);
             perfCollector->AddBroadcastPopCnt();
-            uint64_t zoneID = 0;
-            ZoneState* zone = nullptr;
-            for (auto& packet : *packets)
-            {
-                if (packet != nullptr)
-                {
-                    zoneID = packet->GetZone();
-                    if (zoneID == 0)
-                        continue;
-                    zone = stateManager->GetZone(zoneID);
-                    break;
-                }
-            }
 
-            if (zone == nullptr)
-                continue;
+            uint64_t zoneID = headers[0]->GetZone();
+            ZoneState* zone = stateManager->GetZone(zoneID);
             Base::BufferReader<std::vector<std::vector<uint64_t>>> reader = zone->GetSessionSnaphot();
             auto& vec = *reader.data; 
             size_t sentCount = 0;
             for (int i =0 ;i < CELLS_X*CELLS_Y; i++)
             {
-                sentCount += vec[i].size();
-                if ((*packets)[i] == nullptr)
+                size_t len = 0;
+                uint16_t count = 0;
+                currChunks[i].clear();
+                for (int j : AOI[i])
+                {
+                    if (chunks[j] == nullptr)
+                        continue;
+                    len += chunks[j]->GetLength();
+                    count += chunks[j]->GetCount();
+                    currChunks[i].push_back(chunks[j]);
+                }
+                if (count == 0)
                     continue;
+                writer->AddChunk(headers[i], len, count);
+                sentCount += vec[i].size();
                 for (auto session : vec[i])
                 {
-                    iocp->SendData(session, (*packets)[i]);
+                    iocp->SendDataChunks(session, headers[i], currChunks[i]);
                 }
             }
             perfCollector->AddBroadcastSendCnt(sentCount);
@@ -73,16 +76,11 @@ namespace Core {
         }
     }
 
-    void BroadcastThreadPool::EnqueueWork(std::vector<std::shared_ptr<IPacket>> packets, uint16_t zoneID) {
+    void BroadcastThreadPool::EnqueueWork(std::vector<std::shared_ptr<IPacket>> headers, std::vector<std::shared_ptr<IPacket>> chunks, uint16_t zoneID) {
         perfCollector->AddBroadcastEnqueueCnt();
         if (m_running.load()) {
-            
-            for (auto& packet : packets) {
-                if (packet == nullptr)
-                    continue;
-                packet->SetZone(zoneID);
-            }
-            m_workQ.push(std::make_unique<std::vector<std::shared_ptr<IPacket>>>(packets));
+            headers[0]->SetZone(zoneID);
+            m_workQ.push(std::make_unique<std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>>(headers, chunks));
             // 실패 시 drop
         }
     }

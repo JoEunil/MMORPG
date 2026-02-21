@@ -145,8 +145,8 @@ namespace Core {
         return p_st->body.chatCnt;
     }
 
-    std::shared_ptr<IPacket> PacketWriter::GetInitialFullPacket() {
-        auto p = bigPacketPool->Acquire();
+    std::shared_ptr<IPacket> PacketWriter::GetFullHeader() {
+        auto p = packetPool->Acquire();
         auto p_st = reinterpret_cast<PacketStruct<FullSnapshotBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
         p->SetLength(p_st->header.length);
@@ -159,11 +159,10 @@ namespace Core {
     }
 
     void PacketWriter::WriteFullField(std::shared_ptr<IPacket> p, CharacterState& state){
-        auto p_st = reinterpret_cast<PacketStruct<FullSnapshotBody>*>(p->GetBuffer());
-        p_st->header.length += sizeof(FullStateField);
-        p->SetLength(p_st->header.length);
-        p_st->body.count++;
-        auto& slot = p_st->body.states[p_st->body.count-1];
+        auto fields = reinterpret_cast<FullStateField*>(p->GetBuffer());
+        p->SetLength(p->GetLength() + sizeof(FullStateField));
+        p->Count();
+        auto& slot = fields[p->GetCount() -1];
         slot.zoneInternalID = state.zoneInternalID;
         slot.hp = state.hp;
         slot.mp = state.mp;
@@ -174,11 +173,11 @@ namespace Core {
         slot.dir = state.dir;
         slot.x = state.x;
         slot.y = state.y;
-        std::memcpy(p_st->body.states[p_st->body.count-1].charName, state.charName, MAX_CHARNAME_LEN);
+        std::memcpy(slot.charName, state.charName, MAX_CHARNAME_LEN);
     }
 
-    std::shared_ptr<IPacket> PacketWriter::GetInitialMonsterFullPacket() {
-        auto p = bigPacketPool->Acquire();
+    std::shared_ptr<IPacket> PacketWriter::GetMonsterFullHeader() {
+        auto p = packetPool->Acquire();
         auto p_st = reinterpret_cast<PacketStruct<MonsterFullSnapshotBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
         p->SetLength(p_st->header.length);
@@ -191,11 +190,10 @@ namespace Core {
     }
 
     void PacketWriter::WriteMonsterFullField(std::shared_ptr<IPacket> p, MonsterState& state) {
-        auto p_st = reinterpret_cast<PacketStruct<MonsterFullSnapshotBody>*>(p->GetBuffer());
-        p_st->header.length += sizeof(MonsterFullField);
-        p->SetLength(p_st->header.length);
-        p_st->body.count++;
-        auto& slot = p_st->body.states[p_st->body.count - 1];
+        auto fields = reinterpret_cast<MonsterFullField*>(p->GetBuffer());
+        p->SetLength(p->GetLength() + sizeof(MonsterFullField));
+        p->Count();
+        auto& slot = fields[p->GetCount() - 1];
         slot.internalId = state.internalID;
         slot.hp = state.hp;
         slot.maxHp = state.data->maxHp;
@@ -206,8 +204,8 @@ namespace Core {
         slot.monsterId = state.data->id;
     }
 
-    std::shared_ptr<IPacket> PacketWriter::GetInitialActionPacket() {
-        auto p = bigPacketPool->Acquire();
+    std::shared_ptr<IPacket> PacketWriter::GetActionHeader() {
+        auto p = packetPool->Acquire();
         auto p_st = reinterpret_cast<PacketStruct<ActionResultBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
         p->SetLength(p_st->header.length);
@@ -220,11 +218,10 @@ namespace Core {
     }
 
     void PacketWriter::WriteActionField(std::shared_ptr<IPacket> p, ActionResult& state) {
-        auto p_st = reinterpret_cast<PacketStruct<ActionResultBody>*>(p->GetBuffer());
-        p_st->header.length += sizeof(ActionResultField);
-        p->SetLength(p_st->header.length);
-        p_st->body.count++;
-        auto& action = p_st->body.actions[p_st->body.count - 1];
+        auto fields = reinterpret_cast<ActionResultField*>(p->GetBuffer());
+        p->SetLength(p->GetLength() + sizeof(ActionResultField));
+        p->Count();
+        auto& action = fields[p->GetCount() - 1];
         action.casterType = state.casterType;
         if (state.casterType == 0)
             action.casterId = state.zoneInternalId;

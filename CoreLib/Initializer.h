@@ -50,7 +50,7 @@ namespace Core {
         
         void InjectDependencies1(IIOCP* iocp, IPacketPool* packetPool, IPacketPool* bigPacketPool) {
             perfCollector.Initialize();
-            broadcastPool.Initialize(iocp, &stateManager, &perfCollector);
+            broadcastPool.Initialize(iocp, &stateManager, &perfCollector, &writer);
             lobbyZone.Initialize(& stateManager);
             noneZoneThreadPool.Initialize( &noneZoneHandler);
             zoneThreadSet.Initialize(&zoneHandler, &perfCollector);

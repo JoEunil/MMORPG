@@ -71,6 +71,8 @@ namespace Net {
 	void OverlappedExPool::Return(STOverlappedEx* r) {
 		r->sharedPacket.reset();
 		r->uniquePacket.reset();
+		r->packetChunks.clear();
+		r->wsaBuf.resize(1);
 		// nullptr도 안전
 		std::lock_guard<std::mutex> lock(m_mutex);
 		m_overlappedPool.push_back(r);

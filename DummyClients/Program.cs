@@ -96,7 +96,7 @@ static class Program
     }
     static async Task Main(string[] args)
     {
-        int clientCount = 100;   // 원하는 더미 클라이언트 수
+        int clientCount = 50;   // 원하는 더미 클라이언트 수
 
         Initialize(clientCount);
         await Connect();

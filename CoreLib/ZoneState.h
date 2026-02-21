@@ -102,6 +102,7 @@ namespace Core {
 
             m_monsters.reserve(MAX_MONSTER_COUNT);
             m_userCnt.store(0, std::memory_order_relaxed);
+            InitAOI();
         }
         void InitializeMonster();
         uint64_t ImmigrateChar(uint64_t sessionID, CharacterState& user);
@@ -122,8 +123,8 @@ namespace Core {
         void SkillCoolDown();
         void ApplySkill();
         void PopSkill(int idx, std::vector<ActiveSkill>& list);
-        void ProcessCellActiveSkills(Cell& cell);
-        void ApplyHit(std::optional<std::reference_wrapper<CharacterState>> caster, ActiveSkill& skill, Cell& cell);
+        void ProcessCellActiveSkills(Cell& cell, int idx);
+        void ApplyHit(std::optional<std::reference_wrapper<CharacterState>> caster, ActiveSkill& skill, int idx);
         void MoveToward(MonsterState& monster, CharacterState& character);
         void MoveAround(MonsterState& monster);
         uint32_t GetUserCnt() {

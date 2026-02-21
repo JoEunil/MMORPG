@@ -74,7 +74,7 @@ namespace Net {
 		Packet* rawPacket = m_packets.back();
 		m_packets.pop_back();
 		Adjust();
-
+		rawPacket->Clear();
 		// 커스텀 deleter: delete 대신 PacketPool에 반환
 		return std::shared_ptr<Core::IPacket>(rawPacket, [this](Packet* p) { this->Return(p); });
 	}

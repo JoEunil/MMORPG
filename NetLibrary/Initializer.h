@@ -35,7 +35,7 @@ namespace Net {
         std::condition_variable cv;
         std::mutex mutex; 
         PacketPool packetPool{ TARGET_PACKETPOOL_SIZE, MAX_PACKETPOOL_SIZE, MIN_PACKETPOOL_SIZE , NORMAL_PACKET_LENGTH };
-        PacketPool bigPacketPool{ TARGET_BPACKETPOOL_SIZE, MAX_BPACKETPOOL_SIZE, MIN_BPACKETPOOL_SIZE, BIG_PACKET_LENGTH};
+        PacketPool bigPacketPool{ TARGET_BPACKETPOOL_SIZE, MAX_BPACKETPOOL_SIZE, MIN_BPACKETPOOL_SIZE, BIG_PACKET_LENGTH };
         PingManager pingManager;
         SessionManager sessionManager;
         NetPerfCollector perfCollector;

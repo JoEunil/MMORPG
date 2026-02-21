@@ -8,6 +8,7 @@
 
 #include <BaseLib/LockFreeQueueUP.h>
 #include "LoggerGlobal.h"
+#include "PacketWriter.h"
 #include "Config.h"
 
 namespace Core {
@@ -17,13 +18,14 @@ namespace Core {
     class CorePerfCollector;
     class BroadcastThreadPool {
         std::vector<std::thread> m_threads;
-        Base::LockFreeQueueUP<std::unique_ptr<std::vector<std::shared_ptr<IPacket>>>, BROADCAST_QUEUE_SIZE> m_workQ;
+        Base::LockFreeQueueUP<std::unique_ptr< std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>>, BROADCAST_QUEUE_SIZE> m_workQ;
 
         std::atomic<bool> m_running = false;
-        void Initialize(IIOCP* i, StateManager* s, CorePerfCollector* p) {
+        void Initialize(IIOCP* i, StateManager* s, CorePerfCollector* p, PacketWriter* pw) {
             iocp = i;
             stateManager = s;
             perfCollector = p;
+            writer = pw;
         }
         bool IsReady() const {
             if (m_threads.size() != BROADCAST_THREADPOOL_SIZE) {
@@ -42,6 +44,10 @@ namespace Core {
                 sysLogger->LogError("broadcast thread", "perfCollector not initialized");
                 return false;
             }
+            if (writer == nullptr) {
+                sysLogger->LogError("broadcast thread", "writer not initialized");
+                return false;
+            }
             return true;
         }
 
@@ -52,13 +58,14 @@ namespace Core {
         IIOCP* iocp;
         StateManager* stateManager;
         CorePerfCollector* perfCollector;
+        PacketWriter* writer;
         friend class Initializer;
     public:
         ~BroadcastThreadPool() {
             Stop();
         }
 
-        void EnqueueWork(std::vector<std::shared_ptr<Core::IPacket>> work, uint16_t zoneID);
+        void EnqueueWork(std::vector<std::shared_ptr<IPacket>> headers, std::vector<std::shared_ptr<IPacket>> chunks, uint16_t zoneID);
     };
 
 }

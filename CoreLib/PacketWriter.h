@@ -39,8 +39,8 @@ namespace Core {
         std::shared_ptr<IPacket> GetInitialChatBatchPacket(CHAT_SCOPE scope);
         uint16_t WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, std::string& userName, std::string& message);
         
-        std::shared_ptr<IPacket> GetInitialDeltaPacket() {
-            auto p = bigPacketPool->Acquire();
+        std::shared_ptr<IPacket> GetDeltaHeader() {
+            auto p = packetPool->Acquire();
             auto p_st = reinterpret_cast<PacketStruct<DeltaSnapshotBody>*>(p->GetBuffer());
             p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
             p->SetLength(p_st->header.length);
@@ -54,22 +54,21 @@ namespace Core {
         void WriteDeltaField(std::shared_ptr<IPacket> p, uint64_t zoneInternalID,uint16_t fieldID, T val) {
             static_assert(sizeof(T) <= sizeof(uint32_t), "Delta field too large"); // 컴파일 타임
 
-            auto p_st = reinterpret_cast<PacketStruct<DeltaSnapshotBody>*>(p->GetBuffer());
-            p_st->header.length += sizeof(DeltaUpdateField);
-            p->SetLength(p_st->header.length);
-            p_st->body.count++;
-            auto& slot = p_st->body.updates[p_st->body.count-1];
+            auto fields = reinterpret_cast<DeltaUpdateField*>(p->GetBuffer());
+            p->SetLength(p->GetLength() + sizeof(DeltaUpdateField));
+            p->Count();
+            auto& slot = fields[p->GetCount() - 1];
             slot.zoneInternalID = zoneInternalID;
             slot.fieldID = fieldID;
             
             std::memset(&slot.fieldVal, 0, sizeof(slot.fieldVal)); // 나머지 바이트 초기화
             std::memcpy(&slot.fieldVal, &val, sizeof(T));
         }
-        std::shared_ptr<IPacket> GetInitialFullPacket();
+        std::shared_ptr<IPacket> GetFullHeader();
         void WriteFullField(std::shared_ptr<IPacket> p, CharacterState& state);
 
-        std::shared_ptr<IPacket> GetInitialMonsterDeltaPacket() {
-            auto p = bigPacketPool->Acquire();
+        std::shared_ptr<IPacket> GetMonsterDeltaHeader() {
+            auto p = packetPool->Acquire();
             auto p_st = reinterpret_cast<PacketStruct<MonsterDeltaSnapshotBody>*>(p->GetBuffer());
             p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
             p->SetLength(p_st->header.length);
@@ -83,22 +82,35 @@ namespace Core {
         void WriteMonsterDeltaField(std::shared_ptr<IPacket> p, uint16_t internalID, uint16_t fieldID, T val) {
             static_assert(sizeof(T) <= sizeof(uint32_t), "Delta field too large"); // 컴파일 타임
 
-            auto p_st = reinterpret_cast<PacketStruct<MonsterDeltaSnapshotBody>*>(p->GetBuffer());
-            p_st->header.length += sizeof(MonsterDeltaField);
-            p->SetLength(p_st->header.length);
-            p_st->body.count++;
-            auto& slot = p_st->body.updates[p_st->body.count - 1];
+            auto fields = reinterpret_cast<MonsterDeltaField*>(p->GetBuffer());
+            p->SetLength(p->GetLength() + sizeof(MonsterDeltaField));
+            p->Count();
+            auto& slot = fields[p->GetCount() - 1];
             slot.internalId = internalID;
             slot.fieldId = fieldID;
 
             std::memset(&slot.fieldVal, 0, sizeof(slot.fieldVal)); // 나머지 바이트 초기화
             std::memcpy(&slot.fieldVal, &val, sizeof(T));
         }
-        std::shared_ptr<IPacket> GetInitialMonsterFullPacket();
+        std::shared_ptr<IPacket> GetMonsterFullHeader();
         void WriteMonsterFullField(std::shared_ptr<IPacket> p, MonsterState& state);
 
-        std::shared_ptr<IPacket> GetInitialActionPacket();
+        std::shared_ptr<IPacket> GetActionHeader();
         void WriteActionField(std::shared_ptr<IPacket> p, ActionResult& state);
+
+        std::shared_ptr<IPacket> GetInitialChunk() {
+            auto p = bigPacketPool->Acquire();
+            p->SetLength(0);
+            return p;
+        }
+
+        void AddChunk(std::shared_ptr<IPacket> p, size_t len, uint16_t count) {
+            auto header = reinterpret_cast<PacketHeader*>(p->GetBuffer());
+            header->length += len;
+            uint16_t* countPtr = reinterpret_cast<uint16_t*>(p->GetBuffer() + sizeof(PacketHeader));
+            *countPtr += count;
+
+        }
 
         std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeFailed();
         std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint64_t zoneInternalID, float x, float y);
