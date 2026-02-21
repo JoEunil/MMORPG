@@ -42,8 +42,7 @@ namespace Core {
             return now - body->serverTimeMs;
         }
         void Ping(uint64_t sessionID, uint64_t rtt, uint64_t nowMs) override {
-            auto packet = writer->GetPingPacket(rtt, nowMs);
-            iocp->SendDataUnique(sessionID, std::move(packet));
+            iocp->SendDataUnique(sessionID, std::move(writer->GetPingPacket(rtt, nowMs)));
         }
     };
 }

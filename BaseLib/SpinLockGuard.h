@@ -1,5 +1,6 @@
 ﻿#pragma once
-#include <atomic>;
+#include <atomic>
+
 namespace Base{
 	class SpinLockGuard {
 		// lock_guard 처럼 쓸수 있게 RAII 적용

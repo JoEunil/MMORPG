@@ -22,13 +22,13 @@ namespace Net {
 	inline constexpr const uint32_t MIN_BPACKETPOOL_SIZE = 200;
 	inline constexpr const uint32_t TARGET_BPACKETPOOL_SIZE = 5000;
 
-	inline constexpr const uint16_t MAX_OVERLAPPEDPOOL_SIZE = MAX_CLIENT_CONNECTION * 12;
-	inline constexpr const uint16_t MIN_OVERLAPPEDPOOL_SIZE = MAX_CLIENT_CONNECTION * 2;
-	inline constexpr const uint16_t TARGET_OVERLAPPEDPOOL_SIZE = MAX_CLIENT_CONNECTION * 6;
+	inline constexpr const uint16_t MAX_OVERLAPPEDPOOL_SIZE = MAX_CLIENT_CONNECTION * 4;
+	inline constexpr const uint16_t MIN_OVERLAPPEDPOOL_SIZE = 1000;
+	inline constexpr const uint16_t TARGET_OVERLAPPEDPOOL_SIZE = MAX_CLIENT_CONNECTION * 2;
 
-	inline constexpr const uint32_t MAX_PACKETVIEWPOOL_SIZE = 15000;
+	inline constexpr const uint32_t MAX_PACKETVIEWPOOL_SIZE = 30000;
 	inline constexpr const uint32_t MIN_PACKETVIEWPOOL_SIZE = 200;
-	inline constexpr const uint32_t TARGET_PACKETVIEWPOOL_SIZE = 5000;
+	inline constexpr const uint32_t TARGET_PACKETVIEWPOOL_SIZE = 10000;
 
 	inline constexpr const uint16_t FLUSH_CONTEXTPOOL = 500;
 
@@ -48,9 +48,9 @@ namespace Net {
 		return n;
 	}
 	inline constexpr const uint16_t RECV_BUFFER_SIZE = 128;  
-	inline constexpr const uint16_t RING_BUFFER_SIZE_MIN = RECV_BUFFER_SIZE* 16; // 서버 수신 패킷은 크기가 작아서 충분, ring buffer에 남은 버퍼공간 반납하는 로직도 있어서 안전함.
-	inline constexpr const uint16_t RING_BUFFER_SIZE = NextPowerOf2(RING_BUFFER_SIZE_MIN);
-	inline constexpr const uint16_t RING_BUFFER_SIZE_MASK = RING_BUFFER_SIZE - 1;
+	inline constexpr const uint32_t RING_BUFFER_SIZE_MIN = RECV_BUFFER_SIZE* 256; // recv buffer size * 16으로 설정했을 때 dummy client 테스트에서 buffer override 발생..
+	inline constexpr const uint32_t RING_BUFFER_SIZE = NextPowerOf2(RING_BUFFER_SIZE_MIN);
+	inline constexpr const uint32_t RING_BUFFER_SIZE_MASK = RING_BUFFER_SIZE - 1;
 	inline constexpr const uint16_t MAX_PACKET_LEN = 4096; // PacketPool에서 미리 할당할 패킷 크기, 대용량 상태 동기화 패킷 처리를 위해 4KB로 설정
 
 	inline constexpr const uint16_t RELEASE_Q_SIZE_MIN = RING_BUFFER_SIZE / sizeof(Core::PacketHeader) + 2;

@@ -50,7 +50,7 @@ namespace Core {
     inline constexpr const auto DELTA_SNAPSHOT_TICK = std::chrono::milliseconds(50);
     inline constexpr const auto GAME_TICK = std::chrono::milliseconds(50);
 
-    inline constexpr const uint16_t MAX_CHEAT_COUNT = 5; // 최대 허용 치트 점수
+    inline constexpr const uint16_t MAX_CHEAT_COUNT = 10; // 최대 허용 치트 점수
     inline constexpr const uint8_t  MASK_EXIST = 1 << 0; 
     inline constexpr const uint8_t  MASK_AUTHENTICATED = 1 << 1;
     inline constexpr const uint8_t  MASK_NOT_CHEAT = 1 << 2;

@@ -6,7 +6,7 @@
 #include <mutex>
 #include <vector>
 
-#include <BaseLib/LockFreeQueue.h>
+#include <BaseLib/LockFreeQueueUP.h>
 #include "LoggerGlobal.h"
 #include "Config.h"
 
@@ -17,7 +17,7 @@ namespace Core {
     class CorePerfCollector;
     class BroadcastThreadPool {
         std::vector<std::thread> m_threads;
-        Base::LockFreeQueue<std::vector<std::shared_ptr<IPacket>>, BROADCAST_QUEUE_SIZE> m_workQ;
+        Base::LockFreeQueueUP<std::unique_ptr<std::vector<std::shared_ptr<IPacket>>>, BROADCAST_QUEUE_SIZE> m_workQ;
 
         std::atomic<bool> m_running = false;
         void Initialize(IIOCP* i, StateManager* s, CorePerfCollector* p) {

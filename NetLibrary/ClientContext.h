@@ -72,8 +72,8 @@ namespace Net {
             m_gameSession.store(true, std::memory_order_release);
         }
         void Disconnect() {
-            m_connected.store(false);
-            if (!m_connected.load() && m_workingCnt.load(std::memory_order_acquire) <= 0) {
+            m_connected.store(false, std::memory_order_release);
+            if (!m_connected.load(std::memory_order_acquire) && m_workingCnt.load(std::memory_order_acquire) <= 0) {
                 NetPacketFilter::Disconnect(m_sessionID);
             }
         }

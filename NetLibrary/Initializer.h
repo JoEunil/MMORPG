@@ -48,7 +48,7 @@ namespace Net {
             bigPacketPool.Initialize();
             sessionManager.Initialize(&clientContextPool);
             netHandler.Initialize(&sessionManager, &iocp);
-            perfCollector.Initialize(&sessionManager, &packetPool, &overlappedExPool,&clientContextPool);
+            perfCollector.Initialize(&sessionManager, &packetPool, &bigPacketPool, &overlappedExPool,&clientContextPool);
         }
         void CleanUp1() {
             pingManager.StopPing();

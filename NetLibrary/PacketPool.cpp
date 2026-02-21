@@ -89,12 +89,12 @@ namespace Net {
 		m_packets.pop_back();
 		Adjust();
 
-		return std::unique_ptr<Core::IPacket, Core::PacketDeleter>(rawPacket);
+		return std::unique_ptr<Core::IPacket, Core::PacketDeleter>(static_cast<Core::IPacket*>(rawPacket));
 	}
 
 	void PacketPool::Return(Core::IPacket* packet) {
 		std::lock_guard<std::mutex> lock(m_mutex);
-		m_packets.push_back(static_cast<Packet*>(packet)); // 인터페이스에 순수 가상함수만 정의되어 static_cast는 안전함
+		m_packets.push_back(static_cast<Packet*>(packet)); 
 		Adjust();
 	}
 

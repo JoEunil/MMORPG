@@ -16,9 +16,10 @@ namespace Net {
         std::atomic<uint64_t> jitter;
         std::thread m_thread;
         std::atomic<bool> m_running;
-        void Initialize(SessionManager* s, PacketPool* p, OverlappedExPool* o, ClientContextPool* c) {
+        void Initialize(SessionManager* s, PacketPool* p, PacketPool* bp, OverlappedExPool* o, ClientContextPool* c) {
             sessionManager = s;
             packetPool = p;
+            bigPacketPool = bp;
             overlappedPool = o;
             contextPool = c;
         }
@@ -29,6 +30,10 @@ namespace Net {
             }
             if (packetPool == nullptr) {
                 Core::sysLogger->LogError("net perf", "packetPool not initialized");
+                return false;
+            }
+            if (bigPacketPool == nullptr) {
+                Core::sysLogger->LogError("net perf", "bigPacketPool not initialized");
                 return false;
             }
             if (overlappedPool == nullptr) {
@@ -43,6 +48,7 @@ namespace Net {
         }
         SessionManager* sessionManager;
         PacketPool* packetPool;
+        PacketPool* bigPacketPool;
         OverlappedExPool* overlappedPool;
         ClientContextPool* contextPool;
         friend class Initializer;
@@ -72,6 +78,7 @@ namespace Net {
         void Flush() {
             auto connection = sessionManager->GetConnectionCnt();
             auto pPool = packetPool->GetPoolSize();
+            auto bPool = bigPacketPool->GetPoolSize();
             auto oPool = overlappedPool->GetPoolSize();
             auto cPool = contextPool->GetContextPoolSize();
             auto flush = contextPool->GetFlushQueueSize();
@@ -82,6 +89,7 @@ namespace Net {
                 "perf log per sec",
                 "connection", connection,
                 "packetPool", pPool,
+                "bigPacketPool", bPool,
                 "overlappedPool", oPool,
                 "contextPool", cPool,
                 "flushQueue", flush,

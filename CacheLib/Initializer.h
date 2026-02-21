@@ -43,18 +43,23 @@ namespace Cache {
         
         bool CheckReady() {
             if (!dispatcher.IsReady()) {
+                std::cout << "dispatcher 체크 실패" << std::endl;
                 return false;
             }
             if (!flush.IsReady()) {
+                std::cout << "flush 체크 실패" << std::endl;
                 return false;
             }
             if (!msgPool.IsReady()) {
+                std::cout << "msgPool 체크 실패" << std::endl;
                 return false;
             }
             if (!recvMQ.IsReady()) {
+                std::cout << "recvMQ 체크 실패" << std::endl;
                 return false;
             }
             if (!cache_5.IsReady()) {
+                std::cout << "cache_5 체크 실패" << std::endl;
                 return false;
             }
         }

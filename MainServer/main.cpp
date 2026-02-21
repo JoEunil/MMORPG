@@ -53,6 +53,14 @@ int main(int argc, char* argv[]) {
             std::cout << "서버 준비 완료" << std::endl;
             net.WaitCloseSignal();
         }
+        else {
+            if (!net.CheckReady())
+                std::cout << "net 체크 실패" << std::endl;
+            if (!core.CheckReady())
+            std::cout << "core 체크 실패" << std::endl;
+            if (!cache.CheckReady())
+            std::cout << "cache 체크 실패" << std::endl;
+        }
         std::cout << "서버 종료" << std::endl;
         Core::sysLogger->LogInfo("server stop");
         net.CleanUp1();
