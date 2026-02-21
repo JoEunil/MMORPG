@@ -159,7 +159,7 @@ namespace Net {
             }
 
             STOverlappedEx* pOverlappedEx = reinterpret_cast<STOverlappedEx*>(pOverlapped);
-            WSABUF pBuffer = pOverlappedEx->wsaBuf;
+            WSABUF pBuffer = pOverlappedEx->wsaBuf[0];
             SOCKET clientSocket = pOverlappedEx->clientSocket;
 
             if (result == FALSE)
@@ -181,7 +181,7 @@ namespace Net {
                     break;
                 }
                 perfCollector->AddRecvCnt(index);
-                netHandler->OnRecv(clientSocket, reinterpret_cast<uint8_t*>(pOverlappedEx->wsaBuf.buf), bytesTransferred);
+                netHandler->OnRecv(clientSocket, reinterpret_cast<uint8_t*>(pOverlappedEx->wsaBuf[0].buf), bytesTransferred);
 
                 if (!PostRecv(clientSocket)) {
                     Core::errorLogger->LogWarn("iocp", "Post Receive Failed(recv)", "socket", clientSocket);
@@ -194,7 +194,7 @@ namespace Net {
                 // completion key는 listen 소켓
                 if (!m_receiving.load())
                     break;
-                overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf.buf);
+                overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
                 setsockopt(clientSocket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&m_listenSock, sizeof(m_listenSock));
                 if (CreateIoCompletionPort((HANDLE)clientSocket, m_hIOCP, (ULONG_PTR)clientSocket, 0) == nullptr) {
                     closesocket(clientSocket);
@@ -232,8 +232,9 @@ namespace Net {
         ZeroMemory(pOverlappedEx, sizeof(STOverlappedEx));
         pOverlappedEx->op = IOOperation::ACCEPT;
         pOverlappedEx->clientSocket = clientSocket;
-        pOverlappedEx->wsaBuf.buf = overlappedExPool->AcquireAcceptBuffer();
-        if (pOverlappedEx->wsaBuf.buf == nullptr) {
+        pOverlappedEx->wsaBuf.resize(1);
+        pOverlappedEx->wsaBuf[0].buf = overlappedExPool->AcquireAcceptBuffer();
+        if (pOverlappedEx->wsaBuf[0].buf == nullptr) {
             // PREPOSTED_ACCEPT 만큼만 PostAccept가 유지되기 때문에 발생할 일이 없음. Accept가 실패될 순 있어도 PostAccept가 실패될 순 없음
             Core::errorLogger->LogError("iocp", "Failed to acquire Accept Buffer");
             overlappedExPool->Return(pOverlappedEx);
@@ -243,7 +244,7 @@ namespace Net {
         BOOL bRet = m_lpfnAcceptEx(
             m_listenSock,
             clientSocket,
-            pOverlappedEx->wsaBuf.buf,
+            pOverlappedEx->wsaBuf[0].buf,
             0,
             sizeof(SOCKADDR_IN) + 16,
             sizeof(SOCKADDR_IN) + 16,
@@ -260,7 +261,7 @@ namespace Net {
                 fatalError->store(true);
                 cv->notify_one();
 
-                overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf.buf);
+                overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
                 overlappedExPool->Return(pOverlappedEx);
                 closesocket(clientSocket);
             }
@@ -276,15 +277,16 @@ namespace Net {
         pOverlappedEx->op = IOOperation::RECV;
         pOverlappedEx->clientSocket = clientSocket;
         uint8_t* buf = nullptr;
-        pOverlappedEx->wsaBuf.len = netHandler->AllocateBuffer(clientSocket, buf);
-        pOverlappedEx->wsaBuf.buf = reinterpret_cast<char*>(buf);
-        if (pOverlappedEx->wsaBuf.len == 0) {
+        pOverlappedEx->wsaBuf.resize(1);
+        pOverlappedEx->wsaBuf[0].len = netHandler->AllocateBuffer(clientSocket, buf);
+        pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(buf);
+        if (pOverlappedEx->wsaBuf[0].len == 0) {
             Core::errorLogger->LogWarn("iocp", "can't allocate buffer", "socket", clientSocket);
             overlappedExPool->Return(pOverlappedEx);
             return false;
         }
 
-        int result = WSARecv(clientSocket, &pOverlappedEx->wsaBuf, 1, &dwBytesReceived, &dwFlags, &pOverlappedEx->wsaOverlapped, NULL);
+        int result = WSARecv(clientSocket, &pOverlappedEx->wsaBuf[0], 1, &dwBytesReceived, &dwFlags, &pOverlappedEx->wsaOverlapped, NULL);
 
         if (result == SOCKET_ERROR) {
             int err = WSAGetLastError();
@@ -331,11 +333,12 @@ namespace Net {
         STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
         pOverlappedEx->op = IOOperation::SEND;
         pOverlappedEx->clientSocket = clientSocket;
-        pOverlappedEx->wsaBuf.buf = reinterpret_cast<char*>(packet->GetBuffer()); // 다른 타입이지만, 메모리 표현은 동일 -> reinter cast
-        pOverlappedEx->wsaBuf.len = packet->GetLength();
+        pOverlappedEx->wsaBuf.resize(1);
+        pOverlappedEx->wsaBuf[0].len =  packet->GetLength();
+        pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
         pOverlappedEx->sharedPacket = packet;
         // 상속관계 타입 변환은 static cast, 컴파일 타임에 변환되어 런타임에 비용 0
-        int result = WSASend(clientSocket, &pOverlappedEx->wsaBuf, 1, &dwBytesSent, 0, &pOverlappedEx->wsaOverlapped, NULL);
+        int result = WSASend(clientSocket, &pOverlappedEx->wsaBuf[0], 1,  &dwBytesSent, 0, &pOverlappedEx->wsaOverlapped, NULL);
         if (result == SOCKET_ERROR)
         {
             int err = WSAGetLastError();
@@ -343,6 +346,48 @@ namespace Net {
             {
                 overlappedExPool->Return(pOverlappedEx);
                 Core::errorLogger->LogWarn("iocp", "WSASend failed: ","socket", clientSocket, "error message", std::to_string(err));
+            }
+        }
+
+    }
+
+
+    void IOCP::SendDataChunks(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet, std::vector<std::shared_ptr<Core::IPacket>>& packetChunks)
+    {
+        // Send 중 socket close와의 race condition은 발생할 수 있음.
+        // 그러나 WSASend 실패 / IO 취소는 정상적인 종료 경로
+        // 중복 close나 메모리 손상은 발생하지 않음.
+        // 이 경로에 mutex를 사용하면 성능에 영향이 커서 의도적으로 허용함.
+
+        SOCKET clientSocket = sessionManager->GetSocket(sessionID);
+        if (clientSocket == INVALID_SOCKET) {
+            //Core::errorLogger->LogWarn("iocp", "try send to INVALID SOCKET", "session" , sessionID); 
+            // 정상 실행 흐름에서 발생 가능하고, 발생 빈도가 매우 높다.
+            return;
+        }
+        DWORD dwBytesSent = 0;
+        STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
+        pOverlappedEx->op = IOOperation::SEND;
+        pOverlappedEx->clientSocket = clientSocket;
+        pOverlappedEx->wsaBuf.resize(1);
+        pOverlappedEx->wsaBuf[0].len = packet->GetLength();
+        pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
+        pOverlappedEx->sharedPacket = packet;
+        pOverlappedEx->packetChunks = packetChunks;
+        for (auto& chunk : packetChunks)
+        {
+            pOverlappedEx->wsaBuf.emplace_back(WSABUF{ chunk->GetLength(), reinterpret_cast<char*>(chunk->GetBuffer()) });
+        }
+        // 상속관계 타입 변환은 static cast, 컴파일 타임에 변환되어 런타임에 비용 0
+        int result = WSASend(clientSocket, pOverlappedEx->wsaBuf.data(), static_cast<DWORD>(pOverlappedEx->wsaBuf.size()),
+            &dwBytesSent, 0, &pOverlappedEx->wsaOverlapped, NULL);
+        if (result == SOCKET_ERROR)
+        {
+            int err = WSAGetLastError();
+            if (err != WSA_IO_PENDING)
+            {
+                overlappedExPool->Return(pOverlappedEx);
+                Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", clientSocket, "error message", std::to_string(err));
             }
         }
 
@@ -359,10 +404,11 @@ namespace Net {
         STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
         pOverlappedEx->op = IOOperation::SEND;
         pOverlappedEx->clientSocket = clientSocket;
-        pOverlappedEx->wsaBuf.buf = reinterpret_cast<char*>(packet->GetBuffer());
-        pOverlappedEx->wsaBuf.len = packet->GetLength();
+        pOverlappedEx->wsaBuf.resize(1);
+        pOverlappedEx->wsaBuf[0].len = packet->GetLength();
+        pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
         pOverlappedEx->uniquePacket = std::move(packet);
-        int result = WSASend(clientSocket, &pOverlappedEx->wsaBuf, 1, &dwBytesSent, 0, &pOverlappedEx->wsaOverlapped, NULL);
+        int result = WSASend(clientSocket, &pOverlappedEx->wsaBuf[0], 1, &dwBytesSent, 0, &pOverlappedEx->wsaOverlapped, NULL);
         if (result == SOCKET_ERROR)
         {
             int err = WSAGetLastError();

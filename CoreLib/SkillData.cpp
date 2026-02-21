@@ -9,7 +9,7 @@ namespace Data {
             1, 20,         // mana, cooldown
             {
                 // wait tick, actionType, range, attack
-                SkillPhase{ 0, 0, {SkillRangeType::None, 0, 0}, 50 }, // 스킬 애니메이션 시작
+                SkillPhase{ 0, 0, {SkillRangeType::None, 0, 0}, 0 }, // 스킬 애니메이션 시작
                 SkillPhase{ 6, 1, {SkillRangeType::Circle, 2.0f, 0.0f}, 5 }, // 타격 처리
             },
         },

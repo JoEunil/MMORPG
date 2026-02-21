@@ -33,7 +33,7 @@ namespace Core {
             y = posY;
             spawnX = x;
             spawnY = y;
-            dir = 1;
+            dir = 2;
             aggro = 0;
             aggroTick = 0;
             tick = 0;

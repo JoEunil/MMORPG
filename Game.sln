@@ -34,8 +34,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Concept", "Concept", "{C8D5
 		IOCP&epoll.md = IOCP&epoll.md
 		LockFreeQueue.md = LockFreeQueue.md
 		memory_order.md = memory_order.md
-		Monster.md = Monster.md
-		Skill.md = Skill.md
 		StructuredLogging.md = StructuredLogging.md
 		TripleBuffer.md = TripleBuffer.md
 	EndProjectSection
@@ -44,14 +42,21 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Design", "Design", "{F0F87F
 	ProjectSection(SolutionItems) = preProject
 		ClientContext.md = ClientContext.md
 		FloodDetect.md = FloodDetect.md
+		DummyTest.md = DummyTest.md
+		Monitoring.md = Monitoring.md
+		Monster.md = Monster.md
 		PingLoop.md = PingLoop.md
+		Skill.md = Skill.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A67903F-5C0B-4FD6-876B-B0088C77C6B6}"
 	ProjectSection(SolutionItems) = preProject
+		images\BeforeAOI.gif = images\BeforeAOI.gif
+		images\ChatGlobal.gif = images\ChatGlobal.gif
+		images\ChatWhisper.gif = images\ChatWhisper.gif
+		images\ChatZone.gif = images\ChatZone.gif
 		images\FloodCheckFlowChart.png = images\FloodCheckFlowChart.png
-		images\flushQueue1.png = images\flushQueue1.png
-		images\flushQueue2.png = images\flushQueue2.png
+		images\flushQueue.png = images\flushQueue.png
 		images\IOCPWorkerThreadRecv.png = images\IOCPWorkerThreadRecv.png
 		images\LockFreeQueue1.png = images\LockFreeQueue1.png
 		images\LockFreeQueue2.png = images\LockFreeQueue2.png
@@ -62,6 +67,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 		images\SessionManagerDeadLock2.png = images\SessionManagerDeadLock2.png
 		images\StackOverflow.png = images\StackOverflow.png
 		images\TCP&UDP.png = images\TCP&UDP.png
+		images\WindowTimerResolution.gif = images\WindowTimerResolution.gif
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Gif", "Gif", "{1EAD1855-C4A5-4C63-AC48-2766B77829DD}"
@@ -72,6 +78,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Debug", "Debug", "{04961DE9-96A0-4081-AB5A-BAF900334FF2}"
 	ProjectSection(SolutionItems) = preProject
 		LockFreeQueueDebug.md = LockFreeQueueDebug.md
+		MemoryOrderDebug.md = MemoryOrderDebug.md
 		SessionManagerDeadLock.md = SessionManagerDeadLock.md
 	EndProjectSection
 EndProject

@@ -30,8 +30,6 @@ void OnRecv(SOCKET sock, uint8_t* buf, uint16_t len) const {
 ```
 
 ## Note
-- 운영 중 서버에서 Pong 스레드 TPS 추적 가능
-	- TPS가 0이면 데드락 발생 가능성을 의심
 - ClientContext의 설계의도를 간과하고 StateManager 내부에서 처리하도록 한 것이 문제
 ## 관련 문서
 해당 PR: [데드락 해결 및 SessionManager 수정#14](https://github.com/JoEunil/MMORPG/pull/13)   

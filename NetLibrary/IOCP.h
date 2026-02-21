@@ -102,6 +102,7 @@ namespace Net {
             CleanUp();
         }
         void SendData(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet) override;
+        void SendDataChunks(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet, std::vector<std::shared_ptr<Core::IPacket>>& chunks) override;
         void SendDataUnique(uint64_t sessionID, std::unique_ptr<Core::IPacket, Core::PacketDeleter> packet) override;
 
         void AbortSocket(SOCKET sock) override;

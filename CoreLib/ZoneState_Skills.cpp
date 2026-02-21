@@ -35,7 +35,7 @@ namespace Core {
 			for (int j = 0; j < CELLS_X; j++)
 			{
 				auto& cell = m_cells[i][j];
-				ProcessCellActiveSkills(cell);
+				ProcessCellActiveSkills(cell, i * CELLS_Y + j);
 			}
 		}
 	}
@@ -45,7 +45,7 @@ namespace Core {
 		list.pop_back();
 	}
 
-	void ZoneState::ProcessCellActiveSkills(Cell& cell) {
+	void ZoneState::ProcessCellActiveSkills(Cell& cell, int idx) {
 		for (int k = 0; k < cell.activeSkills.size(); k++)
 		{
 			auto& skill = cell.activeSkills[k];
@@ -71,7 +71,7 @@ namespace Core {
 			}
 			auto actionID = skillData.phases[skill.currentPhase].actionID;
 			if (actionID == 1)
-				ApplyHit(caster, skill, cell);
+				ApplyHit(caster, skill, idx);
 			cell.actionResults.emplace_back(ActionResult{
 			skill.casterType,
 			skill.zoneInternalId,
@@ -93,67 +93,75 @@ namespace Core {
 		}
 	}
 
-	void ZoneState::ApplyHit(std::optional<std::reference_wrapper<CharacterState>> c, ActiveSkill& skill, Cell& cell) {
+	void ZoneState::ApplyHit(std::optional<std::reference_wrapper<CharacterState>> c, ActiveSkill& skill, int idx) {
 		perfCollector->AddHitCnt(m_zoneID);
 		auto& skillData = Data::skillList[skill.skillId];
 		auto& phase = skillData.phases[skill.currentPhase];
 		bool AOE = skillData.flags & 0x02; // 광역기
 		if (skill.casterType == 0) { // 캐릭터 -> 몬스터
 			auto& caster = c.value().get();
-			for (uint16_t mon : cell.monsterIndexes)
-			{
-				if (m_monsters[mon].hp == 0)
-					continue;
-				if (phase.range.InRange(skill.dir, skill.x, skill.y, m_monsters[mon].x, m_monsters[mon].y))
+			for (auto& cellIdx : AOI[idx]) {
+				auto& cell = m_cells[cellIdx / CELLS_X][cellIdx % CELLS_X];
+				for (uint16_t mon : cell.monsterIndexes)
 				{
-					auto damage = caster.attack * phase.attack;
-					if (skillData.flags & 0x01) {
-						// critical 적용..
-						damage *= 2;
+					if (m_monsters[mon].hp == 0)
+						continue;
+					if (phase.range.InRange(skill.dir, skill.x, skill.y, m_monsters[mon].x, m_monsters[mon].y))
+					{
+						auto damage = caster.attack * phase.attack;
+						if (skillData.flags & 0x01) {
+							// critical 적용..
+							damage *= 2;
+						}
+						m_monsters[mon].hp -= damage;
+						if (m_monsters[mon].hp <= 0) {
+							m_monsters[mon].hp = 0;
+							// 일단 막타 친 사람만 보상.. 
+							// 보스몬스터의 경우 hitter list로 보상 분배하도록 처리해야됨.
+							caster.exp += m_monsters[mon].data->reward.exp;
+							caster.dirtyBit |= 0x10; // exp
+							cell.dirtyChar.push_back(caster.zoneInternalID);
+						}
+						m_monsters[mon].aggro = caster.zoneInternalID;
+						m_monsters[mon].aggroTick = 0;
+						m_monsters[mon].dirtyBit |= 0x01; // hp
+						if (!AOE)
+							break;
 					}
-					m_monsters[mon].hp -= damage;
-					if (m_monsters[mon].hp <= 0) {
-						m_monsters[mon].hp = 0;
-						// 일단 막타 친 사람만 보상.. 
-						// 보스몬스터의 경우 hitter list로 보상 분배하도록 처리해야됨.
-						caster.exp += m_monsters[mon].data->reward.exp;
-						caster.dirtyBit |= 0x10; // exp
-						cell.dirtyChar.push_back(caster.zoneInternalID);
-					}
-					m_monsters[mon].aggro = caster.zoneInternalID;
-					m_monsters[mon].aggroTick = 0;
-					m_monsters[mon].dirtyBit |= 0x01; // hp
-					if (!AOE)
-						break;
 				}
 			}
+			
 		}
 		else { // 몬스터 -> 캐릭터
 			auto& caster = m_monsters[skill.monsterId];
-			for (auto session : cell.charSessions) {
-				auto it = m_sessionToIndex.find(session);
-				if (it == m_sessionToIndex.end())
-					continue;
-				auto& character = m_chars[it->second];
+			for (auto& cellIdx : AOI[idx]) {
+				auto& cell = m_cells[cellIdx / CELLS_X][cellIdx % CELLS_X];
+				for (auto session : cell.charSessions) {
+					auto it = m_sessionToIndex.find(session);
+					if (it == m_sessionToIndex.end())
+						continue;
+					auto& character = m_chars[it->second];
 
-				if (phase.range.InRange(skill.dir, skill.x, skill.y, character.x, character.y))
-				{
-					auto damage = caster.data->attack * phase.attack;
-					if (skillData.flags & 0x01) {
-						// critical 적용..
-						damage *= 2;
+					if (phase.range.InRange(skill.dir, skill.x, skill.y, character.x, character.y))
+					{
+						auto damage = caster.data->attack * phase.attack;
+						if (skillData.flags & 0x01) {
+							// critical 적용..
+							damage *= 2;
+						}
+						character.hp -= damage;
+						if (character.hp <= 0)
+							character.hp = 0;
+						else
+							caster.aggroTick = 0; // 공격시에도 어그로 틱 초기화.
+						character.dirtyBit |= 0x01; // hp
+						cell.dirtyChar.push_back(character.zoneInternalID);
+						if (!AOE)
+							break;
 					}
-					character.hp -= damage;
-					if (character.hp <= 0)
-						character.hp = 0;
-					else 
-						caster.aggroTick = 0; // 공격시에도 어그로 틱 초기화.
-					character.dirtyBit |= 0x01; // hp
-					cell.dirtyChar.push_back(character.zoneInternalID);
-					if (!AOE)
-						break;
 				}
 			}
+			
 		}
 		
 	}
