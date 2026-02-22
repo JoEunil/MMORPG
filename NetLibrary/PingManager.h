@@ -40,6 +40,7 @@ namespace Net {
         void SendPing(uint64_t session, uint64_t rtt, uint64_t nowMs);
 
         void PingStart() {
+            m_running.store(true);
             m_pingThread = std::thread(&PingManager::PingFunc, this);
         }
 

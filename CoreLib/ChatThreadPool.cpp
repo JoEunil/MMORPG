@@ -10,7 +10,6 @@ namespace Core {
         std::stringstream ss;
         ss << tid;
         sysLogger->LogInfo("chat thread", "chat thread started", "threadID", ss.str());
-        m_running.store(true);
         std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash> tempPackets;
         tempPackets.reserve(100);
 

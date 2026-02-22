@@ -13,7 +13,6 @@ namespace Net {
         std::stringstream ss;
         ss << tid;
         Core::sysLogger->LogInfo( "ping manager", "Ping thread started", "threadID", ss.str());
-        m_running.store(true);
         std::vector<PingStruct> clientList;
         // socket, session, rtt
         

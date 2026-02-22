@@ -105,6 +105,7 @@ namespace Core {
         }
         void Start() {
             const uint16_t CHAT_WORKER_SIZE = 1;  // 변경하려면 ChatDestKey 활용해 샤딩 적용 필요. 
+            m_running.store(true);
             for (int i = 0; i < CHAT_WORKER_SIZE; i++)
             {
                 m_workerThreadPool.emplace_back(std::thread(&ChatThreadPool::ThreadFunc, this));
