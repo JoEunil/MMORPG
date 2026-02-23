@@ -48,8 +48,7 @@ namespace Core {
                 auto& cell = m_cells[i][j];
                 int idx = i * CELLS_X + j;
                 int loop = DELTA_UPDATE_COUNT;
-
-                bool wroteField = false;
+                int iterCnt = 0;
                 while (!cell.dirtyChar.empty() && loop--)
                 {
                     auto& internalID = cell.dirtyChar.back();
@@ -78,13 +77,12 @@ namespace Core {
                         if (bit & 0x100)
                             writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 8, character.y);
                         character.dirtyBit = 0x00;
+                        iterCnt++;
                     }
                     cell.dirtyChar.pop_back();
-                    wroteField = true;
                 }
-
-                perfCollector->AddDeltaFieldCnt(m_zoneID, DELTA_UPDATE_COUNT - loop);
-                if (!wroteField) {
+                perfCollector->AddDeltaFieldCnt(m_zoneID, iterCnt);
+                if (iterCnt == 0) {
                     chunks[idx].reset();
                 }
             }
@@ -162,7 +160,7 @@ namespace Core {
                 auto& cell = m_cells[i][j];
                 int idx = i * CELLS_X + j;
                 int loop = DELTA_UPDATE_COUNT*2;
-
+                int iterCnt = 0;
                 for (int k =0 ; k < cell.monsterIndexes.size() && loop--; k++)
                 {
                     auto& monster = m_monsters[cell.monsterIndexes[k]];
@@ -179,8 +177,9 @@ namespace Core {
                         writer->WriteMonsterDeltaField(chunks[idx], monster.internalID, 3, monster.dir);
                     monster.dirtyBit = 0x00;
                     monster.attacked = 0;
+                    iterCnt++;
                 }
-                perfCollector->AddMonsterDeltaFieldCnt(m_zoneID, DELTA_UPDATE_COUNT * 2 - loop);
+                perfCollector->AddMonsterDeltaFieldCnt(m_zoneID, iterCnt);
             }
         }
         broadcast->EnqueueWork(headers, chunks, m_zoneID);

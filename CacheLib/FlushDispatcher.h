@@ -40,7 +40,6 @@ namespace Cache {
         }
 
         void ThreadFunc() {
-            m_running.store(true);
             while (m_running.load()) {
                 m_minTime = std::chrono::steady_clock::now() + std::chrono::seconds(30);
                 storage_5->ForEachDirty([this](const Key5& key, Result5& res) { DirtyFlush(key, res); });
@@ -53,6 +52,7 @@ namespace Cache {
             flush = f;
             storage_5 = s;
             s->SetFlushFn([this](const Key5& key, Result5& res) { Flush(key, res); });
+            m_running.store(true);
             m_thread = std::thread(&FlushDispatcher::ThreadFunc, this);
         }
         bool IsReady() {

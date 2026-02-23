@@ -62,6 +62,20 @@ class ZoneChageTrigger : MonoBehaviour
         var res = _zoneMap[_zoneID].CheckPos(x, y);
         if (res == 0)
             return;
+        int cx = (_zoneID - 1) % 3;
+        int cy = (_zoneID - 1) / 3;
+
+        bool canMove = res switch
+        {
+            1 => cy > 0,   // 위로 이동 → y > 0 이어야 함
+            2 => cy < 2,   // 아래로 이동 → y < 2
+            3 => cx > 0,   // 왼쪽으로 이동 → x > 0
+            4 => cx < 2,   // 오른쪽으로 이동 → x < 2
+            _ => false
+        };
+
+        if (!canMove)
+            return;
         _viewModel.ZoneChange(res);
         _trigger = false;
         Debug.Log($"Zone chagne op {res}");

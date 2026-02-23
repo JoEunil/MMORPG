@@ -17,10 +17,10 @@ namespace Net {
 		inline static std::thread m_thread;
 		inline static std::atomic<bool> m_running;
 		static void StartThread() {
+			m_running.store(true, std::memory_order_relaxed);
 			m_thread = std::thread(ThreadFunc);
 		}
 		static void ThreadFunc() {
-			m_running.store(true, std::memory_order_relaxed);
 			auto tid = std::this_thread::get_id();
 			std::stringstream ss;
 			ss << tid;

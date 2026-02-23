@@ -15,6 +15,10 @@ public class PlayerManager : MonoBehaviour
     [SerializeField] private GameObject playerPrefab;
     [SerializeField] private PlayerState _myPlayerState;
     [SerializeField] private MyHeroControl _myPlayerControl;
+
+    [SerializeField] private PlayerStatsUI playerStatsUI;
+    [SerializeField] private SkillUI skillUI;
+
     private ulong _chatID = 0;
 
     bool _myPlayerInitialized = false;
@@ -39,15 +43,15 @@ public class PlayerManager : MonoBehaviour
         }
         return null;
     }
-    public void SpawnPlayer(ulong zoneInternalID, Vector3 pos, string name, ushort level)
+    public void SpawnPlayer(ulong zoneInternalID, FullStateField field)
     {
         if (_players.ContainsKey(zoneInternalID)) return;
-        GameObject go = Instantiate(playerPrefab, pos, Quaternion.identity);
+        GameObject go = Instantiate(playerPrefab, new Vector3(field.x, field.y, transform.position.y), Quaternion.identity);
         PlayerState state = go.GetComponent<PlayerState>();
         HeroControl control = go.GetComponent<HeroControl>();
-        control.SetNameLevel(name, level);
+        state.SetPlayer(field);
+        control.SetNameLevel(Encoding.UTF8.GetString(field.charName), field.level);
         _players[zoneInternalID] = (state, control);
-        
     }
     public void ZoneChange(ulong id, float x, float y)
     {
@@ -86,14 +90,15 @@ public class PlayerManager : MonoBehaviour
             } 
             else
             {
-                SpawnPlayer(internalID, new Vector3(fields[i].x, fields[i].y, transform.position.z), Encoding.UTF8.GetString(fields[i].charName), fields[i].level);
+                SpawnPlayer(internalID, fields[i]);
             }
         }
         ApplyDirtyUpdates();
+        playerStatsUI.UpdateAll(_myPlayerState);
     }
     public void ApplyDelta(ushort count, DeltaUpdateField[] fields)
     {
-        for (int i = 0; i < count || i < fields.Length; i++)
+        for (int i = 0; i < count && i < fields.Length; i++)
         {
             if (fields[i].zoneInternalID == _myPlayerState.zoneInternalID)
             {
@@ -108,6 +113,7 @@ public class PlayerManager : MonoBehaviour
             }
         }
         ApplyDirtyUpdates();
+        playerStatsUI.UpdateAll(_myPlayerState);
     }
     private void ApplyDirtyUpdates()
     {
@@ -122,7 +128,7 @@ public class PlayerManager : MonoBehaviour
 
             var (state, control) = _players[zoneID];
             control.UpdatePosition(state.dir, state.x, state.y);
-            control.UpdateHPMP(state.HP, state.MP);
+            control.UpdateHPMP(state.HP, state.MP, state.MAXHP, state.MAXMP);
         }
 
         _dirtySet.Clear();
@@ -139,9 +145,21 @@ public class PlayerManager : MonoBehaviour
         if (_players.TryGetValue(zoneInternalID, out var player))
         {
             Destroy(player.control.gameObject);
+            Destroy(player.state.gameObject);
             _players.Remove(zoneInternalID);
             _dirtySet.Remove(zoneInternalID);
         }
     }
-
+    public void SkillAnimation(ulong casterID, byte slotID, uint skillId, byte dir)
+    {
+        if (casterID == _myPlayerState.zoneInternalID)
+        {
+            _myPlayerControl.StartSkill(dir, skillId);
+            skillUI.UseSkill(slotID);
+        }
+        else if (_players.TryGetValue(casterID, out var player))
+        {
+            player.control.StartSkill(dir, skillId);
+        }
+    }
 }

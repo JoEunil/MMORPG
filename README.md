@@ -1,10 +1,34 @@
 ﻿ # MMORPG GAME PROJECT
 
 ## 1. 프로젝트 개요
+__목적__
+- MMORPG 서버 구현을 통해 서버 관점에서 요구되는 기술과 개념을 이해한다.  
+- 서버 운영과 관련된 핵심 기술을 직접 경험하고 습득한다.  
+
+__목표__
+- 클라이언트 로그인부터 사용자 접속 종료 및 재접속 로직까지, __End-to-End 데이터 파이프라인__ 을 설계하고 구현한다.  
+- 프로젝트 전반의 서버 구조와 흐름을 직접 설계한다.
 
 ## 2. 전체 아키텍처
+![이미지 로드 실패](images/architecture.png)
+프로젝트는 클라이언트·서버·공용 라이브러리로 명확히 분리된 구조를 가진다.
+
+클라이언트는 .NET 기반의 ClientCore 라이브러리에서 네트워크 로직을 처리하고, UI는 WinForms 테스트 후 Unity View로 대체할 수 있도록 MVVM 패턴을 적용했다.
+
+서버는 기능별로 모듈화되어 있으며,
+
+- __NetLibrary__는 네트워크 IO 및 네트워크 세션, 핑 처리,
+- __CoreLib__는 게임 로직,
+- __CacheLib__는 DB I/O와 메모리 캐시,
+- __ExternalLib__는 로그 처리 및 Redis 기반 세션 인증을 담당한다.
+
+외부 모듈로는  spdlog, hiredis, libevent, nlohmann(json), Mysql Connector C++를 사용하며, DB는 로그인 DB와 게임 DB로 분리하여 운영한다.
+또한 인증 서버는 Redis에 임시 세션을 저장해 게임 서버 진입을 검증하고, 로그인 서버는 로그인 토큰을 발급해 인증 서버에 세션을 등록하는 역할을 수행한다.
 
 ## 3. 리팩토링 
+README에서는 refactoring을 위주로 서술한다. 
+주요 기능은 별도로 문서를 남겨놓았고 [문서](#doc)에서 확인할 수 있다.
+
 ### 3.1 Ping 루프 기반 세션 종료 리팩토링
 #### 문제상황
 초기 설계에서는 Ping Loop를 통한 세션 종료 로직이 CoreLib의 StateManager에 위치해 있었다.
@@ -161,7 +185,81 @@ PacketView
 #### 참고
 - 관련 PR: [Context, Session 리팩토링 #13](https://github.com/JoEunil/MMORPG/pull/13)
 - 관련 PR: [데드락 해결 및 SessionManager 수정#14](https://github.com/JoEunil/MMORPG/pull/13)
-## 4. 문서
+
+### 3.4 AOI 적용
+#### 문제상황
+- 스킬 기능 및 상태 동기화 처리 기능을 추가하면서, Zone 내 유저 수가 많아지면 AOI 탐색 Depth가 깊어지고,
+이는 Zone 스레드의 TPS에 영향을 미칠 위험성을 인지하였다.
+- Zone을 Cell 단위로 나누어서 처리했고, Cell에 AOI를 적용하기 위해서는 기존의 패킷 처리 로직을 그대로 사용할 수 없었다.
+#### 수정사항
+__구조 변경__  
+- Zone 내부를 Cell 단위로 분리하여 패킷 전파 단위 축소
+	- 기존: zone 유저수 x zone 유저수 x 패킷 필드
+	- Cell 적용 후: Cell 유저수 x Cell 유저수 x 패킷 필드
+- AOI 처리 시 개별 패킷을 보내는 대신 Chunk 단위로 묶어 전송
+- overlapped 구조체를 일부 수정하고, 별도의 Send 메서드를 추가하여 Chunk 전송 처리
+
+__처리 방식__  
+Chunk 단위 전송 처리 방식  
+- 기존 Packet 클래스를 그대로 사용
+- 패킷 헤더는 기존 경로로 처리
+- 패킷 바디는 각 Cell을 Chunk 단위로 분리 후 합쳐서 전송
+- overlapped 구조체에서 wsaBuf를 vector에 담아 WSA Send call 한 번으로 패킷 전송 가능.
+- 현재 Grid 기반 AOI를 사용하며, 각 Cell의 AOI 단위는 미리 정의되어 있음
+
+#### 설계 결정 및 트레이드오프
+- 기존 3.3 리팩토링에서 Chunk 단위 전송을 고려했으나, 당시에는 필요성 낮음 판단 → 보류
+- Cell, AOI 적용
+	- 패킷 크기 감소, Skill 처리 탐색 범위 감소
+	- 대역폭 계산  
+	```패킷 크기 x 전송 대상 수 = (패킷 필드 1개 x 전송 대상) x 전송 대상 ```
+	- 패킷 전송량은 전송 대상 수의 제곱에 비례
+	- 따라서 Cell 단위 분리는 대역폭 절감 효과가 매우 큼
+	- AOI 적용을 통해 예측 가능한 시야 범위 정보를 미리 로드하고, 불필요한 전송을 줄일 수 있음
+- Chunk 단위 전송 처리 로직 추가 
+	- 코드 복잡도 상승, 
+	- 패킷 절감 효과 발생
+
+#### 시연
+
+ ![GIF 로드 실패](images/BeforeAOI.gif)
+>  AOI 적용 전 임시로 Cell 단위로 처리한 상태
+
+ ![GIF 로드 실패](images/AfterAOI.gif)
+>  AOI 적용 후  
+*분홍색 선은 Cell 경계를 나타낸 것이다.
+#### 참고
+- 관련 PR: [grid 기반 AOI 적용 #20](https://github.com/JoEunil/MMORPG/pull/20)
+
+## 4. 느낀점 및 추후 개선이 필요한 점
+__게임 서버에서 성능 우선순위__
+1. 네트워크
+	- AOI
+	- 패킷 최소화
+	- Full 패킷 줄이기
+	- Delta 패킷 사용
+	- Batch 처리
+2. CPU
+	- AOI
+	- Zone 전용 스레드 코어 고정 -> 캐시 효율 증가
+	- SpinLock 적용 -> contextSwitching 비용 감소
+	- Lock free 자료구조 적용 -> mutex 잠금 비용 감소
+3. 메모리
+	- MMO 서버에서 메모리는 문제가 되지 않는다.
+		- Network IO나 CPU 스케줄링이 먼저 병목 발생
+		- 메모리는 대부분 예측 가능하게 소비됨
+	- 문제가 되는 경우: 메모리 누수, 객체 풀 설계 오류
+
+__프로젝트를 통해 얻은 인사이트__
+- Lock-free 자료구조를 직접 구현하고 디버깅하며 atomic 변수, mutex, memory_order에 대한 이해 향상
+- 멀티스레드 환경에서 스레드 동기화와 TPS 처리 구조 이해
+
+__추후 개선 사항__
+- 현재 Zone 전환 로직에서 모든 작업에 mutex 잠금을 사용 → Zone별 lock-free 작업 큐 도입으로 mutex 제거
+- 서버 성능 모니터링을 위해 메트릭 수집기 추가 필요
+- 스킬, 몬스터 데이터는 데이터 드리븐으로 변경. 지금은 하드코딩으로 처리하는 상태.
+
+## 5. 문서 {#doc}
 
 ### 개념
 - [memory_order](memory_order.md)
@@ -169,6 +267,7 @@ PacketView
 - [IOCP와 epoll](IOCP&epoll.md)
 - [로그 구조화](StructuredLogging.md)
 - [TripleBuffer](TripleBuffer.md)
+
 ### 설계
 - [네트워크 Flood 탐지](FloodDetect.md) 
 - [Ping 처리](PingLoop.md) 
@@ -177,6 +276,8 @@ PacketView
 - [Monster](Monster.md) 
 - [모니터링](Monitoring.md) 
 - [더미 클라이언트 테스트](DummyTest.md) 
+- [서버 클라이언트 동기화 처리 전략(Snapshot)](Snapshot.md) 
+- [서버, 클라이언트 틱 처리](Tick.md) 
 
 ### 디버그
 - [SessionManager 데드락](SessionManagerDeadLock.md)

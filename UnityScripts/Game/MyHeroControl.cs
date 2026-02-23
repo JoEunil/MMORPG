@@ -1,5 +1,6 @@
 ﻿using ClientCore;
 using System;
+using System.Xml.Serialization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -30,43 +31,6 @@ public class MyHeroControl : MonoBehaviour
         _viewData = CoreManager.Instance.VD;
     }
 
-    //void Update()
-    //{
-    //    if (IsTyping()) return;
-
-    //    _moveInput.x = Input.GetAxisRaw("Horizontal");
-    //    _moveInput.y = Input.GetAxisRaw("Vertical");
-
-    //    if (_moveInput != Vector2.zero)
-    //    {
-    //        if (_moveInput.x != 0)
-    //        {
-    //            _moveInput.y = 0;
-    //            _inputDirection = _moveInput.x > 0 ? 3 : 2;
-    //        }
-    //        else if (_moveInput.y != 0)
-    //        {
-    //            _inputDirection = _moveInput.y > 0 ? 0 : 1;
-    //        }
-    //        _viewData.UpdateMove((byte)_inputDirection, moveSpeed);
-    //    }
-    //}
-    //public void Teleport(byte direction, float x, float y)
-    //{
-    //    transform.position = new Vector3(x, y, transform.position.z);
-    //    _direction = direction;
-    //    CameraFollow cam = Camera.main.GetComponent<CameraFollow>();
-    //    if (cam != null)
-    //    {
-    //        cam.InstantSnap();
-    //    }
-    //}
-    //public void UpdatePosition(byte direction, float x, float y)
-    //{
-    //    transform.position = new Vector3(x, y, transform.position.z);
-    //    _direction = direction;
-    //    testUI.SetPosition(x, y);
-    //}
     void Update()
     {
         if ((_targetPos - transform.position).sqrMagnitude > 0.001f)
@@ -99,6 +63,18 @@ public class MyHeroControl : MonoBehaviour
 
         if (IsTyping()) return;
 
+        if (Input.GetKeyDown(KeyCode.Z))
+        {
+            _viewData.UpdateSkill(0);
+        }
+        else if (Input.GetKeyDown(KeyCode.X))
+        {
+            _viewData.UpdateSkill(1); 
+        }
+        else if (Input.GetKeyDown(KeyCode.C))
+        {
+            _viewData.UpdateSkill(2); 
+        }
         _moveInput.x = Input.GetAxisRaw("Horizontal");
         _moveInput.y = Input.GetAxisRaw("Vertical");
 
@@ -149,5 +125,10 @@ public class MyHeroControl : MonoBehaviour
         return selected != null &&
                (selected.GetComponent<UnityEngine.UI.InputField>() != null ||
                 selected.GetComponent<TMPro.TMP_InputField>() != null);
+    }
+    public void StartSkill(byte dir, uint skillId)
+    {
+        animator.SetFloat("Direction", _direction);
+        animator.SetTrigger("Attack");
     }
 }

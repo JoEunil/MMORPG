@@ -25,6 +25,7 @@ public class ChatView : MonoBehaviour
 
     private ChatScope _currentScope = ChatScope.Global;
     private ulong _targetChatID = 0;
+    private const int MaxChatCount = 10;
     public enum ChatScope
     {
         Global,
@@ -61,7 +62,6 @@ public class ChatView : MonoBehaviour
     }
     public void OnChatMessageClick(ulong target)
     {
-        Debug.Log($"Chat message clicked: {target}");
         if (_targetChatID == playerManager.GetChatID())
             return;
         _targetChatID = target;
@@ -117,18 +117,21 @@ public class ChatView : MonoBehaviour
     {
         GameObject newMessageObj = null;
 
+        RectTransform targetContent = null;
+
         switch ((ChatScope)scope)
         {
             case ChatScope.Global:
-                newMessageObj = Instantiate(ChatMessagePrefab, ChatContentGlobal);
+                targetContent = ChatContentGlobal;
                 break;
             case ChatScope.Zone:
-                newMessageObj = Instantiate(ChatMessagePrefab, ChatContentZone);
+                targetContent = ChatContentZone;
                 break;
             case ChatScope.Whisper:
-                newMessageObj = Instantiate(ChatMessagePrefab, ChatContentWhisper);
+                targetContent = ChatContentWhisper;
                 break;
         }
+        newMessageObj = Instantiate(ChatMessagePrefab, targetContent);
 
         if (newMessageObj == null)
             return;
@@ -143,6 +146,11 @@ public class ChatView : MonoBehaviour
                 (ChatScope)scope,
                 senderName,
                 message);
+        }
+
+        if (targetContent.childCount > MaxChatCount)
+        {
+            Destroy(targetContent.GetChild(0).gameObject); // 가장 오래된 메시지 삭제
         }
 
         Canvas.ForceUpdateCanvases();
