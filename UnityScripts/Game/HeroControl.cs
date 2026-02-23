@@ -1,8 +1,10 @@
-﻿using System;
+﻿using ClientCore;
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using System.Collections;
 
 public class HeroControl : MonoBehaviour
 {
@@ -11,27 +13,19 @@ public class HeroControl : MonoBehaviour
 
     [SerializeField] private TextMeshProUGUI Name;
     [SerializeField] private TextMeshProUGUI Level;
-
     private Vector3 _targetPos;
     private int _direction;
     private bool _isMoving = true;
-
-    void Start()
+    private void Awake()
     {
-        _targetPos = transform.position;
         animator = GetComponent<Animator>();
         spriteRenderer = GetComponent<SpriteRenderer>();
     }
+    void Start()
+    {
+        _targetPos = transform.position;
+    }
 
-    //void Update()
-    //{
-
-    //}
-    //public void UpdatePosition(byte direction, float x, float y)
-    //{
-    //    transform.position = new Vector3(x, y, transform.position.z);
-    //    _direction = direction;
-    //}
     void Update()
     {
         if ((_targetPos - transform.position).sqrMagnitude > 0.001f)
@@ -63,6 +57,12 @@ public class HeroControl : MonoBehaviour
         spriteRenderer.flipX = (_direction == 2);
     }
 
+    public void Teleport(byte direction, float x, float y)
+    {
+        transform.position = new Vector3(x, y, transform.position.z);
+        _targetPos = new Vector3(x, y, transform.position.z);
+        _direction = direction;
+    }
     public void UpdatePosition(byte direction, float x, float y)
     {
         _targetPos = new Vector3(x, y, transform.position.z);
@@ -70,11 +70,24 @@ public class HeroControl : MonoBehaviour
     }
     public void SetNameLevel(string name, ushort level)
     {
-        Name.text = name;
-        Level.text = "Lv." + level;
+        StartCoroutine(DelayedUpdateUI(name, level));
     }
-    public void UpdateHPMP(int HP, int MP)
+
+    private IEnumerator DelayedUpdateUI(string name, ushort level)
+    {
+        yield return null; // 한 프레임 대기
+        if (Name != null) Name.text = name;
+        if (Level != null) Level.text = "Lv." + level;
+        if (Name != null) Name.ForceMeshUpdate();
+        if (Level != null) Level.ForceMeshUpdate();
+    }
+    public void UpdateHPMP(int HP, int MP, int MAXHP, int MAXMP)
     {
 
+    }
+    public void StartSkill(byte dir, uint skillId)
+    {
+        animator.SetFloat("Direction", _direction);
+        animator.SetTrigger("Attack");
     }
 }

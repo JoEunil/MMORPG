@@ -60,7 +60,7 @@ memory_order를 잘 설정해야한다.
 또한 Debug 빌드도 atomic ordering을 보장하지 않는다.
 
 ## 관련 문서
-[커밋](#ff7665c)   
-ClientContext: [ClientContext 설명 문서](ClientContext.md)  
-ClientContext: [ClientContext.h](NetLibrary/ClientContext.h)  
-ClientContextPool: [ClientContextPool.h](NetLibrary/ClientContextPool.h)  
+[관련 커밋](#ff7665c)   
+[ClientContext 설명 문서](ClientContext.md)  
+[ClientContext.h](NetLibrary/ClientContext.h)  
+[ClientContextPool.h](NetLibrary/ClientContextPool.h)  

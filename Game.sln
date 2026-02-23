@@ -41,20 +41,18 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Design", "Design", "{F0F87F94-7836-4275-9E8B-AF797CBC0540}"
 	ProjectSection(SolutionItems) = preProject
 		ClientContext.md = ClientContext.md
-		FloodDetect.md = FloodDetect.md
 		DummyTest.md = DummyTest.md
+		FloodDetect.md = FloodDetect.md
 		Monitoring.md = Monitoring.md
 		Monster.md = Monster.md
 		PingLoop.md = PingLoop.md
 		Skill.md = Skill.md
+		Snapshot.md = Snapshot.md
+		Tick.md = Tick.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A67903F-5C0B-4FD6-876B-B0088C77C6B6}"
 	ProjectSection(SolutionItems) = preProject
-		images\BeforeAOI.gif = images\BeforeAOI.gif
-		images\ChatGlobal.gif = images\ChatGlobal.gif
-		images\ChatWhisper.gif = images\ChatWhisper.gif
-		images\ChatZone.gif = images\ChatZone.gif
 		images\FloodCheckFlowChart.png = images\FloodCheckFlowChart.png
 		images\flushQueue.png = images\flushQueue.png
 		images\IOCPWorkerThreadRecv.png = images\IOCPWorkerThreadRecv.png
@@ -67,11 +65,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 		images\SessionManagerDeadLock2.png = images\SessionManagerDeadLock2.png
 		images\StackOverflow.png = images\StackOverflow.png
 		images\TCP&UDP.png = images\TCP&UDP.png
-		images\WindowTimerResolution.gif = images\WindowTimerResolution.gif
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Gif", "Gif", "{1EAD1855-C4A5-4C63-AC48-2766B77829DD}"
 	ProjectSection(SolutionItems) = preProject
+		images\AfterAOI.gif = images\AfterAOI.gif
+		images\BeforeAOI.gif = images\BeforeAOI.gif
+		images\BossMonster.gif = images\BossMonster.gif
+		images\ChatGlobal.gif = images\ChatGlobal.gif
+		images\ChatWhisper.gif = images\ChatWhisper.gif
+		images\ChatZone.gif = images\ChatZone.gif
+		images\SkillAOI.gif = images\SkillAOI.gif
 		images\WindowTimerResolution.gif = images\WindowTimerResolution.gif
 	EndProjectSection
 EndProject

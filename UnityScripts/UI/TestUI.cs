@@ -5,6 +5,7 @@ class TestUI : MonoBehaviour
 {
     [SerializeField] private TextMeshProUGUI zoneID;
     [SerializeField] private TextMeshProUGUI UserCnt;
+    [SerializeField] private TextMeshProUGUI MonsterCnt;
     [SerializeField] private TextMeshProUGUI position;
     [SerializeField] private TextMeshProUGUI ping;
 
@@ -20,7 +21,11 @@ class TestUI : MonoBehaviour
     }
     public void SetUserCnt(int cnt)
     {
-        UserCnt.text = "User count: " + cnt;
+        UserCnt.text = "User count(AOI): " + cnt;
+    }
+    public void SetMonsterCnt(int cnt)
+    {
+        MonsterCnt.text = "Monster count(AOI): " + cnt;
     }
     public void SetPosition(float x, float y)
     {
