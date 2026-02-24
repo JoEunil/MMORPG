@@ -195,7 +195,8 @@ PacketView
 __구조 변경__  
 - Zone 내부를 Cell 단위로 분리하여 패킷 전파 단위 축소
 	- 기존: zone 유저수 x zone 유저수 x 패킷 필드
-	- Cell 적용 후: Cell 유저수 x Cell 유저수 x 패킷 필드
+	- Cell 적용 후: Cell 유저수 x Cell 유저수 x Cell 갯수 x 패킷 필드
+	- Cell 5x5 기준: 패킷은 평균적으로 1/25 줄어든다. (AOI 적용 전)
 - AOI 처리 시 개별 패킷을 보내는 대신 Chunk 단위로 묶어 전송
 - overlapped 구조체를 일부 수정하고, 별도의 Send 메서드를 추가하여 Chunk 전송 처리
 
@@ -232,7 +233,7 @@ Chunk 단위 전송 처리 방식
 - 관련 PR: [grid 기반 AOI 적용 #20](https://github.com/JoEunil/MMORPG/pull/20)
 
 ## 4. 느낀점 및 추후 개선이 필요한 점
-__게임 서버에서 성능 우선순위__
+__게임 서버 병목 발생 순서 및 최적화 집중 영역__
 1. 네트워크
 	- AOI
 	- 패킷 최소화
