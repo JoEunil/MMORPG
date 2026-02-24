@@ -25,6 +25,40 @@ __목표__
 외부 모듈로는  spdlog, hiredis, libevent, nlohmann(json), Mysql Connector C++를 사용하며, DB는 로그인 DB와 게임 DB로 분리하여 운영한다.
 또한 인증 서버는 Redis에 임시 세션을 저장해 게임 서버 진입을 검증하고, 로그인 서버는 로그인 토큰을 발급해 인증 서버에 세션을 등록하는 역할을 수행한다.
 
+
+__스레드 모델__  
+스레드별 작업 성격에 따라 분류하면 다음과 같다.   
+
+MaineServer:   
+	- main thread
+
+NetLibrary:    
+	- ping thread  
+	- net timer  
+	- perf collector -  IO-bound  
+	- iocp worker pool - CPU-bound  
+
+CoreLib:    
+	- ZoneThreadSet - CPU-bound  
+	- NoneZoneThreadPool  
+	- perf collector - IO-bound    
+	- chat thread - CPU-bound (작업량 증가 시)  
+	- broadcast thread pool - CPU-bound (작업량 증가 시)  
+
+CacheLib:  
+	- flush dispatcher  
+	- cache flush: IO-bound (DB)    
+
+ExternalLib:  
+	- session thread: IO-bound (event 루프 기반)  
+
+표시되지 않은 스레드들은 작업 빈도와 CPU 소모가 낮기 때문에  
+CPU-bound 또는 IO-bound로 분류하기 어렵다.  
+
+또한 WSA Send / WSA Recv는 비동기 IO 모델을 사용하기 때문에,  
+스레드가 IO 완료를 기다리지 않는다.  
+따라서 해당 작업을 IO-bound로 분류할 수 없다.  
+
 ## 3. 리팩토링 
 README에서는 refactoring을 위주로 서술한다. 
 주요 기능은 별도로 문서를 남겨놓았고 [문서](#5-문서)에서 확인할 수 있다.
