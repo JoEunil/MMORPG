@@ -149,7 +149,7 @@ https://github.com/couchbase/phosphor/blob/master/thirdparty/dvyukov/include/dvy
 - 큐의 size()를 제공하지 않는다.
 	- size 계산 자체가 race condition을 유발할 수 있으며,
 	- consumer 쪽에서도 적절한 wait / retry 정책이 필요하다
-- LockFree큐는 empty(), size() 메서드를 제공하지 않기 때문에, 별도의 종료 로직이 필요하다.
+- LockFree큐는 empty(), size() 메서드를 제공하지 않는다.
   
 ![이미지 로드 실패](images/StackOverflow.png)
 - 테스트 환경에서 위와 같이 스택오버플로우(0xc0000fd)가 발생한다.
