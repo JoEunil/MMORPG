@@ -2,15 +2,15 @@
 
 ## Triple Buffer란?
 riple Buffer는 공유 자원에 대해 읽기(Reader)와 쓰기(Writer) 작업이 빈번하게 발생하는 멀티스레드 환경에서,   
-Lock 경합을 최소화하고 데이터의 최신 상태(Snapshot)를 안전하고 빠르게 공유하기 위한 버퍼링 기법입니다.
+Lock 경합을 최소화하고 데이터의 최신 상태(Snapshot)를 안전하고 빠르게 공유하기 위한 버퍼링 기법이다..
 
-Triple Buffer는 3개의 버퍼를 사용하여 다음을 보장합니다:
+Triple Buffer는 3개의 버퍼를 사용하여 다음을 보장한다:
 1. Writer는 현재 쓰고 있는 버퍼를 독점적으로 수정
 1. Reader는 최신 완료된 버퍼를 읽음
 1. 버퍼 교체(swap)는 atomic/lock-free로 수행
-이를 통해 reader와 writer가 동시에 충돌 없이 데이터를 읽고 쓸 수 있음을 보장합니다.
+이를 통해 reader와 writer가 동시에 충돌 없이 데이터를 읽고 쓸 수 있음을 보장한다.
 
-> 본래 그래픽 렌더링 파이프라인(GPU)에서 프레임 생성 속도와 모니터 출력 속도(V-Sync) 차이로 인한 티어링(Tearing) 및 지연(Lag) 현상을 방지하기 위해 고안된 기법입니다.
+> 본래 그래픽 렌더링 파이프라인(GPU)에서 프레임 생성 속도와 모니터 출력 속도(V-Sync) 차이로 인한 티어링(Tearing) 및 지연(Lag) 현상을 방지하기 위해 고안된 기법이다.
 
 ## 도입 배경
 ### 시스템 요구사항
@@ -30,7 +30,7 @@ Triple Buffer는 3개의 버퍼를 사용하여 다음을 보장합니다:
 ## 구현 히스토리
 ### 1차 구현
 Rust 포럼의 [SPMC Triple Buffring](https://users.rust-lang.org/t/spmc-buffer-triple-buffering-for-multiple-consumers/10118) 
-개념을 참고하여 구현하였습니다.  
+개념을 참고하여 구현.  
 
 __구현 코드__
 ```cpp
@@ -58,15 +58,15 @@ public:
 
 __문제점__  
 
-SPMC 환경에서 다수의 Worker 스레드가 공유된 Reader 풀로 동작할 때 치명적인 단점이 발견되었습니다.
-- 오래된 데이터: 오랫동안 대기하던 Worker 스레드가 뒤늦게 깨어나 Read를 수행할 때, 이미 아주 옛날에 Swap 해둔 버퍼를 참조할 수 있습니다.
-- 잘못된 데이터: Zone 객체는 여러 개인데 ThreadPool은 공유됩니다. Worker가 가진 로컬 버퍼가 현재 처리하려는 Zone의 것이 아닐 수 있어 논리적 오류를 유발합니다.
+SPMC 환경에서 다수의 Worker 스레드가 공유된 Reader 풀로 동작할 때 치명적인 단점이 발견됨.
+- 오래된 데이터: 오랫동안 대기하던 Worker 스레드가 뒤늦게 깨어나 Read를 수행할 때, 이미 아주 옛날에 Swap 해둔 버퍼를 참조할 수 있다.
+- 잘못된 데이터: Zone 객체는 여러 개인데 ThreadPool은 공유됩니다. Worker가 가진 로컬 버퍼가 현재 처리하려는 Zone의 것이 아닐 수 있어 논리적 오류를 유발한다.
 
 [TripleBuffer.h](BaseLib/TripleBuffer.h)
 
 ### 2차 개선 버전
 
-Double Back-Buffer 구조와 Ref-Counting을 도입하여 RCU(Read-Copy-Update) 스타일로 개선했습니다.  
+Double Back-Buffer 구조와 Ref-Counting을 도입하여 RCU(Read-Copy-Update) 스타일로 개선.  
 
 __핵심 아이디어__
 
@@ -74,7 +74,7 @@ __핵심 아이디어__
 	- Writer (Local): producer 스레드가 독점적으로 작성 중인 버퍼.
 	- Back1 (Staging Area): Writer가 작성을 완료하고 대기하는 Staging Area. 
 	- Back2 (Shared Area): 모든 Reader가 참조하는 Shared Area.
-- Reader 주도 업데이트: Reader가 접근할 때 Back1에 최신 데이터가 있다면 Back2로 Swap 시키고 읽습니다.
+- Reader 주도 업데이트: Reader가 접근할 때 Back1에 최신 데이터가 있다면 Back2로 Swap 시키고 읽는다.
 
 __사용한 기술__   
 
