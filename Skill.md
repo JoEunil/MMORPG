@@ -30,9 +30,32 @@ Action Packet으로 들어온 요청을 정의된 Phase 순서에 따라 처리�
 클라이언트는 ActionResult 패킷을 통해 애니메이션, 이펙트를 재생한다.
 
 __Hit 판정__  
+```cpp
+void ZoneState::ApplyHit(std::optional<std::reference_wrapper<CharacterState>> c, ActiveSkill& skill, int idx) {
+	~~~
+	if (skill.casterType == 0) { // 캐릭터 -> 몬스터
+		auto& caster = c.value().get();
+		for (auto& cellIdx : AOI[idx]) {
+			auto& cell = m_cells[cellIdx / CELLS_X][cellIdx % CELLS_X];
+			for (uint16_t mon : cell.monsterIndexes)
+			{
+				if (m_monsters[mon].hp == 0)
+					continue;
+				if (phase.range.InRange(skill.dir, skill.x, skill.y, m_monsters[mon].x, m_monsters[mon].y))
+				{
+					~~~
+					// 스킬 처리
+					~~~
+				}
+			}
+		}
+	}
+}
+```
 스킬 Hit 판정은 스킬의 AOI(Area of Interest) 범위 내의 타겟을 순회하며 처리한다.
 - 단일 대상 스킬: 범위 내 첫 번째 타겟에게만 피격 처리
 - AOE(Area of Effect) 스킬: 범위 내 모든 타겟에게 피격 처리
+- 게임 서버에서 __CPU 부하가 가장 큰 부분__ 이다.
 Monster AI 로직에 대한 추가 내용은 [Monster.md](Monster.md)을 참고한다.
 
 
