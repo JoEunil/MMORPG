@@ -60,7 +60,7 @@ memory_order를 잘 설정해야한다.
 컴파일러 레벨 재배치를 막지 않는다.  
 또한 Debug 빌드도 atomic ordering을 보장하지 않는다.
 
-## 6. 관련 문서
+## 6. 참고
 - [ClientContext 설명 문서](ClientContext.md)  
 - [ClientContext.h](NetLibrary/ClientContext.h)  
 - [ClientContextPool.h](NetLibrary/ClientContextPool.h)  
