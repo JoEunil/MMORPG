@@ -38,7 +38,7 @@ if (n == -1 && errno == EWOULDBLOCK) {
 - I/O 처리 함수자체가 비동기적으로 동작하여 소켓 자체는 동기 소켓을 사용.
   - WsaSend, WsaRecv
  
-## IOCP와 epoll의 차이
+## 5. IOCP와 epoll의 차이
 epoll: 논블로킹 소켓 특성상 Send 호출 시 송신 버퍼가 가득 찬 경우 EAGAIN/EWOULDBLOCK이 발생한다..
 → 애플리케이션이 재시도 로직을 구현해야 함.
 
