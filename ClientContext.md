@@ -53,4 +53,6 @@ TCP
   - Session 관련 상태는 `SessionManager` 및 `SessionState`에서 관리
 
 ## 참고
-- 관련 클래스: [PacketView](NetLibrary/PacketView.h), [SessionManager](NetLibrary/SessionManager.h), [RingBuffer](NetLibrary/RingBuffer.h)
+- [PacketView.h](NetLibrary/PacketView.h)
+- [SessionManager.h](NetLibrary/SessionManager.h)
+- [RingBuffer.h](NetLibrary/RingBuffer.h)
