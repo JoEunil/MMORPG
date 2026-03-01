@@ -1,7 +1,10 @@
 ﻿# AOI(Aread of Interest) 적용
 
+## 개요
+이 문서는 MMORPG 서버에서 Zone을 Cell 단위로 분리하고 AOI(Area of Interest)를 적용한 개선 작업에 대한 기술적 설명이다.  
+
 ## 문제상황
-- 스킬 기능 및 상태 동기화 처리 기능을 추가하면서, Zone 내 유저 수가 많아지면 AOI 탐색 Depth가 깊어지고,
+- 스킬 기능을 추가하면서, Zone 내 유저 수가 많아지면 AOI 탐색 Depth가 깊어지고,
 이는 Zone 스레드의 TPS에 영향을 미칠 위험성을 인지하였다.
 - Zone을 Cell 단위로 나누어서 처리했고, Cell에 AOI를 적용하기 위해서는 기존의 패킷 처리 로직을 그대로 사용할 수 없었다.
 
