@@ -1,7 +1,7 @@
-﻿## Skill 구현
+﻿# Skill 구현
 
 ## 1. 개요
-이 문서는 게임 로직 중 Skill 구현에 대해 설명합니다.
+이 문서는 게임 로직 중 Skill 구현에 대해 설명한다.
 
 ## 2. 구현 범위
 
@@ -14,7 +14,7 @@
 __Phase/ Range__  
 캐릭터는 __Action 패킷__ 입력을 기반으로 스킬을 사용하며,  
 몬스터는 __Monster Data에 정의된 AI 동작__ 을 통해 스킬이 시전된다.  
-스킬의 __준비 모션(캐스팅)__과 타격 모션을 분리하여 처리하기 위해 SkillPhase를 사용한다.
+스킬의 __준비 모션(캐스팅)__ 과 타격 모션을 분리하여 처리하기 위해 SkillPhase를 사용한다.
 - Ready (준비 동작)
 - Hit (타격 판정)
 
@@ -56,7 +56,7 @@ void ZoneState::ApplyHit(std::optional<std::reference_wrapper<CharacterState>> c
 - 단일 대상 스킬: 범위 내 첫 번째 타겟에게만 피격 처리
 - AOE(Area of Effect) 스킬: 범위 내 모든 타겟에게 피격 처리
 - 게임 서버에서 __CPU 부하가 가장 큰 부분__ 이다.
-Monster AI 로직에 대한 추가 내용은 [Monster.md](Monster.md)을 참고한다.
+Monster AI 로직에 대한 추가 내용은 [Monster 구현 설명](Monster.md)을 참고한다.
 
 
 ## 3. 시연
@@ -70,5 +70,5 @@ Monster AI 로직에 대한 추가 내용은 [Monster.md](Monster.md)을 참고�
 [SkillData.h](CoreLib/SkillData.h)  
 [SkillData.cpp](CoreLib/SkillData.cpp)  
 [SkillData_Range.cpp](CoreLib/SkillData_Range.cpp)  
-[ZonsState_Skills.cpp](CoreLib/ZonsState_Skills.cpp)  
-[ZonsState_Actions.cpp](CoreLib/ZonsState_Actions.cpp)  
+[ZonsState_Skills.cpp](CoreLib/ZoneState_Skills.cpp)  
+[ZonsState_Actions.cpp](CoreLib/ZoneState_Actions.cpp)  

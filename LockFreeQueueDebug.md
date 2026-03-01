@@ -1,10 +1,12 @@
-﻿## 개요
-[BaseLib/LockFreeQueue](BaseLib/LockFreeQueue.h)는 Vyukov의 MPMC Lock-Free Queue를 참고하여 구현된 다중 생산자/소비자(MPMC) 큐이다.
+# Lock-Free Queue Debug
+
+ ## 1. 개요
+[BaseLib/LockFreeQueue](BaseLib/LockFreeQueue.h)는 Vyukov의 MPMC Lock-Free Queue를 참고하여 구현된 다중 생산자/소비자(MPMC) 큐이다.  
 이 문서는 Lock-Free Queue에 대한 테스트및 디버깅을 정리한다.
 
-## 테스트 시나리오
-[LockFreeQueue unit test 코드](MainServer/UnitTest.h)
-- 큐 크기: 1024
+## 2. 테스트 시나리오
+[LockFreeQueue unit test 코드](MainServer/UnitTest.h)  
+- 큐 크기: 1024  
 - producer 스레드: 4개
 - consumer 스레드: 4개
 - atomic counter 변수: 1개 (큐 size 추적)
@@ -12,12 +14,12 @@
 - consumer 스레드 종료 조건: counter == 0
 - back-off 정책: yield 호출
 
-## 예상 결과
-- 큐가 full일 경우, Producer는 yield를 수행하며 Consumer가 pop을 수행.
+## 3. 예상 결과  
+- 큐가 full일 경우, Producer는 yield를 수행하며 Consumer가 pop을 수행.  
 - Consumer가 먼저 큐를 비워 counter == 0이 되면 종료 조건 충족.
 - 모든 push/pop 완료 후 counter == 0
 
-## 테스트 결과
+## 4. 테스트 결과
 유닛테스트 통과 실패.
 
 ![이미지 로드 실패](images/LockFreeQueue1.png)
@@ -59,7 +61,7 @@ bool pop(T& out) {
 ```
 - 일부 Consumer 스레드는 CAS 루프에 걸려있고, 하나만 정상적으로 pop 수행
 
-## 원인 분석
+## 5. 원인 분석
 Vyukov 코드와 비교해보니 pop에서 seq 갱신이 잘못됨
 
 ```cpp
@@ -92,7 +94,7 @@ __문제 상황 예시 (큐 크기 1024)__
 	1. seq 갱신: 잘못된 경우 head + QSize + 1 = 1025
 	1. seq가 예상보다 커서 다음 push/compare 계산이 꼬임 → Consumer 루프 이상 동작
 
-## 해결
+## 6. 해결
 
 ```cpp
 	m_queue[idx].seq.store(head + QSize, std::memory_order_release); 
@@ -103,11 +105,11 @@ pop에서 seq 갱신을 head + QSize로 변경
 > Unit test 통과
 단위 테스트 정상 통과 확인
 
-## 결과
+## 7. 결과
 - Unit test 통과
 - Back-pressure 상황에서도 안정적 동작 확인
 - seq 계산 오류로 인한 consumer 루프 이상 현상 해결
 
-## Note
+## 8. Note
 - seq는 슬롯의 상태와 순서를 동시에 나타내는 값
 - 잘못된 seq 갱신 시 CAS 실패 및 loop 지속 현상이 나타남

@@ -275,7 +275,7 @@ Unity Client
 
 ### 리팩토링
 - [채팅 기능 리팩토링](ChatRefactor.md)
-- [ClientContext 리팩토링: God Object](ClientContext.md)
+- [ClientContext 리팩토링: God Object](ClientContextRefactor.md)
 - [Ping 리팩토링](PingRefactor.md)
 - [AOI 적용](AOI.md)
 

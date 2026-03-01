@@ -1,8 +1,8 @@
-﻿## Snapshot 구현
+﻿# Snapshot 구현
 
 ## 1. 개요
-이 문서는 네트워크 대역폭을 줄이기 위한 snapshot 처리 전략에 대해 설명한다.
-Snapshot은 서버가 Zone 내 캐릭터, 몬스터, 액션 상태 등의 현재 상태를 정기적으로 클라이언트에 전송하기 위해 만든 __상태 패킷__을 의미한다.  
+이 문서는 네트워크 대역폭을 줄이기 위한 snapshot 처리 전략에 대해 설명한다.  
+Snapshot은 서버가 Zone 내 캐릭터, 몬스터, 액션 상태 등의 현재 상태를 정기적으로 클라이언트에 전송하기 위해 만든 __상태 패킷__ 을 의미한다.    
 Snapshot 단위로 클라이언트는 캐릭터 위치, 상태, 스킬 시전, Hit 정보 등을 수신하여 게임 화면을 동기화한다.
 
 ## 2. 목적
@@ -88,5 +88,5 @@ __Zone 처리 관련 주의점__
 
 
 ## 5. 참고 
-[ZoneState_Snapshots](CoreLib/ZoneState_Snapshots.cpp)  
-[PacketType](CoreLib/PacketType.h)
+- [ZoneState_Snapshots.cpp](CoreLib/ZoneState_Snapshots.cpp)  
+- [PacketTypes.h](CoreLib/PacketTypes.h)

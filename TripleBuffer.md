@@ -1,18 +1,22 @@
-﻿## triple buffer
+﻿# triple buffer
 
-## Triple Buffer란?
-riple Buffer는 공유 자원에 대해 읽기(Reader)와 쓰기(Writer) 작업이 빈번하게 발생하는 멀티스레드 환경에서,   
-Lock 경합을 최소화하고 데이터의 최신 상태(Snapshot)를 안전하고 빠르게 공유하기 위한 버퍼링 기법이다..
+## 1. 개요
+이 문서는 Triple Buffer의 개념과 구현 과정을 기술한다.  
 
-Triple Buffer는 3개의 버퍼를 사용하여 다음을 보장한다:
-1. Writer는 현재 쓰고 있는 버퍼를 독점적으로 수정
-1. Reader는 최신 완료된 버퍼를 읽음
+## 2. Triple Buffer란?
+riple Buffer는 공유 자원에 대해 읽기(Reader)와 쓰기(Writer) 작업이 빈번하게 발생하는 멀티스레드 환경에서,     
+Lock 경합을 최소화하고 데이터의 최신 상태(Snapshot)를 안전하고 빠르게 공유하기 위한 버퍼링 기법이다..  
+
+Triple Buffer는 3개의 버퍼를 사용하여 다음을 보장한다:  
+1. Writer는 현재 쓰고 있는 버퍼를 독점적으로 수정  
+1. Reader는 최신 완료된 버퍼를 읽음  
 1. 버퍼 교체(swap)는 atomic/lock-free로 수행
+
 이를 통해 reader와 writer가 동시에 충돌 없이 데이터를 읽고 쓸 수 있음을 보장한다.
 
 > 본래 그래픽 렌더링 파이프라인(GPU)에서 프레임 생성 속도와 모니터 출력 속도(V-Sync) 차이로 인한 티어링(Tearing) 및 지연(Lag) 현상을 방지하기 위해 고안된 기법이다.
 
-## 도입 배경
+## 3. 도입 배경
 ### 시스템 요구사항
 - 시나리오: Zone 스레드(Writer)가 브로드캐스트 패킷을 생성하여 ThreadPool(Reader)로 넘김.
 - 제약 사항: 패킷에는 전송 대상 정보가 없으므로, Worker 스레드는 다시 Zone에서 '전송 대상 목록'을 받아와야 함.
@@ -27,7 +31,7 @@ Triple Buffer는 3개의 버퍼를 사용하여 다음을 보장한다:
 	- Object Pool은 수천 개의 스냅샷 객체를 관리해야 하며 Pool 고갈 시 메모리 추가 할당을 해야함.
 	- Triple Buffer는 고정된 3개의 버퍼만 재사용하므로 메모리가 안정적임.
 
-## 구현 히스토리
+## 4. 구현 히스토리
 ### 1차 구현
 Rust 포럼의 [SPMC Triple Buffring](https://users.rust-lang.org/t/spmc-buffer-triple-buffering-for-multiple-consumers/10118) 
 개념을 참고하여 구현.  
@@ -94,7 +98,7 @@ RAII 패턴을 통한 안전한 반납
 - Reader가 사용을 완료한 후 참조 카운트 감소를 위해 ReadDone() 이라는 완료 메서드를 호출해야함.
 - BufferReader라는 객체를 정의하여 스코프를 벗어날 때 반납이 이루어지도록 처리.
 
-__ 동작 __
+__동작__  
 1. Write
 	- CAS로 권한 획득하고 최상위 비트 마킹(0x8000)
 	- back1과 write 포인터 스왑

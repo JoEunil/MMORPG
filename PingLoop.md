@@ -68,3 +68,7 @@ Ping loop는 IOCP 워커 스레드와 독립적으로 동작하며,
 - ClientContext는 IOCP 워커 스레드의 호출 스택에 포함될 수 있다.
 - 동일 실행 흐름에서의 세션 종료는 구조적으로 위험하다.
 - Ping loop는 이를 위한 전용 Killer 스레드 역할을 수행한다.
+
+## 7. 참고
+- [PingManager.h](NetLibrary/PingManager.h)
+- [PingManager.cpp](NetLibrary/PingManager.cpp)

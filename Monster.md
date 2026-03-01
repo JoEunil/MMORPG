@@ -1,25 +1,21 @@
-﻿## Monster 구현
+﻿# Monster 구현
 
 ## 1. 개요
-이 문서는 게임 로직 중 Monster 구현에 대해 설명합니다.
+이 문서는 게임 로직 중 Monster 구현에 대해 설명한다.
 
 ## 2. 구현 범위  
 
-몬스터 기능은 다음 요소들로 구성된다.
-
-__피격 및 데미지 처리__  
-몬스터는 공격을 받으면 데미지를 계산하여 HP를 감소시키고, 필요 시 사망 처리한다.
-
-__이동__   
-몬스터는 자신의 Cell 내부에서 현재 바라보는 방향으로 이동하며, Cell 경계에 도달하면 이동을 멈춘다.
-
-__Aggro 및 추격 / 공격__
-* 몬스터가 피격될 경우 공격자를 Aggro 대상으로 설정하고 해당 대상을 추적한다.
-* Aggro 대상이 Cell 범위를 벗어나거나 일정 시간이 지나면 Aggro는 해제된다.
-* 공격 가능 범위에 도달하면 공격을 수행한다. 공격 주기는 틱기반으로 설정한다. 
-
-__Respawn__  
-사망한 몬스터는 설정된 Respawn tick에 도달하면 해당 위치에서 다시 부활한다.
+### 몬스터 기능
+- __피격 및 데미지 처리__  
+	- 몬스터는 공격을 받으면 데미지를 계산하여 HP를 감소시키고, 필요 시 사망 처리한다.
+- __이동__  
+	- 몬스터는 자신의 Cell 내부에서 현재 바라보는 방향으로 이동하며, Cell 경계에 도달하면 이동을 멈춘다.
+- __Aggro 및 추격 / 공격__
+	- 몬스터가 피격될 경우 공격자를 Aggro 대상으로 설정하고 해당 대상을 추적한다.
+	- Aggro 대상이 Cell 범위를 벗어나거나 일정 시간이 지나면 Aggro는 해제된다.
+	- 공격 가능 범위에 도달하면 공격을 수행한다. 공격 주기는 틱기반으로 설정한다. 
+- __Respawn__
+	- 사망한 몬스터는 설정된 Respawn tick에 도달하면 해당 위치에서 다시 부활한다.
 
 __서버 업데이트 주기__  
 캐릭터는 20 FPS로 업데이트되지만,
@@ -40,6 +36,7 @@ Phase마다 반복적으로 Hit 판정이 발생한다.
 각 Phase별로 스킬 시전 간격, 반복 횟수, 공격 강도 등을 다르게 설정하여
 난이도 및 전투 패턴이 변화하도록 구성하였다.
 
+## 3. 한계
 __상태 머신 기반으로 확장 필요__  
 현재는 MonsterAI 내부의 단일 메서드에서 순차 로직으로 처리하고 있으나,
 향후 확장성을 위해 __상태 머신 기반 구조__ 로 전환하는 것이 바람직하다.
@@ -113,12 +110,12 @@ void ChangeState(Monster& monster, State newState) {
 ```
 > 상태 머신 의사 코드
 
-## 3. 시연
+## 4. 시연
 ![gif 로드 실패](images/SkillAOI.gif)
 ![gif 로드 실패](images/BossMonster.gif)
 
-## 4. 참고 
+## 5. 참고 
 
-[MonsterData.h](CoreLib/MonsterData.h)  
-[MonsterState.h](CoreLib/MonsterState.h)  
-[ZonsState_Monsters.cpp](CoreLib/ZonsState_Monsters.cpp)  
+- [MonsterData.h](CoreLib/MonsterData.h)  
+- [MonsterState.h](CoreLib/MonsterState.h)  
+- [ZonsState_Monsters.cpp](CoreLib/ZoneState_Monsters.cpp)  

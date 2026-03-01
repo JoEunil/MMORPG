@@ -1,6 +1,9 @@
 ﻿# ClientContext
 
-##  TCP vs UDP 메시지 처리
+## 1. 개요
+TCP 수신 처리 시 누적버퍼 처리를 위해 사용되는 ClientContext를 설명하는 문서이다.
+
+##  2. TCP vs UDP 메시지 처리
 ![이미지 로드 실패](images/TCP&UDP.png)
 > TCP와 UDP 패킷 처리 차이  
 
@@ -19,7 +22,7 @@ TCP
 - 하나의 send()가 여러 recv() 호출로 쪼개져 도착할 수 있음
 - 따라서 TCP를 사용할 경우 애플리케이션 레벨에서 __수신 버퍼를 재조합하여 원래 메시지 단위의 패킷__을 만들어야 함
 
-## 개요
+## 3. ClientContext 개념
 `ClientContext` 클래스는 각 클라이언트 연결에 대한 TCP 수신 버퍼를 관리하며,
 패킷 단위로 데이터를 분리하기 전까지의 누적 데이터를 처리하는 역할을 수행한다.
 
@@ -30,7 +33,7 @@ TCP
   - Zero-copy 전략 유지
   - Buffer Release 관리 (작업 완료 후 반환)
 
-## 구조
+## 4. 구조
 - 멤버 변수
   - `RingBuffer m_buffer` : TCP 수신 누적 버퍼
   - `uint64_t m_sessionID` : 연결된 세션 ID (캐시)
@@ -40,19 +43,19 @@ TCP
   - 내부 버퍼 Release 경로에만 사용
   - 수신/처리 경로는 lock-free 유지, 싱글 스레드 접근이 보장됨
 
-## 동작
+## 5. 동작
 1. 수신 데이터는 `EnqueueRecvQ()` 호출로 누적
 2. 패킷 분리가 완료되면 `PacketView`를 통해 외부로 전달
 3. 처리 완료 후 `ReleaseBuffer()`로 RingBuffer 반환
 4. 게임 세션 종료 시 `ClienContextPool`에 반납되고 workingCnt가 0이 되면 flush 로직에 의해 처리됨.
 
-## 설계 결정 및 트레이드오프
+## 6. 설계 결정 및 트레이드오프
 - 포인터로 외부에서 사용하도록 설계
   - 수명 관리는 ContextPool에서 flush 정책과 workingCnt를 통해 안전하게 보장
 - Session 상태와 직접 연관시키지 않음
   - Session 관련 상태는 `SessionManager` 및 `SessionState`에서 관리
 
-## 참고
+## 7. 참고
 - [PacketView.h](NetLibrary/PacketView.h)
 - [SessionManager.h](NetLibrary/SessionManager.h)
 - [RingBuffer.h](NetLibrary/RingBuffer.h)
