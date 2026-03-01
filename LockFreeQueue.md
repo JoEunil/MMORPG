@@ -138,7 +138,9 @@ https://github.com/couchbase/phosphor/blob/master/thirdparty/dvyukov/include/dvy
 http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
 
 ## 7. 구현 코드
-[BaseLib/LockFreeQueue](BaseLib/LockFreeQueue.h)
+[BaseLib/LockFreeQueue](BaseLib/LockFreeQueue.h)  
+[BaseLib/LockFreeQueueSP](BaseLib/LockFreeQueueSP.h)  - shared_ptr 구현 버전  
+[BaseLib/LockFreeQueueUP](BaseLib/LockFreeQueueUP.h)  - unique_ptr 구현 버전  
 
 ## 8. 주의사항 
 - 큐 크기는 모듈러 연산 최적화를 위해 2의 거듭제곱으로 사용한다.
