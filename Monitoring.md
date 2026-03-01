@@ -1,7 +1,7 @@
-﻿## Monitoring 시스템 구현
+﻿# Monitoring 시스템 구현
 
 ## 1. 개요
-이 문서는 모니터링 시스템 구현에 대해 설명합니다.
+이 문서는 모니터링 시스템의 구조와 지표 수집 방법에 대해 설명한다.
 
 ## 2. 목적
 [구조화 로그](StructuredLogging.md)를 활용하여 TPS, 접속자 수, 지연 시간 등 핵심 성능 지표를 실시간으로 추적하고,
@@ -31,7 +31,7 @@
 > Grafana 대시보드
 
 
-## TPS 측정 방식
+## 4. TPS 측정 방식
 게임 서버의 Zone Thread는 시간 기반 로직 처리가 핵심이며, 일정한 TPS를 유지하는 것이 매우 중요하다.  
 시간 기반 처리 요소:
 - 스킬 스케줄링
@@ -58,6 +58,6 @@ __정확도 및 오차__
 - Collector가 로그 기록 후 1초 Sleep을 수행하기 때문에,
   실제 1초 기준과 완전히 일치하지 않아 소폭의 오차가 발생한다.
 - 이에 따라 TPS 값은 보통 19 ~ 21 범위에서 측정된다.
-## 참고 자료
+## 5. 참고 자료
 [NetPerfCollector](NetLibrary/NetPerfCollector.h)  
 [CorePerfCollector](CoreLib/CorePerfCollector.h)  
