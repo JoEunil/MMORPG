@@ -7,10 +7,10 @@
 1. [스레드 모델]
 1. [핵심 기술 요약 ]
 1. [테스트 ]
-1. [트러블 슈팅 ]
 1. [리팩토링 ]
-1. [빌드, 실행 방법 ]
+1. [트러블 슈팅 ]
 1. [추후 개선 사항 ]
+1. [빌드, 실행 방법 ]
 1. [기술 문서 목록 ]
 
 ## 프로젝트 개요
@@ -54,10 +54,10 @@ __로그, 모니터링__
 
 서버는 기능별로 모듈화되어 있으며,
 
-- __NetLibrary__는 네트워크 IO 및 네트워크 세션, 핑 처리,
-- __CoreLib__는 게임 로직,
-- __CacheLib__는 DB I/O와 메모리 캐시,
-- __ExternalLib__는 로그 처리 및 Redis 기반 세션 인증을 담당한다.
+- __NetLibrary__ 는 네트워크 IO 및 네트워크 세션, 핑 처리,
+- __CoreLib__ 는 게임 로직,
+- __CacheLib__ 는 DB I/O와 메모리 캐시,
+- __ExternalLib__ 는 로그 처리 및 Redis 기반 세션 인증을 담당한다.
 
 외부 모듈로는  spdlog, hiredis, libevent, nlohmann(json), Mysql Connector C++를 사용하며, DB는 로그인 DB와 게임 DB로 분리하여 운영한다.
 또한 인증 서버는 Redis에 임시 세션을 저장해 게임 서버 진입을 검증하고, 로그인 서버는 로그인 토큰을 발급해 인증 서버에 세션을 등록하는 역할을 수행한다.
@@ -98,20 +98,42 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 
 ## 핵심 기술 요약 
 
-핵심 기술 요소
-__네트워크__: IOCP, 비동기 IO, TCP/IP 소켓  
-__패킷__: 패킷 직렬화/역직렬화, 가변길이 패킷 처리  
-__멀티 스레드 동기화__ : Spin lock, mutex, atomic 변수, memory order, lock-free 자료구조  
-__메모리__: 객체 풀  
-__캐시__: 캐시라인 정렬, Zone 스레드 코어 고정  
+고성능 비동기 IO 모델인 IOCP를 기반으로, Lock-free 자료구조와 멀티스레드 최적화를 통해 대용량 트래픽을 처리하는 서버 아키텍처를 설계하고 구현.
 
-[IOCP](IOCP&epool.md)  - IOCP와 epoll 비교  
-[LockFreeQueue.md](LockFreeQueue.md)  - Lock-free 큐 개념 구현과정 기록  
-[memory_order.md](memory_order.md)   - memory_order 개념 정리, SpinLock 예제  
-[StructuredLogging](StructuredLogging.md) - 구조화 로그 적용 방법 및 로그 분류.    
-[TripleBuffer](TripleBuffer.md) - Triple 버퍼 구현 과정
-[Monster](Monster.md) - 몬스터 구현 내용 기록   
-[Skill](Skill.md) - 스킬 구현 내용 기록 
+### 1. 데이터 처리 파이프라인 (Data Pipeline)
+
+네트워크 수신부터 로직 처리, 브로드캐스트까지의 효율적인 데이터 흐름을 구축했습니다.
+
+- __수신 및 전파__ : IOCP 비동기 수신 → ClientContext의 RingBuffer를 통한 패킷 조립 → PacketView를 활용한 제로 카피 지향 로직 전파.
+	- [IOCP](IOCP&epoll.md) : IOCP와 epoll 비교
+	- [ClientContext](ClientContext.md): TCP 수신 버퍼 처리구조, Ring buffer와 Context 누적버퍼 처리 방법
+- __Zone 기반 로직__ : Zone 스레드에 코어를 고정하여 컨텐츠 로직 및 `Tick` 처리 수행.
+
+---
+
+### 2. 멀티스레드 동기화 및 성능 최적화
+
+단순한 Lock 기반 경쟁을 제거하고 CPU 캐시 효율을 극대화하는 설계를 적용했습니다.
+
+- [memory_order.md](memory_order.md):멀티스레드 환경의 메모리 재배치 문제를 방지하고 성능을 최적화하기 위해, Acquire-Release 시맨틱의 동작 원리를 분석하고 이를 SpinLock 설계에 적용한 과정을 정리.
+- [LockFreeQueue.md](LockFreeQueue.md): Lock 경합을 방지하기 위해 atomic 변수와 CAS(Compare-And-Swap) 함수를 통해 구현한 __Vyukov's Lock-free Queue__ 구현 및 검증.
+- [TripleBuffer](TripleBuffer.md) : 로직 스레드와 네트워크 스레드 간의 간섭을 최소화하여 데이터 일관성 유지.
+
+---
+
+### 3. 네트워크 안정성
+
+- [Ping](PingLoop.md) : Ping 루프를 통해 좀비 세션 탐지 및 순환 참조 없는 안전한 세션 종료 로직 구현.
+- [Flood Detection](https://www.google.com/search?q=FloodDetect.md): 어플리케이션 레벨에서의 대역폭 공격 방어를 위해 패킷 유입량을 감시하고 차단하는 탐지 로직 적용.  
+- [Tick](Tick.md) & [Snapshot](Snapshot.md) : 클라이언트와 서버 간의 틱 기반 동기화 및 패킷 크기 최적화를 위한 스냅샷 전략 수립.
+
+---
+
+### 4. 콘텐츠 구현 및 모니터링
+
+- [Monster](Monster.md) & [Skill](Skill.md) : 간단한 AI 및 상호작용 로직을 통해 구조적 위험성 분석. AOI(Area of Interest) 및 Cell 분할 필요성 도출.
+- [StructuredLogging](StructuredLogging.md) : 서버 내부 상태와 테스트 결과를 시각화하고 추적하기 위해 로그를 구조화하여 분류 및 적용.
+
 
 ## 테스트
 
@@ -126,7 +148,27 @@ __캐시__: 캐시라인 정렬, Zone 스레드 코어 고정
 왜 이동 입력이 전부 처리되지 않았는가?  
 
 [더미 테스트](DummyTest.md)에서 자세한 내용 확인
-	
+
+## 리팩토링
+기능 구현 과정에서 직면한 구조적 한계와 병목 지점을 분석하고, 명확한 근거와 필요성에 따라 진행한 리팩토링 기록입니다.  
+
+[채팅 기능 리팩토링](ChatRefactor.md)    
+- 필요성: 채팅 트래픽이 메인 게임 로직(Zone Tick)의 성능에 영향을 미칠 수 있는 것을 인지. 핵심 로직의 안정성을 위해 채팅 로직 레이어 분리 결정.
+기존 채팅 기능이 단순히 전송 대상(Zone) 공유를 위해 Zone 로직내에 통합시켜놨다. 
+- 내용: 채팅 전용 스레드/레이어 분리 및 추가 기능(Global Chat, 귓속말) 구현 
+
+[ClientContext 리팩토링: God Object](ClientContext.md)  
+- 필요성: 하나의 객체가 너무 많은 상태를 관리하여 복잡성이 높고, 버그 추적에 어려움 경험
+- 내용: 기능을 쪼개어 ClientContext를 수신 버퍼 관리 전용으로 경량화, SRP
+
+[Ping 리팩토링](PingRefactor.md)  
+- 필요성: CoreLib에서 소켓을 직접 제어할 수 없어서 비정상 종료 소켓을 강제로 끊으 수 없는 구조
+- 내용: NetLib로 Ping 루프를 이관하여, 비정상 종료 or Ping 응답 실패 누적된 소켓 강제 종료.
+
+[AOI 적용](AOI.md)  
+- 필요성: 스킬 판정 시 모든 대상을 조회하는 방식이 유저 수 증가에 따른 성능 하락이 될 수 있음을 인지
+- 내용: 격자형 Cell 구조 도입 및 다중 Cell의 패킷 조각(Chunk)을 효율적으로 병합 전송하는 Overlapped 구조체 개선 병행.
+
 ## 트러블 슈팅
 
 - [LockFreeQueue 디버그](LockFreeQueueDebug.md)  
@@ -137,17 +179,6 @@ __캐시__: 캐시라인 정렬, Zone 스레드 코어 고정
 
 - [SessionManager 데드락](SessionManagerDeadLock.md)  
   순환 참조로 인해 발생한 데드락 원인 추적, 구조 개선.
-- 
-## 리팩토링
-
-- [채팅 기능 리팩토링](ChatRefactor.md)
-- [ClientContext 리팩토링: God Object](ClientContext.md)
-- [Ping 리팩토링](PingRefactor.md)
-- [AOI 적용](AOI.md)
-
-
-## 빌드, 실행 방법
-
 
 ## 추후 개선 사항
 
@@ -156,6 +187,85 @@ __캐시__: 캐시라인 정렬, Zone 스레드 코어 고정
 - 스킬, 몬스터 데이터는 데이터 드리븐으로 변경. 지금은 하드코딩으로 처리하는 상태.
 - 몬스터 AI 처리 상태머신 기반으로 전환.
 - 방향 + 속도를 입력 받는것이 아닌 유저가 이동후 최종 좌표를 서버에 전송하는 방식으로 변경해야 한다.
+- 현재 동기 방식의 MySQL Connector/C++를 사용 중이며, 이는 쿼리 실행 시 워커 스레드의 블로킹을 유발한다. 이를 MariaDB Non-blocking C API로 교체할 필요가 있다.
+
+## 빌드, 실행 방법
+### 1. 개발 환경
+Client Engine: Unity 6.0  
+IDE: Visual Studio Community 2022  
+OS: Windows 11 (x64), 25H2
+DB/Store: MySQL8.4.0, Redis 3.0.504
+
+Game Server: C++ 20, Windows SDK 10.0 
+Client Core: .Net Standard 2.0
+DummyClient: .Net 8.0
+Login: NodeJs 22.14.0
+
+### 2. 외부 모듈
+프로젝트에 필요한 모든 외부 라이브러리는 /External 경로에 포함되어 있다.  
+솔루션 파일을 열어 즉시 빌드가 가능하도록 의존성이 설정되어 있으며, 라이브러리 바이너리도 프로젝트에 포함되어있다.   
+
+포함 모듈: hiredis, spdlog, MySQL Connector/C++, nlohmann/json
+- Nuget 패키지: Newtonsoft.Json, libevent2
+
+- x32 또는 Windows 8 이하 환경에서 빌드 시, 해당 타겟에 맞는 라이브러리 바이너리를 /External 경로에 재배치해야 한다.
+- Linux 및 macOS 환경에서의 빌드는 지원하지 않는다.
+
+### 3. 외부 인프라 설정
+DB  
+- 스크립트 실행: Resources/DB/init.sql 
+	- 로그인 DB, 게임 DB 생성
+- Host: localhost
+- ID/PW: root / 1234 
+
+인증서버  
+- Program Files\redis-server.exe 실행
+- Host: 127.0.0.1
+- Port: 6379
+
+로그인서버  
+- Node.js로 실행하거나 vs에서 실행 
+- localhost, 포트 3000
+
+게임 서버  
+1. Mainserver 빌드 후 실행
+1. 또는 Resources/Release/MainServer.exe 실행
+	1. 실행파일 직접 사용 시 로그 경로 변경됨
+	1. Resources/monitoring/promtail-config.yaml에서 path를 Resources/Release/logs/~~.log로 변경
+
+
+### 4. 모니터링 설정
+1. grafana, loki, promtail 설치.  
+	1. grafana: https://grafana.com/grafana/download?edition=oss&platform=windows
+	1. loki, promtail: https://github.com/grafana/loki/releases (assets에서 loki, promtail 찾아서 설치)
+	
+1. Resources/monitoring 폴더의 loki-config.yaml과 promtail-config.yaml 수정
+	1. 파일 저장 경로를 로컬 환경에 맞게 수정
+1. loki.bat, promtail.bat 순서대로 실행.
+	1. bat, yaml을 각각 loki, promtail 실행파일과 같은 경로로 설정
+1. Resources/grafana.db를 아래 위치에 덮어쓰기
+	1. C:\Program Files\GrafanaLabs\grafana\data
+1. Grafana 실행
+	- ID/PW: admin / admin
+
+### 5. 계정 생성, 캐릭터 생성
+- 로그인 서버, DB 실행중인 상태에서   
+   ```node Resources/monitoring/create_user.js ```
+
+- 캐릭터 생성 sql 실행
+  ```Resources/DB/createCharacter.sql 실행```
+
+### 6. 클라이언트 테스트
+Dummy Client 
+- DummyClients/Program.cs에서 접속자 수 설정 후 DummyClients 실행
+
+Unity Client
+- Resources/UnityClient/UnityClient.exe
+
+기본 테스트 계정
+- ID: test_1 ~ test_5000
+- PW: 12345
+
 
 ## 기술 문서 목록
 

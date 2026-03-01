@@ -16,11 +16,11 @@
     <Filter Include="Cache">
       <UniqueIdentifier>{0444013b-42f7-456f-b6a1-a94f682ec414}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Data">
-      <UniqueIdentifier>{412850a0-70ca-4b69-9a40-dbf019f24972}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Interface">
       <UniqueIdentifier>{78a706b3-8ee5-412f-9ccd-6af5f0d8ca90}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Data">
+      <UniqueIdentifier>{412850a0-70ca-4b69-9a40-dbf019f24972}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
