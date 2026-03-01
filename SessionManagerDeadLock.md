@@ -33,7 +33,7 @@ void OnRecv(SOCKET sock, uint8_t* buf, uint16_t len) const {
 ## 5. Note
 - ClientContext의 설계의도를 간과하고 StateManager 내부에서 처리하도록 한 것이 문제
 
-## 6. 관련 문서
+## 6. 참고
 - 해당 PR: [데드락 해결 및 SessionManager 수정#14](https://github.com/JoEunil/MMORPG/pull/13)   
 - ClientContext: [ClientContext 설명 문서](ClientContext.md)  
 - [SessionManager.h](NetLibrary/SessionManager.h)  
