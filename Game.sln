@@ -38,15 +38,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Concept", "Concept", "{C8D5
 		TripleBuffer.md = TripleBuffer.md
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SystemDesign", "SystemDesign", "{F0F87F94-7836-4275-9E8B-AF797CBC0540}"
-	ProjectSection(SolutionItems) = preProject
-		ClientContext.md = ClientContext.md
-		FloodDetect.md = FloodDetect.md
-		PingLoop.md = PingLoop.md
-		Snapshot.md = Snapshot.md
-		Tick.md = Tick.md
-	EndProjectSection
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A67903F-5C0B-4FD6-876B-B0088C77C6B6}"
 	ProjectSection(SolutionItems) = preProject
 		images\FloodCheckFlowChart.png = images\FloodCheckFlowChart.png
@@ -61,6 +52,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 		images\SessionManagerDeadLock2.png = images\SessionManagerDeadLock2.png
 		images\StackOverflow.png = images\StackOverflow.png
 		images\TCP&UDP.png = images\TCP&UDP.png
+		images\zeroWindow.png = images\zeroWindow.png
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Gif", "Gif", "{1EAD1855-C4A5-4C63-AC48-2766B77829DD}"
@@ -98,7 +90,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Refactor", "Refactor", "{FB
 		PingRefactor.md = PingRefactor.md
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ContentsDesign", "ContentsDesign", "{6C9964E0-7303-46E2-ABEB-A2CD3EBE4D43}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SystemDesign", "SystemDesign", "{6C9964E0-7303-46E2-ABEB-A2CD3EBE4D43}"
+	ProjectSection(SolutionItems) = preProject
+		ClientContext.md = ClientContext.md
+		FloodDetect.md = FloodDetect.md
+		PingLoop.md = PingLoop.md
+		Snapshot.md = Snapshot.md
+		Tick.md = Tick.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ContentsDesign", "ContentsDesign", "{C60890E3-6BC0-444C-8B3B-3846C03E623B}"
 	ProjectSection(SolutionItems) = preProject
 		Monster.md = Monster.md
 		Skill.md = Skill.md
@@ -290,13 +291,13 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{C8D5274F-AC00-46C7-1F8D-E88E81087A52} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
-		{F0F87F94-7836-4275-9E8B-AF797CBC0540} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 		{1A67903F-5C0B-4FD6-876B-B0088C77C6B6} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 		{1EAD1855-C4A5-4C63-AC48-2766B77829DD} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 		{04961DE9-96A0-4081-AB5A-BAF900334FF2} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 		{C6CB27A9-DDF3-40CF-8497-8B6FC27D4E0F} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 		{FBE39A87-206D-4DA5-907E-619734B665F2} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 		{6C9964E0-7303-46E2-ABEB-A2CD3EBE4D43} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
+		{C60890E3-6BC0-444C-8B3B-3846C03E623B} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1D7E6752-8BC7-4122-B538-33B39EB8EA38}
