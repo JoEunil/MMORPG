@@ -48,4 +48,4 @@ Zone 스레드는 Tick 단위로 다음과 같은 작업을 수행한다:
 > 즉, 클라이언트는 서버 Tick을 기준으로 게임 상태를 맞추고, 화면 표시 시 보간과 예측을 통해 자연스러운 움직임을 구현한다.
 
 ## 5. 참고
-[ZoneThreadSet](CoreLib/ZoneThreadSet.cpp)
+[ZoneThreadSetcpp](CoreLib/ZoneThreadSet.cpp)
