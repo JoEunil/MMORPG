@@ -1,7 +1,7 @@
 # Memory order Debug
 
 ## 1. 개요
-[모니터링에서 발견한 버그 수정](#ff7665c) 커밋에서 발견한 memory order 관련 문제를 해결하는 과정을 설명한다.
+[모니터링에서 발견한 버그 수정](https://github.com/JoEunil/MMORPG/commit/16247c033861497bd2840bb25f22b093a70e5370) 커밋에서 발견한 memory order 관련 문제를 해결하는 과정을 설명한다.
 
 ## 2. 문제 상황
 ![이미지 로드 실패](images/flushQueue.png)
@@ -61,6 +61,6 @@ memory_order를 잘 설정해야한다.
 또한 Debug 빌드도 atomic ordering을 보장하지 않는다.
 
 ## 6. 관련 문서
-[ClientContext 설명 문서](ClientContext.md)  
-[ClientContext.h](NetLibrary/ClientContext.h)  
-[ClientContextPool.h](NetLibrary/ClientContextPool.h)  
+- [ClientContext 설명 문서](ClientContext.md)  
+- [ClientContext.h](NetLibrary/ClientContext.h)  
+- [ClientContextPool.h](NetLibrary/ClientContextPool.h)  
