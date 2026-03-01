@@ -100,34 +100,23 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 
 고성능 비동기 IO 모델인 IOCP를 기반으로, Lock-free 자료구조와 멀티스레드 최적화를 통해 대용량 트래픽을 처리하는 서버 아키텍처를 설계하고 구현.
 
-### 1. 데이터 처리 파이프라인 (Data Pipeline)
-
-네트워크 수신부터 로직 처리, 브로드캐스트까지의 효율적인 데이터 흐름을 구축했습니다.
-
+### 1. 소켓과 패킷 수신 처리 구조
 - __수신 및 전파__ : IOCP 비동기 수신 → ClientContext의 RingBuffer를 통한 패킷 조립 → PacketView를 활용한 제로 카피 지향 로직 전파.
 	- [IOCP](IOCP&epoll.md) : IOCP와 epoll 비교
 	- [ClientContext](ClientContext.md): TCP 수신 버퍼 처리구조, Ring buffer와 Context 누적버퍼 처리 방법
-- __Zone 기반 로직__ : Zone 스레드에 코어를 고정하여 컨텐츠 로직 및 `Tick` 처리 수행.
 
 
 ### 2. 멀티스레드 동기화 및 성능 최적화
-
-단순한 Lock 기반 경쟁을 제거하고 CPU 캐시 효율을 극대화하는 설계를 적용했습니다.
-
 - [memory_order.md](memory_order.md):멀티스레드 환경의 메모리 재배치 문제를 방지하고 성능을 최적화하기 위해, Acquire-Release 시맨틱의 동작 원리를 분석하고 이를 SpinLock 설계에 적용한 과정을 정리.
 - [LockFreeQueue.md](LockFreeQueue.md): Lock 경합을 방지하기 위해 atomic 변수와 CAS(Compare-And-Swap) 함수를 통해 구현한 __Vyukov's Lock-free Queue__ 구현 및 검증.
 - [TripleBuffer](TripleBuffer.md) : 로직 스레드와 네트워크 스레드 간의 간섭을 최소화하여 데이터 일관성 유지.
 
-
 ### 3. 네트워크 안정성
-
 - [Ping](PingLoop.md) : Ping 루프를 통해 좀비 세션 탐지 및 순환 참조 없는 안전한 세션 종료 로직 구현.
 - [Flood Detection](https://www.google.com/search?q=FloodDetect.md): 어플리케이션 레벨에서의 대역폭 공격 방어를 위해 패킷 유입량을 감시하고 차단하는 탐지 로직 적용.  
 - [Tick](Tick.md) & [Snapshot](Snapshot.md) : 클라이언트와 서버 간의 틱 기반 동기화 및 패킷 크기 최적화를 위한 스냅샷 전략 수립.
 
-
 ### 4. 콘텐츠 구현 및 모니터링
-
 - [Monster](Monster.md) & [Skill](Skill.md) : 간단한 AI 및 상호작용 로직을 통해 구조적 위험성 분석. AOI(Area of Interest) 및 Cell 분할 필요성 도출.
 - [StructuredLogging](StructuredLogging.md) : 서버 내부 상태와 테스트 결과를 시각화하고 추적하기 위해 로그를 구조화하여 분류 및 적용.
 
