@@ -1,7 +1,7 @@
 # SessionManager DeadLock Debug
 
 ## 1. 개요
-[데드락 해결 및 SessionManager 수정#14](https://github.com/JoEunil/MMORPG/pull/13) 
+[데드락 해결 및 SessionManager 수정#13](https://github.com/JoEunil/MMORPG/pull/13) 
 PR에서 해결한 문제에 대해 설명하는 문서이다.
 ## 2. 문제 상황
 ![이미지 로드 실패](images/SessionManagerDeadLock1.png)
@@ -34,5 +34,7 @@ void OnRecv(SOCKET sock, uint8_t* buf, uint16_t len) const {
 - ClientContext의 설계의도를 간과하고 StateManager 내부에서 처리하도록 한 것이 문제
 
 ## 6. 관련 문서
-해당 PR: [데드락 해결 및 SessionManager 수정#14](https://github.com/JoEunil/MMORPG/pull/13)   
-ClientContext: [ClientContext 설명 문서](ClientContext.md)  
+- 해당 PR: [데드락 해결 및 SessionManager 수정#14](https://github.com/JoEunil/MMORPG/pull/13)   
+- ClientContext: [ClientContext 설명 문서](ClientContext.md)  
+- [SessionManager.h](NetLibrary/SessionManager.h)  
+- [ClientContext.h](NetLibrary/ClientContext.h)  
