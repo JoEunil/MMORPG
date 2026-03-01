@@ -77,3 +77,6 @@ data: 부가 데이터. key-value 형식의 JSON 객체로 필요한 정보를 �
 과도한 로깅 금지
 - 초당 수백~수천 번 호출되는 핵심 루프에서 무분별한 로그는 성능을 해칠 수 있다.
 - 성능 민감 구간은 “집계 후 1초 단위 perf log 출력” 형태로 제한한다.
+
+## 6. 참고
+- [JsonUtility.h](ExternalLib/JsonUtility.h)
