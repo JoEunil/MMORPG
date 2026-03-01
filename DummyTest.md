@@ -131,7 +131,7 @@ Authoritative 구조의 유지: 서버 권위를 포기하는 것이 아니라, 
 	1. 각 zone에 작업 큐를 두어 mutex 없이 작업큐를 통해 비동기적으로 처리되도록 해야한다.
 	1. zone 내부로직은 zone 전환을 제외하고는 싱글스레드 접근이라 모든 mutex를 제거할 수 있게된다.
 
-## 6.참고자료
+## 6.참고
 - [DummyClient](DummyClients/Program.cs)
 - [NetPerfCollector.h](NetLibrary/NetPerfCollector.h)
 - [CorePerfCollector.h](CoreLib/CorePerfCollector.h)
