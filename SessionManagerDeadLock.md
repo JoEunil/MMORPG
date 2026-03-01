@@ -17,7 +17,6 @@ PR에서 해결한 문제에 대해 설명하는 문서이다.
 - SessionManager 내부에서 호출 스택 상 SpinLock을 잡은 상태로 GetContext를 호출하며 데드락 발생
 - 정상 동작한 유저는 샤드가 겹치지 않아서 문제가 발생하지 않음, Ping 루프는 이미 데드락 상태
 
-해결 방법
 ## 해결
 GetContext를 통해 Context 포인터를 얻은 후, NetHandler에서 처리하도록 변경
 이렇게 하면 Context 내부 작업에서 SpinLock 중첩이 발생하지 않음

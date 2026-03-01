@@ -58,26 +58,43 @@ namespace Core {
                         if (character.dirtyBit == 0x0)
                             continue;
                         auto& bit = character.dirtyBit;
-                        if (bit & 0x01)
+                        if (bit & 0x01) {
                             writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 0, character.hp);
-                        if (bit & 0x02)
+                            iterCnt++;
+                        }
+                        if (bit & 0x02) {
                             writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 1, character.mp);
-                        if (bit & 0x04)
+                            iterCnt++;
+                        }
+                        if (bit & 0x04) {
                             writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 2, character.maxHp);
-                        if (bit & 0x08)
+                            iterCnt++;
+                        }
+                        if (bit & 0x08) {
                             writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 3, character.maxMp);
-                        if (bit & 0x10)
+                            iterCnt++;
+                        }
+                        if (bit & 0x10) {
                             writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 4, character.exp);
-                        if (bit & 0x20)
+                            iterCnt++;
+                        }
+                        if (bit & 0x20) {
                             writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 5, character.level);
-                        if (bit & 0x40)
+                            iterCnt++;
+                        }
+                        if (bit & 0x40) {
                             writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 6, character.dir);
-                        if (bit & 0x80)
+                            iterCnt++;
+                        }
+                        if (bit & 0x80) {
                             writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 7, character.x);
-                        if (bit & 0x100)
+                            iterCnt++;
+                        }
+                        if (bit & 0x100) {
                             writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 8, character.y);
+                            iterCnt++;
+                        }
                         character.dirtyBit = 0x00;
-                        iterCnt++;
                     }
                     cell.dirtyChar.pop_back();
                 }
@@ -167,17 +184,24 @@ namespace Core {
                     auto& bit = monster.dirtyBit;
                     if (bit == 0x00)
                         continue;
-                    if (bit & 0x01)
+                    if (bit & 0x01) {
                         writer->WriteMonsterDeltaField(chunks[idx], monster.internalID, 0, monster.hp);
-                    if (bit & 0x02)
+                        iterCnt++;
+                    }
+                    if (bit & 0x02) {
                         writer->WriteMonsterDeltaField(chunks[idx], monster.internalID, 1, monster.x);
-                    if (bit & 0x04)
+                        iterCnt++;
+                    }
+                    if (bit & 0x04) {
                         writer->WriteMonsterDeltaField(chunks[idx], monster.internalID, 2, monster.y);
-                    if (bit & 0x08)
+                        iterCnt++;
+                    }
+                    if (bit & 0x08) {
                         writer->WriteMonsterDeltaField(chunks[idx], monster.internalID, 3, monster.dir);
+                        iterCnt++;
+                    }
                     monster.dirtyBit = 0x00;
                     monster.attacked = 0;
-                    iterCnt++;
                 }
                 perfCollector->AddMonsterDeltaFieldCnt(m_zoneID, iterCnt);
             }

@@ -38,15 +38,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Concept", "Concept", "{C8D5
 		TripleBuffer.md = TripleBuffer.md
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Design", "Design", "{F0F87F94-7836-4275-9E8B-AF797CBC0540}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SystemDesign", "SystemDesign", "{F0F87F94-7836-4275-9E8B-AF797CBC0540}"
 	ProjectSection(SolutionItems) = preProject
 		ClientContext.md = ClientContext.md
-		DummyTest.md = DummyTest.md
 		FloodDetect.md = FloodDetect.md
-		Monitoring.md = Monitoring.md
-		Monster.md = Monster.md
 		PingLoop.md = PingLoop.md
-		Skill.md = Skill.md
 		Snapshot.md = Snapshot.md
 		Tick.md = Tick.md
 	EndProjectSection
@@ -87,6 +83,26 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Debug", "Debug", "{04961DE9
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DummyClients", "DummyClients\DummyClients.csproj", "{C6494044-85D7-486D-AAF6-D9B11C69CCE3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{C6CB27A9-DDF3-40CF-8497-8B6FC27D4E0F}"
+	ProjectSection(SolutionItems) = preProject
+		DummyTest.md = DummyTest.md
+		Monitoring.md = Monitoring.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Refactor", "Refactor", "{FBE39A87-206D-4DA5-907E-619734B665F2}"
+	ProjectSection(SolutionItems) = preProject
+		AOI.md = AOI.md
+		ChatRefactor.md = ChatRefactor.md
+		ClientContextRefactor.md = ClientContextRefactor.md
+		PingRefactor.md = PingRefactor.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ContentsDesign", "ContentsDesign", "{6C9964E0-7303-46E2-ABEB-A2CD3EBE4D43}"
+	ProjectSection(SolutionItems) = preProject
+		Monster.md = Monster.md
+		Skill.md = Skill.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -278,6 +294,9 @@ Global
 		{1A67903F-5C0B-4FD6-876B-B0088C77C6B6} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 		{1EAD1855-C4A5-4C63-AC48-2766B77829DD} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 		{04961DE9-96A0-4081-AB5A-BAF900334FF2} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
+		{C6CB27A9-DDF3-40CF-8497-8B6FC27D4E0F} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
+		{FBE39A87-206D-4DA5-907E-619734B665F2} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
+		{6C9964E0-7303-46E2-ABEB-A2CD3EBE4D43} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1D7E6752-8BC7-4122-B538-33B39EB8EA38}

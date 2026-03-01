@@ -1,0 +1,34 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 0   
+ingester:
+  lifecycler:
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+
+schema_config:
+  configs:
+    - from: 2020-10-24
+      store: boltdb-shipper
+      object_store: filesystem
+      schema: v11
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  boltdb_shipper:
+    active_index_directory: C:/loki/storage/index
+    cache_location: C:/loki/storage/index_cache
+  filesystem:
+    directory: C:/loki/storage/chunks
+
+limits_config:
+  allow_structured_metadata: false
+
+compactor:
+  working_directory: C:/loki/work
