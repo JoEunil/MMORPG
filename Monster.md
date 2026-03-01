@@ -116,6 +116,6 @@ void ChangeState(Monster& monster, State newState) {
 
 ## 5. 참고 
 
-[MonsterData.h](CoreLib/MonsterData.h)  
-[MonsterState.h](CoreLib/MonsterState.h)  
-[ZonsState_Monsters.cpp](CoreLib/ZoneState_Monsters.cpp)  
+- [MonsterData.h](CoreLib/MonsterData.h)  
+- [MonsterState.h](CoreLib/MonsterState.h)  
+- [ZonsState_Monsters.cpp](CoreLib/ZoneState_Monsters.cpp)  
