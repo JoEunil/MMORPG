@@ -1,14 +1,14 @@
 ﻿# AOI(Aread of Interest) 적용
 
-## 개요
+## 1. 개요
 이 문서는 MMORPG 서버에서 Zone을 Cell 단위로 분리하고 AOI(Area of Interest)를 적용한 개선 작업에 대한 기술적 설명이다.  
 
-## 문제상황
+## 2. 문제상황
 - 스킬 기능을 추가하면서, Zone 내 유저 수가 많아지면 AOI 탐색 Depth가 깊어지고,
 이는 Zone 스레드의 TPS에 영향을 미칠 위험성을 인지하였다.
 - Zone을 Cell 단위로 나누어서 처리했고, Cell에 AOI를 적용하기 위해서는 기존의 패킷 처리 로직을 그대로 사용할 수 없었다.
 
-## 수정사항
+## 3. 수정사항
 __구조 변경__  
 - Zone 내부를 Cell 단위로 분리하여 패킷 전파 단위 축소
 	- 기존: zone 유저수 x zone 유저수 x 패킷 필드
@@ -41,7 +41,7 @@ Chunk 단위 전송 처리 방식
 - overlapped 구조체에서 wsaBuf를 vector에 담아 WSA Send call 한 번으로 패킷 전송 가능.
 - 현재 Grid 기반 AOI를 사용하며, 각 Cell의 AOI 단위는 미리 정의되어 있음
 
-## 설계 결정 및 트레이드오프
+## 4. 설계 결정 및 트레이드오프
 - [ClientContext 리팩토링](ClientContextRefactor.md)에서 Chunk 단위 전송을 고려했으나, 당시에는 필요성 낮음 판단 → 보류
 - Cell, AOI 적용
 	- 패킷 크기 감소, Skill 처리 탐색 범위 감소
@@ -54,7 +54,7 @@ Chunk 단위 전송 처리 방식
 	- 코드 복잡도 상승, 
 	- 패킷 절감 효과 발생
 
-## Delta 패킷 전송량 비교 (AOI 적용 전/후)
+## 5. Delta 패킷 전송량 비교 (AOI 적용 전/후)
 __패킷 구조__
 ```cpp    
 struct PacketHeader { // 6바이트
@@ -109,7 +109,7 @@ __AOI, Cell 적용 후__
 약 64% 대역폭 절감
 → AOI + Cell 단위 분리 효과가 매우 큼
 
-## 시연
+## 6. 시연
 
  ![GIF 로드 실패](images/BeforeAOI.gif)
 >  AOI 적용 전 임시로 Cell 단위로 처리한 상태
@@ -117,5 +117,5 @@ __AOI, Cell 적용 후__
  ![GIF 로드 실패](images/AfterAOI.gif)
 >  AOI 적용 후  
 *분홍색 선은 Cell 경계를 나타낸 것이다.
-## 참고
+## 7. 참고
 - 관련 PR: [grid 기반 AOI 적용 #20](https://github.com/JoEunil/MMORPG/pull/20)
