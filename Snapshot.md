@@ -88,5 +88,5 @@ __Zone 처리 관련 주의점__
 
 
 ## 5. 참고 
-[ZoneState_Snapshots](CoreLib/ZoneState_Snapshots.cpp)  
-[PacketType](CoreLib/PacketType.h)
+- [ZoneState_Snapshots.cpp](CoreLib/ZoneState_Snapshots.cpp)  
+- [PacketTypes.h](CoreLib/PacketTypes.h)
