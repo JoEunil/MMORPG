@@ -58,7 +58,7 @@ __정확도 및 오차__
 - Collector가 로그 기록 후 1초 Sleep을 수행하기 때문에,
   실제 1초 기준과 완전히 일치하지 않아 소폭의 오차가 발생한다.
 - 이에 따라 TPS 값은 보통 19 ~ 21 범위에서 측정된다.
-## 5. 참고 자료
+## 5. 참고
 - [NetPerfCollector](NetLibrary/NetPerfCollector.h)  
 - [CorePerfCollector](CoreLib/CorePerfCollector.h)  
 - [Logger.h](ExternalLib/Logger.h)  
