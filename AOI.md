@@ -18,7 +18,7 @@ __구조 변경__
 - overlapped 구조체를 일부 수정하고, 별도의 Send 메서드를 추가하여 Chunk 전송 처리
 
 __처리 방식__  
-[IOCP.cpp chunk 패킷 send 메서드](Netlibaray/IOCP.cpp)
+[IOCP.cpp chunk 패킷 send 메서드](NetLibrary/IOCP.cpp)
 ```cpp   
 void IOCP::SendDataChunks(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet, std::vector<std::shared_ptr<Core::IPacket>>& packetChunks)
 {
@@ -119,3 +119,7 @@ __AOI, Cell 적용 후__
 *분홍색 선은 Cell 경계를 나타낸 것이다.
 ## 7. 참고
 - 관련 PR: [grid 기반 AOI 적용 #20](https://github.com/JoEunil/MMORPG/pull/20)
+- [Cell.h](CoreLib/Cell.h)
+- [BroadcastThreadPool.cpp](CoreLib/BroadcastThreadPool.cpp)
+- [ZoneState_Skills.cpp](CoreLib/ZoneState_Skills.cpp)
+- [ZoneState_Snapshots.cpp](CoreLib/ZoneState_Snapshots.cpp)
