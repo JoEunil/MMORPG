@@ -40,6 +40,7 @@ Phase마다 반복적으로 Hit 판정이 발생한다.
 각 Phase별로 스킬 시전 간격, 반복 횟수, 공격 강도 등을 다르게 설정하여
 난이도 및 전투 패턴이 변화하도록 구성하였다.
 
+## 3. 한계
 __상태 머신 기반으로 확장 필요__  
 현재는 MonsterAI 내부의 단일 메서드에서 순차 로직으로 처리하고 있으나,
 향후 확장성을 위해 __상태 머신 기반 구조__ 로 전환하는 것이 바람직하다.
@@ -113,11 +114,11 @@ void ChangeState(Monster& monster, State newState) {
 ```
 > 상태 머신 의사 코드
 
-## 3. 시연
+## 4. 시연
 ![gif 로드 실패](images/SkillAOI.gif)
 ![gif 로드 실패](images/BossMonster.gif)
 
-## 4. 참고 
+## 5. 참고 
 
 [MonsterData.h](CoreLib/MonsterData.h)  
 [MonsterState.h](CoreLib/MonsterState.h)  
