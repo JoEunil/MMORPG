@@ -25,7 +25,7 @@ __ReleaseBuffer()__
 m_workingCnt.fetch_sub(1, relaxed);
 if (!m_connected.load(relaxed) && m_workingCnt.load(relaxed) == 0)
 ```
-[ClientContext](NetLibrary/ClientContext.h)에서 연결 종료를 입력받는 Disconnect 메서드와   
+[ClientContext](ClientContext.md)에서 연결 종료를 입력받는 Disconnect 메서드와   
 Core 로직에서 사용 완료한 버퍼를 반환하는 ReleaseBuffer메서드이다.  
 PacketView를 통해 수신 버퍼를 복사하지 않고 버퍼 그대로 참조하여 사용하도록 만들었기 때문에,   
 Disconnect시 바로 자원을 정리하는것이 위험하다고 생각해서, workingCnt를 두어 모든 작업이 끝난후 자원이 정리되도록 설계하였다.
