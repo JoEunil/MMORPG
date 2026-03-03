@@ -4,7 +4,7 @@
 이 문서는 Triple Buffer의 개념과 구현 과정을 기술한다.  
 
 ## 2. Triple Buffer란?
-riple Buffer는 공유 자원에 대해 읽기(Reader)와 쓰기(Writer) 작업이 빈번하게 발생하는 멀티스레드 환경에서,     
+Triple Buffer는 공유 자원에 대해 읽기(Reader)와 쓰기(Writer) 작업이 빈번하게 발생하는 멀티스레드 환경에서,     
 Lock 경합을 최소화하고 데이터의 최신 상태(Snapshot)를 안전하고 빠르게 공유하기 위한 버퍼링 기법이다..  
 
 Triple Buffer는 3개의 버퍼를 사용하여 다음을 보장한다:  
