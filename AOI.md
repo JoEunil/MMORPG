@@ -1,4 +1,4 @@
-﻿# AOI(Aread of Interest) 적용
+﻿# AOI(Area of Interest) 적용
 
 ## 1. 개요
 이 문서는 MMORPG 서버에서 Zone을 Cell 단위로 분리하고 AOI(Area of Interest)를 적용한 개선 작업에 대한 기술적 설명이다.  
