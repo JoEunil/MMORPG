@@ -6,7 +6,7 @@
 3. [아키텍처 다이어그램](#아키텍처-다이어그램)
 4. [스레드 모델](#스레드-모델)
 5. [핵심 기술 요약](#핵심-기술-요약)
-6. [테스트](#테스트)
+6. [부하 테스트 및 I/O 병목 분석](#부하-테스트-및-io-병목-분석)  
 7. [리팩토링](#리팩토링)
 8. [트러블 슈팅](#트러블-슈팅)
 9. [추후 개선 사항](#추후-개선-사항)
@@ -29,11 +29,6 @@ __목표__
 
 ## 기술 스택
 
-__클라이언트__
-- 게임 클라이언트: Unity
-- 클라이언트 라이브러리: .Net Standard 20 (Unity 연동 목적) 
-- 더미 클라이언트, Winform: .Net 8.0 
-
 __서버__
 - 게임 서버: C++20  
 - DB: Mysql  
@@ -45,12 +40,15 @@ __로그, 모니터링__
 - 로그 저장소: promtail, loki
 - 모니터링: grafana 
 
+__클라이언트__
+- 게임 클라이언트: Unity
+- 클라이언트 라이브러리: .Net Standard 20 (Unity 연동 목적) 
+- 더미 클라이언트, Winform: .Net 8.0
+
 ## 아키텍처 다이어그램
 
 ![이미지 로드 실패](images/architecture.png)
 프로젝트는 클라이언트·서버·공용 라이브러리로 명확히 분리된 구조를 가진다.
-
-클라이언트는 .NET 기반의 ClientCore 라이브러리에서 네트워크 로직을 처리하고, UI는 WinForms 테스트 후 Unity View로 대체할 수 있도록 MVVM 패턴을 적용했다.
 
 서버는 기능별로 모듈화되어 있으며,
 
@@ -61,6 +59,8 @@ __로그, 모니터링__
 
 외부 모듈로는  spdlog, hiredis, libevent, nlohmann(json), Mysql Connector C++를 사용하며, DB는 로그인 DB와 게임 DB로 분리하여 운영한다.
 또한 인증 서버는 Redis에 임시 세션을 저장해 게임 서버 진입을 검증하고, 로그인 서버는 로그인 토큰을 발급해 인증 서버에 세션을 등록하는 역할을 수행한다.
+
+클라이언트는 .NET 기반의 ClientCore 라이브러리에서 네트워크 로직을 처리하고, UI는 WinForms 테스트 후 Unity View로 대체할 수 있도록 MVVM 패턴을 적용했다.
 
 ## 스레드 모델
 
@@ -109,7 +109,7 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 ### 2. 멀티스레드 동기화 및 성능 최적화
 - [memory_order.md](memory_order.md):멀티스레드 환경의 메모리 재배치 문제를 방지하고 성능을 최적화하기 위해, Acquire-Release 시맨틱의 동작 원리를 분석하고 이를 SpinLock 설계에 적용한 과정을 정리.
 - [LockFreeQueue.md](LockFreeQueue.md): Lock 경합을 방지하기 위해 atomic 변수와 CAS(Compare-And-Swap) 함수를 통해 구현한 __Vyukov's Lock-free Queue__ 구현 및 검증.
-- [TripleBuffer](TripleBuffer.md) : 로직 스레드와 네트워크 스레드 간의 간섭을 최소화하여 데이터 일관성 유지.
+- [TripleBuffer](TripleBuffer.md) : 로직 스레드와 네트워크 스레드 간의 간섭을 최소화하며 데이터 일관성 유지.
 
 ### 3. 네트워크 안정성
 - [Ping](PingLoop.md) : Ping 루프를 통해 좀비 세션 탐지 및 순환 참조 없는 안전한 세션 종료 로직 구현.
@@ -121,9 +121,10 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 - [StructuredLogging](StructuredLogging.md) : 서버 내부 상태와 테스트 결과를 시각화하고 추적하기 위해 로그를 구조화하여 분류 및 적용.
 
 
-## 테스트
+## 부하 테스트 및 I/O 병목 분석
 
-모니터링 시스템은 Grafana + Loki + Promtail 조합으로 구축하여 서버 메트릭을 실시간으로 시각화하였다. (자세한 내용은 [모니터링](Monitoring.md) 참고)  
+모니터링 시스템은 Grafana + Loki + Promtail 조합으로 구축하여 서버 성능 지표를 실시간으로 시각화하였다.   
+(자세한 내용은 [모니터링](Monitoring.md) 참고)    
 다중 접속 환경에서의 서버 안정성을 검증하기 위해 더미 클라이언트를 활용한 단계별 부하 테스트를 진행하였다.
 - 100명 테스트 (성공): AOI(Area of Interest) 효율 및 메모리 풀 안정성 검증 완료.
 	- 모니터링 지표 분석 중 이동 입력 설계(방향/속도 기반)의 치명적인 결함을 데이터로 확인하였다.
