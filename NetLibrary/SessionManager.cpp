@@ -22,6 +22,7 @@ namespace Net {
             session = m_sessionGenerator.fetch_add(1);
             auto ctx = contextPool->Acquire(session);
             if (ctx == nullptr) {
+                m_connectionCnt.fetch_sub(1, std::memory_order_relaxed);
                 return false;
             }
             shard.stateMap[sock].SetSession(session);

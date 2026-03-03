@@ -165,7 +165,9 @@ namespace Net {
             if (result == FALSE)
             {
                 DWORD err = GetLastError();
+                overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
                 overlappedExPool->Return(reinterpret_cast<STOverlappedEx*>(pOverlapped));
+                PostAccept();
                 Core::errorLogger->LogWarn("iocp", "GetQueuedCompletionStatus failed", "error code", std::to_string(err), "socket", clientSocket);
                 CleanUpSocket(clientSocket);
                 continue;
@@ -274,6 +276,8 @@ namespace Net {
         DWORD dwFlags = 0;
 
         STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
+        if (!pOverlappedEx)
+            return false;
         pOverlappedEx->op = IOOperation::RECV;
         pOverlappedEx->clientSocket = clientSocket;
         uint8_t* buf = nullptr;
@@ -331,6 +335,8 @@ namespace Net {
         }
         DWORD dwBytesSent = 0;
         STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
+        if (!pOverlappedEx)
+            return ;
         pOverlappedEx->op = IOOperation::SEND;
         pOverlappedEx->clientSocket = clientSocket;
         pOverlappedEx->wsaBuf.resize(1);
@@ -402,6 +408,8 @@ namespace Net {
         }
         DWORD dwBytesSent = 0;
         STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
+        if (!pOverlappedEx)
+            return ;
         pOverlappedEx->op = IOOperation::SEND;
         pOverlappedEx->clientSocket = clientSocket;
         pOverlappedEx->wsaBuf.resize(1);
