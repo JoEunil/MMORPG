@@ -229,7 +229,7 @@ namespace Core {
         }
         zoneInternalID = DZone->ImmigrateChar(session, temp);
         if (zoneInternalID == 0) {
-            if (SZone->ImmigrateChar(session, temp)) // 원래 Zone으로 복구
+            if (!SZone->ImmigrateChar(session, temp)) // 원래 Zone으로 복구
                 Disconnect(session);
             iocp->SendDataUnique(session, std::move(writer->WriteZoneChangeFailed()));
             return;

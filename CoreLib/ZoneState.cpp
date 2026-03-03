@@ -29,10 +29,6 @@ namespace Core {
         character.cellX = x;
         character.cellY = y;
         // 임시로 스킬 고정
-        character.skillSlotCnt = 3;
-        character.skillSlot.push_back(SkillSlotEntry(0, 0));
-        character.skillSlot.push_back(SkillSlotEntry(1, 0));
-        character.skillSlot.push_back(SkillSlotEntry(2, 0));
     }
 
     uint64_t ZoneState::ImmigrateChar(uint64_t sessionID, CharacterState& state) {
@@ -53,6 +49,10 @@ namespace Core {
         auto [x, y] = GetCell(state.x, state.y, m_area);
         AddToCell(state, x, y);
         state.lastZone = m_zoneID;
+        state.skillSlotCnt = 3;
+        state.skillSlot.push_back(SkillSlotEntry(0, 0));
+        state.skillSlot.push_back(SkillSlotEntry(1, 0));
+        state.skillSlot.push_back(SkillSlotEntry(2, 0));
         m_chars.push_back(state);
         m_sessionToIndex[sessionID] = index;
         m_InternalIDToIndex[state.zoneInternalID] = index;

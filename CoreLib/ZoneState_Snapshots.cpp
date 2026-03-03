@@ -55,8 +55,10 @@ namespace Core {
                     auto it = m_InternalIDToIndex.find(internalID);
                     if (it != m_InternalIDToIndex.end()) {
                         auto& character = m_chars[it->second];
-                        if (character.dirtyBit == 0x0)
+                        if (character.dirtyBit == 0x00) {
+                            cell.dirtyChar.pop_back();
                             continue;
+                        }
                         auto& bit = character.dirtyBit;
                         if (bit & 0x01) {
                             writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 0, character.hp);

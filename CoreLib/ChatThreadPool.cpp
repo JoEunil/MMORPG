@@ -110,7 +110,7 @@ namespace Core {
             }
             SendPacketUnique(it->second, std::move(packet));
             auto senderPacket = writer->GetChatWhisperPacket(chatID, userName, curr.message);
-            SendPacketUnique(curr.senderSessionID, std::move(packet));
+            SendPacketUnique(curr.senderSessionID, std::move(senderPacket));
             perfCollector->AddChatSend(2);
             return;
         }

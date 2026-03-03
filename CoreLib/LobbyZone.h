@@ -55,6 +55,7 @@ namespace Core {
                 return false;
             }
             o = m_chars[sessionID];
+            m_chars.erase(it);
             return true;
         }
         

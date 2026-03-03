@@ -16,6 +16,7 @@ namespace Core {
         }
         if (it->second.zoneID == 0) {
             lobbyZone->Disconnect(sessionID);
+            shard.sessionMap.erase(it);
             return;
         }
         CharacterState temp;

@@ -35,7 +35,7 @@ namespace Core {
 			for (int j = 0; j < CELLS_X; j++)
 			{
 				auto& cell = m_cells[i][j];
-				ProcessCellActiveSkills(cell, i * CELLS_Y + j);
+				ProcessCellActiveSkills(cell, i * CELLS_X + j);
 			}
 		}
 	}
@@ -58,6 +58,7 @@ namespace Core {
 				auto it = m_sessionToIndex.find(skill.sessionId);
 				if (it == m_sessionToIndex.end()) {
 					PopSkill(k, cell.activeSkills);
+					k--;
 					continue;
 				}
 				caster = m_chars[it->second];

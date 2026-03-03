@@ -162,8 +162,8 @@ namespace Core {
             else
                 monster.dir = 2;
             monster.x += x;
-            monster.dirtyBit |= 0x01;
-            monster.dirtyBit |= 0x04;
+            monster.dirtyBit |= 0x02;
+            monster.dirtyBit |= 0x08;
         }
         if (y != 0) {
             if ((monster.y + y) < area.y_min or (monster.y + y) > area.y_max) {
@@ -176,8 +176,8 @@ namespace Core {
             else
                 monster.dir = 1;
             monster.y += y;
-            monster.dirtyBit |= 0x02;
             monster.dirtyBit |= 0x04;
+            monster.dirtyBit |= 0x08;
         }
     }
 
@@ -197,21 +197,21 @@ namespace Core {
         // 영역 체크
         if (monster.x + dx < area.x_min || monster.x + dx > area.x_max) {
             monster.dir = (monster.dir == 2 ? 3 : 2); // 좌우 반전
-            monster.dirtyBit |= 0x04; // 방향 변경 표시
+            monster.dirtyBit |= 0x08; // 방향 변경 표시
         }
         else
             monster.x += dx;
 
         if (monster.y + dy < area.y_min || monster.y + dy > area.y_max) {
             monster.dir = (monster.dir == 0 ? 1 : 0); // 상하 반전
-            monster.dirtyBit |= 0x04; // 방향 변경 표시
+            monster.dirtyBit |= 0x08; // 방향 변경 표시
         }
         else
             monster.y += dy;
 
         // 이동 표시
-        if (dx != 0) monster.dirtyBit |= 0x01;
-        if (dy != 0) monster.dirtyBit |= 0x02;
-        monster.dirtyBit |= 0x04; // 방향 변경 표시
+        if (dx != 0) monster.dirtyBit |= 0x02;
+        if (dy != 0) monster.dirtyBit |= 0x04;
+        monster.dirtyBit |= 0x08; // 방향 변경 표시
     }
 }

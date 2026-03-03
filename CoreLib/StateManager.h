@@ -84,7 +84,7 @@ namespace Core {
                     CharacterState temp;
                     m_states[data.zoneID]->EmigrateChar(session, temp);
                     Message* msg = messagePool->Acquire();
-                    auto st = reinterpret_cast<MsgStruct<MsgCharacterStateUpdateBody>*>(msg);
+                    auto st = reinterpret_cast<MsgStruct<MsgCharacterStateUpdateBody>*>(msg->GetBuffer());
 
                     st->header.sessionID = session;
                     st->header.messageType = MSG_CHARACTER_STATE_UPDATE;
