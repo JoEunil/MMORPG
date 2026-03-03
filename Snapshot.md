@@ -15,7 +15,7 @@ Zone 상태를 Full Snapshot / Delta Snapshot으로 분리하여,
 	- [TripleBuffer](TripleBuffer.md)를 사용
 - Character Full Snapshot
 - Character Delta Snapshot
-- Mosnter Full Snapshot
+- Monster Full Snapshot
 - Monster Delta Snapshot
 - ActionResult Snapshot
 	- 비정기적으로 발생하며 공유되어야 하는 상태 변화값 처리
