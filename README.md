@@ -66,7 +66,7 @@ __클라이언트__
 
 스레드별 작업 성격에 따른 분류   
 
-__MaineServer__   
+__MainServer__   
 - main thread
 
 __NetLibrary__  
@@ -113,7 +113,7 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 
 ### 3. 네트워크 안정성
 - [Ping](PingLoop.md) : Ping 루프를 통해 좀비 세션 탐지 및 순환 참조 없는 안전한 세션 종료 로직 구현.
-- [Flood Detection](https://www.google.com/search?q=FloodDetect.md): 어플리케이션 레벨에서의 대역폭 공격 방어를 위해 패킷 유입량을 감시하고 차단하는 탐지 로직 적용.  
+- [Flood Detection](FloodDetect.md): 어플리케이션 레벨에서의 대역폭 공격 방어를 위해 패킷 유입량을 감시하고 차단하는 탐지 로직 적용.  
 - [Tick](Tick.md) & [Snapshot](Snapshot.md) : 클라이언트와 서버 간의 틱 기반 동기화 및 패킷 크기 최적화를 위한 스냅샷 전략 수립.
 
 ### 4. 콘텐츠 구현 및 모니터링
