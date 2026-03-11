@@ -5,8 +5,8 @@
 #include "Config.h"
 
 namespace Net {
-    constexpr const uint8_t RELEASE = 0;
-    constexpr const uint8_t ACQUIRE = 1;
+    constexpr uint8_t RELEASE = 0;
+    constexpr uint8_t ACQUIRE = 1;
 
     struct BufferFragment
     {

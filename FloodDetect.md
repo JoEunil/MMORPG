@@ -46,9 +46,9 @@ AbortSocket() 호출 시 ClientContext의 종료 처리 메서드를 수행하�
 	* tiny packet 공격을 판단할 수 없다. -> 수신 간격이 큰 경우 매우 작은값으로 측정됨
 
 ```cpp  
-constexpr const uint8_t Q_SIZE = 16; // 2의 거듭제곱
+constexpr uint8_t Q_SIZE = 16; // 2의 거듭제곱
 static_assert((Q_SIZE != 0) && ((Q_SIZE& (Q_SIZE - 1)) == 0), "Q_SIZE must be a power of 2!");
-constexpr const double THRESHOLD = 4096; // bps 제한
+constexpr double THRESHOLD = 4096; // bps 제한
 class TrafficFloodDetector {
 	std::vector<uint64_t> m_byte; // 누적합, ring queue
 	std::vector<std::chrono::steady_clock::time_point> m_timeStamp; // ring queue

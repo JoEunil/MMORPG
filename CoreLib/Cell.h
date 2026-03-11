@@ -6,10 +6,10 @@
 #include "Config.h"
 
 namespace Core {
-    inline constexpr const float ZONE_SIZE = 100.0f;     // zone 한 칸 크기
-    inline constexpr const int ZONE_HORIZON = 3; // 3x3
-    inline constexpr const int ZONE_VERTICAL = 3;
-    inline constexpr const float TRANSITION_BUFFER = 5.0f; // 겹치는 영역
+    inline constexpr float ZONE_SIZE = 100.0f;     // zone 한 칸 크기
+    inline constexpr int ZONE_HORIZON = 3; // 3x3
+    inline constexpr int ZONE_VERTICAL = 3;
+    inline constexpr float TRANSITION_BUFFER = 5.0f; // 겹치는 영역
 
     static constexpr int CELL_SIZE = 22; // 5 * 5
     static constexpr int CELLS_X = (TRANSITION_BUFFER * 2 + ZONE_SIZE) / CELL_SIZE;
