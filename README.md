@@ -180,13 +180,13 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 ### 1. 개발 환경
 Client Engine: Unity 6.0  
 IDE: Visual Studio Community 2022  
-OS: Windows 11 (x64), 25H2
-DB/Store: MySQL8.4.0, Redis 3.0.504
+OS: Windows 11 (x64), 25H2  
+DB/Store: MySQL8.4.0, Redis 3.0.504  
 
-Game Server: C++ 20, Windows SDK 10.0 
-Client Core: .Net Standard 2.0
-DummyClient: .Net 8.0
-Login: NodeJs 22.14.0
+Game Server: C++ 20, Windows SDK 10.0   
+Client Core: .Net Standard 2.0  
+DummyClient: .Net 8.0  
+Login: NodeJs 22.14.0  
 
 ### 2. 외부 모듈
 프로젝트에 필요한 모든 외부 라이브러리는 /External 경로에 포함되어 있다.  
