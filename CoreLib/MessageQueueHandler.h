@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "MessageTypes.h"
+#include "LoggerGlobal.h"
 
 namespace Core {
     class PacketWriter;

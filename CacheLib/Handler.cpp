@@ -32,21 +32,21 @@ namespace Cache {
         if (msg != nullptr)
             messagePool->Return(msg);
     }
-    void Handler::CharacterListRequest(Core::Message* msg, uint64_t sesionID, Core::MsgCharacterListReqBody* body) {
+    void Handler::CharacterListRequest(Core::Message* msg, uint64_t sessionID, Core::MsgCharacterListReqBody* body) {
         DBConnection* conn = connectionPool->Acquire();
         auto res = conn->ExecuteSelect(1, body->userID, body->channelID);
         connectionPool->Return(conn);
         Core::MsgStruct<Core::MsgCharacterListResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgCharacterListResBody>*>(msg->GetBuffer());
         
-        st->header.sessionID = sesionID;
+        st->header.sessionID = sessionID;
         st->header.messageType = Core::MSG_CHARACTER_LIST_RES;
         
         if (!res || !res->next()) {
+            Core::gameLogger->LogInfo("cache handler", "character list read failed", "sessionID", sessionID, "user_id", body->userID, "channel_id", body->channelID);
             st->body.resStatus = 0;
             st->body.count = 0;
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterListResBody>));
             messageQ->EnqueueMessage(msg);
-            connectionPool->Return(conn);
             return;
         }
 
@@ -70,7 +70,7 @@ namespace Cache {
         messageQ->EnqueueMessage(msg);
     }
 
-    void Handler::CharacterStateRequest(Core::Message* msg, uint64_t sesionID, Core::MsgCharacterStateReqBody* body) {
+    void Handler::CharacterStateRequest(Core::Message* msg, uint64_t sessionID, Core::MsgCharacterStateReqBody* body) {
         uint64_t characterID = body->characterID;
         DBConnection* conn = connectionPool->Acquire();
         auto res = conn->ExecuteSelect(3, body->characterID);
@@ -78,10 +78,11 @@ namespace Cache {
 
         Core::MsgStruct<Core::MsgCharacterStateResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgCharacterStateResBody>*>(msg->GetBuffer());
         
-        st->header.sessionID = sesionID;
+        st->header.sessionID = sessionID;
         st->header.messageType = Core::MSG_CHARACTER_STATE_RES;
         
         if (!res || !res->next()) {
+            Core::gameLogger->LogInfo("cache handler", "character state read failed", "sessionID", sessionID, "char_id", body->characterID);
             st->body.resStatus = 0;
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterStateResBody>));
             messageQ->EnqueueMessage(msg);
@@ -106,8 +107,6 @@ namespace Cache {
         st->body.currentZone = res->getUInt("zone_id");
         st->body.startX = res->getDouble("last_pos_x");
         st->body.startY = res->getDouble("last_pos_y");
-        
-        cache_5->Setter(std::move(res));
 
         msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterStateResBody>));
         messageQ->EnqueueMessage(msg);
@@ -115,48 +114,31 @@ namespace Cache {
 
     void Handler::CharacterStateUpdate(Core::Message* msg, uint64_t sessionID, Core::MsgCharacterStateUpdateBody* body) {
         DBConnection* conn = connectionPool->Acquire();
-        Core::gameLogger->LogInfo("cache handler", "character state update", "sessionID", sessionID);
         auto res = conn->ExecuteUpdate(4, body->attack, body->level, body->exp, body->hp, body->mp, body->maxHp, body->maxMp, body->dir, body->x, body->y, body->lastZone, body->charID);
         connectionPool->Return(conn);
+        if (!res) {
+            Core::gameLogger->LogInfo("cache handler", "character state update failed", "sessionID", sessionID, "char_id", body->charID, "level", body->level,
+                "exp", body->exp, "hp", body->hp, "mp", body->mp, "max_hp", body->maxHp, "max_mp", body->maxMp, "dir", body->dir, "x", body->x, "y", body->y, "last_zone", body->lastZone);
+        }
     }
 
-    void Handler::InventoryRequest(Core::Message* msg, uint64_t sesionID, Core::MsgInventoryReqBody* body) {    
-        Core::MsgStruct<Core::MsgInventoryResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgInventoryResBody>*>(msg->GetBuffer());
-        
-        if (!cache_5->Getter(msg)) {
-            auto conn = connectionPool->Acquire();
-            auto res = conn->ExecuteSelect(5, body->characterID);
-            connectionPool->Return(conn);
-
-            if (!res) {
-                st->body.resStatus = 0;
-                msg->SetLength(sizeof(Core::MsgStruct<Core::MsgInventoryResBody>));
-                messageQ->EnqueueMessage(msg);
-                return;
-            }
-            cache_5->Setter(std::move(res));
-            cache_5->Getter(msg);
-        }
-
-        msg->SetLength(sizeof(Core::MsgStruct<Core::MsgInventoryResBody>));
+    void Handler::InventoryRequest(Core::Message* msg, uint64_t sessionID, Core::MsgInventoryReqBody* body) {    
+        cache_5->Getter(msg);
         messageQ->EnqueueMessage(msg);
     }
 
-    void Handler::InventoryUpdate(Core::Message* msg, uint64_t sesionID, Core::MsgInventoryUpdateBody* body) {
-        auto [resStatus, itemID, slot, quantity] = cache_5->PartialUpdate(msg);
-
+    void Handler::InventoryUpdate(Core::Message* msg, uint64_t sessionID, Core::MsgInventoryUpdateBody* body) {
         auto charID = body->characterID;
-        Core::MsgStruct<Core::MsgInventoryUpdateResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgInventoryUpdateResBody>*>(msg->GetBuffer());
+        auto [status,itemID,  slot, quantity] = cache_5->PartialUpdate(msg);
 
-        st->header.sessionID = sesionID;
-        st->header.messageType = Core::MSG_INVENTORY_UPDATE_RES;
-
-        st->body.resStatus = resStatus;
+        auto st = reinterpret_cast<Core::MsgStruct<Core::MsgInventoryUpdateResBody>*>(msg->GetBuffer());
+        st->header.messageType = Core::MSG_INVENTORY_RES;
+        st->body.characterID = charID;
+        st->body.resStatus = (status == CACHE_STATUS::AVAILABLE ? 1 : 0);
         st->body.itemID = itemID;
         st->body.slot = slot;
         st->body.itemQuantity = quantity;
-        st->body.characterID = charID;
-        msg->SetLength(sizeof(Core::MsgStruct<Core::MsgInventoryUpdateResBody>));
+        
         messageQ->EnqueueMessage(msg);
     }
 }

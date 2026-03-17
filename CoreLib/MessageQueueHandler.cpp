@@ -58,6 +58,7 @@ namespace Core {
             temp.x = body->startX;
             temp.y = body->startY;
             if (!lobbyZone->ImmigrateChar(sessionID, temp)) {
+                errorLogger->LogError("mq handler", "Failed to enter lobby");
                 return;
             }
         }

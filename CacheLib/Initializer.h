@@ -7,6 +7,7 @@
 #include "CacheStorage.h"
 #include "InmemoryQueue.h"
 #include "Handler.h"
+#include "CacheTimer.h"
 #include <CoreLib/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
 
@@ -14,23 +15,23 @@ namespace Cache {
 	class Initializer {
         FlushDispatcher dispatcher;
         CacheFlush flush;
-        DBConnectionPool connectionPool;
         CacheStorage5 cache_5;
         Handler handler;
         MessagePool msgPool;
         InMemoryQueue recvMQ;
+        DBConnectionPool connectionPool;
         
     public:
         ~Initializer() {
-            CleanUp1();
-            CleanUp2();
+            CleanUp();
         }
         void Initialize() {
-            cache_5.Initialize();
             connectionPool.Initialize();
+            cache_5.Initialize(&connectionPool);
             msgPool.Initialize();
+            CacheTimer::StartThread();
             
-            flush.Initialize(&connectionPool);
+            flush.Initialize(&connectionPool, &cache_5);
             dispatcher.Initialize(&flush, &cache_5);
         }
         
@@ -43,33 +44,30 @@ namespace Cache {
         
         bool CheckReady() {
             if (!dispatcher.IsReady()) {
-                std::cout << "dispatcher 체크 실패" << std::endl;
                 return false;
             }
             if (!flush.IsReady()) {
-                std::cout << "flush 체크 실패" << std::endl;
                 return false;
             }
             if (!msgPool.IsReady()) {
-                std::cout << "msgPool 체크 실패" << std::endl;
                 return false;
             }
             if (!recvMQ.IsReady()) {
-                std::cout << "recvMQ 체크 실패" << std::endl;
                 return false;
             }
             if (!cache_5.IsReady()) {
-                std::cout << "cache_5 체크 실패" << std::endl;
                 return false;
             }
+            if (!handler.IsReady()) {
+                return false;
+            }
+            return true;
         }
         
-        void CleanUp1() {
-            recvMQ.FlushQueue();
-        }
-        void CleanUp2() {
+        void CleanUp() {
             dispatcher.Stop(); // store all dirty data
             flush.Stop();
+            CacheTimer::Stop();
         }
         Core::IMessageQueue* GetMessageQueue() {
             return static_cast<Core::IMessageQueue*>(&recvMQ);

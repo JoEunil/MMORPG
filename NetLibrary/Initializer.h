@@ -53,6 +53,7 @@ namespace Net {
         void CleanUp1() {
             pingManager.StopPing();
             iocp.StopReceive();
+            perfCollector.Stop();
         }
         void CleanUp2() {
             iocp.CleanUp();

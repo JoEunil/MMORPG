@@ -1,8 +1,9 @@
-#pragma once
+﻿#pragma once
 
 #include <mutex>
 #include <vector>
 #include "DBConnection.h"
+#include <CoreLib/LoggerGlobal.h>
 #include "Config.h"
 
 namespace Cache {

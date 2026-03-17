@@ -13,26 +13,32 @@ CREATE TABLE users (
 
 use game;
 
-CREATE TABLE IF NOT EXISTS Characters (
+CREATE TABLE IF NOT EXISTS characters (
     char_id BIGINT PRIMARY KEY AUTO_INCREMENT,
     user_id BIGINT NOT NULL,
     channel_id INT NOT NULL,
     name VARCHAR(32) NOT NULL,
     level INT NOT NULL DEFAULT 1,
     exp INT NOT NULL DEFAULT 0,
-    hp INT NOT NULL DEFAULT 10,
-    mp INT NOT NULL DEFAULT 10,
-    maxHp INT NOT NULL DEFAULT 10,
-    maxMp INT NOT NULL DEFAULT 10,
+    hp INT NOT NULL DEFAULT 10000,
+    mp INT NOT NULL DEFAULT 10000,
+    maxHp INT NOT NULL DEFAULT 10000,
+    maxMp INT NOT NULL DEFAULT 10000,
     dir TINYINT NOT NULL DEFAULT 0,
     zone_id TINYINT NOT NULL DEFAULT 0,
     last_pos_x float NOT NULL DEFAULT 0,
     last_pos_y float NOT NULL DEFAULT 0,
-    inventory BLOB,
+
     deleted_at DATETIME DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE INDEX idx_user_channel ON Characters(user_id, channel_id);
+CREATE TABLE characters_inventory (
+    char_id   BIGINT       NOT NULL,
+    inventory BLOB,
+    PRIMARY KEY (char_id)
+)  ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE INDEX idx_user_channel ON characters(user_id, channel_id);
 
 CREATE OR REPLACE VIEW v_user_characters AS
 SELECT 
@@ -41,7 +47,7 @@ SELECT
     c.char_id,
     c.name,
     c.level
-FROM Characters c
+FROM characters c
 WHERE c.deleted_at IS NULL;
 
 

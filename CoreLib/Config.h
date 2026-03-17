@@ -69,6 +69,7 @@ namespace Core {
    inline constexpr uint32_t  NONE_ZONE_QUEUE_SIZE = 8192;
    inline constexpr uint32_t  ZONE_QUEUE_SIZE = 16384;  
 
+   inline constexpr size_t MQ_SIZE = 256;
 
    template <typename T>
    constexpr bool IsPowerOfTwo(T x) {

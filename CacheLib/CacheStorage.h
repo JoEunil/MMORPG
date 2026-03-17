@@ -10,16 +10,29 @@
 #include <chrono>
 #include <functional>
 #include <deque>
+#include <iostream>
 
+#include <mysqlconn/include/mysql/jdbc.h>
+
+#include "DBConnectionPool.h"
+#include "CacheTimer.h"
 #include "Config.h"
 
 namespace Cache {
+    enum class CACHE_STATUS : uint8_t {
+        AVAILABLE, // 0
+        EVICTING, //  1
+        DB_READING, // 2
+        EMPTY, // 3
+        BLOCKED, // 4
+    };
     template<typename T>
     struct CacheItem {
-        std::chrono::steady_clock::time_point lastModified;
+        uint64_t lastModified;
+        CACHE_STATUS status; // 0: available, 1:evicting, 2: DB reading, 3: Empty
+        uint8_t rollbackCnt = 0;
         T data;
     };
-    class DBConnectionPool;
 
     template<typename Key, typename Result, typename KeyHash>
     struct CacheShard {
@@ -28,16 +41,21 @@ namespace Cache {
         std::unordered_map<Key, typename std::list<Key>::iterator, KeyHash> lru_pos;
         std::set<Key> dirty_list;
 
-        std::shared_mutex dataMutex;
-        std::mutex dirtyMutex;
+        std::mutex mutex;
     };
 
     template<typename Key, typename Result, typename KeyHash>
     class CacheStorage {
-        void Initialize();
+        void Initialize(DBConnectionPool* c);
         bool IsReady() {
-            if (m_flushFn == nullptr)
+            if (m_flushFn == nullptr) {
+                Core::sysLogger->LogError("cache storage", "m_flushFn not initialized");
                 return false;
+            }
+            if (connectionPool == nullptr) {
+                Core::sysLogger->LogError("cache storage", "connectionPool not initialized");
+                return false;
+            }
             return true;
         }
         friend class Initializer;
@@ -46,14 +64,21 @@ namespace Cache {
         std::deque<CacheShard<Key, Result, KeyHash>> m_shards;
         std::function< void(const Key&, Result&) > m_flushFn;
 
-        bool TryGet(uint16_t shardIndex, const Key& key, Result& outResult);
+        CACHE_STATUS TryGet(uint16_t shardIndex, const Key& key, Result& outResult);
         void Insert(uint16_t shardIndex, const Key& key, const Result& result);
-        
+
+        CACHE_STATUS TrySetReading(uint16_t shardIndex, const Key& key);
+        void SetEmpty(uint16_t shardIndex, const Key& key);
+
     public:
         void SetFlushFn(std::function<void(const Key&, Result&)> f) {
             m_flushFn = f;
         }
-        void ForEachDirty(std::function<void(const Key&, Result&)> fn);
+        void ForEachDirty(std::function<bool(const Key&, Result&)> fn);
+        void Rollback(uint16_t shardIndex, const Key& key);
+        void WriteDone(uint16_t shardIndex, const Key& key);
+
+        virtual std::string ResultToString(const Key& key, const Result& result) = 0;
     };
 
 }

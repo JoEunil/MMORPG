@@ -4,6 +4,8 @@
 #include <mutex>
 #include <cstdint>
 
+#include "LoggerGlobal.h"
+
 namespace Core {
     class Message;
     class MessagePool{

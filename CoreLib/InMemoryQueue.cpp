@@ -5,24 +5,22 @@
 
 namespace Core {
     void InMemoryQueue::ThreadFunc() {
-        while (m_running.load()) {
-            std::unique_lock<std::mutex> lock(m_mutex);
-            m_cv.wait(lock,[&] {return !m_running || !m_sharedQueue.empty();});
-            if (!m_running.load())
-                break;
-            while (!m_sharedQueue.empty()) {
-                auto work = m_sharedQueue.front();
-                m_sharedQueue.pop();
-                lock.unlock();
-                handler->Process(work);
-                lock.lock();
+        auto tid = std::this_thread::get_id();
+        std::stringstream ss;
+        ss << tid;
+        sysLogger->LogInfo("core mq", "mq thread started", "threadID", ss.str());
+        while (m_running.load(std::memory_order_relaxed)) {
+            Message* work;
+            if (!m_sharedQueue.pop(work)) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+                continue;
             }
+            handler->Process(work);
         }
+        sysLogger->LogInfo("core mq", "mq thread stopped", "threadID", ss.str());
     }
 
     void InMemoryQueue::Start() {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_threads.resize(MQ_THREADPOOL_SIZE);
         m_running.store(true);
         for (int i = 0; i < MQ_THREADPOOL_SIZE; i++)
         {
@@ -32,16 +30,13 @@ namespace Core {
 
     void InMemoryQueue::Stop() {
         m_running.store(false);
-        m_cv.notify_all();
 
         for (auto& t : m_threads) {
             if (t.joinable())
                 t.join();
         }
-
-        while (!m_sharedQueue.empty()) {
-            auto work = m_sharedQueue.front();
-            m_sharedQueue.pop();
+        Message* work;
+        while (m_sharedQueue.pop(work)) {
             handler->Process(work);
         }
     }
@@ -51,9 +46,9 @@ namespace Core {
             return;
         auto coreMsg = messagePool->Acquire();
         std::memcpy(coreMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());
-    
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_sharedQueue.push(coreMsg);
-        m_cv.notify_one();
+  
+        if (!m_sharedQueue.push(coreMsg)) {
+            errorLogger->LogWarn("core mq", "push failed");
+        }
     }
 }

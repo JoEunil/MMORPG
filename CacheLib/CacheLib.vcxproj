@@ -145,6 +145,7 @@
     <ClInclude Include="CacheStorage.h" />
     <ClInclude Include="CacheStorage5.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="CacheTimer.h" />
     <ClInclude Include="DBConnection.h" />
     <ClInclude Include="DBConnectionPool.h" />
     <ClInclude Include="FlushDispatcher.h" />
@@ -161,6 +162,9 @@
     <ClCompile Include="MessagePool.h" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\BaseLib\BaseLib.vcxproj">
+      <Project>{1ebfc4a8-22e7-4752-bc34-b968f89dc757}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\CoreLib\CoreLib.vcxproj">
       <Project>{38477bea-387b-4a18-b6ca-8dce0a9cfea7}</Project>
     </ProjectReference>

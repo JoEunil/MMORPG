@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <queue>
 #include <mutex>
@@ -6,9 +6,10 @@
 #include <cstdint>
 #include <memory>
 #include <any>
-
 #include <condition_variable>
 
+#include <CoreLib/LoggerGlobal.h>
+#include "CacheStorage5.h"
 #include "Config.h"
 
 namespace Cache {
@@ -27,11 +28,21 @@ namespace Cache {
 
         std::atomic<bool> m_running = false;
         DBConnectionPool* connectionPool;
-
-        void Initialize(DBConnectionPool* p);
+        CacheStorage5* cache_5;
+        void Initialize(DBConnectionPool* p, CacheStorage5* c5);
         bool IsReady() {
-            if (!m_running.load() || m_threads.size() != FLUSH_THREADPOOL_SIZE || connectionPool == nullptr)
+            if (!m_running.load()) {
+                Core::sysLogger->LogError("cache flush", "not running");
                 return false;
+            }
+            if (m_threads.size() != FLUSH_THREADPOOL_SIZE) {
+                Core::sysLogger->LogError("cache flush", "invalid thread size");
+                return false;
+            }
+            if (connectionPool == nullptr) {
+                Core::sysLogger->LogError("cache flush", "connectionPool not initialized");
+                return false;
+            }
             return true;
         }
         void Stop();

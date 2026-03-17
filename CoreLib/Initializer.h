@@ -126,6 +126,7 @@ namespace Core {
             broadcastPool.Stop();
             zoneThreadSet.Stop();
             chat.Stop();
+            perfCollector.Stop();
         }
         void CleanUp2() {
             recvMQ.Stop();

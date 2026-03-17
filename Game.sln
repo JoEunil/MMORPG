@@ -40,6 +40,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Concept", "Concept", "{C8D5
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A67903F-5C0B-4FD6-876B-B0088C77C6B6}"
 	ProjectSection(SolutionItems) = preProject
+		images\CacheUnitTest.png = images\CacheUnitTest.png
 		images\FloodCheckFlowChart.png = images\FloodCheckFlowChart.png
 		images\flushQueue.png = images\flushQueue.png
 		images\IOCPWorkerThreadRecv.png = images\IOCPWorkerThreadRecv.png
@@ -48,10 +49,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 		images\LockFreeQueue3.png = images\LockFreeQueue3.png
 		images\LockFreeQueue4.png = images\LockFreeQueue4.png
 		images\monitoring.png = images\monitoring.png
+		images\Read-Through.png = images\Read-Through.png
 		images\SessionManagerDeadLock1.png = images\SessionManagerDeadLock1.png
 		images\SessionManagerDeadLock2.png = images\SessionManagerDeadLock2.png
 		images\StackOverflow.png = images\StackOverflow.png
 		images\TCP&UDP.png = images\TCP&UDP.png
+		images\Write-Back.png = images\Write-Back.png
 		images\zeroWindow.png = images\zeroWindow.png
 	EndProjectSection
 EndProject
@@ -92,7 +95,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Refactor", "Refactor", "{FB
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SystemDesign", "SystemDesign", "{6C9964E0-7303-46E2-ABEB-A2CD3EBE4D43}"
 	ProjectSection(SolutionItems) = preProject
+		CacheLib.md = CacheLib.md
+		CacheLib_ACID.md = CacheLib_ACID.md
+		CacheLib_Test.md = CacheLib_Test.md
 		ClientContext.md = ClientContext.md
+		DB.md = DB.md
 		FloodDetect.md = FloodDetect.md
 		PingLoop.md = PingLoop.md
 		Snapshot.md = Snapshot.md

@@ -1,19 +1,22 @@
 ﻿#pragma once
 
-#include <mysqlconn/include/mysql/jdbc.h>
 #include <cstdint>
 #include <string_view>
 #include <map>
 #include <memory>
+#include <sstream>
 
+#include <mysqlconn/include/mysql/jdbc.h>
+#include <CoreLib/LoggerGlobal.h>
 #include "Config.h"
-#include <iostream>
 
 
 namespace Cache {
     class DBConnection {
         std::unique_ptr<sql::Connection> m_conn;
+        std::unique_ptr<std::istringstream> m_blobStream; // blob 처리용도, dangling pointer 방지
         std::map<uint16_t, std::unique_ptr<sql::PreparedStatement>> m_stmts;
+
         void Initialize() {
             Connect();
             m_stmts[1] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_1));
@@ -21,6 +24,7 @@ namespace Cache {
             m_stmts[3] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_3));
             m_stmts[4] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_4));
             m_stmts[5] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_5));
+            m_stmts[6] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_6));
         }
         void Connect() {
             sql::SQLString host = DB_HOST;
@@ -51,8 +55,12 @@ namespace Cache {
         void BindOne(sql::PreparedStatement& stmt, int idx, uint64_t value) { stmt.setUInt64(idx, value); }
         void BindOne(sql::PreparedStatement& stmt, int idx, float value) { stmt.setDouble(idx, value); }
         void BindOne(sql::PreparedStatement& stmt, int idx, const std::string& value) { stmt.setString(idx, value); }
-        void BindOne(sql::PreparedStatement& stmt, int idx, std::vector<uint8_t>& value) { stmt.setString(idx, reinterpret_cast<const char*>(value.data())); }
-        
+        void BindOne(sql::PreparedStatement& stmt, int idx, std::vector<uint8_t>& value) {
+            std::string blobData(reinterpret_cast<const char*>(value.data()), value.size());
+            m_blobStream = std::make_unique<std::istringstream>(blobData);
+            m_blobStream->seekg(0);
+            stmt.setBlob(idx, m_blobStream.get()); // executeUpdate까지 살아있음
+        }
 
         friend class DBConnectionPool;
 

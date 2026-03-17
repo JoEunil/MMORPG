@@ -90,7 +90,7 @@ namespace Core {
 	struct MsgInventoryUpdateBody {
         uint64_t characterID;
 		uint32_t itemID;
-		uint8_t op; // 1: add, 2: delete, 3:update
+		uint8_t op; // 1: add, 2: update
 		int16_t change; // 변화값
 	};
 

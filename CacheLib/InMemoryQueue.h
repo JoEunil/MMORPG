@@ -7,8 +7,10 @@
 #include <thread>
 #include <vector>
 
+#include <BaseLib/LockFreeQueue.h>
 #include <CoreLib/IMessageQueue.h>
 #include <CoreLib/Message.h>
+#include <CoreLib/LoggerGlobal.h>
 #include <CoreLib/Config.h>
 #include "Config.h"
 
@@ -17,9 +19,7 @@ namespace Cache {
     class MessagePool;
     class InMemoryQueue :public Core::IMessageQueue {
         std::vector<std::thread> m_threads;
-        std::queue<Core::Message*> m_sharedQueue;
-        std::mutex m_mutex;
-        std::condition_variable m_cv;
+        Base::LockFreeQueue<Core::Message*, MQ_SIZE> m_sharedQueue;
 
         std::atomic<bool> m_running = false;
         Handler* handler;
@@ -31,21 +31,23 @@ namespace Cache {
         }
         
         bool IsReady() {
-            if (!m_running.load() || m_threads.size() != MQ_THREADPOOL_SIZE || handler == nullptr || messagePool == nullptr)
+            if (!m_running.load()) {
+                Core::sysLogger->LogError("cache mq", "not running");
                 return false;
-            return true;
-        }
-        
-        void FlushQueue() {
-            while (true)
-            {
-                {
-                    std::lock_guard<std::mutex> lock(m_mutex);
-                    if (m_sharedQueue.empty())
-                        break;
-                }
-                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            } 
+            if (m_threads.size() != MQ_THREADPOOL_SIZE) {
+                Core::sysLogger->LogError("cache mq", "invalid thread size");
+                return false;
             }
+            if (handler == nullptr) {
+                Core::sysLogger->LogError("cache mq", "handler not initiailized");
+                return false;
+            }
+            if (messagePool == nullptr) {
+                Core::sysLogger->LogError("cache mq", "messagePool not initialized");
+                return false;
+            }
+            return true;
         }
 
         void Start();

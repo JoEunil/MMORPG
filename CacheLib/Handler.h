@@ -4,6 +4,7 @@
 
 #include <mysqlconn/include/mysql/jdbc.h>
 #include "CacheStorage5.h"
+#include <CoreLib/LoggerGlobal.h>
 namespace Core {
     class IMessageQueue;
     class ILogger;
@@ -24,6 +25,25 @@ namespace Cache {
             messagePool = mp;
             connectionPool = conn;
             cache_5 = c;
+        }
+        bool IsReady() {
+            if (messageQ == nullptr) {
+                Core::sysLogger->LogError("cache handler", "messageQ not initialized");
+                return false;
+            }
+            if (messagePool == nullptr) {
+                Core::sysLogger->LogError("cache handler", "messagePool not initialized");
+                return false;
+            }
+            if (connectionPool == nullptr) {
+                Core::sysLogger->LogError("cache handler", "connectionPool not initialized");
+                return false;
+            }
+            if (cache_5 == nullptr) {
+                Core::sysLogger->LogError("cache handler", "cache_5 not initialized");
+                return false;
+            }
+            return true;
         }
         void CharacterListRequest(Core::Message* msg, uint64_t sesionID, Core::MsgCharacterListReqBody* body);
         void CharacterStateRequest(Core::Message* msg, uint64_t sesionID, Core::MsgCharacterStateReqBody* body);

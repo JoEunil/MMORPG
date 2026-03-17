@@ -107,8 +107,8 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 
 
 ### 2. 멀티스레드 동기화 및 성능 최적화
-- [memory_order.md](memory_order.md):멀티스레드 환경의 메모리 재배치 문제를 방지하고 성능을 최적화하기 위해, Acquire-Release 시맨틱의 동작 원리를 분석하고 이를 SpinLock 설계에 적용한 과정을 정리.
-- [LockFreeQueue.md](LockFreeQueue.md): Lock 경합을 방지하기 위해 atomic 변수와 CAS(Compare-And-Swap) 함수를 통해 구현한 __Vyukov's Lock-free Queue__ 구현 및 검증.
+- [memory_order](memory_order.md) : 멀티스레드 환경의 메모리 재배치 문제를 방지하고 성능을 최적화하기 위해, Acquire-Release 시맨틱의 동작 원리를 분석하고 이를 SpinLock 설계에 적용한 과정을 정리.
+- [LockFreeQueue](LockFreeQueue.md): Lock 경합을 방지하기 위해 atomic 변수와 CAS(Compare-And-Swap) 함수를 통해 구현한 __Vyukov's Lock-free Queue__ 구현 및 검증.
 - [TripleBuffer](TripleBuffer.md) : 로직 스레드와 네트워크 스레드 간의 간섭을 최소화하며 데이터 일관성 유지.
 
 ### 3. 네트워크 안정성
@@ -120,6 +120,13 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 - [Monster](Monster.md) & [Skill](Skill.md) : 간단한 AI 및 상호작용 로직을 통해 구조적 위험성 분석. AOI(Area of Interest) 및 Cell 분할 필요성 도출.
 - [StructuredLogging](StructuredLogging.md) : 서버 내부 상태와 테스트 결과를 시각화하고 추적하기 위해 로그를 구조화하여 분류 및 적용.
 
+### 5. 캐시 및 DB 설계
+접근 빈도가 높은 인벤토리 데이터를 대상으로 In-Process 메모리 캐시를 직접 구현하였다.  
+Write-Back 전략을 채택하여 DB IO 부하를 줄이고, 캐시 동작 전반에 걸쳐 ACID를 고려한 설계를 적용하였다.
+- [Cache](CacheLib.md) : 캐시 배치 전략, Write-Back/Read-Through 동작 흐름, 구조 설계
+- [Cache ACID](CacheLib_ACID.md) : 캐시 상태값 도입 및 ACID 보장 설계
+- [Cache UnitTest](CacheLib_Test.md) : DB fetch, cache hit/miss, flush, LRU eviction 동작 검증
+- [DB](DB.md) : 수직 파티셔닝, 복합 인덱스, View Table 설계
 
 ## 부하 테스트 및 I/O 병목 분석
 
@@ -273,6 +280,10 @@ Unity Client
 - [ClientContext](ClientContext.md) 
 - [서버 클라이언트 동기화 처리 전략(Snapshot)](Snapshot.md) 
 - [서버, 클라이언트 틱 처리](Tick.md) 
+- [캐시 설계](CacheLib.md)
+- [캐시 ACID 설계](CacheLib_ACID.md)
+- [캐시 단위 테스트](CacheLib_Test.md)
+- [DB 설계](DB.md)
 
 ### 리팩토링
 - [채팅 기능 리팩토링](ChatRefactor.md)

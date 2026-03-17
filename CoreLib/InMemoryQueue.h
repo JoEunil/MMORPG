@@ -6,9 +6,12 @@
 #include <condition_variable>
 #include <thread>
 
+#include <BaseLib/LockFreeQueue.h>
+
 #include "IMessageQueue.h"
 #include "MessagePool.h"
 #include "Message.h"
+#include "LoggerGlobal.h"
 #include "Config.h"
 
 namespace Core {
@@ -16,9 +19,7 @@ namespace Core {
 	// 수신 큐
 	class InMemoryQueue :public IMessageQueue{
 		std::vector<std::thread> m_threads;
-		std::queue<Message*> m_sharedQueue;
-		std::mutex m_mutex;
-		std::condition_variable m_cv;
+		Base::LockFreeQueue<Message*, MQ_SIZE> m_sharedQueue;
 
 		std::atomic<bool> m_running = false;
 

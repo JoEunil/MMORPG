@@ -3,9 +3,13 @@
 #include <CoreLib/MessageTypes.h>
 #include <CoreLib/Message.h>
 #include <tuple>
+#include <memory>
 
+#include <CoreLib/LoggerGlobal.h>
 #include <mysqlconn/include/mysql/jdbc.h>
+
 namespace Cache {
+    struct FlushCommand;
     struct InventoryStruct {
         uint16_t count;
         Core::MsgInventoryItem items[MAX_INVENTORY];
@@ -38,9 +42,18 @@ namespace Cache {
         using Key = Key5;
         using KeyHash = KeyHash5;
         using Result = Result5;
+        CACHE_STATUS LoadFromDB(uint16_t shardIndex, Key& key, Result& result);
     public:
         bool Getter(Core::Message* msg);
-        bool Setter(std::unique_ptr<sql::ResultSet> r);
-        std::tuple<uint8_t, uint32_t, uint16_t, uint16_t> PartialUpdate(Core::Message* msg);
+        std::tuple<CACHE_STATUS, uint32_t, uint16_t, uint16_t> PartialUpdate(Core::Message* msg);
+        static std::unique_ptr<FlushCommand> GetFlushCommand(Key key, Result result);
+        std::string ResultToString(const Key5& key, const Result5& result) override {
+            std::ostringstream oss;
+            oss << "char_id: " << key.characterID << ", inventory_hex: ";
+            const uint8_t* raw = reinterpret_cast<const uint8_t*>(&result.data);
+            for (size_t i = 0; i < sizeof(InventoryStruct); i++)
+                oss << std::hex << std::setw(2) << std::setfill('0') << (int)raw[i];
+            return oss.str();
+        }
     };
 }

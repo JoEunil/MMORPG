@@ -4,6 +4,9 @@
 #include <mutex>
 #include <cstdint>
 
+#include <CoreLib/LoggerGlobal.h>
+#include "Config.h"
+
 namespace Core {
     class Message;
 }
@@ -15,7 +18,11 @@ namespace Cache {
 
         void Initialize();
         bool IsReady() {
-            return m_messages.size() > 0;
+            if (m_messages.size() > MIN_MSGPOOL_SIZE) {
+                Core::sysLogger->LogError("cache message pool", "invalid pool size");
+                return false;
+            }
+            return true;
         }
         void Adjust();
         void Increase(); 

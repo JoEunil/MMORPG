@@ -39,6 +39,7 @@ namespace Cache {
                 m_messages.push_back(message);
                 current++;
             }
+            Core::sysLogger->LogInfo("cache message pool", "Pool increased");
         }
     }
 
@@ -53,6 +54,7 @@ namespace Cache {
                 delete temp;
                 current--;
             }
+            Core::sysLogger->LogInfo("cache message pool", "Pool decreased");
         }
     }
 

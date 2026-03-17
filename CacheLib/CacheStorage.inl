@@ -5,58 +5,132 @@ namespace Cache {
 
 
     template<typename Key, typename Result, typename KeyHash>
-    void CacheStorage<Key, Result, KeyHash>::Initialize() {
+    void CacheStorage<Key, Result, KeyHash>::Initialize(DBConnectionPool* c) {
         m_shards.resize(SHARD_SIZE);
+        connectionPool = c;
     }
 
     template<typename Key, typename Result, typename KeyHash>
-    bool CacheStorage<Key, Result, KeyHash>::TryGet(uint16_t shardIndex, const Key& key, Result& outResult) {
+    CACHE_STATUS CacheStorage<Key, Result, KeyHash>::TryGet(uint16_t shardIndex, const Key& key, Result& outResult) {
         auto& shard = m_shards[shardIndex];
-        std::shared_lock<std::shared_mutex> lock(shard.dataMutex);
+        std::lock_guard<std::mutex> lock(shard.mutex);
         auto it = shard.cache_data.find(key);
-        if (it == shard.cache_data.end())
-            return false;
+        if (it == shard.cache_data.end()) {
+            //std::cout << "cache miss\n";
+            return CACHE_STATUS::EMPTY;
+        }
+        if (it->second.status != CACHE_STATUS::AVAILABLE) {
+            //std::cout << "data not ready, status: " << (int)it->second.status <<  " \n";
+            return it->second.status;
+        }
+        //std::cout << "cache hit\n";
         outResult = it->second;
-        shard.lru_list.erase(shard.lru_pos[key]);
-        shard.lru_list.push_front(key);
+        // splice: list 전용 메서드, O(1), 연결리스트 포인터 교체
+        // splice(삽입할 위치, 원본 리스트, 가져올 iterator)
+        shard.lru_list.splice(shard.lru_list.begin(), shard.lru_list, shard.lru_pos[key]);
         shard.lru_pos[key] = shard.lru_list.begin();
-        return true;
+        return CACHE_STATUS::AVAILABLE;
     }
 
     template<typename Key, typename Result, typename KeyHash>
     void CacheStorage<Key, Result, KeyHash>::Insert(uint16_t shardIndex, const Key& key, const Result& result) {
         auto& shard = m_shards[shardIndex];
-        std::unique_lock<std::shared_mutex> lock(shard.dataMutex);
-        if (shard.cache_data.size() >= MAX_CACHE_SIZE) {
-            const auto& oldKey = shard.lru_list.back();
-            m_flushFn(oldKey, shard.cache_data[oldKey]);
-            shard.cache_data.erase(oldKey);
+        std::lock_guard<std::mutex> lock(shard.mutex);
+        //std::cout << "Insert: cache size " << shard.cache_data.size() << "\n";
+
+        auto it = shard.cache_data.find(key);
+        if (it != shard.cache_data.end() && it->second.status != CACHE_STATUS::DB_READING) {
+            return; 
+        }
+        shard.lru_list.push_front(key);
+        shard.lru_pos[key] = shard.lru_list.begin();
+
+        auto& item = shard.cache_data[key];
+        item.data = result.data;
+        item.lastModified = CacheTimer::GetTimeMS();
+        item.status = CACHE_STATUS::AVAILABLE;
+
+        if (shard.lru_list.size() >= MAX_CACHE_SIZE) {
+            //std::cout << "[LRU] evict\n"; 
+            const auto oldKey = shard.lru_list.back();
             shard.lru_pos.erase(oldKey);
-            shard.lru_list.pop_back();
-        } else {
-            auto& item = shard.cache_data[key];
-            item = result;
-            item.lastModified = std::chrono::steady_clock::now();
-            shard.lru_list.push_front(key);
-            shard.lru_pos[key] = shard.lru_list.begin();
+            shard.lru_list.pop_back();;
+
+            auto it = shard.dirty_list.find(oldKey);
+            if (it != shard.dirty_list.end()) {
+                shard.cache_data[oldKey].status = CACHE_STATUS::EVICTING;
+                m_flushFn(oldKey, shard.cache_data[oldKey]);
+            } else {
+                shard.cache_data.erase(oldKey);
+            }
         }
     }
 
     template<typename Key, typename Result, typename KeyHash>
-    void CacheStorage<Key, Result, KeyHash>::ForEachDirty(std::function<void(const Key&, Result&)> fn) {
+    CACHE_STATUS CacheStorage<Key, Result, KeyHash>::TrySetReading(uint16_t shardIndex, const Key& key) {
+        auto& shard = m_shards[shardIndex];
+        std::lock_guard<std::mutex> lock(shard.mutex);
+        auto it = shard.cache_data.find(key);
+        if (it != shard.cache_data.end()) {
+            return it->second.status;
+        }
+        shard.cache_data[key].status = CACHE_STATUS::DB_READING;
+        return CACHE_STATUS::EMPTY; // 기존 READING 상태가 있어, EMPTY를 성공 상태로. 
+    }
+
+    template<typename Key, typename Result, typename KeyHash>
+    void CacheStorage<Key, Result, KeyHash>::SetEmpty(uint16_t shardIndex, const Key& key) {
+        auto& shard = m_shards[shardIndex];
+        std::lock_guard<std::mutex> lock(shard.mutex);
+        shard.cache_data.erase(key);
+    }
+
+    template<typename Key, typename Result, typename KeyHash>
+    void CacheStorage<Key, Result, KeyHash>::ForEachDirty(std::function<bool(const Key&, Result&)> fn) {
         for (auto& shard : m_shards) {
-            std::unique_lock<std::mutex> dirtyLock(shard.dirtyMutex);
+            std::lock_guard<std::mutex> lock(shard.mutex);
             for (auto it = shard.dirty_list.begin(); it != shard.dirty_list.end(); ) {
                 auto cacheIt = shard.cache_data.find(*it);
                 if (cacheIt == shard.cache_data.end()) {
                     it = shard.dirty_list.erase(it);
                 }
                 else {
-                    fn(cacheIt->first, cacheIt->second);
-                    ++it;
+                    if (fn(cacheIt->first, cacheIt->second)) {
+                        it = shard.dirty_list.erase(it);
+                    } else {
+                        it++;
+                    }
                 }
             }
         }
     }
 
+    template<typename Key, typename Result, typename KeyHash>
+    void CacheStorage<Key, Result, KeyHash>::Rollback(uint16_t shardIndex, const Key& key) {
+        auto& shard = m_shards[shardIndex];
+        std::lock_guard<std::mutex> lock(shard.mutex);
+        auto it = shard.cache_data.find(key);
+        if (it == shard.cache_data.end()) {
+            Core::errorLogger->LogError("cache storage", "rollback target not found");
+            return;
+        }
+        it->second.rollbackCnt++;
+        if (it->second.rollbackCnt >= 3) {
+            Core::errorLogger->LogError("cache storage", "rollback limit exceeded", "detail", ResultToString(it->first, it->second));
+            shard.cache_data.erase(key);
+            return;
+        }
+        m_flushFn(key, it->second);
+        
+    }
+
+    template<typename Key, typename Result, typename KeyHash>
+    void CacheStorage<Key, Result, KeyHash>::WriteDone(uint16_t shardIndex, const Key& key) {
+        auto& shard = m_shards[shardIndex];
+        std::lock_guard<std::mutex> lock(shard.mutex);
+        auto it = shard.cache_data.find(key);
+        if (it != shard.cache_data.end()) {
+            shard.cache_data.erase(key);
+        }
+    }
 }

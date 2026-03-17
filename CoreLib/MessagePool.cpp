@@ -39,6 +39,7 @@ namespace Core {
 				m_messages.push_back(message);
 				current++;
 			}
+			sysLogger->LogInfo("core message pool", "Pool increased");
 		}
 	}
 
@@ -53,6 +54,7 @@ namespace Core {
 				delete temp;
 				current--;
 			}
+			sysLogger->LogInfo("core message pool", "Pool decreased");
 		}
 	}
 
