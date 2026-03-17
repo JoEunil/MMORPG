@@ -81,10 +81,12 @@ __CoreLib__
 - perf collector - IO-bound    
 - chat thread - CPU-bound (작업량 증가 시)  
 - broadcast thread pool - CPU-bound (작업량 증가 시)  
+- memory queue  
 
 __CacheLib__  
 - flush dispatcher  
 - cache flush: IO-bound (DB)    
+- memory queue   
 
 __ExternalLib__  
 - session thread: IO-bound (event 루프 기반)  
