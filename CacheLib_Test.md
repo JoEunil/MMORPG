@@ -53,4 +53,4 @@ __테스트 준비__
 결과 : evict 동작이 정상 수행되는 것을 확인하였으며 캐시 서버의 메모리 누수가 없음을 검증  
 
 ## 4.참고
-[UnitTestCache.h](Mainserver/UnitTestCache.h)
+[UnitTestCache.h](MainServer/UnitTestCache.h)
