@@ -25,7 +25,7 @@ enum class CACHE_STATUS : uint8_t {
 template<typename T>
 struct CacheItem {
     uint64_t lastModified;
-    uint8_t status;
+    CACHE_STATUS status;
     T data;
 };
 ```
@@ -63,6 +63,7 @@ __Atomicity (원자성)__
 __Consistency (일관성)__
 - 현재 단일 연산 수준에서 Atomicity와 Isolation에 의해 보장
 - 다중 연산 간 일관성 보장을 위해 추후 캐시 레이어에서 DB Transaction과 유사한 처리가 필요하다
+
 __Isolation (격리성)__
 - 중간 상태의 데이터에 대한 외부 접근 차단
 - EVICTING 상태인 키에 대해 Getter/Update 접근 차단

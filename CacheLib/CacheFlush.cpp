@@ -31,7 +31,7 @@ namespace Cache {
                     "code", e.getErrorCode(),
                     "msg", e.what());
                 Key5 key;
-                key.characterID = std::any_cast<uint64_t&>(command->params[0]);
+                key.characterID = std::any_cast<uint64_t&>(command->params[1]);
                 auto shardIndex = key.characterID & SHARD_SIZE_MASK;
                 cache_5->Rollback(shardIndex, key);
             }
@@ -43,7 +43,7 @@ namespace Cache {
             
             if (res == 0) {// error 
                cache_5->Rollback(shardIndex, key);
-               Core::errorLogger->LogInfo("cache flush", "DB write faield", "char_id", key.characterID);
+               Core::errorLogger->LogInfo("cache flush", "DB write failed", "char_id", key.characterID);
                break;
             }
             cache_5->WriteDone(shardIndex, key);
