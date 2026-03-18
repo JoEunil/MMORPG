@@ -4,8 +4,8 @@
 1. [프로젝트 개요](#프로젝트-개요)
 2. [기술 스택](#기술-스택)
 3. [아키텍처 다이어그램](#아키텍처-다이어그램)
-4. [스레드 모델](#스레드-모델)
-5. [핵심 기술 요약](#핵심-기술-요약)
+4. [핵심 기술 요약](#핵심-기술-요약)
+5. [스레드 모델](#스레드-모델)
 6. [부하 테스트 및 I/O 병목 분석](#부하-테스트-및-io-병목-분석)  
 7. [리팩토링](#리팩토링)
 8. [트러블 슈팅](#트러블-슈팅)
@@ -66,6 +66,38 @@ __외부 라이브러리__
 
 클라이언트는 .NET 기반의 ClientCore 라이브러리에서 네트워크 로직을 처리하고, UI는 WinForms 테스트 후 Unity View로 대체할 수 있도록 MVVM 패턴을 적용했다.
 
+## 핵심 기술 요약 
+
+고성능 비동기 IO 모델인 IOCP를 기반으로, Lock-free 자료구조와 멀티스레드 최적화를 통해 대용량 트래픽을 처리하는 서버 아키텍처를 설계하고 구현.
+
+### 1. 소켓과 패킷 수신 처리 구조
+- __수신 및 전파__ : IOCP 비동기 수신 → ClientContext의 RingBuffer를 통한 패킷 조립 → PacketView를 활용한 제로 카피 지향 로직 전파.
+	- [IOCP](IOCP&epoll.md) : IOCP와 epoll 비교
+	- [ClientContext](ClientContext.md): TCP 수신 버퍼 처리구조, Ring buffer와 Context 누적버퍼 처리 방법
+
+
+### 2. 멀티스레드 동기화 및 성능 최적화
+- [memory_order](memory_order.md) : 멀티스레드 환경의 메모리 재배치 문제를 방지하고 성능을 최적화하기 위해, Acquire-Release 시맨틱의 동작 원리를 분석하고 이를 SpinLock 설계에 적용한 과정을 정리.
+- [LockFreeQueue](LockFreeQueue.md): Lock 경합을 방지하기 위해 atomic 변수와 CAS(Compare-And-Swap) 함수를 통해 구현한 __Vyukov's Lock-free Queue__ 구현 및 검증.
+- [TripleBuffer](TripleBuffer.md) : 로직 스레드와 네트워크 스레드 간의 간섭을 최소화하며 데이터 일관성 유지.
+
+### 3. 네트워크 안정성
+- [Ping](PingLoop.md) : Ping 루프를 통해 좀비 세션 탐지 및 순환 참조 없는 안전한 세션 종료 로직 구현.
+- [Flood Detection](FloodDetect.md): 어플리케이션 레벨에서의 대역폭 공격 방어를 위해 패킷 유입량을 감시하고 차단하는 탐지 로직 적용.  
+- [Tick](Tick.md) & [Snapshot](Snapshot.md) : 클라이언트와 서버 간의 틱 기반 동기화 및 패킷 크기 최적화를 위한 스냅샷 전략 수립.
+
+### 4. 콘텐츠 구현 및 모니터링
+- [Monster](Monster.md) & [Skill](Skill.md) : 간단한 AI 및 상호작용 로직을 통해 구조적 위험성 분석. AOI(Area of Interest) 및 Cell 분할 필요성 도출.
+- [StructuredLogging](StructuredLogging.md) : 서버 내부 상태와 테스트 결과를 시각화하고 추적하기 위해 로그를 구조화하여 분류 및 적용.
+
+### 5. 캐시 및 DB 설계
+접근 빈도가 높은 인벤토리 데이터를 대상으로 In-Process 메모리 캐시를 직접 구현하였다.  
+Write-Back 전략을 채택하여 DB IO 부하를 줄이고, 캐시 동작 전반에 걸쳐 ACID를 고려한 설계를 적용하였다.
+- [Cache](CacheLib.md) : 캐시 배치 전략, Write-Back/Read-Through 동작 흐름, 구조 설계
+- [Cache ACID](CacheLib_ACID.md) : 캐시 상태값 도입 및 ACID 보장 설계
+- [Cache UnitTest](CacheLib_Test.md) : DB fetch, cache hit/miss, flush, LRU eviction 동작 검증
+- [DB](DB.md) : 수직 파티셔닝, 복합 인덱스, View Table 설계
+
 ## 스레드 모델
 
 스레드별 작업 성격에 따른 분류   
@@ -101,38 +133,6 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 또한 WSA Send / WSA Recv는 비동기 IO 모델을 사용하기 때문에,  
 스레드가 IO 완료를 기다리지 않는다.  
 따라서 해당 작업을 IO-bound로 분류할 수 없다.  
-
-## 핵심 기술 요약 
-
-고성능 비동기 IO 모델인 IOCP를 기반으로, Lock-free 자료구조와 멀티스레드 최적화를 통해 대용량 트래픽을 처리하는 서버 아키텍처를 설계하고 구현.
-
-### 1. 소켓과 패킷 수신 처리 구조
-- __수신 및 전파__ : IOCP 비동기 수신 → ClientContext의 RingBuffer를 통한 패킷 조립 → PacketView를 활용한 제로 카피 지향 로직 전파.
-	- [IOCP](IOCP&epoll.md) : IOCP와 epoll 비교
-	- [ClientContext](ClientContext.md): TCP 수신 버퍼 처리구조, Ring buffer와 Context 누적버퍼 처리 방법
-
-
-### 2. 멀티스레드 동기화 및 성능 최적화
-- [memory_order](memory_order.md) : 멀티스레드 환경의 메모리 재배치 문제를 방지하고 성능을 최적화하기 위해, Acquire-Release 시맨틱의 동작 원리를 분석하고 이를 SpinLock 설계에 적용한 과정을 정리.
-- [LockFreeQueue](LockFreeQueue.md): Lock 경합을 방지하기 위해 atomic 변수와 CAS(Compare-And-Swap) 함수를 통해 구현한 __Vyukov's Lock-free Queue__ 구현 및 검증.
-- [TripleBuffer](TripleBuffer.md) : 로직 스레드와 네트워크 스레드 간의 간섭을 최소화하며 데이터 일관성 유지.
-
-### 3. 네트워크 안정성
-- [Ping](PingLoop.md) : Ping 루프를 통해 좀비 세션 탐지 및 순환 참조 없는 안전한 세션 종료 로직 구현.
-- [Flood Detection](FloodDetect.md): 어플리케이션 레벨에서의 대역폭 공격 방어를 위해 패킷 유입량을 감시하고 차단하는 탐지 로직 적용.  
-- [Tick](Tick.md) & [Snapshot](Snapshot.md) : 클라이언트와 서버 간의 틱 기반 동기화 및 패킷 크기 최적화를 위한 스냅샷 전략 수립.
-
-### 4. 콘텐츠 구현 및 모니터링
-- [Monster](Monster.md) & [Skill](Skill.md) : 간단한 AI 및 상호작용 로직을 통해 구조적 위험성 분석. AOI(Area of Interest) 및 Cell 분할 필요성 도출.
-- [StructuredLogging](StructuredLogging.md) : 서버 내부 상태와 테스트 결과를 시각화하고 추적하기 위해 로그를 구조화하여 분류 및 적용.
-
-### 5. 캐시 및 DB 설계
-접근 빈도가 높은 인벤토리 데이터를 대상으로 In-Process 메모리 캐시를 직접 구현하였다.  
-Write-Back 전략을 채택하여 DB IO 부하를 줄이고, 캐시 동작 전반에 걸쳐 ACID를 고려한 설계를 적용하였다.
-- [Cache](CacheLib.md) : 캐시 배치 전략, Write-Back/Read-Through 동작 흐름, 구조 설계
-- [Cache ACID](CacheLib_ACID.md) : 캐시 상태값 도입 및 ACID 보장 설계
-- [Cache UnitTest](CacheLib_Test.md) : DB fetch, cache hit/miss, flush, LRU eviction 동작 검증
-- [DB](DB.md) : 수직 파티셔닝, 복합 인덱스, View Table 설계
 
 ## 부하 테스트 및 I/O 병목 분석
 
