@@ -1,4 +1,4 @@
-﻿ # MMORPG GAME PROJECT
+﻿# MMORPG GAME PROJECT
 
 ## 목차
 1. [프로젝트 개요](#프로젝트-개요)
@@ -14,11 +14,10 @@
 11. [기술 문서 목록](#기술-문서-목록)
 
 ## 프로젝트 개요
-
-__목적__
-- MMORPG 서버 구현을 통해 서버 관점에서 요구되는 기술과 개념을 이해한다.  
-- 서버 운영과 관련된 핵심 기술을 직접 경험하고 습득한다.  
-- 실제로 동작 가능한 형태의 서버를 구현하고, 테스트를 통해 기능을 검증한다.
+C++20 기반 MMORPG 게임 서버.   
+IOCP, Lock-free Queue, Write-Back Cache 등 핵심 컴포넌트를 직접 구현하고   
+더미 클라이언트 부하 테스트로 검증하였다.
+![이미지 로드 실패](images/SkillAOI.gif)
 
 __목표__
 - 클라이언트 로그인부터 사용자 접속 종료 및 재접속 로직까지, __End-to-End 데이터 파이프라인__ 을 설계하고 구현한다.  
@@ -29,21 +28,26 @@ __목표__
 
 ## 기술 스택
 
-__서버__
-- 게임 서버: C++20  
-- DB: Mysql  
-- 로그인 서버: Node.js  
-- 인증 서버: Redis 
+__게임 서버 (C++20)__
+- 네트워크: IOCP 비동기 IO, 커스텀 바이너리 프로토콜, RingBuffer 패킷 조립
+- 동시성: Vyukov's Lock-free Queue, Triple Buffer, Sharded Mutex
+- 캐시: Sharded, Write-Back, In-Process Cache, LRU Eviction, ACID 
+- 게임 로직: Zone Tick, Cell 기반 AOI, Snapshot Delta 동기화
+- 안정성: Ping 좀비 세션 탐지, Flood Detection
 
-__로그, 모니터링__
-- 비동기 로그, 구조화 로그: spdlog, nlohman(json)
-- 로그 저장소: promtail, loki
-- 모니터링: grafana 
+__인프라__
+- DB: MySQL (수직 파티셔닝, 복합 인덱스)
+- 인증: Redis 임시 세션
+- 로그인: Node.js
+- 모니터링: Grafana + Loki + Promtail
 
 __클라이언트__
 - 게임 클라이언트: Unity
-- 클라이언트 라이브러리: .Net Standard 20 (Unity 연동 목적) 
-- 더미 클라이언트, Winform: .Net 8.0
+- 더미 클라이언트: .NET 8.0 WinForms (부하 테스트용)
+- 클라이언트 라이브러리: .NET Standard 2.0 (Unity 연동)
+
+__외부 라이브러리__
+- spdlog, hiredis, libevent, nlohmann/json, MySQL Connector C++
 
 ## 아키텍처 다이어그램
 
