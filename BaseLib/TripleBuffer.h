@@ -4,25 +4,36 @@
 
 
 namespace Base {
-	// SPMC Lock Free 버퍼
+	// MPMC Lock Free 버퍼
 	template <typename T>
 	class TripleBuffer {
 		T* back;
-		std::atomic<uint8_t> dirty; // 0: readable, 1: writing , 2: dirty
+		std::atomic<uint8_t> dirty; // 0: readable, 1: swap , 2: dirty
 	public:
 		void Init(T* b) {
 			back = b;
 		}
 		void Write(T* write) {
-			dirty.store(1, std::memory_order_acquire); // 이전 swap 작업 완료
+			while (true) {
+				uint8_t exp = dirty.load(std::memory_order_relaxed);
+				if (exp == 1) 
+					continue;
+				if (dirty.compare_exchange_weak(exp, 1, std::memory_order_acquire, std::memory_order_relaxed))
+					break;
+			}
 			std::swap(back, write);
 			dirty.store(0, std::memory_order_release);
 		}
-		void Read(T* read)) {
-			if (dirty.compare_exchange_strong(0, 2, std::memory_order_acq, std::memory_order_relaxed )) {
-				std::swap(back, read);
-				dirty.store(2, std::memory_order_release);
+		bool Read(T* read) {
+			uint8_t exp = 0;
+			if (!dirty.compare_exchange_strong(exp, 1,
+				std::memory_order_acquire, std::memory_order_relaxed)) {
+				return false; 
 			}
+			std::swap(back, read);
+			dirty.store(2, std::memory_order_release);  
+			return true;
 		}
+
 	};
 }
