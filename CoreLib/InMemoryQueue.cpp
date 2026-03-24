@@ -22,6 +22,7 @@ namespace Core {
 
     void InMemoryQueue::Start() {
         m_running.store(true);
+		m_threads.resize(MQ_THREADPOOL_SIZE);
         for (int i = 0; i < MQ_THREADPOOL_SIZE; i++)
         {
             m_threads[i] = std::thread(&InMemoryQueue::ThreadFunc, this);

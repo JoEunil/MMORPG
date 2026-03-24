@@ -18,7 +18,7 @@ namespace Cache {
 
         void Initialize();
         bool IsReady() {
-            if (m_messages.size() > MIN_MSGPOOL_SIZE) {
+            if (m_messages.size() < MIN_MSGPOOL_SIZE) {
                 Core::sysLogger->LogError("cache message pool", "invalid pool size");
                 return false;
             }
