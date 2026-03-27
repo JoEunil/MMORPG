@@ -23,7 +23,7 @@ namespace Cache {
 
     void InMemoryQueue::Start() {
         m_threads.resize(MQ_THREADPOOL_SIZE);
-        m_running.store(true);
+        m_running.store(true, std::memory_order_relaxed);
         for (int i = 0; i < MQ_THREADPOOL_SIZE; i++)
         {
             m_threads[i] = std::thread(&InMemoryQueue::ThreadFunc, this);
@@ -32,7 +32,7 @@ namespace Cache {
 
 
     void InMemoryQueue::Stop() {
-        m_running.store(false);
+        m_running.store(false, std::memory_order_relaxed);
         
         for (auto& t : m_threads) {
             if (t.joinable())
@@ -45,7 +45,7 @@ namespace Cache {
     }
 
     void InMemoryQueue::EnqueueMessage(Core::Message* msg) {
-        if (!m_running.load())
+        if (!m_running.load(std::memory_order_relaxed))
             return;
         auto cacheMsg = messagePool->Acquire();
         std::memcpy(cacheMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());

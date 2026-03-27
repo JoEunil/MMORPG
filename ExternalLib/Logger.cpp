@@ -3,7 +3,7 @@
 
 namespace External {
     void Logger::CreateSink(const std::string& logFileName) {
-        if (m_running.load()) {
+        if (m_running.load(std::memory_order_relaxed)) {
             return; 
         }
         std::string filePath = "logs/" + logFileName + ".log";
@@ -26,6 +26,6 @@ namespace External {
         m_logger->set_pattern("%v");  // 포맷 없이 메시지만 출력
         // flush 할 로그의 레벨
         spdlog::register_logger(m_logger);
-        m_running.store(true);
+        m_running.store(true, std::memory_order_relaxed);
     }
 }

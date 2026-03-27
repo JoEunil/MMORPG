@@ -37,8 +37,8 @@ namespace Base {
 	public:
 		LockFreeQueueUP() : m_mask(QSize - 1) {
 			assert((QSize >= 2) && ((QSize & (QSize - 1)) == 0));
-			m_head.store(0);
-			m_tail.store(0);
+			m_head.store(0, std::memory_order_relaxed );
+			m_tail.store(0, std::memory_order_relaxed);
 			m_queue = std::make_unique<Cell[]>(QSize);
 			for (int i = 0; i < QSize; i++)
 			{
@@ -48,13 +48,13 @@ namespace Base {
 		T push(T data) {
 			while (true)
 			{
-				auto tail = m_tail.load();
+				auto tail = m_tail.load(std::memory_order_relaxed);
 				auto idx = tail & m_mask;
 				auto seq = m_queue[idx].seq.load(std::memory_order_acquire);
 				int64_t diff = static_cast<int64_t>(seq) - static_cast<int64_t>(tail);
 
 				if (diff == 0) {
-					if (m_tail.compare_exchange_weak(tail, tail + 1)) {
+					if (m_tail.compare_exchange_weak(tail, tail + 1, std::memory_order_acq_rel, std::memory_order_relaxed)) {
 						m_queue[idx].data = std::move(data);
 						m_queue[idx].seq.store(tail + 1, std::memory_order_release); 
 						return T{};
@@ -73,7 +73,7 @@ namespace Base {
 		T pop() {
 			while (true)
 			{
-				auto head = m_head.load();
+				auto head = m_head.load(std::memory_order_relaxed);
 				auto idx = head & m_mask;
 				auto seq = m_queue[idx].seq.load(std::memory_order_acquire);
 				int64_t diff = static_cast<int64_t>(seq) - static_cast<int64_t>(head + 1);

@@ -76,7 +76,7 @@ namespace Core {
         for (int i = 0; i < ZONE_COUNT; i++)
         {
             //0번 lobby zone은 noneZoneThreadPool에서만 처리
-            m_threads[i].running.store(true);
+            m_threads[i].running.store(true, std::memory_order_relaxed);
             m_threads[i].thread = std::thread([this, i, &thread = m_threads[i]]() {
                 this->WorkerFunc(&thread, i+1);
                 });
@@ -100,7 +100,7 @@ namespace Core {
     void ZoneThreadSet::Stop() {
         for (auto& t : m_threads)
         {
-            t.running.store(false);
+            t.running.store(false, std::memory_order_relaxed);
             if (t.thread.joinable())
                 t.thread.join();
         }

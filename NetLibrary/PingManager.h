@@ -40,12 +40,12 @@ namespace Net {
         void SendPing(uint64_t session, uint64_t rtt, uint64_t nowMs);
 
         void PingStart() {
-            m_running.store(true);
+            m_running.store(true, std::memory_order_relaxed);
             m_pingThread = std::thread(&PingManager::PingFunc, this);
         }
 
         void StopPing() {
-            m_running.store(false);
+            m_running.store(false, std::memory_order_relaxed);
             if (m_pingThread.joinable())
                 m_pingThread.join();
             Core::sysLogger->LogInfo("ping manager", "Ping thread stopped");

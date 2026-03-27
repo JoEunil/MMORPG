@@ -21,7 +21,7 @@ namespace Cache {
         uint64_t m_minTime; // ms
 
         bool DirtyFlush5(const Key5& key, Result5& res) {
-            if (m_running.load() && res.lastModified + 30000 > CacheTimer::GetTimeMS()) {
+            if (m_running.load(std::memory_order_relaxed) && res.lastModified + 30000 > CacheTimer::GetTimeMS()) {
                 m_minTime = std::min(m_minTime, res.lastModified + 30000);
                 return false;
             }
@@ -53,11 +53,11 @@ namespace Cache {
                     flush->EnqueueFlushQ(std::move(CacheStorage5::GetFlushCommand(key, res)));
                 }
             );
-            m_running.store(true);
+            m_running.store(true, std::memory_order_relaxed);
             m_thread = std::thread(&FlushDispatcher::ThreadFunc, this);
         }
         bool IsReady() {
-            if (!m_running.load()) {
+            if (!m_running.load(std::memory_order_relaxed)) {
                 Core::sysLogger->LogError("cache flush dispatcher", "not running");
                 return false;
             }
@@ -72,7 +72,7 @@ namespace Cache {
             return true;
         }
         void Stop() {
-            m_running.store(false);
+            m_running.store(false, std::memory_order_relaxed);
             if (m_thread.joinable())
                 m_thread.join();
             cache_5->ForEachDirty([this](auto& key, auto& res) { return  DirtyFlush5(key, res); });

@@ -23,7 +23,7 @@ CAS(Compare-And-Swap)와 memory_order에 대한 기본적인 이해를 바탕으
 
 			T* pop() {
 				auto expected = m_head;
-				while (m_head.compare_exchange_weak(expected, (expected + 1) % m_QSize)) {
+				while (m_head.compare_exchange_weak(expected, (expected + 1) % m_QSize), std::memory_order_acq_rel, std::memory_order_relaxed) {
 					// strong은 비용이 커서, 이렇게 루프로 체크하는 곳에는 weak 사용하는것이 효율적
 					expected = (expected +1)%m_QSize;
 				}
@@ -35,7 +35,7 @@ CAS(Compare-And-Swap)와 memory_order에 대한 기본적인 이해를 바탕으
 			
 			bool push(T* data) {
 				auto expected = m_tail;
-				while (m_head.compare_exchange_weak(expected, (expected + 1) % m_QSize)) {
+				while (m_head.compare_exchange_weak(expected, (expected + 1) % m_QSize), std::memory_order_acq_rel, std::memory_order_relaxed) {
 					expected = (expected + 1) % m_QSize;
 				if ((expected +1)%m_QSize == m_head) //full
 						return false;

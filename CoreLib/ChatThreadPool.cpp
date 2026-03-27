@@ -13,7 +13,7 @@ namespace Core {
         std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash> tempPackets;
         tempPackets.reserve(100);
 
-        while (m_running)
+        while (m_running.load(std::memory_order_relaxed))
         {
             int loop = 100; 
             bool processed = false;

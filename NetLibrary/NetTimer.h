@@ -25,7 +25,7 @@ namespace Net {
 			std::stringstream ss;
 			ss << tid;
 			Core::sysLogger->LogInfo("net timer", "Net timer thread started", "threadID", ss.str());
-			while (m_running.load()) {
+			while (m_running.load(std::memory_order_relaxed)) {
 				auto now = std::chrono::steady_clock::now();
 				uint64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 				// 1ms 단위로 갱신하기 때문에 nano second 단위의 정밀성 필요 없음.

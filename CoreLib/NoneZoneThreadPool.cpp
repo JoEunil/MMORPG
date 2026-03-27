@@ -6,7 +6,7 @@
 
 namespace Core {
     void NoneZoneThreadPool::Start() {
-        m_running.store(true);
+        m_running.store(true, std::memory_order_relaxed);
 
         m_threads.resize(NONE_ZONE_THREADPOOL_SIZE);
         for (int i = 0; i < NONE_ZONE_THREADPOOL_SIZE; i++)
@@ -16,7 +16,7 @@ namespace Core {
     }
 
     void NoneZoneThreadPool::Stop() {
-        m_running.store(false);
+        m_running.store(false, std::memory_order_relaxed);
         for (auto& t : m_threads)
         {
             if (t.joinable())
@@ -30,7 +30,7 @@ namespace Core {
         std::stringstream ss;
         ss << tid;
         sysLogger->LogInfo("none zone thread", "none zone thread started", "threadID", ss.str());
-        while (m_running.load())
+        while (m_running.load(std::memory_order_relaxed))
         {
             bool empty = true;
             uint64_t session;

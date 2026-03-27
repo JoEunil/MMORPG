@@ -52,11 +52,11 @@ namespace Net {
             perfCollector = p;
         }
         bool IsReady() {
-            if (!m_isRunning.load()) {
+            if (!m_isRunning.load(std::memory_order_relaxed)) {
                 Core::sysLogger->LogError("iocp", "not running");
                 return false;
             }
-            if (!m_receiving.load()) {
+            if (!m_receiving.load(std::memory_order_relaxed)) {
                 Core::sysLogger->LogError("iocp", "not receiving");
                 return false;
             }

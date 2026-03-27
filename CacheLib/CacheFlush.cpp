@@ -59,10 +59,10 @@ namespace Cache {
         std::stringstream ss;
         ss << tid;
         Core::sysLogger->LogInfo("cache flush", "flush thread started", "threadID", ss.str());
-        while (m_running.load()) {
+        while (m_running.load(std::memory_order_relaxed)) {
             std::unique_lock<std::mutex> lock(m_mutex);
             m_cv.wait(lock,[&] {return !m_running || !m_flushQ.empty();});
-            if (!m_running.load())
+            if (!m_running.load(std::memory_order_relaxed))
                 break;
             while (!m_flushQ.empty()) {
                 auto work = std::move(m_flushQ.front());
@@ -80,7 +80,7 @@ namespace Cache {
         cache_5 = c5;
         std::lock_guard<std::mutex> lock(m_mutex);
         m_threads.resize(FLUSH_THREADPOOL_SIZE);
-        m_running.store(true);
+        m_running.store(true, std::memory_order_relaxed);
         for (int i = 0; i < FLUSH_THREADPOOL_SIZE; i++)
         {
             m_threads[i] = std::thread(&CacheFlush::ThreadFunc, this);
@@ -88,7 +88,7 @@ namespace Cache {
     }
 
     void CacheFlush::Stop() {
-        m_running.store(false);
+        m_running.store(false, std::memory_order_relaxed);
         m_cv.notify_all();
 
         for (auto& t : m_threads) {

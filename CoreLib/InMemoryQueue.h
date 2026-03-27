@@ -35,7 +35,7 @@ namespace Core {
 				return false;
 			if (messagePool == nullptr) 
                 return false;
-			if(!m_running.load())
+			if(!m_running.load(std::memory_order_relaxed))
 				return false;
 			if (m_threads.size() != MQ_THREADPOOL_SIZE)
 				return false;

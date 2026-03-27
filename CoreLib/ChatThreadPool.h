@@ -89,7 +89,7 @@ namespace Core {
             perfCollector = p;
             m_sessionChatIdMap.reserve(MAX_USER_CAPACITY);
             m_zoneMembers.resize(ZONE_COUNT);
-            m_chatIdGenerater.store(1);
+            m_chatIdGenerater.store(1, std::memory_order_relaxed);
         }
 
         bool IsReady() {
@@ -105,7 +105,7 @@ namespace Core {
         }
         void Start() {
             const uint16_t CHAT_WORKER_SIZE = 1;  // 변경하려면 ChatDestKey 활용해 샤딩 적용 필요. 
-            m_running.store(true);
+            m_running.store(true, std::memory_order_relaxed);
             for (int i = 0; i < CHAT_WORKER_SIZE; i++)
             {
                 m_workerThreadPool.emplace_back(std::thread(&ChatThreadPool::ThreadFunc, this));
@@ -113,7 +113,7 @@ namespace Core {
         }
 
         void Stop() {
-            m_running.store(false);
+            m_running.store(false, std::memory_order_relaxed);
             for (auto& t : m_workerThreadPool)
             {
                 if (t.joinable())
@@ -138,7 +138,7 @@ namespace Core {
 
     public:
         uint64_t AddChatSession(uint64_t session, uint16_t zone, std::string&& userName) {
-            uint64_t chatID = m_chatIdGenerater.fetch_add(1);
+            uint64_t chatID = m_chatIdGenerater.fetch_add(1, std::memory_order_relaxed);
             ChatEvent e{};
             e.type = ChatEventType::SESSION_ADD;
             e.senderSessionID = session;

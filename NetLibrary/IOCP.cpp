@@ -52,7 +52,7 @@ namespace Net {
         {
             PostAccept();
         }
-        m_receiving.store(true);
+        m_receiving.store(true, std::memory_order_relaxed);
     }
 
     bool IOCP::CreateListenSocket()
@@ -86,7 +86,7 @@ namespace Net {
     }
     //Waiting Thread Queue에서 대기할 쓰레드들 생성
     bool IOCP::CreateWorkerThread() {
-        m_isRunning.store(true);
+        m_isRunning.store(true, std::memory_order_relaxed);
         m_threads.resize(IOCP_THREADPOOL_SIZE);
         for (int i = 0; i < IOCP_THREADPOOL_SIZE; i++)
         {
@@ -102,7 +102,7 @@ namespace Net {
 
     void IOCP::CleanUp()
     {
-        m_isRunning.store(false);
+        m_isRunning.store(false, std::memory_order_relaxed);
         Core::sysLogger->LogInfo("iocp", "IOCP CleanUp");
 
         // 소켓 리소스 해제
@@ -138,7 +138,7 @@ namespace Net {
         Core::sysLogger->LogInfo("iocp", "iocp worker thread started", "threadID", ss.str(), "thread index", index);
 
         int current_thread = GetCurrentThreadId();
-        while (m_isRunning.load())
+        while (m_isRunning.load(std::memory_order_relaxed))
         {
             DWORD bytesTransferred;
             ULONG_PTR completionKey;  // socket
@@ -176,7 +176,7 @@ namespace Net {
 
             switch (pOverlappedEx->op) {
             case IOOperation::RECV:
-                if (!m_receiving.load())
+                if (!m_receiving.load(std::memory_order_relaxed))
                     break;
                 if (bytesTransferred == 0) {
                     CleanUpSocket(clientSocket);
@@ -194,7 +194,7 @@ namespace Net {
                 break;
             case IOOperation::ACCEPT:
                 // completion key는 listen 소켓
-                if (!m_receiving.load())
+                if (!m_receiving.load(std::memory_order_relaxed))
                     break;
                 overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
                 setsockopt(clientSocket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&m_listenSock, sizeof(m_listenSock));
@@ -259,8 +259,8 @@ namespace Net {
             if (err != ERROR_IO_PENDING) {
                 Core::errorLogger->LogError("iocp", "Critical: failed to post AcceptEx", "error", err);
 
-                m_isRunning.store(false);
-                fatalError->store(true);
+                m_isRunning.store(false, std::memory_order_relaxed);
+                fatalError->store(true, std::memory_order_relaxed);
                 cv->notify_one();
 
                 overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);

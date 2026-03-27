@@ -21,7 +21,7 @@ namespace Core {
     }
 
     void InMemoryQueue::Start() {
-        m_running.store(true);
+        m_running.store(true, std::memory_order_relaxed);
 		m_threads.resize(MQ_THREADPOOL_SIZE);
         for (int i = 0; i < MQ_THREADPOOL_SIZE; i++)
         {
@@ -30,7 +30,7 @@ namespace Core {
     }
 
     void InMemoryQueue::Stop() {
-        m_running.store(false);
+        m_running.store(false, std::memory_order_relaxed);
 
         for (auto& t : m_threads) {
             if (t.joinable())
@@ -43,7 +43,7 @@ namespace Core {
     }
 
     void InMemoryQueue::EnqueueMessage(Core::Message* msg) {
-        if (!m_running.load())
+        if (!m_running.load(std::memory_order_relaxed))
             return;
         auto coreMsg = messagePool->Acquire();
         std::memcpy(coreMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());

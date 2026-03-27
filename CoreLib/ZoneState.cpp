@@ -33,7 +33,7 @@ namespace Core {
 
     uint64_t ZoneState::ImmigrateChar(uint64_t sessionID, CharacterState& state) {
         // 추가 제거는 fullSnapshot에 적용됨
-        state.zoneInternalID = m_internalIdGenerator.fetch_add(1);
+        state.zoneInternalID = m_internalIdGenerator.fetch_add(1, std::memory_order_relaxed);
         std::lock_guard<std::mutex> lock(m_mutex);
         
         uint16_t index = static_cast<uint16_t>(m_chars.size());

@@ -18,7 +18,7 @@ namespace Cache {
 			std::stringstream ss;
 			ss << tid;
 			Core::sysLogger->LogInfo("cache timer", "Cache timer thread started", "threadID", ss.str());
-			while (m_running.load()) {
+			while (m_running.load(std::memory_order_relaxed)) {
 				auto now = std::chrono::steady_clock::now();
 				uint64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 				m_timeCache.store(ms, std::memory_order_relaxed);

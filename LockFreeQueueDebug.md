@@ -1,4 +1,4 @@
-# Lock-Free Queue Debug
+﻿# Lock-Free Queue Debug
 
  ## 1. 개요
 [BaseLib/LockFreeQueue](BaseLib/LockFreeQueue.h)는 Vyukov의 MPMC Lock-Free Queue를 참고하여 구현된 다중 생산자/소비자(MPMC) 큐이다.  
@@ -33,7 +33,7 @@ producer와 consumer 스레드 모두 join 되지 않고 계속 돌아가는 모
 bool push(T& data) {
 	while (true)
 	{
- 		auto tail = m_tail.load(); // 관측된 지점
+ 		auto tail = m_tail.load(std::memory_order_relaxed); // 관측된 지점
 	}
 }
 ```

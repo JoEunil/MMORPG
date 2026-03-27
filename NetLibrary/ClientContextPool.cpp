@@ -14,7 +14,7 @@ namespace Net {
         while (true) {
             std::unique_lock<std::mutex> lock(m_mutex);
             FlushPending();
-            if (m_workingCnt.load() == 0 && m_flushQ.empty())
+            if (m_workingCnt.load(std::memory_order_relaxed) == 0 && m_flushQ.empty())
                 break;
             lock.unlock();
             std::this_thread::sleep_for(std::chrono::milliseconds(20));

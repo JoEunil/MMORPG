@@ -12,7 +12,7 @@ namespace Core {
         std::stringstream ss;
         ss << tid;
         sysLogger->LogInfo("broadcast thread", "broadcast thread started", "threadID", ss.str());
-        while (m_running.load())
+        while (m_running.load(std::memory_order_relaxed))
         {
             auto packets = std::move(m_workQ.pop());
             if (!packets) {
@@ -59,7 +59,7 @@ namespace Core {
 
     void BroadcastThreadPool::Start() {
         m_threads.resize(BROADCAST_THREADPOOL_SIZE);
-        m_running.store(true);
+        m_running.store(true, std::memory_order_relaxed);
         for (int i = 0; i < BROADCAST_THREADPOOL_SIZE; i++)
         {
             m_threads[i] = std::thread(&BroadcastThreadPool::ThreadFunc, this);
@@ -68,7 +68,7 @@ namespace Core {
 
 
     void BroadcastThreadPool::Stop() {
-        m_running.store(false);
+        m_running.store(false, std::memory_order_relaxed);
         for (auto& t : m_threads)
         {
             if (t.joinable())
@@ -78,7 +78,7 @@ namespace Core {
 
     void BroadcastThreadPool::EnqueueWork(std::vector<std::shared_ptr<IPacket>> headers, std::vector<std::shared_ptr<IPacket>> chunks, uint16_t zoneID) {
         perfCollector->AddBroadcastEnqueueCnt();
-        if (m_running.load()) {
+        if (m_running.load(std::memory_order_relaxed)) {
             headers[0]->SetZone(zoneID);
             m_workQ.push(std::make_unique<std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>>(headers, chunks));
             // 실패 시 drop

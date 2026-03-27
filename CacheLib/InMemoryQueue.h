@@ -31,7 +31,7 @@ namespace Cache {
         }
         
         bool IsReady() {
-            if (!m_running.load()) {
+            if (!m_running.load(std::memory_order_relaxed)) {
                 Core::sysLogger->LogError("cache mq", "not running");
                 return false;
             } 

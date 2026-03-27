@@ -31,7 +31,7 @@ namespace Cache {
         CacheStorage5* cache_5;
         void Initialize(DBConnectionPool* p, CacheStorage5* c5);
         bool IsReady() {
-            if (!m_running.load()) {
+            if (!m_running.load(std::memory_order_relaxed)) {
                 Core::sysLogger->LogError("cache flush", "not running");
                 return false;
             }

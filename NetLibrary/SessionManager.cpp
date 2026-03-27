@@ -19,7 +19,7 @@ namespace Net {
                 // 절대 불가능
                 return false;
             }
-            session = m_sessionGenerator.fetch_add(1);
+            session = m_sessionGenerator.fetch_add(1, std::memory_order_relaxed);
             auto ctx = contextPool->Acquire(session);
             if (ctx == nullptr) {
                 m_connectionCnt.fetch_sub(1, std::memory_order_relaxed);
@@ -69,7 +69,7 @@ namespace Net {
             }
             shard.socketMap.erase(session);
         }
-        m_connectionCnt.fetch_sub(1);
+        m_connectionCnt.fetch_sub(1, std::memory_order_relaxed);
         Core::gameLogger->LogInfo("net session", "Session disconnected", "sessionID", session, "socket", sock);
         return true;
     }

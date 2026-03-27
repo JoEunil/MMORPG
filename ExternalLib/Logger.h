@@ -23,9 +23,9 @@ namespace External {
             spdlog::init_thread_pool(LOG_Q_SIZE, LOG_THREAD_SIZE);
         }
         ~Logger() {
-            if (m_running.load() && m_logger) {
+            if (m_running.load(std::memory_order_relaxed) && m_logger) {
                 m_logger->flush();
-                m_running.store(false);
+                m_running.store(false, std::memory_order_relaxed);
             }
             if (m_logger) {
                 spdlog::shutdown();
@@ -34,24 +34,24 @@ namespace External {
         void CreateSink(const std::string& logFileName);
 
         void LogInfo(const std::string& msg) override {
-            if (m_running.load()) {
+            if (m_running.load(std::memory_order_relaxed)) {
                 m_logger->info(msg);
             }
         }
 
         void LogError(const std::string& msg) override {
-            if (m_running.load()) {
+            if (m_running.load(std::memory_order_relaxed)) {
                 m_logger->info(msg);
             }
         }
 
         void LogWarn(const std::string& msg) override {
-            if (m_running.load()) {
+            if (m_running.load(std::memory_order_relaxed)) {
                 m_logger->info(msg);
             }
         }
         void Flush() override {
-            if (m_running.load())  {
+            if (m_running.load(std::memory_order_relaxed))  {
                 m_logger->flush();
             }
         }

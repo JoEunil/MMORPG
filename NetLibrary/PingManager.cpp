@@ -17,7 +17,7 @@ namespace Net {
         // socket, session, rtt
         
         clientList.reserve(MAX_CLIENT_CONNECTION);
-        while (m_running.load()) {
+        while (m_running.load(std::memory_order_relaxed)) {
             // 여기서 NetSession 체크하고 Ping 송신
             for (int i = 0; i < SESSION_SHARD_SIZE; i++)
             {

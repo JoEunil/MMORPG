@@ -109,7 +109,7 @@ namespace Net {
         void WaitCloseSignal() {
             std::unique_lock<std::mutex> lock(mutex);
             while (true) {
-                if (fatalError.load()) {
+                if (fatalError.load(std::memory_order_relaxed)) {
                     Core::errorLogger->LogError("signal", "Fatal error Occured");
                     break;
                 }

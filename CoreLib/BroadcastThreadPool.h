@@ -32,7 +32,7 @@ namespace Core {
                 sysLogger->LogError("broadcast thread", "m_threads not initialized");
                 return false;
             }
-            if (!m_running.load()) {
+            if (!m_running.load(std::memory_order_relaxed)) {
                 sysLogger->LogError("broadcast thread", "not running");
                 return false;
             }
