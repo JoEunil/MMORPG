@@ -80,7 +80,7 @@ namespace Core {
             m_threads[i].thread = std::thread([this, i, &thread = m_threads[i]]() {
                 this->WorkerFunc(&thread, i+1);
                 });
-            DWORD_PTR mask = 1ull << (i);
+            DWORD_PTR mask = 1ull << (i*2);
             DWORD_PTR prevMask = SetThreadAffinityMask((HANDLE)m_threads[i].thread.native_handle(), mask); // 스레드 코어 고정
             
             if (prevMask == 0) {
