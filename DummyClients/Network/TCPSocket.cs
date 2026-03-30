@@ -105,11 +105,11 @@ namespace ClientCore.Network
                 }
             }
         }
-        public void Send(byte[] binary)
+        public async Task Send(byte[] binary)
         {
             try
             {
-                int sent = sock.Send(binary);
+                await sock.SendAsync(new ArraySegment<byte>(binary), SocketFlags.None);
             }
             catch (SocketException ex)
             {

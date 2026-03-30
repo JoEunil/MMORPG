@@ -23,11 +23,11 @@ namespace ClientCore.Services
             }
         }
 
-        public void CharacterList(TCPSocket sock)
+        public async void CharacterList(TCPSocket sock)
         {
             try
             {
-                sock.Send(PacketBuilder.CreateCharacterListPacket());
+                await sock.Send(PacketBuilder.CreateCharacterListPacket());
             }
             catch (Exception ex)
             {
@@ -35,11 +35,11 @@ namespace ClientCore.Services
             }
         }
 
-        public void Enter(TCPSocket sock, ulong charID)
+        public async void Enter(TCPSocket sock, ulong charID)
         {
             try
             {
-                sock.Send(PacketBuilder.CreateEnterWorldPacket(charID));
+                await sock.Send(PacketBuilder.CreateEnterWorldPacket(charID));
             }
             catch (Exception ex)
             {
@@ -47,11 +47,11 @@ namespace ClientCore.Services
             }
         }
 
-        public bool Chat(TCPSocket sock,string message, byte scope, ulong targetID)
+        public async Task<bool> Chat(TCPSocket sock,string message, byte scope, ulong targetID)
         {
             try
             {
-                sock.Send(PacketBuilder.CreateChatPacket(message, scope, targetID));
+                await sock.Send(PacketBuilder.CreateChatPacket(message, scope, targetID));
             }
             catch (Exception ex)
             {
@@ -60,11 +60,11 @@ namespace ClientCore.Services
             }
             return true;
         }
-        public bool Action(TCPSocket sock, byte dir, float speed, byte skillSlot)
+        public async Task<bool> Action(TCPSocket sock, byte dir, float speed, byte skillSlot)
         {
             try
             {
-                sock.Send(PacketBuilder.CreateActionPacket(dir, speed, skillSlot));
+                await sock.Send(PacketBuilder.CreateActionPacket(dir, speed, skillSlot));
             }
             catch (Exception ex)
             {
@@ -74,11 +74,11 @@ namespace ClientCore.Services
             return true;
         }
 
-        public void ZoneChange(TCPSocket sock, byte op)
+        public async void ZoneChange(TCPSocket sock, byte op)
         {
             try
             {
-                sock.Send(PacketBuilder.CreateZoneChangePacket(op));
+                await sock.Send(PacketBuilder.CreateZoneChangePacket(op));
             }
             catch (Exception ex)
             {
@@ -86,11 +86,11 @@ namespace ClientCore.Services
             }
         }
 
-        public void Pong(TCPSocket sock, ulong serverTimeMs)
+        public async void Pong(TCPSocket sock, ulong serverTimeMs)
         {
             try
             {
-                sock.Send(PacketBuilder.CreatePongPacket(serverTimeMs));
+                await sock.Send(PacketBuilder.CreatePongPacket(serverTimeMs));
             }
             catch (Exception ex)
             {
