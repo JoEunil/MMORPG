@@ -15,6 +15,13 @@ namespace Net {
         auto op = pv->GetOpcode();
         // 게임 세션 상태 확인. 
         uint8_t health = packetDispatcher->HealthCheck(session);
+        if (op == Core::OP::PONG) {
+            uint64_t rtt = packetDispatcher->GetRTT(std::move(pv), NetTimer::GetTimeMS());
+            if (rtt > 200)
+                perfCollector->AddJitterCnt();
+            sessionManager->PongReceived(session, rtt);
+            return true;
+        }
 
         if (!(health & Core::MASK_EXIST)) {
             if (op == Core::OP::AUTH) {
@@ -42,14 +49,6 @@ namespace Net {
 
         switch (op)
         {
-        case Core::OP::PONG: 
-            {
-                uint64_t rtt = packetDispatcher->GetRTT(std::move(pv), NetTimer::GetTimeMS());
-                if (rtt > 200)
-                    perfCollector->AddJitterCnt();
-                sessionManager->PongReceived(session, rtt);
-            }
-            break;
         default:
             packetDispatcher->Process(std::move(pv));
             break;
