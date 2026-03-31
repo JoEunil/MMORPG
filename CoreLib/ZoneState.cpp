@@ -89,5 +89,6 @@ namespace Core {
         {
             stateManager->Cheat(session, cheat, timePoint);
         }
+		m_cheatList.clear();
     }
 }

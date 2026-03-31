@@ -17,6 +17,7 @@ namespace Core {
         }
 
         if (speed > 1) {
+            gameLogger->LogInfo("zone state", "invalid speed", "sessionID", sessionID, "speed", speed);
             m_cheatList.push_back({ sessionID, 1 });
             return;
         }
@@ -72,6 +73,7 @@ namespace Core {
         }
         auto& character = m_chars[it->second];
         if (skillSlot > (character.skillSlotCnt - 1)) {
+			gameLogger->LogInfo("zone state", "invalid skill slot", "sessionID", sessionID, "skillSlot", skillSlot);
             m_cheatList.push_back({ sessionID, 1 });
             return;
         }
