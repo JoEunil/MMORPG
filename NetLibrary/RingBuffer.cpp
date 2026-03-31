@@ -7,7 +7,7 @@ namespace Net {
 	uint16_t RingBuffer::HasSpace() const
 	{
 		if (m_tail == m_head)
-			return m_last_op == RELEASE ? RECV_BUFFER_SIZE : 0;
+			return m_last_op == RELEASE ? std::min<uint16_t>(RECV_BUFFER_SIZE, RING_BUFFER_SIZE - m_tail) : 0;
 		if (m_tail < m_head)
 			return std::min<uint16_t>(static_cast<uint16_t>(RECV_BUFFER_SIZE), static_cast<uint16_t>(m_head - m_tail));
 		return std::min<uint16_t>(static_cast<uint16_t>(RECV_BUFFER_SIZE), static_cast<uint16_t>(RING_BUFFER_SIZE - m_tail));
