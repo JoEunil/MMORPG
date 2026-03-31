@@ -4,18 +4,18 @@
 #include <algorithm>
 
 namespace Net {
-	int16_t RingBuffer::HasSpace() const
+	uint16_t RingBuffer::HasSpace() const
 	{
 		if (m_tail == m_head)
 			return m_last_op == RELEASE ? RECV_BUFFER_SIZE : 0;
 		if (m_tail < m_head)
-			return std::min<int16_t>(static_cast<int16_t>(RECV_BUFFER_SIZE), static_cast<int16_t>(m_head - m_tail));
-		return std::min<int16_t>(static_cast<int16_t>(RECV_BUFFER_SIZE), static_cast<int16_t>(RING_BUFFER_SIZE - m_tail));
+			return std::min<uint16_t>(static_cast<uint16_t>(RECV_BUFFER_SIZE), static_cast<uint16_t>(m_head - m_tail));
+		return std::min<uint16_t>(static_cast<uint16_t>(RECV_BUFFER_SIZE), static_cast<uint16_t>(RING_BUFFER_SIZE - m_tail));
 	}
 
-	int16_t RingBuffer::TryAcquireBuffer(BufferFragment& res)
+	uint16_t RingBuffer::TryAcquireBuffer(BufferFragment& res)
 	{
-		int16_t len = HasSpace();
+		uint16_t len = HasSpace();
 		res.startPtr = m_buffer.data();
 		res.front = m_tail;
 		res.rear = m_tail + len - 1;

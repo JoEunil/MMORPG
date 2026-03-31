@@ -24,7 +24,7 @@ namespace Net {
         // 수신 버퍼 재사용, 메모리 복사 없이 패킷 사용하기 위함 (Wrap-around 구간제외 하면 연속적인 메모리 공간, 별도 처리 필요)
         std::vector<uint8_t> m_buffer;
 
-        int16_t HasSpace() const;
+        uint16_t HasSpace() const;
         
         void Initialize() {
             m_buffer.resize(RING_BUFFER_SIZE);
@@ -32,7 +32,7 @@ namespace Net {
         }
         friend class ClientContext;
     public:
-        int16_t TryAcquireBuffer(BufferFragment& res);
+        uint16_t TryAcquireBuffer(BufferFragment& res);
         bool Release(int16_t front, int16_t rear);
         void ReleaseLeftOver(int16_t p);
         uint8_t* GetStartPtr();
