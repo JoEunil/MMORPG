@@ -12,7 +12,7 @@ namespace Net {
     inline constexpr uint16_t PREPOSTED_ACCEPTS = 10; //worker threadpool * 2~4
 
 	inline constexpr uint32_t NORMAL_PACKET_LENGTH = 512;
-	inline constexpr uint32_t BIG_PACKET_LENGTH = 4096;
+	inline constexpr uint32_t BIG_PACKET_LENGTH = 16384;
 
 	inline constexpr uint32_t MAX_PACKETPOOL_SIZE = 10000;
 	inline constexpr uint32_t MIN_PACKETPOOL_SIZE = 200;
