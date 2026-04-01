@@ -97,7 +97,7 @@ static class Program
     static async Task Main(string[] args)
     {
         ThreadPool.SetMinThreads(10, 10);
-        ThreadPool.SetMaxThreads(20, 20);
+        ThreadPool.SetMaxThreads(10, 10);
         int clientCount = 1000;   // 원하는 더미 클라이언트 수
 
         Initialize(clientCount);

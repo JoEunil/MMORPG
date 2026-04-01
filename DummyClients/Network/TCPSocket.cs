@@ -62,7 +62,7 @@ namespace ClientCore.Network
         private List<byte> recvBuffer = new List<byte>();
         public async Task ReceiveLoopAsync()
         {
-            var buffer = new byte[4096];
+            var buffer = new byte[65536];
             while (true)
             {
                 try
