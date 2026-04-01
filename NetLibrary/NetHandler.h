@@ -40,12 +40,14 @@ namespace Net {
         void OnRecv(SOCKET sock, uint8_t* buf, uint16_t len) const {
             sessionManager->UpdateFlood(sock, len);
             if (!sessionManager->CheckSession(sock)) {
+                Core::sysLogger->LogInfo("net handler", "net session died", "socket", sock);
                 abortSocket->AbortSocket(sock);
                 return;
             }
             auto ctx = sessionManager->GetContext(sock);
             if (!ctx->CheckGameSession()) {
                 sessionManager->SetContextInvalid(sock);
+                Core::sysLogger->LogInfo("net handler", "game session died", "socket", sock);
                 abortSocket->AbortSocket(sock);
                 return;
             }

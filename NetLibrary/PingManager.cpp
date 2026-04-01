@@ -30,8 +30,10 @@ namespace Net {
                 {
                     if (st.isAlive)
                         SendPing(st.session, st.rtt, now);
-                    else
+                    else {
+                        Core::errorLogger->LogInfo("ping manager", "not alive", "socket", st.socket);
                         abortSocket->AbortSocket(st.socket);
+                    }
                 }
             }
             std::this_thread::sleep_for(PING_LOOP_WAIT);

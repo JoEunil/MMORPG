@@ -30,10 +30,18 @@ namespace Net {
             std::memcpy(tempBuffer, m_startPtr + m_front, firstPart);
             std::memcpy(tempBuffer + firstPart, m_startPtr, secondPart);
             h = reinterpret_cast<Core::PacketHeader*>(&tempBuffer);
+            if (h->magic != Core::MAGIC)
+            {
+                Core::gameLogger->LogWarn("context", "1 packet Magic invalid in header parsing", "session", m_sessionID, "magic", h->magic, "packetLen", h->length, "opcde", h->opcode, "m_front", m_front, "m_rear", m_rear, "GetLen()", GetLen());
+            }
         }
         else {
-            bufferPtr = m_buffer.GetStartPtr() + m_front;
+            bufferPtr = m_startPtr + m_front;
             h = reinterpret_cast<Core::PacketHeader*>(bufferPtr);
+            if (h->magic != Core::MAGIC)
+            {
+                Core::gameLogger->LogWarn("context", "2 packet Magic invalid in header parsing", "session", m_sessionID, "magic", h->magic, "packetLen", h->length, "opcde", h->opcode, "m_front", m_front, "m_rear", m_rear, "GetLen()", GetLen());
+			}
         }
         // header가 wrap오버구간인 경우 처리
         return {h->magic, h->length, h->opcode };
@@ -47,14 +55,14 @@ namespace Net {
 
         if (magic != Core::MAGIC)
         {
-            Core::gameLogger->LogWarn("context", "packet Magic invalid", "session", m_sessionID, "magic", magic);
+            Core::gameLogger->LogWarn("context", "packet Magic invalid", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcde", opcode, "m_front", m_front, "m_rear", m_rear, "GetLen()", GetLen());
             m_gameSession.store(false, std::memory_order_release);
             return false;
         }
 
         if (opcode == 0 or opcode > Core::MAX_DEFINED_OPCODE)
         {
-            Core::gameLogger->LogWarn("context", "undefined opcode", "session", m_sessionID, "opcode", opcode);
+            Core::gameLogger->LogWarn("context", "undefined opcode", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcde", opcode, "m_front", m_front, "GetLen()", GetLen());
             m_gameSession.store(false, std::memory_order_release);
             return false;
         }
@@ -86,7 +94,7 @@ namespace Net {
 
         m_front = (m_front + packetLen) & RING_BUFFER_SIZE_MASK;
         m_last_op = RELEASE;
-        m_workingCnt.fetch_add(1);
+        m_workingCnt.fetch_add(1, std::memory_order_relaxed);
 
         if (!NetPacketFilter::TryDispatch(std::move(pv))) {
             m_gameSession.store(false, std::memory_order_release);
@@ -112,7 +120,7 @@ namespace Net {
             return false;
         uint16_t rear = m_rear + len;
         rear &= RING_BUFFER_SIZE_MASK;
-        m_buffer.ReleaseLeftOver(rear + 1);
+        m_buffer.ReleaseLeftOver((rear + 1)& RING_BUFFER_SIZE_MASK, len != 0);
         m_rear = rear;
 
         m_last_op = ACQUIRE;
@@ -123,7 +131,6 @@ namespace Net {
     void ClientContext::EnqueueReleaseQ(uint32_t seq, uint16_t front, uint16_t rear) {
         std::lock_guard<std::recursive_mutex> lock(m_mutex);
         m_releaseQ[seq & RELEASE_Q_SIZE_MASK] = std::make_pair(front, rear);
-        std::lock_guard<std::mutex> lock(m_releaseMutex);
         auto current = m_releaseQ[m_releaseIdx];
         while (current != EMPTY_PAIR and m_buffer.Release(current.first, current.second))
         {

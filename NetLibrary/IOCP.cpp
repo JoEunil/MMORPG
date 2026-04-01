@@ -179,6 +179,7 @@ namespace Net {
                 if (!m_receiving.load(std::memory_order_relaxed))
                     break;
                 if (bytesTransferred == 0) {
+                    Core::sysLogger->LogInfo("iocp", "Client FIN received", "socket", clientSocket);
                     CleanUpSocket(clientSocket);
                     break;
                 }
@@ -307,7 +308,7 @@ namespace Net {
     {
         if (netHandler->OnDisConnect(clientSocket))
         {
-            // Race condition이 발생할 수 있는 지점이지만,
+            // 여러 스레드에서 동시에 호출될 수 있지만,
             // NetHandler가 Disconnect를 단일 책임으로 관리하여 멱등성이 보장됨.
             // 중복으로 CleanUp 요청이 와도 최초 1회만 true를 반환함.
             Core::sysLogger->LogInfo("iocp", "Disconnect", "socket", clientSocket);
@@ -351,6 +352,7 @@ namespace Net {
             if (err != WSA_IO_PENDING)
             {
                 overlappedExPool->Return(pOverlappedEx);
+                CleanUpSocket(clientSocket); 
                 Core::errorLogger->LogWarn("iocp", "WSASend failed: ","socket", clientSocket, "error message", std::to_string(err));
             }
         }
@@ -393,6 +395,7 @@ namespace Net {
             if (err != WSA_IO_PENDING)
             {
                 overlappedExPool->Return(pOverlappedEx);
+                CleanUpSocket(clientSocket);
                 Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", clientSocket, "error message", std::to_string(err));
             }
         }
@@ -423,6 +426,7 @@ namespace Net {
             if (err != WSA_IO_PENDING)
             {
                 overlappedExPool->Return(pOverlappedEx);
+                CleanUpSocket(clientSocket);
                 Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", clientSocket, "error message", std::to_string(err));
             }
         }
@@ -432,6 +436,7 @@ namespace Net {
     void IOCP::AbortSocket(SOCKET clientSocket) {
         if (clientSocket == INVALID_SOCKET)
             return;
+        Core::sysLogger->LogInfo("iocp", "Abort Socket", "socket", clientSocket);
         CleanUpSocket(clientSocket); 
     }
 }

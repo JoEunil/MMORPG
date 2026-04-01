@@ -72,8 +72,7 @@ namespace Net {
         }
 
         void BufferReceived(uint32_t byte) {
-            if (!m_floodDetector.ByteReceived(byte))
-                m_flood = false;
+            m_flood = m_floodDetector.ByteReceived(byte);
         }
 
         void SetContextInvalid() {

@@ -64,6 +64,7 @@ namespace Net {
 		}
 		STOverlappedEx* res = m_overlappedPool.back();
 		m_overlappedPool.pop_back();
+		ZeroMemory(&res->wsaOverlapped, sizeof(WSAOVERLAPPED));
 		Adjust();
 		return res;
 	}
