@@ -49,7 +49,7 @@ static class Program
             (var address, var port) = await AuthService.Instance.GetSessionAsync(session);
             await _network.Connect(session, address, port);
             i++;
-            Thread.Sleep(100);
+            Thread.Sleep(10);
         }
         Console.WriteLine("connect ");
     }
@@ -83,14 +83,14 @@ static class Program
                 sessions.Remove(session);
                 continue;
             }
-            if (chat)
-            {
-                if (! await _network.Chat(session.GetSocket(), "test" + session.UserID, 1, 1))
-                {
-                    sessions.Remove(session);
-                    continue;
-                }
-            }
+            //if (chat)
+            //{
+            //    if (! await _network.Chat(session.GetSocket(), "test" + session.UserID, 1, 1))
+            //    {
+            //        sessions.Remove(session);
+            //        continue;
+            //    }
+            //}
         }
         _count = sessions.Count();
     }
@@ -98,7 +98,7 @@ static class Program
     {
         ThreadPool.SetMinThreads(10, 10);
         ThreadPool.SetMaxThreads(10, 10);
-        int clientCount = 1000;   // 원하는 더미 클라이언트 수
+        int clientCount = 2000;   // 원하는 더미 클라이언트 수
 
         Initialize(clientCount);
         await Connect();
