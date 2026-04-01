@@ -109,8 +109,10 @@ namespace Core {
 
     void ZoneThreadSet::EnqueueWork(std::unique_ptr<Core::IPacketView, PacketViewDeleter> pv, uint16_t zoneID) {
         Thread& t = m_threads[zoneID-1];
-        t.workQueue.push(std::move(pv));
-        // 유저 입력은 실패 시 drop
+        if (t.workQueue.push(std::move(pv)) != nullptr) {
+            // 성공 시 nullptr 반환
+            perfCollector->AddZoneDropCnt(zoneID);
+        }
     }
 }
 

@@ -80,8 +80,10 @@ namespace Core {
         perfCollector->AddBroadcastEnqueueCnt();
         if (m_running.load(std::memory_order_relaxed)) {
             headers[0]->SetZone(zoneID);
-            m_workQ.push(std::make_unique<std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>>(headers, chunks));
-            // 실패 시 drop
+            if (m_workQ.push(std::make_unique<std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>>(headers, chunks)) != nullptr) {
+                // push 성공 시 nullptr 반환
+                perfCollector->AddBroadcastDropCnt();
+            }
         }
     }
 }

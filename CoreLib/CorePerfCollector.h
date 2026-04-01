@@ -15,7 +15,8 @@ namespace Core {
         std::atomic<uint64_t> characterCount;
         std::atomic<uint64_t> monsterDeltaFieldCount;
         std::atomic<uint64_t> monsterCount; 
-        std::atomic<uint64_t> hitCount; 
+        std::atomic<uint64_t> hitCount;
+        std::atomic<uint64_t> zoneWorkDropCnt;
     };
 
     class CorePerfCollector {
@@ -23,7 +24,8 @@ namespace Core {
         std::atomic<uint64_t> chatSendCnt;
         std::atomic<uint64_t> broadcastEnqueuCnt;
         std::atomic<uint64_t> broadcastPopCnt;
-        std::atomic<uint64_t> broadcastSendCnt;;
+        std::atomic<uint64_t> broadcastSendCnt;
+        std::atomic<uint64_t> broadcastDropCnt;
         std::thread m_thread;
         std::atomic<bool> m_running;
 
@@ -31,6 +33,7 @@ namespace Core {
             chatSendCnt.store(0, std::memory_order_relaxed);
             broadcastEnqueuCnt.store(0, std::memory_order_relaxed);
             broadcastPopCnt.store(0, std::memory_order_relaxed);
+            broadcastDropCnt.store(0, std::memory_order_relaxed);
             for (int i = 0; i < ZONE_COUNT; i++)
             {
                 zones[i].packetProcessed.store(0, std::memory_order_relaxed);
@@ -41,6 +44,7 @@ namespace Core {
                 zones[i].monsterDeltaFieldCount.store(0, std::memory_order_relaxed);
                 zones[i].monsterCount.store(0, std::memory_order_relaxed);
                 zones[i].hitCount.store(0, std::memory_order_relaxed);
+                zones[i].zoneWorkDropCnt.store(0, std::memory_order_relaxed);
             }
         }
         bool IsReady() {
@@ -120,6 +124,13 @@ namespace Core {
             }
             zones[zoneID - 1].hitCount.fetch_add(1, std::memory_order_relaxed);
         }
+        void AddZoneDropCnt(uint16_t zoneID) {
+            if (zoneID - 1 >= ZONE_COUNT) {
+                errorLogger->LogInfo("core perf", "AddHitCnt zoneID out of bound", "zoneID", zoneID);
+                return;
+            }
+            zones[zoneID - 1].hitCount.fetch_add(1, std::memory_order_relaxed);
+        }
         void AddChatSend(size_t cnt) {
             chatSendCnt.fetch_add(cnt, std::memory_order_relaxed);
         }
@@ -132,6 +143,9 @@ namespace Core {
         void AddBroadcastSendCnt(size_t cnt) {
             broadcastSendCnt.fetch_add(cnt, std::memory_order_relaxed);
         }
+        void AddBroadcastDropCnt() {
+            broadcastDropCnt.fetch_add(1, std::memory_order_relaxed);
+        }
         void Flush() {
             auto TchatSendCnt = chatSendCnt.load(std::memory_order_relaxed);
             chatSendCnt.store(0, std::memory_order_relaxed);
@@ -141,9 +155,12 @@ namespace Core {
             broadcastPopCnt.store(0, std::memory_order_relaxed);
             auto TbroadcastSendCnt = broadcastSendCnt.load(std::memory_order_relaxed);
             broadcastSendCnt.store(0, std::memory_order_relaxed);
+            auto TbroadcastDropCnt = broadcastDropCnt.load(std::memory_order_relaxed);
+            broadcastDropCnt.store(0, std::memory_order_relaxed);
+
             perfLogger->LogInfo("core perf", "perf log per sec", "chatSendCnt", TchatSendCnt,
             "broadcastEnqueuCnt", TbroadcastEnqueuCnt, "broadcastPopCnt", TbroadcastPopCnt,
-            "broadcastSendCnt", TbroadcastSendCnt);
+            "broadcastSendCnt", TbroadcastSendCnt, "brodcastWorkDropCnt", TbroadcastDropCnt);
             for (int i = 0; i < ZONE_COUNT; i++)
             {
                 auto& curr = zones[i];
@@ -155,7 +172,8 @@ namespace Core {
                     "characterCount", curr.characterCount.load(std::memory_order_relaxed),
                     "monsterDeltaFieldCount", curr.monsterDeltaFieldCount.load(std::memory_order_relaxed),
                     "monsterCount", curr.monsterCount.load(std::memory_order_relaxed),
-                    "hitCount", curr.hitCount.load(std::memory_order_relaxed)
+                    "hitCount", curr.hitCount.load(std::memory_order_relaxed),
+                    "zoneWorkDropCount", curr.zoneWorkDropCnt.load(std::memory_order_relaxed)
                 );
                 curr.packetProcessed.store(0, std::memory_order_relaxed);
                 curr.tick.store(0, std::memory_order_relaxed);
@@ -163,6 +181,7 @@ namespace Core {
                 curr.deltaFieldCount.store(0, std::memory_order_relaxed);
                 curr.monsterDeltaFieldCount.store(0, std::memory_order_relaxed);
                 curr.hitCount.store(0, std::memory_order_relaxed);
+                curr.zoneWorkDropCnt.store(0, std::memory_order_relaxed);
             }
             sysLogger->Flush();
             errorLogger->Flush();
