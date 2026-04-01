@@ -27,7 +27,7 @@ namespace Net {
 	}
 
 
-	bool RingBuffer::Release(int16_t front, int16_t rear)
+	bool RingBuffer::Release(uint16_t front, uint16_t rear)
 	{
 		// 사용 완료한 버퍼 처리
 		if (front != m_head)
@@ -38,12 +38,13 @@ namespace Net {
 		return true;
 	}
 
-	void RingBuffer::ReleaseLeftOver(int16_t notWr)
+	void RingBuffer::ReleaseLeftOver(uint16_t notWr, bool hasData)
 	{
 		// 수신 후 남은 버퍼 공간만큼 앞으로 당기기
 		m_tail = notWr;
 		m_tail &= RING_BUFFER_SIZE_MASK;
-		m_last_op = RELEASE;
+		if (m_tail == m_head)
+			m_last_op = hasData ? ACQUIRE : RELEASE;
 	}
 
 	uint8_t* RingBuffer::GetStartPtr() {

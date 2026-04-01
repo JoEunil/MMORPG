@@ -14,8 +14,8 @@ namespace Net {
 		uint64_t m_sessionId;
 
 		uint32_t m_seq;            // 패킷 순서, release에 사용
-		int16_t m_front;
-		int16_t m_rear;
+		uint16_t m_front;
+		uint16_t m_rear;
 		uint16_t m_length = 0;
 		std::vector<uint8_t> m_copiedBuffer;
 		ClientContext* owner;
@@ -73,15 +73,15 @@ namespace Net {
 		void SetStartPtr(uint8_t* ptr) { m_startPtr = ptr; }
 		void SetSessionId(uint64_t s) { m_sessionId = s; }
 		void SetSeq(uint32_t seq) { m_seq = seq; }
-		void SetFront(int16_t front) { m_front = front; }
-		void SetRear(int16_t rear) { m_rear = rear; }
+		void SetFront(uint16_t front) { m_front = front; }
+		void SetRear(uint16_t rear) { m_rear = rear; }
 		void SetOpcode(uint8_t opcode) { m_opcode = opcode; }
 		void SetOwner(ClientContext* o) { owner = o; }
 		bool IsCopied() const { return m_isCopied; }
 
 		uint32_t GetSeq() const { return m_seq; }
-		int16_t GetFront() const { return m_front; }
-		int16_t GetRear() const { return m_rear; }
+		uint16_t GetFront() const { return m_front; }
+		uint16_t GetRear() const { return m_rear; }
 
 		uint64_t GetSessionID() const override { return m_sessionId; }
 		uint8_t* GetPtr() const override { 
