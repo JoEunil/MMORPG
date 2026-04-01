@@ -41,7 +41,7 @@ namespace Core {
     inline constexpr uint16_t MAX_MONSTER_COUNT = 1000;
     inline constexpr uint16_t MAX_MONSTER_DELTA = 3000;
 
-    inline constexpr uint16_t MAX_ZONE_CAPACITY = 500;
+    inline constexpr uint16_t MAX_ZONE_CAPACITY = 1000;
     inline constexpr uint16_t MAX_USER_CAPACITY = 5000;
     inline constexpr uint16_t MAX_CHAT_PACKET = 10;
     inline constexpr uint16_t DELTA_UPDATE_COUNT = 1000;
