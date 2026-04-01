@@ -90,9 +90,9 @@ namespace Core {
             //thread 우선순위 설정, std::thread에서는 할 수없어서 win32 API 통해서
             HANDLE h = (HANDLE)m_threads[i].thread.native_handle();
             // HIGH PRIORITY
-            if (!::SetThreadPriority(h, THREAD_PRIORITY_HIGHEST)) {
-                sysLogger->LogError("zone thread", "Failed to set priority", "zoneID", i + 1);
-            }
+            //if (!::SetThreadPriority(h, THREAD_PRIORITY_ABOVE_NORMAL)) {
+            //    sysLogger->LogError("zone thread", "Failed to set priority", "zoneID", i + 1);
+            //}
             
         }
     }

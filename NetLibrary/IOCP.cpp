@@ -93,9 +93,9 @@ namespace Net {
             m_threads[i] = std::thread(&IOCP::WorkerThreadFunc, this, i);
             HANDLE h = (HANDLE)m_threads[i].native_handle();
             // zone 스레드보다는 우선순위 낮고, 다른 스레드풀 보다는 우선순위 높게
-            if (!::SetThreadPriority(h, THREAD_PRIORITY_ABOVE_NORMAL)) {
-                Core::errorLogger->LogError("iocp", "Failed to set priority", "zone_id", i + 1);
-            }
+            //if (!::SetThreadPriority(h, THREAD_PRIORITY_ABOVE_NORMAL)) {
+            //    Core::errorLogger->LogError("iocp", "Failed to set priority", "zone_id", i + 1);
+            //}
         }
         return true;
     }

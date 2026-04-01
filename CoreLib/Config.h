@@ -22,7 +22,7 @@ namespace Core {
     inline constexpr uint16_t ZONE_COUNT = 4; // lobby 제외
 
     inline constexpr uint16_t MAX_INVENTORY_ITEMS = 10;
-    inline constexpr uint8_t BROADCAST_THREADPOOL_SIZE = 2;
+    inline constexpr uint8_t BROADCAST_THREADPOOL_SIZE = 4;
     inline constexpr uint16_t NONE_ZONE_THREADPOOL_SIZE = 3;
     
     inline constexpr uint16_t SHARD_SIZE = 8; // stateManager의 session - zone 매핑 샤드, 접근하는 스레드풀 크기의 2~4배 정도
@@ -41,10 +41,10 @@ namespace Core {
     inline constexpr uint16_t MAX_MONSTER_COUNT = 1000;
     inline constexpr uint16_t MAX_MONSTER_DELTA = 3000;
 
-    inline constexpr uint16_t MAX_ZONE_CAPACITY = 1000;
-    inline constexpr uint16_t MAX_USER_CAPACITY = 5000;
+    inline constexpr uint16_t MAX_ZONE_CAPACITY = 2000;
+    inline constexpr uint16_t MAX_USER_CAPACITY = 7000;
     inline constexpr uint16_t MAX_CHAT_PACKET = 10;
-    inline constexpr uint16_t DELTA_UPDATE_COUNT = 1000;
+    inline constexpr uint16_t DELTA_UPDATE_COUNT = 5000;
 
     inline constexpr auto FULL_SNAPSHOT_TICK = std::chrono::milliseconds(1000);
     inline constexpr auto DELTA_SNAPSHOT_TICK = std::chrono::milliseconds(50);

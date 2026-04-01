@@ -16,11 +16,11 @@ namespace Net {
 
 	inline constexpr uint32_t MAX_PACKETPOOL_SIZE = 10000;
 	inline constexpr uint32_t MIN_PACKETPOOL_SIZE = 200;
-	inline constexpr uint32_t TARGET_PACKETPOOL_SIZE = 5000;
+	inline constexpr uint32_t TARGET_PACKETPOOL_SIZE = 8000;
 
 	inline constexpr uint32_t MAX_BPACKETPOOL_SIZE = 10000;
 	inline constexpr uint32_t MIN_BPACKETPOOL_SIZE = 200;
-	inline constexpr uint32_t TARGET_BPACKETPOOL_SIZE = 5000;
+	inline constexpr uint32_t TARGET_BPACKETPOOL_SIZE = 8000;
 
 	inline constexpr uint16_t MAX_OVERLAPPEDPOOL_SIZE = MAX_CLIENT_CONNECTION * 4;
 	inline constexpr uint16_t MIN_OVERLAPPEDPOOL_SIZE = 1000;
