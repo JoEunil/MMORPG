@@ -95,6 +95,7 @@ namespace Net {
         return true;
     }
     uint16_t ClientContext::AllocateRecvBuffer(uint8_t*& buffer) {
+        std::lock_guard<std::recursive_mutex> lock(m_mutex);
         BufferFragment temp;
         uint16_t len = m_buffer.TryAcquireBuffer(temp);
         buffer = temp.startPtr + temp.front;
@@ -105,6 +106,7 @@ namespace Net {
 
 
     bool ClientContext::EnqueueRecvQ(uint8_t* ptr, size_t len) {
+        std::lock_guard<std::recursive_mutex> lock(m_mutex);
         uint16_t front = ptr - m_startPtr;
         if (front != ((m_rear + 1) & RING_BUFFER_SIZE_MASK))
             return false;
@@ -119,6 +121,7 @@ namespace Net {
     }
 
     void ClientContext::EnqueueReleaseQ(uint32_t seq, uint16_t front, uint16_t rear) {
+        std::lock_guard<std::recursive_mutex> lock(m_mutex);
         m_releaseQ[seq & RELEASE_Q_SIZE_MASK] = std::make_pair(front, rear);
         std::lock_guard<std::mutex> lock(m_releaseMutex);
         auto current = m_releaseQ[m_releaseIdx];

@@ -34,7 +34,9 @@ namespace Net {
         std::atomic<int16_t> m_workingCnt = int16_t(0); // buffer 조각(패킷)을 점유하고 있는 작업의 수
         std::atomic<bool> m_gameSession = false;
 
-        std::mutex m_releaseMutex;
+        std::recursive_mutex m_mutex; 
+        // TryDispatch 실패하는 경우, EnqueueReleaseQ에서 DeadLock을 방지하기 위함. 
+        // 그 이외에는 recursive 하지 않게 사용하기 때문에 성능상 크게 문제 없음.
         uint16_t m_releaseIdx = 0;
         std::vector<std::pair<uint16_t, uint16_t>> m_releaseQ;
         // sequence % RELEASE_Q_SIZE를 index로 사용해서 ring Queue로 사용
@@ -61,6 +63,7 @@ namespace Net {
         uint64_t GetSessionID() const { return m_sessionID; }
 
         void Clear(uint64_t session) {
+            std::lock_guard<std::recursive_mutex> lock(m_mutex);
             m_sessionID = session;
             m_buffer.Clear();
             m_startPtr = m_buffer.GetStartPtr();
