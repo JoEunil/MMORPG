@@ -27,11 +27,34 @@
 - Loki에 대해 쿼리를 수행하여 원하는 지표를 가져온다.
 - 대시보드에서 실시간 그래프를 구성한다.
 
-![이미지 로드 실패](images/monitoring.png)
+
+## 4. 모니터링 지표
+![이미지 로드 실패](images/2000_grafana_latest.png)
 > Grafana 대시보드
 
+Connection - 현재 연결 수를 나타낸다.   
+Jitter - Ping 처리 과정에서 RTT가 200ms 이상으로 측정된 수. 엄밀히는 high_latency_count에 해당하며, 네트워크 지연 스파이크 발생 빈도를 추적하는 서버 성능 지표로 활용한다.
+contextPool, overlappedExPool, packetPool. bigPacketPool - 객체풀의 갯수를 측정한다. 서버 병목 발생시 이 부분에서 고갈이 나타난다. 부하 발생시에도 버틸 수 있도록 테스트를 통해 적절한 수치를 설정해야한다.  
+flushQueue - 종료된 context에서 내부 작업까지 완료되고 반납을 대기하는 큐.   
+chat send - 채팅 패킷 발생 수 추적. 각각의 전송대상수를 반영하여 기록.   
+broadcast send count - broadcast 스레드에서 패킷의 전송대상수를 반영하여 기록.   
+zone TPS - 각 zone의 TPS 추적
+iocp worker thread recv - 각 IOCP 워커 스레드의 recv 완료 작업 처리수를 기록, 분산 처리가 잘 이루어지는 지 확인 가능.  
+broadcast queue - broadcast는 lock-free 작업큐를 사용하기 때문에 작업 발생량과 처리량을 추적하기위해, push, pop count를 추적한다.
+broadcast work drop count - lock-free 작업큐에서 queue가 가득차 push에 실패하는 횟수를 추적한다. (broadcast queue에서 실제로 drop이 발생했는지 추적하기 위해 추가한 지표)
 
-## 4. TPS 측정 방식
+zone 내부 지표
+- actionFieldCount: action(스킬 이펙트) 전송대상 수 
+- deltafiedlcount: delta 업데이트 필드 수 
+- character count: zone 내부 캐릭터 수 
+- monster delta field coun: 몬스터 delta 업데이트 필드 수 
+- monster count: zone 내부 몬스터 수
+- processed work: zone에서 처리한 입력(packet) 수
+- hit count: skill 처리 중 hit 판정 발생 횟수
+- work drop count:lock-free 작업 큐 push 실패 횟수 
+
+
+## 5. TPS 측정 방식
 게임 서버의 Zone Thread는 시간 기반 로직 처리가 핵심이며, 일정한 TPS를 유지하는 것이 매우 중요하다.  
 시간 기반 처리 요소:
 - 스킬 스케줄링
@@ -58,7 +81,8 @@ __정확도 및 오차__
 - Collector가 로그 기록 후 1초 Sleep을 수행하기 때문에,
   실제 1초 기준과 완전히 일치하지 않아 소폭의 오차가 발생한다.
 - 이에 따라 TPS 값은 보통 19 ~ 21 범위에서 측정된다.
-## 5. 참고
+
+## 6. 참고
 - [NetPerfCollector](NetLibrary/NetPerfCollector.h)  
 - [CorePerfCollector](CoreLib/CorePerfCollector.h)  
 - [Logger.h](ExternalLib/Logger.h)  

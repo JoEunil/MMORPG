@@ -135,19 +135,16 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 따라서 해당 작업을 IO-bound로 분류할 수 없다.  
 
 ## 부하 테스트 및 I/O 병목 분석
-
+[모니터링](Monitoring.md)   
 모니터링 시스템은 Grafana + Loki + Promtail 조합으로 구축하여 서버 성능 지표를 실시간으로 시각화하였다.   
-(자세한 내용은 [모니터링](Monitoring.md) 참고)    
+
+[더미 테스트](DummyTest.md)  
 다중 접속 환경에서의 서버 안정성을 검증하기 위해 더미 클라이언트를 활용한 단계별 부하 테스트를 진행하였다.
 - 100명 테스트 (성공): AOI(Area of Interest) 효율 및 메모리 풀 안정성 검증 완료.
-	- 모니터링 지표 분석 중 이동 입력 설계(방향/속도 기반)의 치명적인 결함을 데이터로 확인하였다.
-- 1,000명 테스트 (실패): 단일 장비의 리소스 경합으로 인한 커널 레벨 소켓 종료 현상 발생.
+- 1,000명 테스트 (실패): 더미 클라이언트에서 IO 병목 발생. TCP 수신 버퍼 초과로 소켓 종료 현상 
 
-[주요 분석 포인트]  
-왜 1,000명 테스트에서 소켓이 강제 종료되었는가?   
-왜 이동 입력이 전부 처리되지 않았는가?  
-
-[더미 테스트](DummyTest.md)에서 자세한 내용 확인
+[더미 테스트](DummyTest2.md)  
+- 실패 원인 재분석 및 최적화를 통해 2000명 테스트 성공
 
 ## 리팩토링
 기능 구현 과정에서 직면한 구조적 한계와 병목 지점을 분석하고, 명확한 근거와 필요성에 따라 진행한 리팩토링 기록입니다.  
@@ -179,6 +176,9 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 
 - [SessionManager 데드락](SessionManagerDeadLock.md)  
   순환 참조로 인해 발생한 데드락 원인 추적, 구조 개선.
+
+- [DummyTest 과정중 발생한 오류 디버그](DummyTestDebug.md)  
+  RingBuffer 엣지 케이스 처리.
 
 ## 추후 개선 사항
 
@@ -301,7 +301,9 @@ Unity Client
 - [SessionManager 데드락](SessionManagerDeadLock.md)
 - [LockFreeQueue 디버그](LockFreeQueueDebug.md)
 - [ContextPool memory_order 디버그](MemoryOrderDebug.md)
+- [DummyTest 디버그](DummyTestDebug.md)
 
 ### 테스트
 - [모니터링](Monitoring.md) 
 - [더미 클라이언트 테스트](DummyTest.md) 
+- [더미 클라이언트 테스트2](DummyTest2.md) 
