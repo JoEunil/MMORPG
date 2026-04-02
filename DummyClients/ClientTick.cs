@@ -16,6 +16,7 @@ namespace ClientCore
             _running = 1;
             _thread = new Thread(Work);
             _thread.IsBackground = true; // 메인 종료 시 같이 종료
+            _thread.Priority = ThreadPriority.AboveNormal;
             _thread.Start();
         }
 
