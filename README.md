@@ -18,7 +18,13 @@ C++20 기반 MMORPG 게임 서버.
 IOCP, Lock-free Queue, Write-Back Cache 등 핵심 컴포넌트를 직접 구현하고   
 Unity 클라이언트로 기능 테스트, 더미 클라이언트 부하 테스트로 검증하였다.  
 4코어 단일 PC 환경에서 __2,000명 동시 접속 부하테스트__ 를 성공적으로 수행하였다.  
+
+> 2,000명 동시 접속 Unity 클라이언트 테스트 영상  
+> https://youtu.be/2q2kZwI3uSQ
+
+
 ![이미지 로드 실패](images/SkillAOI.gif)
+> 게임 시연 gif
 
 __목표__
 - 클라이언트 로그인부터 사용자 접속 종료 및 재접속 로직까지, __End-to-End 데이터 파이프라인__ 을 설계하고 구현한다.  
