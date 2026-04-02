@@ -144,7 +144,7 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 - 100명 테스트 (성공): AOI(Area of Interest) 효율 및 메모리 풀 안정성 검증 완료.
 - 1,000명 테스트 (실패): 더미 클라이언트에서 IO 병목 발생. TCP 수신 버퍼 초과로 소켓 종료 현상 
 
-[더미 테스트](DummyTest2.md)  
+[더미 테스트2](DummyTest2.md)  
 - 실패 원인 재분석 및 최적화를 통해 2000명 테스트 성공
 
 ## 리팩토링
@@ -225,7 +225,12 @@ DB
 - Port: 6379
 
 로그인서버  
-- Node.js로 실행하거나 vs에서 실행 
+- 터미널에서 실행
+```
+ cd LoginServer
+ node app.js
+```
+- 또는 VisualStudio에서 실행.
 - localhost, 포트 3000
 
 게임 서버  
@@ -256,7 +261,10 @@ DB
 - 캐릭터 생성 sql 실행
   ```Resources/DB/createCharacter.sql 실행```
 
-### 6. 클라이언트 테스트
+### 6. 실행 순서
+DB → Redis → 로그인 서버 → 게임 서버
+
+### 7. 클라이언트 테스트
 Dummy Client 
 - DummyClients/Program.cs에서 접속자 수 설정 후 DummyClients 실행
 
