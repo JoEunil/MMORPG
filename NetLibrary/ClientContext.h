@@ -7,10 +7,12 @@
 #include "NetPacketFilter.h"
 #include "TrafficFloodDetector.h"
 #include "PacketView.h"
+#include "OverlappedExPool.h"
 #include "Config.h"
 
 #include <CoreLib/PacketTypes.h>
 #include <BaseLib/ObjectPool.h>
+#include <BaseLib/RingQueue.h>
 
 
 namespace Core {
@@ -41,6 +43,11 @@ namespace Net {
         std::vector<std::pair<uint16_t, uint16_t>> m_releaseQ;
         // sequence % RELEASE_Q_SIZE를 index로 사용해서 ring Queue로 사용
 
+        Base::RingQueue<STOverlappedEx*, SEND_QUEUE_SIZE> m_sendQueue;
+        std::mutex m_sendMutex;
+        bool m_sendPending = false;
+        // WSA Send 중첩을 방지하기 위함
+
         inline static Base::ObjectPool<PacketView> packetViewPool{ TARGET_PACKETVIEWPOOL_SIZE, MAX_PACKETVIEWPOOL_SIZE, MIN_PACKETVIEWPOOL_SIZE };
 
         uint16_t GetLen();
@@ -56,6 +63,7 @@ namespace Net {
             m_front = 0;
             m_rear = RING_BUFFER_SIZE - 1;
             m_last_op = RELEASE;
+            
         }
 
         uint16_t AllocateRecvBuffer(uint8_t*& buffer);
@@ -63,16 +71,24 @@ namespace Net {
         uint64_t GetSessionID() const { return m_sessionID; }
 
         void Clear(uint64_t session) {
-            std::lock_guard<std::recursive_mutex> lock(m_mutex);
-            m_sessionID = session;
-            m_buffer.Clear();
-            m_startPtr = m_buffer.GetStartPtr();
-            m_seq = 0;
-            m_front = 0;
-            m_rear = RING_BUFFER_SIZE - 1;
-            m_connected.store(true, std::memory_order_release);
-            m_workingCnt.store(0, std::memory_order_release);
-            m_gameSession.store(true, std::memory_order_release);
+            {
+                std::lock_guard<std::recursive_mutex> lock(m_mutex);
+                m_sessionID = session;
+                m_buffer.Clear();
+                m_startPtr = m_buffer.GetStartPtr();
+                m_seq = 0;
+                m_front = 0;
+                m_rear = RING_BUFFER_SIZE - 1;
+                m_connected.store(true, std::memory_order_release);
+                m_workingCnt.store(0, std::memory_order_release);
+                m_gameSession.store(true, std::memory_order_release);
+            }
+            {
+                std::lock_guard<std::mutex> lock(m_sendMutex);
+                while (!m_sendQueue.empty()) {
+                    m_sendQueue.pop();
+                }
+            }
         }
         void Disconnect() {
             m_connected.store(false, std::memory_order_release);
@@ -86,5 +102,8 @@ namespace Net {
 
         void ReleaseBuffer(PacketView* pv);
         bool EnqueueRecvQ(uint8_t* ptr, size_t len);
+
+        STOverlappedEx* EnqueueSend(STOverlappedEx* work);
+        STOverlappedEx* DequeueSend();
     };
 }

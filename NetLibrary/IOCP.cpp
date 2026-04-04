@@ -191,8 +191,12 @@ namespace Net {
                     CleanUpSocket(clientSocket);
                 }
                 break;
-            case IOOperation::SEND:
+            case IOOperation::SEND: {
+                auto next = sessionManager->DequeueSend(clientSocket);
+                if (next)
+                    DoWSASend(next);
                 break;
+            }
             case IOOperation::ACCEPT:
                 // completion key는 listen 소켓
                 if (!m_receiving.load(std::memory_order_relaxed))
@@ -323,11 +327,6 @@ namespace Net {
 
     void IOCP::SendData(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet)
     {
-        // Send 중 socket close와의 race condition은 발생할 수 있음.
-        // 그러나 WSASend 실패 / IO 취소는 정상적인 종료 경로
-        // 중복 close나 메모리 손상은 발생하지 않음.
-        // 이 경로에 mutex를 사용하면 성능에 영향이 커서 의도적으로 허용함.
-        
         SOCKET clientSocket = sessionManager->GetSocket(sessionID);
         if (clientSocket == INVALID_SOCKET) {
             //Core::errorLogger->LogWarn("iocp", "try send to INVALID SOCKET", "session" , sessionID); 
@@ -344,29 +343,14 @@ namespace Net {
         pOverlappedEx->wsaBuf[0].len =  packet->GetLength();
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
         pOverlappedEx->sharedPacket = packet;
-        // 상속관계 타입 변환은 static cast, 컴파일 타임에 변환되어 런타임에 비용 0
-        int result = WSASend(clientSocket, &pOverlappedEx->wsaBuf[0], 1,  &dwBytesSent, 0, &pOverlappedEx->wsaOverlapped, NULL);
-        if (result == SOCKET_ERROR)
-        {
-            int err = WSAGetLastError();
-            if (err != WSA_IO_PENDING)
-            {
-                overlappedExPool->Return(pOverlappedEx);
-                CleanUpSocket(clientSocket); 
-                Core::errorLogger->LogWarn("iocp", "WSASend failed: ","socket", clientSocket, "error message", std::to_string(err));
-            }
+        if (pOverlappedEx = sessionManager->EnqueueSend(clientSocket, pOverlappedEx)) {
+            DoWSASend(pOverlappedEx);
         }
-
     }
 
 
     void IOCP::SendDataChunks(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet, std::vector<std::shared_ptr<Core::IPacket>>& packetChunks)
     {
-        // Send 중 socket close와의 race condition은 발생할 수 있음.
-        // 그러나 WSASend 실패 / IO 취소는 정상적인 종료 경로
-        // 중복 close나 메모리 손상은 발생하지 않음.
-        // 이 경로에 mutex를 사용하면 성능에 영향이 커서 의도적으로 허용함.
-
         SOCKET clientSocket = sessionManager->GetSocket(sessionID);
         if (clientSocket == INVALID_SOCKET) {
             //Core::errorLogger->LogWarn("iocp", "try send to INVALID SOCKET", "session" , sessionID); 
@@ -386,18 +370,8 @@ namespace Net {
         {
             pOverlappedEx->wsaBuf.emplace_back(WSABUF{ chunk->GetLength(), reinterpret_cast<char*>(chunk->GetBuffer()) });
         }
-        // 상속관계 타입 변환은 static cast, 컴파일 타임에 변환되어 런타임에 비용 0
-        int result = WSASend(clientSocket, pOverlappedEx->wsaBuf.data(), static_cast<DWORD>(pOverlappedEx->wsaBuf.size()),
-            &dwBytesSent, 0, &pOverlappedEx->wsaOverlapped, NULL);
-        if (result == SOCKET_ERROR)
-        {
-            int err = WSAGetLastError();
-            if (err != WSA_IO_PENDING)
-            {
-                overlappedExPool->Return(pOverlappedEx);
-                CleanUpSocket(clientSocket);
-                Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", clientSocket, "error message", std::to_string(err));
-            }
+        if (pOverlappedEx = sessionManager->EnqueueSend(clientSocket, pOverlappedEx)) {
+            DoWSASend(pOverlappedEx);
         }
 
     }
@@ -419,18 +393,24 @@ namespace Net {
         pOverlappedEx->wsaBuf[0].len = packet->GetLength();
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
         pOverlappedEx->uniquePacket = std::move(packet);
-        int result = WSASend(clientSocket, &pOverlappedEx->wsaBuf[0], 1, &dwBytesSent, 0, &pOverlappedEx->wsaOverlapped, NULL);
+        if (pOverlappedEx = sessionManager->EnqueueSend(clientSocket, pOverlappedEx)) {
+            DoWSASend(pOverlappedEx);
+        }
+    }
+    void IOCP::DoWSASend(STOverlappedEx* pOverlappedEx) {
+        if (pOverlappedEx == nullptr)
+            return;
+        int result = WSASend(pOverlappedEx->clientSocket, pOverlappedEx->wsaBuf.data(), (DWORD)pOverlappedEx->wsaBuf.size(), 0, 0, &pOverlappedEx->wsaOverlapped, NULL);
         if (result == SOCKET_ERROR)
         {
             int err = WSAGetLastError();
             if (err != WSA_IO_PENDING)
             {
                 overlappedExPool->Return(pOverlappedEx);
-                CleanUpSocket(clientSocket);
-                Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", clientSocket, "error message", std::to_string(err));
+                CleanUpSocket(pOverlappedEx->clientSocket);
+                Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", pOverlappedEx->clientSocket, "error message", std::to_string(err));
             }
         }
-
     }
 
     void IOCP::AbortSocket(SOCKET clientSocket) {

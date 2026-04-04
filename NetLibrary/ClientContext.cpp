@@ -151,4 +151,27 @@ namespace Net {
             NetPacketFilter::Disconnect(m_sessionID);
         }
     }
+    STOverlappedEx* ClientContext::EnqueueSend(STOverlappedEx* work) {
+        std::lock_guard<std::mutex> lock(m_sendMutex);
+        if (m_sendQueue.full())
+            return nullptr;
+        if (m_sendPending == false) {
+            m_sendPending = true;
+            return work;
+        }
+        m_sendQueue.push(work);
+        return nullptr;
+    }
+
+    STOverlappedEx* ClientContext::DequeueSend() {
+        std::lock_guard<std::mutex> lock(m_sendMutex);
+        if (m_sendQueue.empty()) {
+            m_sendPending = false;
+            return nullptr;
+        }
+        auto res = m_sendQueue.pop();
+        if (m_sendQueue.empty())
+            m_sendPending = false;
+        return res;
+    }
 }

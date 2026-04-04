@@ -8,6 +8,7 @@
 
 #include "SessionState.h"
 #include "ClientContext.h"
+#include "STOverlappedEx.h"
 
 #include <BaseLib/SpinLockGuard.h>
 
@@ -130,6 +131,16 @@ namespace Net{
         bool Disconnect(SOCKET sock);
         uint32_t GetConnectionCnt() {
             return m_connectionCnt.load(std::memory_order_relaxed);
+        }
+
+        STOverlappedEx* EnqueueSend(SOCKET sock, STOverlappedEx* overlappedEx) {
+            auto ctx = GetContext(sock);
+            return ctx->EnqueueSend(overlappedEx);
+        }
+
+        STOverlappedEx* DequeueSend(SOCKET sock) {
+            auto ctx = GetContext(sock);
+            return ctx->DequeueSend();
         }
     };
 }

@@ -26,6 +26,7 @@ namespace Core {
 namespace Net {
     class NetHandler;
     class OverlappedExPool;
+    struct STOverlappedEx;
     class SessionManager;
     class NetPerfCollector;
     class IOCP : public Core::IIOCP, public IAbortSocket {
@@ -106,5 +107,6 @@ namespace Net {
         void SendDataUnique(uint64_t sessionID, std::unique_ptr<Core::IPacket, Core::PacketDeleter> packet) override;
 
         void AbortSocket(SOCKET sock) override;
+        void DoWSASend(STOverlappedEx* o);
     };
 }

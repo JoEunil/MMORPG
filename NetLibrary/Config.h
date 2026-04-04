@@ -32,6 +32,8 @@ namespace Net {
 
 	inline constexpr uint16_t FLUSH_CONTEXTPOOL = 500;
 
+	inline constexpr uint32_t SEND_QUEUE_SIZE = 16;
+
 	// 가장 가까운 2의 거듭제곱 계산
 	// 원리:
 	// 1. 2의 거듭제곱 - 1은 00011111 형태가 됨
