@@ -137,10 +137,6 @@ __ExternalLib__
 표시되지 않은 스레드들은 작업 빈도와 CPU 소모가 낮기 때문에  
 CPU-bound 또는 IO-bound로 분류하기 어렵다.  
 
-또한 WSA Send / WSA Recv는 비동기 IO 모델을 사용하기 때문에,  
-스레드가 IO 완료를 기다리지 않는다.  
-따라서 해당 작업을 IO-bound로 분류할 수 없다.  
-
 ## 부하 테스트
 [모니터링](Monitoring.md)   
 모니터링 시스템은 Grafana + Loki + Promtail 조합으로 구축하여 서버 성능 지표를 실시간으로 시각화하였다.   
