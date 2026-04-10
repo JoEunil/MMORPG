@@ -192,9 +192,14 @@ namespace Net {
                 }
                 break;
             case IOOperation::SEND: {
-                auto next = sessionManager->DequeueSend(clientSocket);
-                if (next)
-                    DoWSASend(next);
+                pOverlappedEx->sentBytes += bytesTransferred;
+                if (pOverlappedEx->sentBytes < pOverlappedEx->totalBytes) {
+                    ResumeSend(pOverlappedEx);
+                } else {
+                    auto next = sessionManager->DequeueSend(clientSocket);
+                    if (next)
+                        DoWSASend(next);
+                }
                 break;
             }
             case IOOperation::ACCEPT:
@@ -398,8 +403,47 @@ namespace Net {
         }
     }
     void IOCP::DoWSASend(STOverlappedEx* pOverlappedEx) {
+        // 최초의 Send에서만 호출
         if (pOverlappedEx == nullptr)
             return;
+        ZeroMemory(&pOverlappedEx->wsaOverlapped, sizeof(WSAOVERLAPPED));
+        pOverlappedEx->totalBytes = 0;
+        pOverlappedEx->sentBytes = 0;
+        pOverlappedEx->origianlBufs = pOverlappedEx->wsaBuf;
+        for (auto& buf : pOverlappedEx->wsaBuf)
+            pOverlappedEx->totalBytes += buf.len;
+        int result = WSASend(pOverlappedEx->clientSocket, pOverlappedEx->wsaBuf.data(), (DWORD)pOverlappedEx->wsaBuf.size(), 0, 0, &pOverlappedEx->wsaOverlapped, NULL);
+        if (result == SOCKET_ERROR)
+        {
+            int err = WSAGetLastError();
+            if (err != WSA_IO_PENDING)
+            {
+                overlappedExPool->Return(pOverlappedEx);
+                CleanUpSocket(pOverlappedEx->clientSocket);
+                Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", pOverlappedEx->clientSocket, "error message", std::to_string(err));
+            }
+        }
+    }
+    void IOCP::ResumeSend(STOverlappedEx* pOverlappedEx) {
+        ZeroMemory(&pOverlappedEx->wsaOverlapped, sizeof(WSAOVERLAPPED));
+        int remain = pOverlappedEx->sentBytes;
+        pOverlappedEx->wsaBuf.clear();
+        for (auto& buf : pOverlappedEx->origianlBufs)
+        {
+            if (remain >= buf.len)
+            {
+                remain -= buf.len;
+                continue;
+            }
+
+            WSABUF newBuf;
+            newBuf.buf = buf.buf + remain;
+            newBuf.len = buf.len - remain;
+
+            pOverlappedEx->wsaBuf.push_back(newBuf);
+
+            remain = 0;
+        }
         int result = WSASend(pOverlappedEx->clientSocket, pOverlappedEx->wsaBuf.data(), (DWORD)pOverlappedEx->wsaBuf.size(), 0, 0, &pOverlappedEx->wsaOverlapped, NULL);
         if (result == SOCKET_ERROR)
         {

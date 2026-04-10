@@ -108,5 +108,6 @@ namespace Net {
 
         void AbortSocket(SOCKET sock) override;
         void DoWSASend(STOverlappedEx* o);
+        void ResumeSend(STOverlappedEx* pOverlappedEx);
     };
 }
