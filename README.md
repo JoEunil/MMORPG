@@ -1,5 +1,7 @@
 ﻿# MMORPG GAME PROJECT
 
+## 포트폴리오 PPT
+[C++ MMORPG Game Server 포트폴리오](https://docs.google.com/presentation/d/18-KmCPBSbsv9-NlrXx0bZFHqadkZOms4cijFuEKi2Q4/edit?usp=sharing)
 ## 목차
 1. [프로젝트 개요](#프로젝트-개요)
 2. [기술 스택](#기술-스택)
