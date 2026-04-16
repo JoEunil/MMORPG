@@ -148,6 +148,7 @@
     <ClInclude Include="CacheTimer.h" />
     <ClInclude Include="DBConnection.h" />
     <ClInclude Include="DBConnectionPool.h" />
+    <ClInclude Include="DBWorker.h" />
     <ClInclude Include="FlushDispatcher.h" />
     <ClInclude Include="Handler.h" />
     <ClInclude Include="Initializer.h" />

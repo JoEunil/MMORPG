@@ -12,18 +12,18 @@ namespace Core {
 }
 
 namespace Cache {
-    class DBConnectionPool;
     class MessagePool;
+    class DBWorker;
     class Handler {
         Core::IMessageQueue* messageQ;  // response
         MessagePool* messagePool;
-        DBConnectionPool* connectionPool;
         CacheStorage5* cache_5;
         Core::ILogger* logger;
-        void Initialize(Core::IMessageQueue* mq,  MessagePool* mp, DBConnectionPool* conn, CacheStorage5* c) {
+        DBWorker* dbWorker;
+        void Initialize(Core::IMessageQueue* mq,  MessagePool* mp, DBWorker* d, CacheStorage5* c) {
             messageQ = mq;
             messagePool = mp;
-            connectionPool = conn;
+            dbWorker = d;
             cache_5 = c;
         }
         bool IsReady() {
@@ -35,8 +35,8 @@ namespace Cache {
                 Core::sysLogger->LogError("cache handler", "messagePool not initialized");
                 return false;
             }
-            if (connectionPool == nullptr) {
-                Core::sysLogger->LogError("cache handler", "connectionPool not initialized");
+            if (dbWorker == nullptr) {
+                Core::sysLogger->LogError("cache handler", "dbWorker not initialized");
                 return false;
             }
             if (cache_5 == nullptr) {

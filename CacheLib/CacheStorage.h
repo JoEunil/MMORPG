@@ -14,7 +14,7 @@
 
 #include <mysqlconn/include/mysql/jdbc.h>
 
-#include "DBConnectionPool.h"
+#include "DBWorker.h"
 #include "CacheTimer.h"
 #include "Config.h"
 
@@ -46,21 +46,21 @@ namespace Cache {
 
     template<typename Key, typename Result, typename KeyHash>
     class CacheStorage {
-        void Initialize(DBConnectionPool* c);
+        void Initialize(DBWorker* d);
         bool IsReady() {
             if (m_flushFn == nullptr) {
                 Core::sysLogger->LogError("cache storage", "m_flushFn not initialized");
                 return false;
             }
-            if (connectionPool == nullptr) {
-                Core::sysLogger->LogError("cache storage", "connectionPool not initialized");
+            if (dbWorker == nullptr) {
+                Core::sysLogger->LogError("cache storage", "dbWorker not initialized");
                 return false;
             }
             return true;
         }
         friend class Initializer;
     protected:
-        DBConnectionPool* connectionPool = nullptr;
+        DBWorker* dbWorker;
         std::deque<CacheShard<Key, Result, KeyHash>> m_shards;
         std::function< void(const Key&, Result&) > m_flushFn;
 

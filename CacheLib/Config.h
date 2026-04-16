@@ -34,6 +34,7 @@ namespace Cache {
     inline constexpr uint8_t MQ_THREADPOOL_SIZE = 3;
 
     inline constexpr size_t MQ_SIZE = 8192;
+    inline constexpr uint16_t DB_WORKER_THREADPOOL_SIZE = 2;
     
 
     template <typename T>

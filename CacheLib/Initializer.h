@@ -8,6 +8,8 @@
 #include "InmemoryQueue.h"
 #include "Handler.h"
 #include "CacheTimer.h"
+#include "DBWorker.h"
+
 #include <CoreLib/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
 
@@ -20,14 +22,15 @@ namespace Cache {
         MessagePool msgPool;
         InMemoryQueue recvMQ;
         DBConnectionPool connectionPool;
-        
+        DBWorker dbWorker;
     public:
         ~Initializer() {
             CleanUp();
         }
         void Initialize() {
             connectionPool.Initialize();
-            cache_5.Initialize(&connectionPool);
+            dbWorker.Initialize(&connectionPool);
+            cache_5.Initialize(&dbWorker);
             msgPool.Initialize();
             CacheTimer::StartThread();
             
@@ -37,7 +40,7 @@ namespace Cache {
         
         void InjectDependencies(Core::IMessageQueue* sendMQ)
         {
-            handler.Initialize(sendMQ, &msgPool, &connectionPool, &cache_5);
+            handler.Initialize(sendMQ, &msgPool, &dbWorker, &cache_5);
             recvMQ.Initialize(&handler, &msgPool);
             recvMQ.Start();
         }
@@ -59,6 +62,9 @@ namespace Cache {
                 return false;
             }
             if (!handler.IsReady()) {
+                return false;
+            }
+            if (!cache_5.IsReady()) {
                 return false;
             }
             return true;

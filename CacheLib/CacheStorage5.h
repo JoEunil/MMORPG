@@ -1,12 +1,14 @@
 ﻿#pragma once
-#include "CacheStorage.h"
-#include <CoreLib/MessageTypes.h>
-#include <CoreLib/Message.h>
 #include <tuple>
 #include <memory>
 
+#include <CoreLib/MessageTypes.h>
+#include <CoreLib/Message.h>
 #include <CoreLib/LoggerGlobal.h>
 #include <mysqlconn/include/mysql/jdbc.h>
+
+#include "CacheStorage.h"
+
 
 namespace Cache {
     struct FlushCommand;
@@ -42,7 +44,7 @@ namespace Cache {
         using Key = Key5;
         using KeyHash = KeyHash5;
         using Result = Result5;
-        CACHE_STATUS LoadFromDB(uint16_t shardIndex, Key& key, Result& result);
+        CACHE_STATUS LoadFromDB(uint16_t shardIndex, Key& key);
     public:
         bool Getter(Core::Message* msg);
         std::tuple<CACHE_STATUS, uint32_t, uint16_t, uint16_t> PartialUpdate(Core::Message* msg);

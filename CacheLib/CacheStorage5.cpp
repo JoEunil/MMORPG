@@ -2,38 +2,39 @@
 
 #include <mysqlconn/include/mysql/jdbc.h>
 #include <CoreLib/Message.h>
-
+#include "DBWorker.h"
 #include "CacheFlush.h"
 
 namespace Cache {
-    CACHE_STATUS CacheStorage5::LoadFromDB(uint16_t shardIndex, Key& key, Result& result) {
+    CACHE_STATUS CacheStorage5::LoadFromDB(uint16_t shardIndex, Key& key) {
         // status 변경 -> 원자성 보장
         auto status = TrySetReading(shardIndex, key);
         if (status != CACHE_STATUS::EMPTY) // READING
             return status;
 
-        auto conn = connectionPool->Acquire();
-        auto res = conn->ExecuteSelect(5, key.characterID);
-        connectionPool->Return(conn);
+        dbWorker->Enqueue([=](DBConnection* conn) {
+            Result result;
+            auto res = conn->ExecuteSelect(5, key.characterID);
+            if (!res || !res->next()) {
+                Core::gameLogger->LogInfo("cache storage 5", "inventory not found in DB", "char_id", key.characterID);
+                SetEmpty(shardIndex, key);  // READING → EMPTY
+                return CACHE_STATUS::EMPTY;
+            }
 
-        if (!res || !res->next()) {
-            Core::gameLogger->LogInfo("cache storage 5", "inventory not found in DB", "char_id", key.characterID);
-            SetEmpty(shardIndex, key);  // READING → EMPTY
-            return CACHE_STATUS::EMPTY;
-        }
-
-        std::istream* blobStream = res->getBlob("inventory");
-        if (blobStream) {
-            blobStream->read(
-                reinterpret_cast<char*>(&result.data),
-                sizeof(InventoryStruct)
-            );
-        } else {
-            result.data = EMPTY_INVENTORY;
-        }
-        result.rollbackCnt = 0;
-        Insert(shardIndex, key, result);  // READING → AVAILABLE
-        return CACHE_STATUS::AVAILABLE;
+            std::istream* blobStream = res->getBlob("inventory");
+            if (blobStream) {
+                blobStream->read(
+                    reinterpret_cast<char*>(&result.data),
+                    sizeof(InventoryStruct)
+                );
+            }
+            else {
+                result.data = EMPTY_INVENTORY;
+            }
+            result.rollbackCnt = 0;
+            Insert(shardIndex, key, result);  // READING → AVAILABLE
+        });
+        return CACHE_STATUS::DB_READING;
     }
 
     bool CacheStorage5::Getter(Core::Message* msg) {
@@ -52,7 +53,7 @@ namespace Cache {
         case CACHE_STATUS::EVICTING:
             return false;
         case CACHE_STATUS::EMPTY: {
-            if (LoadFromDB(shardIndex, key, result) != CACHE_STATUS::AVAILABLE)
+            if (LoadFromDB(shardIndex, key) != CACHE_STATUS::AVAILABLE)
                 return false;
             break;
         }
@@ -99,7 +100,7 @@ namespace Cache {
         case CACHE_STATUS::EVICTING:
             return std::make_tuple(CACHE_STATUS::EVICTING, 0, 0, 0);
         case CACHE_STATUS::EMPTY: {
-            if (LoadFromDB(shardIndex, key, result) != CACHE_STATUS::AVAILABLE)
+            if (LoadFromDB(shardIndex, key) != CACHE_STATUS::AVAILABLE)
                 return std::make_tuple(CACHE_STATUS::EMPTY, 0, 0, 0);
             break;
         }
