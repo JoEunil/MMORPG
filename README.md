@@ -83,7 +83,8 @@ __외부 라이브러리__
 - __수신 및 전파__ : IOCP 비동기 수신 → ClientContext의 RingBuffer를 통한 패킷 조립 → PacketView를 활용한 제로 카피 지향 로직 전파.
 	- [IOCP](IOCP&epoll.md) : IOCP와 epoll 비교
 	- [ClientContext](ClientContext.md): TCP 수신 버퍼 처리구조, Ring buffer와 Context 누적버퍼 처리 방법
-
+- __송신 처리__ 
+	- [IOCP Send 파이프라인](IOCPSendPipeline.md): IOCP 송신 큐 처리구조, chunck 패킷 처리 구조
 
 ### 2. 멀티스레드 동기화 및 성능 최적화
 - [memory_order](memory_order.md) : 멀티스레드 환경의 메모리 재배치 문제를 방지하고 성능을 최적화하기 위해, Acquire-Release 시맨틱의 동작 원리를 분석하고 이를 SpinLock 설계에 적용한 과정을 정리.
@@ -307,6 +308,7 @@ Unity Client
 - [캐시 ACID 설계](CacheLib_ACID.md)
 - [캐시 단위 테스트](CacheLib_Test.md)
 - [DB 설계](DB.md)
+- [IOCP Send 파이프라인](IOCPSendPipeline.md)
 
 ### 리팩토링
 - [채팅 기능 리팩토링](ChatRefactor.md)
