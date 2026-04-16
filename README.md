@@ -171,6 +171,11 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 - 필요성: 스킬 판정 시 모든 대상을 조회하는 방식이 유저 수 증가에 따른 성능 하락이 될 수 있음을 인지
 - 내용: 격자형 Cell 구조 도입 및 다중 Cell의 패킷 조각(Chunk)을 효율적으로 병합 전송하는 Overlapped 구조체 개선 병행.
 
+[DB 전용 worker 스레드 분리](DBWorkerRefactor.md)
+- 필요성: DB I/O 블로킹으로 인한 캐시 처리 지연 제거  
+- 내용: DB 작업을 전용 워커 스레드로 분리, LoadFromDB 비동기 전환 및 클라이언트 재시도 방식 적용
+
+
 ## 트러블 슈팅
 
 - [LockFreeQueue 디버그](LockFreeQueueDebug.md)  
@@ -308,6 +313,7 @@ Unity Client
 - [ClientContext 리팩토링: God Object](ClientContextRefactor.md)
 - [Ping 리팩토링](PingRefactor.md)
 - [AOI 적용](AOI.md)
+- [DB 전용 worker 스레드 분리](DBWorkerRefactor.md)
 
 ### 트러블 슈팅
 - [SessionManager 데드락](SessionManagerDeadLock.md)
