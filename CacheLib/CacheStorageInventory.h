@@ -12,13 +12,13 @@
 
 namespace Cache {
     struct FlushCommand;
-    struct InventoryStruct {
+    struct InventoryData {
         uint16_t count;
         Core::MsgInventoryItem items[MAX_INVENTORY];
     };
 
     constexpr Core::MsgInventoryItem EMPTY_SLOT = { 0, 0, 0 };
-    constexpr InventoryStruct EMPTY_INVENTORY = {
+    constexpr InventoryData EMPTY_INVENTORY = {
         0,
         {} // 모든 원소 0으로 초기화
     };
@@ -38,22 +38,24 @@ namespace Cache {
         }
     };
 
-    using Result5 = CacheItem<InventoryStruct>;
+    using Result5 = CacheItem<InventoryData>;
 
-    class CacheStorage5 : public CacheStorage<Key5, Result5, KeyHash5> {
+    class CacheStorageInventory : public CacheStorage<Key5, Result5, KeyHash5> {
         using Key = Key5;
         using KeyHash = KeyHash5;
         using Result = Result5;
         CACHE_STATUS LoadFromDB(uint16_t shardIndex, Key& key);
     public:
-        bool Getter(Core::Message* msg);
-        std::tuple<CACHE_STATUS, uint32_t, uint16_t, uint16_t> PartialUpdate(Core::Message* msg);
+        Result5 Getter(uint64_t characterID);
+
+        uint16_t GetItemCount(uint64_t characterID, uint32_t itemID);
+        std::tuple<CACHE_STATUS, uint32_t, uint16_t, uint16_t> PartialUpdate(uint64_t characterID, uint32_t itemID, uint8_t op, int16_t change);
         static std::unique_ptr<FlushCommand> GetFlushCommand(Key key, Result result);
         std::string ResultToString(const Key5& key, const Result5& result) override {
             std::ostringstream oss;
             oss << "char_id: " << key.characterID << ", inventory_hex: ";
             const uint8_t* raw = reinterpret_cast<const uint8_t*>(&result.data);
-            for (size_t i = 0; i < sizeof(InventoryStruct); i++)
+            for (size_t i = 0; i < sizeof(InventoryData); i++)
                 oss << std::hex << std::setw(2) << std::setfill('0') << (int)raw[i];
             return oss.str();
         }

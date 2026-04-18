@@ -27,12 +27,42 @@ namespace Cache {
         case Core::MSG_INVENTORY_UPDATE:
             InventoryUpdate(msg, header->sessionID, Core::parseMsgBody<Core::MsgInventoryUpdateBody>(msg->GetBuffer()));
             break;
+        case Core::MSG_CURRENCY_REQ:
+            CurrencyRequest(msg, header->sessionID, Core::parseMsgBody<Core::MsgCurrencyReqBody>(msg->GetBuffer()));
+            break;
+        case Core::MSG_CURRENCY_DEPOSIT:
+            CurrencyDeposit(msg, header->sessionID, Core::parseMsgBody<Core::MsgCurrencyDepositBody>(msg->GetBuffer()));
+            break;
+        case Core::MSG_DIAMOND_REQ:
+            DiamondRequest(msg, header->sessionID, Core::parseMsgBody<Core::MsgDiamondReqBody>(msg->GetBuffer()));
+            break;
+        case Core::MSG_DIAMOND_DEPOSIT:
+            DiamondDeposit(msg, header->sessionID, Core::parseMsgBody<Core::MsgDiamondDepositBody>(msg->GetBuffer()));
+            break;
+        case Core::MSG_BAZAAR_MY_LIST:
+            BazaarMyList(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarMyListBody>(msg->GetBuffer()));
+            break;
+        case Core::MSG_BAZAAR_SEARCH:
+            BazaarSearch(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarSearchBody>(msg->GetBuffer()));
+            break;
+        case Core::MSG_BAZAAR_REGISTER:
+            BazaarRegister(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarRegisterBody>(msg->GetBuffer()));
+            break;
+        case Core::MSG_BAZAAR_CANCEL:
+            BazaarCancel(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCancelBody>(msg->GetBuffer()));
+            break;
+        case Core::MSG_BAZAAR_BUY:
+            BazaarBuy(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarBuyBody>(msg->GetBuffer()));
+            break;
+        case Core::MSG_BAZAAR_CLAIM:
+            BazaarClaim(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarClaimBody>(msg->GetBuffer()));
+            break;
         }
         if (msg != nullptr)
             messagePool->Return(msg);
     }
-    void Handler::CharacterListRequest(Core::Message* msg, uint64_t sessionID, Core::MsgCharacterListReqBody* body) {
-        dbWorker->Enqueue([=](DBConnection* conn) {
+    void Handler::CharacterListRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterListReqBody* body) {
+        dbWorkerGame->Enqueue([=](DBConnectionGame* conn) {
             auto res = conn->ExecuteSelect(1, body->userID, body->channelID);
             Core::MsgStruct<Core::MsgCharacterListResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgCharacterListResBody>*>(msg->GetBuffer());
 
@@ -45,6 +75,7 @@ namespace Cache {
                 st->body.count = 0;
                 msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterListResBody>));
                 messageQ->EnqueueMessage(msg);
+                messagePool->Return(msg);
                 return;
             }
 
@@ -66,11 +97,13 @@ namespace Cache {
 
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterListResBody>));
             messageQ->EnqueueMessage(msg);
+            messagePool->Return(msg);
             });
+        msg = nullptr; // 현재 컨텍스트에서 반납하지 않고, 람다 콜백 내부에서 반납하기 위함. 
     }
 
-    void Handler::CharacterStateRequest(Core::Message* msg, uint64_t sessionID, Core::MsgCharacterStateReqBody* body) {
-        dbWorker->Enqueue([=](DBConnection* conn) {
+    void Handler::CharacterStateRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterStateReqBody* body) {
+        dbWorkerGame->Enqueue([=](DBConnectionGame* conn) {
             auto res = conn->ExecuteSelect(3, body->characterID);
 
             Core::MsgStruct<Core::MsgCharacterStateResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgCharacterStateResBody>*>(msg->GetBuffer());
@@ -83,6 +116,7 @@ namespace Cache {
                 st->body.resStatus = 0;
                 msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterStateResBody>));
                 messageQ->EnqueueMessage(msg);
+                messagePool->Return(msg);
                 return;
             }
             st->body.charID = res->getUInt64("char_id");
@@ -107,11 +141,13 @@ namespace Cache {
 
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterStateResBody>));
             messageQ->EnqueueMessage(msg);
+            messagePool->Return(msg);
         });
+        msg = nullptr;
     }
 
-    void Handler::CharacterStateUpdate(Core::Message* msg, uint64_t sessionID, Core::MsgCharacterStateUpdateBody* body) {
-        dbWorker->Enqueue([=](DBConnection* conn) {
+    void Handler::CharacterStateUpdate(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterStateUpdateBody* body) {
+        dbWorkerGame->Enqueue([=](DBConnectionGame* conn) {
             auto res = conn->ExecuteUpdate(4, body->attack, body->level, body->exp, body->hp, body->mp, body->maxHp, body->maxMp, body->dir, body->x, body->y, body->lastZone, body->charID);
 
             if (!res) {
@@ -119,25 +155,5 @@ namespace Cache {
                     "exp", body->exp, "hp", body->hp, "mp", body->mp, "max_hp", body->maxHp, "max_mp", body->maxMp, "dir", body->dir, "x", body->x, "y", body->y, "last_zone", body->lastZone);
             }
         });
-    }
-
-    void Handler::InventoryRequest(Core::Message* msg, uint64_t sessionID, Core::MsgInventoryReqBody* body) {    
-        cache_5->Getter(msg);
-        messageQ->EnqueueMessage(msg);
-    }
-
-    void Handler::InventoryUpdate(Core::Message* msg, uint64_t sessionID, Core::MsgInventoryUpdateBody* body) {
-        auto charID = body->characterID;
-        auto [status,itemID,  slot, quantity] = cache_5->PartialUpdate(msg);
-
-        auto st = reinterpret_cast<Core::MsgStruct<Core::MsgInventoryUpdateResBody>*>(msg->GetBuffer());
-        st->header.messageType = Core::MSG_INVENTORY_RES;
-        st->body.characterID = charID;
-        st->body.resStatus = (status == CACHE_STATUS::AVAILABLE ? 1 : 0);
-        st->body.itemID = itemID;
-        st->body.slot = slot;
-        st->body.itemQuantity = quantity;
-        
-        messageQ->EnqueueMessage(msg);
     }
 }

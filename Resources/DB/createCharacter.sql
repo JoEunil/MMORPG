@@ -35,10 +35,13 @@ BEGIN
             NULL
         );
 
+	SET @new_id = LAST_INSERT_ID(); 
         INSERT INTO characters_inventory (char_id, inventory)
-        VALUES (LAST_INSERT_ID(), UNHEX(REPEAT('00', 2404)));
+        VALUES (@new_id, UNHEX(REPEAT('00', 2404)));
 
-        SET i = i + 1;
+	INSERT INTO characters_currency (char_id, gold, diamond)
+	VALUES (@new_id, 0, 0);
+
     END WHILE;
 END $$
 DELIMITER ;

@@ -143,11 +143,13 @@
   <ItemGroup>
     <ClInclude Include="CacheFlush.h" />
     <ClInclude Include="CacheStorage.h" />
-    <ClInclude Include="CacheStorage5.h" />
+    <ClInclude Include="CacheStorageInventory.h" />
+    <ClInclude Include="CacheStorageCurrency.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="CacheTimer.h" />
     <ClInclude Include="DBConnection.h" />
     <ClInclude Include="DBConnectionPool.h" />
+    <ClInclude Include="DBConnectionGame.h" />
     <ClInclude Include="DBWorker.h" />
     <ClInclude Include="FlushDispatcher.h" />
     <ClInclude Include="Handler.h" />
@@ -155,8 +157,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CacheFlush.cpp" />
-    <ClCompile Include="CacheStorage5.cpp" />
+    <ClCompile Include="CacheStorageCurrency.cpp" />
+    <ClCompile Include="CacheStorageInventory.cpp" />
+    <ClInclude Include="DBConnectionBilling.h" />
     <ClCompile Include="Handler.cpp" />
+    <ClCompile Include="Handler_Bazaar.cpp" />
+    <ClCompile Include="Handler_Currency.cpp" />
+    <ClCompile Include="Handler_Diamond.cpp" />
+    <ClCompile Include="Handler_Inventory.cpp" />
     <ClCompile Include="InMemoryQueue.cpp" />
     <ClCompile Include="InMemoryQueue.h" />
     <ClCompile Include="MessagePool.cpp" />

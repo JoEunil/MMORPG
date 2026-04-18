@@ -9,7 +9,10 @@
 #include <condition_variable>
 
 #include <CoreLib/LoggerGlobal.h>
-#include "CacheStorage5.h"
+#include "CacheStorageInventory.h"
+#include "CacheStorageCurrency.h"
+#include "DBConnectionPool.h"
+#include "DBConnectionGame.h"
 #include "Config.h"
 
 namespace Cache {
@@ -17,8 +20,6 @@ namespace Cache {
         uint16_t stmtID;
         std::vector<std::any> params;
     };
-
-    class DBConnectionPool;
     class DBConnectinon;
     class CacheFlush {
         std::vector<std::thread> m_threads;
@@ -27,9 +28,10 @@ namespace Cache {
         std::deque<std::unique_ptr<FlushCommand>> m_flushQ;
 
         std::atomic<bool> m_running = false;
-        DBConnectionPool* connectionPool;
-        CacheStorage5* cache_5;
-        void Initialize(DBConnectionPool* p, CacheStorage5* c5);
+        DBConnectionPool<DBConnectionGame>* connectionPool;
+        CacheStorageInventory* cache_inventory;
+        CacheStorageCurrency* cache_currency;
+        void Initialize(DBConnectionPool<DBConnectionGame>* p, CacheStorageInventory* c5, CacheStorageCurrency* c7);
         bool IsReady() {
             if (!m_running.load(std::memory_order_relaxed)) {
                 Core::sysLogger->LogError("cache flush", "not running");
@@ -41,6 +43,14 @@ namespace Cache {
             }
             if (connectionPool == nullptr) {
                 Core::sysLogger->LogError("cache flush", "connectionPool not initialized");
+                return false;
+            }
+            if (cache_inventory == nullptr) {
+                Core::sysLogger->LogError("cache flush", "cache_inventory not initialized");
+                return false;
+            }
+            if (cache_currency == nullptr) {
+                Core::sysLogger->LogError("cache flush", "cache_currency not initialized");
                 return false;
             }
             return true;

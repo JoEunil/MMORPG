@@ -10,21 +10,24 @@
 #include <CoreLib/LoggerGlobal.h>
 
 namespace Cache {
+	template<typename T>
     class DBWorker {
-        std::queue<std::function<void(DBConnection*)>> m_queue;
+        std::queue<std::function<void(T*)>> m_queue;
         std::vector<std::thread> m_threads;
 
         std::atomic<bool> m_running;
         std::mutex m_mutex;
+        size_t m_threadPoolSize;
         std::condition_variable m_cv;
-        DBConnectionPool* connectionPool;
+        DBConnectionPool<T>* connectionPool;
 
-        void Initialize(DBConnectionPool* c) {
+        void Initialize(DBConnectionPool<T>* c, size_t threadPoolSize) {
             std::lock_guard<std::mutex> lock(m_mutex);
             connectionPool = c;
-            m_threads.resize(DB_WORKER_THREADPOOL_SIZE);
+			m_threadPoolSize = threadPoolSize;
+            m_threads.resize(threadPoolSize);
             m_running.store(true, std::memory_order_relaxed);
-            for (int i = 0; i < DB_WORKER_THREADPOOL_SIZE; i++)
+            for (int i = 0; i < threadPoolSize; i++)
             {
                 m_threads[i] = std::thread(&DBWorker::ThreadFunc, this);
             }
@@ -39,7 +42,7 @@ namespace Cache {
                 Core::sysLogger->LogError("DB worker thread", "connectionPool not initilaized");
                 return false;
             }
-            if (m_threads.size() != DB_WORKER_THREADPOOL_SIZE) {
+            if (m_threads.size() != m_threadPoolSize) {
                 Core::sysLogger->LogError("DB worker thread", "invalid thread size");
                 return false;
             }
@@ -54,7 +57,7 @@ namespace Cache {
             
             while (m_running.load(std::memory_order_relaxed))
             {
-                std::function<void(DBConnection*)> work;
+                std::function<void(T*)> work;
                 {
                     std::unique_lock<std::mutex> lock(m_mutex);
                     m_cv.wait(lock, [this] {
@@ -65,7 +68,7 @@ namespace Cache {
                     work = std::move(m_queue.front());
                     m_queue.pop();
                 }
-                DBConnection* conn = connectionPool->Acquire();
+                T* conn = connectionPool->Acquire();
                 work(conn);
                 connectionPool->Return(conn);
             }
@@ -75,7 +78,7 @@ namespace Cache {
         void Stop() {
             m_running.store(false, std::memory_order_relaxed);
             m_cv.notify_all();
-            for (int i = 0; i < DB_WORKER_THREADPOOL_SIZE; i++)
+            for (int i = 0; i < m_threadPoolSize; i++)
             {
                 if (m_threads[i].joinable())
                     m_threads[i].join();
@@ -87,7 +90,7 @@ namespace Cache {
             Stop();
         }
 
-        void Enqueue(std::function<void(DBConnection*)> work) {
+        void Enqueue(std::function<void(T*)> work) {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_queue.push({ std::move(work) });
             m_cv.notify_one();

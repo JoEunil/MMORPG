@@ -13,7 +13,7 @@
 #include <iostream>
 
 #include <mysqlconn/include/mysql/jdbc.h>
-
+#include "DBConnectionGame.h"
 #include "DBWorker.h"
 #include "CacheTimer.h"
 #include "Config.h"
@@ -46,7 +46,7 @@ namespace Cache {
 
     template<typename Key, typename Result, typename KeyHash>
     class CacheStorage {
-        void Initialize(DBWorker* d);
+        void Initialize(DBWorker<DBConnectionGame>* d);
         bool IsReady() {
             if (m_flushFn == nullptr) {
                 Core::sysLogger->LogError("cache storage", "m_flushFn not initialized");
@@ -60,7 +60,7 @@ namespace Cache {
         }
         friend class Initializer;
     protected:
-        DBWorker* dbWorker;
+        DBWorker<DBConnectionGame>* dbWorker;
         std::deque<CacheShard<Key, Result, KeyHash>> m_shards;
         std::function< void(const Key&, Result&) > m_flushFn;
 
@@ -78,7 +78,9 @@ namespace Cache {
         void Rollback(uint16_t shardIndex, const Key& key);
         void WriteDone(uint16_t shardIndex, const Key& key);
 
-        virtual std::string ResultToString(const Key& key, const Result& result) = 0;
+        virtual std::string ResultToString(const Key& key, const Result& result) {
+            return "null";
+        }
     };
 
 }

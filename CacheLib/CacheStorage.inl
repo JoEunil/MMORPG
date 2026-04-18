@@ -5,7 +5,7 @@ namespace Cache {
 
 
     template<typename Key, typename Result, typename KeyHash>
-    void CacheStorage<Key, Result, KeyHash>::Initialize(DBWorker* c) {
+    void CacheStorage<Key, Result, KeyHash>::Initialize(DBWorker<DBConnectionGame>* c) {
         m_shards.resize(SHARD_SIZE);
         dbWorker = c;
     }

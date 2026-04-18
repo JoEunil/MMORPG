@@ -39,13 +39,22 @@
     <ClInclude Include="FlushDispatcher.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="CacheStorage5.h">
+    <ClInclude Include="CacheStorageInventory.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="CacheTimer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="DBWorker.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="CacheStorageCurrency.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="DBConnectionGame.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="DBConnectionBilling.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
@@ -68,7 +77,22 @@
     <ClCompile Include="CacheFlush.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="CacheStorage5.cpp">
+    <ClCompile Include="CacheStorageInventory.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Handler_Bazaar.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="CacheStorageCurrency.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Handler_Inventory.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Handler_Currency.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Handler_Diamond.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

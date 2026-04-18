@@ -1,7 +1,7 @@
 ﻿#include "CacheFlush.h"
 
 #include "DBConnectionPool.h"
-#include "DBConnection.h"
+#include "DBConnectionGame.h"
 
 #include "Config.h"
 #include <format>
@@ -16,8 +16,8 @@ namespace Cache {
                 Key5 key;
                 key.characterID = std::any_cast<uint64_t&>(command->params[1]);
                 auto shardIndex = key.characterID & SHARD_SIZE_MASK;
-                cache_5->Rollback(shardIndex, key);
-                Core::errorLogger->LogError("cache flush", "connection acquire failed", "char_id", key.characterID);
+                cache_inventory->Rollback(shardIndex, key);
+                Core::errorLogger->LogError("cache flush", "connection acquire failed case 6", "char_id", key.characterID);
                 return;
             }
             auto& param0 = std::any_cast<std::vector<uint8_t>&>(command->params[0]);
@@ -27,13 +27,13 @@ namespace Cache {
                 res = conn->ExecuteUpdate(command->stmtID, param0, param1);
             }
             catch (sql::SQLException& e) {
-                Core::errorLogger->LogError("cache flush", "DB write exception",
+                Core::errorLogger->LogError("cache flush", "DB write exception case 6",
                     "code", e.getErrorCode(),
                     "msg", e.what());
                 Key5 key;
                 key.characterID = std::any_cast<uint64_t&>(command->params[1]);
                 auto shardIndex = key.characterID & SHARD_SIZE_MASK;
-                cache_5->Rollback(shardIndex, key);
+                cache_inventory->Rollback(shardIndex, key);
             }
 
             connectionPool->Return(conn);
@@ -42,11 +42,50 @@ namespace Cache {
             auto shardIndex = param1 & SHARD_SIZE_MASK;
             
             if (res == 0) {// error 
-               cache_5->Rollback(shardIndex, key);
-               Core::errorLogger->LogInfo("cache flush", "DB write failed", "char_id", key.characterID);
+               cache_inventory->Rollback(shardIndex, key);
+               Core::errorLogger->LogInfo("cache flush", "DB write failed case 6", "char_id", key.characterID);
                break;
             }
-            cache_5->WriteDone(shardIndex, key);
+            cache_inventory->WriteDone(shardIndex, key);
+            break;
+        }
+        case 8: {
+            auto conn = connectionPool->Acquire();
+            if (conn == nullptr) {
+                Key7 key;
+                key.characterID = std::any_cast<uint64_t&>(command->params[1]);
+                auto shardIndex = key.characterID & SHARD_SIZE_MASK;
+                cache_currency->Rollback(shardIndex, key);
+                Core::errorLogger->LogError("cache flush", "connection acquire failed case 8", "char_id", key.characterID);
+                return;
+            }
+            auto& param0 = std::any_cast<uint64_t&>(command->params[0]);
+            auto& param1 = std::any_cast<uint64_t&>(command->params[1]);
+            int res = 0;
+            try {
+                res = conn->ExecuteUpdate(command->stmtID, param0, param1);
+            }
+            catch (sql::SQLException& e) {
+                Core::errorLogger->LogError("cache flush", "DB write exception case 8",
+                    "code", e.getErrorCode(),
+                    "msg", e.what());
+                Key7 key;
+                key.characterID = std::any_cast<uint64_t&>(command->params[1]);
+                auto shardIndex = key.characterID & SHARD_SIZE_MASK;
+                cache_currency->Rollback(shardIndex, key);
+            }
+
+            connectionPool->Return(conn);
+            Key7 key;
+            key.characterID = param1;
+            auto shardIndex = param1 & SHARD_SIZE_MASK;
+
+            if (res == 0) {// error 
+                cache_currency->Rollback(shardIndex, key);
+                Core::errorLogger->LogInfo("cache flush", "DB write failed case 8", "char_id", key.characterID);
+                break;
+            }
+            cache_currency->WriteDone(shardIndex, key);
             break;
         }
         default:
@@ -75,9 +114,10 @@ namespace Cache {
         Core::sysLogger->LogInfo("cache flush", "flush thread stopped", "threadID", ss.str());
     }
 
-    void CacheFlush::Initialize(DBConnectionPool* p, CacheStorage5* c5) {
+    void CacheFlush::Initialize(DBConnectionPool<DBConnectionGame>* p, CacheStorageInventory* c5, CacheStorageCurrency* c7) {
         connectionPool = p;
-        cache_5 = c5;
+        cache_inventory = c5;
+        cache_currency = c7;
         std::lock_guard<std::mutex> lock(m_mutex);
         m_threads.resize(FLUSH_THREADPOOL_SIZE);
         m_running.store(true, std::memory_order_relaxed);
