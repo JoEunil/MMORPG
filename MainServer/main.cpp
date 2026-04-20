@@ -15,7 +15,7 @@
 #include <External/spdlog/spdlog.h>
 
 #include <mysqlconn/include/mysql/jdbc.h>
-
+#include "TestBazaar.h"
 
 int main(int argc, char* argv[]) {
     ST_WSA_INITIALIZER wsa; // winsock 초기화
@@ -33,6 +33,16 @@ int main(int argc, char* argv[]) {
     Core::errorLogger->CreateSink("error");
     Core::perfLogger = std::make_unique<External::Logger>();
     Core::perfLogger->CreateSink("perf");
+    #ifdef TEST_BAZAAR
+        Test::g_msgPool().InitializeForTest();
+        Test::RunAll();
+        spdlog::shutdown();
+        Core::sysLogger.reset();
+        Core::gameLogger.reset();
+        Core::errorLogger.reset();
+        Core::perfLogger.reset();
+        return 0;
+    #endif
 
     try {
         External::SessionAuth auth;
@@ -70,6 +80,11 @@ int main(int argc, char* argv[]) {
         core.CleanUp2();
         cache.CleanUp();
         net.CleanUp2();
+        spdlog::shutdown();
+        Core::sysLogger.reset();
+        Core::gameLogger.reset();
+        Core::errorLogger.reset();
+        Core::perfLogger.reset();
     }
     catch (const std::exception& e) {
         std::cerr << "Standard exception: " << e.what() << std::endl;
@@ -83,3 +98,4 @@ int main(int argc, char* argv[]) {
     }
     return 0;
 }
+

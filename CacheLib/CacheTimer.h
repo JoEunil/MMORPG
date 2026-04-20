@@ -10,6 +10,9 @@ namespace Cache {
 		inline static std::thread m_thread;
 		inline static std::atomic<bool> m_running;
 		static void StartThread() {
+			if (m_running.load(std::memory_order_relaxed)) {
+				return;
+			}
 			m_running.store(true, std::memory_order_relaxed);
 			m_thread = std::thread(ThreadFunc);
 		}

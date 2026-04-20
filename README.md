@@ -31,7 +31,7 @@ Unity 클라이언트로 기능 테스트, 더미 클라이언트 부하 테스�
 __목표__
 - 클라이언트 로그인부터 사용자 접속 종료 및 재접속 로직까지, __End-to-End 데이터 파이프라인__ 을 설계하고 구현한다.  
 - 프로젝트 전반에 걸친 서버 구조와 동작 흐름을 직접 설계한다.
-- 채팅, 몬스터, 스킬 등 기본 콘텐츠를 구현하고 클라이언트와의 연동을 검증한다
+- 채팅, 몬스터, 스킬, __거래소__ 등 기본 콘텐츠를 구현하고 클라이언트와의 연동을 검증한다
 - 더미 클라이언트를 활용해 처리 성능을 확인한다.
 
 
@@ -98,6 +98,8 @@ __외부 라이브러리__
 
 ### 4. 콘텐츠 구현 및 모니터링
 - [Monster](Monster.md) & [Skill](Skill.md) : 간단한 AI 및 상호작용 로직을 통해 구조적 위험성 분석. AOI(Area of Interest) 및 Cell 분할 필요성 도출.
+- [거래소 시스템](Bazaar.md) : 서버 통합 거래소 구현. 재화 특성 기반 저장 전략 분리 (Gold: Write-Back 캐시 / Diamond: DB 트랜잭션), Stored Procedure로 ACID 보장, 두 장군 문제로 인한 Bounded Loss 수용 및 거래 로그 기반 복구 전략 적용.
+- [거래소 시스템 테스트](BazaarTest.md) : 기본 기능, Crash 시나리오, 동시 구매 경합, lock contention 관측 테스트 수행. CAS 기반 중복 구매 방지 및 Crash 후 복구 가능성 확인.
 - [StructuredLogging](StructuredLogging.md) : 서버 내부 상태와 테스트 결과를 시각화하고 추적하기 위해 로그를 구조화하여 분류 및 적용.
 
 ### 5. 캐시 및 DB 설계
@@ -309,6 +311,8 @@ Unity Client
 - [캐시 단위 테스트](CacheLib_Test.md)
 - [DB 설계](DB.md)
 - [IOCP Send 파이프라인](IOCPSendPipeline.md)
+- [거래소 시스템](Bazaar.md)
+- [거래소 시스템 테스트](BazaarTest.md)
 
 ### 리팩토링
 - [채팅 기능 리팩토링](ChatRefactor.md)

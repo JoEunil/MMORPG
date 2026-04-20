@@ -185,6 +185,7 @@ namespace Cache {
                 if (res && res->next()) {
                     uint64_t realItemID = res->getUInt64("item_id");
                     uint16_t realQty = res->getUInt("quantity");
+
                     auto [status, itemID, slot, quantity] = cache_inventory->PartialUpdate(body->characterID, realItemID, 2, (int16_t)realQty);
 
                     if (status != CACHE_STATUS::AVAILABLE) {
@@ -213,7 +214,7 @@ namespace Cache {
     void Handler::BazaarBuy(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarBuyBody* body) {
         // 1. DB에서 itemID 조회 
         dbWorkerBilling->Enqueue([=](DBConnectionBilling* conn) {
-            // 2. Inventory에서 해당 item 보유 갯수 조회
+
 			auto listingRes = conn->ExecuteSelect(15, body->listingID);
 
             if (!listingRes || !listingRes->next()) {
@@ -252,9 +253,19 @@ namespace Cache {
                 uint32_t itemID = res->getUInt("item_id");
 				uint16_t quantity = res->getUInt("quantity");
                 uint32_t diamondSpent = res->getUInt("price");
+#ifdef CRASH_POINT_BUY
+                std::cout << "  [abort 직전 inventory 상태]\n";
+
+                Result5 resInv = cache_inventory->Getter(body->characterID);
+                for (int i = 0; i < resInv.data.count; i++) {
+                    std::cout << "  itemID: " << resInv.data.items[i].itemID
+                        << " quantity: " << resInv.data.items[i].quantity << "\n";
+                }
+                abort();
+#endif
                 // 4. 아이템 Inventory에 추가
                 if (resultCode == 1) {
-                    auto [status, itemID, slot, quantity] = cache_inventory->PartialUpdate(body->characterID, realItemID, 1, (int16_t)realQty);
+                    auto [cacheStatus, updatedItemID, slot, updatedQty] = cache_inventory->PartialUpdate(body->characterID, realItemID, 1, (int16_t)realQty);
 
                     if (cacheStatus != CACHE_STATUS::AVAILABLE) {
                         // 이 경로는 캐시 설정이 올바른 경우 도달 불가.
@@ -298,11 +309,13 @@ namespace Cache {
             }
 
             uint8_t resultCode = res->getUInt("result");
+            uint32_t claimed = res->getUInt("diamond");
 
             Core::MsgStruct<Core::MsgBazaarClaimResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarClaimResBody>*>(msg->GetBuffer());
             st->header.sessionID = sessionID;
             st->header.messageType = Core::MSG_BAZAAR_CLAIM_RES;
             st->body.resStatus = resultCode;
+            st->body.diamondClaimed = claimed;
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarClaimResBody>));
             messageQ->EnqueueMessage(msg);
             messagePool->Return(msg);

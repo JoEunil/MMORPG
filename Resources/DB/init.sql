@@ -87,8 +87,11 @@ CREATE TABLE bazaar_log (
     listing_id BIGINT UNSIGNED NOT NULL,
     seller_id  BIGINT UNSIGNED NOT NULL,
     buyer_id   BIGINT UNSIGNED NOT NULL,
+    claim_status ENUM('READY', 'CLAIMED') NOT NULL DEFAULT 'READY',
+    claimed_at DATETIME DEFAULT NULL,
     buyer_prev_quantity INT UNSIGNED DEFAULT NULL,
     item_type  TINYINT UNSIGNED NOT NULL,
+quantity INT UNSIGNED NOT NULL DEFAULT 0,
     price      BIGINT UNSIGNED NOT NULL,
     sold_at    DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

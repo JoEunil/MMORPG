@@ -218,7 +218,6 @@ namespace Core {
 
     struct MsgBazaarRegisterResBody {
         uint8_t  resStatus; // 0: 실패, 1: 성공, 2: 아이템 수량 부족, 3: 골드 부족, 4: 유효하지 않은 아이템
-        uint64_t listingID;
     };
 
     struct MsgBazaarCancelBody {
@@ -228,7 +227,6 @@ namespace Core {
 
     struct MsgBazaarCancelResBody {
         uint8_t  resStatus;
-        uint64_t listingID;
     };
 
     struct MsgBazaarBuyBody {
@@ -241,7 +239,7 @@ namespace Core {
         uint64_t listingID;
         uint32_t itemID;
         uint16_t quantity;
-        uint64_t diamondSpent;
+        uint32_t diamondSpent;
     };
 
     struct MsgBazaarClaimBody {
@@ -252,7 +250,7 @@ namespace Core {
     struct MsgBazaarClaimResBody {
         uint8_t  resStatus;
         uint64_t listingID;
-        uint64_t diamondClaimed;
+        uint32_t diamondClaimed;
     };
 
 	inline MsgHeader* parseMsgHeader(uint8_t* data) {
