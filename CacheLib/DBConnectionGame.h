@@ -68,5 +68,13 @@ namespace Cache
             default: return 0;
             }
         }
+
+        void ClearResults() {
+            for (auto& [id, stmt] : m_stmts) {
+                while (stmt->getMoreResults()) {
+                    std::unique_ptr<sql::ResultSet> extra(stmt->getResultSet());
+                }
+            }
+        }
     };
 }

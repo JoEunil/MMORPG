@@ -39,7 +39,7 @@ namespace Cache
 
             auto& stmt = it->second;
             BindParams(*stmt, 1, std::forward<Args>(args)...);
-
+            try {
             switch (stmt_id)
             {
             case 9: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
@@ -49,6 +49,15 @@ namespace Cache
             case 16: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
             case 17: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
             default: return nullptr;
+            }
+              }
+            catch (const sql::SQLException& e) {
+                std::cerr << "SQL Exception: " << e.what() << "\n";
+                std::cerr << "Error code: " << e.getErrorCode() << "\n";
+                std::cerr << "SQL state: " << e.getSQLState() << "\n";
+            }
+            catch (const std::exception& e) {
+                std::cerr << "Exception: " << e.what() << "\n";
             }
         }
 
@@ -68,6 +77,15 @@ namespace Cache
             case 13: return stmt->executeUpdate(); // INSERT
             case 14: return stmt->executeUpdate(); // UPDATE
             default: return 0;
+            }
+        }
+
+
+        void ClearResults() {
+            for (auto& [id, stmt] : m_stmts) {
+                while (stmt->getMoreResults()) {
+                    std::unique_ptr<sql::ResultSet> extra(stmt->getResultSet());
+                }
             }
         }
     };

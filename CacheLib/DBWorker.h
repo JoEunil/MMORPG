@@ -49,6 +49,7 @@ namespace Cache {
             return true;
         }
 
+
         void ThreadFunc() {
             auto tid = std::this_thread::get_id();
             std::stringstream ss;
@@ -70,6 +71,7 @@ namespace Cache {
                 }
                 T* conn = connectionPool->Acquire();
                 work(conn);
+                conn->ClearResults();
                 connectionPool->Return(conn);
             }
 
