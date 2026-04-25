@@ -9,7 +9,13 @@
 | Login | users | 사용자 계정 정보 |
 | Game | characters | 캐릭터 정보 |
 | Game | characters_inventory | 캐릭터 인벤토리 (수직 파티셔닝) |
+| Game | characters_currency | 캐릭터 재화 (수직 파티셔닝) |
 | Game | v_user_characters | 캐릭터 목록 조회용 View |
+| Billing | bazaar | 거래소 등록 정보 |
+| Billing | bazaar_log | 거래 이력 |
+| Billing | characters_diamond | 캐릭터 유료 재화 |
+
+>거래소 관련 내용은 [거래소 설계 문서](Bazaar.md) 참고
 
 ## 3. 사용 기술
 ### 수직 파티셔닝
@@ -71,6 +77,12 @@ View Table의 실질적인 이점은 다음과 같다.
 - __쿼리 추상화__ — 애플리케이션 코드 단순화
 - __유지보수__ — 조건 변경 시 View 한 곳만 수정하면 됨
 - __민감 데이터 노출 제한__ — 필요한 컬럼만 노출하여 불필요한 데이터 접근 차단
+
+### Stored Procedure
+거래소의 구매(sp_bazaar_buy), 정산(sp_bazaar_claim) 등 원자성이 필수인 작업은 Stored Procedure로 처리한다. 
+트랜잭션이 DB 내부에서 완결되어 lock holding time을 최소화하고, 애플리케이션 크래시가 트랜잭션 안정성에 영향을 주지 않는다.
+
+프로시저 상세는 [거래소 설계 문서](Bazaar.md) 참고
 
 ## 4. 추후 업데이트
 
