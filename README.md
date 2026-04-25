@@ -87,7 +87,7 @@ __외부 라이브러리__
 	- [IOCP Send 파이프라인](IOCPSendPipeline.md): IOCP 송신 큐 처리구조, chunck 패킷 처리 구조
 
 ### 2. 멀티스레드 동기화 및 성능 최적화
-- [memory_order](memory_order.md) : 멀티스레드 환경의 메모리 재배치 문제를 방지하고 성능을 최적화하기 위해, Acquire-Release 시맨틱의 동작 원리를 분석하고 이를 SpinLock 설계에 적용한 과정을 정리.
+- [memory_order](memory_order.md) : 멀티스레드 환경의 메모리 재배치와 가시성 문제를 방지하고 성능을 최적화하기 위해, Acquire-Release 시맨틱의 동작 원리를 분석하고 이를 SpinLock 설계에 적용한 과정을 정리.
 - [LockFreeQueue](LockFreeQueue.md): Lock 경합을 방지하기 위해 atomic 변수와 CAS(Compare-And-Swap) 함수를 통해 구현한 __Vyukov's Lock-free Queue__ 구현 및 검증.
 - [TripleBuffer](TripleBuffer.md) : 로직 스레드와 네트워크 스레드 간의 간섭을 최소화하며 데이터 일관성 유지.
 
