@@ -30,7 +30,12 @@ namespace Cache {
 			Core::sysLogger->LogInfo("cache timer", "Cache timer thread stopped", "threadID", ss.str());
 		}
 		static void Stop() {
-			m_running.store(false, std::memory_order_relaxed);
+			bool expected = true;
+			if (!m_running.compare_exchange_strong(expected, false,
+				std::memory_order_relaxed)) {
+				return;  
+			}
+
 			if (m_thread.joinable())
 				m_thread.join();
 		}
