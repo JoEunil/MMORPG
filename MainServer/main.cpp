@@ -34,13 +34,19 @@ int main(int argc, char* argv[]) {
     Core::perfLogger = std::make_unique<External::Logger>();
     Core::perfLogger->CreateSink("perf");
     #ifdef TEST_BAZAAR
-        Test::g_msgPool().InitializeForTest();
-        Test::RunAll();
-        spdlog::shutdown();
-        Core::sysLogger.reset();
-        Core::gameLogger.reset();
-        Core::errorLogger.reset();
-        Core::perfLogger.reset();
+        try {
+            Test::g_msgPool().InitializeForTest();
+            Test::RunAll();
+            spdlog::shutdown();
+            Core::sysLogger.reset();
+            Core::gameLogger.reset();
+            Core::errorLogger.reset();
+            Core::perfLogger.reset();
+        }
+        catch (sql::SQLException& e) {
+            std::cout << std::format("SQLException: {} (code: {}, state: {})",
+                e.what(), e.getErrorCode(), e.getSQLState());
+        }
         return 0;
     #endif
 

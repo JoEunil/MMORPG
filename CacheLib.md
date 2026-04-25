@@ -51,7 +51,6 @@ Inventory 데이터를 기준으로 구체적인 캐시 동작을 설계하고 �
 
 
 ## 4. 구조
-
 ### 서버 동작 흐름
 
 | 색상 | 스레드 |
@@ -123,6 +122,45 @@ __종료 처리__
 별도의 종료 처리 없이 write-back과 LRU에 의해 자연스럽게 처리된다.
 - LRU eviction으로 메모리 내 데이터를 직접 제거할 필요 없음
 - 재접속 시 캐시에 데이터가 남아있어 유리함
+
+### InnoDB 아키텍처와 비교
+
+![이미지 로드 실패](images/InnoDBArchitecture.png)
+>InnoDB 아키텍처
+
+![이미지 로드 실패](images/CacheLibArchitecture.png)
+>CacheLib 아키텍처
+
+CacheLib의 구조는 InnoDB 스토리지 엔진의 Buffer Pool과 유사한 설계 철학을 따른다.  
+
+__유사한 점__
+메모리 캐싱 후 비동기 디스크 반영 (Cache → DB, Buffer Pool → Disk)  
+LRU 기반 교체 정책  
+Dirty 데이터 관리 및 백그라운드 스레드 Flush  
+
+__차이점__
+4장 구조 섹션 마지막에 추가하면 자연스러워. "사용자 접근 패턴" 다음, 5장 특징 전에:
+
+---
+
+### InnoDB 아키텍처와 비교
+
+CacheLib의 구조는 InnoDB 스토리지 엔진의 Buffer Pool과 유사한 설계 철학을 따른다.
+
+__유사한 점__
+- 메모리 캐싱 후 비동기 디스크 반영 (Cache → DB, Buffer Pool → Disk)
+- LRU 기반 교체 정책
+- Dirty 데이터 관리 및 백그라운드 스레드 Flush
+
+__차이점__
+
+| 항목 | InnoDB Buffer Pool | CacheLib |
+|------|-------------------|----------|
+| 데이터 접근 | B+Tree (범위/조건 탐색 지원) | Hash Table (O(1) point lookup) |
+| 영속성 | Redo Log(WAL)로 보장 | 미적용 — DB가 별도 영속 저장소로 존재 |
+| 메모리 관리 | Free List  | 미적용 — Hash Table 기반으로 불필요 |
+
+CacheLib은 캐시 레이어에서 영속성을 보장하지 않으며, 영속성은 DB에 위임한다. 크래시 시 마지막 Write-Back 시점까지 복구 가능하며, 최대 유실 범위는 flush 주기 이내이다.
 
 ## 5. 특징
 

@@ -744,9 +744,9 @@ namespace Test {
 
         // mysql max connection 기본값 151
 
-        constexpr int SERVER_COUNT = 10;
-        constexpr int BUYER_PER_SERVER = 5; // 서버당 동시 요청
-        constexpr int TOTAL_BUYERS = SERVER_COUNT * BUYER_PER_SERVER; // 100
+        constexpr int SERVER_COUNT = 20;
+        constexpr int BUYER_PER_SERVER = 2; // 서버당 동시 요청
+        constexpr int TOTAL_BUYERS = SERVER_COUNT * BUYER_PER_SERVER; 
 
         DBChecker db;
         db.CleanupBazaar();

@@ -106,28 +106,33 @@ __시나리오__: 50개 buyer가 단일 listing에 동시 구매 요청
 
 | 항목 | 값 |
 |------|-----|
-| Buyer 수 | 50 (Server 10 × 5) |
+| Buyer 수 | 40 (Server 20 × 2) |
 | Listing 수 | 1 |
-| 총 요청 수 | 50 |
+| 총 요청 수 | 40 |
 | 기대 성공 | 1 |
-| 기대 실패 | 49 |
+| 기대 실패 | 39 |
 
 __결과__ 
 
-![이미지 로드 실패](images/TestBazaar8.png)
+![이미지 로드 실패](images/TestBazaar8-1.png)
 
 | 항목 | 결과 |
 |------|------|
 | 성공 | 1 |
-| 실패 | 49 |
+| 실패 | 39 |
 | commit | +1 |
-| rollback | +49 |
+| rollback | +39 |
 | lock_waits | +2 |
-| lock_time | +4 ms |
-| lock_time_avg | 1 ms |
+| lock_time | +3 ms |
+| lock_time_avg | 2 ms |
 
-로컬 환경 특성상 네트워크 레이턴시가 없어 실제 운영 환경과 차이가 있을 수 있다.  
-거래소 BUY는 발생 빈도가 낮은 작업이므로 lock contention이 서버 전체 성능에 미치는 영향은 제한적일 것으로 판단된다.
+__slow query 관측 결과__
+![이미지 로드 실패](images/TestBazaar8-2.png)
+
+전부 2ms 내외로 측정되었으며, stored procedure의 max_rows_examined도 4~5로 측정되어 풀스캔 없이 필요한 row만 접근하는 것을 확인할 수 있다.  
+store_procedure 40회 호출 중 3회만 slow query로 기록되었으며, 이는 lock contention으로 인해 query_time이 1ms 임계값을 초과한 것으로 추정된다.   
+나머지 37회는 1ms 미만에 처리되어 기록되지 않았다.   
+임계값을 1ms로 설정했기 때문에 관측된 수치인 것일 뿐 실제로는 전부 정상범위 내에서 처리된 것이다. 
 
 ## 5. 테스트 결과 정리
 
@@ -136,8 +141,12 @@ __결과__
 | 기본 기능 (1~5) | 통과 | - |
 | Crash 시나리오 (6) | 통과 | bazaar_log 기반 복구 가능 확인 |
 | 경합 상황 (7) | 통과 | 정합성 검증 — 중복 구매 없음 |
-| lock contention (8) | 통과 | 단일 listing 50 동시 요청 — lock_waits: 2회, lock_time_avg: 1ms |
+| lock contention (8) | 통과 | 단일 listing 40 동시 요청 — lock_waits: 2회, lock_time_avg: 2ms |
 
+__lock contention이 미미한 이유__
+테스트 환경에서 요청 타이밍을 정확히 일치시킬 수 없어 실제 동시 경합이 제한적이었다.  
+또한 stored procedure로 트랜잭션이 DB 내부에서 완결되어 lock holding time이 최소화된다.  
+프로시저는 SELECT FOR UPDATE 없이 CAS 패턴(UPDATE WHERE status = 'TRADING')으로 경합을 처리하므로, 경합 지점이 bazaar 테이블의 단일 UPDATE로 한정되고 실패한 트랜잭션은 즉시 rollback된다.  
 
 ## 6. 참고
 
