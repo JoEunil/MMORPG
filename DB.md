@@ -13,6 +13,7 @@
 | Game | v_user_characters | 캐릭터 목록 조회용 View |
 | Billing | bazaar | 거래소 등록 정보 |
 | Billing | bazaar_log | 거래 이력 |
+| Billing | bazaar_claim | 판매자 정산 처리 |
 | Billing | characters_diamond | 캐릭터 유료 재화 |
 
 >거래소 관련 내용은 [거래소 설계 문서](Bazaar.md) 참고

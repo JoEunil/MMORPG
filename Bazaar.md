@@ -73,7 +73,7 @@ conn->commit();  // 홉 4 — lock 점유 시간: 홉 1 ~ 홉 4
 | 저장소 | 관리 데이터 | 전략 |
 |--------|------------|------|
 | Cache (In-Process) | Inventory, Gold | Write-Back, 손실 수용 |
-| DB (Billing) | Diamond, Bazaar, bazaar_log | 트랜잭션, 감사 추적 |
+| DB (Billing) | Diamond, Bazaar, bazaar_log, bazaar_claim | 트랜잭션, 감사 추적 |
 
 
 ## 4. BUY 처리 상세 (sp_bazaar_buy)
@@ -82,7 +82,8 @@ conn->commit();  // 홉 4 — lock 점유 시간: 홉 1 ~ 홉 4
 2. 구매자 diamond 차감 (`diamond >= price` 조건으로 원자적 처리)
 3. bazaar CAS: `TRADING → SOLD` (`ROW_COUNT() = 0`이면 rollback)
 4. bazaar_log INSERT (`buyer_prev_quantity` 포함 — 복구용)
-5. COMMIT → 인벤토리 PartialUpdate
+5. bazaar_claim INSERT (`READY` 상태로 seller 정산 대기열 등록)
+6. COMMIT → 인벤토리 PartialUpdate
 
 __Crash Point__: COMMIT 이후 ~ PartialUpdate 전 Crash 시
 
@@ -91,18 +92,20 @@ __Crash Point__: COMMIT 이후 ~ PartialUpdate 전 Crash 시
 | diamond | 차감 완료 |
 | bazaar status | SOLD |
 | bazaar_log | 기록 있음 |
+| bazaar_claim |  READY 상태 |
 | 인벤토리 (Cache) | 미반영 |
 | 복구 가능 여부 | bazaar_log의 buyer_prev_quantity 기반 수동 복구 가능 |
 
 ## 5. CLAIM 처리 상세 (sp_bazaar_claim)
 
 1. listing 조회 (`status = 'SOLD'`, `seller_id` 조건)
-2. bazaar CAS: `SOLD → CLAIMED`
+2. bazaar_claim `claim_status` 업데이트 (`READY → CLAIMED`)
 3. seller diamond 지급
-4. bazaar_log `claim_status` 업데이트 (`READY → CLAIMED`)
-5. COMMIT
+4. COMMIT
 
 CLAIM 처리는 전부 Transaction 단위 내에서 처리되기 때문에 데이터 유실은 발생하지 않는다. 
+
+> bazaar_log는 append-only 감사 로그로 유지하고, mutable한 정산 상태는 bazaar_claim으로 분리하여 로그 테이블의 불변성을 보장한다.
 
 ## 6. 고가 아이템 거래 리스크 대응
 
