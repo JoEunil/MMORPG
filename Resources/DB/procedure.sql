@@ -8,8 +8,9 @@ CREATE PROCEDURE sp_bazaar_buy(
 BEGIN
     DECLARE v_seller_id BIGINT UNSIGNED DEFAULT 0;
     DECLARE v_item_id   BIGINT UNSIGNED DEFAULT 0;
+    DECLARE v_item_type INT    UNSIGNED DEFAULT 0;
     DECLARE v_quantity  INT    UNSIGNED DEFAULT 0;
-    DECLARE v_price     INT    UNSIGNED DEFAULT 0;
+    DECLARE v_price     BIGINT UNSIGNED DEFAULT 0;
     DECLARE v_found     TINYINT        DEFAULT 0;
 
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
@@ -20,9 +21,8 @@ BEGIN
 
     START TRANSACTION;
 
-    -- 1. Get listing info
-    SELECT seller_id, item_id, quantity, price, 1
-    INTO   v_seller_id, v_item_id, v_quantity, v_price, v_found
+    SELECT seller_id, item_id, item_type, quantity, price, 1
+    INTO   v_seller_id, v_item_id, v_item_type, v_quantity, v_price, v_found
     FROM   bazaar
     WHERE  listing_id = p_listing_id AND status = 'TRADING';
 
@@ -30,7 +30,6 @@ BEGIN
         ROLLBACK;
         SELECT 0 AS result, 0 AS seller_id, 0 AS item_id, 0 AS quantity, 0 AS price;
     ELSE
-        -- 2. sub buyer's diamond'
         UPDATE characters_diamond
         SET    diamond     = diamond - v_price,
                total_spent = total_spent + v_price,
@@ -41,7 +40,6 @@ BEGIN
             ROLLBACK;
             SELECT 4 AS result, 0 AS seller_id, 0 AS item_id, 0 AS quantity, 0 AS price;
         ELSE
-            -- 3. bazaar CAS (TRADING -> SOLD)
             UPDATE bazaar
             SET    status   = 'SOLD',
                    buyer_id = p_buyer_id
@@ -51,14 +49,17 @@ BEGIN
                 ROLLBACK;
                 SELECT 0 AS result, 0 AS seller_id, 0 AS item_id, 0 AS quantity, 0 AS price;
             ELSE
-                -- 4. trade log INSERT
                 INSERT INTO bazaar_log
                     (listing_id, seller_id, buyer_id, item_type,
-                     quantity, price, sold_at, claim_status, buyer_prev_quantity)
-                SELECT p_listing_id, v_seller_id, p_buyer_id, item_type,
-                       v_quantity, v_price, NOW(), 'READY', p_buyer_prev_qty
-                FROM   bazaar
-                WHERE  listing_id = p_listing_id;
+                     quantity, price, sold_at, buyer_prev_quantity)
+                VALUES
+                    (p_listing_id, v_seller_id, p_buyer_id, v_item_type,
+                     v_quantity, v_price, NOW(), p_buyer_prev_qty);
+
+                INSERT INTO bazaar_claim
+                    (listing_id, seller_id, claim_status)
+                VALUES
+                    (p_listing_id, v_seller_id, 'READY');
 
                 COMMIT;
                 SELECT 1 AS result, v_seller_id AS seller_id,
@@ -73,8 +74,8 @@ CREATE PROCEDURE sp_bazaar_claim(
     IN p_seller_id  BIGINT UNSIGNED
 )
 BEGIN
-    DECLARE v_price INT UNSIGNED DEFAULT 0;
-    DECLARE v_found TINYINT      DEFAULT 0;
+    DECLARE v_price BIGINT UNSIGNED DEFAULT 0;
+    DECLARE v_found TINYINT         DEFAULT 0;
 
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
@@ -84,7 +85,6 @@ BEGIN
 
     START TRANSACTION;
 
-    -- 1. Get listing info
     SELECT price, 1
     INTO   v_price, v_found
     FROM   bazaar
@@ -96,30 +96,21 @@ BEGIN
         ROLLBACK;
         SELECT 2 AS result, 0 AS diamond;
     ELSE
-        -- 2. bazaar CAS (SOLD -> CLAIMED)
-        UPDATE bazaar
-        SET    status = 'CLAIMED'
-        WHERE  listing_id = p_listing_id
-          AND  seller_id  = p_seller_id
-          AND  status     = 'SOLD';
+        UPDATE bazaar_claim
+        SET    claim_status = 'CLAIMED',
+               claimed_at   = NOW()
+        WHERE  listing_id   = p_listing_id
+          AND  claim_status = 'READY';
 
         IF ROW_COUNT() = 0 THEN
             ROLLBACK;
             SELECT 4 AS result, 0 AS diamond;
         ELSE
-            -- 3. seller claimm diamond
             UPDATE characters_diamond
             SET    diamond      = diamond + v_price,
                    total_earned = total_earned + v_price,
                    updated_at   = NOW()
             WHERE  char_id = p_seller_id;
-
-            -- 4. bazaar_log update 
-            UPDATE bazaar_log
-            SET    claim_status = 'CLAIMED',
-                   claimed_at   = NOW()
-            WHERE  listing_id   = p_listing_id
-              AND  claim_status  = 'READY';
 
             COMMIT;
             SELECT 1 AS result, v_price AS diamond;

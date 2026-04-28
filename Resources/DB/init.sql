@@ -1,15 +1,25 @@
-CREATE DATABASE login;
+﻿CREATE DATABASE login;
 CREATE DATABASE game;
 CREATE DATABASE billing;
 use login;
 
 CREATE TABLE users (
     user_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    username VARCHAR(255) NOT NULL UNIQUE,
+    login_id VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     phone_number VARCHAR(15),
     PRIMARY KEY (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE login_log (
+    log_id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    login_id VARCHAR(255) NOT NULL,
+    succeed BOOL NOT NULL,
+    ip_addr    VARCHAR(45) NOT NULL,
+    user_agent VARCHAR(512),
+    logged_at  DATETIME DEFAULT NOW(),
+    INDEX idx_login (login_id, logged_at DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 use game;
@@ -29,7 +39,6 @@ CREATE TABLE IF NOT EXISTS characters (
     zone_id TINYINT UNSIGNED NOT NULL DEFAULT 0,
     last_pos_x float NOT NULL DEFAULT 0,
     last_pos_y float NOT NULL DEFAULT 0,
-
     deleted_at DATETIME DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -78,8 +87,9 @@ CREATE TABLE bazaar (
     status     ENUM('TRADING', 'SOLD', 'CANCELLED', 'CLAIMED') DEFAULT 'TRADING',
     listed_at  DATETIME NOT NULL,
     INDEX idx_status_listed (status, listed_at DESC),
-    INDEX idx_seller        (seller_id, status),
-    INDEX idx_item_type     (item_type, status, listed_at DESC) -- 정렬 조건은 뒤에 배치
+    INDEX idx_seller        (seller_id, status, listed_at DESC),
+    INDEX idx_item_type     (item_type, status, listed_at DESC), -- 정렬 조건은 뒤에 배치
+    INDEX idx_buyer     (buyer_id, status, listed_at DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE bazaar_log (
@@ -87,11 +97,17 @@ CREATE TABLE bazaar_log (
     listing_id BIGINT UNSIGNED NOT NULL,
     seller_id  BIGINT UNSIGNED NOT NULL,
     buyer_id   BIGINT UNSIGNED NOT NULL,
-    claim_status ENUM('READY', 'CLAIMED') NOT NULL DEFAULT 'READY',
-    claimed_at DATETIME DEFAULT NULL,
     buyer_prev_quantity INT UNSIGNED DEFAULT NULL,
     item_type  TINYINT UNSIGNED NOT NULL,
-quantity INT UNSIGNED NOT NULL DEFAULT 0,
+    quantity INT UNSIGNED NOT NULL DEFAULT 0,
     price      BIGINT UNSIGNED NOT NULL,
     sold_at    DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE bazaar_claim (
+    listing_id BIGINT UNSIGNED PRIMARY KEY,
+    seller_id  BIGINT UNSIGNED NOT NULL,
+    claim_status ENUM('READY', 'CLAIMED') NOT NULL DEFAULT 'READY',
+    claimed_at DATETIME DEFAULT NULL,
+    INDEX idx_seller        (seller_id, claim_status),
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

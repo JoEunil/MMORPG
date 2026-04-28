@@ -13,38 +13,39 @@ require('dotenv').config();
 
 // 로그인 요청 처리
 router.post('/login', (req, res) => {
-  const { username, password } = req.body;
+    const { login_id, password } = req.body;
   console.log(req.body);
-  const query = 'SELECT * FROM users WHERE username = ?';
+    const query = 'SELECT * FROM users WHERE login_id = ?';
+    const logQuery = 'INSERT INTO login_log (login_id, succeed, ip_addr, user_agent) VALUES (?, ?, ?, ?)';
+    const ip_addr = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const user_agent = req.headers['user-agent'] || null;
 
-  db.execute(query, [username], (err, results) => {
+    db.execute(query, [login_id], (err, results) => {
       if (err) {
         console.error('데이터베이스 쿼리 오류:', err);
         return res.status(500).send('서버 오류');
       }
 
       if (results.length === 0) {
+          db.execute(logQuery, [login_id, false, ip_addr, user_agent], () => { });
         return res.status(400).send('사용자가 존재하지 않습니다.');
       }
 
       // DB에서 찾은 사용자
       const user = results[0];
 
-      // 비밀번호 비교
-      bcrypt.compareSync(password, user.password, (err, isMatch) => {
-        if (err) {
-          return res.status(500).send('비밀번호 비교 중 오류 발생');
-        }
-
-        if (!isMatch) {
+        // 비밀번호 비교
+      const isMatch = bcrypt.compareSync(password, user.password);
+      if (!isMatch) {
+          db.execute(logQuery, [login_id, false, ip_addr, user_agent], () => {});
           return res.status(400).send('비밀번호가 일치하지 않습니다.');
-        }
-      });
+      }
+      db.execute(logQuery, [login_id, true, ip_addr, user_agent], () => { });
 
       // JWT 토큰 생성 (사용자 정보와 비밀 키를 기반으로 생성)
       const payload = {
         userId: user.user_id,
-        username: user.username,
+        login_id: user.login_id,
         email: user.email,
       };
 
@@ -62,10 +63,10 @@ router.post('/login', (req, res) => {
 
 // 회원가입
 router.post('/signup', (req, res) => {
-  const { username, password, email, phone_number} = req.body;
+    const { login_id, password, email, phone_number} = req.body;
   console.log(req.body);
   // 사용자 정보가 없으면 에러 처리
-  if (!username || !password || !email || !phone_number) {
+  if (!login_id || !password || !email || !phone_number) {
     return res.status(400).send('모든 필드를 입력해야 합니다.');
   }
 
@@ -76,9 +77,9 @@ router.post('/signup', (req, res) => {
       return res.status(500).send('서버 오류');
     }
     // 회원가입된 사용자 정보 데이터베이스에 저장
-    const query = 'INSERT INTO users (username, password, email, phone_number) VALUES (?, ?, ?, ?)';
+    const query = 'INSERT INTO users (login_id, password, email, phone_number) VALUES (?, ?, ?, ?)';
 
-    db.execute(query, [username, hashedPassword, email, phone_number], (err, results) => {
+    db.execute(query, [login_id, hashedPassword, email, phone_number], (err, results) => {
       if (err) {
         console.error('사용자 생성 오류:', err);
         return res.status(500).send('서버 오류');
