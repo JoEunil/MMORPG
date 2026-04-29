@@ -39,11 +39,8 @@ if (n == -1 && errno == EWOULDBLOCK) {
   - WsaSend, WsaRecv
  
 ## 5. IOCP와 epoll의 차이
-epoll: 논블로킹 소켓 특성상 Send 호출 시 송신 버퍼가 가득 찬 경우 EAGAIN/EWOULDBLOCK이 발생한다..
-→ 애플리케이션이 재시도 로직을 구현해야 함.
+epoll (Reactor): 소켓이 I/O 가능한 상태임을 통지. 애플리케이션이 직접 non-blocking recv/send를 호출한다. EAGAIN 발생 시 EPOLLOUT 등록 후 재시도 타이밍을 직접 관리해야 한다.
 
-IOCP: OVERLAPPED 구조체를 통한 비동기 I/O 관리가 필요하다.
-→ Send 호출 자체가 비동기적이므로 재시도 로직이 불필요하며, 커널이 내부 송신 큐를 관리하여 거의 실패하지 않는다.
-Overlapped 구조체 관리가 복잡하고, 플랫폼 종속성 있음.
+IOCP (Proactor): OS에 I/O를 위임하고 완료를 통지받는 구조. EAGAIN 재시도는 불필요하지만, 동일 소켓에 대한 동시 WSASend 호출 시 데이가 뒤섞일 수 있어(MSDN) 애플리케이션 레벨 Send Queue가 필요하다.
 
-*게임 서버의 플랫폼 종속성은 무시 가능하고, Overlapped 구조체 관리 가능하다면 IOCP가 epoll에 비해 장점을 가진다.
+공통점: 둘 다 소수 스레드로 다수 커넥션 처리 가능. 둘 다 애플리케이션 레벨 Send Queue 구현이 필요하나, 그 이유가 다르다 (epoll: 재시도 관리, IOCP: 동시 호출 방지).
