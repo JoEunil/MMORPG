@@ -16,36 +16,31 @@
 11. [기술 문서 목록](#기술-문서-목록)
 
 ## 프로젝트 개요
-C++20 기반 MMORPG 게임 서버.   
-IOCP, Lock-free Queue, Write-Back Cache 등 핵심 컴포넌트를 직접 구현하고   
-Unity 클라이언트로 기능 테스트, 더미 클라이언트 부하 테스트로 검증하였다.  
-4코어 단일 PC 환경에서 __2,000명 동시 접속 부하테스트__ 를 성공적으로 수행하였다.  
+C++20 기반 MMORPG 게임 서버.  
+IOCP, Lock-Free Queue, Write-Back Cache 등 
+핵심 컴포넌트를 직접 구현하고 Unity 클라이언트로 검증.  
+i3-12100F 4코어 환경에서 **2,000명 동시접속** 부하테스트 완료.
+
+**구현 콘텐츠**    
+캐릭터 이동 / 스킬 / 몬스터 / 통합 거래소 / 인벤토리 / 채팅  
 
 > 2,000명 동시 접속 Unity 클라이언트 테스트 영상  
 > https://youtu.be/2q2kZwI3uSQ
 
-
 ![이미지 로드 실패](images/SkillAOI.gif)
 > 게임 시연 gif
-
-__목표__
-- 클라이언트 로그인부터 사용자 접속 종료 및 재접속 로직까지, __End-to-End 데이터 파이프라인__ 을 설계하고 구현한다.  
-- 프로젝트 전반에 걸친 서버 구조와 동작 흐름을 직접 설계한다.
-- 채팅, 몬스터, 스킬, __거래소__ 등 기본 콘텐츠를 구현하고 클라이언트와의 연동을 검증한다
-- 더미 클라이언트를 활용해 처리 성능을 확인한다.
-
 
 ## 기술 스택
 
 __게임 서버 (C++20)__
 - 네트워크: IOCP 비동기 IO, 커스텀 바이너리 프로토콜, RingBuffer 패킷 조립
 - 동시성: Vyukov's Lock-free Queue, Triple Buffer, Sharded Mutex
-- 캐시: Sharded, Write-Back, In-Process Cache, LRU Eviction, ACID 
+- 캐시: In-Process Write-Back Cache (Shard, LRU eviction, ACID 설계)
 - 게임 로직: Zone Tick, Cell 기반 AOI, Snapshot Delta 동기화
 - 안정성: Ping 좀비 세션 탐지, Flood Detection
 
 __인프라__
-- DB: MySQL (수직 파티셔닝, 복합 인덱스)
+- DB: MySQL
 - 인증: Redis 임시 세션
 - 로그인: Node.js
 - 모니터링: Grafana + Loki + Promtail
@@ -61,24 +56,22 @@ __외부 라이브러리__
 ## 아키텍처 다이어그램
 
 ![이미지 로드 실패](images/architecture.png)
-프로젝트는 클라이언트·서버·공용 라이브러리로 명확히 분리된 구조를 가진다.
 
-서버는 기능별로 모듈화되어 있으며,
+서버는 기능별로 4개 모듈로 분리된 구조를 가진다.
 
-- __NetLibrary__ 는 네트워크 IO 및 네트워크 세션, 핑 처리,
-- __CoreLib__ 는 게임 로직,
-- __CacheLib__ 는 DB I/O와 메모리 캐시,
-- __ExternalLib__ 는 로그 처리 및 Redis 기반 세션 인증을 담당한다.
+| 모듈 | 역할 |
+|---|---|
+| NetLibrary | IOCP 비동기 IO, 세션 관리, Ping |
+| CoreLib | 게임 로직, Zone 스레드 |
+| CacheLib | In-Process 캐시, DB I/O |
+| ExternalLib | 구조화 로그, Redis 세션 인증 |
 
-외부 모듈로는  spdlog, hiredis, libevent, nlohmann(json), Mysql Connector C++를 사용하며, DB는 로그인 DB와 게임 DB로 분리하여 운영한다.
-또한 인증 서버는 Redis에 임시 세션을 저장해 게임 서버 진입을 검증하고, 로그인 서버는 로그인 토큰을 발급해 인증 서버에 세션을 등록하는 역할을 수행한다.
-
-클라이언트는 .NET 기반의 ClientCore 라이브러리에서 네트워크 로직을 처리하고, UI는 WinForms 테스트 후 Unity View로 대체할 수 있도록 MVVM 패턴을 적용했다.
+DB는 로그인 DB / 게임 DB / 거래소 DB로 분리 운영.  
+클라이언트는 MVVM 패턴으로 WinForms(더미) / Unity(게임) View를 교체 가능하도록 설계.
 
 ## 핵심 기술 요약 
 
-고성능 비동기 IO 모델인 IOCP를 기반으로, Lock-free 자료구조와 멀티스레드 최적화를 통해 대용량 트래픽을 처리하는 서버 아키텍처를 설계하고 구현.
-
+MMO 특성상 수천~수만 개의 동시 커넥션을 처리해야 하므로 IOCP 기반 비동기 IO를 채택, 소수의 워커 스레드로 대용량 트래픽을 처리. Lock-Free 자료구조와 Zone 기반 멀티스레드 아키텍처로 동시성 최적화.
 ### 1. 소켓과 패킷 수신 처리 구조
 - __수신 및 전파__ : IOCP 비동기 수신 → ClientContext의 RingBuffer를 통한 패킷 조립 → PacketView를 활용한 제로 카피 지향 로직 전파.
 	- [IOCP](IOCP&epoll.md) : IOCP와 epoll 비교
@@ -103,8 +96,8 @@ __외부 라이브러리__
 - [StructuredLogging](StructuredLogging.md) : 서버 내부 상태와 테스트 결과를 시각화하고 추적하기 위해 로그를 구조화하여 분류 및 적용.
 
 ### 5. 캐시 및 DB 설계
-접근 빈도가 높은 인벤토리 데이터를 대상으로 In-Process 메모리 캐시를 직접 구현하였다.  
-Write-Back 전략을 채택하여 DB IO 부하를 줄이고, 캐시 동작 전반에 걸쳐 ACID를 고려한 설계를 적용하였다.
+접근 빈도가 높은 인벤토리 데이터를 대상으로 In-Process 메모리 캐시를 직접 구현.  
+Write-Back 전략을 채택하여 DB IO 부하를 줄이고, 캐시 동작 전반에 걸쳐 ACID를 고려한 설계를 적용.
 - [Cache](CacheLib.md) : 캐시 배치 전략, Write-Back/Read-Through 동작 흐름, 구조 설계
 - [Cache ACID](CacheLib_ACID.md) : 캐시 상태값 도입 및 ACID 보장 설계
 - [Cache UnitTest](CacheLib_Test.md) : DB fetch, cache hit/miss, flush, LRU eviction 동작 검증
@@ -149,17 +142,17 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 [더미 테스트](DummyTest.md)  
 다중 접속 환경에서의 서버 안정성을 검증하기 위해 더미 클라이언트를 활용한 단계별 부하 테스트를 진행하였다.
 - 100명 테스트 (성공): 메모리 풀 안정성 검증 완료.
-- 1,000명 테스트 (실패): 더미 클라이언트에서 IO 병목 발생. TCP 수신 버퍼 초과로 소켓 종료 현상 
+- 1,000명 테스트 (실패): 더미 클라이언트 단일 스레드 IO 병목 →
+  TCP 수신 버퍼 초과로 소켓 종료. 서버 문제 아님을 Wireshark로 확인.
 
 [더미 테스트2](DummyTest2.md)  
-- 실패 원인 재분석 및 최적화를 통해 2000명 테스트 성공
+- 2,000명 테스트 (성공): 더미 클라이언트 IO 스레드풀 적용 및 서버 스레드 우선순위 설정 제거로 starvation 현상 제거. 
 
 ## 리팩토링
-기능 구현 과정에서 직면한 구조적 한계와 병목 지점을 분석하고, 명확한 근거와 필요성에 따라 진행한 리팩토링 기록입니다.  
+기능 구현 과정에서 직면한 구조적 한계와 병목 지점을 분석하고, 명확한 근거와 필요성에 따라 진행한 리팩토링 기록.
 
 [채팅 기능 리팩토링](ChatRefactor.md)    
 - 필요성: 채팅 트래픽이 메인 게임 로직(Zone Tick)의 성능에 영향을 미칠 수 있는 것을 인지. 핵심 로직의 안정성을 위해 채팅 로직 레이어 분리 결정.
-기존 채팅 기능이 단순히 전송 대상(Zone) 공유를 위해 Zone 로직내에 통합시켜놨다. 
 - 내용: 채팅 전용 스레드/레이어 분리 및 추가 기능(Global Chat, 귓속말) 구현 
 
 [ClientContext 리팩토링: God Object](ClientContext.md)  
