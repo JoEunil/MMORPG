@@ -54,14 +54,40 @@ LRU overflow 발생
             → 3회 초과 → 로그 남기고 삭제 처리
 ```
 
+### DB_READING
+
+__도입 배경__
+
+캐시에 데이터가 로딩되지 않은 상태에서 여러 read 요청이 한꺼번에 발생하면 불필요하게 DB read가 중복으로 발생한다. 
+
+__목적__
+
+DB read 작업의 중복 처리를 줄이기 위함. 
+
+### 처리 흐름
+
+```
+캐시 조회 요청
+→ 캐시 miss
+→ 해당 키에 DB_READING 상태 마킹
+→ DB 조회 요청 (비동기)
+→ 이후 동일 키 요청 들어오면
+    → DB_READING 상태 감지
+    → 중복 DB 조회 차단
+    → 호출자가 재시도 처리. (클라이언트 로직으로)
+→ DB 조회 완료
+→ 캐시에 기록
+→ AVAILABLE 상태 마킹
+```
+
 ## 4. ACID 보장
 
 __Atomicity (원자성)__
-- DB write/read 작업이 완전히 완료되거나 복구됨
+- DB write 작업이 완전히 완료되거나 복구됨
 - DB write 성공 시 WriteDone, 실패 시 Rollback으로 처리
 
 __Consistency (일관성)__
-- 현재 단일 연산 수준에서 Atomicity와 Isolation에 의해 보장
+- 현재 단일 연산 수준에서 Atomicity와 Isolation에 의해 뒷바침 됨.(애플리케이션 로직이 올바른 경우)
 - 다중 연산 간 일관성 보장을 위해 추후 캐시 레이어에서 DB Transaction과 유사한 처리가 필요하다
 
 __Isolation (격리성)__
@@ -72,4 +98,5 @@ __Isolation (격리성)__
 __Durability (지속성)__
 - dirty 데이터는 DB flush를 통해 영구 저장 보장
 - 서버 종료 시에도 잔여 flush 수행
-- DB write 실패 시 최대 3회 재시도, 초과 시 로그 후 삭제
+- DB write 실패 시 최대 3회 재시도, 초과 시 로그 후 삭제   
+-> 재시도 실패는 DB 장애상황이라 판단했고, 재시동 후 로그를 통해 수동복구하는 방식이 바람직하다고 판단.
