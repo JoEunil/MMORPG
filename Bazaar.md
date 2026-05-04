@@ -127,3 +127,4 @@ CLAIM 처리는 전부 Transaction 단위 내에서 처리되기 때문에 데�
 ## 7. 참고
 
 - [BazaarTest.md](BazaarTest.md)
+- [procedure.sql](Resources/DB/procedure.sql)
