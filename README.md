@@ -5,7 +5,7 @@
 ## 목차
 1. [프로젝트 개요](#프로젝트-개요)
 2. [기술 스택](#기술-스택)
-3. [아키텍처 다이어그램](#아키텍처-다이어그램)
+3. [아키텍처](#아키텍처)
 4. [핵심 기술 요약](#핵심-기술-요약)
 5. [스레드 모델](#스레드-모델)
 6. [부하 테스트](#부하-테스트)  
@@ -53,9 +53,9 @@ __클라이언트__
 __외부 라이브러리__
 - spdlog, hiredis, libevent, nlohmann/json, MySQL Connector C++
 
-## 아키텍처 다이어그램
+## 아키텍처 
 
-![이미지 로드 실패](images/architecture.png)
+![이미지 로드 실패](images/Architecture_current.png)
 
 서버는 기능별로 4개 모듈로 분리된 구조를 가진다.
 
@@ -66,12 +66,56 @@ __외부 라이브러리__
 | CacheLib | In-Process 캐시, DB I/O |
 | ExternalLib | 구조화 로그, Redis 세션 인증 |
 
-DB는 로그인 DB / 게임 DB / 거래소 DB로 분리 운영.  
-클라이언트는 MVVM 패턴으로 WinForms(더미) / Unity(게임) View를 교체 가능하도록 설계.
+- DB는 로그인 DB / 게임 DB / 거래소 DB로 분리 운영.  
+- 클라이언트는 MVVM 패턴으로 WinForms(더미) / Unity(게임) View를 교체 가능하도록 설계.
+- 단일 서버 내에서도 작업 특성에 따라 __Zone__(시뮬레이션) / __Non-Zone__(비시뮬레이션) 두 영역으로 논리적으로 분리해 처리한다.  
+- Zone은 tick 기반 동기 처리로 이동, 전투, 몬스터 AI 동기화를 담당하고, Non-Zone은 요청-응답 패턴으로 인벤토리, 채팅, 인증 같은 비실시간 작업을 처리한다. 
+
+### 분산 아키텍처로의 확장 설계  
+
+현재는 단일 GameServer 내부에서 Zone / Non-Zone을 논리적으로만 분리해 운영하지만, 단일 프로세스의 처리 한계로 수직 확장에 제약이 있다.  
+실서비스 수준의 MMO로 발전시킬 경우, 이 논리적 분리를 물리적 분리로 확장한 아래 구조로 재설계할 수 있다.  
+
+![이미지 로드 실패](images/Architecture_future.png)  
+
+#### 1. GameServer 책임 분리와 Proxy 도입
+
+기존 GameServer가 담당하던 책임을 도메인별 서버로 분리하고, 클라이언트는 단일 Proxy 엔드포인트에만 접속한다.  
+Proxy는 opcode 기반 routing table에 따라 적절한 도메인 서버로 패킷을 분배한다.  
+
+- __Zone (in channel server)__ : 실시간 시뮬레이션 (이동, 전투, 몬스터 AI)
+- __World Services__ : Mailbox, Guild, Friend 등 비실시간 서비스
+
+이 분리의 핵심 기준은 단순한 zone/non-zone이 아니라 __현재 player의 실시간 상태에 영향을 주는가__ 이다.   
+인벤토리 사용/장착 같은 비시뮬레이션 작업이라도 character state에 직접 영향을 주고 latency에 민감하면 Zone에서 처리하고,    
+채팅, 우편, 결제처럼 character 상태에 직접 영향이 없는 도메인은 별도 서비스로 분리한다.
+
+#### 2. NetLib 추상화와 라이브러리 재구성
+
+단일 서버에서는 NetLib가 GameServer 내부에 종속된 형태였지만, 분산 환경에서는 모든 내부 서버가 NetLib을 공통으로 사용해야 한다.  
+이를 위해 transport 책임만 담당하도록 NetLib을 분리하고, 그 위에 각 서버가 자신의 packet dispatcher와 핸들러를 등록하는 구조로 재구성해야한다.  
+
+- Proxy: routing 핸들러 (내부 서버로 forward)
+- Zone Server: 게임 로직 핸들러
+- World Services: 도메인별 핸들러
+
+#### 3. Internal Header 기반 세션 식별
+
+내부 서버는 클라이언트와 직접 1:1 socket 매핑을 갖지 않는다.  
+Proxy가 내부 서버로 forward할 때 internal header를 추가해 sessionId를 명시하고, 내부 서버는 sessionId 기반으로 컨텍스트를 관리한다.  
+
+#### 4. Redis 기반 데이터 동기화 및 캐시 전략
+
+분산 환경에서는 서버 간 상태 공유를 위해 Redis를 read cache로 활용한다.  
+Redis는 authoritative source가 아닌 캐시 계층으로 사용되며, 일부 stale 데이터를 허용하는 __eventual consistency__ 모델을 따른다.  
+
+실시간 게임 상태는 Channel Server가 authoritative하게 관리하며 strong consistency를 유지하고, World Services에서 사용하는 비실시간 데이터는 Redis를 통해 서버 간 공유된다.  
+데이터 변경은 각 도메인의 authoritative 서버에서 처리된 후 DB에 반영되며,Redis는 캐시로서 필요 시 갱신되거나 TTL 기반으로 동기화된다.  
 
 ## 핵심 기술 요약 
 
 MMO 특성상 수천~수만 개의 동시 커넥션을 처리해야 하므로 IOCP 기반 비동기 IO를 채택, 소수의 워커 스레드로 대용량 트래픽을 처리. Lock-Free 자료구조와 Zone 기반 멀티스레드 아키텍처로 동시성 최적화.
+
 ### 1. 소켓과 패킷 수신 처리 구조
 - __수신 및 전파__ : IOCP 비동기 수신 → ClientContext의 RingBuffer를 통한 패킷 조립 → PacketView를 활용한 제로 카피 지향 로직 전파.
 	- [IOCP](IOCP&epoll.md) : IOCP와 epoll 비교
