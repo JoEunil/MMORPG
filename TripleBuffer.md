@@ -25,7 +25,7 @@ Triple Buffer는 3개의 버퍼를 사용하여 다음을 보장한다:
 	- Reader: 브로드캐스트 ThreadPool (N개, 공유됨)
 
 ### 해결해야 할 Pain Point
-1. 동기화 비용: Writer와 Reader가 동일 자원에 접근 시 Mutex를 사용하면 심각한 성능 저하 발생.
+1. 동기화 비용: writer가 zone 스레드이기 때문에 mutex를 적용하기에 부적합. 
 1. 데이터 일관성: 전송 도중 데이터가 변경되면 안 되며, 항상 '특정 시점에 완성된' 스냅샷이 필요.
 1.  메모리 효율성 (vs Object Pool):
 	- Object Pool은 수천 개의 스냅샷 객체를 관리해야 하며 Pool 고갈 시 메모리 추가 할당을 해야함.
@@ -79,6 +79,8 @@ SPMC 환경에서 다수의 Worker 스레드가 공유된 Reader 풀로 동작�
 [TripleBuffer.h](BaseLib/TripleBuffer.h)
 
 ### 2차 개선 버전
+
+![이미지 로드 실패](images/TripleBuffer.png)
 
 Double Back-Buffer 구조와 Ref-Counting을 도입하여 RCU(Read-Copy-Update) 스타일로 개선.  
 
@@ -135,7 +137,7 @@ flag (16bit)
 Write:
   CAS -> set 8000
   swap(back1, write)
-  CAS -> unset 8000 + set 4000
+  CAS -> unset 8000 + unset 4000
 
 Read:
   CAS loop:
@@ -146,6 +148,8 @@ Read:
 
 [TripleBufferAdvanced.h](BaseLib/TripleBufferAdvanced.h)
 
+## 5. Note
+이 자료구조는 actor 모델에서 actor 내부상태를 외부 reader에 동기화 할 때 유용하게 사용할 수 있다.  
 
 
 

@@ -85,6 +85,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 		images\TestBazaar8-1.png = images\TestBazaar8-1.png
 		images\TestBazaar8-2.png = images\TestBazaar8-2.png
 		images\threadPriority.png = images\threadPriority.png
+		images\TripleBuffer.png = images\TripleBuffer.png
 		images\Write-Back.png = images\Write-Back.png
 		images\zeroWindow.png = images\zeroWindow.png
 	EndProjectSection
