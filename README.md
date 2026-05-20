@@ -41,13 +41,13 @@ __게임 서버 (C++20)__
 
 __인프라__
 - DB: MySQL
-- 인증: Redis 임시 세션
+- 인증: Redis 
 - 로그인: Node.js
 - 모니터링: Grafana + Loki + Promtail
 
 __클라이언트__
 - 게임 클라이언트: Unity
-- 더미 클라이언트: .NET 8.0 WinForms (부하 테스트용)
+- 더미 클라이언트: .NET 8.0 (부하 테스트용)
 - 클라이언트 라이브러리: .NET Standard 2.0 (Unity 연동)
 
 __외부 라이브러리__
@@ -62,7 +62,7 @@ __외부 라이브러리__
 | 모듈 | 역할 |
 |---|---|
 | NetLibrary | IOCP 비동기 IO, 세션 관리, Ping |
-| CoreLib | 게임 로직, Zone 스레드 |
+| CoreLib | 게임 로직 |
 | CacheLib | In-Process 캐시, DB I/O |
 | ExternalLib | 구조화 로그, Redis 세션 인증 |
 
@@ -126,8 +126,8 @@ MMO 특성상 수천~수만 개의 동시 커넥션을 처리해야 하므로 IO
 ### 2. 멀티스레드 동기화 및 성능 최적화
 - [memory_order](memory_order.md) : 멀티스레드 환경의 메모리 재배치와 가시성 문제를 방지하고 성능을 최적화하기 위해, Acquire-Release 시맨틱의 동작 원리를 분석하고 이를 SpinLock 설계에 적용한 과정을 정리.
 - [LockFreeQueue](LockFreeQueue.md): Lock 경합을 방지하기 위해 atomic 변수와 CAS(Compare-And-Swap) 함수를 통해 구현한 __Vyukov's Lock-free Queue__ 구현 및 검증.
-- [TripleBuffer](TripleBuffer.md) : 로직 스레드와 네트워크 스레드 간의 간섭을 최소화하며 데이터 일관성 유지.
-
+- [TripleBuffer](TripleBuffer.md) : RCU + Triple Buffer 개념을 응용한 SPMC Lock-free 세션 스냅샷 구현. Bit Packing으로 상태를 단일 atomic 변수에 압축 관리.
+- 
 ### 3. 네트워크 안정성
 - [Ping](PingLoop.md) : Ping 루프를 통해 좀비 세션 탐지 및 순환 참조 없는 안전한 세션 종료 로직 구현.
 - [Flood Detection](FloodDetect.md): 어플리케이션 레벨에서의 대역폭 공격 방어를 위해 패킷 유입량을 감시하고 차단하는 탐지 로직 적용.  
