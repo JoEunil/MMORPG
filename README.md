@@ -204,7 +204,7 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 - 내용: 기능을 쪼개어 ClientContext를 수신 버퍼 관리 전용으로 경량화, SRP
 
 [Ping 리팩토링](PingRefactor.md)  
-- 필요성: CoreLib에서 소켓을 직접 제어할 수 없어서 비정상 종료 소켓을 강제로 끊으 수 없는 구조
+- 필요성: CoreLib에서 소켓을 직접 제어할 수 없어서 비정상 종료 소켓을 강제로 끊을 수 없는 구조
 - 내용: NetLib로 Ping 루프를 이관하여, 비정상 종료 or Ping 응답 실패 누적된 소켓 강제 종료.
 
 [AOI 적용](AOI.md)  
@@ -219,7 +219,7 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 ## 트러블 슈팅
 
 - [LockFreeQueue 디버그](LockFreeQueueDebug.md)  
-  Lock Free Queue 설계 오류로 인한 교착 상태를 호출 스택 분석을 통해 처리
+  Lock Free Queue 설계 오류로 인한 교착 상태를 호출 스택 분석을 통해 원인 분석 및 수정
 
 - [ContextPool memory_order 디버그](MemoryOrderDebug.md)  
   느슨한 메모리 순서(memory_order_relaxed) 사용 시 발생하는 가시성 문제를 분석하고, 적절한 메모리 순서 (acquire / release) 적용
@@ -237,7 +237,7 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 - 서버 성능 모니터링을 위해 메트릭 수집기 추가 필요
 - 스킬, 몬스터 데이터는 데이터 드리븐으로 변경. 지금은 하드코딩으로 처리하는 상태.
 - 몬스터 AI 처리 상태머신 기반으로 전환.
-- 방향 + 속도를 입력 받는것이 아닌 유저가 이동후 최종 좌표를 서버에 전송하는 방식으로 변경해야 한다.
+- 방향 + 속도를 입력 받는 것이 아닌 유저가 이동후 최종 좌표를 서버에 전송하는 방식으로 변경해야 한다.
   
 ## 빌드, 실행 방법
 ### 1. 개발 환경
