@@ -64,7 +64,7 @@ MESI 프로토콜 자체는 캐시라인 단위 코히어런스를 보장하지�
 
 이 버퍼들로 인해 코어 A가 값을 썼더라도 코어 B가 이전 값을 읽는 구간이 발생한다. 이것이 가시성 문제이며, memory barrier가 이를 해결한다.  
 memory_order_release → Store Buffer를 비워 이전 쓰기를 모두 캐시에 반영, 자신의 캐시에 변경이 발생하면 다른 코어들의 invalidation큐를 통해 전파.  
-memory_order_acquire → Invalidation Queue를 처리한 후(메모리나 L3 캐시에서 다시 데이터를 읽어온 후) 읽기 수행  
+memory_order_acquire → Invalidation Queue를 처리한 후 읽기 수행, cache miss 발생 시 MESI 프로토콜을 통해 최신 값을 보유한 코어(Modified 상태)에서 직접 cache-to-cache transfer로 가져옴.  
 
 ## 4. memory_order  
 memory_order는 **멀티스레드 환경에서 메모리 재배치와 가시성으로 인한 예상치 못한 동작(race condition)을 방지**하기 위해 사용된다.  
