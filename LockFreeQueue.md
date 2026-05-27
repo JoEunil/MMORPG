@@ -23,7 +23,7 @@ CAS(Compare-And-Swap)와 memory_order에 대한 기본적인 이해를 바탕으
 
 			T* pop() {
 				auto expected = m_head;
-				while (m_head.compare_exchange_weak(expected, (expected + 1) % m_QSize), std::memory_order_acq_rel, std::memory_order_relaxed) {
+				while (m_head.compare_exchange_weak(expected, (expected + 1) % m_QSize, std::memory_order_acq_rel, std::memory_order_relaxed) {
 					// strong은 비용이 커서, 이렇게 루프로 체크하는 곳에는 weak 사용하는것이 효율적
 					expected = (expected +1)%m_QSize;
 				}
@@ -35,7 +35,7 @@ CAS(Compare-And-Swap)와 memory_order에 대한 기본적인 이해를 바탕으
 			
 			bool push(T* data) {
 				auto expected = m_tail;
-				while (m_head.compare_exchange_weak(expected, (expected + 1) % m_QSize), std::memory_order_acq_rel, std::memory_order_relaxed) {
+				while (m_head.compare_exchange_weak(expected, (expected + 1) % m_QSize, std::memory_order_acq_rel, std::memory_order_relaxed) {
 					expected = (expected + 1) % m_QSize;
 				if ((expected +1)%m_QSize == m_head) //full
 						return false;
@@ -108,7 +108,7 @@ Dmitry Vyukov가 제시한 bounded MPMC 큐이다.
 slot의 상태를 단일 atomic 값으로 표현한다.  
 
 __Slot 상태 정의__
-- s. eq == index  
+- seq == index  
 → 슬롯이 비어 있음 (producer가 push 가능)  
 - seq < index  
 → 아직 이전 cycle의 데이터가 남아 있음 (사용 불가)  
@@ -128,7 +128,7 @@ push / pop 가능 여부를 판단한다.
 이 방식의 장점은 다음과 같다.  
 - slot의 상태가 단일 atomic 값으로 완전히 표현됨
 - multi-variable invariant 제거
-- ABA 문제를 구조적으로 회피 (seq는 non-deccreasing)
+- ABA 문제를 구조적으로 회피 (seq는 non-decreasing)
 - CAS 하나로 slot 상태 전이를 안전하게 제어 가능
 
 Vyukov의 구현은 논문이 아닌 블로그로 공개되었으며, 현재는 아래 저장소에서 확인할 수 있다.

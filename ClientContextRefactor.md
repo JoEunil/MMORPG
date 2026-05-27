@@ -6,7 +6,7 @@
 ## 2. 문제상황
 [ClientContext 설명 문서](ClientContext.md)  
 
-이전에 [3.1 Ping 루프 기반 세션 종료 리팩토링](#3.1-ping-루프-기반-세션-종료-리팩토링)에서 ClientContext의 복잡성을 인지하였고  
+이전에 [Ping 루프 기반 세션 종료 리팩토링](PingRefactor.md)에서 ClientContext의 복잡성을 인지하였고  
 다음과 같이 이슈를 정리했었다. [Refactor God Object: ClientContext](https://github.com/JoEunil/MMORPG/issues/5)  
 
 - 기존 구조에서 ClientContext가 세션 상태까지 관리하며 책임이 과도하게 집중됨

@@ -41,6 +41,6 @@ if (n == -1 && errno == EWOULDBLOCK) {
 ## 5. IOCP와 epoll의 차이
 epoll (Reactor): 소켓이 I/O 가능한 상태임을 통지. 애플리케이션이 직접 non-blocking recv/send를 호출한다. EAGAIN 발생 시 EPOLLOUT 등록 후 재시도 타이밍을 직접 관리해야 한다.
 
-IOCP (Proactor): OS에 I/O를 위임하고 완료를 통지받는 구조. EAGAIN 재시도는 불필요하지만, 동일 소켓에 대한 동시 WSASend 호출 시 데이가 뒤섞일 수 있어(MSDN) 애플리케이션 레벨 Send Queue가 필요하다.
+IOCP (Proactor): OS에 I/O를 위임하고 완료를 통지받는 구조. EAGAIN 재시도는 불필요하지만, 동일 소켓에 대한 동시 WSASend 호출 시 데이터가 뒤섞일 수 있어(MSDN) 애플리케이션 레벨 Send Queue가 필요하다.
 
 공통점: 둘 다 소수 스레드로 다수 커넥션 처리 가능. 둘 다 애플리케이션 레벨 Send Queue 구현이 필요하나, 그 이유가 다르다 (epoll: 재시도 관리, IOCP: 동시 호출 방지).

@@ -47,7 +47,7 @@ zone 내부 지표
 - actionFieldCount: action(스킬 이펙트) 전송대상 수 
 - deltafiedlcount: delta 업데이트 필드 수 
 - character count: zone 내부 캐릭터 수 
-- monster delta field coun: 몬스터 delta 업데이트 필드 수 
+- monster delta field count: 몬스터 delta 업데이트 필드 수 
 - monster count: zone 내부 몬스터 수
 - processed work: zone에서 처리한 입력(packet) 수
 - hit count: skill 처리 중 hit 판정 발생 횟수

@@ -1,6 +1,6 @@
 ﻿# memory_order
 ## 1. 개요 
-이 문서는 atomic 변수의 메모리 가시성과 가시성을 보장하는 memory_order sementic에 대해 설명한다.
+이 문서는 atomic 변수의 메모리 가시성과 가시성을 보장하는 memory_order semantic에 대해 설명한다.
 
 ## 2. 메모리 재배치
 
@@ -54,9 +54,9 @@ x, y가 atomic 변수로 원자적으로 처리된다고 하더라도 메모리 
 멀티스레드 환경의 문제는 메모리 재배치만이 아니다. 한 코어가 값을 수정했더라도 다른 코어에서 즉시 관측되지 않는 가시성 문제가 존재한다.    
 멀티코어 CPU에서 각 코어는 자체 캐시(L1, L2)를 보유한다. 캐시 간 데이터 일관성은 __MESI 프로토콜__ 로 관리된다.  
 
-MESI 프로토콜 자체는 캐시라인 단위 코히어런스를 보장하지만, 성능을 위해 코어와 캐시 사이에 Store Buffer와 Invalidataion Queue가 존재한다.   
+MESI 프로토콜 자체는 캐시라인 단위 코히어런스를 보장하지만, 성능을 위해 코어와 캐시 사이에 Store Buffer와 Invalidation Queue가 존재한다.   
  -> 코어가 값을 쓸 떄마다 다른 코어의 캐시라인을 무효화하고 응답을 기다리는 것은 성능 저하가 크기 때문에, 버퍼를 활용하여 무효화 응답을 기다리지 않고 다음 명령어를 실행할 수 있도록 한다.  
- -> 하지만 이런 버퍼틀로 인해 상태 불일치가 발생한다.  
+ -> 하지만 이런 버퍼들로 인해 상태 불일치가 발생한다.  
 - Store Buffer: 코어가 값을 쓸 때 캐시에 바로 쓰지 않고 버퍼에 먼저 기록. 다른 코어의 Invalidate 응답을 기다리지 않고 다음 명령어를 실행하기 위함.  
 - Invalidation Queue: Invalidate 요청을 받은 코어가 즉시 처리하지 않고 큐에 넣어두고 나중에 처리.  
 
@@ -78,7 +78,7 @@ memory_order는 **멀티스레드 환경에서 메모리 재배치와 가시성�
 | `acquire` | 이 스레드에서 acquire 이후 수행하는 모든 read/write는, 다른 스레드의 release 이전에 수행된 write를 모두 관측 |
 | `release` | 이 스레드에서 release 이전의 모든 write는, 다른 스레드가 acquire할 때 반드시 보임 |
 | `acq_rel` | 읽기와 쓰기 모두에 대해 acquire와 release 효과를 동시에 적용, 보통 read-modify-write(RMW) 연산, 예를 들어 fetch_add, compare_exchange 같은 atomic 연산에서 사용 |
-| `seq_cst` | 가장 강력한 순서 보장. 모든 스레드에서 단일 순서 유지. 성능 저하가 커서 사용하지 않는것이 좋음 |
+| `seq_cst` | 가장 강력한 순서 보장. 모든 스레드에서 단일 순서 유지. 꼭 필요한 곳이 아니라면 acquire/release로 충분한 경우가 많다 |
 
 
 ### 설계 주의점

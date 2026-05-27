@@ -47,7 +47,7 @@ TCP
 1. 수신 데이터는 `EnqueueRecvQ()` 호출로 누적
 2. 패킷 분리가 완료되면 `PacketView`를 통해 외부로 전달
 3. 처리 완료 후 `ReleaseBuffer()`로 RingBuffer 반환
-4. 게임 세션 종료 시 `ClienContextPool`에 반납되고 workingCnt가 0이 되면 flush 로직에 의해 처리됨.
+4. 게임 세션 종료 시 `ClientcontextPool`에 반납되고 workingCnt가 0이 되면 flush 로직에 의해 처리됨.
 
 ## 6. 설계 결정 및 트레이드오프
 - 포인터로 외부에서 사용하도록 설계

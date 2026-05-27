@@ -37,7 +37,8 @@ Rust 포럼의 [SPMC Triple Buffring](https://users.rust-lang.org/t/spmc-buffer-
 개념을 참고하여 구현.  
 
 __구현 코드__
-```cpptemplate <typename T>
+```cpp
+template <typename T>
 	class TripleBuffer {
 		T* back;
 		std::atomic<uint8_t> dirty; // 0: readable, 1: swap , 2: dirty

@@ -2,7 +2,7 @@
 ## 1. 개요
 본 문서는 서버에 유입되는 비정상 트래픽을 효과적으로 탐지하고 차단하기 위한 Flood Detection 시스템의 목적과 구현을 설명한다.
 
-## 2.목적
+## 2. 목적
 과도한 트래픽 (m_bytes > BYTE_THRESHOLD): 정상적인 패킷 형태를 띠고 있지만, 너무 많은 양의 데이터를 보내 대역폭을 점유하려는 시도      
 Tiny 패킷 (m_bytes < MIN_BYTE_PER_WINDOW): 데이터 양은 적지만, 수천 번의 수신 이벤트를 발생시켜 서버의 CPU(Worker Thread)를 고갈시키려는 시도
 
@@ -116,7 +116,7 @@ class TrafficFloodDetector {
 	* 변수 두개만 사용하여 메모리 사용량이 적음
 	* std::now() 같은 무거운 연산이 없어서 Hot path에 적용 가능
 	* 임계 횟수 도달 시점에 즉시 판정하여 신속한 차단 가능.
-	* 과도한 트래은 물론, 작은 패킷을 쏟아부어 CPU 자원을 고갈시키는   
+	* 과도한 트래픽은 물론, 작은 패킷을 쏟아부어 CPU 자원을 고갈시키는   
 	  Tiny Packet 공격까지 방어 가능(패킷 헤더 크기 기반 최소 바이트 설정).  
 ```cpp
 	class TrafficFloodDetector {
@@ -143,7 +143,7 @@ class TrafficFloodDetector {
 
 [TrafficFloodDetector.h](NetLibrary/TrafficFloodDetector.h)
 
-### EMWA 
+### EWMA 
 * 개념
 	* 지수 가중 이동 평균을 이용하여 최근 데이터에 높은 가중치를 부여하여 트래픽 변화를 유연하게 대응하는 방식.
 * 미도입 사유

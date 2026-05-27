@@ -1,4 +1,4 @@
-# Memory order Debug
+﻿# Memory order Debug
 
 ## 1. 개요
 [모니터링에서 발견한 버그 수정](https://github.com/JoEunil/MMORPG/commit/16247c033861497bd2840bb25f22b093a70e5370) 커밋에서 발견한 memory order 관련 문제를 해결하는 과정을 설명한다.
@@ -44,7 +44,7 @@ if (!m_connected.load(acquire) && m_workingCnt.load(acquire))
 
 __ReleaseBuffer()__
 ```cpp
-m_workingCnt.fetch_sub(1, acq_rel_);
+m_workingCnt.fetch_sub(1, acq_rel);
 if (!m_connected.load(acquire) && m_workingCnt.load(acquire) == 0)
 ```
 위와 같이 acquire-release 관계를 형성하도록 memory_order를 수정한 후

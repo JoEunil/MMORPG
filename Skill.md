@@ -63,8 +63,8 @@ Monster AI 로직에 대한 추가 내용은 [Monster 구현 설명](Monster.md)
 ![gif 로드 실패](images/SkillAOI.gif)
 ![gif 로드 실패](images/BossMonster.gif)
 - 스킬 시전 위치는 캐스터의 움직임을 따라가지 않고, 최초 시전 위치를 기준으로 모든 SkillPhase가 수행된다.
-- dirtyBit 필드를 잘못사용하여 몬스터 움직임 처리가 Delta Update에서 제대로 처리되지 못했다.
-- 보간 처리 때문에 이를 인지하지 못했다.
+- dirtyBit 필드를 잘못사용하여 몬스터 움직임 처리가 Delta Update에서 제대로 처리되지 못했다. 
+- 보간 처리 때문에 이를 인지하지 못했다. (수정 완료)
 
 ## 4. 참고 
 

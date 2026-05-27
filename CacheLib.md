@@ -134,20 +134,6 @@ __종료 처리__
 CacheLib의 구조는 InnoDB 스토리지 엔진의 Buffer Pool과 유사한 설계 철학을 따른다.  
 
 __유사한 점__
-메모리 캐싱 후 비동기 디스크 반영 (Cache → DB, Buffer Pool → Disk)  
-LRU 기반 교체 정책  
-Dirty 데이터 관리 및 백그라운드 스레드 Flush  
-
-__차이점__
-4장 구조 섹션 마지막에 추가하면 자연스러워. "사용자 접근 패턴" 다음, 5장 특징 전에:
-
----
-
-### InnoDB 아키텍처와 비교
-
-CacheLib의 구조는 InnoDB 스토리지 엔진의 Buffer Pool과 유사한 설계 철학을 따른다.
-
-__유사한 점__
 - 메모리 캐싱 후 비동기 디스크 반영 (Cache → DB, Buffer Pool → Disk)
 - LRU 기반 교체 정책
 - Dirty 데이터 관리 및 백그라운드 스레드 Flush
