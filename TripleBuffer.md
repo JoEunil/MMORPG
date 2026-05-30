@@ -1,4 +1,4 @@
-﻿# triple buffer
+﻿# MPMC Lock-free Triple Buffer
 
 ## 1. 개요
 이 문서는 Triple Buffer의 개념과 구현 과정을 기술한다.  
@@ -83,7 +83,9 @@ SPMC 환경에서 다수의 Worker 스레드가 공유된 Reader 풀로 동작�
 
 ![이미지 로드 실패](images/TripleBuffer.png)
 
-Double Back-Buffer 구조와 Ref-Counting을 도입하여 RCU(Read-Copy-Update) 스타일로 개선.  
+Double Back-Buffer 구조와 Ref-Counting을 도입하여 RCU(Read-Copy-Update) 스타일로 개선.    
+> 설계 의도는 SPMC였으나, Writer의 CAS 권한 획득 구조와   
+상태 플래그 설계로 인해 결과적으로 MPMC를 지원한다.
 
 __핵심 아이디어__
 
@@ -94,11 +96,6 @@ __핵심 아이디어__
 - Reader 주도 업데이트: Reader가 접근할 때 Back1에 최신 데이터가 있다면 Back2로 Swap 시키고 읽는다.
 
 __사용한 기술__   
-
-~~Bit-packing(uint8_t)~~
-- ~~참조 카운팅과 back1 포인터 상태의 원자성을 보장하기 위해, 두 변수를 하나의 변수(uint8_t)_로 압축~~
-- ~~최상위 비트를 back1 포인터 상태, 하위 7 비트는 ref-counter~~
-- ~~두개의 상태값을 하나의 원자 조작으로 처리 가능하여 Lock-free 알고리즘 구현 가능.~~
 
 BitPacking(최신 구조, uint16_t)
 - 상위 2비트: 상태 표시
@@ -150,7 +147,9 @@ Read:
 [TripleBufferAdvanced.h](BaseLib/TripleBufferAdvanced.h)
 
 ## 5. Note
-이 자료구조는 actor 모델에서 actor 내부상태를 외부 reader에 동기화 할 때 유용하게 사용할 수 있다.  
+이 자료구조는 actor 모델에서 actor 내부상태를 외부 reader에 동기화 할 때 유용하게 사용할 수 있다.   
+- 짧은 읽기 참조 (패킷 생성, 포인터 복사 수준)
+- 최신 스냅샷만 필요한 경우
 
 
 

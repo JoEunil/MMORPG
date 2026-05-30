@@ -3,6 +3,11 @@
 #include <algorithm>
 #include <memory>
 
+// MPMC Lock-Free Buffer
+// Eventually consistent reads via triple buffering
+// Suitable for: short read operations, latest-snapshot workloads
+// Not suitable for: long read operations, ordered update processing
+
 namespace Base {
 	template <typename T>
 	struct BufferReader;
@@ -47,9 +52,8 @@ namespace Base {
 		}
 
 		BufferReader<T> Read() {
-			T* read_ptr = nullptr;
-
 			uint16_t new_flag;
+
 			while (true) {
 				uint16_t old_flag = flag.load(std::memory_order_relaxed);
 				if (old_flag == 0) { // 최신 + not reading
@@ -74,7 +78,6 @@ namespace Base {
 				flag.store(0x4000 + 1, std::memory_order_release);
 			}
 
-			read_ptr = back2;
 			return BufferReader<T>(back2, this);
 		}
 		void ReadDone() {
