@@ -19,12 +19,12 @@ namespace Base {
 			std::atomic<uint64_t> seq;
 			T data;
 		};
-		std::unique_ptr <Cell[]> m_queue alignas(std::hardware_destructive_interference_size);
+		alignas(std::hardware_destructive_interference_size) std::unique_ptr <Cell[]> m_queue;
 		// vector는 seq가 atomic이기 때문에 사용할 수 없음(copy, move가 안돼서)
 
-		std::atomic<uint64_t> m_head alignas(std::hardware_destructive_interference_size);
+		alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_head;
 
-		std::atomic<uint64_t> m_tail alignas(std::hardware_destructive_interference_size);
+		alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_tail;
 
 		uint16_t m_mask;
 

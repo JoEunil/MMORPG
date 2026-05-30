@@ -2,6 +2,7 @@
 #include <atomic>
 #include <algorithm>
 #include <memory>
+#include <new>
 
 // MPMC Lock-Free Buffer
 // Eventually consistent reads via triple buffering
@@ -14,9 +15,9 @@ namespace Base {
 		
 	template <typename T>
 	class TripleBufferAdvanced {
-		T* back1; 
-		T* back2; // reader 가 참조
-		std::atomic<uint16_t> flag = 0;
+		alignas(std::hardware_destructive_interference_size) T* back1;
+		alignas(std::hardware_destructive_interference_size) T* back2; // reader 가 참조
+		alignas(std::hardware_destructive_interference_size) std::atomic<uint16_t> flag = 0;
 		// 상위 2비트는 상태 표시 , 이전 비트는 counter
 		// 첫번째 비트: back1, back2 lock
 		// 두번째 비트 : back2가 최신 상태인지, (write 시 1, back1-back2 swap 시 0)
