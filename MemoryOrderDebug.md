@@ -52,13 +52,20 @@ flush가 정상적으로 수행되었다.
 (relaxed에서는 두 atomic 간의 순서·가시성이 보장되지 않아 조건 평가가 뒤틀릴 수 있었음)
 
 ## 5. Note
-- 단순 counter나 종료 신호 같은 flag라도 두개 이상의 atomic 변수를 논리적으로 연결된 상태로 사용할 때에는  
-memory_order를 잘 설정해야한다.
-	- 한 변수 변경 → 다른 변수가 그 변경을 기준으로 의존 
-	- 이런 경우 반드시 acquire/release 또는 seq_cst가 필요.
-> x64 TSO는 하드웨어 재배치를 대부분 막아주고, Debug 빌드는 컴파일러 재배치도 없다.
-> 하지만 relaxed는 코어 간 happens-before를 보장하지 않아 store buffer / invalidation queue에 의한 가시성 지연이 발생한다.
-> 플랫폼·빌드 모드와 관계없이, 논리적으로 연결된 atomic 변수 간에는 명시적인 acquire/release 설정이 필수적이다. 
+- relaxed는 atomic 변수의 원자성을 보장하지만, 스레드 간 가시성은 보장하지 않는다.
+  - store buffer flush가 강제되지 않아 가시성 지연이 발생할 수 있다.
+  - x64 TSO + Debug 빌드 환경에서 명령 재배치가 없었음에도 버그가 발생한 원인이다.
+
+- fetch_add 기반 ID 발급은 relaxed여도 중복이 발생하지 않는다.
+  - fetch_add는 read-modify-write 연산으로 캐시 라인을 독점하기 때문에,
+    발급 스레드들끼리는 항상 최신값 기반으로 연산이 수행된다.
+  - 단순 load로 관측하는 스레드가 없으므로 stale read 자체가 발생하지 않는다.
+
+- 반면 m_connected + m_workingCnt처럼 두 변수를 논리적으로 연결해서
+  조건 판단에 사용하는 경우는 relaxed가 위험하다.
+  - 각 변수의 가시성 시점이 독립적이라 한 변수는 최신값,
+    다른 변수는 stale값을 동시에 관측할 수 있기 때문이다.
+  - 플랫폼·빌드 모드와 관계없이 acquire/release로 happens-before를 형성해야 한다.
 
 ## 6. 참고
 - [ClientContext 설명 문서](ClientContext.md)  
