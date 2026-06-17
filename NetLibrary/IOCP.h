@@ -13,6 +13,7 @@
 #include <thread>
 #include <atomic>
 #include <cstdint>
+#include <new>
 #include <CoreLib/IIOCP.h>
 #include <CoreLib/LoggerGlobal.h>
 
@@ -34,8 +35,9 @@ namespace Net {
         std::vector<std::thread> m_threads;
         SOCKET m_listenSock;
         LPFN_ACCEPTEX m_lpfnAcceptEx = nullptr; // AcceptEx 함수를 담을 함수 포인터
-        std::atomic<bool> m_isRunning = false;
-        std::atomic<bool> m_receiving = false;
+
+        alignas(std::hardware_destructive_interference_size) std::atomic<bool> m_isRunning = false;
+        alignas(std::hardware_destructive_interference_size) std::atomic<bool> m_receiving = false;
 
         std::atomic<bool>* fatalError;
         std::condition_variable* cv;

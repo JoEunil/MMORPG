@@ -1,14 +1,15 @@
 ﻿#pragma once
 #include <atomic>
 #include <algorithm>
+#include <new>
 
 
 namespace Base {
 	// MPMC Lock Free 버퍼
 	template <typename T>
 	class TripleBuffer {
-		T* back;
-		std::atomic<uint8_t> dirty; // 0: readable, 1: swap , 2: dirty
+		alignas(std::hardware_destructive_interference_size) T* back;
+		alignas(std::hardware_destructive_interference_size) std::atomic<uint8_t> dirty; // 0: readable, 1: swap , 2: dirty
 	public:
 		void Init(T* b) {
 			back = b;

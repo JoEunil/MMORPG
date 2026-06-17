@@ -3,29 +3,31 @@
 #include <atomic>
 #include <array>
 #include <thread>
+#include <new>
 
 #include "LoggerGlobal.h"
 #include "Config.h"
 namespace Core {
     struct ZonePerfData {// per sec
+        // single thread access
         std::atomic<uint64_t> packetProcessed;
         std::atomic<uint64_t> tick;
         std::atomic<uint64_t> actionFieldCount;
-        std::atomic<uint64_t> deltaFieldCount; 
+        std::atomic<uint64_t> deltaFieldCount;
         std::atomic<uint64_t> characterCount;
         std::atomic<uint64_t> monsterDeltaFieldCount;
-        std::atomic<uint64_t> monsterCount; 
+        std::atomic<uint64_t> monsterCount;
         std::atomic<uint64_t> hitCount;
         std::atomic<uint64_t> zoneWorkDropCnt;
     };
 
     class CorePerfCollector {
         std::array<ZonePerfData,ZONE_COUNT> zones;
-        std::atomic<uint64_t> chatSendCnt;
-        std::atomic<uint64_t> broadcastEnqueuCnt;
-        std::atomic<uint64_t> broadcastPopCnt;
-        std::atomic<uint64_t> broadcastSendCnt;
-        std::atomic<uint64_t> broadcastDropCnt;
+        alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> chatSendCnt;
+        alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> broadcastEnqueuCnt;
+        alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> broadcastPopCnt;
+        alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> broadcastSendCnt;
+        alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> broadcastDropCnt;
         std::thread m_thread;
         std::atomic<bool> m_running;
 

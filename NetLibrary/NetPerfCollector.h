@@ -3,6 +3,7 @@
 #include <thread>
 #include <atomic>
 #include <array>
+#include <new>
 #include <CoreLib/LoggerGlobal.h>
 #include "SessionManager.h"
 #include "PacketPool.h"
@@ -11,9 +12,13 @@
 #include "Config.h"
 
 namespace Net {
+    struct alignas(std::hardware_destructive_interference_size) PaddedAtomicU64 {
+        std::atomic<uint64_t> v;
+    };
+
     class NetPerfCollector {
-        std::array<std::atomic<uint64_t>, IOCP_THREADPOOL_SIZE> m_recvCount = { 0 };
-        std::atomic<uint64_t> jitter;
+        std::array<PaddedAtomicU64, IOCP_THREADPOOL_SIZE> m_recvCount{};
+        alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> jitter;
         std::thread m_thread;
         std::atomic<bool> m_running;
         void Initialize(SessionManager* s, PacketPool* p, PacketPool* bp, OverlappedExPool* o, ClientContextPool* c) {
@@ -97,8 +102,8 @@ namespace Net {
             );
             for (int i = 0; i < IOCP_THREADPOOL_SIZE; i++)
             {
-                Core::perfLogger->LogInfo("net perf", "iocp worker log per sec", "index", i, "recv", m_recvCount[i].load(std::memory_order_relaxed));
-                m_recvCount[i].store(0, std::memory_order_relaxed);
+                Core::perfLogger->LogInfo("net perf", "iocp worker log per sec", "index", i, "recv", m_recvCount[i].v.load(std::memory_order_relaxed));
+                m_recvCount[i].v.store(0, std::memory_order_relaxed);
             }
             Core::perfLogger->Flush();
         }
@@ -108,7 +113,7 @@ namespace Net {
                 Core::errorLogger->LogInfo("net perf", "AddRecvCnt index out of bound", "index", index);
                 return;
             }
-            m_recvCount[index].fetch_add(1, std::memory_order_relaxed);
+            m_recvCount[index].v.fetch_add(1, std::memory_order_relaxed);
         }
         void AddJitterCnt() {
             jitter.fetch_add(1, std::memory_order_relaxed);

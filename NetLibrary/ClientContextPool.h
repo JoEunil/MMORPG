@@ -3,7 +3,8 @@
 #include <atomic>
 #include <mutex>
 #include <memory>
-#include <winsock2.h>    
+#include <new>
+#include <winsock2.h>
 #include <cstdint>
 
 #include <CoreLib/LoggerGlobal.h>
@@ -18,7 +19,7 @@ namespace Net {
 
         std::mutex m_mutex;
         bool m_running = false;
-        std::atomic<int> m_workingCnt = 0;
+        alignas(std::hardware_destructive_interference_size) std::atomic<int> m_workingCnt = 0;
         
         void Initialize();
         bool IsReady() const {

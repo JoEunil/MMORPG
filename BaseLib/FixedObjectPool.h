@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <memory>
+#include <new>
 #include "SpinLockGuard.h"
 
 
@@ -10,7 +11,7 @@ namespace Base {
     class FixedObjectPool {
         std::unique_ptr<T[]> pool; // 힙 할당
         std::vector<T*> freeList;
-        std::atomic_flag lock;
+        alignas(std::hardware_destructive_interference_size) std::atomic_flag lock;
     public:
         FixedObjectPool() : pool(std::make_unique<T[]>(Size)) {
             freeList.reserve(Size);

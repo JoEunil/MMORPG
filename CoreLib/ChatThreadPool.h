@@ -2,6 +2,7 @@
 #include <mutex>
 #include <thread>
 #include <atomic>
+#include <new>
 #include <set>
 #include <unordered_map>
 #include <memory>
@@ -63,7 +64,7 @@ namespace Core {
         // zone 당 2000명으로 설정해서, 삽입 삭제 비용이 크지 않음.
         //std::unordered_map<uint64_t, std::vector<uint64_t>> m_guildMembers;
         //std::unordered_map<uint64_t, std::vector<uint64_t>> m_partyMembers;
-        std::atomic<uint64_t> m_chatIdGenerater;
+        alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_chatIdGenerater;
         Base::LockFreeQueue<ChatEvent, CHAT_QUEUE_SIZE> m_chatQueue;
         // MPMC 큐 적용
 

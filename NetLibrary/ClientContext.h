@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <cstdint>
+#include <new>
 
 #include "RingBuffer.h"
 #include "NetPacketFilter.h"
@@ -32,9 +33,11 @@ namespace Net {
         bool m_last_op = RELEASE;
         uint64_t m_sessionID = 0;
 
-        std::atomic<bool> m_connected = false;
-        std::atomic<int16_t> m_workingCnt = int16_t(0); // buffer 조각(패킷)을 점유하고 있는 작업의 수
+        // m_connected, m_gameSession은 자주 read 되지만 write는 드묾 → 같은 cache line에 두어도 됨.
+        // m_workingCnt는 패킷마다 fetch_add/sub 되므로 자주 read 되는 두 flag와 cache line 분리.
+        alignas(std::hardware_destructive_interference_size) std::atomic<bool> m_connected = false;
         std::atomic<bool> m_gameSession = false;
+        alignas(std::hardware_destructive_interference_size) std::atomic<int16_t> m_workingCnt = int16_t(0); // buffer 조각(패킷)을 점유하고 있는 작업의 수
 
         std::recursive_mutex m_mutex; 
         // TryDispatch 실패하는 경우, EnqueueReleaseQ에서 DeadLock을 방지하기 위함. 

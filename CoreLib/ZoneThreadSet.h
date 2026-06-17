@@ -4,6 +4,7 @@
 #include <memory>
 #include <mutex>
 #include <array>
+#include <new>
 #include <condition_variable>
 
 #include "ZoneHandler.h"
@@ -15,7 +16,8 @@
 namespace Core {
     class IPacketView;
     class CorePerfCollector;
-    struct Thread {
+
+    struct alignas(std::hardware_destructive_interference_size) Thread {
         std::thread thread;
         Base::LockFreeQueueUP<std::unique_ptr<IPacketView, PacketViewDeleter>, ZONE_QUEUE_SIZE> workQueue; // 개별 작업 큐
         std::atomic<bool> running = false;

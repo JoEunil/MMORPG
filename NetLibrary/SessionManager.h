@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <mutex>
 #include <atomic>
+#include <new>
 #include <unordered_map>
 #include <functional>
 
@@ -16,12 +17,13 @@ namespace Net{
     // 네트워크 레벨의 공유 자료구조를 담기 때문에 shard를 통해 lock contension을 줄이고
     // spin lock을 적용해 lock으로 인한 context switching을 줄인다.
     // critical section이 매우 짧아야 한다.
-    struct SessionShard {
+
+    struct alignas(std::hardware_destructive_interference_size) SessionShard {
         std::atomic_flag flag;
         std::unordered_map<SOCKET, SessionState> stateMap; // socket -> sessionState
         std::unordered_map<uint64_t, ClientContext*> contextMap; // session -> context
     };
-    struct ReverseShard {
+    struct alignas(std::hardware_destructive_interference_size) ReverseShard {
         std::atomic_flag flag;
         std::unordered_map<uint64_t, SOCKET> socketMap; // session -> socket 조회용도
     };
@@ -29,8 +31,8 @@ namespace Net{
     class ClientContextPool;
 
     class SessionManager{
-        std::atomic<uint64_t> m_connectionCnt = 0;
-        std::atomic<uint64_t> m_sessionGenerator = 1;
+        alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_connectionCnt = 0;
+        alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_sessionGenerator = 1;
         std::array<SessionShard, SESSION_SHARD_SIZE> m_sessionShard;
         std::array<ReverseShard, SESSION_SHARD_SIZE> m_reverseShard;
         // AddSession과 Disconnect에 의해서만 추가, 제거가 처리됨.
