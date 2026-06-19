@@ -12,7 +12,7 @@ namespace Base {
     class ObjectPool {
         std::vector<T*> objects;
         std::mutex mutex;
-        const size_t target, max, min;
+        const size_t target, max, min; // min != 0
 
         void Adjust() {
             if (objects.size() >= max) {
