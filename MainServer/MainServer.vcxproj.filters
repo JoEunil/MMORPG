@@ -18,9 +18,6 @@
     <ClInclude Include="main.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="UnitTest.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="UnitTestRingQueue.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
