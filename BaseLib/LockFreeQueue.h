@@ -20,7 +20,7 @@ namespace Base {
 			T data;
 		};
 		alignas(std::hardware_destructive_interference_size) std::unique_ptr <Cell[]> m_queue;
-		// vector는 seq가 atomic이기 때문에 사용할 수 없음(copy, move가 안돼서)
+		// vector로 사용 가능함, 고정크기 + 재할당 방지 목적으로 array가 적합.
 
 		alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_head;
 
@@ -42,7 +42,7 @@ namespace Base {
 				m_queue[i].seq.store(i, std::memory_order_relaxed);
 			}
 		}
-		bool push(T& data) {
+		bool push(const T& data) {
 			while (true)
 			{
  				auto tail = m_tail.load(std::memory_order_relaxed);

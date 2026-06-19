@@ -144,9 +144,7 @@ http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
 
 ## 8. 주의사항 
 - 큐 크기는 모듈러 연산 최적화를 위해 2의 거듭제곱으로 사용한다.
-- Cell 내부의 seq는 std::atomic이므로 복사 및 이동 연산이 불가능하다.
-- 이로 인해 내부적으로 복사/이동을 사용하는 std::vector는 사용할 수 없다
-- ~~std::array를 사용하며~~, 큐 크기는 컴파일 타임에 결정되도록 템플릿 인자로 전달한다.
+- std::array를 사용하며, 큐 크기는 컴파일 타임에 결정되도록 템플릿 인자로 전달한다.
 - push는 큐가 가득 찬 경우 false를 반환하므로, 중요한 데이터의 경우 back-off 정책이 필요하다.
 - 큐의 size()를 제공하지 않는다.
 	- size 계산 자체가 race condition을 유발할 수 있으며,

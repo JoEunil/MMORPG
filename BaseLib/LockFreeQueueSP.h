@@ -33,8 +33,7 @@ namespace Base {
 			m_queue = std::make_unique<Cell[]>(QSize);
 			for (int i = 0; i < QSize; i++)
 			{
-				m_queue[i].seq
-					i, std::memory_order_relaxed);
+				m_queue[i].seq.store(i, std::memory_order_relaxed);
 			}
 		}
 		bool push(T data) {
@@ -46,7 +45,7 @@ namespace Base {
 				int64_t diff = static_cast<int64_t>(seq) - static_cast<int64_t>(tail);
 
 				if (diff == 0) {
-					if (m_tail.compare_exchange_weak(tail, tail + 1, std::memory_order_acq_rel, std::memory_order_relaxed))) {
+					if (m_tail.compare_exchange_weak(tail, tail + 1, std::memory_order_acq_rel, std::memory_order_relaxed)) {
 						m_queue[idx].data = data;
 						m_queue[idx].seq.store(tail + 1, std::memory_order_release);
 						return true;
@@ -70,7 +69,7 @@ namespace Base {
 				auto seq = m_queue[idx].seq.load(std::memory_order_acquire);
 				int64_t diff = static_cast<int64_t>(seq) - static_cast<int64_t>(head + 1);
 				if (diff == 0) {
-					if (m_head.compare_exchange_weak(head, head + 1, std::memory_order_acq_rel, std::memory_order_relaxed))) {
+					if (m_head.compare_exchange_weak(head, head + 1, std::memory_order_acq_rel, std::memory_order_relaxed)) {
 						auto res = m_queue[idx].data;
 						m_queue[idx].seq.store(head + QSize, std::memory_order_release);
 						m_queue[idx].data = T{};
