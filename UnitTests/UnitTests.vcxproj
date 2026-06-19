@@ -102,6 +102,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -119,6 +120,7 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions</EnableEnhancedInstructionSet>
+      <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,9 +131,14 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="LockFreeQueue.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ObjectPool.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\BaseLib\BaseLib.vcxproj">
+      <Project>{1ebfc4a8-22e7-4752-bc34-b968f89dc757}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\CacheLib\CacheLib.vcxproj">
       <Project>{c76d26f8-548e-4af9-bdd3-e4e7657ecd50}</Project>
     </ProjectReference>
