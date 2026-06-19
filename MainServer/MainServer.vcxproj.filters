@@ -24,13 +24,13 @@
     <ClInclude Include="UnitTestRingQueue.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="UnitTestCache.h">
+    <ClInclude Include="IntegrationTestCache.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="CoreCheck.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="TestBazaar.h">
+    <ClInclude Include="IntegrationTestBazaar.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

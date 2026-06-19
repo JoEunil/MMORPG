@@ -214,8 +214,8 @@ xcopy /Y "$(SolutionDir)External\libevent\bin\Release\*.dll" "$(OutDir)"</Comman
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClInclude Include="CoreCheck.h" />
-    <ClInclude Include="TestBazaar.h" />
-    <ClInclude Include="UnitTestCache.h" />
+    <ClInclude Include="IntegrationTestBazaar.h" />
+    <ClInclude Include="IntegrationTestCache.h" />
     <ClInclude Include="UnitTestRingQueue.h">
       <FileType>CppCode</FileType>
     </ClInclude>
