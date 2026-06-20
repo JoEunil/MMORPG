@@ -23,7 +23,6 @@
 namespace Core {
     class IPacket;
     class BroadcastThreadPool;
-    class PacketWriter;
     class StateManager; 
 
     struct SkillRequest {
@@ -52,22 +51,16 @@ namespace Core {
         std::vector<std::vector<uint64_t>>* sessionSnapshotWriter;
 
         inline static BroadcastThreadPool* broadcast;
-        inline static PacketWriter* writer;
         inline static StateManager* stateManager;
         inline static CorePerfCollector* perfCollector;
-        static void Initialize(BroadcastThreadPool* b, PacketWriter* p, StateManager* s, CorePerfCollector* pc) {
+        static void Initialize(BroadcastThreadPool* b, StateManager* s, CorePerfCollector* pc) {
             broadcast = b;
-            writer = p;
             stateManager = s;
             perfCollector = pc;
         }
         static bool IsReady() {
             if (broadcast == nullptr) {
                 sysLogger->LogError("zone state", "broadcast not initialized");
-                return false;
-            }
-            if(writer == nullptr) {
-                sysLogger->LogError("zone state", "writer not initialized");
                 return false;
             }
             return true;

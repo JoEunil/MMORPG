@@ -33,6 +33,18 @@ namespace Core {
     {
         gameLogger->LogInfo("state manager", "Enqueue Disconnect", "sessionID", sessionID);
         Message* msg = messagePool->Acquire();
+        constexpr int MAX_RETRY = 10;
+        for (int retry = 0; retry < MAX_RETRY && !msg; retry++) {
+            msg = messagePool->Acquire();
+            if (!msg)
+                std::this_thread::yield();
+        }
+
+        if (!msg) {
+            gameLogger->LogError("state manager", "Failed to acquire message for disconnect", "sessionID", sessionID, "character state", temp);
+            return ;
+        }
+
         auto st = reinterpret_cast<MsgStruct<MsgCharacterStateUpdateBody>*>(msg->GetBuffer());
         st->header.sessionID = sessionID;
         st->header.messageType = MSG_CHARACTER_STATE_UPDATE;

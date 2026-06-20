@@ -2,7 +2,6 @@
 #include "ZoneState.h"
 #include "IPacket.h"
 #include "ILogger.h"
-#include "PacketWriter.h"
 #include "StateManager.h"
 #include "LoggerGlobal.h"
 

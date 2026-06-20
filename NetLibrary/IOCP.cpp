@@ -241,6 +241,11 @@ namespace Net {
         }
 
         STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
+        if (!pOverlappedEx) {
+            Core::errorLogger->LogWarn("iocp", "failed to acquire overlappedEx");
+            closesocket(clientSocket);
+            return;
+		}
         ZeroMemory(pOverlappedEx, sizeof(STOverlappedEx));
         pOverlappedEx->op = IOOperation::ACCEPT;
         pOverlappedEx->clientSocket = clientSocket;
@@ -364,6 +369,8 @@ namespace Net {
         }
         DWORD dwBytesSent = 0;
         STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
+        if (!pOverlappedEx)
+            return;
         pOverlappedEx->op = IOOperation::SEND;
         pOverlappedEx->clientSocket = clientSocket;
         pOverlappedEx->wsaBuf.resize(1);

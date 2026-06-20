@@ -51,7 +51,7 @@ __클라이언트__
 - 클라이언트 라이브러리: .NET Standard 2.0 (Unity 연동)
 
 __외부 라이브러리__
-- spdlog, hiredis, libevent, nlohmann/json, MySQL Connector C++
+- spdlog, hiredis, libevent, nlohmann/json, MySQL Connector C++, google test
 
 ## 아키텍처 
 
@@ -215,6 +215,9 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 - 필요성: DB I/O 블로킹으로 인한 캐시 처리 지연 제거  
 - 내용: DB 작업을 전용 워커 스레드로 분리, LoadFromDB 비동기 전환 및 클라이언트 재시도 방식 적용
 
+[ObjectPool 리팩토링](ObjectPool.md)
+- 필요성: 동적 resize 구조가 병목 상황에서 추가 할당을 유발해 지연을 전이시킬 수 있음을 인지
+- 내용: Elastic ObjectPool 제거 후 FixedObjectPool로 교체, 고갈 시 Drop + 로그로 대응
 
 ## 트러블 슈팅
 
@@ -358,6 +361,7 @@ Unity Client
 - [Ping 리팩토링](PingRefactor.md)
 - [AOI 적용](AOI.md)
 - [DB 전용 worker 스레드 분리](DBWorkerRefactor.md)
+- [ObjectPool 리팩토링](ObjectPool.md)
 
 ### 트러블 슈팅
 - [SessionManager 데드락](SessionManagerDeadLock.md)

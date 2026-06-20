@@ -60,11 +60,9 @@ namespace Cache {
     inline constexpr const char* QUERY_16 = "CALL sp_bazaar_buy(?, ?, ?)";
     inline constexpr const char* QUERY_17 = "CALL sp_bazaar_claim(?, ?)";
 
-    inline constexpr uint16_t TARGET_MSGPOOL_SIZE = 50;
-    inline constexpr uint16_t MAX_MSGPOOL_SIZE = 100;
-    inline constexpr uint16_t MIN_MSGPOOL_SIZE = 20;
+    inline constexpr uint16_t MSGPOOL_SIZE = 100;
 
-    inline constexpr uint16_t MESSGAGE_LEN = 1024;
+    inline constexpr uint16_t MESSAGE_LEN = 1024;
     inline constexpr uint16_t THREADPOOL_SIZE = 100; 
 
     inline constexpr uint16_t MAX_CHARACTER_CNT = 10;

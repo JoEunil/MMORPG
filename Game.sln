@@ -125,6 +125,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Refactor", "Refactor", "{FB
 		ChatRefactor.md = ChatRefactor.md
 		ClientContextRefactor.md = ClientContextRefactor.md
 		DBWorkerRefactor.md = DBWorkerRefactor.md
+		ObjectPool.md = ObjectPool.md
 		PingRefactor.md = PingRefactor.md
 	EndProjectSection
 EndProject

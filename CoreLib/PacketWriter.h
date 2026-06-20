@@ -41,6 +41,9 @@ namespace Core {
         
         std::shared_ptr<IPacket> GetDeltaHeader() {
             auto p = packetPool->Acquire();
+            if (!p) {
+                return nullptr;
+            }
             auto p_st = reinterpret_cast<PacketStruct<DeltaSnapshotBody>*>(p->GetBuffer());
             p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
             p->SetLength(p_st->header.length);
@@ -69,6 +72,9 @@ namespace Core {
 
         std::shared_ptr<IPacket> GetMonsterDeltaHeader() {
             auto p = packetPool->Acquire();
+            if (!p) {
+                return nullptr;
+            }
             auto p_st = reinterpret_cast<PacketStruct<MonsterDeltaSnapshotBody>*>(p->GetBuffer());
             p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
             p->SetLength(p_st->header.length);
@@ -100,6 +106,9 @@ namespace Core {
 
         std::shared_ptr<IPacket> GetInitialChunk() {
             auto p = bigPacketPool->Acquire();
+            if (!p) {
+                return nullptr;
+            }
             p->SetLength(0);
             return p;
         }
@@ -117,6 +126,9 @@ namespace Core {
 
         std::unique_ptr<IPacket, PacketDeleter>  GetPingPacket(uint64_t rtt,uint64_t nowMs) override {
             auto p = packetPool->AcquireUnique();
+            if (!p) {
+                return nullptr;
+            }
             auto p_st = reinterpret_cast<PacketStruct<Ping>*>(p->GetBuffer());
             p_st->header.length = sizeof(PacketHeader) + sizeof(Ping);
             p_st->header.opcode = OP::PING;

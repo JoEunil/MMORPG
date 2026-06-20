@@ -1,35 +1,27 @@
 ﻿#pragma once
 
 #include <deque>
-#include <mutex>
 #include <cstdint>
 
+#include <BaseLib/FixedObjectPool.h>
 #include "LoggerGlobal.h"
+#include "Message.h"
 
 namespace Core {
-    class Message;
     class MessagePool{
-        uint16_t m_remains;
-        std::vector<Message*> m_messages;
-        std::mutex m_mutex;
+        Base::FixedObjectPool<Message, MSGPOOL_SIZE> m_fixedPool{ MESSGAGE_LEN };
 
-        void Initialize();
         bool IsReady() {
-            return m_messages.size() > 0;
+            return true;
         }
-        void Adjust();
-        void Increase(); // 풀 늘리기
-        void Decrease(); // 풀 줄이기
-        
+
         friend class Initializer;
     public:
-        ~MessagePool();
         Message* Acquire(); // MessageQueue에 복사하고 바로 반납해서 수명관리가 단순함
         void Return(Message* msg);
 
     #ifdef TEST_BAZAAR
         void InitializeForTest() {
-            Initialize();
         }
     #endif
     };

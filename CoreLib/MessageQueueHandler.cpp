@@ -36,7 +36,11 @@ namespace Core {
     }
 
     void MessageQueueHandler::CharacterListResponse(uint64_t sessionID, MsgCharacterListResBody* body) {
-        iocp->SendDataUnique(sessionID, std::move(writer->WriteCharacterListResponse(body)));
+        auto p = writer->WriteCharacterListResponse(body);
+        if (!p) {
+            return;
+        }
+        iocp->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::CharacterStateResponse(uint64_t sessionID, MsgCharacterStateResBody* body) {
@@ -64,14 +68,26 @@ namespace Core {
         }
 
 
-        iocp->SendDataUnique(sessionID, std::move(writer->WriteEnterWorldResponse(body)));
+        auto p = writer->WriteEnterWorldResponse(body);
+        if (!p) {
+            return;
+        }
+        iocp->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::InventoryResponse(uint64_t sessionID, MsgInventoryResBody* body) {
-        iocp->SendDataUnique(sessionID, std::move(writer->WriteInventoryResponse(body)));
+        auto p = writer->WriteInventoryResponse(body);
+        if (!p) {
+            return;
+        }
+        iocp->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::InventoryUpdateResponse(uint64_t sessionID, MsgInventoryUpdateResBody* body) {
-        iocp->SendDataUnique(sessionID, std::move(writer->WriteInventoryUpdateResponse(body)));
+        auto p = writer->WriteInventoryUpdateResponse(body);
+        if (!p) {
+            return;
+        }
+        iocp->SendDataUnique(sessionID, std::move(p));
     }
 }

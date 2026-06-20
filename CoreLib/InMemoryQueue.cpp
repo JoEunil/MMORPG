@@ -46,6 +46,10 @@ namespace Core {
         if (!m_running.load(std::memory_order_relaxed))
             return;
         auto coreMsg = messagePool->Acquire();
+        if (coreMsg == nullptr) {
+            errorLogger->LogWarn("core mq", "message pool empty");
+            return;
+		}
         std::memcpy(coreMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());
   
         if (!m_sharedQueue.push(coreMsg)) {

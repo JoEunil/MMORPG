@@ -6,6 +6,9 @@
 namespace Core {
     std::unique_ptr<IPacket, PacketDeleter>  PacketWriter::WriteAuthResponse(uint8_t resStatus) {
         auto p = packetPool->AcquireUnique();
+        if (p == nullptr) {
+            return nullptr;
+        }
         auto p_st = reinterpret_cast<PacketStruct<AuthResponseBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(AuthResponseBody);
         p->SetLength(p_st->header.length);
@@ -18,6 +21,9 @@ namespace Core {
 
     std::unique_ptr<IPacket, PacketDeleter>  PacketWriter::WriteCharacterListResponse(MsgCharacterListResBody* body) {
         auto p = bigPacketPool->AcquireUnique();
+        if (p == nullptr) {
+            return nullptr;
+        }
         auto p_st = reinterpret_cast<PacketStruct<CharacterListResponseBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(CharacterListResponseBody);
         p->SetLength(p_st->header.length);
@@ -37,6 +43,9 @@ namespace Core {
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteEnterWorldResponse(MsgCharacterStateResBody* body) {
         auto p = packetPool->AcquireUnique();
+        if (p == nullptr) {
+            return nullptr;
+        }
         auto p_st = reinterpret_cast<PacketStruct<EnterWorldResponseBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(EnterWorldResponseBody);
         p->SetLength(p_st->header.length);
@@ -61,6 +70,9 @@ namespace Core {
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteInventoryResponse(MsgInventoryResBody* body) {
         auto p = packetPool->AcquireUnique();
+        if (p == nullptr) {
+            return nullptr;
+        }
         
         auto p_st = reinterpret_cast<PacketStruct<InventoryResBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(InventoryResBody);
@@ -82,6 +94,9 @@ namespace Core {
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteInventoryUpdateResponse(MsgInventoryUpdateResBody* body) {
         auto p = packetPool->AcquireUnique();
+        if (p == nullptr) {
+            return nullptr;
+        }
         
         auto p_st = reinterpret_cast<PacketStruct<InventoryUpdateResBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(InventoryUpdateResBody);
@@ -99,6 +114,9 @@ namespace Core {
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::GetChatWhisperPacket(uint64_t sender, std::string& userName, std::string& message) {
         auto p = packetPool->AcquireUnique();
+        if (p == nullptr) {
+            return nullptr;
+        }
         auto p_st = reinterpret_cast<PacketStruct<ChatWhisperBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(ChatWhisperBody) + message.length();
         p->SetLength(p_st->header.length);
@@ -115,6 +133,9 @@ namespace Core {
 
     std::shared_ptr<IPacket> PacketWriter::GetInitialChatBatchPacket(CHAT_SCOPE scope) {
         auto p = bigPacketPool->Acquire();
+        if (p == nullptr) {
+            return nullptr;
+        }
         auto p_st = reinterpret_cast<PacketStruct<ChatBatchNotifyBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(ChatBatchNotifyBody);
         p->SetLength(p_st->header.length);
@@ -147,6 +168,9 @@ namespace Core {
 
     std::shared_ptr<IPacket> PacketWriter::GetFullHeader() {
         auto p = packetPool->Acquire();
+        if (p == nullptr) {
+            return nullptr;
+        }
         auto p_st = reinterpret_cast<PacketStruct<FullSnapshotBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
         p->SetLength(p_st->header.length);
@@ -178,6 +202,9 @@ namespace Core {
 
     std::shared_ptr<IPacket> PacketWriter::GetMonsterFullHeader() {
         auto p = packetPool->Acquire();
+        if (p == nullptr) {
+            return nullptr;
+        }
         auto p_st = reinterpret_cast<PacketStruct<MonsterFullSnapshotBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
         p->SetLength(p_st->header.length);
@@ -206,6 +233,9 @@ namespace Core {
 
     std::shared_ptr<IPacket> PacketWriter::GetActionHeader() {
         auto p = packetPool->Acquire();
+        if (p == nullptr) {
+            return nullptr;
+        }
         auto p_st = reinterpret_cast<PacketStruct<ActionResultBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
         p->SetLength(p_st->header.length);
@@ -237,6 +267,9 @@ namespace Core {
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeFailed() {
         auto p = packetPool->AcquireUnique();
+        if (p == nullptr) {
+            return nullptr;
+        }
         auto p_st = reinterpret_cast<PacketStruct<ZoneChangeResponseBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(ZoneChangeResponseBody);
         p->SetLength(p_st->header.length);
@@ -250,6 +283,9 @@ namespace Core {
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint64_t zoneInternalID, float x, float y) {
         auto p = packetPool->AcquireUnique();
+        if (p == nullptr) {
+            return nullptr;
+        }
         auto p_st = reinterpret_cast<PacketStruct<ZoneChangeResponseBody>*>(p->GetBuffer());
         p_st->header.length = sizeof(PacketHeader) + sizeof(ZoneChangeResponseBody);
         p->SetLength(p_st->header.length);

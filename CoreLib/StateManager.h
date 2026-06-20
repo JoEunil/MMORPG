@@ -16,7 +16,6 @@
 #include "Config.h"
 #include "IPacket.h"
 #include "IIOCP.h"
-#include "IPacketPool.h"
 #include "PacketTypes.h"
 #include <iostream>
 
@@ -47,11 +46,10 @@ namespace Core {
         MessagePool* messagePool;
         IMessageQueue* mq;
         IIOCP* iocp;
-        IPacketPool* packetPool;
         LobbyZone* lobbyZone;
         ChatThreadPool* chat;
 
-        void Initialize(IMessageQueue* m, IIOCP* io, MessagePool* mp, IPacketPool* pp, LobbyZone* lobby, ChatThreadPool* c) {
+        void Initialize(IMessageQueue* m, IIOCP* io, MessagePool* mp, LobbyZone* lobby, ChatThreadPool* c) {
             m_states.reserve(ZONE_COUNT);
             for (int zoneID = 1; zoneID <= ZONE_COUNT; zoneID++) {
                 m_states.emplace(zoneID, std::make_unique<ZoneState>(zoneID));
@@ -61,7 +59,6 @@ namespace Core {
             mq = m;
             messagePool = mp;
             lobbyZone = lobby;
-            packetPool = pp;
             iocp = io;
             chat = c;
         }
@@ -84,6 +81,17 @@ namespace Core {
                     CharacterState temp;
                     m_states[data.zoneID]->EmigrateChar(session, temp);
                     Message* msg = messagePool->Acquire();
+                    constexpr int MAX_RETRY = 10;
+                    for (int retry = 0; retry < MAX_RETRY && !msg; retry++) {
+                        msg = messagePool->Acquire();
+                        if (!msg)
+                            std::this_thread::yield();
+                    }
+
+                    if (!msg) {
+                        Core::errorLogger->LogError("state manager", "failed to acquire message for disconnect", "sessionID", session, "character state", temp);
+                        continue;
+                    }
                     auto st = reinterpret_cast<MsgStruct<MsgCharacterStateUpdateBody>*>(msg->GetBuffer());
 
                     st->header.sessionID = session;

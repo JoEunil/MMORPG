@@ -48,6 +48,10 @@ namespace Cache {
         if (!m_running.load(std::memory_order_relaxed))
             return;
         auto cacheMsg = messagePool->Acquire();
+        if (!cacheMsg) {
+            Core::errorLogger->LogError("cache mq", "message pool exhausted");
+            return;
+		}
         std::memcpy(cacheMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());
 
         if (!m_sharedQueue.push(cacheMsg)) {

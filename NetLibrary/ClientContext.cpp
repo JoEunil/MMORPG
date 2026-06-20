@@ -71,7 +71,7 @@ namespace Net {
             return false;
 
 
-        PacketView* packet = packetViewPool.Acquire();
+        PacketView* packet = packetViewPool.Allocate();
         packet->Clear();
         if (RING_BUFFER_SIZE - m_front < packetLen)
         {
@@ -146,7 +146,7 @@ namespace Net {
             EnqueueReleaseQ(pv->GetSeq(), pv->GetFront(), pv->GetRear());
         m_workingCnt.fetch_sub(1, std::memory_order_acq_rel);
         pv->Clear();
-        packetViewPool.Return(pv);
+        packetViewPool.Deallocate(pv);
         if (!m_connected.load(std::memory_order_acquire) && m_workingCnt.load(std::memory_order_acquire) == 0) {
             NetPacketFilter::Disconnect(m_sessionID);
         }

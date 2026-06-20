@@ -12,7 +12,7 @@
 #include "Config.h"
 
 #include <CoreLib/PacketTypes.h>
-#include <BaseLib/ObjectPool.h>
+#include <BaseLib/FixedObjectPool.h>
 #include <BaseLib/RingQueue.h>
 
 
@@ -51,7 +51,7 @@ namespace Net {
         bool m_sendPending = false;
         // WSA Send 중첩을 방지하기 위함
 
-        inline static Base::ObjectPool<PacketView> packetViewPool{ TARGET_PACKETVIEWPOOL_SIZE, MAX_PACKETVIEWPOOL_SIZE, MIN_PACKETVIEWPOOL_SIZE };
+        inline static Base::FixedObjectPool<PacketView, PACKETVIEWPOOL_SIZE> packetViewPool;
 
         uint16_t GetLen();
         std::tuple<uint16_t, uint16_t, uint8_t> ParseHeader();

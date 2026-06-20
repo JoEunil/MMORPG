@@ -41,7 +41,6 @@ namespace Cache {
             dbWorkerBilling.Initialize(&connectionPoolBilling, BILLLING_DB_WORKER_THREADPOOL_SIZE);
             cache_inventory.Initialize(&dbWorkerGame);
             cache_currency.Initialize(&dbWorkerGame);
-            msgPool.Initialize();
             CacheTimer::StartThread();
             
             flush.Initialize(&connectionPoolGame, &cache_inventory, &cache_currency);

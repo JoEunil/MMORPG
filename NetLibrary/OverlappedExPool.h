@@ -6,23 +6,22 @@
 #include "STOverlappedEx.h"
 #include "Config.h"
 #include <CoreLib/LoggerGlobal.h>
-
+#include <BaseLib/FixedObjectPool.h>
 
 namespace Net {
     static constexpr size_t ACCEPT_BUFFER_SIZE = (sizeof(SOCKADDR_IN) + 16) * 2;
     class PacketPool;
     class OverlappedExPool {
-        std::vector<STOverlappedEx*> m_overlappedPool;
+        Base::FixedObjectPool<STOverlappedEx, OVERLAPPEDPOOL_SIZE> m_fixedPool;
 
         std::vector<char*> m_acceptBuffers; // LIFO로 관리하면 충분
-        std::mutex m_bufMutex;
         std::mutex m_mutex;
         
         ~OverlappedExPool();
         void Initialize();
         bool IsReady() {
-            if (m_overlappedPool.empty()) {
-                Core::sysLogger->LogError("ovelapped pool", "m_overlappedPool not initialized");
+            if (m_acceptBuffers.empty()) {
+                Core::sysLogger->LogError("ovelapped pool", "m_acceptBuffers not initialized");
                 return false;
             }
             return true;
@@ -36,7 +35,7 @@ namespace Net {
         STOverlappedEx* Acquire();
         void Return(STOverlappedEx*);
         char* AcquireAcceptBuffer() {
-            std::lock_guard<std::mutex> lock(m_bufMutex);
+            std::lock_guard<std::mutex> lock(m_mutex);
             if (m_acceptBuffers.empty()) {
                 return nullptr;
             }
@@ -45,12 +44,8 @@ namespace Net {
             return buf;
         }
         void ReturnAcceptBuf(char*  buf) {
-            std::lock_guard<std::mutex> lock(m_bufMutex);
-            m_acceptBuffers.push_back(buf);
-        }
-        uint32_t GetPoolSize() {
             std::lock_guard<std::mutex> lock(m_mutex);
-            return static_cast<uint32_t>(m_overlappedPool.size());
+            m_acceptBuffers.push_back(buf);
         }
     };
 }

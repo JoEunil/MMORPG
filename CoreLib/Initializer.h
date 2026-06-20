@@ -41,7 +41,6 @@ namespace Core {
 
     public:
         void Initialize() {
-            msgPool.Initialize();
         }
         ~Initializer() {
             CleanUp1();
@@ -62,11 +61,11 @@ namespace Core {
         }
         
         void InjectDependencies2(IIOCP* iocp, ISessionAuth* session, IMessageQueue* sendMQ, IPacketPool* packetPool) {
-            stateManager.Initialize(sendMQ, iocp, &msgPool, packetPool, &lobbyZone, &chat);
+            stateManager.Initialize(sendMQ, iocp, &msgPool, &lobbyZone, &chat);
             packetDispatcher.Initialize(&noneZoneThreadPool, &zoneThreadSet, &stateManager, static_cast<IPingPacketWriter*>(&writer), iocp);
             noneZoneThreadPool.Start();
             broadcastPool.Start();
-            ZoneState::Initialize(&broadcastPool, &writer, &stateManager, &perfCollector);
+            ZoneState::Initialize(&broadcastPool, &stateManager, &perfCollector);
             zoneHandler.Initialize(&stateManager);
             noneZoneHandler.Initialize(iocp, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone, &chat);
             zoneThreadSet.Start();

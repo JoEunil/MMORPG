@@ -82,7 +82,10 @@ namespace Core {
 
     static void ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID) {
         stateManager->AddSession(sessionID, userID, resStatus == RES_STATUS::SUCCESS);
-        iocp->SendDataUnique(sessionID, std::move(writer->WriteAuthResponse(resStatus)));
+        auto res = writer->WriteAuthResponse(resStatus);
+        if (res == nullptr)
+            return;
+        iocp->SendDataUnique(sessionID, std::move(res));
     }
 
     void NoneZoneHandler::CheckSession(IPacketView* p) {
@@ -97,6 +100,10 @@ namespace Core {
 
     void NoneZoneHandler::GetCharacterList(IPacketView* p) {
         Message* msg = messagePool->Acquire();
+        if (msg == nullptr) {
+            p = nullptr;
+            return ;
+		}
         MsgStruct<MsgCharacterListReqBody>* st = reinterpret_cast<MsgStruct<MsgCharacterListReqBody>*>(msg->GetBuffer());
         
         st->header.sessionID = p->GetSessionID();
@@ -110,6 +117,10 @@ namespace Core {
 
     void NoneZoneHandler::GetCharacterState(IPacketView* p) {
         Message* msg = messagePool->Acquire();
+        if (msg == nullptr) {
+            p = nullptr;
+            return;
+        }
         MsgStruct<MsgCharacterStateReqBody>* st = reinterpret_cast<MsgStruct<MsgCharacterStateReqBody>*>(msg->GetBuffer());
         
         auto packetBody = parseBody<EnterWorldRequestBody>(p->GetPtr());
@@ -131,6 +142,10 @@ namespace Core {
             return ;
         
         Message* msg = messagePool->Acquire();
+        if (msg == nullptr) {
+            p = nullptr;
+            return;
+        }
         MsgStruct<MsgInventoryReqBody>* st = reinterpret_cast<MsgStruct<MsgInventoryReqBody>*>(msg->GetBuffer());
         
         st->header.sessionID = p->GetSessionID();
@@ -178,13 +193,19 @@ namespace Core {
             case ZONE_CHANGE::ENTER : {
                 if (zoneID != 0) {
                     errorLogger->LogError("none zone handler", "zone enter failed ZoneID != 0", "session", session, "zoneID", zoneID);
-                    iocp->SendDataUnique(session, std::move(writer->WriteZoneChangeFailed()));
+					auto p = writer->WriteZoneChangeFailed();
+                    if (!p)
+                        return;
+                    iocp->SendDataUnique(session, std::move(p));
                     return;
                 }
                 CharacterState temp;
                 if (!lobbyZone->EmigrateChar(session, temp)) {
                     errorLogger->LogError("none zone handler", "EmigrateChar from LobbyZone failed", "session", session);
-                    iocp->SendDataUnique(session, std::move(writer->WriteZoneChangeFailed()));
+                    auto p = writer->WriteZoneChangeFailed();
+                    if (!p)
+                        return;
+                    iocp->SendDataUnique(session, std::move(p));
                     return;
                 }
                 if (temp.lastZone == 0)
@@ -195,14 +216,21 @@ namespace Core {
                 if (zoneInternalID == 0) {
                     if (!lobbyZone->ImmigrateChar(session, temp)) // 다시 Lobby Zone으로
                         Disconnect(session);
-                    iocp->SendDataUnique(session, std::move(writer->WriteZoneChangeFailed()));
+
+                    auto p = writer->WriteZoneChangeFailed();
+                    if (!p)
+                        return;
+                    iocp->SendDataUnique(session, std::move(p));
                     errorLogger->LogError("none zone handler", "ImmigrateChar Failed", "session", session, "zone", zoneID);
                     return;
                 }
                 else {
                     uint64_t chatID = chat->AddChatSession(session, temp.lastZone, std::string(temp.charName));
                     chat->EnqueueZoneJoin(session, temp.lastZone);
-                    iocp->SendDataUnique(session, std::move(writer->WriteZoneChangeSucess(temp.lastZone, chatID, zoneInternalID, temp.x, temp.y)));
+                    auto p = writer->WriteZoneChangeSucess(temp.lastZone, chatID, zoneInternalID, temp.x, temp.y);
+                    if (!p)
+                        return;
+                    iocp->SendDataUnique(session, std::move(p));
                     return;
                 }
                 break;
@@ -216,7 +244,10 @@ namespace Core {
         
         if (destZone <= 0 || destZone > ZONE_COUNT)
         {
-            iocp->SendDataUnique(session, std::move(writer->WriteZoneChangeFailed()));
+            auto p = writer->WriteZoneChangeFailed();
+            if (!p)
+                return;
+            iocp->SendDataUnique(session, std::move(p));
             return;
         }
         auto SZone = stateManager->GetZone(zoneID);
@@ -224,18 +255,28 @@ namespace Core {
 
         CharacterState temp;
         if (!SZone->EmigrateChar(session, temp)) {
-            iocp->SendDataUnique(session, std::move(writer->WriteZoneChangeFailed()));
+            auto p = writer->WriteZoneChangeFailed();
+            if (!p)
+                return;
+            iocp->SendDataUnique(session, std::move(p));
             return;
         }
         zoneInternalID = DZone->ImmigrateChar(session, temp);
         if (zoneInternalID == 0) {
             if (!SZone->ImmigrateChar(session, temp)) // 원래 Zone으로 복구
                 Disconnect(session);
-            iocp->SendDataUnique(session, std::move(writer->WriteZoneChangeFailed()));
+            auto p = writer->WriteZoneChangeFailed();
+            if (!p)
+                return;
+            iocp->SendDataUnique(session, std::move(p));
             return;
         }
         else {
-            iocp->SendDataUnique(session, std::move(writer->WriteZoneChangeSucess(destZone, 0, zoneInternalID, temp.x, temp.y)));
+            auto p = writer->WriteZoneChangeSucess(destZone, 0, zoneInternalID, temp.x, temp.y);
+            if (!p)
+                return;
+            iocp->SendDataUnique(session, std::move(p));
+
             chat->EnqueueZoneLeave(session, zoneID);
             chat->EnqueueZoneJoin(session, destZone);
         }

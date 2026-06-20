@@ -103,6 +103,8 @@ namespace Core {
     void ChatThreadPool::ProcesChat(ChatEvent& curr, uint64_t chatID, std::string& userName, std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
         if (curr.key.scope == CHAT_SCOPE::Whisper) {
             auto packet = writer->GetChatWhisperPacket(chatID, userName, curr.message);
+            if (!packet)
+				return;
             uint64_t& destChatID = curr.key.id;
             auto it = m_chatIdSessionMap.find(destChatID);
             if (it == m_chatIdSessionMap.end()) {
@@ -110,6 +112,8 @@ namespace Core {
             }
             SendPacketUnique(it->second, std::move(packet));
             auto senderPacket = writer->GetChatWhisperPacket(chatID, userName, curr.message);
+            if (!packet)
+                return;
             SendPacketUnique(curr.senderSessionID, std::move(senderPacket));
             perfCollector->AddChatSend(2);
             return;
@@ -125,11 +129,17 @@ namespace Core {
             uint16_t count = writer->WriteChatBatchPacketField(it->second, chatID, userName, curr.message);
             if (count == MAX_CHAT_PACKET) {
                 SendPacketGroup(it->first, it->second);
-                tempPackets[curr.key] = writer->GetInitialChatBatchPacket(curr.key.scope);
+				auto p = writer->GetInitialChatBatchPacket(curr.key.scope);
+                if (!p)
+					return;
+				tempPackets[curr.key] = p;
             }
         }
         else {
-            tempPackets[curr.key] = writer->GetInitialChatBatchPacket(curr.key.scope);
+            auto p = writer->GetInitialChatBatchPacket(curr.key.scope);
+            if (!p)
+                return;
+            tempPackets[curr.key] = p;
             int count = writer->WriteChatBatchPacketField(tempPackets[curr.key], chatID, userName, curr.message);
         }
     }

@@ -12,9 +12,7 @@ namespace Core {
     inline constexpr uint16_t MAX_MESSAGE_LEN = 128;
 
 
-    inline constexpr uint16_t TARGET_MSGPOOL_SIZE = 50;
-    inline constexpr uint16_t MAX_MSGPOOL_SIZE = 100;
-    inline constexpr uint16_t MIN_MSGPOOL_SIZE = 20;
+    inline constexpr uint16_t MSGPOOL_SIZE = 100;
 
     inline constexpr uint16_t MESSGAGE_LEN = 1024;
     inline constexpr uint16_t MQ_THREADPOOL_SIZE = 2; // 수신 큐
@@ -27,14 +25,6 @@ namespace Core {
     
     inline constexpr uint16_t SHARD_SIZE = 8; // stateManager의 session - zone 매핑 샤드, 접근하는 스레드풀 크기의 2~4배 정도
     inline constexpr uint16_t SHARD_SIZE_MASK = SHARD_SIZE - 1;
-
-    inline constexpr uint16_t TARGET_DELTA_SNAPSHOT_POOL_SIZE = 50;
-    inline constexpr uint16_t MAX_DELTA_SNAPSHOT_POOL_SIZE = 100;
-    inline constexpr uint16_t MIN_DELTA_SNAPSHOT_POOL_SIZE = 20;
-
-    inline constexpr uint16_t TARGET_FULL_SNAPSHOT_POOL_SIZE = 50;
-    inline constexpr uint16_t MAX_FULL_SNAPSHOT_POOL_SIZE = 100;
-    inline constexpr uint16_t MIN_FULL_SNAPSHOT_POOL_SIZE = 20;
 
 
     inline constexpr uint16_t ACTION_RESULT_COUNT = 500;
