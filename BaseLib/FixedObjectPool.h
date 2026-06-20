@@ -40,5 +40,10 @@ namespace Base {
             SpinLockGuard lockGuard(lock);
             freeList.push_back(ptr);
         }
+
+        size_t GetPoolSize() {
+            SpinLockGuard lockGuard(lock);
+			return freeList.size();
+        }
     };
 }

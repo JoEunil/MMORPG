@@ -24,6 +24,10 @@ namespace Net {
                 Core::sysLogger->LogError("ovelapped pool", "m_acceptBuffers not initialized");
                 return false;
             }
+            if (m_fixedPool.GetPoolSize() < OVERLAPPEDPOOL_SIZE / 2) {
+                Core::sysLogger->LogError("ovelapped pool", "m_fixedPool not initialized");
+                return false;
+			}
             return true;
         }
         void Adjust();
@@ -47,5 +51,8 @@ namespace Net {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_acceptBuffers.push_back(buf);
         }
+        size_t GetPoolSize() {
+            return m_fixedPool.GetPoolSize();
+		}
     };
 }

@@ -21,6 +21,10 @@ namespace Net {
 
         void Initialize(); 
         bool IsReady() {
+            if (m_fixedPool.GetPoolSize() < m_poolSize / 2) {
+                Core::sysLogger->LogError("packet pool", "m_fixedPool not initialized");
+                return false;
+			}
             return true;
         }
 
@@ -32,5 +36,9 @@ namespace Net {
         std::shared_ptr<Core::IPacket> Acquire() override;
         std::unique_ptr<Core::IPacket, Core::PacketDeleter> AcquireUnique() override;
         void Return(Core::IPacket* packet) override;
+
+        size_t GetPoolSize() {
+            return m_fixedPool.GetPoolSize();
+        }
     };
 }
