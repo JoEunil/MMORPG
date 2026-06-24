@@ -65,7 +65,7 @@ namespace Core {
             packetDispatcher.Initialize(&noneZoneThreadPool, &zoneThreadSet, &stateManager, static_cast<IPingPacketWriter*>(&writer), iocp);
             noneZoneThreadPool.Start();
             broadcastPool.Start();
-            ZoneState::Initialize(&broadcastPool, &stateManager, &perfCollector);
+            ZoneState::Initialize(&broadcastPool, &writer, &stateManager, &perfCollector);
             zoneHandler.Initialize(&stateManager);
             noneZoneHandler.Initialize(iocp, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone, &chat);
             zoneThreadSet.Start();
