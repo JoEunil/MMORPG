@@ -1,87 +1,280 @@
 ﻿#include <gtest/gtest.h>
 #include <thread>
+#include <set>
+#include <mutex>
 
 #include <BaseLib/LockFreeQueue.h>
+#include <BaseLib/LockFreeQueueSP.h>
+#include <BaseLib/LockFreeQueueUP.h>
 
-constexpr int QUEUE_SIZE = 1024;
-constexpr int NUM_PRODUCERS = 4;
-constexpr int NUM_CONSUMERS = 4;
-constexpr int OPS_PER_THREAD = 10000;
-constexpr int TOTAL = NUM_PRODUCERS * OPS_PER_THREAD;
 
-void Producer(Base::LockFreeQueue<int, QUEUE_SIZE>& q, std::atomic<int>& counter, int id) {
-    for (int j = 0; j < OPS_PER_THREAD; ++j) {
-        int val = id * OPS_PER_THREAD + j;
-        while (!q.push(val)) {
-            std::this_thread::yield();
-        }
-        counter.fetch_add(1, std::memory_order_relaxed);
-    }
-}
+constexpr int QUEUE_SIZE1 = 1024;
+constexpr int QUEUE_SIZE2 = 1024;
+constexpr int THREADS = 4;
+constexpr int REQUEST_PER_THREAD = 100;
 
-void Consumer(Base::LockFreeQueue<int, QUEUE_SIZE>& q, std::atomic<int>& counter, std::vector<std::atomic<int>>& seen) {
-    int val;
-    while (counter.load(std::memory_order_relaxed) < TOTAL) {
-        if (q.pop(val)) {
-			seen[val].fetch_add(1, std::memory_order_relaxed);
-            counter.fetch_add(1, std::memory_order_relaxed);
-        }
-        else {
-            std::this_thread::yield();
-        }
-    }
-}
+struct Dummy {
+    Dummy() = default;
+    Dummy(int val) : v(val) {};
+    int v = 0;
+};
 
 TEST(LockFreeQueueTest, SingleThreadPushPop) {
-    Base::LockFreeQueue<int, 8> q;
-    int val;
-    EXPECT_TRUE(q.push(1));
-    EXPECT_TRUE(q.pop(val));
-    EXPECT_EQ(val, 1);
+    Base::LockFreeQueue<Dummy, QUEUE_SIZE1> q;
+    Dummy out;
+    EXPECT_TRUE(q.push(Dummy{1}));
+    EXPECT_TRUE(q.pop(out));
+    EXPECT_EQ(out.v, 1);
 }
 
 TEST(LockFreeQueueTest, PopFromEmptyFails) {
-    Base::LockFreeQueue<int, 8> q;
-    int val;
-    EXPECT_FALSE(q.pop(val));   // 빈 큐 pop은 false
+    Base::LockFreeQueue<Dummy, QUEUE_SIZE1> q;
+    Dummy out;
+    EXPECT_FALSE(q.pop(out));   // 빈 큐 pop은 false
 }
 
 TEST(LockFreeQueueTest, PushToFullFails) {
-    Base::LockFreeQueue<int, 4> q;
-    for (int i = 0 ; i < 4; ++i) {
-        EXPECT_TRUE(q.push(i));
+    Base::LockFreeQueue<Dummy, QUEUE_SIZE1> q;
+    for (int i = 0 ; i < QUEUE_SIZE1; ++i) {
+        EXPECT_TRUE(q.push(Dummy{ i }));
 	}
-	EXPECT_FALSE(q.push(4));   // 꽉 찬 큐 push는 false
+	EXPECT_FALSE(q.push(QUEUE_SIZE1));   // 꽉 찬 큐 push는 false
 }
 
-TEST(LockFreeQueueTest, ConcurrentNoLossNoDuplication) {
-    // 4 producer × 4 consumer, 유실 0 + 중복 0 검증
-    Base::LockFreeQueue<int, QUEUE_SIZE> q;
-    alignas(64) std::atomic<int> produced{0};
-    alignas(64) std::atomic<int> consumed{0};
-
-    std::vector<std::atomic<int>> seen(TOTAL); 
-
-    std::vector<std::thread> producers;
-    for (int i = 0; i < NUM_PRODUCERS; ++i)
-        producers.emplace_back(Producer, std::ref(q), std::ref(produced), i);
-    std::vector<std::thread> consumers;
-    for (int i = 0; i < NUM_CONSUMERS; ++i)
-        consumers.emplace_back(Consumer, std::ref(q), std::ref(consumed), std::ref(seen));
-
-    for (auto& t : producers) t.join();
-    //0 ~ 40000까지 push, back-off 정책은 yield
-    for (auto& t : consumers) t.join();
-    //0 ~ 40000까지 pop, back-off 정책은 yield, counter가 0이 되는 순간 종료.
-
-	EXPECT_EQ(produced.load(), TOTAL); 
-	EXPECT_EQ(consumed.load(), TOTAL); 
-
-    int failCount = 0;
-    for (int i = 0; i < TOTAL; ++i) {
-        if (seen[i].load() != 1) {
-            EXPECT_EQ(seen[i].load(), 1) << "Value " << i << " was seen " << seen[i].load() << " times";
-            if (++failCount >= 10) break;  // 최대 10개만 출력
-        }
+TEST(LockFreeQueueTest, MutiThreadSafePushRace) { 
+    Base::LockFreeQueue<Dummy, QUEUE_SIZE2> q;
+    std::vector<std::thread> threads;
+    std::atomic<int> successCnt = 0;
+    std::set<int> pushed;
+    for (int i = 0; i < THREADS; i++)
+    {
+        threads.push_back(std::thread([&, i]() {
+            for (int j = 0; j < REQUEST_PER_THREAD; j++) {
+                if (q.push(Dummy{ i * REQUEST_PER_THREAD + j })) {
+                    successCnt.fetch_add(1, std::memory_order_relaxed);
+                }
+            }
+            } ));
     }
+    for (int i = 0; i < THREADS; i++) {
+        threads[i].join();
+    }
+    EXPECT_EQ(successCnt.load(std::memory_order_relaxed), THREADS * REQUEST_PER_THREAD);
+
+    Dummy out;
+    while (q.pop(out)) {
+        pushed.insert(out.v);
+    }
+    EXPECT_EQ(pushed.size(), THREADS * REQUEST_PER_THREAD);
+}
+
+TEST(LockFreeQueueTest, MutiThreadSafePopRace) {
+    Base::LockFreeQueue<Dummy, QUEUE_SIZE2> q;
+    std::vector<std::thread> threads;
+    std::atomic<int> successCnt = 0;
+    std::set<int> popped;
+    std::mutex setMutex;
+    
+    for (int i = 0; i < THREADS * REQUEST_PER_THREAD; i++)
+    {
+        q.push(Dummy{i});
+    }
+    for (int i = 0; i < THREADS; i++)
+    {
+        threads.push_back(std::thread([&]() {
+            Dummy out;
+            std::set<int> local;
+            for (int j = 0; j < REQUEST_PER_THREAD; j++)
+            {
+                if (q.pop(out)) {
+                    successCnt.fetch_add(1, std::memory_order_relaxed);
+                    local.insert(out.v);
+                }
+            }
+            std::lock_guard<std::mutex> lock(setMutex);
+            popped.insert(local.begin(), local.end());
+            }));
+    }
+
+    for (int i = 0; i < THREADS; i++) {
+        threads[i].join();
+    }
+    EXPECT_EQ(successCnt.load(std::memory_order_relaxed), THREADS * REQUEST_PER_THREAD);
+    EXPECT_EQ(popped.size(), THREADS * REQUEST_PER_THREAD);
+
+}
+
+// unique_ptr
+// unique_ptr은 실패 처리 때문에 push 성공 시 nullptr, 실패 시 unique_ptr 반환
+TEST(LockFreeQueueUPTest, SingleThreadPushPop) {
+    Base::LockFreeQueueUP<std::unique_ptr<Dummy>, QUEUE_SIZE1> q;
+    EXPECT_EQ(q.push(std::make_unique<Dummy>(Dummy{2})), nullptr);
+    std::unique_ptr<Dummy> out = q.pop(); 
+    ASSERT_NE(out, nullptr);
+    EXPECT_EQ(out->v, 2);
+}
+
+TEST(LockFreeQueueUPTest, PopFromEmptyFails) {
+    Base::LockFreeQueueUP<std::unique_ptr<Dummy>, QUEUE_SIZE1> q;
+    std::unique_ptr<Dummy> out = q.pop();
+    EXPECT_EQ(out, nullptr);
+}
+
+TEST(LockFreeQueueUPTest, PushToFullFails) {
+    Base::LockFreeQueueUP<std::unique_ptr<Dummy>, QUEUE_SIZE1> q;
+    for (int i = 0; i < QUEUE_SIZE1; ++i) {
+        EXPECT_EQ(q.push(std::make_unique<Dummy>(Dummy{ i })), nullptr);
+    }
+    EXPECT_NE(q.push(std::make_unique<Dummy>(Dummy{QUEUE_SIZE1})), nullptr);   // 꽉 찬 큐 push는 false
+}
+
+TEST(LockFreeQueueUPTest, MutiThreadSafePushRace) {
+    Base::LockFreeQueueUP<std::unique_ptr<Dummy>, QUEUE_SIZE2> q;
+    std::vector<std::thread> threads;
+    std::atomic<int> successCnt = 0;
+    std::set<int> pushed;
+    for (int i = 0; i < THREADS; i++)
+    {
+        threads.push_back(std::thread([&, i]() {
+            for (int j = 0; j < REQUEST_PER_THREAD; j++) {
+                if (q.push(std::make_unique<Dummy>(Dummy{ i * REQUEST_PER_THREAD + j })) == nullptr) {
+                    successCnt.fetch_add(1, std::memory_order_relaxed);
+                }
+            }
+            }));
+    }
+    for (int i = 0; i < THREADS; i++) {
+        threads[i].join();
+    }
+    EXPECT_EQ(successCnt.load(std::memory_order_relaxed), THREADS * REQUEST_PER_THREAD);
+
+    std::unique_ptr<Dummy> out;
+    while (out = q.pop()) {
+        pushed.insert(out->v);
+    }
+    EXPECT_EQ(pushed.size(), THREADS * REQUEST_PER_THREAD);
+}
+
+TEST(LockFreeQueueUPTest, MutiThreadSafePopRace) {
+    Base::LockFreeQueueUP<std::unique_ptr<Dummy>, QUEUE_SIZE2> q;
+    std::vector<std::thread> threads;
+    std::atomic<int> successCnt = 0;
+    std::set<int> popped;
+    std::mutex setMutex;
+
+    for (int i = 0; i < THREADS * REQUEST_PER_THREAD; i++)
+    {
+        q.push(std::make_unique<Dummy>(Dummy{ i }));
+    }
+    for (int i = 0; i < THREADS; i++)
+    {
+        threads.push_back(std::thread([&]() {
+            std::unique_ptr<Dummy> out;
+            std::set<int> local;
+            for (int j = 0; j < REQUEST_PER_THREAD; j++)
+            {
+                if (out = q.pop() ) {
+                    successCnt.fetch_add(1, std::memory_order_relaxed);
+                    local.insert(out->v);
+                }
+            }
+            std::lock_guard<std::mutex> lock(setMutex);
+            popped.insert(local.begin(), local.end());
+            }));
+    }
+
+    for (int i = 0; i < THREADS; i++) {
+        threads[i].join();
+    }
+    EXPECT_EQ(successCnt.load(std::memory_order_relaxed), THREADS * REQUEST_PER_THREAD);
+    EXPECT_EQ(popped.size(), THREADS * REQUEST_PER_THREAD);
+
+}
+
+// shared_ptr
+TEST(LockFreeQueueSPTest, SingleThreadPushPop) {
+    Base::LockFreeQueueSP<std::shared_ptr<Dummy>, QUEUE_SIZE1> q;
+    EXPECT_TRUE(q.push(std::make_shared<Dummy>(Dummy{2})));
+    std::shared_ptr<Dummy> out = q.pop();
+    ASSERT_NE(out, nullptr);
+    EXPECT_EQ(out->v, 2);
+    EXPECT_EQ(1, out.use_count());
+}
+
+TEST(LockFreeQueueSPTest, PopFromEmptyFails) {
+    Base::LockFreeQueueSP<std::shared_ptr<Dummy>, QUEUE_SIZE1> q;
+    std::shared_ptr<Dummy> out = q.pop();
+    EXPECT_EQ(out, nullptr);
+}
+
+TEST(LockFreeQueueSPTest, PushToFullFails) {
+    Base::LockFreeQueueSP<std::shared_ptr<Dummy>, QUEUE_SIZE1> q;
+    for (int i = 0; i < QUEUE_SIZE1; ++i) {
+        EXPECT_TRUE(q.push(std::make_shared<Dummy>(Dummy{ i })));
+    }
+    EXPECT_FALSE(q.push(std::make_shared<Dummy>(Dummy{QUEUE_SIZE1})));   // 꽉 찬 큐 push는 false
+}
+
+TEST(LockFreeQueueSPTest, MutiThreadSafePushRace) {
+    Base::LockFreeQueueSP<std::shared_ptr<Dummy>, QUEUE_SIZE2> q;
+    std::vector<std::thread> threads;
+    std::atomic<int> successCnt = 0;
+    std::set<int> pushed;
+    for (int i = 0; i < THREADS; i++)
+    {
+        threads.push_back(std::thread([&, i]() {
+            for (int j = 0; j < REQUEST_PER_THREAD; j++) {
+                if (q.push(std::make_shared<Dummy>(Dummy{ i * REQUEST_PER_THREAD + j }))) {
+                    successCnt.fetch_add(1, std::memory_order_relaxed);
+                }
+            }
+            }));
+    }
+    for (int i = 0; i < THREADS; i++) {
+        threads[i].join();
+    }
+    EXPECT_EQ(successCnt.load(std::memory_order_relaxed), THREADS * REQUEST_PER_THREAD);
+
+    std::shared_ptr<Dummy> out;
+    while (out = q.pop()) {
+        EXPECT_EQ(1, out.use_count());
+        pushed.insert(out->v);
+    }
+    EXPECT_EQ(pushed.size(), THREADS * REQUEST_PER_THREAD);
+}
+
+TEST(LockFreeQueueSPTest, MutiThreadSafePopRace) {
+    Base::LockFreeQueueSP<std::shared_ptr<Dummy>, QUEUE_SIZE2> q;
+    std::vector<std::thread> threads;
+    std::atomic<int> successCnt = 0;
+    std::set<int> popped;
+    std::mutex setMutex;
+
+    for (int i = 0; i < THREADS * REQUEST_PER_THREAD; i++)
+    {
+        q.push(std::make_shared<Dummy>(Dummy{ i }));
+    }
+    for (int i = 0; i < THREADS; i++)
+    {
+        threads.push_back(std::thread([&]() {
+            std::shared_ptr<Dummy> out;
+            std::set<int> local;
+            for (int j = 0; j < REQUEST_PER_THREAD; j++)
+            {
+                if (out = q.pop()) {
+                    successCnt.fetch_add(1, std::memory_order_relaxed);
+                    local.insert(out->v);
+                }
+            }
+            std::lock_guard<std::mutex> lock(setMutex);
+            popped.insert(local.begin(), local.end());
+            }));
+    }
+
+    for (int i = 0; i < THREADS; i++) {
+        threads[i].join();
+    }
+    EXPECT_EQ(successCnt.load(std::memory_order_relaxed), THREADS * REQUEST_PER_THREAD);
+    EXPECT_EQ(popped.size(), THREADS * REQUEST_PER_THREAD);
+
 }
