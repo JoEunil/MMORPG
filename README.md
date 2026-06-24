@@ -217,7 +217,7 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
 
 [ObjectPool 리팩토링](ObjectPool.md)
 - 필요성: 동적 resize 구조가 병목 상황에서 추가 할당을 유발해 지연을 전이시킬 수 있음을 인지
-- 내용: Elastic ObjectPool 제거 후 FixedObjectPool로 교체, 고갈 시 Drop + 로그로 대응
+- 내용: Elastic ObjectPool 제거 후 FixedObjectPool로 교체, 고갈 시 Drop + 로그로 대응. 크리티컬 경로(Disconnect)는 retry loop로 별도 처리.  
 
 ## 트러블 슈팅
 
