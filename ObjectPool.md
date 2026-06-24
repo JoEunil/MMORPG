@@ -113,7 +113,9 @@ for (int retry = 0; retry < MAX_RETRY && !msg; retry++) {
 }
 
 if (!msg) {
-    Core::errorLogger->LogError("state manager", "failed to acquire message for disconnect", "sessionID", session, "character state", temp);
+    std::vector<std::byte> binary(sizeof(CharacterState));
+    std::memcpy(binary.data(), &temp, sizeof(CharacterState));
+    Core::errorLogger->LogError("state manager", "failed to acquire message for disconnect", "sessionID", session, "character state", binary);
     continue;
 }
 ```

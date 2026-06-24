@@ -8,7 +8,7 @@
 #include <CoreLib/IPacketPool.h>
 #include <CoreLib/LoggerGlobal.h>
 #include <BaseLib/FixedObjectPool.h>
-
+#include "Config.h"
 #include "Packet.h"
 
 
@@ -17,9 +17,8 @@ namespace Net {
         const uint32_t m_poolSize;
         const uint32_t m_packetLen;
 
-        Base::FixedObjectPool<Packet, PACKETPOOL_SIZE> m_fixedPool{ m_packetLen };
+        Base::FixedObjectPool<Packet, PACKETPOOL_SIZE> m_fixedPool{ m_packetLen, this };
 
-        void Initialize(); 
         bool IsReady() {
             if (m_fixedPool.GetPoolSize() < m_poolSize / 2) {
                 Core::sysLogger->LogError("packet pool", "m_fixedPool not initialized");

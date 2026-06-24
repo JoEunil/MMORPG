@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include <BaseLib/FixedObjectPool.h>
+#include "Config.h"
 #include "LoggerGlobal.h"
 #include "Message.h"
 

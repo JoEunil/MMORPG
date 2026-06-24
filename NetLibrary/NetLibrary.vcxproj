@@ -248,6 +248,7 @@
     <ClCompile Include="ClientContext.cpp" />
     <ClCompile Include="ClientContextPool.cpp" />
     <ClCompile Include="IOCP.cpp" />
+    <ClCompile Include="Packet.cpp" />
     <ClCompile Include="PacketView.cpp" />
     <ClCompile Include="SessionManager.cpp" />
     <ClInclude Include="NetHandler.h" />

@@ -41,7 +41,9 @@ namespace Core {
         }
 
         if (!msg) {
-            gameLogger->LogError("state manager", "Failed to acquire message for disconnect", "sessionID", sessionID, "character state", temp);
+            std::vector<std::byte> binary(sizeof(CharacterState));
+            std::memcpy(binary.data(), &temp, sizeof(CharacterState));
+            gameLogger->LogError("state manager", "Failed to acquire message for disconnect", "sessionID", sessionID, "character state", binary);
             return ;
         }
 

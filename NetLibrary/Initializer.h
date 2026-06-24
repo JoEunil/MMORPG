@@ -44,8 +44,6 @@ namespace Net {
             NetTimer::StartThread();
             overlappedExPool.Initialize();
             clientContextPool.Initialize();
-            packetPool.Initialize();
-            bigPacketPool.Initialize();
             sessionManager.Initialize(&clientContextPool);
             netHandler.Initialize(&sessionManager, &iocp);
             perfCollector.Initialize(&sessionManager, &packetPool, &bigPacketPool, &overlappedExPool,&clientContextPool);
