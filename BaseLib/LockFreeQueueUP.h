@@ -45,6 +45,7 @@ namespace Base {
 				m_queue[i].seq.store(i, std::memory_order_relaxed);
 			}
 		}
+		// 실패 처리를 위해 원본 반환 필요. 
 		T push(T data) {
 			while (true)
 			{
@@ -57,7 +58,7 @@ namespace Base {
 					if (m_tail.compare_exchange_weak(tail, tail + 1, std::memory_order_acq_rel, std::memory_order_relaxed)) {
 						m_queue[idx].data = std::move(data);
 						m_queue[idx].seq.store(tail + 1, std::memory_order_release); 
-						return T{};
+						return nullptr;
 					}
 					continue;
 				}
@@ -87,11 +88,11 @@ namespace Base {
 				}
 
 				if (diff < 0) {
-					return T{};
+					return nullptr;
 				}
 			}
 			unreachable();
-			return T{};
+			return nullptr;
 		}
 	};
 }

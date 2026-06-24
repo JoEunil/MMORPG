@@ -79,11 +79,11 @@ namespace Base {
 				}
 
 				if (diff < 0) {
-					return T{}; // default type으로 변환 여기서는 nullptr
+					return nullptr;
 				}
 			}
 			unreachable();
-			return T{};
+			return nullptr;
 		}
 	};
 }
