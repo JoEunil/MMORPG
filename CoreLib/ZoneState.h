@@ -17,7 +17,7 @@
 #include "Config.h"
 #include "SkillData.h"
 #include "CorePerfCollector.h"
-#include <BaseLib/TripleBufferAdvanced.h>
+#include <BaseLib/TripleBuffer.h>
 #include <CoreLib/LoggerGlobal.h>
 
 namespace Core {
@@ -48,7 +48,7 @@ namespace Core {
         std::array<std::array<Cell, CELLS_X>, CELLS_Y> m_cells;
         alignas(std::hardware_destructive_interference_size) std::atomic<uint32_t>m_userCnt;
 
-        Base::TripleBufferAdvanced<std::vector<std::vector<uint64_t>>> tripleBuffer;
+        Base::TripleBuffer<std::vector<std::vector<uint64_t>>> tripleBuffer;
         std::vector<std::vector<uint64_t>>* sessionSnapshotWriter;
 
         inline static BroadcastThreadPool* broadcast;
@@ -100,6 +100,8 @@ namespace Core {
             for (auto& c : *sessionSnapshotWriter) {
                 c.reserve(CELL_CAPACITY);
             }
+            // Init 호출 시 소유권이 TripleBuffer로 이전됨
+            // 이후 back1, back2는 TripleBuffer가 해제 책임
             tripleBuffer.Init(back1, back2);
 
             m_monsters.reserve(MAX_MONSTER_COUNT);

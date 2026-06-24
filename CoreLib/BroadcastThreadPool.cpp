@@ -5,7 +5,7 @@
 #include "IIOCP.h"
 #include "StateManager.h"
 #include "Cell.h"
-#include <BaseLib/TripleBufferAdvanced.h>
+#include <BaseLib/TripleBuffer.h>
 namespace Core {
     void BroadcastThreadPool::ThreadFunc() {
         auto tid = std::this_thread::get_id();

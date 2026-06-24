@@ -77,7 +77,6 @@ SPMC 환경에서 다수의 Worker 스레드가 공유된 Reader 풀로 동작�
 - 오래된 데이터: 오랫동안 대기하던 Worker 스레드가 뒤늦게 깨어나 Read를 수행할 때, 이미 아주 옛날에 Swap 해둔 버퍼를 참조할 수 있다.
 - 잘못된 데이터: Zone 객체는 여러 개인데 ThreadPool은 공유됩니다. Worker가 가진 로컬 버퍼가 현재 처리하려는 Zone의 것이 아닐 수 있어 논리적 오류를 유발한다.
 
-[TripleBuffer.h](BaseLib/TripleBuffer.h)
 
 ### 2차 개선 버전
 
@@ -144,7 +143,7 @@ Read:
     else       -> count++
 ```
 
-[TripleBufferAdvanced.h](BaseLib/TripleBufferAdvanced.h)
+[TripleBuffer.h](BaseLib/TripleBuffer.h)
 
 ## 5. Note
 이 자료구조는 actor 모델에서 actor 내부상태를 외부 reader에 동기화 할 때 유용하게 사용할 수 있다.   
