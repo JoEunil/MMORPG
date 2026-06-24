@@ -133,7 +133,7 @@
   <ItemGroup>
     <ClCompile Include="LockFreeQueue.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="ObjectPool.cpp" />
+    <ClCompile Include="FixedObjectPool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BaseLib\BaseLib.vcxproj">

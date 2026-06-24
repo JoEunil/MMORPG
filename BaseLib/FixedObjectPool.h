@@ -12,7 +12,7 @@ namespace Base {
         struct alignas(T) Slot { unsigned char data[sizeof(T)]; };  // 생성자 호출 없이 메모리 예약하기 위함.
         std::unique_ptr<Slot[]> m_storage;
         std::vector<T*> freeList;
-        alignas(std::hardware_destructive_interference_size) std::atomic_flag lock;
+        alignas(std::hardware_destructive_interference_size) std::atomic_flag lock; // 임계영역이 극단적으로 짧은 케이스, mutex보다 spin lock이 적절함.
     public:
         template<typename... Args>
         explicit FixedObjectPool(const Args&... args)

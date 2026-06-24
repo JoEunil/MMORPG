@@ -65,7 +65,6 @@ TEST(LockFreeQueueTest, ConcurrentNoLossNoDuplication) {
     std::vector<std::thread> producers;
     for (int i = 0; i < NUM_PRODUCERS; ++i)
         producers.emplace_back(Producer, std::ref(q), std::ref(produced), i);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     std::vector<std::thread> consumers;
     for (int i = 0; i < NUM_CONSUMERS; ++i)
         consumers.emplace_back(Consumer, std::ref(q), std::ref(consumed), std::ref(seen));
@@ -77,10 +76,12 @@ TEST(LockFreeQueueTest, ConcurrentNoLossNoDuplication) {
 
 	EXPECT_EQ(produced.load(), TOTAL); 
 	EXPECT_EQ(consumed.load(), TOTAL); 
-    
+
+    int failCount = 0;
     for (int i = 0; i < TOTAL; ++i) {
-        EXPECT_EQ(seen[i].load(), 1) << "Value " << i << " was seen " << seen[i].load() << " times";
-        if (i != 1)
-            break;
-	}
+        if (seen[i].load() != 1) {
+            EXPECT_EQ(seen[i].load(), 1) << "Value " << i << " was seen " << seen[i].load() << " times";
+            if (++failCount >= 10) break;  // 최대 10개만 출력
+        }
+    }
 }
