@@ -4,6 +4,8 @@
 
 namespace Base {
 	// not thread safe, full이 발생하지 않는 상황에서만 사용
+	// ClientContext에서 SendQueue, pending 중 큐잉하기 위해 사용. 
+	// ClientContextPool에서 FlushQueue, 최대 크기 고정된 케이스. 
 	template <typename T, uint32_t SIZE>
 	class RingQueue {
 		std::array<T, SIZE> queue;
