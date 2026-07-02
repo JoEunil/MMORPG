@@ -105,8 +105,8 @@ namespace Net {
     uint16_t ClientContext::AllocateRecvBuffer(uint8_t*& buffer) {
         std::lock_guard<std::recursive_mutex> lock(m_mutex);
         BufferFragment temp;
-        uint16_t len = m_buffer.TryAcquireBuffer(temp);
-        buffer = temp.startPtr + temp.front;
+        uint16_t len = m_buffer.TryAcquireBuffer(temp, RECV_BUFFER_SIZE);
+        buffer = temp.startPtr;
         if (len == 0)
             Core::errorLogger->LogError("context", "can't allocate buffer", "sessionID", m_sessionID, "front", m_front, "rear", m_rear);
         return len;

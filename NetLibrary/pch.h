@@ -12,11 +12,11 @@
 #pragma comment(lib, "mswsock.lib")
 
 #define WIN32_LEAN_AND_MEAN  // windows.h 포함 전에 정의
-#undef min                  // Windows 매크로 제거
-#undef max                  // Windows 매크로 제거
 
 #include <winsock2.h>        // 반드시 windows.h보다 먼저
 #include <windows.h>         // IOCP, HANDLE, DWORD 등
+#undef min                  // Windows 매크로 제거
+#undef max                  // Windows 매크로 제거
 #include <mswsock.h>         // AcceptEx 등
 #include <Ws2tcpip.h>        // inet_pton, getaddrinfo 등
 

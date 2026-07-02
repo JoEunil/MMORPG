@@ -60,7 +60,7 @@ namespace Net {
 
     public:
         ClientContext(){
-            m_buffer.Initialize();
+            m_buffer.Initialize(RING_BUFFER_SIZE);
             m_startPtr = m_buffer.GetStartPtr();
             m_releaseQ.resize(RELEASE_Q_SIZE, { EMPTY_SLOT, EMPTY_SLOT });
             m_front = 0;

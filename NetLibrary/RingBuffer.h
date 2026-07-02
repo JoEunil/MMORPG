@@ -2,7 +2,8 @@
 
 #include <cstdint>
 #include <vector>
-#include "Config.h"
+
+class RingBufferTest;
 
 namespace Net {
     constexpr uint8_t RELEASE = 0;
@@ -23,20 +24,24 @@ namespace Net {
 
         // 수신 버퍼 재사용, 메모리 복사 없이 패킷 사용하기 위함 (Wrap-around 구간제외 하면 연속적인 메모리 공간, 별도 처리 필요)
         std::vector<uint8_t> m_buffer;
-
+        uint32_t m_size = 0;
+        uint32_t m_mask = -1;
         uint16_t HasSpace() const;
         
-        void Initialize() {
-            m_buffer.resize(RING_BUFFER_SIZE);
+        void Initialize(uint32_t size) {
+            m_buffer.resize(size);
+            m_size = size;
+            m_mask = size - 1;
             m_last_op = RELEASE;
         }
         friend class ClientContext;
+        friend class ::RingBufferTest;
     public:
-        uint16_t TryAcquireBuffer(BufferFragment& res);
+        uint16_t TryAcquireBuffer(BufferFragment& res, uint16_t fragmentSize);
         bool Release(uint16_t front, uint16_t rear);
         void ReleaseLeftOver(uint16_t p, bool hasData);
         uint8_t* GetStartPtr();
-        uint16_t GetCapacity() const { return RING_BUFFER_SIZE; }
+        uint16_t GetCapacity() const { return m_size; }
         void Clear() {
             m_head = 0;
             m_tail = 0;
