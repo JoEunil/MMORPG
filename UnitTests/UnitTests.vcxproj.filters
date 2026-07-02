@@ -16,6 +16,9 @@
     <Filter Include="BaseLib">
       <UniqueIdentifier>{4fc77f32-bd14-4c70-9a54-e2c3b52d1f1c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="CacheLib">
+      <UniqueIdentifier>{bc22d2db-276a-4f18-b76c-7ab63eba861c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -24,11 +27,20 @@
     <ClCompile Include="main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="FixedObjectPool.cpp">
+    <ClCompile Include="BaseLib\FixedObjectPool.cpp">
       <Filter>BaseLib</Filter>
     </ClCompile>
-    <ClCompile Include="LockFreeQueue.cpp">
+    <ClCompile Include="BaseLib\LockFreeQueue.cpp">
       <Filter>BaseLib</Filter>
+    </ClCompile>
+    <ClCompile Include="BaseLib\RingQueue.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="NetLib\RingBuffer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="..\NetLibrary\RingBuffer.cpp">
+      <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

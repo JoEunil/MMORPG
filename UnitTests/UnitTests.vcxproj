@@ -131,9 +131,12 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="LockFreeQueue.cpp" />
+    <ClCompile Include="..\NetLibrary\RingBuffer.cpp" />
+    <ClCompile Include="BaseLib\LockFreeQueue.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="FixedObjectPool.cpp" />
+    <ClCompile Include="BaseLib\FixedObjectPool.cpp" />
+    <ClCompile Include="NetLib\RingBuffer.cpp" />
+    <ClCompile Include="BaseLib\RingQueue.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BaseLib\BaseLib.vcxproj">
