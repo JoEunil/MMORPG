@@ -16,13 +16,19 @@
 11. [기술 문서 목록](#기술-문서-목록)
 
 ## 프로젝트 개요
-C++20 기반 MMORPG 게임 서버.  
-IOCP, Lock-Free Queue, Write-Back Cache 등 
-핵심 컴포넌트를 직접 구현하고 Unity 클라이언트로 검증.  
-i3-12100F 4코어 환경에서 **2,000명 동시접속** 부하테스트 완료.
+C++ 기반 TCP Stateful MMORPG 서버, 개인 프로젝트 (개발 기간 약 1년)  
+게임 서버의 핵심 문제인 대규모 동시 접속 처리와 실시간 동기화를 직접 해결하기 위해  
+IOCP, Lock-Free Queue, In-Process Cache 등 핵심 컴포넌트를 직접 구현.  
+Zone Tick 기반 게임 루프, Grid AOI, Full/Delta Snapshot 동기화로 실시간 게임 로직 구현. 
 
 **구현 콘텐츠**    
-캐릭터 이동 / 스킬 / 몬스터 / 통합 거래소 / 인벤토리 / 채팅  
+캐릭터 이동 / 스킬 / 몬스터 / 아이템 거래소 / 인벤토리 / 채팅  
+
+**검증**   
+- 핵심 컴포넌트 Google Test 단위 테스트  
+- Unity 클라이언트 연동 및 기본 기능 테스트  
+- 더미 클라이언트 부하 테스트      
+-> i3-12100F 4코어 단일 PC 환경에서 **2,000명 동시접속** 달성.
 
 > 2,000명 동시 접속 Unity 클라이언트 테스트 영상  
 > https://youtu.be/2q2kZwI3uSQ
@@ -32,7 +38,7 @@ i3-12100F 4코어 환경에서 **2,000명 동시접속** 부하테스트 완료.
 
 ## 기술 스택
 
-__게임 서버 (C++20)__
+__게임 서버 (C++)__
 - 네트워크: IOCP 비동기 IO, 커스텀 바이너리 프로토콜, RingBuffer 패킷 조립
 - 동시성: Vyukov's Lock-free Queue, Triple Buffer, Sharded Mutex
 - 캐시: In-Process Write-Back Cache (Shard, LRU eviction, ACID 설계)
@@ -41,7 +47,7 @@ __게임 서버 (C++20)__
 
 __인프라__
 - DB: MySQL
-- 인증: Redis 
+- 세션 저장소: Redis (In Memory DB, TTL 기반 세션 관리)  
 - 로그인: Node.js
 - 모니터링: Grafana + Loki + Promtail
 
@@ -157,21 +163,22 @@ __MainServer__
 __NetLibrary__  
 - ping thread  
 - net timer  
-- perf collector -  IO-bound  
+- perf collector -  IO-bound (Logger)    
 - iocp worker pool - CPU-bound  
 
 __CoreLib__    
 - ZoneThreadSet - CPU-bound  
 - NoneZoneThreadPool  
-- perf collector - IO-bound    
+- perf collector - IO-bound (Logger)    
 - chat thread - CPU-bound (작업량 증가 시)  
 - broadcast thread pool - CPU-bound (작업량 증가 시)  
 - memory queue  
 
 __CacheLib__  
 - flush dispatcher  
-- cache flush: IO-bound (DB)    
-- memory queue   
+- cache flush  
+- memory queue
+- DB Worker - IO-bound  
 
 __ExternalLib__  
 - session thread: IO-bound (event 루프 기반)  
