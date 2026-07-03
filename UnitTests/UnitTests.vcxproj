@@ -133,6 +133,7 @@
   <ItemGroup>
     <ClCompile Include="..\NetLibrary\RingBuffer.cpp" />
     <ClCompile Include="BaseLib\LockFreeQueue.cpp" />
+    <ClCompile Include="BaseLib\TripleBuffer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="BaseLib\FixedObjectPool.cpp" />
     <ClCompile Include="NetLib\RingBuffer.cpp" />
