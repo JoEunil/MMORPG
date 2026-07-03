@@ -33,7 +33,7 @@ namespace Base {
 			back1 = b1;
 			back2 = b2;
 		}
-		void Write(T* write) {
+		void Write(T*& write) {
 			while (true)
 			{
 				uint16_t old_flag = flag.load(std::memory_order_relaxed);

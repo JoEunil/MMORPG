@@ -46,7 +46,7 @@ template <typename T>
 		void Init(T* b) {
 			back = b;
 		}
-		void Write(T* write) {
+		void Write(T*& write) {
 			while (true) {
 				uint8_t exp = dirty.load(std::memory_order_relaxed);
 				if (exp == 1) 
@@ -57,7 +57,7 @@ template <typename T>
 			std::swap(back, write);
 			dirty.store(0, std::memory_order_release);
 		}
-		bool Read(T* read) {
+		bool Read(T*& read) {
 			uint8_t exp = 0;
 			if (!dirty.compare_exchange_strong(exp, 1,
 				std::memory_order_acquire, std::memory_order_relaxed)) {
