@@ -97,7 +97,11 @@ namespace Cache {
         }
         auto& shard = m_shards[shardIndex];
         std::unique_lock<std::mutex> lock(shard.mutex);
-        auto& res = shard.cache_data[key];
+
+        auto it = shard.cache_data.find(key);
+        if (it == shard.cache_data.end())
+            return { CACHE_STATUS::EMPTY, 0, 0, 0 };
+        auto& res = it->second;
         
         if(res.status != CACHE_STATUS::AVAILABLE)
             return std::make_tuple(res.status, 0, 0, 0);
