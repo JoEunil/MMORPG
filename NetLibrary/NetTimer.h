@@ -4,6 +4,7 @@
 #include <atomic>
 #include <CoreLib/LoggerGlobal.h>
 
+class NetTimerTest;
 namespace Net {
 	class NetTimer {
 		// std::chrono::steady_clock::now() 호출 비용이 커서 전역으로 캐시해서 사용할 수 있도록, 전용 스레드에서 업데이트.
@@ -41,6 +42,7 @@ namespace Net {
 			Core::sysLogger->LogInfo("net timer", "Net timer thread stopped");
 		}
 		friend class Initializer;
+		friend class ::NetTimerTest;
 	public:
 		static uint64_t GetTimeMS() {
 			return m_timeCache.load(std::memory_order_relaxed);

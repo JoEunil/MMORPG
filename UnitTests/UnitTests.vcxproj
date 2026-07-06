@@ -102,7 +102,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\External</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -120,7 +120,7 @@
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions</EnableEnhancedInstructionSet>
-      <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\External</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -131,11 +131,15 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\CoreLib\LoggerGlobal.cpp" />
+    <ClCompile Include="..\NetLibrary\ClientContext.cpp" />
     <ClCompile Include="..\NetLibrary\RingBuffer.cpp" />
     <ClCompile Include="BaseLib\LockFreeQueue.cpp" />
     <ClCompile Include="BaseLib\TripleBuffer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="BaseLib\FixedObjectPool.cpp" />
+    <ClCompile Include="NetLib\NetTimer.cpp" />
+    <ClCompile Include="NetLib\PacketView.cpp" />
     <ClCompile Include="NetLib\RingBuffer.cpp" />
     <ClCompile Include="BaseLib\RingQueue.cpp" />
   </ItemGroup>
