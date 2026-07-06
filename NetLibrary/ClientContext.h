@@ -103,7 +103,8 @@ namespace Net {
             return m_gameSession.load(std::memory_order_acquire);
         }
 
-        void ReleaseBuffer(PacketView* pv);
+        // unit test에서 mock 주입 위해 virtual 선언
+        virtual void ReleaseBuffer(PacketView* pv);
         bool EnqueueRecvQ(uint8_t* ptr, size_t len);
 
         STOverlappedEx* EnqueueSend(STOverlappedEx* work);
