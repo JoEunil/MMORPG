@@ -87,8 +87,8 @@ namespace ClientCore.Network
                         PacketHeader header = Packet.ExtractHeader(recvBuffer.ToArray());
                         if (recvBuffer.Count < header.length) break; // 아직 전체 패킷 안들어옴
 
-                        byte[] packetData = recvBuffer.Take(header.length).ToArray();
-                        recvBuffer.RemoveRange(0, header.length);
+                        byte[] packetData = recvBuffer.Take((int)header.length).ToArray();
+                        recvBuffer.RemoveRange(0, (int)header.length);
                         // 배열을 앞으로 당기면서 복사 발생.. 
 
                         // 패킷 처리

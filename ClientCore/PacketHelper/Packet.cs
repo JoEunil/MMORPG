@@ -60,7 +60,7 @@ namespace ClientCore.PacketHelper
     public struct PacketHeader
     {
         public ushort magic;
-        public ushort length;
+        public uint length;
         public byte opcode;
         public byte flags;
     }

@@ -10,7 +10,7 @@ namespace Net {
 	class PacketPool;
     class Packet : public Core::IPacket {
         uint8_t* m_buffer;
-        uint16_t m_length; // data length
+        uint32_t m_length; // data length
         uint16_t m_capacity; // buffer length
         PacketPool* owner;
 
@@ -55,8 +55,8 @@ namespace Net {
 
         void Release() override;
         uint8_t* GetBuffer() override { return m_buffer; }
-        uint16_t GetLength() override { return m_length; }
-        void SetLength(uint16_t len) override { m_length = len; }
+        uint32_t GetLength() override { return m_length; }
+        void SetLength(uint32_t len) override { m_length = len; }
         PacketPool* GetOwner() {return owner;}
     };
 
