@@ -52,7 +52,8 @@ namespace Net {
         ClientContext* ctx = m_contexts.back();
         m_contexts.pop_back();
         ctx->Clear(session);
-        
+        m_workingCnt.fetch_add(1, std::memory_order_relaxed);
+
         if (m_flushQ.size() > FLUSH_CONTEXTPOOL)
             FlushPending();
         return ctx;
@@ -61,7 +62,7 @@ namespace Net {
     void ClientContextPool::Return(ClientContext* context)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        m_workingCnt.fetch_sub(1);
+        m_workingCnt.fetch_sub(1, std::memory_order_relaxed);
         context->Disconnect();
         m_flushQ.push(context);
     }
