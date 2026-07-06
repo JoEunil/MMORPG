@@ -90,6 +90,25 @@ memory_order는 **멀티스레드 환경에서 메모리 재배치와 가시성�
   → 메모리 가시성과 순서를 **싱글 스레드처럼 보이게** 하는 목적  
 - **주의:** 모든 구간을 싱글 스레드처럼 완벽히 보장하면 성능 저하가 크므로, 필요한 구간에만 `acquire/release`를 적절히 사용하는 것이 중요
 
+### SB 리트머스 테스트 
+ x, y는 공유 변수, 초기값 둘 다 0
+```
+Thread 1:              Thread 2:
+store(x, 1)             store(y, 1)
+r1 = load(y)            r2 = load(x)
+```
+실행이 끝난 뒤 **r1 == 0 이면서 r2 == 0**인 상태가 나올 수 있는가?
+-> Thread 1의 store(x,1)이 자기 store buffer에 잠깐 머무는 사이(다른 코어엔 아직 안 보임) load(y)를 먼저 실행해버리고,  
+Thread 2도 동시에 똑같은 상황이라면, 두 load 모두 상대방의 store가 아직 전역적으로 보이기 전의 "옛날 값(0)"을 읽어버릴 수 있다.  
+
+전부 relaxed: r1==0 && r2==0 관측 가능
+전부 acquire/release: r1==0 && r2==0 관측 가능  
+-> "같은 변수"에 대한 release-store를 acquire-load가 읽었을 때만 happens-before가 형성됨.
+전부 seq_cst: r1==0 && r2==0이 절대 불가능하다고 표준이 보장
+
+> SB 리트머스 테스트는 store buffer가 만들어내는 재배치 효과를 드러내는 최소 테스트  
+> x86-TSO 모델에서도 store-load 재배치는 허용하기 때문에 이 문제가 발생한다. 
+
 ## 5. 예시
 
 ```cpp

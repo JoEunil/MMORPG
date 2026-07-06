@@ -232,8 +232,8 @@ CPU-bound 또는 IO-bound로 분류하기 어렵다.
   Lock Free Queue 설계 오류로 인한 교착 상태를 호출 스택 분석을 통해 원인 분석 및 수정
 
 - [ContextPool memory_order 디버그](MemoryOrderDebug.md)  
-  느슨한 메모리 순서(memory_order_relaxed) 사용 시 발생하는 가시성 문제를 분석하고, 적절한 메모리 순서 (acquire / release) 적용
-  Debug 빌드에서 발생, Core에서 비순차 실행으로 인한 명령 재배치 케이스    
+  두 atomic 변수를 교차 확인하는 SB(Store-Buffer) 리트머스 패턴에서 발생한 가시성 문제 분석. acquire/release로는 표준상 완전한 보장이 안 됨을 확인해 seq_cst로 최종 수정. 
+  x64 + Debug 빌드(명령 재배치 없음)에서도 Store Buffer로 인한 가시성 지연으로 재현된 케이스
 
 - [SessionManager 데드락](SessionManagerDeadLock.md)  
   순환 참조로 인해 발생한 데드락 원인 추적, 구조 개선.

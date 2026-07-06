@@ -35,7 +35,7 @@ m_connected와 m_workingCnt 둘다 atomic 변수이고, 어떤 자원을 lock하
 ReleaseBuffer()의 fetch_sub()보다 m_connected.load()가 먼저 실행될 수 있고
 이로 인해 조건문이 잘못 평가되는 race condition이 발생할 수 있다.
 
-## 4. 해결
+## 4. 1차 해결 (잘못된 방법)
 __Disconnect()__
 ```cpp
 m_connected.store(false, release);
@@ -47,11 +47,26 @@ __ReleaseBuffer()__
 m_workingCnt.fetch_sub(1, acq_rel);
 if (!m_connected.load(acquire) && m_workingCnt.load(acquire) == 0)
 ```
-위와 같이 acquire-release 관계를 형성하도록 memory_order를 수정한 후
-flush가 정상적으로 수행되었다.  
-(relaxed에서는 두 atomic 간의 순서·가시성이 보장되지 않아 조건 평가가 뒤틀릴 수 있었음)
+각 atomic 변수의 원자성은 relaxed로도 보장되지만, 두 스레드가 서로 다른 변수를 통해 상대방의 상태를 관측해야 하므로, release-acquire 쌍을 적용해 두 atomic 사이에도 happens-before가 형성될 것이라 판단했다.  
+acquire/release 시멘틱을 적용한 결과 정상적으로 동작하였다.  
 
-## 5. Note
+## 5. 2차 해결
+```cpp
+Disconnect()
+m_connected.store(false, seq_cst);
+if (!m_connected.load(seq_cst) && m_workingCnt.load(seq_cst))
+
+ReleaseBuffer()
+m_workingCnt.fetch_sub(1, seq_cst);
+if (!m_connected.load(seq_cst) && m_workingCnt.load(seq_cst) == 0)
+```
+1차 해결에서 잘못 판단한 지점은, acquire/release 시멘틱이 해당 atomic 변수 앞뒤의 모든 메모리 접근에 대해 happens-before를 형성한다고 생각한 것이다.  
+하지만 acquire/release가 형성하는 happens-before는 "그 atomic이 보호하는 임계영역(주로 비원자적 데이터)"에 한정되며, m_connected와 m_workingCnt처럼 독립적으로 동작하는 두 atomic 사이에는 적용되지 않는다.  
+
+즉 이 구조는 서로 다른 두 atomic을 교차로 store-then-load 하는 고전적인 SB 리트머스 테스트 패턴이며, 이런 패턴에서 StoreLoad 재배치를 완전히 막으려면 acquire/release가 아니라 seq_cst가 필요하다.  
+1차 해결이 우연히 테스트를 통과한 건 fetch_sub이 RMW 연산이라 x86에서 LOCK 접두로 풀 펜스가 걸린 부수 효과였을 뿐, 표준이 보장하는 해결은 아니었다.    
+
+## 6. Note
 - relaxed는 atomic 변수의 원자성을 보장하지만, 스레드 간 가시성은 보장하지 않는다.
   - store buffer flush가 강제되지 않아 가시성 지연이 발생할 수 있다.
   - x64 TSO + Debug 빌드 환경에서 명령 재배치가 없었음에도 버그가 발생한 원인이다.
@@ -61,13 +76,16 @@ flush가 정상적으로 수행되었다.
     발급 스레드들끼리는 항상 최신값 기반으로 연산이 수행된다.
   - 단순 load로 관측하는 스레드가 없으므로 stale read 자체가 발생하지 않는다.
 
-- 반면 m_connected + m_workingCnt처럼 두 변수를 논리적으로 연결해서
-  조건 판단에 사용하는 경우는 relaxed가 위험하다.
-  - 각 변수의 가시성 시점이 독립적이라 한 변수는 최신값,
-    다른 변수는 stale값을 동시에 관측할 수 있기 때문이다.
-  - 플랫폼·빌드 모드와 관계없이 acquire/release로 happens-before를 형성해야 한다.
+- 반면 m_connected + m_workingCnt처럼 독립적인 두 atomic을 교차로 확인해 조건을 판단하는 구조는,   
+  하나의 atomic이 다른 데이터를 보호하는 관계가 아니라 고전적인 SB 리트머스 테스트 패턴 그 자체다.
+  - acquire/release는 서로 다른 두 변수에 걸친 StoreLoad 재배치까지는
+    막아주지 않으며, 완전한 방지에는 seq_cst가 필요하다.
+  - 1차 해결(acquire-release)이 통과한 건 fetch_sub의 RMW 특성상 x86에서
+    LOCK 접두로 우연히 풀 펜스가 걸린 결과였다.
+ 
+- Windows(MSVC/x86-64) 빌드 기준, seq_cst 전환의 실제 비용 차이는 store 연산에서만 발생한다. 
 
-## 6. 참고
+## 7. 참고
 - [ClientContext 설명 문서](ClientContext.md)  
 - [ClientContext.h](NetLibrary/ClientContext.h)  
 - [ClientContextPool.h](NetLibrary/ClientContextPool.h)  
