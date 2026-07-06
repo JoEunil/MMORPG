@@ -13,6 +13,9 @@ protected:
 	Base::TripleBuffer<Dummy> tb;
 	Dummy* writer = new Dummy();
 
+	~TripleBufferTest() {
+		delete writer;
+	}
 	void Initialize() {
 		Dummy* back1 = new Dummy();
 		Dummy* back2 = new Dummy();
