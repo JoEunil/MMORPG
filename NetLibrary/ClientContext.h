@@ -82,8 +82,8 @@ namespace Net {
                 m_seq = 0;
                 m_front = 0;
                 m_rear = RING_BUFFER_SIZE - 1;
-                m_connected.store(true, std::memory_order_release);
-                m_workingCnt.store(0, std::memory_order_release);
+                m_connected.store(true, std::memory_order_seq_cst);
+                m_workingCnt.store(0, std::memory_order_seq_cst);
                 m_gameSession.store(true, std::memory_order_release);
             }
             {
@@ -94,8 +94,8 @@ namespace Net {
             }
         }
         void Disconnect() {
-            m_connected.store(false, std::memory_order_release);
-            if (!m_connected.load(std::memory_order_acquire) && m_workingCnt.load(std::memory_order_acquire) <= 0) {
+            m_connected.store(false, std::memory_order_seq_cst);
+            if (!m_connected.load(std::memory_order_seq_cst) && m_workingCnt.load(std::memory_order_seq_cst) <= 0) {
                 NetPacketFilter::Disconnect(m_sessionID);
             }
         }

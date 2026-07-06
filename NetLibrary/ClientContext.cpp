@@ -94,7 +94,7 @@ namespace Net {
 
         m_front = (m_front + packetLen) & RING_BUFFER_SIZE_MASK;
         m_last_op = RELEASE;
-        m_workingCnt.fetch_add(1, std::memory_order_relaxed);
+        m_workingCnt.fetch_add(1, std::memory_order_seq_cst);
 
         if (!NetPacketFilter::TryDispatch(std::move(pv))) {
             m_gameSession.store(false, std::memory_order_release);
@@ -142,12 +142,12 @@ namespace Net {
     }
 
     void ClientContext::ReleaseBuffer(PacketView* pv) {
-        if (m_connected.load(std::memory_order_relaxed))
+        if (m_connected.load(std::memory_order_seq_cst))
             EnqueueReleaseQ(pv->GetSeq(), pv->GetFront(), pv->GetRear());
-        m_workingCnt.fetch_sub(1, std::memory_order_acq_rel);
+        m_workingCnt.fetch_sub(1, std::memory_order_seq_cst);
         pv->Clear();
         packetViewPool.Deallocate(pv);
-        if (!m_connected.load(std::memory_order_acquire) && m_workingCnt.load(std::memory_order_acquire) == 0) {
+        if (!m_connected.load(std::memory_order_seq_cst) && m_workingCnt.load(std::memory_order_seq_cst) == 0) {
             NetPacketFilter::Disconnect(m_sessionID);
         }
     }
