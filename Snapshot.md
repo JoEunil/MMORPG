@@ -48,7 +48,7 @@ Delta Snapshot은 캐릭터 구분 ID + 필드 ID + 필드 값으로 구성되�
 __대역폭 계산 예시__
 - Delta
 ```
-Cell 당 패킷 크기 * AOI 범위 * Cell당 유저 수 * Zone 수 * tick
+패킷 크기 * AOI 범위 * Cell당 유저 수 * Zone 수 * tick
 (16바이트 * Cell 유저 수) * 9 * Cell당 유저 수 * Zone 수 * 20FPS
 = 230,400 * zone * 20fps
 = 4,608,000 * zone / sec
@@ -57,7 +57,7 @@ Cell 당 패킷 크기 * AOI 범위 * Cell당 유저 수 * Zone 수 * tick
 
 - Full
 ```
-Cell 당 패킷 크기 * AOI 범위 * Cell당 유저 수 * Zone 수
+패킷 크기 * AOI 범위 * Cell당 유저 수 * Zone 수
 (33바이트 * Cell 유저 수) * AOI 범위 * Cell당 유저 수 * Zone 수
 = 475,200 * zone / tick
 ```
@@ -72,13 +72,13 @@ __예상 bps(bit per second)__
 AOI 범위 9개 Cell, Delta Snapshot 20FPS, Full Snapshot 3초마다 수행될 때
 - Delta Snapshot: 약 36 Mbps / zone
 - Full Snapshot: 약 1.2 Mbps / zone
-이론상, Character Snapshot만 고려하면 30개 Zone, 유저 30,000명 수준에서도 1Gbps 한계 내에서 처리 가능하다.
+이론상, Character Snapshot만 고려하면 30개 Zone, 유저 30,000명 수준에서 1Gbps에 근접한다.  
 
 그러나 현실에서는 다음 요소 때문에 실제 한계는 더 낮다:
 - Monster/ActionResult 등 추가 패킷
 - 서버 응답 패킷 및 ACK/재전송
 - CPU 처리, AOI 확대, Zone 내부 Skill/Hit 처리
-> 따라서 서버 1대당 안정적으로 운영 가능한 규모는 최대 (10,000 ~ 150,000) 수준이 현실적이다.
+> 따라서 서버 1대당 안정적으로 운영 가능한 규모는 최대 10,000 ~ 15,000명 수준이 현실적이다.
 
 __Zone 처리 관련 주의점__
 - Zone은 1개의 전용 코어를 필요로 한다.  

@@ -12,7 +12,7 @@ FloodDetector (Inner Layer): 세션 단위 정밀 차단 및 Tiny Packet을 이�
 
 ## 3. 요구사항
 1. 즉각적인 차단: 다음 수신 작업이 추가적으로 발생하지 않도록 차단해야한다.
-2. 저비용 연산 (Hot Path): 매 수신마다 호출되는 핵심 경로이므로, std::now() 등 무거운 연산을 지양한다.
+2. 저비용 연산 (Hot Path): 매 수신마다 호출되는 핵심 경로이므로, steady_clock::now() 등 무거운 연산을 지양한다.
 
 ![이미지 로드 실패](images/FloodCheckFlowChart.png)
 > iocp 수신완료 처리 work flow 
@@ -24,9 +24,9 @@ FloodDetector (Inner Layer): 세션 단위 정밀 차단 및 Tiny Packet을 이�
 *ClientContext는 TCP 스트림을 패킷 단위로 잘라내는 로직을 담당
 1. 호출 스택 오염  
 AbortSocket() 호출 시 ClientContext의 종료 처리 메서드를 수행하게 됨.
-따라서 ClientContext 이후 로직에서 AbortSockett()을 호출하게 된다면,   
-호출스택 상위에 ClientContext를 남겨둔 채 해당 인스턴스를 종료 상태로 만듦.  
-이는 코드의 실행 흐름을 예측하기 어렵게 만드는 주요 원인이 됩.   
+따라서 ClientContext 이후 로직에서 AbortSocket()을 호출하게 된다면,   
+호출스택 상위에 ClientContext를 남겨둔 채 해당 인스턴스를 종료 상태로 만들게 된다.  
+이는 코드의 실행 흐름을 예측하기 어렵게 만드는 주요 원인이 된다.   
 -> 객체 지향 설계 관점에서도 제어권을 하위 레이어에 부여하는건 위험  
 -> 상태값을 가지지 않고 전달자 역할만 하는 NetHandler에서 제어하는 것은 안전한 설계
 2. DoS 방어의 효율성  
@@ -40,7 +40,7 @@ AbortSocket() 호출 시 ClientContext의 종료 처리 메서드를 수행하�
 	* 누적합을 통해 구간합 연산 단순화.
 	* Q_SIZE를 2의 거듭제곱으로 설정하고 비트 연산을 사용하여 인덱스 관리 효율을 높임.
 * 한계
-	* 매 수신마다 std::now()를 호출
+	* 매 수신마다 steady_clock::now()를 호출
 	* Ring Queue 및 타임스탬프 관리를 위한 로직 복잡도 증가
 	* 평균화 연산 특성상 순간적인 트래픽 변화 대응이 늦음
 	* tiny packet 공격을 판단할 수 없다. -> 수신 간격이 큰 경우 매우 작은값으로 측정됨
@@ -81,7 +81,7 @@ class TrafficFloodDetector {
 * 특징 
 	* 변수 두개만 사용하여 메모리 사용량이 적음
 * 한계
-	* 여전히 std::now() 연산이 필요함
+	* 여전히 steady_clock::now() 연산이 필요함
 	* tiny packet 공격을 판단할 수 없다. -> 새 윈도우에서 첫 패킷은 매우 작은 값으로 측정됨
 
 ```cpp
@@ -114,7 +114,7 @@ class TrafficFloodDetector {
 	* 시간 기준을 제거하고, 수신 횟수(RECV_WINDOW)를 기준으로 트래픽을 근사 측정함.
 * 특징 
 	* 변수 두개만 사용하여 메모리 사용량이 적음
-	* std::now() 같은 무거운 연산이 없어서 Hot path에 적용 가능
+	* steady_clock::now() 같은 무거운 연산이 없어서 Hot path에 적용 가능
 	* 임계 횟수 도달 시점에 즉시 판정하여 신속한 차단 가능.
 	* 과도한 트래픽은 물론, 작은 패킷을 쏟아부어 CPU 자원을 고갈시키는   
 	  Tiny Packet 공격까지 방어 가능(패킷 헤더 크기 기반 최소 바이트 설정).  

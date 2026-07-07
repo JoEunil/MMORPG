@@ -5,7 +5,7 @@
 
 ## 2. Triple Buffer란?
 Triple Buffer는 공유 자원에 대해 읽기(Reader)와 쓰기(Writer) 작업이 빈번하게 발생하는 멀티스레드 환경에서,     
-Lock 경합을 최소화하고 데이터의 최신 상태(Snapshot)를 안전하고 빠르게 공유하기 위한 버퍼링 기법이다..  
+Lock 경합을 최소화하고 데이터의 최신 상태(Snapshot)를 안전하고 빠르게 공유하기 위한 버퍼링 기법이다.  
 
 Triple Buffer는 3개의 버퍼를 사용하여 다음을 보장한다:  
 1. Writer는 현재 쓰고 있는 버퍼를 독점적으로 수정  
@@ -33,7 +33,7 @@ Triple Buffer는 3개의 버퍼를 사용하여 다음을 보장한다:
 
 ## 4. 구현 히스토리
 ### 1차 구현
-Rust 포럼의 [SPMC Triple Buffring](https://users.rust-lang.org/t/spmc-buffer-triple-buffering-for-multiple-consumers/10118) 
+Rust 포럼의 [SPMC Triple Buffering](https://users.rust-lang.org/t/spmc-buffer-triple-buffering-for-multiple-consumers/10118) 
 개념을 참고하여 구현.  
 
 __구현 코드__
@@ -74,8 +74,8 @@ template <typename T>
 __문제점__  
 
 SPMC 환경에서 다수의 Worker 스레드가 공유된 Reader 풀로 동작할 때 치명적인 단점이 발견됨.
-- 오래된 데이터: 오랫동안 대기하던 Worker 스레드가 뒤늦게 깨어나 Read를 수행할 때, 이미 아주 옛날에 Swap 해둔 버퍼를 참조할 수 있다.
-- 잘못된 데이터: Zone 객체는 여러 개인데 ThreadPool은 공유됩니다. Worker가 가진 로컬 버퍼가 현재 처리하려는 Zone의 것이 아닐 수 있어 논리적 오류를 유발한다.
+- 한번에 한 Reader만 소비 가능한 구조여서, 다음 write 전까지 다른 reader들은 작업을 처리하지 못한다. 
+- 잘못된 데이터: Zone 객체는 여러 개인데 ThreadPool은 공유된다. Worker가 가진 로컬 버퍼가 현재 처리하려는 Zone의 것이 아닐 수 있어 논리적 오류를 유발한다.
 
 
 ### 2차 개선 버전

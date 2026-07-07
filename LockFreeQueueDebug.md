@@ -84,15 +84,15 @@ __seq 역할__
 	
 __문제 상황 예시 (큐 크기 1024)__
 1. 큐 초기 상태: tail = 0, head = 0, seq[i] = i
-1. 1번 push 수행: tail = 0 0 -> seq[0] = tail + 1 = 1
+1. 1번 push 수행: tail = 0  ->  seq[0] = tail + 1 = 1
 1. 큐 full 후 1025번째 push:
 	1. tail = 1024, idx = 0
-	1. seq[0] = 1 -> diff = seq - tail = 1 - 1024 < 0 -> push 실패 -> back-off yield 수행
+	1. seq[0] = 1  ->  diff = seq - tail = 1 - 1024 < 0  ->  push 실패  ->  back-off yield 수행
 1. 첫 번째 pop 수행:
 	1. head = 0, idx = 0
-	1. seq[0] = 1 -> diff = seq - (head + 1) = 0 → CAS 성공
+	1. seq[0] = 1  ->  diff = seq - (head + 1) = 0  →  CAS 성공
 	1. seq 갱신: 잘못된 경우 head + QSize + 1 = 1025
-	1. seq가 예상보다 커서 다음 push/compare 계산이 꼬임 → Consumer 루프 이상 동작
+	1. seq가 예상보다 커서 다음 push/compare 계산이 꼬임  →  Consumer 루프 이상 동작
 
 ## 6. 해결
 

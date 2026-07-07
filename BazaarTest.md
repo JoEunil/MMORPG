@@ -130,7 +130,7 @@ __slow query 관측 결과__
 ![이미지 로드 실패](images/TestBazaar8-2.png)
 
 전부 2ms 내외로 측정되었으며, stored procedure의 max_rows_examined도 4~5로 측정되어 풀스캔 없이 필요한 row만 접근하는 것을 확인할 수 있다.  
-store_procedure 40회 호출 중 3회만 slow query로 기록되었으며, 이는 lock contention으로 인해 query_time이 1ms 임계값을 초과한 것으로 추정된다.   
+stored procedure 40회 호출 중 3회만 slow query로 기록되었으며, 이는 lock contention으로 인해 query_time이 1ms 임계값을 초과한 것으로 추정된다.   
 나머지 37회는 1ms 미만에 처리되어 기록되지 않았다.   
 임계값을 1ms로 설정했기 때문에 관측된 수치인 것일 뿐 실제로는 전부 정상범위 내에서 처리된 것이다. 
 

@@ -87,7 +87,7 @@ __Atomicity (원자성)__
 - DB write 성공 시 WriteDone, 실패 시 Rollback으로 처리
 
 __Consistency (일관성)__
-- 현재 단일 연산 수준에서 Atomicity와 Isolation에 의해 뒷바침 됨.(애플리케이션 로직이 올바른 경우)
+- 현재 단일 연산 수준에서 Atomicity와 Isolation에 의해 뒷받침됨. (애플리케이션 로직이 올바른 경우)
 - 다중 연산 간 일관성 보장을 위해 추후 캐시 레이어에서 DB Transaction과 유사한 처리가 필요하다
 
 __Isolation (격리성)__

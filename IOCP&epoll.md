@@ -35,8 +35,7 @@ if (n == -1 && errno == EWOULDBLOCK) {
 - OVERLAPPED 구조체로 비동기 I/O 요청  
 - I/O 완료 시 커널이 **completion queue**에 이벤트 삽입  
 - 스레드는 `GetQueuedCompletionStatus()`로 큐에서 이벤트를 꺼냄 → O(1) 처리
-- I/O 처리 함수자체가 비동기적으로 동작하여 소켓 자체는 동기 소켓을 사용.
-  - WsaSend, WsaRecv
+- I/O 함수(WSASend, WSARecv) 호출 자체가 비동기로 동작하므로, epoll처럼 소켓을 논블로킹 모드로 설정할 필요가 없다.
  
 ## 5. IOCP와 epoll의 차이
 epoll (Reactor): 소켓이 I/O 가능한 상태임을 통지. 애플리케이션이 직접 non-blocking recv/send를 호출한다. EAGAIN 발생 시 EPOLLOUT 등록 후 재시도 타이밍을 직접 관리해야 한다.

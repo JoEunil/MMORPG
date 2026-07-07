@@ -25,7 +25,7 @@ CAS(Compare-And-Swap)와 memory_order에 대한 기본적인 이해를 바탕으
 				auto expected = m_head;
 				while (m_head.compare_exchange_weak(expected, (expected + 1) % m_QSize, std::memory_order_acq_rel, std::memory_order_relaxed) {
 					// strong은 비용이 커서, 이렇게 루프로 체크하는 곳에는 weak 사용하는것이 효율적
-					expected = (expected +1)%m_QSize;
+					expected = (expected +1)%QSize;
 				}
 					if (expected == m_tail) // empty
 						return nullptr;
@@ -36,8 +36,8 @@ CAS(Compare-And-Swap)와 memory_order에 대한 기본적인 이해를 바탕으
 			bool push(T* data) {
 				auto expected = m_tail;
 				while (m_head.compare_exchange_weak(expected, (expected + 1) % m_QSize, std::memory_order_acq_rel, std::memory_order_relaxed) {
-					expected = (expected + 1) % m_QSize;
-				if ((expected +1)%m_QSize == m_head) //full
+					expected = (expected + 1) % QSize;
+				if ((expected +1)%QSize == m_head) //full
 						return false;
 				}
 				return true;
@@ -69,15 +69,15 @@ producer와 consumer가 각각 서로 다른 변수를 독점적으로 수정한
 				if (m_head == m_tail) // empty
 					return nullptr;
 				auto res = m_queue[m_head].data;
-				m_head = (m_head+1)%m_QSize;
+				m_head = (m_head+1)%QSize;
 				return res;
 		}
 		
 		bool push(T* data) {
-				if ((m_tail+1)%m_QSize == m_head) //full
+				if ((m_tail+1)%QSize == m_head) //full
 					return false;
 			m_queue[m_tail] = data;
-			m_tail = (m_tail+1)%m_QSize;
+			m_tail = (m_tail+1)%QSize;
 			return true;
 		}
 ```
@@ -146,13 +146,12 @@ http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
 - 큐 크기는 모듈러 연산 최적화를 위해 2의 거듭제곱으로 사용한다.
 - std::array를 사용하며, 큐 크기는 컴파일 타임에 결정되도록 템플릿 인자로 전달한다.
 - push는 큐가 가득 찬 경우 false를 반환하므로, 중요한 데이터의 경우 back-off 정책이 필요하다.
-- 큐의 size()를 제공하지 않는다.
+- LockFree 큐는 empty(), size() 메서드를 제공하지 않는다.
 	- size 계산 자체가 race condition을 유발할 수 있으며,
 	- consumer 쪽에서도 적절한 wait / retry 정책이 필요하다
-- LockFree큐는 empty(), size() 메서드를 제공하지 않는다.
   
 ![이미지 로드 실패](images/StackOverflow.png)
-- 테스트 환경에서 위와 같이 스택오버플로우(0xc0000fd)가 발생한다.
+- 테스트 환경에서 위와 같이 스택오버플로우(0xc00000FD)가 발생한다.
 - LockFree큐에서 array를 사용해서 stack overflow가 발생한 것이다.
 - C스타일 배열을 unique_ptr로 감싸서 heap 메모리를 사용하면 해결된다.
 - 또한, Lock-Free 큐의 본질은 여러 스레드가 공유하는 자원을 안전하게 관리하는 것이므로, 

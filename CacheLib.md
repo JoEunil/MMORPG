@@ -154,7 +154,7 @@ CacheLib은 캐시 레이어에서 영속성을 보장하지 않으며, 영속�
 - __순환 의존 방지__ — 의존성 주입 대신 함수 객체(function object) 사용으로 구조적 순환 의존을 방지
 - __TOCTOU 처리__ — lock 획득 후 재조건 체크하는 구조 적용. 캐시 미스 후 동시 요청이 들어오는 경우 첫 번째 요청이 DB 조회 중일 때 두 번째 요청은 READING 상태를 감지하고 재시도를 클라이언트에 위임
 - __LRU eviction__ — eviction 발생 시 데이터를 즉시 제거하지 않고 LRU 리스트에서만 제거 후 DB write-back 완료 후 최종 제거. 
-- __ACID 준수__ — 캐시 동작 전반에 걸쳐 ACID를 따르도록 설계. 자세한 내용은 [ACID 설계 문서](CacheLib_ACID.md) 참고
+- __ACID를 고려한 설계__ — 캐시 동작 전반에 걸쳐 ACID를 따르도록 설계. 자세한 내용은 [ACID 설계 문서](CacheLib_ACID.md) 참고
 
 
 ## 6. 참고
