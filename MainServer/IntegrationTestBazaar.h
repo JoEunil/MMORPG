@@ -121,10 +121,10 @@ namespace Test {
         DBChecker() {
             auto* driver = sql::mysql::get_mysql_driver_instance();
             conn = driver->connect(
-                Cache::DB_HOST_BILLING,
-                Cache::DB_USER_BILLING,
-                Cache::DB_PASS_BILLING);
-            conn->setSchema(Cache::DB_DB_BILLING);
+                Cache::DB_HOST_BAZAAR,
+                Cache::DB_USER_BAZAAR,
+                Cache::DB_PASS_BAZAAR);
+            conn->setSchema(Cache::DB_DB_BAZAAR);
         }
         ~DBChecker() { delete conn; }
 

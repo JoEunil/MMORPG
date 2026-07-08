@@ -73,7 +73,7 @@ conn->commit();  // 홉 4 — lock 점유 시간: 홉 1 ~ 홉 4
 | 저장소 | 관리 데이터 | 전략 |
 |--------|------------|------|
 | Cache (In-Process) | Inventory, Gold | Write-Back, 손실 수용 |
-| DB (Billing) | Diamond, Bazaar, bazaar_log, bazaar_claim | 트랜잭션, 감사 추적 |
+| DB (Bazaar) | Diamond, Bazaar, bazaar_log, bazaar_claim | 트랜잭션, 감사 추적 |
 
 
 ## 4. BUY 처리 상세 (sp_bazaar_buy)

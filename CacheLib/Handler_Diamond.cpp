@@ -10,7 +10,7 @@
 
 namespace Cache {
     void Handler::DiamondRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgDiamondReqBody* body) {
-        dbWorkerBilling->Enqueue([=](DBConnectionBilling* conn) {
+        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
             auto res = conn->ExecuteSelect(9, body->characterID);
             Core::MsgStruct<Core::MsgDiamondResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgDiamondResBody>*>(msg->GetBuffer());
 
@@ -38,7 +38,7 @@ namespace Cache {
     }
 
     void Handler::DiamondDeposit(Core::Message*& msg, uint64_t sessionID, Core::MsgDiamondDepositBody* body) {
-        dbWorkerBilling->Enqueue([=](DBConnectionBilling* conn) {
+        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
             int affected = conn->ExecuteUpdate(10, body->diamond, body->diamond, body->characterID);
             Core::MsgStruct<Core::MsgDiamondDepositResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgDiamondDepositResBody>*>(msg->GetBuffer());
 

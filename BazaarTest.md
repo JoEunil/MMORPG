@@ -16,7 +16,7 @@
 
 - CacheLib를 인스턴스화하여 각 인스턴스를 GameServer 1개로 설정하여 테스트를 진행한다.   
 - MockMessageQueue를 통해 CacheLib에 메시지를 직접 주입하고 응답을 수신하는 방식으로 동작한다. 
-- 커넥션 풀 크기 - Game DB: 3, Billing DB: 3
+- 커넥션 풀 크기 - Game DB: 3, Bazaar DB: 3
 
 ## 4. 테스트
 

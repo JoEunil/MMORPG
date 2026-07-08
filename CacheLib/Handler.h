@@ -7,7 +7,7 @@
 #include "CacheStorageCurrency.h"
 #include "DBWorker.h"
 #include "DBConnectionGame.h"
-#include "DBConnectionBilling.h"
+#include "DBConnectionBazaar.h"
 
 #include <CoreLib/LoggerGlobal.h>
 namespace Core {
@@ -26,12 +26,12 @@ namespace Cache {
         CacheStorageCurrency* cache_currency;
         Core::ILogger* logger;
         DBWorker<DBConnectionGame>* dbWorkerGame;
-        DBWorker<DBConnectionBilling>* dbWorkerBilling;
-        void Initialize(Core::IMessageQueue* mq,  MessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBilling>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc) {
+        DBWorker<DBConnectionBazaar>* dbWorkerBazaar;
+        void Initialize(Core::IMessageQueue* mq,  MessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc) {
             messageQ = mq;
             messagePool = mp;
             dbWorkerGame = dg;
-            dbWorkerBilling = db;
+            dbWorkerBazaar = db;
             cache_inventory = ci;
             cache_currency = cc;
         }
@@ -48,8 +48,8 @@ namespace Cache {
                 Core::sysLogger->LogError("cache handler", "dbWorkerGame not initialized");
                 return false;
             }
-            if (dbWorkerBilling == nullptr) {
-                Core::sysLogger->LogError("cache handler", "dbWorkerBilling not initialized");
+            if (dbWorkerBazaar == nullptr) {
+                Core::sysLogger->LogError("cache handler", "dbWorkerBazaar not initialized");
                 return false;
             }
             if (cache_inventory == nullptr) {

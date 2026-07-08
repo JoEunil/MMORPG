@@ -9,10 +9,10 @@ namespace Cache {
     inline constexpr const char* DB_PASS_GAME = "1234";
     inline constexpr const char* DB_DB_GAME = "game";
 
-    inline constexpr const char* DB_HOST_BILLING = "localhost";
-    inline constexpr const char* DB_USER_BILLING = "root";
-    inline constexpr const char* DB_PASS_BILLING = "1234";
-    inline constexpr const char* DB_DB_BILLING = "billing";
+    inline constexpr const char* DB_HOST_BAZAAR = "localhost";
+    inline constexpr const char* DB_USER_BAZAAR = "root";
+    inline constexpr const char* DB_PASS_BAZAAR = "1234";
+    inline constexpr const char* DB_DB_BAZAAR = "bazaar";
 
     //inline constexpr size_t MAX_CACHE_SIZE = 2; // unit test
     inline constexpr size_t MAX_CACHE_SIZE = 1024;
@@ -72,7 +72,7 @@ namespace Cache {
 
     inline constexpr size_t MQ_SIZE = 8192;
     inline constexpr uint16_t GAME_DB_WORKER_THREADPOOL_SIZE = 2;
-    inline constexpr uint16_t BILLLING_DB_WORKER_THREADPOOL_SIZE = 1;
+    inline constexpr uint16_t BAZAAR_DB_WORKER_THREADPOOL_SIZE = 1;
     
 
     template <typename T>

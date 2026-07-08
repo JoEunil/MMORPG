@@ -4,7 +4,7 @@
 #include "CacheFlush.h"
 #include "MessagePool.h"
 #include "DBConnectionGame.h"
-#include "DBConnectionBilling.h"
+#include "DBConnectionBazaar.h"
 #include "DBConnectionPool.h"
 #include "CacheStorage.h"
 #include "CacheStorageInventory.h"
@@ -27,18 +27,18 @@ namespace Cache {
         MessagePool msgPool;
         InMemoryQueue recvMQ;
         DBConnectionPool<DBConnectionGame> connectionPoolGame;
-        DBConnectionPool<DBConnectionBilling> connectionPoolBilling;
+        DBConnectionPool<DBConnectionBazaar> connectionPoolBazaar;
         DBWorker<DBConnectionGame> dbWorkerGame;
-        DBWorker<DBConnectionBilling> dbWorkerBilling;
+        DBWorker<DBConnectionBazaar> dbWorkerBazaar;
     public:
         ~Initializer() {
             CleanUp();
         }
         void Initialize() {
             connectionPoolGame.Initialize();
-            connectionPoolBilling.Initialize();
+            connectionPoolBazaar.Initialize();
             dbWorkerGame.Initialize(&connectionPoolGame, GAME_DB_WORKER_THREADPOOL_SIZE);
-            dbWorkerBilling.Initialize(&connectionPoolBilling, BILLLING_DB_WORKER_THREADPOOL_SIZE);
+            dbWorkerBazaar.Initialize(&connectionPoolBazaar, BAZAAR_DB_WORKER_THREADPOOL_SIZE);
             cache_inventory.Initialize(&dbWorkerGame);
             cache_currency.Initialize(&dbWorkerGame);
             CacheTimer::StartThread();
@@ -49,7 +49,7 @@ namespace Cache {
         
         void InjectDependencies(Core::IMessageQueue* sendMQ)
         {
-            handler.Initialize(sendMQ, &msgPool, &dbWorkerGame, &dbWorkerBilling, &cache_inventory, &cache_currency);
+            handler.Initialize(sendMQ, &msgPool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency);
             recvMQ.Initialize(&handler, &msgPool);
             recvMQ.Start();
         }
@@ -79,7 +79,7 @@ namespace Cache {
             if (!dbWorkerGame.IsReady()) {
                 return false;
             }
-            if (!dbWorkerBilling.IsReady()) {
+            if (!dbWorkerBazaar.IsReady()) {
                 return false;
             }
             return true;

@@ -159,7 +159,7 @@
     <ClCompile Include="CacheFlush.cpp" />
     <ClCompile Include="CacheStorageCurrency.cpp" />
     <ClCompile Include="CacheStorageInventory.cpp" />
-    <ClInclude Include="DBConnectionBilling.h" />
+    <ClInclude Include="DBConnectionBazaar.h" />
     <ClCompile Include="Handler.cpp" />
     <ClCompile Include="Handler_Bazaar.cpp" />
     <ClCompile Include="Handler_Currency.cpp" />

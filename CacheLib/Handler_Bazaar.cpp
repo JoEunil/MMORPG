@@ -13,7 +13,7 @@
 
 namespace Cache {
     void Handler::BazaarMyList(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarMyListBody * body) {
-        dbWorkerBilling->Enqueue([=](DBConnectionBilling* conn) {
+        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
             auto res = conn->ExecuteSelect(11, body->characterID, Core::MAX_BAZAAR_MY_LIST);
             Core::MsgStruct<Core::MsgBazaarMyListResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarMyListResBody>*>(msg->GetBuffer());
 
@@ -55,7 +55,7 @@ namespace Cache {
     }
 
     void Handler::BazaarSearch(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarSearchBody* body) {
-        dbWorkerBilling->Enqueue([=](DBConnectionBilling* conn) {
+        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
             uint32_t offset = body->page * Core::MAX_BAZAAR_SEARCH_RESULT;
             auto res = conn->ExecuteSelect(12, body->item_type, Core::MAX_BAZAAR_SEARCH_RESULT, offset);
             Core::MsgStruct<Core::MsgBazaarSearchResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarSearchResBody>*>(msg->GetBuffer());
@@ -146,7 +146,7 @@ namespace Cache {
         }
 
         // 3. bazaar에 등록 
-        dbWorkerBilling->Enqueue([=](DBConnectionBilling* conn) {
+        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
             int affected = conn->ExecuteUpdate(13, body->itemID, body->characterID, itemType, body->quantity, body->price);
 
             // 4. 실패 시 롤백
@@ -177,7 +177,7 @@ namespace Cache {
 
     void Handler::BazaarCancel(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCancelBody* body) {
 		// 1. bazaar에서 listing status 변경 (CANCELLED) CAS 방식으로 처리
-        dbWorkerBilling->Enqueue([=](DBConnectionBilling* conn) {
+        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
             int affected = conn->ExecuteUpdate(14, body->listingID, body->characterID);
             if (affected == 1) {
                 // 2. inventory에 아이템 추가 (롤백)
@@ -213,7 +213,7 @@ namespace Cache {
 
     void Handler::BazaarBuy(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarBuyBody* body) {
         // 1. DB에서 itemID 조회 
-        dbWorkerBilling->Enqueue([=](DBConnectionBilling* conn) {
+        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
 
 			auto listingRes = conn->ExecuteSelect(15, body->listingID);
 
@@ -235,7 +235,7 @@ namespace Cache {
             // 3. bazzar에서 listing status 변경 (SOLD)
             // bazaar_log에 거래 기록 추가 
             // 구매자 다이아 차감
-            dbWorkerBilling->Enqueue([=](DBConnectionBilling* conn) {
+            dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
 				auto res = conn->ExecuteSelect(16, body->listingID, body->characterID, prevItemCnt);
 
                 if (!res || !res->next()) {
@@ -295,7 +295,7 @@ namespace Cache {
     void Handler::BazaarClaim(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarClaimBody* body) {
         // listing status가 sold인 listingID에 대해서 판매자가 claim 요청
 		// 판매자에게 diamond 지급, status 'CLAIMED'로 변경
-        dbWorkerBilling->Enqueue([=](DBConnectionBilling* conn) {
+        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
             auto res = conn->ExecuteSelect(17, body->listingID, body->characterID);
             if (!res || !res->next()) {
                 Core::MsgStruct<Core::MsgBazaarClaimResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarClaimResBody>*>(msg->GetBuffer());

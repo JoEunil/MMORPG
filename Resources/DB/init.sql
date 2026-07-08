@@ -1,6 +1,6 @@
 ﻿CREATE DATABASE login;
 CREATE DATABASE game;
-CREATE DATABASE billing;
+CREATE DATABASE bazaar;
 use login;
 
 CREATE TABLE users (
@@ -66,7 +66,7 @@ CREATE TABLE characters_currency (
     gold    BIGINT UNSIGNED NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-use billing;
+use bazaar;
 
 CREATE TABLE characters_diamond (
     char_id         BIGINT UNSIGNED PRIMARY KEY,
