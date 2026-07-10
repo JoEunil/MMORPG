@@ -41,8 +41,8 @@ namespace Core {
     class StateManager {
         std::unordered_map<uint16_t, std::unique_ptr<Core::ZoneState>> m_states;
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
-        
-        
+
+
         MessagePool* messagePool;
         IMessageQueue* mq;
         IIOCP* iocp;
@@ -54,7 +54,7 @@ namespace Core {
             for (int zoneID = 1; zoneID <= ZONE_COUNT; zoneID++) {
                 m_states.emplace(zoneID, std::make_unique<ZoneState>(zoneID));
             }
-            for (auto& shard: m_shards)
+            for (auto& shard : m_shards)
                 shard.sessionMap.reserve(MAX_USER_CAPACITY / SHARD_SIZE);
             mq = m;
             messagePool = mp;
@@ -62,7 +62,7 @@ namespace Core {
             iocp = io;
             chat = c;
         }
-        
+
         bool IsReady() {
             if (mq == nullptr) return false;
             if (messagePool == nullptr) return false;
@@ -70,48 +70,9 @@ namespace Core {
             if (chat == nullptr) return false;
             return true;
         }
-        
-        
-        void CleanUp() {
-            for (auto& shard : m_shards)
-            {
-                std::unique_lock<std::shared_mutex> lock(shard.smutex);
-                for (auto& [session, data] : shard.sessionMap)
-                {
-                    CharacterState temp;
-                    m_states[data.zoneID]->EmigrateChar(session, temp);
-                    Message* msg = messagePool->Acquire();
-                    constexpr int MAX_RETRY = 10;
-                    for (int retry = 0; retry < MAX_RETRY && !msg; retry++) {
-                        msg = messagePool->Acquire();
-                        if (!msg)
-                            std::this_thread::yield();
-                    }
 
-                    if (!msg) {
-                        std::vector<std::byte> binary(sizeof(CharacterState));
-                        std::memcpy(binary.data(), &temp, sizeof(CharacterState));
-                        Core::errorLogger->LogError("state manager", "failed to acquire message for disconnect", "sessionID", session, "character state", binary);
-                        continue;
-                    }
-                    auto st = reinterpret_cast<MsgStruct<MsgCharacterStateUpdateBody>*>(msg->GetBuffer());
 
-                    st->header.sessionID = session;
-                    st->header.messageType = MSG_CHARACTER_STATE_UPDATE;
-                    st->body.charID = temp.characterID;
-                    st->body.attack = temp.attack;
-                    st->body.level = temp.level;
-                    st->body.exp = temp.exp;
-                    st->body.hp = temp.hp;
-                    st->body.mp = temp.mp;
-                    st->body.dir = temp.dir;
-                    st->body.x = temp.x;
-                    st->body.y = temp.y;
-                    st->body.lastZone = temp.lastZone;
-                    mq->EnqueueMessage(msg);
-                }
-            }
-        }
+        void CleanUp();
 
         friend class Initializer;
 
