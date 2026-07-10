@@ -137,11 +137,17 @@ namespace Net{
 
         STOverlappedEx* EnqueueSend(SOCKET sock, STOverlappedEx* overlappedEx) {
             auto ctx = GetContext(sock);
+            if (ctx == nullptr) {
+                return nullptr;
+            }
             return ctx->EnqueueSend(overlappedEx);
         }
 
         STOverlappedEx* DequeueSend(SOCKET sock) {
             auto ctx = GetContext(sock);
+            if (ctx == nullptr) {
+                return nullptr;
+            }
             return ctx->DequeueSend();
         }
     };
