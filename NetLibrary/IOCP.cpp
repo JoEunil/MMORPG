@@ -194,7 +194,12 @@ namespace Net {
             case IOOperation::SEND: {
                 pOverlappedEx->sentBytes += bytesTransferred;
                 if (pOverlappedEx->sentBytes < pOverlappedEx->totalBytes) {
-                    ResumeSend(pOverlappedEx);
+                    ResumeSend(pOverlappedEx); // 커널이 다시 소유 -> 반납 금지
+                    continue; // 하단 공용 Return 을 건너뜀
+                    // 소유권 측면에서 smart pointer나 flag 패턴이 여기에는 맞지 않음. 
+                    // smart pointer:  RAII는 lifetime == scope일 때 가치가 있는데, 
+                    // OVERLAPPED의 수명은 post~completion scope 밖(pending IO)에 결박됨.
+                    // flag: 소유권을 데이터로 복제하는 것, 전형적인 안티 패턴
                 } else {
                     auto next = sessionManager->DequeueSend(clientSocket);
                     if (next)
