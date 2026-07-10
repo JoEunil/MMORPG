@@ -20,6 +20,14 @@ namespace Core {
     class IPacketDispatcher;
 }
 
+enum class EnqueueSendResult
+{
+    Ready,      // 큐가 비어있어 즉시 전송 가능
+    Queued,     // pending으로 큐에 적재됨 
+    QueueFull,   // 큐 가득참 
+    Failed     // 실패
+};
+
 namespace Net {
     inline const uint16_t EMPTY_SLOT = RING_BUFFER_SIZE;
     inline const std::pair<uint16_t, uint16_t> EMPTY_PAIR{ EMPTY_SLOT, EMPTY_SLOT };
@@ -51,6 +59,7 @@ namespace Net {
         bool m_sendPending = false;
         // WSA Send 중첩을 방지하기 위함
 
+        inline static OverlappedExPool* overlappedExPool;
         inline static Base::FixedObjectPool<PacketView, PACKETVIEWPOOL_SIZE> packetViewPool;
 
         uint16_t GetLen();
@@ -58,6 +67,17 @@ namespace Net {
         bool DequeueRecvQ();
         void EnqueueReleaseQ(uint32_t seq, uint16_t front, uint16_t rear);
 
+        static void Initialize(OverlappedExPool* o) {
+            overlappedExPool = o;
+        }
+        static bool IsReady() {
+            if (overlappedExPool == nullptr) {
+                Core::errorLogger->LogError("context", "overlappedPool not Initialized");
+                return false;
+            }
+            return true;
+        }
+        friend class Initializer;
     public:
         ClientContext(){
             m_buffer.Initialize(RING_BUFFER_SIZE);
@@ -66,8 +86,8 @@ namespace Net {
             m_front = 0;
             m_rear = RING_BUFFER_SIZE - 1;
             m_last_op = RELEASE;
-            
         }
+  
 
         uint16_t AllocateRecvBuffer(uint8_t*& buffer);
         uint16_t GetWorkingCnt() const { return m_workingCnt.load(std::memory_order_relaxed); }
@@ -89,7 +109,7 @@ namespace Net {
             {
                 std::lock_guard<std::mutex> lock(m_sendMutex);
                 while (!m_sendQueue.empty()) {
-                    m_sendQueue.pop();
+                    overlappedExPool->Return(m_sendQueue.pop());
                 }
             }
         }
@@ -107,7 +127,7 @@ namespace Net {
         virtual void ReleaseBuffer(PacketView* pv);
         bool EnqueueRecvQ(uint8_t* ptr, size_t len);
 
-        STOverlappedEx* EnqueueSend(STOverlappedEx* work);
+        EnqueueSendResult EnqueueSend(STOverlappedEx* work);
         STOverlappedEx* DequeueSend();
     };
 }

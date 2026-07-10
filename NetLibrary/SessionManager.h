@@ -29,7 +29,6 @@ namespace Net{
     };
     struct PingStruct;
     class ClientContextPool;
-
     class SessionManager{
         alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_connectionCnt = 0;
         alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_sessionGenerator = 1;
@@ -135,10 +134,10 @@ namespace Net{
             return m_connectionCnt.load(std::memory_order_relaxed);
         }
 
-        STOverlappedEx* EnqueueSend(SOCKET sock, STOverlappedEx* overlappedEx) {
+        EnqueueSendResult EnqueueSend(SOCKET sock, STOverlappedEx* overlappedEx) {
             auto ctx = GetContext(sock);
             if (ctx == nullptr) {
-                return nullptr;
+                return EnqueueSendResult::Failed;
             }
             return ctx->EnqueueSend(overlappedEx);
         }

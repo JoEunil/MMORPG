@@ -42,10 +42,11 @@ void IOCP::SendDataChunks(uint64_t sessionID, std::shared_ptr<Core::IPacket> pac
     {
         pOverlappedEx->wsaBuf.emplace_back(WSABUF{ chunk->GetLength(), reinterpret_cast<char*>(chunk->GetBuffer()) });
     }
-    if (pOverlappedEx = sessionManager->EnqueueSend(clientSocket, pOverlappedEx)) {
+    EnqueueSendResult status = sessionManager->EnqueueSend(clientSocket, pOverlappedEx);
+    if  (status == EnqueueSendResult::Ready) {
         DoWSASend(pOverlappedEx);
     }
-
+    ~~~
 }
 ```
 ### 3.2 Send Queue와 WSASend 중복 방지
