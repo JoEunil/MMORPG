@@ -158,6 +158,16 @@ namespace Net {
                 break;
             }
 
+            if (pOverlapped == nullptr)
+            {
+                Core::errorLogger->LogError("iocp", "GQCS failed without completion", "error", GetLastError());
+                // GQCS 호출 자체가 실패해서 완료를 하나도 꺼내지 못한 경우
+                // 포트가 닫힌 경우여서 종료 처리
+                fatalError->store(true, std::memory_order_relaxed);
+                cv->notify_one();
+                break;
+            }
+
             STOverlappedEx* pOverlappedEx = reinterpret_cast<STOverlappedEx*>(pOverlapped);
             WSABUF pBuffer = pOverlappedEx->wsaBuf[0];
             SOCKET clientSocket = pOverlappedEx->clientSocket;
@@ -165,11 +175,17 @@ namespace Net {
             if (result == FALSE)
             {
                 DWORD err = GetLastError();
-                overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
-                overlappedExPool->Return(reinterpret_cast<STOverlappedEx*>(pOverlapped));
-                PostAccept();
+
                 Core::errorLogger->LogWarn("iocp", "GetQueuedCompletionStatus failed", "error code", std::to_string(err), "socket", clientSocket);
-                CleanUpSocket(clientSocket);
+
+                if (pOverlappedEx->op == IOOperation::ACCEPT) {
+                    overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
+                    closesocket(clientSocket); // 세션 등록 전 소켓 — 직접 닫기
+                    PostAccept();              // accept 슬롯 보충
+                }
+                else {
+                    CleanUpSocket(clientSocket); // RECV/SEND: 등록된 세션 정리
+                }
                 continue;
             }
 
