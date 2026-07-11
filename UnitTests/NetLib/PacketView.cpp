@@ -98,7 +98,7 @@ TEST_F(PacketViewTest, JoinBuffer) {
 	Net::PacketView* pv = Getter();
 	pv->JoinBuffer(buffer1, 2, buffer2, 3);
 	EXPECT_EQ(pv->GetLength(), 5);
-	EXPECT_TRUE(std::strcmp(reinterpret_cast<char*>(pv->GetPtr()), joined) == 0);
+	EXPECT_TRUE(std::strncmp(reinterpret_cast<char*>(pv->GetPtr()), joined, 5) == 0);
 	EXPECT_TRUE(pv->IsCopied());
 	EXPECT_NE(pv->GetPtr(), buffer1);
 	EXPECT_NE(pv->GetPtr(), buffer2);
