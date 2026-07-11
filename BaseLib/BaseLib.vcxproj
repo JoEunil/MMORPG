@@ -147,6 +147,7 @@
     <ClInclude Include="RingQueue.h" />
     <ClInclude Include="SpinLockGuard.h" />
     <ClInclude Include="TripleBuffer.h" />
+    <ClInclude Include="WAL.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
