@@ -2,7 +2,7 @@
 
 C++ 기반 TCP Stateful MMORPG 게임 서버 — 개인 프로젝트 (개발 기간 약 1년)
 
-📑 [C++ MMORPG Game Server 포트폴리오 PPT](https://docs.google.com/presentation/d/18-KmCPBSbsv9-NlrXx0bZFHqadkZOms4cijFuEKi2Q4/edit?usp=sharing)
+📑 [C++ MMORPG Game Server 포트폴리오 PPT](https://docs.google.com/presentation/d/1Sz7WlzlE4qYqyXO43ad0i0CYAFvzJMR2/edit?usp=sharing&ouid=104250523129405797740&rtpof=true&sd=true)
 
 ## 목차
 1. [프로젝트 개요](#프로젝트-개요)
