@@ -26,6 +26,8 @@ namespace Cache
             m_stmts[15] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_15));
             m_stmts[16] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_16));
             m_stmts[17] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_17));
+            m_stmts[18] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_18));
+            m_stmts[19] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_19));
         }
 		friend class DBConnectionPool<DBConnectionBazaar>;
     public:
@@ -48,6 +50,7 @@ namespace Cache
             case 15: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
             case 16: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
             case 17: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
+            case 18: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
             default: return nullptr;
             }
               }
@@ -76,6 +79,7 @@ namespace Cache
             case 10: return stmt->executeUpdate(); // UPDATE
             case 13: return stmt->executeUpdate(); // INSERT
             case 14: return stmt->executeUpdate(); // UPDATE
+            case 19: return stmt->executeUpdate(); // UPDATE
             default: return 0;
             }
         }

@@ -77,6 +77,8 @@ namespace Cache {
         void BazaarCancel(Core::Message*& msg, uint64_t sesionID, Core::MsgBazaarCancelBody* body);
         void BazaarBuy(Core::Message*& msg, uint64_t sesionID, Core::MsgBazaarBuyBody* body);
         void BazaarClaim(Core::Message*& msg, uint64_t sesionID, Core::MsgBazaarClaimBody* body);
+        void BazaarCheckOutbox(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCheckOutboxBody* body);
+
         friend class Initializer;
     public:
         void Process(Core::Message* msg);

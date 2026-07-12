@@ -12,9 +12,16 @@
 
 namespace Cache {
     struct FlushCommand;
+    constexpr size_t RING_SIZE = 32;
+    constexpr size_t RING_SIZE_MASK = 31;
     struct InventoryData {
         uint16_t count;
         Core::MsgInventoryItem items[MAX_INVENTORY];
+        // blob 내부 필드라서 다른 자료구조 적용이 어려움.
+        uint64_t recentEventIds[RING_SIZE];   // dedup ring (자동 truncate)
+        uint8_t  head; // outbox CLAIMED 시 갱신 
+        uint8_t  tail;
+        bool lastOp; // 1: push, 0: pop
     };
 
     constexpr Core::MsgInventoryItem EMPTY_SLOT = { 0, 0, 0 };
@@ -47,10 +54,11 @@ namespace Cache {
         CACHE_STATUS LoadFromDB(uint16_t shardIndex, Key& key);
     public:
         Result5 Getter(uint64_t characterID);
-
-        uint16_t GetItemCount(uint64_t characterID, uint32_t itemID);
         std::tuple<CACHE_STATUS, uint32_t, uint16_t, uint16_t> PartialUpdate(uint64_t characterID, uint32_t itemID, uint8_t op, int16_t change);
         static std::unique_ptr<FlushCommand> GetFlushCommand(Key key, Result result);
+        // outbox → inbox 배송. AVAILABLE: 지급됨 / DUPLICATED: 이미 지급(스킵) / BLOCKED: 인벤·링 가득
+        CACHE_STATUS DeliverItem(uint64_t characterID, uint64_t event_id, uint32_t itemID, uint32_t quantity);
+          void AdvanceInboxHead(uint16_t shardIndex, Key key, uint8_t snapshotHead, uint8_t claimedCnt);
         std::string ResultToString(const Key5& key, const Result5& result) override {
             std::ostringstream oss;
             oss << "char_id: " << key.characterID << ", inventory_hex: ";

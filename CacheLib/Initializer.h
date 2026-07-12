@@ -43,7 +43,7 @@ namespace Cache {
             cache_currency.Initialize(&dbWorkerGame);
             CacheTimer::StartThread();
             
-            flush.Initialize(&connectionPoolGame, &cache_inventory, &cache_currency);
+            flush.Initialize(&connectionPoolGame, &connectionPoolBazaar, &cache_inventory, &cache_currency);
             dispatcher.Initialize(&flush, &cache_inventory, &cache_currency);
         }
         

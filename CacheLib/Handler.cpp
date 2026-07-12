@@ -57,6 +57,9 @@ namespace Cache {
         case Core::MSG_BAZAAR_CLAIM:
             BazaarClaim(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarClaimBody>(msg->GetBuffer()));
             break;
+        case Core::MSG_BAZAAR_CHECK_OUTBOX:
+            BazaarCheckOutbox(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCheckOutboxBody>(msg->GetBuffer()));
+            break;
         }
         if (msg != nullptr)
             messagePool->Return(msg);

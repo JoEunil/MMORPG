@@ -57,8 +57,19 @@ namespace Cache {
         "UPDATE bazaar " 
         "SET status = 'CANCELLED' WHERE status = 'TRADING' AND listing_id = ? AND seller_id = ? ";
     inline constexpr const char* QUERY_15 = "SELECT item_id, quantity FROM bazaar WHERE listing_id = ?";
-    inline constexpr const char* QUERY_16 = "CALL sp_bazaar_buy(?, ?, ?)";
+    inline constexpr const char* QUERY_16 = "CALL sp_bazaar_buy(?, ?)";
     inline constexpr const char* QUERY_17 = "CALL sp_bazaar_claim(?, ?)";
+    inline constexpr const char* QUERY_18 = 
+        "SELECT event_id, listing_id, item_id, item_type, quantity, price, "
+        "UNIX_TIMESTAMP(purchased_at) AS purchased_at "
+        "FROM buyer_outbox "
+        "WHERE char_id = ? AND delivery_status = 'READY' "
+        "ORDER BY purchased_at ASC "
+        "LIMIT 30";
+    inline constexpr const char* QUERY_19 =
+        "UPDATE buyer_outbox "
+        "SET delivery_status = 'CLAIMED', delivery_claimed_at = NOW() "
+        "WHERE event_id = ? AND char_id = ? AND delivery_status = 'READY'";
 
     inline constexpr uint16_t MSGPOOL_SIZE = 100;
 

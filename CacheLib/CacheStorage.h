@@ -25,6 +25,7 @@ namespace Cache {
         DB_READING, // 2
         EMPTY, // 3
         BLOCKED, // 4
+        DUPLICATED, // 5 - 이미 배송된 event. BLOCKED와 달리 재시도 불필요, 캐시 상태
     };
     template<typename T>
     struct CacheItem {

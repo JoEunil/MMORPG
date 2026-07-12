@@ -60,6 +60,8 @@ namespace Cache {
             if (it != shard.dirty_list.end()) {
                 shard.cache_data[oldKey].status = CACHE_STATUS::EVICTING;
                 m_flushFn(oldKey, shard.cache_data[oldKey]);
+                // EVICTING이라 flush 중 재수정 불가 — 여기서 dirty를 지워야 WriteDone이 erase함
+                shard.dirty_list.erase(oldKey);
             } else {
                 shard.cache_data.erase(oldKey);
             }
@@ -129,8 +131,12 @@ namespace Cache {
         auto& shard = m_shards[shardIndex];
         std::lock_guard<std::mutex> lock(shard.mutex);
         auto it = shard.cache_data.find(key);
-        if (it != shard.cache_data.end()) {
-            shard.cache_data.erase(key);
-        }
+        if (it == shard.cache_data.end())
+            return;
+        // flush 진행 중 재수정(dirty)된 entry는 유지 — 다음 flush가 최신 상태를 반영
+        // (예: 배송 head 전진, flush 도중 들어온 인벤토리 변경)
+        if (shard.dirty_list.find(key) != shard.dirty_list.end())
+            return;
+        shard.cache_data.erase(key);
     }
 }

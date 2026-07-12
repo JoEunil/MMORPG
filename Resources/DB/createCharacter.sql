@@ -40,7 +40,7 @@ BEGIN
         VALUES (@new_id, UNHEX(REPEAT('00', 2404)));
 
 	INSERT INTO characters_currency (char_id, gold, diamond)
-	VALUES (@new_id, 0, 0);
+	VALUES (@new_id, 100000, 1000);
 
     END WHILE;
 END $$

@@ -230,13 +230,12 @@ namespace Cache {
             uint64_t realItemID = listingRes->getUInt64("item_id");
             uint16_t realQty = listingRes->getUInt("quantity");
 
-            // 2. Inventory에서 해당 item 보유 갯수 조회
-            uint16_t prevItemCnt = cache_inventory->GetItemCount(body->characterID, realItemID);
-            // 3. bazzar에서 listing status 변경 (SOLD)
+            // 2. bazzar에서 listing status 변경 (SOLD)
             // bazaar_log에 거래 기록 추가 
+            // buyer_outbox에 아이템 추가
             // 구매자 다이아 차감
             dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
-				auto res = conn->ExecuteSelect(16, body->listingID, body->characterID, prevItemCnt);
+				auto res = conn->ExecuteSelect(16, body->listingID, body->characterID);
 
                 if (!res || !res->next()) {
                     Core::MsgStruct<Core::MsgBazaarBuyResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarBuyResBody>*>(msg->GetBuffer());
@@ -253,29 +252,7 @@ namespace Cache {
                 uint32_t itemID = res->getUInt("item_id");
 				uint16_t quantity = res->getUInt("quantity");
                 uint32_t diamondSpent = res->getUInt("price");
-#ifdef CRASH_POINT_BUY
-                std::cout << "  [abort 직전 inventory 상태]\n";
-
-                Result5 resInv = cache_inventory->Getter(body->characterID);
-                for (int i = 0; i < resInv.data.count; i++) {
-                    std::cout << "  itemID: " << resInv.data.items[i].itemID
-                        << " quantity: " << resInv.data.items[i].quantity << "\n";
-                }
-                abort();
-#endif
-                // 4. 아이템 Inventory에 추가
-                if (resultCode == 1) {
-                    auto [cacheStatus, updatedItemID, slot, updatedQty] = cache_inventory->PartialUpdate(body->characterID, realItemID, 1, (int16_t)realQty);
-
-                    if (cacheStatus != CACHE_STATUS::AVAILABLE) {
-                        // 이 경로는 캐시 설정이 올바른 경우 도달 불가.
-                        // 도달 시 Config의 LRU 크기 재검토 필요.
-                        Core::gameLogger->LogInfo("cache handler bazaar", "add invenoty failed after purchase bazaar", "listing_id", body->listingID, "item_id", itemID, "quantity", quantity);
-                    }
-                    // bazaar에서 수량이나 항목 수정은 금지. 원자성 깨짐.
-                    // 수량/가격 수정은 Cancel + 재등록으로 처리.
-                }
-                // 6. 응답
+                // 3. 응답
                 Core::MsgStruct<Core::MsgBazaarBuyResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarBuyResBody>*>(msg->GetBuffer());
                 st->header.sessionID = sessionID;
                 st->header.messageType = Core::MSG_BAZAAR_BUY_RES;
@@ -292,6 +269,7 @@ namespace Cache {
 
         msg = nullptr;
     }
+
     void Handler::BazaarClaim(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarClaimBody* body) {
         // listing status가 sold인 listingID에 대해서 판매자가 claim 요청
 		// 판매자에게 diamond 지급, status 'CLAIMED'로 변경
@@ -322,5 +300,61 @@ namespace Cache {
             });
 		msg = nullptr;
     }
+
+    void Handler::BazaarCheckOutbox(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCheckOutboxBody* body) {
+        // buyer_outbox의 READY event를 인벤토리로 배송 (Outbox → Inbox).
+        // CLAIMED 전환은 여기서 하지 않는다 — 인벤토리 blob이 flush로 durable해진 뒤 CacheFlush가 수행.
+        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
+            // body는 msg 버퍼 내부를 가리키므로, 응답(st)이 같은 버퍼를 덮어쓰기 전에 먼저 읽어야 함
+            uint64_t characterID = body->characterID;
+
+            Core::MsgStruct<Core::MsgBazaarCheckOutboxResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarCheckOutboxResBody>*>(msg->GetBuffer());
+            st->header.sessionID = sessionID;
+            st->header.messageType = Core::MSG_BAZAAR_CHECK_OUTBOX_RES;
+            st->body.resStatus = 1;
+            st->body.deliveredCount = 0;
+            st->body.duplicatedCount = 0;
+            st->body.blockedCount = 0;
+
+            auto res = conn->ExecuteSelect(18, characterID);
+            if (!res) {
+                st->body.resStatus = 0; // select 실패 — 재시도 필요
+                Core::errorLogger->LogError("cache handler bazaar", "check outbox select failed", "char_id", characterID);
+            }
+            if (res) {
+                bool stop = false;
+                while (!stop && res->next()) {
+                    uint64_t eventID = res->getUInt64("event_id");
+                    uint32_t itemID = res->getUInt("item_id");
+                    uint32_t quantity = res->getUInt("quantity");
+
+                    switch (cache_inventory->DeliverItem(characterID, eventID, itemID, quantity)) {
+                    case CACHE_STATUS::AVAILABLE:
+                        st->body.deliveredCount++;
+                        break;
+                    case CACHE_STATUS::DUPLICATED:
+                        st->body.duplicatedCount++; // 이미 배송됨 — flush가 outbox를 CLAIMED로 수렴시킴
+                        break;
+                    case CACHE_STATUS::BLOCKED:
+                        // 인벤토리/ring 가득 — 배송 순서 유지를 위해 이후 event도 보류 (outbox READY 유지)
+                        st->body.blockedCount++;
+                        stop = true;
+                        break;
+                    default:
+                        // DB_READING / EVICTING / EMPTY — 캐시 미적재, 재시도 필요
+                        st->body.resStatus = 0;
+                        stop = true;
+                        break;
+                    }
+                }
+            }
+
+            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarCheckOutboxResBody>));
+            messageQ->EnqueueMessage(msg);
+            messagePool->Return(msg);
+            });
+        msg = nullptr;
+    }
+
 
 }

@@ -30,11 +30,12 @@ CREATE TABLE IF NOT EXISTS characters (
     channel_id INT UNSIGNED NOT NULL,
     name VARCHAR(32) NOT NULL,
     level INT UNSIGNED  NOT NULL DEFAULT 1,
-    exp INT UNSIGNEDNOT NULL DEFAULT 0,
+    exp INT UNSIGNED NOT NULL DEFAULT 0,
     hp INT NOT NULL DEFAULT 10000,
     mp INT NOT NULL DEFAULT 10000,
-    maxHp INT NOT NULL DEFAULT 10000,
-    maxMp INT NOT NULL DEFAULT 10000,
+    max_hp INT NOT NULL DEFAULT 10000,
+    max_mp INT NOT NULL DEFAULT 10000,
+    attack INT NOT NULL DEFAULT 10,
     dir TINYINT UNSIGNED NOT NULL DEFAULT 0,
     zone_id TINYINT UNSIGNED NOT NULL DEFAULT 0,
     last_pos_x float NOT NULL DEFAULT 0,
@@ -59,7 +60,6 @@ SELECT
     c.level
 FROM characters c
 WHERE c.deleted_at IS NULL;
-ET=utf8mb4;
 
 CREATE TABLE characters_currency (
     char_id BIGINT UNSIGNED PRIMARY KEY,
@@ -73,7 +73,7 @@ CREATE TABLE characters_diamond (
     diamond         INT    UNSIGNED NOT NULL DEFAULT 0,
     total_earned  BIGINT UNSIGNED NOT NULL DEFAULT 0,
     total_spent     BIGINT UNSIGNED NOT NULL DEFAULT 0,
-    updated_at      DATETIME        NOT NULL
+    updated_at      DATETIME        NOT NULL DEFAULT NOW()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE bazaar (
@@ -81,8 +81,8 @@ CREATE TABLE bazaar (
     item_id    BIGINT UNSIGNED NOT NULL,       
     seller_id  BIGINT UNSIGNED NOT NULL,
     buyer_id   BIGINT UNSIGNED,
-    item_type  INT UNSIGNED NOT NULL,
-    quantity   INT UNSIGNED NOT NULL DEFAULT 1, -- 수량 없음, 추가 필요
+    item_type  SMALLINT UNSIGNED NOT NULL,
+    quantity   INT UNSIGNED NOT NULL DEFAULT 1,
     price      BIGINT UNSIGNED NOT NULL,        -- 음수 불가
     status     ENUM('TRADING', 'SOLD', 'CANCELLED', 'CLAIMED') DEFAULT 'TRADING',
     listed_at  DATETIME NOT NULL,
@@ -95,10 +95,10 @@ CREATE TABLE bazaar (
 CREATE TABLE bazaar_log (
     log_id     BIGINT AUTO_INCREMENT PRIMARY KEY,
     listing_id BIGINT UNSIGNED NOT NULL,
-    seller_id  BIGINT UNSIGNED NOT NULL,
-    buyer_id   BIGINT UNSIGNED NOT NULL,
-    buyer_prev_quantity INT UNSIGNED DEFAULT NULL,
-    item_type  TINYINT UNSIGNED NOT NULL,
+    seller_id  BIGINT UNSIGNED NOT NULL,    
+    buyer_id   BIGINT UNSIGNED NOT NULL,   
+    item_id    BIGINT UNSIGNED NOT NULL,      
+    item_type  SMALLINT UNSIGNED NOT NULL,
     quantity INT UNSIGNED NOT NULL DEFAULT 0,
     price      BIGINT UNSIGNED NOT NULL,
     sold_at    DATETIME NOT NULL
@@ -109,5 +109,19 @@ CREATE TABLE bazaar_claim (
     seller_id  BIGINT UNSIGNED NOT NULL,
     claim_status ENUM('READY', 'CLAIMED') NOT NULL DEFAULT 'READY',
     claimed_at DATETIME DEFAULT NULL,
-    INDEX idx_seller        (seller_id, claim_status),
+    INDEX idx_seller        (seller_id, claim_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE buyer_outbox (       
+    event_id		BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    char_id         BIGINT UNSIGNED NOT NULL, 
+    listing_id BIGINT UNSIGNED NOT NULL,
+    item_id    BIGINT UNSIGNED NOT NULL,      
+    item_type  SMALLINT UNSIGNED NOT NULL,
+    quantity INT UNSIGNED NOT NULL DEFAULT 0,
+    price      BIGINT UNSIGNED NOT NULL,
+    purchased_at DATETIME DEFAULT NULL,   
+    delivery_status ENUM('READY', 'CLAIMED') NOT NULL DEFAULT 'READY',    
+    delivery_claimed_at DATETIME DEFAULT NULL,
+    INDEX (char_id, delivery_status)
+)  ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

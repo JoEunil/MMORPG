@@ -13,6 +13,7 @@
 #include "CacheStorageCurrency.h"
 #include "DBConnectionPool.h"
 #include "DBConnectionGame.h"
+#include "DBConnectionBazaar.h"
 #include "Config.h"
 
 namespace Cache {
@@ -28,10 +29,11 @@ namespace Cache {
         std::deque<std::unique_ptr<FlushCommand>> m_flushQ;
 
         std::atomic<bool> m_running = false;
-        DBConnectionPool<DBConnectionGame>* connectionPool;
+        DBConnectionPool<DBConnectionGame>* connectionPoolGame;
+        DBConnectionPool<DBConnectionBazaar>* connectionPoolBazaar;
         CacheStorageInventory* cache_inventory;
         CacheStorageCurrency* cache_currency;
-        void Initialize(DBConnectionPool<DBConnectionGame>* p, CacheStorageInventory* c5, CacheStorageCurrency* c7);
+        void Initialize(DBConnectionPool<DBConnectionGame>* pg, DBConnectionPool<DBConnectionBazaar>* pb, CacheStorageInventory* c5, CacheStorageCurrency* c7);
         bool IsReady() {
             if (!m_running.load(std::memory_order_relaxed)) {
                 Core::sysLogger->LogError("cache flush", "not running");
@@ -41,8 +43,12 @@ namespace Cache {
                 Core::sysLogger->LogError("cache flush", "invalid thread size");
                 return false;
             }
-            if (connectionPool == nullptr) {
-                Core::sysLogger->LogError("cache flush", "connectionPool not initialized");
+            if (connectionPoolGame == nullptr) {
+                Core::sysLogger->LogError("cache flush", "connectionPoolGame not initialized");
+                return false;
+            }
+            if (connectionPoolBazaar == nullptr) {
+                Core::sysLogger->LogError("cache flush", "connectionPoolBazaar not initialized");
                 return false;
             }
             if (cache_inventory == nullptr) {

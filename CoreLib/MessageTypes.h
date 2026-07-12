@@ -37,6 +37,8 @@ namespace Core {
         MSG_BAZAAR_BUY_RES = 27,
         MSG_BAZAAR_CLAIM = 28,
         MSG_BAZAAR_CLAIM_RES = 29,
+        MSG_BAZAAR_CHECK_OUTBOX = 30,
+        MSG_BAZAAR_CHECK_OUTBOX_RES = 31,
     };
 
     struct MsgHeader {
@@ -243,7 +245,7 @@ namespace Core {
     };
 
     struct MsgBazaarClaimBody {
-        uint64_t characterID; // 0: 실패, 1: 성공, 2: listingID 조회 실패, 3: 프로시저 실패, 4: CLAIM 실패
+        uint64_t characterID;
         uint64_t listingID;
     };
 
@@ -251,6 +253,17 @@ namespace Core {
         uint8_t  resStatus;
         uint64_t listingID;
         uint32_t diamondClaimed;
+    };
+
+    struct MsgBazaarCheckOutboxBody {
+        uint64_t characterID;
+    };
+
+    struct MsgBazaarCheckOutboxResBody {
+        uint8_t resStatus;       // 0: 실패(캐시 미적재 등, 재시도 필요), 1: 성공
+        uint8_t deliveredCount;  // 이번에 새로 지급된 event 수
+        uint8_t duplicatedCount; // dedup으로 스킵된 event 수 (이미 지급됨)
+        uint8_t blockedCount;    // 인벤토리/ring 가득으로 보류된 event 수 (READY 유지)
     };
 
 	inline MsgHeader* parseMsgHeader(uint8_t* data) {
