@@ -1,8 +1,37 @@
 ﻿#pragma once
 #include <cstdint>
+#include <cstdlib>
+#include <cstdio>
+#include <string>
 
 namespace Cache {
-    inline constexpr uint8_t DB_CONN_POOL = 3;
+    inline std::string GetEnvVar(const char* name) {
+#ifdef _MSC_VER
+        char* buf = nullptr;
+        size_t len = 0;
+        if (_dupenv_s(&buf, &len, name) != 0 || buf == nullptr)
+            return {};
+        std::string value(buf);
+        std::free(buf);
+        return value;
+#else
+        const char* v = std::getenv(name);
+        return v ? std::string(v) : std::string();
+#endif
+    }
+
+    // set CRASH_POINT=DELIVER  (배송 반영 후 flush 전 abort)
+    // set CRASH_POINT=CLAIM    (인벤토리 flush 후 outbox CLAIM 전 abort)
+    inline void CrashPoint(const char* name) {
+        static const std::string target = GetEnvVar("CRASH_POINT");
+        if (!target.empty() && target == name) {
+            std::printf("[CRASH_POINT] %s - abort\n", name);
+            std::fflush(stdout);
+            std::abort();
+        }
+    }
+
+    inline constexpr uint8_t DB_CONN_POOL = 10;
     inline constexpr uint8_t FLUSH_THREADPOOL_SIZE = 2;
     inline constexpr const char* DB_HOST_GAME = "localhost";
     inline constexpr const char* DB_USER_GAME = "root";
@@ -83,7 +112,7 @@ namespace Cache {
 
     inline constexpr size_t MQ_SIZE = 8192;
     inline constexpr uint16_t GAME_DB_WORKER_THREADPOOL_SIZE = 2;
-    inline constexpr uint16_t BAZAAR_DB_WORKER_THREADPOOL_SIZE = 1;
+    inline constexpr uint16_t BAZAAR_DB_WORKER_THREADPOOL_SIZE = 2;
     
 
     template <typename T>

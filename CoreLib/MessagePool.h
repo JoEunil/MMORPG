@@ -21,9 +21,7 @@ namespace Core {
         Message* Acquire(); // MessageQueue에 복사하고 바로 반납해서 수명관리가 단순함
         void Return(Message* msg);
 
-    #ifdef TEST_BAZAAR
         void InitializeForTest() {
         }
-    #endif
     };
 }

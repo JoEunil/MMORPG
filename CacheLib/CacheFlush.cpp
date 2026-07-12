@@ -43,12 +43,13 @@ namespace Cache {
             key.characterID = param1;
             auto shardIndex = param1 & SHARD_SIZE_MASK;
             
-            if (res == 0) {// error 
+            if (res == 0) {// error
                cache_inventory->Rollback(shardIndex, key);
                Core::errorLogger->LogInfo("cache flush", "DB write failed case 6", "char_id", key.characterID);
                return;
             }
-            cache_inventory->WriteDone(shardIndex, key);
+
+            CrashPoint("CLAIM"); // 인벤토리 blob durable 이후, outbox CLAIM 전
 
             // blob에서 역직렬화 해서 eventRing 추출
             const InventoryData* inv = reinterpret_cast<const InventoryData*>(param0.data());
@@ -58,30 +59,29 @@ namespace Cache {
                 pendingCnt = RING_SIZE; // full
 
             if (pendingCnt > 0) {
-            auto bazaarConn = connectionPoolBazaar->Acquire();
-            if (bazaarConn == nullptr) {
+                auto bazaarConn = connectionPoolBazaar->Acquire();
+                if (bazaarConn == nullptr) {
                     // claim은 멱등 — rollback 없이 스킵, 다음 flush/재접속이 수렴시킴
-                Core::errorLogger->LogError("cache flush", "bazaar connection acquire failed case 6", "char_id", key.characterID);
-                break;
-            }
-                else {
-            uint8_t claimedCnt = 0;
-            try {
-                uint8_t idx = inv->head;
-                for (uint8_t k = 0; k < pendingCnt; ++k, idx = (idx + 1) & RING_SIZE_MASK) {
-                    bazaarConn->ExecuteUpdate(19, inv->recentEventIds[idx], key.characterID);
-                    claimedCnt++; // 0 rows(이미 CLAIMED)도 성공으로 진행
+                    Core::errorLogger->LogError("cache flush", "bazaar connection acquire failed case 6", "char_id", key.characterID);
                 }
-            }
-            catch (sql::SQLException& e) {
-                Core::errorLogger->LogError("cache flush", "outbox claim exception case 6", "code", e.getErrorCode(), "msg", e.what(), "char_id", key.characterID);
-                // 여기서 중단 — 성공한 prefix만큼만 head 전진
-            }
-            connectionPoolBazaar->Return(bazaarConn);
+                else {
+                    uint8_t claimedCnt = 0;
+                    try {
+                        uint8_t idx = inv->head;
+                        for (uint8_t k = 0; k < pendingCnt; ++k, idx = (idx + 1) & RING_SIZE_MASK) {
+                            bazaarConn->ExecuteUpdate(19, inv->recentEventIds[idx], key.characterID);
+                            claimedCnt++; // 0 rows(이미 CLAIMED)도 성공으로 진행
+                        }
+                    }
+                    catch (sql::SQLException& e) {
+                        Core::errorLogger->LogError("cache flush", "outbox claim exception case 6", "code", e.getErrorCode(), "msg", e.what(), "char_id", key.characterID);
+                        // 여기서 중단 — 성공한 prefix만큼만 head 전진
+                    }
+                    connectionPoolBazaar->Return(bazaarConn);
 
                     // head 전진(dirty 재마킹) 후에 WriteDone을 호출해야 entry가 erase되지 않고
                     // 전진된 head가 다음 flush로 영속된다
-            if (claimedCnt > 0)
+                    if (claimedCnt > 0)
                         cache_inventory->AdvanceInboxHead(shardIndex, key, inv->head, claimedCnt);
                 }
             }

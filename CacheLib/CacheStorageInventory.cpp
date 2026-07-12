@@ -13,6 +13,8 @@ namespace Cache {
 
         dbWorker->Enqueue([=](DBConnectionGame* conn) {
             Result result;
+            // blob이 구버전(ring 필드 이전)이라 짧게 읽혀도 나머지가 쓰레기로 남지 않도록 선초기화
+            result.data = EMPTY_INVENTORY;
             auto res = conn->ExecuteSelect(5, key.characterID);
             if (!res || !res->next()) {
                 Core::gameLogger->LogInfo("cache storage inventory", "inventory not found in DB", "char_id", key.characterID);
@@ -27,8 +29,14 @@ namespace Cache {
                     sizeof(InventoryData)
                 );
             }
-            else {
-                result.data = EMPTY_INVENTORY;
+            // blob 손상·구버전 방어: ring 인덱스가 범위를 벗어나면 ring만 초기화
+            // (tail이 RING_SIZE 이상이면 push 시 recentEventIds[tail] 범위 밖 쓰기가 발생)
+            if (result.data.head >= RING_SIZE || result.data.tail >= RING_SIZE) {
+                Core::errorLogger->LogError("cache storage inventory", "invalid ring index in blob, reset ring", "char_id", key.characterID);
+                std::memset(result.data.recentEventIds, 0, sizeof(result.data.recentEventIds));
+                result.data.head = 0;
+                result.data.tail = 0;
+                result.data.lastOp = false;
             }
             result.rollbackCnt = 0;
             Insert(shardIndex, key, result);  // READING → AVAILABLE

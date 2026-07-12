@@ -331,6 +331,7 @@ namespace Cache {
                     switch (cache_inventory->DeliverItem(characterID, eventID, itemID, quantity)) {
                     case CACHE_STATUS::AVAILABLE:
                         st->body.deliveredCount++;
+                        CrashPoint("DELIVER"); // 배송 반영 후 flush 전
                         break;
                     case CACHE_STATUS::DUPLICATED:
                         st->body.duplicatedCount++; // 이미 배송됨 — flush가 outbox를 CLAIMED로 수렴시킴

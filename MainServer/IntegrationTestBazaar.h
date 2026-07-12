@@ -19,10 +19,13 @@
 #include <CacheLib/Config.h>
 
 // ================================================================
-// 크래시 포인트 매크로 (BazaarHandler.cpp 상단에 위치)
-// 테스트 시 주석 해제 후 빌드, 완료 후 다시 주석 처리
-// #define CRASH_POINT_BUY     // 프로시저 성공 후 PartialUpdate 전
-// #define CRASH_POINT_CANCEL  // DB CANCEL 처리 후 PartialUpdate 전
+// 크래시 테스트 — 재빌드 불필요, 환경변수로 제어 (Cache::CrashPoint)
+//
+// 1단계 (크래시 유발):
+//   set CRASH_POINT=DELIVER   → 배송(DeliverItem) 반영 후 flush 전 abort
+//   set CRASH_POINT=CLAIM     → 인벤토리 flush 후 outbox CLAIM 전 abort
+// 2단계 (복구 검증, cleanup 없이 재실행):
+//   set CRASH_VERIFY=1        → CheckOutbox 재시도 후 exactly-once 확인
 // ================================================================
 
 namespace Test {
@@ -112,6 +115,44 @@ namespace Test {
         }
     };
 
+    // outbox 배송 요청 + 결과 반환
+    static Core::MsgBazaarCheckOutboxResBody SendCheckOutbox(CacheNode& node, uint64_t charID, uint64_t sessionID) {
+        Core::MsgBazaarCheckOutboxBody body{};
+        body.characterID = charID;
+        auto msg = MakeMsg(Core::MSG_BAZAAR_CHECK_OUTBOX, sessionID, body);
+        node.Send(msg);
+        SafeReturn(msg);
+        Core::MsgBazaarCheckOutboxResBody out{};
+        auto* res = node.Wait();
+        if (res) {
+            out = *GetBody<Core::MsgBazaarCheckOutboxResBody>(res);
+            SafeReturn(res);
+        }
+        return out;
+    }
+
+    // 인벤토리 조회 + 출력, itemCount 반환
+    static uint16_t PrintInventory(CacheNode& node, uint64_t charID, uint64_t sessionID) {
+        Core::MsgInventoryReqBody reqBody{};
+        reqBody.characterID = charID;
+        auto msg = MakeMsg(Core::MSG_INVENTORY_REQ, sessionID, reqBody);
+        node.Send(msg);
+        SafeReturn(msg);
+        auto* res = node.Wait();
+        if (!res) {
+            std::cout << "  인벤토리 조회 타임아웃\n";
+            return 0;
+        }
+        auto* invRes = GetBody<Core::MsgInventoryResBody>(res);
+        std::cout << std::format("  인벤토리: status={} count={}\n", invRes->resStatus, invRes->itemCount);
+        for (int i = 0; i < invRes->itemCount; ++i)
+            std::cout << std::format("    slot={} itemID={} qty={}\n",
+                invRes->items[i].slot, invRes->items[i].itemID, invRes->items[i].quantity);
+        uint16_t count = invRes->itemCount;
+        SafeReturn(res);
+        return count;
+    }
+
     // ----------------------------------------------------------------
     // DB 상태 체크
     // ----------------------------------------------------------------
@@ -152,6 +193,22 @@ namespace Test {
                     charID,  rs->getUInt64("diamond"));
             else
                 std::cout << std::format("  [diamond] char={} 없음\n", charID);
+        }
+
+        void PrintOutbox(uint64_t charID) {
+            std::unique_ptr<sql::PreparedStatement> ps(conn->prepareStatement(
+                "SELECT event_id, item_id, quantity, delivery_status FROM buyer_outbox WHERE char_id = ? ORDER BY event_id"));
+            ps->setUInt64(1, charID);
+            std::unique_ptr<sql::ResultSet> rs(ps->executeQuery());
+            bool any = false;
+            while (rs->next()) {
+                any = true;
+                std::cout << std::format("  [outbox] event={} item={} qty={} status={}\n",
+                    rs->getUInt64("event_id"), rs->getUInt64("item_id"),
+                    rs->getUInt("quantity"), rs->getString("delivery_status").c_str());
+            }
+            if (!any)
+                std::cout << std::format("  [outbox] char={} 기록 없음\n", charID);
         }
 
         void PrintBazaarLog(uint64_t listingID) {
@@ -208,9 +265,12 @@ namespace Test {
         }
 
         void CleanupBazaar() {
+            // 테스트 캐릭 범위: CHAR_A~C(50~52), 부하테스트(60~) — 잔여 READY outbox가 남으면
+            // 다음 실행의 CheckOutbox에서 재배송돼 테스트가 오염되므로 outbox도 함께 정리
             std::unique_ptr<sql::Statement> st(conn->createStatement());
-            st->execute("DELETE FROM bazaar_log WHERE seller_id BETWEEN 11 AND 30 OR buyer_id BETWEEN 11 AND 30");
-            st->execute("DELETE FROM bazaar WHERE seller_id BETWEEN 11 AND 30");
+            st->execute("DELETE FROM bazaar_log WHERE seller_id BETWEEN 50 AND 110 OR buyer_id BETWEEN 50 AND 110");
+            st->execute("DELETE FROM buyer_outbox WHERE char_id BETWEEN 50 AND 110");
+            st->execute("DELETE FROM bazaar WHERE seller_id BETWEEN 50 AND 110");
         }
     };
 
@@ -335,90 +395,110 @@ namespace Test {
     }
 
     // ----------------------------------------------------------------
-    // 4. Bazaar 기본 동작 (REGISTER → BUY → CLAIM)
+    // 4. Bazaar 기본 동작 (REGISTER → BUY → CHECK_OUTBOX 배송 → CLAIM)
+    //    + 중복 배송 방어 (CheckOutbox 2회 → 수량 불변)
     // ----------------------------------------------------------------
     inline void Test4_BazaarBasic() {
-        std::cout << "\n=== [4] Bazaar 기본 동작 (REGISTER → BUY → CLAIM) ===\n";
+        std::cout << "\n=== [4] Bazaar 기본 동작 (REGISTER → BUY → 배송 → CLAIM) ===\n";
 
         DBChecker db;
         db.CleanupBazaar();
 
-        CacheNode seller;
-        CacheNode buyer;
-        WarmUp(seller, CHAR_A, SESSION_A);
-        WarmUp(buyer, CHAR_B, SESSION_B);
+        {
+            CacheNode seller;
+            CacheNode buyer;
+            WarmUp(seller, CHAR_A, SESSION_A);
+            WarmUp(buyer, CHAR_B, SESSION_B);
 
-        // seller: 철검 1개 추가
-        Core::MsgInventoryUpdateBody addItem{};
-        addItem.characterID = CHAR_A;
-        addItem.itemID = 3; // 철검
-        addItem.op = 1;
-        addItem.change = 1;
-        auto msg = MakeMsg(Core::MSG_INVENTORY_UPDATE, SESSION_A, addItem);
-        seller.Send(msg);
-        SafeReturn(msg);
-        SafeReturn(seller.Wait());
+            // seller: 철검 1개 추가
+            Core::MsgInventoryUpdateBody addItem{};
+            addItem.characterID = CHAR_A;
+            addItem.itemID = 3; // 철검
+            addItem.op = 1;
+            addItem.change = 1;
+            auto msg = MakeMsg(Core::MSG_INVENTORY_UPDATE, SESSION_A, addItem);
+            seller.Send(msg);
+            SafeReturn(msg);
+            SafeReturn(seller.Wait());
 
-        // buyer: 다이아 충전
-        Core::MsgDiamondDepositBody diamondDeposit{};
-        diamondDeposit.characterID = CHAR_B;
-        diamondDeposit.diamond = 1000;
-        auto msg2 = MakeMsg(Core::MSG_DIAMOND_DEPOSIT, SESSION_B, diamondDeposit);
-        buyer.Send(msg2);
-        SafeReturn(msg2);
-        SafeReturn(buyer.Wait());
+            // buyer: 다이아 충전
+            Core::MsgDiamondDepositBody diamondDeposit{};
+            diamondDeposit.characterID = CHAR_B;
+            diamondDeposit.diamond = 1000;
+            auto msg2 = MakeMsg(Core::MSG_DIAMOND_DEPOSIT, SESSION_B, diamondDeposit);
+            buyer.Send(msg2);
+            SafeReturn(msg2);
+            SafeReturn(buyer.Wait());
 
-        std::cout << "  [등록 전]\n";
-        db.PrintDiamond(CHAR_A);
-        db.PrintDiamond(CHAR_B);
+            std::cout << "  [등록 전]\n";
+            db.PrintDiamond(CHAR_A);
+            db.PrintDiamond(CHAR_B);
 
-        // REGISTER
-        Core::MsgBazaarRegisterBody regBody{};
-        regBody.characterID = CHAR_A;
-        regBody.itemID = 3;
-        regBody.quantity = 1;
-        regBody.price = 100;
-        auto msg3 = MakeMsg(Core::MSG_BAZAAR_REGISTER, SESSION_A, regBody);
-        seller.Send(msg3);
-        SafeReturn(msg3);
-        auto* regRes_raw = seller.Wait();
-        uint64_t listingID = db.FetchLatestListingID(CHAR_A);
-        std::cout << std::format("  REGISTER: status={} listingID={}\n",
-            GetBody<Core::MsgBazaarRegisterResBody>(regRes_raw)->resStatus, listingID);
-        SafeReturn(regRes_raw);
-        db.PrintListing(listingID);
+            // REGISTER
+            Core::MsgBazaarRegisterBody regBody{};
+            regBody.characterID = CHAR_A;
+            regBody.itemID = 3;
+            regBody.quantity = 1;
+            regBody.price = 100;
+            auto msg3 = MakeMsg(Core::MSG_BAZAAR_REGISTER, SESSION_A, regBody);
+            seller.Send(msg3);
+            SafeReturn(msg3);
+            auto* regRes_raw = seller.Wait();
+            uint64_t listingID = db.FetchLatestListingID(CHAR_A);
+            std::cout << std::format("  REGISTER: status={} listingID={}\n",
+                GetBody<Core::MsgBazaarRegisterResBody>(regRes_raw)->resStatus, listingID);
+            SafeReturn(regRes_raw);
+            db.PrintListing(listingID);
 
-        // BUY
-        Core::MsgBazaarBuyBody buyBody{};
-        buyBody.characterID = CHAR_B;
-        buyBody.listingID = listingID;
-        auto msg4 = MakeMsg(Core::MSG_BAZAAR_BUY, SESSION_B, buyBody);
-        buyer.Send(msg4);
-        SafeReturn(msg4);
-        auto* buyRes_raw = buyer.Wait();
-        auto* buyRes = GetBody<Core::MsgBazaarBuyResBody>(buyRes_raw);
-        std::cout << std::format("  BUY: status={} itemID={} qty={} spent={}\n",
-            buyRes->resStatus, buyRes->itemID, buyRes->quantity, buyRes->diamondSpent);
-        SafeReturn(buyRes_raw);
-        db.PrintListing(listingID);
-        db.PrintBazaarLog(listingID);
+            // BUY — outbox에 READY 기록까지만, 아이템 지급은 CHECK_OUTBOX가 수행
+            Core::MsgBazaarBuyBody buyBody{};
+            buyBody.characterID = CHAR_B;
+            buyBody.listingID = listingID;
+            auto msg4 = MakeMsg(Core::MSG_BAZAAR_BUY, SESSION_B, buyBody);
+            buyer.Send(msg4);
+            SafeReturn(msg4);
+            auto* buyRes_raw = buyer.Wait();
+            auto* buyRes = GetBody<Core::MsgBazaarBuyResBody>(buyRes_raw);
+            std::cout << std::format("  BUY: status={} itemID={} qty={} spent={}\n",
+                buyRes->resStatus, buyRes->itemID, buyRes->quantity, buyRes->diamondSpent);
+            SafeReturn(buyRes_raw);
+            db.PrintListing(listingID);
+            db.PrintBazaarLog(listingID);
+            db.PrintOutbox(CHAR_B); // READY여야 함
 
-        // CLAIM
-        Core::MsgBazaarClaimBody claimBody{};
-        claimBody.characterID = CHAR_A;
-        claimBody.listingID = listingID;
-        auto msg5 = MakeMsg(Core::MSG_BAZAAR_CLAIM, SESSION_A, claimBody);
-        seller.Send(msg5);
-        SafeReturn(msg5);
-        auto* claimRes_raw = seller.Wait();
-        auto* claimRes = GetBody<Core::MsgBazaarClaimResBody>(claimRes_raw);
-        std::cout << std::format("  CLAIM: status={} diamond={}\n",
-            claimRes->resStatus, claimRes->diamondClaimed);
-        SafeReturn(claimRes_raw);
+            // CHECK_OUTBOX #1 — 배송 (기대: delivered=1)
+            auto out1 = SendCheckOutbox(buyer, CHAR_B, SESSION_B);
+            std::cout << std::format("  CHECK_OUTBOX #1: status={} delivered={} duplicated={} blocked={}\n",
+                out1.resStatus, out1.deliveredCount, out1.duplicatedCount, out1.blockedCount);
+            uint16_t countAfterDeliver = PrintInventory(buyer, CHAR_B, SESSION_B);
+
+            // CHECK_OUTBOX #2 — 중복 배송 방어 (기대: delivered=0, duplicated=1, 수량 불변)
+            auto out2 = SendCheckOutbox(buyer, CHAR_B, SESSION_B);
+            std::cout << std::format("  CHECK_OUTBOX #2 (dedup): delivered={} duplicated={} (기대: 0, 1)\n",
+                out2.deliveredCount, out2.duplicatedCount);
+            uint16_t countAfterDup = PrintInventory(buyer, CHAR_B, SESSION_B);
+            std::cout << std::format("  중복 방어: {}\n",
+                (out2.deliveredCount == 0 && countAfterDeliver == countAfterDup) ? "OK (수량 불변)" : "FAIL");
+
+            // CLAIM — seller 다이아 정산
+            Core::MsgBazaarClaimBody claimBody{};
+            claimBody.characterID = CHAR_A;
+            claimBody.listingID = listingID;
+            auto msg5 = MakeMsg(Core::MSG_BAZAAR_CLAIM, SESSION_A, claimBody);
+            seller.Send(msg5);
+            SafeReturn(msg5);
+            auto* claimRes_raw = seller.Wait();
+            auto* claimRes = GetBody<Core::MsgBazaarClaimResBody>(claimRes_raw);
+            std::cout << std::format("  CLAIM: status={} diamond={}\n",
+                claimRes->resStatus, claimRes->diamondClaimed);
+            SafeReturn(claimRes_raw);
+            // 스코프 종료 → CleanUp이 dirty flush → outbox CLAIMED 전환
+        }
 
         std::cout << "  [완료 후]\n";
-        db.PrintDiamond(CHAR_A); // 다이아 증가 확인
-        db.PrintDiamond(CHAR_B); // 다이아 감소 확인
+        db.PrintDiamond(CHAR_A);  // 다이아 증가 확인
+        db.PrintDiamond(CHAR_B);  // 다이아 감소 확인
+        db.PrintOutbox(CHAR_B);   // CLAIMED여야 함 (flush 후 claim 완료)
     }
 
     // ----------------------------------------------------------------
@@ -507,116 +587,121 @@ namespace Test {
             SafeReturn(claimRes_raw);
         }
 
+        // buyer: 재접속 후 아이템 수령 — outbox 패턴의 대표 시나리오
+        // (구매 시점에 못 받았어도 재접속 CheckOutbox로 유실 없이 수령)
+        {
+            CacheNode buyer;
+            WarmUp(buyer, CHAR_B, SESSION_B);
+            auto out = SendCheckOutbox(buyer, CHAR_B, SESSION_B);
+            std::cout << std::format("  CHECK_OUTBOX (buyer 재접속): delivered={} duplicated={}\n",
+                out.deliveredCount, out.duplicatedCount);
+            PrintInventory(buyer, CHAR_B, SESSION_B); // 철방패(4) 수령 확인
+        }
+
         std::cout << "  [완료 후]\n";
         db.PrintDiamond(CHAR_A);
         db.PrintDiamond(CHAR_B);
+        db.PrintOutbox(CHAR_B); // CLAIMED여야 함
     }
 
     // ----------------------------------------------------------------
-    // 6. Crash 테스트
-    // BazaarHandler.cpp 상단에서 매크로 주석 해제 후 빌드
+    // 6. Crash 테스트 (exactly-once 배송 검증) — 재빌드 불필요
     //
-    // [BUY 크래시]
-    //   기대: DB status=SOLD, bazaar_log 기록 있음, buyer 인벤토리 아이템 없음
-    //   복구: bazaar_log 기반 수동 복구 가능
-    //
+    // 1단계: set CRASH_POINT=DELIVER 또는 CLAIM 후 실행 → abort
+    //   DELIVER: 배송 반영 후 flush 전 → 기대 DB: 인벤토리에 아이템 없음 + outbox READY
+    //   CLAIM:   flush 후 outbox CLAIM 전 → 기대 DB: 인벤토리에 아이템 있음 + outbox READY
+    // 2단계: 환경변수 지우고 set CRASH_VERIFY=1 후 재실행 (cleanup 없음)
+    //   기대: 수량 = 재시도 전 + delivered (유실/중복 없음), 종료 후 outbox CLAIMED
+    //   (DELIVER 크래시였다면 delivered=1 재배송, CLAIM 크래시였다면 duplicated=1 스킵)
     // ----------------------------------------------------------------
     inline void Test6_Crash() {
-        std::cout << "\n=== [6] Crash 테스트 ===\n";
-        std::cout << "  BazaarHandler.cpp 매크로 확인\n";
-
         DBChecker db;
-        db.CleanupBazaar();
 
-        uint64_t listingID = 0;
+        std::string crashPoint = Cache::GetEnvVar("CRASH_POINT");
+        if (!crashPoint.empty()) {
+            std::cout << std::format("\n=== [6] Crash 1단계: CRASH_POINT={} ===\n", crashPoint);
+            db.CleanupBazaar();
 
-        // seller REGISTER
-        {
-            CacheNode seller;
-            WarmUp(seller, CHAR_A, SESSION_A);
-            Core::MsgInventoryUpdateBody addItem{};
-            addItem.characterID = CHAR_A;
-            addItem.itemID = 3;
-            addItem.op = 1;
-            addItem.change = 1;
-            auto msg1 = MakeMsg(Core::MSG_INVENTORY_UPDATE, SESSION_A, addItem);
-            seller.Send(msg1);
-            SafeReturn(msg1);
-            SafeReturn(seller.Wait());
+            // seller: 철검 등록
+            {
+                CacheNode seller;
+                WarmUp(seller, CHAR_A, SESSION_A);
+                Core::MsgInventoryUpdateBody addItem{};
+                addItem.characterID = CHAR_A;
+                addItem.itemID = 3;
+                addItem.op = 1;
+                addItem.change = 1;
+                auto msg1 = MakeMsg(Core::MSG_INVENTORY_UPDATE, SESSION_A, addItem);
+                seller.Send(msg1);
+                SafeReturn(msg1);
+                SafeReturn(seller.Wait());
 
-            Core::MsgBazaarRegisterBody regBody{};
-            regBody.characterID = CHAR_A;
-            regBody.itemID = 3;
-            regBody.quantity = 1;
-            regBody.price = 100;
-            auto msg2 = MakeMsg(Core::MSG_BAZAAR_REGISTER, SESSION_A, regBody);
-            seller.Send(msg2);
-            SafeReturn(msg2);
-            auto* regRes_raw = seller.Wait();
-            std::cout << "Registered\n";
-            SafeReturn(regRes_raw);
+                Core::MsgBazaarRegisterBody regBody{};
+                regBody.characterID = CHAR_A;
+                regBody.itemID = 3;
+                regBody.quantity = 1;
+                regBody.price = 100;
+                auto msg2 = MakeMsg(Core::MSG_BAZAAR_REGISTER, SESSION_A, regBody);
+                seller.Send(msg2);
+                SafeReturn(msg2);
+                SafeReturn(seller.Wait());
+                std::cout << "  REGISTER 완료\n";
+            }
+            uint64_t listingID = db.FetchLatestListingID(CHAR_A);
+
+            // buyer: BUY → CHECK_OUTBOX → 크래시
+            {
+                CacheNode buyer;
+                WarmUp(buyer, CHAR_B, SESSION_B);
+                Core::MsgDiamondDepositBody dd{};
+                dd.characterID = CHAR_B;
+                dd.diamond = 1000;
+                auto msg1 = MakeMsg(Core::MSG_DIAMOND_DEPOSIT, SESSION_B, dd);
+                buyer.Send(msg1);
+                SafeReturn(msg1);
+                SafeReturn(buyer.Wait());
+
+                Core::MsgBazaarBuyBody buyBody{};
+                buyBody.characterID = CHAR_B;
+                buyBody.listingID = listingID;
+                auto msg2 = MakeMsg(Core::MSG_BAZAAR_BUY, SESSION_B, buyBody);
+                buyer.Send(msg2);
+                SafeReturn(msg2);
+                SafeReturn(buyer.Wait());
+                std::cout << "  BUY 완료 — outbox READY:\n";
+                db.PrintOutbox(CHAR_B);
+
+                // CRASH_POINT=DELIVER: 여기서 abort (배송 반영 직후, flush 전)
+                auto out = SendCheckOutbox(buyer, CHAR_B, SESSION_B);
+                std::cout << std::format("  CHECK_OUTBOX: delivered={}\n", out.deliveredCount);
+                // CRASH_POINT=CLAIM: 스코프 종료 → CleanUp flush 중 abort (blob durable 후, CLAIM 전)
+            }
+            std::cout << "  크래시 미발생 — CRASH_POINT 값 확인 필요 (DELIVER/CLAIM)\n";
+            return;
         }
 
-        listingID = db.FetchLatestListingID(CHAR_A);
-        std::cout << "CHAR_B  다이아 차감 전\n";
-        db.PrintDiamond(CHAR_B);
-        db.PrintListing(listingID);
-        db.PrintBazaarLog(listingID); // 기록 있어야 복구 가능
-
-        {
-            CacheNode node;
-            Core::MsgInventoryReqBody reqBody{};
-            WarmUp(node, CHAR_B, SESSION_B);
-            reqBody.characterID = CHAR_B;
-            auto msg3 = MakeMsg(Core::MSG_INVENTORY_REQ, SESSION_A, reqBody);
-            node.Send(msg3);
-            SafeReturn(msg3);
-            auto res = node.Wait();
-            auto* invRes = GetBody<Core::MsgInventoryResBody>(res);
-            std::cout << std::format("CHAR_B inventory  조회: status = {} count = {}\n", invRes->resStatus, invRes->itemCount);
-            for (int i = 0; i < invRes->itemCount; ++i)
-                std::cout << std::format("    slot={} itemID={} qty={}\n",
-                    invRes->items[i].slot, invRes->items[i].itemID, invRes->items[i].quantity);
-        }
-
-        // buyer BUY → CRASH_POINT_BUY 활성화 시 abort()
+        // 2단계: 복구 검증 — cleanup 없이 크래시 당시 DB 상태에서 시작
+        std::cout << "\n=== [6] Crash 2단계: 복구 검증 ===\n";
+        std::cout << "  [복구 전 outbox]\n";
+        db.PrintOutbox(CHAR_B);
         {
             CacheNode buyer;
+            WarmUp(buyer, CHAR_B, SESSION_B);
+            std::cout << "  [재시도 전]\n";
+            PrintInventory(buyer, CHAR_B, SESSION_B);
 
-            Core::MsgBazaarBuyBody buyBody{};
-            buyBody.characterID = CHAR_B;
-            buyBody.listingID = listingID;
-            auto msg2 = MakeMsg(Core::MSG_BAZAAR_BUY, SESSION_B, buyBody);
-            buyer.Send(msg2);
-            SafeReturn(msg2);
+            auto out = SendCheckOutbox(buyer, CHAR_B, SESSION_B);
+            std::cout << std::format("  CHECK_OUTBOX: delivered={} duplicated={} (DELIVER 크래시→1/0, CLAIM 크래시→0/1)\n",
+                out.deliveredCount, out.duplicatedCount);
 
-            // CRASH_POINT_BUY 활성화 시 abort() → 아래 도달 안 함
-            auto* res = buyer.Wait(3000);
-            if (!res)
-                std::cout << "  abort() 발생 또는 타임아웃\n";
-            else
-                SafeReturn(res);
+            // 인벤토리는 실행 간 누적되므로 절대값이 아니라 변화량으로 검증:
+            // 재시도 후 수량 = 재시도 전 + delivered (DELIVER 크래시→+1, CLAIM 크래시→불변)
+            std::cout << "  [재시도 후 — 수량이 '재시도 전 + delivered'여야 함 (유실/중복 없음)]\n";
+            PrintInventory(buyer, CHAR_B, SESSION_B);
+            // 스코프 종료 → CleanUp이 동기적으로 flush → CLAIM까지 완료됨 (sleep 불필요)
         }
-
-        std::cout << "CHAR_B  다이아 차감 후\n";
-        db.PrintDiamond(CHAR_B);     // 다이아 차감 확인 (트랜잭션이므로 차감됨)
-        db.PrintListing(listingID);
-        db.PrintBazaarLog(listingID); // 기록 있어야 복구 가능
-        {
-            CacheNode node;
-            WarmUp(node, CHAR_B, SESSION_B);
-            Core::MsgInventoryReqBody reqBody{};
-            reqBody.characterID = CHAR_B;
-            auto msg3 = MakeMsg(Core::MSG_INVENTORY_REQ, SESSION_A, reqBody);
-            node.Send(msg3);
-            SafeReturn(msg3);
-            auto res = node.Wait();
-            auto* invRes = GetBody<Core::MsgInventoryResBody>(res);
-            std::cout << std::format("CHAR_B inventory  조회: status = {} count = {}\n", invRes->resStatus, invRes->itemCount);
-            for (int i = 0; i < invRes->itemCount; ++i)
-                std::cout << std::format("    slot={} itemID={} qty={}\n",
-                    invRes->items[i].slot, invRes->items[i].itemID, invRes->items[i].quantity);
-        }
+        std::cout << "  [종료 후 outbox — CLAIMED여야 함]\n";
+        db.PrintOutbox(CHAR_B);
     }
 
     // ----------------------------------------------------------------
@@ -677,7 +762,7 @@ namespace Test {
                 uint64_t sessionID = SESSION_B + 100 + i;
 
                 CacheNode buyer;
-                WarmUp(buyer, CHAR_B, SESSION_B);
+                WarmUp(buyer, charID, sessionID);
 
                 Core::MsgDiamondDepositBody diamondDeposit{};
                 diamondDeposit.characterID = charID;
@@ -844,19 +929,27 @@ namespace Test {
     // 전체 실행
     // ================================================================
     inline void RunAll() {
-#if defined(TEST_CRASH) 
-        Test6_Crash();
-#elif defined(TEST_LOAD)
-        Test8_LockContention();
-#elif defined(TEST_RACE)
-        Test7_Race();
-#else
+        // 실행 모드는 전부 환경변수로 제어 (재빌드 불필요)
+        // set CRASH_POINT=DELIVER|CLAIM → 크래시 1단계 / set CRASH_VERIFY=1 → 복구 검증(2단계)
+        // set TEST_MODE=RACE → 동시 구매 경쟁 / set TEST_MODE=LOAD → lock 경합 부하
+        if (!Cache::GetEnvVar("CRASH_POINT").empty() || !Cache::GetEnvVar("CRASH_VERIFY").empty()) {
+            Test6_Crash();
+            return;
+        }
+        std::string mode = Cache::GetEnvVar("TEST_MODE");
+        if (mode == "LOAD") {
+            Test8_LockContention();
+            return;
+        }
+        if (mode == "RACE") {
+            Test7_Race();
+            return;
+        }
         Test1_Inventory();
         Test2_Currency();
         Test3_Diamond();
         Test4_BazaarBasic();
         Test5_SellerOffline();
-#endif
     }
 
 } // namespace Test

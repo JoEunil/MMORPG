@@ -16,6 +16,8 @@
 
 #include <mysqlconn/include/mysql/jdbc.h>
 
+#include "IntegrationTestBazaar.h"
+
 int main(int argc, char* argv[]) {
     ST_WSA_INITIALIZER wsa; // winsock 초기화
 
@@ -32,22 +34,30 @@ int main(int argc, char* argv[]) {
     Core::errorLogger->CreateSink("error");
     Core::perfLogger = std::make_unique<External::Logger>();
     Core::perfLogger->CreateSink("perf");
-    #ifdef TEST_BAZAAR
+    // set TEST_BAZAAR=1 → 통합 테스트 모드 (재빌드 불필요, 미설정 시 일반 서버로 기동)
+    if (!Cache::GetEnvVar("TEST_BAZAAR").empty()) {
         try {
             Test::g_msgPool().InitializeForTest();
             Test::RunAll();
-            spdlog::shutdown();
-            Core::sysLogger.reset();
-            Core::gameLogger.reset();
-            Core::errorLogger.reset();
-            Core::perfLogger.reset();
         }
         catch (sql::SQLException& e) {
-            std::cout << std::format("SQLException: {} (code: {}, state: {})",
-                e.what(), e.getErrorCode(), e.getSQLState());
+            std::cout << std::format("SQLException: {} (code: {}, state: {})", e.what(), e.getErrorCode(), e.getSQLState());
         }
+        catch (std::exception& e)
+        {
+            std::cout << e.what() << std::endl;
+        }
+        catch (...)
+        {
+            std::cout << "unknown exception\n";
+        }
+        spdlog::shutdown();
+        Core::sysLogger.reset();
+        Core::gameLogger.reset();
+        Core::errorLogger.reset();
+        Core::perfLogger.reset();
         return 0;
-    #endif
+    }
 
     try {
         External::SessionAuth auth;
