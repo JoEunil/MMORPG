@@ -7,8 +7,8 @@
 
 ## 2. 목적
 
-- 기본 거래 흐름 (REGISTER → BUY → CLAIM) 정상 동작 검증
-- Crash 시 DB 정합성 및 복구 가능성 확인
+- 기본 거래 흐름 (REGISTER → BUY → 배송 → CLAIM) 정상 동작 검증  
+- Crash 시 배송의 exactly-once 수렴(유실·중복 없음) 확인  
 - 동시 구매 경합 상황에서 정합성 검증
 - lock contention 발생 수준 관측
 
@@ -27,8 +27,8 @@
 | Test1 | 인벤토리 아이템 추가/제거 |
 | Test2 | Currency (Gold) 추가/조회 |
 | Test3 | Diamond 추가/조회 |
-| Test4 | Bazaar 기본 동작 (REGISTER → BUY → CLAIM) |
-| Test5 | Seller 오프라인 상태에서 BUY + 재접속 후 CLAIM |
+| Test4 | Bazaar 기본 동작 (REGISTER → BUY → CHECK_OUTBOX 배송 → CLAIM) + 중복 배송 방어(CheckOutbox 2회 → 수량 불변, outbox CLAIMED 수렴) |
+| Test5 | Seller 오프라인 상태에서 BUY + Seller 재접속 CLAIM + Buyer 재접속 CHECK_OUTBOX 수령 |
 
 __결과__   
 ![이미지 로드 실패](images/TestBazaar.png)
@@ -39,38 +39,48 @@ __결과__
 - Test4: 기본 거래 흐름 정상 동작 확인 (bazaar 상태 변화, 구매자 diamond 차감, 판매자 다이아몬드 지급)
 - Test5: 판매자가 오프라인 상태에서도 BUY가 정상 처리되고, 판매자 재접속 시 CLAIM이 정상 처리 확인. 
 
-### 4.2 Crash 상황 테스트 (Test 6)
+### 4.2 Crash 상황 테스트 (Test 6) — exactly-once 배송 검증  
 
-__시나리오__: `CRASH_POINT_BUY` 매크로 활성화 시, sp_bazaar_buy() COMMIT 이후 ~ 인벤토리 PartialUpdate 전 `abort()` 발생
+Outbox·Inbox 배송 파이프라인의 두 취약 지점에서 크래시를 유발하고, 재시작 후 **유실도 중복도 없이** 수렴하는지 확인한다.  
+크래시 지점은 매크로가 아니라 **환경변수**로 제어한다 (재빌드 불필요, `Cache::CrashPoint`).  
 
-__목적__: Crash 이후에도 bazaar_log 기반으로 복구 가능한 상태임을 확인
+__실행 방법__ (2단계):  
 
-__흐름__:
-1. Seller가 아이템 등록
-2. Buyer가 구매 요청 → DB 트랜잭션 성공 후 abort()
-3. DB 상태 및 인벤토리 상태 확인
+```
+# 공통: 테스트 모드 진입 (미설정 시 일반 서버로 기동)
+set TEST_BAZAAR=1
 
-__기대 결과__:
+# 1단계: 크래시 유발
+set CRASH_POINT=DELIVER   (또는 CLAIM) 후 실행 → abort
 
-| 항목 | 기대 상태 |
-|------|----------|
-| bazaar status | SOLD |
-| diamond | 차감 완료 |
-| bazaar_log | 기록 있음 (buyer_prev_quantity 포함) |
-| 인벤토리 (Cache) | 아이템 미반영 |
-| 복구 가능 여부 | bazaar_log 기반 수동 복구 가능 |
+# 2단계: 복구 검증 (cleanup 없이 크래시 당시 DB 상태에서 재시작)  
+set CRASH_VERIFY=1        후 재실행
+```
+
+__크래시 지점과 기대 결과__:  
+
+| 지점 | 타이밍 | 크래시 직후 DB | 복구(2단계) 기대 |
+|------|--------|---------------|-----------------|
+| `DELIVER` | 배송(DeliverItem) 반영 후, blob flush 전 | 인벤토리에 아이템 없음 + outbox READY | 재배송 (delivered=1) → 아이템 정확히 1개 |
+| `CLAIM` | blob flush 성공 후, outbox CLAIM 전 | 인벤토리에 아이템 있음 + outbox READY | dedup 스킵 (duplicated=1) → 수량 불변, flush 후 CLAIMED |
+
+두 경우 모두 최종 상태는 동일해야 한다: **수량 = 재시도 전 + delivered, outbox 전부 CLAIMED**.  
+DELIVER는 "유실 없음"(Outbox = 재시도 소스), CLAIM은 "중복 없음"(Inbox = 멱등)을 각각 증명한다.  
 
 __결과__:  
 
 ![이미지 로드 실패](images/TestBazaar6-1.png)
-- Crash 없이 테스트: 정상 결과  
+> DELIVER 크래시: 배송 반영 후 flush 전 abort — outbox READY, 인벤토리 미반영 상태
 
 ![이미지 로드 실패](images/TestBazaar6-2.png)
-- Crash 상황: inventory에 아이템이 반영되지 않은 상태  
+> 복구: 재배송(delivered=1)으로 수량 6 → 7 (재시도 전 + delivered), outbox CLAIMED — **유실 없음**
 
 ![이미지 로드 실패](images/TestBazaar6-3.png)
-- Crash 후 DB 상태 확인: transaction 정상 처리 확인 및 다이아몬드 차감 확인. (900 -> 800)
-- buyer_prev_quantity가 0으로 기록되어 있어, 수동 복구 시 아이템 수량을 buyer_prev_quantity 기준으로 1개 추가하여 복구할 수 있음을 확인하였다.
+> CLAIM 크래시: 인벤토리 flush 후 outbox CLAIM 전 abort — 배송 자체는 이미 durable, outbox만 READY로 남음
+
+![이미지 로드 실패](images/TestBazaar6-4.png)
+> 복구: CLAIM 크래시는 인벤토리가 이미 DB에 반영된 상태이므로, dedup이 재배송을 스킵(duplicated=1)하고
+> **아이템 수량 변화 없이 outbox만 READY → CLAIMED로 전환** — **중복 없음**.
 
 ### 4.3 경합 상황 테스트 (Test 7)
 
@@ -122,9 +132,9 @@ __결과__
 | 실패 | 39 |
 | commit | +1 |
 | rollback | +39 |
-| lock_waits | +2 |
-| lock_time | +3 ms |
-| lock_time_avg | 2 ms |
+| lock_waits | +14 |
+| lock_time | +1 ms |
+| lock_time_avg | 1 ms |
 
 __slow query 관측 결과__
 ![이미지 로드 실패](images/TestBazaar8-2.png)
@@ -138,8 +148,8 @@ stored procedure 40회 호출 중 3회만 slow query로 기록되었으며, 이�
 
 | 테스트 | 결과 | 비고 |
 |--------|------|------|
-| 기본 기능 (1~5) | 통과 | - |
-| Crash 시나리오 (6) | 통과 | bazaar_log 기반 복구 가능 확인 |
+| 기본 기능 (1~5) | 통과 | Test4에 배송·중복 방어(dedup), Test5에 buyer 재접속 수령 포함 |
+| Crash 시나리오 (6) | 통과 | DELIVER: 재배송으로 유실 없음 / CLAIM: dedup 스킵으로 중복 없음 — exactly-once 수렴 |
 | 경합 상황 (7) | 통과 | 정합성 검증 — 중복 구매 없음 |
 | lock contention (8) | 통과 | 단일 listing 40 동시 요청 — lock_waits: 2회, lock_time_avg: 2ms |
 

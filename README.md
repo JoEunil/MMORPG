@@ -150,19 +150,20 @@ Lock-Free 자료구조와 Zone 기반 멀티스레드 아키텍처로 동시성�
 
 ### 4. 콘텐츠 구현 및 모니터링
 - [Monster](Monster.md) & [Skill](Skill.md): 간단한 AI 및 상호작용 로직을 통해 구조적 위험성 분석. AOI(Area of Interest) 및 Cell 분할 필요성 도출
-- [거래소 시스템](Bazaar.md): 서버 통합 거래소 구현. 재화 특성 기반 저장 전략 분리 (Gold: Write-Back 캐시 / Diamond: DB 트랜잭션), Stored Procedure로 ACID 보장, 두 장군 문제로 인한 Bounded Loss 수용 및 거래 로그 기반 복구 전략 적용
-- [거래소 시스템 테스트](BazaarTest.md): 기본 기능, Crash 시나리오, 동시 구매 경합, lock contention 관측 테스트 수행. CAS 기반 중복 구매 방지 및 Crash 후 복구 가능성 확인
+- [거래소 시스템](Bazaar.md): 서버 통합 거래소 구현. 데이터 특성 기반 저장 전략 분리 (Gold: Write-Back 캐시 / Item: 캐시 + 거래 배송은 Outbox/Inbox로 exactly-once / Diamond: DB 트랜잭션), Stored Procedure로 ACID 보장
+- [거래소 시스템 테스트](BazaarTest.md): 기본 기능, Crash 시나리오, 동시 구매 경합, lock contention 관측 테스트 수행. CAS 기반 중복 구매 방지 및 Crash 후 배송의 exactly-once 수렴(유실·중복 없음) 검증
 - [StructuredLogging](StructuredLogging.md): 서버 내부 상태와 테스트 결과를 시각화하고 추적하기 위해 로그를 구조화하여 분류 및 적용
 
 ### 5. 캐시 및 DB 설계
 
 접근 빈도가 높은 인벤토리 데이터를 대상으로 In-Process 메모리 캐시를 직접 구현했다.
-Write-Back 전략을 채택하여 DB IO 부하를 줄이고, 캐시 동작 전반에 걸쳐 ACID를 고려한 설계를 적용했다.
+Write-Back 전략을 채택하여 DB IO 부하를 줄이고, 캐시 동작 전반에 걸쳐 ACID를 고려한 설계를 적용했다.  
+또한 거래소가 game / bazaar DB 경계를 넘는 부분은 **Saga(등록)·Outbox/Inbox(배송)** 로 cross-DB 정합성을 보장하고, 아이템·재화의 중요도에 따라 durability를 차등 적용했다.  
 
 - [Cache](CacheLib.md): 캐시 배치 전략, Write-Back/Read-Through 동작 흐름, 구조 설계
 - [Cache ACID](CacheLib_ACID.md): 캐시 상태값 도입 및 ACID 보장 설계
 - [Cache UnitTest](CacheLib_Test.md): DB fetch, cache hit/miss, flush, LRU eviction 동작 검증
-- [DB](DB.md): 수직 파티셔닝, 복합 인덱스, View Table 설계
+- [DB](DB.md): DB 분리, 수직 파티셔닝, 복합 인덱스, View, Saga, Outbox/Inbox
 
 ## 스레드 모델
 
