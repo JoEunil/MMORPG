@@ -17,6 +17,8 @@
 #include <mysqlconn/include/mysql/jdbc.h>
 
 #include "IntegrationTestBazaar.h"
+#include "CacheDurabilityTest.h"
+#include "IntegrationTestCache.h"
 
 int main(int argc, char* argv[]) {
     ST_WSA_INITIALIZER wsa; // winsock 초기화
@@ -58,7 +60,24 @@ int main(int argc, char* argv[]) {
         Core::perfLogger.reset();
         return 0;
     }
-
+    if (!Cache::GetEnvVar("TEST_CACHE").empty()) {
+        Cache::RunAllCacheTests();
+        spdlog::shutdown();
+        Core::sysLogger.reset();
+        Core::gameLogger.reset();
+        Core::errorLogger.reset();
+        Core::perfLogger.reset();
+        return 0;
+    }
+    if (!Cache::GetEnvVar("TEST_CACHE_DURABLE").empty()) {
+        Cache::RunCacheDurabilityTest();
+        spdlog::shutdown();
+        Core::sysLogger.reset();
+        Core::gameLogger.reset();
+        Core::errorLogger.reset();
+        Core::perfLogger.reset();
+        return 0;
+    }
     try {
         External::SessionAuth auth;
         auth.Initialize();

@@ -11,6 +11,7 @@
 #include <CoreLib/Message.h>
 #include <CoreLib/MessageTypes.h>
 #include <CacheLib/Initializer.h>
+#include <CacheLib/Config.h>
 
 // 전제 조건:
 //   - 로컬 DB (localhost, root/1234, game) 실행 중
@@ -46,7 +47,7 @@ namespace Cache {
 		// 요청 메시지 생성 헬퍼
 	template<typename BodyType>
 	static Core::Message * MakeMsg(uint16_t msgType, uint64_t sessionID, const BodyType & body) {
-		auto* msg = new Core::Message(MESSGAGE_LEN);
+		auto* msg = new Core::Message(MESSAGE_LEN);
 		auto* st = reinterpret_cast<Core::MsgStruct<BodyType>*>(msg->GetBuffer());
 		st->header.messageType = msgType;
 		st->header.sessionID = sessionID;
@@ -304,7 +305,7 @@ namespace Cache {
 	// 전체 실행
 	// ---------------------------------------------------------------
 	inline static int RunAllCacheTests() {
-		std::cout << "=== CacheLib Unit Tests ===\n";
+		std::cout << "=== CacheLib Integration Tests ===\n";
 		Test_Inventory_DBFetch();
 		Test_Inventory_CacheHit();
 		Test_InventoryUpdate_Sequence();
