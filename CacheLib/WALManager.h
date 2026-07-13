@@ -2,11 +2,14 @@
 
 #include <thread>
 #include <atomic>
+#include <map>
+
 #include <BaseLib/WAL.h>
 #include <CoreLib/LoggerGlobal.h>
 #include <CacheLib/CacheStorageInventory.h>
 #include <CacheLib/DBConnectionPool.h>
 #include <CacheLib/DBConnectionGame.h>
+
 namespace Cache {
 	struct WalInventoryRecord {
 		uint64_t      characterID;
@@ -19,6 +22,11 @@ namespace Cache {
 		// cache flush, flush dispatcher 뒤에 초기화.
 		std::optional<Base::WAL> m_wal; // 생성 지연
 		std::thread m_fsyncThread;
+
+		std::unordered_map<uint32_t, uint32_t> m_segRefCnt;    // seg -> 보존 필요 레코드 수, 전역
+		std::unordered_map<uint64_t, uint64_t> m_unflushedInventory; // inventory 전용 (key = charID)
+		std::mutex m_mutex;
+
 		std::atomic<bool> m_blocked = false;
 		// file write 실패한 경우 일정 기간동안 Write를 block 하기 위함.
 		// 실패 시 drop, wal 없이 작업을 통과 시키도록.
@@ -47,7 +55,8 @@ namespace Cache {
 			if (m_lastImageInventory.empty())
 				return;
 			auto* conn = connectionPoolGame->Acquire();   // 부팅 시점 동기 접근 — 블로킹 OK
-
+			if (conn == nullptr)
+				return;
 			for (auto& [key, val] : m_lastImageInventory) {
 				// DB blob 로드 → lastLSN 비교 (기존 QUERY_5 재사용)
 				uint64_t lsn = val.first;
@@ -61,9 +70,12 @@ namespace Cache {
 					if (blob) blob->read(reinterpret_cast<char*>(&tmp), sizeof(InventoryData));
 					dbLSN = tmp.lastLsn;
 				}
-				// 헤더의 lsn이 정확함.
-				if (lsn > dbLSN)
+				// 레코드는 자기 lsn을 품을 수 없어(발급 전 복사) payload의 lastLsn은 한 세대 전 값.
+				// header lsn으로 보정해야 flush 정산과 재부팅 비교가 여기서 수렴한다.
+				rec.data.lastLsn = lsn;
+				if (lsn > dbLSN) {
 					cache_inventory->RestoreEntry(key, rec.data);  // 캐시 Insert + dirty 마킹
+				}
 			}
 			connectionPoolGame->Return(conn);
 			m_lastImageInventory.clear();
@@ -136,7 +148,28 @@ namespace Cache {
 			record.characterID = characterID;
 			record.data = data;
 			// WAL::Write()에서 바로 복사해서 쓰기 때문에 수명 문제 없음
-			return Write(reinterpret_cast<const uint8_t*>(&record), sizeof(WalInventoryRecord), WalType::INVENTORY);
+			uint64_t lsn  = Write(reinterpret_cast<const uint8_t*>(&record), sizeof(WalInventoryRecord), WalType::INVENTORY);
+
+
+			if (lsn != 0) {
+				std::lock_guard<std::mutex> lock(m_mutex);
+				auto it = m_unflushedInventory.find(characterID);
+				if (it != m_unflushedInventory.end())
+					m_segRefCnt[static_cast<uint32_t>(it->second >> 32)]--;
+				m_unflushedInventory[characterID] = lsn;
+				m_segRefCnt[static_cast<uint32_t>(lsn >> 32)]++;
+			}
+			return lsn;
+		}
+		void OnInventoryFlushed(uint64_t characterID, uint64_t flushedLsn) {
+			std::lock_guard<std::mutex> lock(m_mutex);
+			auto it = m_unflushedInventory.find(characterID);
+			if (it == m_unflushedInventory.end())
+				return;                    // 이미 정산됨
+			if (it->second > flushedLsn) 
+				return;					// flush 중 재수정
+			m_segRefCnt[static_cast<uint32_t>(it->second >> 32)]--;
+			m_unflushedInventory.erase(it);
 		}
 	};
 }

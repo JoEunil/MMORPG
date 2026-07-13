@@ -351,5 +351,6 @@ namespace Cache {
 
         res.lastModified = CacheTimer::GetTimeMS();
         shard.dirty_list.insert(key);
+        return true;
     }
 }

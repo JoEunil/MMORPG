@@ -88,6 +88,8 @@ namespace Cache {
                 }
             }
             cache_inventory->WriteDone(shardIndex, key);
+            if (m_invFlushedFn)
+                m_invFlushedFn(key.characterID, inv->lastLsn);
             break;
         }
         case 8: {

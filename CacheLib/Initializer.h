@@ -46,6 +46,9 @@ namespace Cache {
             CacheTimer::StartThread();
             
             flush.Initialize(&connectionPoolGame, &connectionPoolBazaar, &cache_inventory, &cache_currency);
+            flush.SetInvFlushedFn([this](uint64_t characterID, uint64_t flushedLsn) {
+                walManager.OnInventoryFlushed(characterID, flushedLsn);
+                });
             dispatcher.Initialize(&flush, &cache_inventory, &cache_currency);
             walManager.Initialize(&cache_inventory, &connectionPoolGame);//  flush, disptcher 보다 뒤에
 
@@ -86,7 +89,7 @@ namespace Cache {
             if (!dbWorkerBazaar.IsReady()) {
                 return false;
             }
-            if (walManager.IsReady()) {
+            if (!walManager.IsReady()) {
                 return false;
             }
             return true;

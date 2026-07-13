@@ -7,6 +7,7 @@
 #include <memory>
 #include <any>
 #include <condition_variable>
+#include <functional>
 
 #include <CoreLib/LoggerGlobal.h>
 #include "CacheStorageInventory.h"
@@ -27,6 +28,7 @@ namespace Cache {
         std::mutex m_mutex;
         std::condition_variable m_cv;
         std::deque<std::unique_ptr<FlushCommand>> m_flushQ;
+        std::function<void(uint64_t, uint64_t)> m_invFlushedFn;
 
         std::atomic<bool> m_running = false;
         DBConnectionPool<DBConnectionGame>* connectionPoolGame;
@@ -34,6 +36,9 @@ namespace Cache {
         CacheStorageInventory* cache_inventory;
         CacheStorageCurrency* cache_currency;
         void Initialize(DBConnectionPool<DBConnectionGame>* pg, DBConnectionPool<DBConnectionBazaar>* pb, CacheStorageInventory* c5, CacheStorageCurrency* c7);
+        void SetInvFlushedFn(std::function<void(uint64_t, uint64_t)> f) {
+            m_invFlushedFn = std::move(f);
+        }
         bool IsReady() {
             if (!m_running.load(std::memory_order_relaxed)) {
                 Core::sysLogger->LogError("cache flush", "not running");
