@@ -36,7 +36,6 @@ namespace Cache {
     void CacheStorage<Key, Result, KeyHash>::Insert(uint16_t shardIndex, const Key& key, const Result& result) {
         auto& shard = m_shards[shardIndex];
         std::lock_guard<std::mutex> lock(shard.mutex);
-        //std::cout << "Insert: cache size " << shard.cache_data.size() << "\n";
 
         auto it = shard.cache_data.find(key);
         if (it != shard.cache_data.end() && it->second.status != CACHE_STATUS::DB_READING) {
@@ -51,10 +50,9 @@ namespace Cache {
         item.status = CACHE_STATUS::AVAILABLE;
 
         if (shard.lru_list.size() >= MAX_CACHE_SIZE) {
-            //std::cout << "[LRU] evict\n"; 
             const auto oldKey = shard.lru_list.back();
             shard.lru_pos.erase(oldKey);
-            shard.lru_list.pop_back();;
+            shard.lru_list.pop_back();
 
             auto it = shard.dirty_list.find(oldKey);
             if (it != shard.dirty_list.end()) {
@@ -64,6 +62,7 @@ namespace Cache {
                 shard.dirty_list.erase(oldKey);
             } else {
                 shard.cache_data.erase(oldKey);
+                // dirty list에 없으면 db와 동일한 상태임으로 바로 지워도 됨.
             }
         }
     }
@@ -119,7 +118,7 @@ namespace Cache {
         it->second.rollbackCnt++;
         if (it->second.rollbackCnt >= 3) {
             Core::errorLogger->LogError("cache storage", "rollback limit exceeded", "detail", ResultToString(it->first, it->second));
-            shard.cache_data.erase(key);
+            // 데이터 삭제 없이 알림만
             return;
         }
         m_flushFn(key, it->second);
@@ -133,10 +132,13 @@ namespace Cache {
         auto it = shard.cache_data.find(key);
         if (it == shard.cache_data.end())
             return;
-        // flush 진행 중 재수정(dirty)된 entry는 유지 — 다음 flush가 최신 상태를 반영
-        // (예: 배송 head 전진, flush 도중 들어온 인벤토리 변경)
-        if (shard.dirty_list.find(key) != shard.dirty_list.end())
-            return;
-        shard.cache_data.erase(key);
+
+        it->second.rollbackCnt = 0;
+
+        // evicting 중인 것만 삭제
+        auto itLru = shard.lru_pos.find(key);
+        if (itLru == shard.lru_pos.end()) {
+            shard.cache_data.erase(key);
+        }
     }
 }

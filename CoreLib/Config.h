@@ -14,7 +14,7 @@ namespace Core {
 
     inline constexpr uint16_t MSGPOOL_SIZE = 100;
 
-    inline constexpr uint16_t MESSGAGE_LEN = 1024;
+    inline constexpr uint16_t MESSAGE_LEN = 1024;
     inline constexpr uint16_t MQ_THREADPOOL_SIZE = 2; // 수신 큐
 
     inline constexpr uint16_t ZONE_COUNT = 4; // lobby 제외

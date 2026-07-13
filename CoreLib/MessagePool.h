@@ -10,7 +10,7 @@
 
 namespace Core {
     class MessagePool{
-        Base::FixedObjectPool<Message, MSGPOOL_SIZE> m_fixedPool{ MESSGAGE_LEN };
+        Base::FixedObjectPool<Message, MSGPOOL_SIZE> m_fixedPool{ MESSAGE_LEN };
 
         bool IsReady() {
             return true;

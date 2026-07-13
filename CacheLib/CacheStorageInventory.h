@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <tuple>
 #include <memory>
+#include <functional>
 
 #include <CoreLib/MessageTypes.h>
 #include <CoreLib/Message.h>
@@ -22,6 +23,7 @@ namespace Cache {
         uint8_t  head; // outbox CLAIMED 시 갱신 
         uint8_t  tail;
         bool lastOp; // 1: push, 0: pop
+        uint64_t lastLsn; 
     };
 
     constexpr Core::MsgInventoryItem EMPTY_SLOT = { 0, 0, 0 };
@@ -51,14 +53,22 @@ namespace Cache {
         using Key = Key5;
         using KeyHash = KeyHash5;
         using Result = Result5;
+        std::function<uint64_t(uint64_t, const InventoryData&)>  m_walFn;
+
         CACHE_STATUS LoadFromDB(uint16_t shardIndex, Key& key);
+        bool RestoreEntry(uint64_t characterID, InventoryData& rec);
+
+        void SetWalFn(std::function<uint64_t(uint64_t, const InventoryData&)> f) {
+            m_walFn = std::move(f);
+        }
+        friend class WALManager;
     public:
         Result5 Getter(uint64_t characterID);
         std::tuple<CACHE_STATUS, uint32_t, uint16_t, uint16_t> PartialUpdate(uint64_t characterID, uint32_t itemID, uint8_t op, int16_t change);
         static std::unique_ptr<FlushCommand> GetFlushCommand(Key key, Result result);
         // outbox → inbox 배송. AVAILABLE: 지급됨 / DUPLICATED: 이미 지급(스킵) / BLOCKED: 인벤·링 가득
         CACHE_STATUS DeliverItem(uint64_t characterID, uint64_t event_id, uint32_t itemID, uint32_t quantity);
-          void AdvanceInboxHead(uint16_t shardIndex, Key key, uint8_t snapshotHead, uint8_t claimedCnt);
+        bool AdvanceInboxHead(uint16_t shardIndex, Key key, uint8_t snapshotHead, uint8_t claimedCnt);
         std::string ResultToString(const Key5& key, const Result5& result) override {
             std::ostringstream oss;
             oss << "char_id: " << key.characterID << ", inventory_hex: ";

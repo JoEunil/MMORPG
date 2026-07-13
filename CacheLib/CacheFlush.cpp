@@ -81,8 +81,10 @@ namespace Cache {
 
                     // head 전진(dirty 재마킹) 후에 WriteDone을 호출해야 entry가 erase되지 않고
                     // 전진된 head가 다음 flush로 영속된다
-                    if (claimedCnt > 0)
-                        cache_inventory->AdvanceInboxHead(shardIndex, key, inv->head, claimedCnt);
+                    if (claimedCnt > 0) {
+                        if(!cache_inventory->AdvanceInboxHead(shardIndex, key, inv->head, claimedCnt))
+                            Core::gameLogger->LogInfo("cache flush", "inbox advance failed", "char_id", key.characterID);
+                    }
                 }
             }
             cache_inventory->WriteDone(shardIndex, key);

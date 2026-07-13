@@ -6,6 +6,45 @@
 #include "CacheFlush.h"
 
 namespace Cache {
+    bool CacheStorageInventory::RestoreEntry(uint64_t characterID, InventoryData& rec) {
+        Key key;
+        key.characterID = characterID;
+        auto shardIndex = characterID & SHARD_SIZE_MASK;
+        auto& shard = m_shards[shardIndex];
+        std::lock_guard<std::mutex> lock(shard.mutex);
+
+        auto it = shard.cache_data.find(key);
+        if (it != shard.cache_data.end()) {
+            return false;
+        }
+
+        shard.lru_list.push_front(key);
+        shard.lru_pos[key] = shard.lru_list.begin();
+
+        auto& item = shard.cache_data[key];
+        item.data = rec;
+        item.lastModified = CacheTimer::GetTimeMS();
+        item.status = CACHE_STATUS::AVAILABLE;
+        shard.dirty_list.insert(key);
+
+        if (shard.lru_list.size() >= MAX_CACHE_SIZE) {
+            const auto oldKey = shard.lru_list.back();
+            shard.lru_pos.erase(oldKey);
+            shard.lru_list.pop_back();
+
+            auto it = shard.dirty_list.find(oldKey);
+            if (it != shard.dirty_list.end()) {
+                shard.cache_data[oldKey].status = CACHE_STATUS::EVICTING;
+                m_flushFn(oldKey, shard.cache_data[oldKey]);
+                shard.dirty_list.erase(oldKey);
+            }
+            else {
+                shard.cache_data.erase(oldKey);
+            }
+        }
+        return true;
+
+    }
     CACHE_STATUS CacheStorageInventory::LoadFromDB(uint16_t shardIndex, Key& key) {
         auto status = TrySetReading(shardIndex, key);
         if (status != CACHE_STATUS::EMPTY) // READING
@@ -37,6 +76,7 @@ namespace Cache {
                 result.data.head = 0;
                 result.data.tail = 0;
                 result.data.lastOp = false;
+                result.data.lastLsn = 0;
             }
             result.rollbackCnt = 0;
             Insert(shardIndex, key, result);  // READING → AVAILABLE
@@ -178,6 +218,12 @@ namespace Cache {
             return std::make_tuple(CACHE_STATUS::BLOCKED, 0, 0, 0);
         }
 
+        if (m_walFn) {
+            uint64_t lsn = m_walFn(key.characterID, res.data);
+            if (lsn != 0)
+                res.data.lastLsn = lsn;  // 실패 시 기존 값 유지 
+        }
+
         res.lastModified = CacheTimer::GetTimeMS();
         shard.dirty_list.insert(key);
         return std::make_tuple(resStatus, itemID, slot, quantity);
@@ -272,22 +318,37 @@ namespace Cache {
         res.data.tail = (res.data.tail + 1) & RING_SIZE_MASK;
         res.data.lastOp = true; // push
 
+        if (m_walFn) {
+            uint64_t lsn = m_walFn(key.characterID, res.data);
+            if (lsn != 0)
+                res.data.lastLsn = lsn;  // 실패 시 기존 값 유지 
+        }
+
         res.lastModified = CacheTimer::GetTimeMS();
         shard.dirty_list.insert(key);
         return CACHE_STATUS::AVAILABLE;
     }
 
-    void CacheStorageInventory::AdvanceInboxHead(uint16_t shardIndex, Key key, uint8_t snapshotHead, uint8_t claimedCnt) {
+    bool CacheStorageInventory::AdvanceInboxHead(uint16_t shardIndex, Key key, uint8_t snapshotHead, uint8_t claimedCnt) {
         auto& shard = m_shards[shardIndex];
         std::lock_guard<std::mutex> lock(shard.mutex);
         auto it = shard.cache_data.find(key);
         if (it == shard.cache_data.end())
-            return;
+            return false;
         auto& res = it->second;
+        if (res.status != CACHE_STATUS::AVAILABLE)  // EVICTING 등 — 건드리지 않음
+            return false;
         if (res.data.head != snapshotHead) // 다른 claim pass가 이미 전진 — 스테일 적용(이중 전진) 방지
-            return;
+            return false;
         res.data.head = (snapshotHead + claimedCnt) & RING_SIZE_MASK;
-        res.data.lastOp = false; 
+        res.data.lastOp = false;
+
+        if (m_walFn) {
+            uint64_t lsn = m_walFn(key.characterID, res.data);
+            if (lsn != 0)
+                res.data.lastLsn = lsn;  // 실패 시 기존 값 유지 
+        }
+
         res.lastModified = CacheTimer::GetTimeMS();
         shard.dirty_list.insert(key);
     }

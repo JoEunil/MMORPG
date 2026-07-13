@@ -13,25 +13,47 @@
 #include <cstdint>
 #include <array>
 #include <algorithm>
+#include <atomic>
+#include <Windows.h>
+#include <io.h>      // _chsize_s, _get_osfhandle
+#include <cstdio>    // FILE*, fopen_s
 
 namespace Base {
+#pragma pack(push ,1)
+	struct WALHeader
+	{
+		uint32_t magic;
+		uint16_t type;
+		uint16_t length; // payload len
+		uint64_t lsn; // LSN = (seg << 32) | offset
+		uint32_t crc;
+	};
+#pragma pack(pop)
+	// [WALHeader] [Payload]
 
-	template <typename T, uint64_t LIMIT>
 	class WAL {
 		// Wrtie ahead Logging
-		static_assert(std::is_trivially_copyable_v<T>,
-			"WAL record must be trivially copyable (POD)");
+
+		// truncate 규칙
+		// 운영 중 truncate(recoveryLSN 기반) : 닫힌 옛 세그먼트만 삭제 → 활성 세그먼트 번호 유지 → 자동으로 안전
+		// shutdown truncate : 전부 flush 후 옛 세그먼트 삭제 + 빈 세그먼트 N + 1 생성(N 재사용 금지)
+		// 종료 로직에서 순서만 잘 지켜주면 됨. 
 
 		std::string m_fileName;
-		std::ofstream m_out;
+		FILE* m_fp = nullptr; // fstream은 OS 핸들을 노출하지 않아 fsync 불가.
+
+		HANDLE m_handle = INVALID_HANDLE_VALUE; // POSIX 포팅 시: fd + fsync()로 대체
+		std::mutex m_syncMutex; // fsync 중 handle이 닫히는것 방지
 		std::mutex m_mutex;
 		uint32_t m_segment = 1;
-		uint64_t m_counter = 0;
+		uint32_t m_offset = 0; // 현재 byte offset
+		std::vector<uint8_t> m_writeBuf;
+
+		std::atomic<bool> dirty = false;  // fsync 
+
+		uint32_t LIMIT = 0;
 		const uint32_t MAGIC = 0xA2DFFD2A;
 		std::array<uint32_t, 256> CRC_TABLE{};
-		// [MAGIC 4B][payload sizeof(T)][CRC32 4B]
-		const size_t RECORD_SIZE = sizeof(uint32_t) + sizeof(T) + sizeof(uint32_t);
-		// 복구 시 깨진 부분 처리하기 위함
 		// CRC는 체크섬 용도
 
 		// CRC32 테이블 생성 함수
@@ -85,78 +107,183 @@ namespace Base {
 			return segs;
 		}
 
-		void Replay(const std::function<void(const T&)>& apply) {
+		// seg, offset
+		std::pair<uint32_t, uint32_t> Replay(const std::function<void(const WALHeader&, const uint8_t* payload)>& apply) {
 			auto segs = FindSegments();
 			if (segs.empty())
-			{ 
-				m_segment = 1;
-				m_counter = 0; 
-				return; 
-			}
+				return { 1, 0 };
+
+			uint32_t lastSeg = static_cast<uint32_t>(segs.front().first);
+			uint32_t validOffset = 0;
 
 			for (auto& [num, path] : segs) {
 				std::ifstream in(path, std::ios::binary);
-				if (!in) continue;
-				std::vector<char> buf((std::istreambuf_iterator<char>(in)),
+				if (!in)
+					break; // 세그먼트 파일 자체를 못 열면 이후 LSN 순서 보장 불가
+
+				std::vector<uint8_t> buf((std::istreambuf_iterator<char>(in)),
 					std::istreambuf_iterator<char>());
-				size_t   pos = 0;
-				uint64_t validCnt = 0;
+				size_t pos = 0;
+				while (pos + sizeof(WALHeader) <= buf.size()) {
+					WALHeader h;
+					std::memcpy(&h, buf.data() + pos, sizeof(WALHeader));
 
-				while (pos + RECORD_SIZE <= buf.size()) {
-					uint32_t magic;
-					std::memcpy(&magic, buf.data() + pos, sizeof(magic));
-					if (magic != MAGIC) { 
-						++pos; 
-						continue; 
-					}          // 경계 재동기화
+					if (h.magic != MAGIC)
+						break;                                    // 깨짐 
+					size_t recordSize = sizeof(WALHeader) + h.length;
+					if (pos + recordSize > buf.size())
+						break;                                    // 길이가 파일 밖 -> 쓰다 만 레코드
 
-					const char* payload = buf.data() + pos + sizeof(uint32_t);
-					uint32_t storedCrc;
-					std::memcpy(&storedCrc, payload + sizeof(T), sizeof(storedCrc));
+					// CRC 검증: 레코드 사본에서 crc 필드만 0으로 만들고 전체 재계산
+					m_writeBuf.assign(buf.begin() + pos, buf.begin() + pos + recordSize);
+					reinterpret_cast<WALHeader*>(m_writeBuf.data())->crc = 0;
+					if (calculate_crc32(m_writeBuf.data(), recordSize) != h.crc)
+						break;                                    // 체크섬 불일치 
 
-					if (calculate_crc32(payload, sizeof(T)) != storedCrc) {
-						++pos; 
-						continue;                              // 체크섬 불일치 → 계속 스캔
-					}
-
-					T rec;
-					std::memcpy(&rec, payload, sizeof(T));
-					apply(rec);                                       // 멱등 적용
-					pos += RECORD_SIZE;
-					++validCnt;
+					apply(h, buf.data() + pos + sizeof(WALHeader));
+					pos += recordSize;
 				}
-				// 마지막 세그먼트 상태를 이어감 (append 대상)
-				m_segment = static_cast<uint32_t>(num);
-				m_counter = validCnt;
+
+				lastSeg = static_cast<uint32_t>(num);
+				validOffset = static_cast<uint32_t>(pos);
+
+				if (pos < buf.size())
+					break; // 중간에 끊김 — 뒤 세그먼트가 있어도 순서 보장이 깨지므로 무시
 			}
+			return { lastSeg, validOffset };
+		}
+
+		bool OpenSegment(uint32_t segment)
+		{
+			std::string path = m_fileName + "." + std::to_string(segment);
+
+			FILE* fp = nullptr;
+			if (fopen_s(&fp, path.c_str(), "ab+") != 0)
+				return false;
+
+			int fd = _fileno(fp);
+			HANDLE h = (HANDLE)_get_osfhandle(fd);
+			if (h == INVALID_HANDLE_VALUE)
+			{
+				fclose(fp);
+				return false;
+			}
+			m_fp = fp;
+			m_handle = h;
+			m_segment = segment;
+
+			return true;
+		}
+
+		bool RotateSegment()
+		{
+			if (!m_fp)
+				return OpenSegment(m_segment);
+
+			fflush(m_fp);
+
+			{
+				std::lock_guard<std::mutex> lock(m_syncMutex);
+				FlushFileBuffers(m_handle);
+				fclose(m_fp);
+			}
+
+			m_fp = nullptr;
+			m_handle = INVALID_HANDLE_VALUE;
+
+			uint32_t nextSegment = m_segment + 1;
+
+			if (!OpenSegment(nextSegment))
+				return false;
+
+			m_offset = 0;
+			return true;
 		}
 
 	public:
 		WAL() = delete;
-		WAL(std::string f, const std::function<void(const T&)>& a) : m_fileName(f)
+		WAL(std::string f, uint32_t limit, const std::function<void (const WALHeader&, const uint8_t* payload)>& a) : m_fileName(f), LIMIT(limit)
 		{
 			generate_crc_table();
-			Replay(a);
-			m_out.open(m_fileName + "." + std::to_string(m_segment), std::ios::binary | std::ios::app); 
-			if (!m_out.is_open())
-				throw std::runtime_error("WAL open failed: " + m_fileName);
-		}
-		bool Write(T& rec) {
-			std::lock_guard<std::mutex> lock(m_mutex);
-			if (m_counter >= LIMIT) {
-				m_segment++;
-				m_out.close();
-				m_out.open(m_fileName + "." + std::to_string(m_segment), std::ios::binary | std::ios::app);
-				m_counter = 0;
-			}
-			uint32_t crc = calculate_crc32(&rec, sizeof(rec));
-			m_out.write(reinterpret_cast<const char*>(&MAGIC), sizeof(MAGIC));
-			m_out.write(reinterpret_cast<const char*>(&rec), sizeof(rec));
-			m_out.write(reinterpret_cast<const char*>(&crc), sizeof(crc));
+			auto [seg, offset] = Replay(a);
+			m_segment = seg;
+			m_offset = offset;
+			std::string path = m_fileName + "." + std::to_string(m_segment);
 
-			m_out.flush();
-			m_counter++;
-			return static_cast<bool>(m_out); // 성공했는지, 스트림이 bool() operator 가지고 있음
+			// 깨진 부분 잘라내기, 실제 파일 end와 offset 위치 비교
+
+			// std::filesystem 멤버는 실패시 throw
+			if (std::filesystem::exists(path) && std::filesystem::file_size(path) > m_offset)
+				std::filesystem::resize_file(path, m_offset);
+
+			if (!OpenSegment(seg))
+				throw std::runtime_error("open failed");
+			m_writeBuf.reserve(1000);
+
+			int fd = _fileno(m_fp);
+			m_handle = (HANDLE)_get_osfhandle(fd);
+		}
+		~WAL() {
+			std::lock_guard<std::mutex> lock(m_mutex);
+			if (m_fp) {
+				fflush(m_fp);              // CRT 버퍼 → OS
+				FlushFileBuffers(m_handle); // OS → 디스크 (마지막 records까지 durable하게)
+				fclose(m_fp);
+				m_fp = nullptr;
+			}
+		}
+		void Fsync() {
+			if (!dirty.load(std::memory_order_acquire))
+				return;
+			{
+				std::lock_guard<std::mutex> lock(m_mutex);
+				fflush(m_fp);
+				dirty.store(false, std::memory_order_release);
+			}
+			{
+				std::lock_guard<std::mutex> lock(m_syncMutex);
+				FlushFileBuffers(m_handle); // fsync
+			}
+		}
+
+		// payload는 ( key + result ) 형태로 만들어서 넘기기
+		uint64_t Write(const uint8_t* payload, size_t len, uint16_t type) {
+			if (len > UINT16_MAX - sizeof(WALHeader))
+				return 0;
+			std::lock_guard<std::mutex> lock(m_mutex);
+			if (!m_fp) {
+				if (!OpenSegment(m_segment))
+					return 0;
+			}
+			m_writeBuf.resize(sizeof(WALHeader) + len);
+			size_t recordSize = sizeof(WALHeader) + len;
+			if (m_offset + recordSize > LIMIT) {
+				if (!RotateSegment())
+					return 0;
+			}
+
+			WALHeader* header = reinterpret_cast<WALHeader*>(m_writeBuf.data());
+			header->magic = MAGIC;
+			header->type = type;
+			header->length = static_cast<uint16_t>(len);
+			header->lsn = (static_cast<uint64_t>(m_segment) << 32) | m_offset;
+			header->crc = 0;   // crc 필드는 0으로 crc 값 계산, crc 검증 시 crc 필드는 0으로 세팅.
+
+			std::memcpy(m_writeBuf.data() + sizeof(WALHeader), payload, len);
+			header->crc = calculate_crc32(m_writeBuf.data(), recordSize);
+
+			// wal 기록 실패는 durability를 더이상 보장할 수 없는 상황 -> 추가 작업 block 
+			// seg가 1부터 시작이기 때문에 0을 Invalid lsn으로. 
+			if (fwrite(m_writeBuf.data(), recordSize, 1, m_fp) != 1) {
+				fflush(m_fp); // CRT 버퍼 flush (CRT 버퍼 -> OS 페이지 캐시)
+				_chsize_s(_fileno(m_fp), m_offset);   // OS 레벨 파일 자르기
+				clearerr(m_fp);
+				return 0;
+			}
+
+			m_offset += recordSize;
+			dirty.store(true, std::memory_order_release);
+			return header->lsn; 
 		}
 	};
 }

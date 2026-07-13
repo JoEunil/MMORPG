@@ -13,6 +13,7 @@
 #include "Handler.h"
 #include "CacheTimer.h"
 #include "DBWorker.h"
+#include "WALManager.h"
 
 #include <CoreLib/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
@@ -30,6 +31,7 @@ namespace Cache {
         DBConnectionPool<DBConnectionBazaar> connectionPoolBazaar;
         DBWorker<DBConnectionGame> dbWorkerGame;
         DBWorker<DBConnectionBazaar> dbWorkerBazaar;
+        WALManager walManager;
     public:
         ~Initializer() {
             CleanUp();
@@ -45,6 +47,8 @@ namespace Cache {
             
             flush.Initialize(&connectionPoolGame, &connectionPoolBazaar, &cache_inventory, &cache_currency);
             dispatcher.Initialize(&flush, &cache_inventory, &cache_currency);
+            walManager.Initialize(&cache_inventory, &connectionPoolGame);//  flush, disptcher 보다 뒤에
+
         }
         
         void InjectDependencies(Core::IMessageQueue* sendMQ)
@@ -80,6 +84,9 @@ namespace Cache {
                 return false;
             }
             if (!dbWorkerBazaar.IsReady()) {
+                return false;
+            }
+            if (walManager.IsReady()) {
                 return false;
             }
             return true;

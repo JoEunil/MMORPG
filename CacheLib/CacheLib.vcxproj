@@ -154,6 +154,7 @@
     <ClInclude Include="FlushDispatcher.h" />
     <ClInclude Include="Handler.h" />
     <ClInclude Include="Initializer.h" />
+    <ClInclude Include="WALManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CacheFlush.cpp" />
