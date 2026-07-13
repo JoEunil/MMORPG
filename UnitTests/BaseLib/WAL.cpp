@@ -355,3 +355,52 @@ TEST(WALTest, MultiTypeDispatch)
 
     std::filesystem::remove("multiTypeTest.1");
 }
+
+TEST(WALTest, TruncateBefore)
+{
+    std::filesystem::remove("truncateTest.1");
+    std::filesystem::remove("truncateTest.2");
+    std::filesystem::remove("truncateTest.3");
+
+    std::string filename = "truncateTest";
+
+    {
+        Base::WAL wal(filename, 350, ApplyEmpty);
+
+        // 35byte × 10 = 350, seg3(활성): 21~25
+        for (uint64_t i = 1; i <= 25; ++i)
+        {
+            WalRecordTestA rec = { i,i,(uint16_t)i,(uint8_t)i };
+            wal.Write(reinterpret_cast<uint8_t*>(&rec),
+                sizeof(rec),
+                typeA);
+        }
+
+        // seg1, seg2 삭제 
+        wal.TruncateBefore(3);
+
+        EXPECT_FALSE(std::filesystem::exists("truncateTest.1"));
+        EXPECT_FALSE(std::filesystem::exists("truncateTest.2"));
+        EXPECT_TRUE(std::filesystem::exists("truncateTest.3"));
+
+        // 경계가 활성 세그먼트를 넘어도 활성은 절대 삭제되지 않음 (clamp)
+        wal.TruncateBefore(UINT32_MAX);
+        EXPECT_TRUE(std::filesystem::exists("truncateTest.3"));
+
+        // truncate 후에도 활성 세그먼트에 이어쓰기 정상
+        WalRecordTestA rec = { 26, 26, 26, 26 };
+        wal.Write(reinterpret_cast<uint8_t*>(&rec),
+            sizeof(rec),
+            typeA);
+    }
+
+    replayCnt = 21;
+
+    {
+        Base::WAL wal(filename, 350, ApplyRecordCompare);
+    }
+
+    EXPECT_EQ(replayCnt, 27);
+
+    std::filesystem::remove("truncateTest.3");
+}

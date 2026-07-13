@@ -75,6 +75,10 @@ namespace Cache {
 				rec.data.lastLsn = lsn;
 				if (lsn > dbLSN) {
 					cache_inventory->RestoreEntry(key, rec.data);  // 캐시 Insert + dirty 마킹
+
+					std::lock_guard<std::mutex> lock(m_mutex);
+					m_unflushedInventory[key] = lsn;
+					m_segRefCnt[static_cast<uint32_t>(lsn >> 32)]++;
 				}
 			}
 			connectionPoolGame->Return(conn);
@@ -91,6 +95,8 @@ namespace Cache {
 			Core::sysLogger->LogInfo("WAL manager", "WAL manager thread started", "threadID", ss.str());
 
 			int resumeCounter = 0;
+			int truncateCounter = 0;
+
 			while (m_running.load(std::memory_order_relaxed)) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(50));
 				m_wal->Fsync();
@@ -100,7 +106,14 @@ namespace Cache {
 						resumeCounter = 0;
 					}
 				}
+
+				if (++truncateCounter >= 100) {  // 5초마다
+					UpdateTruncate();
+					truncateCounter = 0;
+				}
 			}
+
+
 			m_wal->Fsync();
 			Core::sysLogger->LogInfo("WAL manager", "WAL manager thread stopped", "threadID", ss.str());
 		}
@@ -131,6 +144,19 @@ namespace Cache {
 			if (lsn == 0)
 				m_blocked.store(true, std::memory_order_relaxed);
 			return lsn;
+		}
+		void UpdateTruncate() {
+			// 활성 segment cnt가 0인 경우도 
+			// limit이 활성 segment로 설정되어서 커버됨.
+			std::lock_guard<std::mutex> lock(m_mutex);
+			uint32_t boundary = UINT32_MAX; 
+			for (auto& [seg, cnt] : m_segRefCnt)
+				if (cnt > 0 && seg < boundary)
+					boundary = seg;
+			// 장부 청소: 경계 이전의 0-카운트 엔트리는 더 볼 일 없음
+			for (auto it = m_segRefCnt.begin(); it != m_segRefCnt.end(); )
+				it = (it->first < boundary) ? m_segRefCnt.erase(it) : std::next(it);
+			m_wal->TruncateBefore(boundary);
 		}
 		friend class Initializer;
 	public:
@@ -168,8 +194,10 @@ namespace Cache {
 				return;                    // 이미 정산됨
 			if (it->second > flushedLsn) 
 				return;					// flush 중 재수정
-			m_segRefCnt[static_cast<uint32_t>(it->second >> 32)]--;
+
+			uint32_t seg = static_cast<uint32_t>(it->second >> 32);
 			m_unflushedInventory.erase(it);
+			m_segRefCnt[seg]--;
 		}
 	};
 }

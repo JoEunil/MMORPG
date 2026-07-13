@@ -17,7 +17,7 @@
 // ================================================================
 // Cache Durability (WAL) 테스트 — 재빌드 불필요, 환경변수 2단계
 //
-//   set Durable=1                            (공통: 테스트 모드 진입)
+//   set TEST_CACHE_DRUABLE=1                            (공통: 테스트 모드 진입)
 //   1단계: set CRASH_POINT=WAL_DIRTY  -> 뮤테이션 후 flush 전 abort
 //   2단계: set CRASH_VERIFY=1 -> 복구 + 멱등성 검증
 //

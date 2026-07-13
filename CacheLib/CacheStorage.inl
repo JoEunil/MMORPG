@@ -116,13 +116,22 @@ namespace Cache {
             return;
         }
         it->second.rollbackCnt++;
+
+        if (it->second.status == CACHE_STATUS::EVICTING) {
+            // DB가 죽은 상황이면 cache에 무한히 증식되는 상황이 아니라서 rollback 자체가 문제되지는 않음.
+            it->second.status = CACHE_STATUS::AVAILABLE;
+            shard.lru_list.push_front(key);
+            shard.lru_pos[key] = shard.lru_list.begin();
+        }
+
         if (it->second.rollbackCnt >= 3) {
             Core::errorLogger->LogError("cache storage", "rollback limit exceeded", "detail", ResultToString(it->first, it->second));
-            // 데이터 삭제 없이 알림만
+            // 즉시 재시도 중단 — 데이터는 버리지 않고 dirty 재마킹으로 다음 flush 주기(최대 30초)에 위임한다.
+            shard.dirty_list.insert(key);
             return;
         }
         m_flushFn(key, it->second);
-        
+
     }
 
     template<typename Key, typename Result, typename KeyHash>

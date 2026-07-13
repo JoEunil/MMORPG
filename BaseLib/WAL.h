@@ -285,5 +285,19 @@ namespace Base {
 			dirty.store(true, std::memory_order_release);
 			return header->lsn; 
 		}
+
+		void TruncateBefore(uint32_t boundary) {
+			uint32_t limit;
+			{
+				std::lock_guard<std::mutex> lock(m_mutex);
+				limit = (boundary < m_segment) ? boundary : m_segment;
+			}
+			for (auto& [num, path] : FindSegments()) {
+				if (num < limit) {
+					std::error_code ec;
+					std::filesystem::remove(path, ec); // 실패해도 무시 — 다음 truncate가 재시도
+				}
+			}
+		}
 	};
 }
