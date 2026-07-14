@@ -29,7 +29,7 @@ namespace Cache {
     template<typename T>
     struct CacheItem {
         uint64_t lastModified;
-        CACHE_STATUS status; // 0: available, 1:evicting, 2: DB reading, 3: Empty
+        CACHE_STATUS status = EMPTY; // 0: available, 1:evicting, 2: DB reading, 3: Empty
         uint8_t rollbackCnt = 0;
         T data;
     };
