@@ -180,9 +180,10 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 | CoreLib | chat thread | CPU-bound (작업량 증가 시) |
 | CoreLib | broadcast thread pool | CPU-bound (작업량 증가 시) |
 | CoreLib | perf collector | IO-bound (Logger) |
-| CoreLib | NoneZoneThreadPool, memory queue | - |
+| CoreLib | NoneZoneThreadPool, MQ worker | - |
 | CacheLib | DB Worker | IO-bound |
-| CacheLib | flush dispatcher, cache flush, memory queue | - |
+| CacheLib | flush dispatcher, cache flush, MQ worker | - |
+| CacheLib | WALManager(fsync) | IO-bound |
 | ExternalLib | session thread (event 루프 기반) | IO-bound |
 
 > 성격이 표시되지 않은 스레드들은 작업 빈도와 CPU 소모가 낮아 CPU-bound / IO-bound로 분류하지 않았다.
