@@ -58,7 +58,7 @@ namespace Core {
         p_st->body.hp = body->hp;
         p_st->body.mp = body->mp;
         p_st->body.maxHp = body->maxHp;
-        p_st->body.maxMp = body->maxHp;
+        p_st->body.maxMp = body->maxMp;
         p_st->body.attack = body->attack;
         p_st->body.exp = body->exp;
         p_st->body.level = body->level;

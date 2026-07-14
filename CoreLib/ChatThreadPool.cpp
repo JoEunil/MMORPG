@@ -81,7 +81,7 @@ namespace Core {
         {
         case CHAT_SCOPE::Zone: {
             uint16_t zoneID = key.id;
-            if (zoneID == 0 || zoneID > ZONE_COUNT + 1)
+            if (zoneID == 0 || zoneID > ZONE_COUNT)
                 return;
             for (auto& session : m_zoneMembers[zoneID-1])
             {
@@ -168,6 +168,8 @@ namespace Core {
         m_sessionChatIdMap.erase(it);
     }
     void ChatThreadPool::ProcessZoneJoin(uint64_t sessionID, uint16_t zoneID) {
+        if (zoneID == 0 || zoneID > ZONE_COUNT)
+            return;
         auto it = m_zoneMembers[zoneID-1].find(sessionID);
         if (it != m_zoneMembers[zoneID-1].end()) {
             errorLogger->LogInfo("chat thread", "session already exist in zone", "session", sessionID, "zoneID", zoneID);
@@ -176,6 +178,8 @@ namespace Core {
         m_zoneMembers[zoneID-1].insert(sessionID);
     }
     void ChatThreadPool::ProcessZoneLeave(uint64_t sessionID, uint16_t zoneID) {
+        if (zoneID == 0 || zoneID > ZONE_COUNT)
+            return;
         auto it = m_zoneMembers[zoneID-1].find(sessionID);
         if (it == m_zoneMembers[zoneID-1].end()) {
             errorLogger->LogInfo("chat thread", "session doesn't exist", "session", sessionID, "zoneID", zoneID);
