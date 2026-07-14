@@ -21,6 +21,7 @@ namespace Cache {
                 st->body.resStatus = 0;
                 msg->SetLength(sizeof(Core::MsgStruct<Core::MsgDiamondResBody>));
                 messageQ->EnqueueMessage(msg);
+                messagePool->Return(msg);
                 Core::gameLogger->LogInfo("cache handler diamond", "diamond read failed", "sessionID", sessionID, "char_id", body->characterID);
                 return;
             }
@@ -49,6 +50,7 @@ namespace Cache {
                 st->body.resStatus = 0;
                 msg->SetLength(sizeof(Core::MsgStruct<Core::MsgDiamondDepositResBody>));
                 messageQ->EnqueueMessage(msg);
+                messagePool->Return(msg);
                 Core::gameLogger->LogInfo("cache handler diamond", "diamond deposit failed", "sessionID", sessionID, "char_id", body->characterID);
                 return;
             }
@@ -58,6 +60,7 @@ namespace Cache {
                 st->body.resStatus = 2;
                 msg->SetLength(sizeof(Core::MsgStruct<Core::MsgDiamondDepositResBody>));
                 messageQ->EnqueueMessage(msg);
+                messagePool->Return(msg);
                 return;
             }
 
