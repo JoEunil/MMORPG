@@ -224,7 +224,8 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 | 100명 | ✅ 성공 | 메모리 풀 안정성 및 Zone TPS(19~21) 유지 검증 |
 | 1,000명 | ❌ 실패 | 더미 클라이언트 단일 스레드 IO 병목 → TCP 수신 버퍼 초과로 소켓 종료. Wireshark(ZeroWindow) 분석으로 서버가 아닌 클라이언트 측 병목임을 확인 |
 | 2,000명 | ✅ 성공 | 더미 클라이언트 IO 스레드풀 적용, Zone 스레드 물리 코어 고정, 서버 스레드 우선순위 제거로 starvation 해소 |
-| 4,000명 | ❌ 실패 | 하드웨어 한계로 freeze 발생 |
+| 3 ~ 4,000명 | ❌ 실패 | 클라이언트 입력 지연 발생  |
+| 5,000명 | ❌ 실패 | 하드웨어 한계로 freeze 발생 |
 
 - [모니터링](Monitoring.md) — Grafana + Loki + Promtail 조합으로 서버 성능 지표(TPS, 풀 사용량, 처리량 등)를 실시간 시각화
 - [더미 테스트](DummyTest.md) — 100명 / 1,000명 테스트 및 실패 원인 분석 (Wireshark 검증)
