@@ -151,12 +151,13 @@ stored procedure 40회 호출 중 3회만 slow query로 기록되었으며, 이�
 | 기본 기능 (1~5) | 통과 | Test4에 배송·중복 방어(dedup), Test5에 buyer 재접속 수령 포함 |
 | Crash 시나리오 (6) | 통과 | DELIVER: 재배송으로 유실 없음 / CLAIM: dedup 스킵으로 중복 없음 — exactly-once 수렴 |
 | 경합 상황 (7) | 통과 | 정합성 검증 — 중복 구매 없음 |
-| lock contention (8) | 통과 | 단일 listing 40 동시 요청 — lock_waits: 2회, lock_time_avg: 2ms |
+| lock contention (8) | 통과 | 단일 listing 40 동시 요청 — lock_waits: 14회, lock_time_avg: 1ms |
 
-__lock contention이 미미한 이유__
-테스트 환경에서 요청 타이밍을 정확히 일치시킬 수 없어 실제 동시 경합이 제한적이었다.  
-또한 stored procedure로 트랜잭션이 DB 내부에서 완결되어 lock holding time이 최소화된다.  
-프로시저는 SELECT FOR UPDATE 없이 CAS 패턴(UPDATE WHERE status = 'TRADING')으로 경합을 처리하므로, 경합 지점이 bazaar 테이블의 단일 UPDATE로 한정되고 실패한 트랜잭션은 즉시 rollback된다.  
+__lock_waits는 발생했지만 lock_time은 짧았던 이유__
+40건의 동시 요청 중 14건이 실제로 락 대기를 겪었으므로 경합 자체는 발생했다. 다만 대기 시간은 평균 1ms로 매우 짧았는데, 그 이유는 다음과 같다.  
+- 테스트 환경에서 요청 타이밍을 정확히 일치시킬 수 없어, 14건 각각의 대기가 다수 요청이 동시에 몰린 것이 아니라 소수 요청끼리 겹친 수준에 그쳤다.
+- stored procedure로 트랜잭션이 DB 내부에서 완결되어 lock holding time 자체가 짧다.
+- 프로시저는 SELECT FOR UPDATE 없이 CAS 패턴(UPDATE WHERE status = 'TRADING')으로 경합을 처리하므로, 경합 지점이 bazaar 테이블의 단일 UPDATE로 한정되고 실패한 트랜잭션은 즉시 rollback된다.
 
 ## 6. 참고
 
