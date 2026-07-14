@@ -48,8 +48,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 		images\2000_CPU.png = images\2000_CPU.png
 		images\2000_grafana.png = images\2000_grafana.png
 		images\2000_grafana_latest.png = images\2000_grafana_latest.png
-		images\3000_CPU.png = images\3000_CPU.png
 		images\3000_before_remove_priority.png = images\3000_before_remove_priority.png
+		images\3000_CPU.png = images\3000_CPU.png
 		images\3000_grafana.png = images\3000_grafana.png
 		images\4000_CPU.png = images\4000_CPU.png
 		images\4000_grafana.png = images\4000_grafana.png
@@ -131,6 +131,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Refactor", "Refactor", "{FB
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SystemDesign", "SystemDesign", "{6C9964E0-7303-46E2-ABEB-A2CD3EBE4D43}"
 	ProjectSection(SolutionItems) = preProject
+		CacheDurabilityTest.md = CacheDurabilityTest.md
 		CacheLib.md = CacheLib.md
 		CacheLib_ACID.md = CacheLib_ACID.md
 		CacheLib_Test.md = CacheLib_Test.md
@@ -141,6 +142,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SystemDesign", "SystemDesig
 		PingLoop.md = PingLoop.md
 		Snapshot.md = Snapshot.md
 		Tick.md = Tick.md
+		WAL.md = WAL.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ContentsDesign", "ContentsDesign", "{C60890E3-6BC0-444C-8B3B-3846C03E623B}"

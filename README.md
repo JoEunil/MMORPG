@@ -20,7 +20,7 @@ C++ 기반 TCP Stateful MMORPG 게임 서버 — 개인 프로젝트 (개발 기
 ## 프로젝트 개요
 
 게임 서버의 핵심 문제인 **대규모 동시 접속 처리**와 **실시간 동기화**를 직접 해결하는 것을 목표로,  
-IOCP 비동기 IO, Lock-Free Queue, In-Process Write-Back Cache 등 핵심 컴포넌트를 직접 구현했다.  
+IOCP 비동기 IO, Lock-Free Queue, WAL 기반 장애 복구를 포함한 In-Process Write-Back Cache 등 핵심 컴포넌트를 직접 구현했다.  
 게임 로직은 Zone Tick 기반 게임 루프, Grid AOI, Full/Delta Snapshot 동기화로 실시간 처리를 구현했다.  
 
 **구현 콘텐츠**
@@ -29,8 +29,8 @@ IOCP 비동기 IO, Lock-Free Queue, In-Process Write-Back Cache 등 핵심 컴�
 
 **검증**
 - 핵심 컴포넌트 Google Test 단위 테스트
-  (LockFreeQueue, TripleBuffer, RingBuffer, RingQueue, FixedObjectPool, PacketView, NetTimer — 동시성 테스트 포함)
-- Cache / 거래소 통합 테스트 (DB fetch, LRU eviction, Crash 시나리오, 동시 구매 경합)
+  (LockFreeQueue, TripleBuffer, RingBuffer, RingQueue, FixedObjectPool, PacketView, NetTimer, WAL — 동시성 테스트 포함)
+- Cache / 거래소 통합 테스트 (DB fetch, LRU eviction, WAL Crash 복구, 거래소 Crash 시나리오, 동시 구매 경합)
 - Unity 클라이언트 연동 및 기본 기능 테스트
 - 더미 클라이언트 부하 테스트
   → **i3-12100F 4코어 단일 PC 환경에서 2,000명 동시 접속 달성**
@@ -46,7 +46,7 @@ IOCP 비동기 IO, Lock-Free Queue, In-Process Write-Back Cache 등 핵심 컴�
 __게임 서버 (C++)__
 - 네트워크: IOCP 비동기 IO, 커스텀 바이너리 프로토콜, RingBuffer 패킷 조립
 - 동시성: Vyukov's Lock-free Queue, Triple Buffer, Sharded Mutex
-- 캐시: In-Process Write-Back Cache (Shard, LRU eviction, ACID 설계)
+- 캐시:In-Process Write-Back Cache (Shard, LRU eviction, WAL 기반 장애 복구, ACID 설계)
 - 게임 로직: Zone Tick, Cell 기반 AOI, Snapshot Delta 동기화
 - 안정성: Ping 좀비 세션 탐지, Flood Detection
 
@@ -157,12 +157,13 @@ Lock-Free 자료구조와 Zone 기반 멀티스레드 아키텍처로 동시성�
 ### 5. 캐시 및 DB 설계
 
 접근 빈도가 높은 인벤토리 데이터를 대상으로 In-Process 메모리 캐시를 직접 구현했다.
-Write-Back 전략을 채택하여 DB IO 부하를 줄이고, 캐시 동작 전반에 걸쳐 ACID를 고려한 설계를 적용했다.  
+Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush 이전 장애에서도 Dirty 데이터를 복구할 수 있도록 설계했다. 
 또한 거래소가 game / bazaar DB 경계를 넘는 부분은 **Saga(등록)·Outbox/Inbox(배송)** 로 cross-DB 정합성을 보장하고, 아이템·재화의 중요도에 따라 durability를 차등 적용했다.  
 
 - [Cache](CacheLib.md): 캐시 배치 전략, Write-Back/Read-Through 동작 흐름, 구조 설계
 - [Cache ACID](CacheLib_ACID.md): 캐시 상태값 도입 및 ACID 보장 설계
-- [Cache UnitTest](CacheLib_Test.md): DB fetch, cache hit/miss, flush, LRU eviction 동작 검증
+- [Cache Integration Test](CacheLib_Test.md): DB fetch, cache hit/miss, flush, LRU eviction 동작 검증
+- [WAL](WAL.md): Write-Ahead Log 구조, Replay, Truncate, 장애 복구 설계
 - [DB](DB.md): DB 분리, 수직 파티셔닝, 복합 인덱스, View, Saga, Outbox/Inbox
 
 ## 스레드 모델
@@ -186,6 +187,9 @@ Write-Back 전략을 채택하여 DB IO 부하를 줄이고, 캐시 동작 전�
 
 > 성격이 표시되지 않은 스레드들은 작업 빈도와 CPU 소모가 낮아 CPU-bound / IO-bound로 분류하지 않았다.
 
+현재는 단일 프로세스에서 모든 스레드가 실행되므로 CPU-bound 작업(Zone, Broadcast 등)과 IO-bound 작업(DB, Logger, Session 등)이 동일한 프로세스 자원을 공유한다.   
+서비스 규모가 커질수록 스레드 수와 CPU 자원 배분 기준이 모호해지고, 서로 다른 특성의 작업이 커널 스케줄러와 메모리 자원을 경쟁하게 되어 수직 확장에 한계가 발생한다.  
+
 ## 테스트
 
 ### 단위 테스트 (Google Test)
@@ -202,10 +206,12 @@ Write-Back 전략을 채택하여 DB IO 부하를 줄이고, 캐시 동작 전�
 | FixedObjectPool | 할당/반납 정합성, 고갈 시 실패 반환, 멀티스레드 안전성 |
 | PacketView | Setter/Getter, 소유 버퍼 반환(Release), 버퍼 병합(JoinBuffer) |
 | NetTimer | 타이머 지연 및 정지 동작 |
+| WAL | Replay, Segment Rotation, CRC 복구, 깨진 데이터 대응, multi type 처리, Truncate(경계 삭제·활성 세그먼트 보존) |
 
 ### 통합 테스트
 
-- [Cache 단위/통합 테스트](CacheLib_Test.md) — DB fetch, cache hit/miss, flush, LRU eviction 검증
+- [Cache 통합 테스트](CacheLib_Test.md) — DB fetch, cache hit/miss, flush, LRU eviction 검증
+- [Cache 영속성 테스트](CacheDurabilityTest.md) — Crash 복구, WAL Replay, Replay 멱등성, Flush 이전 장애 복구
 - [거래소 시스템 테스트](BazaarTest.md) — Crash 시나리오, 동시 구매 경합, lock contention 관측
 
 ### 부하 테스트
@@ -383,6 +389,8 @@ DB → Redis → 로그인 서버 → 게임 서버
 - [캐시 설계](CacheLib.md)
 - [캐시 ACID 설계](CacheLib_ACID.md)
 - [캐시 단위 테스트](CacheLib_Test.md)
+- [WAL](WAL.md)
+- [Cache Durability Test](CacheDurabilityTest.md)
 - [DB 설계](DB.md)
 - [IOCP Send 파이프라인](IOCPSendPipeline.md)
 - [거래소 시스템](Bazaar.md)

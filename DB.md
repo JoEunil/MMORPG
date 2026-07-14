@@ -71,6 +71,8 @@
 
 > 배송의 Write-ahead 기록은 별도 로그 파일이 아니라 **Outbox 행 자체**이다.  
 > DB의 자체 redo log가 각 INSERT/UPDATE의 durability를 보장한다.  
+>
+> 이 문서의 "Write-ahead"는 **MySQL 엔진 자체의 redo log**를 가리킨다. Game DB 인벤토리 캐시가 자체적으로 갖는 앱 레벨 WAL(별도 로그 파일 + LSN + Replay)은 이와 별개 메커니즘이며 [WAL.md](WAL.md)에서 다룬다.
 
 ### 동시성 제어 — CAS + 비관적 잠금
 
