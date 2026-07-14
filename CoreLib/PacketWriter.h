@@ -47,6 +47,7 @@ namespace Core {
             auto p_st = reinterpret_cast<PacketStruct<DeltaSnapshotBody>*>(p->GetBuffer());
             p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
             p->SetLength(p_st->header.length);
+            p_st->header.magic = MAGIC;
             p_st->header.opcode = OP::ZONE_DELTA_UPDATE_BROADCAST;
             p_st->header.flags = 0x00;
             p_st->header.flags |= FLAG_SIMULATION;
@@ -78,6 +79,7 @@ namespace Core {
             auto p_st = reinterpret_cast<PacketStruct<MonsterDeltaSnapshotBody>*>(p->GetBuffer());
             p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
             p->SetLength(p_st->header.length);
+            p_st->header.magic = MAGIC;
             p_st->header.opcode = OP::MONSTER_DELTA_UPDATE_BROADCAST;
             p_st->header.flags = 0x00;
             p_st->header.flags |= FLAG_SIMULATION;
@@ -131,6 +133,7 @@ namespace Core {
             }
             auto p_st = reinterpret_cast<PacketStruct<Ping>*>(p->GetBuffer());
             p_st->header.length = sizeof(PacketHeader) + sizeof(Ping);
+            p_st->header.magic = MAGIC;
             p_st->header.opcode = OP::PING;
             p_st->header.flags = 0x00;
             p_st->body.serverTimeMs = static_cast<uint64_t>(nowMs);
