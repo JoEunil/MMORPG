@@ -2,7 +2,6 @@
 #include "StateManager.h"
 #include "Initializer.h"
 #include "ChatThreadPool.h"
-#include <iostream>
 
 namespace Core {
     void StateManager::CleanUp() {

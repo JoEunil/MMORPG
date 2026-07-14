@@ -137,7 +137,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Exeption.h" />
+    <ClInclude Include="Exception.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="LockFreeQueue.h" />
     <ClInclude Include="LockFreeQueueSP.h" />

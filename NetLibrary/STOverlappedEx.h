@@ -21,7 +21,7 @@ namespace Net {
         int sentBytes;
         SOCKET          clientSocket;     // 클라이언트 소켓
         std::vector<WSABUF> wsaBuf;           // 버퍼 정보를 담는 구조체,
-        std::vector<WSABUF> origianlBufs;    // 최초의 Send 시점의 Buffer, Partial Send 처리에 사용. 
+        std::vector<WSABUF> originalBufs;    // 최초의 Send 시점의 Buffer, Partial Send 처리에 사용. 
         //버퍼 크기와 버퍼 포인터를 담고 있음, 버퍼 관리는 send는 PacketPool, recv는 ClientContext에서
 
         IOOperation op;
@@ -31,7 +31,7 @@ namespace Net {
 
         STOverlappedEx() {
             wsaBuf.reserve(9);
-            origianlBufs.reserve(9);
+            originalBufs.reserve(9);
             packetChunks.reserve(9);
         }
     };

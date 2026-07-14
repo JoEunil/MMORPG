@@ -461,7 +461,7 @@ namespace Net {
         ZeroMemory(&pOverlappedEx->wsaOverlapped, sizeof(WSAOVERLAPPED));
         pOverlappedEx->totalBytes = 0;
         pOverlappedEx->sentBytes = 0;
-        pOverlappedEx->origianlBufs = pOverlappedEx->wsaBuf;
+        pOverlappedEx->originalBufs = pOverlappedEx->wsaBuf;
         for (auto& buf : pOverlappedEx->wsaBuf)
             pOverlappedEx->totalBytes += buf.len;
         int result = WSASend(pOverlappedEx->clientSocket, pOverlappedEx->wsaBuf.data(), (DWORD)pOverlappedEx->wsaBuf.size(), 0, 0, &pOverlappedEx->wsaOverlapped, NULL);
@@ -480,7 +480,7 @@ namespace Net {
         ZeroMemory(&pOverlappedEx->wsaOverlapped, sizeof(WSAOVERLAPPED));
         int remain = pOverlappedEx->sentBytes;
         pOverlappedEx->wsaBuf.clear();
-        for (auto& buf : pOverlappedEx->origianlBufs)
+        for (auto& buf : pOverlappedEx->originalBufs)
         {
             if (remain >= buf.len)
             {

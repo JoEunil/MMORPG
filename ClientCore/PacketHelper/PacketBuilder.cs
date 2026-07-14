@@ -22,7 +22,7 @@ namespace ClientCore.PacketHelper
 
             var header = new PacketHeader
             {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,  // Serialize에서 계산
                 opcode = (byte)OP_CODE.AUTH,
                 flags = 0x00,
@@ -39,7 +39,7 @@ namespace ClientCore.PacketHelper
         internal static byte[] CreateChatPacket(string message, byte scope, ulong targetID)
         {
             var header = new PacketHeader {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,  // Serialize에서 계산
                 opcode = (byte)OP_CODE.CHAT,
                 flags = 0x00, 
@@ -54,7 +54,7 @@ namespace ClientCore.PacketHelper
             var body = new ZoneChangeBody { op = op };
             var header = new PacketHeader
             {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,
                 opcode = (byte)OP_CODE.ZONE_CHANGE,
                 flags = 0x00
@@ -80,7 +80,7 @@ namespace ClientCore.PacketHelper
 
             var header = new PacketHeader
             {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,
                 opcode = (byte)OP_CODE.ACTION,
                 flags = 0x00,
@@ -100,7 +100,7 @@ namespace ClientCore.PacketHelper
         {
             var header = new PacketHeader
             {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,
                 opcode = (byte)OP_CODE.CHARACTER_LIST,
                 flags = 0x00,
@@ -118,7 +118,7 @@ namespace ClientCore.PacketHelper
 
             var header = new PacketHeader
             {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,
                 opcode = (byte)OP_CODE.ENTER_WORLD,
                 flags = 0x00,
@@ -137,7 +137,7 @@ namespace ClientCore.PacketHelper
         {
             var header = new PacketHeader
             {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,
                 opcode = (byte)OP_CODE.INVENTORY_REQ,
                 flags = 0x00,
@@ -148,7 +148,7 @@ namespace ClientCore.PacketHelper
         {
             var header = new PacketHeader
             {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,
                 opcode = (byte)OP_CODE.PONG,
                 flags = 0x00,

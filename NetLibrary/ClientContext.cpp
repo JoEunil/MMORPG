@@ -32,7 +32,7 @@ namespace Net {
             h = reinterpret_cast<Core::PacketHeader*>(&tempBuffer);
             if (h->magic != Core::MAGIC)
             {
-                Core::gameLogger->LogWarn("context", "1 packet Magic invalid in header parsing", "session", m_sessionID, "magic", h->magic, "packetLen", h->length, "opcde", h->opcode, "m_front", m_front, "m_rear", m_rear, "GetLen()", GetLen());
+                Core::gameLogger->LogWarn("context", "1 packet Magic invalid in header parsing", "session", m_sessionID, "magic", h->magic, "packetLen", h->length, "opcode", h->opcode, "m_front", m_front, "m_rear", m_rear, "GetLen()", GetLen());
             }
         }
         else {
@@ -40,7 +40,7 @@ namespace Net {
             h = reinterpret_cast<Core::PacketHeader*>(bufferPtr);
             if (h->magic != Core::MAGIC)
             {
-                Core::gameLogger->LogWarn("context", "2 packet Magic invalid in header parsing", "session", m_sessionID, "magic", h->magic, "packetLen", h->length, "opcde", h->opcode, "m_front", m_front, "m_rear", m_rear, "GetLen()", GetLen());
+                Core::gameLogger->LogWarn("context", "2 packet Magic invalid in header parsing", "session", m_sessionID, "magic", h->magic, "packetLen", h->length, "opcode", h->opcode, "m_front", m_front, "m_rear", m_rear, "GetLen()", GetLen());
 			}
         }
         // header가 wrap오버구간인 경우 처리
@@ -55,14 +55,14 @@ namespace Net {
 
         if (magic != Core::MAGIC)
         {
-            Core::gameLogger->LogWarn("context", "packet Magic invalid", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcde", opcode, "m_front", m_front, "m_rear", m_rear, "GetLen()", GetLen());
+            Core::gameLogger->LogWarn("context", "packet Magic invalid", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcode", opcode, "m_front", m_front, "m_rear", m_rear, "GetLen()", GetLen());
             m_gameSession.store(false, std::memory_order_release);
             return false;
         }
 
         if (opcode == 0 or opcode > Core::MAX_DEFINED_OPCODE)
         {
-            Core::gameLogger->LogWarn("context", "undefined opcode", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcde", opcode, "m_front", m_front, "GetLen()", GetLen());
+            Core::gameLogger->LogWarn("context", "undefined opcode", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcode", opcode, "m_front", m_front, "GetLen()", GetLen());
             m_gameSession.store(false, std::memory_order_release);
             return false;
         }

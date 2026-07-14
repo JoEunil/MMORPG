@@ -17,7 +17,6 @@
 #include "IPacket.h"
 #include "IIOCP.h"
 #include "PacketTypes.h"
-#include <iostream>
 
 namespace Core {
     struct SessionData {

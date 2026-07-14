@@ -1,7 +1,6 @@
 ﻿#include "InMemoryQueue.h"
 #include "Handler.h"
 #include "MessagePool.h"
-#include <iostream>
 
 namespace Cache {
     void InMemoryQueue::ThreadFunc() {

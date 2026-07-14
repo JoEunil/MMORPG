@@ -6,7 +6,7 @@
 #include <new>
 #include <memory>
 
-#include "Exeption.h"
+#include "Exception.h"
 
 namespace Base {
 

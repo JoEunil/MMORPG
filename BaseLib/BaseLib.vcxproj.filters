@@ -27,7 +27,7 @@
     <ClInclude Include="LockFreeQueue.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Exeption.h">
+    <ClInclude Include="Exception.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="RingQueue.h">

@@ -118,7 +118,6 @@ namespace Core {
     void NoneZoneHandler::GetCharacterState(IPacketView* p) {
         Message* msg = messagePool->Acquire();
         if (msg == nullptr) {
-            p = nullptr;
             return;
         }
         MsgStruct<MsgCharacterStateReqBody>* st = reinterpret_cast<MsgStruct<MsgCharacterStateReqBody>*>(msg->GetBuffer());
@@ -143,7 +142,6 @@ namespace Core {
         
         Message* msg = messagePool->Acquire();
         if (msg == nullptr) {
-            p = nullptr;
             return;
         }
         MsgStruct<MsgInventoryReqBody>* st = reinterpret_cast<MsgStruct<MsgInventoryReqBody>*>(msg->GetBuffer());

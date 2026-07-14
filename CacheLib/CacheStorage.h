@@ -10,7 +10,6 @@
 #include <chrono>
 #include <functional>
 #include <deque>
-#include <iostream>
 
 #include <mysqlconn/include/mysql/jdbc.h>
 #include "DBConnectionGame.h"

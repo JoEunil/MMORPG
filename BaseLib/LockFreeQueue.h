@@ -5,11 +5,11 @@
 #include <cassert>
 #include <new>
 
-#include "Exeption.h"
+#include "Exception.h"
 
 namespace Base {
 	// Dmitry Vyukov의 lock free queue 
-	// MPMC(multi produce multi condition)에서 race condition 해결한 방법
+	// MPMC(multi produce multi consumer)에서 race condition 해결한 방법
 	// 각 Slot에 번호(seq)를 매기고 상태 표현 → seq가 유일한 상태 값이 되어 race condition이 발생하지 않음.
 	// back-off 정책은 호출자에서 구현. 
 
