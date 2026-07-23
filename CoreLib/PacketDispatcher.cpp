@@ -20,10 +20,10 @@ namespace Core {
             }
             zoneThreadSet->EnqueueWork(std::move(pv), zoneID);
         } else {
-            noneZoneThreadPool->EnqueueWork(std::move(pv));
+            nonZoneThreadPool->EnqueueWork(std::move(pv));
         }
     }
     void PacketDispatcher::Disconnect(uint64_t sessionID) {
-        noneZoneThreadPool->EnqueueDisconnect(sessionID);
+        nonZoneThreadPool->EnqueueDisconnect(sessionID);
     }
 }

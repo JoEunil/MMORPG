@@ -96,10 +96,10 @@
     <ClInclude Include="PacketDispatcher.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="NoneZoneHandler.h">
+    <ClInclude Include="NonZoneHandler.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="NoneZoneThreadPool.h">
+    <ClInclude Include="NonZoneThreadPool.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="IPacketDispatcher.h">
@@ -167,10 +167,10 @@
     <ClCompile Include="PacketDispatcher.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="NoneZoneHandler.cpp">
+    <ClCompile Include="NonZoneHandler.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="NoneZoneThreadPool.cpp">
+    <ClCompile Include="NonZoneThreadPool.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="BroadcastThreadPool.cpp">
@@ -201,4 +201,4 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
-</Project>
+</Project>

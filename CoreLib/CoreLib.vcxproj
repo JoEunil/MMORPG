@@ -147,8 +147,8 @@
     <ClInclude Include="LoggerGlobal.h" />
     <ClInclude Include="MonsterData.h" />
     <ClInclude Include="MonsterState.h" />
-    <ClInclude Include="NoneZoneHandler.h" />
-    <ClInclude Include="NoneZoneThreadPool.h" />
+    <ClInclude Include="NonZoneHandler.h" />
+    <ClInclude Include="NonZoneThreadPool.h" />
     <ClInclude Include="BroadcastThreadPool.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="IIOCP.h" />
@@ -179,8 +179,8 @@
   <ItemGroup>
     <ClCompile Include="ChatThreadPool.cpp" />
     <ClCompile Include="LoggerGlobal.cpp" />
-    <ClCompile Include="NoneZoneHandler.cpp" />
-    <ClCompile Include="NoneZoneThreadPool.cpp" />
+    <ClCompile Include="NonZoneHandler.cpp" />
+    <ClCompile Include="NonZoneThreadPool.cpp" />
     <ClCompile Include="BroadcastThreadPool.cpp" />
     <ClCompile Include="PacketDispatcher.cpp" />
     <ClCompile Include="SkillData.cpp" />
@@ -216,4 +216,4 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-</Project>
+</Project>

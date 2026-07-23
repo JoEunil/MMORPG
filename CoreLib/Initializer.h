@@ -13,8 +13,8 @@
 #include "BroadcastThreadPool.h"
 #include "ZoneHandler.h"
 #include "ZoneThreadSet.h"
-#include "NoneZoneHandler.h"
-#include "NoneZoneThreadPool.h"
+#include "NonZoneHandler.h"
+#include "NonZoneThreadPool.h"
 #include "PacketDispatcher.h"
 #include "LobbyZone.h"
 #include "IPingPacketWriter.h"
@@ -32,8 +32,8 @@ namespace Core {
         BroadcastThreadPool broadcastPool;
         ZoneHandler zoneHandler;
         ZoneThreadSet zoneThreadSet;
-        NoneZoneHandler noneZoneHandler;
-        NoneZoneThreadPool noneZoneThreadPool;
+        NonZoneHandler nonZoneHandler;
+        NonZoneThreadPool nonZoneThreadPool;
         PacketDispatcher packetDispatcher;
         LobbyZone lobbyZone;
         ChatThreadPool chat;
@@ -51,7 +51,7 @@ namespace Core {
             perfCollector.Initialize();
             broadcastPool.Initialize(iocp, &stateManager, &perfCollector, &writer);
             lobbyZone.Initialize(& stateManager);
-            noneZoneThreadPool.Initialize( &noneZoneHandler);
+            nonZoneThreadPool.Initialize( &nonZoneHandler);
             zoneThreadSet.Initialize(&zoneHandler, &perfCollector);
             writer.Initialize(packetPool, bigPacketPool);
             mqHandler.Initialize(iocp, &writer, &lobbyZone, &msgPool);
@@ -62,12 +62,12 @@ namespace Core {
         
         void InjectDependencies2(IIOCP* iocp, ISessionAuth* session, IMessageQueue* sendMQ, IPacketPool* packetPool) {
             stateManager.Initialize(sendMQ, iocp, &msgPool, &lobbyZone, &chat);
-            packetDispatcher.Initialize(&noneZoneThreadPool, &zoneThreadSet, &stateManager, static_cast<IPingPacketWriter*>(&writer), iocp);
-            noneZoneThreadPool.Start();
+            packetDispatcher.Initialize(&nonZoneThreadPool, &zoneThreadSet, &stateManager, static_cast<IPingPacketWriter*>(&writer), iocp);
+            nonZoneThreadPool.Start();
             broadcastPool.Start();
             ZoneState::Initialize(&broadcastPool, &writer, &stateManager, &perfCollector);
             zoneHandler.Initialize(&stateManager);
-            noneZoneHandler.Initialize(iocp, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone, &chat);
+            nonZoneHandler.Initialize(iocp, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone, &chat);
             zoneThreadSet.Start();
             chat.Start();
             perfCollector.Start();

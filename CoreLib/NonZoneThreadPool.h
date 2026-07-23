@@ -3,7 +3,7 @@
 #include <thread>
 #include <queue>
 #include <condition_variable>
-#include "NoneZoneHandler.h"
+#include "NonZoneHandler.h"
 #include "IPacketView.h"
 #include "Config.h"
 #include <BaseLib/LockFreeQueue.h>
@@ -11,21 +11,21 @@
 #include "LoggerGlobal.h"
 namespace Core {
     // 게임틱 단위로 처리되지 않는 (zone 상태와 관련 없는) 요청 처리
-    class NoneZoneThreadPool {
+    class NonZoneThreadPool {
         std::vector<std::thread> m_threads;
-        Base::LockFreeQueueUP<std::unique_ptr<IPacketView, PacketViewDeleter>, NONE_ZONE_QUEUE_SIZE> m_workQueue;
+        Base::LockFreeQueueUP<std::unique_ptr<IPacketView, PacketViewDeleter>, NON_ZONE_QUEUE_SIZE> m_workQueue;
         Base::LockFreeQueue<uint64_t, DISCONNECT_QUEUE_SIZE> m_disconnectQueue;
 
         std::atomic<bool> m_running = false;
         
-        NoneZoneHandler* handler;
-        void Initialize(NoneZoneHandler* h) {
+        NonZoneHandler* handler;
+        void Initialize(NonZoneHandler* h) {
             handler = h;
         }
         void Start();
         void Stop();
         bool IsReady() {
-            if (m_threads.size() != NONE_ZONE_THREADPOOL_SIZE) {
+            if (m_threads.size() != NON_ZONE_THREADPOOL_SIZE) {
                 sysLogger->LogError("none zone thread", "m_threads not initialized");
                 return false;
             }
@@ -38,7 +38,7 @@ namespace Core {
         void WorkFunc();
         friend class Initializer;
     public:
-        ~NoneZoneThreadPool() {
+        ~NonZoneThreadPool() {
             Stop();
         }
         void EnqueueWork(std::unique_ptr<IPacketView, PacketViewDeleter> pv);

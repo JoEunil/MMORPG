@@ -1,34 +1,34 @@
 ﻿#include "pch.h"
-#include "NoneZoneThreadPool.h"
+#include "NonZoneThreadPool.h"
 #include "IPacketView.h"
 
 
 namespace Core {
-    void NoneZoneThreadPool::Start() {
+    void NonZoneThreadPool::Start() {
         m_running.store(true, std::memory_order_relaxed);
 
-        m_threads.resize(NONE_ZONE_THREADPOOL_SIZE);
-        for (int i = 0; i < NONE_ZONE_THREADPOOL_SIZE; i++)
+        m_threads.resize(NON_ZONE_THREADPOOL_SIZE);
+        for (int i = 0; i < NON_ZONE_THREADPOOL_SIZE; i++)
         {
-            m_threads[i] = std::thread(&NoneZoneThreadPool::WorkFunc, this);
+            m_threads[i] = std::thread(&NonZoneThreadPool::WorkFunc, this);
         }
     }
 
-    void NoneZoneThreadPool::Stop() {
+    void NonZoneThreadPool::Stop() {
         m_running.store(false, std::memory_order_relaxed);
         for (auto& t : m_threads)
         {
             if (t.joinable())
                 t.join();
         }
-        sysLogger->LogInfo("none zone thread", "none zone thread stopped");
+        sysLogger->LogInfo("non zone thread", "non zone thread stopped");
     }
 
-    void NoneZoneThreadPool::WorkFunc() {
+    void NonZoneThreadPool::WorkFunc() {
         auto tid = std::this_thread::get_id();
         std::stringstream ss;
         ss << tid;
-        sysLogger->LogInfo("none zone thread", "none zone thread started", "threadID", ss.str());
+        sysLogger->LogInfo("non zone thread", "non zone thread started", "threadID", ss.str());
         while (m_running.load(std::memory_order_relaxed))
         {
             bool empty = true;
@@ -45,11 +45,11 @@ namespace Core {
         }
     }
 
-    void NoneZoneThreadPool::EnqueueWork(std::unique_ptr<IPacketView, PacketViewDeleter> pv)  {
+    void NonZoneThreadPool::EnqueueWork(std::unique_ptr<IPacketView, PacketViewDeleter> pv)  {
         m_workQueue.push(std::move(pv));
     }
 
-    void NoneZoneThreadPool::EnqueueDisconnect(uint64_t sessionID) {
+    void NonZoneThreadPool::EnqueueDisconnect(uint64_t sessionID) {
         m_disconnectQueue.push(sessionID);
     }
 }

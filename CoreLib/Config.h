@@ -21,7 +21,7 @@ namespace Core {
 
     inline constexpr uint16_t MAX_INVENTORY_ITEMS = 10;
     inline constexpr uint8_t BROADCAST_THREADPOOL_SIZE = 6;
-    inline constexpr uint16_t NONE_ZONE_THREADPOOL_SIZE = 3;
+    inline constexpr uint16_t NON_ZONE_THREADPOOL_SIZE = 3;
     
     inline constexpr uint16_t SHARD_SIZE = 8; // stateManager의 session - zone 매핑 샤드, 접근하는 스레드풀 크기의 2~4배 정도
     inline constexpr uint16_t SHARD_SIZE_MASK = SHARD_SIZE - 1;
@@ -56,7 +56,7 @@ namespace Core {
    inline constexpr uint16_t  BROADCAST_QUEUE_SIZE = 512;
    inline constexpr uint16_t  DISCONNECT_QUEUE_SIZE = 8192;
 
-   inline constexpr uint32_t  NONE_ZONE_QUEUE_SIZE = 8192;
+   inline constexpr uint32_t  NON_ZONE_QUEUE_SIZE = 8192;
    inline constexpr uint32_t  ZONE_QUEUE_SIZE = 16384;  
 
    inline constexpr size_t MQ_SIZE = 256;
@@ -70,5 +70,5 @@ namespace Core {
    static_assert(IsPowerOfTwo(BROADCAST_QUEUE_SIZE), "BROADCAST_QUEUE_SIZE must be a power of two");
    static_assert(IsPowerOfTwo(DISCONNECT_QUEUE_SIZE), "DISCONNECT_QUEUE_SIZE must be a power of two");
    static_assert(IsPowerOfTwo(ZONE_QUEUE_SIZE), "ZONE_QUEUE_SIZE must be a power of two");
-   static_assert(IsPowerOfTwo(NONE_ZONE_QUEUE_SIZE), "NONE_ZONE_QUEUE_SIZE must be a power of two");
+   static_assert(IsPowerOfTwo(NON_ZONE_QUEUE_SIZE), "NON_ZONE_QUEUE_SIZE must be a power of two");
 }

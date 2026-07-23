@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "NoneZoneThreadPool.h"
+#include "NonZoneThreadPool.h"
 #include "ZoneThreadSet.h"
 #include "IPacketView.h"
 #include "IPacketDispatcher.h"
@@ -10,13 +10,13 @@
 namespace Core {
     class ILogger;
     class PacketDispatcher : public IPacketDispatcher {
-        NoneZoneThreadPool* noneZoneThreadPool;
+        NonZoneThreadPool* nonZoneThreadPool;
         ZoneThreadSet*  zoneThreadSet;
         StateManager* stateManager;
         IPingPacketWriter* writer;
         IIOCP* iocp;
-        void Initialize(NoneZoneThreadPool* a, ZoneThreadSet* z, StateManager* s, IPingPacketWriter* w, IIOCP* i) {
-            noneZoneThreadPool = a;
+        void Initialize(NonZoneThreadPool* a, ZoneThreadSet* z, StateManager* s, IPingPacketWriter* w, IIOCP* i) {
+            nonZoneThreadPool = a;
             zoneThreadSet = z;
             stateManager = s;
             writer = w;
@@ -24,7 +24,7 @@ namespace Core {
         }
         bool IsReady() {
             if (stateManager == nullptr) return false;
-            if (noneZoneThreadPool == nullptr || zoneThreadSet == nullptr)
+            if (nonZoneThreadPool == nullptr || zoneThreadSet == nullptr)
                 return false;
             if (writer == nullptr) return false;
             if (iocp == nullptr) return false;

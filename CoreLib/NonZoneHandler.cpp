@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "NoneZoneHandler.h"
+#include "NonZoneHandler.h"
 
 #include "PacketTypes.h"
 #include "IPacketView.h"
@@ -22,7 +22,7 @@ namespace Core {
     static StateManager* stateManager;
     // 콜백에서 쓰기 위함
 
-    void NoneZoneHandler::Initialize(IIOCP* i, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c) {
+    void NonZoneHandler::Initialize(IIOCP* i, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c) {
         iocp = i;
         auth = s;
         writer = p;
@@ -33,7 +33,7 @@ namespace Core {
         chat = c;
     }
 
-    bool NoneZoneHandler::IsReady() {
+    bool NonZoneHandler::IsReady() {
         if (iocp == nullptr) return false;
         if (auth == nullptr) return false;
         if (writer == nullptr) return false;
@@ -45,7 +45,7 @@ namespace Core {
         return true;
     }
 
-    void NoneZoneHandler::Process(IPacketView* p) {
+    void NonZoneHandler::Process(IPacketView* p) {
         PacketHeader* h = parseHeader(p->GetPtr());
         uint16_t zoneID = 0;
         if (p->GetOpcode() != OP::AUTH ) {
@@ -70,13 +70,13 @@ namespace Core {
                 ZoneChange(p);
                 break;
             default:
-                errorLogger->LogInfo("none zone handler",  "UnDefined OPCODE", "opcode", p->GetOpcode(),"header opcode", h->opcode,"sessionId", p->GetSessionID());
+                errorLogger->LogInfo("non zone handler",  "UnDefined OPCODE", "opcode", p->GetOpcode(),"header opcode", h->opcode,"sessionId", p->GetSessionID());
                 break;
         }
         
     }
 
-    void NoneZoneHandler::Disconnect(uint64_t sessionID) {
+    void NonZoneHandler::Disconnect(uint64_t sessionID) {
         stateManager->Disconnect(sessionID);
     }
 
@@ -88,7 +88,7 @@ namespace Core {
         iocp->SendDataUnique(sessionID, std::move(res));
     }
 
-    void NoneZoneHandler::CheckSession(IPacketView* p) {
+    void NonZoneHandler::CheckSession(IPacketView* p) {
         AuthRequestBody* body = parseBody<AuthRequestBody>(p->GetPtr());
         SessionCallbackData* privdata = new SessionCallbackData;
         privdata->sessionID = p->GetSessionID();
@@ -98,7 +98,7 @@ namespace Core {
         auth->CheckSession(privdata);
     }
 
-    void NoneZoneHandler::GetCharacterList(IPacketView* p) {
+    void NonZoneHandler::GetCharacterList(IPacketView* p) {
         Message* msg = messagePool->Acquire();
         if (msg == nullptr) {
             p = nullptr;
@@ -115,7 +115,7 @@ namespace Core {
         messagePool->Return(msg);
     }
 
-    void NoneZoneHandler::GetCharacterState(IPacketView* p) {
+    void NonZoneHandler::GetCharacterState(IPacketView* p) {
         Message* msg = messagePool->Acquire();
         if (msg == nullptr) {
             return;
@@ -135,7 +135,7 @@ namespace Core {
         messagePool->Return(msg);
     }
 
-    void NoneZoneHandler::GetInventory(IPacketView* p) {
+    void NonZoneHandler::GetInventory(IPacketView* p) {
         auto charID = stateManager->GetCharacterID(p->GetSessionID());
         if (charID <= 0)
             return ;
@@ -154,7 +154,7 @@ namespace Core {
         messagePool->Return(msg);
     }
 
-    void NoneZoneHandler::Chat(IPacketView* p) {
+    void NonZoneHandler::Chat(IPacketView* p) {
         auto body = parseBody<ChatRequestBody>(p->GetPtr());
         uint8_t* startPtr = p->GetPtr() + sizeof(PacketStruct<ChatRequestBody>);
         auto session = p->GetSessionID();
@@ -172,7 +172,7 @@ namespace Core {
             event.key.id = static_cast<uint64_t>(zoneID);
         }
         if (p->GetLength() < sizeof(PacketStruct<ChatRequestBody>) + body->messageLength) {
-            errorLogger->LogError("none zone handler", "message length invalid", "session", session, "messageLength", body->messageLength);
+            errorLogger->LogError("non zone handler", "message length invalid", "session", session, "messageLength", body->messageLength);
             Disconnect(session);
             return;
         }
@@ -180,7 +180,7 @@ namespace Core {
         chat->EnqueueChat(event);
     }
 
-    void NoneZoneHandler::ZoneChange(IPacketView* p) {
+    void NonZoneHandler::ZoneChange(IPacketView* p) {
         auto body = parseBody<ZoneChangeBody>(p->GetPtr());
         auto session = p->GetSessionID();
         auto zoneID = stateManager->GetZoneID(session);
@@ -190,7 +190,7 @@ namespace Core {
         {
             case ZONE_CHANGE::ENTER : {
                 if (zoneID != 0) {
-                    errorLogger->LogError("none zone handler", "zone enter failed ZoneID != 0", "session", session, "zoneID", zoneID);
+                    errorLogger->LogError("non zone handler", "zone enter failed ZoneID != 0", "session", session, "zoneID", zoneID);
 					auto p = writer->WriteZoneChangeFailed();
                     if (!p)
                         return;
@@ -199,7 +199,7 @@ namespace Core {
                 }
                 CharacterState temp;
                 if (!lobbyZone->EmigrateChar(session, temp)) {
-                    errorLogger->LogError("none zone handler", "EmigrateChar from LobbyZone failed", "session", session);
+                    errorLogger->LogError("non zone handler", "EmigrateChar from LobbyZone failed", "session", session);
                     auto p = writer->WriteZoneChangeFailed();
                     if (!p)
                         return;
@@ -219,7 +219,7 @@ namespace Core {
                     if (!p)
                         return;
                     iocp->SendDataUnique(session, std::move(p));
-                    errorLogger->LogError("none zone handler", "ImmigrateChar Failed", "session", session, "zone", zoneID);
+                    errorLogger->LogError("non zone handler", "ImmigrateChar Failed", "session", session, "zone", zoneID);
                     return;
                 }
                 else {

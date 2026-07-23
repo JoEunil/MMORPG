@@ -21,7 +21,8 @@ C++ 기반 TCP Stateful MMORPG 게임 서버 — 개인 프로젝트 (개발 기
 
 게임 서버의 핵심 문제인 **대규모 동시 접속 처리**와 **실시간 동기화**를 직접 해결하는 것을 목표로,  
 IOCP 비동기 IO, Lock-Free Queue, WAL 기반 장애 복구를 포함한 In-Process Write-Back Cache 등 핵심 컴포넌트를 직접 구현했다.  
-게임 로직은 Zone Tick 기반 게임 루프, Grid AOI, Full/Delta Snapshot 동기화로 실시간 처리를 구현했다.  
+게임 로직은 Zone Tick 기반 게임 루프, Grid AOI, Full/Delta Snapshot 동기화로 실시간 처리를 구현했다.   
+거래소 시스템에서는 Saga·Outbox/Inbox 패턴으로 cross-DB 정합성을, WAL로 Cache의 durability를 보장했다.  
 
 **구현 콘텐츠**
 
@@ -180,7 +181,7 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 | CoreLib | chat thread | CPU-bound (작업량 증가 시) |
 | CoreLib | broadcast thread pool | CPU-bound (작업량 증가 시) |
 | CoreLib | perf collector | IO-bound (Logger) |
-| CoreLib | NoneZoneThreadPool, MQ worker | - |
+| CoreLib | NonZoneThreadPool, MQ worker | - |
 | CacheLib | DB Worker | IO-bound |
 | CacheLib | flush dispatcher, cache flush, MQ worker | - |
 | CacheLib | WALManager(fsync) | IO-bound |
@@ -201,7 +202,7 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 | 대상 | 테스트 범위 |
 |---|---|
 | LockFreeQueue (raw/unique_ptr/shared_ptr) | push/pop 정합성, empty/full 경계 처리, 멀티스레드 push/pop 경합 |
-| TripleBuffer | 포인터 스왑 검증, 최신 데이터(fresh) 읽기 보장, Reader 간 경합, Writer/Reader 동시 접근 |
+| TripleBuffer | 포인터 스왑 검증, Eventually consistent 읽기 보장, Reader 간 경합, Writer/Reader 동시 접근 |
 | RingBuffer | 버퍼 획득/반납, 고갈·wrap-around 경계 조건, Release 범위 검증 |
 | RingQueue | 기본 동작 및 초기 상태 검증 |
 | FixedObjectPool | 할당/반납 정합성, 고갈 시 실패 반환, 멀티스레드 안전성 |
@@ -262,7 +263,7 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 ## 트러블 슈팅
 
 - [LockFreeQueue 디버그](LockFreeQueueDebug.md)
-  pop 시 seq 갱신 오류로 인한 교착 상태를 스레드 상태 및 호출 스택 분석으로 추적하여 수정
+  pop 시 seq 갱신 오류로 인한 무한 대기를 스레드 상태 및 호출 스택 분석으로 추적하여 수정
 
 - [ContextPool memory_order 디버그](MemoryOrderDebug.md)
   두 atomic 변수를 교차 확인하는 SB(Store-Buffer) 리트머스 패턴에서 발생한 가시성 문제 분석. acquire/release로는 표준상 완전한 보장이 안 됨을 확인해 seq_cst로 최종 수정. 
@@ -322,7 +323,7 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 **로그인 서버**
 - 터미널에서 실행 (또는 Visual Studio에서 실행)
 ```
-cd LoginServer
+cd Login
 node app.js
 ```
 - localhost, 포트 3000
@@ -349,7 +350,7 @@ node app.js
 ### 5. 계정 생성, 캐릭터 생성
 
 - 로그인 서버, DB 실행 중인 상태에서
-  `node Resources/monitoring/create_user.js`
+  `node Resources/monitoring/create_users.js`
 - 캐릭터 생성 SQL 실행
   `Resources/DB/createCharacter.sql`
 
