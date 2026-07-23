@@ -158,7 +158,7 @@ Lock-Free 자료구조와 Zone 기반 멀티스레드 아키텍처로 동시성�
 
 접근 빈도가 높은 인벤토리 데이터를 대상으로 In-Process 메모리 캐시를 직접 구현했다.
 Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush 이전 장애에서도 Dirty 데이터를 복구할 수 있도록 설계했다. 
-또한 거래소가 game / bazaar DB 경계를 넘는 부분은 **Saga(등록)·Outbox/Inbox(배송)** 로 cross-DB 정합성을 보장하고, 아이템·재화의 중요도에 따라 durability를 차등 적용했다.  
+또한 거래소가 Cache - DB 경계를 넘는 부분은 **Saga(등록)·Outbox/Inbox(배송)** 로 cross-DB 정합성을 보장하고, 아이템·재화의 중요도에 따라 durability를 차등 적용했다.  
 
 - [Cache](CacheLib.md): 캐시 배치 전략, Write-Back/Read-Through 동작 흐름, 구조 설계
 - [Cache ACID](CacheLib_ACID.md): 캐시 상태값 도입 및 ACID 보장 설계
