@@ -62,9 +62,16 @@ MESI 프로토콜 자체는 캐시라인 단위 코히어런스를 보장하지�
 
 >코히런스: 같은 메모리 주소에 대해 모든 코어가 동일한 값을 보는 것.  
 
-이 버퍼들로 인해 코어 A가 값을 썼더라도 코어 B가 이전 값을 읽는 구간이 발생한다. 이것이 가시성 문제이며, memory barrier가 이를 해결한다.  
-memory_order_release → Store Buffer를 비워 이전 쓰기를 모두 캐시에 반영, 자신의 캐시에 변경이 발생하면 다른 코어들의 invalidation큐를 통해 전파.  
-memory_order_acquire → Invalidation Queue를 처리한 후 읽기 수행, cache miss 발생 시 MESI 프로토콜을 통해 최신 값을 보유한 코어(Modified 상태)에서 직접 cache-to-cache transfer로 가져옴.  
+이 버퍼들로 인해 코어 A가 값을 썼더라도 코어 B가 이전 값을 읽는 구간이 발생한다.  
+이것이 가시성 문제이며, release/acquire가 **재배치 순서 제약**으로 이를 해결한다.  
+
+- **memory_order_release (store)**: 이 스토어보다 program order상 앞선 모든 read/write가스토어 뒤로 넘어가지 못하게 막는 단방향 배리어.   
+  다른 스레드가 **같은 변수**를 acquire로 읽어 이 값을 관측하면, release 이전의 모든 쓰기가 그 스레드에 보이도록 보장된다(happens-before 성립).    
+- **memory_order_acquire (load)**: 이 로드보다 program order상 뒤에 오는 모든 read/write  로드 앞으로 당겨지지 못하게 막는 단방향 배리어    
+
+즉 release/acquire는 "버퍼를 비운다"가 아니라, **재배치를 한 방향으로만 막고 같은 변수에 대한 release→acquire가 맞물릴 때만 happens-before 간선을 만든다**로 이해해야 정확하다.
+> Store buffer flush는 seq_cst에서만 발생한다.
+
 
 ## 4. memory_order  
 memory_order는 **멀티스레드 환경에서 메모리 재배치와 가시성으로 인한 예상치 못한 동작(race condition)을 방지**하기 위해 사용된다.  
