@@ -75,7 +75,8 @@ namespace Net{
         
         // session 
         bool CheckSession(SOCKET sock) {
-            auto& shard = m_sessionShard[sock & SESSION_SHARD_MASK];
+            // windows 소켓 핸들은 4의 배수. 
+            auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             Base::SpinLockGuard lock(shard.flag);
             auto it = shard.stateMap.find(sock);
             if (it == shard.stateMap.end())
@@ -84,7 +85,7 @@ namespace Net{
         }
 
         uint64_t GetSession(SOCKET sock) {
-            auto& shard = m_sessionShard[sock & SESSION_SHARD_MASK];
+            auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             Base::SpinLockGuard lock(shard.flag);
             auto it = shard.stateMap.find(sock);
             if (it == shard.stateMap.end())
@@ -95,21 +96,21 @@ namespace Net{
         void GetSessionSnapshot(int shardID, std::vector<PingStruct>& out);
 
         void SetContextInvalid(SOCKET sock) {
-            auto& shard = m_sessionShard[sock & SESSION_SHARD_MASK];
+            auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             Base::SpinLockGuard lock(shard.flag);
             auto it = shard.stateMap.find(sock);
             if (it != shard.stateMap.end())
                 it->second.SetContextInvalid();
         }
         void UpdateFlood(SOCKET sock, uint16_t byte) {
-            auto& shard = m_sessionShard[sock & SESSION_SHARD_MASK];
+            auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             Base::SpinLockGuard lock(shard.flag);
             auto it = shard.stateMap.find(sock);
             if (it != shard.stateMap.end())
                 it->second.BufferReceived(byte);
         }
         ClientContext* GetContext(SOCKET  sock) {
-            auto& shard = m_sessionShard[sock & SESSION_SHARD_MASK];
+            auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             Base::SpinLockGuard lock(shard.flag);
             auto it = shard.contextMap.find(sock);
             return it != shard.contextMap.end() ? it->second : nullptr;
