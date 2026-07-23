@@ -18,6 +18,7 @@ namespace Base {
 		alignas(std::hardware_destructive_interference_size) T* back1 = nullptr;
 		alignas(std::hardware_destructive_interference_size) T* back2 = nullptr; // reader 가 참조
 		alignas(std::hardware_destructive_interference_size) std::atomic<uint16_t> flag = 0;
+		char padding[std::hardware_destructive_interference_size - sizeof(uint16_t)];
 		// 상위 2비트는 상태 표시 , 이전 비트는 counter
 		// 첫번째 비트: back1, back2 lock
 		// 두번째 비트 : back2가 최신 상태인지, (write 시 0, back1-back2 swap 시 1)

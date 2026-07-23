@@ -13,15 +13,14 @@ namespace Base {
 	class LockFreeQueueSP {
 		// T = shared_ptr<t>
 
-		struct Cell {
+		struct alignas(std::hardware_destructive_interference_size) Cell {
 			std::atomic<uint64_t> seq;
 			T data;
 		};
-		alignas(std::hardware_destructive_interference_size) std::unique_ptr <Cell[]> m_queue;
-
+		std::unique_ptr <Cell[]> m_queue;
 		alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_head;
-
 		alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_tail;
+		char padding[std::hardware_destructive_interference_size - sizeof(uint64_t)];
 
 		uint16_t m_mask;
 

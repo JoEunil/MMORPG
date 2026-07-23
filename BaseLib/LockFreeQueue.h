@@ -15,16 +15,16 @@ namespace Base {
 
 	template<typename T, size_t QSize>
 	class LockFreeQueue {
-		struct Cell {
+		struct alignas(std::hardware_destructive_interference_size) Cell {
 			std::atomic<uint64_t> seq;
 			T data;
 		};
-		alignas(std::hardware_destructive_interference_size) std::unique_ptr <Cell[]> m_queue;
+		std::unique_ptr <Cell[]> m_queue;
 		// vector로 사용 가능함, 고정크기 + 재할당 방지 목적으로 array가 적합.
 
 		alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_head;
-
 		alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_tail;
+		char padding[std::hardware_destructive_interference_size - sizeof(uint64_t)];
 
 		uint16_t m_mask;
 

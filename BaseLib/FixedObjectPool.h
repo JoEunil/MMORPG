@@ -13,6 +13,8 @@ namespace Base {
         std::unique_ptr<Slot[]> m_storage;
         std::vector<T*> freeList;
         alignas(std::hardware_destructive_interference_size) std::atomic_flag lock; // 임계영역이 극단적으로 짧은 케이스, mutex보다 spin lock이 적절함.
+
+        char padding[std::hardware_destructive_interference_size - sizeof(std::atomic_flag)];
     public:
         template<typename... Args>
         explicit FixedObjectPool(const Args&... args)

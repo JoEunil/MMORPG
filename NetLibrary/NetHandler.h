@@ -6,6 +6,8 @@
 #include <shared_mutex>
 #include <atomic>
 #include <array>
+#include <new>
+
 #include "SessionManager.h"
 #include "IAbortSocket.h"
 #include "ClientContext.h"
@@ -13,7 +15,9 @@
 
 namespace Net {
     class NetHandler {
-        std::atomic<int> m_connectionCnt = 0;
+        alignas(std::hardware_destructive_interference_size) std::atomic<int> m_connectionCnt = 0;
+        char padding[std::hardware_destructive_interference_size];
+
         SessionManager* sessionManager;
         IAbortSocket* abortSocket;
         bool IsReady() const {

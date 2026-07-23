@@ -20,11 +20,15 @@ namespace Net{
 
     struct alignas(std::hardware_destructive_interference_size) SessionShard {
         std::atomic_flag flag;
+        char padding[std::hardware_destructive_interference_size - sizeof(std::atomic_flag)];
+
         std::unordered_map<SOCKET, SessionState> stateMap; // socket -> sessionState
         std::unordered_map<uint64_t, ClientContext*> contextMap; // session -> context
     };
     struct alignas(std::hardware_destructive_interference_size) ReverseShard {
         std::atomic_flag flag;
+        char padding[std::hardware_destructive_interference_size- sizeof(std::atomic_flag)];
+
         std::unordered_map<uint64_t, SOCKET> socketMap; // session -> socket 조회용도
     };
     struct PingStruct;
@@ -32,6 +36,7 @@ namespace Net{
     class SessionManager{
         alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_connectionCnt = 0;
         alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_sessionGenerator = 1;
+        char padding[std::hardware_destructive_interference_size - sizeof(uint64_t)];
         std::array<SessionShard, SESSION_SHARD_SIZE> m_sessionShard;
         std::array<ReverseShard, SESSION_SHARD_SIZE> m_reverseShard;
         // AddSession과 Disconnect에 의해서만 추가, 제거가 처리됨.

@@ -8,7 +8,7 @@
 #include "LoggerGlobal.h"
 #include "Config.h"
 namespace Core {
-    struct ZonePerfData {// per sec
+    struct alignas(std::hardware_destructive_interference_size) ZonePerfData {// per sec
         // single thread access
         std::atomic<uint64_t> packetProcessed;
         std::atomic<uint64_t> tick;
@@ -28,6 +28,8 @@ namespace Core {
         alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> broadcastPopCnt;
         alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> broadcastSendCnt;
         alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> broadcastDropCnt;
+        char padding[std::hardware_destructive_interference_size - sizeof(uint64_t)];
+
         std::thread m_thread;
         std::atomic<bool> m_running;
 

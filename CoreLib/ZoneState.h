@@ -41,12 +41,14 @@ namespace Core {
         std::vector<std::pair<uint64_t, uint16_t>> m_cheatList;  // Cheat 탐지해서 배치처리하는 용도, stack
         std::mutex m_mutex;
 
-        alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_internalIdGenerator= 1; // 각각 character에 ID 부여
         uint64_t m_deltaTickCounter;
         uint16_t m_zoneID;
         ZoneArea m_area;
         std::array<std::array<Cell, CELLS_X>, CELLS_Y> m_cells;
+
+        alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_internalIdGenerator = 1; // 각각 character에 ID 부여
         alignas(std::hardware_destructive_interference_size) std::atomic<uint32_t>m_userCnt;
+        char padding[std::hardware_destructive_interference_size - sizeof(uint32_t)];
 
         Base::TripleBuffer<std::vector<std::vector<uint64_t>>> tripleBuffer;
         std::vector<std::vector<uint64_t>>* sessionSnapshotWriter;

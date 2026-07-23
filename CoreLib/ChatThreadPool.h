@@ -65,6 +65,8 @@ namespace Core {
         //std::unordered_map<uint64_t, std::vector<uint64_t>> m_guildMembers;
         //std::unordered_map<uint64_t, std::vector<uint64_t>> m_partyMembers;
         alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_chatIdGenerater;
+        char padding[std::hardware_destructive_interference_size - sizeof(uint64_t)];
+
         Base::LockFreeQueue<ChatEvent, CHAT_QUEUE_SIZE> m_chatQueue;
         // MPMC 큐 적용
 

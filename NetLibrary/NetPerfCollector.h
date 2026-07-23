@@ -19,6 +19,7 @@ namespace Net {
     class NetPerfCollector {
         std::array<PaddedAtomicU64, IOCP_THREADPOOL_SIZE> m_recvCount{};
         alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> jitter;
+        char padding[std::hardware_destructive_interference_size - sizeof(uint64_t)];
         std::thread m_thread;
         std::atomic<bool> m_running;
         void Initialize(SessionManager* s, PacketPool* p, PacketPool* bp, OverlappedExPool* o, ClientContextPool* c) {
