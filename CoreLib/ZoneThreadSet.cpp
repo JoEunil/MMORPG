@@ -46,6 +46,7 @@ namespace Core {
             auto fullSnapshotElapsed = now - lastFullSnapshot;
             if (fullSnapshotElapsed >= FULL_SNAPSHOT_TICK) {
                 lastFullSnapshot = now;
+                lastDeltaSnapshot = now;
                 handler->BroadcastFullState(zoneID);
             }
             else if (deltaSnapshotElapsed >= DELTA_SNAPSHOT_TICK) {
