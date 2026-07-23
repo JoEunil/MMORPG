@@ -229,6 +229,10 @@ namespace Net {
                     break;
                 overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
                 setsockopt(clientSocket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&m_listenSock, sizeof(m_listenSock));
+                // NAGLE 알고리즘 OFF
+                BOOL nodelay = TRUE;
+                setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, (char*)&nodelay, sizeof(nodelay));
+
                 if (CreateIoCompletionPort((HANDLE)clientSocket, m_hIOCP, (ULONG_PTR)clientSocket, 0) == nullptr) {
                     closesocket(clientSocket);
                     break;
@@ -267,7 +271,8 @@ namespace Net {
             closesocket(clientSocket);
             return;
 		}
-        ZeroMemory(pOverlappedEx, sizeof(STOverlappedEx));
+        // wsaOverlapped만 초기화
+        ZeroMemory(&pOverlappedEx->wsaOverlapped, sizeof(WSAOVERLAPPED));
         pOverlappedEx->op = IOOperation::ACCEPT;
         pOverlappedEx->clientSocket = clientSocket;
         pOverlappedEx->wsaBuf.resize(1);
