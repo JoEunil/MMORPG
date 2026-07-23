@@ -38,7 +38,7 @@ namespace Cache {
 		CacheStorageInventory* cache_inventory;
 		DBConnectionPool<DBConnectionGame>* connectionPoolGame;
 
-		void CollectInvenotry(const Base::WALHeader& header, const uint8_t* payload) {
+		void CollectInventory(const Base::WALHeader& header, const uint8_t* payload) {
 			if (header.length != sizeof(WalInventoryRecord))
 				return;
 			WalInventoryRecord rec;
@@ -47,7 +47,7 @@ namespace Cache {
 		}
 		void Collect(const Base::WALHeader& header, const uint8_t* payload) {
 			switch (header.type) {
-			case WalType::INVENTORY: CollectInvenotry(header, payload); break;
+			case WalType::INVENTORY: CollectInventory(header, payload); break;
 			}
 		}
 
