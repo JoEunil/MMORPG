@@ -32,7 +32,7 @@ Character Snapshot 크기
 
 Delta Snapshot은 캐릭터 구분 ID + 필드 ID + 필드 값으로 구성되어,
 변경된 필드만 전송한다.  
-- 한 틱에 5개 이하의 필드 변경이 발생하면, Full Snapshot 대비 효율적이다.
+- 한 틱에 4개 이하의 필드 변경이 발생하면, Full Snapshot 대비 효율적이다.
 
 ## 4. 추후 변경 사항
 - InternalID 최적화
@@ -48,18 +48,18 @@ Delta Snapshot은 캐릭터 구분 ID + 필드 ID + 필드 값으로 구성되�
 __대역폭 계산 예시__
 - Delta
 ```
-패킷 크기 * AOI 범위 * Cell당 유저 수 * Zone 수 * tick
-(16바이트 * Cell 유저 수) * 9 * Cell당 유저 수 * Zone 수 * 20FPS
-= 230,400 * zone * 20fps
-= 4,608,000 * zone / sec
-= 230,400 * zone / tick
+필드 1개 크기 * AOI 범위 * Cell당 유저 수 * Zone 수 * tick
+(14바이트 * Cell 유저 수) * 9 * Cell당 유저 수 * Zone 수 * 20FPS
+= 201,600 * zone * 20fps
+= 4,032,000 * zone / sec
+= 201,600 * zone / tick
 ```
 
 - Full
 ```
-패킷 크기 * AOI 범위 * Cell당 유저 수 * Zone 수
-(33바이트 * Cell 유저 수) * AOI 범위 * Cell당 유저 수 * Zone 수
-= 475,200 * zone / tick
+필드 1개 크기 * AOI 범위 * Cell당 유저 수 * Zone 수
+(71바이트 * Cell 유저 수) * AOI 범위 * Cell당 유저 수 * Zone 수
+= 1,054,350 * zone / tick
 ```
 
 - 현재 Grid 기반 AOI:
@@ -70,15 +70,14 @@ __대역폭 계산 예시__
 
 __예상 bps(bit per second)__
 AOI 범위 9개 Cell, Delta Snapshot 20FPS, Full Snapshot 3초마다 수행될 때
-- Delta Snapshot: 약 36 Mbps / zone
-- Full Snapshot: 약 1.2 Mbps / zone
-이론상, Character Snapshot만 고려하면 30개 Zone, 유저 30,000명 수준에서 1Gbps에 근접한다.  
+- Delta Snapshot: 약 64 Mbps / zone
+- Full Snapshot: 약 2.8 Mbps / zone
+이론상, Character Snapshot만 고려하면 15개 Zone, 유저 15,000명 수준에서 1Gbps에 근접한다.  
 
 그러나 현실에서는 다음 요소 때문에 실제 한계는 더 낮다:
 - Monster/ActionResult 등 추가 패킷
 - 서버 응답 패킷 및 ACK/재전송
 - CPU 처리, AOI 확대, Zone 내부 Skill/Hit 처리
-> 따라서 서버 1대당 안정적으로 운영 가능한 규모는 최대 10,000 ~ 15,000명 수준이 현실적이다.
 
 __Zone 처리 관련 주의점__
 - Zone은 1개의 전용 코어를 필요로 한다.  

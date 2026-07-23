@@ -35,13 +35,13 @@ TCP
 
 ## 4. 구조
 - 멤버 변수
-  - `RingBuffer m_buffer` : TCP 수신 누적 버퍼
-  - `uint64_t m_sessionID` : 연결된 세션 ID (캐시)
-  - `std::atomic<int16_t> m_workingCnt` : 버퍼 점유 중인 작업 수
-  - `std::vector<std::pair<uint16_t, uint16_t>> m_releaseQ` : 버퍼 반환 큐
+	- `RingBuffer m_buffer` : TCP 수신 누적 버퍼
+	- `uint64_t m_sessionID` : 연결된 세션 ID (캐시)
+	- `std::atomic<int16_t> m_workingCnt` : 버퍼 점유 중인 작업 수
+	- `std::vector<std::pair<uint16_t, uint16_t>> m_releaseQ` : 버퍼 반환 큐
 - Mutex 사용
-  - 내부 버퍼 Release 경로에만 사용
-  - 수신/처리 경로는 lock-free 유지, 싱글 스레드 접근이 보장됨
+	- RingBuffer 사용 부분 직렬화
+	- 수신은 소켓당 1개씩 체이닝 되기 때문에 경합은 낮음.
 
 ## 5. 동작
 1. 수신 데이터는 `EnqueueRecvQ()` 호출로 누적

@@ -1,7 +1,7 @@
 ﻿# SessionManager DeadLock Debug
 
 ## 1. 개요
-[데드락 해결 및 SessionManager 수정#13](https://github.com/JoEunil/MMORPG/pull/13) 
+[데드락 해결 및 SessionManager 수정#14](https://github.com/JoEunil/MMORPG/pull/14) 
 PR에서 해결한 문제에 대해 설명하는 문서이다.
 ## 2. 문제 상황
 ![이미지 로드 실패](images/SessionManagerDeadLock1.png)

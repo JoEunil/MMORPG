@@ -115,9 +115,8 @@
 > 캐릭터 선택 화면
 
 캐릭터 선택 단계에서 `characters` 테이블을 `user_id`, `channel_id` 기준으로 필터링하여 캐릭터 목록을 조회해야 한다.   
-탐색 속도와 lock 범위를 줄이기 위해 복합 인덱스를 설정하였다.
 
-인덱스 효율은 카디널리티가 높을수록(데이터가 분산될수록) 좋기 때문에 `user_id → channel_id` 순서로 설정하였다.
+둘다 등가(=) 쿼리 이기 때문에 두 칼럼의 순서는 성능 차이가 없다. 
 
 ```sql
 CREATE INDEX idx_user_channel ON characters(user_id, channel_id);

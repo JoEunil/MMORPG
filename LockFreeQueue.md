@@ -35,7 +35,7 @@ CAS(Compare-And-Swap)와 memory_order에 대한 기본적인 이해를 바탕으
 			
 			bool push(T* data) {
 				auto expected = m_tail;
-				while (m_head.compare_exchange_weak(expected, (expected + 1) % m_QSize, std::memory_order_acq_rel, std::memory_order_relaxed) {
+				while (m_tail.compare_exchange_weak(expected, (expected + 1) % m_QSize, std::memory_order_acq_rel, std::memory_order_relaxed) {
 					expected = (expected + 1) % QSize;
 				if ((expected +1)%QSize == m_head) //full
 						return false;
@@ -63,7 +63,7 @@ producer와 consumer가 각각 서로 다른 변수를 독점적으로 수정한
 
 이 경우 write-write 경쟁이 발생하지 않으며, 필요한 것은 올바른 memory_order 설정뿐이다.  
 
-```csharp
+```cpp
 // SPSC
 		T* pop() {
 				if (m_head == m_tail) // empty
@@ -108,17 +108,23 @@ Dmitry Vyukov가 제시한 bounded MPMC 큐이다.
 slot의 상태를 단일 atomic 값으로 표현한다.  
 
 __Slot 상태 정의__
-- seq == index  
-→ 슬롯이 비어 있음 (producer가 push 가능)  
-- seq < index  
-→ 아직 이전 cycle의 데이터가 남아 있음 (사용 불가)  
-- seq > index  
-→ 데이터가 준비됨 (consumer가 pop 가능)  
+
+**producer 기준**  
+`diff = seq - pos`  
+- seq == pos  → 슬롯이 비어 있음 push 가능  
+- seq < pos   → 큐가 가득 참 (이 슬롯이 아직 consumer한테 회수 안됨), push 불가  
+- seq > pos   → 다른 producer가 이미 이 슬롯을 선점함, tail 다시 읽고 재시도  
+
+**consumer 기준**  
+`diff = seq - (pos + 1)`  
+seq == pos + 1 → 데이터 준비됨, pop 가능
+seq < pos + 1 → 큐가 비어있음, pop 불가
+seq > pos + 1 → 다른 consumer가 이미 이 슬롯을 선점함, head 다시 읽고 재시도
 
 ```cpp
 	struct Cell{
 		std::atomic<uint32_t> seq;
-		T* data;
+		T* data;s
 	};
 ```
 

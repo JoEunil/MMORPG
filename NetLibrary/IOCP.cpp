@@ -223,7 +223,7 @@ namespace Net {
                 }
                 break;
             }
-            case IOOperation::ACCEPT:
+            case IOOperation::ACCEPT: {
                 // completion key는 listen 소켓
                 if (!m_receiving.load(std::memory_order_relaxed))
                     break;
@@ -250,6 +250,7 @@ namespace Net {
                 }
                 PostAccept();
                 break;
+            }
             default:
                 break;
             }
