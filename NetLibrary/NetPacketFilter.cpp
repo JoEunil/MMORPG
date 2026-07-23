@@ -39,9 +39,11 @@ namespace Net {
         if (!(health & Core::MASK_AUTHENTICATED)) {
             Core::gameLogger->LogWarn("net filter", "session not authenticated", "session", session);
             switch (op) {
-            case ::Core::OP::AUTH: 
+            case ::Core::OP::AUTH: {
+                packetDispatcher->Process(std::move(pv));
+                // 인증 실패를 바로 Disconnect 시키지 않기 때문에 재인증 허용
                 return true;
-            // 인증 패킷이 중복으로 들어온것을 바로 Cheat로 판단하기는 어려움.
+            }
             case ::Core::OP::PONG: break;
             default: return false;
             }
