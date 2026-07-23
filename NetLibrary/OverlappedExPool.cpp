@@ -23,6 +23,7 @@ namespace Net {
 	}
 
 	void OverlappedExPool::Return(STOverlappedEx* r) {
+		r->originalBufs.clear();
 		r->sharedPacket.reset();
 		r->uniquePacket.reset();
 		r->packetChunks.clear();
