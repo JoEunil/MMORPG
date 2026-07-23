@@ -72,7 +72,7 @@ namespace Net {
 
 
         PacketView* packet = packetViewPool.Allocate();
-        if (packet) {
+        if (!packet) {
             Core::errorLogger->LogWarn("context", "packetViewPool empty");
             m_gameSession.store(false, std::memory_order_release);
             return false;
