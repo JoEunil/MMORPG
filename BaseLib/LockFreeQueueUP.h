@@ -31,7 +31,7 @@ namespace Base {
 		alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_tail;
 		char padding[std::hardware_destructive_interference_size - sizeof(uint64_t)];
 
-		uint16_t m_mask;
+		size_t m_mask;
 
 	public:
 		LockFreeQueueUP() : m_mask(QSize - 1) {

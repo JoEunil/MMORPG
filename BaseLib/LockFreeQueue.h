@@ -26,7 +26,7 @@ namespace Base {
 		alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_tail;
 		char padding[std::hardware_destructive_interference_size - sizeof(uint64_t)];
 
-		uint16_t m_mask;
+		size_t m_mask;
 
 	public:
 		// Q 사이즈는 2의 거듭제곱이어야 한다.
