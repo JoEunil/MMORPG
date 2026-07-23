@@ -12,7 +12,7 @@ namespace Net {
         }
         uint64_t session = 0;
         {
-            auto& shard = m_sessionShard[sock & SESSION_SHARD_MASK];
+            auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             Base::SpinLockGuard lock(shard.flag);
             auto it = shard.contextMap.find(sock);
             if (it != shard.contextMap.end()) {
@@ -40,7 +40,7 @@ namespace Net {
     bool SessionManager::Disconnect(SOCKET sock) {
         uint64_t session = 0;
         {
-            auto& shard = m_sessionShard[sock & SESSION_SHARD_MASK];
+            auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             Base::SpinLockGuard lock(shard.flag);
             {
                 auto it = shard.stateMap.find(sock);

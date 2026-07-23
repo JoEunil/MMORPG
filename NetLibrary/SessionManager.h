@@ -127,7 +127,7 @@ namespace Net{
         //session, reverse
         void PongReceived(uint64_t session, uint64_t rtt) {
             SOCKET sock = GetSocket(session);
-            auto& shard = m_sessionShard[sock & SESSION_SHARD_MASK];
+            auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             Base::SpinLockGuard lock(shard.flag);
             auto it = shard.stateMap.find(sock);
             if (it == shard.stateMap.end())
@@ -141,19 +141,21 @@ namespace Net{
         }
 
         EnqueueSendResult EnqueueSend(SOCKET sock, STOverlappedEx* overlappedEx) {
-            auto ctx = GetContext(sock);
-            if (ctx == nullptr) {
+            auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
+            Base::SpinLockGuard lock(shard.flag);
+            auto it = shard.contextMap.find(sock);
+            if (it == shard.contextMap.end())
                 return EnqueueSendResult::Failed;
-            }
-            return ctx->EnqueueSend(overlappedEx);
+            return it->second->EnqueueSend(overlappedEx);
         }
 
         STOverlappedEx* DequeueSend(SOCKET sock) {
-            auto ctx = GetContext(sock);
-            if (ctx == nullptr) {
+            auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
+            Base::SpinLockGuard lock(shard.flag);
+            auto it = shard.contextMap.find(sock);
+            if (it == shard.contextMap.end())
                 return nullptr;
-            }
-            return ctx->DequeueSend();
+            return it->second->DequeueSend();
         }
     };
 }
