@@ -56,7 +56,7 @@ namespace Cache {
             ss << tid;
             Core::sysLogger->LogInfo("DB worker thread", "DB worker thread started", "threadID", ss.str());
             
-            while (m_running.load(std::memory_order_relaxed))
+            while (true)
             {
                 std::function<void(T*)> work;
                 {
@@ -64,7 +64,7 @@ namespace Cache {
                     m_cv.wait(lock, [this] {
                         return !m_queue.empty() || !m_running.load(std::memory_order_relaxed);
                         });
-                    if (!m_running.load(std::memory_order_relaxed) || m_queue.empty())
+                    if (m_queue.empty()) // 큐가 비었는데 깨어남 = running=false → drain 완료, 종료
                         break;
                     work = std::move(m_queue.front());
                     m_queue.pop();
