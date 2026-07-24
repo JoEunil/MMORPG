@@ -78,7 +78,13 @@ namespace Cache {
             Core::sysLogger->LogInfo("DB worker thread", "DB worker thread stopped", "threadID", ss.str());
         }
         void Stop() {
-            m_running.store(false, std::memory_order_relaxed);
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                m_running.store(false, std::memory_order_relaxed);
+            }
+            // lost wakeup 방지: 워커가 predicate 평가 후 wait 진입하기 전 틈에
+            // notify가 끼면 신호를 놓치고 영원히 잠듦.
+            // 락을 잡고 플래그를 바꾸면 그 틈에 끼어들 수 없음.
             m_cv.notify_all();
             for (int i = 0; i < m_threadPoolSize; i++)
             {

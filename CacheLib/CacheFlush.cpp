@@ -174,7 +174,10 @@ namespace Cache {
     }
 
     void CacheFlush::Stop() {
-        m_running.store(false, std::memory_order_relaxed);
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_running.store(false, std::memory_order_relaxed);
+        }
         m_cv.notify_all();
 
         for (auto& t : m_threads) {
