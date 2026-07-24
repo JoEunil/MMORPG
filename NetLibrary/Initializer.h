@@ -34,8 +34,8 @@ namespace Net {
         ClientContextPool clientContextPool;
         std::condition_variable cv;
         std::mutex mutex; 
-        PacketPool packetPool{ PACKETPOOL_SIZE, NORMAL_PACKET_LENGTH };
-        PacketPool bigPacketPool{ BPACKETPOOL_SIZE, BIG_PACKET_LENGTH };
+        PacketPool<PACKETPOOL_SIZE> packetPool{ NORMAL_PACKET_LENGTH };
+        PacketPool<BPACKETPOOL_SIZE> bigPacketPool{ BIG_PACKET_LENGTH };
         PingManager pingManager;
         SessionManager sessionManager;
         NetPerfCollector perfCollector;

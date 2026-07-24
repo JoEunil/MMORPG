@@ -22,7 +22,13 @@ namespace Net {
         char padding[std::hardware_destructive_interference_size - sizeof(uint64_t)];
         std::thread m_thread;
         std::atomic<bool> m_running;
-        void Initialize(SessionManager* s, PacketPool* p, PacketPool* bp, OverlappedExPool* o, ClientContextPool* c) {
+        SessionManager* sessionManager;
+        PacketPool<PACKETPOOL_SIZE>* packetPool;
+        PacketPool<BPACKETPOOL_SIZE>* bigPacketPool;
+        OverlappedExPool* overlappedPool;
+        ClientContextPool* contextPool;
+
+        void Initialize(SessionManager* s, PacketPool<PACKETPOOL_SIZE>* p, PacketPool<BPACKETPOOL_SIZE>* bp, OverlappedExPool* o, ClientContextPool* c) {
             sessionManager = s;
             packetPool = p;
             bigPacketPool = bp;
@@ -52,11 +58,6 @@ namespace Net {
             }
             return true;
         }
-        SessionManager* sessionManager;
-        PacketPool* packetPool;
-        PacketPool* bigPacketPool;
-        OverlappedExPool* overlappedPool;
-        ClientContextPool* contextPool;
         friend class Initializer;
     public:
         void Start() {
