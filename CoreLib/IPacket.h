@@ -10,6 +10,7 @@ namespace Core {
         virtual ~IPacket() = default;
         virtual uint8_t* GetBuffer() = 0;
         virtual uint32_t GetLength() = 0;
+        virtual uint32_t GetCapacity() = 0;
         virtual void SetLength(uint32_t len) = 0;
         virtual void Release() = 0;
 

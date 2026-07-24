@@ -55,6 +55,8 @@ namespace Core {
                 int idx = i * CELLS_X + j;
                 int loop = DELTA_UPDATE_COUNT;
                 int iterCnt = 0;
+                if (chunks[idx] == nullptr || headers[idx] == nullptr)
+                    continue;
                 while (!cell.dirtyChar.empty() && loop--)
                 {
                     auto& internalID = cell.dirtyChar.back();
@@ -152,6 +154,8 @@ namespace Core {
                 auto& cell = m_cells[i][j];
                 cell.dirtyChar.clear();
                 int idx = i * CELLS_X + j;
+                if (chunks[idx] == nullptr || headers[idx] == nullptr)
+                    continue;
                 for (auto& session : cell.charSessions)
                 {
                     auto& character = m_chars[m_sessionToIndex[session]];
@@ -198,6 +202,8 @@ namespace Core {
                 int idx = i * CELLS_X + j;
                 int loop = DELTA_UPDATE_COUNT*2;
                 int iterCnt = 0;
+                if (chunks[idx] == nullptr || headers[idx] == nullptr)
+                    continue;
                 for (int k =0 ; k < cell.monsterIndexes.size() && loop--; k++)
                 {
                     auto& monster = m_monsters[cell.monsterIndexes[k]];
@@ -260,6 +266,8 @@ namespace Core {
                 auto& cell = m_cells[i][j];
                 int idx = i * CELLS_X + j;
 
+                if (chunks[idx] == nullptr || headers[idx] == nullptr)
+                    continue;
                 for (auto& monsterIdx : cell.monsterIndexes)
                 {
                     if (m_monsters[monsterIdx].hp == 0)
@@ -303,6 +311,8 @@ namespace Core {
                 bool wroteField = false;
                 auto& cell = m_cells[i][j];
                 int idx = i * CELLS_X + j;
+                if (chunks[idx] == nullptr || headers[idx] == nullptr)
+                    continue;
                 perfCollector->AddActionFieldCnt(m_zoneID, cell.actionResults.size());
                 for (auto& actionRes: cell.actionResults)
                 {

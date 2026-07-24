@@ -44,6 +44,7 @@ namespace Core {
             if (!p) {
                 return nullptr;
             }
+            p->Clear();
             auto p_st = reinterpret_cast<PacketStruct<DeltaSnapshotBody>*>(p->GetBuffer());
             p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
             p->SetLength(p_st->header.length);
@@ -55,8 +56,11 @@ namespace Core {
             return p;
         }
         template<typename T>
-        void WriteDeltaField(std::shared_ptr<IPacket> p, uint64_t zoneInternalID,uint16_t fieldID, T val) {
+        bool WriteDeltaField(std::shared_ptr<IPacket> p, uint64_t zoneInternalID,uint16_t fieldID, T val) {
             static_assert(sizeof(T) <= sizeof(uint32_t), "Delta field too large"); // 컴파일 타임
+
+            if (p->GetLength() + sizeof(DeltaUpdateField) > p->GetCapacity())
+                return false;
 
             auto fields = reinterpret_cast<DeltaUpdateField*>(p->GetBuffer());
             p->SetLength(p->GetLength() + sizeof(DeltaUpdateField));
@@ -67,15 +71,17 @@ namespace Core {
             
             std::memset(&slot.fieldVal, 0, sizeof(slot.fieldVal)); // 나머지 바이트 초기화
             std::memcpy(&slot.fieldVal, &val, sizeof(T));
+            return true;
         }
         std::shared_ptr<IPacket> GetFullHeader();
-        void WriteFullField(std::shared_ptr<IPacket> p, CharacterState& state);
+        bool WriteFullField(std::shared_ptr<IPacket> p, CharacterState& state);
 
         std::shared_ptr<IPacket> GetMonsterDeltaHeader() {
             auto p = packetPool->Acquire();
             if (!p) {
                 return nullptr;
             }
+            p->Clear();
             auto p_st = reinterpret_cast<PacketStruct<MonsterDeltaSnapshotBody>*>(p->GetBuffer());
             p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
             p->SetLength(p_st->header.length);
@@ -87,8 +93,11 @@ namespace Core {
             return p;
         }
         template<typename T>
-        void WriteMonsterDeltaField(std::shared_ptr<IPacket> p, uint16_t internalID, uint16_t fieldID, T val) {
+        bool WriteMonsterDeltaField(std::shared_ptr<IPacket> p, uint16_t internalID, uint16_t fieldID, T val) {
             static_assert(sizeof(T) <= sizeof(uint32_t), "Delta field too large"); // 컴파일 타임
+
+            if (p->GetLength() + sizeof(MonsterDeltaField) > p->GetCapacity())
+                return false;
 
             auto fields = reinterpret_cast<MonsterDeltaField*>(p->GetBuffer());
             p->SetLength(p->GetLength() + sizeof(MonsterDeltaField));
@@ -99,18 +108,20 @@ namespace Core {
 
             std::memset(&slot.fieldVal, 0, sizeof(slot.fieldVal)); // 나머지 바이트 초기화
             std::memcpy(&slot.fieldVal, &val, sizeof(T));
+            return true;
         }
         std::shared_ptr<IPacket> GetMonsterFullHeader();
-        void WriteMonsterFullField(std::shared_ptr<IPacket> p, MonsterState& state);
+        bool WriteMonsterFullField(std::shared_ptr<IPacket> p, MonsterState& state);
 
         std::shared_ptr<IPacket> GetActionHeader();
-        void WriteActionField(std::shared_ptr<IPacket> p, ActionResult& state);
+        bool WriteActionField(std::shared_ptr<IPacket> p, ActionResult& state);
 
         std::shared_ptr<IPacket> GetInitialChunk() {
             auto p = bigPacketPool->Acquire();
             if (!p) {
                 return nullptr;
             }
+            p->Clear();
             p->SetLength(0);
             return p;
         }
@@ -131,6 +142,7 @@ namespace Core {
             if (!p) {
                 return nullptr;
             }
+            p->Clear();
             auto p_st = reinterpret_cast<PacketStruct<Ping>*>(p->GetBuffer());
             p_st->header.length = sizeof(PacketHeader) + sizeof(Ping);
             p_st->header.magic = MAGIC;
