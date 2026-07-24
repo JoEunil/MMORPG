@@ -43,11 +43,15 @@ static class Program
         var i = 1;
         foreach (var session in sessions)
         {
-            var id = "test" + i;
-            var pwd = "12345";
-            await AuthService.Instance.LoginAsync(session, id, pwd);
-            (var address, var port) = await AuthService.Instance.GetSessionAsync(session);
-            await _network.Connect(session, address, port);
+            try
+            {
+                var id = "test" + i;
+                var pwd = "12345";
+                await AuthService.Instance.LoginAsync(session, id, pwd);
+                (var address, var port) = await AuthService.Instance.GetSessionAsync(session);
+                await _network.Connect(session, address, port);
+            }
+            catch (Exception e) { Console.WriteLine($"connect fail {i}: {e.Message}"); }
             i++;
             Thread.Sleep(10);
         }

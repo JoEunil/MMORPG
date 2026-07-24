@@ -37,7 +37,7 @@ namespace ClientCore.Services
             {
                 var requestData = new
                 {
-                    username = id,
+                    login_id = id,
                     password = pwd
                 };
 

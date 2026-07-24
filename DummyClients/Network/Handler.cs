@@ -56,6 +56,7 @@ namespace ClientCore.Network
             }
             catch (Exception e)
             {
+                Console.WriteLine($"[{index}] handler ex: {e}");
             }
         }
         private void HandleAuthRes(int index, STPacket<AuthResponseBody> packet)

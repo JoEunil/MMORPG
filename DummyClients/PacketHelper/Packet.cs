@@ -60,7 +60,7 @@ namespace ClientCore.PacketHelper
     public struct PacketHeader
     {
         public ushort magic;
-        public ushort length;
+        public uint length;
         public byte opcode;
         public byte flags;
     }
@@ -362,7 +362,7 @@ namespace ClientCore.PacketHelper
             int totalSize = headerSize + bodySize;
 
             byte[] arr = new byte[totalSize];
-            packet.header.length = (ushort)totalSize;
+            packet.header.length = (uint)totalSize;
 
             IntPtr ptr = Marshal.AllocHGlobal(totalSize);
 
@@ -389,7 +389,7 @@ namespace ClientCore.PacketHelper
             int headerSize = Marshal.SizeOf<PacketHeader>();
             byte[] arr = new byte[headerSize];
 
-            header.length = (ushort)headerSize;
+            header.length = (uint)headerSize;
 
             IntPtr ptr = Marshal.AllocHGlobal(headerSize);
             try
@@ -413,7 +413,7 @@ namespace ClientCore.PacketHelper
             int bodySize = Marshal.SizeOf<ChatRequestBody>();
             // 전체 패킷 사이즈
             int totalSize = Marshal.SizeOf<PacketHeader>() + bodySize + messageBytes.Length;
-            header.length = (ushort)totalSize;
+            header.length = (uint)totalSize;
             body.messageLength = (ushort)messageBytes.Length;
             body.scope = (CHAT_SCOPE)scope;
             body.targetChatID = targetID;

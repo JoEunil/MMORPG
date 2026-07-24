@@ -11,7 +11,7 @@ const API_PATH = "/auth/signup";
 async function main() {
     for (let i = 1; i <= 5000; i++) {
         const data = JSON.stringify({
-            username: `test${i}`,
+            login_id: `test${i}`,
             password: "12345",
             email: `test${i}@test.com`,
             phone_number: `010-0000-${String(i).padStart(4, "0")}`
