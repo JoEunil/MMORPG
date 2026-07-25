@@ -364,3 +364,5 @@ FodyWeavers.xsd
 
 !Resources/Release/
 redo.*
+# vcpkg (manifest mode) - installed packages are restored from vcpkg.json
+vcpkg_installed/

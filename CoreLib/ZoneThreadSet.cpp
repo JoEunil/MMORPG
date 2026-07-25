@@ -74,6 +74,7 @@ namespace Core {
     }
 
     void ZoneThreadSet::Start() {
+        m_running.store(true, std::memory_order_relaxed);
         for (int i = 0; i < ZONE_COUNT; i++)
         {
             //0번 lobby zone은 nonZoneThreadPool에서만 처리
@@ -99,13 +100,18 @@ namespace Core {
     }
 
     void ZoneThreadSet::Stop() {
+        // 이미 Stop 되었으면 재호출은 무시 (graceful shutdown + 소멸자 이중 호출 방어)
+        if (!m_running.exchange(false, std::memory_order_relaxed))
+            return;
         for (auto& t : m_threads)
         {
             t.running.store(false, std::memory_order_relaxed);
             if (t.thread.joinable())
                 t.thread.join();
         }
-        sysLogger->LogInfo("zone thread", "zone thread stopped");
+        // 소멸자 경로에서는 로거가 이미 파괴되었을 수 있음
+        if (sysLogger)
+            sysLogger->LogInfo("zone thread", "zone thread stopped");
     }
 
     void ZoneThreadSet::EnqueueWork(std::unique_ptr<Core::IPacketView, PacketViewDeleter> pv, uint16_t zoneID) {

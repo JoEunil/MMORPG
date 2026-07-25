@@ -80,7 +80,8 @@ namespace Cache {
         void Stop() {
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
-                m_running.store(false, std::memory_order_relaxed);
+                if (!m_running.exchange(false, std::memory_order_relaxed))
+                    return;
             }
             // lost wakeup 방지: 워커가 predicate 평가 후 wait 진입하기 전 틈에
             // notify가 끼면 신호를 놓치고 영원히 잠듦.

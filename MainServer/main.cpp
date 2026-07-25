@@ -109,16 +109,23 @@ int main(int argc, char* argv[]) {
         }
         std::cout << "서버 종료" << std::endl;
         Core::sysLogger->LogInfo("server stop");
+        // === Graceful shutdown ===
+        // 자원 소유/의존 순서에 맞춰 정리한다. 특히 종료 시점의 캐릭터 상태는
+        // stateManager.CleanUp()(core.CleanUp2) 에서 cache 큐로 enqueue → cache.CleanUp()의
+        // recvMQ drain → dbWorker drain 경로로 유실 없이 DB에 기록된다.
+        // 각 Stop()/CleanUp()은 idempotent(running.exchange) + 로거 null-safe 이며,
+        // DB 워커는 큐를 drain한 뒤 종료한다. 상세: GracefulShutdown.md
         net.CleanUp1();
         core.CleanUp1();
         core.CleanUp2();
-        cache.CleanUp();
         net.CleanUp2();
-        spdlog::shutdown();
+        cache.CleanUp();
+
         Core::sysLogger.reset();
         Core::gameLogger.reset();
         Core::errorLogger.reset();
         Core::perfLogger.reset();
+        spdlog::shutdown();
     }
     catch (const std::exception& e) {
         std::cerr << "Standard exception: " << e.what() << std::endl;

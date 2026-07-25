@@ -36,7 +36,8 @@ namespace External {
         });
         redisAsyncSetDisconnectCallback(m_context, [](const redisAsyncContext* c, int status) {
             auto self = reinterpret_cast<SessionAuth*>(c->data);
-            Core::sysLogger->LogError(std::string("Redis(session) connect error: ") + std::to_string(status));
+            if (Core::sysLogger)
+                Core::sysLogger->LogError(std::string("Redis(session) connect error: ") + std::to_string(status));
         });
         m_thread = std::thread([this]() {
             event_base_dispatch(m_eventBase);

@@ -102,7 +102,8 @@ namespace Net {
 
     void IOCP::CleanUp()
     {
-        m_isRunning.store(false, std::memory_order_relaxed);
+        if (!m_isRunning.exchange(false, std::memory_order_relaxed))
+            return;
         Core::sysLogger->LogInfo("iocp", "IOCP CleanUp");
 
         // 소켓 리소스 해제

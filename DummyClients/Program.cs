@@ -117,7 +117,7 @@ static class Program
         while (true)
         {
             Console.WriteLine("current client: " + _count);
-            Thread.Sleep(10000);
+            Thread.Sleep(60000);
         }
     }
 }

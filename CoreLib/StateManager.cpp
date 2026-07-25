@@ -5,6 +5,8 @@
 
 namespace Core {
     void StateManager::CleanUp() {
+        if (!m_running.exchange(false, std::memory_order_relaxed))
+            return;
         for (auto& shard : m_shards)
         {
             std::unique_lock<std::shared_mutex> lock(shard.smutex);

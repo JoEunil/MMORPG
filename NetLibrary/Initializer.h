@@ -28,14 +28,18 @@
 namespace Net {
     class Initializer {
         IOCP iocp;
+        // 소멸 순서 주의: STOverlappedEx가 packetPool/bigPacketPool의 패킷을 물고 있고,
+        // ClientContext는 overlappedExPool의 overlapped를 물고 있음.
+        // 선언 역순으로 소멸하므로 packetPool/bigPacketPool → overlappedExPool → clientContextPool 순으로 선언해
+        // 소멸 시 clientContextPool → overlappedExPool → packetPool 순으로 파괴되게 함(자원 제공자가 더 늦게 파괴).
+        PacketPool<PACKETPOOL_SIZE> packetPool{ NORMAL_PACKET_LENGTH };
+        PacketPool<BPACKETPOOL_SIZE> bigPacketPool{ BIG_PACKET_LENGTH };
         OverlappedExPool overlappedExPool;
         NetHandler netHandler;
         std::atomic<bool> fatalError;
         ClientContextPool clientContextPool;
         std::condition_variable cv;
-        std::mutex mutex; 
-        PacketPool<PACKETPOOL_SIZE> packetPool{ NORMAL_PACKET_LENGTH };
-        PacketPool<BPACKETPOOL_SIZE> bigPacketPool{ BIG_PACKET_LENGTH };
+        std::mutex mutex;
         PingManager pingManager;
         SessionManager sessionManager;
         NetPerfCollector perfCollector;

@@ -6,6 +6,7 @@
 #include <array>
 #include <new>
 #include <condition_variable>
+#include <atomic>
 
 #include "ZoneHandler.h"
 #include "IPacketView.h"
@@ -28,6 +29,7 @@ namespace Core {
 
         inline static ZoneHandler* handler;
         inline static CorePerfCollector* perfCollector;
+        inline static std::atomic<bool> m_running;
         static void Initialize(ZoneHandler* c, CorePerfCollector* p) {
             handler = c;
             perfCollector = p;

@@ -40,13 +40,14 @@ namespace Core {
     class StateManager {
         std::unordered_map<uint16_t, std::unique_ptr<Core::ZoneState>> m_states;
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
-
+        std::atomic<bool> m_running;
 
         MessagePool* messagePool;
         IMessageQueue* mq;
         IIOCP* iocp;
         LobbyZone* lobbyZone;
         ChatThreadPool* chat;
+
 
         void Initialize(IMessageQueue* m, IIOCP* io, MessagePool* mp, LobbyZone* lobby, ChatThreadPool* c) {
             m_states.reserve(ZONE_COUNT);
@@ -60,6 +61,7 @@ namespace Core {
             lobbyZone = lobby;
             iocp = io;
             chat = c;
+            m_running.store(true, std::memory_order_relaxed);
         }
 
         bool IsReady() {

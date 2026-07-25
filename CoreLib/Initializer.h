@@ -128,6 +128,7 @@ namespace Core {
             perfCollector.Stop();
         }
         void CleanUp2() {
+            nonZoneThreadPool.Stop();
             recvMQ.Stop();
             stateManager.CleanUp();
         }

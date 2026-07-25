@@ -158,16 +158,20 @@ namespace Cache {
 				it = (it->first < boundary) ? m_segRefCnt.erase(it) : std::next(it);
 			m_wal->TruncateBefore(boundary);
 		}
+		void Stop() {
+			if (!m_running.exchange(false, std::memory_order_relaxed))
+				return;
+
+			if (m_fsyncThread.joinable())
+				m_fsyncThread.join();
+		}
 		friend class Initializer;
 	public:
 		WALManager() {
 		}
 		~WALManager()
 		{
-			m_running.store(false, std::memory_order_relaxed);
-
-			if (m_fsyncThread.joinable())
-				m_fsyncThread.join();
+			Stop();
 		}
 		uint64_t WriteInventory(uint64_t characterID, const InventoryData& data) {
 			WalInventoryRecord record;

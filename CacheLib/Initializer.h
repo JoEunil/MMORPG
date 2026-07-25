@@ -94,11 +94,14 @@ namespace Cache {
             }
             return true;
         }
-        
         void CleanUp() {
+            CacheTimer::Stop();
+            recvMQ.Stop();
             dispatcher.Stop(); // store all dirty data
             flush.Stop();
-            CacheTimer::Stop();
+            dbWorkerGame.Stop();
+            dbWorkerBazaar.Stop();
+            walManager.Stop();
         }
         Core::IMessageQueue* GetMessageQueue() {
             return static_cast<Core::IMessageQueue*>(&recvMQ);

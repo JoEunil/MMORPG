@@ -95,7 +95,8 @@ namespace Cache {
             return true;
         }
         void Stop() {
-            m_running.store(false, std::memory_order_relaxed);
+            if (!m_running.exchange(false, std::memory_order_relaxed))
+                return;
             if (m_thread.joinable())
                 m_thread.join();
             cache_inventory->ForEachDirty([this](auto& key, auto& res) { return  DirtyFlush5(key, res); });

@@ -27,9 +27,10 @@ namespace External {
                 m_logger->flush();
                 m_running.store(false, std::memory_order_relaxed);
             }
-            if (m_logger) {
-                spdlog::shutdown();
-            }
+            // 전역 spdlog 스레드풀은 모든 로거가 공유하므로 여기서 내리지 않는다.
+            // 인스턴스마다 spdlog::shutdown()을 부르면 첫 로거 파괴 시 풀이 사라져
+            // 나머지 로거의 flush가 "thread pool doesn't exist" 에러를 낸다.
+            // 풀 종료는 main에서 모든 로거 reset 후 한 번만 spdlog::shutdown()으로 수행.
         }
         void CreateSink(const std::string& logFileName);
 

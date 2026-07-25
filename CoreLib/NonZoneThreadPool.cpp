@@ -15,7 +15,8 @@ namespace Core {
     }
 
     void NonZoneThreadPool::Stop() {
-        m_running.store(false, std::memory_order_relaxed);
+        if (!m_running.exchange(false, std::memory_order_relaxed))
+            return;
         for (auto& t : m_threads)
         {
             if (t.joinable())

@@ -60,7 +60,8 @@ namespace Core {
             m_thread = std::thread(&CorePerfCollector::ThreadFunc, this);
         }
         void Stop() {
-            m_running.store(false, std::memory_order_relaxed);
+            if (!m_running.exchange(false, std::memory_order_relaxed))
+                return;
             if (m_thread.joinable())
                 m_thread.join();
             sysLogger->LogInfo("core perf", "Core perf collector thread stopped");
