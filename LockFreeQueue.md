@@ -124,7 +124,7 @@ seq > pos + 1 → 다른 consumer가 이미 이 슬롯을 선점함, head 다시
 ```cpp
 	struct Cell{
 		std::atomic<uint32_t> seq;
-		T* data;s
+		T* data;
 	};
 ```
 

@@ -46,20 +46,18 @@ Delta Snapshot은 캐릭터 구분 ID + 필드 ID + 필드 값으로 구성되�
 - 하지만 zone 이동이나 Cell 전환 시 새로운 몬스터/캐릭터 로드가 Full Snapshot을 받은 시점에 적용되기 때문에 적절한 주기 설정이 필요함.
 
 __대역폭 계산 예시__
-- Delta
+- Delta (유저당 필드 2개 = 28바이트 가정)
 ```
-필드 1개 크기 * AOI 범위 * Cell당 유저 수 * Zone 수 * tick
-(14바이트 * Cell 유저 수) * 9 * Cell당 유저 수 * Zone 수 * 20FPS
-= 201,600 * zone * 20fps
-= 4,032,000 * zone / sec
-= 201,600 * zone / tick
+28B * AOI 범위(9) * Cell당 유저 수(40, 송신) * Cell당 유저 수(40, 수신)
+= 28 * 9 * 40 * 40 = 403,200 byte / tick / zone
+= 403,200 * 20FPS  = 8,064,000 byte / sec / zone   → 약 64 Mbps / zone
 ```
 
-- Full
+- Full (유저당 71바이트)
 ```
-필드 1개 크기 * AOI 범위 * Cell당 유저 수 * Zone 수
-(71바이트 * Cell 유저 수) * AOI 범위 * Cell당 유저 수 * Zone 수
-= 1,054,350 * zone / tick
+71B * AOI 범위(9) * Cell당 유저 수(40, 송신) * Cell당 유저 수(40, 수신)
+= 71 * 9 * 40 * 40 = 1,022,400 byte / tick / zone
+= 3초 주기         → 약 2.8 Mbps / zone
 ```
 
 - 현재 Grid 기반 AOI:

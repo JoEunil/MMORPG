@@ -57,9 +57,9 @@ Chunk 단위 전송 처리 방식
 ## 5. Delta 패킷 전송량 비교 (AOI 적용 전/후)
 __패킷 구조__
 ```cpp    
-struct PacketHeader { // 6바이트
+struct PacketHeader { // 8바이트
     uint16_t magic = MAGIC;
-    uint16_t length;
+    uint32_t length;
     uint8_t opcode;
     uint8_t flags = 0x00; // 첫번째 비트는 시뮬레이션 로직인지 나타냄, 0x01 ~ 0x80
 };
@@ -76,7 +76,7 @@ struct DeltaSnapshotBody {
 };
 ```
 __Delta 패킷 크기__  
-헤더 + Count 필드 크기: 6 + 2 = 8 byte  
+헤더 + Count 필드 크기: 8 + 2 = 10 byte  
 Delta 필드 1개:  14 byte
 
 __계산 조건__
@@ -89,10 +89,10 @@ __계산 조건__
 __AOI, Cell 적용 전__
 - Zone 내 모든 유저에게 전체 Delta 패킷 전송
 - 패킷 크기(100명 기준):  
-  `28 bytes × 100  + 8 = 2808 bytes`
+  `28 bytes × 100 + 10 = 2810 bytes`
 - 전송 대상: 100명
 - 총 전송량:  
-  `2808 × 100 = 280,800 bytes`
+  `2810 × 100 = 281,000 bytes`
 
 __AOI, Cell 적용 후__  
 각 Cell이 AOI(3×3) 기준으로 필요한 유저 그룹만 묶어서 전송  
@@ -100,10 +100,10 @@ __AOI, Cell 적용 후__
   4명(Cell 당) × 9개 Cell = 36명
 - Cell 1개 패킷 크기
   - Delta 크기: 36 × 28 = 1008 bytes
-  - 패킷 헤더 + Count: 8 bytes  
-  → 총 1016 bytes
+  - 패킷 헤더 + Count: 10 bytes  
+  → 총 1018 bytes
 - 총 전송량  
-  `25 × 1016 × 4 = 101,600 bytes`
+  `25 × 1018 × 4 = 101,800 bytes`
   
   
 약 64% 대역폭 절감

@@ -35,6 +35,7 @@ IOCP 비동기 IO, Lock-Free Queue, WAL 기반 장애 복구를 포함한 In-Pro
 - Unity 클라이언트 연동 및 기본 기능 테스트
 - 더미 클라이언트 부하 테스트
   → **i3-12100F 4코어 단일 PC 환경에서 2,000명 동시 접속 달성**
+- 종료 안정성 및 메모리 검증 (Graceful Shutdown, AddressSanitizer)
 
 [![2,000명 동시 접속 Unity 클라이언트 테스트 영상](https://img.youtube.com/vi/2q2kZwI3uSQ/maxresdefault.jpg)](https://youtu.be/2q2kZwI3uSQ)
 > ▶ 2,000명 동시 접속 Unity 클라이언트 테스트 영상 
@@ -167,6 +168,12 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 - [WAL](WAL.md): Write-Ahead Log 구조, Replay, Truncate, 장애 복구 설계
 - [DB](DB.md): DB 분리, 수직 파티셔닝, 복합 인덱스, View, Saga, Outbox/Inbox
 
+### 6. 종료 처리 (Graceful Shutdown)
+
+서버 종료 시 진행 중인 작업 유실과 소멸 순서로 인한 크래시를 방지하기 위해, 자원 소유 관계에 기반한 정리 순서와 스레드 종료 정책을 설계했다.
+
+- [Graceful Shutdown](GracefulShutdown.md): 멤버 소멸 순서(소비자 → 제공자), 큐/워커 drain 정책, 로거 teardown 순서 정립. 종료 시점의 캐릭터 상태를 유실 없이 DB에 반영하고, 이중 Stop 호출·소멸 순서로 인한 크래시를 제거
+
 ## 스레드 모델
 
 스레드별 작업 성격에 따른 분류.
@@ -231,6 +238,12 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 - [모니터링](Monitoring.md) — Grafana + Loki + Promtail 조합으로 서버 성능 지표(TPS, 풀 사용량, 처리량 등)를 실시간 시각화
 - [더미 테스트](DummyTest.md) — 100명 / 1,000명 테스트 및 실패 원인 분석 (Wireshark 검증)
 - [더미 테스트2](DummyTest2.md) — 실패 원인 재분석과 개선을 거친 2,000명 달성 과정, 3,000~5,000명 시도 기록
+
+### 메모리 분석 (AddressSanitizer)
+
+서버와 단위 테스트를 ASAN 빌드로 실행해 메모리 안전성과 누수를 검증했다.
+
+- [ASAN 부하 테스트 & 메모리 분석](ASAN.md) — 서버(2,000명, 1분/10분)·단위 테스트 43종을 ASAN으로 실행. 메모리 오류 없음, `inuse` 시간축 비교로 누수 없음 확인
 
 ## 리팩토링
 
@@ -398,6 +411,7 @@ DB → Redis → 로그인 서버 → 게임 서버
 - [IOCP Send 파이프라인](IOCPSendPipeline.md)
 - [거래소 시스템](Bazaar.md)
 - [거래소 시스템 테스트](BazaarTest.md)
+- [Graceful Shutdown](GracefulShutdown.md)
 
 ### 리팩토링
 - [채팅 기능 리팩토링](ChatRefactor.md)
@@ -417,3 +431,4 @@ DB → Redis → 로그인 서버 → 게임 서버
 - [모니터링](Monitoring.md)
 - [더미 클라이언트 테스트](DummyTest.md)
 - [더미 클라이언트 테스트2](DummyTest2.md)
+- [ASAN 테스트 분석](ASAN.md)

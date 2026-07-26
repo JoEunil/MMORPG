@@ -114,6 +114,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DummyClients", "DummyClient
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{C6CB27A9-DDF3-40CF-8497-8B6FC27D4E0F}"
 	ProjectSection(SolutionItems) = preProject
+		ASAN.md = ASAN.md
 		DummyTest.md = DummyTest.md
 		DummyTest2.md = DummyTest2.md
 		Monitoring.md = Monitoring.md
@@ -138,6 +139,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SystemDesign", "SystemDesig
 		ClientContext.md = ClientContext.md
 		DB.md = DB.md
 		FloodDetect.md = FloodDetect.md
+		GracefulShutdown.md = GracefulShutdown.md
 		IOCPSendPipeline.md = IOCPSendPipeline.md
 		PingLoop.md = PingLoop.md
 		Snapshot.md = Snapshot.md

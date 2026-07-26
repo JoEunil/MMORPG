@@ -5,7 +5,7 @@
 이 문서는 Lock-Free Queue에 대한 테스트및 디버깅을 정리한다.
 
 ## 2. 테스트 시나리오
-[LockFreeQueue unit test 코드](MainServer/UnitTest.h)  
+[LockFreeQueue unit test 코드](UnitTests/BaseLib/LockFreeQueue.cpp)  
 - 큐 크기: 1024  
 - producer 스레드: 4개
 - consumer 스레드: 4개
