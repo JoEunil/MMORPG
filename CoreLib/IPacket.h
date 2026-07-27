@@ -9,8 +9,8 @@ namespace Core {
     public:
         virtual ~IPacket() = default;
         virtual uint8_t* GetBuffer() = 0;
-        virtual uint32_t GetLength() = 0;
-        virtual uint32_t GetCapacity() = 0;
+        virtual uint32_t GetLength() const = 0;
+        virtual uint32_t GetCapacity() const = 0;
         virtual void SetLength(uint32_t len) = 0;
         virtual void Release() = 0;
 
@@ -18,13 +18,13 @@ namespace Core {
         void SetZone(uint16_t z) {
             m_zoneID = z;
         }
-        uint16_t GetZone() {
+        uint16_t GetZone() const {
             return m_zoneID;
          }
         void Count() {
             m_count++;
         }
-        size_t GetCount() {
+        size_t GetCount() const {
             return m_count;
         }
         void Clear() {

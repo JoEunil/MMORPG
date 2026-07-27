@@ -120,7 +120,7 @@ namespace Net {
                 NetPacketFilter::Disconnect(m_sessionID);
             }
         }
-        bool CheckGameSession() {
+        bool CheckGameSession() const {
             return m_gameSession.load(std::memory_order_acquire);
         }
 

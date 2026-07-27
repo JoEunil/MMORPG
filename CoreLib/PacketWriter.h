@@ -31,13 +31,13 @@ namespace Core {
         friend class Initializer;
     public:
         std::unique_ptr<IPacket, PacketDeleter> WriteAuthResponse(uint8_t resStatus);
-        std::unique_ptr<IPacket, PacketDeleter>  WriteCharacterListResponse(MsgCharacterListResBody* body);
-        std::unique_ptr<IPacket, PacketDeleter>  WriteEnterWorldResponse(MsgCharacterStateResBody* body);
-        std::unique_ptr<IPacket, PacketDeleter>  WriteInventoryResponse(MsgInventoryResBody* body);
-        std::unique_ptr<IPacket, PacketDeleter>  WriteInventoryUpdateResponse(MsgInventoryUpdateResBody* body);
-        std::unique_ptr<IPacket, PacketDeleter>  GetChatWhisperPacket(uint64_t sender, std::string& userName, std::string& message);
+        std::unique_ptr<IPacket, PacketDeleter>  WriteCharacterListResponse(const MsgCharacterListResBody* body);
+        std::unique_ptr<IPacket, PacketDeleter>  WriteEnterWorldResponse(const MsgCharacterStateResBody* body);
+        std::unique_ptr<IPacket, PacketDeleter>  WriteInventoryResponse(const MsgInventoryResBody* body);
+        std::unique_ptr<IPacket, PacketDeleter>  WriteInventoryUpdateResponse(const MsgInventoryUpdateResBody* body);
+        std::unique_ptr<IPacket, PacketDeleter>  GetChatWhisperPacket(uint64_t sender, const std::string& userName, const std::string& message);
         std::shared_ptr<IPacket> GetInitialChatBatchPacket(CHAT_SCOPE scope);
-        uint16_t WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, std::string& userName, std::string& message);
+        uint16_t WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, const std::string& userName, const std::string& message);
         
         std::shared_ptr<IPacket> GetDeltaHeader() {
             auto p = packetPool->Acquire();
@@ -74,7 +74,7 @@ namespace Core {
             return true;
         }
         std::shared_ptr<IPacket> GetFullHeader();
-        bool WriteFullField(std::shared_ptr<IPacket> p, CharacterState& state);
+        bool WriteFullField(std::shared_ptr<IPacket> p, const CharacterState& state);
 
         std::shared_ptr<IPacket> GetMonsterDeltaHeader() {
             auto p = packetPool->Acquire();
@@ -111,10 +111,10 @@ namespace Core {
             return true;
         }
         std::shared_ptr<IPacket> GetMonsterFullHeader();
-        bool WriteMonsterFullField(std::shared_ptr<IPacket> p, MonsterState& state);
+        bool WriteMonsterFullField(std::shared_ptr<IPacket> p, const MonsterState& state);
 
         std::shared_ptr<IPacket> GetActionHeader();
-        bool WriteActionField(std::shared_ptr<IPacket> p, ActionResult& state);
+        bool WriteActionField(std::shared_ptr<IPacket> p, const ActionResult& state);
 
         std::shared_ptr<IPacket> GetInitialChunk() {
             auto p = bigPacketPool->Acquire();

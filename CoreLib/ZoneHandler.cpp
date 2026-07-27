@@ -12,7 +12,7 @@
 #include "LoggerGlobal.h"
 
 namespace Core {
-    void ZoneHandler::ProcessAction(ActionRequestBody* body, uint64_t sessionID, uint16_t zoneID) {
+    void ZoneHandler::ProcessAction(const ActionRequestBody* body, uint64_t sessionID, uint16_t zoneID) {
         auto zoneState = stateManager->GetZone(zoneID);
         // 한 틱에서 마지막 입력으로 업데이트. 
 

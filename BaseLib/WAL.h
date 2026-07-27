@@ -68,7 +68,7 @@ namespace Base {
 		}
 
 		// CRC32 계산 함수
-		uint32_t calculate_crc32(const void* data, size_t len) {
+		uint32_t calculate_crc32(const void* data, size_t len) const {
 			const uint8_t* p = static_cast<const uint8_t*>(data);
 			uint32_t crc = 0xFFFFFFFF;
 

@@ -136,7 +136,7 @@ namespace Net{
         }
         bool AddSession(SOCKET sock);
         bool Disconnect(SOCKET sock);
-        uint32_t GetConnectionCnt() {
+        uint32_t GetConnectionCnt() const {
             return m_connectionCnt.load(std::memory_order_relaxed);
         }
 

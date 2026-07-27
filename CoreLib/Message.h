@@ -21,7 +21,7 @@ namespace Core {
         }
 
         uint8_t* GetBuffer() { return m_buffer; }
-        uint16_t GetLength() { return m_length; }
+        uint16_t GetLength() const { return m_length; }
         void SetLength(uint16_t len) { m_length = len; };
     };
 }

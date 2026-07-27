@@ -19,7 +19,7 @@ namespace Core {
         return p;
     }
 
-    std::unique_ptr<IPacket, PacketDeleter>  PacketWriter::WriteCharacterListResponse(MsgCharacterListResBody* body) {
+    std::unique_ptr<IPacket, PacketDeleter>  PacketWriter::WriteCharacterListResponse(const MsgCharacterListResBody* body) {
         auto p = bigPacketPool->AcquireUnique();
         if (p == nullptr) {
             return nullptr;
@@ -42,7 +42,7 @@ namespace Core {
         return p;
     }
 
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteEnterWorldResponse(MsgCharacterStateResBody* body) {
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteEnterWorldResponse(const MsgCharacterStateResBody* body) {
         auto p = packetPool->AcquireUnique();
         if (p == nullptr) {
             return nullptr;
@@ -70,7 +70,7 @@ namespace Core {
         return p;
     }
 
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteInventoryResponse(MsgInventoryResBody* body) {
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteInventoryResponse(const MsgInventoryResBody* body) {
         auto p = packetPool->AcquireUnique();
         if (p == nullptr) {
             return nullptr;
@@ -95,7 +95,7 @@ namespace Core {
         return p;
     }
 
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteInventoryUpdateResponse(MsgInventoryUpdateResBody* body) {
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteInventoryUpdateResponse(const MsgInventoryUpdateResBody* body) {
         auto p = packetPool->AcquireUnique();
         if (p == nullptr) {
             return nullptr;
@@ -116,7 +116,7 @@ namespace Core {
         return p;
     }
 
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::GetChatWhisperPacket(uint64_t sender, std::string& userName, std::string& message) {
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::GetChatWhisperPacket(uint64_t sender, const std::string& userName, const std::string& message) {
         auto p = packetPool->AcquireUnique();
         if (p == nullptr) {
             return nullptr;
@@ -154,7 +154,7 @@ namespace Core {
         return p;
     }
 
-    uint16_t PacketWriter::WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, std::string& userName, std::string& message) {
+    uint16_t PacketWriter::WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, const std::string& userName, const std::string& message) {
         auto p_st = reinterpret_cast<PacketStruct<ChatBatchNotifyBody>*>(p->GetBuffer());
         p_st->header.length += message.length();
         p->SetLength(p_st->header.length);
@@ -189,7 +189,7 @@ namespace Core {
         return p;
     }
 
-    bool PacketWriter::WriteFullField(std::shared_ptr<IPacket> p, CharacterState& state){
+    bool PacketWriter::WriteFullField(std::shared_ptr<IPacket> p, const CharacterState& state){
         if (p->GetLength() + sizeof(FullStateField) > p->GetCapacity())
             return false;
         auto fields = reinterpret_cast<FullStateField*>(p->GetBuffer());
@@ -227,7 +227,7 @@ namespace Core {
         return p;
     }
 
-    bool PacketWriter::WriteMonsterFullField(std::shared_ptr<IPacket> p, MonsterState& state) {
+    bool PacketWriter::WriteMonsterFullField(std::shared_ptr<IPacket> p, const MonsterState& state) {
         if (p->GetLength() + sizeof(MonsterFullField) > p->GetCapacity())
             return false;   
         auto fields = reinterpret_cast<MonsterFullField*>(p->GetBuffer());
@@ -262,7 +262,7 @@ namespace Core {
         return p;
     }
 
-    bool PacketWriter::WriteActionField(std::shared_ptr<IPacket> p, ActionResult& state) {
+    bool PacketWriter::WriteActionField(std::shared_ptr<IPacket> p, const ActionResult& state) {
         if (p->GetLength() + sizeof(ActionResultField) > p->GetCapacity())
             return false;
         auto fields = reinterpret_cast<ActionResultField*>(p->GetBuffer());

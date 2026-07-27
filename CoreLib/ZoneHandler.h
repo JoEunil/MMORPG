@@ -29,7 +29,7 @@ namespace Core {
             return true;
         }
         
-        void ProcessAction(ActionRequestBody* body, uint64_t sessionID, uint16_t zoneID);
+        void ProcessAction(const ActionRequestBody* body, uint64_t sessionID, uint16_t zoneID);
         friend class Initializer;
     public:
         void Process(IPacketView* p, uint16_t zoneID);

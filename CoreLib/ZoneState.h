@@ -133,7 +133,7 @@ namespace Core {
         void ApplyHit(std::optional<std::reference_wrapper<CharacterState>> caster, ActiveSkill& skill, int idx);
         void MoveToward(MonsterState& monster, CharacterState& character);
         void MoveAround(MonsterState& monster);
-        uint32_t GetUserCnt() {
+        uint32_t GetUserCnt() const {
             return m_userCnt.load(std::memory_order_relaxed);
         }
     };

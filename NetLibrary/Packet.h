@@ -55,10 +55,10 @@ namespace Net {
 
         void Release() override;
         uint8_t* GetBuffer() override { return m_buffer; }
-        uint32_t GetLength() override { return m_length; }
-        uint32_t GetCapacity() override { return m_capacity; }
+        uint32_t GetLength() const override { return m_length; }
+        uint32_t GetCapacity() const override { return m_capacity; }
         void SetLength(uint32_t len) override { m_length = len; }
-        Core::IPacketPool* GetOwner() {return owner;}
+        Core::IPacketPool* GetOwner() const {return owner;}
     };
 
     // 버퍼와 타입캐스팅으로, 직렬화, 역직렬화 기능 (메모리 복사 없음)

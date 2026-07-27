@@ -99,7 +99,7 @@ namespace Core {
         z.y_max = (y + 1) * ZONE_SIZE + TRANSITION_BUFFER;
     }
 
-    inline void CellInit(std::array<std::array<Cell, CELLS_X>, CELLS_Y>& cells, ZoneArea& area) {
+    inline void CellInit(std::array<std::array<Cell, CELLS_X>, CELLS_Y>& cells, const ZoneArea& area) {
         for (int cy = 0; cy < CELLS_Y; ++cy) {
             for (int cx = 0; cx < CELLS_X; ++cx) {
 
@@ -119,7 +119,7 @@ namespace Core {
         }
     }
 
-    inline std::pair<uint16_t, uint16_t> GetCell(float x, float y, ZoneArea& area) {
+    inline std::pair<uint16_t, uint16_t> GetCell(float x, float y, const ZoneArea& area) {
         int cx = (x - area.x_min) / CELL_SIZE;
         int cy = (y - area.y_min) / CELL_SIZE;
 

@@ -24,7 +24,7 @@ namespace Net {
         // 경합 상황이면 flag 상태를 여러개로 나누고, CAS 함수가 필요했을 것.
         // 다음 recv에서 flood가 무조건 걸리도록 release, acquire만 잘 걸어주면 됨.
 
-        bool NetStatus() {
+        bool NetStatus() const {
             if (m_contextStatus == false) {
                 Core::gameLogger->LogWarn("net session", "context invalid", "sessionID", m_sessionID);
                 return false;
@@ -35,7 +35,7 @@ namespace Net {
             }
             return true;
         }
-        bool FloodCheck() {
+        bool FloodCheck() const {
             return m_flood;
         }
         mutable std::mutex m_mutex;
@@ -51,7 +51,7 @@ namespace Net {
             m_contextStatus = true;
         }
 
-        bool CheckSession() {
+        bool CheckSession() const {
             if (!NetStatus())
                 return false;
             if (FloodCheck()) {
@@ -66,7 +66,7 @@ namespace Net {
             m_rtt = rtt;
         }
         
-        uint64_t GetRtt() {
+        uint64_t GetRtt() const {
             // race condition 안중요함, 틀려도 되는 데이터
             return m_rtt;
         }
