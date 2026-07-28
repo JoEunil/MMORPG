@@ -14,8 +14,8 @@ namespace Core {
         sysLogger->LogInfo("broadcast thread", "broadcast thread started", "threadID", ss.str());
         while (m_running.load(std::memory_order_relaxed))
         {
-            auto packets = std::move(m_workQ.pop());
-            if (!packets) {
+            std::unique_ptr< std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>> packets;
+            if (!m_workQ.pop(packets)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 // back-off
                 continue;
@@ -81,8 +81,8 @@ namespace Core {
         perfCollector->AddBroadcastEnqueueCnt();
         if (m_running.load(std::memory_order_relaxed)) {
             headers[0]->SetZone(zoneID);
-            if (m_workQ.push(std::make_unique<std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>>(headers, chunks)) != nullptr) {
-                // push 성공 시 nullptr 반환
+            if (!m_workQ.push(std::make_unique<std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>>(headers, chunks))) {
+                // push 실패(full) 시 false 반환
                 perfCollector->AddBroadcastDropCnt();
             }
         }

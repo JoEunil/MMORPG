@@ -28,13 +28,14 @@ namespace Core {
         handler->SpawnMonster(zoneID);
         while (t->running) {
             handler->SkillCoolDown(zoneID);
-            auto packet = std::move(t->workQueue.pop());
+            std::unique_ptr<IPacketView, PacketViewDeleter> packet;
             const size_t MAX_PACKETS_PER_TICK = 2000;
             size_t processed = 0;
-            while(packet != nullptr && processed < MAX_PACKETS_PER_TICK)
+            bool got = t->workQueue.pop(packet);
+            while(got && processed < MAX_PACKETS_PER_TICK)
             {
                 handler->Process(packet.get(), zoneID); // 게임 상태 업데이트 처리
-                packet = t->workQueue.pop();
+                got = t->workQueue.pop(packet);
                 processed++;
             }
             perfCollector->AddPacketProcessCnt(zoneID, processed);
@@ -116,8 +117,8 @@ namespace Core {
 
     void ZoneThreadSet::EnqueueWork(std::unique_ptr<Core::IPacketView, PacketViewDeleter> pv, uint16_t zoneID) {
         Thread& t = m_threads[zoneID-1];
-        if (t.workQueue.push(std::move(pv)) != nullptr) {
-            // 성공 시 nullptr 반환
+        if (!t.workQueue.push(std::move(pv))) {
+            // 실패(full) 시 false 반환
             perfCollector->AddZoneDropCnt(zoneID);
         }
     }

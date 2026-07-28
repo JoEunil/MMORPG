@@ -7,13 +7,12 @@
 #include "IPacketView.h"
 #include "Config.h"
 #include <BaseLib/LockFreeQueue.h>
-#include <BaseLib/LockFreeQueueUP.h>
 #include "LoggerGlobal.h"
 namespace Core {
     // 게임틱 단위로 처리되지 않는 (zone 상태와 관련 없는) 요청 처리
     class NonZoneThreadPool {
         std::vector<std::thread> m_threads;
-        Base::LockFreeQueueUP<std::unique_ptr<IPacketView, PacketViewDeleter>, NON_ZONE_QUEUE_SIZE> m_workQueue;
+        Base::LockFreeQueue<std::unique_ptr<IPacketView, PacketViewDeleter>, NON_ZONE_QUEUE_SIZE> m_workQueue;
         Base::LockFreeQueue<uint64_t, DISCONNECT_QUEUE_SIZE> m_disconnectQueue;
 
         std::atomic<bool> m_running = false;

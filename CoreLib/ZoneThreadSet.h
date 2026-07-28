@@ -12,7 +12,7 @@
 #include "IPacketView.h"
 #include "Config.h"
 
-#include <BaseLib/LockFreeQueueUP.h>
+#include <BaseLib/LockFreeQueue.h>
 
 namespace Core {
     class IPacketView;
@@ -20,7 +20,7 @@ namespace Core {
 
     struct alignas(std::hardware_destructive_interference_size) Thread {
         std::thread thread;
-        Base::LockFreeQueueUP<std::unique_ptr<IPacketView, PacketViewDeleter>, ZONE_QUEUE_SIZE> workQueue; // 개별 작업 큐
+        Base::LockFreeQueue<std::unique_ptr<IPacketView, PacketViewDeleter>, ZONE_QUEUE_SIZE> workQueue; // 개별 작업 큐
         std::atomic<bool> running = false;
     };
 

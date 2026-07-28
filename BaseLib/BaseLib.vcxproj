@@ -140,8 +140,6 @@
     <ClInclude Include="Exception.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="LockFreeQueue.h" />
-    <ClInclude Include="LockFreeQueueSP.h" />
-    <ClInclude Include="LockFreeQueueUP.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="FixedObjectPool.h" />
     <ClInclude Include="RingQueue.h" />

@@ -144,9 +144,25 @@ https://github.com/couchbase/phosphor/blob/master/thirdparty/dvyukov/include/dvy
 http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
 
 ## 7. 구현 코드
-[BaseLib/LockFreeQueue](BaseLib/LockFreeQueue.h)  
-[BaseLib/LockFreeQueueSP](BaseLib/LockFreeQueueSP.h)  - shared_ptr 구현 버전  
-[BaseLib/LockFreeQueueUP](BaseLib/LockFreeQueueUP.h)  - unique_ptr 구현 버전  
+[BaseLib/LockFreeQueue](BaseLib/LockFreeQueue.h) — value / shared_ptr / unique_ptr 통합 버전
+
+기존에는 원소 타입별로 `LockFreeQueue`(value) / `LockFreeQueueSP`(shared_ptr) / `LockFreeQueueUP`(unique_ptr) 3개로 나뉘어 있었다.
+코어 알고리즘(seq 기반 슬롯 상태 + CAS)은 세 버전이 완전히 동일했고, 갈라진 부분은 원소를 넣고 빼는 API뿐이었다.
+갈라진 근본 원인은 서로 양립하지 않는 두 요구였다.
+- **값 타입은 nullptr이 없다** → 반환 기반 `T pop()`을 못 쓰고 out 파라미터가 강제됨.
+- **move-only(unique_ptr)는 full일 때 버리면 안 된다** → push 실패 시 원본을 돌려줄 방법이 필요함.
+
+아래 전제로 하나의 템플릿으로 통합했다.
+- **T는 nothrow-move-assignable** 이어야 한다. (`static_assert`로 강제)
+- **push는 consume-on-success** — 슬롯 확보에 성공할 때만 `item`을 move해 간다.
+  - `bool push(T& item)` : 실패(full) 시 `item`을 건드리지 않으므로 move-only도 유실 없이 재시도 가능.
+  - `bool push(T&& item)` : 임시/rvalue 편의 오버로드.
+- **pop은 out 파라미터로 move-out** — `bool pop(T& out)`.
+  - move-out으로 슬롯이 자동으로 비므로(unique_ptr/shared_ptr ref 해제) shared_ptr용 수동 clear가 불필요.
+  - nullptr 센티넬이 필요 없어 값 타입도 그대로 사용 가능.
+
+즉 반환 기반(nullptr 센티넬) API 대신 **참조 기반(consume-on-success) API**로 통일한 것이 통합의 핵심이다.  
+이렇게 하면 "실패 시 원본 보존(unique_ptr)"과 "센티넬 없는 값 타입"을 하나의 시그니처로 동시에 만족시킬 수 있다.
 
 ## 8. 주의사항 
 - 큐 크기는 모듈러 연산 최적화를 위해 2의 거듭제곱으로 사용한다.

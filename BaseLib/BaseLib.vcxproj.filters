@@ -33,12 +33,6 @@
     <ClInclude Include="RingQueue.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="LockFreeQueueSP.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="LockFreeQueueUP.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
     <ClInclude Include="TripleBuffer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>

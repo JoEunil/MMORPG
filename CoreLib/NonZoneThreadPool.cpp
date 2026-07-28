@@ -38,8 +38,8 @@ namespace Core {
                 empty = false;
                 handler->Disconnect(session);
             }
-            auto work = m_workQueue.pop();
-            if (work != nullptr)
+            std::unique_ptr<IPacketView, PacketViewDeleter> work;
+            if (m_workQueue.pop(work))
                 handler->Process(work.get()); // handler에서 비동기 요청은 복사해서 처리.
             if (empty)
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));

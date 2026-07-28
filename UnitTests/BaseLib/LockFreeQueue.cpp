@@ -2,11 +2,12 @@
 #include <thread>
 #include <set>
 #include <mutex>
+#include <memory>
 
 #include <BaseLib/LockFreeQueue.h>
-#include <BaseLib/LockFreeQueueSP.h>
-#include <BaseLib/LockFreeQueueUP.h>
 
+// value / unique_ptr / shared_ptr 를 모두 통합된 Base::LockFreeQueue 하나로 검증한다.
+// (기존 LockFreeQueueSP / LockFreeQueueUP 분기는 통합됨)
 
 constexpr int QUEUE_SIZE1 = 1024;
 constexpr int QUEUE_SIZE2 = 1024;
@@ -19,6 +20,7 @@ struct Dummy {
     int v = 0;
 };
 
+// value 타입
 TEST(LockFreeQueueTest, SingleThreadPushPop) {
     Base::LockFreeQueue<Dummy, QUEUE_SIZE1> q;
     Dummy out;
@@ -41,7 +43,7 @@ TEST(LockFreeQueueTest, PushToFullFails) {
 	EXPECT_FALSE(q.push(QUEUE_SIZE1));   // 꽉 찬 큐 push는 false
 }
 
-TEST(LockFreeQueueTest, MutiThreadSafePushRace) { 
+TEST(LockFreeQueueTest, MutiThreadSafePushRace) {
     Base::LockFreeQueue<Dummy, QUEUE_SIZE2> q;
     std::vector<std::thread> threads;
     std::atomic<int> successCnt = 0;
@@ -74,7 +76,7 @@ TEST(LockFreeQueueTest, MutiThreadSafePopRace) {
     std::atomic<int> successCnt = 0;
     std::set<int> popped;
     std::mutex setMutex;
-    
+
     for (int i = 0; i < THREADS * REQUEST_PER_THREAD; i++)
     {
         q.push(Dummy{i});
@@ -104,32 +106,39 @@ TEST(LockFreeQueueTest, MutiThreadSafePopRace) {
 
 }
 
-// unique_ptr
-// unique_ptr은 실패 처리 때문에 push 성공 시 nullptr, 실패 시 unique_ptr 반환
+// unique_ptr (move-only)
+// consume-on-success: push 성공 시 원본이 move되어 비고, 실패(full) 시 원본은 유지된다(유실 없음).
 TEST(LockFreeQueueUPTest, SingleThreadPushPop) {
-    Base::LockFreeQueueUP<std::unique_ptr<Dummy>, QUEUE_SIZE1> q;
-    EXPECT_EQ(q.push(std::make_unique<Dummy>(Dummy{2})), nullptr);
-    std::unique_ptr<Dummy> out = q.pop(); 
+    Base::LockFreeQueue<std::unique_ptr<Dummy>, QUEUE_SIZE1> q;
+    auto in = std::make_unique<Dummy>(Dummy{2});
+    EXPECT_TRUE(q.push(in));
+    EXPECT_EQ(in, nullptr);            // 성공 시 move되어 원본은 비워짐
+    std::unique_ptr<Dummy> out;
+    ASSERT_TRUE(q.pop(out));
     ASSERT_NE(out, nullptr);
     EXPECT_EQ(out->v, 2);
 }
 
 TEST(LockFreeQueueUPTest, PopFromEmptyFails) {
-    Base::LockFreeQueueUP<std::unique_ptr<Dummy>, QUEUE_SIZE1> q;
-    std::unique_ptr<Dummy> out = q.pop();
+    Base::LockFreeQueue<std::unique_ptr<Dummy>, QUEUE_SIZE1> q;
+    std::unique_ptr<Dummy> out;
+    EXPECT_FALSE(q.pop(out));
     EXPECT_EQ(out, nullptr);
 }
 
 TEST(LockFreeQueueUPTest, PushToFullFails) {
-    Base::LockFreeQueueUP<std::unique_ptr<Dummy>, QUEUE_SIZE1> q;
+    Base::LockFreeQueue<std::unique_ptr<Dummy>, QUEUE_SIZE1> q;
     for (int i = 0; i < QUEUE_SIZE1; ++i) {
-        EXPECT_EQ(q.push(std::make_unique<Dummy>(Dummy{ i })), nullptr);
+        auto in = std::make_unique<Dummy>(Dummy{ i });
+        EXPECT_TRUE(q.push(in));
     }
-    EXPECT_NE(q.push(std::make_unique<Dummy>(Dummy{QUEUE_SIZE1})), nullptr);   // 꽉 찬 큐 push는 false
+    auto overflow = std::make_unique<Dummy>(Dummy{ QUEUE_SIZE1 });
+    EXPECT_FALSE(q.push(overflow));    // 꽉 찬 큐 push는 false
+    EXPECT_NE(overflow, nullptr);      // 실패 시 원본 유지 → move-only 유실 없음
 }
 
 TEST(LockFreeQueueUPTest, MutiThreadSafePushRace) {
-    Base::LockFreeQueueUP<std::unique_ptr<Dummy>, QUEUE_SIZE2> q;
+    Base::LockFreeQueue<std::unique_ptr<Dummy>, QUEUE_SIZE2> q;
     std::vector<std::thread> threads;
     std::atomic<int> successCnt = 0;
     std::set<int> pushed;
@@ -137,7 +146,8 @@ TEST(LockFreeQueueUPTest, MutiThreadSafePushRace) {
     {
         threads.push_back(std::thread([&, i]() {
             for (int j = 0; j < REQUEST_PER_THREAD; j++) {
-                if (q.push(std::make_unique<Dummy>(Dummy{ i * REQUEST_PER_THREAD + j })) == nullptr) {
+                auto in = std::make_unique<Dummy>(Dummy{ i * REQUEST_PER_THREAD + j });
+                if (q.push(in)) {
                     successCnt.fetch_add(1, std::memory_order_relaxed);
                 }
             }
@@ -149,14 +159,14 @@ TEST(LockFreeQueueUPTest, MutiThreadSafePushRace) {
     EXPECT_EQ(successCnt.load(std::memory_order_relaxed), THREADS * REQUEST_PER_THREAD);
 
     std::unique_ptr<Dummy> out;
-    while (out = q.pop()) {
+    while (q.pop(out)) {
         pushed.insert(out->v);
     }
     EXPECT_EQ(pushed.size(), THREADS * REQUEST_PER_THREAD);
 }
 
 TEST(LockFreeQueueUPTest, MutiThreadSafePopRace) {
-    Base::LockFreeQueueUP<std::unique_ptr<Dummy>, QUEUE_SIZE2> q;
+    Base::LockFreeQueue<std::unique_ptr<Dummy>, QUEUE_SIZE2> q;
     std::vector<std::thread> threads;
     std::atomic<int> successCnt = 0;
     std::set<int> popped;
@@ -164,7 +174,8 @@ TEST(LockFreeQueueUPTest, MutiThreadSafePopRace) {
 
     for (int i = 0; i < THREADS * REQUEST_PER_THREAD; i++)
     {
-        q.push(std::make_unique<Dummy>(Dummy{ i }));
+        auto in = std::make_unique<Dummy>(Dummy{ i });
+        q.push(in);
     }
     for (int i = 0; i < THREADS; i++)
     {
@@ -173,7 +184,7 @@ TEST(LockFreeQueueUPTest, MutiThreadSafePopRace) {
             std::set<int> local;
             for (int j = 0; j < REQUEST_PER_THREAD; j++)
             {
-                if (out = q.pop() ) {
+                if (q.pop(out)) {
                     successCnt.fetch_add(1, std::memory_order_relaxed);
                     local.insert(out->v);
                 }
@@ -192,23 +203,26 @@ TEST(LockFreeQueueUPTest, MutiThreadSafePopRace) {
 }
 
 // shared_ptr
+// move-out으로 슬롯이 자동 비워지므로 pop 후 refcount는 1 (별도 clear 불필요).
 TEST(LockFreeQueueSPTest, SingleThreadPushPop) {
-    Base::LockFreeQueueSP<std::shared_ptr<Dummy>, QUEUE_SIZE1> q;
+    Base::LockFreeQueue<std::shared_ptr<Dummy>, QUEUE_SIZE1> q;
     EXPECT_TRUE(q.push(std::make_shared<Dummy>(Dummy{2})));
-    std::shared_ptr<Dummy> out = q.pop();
+    std::shared_ptr<Dummy> out;
+    ASSERT_TRUE(q.pop(out));
     ASSERT_NE(out, nullptr);
     EXPECT_EQ(out->v, 2);
     EXPECT_EQ(1, out.use_count());
 }
 
 TEST(LockFreeQueueSPTest, PopFromEmptyFails) {
-    Base::LockFreeQueueSP<std::shared_ptr<Dummy>, QUEUE_SIZE1> q;
-    std::shared_ptr<Dummy> out = q.pop();
+    Base::LockFreeQueue<std::shared_ptr<Dummy>, QUEUE_SIZE1> q;
+    std::shared_ptr<Dummy> out;
+    EXPECT_FALSE(q.pop(out));
     EXPECT_EQ(out, nullptr);
 }
 
 TEST(LockFreeQueueSPTest, PushToFullFails) {
-    Base::LockFreeQueueSP<std::shared_ptr<Dummy>, QUEUE_SIZE1> q;
+    Base::LockFreeQueue<std::shared_ptr<Dummy>, QUEUE_SIZE1> q;
     for (int i = 0; i < QUEUE_SIZE1; ++i) {
         EXPECT_TRUE(q.push(std::make_shared<Dummy>(Dummy{ i })));
     }
@@ -216,7 +230,7 @@ TEST(LockFreeQueueSPTest, PushToFullFails) {
 }
 
 TEST(LockFreeQueueSPTest, MutiThreadSafePushRace) {
-    Base::LockFreeQueueSP<std::shared_ptr<Dummy>, QUEUE_SIZE2> q;
+    Base::LockFreeQueue<std::shared_ptr<Dummy>, QUEUE_SIZE2> q;
     std::vector<std::thread> threads;
     std::atomic<int> successCnt = 0;
     std::set<int> pushed;
@@ -236,7 +250,7 @@ TEST(LockFreeQueueSPTest, MutiThreadSafePushRace) {
     EXPECT_EQ(successCnt.load(std::memory_order_relaxed), THREADS * REQUEST_PER_THREAD);
 
     std::shared_ptr<Dummy> out;
-    while (out = q.pop()) {
+    while (q.pop(out)) {
         EXPECT_EQ(1, out.use_count());
         pushed.insert(out->v);
     }
@@ -244,7 +258,7 @@ TEST(LockFreeQueueSPTest, MutiThreadSafePushRace) {
 }
 
 TEST(LockFreeQueueSPTest, MutiThreadSafePopRace) {
-    Base::LockFreeQueueSP<std::shared_ptr<Dummy>, QUEUE_SIZE2> q;
+    Base::LockFreeQueue<std::shared_ptr<Dummy>, QUEUE_SIZE2> q;
     std::vector<std::thread> threads;
     std::atomic<int> successCnt = 0;
     std::set<int> popped;
@@ -261,7 +275,7 @@ TEST(LockFreeQueueSPTest, MutiThreadSafePopRace) {
             std::set<int> local;
             for (int j = 0; j < REQUEST_PER_THREAD; j++)
             {
-                if (out = q.pop()) {
+                if (q.pop(out)) {
                     successCnt.fetch_add(1, std::memory_order_relaxed);
                     local.insert(out->v);
                 }
