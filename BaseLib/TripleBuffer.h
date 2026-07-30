@@ -4,7 +4,7 @@
 #include <memory>
 #include <new>
 
-// MPMC Lock-Free Buffer
+// SPMC Lock-Free Buffer
 // Eventually consistent reads via triple buffering
 // Suitable for: short read operations, latest-snapshot workloads
 // Not suitable for: long read operations, ordered update processing

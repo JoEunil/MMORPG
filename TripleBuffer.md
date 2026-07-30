@@ -1,4 +1,4 @@
-﻿# MPMC Lock-free Triple Buffer
+﻿# SPMC Lock-free Triple Buffer
 
 ## 1. 개요
 이 문서는 Triple Buffer의 개념과 구현 과정을 기술한다.  
@@ -83,8 +83,8 @@ SPMC 환경에서 다수의 Worker 스레드가 공유된 Reader 풀로 동작�
 ![이미지 로드 실패](images/TripleBuffer.png)
 
 Double Back-Buffer 구조와 Ref-Counting을 도입하여 RCU(Read-Copy-Update) 스타일로 개선.    
-> 설계 의도는 SPMC였으나, Writer의 CAS 권한 획득 구조와   
-상태 플래그 설계로 인해 결과적으로 MPMC를 지원한다.
+> 설계 의도는 SPMC였으나, Writer의 CAS 권한 획득 구조와 상태 플래그 설계로 인해 결과적으로 여러 Writer가 동시에 호출해도 메모리 안전성은 보장된다.  
+> 다만 이는 data race가 없다는 의미일 뿐, lock-free의 진행 보장(progress guarantee)까지 지원하는 것은 아니다  
 
 __핵심 아이디어__
 
