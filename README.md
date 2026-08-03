@@ -34,7 +34,7 @@ IOCP 비동기 IO, Lock-Free Queue, WAL 기반 장애 복구를 포함한 In-Pro
 - Cache / 거래소 통합 테스트 (DB fetch, LRU eviction, WAL Crash 복구, 거래소 Crash 시나리오, 동시 구매 경합)
 - Unity 클라이언트 연동 및 기본 기능 테스트
 - 더미 클라이언트 부하 테스트
-  → **i3-12100F 4코어 단일 PC 환경에서 2,000명 동시 접속 달성**
+  → i3-12100F(4C/8T)에서 2,000명 → CPU 업그레이드·최적화 후 **i5-14400F(6P+4E, 16T) 단일 PC 환경에서 5,000명 동시 접속 달성**
 - 종료 안정성 및 메모리 검증 (Graceful Shutdown, AddressSanitizer)
 
 [![2,000명 동시 접속 Unity 클라이언트 테스트 영상](https://img.youtube.com/vi/2q2kZwI3uSQ/maxresdefault.jpg)](https://youtu.be/2q2kZwI3uSQ)
@@ -225,7 +225,7 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 
 ### 부하 테스트
 
-단일 4코어 PC에 게임 서버, DB, Redis, 모니터링, 더미 클라이언트를 모두 구동한 환경에서 단계별 부하 테스트를 진행했다.
+단일 PC에 게임 서버, DB, Redis, 모니터링, 더미 클라이언트를 모두 구동한 환경에서 단계별 부하 테스트를 진행했다.
 
 | 단계 | 결과 | 요약 |
 |---|---|---|
@@ -234,10 +234,12 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 | 2,000명 | ✅ 성공 | 더미 클라이언트 IO 스레드풀 적용, Zone 스레드 물리 코어 고정, 서버 스레드 우선순위 제거로 starvation 해소 |
 | 3 ~ 4,000명 | ❌ 실패 | 클라이언트 입력 지연 발생  |
 | 5,000명 | ❌ 실패 | 하드웨어 한계로 freeze 발생 |
+| 5,000명 | ✅ 성공 | CPU 업그레이드 (4core -> 10 core) |
 
 - [모니터링](Monitoring.md) — Grafana + Loki + Promtail 조합으로 서버 성능 지표(TPS, 풀 사용량, 처리량 등)를 실시간 시각화
 - [더미 테스트](DummyTest.md) — 100명 / 1,000명 테스트 및 실패 원인 분석 (Wireshark 검증)
 - [더미 테스트2](DummyTest2.md) — 실패 원인 재분석과 개선을 거친 2,000명 달성 과정, 3,000~5,000명 시도 기록
+- [더미 테스트3](DummyTest3.md) — CPU 업그레이드(i5-14400F)와 클라이언트 수신 Pipeline 적용·액션 패킷 재사용·P-Core Affinity 적용으로 5,000명 안정적 달성
 
 ### 메모리 분석 (AddressSanitizer)
 
@@ -431,4 +433,5 @@ DB → Redis → 로그인 서버 → 게임 서버
 - [모니터링](Monitoring.md)
 - [더미 클라이언트 테스트](DummyTest.md)
 - [더미 클라이언트 테스트2](DummyTest2.md)
+- [더미 클라이언트 테스트3](DummyTest3.md)
 - [ASAN 테스트 분석](ASAN.md)
