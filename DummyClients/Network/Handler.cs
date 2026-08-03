@@ -1,16 +1,7 @@
-﻿using ClientCore;
+using ClientCore;
 using ClientCore.PacketHelper;
 using ClientCore.Services;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 using static ClientCore.Config;
 using static ClientCore.PacketHelper.Packet;
@@ -20,7 +11,7 @@ namespace ClientCore.Network
     internal class Handler
     {
         private ViewModel _viewModel;
-        public void Initialize(ViewModel viewModel) 
+        public void Initialize(ViewModel viewModel)
         {
             _viewModel = viewModel;
         }
@@ -46,7 +37,7 @@ namespace ClientCore.Network
                     case OP_CODE.ENTER_WORLD_RESPONSE:
                         HandleEnterRes(index, Packet.Deserialize<EnterWorldResponseBody>(header, buffer));
                         break;
-                    
+
                     case OP_CODE.PING:
                         HandlePing(index, Packet.Deserialize<Ping>(header, buffer));
                         break;
@@ -56,7 +47,25 @@ namespace ClientCore.Network
             }
             catch (Exception e)
             {
-                Console.WriteLine($"[{index}] handler ex: {e}");
+                Console.WriteLine($"[{index}] handler ex: {e.Message}");
+            }
+        }
+
+        // byte[] 할당 없이 건너뛸 수 있도록, 실제 처리하는 opcode만 true를 반환한다.
+        public static bool ShouldHandle(byte opcode, byte flags)
+        {
+            if ((flags & FLAG_SIMULATION) == FLAG_SIMULATION)
+                return (OP_CODE)opcode == OP_CODE.ZONE_CHANGE_RESPONSE;
+
+            switch ((OP_CODE)opcode)
+            {
+                case OP_CODE.AUTH_RESPONSE:
+                case OP_CODE.CHARACTER_LIST_RESPONSE:
+                case OP_CODE.ENTER_WORLD_RESPONSE:
+                case OP_CODE.PING:
+                    return true;
+                default:
+                    return false;
             }
         }
         private void HandleAuthRes(int index, STPacket<AuthResponseBody> packet)
