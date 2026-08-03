@@ -112,6 +112,7 @@ namespace Net {
                 while (!m_sendQueue.empty()) {
                     overlappedExPool->Return(m_sendQueue.pop());
                 }
+                m_sendPending = false;
             }
         }
         void Disconnect() {

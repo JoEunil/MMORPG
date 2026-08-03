@@ -175,8 +175,6 @@ namespace Net {
             return nullptr;
         }
         auto res = m_sendQueue.pop();
-        if (m_sendQueue.empty())
-            m_sendPending = false;
         return res;
     }
 }

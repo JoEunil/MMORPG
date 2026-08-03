@@ -187,6 +187,7 @@ namespace Net {
                 else {
                     CleanUpSocket(clientSocket); // RECV/SEND: 등록된 세션 정리
                 }
+                overlappedExPool->Return(pOverlappedEx);
                 continue;
             }
 
