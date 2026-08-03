@@ -5,7 +5,7 @@
 #include <CoreLib/PacketTypes.h>
 
 namespace Net {
-	inline constexpr uint8_t IOCP_THREADPOOL_SIZE = 4; // IOCP 워커
+	inline constexpr uint8_t IOCP_THREADPOOL_SIZE = 8; // IOCP 워커
 	inline constexpr uint16_t MAX_CLIENT_CONNECTION = 5000;
     inline constexpr const char* LISTEN_ADDRESS = "0.0.0.0"; // allow anywhere
 	inline constexpr uint16_t LISTEN_PORT = 9999;
@@ -17,7 +17,7 @@ namespace Net {
 	inline constexpr uint32_t PACKETPOOL_SIZE = 30000;
 	inline constexpr uint32_t BPACKETPOOL_SIZE = 20000;
 	inline constexpr uint16_t OVERLAPPEDPOOL_SIZE = MAX_CLIENT_CONNECTION * 4;
-	inline constexpr uint32_t PACKETVIEWPOOL_SIZE = 10000;
+	inline constexpr uint32_t PACKETVIEWPOOL_SIZE = 50000;
 
 	inline constexpr uint16_t FLUSH_CONTEXTPOOL = 500;
 

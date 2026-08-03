@@ -100,7 +100,7 @@ namespace Cache {
         "SET delivery_status = 'CLAIMED', delivery_claimed_at = NOW() "
         "WHERE event_id = ? AND char_id = ? AND delivery_status = 'READY'";
 
-    inline constexpr uint16_t MSGPOOL_SIZE = 100;
+    inline constexpr uint16_t MSGPOOL_SIZE = 10000;
 
     inline constexpr uint16_t MESSAGE_LEN = 1024;
     inline constexpr uint16_t THREADPOOL_SIZE = 100; 

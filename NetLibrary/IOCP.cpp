@@ -88,14 +88,17 @@ namespace Net {
     bool IOCP::CreateWorkerThread() {
         m_isRunning.store(true, std::memory_order_relaxed);
         m_threads.resize(IOCP_THREADPOOL_SIZE);
+        static const int kIocpCores[] = { 1, 3, 5, 7, 8, 9, 10, 11 };
+        constexpr int kIocpCoreCount = sizeof(kIocpCores) / sizeof(kIocpCores[0]);
         for (int i = 0; i < IOCP_THREADPOOL_SIZE; i++)
         {
             m_threads[i] = std::thread(&IOCP::WorkerThreadFunc, this, i);
             HANDLE h = (HANDLE)m_threads[i].native_handle();
-            // zone 스레드보다는 우선순위 낮고, 다른 스레드풀 보다는 우선순위 높게
-            //if (!::SetThreadPriority(h, THREAD_PRIORITY_ABOVE_NORMAL)) {
-            //    Core::errorLogger->LogError("iocp", "Failed to set priority", "zone_id", i + 1);
-            //}
+            int core = kIocpCores[i % kIocpCoreCount];
+            if (SetThreadAffinityMask(h, (DWORD_PTR)1 << core) == 0)
+                Core::errorLogger->LogWarn("iocp", "SetThreadAffinityMask failed", "worker", i, "core", core, "err", (uint64_t)GetLastError());
+            else
+                Core::sysLogger->LogInfo("iocp", "worker pinned", "worker", i, "core", core);
         }
         return true;
     }
