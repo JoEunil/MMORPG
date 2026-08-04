@@ -27,7 +27,6 @@ BEGIN
     FROM   bazaar
     WHERE  listing_id = p_listing_id AND status = 'TRADING' 
     FOR UPDATE;
-    -- 이후 CAS로 처리되지만 롤백 낭비를 방지하기 위해 lock 적용.   
 
     IF v_found = 0 THEN
         ROLLBACK;
