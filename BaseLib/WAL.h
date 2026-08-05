@@ -168,10 +168,12 @@ namespace Base {
 				fclose(fp);
 				return false;
 			}
-			m_fp = fp;
-			m_handle = h;
+			{
+				std::lock_guard<std::mutex> lock(m_syncMutex);
+				m_fp = fp;
+				m_handle = h;
+			}
 			m_segment = segment;
-
 			return true;
 		}
 
@@ -186,10 +188,10 @@ namespace Base {
 				std::lock_guard<std::mutex> lock(m_syncMutex);
 				FlushFileBuffers(m_handle);
 				fclose(m_fp);
+				m_fp = nullptr;
+				m_handle = INVALID_HANDLE_VALUE;
 			}
 
-			m_fp = nullptr;
-			m_handle = INVALID_HANDLE_VALUE;
 
 			uint32_t nextSegment = m_segment + 1;
 
@@ -219,12 +221,10 @@ namespace Base {
 			if (!OpenSegment(seg))
 				throw std::runtime_error("open failed");
 			m_writeBuf.reserve(1000);
-
-			int fd = _fileno(m_fp);
-			m_handle = (HANDLE)_get_osfhandle(fd);
 		}
 		~WAL() {
 			std::lock_guard<std::mutex> lock(m_mutex);
+			std::lock_guard<std::mutex> lock2(m_syncMutex);
 			if (m_fp) {
 				fflush(m_fp);              // CRT 버퍼 → OS
 				FlushFileBuffers(m_handle); // OS → 디스크 (마지막 records까지 durable하게)
@@ -237,6 +237,8 @@ namespace Base {
 				return;
 			{
 				std::lock_guard<std::mutex> lock(m_mutex);
+				if (!m_fp)
+					return;
 				fflush(m_fp);
 				dirty.store(false, std::memory_order_release);
 			}
