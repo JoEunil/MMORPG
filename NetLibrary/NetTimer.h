@@ -29,10 +29,17 @@ namespace Net {
 			while (m_running.load(std::memory_order_relaxed)) {
 				auto now = std::chrono::steady_clock::now();
 				uint64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-				// 1ms 단위로 갱신하기 때문에 nano second 단위의 정밀성 필요 없음.
-				// rtt 측정하는 데에는 milisecond도 충분
+				// ms 단위로 캐시한다. nanosecond 정밀도는 아래 갱신 주기 한계상 의미가 없다.
 				m_timeCache.store(ms, std::memory_order_relaxed);
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				// 실제 갱신 주기는 Windows 타이머 해상도(기본 약 15.6ms)에 종속된다.
+				// sleep_for(1ms)는 다음 클럭 틱까지 자므로 이 루프는 ~64Hz로 돈다.
+				// 따라서 GetTimeMS()는 최대 ~15.6ms 낡은 값이고, RTT처럼 두 번 읽는
+				// 용도에서는 오차가 ~31ms까지 벌어진다 (UnitTests/NetLib/NetTimer.cpp 참고).
+				// 현재 RTT는 로깅·클라이언트 표시용이라 이 정밀도로 충분하다.
+				// 되감기(lag compensation) 도입 시에는 CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
+				// 기반 대기로 교체해야 한다 — timeBeginPeriod와 달리 전역 클럭 주기를
+				// 바꾸지 않아 다른 프로세스에 비용을 전가하지 않는다.
 			}
 		}
 		static void Stop() {

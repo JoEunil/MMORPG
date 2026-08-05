@@ -24,7 +24,8 @@ TEST_F(NetTimerTest, TimerDelay) {
 		auto now = std::chrono::steady_clock::now();
 		uint64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
-		// 이론적으로 최대 오차는 17ms (windows timer 해상도 16.6sm)
+		// 갱신 주기가 Windows 타이머 해상도(약 15.6ms)에 종속되므로
+		// 캐시 값은 그만큼 낡을 수 있다. 여유를 둬 2주기(약 31ms)를 상한으로 잡는다.
 		EXPECT_TRUE(ms - timer.GetTimeMS() < 32);
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}

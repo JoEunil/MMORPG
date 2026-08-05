@@ -149,7 +149,7 @@ Lock-Free 자료구조와 Zone 기반 멀티스레드 아키텍처로 동시성�
 ### 3. 네트워크 안정성
 - [Ping](PingLoop.md): Ping 루프를 통한 좀비 세션 탐지. IOCP 워커의 호출 스택과 분리된 전용 스레드에서 세션을 종료하는 안전한 종료 전략 적용
 - [Flood Detection](FloodDetect.md): 단일 세션의 과도한 트래픽 유입과 Tiny Packet을 이용한 CPU 고갈 공격을 애플리케이션 레벨에서 탐지·차단. Hot Path 특성을 고려해 시간 연산이 없는 Count 기반 Fixed Window 방식 채택
-- [Tick](Tick.md) & [Snapshot](Snapshot.md): 클라이언트와 서버 간의 틱 기반 동기화 및 패킷 크기 최적화를 위한 스냅샷 전략 수립
+- [Tick](Tick.md) & [Snapshot](Snapshot.md): 클라이언트와 서버 간의 틱 기반 동기화 및 패킷 크기 최적화를 위한 스냅샷 전략 수립. Windows 타이머 해상도(기본 15.6ms)가 틱 보정과 RTT 측정에 미치는 영향을 분석하고, `timeBeginPeriod`(최대 1ms)와 high-resolution waitable timer(100ns 단위 설정)의 비용 구조를 비교. 되감기(lag compensation) 도입 시점을 적용 기준으로 설정
 
 ### 4. 콘텐츠 구현 및 모니터링
 - [Monster](Monster.md) & [Skill](Skill.md): 간단한 AI 및 상호작용 로직을 통해 구조적 위험성 분석. AOI(Area of Interest) 및 Cell 분할 필요성 도출
