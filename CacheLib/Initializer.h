@@ -20,8 +20,8 @@
 
 namespace Cache {
 	class Initializer {
-        FlushDispatcher dispatcher;
         CacheFlush flush;
+        FlushDispatcher dispatcher;
         CacheStorageInventory cache_inventory;
         CacheStorageCurrency cache_currency; 
         Handler handler;

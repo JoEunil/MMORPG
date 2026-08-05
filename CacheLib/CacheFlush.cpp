@@ -5,6 +5,7 @@
 
 #include "Config.h"
 #include <format>
+#include <chrono>
 
 namespace Cache {
 
@@ -151,12 +152,30 @@ namespace Cache {
             while (!m_flushQ.empty()) {
                 auto work = std::move(m_flushQ.front());
                 m_flushQ.pop_front();
+                ++m_inFlight;
                 lock.unlock();
                 DBWrite(work.get());
                 lock.lock();
+                --m_inFlight;
+                // DBWrite 중 Rollback이 재enqueue할 수 있으므로 큐와 in-flight를 함께 확인
+                if (m_flushQ.empty() && m_inFlight == 0)
+                    m_drainCv.notify_all();
             }
         }
         Core::sysLogger->LogInfo("cache flush", "flush thread stopped", "threadID", ss.str());
+    }
+
+    void CacheFlush::WaitUntilDrained() {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        if (!m_running.load(std::memory_order_relaxed))
+            return; // 워커가 이미 종료됨 — Stop()의 최종 드레인이 처리한다
+        // Rollback 재시도는 key당 3회로 상한이 있어 드레인은 반드시 끝나지만,
+        // DB가 응답하지 않는 상황에서 종료가 막히지 않도록 상한을 둔다.
+        if (!m_drainCv.wait_for(lock, std::chrono::seconds(30),
+            [&] { return m_flushQ.empty() && m_inFlight == 0; })) {
+            Core::errorLogger->LogWarn("cache flush", "drain wait timed out on shutdown",
+                "queued", (uint64_t)m_flushQ.size(), "in_flight", (uint64_t)m_inFlight);
+        }
     }
 
     void CacheFlush::Initialize(DBConnectionPool<DBConnectionGame>* pg, DBConnectionPool<DBConnectionBazaar>* pb, CacheStorageInventory* c5, CacheStorageCurrency* c7) {

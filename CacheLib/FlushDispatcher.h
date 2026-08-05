@@ -99,6 +99,14 @@ namespace Cache {
                 return;
             if (m_thread.joinable())
                 m_thread.join();
+
+            // 최종 dispatch 전에 큐를 비운다.
+            // m_running=false라 아래 ForEachDirty는 30초 게이트를 단락 평가로 통과해
+            // 모든 dirty entry를 즉시 enqueue한다. 이미 dispatch되어 큐에 남아있는
+            // 옛 스냅샷과 겹치면 두 flush 스레드가 같은 key를 동시에 써서
+            // 오래된 blob이 최신 blob을 덮을 수 있다.
+            flush->WaitUntilDrained();
+
             cache_inventory->ForEachDirty([this](auto& key, auto& res) { return  DirtyFlush5(key, res); });
             cache_currency->ForEachDirty([this](auto& key, auto& res) { return  DirtyFlush7(key, res); });
         }

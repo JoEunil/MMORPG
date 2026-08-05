@@ -27,7 +27,9 @@ namespace Cache {
         std::vector<std::thread> m_threads;
         std::mutex m_mutex;
         std::condition_variable m_cv;
+        std::condition_variable m_drainCv;   // 큐가 비고 진행 중인 DBWrite도 없을 때 통지
         std::deque<std::unique_ptr<FlushCommand>> m_flushQ;
+        uint32_t m_inFlight = 0;             // pop 후 DBWrite 실행 중인 command 수
         std::function<void(uint64_t, uint64_t)> m_invFlushedFn;
 
         std::atomic<bool> m_running = false;
@@ -73,5 +75,8 @@ namespace Cache {
         friend class Initializer;
     public:
         void EnqueueFlushQ(std::unique_ptr<FlushCommand> c);
+        // 큐가 비고 진행 중인 DBWrite도 끝날 때까지 블록한다.
+        // 워커 스레드가 살아있는 동안(= Stop() 이전)에만 의미가 있다.
+        void WaitUntilDrained();
     };
 }
