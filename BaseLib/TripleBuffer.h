@@ -87,7 +87,7 @@ namespace Base {
 			return BufferReader<T>(back2, this);
 		}
 		void ReadDone() {
-			flag.fetch_sub(1, std::memory_order_relaxed);
+			flag.fetch_sub(1, std::memory_order_release);
 		}
 	};
 
