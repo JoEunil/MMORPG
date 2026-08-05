@@ -68,7 +68,7 @@ namespace Net{
             }
             return true;
         }
-        ClientContextPool* contextPool;
+        ClientContextPool* contextPool = nullptr;
         friend class Initializer;
 
     public:

@@ -60,7 +60,7 @@ namespace Cache {
         }
         friend class Initializer;
     protected:
-        DBWorker<DBConnectionGame>* dbWorker;
+        DBWorker<DBConnectionGame>* dbWorker = nullptr;
         std::deque<CacheShard<Key, Result, KeyHash>> m_shards;
         std::function< void(const Key&, Result&) > m_flushFn;
 

@@ -17,7 +17,7 @@ namespace Core {
 
         std::atomic<bool> m_running = false;
         
-        NonZoneHandler* handler;
+        NonZoneHandler* handler = nullptr;
         void Initialize(NonZoneHandler* h) {
             handler = h;
         }

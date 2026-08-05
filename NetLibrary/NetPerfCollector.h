@@ -22,11 +22,11 @@ namespace Net {
         char padding[std::hardware_destructive_interference_size - sizeof(uint64_t)];
         std::thread m_thread;
         std::atomic<bool> m_running;
-        SessionManager* sessionManager;
-        PacketPool<PACKETPOOL_SIZE>* packetPool;
-        PacketPool<BPACKETPOOL_SIZE>* bigPacketPool;
-        OverlappedExPool* overlappedPool;
-        ClientContextPool* contextPool;
+        SessionManager* sessionManager = nullptr;
+        PacketPool<PACKETPOOL_SIZE>* packetPool = nullptr;
+        PacketPool<BPACKETPOOL_SIZE>* bigPacketPool = nullptr;
+        OverlappedExPool* overlappedPool = nullptr;
+        ClientContextPool* contextPool = nullptr;
 
         void Initialize(SessionManager* s, PacketPool<PACKETPOOL_SIZE>* p, PacketPool<BPACKETPOOL_SIZE>* bp, OverlappedExPool* o, ClientContextPool* c) {
             sessionManager = s;

@@ -15,10 +15,10 @@ namespace Core {
     
     class MessageQueueHandler {
         // 캐시 or db 요청 결과 처리
-        PacketWriter* writer;
-        IIOCP* iocp;
-        LobbyZone* lobbyZone;
-        MessagePool* messagePool;
+        PacketWriter* writer = nullptr;
+        IIOCP* iocp = nullptr;
+        LobbyZone* lobbyZone = nullptr;
+        MessagePool* messagePool = nullptr;
         void Initialize(IIOCP* i, PacketWriter* w, LobbyZone* lo, MessagePool* msgPool) noexcept {
             iocp = i;
             writer = w;

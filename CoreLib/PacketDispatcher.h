@@ -10,11 +10,11 @@
 namespace Core {
     class ILogger;
     class PacketDispatcher : public IPacketDispatcher {
-        NonZoneThreadPool* nonZoneThreadPool;
-        ZoneThreadSet*  zoneThreadSet;
-        StateManager* stateManager;
-        IPingPacketWriter* writer;
-        IIOCP* iocp;
+        NonZoneThreadPool* nonZoneThreadPool = nullptr;
+        ZoneThreadSet*  zoneThreadSet = nullptr;
+        StateManager* stateManager = nullptr;
+        IPingPacketWriter* writer = nullptr;
+        IIOCP* iocp = nullptr;
         void Initialize(NonZoneThreadPool* a, ZoneThreadSet* z, StateManager* s, IPingPacketWriter* w, IIOCP* i) {
             nonZoneThreadPool = a;
             zoneThreadSet = z;

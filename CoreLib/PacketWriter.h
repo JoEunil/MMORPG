@@ -14,8 +14,8 @@ namespace Core {
     class IPacket;
     class PacketTypes;
     class PacketWriter : public IPingPacketWriter{
-        IPacketPool* packetPool;
-        IPacketPool* bigPacketPool;
+        IPacketPool* packetPool = nullptr;
+        IPacketPool* bigPacketPool = nullptr;
 
         void Initialize(IPacketPool* p, IPacketPool* big) {
             packetPool = p;

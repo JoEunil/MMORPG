@@ -22,8 +22,8 @@ namespace Cache {
         Base::LockFreeQueue<Core::Message*, MQ_SIZE> m_sharedQueue;
 
         std::atomic<bool> m_running = false;
-        Handler* handler;
-        MessagePool* messagePool;
+        Handler* handler = nullptr;
+        MessagePool* messagePool = nullptr;
         
         void Initialize(Handler* h, MessagePool* m) {
             handler = h;

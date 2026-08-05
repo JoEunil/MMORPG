@@ -33,10 +33,10 @@ namespace Cache {
         std::function<void(uint64_t, uint64_t)> m_invFlushedFn;
 
         std::atomic<bool> m_running = false;
-        DBConnectionPool<DBConnectionGame>* connectionPoolGame;
-        DBConnectionPool<DBConnectionBazaar>* connectionPoolBazaar;
-        CacheStorageInventory* cache_inventory;
-        CacheStorageCurrency* cache_currency;
+        DBConnectionPool<DBConnectionGame>* connectionPoolGame = nullptr;
+        DBConnectionPool<DBConnectionBazaar>* connectionPoolBazaar = nullptr;
+        CacheStorageInventory* cache_inventory = nullptr;
+        CacheStorageCurrency* cache_currency = nullptr;
         void Initialize(DBConnectionPool<DBConnectionGame>* pg, DBConnectionPool<DBConnectionBazaar>* pb, CacheStorageInventory* c5, CacheStorageCurrency* c7);
         void SetInvFlushedFn(std::function<void(uint64_t, uint64_t)> f) {
             m_invFlushedFn = std::move(f);

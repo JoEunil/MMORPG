@@ -24,12 +24,12 @@ namespace Core {
         void GetInventory(IPacketView* p);
         void Chat(IPacketView* p);
         void ZoneChange(IPacketView* p);
-        ISessionAuth* auth;
-        IDBCache* cache;
-        MessagePool* messagePool;
-        IMessageQueue* messageQueue;
-        LobbyZone* lobbyZone;
-        ChatThreadPool* chat;
+        ISessionAuth* auth = nullptr;
+        IDBCache* cache = nullptr;
+        MessagePool* messagePool = nullptr;
+        IMessageQueue* messageQueue = nullptr;
+        LobbyZone* lobbyZone = nullptr;
+        ChatThreadPool* chat = nullptr;
         friend class Initializer;
         
     public:

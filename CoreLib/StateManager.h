@@ -42,11 +42,11 @@ namespace Core {
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
         std::atomic<bool> m_running;
 
-        MessagePool* messagePool;
-        IMessageQueue* mq;
-        IIOCP* iocp;
-        LobbyZone* lobbyZone;
-        ChatThreadPool* chat;
+        MessagePool* messagePool = nullptr;
+        IMessageQueue* mq = nullptr;
+        IIOCP* iocp = nullptr;
+        LobbyZone* lobbyZone = nullptr;
+        ChatThreadPool* chat = nullptr;
 
 
         void Initialize(IMessageQueue* m, IIOCP* io, MessagePool* mp, LobbyZone* lobby, ChatThreadPool* c) {

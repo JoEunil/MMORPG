@@ -134,9 +134,9 @@ namespace Core {
         void ProcessZoneLeave(uint64_t sessionID, uint16_t zoneID);
         void ProcessZoneJoin(uint64_t sessionID, uint16_t zoneID);
 
-        PacketWriter* writer;
-        IIOCP* iocp;
-        CorePerfCollector* perfCollector;
+        PacketWriter* writer = nullptr;
+        IIOCP* iocp = nullptr;
+        CorePerfCollector* perfCollector = nullptr;
         friend class Initializer;
 
     public:

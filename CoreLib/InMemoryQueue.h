@@ -23,8 +23,8 @@ namespace Core {
 
 		std::atomic<bool> m_running = false;
 
-		MessageQueueHandler* handler;
-        MessagePool* messagePool;
+		MessageQueueHandler* handler = nullptr;
+        MessagePool* messagePool = nullptr;
 		void Initialize(MessageQueueHandler* h, MessagePool* m) {
 			handler = h;
             messagePool = m;

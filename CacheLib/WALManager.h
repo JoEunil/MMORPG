@@ -35,8 +35,8 @@ namespace Cache {
 		const int RESUME_TRIGGER = 200; // 10초+
 
 		std::unordered_map<uint64_t, std::pair<uint64_t, WalInventoryRecord>> m_lastImageInventory;
-		CacheStorageInventory* cache_inventory;
-		DBConnectionPool<DBConnectionGame>* connectionPoolGame;
+		CacheStorageInventory* cache_inventory = nullptr;
+		DBConnectionPool<DBConnectionGame>* connectionPoolGame = nullptr;
 
 		void CollectInventory(const Base::WALHeader& header, const uint8_t* payload) {
 			if (header.length != sizeof(WalInventoryRecord))

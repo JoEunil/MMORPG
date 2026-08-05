@@ -17,8 +17,8 @@ namespace Net {
         std::thread m_pingThread;
         std::atomic<bool> m_running = false;
 
-        SessionManager* sessionManager;
-        IAbortSocket* abortSocket;
+        SessionManager* sessionManager = nullptr;
+        IAbortSocket* abortSocket = nullptr;
 
         void Initialize(IAbortSocket* a, SessionManager* s) {
             abortSocket = a;

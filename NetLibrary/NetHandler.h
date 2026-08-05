@@ -18,8 +18,8 @@ namespace Net {
         alignas(std::hardware_destructive_interference_size) std::atomic<int> m_connectionCnt = 0;
         char padding[std::hardware_destructive_interference_size];
 
-        SessionManager* sessionManager;
-        IAbortSocket* abortSocket;
+        SessionManager* sessionManager = nullptr;
+        IAbortSocket* abortSocket = nullptr;
         bool IsReady() const {
             if (sessionManager == nullptr) {
                 Core::sysLogger->LogError("net handler", "sessionManager not initialized");

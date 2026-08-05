@@ -39,13 +39,13 @@ namespace Net {
         std::atomic<bool> m_isRunning = false;
         std::atomic<bool> m_receiving = false;
 
-        std::atomic<bool>* fatalError;
-        std::condition_variable* cv;
+        std::atomic<bool>* fatalError = nullptr;
+        std::condition_variable* cv = nullptr;
 
-        OverlappedExPool* overlappedExPool;
-        NetHandler* netHandler;
-        SessionManager* sessionManager;
-        NetPerfCollector* perfCollector;
+        OverlappedExPool* overlappedExPool = nullptr;
+        NetHandler* netHandler = nullptr;
+        SessionManager* sessionManager = nullptr;
+        NetPerfCollector* perfCollector = nullptr;
         void Initialize(OverlappedExPool* o, NetHandler* n, SessionManager* s, std::atomic<bool>* f, std::condition_variable* c, NetPerfCollector* p) {
             overlappedExPool = o;
             netHandler = n;

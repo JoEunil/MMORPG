@@ -15,9 +15,9 @@
 #undef max   
 namespace Cache {
     class FlushDispatcher {
-        CacheFlush* flush;
-        CacheStorageInventory* cache_inventory;
-        CacheStorageCurrency* cache_currency;
+        CacheFlush* flush = nullptr;
+        CacheStorageInventory* cache_inventory = nullptr;
+        CacheStorageCurrency* cache_currency = nullptr;
         std::thread m_thread;
         std::atomic<bool> m_running = false;
         uint64_t m_minTime; // ms

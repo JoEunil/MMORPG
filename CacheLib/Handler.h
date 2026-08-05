@@ -21,12 +21,12 @@ namespace Cache {
 
     class Handler {
         Core::IMessageQueue* messageQ;  // response
-        MessagePool* messagePool;
-        CacheStorageInventory* cache_inventory;
-        CacheStorageCurrency* cache_currency;
-        Core::ILogger* logger;
-        DBWorker<DBConnectionGame>* dbWorkerGame;
-        DBWorker<DBConnectionBazaar>* dbWorkerBazaar;
+        MessagePool* messagePool = nullptr;
+        CacheStorageInventory* cache_inventory = nullptr;
+        CacheStorageCurrency* cache_currency = nullptr;
+        Core::ILogger* logger = nullptr;
+        DBWorker<DBConnectionGame>* dbWorkerGame = nullptr;
+        DBWorker<DBConnectionBazaar>* dbWorkerBazaar = nullptr;
         void Initialize(Core::IMessageQueue* mq,  MessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc) {
             messageQ = mq;
             messagePool = mp;

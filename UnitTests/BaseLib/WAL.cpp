@@ -404,3 +404,84 @@ TEST(WALTest, TruncateBefore)
 
     std::filesystem::remove("truncateTest.3");
 }
+
+std::vector<uint64_t> g_replayed;
+void ApplyCollect(const Base::WALHeader& h, const uint8_t* p) {
+    const WalRecordTestA* rec = reinterpret_cast<const WalRecordTestA*>(p);
+    g_replayed.push_back(rec->a);
+}
+
+TEST(WALTest, QuarantineCorruptedClosedSegment)
+{
+    // 이미 닫힌(fsync된) 세그먼트가 깨진 경우:
+    //  - 뒤 세그먼트는 계속 replay (full image라 중단이 오히려 손해)
+    //  - 손상 세그먼트는 네임스페이스 밖으로 격리
+    //  - 그 자리에 이어쓰지 않고 새 번호에서 재개 (LSN 역행 방지)
+    const std::string filename = "quarantineTest";
+    constexpr size_t RECORD_SIZE = sizeof(Base::WALHeader) + sizeof(WalRecordTestA); // 35
+
+    auto cleanup = [&] {
+        for (auto& e : std::filesystem::directory_iterator(".")) {
+            auto name = e.path().filename().string();
+            if (name.rfind(filename + ".", 0) == 0) {
+                std::error_code ec;
+                std::filesystem::remove(e.path(), ec);
+            }
+        }
+    };
+    cleanup();
+
+    {
+        Base::WAL wal(filename, 350, ApplyEmpty); // 35 * 10 = 350 → 세그먼트당 10개
+        for (uint64_t i = 1; i <= 25; ++i) {
+            WalRecordTestA rec = { i,i,(uint16_t)i,(uint8_t)i };
+            wal.Write(reinterpret_cast<uint8_t*>(&rec), sizeof(rec), typeA);
+        }
+    }
+    ASSERT_TRUE(std::filesystem::exists(filename + ".1"));
+    ASSERT_TRUE(std::filesystem::exists(filename + ".2"));
+    ASSERT_TRUE(std::filesystem::exists(filename + ".3"));
+
+    {
+        // seg2의 5번째 레코드(전체 15번) payload 손상 — 활성(seg3)이 아닌 닫힌 세그먼트
+        std::fstream fs(filename + ".2", std::ios::binary | std::ios::in | std::ios::out);
+        ASSERT_TRUE(fs.is_open());
+        fs.seekp(4 * RECORD_SIZE + sizeof(Base::WALHeader) + 3);
+        char corrupt = 0x5A;
+        fs.write(&corrupt, 1);
+    }
+
+    g_replayed.clear();
+    uint64_t newLsn = 0;
+    {
+        Base::WAL wal(filename, 350, ApplyCollect);
+        EXPECT_TRUE(wal.ReplayDegraded());
+
+        WalRecordTestA rec = { 26, 26, 26, 26 };
+        newLsn = wal.Write(reinterpret_cast<uint8_t*>(&rec), sizeof(rec), typeA);
+    }
+
+    // seg1 전체(1~10) + seg2 유효 prefix(11~14) + seg3 전체(21~25)
+    ASSERT_EQ(g_replayed.size(), 19u);
+    EXPECT_EQ(g_replayed.front(), 1u);
+    EXPECT_EQ(g_replayed[13], 14u);
+    EXPECT_EQ(g_replayed[14], 21u); // 손상 세그먼트 뒤가 버려지지 않았다
+    EXPECT_EQ(g_replayed.back(), 25u);
+
+    // 손상 세그먼트 격리 — 재replay·truncate 대상에서 빠지고 분석용으로 보존
+    EXPECT_FALSE(std::filesystem::exists(filename + ".2"));
+    bool quarantined = false;
+    for (auto& e : std::filesystem::directory_iterator(".")) {
+        if (e.path().filename().string().rfind(filename + ".2.corrupt.", 0) == 0)
+            quarantined = true;
+    }
+    EXPECT_TRUE(quarantined);
+
+    // 번호 재사용 금지 — seg3 다음인 seg4에서 재개
+    EXPECT_TRUE(std::filesystem::exists(filename + ".4"));
+    EXPECT_EQ(newLsn >> 32, 4u);
+    // 새 LSN은 기존 최대 세그먼트의 어떤 LSN보다 크다 (복구 판정 lsn > dbLsn 유지)
+    EXPECT_GT(newLsn, (static_cast<uint64_t>(3) << 32) | 349);
+
+    cleanup();
+}

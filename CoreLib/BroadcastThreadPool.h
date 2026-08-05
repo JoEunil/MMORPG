@@ -55,10 +55,10 @@ namespace Core {
         void Start();
         void Stop();
 
-        IIOCP* iocp;
-        StateManager* stateManager;
-        CorePerfCollector* perfCollector;
-        PacketWriter* writer;
+        IIOCP* iocp = nullptr;
+        StateManager* stateManager = nullptr;
+        CorePerfCollector* perfCollector = nullptr;
+        PacketWriter* writer = nullptr;
         friend class Initializer;
     public:
         ~BroadcastThreadPool() {

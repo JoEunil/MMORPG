@@ -19,7 +19,7 @@ namespace Cache {
         std::mutex m_mutex;
         size_t m_threadPoolSize;
         std::condition_variable m_cv;
-        DBConnectionPool<T>* connectionPool;
+        DBConnectionPool<T>* connectionPool = nullptr;
 
         void Initialize(DBConnectionPool<T>* c, size_t threadPoolSize) {
             std::lock_guard<std::mutex> lock(m_mutex);

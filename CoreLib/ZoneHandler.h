@@ -15,7 +15,7 @@ namespace Core {
     class IMessageQueue;
 
     class ZoneHandler {
-        StateManager* stateManager;
+        StateManager* stateManager = nullptr;
         
         void Initialize(StateManager* m) {
             stateManager = m;

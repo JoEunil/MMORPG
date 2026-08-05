@@ -10,7 +10,7 @@ namespace Core {
         std::unordered_map<uint64_t, CharacterState> m_chars;
         std::mutex m_mutex;
         
-        StateManager* stateManager;
+        StateManager* stateManager = nullptr;
         void Initialize(StateManager* s) {
             m_chars.reserve(MAX_USER_CAPACITY);
             stateManager = s;
