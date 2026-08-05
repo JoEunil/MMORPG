@@ -16,13 +16,15 @@ namespace Cache {
             st->header.messageType = Core::MSG_INVENTORY_RES;
             st->header.sessionID = sessionID;
             st->body.resStatus = 1;
-            st->body.itemCount = res.data.count;
-            for (int i = 0; i < res.data.count; i++)
-            {
-                st->body.items[i].itemID = res.data.items[i].itemID;
-                st->body.items[i].quantity = res.data.items[i].quantity;
-                st->body.items[i].slot = res.data.items[i].slot;
+            uint16_t n = 0;
+            for (int i = 0; i < MAX_INVENTORY && n < MAX_INVENTORY; i++) {
+                if (res.data.items[i].itemID == 0) continue;
+                st->body.items[n].itemID = res.data.items[i].itemID;
+                st->body.items[n].quantity = res.data.items[i].quantity;
+                st->body.items[n].slot = res.data.items[i].slot;
+                n++;
             }
+            st->body.itemCount = n;
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgInventoryResBody>));
             messageQ->EnqueueMessage(msg);
         } else {
