@@ -14,6 +14,7 @@
 #include <array>
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <Windows.h>
 #include <io.h>      // _chsize_s, _get_osfhandle
 #include <cstdio>    // FILE*, fopen_s
@@ -45,11 +46,12 @@ namespace Base {
 		HANDLE m_handle = INVALID_HANDLE_VALUE; // POSIX 포팅 시: fd + fsync()로 대체
 		std::mutex m_syncMutex; // fsync 중 handle이 닫히는것 방지
 		std::mutex m_mutex;
-		uint32_t m_segment = 1;
+		uint64_t m_segment = 1;
 		uint32_t m_offset = 0; // 현재 byte offset
 		std::vector<uint8_t> m_writeBuf;
 
-		std::atomic<bool> dirty = false;  // fsync 
+		std::atomic<bool> dirty = false;  // fsync
+		bool m_degraded = false; // 재기동 시 닫힌 세그먼트 손상으로 격리가 발생했는지
 
 		uint32_t LIMIT = 0;
 		const uint32_t MAGIC = 0xA2DFFD2A;
@@ -107,19 +109,37 @@ namespace Base {
 			return segs;
 		}
 
-		// seg, offset
-		std::pair<uint32_t, uint32_t> Replay(const std::function<void(const WALHeader&, const uint8_t* payload)>& apply) {
+		// 손상된 세그먼트를 세그먼트 네임스페이스 밖으로 옮긴다.
+		// - FindSegments()의 "숫자 suffix" 규칙에 걸리지 않아 재기동마다 재replay되지 않는다
+		// - TruncateBefore()의 삭제 대상에서도 빠져 사후 분석용으로 남는다
+		void QuarantineSegment(const std::string& path) const {
+			auto stamp = std::chrono::duration_cast<std::chrono::seconds>(
+				std::chrono::system_clock::now().time_since_epoch()).count();
+			std::error_code ec;
+			std::filesystem::rename(path, path + ".corrupt." + std::to_string(stamp), ec);
+		}
+
+		// 이어쓸 segment, 그 segment의 offset, 닫힌 세그먼트 손상 여부
+		std::tuple<uint32_t, uint32_t, bool> Replay(const std::function<void(const WALHeader&, const uint8_t* payload)>& apply) {
 			auto segs = FindSegments();
 			if (segs.empty())
-				return { 1, 0 };
+				return { 1, 0, false };
 
-			uint32_t lastSeg = static_cast<uint32_t>(segs.front().first);
+			// 번호순 정렬이므로 마지막이 활성 세그먼트.
+			const uint64_t finalSeg = segs.back().first;
 			uint32_t validOffset = 0;
+			std::vector<std::string> corrupted;
 
 			for (auto& [num, path] : segs) {
+				const bool isFinal = (num == finalSeg);
+
 				std::ifstream in(path, std::ios::binary);
-				if (!in)
-					break; // 세그먼트 파일 자체를 못 열면 이후 LSN 순서 보장 불가
+				if (!in) {
+					// 파일은 있는데 열리지 않음 — 활성 세그먼트라도 정상 크래시가 아니다.
+					// full image 로깅이라 뒤 세그먼트가 앞을 덮으므로 replay는 계속한다.
+					corrupted.push_back(path);
+					continue;
+				}
 
 				std::vector<uint8_t> buf((std::istreambuf_iterator<char>(in)),
 					std::istreambuf_iterator<char>());
@@ -144,13 +164,20 @@ namespace Base {
 					pos += recordSize;
 				}
 
-				lastSeg = static_cast<uint32_t>(num);
-				validOffset = static_cast<uint32_t>(pos);
-
-				if (pos < buf.size())
-					break; // 중간에 끊김 — 뒤 세그먼트가 있어도 순서 보장이 깨지므로 무시
+				if (isFinal)
+					validOffset = static_cast<uint32_t>(pos);   // torn tail 절단 지점 (정상 크래시)
+				else if (pos < buf.size())
+					corrupted.push_back(path);  // 이미 fsync된 세그먼트가 깨짐 — 비정상
 			}
-			return { lastSeg, validOffset };
+
+			if (corrupted.empty())
+				return { static_cast<uint32_t>(finalSeg), validOffset, false };
+
+			// 손상 구간에 이어쓰면 새로 발급되는 LSN이 뒤 세그먼트의 LSN보다 작아져
+			// 복구 판정(lsn > dbLsn)이 조용히 무력화된다. 번호를 절대 재사용하지 않는다.
+			for (auto& p : corrupted)
+				QuarantineSegment(p);
+			return { static_cast<uint32_t>(finalSeg) + 1, 0, true };
 		}
 
 		bool OpenSegment(uint32_t segment)
@@ -207,18 +234,21 @@ namespace Base {
 		WAL(std::string f, uint32_t limit, const std::function<void (const WALHeader&, const uint8_t* payload)>& a) : m_fileName(f), LIMIT(limit)
 		{
 			generate_crc_table();
-			auto [seg, offset] = Replay(a);
+			auto [seg, offset, degraded] = Replay(a);
 			m_segment = seg;
 			m_offset = offset;
-			std::string path = m_fileName + "." + std::to_string(m_segment);
+			m_degraded = degraded;
 
-			// 깨진 부분 잘라내기, 실제 파일 end와 offset 위치 비교
+			if (!m_degraded) {
+				// 활성 세그먼트의 torn tail 절단.
+				// append 모드(ab+)는 깨진 꼬리 뒤에 그대로 이어 쓰므로 먼저 잘라야 한다.
+				// degraded면 손상 세그먼트를 격리하고 빈 세그먼트에서 시작하므로 자를 대상이 없다.
+				std::string path = m_fileName + "." + std::to_string(m_segment);
+				if (std::filesystem::exists(path) && std::filesystem::file_size(path) > m_offset)
+					std::filesystem::resize_file(path, m_offset);
+			}
 
-			// std::filesystem 멤버는 실패시 throw
-			if (std::filesystem::exists(path) && std::filesystem::file_size(path) > m_offset)
-				std::filesystem::resize_file(path, m_offset);
-
-			if (!OpenSegment(seg))
+			if (!OpenSegment(m_segment))
 				throw std::runtime_error("open failed");
 			m_writeBuf.reserve(1000);
 		}
@@ -232,6 +262,9 @@ namespace Base {
 				m_fp = nullptr;
 			}
 		}
+
+		bool ReplayDegraded() const { return m_degraded; }
+
 		void Fsync() {
 			if (!dirty.load(std::memory_order_acquire))
 				return;

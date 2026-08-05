@@ -122,6 +122,12 @@ namespace Cache {
 			cache_inventory = ci;
 			connectionPoolGame = p;
 			m_wal.emplace("redo", 1000000, [this](const Base::WALHeader& h, const uint8_t* p) { Collect(h, p); });
+			if (m_wal->ReplayDegraded()) {
+				// 손상 파일은 새 세그먼트에서 재개한다.
+				// 유실 범위는 "flush 안 된 변경분"으로 한정되고 DB 반영분은 무사하므로 로그를 남기고 서비스는 진행한다.  
+				Core::errorLogger->LogError("WAL manager",
+					"closed WAL segment corrupted on replay - quarantined, resuming on a fresh segment");
+			}
 			Restore();   // 수집된 last-image를 캐시에 적용
 			m_running.store(true, std::memory_order_relaxed);
 			m_fsyncThread = std::thread(&WALManager::ThreadFunc, this);
