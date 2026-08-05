@@ -4,29 +4,30 @@ C++ 기반 TCP Stateful MMORPG 게임 서버 — 개인 프로젝트 (개발 기
 
 📑 [C++ MMORPG Game Server 포트폴리오 PPT](https://docs.google.com/presentation/d/1Sz7WlzlE4qYqyXO43ad0i0CYAFvzJMR2/edit?usp=sharing&ouid=104250523129405797740&rtpof=true&sd=true)
 
-## 목차
+<details>
+<summary> 목차 </summary>  
+  
 1. [프로젝트 개요](#프로젝트-개요)
 2. [기술 스택](#기술-스택)
 3. [아키텍처](#아키텍처)
 4. [핵심 기술 요약](#핵심-기술-요약)
-5. [스레드 모델](#스레드-모델)
-6. [테스트](#테스트)
-7. [리팩토링](#리팩토링)
-8. [트러블 슈팅](#트러블-슈팅)
-9. [추후 개선 사항](#추후-개선-사항)
-10. [빌드, 실행 방법](#빌드-실행-방법)
-11. [기술 문서 목록](#기술-문서-목록)
+5. [테스트](#테스트)
+6. [리팩토링](#리팩토링)
+7. [트러블 슈팅](#트러블-슈팅)
+8. [추후 개선 사항](#추후-개선-사항)
+9. [빌드, 실행 방법](#빌드-실행-방법)
+10. [기술 문서 목록](#기술-문서-목록)
+</details>  
 
 ## 프로젝트 개요
 
-게임 서버의 핵심 문제인 **대규모 동시 접속 처리**와 **실시간 동기화**를 직접 해결하는 것을 목표로,  
-IOCP 비동기 IO, Lock-Free Queue, WAL 기반 장애 복구를 포함한 In-Process Write-Back Cache 등 핵심 컴포넌트를 직접 구현했다.  
-게임 로직은 Zone Tick 기반 게임 루프, Grid AOI, Full/Delta Snapshot 동기화로 실시간 처리를 구현했다.   
-거래소 시스템에서는 Saga·Outbox/Inbox 패턴으로 cross-DB 정합성을, WAL로 Cache의 durability를 보장했다.  
+게임 서버의 핵심 문제인 **대규모 동시 접속 처리**와 **실시간 동기화**를 직접 해결하는 것을 목표로 시작한 프로젝트다.
 
-**구현 콘텐츠**
+- **동시성**: IOCP 비동기 IO 기반으로 **단일 PC 환경에서 5,000명 동시 접속**을 검증했다 (Lock-Free Queue, Zone Tick 기반 멀티스레드 아키텍처)
+- **안정성**: WAL 기반 In-Process Write-Back Cache로 장애 시 Dirty 데이터 복구를 보장하고, **ASan으로 메모리 안전성(누수·오류 없음)을 검증**했다
+- **정합성**: 거래소 시스템에서 Saga·Outbox/Inbox 패턴으로 cross-DB 정합성을, **Crash 후 배송 exactly-once(유실·중복 없음)를 테스트로 검증**했다
 
-캐릭터 이동 / 스킬 / 몬스터 / 아이템 거래소 / 인벤토리 / 채팅
+**구현 콘텐츠**: 캐릭터 이동 / 스킬 / 몬스터 / 아이템 거래소 / 인벤토리 / 채팅
 
 **검증**
 - 핵심 컴포넌트 Google Test 단위 테스트
@@ -34,14 +35,11 @@ IOCP 비동기 IO, Lock-Free Queue, WAL 기반 장애 복구를 포함한 In-Pro
 - Cache / 거래소 통합 테스트 (DB fetch, LRU eviction, WAL Crash 복구, 거래소 Crash 시나리오, 동시 구매 경합)
 - Unity 클라이언트 연동 및 기본 기능 테스트
 - 더미 클라이언트 부하 테스트
-  → i3-12100F(4C/8T)에서 2,000명 → CPU 업그레이드·최적화 후 **i5-14400F(6P+4E, 16T) 단일 PC 환경에서 5,000명 동시 접속 달성**
+  → i3-12100F(4C/8T)에서 2,000명 → CPU 업그레이드·최적화 후 i5-14400F(6P+4E, 16T) 단일 PC 환경에서 5,000명 동시 접속 달성
 - 종료 안정성 및 메모리 검증 (Graceful Shutdown, AddressSanitizer)
 
 [![2,000명 동시 접속 Unity 클라이언트 테스트 영상](https://img.youtube.com/vi/2q2kZwI3uSQ/maxresdefault.jpg)](https://youtu.be/2q2kZwI3uSQ)
-> ▶ 2,000명 동시 접속 Unity 클라이언트 테스트 영상 
-
-![이미지 로드 실패](images/SkillAOI.gif)
-> 게임 시연 gif
+> ▶ 2,000명 동시 접속 Unity 클라이언트 테스트 영상
 
 ## 기술 스택
 
@@ -85,7 +83,8 @@ __외부 라이브러리__
   - Zone: tick 기반 동기 처리 — 이동, 전투, 몬스터 AI 동기화
   - Non-Zone: 요청-응답 패턴 — 인벤토리, 채팅, 인증 같은 비실시간 작업
 
-### 분산 아키텍처로의 확장 설계
+<details>
+  <summary><b>분산 아키텍처로의 확장 설계</b></summary>
 
 현재는 단일 GameServer 내부에서 Zone / Non-Zone을 논리적으로만 분리해 운영하지만, 단일 프로세스 내에서 처리된다.     
 서비스별로 부하 패턴이 다르기 때문에, 하나의 프로세스에 몰아넣으면 서버 스펙과 스레드 수를 정하는 기준이 모호해진다.  
@@ -127,6 +126,8 @@ Redis는 authoritative source가 아닌 캐시 계층으로 사용되며, 일부
 
 실시간 게임 상태는 Channel Server가 authoritative하게 관리하며 strong consistency를 유지하고, World Services에서 사용하는 비실시간 데이터는 Redis를 통해 서버 간 공유된다.
 데이터 변경은 각 도메인의 authoritative 서버에서 처리된 후 DB에 반영되며, Redis는 캐시로서 필요 시 갱신되거나 TTL 기반으로 동기화된다.
+
+</details>
 
 ## 핵심 기술 요약
 
@@ -174,7 +175,8 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 
 - [Graceful Shutdown](GracefulShutdown.md): 멤버 소멸 순서(소비자 → 제공자), 큐/워커 drain 정책, 로거 teardown 순서 정립. 종료 시점의 캐릭터 상태를 유실 없이 DB에 반영하고, 이중 Stop 호출·소멸 순서로 인한 크래시를 제거
 
-## 스레드 모델
+<details>
+  <summary><b>스레드 모델</b></summary>
 
 스레드별 작업 성격에 따른 분류.
 
@@ -198,6 +200,7 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 
 현재는 단일 프로세스에서 모든 스레드가 실행되므로 CPU-bound 작업(Zone, Broadcast 등)과 IO-bound 작업(DB, Logger, Session 등)이 동일한 프로세스 자원을 공유한다.   
 서비스 규모가 커질수록 스레드 수와 CPU 자원 배분 기준이 모호해지고, 서로 다른 특성의 작업이 커널 스케줄러와 메모리 자원을 경쟁하게 되어 수직 확장에 한계가 발생한다.  
+</details>
 
 ## 테스트
 
