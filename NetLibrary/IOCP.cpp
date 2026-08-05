@@ -481,8 +481,9 @@ namespace Net {
             int err = WSAGetLastError();
             if (err != WSA_IO_PENDING)
             {
+                SOCKET sock = pOverlappedEx->clientSocket;
                 overlappedExPool->Return(pOverlappedEx);
-                CleanUpSocket(pOverlappedEx->clientSocket);
+                CleanUpSocket(sock);
                 Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", pOverlappedEx->clientSocket, "error message", std::to_string(err));
             }
         }
@@ -513,9 +514,10 @@ namespace Net {
             int err = WSAGetLastError();
             if (err != WSA_IO_PENDING)
             {
+                SOCKET sock = pOverlappedEx->clientSocket;
                 overlappedExPool->Return(pOverlappedEx);
-                CleanUpSocket(pOverlappedEx->clientSocket);
-                Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", pOverlappedEx->clientSocket, "error message", std::to_string(err));
+                CleanUpSocket(sock);
+                Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", sock, "error message", std::to_string(err));
             }
         }
     }
