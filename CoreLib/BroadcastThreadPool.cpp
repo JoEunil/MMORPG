@@ -20,8 +20,8 @@ namespace Core {
                 // back-off
                 continue;
             }
-            auto headers = packets->first;
-            auto chunks = packets->second;
+            auto& headers = packets->first;
+            auto& chunks = packets->second;
             std::vector<std::vector<std::shared_ptr<IPacket>>> currChunks;
             currChunks.resize(CELLS_X * CELLS_Y);
             perfCollector->AddBroadcastPopCnt();
