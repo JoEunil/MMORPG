@@ -12,6 +12,10 @@ namespace Core {
         std::stringstream ss;
         ss << tid;
         sysLogger->LogInfo("broadcast thread", "broadcast thread started", "threadID", ss.str());
+
+        // work마다 재할당하지 않도록 스레드 로컬로 재사용 (내부 vector의 capacity도 유지된다)
+        std::vector<std::vector<std::shared_ptr<IPacket>>> currChunks(CELLS_X * CELLS_Y);
+
         while (m_running.load(std::memory_order_relaxed))
         {
             std::unique_ptr< std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>> packets;
@@ -22,9 +26,10 @@ namespace Core {
             }
             auto& headers = packets->first;
             auto& chunks = packets->second;
-            std::vector<std::vector<std::shared_ptr<IPacket>>> currChunks;
-            currChunks.resize(CELLS_X * CELLS_Y);
             perfCollector->AddBroadcastPopCnt();
+
+            if (headers.empty())
+                continue;
 
             uint64_t zoneID = headers[0]->GetZone();
             ZoneState* zone = stateManager->GetZone(zoneID);
@@ -54,6 +59,11 @@ namespace Core {
                 }
             }
             perfCollector->AddBroadcastSendCnt(sentCount);
+
+            // 다음 work가 올 때까지 packet 참조를 붙들지 않도록 즉시 해제.
+            // (버퍼 자체는 재사용하고 shared_ptr만 놓는다)
+            for (auto& c : currChunks)
+                c.clear();
         }
     }
 

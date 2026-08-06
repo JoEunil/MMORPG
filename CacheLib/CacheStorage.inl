@@ -27,8 +27,17 @@ namespace Cache {
         outResult = it->second;
         // splice: list 전용 메서드, O(1), 연결리스트 포인터 교체
         // splice(삽입할 위치, 원본 리스트, 가져올 iterator)
-        shard.lru_list.splice(shard.lru_list.begin(), shard.lru_list, shard.lru_pos[key]);
-        shard.lru_pos[key] = shard.lru_list.begin();
+        auto posIt = shard.lru_pos.find(key);
+        if (posIt != shard.lru_pos.end()) {
+            shard.lru_list.splice(shard.lru_list.begin(), shard.lru_list, posIt->second);
+            posIt->second = shard.lru_list.begin();
+        }
+        else {
+            // AVAILABLE인데 LRU 추적에서 이탈한 상태 — operator[]로 접근하면
+            Core::errorLogger->LogError("cache storage", "AVAILABLE entry missing from lru_pos, re-registering");
+            shard.lru_list.push_front(key);
+            shard.lru_pos[key] = shard.lru_list.begin();
+        }
         return CACHE_STATUS::AVAILABLE;
     }
 
