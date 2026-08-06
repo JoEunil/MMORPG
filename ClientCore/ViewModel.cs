@@ -85,7 +85,7 @@ namespace ClientCore
             var res = _viewData.GetActionState();
             if (res.Item1 == true)
             {
-                _network.Action(res.Item2, res.Item3, res.Item4);
+                _network.Action(res.Item2, res.Item3, res.Item4, res.Item5);
             }
         }
 
@@ -118,6 +118,7 @@ namespace ClientCore
             bool success = resStatus != 0;
             if (success)
             {
+                _viewData.SetPosition(startX, startY); // 이동 좌표 시드
                 _network.ZoneChange((byte)ZONE_CHANGE.ENTER);
             }
             _threadDispatcher.Post(() =>
@@ -152,10 +153,13 @@ namespace ClientCore
         {
             bool success = resStatus != 0;
             if (success)
+            {
+                _viewData.SetPosition(x, y); // 존 이동 후 권위 좌표로 재시드
                 _threadDispatcher.Post(() =>
                 {
                     OnZoneChageReceived?.Invoke(zoneID, chatID, zoneInternalID, x, y);
                 });
+            }
             else
             {
                 OnZoneChageFailed?.Invoke();

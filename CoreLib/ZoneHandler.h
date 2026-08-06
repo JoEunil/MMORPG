@@ -57,6 +57,10 @@ namespace Core {
             auto zoneState = stateManager->GetZone(zoneID);
             zoneState->SkillCoolDown();
         }
+        void ReplenishMoveBudget(uint16_t zoneID) {
+            auto zoneState = stateManager->GetZone(zoneID);
+            zoneState->ReplenishMoveBudget();
+        }
         void ApplySkill(uint16_t zoneID) {
             auto zoneState = stateManager->GetZone(zoneID);
             zoneState->ApplySkill();

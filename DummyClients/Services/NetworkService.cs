@@ -62,11 +62,11 @@ namespace ClientCore.Services
             }
             return true;
         }
-        public async Task<bool> Action(TCPSocket sock, byte dir, float speed, byte skillSlot)
+        public async Task<bool> Action(TCPSocket sock, byte dir, float x, float y, byte skillSlot)
         {
             try
             {
-                await sock.Send(PacketBuilder.CreateActionPacket(dir, speed, skillSlot));
+                await sock.Send(PacketBuilder.CreateActionPacket(dir, x, y, skillSlot));
             }
             catch (Exception ex)
             {
@@ -75,10 +75,6 @@ namespace ClientCore.Services
             }
             return true;
         }
-
-        // 틱당 한 번만 빌드해서 모든 세션이 공유 전송(send마다 마샬링/할당 반복 제거).
-        public byte[] BuildActionPacket(byte dir, float speed, byte skillSlot)
-            => PacketBuilder.CreateActionPacket(dir, speed, skillSlot);
 
         public async Task<bool> SendPacket(TCPSocket sock, byte[] packet)
         {

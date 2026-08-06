@@ -1,4 +1,4 @@
-using ClientCore;
+﻿using ClientCore;
 using ClientCore.PacketHelper;
 using ClientCore.Services;
 using System;
@@ -82,7 +82,7 @@ namespace ClientCore.Network
         }
         private void HandleZoneChange(int index, STPacket<ZoneChangeResponseBody> packet)
         {
-            _viewModel.ZoneChageReceived(index, packet.body.resStatus);
+            _viewModel.ZoneChageReceived(index, packet.body.resStatus, packet.body.startX, packet.body.startY);
         }
         public void HandlePing(int index, STPacket<Ping> packet)
         {

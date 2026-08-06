@@ -212,8 +212,8 @@ namespace ClientCore.PacketHelper
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ActionRequestBody
     {
-        public byte dir;
-        public float speed;
+        public byte dir;      // 애니메이션/스킬 시전 방향
+        public float x, y;    // 이동 후 최종 좌표(절대). 서버가 경과 시간 대비 이동량을 검증한다.
         public byte skillSlot;
     }
 
@@ -362,7 +362,7 @@ namespace ClientCore.PacketHelper
             int totalSize = headerSize + bodySize;
 
             byte[] arr = new byte[totalSize];
-            packet.header.length = (ushort)totalSize;
+            packet.header.length = (uint)totalSize;
 
             IntPtr ptr = Marshal.AllocHGlobal(totalSize);
 
@@ -389,7 +389,7 @@ namespace ClientCore.PacketHelper
             int headerSize = Marshal.SizeOf<PacketHeader>();
             byte[] arr = new byte[headerSize];
 
-            header.length = (ushort)headerSize;
+            header.length = (uint)headerSize;
 
             IntPtr ptr = Marshal.AllocHGlobal(headerSize);
             try
@@ -413,7 +413,7 @@ namespace ClientCore.PacketHelper
             int bodySize = Marshal.SizeOf<ChatRequestBody>();
             // 전체 패킷 사이즈
             int totalSize = Marshal.SizeOf<PacketHeader>() + bodySize + messageBytes.Length;
-            header.length = (ushort)totalSize;
+            header.length = (uint)totalSize;
             body.messageLength = (ushort)messageBytes.Length;
             body.scope = (CHAT_SCOPE)scope;
             body.targetChatID = targetID;

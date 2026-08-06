@@ -1,4 +1,4 @@
-using ClientCore;
+﻿using ClientCore;
 using ClientCore.Network;
 using ClientCore.Services;
 using System;
@@ -23,6 +23,12 @@ static class Program
         if (index < 0 || index >= sessions.Length)
             return null;
         return sessions[index]?.GetSocket();
+    }
+    static public void SetSessionPosition(int index, float x, float y)
+    {
+        if (index < 0 || index >= sessions.Length)
+            return;
+        sessions[index]?.SetPosition(x, y);
     }
     static public void Initialize(int count)
     {
@@ -108,6 +114,11 @@ static class Program
             Thread.Sleep(1000);
         }
     }
+    // 서버 틱당 이동 예산(MOVE_BUDGET_PER_TICK = 1.0)의 절반만 쓴다. Unity 클라이언트와 같은 속도다.
+    // 예산과 동일하게 맞추면 부하 상황에서 서버 틱이 밀릴 때
+    // 정상 이동이 거부되고 치트 카운트가 쌓여 세션이 끊긴다.
+    private const float MOVE_STEP = 0.5f;
+
     static public void Action()
     {
         tick++;
@@ -116,8 +127,8 @@ static class Program
             dir++;
             dir &= 3;
         }
-        // 이 틱의 action 패킷은 모든 세션이 동일 → 한 번만 빌드해 공유(send마다 마샬링/할당 반복 제거).
-        byte[] pkt = _network.BuildActionPacket(dir, 1, 255);
+        // 좌표 기반으로 바뀌면서 세션마다 패킷이 달라져 더 이상 공유할 수 없다.
+        // 대신 마샬링 없는 고정 레이아웃 기록(CreateActionPacketFast)으로 빌드 비용을 낮췄다.
         int alive = 0;
         for (int idx = 0; idx < sessions.Length; idx++)
         {
@@ -125,6 +136,9 @@ static class Program
             if (session == null)
                 continue;
             alive++;
+            byte[] pkt = session.BuildMovePacket(dir, MOVE_STEP);
+            if (pkt == null)
+                continue; // 아직 시작 좌표를 못 받은 세션
             _ = SendActionAsync(session.GetSocket(), pkt, idx);
         }
         _count = alive;

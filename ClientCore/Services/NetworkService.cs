@@ -66,11 +66,11 @@ namespace ClientCore.Services
                 Log(ex.Message);
             }
         }
-        public void Action(byte dir, float speed, byte skillSlot)
+        public void Action(byte dir, float x, float y, byte skillSlot)
         {
             try
             {
-                _sock.Send(PacketBuilder.CreateActionPacket(dir, speed, skillSlot));
+                _sock.Send(PacketBuilder.CreateActionPacket(dir, x, y, skillSlot));
             }
             catch (Exception ex)
             {

@@ -18,11 +18,11 @@ namespace ClientCore
         internal const int MAX_INVENTORY_ITEMS = 128;
         internal const int MAX_INVENTORY = 64;
         internal const int MAX_CHAT_PACKET = 10;
-        internal const int MAX_ZONE_CAPACITY = 500;
+        internal const int MAX_ZONE_CAPACITY = 2000;
         internal const int FIELD_COUNT = 10;
-        internal const ushort MAGIC = 0x1234;
+        internal const ushort MAGIC = 0xABCD;
         internal const byte FLAG_SIMULATION = 0x01;
-        internal const int DELTA_UPDATE_COUNT = 1000;
+        internal const int DELTA_UPDATE_COUNT = 5000;
         internal const int ACTION_RESULT_COUNT = 500;
         internal const int MAX_MONSTER_DELTA = 3000;
         internal const int MAX_MONSTER_COUNT = 1000;

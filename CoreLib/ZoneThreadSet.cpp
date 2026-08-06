@@ -28,6 +28,7 @@ namespace Core {
         handler->SpawnMonster(zoneID);
         while (t->running) {
             handler->SkillCoolDown(zoneID);
+            handler->ReplenishMoveBudget(zoneID);
             std::unique_ptr<IPacketView, PacketViewDeleter> packet;
             const size_t MAX_PACKETS_PER_TICK = 2000;
             size_t processed = 0;

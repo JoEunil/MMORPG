@@ -212,8 +212,8 @@ namespace ClientCore.PacketHelper
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ActionRequestBody
     {
-        public byte dir;
-        public float speed;
+        public byte dir;      // 애니메이션/스킬 시전 방향
+        public float x, y;    // 이동 후 최종 좌표(절대). 서버가 경과 시간 대비 이동량을 검증한다.
         public byte skillSlot;
     }
 

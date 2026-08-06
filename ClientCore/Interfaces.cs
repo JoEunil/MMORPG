@@ -15,7 +15,7 @@ namespace ClientCore
     public struct ActionData
     {
         public byte dir;
-        public float speed;
+        public float x, y;   // 클라이언트가 로컬로 이동한 뒤의 최종 좌표
         public bool dirty;
         public byte waitSkillSlot;
     }
@@ -113,7 +113,8 @@ public struct InventoryItemView
     {
         long GetServerTimeMs();
         void UpdateServerTime(long serverTime);
-        (bool, byte, float, byte) GetActionState();
+        (bool, byte, float, float, byte) GetActionState();
+        void SetPosition(float x, float y);
         void SetCharList(ushort count, CharacterInfo[] chars);
         void SetInventory(InventoryItem[] items);
     }
@@ -121,7 +122,7 @@ public struct InventoryItemView
     public interface IViewDataUI
     {
         long GetServerTimeMs();
-        void UpdateMove(byte dir, float speed);
+        void UpdateMove(byte dir, float x, float y);
         void UpdateSkill(byte skillSlot);
         (ushort, List<CharacterInfoView>) GetCharList();
         List<InventoryItemView> GetInventory();
@@ -163,7 +164,7 @@ namespace ClientCore.Services
         void Enter(ulong charID);
 
         void Chat(string message, byte scope, ulong targetID);
-        void Action(byte dir, float speed, byte skillSlot);
+        void Action(byte dir, float x, float y, byte skillSlot);
         void Pong(ulong serverTimeMs);
         void ZoneChange(byte op);
         void Log(string msg);

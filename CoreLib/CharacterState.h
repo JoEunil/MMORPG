@@ -19,6 +19,7 @@ namespace Core {
         float x, y; // 7, 8
 
         // --  내부 정보
+        float moveBudget = 0.0f; // 남은 이동 허용 거리. 틱마다 보충되고 이동 시 소비된다.
         uint8_t cellX;
         uint8_t cellY;
         uint16_t cellIdx;

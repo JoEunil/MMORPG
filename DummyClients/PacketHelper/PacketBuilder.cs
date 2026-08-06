@@ -22,7 +22,7 @@ namespace ClientCore.PacketHelper
 
             var header = new PacketHeader
             {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,  // Serialize에서 계산
                 opcode = (byte)OP_CODE.AUTH,
                 flags = 0x00,
@@ -39,7 +39,7 @@ namespace ClientCore.PacketHelper
         internal static byte[] CreateChatPacket(string message, byte scope, ulong targetID)
         {
             var header = new PacketHeader {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,  // Serialize에서 계산
                 opcode = (byte)OP_CODE.CHAT,
                 flags = 0x00, 
@@ -54,7 +54,7 @@ namespace ClientCore.PacketHelper
             var body = new ZoneChangeBody { op = op };
             var header = new PacketHeader
             {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,
                 opcode = (byte)OP_CODE.ZONE_CHANGE,
                 flags = 0x00
@@ -69,18 +69,41 @@ namespace ClientCore.PacketHelper
             return Packet.Serialize(packet);
         }
 
-        internal static byte[] CreateActionPacket(byte dir, float speed, byte skillSlot)
+        // header(8) + dir(1) + x(4) + y(4) + skillSlot(1)
+        internal const int ACTION_PACKET_SIZE = 18;
+        private const int ACTION_OFFSET_DIR = 8;
+        private const int ACTION_OFFSET_X = 9;
+        private const int ACTION_OFFSET_Y = 13;
+        private const int ACTION_OFFSET_SKILL = 17;
+
+        internal static byte[] CreateActionPacketFast(byte dir, float x, float y, byte skillSlot)
+        {
+            var buf = new byte[ACTION_PACKET_SIZE]; // 0으로 초기화됨
+            buf[0] = unchecked((byte)MAGIC);
+            buf[1] = (byte)(MAGIC >> 8);
+            buf[2] = ACTION_PACKET_SIZE;           // length(uint32 LE) — 18이라 상위 3바이트는 0
+            buf[6] = (byte)OP_CODE.ACTION;
+            buf[7] = FLAG_SIMULATION;
+            buf[ACTION_OFFSET_DIR] = dir;
+            BitConverter.TryWriteBytes(buf.AsSpan(ACTION_OFFSET_X), x);
+            BitConverter.TryWriteBytes(buf.AsSpan(ACTION_OFFSET_Y), y);
+            buf[ACTION_OFFSET_SKILL] = skillSlot;
+            return buf;
+        }
+
+        internal static byte[] CreateActionPacket(byte dir, float x, float y, byte skillSlot)
         {
             var body = new ActionRequestBody
             {
                 dir = dir,
-                speed = speed,
+                x = x,
+                y = y,
                 skillSlot = skillSlot
             };
 
             var header = new PacketHeader
             {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,
                 opcode = (byte)OP_CODE.ACTION,
                 flags = 0x00,
@@ -100,7 +123,7 @@ namespace ClientCore.PacketHelper
         {
             var header = new PacketHeader
             {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,
                 opcode = (byte)OP_CODE.CHARACTER_LIST,
                 flags = 0x00,
@@ -118,7 +141,7 @@ namespace ClientCore.PacketHelper
 
             var header = new PacketHeader
             {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,
                 opcode = (byte)OP_CODE.ENTER_WORLD,
                 flags = 0x00,
@@ -137,7 +160,7 @@ namespace ClientCore.PacketHelper
         {
             var header = new PacketHeader
             {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,
                 opcode = (byte)OP_CODE.INVENTORY_REQ,
                 flags = 0x00,
@@ -148,7 +171,7 @@ namespace ClientCore.PacketHelper
         {
             var header = new PacketHeader
             {
-                magic = 0xABCD,
+                magic = MAGIC,
                 length = 0,
                 opcode = (byte)OP_CODE.PONG,
                 flags = 0x00,

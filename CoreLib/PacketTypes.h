@@ -169,8 +169,8 @@ namespace Core {
 
 
     struct ActionRequestBody {
-        uint8_t dir; // 상, 하, 좌, 우
-        float speed;
+        uint8_t dir;      // 상, 하, 좌, 우 — 애니메이션/스킬 시전 방향
+        float x, y;       // 이동 후 최종 좌표(절대). 서버가 경과 시간 대비 이동량을 검증한다.
         uint8_t skillSlot;
     };
 

@@ -1,4 +1,5 @@
 ﻿using ClientCore.Network;
+using ClientCore.PacketHelper;
 using System;
 
 namespace ClientCore
@@ -12,9 +13,44 @@ namespace ClientCore
         private string _accessToken;
         private string _sessionToken;
 
-        public ClientSession(TCPSocket sock) 
+        // Dummy에 viewData가 없으므로, ClientSession에서 좌표를 관리한다.
+        private float _x;
+        private float _y;
+        private bool _hasPosition;
+
+        public ClientSession(TCPSocket sock)
         {
             _sock = sock;
+        }
+
+        public void SetPosition(float x, float y)
+        {
+            lock (_lock) { _x = x; _y = y; _hasPosition = true; }
+        }
+
+        public bool HasPosition
+        {
+            get { lock (_lock) return _hasPosition; }
+        }
+
+        public byte[]? BuildMovePacket(byte dir, float step)
+        {
+            float x, y;
+            lock (_lock)
+            {
+                if (!_hasPosition)
+                    return null;
+                switch (dir)
+                {
+                    case 0: _y += step; break;
+                    case 1: _y -= step; break;
+                    case 2: _x -= step; break;
+                    case 3: _x += step; break;
+                }
+                x = _x;
+                y = _y;
+            }
+            return PacketBuilder.CreateActionPacketFast(dir, x, y, Config.NONE_SKILL);
         }
         public TCPSocket GetSocket()
         {
