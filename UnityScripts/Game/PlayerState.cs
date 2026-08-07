@@ -6,7 +6,7 @@ using System.Text;
 using UnityEngine;
 public class PlayerState : MonoBehaviour
 {
-    public ulong zoneInternalID;
+    public uint zoneInternalID;
     public int HP;
     public int MP;
     public int MAXHP;
@@ -17,7 +17,7 @@ public class PlayerState : MonoBehaviour
     public byte dir;
     public float x, y;
     public string charName;
-    public void ZoneMove(ulong id, float X, float Y)
+    public void ZoneMove(uint id, float X, float Y)
     {
         zoneInternalID = id;
         x = X;

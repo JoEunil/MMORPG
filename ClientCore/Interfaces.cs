@@ -27,7 +27,7 @@ namespace ClientCore
     }
     public struct MyCharData
     {
-        public ulong zoneInternalID;
+        public uint zoneInternalID;
         public string Name;
         public ushort Level;
         public uint Exp;
@@ -39,16 +39,6 @@ namespace ClientCore
         public ushort zoneID;
     }
 
-    public struct CharacterState 
-    {
-        ushort zoneInternalID; 
-        int hp; // 0
-        int mp; // 1
-        ushort level; // 2
-        ulong exp; // 3
-        ushort dir; // 4
-        float x, y;  // 5, 6
-    };
 
 public struct InventoryItemView
     {
@@ -69,7 +59,7 @@ public struct InventoryItemView
         event Action<bool> OnCharacterListReceived;
         event Action<byte, ulong, string, string> OnChatReceived;
         event Action<bool> OnInventoryReceived;
-        event Action<ushort, ulong, ulong, float, float> OnZoneChageReceived;
+        event Action<ushort, ulong, uint, float, float> OnZoneChageReceived;
         event Action<ushort, DeltaUpdateField[]> OnDeltaReceived;
         event Action<ushort, FullStateField[]> OnFullReceived;
         event Action<ushort, MonsterDeltaField[]> OnMonsterDeltaReceived;
@@ -93,7 +83,7 @@ public struct InventoryItemView
         void EnterReceived(byte resStatus, byte[] name, ushort attack, ushort level, uint exp, int hp, int mp, int maxHp, int maxMp, byte dir, float startX, float startY, ushort CurrentZone);
         void ChatReceived(Packet.Message message);
         void InventoryReceived(byte resStatus, PacketHelper.InventoryItem[] items);
-        void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, ulong zoneInternalID, float x, float y);
+        void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y);
         void DeltaReceived(ushort count, PacketHelper.DeltaUpdateField[] updates);
         void FullReceived(ushort count, PacketHelper.FullStateField[] states);
         void MonsterDeltaReceived(ushort count, PacketHelper.MonsterDeltaField[] updates);

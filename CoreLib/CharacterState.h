@@ -8,7 +8,7 @@ namespace Core {
         uint32_t skillCoolDownTick;
     };
     struct CharacterState {
-        uint64_t zoneInternalID; // zone 내부에서 사용하는 id
+        uint32_t zoneInternalID; // zone 내부에서 사용하는 id
         int hp; // 0
         int mp; // 1
         int maxHp; // 2

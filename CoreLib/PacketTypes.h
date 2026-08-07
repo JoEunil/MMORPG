@@ -137,7 +137,7 @@ namespace Core {
         uint8_t resStatus;
         uint16_t zoneID;
         uint64_t chatID;
-        uint64_t zoneInternalID;
+        uint32_t zoneInternalID;
         float startX, startY;
     };
 
@@ -176,7 +176,7 @@ namespace Core {
 
     struct ActionResultField {
         uint8_t casterType;//  0 캐릭터, 1 몬스터
-        uint64_t casterId;
+        uint32_t casterId; // casterType 0이면 zoneInternalID, 1이면 monsterId
         uint8_t skillSlot;
         uint8_t dir;
         float x, y; // 시전 위치
@@ -190,7 +190,7 @@ namespace Core {
     };
 
     struct DeltaUpdateField {
-        uint64_t zoneInternalID;   
+        uint32_t zoneInternalID;   
         uint16_t fieldID;
         uint32_t fieldVal; // field에 맞는 타입으로 변환 해서 사용
     };
@@ -201,7 +201,7 @@ namespace Core {
     };
 
     struct FullStateField {
-        uint64_t zoneInternalID;
+        uint32_t zoneInternalID;
         int hp; // 0
         int mp; // 1
         int maxHp; // 2

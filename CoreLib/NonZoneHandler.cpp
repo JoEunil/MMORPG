@@ -185,7 +185,7 @@ namespace Core {
         auto session = p->GetSessionID();
         auto zoneID = stateManager->GetZoneID(session);
         int destZone = 0;
-        uint64_t zoneInternalID = 0;
+        uint32_t zoneInternalID = INVALID_ZONE_INTERNAL_ID;
         switch (body->op)
         {
             case ZONE_CHANGE::ENTER : {
@@ -211,7 +211,7 @@ namespace Core {
 
                 auto zone = stateManager->GetZone(temp.lastZone);
                 zoneInternalID = zone->ImmigrateChar(session, temp);
-                if (zoneInternalID == 0) {
+                if (zoneInternalID == INVALID_ZONE_INTERNAL_ID) {
                     if (!lobbyZone->ImmigrateChar(session, temp)) // 다시 Lobby Zone으로
                         Disconnect(session);
 
@@ -260,7 +260,7 @@ namespace Core {
             return;
         }
         zoneInternalID = DZone->ImmigrateChar(session, temp);
-        if (zoneInternalID == 0) {
+        if (zoneInternalID == INVALID_ZONE_INTERNAL_ID) {
             if (!SZone->ImmigrateChar(session, temp)) // 원래 Zone으로 복구
                 Disconnect(session);
             auto p = writer->WriteZoneChangeFailed();

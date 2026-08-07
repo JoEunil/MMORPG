@@ -30,20 +30,37 @@ namespace Core {
         // 임시로 스킬 고정
     }
 
-    uint64_t ZoneState::ImmigrateChar(uint64_t sessionID, CharacterState& state) {
+    // 상한에 도달하면 발급을 중단한다.
+    // wrap-around 시 이미 사용 중인 ID와 중복되어 다른 캐릭터의 상태를 덮어쓰기 때문에,fetch_add로 넘겨서 카운터를 굴리지 않고 CAS로 상한에서 정지시킨다.
+    uint32_t ZoneState::AcquireInternalID() {
+        uint32_t cur = m_internalIdGenerator.load(std::memory_order_relaxed);
+        while (cur < MAX_ZONE_INTERNAL_ID) {
+            if (m_internalIdGenerator.compare_exchange_weak(cur, cur + 1,
+                std::memory_order_relaxed, std::memory_order_relaxed))
+                return cur;
+        }
+        return INVALID_ZONE_INTERNAL_ID;
+    }
+
+    uint32_t ZoneState::ImmigrateChar(uint64_t sessionID, CharacterState& state) {
         // 추가 제거는 fullSnapshot에 적용됨
-        state.zoneInternalID = m_internalIdGenerator.fetch_add(1, std::memory_order_relaxed);
         std::lock_guard<std::mutex> lock(m_mutex);
-        
+
         uint16_t index = static_cast<uint16_t>(m_chars.size());
         if (index >= MAX_ZONE_CAPACITY) {
             errorLogger->LogError("zone state", "zone full", "zoneID", m_zoneID, "sessionID", sessionID, "index", index);
-            return 0;
+            return INVALID_ZONE_INTERNAL_ID;
         }
         auto it = m_sessionToIndex.find(sessionID);
         if (it != m_sessionToIndex.end()) {
             errorLogger->LogError("zone state", "ImmigrageChar Failed sessionID already exists","zoneID", m_zoneID, "sessionID", sessionID);
-            return 0;
+            return INVALID_ZONE_INTERNAL_ID;
+        }
+        // 실패한 진입이 ID를 소모하지 않도록 검증 이후에 발급한다.
+        state.zoneInternalID = AcquireInternalID();
+        if (state.zoneInternalID == INVALID_ZONE_INTERNAL_ID) {
+            errorLogger->LogError("zone state", "zoneInternalID exhausted", "zoneID", m_zoneID, "sessionID", sessionID);
+            return INVALID_ZONE_INTERNAL_ID;
         }
         auto [x, y] = GetCell(state.x, state.y, m_area);
         AddToCell(state, x, y);

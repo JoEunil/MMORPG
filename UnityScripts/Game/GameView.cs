@@ -31,7 +31,7 @@ public class GameView : MonoBehaviour
         _viewModel.OnMonsterFullReceived += MonsterFull;
         _viewModel.OnActionResultReceived += ActionResult;
     }
-    void ZoneChange(ushort zoneID, ulong chatID, ulong InternalId, float x, float y)
+    void ZoneChange(ushort zoneID, ulong chatID, uint InternalId, float x, float y)
     {
         testUI.SetZoneID(zoneID);
         playerManager.ZoneChange(InternalId, x, y);

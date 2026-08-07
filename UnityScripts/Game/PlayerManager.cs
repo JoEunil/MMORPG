@@ -7,11 +7,11 @@ using System.Xml.Serialization;
 using UnityEngine;
 public class PlayerManager : MonoBehaviour
 {
-    private Dictionary<ulong, (PlayerState state, HeroControl control)> _players
-    = new Dictionary<ulong, (PlayerState, HeroControl)>();
+    private Dictionary<uint, (PlayerState state, HeroControl control)> _players
+    = new Dictionary<uint, (PlayerState, HeroControl)>();
 
-    private HashSet<ulong> _deleteSet = new HashSet<ulong>();
-    private HashSet<ulong> _dirtySet = new HashSet<ulong>();
+    private HashSet<uint> _deleteSet = new HashSet<uint>();
+    private HashSet<uint> _dirtySet = new HashSet<uint>();
     [SerializeField] private GameObject playerPrefab;
     [SerializeField] private PlayerState _myPlayerState;
     [SerializeField] private MyHeroControl _myPlayerControl;
@@ -31,11 +31,11 @@ public class PlayerManager : MonoBehaviour
     {
         return _chatID;
     }
-    public ulong GetMyPlayerID()
+    public uint GetMyPlayerID()
     {
         return _myPlayerState.zoneInternalID;
     }
-    public string GetPlayerName(ulong id)
+    public string GetPlayerName(uint id)
     {
         if (_players.TryGetValue(id, out var player))
         {
@@ -43,7 +43,7 @@ public class PlayerManager : MonoBehaviour
         }
         return null;
     }
-    public void SpawnPlayer(ulong zoneInternalID, FullStateField field)
+    public void SpawnPlayer(uint zoneInternalID, FullStateField field)
     {
         if (_players.ContainsKey(zoneInternalID)) return;
         GameObject go = Instantiate(playerPrefab, new Vector3(field.x, field.y, transform.position.y), Quaternion.identity);
@@ -53,7 +53,7 @@ public class PlayerManager : MonoBehaviour
         control.SetNameLevel(Encoding.UTF8.GetString(field.charName), field.level);
         _players[zoneInternalID] = (state, control);
     }
-    public void ZoneChange(ulong id, float x, float y)
+    public void ZoneChange(uint id, float x, float y)
     {
         _myPlayerState.ZoneMove(id, x, y);
         foreach (var key in _players.Keys.ToList())
@@ -140,7 +140,7 @@ public class PlayerManager : MonoBehaviour
 
         _deleteSet.Clear();
     }
-    public void RemovePlayer(ulong zoneInternalID)
+    public void RemovePlayer(uint zoneInternalID)
     {
         if (_players.TryGetValue(zoneInternalID, out var player))
         {
@@ -150,7 +150,7 @@ public class PlayerManager : MonoBehaviour
             _dirtySet.Remove(zoneInternalID);
         }
     }
-    public void SkillAnimation(ulong casterID, byte slotID, uint skillId, byte dir)
+    public void SkillAnimation(uint casterID, byte slotID, uint skillId, byte dir)
     {
         if (casterID == _myPlayerState.zoneInternalID)
         {

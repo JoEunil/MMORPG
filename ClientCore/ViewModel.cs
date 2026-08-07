@@ -21,7 +21,7 @@ namespace ClientCore
         public event Action<bool> OnCharacterListReceived;
         public event Action<byte, ulong, string, string> OnChatReceived;
         public event Action<bool> OnInventoryReceived;
-        public event Action<ushort, ulong, ulong, float, float> OnZoneChageReceived;
+        public event Action<ushort, ulong, uint, float, float> OnZoneChageReceived;
         public event Action<ushort, DeltaUpdateField[]> OnDeltaReceived;
         public event Action<ushort, FullStateField[]> OnFullReceived;
         public event Action<ushort, MonsterDeltaField[]> OnMonsterDeltaReceived;
@@ -149,7 +149,7 @@ namespace ClientCore
             });
         }
 
-        public void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, ulong zoneInternalID, float x, float y)
+        public void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y)
         {
             bool success = resStatus != 0;
             if (success)

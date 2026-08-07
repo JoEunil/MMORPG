@@ -15,7 +15,7 @@ namespace Core {
 
 
         float spawnX, spawnY;
-        uint64_t aggro;
+        uint32_t aggro; // 어그로 대상의 zoneInternalID
         uint32_t aggroTick;
         uint8_t cellX;
         uint8_t cellY;

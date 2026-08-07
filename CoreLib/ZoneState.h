@@ -35,7 +35,7 @@ namespace Core {
     class ZoneState {
         std::vector<CharacterState> m_chars;
         std::unordered_map<uint64_t, uint16_t> m_sessionToIndex; // 자신의 캐릭터를 컨트롤 할 때
-        std::unordered_map<uint64_t, uint16_t> m_InternalIDToIndex; // 다른 캐릭터와 상호작용할 때
+        std::unordered_map<uint32_t, uint16_t> m_InternalIDToIndex; // 다른 캐릭터와 상호작용할 때
         std::vector<MonsterState> m_monsters; // id = index, 죽은 몬스터는 제거하지 않고 틱 단위로 처리.
 
         std::vector<std::pair<uint64_t, uint16_t>> m_cheatList;  // Cheat 탐지해서 배치처리하는 용도, stack
@@ -46,7 +46,7 @@ namespace Core {
         ZoneArea m_area;
         std::array<std::array<Cell, CELLS_X>, CELLS_Y> m_cells;
 
-        alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_internalIdGenerator = 1; // 각각 character에 ID 부여
+        alignas(std::hardware_destructive_interference_size) std::atomic<uint32_t> m_internalIdGenerator = 1; // 각각 character에 ID 부여
         alignas(std::hardware_destructive_interference_size) std::atomic<uint32_t>m_userCnt;
         char padding[std::hardware_destructive_interference_size - sizeof(uint32_t)];
 
@@ -77,6 +77,7 @@ namespace Core {
 
         void RemoveFromCell(CharacterState& character);
         void AddToCell(CharacterState& character,  uint8_t x, uint8_t y);
+        uint32_t AcquireInternalID();
         void UpdateSessionSnapshot();
         friend class Initializer;
     public:
@@ -111,7 +112,7 @@ namespace Core {
             InitAOI();
         }
         void InitializeMonster();
-        uint64_t ImmigrateChar(uint64_t sessionID, CharacterState& user);
+        uint32_t ImmigrateChar(uint64_t sessionID, CharacterState& user);
         bool EmigrateChar(uint64_t sessionID, CharacterState& o);
         Base::BufferReader<std::vector<std::vector<uint64_t>>> GetSessionSnaphot() {
             return tripleBuffer.Read();

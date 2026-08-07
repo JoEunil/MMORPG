@@ -273,7 +273,7 @@ namespace Core {
         if (state.casterType == 0)
             action.casterId = state.zoneInternalId;
         else
-            action.casterId = static_cast<uint64_t>(state.monsterId);
+            action.casterId = static_cast<uint32_t>(state.monsterId);
         action.dir = state.dir;
         action.x = state.x;
         action.y = state.y;
@@ -300,7 +300,7 @@ namespace Core {
         return p;
     }
 
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint64_t zoneInternalID, float x, float y) {   
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y) {   
         auto p = packetPool->AcquireUnique();
         if (p == nullptr) {
             return nullptr;

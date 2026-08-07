@@ -31,6 +31,12 @@ namespace Core {
     inline constexpr uint16_t MAX_MONSTER_COUNT = 1000;
     inline constexpr uint16_t MAX_MONSTER_DELTA = 3000;
 
+    inline constexpr uint32_t INVALID_ZONE_INTERNAL_ID = 0; // 발급 실패 sentinel
+    // zoneInternalID는 zone별로 단조 증가하며 재사용하지 않는다.
+    // 초당 1000회 발급해도 약 50일치라 정상 운영 중 고갈되지 않지만,
+    // wrap-around로 ID가 중복되면 조용히 오동작하므로 상한에서 발급을 중단한다.
+    inline constexpr uint32_t MAX_ZONE_INTERNAL_ID = UINT32_MAX;
+
     inline constexpr uint16_t MAX_ZONE_CAPACITY = 2000;
     inline constexpr uint16_t MAX_USER_CAPACITY = 7000;
     inline constexpr uint16_t MAX_CHAT_PACKET = 10;

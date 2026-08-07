@@ -166,7 +166,7 @@ namespace ClientCore.PacketHelper
         public byte resStatus;
         public ushort zoneID;
         public ulong chatID;
-        public ulong zoneInternalID;
+        public uint zoneInternalID;
         public float startX;
         public float startY;
     }
@@ -221,7 +221,7 @@ namespace ClientCore.PacketHelper
     public struct ActionResultField
     {
         public byte casterType;
-        public ulong casterId;
+        public uint casterId;
         public byte skillSlot;
         public byte dir;
         public float x, y;
@@ -240,7 +240,7 @@ namespace ClientCore.PacketHelper
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct DeltaUpdateField
     {
-        public ulong zoneInternalID;
+        public uint zoneInternalID;
         public ushort fieldID;
         public uint fieldVal;
     }
@@ -257,7 +257,7 @@ namespace ClientCore.PacketHelper
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct FullStateField
     {
-        public ulong zoneInternalID;
+        public uint zoneInternalID;
         public int hp;
         public int mp;
         public int maxHp;

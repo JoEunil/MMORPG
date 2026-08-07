@@ -56,7 +56,7 @@ namespace Core {
             return p;
         }
         template<typename T>
-        bool WriteDeltaField(std::shared_ptr<IPacket> p, uint64_t zoneInternalID,uint16_t fieldID, T val) {
+        bool WriteDeltaField(std::shared_ptr<IPacket> p, uint32_t zoneInternalID,uint16_t fieldID, T val) {
             static_assert(sizeof(T) <= sizeof(uint32_t), "Delta field too large"); // 컴파일 타임
 
             if (p->GetLength() + sizeof(DeltaUpdateField) > p->GetCapacity())
@@ -135,7 +135,7 @@ namespace Core {
         }
 
         std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeFailed();
-        std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint64_t zoneInternalID, float x, float y);
+        std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y);
 
         std::unique_ptr<IPacket, PacketDeleter>  GetPingPacket(uint64_t rtt,uint64_t nowMs) override {
             auto p = packetPool->AcquireUnique();
