@@ -1,5 +1,19 @@
 ﻿# WAL (Write-Ahead Log)
 
+## ⚠️ 과설계
+
+### 착각의 원인
+WAL을 도입한 직접적인 계기는 거래소 시스템의 durability 문제였다. 인벤토리 데이터가 캐시에 있다 보니 "캐시 자체가 durability를 보장해야 거래가 안전하다"고 판단했는데, 이건 착각이었다.  
+[Bazaar.md](Bazaar.md)의 **Outbox + Inbox** 조합만으로 이미 exactly-once가 성립한다.  
+— flush 전 크래시가 나면 인벤토리 blob(수량 증가 + dedup 마커)이 outbox와 함께 통째로 유실되므로, 재접속 시 outbox가 재시도하고 인벤토리는 처음부터 다시 정상 반영된다. 유실도 중복도 없다.   
+
+이 문제를 고민한 시점이 `데이터 중심 애플리케이션 설계` 3장(저장소와 검색 — B-Tree/LSM-Tree와 WAL)을 읽던 중이였기 때문이다. 내가 구현한 In-Process 캐시의 구조를 대입해서 생각하다 보니 "캐시가 durability를 안 갖는 건 위험하다"는 생각이들었다.  
+또한 Outbox/Inbox 도입 완료 후 WAL을 추가한 것이 아니라 Outbox/Inbox와 동시에 WAL을 도입하면서 이미 Outbox/Inbox가 durability를 충분히 보장한다는 사실을 생각하지 못했다.  
+
+### 결론
+- 게임 서버에서 durability의 기준은 DB다. 거래처럼 DB 트랜잭션 경계를 가지는 로직은 Outbox/Inbox 같은 패턴으로 이미 충분하며, WAL이 필요하지 않다.  
+- WAL은 이 프로젝트의 실제 요구사항을 해결하기 위해 넣은 게 아니라, **캐시 레이어 자체에 범용 durability를 갖고 싶을 때 쓸 수 있다**라는 정도로 남겨둔다.  
+
 ## 1. 개요
 본 문서는 CacheLib에 도입한 WAL의 구조와 설계 근거를 설명한다.  
 목적은 하나다 — **Write-Back 캐시의 flush 이전 유실 창을 좁히는 것.**  

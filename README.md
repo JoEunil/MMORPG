@@ -163,6 +163,9 @@ Lock-Free 자료구조와 Zone 기반 멀티스레드 아키텍처로 동시성�
 Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush 이전 장애에서도 Dirty 데이터를 복구할 수 있도록 설계했다. 
 또한 거래소가 Cache - DB 경계를 넘는 부분은 **Saga(등록)·Outbox/Inbox(배송)** 로 cross-DB 정합성을 보장하고, 아이템·재화의 중요도에 따라 durability를 차등 적용했다.  
 
+> **⚠️ 과설계**: WAL 도입 계기는 거래소 durability 문제였는데, Outbox(DB)/Inbox(dedup) 조합만으로 이미 유실·중복 없는 exactly-once가 성립해 WAL이 없어도 됐다.  
+Outbox/Inbox 도입 완료 후 WAL을 추가한 게 아니라 두 가지를 동시에 도입하면서, 이미 Outbox/Inbox가 durability를 충분히 보장한다는 걸 놓쳤다.   
+
 - [Cache](CacheLib.md): 캐시 배치 전략, Write-Back/Read-Through 동작 흐름, 구조 설계
 - [Cache ACID](CacheLib_ACID.md): 캐시 상태값 도입 및 ACID 보장 설계
 - [Cache Integration Test](CacheLib_Test.md): DB fetch, cache hit/miss, flush, LRU eviction 동작 검증
