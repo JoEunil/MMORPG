@@ -116,7 +116,7 @@ namespace Core {
         return p;
     }
 
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::GetChatWhisperPacket(uint64_t sender, const std::string& userName, const std::string& message) {
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::GetChatWhisperPacket(uint64_t sender, uint32_t senderProfileId, const std::string& message) {
         auto p = packetPool->AcquireUnique();
         if (p == nullptr) {
             return nullptr;
@@ -128,7 +128,7 @@ namespace Core {
         p_st->header.opcode = OP::CHAT_WHISPER;
         p_st->header.magic = MAGIC;
         p_st->header.flags = 0x00;
-        memcpy(p_st->body.name, userName.data(), userName.length());
+        p_st->body.senderProfileId = senderProfileId;
         p_st->body.senderChatID = sender;
         p_st->body.messageLen = message.length();
         uint8_t* msgStart = reinterpret_cast<uint8_t*>(p->GetBuffer()) + sizeof(PacketStruct<ChatWhisperBody>);
@@ -154,7 +154,7 @@ namespace Core {
         return p;
     }
 
-    uint16_t PacketWriter::WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, const std::string& userName, const std::string& message) {
+    uint16_t PacketWriter::WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, uint32_t senderProfileId, const std::string& message) {
         auto p_st = reinterpret_cast<PacketStruct<ChatBatchNotifyBody>*>(p->GetBuffer());
         p_st->header.length += message.length();
         p->SetLength(p_st->header.length);
@@ -165,8 +165,7 @@ namespace Core {
         p_st->body.entities[p_st->body.chatCnt].senderChatID = sender;
         p_st->body.entities[p_st->body.chatCnt].offset = p_st->body.totalMessageLength;
         p_st->body.entities[p_st->body.chatCnt].messageLength = message.length();
-        memcpy(p_st->body.entities[p_st->body.chatCnt].name, userName.data(), userName.length());
-        p_st->body.entities[p_st->body.chatCnt].name[userName.length()] = '\0';
+        p_st->body.entities[p_st->body.chatCnt].senderProfileId = senderProfileId;
         p_st->body.chatCnt++;
         p_st->body.totalMessageLength += message.length();
         return p_st->body.chatCnt;
@@ -197,6 +196,8 @@ namespace Core {
         p->Count();
         auto& slot = fields[p->GetCount() -1];
         slot.zoneInternalID = state.zoneInternalID;
+        slot.profileId = state.profileId;
+        slot.profileVersion = state.profileVersion;
         slot.hp = state.hp;
         slot.mp = state.mp;
         slot.maxHp = state.maxHp;
@@ -206,7 +207,6 @@ namespace Core {
         slot.dir = state.dir;
         slot.x = state.x;
         slot.y = state.y;
-        std::memcpy(slot.charName, state.charName, MAX_CHARNAME_LEN);
         return true;
     }
 
@@ -300,7 +300,34 @@ namespace Core {
         return p;
     }
 
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y) {   
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteProfileBatchRes(const ProfileEntry* entries, uint16_t count) {
+        auto p = bigPacketPool->AcquireUnique();
+        if (p == nullptr) {
+            return nullptr;
+        }
+        p->Clear();
+        auto p_st = reinterpret_cast<PacketStruct<ProfileBatchResBody>*>(p->GetBuffer());
+
+        const size_t fixedLen = sizeof(PacketHeader) + sizeof(p_st->body.count);
+        if (count > MAX_PROFILE_BATCH)
+            count = MAX_PROFILE_BATCH;
+        // 클램프
+        while (count > 0 && fixedLen + count * sizeof(ProfileEntry) > p->GetCapacity())
+            count--;
+
+        p_st->header.length = static_cast<uint32_t>(fixedLen + count * sizeof(ProfileEntry));
+        p->SetLength(p_st->header.length);
+        p_st->header.opcode = OP::PROFILE_BATCH_RES;
+        p_st->header.magic = MAGIC;
+        p_st->header.flags = 0x00;
+        p_st->body.count = count;
+        for (uint16_t i = 0; i < count; i++) {
+            p_st->body.entries[i] = entries[i];
+        }
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y) {
         auto p = packetPool->AcquireUnique();
         if (p == nullptr) {
             return nullptr;

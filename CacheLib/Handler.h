@@ -5,6 +5,7 @@
 #include <mysqlconn/include/mysql/jdbc.h>
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"
+#include "ProfileCache.h"
 #include "DBWorker.h"
 #include "DBConnectionGame.h"
 #include "DBConnectionBazaar.h"
@@ -24,16 +25,18 @@ namespace Cache {
         MessagePool* messagePool = nullptr;
         CacheStorageInventory* cache_inventory = nullptr;
         CacheStorageCurrency* cache_currency = nullptr;
+        ProfileCache* cache_profile = nullptr;
         Core::ILogger* logger = nullptr;
         DBWorker<DBConnectionGame>* dbWorkerGame = nullptr;
         DBWorker<DBConnectionBazaar>* dbWorkerBazaar = nullptr;
-        void Initialize(Core::IMessageQueue* mq,  MessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc) {
+        void Initialize(Core::IMessageQueue* mq,  MessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp) {
             messageQ = mq;
             messagePool = mp;
             dbWorkerGame = dg;
             dbWorkerBazaar = db;
             cache_inventory = ci;
             cache_currency = cc;
+            cache_profile = cp;
         }
         bool IsReady() {
             if (messageQ == nullptr) {
@@ -60,6 +63,10 @@ namespace Cache {
                 Core::sysLogger->LogError("cache handler", "cache_currency not initialized");
                 return false;
             }
+            if (cache_profile == nullptr) {
+                Core::sysLogger->LogError("cache handler", "cache_profile not initialized");
+                return false;
+            }
             return true;
         }
         void CharacterListRequest(Core::Message*& msg, uint64_t sesionID, Core::MsgCharacterListReqBody* body);
@@ -78,6 +85,7 @@ namespace Cache {
         void BazaarBuy(Core::Message*& msg, uint64_t sesionID, Core::MsgBazaarBuyBody* body);
         void BazaarClaim(Core::Message*& msg, uint64_t sesionID, Core::MsgBazaarClaimBody* body);
         void BazaarCheckOutbox(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCheckOutboxBody* body);
+        void ProfileRename(Core::Message*& msg, uint64_t sessionID, Core::MsgProfileRenameBody* body);
 
         friend class Initializer;
     public:

@@ -172,6 +172,7 @@ Outbox/Inbox 도입 완료 후 WAL을 추가한 게 아니라 두 가지를 동�
 - [Cache Integration Test](CacheLib_Test.md): DB fetch, cache hit/miss, flush, LRU eviction 동작 검증
 - [WAL](WAL.md): Write-Ahead Log 구조, Replay, Truncate, 장애 복구 설계
 - [DB](DB.md): DB 분리, 수직 파티셔닝, 복합 인덱스, View, Saga, Outbox/Inbox
+- [Profile 분리](Profile.md): 캐릭터 이름을 Zone 상태에서 분리해 별도 Profile 엔티티 + Write-Through 캐시로 관리. Snapshot/Chat 페이로드에서 이름 필드 제거, Zone으로의 버전 역전파 설계
 
 ### 6. 종료 처리 (Graceful Shutdown)
 
@@ -417,6 +418,7 @@ DB → Redis → 로그인 서버 → 게임 서버
 - [WAL](WAL.md)
 - [Cache Durability Test](CacheDurabilityTest.md)
 - [DB 설계](DB.md)
+- [Profile 분리](Profile.md)
 - [IOCP Send 파이프라인](IOCPSendPipeline.md)
 - [거래소 시스템](Bazaar.md)
 - [거래소 시스템 테스트](BazaarTest.md)

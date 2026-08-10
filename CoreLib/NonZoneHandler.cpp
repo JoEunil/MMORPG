@@ -13,6 +13,7 @@
 #include "StateManager.h"
 #include "LobbyZone.h"
 #include "ChatThreadPool.h"
+#include "IProfileCache.h"
 #include "LoggerGlobal.h"
 #include "Config.h"
 
@@ -31,6 +32,10 @@ namespace Core {
         stateManager = manager;
         lobbyZone = lobby;
         chat = c;
+    }
+
+    void NonZoneHandler::InitializeProfileCache(IProfileCache* pc) {
+        profileCache = pc;
     }
 
     bool NonZoneHandler::IsReady() {
@@ -69,6 +74,9 @@ namespace Core {
             case OP::ZONE_CHANGE:
                 ZoneChange(p);
                 break;
+            case OP::PROFILE_BATCH:
+                GetProfileBatch(p);
+                break;
             default:
                 errorLogger->LogInfo("non zone handler",  "UnDefined OPCODE", "opcode", p->GetOpcode(),"header opcode", h->opcode,"sessionId", p->GetSessionID());
                 break;
@@ -78,6 +86,26 @@ namespace Core {
 
     void NonZoneHandler::Disconnect(uint64_t sessionID) {
         stateManager->Disconnect(sessionID);
+    }
+
+    void NonZoneHandler::RequestProfileRename(uint64_t sessionID, uint32_t profileId, const char* name, uint16_t nameLen) {
+        if (profileId == INVALID_PROFILE_ID || name == nullptr || nameLen == 0 || nameLen >= MAX_CHARNAME_LEN) {
+            errorLogger->LogError("non zone handler", "profile rename invalid", "session", sessionID, "profile_id", profileId, "nameLen", nameLen);
+            return;
+        }
+        Message* msg = messagePool->Acquire();
+        if (msg == nullptr) {
+            return;
+        }
+        auto st = reinterpret_cast<MsgStruct<MsgProfileRenameBody>*>(msg->GetBuffer());
+        st->header.sessionID = sessionID;
+        st->header.messageType = MSG_PROFILE_RENAME;
+        st->body.profileId = profileId;
+        std::memset(st->body.name, 0, sizeof(st->body.name));
+        std::memcpy(st->body.name, name, nameLen);
+        msg->SetLength(sizeof(MsgStruct<MsgProfileRenameBody>));
+        messageQueue->EnqueueMessage(msg);
+        messagePool->Return(msg);
     }
 
     static void ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID) {
@@ -180,6 +208,39 @@ namespace Core {
         chat->EnqueueChat(event);
     }
 
+    // 클라이언트가 모르는 profile_id 목록을 보내면 캐시에 있는 것만 돌려준다.
+    // NonZone 스레드에서 처리하므로 zone 틱과 무관하고, write-through 캐시라
+    // DB를 기다릴 일이 없어 동기 조회로 충분하다.
+    void NonZoneHandler::GetProfileBatch(IPacketView* p) {
+        auto session = p->GetSessionID();
+        if (profileCache == nullptr) {
+            errorLogger->LogError("non zone handler", "profileCache not initialized", "session", session);
+            return;
+        }
+        auto body = parseBody<ProfileBatchReqBody>(p->GetPtr());
+
+        // count는 클라이언트가 보낸 값이라 그대로 믿고 인덱싱하면 버퍼를 넘는다.
+        if (body->count == 0 || body->count > MAX_PROFILE_BATCH) {
+            errorLogger->LogError("non zone handler", "profile batch count invalid", "session", session, "count", body->count);
+            Disconnect(session);
+            return;
+        }
+        const size_t needed = sizeof(PacketHeader) + sizeof(body->count) + body->count * sizeof(uint32_t);
+        if (p->GetLength() < needed) {
+            errorLogger->LogError("non zone handler", "profile batch length invalid", "session", session, "count", body->count, "length", p->GetLength());
+            Disconnect(session);
+            return;
+        }
+
+        ProfileEntry entries[MAX_PROFILE_BATCH];
+        uint16_t found = profileCache->GetBatch(body->profileIds, body->count, entries);
+
+        auto res = writer->WriteProfileBatchRes(entries, found);
+        if (!res)
+            return;
+        iocp->SendDataUnique(session, std::move(res));
+    }
+
     void NonZoneHandler::ZoneChange(IPacketView* p) {
         auto body = parseBody<ZoneChangeBody>(p->GetPtr());
         auto session = p->GetSessionID();
@@ -223,7 +284,7 @@ namespace Core {
                     return;
                 }
                 else {
-                    uint64_t chatID = chat->AddChatSession(session, temp.lastZone, std::string(temp.charName));
+                    uint64_t chatID = chat->AddChatSession(session, temp.lastZone, temp.profileId);
                     chat->EnqueueZoneJoin(session, temp.lastZone);
                     auto p = writer->WriteZoneChangeSucess(temp.lastZone, chatID, zoneInternalID, temp.x, temp.y);
                     if (!p)

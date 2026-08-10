@@ -27,7 +27,7 @@ Snapshot 주기
 > 대역폭 절감을 위해 Full Snapshot 주기를 더 늘릴 필요가 있음
 
 Character Snapshot 크기
-- Full Snapshot Field: 67바이트
+- Full Snapshot Field: 43바이트
 - Delta Snapshot Field: 10바이트
 
 Delta Snapshot은 캐릭터 구분 ID + 필드 ID + 필드 값으로 구성되어,
@@ -39,10 +39,11 @@ Delta Snapshot은 캐릭터 구분 ID + 필드 ID + 필드 값으로 구성되�
 	- 8바이트 → 4바이트 적용 완료 (재사용 없이 단조 증가, 상한 도달 시 발급 중단)
 	- 2바이트까지 줄이려면 자원 할당/반납 정책 활용 필요
 - Full Snapshot 이름 필드 제거
-	- 현재 32바이트 → 제거 시 전체 크기 감소
-- 예상 Snapshot 크기
+	- 적용 완료. 32바이트 charName을 profile_id(4) + version(4)로 대체했다.   
+	  이름은 클라이언트가 profile_id로 별도 조회해 캐싱한다. ([Profile.md](Profile.md))   
+- 예상 Snapshot 크기 (InternalID를 2바이트까지 줄였을 때)
 	- Delta Field 1개: 8바이트
-	- Full Field 1개: 33바이트
+	- Full Field 1개: 41바이트
 - Delta Snapshot이 Full Snapshot 보다 효율성이 높음
 - 하지만 zone 이동이나 Cell 전환 시 새로운 몬스터/캐릭터 로드가 Full Snapshot을 받은 시점에 적용되기 때문에 적절한 주기 설정이 필요함.
 
@@ -54,11 +55,11 @@ __대역폭 계산 예시__
 = 288,000 * 20FPS  = 5,760,000 byte / sec / zone   → 약 46 Mbps / zone
 ```
 
-- Full (유저당 67바이트)
+- Full (유저당 43바이트)
 ```
-67B * AOI 범위(9) * Cell당 유저 수(40, 송신) * Cell당 유저 수(40, 수신)
-= 67 * 9 * 40 * 40 = 964,800 byte / tick / zone
-= 3초 주기         → 약 2.6 Mbps / zone
+43B * AOI 범위(9) * Cell당 유저 수(40, 송신) * Cell당 유저 수(40, 수신)
+= 43 * 9 * 40 * 40 = 619,200 byte / tick / zone
+= 3초 주기         → 약 1.7 Mbps / zone
 ```
 
 - 현재 Grid 기반 AOI:
@@ -70,8 +71,9 @@ __대역폭 계산 예시__
 __예상 bps(bit per second)__
 AOI 범위 9개 Cell, Delta Snapshot 20FPS, Full Snapshot 3초마다 수행될 때
 - Delta Snapshot: 약 46 Mbps / zone
-- Full Snapshot: 약 2.6 Mbps / zone
+- Full Snapshot: 약 1.7 Mbps / zone
 이론상, Character Snapshot만 고려하면 20개 Zone, 유저 20,000명 수준에서 1Gbps에 근접한다.  
+Full Snapshot 비중이 크게 줄어 이제는 Delta가 대역폭을 사실상 전부 차지한다.  
 
 그러나 현실에서는 다음 요소 때문에 실제 한계는 더 낮다:
 - Monster/ActionResult 등 추가 패킷

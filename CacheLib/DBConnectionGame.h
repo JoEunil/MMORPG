@@ -25,6 +25,9 @@ namespace Cache
             m_stmts[6] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_6));
             m_stmts[7] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_7));
             m_stmts[8] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_8));
+            m_stmts[20] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_20));
+            m_stmts[21] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_21));
+            m_stmts[22] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_22));
         }
         friend class DBConnectionPool<DBConnectionGame>;
     public:
@@ -45,6 +48,7 @@ namespace Cache
             case 3: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); // select
             case 5: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
             case 7: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
+            case 21: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
             default: return nullptr;
             }
         }
@@ -65,6 +69,8 @@ namespace Cache
             case 4: return stmt->executeUpdate(); // update
             case 6: return stmt->executeUpdate(); // update
             case 8: return stmt->executeUpdate(); // update
+            case 20: return stmt->executeUpdate(); // insert
+            case 22: return stmt->executeUpdate(); // update
             default: return 0;
             }
         }

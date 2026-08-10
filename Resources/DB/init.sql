@@ -24,11 +24,18 @@ CREATE TABLE login_log (
 
 use game;
 
+CREATE TABLE profile (
+    profile_id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    version    INT UNSIGNED NOT NULL DEFAULT 1,
+    name       VARCHAR(32) NOT NULL,
+    UNIQUE KEY uk_profile_name (name) -- 중복방지 + 인덱스 (null 방지는 스키마 제약으로)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS characters (
     char_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     user_id BIGINT UNSIGNED NOT NULL,
     channel_id INT UNSIGNED NOT NULL,
-    name VARCHAR(32) NOT NULL,
+    profile_id INT UNSIGNED NOT NULL,
     level INT UNSIGNED  NOT NULL DEFAULT 1,
     exp INT UNSIGNED NOT NULL DEFAULT 0,
     hp INT NOT NULL DEFAULT 10000,
@@ -52,13 +59,16 @@ CREATE TABLE characters_inventory (
 CREATE INDEX idx_user_channel ON characters(user_id, channel_id);
 
 CREATE OR REPLACE VIEW v_user_characters AS
-SELECT 
+SELECT
     c.user_id,
     c.channel_id,
     c.char_id,
-    c.name,
+    c.profile_id,
+    p.version AS profile_version,
+    p.name,
     c.level
 FROM characters c
+JOIN profile p ON p.profile_id = c.profile_id
 WHERE c.deleted_at IS NULL;
 
 CREATE TABLE characters_currency (

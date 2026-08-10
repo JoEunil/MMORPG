@@ -23,6 +23,10 @@ namespace Cache {
         }
         friend class Initializer;
     public:
+        ~DBConnectionPool() {
+            for (auto* c : m_conns)
+                delete c;
+        }
         T* Acquire() {
             std::lock_guard<std::mutex> lock(m_mutex);
             if (m_conns.empty())

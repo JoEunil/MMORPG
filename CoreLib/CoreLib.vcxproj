@@ -195,6 +195,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClInclude>
     <ClCompile Include="InMemoryQueue.cpp" />
+    <ClInclude Include="IProfileCache.h" />
     <ClInclude Include="MessagePool.h" />
     <ClCompile Include="MessagePool.cpp" />
     <ClCompile Include="MessageQueueHandler.cpp" />

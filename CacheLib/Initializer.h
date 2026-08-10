@@ -9,6 +9,7 @@
 #include "CacheStorage.h"
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"
+#include "ProfileCache.h"
 #include "InmemoryQueue.h"
 #include "Handler.h"
 #include "CacheTimer.h"
@@ -18,12 +19,15 @@
 #include <CoreLib/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
 
+class ProfileCacheTest;
+
 namespace Cache {
 	class Initializer {
         CacheFlush flush;
         FlushDispatcher dispatcher;
         CacheStorageInventory cache_inventory;
-        CacheStorageCurrency cache_currency; 
+        CacheStorageCurrency cache_currency;
+        ProfileCache cache_profile;
         Handler handler;
         MessagePool msgPool;
         InMemoryQueue recvMQ;
@@ -32,6 +36,12 @@ namespace Cache {
         DBWorker<DBConnectionGame> dbWorkerGame;
         DBWorker<DBConnectionBazaar> dbWorkerBazaar;
         WALManager walManager;
+
+        // 테스트에서 Load/Unload/Rename까지 직접 두드리기 위한 concrete getter. friend으로만 접근.
+        ProfileCache* GetProfileCacheImpl() {
+            return &cache_profile;
+        }
+        friend class ::ProfileCacheTest;
     public:
         ~Initializer() {
             CleanUp();
@@ -43,6 +53,7 @@ namespace Cache {
             dbWorkerBazaar.Initialize(&connectionPoolBazaar, BAZAAR_DB_WORKER_THREADPOOL_SIZE);
             cache_inventory.Initialize(&dbWorkerGame);
             cache_currency.Initialize(&dbWorkerGame);
+            cache_profile.Initialize(&dbWorkerGame);
             CacheTimer::StartThread();
             
             flush.Initialize(&connectionPoolGame, &connectionPoolBazaar, &cache_inventory, &cache_currency);
@@ -56,7 +67,7 @@ namespace Cache {
         
         void InjectDependencies(Core::IMessageQueue* sendMQ)
         {
-            handler.Initialize(sendMQ, &msgPool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency);
+            handler.Initialize(sendMQ, &msgPool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile);
             recvMQ.Initialize(&handler, &msgPool);
             recvMQ.Start();
         }
@@ -78,6 +89,9 @@ namespace Cache {
                 return false;
             }
             if (!cache_currency.IsReady()) {
+                return false;
+            }
+            if (!cache_profile.IsReady()) {
                 return false;
             }
             if (!handler.IsReady()) {
@@ -105,6 +119,9 @@ namespace Cache {
         }
         Core::IMessageQueue* GetMessageQueue() {
             return static_cast<Core::IMessageQueue*>(&recvMQ);
+        }
+        Core::IProfileCache* GetProfileCache() {
+            return static_cast<Core::IProfileCache*>(&cache_profile);
         }
 	};
 }

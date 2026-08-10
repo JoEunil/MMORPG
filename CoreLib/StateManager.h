@@ -184,6 +184,7 @@ namespace Core {
         }
         void Disconnect(uint64_t sessionID);
         void EnqueueDisconnectMsg(CharacterState& temp, uint64_t sessionID);
+        void UpdateProfileVersion(uint64_t sessionID, uint32_t version);
 
         void Cheat(uint64_t sessionID, uint16_t cheat, std::chrono::steady_clock::time_point time) {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];

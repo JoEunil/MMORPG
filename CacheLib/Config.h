@@ -49,8 +49,12 @@ namespace Cache {
     inline constexpr uint16_t SHARD_SIZE_MASK = SHARD_SIZE - 1;
 
     inline constexpr const char* QUERY_1 = "SELECT  * FROM v_user_characters WHERE user_id = ? and channel_id = ?";
-    inline constexpr const char* QUERY_2 = "INSERT INTO characters (user_id, channel_id, name, zone_id, deleted_at) VALUES (?, ?, ?, ?, NULL);";
-    inline constexpr const char* QUERY_3 = "SELECT char_id, name, attack, level, exp, hp, mp, max_hp, max_mp, dir, zone_id, last_pos_x, last_pos_y FROM characters WHERE char_id = ?";
+    inline constexpr const char* QUERY_2 = "INSERT INTO characters (user_id, channel_id, profile_id, zone_id, deleted_at) VALUES (?, ?, ?, ?, NULL);";
+    inline constexpr const char* QUERY_3 =
+        "SELECT c.char_id, c.profile_id, p.version AS profile_version, p.name, "
+        "c.attack, c.level, c.exp, c.hp, c.mp, c.max_hp, c.max_mp, c.dir, c.zone_id, c.last_pos_x, c.last_pos_y "
+        "FROM characters c JOIN profile p ON p.profile_id = c.profile_id "
+        "WHERE c.char_id = ?";
     inline constexpr const char* QUERY_4 = "UPDATE characters SET attack = ?, level = ?, exp = ?, hp = ?, mp = ?, max_hp = ?, max_mp = ?, dir =?, last_pos_x = ?, last_pos_y = ?, zone_id = ? WHERE char_id = ?;";
     inline constexpr const char* QUERY_5 = "SELECT char_id, inventory FROM characters_inventory WHERE char_id = ?";
     inline constexpr const char* QUERY_6 = "UPDATE characters_inventory SET inventory = ? WHERE char_id = ?;";
@@ -99,6 +103,10 @@ namespace Cache {
         "UPDATE buyer_outbox "
         "SET delivery_status = 'CLAIMED', delivery_claimed_at = NOW() "
         "WHERE event_id = ? AND char_id = ? AND delivery_status = 'READY'";
+
+    inline constexpr const char* QUERY_20 = "INSERT INTO profile (name) VALUES (?)";
+    inline constexpr const char* QUERY_21 = "SELECT profile_id, version, name FROM profile WHERE profile_id = ?";
+    inline constexpr const char* QUERY_22 = "UPDATE profile SET name = ?, version = version + 1 WHERE profile_id = ?";
 
     inline constexpr uint16_t MSGPOOL_SIZE = 10000;
 

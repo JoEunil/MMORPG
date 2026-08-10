@@ -9,6 +9,8 @@ namespace Core {
     };
     struct CharacterState {
         uint32_t zoneInternalID; // zone 내부에서 사용하는 id
+        uint32_t profileId;      // 공개 프로필 키. 이름은 여기 담지 않는다.
+        uint32_t profileVersion; //9 rename 시 증가하며 delta로 전파된다.
         int hp; // 0
         int mp; // 1
         int maxHp; // 2
@@ -33,7 +35,5 @@ namespace Core {
 
         uint64_t sessionID;
         uint64_t characterID;
-
-        char charName[MAX_CHARNAME_LEN];
     };
 }

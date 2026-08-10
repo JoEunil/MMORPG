@@ -114,6 +114,7 @@ namespace Core {
         void InitializeMonster();
         uint32_t ImmigrateChar(uint64_t sessionID, CharacterState& user);
         bool EmigrateChar(uint64_t sessionID, CharacterState& o);
+        void UpdateProfileVersion(uint64_t sessionID, uint32_t version);
         Base::BufferReader<std::vector<std::vector<uint64_t>>> GetSessionSnaphot() {
             return tripleBuffer.Read();
         }

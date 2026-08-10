@@ -39,6 +39,10 @@ namespace Core {
         MSG_BAZAAR_CLAIM_RES = 29,
         MSG_BAZAAR_CHECK_OUTBOX = 30,
         MSG_BAZAAR_CHECK_OUTBOX_RES = 31,
+
+        // 쓰기는 큐 한 경로로 모아 profile_id별 순서를 보장한다.
+        MSG_PROFILE_RENAME = 32,
+        MSG_PROFILE_RENAME_RES = 33,
     };
 
     struct MsgHeader {
@@ -79,7 +83,9 @@ namespace Core {
     struct MsgCharacterStateResBody {
         uint8_t resStatus;
         uint64_t charID;
-        uint8_t name[MAX_CHARNAME_LEN];
+        uint32_t profileId;
+        uint32_t profileVersion;
+        uint8_t name[MAX_CHARNAME_LEN]; // 자기 이름은 진입 시 1회 내려준다.
         uint16_t attack; // 기본 공격력
         uint16_t level;
         uint32_t exp;
@@ -94,6 +100,7 @@ namespace Core {
 
     struct MsgCharacterStateUpdateBody {
         uint64_t charID;
+        uint32_t profileId; // 캐시에서 profile을 내림
         uint16_t attack; // 기본 공격력
         uint16_t level;
         uint32_t exp;
@@ -264,6 +271,18 @@ namespace Core {
         uint8_t deliveredCount;  // 이번에 새로 지급된 event 수
         uint8_t duplicatedCount; // dedup으로 스킵된 event 수 (이미 지급됨)
         uint8_t blockedCount;    // 인벤토리/ring 가득으로 보류된 event 수 (READY 유지)
+    };
+
+    struct MsgProfileRenameBody {
+        uint32_t profileId;
+        uint8_t  name[MAX_CHARNAME_LEN];
+    };
+
+    // DB에 확정된 version을 zone으로 되돌리기 위한 응답.
+    struct MsgProfileRenameResBody {
+        uint8_t  resStatus; //  0=실패(DB 오류), 1=성공, 2=거부(같은 profile_id에 rename 진행 중)
+        uint32_t profileId;
+        uint32_t version; // 실패 시 0
     };
 
 	inline MsgHeader* parseMsgHeader(uint8_t* data) {

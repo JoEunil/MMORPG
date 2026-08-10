@@ -47,6 +47,7 @@ namespace Core {
                 st->header.sessionID = session;
                 st->header.messageType = MSG_CHARACTER_STATE_UPDATE;
                 st->body.charID = temp.characterID;
+                st->body.profileId = temp.profileId;
                 st->body.attack = temp.attack;
                 st->body.level = temp.level;
                 st->body.exp = temp.exp;
@@ -89,6 +90,27 @@ namespace Core {
             EnqueueDisconnectMsg(temp, sessionID);
         }
     }
+    // rename이 DB에 확정된 뒤, 세션이 속한 zone의 CharacterState에 새 version을 반영한다.
+    // zone에 이벤트 큐를 붙여 처리하는 편이 깔끔하지만, zone 간 참조 방식을 아직 정하지 못해 여기서는 ZoneState의 기존 m_mutex를 그대로 쓴다.
+    void StateManager::UpdateProfileVersion(uint64_t sessionID, uint32_t version) {
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::shared_lock<std::shared_mutex> lock(shard.smutex);
+        auto it = shard.sessionMap.find(sessionID);
+        if (it == shard.sessionMap.end())
+            return;
+        uint16_t zoneID = it->second.zoneID;
+        lock.unlock();
+
+        if (zoneID == 0) // 로비에는 전파할 대상이 없다. 진입 시 full snapshot으로 최신값이 나간다.
+            return;
+        auto it_state = m_states.find(zoneID);
+        if (it_state == m_states.end()) {
+            gameLogger->LogInfo("state manager", "state not found", "sessionID", sessionID, "zoneID", zoneID);
+            return;
+        }
+        it_state->second->UpdateProfileVersion(sessionID, version);
+    }
+
     void StateManager::EnqueueDisconnectMsg(CharacterState& temp, uint64_t sessionID)
     {
         gameLogger->LogInfo("state manager", "Enqueue Disconnect", "sessionID", sessionID);
@@ -111,6 +133,7 @@ namespace Core {
         st->header.sessionID = sessionID;
         st->header.messageType = MSG_CHARACTER_STATE_UPDATE;
         st->body.charID = temp.characterID;
+        st->body.profileId = temp.profileId;
         st->body.level = temp.level;
         st->body.exp = temp.exp;
         st->body.hp = temp.hp;

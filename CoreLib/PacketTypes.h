@@ -7,7 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
-    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 23;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 25;
 
     enum OP : uint16_t {
         AUTH = 1,
@@ -37,6 +37,9 @@ namespace Core {
         INVENTORY_RES = 21,
         PING = 22, // 서버 송신
         PONG = 23, // 클라이언트 송신
+
+        PROFILE_BATCH = 24,     // 클라이언트 송신, 모르는 profile_id 목록 조회
+        PROFILE_BATCH_RES = 25,
     };
 
     enum ZONE_CHANGE: uint8_t {
@@ -150,14 +153,14 @@ namespace Core {
     struct ChatWhisperBody {
         uint16_t messageLen;
         uint64_t senderChatID;
-        uint8_t name[MAX_CHARNAME_LEN];
+        uint32_t senderProfileId; // 이름 대신 profile_id. 표시 이름은 클라이언트가 캐시에서 찾는다.
     };// + raw char*
 
     struct ChatEntity {
         uint64_t senderChatID; // sender
         uint16_t offset;
         uint16_t messageLength;
-        uint8_t name[MAX_CHARNAME_LEN];
+        uint32_t senderProfileId;
     };
 
     struct ChatBatchNotifyBody {
@@ -202,6 +205,8 @@ namespace Core {
 
     struct FullStateField {
         uint32_t zoneInternalID;
+        uint32_t profileId;      // 이름은 PROFILE_BATCH로 따로 조회한다.
+        uint32_t profileVersion; // 올라가면 클라이언트가 재요청한다.
         int hp; // 0
         int mp; // 1
         int maxHp; // 2
@@ -210,7 +215,6 @@ namespace Core {
         uint16_t level; // 5
         uint8_t dir;  // 6
         float x, y; // 7, 8
-        char charName[MAX_CHARNAME_LEN];
     };
 
     struct FullSnapshotBody {
@@ -242,6 +246,25 @@ namespace Core {
     struct MonsterFullSnapshotBody {
         uint16_t count;
         MonsterFullField states[MAX_MONSTER_COUNT];
+    };
+
+    // 클라이언트가 스냅샷/채팅에서 처음 본 profile_id들을 모아 한 번에 조회한다.
+    struct ProfileBatchReqBody {
+        uint16_t count;
+        uint32_t profileIds[MAX_PROFILE_BATCH];
+    };
+
+    struct ProfileEntry {
+        uint32_t profileId;
+        uint32_t version;
+        uint8_t  name[MAX_CHARNAME_LEN];
+    };
+
+    // 캐시에 있는 값만 담는다. 요청했는데 응답에 없는 profile_id는 미접속 상태라
+    // 서버 메모리에 없다는 뜻이므로, 클라이언트는 반복 재요청하지 말아야 한다.
+    struct ProfileBatchResBody {
+        uint16_t count;
+        ProfileEntry entries[MAX_PROFILE_BATCH];
     };
 
     template<typename T>

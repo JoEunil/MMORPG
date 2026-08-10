@@ -104,6 +104,11 @@ namespace Core {
                             writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 8, character.y);
                             iterCnt++;
                         }
+                        if (bit & 0x200) {
+                            // rename 전파. 클라이언트는 version이 바뀌면 캐시한 이름을 버리고 재요청한다.
+                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 9, character.profileVersion);
+                            iterCnt++;
+                        }
                         character.dirtyBit = 0x00;
                     }
                     cell.dirtyChar.pop_back();

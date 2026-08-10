@@ -40,6 +40,10 @@ namespace Core {
     inline constexpr uint16_t MAX_ZONE_CAPACITY = 2000;
     inline constexpr uint16_t MAX_USER_CAPACITY = 7000;
     inline constexpr uint16_t MAX_CHAT_PACKET = 10;
+
+    // 클라이언트가 한 번에 조회할 수 있는 profile 수. 요청 패킷 크기 상한이자 응답 상한.
+    inline constexpr uint16_t MAX_PROFILE_BATCH = 50;
+    inline constexpr uint32_t INVALID_PROFILE_ID = 0;
     inline constexpr uint16_t DELTA_UPDATE_COUNT = 5000;
 
     inline constexpr auto FULL_SNAPSHOT_TICK = std::chrono::milliseconds(1000);

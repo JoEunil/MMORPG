@@ -24,7 +24,7 @@ namespace Core {
                 switch (curr.type)
                 {
                 case ChatEventType::SESSION_ADD:
-                    ProcessAddSession(curr.senderSessionID, curr.senderChatID, static_cast<uint16_t>(curr.key.id), curr.message);
+                    ProcessAddSession(curr.senderSessionID, curr.senderChatID, static_cast<uint16_t>(curr.key.id), curr.senderProfileId);
                     continue;
                 }
 
@@ -33,12 +33,12 @@ namespace Core {
                         continue;
                 }
                 auto chatID = it->second.chatID;
-                auto userName = it->second.userName;
-                
+                auto profileId = it->second.profileId;
+
                 switch (curr.type)
                 {
                 case ChatEventType::CHAT:
-                    ProcesChat(curr, chatID, userName, tempPackets);
+                    ProcesChat(curr, chatID, profileId, tempPackets);
                     break;
 
                 case ChatEventType::SESSION_DELETE:
@@ -100,9 +100,9 @@ namespace Core {
         }
     }
 
-    void ChatThreadPool::ProcesChat(ChatEvent& curr, uint64_t chatID, std::string& userName, std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
+    void ChatThreadPool::ProcesChat(ChatEvent& curr, uint64_t chatID, uint32_t profileId, std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
         if (curr.key.scope == CHAT_SCOPE::Whisper) {
-            auto packet = writer->GetChatWhisperPacket(chatID, userName, curr.message);
+            auto packet = writer->GetChatWhisperPacket(chatID, profileId, curr.message);
             if (!packet)
 				return;
             uint64_t& destChatID = curr.key.id;
@@ -111,7 +111,7 @@ namespace Core {
                 return;
             }
             SendPacketUnique(it->second, std::move(packet));
-            auto senderPacket = writer->GetChatWhisperPacket(chatID, userName, curr.message);
+            auto senderPacket = writer->GetChatWhisperPacket(chatID, profileId, curr.message);
 
             SendPacketUnique(curr.senderSessionID, std::move(senderPacket));
             perfCollector->AddChatSend(2);
@@ -125,7 +125,7 @@ namespace Core {
         }
         auto it = tempPackets.find(curr.key);
         if (it != tempPackets.end()) {
-            uint16_t count = writer->WriteChatBatchPacketField(it->second, chatID, userName, curr.message);
+            uint16_t count = writer->WriteChatBatchPacketField(it->second, chatID, profileId, curr.message);
             if (count == MAX_CHAT_PACKET) {
                 SendPacketGroup(it->first, it->second);
 				auto p = writer->GetInitialChatBatchPacket(curr.key.scope);
@@ -139,21 +139,21 @@ namespace Core {
             if (!p)
                 return;
             tempPackets[curr.key] = p;
-            int count = writer->WriteChatBatchPacketField(tempPackets[curr.key], chatID, userName, curr.message);
+            int count = writer->WriteChatBatchPacketField(tempPackets[curr.key], chatID, profileId, curr.message);
         }
     }
 
     // State Manager의 처리결과를 동기화해서 쓰는거라서 예외 발생은 하지 않는다고 가정.
     // session 추가, 삭제는 샤딩 적용하더라도, mutex 필요.
-    void ChatThreadPool::ProcessAddSession(uint64_t sessionID, uint64_t chatID, uint16_t zoneID, std::string& userName) {
+    void ChatThreadPool::ProcessAddSession(uint64_t sessionID, uint64_t chatID, uint16_t zoneID, uint32_t profileId) {
         auto it = m_sessionChatIdMap.find(sessionID);
         if (it != m_sessionChatIdMap.end()) {
             errorLogger->LogInfo("chat thread", "chatID already exist", "chatID", chatID, "session", sessionID);
             return;
         }
         auto& node = m_sessionChatIdMap[sessionID];
-        node.chatID = chatID; 
-        node.userName = userName;
+        node.chatID = chatID;
+        node.profileId = profileId;
         m_chatIdSessionMap[chatID] = sessionID;
         // 싱글 스레드 접근이라서 안전함
     }

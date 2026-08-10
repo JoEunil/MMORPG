@@ -35,9 +35,9 @@ namespace Core {
         std::unique_ptr<IPacket, PacketDeleter>  WriteEnterWorldResponse(const MsgCharacterStateResBody* body);
         std::unique_ptr<IPacket, PacketDeleter>  WriteInventoryResponse(const MsgInventoryResBody* body);
         std::unique_ptr<IPacket, PacketDeleter>  WriteInventoryUpdateResponse(const MsgInventoryUpdateResBody* body);
-        std::unique_ptr<IPacket, PacketDeleter>  GetChatWhisperPacket(uint64_t sender, const std::string& userName, const std::string& message);
+        std::unique_ptr<IPacket, PacketDeleter>  GetChatWhisperPacket(uint64_t sender, uint32_t senderProfileId, const std::string& message);
         std::shared_ptr<IPacket> GetInitialChatBatchPacket(CHAT_SCOPE scope);
-        uint16_t WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, const std::string& userName, const std::string& message);
+        uint16_t WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, uint32_t senderProfileId, const std::string& message);
         
         std::shared_ptr<IPacket> GetDeltaHeader() {
             auto p = packetPool->Acquire();
@@ -133,6 +133,8 @@ namespace Core {
             *countPtr += count;
 
         }
+
+        std::unique_ptr<IPacket, PacketDeleter> WriteProfileBatchRes(const ProfileEntry* entries, uint16_t count);
 
         std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeFailed();
         std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y);

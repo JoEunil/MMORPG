@@ -60,6 +60,9 @@ namespace Cache {
         case Core::MSG_BAZAAR_CHECK_OUTBOX:
             BazaarCheckOutbox(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCheckOutboxBody>(msg->GetBuffer()));
             break;
+        case Core::MSG_PROFILE_RENAME:
+            ProfileRename(msg, header->sessionID, Core::parseMsgBody<Core::MsgProfileRenameBody>(msg->GetBuffer()));
+            break;
         }
         if (msg != nullptr)
             messagePool->Return(msg);
@@ -125,10 +128,15 @@ namespace Cache {
             st->body.charID = res->getUInt64("char_id");
             st->body.resStatus = 1;
             std::string name = res->getString("name");
+            st->body.profileId = res->getUInt("profile_id");
+            st->body.profileVersion = res->getUInt("profile_version");
 
             std::memset(st->body.name, 0, sizeof(st->body.name));
             std::memcpy(st->body.name, name.c_str(), std::min(name.size(), sizeof(st->body.name) - 1));
             st->body.name[sizeof(st->body.name) - 1] = '\0';
+
+            // 접속 시 적재. QUERY_3에서 이미 profile을 조인해 읽었으므로 DB 왕복이 늘지 않는다.
+            cache_profile->Load(st->body.profileId, st->body.profileVersion, name);
 
             st->body.attack = res->getUInt("attack");
             st->body.level = res->getUInt("level");
@@ -149,7 +157,10 @@ namespace Cache {
         msg = nullptr;
     }
 
+    // 접속 종료 경로. 캐릭터 상태를 DB에 쓰면서 profile 캐시도 함께 내린다.
+    // write-through라 flush를 기다릴 필요 없이 바로 지워도 유실이 없다.
     void Handler::CharacterStateUpdate(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterStateUpdateBody* body) {
+        cache_profile->Unload(body->profileId);
         dbWorkerGame->Enqueue([=](DBConnectionGame* conn) {
             auto res = conn->ExecuteUpdate(4, body->attack, body->level, body->exp, body->hp, body->mp, body->maxHp, body->maxMp, body->dir, body->x, body->y, body->lastZone, body->charID);
 
@@ -158,5 +169,36 @@ namespace Cache {
                     "exp", body->exp, "hp", body->hp, "mp", body->mp, "max_hp", body->maxHp, "max_mp", body->maxMp, "dir", body->dir, "x", body->x, "y", body->y, "last_zone", body->lastZone);
             }
         });
+    }
+
+    // 쓰기는 이 한 경로로만 들어온다. Rename 내부에서 profile_id당 in-flight를 1개로 제한하므로(ProfileCache.h 참고) 
+    // DBWorker가 스레드풀이라도 캐시 갱신 순서가 뒤집히지 않는다.
+  
+    void Handler::ProfileRename(Core::Message*& msg, uint64_t sessionID, Core::MsgProfileRenameBody* body) {
+        uint32_t profileId = body->profileId;
+        std::string name(reinterpret_cast<const char*>(body->name),
+            strnlen(reinterpret_cast<const char*>(body->name), Core::MAX_CHARNAME_LEN));
+
+        cache_profile->Rename(profileId, name, [this, sessionID, profileId](bool success, uint32_t version) {
+            if (!success) {
+                Core::gameLogger->LogInfo("cache handler", "profile rename failed",
+                    "sessionID", sessionID, "profile_id", profileId);
+            }
+            Core::Message* res = messagePool->Acquire();
+            if (res == nullptr) {
+                Core::errorLogger->LogError("cache handler", "failed to acquire message for rename response",
+                    "sessionID", sessionID, "profile_id", profileId, "success", success);
+                return;
+            }
+            auto st = reinterpret_cast<Core::MsgStruct<Core::MsgProfileRenameResBody>*>(res->GetBuffer());
+            st->header.sessionID = sessionID;
+            st->header.messageType = Core::MSG_PROFILE_RENAME_RES;
+            st->body.resStatus = success ? 1 : 0;
+            st->body.profileId = profileId;
+            st->body.version = version; // 실패 시 0
+            res->SetLength(sizeof(Core::MsgStruct<Core::MsgProfileRenameResBody>));
+            messageQ->EnqueueMessage(res);
+            messagePool->Return(res);
+            });
     }
 }

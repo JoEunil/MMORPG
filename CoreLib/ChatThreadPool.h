@@ -38,13 +38,14 @@ namespace Core {
         ChatEventType type;
         uint64_t senderSessionID;
         uint64_t senderChatID;
+        uint32_t senderProfileId; // SESSION_ADD에서만 사용
         ChatDestKey key;
         std::string message;
     };
 
     struct ChatUserInfo {
         uint64_t chatID;
-        std::string userName;
+        uint32_t profileId;
     };
     
     class IIOCP;
@@ -127,9 +128,9 @@ namespace Core {
         void ThreadFunc();
         void SendPacketUnique(uint64_t session, std::unique_ptr<IPacket, PacketDeleter> p);
         void SendPacketGroup(ChatDestKey key, std::shared_ptr<IPacket> packet);
-        void ProcesChat(ChatEvent& curr, uint64_t chatID, std::string& userName,
+        void ProcesChat(ChatEvent& curr, uint64_t chatID, uint32_t profileId,
             std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets);
-        void ProcessAddSession(uint64_t sessionID, uint64_t chatID, uint16_t zoneID, std::string& userName);
+        void ProcessAddSession(uint64_t sessionID, uint64_t chatID, uint16_t zoneID, uint32_t profileId);
         void ProcessDeleteSession(uint64_t sessionID, uint16_t zoneID);
         void ProcessZoneLeave(uint64_t sessionID, uint16_t zoneID);
         void ProcessZoneJoin(uint64_t sessionID, uint16_t zoneID);
@@ -140,16 +141,14 @@ namespace Core {
         friend class Initializer;
 
     public:
-        uint64_t AddChatSession(uint64_t session, uint16_t zone, std::string&& userName) {
+        uint64_t AddChatSession(uint64_t session, uint16_t zone, uint32_t profileId) {
             uint64_t chatID = m_chatIdGenerater.fetch_add(1, std::memory_order_relaxed);
             ChatEvent e{};
             e.type = ChatEventType::SESSION_ADD;
             e.senderSessionID = session;
-            e.key.id = zone; 
-            e.message = std::move(userName);
+            e.key.id = zone;
+            e.senderProfileId = profileId;
             e.senderChatID = chatID;
-            // char array를 std::string으로 변환한 뒤
-            // rvalue로 전달하여 이후 복사를 최소화한다. (길이 짧아서 성능 차이는 미미함.)
             EnqueueChat(e);
             return chatID;
         }

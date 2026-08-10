@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
 
         core.InjectDependencies1(net.GetIOCP(), net.GetPacketPool(), net.GetBigPacketPool());
         cache.InjectDependencies(core.GetMessageQueue());
-        core.InjectDependencies2(net.GetIOCP(), &auth, cache.GetMessageQueue(), net.GetPacketPool());
+        core.InjectDependencies2(net.GetIOCP(), &auth, cache.GetMessageQueue(), net.GetPacketPool(), cache.GetProfileCache());
         net.InjectDependencies(core.GetPacketDispatcher());
 
         if (net.CheckReady() && core.CheckReady() && cache.CheckReady()) {

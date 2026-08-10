@@ -60,6 +60,9 @@
     <ClInclude Include="WALManager.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="ProfileCache.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="InMemoryQueue.h">
@@ -96,6 +99,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="Handler_Diamond.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ProfileCache.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

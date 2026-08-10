@@ -6,6 +6,7 @@
 #include "IIOCP.h"
 #include "PacketWriter.h"
 #include "LobbyZone.h"
+#include "StateManager.h"
 #include "LoggerGlobal.h"
 #include "Config.h"
 
@@ -29,6 +30,9 @@ namespace Core {
         case MSG_INVENTORY_UPDATE_RES:
             InventoryUpdateResponse(header->sessionID, parseMsgBody<MsgInventoryUpdateResBody>(msg->GetBuffer()));
             break;
+        case MSG_PROFILE_RENAME_RES:
+            ProfileRenameResponse(header->sessionID, parseMsgBody<MsgProfileRenameResBody>(msg->GetBuffer()));
+            break;
         default:
             errorLogger->LogError("mq handler", "invalid message type");
         }
@@ -47,7 +51,9 @@ namespace Core {
         //client에서는 full snapshot 받을 때 까지 로딩 화면
         CharacterState temp;
         if (body->resStatus != 0) {
-            std::memcpy(temp.charName, body->name, MAX_CHARNAME_LEN);
+            // 이름은 zone이 들고 있지 않는다. 자기 이름은 EnterWorld 응답으로만 내려간다.
+            temp.profileId = body->profileId;
+            temp.profileVersion = body->profileVersion;
             temp.characterID = body->charID;
             temp.dir = body->dir;
             temp.attack = body->attack;
@@ -89,5 +95,19 @@ namespace Core {
             return;
         }
         iocp->SendDataUnique(sessionID, std::move(p));
+    }
+
+    // rename이 DB에 확정된 뒤 도는 경로. zone이 들고 있는 profileVersion 사본을
+    // 여기서 갱신해야 delta로 전파된다.
+    void MessageQueueHandler::ProfileRenameResponse(uint64_t sessionID, MsgProfileRenameResBody* body) {
+        if (body->resStatus == 0) {
+            gameLogger->LogInfo("mq handler", "profile rename failed", "sessionID", sessionID, "profile_id", body->profileId);
+            return;
+        }
+        if (stateManager == nullptr) {
+            errorLogger->LogError("mq handler", "stateManager not initialized", "sessionID", sessionID);
+            return;
+        }
+        stateManager->UpdateProfileVersion(sessionID, body->version);
     }
 }

@@ -19,6 +19,7 @@
 #include "LobbyZone.h"
 #include "IPingPacketWriter.h"
 #include "ChatThreadPool.h"
+#include "IProfileCache.h"
 
 #include "LoggerGlobal.h"
 
@@ -60,14 +61,16 @@ namespace Core {
             chat.Initialize(iocp, &writer, &perfCollector);
         }
         
-        void InjectDependencies2(IIOCP* iocp, ISessionAuth* session, IMessageQueue* sendMQ, IPacketPool* packetPool) {
+        void InjectDependencies2(IIOCP* iocp, ISessionAuth* session, IMessageQueue* sendMQ, IPacketPool* packetPool, IProfileCache* profileCache) {
             stateManager.Initialize(sendMQ, iocp, &msgPool, &lobbyZone, &chat);
+            mqHandler.InitializeStateManager(&stateManager);
             packetDispatcher.Initialize(&nonZoneThreadPool, &zoneThreadSet, &stateManager, static_cast<IPingPacketWriter*>(&writer), iocp);
             nonZoneThreadPool.Start();
             broadcastPool.Start();
             ZoneState::Initialize(&broadcastPool, &writer, &stateManager, &perfCollector);
             zoneHandler.Initialize(&stateManager);
             nonZoneHandler.Initialize(iocp, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone, &chat);
+            nonZoneHandler.InitializeProfileCache(profileCache);
             zoneThreadSet.Start();
             chat.Start();
             perfCollector.Start();

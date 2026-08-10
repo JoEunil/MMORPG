@@ -127,6 +127,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Refactor", "Refactor", "{FB
 		DBWorkerRefactor.md = DBWorkerRefactor.md
 		ObjectPool.md = ObjectPool.md
 		PingRefactor.md = PingRefactor.md
+		Profile.md = Profile.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SystemDesign", "SystemDesign", "{6C9964E0-7303-46E2-ABEB-A2CD3EBE4D43}"
@@ -151,6 +152,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ContentsDesign", "ContentsD
 		Bazaar.md = Bazaar.md
 		BazaarTest.md = BazaarTest.md
 		Monster.md = Monster.md
+		Profile.md = Profile.md
 		Skill.md = Skill.md
 	EndProjectSection
 EndProject
