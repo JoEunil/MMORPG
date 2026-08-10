@@ -32,8 +32,11 @@
 ![이미지 로드 실패](images/2000_grafana_latest.png)
 > Grafana 대시보드
 
+Jitter - Ping 처리 과정에서 RTT가 평균보다 크게 벗어난 횟수를 추적한다. TCP에서 사용되는 Jacobson/Karels 알고리즘을 기반으로 jitter를 판단하였다. (EWMA 기반)  
+- 기존에는 RTT의 절대값을 기준으로 판단했으나, 클라이언트마다 네트워크 환경이 다르기 때문에 절대값 기준은 무의미하다고 판단하였다. (인터넷이 느린 환경의 유저는 항상 그 절대값을 벗어나게 된다)   
+- 모니터링 중 jitter count가 갑자기 크게 증가하면, IOCP 워커 스레드의 지표가 문제 없는 경우 서버와 가까운 네트워크 장비에서 문제가 발생했을 가능성이 높다.  
+
 Connection - 현재 연결 수를 나타낸다.   
-Jitter - Ping 처리 과정에서 RTT가 200ms 이상으로 측정된 수. 엄밀히는 high_latency_count에 해당하며, 네트워크 지연 스파이크 발생 빈도를 추적하는 서버 성능 지표로 활용한다.
 contextPool, overlappedExPool, packetPool, bigPacketPool - 객체풀의 개수를 측정한다. 서버 병목 발생시 이 부분에서 고갈이 나타난다. 부하 발생시에도 버틸 수 있도록 테스트를 통해 적절한 수치를 설정해야한다.  
 flushQueue - 종료된 context에서 내부 작업까지 완료되고 반납을 대기하는 큐.   
 chat send - 채팅 패킷 발생 수 추적. 각각의 전송대상수를 반영하여 기록.   

@@ -101,7 +101,7 @@ namespace Net {
         m_last_op = RELEASE;
         m_workingCnt.fetch_add(1, std::memory_order_seq_cst);
 
-        if (!NetPacketFilter::TryDispatch(std::move(pv))) {
+        if (!NetPacketFilter::TryDispatch(std::move(pv), m_srtt, m_rttvar)) {
             m_gameSession.store(false, std::memory_order_release);
             return false;
         }

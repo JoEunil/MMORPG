@@ -156,6 +156,7 @@ Lock-Free 자료구조와 Zone 기반 멀티스레드 아키텍처로 동시성�
 - [거래소 시스템](Bazaar.md): 서버 통합 거래소 구현. 데이터 특성 기반 저장 전략 분리 (Gold: Write-Back 캐시 / Item: 캐시 + 거래 배송은 Outbox/Inbox로 exactly-once / Diamond: DB 트랜잭션), Stored Procedure로 ACID 보장
 - [거래소 시스템 테스트](BazaarTest.md): 기본 기능, Crash 시나리오, 동시 구매 경합, lock contention 관측 테스트 수행. CAS 기반 중복 구매 방지 및 Crash 후 배송의 exactly-once 수렴(유실·중복 없음) 검증
 - [StructuredLogging](StructuredLogging.md): 서버 내부 상태와 테스트 결과를 시각화하고 추적하기 위해 로그를 구조화하여 분류 및 적용
+- [Monitoring](Monitoring.md): Grafana + Loki + Promtail로 TPS, 접속자 수, 객체풀 등 핵심 지표를 실시간 추적. Jitter 지표를 RTT 절대값 임계치 대신 Jacobson/Karels EWMA(SRTT/RTTVAR) 기반으로 재설계해, 클라이언트별 네트워크 환경 차이로 인한 오탐을 제거
 
 ### 5. 캐시 및 DB 설계
 

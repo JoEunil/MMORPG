@@ -41,6 +41,10 @@ namespace Net {
         bool m_last_op = RELEASE;
         uint64_t m_sessionID = 0;
 
+        // Jacobson/Karels 알고리즘, jitter 계산을 위함.
+        uint64_t m_srtt = 0; // EWMA 평균
+		uint64_t m_rttvar = 0; // 표준 편차
+
         // m_workingCnt는 패킷마다 fetch_add/sub 되므로 자주 read 되는 두 flag와 cache line 분리.
         std::atomic<bool> m_connected = false;
         std::atomic<bool> m_gameSession = false;
@@ -106,6 +110,8 @@ namespace Net {
                 m_connected.store(true, std::memory_order_seq_cst);
                 m_workingCnt.store(0, std::memory_order_seq_cst);
                 m_gameSession.store(true, std::memory_order_release);
+                m_srtt = 0;
+				m_rttvar = 0;
             }
             {
                 std::lock_guard<std::mutex> lock(m_sendMutex);
