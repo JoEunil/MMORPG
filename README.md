@@ -23,6 +23,19 @@ C++ 기반 TCP Stateful MMORPG 게임 서버 — 개인 프로젝트 (개발 기
 
 게임 서버의 핵심 문제인 **대규모 동시 접속 처리**와 **실시간 동기화**를 직접 해결하는 것을 목표로 시작한 프로젝트다.
 
+같은 게임 서버라도 MMORPG는 세션 기반 게임(FPS/MOBA)과 제약이 다르다. **한 유저가 매 틱 수백 명의 상태를 수신한다**(세션 기반은 5~32). 
+
+| | 세션 기반 (FPS/MOBA) | MMORPG |
+|---|---|---|
+| 동시 엔티티 | 매치당 5~32 | Zone당 수백~수천 |
+| 상태 수명 | 매치 종료 시 폐기 | 영구 지속, DB와 계속 정합 |
+| 연결 수명 | 분 단위 | 시간 단위 |
+| 틱 | 60~128Hz | 20Hz |
+| durability | 매치 종료 후 1회 저장 | 가동 중 상시 정합 |
+| 확장 방향 | 매치 인스턴스 추가 | 월드 분할 |
+
+Zone 단위 틱 루프, Cell 기반 AOI, Delta/Full 스냅샷 분리, TCP, 고정 객체풀, Write-Back 캐시는 모두 이 자릿수 차이(세션당 5~32명 vs Zone당 수백~수천 명)에서 갈라져 나온 결정이다. 자세한 내용은 [설계 결정](DesignDecisions.md)에 정리했다.
+
 - **동시성**: IOCP 비동기 IO 기반으로 **단일 PC 환경에서 5,000명 동시 접속**을 검증했다 (Lock-Free Queue, Zone Tick 기반 멀티스레드 아키텍처)
 - **안정성**: WAL 기반 In-Process Write-Back Cache로 장애 시 Dirty 데이터 복구를 보장하고, **ASan으로 메모리 안전성(누수·오류 없음)을 검증**했다
 - **정합성**: 거래소 시스템에서 Saga·Outbox/Inbox 패턴으로 cross-DB 정합성을, **Crash 후 배송 exactly-once(유실·중복 없음)를 테스트로 검증**했다
@@ -302,7 +315,7 @@ Outbox/Inbox 도입 완료 후 WAL을 추가한 게 아니라 두 가지를 동�
 
 - 스킬, 몬스터 데이터를 데이터 드리븐 방식으로 변경 (현재는 하드코딩 상태)
 - 몬스터 AI를 상태머신 기반으로 전환
-- 이동 동기화 방식 변경: 방향 + 속도 입력 방식에서, 유저 이동 후 최종 좌표를 서버에 전송하는 방식으로 변경
+- Zone 진입·이탈 경로를 Zone 이벤트 큐로 이관해 `ZoneState`의 mutex 제거
 
 ## 빌드, 실행 방법
 
@@ -407,6 +420,7 @@ DB → Redis → 로그인 서버 → 게임 서버
 - [Monster](Monster.md)
 
 ### 시스템 설계
+- [MMORPG 서버 설계 결정](DesignDecisions.md): 세션 기반 게임과 갈라지는 지점. 구현 상세가 아니라 선택의 근거
 - [네트워크 Flood 탐지](FloodDetect.md)
 - [Ping 처리](PingLoop.md)
 - [ClientContext](ClientContext.md)
