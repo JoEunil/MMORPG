@@ -23,7 +23,7 @@ namespace Cache {
         uint8_t  head; // outbox CLAIMED 시 갱신 
         uint8_t  tail;
         bool lastOp; // 1: push, 0: pop
-        uint64_t lastLsn; 
+        uint64_t lastLsn;
     };
 
     constexpr Core::MsgInventoryItem EMPTY_SLOT = { 0, 0, 0 };
