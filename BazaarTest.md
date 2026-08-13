@@ -65,7 +65,7 @@ __크래시 지점과 기대 결과__:
 | `CLAIM` | blob flush 성공 후, outbox CLAIM 전 | 인벤토리에 아이템 있음 + outbox READY | dedup 스킵 (duplicated=1) → 수량 불변, flush 후 CLAIMED |
 
 두 경우 모두 최종 상태는 동일해야 한다: **수량 = 재시도 전 + delivered, outbox 전부 CLAIMED**.  
-DELIVER는 "유실 없음"(Outbox = 재시도 소스), CLAIM은 "중복 없음"(Inbox = 멱등)을 각각 증명한다.  
+DELIVER 케이스는 재배송으로 유실이 없는지를, CLAIM 케이스는 dedup으로 중복이 생기지 않는지를 확인한다.  
 
 __결과__:  
 

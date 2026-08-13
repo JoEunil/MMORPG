@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include <Windows.h>
-#include <mutex>
 #include <cstdint>
 
 #include "TrafficFloodDetector.h"
@@ -20,9 +19,10 @@ namespace Net {
         bool m_flood = false;
         bool m_contextStatus = false;
         TrafficFloodDetector m_floodDetector;
-        // recv가 한번씩 발생하고, recv 완료 후 다음 recv 호출이 이루어지기 때문에 atomic 플래그 하나로 충분
-        // 경합 상황이면 flag 상태를 여러개로 나누고, CAS 함수가 필요했을 것.
-        // 다음 recv에서 flood가 무조건 걸리도록 release, acquire만 잘 걸어주면 됨.
+        // SessionState는 자체 동기화를 두지 않는다.
+        // 모든 접근이 SessionManager의 shard SpinLock 아래에서만 일어나므로
+        // 멤버를 atomic으로 둘 필요가 없다. (SessionManager::CheckSession/PongReceived/
+        // GetSessionSnapshot 등 진입점 전부가 SpinLockGuard를 먼저 잡는다)
 
         bool NetStatus() const {
             if (m_contextStatus == false) {
@@ -38,7 +38,6 @@ namespace Net {
         bool FloodCheck() const {
             return m_flood;
         }
-        mutable std::mutex m_mutex;
     public:
         uint64_t GetSessionID() const {
             return m_sessionID; 
@@ -67,7 +66,7 @@ namespace Net {
         }
         
         uint64_t GetRtt() const {
-            // race condition 안중요함, 틀려도 되는 데이터
+            // 직전 pong 기준이라 실제보다 낡을 수 있다. 표시·로깅용이라 무해.
             return m_rtt;
         }
 

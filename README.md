@@ -157,7 +157,7 @@ Lock-Free 자료구조와 Zone 기반 멀티스레드 아키텍처로 동시성�
 ### 2. 멀티스레드 동기화 및 성능 최적화
 - [memory_order](memory_order.md): 멀티스레드 환경의 메모리 재배치와 가시성 문제를 방지하고 성능을 최적화하기 위해, Acquire-Release 시맨틱의 동작 원리를 분석하고 이를 SpinLock 설계에 적용한 과정을 정리
 - [LockFreeQueue](LockFreeQueue.md): **Vyukov's Bounded MPMC Lock-free Queue** 구현 및 검증
-- [TripleBuffer](TripleBuffer.md): RCU + Triple Buffer 개념을 응용한 Lock-free 스냅샷 버퍼 구현. Zone 스레드(Writer)의 세션 스냅샷을 브로드캐스트 스레드풀(Reader)에 공유하는 용도로 사용하며, 설계 목표는 SPMC였으나 CAS 기반 상태 플래그 구조로 결과적으로 MPMC까지 지원. 잠금/최신 여부/Reader Count 상태를 Bit Packing으로 단일 atomic 변수에 압축 관리
+- [TripleBuffer](TripleBuffer.md): RCU + Triple Buffer 개념을 응용한 스냅샷 버퍼 구현. Zone 스레드(Writer)의 세션 스냅샷을 브로드캐스트 스레드풀(Reader)에 공유하는 용도로 사용하며, 설계 목표는 SPMC이며, CAS 기반 상태 플래그 구조 덕분에 Writer가 여럿이어도 메모리 안전성은 유지된다(lost update를 막지는 않으므로 MPMC 용도로는 쓰지 않는다). 잠금/최신 여부/Reader Count 상태를 Bit Packing으로 단일 atomic 변수에 압축 관리
 
 ### 3. 네트워크 안정성
 - [Ping](PingLoop.md): Ping 루프를 통한 좀비 세션 탐지. IOCP 워커의 호출 스택과 분리된 전용 스레드에서 세션을 종료하는 안전한 종료 전략 적용
@@ -226,7 +226,7 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 ### 단위 테스트 (Google Test)
 
 핵심 컴포넌트는 별도 `UnitTests` 프로젝트에서 Google Test 기반으로 검증한다.
-단순 기능 검증뿐 아니라 다중 스레드 환경의 동시성 테스트(경합, back-pressure)를 포함한다.
+단순 기능 검증뿐 아니라 다중 스레드 환경의 동시성 테스트를 포함한다.
 
 | 대상 | 테스트 범위 |
 |---|---|
@@ -318,6 +318,8 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 - 몬스터 AI를 상태머신 기반으로 전환
 - Zone 진입·이탈 경로를 Zone 이벤트 큐로 이관해 `ZoneState`의 mutex 제거
 - WAL 적용 범위를 인벤토리에서 캐시 전 구간으로 일반화 (현재 골드는 미적용)
+- 장기 DB 장애를 대비해 캐시 flush에 dirty 총량 임계와 backpressure 추가 (현재는 재시도에 상한이 없어 evict가 막히고 캐시가 계속 증가. 데이터 자체는 WAL로 보존)
+
 
 ## 빌드, 실행 방법
 

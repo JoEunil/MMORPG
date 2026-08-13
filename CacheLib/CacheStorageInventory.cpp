@@ -311,7 +311,7 @@ namespace Cache {
         }
 
         if (res.data.head == res.data.tail && res.data.lastOp) {
-            // event ring full — 미CLAIM event가 밀려나지 않도록 배송 차단 (backpressure)
+            // event ring full — CLAIM 되지 않은 event가 밀려나지 않도록 배송 차단 (backpressure)
             Core::gameLogger->LogInfo("cache5", "event ring full", "char_id", characterID);
             return CACHE_STATUS::BLOCKED;
         }

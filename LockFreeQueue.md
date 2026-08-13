@@ -3,8 +3,8 @@
 Lock-free Queue의 개념과 구현과정을 설명한 문서이다. 
 
 ## 2. Lock-Free Queue 개념
-Lock-free Queue란 두 개 이상의 스레드가 락을 사용하지 않고 공유 자원인 큐에 접근할 수 있도록 설계된 큐를 의미한다.  
-뮤텍스 기반 큐와 달리, 특정 스레드의 지연이나 중단이 전체 시스템의 진행을 막지 않는다는 장점이 있다.
+Lock-free Queue란 어떤 스레드가 임의의 시점에 지연되거나 멈춰도, 유한 스텝 안에 최소 한 스레드는 진행하는 것이 보장되는 큐를 의미한다(progress guarantee).  
+락을 쓰지 않는 것은 정의가 아니라 이 보장을 얻기 위한 수단이다. 뮤텍스 기반 큐는 락을 쥔 스레드가 멈추면 나머지가 전부 대기하므로 이 보장이 성립하지 않는다.
 
 본 문서에서는 Lock-free Queue를 직접 구현해보며 겪은 시행착오와,  
 SPSC(Single Producer Single Consumer)와 MPMC(Multi Producer Multi Consumer) 큐의 구조적 차이,  
@@ -64,26 +64,31 @@ producer와 consumer가 각각 서로 다른 변수를 독점적으로 수정한
 이 경우 write-write 경쟁이 발생하지 않으며, 필요한 것은 올바른 memory_order 설정뿐이다.  
 
 ```cpp
-// SPSC
-		T* pop() {
-				if (m_head == m_tail) // empty
+// SPSC  (m_head, m_tail은 std::atomic<size_t>)
+		T* pop() {                                   // consumer 전용
+				const auto head = m_head.load(std::memory_order_relaxed);
+				if (head == m_tail.load(std::memory_order_acquire)) // empty
 					return nullptr;
-				auto res = m_queue[m_head].data;
-				m_head = (m_head+1)%QSize;
+				auto res = m_queue[head].data;
+				m_head.store((head+1)%QSize, std::memory_order_release);
 				return res;
 		}
 		
-		bool push(T* data) {
-				if ((m_tail+1)%QSize == m_head) //full
+		bool push(T* data) {                         // producer 전용
+				const auto tail = m_tail.load(std::memory_order_relaxed);
+				if ((tail+1)%QSize == m_head.load(std::memory_order_acquire)) //full
 					return false;
-			m_queue[m_tail] = data;
-			m_tail = (m_tail+1)%QSize;
+			m_queue[tail] = data;
+			m_tail.store((tail+1)%QSize, std::memory_order_release);
 			return true;
 		}
 ```
 
+자기 인덱스는 자기만 쓰므로 relaxed로 읽고, 상대 인덱스만 acquire로 읽는다.  
+slot 쓰기(`m_queue[tail] = data`)는 `m_tail`의 release로 공개되고, slot 재사용은 `m_head`의 release로 허가된다.  
+
 producer와 consumer가 각각 하나의 스레드이기 때문에  
-race condition이 발생할 수 있는 지점은 empty / full 체크뿐이다.  
+경쟁이 있어 보이는 지점은 empty / full 체크뿐인데, 실제로는 다음 이유로 문제가 되지 않는다.  
 - pop에서 m_head != m_tail인 경우, producer에 의해 다시 empty 상태가 되는 것은 불가능하다.
 - empty 상태에서 producer가 push하는 경우는 retry 로직으로 자연스럽게 해결된다.
 - push에서도 full이 아닌 상태에서 consumer에 의해 다시 full이 되는 상황은 발생하지 않는다.
@@ -153,11 +158,11 @@ http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
 - **move-only(unique_ptr)는 full일 때 버리면 안 된다** → push 실패 시 원본을 돌려줄 방법이 필요함.
 
 아래 전제로 하나의 템플릿으로 통합했다.
-- **T는 nothrow-move-assignable** 이어야 한다. (`static_assert`로 강제)
-- **push는 consume-on-success** — 슬롯 확보에 성공할 때만 `item`을 move해 간다.
+- T는 nothrow-move-assignable이어야 한다. (`static_assert`로 강제)
+- push는 슬롯 확보에 성공할 때만 `item`을 move해 간다 (consume-on-success).
   - `bool push(T& item)` : 실패(full) 시 `item`을 건드리지 않으므로 move-only도 유실 없이 재시도 가능.
   - `bool push(T&& item)` : 임시/rvalue 편의 오버로드.
-- **pop은 out 파라미터로 move-out** — `bool pop(T& out)`.
+- pop은 out 파라미터로 move-out한다. `bool pop(T& out)`.
   - move-out으로 슬롯이 자동으로 비므로(unique_ptr/shared_ptr ref 해제) shared_ptr용 수동 clear가 불필요.
   - nullptr 센티넬이 필요 없어 값 타입도 그대로 사용 가능.
 
@@ -176,8 +181,8 @@ http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
 - 테스트 환경에서 위와 같이 스택오버플로우(0xc00000FD)가 발생한다.
 - LockFree큐에서 array를 사용해서 stack overflow가 발생한 것이다.
 - C스타일 배열을 unique_ptr로 감싸서 heap 메모리를 사용하면 해결된다.
-- 또한, Lock-Free 큐의 본질은 여러 스레드가 공유하는 자원을 안전하게 관리하는 것이므로, 
-  큐를 heap에 올려서 안정적으로 공유 메모리를 사용하는 것이 목적과 부합한다.
+- 또한 이 큐는 여러 스레드가 오래 공유하는 자료구조이므로, 스택 수명에 묶이지 않도록
+  heap에 올려 두는 편이 용도에 맞는다.
 
 ## 9. 단위 테스트  
 [LockFreeQueueDebug](LockFreeQueueDebug.md)

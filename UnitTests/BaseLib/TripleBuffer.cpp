@@ -97,7 +97,8 @@ TEST_F(TripleBufferTest, ReaderRace) {
 			int before = -1;
 			while (!stopSignal.load(std::memory_order_relaxed)) {
 				Base::BufferReader<Dummy> reader = tb.Read();
-				// eventual consistency 확인, reader가 읽은 값 이 이전 값보다 작으면 안 됨
+				// 단조 읽기(monotonic read) 확인 — reader가 읽은 값이 이전 값보다 작으면 안 됨
+				// (eventual consistency만으로는 역행을 막지 못하므로 별도 성질)
 				EXPECT_TRUE(reader.data->a >= before);
 				before = reader.data->a;
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));

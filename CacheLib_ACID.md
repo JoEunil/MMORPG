@@ -54,7 +54,8 @@ LRU overflow 발생
             → 이후 일반 dirty entry와 동일하게 재시도 (처음 2회는 즉시, 3회째부터는 dirty 재마킹으로 30초 주기 백오프)
 ```
 
-**접근 차단은 실패하는 순간 즉시 풀린다.** flush가 실패하면 그 즉시 AVAILABLE로 되돌리고, `Insert()`에서 뺐던 LRU 리스트 등록도 복원한다(다시 넣지 않으면 이 entry가 LRU 추적에서 이탈해 `MAX_CACHE_SIZE` 상한을 우회하는 좀비 entry가 된다). eviction이었다는 사실 자체는 여기서 취소되고, 이후로는 일반 dirty entry와 동일한 재시도 경로(즉시 2회 → 30초 주기 백오프)를 탄다. 데이터는 성공할 때까지 절대 버리지 않는다.
+**접근 차단은 실패하는 순간 즉시 풀린다.** flush가 실패하면 그 즉시 AVAILABLE로 되돌리고, `Insert()`에서 뺐던 LRU 리스트 등록도 복원한다(다시 넣지 않으면 이 entry가 LRU 추적에서 이탈해 `MAX_CACHE_SIZE` 상한을 우회하는 좀비 entry가 된다). 
+eviction이었다는 사실 자체는 여기서 취소되고, 이후로는 일반 dirty entry와 동일한 재시도 경로(즉시 2회 → 30초 주기 백오프)를 탄다. 데이터는 write가 성공할 때까지 버리지 않는다.
 
 ### DB_READING
 
@@ -95,6 +96,9 @@ WAL의 LSN 관리, Segment Rotation, CRC 검증, Replay 및 Truncate 정책 등 
 
 ## 4. ACID 보장
 
+여기서 말하는 ACID는 캐시가 런타임 동안 자기 데이터에 대해 보장하는 성질이다.  
+캐시와 DB 사이는 write-back 주기만큼 벌어지는 최종 일관성이며, 아래 네 항목과는 다른 축이다.  
+
 __Atomicity (원자성)__
 - 캐시 변경은 하나의 Critical Section에서 수행된다.
 - 캐시 변경 과정이 다른 스레드에 중간 상태로 노출되지 않도록 설계하였다.
@@ -109,7 +113,8 @@ __Isolation (격리성)__
 - EVICTING 상태인 키에 대해 Getter/Update 접근 차단 
 - DB_READING 상태인 키에 대해 중복 조회 차단
 - DB write 성공 시 `WriteDone`이 재시도 카운터를 초기화한다. eviction 대상이었던 키만 캐시에서 최종 제거되고, 그 외에는 AVAILABLE 상태로 캐시에 남아 계속 접근 가능하다 (write-back 캐시 본연의 동작 — flush됐다고 캐시에서 쫓아내지 않는다).
-- DB write 실패 시 `Rollback`이 처리한다. eviction 시도였다면 즉시 AVAILABLE로 되돌리고 LRU에 재등록해 접근 차단을 풀고 eviction 자체를 취소한다. 이후 재flush는 처음 2회 즉시, 3회째부터는 `dirty_list` 재등록으로 백오프하며 무한정 재시도한다(데이터는 절대 버리지 않는다).
+- DB write 실패 시 `Rollback`이 처리한다. eviction 시도였다면 즉시 AVAILABLE로 되돌리고 LRU에 재등록해 접근 차단을 풀고 eviction 자체를 취소한다. 이후 재flush는 처음 2회 즉시, 3회째부터는 `dirty_list` 재등록으로 백오프하며 재시도한다.
+- 다만 이 재시도에는 상한이 없다. DB 장애가 길어지면 dirty entry가 계속 쌓이는데, evict하려면 DB write가 먼저 성공해야 하므로 그동안은 `MAX_CACHE_SIZE` 상한도 실질적으로 강제되지 않는다. WAL이 기록 실패에 degraded mode를 두는 것처럼 flush 경로에도 같은 장치가 필요하다.
 
 __Durability (지속성)__
 - 캐시 변경 사항은 같은 임계구역 안에서 WAL에도 함께 기록되어, DB flush 이전 장애에도 복구 가능하다.

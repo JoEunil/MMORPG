@@ -4,8 +4,10 @@
 #include <memory>
 #include <new>
 
-// SPMC Lock-Free Buffer
+// SPMC Snapshot Buffer
 // Eventually consistent reads via triple buffering
+// Not lock-free: Write() acquires a lock bit (0x8000) by CAS, so a stalled writer
+//                blocks the swap path. No progress guarantee is provided.
 // Suitable for: short read operations, latest-snapshot workloads
 // Not suitable for: long read operations, ordered update processing
 

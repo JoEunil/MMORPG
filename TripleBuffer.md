@@ -1,4 +1,4 @@
-﻿# SPMC Lock-free Triple Buffer
+﻿# SPMC Triple Buffer
 
 ## 1. 개요
 이 문서는 Triple Buffer의 개념과 구현 과정을 기술한다.  
@@ -10,7 +10,7 @@ Lock 경합을 최소화하고 데이터의 최신 상태(Snapshot)를 안전하
 Triple Buffer는 3개의 버퍼를 사용하여 다음을 보장한다:  
 1. Writer는 현재 쓰고 있는 버퍼를 독점적으로 수정  
 1. Reader는 최신 완료된 버퍼를 읽음  
-1. 버퍼 교체(swap)는 atomic/lock-free로 수행
+1. 버퍼 교체(swap)는 단일 atomic 플래그로 조정 (뮤텍스 없이 CAS로 권한을 잡는다)
 
 이를 통해 reader와 writer가 동시에 충돌 없이 데이터를 읽고 쓸 수 있음을 보장한다.
 
@@ -85,6 +85,15 @@ SPMC 환경에서 다수의 Worker 스레드가 공유된 Reader 풀로 동작�
 Double Back-Buffer 구조와 Ref-Counting을 도입하여 RCU(Read-Copy-Update) 스타일로 개선.    
 > 설계 의도는 SPMC였으나, Writer의 CAS 권한 획득 구조와 상태 플래그 설계로 인해 결과적으로 여러 Writer가 동시에 호출해도 메모리 안전성은 보장된다.  
 > 다만 이는 data race가 없다는 의미일 뿐, lock-free의 진행 보장(progress guarantee)까지 지원하는 것은 아니다  
+
+진행 보장이 없는 이유는 스왑 경로가 `0x8000` 비트를 CAS로 잡고 임계구역(`std::swap`)에 들어가기 때문이다.  
+그 사이 스레드가 멈추면 다른 진입이 모두 스핀한다.  
+
+이 비트를 없애려면 back1/back2를 포인터 대신 인덱스로 두고 flag 한 워드에 함께 패킹하면 된다.  
+그러면 스왑이 CAS 한 번으로 끝나 진행 보장이 선다. 다만 임계구역이 포인터 두 개 교환이고  
+Writer가 하나인 SPMC 요구사항에서는 경합이 사실상 없어, 버퍼 소유권을 옮기는 API 변경까지  
+감수하며 적용할 이득이 없다고 판단했다. Writer가 여럿이 되거나 read가 길어지면 다시 볼 지점이다.  
+
 
 __핵심 아이디어__
 
