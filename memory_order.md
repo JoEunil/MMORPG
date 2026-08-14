@@ -52,25 +52,30 @@ x, y가 atomic 변수로 원자적으로 처리된다고 하더라도 메모리 
 
 ## 3. 메모리 가시성 
 멀티스레드 환경의 문제는 메모리 재배치만이 아니다. 한 코어가 값을 수정했더라도 다른 코어에서 즉시 관측되지 않는 가시성 문제가 존재한다.    
-멀티코어 CPU에서 각 코어는 자체 캐시(L1, L2)를 보유한다. 캐시 간 데이터 일관성은 __MESI 프로토콜__ 로 관리된다.  
 
-MESI 프로토콜 자체는 캐시라인 단위 코히어런스를 보장하지만, 성능을 위해 코어와 캐시 사이에 Store Buffer와 Invalidation Queue가 존재한다.   
- -> 코어가 값을 쓸 때 마다 다른 코어의 캐시라인을 무효화하고 응답을 기다리는 것은 성능 저하가 크기 때문에, 버퍼를 활용하여 무효화 응답을 기다리지 않고 다음 명령어를 실행할 수 있도록 한다.  
- -> 하지만 이런 버퍼들로 인해 상태 불일치가 발생한다.  
-- Store Buffer: 코어가 값을 쓸 때 캐시에 바로 쓰지 않고 버퍼에 먼저 기록. 다른 코어의 Invalidate 응답을 기다리지 않고 다음 명령어를 실행하기 위함.  
-- Invalidation Queue (Arm64): Invalidate 요청을 받은 코어가 즉시 처리하지 않고 큐에 넣어두고 나중에 처리.  
+C++ 메모리 모델은 캐시나 버퍼를 말하지 않는다.   
+어떤 쓰기가 다른 스레드에 보이는지는 두 연산 사이에 happens-before 간선이 있는지로만 결정된다.  
 
->코히런스: 같은 메모리 주소에 대해 모든 코어가 동일한 값을 보는 것.  
-
-이 버퍼들로 인해 코어 A가 값을 썼더라도 코어 B가 이전 값을 읽는 구간이 발생한다.  
-이것이 가시성 문제이며, release/acquire가 **재배치 순서 제약**으로 이를 해결한다.  
-
-- **memory_order_release (store)**: 이 스토어보다 program order상 앞선 모든 read/write가스토어 뒤로 넘어가지 못하게 막는 단방향 배리어.   
+- **memory_order_release (store)**: 이 스토어보다 program order상 앞선 모든 read/write가 스토어 뒤로 넘어가지 못하게 막는 단방향 배리어.   
   다른 스레드가 **같은 변수**를 acquire로 읽어 이 값을 관측하면, release 이전의 모든 쓰기가 그 스레드에 보이도록 보장된다(happens-before 성립).    
-- **memory_order_acquire (load)**: 이 로드보다 program order상 뒤에 오는 모든 read/write  로드 앞으로 당겨지지 못하게 막는 단방향 배리어    
+- **memory_order_acquire (load)**: 이 로드보다 program order상 뒤에 오는 모든 read/write가 로드 앞으로 당겨지지 못하게 막는 단방향 배리어    
 
 즉 release/acquire는 "버퍼를 비운다"가 아니라, **재배치를 한 방향으로만 막고 같은 변수에 대한 release→acquire가 맞물릴 때만 happens-before 간선을 만든다**로 이해해야 정확하다.
-> Store buffer flush는 seq_cst에서만 발생한다.
+
+### Debug 빌드에서도 재현되는 이유
+
+Debug 빌드는 컴파일러가 재배치를 하지 않는데도 이 문제가 재현된다. 원인은 store buffer다.  
+
+코어는 store를 캐시에 바로 쓰지 않고 **store buffer**에 넣은 뒤 다음 명령으로 넘어간다.   
+그래서 그 store가 다른 코어에 보이기 전에, 뒤따르는 load가 먼저 실행될 수 있다.   
+x86-TSO는 다른 재배치는 막지만 이 store→load 순서만은 허용한다. 아래 SB 리트머스 테스트가 그 최소 사례다.  
+
+> x86에서 `seq_cst` store는 `XCHG`(또는 `MOV` + `MFENCE`)로 컴파일되어, 이후 load가 그 store의 전역 가시화 전에 실행되는 것을 막는다.   
+> `release` store는 평범한 `MOV`라 그 제약이 없다. 그래서 SB 패턴은 acquire/release로는 막히지 않는다.  
+>
+> - `MOV` — 값을 옮기는 일반 명령. 순서에 대한 제약이 없다.  
+> - `XCHG` — 레지스터와 메모리를 교환하는 명령. x86에서 암묵적으로 `lock` 접두사가 붙어 full barrier로 동작한다.  
+> - `MFENCE` — 앞선 메모리 연산이 전부 전역에 보이기 전까지 뒤따르는 메모리 연산을 실행하지 않게 하는 배리어 명령.  
 
 
 ## 4. memory_order  

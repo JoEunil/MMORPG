@@ -299,18 +299,18 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 
 ## 트러블 슈팅
 
-- [LockFreeQueue 디버그](LockFreeQueueDebug.md)
-  pop 시 seq 갱신 오류로 인한 무한 대기를 스레드 상태 및 호출 스택 분석으로 추적하여 수정
+[LockFreeQueue 디버그](LockFreeQueueDebug.md)
+  - pop 시 seq 갱신 오류로 인한 무한 대기를 스레드 상태 및 호출 스택 분석으로 추적하여 수정
 
-- [ContextPool memory_order 디버그](MemoryOrderDebug.md)
-  두 atomic 변수를 교차 확인하는 SB(Store-Buffer) 리트머스 패턴에서 발생한 가시성 문제 분석. acquire/release로는 표준상 완전한 보장이 안 됨을 확인해 seq_cst로 최종 수정. 
-  x64 + Debug 빌드(명령 재배치 없음)에서도 Store Buffer로 인한 가시성 지연으로 재현된 케이스
+[ContextPool memory_order 디버그](MemoryOrderDebug.md)
+  - 두 atomic 변수를 교차 확인하는 SB(Store-Buffer) 리트머스 패턴에서 발생한 가시성 문제 분석. acquire/release로는 표준상 완전한 보장이 안 됨을 확인해 seq_cst로 최종 수정.   
+  - x64 + Debug 빌드(명령 재배치 없음)에서도 store buffer로 인한 store→load 순서 역전으로 재현된 케이스    
+	
+[SessionManager 데드락](SessionManagerDeadLock.md)
+  - SpinLock을 획득한 상태에서 같은 락을 다시 획득하는 호출 경로로 인한 데드락 원인 추적, 구조 개선
 
-- [SessionManager 데드락](SessionManagerDeadLock.md)
-  SpinLock을 획득한 상태에서 같은 락을 다시 획득하는 호출 경로로 인한 데드락 원인 추적, 구조 개선
-
-- [DummyTest 과정 중 발생한 오류 디버그](DummyTestDebug.md)
-  RingBuffer wrap-around 경계 조건 및 고정 크기 버퍼 한계로 인한 엣지 케이스 처리
+[DummyTest 과정 중 발생한 오류 디버그](DummyTestDebug.md)
+  - RingBuffer wrap-around 경계 조건 및 고정 크기 버퍼 한계로 인한 엣지 케이스 처리
 
 ## 추후 개선 사항
 

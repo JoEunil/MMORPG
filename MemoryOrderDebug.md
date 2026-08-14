@@ -67,8 +67,9 @@ if (!m_connected.load(seq_cst) && m_workingCnt.load(seq_cst) == 0)
 1차 해결이 우연히 테스트를 통과한 건 fetch_sub이 RMW 연산이라 x86에서 LOCK 접두로 풀 펜스가 걸린 부수 효과였을 뿐, 표준이 보장하는 해결은 아니었다.    
 
 ## 6. Note
-- relaxed는 atomic 변수의 원자성을 보장하지만, 스레드 간 가시성은 보장하지 않는다.
-  - store buffer flush가 강제되지 않아 가시성 지연이 발생할 수 있다.
+- relaxed는 atomic 변수의 원자성을 보장하지만, 스레드 간 순서는 보장하지 않는다.
+  - store가 store buffer에 머무는 동안 뒤따르는 load가 먼저 실행될 수 있다.
+    (x86에서 이를 막으려면 seq_cst store가 `XCHG`/`MFENCE`로 컴파일되어야 한다)
   - x64 TSO + Debug 빌드 환경에서 명령 재배치가 없었음에도 버그가 발생한 원인이다.
 
 - fetch_add 기반 ID 발급은 relaxed여도 중복이 발생하지 않는다.
