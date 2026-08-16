@@ -22,10 +22,11 @@ namespace {
         std::condition_variable m_cv;
         std::queue<Core::Message*> m_received;
     public:
-        void EnqueueMessage(Core::Message* msg) override {
+        bool EnqueueMessage(Core::Message* msg) override {
             std::lock_guard lock(m_mutex);
             m_received.push(msg);
             m_cv.notify_one();
+            return true;
         }
         Core::Message* WaitFor(int ms = 5000) {
             std::unique_lock lock(m_mutex);

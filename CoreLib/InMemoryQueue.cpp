@@ -42,18 +42,21 @@ namespace Core {
         }
     }
 
-    void InMemoryQueue::EnqueueMessage(Core::Message* msg) {
+    bool InMemoryQueue::EnqueueMessage(Core::Message* msg) {
         if (!m_running.load(std::memory_order_relaxed))
-            return;
+            return false;
         auto coreMsg = messagePool->Acquire();
         if (coreMsg == nullptr) {
             errorLogger->LogWarn("core mq", "message pool empty");
-            return;
+            return false;
 		}
         std::memcpy(coreMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());
-  
+
         if (!m_sharedQueue.push(coreMsg)) {
             errorLogger->LogWarn("core mq", "push failed");
+            messagePool->Return(coreMsg);
+            return false;
         }
+        return true;
     }
 }

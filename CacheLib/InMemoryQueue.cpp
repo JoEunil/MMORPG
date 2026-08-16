@@ -44,18 +44,21 @@ namespace Cache {
         }
     }
 
-    void InMemoryQueue::EnqueueMessage(Core::Message* msg) {
+    bool InMemoryQueue::EnqueueMessage(Core::Message* msg) {
         if (!m_running.load(std::memory_order_relaxed))
-            return;
+            return false;
         auto cacheMsg = messagePool->Acquire();
         if (!cacheMsg) {
             Core::errorLogger->LogError("cache mq", "message pool exhausted");
-            return;
+            return false;
 		}
         std::memcpy(cacheMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());
 
         if (!m_sharedQueue.push(cacheMsg)) {
             Core::errorLogger->LogWarn("cache mq", "push failed");
+            messagePool->Return(cacheMsg);
+            return false;
         }
+        return true;
     }
 }

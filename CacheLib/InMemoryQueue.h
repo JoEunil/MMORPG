@@ -60,6 +60,6 @@ namespace Cache {
         ~InMemoryQueue() {
             Stop();
         }
-        void EnqueueMessage(Core::Message* msg) override; 
+        bool EnqueueMessage(Core::Message* msg) override;
     };
 }

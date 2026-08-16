@@ -145,7 +145,22 @@ namespace Core {
         st->body.y = temp.y;
         st->body.lastZone = temp.lastZone;
         msg->SetLength(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
-        mq->EnqueueMessage(msg);
+
+        // 접속 종료 시점의 위치/스탯은 여기서 흘리면 복구할 방법이 없다.
+        // 큐가 순간적으로 꽉 찼거나 수신 풀이 비었을 뿐일 수 있으므로 몇 번은 다시 밀어본다.
+        bool enqueued = false;
+        for (int retry = 0; retry < MAX_RETRY; retry++) {
+            if (mq->EnqueueMessage(msg)) {
+                enqueued = true;
+                break;
+            }
+            std::this_thread::yield();
+        }
+        if (!enqueued) {
+            std::vector<std::byte> binary(sizeof(CharacterState));
+            std::memcpy(binary.data(), &temp, sizeof(CharacterState));
+            errorLogger->LogError("state manager", "Failed to enqueue disconnect message", "sessionID", sessionID, "character state", binary);
+        }
         messagePool->Return(msg);
     }
 }
