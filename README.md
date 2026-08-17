@@ -186,7 +186,6 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 - [Cache Integration Test](CacheLib_Test.md): DB fetch, cache hit/miss, flush, LRU eviction 동작 검증
 - [WAL](WAL.md): Write-Ahead Log 구조, Replay, Truncate, 장애 복구 설계
 - [DB](DB.md): DB 분리, 수직 파티셔닝, 복합 인덱스, View, Saga, Outbox/Inbox
-- [Profile 분리](Profile.md): 캐릭터 이름을 Zone 상태에서 분리해 별도 Profile 엔티티 + Write-Through 캐시로 관리. Snapshot/Chat 페이로드에서 이름 필드 제거, Zone으로의 버전 역전파 설계
 
 ### 6. 종료 처리 (Graceful Shutdown)
 
@@ -296,6 +295,10 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 [ObjectPool 리팩토링](ObjectPool.md)
 - 필요성: 동적 resize 구조는 병목 상황에서 추가 할당을 유발해 지연을 메모리 영역으로 전이시킬 수 있음을 인지
 - 내용: Elastic ObjectPool 제거 후 FixedObjectPool로 교체, 고갈 시 Drop + 로그로 대응. 크리티컬 경로(Disconnect)는 retry loop로 별도 처리
+
+[Profile 분리](Profile.md)  
+- 필요성: Full Snapshot에 캐릭터 이름이 포함되어 있어, 유저 수에 비례해 이름 필드가 반복 전송되며 스냅샷 크기가 커진다. 또한 이름이 Zone 상태에 직접 저장돼 있어 변경 시 Zone 상태를 직접 건드려야 하는 구조라 자연스럽지 않다.
+- 내용: 캐릭터 이름을 Zone 상태에서 분리해 별도 Profile 엔티티 + Write-Through 캐시로 관리. Snapshot/Chat 페이로드에서 이름 필드 제거, Zone으로의 버전 역전파 설계
 
 ## 트러블 슈팅
 
@@ -436,7 +439,6 @@ DB → Redis → 로그인 서버 → 게임 서버
 - [WAL](WAL.md)
 - [Cache Durability Test](CacheDurabilityTest.md)
 - [DB 설계](DB.md)
-- [Profile 분리](Profile.md)
 - [IOCP Send 파이프라인](IOCPSendPipeline.md)
 - [거래소 시스템](Bazaar.md)
 - [거래소 시스템 테스트](BazaarTest.md)
@@ -449,6 +451,7 @@ DB → Redis → 로그인 서버 → 게임 서버
 - [AOI 적용](AOI.md)
 - [DB 전용 worker 스레드 분리](DBWorkerRefactor.md)
 - [ObjectPool 리팩토링](ObjectPool.md)
+- [Profile 분리](Profile.md)
 
 ### 트러블 슈팅
 - [SessionManager 데드락](SessionManagerDeadLock.md)
