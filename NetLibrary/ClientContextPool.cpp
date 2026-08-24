@@ -25,7 +25,7 @@ namespace Net {
         while(!m_flushQ.empty())
         {
             auto t = m_flushQ.pop();
-            if (t->GetWorkingCnt() != 0) {
+            if (!t->CanRecycle()) {
                 m_flushQ.push(t);
                 break;
             }

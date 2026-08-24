@@ -188,8 +188,10 @@ namespace Net {
                     PostAccept();              // accept 슬롯 보충
                 }
                 else {
-                    CleanUpSocket(clientSocket); // RECV/SEND: 등록된 세션 정리
+                    CleanUpSocket(clientSocket, pOverlappedEx->sessionID); // RECV/SEND: 등록된 세션 정리
                 }
+                if (pOverlappedEx->op == IOOperation::RECV && pOverlappedEx->ownerContext != nullptr)
+                    pOverlappedEx->ownerContext->CompleteRecvIO(pOverlappedEx->sessionID);
                 overlappedExPool->Return(pOverlappedEx);
                 continue;
             }
@@ -201,15 +203,18 @@ namespace Net {
                     break;
                 if (bytesTransferred == 0) {
                     Core::sysLogger->LogInfo("iocp", "Client FIN received", "socket", clientSocket);
-                    CleanUpSocket(clientSocket);
+                    CleanUpSocket(clientSocket, pOverlappedEx->sessionID);
                     break;
                 }
-                perfCollector->AddRecvCnt(index);
-                netHandler->OnRecv(clientSocket, reinterpret_cast<uint8_t*>(pOverlappedEx->wsaBuf[0].buf), bytesTransferred);
+                if (pOverlappedEx->ownerContext != nullptr && pOverlappedEx->ownerContext->IsSessionAlive(pOverlappedEx->sessionID)) {
+                    perfCollector->AddRecvCnt(index);
+                    netHandler->OnRecv(pOverlappedEx->ownerContext, pOverlappedEx->sessionID, clientSocket,
+                        reinterpret_cast<uint8_t*>(pOverlappedEx->wsaBuf[0].buf), bytesTransferred);
 
-                if (!PostRecv(clientSocket)) {
-                    Core::errorLogger->LogWarn("iocp", "Post Receive Failed(recv)", "socket", clientSocket);
-                    CleanUpSocket(clientSocket);
+                    if (pOverlappedEx->ownerContext->IsSessionAlive(pOverlappedEx->sessionID) && !PostRecv(clientSocket, pOverlappedEx->sessionID)) {
+                        Core::errorLogger->LogWarn("iocp", "Post Receive Failed(recv)", "socket", clientSocket);
+                        CleanUpSocket(clientSocket, pOverlappedEx->sessionID);
+                    }
                 }
                 break;
             case IOOperation::SEND: {
@@ -249,7 +254,8 @@ namespace Net {
                     break;
                 }
 
-                if (!PostRecv(clientSocket)) {
+                uint64_t sessionID = sessionManager->GetSession(clientSocket);
+                if (sessionID == 0 || !PostRecv(clientSocket, sessionID)) {
                     Core::errorLogger->LogWarn("iocp", "Post Receive Failed(accept)", "socket", clientSocket);
                     CleanUpSocket(clientSocket);
                 }
@@ -259,6 +265,8 @@ namespace Net {
             default:
                 break;
             }
+            if (pOverlappedEx->op == IOOperation::RECV && pOverlappedEx->ownerContext != nullptr)
+                pOverlappedEx->ownerContext->CompleteRecvIO(pOverlappedEx->sessionID);
             overlappedExPool->Return(pOverlappedEx);
         }
     }
@@ -317,7 +325,7 @@ namespace Net {
         }
     }
 
-    bool IOCP::PostRecv(SOCKET clientSocket)
+    bool IOCP::PostRecv(SOCKET clientSocket, uint64_t expectedSessionID)
     {
         DWORD dwBytesReceived = 0;
         DWORD dwFlags = 0;
@@ -328,11 +336,21 @@ namespace Net {
         pOverlappedEx->op = IOOperation::RECV;
         pOverlappedEx->clientSocket = clientSocket;
         uint8_t* buf = nullptr;
+        ClientContext* ownerContext = nullptr;
+        uint64_t sessionID = 0;
+        uint16_t bufferLength = 0;
         pOverlappedEx->wsaBuf.resize(1);
-        pOverlappedEx->wsaBuf[0].len = netHandler->AllocateBuffer(clientSocket, buf);
+        if (!sessionManager->BeginRecvIO(clientSocket, expectedSessionID, ownerContext, sessionID, buf, bufferLength)) {
+            overlappedExPool->Return(pOverlappedEx);
+            return false;
+        }
+        pOverlappedEx->ownerContext = ownerContext;
+        pOverlappedEx->sessionID = sessionID;
+        pOverlappedEx->wsaBuf[0].len = bufferLength;
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(buf);
         if (pOverlappedEx->wsaBuf[0].len == 0) {
             Core::errorLogger->LogWarn("iocp", "can't allocate buffer", "socket", clientSocket);
+            ownerContext->CompleteRecvIO(sessionID);
             overlappedExPool->Return(pOverlappedEx);
             return false;
         }
@@ -343,6 +361,7 @@ namespace Net {
             int err = WSAGetLastError();
             if (err != WSA_IO_PENDING) {
                 Core::errorLogger->LogError("iocp", "WSAGetLastError ", "socket", clientSocket, "error message", std::to_string(err));
+                ownerContext->CompleteRecvIO(sessionID);
                 overlappedExPool->Return(pOverlappedEx);
                 return false;
             }
@@ -354,6 +373,19 @@ namespace Net {
     {
         if (netHandler->OnDisConnect(clientSocket))
         {
+            Core::sysLogger->LogInfo("iocp", "Disconnect", "socket", clientSocket);
+            if (!CancelIoEx((HANDLE)clientSocket, nullptr)) {
+                int err = GetLastError();
+                Core::errorLogger->LogWarn("iocp", "CancelIoEx failed", "socket", clientSocket, "error", err);
+            }
+            closesocket(clientSocket);
+        }
+    }
+
+    void IOCP::CleanUpSocket(SOCKET clientSocket, uint64_t expectedSessionID)
+    {
+        if (netHandler->OnDisConnect(clientSocket, expectedSessionID))
+        {
             // 여러 스레드에서 동시에 호출될 수 있지만,
             // NetHandler가 Disconnect를 단일 책임으로 관리하여 멱등성이 보장됨.
             // 중복으로 CleanUp 요청이 와도 최초 1회만 true를 반환함.
@@ -361,7 +393,7 @@ namespace Net {
             if (!CancelIoEx((HANDLE)clientSocket, nullptr)) {
                 int err = GetLastError();
                 Core::errorLogger->LogWarn("iocp", "CancelIoEx failed", "socket", clientSocket, "error", err);
-            } // pending IO를 즉시 취소
+            } // 취소 completion이 회수될 때까지 RECV Context는 pendingIOCnt로 유지
             closesocket(clientSocket);
         }
     }
@@ -381,6 +413,7 @@ namespace Net {
             return ;
         pOverlappedEx->op = IOOperation::SEND;
         pOverlappedEx->clientSocket = clientSocket;
+        pOverlappedEx->sessionID = sessionID;
         pOverlappedEx->wsaBuf.resize(1);
         pOverlappedEx->wsaBuf[0].len =  packet->GetLength();
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
@@ -413,6 +446,7 @@ namespace Net {
             return;
         pOverlappedEx->op = IOOperation::SEND;
         pOverlappedEx->clientSocket = clientSocket;
+        pOverlappedEx->sessionID = sessionID;
         pOverlappedEx->wsaBuf.resize(1);
         pOverlappedEx->wsaBuf[0].len = packet->GetLength();
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
@@ -449,6 +483,7 @@ namespace Net {
             return ;
         pOverlappedEx->op = IOOperation::SEND;
         pOverlappedEx->clientSocket = clientSocket;
+        pOverlappedEx->sessionID = sessionID;
         pOverlappedEx->wsaBuf.resize(1);
         pOverlappedEx->wsaBuf[0].len = packet->GetLength();
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
@@ -482,9 +517,10 @@ namespace Net {
             if (err != WSA_IO_PENDING)
             {
                 SOCKET sock = pOverlappedEx->clientSocket;
+                uint64_t sessionID = pOverlappedEx->sessionID;
                 overlappedExPool->Return(pOverlappedEx);
-                CleanUpSocket(sock);
-                Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", pOverlappedEx->clientSocket, "error message", std::to_string(err));
+                CleanUpSocket(sock, sessionID);
+                Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", sock, "error message", std::to_string(err));
             }
         }
     }
@@ -515,8 +551,9 @@ namespace Net {
             if (err != WSA_IO_PENDING)
             {
                 SOCKET sock = pOverlappedEx->clientSocket;
+                uint64_t sessionID = pOverlappedEx->sessionID;
                 overlappedExPool->Return(pOverlappedEx);
-                CleanUpSocket(sock);
+                CleanUpSocket(sock, sessionID);
                 Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", sock, "error message", std::to_string(err));
             }
         }

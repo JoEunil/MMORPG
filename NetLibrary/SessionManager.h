@@ -116,6 +116,29 @@ namespace Net{
             return it != shard.contextMap.end() ? it->second : nullptr;
         }
 
+        bool BeginRecvIO(SOCKET sock, uint64_t expectedSessionID, ClientContext*& context,
+            uint64_t& sessionID, uint8_t*& buffer, uint16_t& length) {
+            auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
+            Base::SpinLockGuard lock(shard.flag);
+
+            auto stateIt = shard.stateMap.find(sock);
+            auto contextIt = shard.contextMap.find(sock);
+            if (stateIt == shard.stateMap.end() || contextIt == shard.contextMap.end())
+                return false;
+
+            sessionID = stateIt->second.GetSessionID();
+            if (sessionID != expectedSessionID)
+                return false;
+
+            context = contextIt->second;
+            length = context->BeginRecvIO(sessionID, buffer);
+            if (length == 0) {
+                context = nullptr;
+                return false;
+            }
+            return true;
+        }
+
         // reverse
         SOCKET GetSocket(uint64_t s) {
             auto& shard = m_reverseShard[s & SESSION_SHARD_MASK];
@@ -136,6 +159,7 @@ namespace Net{
         }
         bool AddSession(SOCKET sock);
         bool Disconnect(SOCKET sock);
+        bool Disconnect(SOCKET sock, uint64_t expectedSessionID);
         uint32_t GetConnectionCnt() const {
             return m_connectionCnt.load(std::memory_order_relaxed);
         }

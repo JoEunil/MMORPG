@@ -45,12 +45,12 @@ namespace Net {
         uint64_t m_srtt = 0; // EWMA 평균
 		uint64_t m_rttvar = 0; // 표준 편차
 
-        // m_workingCnt는 패킷마다 fetch_add/sub 되므로 자주 read 되는 두 flag와 cache line 분리.
-        std::atomic<bool> m_connected = false;
-        std::atomic<bool> m_gameSession = false;
-
+        // 서로 다른 실행 경로에서 갱신되는 atomic 간 false sharing 방지.
+        alignas(std::hardware_destructive_interference_size) std::atomic<bool> m_connected = false;
+        alignas(std::hardware_destructive_interference_size) std::atomic<bool> m_gameSession = false;
         alignas(std::hardware_destructive_interference_size) std::atomic<int16_t> m_workingCnt = int16_t(0); // buffer 조각(패킷)을 점유하고 있는 작업의 수
-        char padding[std::hardware_destructive_interference_size - sizeof(uint16_t)];
+        alignas(std::hardware_destructive_interference_size) std::atomic<int16_t> m_pendingIOCnt = int16_t(0); // Context 내부 버퍼를 참조하는 pending RECV 수
+        char padding[std::hardware_destructive_interference_size - sizeof(std::atomic<int16_t>)];
 
         std::recursive_mutex m_mutex; 
         // TryDispatch 실패하는 경우, EnqueueReleaseQ에서 DeadLock을 방지하기 위함. 
@@ -71,6 +71,7 @@ namespace Net {
         std::tuple<uint16_t, uint16_t, uint8_t> ParseHeader();
         bool DequeueRecvQ();
         void EnqueueReleaseQ(uint32_t seq, uint16_t front, uint16_t rear);
+        void TryNotifyDisconnect();
 
         static void Initialize(OverlappedExPool* o) {
             overlappedExPool = o;
@@ -94,9 +95,19 @@ namespace Net {
         }
   
 
-        uint16_t AllocateRecvBuffer(uint8_t*& buffer);
+        uint16_t BeginRecvIO(uint64_t expectedSessionID, uint8_t*& buffer);
+        void CompleteRecvIO(uint64_t expectedSessionID);
         uint16_t GetWorkingCnt() const { return m_workingCnt.load(std::memory_order_relaxed); }
+        uint16_t GetPendingIOCnt() const { return m_pendingIOCnt.load(std::memory_order_relaxed); }
         uint64_t GetSessionID() const { return m_sessionID; }
+        bool IsSessionAlive(uint64_t expectedSessionID) const {
+            return m_connected.load(std::memory_order_acquire) && m_sessionID == expectedSessionID;
+        }
+        bool CanRecycle() const {
+            return !m_connected.load(std::memory_order_acquire)
+                && m_workingCnt.load(std::memory_order_acquire) == 0
+                && m_pendingIOCnt.load(std::memory_order_acquire) == 0;
+        }
 
         void Clear(uint64_t session) {
             {
@@ -109,6 +120,7 @@ namespace Net {
                 m_rear = RING_BUFFER_SIZE - 1;
                 m_connected.store(true, std::memory_order_seq_cst);
                 m_workingCnt.store(0, std::memory_order_seq_cst);
+                m_pendingIOCnt.store(0, std::memory_order_seq_cst);
                 m_gameSession.store(true, std::memory_order_release);
                 m_srtt = 0;
 				m_rttvar = 0;
@@ -122,10 +134,13 @@ namespace Net {
             }
         }
         void Disconnect() {
-            m_connected.store(false, std::memory_order_seq_cst);
-            if (!m_connected.load(std::memory_order_seq_cst) && m_workingCnt.load(std::memory_order_seq_cst) <= 0) {
-                NetPacketFilter::Disconnect(m_sessionID);
+            bool wasConnected = false;
+            {
+                std::lock_guard<std::recursive_mutex> lock(m_mutex);
+                wasConnected = m_connected.exchange(false, std::memory_order_seq_cst);
             }
+            if (wasConnected)
+                TryNotifyDisconnect();
         }
         bool CheckGameSession() const {
             return m_gameSession.load(std::memory_order_acquire);
@@ -133,7 +148,7 @@ namespace Net {
 
         // unit test에서 mock 주입 위해 virtual 선언
         virtual void ReleaseBuffer(PacketView* pv);
-        bool EnqueueRecvQ(uint8_t* ptr, size_t len);
+        bool EnqueueRecvQ(uint64_t expectedSessionID, uint8_t* ptr, size_t len);
 
         EnqueueSendResult EnqueueSend(STOverlappedEx* work);
         STOverlappedEx* DequeueSend();

@@ -23,6 +23,8 @@ namespace Net {
 	}
 
 	void OverlappedExPool::Return(STOverlappedEx* r) {
+		r->ownerContext = nullptr;
+		r->sessionID = 0;
 		r->originalBufs.clear();
 		r->sharedPacket.reset();
 		r->uniquePacket.reset();

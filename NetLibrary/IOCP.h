@@ -90,8 +90,9 @@ namespace Net {
         bool CreateWorkerThread();
         
         void PostAccept();
-        bool PostRecv(SOCKET clientSocket);
+        bool PostRecv(SOCKET clientSocket, uint64_t expectedSessionID);
         void CleanUpSocket(SOCKET clientSocket);
+        void CleanUpSocket(SOCKET clientSocket, uint64_t expectedSessionID);
         
         void Start();
         void StopReceive() {

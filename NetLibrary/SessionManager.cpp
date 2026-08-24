@@ -38,6 +38,11 @@ namespace Net {
     }
 
     bool SessionManager::Disconnect(SOCKET sock) {
+        uint64_t sessionID = GetSession(sock);
+        return sessionID != 0 && Disconnect(sock, sessionID);
+    }
+
+    bool SessionManager::Disconnect(SOCKET sock, uint64_t expectedSessionID) {
         uint64_t session = 0;
         {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
@@ -48,6 +53,8 @@ namespace Net {
                     return false;
                 }
                 session = it->second.GetSessionID();
+                if (session != expectedSessionID)
+                    return false;
                 shard.stateMap.erase(it);
             }
             {

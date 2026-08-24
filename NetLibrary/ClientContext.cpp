@@ -107,19 +107,46 @@ namespace Net {
         }
         return true;
     }
-    uint16_t ClientContext::AllocateRecvBuffer(uint8_t*& buffer) {
+    uint16_t ClientContext::BeginRecvIO(uint64_t expectedSessionID, uint8_t*& buffer) {
         std::lock_guard<std::recursive_mutex> lock(m_mutex);
+        if (!m_connected.load(std::memory_order_seq_cst) || m_sessionID != expectedSessionID) {
+            buffer = nullptr;
+            return 0;
+        }
+
         BufferFragment temp;
         uint16_t len = m_buffer.TryAcquireBuffer(temp, RECV_BUFFER_SIZE);
         buffer = temp.startPtr;
-        if (len == 0)
-            Core::errorLogger->LogError("context", "can't allocate buffer", "sessionID", m_sessionID, "front", m_front, "rear", m_rear);
+        if (len == 0) {
+            Core::errorLogger->LogError("context", "can't allocate pending recv buffer", "sessionID", m_sessionID, "front", m_front, "rear", m_rear);
+            return 0;
+        }
+
+        // shard lock 아래에서 alive 확인 후 증가한다. 이후 map에서 제거돼도
+        // completion이 이 참조를 반납할 때까지 Context는 pool에서 재사용되지 않는다.
+        m_pendingIOCnt.fetch_add(1, std::memory_order_seq_cst);
         return len;
     }
 
+    void ClientContext::CompleteRecvIO(uint64_t expectedSessionID) {
+        if (m_sessionID != expectedSessionID) {
+            Core::errorLogger->LogError("context", "pending IO session mismatch", "expected", expectedSessionID, "actual", m_sessionID);
+            return;
+        }
 
-    bool ClientContext::EnqueueRecvQ(uint8_t* ptr, size_t len) {
+        int16_t previous = m_pendingIOCnt.fetch_sub(1, std::memory_order_seq_cst);
+        if (previous <= 0) {
+            m_pendingIOCnt.fetch_add(1, std::memory_order_seq_cst);
+            Core::errorLogger->LogError("context", "pending IO counter underflow", "sessionID", expectedSessionID, "previous", previous);
+            return;
+        }
+    }
+
+
+    bool ClientContext::EnqueueRecvQ(uint64_t expectedSessionID, uint8_t* ptr, size_t len) {
         std::lock_guard<std::recursive_mutex> lock(m_mutex);
+        if (!m_connected.load(std::memory_order_seq_cst) || m_sessionID != expectedSessionID)
+            return false;
         uint16_t front = ptr - m_startPtr;
         if (front != ((m_rear + 1) & RING_BUFFER_SIZE_MASK))
             return false;
@@ -149,12 +176,18 @@ namespace Net {
     void ClientContext::ReleaseBuffer(PacketView* pv) {
         if (m_connected.load(std::memory_order_seq_cst))
             EnqueueReleaseQ(pv->GetSeq(), pv->GetFront(), pv->GetRear());
-        m_workingCnt.fetch_sub(1, std::memory_order_seq_cst);
+        int16_t previous = m_workingCnt.fetch_sub(1, std::memory_order_seq_cst);
         pv->Clear();
         packetViewPool.Deallocate(pv);
-        if (!m_connected.load(std::memory_order_seq_cst) && m_workingCnt.load(std::memory_order_seq_cst) == 0) {
-            NetPacketFilter::Disconnect(m_sessionID);
-        }
+        if (previous == 1)
+            TryNotifyDisconnect();
+    }
+
+    void ClientContext::TryNotifyDisconnect() {
+        if (m_connected.load(std::memory_order_seq_cst) || m_workingCnt.load(std::memory_order_seq_cst) != 0)
+            return;
+
+        NetPacketFilter::Disconnect(m_sessionID);
     }
     EnqueueSendResult ClientContext::EnqueueSend(STOverlappedEx* work) {
         std::lock_guard<std::mutex> lock(m_sendMutex);

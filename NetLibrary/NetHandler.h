@@ -41,32 +41,24 @@ namespace Net {
         bool OnAccept(SOCKET sock) const {
             return sessionManager->AddSession(sock);
         }
-        void OnRecv(SOCKET sock, uint8_t* buf, uint16_t len) const {
-            sessionManager->UpdateFlood(sock, len);
-            if (!sessionManager->CheckSession(sock)) {
-                Core::sysLogger->LogInfo("net handler", "net session died", "socket", sock);
-                abortSocket->AbortSocket(sock);
+        void OnRecv(ClientContext* ctx, uint64_t sessionID, SOCKET sock, uint8_t* buf, uint16_t len) const {
+            if (ctx == nullptr || !ctx->IsSessionAlive(sessionID))
                 return;
-            }
-            auto ctx = sessionManager->GetContext(sock);
+            sessionManager->UpdateFlood(sock, len);
             if (!ctx->CheckGameSession()) {
                 sessionManager->SetContextInvalid(sock);
                 Core::sysLogger->LogInfo("net handler", "game session died", "socket", sock);
                 abortSocket->AbortSocket(sock);
                 return;
             }
-            ctx->EnqueueRecvQ(buf, len);
+            ctx->EnqueueRecvQ(sessionID, buf, len);
 
         }
         bool OnDisConnect(SOCKET sock) const {
             return sessionManager->Disconnect(sock);
         }
-        uint16_t AllocateBuffer(SOCKET sock, uint8_t*& buf) const {
-            ClientContext* ctx = sessionManager->GetContext(sock);
-            if (ctx == nullptr) {
-                return 0;
-            }
-            return ctx->AllocateRecvBuffer(buf);
+        bool OnDisConnect(SOCKET sock, uint64_t expectedSessionID) const {
+            return sessionManager->Disconnect(sock, expectedSessionID);
         }
     };
 }
