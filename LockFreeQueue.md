@@ -1,19 +1,15 @@
-﻿# Lock-free Queue
-## 1. 개요 
-Lock-free Queue의 개념과 구현과정을 설명한 문서이다. 
+﻿# Lock-Free Queue
 
-## 2. Lock-Free Queue 개념
-Lock-free Queue란 어떤 스레드가 임의의 시점에 지연되거나 멈춰도, 유한 스텝 안에 최소 한 스레드는 진행하는 것이 보장되는 큐를 의미한다(progress guarantee).  
-락을 쓰지 않는 것은 정의가 아니라 이 보장을 얻기 위한 수단이다. 뮤텍스 기반 큐는 락을 쥔 스레드가 멈추면 나머지가 전부 대기하므로 이 보장이 성립하지 않는다.
+## 1. 개요
 
-본 문서에서는 Lock-free Queue를 직접 구현해보며 겪은 시행착오와,  
-SPSC(Single Producer Single Consumer)와 MPMC(Multi Producer Multi Consumer) 큐의 구조적 차이,  
-그리고 Dmitry Vyukov의 MPMC 큐 설계를 정리한다.
+이 문서는 코드에서 `LockFreeQueue`라는 타입명으로 사용 중인 Vyukov bounded MPMC queue의 구조와 구현 과정을 설명한다. 프로젝트에서는 실용적인 의미로 lock-free queue라고 부르며, 고정 용량의 다중 생산자·다중 소비자 큐에서 mutex 대신 atomic position과 slot별 sequence를 사용한다.
 
-## 3. 시행착오: CAS 기반 Ring Queue 시도
+이 구현은 mutex 없이 동작하지만 formal lock-free progress guarantee를 제공하지는 않는다. Producer는 tail CAS로 slot을 예약한 뒤 데이터를 기록하고 sequence를 공개하며, Consumer도 head CAS로 slot을 예약한 뒤 데이터를 꺼내고 sequence를 재사용 가능 상태로 바꾼다. 예약한 스레드가 sequence 공개 전에 멈추면 다른 스레드가 해당 작업을 대신 완료하거나 FIFO head를 건너뛸 수 없으므로 진행이 그 스레드의 재개에 의존한다. 일반 실행에서 예약과 공개 사이는 move assignment와 atomic store로 짧고 `push`와 `pop`은 준비되지 않은 상태에서 실패를 반환하지만, 이 실용적인 특성과 formal lock-free 보장은 구분한다.
+
+## 2. 시행착오: CAS 기반 Ring Queue 시도
 
 CAS(Compare-And-Swap)와 memory_order에 대한 기본적인 이해를 바탕으로  
-단순한 ring buffer 구조에 CAS를 적용하면 Lock-free 큐를 구현할 수 있을 것이라 가정했다.  
+단순한 ring buffer 구조에 CAS를 적용하면 Lock-free 큐를 구현할 수 있을 것이라 생각했다.  
 
 ```cpp
 	template<typename T, size_t QSize>
@@ -55,7 +51,7 @@ last_op 없이도 CAS만으로 race condition을 방지할 수 있을 것이라 
 이 두 조건을 단일 CAS 연산으로 묶을 수 없었고,    
 결과적으로 race condition을 완전히 제거할 수 없었다.
 
-## 4. SPSC Queue: CAS 없이 가능한 이유
+## 3. SPSC Queue: CAS 없이 가능한 이유
 SPSC(Single Producer Single Consumer) 환경에서는    
 producer와 consumer가 각각 서로 다른 변수를 독점적으로 수정한다.
 - producer → tail만 수정  
@@ -93,9 +89,9 @@ producer와 consumer가 각각 하나의 스레드이기 때문에
 - empty 상태에서 producer가 push하는 경우는 retry 로직으로 자연스럽게 해결된다.
 - push에서도 full이 아닌 상태에서 consumer에 의해 다시 full이 되는 상황은 발생하지 않는다.
 
-따라서 SPSC 환경에서는 CAS 없이도 Lock-free 큐를 안전하게 구현할 수 있다.
+따라서 SPSC 환경에서는 CAS 없이도 각 `push`와 `pop`을 고정된 단계의 atomic load/store로 구현할 수 있다.
 
-## 5. MPSC / SPMC / MPMC의 어려움
+## 4. MPSC / SPMC / MPMC의 어려움
 
 Multiple Producer 혹은 Multiple Consumer가 존재하는 환경에서는 상황이 완전히 달라진다.  
 - 여러 producer가 tail을 경쟁  
@@ -104,9 +100,9 @@ Multiple Producer 혹은 Multiple Consumer가 존재하는 환경에서는 상�
 
 이로 인해 단순한 head / tail CAS만으로는 큐의 Race condition을 해결할 수 없다.  
 
-## 6. Dmitry Vyukov의 MPMC Queue
-MPMC Lock-free 큐 구현에서 가장 널리 알려진 해법은  
-Dmitry Vyukov가 제시한 bounded MPMC 큐이다.  
+## 5. Vyukov Bounded MPMC Queue
+
+Dmitry Vyukov가 제시한 bounded MPMC queue는 각 slot에 sequence 번호를 부여해 slot의 세대와 상태를 하나의 atomic 값으로 표현한다.
 
 핵심 아이디어는 다음과 같다.  
 > 각 slot(Cell)에 sequence 번호(seq)를 부여하여   
@@ -142,14 +138,14 @@ push / pop 가능 여부를 판단한다.
 - ABA 문제를 구조적으로 회피 (seq는 non-decreasing)
 - CAS 하나로 slot 상태 전이를 안전하게 제어 가능
 
-Vyukov의 구현은 논문이 아닌 블로그로 공개되었으며, 현재는 아래 저장소에서 확인할 수 있다.
-https://github.com/couchbase/phosphor/blob/master/thirdparty/dvyukov/include/dvyukov/mpmc_bounded_queue.h
+원 설계자는 이 알고리즘을 atomic RMW로 구현된 bounded MPMC queue로 설명하면서 공식적인 progress guarantee 의미의 lock-free는 아니라고 명시했다.
 
-원문 설명 (블로그, 현재 접근 불가):   
-http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
+- [원 저자의 알고리즘 설명](https://groups.google.com/g/lock-free/c/-bqYlfbQmH0)
+- [참고 구현](https://github.com/couchbase/phosphor/blob/master/thirdparty/dvyukov/include/dvyukov/mpmc_bounded_queue.h)
 
-## 7. 구현 코드
-[BaseLib/LockFreeQueue](BaseLib/LockFreeQueue.h) — value / shared_ptr / unique_ptr 통합 버전
+## 6. 구현 코드
+
+[BaseLib/LockFreeQueue](BaseLib/LockFreeQueue.h)는 value, `shared_ptr`, `unique_ptr`를 하나의 템플릿으로 처리한다. 타입명은 기존 참조와 테스트를 위해 유지하고 있지만, 구현 특성을 나타내는 정확한 명칭은 Vyukov bounded MPMC queue다.
 
 기존에는 원소 타입별로 `LockFreeQueue`(value) / `LockFreeQueueSP`(shared_ptr) / `LockFreeQueueUP`(unique_ptr) 3개로 나뉘어 있었다.
 코어 알고리즘(seq 기반 슬롯 상태 + CAS)은 세 버전이 완전히 동일했고, 갈라진 부분은 원소를 넣고 빼는 API뿐이었다.
@@ -169,20 +165,21 @@ http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
 즉 반환 기반(nullptr 센티넬) API 대신 **참조 기반(consume-on-success) API**로 통일한 것이 통합의 핵심이다.  
 이렇게 하면 "실패 시 원본 보존(unique_ptr)"과 "센티넬 없는 값 타입"을 하나의 시그니처로 동시에 만족시킬 수 있다.
 
-## 8. 주의사항 
+## 7. 주의사항
 - 큐 크기는 모듈러 연산 최적화를 위해 2의 거듭제곱으로 사용한다.
 - std::array를 사용하며, 큐 크기는 컴파일 타임에 결정되도록 템플릿 인자로 전달한다.
 - push는 큐가 가득 찬 경우 false를 반환하므로, 중요한 데이터의 경우 back-off 정책이 필요하다.
-- LockFree 큐는 empty(), size() 메서드를 제공하지 않는다.
+- 이 bounded MPMC queue는 empty(), size() 메서드를 제공하지 않는다.
 	- size 계산 자체가 race condition을 유발할 수 있으며,
 	- consumer 쪽에서도 적절한 wait / retry 정책이 필요하다
   
 ![이미지 로드 실패](images/StackOverflow.png)
 - 테스트 환경에서 위와 같이 스택오버플로우(0xc00000FD)가 발생한다.
-- LockFree큐에서 array를 사용해서 stack overflow가 발생한 것이다.
+- 초기 구현에서 큰 고정 배열을 객체 내부에 직접 둔 것이 stack overflow의 원인이었다.
 - C스타일 배열을 unique_ptr로 감싸서 heap 메모리를 사용하면 해결된다.
 - 또한 이 큐는 여러 스레드가 오래 공유하는 자료구조이므로, 스택 수명에 묶이지 않도록
   heap에 올려 두는 편이 용도에 맞는다.
 
-## 9. 단위 테스트  
-[LockFreeQueueDebug](LockFreeQueueDebug.md)
+## 8. 단위 테스트
+
+[Lock-Free Queue 디버깅 기록](LockFreeQueueDebug.md)

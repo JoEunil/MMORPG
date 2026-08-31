@@ -1,8 +1,8 @@
 ﻿# Lock-Free Queue Debug
 
- ## 1. 개요
-[BaseLib/LockFreeQueue](BaseLib/LockFreeQueue.h)는 Vyukov의 MPMC Lock-Free Queue를 참고하여 구현된 다중 생산자/소비자(MPMC) 큐이다.  
-이 문서는 Lock-Free Queue에 대한 테스트및 디버깅을 정리한다.
+## 1. 개요
+
+[BaseLib/LockFreeQueue](BaseLib/LockFreeQueue.h)는 Vyukov의 bounded MPMC queue를 참고하여 구현한 다중 생산자·다중 소비자 큐다. 이 문서는 slot별 sequence 계산 오류를 찾고 수정한 테스트 및 디버깅 과정을 정리하며, formal progress guarantee의 한계는 [Lock-Free Queue 문서](LockFreeQueue.md)에 별도로 명시한다.
 
 ## 2. 테스트 시나리오
 [LockFreeQueue unit test 코드](UnitTests/BaseLib/LockFreeQueue.cpp)  

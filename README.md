@@ -36,7 +36,7 @@ C++ 기반 TCP Stateful MMORPG 게임 서버 — 개인 프로젝트 (개발 기
 
 Zone 단위 틱 루프, Cell 기반 AOI, Delta/Full 스냅샷 분리, TCP, 고정 객체풀, Write-Back 캐시는 모두 이 자릿수 차이(세션당 5~32명 vs Zone당 수백~수천 명)에서 갈라져 나온 결정이다. 자세한 내용은 [설계 결정](DesignDecisions.md)에 정리했다.
 
-- **동시성**: IOCP 비동기 IO 기반으로 **단일 PC 환경에서 5,000명 동시 접속**을 검증했다 (Lock-Free Queue, Zone Tick 기반 멀티스레드 아키텍처)
+- **동시성**: IOCP 비동기 IO 기반으로 **단일 PC 환경에서 5,000명 동시 접속**을 검증했다 (Vyukov bounded MPMC queue, Zone Tick 기반 멀티스레드 아키텍처)
 - **안정성**: WAL 기반 In-Process Write-Back Cache로 장애 시 Dirty 데이터 복구를 보장하고, **ASan으로 메모리 안전성(누수·오류 없음)을 검증**했다
 - **정합성**: 거래소 시스템에서 Saga·Outbox/Inbox 패턴으로 cross-DB 정합성을, **Crash 후 배송 exactly-once(유실·중복 없음)를 테스트로 검증**했다
 
@@ -44,7 +44,7 @@ Zone 단위 틱 루프, Cell 기반 AOI, Delta/Full 스냅샷 분리, TCP, 고�
 
 **검증**
 - 핵심 컴포넌트 Google Test 단위 테스트
-  (LockFreeQueue, TripleBuffer, RingBuffer, RingQueue, FixedObjectPool, PacketView, NetTimer, WAL — 동시성 테스트 포함)
+  (`LockFreeQueue`, `TripleBuffer`, `RingBuffer`, `RingQueue`, `FixedObjectPool`, `PacketView`, `NetTimer`, WAL — 동시성 테스트 포함)
 - Cache / 거래소 통합 테스트 (DB fetch, LRU eviction, WAL Crash 복구, 거래소 Crash 시나리오, 동시 구매 경합)
 - Unity 클라이언트 연동 및 기본 기능 테스트
 - 더미 클라이언트 부하 테스트
@@ -58,7 +58,7 @@ Zone 단위 틱 루프, Cell 기반 AOI, Delta/Full 스냅샷 분리, TCP, 고�
 
 __게임 서버 (C++)__
 - 네트워크: IOCP 비동기 IO, 커스텀 바이너리 프로토콜, RingBuffer 패킷 조립
-- 동시성: Vyukov's Lock-free Queue, Triple Buffer, Sharded Mutex
+- 동시성: Vyukov Bounded MPMC Queue, Triple Buffer, Sharded Mutex
 - 캐시:In-Process Write-Back Cache (Shard, LRU eviction, WAL 기반 장애 복구, ACID 설계)
 - 게임 로직: Zone Tick, Cell 기반 AOI, Snapshot Delta 동기화
 - 안정성: Ping 좀비 세션 탐지, Flood Detection
@@ -145,7 +145,7 @@ Redis는 authoritative source가 아닌 캐시 계층으로 사용되며, 일부
 ## 핵심 기술 요약
 
 MMO 특성상 수천~수만 개의 동시 커넥션을 처리해야 하므로 IOCP 기반 비동기 IO를 채택해 소수의 워커 스레드로 대용량 트래픽을 처리한다.
-Lock-Free 자료구조와 Zone 기반 멀티스레드 아키텍처로 동시성을 최적화했다.
+Vyukov bounded MPMC queue와 Zone 기반 멀티스레드 아키텍처로 작업 전달 경합을 줄였다.
 
 ### 1. 소켓과 패킷 수신/송신 처리 구조
 - __수신 및 전파__: IOCP 비동기 수신 → ClientContext의 RingBuffer를 통한 패킷 조립 → PacketView를 활용한 제로 카피 지향 로직 전파
@@ -156,7 +156,7 @@ Lock-Free 자료구조와 Zone 기반 멀티스레드 아키텍처로 동시성�
 
 ### 2. 멀티스레드 동기화 및 성능 최적화
 - [memory_order](memory_order.md): 멀티스레드 환경의 메모리 재배치와 가시성 문제를 방지하고 성능을 최적화하기 위해, Acquire-Release 시맨틱의 동작 원리를 분석하고 이를 SpinLock 설계에 적용한 과정을 정리
-- [LockFreeQueue](LockFreeQueue.md): **Vyukov's Bounded MPMC Lock-free Queue** 구현 및 검증
+- [Vyukov Bounded MPMC Queue](LockFreeQueue.md): slot별 sequence와 CAS를 이용한 고정 용량 MPMC queue 구현 및 검증. Mutex 없이 동작하지만 formal lock-free progress guarantee는 제공하지 않는다.
 - [TripleBuffer](TripleBuffer.md): RCU + Triple Buffer 개념을 응용한 스냅샷 버퍼 구현. Zone 스레드(Writer)의 세션 스냅샷을 브로드캐스트 스레드풀(Reader)에 공유하는 용도로 사용하며, 설계 목표는 SPMC이며, CAS 기반 상태 플래그 구조 덕분에 Writer가 여럿이어도 메모리 안전성은 유지된다(lost update를 막지는 않으므로 MPMC 용도로는 쓰지 않는다). 잠금/최신 여부/Reader Count 상태를 Bit Packing으로 단일 atomic 변수에 압축 관리
 
 ### 3. 네트워크 안정성
@@ -229,7 +229,7 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 
 | 대상 | 테스트 범위 |
 |---|---|
-| LockFreeQueue (raw/unique_ptr/shared_ptr) | push/pop 정합성, empty/full 경계 처리, 멀티스레드 push/pop 경합 |
+| `LockFreeQueue` (raw/unique_ptr/shared_ptr) | push/pop 정합성, empty/full 경계 처리, 멀티스레드 push/pop 경합 |
 | TripleBuffer | 포인터 스왑 검증, Eventually consistent 읽기 보장, Reader 간 경합, Writer/Reader 동시 접근 |
 | RingBuffer | 버퍼 획득/반납, 고갈·wrap-around 경계 조건, Release 범위 검증 |
 | RingQueue | 기본 동작 및 초기 상태 검증 |
@@ -302,7 +302,7 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 
 ## 트러블 슈팅
 
-[LockFreeQueue 디버그](LockFreeQueueDebug.md)
+[Vyukov Bounded MPMC Queue 디버그](LockFreeQueueDebug.md)
   - pop 시 seq 갱신 오류로 인한 무한 대기를 스레드 상태 및 호출 스택 분석으로 추적하여 수정
 
 [ContextPool memory_order 디버그](MemoryOrderDebug.md)
@@ -417,7 +417,7 @@ DB → Redis → 로그인 서버 → 게임 서버
 
 ### 개념
 - [memory_order](memory_order.md)
-- [LockFreeQueue](LockFreeQueue.md)
+- [Vyukov Bounded MPMC Queue](LockFreeQueue.md)
 - [IOCP와 epoll](IOCP&epoll.md)
 - [로그 구조화](StructuredLogging.md)
 - [TripleBuffer](TripleBuffer.md)
@@ -455,7 +455,7 @@ DB → Redis → 로그인 서버 → 게임 서버
 
 ### 트러블 슈팅
 - [SessionManager 데드락](SessionManagerDeadLock.md)
-- [LockFreeQueue 디버그](LockFreeQueueDebug.md)
+- [Vyukov Bounded MPMC Queue 디버그](LockFreeQueueDebug.md)
 - [ContextPool memory_order 디버그](MemoryOrderDebug.md)
 - [DummyTest 디버그](DummyTestDebug.md)
 

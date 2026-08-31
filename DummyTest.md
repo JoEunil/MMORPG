@@ -46,7 +46,7 @@ __더미 클라이언트 동작__
 
 - Memory Pool: overlapped pool, packet pool 모두 객체 자원 반납이 즉각적으로 이루어짐을 확인하였다.  
  전체 객체 사용량이 정상 범위 내에서 안정적으로 유지되고 있다.
-- Broadcast Queue: Lock-free 기반 작업 큐의 enqueue, pop 횟수를 실시간 추적한 결과, 두 그래프의 오차가 거의 발생하지 않았다.   
+- Broadcast Queue: Lock-free 기반 작업 큐의 enqueue, pop 횟수를 실시간 추적한 결과, 두 그래프의 오차가 거의 발생하지 않았다.
  이는 큐에 작업이 적체되지 않고 원활하게 처리되고 있음을 의미한다.
  
 ### 4.2 전송 처리량(Throughput)
