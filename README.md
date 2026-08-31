@@ -34,7 +34,7 @@ C++ 기반 TCP Stateful MMORPG 게임 서버 — 개인 프로젝트 (개발 기
 | durability | 매치 종료 후 1회 저장 | 가동 중 상시 정합 |
 | 확장 방향 | 매치 인스턴스 추가 | 월드 분할 |
 
-Zone 단위 틱 루프, Cell 기반 AOI, Delta/Full 스냅샷 분리, TCP, 고정 객체풀, Write-Back 캐시는 모두 이 자릿수 차이(세션당 5~32명 vs Zone당 수백~수천 명)에서 갈라져 나온 결정이다. 자세한 내용은 [설계 결정](DesignDecisions.md)에 정리했다.
+Zone 단위 틱 루프, Cell 기반 AOI, Delta/Full 스냅샷 분리, 고정 객체풀, Write-Back 캐시는 모두 이 자릿수 차이(세션당 5~32명 vs Zone당 수백~수천 명)에서 갈라져 나온 결정이다. 자세한 내용은 [설계 결정](DesignDecisions.md)에 정리했다.
 
 - **동시성**: IOCP 비동기 IO 기반으로 **단일 PC 환경에서 5,000명 동시 접속**을 검증했다 (Vyukov bounded MPMC queue, Zone Tick 기반 멀티스레드 아키텍처)
 - **안정성**: WAL 기반 In-Process Write-Back Cache로 장애 시 Dirty 데이터 복구를 보장하고, **ASan으로 메모리 안전성(누수·오류 없음)을 검증**했다
