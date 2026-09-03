@@ -52,8 +52,8 @@ MPMC 환경에서 사용한다면 전달하는 bucket도 MPMC-safe해야 한다.
 
 ## 5. 주의사항
 
-- defer queue도 고정 크기이므로 가득 찰 수 있다. 이 경우 반드시 로그나 별도의 실패 처리가 필요하다.
-- `Enqueue`가 `void`이므로 현재 구현에서는 defer 실패를 내부에서 처리해야 한다. 호출자가 재시도 여부를 결정해야 한다면 `bool` 반환으로 변경할 수 있다.
+- `Enqueue`는 bucket 또는 defer queue가 입력을 받으면 `true`, Droppable을 버리거나 defer queue까지 가득 차면 `false`를 반환한다.
+- defer queue도 고정 크기이므로 호출자는 `false` 반환 시 로그, 재시도 또는 별도의 실패 처리를 선택해야 한다.
 - 복구와 defer push가 겹치는 경우를 위해 normal 상태에서도 bucket이 비면 defer queue를 확인한다.
 - bucket과 defer queue 각각의 FIFO는 유지되지만 전체 입력에 대한 전역 FIFO는 보장하지 않는다.
 

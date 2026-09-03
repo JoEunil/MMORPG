@@ -91,11 +91,11 @@ TEST(BackPressureTest, DegradedPathDropsDroppableAndDefersImportant) {
 	int droppable = 4;
 	int nextImportant = 5;
 
-	queue.Enqueue(one, Base::Priority::Droppable);
-	queue.Enqueue(two, Base::Priority::Droppable);
-	queue.Enqueue(important, Base::Priority::Important);
-	queue.Enqueue(droppable, Base::Priority::Droppable);
-	queue.Enqueue(nextImportant, Base::Priority::Important);
+	EXPECT_TRUE(queue.Enqueue(one, Base::Priority::Droppable));
+	EXPECT_TRUE(queue.Enqueue(two, Base::Priority::Droppable));
+	EXPECT_TRUE(queue.Enqueue(important, Base::Priority::Important));
+	EXPECT_FALSE(queue.Enqueue(droppable, Base::Priority::Droppable));
+	EXPECT_TRUE(queue.Enqueue(nextImportant, Base::Priority::Important));
 
 	std::vector<int> drained;
 	int out = 0;
@@ -106,7 +106,7 @@ TEST(BackPressureTest, DegradedPathDropsDroppableAndDefersImportant) {
 	EXPECT_EQ(drained, (std::vector<int>{ 1, 2, 3, 5 }));
 
 	int recovered = 6;
-	queue.Enqueue(recovered, Base::Priority::Droppable);
+	EXPECT_TRUE(queue.Enqueue(recovered, Base::Priority::Droppable));
 	ASSERT_TRUE(queue.Dequeue(out));
 	EXPECT_EQ(out, 6);
 }
@@ -116,8 +116,8 @@ TEST(BackPressureTest, SupportsAnyBucketWithPushAndPop) {
 
 	int one = 1;
 	int two = 2;
-	queue.Enqueue(one, Base::Priority::Droppable);
-	queue.Enqueue(two, Base::Priority::Important);
+	EXPECT_TRUE(queue.Enqueue(one, Base::Priority::Droppable));
+	EXPECT_TRUE(queue.Enqueue(two, Base::Priority::Important));
 
 	int out = 0;
 	ASSERT_TRUE(queue.Dequeue(out));
@@ -130,12 +130,13 @@ TEST(BackPressureTest, DeferredItemIsNotStrandedDuringRecoveryRace) {
 	Base::BackPressure<AlwaysFullBucket, BlockingItem, 2> queue;
 	std::atomic<bool> entered = false;
 	std::atomic<bool> proceed = false;
+	std::atomic<bool> accepted = false;
 	BlockingItem::entered = &entered;
 	BlockingItem::proceed = &proceed;
 
 	BlockingItem item(7, true);
 	std::thread producer([&]() {
-		queue.Enqueue(item, Base::Priority::Important);
+		accepted.store(queue.Enqueue(item, Base::Priority::Important), std::memory_order_release);
 	});
 
 	const bool producerEntered = WaitUntilTrue(entered);
@@ -150,6 +151,7 @@ TEST(BackPressureTest, DeferredItemIsNotStrandedDuringRecoveryRace) {
 	BlockingItem::entered = nullptr;
 	BlockingItem::proceed = nullptr;
 
+	EXPECT_TRUE(accepted.load(std::memory_order_acquire));
 	BlockingItem out;
 	ASSERT_TRUE(queue.Dequeue(out));
 	EXPECT_EQ(out.value, 7);
