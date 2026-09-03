@@ -158,6 +158,7 @@ Vyukov bounded MPMC queue와 Zone 기반 멀티스레드 아키텍처로 작업 
 - [memory_order](memory_order.md): 멀티스레드 환경의 메모리 재배치와 가시성 문제를 방지하고 성능을 최적화하기 위해, Acquire-Release 시맨틱의 동작 원리를 분석하고 이를 SpinLock 설계에 적용한 과정을 정리
 - [Vyukov Bounded MPMC Queue](LockFreeQueue.md): slot별 sequence와 CAS를 이용한 고정 용량 MPMC queue 구현 및 검증. Mutex 없이 동작하지만 formal lock-free progress guarantee는 제공하지 않는다.
 - [TripleBuffer](TripleBuffer.md): RCU + Triple Buffer 개념을 응용한 스냅샷 버퍼 구현. Zone 스레드(Writer)의 세션 스냅샷을 브로드캐스트 스레드풀(Reader)에 공유하는 용도로 사용하며, 설계 목표는 SPMC이며, CAS 기반 상태 플래그 구조 덕분에 Writer가 여럿이어도 메모리 안전성은 유지된다(lost update를 막지는 않으므로 MPMC 용도로는 쓰지 않는다). 잠금/최신 여부/Reader Count 상태를 Bit Packing으로 단일 atomic 변수에 압축 관리
+- [Back Pressure](BackPressure.md): 병목 시 drop을 기본으로 하고, degraded mode에서 Droppable 입력은 버리며 Important 입력은 별도 defer queue에 보관하는 정책을 일반화해 구현. 실제 서버에는 적용하지 않았으며 단위 테스트로 동작 검증
 
 ### 3. 네트워크 안정성
 - [Ping](PingLoop.md): Ping 루프를 통한 좀비 세션 탐지. IOCP 워커의 호출 스택과 분리된 전용 스레드에서 세션을 종료하는 안전한 종료 전략 적용
@@ -421,6 +422,7 @@ DB → Redis → 로그인 서버 → 게임 서버
 - [IOCP와 epoll](IOCP&epoll.md)
 - [로그 구조화](StructuredLogging.md)
 - [TripleBuffer](TripleBuffer.md)
+- [Back Pressure](BackPressure.md)
 
 ### 컨텐츠 설계
 - [Skill](Skill.md)

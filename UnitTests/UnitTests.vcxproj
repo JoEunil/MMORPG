@@ -148,6 +148,7 @@ xcopy /Y "$(SolutionDir)External\mysqlconn\Debug\*.pdb" "$(OutDir)"</Command>
     <ClCompile Include="..\CoreLib\LoggerGlobal.cpp" />
     <ClCompile Include="..\NetLibrary\ClientContext.cpp" />
     <ClCompile Include="..\NetLibrary\RingBuffer.cpp" />
+    <ClCompile Include="BaseLib\BackPressure.cpp" />
     <ClCompile Include="BaseLib\LockFreeQueue.cpp" />
     <ClCompile Include="BaseLib\TripleBuffer.cpp" />
     <ClCompile Include="BaseLib\WAL.cpp" />
