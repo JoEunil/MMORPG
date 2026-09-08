@@ -41,12 +41,11 @@ namespace Base {
 		}
 
 		bool Dequeue(T& out) {
-			// producer와 복구 상태 전환이 완전히 직렬화되지 않으므로, degraded 상태에서는 defer queue에 남은 작업을 우선 소진한다.
 			if (m_degraded.load(std::memory_order_relaxed)) {
-				if (m_defer.pop(out)) {
+				if (m_bucket.pop(out)) {
 					return true;
 				}
-				if (m_bucket.pop(out)) {
+				if (m_defer.pop(out)) {
 					return true;
 				}
 
@@ -54,11 +53,13 @@ namespace Base {
 				return false;
 			}
 
-			if (m_bucket.pop(out)) {
+			// 복구 전환과 concurrent producer의 defer push는 직렬화되지 않는다.
+			// 전환 직후 늦게 publish된 defer 작업을 먼저 회수한다.
+			if (m_defer.pop(out)) {
 				return true;
 			}
 
-			return m_defer.pop(out);
+			return m_bucket.pop(out);
 		}
 	};
 }
