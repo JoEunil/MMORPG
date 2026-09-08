@@ -120,6 +120,10 @@ namespace Base {
 
 		BufferReader& operator=(BufferReader&& other) noexcept {
 			if (this != &other) {
+				if (owner != nullptr) {
+					owner->ReadDone();
+				}
+
 				owner = other.owner;
 				data = other.data;
 				other.owner = nullptr;
