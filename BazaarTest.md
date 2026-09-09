@@ -157,7 +157,6 @@ __lock_waits는 발생했지만 lock_time은 짧았던 이유__
 40건의 동시 요청 중 14건이 실제로 락 대기를 겪었으므로 경합 자체는 발생했다. 다만 대기 시간은 평균 1ms로 매우 짧았는데, 그 이유는 다음과 같다.  
 - 테스트 환경에서 요청 타이밍을 정확히 일치시킬 수 없어, 14건 각각의 대기가 다수 요청이 동시에 몰린 것이 아니라 소수 요청끼리 겹친 수준에 그쳤다.
 - stored procedure로 트랜잭션이 DB 내부에서 완결되어 lock holding time 자체가 짧다.
-- 프로시저는 SELECT FOR UPDATE 없이 CAS 패턴(UPDATE WHERE status = 'TRADING')으로 경합을 처리하므로, 경합 지점이 bazaar 테이블의 단일 UPDATE로 한정되고 실패한 트랜잭션은 즉시 rollback된다.
 
 ## 6. 참고
 
