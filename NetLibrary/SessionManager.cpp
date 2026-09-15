@@ -93,7 +93,7 @@ namespace Net {
         out.clear();
         for (auto&[socket, state]: shard.stateMap)
         {
-            out.push_back(PingStruct{ socket, state.GetSessionID(), state.GetRtt(), state.CheckSession() });
+            out.emplace_back(socket, state.GetSessionID(), state.GetRtt(), state.CheckSession());
         }
     }
 }

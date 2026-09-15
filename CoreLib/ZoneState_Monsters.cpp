@@ -118,15 +118,15 @@ namespace Core {
 
             if (dist2 <= 2 and monster.tick >= step.delayTicks)
             {
-                m_cells[monster.cellY][monster.cellX].activeSkills.push_back(ActiveSkill{
+                m_cells[monster.cellY][monster.cellX].activeSkills.emplace_back(
                     1, 0, 0, monster.internalID, 0, monster.dir, monster.x, monster.y, skill.skillID, 0, 0
-                    });
+                    );
                 monster.skillStep++;
                 monster.tick = 0;
             } else if (monster.aggroTick >= step.delayTicks and monster.data->id == 2) {
-                m_cells[monster.cellY][monster.cellX].activeSkills.push_back(ActiveSkill{
+                m_cells[monster.cellY][monster.cellX].activeSkills.emplace_back(
                     1, 0, 0, monster.internalID, 0, monster.dir, monster.x, monster.y, skill.skillID, 0, 0
-                    });
+                    );
                 monster.skillStep++;
                 monster.tick = 0;
             } else {

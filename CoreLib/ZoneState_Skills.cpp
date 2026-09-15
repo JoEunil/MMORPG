@@ -71,7 +71,7 @@ namespace Core {
 			auto actionID = skillData.phases[skill.currentPhase].actionID;
 			if (actionID == 1)
 				ApplyHit(caster, skill, idx);
-			cell.actionResults.push_back(ActionResult{
+			cell.actionResults.emplace_back(
 			skill.casterType,
 			skill.zoneInternalId,
 			skill.monsterId,
@@ -80,8 +80,8 @@ namespace Core {
 			skill.x,
 			skill.y,
 			skill.skillId,
-			skill.currentPhase,            
-				});
+			skill.currentPhase            
+				);
 			if (++skill.currentPhase >= skillData.phases.size()) {
 				PopSkill(k, cell.activeSkills);
 				k--;

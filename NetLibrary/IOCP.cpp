@@ -454,7 +454,7 @@ namespace Net {
         pOverlappedEx->packetChunks = packetChunks;
         for (auto& chunk : packetChunks)
         {
-            pOverlappedEx->wsaBuf.push_back(WSABUF{ chunk->GetLength(), reinterpret_cast<char*>(chunk->GetBuffer()) });
+            pOverlappedEx->wsaBuf.emplace_back(chunk->GetLength(), reinterpret_cast<char*>(chunk->GetBuffer()));
         }
         EnqueueSendResult status = sessionManager->EnqueueSend(clientSocket, pOverlappedEx);
         if (status == EnqueueSendResult::Ready) {
