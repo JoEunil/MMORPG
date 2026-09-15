@@ -61,7 +61,7 @@ namespace Core {
             if (distSq > MOVE_BUDGET_CAP * MOVE_BUDGET_CAP) {
                 gameLogger->LogInfo("zone state", "move exceeds budget", "sessionID", sessionID,
                     "dist", std::sqrt(distSq), "budget", character.moveBudget);
-                m_cheatList.push_back({ sessionID, 1 });
+                m_cheatList.emplace_back(sessionID, 1);
             }
         }
 
@@ -104,7 +104,7 @@ namespace Core {
         auto& character = m_chars[it->second];
         if (skillSlot > (character.skillSlotCnt - 1)) {
 			gameLogger->LogInfo("zone state", "invalid skill slot", "sessionID", sessionID, "skillSlot", skillSlot);
-            m_cheatList.push_back({ sessionID, 1 });
+            m_cheatList.emplace_back(sessionID, 1);
             return;
         }
         auto& skill = character.skillSlot[skillSlot];
@@ -117,9 +117,9 @@ namespace Core {
             character.dirtyBit |= 0x02;
         }
         skill.skillCoolDownTick = skillInfo.coolDown;
-        m_cells[character.cellY][character.cellX].activeSkills.push_back(ActiveSkill{
+        m_cells[character.cellY][character.cellX].activeSkills.emplace_back(
             0, sessionID, character.zoneInternalID, 0, skillSlot, character.dir, character.x, character.y, skill.skillID, 0, 0
-        });
+        );
     }
 
     void ZoneState::DirtyCheck(uint64_t sessionID) {

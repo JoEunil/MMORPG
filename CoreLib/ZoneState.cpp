@@ -66,9 +66,9 @@ namespace Core {
         AddToCell(state, x, y);
         state.lastZone = m_zoneID;
         state.skillSlotCnt = 3;
-        state.skillSlot.push_back(SkillSlotEntry(0, 0));
-        state.skillSlot.push_back(SkillSlotEntry(1, 0));
-        state.skillSlot.push_back(SkillSlotEntry(2, 0));
+        state.skillSlot.emplace_back(0, 0);
+        state.skillSlot.emplace_back(1, 0);
+        state.skillSlot.emplace_back(2, 0);
         m_chars.push_back(state);
         m_sessionToIndex[sessionID] = index;
         m_InternalIDToIndex[state.zoneInternalID] = index;

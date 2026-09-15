@@ -141,8 +141,8 @@ namespace Cache {
         auto command = std::make_unique<FlushCommand>();
         command->stmtID = 8;
 
-        command->params.push_back(result.data.gold);
-        command->params.push_back(key.characterID);
+        command->params.emplace_back(result.data.gold);
+        command->params.emplace_back(key.characterID);
         return command;
     }
 }

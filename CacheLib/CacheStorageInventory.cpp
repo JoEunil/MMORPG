@@ -260,7 +260,7 @@ namespace Cache {
         std::memcpy(blob.data(), &result.data, sizeof(InventoryData));
 
         command->params.emplace_back(std::move(blob));
-        command->params.push_back(key.characterID);
+        command->params.emplace_back(key.characterID);
         return command;
     }
 
