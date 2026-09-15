@@ -71,7 +71,7 @@ namespace Core {
 			auto actionID = skillData.phases[skill.currentPhase].actionID;
 			if (actionID == 1)
 				ApplyHit(caster, skill, idx);
-			cell.actionResults.emplace_back(ActionResult{
+			cell.actionResults.push_back(ActionResult{
 			skill.casterType,
 			skill.zoneInternalId,
 			skill.monsterId,

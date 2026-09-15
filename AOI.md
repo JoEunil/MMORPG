@@ -29,7 +29,7 @@ void IOCP::SendDataChunks(uint64_t sessionID, std::shared_ptr<Core::IPacket> pac
     pOverlappedEx->packetChunks = packetChunks;
     for (auto& chunk : packetChunks)
     {
-        pOverlappedEx->wsaBuf.emplace_back(WSABUF{ chunk->GetLength(), reinterpret_cast<char*>(chunk->GetBuffer()) });
+        pOverlappedEx->wsaBuf.push_back(WSABUF{ chunk->GetLength(), reinterpret_cast<char*>(chunk->GetBuffer()) });
     }
     ~~
 }

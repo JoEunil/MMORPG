@@ -117,7 +117,7 @@ namespace Core {
             character.dirtyBit |= 0x02;
         }
         skill.skillCoolDownTick = skillInfo.coolDown;
-        m_cells[character.cellY][character.cellX].activeSkills.emplace_back(ActiveSkill{
+        m_cells[character.cellY][character.cellX].activeSkills.push_back(ActiveSkill{
             0, sessionID, character.zoneInternalID, 0, skillSlot, character.dir, character.x, character.y, skill.skillID, 0, 0
         });
     }

@@ -40,7 +40,7 @@ void IOCP::SendDataChunks(uint64_t sessionID, std::shared_ptr<Core::IPacket> pac
     ~~~
     for (auto& chunk : packetChunks)
     {
-        pOverlappedEx->wsaBuf.emplace_back(WSABUF{ chunk->GetLength(), reinterpret_cast<char*>(chunk->GetBuffer()) });
+        pOverlappedEx->wsaBuf.push_back(WSABUF{ chunk->GetLength(), reinterpret_cast<char*>(chunk->GetBuffer()) });
     }
     EnqueueSendResult status = sessionManager->EnqueueSend(clientSocket, pOverlappedEx);
     if  (status == EnqueueSendResult::Ready) {

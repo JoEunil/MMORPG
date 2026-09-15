@@ -7,7 +7,7 @@
 ```cpp
         void Increase(uint16_t currentSize) {
             while (currentSize++ < target) {
-                objects.emplace_back(new T);
+                objects.push_back(new T);
             }
         }
         void Decrease(uint16_t currentSize) {

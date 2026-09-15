@@ -112,7 +112,7 @@ namespace Core {
             m_running.store(true, std::memory_order_relaxed);
             for (int i = 0; i < CHAT_WORKER_SIZE; i++)
             {
-                m_workerThreadPool.emplace_back(std::thread(&ChatThreadPool::ThreadFunc, this));
+                m_workerThreadPool.emplace_back(&ChatThreadPool::ThreadFunc, this);
             }
         }
 
