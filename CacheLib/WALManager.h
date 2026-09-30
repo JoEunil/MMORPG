@@ -14,7 +14,7 @@
 #include <CacheLib/DBConnectionGame.h>
 
 namespace Cache {
-	inline constexpr std::chrono::milliseconds DEFAULT_WAL_FSYNC_INTERVAL{ 50 };
+	inline constexpr std::chrono::milliseconds DEFAULT_WAL_FSYNC_INTERVAL{ 25 };
 
 	struct WalInventoryRecord {
 		uint64_t      characterID;

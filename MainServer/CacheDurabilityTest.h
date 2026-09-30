@@ -86,7 +86,7 @@ namespace Cache {
 			std::cout << "  ADD 반영됨 (캐시+WAL). DB flush 전 크래시 유발\n";
 		}
 
-		// 필수 대기: fsync 스레드 주기(50ms)가 지나야 WAL 레코드가 CRT 버퍼를
+		// 필수 대기: fsync 스레드 목표 주기(25ms)가 지나야 WAL 레코드가 CRT 버퍼를
 		// 벗어나 OS 페이지 캐시로 내려감. abort()는 CRT 버퍼를 버리므로,
 		// 이 대기 없이 abort하면 레코드가 유실되어 테스트가 성립하지 않음.
 		Block();
