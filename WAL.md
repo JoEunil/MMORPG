@@ -96,17 +96,41 @@ FlushFileBuffers() ->  3. 디스크                 — 정전에도 생존
 ```
 
 `WAL::Write()`는 shard 락 안에서 호출되므로 1 단계까지만 하고 빠진다(레코드 조립 + memcpy + fwrite, 디스크 I/O 대기 없음).   
-2,3 단계(`Fsync()`)는 별도 스레드가 50ms 주기로 일괄 처리한다.   
-순서 보장(동기 Write)과 내구성 보장(비동기 fsync)을 분리해, 쓰기 경로의 레이턴시는 memcpy 수준으로 유지하면서 손실 창만 fsync 주기로 제한하는 구조다.  
+2,3 단계(`Fsync()`)는 별도 스레드가 **목표 50ms 간격**으로 일괄 처리한다.
+순서 보장(동기 Write)과 내구성 보장(비동기 fsync)을 분리해, 쓰기 경로의 레이턴시는 버퍼 append 수준으로 유지하면서 durability window를 fsync 간격으로 제어하는 구조다. 다만 `sleep_for()`의 실제 깨우기 지연, WAL mutex 경합, flush 소요 시간이 추가되므로 50ms는 엄밀한 최대치가 아니라 목표 대기 값이다.
 
-fflush로 OS 페이지 캐시까지만 올리면 프로세스 크래시는 방어되지만, 지금은 fflush를 50ms 주기로 일괄 처리하므로 그 주기만큼의 손실 창이 남는다 (syscall 비용 때문에 매 Write마다 하지 않고 배치).  
+fflush로 OS 페이지 캐시까지만 올리면 프로세스 크래시는 방어되지만, 현재는 fflush와 `FlushFileBuffers()`를 모두 같은 50ms 목표 간격으로 배치한다. 따라서 프로세스 크래시와 OS 크래시의 유실 가능 구간을 하나의 정책으로 관리한다. 두 주기를 분리하면 프로세스 크래시 유실 창을 더 줄일 수 있지만, CRT dirty와 disk dirty 상태·rotation·종료 순서를 따로 관리해야 하므로 현재는 복구 정확성과 구현 단순성을 우선했다.
 
 
 | 장애 종류 | 손실 범위 |
 |---|---|
-| 프로세스 크래시 (abort, 예외, 강제 종료) | 최대 fflush 주기(50ms)분 — 아직 fflush 안 된 CRT 버퍼상의 tail 레코드 |
-| OS 크래시 / 정전 | 최대 fsync 주기(50ms)분 — 아직 FlushFileBuffers 안 된 tail 레코드만 (파일 전체 아님) |
-필요 시 fsync 주기를 줄이면 정전 손실 창까지 좁힐 수 있다 (durability ↔ throughput 트레이드오프).
+| 프로세스 크래시 (abort, 예외, 강제 종료) | 목표 fflush 간격 50ms + 스케줄링/경합 지연 — 아직 fflush 안 된 CRT 버퍼상의 tail 레코드 |
+| OS 크래시 / 정전 | 목표 fsync 간격 50ms + 스케줄링/경합 지연 — 아직 `FlushFileBuffers()` 안 된 tail 레코드만 (파일 전체 아님) |
+
+필요 시 fsync 간격을 줄이면 정전 손실 창까지 좁힐 수 있지만, 현재의 `sleep_for()` 기반 구현은 Windows 타이머 해상도보다 짧은 간격을 정확히 재현하지 못한다 (durability ↔ throughput 트레이드오프).
+
+### 50ms 간격 선택 근거 — writer 간섭 벤치마크
+
+fsync 간격이 WAL writer를 얼마나 방해하는지 확인하기 위해 [WAL Google Test](UnitTests/BaseLib/WAL.cpp)에 포화 벤치마크를 추가했다. 4개 writer가 1초 동안 쉬지 않고 `WAL::Write()`를 호출하고, 별도 스레드가 설정된 간격마다 `Fsync()`를 호출한다. 고정된 입력 개수를 처리하는 테스트가 아니라, **포화 상태에서 fsync 정책이 writer 처리량을 얼마나 방해하는지**를 보는 테스트다. 결과는 `wal_benchmark_result.txt`로 기록한다.
+
+| 설정 간격 | writes | fsync 시도 | 관측 실효 간격 | writes/fsync | writes/s |
+|---:|---:|---:|---:|---:|---:|
+| 1ms | 3,415,426 | 64 | 약 15.6ms | 53,366 | 3,384,961 |
+| 10ms | 3,266,555 | 62 | 약 16.1ms | 52,686 | 3,253,540 |
+| 50ms | 4,027,630 | 15 | 약 66.7ms | 268,508 | 3,898,964 |
+| 100ms | 3,690,399 | 7 | 약 142.9ms | 527,199 | 3,562,161 |
+
+#### 결과 해석
+
+- 1ms와 10ms 설정은 초당 64회, 62회만 실행되어 약 15.6ms 수준의 Windows 기본 타이머 해상도에 제한된 것으로 관측됐다. 요청한 간격이 실제로 재현되지 않았으므로 이 두 결과는 주기별 성능 비교에서 제외한다.
+- 50ms는 fsync당 약 26.8만 건을 묶으면서 이번 실행에서 가장 높은 처리량인 약 390만 writes/s를 기록했다.
+- 100ms는 fsync당 배치 크기가 약 52.7만 건으로 50ms 대비 두 배 가까이 커졌지만, 처리량은 약 356만 writes/s로 증가하지 않았다. 더 넓은 durability window를 감수할 만한 추가 성능 이득이 관측되지 않아 50ms를 기본값으로 유지했다.
+
+#### 측정 한계
+
+- 실효 간격에는 `sleep_for()`의 깨우기 지연, 4개 writer와 fsync 스레드의 WAL mutex 경합, `fflush()`와 `FlushFileBuffers()` 소요 시간이 모두 포함된다. 따라서 위 결과만으로 순수 디스크 fsync 시간을 도출할 수는 없다.
+- 1초 단일 실행이며 스레드 스케줄링과 시스템 상태에 따른 편차가 있다. 또한 현재 `writes/s`에는 테스트 종료 후 스레드 join과 최종 fsync 시간 일부가 포함되므로 절대 성능값보다 주기별 간섭 경향을 보는 용도로 한정한다.
+- 정밀한 후속 측정에서는 고해상도 timer 적용, 반복 실행 중앙값, `fflush()`/`FlushFileBuffers()` 개별 소요 시간을 분리해야 한다.
 
 
 ## 7. Segment / Rotation
@@ -153,7 +177,7 @@ Restore와의 상호작용: 재기동 복구로 캐시에 되살린 key는 정�
 WAL 기록(`fwrite`) 자체가 실패하면(디스크 가득 참 등) 곧바로 캐시를 막지 않는다. 대신 WAL 보호만 내려놓고(`blocked`) 서비스는 계속한다.  
 
 - `blocked` 동안 캐시의 `lastLsn`은 마지막으로 성공한 LSN에 동결된다. 이 구간의 변경은 WAL 없이 기존 30초 flush 창으로만 보호된다 (write-back 캐시 원래 수준으로 일시 하락).
-- 10초(`RESUME_TRIGGER`) 후 자동으로 재시도한다.
+- 10초 후 자동으로 재시도한다.
 - 재개 후 첫 `Write` 성공은 그 시점의 전체 이미지를 싣고 가므로, blocked 구간에 누적된 변경까지 자동으로 메꿔진다.
 
 즉 "WAL 장애 = 서비스 중단"이 아니라 "durability 보장 수준의 일시적 하락"으로 대응한다. 
@@ -170,7 +194,7 @@ WAL 기록(`fwrite`) 자체가 실패하면(디스크 가득 참 등) 곧바로 
 | WAL append (레코드 조립 → 버퍼 memcpy → `fwrite`) | 디스크 I/O를 기다리지 않는 버퍼드 연산, 짧음 | 직렬 |
 
 **무거운 부분(캐시 조작)은 병렬로 남기고, 가벼운 부분(로그 버퍼 append)만 직렬화**되는 구조라 자연스럽게 맞물린다.   
-진짜 느린 작업인 디스크 I/O(fsync)는 둘 중 어디에도 걸리지 않고 별도 스레드로 완전히 분리돼 있어, WAL의 직렬성이 캐시의 병렬성을 갉아먹지 않는다.
+디스크 I/O는 별도 fsync 스레드로 분리했고, `FlushFileBuffers()`는 WAL append mutex를 풀어놓은 뒤 실행한다. 다만 그 앞의 `fflush()`는 append와 같은 mutex를 잠시 사용하므로 fsync 빈도가 높으면 writer를 방해할 수 있다. 위 벤치마크는 이 간섭을 포함한 실제 처리량을 측정한다.
 
 ## 12. 참고
 - [CacheLib](CacheLib.md) — Write-Back/Read-Through 구조, WAL이 얹히는 지점

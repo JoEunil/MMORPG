@@ -43,6 +43,10 @@ namespace Cache {
         }
         friend class ::ProfileCacheTest;
     public:
+		explicit Initializer(std::chrono::milliseconds walFsyncInterval = DEFAULT_WAL_FSYNC_INTERVAL)
+			: walManager(walFsyncInterval) {
+		}
+
         ~Initializer() {
             CleanUp();
         }

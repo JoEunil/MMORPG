@@ -2,6 +2,14 @@
 
 #include <BaseLib/WAL.h>
 
+#include <array>
+#include <atomic>
+#include <chrono>
+#include <fstream>
+#include <iostream>
+#include <thread>
+#include <vector>
+
 #pragma pack(push,1) 
 struct WalRecordTestA {
     uint64_t a;
@@ -20,6 +28,95 @@ uint8_t typeA = 1;
 uint8_t typeB = 2;
 
 void ApplyEmpty(const Base::WALHeader& h, const uint8_t* p) {
+}
+
+namespace {
+    constexpr size_t WAL_BENCHMARK_WRITER_COUNT = 4;
+
+    struct WalBenchmarkResult {
+        uint64_t writes = 0;
+        uint64_t fsyncAttempts = 0;
+        uint64_t elapsedMilliseconds = 0;
+        uint64_t writesPerSecond = 0;
+    };
+
+    void CleanupWalFiles(const std::string& filename) {
+        for (const auto& entry : std::filesystem::directory_iterator(".")) {
+            const auto name = entry.path().filename().string();
+            if (name.rfind(filename + ".", 0) == 0) {
+                std::error_code ec;
+                std::filesystem::remove(entry.path(), ec);
+            }
+        }
+    }
+
+    WalBenchmarkResult RunFsyncIntervalBenchmark(
+        std::chrono::milliseconds fsyncInterval,
+        std::chrono::milliseconds duration) {
+        const std::string filename =
+            "walFsyncBenchmark_" + std::to_string(fsyncInterval.count()) + "ms";
+        CleanupWalFiles(filename);
+
+        std::atomic<bool> running = true;
+        std::atomic<uint64_t> writes = 0;
+        std::atomic<uint64_t> fsyncAttempts = 0;
+        const auto startedAt = std::chrono::steady_clock::now();
+
+        {
+            // Segment rotation이 벤치마크 결과에 개입하지 않도록 큰 limit을 사용한다.
+            Base::WAL wal(filename, UINT32_MAX, ApplyEmpty);
+
+            std::thread fsyncThread([&] {
+                while (running.load(std::memory_order_relaxed)) {
+                    std::this_thread::sleep_for(fsyncInterval);
+                    if (!running.load(std::memory_order_relaxed))
+                        break;
+                    wal.Fsync();
+                    fsyncAttempts.fetch_add(1, std::memory_order_relaxed);
+                }
+            });
+
+            std::vector<std::thread> writers;
+            writers.reserve(WAL_BENCHMARK_WRITER_COUNT);
+            for (size_t writer = 0; writer < WAL_BENCHMARK_WRITER_COUNT; ++writer) {
+                writers.emplace_back([&, writer] {
+                    uint64_t sequence = writer + 1;
+                    while (running.load(std::memory_order_relaxed)) {
+                        WalRecordTestA record{
+                            sequence,
+                            static_cast<uint32_t>(sequence),
+                            static_cast<uint16_t>(sequence),
+                            static_cast<uint8_t>(sequence)
+                        };
+                        if (wal.Write(reinterpret_cast<const uint8_t*>(&record), sizeof(record), typeA) != 0)
+                            writes.fetch_add(1, std::memory_order_relaxed);
+                        sequence += WAL_BENCHMARK_WRITER_COUNT;
+                    }
+                });
+            }
+
+            std::this_thread::sleep_for(duration);
+            running.store(false, std::memory_order_relaxed);
+
+            for (auto& writer : writers)
+                writer.join();
+            fsyncThread.join();
+            wal.Fsync();
+        }
+
+        const auto elapsed = std::chrono::steady_clock::now() - startedAt;
+        const auto elapsedMilliseconds =
+            std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count();
+
+        WalBenchmarkResult result;
+        result.writes = writes.load(std::memory_order_relaxed);
+        result.fsyncAttempts = fsyncAttempts.load(std::memory_order_relaxed);
+        result.elapsedMilliseconds = static_cast<uint64_t>(elapsedMilliseconds);
+        if (elapsedMilliseconds > 0)
+            result.writesPerSecond = result.writes * 1000 / result.elapsedMilliseconds;
+
+        return result;
+    }
 }
 
 int replayCnt = 1;
@@ -484,4 +581,38 @@ TEST(WALTest, QuarantineCorruptedClosedSegment)
     EXPECT_GT(newLsn, (static_cast<uint64_t>(3) << 32) | 349);
 
     cleanup();
+}
+
+TEST(WALTest, FsyncIntervalBenchmark) {
+    constexpr std::array<int, 4> INTERVALS_MS{ 1, 10, 50, 100 };
+    constexpr auto DURATION = std::chrono::seconds(1);
+    const auto resultPath = std::filesystem::current_path() / "wal_benchmark_result.txt";
+
+    std::ofstream resultFile(resultPath, std::ios::trunc);
+    ASSERT_TRUE(resultFile.is_open()) << "Failed to open benchmark result file: " << resultPath;
+    resultFile << "WAL fsync interval benchmark\n"
+        << "duration_ms: "
+        << std::chrono::duration_cast<std::chrono::milliseconds>(DURATION).count() << '\n'
+        << "writer_count: " << WAL_BENCHMARK_WRITER_COUNT << "\n\n"
+        << "interval_ms\twrites\tfsync_attempts\twrites_per_fsync\twrites_per_sec\n";
+
+    for (const int intervalMs : INTERVALS_MS) {
+        const auto result = RunFsyncIntervalBenchmark(
+            std::chrono::milliseconds(intervalMs), DURATION);
+
+        ASSERT_GT(result.writes, 0u);
+        ASSERT_GT(result.elapsedMilliseconds, 0u);
+        ASSERT_GT(result.fsyncAttempts, 0u);
+
+        const uint64_t writesPerFsync = result.writes / result.fsyncAttempts;
+        resultFile << intervalMs << '\t'
+            << result.writes << '\t'
+            << result.fsyncAttempts << '\t'
+            << writesPerFsync << '\t'
+            << result.writesPerSecond << '\n';
+        resultFile.flush();
+    }
+
+    ASSERT_TRUE(resultFile.good()) << "Failed to write benchmark result file: " << resultPath;
+    std::cout << "\n[WAL benchmark result] " << resultPath << '\n';
 }

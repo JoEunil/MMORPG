@@ -2,7 +2,10 @@
 
 #include <thread>
 #include <atomic>
+#include <chrono>
 #include <map>
+#include <optional>
+#include <stdexcept>
 
 #include <BaseLib/WAL.h>
 #include <CoreLib/LoggerGlobal.h>
@@ -11,6 +14,8 @@
 #include <CacheLib/DBConnectionGame.h>
 
 namespace Cache {
+	inline constexpr std::chrono::milliseconds DEFAULT_WAL_FSYNC_INTERVAL{ 50 };
+
 	struct WalInventoryRecord {
 		uint64_t      characterID;
 		InventoryData data;   // lastLSN 포함
@@ -32,7 +37,9 @@ namespace Cache {
 		// 실패 시 drop, wal 없이 작업을 통과 시키도록.
 		std::atomic<bool> m_running = false;
 
-		const int RESUME_TRIGGER = 200; // 10초+
+		std::chrono::milliseconds m_fsyncInterval;
+		inline static constexpr std::chrono::seconds RESUME_DELAY{ 10 };
+		inline static constexpr std::chrono::seconds TRUNCATE_INTERVAL{ 5 };
 
 		std::unordered_map<uint64_t, std::pair<uint64_t, WalInventoryRecord>> m_lastImageInventory;
 		CacheStorageInventory* cache_inventory = nullptr;
@@ -94,22 +101,29 @@ namespace Cache {
 			ss << tid;
 			Core::sysLogger->LogInfo("WAL manager", "WAL manager thread started", "threadID", ss.str());
 
-			int resumeCounter = 0;
-			int truncateCounter = 0;
+			std::optional<std::chrono::steady_clock::time_point> resumeAt;
+			auto nextTruncate = std::chrono::steady_clock::now() + TRUNCATE_INTERVAL;
 
 			while (m_running.load(std::memory_order_relaxed)) {
-				std::this_thread::sleep_for(std::chrono::milliseconds(50));
+				std::this_thread::sleep_for(m_fsyncInterval);
 				m_wal->Fsync();
+
+				const auto now = std::chrono::steady_clock::now();
 				if (m_blocked.load(std::memory_order_relaxed)) {
-					if (++resumeCounter > RESUME_TRIGGER) {
+					if (!resumeAt)
+						resumeAt = now + RESUME_DELAY;
+					else if (now >= *resumeAt) {
 						m_blocked.store(false, std::memory_order_relaxed);
-						resumeCounter = 0;
+						resumeAt.reset();
 					}
 				}
+				else {
+					resumeAt.reset();
+				}
 
-				if (++truncateCounter >= 100) {  // 5초마다
+				if (now >= nextTruncate) {
 					UpdateTruncate();
-					truncateCounter = 0;
+					nextTruncate = now + TRUNCATE_INTERVAL;
 				}
 			}
 
@@ -173,7 +187,10 @@ namespace Cache {
 		}
 		friend class Initializer;
 	public:
-		WALManager() {
+		explicit WALManager(std::chrono::milliseconds fsyncInterval = DEFAULT_WAL_FSYNC_INTERVAL)
+			: m_fsyncInterval(fsyncInterval) {
+			if (m_fsyncInterval.count() <= 0)
+				throw std::invalid_argument("WAL fsync interval must be greater than zero");
 		}
 		~WALManager()
 		{

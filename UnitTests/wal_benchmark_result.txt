@@ -1,0 +1,9 @@
+WAL fsync interval benchmark
+duration_ms: 1000
+writer_count: 4
+
+interval_ms	writes	fsync_attempts	writes_per_fsync	writes_per_sec
+1	3415426	64	53366	3384961
+10	3266555	62	52686	3253540
+50	4027630	15	268508	3898964
+100	3690399	7	527199	3562161
