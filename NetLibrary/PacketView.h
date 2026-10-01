@@ -47,6 +47,10 @@ namespace Net {
 			m_copiedBuffer(std::move(other.m_copiedBuffer)),
 			owner(other.owner)
 		{
+			if (m_isCopied)
+				m_startPtr = m_copiedBuffer.data();
+			else
+				m_startPtr = other.m_startPtr;
 			// 원본 초기화
 			other.m_isCopied = false;
 			other.m_startPtr = nullptr;
@@ -57,6 +61,7 @@ namespace Net {
 			other.m_length = 0;
 			other.owner = nullptr;
 		}
+		PacketView& operator=(PacketView&&) = delete;
 
 		void Release() override;
 		void JoinBuffer(uint8_t* ptr1, uint16_t length1, uint8_t* ptr2, uint16_t length2) {
