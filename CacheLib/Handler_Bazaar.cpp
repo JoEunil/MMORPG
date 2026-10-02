@@ -13,7 +13,7 @@
 
 namespace Cache {
     void Handler::BazaarMyList(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarMyListBody * body) {
-        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
+        dbWorkerBazaar->Enqueue([msg, sessionID, body, this](DBConnectionBazaar* conn) {
             auto res = conn->ExecuteSelect(11, body->characterID, Core::MAX_BAZAAR_MY_LIST);
             Core::MsgStruct<Core::MsgBazaarMyListResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarMyListResBody>*>(msg->GetBuffer());
 
@@ -55,7 +55,7 @@ namespace Cache {
     }
 
     void Handler::BazaarSearch(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarSearchBody* body) {
-        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
+        dbWorkerBazaar->Enqueue([msg, sessionID, body, this](DBConnectionBazaar* conn) {
             uint32_t offset = body->page * Core::MAX_BAZAAR_SEARCH_RESULT;
             auto res = conn->ExecuteSelect(12, body->item_type, Core::MAX_BAZAAR_SEARCH_RESULT, offset);
             Core::MsgStruct<Core::MsgBazaarSearchResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarSearchResBody>*>(msg->GetBuffer());
@@ -146,7 +146,7 @@ namespace Cache {
         }
 
         // 3. bazaar에 등록 
-        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
+        dbWorkerBazaar->Enqueue([msg, sessionID, body, this, itemType, fee](DBConnectionBazaar* conn) {
             int affected = conn->ExecuteUpdate(13, body->itemID, body->characterID, itemType, body->quantity, body->price);
 
             // 4. 실패 시 롤백
@@ -177,7 +177,7 @@ namespace Cache {
 
     void Handler::BazaarCancel(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCancelBody* body) {
 		// 1. bazaar에서 listing status 변경 (CANCELLED) CAS 방식으로 처리
-        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
+        dbWorkerBazaar->Enqueue([msg, sessionID, body, this](DBConnectionBazaar* conn) {
             int affected = conn->ExecuteUpdate(14, body->listingID, body->characterID);
             if (affected == 1) {
                 // 2. inventory에 아이템 추가 (롤백)
@@ -213,7 +213,7 @@ namespace Cache {
 
     void Handler::BazaarBuy(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarBuyBody* body) {
         // 1. DB에서 itemID 조회 
-        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
+        dbWorkerBazaar->Enqueue([msg, sessionID, body, this](DBConnectionBazaar* conn) {
 
 			auto listingRes = conn->ExecuteSelect(15, body->listingID);
 
@@ -234,7 +234,7 @@ namespace Cache {
             // bazaar_log에 거래 기록 추가 
             // buyer_outbox에 아이템 추가
             // 구매자 다이아 차감
-            dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
+            dbWorkerBazaar->Enqueue([msg, sessionID, body, this](DBConnectionBazaar* conn) {
 				auto res = conn->ExecuteSelect(16, body->listingID, body->characterID);
 
                 if (!res || !res->next()) {
@@ -273,7 +273,7 @@ namespace Cache {
     void Handler::BazaarClaim(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarClaimBody* body) {
         // listing status가 sold인 listingID에 대해서 판매자가 claim 요청
 		// 판매자에게 diamond 지급, status 'CLAIMED'로 변경
-        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
+        dbWorkerBazaar->Enqueue([msg, sessionID, body, this](DBConnectionBazaar* conn) {
             auto res = conn->ExecuteSelect(17, body->listingID, body->characterID);
             if (!res || !res->next()) {
                 Core::MsgStruct<Core::MsgBazaarClaimResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarClaimResBody>*>(msg->GetBuffer());
@@ -304,7 +304,7 @@ namespace Cache {
     void Handler::BazaarCheckOutbox(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCheckOutboxBody* body) {
         // buyer_outbox의 READY event를 인벤토리로 배송 (Outbox → Inbox).
         // CLAIMED 전환은 여기서 하지 않는다 — 인벤토리 blob이 flush로 durable해진 뒤 CacheFlush가 수행.
-        dbWorkerBazaar->Enqueue([=](DBConnectionBazaar* conn) {
+        dbWorkerBazaar->Enqueue([msg, body, sessionID, this](DBConnectionBazaar* conn) {
             // body는 msg 버퍼 내부를 가리키므로, 응답(st)이 같은 버퍼를 덮어쓰기 전에 먼저 읽어야 함
             uint64_t characterID = body->characterID;
 
