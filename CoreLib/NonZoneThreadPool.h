@@ -3,6 +3,8 @@
 #include <thread>
 #include <queue>
 #include <condition_variable>
+#include <semaphore>
+
 #include "NonZoneHandler.h"
 #include "IPacketView.h"
 #include "Config.h"
@@ -14,6 +16,7 @@ namespace Core {
         std::vector<std::thread> m_threads;
         Base::LockFreeQueue<std::unique_ptr<IPacketView, PacketViewDeleter>, NON_ZONE_QUEUE_SIZE> m_workQueue;
         Base::LockFreeQueue<uint64_t, DISCONNECT_QUEUE_SIZE> m_disconnectQueue;
+		std::counting_semaphore<NON_ZONE_QUEUE_SIZE + DISCONNECT_QUEUE_SIZE + NON_ZONE_THREADPOOL_SIZE> m_jobSemaphore{ 0 };
 
         std::atomic<bool> m_running = false;
         

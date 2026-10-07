@@ -13,14 +13,30 @@ namespace Core {
         std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash> tempPackets;
         tempPackets.reserve(100);
 
-        while (m_running.load(std::memory_order_relaxed))
+        while (true)
         {
-            int loop = 100; 
-            bool processed = false;
-            ChatEvent curr;
+            m_workSemaphore.acquire();
+            if (!m_running.load(std::memory_order_relaxed))
+                break; 
 
-            while (loop-- and m_chatQueue.pop(curr)) {
-                processed = true;
+            const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2);
+            for (int processed = 0; processed < 100; ++processed)
+            {
+                // 첫 permit은 바깥에서 이미 획득
+                // 두 번째 작업부터 batch deadline까지 기다린다.
+                if (processed != 0 && !m_workSemaphore.try_acquire_until(deadline))
+                {
+                    break;
+                }
+                if (!m_running.load(std::memory_order_relaxed))
+                    break;
+
+                ChatEvent curr;
+                if (!m_chatQueue.pop(curr))
+                {
+                    errorLogger->LogError( "ChatThreadPool",  "chat semaphore and queue state are out of sync");
+                    break;
+                }
                 switch (curr.type)
                 {
                 case ChatEventType::SESSION_ADD:
@@ -30,7 +46,7 @@ namespace Core {
 
                 auto it = m_sessionChatIdMap.find(curr.senderSessionID);
                 if (it == m_sessionChatIdMap.end()) {
-                        continue;
+                    continue;
                 }
                 auto chatID = it->second.chatID;
                 auto profileId = it->second.profileId;
@@ -57,7 +73,7 @@ namespace Core {
                 default:
                     errorLogger->LogInfo("chat thread", "undefined chat event", "chatID", chatID, "chat event type", (int)curr.type);
                     break;
-                   // "undefined chat event type"
+                    // "undefined chat event type"
                 }
             }
             for (auto& [key, packet] : tempPackets)
@@ -66,11 +82,9 @@ namespace Core {
             }
 
             tempPackets.clear();
-            if (!processed) {
-                // busy spin 방지용 sleep
-                // batch 처리량과 응답latency 간 trade-off 조절 (TPS 측정 기준)
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            }
+
+            if (!m_running.load(std::memory_order_relaxed))
+                break;
         }
     }
     void ChatThreadPool::SendPacketUnique(uint64_t session, std::unique_ptr<IPacket, PacketDeleter> p) {

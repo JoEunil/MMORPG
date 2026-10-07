@@ -5,6 +5,7 @@
 #include <condition_variable>
 #include <mutex>
 #include <vector>
+#include <semaphore>
 
 #include <BaseLib/LockFreeQueue.h>
 #include "LoggerGlobal.h"
@@ -19,6 +20,7 @@ namespace Core {
     class BroadcastThreadPool {
         std::vector<std::thread> m_threads;
         Base::LockFreeQueue<std::unique_ptr< std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>>, BROADCAST_QUEUE_SIZE> m_workQ;
+		std::counting_semaphore <BROADCAST_QUEUE_SIZE + BROADCAST_THREADPOOL_SIZE> m_workSemaphore{ 0 };
 
         std::atomic<bool> m_running = false;
         void Initialize(IIOCP* i, StateManager* s, CorePerfCollector* p, PacketWriter* pw) {

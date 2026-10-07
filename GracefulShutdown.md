@@ -2,7 +2,7 @@
 
 ## 1. 개요
 
-graceful shutdown은 서버 종료 시 진행 중인 작업을 유실 없이 마무리하고, 자원을 안전한 순서로 정리하는 것을 말한다.  
+graceful shutdown은 서버 종료 시 보존 대상으로 정한 작업을 유실 없이 마무리하고, 자원을 안전한 순서로 정리하는 것을 말한다.  
 이 문서는 종료 파이프라인, ASan 부하 테스트 중 검출·수정한 종료 버그, 그리고 그 과정에서 확립한 자원 정리 규칙을 정리한다.  
 
 > 메모리 안전성·누수 검증 수치는 [ASAN.md](ASAN.md)에 별도로 정리했다.
@@ -50,7 +50,7 @@ spdlog::shutdown();
 | 단계 | 호출 | 목적 |
 |---|---|---|
 | 1. 입력 중단 | `net.CleanUp1()` | `iocp.StopReceive()`로 수신 재게시를 멈춰 클라이언트 패킷 유입 차단, ping 정지. 이후 처리 대상이 고정된다 |
-| 2. 남은 입력 처리 | `core.CleanUp1()` → `core.CleanUp2()` 앞부분 | 시뮬레이션 루프(zone tick·broadcast·chat) 정지 후, 이미 수신되어 큐에 쌓인 요청을 `recvMQ.Stop()`이 drain하며 처리 → 내부 상태를 최신으로 만든다 |
+| 2. 남은 입력 처리 | `core.CleanUp1()` → `core.CleanUp2()` 앞부분 | 시뮬레이션 루프(zone tick·broadcast·chat) 정지 후, NonZone의 disconnect와 core recvMQ에 쌓인 응답을 drain하여 내부 상태를 최신으로 만든다 |
 | 3. 내부 상태 저장 | `core.CleanUp2()`의 `stateManager.CleanUp()` | 메모리에 올라가 있는 캐릭터 상태를 순회해 영속 경로(cache 큐)로 넘긴다. |
 | 4. DB 반영 | `cache.CleanUp()` | cache 큐 drain → dirty 캐시 flush → `dbWorker` drain(실제 DB write) |
 
@@ -70,6 +70,12 @@ spdlog::shutdown();
 
 - 순서 보장: 저장 메시지를 넣는 시점(3단계)엔 cache가 살아있고, 소비(4단계)는 그 뒤에 온다.  
 - 유실 방지: recvMQ·dbWorker 모두 Stop 시 큐를 drain하고, `Stop()`의 `join()`이 drain 완료까지 블록한다.  
+
+### Queue 종료 정책
+
+- graceful drain: NonZone `disconnectQueue`, core/cache recvMQ, CacheFlush `flushQ`, DBWorker queue
+- hard stop: Zone packet queue, NonZone 일반 work queue, Broadcast queue, Chat queue
+- 유실 방지 범위는 캐릭터 상태 저장에 필요한 disconnect와 persistence 경로로 한정한다. 그 외 queue는 shutdown 시작 시 남아 있는 작업을 처리하지 않는다.
 
 
 ## 4. 종료 시 발견·수정한 문제들
@@ -144,5 +150,5 @@ running=false 이후엔 producer(recvMQ, dispatcher)가 먼저 멈춰 새 작업
 - 소멸자 경로에서는 전역 로거가 이미 reset됐을 수 있다. `if (logger)` 가드를 둔다.
 - 로거는 spdlog 스레드풀보다 먼저 파괴한다. async 로거가 살아있는 풀로 flush해야 하기 때문이다.
 - 자원을 보유하는 쪽(소비자)을 먼저 선언해 먼저 소멸시키고, 자원을 제공하는 풀을 나중에 선언한다. 멤버 선언 순서로 강제되므로 순서를 바꿀 때는 주석을 남긴다.
-- 종료 순서는 producer-consumer 관계로 결정된다. 파이프라인(net → core → cache, 그리고 내부의 recvMQ → dbWorker)의 각 경계에서 상류를 먼저 멈춰 새 입력을 끊고, 하류가 남은 것을 drain한 뒤 종료한다. 뒤집히면 유실이나 무한 대기가 된다.
+- 종료 순서는 producer-consumer 관계로 결정된다. drain 대상으로 정한 파이프라인(net → core → cache, 그리고 내부의 recvMQ → dbWorker)에서는 상류를 먼저 멈춰 새 입력을 끊고, 하류가 남은 것을 drain한 뒤 종료한다. 뒤집히면 유실이나 무한 대기가 된다.
 - 큐·워커마다 hard stop(남은 것 버림)인지 graceful drain(비울 때까지 처리)인지 명시한다. DB write처럼 유실이 곧 데이터 손실인 경로는 반드시 drain이다.

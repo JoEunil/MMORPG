@@ -8,14 +8,19 @@ namespace Cache {
         std::stringstream ss;
         ss << tid;
         Core::sysLogger->LogInfo("cache mq", "mq thread started", "threadID", ss.str());
-        while (m_running.load(std::memory_order_relaxed)) 
+        while (true) 
         {
+			m_workSemaphore.acquire();
             Core::Message* work;
-            if (!m_sharedQueue.pop(work)) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+            if (m_sharedQueue.pop(work)) {
+                handler->Process(work);
                 continue;
             }
-            handler->Process(work);
+
+            if (!m_running.load(std::memory_order_relaxed))
+                break;
+
+            Core::errorLogger->LogError("cache mq", "work semaphore and queue state are out of sync");
         }
         Core::sysLogger->LogInfo("cache mq", "mq thread stopped", "threadID", ss.str());
     }
@@ -33,14 +38,10 @@ namespace Cache {
     void InMemoryQueue::Stop() {
         if (!m_running.exchange(false, std::memory_order_relaxed))
             return;
-        
+		m_workSemaphore.release(MQ_THREADPOOL_SIZE);
         for (auto& t : m_threads) {
             if (t.joinable())
                 t.join();
-        }
-        Core::Message* work;
-        while (m_sharedQueue.pop(work)) {
-            handler->Process(work);
         }
     }
 
@@ -59,6 +60,7 @@ namespace Cache {
             messagePool->Return(cacheMsg);
             return false;
         }
+		m_workSemaphore.release();
         return true;
     }
 }

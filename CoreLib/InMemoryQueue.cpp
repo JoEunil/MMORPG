@@ -9,13 +9,18 @@ namespace Core {
         std::stringstream ss;
         ss << tid;
         sysLogger->LogInfo("core mq", "mq thread started", "threadID", ss.str());
-        while (m_running.load(std::memory_order_relaxed)) {
+        while (true) {
+			m_workSemaphore.acquire();
             Message* work;
-            if (!m_sharedQueue.pop(work)) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+            if (m_sharedQueue.pop(work)) {
+                handler->Process(work);
                 continue;
             }
-            handler->Process(work);
+
+            if (!m_running.load(std::memory_order_relaxed))
+                break;
+
+            errorLogger->LogError("core mq", "work semaphore and queue state are out of sync");
         }
         sysLogger->LogInfo("core mq", "mq thread stopped", "threadID", ss.str());
     }
@@ -30,15 +35,12 @@ namespace Core {
     }
 
     void InMemoryQueue::Stop() {
-        m_running.store(false, std::memory_order_relaxed);
-
+        if (!m_running.exchange(false, std::memory_order_relaxed))
+            return;
+		m_workSemaphore.release(MQ_THREADPOOL_SIZE);
         for (auto& t : m_threads) {
             if (t.joinable())
                 t.join();
-        }
-        Message* work;
-        while (m_sharedQueue.pop(work)) {
-            handler->Process(work);
         }
     }
 
@@ -56,7 +58,8 @@ namespace Core {
             errorLogger->LogWarn("core mq", "push failed");
             messagePool->Return(coreMsg);
             return false;
-        }
+        } 
+		m_workSemaphore.release();
         return true;
     }
 }

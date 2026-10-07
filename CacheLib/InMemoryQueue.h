@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <thread>
 #include <vector>
+#include <semaphore>
 
 #include <BaseLib/LockFreeQueue.h>
 #include <CoreLib/IMessageQueue.h>
@@ -20,6 +21,7 @@ namespace Cache {
     class InMemoryQueue :public Core::IMessageQueue {
         std::vector<std::thread> m_threads;
         Base::LockFreeQueue<Core::Message*, MQ_SIZE> m_sharedQueue;
+		std::counting_semaphore<MQ_SIZE + MQ_THREADPOOL_SIZE> m_workSemaphore{ 0 };
 
         std::atomic<bool> m_running = false;
         Handler* handler = nullptr;

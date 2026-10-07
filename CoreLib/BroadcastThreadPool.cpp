@@ -16,12 +16,13 @@ namespace Core {
         // work마다 재할당하지 않도록 스레드 로컬로 재사용 (내부 vector의 capacity도 유지된다)
         std::vector<std::vector<std::shared_ptr<IPacket>>> currChunks(CELLS_X * CELLS_Y);
 
-        while (m_running.load(std::memory_order_relaxed))
+        while (true)
         {
+            m_workSemaphore.acquire();
+            if (!m_running.load(std::memory_order_relaxed))
+                break;
             std::unique_ptr< std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>> packets;
             if (!m_workQ.pop(packets)) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                // back-off
                 continue;
             }
             auto& headers = packets->first;
@@ -80,6 +81,7 @@ namespace Core {
     void BroadcastThreadPool::Stop() {
         if (!m_running.exchange(false, std::memory_order_relaxed))
             return;
+		m_workSemaphore.release(BROADCAST_THREADPOOL_SIZE);
         for (auto& t : m_threads)
         {
             if (t.joinable())
@@ -94,6 +96,8 @@ namespace Core {
             if (!m_workQ.push(std::make_unique<std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>>(headers, chunks))) {
                 // push 실패(full) 시 false 반환
                 perfCollector->AddBroadcastDropCnt();
+            } else {
+                m_workSemaphore.release();
             }
         }
     }

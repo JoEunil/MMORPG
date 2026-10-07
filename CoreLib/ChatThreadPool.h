@@ -6,6 +6,7 @@
 #include <set>
 #include <unordered_map>
 #include <memory>
+#include <semaphore>
 
 #include "PacketTypes.h"
 #include "LoggerGlobal.h"
@@ -47,7 +48,9 @@ namespace Core {
         uint64_t chatID;
         uint32_t profileId;
     };
-    
+
+    const uint16_t CHAT_WORKER_SIZE = 1;  // 변경하려면 ChatDestKey 활용해 샤딩 적용 필요. 
+
     class IIOCP;
     class PacketWriter;
     class CorePerfCollector;
@@ -69,7 +72,7 @@ namespace Core {
         char padding[std::hardware_destructive_interference_size - sizeof(uint64_t)];
 
         Base::LockFreeQueue<ChatEvent, CHAT_QUEUE_SIZE> m_chatQueue;
-        // MPMC 큐 적용
+		std::counting_semaphore<CHAT_QUEUE_SIZE + CHAT_WORKER_SIZE> m_workSemaphore{ 0 };
 
         std::vector<std::thread> m_workerThreadPool;
         std::atomic<bool> m_running;
@@ -108,7 +111,6 @@ namespace Core {
             return true;
         }
         void Start() {
-            const uint16_t CHAT_WORKER_SIZE = 1;  // 변경하려면 ChatDestKey 활용해 샤딩 적용 필요. 
             m_running.store(true, std::memory_order_relaxed);
             for (int i = 0; i < CHAT_WORKER_SIZE; i++)
             {
@@ -117,7 +119,9 @@ namespace Core {
         }
 
         void Stop() {
-            m_running.store(false, std::memory_order_relaxed);
+            if (!m_running.exchange(false, std::memory_order_relaxed))
+                return;
+			m_workSemaphore.release(CHAT_WORKER_SIZE);
             for (auto& t : m_workerThreadPool)
             {
                 if (t.joinable())
@@ -162,7 +166,12 @@ namespace Core {
         }
 
         void EnqueueChat(ChatEvent& event) {
-            m_chatQueue.push(event);
+            if (!m_running.load(std::memory_order_relaxed))
+                return;
+
+            if (m_chatQueue.push(event)) {
+				m_workSemaphore.release();
+            }
         }
 
         // EnqueueChat으로 같이 처리하면 코드가 복잡해짐
