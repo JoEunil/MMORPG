@@ -75,7 +75,7 @@ __클라이언트__
 - 클라이언트 라이브러리: .NET Standard 2.0 (Unity 연동)
 
 __외부 라이브러리__
-- spdlog, hiredis, libevent, nlohmann/json, MySQL Connector C++, Google Test
+- spdlog, hiredis, libevent, nlohmann/json, MySQL Connector C++, Google Test, Google Benchmark
 
 ## 아키텍처
 
@@ -230,7 +230,7 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 
 | 대상 | 테스트 범위 |
 |---|---|
-| `LockFreeQueue` (raw/unique_ptr/shared_ptr) | push/pop 정합성, empty/full 경계 처리, 멀티스레드 push/pop 경합 |
+| MPMC Queue | push/pop 정합성, empty/full 경계 처리, 멀티스레드 push/pop 경합 |
 | TripleBuffer | 포인터 스왑 검증, Eventually consistent 읽기 보장, Reader 간 경합, Writer/Reader 동시 접근 |
 | RingBuffer | 버퍼 획득/반납, 고갈·wrap-around 경계 조건, Release 범위 검증 |
 | RingQueue | 기본 동작 및 초기 상태 검증 |
@@ -238,6 +238,13 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 | PacketView | Setter/Getter, 소유 버퍼 반환(Release), 버퍼 병합(JoinBuffer) |
 | NetTimer | 타이머 지연 및 정지 동작 |
 | WAL | Replay, Segment Rotation, CRC 복구, 깨진 데이터 대응, multi type 처리, Truncate(경계 삭제·활성 세그먼트 보존) |
+
+### 성능 벤치마크 (Google Benchmark)
+
+기능 정합성을 검증하는 Google Test와 성능 측정을 분리하기 위해 별도 `Benchmark` 프로젝트에 Google Benchmark를 도입했다.   
+프레임워크가 측정 시간과 반복 횟수, 처리량 집계를 일관되게 관리하므로 직접 작성한 타이머 기반 테스트보다 조건별 성능을 재현하고 비교하기 쉽다.  
+
+- [WAL 성능 벤치마크](Benchmark_WAL.md) — fsync 주기와 writer 수를 변경해 writer-fflush 및 writer-writer contention이 반영된 처리량을 측정하고, 짧은 유실 가능 구간과 처리량을 함께 고려해 fsync 주기를 20ms로 결정
 
 ### 통합 테스트
 
@@ -462,6 +469,8 @@ DB → Redis → 로그인 서버 → 게임 서버
 - [DummyTest 디버그](DummyTestDebug.md)
 
 ### 테스트
+
+- [WAL 성능 벤치마크](Benchmark_WAL.md)
 - [모니터링](Monitoring.md)
 - [더미 클라이언트 테스트](DummyTest.md)
 - [더미 클라이언트 테스트2](DummyTest2.md)

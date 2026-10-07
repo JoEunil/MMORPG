@@ -96,55 +96,17 @@ FlushFileBuffers() ->  3. 디스크                 — 정전에도 생존
 ```
 
 `WAL::Write()`는 shard 락 안에서 호출되므로 1 단계까지만 하고 빠진다(레코드 조립 + memcpy + fwrite, 디스크 I/O 대기 없음).   
-2,3 단계(`Fsync()`)는 별도 스레드가 **목표 25ms 간격**으로 일괄 처리한다.
-순서 보장(동기 Write)과 내구성 보장(비동기 fsync)을 분리해, 쓰기 경로의 레이턴시는 버퍼 append 수준으로 유지하면서 durability window를 fsync 간격으로 제어하는 구조다. 다만 `sleep_for()`의 실제 깨우기 지연, WAL mutex 경합, flush 소요 시간이 추가되므로 25ms는 엄밀한 최대치가 아니라 목표 대기 값이다.
-
-fflush로 OS 페이지 캐시까지만 올리면 프로세스 크래시는 방어되지만, 현재는 fflush와 `FlushFileBuffers()`를 모두 같은 25ms 목표 간격으로 배치한다. 따라서 프로세스 크래시와 OS 크래시의 유실 가능 구간을 하나의 정책으로 관리한다. 두 주기를 분리하면 프로세스 크래시 유실 창을 더 줄일 수 있지만, CRT dirty와 disk dirty 상태·rotation·종료 순서를 따로 관리해야 하므로 현재는 복구 정확성과 구현 단순성을 우선했다.
-
+2,3 단계(`Fsync()`)는 별도 스레드가 **목표 20ms 간격**으로 일괄 처리한다.
+순서 보장(동기 Write)과 내구성 보장(비동기 fsync)을 분리해, 쓰기 경로의 레이턴시는 버퍼 append 수준으로 유지하면서 durability window를 fsync 간격으로 제어하는 구조다. 다만 `sleep_for()`의 실제 깨우기 지연, WAL mutex 경합, flush 소요 시간이 추가되므로 20ms는 엄밀한 최대치가 아니라 목표 대기 값이다.  
+fflush로 OS 페이지 캐시까지만 올리면 프로세스 크래시는 방어되지만, 현재는 fflush와 `FlushFileBuffers()`를 모두 같은 20ms 목표 간격으로 배치한다. 따라서 프로세스 크래시와 OS 크래시의 유실 가능 구간을 하나의 정책으로 관리한다. 두 주기를 분리하면 프로세스 크래시 유실 창을 더 줄일 수 있지만, CRT dirty와 disk dirty 상태·rotation·종료 순서를 따로 관리해야 하므로 현재는 복구 정확성과 구현 단순성을 우선했다.  
+주기는 [WAL 성능 벤치마크](Benchmark_WAL.md)를 근거로 선택했다. Google Benchmark로 fsync 주기와 writer 수를 함께 변경하며 writer-fflush contention과 writer-writer contention이 합산된 처리량을 측정했다.  
 
 | 장애 종류 | 손실 범위 |
 |---|---|
-| 프로세스 크래시 (abort, 예외, 강제 종료) | 목표 fflush 간격 25ms + 스케줄링/경합 지연 — 아직 fflush 안 된 CRT 버퍼상의 tail 레코드 |
-| OS 크래시 / 정전 | 목표 fsync 간격 25ms + 스케줄링/경합 지연 — 아직 `FlushFileBuffers()` 안 된 tail 레코드만 (파일 전체 아님) |
+| 프로세스 크래시 (abort, 예외, 강제 종료) | 목표 fflush 간격 20ms + 스케줄링/경합 지연 — 아직 fflush 안 된 CRT 버퍼상의 tail 레코드 |
+| OS 크래시 / 정전 | 목표 fsync 간격 20ms + 스케줄링/경합 지연 — 아직 `FlushFileBuffers()` 안 된 tail 레코드만 (파일 전체 아님) |
 
 필요 시 fsync 간격을 줄이면 정전 손실 창까지 좁힐 수 있지만, 현재의 `sleep_for()` 기반 구현은 Windows 타이머 해상도보다 짧은 간격을 정확히 재현하지 못한다 (durability ↔ throughput 트레이드오프).
-
-### 25ms 간격 선택 근거 — writer 간섭 벤치마크
-
-fsync 간격이 WAL writer를 얼마나 방해하는지 확인하기 위해 [WAL Google Test](UnitTests/BaseLib/WAL.cpp)에 포화 벤치마크를 추가했다. 4개 writer가 1초 동안 쉬지 않고 `WAL::Write()`를 호출하고, 별도 스레드가 설정된 간격마다 `Fsync()`를 호출한다. 10/25/50/75/100ms를 각각 100회 측정했다. 고정된 입력 개수를 처리하는 테스트가 아니라, **포화 상태에서 fsync 정책이 writer 처리량을 얼마나 방해하는지**를 보는 테스트다. 결과는 `wal_benchmark_result.txt`로 기록한다.
-
-| 설정 간격 | fsync 시도 중앙값 | 관측 실효 간격 | writes/fsync 중앙값 |
-|---:|---:|---:|---:|
-| 10ms | 61.5 | 약 16.3ms | 52,008 |
-| 25ms | 30 | 약 33.3ms | 113,365 |
-| 50ms | 15 | 약 66.7ms | 224,021 |
-| 75ms | 10 | 약 100.0ms | 310,632 |
-| 100ms | 9 | 약 111.1ms | 380,969 |
-
-| 설정 간격 | writes/s 평균 | 표본 표준편차(s) | 표본 CV | p1 | p5 | p50 |
-|---:|---:|---:|---:|---:|---:|---:|
-| 10ms | 3,082,276 | 320,546 | 10.4% | 2,546,075 | 2,649,372 | 3,116,918 |
-| 25ms | **3,373,024** | 184,773 | 5.5% | **2,941,012** | **3,096,449** | **3,351,626** |
-| 50ms | 3,158,900 | 450,419 | 14.3% | 1,479,057 | 2,504,026 | 3,200,208 |
-| 75ms | 3,263,083 | 481,310 | 14.8% | 2,723,808 | 2,819,568 | 3,090,540 |
-| 100ms | 3,065,323 | 159,453 | 5.2% | 2,772,778 | 2,849,920 | 3,044,172 |
-
-> p50은 중앙값이다. writes/s는 높을수록 좋은 지표이므로 p1·p5가 반복 측정 중 성능이 저하된 낮은 처리량 구간을 보여준다. 표본 변동계수는 `표본 표준편차(s) / 표본 평균 × 100`으로 계산했다.
-
-#### 결과 해석
-
-- 10ms는 설정과 달리 실효 간격이 약 16.3ms로 관측돼 Windows 기본 타이머 해상도의 영향을 받았다.
-- 25ms는 평균과 중앙값 모두에서 가장 높은 처리량을 기록했고, 표본 변동계수도 5.5%로 낮았다.
-- 25ms는 p5에서도 약 310만 writes/s를 유지해 50ms의 약 250만 writes/s보다 낮은 처리량 구간이 안정적이었다.
-- 25ms는 50ms 대비 writes/s 평균이 약 6.8%, 중앙값이 약 4.7% 높았다. 동시에 관측 실효 간격은 약 66.7ms에서 33.3ms로 줄어, durability window와 writer 처리량 모두에서 더 유리했다.
-- 75ms와 100ms는 fsync당 배치 크기는 커졌지만 25ms보다 높은 처리량을 보여주지 못했다. 더 넓은 durability window를 감수할 성능 이득이 관측되지 않아 기본값을 50ms에서 25ms로 조정했다.
-
-#### 측정 한계
-
-- 실효 간격에는 `sleep_for()`의 깨우기 지연, 4개 writer와 fsync 스레드의 WAL mutex 경합, `fflush()`와 `FlushFileBuffers()` 소요 시간이 모두 포함된다. 따라서 위 결과만으로 순수 디스크 fsync 시간을 도출할 수는 없다.
-- 각 샘플은 1초 포화 실행이며, 스레드 스케줄링과 시스템 상태에 따른 편차가 있다. 또한 현재 `writes/s`에는 테스트 종료 후 스레드 join과 최종 fsync 시간 일부가 포함되므로 절대 성능값보다 주기별 간섭 경향을 보는 용도로 한정한다.
-- 설정별 100회를 10ms부터 100ms까지 순차적으로 실행했으므로, 시간 경과에 따른 CPU·스토리지 상태가 설정별 결과에 일부 섞였을 수 있다.
-- 정밀한 후속 측정에서는 간격 실행 순서를 교차하고, 고해상도 timer 적용과 `fflush()`/`FlushFileBuffers()` 개별 소요 시간을 분리해야 한다.
 
 
 ## 7. Segment / Rotation
@@ -208,11 +170,12 @@ WAL 기록(`fwrite`) 자체가 실패하면(디스크 가득 참 등) 곧바로 
 | WAL append (레코드 조립 → 버퍼 memcpy → `fwrite`) | 디스크 I/O를 기다리지 않는 버퍼드 연산, 짧음 | 직렬 |
 
 **무거운 부분(캐시 조작)은 병렬로 남기고, 가벼운 부분(로그 버퍼 append)만 직렬화**되는 구조라 자연스럽게 맞물린다.   
-디스크 I/O는 별도 fsync 스레드로 분리했고, `FlushFileBuffers()`는 WAL append mutex를 풀어놓은 뒤 실행한다. 다만 그 앞의 `fflush()`는 append와 같은 mutex를 잠시 사용하므로 fsync 빈도가 높으면 writer를 방해할 수 있다. 위 벤치마크는 이 간섭을 포함한 실제 처리량을 측정한다.
+디스크 I/O는 별도 fsync 스레드로 분리했고, `FlushFileBuffers()`는 WAL append mutex를 풀어놓은 뒤 실행한다. 다만 그 앞의 `fflush()`는 append와 같은 mutex를 잠시 사용하므로 fsync 빈도가 높으면 writer를 방해할 수 있다. [WAL 성능 벤치마크](Benchmark_WAL.md)는 이 간섭을 포함한 실제 처리량을 측정한다.
 
 ## 12. 참고
 - [CacheLib](CacheLib.md) — Write-Back/Read-Through 구조, WAL이 얹히는 지점
 - [CacheLib ACID](CacheLib_ACID.md) — 캐시 상태값과 ACID 관점의 WAL 위치
 - [Cache Durability Test](CacheDurabilityTest.md) — Crash 복구 검증
+- [WAL 성능 벤치마크](Benchmark_WAL.md) — fsync 주기 및 writer 경합에 따른 처리량 측정, 20ms 선택 근거
 - [WAL.h](BaseLib/WAL.h) 
 - [WALManager.h](CacheLib/WALManager.h)
