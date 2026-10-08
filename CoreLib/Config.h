@@ -68,9 +68,8 @@ namespace Core {
    // 네트워크 문제에 의해 증가된 cheat count 정리하기 위함.. 
    inline constexpr uint16_t CHAT_QUEUE_SIZE = 512;
    inline constexpr uint16_t  BROADCAST_QUEUE_SIZE = 512;
-   inline constexpr uint16_t  DISCONNECT_QUEUE_SIZE = 8192;
 
-   inline constexpr uint32_t  NON_ZONE_QUEUE_SIZE = 8192;
+   inline constexpr uint32_t  NON_ZONE_EVENT_QUEUE_SIZE = 16384;
    inline constexpr uint32_t  ZONE_QUEUE_SIZE = 16384;  
 
    inline constexpr size_t MQ_SIZE = 256;
@@ -82,7 +81,6 @@ namespace Core {
    static_assert(IsPowerOfTwo(SHARD_SIZE), "SHARD_SIZE must be a power of two");
    static_assert(IsPowerOfTwo(CHAT_QUEUE_SIZE), "CHAT_QUEUE_SIZE must be a power of two");
    static_assert(IsPowerOfTwo(BROADCAST_QUEUE_SIZE), "BROADCAST_QUEUE_SIZE must be a power of two");
-   static_assert(IsPowerOfTwo(DISCONNECT_QUEUE_SIZE), "DISCONNECT_QUEUE_SIZE must be a power of two");
    static_assert(IsPowerOfTwo(ZONE_QUEUE_SIZE), "ZONE_QUEUE_SIZE must be a power of two");
-   static_assert(IsPowerOfTwo(NON_ZONE_QUEUE_SIZE), "NON_ZONE_QUEUE_SIZE must be a power of two");
+   static_assert(IsPowerOfTwo(NON_ZONE_EVENT_QUEUE_SIZE), "NON_ZONE_EVENT_QUEUE_SIZE must be a power of two");
 }

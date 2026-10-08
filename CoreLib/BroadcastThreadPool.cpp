@@ -21,10 +21,19 @@ namespace Core {
             m_workSemaphore.acquire();
             if (!m_running.load(std::memory_order_relaxed))
                 break;
+
             std::unique_ptr< std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>> packets;
-            if (!m_workQ.pop(packets)) {
-                continue;
+            while (!m_workQ.pop(packets)) {
+                // drain이 필요하지 않아서 종료 시그널 시 즉시 종료.
+                if (!m_running.load(std::memory_order_relaxed))
+                    break;
+
+                std::this_thread::yield();
             }
+
+            if (!m_running.load(std::memory_order_relaxed))
+                break;
+
             auto& headers = packets->first;
             auto& chunks = packets->second;
             perfCollector->AddBroadcastPopCnt();

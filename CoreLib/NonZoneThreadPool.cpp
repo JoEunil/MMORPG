@@ -36,31 +36,37 @@ namespace Core {
         while (true)
         {
             m_jobSemaphore.acquire();
-            uint64_t session;
-            if (m_disconnectQueue.pop(session)) {
-                handler->Disconnect(session);
-                continue;
-            }
+            if (!m_running.load(std::memory_order_relaxed))
+                break;
 
-            std::unique_ptr<IPacketView, PacketViewDeleter> work;
-            if (m_workQueue.pop(work)) {
-                if (m_running.load(std::memory_order_relaxed))
-                    handler->Process(work.get()); // handler에서 비동기 요청은 복사해서 처리.
-                continue;
+            Event event;
+            while (!m_eventQueue.pop(event))
+            {
+                if (!m_running.load(std::memory_order_relaxed))
+                    break;
+
+                std::this_thread::yield();
             }
 
             if (!m_running.load(std::memory_order_relaxed))
                 break;
 
-            errorLogger->LogError("non zone thread", "job semaphore and queues are out of sync");
+            if (event.type == EventType::Disconnect)
+                handler->Disconnect(event.sessionID);
+            else
+                handler->Process(event.work.get()); // handler에서 비동기 요청은 복사해서 처리.
         }
+        sysLogger->LogInfo("non zone thread", "non zone worker stopped", "threadID", ss.str());
     }
 
     void NonZoneThreadPool::EnqueueWork(std::unique_ptr<IPacketView, PacketViewDeleter> pv)  {
         if (!m_running.load(std::memory_order_relaxed))
             return;
 
-        if(m_workQueue.push(std::move(pv)))
+        Event event;
+        event.type = EventType::Work;
+        event.work = std::move(pv);
+        if (m_eventQueue.push(event))
             m_jobSemaphore.release();
     }
 
@@ -68,7 +74,10 @@ namespace Core {
         if (!m_running.load(std::memory_order_relaxed))
             return;
 
-        if(m_disconnectQueue.push(sessionID))
+        Event event;
+        event.type = EventType::Disconnect;
+        event.sessionID = sessionID;
+        if (m_eventQueue.push(event))
             m_jobSemaphore.release();
     }
 }

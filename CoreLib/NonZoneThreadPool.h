@@ -13,10 +13,20 @@
 namespace Core {
     // 게임틱 단위로 처리되지 않는 (zone 상태와 관련 없는) 요청 처리
     class NonZoneThreadPool {
+        enum class EventType : uint8_t {
+            Work,
+            Disconnect,
+        };
+
+        struct Event {
+            EventType type = EventType::Work;
+            std::unique_ptr<IPacketView, PacketViewDeleter> work;
+            uint64_t sessionID = 0;
+        };
+
         std::vector<std::thread> m_threads;
-        Base::LockFreeQueue<std::unique_ptr<IPacketView, PacketViewDeleter>, NON_ZONE_QUEUE_SIZE> m_workQueue;
-        Base::LockFreeQueue<uint64_t, DISCONNECT_QUEUE_SIZE> m_disconnectQueue;
-		std::counting_semaphore<NON_ZONE_QUEUE_SIZE + DISCONNECT_QUEUE_SIZE + NON_ZONE_THREADPOOL_SIZE> m_jobSemaphore{ 0 };
+        Base::LockFreeQueue<Event, NON_ZONE_EVENT_QUEUE_SIZE> m_eventQueue;
+		std::counting_semaphore<NON_ZONE_EVENT_QUEUE_SIZE + NON_ZONE_THREADPOOL_SIZE> m_jobSemaphore{ 0 };
 
         std::atomic<bool> m_running = false;
         

@@ -32,11 +32,17 @@ namespace Core {
                     break;
 
                 ChatEvent curr;
-                if (!m_chatQueue.pop(curr))
+                while (!m_chatQueue.pop(curr))
                 {
-                    errorLogger->LogError( "ChatThreadPool",  "chat semaphore and queue state are out of sync");
-                    break;
+                    if (!m_running.load(std::memory_order_relaxed))
+                        break;
+
+                    std::this_thread::yield();
                 }
+
+                if (!m_running.load(std::memory_order_relaxed))
+                    break;
+
                 switch (curr.type)
                 {
                 case ChatEventType::SESSION_ADD:
