@@ -9,18 +9,23 @@ namespace Core {
         std::stringstream ss;
         ss << tid;
         sysLogger->LogInfo("core mq", "mq thread started", "threadID", ss.str());
-        while (true) {
-			m_workSemaphore.acquire();
-            Message* work;
-            if (m_sharedQueue.pop(work)) {
-                handler->Process(work);
-                continue;
+        while (true)
+        {
+            Message* work = nullptr;
+            {
+                std::unique_lock<std::mutex> lock(m_queueMutex);
+                m_workAvailable.wait(lock, [this] {
+                    return !m_running.load(std::memory_order_relaxed) || !m_sharedQueue.empty();
+                });
+
+                if (m_sharedQueue.empty())
+                    break;
+
+                work = m_sharedQueue.front();
+                m_sharedQueue.pop();
             }
 
-            if (!m_running.load(std::memory_order_relaxed))
-                break;
-
-            errorLogger->LogError("core mq", "work semaphore and queue state are out of sync");
+            handler->Process(work);
         }
         sysLogger->LogInfo("core mq", "mq thread stopped", "threadID", ss.str());
     }
@@ -35,9 +40,13 @@ namespace Core {
     }
 
     void InMemoryQueue::Stop() {
-        if (!m_running.exchange(false, std::memory_order_relaxed))
-            return;
-		m_workSemaphore.release(MQ_THREADPOOL_SIZE);
+        {
+            std::lock_guard<std::mutex> lock(m_queueMutex);
+            if (!m_running.exchange(false, std::memory_order_relaxed))
+                return;
+        }
+
+        m_workAvailable.notify_all();
         for (auto& t : m_threads) {
             if (t.joinable())
                 t.join();
@@ -51,15 +60,33 @@ namespace Core {
         if (coreMsg == nullptr) {
             errorLogger->LogWarn("core mq", "message pool empty");
             return false;
-		}
+        }
         std::memcpy(coreMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());
+        coreMsg->SetLength(msg->GetLength());
 
-        if (!m_sharedQueue.push(coreMsg)) {
-            errorLogger->LogWarn("core mq", "push failed");
+        bool enqueued = false;
+        bool queueFull = false;
+        {
+            std::lock_guard<std::mutex> lock(m_queueMutex);
+            if (m_running.load(std::memory_order_relaxed)) {
+                if (m_sharedQueue.size() < MQ_SIZE) {
+                    m_sharedQueue.push(coreMsg);
+                    enqueued = true;
+                }
+                else {
+                    queueFull = true;
+                }
+            }
+        }
+
+        if (!enqueued) {
+            if (queueFull)
+                errorLogger->LogWarn("core mq", "queue full");
             messagePool->Return(coreMsg);
             return false;
-        } 
-		m_workSemaphore.release();
+        }
+
+        m_workAvailable.notify_one();
         return true;
     }
 }

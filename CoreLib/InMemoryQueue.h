@@ -5,9 +5,6 @@
 #include <atomic>
 #include <condition_variable>
 #include <thread>
-#include <semaphore>
-
-#include <BaseLib/LockFreeQueue.h>
 
 #include "IMessageQueue.h"
 #include "MessagePool.h"
@@ -20,8 +17,9 @@ namespace Core {
 	// 수신 큐
 	class InMemoryQueue :public IMessageQueue{
 		std::vector<std::thread> m_threads;
-		Base::LockFreeQueue<Message*, MQ_SIZE> m_sharedQueue;
-		std::counting_semaphore<MQ_SIZE + MQ_THREADPOOL_SIZE> m_workSemaphore{ 0 };
+		std::queue<Message*> m_sharedQueue;
+		std::mutex m_queueMutex;
+		std::condition_variable m_workAvailable;
 
 		std::atomic<bool> m_running = false;
 
