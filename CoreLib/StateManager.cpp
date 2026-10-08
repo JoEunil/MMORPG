@@ -29,8 +29,8 @@ namespace Core {
                     }
                 }
                 Message* msg = messagePool->Acquire();
-                constexpr int MAX_RETRY = 10;
-                for (int retry = 0; retry < MAX_RETRY && !msg; retry++) {
+                constexpr int MAX_RETRY_POOL = 10;
+                for (int retry = 0; retry < MAX_RETRY_POOL && !msg; retry++) {
                     msg = messagePool->Acquire();
                     if (!msg)
                         std::this_thread::yield();
@@ -53,11 +53,28 @@ namespace Core {
                 st->body.exp = temp.exp;
                 st->body.hp = temp.hp;
                 st->body.mp = temp.mp;
+                st->body.maxHp = temp.maxHp;
+                st->body.maxMp = temp.maxMp;
                 st->body.dir = temp.dir;
                 st->body.x = temp.x;
                 st->body.y = temp.y;
                 st->body.lastZone = temp.lastZone;
-                mq->EnqueueMessage(msg);
+				msg->SetLength(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
+                bool enqueued = false;
+                constexpr int MAX_RETRY_PUSH = 10;
+                for (int retry = 0; retry < MAX_RETRY_PUSH && !enqueued; retry++)
+                {
+                    if (!mq->EnqueueMessage(msg))
+                        std::this_thread::yield();
+                    else 
+						enqueued = true;
+                }
+                if (!enqueued) {
+                    std::vector<std::byte> binary(sizeof(CharacterState));
+                    std::memcpy(binary.data(), &temp, sizeof(CharacterState));
+                    Core::errorLogger->LogError("state manager", "failed to enqueue message for disconnect", "sessionID", session, "character state", binary);
+                }
+                messagePool->Return(msg);
             }
         }
     }
