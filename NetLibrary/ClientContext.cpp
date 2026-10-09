@@ -191,23 +191,22 @@ namespace Net {
     }
     EnqueueSendResult ClientContext::EnqueueSend(STOverlappedEx* work) {
         std::lock_guard<std::mutex> lock(m_sendMutex);
-        if (m_sendQueue.full())
-            return EnqueueSendResult::QueueFull;
         if (m_sendPending == false) {
             m_sendPending = true;
             return EnqueueSendResult::Ready;
         }
-        m_sendQueue.push(work);
+        if (!m_sendQueue.push(work))
+            return EnqueueSendResult::QueueFull;
         return EnqueueSendResult::Queued;
     }
 
     STOverlappedEx* ClientContext::DequeueSend() {
         std::lock_guard<std::mutex> lock(m_sendMutex);
-        if (m_sendQueue.empty()) {
+        STOverlappedEx* res = nullptr;
+        if (!m_sendQueue.pop(res)) {
             m_sendPending = false;
             return nullptr;
         }
-        auto res = m_sendQueue.pop();
         return res;
     }
 }

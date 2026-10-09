@@ -127,9 +127,9 @@ namespace Net {
             }
             {
                 std::lock_guard<std::mutex> lock(m_sendMutex);
-                while (!m_sendQueue.empty()) {
-                    overlappedExPool->Return(m_sendQueue.pop());
-                }
+                STOverlappedEx* pending = nullptr;
+                while (m_sendQueue.pop(pending))
+                    overlappedExPool->Return(pending);
                 m_sendPending = false;
             }
         }

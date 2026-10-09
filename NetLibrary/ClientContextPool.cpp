@@ -4,6 +4,8 @@
 #include "ClientContext.h"
 #include "Config.h"
 
+#include <cassert>
+
 namespace Net {
     void ClientContextPool::Stop() {
         {
@@ -22,15 +24,16 @@ namespace Net {
     }
 
     void ClientContextPool::FlushPending() {
-        while(!m_flushQ.empty())
+        ClientContext* context = nullptr;
+        while (m_flushQ.pop(context))
         {
-            auto t = m_flushQ.pop();
-            if (!t->CanRecycle()) {
-                m_flushQ.push(t);
+            if (!context->CanRecycle()) {
+                const bool requeued = m_flushQ.push(context);
+                assert(requeued);
                 break;
             }
             if (m_running) {
-                m_contexts.push_back(t);
+                m_contexts.push_back(context);
             }
         }
     }
@@ -64,6 +67,7 @@ namespace Net {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_workingCnt.fetch_sub(1, std::memory_order_relaxed);
         context->Disconnect();
-        m_flushQ.push(context);
+        const bool queued = m_flushQ.push(context);
+        assert(queued);
     }
 }
