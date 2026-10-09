@@ -43,7 +43,7 @@ namespace Base {
 				if (CLOSING_FLAG & oldValue) {
 					return; // 신규 유입 차단.
 				}
-				if (m_semaphore.compare_exchange_weak(oldValue, oldValue + count, std::memory_order_release, std::memory_order_relaxed)) {
+				if (m_semaphore.compare_exchange_weak(oldValue, oldValue + count, std::memory_order_acq_rel, std::memory_order_relaxed)) {
 					if (count == 1) {
 						m_semaphore.notify_one();
 					}
@@ -64,7 +64,7 @@ namespace Base {
 		bool Acquire() {
 			while (true)
 			{
-				m_semaphore.wait(0, std::memory_order_acquire); // permit이 0이면 block (C++20 이상)
+				m_semaphore.wait(0, std::memory_order_relaxed); // permit이 0이면 block (C++20 이상)
 				uint64_t oldValue = m_semaphore.load(std::memory_order_acquire);
 				if ((oldValue & COUNT_MASK) > 0) {
 					if (!Drain && oldValue & CLOSING_FLAG) {

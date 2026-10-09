@@ -9,6 +9,9 @@
 
 // Vyukov bounded MPMC queue와 semaphore를 결합한 blocking queue 래퍼.
 // 종료 시 남은 작업 drain을 위해 DrainableSemaphore을 사용한다.
+// 
+// Stop() 호출 이후 push는 queue에는 들어가지만 semaphore에서는 차단되어, pop되지 않는다. 
+
 
 namespace Base {
 	template <typename T, size_t Size, bool Drain>
