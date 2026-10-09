@@ -8,6 +8,8 @@
 #include "DrainableSemaphore.h"
 
 // Vyukov bounded MPMC queue와 semaphore를 결합한 blocking queue 래퍼.
+// Producer의 push는 대기하지 않으며, queue가 가득 차면 즉시 false를 반환한다.
+// Consumer의 pop은 작업이 들어오거나 Stop()이 호출될 때까지 blocking된다.
 // 종료 시 남은 작업 drain을 위해 DrainableSemaphore을 사용한다.
 // 
 // Stop() 호출 이후 push는 queue에는 들어가지만 semaphore에서는 차단되어, pop되지 않는다. 

@@ -60,5 +60,14 @@
     <ClCompile Include="BaseLib\WAL.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="CacheLib\ProfileCacheTest.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="BaseLib\DrainableSemaphore.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="BaseLib\BlockingQueue.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
