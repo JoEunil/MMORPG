@@ -21,6 +21,10 @@ namespace Base {
 		std::atomic<bool> m_degraded{ false };
 
 	public:
+		explicit NonBlockingBackPressureQueue(std::function<bool(const T&)> durableLog = {})
+			: m_durableLog(std::move(durableLog)) {
+		}
+
 		bool Enqueue(T&& item, Priority priority) {
 			return Enqueue(item, priority);
 		}
@@ -37,9 +41,7 @@ namespace Base {
 				return false;
 			}
 			if (!m_deferQueue.push(item)) {
-				if (m_durableLog)
-					m_durableLog(item);
-				return false;
+				return m_durableLog && m_durableLog(item);
 			}
 			return true;
 		}

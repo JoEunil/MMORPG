@@ -28,7 +28,7 @@ namespace Base
 		std::function<bool(const T&)> m_durableLog;
 
 	public:
-		explicit BlockingBackPressureQueue(std::function<void(T&)> durableLog = {})
+		explicit BlockingBackPressureQueue(std::function<bool(const T&)> durableLog = {})
 			: m_durableLog(std::move(durableLog)) {
 		}
 
@@ -50,9 +50,7 @@ namespace Base
 				return false;
 			}
 			if (!m_deferQueue.push(item)) {
-				if (m_durableLog)
-					m_durableLog(item);
-				return false;
+				return m_durableLog && m_durableLog(item);
 			}
 			m_semaphore.Release();
 			return true;

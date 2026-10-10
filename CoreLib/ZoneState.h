@@ -81,7 +81,7 @@ namespace Core {
         void UpdateSessionSnapshot();
         friend class Initializer;
     public:
-        ZoneState(uint16_t zone) {
+        explicit ZoneState(uint16_t zone) {
             m_zoneID = zone;
             m_chars.reserve(MAX_ZONE_CAPACITY);
             m_sessionToIndex.reserve(MAX_ZONE_CAPACITY);

@@ -10,7 +10,7 @@ namespace Core {
         Message() = delete;
         // m_buffer가 raw pointer라서 복사 생성 금지, 이동 생성자 정의
 
-        Message(uint16_t size) {
+        explicit Message(uint16_t size) {
             m_buffer = new uint8_t[size];
             m_capacity = size;
             m_length = 0;

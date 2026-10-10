@@ -29,7 +29,7 @@ namespace Net {
 
         friend class Initializer;
     public:
-        PacketPool(uint32_t packetLen) :m_packetLen(packetLen) {
+		explicit PacketPool(uint32_t packetLen) :m_packetLen(packetLen) {
         }
 
 		std::shared_ptr<Core::IPacket> Acquire() override {
