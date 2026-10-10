@@ -4,9 +4,7 @@
 #include <unordered_map>
 #include <memory>
 #include <shared_mutex>
-#include <atomic>
 #include <array>
-#include <new>
 
 #include "SessionManager.h"
 #include "IAbortSocket.h"
@@ -15,9 +13,6 @@
 
 namespace Net {
     class NetHandler {
-        alignas(std::hardware_destructive_interference_size) std::atomic<int> m_connectionCnt = 0;
-        char padding[std::hardware_destructive_interference_size];
-
         SessionManager* sessionManager = nullptr;
         IAbortSocket* abortSocket = nullptr;
         bool IsReady() const {

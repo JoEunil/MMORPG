@@ -7,6 +7,7 @@
 #include <atomic>
 #include <array>
 #include <chrono>
+#include <new>
 
 #include "IMessageQueue.h"
 #include "MessageTypes.h"
@@ -31,7 +32,7 @@ namespace Core {
         bool authenticated = false;
     };
 
-    struct SessionShard {
+    struct alignas(std::hardware_destructive_interference_size) SessionShard {
         std::shared_mutex smutex;
         std::unordered_map<uint64_t, SessionData> sessionMap;
     };

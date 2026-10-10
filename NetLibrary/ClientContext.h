@@ -45,9 +45,9 @@ namespace Net {
         uint64_t m_srtt = 0; // EWMA 평균
 		uint64_t m_rttvar = 0; // 표준 편차
 
-        // 서로 다른 실행 경로에서 갱신되는 atomic 간 false sharing 방지.
-        alignas(std::hardware_destructive_interference_size) std::atomic<bool> m_connected = false;
-        alignas(std::hardware_destructive_interference_size) std::atomic<bool> m_gameSession = false;
+        std::atomic<bool> m_connected = false;
+        std::atomic<bool> m_gameSession = false;
+        // 서로 다른 실행 경로에서 갱신되는 작업 카운터 간 false sharing 방지.
         alignas(std::hardware_destructive_interference_size) std::atomic<int16_t> m_workingCnt = int16_t(0); // buffer 조각(패킷)을 점유하고 있는 작업의 수
         alignas(std::hardware_destructive_interference_size) std::atomic<int16_t> m_pendingIOCnt = int16_t(0); // Context 내부 버퍼를 참조하는 pending RECV 수
         char padding[std::hardware_destructive_interference_size - sizeof(std::atomic<int16_t>)];

@@ -10,6 +10,7 @@
 #include <chrono>
 #include <functional>
 #include <deque>
+#include <new>
 
 #include <mysqlconn/include/mysql/jdbc.h>
 #include "DBConnectionGame.h"
@@ -35,7 +36,7 @@ namespace Cache {
     };
 
     template<typename Key, typename Result, typename KeyHash>
-    struct CacheShard {
+    struct alignas(std::hardware_destructive_interference_size) CacheShard {
         std::unordered_map<Key, Result, KeyHash> cache_data;
         std::list<Key> lru_list;
         std::unordered_map<Key, typename std::list<Key>::iterator, KeyHash> lru_pos;

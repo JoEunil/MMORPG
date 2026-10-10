@@ -1,5 +1,7 @@
 ﻿#pragma once
 #include <atomic>
+#include <cstdint>
+#include <new>
 
 
 namespace Base {
@@ -13,7 +15,7 @@ namespace Base {
 	constexpr uint64_t CLOSING_FLAG = 1ULL << 63;
 	constexpr uint64_t COUNT_MASK = (1ULL << 63) - 1;
 	template <bool Drain>
-	class DrainableSemaphore
+	class alignas(std::hardware_destructive_interference_size) DrainableSemaphore
 	{
 		std::atomic<uint64_t> m_semaphore{ 0 }; // 상위 1비트: Closing flag, 하위 63비트: permit count
 	public:
