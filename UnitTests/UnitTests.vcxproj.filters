@@ -21,7 +21,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="BaseLib\BackPressure.cpp">
+    <ClCompile Include="BaseLib\NonBlockingBackPressureQueue.cpp">
       <Filter>BaseLib</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">

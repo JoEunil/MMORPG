@@ -4,7 +4,9 @@
 
 이 문서는 코드에서 `LockFreeQueue`라는 타입명으로 사용 중인 Vyukov bounded MPMC queue의 구조와 구현 과정을 설명한다. 프로젝트에서는 실용적인 의미로 lock-free queue라고 부르며, 고정 용량의 다중 생산자·다중 소비자 큐에서 mutex 대신 atomic position과 slot별 sequence를 사용한다.
 
-이 구현은 mutex 없이 동작하지만 formal lock-free progress guarantee를 제공하지는 않는다. Producer는 tail CAS로 slot을 예약한 뒤 데이터를 기록하고 sequence를 공개하며, Consumer도 head CAS로 slot을 예약한 뒤 데이터를 꺼내고 sequence를 재사용 가능 상태로 바꾼다. 예약한 스레드가 sequence 공개 전에 멈추면 다른 스레드가 해당 작업을 대신 완료하거나 FIFO head를 건너뛸 수 없으므로 진행이 그 스레드의 재개에 의존한다. 일반 실행에서 예약과 공개 사이는 move assignment와 atomic store로 짧고 `push`와 `pop`은 준비되지 않은 상태에서 실패를 반환하지만, 이 실용적인 특성과 formal lock-free 보장은 구분한다.
+이 구현은 mutex 없이 동작하지만 formal lock-free progress guarantee를 제공하지는 않는다. Producer는 tail CAS로 slot을 예약한 뒤 데이터를 기록하고 sequence를 공개하며, Consumer도 head CAS로 slot을 예약한 뒤 데이터를 꺼내고 sequence를 재사용 가능 상태로 바꾼다.  
+예약한 스레드가 sequence 공개 전에 멈추면 다른 스레드가 해당 작업을 대신 완료하거나 FIFO head를 건너뛸 수 없으므로 진행이 그 스레드의 재개에 의존한다.    
+일반 실행에서 예약과 공개 사이는 move assignment와 atomic store로 짧고 `push`와 `pop`은 준비되지 않은 상태에서 실패를 반환하지만, 이 실용적인 특성과 formal lock-free 보장은 구분한다.  
 
 ## 2. 시행착오: CAS 기반 Ring Queue 시도
 
@@ -119,7 +121,7 @@ __Slot 상태 정의__
 **consumer 기준**  
 `diff = seq - (pos + 1)`  
 seq == pos + 1 → 데이터 준비됨, pop 가능
-seq < pos + 1 → 큐가 비어있음, pop 불가
+seq < pos + 1 → 현재 FIFO head slot이 아직 준비되지 않음, pop 불가. 논리적으로 비어 있거나 앞선 producer의 공개가 지연된 상태일 수 있음
 seq > pos + 1 → 다른 consumer가 이미 이 슬롯을 선점함, head 다시 읽고 재시도
 
 ```cpp
@@ -172,6 +174,13 @@ push / pop 가능 여부를 판단한다.
 - 이 bounded MPMC queue는 empty(), size() 메서드를 제공하지 않는다.
 	- size 계산 자체가 race condition을 유발할 수 있으며,
 	- consumer 쪽에서도 적절한 wait / retry 정책이 필요하다
+
+### Semaphore와 결합할 때
+
+- Producer는 `push`가 성공해 데이터 공개까지 끝난 뒤 semaphore를 release한다.
+- Consumer가 permit을 acquire했더라도 현재 FIFO head의 `pop`이 즉시 성공한다는 보장은 없다. 앞선 producer가 head slot을 예약한 뒤 공개하기 전에, 뒤 producer가 push와 release를 먼저 끝낼 수 있기 때문이다.
+- Consumer는 획득한 permit을 버리지 않고 `pop`이 성공하거나 hard stop이 시작될 때까지 재시도한다.
+- graceful drain에서는 `pop(false)`를 queue empty의 근거로 사용하지 않는다. 먼저 신규 producer 진입을 차단하고 in-flight producer 수가 0이 된 뒤 남은 permit과 item을 모두 소비해야 한다.
   
 ![이미지 로드 실패](images/StackOverflow.png)
 - 테스트 환경에서 위와 같이 스택오버플로우(0xc00000FD)가 발생한다.

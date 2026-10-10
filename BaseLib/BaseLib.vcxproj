@@ -137,12 +137,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="BackPressure.h" />
+    <ClInclude Include="BackPressurePolicy.h" />
+    <ClInclude Include="BlockingBackPressureQueue.h" />
     <ClInclude Include="BlockingQueue.h" />
     <ClInclude Include="DrainableSemaphore.h" />
     <ClInclude Include="Exception.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="LockFreeQueue.h" />
+    <ClInclude Include="NonBlockingBackPressureQueue.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="FixedObjectPool.h" />
     <ClInclude Include="RingQueue.h" />

@@ -21,7 +21,7 @@ __처리 방식__
 - 외부 호출자에 의한 lock이 발생하지 않도록 하였다.
 
 ## 4. 설계 결정 및 트레이드오프
-- Lock-free 큐에 재시도(back-off) 정책은 적용하지 않음
+- Producer의 push가 큐 full로 실패한 경우 재시도(back-off)하지 않음
 	- 큐가 가득 찬 경우 채팅 이벤트는 드롭
 	- Back-pressure 상황에서 재시도로 인한 CPU 소모가 채팅 유실보다 더 치명적이라고 판단
 - World / Zone 채팅은 Batch 처리를 적용
