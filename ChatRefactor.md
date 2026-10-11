@@ -25,7 +25,8 @@ __처리 방식__
 	- 큐가 가득 찬 경우 채팅 이벤트는 드롭
 	- Back-pressure 상황에서 재시도로 인한 CPU 소모가 채팅 유실보다 더 치명적이라고 판단
 - World / Zone 채팅은 Batch 처리를 적용
-	- 첫 이벤트 수신 후 최대 2ms 동안 최대 100개의 이벤트를 모아 패킷 전송
+	- 15ms tick마다 최대 100개의 이벤트를 모아 패킷 전송
+	- Batch를 가득 채우면 대기하지 않고 다음 Batch를 처리해 backlog를 해소
 	- 짧은 batching latency가 추가되지만, Global / Zone 채팅의 fan-out 비용을 줄이는 편이 효과적이라고 판단  
 
 ## 5. 시연

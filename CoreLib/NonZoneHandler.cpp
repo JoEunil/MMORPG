@@ -336,7 +336,6 @@ namespace Core {
                 return;
             iocp->SendDataUnique(session, std::move(p));
 
-            chat->EnqueueZoneLeave(session, zoneID);
             chat->EnqueueZoneJoin(session, destZone);
         }
     }

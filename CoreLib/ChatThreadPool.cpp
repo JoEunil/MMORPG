@@ -5,6 +5,11 @@
 #include "CorePerfCollector.h"
 
 namespace Core {
+    namespace {
+        constexpr auto CHAT_BATCH_WINDOW = std::chrono::milliseconds(15);
+        constexpr int CHAT_BATCH_SIZE = 100;
+    }
+
     void ChatThreadPool::ThreadFunc() {
         auto tid = std::this_thread::get_id();
         std::stringstream ss;
@@ -13,32 +18,17 @@ namespace Core {
         std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash> tempPackets;
         tempPackets.reserve(100);
 
-        while (true)
+        while (m_running.load(std::memory_order_relaxed))
         {
-            m_workSemaphore.acquire();
-            if (!m_running.load(std::memory_order_relaxed))
-                break; 
-
-            const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2);
-            for (int processed = 0; processed < 100; ++processed)
+            int processed = 0;
+            for (; processed < CHAT_BATCH_SIZE; ++processed)
             {
-                // 첫 permit은 바깥에서 이미 획득
-                // 두 번째 작업부터 batch deadline까지 기다린다.
-                if (processed != 0 && !m_workSemaphore.try_acquire_until(deadline))
-                {
-                    break;
-                }
                 if (!m_running.load(std::memory_order_relaxed))
                     break;
 
                 ChatEvent curr;
-                while (!m_chatQueue.pop(curr))
-                {
-                    if (!m_running.load(std::memory_order_relaxed))
-                        break;
-
-                    std::this_thread::yield();
-                }
+                if (!m_chatQueue.Dequeue(curr))
+                    break;
 
                 if (!m_running.load(std::memory_order_relaxed))
                     break;
@@ -47,6 +37,10 @@ namespace Core {
                 {
                 case ChatEventType::SESSION_ADD:
                     ProcessAddSession(curr.senderSessionID, curr.senderChatID, static_cast<uint16_t>(curr.key.id), curr.senderProfileId);
+                    continue;
+                case ChatEventType::ZONE_JOIN:
+                case ChatEventType::ZONE_LEAVE:
+                    ProcessZoneTransition(std::move(curr));
                     continue;
                 }
 
@@ -66,12 +60,6 @@ namespace Core {
                 case ChatEventType::SESSION_DELETE:
                     ProcessDeleteSession(curr.senderSessionID, static_cast<uint16_t>(curr.key.id));
                     break;
-                case ChatEventType::ZONE_JOIN:
-                    ProcessZoneJoin(curr.senderSessionID, static_cast<uint16_t>(curr.key.id));
-                    break;
-                case ChatEventType::ZONE_LEAVE:
-                    ProcessZoneLeave(curr.senderSessionID, static_cast<uint16_t>(curr.key.id));
-                    break;
                     //case ChatEventType::GUILD_JOIN: break;
                     //case ChatEventType::GUILD_LEAVE: break;
                     //case ChatEventType::PARTY_JOIN: break;
@@ -82,6 +70,7 @@ namespace Core {
                     // "undefined chat event type"
                 }
             }
+
             for (auto& [key, packet] : tempPackets)
             {
                 SendPacketGroup(key, packet);
@@ -89,8 +78,11 @@ namespace Core {
 
             tempPackets.clear();
 
-            if (!m_running.load(std::memory_order_relaxed))
-                break;
+            // Batch가 가득 찬 동안은 sleep 없이 다음 batch를 즉시 처리한다.
+            if (processed == CHAT_BATCH_SIZE)
+                continue;
+
+            std::this_thread::sleep_for(CHAT_BATCH_WINDOW);
         }
     }
     void ChatThreadPool::SendPacketUnique(uint64_t session, std::unique_ptr<IPacket, PacketDeleter> p) {
@@ -174,6 +166,7 @@ namespace Core {
         auto& node = m_sessionChatIdMap[sessionID];
         node.chatID = chatID;
         node.profileId = profileId;
+        node.zoneID = 0;
         m_chatIdSessionMap[chatID] = sessionID;
         // 싱글 스레드 접근이라서 안전함
     }
@@ -183,28 +176,80 @@ namespace Core {
             errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
             return;
         }
+        const uint16_t currentZoneID = it->second.zoneID;
+        if (currentZoneID > 0 && currentZoneID <= ZONE_COUNT) {
+            m_zoneMembers[currentZoneID - 1].erase(sessionID);
+        }
         m_chatIdSessionMap.erase(it->second.chatID);
         m_sessionChatIdMap.erase(it);
     }
     void ChatThreadPool::ProcessZoneJoin(uint64_t sessionID, uint16_t zoneID) {
         if (zoneID == 0 || zoneID > ZONE_COUNT)
             return;
-        auto it = m_zoneMembers[zoneID-1].find(sessionID);
-        if (it != m_zoneMembers[zoneID-1].end()) {
-            errorLogger->LogInfo("chat thread", "session already exist in zone", "session", sessionID, "zoneID", zoneID);
+
+        auto sessionIt = m_sessionChatIdMap.find(sessionID);
+        if (sessionIt == m_sessionChatIdMap.end()) {
+            errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
             return;
         }
-        m_zoneMembers[zoneID-1].insert(sessionID);
+
+        const uint16_t currentZoneID = sessionIt->second.zoneID;
+        if (currentZoneID == zoneID)
+            return;
+
+        if (currentZoneID > 0 && currentZoneID <= ZONE_COUNT) {
+            m_zoneMembers[currentZoneID - 1].erase(sessionID);
+        }
+
+        m_zoneMembers[zoneID - 1].insert(sessionID);
+        sessionIt->second.zoneID = zoneID;
     }
     void ChatThreadPool::ProcessZoneLeave(uint64_t sessionID, uint16_t zoneID) {
-        if (zoneID == 0 || zoneID > ZONE_COUNT)
-            return;
-        auto it = m_zoneMembers[zoneID-1].find(sessionID);
-        if (it == m_zoneMembers[zoneID-1].end()) {
-            errorLogger->LogInfo("chat thread", "session doesn't exist", "session", sessionID, "zoneID", zoneID);
+        auto sessionIt = m_sessionChatIdMap.find(sessionID);
+        if (sessionIt == m_sessionChatIdMap.end()) {
+            errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
             return;
         }
-        m_zoneMembers[zoneID-1].erase(sessionID);
+
+        const uint16_t currentZoneID = sessionIt->second.zoneID;
+        if (currentZoneID == 0)
+            return;
+
+        if (currentZoneID <= ZONE_COUNT) {
+            m_zoneMembers[currentZoneID - 1].erase(sessionID);
+        }
+        sessionIt->second.zoneID = 0;
+    }
+
+    void ChatThreadPool::ProcessZoneTransition(ChatEvent&& event) {
+        std::lock_guard<std::mutex> lock(m_zoneSequenceMutex);
+        auto sequenceIt = m_currentZoneSequence.find(event.senderSessionID);
+        if (sequenceIt == m_currentZoneSequence.end()) {
+            errorLogger->LogError(
+                "chat thread",
+                "zone transition before session add",
+                "session",
+                event.senderSessionID,
+                "sequence",
+                event.zoneSequence);
+            return;
+        }
+
+        if (event.zoneSequence != sequenceIt->second) {
+            return;
+        }
+
+        ApplyZoneTransition(event);
+    }
+
+    void ChatThreadPool::ApplyZoneTransition(const ChatEvent& event) {
+        const auto zoneID = static_cast<uint16_t>(event.key.id);
+        if (event.type == ChatEventType::ZONE_JOIN) {
+            ProcessZoneJoin(event.senderSessionID, zoneID);
+        }
+        else if (event.type == ChatEventType::ZONE_LEAVE) {
+            ProcessZoneLeave(event.senderSessionID, zoneID);
+        }
     }
 
 }

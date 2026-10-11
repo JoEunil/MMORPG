@@ -6,13 +6,12 @@
 #include <set>
 #include <unordered_map>
 #include <memory>
-#include <semaphore>
 
 #include "PacketTypes.h"
 #include "LoggerGlobal.h"
 #include "Config.h"
 #include <CoreLib/IPacket.h>
-#include <BaseLib/LockFreeQueue.h>
+#include <BaseLib/NonBlockingBackPressureQueue.h>
 
 namespace Core {
     enum class ChatEventType {
@@ -42,11 +41,13 @@ namespace Core {
         uint32_t senderProfileId; // SESSION_ADD에서만 사용
         ChatDestKey key;
         std::string message;
+        uint64_t zoneSequence = 0; // ZONE_JOIN / ZONE_LEAVE에서만 사용
     };
 
     struct ChatUserInfo {
         uint64_t chatID;
         uint32_t profileId;
+        uint16_t zoneID = 0;
     };
 
     const uint16_t CHAT_WORKER_SIZE = 1;  // 변경하려면 ChatDestKey 활용해 샤딩 적용 필요. 
@@ -71,8 +72,12 @@ namespace Core {
         alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_chatIdGenerater;
         char padding[std::hardware_destructive_interference_size - sizeof(uint64_t)];
 
-        Base::LockFreeQueue<ChatEvent, CHAT_QUEUE_SIZE> m_chatQueue;
-		std::counting_semaphore<CHAT_QUEUE_SIZE + CHAT_WORKER_SIZE> m_workSemaphore{ 0 };
+        Base::NonBlockingBackPressureQueue<ChatEvent, CHAT_QUEUE_SIZE, CHAT_DEFER_QUEUE_SIZE> m_chatQueue;
+
+        // NonBlockingBackPressureQueue는 primary/defer 전체 FIFO를 보장하지 않는다.
+        // session별 최신 Zone sequence를 공유해 오래된 전환을 폐기한다.
+        std::mutex m_zoneSequenceMutex;
+        std::unordered_map<uint64_t, uint64_t> m_currentZoneSequence;
 
         std::vector<std::thread> m_workerThreadPool;
         std::atomic<bool> m_running;
@@ -95,6 +100,7 @@ namespace Core {
             writer = w;
             perfCollector = p;
             m_sessionChatIdMap.reserve(MAX_USER_CAPACITY);
+            m_currentZoneSequence.reserve(MAX_USER_CAPACITY);
             m_zoneMembers.resize(ZONE_COUNT);
             m_chatIdGenerater.store(1, std::memory_order_relaxed);
         }
@@ -121,7 +127,6 @@ namespace Core {
         void Stop() {
             if (!m_running.exchange(false, std::memory_order_relaxed))
                 return;
-			m_workSemaphore.release(CHAT_WORKER_SIZE);
             for (auto& t : m_workerThreadPool)
             {
                 if (t.joinable())
@@ -138,6 +143,8 @@ namespace Core {
         void ProcessDeleteSession(uint64_t sessionID, uint16_t zoneID);
         void ProcessZoneLeave(uint64_t sessionID, uint16_t zoneID);
         void ProcessZoneJoin(uint64_t sessionID, uint16_t zoneID);
+        void ProcessZoneTransition(ChatEvent&& event);
+        void ApplyZoneTransition(const ChatEvent& event);
 
         PacketWriter* writer = nullptr;
         IIOCP* iocp = nullptr;
@@ -147,12 +154,19 @@ namespace Core {
     public:
         uint64_t AddChatSession(uint64_t session, uint16_t zone, uint32_t profileId) {
             uint64_t chatID = m_chatIdGenerater.fetch_add(1, std::memory_order_relaxed);
+
+            {
+                std::lock_guard<std::mutex> lock(m_zoneSequenceMutex);
+                m_currentZoneSequence.insert_or_assign(session, 1);
+            }
+
             ChatEvent e{};
             e.type = ChatEventType::SESSION_ADD;
             e.senderSessionID = session;
             e.key.id = zone;
             e.senderProfileId = profileId;
             e.senderChatID = chatID;
+            e.zoneSequence = 1;
             EnqueueChat(e);
             return chatID;
         }
@@ -165,13 +179,32 @@ namespace Core {
             EnqueueChat(e);
         }
 
-        void EnqueueChat(ChatEvent& event) {
+        bool EnqueueChat(ChatEvent& event, Base::Priority priority = Base::Priority::Droppable) {
             if (!m_running.load(std::memory_order_relaxed))
-                return;
+                return false;
 
-            if (m_chatQueue.push(event)) {
-				m_workSemaphore.release();
+            return m_chatQueue.Enqueue(event, priority);
+        }
+
+        void EnqueueZoneTransition(ChatEvent& event) {
+            const uint64_t session = event.senderSessionID;
+            const uint64_t zoneID = event.key.id;
+
+            std::lock_guard<std::mutex> lock(m_zoneSequenceMutex);
+            auto it = m_currentZoneSequence.find(session);
+            if (it == m_currentZoneSequence.end()) {
+                errorLogger->LogError("chat thread", "zone transition before session add", "session", session, "zoneID", zoneID);
+                return;
             }
+
+            event.zoneSequence = it->second + 1;
+
+            if (EnqueueChat(event, Base::Priority::Important)) {
+                it->second = event.zoneSequence;
+                return;
+            }
+
+            errorLogger->LogError("chat thread", "zone transition queue overflow","session", session, "zoneID", zoneID);
         }
 
         // EnqueueChat으로 같이 처리하면 코드가 복잡해짐
@@ -180,7 +213,7 @@ namespace Core {
             e.type = ChatEventType::ZONE_JOIN;
             e.senderSessionID = session;
             e.key.id = dest;
-            EnqueueChat(e);
+            EnqueueZoneTransition(e);
         }
 
         void EnqueueZoneLeave(uint64_t session, uint16_t zoneID) {
@@ -188,7 +221,7 @@ namespace Core {
             e.type = ChatEventType::ZONE_LEAVE;
             e.senderSessionID = session;
             e.key.id = zoneID;
-            EnqueueChat(e);
+            EnqueueZoneTransition(e);
         }
 	};
 }
