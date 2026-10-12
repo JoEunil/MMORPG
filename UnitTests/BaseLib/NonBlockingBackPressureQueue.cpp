@@ -41,11 +41,11 @@ TEST(NonBlockingBackPressureQueueTest, EmptyQueueReturnsFalse) {
 
 TEST(NonBlockingBackPressureQueueTest, DurableLog) {
 	int logged = 0;
-	Base::NonBlockingBackPressureQueue<int, 2, 2> queue(
-		[&](const int& item) {
+	Base::NonBlockingBackPressureQueue<int, 2, 2> queue;
+	queue.SetDurableLog([&](const int& item) {
 			logged = item;
 			return true;
-		});
+	});
 
 	int one = 1;
 	int two = 2;

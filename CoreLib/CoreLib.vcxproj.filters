@@ -36,6 +36,9 @@
     <ClInclude Include="Config.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="DurableLogger.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
     <ClInclude Include="Initializer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -144,6 +147,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="PacketWriter.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="DurableLogger.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="ZoneState.cpp">

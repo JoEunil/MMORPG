@@ -69,10 +69,10 @@ namespace Cache {
 
         }
         
-        void InjectDependencies(Core::IMessageQueue* sendMQ)
+        void InjectDependencies(Core::IMessageQueue* sendMQ, Core::DurableLogger* durableLogger = nullptr)
         {
             handler.Initialize(sendMQ, &msgPool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile);
-            recvMQ.Initialize(&handler, &msgPool);
+            recvMQ.Initialize(&handler, &msgPool, durableLogger);
             recvMQ.Start();
         }
         

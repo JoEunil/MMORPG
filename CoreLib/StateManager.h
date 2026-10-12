@@ -7,11 +7,12 @@
 #include <atomic>
 #include <array>
 #include <chrono>
+#include <memory>
 #include <new>
 
 #include "IMessageQueue.h"
 #include "MessageTypes.h"
-#include "MessagePool.h"
+#include "Message.h"
 
 #include "ZoneState.h"
 #include "Config.h"
@@ -43,14 +44,13 @@ namespace Core {
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
         std::atomic<bool> m_running;
 
-        MessagePool* messagePool = nullptr;
         IMessageQueue* mq = nullptr;
         IIOCP* iocp = nullptr;
         LobbyZone* lobbyZone = nullptr;
         ChatThreadPool* chat = nullptr;
 
 
-        void Initialize(IMessageQueue* m, IIOCP* io, MessagePool* mp, LobbyZone* lobby, ChatThreadPool* c) {
+        void Initialize(IMessageQueue* m, IIOCP* io, LobbyZone* lobby, ChatThreadPool* c) {
             m_states.reserve(ZONE_COUNT);
             for (int zoneID = 1; zoneID <= ZONE_COUNT; zoneID++) {
                 m_states.emplace(zoneID, std::make_unique<ZoneState>(zoneID));
@@ -58,7 +58,6 @@ namespace Core {
             for (auto& shard : m_shards)
                 shard.sessionMap.reserve(MAX_USER_CAPACITY / SHARD_SIZE);
             mq = m;
-            messagePool = mp;
             lobbyZone = lobby;
             iocp = io;
             chat = c;
@@ -67,7 +66,6 @@ namespace Core {
 
         bool IsReady() {
             if (mq == nullptr) return false;
-            if (messagePool == nullptr) return false;
             if (lobbyZone == nullptr) return false;
             if (chat == nullptr) return false;
             return true;

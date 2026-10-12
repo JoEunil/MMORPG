@@ -35,11 +35,11 @@ TEST(BlockingBackPressureQueueTest, DropsDroppableAndDefersImportant) {
 
 TEST(BlockingBackPressureQueueTest, DurableLog) {
 	int logged = 0;
-	Base::BlockingBackPressureQueue<int, 2, 2, true> queue(
-		[&](const int& item) {
+	Base::BlockingBackPressureQueue<int, 2, 2, true> queue;
+	queue.SetDurableLog([&](const int& item) {
 			logged = item;
 			return true;
-		});
+	});
 
 	int one = 1;
 	int two = 2;

@@ -6,6 +6,7 @@
 
 #include <Netlibrary/Initializer.h>
 #include <CoreLib/Initializer.h>
+#include <CoreLib/DurableLogger.h>
 #include <CacheLib/Initializer.h>
 
 #include <CoreLib/LoggerGlobal.h>
@@ -82,6 +83,8 @@ int main(int argc, char* argv[]) {
         External::SessionAuth auth;
         auth.Initialize();
 
+        Core::DurableLogger durableLogger;
+        durableLogger.Initialize();
         Core::Initializer core;
         Net::Initializer net;
         Cache::Initializer cache;
@@ -90,8 +93,8 @@ int main(int argc, char* argv[]) {
         core.Initialize();
         net.Initialize();
 
-        core.InjectDependencies1(net.GetIOCP(), net.GetPacketPool(), net.GetBigPacketPool());
-        cache.InjectDependencies(core.GetMessageQueue());
+        core.InjectDependencies1(net.GetIOCP(), net.GetPacketPool(), net.GetBigPacketPool(), &durableLogger);
+        cache.InjectDependencies(core.GetMessageQueue(), &durableLogger);
         core.InjectDependencies2(net.GetIOCP(), &auth, cache.GetMessageQueue(), net.GetPacketPool(), cache.GetProfileCache());
         net.InjectDependencies(core.GetPacketDispatcher());
 

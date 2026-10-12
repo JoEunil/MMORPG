@@ -28,21 +28,8 @@ namespace Core {
                         continue;
                     }
                 }
-                Message* msg = messagePool->Acquire();
-                constexpr int MAX_RETRY_POOL = 10;
-                for (int retry = 0; retry < MAX_RETRY_POOL && !msg; retry++) {
-                    msg = messagePool->Acquire();
-                    if (!msg)
-                        std::this_thread::yield();
-                }
-
-                if (!msg) {
-                    std::vector<std::byte> binary(sizeof(CharacterState));
-                    std::memcpy(binary.data(), &temp, sizeof(CharacterState));
-                    Core::errorLogger->LogError("state manager", "failed to acquire message for disconnect", "sessionID", session, "character state", binary);
-                    continue;
-                }
-                auto st = reinterpret_cast<MsgStruct<MsgCharacterStateUpdateBody>*>(msg->GetBuffer());
+                Message msg(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
+                auto st = reinterpret_cast<MsgStruct<MsgCharacterStateUpdateBody>*>(msg.GetBuffer());
 
                 st->header.sessionID = session;
                 st->header.messageType = MSG_CHARACTER_STATE_UPDATE;
@@ -58,23 +45,13 @@ namespace Core {
                 st->body.dir = temp.dir;
                 st->body.x = temp.x;
                 st->body.y = temp.y;
-                st->body.lastZone = temp.lastZone;
-				msg->SetLength(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
-                bool enqueued = false;
-                constexpr int MAX_RETRY_PUSH = 10;
-                for (int retry = 0; retry < MAX_RETRY_PUSH && !enqueued; retry++)
-                {
-                    if (!mq->EnqueueMessage(msg))
-                        std::this_thread::yield();
-                    else 
-						enqueued = true;
-                }
-                if (!enqueued) {
+                st->body.lastZone = static_cast<uint8_t>(temp.lastZone);
+				msg.SetLength(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
+                if (!mq->EnqueueMessage(&msg)) {
                     std::vector<std::byte> binary(sizeof(CharacterState));
                     std::memcpy(binary.data(), &temp, sizeof(CharacterState));
                     Core::errorLogger->LogError("state manager", "failed to enqueue message for disconnect", "sessionID", session, "character state", binary);
                 }
-                messagePool->Return(msg);
             }
         }
     }
@@ -107,6 +84,7 @@ namespace Core {
             EnqueueDisconnectMsg(temp, sessionID);
         }
     }
+
     // rename이 DB에 확정된 뒤, 세션이 속한 zone의 CharacterState에 새 version을 반영한다.
     // zone에 이벤트 큐를 붙여 처리하는 편이 깔끔하지만, zone 간 참조 방식을 아직 정하지 못해 여기서는 ZoneState의 기존 m_mutex를 그대로 쓴다.
     void StateManager::UpdateProfileVersion(uint64_t sessionID, uint32_t version) {
@@ -131,26 +109,13 @@ namespace Core {
     void StateManager::EnqueueDisconnectMsg(CharacterState& temp, uint64_t sessionID)
     {
         gameLogger->LogInfo("state manager", "Enqueue Disconnect", "sessionID", sessionID);
-        Message* msg = messagePool->Acquire();
-        constexpr int MAX_RETRY = 10;
-        for (int retry = 0; retry < MAX_RETRY && !msg; retry++) {
-            msg = messagePool->Acquire();
-            if (!msg)
-                std::this_thread::yield();
-        }
-
-        if (!msg) {
-            std::vector<std::byte> binary(sizeof(CharacterState));
-            std::memcpy(binary.data(), &temp, sizeof(CharacterState));
-            gameLogger->LogError("state manager", "Failed to acquire message for disconnect", "sessionID", sessionID, "character state", binary);
-            return ;
-        }
-
-        auto st = reinterpret_cast<MsgStruct<MsgCharacterStateUpdateBody>*>(msg->GetBuffer());
+        Message msg(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
+        auto st = reinterpret_cast<MsgStruct<MsgCharacterStateUpdateBody>*>(msg.GetBuffer());
         st->header.sessionID = sessionID;
         st->header.messageType = MSG_CHARACTER_STATE_UPDATE;
         st->body.charID = temp.characterID;
         st->body.profileId = temp.profileId;
+        st->body.attack = temp.attack;
         st->body.level = temp.level;
         st->body.exp = temp.exp;
         st->body.hp = temp.hp;
@@ -160,24 +125,13 @@ namespace Core {
         st->body.dir = temp.dir;
         st->body.x = temp.x;
         st->body.y = temp.y;
-        st->body.lastZone = temp.lastZone;
-        msg->SetLength(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
+        st->body.lastZone = static_cast<uint8_t>(temp.lastZone);
+        msg.SetLength(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
 
-        // 접속 종료 시점의 위치/스탯은 여기서 흘리면 복구할 방법이 없다.
-        // 큐가 순간적으로 꽉 찼거나 수신 풀이 비었을 뿐일 수 있으므로 몇 번은 다시 밀어본다.
-        bool enqueued = false;
-        for (int retry = 0; retry < MAX_RETRY; retry++) {
-            if (mq->EnqueueMessage(msg)) {
-                enqueued = true;
-                break;
-            }
-            std::this_thread::yield();
-        }
-        if (!enqueued) {
+        if (!mq->EnqueueMessage(&msg)) {
             std::vector<std::byte> binary(sizeof(CharacterState));
             std::memcpy(binary.data(), &temp, sizeof(CharacterState));
             errorLogger->LogError("state manager", "Failed to enqueue disconnect message", "sessionID", sessionID, "character state", binary);
         }
-        messagePool->Return(msg);
     }
 }

@@ -151,6 +151,7 @@
     <ClInclude Include="NonZoneThreadPool.h" />
     <ClInclude Include="BroadcastThreadPool.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="DurableLogger.h" />
     <ClInclude Include="IIOCP.h" />
     <ClInclude Include="ILogger.h" />
     <ClInclude Include="Initializer.h" />
@@ -178,6 +179,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChatThreadPool.cpp" />
+    <ClCompile Include="DurableLogger.cpp" />
     <ClCompile Include="LoggerGlobal.cpp" />
     <ClCompile Include="NonZoneHandler.cpp" />
     <ClCompile Include="NonZoneThreadPool.cpp" />

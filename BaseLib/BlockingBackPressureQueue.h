@@ -28,9 +28,7 @@ namespace Base
 		std::function<bool(const T&)> m_durableLog;
 
 	public:
-		explicit BlockingBackPressureQueue(std::function<bool(const T&)> durableLog = {})
-			: m_durableLog(std::move(durableLog)) {
-		}
+		void SetDurableLog(std::function<bool(const T&)> durableLog) { m_durableLog = std::move(durableLog); }
 
 		void Stop() {
 			m_semaphore.Close();

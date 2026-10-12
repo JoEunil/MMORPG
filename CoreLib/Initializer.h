@@ -20,6 +20,7 @@
 #include "IPingPacketWriter.h"
 #include "ChatThreadPool.h"
 #include "IProfileCache.h"
+#include "DurableLogger.h"
 
 #include "LoggerGlobal.h"
 
@@ -48,21 +49,21 @@ namespace Core {
             CleanUp2();
         }
         
-        void InjectDependencies1(IIOCP* iocp, IPacketPool* packetPool, IPacketPool* bigPacketPool) {
+        void InjectDependencies1(IIOCP* iocp, IPacketPool* packetPool, IPacketPool* bigPacketPool, DurableLogger* durableLogger = nullptr) {
             perfCollector.Initialize();
             broadcastPool.Initialize(iocp, &stateManager, &perfCollector, &writer);
             lobbyZone.Initialize(& stateManager);
-            nonZoneThreadPool.Initialize( &nonZoneHandler);
+            nonZoneThreadPool.Initialize(&nonZoneHandler);
             zoneThreadSet.Initialize(&zoneHandler, &perfCollector);
             writer.Initialize(packetPool, bigPacketPool);
             mqHandler.Initialize(iocp, &writer, &lobbyZone, &msgPool);
             recvMQ.Initialize(&mqHandler, &msgPool);
             recvMQ.Start();
-            chat.Initialize(iocp, &writer, &perfCollector);
+            chat.Initialize(iocp, &writer, &perfCollector, durableLogger);
         }
         
         void InjectDependencies2(IIOCP* iocp, ISessionAuth* session, IMessageQueue* sendMQ, IPacketPool* packetPool, IProfileCache* profileCache) {
-            stateManager.Initialize(sendMQ, iocp, &msgPool, &lobbyZone, &chat);
+            stateManager.Initialize(sendMQ, iocp, &lobbyZone, &chat);
             mqHandler.InitializeStateManager(&stateManager);
             packetDispatcher.Initialize(&nonZoneThreadPool, &zoneThreadSet, &stateManager, static_cast<IPingPacketWriter*>(&writer), iocp);
             nonZoneThreadPool.Start();

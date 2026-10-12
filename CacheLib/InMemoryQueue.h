@@ -10,7 +10,9 @@
 #include <CoreLib/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
 #include <CoreLib/Config.h>
+#include <CoreLib/DurableLogger.h>
 #include "Config.h"
+#include "MessagePool.h"
 
 namespace Cache {
     class Handler;
@@ -22,10 +24,20 @@ namespace Cache {
         std::atomic<bool> m_running = false;
         Handler* handler = nullptr;
         MessagePool* messagePool = nullptr;
+        Core::DurableLogger* durableLogger = nullptr;
+
+        bool WriteDurable(Core::Message* message);
         
-        void Initialize(Handler* h, MessagePool* m) {
+        void Initialize(Handler* h, MessagePool* m, Core::DurableLogger* durableLogger) {
             handler = h;
             messagePool = m;
+            this->durableLogger = durableLogger;
+            m_workQueue.SetDurableLog([this](Core::Message* const& message) {
+                if (!WriteDurable(message)) 
+                    return false;
+                messagePool->Return(message);
+                return true;
+            });
         }
         
         bool IsReady() {

@@ -30,18 +30,16 @@ namespace Core {
         std::atomic<bool> m_running = false;
         
         NonZoneHandler* handler = nullptr;
-        void Initialize(NonZoneHandler* h) {
-            handler = h;
-        }
+        void Initialize(NonZoneHandler* h) { handler = h; }
         void Start();
         void Stop();
         bool IsReady() {
             if (m_threads.size() != NON_ZONE_THREADPOOL_SIZE) {
-                sysLogger->LogError("none zone thread", "m_threads not initialized");
+                sysLogger->LogError("non zone thread", "m_threads not initialized");
                 return false;
             }
             if (handler == nullptr) {
-                sysLogger->LogError("none zone thread", "handler not initialized");
+                sysLogger->LogError("non zone thread", "handler not initialized");
                 return false;
             }
             return true;

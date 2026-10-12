@@ -3,6 +3,7 @@
 #include <atomic>
 #include <cstddef>
 #include <functional>
+#include <utility>
 
 #include "BackPressurePolicy.h"
 #include "LockFreeQueue.h"
@@ -21,9 +22,7 @@ namespace Base {
 		std::atomic<bool> m_degraded{ false };
 
 	public:
-		explicit NonBlockingBackPressureQueue(std::function<bool(const T&)> durableLog = {})
-			: m_durableLog(std::move(durableLog)) {
-		}
+		void SetDurableLog(std::function<bool(const T&)> durableLog) { m_durableLog = std::move(durableLog); }
 
 		bool Enqueue(T&& item, Priority priority) {
 			return Enqueue(item, priority);

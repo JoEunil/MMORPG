@@ -45,6 +45,7 @@ namespace Base {
 
 		HANDLE m_handle = INVALID_HANDLE_VALUE; // POSIX 포팅 시: fd + fsync()로 대체
 		std::mutex m_syncMutex; // fsync 중 handle이 닫히는것 방지
+		std::mutex m_fsyncMutex; // concurrent Fsync 호출의 완료 순서를 직렬화
 		std::mutex m_mutex;
 		uint64_t m_segment = 1;
 		uint32_t m_offset = 0; // 현재 byte offset
@@ -209,11 +210,13 @@ namespace Base {
 			if (!m_fp)
 				return OpenSegment(m_segment);
 
-			fflush(m_fp);
+			if (fflush(m_fp) != 0)
+				return false;
 
 			{
 				std::lock_guard<std::mutex> lock(m_syncMutex);
-				FlushFileBuffers(m_handle);
+				if (!FlushFileBuffers(m_handle))
+					return false;
 				fclose(m_fp);
 				m_fp = nullptr;
 				m_handle = INVALID_HANDLE_VALUE;
@@ -265,20 +268,28 @@ namespace Base {
 
 		bool ReplayDegraded() const { return m_degraded; }
 
-		void Fsync() {
+		bool Fsync() {
+			// 다른 호출이 dirty를 먼저 내린 뒤 실제 FlushFileBuffers를 수행 중인 동안
+			// true를 조기 반환하지 않도록 전체 fsync 구간을 직렬화한다.
+			std::lock_guard<std::mutex> fsyncLock(m_fsyncMutex);
 			if (!dirty.load(std::memory_order_acquire))
-				return;
+				return true;
 			{
 				std::lock_guard<std::mutex> lock(m_mutex);
 				if (!m_fp)
-					return;
-				fflush(m_fp);
+					return false;
+				if (fflush(m_fp) != 0)
+					return false;
 				dirty.store(false, std::memory_order_release);
 			}
 			{
 				std::lock_guard<std::mutex> lock(m_syncMutex);
-				FlushFileBuffers(m_handle); // fsync
+				if (!FlushFileBuffers(m_handle)) {
+					dirty.store(true, std::memory_order_release);
+					return false;
+				}
 			}
+			return true;
 		}
 
 		// payload는 ( key + result ) 형태로 만들어서 넘기기

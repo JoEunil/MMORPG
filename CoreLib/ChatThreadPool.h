@@ -10,6 +10,7 @@
 #include "PacketTypes.h"
 #include "LoggerGlobal.h"
 #include "Config.h"
+#include "DurableLogger.h"
 #include <CoreLib/IPacket.h>
 #include <BaseLib/NonBlockingBackPressureQueue.h>
 
@@ -95,7 +96,7 @@ namespace Core {
             }   
         };
 
-        void Initialize(IIOCP* i, PacketWriter* w, CorePerfCollector* p) {
+        void Initialize(IIOCP* i, PacketWriter* w, CorePerfCollector* p, DurableLogger* durableLogger) {
             iocp = i;
             writer = w;
             perfCollector = p;
@@ -103,6 +104,23 @@ namespace Core {
             m_currentZoneSequence.reserve(MAX_USER_CAPACITY);
             m_zoneMembers.resize(ZONE_COUNT);
             m_chatIdGenerater.store(1, std::memory_order_relaxed);
+            m_chatQueue.SetDurableLog([durableLogger](const ChatEvent& event) {
+                if (event.type != ChatEventType::ZONE_JOIN && event.type != ChatEventType::ZONE_LEAVE) return false;
+                if (durableLogger == nullptr) {
+                    errorLogger->LogError("chat thread", "durable logger not initialized", "session", event.senderSessionID, "zoneID", event.key.id, "sequence", event.zoneSequence);
+                    return false;
+                }
+
+                const uint64_t record[] = {
+                    static_cast<uint64_t>(event.type),
+                    event.senderSessionID,
+                    event.key.id,
+                    event.zoneSequence,
+                };
+                if (durableLogger->Write(DurableLogType::ChatZoneTransition, record, sizeof(record))) return true;
+                errorLogger->LogError("chat thread", "zone transition durable write failed", "session", event.senderSessionID, "zoneID", event.key.id, "sequence", event.zoneSequence);
+                return false;
+            });
         }
 
         bool IsReady() {

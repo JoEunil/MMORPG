@@ -17,9 +17,6 @@ namespace Cache {
             case Core::MSG_DIAMOND_REQ:
             case Core::MSG_BAZAAR_MY_LIST:
             case Core::MSG_BAZAAR_SEARCH:
-                return Base::Priority::Droppable;
-            case Core::MSG_CHARACTER_STATE_UPDATE:
-            case Core::MSG_INVENTORY_UPDATE:
             case Core::MSG_CURRENCY_DEPOSIT:
             case Core::MSG_DIAMOND_DEPOSIT:
             case Core::MSG_BAZAAR_REGISTER:
@@ -28,14 +25,37 @@ namespace Cache {
             case Core::MSG_BAZAAR_CLAIM:
             case Core::MSG_BAZAAR_CHECK_OUTBOX:
             case Core::MSG_PROFILE_RENAME:
+                return Base::Priority::Droppable;
+            case Core::MSG_CHARACTER_STATE_UPDATE:
+            case Core::MSG_INVENTORY_UPDATE:
                 return Base::Priority::Important;
             default:
-                Core::errorLogger->LogWarn(
-                    "cache mq","unknown message priority", "messageType", Core::parseMsgHeader(message->GetBuffer())->messageType);
+                Core::errorLogger->LogWarn("cache mq", "unknown message priority", "messageType", Core::parseMsgHeader(message->GetBuffer())->messageType);
                 return Base::Priority::Important;
             }
         }
     }
+
+    bool InMemoryQueue::WriteDurable(Core::Message* message) {
+        if (message == nullptr || message->GetLength() < sizeof(Core::MsgHeader)) {
+            Core::errorLogger->LogError("cache mq", "durable write failed - invalid message");
+            return false;
+        }
+
+        const auto header = Core::parseMsgHeader(message->GetBuffer());
+        if (durableLogger != nullptr && durableLogger->Write(Core::DurableLogType::CacheMessage, message->GetBuffer(), message->GetLength())) return true;
+
+        if (header->messageType == Core::MSG_CHARACTER_STATE_UPDATE) {
+            std::vector<std::byte> binary(message->GetLength());
+            std::memcpy(binary.data(), message->GetBuffer(), message->GetLength());
+            Core::errorLogger->LogError("cache mq", "disconnect durable write failed", "sessionID", header->sessionID, "character state", binary);
+        }
+        else {
+            Core::errorLogger->LogError("cache mq", "durable write failed", "sessionID", header->sessionID, "messageType", header->messageType);
+        }
+        return false;
+    }
+
     void InMemoryQueue::ThreadFunc() {
         auto tid = std::this_thread::get_id();
         std::stringstream ss;
@@ -77,17 +97,22 @@ namespace Cache {
             Core::errorLogger->LogWarn("cache mq", "invalid message");
             return false;
         }
+        const Base::Priority priority = GetMessagePriority(msg);
         auto cacheMsg = messagePool->Acquire();
         if (!cacheMsg) {
+            if (priority == Base::Priority::Important && WriteDurable(msg)) return true;
             Core::errorLogger->LogError("cache mq", "message pool exhausted");
             return false;
         }
         std::memcpy(cacheMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());
         cacheMsg->SetLength(msg->GetLength());
 
-        const Base::Priority priority = GetMessagePriority(cacheMsg);
         if (!m_running.load(std::memory_order_relaxed) || !m_workQueue.Enqueue(cacheMsg, priority)) {
-            Core::errorLogger->LogWarn("cache mq", "queue rejected message", "messageType", Core::parseMsgHeader(cacheMsg->GetBuffer())->messageType, "priority", priority);
+            const auto messageType = Core::parseMsgHeader(cacheMsg->GetBuffer())->messageType;
+            if (priority == Base::Priority::Important)
+                Core::errorLogger->LogError("cache mq", "queue rejected important message", "messageType", messageType);
+            else
+                Core::errorLogger->LogWarn("cache mq", "queue rejected message", "messageType", messageType);
             messagePool->Return(cacheMsg);
             return false;
         }

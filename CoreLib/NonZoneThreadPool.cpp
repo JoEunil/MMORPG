@@ -61,8 +61,10 @@ namespace Core {
         Event event;
         event.type = EventType::Disconnect;
         event.sessionID = sessionID;
-        if (!m_eventQueue.Enqueue(event, Base::Priority::Important))
+        if (!m_eventQueue.Enqueue(event, Base::Priority::Important)) {
             errorLogger->LogError("non zone thread", "disconnect queue overflow", "session", sessionID);
+            handler->Disconnect(sessionID);
+        }
     }
 }
 
