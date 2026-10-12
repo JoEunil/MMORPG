@@ -18,11 +18,11 @@ namespace Core {
                     return !m_running.load(std::memory_order_relaxed) || !m_sharedQueue.empty();
                 });
 
-                if (m_sharedQueue.empty())
+                if (!m_running.load(std::memory_order_relaxed))
                     break;
 
-                work = m_sharedQueue.front();
-                m_sharedQueue.pop();
+                if (!m_sharedQueue.pop(work))
+                    continue;
             }
 
             handler->Process(work);
@@ -51,6 +51,12 @@ namespace Core {
             if (t.joinable())
                 t.join();
         }
+
+        Message* dropped = nullptr;
+        std::lock_guard<std::mutex> lock(m_queueMutex);
+        while (m_sharedQueue.pop(dropped)) {
+            messagePool->Return(dropped);
+        }
     }
 
     bool InMemoryQueue::EnqueueMessage(Core::Message* msg) {
@@ -69,8 +75,7 @@ namespace Core {
         {
             std::lock_guard<std::mutex> lock(m_queueMutex);
             if (m_running.load(std::memory_order_relaxed)) {
-                if (m_sharedQueue.size() < MQ_SIZE) {
-                    m_sharedQueue.push(coreMsg);
+                if (m_sharedQueue.push(coreMsg)) {
                     enqueued = true;
                 }
                 else {

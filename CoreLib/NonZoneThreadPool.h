@@ -1,14 +1,14 @@
 ﻿#pragma once
 
+#include <atomic>
+#include <memory>
 #include <thread>
-#include <queue>
-#include <condition_variable>
-#include <semaphore>
+#include <vector>
 
 #include "NonZoneHandler.h"
 #include "IPacketView.h"
 #include "Config.h"
-#include <BaseLib/LockFreeQueue.h>
+#include <BaseLib/BlockingBackPressureQueue.h>
 #include "LoggerGlobal.h"
 namespace Core {
     // 게임틱 단위로 처리되지 않는 (zone 상태와 관련 없는) 요청 처리
@@ -25,8 +25,7 @@ namespace Core {
         };
 
         std::vector<std::thread> m_threads;
-        Base::LockFreeQueue<Event, NON_ZONE_EVENT_QUEUE_SIZE> m_eventQueue;
-		std::counting_semaphore<NON_ZONE_EVENT_QUEUE_SIZE + NON_ZONE_THREADPOOL_SIZE> m_jobSemaphore{ 0 };
+        Base::BlockingBackPressureQueue<Event, NON_ZONE_EVENT_QUEUE_SIZE, NON_ZONE_DEFER_QUEUE_SIZE,true> m_eventQueue;
 
         std::atomic<bool> m_running = false;
         

@@ -3,27 +3,47 @@
 #include "MessagePool.h"
 
 namespace Cache {
+    namespace {
+        Base::Priority GetMessagePriority(Core::Message* message) {
+            if (message == nullptr || message->GetLength() < sizeof(Core::MsgHeader))
+                return Base::Priority::Droppable;
+
+            switch (Core::parseMsgHeader(message->GetBuffer())->messageType)
+            {
+            case Core::MSG_CHARACTER_LIST_REQ:
+            case Core::MSG_CHARACTER_STATE_REQ:
+            case Core::MSG_INVENTORY_REQ:
+            case Core::MSG_CURRENCY_REQ:
+            case Core::MSG_DIAMOND_REQ:
+            case Core::MSG_BAZAAR_MY_LIST:
+            case Core::MSG_BAZAAR_SEARCH:
+                return Base::Priority::Droppable;
+            case Core::MSG_CHARACTER_STATE_UPDATE:
+            case Core::MSG_INVENTORY_UPDATE:
+            case Core::MSG_CURRENCY_DEPOSIT:
+            case Core::MSG_DIAMOND_DEPOSIT:
+            case Core::MSG_BAZAAR_REGISTER:
+            case Core::MSG_BAZAAR_CANCEL:
+            case Core::MSG_BAZAAR_BUY:
+            case Core::MSG_BAZAAR_CLAIM:
+            case Core::MSG_BAZAAR_CHECK_OUTBOX:
+            case Core::MSG_PROFILE_RENAME:
+                return Base::Priority::Important;
+            default:
+                Core::errorLogger->LogWarn(
+                    "cache mq","unknown message priority", "messageType", Core::parseMsgHeader(message->GetBuffer())->messageType);
+                return Base::Priority::Important;
+            }
+        }
+    }
     void InMemoryQueue::ThreadFunc() {
         auto tid = std::this_thread::get_id();
         std::stringstream ss;
         ss << tid;
         Core::sysLogger->LogInfo("cache mq", "mq thread started", "threadID", ss.str());
-        while (true) 
+        Core::Message* work = nullptr;
+        while (m_workQueue.Dequeue(work))
         {
-            Core::Message* work = nullptr;
-            {
-                std::unique_lock<std::mutex> lock(m_queueMutex);
-                m_workAvailable.wait(lock, [this] {
-                    return !m_running.load(std::memory_order_relaxed) || !m_sharedQueue.empty();
-                });
-
-                if (m_sharedQueue.empty())
-                    break;
-
-                work = m_sharedQueue.front();
-                m_sharedQueue.pop();
-            }
-
             handler->Process(work);
         }
         Core::sysLogger->LogInfo("cache mq", "mq thread stopped", "threadID", ss.str());
@@ -40,13 +60,10 @@ namespace Cache {
 
 
     void InMemoryQueue::Stop() {
-        {
-            std::lock_guard<std::mutex> lock(m_queueMutex);
-            if (!m_running.exchange(false, std::memory_order_relaxed))
-                return;
-        }
+        if (!m_running.exchange(false, std::memory_order_relaxed))
+            return;
 
-        m_workAvailable.notify_all();
+        m_workQueue.Stop();
         for (auto& t : m_threads) {
             if (t.joinable())
                 t.join();
@@ -56,6 +73,10 @@ namespace Cache {
     bool InMemoryQueue::EnqueueMessage(Core::Message* msg) {
         if (!m_running.load(std::memory_order_relaxed))
             return false;
+        if (msg == nullptr || msg->GetLength() < sizeof(Core::MsgHeader)) {
+            Core::errorLogger->LogWarn("cache mq", "invalid message");
+            return false;
+        }
         auto cacheMsg = messagePool->Acquire();
         if (!cacheMsg) {
             Core::errorLogger->LogError("cache mq", "message pool exhausted");
@@ -64,29 +85,13 @@ namespace Cache {
         std::memcpy(cacheMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());
         cacheMsg->SetLength(msg->GetLength());
 
-        bool enqueued = false;
-        bool queueFull = false;
-        {
-            std::lock_guard<std::mutex> lock(m_queueMutex);
-            if (m_running.load(std::memory_order_relaxed)) {
-                if (m_sharedQueue.size() < MQ_SIZE) {
-                    m_sharedQueue.push(cacheMsg);
-                    enqueued = true;
-                }
-                else {
-                    queueFull = true;
-                }
-            }
-        }
-
-        if (!enqueued) {
-            if (queueFull)
-                Core::errorLogger->LogWarn("cache mq", "queue full");
+        const Base::Priority priority = GetMessagePriority(cacheMsg);
+        if (!m_running.load(std::memory_order_relaxed) || !m_workQueue.Enqueue(cacheMsg, priority)) {
+            Core::errorLogger->LogWarn("cache mq", "queue rejected message", "messageType", Core::parseMsgHeader(cacheMsg->GetBuffer())->messageType, "priority", priority);
             messagePool->Return(cacheMsg);
             return false;
         }
 
-        m_workAvailable.notify_one();
         return true;
     }
 }

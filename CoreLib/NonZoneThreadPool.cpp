@@ -17,8 +17,7 @@ namespace Core {
     void NonZoneThreadPool::Stop() {
         if (!m_running.exchange(false, std::memory_order_relaxed))
             return;
-
-        m_jobSemaphore.release(NON_ZONE_THREADPOOL_SIZE);
+        m_eventQueue.Stop();
 
         for (auto& t : m_threads)
         {
@@ -33,24 +32,9 @@ namespace Core {
         std::stringstream ss;
         ss << tid;
         sysLogger->LogInfo("non zone thread", "non zone thread started", "threadID", ss.str());
-        while (true)
+        Event event;
+        while (m_eventQueue.Dequeue(event))
         {
-            m_jobSemaphore.acquire();
-            if (!m_running.load(std::memory_order_relaxed))
-                break;
-
-            Event event;
-            while (!m_eventQueue.pop(event))
-            {
-                if (!m_running.load(std::memory_order_relaxed))
-                    break;
-
-                std::this_thread::yield();
-            }
-
-            if (!m_running.load(std::memory_order_relaxed))
-                break;
-
             if (event.type == EventType::Disconnect)
                 handler->Disconnect(event.sessionID);
             else
@@ -66,8 +50,8 @@ namespace Core {
         Event event;
         event.type = EventType::Work;
         event.work = std::move(pv);
-        if (m_eventQueue.push(event))
-            m_jobSemaphore.release();
+        if (!m_eventQueue.Enqueue(event, Base::Priority::Droppable))
+            errorLogger->LogWarn("non zone thread", "work queue full");
     }
 
     void NonZoneThreadPool::EnqueueDisconnect(uint64_t sessionID) {
@@ -77,8 +61,8 @@ namespace Core {
         Event event;
         event.type = EventType::Disconnect;
         event.sessionID = sessionID;
-        if (m_eventQueue.push(event))
-            m_jobSemaphore.release();
+        if (!m_eventQueue.Enqueue(event, Base::Priority::Important))
+            errorLogger->LogError("non zone thread", "disconnect queue overflow", "session", sessionID);
     }
 }
 

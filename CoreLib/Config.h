@@ -71,6 +71,7 @@ namespace Core {
    inline constexpr uint16_t  BROADCAST_QUEUE_SIZE = 512;
 
    inline constexpr uint32_t  NON_ZONE_EVENT_QUEUE_SIZE = 16384;
+   inline constexpr uint32_t  NON_ZONE_DEFER_QUEUE_SIZE = 4096;
    inline constexpr uint32_t  ZONE_QUEUE_SIZE = 16384;  
 
    inline constexpr size_t MQ_SIZE = 256;
@@ -85,4 +86,5 @@ namespace Core {
    static_assert(IsPowerOfTwo(BROADCAST_QUEUE_SIZE), "BROADCAST_QUEUE_SIZE must be a power of two");
    static_assert(IsPowerOfTwo(ZONE_QUEUE_SIZE), "ZONE_QUEUE_SIZE must be a power of two");
    static_assert(IsPowerOfTwo(NON_ZONE_EVENT_QUEUE_SIZE), "NON_ZONE_EVENT_QUEUE_SIZE must be a power of two");
+   static_assert(IsPowerOfTwo(NON_ZONE_DEFER_QUEUE_SIZE), "NON_ZONE_DEFER_QUEUE_SIZE must be a power of two");
 }

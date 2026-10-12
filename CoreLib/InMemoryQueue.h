@@ -1,11 +1,12 @@
 ﻿#pragma once
 
-#include <queue>
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
 #include <thread>
+#include <vector>
 
+#include <BaseLib/RingQueue.h>
 #include "IMessageQueue.h"
 #include "MessagePool.h"
 #include "Message.h"
@@ -17,7 +18,7 @@ namespace Core {
 	// 수신 큐
 	class InMemoryQueue :public IMessageQueue{
 		std::vector<std::thread> m_threads;
-		std::queue<Message*> m_sharedQueue;
+		Base::RingQueue<Message*, MQ_SIZE> m_sharedQueue;
 		std::mutex m_queueMutex;
 		std::condition_variable m_workAvailable;
 

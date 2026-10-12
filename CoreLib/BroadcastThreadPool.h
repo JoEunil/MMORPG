@@ -1,13 +1,11 @@
 ﻿#pragma once
 
 #include <atomic>
+#include <memory>
 #include <thread>
-#include <condition_variable>
-#include <mutex>
 #include <vector>
-#include <semaphore>
 
-#include <BaseLib/LockFreeQueue.h>
+#include <BaseLib/BlockingQueue.h>
 #include "LoggerGlobal.h"
 #include "PacketWriter.h"
 #include "Config.h"
@@ -18,9 +16,10 @@ namespace Core {
     class StateManager;
     class CorePerfCollector;
     class BroadcastThreadPool {
+        using BroadcastWork = std::unique_ptr<std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>>;
+
         std::vector<std::thread> m_threads;
-        Base::LockFreeQueue<std::unique_ptr< std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>>, BROADCAST_QUEUE_SIZE> m_workQ;
-		std::counting_semaphore <BROADCAST_QUEUE_SIZE + BROADCAST_THREADPOOL_SIZE> m_workSemaphore{ 0 };
+        Base::BlockingQueue<BroadcastWork, BROADCAST_QUEUE_SIZE, false> m_workQ;
 
         std::atomic<bool> m_running = false;
         void Initialize(IIOCP* i, StateManager* s, CorePerfCollector* p, PacketWriter* pw) {

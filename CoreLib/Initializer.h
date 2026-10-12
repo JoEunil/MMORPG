@@ -125,8 +125,8 @@ namespace Core {
         }
 
         void CleanUp1() {
-            broadcastPool.Stop();
             zoneThreadSet.Stop();
+            broadcastPool.Stop();
             chat.Stop();
             perfCollector.Stop();
         }

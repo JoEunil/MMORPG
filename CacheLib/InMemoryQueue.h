@@ -1,14 +1,13 @@
 ﻿#pragma once
 
-#include <queue>
-#include <mutex>
 #include <atomic>
-#include <condition_variable>
 #include <thread>
 #include <vector>
 
+#include <BaseLib/BlockingBackPressureQueue.h>
 #include <CoreLib/IMessageQueue.h>
 #include <CoreLib/Message.h>
+#include <CoreLib/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
 #include <CoreLib/Config.h>
 #include "Config.h"
@@ -18,9 +17,7 @@ namespace Cache {
     class MessagePool;
     class InMemoryQueue :public Core::IMessageQueue {
         std::vector<std::thread> m_threads;
-        std::queue<Core::Message*> m_sharedQueue;
-        std::mutex m_queueMutex;
-        std::condition_variable m_workAvailable;
+        Base::BlockingBackPressureQueue<Core::Message*, MQ_SIZE, MQ_DEFER_SIZE, true> m_workQueue;
 
         std::atomic<bool> m_running = false;
         Handler* handler = nullptr;

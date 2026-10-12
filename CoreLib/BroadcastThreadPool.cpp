@@ -16,24 +16,9 @@ namespace Core {
         // work마다 재할당하지 않도록 스레드 로컬로 재사용 (내부 vector의 capacity도 유지된다)
         std::vector<std::vector<std::shared_ptr<IPacket>>> currChunks(CELLS_X * CELLS_Y);
 
-        while (true)
+        BroadcastWork packets;
+        while (m_workQ.pop(packets))
         {
-            m_workSemaphore.acquire();
-            if (!m_running.load(std::memory_order_relaxed))
-                break;
-
-            std::unique_ptr< std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>> packets;
-            while (!m_workQ.pop(packets)) {
-                // drain이 필요하지 않아서 종료 시그널 시 즉시 종료.
-                if (!m_running.load(std::memory_order_relaxed))
-                    break;
-
-                std::this_thread::yield();
-            }
-
-            if (!m_running.load(std::memory_order_relaxed))
-                break;
-
             auto& headers = packets->first;
             auto& chunks = packets->second;
             perfCollector->AddBroadcastPopCnt();
@@ -90,7 +75,7 @@ namespace Core {
     void BroadcastThreadPool::Stop() {
         if (!m_running.exchange(false, std::memory_order_relaxed))
             return;
-		m_workSemaphore.release(BROADCAST_THREADPOOL_SIZE);
+        m_workQ.Stop();
         for (auto& t : m_threads)
         {
             if (t.joinable())
@@ -102,11 +87,10 @@ namespace Core {
         perfCollector->AddBroadcastEnqueueCnt();
         if (m_running.load(std::memory_order_relaxed)) {
             headers[0]->SetZone(zoneID);
-            if (!m_workQ.push(std::make_unique<std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>>(headers, chunks))) {
+            auto work = std::make_unique<std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>>(std::move(headers), std::move(chunks));
+            if (!m_workQ.push(std::move(work))) {
                 // push 실패(full) 시 false 반환
                 perfCollector->AddBroadcastDropCnt();
-            } else {
-                m_workSemaphore.release();
             }
         }
     }

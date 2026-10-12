@@ -63,16 +63,16 @@
     <ClInclude Include="ProfileCache.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="InMemoryQueue.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="MessagePool.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="InMemoryQueue.h">
-      <Filter>헤더 파일</Filter>
-    </ClCompile>
     <ClCompile Include="InMemoryQueue.cpp">
       <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="MessagePool.h">
-      <Filter>헤더 파일</Filter>
     </ClCompile>
     <ClCompile Include="Handler.cpp">
       <Filter>소스 파일</Filter>

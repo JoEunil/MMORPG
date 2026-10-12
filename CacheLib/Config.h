@@ -119,6 +119,7 @@ namespace Cache {
     inline constexpr uint8_t MQ_THREADPOOL_SIZE = 3;
 
     inline constexpr size_t MQ_SIZE = 8192;
+    inline constexpr size_t MQ_DEFER_SIZE = 2048;
     inline constexpr uint16_t GAME_DB_WORKER_THREADPOOL_SIZE = 2;
     inline constexpr uint16_t BAZAAR_DB_WORKER_THREADPOOL_SIZE = 2;
     
@@ -128,4 +129,6 @@ namespace Cache {
         return x != 0 && (x & (x - 1)) == 0;
     }
     static_assert(IsPowerOfTwo(SHARD_SIZE), "(cache)SHARD_SIZE must be a power of two");
+    static_assert(IsPowerOfTwo(MQ_SIZE), "(cache) MQ_SIZE must be a power of two");
+    static_assert(IsPowerOfTwo(MQ_DEFER_SIZE), "(cache) MQ_DEFER_SIZE must be a power of two");
 }
