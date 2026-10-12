@@ -1,4 +1,6 @@
-﻿DELIMITER $$
+﻿USE game;
+
+DELIMITER $$
 DROP PROCEDURE IF EXISTS generate_characters $$
 CREATE PROCEDURE generate_characters()
 BEGIN
@@ -6,8 +8,15 @@ BEGIN
     DECLARE zone INT;
     DECLARE x FLOAT;
     DECLARE y FLOAT;
-    DECLARE new_profile_id INT;
-    DECLARE new_char_id INT;
+    DECLARE new_profile_id INT UNSIGNED;
+    DECLARE new_char_id BIGINT UNSIGNED;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
 
     WHILE i <= 5000 DO
         SET zone = ((i - 1) DIV 50) MOD 4 + 1;
@@ -32,7 +41,7 @@ BEGIN
         INSERT INTO characters (
             user_id, channel_id, profile_id, zone_id,
             last_pos_x, last_pos_y,
-            hp, maxHp, mp, maxMp,
+            hp, max_hp, mp, max_mp,
             deleted_at
         ) VALUES (
             i, 1, new_profile_id, zone,
@@ -41,14 +50,20 @@ BEGIN
             NULL
         );
 
-	SET new_char_id = LAST_INSERT_ID();
+        SET new_char_id = LAST_INSERT_ID();
         INSERT INTO characters_inventory (char_id, inventory)
         VALUES (new_char_id, UNHEX(REPEAT('00', 2404)));
 
-	INSERT INTO characters_currency (char_id, gold, diamond)
-	VALUES (new_char_id, 100000, 1000);
+        INSERT INTO characters_currency (char_id, gold)
+        VALUES (new_char_id, 100000);
 
+        INSERT INTO bazaar.characters_diamond (char_id, diamond)
+        VALUES (new_char_id, 1000);
+
+        SET i = i + 1;
     END WHILE;
+
+    COMMIT;
 END $$
 DELIMITER ;
 CALL generate_characters();
