@@ -68,7 +68,7 @@ namespace Cache {
             messagePool->Return(msg);
     }
     void Handler::CharacterListRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterListReqBody* body) {
-        dbWorkerGame->Enqueue([=](DBConnectionGame* conn) {
+        EnqueueMessageWork(dbWorkerGame, msg, [=](DBConnectionGame* conn) {
             auto res = conn->ExecuteSelect(1, body->userID, body->channelID);
             Core::MsgStruct<Core::MsgCharacterListResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgCharacterListResBody>*>(msg->GetBuffer());
 
@@ -105,11 +105,10 @@ namespace Cache {
             messageQ->EnqueueMessage(msg);
             messagePool->Return(msg);
             });
-        msg = nullptr; // 현재 컨텍스트에서 반납하지 않고, 람다 콜백 내부에서 반납하기 위함. 
     }
 
     void Handler::CharacterStateRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterStateReqBody* body) {
-        dbWorkerGame->Enqueue([=](DBConnectionGame* conn) {
+        EnqueueMessageWork(dbWorkerGame, msg, [=](DBConnectionGame* conn) {
             auto res = conn->ExecuteSelect(3, body->characterID);
 
             Core::MsgStruct<Core::MsgCharacterStateResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgCharacterStateResBody>*>(msg->GetBuffer());
@@ -154,21 +153,21 @@ namespace Cache {
             messageQ->EnqueueMessage(msg);
             messagePool->Return(msg);
         });
-        msg = nullptr;
     }
 
     // 접속 종료 경로. 캐릭터 상태를 DB에 쓰면서 profile 캐시도 함께 내린다.
     // write-through라 flush를 기다릴 필요 없이 바로 지워도 유실이 없다.
     void Handler::CharacterStateUpdate(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterStateUpdateBody* body) {
         cache_profile->Unload(body->profileId);
-        dbWorkerGame->Enqueue([=](DBConnectionGame* conn) {
-            auto res = conn->ExecuteUpdate(4, body->attack, body->level, body->exp, body->hp, body->mp, body->maxHp, body->maxMp, body->dir, body->x, body->y, body->lastZone, body->charID);
+        const auto state = *body;
+        dbWorkerGame->Enqueue([state, sessionID](DBConnectionGame* conn) {
+            auto res = conn->ExecuteUpdate(4, state.attack, state.level, state.exp, state.hp, state.mp, state.maxHp, state.maxMp, state.dir, state.x, state.y, state.lastZone, state.charID);
 
             if (!res) {
-                Core::gameLogger->LogInfo("cache handler", "character state update failed", "sessionID", sessionID, "char_id", body->charID, "level", body->level,
-                    "exp", body->exp, "hp", body->hp, "mp", body->mp, "max_hp", body->maxHp, "max_mp", body->maxMp, "dir", body->dir, "x", body->x, "y", body->y, "last_zone", body->lastZone);
+                Core::gameLogger->LogInfo("cache handler", "character state update failed", "sessionID", sessionID, "char_id", state.charID, "level", state.level,
+                    "exp", state.exp, "hp", state.hp, "mp", state.mp, "max_hp", state.maxHp, "max_mp", state.maxMp, "dir", state.dir, "x", state.x, "y", state.y, "last_zone", state.lastZone);
             }
-        });
+        }, msg);
     }
 
     // 쓰기는 이 한 경로로만 들어온다. Rename 내부에서 profile_id당 in-flight를 1개로 제한하므로(ProfileCache.h 참고) 

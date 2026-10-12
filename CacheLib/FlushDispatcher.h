@@ -27,8 +27,7 @@ namespace Cache {
                 m_minTime = std::min(m_minTime, res.lastModified + 30000);
                 return false;
             }
-            flush->EnqueueFlushQ(std::move(CacheStorageInventory::GetFlushCommand(key, res)));
-            return true;
+            return flush->EnqueueFlushQ(std::move(CacheStorageInventory::GetFlushCommand(key, res))) != FlushEnqueueResult::Failed;
         }
 
         bool DirtyFlush7(const Key7& key, Result7& res) {
@@ -36,8 +35,7 @@ namespace Cache {
                 m_minTime = std::min(m_minTime, res.lastModified + 30000);
                 return false;
             }
-            flush->EnqueueFlushQ(std::move(CacheStorageCurrency::GetFlushCommand(key, res)));
-            return true;
+            return flush->EnqueueFlushQ(std::move(CacheStorageCurrency::GetFlushCommand(key, res))) != FlushEnqueueResult::Failed;
         }
 
         void ThreadFunc() {
@@ -62,14 +60,14 @@ namespace Cache {
             cache_inventory->SetFlushFn(
                 [this](const Key5& key, Result5& res) 
                 { 
-                    flush->EnqueueFlushQ(std::move(CacheStorageInventory::GetFlushCommand(key, res)));
+                    return flush->EnqueueFlushQ(std::move(CacheStorageInventory::GetFlushCommand(key, res)));
                 }
             );
             cache_currency = c;
             cache_currency->SetFlushFn(
                 [this](const Key7& key, Result7& res)
                 {
-                    flush->EnqueueFlushQ(std::move(CacheStorageCurrency::GetFlushCommand(key, res)));
+                    return flush->EnqueueFlushQ(std::move(CacheStorageCurrency::GetFlushCommand(key, res)));
                 }
             );
             m_running.store(true, std::memory_order_relaxed);

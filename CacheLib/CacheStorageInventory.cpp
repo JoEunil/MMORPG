@@ -35,8 +35,23 @@ namespace Cache {
             auto it = shard.dirty_list.find(oldKey);
             if (it != shard.dirty_list.end()) {
                 shard.cache_data[oldKey].status = CACHE_STATUS::EVICTING;
-                m_flushFn(oldKey, shard.cache_data[oldKey]);
-                shard.dirty_list.erase(oldKey);
+                const auto flushResult = m_flushFn(oldKey, shard.cache_data[oldKey]);
+                if (flushResult == FlushEnqueueResult::Queued) {
+                    shard.dirty_list.erase(oldKey);
+                }
+                else {
+                    shard.cache_data[oldKey].status = CACHE_STATUS::AVAILABLE;
+                    shard.lru_list.push_back(oldKey);
+                    shard.lru_pos[oldKey] = std::prev(shard.lru_list.end());
+                    if (!(oldKey == key)) {
+                        auto newPos = shard.lru_pos.find(key);
+                        if (newPos != shard.lru_pos.end()) shard.lru_list.erase(newPos->second);
+                        shard.lru_pos.erase(key);
+                        shard.dirty_list.erase(key);
+                        shard.cache_data.erase(key);
+                    }
+                    return false;
+                }
             }
             else {
                 shard.cache_data.erase(oldKey);
@@ -50,7 +65,7 @@ namespace Cache {
         if (status != CACHE_STATUS::EMPTY) // READING
             return status;
 
-        dbWorker->Enqueue([=](DBConnectionGame* conn) {
+        const auto enqueueResult = dbWorker->Enqueue([=](DBConnectionGame* conn) {
             Result result;
             // blob이 구버전(ring 필드 이전)이라 짧게 읽혀도 나머지가 쓰레기로 남지 않도록 선초기화
             result.data = EMPTY_INVENTORY;
@@ -81,6 +96,10 @@ namespace Cache {
             result.rollbackCnt = 0;
             Insert(shardIndex, key, result);  // READING → AVAILABLE
         });
+        if (enqueueResult != DBEnqueueResult::Queued) {
+            SetEmpty(shardIndex, key);
+            return CACHE_STATUS::EMPTY;
+        }
         return CACHE_STATUS::DB_READING;
     }
 

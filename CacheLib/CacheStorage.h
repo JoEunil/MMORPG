@@ -10,6 +10,7 @@
 #include <chrono>
 #include <functional>
 #include <deque>
+#include <iterator>
 #include <new>
 
 #include <mysqlconn/include/mysql/jdbc.h>
@@ -19,6 +20,11 @@
 #include "Config.h"
 
 namespace Cache {
+    enum class FlushEnqueueResult : uint8_t {
+        Queued,
+        Failed,
+    };
+
     enum class CACHE_STATUS : uint8_t {
         AVAILABLE, // 0
         EVICTING, //  1
@@ -63,7 +69,7 @@ namespace Cache {
     protected:
         DBWorker<DBConnectionGame>* dbWorker = nullptr;
         std::deque<CacheShard<Key, Result, KeyHash>> m_shards;
-        std::function< void(const Key&, Result&) > m_flushFn;
+        std::function<FlushEnqueueResult(const Key&, Result&)> m_flushFn;
 
         CACHE_STATUS TryGet(uint16_t shardIndex, const Key& key, Result& outResult);
         void Insert(uint16_t shardIndex, const Key& key, const Result& result);
@@ -72,7 +78,7 @@ namespace Cache {
         void SetEmpty(uint16_t shardIndex, const Key& key);
 
     public:
-        void SetFlushFn(std::function<void(const Key&, Result&)> f) {
+        void SetFlushFn(std::function<FlushEnqueueResult(const Key&, Result&)> f) {
             m_flushFn = f;
         }
         void ForEachDirty(std::function<bool(const Key&, Result&)> fn);

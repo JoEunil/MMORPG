@@ -122,6 +122,8 @@ namespace Cache {
     inline constexpr size_t MQ_DEFER_SIZE = 2048;
     inline constexpr uint16_t GAME_DB_WORKER_THREADPOOL_SIZE = 2;
     inline constexpr uint16_t BAZAAR_DB_WORKER_THREADPOOL_SIZE = 2;
+    inline constexpr size_t DB_WORK_QUEUE_SIZE = 4096;
+    inline constexpr size_t FLUSH_QUEUE_SIZE = 4096;
     
 
     template <typename T>
@@ -131,4 +133,6 @@ namespace Cache {
     static_assert(IsPowerOfTwo(SHARD_SIZE), "(cache)SHARD_SIZE must be a power of two");
     static_assert(IsPowerOfTwo(MQ_SIZE), "(cache) MQ_SIZE must be a power of two");
     static_assert(IsPowerOfTwo(MQ_DEFER_SIZE), "(cache) MQ_DEFER_SIZE must be a power of two");
+    static_assert(IsPowerOfTwo(DB_WORK_QUEUE_SIZE), "(cache) DB_WORK_QUEUE_SIZE must be a power of two");
+    static_assert(IsPowerOfTwo(FLUSH_QUEUE_SIZE), "(cache) FLUSH_QUEUE_SIZE must be a power of two");
 }

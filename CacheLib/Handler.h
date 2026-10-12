@@ -29,6 +29,8 @@ namespace Cache {
         Core::ILogger* logger = nullptr;
         DBWorker<DBConnectionGame>* dbWorkerGame = nullptr;
         DBWorker<DBConnectionBazaar>* dbWorkerBazaar = nullptr;
+        template <typename Connection, typename Work>
+        bool EnqueueMessageWork(DBWorker<Connection>* worker, Core::Message*& msg, Work&& work) { if (worker->Enqueue(std::function<void(Connection*)>(std::forward<Work>(work))) != DBEnqueueResult::Queued) return false; msg = nullptr; return true; }
         void Initialize(Core::IMessageQueue* mq,  MessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp) {
             messageQ = mq;
             messagePool = mp;

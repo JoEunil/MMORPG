@@ -47,7 +47,7 @@ namespace Cache {
 
         // in-flight를 1개로 제한했으므로 UPDATE가 성공하면 nextVersion이 곧 DB 확정값이다.
         // 재조회 없이 그대로 캐시에 반영한다.
-        dbWorker->Enqueue([this, profileId, name, nextVersion, onDone](DBConnectionGame* conn) {
+        const auto enqueueResult = dbWorker->Enqueue([this, profileId, name, nextVersion, onDone](DBConnectionGame* conn) {
             bool success = conn->ExecuteUpdate(22, name, profileId) > 0;
 
             std::unique_lock lock(m_mutex);
@@ -63,5 +63,12 @@ namespace Cache {
 
             onDone(success, success ? nextVersion : 0);
             });
+        if (enqueueResult != DBEnqueueResult::Queued) {
+            std::unique_lock lock(m_mutex);
+            auto it = m_profiles.find(profileId);
+            if (it != m_profiles.end()) it->second.renaming = false;
+            lock.unlock();
+            onDone(false, 0);
+        }
     }
 }

@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include <queue>
 #include <mutex>
 #include <atomic>
 #include <cstdint>
@@ -8,7 +7,10 @@
 #include <any>
 #include <condition_variable>
 #include <functional>
+#include <thread>
+#include <vector>
 
+#include <BaseLib/RingQueue.h>
 #include <CoreLib/LoggerGlobal.h>
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"
@@ -28,7 +30,7 @@ namespace Cache {
         std::mutex m_mutex;
         std::condition_variable m_cv;
         std::condition_variable m_drainCv;   // 큐가 비고 진행 중인 DBWrite도 없을 때 통지
-        std::deque<std::unique_ptr<FlushCommand>> m_flushQ;
+        std::unique_ptr<Base::RingQueue<std::unique_ptr<FlushCommand>, FLUSH_QUEUE_SIZE>> m_flushQ = std::make_unique<Base::RingQueue<std::unique_ptr<FlushCommand>, FLUSH_QUEUE_SIZE>>();
         uint32_t m_inFlight = 0;             // pop 후 DBWrite 실행 중인 command 수
         std::function<void(uint64_t, uint64_t)> m_invFlushedFn;
 
@@ -74,7 +76,7 @@ namespace Cache {
         void ThreadFunc();
         friend class Initializer;
     public:
-        void EnqueueFlushQ(std::unique_ptr<FlushCommand> c);
+        FlushEnqueueResult EnqueueFlushQ(std::unique_ptr<FlushCommand> c);
         // 큐가 비고 진행 중인 DBWrite도 끝날 때까지 블록한다.
         // 워커 스레드가 살아있는 동안(= Stop() 이전)에만 의미가 있다.
         void WaitUntilDrained();

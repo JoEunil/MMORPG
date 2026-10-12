@@ -1,18 +1,34 @@
 ﻿#pragma once
-#include <queue>
+#include <atomic>
+#include <cstdint>
 #include <functional>
 #include <thread>
 #include <condition_variable>
+#include <memory>
+#include <mutex>
+#include <sstream>
+#include <vector>
+#include <cstddef>
+#include <cstring>
 
 #include "DBConnection.h"
 #include "DBConnectionPool.h"
 #include "Config.h"
+#include <BaseLib/RingQueue.h>
+#include <CoreLib/Message.h>
+#include <CoreLib/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
 
 namespace Cache {
+	enum class DBEnqueueResult : uint8_t {
+		Queued,
+		Rejected,
+	};
+
 	template<typename T>
     class DBWorker {
-        std::queue<std::function<void(T*)>> m_queue;
+        using Work = std::function<void(T*)>;
+        std::unique_ptr<Base::RingQueue<Work, DB_WORK_QUEUE_SIZE>> m_queue = std::make_unique<Base::RingQueue<Work, DB_WORK_QUEUE_SIZE>>();
         std::vector<std::thread> m_threads;
 
         std::atomic<bool> m_running;
@@ -62,12 +78,12 @@ namespace Cache {
                 {
                     std::unique_lock<std::mutex> lock(m_mutex);
                     m_cv.wait(lock, [this] {
-                        return !m_queue.empty() || !m_running.load(std::memory_order_relaxed);
+                        return !m_queue->empty() || !m_running.load(std::memory_order_relaxed);
                         });
-                    if (m_queue.empty()) // 큐가 비었는데 깨어남 = running=false → drain 완료, 종료
+                    if (m_queue->empty()) // 큐가 비었는데 깨어남 = running=false → drain 완료, 종료
                         break;
-                    work = std::move(m_queue.front());
-                    m_queue.pop();
+                    if (!m_queue->pop(work))
+                        continue;
                 }
                 T* conn = connectionPool->Acquire();
                 work(conn);
@@ -99,10 +115,25 @@ namespace Cache {
             Stop();
         }
 
-        void Enqueue(std::function<void(T*)> work) {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            m_queue.push({ std::move(work) });
-            m_cv.notify_one();
+        DBEnqueueResult Enqueue(Work work, Core::Message* failedMessage = nullptr) {
+            {
+                std::lock_guard<std::mutex> lock(m_mutex);
+                if (m_queue->push(std::move(work))) {
+                    m_cv.notify_one();
+                    return DBEnqueueResult::Queued;
+                }
+            }
+
+            if (failedMessage != nullptr && failedMessage->GetLength() >= sizeof(Core::MsgHeader)) {
+                const auto header = Core::parseMsgHeader(failedMessage->GetBuffer());
+                std::vector<std::byte> binary(failedMessage->GetLength());
+                std::memcpy(binary.data(), failedMessage->GetBuffer(), failedMessage->GetLength());
+                Core::errorLogger->LogError("DB worker thread", "queue full", "sessionID", header->sessionID, "messageType", header->messageType, "message", binary);
+                return DBEnqueueResult::Rejected;
+            }
+
+            Core::errorLogger->LogError("DB worker thread", "queue full");
+            return DBEnqueueResult::Rejected;
         }
 
     };

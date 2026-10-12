@@ -12,7 +12,7 @@ namespace Cache {
         if (status != CACHE_STATUS::EMPTY) // READING
             return status;
 
-        dbWorker->Enqueue([=](DBConnectionGame* conn) {
+        const auto enqueueResult = dbWorker->Enqueue([=](DBConnectionGame* conn) {
             Result result;
             auto res = conn->ExecuteSelect(7, key.characterID);
             if (!res || !res->next()) {
@@ -24,6 +24,10 @@ namespace Cache {
             result.rollbackCnt = 0;
             Insert(shardIndex, key, result);  // READING → AVAILABLE
             });
+        if (enqueueResult != DBEnqueueResult::Queued) {
+            SetEmpty(shardIndex, key);
+            return CACHE_STATUS::EMPTY;
+        }
         return CACHE_STATUS::DB_READING;
     }
 

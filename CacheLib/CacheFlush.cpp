@@ -8,7 +8,6 @@
 #include <chrono>
 
 namespace Cache {
-
     void CacheFlush::DBWrite(FlushCommand* command) {
         switch (command->stmtID) {
         case 6: {
@@ -146,19 +145,18 @@ namespace Cache {
         Core::sysLogger->LogInfo("cache flush", "flush thread started", "threadID", ss.str());
         while (m_running.load(std::memory_order_relaxed)) {
             std::unique_lock<std::mutex> lock(m_mutex);
-            m_cv.wait(lock,[&] {return !m_running || !m_flushQ.empty();});
+            m_cv.wait(lock,[&] {return !m_running || !m_flushQ->empty();});
             if (!m_running.load(std::memory_order_relaxed))
                 break;
-            while (!m_flushQ.empty()) {
-                auto work = std::move(m_flushQ.front());
-                m_flushQ.pop_front();
+            std::unique_ptr<FlushCommand> work;
+            while (m_flushQ->pop(work)) {
                 ++m_inFlight;
                 lock.unlock();
                 DBWrite(work.get());
                 lock.lock();
                 --m_inFlight;
                 // DBWrite 중 Rollback이 재enqueue할 수 있으므로 큐와 in-flight를 함께 확인
-                if (m_flushQ.empty() && m_inFlight == 0)
+                if (m_flushQ->empty() && m_inFlight == 0)
                     m_drainCv.notify_all();
             }
         }
@@ -172,9 +170,9 @@ namespace Cache {
         // Rollback 재시도는 key당 3회로 상한이 있어 드레인은 반드시 끝나지만,
         // DB가 응답하지 않는 상황에서 종료가 막히지 않도록 상한을 둔다.
         if (!m_drainCv.wait_for(lock, std::chrono::seconds(30),
-            [&] { return m_flushQ.empty() && m_inFlight == 0; })) {
+            [&] { return m_flushQ->empty() && m_inFlight == 0; })) {
             Core::errorLogger->LogWarn("cache flush", "drain wait timed out on shutdown",
-                "queued", (uint64_t)m_flushQ.size(), "in_flight", (uint64_t)m_inFlight);
+                "queued", (uint64_t)m_flushQ->size(), "in_flight", (uint64_t)m_inFlight);
         }
     }
 
@@ -204,16 +202,21 @@ namespace Cache {
                 t.join();
         }
 
-        while (!m_flushQ.empty()) {
-            auto work = std::move(m_flushQ.front());
-            m_flushQ.pop_front();
+        std::unique_ptr<FlushCommand> work;
+        while (m_flushQ->pop(work)) {
             DBWrite(work.get());
         }
     }
 
-    void CacheFlush::EnqueueFlushQ(std::unique_ptr<FlushCommand> command) {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        m_flushQ.push_back(std::move(command));
-        m_cv.notify_one();
+    FlushEnqueueResult CacheFlush::EnqueueFlushQ(std::unique_ptr<FlushCommand> command) {
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (m_flushQ->push(std::move(command))) {
+                m_cv.notify_one();
+                return FlushEnqueueResult::Queued;
+            }
+        }
+        if (command != nullptr) Core::errorLogger->LogError("cache flush", "queue full", "stmtID", command->stmtID);
+        return FlushEnqueueResult::Failed;
     }
 }

@@ -66,9 +66,22 @@ namespace Cache {
             auto it = shard.dirty_list.find(oldKey);
             if (it != shard.dirty_list.end()) {
                 shard.cache_data[oldKey].status = CACHE_STATUS::EVICTING;
-                m_flushFn(oldKey, shard.cache_data[oldKey]);
-                // EVICTING이라 flush 중 재수정 불가 — 여기서 dirty를 지워야 WriteDone이 erase함
-                shard.dirty_list.erase(oldKey);
+                const auto flushResult = m_flushFn(oldKey, shard.cache_data[oldKey]);
+                if (flushResult == FlushEnqueueResult::Queued) {
+                    // EVICTING이라 flush 중 재수정 불가 — 여기서 dirty를 지워야 WriteDone이 erase함
+                    shard.dirty_list.erase(oldKey);
+                }
+                else {
+                    shard.cache_data[oldKey].status = CACHE_STATUS::AVAILABLE;
+                    shard.lru_list.push_back(oldKey);
+                    shard.lru_pos[oldKey] = std::prev(shard.lru_list.end());
+                    if (!(oldKey == key)) {
+                        auto newPos = shard.lru_pos.find(key);
+                        if (newPos != shard.lru_pos.end()) shard.lru_list.erase(newPos->second);
+                        shard.lru_pos.erase(key);
+                        shard.cache_data.erase(key);
+                    }
+                }
             } else {
                 shard.cache_data.erase(oldKey);
                 // dirty list에 없으면 db와 동일한 상태임으로 바로 지워도 됨.
@@ -92,7 +105,9 @@ namespace Cache {
     void CacheStorage<Key, Result, KeyHash>::SetEmpty(uint16_t shardIndex, const Key& key) {
         auto& shard = m_shards[shardIndex];
         std::lock_guard<std::mutex> lock(shard.mutex);
-        shard.cache_data.erase(key);
+        auto it = shard.cache_data.find(key);
+        if (it != shard.cache_data.end() && it->second.status == CACHE_STATUS::DB_READING)
+            shard.cache_data.erase(it);
     }
 
     template<typename Key, typename Result, typename KeyHash>
@@ -139,7 +154,8 @@ namespace Cache {
             shard.dirty_list.insert(key);
             return;
         }
-        m_flushFn(key, it->second);
+        if (m_flushFn(key, it->second) == FlushEnqueueResult::Failed)
+            shard.dirty_list.insert(key);
 
     }
 
