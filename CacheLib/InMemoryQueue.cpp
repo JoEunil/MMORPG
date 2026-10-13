@@ -25,9 +25,9 @@ namespace Cache {
             case Core::MSG_BAZAAR_CLAIM:
             case Core::MSG_BAZAAR_CHECK_OUTBOX:
             case Core::MSG_PROFILE_RENAME:
+            case Core::MSG_INVENTORY_UPDATE:
                 return Base::Priority::Droppable;
             case Core::MSG_CHARACTER_STATE_UPDATE:
-            case Core::MSG_INVENTORY_UPDATE:
                 return Base::Priority::Important;
             default:
                 Core::errorLogger->LogWarn("cache mq", "unknown message priority", "messageType", Core::parseMsgHeader(message->GetBuffer())->messageType);

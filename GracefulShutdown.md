@@ -33,7 +33,7 @@ graceful shutdown은 서버 종료 시 보존 대상으로 정한 작업을 유�
 ```cpp
 net.CleanUp1();   // 1) 입력 중단     : iocp 수신 중단, ping 정지
 core.CleanUp1();  // 2) 시뮬레이션 정지: zoneThreadSet(틱), broadcast, chat 정지
-core.CleanUp2();  // 2)+3) 남은 입력 처리(nonZone/recvMQ drain) → 내부 상태 저장(stateManager.CleanUp)
+core.CleanUp2();  // 2)+3) NonZone drain, Core recvMQ HardStop/join → 내부 상태 저장(stateManager.CleanUp)
 net.CleanUp2();   //    네트워크 인프라 종료: iocp, NetTimer 정지 
 cache.CleanUp();  // 4) DB 반영       : cache recvMQ drain → dispatcher/flush → dbWorker drain → WAL
 
@@ -50,7 +50,7 @@ spdlog::shutdown();
 | 단계 | 호출 | 목적 |
 |---|---|---|
 | 1. 입력 중단 | `net.CleanUp1()` | `iocp.StopReceive()`로 수신 재게시를 멈춰 클라이언트 패킷 유입 차단, ping 정지. 이후 처리 대상이 고정된다 |
-| 2. 남은 입력 처리 | `core.CleanUp1()` → `core.CleanUp2()` 앞부분 | 시뮬레이션 루프(zone tick·broadcast·chat) 정지 후, NonZone의 disconnect와 core recvMQ에 쌓인 응답을 drain하여 내부 상태를 최신으로 만든다 |
+| 2. 남은 입력 처리 | `core.CleanUp1()` → `core.CleanUp2()` 앞부분 | Zone producer를 먼저 정지하고 broadcast·chat을 HardStop한 뒤, NonZone에 수락된 Work/Disconnect를 drain한다. Core recvMQ는 HardStop하고 worker를 join해 StateManager 접근을 끝낸다 |
 | 3. 내부 상태 저장 | `core.CleanUp2()`의 `stateManager.CleanUp()` | 메모리에 올라가 있는 캐릭터 상태를 순회해 영속 경로(cache 큐)로 넘긴다. |
 | 4. DB 반영 | `cache.CleanUp()` | cache 큐 drain → dirty 캐시 flush → `dbWorker` drain(실제 DB write) |
 
@@ -69,12 +69,12 @@ spdlog::shutdown();
 ```
 
 - 순서 보장: 저장 메시지를 넣는 시점(3단계)엔 cache가 살아있고, 소비(4단계)는 그 뒤에 온다.  
-- 유실 방지: recvMQ·dbWorker 모두 Stop 시 큐를 drain하고, `Stop()`의 `join()`이 drain 완료까지 블록한다.  
+- 유실 방지: cache recvMQ·dbWorker 모두 Stop 시 큐를 drain하고, `Stop()`의 `join()`이 drain 완료까지 블록한다.
 
 ### Queue 종료 정책
 
-- graceful drain: NonZone `disconnectQueue`, core/cache recvMQ, CacheFlush `flushQ`, DBWorker queue
-- hard stop: Zone packet queue, NonZone 일반 work queue, Broadcast queue, Chat queue
+- graceful drain: NonZone에서 수락한 Work/Disconnect, cache recvMQ, CacheFlush `flushQ`, DBWorker queue
+- hard stop: Zone packet queue, Core recvMQ, Broadcast queue, Chat queue
 - 유실 방지 범위는 캐릭터 상태 저장에 필요한 disconnect와 persistence 경로로 한정한다. 그 외 queue는 shutdown 시작 시 남아 있는 작업을 처리하지 않는다.
 
 

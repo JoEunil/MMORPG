@@ -26,7 +26,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "솔루션 항목", "솔루�
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Concept", "Concept", "{C8D5274F-AC00-46C7-1F8D-E88E81087A52}"
 	ProjectSection(SolutionItems) = preProject
-		BackPressure.md = BackPressure.md
 		DesignDecisions.md = DesignDecisions.md
 		IOCP&epoll.md = IOCP&epoll.md
 		LockFreeQueue.md = LockFreeQueue.md
@@ -135,6 +134,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Refactor", "Refactor", "{FB
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SystemDesign", "SystemDesign", "{6C9964E0-7303-46E2-ABEB-A2CD3EBE4D43}"
 	ProjectSection(SolutionItems) = preProject
+		BackPressure.md = BackPressure.md
 		CacheDurabilityTest.md = CacheDurabilityTest.md
 		CacheLib.md = CacheLib.md
 		CacheLib_ACID.md = CacheLib_ACID.md
@@ -148,6 +148,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SystemDesign", "SystemDesig
 		Snapshot.md = Snapshot.md
 		Tick.md = Tick.md
 		WAL.md = WAL.md
+		WorkQueue.md = WorkQueue.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ContentsDesign", "ContentsDesign", "{C60890E3-6BC0-444C-8B3B-3846C03E623B}"
