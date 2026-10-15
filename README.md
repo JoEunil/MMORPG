@@ -246,6 +246,7 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 프레임워크가 측정 시간과 반복 횟수, 처리량 집계를 일관되게 관리하므로 직접 작성한 타이머 기반 테스트보다 조건별 성능을 재현하고 비교하기 쉽다.  
 
 - [WAL 성능 벤치마크](Benchmark_WAL.md) — fsync 주기와 writer 수를 변경해 writer-fflush 및 writer-writer contention이 반영된 처리량을 측정하고, 짧은 유실 가능 구간과 처리량을 함께 고려해 fsync 주기를 20ms로 결정
+- [Triple Buffer 성능 벤치마크](Benchmark_TripleBuffer.md) — SPMC reader 수에 따른 writer spin 분포와 busy-spin/yield 처리량을 측정하고, `maxSpin = 12` 선택 근거와 trade-off를 정리
 
 ### 통합 테스트
 
@@ -473,6 +474,7 @@ DB → Redis → 로그인 서버 → 게임 서버
 ### 테스트
 
 - [WAL 성능 벤치마크](Benchmark_WAL.md)
+- [Triple Buffer 성능 벤치마크](Benchmark_TripleBuffer.md)
 - [모니터링](Monitoring.md)
 - [더미 클라이언트 테스트](DummyTest.md)
 - [더미 클라이언트 테스트2](DummyTest2.md)

@@ -114,6 +114,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{C6CB27A9-DDF3-40CF-8497-8B6FC27D4E0F}"
 	ProjectSection(SolutionItems) = preProject
 		ASAN.md = ASAN.md
+		Benchmark_TripleBuffer.md = Benchmark_TripleBuffer.md
 		Benchmark_WAL.md = Benchmark_WAL.md
 		DummyTest.md = DummyTest.md
 		DummyTest2.md = DummyTest2.md

@@ -1,0 +1,7 @@
+﻿-------------------------------------------------------------------------------------------------------------------
+Benchmark                                                         Time             CPU   Iterations UserCounters...
+-------------------------------------------------------------------------------------------------------------------
+BM_TripleBufferSpin/consumers:1/min_time:3.000/real_time       76.9 ns         74.7 ns     50417850 contended_%=14.3049 spin_p100=248.051k spin_p95=4 spin_p99=6
+BM_TripleBufferSpin/consumers:2/min_time:3.000/real_time        153 ns          147 ns     29504433 contended_%=25.0276 spin_p100=277.713k spin_p95=5 spin_p99=7
+BM_TripleBufferSpin/consumers:3/min_time:3.000/real_time        178 ns          174 ns     23857282 contended_%=18.6576 spin_p100=69.542k spin_p95=6 spin_p99=8
+BM_TripleBufferSpin/consumers:4/min_time:3.000/real_time        201 ns          189 ns     22047449 contended_%=16.0498 spin_p100=96.071k spin_p95=6 spin_p99=8

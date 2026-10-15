@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <memory>
 #include <new>
+#include <thread>
 
 // SPMC Snapshot Buffer
 // Eventually consistent reads via triple buffering
@@ -37,6 +38,9 @@ namespace Base {
 			back2 = b2;
 		}
 		void Write(T*& write) {
+			// reader lock 중 컨텍스트 스위칭으로 인한 busy spin 방지
+			constexpr uint32_t maxSpin = 12;
+			uint32_t spin = 0;
 			while (true)
 			{
 				uint16_t old_flag = flag.load(std::memory_order_relaxed);
@@ -44,6 +48,8 @@ namespace Base {
 				uint16_t flagUsing = old_flag | 0x8000;
 				if (flag.compare_exchange_weak(flagNotUsing, flagUsing, std::memory_order_acq_rel, std::memory_order_relaxed))
 					break;
+				if (++spin >= maxSpin)
+					std::this_thread::yield();
 			}
 			// back1 swap 권한 획득, flag lock
 

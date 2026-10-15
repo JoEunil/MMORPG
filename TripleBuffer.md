@@ -82,17 +82,20 @@ SPMC 환경에서 다수의 Worker 스레드가 공유된 Reader 풀로 동작�
 
 ![이미지 로드 실패](images/TripleBuffer.png)
 
-Double Back-Buffer 구조와 Ref-Counting을 도입하여 RCU(Read-Copy-Update) 스타일로 개선.    
-> 설계 의도는 SPMC였으나, Writer의 CAS 권한 획득 구조와 상태 플래그 설계로 인해 결과적으로 여러 Writer가 동시에 호출해도 메모리 안전성은 보장된다.  
-> 다만 이는 data race가 없다는 의미일 뿐, lock-free의 진행 보장(progress guarantee)까지 지원하는 것은 아니다  
+Double Back-Buffer 구조와 Ref-Counting을 도입하여 RCU(Read-Copy-Update) 스타일로 개선했다.
 
-진행 보장이 없는 이유는 스왑 경로가 `0x8000` 비트를 CAS로 잡고 임계구역(`std::swap`)에 들어가기 때문이다.  
-그 사이 스레드가 멈추면 다른 진입이 모두 스핀한다.  
+> 설계 대상은 SPMC다. CAS로 writer 권한을 직렬화하므로 여러 writer가 동시에 호출해도 data race는 발생하지 않지만, 다중 writer의 진행 보장이나 성능까지 설계 목표로 삼지는 않는다.
 
-이 비트를 없애려면 back1/back2를 포인터 대신 인덱스로 두고 flag 한 워드에 함께 패킹하면 된다.  
-그러면 스왑이 CAS 한 번으로 끝나 진행 보장이 선다. 다만 임계구역이 포인터 두 개 교환이고  
-Writer가 하나인 SPMC 요구사항에서는 경합이 사실상 없어, 버퍼 소유권을 옮기는 API 변경까지  
-감수하며 적용할 이득이 없다고 판단했다. Writer가 여럿이 되거나 read가 길어지면 다시 볼 지점이다.  
+#### 진행 보장과 bounded spin
+
+현재 스왑 경로는 CAS로 `0x8000` 비트를 획득한 뒤 일반 포인터인 `back1`과 `back2`를 교환한다. 이 임계구역에서 권한을 가진 스레드가 선점되면 다른 진입은 flag가 해제될 때까지 재시도하므로, 엄밀한 lock-free 진행 보장은 없다.  
+Writer는 정상적인 짧은 경합에서는 CAS를 반복하되, 12회 연속 실패하면 `std::this_thread::yield()`로 다른 스레드에 실행 기회를 넘긴다. reader가 swap 권한을 가진 상태에서 선점됐을 때 writer가 CPU를 계속 소모하는 상황을 제한하기 위한 bounded spin이다. SPMC 벤치마크에서 측정한 contended spin p99의 최댓값 8에 50% 여유를 두어 12를 선택했다. 측정 조건과 throughput 영향은 [Triple Buffer 성능 벤치마크](Benchmark_TripleBuffer.md)에 정리했다.
+
+#### 검토한 대안: 인덱스 패킹
+
+고정된 세 버퍼를 배열로 관리하고 `back1`과 `back2`의 역할을 포인터 대신 슬롯 인덱스로 표현한 뒤, 두 인덱스와 reader count 등의 상태를 하나의 atomic 정수에 패킹하는 방법을 검토했다. 이 방식은 역할 교환을 CAS 한 번의 최종 상태 전이로 끝낼 수 있어, `0x8000`을 획득한 스레드가 포인터 교환 도중 선점되는 중간 상태를 제거할 수 있다.  
+다만 이는 flag 표현만 바꾸는 국소 최적화가 아니라 버퍼 소유권 모델과 API를 함께 바꾸는 별도 설계다. 현재 API는 caller가 writer 포인터를 소유하고 `Write(T*& write)`를 통해 `back1`과 교환하지만, 인덱스 방식에서는 Triple Buffer가 세 슬롯을 모두 관리하고 caller도 포인터 대신 슬롯이나 전용 handle을 통해 접근해야 한다. Reader 역시 선택한 shared 슬롯이 모든 참조의 반납 전까지 writer에게 재사용되지 않도록 wrapper 수명과 reader count를 슬롯 역할에 정확히 묶어야 한다.  
+이 계약을 지키면 안전하게 구현할 수 있지만 상태 전이와 소유권 규칙의 검증 부담이 커진다. 현재 SPMC 사용 조건에서는 정상 경합이 p99 8회 안에 끝나고, 드문 장기 stall의 CPU 소모는 bounded spin으로 제한할 수 있으므로 기존 포인터 구조를 유지한다. 향후 writer tail latency 자체가 문제가 되거나 다중 writer를 지원해야 한다면 별도 구현으로 다시 검토한다.
 
 
 __핵심 아이디어__
@@ -154,10 +157,12 @@ Read:
 
 [TripleBuffer.h](BaseLib/TripleBuffer.h)
 
-## 5. Note
+## 5. 적용 조건 및 참고
 이 자료구조는 actor 모델에서 actor 내부상태를 외부 reader에 동기화 할 때 유용하게 사용할 수 있다.   
 - 짧은 읽기 참조 (패킷 생성, 포인터 복사 수준)
 - 최신 스냅샷만 필요한 경우
 
+- [Triple Buffer 성능 벤치마크](Benchmark_TripleBuffer.md) — spin 분포, `maxSpin = 12` 선택 근거 및 throughput 비교
+- [TripleBuffer.h](BaseLib/TripleBuffer.h)
 
 

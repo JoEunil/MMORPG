@@ -45,4 +45,8 @@ namespace {
         return Percentile(values, 0.99);
     }
 
+    double P100(const std::vector<double>& values) {
+        return Percentile(values, 1.0);
+    }
+
 }

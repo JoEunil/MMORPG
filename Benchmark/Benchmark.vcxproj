@@ -135,12 +135,17 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="TripleBufferSpin.cpp" />
+    <ClCompile Include="TripleBufferThroughput.cpp" />
     <ClCompile Include="WAL.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Percentile.h" />
+    <ClInclude Include="TripleBufferSpinCounter.h" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="TripleBufferSpin.txt" />
+    <Text Include="TripleBufferThroughput.txt" />
     <Text Include="WAL_Result.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

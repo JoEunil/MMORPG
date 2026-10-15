@@ -21,6 +21,12 @@
     <ClCompile Include="main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="TripleBufferSpin.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="TripleBufferThroughput.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
     <ClCompile Include="WAL.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -29,8 +35,13 @@
     <ClInclude Include="Percentile.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="TripleBufferSpinCounter.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="WAL_Result.txt" />
+    <Text Include="TripleBufferSpin.txt" />
+    <Text Include="TripleBufferThroughput.txt" />
   </ItemGroup>
 </Project>

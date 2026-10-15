@@ -1,0 +1,11 @@
+﻿---------------------------------------------------------------------------------------------------------------------------------
+Benchmark                                                                       Time             CPU   Iterations UserCounters...
+---------------------------------------------------------------------------------------------------------------------------------
+BM_TripleBufferBusySpinThroughput/consumers:1/min_time:3.000/real_time       64.3 ns         61.5 ns     59421002 reads/s=1.96821M/s writes/s=15.5608M/s
+BM_TripleBufferBusySpinThroughput/consumers:2/min_time:3.000/real_time       65.4 ns         62.6 ns     69929010 reads/s=1.35664M/s writes/s=15.3014M/s
+BM_TripleBufferBusySpinThroughput/consumers:3/min_time:3.000/real_time        148 ns          144 ns     28064828 reads/s=2.69932M/s writes/s=6.76576M/s
+BM_TripleBufferBusySpinThroughput/consumers:4/min_time:3.000/real_time        172 ns          163 ns     23853935 reads/s=2.65053M/s writes/s=5.81657M/s
+BM_TripleBufferYieldThroughput/consumers:1/min_time:3.000/real_time          69.7 ns         67.6 ns     67481229 reads/s=1.89056M/s writes/s=14.3401M/s
+BM_TripleBufferYieldThroughput/consumers:2/min_time:3.000/real_time           118 ns          115 ns     36158152 reads/s=2.4399M/s writes/s=8.49257M/s
+BM_TripleBufferYieldThroughput/consumers:3/min_time:3.000/real_time           146 ns          142 ns     28742749 reads/s=2.19598M/s writes/s=6.8484M/s
+BM_TripleBufferYieldThroughput/consumers:4/min_time:3.000/real_time           167 ns          159 ns     25358573 reads/s=2.5147M/s writes/s=5.98153M/s
