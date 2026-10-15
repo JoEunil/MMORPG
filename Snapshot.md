@@ -48,37 +48,64 @@ Delta Snapshot은 캐릭터 구분 ID + 필드 ID + 필드 값으로 구성되�
 - 하지만 zone 이동이나 Cell 전환 시 새로운 몬스터/캐릭터 로드가 Full Snapshot을 받은 시점에 적용되기 때문에 적절한 주기 설정이 필요함.
 
 __대역폭 계산 예시__
-- Delta (유저당 필드 2개 = 20바이트 가정)
+- 계산 조건
+
+  - Zone당 1,000명, 5x5 Cell에 균등 분포 → Cell당 40명
+  - 모든 유저가 Delta마다 2개 필드를 변경 → 유저당 20바이트
+  - Full Field는 유저당 43바이트
+  - 현재 설정: Delta 50ms, Full 1초 (`CoreLib/Config.h`)
+  - 패킷 헤더, Monster/ActionResult, TCP/IP 오버헤드를 제외한 Character payload만 계산
+
+Zone 전체 전송량은 **각 수신 Cell에서 보는 송신 Cell의 payload × 그 수신 Cell의 유저 수**를 모든 Cell에 대해 합산해야 한다.
+`20B × 9 × 40 × 40`은 수신 Cell 하나의 전송량이므로, 모든 Cell이 9칸을 보는 모델에서 Zone 전체 전송량을 구하려면 Cell 25개를 합산해야 한다.
+
+모든 Cell이 9칸을 본다고 단순화하면 AOI Cell 수의 합은 `25 × 9 = 225`다.
+현재 5x5 Grid는 경계에서 이웃 수가 줄어들므로 실제 합은 다음과 같다.
+
 ```
-20B * AOI 범위(9) * Cell당 유저 수(40, 송신) * Cell당 유저 수(40, 수신)
-= 20 * 9 * 40 * 40 = 288,000 byte / tick / zone
-= 288,000 * 20FPS  = 5,760,000 byte / sec / zone   → 약 46 Mbps / zone
+모서리 4개 × 4칸 + 가장자리 12개 × 6칸 + 내부 9개 × 9칸 = 169
 ```
 
-- Full (유저당 43바이트)
+- Delta (경계를 반영한 균등 분포 모델, 20회/초만 전송한다고 가정)
+
 ```
-43B * AOI 범위(9) * Cell당 유저 수(40, 송신) * Cell당 유저 수(40, 수신)
-= 43 * 9 * 40 * 40 = 619,200 byte / tick / zone
-= 3초 주기         → 약 1.7 Mbps / zone
+20B × Cell당 송신 유저 40명 × Cell당 수신 유저 40명 × AOI Cell 수 합 169
+= 5,408,000 byte / broadcast / zone
+× 20회/초 × 8 = 865,280,000 bit/sec → 약 865.28 Mbps / zone
 ```
 
-- 현재 Grid 기반 AOI:
-	- 5x5 Cell, 인접 Cell에 전파
-	- AOI 범위: 9 (자신 + 인접 8개 Cell)
-	- Cell당 유저 수: Zone당 유저 수 (1000명) / Cell 수(25) = 40명
-- Delta 필드는 틱당 2개의 필드 변경으로 가정
+- Full (경계를 반영한 균등 분포 모델, 현재 1초 주기)
+
+```
+43B × 40명 × 40명 × 169
+= 11,627,200 byte / broadcast / zone
+× 1회/초 × 8 = 93,017,600 bit/sec → 약 93.02 Mbps / zone
+```
 
 __예상 bps(bit per second)__
-AOI 범위 9개 Cell, Delta Snapshot 20FPS, Full Snapshot 3초마다 수행될 때
-- Delta Snapshot: 약 46 Mbps / zone
-- Full Snapshot: 약 1.7 Mbps / zone
-이론상, Character Snapshot만 고려하면 20개 Zone, 유저 20,000명 수준에서 1Gbps에 근접한다.  
-Full Snapshot 비중이 크게 줄어 이제는 Delta가 대역폭을 사실상 전부 차지한다.  
 
-그러나 현실에서는 다음 요소 때문에 실제 한계는 더 낮다:
-- Monster/ActionResult 등 추가 패킷
-- 서버 응답 패킷 및 ACK/재전송
-- CPU 처리, AOI 확대, Zone 내부 Skill/Hit 처리
+| 균등 분포 모델 | Delta만 20회/초 | Full만 1회/초 | 두 전송량의 단순 합 |
+|---|---|---|---|
+| 모든 Cell이 9칸을 보는 단순화 (AOI 합 225) | 1,152 Mbps | 123.84 Mbps | 1,275.84 Mbps |
+| 현재 5x5 Grid의 경계 반영 (AOI 합 169) | 865.28 Mbps | 93.02 Mbps | 958.30 Mbps |
+
+단순 합은 Full 전송 시에도 Delta를 생략하지 않는다고 가정한 payload 예산이다.   
+현재 `ZoneThreadSet::WorkerFunc`는 Full을 전송한 틱에는 Delta를 생략한다.  
+따라서 지연 없이 1초에 Full 1회와 Delta 19회를 수행하는 명목 스케줄에서는 다음과 같다.  
+
+```
+(5,408,000B × 19 + 11,627,200B × 1) × 8
+= 915,033,600 bit/sec → 약 915.03 Mbps / zone
+```
+
+이 조건에서는 **Zone 하나의 Character payload만으로 1Gbps에 근접**한다.
+동일한 1,000명 조건의 Zone 20개라면 Character payload는 약 **18.30Gbps**다.
+
+Full을 3초 주기로 변경하는 가정이라면 Full 자체는 약 31.01Mbps/Zone이다. 이는 현재 설정이 아닌 별도 가정이며, Delta를 생략하는 횟수도 달라진다.
+
+위 수치는 균등 분포·전원 2필드 변경을 가정한 이론값이며 실측 처리량이나 수용 인원을 뜻하지 않는다.  
+실제 전송량은 Cell별 유저 쏠림, 변경 필드 수, 스냅샷 전송 빈도에 따라 달라지고, Monster/ActionResult·패킷 헤더·ACK/재전송 등 추가 비용도 발생한다.  
+지원 인원은 대역폭뿐 아니라 CPU, Zone 틱 지연, 큐 drop을 함께 측정해 판단해야 한다.  
 
 __Zone 처리 관련 주의점__
 - Zone은 1개의 전용 코어를 필요로 한다.  
