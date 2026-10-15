@@ -39,7 +39,7 @@ namespace Core {
         }
         uint64_t GetRTT(std::unique_ptr<IPacketView, PacketViewDeleter> pv, uint64_t now) override {
             Pong* body = parseBody<Pong>(pv->GetPtr());
-            return now - body->serverTimeMs;
+            return body->serverTimeMs <= now ? now - body->serverTimeMs : 0;
         }
         void Ping(uint64_t sessionID, uint64_t rtt, uint64_t nowMs) override {
             auto p = writer->GetPingPacket(rtt, nowMs);

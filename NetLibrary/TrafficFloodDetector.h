@@ -1,10 +1,10 @@
 ﻿#pragma once
 #include <cstdint>
-#include <chrono>
 #include "Config.h"
 
 namespace Net {
 	class TrafficFloodDetector {
+		// 시간 측정 없는 RECV 크기 휴리스틱이다. bytes/s 또는 events/s 제한이 아니다.
 		uint32_t m_bytes = 0;
 		uint32_t m_recvCount = 0;
 

@@ -9,7 +9,7 @@
 #include "NetPerfCollector.h"
 
 namespace Net {
-    bool NetPacketFilter::TryDispatch(std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv, uint64_t& srtt, uint64_t& rttvar) {        
+    bool NetPacketFilter::TryDispatch(std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv, uint64_t& srtt, uint64_t& rttvar, std::optional<uint64_t>& pongRTT) {
         // 3차 패킷 검증
         auto session = pv->GetSessionID();
         auto op = pv->GetOpcode();
@@ -22,13 +22,14 @@ namespace Net {
                 srtt = rtt;
                 rttvar = rtt >> 1;
             } else {
-                rttvar = rttvar - (rttvar >> 2) + (std::abs((int64_t)srtt - (int64_t)rtt) >> 2);
+                const uint64_t difference = srtt > rtt ? srtt - rtt : rtt - srtt;
+                rttvar = rttvar - (rttvar >> 2) + (difference >> 2);
                 srtt = srtt - (srtt >> 3) + (rtt >> 3);
             }
             uint64_t rto = srtt + (rttvar << 2);
             if (rtt > rto)
                 perfCollector->AddJitterCnt();
-            sessionManager->PongReceived(session, rtt);
+            pongRTT = rtt;
             return true;
         }
 
@@ -67,5 +68,8 @@ namespace Net {
 
         return true;
         
+    }
+    void NetPacketFilter::NotifyPong(uint64_t sessionID, uint64_t rtt) {
+        sessionManager->PongReceived(sessionID, rtt);
     }
 }

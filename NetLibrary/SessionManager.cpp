@@ -17,6 +17,7 @@ namespace Net {
             auto it = shard.contextMap.find(sock);
             if (it != shard.contextMap.end()) {
                 // 절대 불가능
+                m_connectionCnt.fetch_sub(1, std::memory_order_relaxed);
                 return false;
             }
             session = m_sessionGenerator.fetch_add(1, std::memory_order_relaxed);
@@ -93,7 +94,10 @@ namespace Net {
         out.clear();
         for (auto&[socket, state]: shard.stateMap)
         {
-            out.emplace_back(socket, state.GetSessionID(), state.GetRtt(), state.CheckSession());
+            const bool alive = state.CheckSession();
+            out.emplace_back(socket, state.GetSessionID(), state.GetRtt(), alive);
+            if (alive)
+                state.PingSent();
         }
     }
 }

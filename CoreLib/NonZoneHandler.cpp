@@ -74,6 +74,9 @@ namespace Core {
             case OP::ZONE_CHANGE:
                 ZoneChange(p);
                 break;
+            case OP::INVENTORY_REQ:
+                GetInventory(p);
+                break;
             case OP::PROFILE_BATCH:
                 GetProfileBatch(p);
                 break;

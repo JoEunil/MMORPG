@@ -3,6 +3,8 @@
 #include <mutex>
 #include <cstdint>
 #include <new>
+#include <optional>
+#include <algorithm>
 
 #include "RingBuffer.h"
 #include "NetPacketFilter.h"
@@ -47,12 +49,14 @@ namespace Net {
 
         std::atomic<bool> m_connected = false;
         std::atomic<bool> m_gameSession = false;
+        enum class DisconnectNotification : uint8_t { Waiting, Sending, Done };
+        std::atomic<DisconnectNotification> m_disconnectNotification = DisconnectNotification::Waiting;
         // 서로 다른 실행 경로에서 갱신되는 작업 카운터 간 false sharing 방지.
         alignas(std::hardware_destructive_interference_size) std::atomic<int16_t> m_workingCnt = int16_t(0); // buffer 조각(패킷)을 점유하고 있는 작업의 수
         alignas(std::hardware_destructive_interference_size) std::atomic<int16_t> m_pendingIOCnt = int16_t(0); // Context 내부 버퍼를 참조하는 pending RECV 수
         char padding[std::hardware_destructive_interference_size - sizeof(std::atomic<int16_t>)];
 
-        std::recursive_mutex m_mutex; 
+        mutable std::recursive_mutex m_mutex;
         // TryDispatch 실패하는 경우, EnqueueReleaseQ에서 DeadLock을 방지하기 위함. 
         // 그 이외에는 recursive 하지 않게 사용하기 때문에 성능상 크게 문제 없음.
         uint16_t m_releaseIdx = 0;
@@ -68,8 +72,8 @@ namespace Net {
         inline static Base::FixedObjectPool<PacketView, PACKETVIEWPOOL_SIZE> packetViewPool;
 
         uint16_t GetLen();
-        std::tuple<uint16_t, uint16_t, uint8_t> ParseHeader();
-        bool DequeueRecvQ();
+        Core::PacketHeader ParseHeader();
+        bool DequeueRecvQ(std::optional<uint64_t>& pongRTT);
         void EnqueueReleaseQ(uint32_t seq, uint16_t front, uint16_t rear);
         void TryNotifyDisconnect();
 
@@ -84,6 +88,7 @@ namespace Net {
             return true;
         }
         friend class Initializer;
+        friend class NetworkRegressionTest;
     public:
         ClientContext(){
             m_buffer.Initialize(RING_BUFFER_SIZE);
@@ -104,7 +109,13 @@ namespace Net {
             return m_connected.load(std::memory_order_acquire) && m_sessionID == expectedSessionID;
         }
         bool CanRecycle() const {
+            // 마지막 PacketView 반납/종료 통지 스택이 완전히 빠져나오기 전에는
+            // 재사용하지 않는다. pool mutex 아래에서 기다리지 않고 다음 flush로 넘긴다.
+            std::unique_lock<std::recursive_mutex> lock(m_mutex, std::try_to_lock);
+            if (!lock.owns_lock())
+                return false;
             return !m_connected.load(std::memory_order_acquire)
+                && m_disconnectNotification.load(std::memory_order_acquire) == DisconnectNotification::Done
                 && m_workingCnt.load(std::memory_order_acquire) == 0
                 && m_pendingIOCnt.load(std::memory_order_acquire) == 0;
         }
@@ -116,8 +127,12 @@ namespace Net {
                 m_buffer.Clear();
                 m_startPtr = m_buffer.GetStartPtr();
                 m_seq = 0;
+                m_releaseIdx = 0;
+                std::fill(m_releaseQ.begin(), m_releaseQ.end(), EMPTY_PAIR);
                 m_front = 0;
                 m_rear = RING_BUFFER_SIZE - 1;
+                m_last_op = RELEASE;
+                m_disconnectNotification.store(DisconnectNotification::Waiting, std::memory_order_release);
                 m_connected.store(true, std::memory_order_seq_cst);
                 m_workingCnt.store(0, std::memory_order_seq_cst);
                 m_pendingIOCnt.store(0, std::memory_order_seq_cst);
@@ -134,11 +149,8 @@ namespace Net {
             }
         }
         void Disconnect() {
-            bool wasConnected = false;
-            {
-                std::lock_guard<std::recursive_mutex> lock(m_mutex);
-                wasConnected = m_connected.exchange(false, std::memory_order_seq_cst);
-            }
+            std::lock_guard<std::recursive_mutex> lock(m_mutex);
+            const bool wasConnected = m_connected.exchange(false, std::memory_order_seq_cst);
             if (wasConnected)
                 TryNotifyDisconnect();
         }

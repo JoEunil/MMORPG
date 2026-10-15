@@ -13,8 +13,8 @@ namespace Net {
         uint64_t m_sessionID = 0;
         // 네트워크(소켓) -> 게임 로직(세션)
 
-        uint8_t m_sessionPingCount; // 누적 시 종료 (half-open)
-        uint64_t m_rtt;
+        uint8_t m_sessionPingCount = 0; // 누적 시 종료 (half-open)
+        uint64_t m_rtt = 0;
 
         bool m_flood = false;
         bool m_contextStatus = false;
@@ -29,7 +29,7 @@ namespace Net {
                 Core::gameLogger->LogWarn("net session", "context invalid", "sessionID", m_sessionID);
                 return false;
             }
-            if (m_sessionPingCount > PING_COUNT_LIMIT) {
+            if (m_sessionPingCount >= PING_COUNT_LIMIT) {
                 Core::gameLogger->LogWarn("net session", "ping count exceed", "sessionID", m_sessionID, "pingCount", m_sessionPingCount);
                 return false;
             }
@@ -48,6 +48,7 @@ namespace Net {
             m_rtt = 0;
             m_flood = false;
             m_contextStatus = true;
+            m_floodDetector = TrafficFloodDetector{};
         }
 
         bool CheckSession() const {
@@ -64,14 +65,19 @@ namespace Net {
             m_sessionPingCount = 0;
             m_rtt = rtt;
         }
+        void PingSent() {
+            if (m_sessionPingCount < PING_COUNT_LIMIT)
+                ++m_sessionPingCount;
+        }
         
         uint64_t GetRtt() const {
             // 직전 pong 기준이라 실제보다 낡을 수 있다. 표시·로깅용이라 무해.
             return m_rtt;
         }
 
-        void BufferReceived(uint32_t byte) {
-            m_flood = m_floodDetector.ByteReceived(byte);
+        bool BufferReceived(uint32_t byte) {
+            m_flood = m_flood || m_floodDetector.ByteReceived(byte);
+            return !m_flood;
         }
 
         void SetContextInvalid() {

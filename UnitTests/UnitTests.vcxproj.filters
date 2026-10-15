@@ -51,6 +51,9 @@
     <ClCompile Include="NetLib\NetTimer.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="NetLib\NetworkRegression.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
     <ClCompile Include="..\NetLibrary\ClientContext.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -62,6 +65,9 @@
     </ClCompile>
     <ClCompile Include="CacheLib\ProfileCacheTest.cpp">
       <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="CacheLib\CacheStorageTest.cpp">
+      <Filter>CacheLib</Filter>
     </ClCompile>
     <ClCompile Include="BaseLib\DrainableSemaphore.cpp">
       <Filter>소스 파일</Filter>

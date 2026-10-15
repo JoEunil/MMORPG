@@ -23,7 +23,7 @@ namespace Net {
             {
                 clientList.clear();
                 sessionManager->GetSessionSnapshot(i, clientList);
-                // 이 호출에서 ping count 증가시키기
+                // shard lock 아래에서 이번 ping의 미응답 카운트도 증가한다.
 
                 auto now = NetTimer::GetTimeMS();
                 for (PingStruct& st: clientList)
@@ -32,7 +32,7 @@ namespace Net {
                         SendPing(st.session, st.rtt, now);
                     else {
                         Core::errorLogger->LogInfo("ping manager", "not alive", "socket", st.socket);
-                        abortSocket->AbortSocket(st.socket);
+                        abortSocket->AbortSocket(st.socket, st.session);
                     }
                 }
             }

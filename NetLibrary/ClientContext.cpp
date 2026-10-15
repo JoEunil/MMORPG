@@ -19,38 +19,22 @@ namespace Net {
         return RING_BUFFER_SIZE - m_front + m_rear + 1;
     }
 
-    std::tuple<uint16_t, uint16_t, uint8_t> ClientContext::ParseHeader() {
-        uint8_t tempBuffer[sizeof(Core::PacketHeader)];
-        uint8_t* bufferPtr;
-        Core::PacketHeader* h;
-        if (m_rear < m_front and RING_BUFFER_SIZE - m_front < sizeof(Core::PacketHeader)) {
-            int firstPart = RING_BUFFER_SIZE - m_front;
-            int secondPart = sizeof(Core::PacketHeader) - firstPart;
-
-            std::memcpy(tempBuffer, m_startPtr + m_front, firstPart);
-            std::memcpy(tempBuffer + firstPart, m_startPtr, secondPart);
-            h = reinterpret_cast<Core::PacketHeader*>(&tempBuffer);
-            if (h->magic != Core::MAGIC)
-            {
-                Core::gameLogger->LogWarn("context", "1 packet Magic invalid in header parsing", "session", m_sessionID, "magic", h->magic, "packetLen", h->length, "opcode", h->opcode, "m_front", m_front, "m_rear", m_rear, "GetLen()", GetLen());
-            }
-        }
-        else {
-            bufferPtr = m_startPtr + m_front;
-            h = reinterpret_cast<Core::PacketHeader*>(bufferPtr);
-            if (h->magic != Core::MAGIC)
-            {
-                Core::gameLogger->LogWarn("context", "2 packet Magic invalid in header parsing", "session", m_sessionID, "magic", h->magic, "packetLen", h->length, "opcode", h->opcode, "m_front", m_front, "m_rear", m_rear, "GetLen()", GetLen());
-			}
-        }
-        // header가 wrap오버구간인 경우 처리
-        return {h->magic, h->length, h->opcode };
+    Core::PacketHeader ClientContext::ParseHeader() {
+        Core::PacketHeader header;
+        const size_t firstPart = (std::min)(sizeof(header), static_cast<size_t>(RING_BUFFER_SIZE - m_front));
+        std::memcpy(&header, m_startPtr + m_front, firstPart);
+        if (firstPart < sizeof(header))
+            std::memcpy(reinterpret_cast<uint8_t*>(&header) + firstPart, m_startPtr, sizeof(header) - firstPart);
+        return header; // wire의 uint32_t length를 검증 전에 축소하지 않는다.
     }
 
-    bool ClientContext::DequeueRecvQ() {
+    bool ClientContext::DequeueRecvQ(std::optional<uint64_t>& pongRTT) {
         if (GetLen() < sizeof(Core::PacketHeader))
             return false;
-        auto [magic, packetLen, opcode] = ParseHeader();
+        const auto header = ParseHeader();
+        const auto magic = header.magic;
+        const uint32_t packetLen = header.length;
+        const auto opcode = header.opcode;
         // 2차 패킷 검증
 
         if (magic != Core::MAGIC)
@@ -60,9 +44,15 @@ namespace Net {
             return false;
         }
 
-        if (opcode == 0 or opcode > Core::MAX_DEFINED_OPCODE)
+        if (opcode == 0 || opcode > Core::MAX_DEFINED_OPCODE)
         {
             Core::gameLogger->LogWarn("context", "undefined opcode", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcode", opcode, "m_front", m_front, "GetLen()", GetLen());
+            m_gameSession.store(false, std::memory_order_release);
+            return false;
+        }
+
+        if (packetLen < sizeof(Core::PacketHeader) || packetLen > MAX_PACKET_LEN) {
+            Core::gameLogger->LogWarn("context", "invalid packet length", "session", m_sessionID,"packetLen", packetLen, "opcode", opcode);
             m_gameSession.store(false, std::memory_order_release);
             return false;
         }
@@ -101,7 +91,7 @@ namespace Net {
         m_last_op = RELEASE;
         m_workingCnt.fetch_add(1, std::memory_order_seq_cst);
 
-        if (!NetPacketFilter::TryDispatch(std::move(pv), m_srtt, m_rttvar)) {
+        if (!NetPacketFilter::TryDispatch(std::move(pv), m_srtt, m_rttvar, pongRTT)) {
             m_gameSession.store(false, std::memory_order_release);
             return false;
         }
@@ -144,8 +134,10 @@ namespace Net {
 
 
     bool ClientContext::EnqueueRecvQ(uint64_t expectedSessionID, uint8_t* ptr, size_t len) {
-        std::lock_guard<std::recursive_mutex> lock(m_mutex);
+        std::unique_lock<std::recursive_mutex> lock(m_mutex);
         if (!m_connected.load(std::memory_order_seq_cst) || m_sessionID != expectedSessionID)
+            return false;
+        if (!m_gameSession.load(std::memory_order_acquire) || len == 0 || len > RECV_BUFFER_SIZE)
             return false;
         uint16_t front = ptr - m_startPtr;
         if (front != ((m_rear + 1) & RING_BUFFER_SIZE_MASK))
@@ -156,8 +148,16 @@ namespace Net {
         m_rear = rear;
 
         m_last_op = ACQUIRE;
-        while (DequeueRecvQ()) {}
-        return true;
+        std::optional<uint64_t> pongRTT;
+        while (DequeueRecvQ(pongRTT)) {}
+        const bool valid = m_gameSession.load(std::memory_order_acquire);
+        lock.unlock();
+        // Disconnect/BeginRecvIO는 shard -> Context 순서다. 수신 경로는
+        // Context lock을 풀고 shard를 얻어 역순 잠금을 만들지 않는다.
+        // 이 호출의 pending RECV 참조가 반환될 때까지 Context 재사용은 금지된다.
+        if (pongRTT)
+            NetPacketFilter::NotifyPong(expectedSessionID, *pongRTT);
+        return valid;
     }
 
     void ClientContext::EnqueueReleaseQ(uint32_t seq, uint16_t front, uint16_t rear) {
@@ -174,6 +174,7 @@ namespace Net {
     }
 
     void ClientContext::ReleaseBuffer(PacketView* pv) {
+        std::lock_guard<std::recursive_mutex> lock(m_mutex);
         if (m_connected.load(std::memory_order_seq_cst))
             EnqueueReleaseQ(pv->GetSeq(), pv->GetFront(), pv->GetRear());
         int16_t previous = m_workingCnt.fetch_sub(1, std::memory_order_seq_cst);
@@ -186,8 +187,14 @@ namespace Net {
     void ClientContext::TryNotifyDisconnect() {
         if (m_connected.load(std::memory_order_seq_cst) || m_workingCnt.load(std::memory_order_seq_cst) != 0)
             return;
-
+        auto expected = DisconnectNotification::Waiting;
+        if (!m_disconnectNotification.compare_exchange_strong(expected, DisconnectNotification::Sending,
+            std::memory_order_acq_rel))
+            return;
+        // 마지막 PacketView가 workingCnt를 0으로 만든 뒤에도 종료 통지 완료 전에는
+        // pool이 Clear로 새 session ID를 덮어쓰지 못하게 한다. 통지는 정확히 한 번이다.
         NetPacketFilter::Disconnect(m_sessionID);
+        m_disconnectNotification.store(DisconnectNotification::Done, std::memory_order_release);
     }
     EnqueueSendResult ClientContext::EnqueueSend(STOverlappedEx* work) {
         std::lock_guard<std::mutex> lock(m_sendMutex);

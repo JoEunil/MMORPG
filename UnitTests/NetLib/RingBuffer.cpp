@@ -40,6 +40,7 @@ TEST_F(RingBufferTest, AcquireBufferZeroLen) {
 	buf.TryAcquireBuffer(fragment, 0);
 	EXPECT_EQ(buf.GetStartPtr() + fragment.front, fragment.startPtr);
 	EXPECT_EQ(0, fragment.length);
+	EXPECT_EQ(buf.TryAcquireBuffer(fragment, 4), 4);
 }
 
 TEST_F(RingBufferTest, AcquireBufferExhausted) {
@@ -78,24 +79,22 @@ TEST_F(RingBufferTest, AcquireAtLastPtr) {
 }
 
 TEST_F(RingBufferTest, ReleaseBuffer) {
-	Net::BufferFragment fragment;
+	Net::BufferFragment first, next, wrapped, exhausted;
 	Initialize(4);
-	
-	buf.TryAcquireBuffer(fragment, 2);
-	EXPECT_EQ(2, fragment.length);
-	bool success;
-
-	success = buf.Release(fragment.front, fragment.rear-1);
-	EXPECT_TRUE(success);
-
-	buf.TryAcquireBuffer(fragment, 4);
-	EXPECT_EQ(3, fragment.length);
-
-	success = buf.Release(fragment.front, fragment.rear-1);
-	EXPECT_TRUE(success);
-
-	buf.TryAcquireBuffer(fragment, 4);
-	EXPECT_EQ(3, fragment.length);
+	ASSERT_EQ(buf.TryAcquireBuffer(first, 2), 2);
+	ASSERT_TRUE(buf.Release(first.front, first.front)); // byte 1 remains in use
+	// Three bytes are free in total, but only two are contiguous before wrap.
+	ASSERT_EQ(buf.TryAcquireBuffer(next, 4), 2);
+	EXPECT_EQ(next.front, 2);
+	EXPECT_FALSE(buf.Release(next.front, next.rear)); // release must follow ownership order
+	ASSERT_EQ(buf.TryAcquireBuffer(wrapped, 4), 1);
+	EXPECT_EQ(wrapped.front, 0);
+	EXPECT_EQ(buf.TryAcquireBuffer(exhausted, 1), 0);
+	ASSERT_TRUE(buf.Release(first.rear, first.rear));
+	ASSERT_TRUE(buf.Release(next.front, next.rear));
+	ASSERT_TRUE(buf.Release(wrapped.front, wrapped.rear));
+	EXPECT_EQ(buf.TryAcquireBuffer(next, 4), 3);
+	EXPECT_EQ(buf.TryAcquireBuffer(wrapped, 4), 1); // all four bytes were returned
 }
 
 TEST_F(RingBufferTest, ReleaseRejectsInvalidRange) {
@@ -119,7 +118,7 @@ TEST_F(RingBufferTest, ReleaseLeftOver) {
 	buf.TryAcquireBuffer(fragment, 3);
 	EXPECT_EQ(3, fragment.length);
 
-	buf.ReleaseLeftOver(fragment.front+3, true); // 2바이트 사용, 1바이트 반납
+	buf.ReleaseLeftOver(fragment.front+2, true); // 2바이트 사용, 1바이트 반납
 
 	buf.TryAcquireBuffer(fragment, 4);
 	EXPECT_EQ(2, fragment.length);

@@ -27,6 +27,12 @@ namespace Core {
         }
         auto& character = m_chars[it->second];
 
+        //clamp
+        if (dir > 3 || !std::isfinite(x) || !std::isfinite(y)) {
+            m_cheatList.emplace_back(sessionID, 1);
+            return;
+        }
+
         // 방향은 좌표와 무관하게 반영 (제자리에서 바라보는 방향만 바꾸는 경우)
         if (character.dir != dir) {
             character.dir = dir;
@@ -102,12 +108,16 @@ namespace Core {
             return;
         }
         auto& character = m_chars[it->second];
-        if (skillSlot > (character.skillSlotCnt - 1)) {
-			gameLogger->LogInfo("zone state", "invalid skill slot", "sessionID", sessionID, "skillSlot", skillSlot);
+        if (skillSlot >= character.skillSlotCnt || skillSlot >= character.skillSlot.size()) {
+            gameLogger->LogInfo("zone state", "invalid skill slot", "sessionID", sessionID, "skillSlot", skillSlot);
             m_cheatList.emplace_back(sessionID, 1);
             return;
         }
         auto& skill = character.skillSlot[skillSlot];
+        if (skill.skillID >= Data::skillList.size()) {
+            m_cheatList.emplace_back(sessionID, 1);
+            return;
+        }
         const Data::SkillData& skillInfo = Data::skillList[skill.skillID];
 
         if (skill.skillCoolDownTick != 0 || character.mp < skillInfo.mana) // 스킬 시전 불가능한 상태

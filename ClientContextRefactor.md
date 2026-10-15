@@ -52,7 +52,7 @@ __구조 변경__
 __주의 사항__
 - ClientContext는 게임 로직 큐로 들어가기 전까지 패킷 파싱 등을 수행하므로 의도적으로 포인터로 사용
 	- [ClientContext로 인한 데드락 디버깅](SessionManagerDeadLock.md)
-- ClientContext의 수명 관리는 Pool 내부 flush 정책과 workingCnt 기반으로 안전하게 처리됨
+- ClientContext는 Pool의 flush 시점에 `workingCnt == 0`, `pendingIOCnt == 0`, 종료 통지 완료를 모두 확인한 뒤 재사용한다. 종료 통지 전의 마지막 PacketView 반환과 취소된 RECV completion도 수명 조건에 포함한다.
 
 
 NetHandler 

@@ -70,6 +70,7 @@ namespace Net{
         }
         ClientContextPool* contextPool = nullptr;
         friend class Initializer;
+        friend class NetworkRegressionTest;
 
     public:
         
@@ -93,21 +94,25 @@ namespace Net{
             return it->second.GetSessionID();
         }
 
+        // Ping loop에서만 호출: 생존 상태를 복사하고 해당 tick의 미응답 수를 증가한다.
         void GetSessionSnapshot(int shardID, std::vector<PingStruct>& out);
 
-        void SetContextInvalid(SOCKET sock) {
+        void SetContextInvalid(SOCKET sock, uint64_t expectedSessionID) {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             Base::SpinLockGuard lock(shard.flag);
             auto it = shard.stateMap.find(sock);
-            if (it != shard.stateMap.end())
+            if (it != shard.stateMap.end() && it->second.GetSessionID() == expectedSessionID)
                 it->second.SetContextInvalid();
         }
-        void UpdateFlood(SOCKET sock, uint16_t byte) {
+        bool UpdateFlood(SOCKET sock, uint64_t expectedSessionID, uint16_t byte) {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             Base::SpinLockGuard lock(shard.flag);
             auto it = shard.stateMap.find(sock);
-            if (it != shard.stateMap.end())
-                it->second.BufferReceived(byte);
+            if (it == shard.stateMap.end() || it->second.GetSessionID() != expectedSessionID)
+                return false;
+            // Ping 임계치 판정은 다음 Ping loop가 담당한다. 이번 PONG이
+            // 카운트를 초기화할 기회를 수신 경로에서 먼저 차단하지 않는다.
+            return it->second.BufferReceived(byte);
         }
         ClientContext* GetContext(SOCKET  sock) {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
@@ -150,10 +155,12 @@ namespace Net{
         //session, reverse
         void PongReceived(uint64_t session, uint64_t rtt) {
             SOCKET sock = GetSocket(session);
+            if (sock == INVALID_SOCKET)
+                return;
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             Base::SpinLockGuard lock(shard.flag);
             auto it = shard.stateMap.find(sock);
-            if (it == shard.stateMap.end())
+            if (it == shard.stateMap.end() || it->second.GetSessionID() != session)
                 return;
             it->second.PongReceived(rtt);
         }

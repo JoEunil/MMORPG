@@ -559,10 +559,10 @@ namespace Net {
         }
     }
 
-    void IOCP::AbortSocket(SOCKET clientSocket) {
+    void IOCP::AbortSocket(SOCKET clientSocket, uint64_t expectedSessionID) {
         if (clientSocket == INVALID_SOCKET)
             return;
         Core::sysLogger->LogInfo("iocp", "Abort Socket", "socket", clientSocket);
-        CleanUpSocket(clientSocket); 
+        CleanUpSocket(clientSocket, expectedSessionID);
     }
 }

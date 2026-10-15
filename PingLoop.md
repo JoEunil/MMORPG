@@ -14,6 +14,7 @@
 - Pong 수신 시 세션은 정상 상태로 간주되며,
   Ping 누적 카운트는 초기화된다.
 - 일정 횟수 이상 Pong 미수신 시 세션은 종료 대상이 된다.
+- Ping loop가 shard 아래에서 생존 여부를 복사한 뒤 미응답 카운트를 1 증가시킨다. `PING_COUNT_LIMIT`(현재 5)에 도달한 채 다음 점검까지 Pong이 없으면 종료한다. 카운트는 임계치에서 포화시켜 정수 wrap을 방지한다.
 - Pong 수신 시 RTT를 측정하여 다음 Ping 패킷에 담아 클라이언트에서 나타낼 수 있도록 한다.
 
 ## 3. ClientContext의 호출 스택 특성
@@ -52,7 +53,7 @@ ClientContext
 ## 5. Ping Loop 기반 세션 종료 전략
 
 위와 같은 문제를 회피하기 위해,
-ForEachShard()에서는 ClientContext의 상태만 조회한다.
+`GetSessionSnapshot()`에서는 shard lock 아래에서 세션 상태를 복사하고 Ping 미응답 카운트를 증가시킨다.
 
 실제 AbortSocket / Disconnect 처리는
 NetHandler 및 IO 스택과 완전히 분리된
@@ -62,6 +63,8 @@ Ping loop는 IOCP 워커 스레드와 독립적으로 동작하며,
 상위 호출 스택의 자원을 점유한 상태에서
 세션 종료가 발생하지 않도록 하기 위한
 의도적인 설계 선택이다.
+
+종료 요청에는 스냅샷의 session ID도 전달한다. 점검 이후 같은 소켓 핸들이 새 연결에 재사용되어도 이전 세션의 종료 요청이 새 연결을 종료하지 않도록 `Disconnect`가 ID를 재확인한다. 잘못된 수신 패킷은 Context mutex를 해제한 뒤 NetHandler에서 즉시 종료한다.
 
 ## 6. 요약
 

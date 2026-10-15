@@ -32,12 +32,9 @@ namespace Core {
             std::unique_ptr<IPacketView, PacketViewDeleter> packet;
             const size_t MAX_PACKETS_PER_TICK = 2000;
             size_t processed = 0;
-            bool got = t->workQueue.pop(packet);
-            while(got && processed < MAX_PACKETS_PER_TICK)
-            {
-                handler->Process(packet.get(), zoneID); // 게임 상태 업데이트 처리
-                got = t->workQueue.pop(packet);
-                processed++;
+            while (processed < MAX_PACKETS_PER_TICK && t->workQueue.pop(packet)) {
+                handler->Process(packet.get(), zoneID);
+                ++processed;
             }
             perfCollector->AddPacketProcessCnt(zoneID, processed);
             handler->ApplySkill(zoneID);

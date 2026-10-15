@@ -39,14 +39,14 @@ namespace Net {
         void OnRecv(ClientContext* ctx, uint64_t sessionID, SOCKET sock, uint8_t* buf, uint16_t len) const {
             if (ctx == nullptr || !ctx->IsSessionAlive(sessionID))
                 return;
-            sessionManager->UpdateFlood(sock, len);
-            if (!ctx->CheckGameSession()) {
-                sessionManager->SetContextInvalid(sock);
+            const bool validNetwork = sessionManager->UpdateFlood(sock, sessionID, len);
+            const bool validPacket = validNetwork && ctx->CheckGameSession() && ctx->EnqueueRecvQ(sessionID, buf, len);
+            if (!validPacket) {
+                sessionManager->SetContextInvalid(sock, sessionID);
                 Core::sysLogger->LogInfo("net handler", "game session died", "socket", sock);
-                abortSocket->AbortSocket(sock);
+                abortSocket->AbortSocket(sock, sessionID);
                 return;
             }
-            ctx->EnqueueRecvQ(sessionID, buf, len);
 
         }
         bool OnDisConnect(SOCKET sock) const {

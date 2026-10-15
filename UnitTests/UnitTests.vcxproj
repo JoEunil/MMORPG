@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -147,7 +147,9 @@ xcopy /Y "$(SolutionDir)External\mysqlconn\Debug\*.pdb" "$(OutDir)"</Command>
   <ItemGroup>
     <ClCompile Include="..\CoreLib\LoggerGlobal.cpp" />
     <ClCompile Include="..\NetLibrary\ClientContext.cpp" />
-    <ClCompile Include="..\NetLibrary\RingBuffer.cpp" />
+    <ClCompile Include="..\NetLibrary\RingBuffer.cpp">
+      <ObjectFileName>$(IntDir)RingBufferImplementation.obj</ObjectFileName>
+    </ClCompile>
     <ClCompile Include="BaseLib\BlockingBackPressureQueue.cpp" />
     <ClCompile Include="BaseLib\NonBlockingBackPressureQueue.cpp" />
     <ClCompile Include="BaseLib\BlockingQueue.cpp" />
@@ -157,10 +159,14 @@ xcopy /Y "$(SolutionDir)External\mysqlconn\Debug\*.pdb" "$(OutDir)"</Command>
     <ClCompile Include="BaseLib\WAL.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="CacheLib\ProfileCacheTest.cpp" />
+    <ClCompile Include="CacheLib\CacheStorageTest.cpp" />
     <ClCompile Include="BaseLib\FixedObjectPool.cpp" />
     <ClCompile Include="NetLib\NetTimer.cpp" />
+    <ClCompile Include="NetLib\NetworkRegression.cpp" />
     <ClCompile Include="NetLib\PacketView.cpp" />
-    <ClCompile Include="NetLib\RingBuffer.cpp" />
+    <ClCompile Include="NetLib\RingBuffer.cpp">
+      <ObjectFileName>$(IntDir)RingBufferTests.obj</ObjectFileName>
+    </ClCompile>
     <ClCompile Include="BaseLib\RingQueue.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -55,7 +55,7 @@ void ZoneState::ApplyHit(std::optional<std::reference_wrapper<CharacterState>> c
 스킬 Hit 판정은 스킬의 AOI(Area of Interest) 범위 내의 타겟을 순회하며 처리한다.
 - 단일 대상 스킬: 범위 내 첫 번째 타겟에게만 피격 처리
 - AOE(Area of Effect) 스킬: 범위 내 모든 타겟에게 피격 처리
-- 게임 서버에서 __CPU 부하가 가장 큰 부분__ 이다.
+- 후보 수와 활성 스킬 수에 따라 비용이 커질 수 있는 경로다. 실제 최대 병목 여부는 프로파일링으로 확인해야 한다.
 Monster AI 로직에 대한 추가 내용은 [Monster 구현 설명](Monster.md)을 참고한다.
 
 

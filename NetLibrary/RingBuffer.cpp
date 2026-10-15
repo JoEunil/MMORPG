@@ -20,6 +20,8 @@ namespace Net {
 		res.rear = m_tail + len - 1;
 		res.rear &= m_mask;
 		res.length = len;
+		if (len == 0)
+			return 0; 
 		m_tail = res.rear + 1;
 		m_tail &= m_mask;
 		m_last_op = ACQUIRE;

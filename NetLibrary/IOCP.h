@@ -109,7 +109,7 @@ namespace Net {
         void SendDataChunks(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet, std::vector<std::shared_ptr<Core::IPacket>>& chunks) override;
         void SendDataUnique(uint64_t sessionID, std::unique_ptr<Core::IPacket, Core::PacketDeleter> packet) override;
 
-        void AbortSocket(SOCKET sock) override;
+        void AbortSocket(SOCKET sock, uint64_t expectedSessionID) override;
         void DoWSASend(STOverlappedEx* o);
         void ResumeSend(STOverlappedEx* pOverlappedEx);
     };
