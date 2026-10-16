@@ -86,7 +86,7 @@ int main(int argc, char* argv[]) {
         core.Initialize();
         net.Initialize();
 
-        core.InjectDependencies1(net.GetIOCP(), net.GetPacketPool(), net.GetBigPacketPool(), &durableLogger);
+        core.InjectDependencies1(net.GetIOCP(), net.GetPacketPool(), net.GetBigPacketPool(), net.GetGiantPacketPool(), &durableLogger);
         cache.InjectDependencies(core.GetMessageQueue(), &durableLogger);
         core.InjectDependencies2(net.GetIOCP(), &auth, cache.GetMessageQueue(), net.GetPacketPool(), cache.GetProfileCache());
         net.InjectDependencies(core.GetPacketDispatcher());

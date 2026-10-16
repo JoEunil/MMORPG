@@ -36,7 +36,7 @@ namespace Core {
             for (int j = 0; j < CELLS_X; j++)
             {
                 int idx = i * CELLS_X + j;
-				auto chunk = writer->GetInitialChunk();
+				auto chunk = writer->GetInitialChunk(true);
 				auto header = writer->GetDeltaHeader();
                 if (chunk == nullptr || header == nullptr) {
                     sysLogger->LogError("zone state", "failed to acquire packet", "zoneID", m_zoneID, "cellX", j, "cellY", i);
@@ -141,7 +141,7 @@ namespace Core {
             for (int j = 0; j < CELLS_X; j++)
             {
                 int idx = i * CELLS_X + j;
-                auto chunk = writer->GetInitialChunk();
+                auto chunk = writer->GetInitialChunk(true);
                 auto header = writer->GetFullHeader();
                 if (chunk == nullptr || header == nullptr) {
                     sysLogger->LogError("zone state", "failed to acquire packet", "zoneID", m_zoneID, "cellX", j, "cellY", i);

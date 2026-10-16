@@ -13,9 +13,13 @@ namespace Net {
 
 	inline constexpr uint32_t NORMAL_PACKET_LENGTH = 512;
 	inline constexpr uint32_t BIG_PACKET_LENGTH = 32768;
+	inline constexpr uint32_t GIANT_PACKET_LENGTH = 256 * 1024;
+	static_assert(GIANT_PACKET_LENGTH >= Core::MAX_ZONE_CAPACITY * sizeof(Core::FullStateField));
+	static_assert(GIANT_PACKET_LENGTH >= Core::MAX_ZONE_CAPACITY * 10 * sizeof(Core::DeltaUpdateField));
 
 	inline constexpr uint32_t PACKETPOOL_SIZE = 30000;
 	inline constexpr uint32_t BPACKETPOOL_SIZE = 20000;
+	inline constexpr uint32_t GPACKETPOOL_SIZE = 4096; // 1 GiB, character Full/Delta snapshots
 	inline constexpr uint16_t OVERLAPPEDPOOL_SIZE = MAX_CLIENT_CONNECTION * 4;
 	inline constexpr uint32_t PACKETVIEWPOOL_SIZE = 50000;
 

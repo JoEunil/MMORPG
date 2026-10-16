@@ -28,12 +28,13 @@
 namespace Net {
     class Initializer {
         IOCP iocp;
-        // 소멸 순서 주의: STOverlappedEx가 packetPool/bigPacketPool의 패킷을 물고 있고,
+        // 소멸 순서 주의: STOverlappedEx가 packetPool/bigPacketPool/giantPacketPool의 패킷을 물고 있고,
         // ClientContext는 overlappedExPool의 overlapped를 물고 있음.
-        // 선언 역순으로 소멸하므로 packetPool/bigPacketPool → overlappedExPool → clientContextPool 순으로 선언해
+        // 선언 역순으로 소멸하므로 packetPool/bigPacketPool/giantPacketPool → overlappedExPool → clientContextPool 순으로 선언해
         // 소멸 시 clientContextPool → overlappedExPool → packetPool 순으로 파괴되게 함(자원 제공자가 더 늦게 파괴).
         PacketPool<PACKETPOOL_SIZE> packetPool{ NORMAL_PACKET_LENGTH };
         PacketPool<BPACKETPOOL_SIZE> bigPacketPool{ BIG_PACKET_LENGTH };
+        PacketPool<GPACKETPOOL_SIZE> giantPacketPool{ GIANT_PACKET_LENGTH };
         OverlappedExPool overlappedExPool;
         NetHandler netHandler;
         std::atomic<bool> fatalError;
@@ -51,7 +52,7 @@ namespace Net {
             ClientContext::Initialize(&overlappedExPool);
             sessionManager.Initialize(&clientContextPool);
             netHandler.Initialize(&sessionManager, &iocp);
-            perfCollector.Initialize(&sessionManager, &packetPool, &bigPacketPool, &overlappedExPool,&clientContextPool);
+            perfCollector.Initialize(&sessionManager, &packetPool, &bigPacketPool, &giantPacketPool, &overlappedExPool,&clientContextPool);
         }
         void CleanUp1() {
             pingManager.StopPing();
@@ -82,6 +83,10 @@ namespace Net {
 
         Core::IPacketPool* GetBigPacketPool() {
             return static_cast<Core::IPacketPool*>(&bigPacketPool);
+        }
+
+        Core::IPacketPool* GetGiantPacketPool() {
+            return &giantPacketPool;
         }
 
         bool CheckReady() {

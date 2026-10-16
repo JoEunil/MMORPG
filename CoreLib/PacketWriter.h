@@ -16,14 +16,16 @@ namespace Core {
     class PacketWriter : public IPingPacketWriter{
         IPacketPool* packetPool = nullptr;
         IPacketPool* bigPacketPool = nullptr;
+        IPacketPool* giantPacketPool = nullptr;
 
-        void Initialize(IPacketPool* p, IPacketPool* big) {
+        void Initialize(IPacketPool* p, IPacketPool* big, IPacketPool* giant) {
             packetPool = p;
             bigPacketPool = big;
+            giantPacketPool = giant;
         }
         
         bool IsReady() {
-            if (packetPool == nullptr)
+            if (packetPool == nullptr || bigPacketPool == nullptr || giantPacketPool == nullptr)
                 return false;
             return true;
         }
@@ -116,8 +118,8 @@ namespace Core {
         std::shared_ptr<IPacket> GetActionHeader();
         bool WriteActionField(std::shared_ptr<IPacket> p, const ActionResult& state);
 
-        std::shared_ptr<IPacket> GetInitialChunk() {
-            auto p = bigPacketPool->Acquire();
+        std::shared_ptr<IPacket> GetInitialChunk(bool useGiant = false) {
+            auto p = (useGiant ? giantPacketPool : bigPacketPool)->Acquire();
             if (!p) {
                 return nullptr;
             }

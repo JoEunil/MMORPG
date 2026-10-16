@@ -25,13 +25,15 @@ namespace Net {
         SessionManager* sessionManager = nullptr;
         PacketPool<PACKETPOOL_SIZE>* packetPool = nullptr;
         PacketPool<BPACKETPOOL_SIZE>* bigPacketPool = nullptr;
+        PacketPool<GPACKETPOOL_SIZE>* giantPacketPool = nullptr;
         OverlappedExPool* overlappedPool = nullptr;
         ClientContextPool* contextPool = nullptr;
 
-        void Initialize(SessionManager* s, PacketPool<PACKETPOOL_SIZE>* p, PacketPool<BPACKETPOOL_SIZE>* bp, OverlappedExPool* o, ClientContextPool* c) {
+        void Initialize(SessionManager* s, PacketPool<PACKETPOOL_SIZE>* p, PacketPool<BPACKETPOOL_SIZE>* bp, PacketPool<GPACKETPOOL_SIZE>* gp, OverlappedExPool* o, ClientContextPool* c) {
             sessionManager = s;
             packetPool = p;
             bigPacketPool = bp;
+            giantPacketPool = gp;
             overlappedPool = o;
             contextPool = c;
         }
@@ -44,8 +46,8 @@ namespace Net {
                 Core::sysLogger->LogError("net perf", "packetPool not initialized");
                 return false;
             }
-            if (bigPacketPool == nullptr) {
-                Core::sysLogger->LogError("net perf", "bigPacketPool not initialized");
+            if (bigPacketPool == nullptr || giantPacketPool == nullptr) {
+                Core::sysLogger->LogError("net perf", "big/giant packet pool not initialized");
                 return false;
             }
             if (overlappedPool == nullptr) {
@@ -97,6 +99,7 @@ namespace Net {
                 "connection", connection,
                 "packetPool", pPool,
                 "bigPacketPool", bPool,
+                "giantPacketPool", giantPacketPool->GetPoolSize(),
                 "overlappedPool", oPool,
                 "contextPool", cPool,
                 "flushQueue", flush,
