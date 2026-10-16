@@ -194,38 +194,29 @@ namespace Cache {
     }
 
     void Handler::BazaarCancel(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCancelBody* body) {
-		// 1. bazaar에서 listing status 변경 (CANCELLED) CAS 방식으로 처리
+        // Cancellation and its return event commit together in the Bazaar DB.
+        // Inventory capacity/cache availability can delay delivery, but cannot lose the item.
         EnqueueMessageWork(dbWorkerBazaar, msg, [msg, sessionID, body, this](DBConnectionBazaar* conn) {
-            int affected = conn->ExecuteUpdate(14, body->listingID, body->characterID);
-            if (affected == 1) {
-                // 2. inventory에 아이템 추가 (롤백)
-                auto res = conn->ExecuteSelect(15, body->listingID);
-                if (res && res->next()) {
-                    uint64_t realItemID = res->getUInt64("item_id");
-                    uint16_t realQty = res->getUInt("quantity");
-
-                    auto [status, itemID, slot, quantity] = cache_inventory->PartialUpdate(body->characterID, realItemID, 2, static_cast<int32_t>(realQty));
-
-                    if (status != CACHE_STATUS::AVAILABLE) {
-                        // 이 경로는 캐시 설정이 올바른 경우 도달 불가.
-                        // 도달 시 Config의 LRU 크기 재검토 필요.
-                        Core::gameLogger->LogInfo("cache handler bazaar", "rollback invenoty failed after cancel bazaar", "listing_id", body->listingID, "item_id", itemID, "quantity", quantity);
-                    }
-                }
-                else {
-                    Core::gameLogger->LogError("cache handler bazaar", "listing select failed after cancel", "listing_id", body->listingID);
+            uint64_t characterID = body->characterID;
+            auto res = conn->ExecuteSelect(14, body->listingID, characterID);
+            uint8_t result = 0;
+            if (res && res->next()) {
+                result = static_cast<uint8_t>(res->getUInt("result"));
+                if (result == 1 && res->getUInt("delivery_pending") != 0) {
+                    auto status = cache_inventory->DeliverItem(characterID, res->getUInt64("event_id"),
+                        res->getUInt("item_id"), res->getUInt("quantity"));
+                    if (status != CACHE_STATUS::AVAILABLE && status != CACHE_STATUS::DUPLICATED)
+                        Core::gameLogger->LogInfo("cache handler bazaar", "cancel return pending in outbox", "char_id", characterID);
                 }
             }
-            // 3. 응답. (1: 성공, 0: 실패(listing이 이미 거래된 경우)) 
-            Core::MsgStruct<Core::MsgBazaarCancelResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarCancelResBody>*>(msg->GetBuffer());
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarCancelResBody>*>(msg->GetBuffer());
             st->header.sessionID = sessionID;
             st->header.messageType = Core::MSG_BAZAAR_CANCEL_RES;
-            st->body.resStatus = affected == 1 ? 1 : 0;
+            st->body.resStatus = result == 1 ? 1 : 0;
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarCancelResBody>));
             messageQ->EnqueueMessage(msg);
             messagePool->Return(msg);
-            return;
-            });
+        });
     }
 
     void Handler::BazaarBuy(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarBuyBody* body) {

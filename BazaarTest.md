@@ -161,3 +161,10 @@ __lock_waits는 발생했지만 lock_time은 짧았던 이유__
 ## 6. 참고
 
 - [Bazaar.md](Bazaar.md)
+## 취소 반환 회귀 검증
+
+`TEST_BAZAAR=1`, `TEST_MODE=CANCEL`로 `Test9_CancelOutbox`를 별도 실행할 수 있다. 기본 전체 모드에도 포함된다. 새 테스트는 40,000개짜리 테스트 listing을 취소하고, 캐시 배송과 독립적으로 반환 Outbox가 남는지, 반복 취소가 동일 event_id와 단일 행을 유지하는지, CLAIMED 이후 재취소가 `delivery_pending=0`을 반환하는지를 Release에서도 활성인 검사로 확인한다. 기존 DB에 `sp_bazaar_cancel`을 적용해야 한다.
+
+동시에 생성되는 테스트 캐시 노드에는 seller/buyer/부하 작업별로 서로 다른 `wal/bazaar-test/<node>/redo` prefix를 부여한다. 크래시 1·2단계는 같은 buyer prefix를 재사용한다. 테스트용 WAL과 DB의 lastLsn은 함께 보존해야 한다.
+
+기존 스크린샷은 당시 실행 결과이며, 새 회귀 항목의 실행 결과를 대신하지 않는다.

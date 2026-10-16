@@ -54,6 +54,7 @@ namespace Cache
             case 9: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
             case 11: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
             case 12: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
+            case 14: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); // cancel transaction
             case 15: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
             case 16: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
             case 17: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
@@ -89,7 +90,6 @@ namespace Cache
             {
             case 10: return stmt->executeUpdate(); // UPDATE
             case 13: return stmt->executeUpdate(); // INSERT
-            case 14: return stmt->executeUpdate(); // UPDATE
             case 19: return stmt->executeUpdate(); // UPDATE
             default: return 0;
             }

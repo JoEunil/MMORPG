@@ -45,10 +45,10 @@ MMORPG 플레이 경험상 소규모 서버에서는 거래소가 활발하지 �
 
 ### 2.3 아이템 배송: Outbox / Inbox 패턴  
 
-구매한 아이템은 **Bazaar DB → 인벤토리(Game DB 캐시)** 로 이동해야 하는데, 두 저장소를 하나의 트랜잭션으로 묶을 수 없다.  
+구매 아이템과 취소 반환 아이템은 **Bazaar DB → 인벤토리(Game DB 캐시)** 로 이동해야 하는데, 두 저장소를 하나의 트랜잭션으로 묶을 수 없다.
 두 장군 문제로 인해 "한 번에 정확히 반영"을 보장하는 것은 불가능하므로, **재시도(Outbox) + 멱등(Inbox)** 조합으로 중복, 손실을 방지한다.  
 
-- **Outbox (`buyer_outbox`)**: 구매 트랜잭션 안에서 원자적으로 INSERT되는 "배송해야 할 사실"의 durable한 기록. `READY` 상태인 한 재배송이 반복된다 → **유실 없음**  
+- **Outbox (`buyer_outbox`)**: 구매·취소 트랜잭션 안에서 원자적으로 INSERT되는 "배송해야 할 사실"의 durable한 기록. `READY` 상태인 한 재배송이 반복된다 → **유실 없음**
 - **Inbox (인벤토리 blob 내 dedup ring)**: 배송 시 event_id를 아이템과 같은 blob에 기록해 원자적으로 영속. 재배송이 와도 dedup으로 스킵 → **중복 없음**  
 - Outbox의 `CLAIMED` 전환은 인벤토리 blob이 DB에 durable해진 이후에만 수행한다.  
 
@@ -81,6 +81,14 @@ __Crash 시나리오별 수렴__ (검증: [BazaarTest.md](BazaarTest.md) Test 6)
 |------|------|------|
 | 배송 반영 후, flush 전 | 인벤토리 미반영 + outbox READY | 재접속 시 **재배송** → 정확히 1개 지급 (유실 없음) |  
 | flush 후, CLAIM 전 | 인벤토리 반영 완료(durable) + outbox READY | dedup이 재배송을 스킵 → **수량 변화 없이 outbox만 READY → CLAIMED** (중복 없음) |
+
+### CANCEL 처리 상세 (sp_bazaar_cancel)
+
+취소는 `TRADING → CANCELLED` 전환과 판매자 앞으로의 반환 Outbox INSERT를 같은 Bazaar DB 트랜잭션에서 처리한다. 이후 서버가 즉시 `DeliverItem`을 시도하며, 캐시 미적재·인벤토리 또는 dedup ring 포화로 실패하면 Outbox를 `READY`로 남겨 `CHECK_OUTBOX`에서 재시도한다. 취소 성공 응답은 반환 이벤트가 durable하게 생성되었다는 뜻이며, 아이템이 즉시 인벤토리에 들어갔다는 뜻은 아니다.
+
+같은 취소를 다시 요청하면 기존 event_id를 반환한다. 이미 `CLAIMED`인 이벤트는 즉시 배송도 다시 시도하지 않아, dedup ring에서 오래된 이벤트가 밀려난 뒤의 재취소로 재지급되는 것을 막는다. 인벤토리 blob 저장과 Outbox CLAIM 순서는 구매 배송과 동일하다. 구매와 취소가 경쟁하면 동일한 listing 행 잠금으로 직렬화되어 하나만 성공한다.
+
+새 프로시저가 추가되었으므로 기존 DB에는 [procedure.sql](Resources/DB/procedure.sql)을 다시 적용해야 한다. 파일의 `DROP PROCEDURE IF EXISTS`는 해당 프로시저 정의만 교체하며 테이블 데이터는 삭제하지 않는다.
 
 ## 5. CLAIM 처리 상세 (sp_bazaar_claim)
 

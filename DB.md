@@ -132,9 +132,10 @@ SELECT
     c.user_id,
     c.channel_id,
     c.char_id,
-    c.name,
+    p.name,
     c.level
 FROM characters c
+JOIN profile p ON p.profile_id = c.profile_id
 WHERE c.deleted_at IS NULL;
 ```
 
@@ -153,7 +154,7 @@ View Table의 실질적인 이점은 다음과 같다.
 - 민감 데이터 노출 제한 — 필요한 컬럼만 노출하여 불필요한 데이터 접근 차단
 
 ### Stored Procedure
-거래소의 구매(sp_bazaar_buy), 정산(sp_bazaar_claim) 등 원자성이 필수인 작업은 Stored Procedure로 처리한다. 
+거래소의 구매(sp_bazaar_buy), 취소 반환(sp_bazaar_cancel), 정산(sp_bazaar_claim) 등 원자성이 필수인 작업은 Stored Procedure로 처리한다.
 트랜잭션이 DB 내부에서 완결되어 lock holding time을 최소화하고, 애플리케이션 크래시가 트랜잭션 안정성에 영향을 주지 않는다.
 
 프로시저 상세는 [거래소 설계 문서](Bazaar.md) 참고

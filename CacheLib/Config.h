@@ -86,9 +86,7 @@ namespace Cache {
     inline constexpr const char* QUERY_13 = 
         "INSERT INTO bazaar (item_id, seller_id, item_type, quantity, price, status, listed_at) " 
         "VALUES(?, ?, ?, ?, ?, 'TRADING', NOW())";
-    inline constexpr const char* QUERY_14 = 
-        "UPDATE bazaar " 
-        "SET status = 'CANCELLED' WHERE status = 'TRADING' AND listing_id = ? AND seller_id = ? ";
+    inline constexpr const char* QUERY_14 = "CALL sp_bazaar_cancel(?, ?)";
     inline constexpr const char* QUERY_15 = "SELECT item_id, quantity FROM bazaar WHERE listing_id = ?";
     inline constexpr const char* QUERY_16 = "CALL sp_bazaar_buy(?, ?)";
     inline constexpr const char* QUERY_17 = "CALL sp_bazaar_claim(?, ?)";
@@ -97,7 +95,7 @@ namespace Cache {
         "UNIX_TIMESTAMP(purchased_at) AS purchased_at "
         "FROM buyer_outbox "
         "WHERE char_id = ? AND delivery_status = 'READY' "
-        "ORDER BY purchased_at ASC "
+        "ORDER BY purchased_at ASC, event_id ASC "
         "LIMIT 30";
     inline constexpr const char* QUERY_19 =
         "UPDATE buyer_outbox "
