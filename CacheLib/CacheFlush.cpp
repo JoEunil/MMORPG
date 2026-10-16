@@ -43,7 +43,7 @@ namespace Cache {
             key.characterID = param1;
             auto shardIndex = param1 & SHARD_SIZE_MASK;
             
-            if (res == 0) {// error
+            if (res <= 0) { // 0: 대상 행 없음, 음수: 내부 실행 실패
                cache_inventory->Rollback(shardIndex, key);
                Core::errorLogger->LogInfo("cache flush", "DB write failed case 6", "char_id", key.characterID);
                return;
@@ -125,7 +125,7 @@ namespace Cache {
             key.characterID = param1;
             auto shardIndex = param1 & SHARD_SIZE_MASK;
 
-            if (res == 0) {// error 
+            if (res <= 0) { // 0: 대상 행 없음, 음수: 내부 실행 실패
                 cache_currency->Rollback(shardIndex, key);
                 Core::errorLogger->LogInfo("cache flush", "DB write failed case 8", "char_id", key.characterID);
                 return;

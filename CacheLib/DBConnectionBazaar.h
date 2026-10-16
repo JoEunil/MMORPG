@@ -11,8 +11,15 @@ namespace Cache
             sql::SQLString user = DB_USER_BAZAAR;
             sql::SQLString password = DB_PASS_BAZAAR;
             sql::SQLString database = DB_DB_BAZAAR;
+            sql::ConnectOptionsMap options;
+            options["hostName"] = host;
+            options["userName"] = user;
+            options["password"] = password;
+            // UPDATE 반환값을 실제 변경 행 수에서 WHERE에 일치한 행 수로 바꾼다.
+            // 이미 같은 값인 행도 양수를 반환하므로, 대상 행 없음(0)과 구분된다.
+            options["CLIENT_FOUND_ROWS"] = true;
             sql::Driver* driver = sql::mysql::get_driver_instance();
-            m_conn = std::unique_ptr<sql::Connection>(driver->connect(host, user, password));
+            m_conn = std::unique_ptr<sql::Connection>(driver->connect(options));
             m_conn->setSchema(database);
         }
         void Initialize() override {
@@ -64,6 +71,9 @@ namespace Cache
             }
         }
 
+        // 지원하는 UPDATE: >0은 대상 행 있음(동일 값 포함), 0은 WHERE 일치 행 없음.
+        // INSERT: 삽입된 행 수. -1은 stmt_id 미등록, 등록됐지만 미지원이면 0.
+        // SQL 실행 오류는 sql::SQLException으로 호출자에게 전파한다.
         template<typename... Args>
         int ExecuteUpdate(uint16_t stmt_id, Args&&... args) {
             auto it = m_stmts.find(stmt_id);
