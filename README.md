@@ -23,7 +23,7 @@ C++ 기반 TCP Stateful MMORPG 게임 서버 — 개인 프로젝트 (개발 기
 
 게임 서버의 핵심 문제인 **대규모 동시 접속 처리**와 **실시간 동기화**를 직접 해결하는 것을 목표로 시작한 프로젝트다.
 
-같은 게임 서버라도 MMORPG는 세션 기반 게임(FPS/MOBA)과 제약이 다르다. **한 유저가 매 틱 수백 명의 상태를 수신한다**(세션 기반은 5~32). 
+이 프로젝트는 많은 유저가 밀집해 **한 유저의 AOI에 수백 명이 들어오는 조건**을 가정했다. 아래 표는 설계 선택을 설명하기 위한 비교 모델이며, 모든 FPS/MOBA/MMORPG의 인원·틱·저장 정책을 일반화한 것은 아니다.
 
 | | 세션 기반 (FPS/MOBA) | MMORPG |
 |---|---|---|
@@ -31,14 +31,14 @@ C++ 기반 TCP Stateful MMORPG 게임 서버 — 개인 프로젝트 (개발 기
 | 상태 수명 | 매치 종료 시 폐기 | 영구 지속, DB와 계속 정합 |
 | 연결 수명 | 분 단위 | 시간 단위 |
 | 틱 | 60~128Hz | 20Hz |
-| durability | 매치 종료 후 1회 저장 | 가동 중 상시 정합 |
+| 저장 모델 | 매치 결과 저장을 중심으로 가정 | 가동 중 지속 저장 |
 | 확장 방향 | 매치 인스턴스 추가 | 월드 분할 |
 
 Zone 단위 틱 루프, Cell 기반 AOI, Delta/Full 스냅샷 분리, 고정 객체풀, Write-Back 캐시는 모두 이 자릿수 차이(세션당 5 ~ 32명 vs Zone당 수백 ~ 수천 명)에서 갈라져 나온 결정이다. 자세한 내용은 [설계 결정](DesignDecisions.md)에 정리했다.
 
 - **동시성**: IOCP 비동기 IO 기반으로 **단일 PC 환경에서 5,000명 동시 접속**을 검증했다 (Vyukov bounded MPMC queue, Zone Tick 기반 멀티스레드 아키텍처)
-- **안정성**: WAL 기반 In-Process Write-Back Cache로 장애 시 Dirty 데이터 복구를 보장하고, **ASan으로 메모리 안전성(누수·오류 없음)을 검증**했다
-- **정합성**: 거래소 시스템에서 Saga·Outbox/Inbox 패턴으로 cross-DB 정합성을, **Crash 후 배송 exactly-once(유실·중복 없음)를 테스트로 검증**했다
+- **안정성**: 인벤토리에 WAL 기반 복구를 적용하고, 수행한 ASan 시나리오에서 메모리 오류가 보고되지 않았다. WAL fsync 이전 손실 가능 구간과 메모리 관측 한계는 각 문서에 명시했다
+- **정합성**: 거래소 구매의 DB 트랜잭션과 Outbox/Inbox 배송을 구현하고 Crash 후 재배송·중복 적용 방지를 테스트했다. 등록 등 별도 경로의 보장 범위는 [거래소 문서](Bazaar.md)에 구분했다
 
 **구현 콘텐츠**: 캐릭터 이동 / 스킬 / 몬스터 / 아이템 거래소 / 인벤토리 / 채팅
 
@@ -46,7 +46,7 @@ Zone 단위 틱 루프, Cell 기반 AOI, Delta/Full 스냅샷 분리, 고정 객
 - 핵심 컴포넌트 Google Test 단위 테스트
   (`LockFreeQueue`, `TripleBuffer`, `RingBuffer`, `RingQueue`, `FixedObjectPool`, `PacketView`, `NetTimer`, WAL — 동시성 테스트 포함)
 - Cache / 거래소 통합 테스트 (DB fetch, LRU eviction, WAL Crash 복구, 거래소 Crash 시나리오, 동시 구매 경합)
-- Unity 클라이언트 연동 및 기본 기능 테스트
+- 과거 버전의 Unity 클라이언트 연동 및 기본 기능 테스트
 - 더미 클라이언트 부하 테스트
   → i3-12100F(4C/8T)에서 2,000명 → CPU 업그레이드·최적화 후 i5-14400F(6P+4E, 16T) 단일 PC 환경에서 5,000명 동시 접속 달성
 - 종료 안정성 및 메모리 검증 (Graceful Shutdown, AddressSanitizer)
@@ -163,12 +163,12 @@ Vyukov bounded MPMC queue와 Zone 기반 멀티스레드 아키텍처로 작업 
 
 ### 3. 네트워크 안정성
 - [Ping](PingLoop.md): Ping 루프를 통한 좀비 세션 탐지. IOCP 워커의 호출 스택과 분리된 전용 스레드에서 세션을 종료하는 안전한 종료 전략 적용
-- [Flood Detection](FloodDetect.md): 단일 세션의 과도한 트래픽 유입과 Tiny Packet을 이용한 CPU 고갈 공격을 애플리케이션 레벨에서 탐지·차단. Hot Path 특성을 고려해 시간 연산이 없는 Count 기반 Fixed Window 방식 채택
+- [Flood Detection](FloodDetect.md): 세션별 20회 수신 합계에 허용 범주를 두어 극단적인 작은/큰 수신 패턴을 저비용으로 차단. 
 - [Tick](Tick.md) & [Snapshot](Snapshot.md): 클라이언트와 서버 간의 틱 기반 동기화 및 패킷 크기 최적화를 위한 스냅샷 전략 수립. Windows 타이머 해상도(기본 15.6ms)가 틱 보정과 RTT 측정에 미치는 영향을 분석하고, `timeBeginPeriod`(최대 1ms)와 high-resolution waitable timer(100ns 단위 설정)의 비용 구조를 비교. 되감기(lag compensation) 도입 시점을 적용 기준으로 설정
 
 ### 4. 콘텐츠 구현 및 모니터링
 - [Monster](Monster.md) & [Skill](Skill.md): 간단한 AI 및 상호작용 로직을 통해 구조적 위험성 분석. AOI(Area of Interest) 및 Cell 분할 필요성 도출
-- [거래소 시스템](Bazaar.md): 서버 통합 거래소 구현. 데이터 특성 기반 저장 전략 분리 (Gold: Write-Back 캐시 / Item: 캐시 + 거래 배송은 Outbox/Inbox로 exactly-once / Diamond: DB 트랜잭션), Stored Procedure로 ACID 보장
+- [거래소 시스템](Bazaar.md): 거래소 구현. 데이터 특성 기반 저장 전략 분리 (Gold: Write-Back 캐시 / Item: 캐시 + 거래 배송은 Outbox/Inbox로 exactly-once / Diamond: DB 트랜잭션), Stored Procedure로 ACID 보장
 - [거래소 시스템 테스트](BazaarTest.md): 기본 기능, Crash 시나리오, 동시 구매 경합, lock contention 관측 테스트 수행. CAS 기반 중복 구매 방지 및 Crash 후 배송의 exactly-once 수렴(유실·중복 없음) 검증
 - [StructuredLogging](StructuredLogging.md): 서버 내부 상태와 테스트 결과를 시각화하고 추적하기 위해 로그를 구조화하여 분류 및 적용
 - [Monitoring](Monitoring.md): Grafana + Loki + Promtail로 TPS, 접속자 수, 객체풀 등 핵심 지표를 실시간 추적. Jitter 지표를 RTT 절대값 임계치 대신 Jacobson/Karels EWMA(SRTT/RTTVAR) 기반으로 재설계해, 클라이언트별 네트워크 환경 차이로 인한 오탐을 제거
@@ -177,7 +177,7 @@ Vyukov bounded MPMC queue와 Zone 기반 멀티스레드 아키텍처로 작업 
 
 접근 빈도가 높은 인벤토리 데이터를 대상으로 In-Process 메모리 캐시를 직접 구현했다.
 Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush 이전 장애에서도 Dirty 데이터를 복구할 수 있도록 설계했다. 
-또한 거래소가 Cache - DB 경계를 넘는 부분은 **Saga(등록)·Outbox/Inbox(배송)** 로 cross-DB 정합성을 보장하고, 아이템·재화의 중요도에 따라 durability를 차등 적용했다.  
+또한 거래소가 Cache - DB 경계를 넘는 부분은 **Saga(등록)·Outbox/Inbox(배송)** 로 복구를 설계하고, 아이템·재화의 중요도에 따라 durability를 차등 적용했다. 각 경로의 크래시 안전성 범위는 거래소 문서에 명시했다.
 
 > 두 메커니즘의 경계는 이렇다. **Outbox/Inbox**는 캐시-DB 경계를 넘는 거래 배송을, **WAL**은 그 안쪽 캐시 자체의 유실 창을 맡는다.  
 > 현재 WAL 적용 범위는 인벤토리뿐이라 골드에는 유실 창이 남아 있다. 특정 데이터만 태우면 저장 정책이 게임 로직으로 새므로, 캐시 전 구간 일반화가 방향이다.  
@@ -245,7 +245,7 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 기능 정합성을 검증하는 Google Test와 성능 측정을 분리하기 위해 별도 `Benchmark` 프로젝트에 Google Benchmark를 도입했다.   
 프레임워크가 측정 시간과 반복 횟수, 처리량 집계를 일관되게 관리하므로 직접 작성한 타이머 기반 테스트보다 조건별 성능을 재현하고 비교하기 쉽다.  
 
-- [WAL 성능 벤치마크](Benchmark_WAL.md) — fsync 주기와 writer 수를 변경해 writer-fflush 및 writer-writer contention이 반영된 처리량을 측정하고, 짧은 유실 가능 구간과 처리량을 함께 고려해 fsync 주기를 20ms로 결정
+- [WAL 성능 벤치마크](Benchmark_WAL.md) — fsync 주기와 writer 수를 변경해 writer-fflush 및 writer-writer contention이 반영된 처리량을 측정. 벤치마크 결과를 바탕으로 기본 주기를 20ms로 선택했으며 성공 응답 직후의 디스크 내구성을 보장하지 않음
 - [Triple Buffer 성능 벤치마크](Benchmark_TripleBuffer.md) — SPMC reader 수에 따른 writer spin 분포와 busy-spin/yield 처리량을 측정하고, `maxSpin = 12` 선택 근거와 trade-off를 정리
 
 ### 통합 테스트
@@ -257,6 +257,7 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 ### 부하 테스트
 
 단일 PC에 게임 서버, DB, Redis, 모니터링, 더미 클라이언트를 모두 구동한 환경에서 단계별 부하 테스트를 진행했다.
+5,000명 시험은 목표 20Hz 액션 전송률을 완전히 유지하지 못한 상태의 접속·동작 기록이다. 물리 NIC를 거치지 않는 loopback 시험이며, 전체 기능을 동시에 수행하는 실서비스 수용량으로 환산하지 않는다. 실제 action/s, 시험 시간, Zone별 분포, 지연 percentile, drop·연결 종료 수를 함께 남기는 재측정이 후속 과제다.
 
 | 단계 | 결과 | 요약 |
 |---|---|---|
@@ -274,9 +275,9 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 
 ### 메모리 분석 (AddressSanitizer)
 
-서버와 단위 테스트를 ASAN 빌드로 실행해 메모리 안전성과 누수를 검증했다.
+서버와 단위 테스트를 ASAN 빌드로 실행해 해당 시나리오의 메모리 오류와 종료 시 할당 통계를 관측했다.
 
-- [ASAN 부하 테스트 & 메모리 분석](ASAN.md) — 서버(2,000명, 1분/10분)·단위 테스트 43종을 ASAN으로 실행. 메모리 오류 없음, `inuse` 시간축 비교로 누수 없음 확인
+- [ASAN 부하 테스트 & 메모리 분석](ASAN.md) — 당시 서버(2,000명, 1분/10분)·단위 테스트 43종에서 ASan 오류 미검출. 종료 `inuse` 비교에서 지속 증가 징후를 관측하지 못했으며, 모든 누수·data race의 부재를 입증한 것은 아님
 
 ## 리팩토링
 
@@ -354,8 +355,8 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 
 ### 2. 외부 모듈
 
-프로젝트에 필요한 모든 외부 라이브러리는 `/External` 경로에 포함되어 있다.
-솔루션 파일을 열어 즉시 빌드가 가능하도록 의존성이 설정되어 있으며, 라이브러리 바이너리도 프로젝트에 포함되어 있다.
+서버 런타임에서 사용하는 외부 라이브러리와 바이너리는 `/External` 경로에 포함되어 있다.
+Visual Studio 2022의 C++ 데스크톱 개발 도구와 Windows SDK가 필요하다. 단위 테스트·벤치마크는 각각의 `vcpkg.json`에 선언한 의존성을 복원하고, C# 프로젝트는 NuGet 패키지를 복원해야 한다.
 
 - 포함 모듈: hiredis, spdlog, MySQL Connector/C++, nlohmann/json
 - NuGet 패키지: Newtonsoft.Json, libevent2
@@ -365,7 +366,8 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 ### 3. 외부 인프라 설정
 
 **DB**
-- 스크립트 실행: `Resources/DB/init.sql` (로그인 DB, 게임 DB 생성)
+- 새 DB는 `Resources/DB/init.sql` → `Resources/DB/procedure.sql` → `Resources/DB/createCharacter.sql` 순서로 초기화한다 (마지막 스크립트는 테스트 캐릭터 시딩).
+- 기존 DB에서 이번 거래소 취소 수정을 사용하려면 `Resources/DB/procedure.sql`만 다시 적용한다. `init.sql`과 캐릭터 시딩은 재실행하지 않는다. 자세한 내용은 [CANCEL 처리](Bazaar.md#cancel-처리-상세-sp_bazaar_cancel) 참고.
 - Host: localhost
 - ID/PW: root / 1234
 
@@ -377,7 +379,8 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 - 터미널에서 실행 (또는 Visual Studio에서 실행)
 ```
 cd Login
-node app.js
+npm ci
+npm start
 ```
 - localhost, 포트 3000
 
@@ -418,6 +421,7 @@ DB → Redis → 로그인 서버 → 게임 서버
 
 **Unity Client**
 - `Resources/UnityClient/UnityClient.exe`
+- 현재 HEAD의 Profile 패킷 변경을 반영하지 않은 과거 데모 실행 파일이다. 최신 서버와의 시연에는 호환 클라이언트 갱신이 필요하다.
 
 **기본 테스트 계정**
 - ID: test_1 ~ test_5000

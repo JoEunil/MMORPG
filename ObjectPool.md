@@ -106,6 +106,8 @@ PacketPool, OverlappedExPool, MessagePool의 멤버로 FixedObjectPool을 사용
 
 ### 5.3 실패 처리
 
+아래 코드는 객체풀 리팩토링 당시의 제한 재시도 방식이다. 현재 StateManager의 종료 저장은 스택 `Message`를 사용하고, 작업 큐 포화 정책은 [BackPressure.md](BackPressure.md)와 [WorkQueue.md](WorkQueue.md)에 별도로 정리했다. 현재 구현과 아래 과거 사례를 구분해야 한다.
+
 객체풀을 동적으로 조정하지 않기 때문에, 메서드 호출 부분에서 실패 처리를 추가하였다. 
 
 ```cpp
