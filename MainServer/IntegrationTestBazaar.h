@@ -943,6 +943,59 @@ namespace Test {
             g_msgPool().Return(msg);
     }
 
+    inline void Test9_CancelOutbox() {
+        std::cout << "\n=== [9] CANCEL durable return and idempotent retry ===\n";
+        DBChecker db;
+        db.CleanupBazaar();
+        auto insert = std::unique_ptr<sql::PreparedStatement>(db.conn->prepareStatement(
+            "INSERT INTO bazaar (item_id, seller_id, item_type, quantity, price, status, listed_at) "
+            "VALUES (1, ?, 1, 40000, 100, 'TRADING', NOW())"));
+        insert->setUInt64(1, CHAR_A);
+        if (!(insert->executeUpdate() == 1))
+            throw std::runtime_error("Listing insert failed");
+        auto listingID = db.FetchLatestListingID(CHAR_A);
+        uint64_t originalEvent = 0;
+        auto cancel = [&](bool expectedPending) {
+            auto stmt = std::unique_ptr<sql::PreparedStatement>(db.conn->prepareStatement("CALL sp_bazaar_cancel(?, ?)"));
+            stmt->setUInt64(1, listingID);
+            stmt->setUInt64(2, CHAR_A);
+            {
+                auto rs = std::unique_ptr<sql::ResultSet>(stmt->executeQuery());
+                if (!(rs && rs->next()))
+                    throw std::runtime_error("Missing cancel result");
+                if (!(rs->getUInt("result") == 1))
+                    throw std::runtime_error("Cancel failed");
+                if (!(rs->getUInt("quantity") == 40000))
+                    throw std::runtime_error("Cancel quantity mismatch");
+                if (!((rs->getUInt("delivery_pending") != 0) == expectedPending))
+                    throw std::runtime_error("Cancel delivery state mismatch");
+                auto event = rs->getUInt64("event_id");
+                if (originalEvent == 0) originalEvent = event;
+                if (!(event == originalEvent && event != 0))
+                    throw std::runtime_error("Cancel event ID changed");
+            }
+            while (stmt->getMoreResults()) {
+                auto extra = std::unique_ptr<sql::ResultSet>(stmt->getResultSet());
+            }
+        };
+        cancel(true); // no inventory/cache access: the return remains durable and READY
+        cancel(true); // a lost cancellation response reuses the same event
+        auto count = std::unique_ptr<sql::PreparedStatement>(db.conn->prepareStatement(
+            "SELECT COUNT(*) AS cnt FROM buyer_outbox WHERE listing_id = ?"));
+        count->setUInt64(1, listingID);
+        {
+            auto rs = std::unique_ptr<sql::ResultSet>(count->executeQuery());
+            if (!(rs && rs->next() && rs->getUInt("cnt") == 1))
+                throw std::runtime_error("Expected one cancellation outbox entry");
+        }
+        auto claim = std::unique_ptr<sql::PreparedStatement>(db.conn->prepareStatement(
+            "UPDATE buyer_outbox SET delivery_status = 'CLAIMED' WHERE event_id = ?"));
+        claim->setUInt64(1, originalEvent);
+        if (!(claim->executeUpdate() == 1))
+            throw std::runtime_error("Outbox claim failed");
+        cancel(false); // a later retry must not deliver a CLAIMED return again
+        db.CleanupBazaar();
+    }
     // ================================================================
     // 전체 실행
     // ================================================================
@@ -963,11 +1016,16 @@ namespace Test {
             Test7_Race();
             return;
         }
+        if (mode == "CANCEL") {
+            Test9_CancelOutbox();
+            return;
+        }
         Test1_Inventory();
         Test2_Currency();
         Test3_Diamond();
         Test4_BazaarBasic();
         Test5_SellerOffline();
+        Test9_CancelOutbox();
     }
 
 } // namespace Test

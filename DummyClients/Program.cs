@@ -99,7 +99,7 @@ static class Program
     }
     static public void Ready()
     {
-        _ready++;
+        Interlocked.Increment(ref _ready);
     }
     static public void StartAction()
     {

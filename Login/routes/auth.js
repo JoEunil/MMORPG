@@ -14,7 +14,6 @@ require('dotenv').config();
 // 로그인 요청 처리
 router.post('/login', (req, res) => {
     const { login_id, password } = req.body;
-  console.log(req.body);
     const query = 'SELECT * FROM users WHERE login_id = ?';
     const logQuery = 'INSERT INTO login_log (login_id, succeed, ip_addr, user_agent) VALUES (?, ?, ?, ?)';
     const ip_addr = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
@@ -64,7 +63,6 @@ router.post('/login', (req, res) => {
 // 회원가입
 router.post('/signup', (req, res) => {
     const { login_id, password, email, phone_number} = req.body;
-  console.log(req.body);
   // 사용자 정보가 없으면 에러 처리
   if (!login_id || !password || !email || !phone_number) {
     return res.status(400).send('모든 필드를 입력해야 합니다.');
@@ -91,15 +89,10 @@ router.post('/signup', (req, res) => {
 
 router.post('/getSession', authenticateToken, async (req, res) => {
   try {
-    console.log('Authenticated user:', req.user);
-
     // 게임 서버용 임시 세션 토큰 생성 
     const sessionToken = uuidv4();
-    console.log('Generated session token:', sessionToken);
     // Redis에 세션 토큰 저장 (10분 동안 유효)
-    await redis.set(req.user.userId.toString(), sessionToken, 'EX', 600);
-
-    console.log('Session token saved in Redis');
+    await redis.set(req.user.userId.toString(), sessionToken, { EX: 600 });
     
     // 게임 서버 정보와 세션 토큰 반환
     res.json({
@@ -112,7 +105,7 @@ router.post('/getSession', authenticateToken, async (req, res) => {
     });
   } catch (err) {
     console.error('Redis error:', err);
-    return res.status(500).json({ error: "Redis error", details: err });
+    return res.status(500).json({ error: "Redis error" });
   }
 });
 

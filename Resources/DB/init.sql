@@ -19,6 +19,7 @@ CREATE TABLE login_log (
     ip_addr    VARCHAR(45) NOT NULL,
     user_agent VARCHAR(512),
     logged_at  DATETIME DEFAULT NOW(),
+    PRIMARY KEY (log_id),
     INDEX idx_login (login_id, logged_at DESC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

@@ -39,6 +39,8 @@ namespace ClientCore.PacketHelper
         INVENTORY_RES = 21,
         PING = 22, // 서버 송신
         PONG = 23, // 클라이언트 송신
+        PROFILE_BATCH = 24,
+        PROFILE_BATCH_RES = 25,
     }
     
     public enum ZONE_CHANGE : byte
@@ -181,11 +183,9 @@ namespace ClientCore.PacketHelper
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ChatWhisperBody
     {
-        public short messageLen;
+        public ushort messageLen;
         public ulong senderChatID;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_CHARNAME_LEN)]
-        public byte[] name;
+        public uint senderProfileId;
     };// + raw char*
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -194,8 +194,7 @@ namespace ClientCore.PacketHelper
         public ulong senderChatID; // sender
         public ushort offset;
         public ushort messageLength;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_CHARNAME_LEN)]
-        public byte[] name;
+        public uint senderProfileId;
     };
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -258,6 +257,8 @@ namespace ClientCore.PacketHelper
     public struct FullStateField
     {
         public uint zoneInternalID;
+        public uint profileId;
+        public uint profileVersion;
         public int hp;
         public int mp;
         public int maxHp;
@@ -268,8 +269,6 @@ namespace ClientCore.PacketHelper
         public float x;
         public float y;
 
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_CHARNAME_LEN)]
-        public byte[] charName;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -474,7 +473,7 @@ namespace ClientCore.PacketHelper
         {
             public byte scope;
             public ulong senderID;
-            public string senderName;
+            public uint senderProfileId;
             public string message;
         }
 
@@ -503,7 +502,7 @@ namespace ClientCore.PacketHelper
 
             message.scope = (byte)CHAT_SCOPE.Whisper;
             message.senderID = packet.body.senderChatID;
-            message.senderName = EncodingHelper.DecodeUtf8(packet.body.name).TrimEnd('\0');
+            message.senderProfileId = packet.body.senderProfileId;
             message.message = EncodingHelper.DecodeUtf8(buffer, messageOffset, packet.body.messageLen).TrimEnd('\0');
             
 
@@ -538,7 +537,7 @@ namespace ClientCore.PacketHelper
 
                 messages[i].scope = (byte)packet.body.scope;
                 messages[i].senderID = entity.senderChatID;
-                messages[i].senderName = EncodingHelper.DecodeUtf8(entity.name).TrimEnd('\0');
+                messages[i].senderProfileId = entity.senderProfileId;
                 messages[i].message = EncodingHelper.DecodeUtf8(buffer, messageOffset + entity.offset, entity.messageLength).TrimEnd('\0');
             }
 
