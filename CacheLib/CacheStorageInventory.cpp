@@ -29,13 +29,15 @@ namespace Cache {
 
         if (shard.lru_list.size() >= MAX_CACHE_SIZE) {
             const auto oldKey = shard.lru_list.back();
+            if (shard.cache_data[oldKey].flushInFlight)
+                return true;
             shard.lru_pos.erase(oldKey);
             shard.lru_list.pop_back();
 
             auto it = shard.dirty_list.find(oldKey);
             if (it != shard.dirty_list.end()) {
                 shard.cache_data[oldKey].status = CACHE_STATUS::EVICTING;
-                const auto flushResult = m_flushFn(oldKey, shard.cache_data[oldKey]);
+                const auto flushResult = QueueFlushLocked(shard, oldKey, shard.cache_data[oldKey]);
                 if (flushResult == FlushEnqueueResult::Queued) {
                     shard.dirty_list.erase(oldKey);
                 }
@@ -73,7 +75,7 @@ namespace Cache {
             if (!res || !res->next()) {
                 Core::gameLogger->LogInfo("cache storage inventory", "inventory not found in DB", "char_id", key.characterID);
                 SetEmpty(shardIndex, key);  // READING → EMPTY
-                return CACHE_STATUS::EMPTY;
+                return;
             }
 
             std::istream* blobStream = res->getBlob("inventory");
@@ -95,7 +97,7 @@ namespace Cache {
             }
             result.rollbackCnt = 0;
             Insert(shardIndex, key, result);  // READING → AVAILABLE
-        });
+        }, nullptr, [this, shardIndex, key] { SetEmpty(shardIndex, key); });
         if (enqueueResult != DBEnqueueResult::Queued) {
             SetEmpty(shardIndex, key);
             return CACHE_STATUS::EMPTY;
@@ -152,7 +154,9 @@ namespace Cache {
     }
 
     // status, itemID, slot, quantity
-    std::tuple<CACHE_STATUS, uint32_t, uint16_t, uint16_t> CacheStorageInventory::PartialUpdate(uint64_t characterID, uint32_t itemID, uint8_t op, int16_t change) {
+    std::tuple<CACHE_STATUS, uint32_t, uint16_t, uint16_t> CacheStorageInventory::PartialUpdate(uint64_t characterID, uint32_t itemID, uint8_t op, int32_t change) {
+        if (itemID == 0 || change == 0 || change < -static_cast<int32_t>(UINT16_MAX) || change > UINT16_MAX || (op == 1 && change < 0))
+            return { CACHE_STATUS::BLOCKED, 0, 0, 0 };
         Key key;
         Result result;
         key.characterID = characterID;
@@ -214,7 +218,6 @@ namespace Cache {
             }
             itemSlot.quantity = static_cast<uint16_t>(newQuantity);
             quantity = itemSlot.quantity;
-            res.data.count++;
             break;
         }
         case 2: { // UPDATE
@@ -275,6 +278,7 @@ namespace Cache {
     std::unique_ptr<FlushCommand> CacheStorageInventory::GetFlushCommand(Key key, Result result) {
         auto command = std::make_unique<FlushCommand>();
         command->stmtID = 6;
+        command->generation = result.flushGeneration;
         std::vector<uint8_t> blob(sizeof(InventoryData));
         std::memcpy(blob.data(), &result.data, sizeof(InventoryData));
 
@@ -284,7 +288,7 @@ namespace Cache {
     }
 
     CACHE_STATUS CacheStorageInventory::DeliverItem(uint64_t characterID, uint64_t event_id, uint32_t itemID, uint32_t quantity) {
-        if (event_id == 0) // ring의 미사용 슬롯(0)과 충돌 방지
+        if (event_id == 0 || itemID == 0 || quantity == 0 || quantity > UINT16_MAX)
             return CACHE_STATUS::BLOCKED;
         Key key;
         Result result;

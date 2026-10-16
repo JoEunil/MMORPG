@@ -64,7 +64,7 @@ namespace Cache {
         friend class WALManager;
     public:
         Result5 Getter(uint64_t characterID);
-        std::tuple<CACHE_STATUS, uint32_t, uint16_t, uint16_t> PartialUpdate(uint64_t characterID, uint32_t itemID, uint8_t op, int16_t change);
+        std::tuple<CACHE_STATUS, uint32_t, uint16_t, uint16_t> PartialUpdate(uint64_t characterID, uint32_t itemID, uint8_t op, int32_t change);
         static std::unique_ptr<FlushCommand> GetFlushCommand(Key key, Result result);
         // outbox → inbox 배송. AVAILABLE: 지급됨 / DUPLICATED: 이미 지급(스킵) / BLOCKED: 인벤·링 가득
         CACHE_STATUS DeliverItem(uint64_t characterID, uint64_t event_id, uint32_t itemID, uint32_t quantity);

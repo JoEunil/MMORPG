@@ -81,13 +81,13 @@ CacheMQ는 수신 MQ, GameMQ는 캐시 서버 기준 응답 송신 MQ이다.
 |---|---|
 | `TryGet` | 캐시에서 데이터 조회 시도 |
 | `Rollback` | DB 쓰기 실패 시 재시도(재flush) 처리. 처음 2회는 즉시 재시도, 3회째부터는 `dirty_list` 재등록으로 백오프하여 무한정 재시도(데이터는 버리지 않음) |
-| `WriteDone` | DB 쓰기 완료 후 재시도 카운터 초기화. LRU에서 이미 제거된(evict 대상) 항목만 캐시에서 최종 삭제하고, 그 외에는 AVAILABLE 상태로 캐시에 유지한다 |
+| `WriteDone` | 발행 generation이 일치하는 완료만 적용하고 in-flight 해제. eviction 대상이면서 추가 dirty가 없는 항목만 제거한다 |
 | `ForEachDirty` | dirty 상태의 캐시 항목 순회 |
 | `TrySetReading` | DB 조회 중 상태 설정 (중복 조회 방지) |
 | `Insert` | 캐시에 데이터 삽입 |
 | `SetEmpty` | 캐시 항목을 빈 상태로 설정 |
 
-> `dirty_list`에서의 제거는 `WriteDone` 시점이 아니라 `FlushDispatcher`가 flush를 큐에 넣는 시점(발행 시점)에 이루어진다. 따라서 `WriteDone`은 dirty 여부를 다시 판단하지 않고, 순수하게 "eviction 완료 처리"와 "재시도 카운터 리셋"만 담당한다.
+> `dirty_list`는 snapshot 발행에 성공했을 때 제거한다. 같은 키의 flush는 하나만 in-flight로 허용하며, DB I/O 중 새 변경은 다시 dirty로 남긴다. snapshot의 generation을 완료·롤백 콜백과 비교해 과거 콜백이 새 작업을 지우지 못하게 한다. in-flight entry는 LRU에서도 즉시 제거하지 않는다. CLAIM 재시도가 필요하면 `WriteDone`이 dirty를 유지한다.
 
 ### 개별 캐시 메서드
 
@@ -121,8 +121,9 @@ __Update__
 
 __종료 처리__
 
-정상 종료 시에는 `CleanUp()`이 dirty 데이터를 **먼저 동기적으로 DB에 반영**한다. WAL은 그 이후 소멸자에서 마지막 fsync만 수행하는데, 이 시점엔 이미 모든 dirty 데이터가 DB에 반영된 뒤라 durability 관점에서는 하우스키핑에 가깝다 — 정상 종료는 WAL Replay 없이도 데이터 유실이 없다.  
-비정상 종료(크래시) 시에는 이 flush 자체가 일어나지 않으므로, 재기동 시 WAL Replay를 통해 flush되지 못한 변경 사항을 복구한다. LSN 기반 복구 규칙 등 상세 설계는 [WAL.md](WAL.md) 참고.
+정상 종료 시 `CleanUp()`은 입력 큐를 중단·drain하고, DB 작업 워커의 처리 및 rollback을 마친 뒤 최종 dirty snapshot을 만든다. FlushDispatcher는 큐 용량을 넘는 dirty entry도 여러 batch로 발행하며, 배송 CLAIM 이후 변경된 Inbox head까지 추가 flush한다. 마지막으로 flush 워커를 종료하고 WAL을 fsync한다.
+
+이 순서는 **DB 저장 성공 시** 마지막 변경이 누락되지 않도록 하는 계약이다. DB 저장이 반복 실패하면 dirty를 버리지 않고 재시도 상한에서 종료하며, 인벤토리는 남은 WAL로 복구해야 한다. Gold는 WAL이 없어 이 상황의 복구를 보장하지 않는다. 비정상 종료에서는 20ms 비동기 fflush/fsync 정책상 아직 기록되지 않은 tail이 유실될 수 있다. 상세는 [WAL.md](WAL.md) 참고.
 
 ### InnoDB 아키텍처와 비교
 
@@ -156,7 +157,7 @@ __차이점__
 - __TOCTOU 처리__ — 캐시 조회 후 lock 획득 시 상태를 다시 확인하는 구조로 Time-of-check to time-of-use 경쟁 상황을 방지하였다
 - __LRU eviction__ — eviction 발생 시 데이터를 즉시 제거하지 않고 LRU 리스트에서만 제거 후 DB write-back 완료 후 최종 제거. 
 - __ACID를 고려한 설계__ — 캐시 동작 전반에 걸쳐 ACID를 따르도록 설계. 자세한 내용은 [ACID 설계 문서](CacheLib_ACID.md) 참고  
-- __WAL 기반 장애 복구__ — 캐시 변경과 WAL 기록을 하나의 임계 구역에서 처리하며, 서버 장애 발생 시 WAL Replay를 통해 Flush되지 않은 Dirty 데이터를 복원한다. 상세 설계는 [WAL 설계 문서](WAL.md) 참고
+- __WAL 기반 장애 복구__ — 인벤토리 변경과 WAL append를 하나의 shard 임계구역에서 처리하며, 장애 후 파일에 남은 유효 레코드로 Dirty 데이터를 복원한다. 비동기 fsync 이전 tail과 Gold는 보장 범위에서 구분한다. 상세 설계는 [WAL 설계 문서](WAL.md) 참고
 
 ## 6. 참고
 - [CacheLib ACID 설계 문서](CacheLib_ACID.md)

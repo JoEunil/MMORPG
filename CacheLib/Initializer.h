@@ -36,6 +36,7 @@ namespace Cache {
         DBWorker<DBConnectionGame> dbWorkerGame;
         DBWorker<DBConnectionBazaar> dbWorkerBazaar;
         WALManager walManager;
+        bool m_initialized = false;
 
         // 테스트에서 Load/Unload/Rename까지 직접 두드리기 위한 concrete getter. friend으로만 접근.
         ProfileCache* GetProfileCacheImpl() {
@@ -43,8 +44,9 @@ namespace Cache {
         }
         friend class ::ProfileCacheTest;
     public:
-		explicit Initializer(std::chrono::milliseconds walFsyncInterval = DEFAULT_WAL_FSYNC_INTERVAL)
-			: walManager(walFsyncInterval) {
+		explicit Initializer(std::chrono::milliseconds walFsyncInterval = DEFAULT_WAL_FSYNC_INTERVAL,
+            std::string walPrefix = "redo")
+			: walManager(walFsyncInterval, std::move(walPrefix)) {
 		}
 
         ~Initializer() {
@@ -59,6 +61,7 @@ namespace Cache {
             cache_currency.Initialize(&dbWorkerGame);
             cache_profile.Initialize(&dbWorkerGame);
             CacheTimer::StartThread();
+            m_initialized = true;
             
             flush.Initialize(&connectionPoolGame, &connectionPoolBazaar, &cache_inventory, &cache_currency);
             flush.SetInvFlushedFn([this](uint64_t characterID, uint64_t flushedLsn) {
@@ -113,13 +116,18 @@ namespace Cache {
             return true;
         }
         void CleanUp() {
-            CacheTimer::Stop();
             recvMQ.Stop();
-            dispatcher.Stop(); // store all dirty data
-            flush.Stop();
-            dbWorkerGame.Stop();
             dbWorkerBazaar.Stop();
+            dbWorkerGame.Stop();
+            // DB callbacks can mutate inventory/currency (e.g. registration rollback).
+            // Finish them before taking the final dirty snapshots.
+            dispatcher.Stop();
+            flush.Stop();
             walManager.Stop();
+            if (m_initialized) {
+                CacheTimer::Stop();
+                m_initialized = false;
+            }
         }
         Core::IMessageQueue* GetMessageQueue() {
             return static_cast<Core::IMessageQueue*>(&recvMQ);

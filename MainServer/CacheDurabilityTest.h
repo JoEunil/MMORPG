@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include <iostream>
-#include <cassert>
+#include <stdexcept>
 #include <queue>
 #include <mutex>
 #include <condition_variable>
@@ -17,7 +17,7 @@
 // ================================================================
 // Cache Durability (WAL) 테스트 — 재빌드 불필요, 환경변수 2단계
 //
-//   set TEST_CACHE_DRUABLE=1                            (공통: 테스트 모드 진입)
+//   set TEST_CACHE_DURABLE=1                            (공통: 테스트 모드 진입)
 //   1단계: set CRASH_POINT=WAL_DIRTY  -> 뮤테이션 후 flush 전 abort
 //   2단계: set CRASH_VERIFY=1 -> 복구 + 멱등성 검증
 //
@@ -37,7 +37,7 @@ namespace Cache {
 		std::cout << "=== Cache Durability 1단계: 크래시 유발 ===\n";
 
 		MockMessageQueue mockMQ;
-		Cache::Initializer init;
+		Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-durable/redo" };
 		init.Initialize();
 		init.InjectDependencies(&mockMQ);
 		auto* recvMQ = init.GetMessageQueue();
@@ -45,12 +45,10 @@ namespace Cache {
 		// 캐시 채우기 + 이전 실행 잔재 정리 (정상 삭제 경로 — WAL에도 기록되어 안전)
 		// 테스트에 쓸 ItemID와 일치하면 제거.
 		{
-			Core::MsgInventoryReqBody body{};
-			body.characterID = DUR_CHAR_ID;
-			recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_REQ, 1, body));
-			auto* res = mockMQ.WaitFor();
-			assert(res != nullptr && "Timeout: initial fetch");
+			auto* res = PollInventoryUntilAvailable(recvMQ, mockMQ, DUR_CHAR_ID, 1);
 			auto* rb = Core::parseMsgBody<Core::MsgInventoryResBody>(res->GetBuffer());
+			if (!(rb->resStatus == 1))
+			    throw std::runtime_error("Initial inventory fetch failed");
 
 			for (int i = 0; i < rb->itemCount; ++i) {
 				if (rb->items[i].itemID == DUR_ITEM_ID) {
@@ -60,8 +58,12 @@ namespace Cache {
 					del.itemID = DUR_ITEM_ID;
 					del.op = 2;
 					del.change = -static_cast<int16_t>(rb->items[i].quantity);
-					recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 1, del));
-					assert(mockMQ.WaitFor() != nullptr && "Timeout: pre-cleanup");
+					if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 1, del))))
+					    throw std::runtime_error("Cache request enqueue failed");
+					auto* waitedResponse = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ,
+						Core::MSG_INVENTORY_UPDATE_RES, 1);
+					if (!(Core::parseMsgBody<Core::MsgInventoryUpdateResBody>(waitedResponse->GetBuffer())->resStatus == 1))
+					    throw std::runtime_error("Inventory cleanup failed");
 					Block();
 					break;
 				}
@@ -76,13 +78,15 @@ namespace Cache {
 			body.itemID = DUR_ITEM_ID;
 			body.op = 1;
 			body.change = DUR_ITEM_QTY;
-			recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 2, body));
+			if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 2, body))))
+			    throw std::runtime_error("Cache request enqueue failed");
 
-			auto* res = mockMQ.WaitFor();
-			assert(res != nullptr && "Timeout: ADD");
+			auto* res = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ, Core::MSG_INVENTORY_UPDATE_RES, 2);
 			auto* rb = Core::parseMsgBody<Core::MsgInventoryUpdateResBody>(res->GetBuffer());
-			assert(rb->resStatus == 1 && "ADD failed");
-			assert(rb->itemQuantity == DUR_ITEM_QTY);
+			if (!(rb->resStatus == 1))
+			    throw std::runtime_error("ADD failed");
+			if (!(rb->itemQuantity == DUR_ITEM_QTY))
+			    throw std::runtime_error("Durability quantity mismatch");
 			std::cout << "  ADD 반영됨 (캐시+WAL). DB flush 전 크래시 유발\n";
 		}
 
@@ -102,27 +106,26 @@ namespace Cache {
 		// 1) WAL 복구 확인 — flush 못 한 변경이 살아 있어야 함
 		{
 			MockMessageQueue mockMQ;
-			Cache::Initializer init;
+			Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-durable/redo" };
 			init.Initialize(); // Restore: WAL last image의 lsn > DB lastLsn -> 캐시 재적용
 			init.InjectDependencies(&mockMQ);
 			auto* recvMQ = init.GetMessageQueue();
 
-			Core::MsgInventoryReqBody body{};
-			body.characterID = DUR_CHAR_ID;
-			recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_REQ, 1, body));
-			auto* res = mockMQ.WaitFor();
-			assert(res != nullptr && "Timeout: restore fetch");
+			auto* res = PollInventoryUntilAvailable(recvMQ, mockMQ, DUR_CHAR_ID, 1);
 			auto* rb = Core::parseMsgBody<Core::MsgInventoryResBody>(res->GetBuffer());
-			assert(rb->resStatus == 1 && "Data not exist");
+			if (!(rb->resStatus == 1))
+			    throw std::runtime_error("Data not exist");
 
 			bool found = false;
 			for (int i = 0; i < rb->itemCount; ++i) {
 				if (rb->items[i].itemID == DUR_ITEM_ID) {
-					assert(rb->items[i].quantity == DUR_ITEM_QTY && "WAL 복구 수량 불일치");
+					if (!(rb->items[i].quantity == DUR_ITEM_QTY))
+					    throw std::runtime_error("WAL 복구 수량 불일치");
 					found = true;
 				}
 			}
-			assert(found && "WAL 복구 실패 - flush 전 변경이 유실됨");
+			if (!(found))
+			    throw std::runtime_error("WAL 복구 실패 - flush 전 변경이 유실됨");
 			std::cout << "  [PASS] WAL 복구: flush 전 변경 생존 (qty=" << DUR_ITEM_QTY << ")\n";
 			Block();
 			// init 소멸: dirty flush -> DB의 lastLsn이 WAL 레코드 lsn까지 전진
@@ -133,21 +136,25 @@ namespace Cache {
 		//   Restore가 스킵해야 함 (중복 적용이면 qty가 2배가 됨)
 		{
 			MockMessageQueue mockMQ;
-			Cache::Initializer init;
+			Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-durable/redo" };
 			init.Initialize(); // Restore 재실행 — lsn > dbLSN 불충족 -> 스킵
 			init.InjectDependencies(&mockMQ);
 			auto* recvMQ = init.GetMessageQueue();
 
-			Core::MsgInventoryReqBody body{};
-			body.characterID = DUR_CHAR_ID;
-			recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_REQ, 2, body));
-			auto* res = mockMQ.WaitFor();
-			assert(res != nullptr && "Timeout: idempotency fetch");
+			auto* res = PollInventoryUntilAvailable(recvMQ, mockMQ, DUR_CHAR_ID, 2);
 			auto* rb = Core::parseMsgBody<Core::MsgInventoryResBody>(res->GetBuffer());
+			if (!(rb->resStatus == 1))
+			    throw std::runtime_error("Idempotency inventory fetch failed");
+			bool found = false;
 			for (int i = 0; i < rb->itemCount; ++i) {
-				if (rb->items[i].itemID == DUR_ITEM_ID)
-					assert(rb->items[i].quantity == DUR_ITEM_QTY && "복구 중복 적용 발생");
+				if (rb->items[i].itemID == DUR_ITEM_ID) {
+					if (!(rb->items[i].quantity == DUR_ITEM_QTY))
+					    throw std::runtime_error("복구 중복 적용 발생");
+					found = true;
+				}
 			}
+			if (!(found))
+			    throw std::runtime_error("Recovered item missing on second restore");
 			std::cout << "  [PASS] 복구 멱등성: 재복구에도 수량 불변\n";
 			Block();
 
@@ -157,8 +164,12 @@ namespace Cache {
 			del.itemID = DUR_ITEM_ID;
 			del.op = 2;
 			del.change = -static_cast<int16_t>(DUR_ITEM_QTY);
-			recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 3, del));
-			assert(mockMQ.WaitFor() != nullptr && "Timeout: cleanup");
+			if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 3, del))))
+			    throw std::runtime_error("Cache request enqueue failed");
+			auto* waitedResponse = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ,
+				Core::MSG_INVENTORY_UPDATE_RES, 3);
+			if (!(Core::parseMsgBody<Core::MsgInventoryUpdateResBody>(waitedResponse->GetBuffer())->resStatus == 1))
+			    throw std::runtime_error("Inventory cleanup failed");
 			Block();
 		}
 

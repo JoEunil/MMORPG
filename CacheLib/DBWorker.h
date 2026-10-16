@@ -10,6 +10,7 @@
 #include <vector>
 #include <cstddef>
 #include <cstring>
+#include <stdexcept>
 
 #include "DBConnection.h"
 #include "DBConnectionPool.h"
@@ -28,12 +29,16 @@ namespace Cache {
 	template<typename T>
     class DBWorker {
         using Work = std::function<void(T*)>;
-        std::unique_ptr<Base::RingQueue<Work, DB_WORK_QUEUE_SIZE>> m_queue = std::make_unique<Base::RingQueue<Work, DB_WORK_QUEUE_SIZE>>();
+        struct QueuedWork {
+            Work work;
+            std::function<void()> onFailure;
+        };
+        std::unique_ptr<Base::RingQueue<QueuedWork, DB_WORK_QUEUE_SIZE>> m_queue = std::make_unique<Base::RingQueue<QueuedWork, DB_WORK_QUEUE_SIZE>>();
         std::vector<std::thread> m_threads;
 
-        std::atomic<bool> m_running;
+        std::atomic<bool> m_running = false;
         std::mutex m_mutex;
-        size_t m_threadPoolSize;
+        size_t m_threadPoolSize = 0;
         std::condition_variable m_cv;
         DBConnectionPool<T>* connectionPool = nullptr;
 
@@ -74,7 +79,7 @@ namespace Cache {
             
             while (true)
             {
-                std::function<void(T*)> work;
+                QueuedWork work;
                 {
                     std::unique_lock<std::mutex> lock(m_mutex);
                     m_cv.wait(lock, [this] {
@@ -86,9 +91,36 @@ namespace Cache {
                         continue;
                 }
                 T* conn = connectionPool->Acquire();
-                work(conn);
-                conn->ClearResults();
-                connectionPool->Return(conn);
+                bool failed = false;
+                try {
+                    if (conn == nullptr)
+                        throw std::runtime_error("DB connection pool exhausted");
+                    work.work(conn);
+                }
+                catch (const std::exception& e) {
+                    failed = true;
+                    Core::errorLogger->LogError("DB worker thread", "work failed", "msg", e.what());
+                }
+                catch (...) {
+                    failed = true;
+                    Core::errorLogger->LogError("DB worker thread", "work failed with unknown exception");
+                }
+                if (conn != nullptr) {
+                    try { conn->ClearResults(); }
+                    catch (const std::exception& e) {
+                        Core::errorLogger->LogError("DB worker thread", "clear results failed", "msg", e.what());
+                    }
+                    catch (...) {
+                        Core::errorLogger->LogError("DB worker thread", "clear results failed with unknown exception");
+                    }
+                    connectionPool->Return(conn);
+                }
+                if (failed && work.onFailure) {
+                    try { work.onFailure(); }
+                    catch (...) {
+                        Core::errorLogger->LogError("DB worker thread", "failure callback threw");
+                    }
+                }
             }
 
             Core::sysLogger->LogInfo("DB worker thread", "DB worker thread stopped", "threadID", ss.str());
@@ -115,10 +147,10 @@ namespace Cache {
             Stop();
         }
 
-        DBEnqueueResult Enqueue(Work work, Core::Message* failedMessage = nullptr) {
+        DBEnqueueResult Enqueue(Work work, Core::Message* failedMessage = nullptr, std::function<void()> onFailure = {}) {
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
-                if (m_queue->push(std::move(work))) {
+                if (m_running.load(std::memory_order_relaxed) && m_queue->push(QueuedWork{ std::move(work), std::move(onFailure) })) {
                     m_cv.notify_one();
                     return DBEnqueueResult::Queued;
                 }

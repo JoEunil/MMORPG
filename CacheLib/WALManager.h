@@ -14,7 +14,7 @@
 #include <CacheLib/DBConnectionGame.h>
 
 namespace Cache {
-	inline constexpr std::chrono::milliseconds DEFAULT_WAL_FSYNC_INTERVAL{ 25 };
+	inline constexpr std::chrono::milliseconds DEFAULT_WAL_FSYNC_INTERVAL{ 20 };
 
 	struct WalInventoryRecord {
 		uint64_t      characterID;
@@ -38,6 +38,7 @@ namespace Cache {
 		std::atomic<bool> m_running = false;
 
 		std::chrono::milliseconds m_fsyncInterval;
+		std::string m_prefix;
 		inline static constexpr std::chrono::seconds RESUME_DELAY{ 10 };
 		inline static constexpr std::chrono::seconds TRUNCATE_INTERVAL{ 5 };
 
@@ -61,7 +62,7 @@ namespace Cache {
 		void RestoreInventory() {
 			if (m_lastImageInventory.empty())
 				return;
-			auto* conn = connectionPoolGame->Acquire();   // 부팅 시점 동기 접근 — 블로킹 OK
+			auto conn = connectionPoolGame->AcquireScoped();   // 부팅 시점 동기 접근 — 블로킹 OK
 			if (conn == nullptr)
 				return;
 			for (auto& [key, val] : m_lastImageInventory) {
@@ -88,7 +89,6 @@ namespace Cache {
 					m_segRefCnt[static_cast<uint32_t>(lsn >> 32)]++;
 				}
 			}
-			connectionPoolGame->Return(conn);
 			m_lastImageInventory.clear();
 		}
 		void Restore() {
@@ -106,7 +106,8 @@ namespace Cache {
 
 			while (m_running.load(std::memory_order_relaxed)) {
 				std::this_thread::sleep_for(m_fsyncInterval);
-				m_wal->Fsync();
+				if (!m_wal->Fsync() && !m_blocked.exchange(true, std::memory_order_relaxed))
+					Core::errorLogger->LogError("WAL manager", "fsync failed; durability temporarily degraded");
 
 				const auto now = std::chrono::steady_clock::now();
 				if (m_blocked.load(std::memory_order_relaxed)) {
@@ -135,7 +136,7 @@ namespace Cache {
 		void Initialize(CacheStorageInventory* ci, DBConnectionPool<DBConnectionGame>* p) {
 			cache_inventory = ci;
 			connectionPoolGame = p;
-			m_wal.emplace("redo", 1000000, [this](const Base::WALHeader& h, const uint8_t* p) { Collect(h, p); });
+			m_wal.emplace(m_prefix, 1000000, [this](const Base::WALHeader& h, const uint8_t* p) { Collect(h, p); });
 			if (m_wal->ReplayDegraded()) {
 				// 손상 파일은 새 세그먼트에서 재개한다.
 				// 유실 범위는 "flush 안 된 변경분"으로 한정되고 DB 반영분은 무사하므로 로그를 남기고 서비스는 진행한다.  
@@ -157,10 +158,10 @@ namespace Cache {
 			}
 			return true;
 		}
-		uint64_t Write(const uint8_t* payload, size_t len, uint8_t type) {
+		uint64_t Write(const uint8_t* payload, size_t len, uint8_t type, uint64_t minimumLsn) {
 			if (m_blocked.load(std::memory_order_relaxed))
 				return 0;
-			uint64_t lsn = m_wal->Write(payload, len, type);
+			uint64_t lsn = m_wal->Write(payload, len, type, minimumLsn);
 			if (lsn == 0)
 				m_blocked.store(true, std::memory_order_relaxed);
 			return lsn;
@@ -168,14 +169,18 @@ namespace Cache {
 		void UpdateTruncate() {
 			// 활성 segment cnt가 0인 경우도 
 			// limit이 활성 segment로 설정되어서 커버됨.
-			std::lock_guard<std::mutex> lock(m_mutex);
-			uint32_t boundary = UINT32_MAX; 
-			for (auto& [seg, cnt] : m_segRefCnt)
-				if (cnt > 0 && seg < boundary)
-					boundary = seg;
-			// 장부 청소: 경계 이전의 0-카운트 엔트리는 더 볼 일 없음
-			for (auto it = m_segRefCnt.begin(); it != m_segRefCnt.end(); )
-				it = (it->first < boundary) ? m_segRefCnt.erase(it) : std::next(it);
+			uint32_t boundary;
+			{
+				std::lock_guard<std::mutex> lock(m_mutex);
+				boundary = m_wal->CurrentSegment();
+				for (auto& [seg, cnt] : m_segRefCnt)
+					if (cnt > 0 && seg < boundary)
+						boundary = seg;
+				// Pin the current segment while capturing the boundary. Future writes
+				// cannot reference an earlier segment, so slow deletion can run unlocked.
+				for (auto it = m_segRefCnt.begin(); it != m_segRefCnt.end(); )
+					it = (it->first < boundary) ? m_segRefCnt.erase(it) : std::next(it);
+			}
 			m_wal->TruncateBefore(boundary);
 		}
 		void Stop() {
@@ -187,25 +192,29 @@ namespace Cache {
 		}
 		friend class Initializer;
 	public:
-		explicit WALManager(std::chrono::milliseconds fsyncInterval = DEFAULT_WAL_FSYNC_INTERVAL)
-			: m_fsyncInterval(fsyncInterval) {
+		explicit WALManager(std::chrono::milliseconds fsyncInterval = DEFAULT_WAL_FSYNC_INTERVAL, std::string prefix = "redo")
+			: m_fsyncInterval(fsyncInterval), m_prefix(std::move(prefix)) {
 			if (m_fsyncInterval.count() <= 0)
 				throw std::invalid_argument("WAL fsync interval must be greater than zero");
+			if (m_prefix.empty())
+				throw std::invalid_argument("WAL prefix must not be empty");
 		}
 		~WALManager()
 		{
 			Stop();
 		}
 		uint64_t WriteInventory(uint64_t characterID, const InventoryData& data) {
+			// Keep append and reference registration indivisible with respect to truncate.
+			// Otherwise another writer can rotate the just-written segment before it is pinned.
+			std::lock_guard<std::mutex> lock(m_mutex);
 			WalInventoryRecord record;
 			record.characterID = characterID;
 			record.data = data;
 			// WAL::Write()에서 바로 복사해서 쓰기 때문에 수명 문제 없음
-			uint64_t lsn  = Write(reinterpret_cast<const uint8_t*>(&record), sizeof(WalInventoryRecord), WalType::INVENTORY);
+			uint64_t lsn  = Write(reinterpret_cast<const uint8_t*>(&record), sizeof(WalInventoryRecord), WalType::INVENTORY, data.lastLsn);
 
 
 			if (lsn != 0) {
-				std::lock_guard<std::mutex> lock(m_mutex);
 				auto it = m_unflushedInventory.find(characterID);
 				if (it != m_unflushedInventory.end())
 					m_segRefCnt[static_cast<uint32_t>(it->second >> 32)]--;

@@ -3,6 +3,7 @@
 #include <memory>
 #include <iostream>
 #include <format>
+#include <cstdlib>
 
 #include <Netlibrary/Initializer.h>
 #include <CoreLib/Initializer.h>
@@ -37,47 +38,39 @@ int main(int argc, char* argv[]) {
     Core::errorLogger->CreateSink("error");
     Core::perfLogger = std::make_unique<External::Logger>();
     Core::perfLogger->CreateSink("perf");
-    // set TEST_BAZAAR=1 → 통합 테스트 모드 (재빌드 불필요, 미설정 시 일반 서버로 기동)
-    if (!Cache::GetEnvVar("TEST_BAZAAR").empty()) {
+    bool testBazaar = !Cache::GetEnvVar("TEST_BAZAAR").empty();
+    bool testCache = !Cache::GetEnvVar("TEST_CACHE").empty();
+    bool testDurable = !Cache::GetEnvVar("TEST_CACHE_DURABLE").empty();
+    if (testBazaar || testCache || testDurable) {
+        int result = EXIT_FAILURE;
         try {
-            Test::g_msgPool().InitializeForTest();
-            Test::RunAll();
+            if (testBazaar) {
+                Test::g_msgPool().InitializeForTest();
+                Test::RunAll();
+                result = EXIT_SUCCESS;
+            }
+            else if (testCache) {
+                result = Cache::RunAllCacheTests();
+            }
+            else {
+                result = Cache::RunCacheDurabilityTest();
+            }
         }
-        catch (sql::SQLException& e) {
-            std::cout << std::format("SQLException: {} (code: {}, state: {})", e.what(), e.getErrorCode(), e.getSQLState());
+        catch (const sql::SQLException& e) {
+            std::cerr << std::format("SQLException: {} (code: {}, state: {})\n", e.what(), e.getErrorCode(), e.getSQLState());
         }
-        catch (std::exception& e)
-        {
-            std::cout << e.what() << std::endl;
+        catch (const std::exception& e) {
+            std::cerr << e.what() << std::endl;
         }
-        catch (...)
-        {
-            std::cout << "unknown exception\n";
+        catch (...) {
+            std::cerr << "Unknown integration test exception\n";
         }
-        spdlog::shutdown();
         Core::sysLogger.reset();
         Core::gameLogger.reset();
         Core::errorLogger.reset();
         Core::perfLogger.reset();
-        return 0;
-    }
-    if (!Cache::GetEnvVar("TEST_CACHE").empty()) {
-        Cache::RunAllCacheTests();
         spdlog::shutdown();
-        Core::sysLogger.reset();
-        Core::gameLogger.reset();
-        Core::errorLogger.reset();
-        Core::perfLogger.reset();
-        return 0;
-    }
-    if (!Cache::GetEnvVar("TEST_CACHE_DURABLE").empty()) {
-        Cache::RunCacheDurabilityTest();
-        spdlog::shutdown();
-        Core::sysLogger.reset();
-        Core::gameLogger.reset();
-        Core::errorLogger.reset();
-        Core::perfLogger.reset();
-        return 0;
+        return result;
     }
     try {
         External::SessionAuth auth;
@@ -133,12 +126,12 @@ int main(int argc, char* argv[]) {
     catch (const std::exception& e) {
         std::cerr << "Standard exception: " << e.what() << std::endl;
         Core::errorLogger->LogError(std::format("exception: {}", e.what()));
-        return 0;
+        return EXIT_FAILURE;
     }
     catch (...) {
         std::cerr << "Unknown exception caught in main()" << std::endl;
         Core::errorLogger->LogError(std::format("undefined excetion"));
-        return 0;
+        return EXIT_FAILURE;
     }
     return 0;
 }

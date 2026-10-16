@@ -69,6 +69,7 @@ namespace Cache
             catch (const std::exception& e) {
                 std::cerr << "Exception: " << e.what() << "\n";
             }
+            return nullptr;
         }
 
         // 지원하는 UPDATE: >0은 대상 행 있음(동일 값 포함), 0은 WHERE 일치 행 없음.

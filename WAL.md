@@ -10,8 +10,8 @@ WAL을 넣은 목적은 Write-Back 캐시가 flush하기 전에 죽었을 때 �
 `FlushDispatcher`는 마지막 변경 후 30초가 지난 dirty 데이터를 DB에 write-back하는데, 이 30초 사이에 서버가 죽으면 그 구간의 변경은 그대로 유실된다.  
 
 이 유실 창을 없애는 가장 단순한 방법은 매 변경마다 즉시 DB에 쓰는 것이지만, 그러면 애초에 캐시를 둔 이유(DB 부하 절감, 저지연 처리)가 사라진다.  
-대신 **캐시 자체가 자기 durability를 보장하도록** WAL을 도입했다.  
-변경이 일어날 때 그 변경 내용을 별도 로그 파일에 순서대로 기록해두면, 서버가 죽어도 재기동 시 그 로그로 캐시 상태를 재구성할 수 있다.  
+대신 **인벤토리 캐시의 장애 시 유실 창을 줄이기 위해** WAL을 도입했다.
+변경 내용을 별도 로그 파일에 순서대로 append하고, 재기동 시 유효하게 남은 로그로 캐시 상태를 재구성한다. 응답 전에 fsync 완료를 기다리지는 않으므로, 성공 응답을 받은 모든 변경의 영속성을 보장하는 구조는 아니다.
 
 ### 거래소 정합성과의 경계
 
@@ -38,10 +38,10 @@ WAL을 얹은 뒤에도 30초 write-back 주기는 그대로 유지한다.
 — 정확히는 캐시를 먼저 바꾸고, 그 직후 같은 락 안에서 WAL에 기록하는 순서다. 즉 로그가 캐시 변경보다 시간상 "먼저" 쓰이는 것은 아니다.  
 
 그럼에도 Write-Ahead라 부르는 이유는 비교 대상이 캐시 변경이 아니라 DB 반영이기 때문이다.  
-로그는 DB에 반영되기 훨씬 전(최대 30초 전)에 먼저 기록된다.  
-이 로그가 있기 때문에, DB 반영 전에 크래시가 나도 캐시 상태를 재구성할 수 있다.  
+로그 append는 해당 캐시 snapshot의 DB write-back보다 먼저 수행된다. write-back의 30초 조건은 마지막 변경 이후의 대기 정책이며, 최대 지연이나 최대 유실 시간의 상한은 아니다.
+DB 반영 전 크래시가 나면 파일에 남아 CRC 검증을 통과한 레코드까지 캐시 상태를 재구성할 수 있다. CRT 버퍼에만 있던 tail은 프로세스 종료 시 유실될 수 있다.
 
-> 캐시 변경과 로그 기록은 같은 임계구역 안에서 원자적으로 묶인 하나의 사건에 가깝다.
+> 같은 shard 임계구역은 다른 스레드의 중간 상태 관측을 막는다. 프로세스 크래시나 I/O 실패에 대한 원자적 커밋을 의미하지는 않는다. 캐시 변경 뒤 append 전에 죽거나, append/fsync가 실패한 구간은 복구되지 않을 수 있다.
 
 ## 4. 레코드 포맷
 
@@ -95,10 +95,10 @@ fflush()          ->  2. OS 페이지 캐시 (커널)   — 프로세스가 죽�
 FlushFileBuffers() ->  3. 디스크                 — 정전에도 생존
 ```
 
-`WAL::Write()`는 shard 락 안에서 호출되므로 1 단계까지만 하고 빠진다(레코드 조립 + memcpy + fwrite, 디스크 I/O 대기 없음).   
+`WAL::Write()`는 shard 락 안에서 호출되며 레코드 조립 + memcpy + buffered fwrite를 수행한다. 일반 경로는 버퍼 append이지만, CRT 버퍼가 가득 차면 OS write가 발생할 수 있고 세그먼트 rotation은 동기 fflush/fsync를 포함한다. 따라서 모든 Write가 I/O 대기 없이 끝난다는 보장은 없다.
 2,3 단계(`Fsync()`)는 별도 스레드가 **목표 20ms 간격**으로 일괄 처리한다.
-순서 보장(동기 Write)과 내구성 보장(비동기 fsync)을 분리해, 쓰기 경로의 레이턴시는 버퍼 append 수준으로 유지하면서 durability window를 fsync 간격으로 제어하는 구조다. 다만 `sleep_for()`의 실제 깨우기 지연, WAL mutex 경합, flush 소요 시간이 추가되므로 20ms는 엄밀한 최대치가 아니라 목표 대기 값이다.  
-fflush로 OS 페이지 캐시까지만 올리면 프로세스 크래시는 방어되지만, 현재는 fflush와 `FlushFileBuffers()`를 모두 같은 20ms 목표 간격으로 배치한다. 따라서 프로세스 크래시와 OS 크래시의 유실 가능 구간을 하나의 정책으로 관리한다. 두 주기를 분리하면 프로세스 크래시 유실 창을 더 줄일 수 있지만, CRT dirty와 disk dirty 상태·rotation·종료 순서를 따로 관리해야 하므로 현재는 복구 정확성과 구현 단순성을 우선했다.  
+순서 보장(동기 Write)과 내구성 보장(비동기 fsync)을 분리해, 쓰기 경로의 레이턴시는 버퍼 append 수준으로 유지하면서 durability window를 fsync 간격으로 제어하는 구조다. 다만 `sleep_for()`의 실제 깨우기 지연, WAL mutex 경합, flush 소요 시간이 추가되므로 20ms는 엄밀한 최대치가 아니라 목표 대기 값이다.
+fflush로 OS 페이지 캐시까지만 올리면 프로세스 크래시는 방어되지만, 현재는 fflush와 `FlushFileBuffers()`를 모두 같은 20ms 목표 간격으로 배치한다. 따라서 프로세스 크래시와 OS 크래시의 유실 가능 구간을 하나의 정책으로 관리한다. 두 주기를 분리하면 프로세스 크래시 유실 창을 더 줄일 수 있지만, CRT dirty와 disk dirty 상태·rotation·종료 순서를 따로 관리해야 하므로 현재는 복구 정확성과 구현 단순성을 우선했다.
 주기는 [WAL 성능 벤치마크](Benchmark_WAL.md)를 근거로 선택했다. Google Benchmark로 fsync 주기와 writer 수를 함께 변경하며 writer-fflush contention과 writer-writer contention이 합산된 처리량을 측정했다.  
 
 | 장애 종류 | 손실 범위 |
@@ -140,19 +140,25 @@ key는 레코드 마다 다르기 때문에 key-unflushedLSN 매핑만 별도로
 
 #### 전이 규칙
 - `Write` 성공: 이전 lsn이 있으면 그 세그먼트 refcnt−-, 새 lsn의 세그먼트 refcnt++
-- `OnInventoryFlushed(key, flushedLsn)`: 장부의 lsn이 flushedLsn보다 크면 skip(flush 도중 재수정되어 최신 이미지가 아직 미반영 상태, 레코드 lock 한 상태에서 수행되기 떄문에 도달하지 않는 부분), 아니면 refcnt−- 장부에서 제거  
+- `OnInventoryFlushed(key, flushedLsn)`: 장부의 lsn이 flushedLsn보다 크면 skip한다. DB I/O 동안 shard lock을 놓으므로 정상적으로 재수정될 수 있다. 그렇지 않으면 refcnt를 낮추고 장부에서 제거한다.
 
 삭제 경계: `refcnt > 0`인 세그먼트 중 최솟값. 활성 세그먼트는 경계 계산과 무관하게 항상 보존한다 — 세그먼트 번호는 절대 재사용하지 않는데, 재사용하면 새로 발급되는 LSN이 DB에 이미 기록된 이전 LSN보다 작아질 수 있어 복구 판정(`lsn > dbLSN`)이 조용히 무력화되기 때문이다.  
-truncate는 5초 주기로 fsync 스레드에서 실행한다 — hot-path(shard lock 보유 중)에서 디렉토리 스캔과 파일 삭제를 하면 락 경합이 생기므로 분리했다.  
+truncate는 5초 주기로 fsync 스레드에서 실행한다. append와 최신 LSN 참조 등록을 같은 WALManager mutex로 묶어, 새 레코드가 참조 장부에 오르기 전에 삭제 경계가 계산되는 틈을 막았다. 삭제 경계를 캡처할 때 활성 세그먼트로 상한을 고정하므로 이후 append/rotation이 일어나도 안전하며, 디렉토리 스캔과 파일 삭제는 그 mutex 밖에서 실행한다.
 
 Restore와의 상호작용: 재기동 복구로 캐시에 되살린 key는 정의상 미flush 상태이므로, 복구 성공 시 이 두 장부에도 등록해야 한다.  
 등록하지 않으면 truncate가 "DB에 아직 없는 유일한 사본(WAL)"을 지워버릴 수 있다 — 그래서 `Initialize()`는 반드시 `Restore()`를 마친 뒤에 fsync/truncate 스레드를 시작한다.
 
+### 노드별 파일 소유권과 LSN
+
+기본 prefix는 기존 `redo`를 유지한다. **WAL 경로(prefix)마다 한 시점에 하나의 인스턴스만 소유한다는 전제**다. 여러 서버나 테스트 노드를 같은 작업 디렉토리에서 실행할 때는 `Initializer(interval, prefix)`로 `wal/node-a/redo`, `wal/node-b/redo`처럼 서로 다른 경로를 지정해야 한다. 부모 디렉토리는 자동 생성하며, 같은 prefix의 중복 실행을 파일 잠금으로 검사하지 않는다. 크래시 복구는 이전 실행과 같은 prefix를 사용해야 하며, DB에 `lastLsn`이 남은 채 WAL만 삭제하면 안 된다.
+
+다른 노드에서 저장된 캐릭터를 로드하면 해당 blob의 `lastLsn`보다 큰 LSN을 발급하도록 로컬 세그먼트를 전진시킨다. 캐릭터 하나의 캐시 소유자는 한 시점에 한 노드라는 전제이며, 여러 노드가 같은 캐릭터를 동시에 수정하는 분산 소유권 제어는 구현 범위 밖이다.
+
 ## 10. 장애 대응 — Degraded Mode
 
-WAL 기록(`fwrite`) 자체가 실패하면(디스크 가득 참 등) 곧바로 캐시를 막지 않는다. 대신 WAL 보호만 내려놓고(`blocked`) 서비스는 계속한다.  
+WAL 기록(`fwrite`)이나 주기적 fsync가 실패하면(디스크 가득 참 등) 곧바로 캐시를 막지 않는다. 대신 WAL 보호만 내려놓고(`blocked`) 서비스는 계속한다.
 
-- `blocked` 동안 캐시의 `lastLsn`은 마지막으로 성공한 LSN에 동결된다. 이 구간의 변경은 WAL 없이 기존 30초 flush 창으로만 보호된다 (write-back 캐시 원래 수준으로 일시 하락).
+- `blocked` 동안 캐시의 `lastLsn`은 마지막으로 성공한 LSN에 동결된다. 이 구간의 변경은 WAL 없이 DB write-back으로만 보호된다(마지막 변경 이후 30초가 기준이며, 계속 변경되는 키의 최대 대기시간을 뜻하지 않음) (write-back 캐시 원래 수준으로 일시 하락).
 - 10초 후 자동으로 재시도한다.
 - 재개 후 첫 `Write` 성공은 그 시점의 전체 이미지를 싣고 가므로, blocked 구간에 누적된 변경까지 자동으로 메꿔진다.
 
@@ -167,10 +173,10 @@ WAL 기록(`fwrite`) 자체가 실패하면(디스크 가득 참 등) 곧바로 
 | | 성격 | 병렬성 |
 |---|---|---|
 | Cache 접근 (해시 테이블 조회, 뮤테이션) | 상대적으로 무겁고, shard별로 독립적이어야 함 | shard mutex로 병렬 |
-| WAL append (레코드 조립 → 버퍼 memcpy → `fwrite`) | 디스크 I/O를 기다리지 않는 버퍼드 연산, 짧음 | 직렬 |
+| WAL append (레코드 조립 → 버퍼 memcpy → `fwrite`) | 일반 경로는 buffered append, 버퍼 flush·rotation 시 I/O 가능 | 직렬 |
 
 **무거운 부분(캐시 조작)은 병렬로 남기고, 가벼운 부분(로그 버퍼 append)만 직렬화**되는 구조라 자연스럽게 맞물린다.   
-디스크 I/O는 별도 fsync 스레드로 분리했고, `FlushFileBuffers()`는 WAL append mutex를 풀어놓은 뒤 실행한다. 다만 그 앞의 `fflush()`는 append와 같은 mutex를 잠시 사용하므로 fsync 빈도가 높으면 writer를 방해할 수 있다. [WAL 성능 벤치마크](Benchmark_WAL.md)는 이 간섭을 포함한 실제 처리량을 측정한다.
+주기적 fsync는 별도 스레드로 분리했고, `FlushFileBuffers()`는 WAL append mutex를 풀어놓은 뒤 실행한다. 다만 그 앞의 `fflush()`는 append와 같은 mutex를 잠시 사용하므로 fsync 빈도가 높으면 writer를 방해할 수 있다. [WAL 성능 벤치마크](Benchmark_WAL.md)는 이 간섭을 포함한 실제 처리량을 측정한다.
 
 ## 12. 참고
 - [CacheLib](CacheLib.md) — Write-Back/Read-Through 구조, WAL이 얹히는 지점

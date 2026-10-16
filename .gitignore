@@ -366,3 +366,6 @@ FodyWeavers.xsd
 redo.*
 # vcpkg (manifest mode) - installed packages are restored from vcpkg.json
 vcpkg_installed/
+
+# Isolated cache/test WAL directories (operational default redo.* is ignored above).
+wal/

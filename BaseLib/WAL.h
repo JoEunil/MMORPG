@@ -205,7 +205,7 @@ namespace Base {
 			return true;
 		}
 
-		bool RotateSegment()
+		bool RotateSegment(uint32_t minimumSegment = 0)
 		{
 			if (!m_fp)
 				return OpenSegment(m_segment);
@@ -223,7 +223,7 @@ namespace Base {
 			}
 
 
-			uint32_t nextSegment = m_segment + 1;
+			uint32_t nextSegment = (std::max)(static_cast<uint32_t>(m_segment) + 1, minimumSegment);
 
 			if (!OpenSegment(nextSegment))
 				return false;
@@ -236,6 +236,9 @@ namespace Base {
 		WAL() = delete;
 		WAL(std::string f, uint32_t limit, const std::function<void (const WALHeader&, const uint8_t* payload)>& a) : m_fileName(f), LIMIT(limit)
 		{
+			auto parent = std::filesystem::path(m_fileName).parent_path();
+			if (!parent.empty())
+				std::filesystem::create_directories(parent);
 			generate_crc_table();
 			auto [seg, offset, degraded] = Replay(a);
 			m_segment = seg;
@@ -267,6 +270,10 @@ namespace Base {
 		}
 
 		bool ReplayDegraded() const { return m_degraded; }
+		uint32_t CurrentSegment() {
+			std::lock_guard<std::mutex> lock(m_mutex);
+			return static_cast<uint32_t>(m_segment);
+		}
 
 		bool Fsync() {
 			// 다른 호출이 dirty를 먼저 내린 뒤 실제 FlushFileBuffers를 수행 중인 동안
@@ -293,7 +300,7 @@ namespace Base {
 		}
 
 		// payload는 ( key + result ) 형태로 만들어서 넘기기
-		uint64_t Write(const uint8_t* payload, size_t len, uint16_t type) {
+		uint64_t Write(const uint8_t* payload, size_t len, uint16_t type, uint64_t minimumLsn = 0) {
 			if (len > UINT16_MAX - sizeof(WALHeader))
 				return 0;
 			std::lock_guard<std::mutex> lock(m_mutex);
@@ -303,6 +310,11 @@ namespace Base {
 			}
 			m_writeBuf.resize(sizeof(WALHeader) + len);
 			size_t recordSize = sizeof(WALHeader) + len;
+			// 새로 기록할 LSN이 기존 인벤토리의 lastLsn보다 작아지는 것을 방지
+			if (((static_cast<uint64_t>(m_segment) << 32) | m_offset) <= minimumLsn) {
+				if ((minimumLsn >> 32) >= UINT32_MAX || !RotateSegment(static_cast<uint32_t>(minimumLsn >> 32) + 1))
+					return 0;
+			}
 			if (m_offset + recordSize > LIMIT) {
 				if (!RotateSegment())
 					return 0;

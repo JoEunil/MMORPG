@@ -95,7 +95,7 @@ namespace Cache {
 
     void Handler::BazaarRegister(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarRegisterBody* body) {
         auto it = Data::itemMap.find(body->itemID);
-        if (it == Data::itemMap.end()) {
+        if (it == Data::itemMap.end() || body->quantity == 0) {
             Core::MsgStruct<Core::MsgBazaarRegisterResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterResBody>*>(msg->GetBuffer());
             st->header.sessionID = sessionID;
             st->header.messageType = Core::MSG_BAZAAR_REGISTER_RES;
@@ -108,7 +108,7 @@ namespace Cache {
 		uint16_t itemType = it->second.itemType;
 
         // 1. 아이템 Iventory에서 제거
-        auto [inventoryStatus, itemID, slot, quantity] = cache_inventory->PartialUpdate(body->characterID, body->itemID, 2, -static_cast<int16_t>(body->quantity));
+        auto [inventoryStatus, itemID, slot, quantity] = cache_inventory->PartialUpdate(body->characterID, body->itemID, 2, -static_cast<int32_t>(body->quantity));
         if (inventoryStatus != CACHE_STATUS::AVAILABLE) {
             Core::MsgStruct<Core::MsgBazaarRegisterResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterResBody>*>(msg->GetBuffer());
             st->header.sessionID = sessionID;
@@ -145,7 +145,13 @@ namespace Cache {
 
         // 3. bazaar에 등록 
         if (!EnqueueMessageWork(dbWorkerBazaar, msg, [msg, sessionID, body, this, itemType, fee](DBConnectionBazaar* conn) {
-            int affected = conn->ExecuteUpdate(13, body->itemID, body->characterID, itemType, body->quantity, body->price);
+            int affected = 0;
+            try {
+                affected = conn->ExecuteUpdate(13, body->itemID, body->characterID, itemType, body->quantity, body->price);
+            }
+            catch (const sql::SQLException& e) {
+                Core::errorLogger->LogError("cache handler bazaar", "register query failed", "msg", e.what());
+            }
 
             // 4. 실패 시 롤백
             if (affected != 1) {
@@ -198,7 +204,7 @@ namespace Cache {
                     uint64_t realItemID = res->getUInt64("item_id");
                     uint16_t realQty = res->getUInt("quantity");
 
-                    auto [status, itemID, slot, quantity] = cache_inventory->PartialUpdate(body->characterID, realItemID, 2, (int16_t)realQty);
+                    auto [status, itemID, slot, quantity] = cache_inventory->PartialUpdate(body->characterID, realItemID, 2, static_cast<int32_t>(realQty));
 
                     if (status != CACHE_STATUS::AVAILABLE) {
                         // 이 경로는 캐시 설정이 올바른 경우 도달 불가.
@@ -223,62 +229,28 @@ namespace Cache {
     }
 
     void Handler::BazaarBuy(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarBuyBody* body) {
-        // 1. DB에서 itemID 조회 
+        // One queued work owns the message throughout the purchase transaction.
         EnqueueMessageWork(dbWorkerBazaar, msg, [msg, sessionID, body, this](DBConnectionBazaar* conn) {
-
-			auto listingRes = conn->ExecuteSelect(15, body->listingID);
-
-            if (!listingRes || !listingRes->next()) {
-                Core::MsgStruct<Core::MsgBazaarBuyResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarBuyResBody>*>(msg->GetBuffer());
-                st->header.sessionID = sessionID;
-                st->header.messageType = Core::MSG_BAZAAR_BUY_RES;
-                st->body.resStatus = 2;
-                msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarBuyResBody>));
-                messageQ->EnqueueMessage(msg);
-                messagePool->Return(msg);
-                return;
+            uint64_t listingID = body->listingID;
+            auto res = conn->ExecuteSelect(16, listingID, body->characterID);
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarBuyResBody>*>(msg->GetBuffer());
+            st->header.sessionID = sessionID;
+            st->header.messageType = Core::MSG_BAZAAR_BUY_RES;
+            st->body = {};
+            st->body.listingID = listingID;
+            if (res && res->next()) {
+                st->body.resStatus = static_cast<uint8_t>(res->getUInt("result"));
+                st->body.itemID = res->getUInt("item_id");
+                st->body.quantity = static_cast<uint16_t>(res->getUInt("quantity"));
+                st->body.diamondSpent = res->getUInt("price");
             }
-            uint64_t realItemID = listingRes->getUInt64("item_id");
-            uint16_t realQty = listingRes->getUInt("quantity");
-
-            // 2. bazzar에서 listing status 변경 (SOLD)
-            // bazaar_log에 거래 기록 추가 
-            // buyer_outbox에 아이템 추가
-            // 구매자 다이아 차감
-            const auto enqueueResult = dbWorkerBazaar->Enqueue([msg, sessionID, body, this](DBConnectionBazaar* conn) {
-				auto res = conn->ExecuteSelect(16, body->listingID, body->characterID);
-
-                if (!res || !res->next()) {
-                    Core::MsgStruct<Core::MsgBazaarBuyResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarBuyResBody>*>(msg->GetBuffer());
-                    st->header.sessionID = sessionID;
-                    st->header.messageType = Core::MSG_BAZAAR_BUY_RES;
-                    st->body.resStatus = 3;
-                    msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarBuyResBody>));
-                    messageQ->EnqueueMessage(msg);
-                    messagePool->Return(msg);
-                    return;
-                }
-                uint8_t resultCode = res->getUInt("result");
-                uint64_t listingID = body->listingID;
-                uint32_t itemID = res->getUInt("item_id");
-				uint16_t quantity = res->getUInt("quantity");
-                uint32_t diamondSpent = res->getUInt("price");
-                // 3. 응답
-                Core::MsgStruct<Core::MsgBazaarBuyResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarBuyResBody>*>(msg->GetBuffer());
-                st->header.sessionID = sessionID;
-                st->header.messageType = Core::MSG_BAZAAR_BUY_RES;
-                st->body.resStatus = resultCode;
-                st->body.listingID = listingID;
-                st->body.itemID = itemID;
-                st->body.quantity = quantity;
-                st->body.diamondSpent = diamondSpent;
-                msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarBuyResBody>));
-                messageQ->EnqueueMessage(msg);
-                messagePool->Return(msg);
-                });
-            if (enqueueResult != DBEnqueueResult::Queued)
-                messagePool->Return(msg);
-            });
+            else {
+                st->body.resStatus = 3;
+            }
+            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarBuyResBody>));
+            messageQ->EnqueueMessage(msg);
+            messagePool->Return(msg);
+        });
     }
 
     void Handler::BazaarClaim(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarClaimBody* body) {

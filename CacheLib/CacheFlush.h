@@ -22,6 +22,7 @@
 namespace Cache {
     struct FlushCommand {
         uint16_t stmtID;
+        uint64_t generation = 0;
         std::vector<std::any> params;
     };
     class DBConnectinon;
@@ -73,6 +74,7 @@ namespace Cache {
         void Stop();
 
         void DBWrite(FlushCommand* command);
+        void ExecuteWrite(FlushCommand* command);
         void ThreadFunc();
         friend class Initializer;
     public:

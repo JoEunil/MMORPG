@@ -5,6 +5,9 @@
 #include <condition_variable>
 #include <chrono>
 #include <thread>
+#include <memory>
+#include <vector>
+#include <cstring>
 
 #include <CoreLib/IMessageQueue.h>
 #include <CoreLib/Message.h>
@@ -14,17 +17,22 @@
 #include <CacheLib/Config.h>
 
 // Profile Cache 통합테스트
-// 전제 조건: 로컬 DB(localhost, root/1234, game) 실행 중, Resources/DB/createCharacter.sql로 시딩됨.
+// GAME_TEST_DATABASE=1일 때만 실행한다. 전용 테스트 DB와 Resources/DB/createCharacter.sql 시딩 필요.
 
 namespace {
     class MockMessageQueue : public Core::IMessageQueue {
         std::mutex m_mutex;
         std::condition_variable m_cv;
         std::queue<Core::Message*> m_received;
+        std::vector<std::unique_ptr<Core::Message>> m_ownedResponses;
     public:
         bool EnqueueMessage(Core::Message* msg) override {
+            auto copy = std::make_unique<Core::Message>(msg->GetLength());
+            std::memcpy(copy->GetBuffer(), msg->GetBuffer(), msg->GetLength());
+            copy->SetLength(msg->GetLength());
             std::lock_guard lock(m_mutex);
-            m_received.push(msg);
+            m_received.push(copy.get());
+            m_ownedResponses.push_back(std::move(copy));
             m_cv.notify_one();
             return true;
         }
@@ -41,7 +49,9 @@ namespace {
 
     template<typename BodyType>
     Core::Message* MakeMsg(uint16_t msgType, uint64_t sessionID, const BodyType& body) {
-        auto* msg = new Core::Message(Cache::MESSAGE_LEN);
+        // InMemoryQueue copies synchronously, so each thread can reuse its request.
+        thread_local Core::Message request(Cache::MESSAGE_LEN);
+        auto* msg = &request;
         auto* st = reinterpret_cast<Core::MsgStruct<BodyType>*>(msg->GetBuffer());
         st->header.messageType = msgType;
         st->header.sessionID = sessionID;
@@ -59,12 +69,15 @@ namespace {
 class ProfileCacheTest : public ::testing::Test {
 protected:
     MockMessageQueue mockMQ;
-    Cache::Initializer init;
+    Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/profile-cache-test/redo" };
     Core::IMessageQueue* recvMQ = nullptr;
     Cache::ProfileCache* cache = nullptr;
     uint64_t nextSessionID = 1;
 
     void SetUp() override {
+        if (Cache::GetEnvVar("GAME_TEST_DATABASE") != "1") {
+            GTEST_SKIP() << "Requires a seeded test DB; opt in with GAME_TEST_DATABASE=1";
+        }
         init.Initialize();
         init.InjectDependencies(&mockMQ);
         recvMQ = init.GetMessageQueue();
@@ -77,7 +90,10 @@ protected:
         body.characterID = charID;
         recvMQ->EnqueueMessage(MakeMsg(Core::MSG_CHARACTER_STATE_REQ, nextSessionID++, body));
         auto* res = mockMQ.WaitFor();
-        EXPECT_NE(res, nullptr);
+        if (res == nullptr) {
+            ADD_FAILURE() << "Timed out loading character " << charID;
+            return {};
+        }
         auto* rb = Core::parseMsgBody<Core::MsgCharacterStateResBody>(res->GetBuffer());
         EXPECT_EQ(rb->resStatus, 1);
         return *rb;
@@ -98,7 +114,10 @@ protected:
         std::memcpy(body.name, name.data(), len);
         recvMQ->EnqueueMessage(MakeMsg(Core::MSG_PROFILE_RENAME, sessionID, body));
         auto* res = mockMQ.WaitFor();
-        EXPECT_NE(res, nullptr);
+        if (res == nullptr) {
+            ADD_FAILURE() << "Timed out renaming profile " << profileId;
+            return {};
+        }
         return *Core::parseMsgBody<Core::MsgProfileRenameResBody>(res->GetBuffer());
     }
 };

@@ -87,7 +87,7 @@ DB read 작업의 중복 처리를 줄이기 위함.
 
 __도입 전__: durability는 전적으로 주기적 DB flush(`FlushDispatcher`, 마지막 변경 후 30초)에 의존했다. 이 30초 창 안에 서버가 죽으면 그 구간의 변경은 그대로 유실됐다.
 
-__도입 후__: 캐시 데이터가 변경될 때 그 내용을 같은 임계구역 안에서 WAL에도 함께 기록해, 캐시가 flush 주기와 무관하게 자기 durability를 보장하도록 바꿨다. 30초 write-back 주기 자체는 그대로 유지되지만, 이제 이 정책은 순수하게 *DB 반영 시점을 늦춰 부하를 줄이는* 목적만 남고, durability는 WAL이 전담한다.
+__도입 후__: 인벤토리 변경을 같은 shard 임계구역 안에서 WAL에 append하여, DB write-back 이전 장애의 복구 범위를 넓혔다. 현재 보호 대상은 인벤토리뿐이며 Gold는 WAL에 기록하지 않는다. 기본 fflush/fsync 대기 값은 20ms이고, 응답 전에 완료를 기다리지 않으므로 최근 tail과 I/O 장애 구간의 유실 가능성은 남는다.
 
 서버 장애 발생 시 WAL Replay를 통해 Flush되지 않은 데이터를 캐시에 복원한 후 백그라운드 Write-Back으로 DB와 다시 동기화한다.  
 
@@ -96,7 +96,7 @@ WAL의 LSN 관리, Segment Rotation, CRC 검증, Replay 및 Truncate 정책 등 
 
 ## 4. ACID 보장
 
-여기서 말하는 ACID는 캐시가 런타임 동안 자기 데이터에 대해 보장하는 성질이다.  
+아래는 단일 캐시 연산의 원자성·격리성과, 조건부 장애 복구 범위를 ACID 관점에서 구분한 것이다. 전체 캐시 또는 성공 응답 전체에 대한 완전한 ACID 보장을 의미하지 않는다.
 캐시와 DB 사이는 write-back 주기만큼 벌어지는 최종 일관성이며, 아래 네 항목과는 다른 축이다.  
 
 __Atomicity (원자성)__
@@ -112,15 +112,17 @@ __Isolation (격리성)__
 - 중간 상태의 데이터에 대한 외부 접근 차단
 - EVICTING 상태인 키에 대해 Getter/Update 접근 차단 
 - DB_READING 상태인 키에 대해 중복 조회 차단
+- 같은 키의 flush는 하나만 in-flight로 허용하며, 완료·롤백 콜백은 발행 generation이 일치할 때만 적용한다. DB I/O 중의 새 변경은 dirty로 남겨 다음 snapshot에 포함한다.
 - DB write 성공 시 `WriteDone`이 재시도 카운터를 초기화한다. eviction 대상이었던 키만 캐시에서 최종 제거되고, 그 외에는 AVAILABLE 상태로 캐시에 남아 계속 접근 가능하다 (write-back 캐시 본연의 동작 — flush됐다고 캐시에서 쫓아내지 않는다).
 - DB write 실패 시 `Rollback`이 처리한다. eviction 시도였다면 즉시 AVAILABLE로 되돌리고 LRU에 재등록해 접근 차단을 풀고 eviction 자체를 취소한다. 이후 재flush는 처음 2회 즉시, 3회째부터는 `dirty_list` 재등록으로 백오프하며 재시도한다.
 - 다만 이 재시도에는 상한이 없다. DB 장애가 길어지면 dirty entry가 계속 쌓이는데, evict하려면 DB write가 먼저 성공해야 하므로 그동안은 `MAX_CACHE_SIZE` 상한도 실질적으로 강제되지 않는다. WAL이 기록 실패에 degraded mode를 두는 것처럼 flush 경로에도 같은 장치가 필요하다.
 
 __Durability (지속성)__
-- 캐시 변경 사항은 같은 임계구역 안에서 WAL에도 함께 기록되어, DB flush 이전 장애에도 복구 가능하다.
+- 인벤토리 변경은 같은 shard 임계구역 안에서 WAL에 append한다. 재기동 시 파일에 남아 CRC 검증을 통과한 레코드까지 복구하며, 아직 fflush/fsync되지 않은 tail은 유실될 수 있다.
+- Gold는 WAL 보호 대상이 아니며, 마지막 변경 후 30초 write-back 또는 정상 종료 시 DB 반영에 의존한다. 계속 변경되는 키에 대해 30초는 최대 유실 시간의 상한이 아니다.
 - 서버 크래시 시 재기동 과정에서 WAL Replay로 flush되지 않은 Dirty 데이터를 캐시에 복원한다. 복원 판정은 `레코드 LSN > blob의 lastLsn` 비교이며, 몇 번을 재실행해도 같은 결과가 나오는 멱등한 절차다.
 - 복원된 데이터는 이후 백그라운드 Write-Back을 통해 다시 DB와 동기화된다.
-- 정상 종료 시에는 WAL Replay가 필요 없다 — `CleanUp()`이 dirty 데이터를 먼저 동기적으로 DB에 반영한 뒤, WAL은 마지막 fsync만 수행한다(하우스키핑).
+- 정상 종료는 입력 큐와 DB 작업 워커를 먼저 drain하여 마지막 rollback까지 반영한 뒤, dirty 데이터를 여러 batch로 DB에 저장하고 WAL을 최종 fsync한다. DB 저장이 성공한 경우 다음 부팅에서 해당 WAL 이미지는 `lastLsn` 비교로 skip한다. 종료 중에도 DB 저장이 실패하면 인벤토리는 남은 WAL 복구에 의존하고, WAL이 없는 Gold는 복구를 보장하지 않는다.
 - WAL 기록(`fwrite`) 자체가 실패하면 즉시 서비스를 막지 않고 WAL 보호만 일시적으로 내려놓는다(degraded mode). 이 구간의 변경은 기존 30초 write-back 창으로만 보호되며, 일정 시간 후 자동으로 WAL 기록을 재개한다. 재개 후 첫 기록이 그 시점의 전체 상태를 다시 실어 보내므로 별도 보정 없이 자동으로 수렴한다. 상세는 [WAL.md](WAL.md) 참고.
 
 ## 5. 참고

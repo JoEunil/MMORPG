@@ -18,12 +18,12 @@ namespace Cache {
             if (!res || !res->next()) {
                 Core::gameLogger->LogInfo("cache storage currency", "currency not found in DB", "char_id", key.characterID);
                 SetEmpty(shardIndex, key);  // READING → EMPTY
-                return CACHE_STATUS::EMPTY;
+                return;
             }
             result.data.gold = static_cast<uint64_t>(res->getUInt64("gold"));
             result.rollbackCnt = 0;
             Insert(shardIndex, key, result);  // READING → AVAILABLE
-            });
+            }, nullptr, [this, shardIndex, key] { SetEmpty(shardIndex, key); });
         if (enqueueResult != DBEnqueueResult::Queued) {
             SetEmpty(shardIndex, key);
             return CACHE_STATUS::EMPTY;
@@ -93,7 +93,9 @@ namespace Cache {
 
         CACHE_STATUS resStatus = CACHE_STATUS::AVAILABLE;
         
-        res.data.gold +=deposit;
+        if (deposit > UINT64_MAX - res.data.gold)
+            return { CACHE_STATUS::BLOCKED, res.data.gold };
+        res.data.gold += deposit;
         res.lastModified = CacheTimer::GetTimeMS();
         shard.dirty_list.insert(key);
         return { resStatus, res.data.gold};
@@ -144,6 +146,7 @@ namespace Cache {
     std::unique_ptr<FlushCommand> CacheStorageCurrency::GetFlushCommand(Key key, Result result) {
         auto command = std::make_unique<FlushCommand>();
         command->stmtID = 8;
+        command->generation = result.flushGeneration;
 
         command->params.emplace_back(result.data.gold);
         command->params.emplace_back(key.characterID);

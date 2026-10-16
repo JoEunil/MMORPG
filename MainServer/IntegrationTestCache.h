@@ -1,9 +1,16 @@
 ﻿#pragma once
+#include <stdexcept>
+#include <string>
 
  #include <queue>
  #include <mutex>
  #include <condition_variable>
  #include <chrono>
+ #include <cstring>
+ #include <memory>
+ #include <vector>
+ #include <algorithm>
+ #include <thread>
 
 #include <CoreLib/IMessageQueue.h>
 #include <CoreLib/Message.h>
@@ -12,8 +19,8 @@
 #include <CacheLib/Config.h>
 
 // 전제 조건:
-//   - 로컬 DB (localhost, root/1234, game) 실행 중
-//   - characters 테이블에 char_id=11 존재
+//   - CacheLib/Config.h의 DB 환경변수에 해당하는 테스트 DB 실행 중
+//   - characters 테이블에 TEST_CHAR_ID 및 LRU 테스트용 캐릭터 존재
 
 namespace Cache {
 	void Block() {
@@ -24,10 +31,16 @@ namespace Cache {
 		std::mutex m_mutex;
 		std::condition_variable m_cv;
 		std::queue<Core::Message*> m_received;
+		std::vector<std::unique_ptr<Core::Message>> m_ownedResponses;
 	public:
 		bool EnqueueMessage(Core::Message * msg) override {
+			// The handler returns its message to the pool immediately after enqueue.
+			auto copy = std::make_unique<Core::Message>(msg->GetLength());
+			std::memcpy(copy->GetBuffer(), msg->GetBuffer(), msg->GetLength());
+			copy->SetLength(msg->GetLength());
 			std::lock_guard lock(m_mutex);
-			m_received.push(msg);
+			m_received.push(copy.get());
+			m_ownedResponses.push_back(std::move(copy));
 			m_cv.notify_one();
 			return true;
 		}
@@ -45,13 +58,62 @@ namespace Cache {
 		// 요청 메시지 생성 헬퍼
 	template<typename BodyType>
 	static Core::Message * MakeMsg(uint16_t msgType, uint64_t sessionID, const BodyType & body) {
-		auto* msg = new Core::Message(MESSAGE_LEN);
+		// InMemoryQueue copies the request before EnqueueMessage returns.
+		thread_local Core::Message request(MESSAGE_LEN);
+		auto* msg = &request;
 		auto* st = reinterpret_cast<Core::MsgStruct<BodyType>*>(msg->GetBuffer());
 		st->header.messageType = msgType;
 		st->header.sessionID = sessionID;
 		st->body = body;
 		msg->SetLength(sizeof(Core::MsgStruct<BodyType>));
 		return msg;
+	}
+
+	template<typename BodyType>
+	static Core::Message* WaitForResponse(MockMessageQueue& responses, uint16_t messageType,
+		uint64_t sessionID, int timeoutMs = 5000) {
+		auto* response = responses.WaitFor(timeoutMs);
+		if (!(response != nullptr))
+		    throw std::runtime_error("Timeout waiting for cache response");
+		if (!(response->GetLength() >= sizeof(Core::MsgStruct<BodyType>)))
+		    throw std::runtime_error("Cache response too short");
+		const auto* header = Core::parseMsgHeader(response->GetBuffer());
+		if (!(header->messageType == messageType))
+		    throw std::runtime_error("Unexpected cache response type");
+		if (!(header->sessionID == sessionID))
+		    throw std::runtime_error("Unexpected cache response session");
+		return response;
+	}
+
+	// A cold Getter starts an asynchronous DB read and immediately reports status=0.
+	// Consume each response before retrying; never replay a mutation to warm the cache.
+	static Core::Message* PollInventoryUntilAvailable(Core::IMessageQueue* requests,
+		MockMessageQueue& responses, uint64_t characterID, uint64_t sessionID,
+		std::chrono::milliseconds timeout = std::chrono::seconds(5)) {
+		auto deadline = std::chrono::steady_clock::now() + timeout;
+		Core::MsgInventoryReqBody request{};
+		request.characterID = characterID;
+		while (std::chrono::steady_clock::now() < deadline) {
+			if (!(requests->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_REQ, sessionID, request))))
+			    throw std::runtime_error("Cache request enqueue failed");
+			auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+				deadline - std::chrono::steady_clock::now()).count();
+			if (!(remaining > 0))
+			    throw std::runtime_error("Inventory polling deadline expired");
+			auto* response = WaitForResponse<Core::MsgInventoryResBody>(responses,
+				Core::MSG_INVENTORY_RES, sessionID, static_cast<int>(remaining));
+			const auto* body = Core::parseMsgBody<Core::MsgInventoryResBody>(response->GetBuffer());
+			if (!(body->resStatus <= 1))
+			    throw std::runtime_error("Unexpected inventory response status");
+			if (body->resStatus == 1) {
+				if (!(body->itemCount <= Core::MAX_INVENTORY_ITEMS))
+				    throw std::runtime_error("Inventory item count out of range");
+				return response;
+			}
+			std::this_thread::sleep_until((std::min)(deadline,
+				std::chrono::steady_clock::now() + std::chrono::milliseconds(10)));
+		}
+		throw std::runtime_error("Inventory remained unavailable for character " + std::to_string(characterID));
 	}
 	
 	constexpr uint64_t TEST_CHAR_ID = 16;    // DB에 존재하는 char_id
@@ -62,19 +124,15 @@ namespace Cache {
 	// ---------------------------------------------------------------
 	inline static int Test_Inventory_DBFetch() {
 		MockMessageQueue mockMQ;
-		Cache::Initializer init;
+		Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
 		init.Initialize();
 		init.InjectDependencies(&mockMQ);
 		auto* recvMQ = init.GetMessageQueue();
 
-		Core::MsgInventoryReqBody body{};
-		body.characterID = TEST_CHAR_ID;
-		recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_REQ, 1, body));
-		
-		auto* res = mockMQ.WaitFor();
-		assert(res != nullptr && "Timeout: DB fetch");
+		auto* res = PollInventoryUntilAvailable(recvMQ, mockMQ, TEST_CHAR_ID, 1);
 		auto* rb = Core::parseMsgBody<Core::MsgInventoryResBody>(res->GetBuffer());
-		assert(rb->resStatus == 1 && "DB fetch failed");
+		if (!(rb->resStatus == 1))
+		    throw std::runtime_error("DB fetch failed");
 
 		Block();
 		std::cout << "[PASS] Test_Inventory_DBFetch (itemCount=" << rb->itemCount << ")\n\n";
@@ -89,7 +147,7 @@ namespace Cache {
 	// ---------------------------------------------------------------
 	inline static int Test_Inventory_CacheHit() {
 		MockMessageQueue mockMQ;
-		Cache::Initializer init;
+		Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
 		init.Initialize();
 		init.InjectDependencies(&mockMQ);
 		auto* recvMQ = init.GetMessageQueue();
@@ -98,15 +156,15 @@ namespace Cache {
 		body.characterID = TEST_CHAR_ID;
 		
 			        // 1차: DB fetch로 캐시 채우기
-		recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_REQ, 1, body));
-		assert(mockMQ.WaitFor() != nullptr && "Timeout: initial fetch");
+		PollInventoryUntilAvailable(recvMQ, mockMQ, TEST_CHAR_ID, 1);
 		Block();
 			        // 2차: 캐시 히트
-		recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_REQ, 1, body));
-		auto* res = mockMQ.WaitFor();
-		assert(res != nullptr && "Timeout: cache hit");
+		if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_REQ, 1, body))))
+		    throw std::runtime_error("Cache request enqueue failed");
+		auto* res = WaitForResponse<Core::MsgInventoryResBody>(mockMQ, Core::MSG_INVENTORY_RES, 1);
 		auto* rb = Core::parseMsgBody<Core::MsgInventoryResBody>(res->GetBuffer());
-		assert(rb->resStatus == 1 && "Data not exist");
+		if (!(rb->resStatus == 1))
+		    throw std::runtime_error("Data not exist");
 		Block();
 		
 		std::cout << "[PASS] Test_Inventory_CacheHit\n\n";
@@ -119,17 +177,12 @@ namespace Cache {
 	// ---------------------------------------------------------------
 	inline static int Test_InventoryUpdate_Sequence() {
 		MockMessageQueue mockMQ;
-		Cache::Initializer init;
+		Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
 		init.Initialize();
 		init.InjectDependencies(&mockMQ);
 		auto* recvMQ = init.GetMessageQueue();
 		// 캐시 채우기
-		{
-			Core::MsgInventoryReqBody body{};
-			body.characterID = TEST_CHAR_ID;
-			recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_REQ, 1, body));
-			assert(mockMQ.WaitFor() != nullptr && "Timeout: initial fetch");
-		}
+		PollInventoryUntilAvailable(recvMQ, mockMQ, TEST_CHAR_ID, 1);
 		Block();
 		// ADD item TEST_ITEM_ID, qty=5
 		{
@@ -138,14 +191,17 @@ namespace Cache {
 			body.itemID = TEST_ITEM_ID;
 			body.op = 1;
 			body.change = 5;
-			recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 2, body));
+			if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 2, body))))
+			    throw std::runtime_error("Cache request enqueue failed");
 			
-			auto* res = mockMQ.WaitFor();
-			assert(res != nullptr && "Timeout: ADD");
+			auto* res = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ, Core::MSG_INVENTORY_UPDATE_RES, 2);
 			auto* rb = Core::parseMsgBody<Core::MsgInventoryUpdateResBody>(res->GetBuffer());
-			assert(rb->resStatus == 1 && "ADD failed");
-			assert(rb->itemID == TEST_ITEM_ID);
-			assert(rb->itemQuantity == 5);
+			if (!(rb->resStatus == 1))
+			    throw std::runtime_error("ADD failed");
+			if (!(rb->itemID == TEST_ITEM_ID))
+			    throw std::runtime_error("Unexpected inventory item");
+			if (!(rb->itemQuantity == 5))
+			    throw std::runtime_error("ADD quantity mismatch");
 			Block();
 			std::cout << "  ADD PASSED (slot=" << (int)rb->slot << ", qty=" << rb->itemQuantity << ")\n\n";
 		}
@@ -157,13 +213,15 @@ namespace Cache {
 			body.itemID = TEST_ITEM_ID;
 			body.op = 2;
 			body.change = 3; // update + 3
-			recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 3, body));
+			if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 3, body))))
+			    throw std::runtime_error("Cache request enqueue failed");
 			
-			auto* res = mockMQ.WaitFor();
-			assert(res != nullptr && "Timeout: UPDATE");
+			auto* res = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ, Core::MSG_INVENTORY_UPDATE_RES, 3);
 			auto* rb = Core::parseMsgBody<Core::MsgInventoryUpdateResBody>(res->GetBuffer());
-			assert(rb->resStatus == 1 && "UPDATE failed");
-			assert(rb->itemQuantity == 8);
+			if (!(rb->resStatus == 1))
+			    throw std::runtime_error("UPDATE failed");
+			if (!(rb->itemQuantity == 8))
+			    throw std::runtime_error("UPDATE quantity mismatch");
 			Block();
 			std::cout << "  UPDATE PASSED (qty=" << rb->itemQuantity << ")\n";
 		}
@@ -175,12 +233,13 @@ namespace Cache {
 			body.itemID = TEST_ITEM_ID;
 			body.op = 2;
 			body.change = -8;
-			recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 4, body));
+			if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 4, body))))
+			    throw std::runtime_error("Cache request enqueue failed");
 			
-			auto* res = mockMQ.WaitFor();
-			assert(res != nullptr && "Timeout: DELETE");
+			auto* res = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ, Core::MSG_INVENTORY_UPDATE_RES, 4);
 			auto* rb = Core::parseMsgBody<Core::MsgInventoryUpdateResBody>(res->GetBuffer());
-			assert(rb->resStatus == 1 && "DELETE failed");
+			if (!(rb->resStatus == 1))
+			    throw std::runtime_error("DELETE failed");
 			Block();
 			std::cout << "  DELETE PASSED (qty=" << rb->itemQuantity << ")\n";
 		}
@@ -197,43 +256,50 @@ namespace Cache {
 	inline static int Test_DB_Flush() {
 		{
 			MockMessageQueue mockMQ;
-			Cache::Initializer init;
+			Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
 			init.Initialize();
 			init.InjectDependencies(&mockMQ);
 			auto* recvMQ = init.GetMessageQueue();
 
+			PollInventoryUntilAvailable(recvMQ, mockMQ, TEST_CHAR_ID, 1);
 			Core::MsgInventoryUpdateBody body{};
 			body.characterID = TEST_CHAR_ID; 
 			body.itemID = 33;
 			body.op = 1;
 			body.change = 34;
-			recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 1, body));
+			if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 1, body))))
+			    throw std::runtime_error("Cache request enqueue failed");
 
-			auto* res = mockMQ.WaitFor();
-			assert(res != nullptr && "Timeout: cache miss update");
+			auto* res = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ, Core::MSG_INVENTORY_UPDATE_RES, 1);
 			auto* rb = Core::parseMsgBody<Core::MsgInventoryUpdateResBody>(res->GetBuffer());
-			assert(rb->resStatus == 1 && "UPDATE failed");
-			assert(rb->itemQuantity == 34 && "Expected item quantity = 34");
+			if (!(rb->resStatus == 1))
+			    throw std::runtime_error("UPDATE failed");
+			if (!(rb->itemQuantity == 34))
+			    throw std::runtime_error("Expected item quantity = 34");
 		}
 		Block();
 		// init 소멸자에서 DB flush 
 		{
 			MockMessageQueue mockMQ;
-			Cache::Initializer init;
+			Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
 			init.Initialize();
 			init.InjectDependencies(&mockMQ);
 			auto* recvMQ = init.GetMessageQueue();
 			{
-				Core::MsgInventoryReqBody body{};
-				body.characterID = TEST_CHAR_ID;
-				recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_REQ, 2, body));
-
-				auto* res = mockMQ.WaitFor();
-				assert(res != nullptr && "Timeout: cache miss update");
+				auto* res = PollInventoryUntilAvailable(recvMQ, mockMQ, TEST_CHAR_ID, 2);
 				auto* rb = Core::parseMsgBody<Core::MsgInventoryResBody>(res->GetBuffer());
-				assert(rb->resStatus == 1 && "Data not exist");
-				assert(rb->items[0].itemID == 33 && "Expected item id = 33");
-				assert(rb->items[0].quantity == 34 && "Expected item quantity = 34");
+				if (!(rb->resStatus == 1))
+				    throw std::runtime_error("Data not exist");
+				bool found = false;
+				for (int i = 0; i < rb->itemCount; ++i) {
+					if (rb->items[i].itemID == 33) {
+						if (!(rb->items[i].quantity == 34))
+						    throw std::runtime_error("Expected item quantity = 34");
+						found = true;
+					}
+				}
+				if (!(found))
+				    throw std::runtime_error("Expected flushed item id = 33");
 
 			}
 			Block();
@@ -244,12 +310,13 @@ namespace Cache {
 				body.itemID = 33;
 				body.op = 2;
 				body.change = -34;
-				recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 2, body));
+				if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 2, body))))
+				    throw std::runtime_error("Cache request enqueue failed");
 
-				auto* res = mockMQ.WaitFor();
-				assert(res != nullptr && "Timeout: cache miss update");
+				auto* res = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ, Core::MSG_INVENTORY_UPDATE_RES, 2);
 				auto* rb = Core::parseMsgBody<Core::MsgInventoryUpdateResBody>(res->GetBuffer());
-				assert(rb->resStatus == 1 && "Delete Succeed");
+				if (!(rb->resStatus == 1))
+				    throw std::runtime_error("Delete Succeed");
 			}
 		}
 		Block();
@@ -262,19 +329,22 @@ namespace Cache {
 	// 캐시 set -> lru 리스트 초과 -> lru evict 발생
 	// ---------------------------------------------------------------
 	inline static int Test_LRU_Eviction() {
+		if (MAX_CACHE_SIZE != 2) {
+			std::cout << "[SKIP] LRU fetch scenario requires MAX_CACHE_SIZE=2; use CacheStorageTest for eviction assertions.\n";
+			return 0;
+		}
 		MockMessageQueue mockMQ;
-		Cache::Initializer init;
+		Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
 		init.Initialize();
 		init.InjectDependencies(&mockMQ);
 		auto* recvMQ = init.GetMessageQueue();
 
 		auto fetch = [&](uint64_t charID) {
-			Core::MsgInventoryReqBody body{};
-			body.characterID = charID;
-			recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_REQ, charID, body));
-			auto* res = mockMQ.WaitFor();
-			assert(res != nullptr);
-			return Core::parseMsgBody<Core::MsgInventoryResBody>(res->GetBuffer())->resStatus;
+			auto* res = PollInventoryUntilAvailable(recvMQ, mockMQ, charID, charID);
+			auto status = Core::parseMsgBody<Core::MsgInventoryResBody>(res->GetBuffer())->resStatus;
+			if (!(status == 1))
+			    throw std::runtime_error("LRU scenario inventory fetch failed");
+			return status;
 			};
 
 		Block();
@@ -295,7 +365,7 @@ namespace Cache {
 		// ↑ 여기서도 [LRU] evict 출력
 
 		Block();
-		std::cout << "[PASS] Test_LRU_Eviction\n\n";
+		std::cout << "[INFO] LRU fetch sequence completed; confirm eviction in logs.\n\n";
 		return 0;
 	}
 

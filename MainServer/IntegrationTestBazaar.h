@@ -17,6 +17,7 @@
 #include <CoreLib/MessagePool.h>
 #include <CoreLib/ItemData.h>
 #include <CacheLib/Config.h>
+#include <stdexcept>
 
 // ================================================================
 // 크래시 테스트 — 재빌드 불필요, 환경변수로 제어 (Cache::CrashPoint)
@@ -96,6 +97,10 @@ namespace Test {
 
     template<typename ResBody>
     static const ResBody* GetBody(Core::Message* msg) {
+        if (!(msg != nullptr))
+            throw std::runtime_error("Missing bazaar response");
+        if (!(msg->GetLength() >= sizeof(Core::MsgStruct<ResBody>)))
+            throw std::runtime_error("Bazaar response too short");
         return &reinterpret_cast<Core::MsgStruct<ResBody>*>(msg->GetBuffer())->body;
     }
 
@@ -104,7 +109,8 @@ namespace Test {
         MockMessageQueue   mq;
         Cache::Initializer cache;
 
-        CacheNode() {
+        explicit CacheNode(const std::string& nodeName = "single")
+            : cache(Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/bazaar-test/" + nodeName + "/redo") {
             cache.Initialize();
             cache.InjectDependencies(&mq);
         }
@@ -408,8 +414,8 @@ namespace Test {
         db.CleanupBazaar();
 
         {
-            CacheNode seller;
-            CacheNode buyer;
+            CacheNode seller("seller");
+            CacheNode buyer("buyer");
             WarmUp(seller, CHAR_A, SESSION_A);
             WarmUp(buyer, CHAR_B, SESSION_B);
 
@@ -517,7 +523,7 @@ namespace Test {
 
         // seller: REGISTER 후 종료
         {
-            CacheNode seller;
+            CacheNode seller("seller");
             WarmUp(seller, CHAR_A, SESSION_A);
             Core::MsgInventoryUpdateBody addItem{};
             addItem.characterID = CHAR_A;
@@ -550,7 +556,7 @@ namespace Test {
 
         // buyer: seller 없는 상태에서 BUY
         {
-            CacheNode buyer;
+            CacheNode buyer("buyer");
             WarmUp(buyer, CHAR_B, SESSION_B);
             Core::MsgDiamondDepositBody diamondDeposit{};
             diamondDeposit.characterID = CHAR_B;
@@ -575,7 +581,7 @@ namespace Test {
 
         // seller: 재접속 후 CLAIM
         {
-            CacheNode seller;
+            CacheNode seller("seller");
             WarmUp(seller, CHAR_A, SESSION_A);
             Core::MsgBazaarClaimBody claimBody{};
             claimBody.characterID = CHAR_A;
@@ -593,7 +599,7 @@ namespace Test {
         // buyer: 재접속 후 아이템 수령 — outbox 패턴의 대표 시나리오
         // (구매 시점에 못 받았어도 재접속 CheckOutbox로 유실 없이 수령)
         {
-            CacheNode buyer;
+            CacheNode buyer("buyer");
             WarmUp(buyer, CHAR_B, SESSION_B);
             auto out = SendCheckOutbox(buyer, CHAR_B, SESSION_B);
             std::cout << std::format("  CHECK_OUTBOX (buyer 재접속): delivered={} duplicated={}\n",
@@ -627,7 +633,7 @@ namespace Test {
 
             // seller: 철검 등록
             {
-                CacheNode seller;
+                CacheNode seller("seller");
                 WarmUp(seller, CHAR_A, SESSION_A);
                 Core::MsgInventoryUpdateBody addItem{};
                 addItem.characterID = CHAR_A;
@@ -654,7 +660,7 @@ namespace Test {
 
             // buyer: BUY → CHECK_OUTBOX → 크래시
             {
-                CacheNode buyer;
+                CacheNode buyer("buyer");
                 WarmUp(buyer, CHAR_B, SESSION_B);
                 Core::MsgDiamondDepositBody dd{};
                 dd.characterID = CHAR_B;
@@ -688,7 +694,7 @@ namespace Test {
         std::cout << "  [복구 전 outbox]\n";
         db.PrintOutbox(CHAR_B);
         {
-            CacheNode buyer;
+            CacheNode buyer("buyer");
             WarmUp(buyer, CHAR_B, SESSION_B);
             std::cout << "  [재시도 전]\n";
             PrintInventory(buyer, CHAR_B, SESSION_B);
@@ -722,7 +728,7 @@ namespace Test {
         // seller: listing LISTING_COUNT개 등록
         std::vector<uint64_t> listingIDs;
         {
-            CacheNode seller;
+            CacheNode seller("seller");
             WarmUp(seller, CHAR_A, SESSION_A);
             for (int i = 0; i < LISTING_COUNT; ++i) {
                 Core::MsgInventoryUpdateBody addItem{};
@@ -755,6 +761,9 @@ namespace Test {
         auto snapshot_before = db.Snapshot();
 
         // buyer BUYER_COUNT개 동시 BUY
+        std::vector<std::unique_ptr<CacheNode>> buyers;
+        for (int i = 0; i < BUYER_COUNT; ++i)
+            buyers.push_back(std::make_unique<CacheNode>("race-buyer-" + std::to_string(i)));
         std::vector<std::thread> threads;
         std::atomic<int> successCount{ 0 };
         std::atomic<int> failCount{ 0 };
@@ -764,7 +773,7 @@ namespace Test {
                 uint64_t charID = CHAR_LOAD_BASE + i; 
                 uint64_t sessionID = SESSION_B + 100 + i;
 
-                CacheNode buyer;
+                auto& buyer = *buyers[i];
                 WarmUp(buyer, charID, sessionID);
 
                 Core::MsgDiamondDepositBody diamondDeposit{};
@@ -794,6 +803,7 @@ namespace Test {
                 });
         }
         for (auto& t : threads) t.join();
+        buyers.clear(); // Stop and final flush run on the main thread before the DB snapshot.
 
         auto snapshot_after = db.Snapshot();
 
@@ -842,7 +852,7 @@ namespace Test {
         // seller: listing 1개 등록
         uint64_t listingID = 0;
         {
-            CacheNode seller;
+            CacheNode seller("seller");
             WarmUp(seller, CHAR_A, SESSION_A);
 
             Core::MsgInventoryUpdateBody addItem{};
@@ -872,6 +882,9 @@ namespace Test {
         auto snapshot_before = db.Snapshot();
         auto lockTimeBefore = db.QuerySingle("Innodb_row_lock_time");
 
+        std::vector<std::unique_ptr<CacheNode>> buyers;
+        for (int i = 0; i < TOTAL_BUYERS; ++i)
+            buyers.push_back(std::make_unique<CacheNode>("load-buyer-" + std::to_string(i)));
         std::vector<std::thread> threads;
         std::atomic<int> successCount{ 0 };
         std::atomic<int> failCount{ 0 };
@@ -883,7 +896,7 @@ namespace Test {
                     uint64_t charID = CHAR_LOAD_BASE + idx; 
                     uint64_t sessionID = SESSION_B + 200 + idx;
 
-                    CacheNode buyer;
+                    auto& buyer = *buyers[idx];
                     WarmUp(buyer, charID, sessionID);
 
                     Core::MsgDiamondDepositBody diamondDeposit{};
@@ -912,6 +925,7 @@ namespace Test {
             }
         }
         for (auto& t : threads) t.join();
+        buyers.clear(); // Stop and final flush run on the main thread before the DB snapshot.
 
         auto snapshot_after = db.Snapshot();
         auto lockTimeAfter = db.QuerySingle("Innodb_row_lock_time");
@@ -928,6 +942,7 @@ namespace Test {
         if (msg) 
             g_msgPool().Return(msg);
     }
+
     // ================================================================
     // 전체 실행
     // ================================================================

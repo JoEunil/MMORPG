@@ -47,12 +47,25 @@ __테스트 준비__
 ### Test_LRU_Eviction
 목적 : 캐시 용량 제한을 위해 설계된 LRU 동작이 정상 수행되는지 검증  
 시나리오 : 캐시 크기 2 설정 → 데이터 3개 삽입 → LRU evict 확인 → 최초 삽입 데이터 재조회 → cache miss 확인  
-결과 : evict 동작이 정상 수행되는 것을 확인하였으며 캐시 서버의 메모리 누수가 없음을 검증  
+결과 : evict 동작이 정상 수행되는 것을 확인하였으며 해당 시나리오에서 관측한 캐시 데이터 정리 동작을 확인
 
 ![이미지 로드 실패](images/CacheIntegrationTest2.png)
 > WAL 적용 후 동일한 통합 테스트를 수행하였다.  
 다만 내부 디버그 출력 제거로 Cache 내부 동작을 직접 관측할 수 없었다.   
 이번 변경은 캐시의 영속성 경로(WAL)를 추가한 것으로 Cache Hit/Miss, LRU 등 기존 캐시 로직에는 영향을 주지 않는다.  
+
+## DB 없이 실행하는 회귀 테스트
+
+[CacheStorageTest.cpp](UnitTests/CacheLib/CacheStorageTest.cpp)의 Google Test는 DB 연결 없이 내부 캐시 상태와 발행 snapshot을 검사한다.
+
+- 40,000/65,535 수량의 추가·차감, 동일 아이템 stack의 count 단일 증가, 0·음수 ADD·overflow 거절
+- 같은 키의 두 snapshot이 동시에 발행되지 않는지, I/O 중 새 변경이 다음 snapshot에 남는지
+- 이전 generation의 완료·실패 콜백이 최신 in-flight 상태를 해제하지 않는지
+- DB 재시도 snapshot이 최신 상태를 담는지, 큐 거절 뒤 dirty가 재발행 가능한지
+- in-flight entry의 LRU 퇴출 방지, Gold overflow 방지
+- 새 노드 LSN이 로드한 DB lastLsn보다 큰지, 기록한 LSN이 파일 재열기 후 복구되는지
+
+이 테스트는 네트워크·DB 서버 장애를 재현한 통합 결과와 구분한다.
 
 ## 4.참고
 [IntegrationTestCache.h](MainServer/IntegrationTestCache.h)

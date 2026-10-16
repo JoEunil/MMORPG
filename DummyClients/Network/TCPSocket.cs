@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Buffers;
 using System.IO.Pipelines;
 using System.Net;
@@ -155,6 +155,9 @@ namespace ClientCore.Network
             buffer.Slice(0, HeaderSize).CopyTo(headerSpan);
             PacketHeader header = MemoryMarshal.Read<PacketHeader>(headerSpan);
 
+            if (header.magic != Config.MAGIC)
+                throw new InvalidOperationException($"invalid packet magic {header.magic}");
+
             if (header.length < HeaderSize || header.length > MaxPacketSize)
                 throw new InvalidOperationException(
                     $"invalid packet length {header.length} (opcode {header.opcode})");
@@ -175,15 +178,20 @@ namespace ClientCore.Network
             await _sendLock.WaitAsync();
             try
             {
-                await sock.SendAsync(new ArraySegment<byte>(binary), SocketFlags.None);
+                int sent = 0;
+                while (sent < binary.Length)
+                {
+                    int written = await sock.SendAsync(
+                        new ArraySegment<byte>(binary, sent, binary.Length - sent), SocketFlags.None);
+                    if (written == 0)
+                        throw new SocketException((int)SocketError.ConnectionReset);
+                    sent += written;
+                }
             }
             catch (SocketException ex)
             {
                 Console.WriteLine(ex.ToString());
                 throw;
-            }
-            catch (ObjectDisposedException)
-            {
             }
             finally
             {

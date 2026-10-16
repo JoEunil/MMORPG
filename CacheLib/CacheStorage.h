@@ -35,10 +35,12 @@ namespace Cache {
     };
     template<typename T>
     struct CacheItem {
-        uint64_t lastModified;
+        uint64_t lastModified = 0;
         CACHE_STATUS status = CACHE_STATUS::EMPTY; // 0: available, 1:evicting, 2: DB reading, 3: Empty
         uint8_t rollbackCnt = 0;
-        T data;
+        bool flushInFlight = false;
+        uint64_t flushGeneration = 0;
+        T data{};
     };
 
     template<typename Key, typename Result, typename KeyHash>
@@ -47,6 +49,7 @@ namespace Cache {
         std::list<Key> lru_list;
         std::unordered_map<Key, typename std::list<Key>::iterator, KeyHash> lru_pos;
         std::set<Key> dirty_list;
+        uint64_t nextFlushGeneration = 0;
 
         std::mutex mutex;
     };
@@ -76,14 +79,15 @@ namespace Cache {
 
         CACHE_STATUS TrySetReading(uint16_t shardIndex, const Key& key);
         void SetEmpty(uint16_t shardIndex, const Key& key);
+        FlushEnqueueResult QueueFlushLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& result);
 
     public:
         void SetFlushFn(std::function<FlushEnqueueResult(const Key&, Result&)> f) {
             m_flushFn = f;
         }
         void ForEachDirty(std::function<bool(const Key&, Result&)> fn);
-        void Rollback(uint16_t shardIndex, const Key& key);
-        void WriteDone(uint16_t shardIndex, const Key& key);
+        void Rollback(uint16_t shardIndex, const Key& key, uint64_t generation);
+        void WriteDone(uint16_t shardIndex, const Key& key, uint64_t generation, bool retryClaim = false);
 
         virtual std::string ResultToString(const Key& key, const Result& result) {
             return "null";

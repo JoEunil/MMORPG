@@ -19,6 +19,8 @@ namespace Cache {
         CacheStorageInventory* cache_inventory = nullptr;
         CacheStorageCurrency* cache_currency = nullptr;
         std::thread m_thread;
+        std::mutex m_waitMutex;
+        std::condition_variable m_wake;
         std::atomic<bool> m_running = false;
         uint64_t m_minTime; // ms
 
@@ -49,7 +51,9 @@ namespace Cache {
                 cache_currency->ForEachDirty([this](const Key7& key, Result7& res) { return DirtyFlush7(key, res); });
                 uint64_t now = CacheTimer::GetTimeMS();
                 uint64_t sleepDuration = (m_minTime > now) ? (m_minTime - now) : 0;
-                std::this_thread::sleep_for(std::chrono::milliseconds(sleepDuration));
+                std::unique_lock lock(m_waitMutex);
+                m_wake.wait_for(lock, std::chrono::milliseconds(sleepDuration),
+                    [this] { return !m_running.load(std::memory_order_relaxed); });
             }
             Core::sysLogger->LogInfo("cache flush dispatcher", "dispatcher thread stopped", "threadID", ss.str());
         }
@@ -93,20 +97,39 @@ namespace Cache {
             return true;
         }
         void Stop() {
-            if (!m_running.exchange(false, std::memory_order_relaxed))
-                return;
+            {
+                std::lock_guard lock(m_waitMutex);
+                if (!m_running.exchange(false, std::memory_order_relaxed))
+                    return;
+            }
+            m_wake.notify_all();
             if (m_thread.joinable())
                 m_thread.join();
 
-            // 최종 dispatch 전에 큐를 비운다.
-            // m_running=false라 아래 ForEachDirty는 30초 게이트를 단락 평가로 통과해
-            // 모든 dirty entry를 즉시 enqueue한다. 이미 dispatch되어 큐에 남아있는
-            // 옛 스냅샷과 겹치면 두 flush 스레드가 같은 key를 동시에 써서
-            // 오래된 blob이 최신 blob을 덮을 수 있다.
+            // No business producers remain. Drain, then dispatch in batches: the
+            // bounded queue may not fit all dirty entries in a single pass.
+            // Claim/head updates can also become dirty while a batch is written.
             flush->WaitUntilDrained();
-
-            cache_inventory->ForEachDirty([this](auto& key, auto& res) { return  DirtyFlush5(key, res); });
-            cache_currency->ForEachDirty([this](auto& key, auto& res) { return  DirtyFlush7(key, res); });
+            bool firstPass = true;
+            for (;;) {
+                size_t queued = 0;
+                cache_inventory->ForEachDirty([&](auto& key, auto& res) {
+                    if (!firstPass && res.rollbackCnt >= 3) return false;
+                    bool accepted = DirtyFlush5(key, res);
+                    queued += accepted;
+                    return accepted;
+                });
+                cache_currency->ForEachDirty([&](auto& key, auto& res) {
+                    if (!firstPass && res.rollbackCnt >= 3) return false;
+                    bool accepted = DirtyFlush7(key, res);
+                    queued += accepted;
+                    return accepted;
+                });
+                if (queued == 0)
+                    break;
+                flush->WaitUntilDrained();
+                firstPass = false;
+            }
         }
 
         ~FlushDispatcher() {
