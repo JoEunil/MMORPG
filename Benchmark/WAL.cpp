@@ -135,13 +135,13 @@ namespace {
         benchmark->Args({ 25, 8 }); // lock contention stress
     }
 }
-BENCHMARK(BM_WalFsyncInterval)
-->Apply(WalArguments)
-->ArgNames({ "fsync_ms", "writers" })
-->UseRealTime()
-->Unit(benchmark::kMillisecond)
-->MinTime(1.0)
-->Repetitions(100)  // 반복
-->ComputeStatistics("p01", P01)
-->ComputeStatistics("p05", P05)
-->DisplayAggregatesOnly(true); // 콘솔에 집계만 출력
+//BENCHMARK(BM_WalFsyncInterval)
+//->Apply(WalArguments)
+//->ArgNames({ "fsync_ms", "writers" })
+//->UseRealTime()
+//->Unit(benchmark::kMillisecond)
+//->MinTime(1.0)
+//->Repetitions(100)  // 반복
+//->ComputeStatistics("p01", P01)
+//->ComputeStatistics("p05", P05)
+//->DisplayAggregatesOnly(true); // 콘솔에 집계만 출력

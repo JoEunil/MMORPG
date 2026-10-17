@@ -80,6 +80,7 @@ namespace Core {
         uint32_t AcquireInternalID();
         void UpdateSessionSnapshot();
         friend class Initializer;
+        friend class ZoneBenchmarkAccess;
     public:
         explicit ZoneState(uint16_t zone) {
             m_zoneID = zone;

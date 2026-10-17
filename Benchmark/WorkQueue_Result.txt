@@ -1,0 +1,35 @@
+﻿----------------------------------------------------------------------------------------------------------------------------------------------------------------
+Benchmark                                                                                                      Time             CPU   Iterations UserCounters...
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+BM_WorkerQueue_Poll/producers:1/consumers:1/capacity:1024/min_time:10.000/repeats:1/manual_time             13.4 ms        0.058 ms         1071 items_per_second=78.4527M/s push_failures/item=2.09503m
+BM_WorkerQueue_Poll/producers:1/consumers:1/capacity:16384/min_time:10.000/repeats:1/manual_time            12.9 ms        0.314 ms         1094 items_per_second=81.3743M/s push_failures/item=1.13033m
+BM_WorkerQueue_Poll/producers:4/consumers:1/capacity:1024/min_time:10.000/repeats:1/manual_time             73.1 ms        0.326 ms          192 items_per_second=14.3508M/s push_failures/item=0.047783
+BM_WorkerQueue_Poll/producers:4/consumers:1/capacity:16384/min_time:10.000/repeats:1/manual_time            68.5 ms        0.601 ms          208 items_per_second=15.3149M/s push_failures/item=9.44493m
+BM_WorkerQueue_Poll/producers:1/consumers:4/capacity:1024/min_time:10.000/repeats:1/manual_time             80.6 ms        0.090 ms          173 items_per_second=13.0078M/s push_failures/item=0.153373
+BM_WorkerQueue_Poll/producers:1/consumers:4/capacity:16384/min_time:10.000/repeats:1/manual_time            77.8 ms        0.349 ms          179 items_per_second=13.4802M/s push_failures/item=0.150808
+BM_WorkerQueue_Poll/producers:4/consumers:4/capacity:1024/min_time:10.000/repeats:1/manual_time              104 ms        0.114 ms          137 items_per_second=10.0425M/s push_failures/item=0.086548
+BM_WorkerQueue_Poll/producers:4/consumers:4/capacity:16384/min_time:10.000/repeats:1/manual_time            94.6 ms        0.633 ms          148 items_per_second=11.0867M/s push_failures/item=0.0207939
+BM_WorkerQueue_PollSleep/producers:1/consumers:1/capacity:1024/min_time:10.000/repeats:1/manual_time         131 ms        0.119 ms          131 items_per_second=8.03479M/s push_failures/item=1.1156
+BM_WorkerQueue_PollSleep/producers:1/consumers:1/capacity:16384/min_time:10.000/repeats:1/manual_time       32.5 ms        0.247 ms          380 items_per_second=32.2442M/s push_failures/item=0.169989
+BM_WorkerQueue_PollSleep/producers:4/consumers:1/capacity:1024/min_time:10.000/repeats:1/manual_time        9416 ms        0.000 ms            2 items_per_second=111.363k/s push_failures/item=330.179
+BM_WorkerQueue_PollSleep/producers:4/consumers:1/capacity:16384/min_time:10.000/repeats:1/manual_time        708 ms        0.000 ms           20 items_per_second=1.48034M/s push_failures/item=22.3284
+BM_WorkerQueue_PollSleep/producers:1/consumers:4/capacity:1024/min_time:10.000/repeats:1/manual_time         271 ms        0.868 ms           54 items_per_second=3.8736M/s push_failures/item=2.09711
+BM_WorkerQueue_PollSleep/producers:1/consumers:4/capacity:16384/min_time:10.000/repeats:1/manual_time       86.7 ms        0.476 ms          164 items_per_second=12.0921M/s push_failures/item=0.24649
+BM_WorkerQueue_PollSleep/producers:4/consumers:4/capacity:1024/min_time:10.000/repeats:1/manual_time         805 ms        0.000 ms           19 items_per_second=1.30196M/s push_failures/item=25.557
+BM_WorkerQueue_PollSleep/producers:4/consumers:4/capacity:16384/min_time:10.000/repeats:1/manual_time        168 ms        0.727 ms           86 items_per_second=6.24041M/s push_failures/item=2.53523
+BM_WorkerQueue_Semaphore/producers:1/consumers:1/capacity:1024/min_time:10.000/repeats:1/manual_time        64.7 ms        0.145 ms          216 items_per_second=16.2115M/s push_failures/item=0.0155281
+BM_WorkerQueue_Semaphore/producers:1/consumers:1/capacity:16384/min_time:10.000/repeats:1/manual_time       62.5 ms        0.349 ms          224 items_per_second=16.7689M/s push_failures/item=1.47424m
+BM_WorkerQueue_Semaphore/producers:4/consumers:1/capacity:1024/min_time:10.000/repeats:1/manual_time         128 ms        0.601 ms          104 items_per_second=8.17094M/s push_failures/item=0.343323
+BM_WorkerQueue_Semaphore/producers:4/consumers:1/capacity:16384/min_time:10.000/repeats:1/manual_time        128 ms        0.717 ms          109 items_per_second=8.17442M/s push_failures/item=0.32389
+BM_WorkerQueue_Semaphore/producers:1/consumers:4/capacity:1024/min_time:10.000/repeats:1/manual_time         182 ms        0.000 ms           77 items_per_second=5.7633M/s push_failures/item=1.08581m
+BM_WorkerQueue_Semaphore/producers:1/consumers:4/capacity:16384/min_time:10.000/repeats:1/manual_time        193 ms         1.25 ms           75 items_per_second=5.42754M/s push_failures/item=35.909u
+BM_WorkerQueue_Semaphore/producers:4/consumers:4/capacity:1024/min_time:10.000/repeats:1/manual_time         159 ms        0.178 ms           88 items_per_second=6.57759M/s push_failures/item=290.285u
+BM_WorkerQueue_Semaphore/producers:4/consumers:4/capacity:16384/min_time:10.000/repeats:1/manual_time        143 ms        0.319 ms           98 items_per_second=7.31825M/s push_failures/item=0.0176095
+BM_WorkerQueue_MutexCV/producers:1/consumers:1/capacity:1024/min_time:10.000/repeats:1/manual_time          68.4 ms        0.153 ms          204 items_per_second=15.3313M/s push_failures/item=0.0581335
+BM_WorkerQueue_MutexCV/producers:1/consumers:1/capacity:16384/min_time:10.000/repeats:1/manual_time         49.8 ms        0.000 ms          278 items_per_second=21.0545M/s push_failures/item=0.013256
+BM_WorkerQueue_MutexCV/producers:4/consumers:1/capacity:1024/min_time:10.000/repeats:1/manual_time           206 ms        0.000 ms           67 items_per_second=5.08963M/s push_failures/item=0.590593
+BM_WorkerQueue_MutexCV/producers:4/consumers:1/capacity:16384/min_time:10.000/repeats:1/manual_time          192 ms        0.000 ms           70 items_per_second=5.44776M/s push_failures/item=0.535251
+BM_WorkerQueue_MutexCV/producers:1/consumers:4/capacity:1024/min_time:10.000/repeats:1/manual_time           233 ms        0.000 ms           57 items_per_second=4.50047M/s push_failures/item=3.94189m
+BM_WorkerQueue_MutexCV/producers:1/consumers:4/capacity:16384/min_time:10.000/repeats:1/manual_time          219 ms        0.496 ms           63 items_per_second=4.78679M/s push_failures/item=151.377n
+BM_WorkerQueue_MutexCV/producers:4/consumers:4/capacity:1024/min_time:10.000/repeats:1/manual_time           198 ms        0.000 ms           70 items_per_second=5.28795M/s push_failures/item=0.0470671
+BM_WorkerQueue_MutexCV/producers:4/consumers:4/capacity:16384/min_time:10.000/repeats:1/manual_time          165 ms        0.368 ms           85 items_per_second=6.3542M/s push_failures/item=4.70662m

@@ -75,6 +75,7 @@ namespace Core {
         void CleanUp();
 
         friend class Initializer;
+        friend class ZoneBenchmarkAccess;
 
     public:
         ~StateManager() {

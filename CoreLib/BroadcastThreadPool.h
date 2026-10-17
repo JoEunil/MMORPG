@@ -61,6 +61,7 @@ namespace Core {
         CorePerfCollector* perfCollector = nullptr;
         PacketWriter* writer = nullptr;
         friend class Initializer;
+        friend class ZoneBenchmarkAccess;
     public:
         ~BroadcastThreadPool() {
             Stop();

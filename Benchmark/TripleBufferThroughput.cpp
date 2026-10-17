@@ -70,16 +70,16 @@ namespace {
     }
 }
 
-BENCHMARK(BM_TripleBufferBusySpinThroughput)
-    ->DenseRange(1, 4, 1)
-    ->ArgName("consumers")
-    ->UseRealTime()
-    ->Unit(benchmark::kNanosecond)
-    ->MinTime(3.0);
-
-BENCHMARK(BM_TripleBufferYieldThroughput)
-    ->DenseRange(1, 4, 1)
-    ->ArgName("consumers")
-    ->UseRealTime()
-    ->Unit(benchmark::kNanosecond)
-    ->MinTime(3.0);
+//BENCHMARK(BM_TripleBufferBusySpinThroughput)
+//    ->DenseRange(1, 4, 1)
+//    ->ArgName("consumers")
+//    ->UseRealTime()
+//    ->Unit(benchmark::kNanosecond)
+//    ->MinTime(3.0);
+//
+//BENCHMARK(BM_TripleBufferYieldThroughput)
+//    ->DenseRange(1, 4, 1)
+//    ->ArgName("consumers")
+//    ->UseRealTime()
+//    ->Unit(benchmark::kNanosecond)
+//    ->MinTime(3.0);

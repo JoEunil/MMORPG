@@ -1,4 +1,4 @@
-﻿# MMORPG GAME PROJECT
+# MMORPG GAME PROJECT
 
 C++ 기반 TCP Stateful MMORPG 게임 서버 — 개인 프로젝트 (개발 기간 약 1년)
 
@@ -247,6 +247,8 @@ Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush
 
 - [WAL 성능 벤치마크](Benchmark_WAL.md) — fsync 주기와 writer 수를 변경해 writer-fflush 및 writer-writer contention이 반영된 처리량을 측정. 벤치마크 결과를 바탕으로 기본 주기를 20ms로 선택했으며 성공 응답 직후의 디스크 내구성을 보장하지 않음
 - [Triple Buffer 성능 벤치마크](Benchmark_TripleBuffer.md) — SPMC reader 수에 따른 writer spin 분포와 busy-spin/yield 처리량을 측정하고, `maxSpin = 12` 선택 근거와 trade-off를 정리
+- [ZoneTick 성능 벤치마크](Benchmark_ZoneTick.md) — 목표 부하에서 50ms 틱 처리 예산 충족 여부
+- [WorkerQueue 성능 벤치마크](Benchmark_WorkerQueue.md) — 큐 구현과 대기 방식에 따른 처리량 비교
 
 ### 통합 테스트
 
@@ -479,6 +481,8 @@ DB → Redis → 로그인 서버 → 게임 서버
 
 - [WAL 성능 벤치마크](Benchmark_WAL.md)
 - [Triple Buffer 성능 벤치마크](Benchmark_TripleBuffer.md)
+- [ZoneTick 성능 벤치마크](Benchmark_ZoneTick.md)
+- [WorkerQueue 성능 벤치마크](Benchmark_WorkerQueue.md)
 - [모니터링](Monitoring.md)
 - [더미 클라이언트 테스트](DummyTest.md)
 - [더미 클라이언트 테스트2](DummyTest2.md)

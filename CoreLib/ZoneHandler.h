@@ -1,5 +1,7 @@
 ﻿#pragma once
 #include <cstdint>
+#include "IPacketView.h"
+#include "CorePerfCollector.h"
 
 #include "MessageTypes.h"
 #include "MessagePool.h"
@@ -31,7 +33,35 @@ namespace Core {
         
         void ProcessAction(const ActionRequestBody* body, uint64_t sessionID, uint16_t zoneID);
         friend class Initializer;
+        friend class ZoneBenchmarkAccess;
     public:
+        enum class TickSnapshot { None, Delta, Full };
+
+        template<class Queue, class SelectSnapshot>
+        size_t RunTick(uint16_t zoneID, Queue& queue, size_t maxPackets,
+            CorePerfCollector& perf, SelectSnapshot selectSnapshot) {
+            SkillCoolDown(zoneID);
+            ReplenishMoveBudget(zoneID);
+            size_t processed = 0;
+            {
+                std::unique_ptr<IPacketView, PacketViewDeleter> packet;
+                while (processed < maxPackets && queue.pop(packet)) {
+                    Process(packet.get(), zoneID);
+                    ++processed;
+                }
+            }
+            perf.AddPacketProcessCnt(zoneID, processed);
+            ApplySkill(zoneID);
+            UpdateMonster(zoneID);
+            FlushCheat(zoneID);
+            switch (selectSnapshot()) {
+            case TickSnapshot::Full: BroadcastFullState(zoneID); break;
+            case TickSnapshot::Delta: BroadcastDeltaState(zoneID); break;
+            case TickSnapshot::None: break;
+            }
+            return processed;
+        }
+
         void Process(IPacketView* p, uint16_t zoneID);
         void BroadcastDeltaState(uint16_t zoneID) {
             auto zoneState = stateManager->GetZone(zoneID);

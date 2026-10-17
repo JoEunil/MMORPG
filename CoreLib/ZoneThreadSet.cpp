@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "ZoneThreadSet.h"
 
 #include <windows.h>
@@ -27,33 +27,21 @@ namespace Core {
 
         handler->SpawnMonster(zoneID);
         while (t->running) {
-            handler->SkillCoolDown(zoneID);
-            handler->ReplenishMoveBudget(zoneID);
-            std::unique_ptr<IPacketView, PacketViewDeleter> packet;
-            const size_t MAX_PACKETS_PER_TICK = 2000;
-            size_t processed = 0;
-            while (processed < MAX_PACKETS_PER_TICK && t->workQueue.pop(packet)) {
-                handler->Process(packet.get(), zoneID);
-                ++processed;
-            }
-            perfCollector->AddPacketProcessCnt(zoneID, processed);
-            handler->ApplySkill(zoneID);
-            handler->UpdateMonster(zoneID);
-            handler->FlushCheat(zoneID);
-            auto now = std::chrono::steady_clock::now();
-            auto deltaSnapshotElapsed = now - lastDeltaSnapshot;
-            auto fullSnapshotElapsed = now - lastFullSnapshot;
-            if (fullSnapshotElapsed >= FULL_SNAPSHOT_TICK) {
-                lastFullSnapshot = now;
-                lastDeltaSnapshot = now;
-                handler->BroadcastFullState(zoneID);
-            }
-            else if (deltaSnapshotElapsed >= DELTA_SNAPSHOT_TICK) {
-                lastDeltaSnapshot = now;
-                handler->BroadcastDeltaState(zoneID);
-            }
+            handler->RunTick(zoneID, t->workQueue, 2000, *perfCollector, [&] {
+                const auto now = std::chrono::steady_clock::now();
+                if (now - lastFullSnapshot >= FULL_SNAPSHOT_TICK) {
+                    lastFullSnapshot = now;
+                    lastDeltaSnapshot = now;
+                    return ZoneHandler::TickSnapshot::Full;
+                }
+                if (now - lastDeltaSnapshot >= DELTA_SNAPSHOT_TICK) {
+                    lastDeltaSnapshot = now;
+                    return ZoneHandler::TickSnapshot::Delta;
+                }
+                return ZoneHandler::TickSnapshot::None;
+            });
 
-            now = std::chrono::steady_clock::now();
+            auto now = std::chrono::steady_clock::now();
             auto tickElapsed = now - lastTick;
 
             auto delay = tickElapsed - GAME_TICK;

@@ -31,6 +31,7 @@ namespace Core {
         }
         
         friend class Initializer;
+        friend class ZoneBenchmarkAccess;
     public:
         std::unique_ptr<IPacket, PacketDeleter> WriteAuthResponse(uint8_t resStatus);
         std::unique_ptr<IPacket, PacketDeleter>  WriteCharacterListResponse(const MsgCharacterListResBody* body);

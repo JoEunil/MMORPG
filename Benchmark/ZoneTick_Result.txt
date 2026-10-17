@@ -1,0 +1,11 @@
+﻿---------------------------------------------------------------------------------------------------------------------------------------------
+Benchmark                                                                                   Time             CPU   Iterations UserCounters...
+---------------------------------------------------------------------------------------------------------------------------------------------
+BM_ZoneTick/players:2000/clustered:0/moves:1/iterations:1200/repeats:1/manual_time      0.424 ms        0.612 ms         1200 max_tick_ms=8.6548 over_50ms_pct=0 p99_tick_ms=2.4976
+BM_ZoneTick/players:2000/clustered:0/moves:2/iterations:1200/repeats:1/manual_time      0.584 ms        0.365 ms         1200 max_tick_ms=6.8106 over_50ms_pct=0 p99_tick_ms=3.9751
+BM_ZoneTick/players:2000/clustered:0/moves:3/iterations:1200/repeats:1/manual_time      0.932 ms        0.820 ms         1200 max_tick_ms=8.4572 over_50ms_pct=0 p99_tick_ms=5.5117
+BM_ZoneTick/players:2000/clustered:0/moves:4/iterations:1200/repeats:1/manual_time       1.01 ms        0.742 ms         1200 max_tick_ms=42.7499 over_50ms_pct=0 p99_tick_ms=6.3459
+BM_ZoneTick/players:2000/clustered:1/moves:1/iterations:1200/repeats:1/manual_time      0.399 ms        0.234 ms         1200 max_tick_ms=6.8941 over_50ms_pct=0 p99_tick_ms=2.4025
+BM_ZoneTick/players:2000/clustered:1/moves:2/iterations:1200/repeats:1/manual_time      0.586 ms        0.560 ms         1200 max_tick_ms=6.9492 over_50ms_pct=0 p99_tick_ms=3.372
+BM_ZoneTick/players:2000/clustered:1/moves:3/iterations:1200/repeats:1/manual_time      0.713 ms        0.664 ms         1200 max_tick_ms=7.2922 over_50ms_pct=0 p99_tick_ms=3.5437
+BM_ZoneTick/players:2000/clustered:1/moves:4/iterations:1200/repeats:1/manual_time      0.823 ms        0.768 ms         1200 max_tick_ms=7.1844 over_50ms_pct=0 p99_tick_ms=4.1871
