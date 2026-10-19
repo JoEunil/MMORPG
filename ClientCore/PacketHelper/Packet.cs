@@ -171,6 +171,7 @@ namespace ClientCore.PacketHelper
         public uint zoneInternalID;
         public float startX;
         public float startY;
+        public ulong zoneGeneration;
     }
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ChatRequestBody
@@ -637,14 +638,18 @@ namespace ClientCore.PacketHelper
         }
 
         // 가변 길이 패킷, T는 필드 타입
-        public static (ushort count, T[] items) DeserializeVariablePacket<T> (PacketHeader header, byte[] buffer) where T : struct
+        public static (ushort count, ushort zoneID, ulong generation, T[] items) DeserializeVariablePacket<T> (PacketHeader header, byte[] buffer) where T : struct
         {
             int offset = Marshal.SizeOf<PacketHeader>();
-            if (buffer == null || header.length != buffer.Length || buffer.Length < offset + sizeof(ushort))
+            if (buffer == null || header.flags != FLAG_SIMULATION || header.length != buffer.Length || buffer.Length < offset + 12)
                 throw new ArgumentException("Invalid variable packet length.");
 
             ushort count = BitConverter.ToUInt16(buffer, offset);
-            offset += sizeof(ushort);
+            ushort zoneID = BitConverter.ToUInt16(buffer, offset + 2);
+            ulong generation = BitConverter.ToUInt64(buffer, offset + 4);
+            if (zoneID < 1 || zoneID > 4 || generation == 0)
+                throw new ArgumentException("Invalid simulation zone identity.");
+            offset += 12;
 
             int itemSize = Marshal.SizeOf<T>();
             // Validate before allocating or reading any unmanaged struct.
@@ -658,7 +663,20 @@ namespace ClientCore.PacketHelper
                 offset += itemSize;
             }
 
-            return (count, items);
+            return (count, zoneID, generation, items);
+        }
+
+        internal static STPacket<ZoneChangeResponseBody> DeserializeZoneChange(PacketHeader header, byte[] buffer)
+        {
+            if (header.flags != FLAG_SIMULATION || header.length != 39 || buffer.Length != 39)
+                throw new ArgumentException("Invalid zone response length or flags.");
+            var packet = Deserialize<ZoneChangeResponseBody>(header, buffer);
+            var body = packet.body;
+            if (body.resStatus > 1 || body.resStatus == 1 && (body.zoneID < 1 || body.zoneID > 4 ||
+                body.zoneGeneration == 0 || body.zoneInternalID == 0 || body.zoneInternalID == uint.MaxValue ||
+                float.IsNaN(body.startX) || float.IsInfinity(body.startX) || float.IsNaN(body.startY) || float.IsInfinity(body.startY)))
+                throw new ArgumentException("Invalid zone response identity.");
+            return packet;
         }
     }
 }

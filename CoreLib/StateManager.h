@@ -40,6 +40,13 @@ namespace Core {
     };
     class LobbyZone;
     class ChatThreadPool;
+    struct ZoneChangeResult {
+        uint16_t zoneID = 0;
+        uint64_t chatID = 0;
+        uint32_t internalID = 0;
+        float x = 0, y = 0;
+        uint64_t generation = 0;
+    };
     class StateManager {
         std::unordered_map<uint16_t, std::unique_ptr<Core::ZoneState>> m_states;
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
@@ -195,6 +202,7 @@ namespace Core {
             return res;
         }
         void Disconnect(uint64_t sessionID);
+        bool ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result);
         void EnqueueDisconnectMsg(CharacterState& temp, uint64_t sessionID);
         void UpdateProfileVersion(uint64_t sessionID, uint32_t version);
 

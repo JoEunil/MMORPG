@@ -56,7 +56,7 @@ namespace ClientCore.Network
                         switch ((OP_CODE)header.opcode)
                         {
                             case OP_CODE.ZONE_CHANGE_RESPONSE:
-                                _handler.HandleZoneChangeRes(Packet.Deserialize<ZoneChangeResponseBody>(header, curr));
+                                _handler.HandleZoneChangeRes(Packet.DeserializeZoneChange(header, curr));
                                 break;
                             case OP_CODE.ZONE_DELTA_UPDATE_BROADCAST:
                                 _handler.HandleDeltaUpdate(Packet.DeserializeVariablePacket<DeltaUpdateField>(header, curr));

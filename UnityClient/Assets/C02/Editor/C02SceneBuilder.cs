@@ -7,6 +7,60 @@ using UnityEngine;
 
 public static class C02SceneBuilder
 {
+    [MenuItem("C02/C08/Apply Zone Transition UI")]
+    public static void ApplyC08ZoneTransitionUI()
+    {
+        if (EditorApplication.isPlaying) throw new System.InvalidOperationException("Stop Play before applying C08 UI.");
+        if (EditorSceneManager.GetActiveScene().path != "Assets/C02/C02.unity")
+            throw new System.InvalidOperationException("Open the C02 scene first.");
+
+        var canvas = Object.FindFirstObjectByType<Canvas>();
+        var world = Object.FindFirstObjectByType<C02WorldScreen>();
+        if (canvas == null || canvas.renderMode != RenderMode.ScreenSpaceOverlay || world == null)
+            throw new System.InvalidOperationException("Expected the existing C02 overlay Canvas and C02WorldScreen.");
+
+        var existing = canvas.transform.Find("C08ZoneTransitionButton");
+        UnityEngine.UI.Button button;
+        if (existing == null)
+        {
+            var rect = new GameObject("C08ZoneTransitionButton", typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button)).GetComponent<RectTransform>();
+            rect.SetParent(canvas.transform, false);
+            button = rect.GetComponent<UnityEngine.UI.Button>();
+            var label = Text("Label", rect, "ENTER ZONE 2  →", 14);
+            label.color = new Color(.98f, .89f, .66f);
+            label.alignment = TextAlignmentOptions.Center;
+            label.rectTransform.anchorMin = Vector2.zero;
+            label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = new Vector2(8, 2);
+            label.rectTransform.offsetMax = new Vector2(-8, -2);
+        }
+        else button = existing.GetComponent<UnityEngine.UI.Button>();
+
+        var buttonRect = button.GetComponent<RectTransform>();
+        buttonRect.anchorMin = buttonRect.anchorMax = buttonRect.pivot = new Vector2(.5f, 0);
+        buttonRect.anchoredPosition = new Vector2(40, 24);
+        buttonRect.sizeDelta = new Vector2(276, 48);
+        var image = button.GetComponent<UnityEngine.UI.Image>();
+        image.color = new Color(.48f, .34f, .15f, .98f);
+        image.raycastTarget = true;
+        button.targetGraphic = image;
+        button.interactable = true;
+        var colors = button.colors;
+        colors.normalColor = new Color(.48f, .34f, .15f, .98f);
+        colors.highlightedColor = new Color(.62f, .45f, .19f, 1f);
+        colors.pressedColor = new Color(.34f, .23f, .11f, 1f);
+        colors.selectedColor = colors.normalColor;
+        button.colors = colors;
+        button.gameObject.SetActive(false);
+
+        var serialized = new SerializedObject(world);
+        serialized.FindProperty("zoneTransitionButton").objectReferenceValue = button;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+        EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
+        AssetDatabase.SaveAssets();
+    }
+
     public static void Build()
     {
         if (EditorApplication.isPlaying) throw new System.InvalidOperationException("Stop Play before building C02.");
@@ -109,6 +163,7 @@ public static class C02SceneBuilder
         world.SetActive(false);
         hud.SetActive(false);
         ApplyV01();
+        ApplyC08ZoneTransitionUI();
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene(), "Assets/C02/C02.unity");
         AssetDatabase.SaveAssets();
     }

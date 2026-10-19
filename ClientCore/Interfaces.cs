@@ -1,4 +1,4 @@
-﻿using ClientCore.PacketHelper;
+using ClientCore.PacketHelper;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -88,12 +88,12 @@ public struct InventoryItemView
         void ChatReceived(Packet.Message message);
         void ProfilesReceived(ProfileEntry[] profiles);
         void InventoryReceived(byte resStatus, PacketHelper.InventoryItem[] items);
-        void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y);
-        void DeltaReceived(ushort count, PacketHelper.DeltaUpdateField[] updates);
-        void FullReceived(ushort count, PacketHelper.FullStateField[] states);
-        void MonsterDeltaReceived(ushort count, PacketHelper.MonsterDeltaField[] updates);
-        void MonsterFullReceived(ushort count, PacketHelper.MonsterFullField[] states);
-        void ActionResultReceived(ushort count, PacketHelper.ActionResultField[] states);
+        void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y, ulong generation);
+        void DeltaReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.DeltaUpdateField[] updates);
+        void FullReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.FullStateField[] states);
+        void MonsterDeltaReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.MonsterDeltaField[] updates);
+        void MonsterFullReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.MonsterFullField[] states);
+        void ActionResultReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.ActionResultField[] states);
         void PingReceived(ulong servertimeMs, ulong rtt);
         void Error(string msg);
         void Log(string msg);
@@ -146,11 +146,11 @@ namespace ClientCore.Network
     public interface IHandlerTick
     {
         void HandleZoneChangeRes(PacketHelper.STPacket<PacketHelper.ZoneChangeResponseBody> packet);
-        void HandleDeltaUpdate((ushort, DeltaUpdateField[]) res);
-        void HandleFullState((ushort, FullStateField[]) res);
-        void HandleMonsterDelta((ushort, MonsterDeltaField[]) res);
-        void HandleMonsterFull((ushort, MonsterFullField[]) res);
-        void HandleActionReult((ushort, ActionResultField[]) res);
+        void HandleDeltaUpdate((ushort count, ushort zoneID, ulong generation, DeltaUpdateField[] items) res);
+        void HandleFullState((ushort count, ushort zoneID, ulong generation, FullStateField[] items) res);
+        void HandleMonsterDelta((ushort count, ushort zoneID, ulong generation, MonsterDeltaField[] items) res);
+        void HandleMonsterFull((ushort count, ushort zoneID, ulong generation, MonsterFullField[] items) res);
+        void HandleActionReult((ushort count, ushort zoneID, ulong generation, ActionResultField[] items) res);
     }
 }
 

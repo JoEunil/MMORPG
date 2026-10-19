@@ -142,6 +142,7 @@ namespace Core {
         uint64_t chatID;
         uint32_t zoneInternalID;
         float startX, startY;
+        uint64_t zoneGeneration;
     };
 
     struct ChatRequestBody {
@@ -189,6 +190,8 @@ namespace Core {
 
     struct ActionResultBody {
         uint16_t count;
+        uint16_t zoneID;
+        uint64_t zoneGeneration;
         ActionResultField actions[ACTION_RESULT_COUNT];
     };
 
@@ -200,6 +203,8 @@ namespace Core {
 
     struct DeltaSnapshotBody {
         uint16_t count;
+        uint16_t zoneID;
+        uint64_t zoneGeneration;
         DeltaUpdateField updates[DELTA_UPDATE_COUNT];
     };
 
@@ -219,6 +224,8 @@ namespace Core {
 
     struct FullSnapshotBody {
         uint16_t count;
+        uint16_t zoneID;
+        uint64_t zoneGeneration;
         FullStateField states[MAX_ZONE_CAPACITY];
     };
 
@@ -230,6 +237,8 @@ namespace Core {
 
     struct MonsterDeltaSnapshotBody {
         uint16_t count;
+        uint16_t zoneID;
+        uint64_t zoneGeneration;
         MonsterDeltaField updates[MAX_MONSTER_DELTA];
     };
 
@@ -245,6 +254,8 @@ namespace Core {
 
     struct MonsterFullSnapshotBody {
         uint16_t count;
+        uint16_t zoneID;
+        uint64_t zoneGeneration;
         MonsterFullField states[MAX_MONSTER_COUNT];
     };
 

@@ -77,3 +77,9 @@ HP0 실전투와 월드 텍스트 focus 입력은 각각 미관찰/미검증이�
 결정: 사용자가 개발 시작/계속 진행·별도 승인 Slack 전달·변경별 새 스레드·Unity Coordinator 앱 발신을 지시했다. 이후 명시 승인으로 서버 보호 영역 두 줄 수정과 전용 캐릭터4행 생성만 적용했다. DB 스키마·기존 계정/비밀번호/재화/아이템 변경은 없었다. 정상 로그인·플레이 상태 저장은 발생했다. commit·push·merge·공개는 하지 않았고 원본 Game의 사용자 변경은 보존했다. HTML은 사용자 유보 지시대로 제작하지 않았다.
 
 C02 실행 정리: Play/paused/compiling/runner/runInBackground=false, Recorder0, native Keyboard/Mouse만, 게임TCP established0. 기존 서비스 유지. Slack은 앱 sender U0C9ZRTQ6F8을 auth.test와 읽기로 확인했고 사용자 명의 발신은 중단했다. 수신기 Coordinator 설정은 그대로이며 새 변경 스레드 자동 재개는 미검증이다. 최신 운영 단계는 HANDOFF.md와 요청 문서를 따른다.
+
+## 2026-10-19 — C08 Zone 1↔2 이동 검증 완료
+
+기존 격자 이웃 구역으로 이동하고 새 서버 상태가 확인된 뒤 조작을 재개하도록 연결했다. 종료 경합과 늦은 이전 구역 패킷도 처리하고 좌표·HP/MP·쿨다운을 보존한다. 서버 39/39, 최종 영향 Unity 회귀 6/6, TCP 경계 3/3 통과. 실제 마우스 입력으로 저장된 Zone 1 재접속 상태 확인, Zone 1→2→1 왕복·추가 이동·정상 종료까지 통과했다. 초반 fixture·TCP 수신·종료 observer 문제는 조건을 유지해 수정하고 해당 범위만 다시 확인했다. 상세 결과와 실행 간 범위는 [C08 결과](C08_RESULTS.md).
+
+C08 변경은 기준 `d752482` 위의 로컬 검증 결과다. GitHub 반영은 최종 승인 대기이며 실제 커밋·전달 상태는 HANDOFF.md를 따른다. 기존 서버 정상 종료에서 AcceptEx 경고가 재현되어 안전 중단 후 후보를 start-only로 실행했다. 경고 코드는 변경하지 않았고 DB 직접 변경도 없다. 최종 PR 생성 전 변경 요약·위험·복구안을 함께 Unity Coordinator Slack 스레드에 승인 요청한다.

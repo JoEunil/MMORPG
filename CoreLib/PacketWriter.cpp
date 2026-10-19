@@ -177,20 +177,22 @@ namespace Core {
         return p_st->body.chatCnt;
     }
 
-    std::shared_ptr<IPacket> PacketWriter::GetFullHeader() {
+    std::shared_ptr<IPacket> PacketWriter::GetFullHeader(uint16_t zoneID, uint64_t generation) {
         auto p = packetPool->Acquire();
         if (p == nullptr) {
             return nullptr;
         }
         p->Clear();
         auto p_st = reinterpret_cast<PacketStruct<FullSnapshotBody>*>(p->GetBuffer());
-        p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
+        p_st->header.length = sizeof(PacketHeader) + sizeof(uint16_t) * 2 + sizeof(uint64_t);
         p->SetLength(p_st->header.length);
         p_st->header.opcode = OP::ZONE_FULL_STATE_BROADCAST;
         p_st->header.magic = MAGIC;
         p_st->header.flags = 0x00;
         p_st->header.flags |= FLAG_SIMULATION;
         p_st->body.count = 0;
+        p_st->body.zoneID = zoneID;
+        p_st->body.zoneGeneration = generation;
         return p;
     }
 
@@ -216,20 +218,22 @@ namespace Core {
         return true;
     }
 
-    std::shared_ptr<IPacket> PacketWriter::GetMonsterFullHeader() {
+    std::shared_ptr<IPacket> PacketWriter::GetMonsterFullHeader(uint16_t zoneID, uint64_t generation) {
         auto p = packetPool->Acquire();
         if (p == nullptr) {
             return nullptr;
         }
         p->Clear();
         auto p_st = reinterpret_cast<PacketStruct<MonsterFullSnapshotBody>*>(p->GetBuffer());
-        p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
+        p_st->header.length = sizeof(PacketHeader) + sizeof(uint16_t) * 2 + sizeof(uint64_t);
         p->SetLength(p_st->header.length);
         p_st->header.opcode = OP::MONSTER_FULL_STATE_BROADCAST;
         p_st->header.magic = MAGIC;
         p_st->header.flags = 0x00;
         p_st->header.flags |= FLAG_SIMULATION;
         p_st->body.count = 0;
+        p_st->body.zoneID = zoneID;
+        p_st->body.zoneGeneration = generation;
         return p;
     }
 
@@ -251,20 +255,22 @@ namespace Core {
         return true;
     }
 
-    std::shared_ptr<IPacket> PacketWriter::GetActionHeader() {
+    std::shared_ptr<IPacket> PacketWriter::GetActionHeader(uint16_t zoneID, uint64_t generation) {
         auto p = packetPool->Acquire();
         if (p == nullptr) {
             return nullptr;
         }
         p->Clear();
         auto p_st = reinterpret_cast<PacketStruct<ActionResultBody>*>(p->GetBuffer());
-        p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
+        p_st->header.length = sizeof(PacketHeader) + sizeof(uint16_t) * 2 + sizeof(uint64_t);
         p->SetLength(p_st->header.length);
         p_st->header.opcode = OP::ACTION_RESULT;
         p_st->header.magic = MAGIC;
         p_st->header.flags = 0x00;
         p_st->header.flags |= FLAG_SIMULATION;
         p_st->body.count = 0;
+        p_st->body.zoneID = zoneID;
+        p_st->body.zoneGeneration = generation;
         return p;
     }
 
@@ -302,7 +308,7 @@ namespace Core {
         p_st->header.magic = MAGIC;
         p_st->header.flags = 0x00;
         p_st->header.flags |= FLAG_SIMULATION;
-        p_st->body.resStatus = 0;
+        p_st->body = {};
         return p;
     }
 
@@ -333,7 +339,7 @@ namespace Core {
         return p;
     }
 
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y) {
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y, uint64_t generation) {
         auto p = packetPool->AcquireUnique();
         if (p == nullptr) {
             return nullptr;
@@ -344,7 +350,7 @@ namespace Core {
         p->SetLength(p_st->header.length);
         p_st->header.opcode = OP::ZONE_CHANGE_RESPONSE;
         p_st->header.magic = MAGIC;
-        p_st->header.flags |= 0x00;
+        p_st->header.flags = 0x00;
         p_st->header.flags |= FLAG_SIMULATION;
         p_st->body.resStatus = 1;
         p_st->body.zoneID = zoneID;
@@ -352,6 +358,7 @@ namespace Core {
         p_st->body.startX = x;
         p_st->body.startY = y;
         p_st->body.zoneInternalID = zoneInternalID;
+        p_st->body.zoneGeneration = generation;
         return p;
     }
 }

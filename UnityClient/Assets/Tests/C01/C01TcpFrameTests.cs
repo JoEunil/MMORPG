@@ -49,12 +49,37 @@ namespace C01.Tests
         [UnityTest, Timeout(30000)]
         public IEnumerator InvalidC01Frames_DisconnectWithoutDispatch()
         {
-            for (var kind = 0; kind < 6; kind++)
+            for (var kind = 0; kind < 8; kind++)
             {
                 var validation = CheckInvalidFrame(kind);
                 while (validation.MoveNext())
                     yield return validation.Current;
             }
+        }
+
+        [UnityTest, Timeout(30000)]
+        public IEnumerator C08SplitAckAndCoalescedSnapshotCrossTheRealTcpBoundary()
+        {
+            var handler = new RecordingHandler();
+            var socket = CreateSocket(handler);
+            var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var ack = Header(39, 17); ack[7] = 1;
+            var full = Header(63, 7); full[7] = 1; full[8] = 1;
+            BitConverter.GetBytes((ushort)1).CopyTo(full, 10);
+            BitConverter.GetBytes(1UL).CopyTo(full, 12);
+            var server = SendSplitThenCombined(listener, ack, full);
+            try
+            {
+                var connect = socket.Connect(IPAddress.Loopback.ToString(), ((IPEndPoint)listener.LocalEndpoint).Port);
+                yield return WaitFor(() => connect.IsCompleted, 5f);
+                if (connect.IsFaulted) throw connect.Exception;
+                yield return WaitFor(() => handler.Packets.Count == 2, 5f);
+                Assert.That(handler.Packets[0], Is.EqualTo(ack));
+                Assert.That(handler.Packets[1], Is.EqualTo(full));
+                yield return WaitFor(() => server.IsCompleted, 2f);
+            }
+            finally { socket.Dispose(); listener.Stop(); }
         }
 
         private IEnumerator CheckInvalidFrame(int kind)
@@ -172,6 +197,12 @@ namespace C01.Tests
                     var badCount = Header(430, 4);
                     badCount[9] = 11;
                     return badCount;
+                case 6:
+                    var oldAck = Header(31, 17); oldAck[7] = 1;
+                    return oldAck;
+                case 7:
+                    var oldSnapshot = Header(10, 7); oldSnapshot[7] = 1;
+                    return oldSnapshot;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(kind));
             }

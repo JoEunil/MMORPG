@@ -43,6 +43,7 @@ namespace Core {
 
         uint64_t m_deltaTickCounter;
         uint16_t m_zoneID;
+        uint64_t m_generation = 0; // Incremented only by a committed admission, under m_mutex.
         ZoneArea m_area;
         std::array<std::array<Cell, CELLS_X>, CELLS_Y> m_cells;
 
@@ -77,10 +78,13 @@ namespace Core {
 
         void RemoveFromCell(CharacterState& character);
         void AddToCell(CharacterState& character,  uint8_t x, uint8_t y);
-        uint32_t AcquireInternalID();
+        uint32_t ImmigrateCharLocked(uint64_t sessionID, const CharacterState& user);
+        void RemoveCharacterLocked(uint64_t sessionID);
         void UpdateSessionSnapshot();
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
+        friend class StateManager;
+        friend class NonZoneThreadPoolFixture;
     public:
         explicit ZoneState(uint16_t zone) {
             m_zoneID = zone;
@@ -113,7 +117,6 @@ namespace Core {
             InitAOI();
         }
         void InitializeMonster();
-        uint32_t ImmigrateChar(uint64_t sessionID, CharacterState& user);
         bool EmigrateChar(uint64_t sessionID, CharacterState& o);
         void UpdateProfileVersion(uint64_t sessionID, uint32_t version);
         Base::BufferReader<std::vector<std::vector<uint64_t>>> GetSessionSnaphot() {

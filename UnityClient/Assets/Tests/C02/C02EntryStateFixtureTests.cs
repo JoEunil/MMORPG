@@ -39,7 +39,7 @@ namespace C02.Tests
             ((IViewModelNet)model).EnterReceived(1, Array.Empty<byte>(), 0, 0, 0, 100, 100, 100, 100, 0, 8, 9, 0);
             dispatcher.Drain();
             Assert.That(network.ZoneChangeCount, Is.EqualTo(1));
-            ((IViewModelNet)model).ZoneChageReceived(0, 0, 0, 0, 0, 0);
+            ((IViewModelNet)model).ZoneChageReceived(0, 0, 0, 0, 0, 0, 1);
             Assert.That(zoneFailed, Is.False);
             dispatcher.Drain();
             Assert.That(zoneFailed, Is.True);
@@ -60,8 +60,8 @@ namespace C02.Tests
             model.Enter(789UL);
             var net = (IViewModelNet)model;
             net.EnterReceived(1, Array.Empty<byte>(), 0, 0, 0, 100, 100, 100, 100, 0, 2, 3, 0);
-            net.ZoneChageReceived(1, 4, 5, 6, 7, 8);
-            net.FullReceived(0, Array.Empty<FullStateField>());
+            net.ZoneChageReceived(1, 4, 5, 6, 7, 8, 1);
+            net.FullReceived(1, 1, 0, Array.Empty<FullStateField>());
             ((IDisposable)model).Dispose();
             dispatcher.Drain();
 

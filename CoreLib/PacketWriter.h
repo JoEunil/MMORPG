@@ -43,20 +43,22 @@ namespace Core {
         std::shared_ptr<IPacket> GetInitialChatBatchPacket(CHAT_SCOPE scope);
         uint16_t WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, uint32_t senderProfileId, const std::string& message);
         
-        std::shared_ptr<IPacket> GetDeltaHeader() {
+        std::shared_ptr<IPacket> GetDeltaHeader(uint16_t zoneID, uint64_t generation) {
             auto p = packetPool->Acquire();
             if (!p) {
                 return nullptr;
             }
             p->Clear();
             auto p_st = reinterpret_cast<PacketStruct<DeltaSnapshotBody>*>(p->GetBuffer());
-            p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
+            p_st->header.length = sizeof(PacketHeader) + sizeof(uint16_t) * 2 + sizeof(uint64_t);
             p->SetLength(p_st->header.length);
             p_st->header.magic = MAGIC;
             p_st->header.opcode = OP::ZONE_DELTA_UPDATE_BROADCAST;
             p_st->header.flags = 0x00;
             p_st->header.flags |= FLAG_SIMULATION;
             p_st->body.count = 0;
+            p_st->body.zoneID = zoneID;
+            p_st->body.zoneGeneration = generation;
             return p;
         }
         template<typename T>
@@ -77,23 +79,25 @@ namespace Core {
             std::memcpy(&slot.fieldVal, &val, sizeof(T));
             return true;
         }
-        std::shared_ptr<IPacket> GetFullHeader();
+        std::shared_ptr<IPacket> GetFullHeader(uint16_t zoneID, uint64_t generation);
         bool WriteFullField(std::shared_ptr<IPacket> p, const CharacterState& state);
 
-        std::shared_ptr<IPacket> GetMonsterDeltaHeader() {
+        std::shared_ptr<IPacket> GetMonsterDeltaHeader(uint16_t zoneID, uint64_t generation) {
             auto p = packetPool->Acquire();
             if (!p) {
                 return nullptr;
             }
             p->Clear();
             auto p_st = reinterpret_cast<PacketStruct<MonsterDeltaSnapshotBody>*>(p->GetBuffer());
-            p_st->header.length = sizeof(PacketHeader) + sizeof(p_st->body.count);
+            p_st->header.length = sizeof(PacketHeader) + sizeof(uint16_t) * 2 + sizeof(uint64_t);
             p->SetLength(p_st->header.length);
             p_st->header.magic = MAGIC;
             p_st->header.opcode = OP::MONSTER_DELTA_UPDATE_BROADCAST;
             p_st->header.flags = 0x00;
             p_st->header.flags |= FLAG_SIMULATION;
             p_st->body.count = 0;
+            p_st->body.zoneID = zoneID;
+            p_st->body.zoneGeneration = generation;
             return p;
         }
         template<typename T>
@@ -114,10 +118,10 @@ namespace Core {
             std::memcpy(&slot.fieldVal, &val, sizeof(T));
             return true;
         }
-        std::shared_ptr<IPacket> GetMonsterFullHeader();
+        std::shared_ptr<IPacket> GetMonsterFullHeader(uint16_t zoneID, uint64_t generation);
         bool WriteMonsterFullField(std::shared_ptr<IPacket> p, const MonsterState& state);
 
-        std::shared_ptr<IPacket> GetActionHeader();
+        std::shared_ptr<IPacket> GetActionHeader(uint16_t zoneID, uint64_t generation);
         bool WriteActionField(std::shared_ptr<IPacket> p, const ActionResult& state);
 
         std::shared_ptr<IPacket> GetInitialChunk(bool useGiant = false) {
@@ -141,7 +145,7 @@ namespace Core {
         std::unique_ptr<IPacket, PacketDeleter> WriteProfileBatchRes(const ProfileEntry* entries, uint16_t count);
 
         std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeFailed();
-        std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y);
+        std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y, uint64_t generation);
 
         std::unique_ptr<IPacket, PacketDeleter>  GetPingPacket(uint64_t rtt,uint64_t nowMs) override {
             auto p = packetPool->AcquireUnique();

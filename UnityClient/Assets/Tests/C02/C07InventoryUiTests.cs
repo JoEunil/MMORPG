@@ -215,7 +215,8 @@ namespace C02.Tests
                     BindingFlags.Instance | BindingFlags.NonPublic, null,
                     new object[] { network, data, new NullLogger(), dispatcher }, null);
                 model.ZoneChange(0);
-                ((IViewModelNet)model).ZoneChageReceived(1, 1, 1, 1, 0, 0);
+                ((IViewModelNet)model).ZoneChageReceived(1, 1, 1, 1, 0, 0, 1);
+                ((IViewModelNet)model).FullReceived(1, 1, 1, new[] { new FullStateField { zoneInternalID = 1 } });
                 var initializer = new Initializer();
                 SetPrivate(initializer, "_viewModel", model);
                 SetPrivate(initializer, "_data", data);

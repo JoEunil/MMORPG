@@ -24,6 +24,7 @@ namespace Core {
         }
         friend class Initializer;
         friend class NonZoneThreadPoolFixture;
+        friend class StateManager;
     public:
         void Disconnect(uint64_t sessionID) {
             // db에서 load 후 변경되지 않은 상태

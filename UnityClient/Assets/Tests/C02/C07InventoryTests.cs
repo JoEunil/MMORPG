@@ -108,7 +108,7 @@ namespace C02.Tests
             {
                 var data = Activator.CreateInstance(typeof(ViewModel).Assembly.GetType("ClientCore.ViewData"), true); Data = (IViewDataUI)data;
                 Model = (ViewModel)Activator.CreateInstance(typeof(ViewModel), BindingFlags.NonPublic | BindingFlags.Instance, null, new object[] { Network, data, new NullLogger(), this }, null);
-                Model.ZoneChange(0); Model.ZoneChageReceived(1, 1, 1, 1, 0, 0); Drain();
+                C08TestSession.Ready(Model, Drain);
             }
             public void Post(Action job) => jobs.Enqueue(job);
             public void Drain() { while (jobs.Count > 0) jobs.Dequeue()(); }
