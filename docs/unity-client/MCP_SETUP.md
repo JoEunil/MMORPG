@@ -1,10 +1,12 @@
 # Unity MCP 연결과 테스트 안내
 
-## 최신 W03 연결 — 현재 개발 Coordinator
+공통 운영·승인·병렬 실행·테스트 기준은 [현재 운영 기준](CURRENT_POLICY.md)을 따른다. 현재 워크플로우는 시작된 상태다. 아래 준비·연결·승인 기록은 당시 이력이며, 현재 대기 상태나 실행 권한을 뜻하지 않는다.
+
+## W03 연결 이력
 
 사용자 단계 완료/Slack 재개 지시에 따라 작업 체크아웃 Tools/SlackReceiver로 새 수신기를 준비했다. 현재 채팅01a14d46-8b23-7590-8ad5-7efc20f8ecd9/등록C05·W03스레드만 대상이며 이전 원본Game 준비 수신기/상태는 보존한다. 독립 정적 리뷰·필터7/7·실제BOT_AUTH/Socket재연결/LISTENING까지 확인, 실제 지정 사람 회신 왕복은 아직미검증이다. 최신 운영은 SLACK_WORKFLOW.md를 따른다. 아래 준비 단계 연결·ID는 이전 시점 기록이다.
 
-## Coordinator 시작 전 준비 상태
+## 이전 준비 상태
 
 - 완료: `master` 기반 `codex/unity-ai-client` worktree, 빈 URP 프로젝트, Unity MCP 연결·컴파일, Recorder GIF 저장, Slack 수신·재연결·중복 억제·동일 준비 채팅 자동 재개.
 - 완료: 임시 Play Mode 오브젝트에서 마우스 입력→위치 `(1,0,0)`, Space 입력→초록 재질을 assertion으로 확인했다. `Assets/Captures/input-smoke-before.png`와 `input-smoke-after.png`에서 실제 화면 변화도 확인했다. Game View 포커스가 필요했고 캡처 시 정지된 이전 프레임을 피하려고 시험 동안만 `Application.runInBackground`를 켰다. 입력은 `down`/`up`을 분리해 전달했다. 임시 InputAction을 해제하고 Play 종료 및 기존 백그라운드 설정 복구를 마쳤다. 게임 이동/스킬·OS 입력 검증은 아니다.
@@ -13,9 +15,11 @@
 - 확정: 개발 시작 후 ClientCore Unity 최소 호환 수정과 관련 검증 후 작업 브랜치 커밋 허용. push·병합·공개 및 범위를 벗어난 변경은 별도 승인. GitHub Pages는 공개 단계에서 설정한다.
 - 시작 조건: 위 준비 결과를 인계한 뒤 사용자의 워크플로우 시작 지시로 개발을 시작한다. 역할 문서의 모델 권장값은 실제 실행 설정과 구분한다.
 
-## Slack 연결 대상
+## 이전 Slack 연결과 로컬 도구 기록
 
 현재 사용자 정책(2026-10-18): 변경 단위마다 #unity-client에 새 부모 메시지/스레드를 만든다. 기존 상시 연결 스레드는 연결 시험/과거 기록이며 새 변경 승인·결과는 각 전용 스레드로 묶는다. 수신기는 원래 단일 thread 필터이므로 새 스레드 자동 전달이 되는 것으로 보고하지 않는다. Coordinator 대상 설정은 그대로 유지하고 현재는 커넥터로 채널과 각 thread를 직접 확인한다. `oldest`를 사용한 조회가 답변을 놓친 사례가 있어 승인 확인 때 전체 해당 스레드를 읽고 원문/발신자/ts를 대조한다.
+
+아래 `scripts/unity-client/` 도구는 원본 PC의 이전 로컬 도구이며 저장소에 포함하지 않는다. 새 체크아웃에서 그대로 실행할 수 있는 설치 절차가 아니다. 현재 수신기는 `UnityClient/Tools/SlackReceiver/`를 기준으로 실제 설정을 확인한다.
 
 ### 로컬 토큰 저장
 

@@ -396,3 +396,6 @@ wal/
 /UnityClient/[Cc]aptures/
 /UnityClient/Assets/[Cc]aptures/
 /UnityClient/Assets/[Cc]aptures.meta
+
+# Local Unity agent and Slack receiver scripts.
+/scripts/unity-client/
