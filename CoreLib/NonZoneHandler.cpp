@@ -112,7 +112,8 @@ namespace Core {
     }
 
     static void ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID) {
-        stateManager->AddSession(sessionID, userID, resStatus == RES_STATUS::SUCCESS);
+        if (!stateManager->CompleteAuth(sessionID, userID, resStatus == RES_STATUS::SUCCESS))
+            return;
         auto res = writer->WriteAuthResponse(resStatus);
         if (res == nullptr)
             return;
@@ -126,6 +127,7 @@ namespace Core {
         privdata->userID = body->userID;
         std::memcpy(privdata->sessionToken.data(), body->sessionToken, privdata->sessionToken.size());
         privdata->callbackFunc = &ResponseSession;
+        stateManager->BeginAuth(privdata->sessionID);
         auth->CheckSession(privdata);
     }
 

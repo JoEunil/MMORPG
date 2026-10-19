@@ -1,127 +1,131 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Net.Sockets;
-using System.Security.Cryptography.X509Certificates;
 using System.Net;
-using static System.Net.Mime.MediaTypeNames;
+using System.Net.Sockets;
+using System.Threading.Tasks;
 using ClientCore.PacketHelper;
-using System.Runtime.InteropServices;
 
 namespace ClientCore.Network
 {
-    internal class TCPSocket : ITCPSocket
+    internal class TCPSocket : ITCPSocket, IDisposable
     {
         private readonly IHandlerSock _handler;
-        private readonly ILogger _logger;
-        private Socket sock;
-        private string _address;
-        private int _port;
-
-        public TCPSocket(IHandlerSock handler, ILogger logger)
-        {
-            _handler = handler;
-            _logger = logger;
-        }
-        ~TCPSocket()
-        {
-            Close();
-        }
+        private readonly object _gate = new object();
+        private Socket _socket;
+        private bool _disposed;
+        public event Action<string> OnDisconnected;
+        public TCPSocket(IHandlerSock handler, ILogger logger) { _handler = handler; }
         public async Task Connect(string address, int port)
         {
+            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            lock (_gate)
+            {
+                if (_disposed) { socket.Dispose(); throw new ObjectDisposedException(nameof(TCPSocket)); }
+                _socket?.Dispose();
+                _socket = socket;
+            }
             try
             {
-               _logger.Log("Connect" + address + ", " + port);
-                _address = address;
-                _port = port;
-                sock?.Close();
-
-                sock = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                IPAddress server_addr = IPAddress.Parse(_address);
-                IPEndPoint clientEP = new IPEndPoint(server_addr, _port);
-                await sock.ConnectAsync(clientEP);
-                _logger.Log("Server connected");
-                _ = ReceiveLoopAsync(); // 수신 루프 백그라운드 실행
+                await socket.ConnectAsync(new IPEndPoint(IPAddress.Parse(address), port)).ConfigureAwait(false);
+                lock (_gate)
+                {
+                    if (_socket != socket) throw new OperationCanceledException();
+                }
+                _ = ReceiveLoopAsync(socket);
             }
-            catch (SocketException ex) 
+            catch
             {
-                _logger.Log("Socket failed:"+ ex);
+                lock (_gate)
+                {
+                    if (_socket == socket) _socket = null;
+                    socket.Dispose();
+                }
+                throw;
             }
         }
-        private void Close()
-        {
-            if (sock != null)
-
-            {
-                sock.Close();
-                sock.Dispose();
-            }
-        }
-        private List<byte> recvBuffer = new List<byte>();
-        public async Task ReceiveLoopAsync()
+        private async Task ReceiveLoopAsync(Socket socket)
         {
             var buffer = new byte[4096];
-            while (true)
+            var pending = new List<byte>();
+            string failure = null;
+            try
             {
-                try
+                while (true)
                 {
-                    int received = await sock.ReceiveAsync(new ArraySegment<byte>(buffer), SocketFlags.None);
-                    if (received == 0)
+                    int received = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), SocketFlags.None).ConfigureAwait(false);
+                    if (received == 0) { failure = "Game server disconnected."; break; }
+                    pending.AddRange(buffer.Take(received));
+                    lock (_gate)
                     {
-                        _logger.Log("Server disconected");
-                        break; // 연결 종료
-                    }
-                        
-                    // tcp 패킷 자르기, 동적 배열 기반으로 복사로 처리함.
-
-                    recvBuffer.AddRange(buffer.Take(received));
-
-                    while (true)
-                    {
-                        if (recvBuffer.Count < Marshal.SizeOf<PacketHeader>()) 
-                            break;
-
-                        // 헤더 확인
-                        PacketHeader header = Packet.ExtractHeader(recvBuffer.ToArray());
-                        if (recvBuffer.Count < header.length) break; // 아직 전체 패킷 안들어옴
-
-                        byte[] packetData = recvBuffer.Take((int)header.length).ToArray();
-                        recvBuffer.RemoveRange(0, (int)header.length);
-                        // 배열을 앞으로 당기면서 복사 발생.. 
-
-                        // 패킷 처리
-                        _handler.HandleResponse(packetData);
+                        if (_socket != socket) return;
+                        while (pending.Count >= 8)
+                        {
+                            var header = Packet.ExtractHeader(pending.ToArray());
+                            // Bound frames to avoid zero-progress loops and unbounded buffering.
+                            if (header.magic != 0xABCD || header.length < 8 || header.length > 1024 * 1024)
+                                throw new InvalidDataException();
+                            if (header.opcode == 2 && (header.length != 9 || header.flags != 0) ||
+                                header.opcode == 14 && (header.length < 22 || header.flags != 0) ||
+                                header.opcode == 15 && (header.length < 173 || header.flags != 0) ||
+                                header.opcode == 25 && (header.length < 10 || header.length > 2010 || header.flags != 0) ||
+                                header.opcode == 4 && (header.length != 430 || header.flags != 0) ||
+                                header.opcode == 6 && (header.length != 76 || header.flags != 0) ||
+                                header.opcode == 17 && (header.length != 31 || header.flags != 1) ||
+                                (header.opcode == 7 || header.opcode == 8 || header.opcode == 9 ||
+                                 header.opcode == 10 || header.opcode == 12) &&
+                                (header.length < 10 || header.flags != 1))
+                                throw new InvalidDataException();
+                            if (pending.Count < header.length) break;
+                            byte[] packet = pending.GetRange(0, (int)header.length).ToArray();
+                            if (header.opcode == 4 && packet[9] > 10) throw new InvalidDataException();
+                            pending.RemoveRange(0, packet.Length);
+                            _handler.HandleResponse(packet);
+                            if (_socket != socket) return;
+                        }
                     }
                 }
-                catch (SocketException ex)
+            }
+            catch (InvalidDataException) { failure = "Invalid game server packet."; }
+            catch (SocketException) { failure = "Game server receive failed."; }
+            catch (ObjectDisposedException) { failure = "Game server connection closed."; }
+            catch (Exception) { failure = "Game server response failed."; }
+            finally
+            {
+                lock (_gate)
                 {
-                    _logger.Log("Recv failed:" + ex);
-                    break;
-                }
-                catch (ObjectDisposedException)
-                {
-                    _logger.Log("Recv failed:" );
-                    break;
+                    if (_socket == socket)
+                    {
+                        _socket = null;
+                        socket.Dispose();
+                        if (!_disposed && failure != null) OnDisconnected?.Invoke(failure);
+                    }
                 }
             }
         }
         public void Send(byte[] binary)
         {
-            try
+            lock (_gate)
             {
-                int sent = sock.Send(binary);
-                if (sent == 0)
-                    _logger.Log("Send returned 0 bytes");
+                if (_socket == null) throw new InvalidOperationException("Game server is not connected.");
+                // Serialize complete frames, including partial Socket.Send results.
+                int offset = 0;
+                while (offset < binary.Length)
+                {
+                    int sent = _socket.Send(binary, offset, binary.Length - offset, SocketFlags.None);
+                    if (sent == 0) throw new IOException("Game server send failed.");
+                    offset += sent;
+                }
             }
-            catch (SocketException ex)
+        }
+        public void Dispose()
+        {
+            lock (_gate)
             {
-                _logger.Log("SocketException during Send: " + ex);
-            }
-            catch (ObjectDisposedException)
-            {
-                _logger.Log("Socket disposed during Send");
+                _disposed = true;
+                _socket?.Dispose();
+                _socket = null;
             }
         }
     }

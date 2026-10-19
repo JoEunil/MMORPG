@@ -1,0 +1,5 @@
+{
+  "name": "C02.Editor",
+  "references": ["C01.Runtime", "C01.Editor", "C02.Runtime", "Unity.TextMeshPro", "Unity.ugui"],
+  "includePlatforms": ["Editor"]
+}

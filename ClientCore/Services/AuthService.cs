@@ -1,15 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System;
+using System.Net;
 using System.Net.Http;
-
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using static ClientCore.Config;
 
 namespace ClientCore.Services
-
 {
     public class LoginResponse
     {
@@ -21,7 +19,6 @@ namespace ClientCore.Services
         public string IP { get; set; }
         public int Port { get; set; }
     }
-
     public class SessionResponse
     {
         public string SessionToken { get; set; }
@@ -30,76 +27,41 @@ namespace ClientCore.Services
     internal class AuthService
     {
         public static AuthService Instance { get; } = new AuthService();
-        internal async Task LoginAsync(string id, string pwd)
+        internal async Task<LoginResponse> LoginAsync(string id, string pwd, CancellationToken cancellationToken)
         {
-
-            using (HttpClient client = new HttpClient())
+            using (var client = new HttpClient())
+            using (var content = new StringContent(JsonConvert.SerializeObject(new { login_id = id, password = pwd }), Encoding.UTF8, "application/json"))
+            using (var response = await client.PostAsync(LOGIN_SERVER_ADDR, content, cancellationToken).ConfigureAwait(false))
             {
-                var requestData = new
-                {
-                    login_id = id,
-                    password = pwd
-                };
-
-                string json = JsonConvert.SerializeObject(requestData);
-
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                HttpResponseMessage response = await client.PostAsync(LOGIN_SERVER_ADDR, content);
-                 
-                if (response.IsSuccessStatusCode)
-                {
-                    string responseBody = await response.Content.ReadAsStringAsync();
-
-                    var parsed = JsonConvert.DeserializeObject<LoginResponse>(responseBody);
-                    string accessToken = parsed?.AccessToken;
-                    ulong userID = parsed.UserID;
-                    if (!string.IsNullOrEmpty(accessToken))
-                    {
-                        ClientSession.AccessToken = accessToken;
-                        ClientSession.UserID = userID;
-                    }
-                    else
-                    {
-                        throw new Exception("로그인 실패: 토큰이 없음.");
-                    }
-                }
-                else
-                {
-                    throw new Exception($"로그인 실패: {response.StatusCode}");
-                }
+                if (!response.IsSuccessStatusCode)
+                    throw new InvalidOperationException($"Login failed (HTTP {(int)response.StatusCode}).");
+                LoginResponse parsed;
+                try { parsed = JsonConvert.DeserializeObject<LoginResponse>(await response.Content.ReadAsStringAsync().ConfigureAwait(false)); }
+                catch (JsonException) { throw new InvalidOperationException("Invalid login response."); }
+                if (parsed == null || string.IsNullOrWhiteSpace(parsed.AccessToken) || parsed.UserID == 0)
+                    throw new InvalidOperationException("Invalid login response.");
+                cancellationToken.ThrowIfCancellationRequested();
+                return parsed;
             }
         }
-        public async Task<(string serverAddress, int serverPort)> GetSessionAsync()
+        internal async Task<SessionResponse> GetSessionAsync(string accessToken, CancellationToken cancellationToken)
         {
-
-            using (HttpClient client = new HttpClient())
+            using (var client = new HttpClient())
             {
-                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", ClientSession.AccessToken);
-
-                HttpResponseMessage response = await client.PostAsync("http://127.0.0.1:3000/auth/getSession", null);
-                GameServerInfo gameServer;
-                if (response.IsSuccessStatusCode)
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                using (var response = await client.PostAsync("http://127.0.0.1:3000/auth/getSession", null, cancellationToken).ConfigureAwait(false))
                 {
-                    string responseBody = await response.Content.ReadAsStringAsync();
-
-                    var parsed = JsonConvert.DeserializeObject<SessionResponse>(responseBody);
-                    string sessionToken = parsed?.SessionToken;
-                    gameServer = parsed?.GameServer;
-                    if (!string.IsNullOrEmpty(sessionToken))
-                    {
-                        ClientSession.SessionToken = sessionToken;
-                    }
-                    else
-                    {
-                        throw new Exception("세션토큰이 없음");
-                    }
+                    if (!response.IsSuccessStatusCode)
+                        throw new InvalidOperationException($"Session request failed (HTTP {(int)response.StatusCode}).");
+                    SessionResponse parsed;
+                    try { parsed = JsonConvert.DeserializeObject<SessionResponse>(await response.Content.ReadAsStringAsync().ConfigureAwait(false)); }
+                    catch (JsonException) { throw new InvalidOperationException("Invalid session response."); }
+                    if (parsed == null || string.IsNullOrWhiteSpace(parsed.SessionToken) || Encoding.UTF8.GetByteCount(parsed.SessionToken) > 36 ||
+                        parsed.GameServer == null || !IPAddress.TryParse(parsed.GameServer.IP, out _) || parsed.GameServer.Port < 1 || parsed.GameServer.Port > 65535)
+                        throw new InvalidOperationException("Invalid session response.");
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return parsed;
                 }
-                else
-                {
-                    throw new Exception($"세션 토큰 요청 실패: {response.StatusCode}");
-                }
-                return (gameServer.IP, gameServer.Port);
             }
         }
     }

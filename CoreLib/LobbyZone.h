@@ -23,6 +23,7 @@ namespace Core {
             return true;
         }
         friend class Initializer;
+        friend class NonZoneThreadPoolFixture;
     public:
         void Disconnect(uint64_t sessionID) {
             // db에서 load 후 변경되지 않은 상태
@@ -36,6 +37,13 @@ namespace Core {
         }
         
         bool ImmigrateChar(uint64_t sessionID, CharacterState& c) {
+            // Same order as StateManager::Disconnect/CleanUp: shard -> lobby.
+            auto& shard = stateManager->m_shards[sessionID & SHARD_SIZE_MASK];
+            std::unique_lock<std::shared_mutex> sessionLock(shard.smutex);
+            auto session = shard.sessionMap.find(sessionID);
+            if (session == shard.sessionMap.end()
+                || !session->second.authenticated || session->second.zoneID != 0)
+                return false;
             std::lock_guard lock(m_mutex);
             auto it = m_chars.find(sessionID);
             if (it != m_chars.end()) {
@@ -43,7 +51,6 @@ namespace Core {
                 return false;
             }
             m_chars[sessionID] = c;
-            stateManager->SetZoneID(sessionID, 0);
             return true;
         }
         
