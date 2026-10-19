@@ -39,6 +39,7 @@ namespace ClientCore.Services
             _sock.Send(PacketBuilder.CreateChatPacket(message, scope, targetID));
         }
         public void Profiles(uint[] profileIds) => _sock.Send(PacketBuilder.CreateProfileRequest(profileIds));
+        public void RequestInventory() => _sock.Send(PacketBuilder.CreateInventoryRequestPacket());
         public void Action(byte dir, float x, float y, byte skillSlot)
         {
             _sock.Send(PacketBuilder.CreateActionPacket(dir, x, y, skillSlot));

@@ -33,6 +33,7 @@ namespace ClientCore
         private readonly Dictionary<uint, uint> _profilesMissing = new Dictionary<uint, uint>();
         private long _profileRequestDeadline;
         private bool _worldReady;
+        private bool _inventoryPending;
         public event Action<bool> OnAuthReceived;
         public event Action<byte, ushort> OnCharacterListResult;
         public event Action<string> OnConnectionFailed;
@@ -97,6 +98,9 @@ namespace ClientCore
             {
                 if (_lifetime.IsCancellationRequested) return;
                 _lifetime.Cancel();
+                _inventoryPending = false;
+                _worldReady = false;
+                _viewData.SetInventory(Array.Empty<PacketHelper.InventoryItem>());
                 ClientSession.AccessToken = null;
                 ClientSession.SessionToken = null;
                 ClientSession.UserID = 0;
@@ -261,15 +265,24 @@ namespace ClientCore
             });
         }
 
+        public void RequestInventory()
+        {
+            if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || _inventoryPending)
+                throw new InvalidOperationException("Inventory is unavailable or a request is pending.");
+            _inventoryPending = true;
+            _viewData.SetInventory(Array.Empty<PacketHelper.InventoryItem>());
+            try { _network.RequestInventory(); }
+            catch { _inventoryPending = false; throw; }
+        }
+
         public void InventoryReceived(byte resStatus, PacketHelper.InventoryItem[] items)
         {
-            bool success = resStatus != 0;
-            if (success)
-            {
-                _viewData.SetInventory(items);
-            }
             _threadDispatcher.Post(() =>
             {
+                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || !_inventoryPending) return;
+                _inventoryPending = false;
+                bool success = resStatus == 1;
+                _viewData.SetInventory(success ? items : Array.Empty<PacketHelper.InventoryItem>());
                 OnInventoryReceived?.Invoke(success);
             });
         }
@@ -364,6 +377,8 @@ namespace ClientCore
             if (_lifetime.IsCancellationRequested) return;
             _connectionFailed = true;
             _worldReady = false;
+            _inventoryPending = false;
+            _viewData.SetInventory(Array.Empty<PacketHelper.InventoryItem>());
             _viewData.SetCharList(0, Array.Empty<PacketHelper.CharacterInfo>());
             _threadDispatcher.Post(() =>
             {

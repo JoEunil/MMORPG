@@ -68,9 +68,10 @@ namespace Core {
         };
 
         class TestPacket final : public IPacket {
-            std::array<uint8_t, 1024> bytes{};
+            std::array<uint8_t, 1024> bytes;
             uint32_t length = 0;
         public:
+            TestPacket() { bytes.fill(0xCD); }
             uint8_t* GetBuffer() override { return bytes.data(); }
             uint32_t GetLength() const override { return length; }
             uint32_t GetCapacity() const override { return static_cast<uint32_t>(bytes.size()); }
@@ -447,12 +448,15 @@ namespace Core {
         ASSERT_TRUE(enterPacket.WaitForRelease());
         ASSERT_TRUE(CompleteLoadSuccessfully(*request)); // Load completion before close.
         ASSERT_TRUE(HasLobbyCharacter(42));
+        ASSERT_EQ(state->GetCharacterID(42), 5012);
         ASSERT_EQ(iocp.sentOpcodes.size(), 2);
         EXPECT_EQ(iocp.sentOpcodes.back(), OP::ENTER_WORLD_RESPONSE);
 
         // Component rollback only: no ZoneChange/ZoneState immigration is executed.
         CharacterState snapshot{};
+        snapshot.characterID = 9001;
         EXPECT_FALSE(lobby.ImmigrateChar(42, snapshot)); // Existing lobby entry rejects duplicates.
+        EXPECT_EQ(state->GetCharacterID(42), 5012); // Duplicate entry cannot replace the bound character.
         ASSERT_TRUE(lobby.EmigrateChar(42, snapshot));
         EXPECT_EQ(snapshot.characterID, 5012);
         ASSERT_TRUE(lobby.ImmigrateChar(42, snapshot)); // Authenticated zone0 rollback remains valid.
@@ -461,6 +465,7 @@ namespace Core {
         EXPECT_EQ(state->GetZoneID(42), -1);
         EXPECT_FALSE(HasLobbyCharacter(42));
         EXPECT_FALSE(lobby.ImmigrateChar(42, snapshot)); // Closed session cannot be rolled back.
+        EXPECT_EQ(state->GetCharacterID(42), 0);
     }
 
     TEST_F(NonZoneThreadPoolFixture, LobbyAdmissionRejectsPendingFailedAndNonLobbySessionsComponent) {
@@ -471,6 +476,7 @@ namespace Core {
         ASSERT_TRUE(pending.WaitForRelease());
         ASSERT_TRUE(authenticated.WaitForRelease());
         CharacterState snapshot{};
+        snapshot.characterID = 5012;
         EXPECT_FALSE(lobby.ImmigrateChar(42, snapshot));
         auth.Complete(0, RES_STATUS::FAILED);
         EXPECT_FALSE(lobby.ImmigrateChar(42, snapshot));
@@ -484,5 +490,63 @@ namespace Core {
         StopWorker();
         EXPECT_FALSE(HasLobbyCharacter(42));
         EXPECT_FALSE(HasLobbyCharacter(43));
+        EXPECT_EQ(state->GetCharacterID(42), 0);
+        EXPECT_EQ(state->GetCharacterID(43), 0);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, InventoryResponseRejectsFailureAndOversizedCountWithoutLeakingBuffer) {
+        MsgInventoryResBody failed;
+        std::memset(&failed, 0xA5, sizeof(failed));
+        failed.resStatus = RES_STATUS::FAILED;
+        failed.itemCount = MAX_INVENTORY_ITEMS;
+
+        auto failedPacket = writer.WriteInventoryResponse(&failed);
+        ASSERT_NE(failedPacket, nullptr);
+        ASSERT_EQ(failedPacket->GetLength(), sizeof(PacketStruct<InventoryResBody>));
+        const auto* failedResponse = reinterpret_cast<const PacketStruct<InventoryResBody>*>(failedPacket->GetBuffer());
+        EXPECT_EQ(failedResponse->body.resStatus, RES_STATUS::FAILED);
+        EXPECT_EQ(failedResponse->body.itemCount, 0);
+        for (const auto& item : failedResponse->body.items) {
+            EXPECT_EQ(item.itemID, 0);
+            EXPECT_EQ(item.quantity, 0);
+            EXPECT_EQ(item.slot, 0);
+        }
+
+        MsgInventoryResBody oversized{};
+        oversized.resStatus = RES_STATUS::SUCCESS;
+        oversized.itemCount = MAX_INVENTORY_ITEMS + 1;
+        auto oversizedPacket = writer.WriteInventoryResponse(&oversized);
+        ASSERT_NE(oversizedPacket, nullptr);
+        const auto* oversizedResponse = reinterpret_cast<const PacketStruct<InventoryResBody>*>(oversizedPacket->GetBuffer());
+        EXPECT_EQ(oversizedResponse->body.resStatus, RES_STATUS::FAILED);
+        EXPECT_EQ(oversizedResponse->body.itemCount, 0);
+        for (const auto& item : oversizedResponse->body.items) {
+            EXPECT_EQ(item.itemID, 0);
+            EXPECT_EQ(item.quantity, 0);
+            EXPECT_EQ(item.slot, 0);
+        }
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, InventoryResponseCopiesMaximumCountAndZeroesUnusedTail) {
+        MsgInventoryResBody body{};
+        body.resStatus = RES_STATUS::SUCCESS;
+        body.itemCount = MAX_INVENTORY_ITEMS;
+        for (uint16_t i = 0; i < body.itemCount; ++i) {
+            body.items[i].itemID = 100 + i;
+            body.items[i].quantity = i + 1;
+            body.items[i].slot = static_cast<uint8_t>(i);
+        }
+
+        auto packet = writer.WriteInventoryResponse(&body);
+        ASSERT_NE(packet, nullptr);
+        ASSERT_EQ(packet->GetLength(), sizeof(PacketStruct<InventoryResBody>));
+        const auto* response = reinterpret_cast<const PacketStruct<InventoryResBody>*>(packet->GetBuffer());
+        EXPECT_EQ(response->body.resStatus, RES_STATUS::SUCCESS);
+        EXPECT_EQ(response->body.itemCount, MAX_INVENTORY_ITEMS);
+        for (uint16_t i = 0; i < body.itemCount; ++i) {
+            EXPECT_EQ(response->body.items[i].itemID, body.items[i].itemID);
+            EXPECT_EQ(response->body.items[i].quantity, body.items[i].quantity);
+            EXPECT_EQ(response->body.items[i].slot, body.items[i].slot);
+        }
     }
 }

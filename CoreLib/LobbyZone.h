@@ -37,6 +37,8 @@ namespace Core {
         }
         
         bool ImmigrateChar(uint64_t sessionID, CharacterState& c) {
+            if (c.characterID == 0)
+                return false;
             // Same order as StateManager::Disconnect/CleanUp: shard -> lobby.
             auto& shard = stateManager->m_shards[sessionID & SHARD_SIZE_MASK];
             std::unique_lock<std::shared_mutex> sessionLock(shard.smutex);
@@ -50,7 +52,9 @@ namespace Core {
                 gameLogger->LogError("lobby zone", "ImmigrageChar Failed sessionID already exists", "sessionID", sessionID);
                 return false;
             }
-            m_chars[sessionID] = c;
+            if (!m_chars.emplace(sessionID, c).second)
+                return false;
+            session->second.characterID = c.characterID;
             return true;
         }
         

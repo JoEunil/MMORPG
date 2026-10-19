@@ -1,11 +1,18 @@
 param(
     [switch]$PreflightOnly,
+    [switch]$C07Candidate,
+    [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$C07Hash,
     [ValidateSet('R01-START-05/r1')][string]$ExecuteApprovedStart
 )
 $ErrorActionPreference = 'Stop'
 $root = 'C:\Users\joeun\Desktop\workspace\Game-UnityClient'
 $image = Join-Path $root 'UnityClient\Builds\R01-Candidate\bin\MainServer.exe'
 $imageHash = '01C6261AB5C3448E2BA5F336CE70FB20E4DBA4B9ED47AD70002F22C88594D108'
+if ($C07Candidate) {
+    if (-not $C07Hash -or $ExecuteApprovedStart) { throw 'C07 needs its reviewed SHA256 and uses current local-operation authorization.' }
+    $image = Join-Path $root 'UnityClient\Builds\C07-Candidate\final\bin\MainServer.exe'
+    $imageHash = $C07Hash.ToUpperInvariant()
+} elseif ($C07Hash) { throw 'C07 hash requires C07 mode.' }
 $inspector = Join-Path $root 'UnityClient\Tools\Inspect-R01Persistence.cjs'
 $captures = Join-Path $root 'UnityClient\Captures'
 $dllHashes = @{
@@ -15,10 +22,10 @@ $dllHashes = @{
     'hiredis.dll'='FC0D6F13F43ADE48A71F9FF3AFD9B9B0751165FC325D3A05D19A01999D29FE5C'
     'mysqlcppconn-9-vs14.dll'='2070CD998CDF625425DE4AA5476F131D92165068998CC634B13C4D3138E0F088'
 }
-if ($PreflightOnly -eq ($ExecuteApprovedStart -eq 'R01-START-05/r1')) {
+if (-not $C07Candidate -and $PreflightOnly -eq ($ExecuteApprovedStart -eq 'R01-START-05/r1')) {
     throw 'Choose exactly one mode: -PreflightOnly, or the exact approved start identifier.'
 }
-if (-not $PreflightOnly -and $ExecuteApprovedStart -ne 'R01-START-05/r1') {
+if (-not $C07Candidate -and -not $PreflightOnly -and $ExecuteApprovedStart -ne 'R01-START-05/r1') {
     throw 'Starting the candidate requires the separately approved R01-START-05/r1 identifier.'
 }
 

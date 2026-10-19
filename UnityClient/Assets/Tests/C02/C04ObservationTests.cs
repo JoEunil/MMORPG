@@ -437,7 +437,7 @@ namespace C02.Tests
         private sealed class NullLogger : ClientCore.ILogger { public void Log(string message) { } }
         private sealed class NoNetwork : INetworkService
         {
-            public void Profiles(uint[] profileIds) { }
+            public void RequestInventory() { } public void Profiles(uint[] profileIds) { }
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void CharacterList() { }
             public void Enter(ulong character) { }

@@ -160,7 +160,7 @@ namespace ClientCore
         {
             lock (_lockInventory)
             {
-                return _inventory;
+                return new List<InventoryItemView>(_inventory);
             }
         }
     }

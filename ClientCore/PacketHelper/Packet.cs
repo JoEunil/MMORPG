@@ -564,6 +564,28 @@ namespace ClientCore.PacketHelper
             return result;
         }
 
+        internal static InventoryResBody DeserializeInventory(PacketHeader header, byte[] buffer)
+        {
+            ValidateChatProfileFrame(header, buffer, 21, 81);
+            if (buffer.Length != 81 || buffer[8] > 1)
+                throw new ArgumentException("Invalid inventory frame.");
+            ushort count = BitConverter.ToUInt16(buffer, 9);
+            if (count > 10 || (buffer[8] == 0 && count != 0))
+                throw new ArgumentException("Invalid inventory count.");
+            var items = new InventoryItem[count];
+            var slots = new HashSet<byte>();
+            for (int i = 0; i < count; i++)
+            {
+                int offset = 11 + 7 * i;
+                var item = new InventoryItem { itemID = BitConverter.ToUInt32(buffer, offset),
+                    quantity = BitConverter.ToUInt16(buffer, offset + 4), slot = buffer[offset + 6] };
+                if (item.itemID == 0 || item.quantity == 0 || item.slot >= 10 || !slots.Add(item.slot))
+                    throw new ArgumentException("Invalid inventory row.");
+                items[i] = item;
+            }
+            return new InventoryResBody { resStatus = buffer[8], itemCount = count, items = items };
+        }
+
         internal static byte[] SerializeProfileRequest(uint[] profileIds)
         {
             if (profileIds == null || profileIds.Length == 0 || profileIds.Length > 50)

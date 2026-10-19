@@ -83,7 +83,13 @@ namespace Core {
         p_st->header.opcode = OP::INVENTORY_RES;
         p_st->header.magic = MAGIC;
         p_st->header.flags = 0x00;
-        p_st->body.resStatus = body->resStatus;
+        p_st->body = {};
+        if (body->resStatus != RES_STATUS::SUCCESS || body->itemCount > MAX_INVENTORY_ITEMS) {
+            p_st->body.resStatus = RES_STATUS::FAILED;
+            return p;
+        }
+
+        p_st->body.resStatus = RES_STATUS::SUCCESS;
         p_st->body.itemCount = body->itemCount;
         for (int i = 0; i < body->itemCount; i++)
         {
