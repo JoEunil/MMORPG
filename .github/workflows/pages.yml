@@ -1,0 +1,79 @@
+name: Build and deploy project site
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - docs/unity-client/SHOWCASE.md
+      - site/**
+      - tools/site/**
+      - .github/workflows/pages.yml
+  pull_request:
+    branches: [master]
+    paths:
+      - docs/unity-client/SHOWCASE.md
+      - site/**
+      - tools/site/**
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Generate and validate the site
+        run: |
+          python tools/site/build.py
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          root = Path("site")
+          html = (root / "index.html").read_text(encoding="utf-8")
+          refs = re.findall(r'(?:src|href)="([^"]+)"', html)
+          missing = [ref for ref in refs if not ref.startswith(("https://", "http://", "#")) and not (root / ref).is_file()]
+          if missing:
+              raise SystemExit("Missing site files: " + ", ".join(missing))
+          if '<html lang="ko">' not in html:
+              raise SystemExit("Korean document language is missing")
+          print(f"Validated {len(refs)} local/remote references")
+          PY
+      - name: Package Pages output
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - name: Make PR preview downloadable
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-agent-site-preview
+          path: site
+          retention-days: 7
+      - name: Explain PR preview
+        if: github.event_name == 'pull_request'
+        run: echo 'The generated site is available in this run as the ai-agent-site-preview artifact. It is not deployed from pull requests.' >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
