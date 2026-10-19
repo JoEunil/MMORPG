@@ -399,3 +399,7 @@ wal/
 
 # Local Unity agent and Slack receiver scripts.
 /scripts/unity-client/
+
+# Generated GitHub Pages preview output.
+/site/index.html
+/site-preview.zip
