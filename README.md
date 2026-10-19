@@ -1,435 +1,80 @@
-# MMORPG GAME PROJECT
+﻿# C++ MMORPG 서버
 
-C++ 기반 TCP Stateful MMORPG 게임 서버 — 개인 프로젝트 (개발 기간 약 1년)
+C++20과 Windows IOCP로 만든 개인 프로젝트다. 이동, 스킬, 몬스터, 인벤토리, 거래소, 채팅을 구현했다.  
+클라이언트의 요청을 서버에서 판정하는 Server Authoritative 구조로, 여러 사용자가 같은 월드 상태를 공유하는 MMORPG 서버를 만드는 것이 목표다.  
+수천 명의 동시 접속과 한 유저의 시야에 수백 명이 들어오는 조건을 전제로, 상태 전파 비용·스레드 간 작업 전달·DB 저장 전 장애 복구를 중심으로 설계했다.  
 
-📑 [C++ MMORPG Game Server 포트폴리오 PPT](https://docs.google.com/presentation/d/1Sz7WlzlE4qYqyXO43ad0i0CYAFvzJMR2/edit?usp=sharing&ouid=104250523129405797740&rtpof=true&sd=true)
+[포트폴리오 PPT](https://docs.google.com/presentation/d/1Sz7WlzlE4qYqyXO43ad0i0CYAFvzJMR2/edit?usp=sharing&ouid=104250523129405797740&rtpof=true&sd=true) · [2,000명 접속 시연 영상](https://youtu.be/2q2kZwI3uSQ) · [빌드 및 실행](BUILD.md)
 
-<details>
-<summary> 목차 </summary>  
-  
-1. [프로젝트 개요](#프로젝트-개요)
-2. [기술 스택](#기술-스택)
-3. [아키텍처](#아키텍처)
-4. [핵심 기술 요약](#핵심-기술-요약)
-5. [테스트](#테스트)
-6. [리팩토링](#리팩토링)
-7. [트러블 슈팅](#트러블-슈팅)
-8. [추후 개선 사항](#추후-개선-사항)
-9. [빌드, 실행 방법](#빌드-실행-방법)
-10. [기술 문서 목록](#기술-문서-목록)
-</details>  
+## 주요 설계
 
-## 프로젝트 개요
+### 1. Cell 단위 스냅샷
 
-게임 서버의 핵심 문제인 **대규모 동시 접속 처리**와 **실시간 동기화**를 직접 해결하는 것을 목표로 시작한 프로젝트다.
+시야에 들어오는 엔티티가 많으면 수신자마다 패킷을 조립하는 일도 부담이 된다. Cell별로 한 번 만든 Chunk를 그 Cell을 보는 세션들이 공유하도록 했다. 주변 3×3 Cell에만 전파하고, 평소에는 변경된 필드만 Delta로 보낸다.  
+세션별 baseline이나 필드 필터링은 두지 않았다. 새로 시야에 들어온 대상이나 누락된 상태는 1초 주기의 Full Snapshot으로 맞춘다. 송신량은 여전히 시야 내 엔티티 수와 수신자 수에 따라 늘어난다.  
 
-이 프로젝트는 많은 유저가 밀집해 **한 유저의 AOI에 수백 명이 들어오는 조건**을 가정했다. 아래 표는 설계 선택을 설명하기 위한 비교 모델이며, 모든 FPS/MOBA/MMORPG의 인원·틱·저장 정책을 일반화한 것은 아니다.
+[설계 결정](DesignDecisions.md#1-상태-전파) · [AOI](AOI.md) · [Snapshot과 대역폭 계산](Snapshot.md)
 
-| | 세션 기반 (FPS/MOBA) | MMORPG |
-|---|---|---|
-| 동시 엔티티 | 매치당 5~32 | Zone당 수백~수천 |
-| 상태 수명 | 매치 종료 시 폐기 | 영구 지속, DB와 계속 정합 |
-| 연결 수명 | 분 단위 | 시간 단위 |
-| 틱 | 60~128Hz | 20Hz |
-| 저장 모델 | 매치 결과 저장을 중심으로 가정 | 가동 중 지속 저장 |
-| 확장 방향 | 매치 인스턴스 추가 | 월드 분할 |
+### 2. Zone 스레드와 작업 전달
 
-Zone 단위 틱 루프, Cell 기반 AOI, Delta/Full 스냅샷 분리, 고정 객체풀, Write-Back 캐시는 모두 이 자릿수 차이(세션당 5 ~ 32명 vs Zone당 수백 ~ 수천 명)에서 갈라져 나온 결정이다. 자세한 내용은 [설계 결정](DesignDecisions.md)에 정리했다.
+IOCP 워커가 받은 시뮬레이션 작업은 bounded MPMC Queue에 넣고, Zone 스레드가 틱마다 꺼내 처리한다. 같은 공간에서 이동·스킬·몬스터 갱신이 계속 일어나므로 Zone을 실행 단위로 잡았다.  
+브로드캐스트(리플리케이션 전송)는 별도 워커에서 처리한다. 패킷 Chunk는 작업 큐로 넘기고, Cell별 전송 대상 목록은 Triple Buffer로 공유한다. 이 목록은 기존 읽기 참조가 모두 반환돼야 새 목록으로 바뀐다.  
+Zone 안의 락은 아직 없애지 못했다. 진입·이탈·프로필 갱신이 외부 스레드에서도 실행돼, 이들과 상태를 공유하는 틱 로직에 mutex가 남아 있다. Zone과 브로드캐스트 큐가 가득 차면 작업을 버리고 drop을 집계한다.  
 
-- **동시성**: IOCP 비동기 IO 기반으로 **단일 PC 환경에서 5,000명 동시 접속**을 검증했다 (Vyukov bounded MPMC queue, Zone Tick 기반 멀티스레드 아키텍처)
-- **안정성**: 인벤토리에 WAL 기반 복구를 적용하고, 수행한 ASan 시나리오에서 메모리 오류가 보고되지 않았다. WAL fsync 이전 손실 가능 구간과 메모리 관측 한계는 각 문서에 명시했다
-- **정합성**: 거래소 구매의 DB 트랜잭션과 Outbox/Inbox 배송을 구현하고 Crash 후 재배송·중복 적용 방지를 테스트했다. 등록 등 별도 경로의 보장 범위는 [거래소 문서](Bazaar.md)에 구분했다
+[설계 결정](DesignDecisions.md#2-시뮬레이션과-스레드-경계) · [작업 큐](WorkQueue.md) · [Triple Buffer](TripleBuffer.md)
 
-**구현 콘텐츠**: 캐릭터 이동 / 스킬 / 몬스터 / 아이템 거래소 / 인벤토리 / 채팅
+### 3. Write-Back 캐시와 복구
 
-**검증**
-- 핵심 컴포넌트 Google Test 단위 테스트
-  (`LockFreeQueue`, `TripleBuffer`, `RingBuffer`, `RingQueue`, `FixedObjectPool`, `PacketView`, `NetTimer`, WAL — 동시성 테스트 포함)
-- Cache / 거래소 통합 테스트 (DB fetch, LRU eviction, WAL Crash 복구, 거래소 Crash 시나리오, 동시 구매 경합)
-- 과거 버전의 Unity 클라이언트 연동 및 기본 기능 테스트
-- 더미 클라이언트 부하 테스트
-  → i3-12100F(4C/8T)에서 2,000명 → CPU 업그레이드·최적화 후 i5-14400F(6P+4E, 16T) 단일 PC 환경에서 5,000명 동시 접속 달성
-- 종료 안정성 및 메모리 검증 (Graceful Shutdown, AddressSanitizer)
+인벤토리와 골드는 메모리에서 변경한 뒤 모아서 DB에 쓴다. 인벤토리는 WAL을 남겨 DB 저장 전 장애에 대비했다. 거래소 구매·취소 아이템은 Outbox로 재배송하고, 인벤토리에 함께 저장한 Inbox로 중복 적용을 막는다. 아이템과 Inbox의 DB 저장이 끝나야 Outbox도 완료 처리한다.  
+WAL은 성공 응답 전에 fsync를 기다리지 않는다. 마지막으로 디스크에 동기화된 이후의 변경은 유실될 수 있다. 골드는 아직 WAL을 적용하지 않았고, 거래소 등록도 아이템 차감 후 매물을 만들기 전에 죽으면 아이템이 유실될 수 있다.  
 
-[![2,000명 동시 접속 Unity 클라이언트 테스트 영상](https://img.youtube.com/vi/2q2kZwI3uSQ/maxresdefault.jpg)](https://youtu.be/2q2kZwI3uSQ)
-> ▶ 2,000명 동시 접속 Unity 클라이언트 테스트 영상
-
-## 기술 스택
-
-__게임 서버 (C++)__
-- 네트워크: IOCP 비동기 IO, 커스텀 바이너리 프로토콜, RingBuffer 패킷 조립
-- 동시성: Vyukov Bounded MPMC Queue, Triple Buffer, Sharded Mutex
-- 캐시:In-Process Write-Back Cache (Shard, LRU eviction, WAL 기반 장애 복구, ACID 설계)
-- 게임 로직: Zone Tick, Cell 기반 AOI, Snapshot Delta 동기화
-- 안정성: Ping 좀비 세션 탐지, Flood Detection
-
-__인프라__
-- DB: MySQL
-- 세션 저장소: Redis (In-Memory DB, TTL 기반 세션 관리)
-- 로그인: Node.js
-- 모니터링: Grafana + Loki + Promtail
-
-__클라이언트__
-- 게임 클라이언트: Unity
-- 더미 클라이언트: .NET 8.0 (부하 테스트용)
-- 클라이언트 라이브러리: .NET Standard 2.0 (Unity 연동)
-
-__외부 라이브러리__
-- spdlog, hiredis, libevent, nlohmann/json, MySQL Connector C++, Google Test, Google Benchmark
-
-## 아키텍처
-
-![이미지 로드 실패](images/Architecture_current.png)
-
-서버는 기능별로 4개 모듈로 분리된 구조를 가진다.
-
-| 모듈 | 역할 |
-|---|---|
-| NetLibrary | IOCP 비동기 IO, 세션 관리, Ping |
-| CoreLib | 게임 로직 |
-| CacheLib | In-Process 캐시, DB I/O |
-| ExternalLib | 구조화 로그, Redis 세션 인증 |
-
-- DB는 로그인 DB / 게임 DB / 거래소 DB로 분리 운영한다.
-- 클라이언트는 MVVM 패턴으로 WinForms(더미) / Unity(게임) View를 교체 가능하도록 설계했다.
-- 단일 서버 내에서도 작업 특성에 따라 **Zone**(시뮬레이션) / **Non-Zone**(비시뮬레이션) 두 영역으로 논리적으로 분리해 처리한다.
-  - Zone: tick 기반 동기 처리 — 이동, 전투, 몬스터 AI 동기화
-  - Non-Zone: 요청-응답 패턴 — 인벤토리, 채팅, 인증 같은 비실시간 작업
-
-<details>
-  <summary><b>분산 아키텍처로의 확장 설계</b></summary>
-
-현재는 단일 GameServer 내부에서 Zone / Non-Zone을 논리적으로만 분리해 운영하지만, 단일 프로세스 내에서 처리된다.     
-서비스별로 부하 패턴이 다르기 때문에, 하나의 프로세스에 몰아넣으면 서버 스펙과 스레드 수를 정하는 기준이 모호해진다.  
-또한 프로세스가 비대해질수록 여러 서비스가 같은 커널 자원(스케줄러, 메모리 등)을 공유하게 되어 서비스 간 자원 경합이 발생하기 쉬워지므로, 물리적으로 분리하는 편이 자원 관리와 확장성 측면에서 유리하다.   
-MMORPG 서버에서는 VM 단위로 이런 물리적 분리를 하는 것이 일반적이다.  
-실서비스 수준의 MMO로 발전시킬 경우, 이 논리적 분리를 물리적 분리로 확장한 아래 구조로 재설계할 수 있다.
-![이미지 로드 실패](images/Architecture_future.png)  
-
-#### 1. GameServer 책임 분리와 Proxy 도입
-
-기존 GameServer가 담당하던 책임을 도메인별 서버로 분리하고, 클라이언트는 단일 Proxy 엔드포인트에만 접속한다.
-Proxy는 opcode 기반 routing table에 따라 적절한 도메인 서버로 패킷을 분배한다.
-
-- __Zone (in Channel Server)__ : 실시간 시뮬레이션 (이동, 전투, 몬스터 AI)
-- __World Services__ : Mailbox, Guild, Friend 등 비실시간 서비스
-
-이 분리의 핵심 기준은 단순한 Zone/Non-Zone이 아니라 **현재 player의 실시간 상태에 영향을 주는지 여부**이다.
-인벤토리 사용/장착 같은 비시뮬레이션 작업이라도 character state에 직접 영향을 주고 latency에 민감하면 Zone에서 처리하고,
-채팅, 우편, 결제처럼 character 상태에 직접 영향이 없는 도메인은 별도 서비스로 분리한다.
-
-#### 2. NetLib 추상화와 라이브러리 재구성
-
-단일 서버에서는 NetLib가 GameServer 내부에 종속된 형태였지만, 분산 환경에서는 모든 내부 서버가 NetLib을 공통으로 사용해야 한다.
-이를 위해 NetLib가 transport 책임만 담당하도록 분리하고, 그 위에 각 서버가 자신의 packet dispatcher와 핸들러를 등록하는 구조로 재구성한다.
-
-- Proxy: routing 핸들러 (내부 서버로 forward)
-- Zone Server: 게임 로직 핸들러
-- World Services: 도메인별 핸들러
-
-#### 3. Internal Header 기반 세션 식별
-
-내부 서버는 클라이언트와 직접 1:1 socket 매핑을 갖지 않는다.
-Proxy가 내부 서버로 forward할 때 internal header를 추가해 sessionId를 명시하고, 내부 서버는 sessionId 기반으로 컨텍스트를 관리한다.
-
-#### 4. Redis 기반 데이터 동기화 및 캐시 전략
-
-분산 환경에서는 서버 간 상태 공유를 위해 Redis를 read cache로 활용한다.
-Redis는 authoritative source가 아닌 캐시 계층으로 사용되며, 일부 stale 데이터를 허용하는 __eventual consistency__ 모델을 따른다.  
-
-실시간 게임 상태는 Channel Server가 authoritative하게 관리하며 strong consistency를 유지하고, World Services에서 사용하는 비실시간 데이터는 Redis를 통해 서버 간 공유된다.
-데이터 변경은 각 도메인의 authoritative 서버에서 처리된 후 DB에 반영되며, Redis는 캐시로서 필요 시 갱신되거나 TTL 기반으로 동기화된다.
-
-</details>
-
-## 핵심 기술 요약
-
-MMO 특성상 수천~수만 개의 동시 커넥션을 처리해야 하므로 IOCP 기반 비동기 IO를 채택해 소수의 워커 스레드로 대용량 트래픽을 처리한다.
-Vyukov bounded MPMC queue와 Zone 기반 멀티스레드 아키텍처로 작업 전달 경합을 줄였다.
-
-### 1. 소켓과 패킷 수신/송신 처리 구조
-- __수신 및 전파__: IOCP 비동기 수신 → ClientContext의 RingBuffer를 통한 패킷 조립 → PacketView를 활용한 제로 카피 지향 로직 전파
-  - [IOCP](IOCP&epoll.md): IOCP와 epoll 비교
-  - [ClientContext](ClientContext.md): TCP 수신 버퍼 처리 구조, RingBuffer와 Context 누적 버퍼 처리 방법
-- __송신 처리__
-  - [IOCP Send 파이프라인](IOCPSendPipeline.md): IOCP 송신 큐 처리 구조, Chunk 패킷 일괄 전송, Partial Send 처리
-
-### 2. 멀티스레드 동기화 및 성능 최적화
-- [memory_order](memory_order.md): 멀티스레드 환경의 메모리 재배치와 가시성 문제를 방지하고 성능을 최적화하기 위해, Acquire-Release 시맨틱의 동작 원리를 분석하고 이를 SpinLock 설계에 적용한 과정을 정리
-- [Vyukov Bounded MPMC Queue](LockFreeQueue.md): slot별 sequence와 CAS를 이용한 고정 용량 MPMC queue 구현 및 검증. Mutex 없이 동작하지만 formal lock-free progress guarantee는 제공하지 않는다.
-- [TripleBuffer](TripleBuffer.md): RCU + Triple Buffer 개념을 응용한 스냅샷 버퍼 구현. Zone 스레드(Writer)의 세션 스냅샷을 브로드캐스트 스레드풀(Reader)에 공유하는 용도로 사용하며, 설계 목표는 SPMC이며, CAS 기반 상태 플래그 구조 덕분에 Writer가 여럿이어도 메모리 안전성은 유지된다(lost update를 막지는 않으므로 MPMC 용도로는 쓰지 않는다). 잠금/최신 여부/Reader Count 상태를 Bit Packing으로 단일 atomic 변수에 압축 관리
-- [작업 큐 정책](WorkQueue.md): Blocking/Non-Blocking queue와 Lock-free, mutex, semaphore, condition variable 조합의 선택 기준과 worker별 적용 상태
-- [Back Pressure 정책](BackPressure.md): `Droppable`과 `Important`를 분리해 과부하 시 핵심 작업을 보호하는 Non-Blocking/Blocking back pressure 정책
-
-### 3. 네트워크 안정성
-- [Ping](PingLoop.md): Ping 루프를 통한 좀비 세션 탐지. IOCP 워커의 호출 스택과 분리된 전용 스레드에서 세션을 종료하는 안전한 종료 전략 적용
-- [Flood Detection](FloodDetect.md): 세션별 20회 수신 합계에 허용 범주를 두어 극단적인 작은/큰 수신 패턴을 저비용으로 차단. 
-- [Tick](Tick.md) & [Snapshot](Snapshot.md): 클라이언트와 서버 간의 틱 기반 동기화 및 패킷 크기 최적화를 위한 스냅샷 전략 수립. Windows 타이머 해상도(기본 15.6ms)가 틱 보정과 RTT 측정에 미치는 영향을 분석하고, `timeBeginPeriod`(최대 1ms)와 high-resolution waitable timer(100ns 단위 설정)의 비용 구조를 비교. 되감기(lag compensation) 도입 시점을 적용 기준으로 설정
-
-### 4. 콘텐츠 구현 및 모니터링
-- [Monster](Monster.md) & [Skill](Skill.md): 간단한 AI 및 상호작용 로직을 통해 구조적 위험성 분석. AOI(Area of Interest) 및 Cell 분할 필요성 도출
-- [거래소 시스템](Bazaar.md): 거래소 구현. 데이터 특성 기반 저장 전략 분리 (Gold: Write-Back 캐시 / Item: 캐시 + 거래 배송은 Outbox/Inbox로 exactly-once / Diamond: DB 트랜잭션), Stored Procedure로 ACID 보장
-- [거래소 시스템 테스트](BazaarTest.md): 기본 기능, Crash 시나리오, 동시 구매 경합, lock contention 관측 테스트 수행. CAS 기반 중복 구매 방지 및 Crash 후 배송의 exactly-once 수렴(유실·중복 없음) 검증
-- [StructuredLogging](StructuredLogging.md): 서버 내부 상태와 테스트 결과를 시각화하고 추적하기 위해 로그를 구조화하여 분류 및 적용
-- [Monitoring](Monitoring.md): Grafana + Loki + Promtail로 TPS, 접속자 수, 객체풀 등 핵심 지표를 실시간 추적. Jitter 지표를 RTT 절대값 임계치 대신 Jacobson/Karels EWMA(SRTT/RTTVAR) 기반으로 재설계해, 클라이언트별 네트워크 환경 차이로 인한 오탐을 제거
-
-### 5. 캐시 및 DB 설계
-
-접근 빈도가 높은 인벤토리 데이터를 대상으로 In-Process 메모리 캐시를 직접 구현했다.
-Write-Back 전략으로 DB IO를 줄이고, WAL(Write-Ahead Log)을 통해 Flush 이전 장애에서도 Dirty 데이터를 복구할 수 있도록 설계했다. 
-또한 거래소가 Cache - DB 경계를 넘는 부분은 **Saga(등록)·Outbox/Inbox(배송)** 로 복구를 설계하고, 아이템·재화의 중요도에 따라 durability를 차등 적용했다. 각 경로의 크래시 안전성 범위는 거래소 문서에 명시했다.
-
-> 두 메커니즘의 경계는 이렇다. **Outbox/Inbox**는 캐시-DB 경계를 넘는 거래 배송을, **WAL**은 그 안쪽 캐시 자체의 유실 창을 맡는다.  
-> 현재 WAL 적용 범위는 인벤토리뿐이라 골드에는 유실 창이 남아 있다. 특정 데이터만 태우면 저장 정책이 게임 로직으로 새므로, 캐시 전 구간 일반화가 방향이다.  
-
-
-- [Cache](CacheLib.md): 캐시 배치 전략, Write-Back/Read-Through 동작 흐름, 구조 설계
-- [Cache ACID](CacheLib_ACID.md): 캐시 상태값 도입 및 ACID 보장 설계
-- [Cache Integration Test](CacheLib_Test.md): DB fetch, cache hit/miss, flush, LRU eviction 동작 검증
-- [WAL](WAL.md): Write-Ahead Log 구조, Replay, Truncate, 장애 복구 설계
-- [DB](DB.md): DB 분리, 수직 파티셔닝, 복합 인덱스, View, Saga, Outbox/Inbox
-
-### 6. 종료 처리 (Graceful Shutdown)
-
-서버 종료 시 진행 중인 작업 유실과 소멸 순서로 인한 크래시를 방지하기 위해, 자원 소유 관계에 기반한 정리 순서와 스레드 종료 정책을 설계했다.
-
-- [Graceful Shutdown](GracefulShutdown.md): 멤버 소멸 순서(소비자 → 제공자), 큐/워커 drain 정책, 로거 teardown 순서 정립. 종료 시점의 캐릭터 상태를 유실 없이 DB에 반영하고, 이중 Stop 호출·소멸 순서로 인한 크래시를 제거
-
-<details>
-  <summary><b>스레드 모델</b></summary>
-
-스레드별 작업 성격에 따른 분류.
-
-| 모듈 | 스레드 | 작업 성격 |
-|---|---|---|
-| MainServer | main thread | - |
-| NetLibrary | iocp worker pool | CPU-bound |
-| NetLibrary | perf collector | IO-bound (Logger) |
-| NetLibrary | ping thread, net timer | - |
-| CoreLib | ZoneThreadSet | CPU-bound |
-| CoreLib | chat thread | CPU-bound (작업량 증가 시) |
-| CoreLib | broadcast thread pool | CPU-bound (작업량 증가 시) |
-| CoreLib | perf collector | IO-bound (Logger) |
-| CoreLib | NonZoneThreadPool, MQ worker | - |
-| CacheLib | DB Worker | IO-bound |
-| CacheLib | flush dispatcher, cache flush, MQ worker | - |
-| CacheLib | WALManager(fsync) | IO-bound |
-| ExternalLib | session thread (event 루프 기반) | IO-bound |
-
-> 성격이 표시되지 않은 스레드들은 작업 빈도와 CPU 소모가 낮아 CPU-bound / IO-bound로 분류하지 않았다.
-
-현재는 단일 프로세스에서 모든 스레드가 실행되므로 CPU-bound 작업(Zone, Broadcast 등)과 IO-bound 작업(DB, Logger, Session 등)이 동일한 프로세스 자원을 공유한다.   
-서비스 규모가 커질수록 스레드 수와 CPU 자원 배분 기준이 모호해지고, 서로 다른 특성의 작업이 커널 스케줄러와 메모리 자원을 경쟁하게 되어 수직 확장에 한계가 발생한다.  
-</details>
+[설계 결정](DesignDecisions.md#5-영속-데이터와-장애-복구) · [캐시](CacheLib.md) · [WAL](WAL.md) · [거래소](Bazaar.md)
 
 ## 테스트
 
-### 단위 테스트 (Google Test)
+자료구조의 경계 조건과 동시 접근, DB 연동, 서버를 강제 종료한 뒤의 복구를 나눠 테스트했다.  
 
-핵심 컴포넌트는 별도 `UnitTests` 프로젝트에서 Google Test 기반으로 검증한다.
-단순 기능 검증뿐 아니라 다중 스레드 환경의 동시성 테스트를 포함한다.
-
-| 대상 | 테스트 범위 |
+| 검증 방식 | 확인한 내용과 기록 |
 |---|---|
-| MPMC Queue | push/pop 정합성, empty/full 경계 처리, 멀티스레드 push/pop 경합 |
-| TripleBuffer | 포인터 스왑 검증, Eventually consistent 읽기 보장, Reader 간 경합, Writer/Reader 동시 접근 |
-| RingBuffer | 버퍼 획득/반납, 고갈·wrap-around 경계 조건, Release 범위 검증 |
-| RingQueue | 기본 동작 및 초기 상태 검증 |
-| FixedObjectPool | 할당/반납 정합성, 고갈 시 실패 반환, 멀티스레드 안전성 |
-| PacketView | Setter/Getter, 소유 버퍼 반환(Release), 버퍼 병합(JoinBuffer) |
-| NetTimer | 타이머 지연 및 정지 동작 |
-| WAL | Replay, Segment Rotation, CRC 복구, 깨진 데이터 대응, multi type 처리, Truncate(경계 삭제·활성 세그먼트 보존) |
+| 단위 테스트 (Google Test) | 큐·버퍼·객체풀의 경계 조건과 동시 접근, 큐 포화·종료 처리, WAL 손상 복구를 확인했다. [테스트 코드](UnitTests)와 [캐시 회귀 테스트](CacheLib_Test.md#db-없이-실행하는-회귀-테스트) |
+| 마이크로 벤치마크 (Google Benchmark) | [작업 큐(WorkerQueue)](Benchmark_WorkerQueue.md)의 대기 방식, [Triple Buffer](Benchmark_TripleBuffer.md)의 spin/yield, [WAL](Benchmark_WAL.md)의 fsync 주기에 따른 처리량·경합을 비교해 정책을 정했다 |
+| 크래시 주입 | [DB 저장 전 WAL 복구](CacheDurabilityTest.md), [아이템 배송 반영 후·DB 저장 후 복구](BazaarTest.md#42-crash-상황-테스트-test-6--exactly-once-배송-검증)를 확인했다. 지정한 지점에서 프로세스를 강제 종료하고, 재기동 후 아이템 수량과 중복 지급 여부를 검사했다 |
+| 통합 테스트 | 실제 DB를 연결해 [캐시 조회·변경·flush·LRU 퇴출](CacheLib_Test.md), [거래소 구매·배송·정산과 동시 구매 경합](BazaarTest.md)을 검증했다 |
 
-### 성능 벤치마크 (Google Benchmark)
+### 부하 테스트와 메모리 검사
 
-기능 정합성을 검증하는 Google Test와 성능 측정을 분리하기 위해 별도 `Benchmark` 프로젝트에 Google Benchmark를 도입했다.   
-프레임워크가 측정 시간과 반복 횟수, 처리량 집계를 일관되게 관리하므로 직접 작성한 타이머 기반 테스트보다 조건별 성능을 재현하고 비교하기 쉽다.  
-
-- [WAL 성능 벤치마크](Benchmark_WAL.md) — fsync 주기와 writer 수를 변경해 writer-fflush 및 writer-writer contention이 반영된 처리량을 측정. 벤치마크 결과를 바탕으로 기본 주기를 20ms로 선택했으며 성공 응답 직후의 디스크 내구성을 보장하지 않음
-- [Triple Buffer 성능 벤치마크](Benchmark_TripleBuffer.md) — SPMC reader 수에 따른 writer spin 분포와 busy-spin/yield 처리량을 측정하고, `maxSpin = 12` 선택 근거와 trade-off를 정리
-- [ZoneTick 성능 벤치마크](Benchmark_ZoneTick.md) — 목표 부하에서 50ms 틱 처리 예산 충족 여부
-- [WorkerQueue 성능 벤치마크](Benchmark_WorkerQueue.md) — 큐 구현과 대기 방식에 따른 처리량 비교
-
-### 통합 테스트
-
-- [Cache 통합 테스트](CacheLib_Test.md) — DB fetch, cache hit/miss, flush, LRU eviction 검증
-- [Cache 영속성 테스트](CacheDurabilityTest.md) — Crash 복구, WAL Replay, Replay 멱등성, Flush 이전 장애 복구
-- [거래소 시스템 테스트](BazaarTest.md) — Crash 시나리오, 동시 구매 경합, lock contention 관측
-
-### 부하 테스트
-
-단일 PC에 게임 서버, DB, Redis, 모니터링, 더미 클라이언트를 모두 구동한 환경에서 단계별 부하 테스트를 진행했다.
-5,000명 시험은 목표 20Hz 액션 전송률을 완전히 유지하지 못한 상태의 접속·동작 기록이다. 물리 NIC를 거치지 않는 loopback 시험이며, 전체 기능을 동시에 수행하는 실서비스 수용량으로 환산하지 않는다. 실제 action/s, 시험 시간, Zone별 분포, 지연 percentile, drop·연결 종료 수를 함께 남기는 재측정이 후속 과제다.
-
-| 단계 | 결과 | 요약 |
-|---|---|---|
-| 100명 | ✅ 성공 | 메모리 풀 안정성 및 Zone TPS(19~21) 유지 검증 |
-| 1,000명 | ❌ 실패 | 더미 클라이언트 단일 스레드 IO 병목 → TCP 수신 버퍼 초과로 소켓 종료. Wireshark(ZeroWindow) 분석으로 서버가 아닌 클라이언트 측 병목임을 확인 |
-| 2,000명 | ✅ 성공 | 더미 클라이언트 IO 스레드풀 적용, Zone 스레드 물리 코어 고정, 서버 스레드 우선순위 제거로 starvation 해소 |
-| 3 ~ 4,000명 | ❌ 실패 | 클라이언트 입력 지연 발생  |
-| 5,000명 | ❌ 실패 | 하드웨어 한계로 freeze 발생 |
-| 5,000명 | ✅ 성공 | CPU 업그레이드 (4core -> 10 core) |
-
-- [모니터링](Monitoring.md) — Grafana + Loki + Promtail 조합으로 서버 성능 지표(TPS, 풀 사용량, 처리량 등)를 실시간 시각화
-- [더미 테스트](DummyTest.md) — 100명 / 1,000명 테스트 및 실패 원인 분석 (Wireshark 검증)
-- [더미 테스트2](DummyTest2.md) — 실패 원인 재분석과 개선을 거친 2,000명 달성 과정, 3,000~5,000명 시도 기록
-- [더미 테스트3](DummyTest3.md) — CPU 업그레이드(i5-14400F)와 클라이언트 수신 Pipeline 적용·액션 패킷 재사용·P-Core Affinity 적용으로 5,000명 안정적 달성
-
-### 메모리 분석 (AddressSanitizer)
-
-서버와 단위 테스트를 ASAN 빌드로 실행해 해당 시나리오의 메모리 오류와 종료 시 할당 통계를 관측했다.
-
-- [ASAN 부하 테스트 & 메모리 분석](ASAN.md) — 당시 서버(2,000명, 1분/10분)·단위 테스트 43종에서 ASan 오류 미검출. 종료 `inuse` 비교에서 지속 증가 징후를 관측하지 못했으며, 모든 누수·data race의 부재를 입증한 것은 아님
-
-## 리팩토링
-
-기능 구현 과정에서 직면한 구조적 한계와 병목 지점을 분석하고, 명확한 근거와 필요성에 따라 진행한 리팩토링 기록.
-
-[채팅 기능 리팩토링](ChatRefactor.md)
-- 필요성: 채팅 트래픽이 메인 게임 로직(Zone Tick)의 성능에 영향을 미칠 수 있음을 인지. 핵심 로직의 안정성을 위해 채팅 로직 레이어 분리 결정
-- 내용: 채팅 전용 스레드/레이어 분리 및 추가 기능(Global Chat, 귓속말) 구현
-
-[ClientContext 리팩토링: God Object](ClientContextRefactor.md)
-- 필요성: 하나의 객체가 너무 많은 상태를 관리하여 복잡성이 높고, 버그 추적에 어려움 경험
-- 내용: 세션 상태 관리를 SessionManager로 이관하고 ClientContext를 수신 버퍼 관리 전용으로 경량화 (SRP)
-
-[Ping 리팩토링](PingRefactor.md)
-- 필요성: CoreLib에서 소켓을 직접 제어할 수 없어 비정상 종료된 소켓을 강제로 끊을 수 없는 구조
-- 내용: NetLib으로 Ping 루프를 이관하여, 비정상 종료 또는 Ping 응답 실패가 누적된 소켓을 강제 종료
-
-[AOI 적용](AOI.md)
-- 필요성: 스킬 판정 시 Zone 내 모든 대상을 조회하는 방식은 유저 수 증가에 따라 성능 하락으로 이어질 수 있음을 인지
-- 내용: 격자형 Cell 구조 도입 및 다중 Cell의 패킷 조각(Chunk)을 효율적으로 병합 전송하는 Overlapped 구조체 개선 병행
-
-[DB 전용 worker 스레드 분리](DBWorkerRefactor.md)
-- 필요성: DB I/O 블로킹으로 인한 캐시 처리 지연 제거
-- 내용: DB 작업을 전용 워커 스레드로 분리, LoadFromDB 비동기 전환 및 클라이언트 재시도 방식 적용
-
-[ObjectPool 리팩토링](ObjectPool.md)
-- 필요성: 동적 resize 구조는 병목 상황에서 추가 할당을 유발해 지연을 메모리 영역으로 전이시킬 수 있음을 인지
-- 내용: Elastic ObjectPool 제거 후 FixedObjectPool로 교체하고, 작업 중요도에 따라 drop/defer/durable fallback을 적용
-
-[Profile 분리](Profile.md)  
-- 필요성: Full Snapshot에 캐릭터 이름이 포함되어 있어, 유저 수에 비례해 이름 필드가 반복 전송되며 스냅샷 크기가 커진다. 또한 이름이 Zone 상태에 직접 저장돼 있어 변경 시 Zone 상태를 직접 건드려야 하는 구조라 자연스럽지 않다.
-- 내용: 캐릭터 이름을 Zone 상태에서 분리해 별도 Profile 엔티티 + Write-Through 캐시로 관리. Snapshot/Chat 페이로드에서 이름 필드 제거, Zone으로의 버전 역전파 설계
-
-## 트러블 슈팅
-
-[Vyukov Bounded MPMC Queue 디버그](LockFreeQueueDebug.md)
-  - pop 시 seq 갱신 오류로 인한 무한 대기를 스레드 상태 및 호출 스택 분석으로 추적하여 수정
-
-[ContextPool memory_order 디버그](MemoryOrderDebug.md)
-  - 두 atomic 변수를 교차 확인하는 SB(Store-Buffer) 리트머스 패턴에서 발생한 가시성 문제 분석. acquire/release로는 표준상 완전한 보장이 안 됨을 확인해 seq_cst로 최종 수정.   
-  - x64 + Debug 빌드(명령 재배치 없음)에서도 store buffer로 인한 store→load 순서 역전으로 재현된 케이스    
-	
-[SessionManager 데드락](SessionManagerDeadLock.md)
-  - SpinLock을 획득한 상태에서 같은 락을 다시 획득하는 호출 경로로 인한 데드락 원인 추적, 구조 개선
-
-[DummyTest 과정 중 발생한 오류 디버그](DummyTestDebug.md)
-  - RingBuffer wrap-around 경계 조건 및 고정 크기 버퍼 한계로 인한 엣지 케이스 처리
-
-## 추후 개선 사항
-
-- 스킬, 몬스터 데이터를 데이터 드리븐 방식으로 변경 (현재는 하드코딩 상태)
-- 몬스터 AI를 상태머신 기반으로 전환
-- Zone 진입·이탈 경로를 Zone 이벤트 큐로 이관해 `ZoneState`의 mutex 제거
-- WAL 적용 범위를 인벤토리에서 캐시 전 구간으로 일반화 (현재 골드는 미적용)
-- 장기 DB 장애를 대비해 캐시 flush에 dirty 총량 임계와 backpressure 추가 (현재는 재시도에 상한이 없어 evict가 막히고 캐시가 계속 증가. 데이터 자체는 WAL로 보존)
-
-
-## 빌드, 실행 방법
-
-### 1. 개발 환경
-
-| 항목 | 버전 |
+| 테스트 | 결과와 조건 |
 |---|---|
-| Client Engine | Unity 6.0 |
-| IDE | Visual Studio Community 2022 |
-| OS | Windows 11 (x64), 25H2 |
-| DB | MySQL 8.4.0 |
-| Session Store | Redis 3.0.504 (Windows용 마지막 버전) |
-| Game Server | C++20, Windows SDK 10.0 |
-| Client Core | .NET Standard 2.0 |
-| DummyClient | .NET 8.0 |
-| Login | Node.js 22.14.0 |
+| [5,000명 더미 접속](DummyTest3.md) | i5-14400F, 게임 Zone 4개. 서버·DB·더미·모니터링을 같은 PC에서 실행한 loopback 시험이다. 접속·동작은 확인했지만 더미의 목표 액션 20Hz는 완전히 유지하지 못했다 |
+| [Zone Tick](Benchmark_ZoneTick.md) | 2,000명, 분산/밀집과 이동량을 바꾼 8조건에서 각각 1,200틱 측정. 50ms 초과는 없었다. 입력 대기·실제 네트워크 전송·여러 Zone 동시 실행은 제외했다 |
+| [ASan](ASAN.md) | 당시 2,000명 부하 시험과 단위 테스트에서 메모리 오류가 보고되지 않았다 |
 
-> Redis Windows 빌드는 2016년 이후 업데이트가 없으며, 실서비스에서는 Linux 환경에서 운영하는 것이 일반적이다.
+## 디버깅 기록
 
-### 2. 외부 모듈
+- [SessionManager 데드락](SessionManagerDeadLock.md): SpinLock을 잡은 상태에서 같은 락을 다시 잡는 호출이 있었다. Context를 조회한 뒤 내부 작업은 NetHandler에서 처리하도록 옮겼다.
+- [MPMC Queue 무한 대기](LockFreeQueueDebug.md): 스레드 상태와 호출 스택을 따라가며 pop 이후 슬롯 sequence를 잘못 갱신한 부분을 찾았다.
+- [메모리 가시성 오류](MemoryOrderDebug.md): 두 atomic을 교차 확인하는 코드에서 acquire/release만으로는 필요한 순서를 보장하지 못했다. seq_cst로 수정했다.
 
-서버 런타임에서 사용하는 외부 라이브러리와 바이너리는 `/External` 경로에 포함되어 있다.
-Visual Studio 2022의 C++ 데스크톱 개발 도구와 Windows SDK가 필요하다. 단위 테스트·벤치마크는 각각의 `vcpkg.json`에 선언한 의존성을 복원하고, C# 프로젝트는 NuGet 패키지를 복원해야 한다.
+## 구조
 
-- 포함 모듈: hiredis, spdlog, MySQL Connector/C++, nlohmann/json
-- NuGet 패키지: Newtonsoft.Json, libevent2
-- x86 또는 Windows 8 이하 환경에서 빌드 시, 해당 타겟에 맞는 라이브러리 바이너리를 `/External` 경로에 재배치해야 한다.
-- Linux 및 macOS 환경에서의 빌드는 지원하지 않는다.
+![서버 아키텍처](images/Architecture_current.png)
 
-### 3. 외부 인프라 설정
+GameServer는 단일 프로세스로 실행한다. NetLibrary는 네트워크와 세션, CoreLib는 게임 로직, CacheLib는 캐시와 DB I/O, ExternalLib는 로그와 세션 인증을 담당한다. 로그인 서버는 Node.js, DB는 MySQL, 세션 저장소는 Redis를 사용한다.
 
-**DB**
-- 새 DB는 `Resources/DB/init.sql` → `Resources/DB/procedure.sql` → `Resources/DB/createCharacter.sql` 순서로 초기화한다 (마지막 스크립트는 테스트 캐릭터 시딩).
-- 기존 DB에서 이번 거래소 취소 수정을 사용하려면 `Resources/DB/procedure.sql`만 다시 적용한다. `init.sql`과 캐릭터 시딩은 재실행하지 않는다. 자세한 내용은 [CANCEL 처리](Bazaar.md#cancel-처리-상세-sp_bazaar_cancel) 참고.
-- Host: localhost
-- ID/PW: root / 1234
+서버 분리 구상은 [설계 결정](DesignDecisions.md#6-분산-확장-구상--미구현)에 적었다. 아직 구현하지 않았다. 위 Unity 시연과 동봉 실행 파일은 과거 버전이며, 최신 서버의 캐릭터 이름 정보(Profile) 패킷에 맞춰 클라이언트 갱신이 필요하다.
 
-**인증 서버 (Redis)**
-- `Program Files\redis-server.exe` 실행
-- Host: 127.0.0.1, Port: 6379
+## 앞으로 할 일
 
-**로그인 서버**
-- 터미널에서 실행 (또는 Visual Studio에서 실행)
-```
-cd Login
-npm ci
-npm start
-```
-- localhost, 포트 3000
+- Zone 진입·이탈과 외부 상태 변경을 이벤트 큐로 옮겨 mutex를 줄인다.
+- 골드 등 다른 캐시에도 WAL을 적용하고, DB 장애가 길어질 때 dirty 데이터가 계속 쌓이지 않도록 제한한다.
+- 더미 클라이언트를 다른 PC로 분리해 action/s, 지연 분포, drop, 연결 종료를 함께 측정한다.
 
-**게임 서버**
-1. MainServer 빌드 후 실행
-2. 또는 `Resources/Release/MainServer.exe` 실행
-   - 실행 파일 직접 사용 시 로그 경로가 변경됨
-   - `Resources/monitoring/promtail-config.yaml`에서 path를 `Resources/Release/logs/~~.log`로 변경
+## 실행 및 문서
 
-### 4. 모니터링 설정
+설치와 실행 순서는 [BUILD.md](BUILD.md)에 정리했다.
 
-1. Grafana, Loki, Promtail 설치
-   - Grafana: https://grafana.com/grafana/download?edition=oss&platform=windows
-   - Loki, Promtail: https://github.com/grafana/loki/releases (Assets에서 loki, promtail 다운로드)
-2. `Resources/monitoring` 폴더의 `loki-config.yaml`과 `promtail-config.yaml` 수정
-   - 파일 저장 경로를 로컬 환경에 맞게 수정
-3. `loki.bat`, `promtail.bat` 순서대로 실행
-   - bat, yaml 파일을 각각 loki, promtail 실행 파일과 같은 경로에 배치
-4. `Resources/grafana.db`를 `C:\Program Files\GrafanaLabs\grafana\data`에 덮어쓰기
-5. Grafana 실행
-   - ID/PW: admin / admin
-
-### 5. 계정 생성, 캐릭터 생성
-
-- 로그인 서버, DB 실행 중인 상태에서
-  `node Resources/monitoring/create_users.js`
-- 캐릭터 생성 SQL 실행
-  `Resources/DB/createCharacter.sql`
-
-### 6. 실행 순서
-
-DB → Redis → 로그인 서버 → 게임 서버
-
-### 7. 클라이언트 테스트
-
-**Dummy Client**
-- `DummyClients/Program.cs`에서 접속자 수 설정 후 DummyClients 실행
-
-**Unity Client**
-- `Resources/UnityClient/UnityClient.exe`
-- 현재 HEAD의 Profile 패킷 변경을 반영하지 않은 과거 데모 실행 파일이다. 최신 서버와의 시연에는 호환 클라이언트 갱신이 필요하다.
-
-**기본 테스트 계정**
-- ID: test_1 ~ test_5000
-- PW: 12345
-
-## 기술 문서 목록
+<details>
+<summary>전체 기술 문서</summary>
 
 ### 개념
 - [memory_order](memory_order.md)
@@ -445,7 +90,7 @@ DB → Redis → 로그인 서버 → 게임 서버
 - [Monster](Monster.md)
 
 ### 시스템 설계
-- [MMORPG 서버 설계 결정](DesignDecisions.md): 세션 기반 게임과 갈라지는 지점. 구현 상세가 아니라 선택의 근거
+- [MMORPG 서버 설계 결정](DesignDecisions.md): 선택의 근거, 대안과 현재 한계
 - [네트워크 Flood 탐지](FloodDetect.md)
 - [Ping 처리](PingLoop.md)
 - [ClientContext](ClientContext.md)
@@ -488,3 +133,5 @@ DB → Redis → 로그인 서버 → 게임 서버
 - [더미 클라이언트 테스트2](DummyTest2.md)
 - [더미 클라이언트 테스트3](DummyTest3.md)
 - [ASAN 테스트 분석](ASAN.md)
+
+</details>

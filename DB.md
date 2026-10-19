@@ -84,13 +84,13 @@ Outbox가 남아 있는 한 배송은 계속 재시도되고, 이미 처리한 e
 
 ### 멱등성
 
-- Inbox dedup: `characters_inbox.event_id` PK (배송 중복 방지)  
+- Inbox dedup: 인벤토리 blob의 `recentEventIds[32]`에서 event_id를 검사하고 아이템과 함께 저장 (배송 중복 방지)
 - 판매자 정산: `INSERT ... ON DUPLICATE KEY UPDATE` (행 없으면 생성 → 정산금 손실 방지)  
 
 ### 차등 durability
 
 정합성 보장 수준을 비즈니스 임팩트에 맞춰 차등한다.  
-- 아이템 (복제/유실 치명적) → Saga·Outbox·Inbox로 강하게 보장  
+- 구매·취소 아이템 배송 → Outbox·Inbox로 재시도와 중복 적용 방지. 등록 Saga에는 차감 후 매물 생성 전 크래시의 유실 구간이 남음 ([Bazaar.md](Bazaar.md) 참고)
 - 등록 수수료 gold → best-effort 보상 (수수료라 유실 허용)  
 
 ### 수직 파티셔닝
