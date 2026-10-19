@@ -84,6 +84,7 @@ public struct InventoryItemView
         void Chat(string message, byte scope, ulong targetID);
         void RequestInventory();
         void RequestBazaar(ushort itemType, ushort page);
+        void RequestBazaarMyList();
         void CancelBazaar();
         void Error(string msg);
         void Log(string msg);
@@ -100,6 +101,7 @@ public struct InventoryItemView
         void ProfilesReceived(ProfileEntry[] profiles);
         void InventoryReceived(byte resStatus, PacketHelper.InventoryItem[] items);
         void BazaarReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows);
+        void BazaarMyListReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows);
         void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y, ulong generation);
         void DeltaReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.DeltaUpdateField[] updates);
         void FullReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.FullStateField[] states);
@@ -180,6 +182,7 @@ namespace ClientCore.Services
         void Profiles(uint[] profileIds);
         void RequestInventory();
         void RequestBazaar(uint requestID, ushort itemType, ushort page);
+        void RequestBazaarMyList(uint requestID);
         void Action(byte dir, float x, float y, byte skillSlot);
         void Pong(ulong serverTimeMs);
         void ZoneChange(byte op);

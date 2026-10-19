@@ -99,6 +99,7 @@ namespace Cache {
 
         friend class Initializer;
         friend class BazaarSearchFixture;
+        friend class BazaarMyListFixture;
     public:
         void Process(Core::Message* msg);
     };

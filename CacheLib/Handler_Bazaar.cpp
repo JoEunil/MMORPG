@@ -11,47 +11,33 @@
 #include "DBWorker.h"
 #include "MessagePool.h"
 #include "BazaarSearchResult.h"
+#include "BazaarMyListResult.h"
 
 namespace Cache {
-    void Handler::BazaarMyList(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarMyListBody * body) {
-        EnqueueMessageWork(dbWorkerBazaar, msg, [msg, sessionID, body, this](DBConnectionBazaar* conn) {
-            auto res = conn->ExecuteSelect(11, body->characterID, Core::MAX_BAZAAR_MY_LIST);
-            Core::MsgStruct<Core::MsgBazaarMyListResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarMyListResBody>*>(msg->GetBuffer());
-
-            st->header.sessionID = sessionID;
-            st->header.messageType = Core::MSG_BAZAAR_MY_LIST_RES;
-
-            if (!res || !res->next()) {
-                st->body.resStatus = 0;
-                msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarMyListResBody>));
-                messageQ->EnqueueMessage(msg);
-				messagePool->Return(msg);
-                Core::gameLogger->LogInfo("cache handler bazaar", "my list read failed", "sessionID", sessionID, "char_id", body->characterID);
-                return;
-            }
-
-            st->body.resStatus = 1;
-            st->body.count = 0;
-
-            do {
-                if (st->body.count >= Core::MAX_BAZAAR_MY_LIST) 
-                    break;
-                auto& listing = st->body.listings[st->body.count];
-                listing.itemID = res->getUInt64("item_id");
-                listing.listingID = res->getUInt64("listing_id");
-                listing.price = res->getUInt64("price");
-                listing.quantity = res->getInt("quantity");
-                listing.registeredAt = res->getUInt64("listed_at");
-                listing.sellerCharacterID = res->getUInt64("seller_id");
-                listing.status = res->getUInt("status");
-
-                st->body.count++;
-            } while (res->next());
-
-            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarMyListResBody>));
-            messageQ->EnqueueMessage(msg);
-            messagePool->Return(msg);
-            });
+    void Handler::BazaarMyList(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarMyListBody* body) {
+        const auto request = *body;
+        auto* owned = msg;
+        const auto finish = [this, owned, sessionID, request](const Core::MsgBazaarMyListResBody& response) {
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarMyListResBody>*>(owned->GetBuffer());
+            st->header = { sessionID, Core::MSG_BAZAAR_MY_LIST_RES };
+            st->body = response;
+            st->body.requestID = request.requestID;
+            st->body.characterID = request.characterID;
+            owned->SetLength(sizeof(*st));
+            if (!messageQ->EnqueueMessage(owned))
+                Core::errorLogger->LogError("cache handler bazaar", "my list response queue rejected", "sessionID", sessionID);
+            messagePool->Return(owned);
+        };
+        const auto failed = [finish] { finish(Core::MsgBazaarMyListResBody{}); };
+        const auto outcome = dbWorkerBazaar->Enqueue([request, finish](DBConnectionBazaar* conn) {
+            auto result = conn->ExecuteSelect(11, request.characterID, Core::MAX_BAZAAR_MY_LIST);
+            Core::MsgBazaarMyListResBody response{};
+            ParseBazaarMyListResult(result.get(), request.requestID, request.characterID, response);
+            finish(response);
+        }, nullptr, failed);
+        if (outcome != DBEnqueueResult::Queued)
+            failed();
+        msg = nullptr; // Async work or synchronous rejection owns the single Return.
     }
 
     void Handler::BazaarSearch(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarSearchBody* body) {

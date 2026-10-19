@@ -318,3 +318,152 @@ namespace Cache {
         EXPECT_EQ(st->body.listings[29].listingID, 0);
     }
 }
+
+#include <CacheLib/BazaarMyListResult.h>
+namespace {
+    struct MyListRows {
+        int count = 0;
+        int index = -1;
+        int invalidAt = -1;
+        int throwAt = -1;
+        const char* nullColumn = nullptr;
+        const char* throwColumn = nullptr;
+        uint64_t itemID = 1;
+        uint64_t owner = 5011;
+        uint64_t listingID = 100;
+        int64_t quantity = 1;
+        int64_t status = 0;
+        bool next() {
+            ++index;
+            if (index == throwAt) throw std::runtime_error("my list fixture next");
+            return index < count;
+        }
+        bool isNull(const char* column) {
+            return index == invalidAt && nullColumn && std::string_view(column) == nullColumn;
+        }
+        uint64_t getUInt64(const char* column) {
+            const std::string_view field(column);
+            if (index == invalidAt && throwColumn && field == throwColumn)
+                throw std::runtime_error("my list fixture partial read");
+            if (field == "item_id") return index == invalidAt ? itemID : 1;
+            if (field == "listing_id") return index == invalidAt ? listingID : 100 + index;
+            if (field == "seller_id") return index == invalidAt ? owner : 5011;
+            if (field == "price") return (std::numeric_limits<uint64_t>::max)();
+            return 0;
+        }
+        int64_t getInt64(const char* column) {
+            if (std::string_view(column) == "quantity") return index == invalidAt ? quantity : 1;
+            return index == invalidAt ? status : index % 3;
+        }
+    };
+}
+
+TEST(BazaarMyListParser, NullAndEmptyResultsKeepCorrelationAndClearAllRows) {
+    Core::MsgBazaarMyListResBody body;
+    std::memset(&body, 0xCD, sizeof(body));
+    Cache::ParseBazaarMyListResult<MyListRows>(nullptr, 123, 5011, body);
+    EXPECT_EQ(body.requestID, 123);
+    EXPECT_EQ(body.characterID, 5011);
+    EXPECT_EQ(body.resStatus, 0);
+    EXPECT_EQ(body.count, 0);
+    EXPECT_EQ(body.listings[29].listingID, 0);
+    MyListRows rows;
+    Cache::ParseBazaarMyListResult(&rows, 124, 5011, body);
+    EXPECT_EQ(body.requestID, 124);
+    EXPECT_EQ(body.characterID, 5011);
+    EXPECT_EQ(body.resStatus, 1);
+    EXPECT_EQ(body.count, 0);
+    EXPECT_EQ(body.listings[29].quantity, 0);
+}
+
+TEST(BazaarMyListParser, OneAndThirtyRowsPreserveEveryStateAndFullWidthValues) {
+    static_assert(sizeof(Core::MsgStruct<Core::MsgBazaarMyListResBody>) <= Core::MESSAGE_LEN);
+    static_assert(sizeof(Core::MsgStruct<Core::MsgBazaarMyListResBody>) <= Cache::MESSAGE_LEN);
+    for (int count : {1, 30}) {
+        MyListRows rows;
+        rows.count = count;
+        Core::MsgBazaarMyListResBody body{};
+        Cache::ParseBazaarMyListResult(&rows, 125, 5011, body);
+        ASSERT_EQ(body.resStatus, 1);
+        ASSERT_EQ(body.count, count);
+        for (int i = 0; i < count; ++i) {
+            EXPECT_EQ(body.listings[i].listingID, 100 + i);
+            EXPECT_EQ(body.listings[i].sellerCharacterID, 5011);
+            EXPECT_EQ(body.listings[i].status, i % 3);
+            EXPECT_EQ(body.listings[i].price, (std::numeric_limits<uint64_t>::max)());
+            EXPECT_EQ(body.listings[i].registeredAt, 0);
+        }
+    }
+}
+
+TEST(BazaarMyListParser, InvalidOrPartialDatabaseResultsNeverExposeAPrefix) {
+    for (int kind = 0; kind < 12; ++kind) {
+        MyListRows rows;
+        rows.count = 4;
+        rows.invalidAt = 2;
+        if (kind == 0) rows.itemID = uint64_t{1} << 32;
+        if (kind == 1) rows.quantity = 65536;
+        if (kind == 2) rows.quantity = -1;
+        if (kind == 3) rows.itemID = 0;
+        if (kind == 4) rows.throwAt = 2;
+        if (kind == 5) rows.status = 255;
+        if (kind == 6) rows.status = -1;
+        if (kind == 7) rows.owner = 5012;
+        if (kind == 8) rows.listingID = 0;
+        if (kind == 9) rows.nullColumn = "listed_at";
+        if (kind == 10) rows.throwColumn = "price";
+        if (kind == 11) rows.count = 31;
+        Core::MsgBazaarMyListResBody body;
+        std::memset(&body, 0xCD, sizeof(body));
+        Cache::ParseBazaarMyListResult(&rows, 126, 5011, body);
+        EXPECT_EQ(body.requestID, 126) << kind;
+        EXPECT_EQ(body.characterID, 5011) << kind;
+        EXPECT_EQ(body.resStatus, 0) << kind;
+        EXPECT_EQ(body.count, 0) << kind;
+        for (const auto& row : body.listings) {
+            EXPECT_EQ(row.listingID, 0) << kind;
+            EXPECT_EQ(row.sellerCharacterID, 0) << kind;
+            EXPECT_EQ(row.itemID, 0) << kind;
+            EXPECT_EQ(row.quantity, 0) << kind;
+            EXPECT_EQ(row.price, 0) << kind;
+            EXPECT_EQ(row.registeredAt, 0) << kind;
+            EXPECT_EQ(row.status, 0) << kind;
+        }
+    }
+}
+
+namespace Cache {
+    class BazaarMyListFixture : public ::testing::Test {
+    protected:
+        std::unique_ptr<MessagePool> messages = std::make_unique<MessagePool>();
+        std::unique_ptr<DBWorker<DBConnectionBazaar>> stoppedWorker = std::make_unique<DBWorker<DBConnectionBazaar>>();
+        SearchResponseQueue responses;
+        Handler handler;
+        void SetUp() override {
+            handler.messageQ = &responses;
+            handler.messagePool = messages.get();
+            handler.dbWorkerBazaar = stoppedWorker.get();
+        }
+        void RequestMyList() {
+            auto* msg = messages->Acquire();
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarMyListBody>*>(msg->GetBuffer());
+            st->header = {42, Core::MSG_BAZAAR_MY_LIST};
+            st->body = {0x12345678, 5011};
+            msg->SetLength(sizeof(*st));
+            handler.Process(msg); // Rejected without any DB connection.
+        }
+    };
+    TEST_F(BazaarMyListFixture, StoppedWorkerReturnsZeroedFailureWithRequestAndOwner) {
+        RequestMyList();
+        ASSERT_NE(responses.received, nullptr);
+        EXPECT_EQ(responses.received->GetLength(), sizeof(Core::MsgStruct<Core::MsgBazaarMyListResBody>));
+        const auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarMyListResBody>*>(responses.received->GetBuffer());
+        EXPECT_EQ(st->header.sessionID, 42);
+        EXPECT_EQ(st->header.messageType, Core::MSG_BAZAAR_MY_LIST_RES);
+        EXPECT_EQ(st->body.requestID, 0x12345678);
+        EXPECT_EQ(st->body.characterID, 5011);
+        EXPECT_EQ(st->body.resStatus, 0);
+        EXPECT_EQ(st->body.count, 0);
+        EXPECT_EQ(st->body.listings[29].listingID, 0);
+    }
+}

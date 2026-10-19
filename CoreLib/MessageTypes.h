@@ -191,17 +191,20 @@ namespace Core {
         uint16_t quantity;
         uint64_t price;        // 개당 가격
         uint64_t registeredAt; // unix timestamp
-        uint8_t  status;  // 0=TRADING, 1=SOLD 
+        uint8_t  status;  // 0=TRADING, 1=SOLD, 2=CLAIMED (not a claim entitlement)
     };
 
     inline constexpr uint16_t MAX_BAZAAR_MY_LIST = 30;
     inline constexpr uint16_t MAX_BAZAAR_SEARCH_RESULT = 30; 
 
     struct MsgBazaarMyListBody {
+        uint32_t requestID;
         uint64_t characterID;
     };
 
     struct MsgBazaarMyListResBody {
+        uint32_t requestID;
+        uint64_t characterID; // Internal owner snapshot; never taken from the TCP request.
         uint8_t resStatus;
         uint16_t count;
         MsgBazaarListing listings[MAX_BAZAAR_MY_LIST];

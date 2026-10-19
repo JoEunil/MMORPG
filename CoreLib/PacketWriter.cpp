@@ -5,6 +5,44 @@
 namespace Core {
     static_assert(sizeof(MsgStruct<MsgBazaarSearchResBody>) <= MESSAGE_LEN);
 
+    static_assert(sizeof(MsgStruct<MsgBazaarMyListResBody>) <= MESSAGE_LEN);
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarMyListResponse(const MsgBazaarMyListResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->characterID == 0)
+            return nullptr;
+        bool valid = body->resStatus == RES_STATUS::SUCCESS && body->count <= MAX_BAZAAR_MY_LIST;
+        if (valid) {
+            for (uint16_t i = 0; i < body->count; ++i) {
+                const auto& row = body->listings[i];
+                if (row.listingID == 0 || row.sellerCharacterID != body->characterID || row.itemID == 0
+                    || row.quantity == 0 || row.status > 2) {
+                    valid = false;
+                    break;
+                }
+            }
+        }
+        const uint16_t count = valid ? body->count : 0;
+        const uint32_t length = sizeof(PacketStruct<BazaarMyListResponseBody>) + count * sizeof(BazaarSearchListing);
+        auto p = bigPacketPool->AcquireUnique();
+        if (!p || p->GetCapacity() < length)
+            return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<BazaarMyListResponseBody>*>(p->GetBuffer());
+        st->header.magic = MAGIC;
+        st->header.length = length;
+        st->header.opcode = OP::BAZAAR_MY_LIST_RES;
+        st->header.flags = 0;
+        st->body = { body->requestID, static_cast<uint8_t>(valid ? RES_STATUS::SUCCESS : RES_STATUS::FAILED), count };
+        auto* rows = reinterpret_cast<BazaarSearchListing*>(p->GetBuffer() + sizeof(*st));
+        for (uint16_t i = 0; i < count; ++i) {
+            const auto& row = body->listings[i];
+            rows[i] = { row.listingID, row.sellerCharacterID, row.itemID, row.quantity,
+                row.price, row.registeredAt, row.status };
+        }
+        p->SetLength(length);
+        return p;
+    }
+
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarSearchResponse(const MsgBazaarSearchResBody* body) {
         if (body == nullptr || body->requestID == 0)
             return nullptr;
