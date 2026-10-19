@@ -4,7 +4,7 @@ C++20과 Windows IOCP로 만든 개인 프로젝트다. 이동, 스킬, 몬스�
 클라이언트의 요청을 서버에서 판정하는 Server Authoritative 구조로, 여러 사용자가 같은 월드 상태를 공유하는 MMORPG 서버를 만드는 것이 목표다.  
 수천 명의 동시 접속과 한 유저의 시야에 수백 명이 들어오는 조건을 전제로, 상태 전파 비용·스레드 간 작업 전달·DB 저장 전 장애 복구를 중심으로 설계했다.  
 
-[포트폴리오 PPT](https://docs.google.com/presentation/d/1Sz7WlzlE4qYqyXO43ad0i0CYAFvzJMR2/edit?usp=sharing&ouid=104250523129405797740&rtpof=true&sd=true) · [2,000명 접속 시연 영상](https://youtu.be/2q2kZwI3uSQ) · [빌드 및 실행](BUILD.md)
+[포트폴리오 PPT](https://docs.google.com/presentation/d/1Sz7WlzlE4qYqyXO43ad0i0CYAFvzJMR2/edit?usp=sharing&ouid=104250523129405797740&rtpof=true&sd=true) · [2,000명 접속 시연 영상](https://youtu.be/2q2kZwI3uSQ) · [AI 활용 게임 개발 결과](https://joeunil.github.io/MMORPG/) · [빌드 및 실행](BUILD.md)
 
 ## 주요 설계
 

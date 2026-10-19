@@ -54,7 +54,7 @@ Coordinator가 작업을 나누고 결과를 취합한다. 필요한 역할만 �
 ## 작업 지침과 결과 공개
 
 기획·역할 지침은 기존 디렉터리에 두고, 개발 결과는 실제 화면과 검증 기록을 중심으로 정리한다. 운영 방식의 공통 기준은 [현재 운영 기준](docs/unity-client/CURRENT_POLICY.md)에서 관리한다.  
-GitHub Pages 소개 페이지는 [공개 설명 원본](docs/unity-client/SHOWCASE.md)에서 생성한다. PR 전에 로컬 웹 미리보기와 실제 브라우저 화면을 확인하고, master 반영 뒤 기본 GitHub Pages 주소로 배포한다. 실제 첫 게시 주소를 확인한 뒤 이 문서와 README에 연결한다. 이후에는 개발 작업 묶음의 검증된 결과와 대표 자료를 함께 갱신한다.
+진행 중인 결과와 화면은 [AI 활용 게임 개발 웹 포트폴리오](https://joeunil.github.io/MMORPG/)에서 볼 수 있다. [공개 설명 원본](docs/unity-client/SHOWCASE.md)을 바탕으로 생성하며, 개발 작업 묶음의 검증된 결과와 대표 자료를 함께 갱신한다.
 
 | 문서 | 내용 |
 |---|---|
