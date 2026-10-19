@@ -1,3 +1,6 @@
+## BAG02 구체 패치 후보 리뷰 완료 — 적용 전
+
+사용자 계속 지시에 따라 승인 비의존 후보 작업 진행. 지정 Slack 추가 회신은 직접 조회에서도 없음. docs/unity-client/BAG02.candidate.patch 양 경로 동일 SHA B36A7D0F767E2553BB333764F243457AFABEB492ADD16959D057217F18547EBA. 구현 담당 패치만 작성→독립 리뷰 P2 두 건(runtime fatal과 종료 구별/소켓 반환) 보완→최종 차단0. git apply --check --whitespace=error 및 메모리 PS AST 문법 통과. 실제 보호 소스/도구 변경·빌드·DB·서버·Unity 입력 실행0. 현재 MainServer0/9999 ListenEstablished0/numeric WAL0 확인. 승인 후 실제 적용·빌드·새 정상 종료 검증을 먼저 수행하고, 통과 뒤 기존 BAG01 두 행과 한 가방 입력 흐름을 이어간다. 새 PR/전체 회귀는 추가하지 않는다.
 ## BAG01 승인 확인 / 정상 종료 검사 중단 — 2026-10-19
 
 지정 Slack 사용자 U0C9QEUHPMK의 회신1792408921.550179 `승인 BAG01`을 부모1792407691.861929에서 직접 확인했다. 요청1792408332.366609와 일치. 이 회신은 정상 종료 1회 착수에 사용됐으며 중복 재실행하지 않는다. DB 승인은 유효하지만 필수 저장 검사 실패로 INSERT/COMMIT0이다.
