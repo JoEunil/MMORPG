@@ -30,6 +30,19 @@ namespace ClientCore.Network
             try
             {
                 var header = Packet.ExtractHeader(buffer);
+                // Parse chat/profile frames before simulation routing so invalid flags cannot bypass validation.
+                switch ((OP_CODE)header.opcode)
+                {
+                    case OP_CODE.CHAT_WHISPER:
+                        HandleChatWhisper(Packet.DeserializeChatWhisper(header, buffer));
+                        return;
+                    case OP_CODE.CHAT_BROADCAST:
+                        HandleChatBatch(Packet.DeserializeChatBatch(header, buffer));
+                        return;
+                    case OP_CODE.PROFILE_BATCH_RES:
+                        _viewModel.ProfilesReceived(Packet.DeserializeProfiles(header, buffer));
+                        return;
+                }
                 if ((header.flags & FLAG_SIMULATION) == FLAG_SIMULATION)
                 {
                     _recvTick.Enqueue(buffer);
@@ -37,12 +50,6 @@ namespace ClientCore.Network
                 }
                 switch ((OP_CODE)header.opcode)
                 {
-                    case OP_CODE.CHAT_WHISPER:
-                        HandleChatWhisper(Packet.DeserializeChatWhisper(header, buffer));
-                        break;
-                    case OP_CODE.CHAT_BROADCAST:
-                        HandleChatBatch(Packet.DeserializeChatBatch(header, buffer));
-                        break;
                     case OP_CODE.AUTH_RESPONSE:
                         HandleAuthRes(Packet.Deserialize<AuthResponseBody>(header, buffer));
                         break;
@@ -65,6 +72,8 @@ namespace ClientCore.Network
             }
             catch (Exception e)
             {
+                // A malformed C06 frame must reach the socket's existing disconnect boundary.
+                if (buffer.Length >= 7 && (buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 25)) throw;
                 ErrorLog(e.Message);
             }
         }

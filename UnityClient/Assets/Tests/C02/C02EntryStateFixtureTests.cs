@@ -268,6 +268,7 @@ namespace C02.Tests
         {
             public ulong EnteredCharacterID { get; private set; }
             public int ZoneChangeCount { get; private set; }
+            public void Profiles(uint[] profileIds) { }
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void CharacterList() { }
             public void Enter(ulong charID) => EnteredCharacterID = charID;

@@ -89,3 +89,60 @@ test('only event_callback in an events_api envelope for the fixed workspace is d
     () => { delivered++; return true; }), 'queued');
   assert.equal(delivered, 1);
 });
+
+test('short approval forwards the exact human text after persisted reservation and acknowledgement', () => {
+  for (const text of ['승인 C06', '승인 R01-DEPLOY_04', '승인 A' + '1'.repeat(23)]) {
+    const state = { deliveries: {} };
+    let saved = 0, acked = false;
+    assert.equal(acceptReply(state, { ...reply, text }, config, () => { saved++; }, () => { acked = true; },
+      (received, id, thread) => {
+        assert.equal(saved, 1);
+        assert.equal(acked, true);
+        assert.equal(state.deliveries[id].status, 'pending');
+        assert.deepEqual([received, id, thread], [text, reply.ts, reply.thread_ts]);
+        return true;
+      }), 'queued');
+    assert.equal(saved, 2);
+    assert.equal('text' in state.deliveries[reply.ts], false);
+  }
+});
+
+test('short approval keeps workspace, human, thread, channel, bot and edit restrictions', () => {
+  const event = { ...reply, text: '승인 C06' };
+  const envelope = { type: 'events_api', payload: { type: 'event_callback', team_id: config.team, event } };
+  for (const change of [{ user: 'other' }, { thread_ts: 'other' }, { channel: 'other' },
+    { bot_id: 'bot' }, { app_id: 'app' }, { subtype: 'message_changed' }]) {
+    assert.equal(acceptEnvelope({ deliveries: {} }, { ...envelope, payload: { ...envelope.payload, event: { ...event, ...change } } },
+      config, () => assert.fail(), () => {}, () => assert.fail()), 'ignored');
+  }
+  assert.equal(acceptEnvelope({ deliveries: {} }, { ...envelope, payload: { ...envelope.payload, team_id: 'other' } },
+    config, () => assert.fail(), () => {}, () => assert.fail()), 'ignored');
+});
+
+test('short approval duplicate ID remains blocked across delivery outcomes', () => {
+  const event = { ...reply, text: '승인 C06' };
+  const state = { deliveries: {} };
+  assert.equal(acceptReply(state, event, config, () => {}, () => {}, () => false), 'needs_review');
+  assert.equal(acceptReply(state, event, config, () => assert.fail(), () => {}, () => assert.fail()), 'duplicate');
+  state.deliveries[event.ts].status = 'pending';
+  assert.equal(acceptReply(state, event, config, () => assert.fail(), () => {}, () => assert.fail()), 'duplicate');
+});
+
+test('short approvals reject malformed, quoted, multiline and appended commands without trimming', () => {
+  for (const text of [undefined, null, 7, {}, ['승인 C06'], '승인', '승인 ', '승인 c06', '승인 06',
+    '승인 C06/r1', '승인 A' + '1'.repeat(24), '승인 C06 계속', '승인 C06; restart', '승인 C06 && restart',
+    '승인 C06\n', '승인 C06\r', '승인 C06\r\n', '승인 C06\nrestart', '\n승인 C06',
+    '> 승인 C06', '"승인 C06"', '`승인 C06`', ' 승인 C06', '승인 C06 ', '승인\tC06', '승인 C06\t']) {
+    let acked = false;
+    assert.equal(acceptReply({ deliveries: {} }, { ...reply, text }, config, () => assert.fail(),
+      () => { acked = true; }, () => assert.fail()), 'ignored');
+    assert.equal(acked, true);
+  }
+});
+
+test('legacy coord commands keep prefix removal and outer trimming', () => {
+  const sent = [];
+  assert.equal(acceptReply({ deliveries: {} }, { ...reply, text: '!coord   confirm  ' }, config, () => {}, () => {},
+    text => { sent.push(text); return true; }), 'queued');
+  assert.deepEqual(sent, ['confirm']);
+});

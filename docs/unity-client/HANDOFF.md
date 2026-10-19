@@ -1,5 +1,19 @@
 # 작업 인계
 
+## 최신 완료 — C06 채팅 / Git 전달 준비
+
+C06 구현·독립리뷰·컴파일·최종공통배치완료. Unity TestRunner45/45(.24s/신규wire/profile10+기존35), native c06-20261019-a PASS(129byte거부/입력보존/초점keys123→2초serverposMP동일·ownphase0/ownchat4·peerchat3실서버echo/한글/normaldisconnect), peer상대수신1/송신1/자기echo1/disposed1 PASS. 첫PNG3번째줄입력란겹침은보존, Setuphistory padding만44/82보완후영향화면Readability(actual한글3줄history존재/overflowfalse/rect비겹침/normaldisconnect)PASS·root직접PNG검수. 기능45/peer배치재실행없음. 서버제품추가변경0/서버01C626…동일. C06_RESULTS.md/C06_REVIEW.md참조.
+
+최종SceneB95D847D…/helperE2AA7287…/DLLB807463D… 동결. 짧은Slack승인 `승인 C06` 지원2파일도독립리뷰/12회귀PASS85.6ms,권한·중복경계동일. receiver6268/node28364를정상stopmarker→STOPPED후기존state보존재시작, 새17604/node13856 BOT_AUTH_OK/SOCKET_READY/LISTENING/stderr0. 실제짧은사람답장왕복은아직미검증. 게임21008/login12424/Editor32900/DB5584/Redis4376유지/게임Established0. runner/background/model=false/selectornull/Play·changing·compile·dirtyfalse/실Console오류경고0.
+
+Git firstsnapshot a2296d9 이후 C06만별도커밋준비. PR설명C06_PR_BODY.md/복구a2296d9와시험결과준비, push/PR/병합/공개없음. 다른채팅이바꾼WORKFLOW/SLACK_WORKFLOW/roles/coordinator정책파일은C06코드커밋에임의포함하지않는다. 아래진행중/승인대기는이전이력이다.
+
+## 진행 중 — C06 채팅 / Git 첫 로컬 커밋
+
+최신사용자다음단계지시로C06시작. 서버wire분석C06_CONTRACT.md완료, 서버제품수정없이ClientCore채팅/profile24·25호환+Unity최소채팅패널구현중. c06_core/c06_ui는독립파일소유, Editor root단독. C06_TASK.md범위·기대·예산·종료조건확정, 단위구현·리뷰끝나기전기능/Play테스트없음.
+
+Git질문대조: 원격master1d5a3d6/원격작업브랜치없음, 이전작업미커밋이었다. root가검증된C01~C05/R01/V04/B05 조합을明示manifest1324개/28MB로첫통합스냅샷로컬커밋 `a2296d9`완료. C06제품변경전이므로이후별도단위분리가능. 비밀/빌드/실행WAL/Captures/.codex/AGENTS제외. push/PR/병합/공개없음. 상세GIT_DELIVERY_STATUS.md. 이후새C06변경은이커밋과구분한다.
+
 ## 2026-10-19 최신 완료 — R01 적용 / B05 재접속·V04 외곽 배치 PASS
 
 후속 receiver 전달 START회신1792381420.912509(부모1792381354.336819/지정사람U0C9QEUHPMK)도 기존 소비 기록과 실제 START PASS receipt를 대조했다. 같은 기동 승인 지연 전달/no-op이며 추가 기동·재시작·테스트 없음. 같은 Slack 스레드에 짧게 확인 회신했다.

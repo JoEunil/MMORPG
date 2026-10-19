@@ -1,5 +1,11 @@
 # GitHub 전달 상태 및 커밋 후보
 
+## 최신 — 로컬 스냅샷 커밋 완료 / 원격 미반영
+
+Coordinator가 C06 제품 변경 전에 명시 manifest1324개/약28MB로 첫 통합 검증 스냅샷을 로컬 커밋했다: `a2296d9` (`feat: snapshot validated Unity field client and disconnect fixes`). 원본 기준은1d5a3d6. `.codex`/루트AGENTS/실행WAL/빌드/원본캡처/비밀파일/C06계약문서는제외했다. 원격push/PR/병합/공개는없다. 원격master1d5a3d6와작업브랜치없음을root의실제ls-remote로도확인했다.
+
+manifest는로컬Captures/pre-c06-commit-manifest.txt와nul. 새staged후검사에서Unity직렬화YAML/기본템플릿/보존patch공백경고가있어재저장하지않았다. 자체제품소스공백차단없음(추가진단2곳은Unity기본TutorialInfo ReadmeEditor). 토큰패턴검사는staged내용을대상으로파일명만조회해의심없음/제외경로없음. 전체보안스캔을대신하지않는다. 단위테스트는소스동일한이미완료B05/기존검증근거를사용하며스냅샷만을위해기능테스트를반복하지않았다. 아래미커밋상태는감사시점이력이다.
+
 확인일: 2026-10-19 (KST)
 
 ## 현재 상태

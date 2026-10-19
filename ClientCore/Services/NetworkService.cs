@@ -36,15 +36,9 @@ namespace ClientCore.Services
 
         public void Chat(string message, byte scope, ulong targetID)
         {
-            try
-            {
-                _sock.Send(PacketBuilder.CreateChatPacket(message, scope, targetID));
-            }
-            catch (Exception ex)
-            {
-                Log(ex.Message);
-            }
+            _sock.Send(PacketBuilder.CreateChatPacket(message, scope, targetID));
         }
+        public void Profiles(uint[] profileIds) => _sock.Send(PacketBuilder.CreateProfileRequest(profileIds));
         public void Action(byte dir, float x, float y, byte skillSlot)
         {
             _sock.Send(PacketBuilder.CreateActionPacket(dir, x, y, skillSlot));

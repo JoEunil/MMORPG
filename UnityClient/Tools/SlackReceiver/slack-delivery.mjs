@@ -24,16 +24,19 @@ export function acceptReply(state, event, config, persist, ack, deliver) {
   if (event?.type !== 'message' || event.subtype || event.bot_id || event.app_id ||
       event.channel !== config.channel || event.user !== config.user ||
       !config.threads.has(event.thread_ts) ||
-      !/^\d+\.\d+$/.test(event.ts ?? '') || !event.text?.startsWith('!coord ')) {
+      !/^\d+\.\d+$/.test(event.ts ?? '') || typeof event.text !== 'string') {
     ack();
     return 'ignored';
   }
+  // Keep legacy prefix stripping and trimming. Short approvals match the whole raw
+  // single line without trimming, so quotes, surrounding whitespace and suffixes fail.
+  const text = event.text.startsWith('!coord ') ? event.text.slice(7).trim() :
+    (!/[\r\n]/.test(event.text) && /^승인 [A-Z][A-Z0-9_-]{0,23}$/.test(event.text) ? event.text : '');
+  if (!text || text.length > 4000) { ack(); return 'ignored'; }
   if (state.deliveries[event.ts]) {
     ack();
     return 'duplicate';
   }
-  const text = event.text.slice(7).trim();
-  if (!text || text.length > 4000) { ack(); return 'ignored'; }
   state.deliveries[event.ts] = { status: 'pending', thread: event.thread_ts };
   persist();
   ack();

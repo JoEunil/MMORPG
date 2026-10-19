@@ -85,6 +85,7 @@ public struct InventoryItemView
         void ChatacterListReceived(byte resStatus, ushort ount, PacketHelper.CharacterInfo[] characters);
         void EnterReceived(byte resStatus, byte[] name, ushort attack, ushort level, uint exp, int hp, int mp, int maxHp, int maxMp, byte dir, float startX, float startY, ushort CurrentZone);
         void ChatReceived(Packet.Message message);
+        void ProfilesReceived(ProfileEntry[] profiles);
         void InventoryReceived(byte resStatus, PacketHelper.InventoryItem[] items);
         void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y);
         void DeltaReceived(ushort count, PacketHelper.DeltaUpdateField[] updates);
@@ -161,6 +162,7 @@ namespace ClientCore.Services
         void Enter(ulong charID);
 
         void Chat(string message, byte scope, ulong targetID);
+        void Profiles(uint[] profileIds);
         void Action(byte dir, float x, float y, byte skillSlot);
         void Pong(ulong serverTimeMs);
         void ZoneChange(byte op);

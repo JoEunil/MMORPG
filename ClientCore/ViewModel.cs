@@ -2,6 +2,9 @@
 using ClientCore.PacketHelper;
 using ClientCore.Services;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Drawing;
 using System.Net.Http;
 using System.Threading;
@@ -22,6 +25,14 @@ namespace ClientCore
         private bool _enterPending;
         private bool _zonePending;
         private volatile bool _connectionFailed;
+        // Profile state belongs to the existing main-thread dispatcher, never the tick thread.
+        private readonly Dictionary<uint, ProfileEntry> _profiles = new Dictionary<uint, ProfileEntry>();
+        private readonly Dictionary<uint, uint> _profileVersions = new Dictionary<uint, uint>();
+        private readonly Dictionary<uint, uint> _entityProfiles = new Dictionary<uint, uint>();
+        private readonly Dictionary<uint, uint> _profilesPending = new Dictionary<uint, uint>();
+        private readonly Dictionary<uint, uint> _profilesMissing = new Dictionary<uint, uint>();
+        private long _profileRequestDeadline;
+        private bool _worldReady;
         public event Action<bool> OnAuthReceived;
         public event Action<byte, ushort> OnCharacterListResult;
         public event Action<string> OnConnectionFailed;
@@ -108,6 +119,8 @@ namespace ClientCore
 
         public void Chat(string message, byte scope, ulong targetID)
         {
+            if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady)
+                throw new InvalidOperationException("Enter the world before chatting.");
             _network.Chat(message, scope, targetID);
         }
         public void ZoneChange(int op)
@@ -186,7 +199,65 @@ namespace ClientCore
         {
             _threadDispatcher.Post(() =>
             {
-                OnChatReceived?.Invoke(message.scope, message.senderID, message.senderName, message.message);
+                if (_lifetime.IsCancellationRequested || _connectionFailed) return;
+                ObserveProfile(message.senderProfileId, 0);
+                string name = _profiles.TryGetValue(message.senderProfileId, out var profile) && !string.IsNullOrEmpty(profile.name)
+                    ? profile.name : "플레이어 #" + message.senderID;
+                OnChatReceived?.Invoke(message.scope, message.senderID, name, message.message);
+                RequestProfiles();
+            });
+        }
+
+        private void ObserveProfile(uint id, uint version)
+        {
+            if (id != 0 && (!_profileVersions.TryGetValue(id, out var current) || version > current))
+                _profileVersions[id] = version;
+        }
+
+        private void RequestProfiles()
+        {
+            // There is no response request ID, so keep a single batch in flight.
+            if (_connectionFailed || _lifetime.IsCancellationRequested) return;
+            if (_profilesPending.Count != 0)
+            {
+                if (Stopwatch.GetTimestamp() < _profileRequestDeadline) return;
+                foreach (var pair in _profilesPending) _profilesMissing[pair.Key] = pair.Value;
+                _profilesPending.Clear();
+            }
+            foreach (var pair in _profileVersions)
+            {
+                if (_profiles.TryGetValue(pair.Key, out var cached) && cached.version >= pair.Value ||
+                    _profilesMissing.TryGetValue(pair.Key, out var missing) && missing >= pair.Value) continue;
+                _profilesPending.Add(pair.Key, pair.Value);
+                if (_profilesPending.Count == 50) break;
+            }
+            if (_profilesPending.Count == 0) return;
+            _profileRequestDeadline = Stopwatch.GetTimestamp() + 5 * Stopwatch.Frequency;
+            try { _network.Profiles(_profilesPending.Keys.ToArray()); }
+            catch (Exception)
+            {
+                foreach (var pair in _profilesPending) _profilesMissing[pair.Key] = pair.Value;
+                _profilesPending.Clear();
+                _logger.Log("Profile lookup request failed.");
+            }
+        }
+
+        public void ProfilesReceived(ProfileEntry[] profiles)
+        {
+            _threadDispatcher.Post(() =>
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed) return;
+                foreach (var profile in profiles)
+                {
+                    if (!_profilesPending.TryGetValue(profile.profileId, out var requested) || profile.version < requested) continue;
+                    if (_profileVersions.TryGetValue(profile.profileId, out var observed) && profile.version < observed) continue;
+                    if (!_profiles.TryGetValue(profile.profileId, out var cached) || profile.version >= cached.version)
+                        _profiles[profile.profileId] = profile;
+                    _profilesPending.Remove(profile.profileId);
+                }
+                // Omitted IDs cannot acknowledge a batch: an empty reply may belong to a timed-out request.
+                // They remain pending until the existing dispatcher traffic observes its deadline.
+                RequestProfiles();
             });
         }
 
@@ -214,6 +285,8 @@ namespace ClientCore
                 _threadDispatcher.Post(() =>
                 {
                     if (_lifetime.IsCancellationRequested) return;
+                    _worldReady = success;
+                    _entityProfiles.Clear();
                     if (success) OnZoneChageReceived?.Invoke(zoneID, chatID, zoneInternalID, x, y);
                     else OnZoneChageFailed?.Invoke();
                 });
@@ -226,7 +299,12 @@ namespace ClientCore
             var subscribers = OnDeltaReceived;
             _threadDispatcher.Post(() =>
             {
-                if (!_lifetime.IsCancellationRequested) subscribers?.Invoke(count, updates);
+                if (_lifetime.IsCancellationRequested || _connectionFailed) return;
+                for (int i = 0; i < count; i++)
+                    if (updates[i].fieldID == 9 && _entityProfiles.TryGetValue(updates[i].zoneInternalID, out var id))
+                        ObserveProfile(id, updates[i].fieldVal);
+                RequestProfiles();
+                subscribers?.Invoke(count, updates);
             });
         }
         public void FullReceived(ushort count, PacketHelper.FullStateField[] states)
@@ -235,7 +313,14 @@ namespace ClientCore
             var subscribers = OnFullReceived;
             _threadDispatcher.Post(() =>
             {
-                if (!_lifetime.IsCancellationRequested) subscribers?.Invoke(count, states);
+                if (_lifetime.IsCancellationRequested || _connectionFailed) return;
+                for (int i = 0; i < count; i++)
+                {
+                    _entityProfiles[states[i].zoneInternalID] = states[i].profileId;
+                    ObserveProfile(states[i].profileId, states[i].profileVersion);
+                }
+                RequestProfiles();
+                subscribers?.Invoke(count, states);
             });
         }
        public void MonsterDeltaReceived(ushort count, PacketHelper.MonsterDeltaField[] updates)
@@ -278,8 +363,17 @@ namespace ClientCore
         {
             if (_lifetime.IsCancellationRequested) return;
             _connectionFailed = true;
+            _worldReady = false;
             _viewData.SetCharList(0, Array.Empty<PacketHelper.CharacterInfo>());
-            _threadDispatcher.Post(() => { if (!_lifetime.IsCancellationRequested) OnConnectionFailed?.Invoke(msg); });
+            _threadDispatcher.Post(() =>
+            {
+                _profiles.Clear();
+                _profileVersions.Clear();
+                _entityProfiles.Clear();
+                _profilesPending.Clear();
+                _profilesMissing.Clear();
+                if (!_lifetime.IsCancellationRequested) OnConnectionFailed?.Invoke(msg);
+            });
         }
         public void Log(string msg)
         {

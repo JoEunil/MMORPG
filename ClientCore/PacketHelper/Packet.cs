@@ -39,6 +39,8 @@ namespace ClientCore.PacketHelper
         INVENTORY_RES = 21,
         PING = 22, // 서버 송신
         PONG = 23, // 클라이언트 송신
+        PROFILE_BATCH = 24,
+        PROFILE_BATCH_RES = 25,
     }
     
     public enum ZONE_CHANGE : byte
@@ -181,11 +183,9 @@ namespace ClientCore.PacketHelper
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ChatWhisperBody
     {
-        public short messageLen;
+        public ushort messageLen;
         public ulong senderChatID;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_CHARNAME_LEN)]
-        public byte[] name;
+        public uint senderProfileId;
     };// + raw char*
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -194,8 +194,7 @@ namespace ClientCore.PacketHelper
         public ulong senderChatID; // sender
         public ushort offset;
         public ushort messageLength;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_CHARNAME_LEN)]
-        public byte[] name;
+        public uint senderProfileId;
     };
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -207,6 +206,13 @@ namespace ClientCore.PacketHelper
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_CHAT_PACKET)]
         public ChatEntity[] entities;
     };
+
+    public struct ProfileEntry
+    {
+        public uint profileId;
+        public uint version;
+        public string name;
+    }
 
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -340,6 +346,7 @@ namespace ClientCore.PacketHelper
     }
     public class Packet
     {
+        private static readonly UTF8Encoding StrictUtf8 = new UTF8Encoding(false, true);
         
         private static T ByteArrayToStructure<T>(byte[] bytes) where T : struct
         {
@@ -406,8 +413,12 @@ namespace ClientCore.PacketHelper
 
         internal static byte[] SerializeChatPacket(PacketHeader header, ChatRequestBody body, string message, byte scope, ulong targetID)
         {
-            byte[] messageBytes = EncodingHelper.EncodeUtf8(message+'\0');
-            // c# 문자열에는 \0가 안붙어서 c스타일 문자열로 바꿔주기 위해 \0 붙임
+            if (string.IsNullOrWhiteSpace(message) || message.IndexOfAny(new[] { '\0', '\r', '\n' }) >= 0)
+                throw new ArgumentException("Enter a single-line chat message.");
+            if (scope > (byte)CHAT_SCOPE.Whisper || (scope != (byte)CHAT_SCOPE.Whisper && targetID != 0))
+                throw new ArgumentException("Invalid chat destination.");
+            byte[] messageBytes = StrictUtf8.GetBytes(message);
+            if (messageBytes.Length > 128) throw new ArgumentException("Chat message exceeds 128 UTF8 bytes.");
 
             int bodySize = Marshal.SizeOf<ChatRequestBody>();
             // 전체 패킷 사이즈
@@ -473,75 +484,101 @@ namespace ClientCore.PacketHelper
         {
             public byte scope;
             public ulong senderID;
-            public string senderName;
+            public uint senderProfileId;
             public string message;
         }
 
         internal static Message DeserializeChatWhisper(PacketHeader header, byte[] buffer)
         {
-            int headerSize = Marshal.SizeOf<PacketHeader>();
-            int fixedBodySize = Marshal.SizeOf<ChatWhisperBody>();
-
-            if (buffer.Length < headerSize + fixedBodySize)
-                throw new ArgumentException("Byte array too small");
-
-            STPacket<ChatWhisperBody> packet = new STPacket<ChatWhisperBody>();
-            packet.header = header;
-
-            // 고정 필드만 읽기
-            byte[] bodyBytes = new byte[fixedBodySize];
-            Array.Copy(buffer, headerSize, bodyBytes, 0, fixedBodySize);
-            packet.body = ByteArrayToStructure<ChatWhisperBody>(bodyBytes);
-
-            // 메시지 배열 읽기
-            int messageOffset = headerSize + fixedBodySize;
-            Message message = new Message();
-
-            if (messageOffset + packet.body.messageLen > buffer.Length)
-                throw new ArgumentException("Message length or offset exceeds buffer size messageLen:"  + packet.body.messageLen + " bufferLen: " + buffer.Length);
-
-            message.scope = (byte)CHAT_SCOPE.Whisper;
-            message.senderID = packet.body.senderChatID;
-            message.senderName = EncodingHelper.DecodeUtf8(packet.body.name).TrimEnd('\0');
-            message.message = EncodingHelper.DecodeUtf8(buffer, messageOffset, packet.body.messageLen).TrimEnd('\0');
-            
-
-            return message;
+            ValidateChatProfileFrame(header, buffer, 14, 22);
+            ushort length = BitConverter.ToUInt16(buffer, 8);
+            if (22 + length != buffer.Length) throw new ArgumentException("Invalid whisper length.");
+            return new Message
+            {
+                scope = (byte)CHAT_SCOPE.Whisper,
+                senderID = BitConverter.ToUInt64(buffer, 10),
+                senderProfileId = BitConverter.ToUInt32(buffer, 18),
+                message = StrictUtf8.GetString(buffer, 22, length)
+            };
         }
         internal static  Message[] DeserializeChatBatch(PacketHeader header, byte[] buffer)
         {
-            int headerSize = Marshal.SizeOf<PacketHeader>();
-            int fixedBodySize = Marshal.SizeOf<ChatBatchNotifyBody>();
-
-            if (buffer.Length < headerSize + fixedBodySize)
-                throw new ArgumentException("Byte array too small");
-        
-            STPacket<ChatBatchNotifyBody> packet = new STPacket<ChatBatchNotifyBody>();
-            packet.header = header;
-
-            // 고정 필드만 읽기
-            byte[] bodyBytes = new byte[fixedBodySize];
-            Array.Copy(buffer, headerSize, bodyBytes, 0, fixedBodySize);
-            packet.body = ByteArrayToStructure<ChatBatchNotifyBody>(bodyBytes);
-
-            // 메시지 배열 읽기
-            int messageOffset = headerSize + fixedBodySize;
-            Message[] messages = new Message[packet.body.chatCnt];
-
-            for (int i = 0; i < packet.body.chatCnt; i++)
+            // Ten fixed 16-byte entity slots precede the variable message region.
+            ValidateChatProfileFrame(header, buffer, 15, 173);
+            ushort count = BitConverter.ToUInt16(buffer, 8);
+            ushort total = BitConverter.ToUInt16(buffer, 10);
+            byte scope = buffer[12];
+            if (count > 10 || scope > (byte)CHAT_SCOPE.Whisper || 173 + total != buffer.Length)
+                throw new ArgumentException("Invalid chat count, scope or payload length.");
+            var messages = new Message[count];
+            for (int i = 0; i < count; i++)
             {
-                var entity = packet.body.entities[i];
-
-                if (messageOffset + entity.offset + entity.messageLength > buffer.Length)
-                    throw new ArgumentException("Message length or offset exceeds buffer size" + messageOffset + " " + entity.offset + " " + entity.messageLength + " "  +  buffer.Length);
-
-                messages[i].scope = (byte)packet.body.scope;
-                messages[i].senderID = entity.senderChatID;
-                messages[i].senderName = EncodingHelper.DecodeUtf8(entity.name).TrimEnd('\0');
-                messages[i].message = EncodingHelper.DecodeUtf8(buffer, messageOffset + entity.offset, entity.messageLength).TrimEnd('\0');
+                int entity = 13 + i * 16;
+                ushort offset = BitConverter.ToUInt16(buffer, entity + 8);
+                ushort length = BitConverter.ToUInt16(buffer, entity + 10);
+                if ((int)offset + length > total) throw new ArgumentException("Invalid chat message range.");
+                messages[i] = new Message
+                {
+                    scope = scope,
+                    senderID = BitConverter.ToUInt64(buffer, entity),
+                    senderProfileId = BitConverter.ToUInt32(buffer, entity + 12),
+                    message = StrictUtf8.GetString(buffer, 173 + offset, length)
+                };
             }
-
             return messages;
+        }
+
+        private static void ValidateChatProfileFrame(PacketHeader header, byte[] buffer, byte opcode, int minimum)
+        {
+            if (buffer == null || buffer.Length < minimum || header.magic != MAGIC ||
+                header.length != buffer.Length || header.opcode != opcode || header.flags != 0)
+                throw new ArgumentException("Invalid chat/profile frame.");
+            var actual = ExtractHeader(buffer);
+            if (actual.magic != header.magic || actual.length != header.length ||
+                actual.opcode != header.opcode || actual.flags != header.flags)
+                throw new ArgumentException("Mismatched packet header.");
+        }
+
+        internal static ProfileEntry[] DeserializeProfiles(PacketHeader header, byte[] buffer)
+        {
+            ValidateChatProfileFrame(header, buffer, 25, 10);
+            ushort count = BitConverter.ToUInt16(buffer, 8);
+            if (count > 50 || 10 + count * 40 != buffer.Length)
+                throw new ArgumentException("Invalid profile count or length.");
+            var result = new ProfileEntry[count];
+            var ids = new HashSet<uint>();
+            for (int i = 0; i < count; i++)
+            {
+                int offset = 10 + i * 40;
+                uint id = BitConverter.ToUInt32(buffer, offset);
+                if (id == 0 || !ids.Add(id)) throw new ArgumentException("Invalid or duplicate profile ID.");
+                int length = Array.IndexOf(buffer, (byte)0, offset + 8, 32) - (offset + 8);
+                if (length < 0) throw new ArgumentException("Unterminated profile name.");
+                result[i] = new ProfileEntry
+                {
+                    profileId = id,
+                    version = BitConverter.ToUInt32(buffer, offset + 4),
+                    name = StrictUtf8.GetString(buffer, offset + 8, length)
+                };
+            }
+            return result;
+        }
+
+        internal static byte[] SerializeProfileRequest(uint[] profileIds)
+        {
+            if (profileIds == null || profileIds.Length == 0 || profileIds.Length > 50)
+                throw new ArgumentException("Invalid profile request count.");
+            var ids = new HashSet<uint>();
+            var result = new byte[10 + profileIds.Length * 4];
+            Buffer.BlockCopy(SerializeHeaderOnly(new PacketHeader { magic = MAGIC, opcode = (byte)OP_CODE.PROFILE_BATCH }), 0, result, 0, 8);
+            Buffer.BlockCopy(BitConverter.GetBytes((uint)result.Length), 0, result, 2, 4);
+            Buffer.BlockCopy(BitConverter.GetBytes((ushort)profileIds.Length), 0, result, 8, 2);
+            for (int i = 0; i < profileIds.Length; i++)
+            {
+                if (profileIds[i] == 0 || !ids.Add(profileIds[i])) throw new ArgumentException("Invalid or duplicate profile ID.");
+                Buffer.BlockCopy(BitConverter.GetBytes(profileIds[i]), 0, result, 10 + i * 4, 4);
+            }
+            return result;
         }
 
         // 고정 길이 패킷
