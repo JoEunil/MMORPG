@@ -4,18 +4,27 @@ using ClientCore.Services;
 using System;
 using System.Drawing;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 
 
 namespace ClientCore
 {
-    public class ViewModel : IViewModelUI, IViewModelNet, IViewModelTick
+    public class ViewModel : IViewModelUI, IViewModelNet, IViewModelTick, IDisposable
     {
         private readonly INetworkService _network;
         private readonly IViewDataModel _viewData;
         private readonly ILogger _logger;
         private readonly IMainThreadDispatcher _threadDispatcher;
+        private readonly CancellationTokenSource _lifetime = new CancellationTokenSource();
+        private readonly object _sessionGate = new object();
+        private bool _enterPending;
+        private bool _zonePending;
+        private volatile bool _connectionFailed;
+        public event Action<bool> OnAuthReceived;
+        public event Action<byte, ushort> OnCharacterListResult;
+        public event Action<string> OnConnectionFailed;
 
         public event Action<bool> OnEnterSuccess;
         public event Action<bool> OnCharacterListReceived;
@@ -39,16 +48,13 @@ namespace ClientCore
         }
         public async Task Connect()
         {
-            try
+            var session = await AuthService.Instance.GetSessionAsync(ClientSession.AccessToken, _lifetime.Token).ConfigureAwait(false);
+            lock (_sessionGate)
             {
-                var (ip, port) = await AuthService.Instance.GetSessionAsync();
-                _logger.Log($"Session Token: {ClientSession.SessionToken}");
-                await _network.Connect(ip, port);
+                _lifetime.Token.ThrowIfCancellationRequested();
+                ClientSession.SessionToken = session.SessionToken;
             }
-            catch (Exception ex)
-            {
-                _logger.Log($"{ex.Message}");
-            }
+            await _network.Connect(session.GameServer.IP, session.GameServer.Port).ConfigureAwait(false);
         }
 
         // UI
@@ -56,18 +62,48 @@ namespace ClientCore
         {
             try
             {
-                await AuthService.Instance.LoginAsync(id, pwd);
-                _logger.Log($"로그인 성공 accessToken:{ClientSession.AccessToken}, userID: {ClientSession.UserID}");
-                await Connect();
+                _lifetime.Token.ThrowIfCancellationRequested();
+                _viewData.SetCharList(0, Array.Empty<PacketHelper.CharacterInfo>());
+                var login = await AuthService.Instance.LoginAsync(id, pwd, _lifetime.Token).ConfigureAwait(false);
+                lock (_sessionGate)
+                {
+                    _lifetime.Token.ThrowIfCancellationRequested();
+                    ClientSession.AccessToken = login.AccessToken;
+                    ClientSession.UserID = login.UserID;
+                }
+                await Connect().ConfigureAwait(false);
             }
+            catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
             catch (Exception ex)
             {
-                _logger.Log($"로그인 실패: {ex.Message}");
+                Error(ex is InvalidOperationException ? ex.Message : "Login or connection failed.");
+            }
+        }
+
+        public void Dispose()
+        {
+            lock (_sessionGate)
+            {
+                if (_lifetime.IsCancellationRequested) return;
+                _lifetime.Cancel();
+                ClientSession.AccessToken = null;
+                ClientSession.SessionToken = null;
+                ClientSession.UserID = 0;
             }
         }
         public void Enter(ulong charID)
         {
-            _network.Enter(charID);
+            lock (_sessionGate)
+            {
+                if (_lifetime.IsCancellationRequested || _enterPending || _zonePending) return;
+                _enterPending = true;
+            }
+            try { _network.Enter(charID); }
+            catch (Exception)
+            {
+                lock (_sessionGate) _enterPending = false;
+                Error("World entry request failed.");
+            }
         }
 
         public void Chat(string message, byte scope, ulong targetID)
@@ -76,39 +112,56 @@ namespace ClientCore
         }
         public void ZoneChange(int op)
         {
-            _network.ZoneChange((byte)op);
+            lock (_sessionGate)
+            {
+                if (_lifetime.IsCancellationRequested || _zonePending) return;
+                _zonePending = true;
+            }
+            try { _network.ZoneChange((byte)op); }
+            catch (Exception)
+            {
+                lock (_sessionGate) _zonePending = false;
+                Error("Zone entry request failed.");
+            }
         }
 
         // Client Tick 루프
         public void SendUpdate()
         {
-            var res = _viewData.GetActionState();
-            if (res.Item1 == true)
+            (bool, byte, float, float, byte) res;
+            lock (_sessionGate)
             {
-                _network.Action(res.Item2, res.Item3, res.Item4, res.Item5);
+                if (_lifetime.IsCancellationRequested || _connectionFailed) return;
+                res = _viewData.GetActionState();
             }
+            // Do not hold the session lock across socket I/O: receive callbacks also use it.
+            if (!res.Item1 || _lifetime.IsCancellationRequested || _connectionFailed) return;
+            try { _network.Action(res.Item2, res.Item3, res.Item4, res.Item5); }
+            catch (Exception) { Error("Movement request failed."); }
         }
 
         // Network
         // Post 인자로 넘기는 lambda 함수 자체가 action으로 처리됨. 람다 함수가 action으로 암시적 형변환이 일어남.
         public void AuthReceived(byte resStatus)
         {
+            if (_lifetime.IsCancellationRequested) return;
             bool success = resStatus != 0;
+            _threadDispatcher.Post(() => { if (!_lifetime.IsCancellationRequested) OnAuthReceived?.Invoke(success); });
             if (success)
                 _network.CharacterList();
             else
-                _logger.Log("Auth request failed");
+                Error("Game server authentication failed.");
         }
 
         public void ChatacterListReceived(byte resStatus, ushort count, PacketHelper.CharacterInfo[] characters)
         {
             bool success = resStatus != 0;
-            if (success)
-            {
-                _viewData.SetCharList(count, characters);
-            }
+            if (_lifetime.IsCancellationRequested) return;
+            _viewData.SetCharList(success ? count : (ushort)0, success ? characters : Array.Empty<PacketHelper.CharacterInfo>());
             _threadDispatcher.Post(() =>
             {
+                if (_lifetime.IsCancellationRequested) return;
+                OnCharacterListResult?.Invoke(resStatus, count);
                 OnCharacterListReceived?.Invoke(success);
             });
         }
@@ -116,16 +169,17 @@ namespace ClientCore
         public void EnterReceived(byte resStatus, byte[] name, ushort attack, ushort level, uint exp, int hp, int mp, int maxHP, int maxMP, byte dir, float startX, float startY, ushort currentZone)
         {
             bool success = resStatus != 0;
-            if (success)
+            lock (_sessionGate)
             {
-                _viewData.SetPosition(startX, startY); // 이동 좌표 시드
-                _network.ZoneChange((byte)ZONE_CHANGE.ENTER);
+                if (_lifetime.IsCancellationRequested || !_enterPending) return;
+                _enterPending = false;
+                _threadDispatcher.Post(() =>
+                {
+                    if (!_lifetime.IsCancellationRequested) OnEnterSuccess?.Invoke(success);
+                });
+                if (success) _viewData.SetPosition(startX, startY);
             }
-            _threadDispatcher.Post(() =>
-            {
-                OnEnterSuccess?.Invoke(success);
-            });
-
+            if (success) ZoneChange((byte)ZONE_CHANGE.ENTER);
         }
 
         public void ChatReceived(Packet.Message message)
@@ -151,55 +205,64 @@ namespace ClientCore
 
         public void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y)
         {
-            bool success = resStatus != 0;
-            if (success)
+            lock (_sessionGate)
             {
-                _viewData.SetPosition(x, y); // 존 이동 후 권위 좌표로 재시드
+                if (_lifetime.IsCancellationRequested || !_zonePending) return;
+                _zonePending = false;
+                bool success = resStatus != 0;
+                if (success) _viewData.SetPosition(x, y);
                 _threadDispatcher.Post(() =>
                 {
-                    OnZoneChageReceived?.Invoke(zoneID, chatID, zoneInternalID, x, y);
+                    if (_lifetime.IsCancellationRequested) return;
+                    if (success) OnZoneChageReceived?.Invoke(zoneID, chatID, zoneInternalID, x, y);
+                    else OnZoneChageFailed?.Invoke();
                 });
-            }
-            else
-            {
-                OnZoneChageFailed?.Invoke();
-                _logger.Log("Zone Change Failed");
             }
         }
 
         public void DeltaReceived(ushort count, PacketHelper.DeltaUpdateField[] updates)
         {
+            if (_lifetime.IsCancellationRequested) return;
+            var subscribers = OnDeltaReceived;
             _threadDispatcher.Post(() =>
             {
-                OnDeltaReceived?.Invoke(count, updates);
+                if (!_lifetime.IsCancellationRequested) subscribers?.Invoke(count, updates);
             });
         }
         public void FullReceived(ushort count, PacketHelper.FullStateField[] states)
         {
+            if (_lifetime.IsCancellationRequested) return;
+            var subscribers = OnFullReceived;
             _threadDispatcher.Post(() =>
             {
-                OnFullReceived?.Invoke(count, states);
+                if (!_lifetime.IsCancellationRequested) subscribers?.Invoke(count, states);
             });
         }
        public void MonsterDeltaReceived(ushort count, PacketHelper.MonsterDeltaField[] updates)
         {
+            if (_lifetime.IsCancellationRequested) return;
+            var subscribers = OnMonsterDeltaReceived;
             _threadDispatcher.Post(() =>
             {
-                OnMonsterDeltaReceived?.Invoke(count, updates);
+                if (!_lifetime.IsCancellationRequested) subscribers?.Invoke(count, updates);
             });
         }
         public void MonsterFullReceived(ushort count, PacketHelper.MonsterFullField[] states)
         {
+            if (_lifetime.IsCancellationRequested) return;
+            var subscribers = OnMonsterFullReceived;
             _threadDispatcher.Post(() =>
             {
-                OnMonsterFullReceived?.Invoke(count, states);
+                if (!_lifetime.IsCancellationRequested) subscribers?.Invoke(count, states);
             });
         }
         public void ActionResultReceived(ushort count, PacketHelper.ActionResultField[] actions)
         {
+            if (_lifetime.IsCancellationRequested) return;
+            var subscribers = OnActionResultReceived;
             _threadDispatcher.Post(() =>
             {
-                OnActionResultReceived?.Invoke(count, actions);
+                if (!_lifetime.IsCancellationRequested) subscribers?.Invoke(count, actions);
             });
         }
         public void PingReceived(ulong servertimeMs, ulong rtt)
@@ -213,7 +276,10 @@ namespace ClientCore
 
         public void Error(string msg)
         {
-            _logger.Log("Error: " + msg);
+            if (_lifetime.IsCancellationRequested) return;
+            _connectionFailed = true;
+            _viewData.SetCharList(0, Array.Empty<PacketHelper.CharacterInfo>());
+            _threadDispatcher.Post(() => { if (!_lifetime.IsCancellationRequested) OnConnectionFailed?.Invoke(msg); });
         }
         public void Log(string msg)
         {

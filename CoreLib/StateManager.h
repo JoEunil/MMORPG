@@ -31,6 +31,7 @@ namespace Core {
         // session의 guild, party는 여기서 1차로 관리. 
         std::chrono::steady_clock::time_point lastCheatTime;
         bool authenticated = false;
+        bool authCompleted = false; // Pending is distinct from a completed failure.
     };
 
     struct alignas(std::hardware_destructive_interference_size) SessionShard {
@@ -75,6 +76,8 @@ namespace Core {
         void CleanUp();
 
         friend class Initializer;
+        friend class LobbyZone; // ImmigrateChar takes the session shard before the lobby mutex.
+        friend class NonZoneThreadPoolFixture;
         friend class ZoneBenchmarkAccess;
 
     public:
@@ -87,23 +90,32 @@ namespace Core {
             return it != m_states.end() ? it->second.get() : nullptr;
         }
 
-        void AddSession(uint64_t sessionID, uint64_t userID, bool authenticated) {
+        void BeginAuth(uint64_t sessionID) {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::unique_lock<std::shared_mutex> lock(shard.smutex);
-            auto& map = shard.sessionMap;
-            auto it = map.find(sessionID);
-            if (it != map.end())
-                return ;
-            map[sessionID].userID = userID;
-            map[sessionID].zoneID = 0; // lobby
-            map[sessionID].characterID = 0;
-            map[sessionID].cheatCount = 0;
-            map[sessionID].lastCheatTime = std::chrono::steady_clock::now();
-            map[sessionID].authenticated = authenticated;
-            // character load 안한 상태
-            Core::gameLogger->LogInfo("state manager", "AddSession",  "session", sessionID,  "userID", userID);
+            // The worker still owns the AUTH PacketView here.
+            shard.sessionMap.try_emplace(sessionID);
         }
-        
+
+        bool CompleteAuth(uint64_t sessionID, uint64_t userID, bool authenticated) {
+            auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+            std::unique_lock<std::shared_mutex> lock(shard.smutex);
+            auto it = shard.sessionMap.find(sessionID);
+            if (it == shard.sessionMap.end())
+                return false; // Disconnect already removed the pending entry.
+            if (it->second.authCompleted)
+                return true; // Preserve first-completion-wins state, including failure.
+            it->second.userID = userID;
+            it->second.zoneID = 0;
+            it->second.characterID = 0;
+            it->second.cheatCount = 0;
+            it->second.lastCheatTime = std::chrono::steady_clock::now();
+            it->second.authenticated = authenticated;
+            it->second.authCompleted = true;
+            Core::gameLogger->LogInfo("state manager", "AddSession", "session", sessionID, "userID", userID);
+            return true;
+        }
+
         uint64_t GetUserID(uint64_t sessionID) {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);

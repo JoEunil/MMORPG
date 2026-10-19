@@ -109,7 +109,7 @@ namespace Cache {
 
     void Handler::CharacterStateRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterStateReqBody* body) {
         EnqueueMessageWork(dbWorkerGame, msg, [=](DBConnectionGame* conn) {
-            auto res = conn->ExecuteSelect(3, body->characterID);
+            auto res = conn->ExecuteSelect(3, body->characterID, body->userID, body->channelID);
 
             Core::MsgStruct<Core::MsgCharacterStateResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgCharacterStateResBody>*>(msg->GetBuffer());
 

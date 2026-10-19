@@ -54,7 +54,7 @@ namespace Cache {
         "SELECT c.char_id, c.profile_id, p.version AS profile_version, p.name, "
         "c.attack, c.level, c.exp, c.hp, c.mp, c.max_hp, c.max_mp, c.dir, c.zone_id, c.last_pos_x, c.last_pos_y "
         "FROM characters c JOIN profile p ON p.profile_id = c.profile_id "
-        "WHERE c.char_id = ?";
+        "WHERE c.char_id = ? AND c.user_id = ? AND c.channel_id = ? AND c.deleted_at IS NULL";
     inline constexpr const char* QUERY_4 = "UPDATE characters SET attack = ?, level = ?, exp = ?, hp = ?, mp = ?, max_hp = ?, max_mp = ?, dir =?, last_pos_x = ?, last_pos_y = ?, zone_id = ? WHERE char_id = ?;";
     inline constexpr const char* QUERY_5 = "SELECT char_id, inventory FROM characters_inventory WHERE char_id = ?";
     inline constexpr const char* QUERY_6 = "UPDATE characters_inventory SET inventory = ? WHERE char_id = ?;";

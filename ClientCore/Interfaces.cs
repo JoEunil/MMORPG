@@ -55,6 +55,9 @@ public struct InventoryItemView
     // UI → ViewModel 호출
     public interface IViewModelUI
     {
+        event Action<bool> OnAuthReceived;
+        event Action<byte, ushort> OnCharacterListResult;
+        event Action<string> OnConnectionFailed;
         event Action<bool> OnEnterSuccess;
         event Action<bool> OnCharacterListReceived;
         event Action<byte, ulong, string, string> OnChatReceived;
@@ -113,6 +116,9 @@ public struct InventoryItemView
     {
         long GetServerTimeMs();
         void UpdateMove(byte dir, float x, float y);
+        void UpdateAction(byte dir, float x, float y, byte skillSlot);
+        void CancelMove();
+        void CancelAction();
         void UpdateSkill(byte skillSlot);
         (ushort, List<CharacterInfoView>) GetCharList();
         List<InventoryItemView> GetInventory();
@@ -125,8 +131,9 @@ namespace ClientCore.Network
     {
         void Enqueue(byte[] buffer);
     }
-    public interface ITCPSocket
+    public interface ITCPSocket : IDisposable
     {
+        event Action<string> OnDisconnected;
         Task Connect(string address, int port);
         void Send(byte[] binary);
     }

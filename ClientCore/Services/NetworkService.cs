@@ -20,39 +20,18 @@ namespace ClientCore.Services
 
         public async Task Connect(string address, int port)
         {
-            try
-            {
-                await _sock.Connect(address, port);
-                _sock.Send(PacketBuilder.CreateAuthPacket());
-            }
-            catch (Exception ex)
-            {
-                Log(ex.Message);
-            }
+            await _sock.Connect(address, port);
+            _sock.Send(PacketBuilder.CreateAuthPacket());
         }
 
         public void CharacterList()
         {
-            try
-            {
-                _sock.Send(PacketBuilder.CreateCharacterListPacket());
-            }
-            catch (Exception ex)
-            {
-                Log(ex.Message);
-            }
+            _sock.Send(PacketBuilder.CreateCharacterListPacket());
         }
 
         public void Enter(ulong charID)
         {
-            try
-            {
-                _sock.Send(PacketBuilder.CreateEnterWorldPacket(charID));
-            }
-            catch (Exception ex)
-            {
-                Log(ex.Message);
-            }
+            _sock.Send(PacketBuilder.CreateEnterWorldPacket(charID));
         }
 
         public void Chat(string message, byte scope, ulong targetID)
@@ -68,26 +47,12 @@ namespace ClientCore.Services
         }
         public void Action(byte dir, float x, float y, byte skillSlot)
         {
-            try
-            {
-                _sock.Send(PacketBuilder.CreateActionPacket(dir, x, y, skillSlot));
-            }
-            catch (Exception ex)
-            {
-                Log(ex.Message);
-            }
+            _sock.Send(PacketBuilder.CreateActionPacket(dir, x, y, skillSlot));
         }
 
         public void ZoneChange(byte op)
         {
-            try
-            {
-                _sock.Send(PacketBuilder.CreateZoneChangePacket(op));
-            }
-            catch (Exception ex)
-            {
-                Log(ex.Message);
-            }
+            _sock.Send(PacketBuilder.CreateZoneChangePacket(op));
         }
 
         public void Pong(ulong serverTimeMs)

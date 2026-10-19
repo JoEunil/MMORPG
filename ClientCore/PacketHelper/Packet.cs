@@ -258,6 +258,8 @@ namespace ClientCore.PacketHelper
     public struct FullStateField
     {
         public uint zoneInternalID;
+        public uint profileId;
+        public uint profileVersion;
         public int hp;
         public int mp;
         public int maxHp;
@@ -267,9 +269,6 @@ namespace ClientCore.PacketHelper
         public byte dir;
         public float x;
         public float y;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_CHARNAME_LEN)]
-        public byte[] charName;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -582,14 +581,16 @@ namespace ClientCore.PacketHelper
         public static (ushort count, T[] items) DeserializeVariablePacket<T> (PacketHeader header, byte[] buffer) where T : struct
         {
             int offset = Marshal.SizeOf<PacketHeader>();
-            int bodySize = (int)(header.length - offset);
-            if (bodySize  < Marshal.SizeOf<ushort>())
-                throw new ArgumentException("Byte array too small");
+            if (buffer == null || header.length != buffer.Length || buffer.Length < offset + sizeof(ushort))
+                throw new ArgumentException("Invalid variable packet length.");
 
             ushort count = BitConverter.ToUInt16(buffer, offset);
             offset += sizeof(ushort);
 
             int itemSize = Marshal.SizeOf<T>();
+            // Validate before allocating or reading any unmanaged struct.
+            if ((long)offset + (long)count * itemSize != buffer.Length)
+                throw new ArgumentException("Invalid variable packet count or item length.");
             T[] items = new T[count];
 
             for (int i = 0; i < count; i++)

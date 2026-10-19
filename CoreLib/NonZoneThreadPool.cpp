@@ -39,6 +39,7 @@ namespace Core {
                 handler->Disconnect(event.sessionID);
             else
                 handler->Process(event.work.get()); // handler에서 비동기 요청은 복사해서 처리.
+            event.work.reset();
         }
         sysLogger->LogInfo("non zone thread", "non zone worker stopped", "threadID", ss.str());
     }
