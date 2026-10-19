@@ -169,6 +169,30 @@ def render_blocks(blocks, source):
     return "\n".join(out)
 
 
+def render_workflow(section):
+    groups = {}
+    items = None
+    for block in section["blocks"]:
+        if isinstance(block, tuple):
+            items = groups.setdefault(block[1], [])
+        elif isinstance(block, str) and block.startswith("- ") and items is not None:
+            items.append(block[2:])
+
+    def node(item):
+        label, _, detail = item.partition(" — ")
+        return f'<strong>{escape(label)}</strong><span>{escape(detail)}</span>'
+
+    agents = groups["에이전트 구성"]
+    chain = ''.join(f'<li>{node(item)}</li>' for item in agents[:2])
+    roles = ''.join(f'<li>{node(item)}</li>' for item in agents[2:])
+    steps = ''.join(f'<li>{node(item)}</li>' for item in groups["작업 흐름"])
+    feedback = ''.join(f'<li>{escape(item)}</li>' for item in groups["피드백"])
+    return f'''<section class="workflow section-wrap" id="workflow"><h2>{escape(section['title'])}</h2>
+<div class="agent-diagram"><h3>에이전트 구성</h3><ol class="agent-chain" aria-label="사용자에서 총괄 Agent로 작업 전달">{chain}</ol>
+<div class="agent-branches"><p class="branch-label">총괄이 필요한 전문 Agent에 배정</p><ul class="agent-roles">{roles}</ul></div></div>
+<div class="flow-diagram"><h3>작업 흐름</h3><ol class="workflow-steps">{steps}</ol><ul class="workflow-feedback">{feedback}</ul></div></section>'''
+
+
 def document(title, description, content, references, site_title):
     ref_footer = "".join(f'<a href="{escape(url, quote=True)}">{escape(label)} ↗</a>' for label, url in references)
     browser_title = title if title == site_title else f"{title} · {site_title}"
@@ -234,21 +258,18 @@ def main():
         cards.append(f'<article class="work-card">{media}<div class="work-copy"><p class="eyebrow">{escape(work["status"])}</p><h3><a href="{detail}">{escape(work["title"])}</a></h3><p>{escape(work["summary"])}</p><div class="card-links"><a href="{detail}">작업 보기 →</a><a href="{history}">화면 이력</a></div></div></article>')
     project_section = next((s for s in home_sections if s["title"] == "프로젝트"), None)
     process_section = next((s for s in home_sections if s["title"] == "AI Agent 워크플로우"), None)
-    experience_section = next((s for s in home_sections if s["title"] == "직접 확인하고 바꾼 점"), None)
     legacy_section = next((s for s in home_sections if s["title"] == "기존 Unity 구현"), None)
     if not project_section:
         raise ValueError("SHOWCASE.md needs a concise '프로젝트' section")
     project_copy = render_blocks(project_section["blocks"], HOME_SOURCE)
-    process_copy = render_blocks(process_section["blocks"], HOME_SOURCE) if process_section else ""
-    experience_copy = render_blocks(experience_section["blocks"], HOME_SOURCE) if experience_section else ""
     legacy_copy = render_blocks(legacy_section["blocks"], HOME_SOURCE) if legacy_section else ""
-    process_html = f'<section class="about section-wrap" id="workflow"><div><h2>{escape(process_section["title"])}</h2></div><div>{process_copy}</div></section>' if process_copy else ""
-    experience_html = f'<section class="experience section-wrap"><h2>{escape(experience_section["title"])}</h2>{experience_copy}</section>' if experience_copy else ""
+    process_html = render_workflow(process_section) if process_section else ""
     legacy_html = f'<section class="legacy-section section-wrap" id="legacy"><h2>{escape(legacy_section["title"])}</h2><div class="legacy-body">{legacy_copy}</div></section>' if legacy_copy else ""
     hero = f'''<main><section class="home-hero"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><a class="button" href="#work">작업 결과 둘러보기</a></div><figure class="home-image"><a href="{hero_image[1]}" target="_blank" rel="noopener"><img src="{hero_image[1]}" alt="{escape(hero_image[0], quote=True)}"></a><figcaption>{escape(hero_image[0])}</figcaption></figure></section>
 <section class="section-wrap project-intro"><h2>{escape(project_section["title"])}</h2>{project_copy}</section>
+{legacy_html}
 <section class="section-wrap" id="work"><div class="section-title"><div><p class="eyebrow">작업 사례</p><h2>작업과 결과</h2></div></div><div class="work-grid">{''.join(cards)}</div></section>
-{process_html}{experience_html}{legacy_html}</main>'''
+{process_html}</main>'''
     (SITE / "index.html").write_text(document(title, intro, hero, references, title), encoding="utf-8", newline="\n")
     check_site()
     print(f"Built home and {len(works)} project pages with screen histories")
