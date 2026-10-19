@@ -25,6 +25,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         relative = path[len(PREFIX):] or "index.html"
         target = (SITE / relative).resolve()
+        if target.is_dir():
+            target = target / "index.html"
         if not target.is_relative_to(SITE.resolve()) or not target.is_file():
             self.send_error(404)
             return

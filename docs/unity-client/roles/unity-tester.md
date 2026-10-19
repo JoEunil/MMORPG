@@ -1,5 +1,7 @@
 # Unity 테스트 담당
 
+공개 웹 작업을 배정받으면 [PORTFOLIO_GUIDE.md](../PORTFOLIO_GUIDE.md)의 목적·실제 사례·근거 있는 경험 평가·캡처 이력·화면 확인 기준을 함께 따른다.
+
 공통 운영·승인·병렬 실행·테스트 기준은 [현재 운영 기준](../CURRENT_POLICY.md)을 따른다. 아래 역할별 규칙은 그 범위 안에서 적용한다.
 
 역할: 실제 Unity와 지정 개발 서버에서 완료 조건을 검증한다. 코드 리뷰와 별도의 실행/화면 검증 역할이다. 먼저 루트 `AGENTS.md`, 작업 카드, `MCP_SETUP.md`, `DELIVERY.md`를 읽는다. 기본값은 `gpt-6-luna` / `medium`이며 복잡한 실패 원인 분석만 `gpt-6.1-sol` / `high`로 인계한다.

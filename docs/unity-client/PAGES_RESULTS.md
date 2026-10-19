@@ -1,5 +1,7 @@
 # AI-AGENT 사이트 — PR 전 검증
 
+후속 상태: WEB01 승인으로 PR30을 병합해 master146c4f1의 Pages 실행39227574423 build/deploy가 성공했다. 실제 주소 https://joeunil.github.io/MMORPG/ 를 브라우저/HTTP200으로 확인했고 공개5파일이 이 초안의 로컬 검토 산출물과 바이트까지 일치했다. README/AI-AGENT 링크는 PR31로 연결했다. 이 초안은 배포 테스트용이며 사용자 보정 이후의 포트폴리오 전면 개편 결과는 PORTFOLIO_RESULTS.md와 PORTFOLIO_GUIDE.md를 따른다. 아래 미배포/승인 대기 표기는 최초 PR 전 기록이다.
+
 2026-10-19. 기준 master `1e36645060947fadbc1b278b1f9b9ccf2153fe61`, 작업 브랜치 `codex/ai-agent-site`. 사이트/문서/CI만 변경하며 PR29 제품·Unity·게임 서비스·DB는 변경하지 않는다.
 
 ## 결과

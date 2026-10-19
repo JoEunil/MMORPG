@@ -401,5 +401,7 @@ wal/
 /scripts/unity-client/
 
 # Generated GitHub Pages preview output.
-/site/index.html
+/site/**/*.html
 /site-preview.zip
+!/site/media/releases/
+!/site/media/releases/**
