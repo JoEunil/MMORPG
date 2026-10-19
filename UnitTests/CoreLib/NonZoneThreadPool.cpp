@@ -153,6 +153,12 @@ namespace Core {
                 enter->header.opcode = OP::ENTER_WORLD;
                 enter->body.characterID = characterID;
             }
+            CountedView(uint64_t id, OP opcode)
+                : packet(sizeof(PacketHeader)), session(id) {
+                auto* header = parseHeader(packet.data());
+                header->length = static_cast<uint32_t>(packet.size());
+                header->opcode = static_cast<uint8_t>(opcode);
+            }
             uint64_t GetSessionID() const override { return session; }
             uint8_t* GetPtr() const override {
                 return const_cast<uint8_t*>(packet.data());
@@ -549,4 +555,56 @@ namespace Core {
             EXPECT_EQ(response->body.items[i].slot, body.items[i].slot);
         }
     }
+    TEST_F(NonZoneThreadPoolFixture, PendingEnterCompletionCannotRebindEmigratedCharacterOrInventory) {
+        StartWorker();
+        auto& authPacket = Enqueue(42);
+        ASSERT_TRUE(auth.WaitFor(1));
+        ASSERT_TRUE(authPacket.WaitForRelease());
+        auth.Complete(0);
+
+        // Both real worker requests reach the cache queue before either load completes.
+        auto& firstEnter = EnqueueEnter(42, 5011);
+        auto firstRequest = loads.TakeRequest();
+        ASSERT_NE(firstRequest, nullptr);
+        ASSERT_TRUE(firstEnter.WaitForRelease());
+        auto& secondEnter = EnqueueEnter(42, 5012);
+        auto secondRequest = loads.TakeRequest();
+        ASSERT_NE(secondRequest, nullptr);
+        ASSERT_TRUE(secondEnter.WaitForRelease());
+        ASSERT_EQ(parseMsgBody<MsgCharacterStateReqBody>(firstRequest->GetBuffer())->characterID, 5011);
+        ASSERT_EQ(parseMsgBody<MsgCharacterStateReqBody>(secondRequest->GetBuffer())->characterID, 5012);
+
+        ASSERT_TRUE(CompleteLoadSuccessfully(*firstRequest));
+        ASSERT_EQ(state->GetCharacterID(42), 5011);
+        ASSERT_EQ(iocp.sentOpcodes.size(), 2);
+        ASSERT_EQ(iocp.sentOpcodes.back(), OP::ENTER_WORLD_RESPONSE);
+        CharacterState snapshot{};
+        ASSERT_TRUE(lobby.EmigrateChar(42, snapshot));
+        ASSERT_EQ(snapshot.characterID, 5011);
+        ASSERT_EQ(state->GetZoneID(42), 0);
+        ASSERT_FALSE(HasLobbyCharacter(42));
+
+        // The late response uses the real MessageQueueHandler in the empty-lobby window.
+        ASSERT_TRUE(CompleteLoadSuccessfully(*secondRequest));
+        EXPECT_EQ(state->GetCharacterID(42), 5011);
+        EXPECT_FALSE(HasLobbyCharacter(42));
+        EXPECT_EQ(iocp.sentOpcodes.size(), 2); // No additional ENTER acknowledgement.
+
+        views.push_back(std::make_unique<CountedView>(42, OP::INVENTORY_REQ));
+        auto& inventoryPacket = *views.back();
+        pool->EnqueueWork(std::unique_ptr<IPacketView, PacketViewDeleter>(&inventoryPacket));
+        auto inventoryRequest = loads.TakeRequest();
+        ASSERT_NE(inventoryRequest, nullptr);
+        ASSERT_TRUE(inventoryPacket.WaitForRelease());
+        ASSERT_EQ(parseMsgHeader(inventoryRequest->GetBuffer())->messageType, MSG_INVENTORY_REQ);
+        EXPECT_EQ(parseMsgBody<MsgInventoryReqBody>(inventoryRequest->GetBuffer())->characterID, 5011);
+
+        ASSERT_TRUE(lobby.ImmigrateChar(42, snapshot)); // Same-character rollback remains valid.
+        EXPECT_FALSE(lobby.ImmigrateChar(42, snapshot)); // Existing duplicate policy remains valid.
+        pool->EnqueueDisconnect(42);
+        StopWorker();
+        EXPECT_EQ(state->GetCharacterID(42), 0);
+        EXPECT_FALSE(HasLobbyCharacter(42));
+    }
+
 }

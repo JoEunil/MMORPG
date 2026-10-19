@@ -44,7 +44,8 @@ namespace Core {
             std::unique_lock<std::shared_mutex> sessionLock(shard.smutex);
             auto session = shard.sessionMap.find(sessionID);
             if (session == shard.sessionMap.end()
-                || !session->second.authenticated || session->second.zoneID != 0)
+                || !session->second.authenticated || session->second.zoneID != 0
+                || (session->second.characterID != 0 && session->second.characterID != c.characterID))
                 return false;
             std::lock_guard lock(m_mutex);
             auto it = m_chars.find(sessionID);
@@ -54,7 +55,8 @@ namespace Core {
             }
             if (!m_chars.emplace(sessionID, c).second)
                 return false;
-            session->second.characterID = c.characterID;
+            if (session->second.characterID == 0)
+                session->second.characterID = c.characterID;
             return true;
         }
         
