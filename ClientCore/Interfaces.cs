@@ -1,4 +1,4 @@
-﻿using ClientCore.PacketHelper;
+using ClientCore.PacketHelper;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -52,6 +52,14 @@ public struct InventoryItemView
         void Log(string message);
     }
 
+    public struct BazaarListingView
+    {
+        public ulong ListingID, SellerCharacterID, Price, RegisteredAt;
+        public uint ItemID;
+        public ushort Quantity;
+        public byte Status;
+    }
+
     // UI → ViewModel 호출
     public interface IViewModelUI
     {
@@ -62,6 +70,7 @@ public struct InventoryItemView
         event Action<bool> OnCharacterListReceived;
         event Action<byte, ulong, string, string> OnChatReceived;
         event Action<bool> OnInventoryReceived;
+        event Action<bool> OnBazaarReceived;
         event Action<ushort, ulong, uint, float, float> OnZoneChageReceived;
         event Action<ushort, DeltaUpdateField[]> OnDeltaReceived;
         event Action<ushort, FullStateField[]> OnFullReceived;
@@ -74,6 +83,8 @@ public struct InventoryItemView
         void Enter(ulong charID);
         void Chat(string message, byte scope, ulong targetID);
         void RequestInventory();
+        void RequestBazaar(ushort itemType, ushort page);
+        void CancelBazaar();
         void Error(string msg);
         void Log(string msg);
         void ZoneChange(int op);
@@ -88,12 +99,13 @@ public struct InventoryItemView
         void ChatReceived(Packet.Message message);
         void ProfilesReceived(ProfileEntry[] profiles);
         void InventoryReceived(byte resStatus, PacketHelper.InventoryItem[] items);
-        void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y);
-        void DeltaReceived(ushort count, PacketHelper.DeltaUpdateField[] updates);
-        void FullReceived(ushort count, PacketHelper.FullStateField[] states);
-        void MonsterDeltaReceived(ushort count, PacketHelper.MonsterDeltaField[] updates);
-        void MonsterFullReceived(ushort count, PacketHelper.MonsterFullField[] states);
-        void ActionResultReceived(ushort count, PacketHelper.ActionResultField[] states);
+        void BazaarReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows);
+        void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y, ulong generation);
+        void DeltaReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.DeltaUpdateField[] updates);
+        void FullReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.FullStateField[] states);
+        void MonsterDeltaReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.MonsterDeltaField[] updates);
+        void MonsterFullReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.MonsterFullField[] states);
+        void ActionResultReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.ActionResultField[] states);
         void PingReceived(ulong servertimeMs, ulong rtt);
         void Error(string msg);
         void Log(string msg);
@@ -112,6 +124,7 @@ public struct InventoryItemView
         void SetPosition(float x, float y);
         void SetCharList(ushort count, CharacterInfo[] chars);
         void SetInventory(InventoryItem[] items);
+        void SetBazaar(BazaarListing[] rows);
     }
 
     public interface IViewDataUI
@@ -124,6 +137,7 @@ public struct InventoryItemView
         void UpdateSkill(byte skillSlot);
         (ushort, List<CharacterInfoView>) GetCharList();
         List<InventoryItemView> GetInventory();
+        List<BazaarListingView> GetBazaar();
     }
 }
 
@@ -146,11 +160,11 @@ namespace ClientCore.Network
     public interface IHandlerTick
     {
         void HandleZoneChangeRes(PacketHelper.STPacket<PacketHelper.ZoneChangeResponseBody> packet);
-        void HandleDeltaUpdate((ushort, DeltaUpdateField[]) res);
-        void HandleFullState((ushort, FullStateField[]) res);
-        void HandleMonsterDelta((ushort, MonsterDeltaField[]) res);
-        void HandleMonsterFull((ushort, MonsterFullField[]) res);
-        void HandleActionReult((ushort, ActionResultField[]) res);
+        void HandleDeltaUpdate((ushort count, ushort zoneID, ulong generation, DeltaUpdateField[] items) res);
+        void HandleFullState((ushort count, ushort zoneID, ulong generation, FullStateField[] items) res);
+        void HandleMonsterDelta((ushort count, ushort zoneID, ulong generation, MonsterDeltaField[] items) res);
+        void HandleMonsterFull((ushort count, ushort zoneID, ulong generation, MonsterFullField[] items) res);
+        void HandleActionReult((ushort count, ushort zoneID, ulong generation, ActionResultField[] items) res);
     }
 }
 
@@ -165,6 +179,7 @@ namespace ClientCore.Services
         void Chat(string message, byte scope, ulong targetID);
         void Profiles(uint[] profileIds);
         void RequestInventory();
+        void RequestBazaar(uint requestID, ushort itemType, ushort page);
         void Action(byte dir, float x, float y, byte skillSlot);
         void Pong(ulong serverTimeMs);
         void ZoneChange(byte op);

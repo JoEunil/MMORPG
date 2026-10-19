@@ -133,16 +133,16 @@ namespace C02.Tests
             int old = 0, replacement = 0;
             Action<ushort, ActionResultField[]> handler = (_, __) => old++;
             model.OnActionResultReceived += handler;
-            model.ActionResultReceived(0, Array.Empty<ActionResultField>());
+            model.ActionResultReceived(1, 1, 0, Array.Empty<ActionResultField>());
             model.OnActionResultReceived -= handler;
             model.OnActionResultReceived += (_, __) => replacement++;
             dispatcher.Drain();
             Assert.That(old, Is.EqualTo(1));
             Assert.That(replacement, Is.Zero, "New subscriptions cannot receive previously queued results.");
-            model.ActionResultReceived(0, Array.Empty<ActionResultField>());
+            model.ActionResultReceived(1, 1, 0, Array.Empty<ActionResultField>());
             model.Dispose();
             dispatcher.Drain();
-            model.ActionResultReceived(0, Array.Empty<ActionResultField>());
+            model.ActionResultReceived(1, 1, 0, Array.Empty<ActionResultField>());
             Assert.That(dispatcher.Jobs.Count, Is.Zero, "Disposed model cannot enqueue more results.");
             Assert.That(replacement, Is.Zero);
         }
@@ -151,20 +151,21 @@ namespace C02.Tests
         public void ActionResultWireIs21Bytes_AndMalformedCountsAreRejected()
         {
             Assert.That(Marshal.SizeOf<ActionResultField>(), Is.EqualTo(21));
-            var frame = new byte[31];
+            var frame = new byte[41];
             BitConverter.GetBytes((ushort)0xABCD).CopyTo(frame, 0);
             BitConverter.GetBytes((uint)frame.Length).CopyTo(frame, 2);
             frame[6] = 12; frame[7] = 1; frame[8] = 1;
-            frame[10] = 0; BitConverter.GetBytes(73U).CopyTo(frame, 11);
-            frame[15] = 2; frame[16] = 3;
-            BitConverter.GetBytes(10f).CopyTo(frame, 17); BitConverter.GetBytes(11f).CopyTo(frame, 21);
-            BitConverter.GetBytes(2U).CopyTo(frame, 25); frame[29] = 1;
+            BitConverter.GetBytes((ushort)1).CopyTo(frame, 10); BitConverter.GetBytes(1UL).CopyTo(frame, 12);
+            frame[20] = 0; BitConverter.GetBytes(73U).CopyTo(frame, 21);
+            frame[25] = 2; frame[26] = 3;
+            BitConverter.GetBytes(10f).CopyTo(frame, 27); BitConverter.GetBytes(11f).CopyTo(frame, 31);
+            BitConverter.GetBytes(2U).CopyTo(frame, 35); frame[39] = 1;
             var result = Packet.DeserializeVariablePacket<ActionResultField>(Packet.ExtractHeader(frame), frame);
             Assert.That(result.count, Is.EqualTo(1)); Assert.That(result.items[0].casterId, Is.EqualTo(73));
             Assert.That(result.items[0].skillPhase, Is.EqualTo(1)); Assert.That(result.items[0].y, Is.EqualTo(11));
             frame[8] = 2;
             Assert.Throws<ArgumentException>(() => Packet.DeserializeVariablePacket<ActionResultField>(Packet.ExtractHeader(frame), frame));
-            var truncated = new byte[30]; Array.Copy(frame, truncated, 30); truncated[8] = 1;
+            var truncated = new byte[40]; Array.Copy(frame, truncated, 40); truncated[8] = 1;
             BitConverter.GetBytes((uint)truncated.Length).CopyTo(truncated, 2);
             Assert.Throws<ArgumentException>(() => Packet.DeserializeVariablePacket<ActionResultField>(Packet.ExtractHeader(truncated), truncated));
         }
@@ -278,8 +279,13 @@ namespace C02.Tests
             }
         }
         private static IViewDataUI NewData() => (IViewDataUI)Activator.CreateInstance(typeof(ViewModel).Assembly.GetType("ClientCore.ViewData", true), true);
-        private static ViewModel NewModel(IViewDataUI data, IMainThreadDispatcher dispatcher) => (ViewModel)Activator.CreateInstance(typeof(ViewModel), BindingFlags.Instance | BindingFlags.NonPublic, null,
-            new object[] { new FakeNetwork(), (IViewDataModel)data, new NullLogger(), dispatcher }, null);
+        private static ViewModel NewModel(IViewDataUI data, IMainThreadDispatcher dispatcher)
+        {
+            var model = (ViewModel)Activator.CreateInstance(typeof(ViewModel), BindingFlags.Instance | BindingFlags.NonPublic, null,
+                new object[] { new FakeNetwork(), (IViewDataModel)data, new NullLogger(), dispatcher }, null);
+            C08TestSession.Ready(model, ((QueuedDispatcher)dispatcher).Drain);
+            return model;
+        }
         private static object Get(object target, string name) => target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(target);
         private static void Set(object target, string name, object value) => target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(target, value);
         private static void Invoke(object target, string name, params object[] args) => target.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic).Invoke(target, args);
@@ -287,7 +293,7 @@ namespace C02.Tests
         private sealed class NullLogger : ClientCore.ILogger { public void Log(string message) { } }
         private sealed class FakeNetwork : INetworkService
         {
-            public void RequestInventory() { } public void Profiles(uint[] profileIds) { }
+            public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() { } public void Profiles(uint[] profileIds) { }
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void CharacterList() { } public void Enter(ulong id) { } public void Chat(string msg, byte scope, ulong target) { }
             public void Action(byte dir, float x, float y, byte slot) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void Log(string msg) { }

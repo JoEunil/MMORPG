@@ -2,8 +2,88 @@
 #include "StateManager.h"
 #include "Initializer.h"
 #include "ChatThreadPool.h"
+#include <cmath>
 
 namespace Core {
+    bool StateManager::ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result) {
+        result = {};
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock sessionLock(shard.smutex);
+        auto session = shard.sessionMap.find(sessionID);
+        if (session == shard.sessionMap.end() || !session->second.authenticated
+            || !session->second.authCompleted || session->second.characterID == 0)
+            return false;
+        const uint16_t sourceID = session->second.zoneID;
+        if ((op == ZONE_CHANGE::ENTER) != (sourceID == 0))
+            return false;
+
+        if (sourceID == 0) {
+            std::unique_lock lobbyLock(lobbyZone->m_mutex);
+            auto loaded = lobbyZone->m_chars.find(sessionID);
+            if (loaded == lobbyZone->m_chars.end()
+                || loaded->second.characterID != session->second.characterID)
+                return false;
+            const uint16_t destinationID = loaded->second.lastZone == 0 ? 1 : loaded->second.lastZone;
+            auto destination = GetZone(destinationID);
+            if (destination == nullptr)
+                return false;
+            std::unique_lock destinationLock(destination->m_mutex);
+            // Immigration copies and prepares the destination before removing the lobby row.
+            if (destination->ImmigrateCharLocked(sessionID, loaded->second) == INVALID_ZONE_INTERNAL_ID)
+                return false;
+            const auto& entered = destination->m_chars.back();
+            result = {destinationID, 0, entered.zoneInternalID, entered.x, entered.y, destination->m_generation};
+            lobbyZone->m_chars.erase(loaded);
+            session->second.zoneID = destinationID;
+            result.chatID = chat->AddChatSession(sessionID, destinationID, entered.profileId);
+            chat->EnqueueZoneJoin(sessionID, destinationID);
+            return true;
+        }
+
+        int destinationID = sourceID;
+        const int column = (sourceID - 1) % ZONE_HORIZON;
+        switch (op) {
+        case ZONE_CHANGE::UP: destinationID += ZONE_HORIZON; break;
+        case ZONE_CHANGE::DOWN: destinationID -= ZONE_HORIZON; break;
+        case ZONE_CHANGE::LEFT:
+            if (column == 0) return false;
+            --destinationID;
+            break;
+        case ZONE_CHANGE::RIGHT:
+            if (column == ZONE_HORIZON - 1) return false;
+            ++destinationID;
+            break;
+        default: return false;
+        }
+        if (destinationID <= 0 || destinationID > ZONE_COUNT)
+            return false;
+        auto source = GetZone(sourceID);
+        auto destination = GetZone(static_cast<uint16_t>(destinationID));
+        if (source == nullptr || destination == nullptr)
+            return false;
+        // All transfers use ascending Zone order after the session shard.
+        std::unique_lock firstLock(sourceID < destinationID ? source->m_mutex : destination->m_mutex);
+        std::unique_lock secondLock(sourceID < destinationID ? destination->m_mutex : source->m_mutex);
+        auto character = source->m_sessionToIndex.find(sessionID);
+        if (character == source->m_sessionToIndex.end())
+            return false;
+        const auto& current = source->m_chars[character->second];
+        if (current.characterID != session->second.characterID
+            || !std::isfinite(current.x) || !std::isfinite(current.y)
+            || current.x < source->m_area.x_min || current.x > source->m_area.x_max
+            || current.y < source->m_area.y_min || current.y > source->m_area.y_max)
+            return false;
+        if (destination->ImmigrateCharLocked(sessionID, current) == INVALID_ZONE_INTERNAL_ID)
+            return false;
+        source->RemoveCharacterLocked(sessionID);
+        session->second.zoneID = static_cast<uint16_t>(destinationID);
+        const auto& entered = destination->m_chars.back();
+        result = {static_cast<uint16_t>(destinationID), 0, entered.zoneInternalID,
+            entered.x, entered.y, destination->m_generation};
+        chat->EnqueueZoneJoin(sessionID, static_cast<uint16_t>(destinationID));
+        return true;
+    }
+
     void StateManager::CleanUp() {
         if (!m_running.exchange(false, std::memory_order_relaxed))
             return;
@@ -53,6 +133,7 @@ namespace Core {
                     Core::errorLogger->LogError("state manager", "failed to enqueue message for disconnect", "sessionID", session, "character state", binary);
                 }
             }
+            shard.sessionMap.clear();
         }
     }
 
@@ -78,9 +159,9 @@ namespace Core {
         if (it_state->second->EmigrateChar(sessionID, temp)) {
             auto zoneID = it->second.zoneID;
             shard.sessionMap.erase(it);
-            lock.unlock();
             chat->EnqueueZoneLeave(sessionID, zoneID);
             chat->DeleteChatSession(sessionID, zoneID);
+            lock.unlock();
             EnqueueDisconnectMsg(temp, sessionID);
         }
     }

@@ -32,8 +32,16 @@ namespace ClientCore
         private readonly Dictionary<uint, uint> _profilesPending = new Dictionary<uint, uint>();
         private readonly Dictionary<uint, uint> _profilesMissing = new Dictionary<uint, uint>();
         private long _profileRequestDeadline;
-        private bool _worldReady;
+        private volatile bool _worldReady;
+        private int _zoneOperation;
+        // Only the dispatcher reads or writes the accepted simulation identity.
+        private ushort _zoneID;
+        private ulong _zoneGeneration;
+        private uint _zoneInternalID;
+        private volatile bool _awaitingZoneAck;
         private bool _inventoryPending;
+        private uint _bazaarRequestID;
+        private uint _bazaarPending;
         public event Action<bool> OnAuthReceived;
         public event Action<byte, ushort> OnCharacterListResult;
         public event Action<string> OnConnectionFailed;
@@ -42,6 +50,7 @@ namespace ClientCore
         public event Action<bool> OnCharacterListReceived;
         public event Action<byte, ulong, string, string> OnChatReceived;
         public event Action<bool> OnInventoryReceived;
+        public event Action<bool> OnBazaarReceived;
         public event Action<ushort, ulong, uint, float, float> OnZoneChageReceived;
         public event Action<ushort, DeltaUpdateField[]> OnDeltaReceived;
         public event Action<ushort, FullStateField[]> OnFullReceived;
@@ -100,6 +109,7 @@ namespace ClientCore
                 _lifetime.Cancel();
                 _inventoryPending = false;
                 _worldReady = false;
+                CancelBazaar();
                 _viewData.SetInventory(Array.Empty<PacketHelper.InventoryItem>());
                 ClientSession.AccessToken = null;
                 ClientSession.SessionToken = null;
@@ -131,8 +141,15 @@ namespace ClientCore
         {
             lock (_sessionGate)
             {
-                if (_lifetime.IsCancellationRequested || _zonePending) return;
+                if (op < 0 || op > 4) throw new ArgumentOutOfRangeException(nameof(op));
+                if (_lifetime.IsCancellationRequested || _connectionFailed || _zonePending) return;
+                if (op != 0 && !_worldReady) return;
+                if (op == 0 && _zoneID != 0) return;
+                _zoneOperation = op;
                 _zonePending = true;
+                CancelBazaar();
+                _awaitingZoneAck = true;
+                _worldReady = false;
             }
             try { _network.ZoneChange((byte)op); }
             catch (Exception)
@@ -148,11 +165,11 @@ namespace ClientCore
             (bool, byte, float, float, byte) res;
             lock (_sessionGate)
             {
-                if (_lifetime.IsCancellationRequested || _connectionFailed) return;
+                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady) return;
                 res = _viewData.GetActionState();
             }
             // Do not hold the session lock across socket I/O: receive callbacks also use it.
-            if (!res.Item1 || _lifetime.IsCancellationRequested || _connectionFailed) return;
+            if (!res.Item1 || _lifetime.IsCancellationRequested || _connectionFailed || !_worldReady) return;
             try { _network.Action(res.Item2, res.Item3, res.Item4, res.Item5); }
             catch (Exception) { Error("Movement request failed."); }
         }
@@ -265,6 +282,36 @@ namespace ClientCore
             });
         }
 
+        public void RequestBazaar(ushort itemType, ushort page)
+        {
+            if (itemType < 1 || itemType > 3) throw new ArgumentOutOfRangeException(nameof(itemType));
+            if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || _bazaarPending != 0)
+                throw new InvalidOperationException("Bazaar search is unavailable or pending.");
+            if (_bazaarRequestID == uint.MaxValue) throw new InvalidOperationException("Reconnect before searching again.");
+            _bazaarPending = ++_bazaarRequestID;
+            _viewData.SetBazaar(Array.Empty<PacketHelper.BazaarListing>());
+            try { _network.RequestBazaar(_bazaarPending, itemType, page); }
+            catch { CancelBazaar(); throw; }
+        }
+
+        public void CancelBazaar()
+        {
+            _bazaarPending = 0;
+            _viewData.SetBazaar(Array.Empty<PacketHelper.BazaarListing>());
+        }
+
+        public void BazaarReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows)
+        {
+            _threadDispatcher.Post(() =>
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || requestID == 0 || requestID != _bazaarPending) return;
+                _bazaarPending = 0;
+                bool success = status == 1;
+                _viewData.SetBazaar(success ? rows : Array.Empty<PacketHelper.BazaarListing>());
+                OnBazaarReceived?.Invoke(success);
+            });
+        }
+
         public void RequestInventory()
         {
             if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || _inventoryPending)
@@ -279,7 +326,8 @@ namespace ClientCore
         {
             _threadDispatcher.Post(() =>
             {
-                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || !_inventoryPending) return;
+                // This response still belongs to the same character during a zone transfer.
+                if (_lifetime.IsCancellationRequested || _connectionFailed || !_inventoryPending) return;
                 _inventoryPending = false;
                 bool success = resStatus == 1;
                 _viewData.SetInventory(success ? items : Array.Empty<PacketHelper.InventoryItem>());
@@ -287,32 +335,47 @@ namespace ClientCore
             });
         }
 
-        public void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y)
+        public void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y, ulong generation)
         {
             lock (_sessionGate)
             {
                 if (_lifetime.IsCancellationRequested || !_zonePending) return;
                 _zonePending = false;
-                bool success = resStatus != 0;
-                if (success) _viewData.SetPosition(x, y);
+                bool success = resStatus == 1;
+                bool wasInWorld = _zoneOperation != 0;
                 _threadDispatcher.Post(() =>
                 {
-                    if (_lifetime.IsCancellationRequested) return;
-                    _worldReady = success;
-                    _entityProfiles.Clear();
-                    if (success) OnZoneChageReceived?.Invoke(zoneID, chatID, zoneInternalID, x, y);
-                    else OnZoneChageFailed?.Invoke();
+                    if (_lifetime.IsCancellationRequested || _connectionFailed) return;
+                    _awaitingZoneAck = false;
+                    if (success)
+                    {
+                        _worldReady = false;
+                        _zoneID = zoneID;
+                        _zoneGeneration = generation;
+                        _zoneInternalID = zoneInternalID;
+                        _viewData.SetPosition(x, y);
+                        _entityProfiles.Clear();
+                        OnZoneChageReceived?.Invoke(zoneID, chatID, zoneInternalID, x, y);
+                    }
+                    else
+                    {
+                        _worldReady = wasInWorld;
+                        OnZoneChageFailed?.Invoke();
+                    }
                 });
             }
         }
 
-        public void DeltaReceived(ushort count, PacketHelper.DeltaUpdateField[] updates)
+        private bool AcceptSimulation(ushort zoneID, ulong generation) => !_lifetime.IsCancellationRequested &&
+            !_connectionFailed && !_awaitingZoneAck && _zoneID != 0 && zoneID == _zoneID && generation >= _zoneGeneration;
+
+        public void DeltaReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.DeltaUpdateField[] updates)
         {
             if (_lifetime.IsCancellationRequested) return;
             var subscribers = OnDeltaReceived;
             _threadDispatcher.Post(() =>
             {
-                if (_lifetime.IsCancellationRequested || _connectionFailed) return;
+                if (!AcceptSimulation(zoneID, generation) || !_worldReady) return;
                 for (int i = 0; i < count; i++)
                     if (updates[i].fieldID == 9 && _entityProfiles.TryGetValue(updates[i].zoneInternalID, out var id))
                         ObserveProfile(id, updates[i].fieldVal);
@@ -320,13 +383,21 @@ namespace ClientCore
                 subscribers?.Invoke(count, updates);
             });
         }
-        public void FullReceived(ushort count, PacketHelper.FullStateField[] states)
+        public void FullReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.FullStateField[] states)
         {
             if (_lifetime.IsCancellationRequested) return;
             var subscribers = OnFullReceived;
             _threadDispatcher.Post(() =>
             {
-                if (_lifetime.IsCancellationRequested || _connectionFailed) return;
+                if (!AcceptSimulation(zoneID, generation)) return;
+                if (!_worldReady)
+                {
+                    bool hasSelf = false;
+                    for (int i = 0; i < count; i++)
+                        if (states[i].zoneInternalID == _zoneInternalID) { hasSelf = true; break; }
+                    if (!hasSelf) return;
+                    _worldReady = true;
+                }
                 for (int i = 0; i < count; i++)
                 {
                     _entityProfiles[states[i].zoneInternalID] = states[i].profileId;
@@ -336,31 +407,31 @@ namespace ClientCore
                 subscribers?.Invoke(count, states);
             });
         }
-       public void MonsterDeltaReceived(ushort count, PacketHelper.MonsterDeltaField[] updates)
+       public void MonsterDeltaReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.MonsterDeltaField[] updates)
         {
             if (_lifetime.IsCancellationRequested) return;
             var subscribers = OnMonsterDeltaReceived;
             _threadDispatcher.Post(() =>
             {
-                if (!_lifetime.IsCancellationRequested) subscribers?.Invoke(count, updates);
+                if (AcceptSimulation(zoneID, generation) && _worldReady) subscribers?.Invoke(count, updates);
             });
         }
-        public void MonsterFullReceived(ushort count, PacketHelper.MonsterFullField[] states)
+        public void MonsterFullReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.MonsterFullField[] states)
         {
             if (_lifetime.IsCancellationRequested) return;
             var subscribers = OnMonsterFullReceived;
             _threadDispatcher.Post(() =>
             {
-                if (!_lifetime.IsCancellationRequested) subscribers?.Invoke(count, states);
+                if (AcceptSimulation(zoneID, generation) && _worldReady) subscribers?.Invoke(count, states);
             });
         }
-        public void ActionResultReceived(ushort count, PacketHelper.ActionResultField[] actions)
+        public void ActionResultReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.ActionResultField[] actions)
         {
             if (_lifetime.IsCancellationRequested) return;
             var subscribers = OnActionResultReceived;
             _threadDispatcher.Post(() =>
             {
-                if (!_lifetime.IsCancellationRequested) subscribers?.Invoke(count, actions);
+                if (AcceptSimulation(zoneID, generation) && _worldReady) subscribers?.Invoke(count, actions);
             });
         }
         public void PingReceived(ulong servertimeMs, ulong rtt)
@@ -376,6 +447,7 @@ namespace ClientCore
         {
             if (_lifetime.IsCancellationRequested) return;
             _connectionFailed = true;
+            CancelBazaar();
             _worldReady = false;
             _inventoryPending = false;
             _viewData.SetInventory(Array.Empty<PacketHelper.InventoryItem>());

@@ -70,12 +70,13 @@ namespace ClientCore.Network
                                 header.opcode == 14 && (header.length < 22 || header.flags != 0) ||
                                 header.opcode == 15 && (header.length < 173 || header.flags != 0) ||
                                 header.opcode == 25 && (header.length < 10 || header.length > 2010 || header.flags != 0) ||
+                                header.opcode == 27 && (header.length < 15 || header.length > 1185 || header.flags != 0) ||
                                 header.opcode == 4 && (header.length != 430 || header.flags != 0) ||
                                 header.opcode == 6 && (header.length != 76 || header.flags != 0) ||
-                                header.opcode == 17 && (header.length != 31 || header.flags != 1) ||
+                                header.opcode == 17 && (header.length != 39 || header.flags != 1) ||
                                 (header.opcode == 7 || header.opcode == 8 || header.opcode == 9 ||
                                  header.opcode == 10 || header.opcode == 12) &&
-                                (header.length < 10 || header.flags != 1))
+                                (header.length < 20 || header.flags != 1))
                                 throw new InvalidDataException();
                             if (pending.Count < header.length) break;
                             byte[] packet = pending.GetRange(0, (int)header.length).ToArray();

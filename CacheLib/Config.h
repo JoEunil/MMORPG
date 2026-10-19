@@ -108,7 +108,7 @@ namespace Cache {
 
     inline constexpr uint16_t MSGPOOL_SIZE = 10000;
 
-    inline constexpr uint16_t MESSAGE_LEN = 1024;
+    inline constexpr uint16_t MESSAGE_LEN = 2048;
     inline constexpr uint16_t THREADPOOL_SIZE = 100; 
 
     inline constexpr uint16_t MAX_CHARACTER_CNT = 10;

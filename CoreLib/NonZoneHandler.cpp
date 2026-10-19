@@ -77,6 +77,9 @@ namespace Core {
             case OP::INVENTORY_REQ:
                 GetInventory(p);
                 break;
+            case OP::BAZAAR_SEARCH:
+                BazaarSearch(p);
+                break;
             case OP::PROFILE_BATCH:
                 GetProfileBatch(p);
                 break;
@@ -187,6 +190,34 @@ namespace Core {
         messagePool->Return(msg);
     }
 
+    void NonZoneHandler::BazaarSearch(IPacketView* p) {
+        if (p->GetLength() != sizeof(PacketStruct<BazaarSearchRequestBody>))
+            return;
+        const auto* header = parseHeader(p->GetPtr());
+        const auto request = *parseBody<BazaarSearchRequestBody>(p->GetPtr());
+        if (header->length != p->GetLength() || header->flags != 0
+            || request.requestID == 0 || request.itemType < 1 || request.itemType > 3
+            || !stateManager->IsFieldSession(p->GetSessionID()))
+            return;
+
+        Message* msg = messagePool->Acquire();
+        if (msg != nullptr) {
+            auto* st = reinterpret_cast<MsgStruct<MsgBazaarSearchBody>*>(msg->GetBuffer());
+            st->header = { p->GetSessionID(), MSG_BAZAAR_SEARCH };
+            st->body = { request.requestID, request.itemType, request.page };
+            msg->SetLength(sizeof(*st));
+            const bool queued = messageQueue->EnqueueMessage(msg);
+            messagePool->Return(msg);
+            if (queued)
+                return;
+        }
+        MsgBazaarSearchResBody failed{};
+        failed.requestID = request.requestID;
+        auto response = writer->WriteBazaarSearchResponse(&failed);
+        if (response)
+            iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+    }
+
     void NonZoneHandler::Chat(IPacketView* p) {
         auto body = parseBody<ChatRequestBody>(p->GetPtr());
         uint8_t* startPtr = p->GetPtr() + sizeof(PacketStruct<ChatRequestBody>);
@@ -247,101 +278,16 @@ namespace Core {
     }
 
     void NonZoneHandler::ZoneChange(IPacketView* p) {
-        auto body = parseBody<ZoneChangeBody>(p->GetPtr());
-        auto session = p->GetSessionID();
-        auto zoneID = stateManager->GetZoneID(session);
-        int destZone = 0;
-        uint32_t zoneInternalID = INVALID_ZONE_INTERNAL_ID;
-        switch (body->op)
-        {
-            case ZONE_CHANGE::ENTER : {
-                if (zoneID != 0) {
-                    errorLogger->LogError("non zone handler", "zone enter failed ZoneID != 0", "session", session, "zoneID", zoneID);
-					auto p = writer->WriteZoneChangeFailed();
-                    if (!p)
-                        return;
-                    iocp->SendDataUnique(session, std::move(p));
-                    return;
-                }
-                CharacterState temp;
-                if (!lobbyZone->EmigrateChar(session, temp)) {
-                    errorLogger->LogError("non zone handler", "EmigrateChar from LobbyZone failed", "session", session);
-                    auto p = writer->WriteZoneChangeFailed();
-                    if (!p)
-                        return;
-                    iocp->SendDataUnique(session, std::move(p));
-                    return;
-                }
-                if (temp.lastZone == 0)
-                    temp.lastZone = 1;
-
-                auto zone = stateManager->GetZone(temp.lastZone);
-                zoneInternalID = zone->ImmigrateChar(session, temp);
-                if (zoneInternalID == INVALID_ZONE_INTERNAL_ID) {
-                    if (!lobbyZone->ImmigrateChar(session, temp)) // 다시 Lobby Zone으로
-                        Disconnect(session);
-
-                    auto p = writer->WriteZoneChangeFailed();
-                    if (!p)
-                        return;
-                    iocp->SendDataUnique(session, std::move(p));
-                    errorLogger->LogError("non zone handler", "ImmigrateChar Failed", "session", session, "zone", zoneID);
-                    return;
-                }
-                else {
-                    uint64_t chatID = chat->AddChatSession(session, temp.lastZone, temp.profileId);
-                    chat->EnqueueZoneJoin(session, temp.lastZone);
-                    auto p = writer->WriteZoneChangeSucess(temp.lastZone, chatID, zoneInternalID, temp.x, temp.y);
-                    if (!p)
-                        return;
-                    iocp->SendDataUnique(session, std::move(p));
-                    return;
-                }
-                break;
-            }
-            case ZONE_CHANGE::UP : destZone = zoneID + ZONE_HORIZON; break;
-            case ZONE_CHANGE::DOWN : destZone = zoneID - ZONE_HORIZON; break;
-            case ZONE_CHANGE::LEFT : destZone = zoneID - 1; break;
-            case ZONE_CHANGE::RIGHT : destZone = zoneID + 1; break;
-            default: break;
-        }
-        
-        if (destZone <= 0 || destZone > ZONE_COUNT)
-        {
-            auto p = writer->WriteZoneChangeFailed();
-            if (!p)
-                return;
-            iocp->SendDataUnique(session, std::move(p));
-            return;
-        }
-        auto SZone = stateManager->GetZone(zoneID);
-        auto DZone = stateManager->GetZone(destZone);
-
-        CharacterState temp;
-        if (!SZone->EmigrateChar(session, temp)) {
-            auto p = writer->WriteZoneChangeFailed();
-            if (!p)
-                return;
-            iocp->SendDataUnique(session, std::move(p));
-            return;
-        }
-        zoneInternalID = DZone->ImmigrateChar(session, temp);
-        if (zoneInternalID == INVALID_ZONE_INTERNAL_ID) {
-            if (!SZone->ImmigrateChar(session, temp)) // 원래 Zone으로 복구
-                Disconnect(session);
-            auto p = writer->WriteZoneChangeFailed();
-            if (!p)
-                return;
-            iocp->SendDataUnique(session, std::move(p));
-            return;
-        }
-        else {
-            auto p = writer->WriteZoneChangeSucess(destZone, 0, zoneInternalID, temp.x, temp.y);
-            if (!p)
-                return;
-            iocp->SendDataUnique(session, std::move(p));
-
-            chat->EnqueueZoneJoin(session, destZone);
-        }
+        ZoneChangeResult result;
+        const auto session = p->GetSessionID();
+        const bool success = p->GetLength() == sizeof(PacketStruct<ZoneChangeBody>)
+            && stateManager->ChangeZone(session, parseBody<ZoneChangeBody>(p->GetPtr())->op, result);
+        // ChangeZone releases the shard and all Zone locks before network transmission.
+        auto response = success
+            ? writer->WriteZoneChangeSucess(result.zoneID, result.chatID, result.internalID,
+                result.x, result.y, result.generation)
+            : writer->WriteZoneChangeFailed();
+        if (response)
+            iocp->SendDataUnique(session, std::move(response));
     }
 }

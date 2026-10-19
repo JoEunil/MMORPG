@@ -40,6 +40,13 @@ namespace Core {
     };
     class LobbyZone;
     class ChatThreadPool;
+    struct ZoneChangeResult {
+        uint16_t zoneID = 0;
+        uint64_t chatID = 0;
+        uint32_t internalID = 0;
+        float x = 0, y = 0;
+        uint64_t generation = 0;
+    };
     class StateManager {
         std::unordered_map<uint16_t, std::unique_ptr<Core::ZoneState>> m_states;
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
@@ -168,6 +175,16 @@ namespace Core {
             return it->second.zoneID;
         }
 
+        bool IsFieldSession(uint64_t sessionID) {
+            auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+            std::shared_lock<std::shared_mutex> lock(shard.smutex);
+            const auto it = shard.sessionMap.find(sessionID);
+            return it != shard.sessionMap.end() && it->second.authCompleted
+                && it->second.authenticated && it->second.userID != 0
+                && it->second.characterID != 0 && it->second.zoneID > 0
+                && it->second.zoneID <= ZONE_COUNT;
+        }
+
         uint8_t HealthCheck(uint64_t sessionID) {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);
@@ -195,6 +212,7 @@ namespace Core {
             return res;
         }
         void Disconnect(uint64_t sessionID);
+        bool ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result);
         void EnqueueDisconnectMsg(CharacterState& temp, uint64_t sessionID);
         void UpdateProfileVersion(uint64_t sessionID, uint32_t version);
 

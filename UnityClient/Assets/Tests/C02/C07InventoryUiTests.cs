@@ -215,7 +215,8 @@ namespace C02.Tests
                     BindingFlags.Instance | BindingFlags.NonPublic, null,
                     new object[] { network, data, new NullLogger(), dispatcher }, null);
                 model.ZoneChange(0);
-                ((IViewModelNet)model).ZoneChageReceived(1, 1, 1, 1, 0, 0);
+                ((IViewModelNet)model).ZoneChageReceived(1, 1, 1, 1, 0, 0, 1);
+                ((IViewModelNet)model).FullReceived(1, 1, 1, new[] { new FullStateField { zoneInternalID = 1 } });
                 var initializer = new Initializer();
                 SetPrivate(initializer, "_viewModel", model);
                 SetPrivate(initializer, "_data", data);
@@ -280,7 +281,7 @@ namespace C02.Tests
         private sealed class FakeNetwork : INetworkService
         {
             public int Requests;
-            public void RequestInventory() => Requests++;
+            public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() => Requests++;
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void CharacterList() { }
             public void Enter(ulong characterId) { }

@@ -1,4 +1,4 @@
-﻿using ClientCore;
+using ClientCore;
 using ClientCore.PacketHelper;
 using ClientCore.Services;
 using System;
@@ -45,6 +45,10 @@ namespace ClientCore.Network
                     case OP_CODE.INVENTORY_RES:
                         HandleInventoryRes(Packet.DeserializeInventory(header, buffer));
                         return;
+                    case OP_CODE.BAZAAR_SEARCH_RES:
+                        var search = Packet.DeserializeBazaar(header, buffer);
+                        _viewModel.BazaarReceived(search.requestID, search.status, search.rows);
+                        return;
                 }
                 if ((header.flags & FLAG_SIMULATION) == FLAG_SIMULATION)
                 {
@@ -73,7 +77,7 @@ namespace ClientCore.Network
             catch (Exception e)
             {
                 // A malformed C06 frame must reach the socket's existing disconnect boundary.
-                if (buffer.Length >= 7 && (buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 21 || buffer[6] == 25)) throw;
+                if (buffer.Length >= 7 && (buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 21 || buffer[6] == 25 || buffer[6] == 27)) throw;
                 ErrorLog(e.Message);
             }
         }
@@ -106,27 +110,27 @@ namespace ClientCore.Network
         }
         public void HandleZoneChangeRes(STPacket<ZoneChangeResponseBody> packet)
         {
-            _viewModel.ZoneChageReceived(packet.body.resStatus, packet.body.zoneID, packet.body.chatID, packet.body.zoneInternalID, packet.body.startX, packet.body.startY);
+            _viewModel.ZoneChageReceived(packet.body.resStatus, packet.body.zoneID, packet.body.chatID, packet.body.zoneInternalID, packet.body.startX, packet.body.startY, packet.body.zoneGeneration);
         }
-        public void HandleDeltaUpdate((ushort, DeltaUpdateField[]) res)
+        public void HandleDeltaUpdate((ushort count, ushort zoneID, ulong generation, DeltaUpdateField[] items) res)
         {
-            _viewModel.DeltaReceived(res.Item1, res.Item2);
+            _viewModel.DeltaReceived(res.zoneID, res.generation, res.count, res.items);
         }
-        public void HandleFullState((ushort, FullStateField[]) res)
+        public void HandleFullState((ushort count, ushort zoneID, ulong generation, FullStateField[] items) res)
         {
-            _viewModel.FullReceived(res.Item1, res.Item2);
+            _viewModel.FullReceived(res.zoneID, res.generation, res.count, res.items);
         } 
-        public void HandleMonsterDelta((ushort, MonsterDeltaField[]) res)
+        public void HandleMonsterDelta((ushort count, ushort zoneID, ulong generation, MonsterDeltaField[] items) res)
         {
-            _viewModel.MonsterDeltaReceived(res.Item1, res.Item2);
+            _viewModel.MonsterDeltaReceived(res.zoneID, res.generation, res.count, res.items);
         }
-        public void HandleMonsterFull((ushort, MonsterFullField[]) res)
+        public void HandleMonsterFull((ushort count, ushort zoneID, ulong generation, MonsterFullField[] items) res)
         {
-            _viewModel.MonsterFullReceived(res.Item1, res.Item2);
+            _viewModel.MonsterFullReceived(res.zoneID, res.generation, res.count, res.items);
         }
-        public void HandleActionReult((ushort, ActionResultField[]) res)
+        public void HandleActionReult((ushort count, ushort zoneID, ulong generation, ActionResultField[] items) res)
         {
-            _viewModel.ActionResultReceived(res.Item1, res.Item2);
+            _viewModel.ActionResultReceived(res.zoneID, res.generation, res.count, res.items);
         }
         public void HandlePing(STPacket<Ping> packet)
         {

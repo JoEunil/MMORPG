@@ -184,3 +184,137 @@ TEST(CacheWALRegression, NewNodeLsnExceedsTheLoadedDatabaseLsn) {
     std::filesystem::remove(dir / "redo.43");
     std::filesystem::remove(dir);
 }
+
+
+#include <CacheLib/BazaarSearchResult.h>
+#include <CacheLib/Handler.h>
+#include <CacheLib/DBWorker.h>
+#include <CoreLib/IMessageQueue.h>
+#include <stdexcept>
+#include <limits>
+#include <string_view>
+
+namespace {
+    struct SearchRows {
+        int count = 0;
+        int index = -1;
+        int invalidAt = -1;
+        int throwAt = -1;
+        uint64_t itemID = 1;
+        int64_t quantity = 1;
+        bool next() {
+            ++index;
+            if (index == throwAt) throw std::runtime_error("fixture read failure");
+            return index < count;
+        }
+        uint64_t getUInt64(const char* name) {
+            const std::string_view field(name);
+            if (field == "item_id") return index == invalidAt ? itemID : 1;
+            if (field == "listing_id") return 100 + index;
+            if (field == "seller_id") return 200 + index;
+            return 0; // Price and registration time zero are valid, preserved values.
+        }
+        int64_t getInt64(const char*) { return index == invalidAt ? quantity : 1; }
+    };
+    class SearchResponseQueue : public Core::IMessageQueue {
+    public:
+        std::unique_ptr<Core::Message> received;
+        bool EnqueueMessage(Core::Message* msg) override {
+            received = std::make_unique<Core::Message>(msg->GetLength());
+            std::memcpy(received->GetBuffer(), msg->GetBuffer(), msg->GetLength());
+            received->SetLength(msg->GetLength());
+            return true;
+        }
+    };
+}
+
+TEST(BazaarSearchParser, NullIsFailureButZeroRowsIsSuccessWithRequestIdAndNoResidue) {
+    Core::MsgBazaarSearchResBody body;
+    std::memset(&body, 0xCD, sizeof(body));
+    Cache::ParseBazaarSearchResult<SearchRows>(nullptr, 123, body);
+    EXPECT_EQ(body.requestID, 123);
+    EXPECT_EQ(body.resStatus, 0);
+    EXPECT_EQ(body.count, 0);
+    EXPECT_EQ(body.listings[29].listingID, 0);
+    SearchRows empty;
+    Cache::ParseBazaarSearchResult(&empty, 124, body);
+    EXPECT_EQ(body.requestID, 124);
+    EXPECT_EQ(body.resStatus, 1);
+    EXPECT_EQ(body.count, 0);
+    EXPECT_EQ(body.listings[29].itemID, 0);
+}
+
+TEST(BazaarSearchParser, ThirtyRowsFitBothMessagePoolsAndTruncateOnlyToSqlLimit) {
+    static_assert(sizeof(Core::MsgStruct<Core::MsgBazaarSearchResBody>) <= Core::MESSAGE_LEN);
+    static_assert(sizeof(Core::MsgStruct<Core::MsgBazaarSearchResBody>) <= Cache::MESSAGE_LEN);
+    SearchRows rows;
+    rows.count = 31;
+    Core::MsgBazaarSearchResBody body{};
+    Cache::ParseBazaarSearchResult(&rows, 125, body);
+    EXPECT_EQ(body.resStatus, 1);
+    EXPECT_EQ(body.count, 30);
+    EXPECT_EQ(body.listings[29].listingID, 129);
+    EXPECT_EQ(body.listings[29].sellerCharacterID, 229);
+    EXPECT_EQ(body.listings[29].registeredAt, 0);
+    EXPECT_EQ(body.listings[29].price, 0);
+    EXPECT_EQ(rows.index, 29);
+}
+
+TEST(BazaarSearchParser, NarrowingOverflowNegativeQuantityAndPartialReadFailureEraseAllRows) {
+    for (int kind = 0; kind < 5; ++kind) {
+        SearchRows rows;
+        rows.count = 4;
+        rows.invalidAt = 2;
+        if (kind == 0) rows.itemID = uint64_t{1} << 32;
+        if (kind == 1) rows.quantity = 65536;
+        if (kind == 2) rows.quantity = -1;
+        if (kind == 3) rows.itemID = 0;
+        if (kind == 4) rows.throwAt = 2;
+        Core::MsgBazaarSearchResBody body;
+        std::memset(&body, 0xCD, sizeof(body));
+        Cache::ParseBazaarSearchResult(&rows, 126, body);
+        EXPECT_EQ(body.requestID, 126) << kind;
+        EXPECT_EQ(body.resStatus, 0) << kind;
+        EXPECT_EQ(body.count, 0) << kind;
+        for (const auto& row : body.listings) {
+            EXPECT_EQ(row.listingID, 0);
+            EXPECT_EQ(row.itemID, 0);
+            EXPECT_EQ(row.quantity, 0);
+        }
+    }
+}
+
+namespace Cache {
+    class BazaarSearchFixture : public ::testing::Test {
+    protected:
+        std::unique_ptr<MessagePool> messages = std::make_unique<MessagePool>();
+        std::unique_ptr<DBWorker<DBConnectionBazaar>> stoppedWorker = std::make_unique<DBWorker<DBConnectionBazaar>>();
+        SearchResponseQueue responses;
+        Handler handler;
+        void SetUp() override {
+            handler.messageQ = &responses;
+            handler.messagePool = messages.get();
+            handler.dbWorkerBazaar = stoppedWorker.get();
+        }
+        void RequestSearch() {
+            auto* msg = messages->Acquire();
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarSearchBody>*>(msg->GetBuffer());
+            st->header = {42, Core::MSG_BAZAAR_SEARCH};
+            st->body = {0x12345678, 3, 65535};
+            msg->SetLength(sizeof(*st));
+            handler.Process(msg); // Stopped queue rejects without connecting to any DB.
+        }
+    };
+    TEST_F(BazaarSearchFixture, StoppedDbWorkerReturnsExplicitCorrelatedFailure) {
+        RequestSearch();
+        ASSERT_NE(responses.received, nullptr);
+        EXPECT_EQ(responses.received->GetLength(), sizeof(Core::MsgStruct<Core::MsgBazaarSearchResBody>));
+        const auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarSearchResBody>*>(responses.received->GetBuffer());
+        EXPECT_EQ(st->header.sessionID, 42);
+        EXPECT_EQ(st->header.messageType, Core::MSG_BAZAAR_SEARCH_RES);
+        EXPECT_EQ(st->body.requestID, 0x12345678);
+        EXPECT_EQ(st->body.resStatus, 0);
+        EXPECT_EQ(st->body.count, 0);
+        EXPECT_EQ(st->body.listings[29].listingID, 0);
+    }
+}

@@ -10,6 +10,7 @@
 
 #include "DBWorker.h"
 #include "MessagePool.h"
+#include "BazaarSearchResult.h"
 
 namespace Cache {
     void Handler::BazaarMyList(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarMyListBody * body) {
@@ -54,43 +55,29 @@ namespace Cache {
     }
 
     void Handler::BazaarSearch(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarSearchBody* body) {
-        EnqueueMessageWork(dbWorkerBazaar, msg, [msg, sessionID, body, this](DBConnectionBazaar* conn) {
-            uint32_t offset = body->page * Core::MAX_BAZAAR_SEARCH_RESULT;
-            auto res = conn->ExecuteSelect(12, body->item_type, Core::MAX_BAZAAR_SEARCH_RESULT, offset);
-            Core::MsgStruct<Core::MsgBazaarSearchResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarSearchResBody>*>(msg->GetBuffer());
-
-            st->header.sessionID = sessionID;
-            st->header.messageType = Core::MSG_BAZAAR_SEARCH_RES;
-
-            st->body.resStatus = 1;
-            st->body.count = 0;
-
-            if (!res || !res->next()) {
-                msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarSearchResBody>));
-                messageQ->EnqueueMessage(msg);
-                messagePool->Return(msg);
-                return;
-            }
-
-            do {
-                if (st->body.count >= Core::MAX_BAZAAR_SEARCH_RESULT)
-                    break;
-                auto& listing = st->body.listings[st->body.count];
-                listing.itemID = res->getUInt64("item_id");
-                listing.listingID = res->getUInt64("listing_id");
-                listing.price = res->getUInt64("price");
-                listing.quantity = res->getInt("quantity");
-                listing.registeredAt = res->getUInt64("listed_at");
-                listing.sellerCharacterID = res->getUInt64("seller_id");
-                listing.status = 0;
-
-                st->body.count++;
-            } while (res->next());
-
-            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarSearchResBody>));
-            messageQ->EnqueueMessage(msg);
-            messagePool->Return(msg);
-            });
+        const auto request = *body;
+        auto* owned = msg;
+        const auto finish = [this, owned, sessionID, requestID = request.requestID](const Core::MsgBazaarSearchResBody& response) {
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarSearchResBody>*>(owned->GetBuffer());
+            st->header = { sessionID, Core::MSG_BAZAAR_SEARCH_RES };
+            st->body = response;
+            st->body.requestID = requestID;
+            owned->SetLength(sizeof(*st));
+            if (!messageQ->EnqueueMessage(owned))
+                Core::errorLogger->LogError("cache handler bazaar", "search response queue rejected", "sessionID", sessionID);
+            messagePool->Return(owned);
+        };
+        const auto failed = [finish] { finish(Core::MsgBazaarSearchResBody{}); };
+        const auto outcome = dbWorkerBazaar->Enqueue([request, finish](DBConnectionBazaar* conn) {
+            const uint32_t offset = static_cast<uint32_t>(request.page) * Core::MAX_BAZAAR_SEARCH_RESULT;
+            auto result = conn->ExecuteSelect(12, request.item_type, Core::MAX_BAZAAR_SEARCH_RESULT, offset);
+            Core::MsgBazaarSearchResBody response{};
+            ParseBazaarSearchResult(result.get(), request.requestID, response);
+            finish(response);
+        }, nullptr, failed);
+        if (outcome != DBEnqueueResult::Queued)
+            failed();
+        msg = nullptr; // Queued work or the synchronous rejection path owns Return.
     }
 
     void Handler::BazaarRegister(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarRegisterBody* body) {

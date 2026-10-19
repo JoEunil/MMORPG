@@ -2,13 +2,28 @@ param(
     [switch]$PreflightOnly,
     [switch]$C07Candidate,
     [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$C07Hash,
+    [switch]$C08Candidate,
+    [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$C08Hash,
+    [switch]$C09Candidate,
+    [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$C09Hash,
     [ValidateSet('R01-START-05/r1')][string]$ExecuteApprovedStart
 )
 $ErrorActionPreference = 'Stop'
 $root = 'C:\Users\joeun\Desktop\workspace\Game-UnityClient'
 $image = Join-Path $root 'UnityClient\Builds\R01-Candidate\bin\MainServer.exe'
 $imageHash = '01C6261AB5C3448E2BA5F336CE70FB20E4DBA4B9ED47AD70002F22C88594D108'
-if ($C07Candidate) {
+if ($C09Candidate) {
+    if (-not $C09Hash -or $C07Candidate -or $C07Hash -or $C08Candidate -or $C08Hash -or $ExecuteApprovedStart) { throw 'C09 needs only its fixed reviewed SHA256 and current local-operation authorization.' }
+    if ($C09Hash.ToUpperInvariant() -ne 'ABA9491459EA2444D8862199104DAD8A8ADDBD19AA52687FBE085C9CC2C123F8') { throw 'C09 reviewed SHA256 mismatch.' }
+    $image = Join-Path $root 'UnityClient\Builds\C09-Candidate\final\bin\MainServer.exe'
+    $imageHash = 'ABA9491459EA2444D8862199104DAD8A8ADDBD19AA52687FBE085C9CC2C123F8'
+} elseif ($C09Hash) { throw 'C09 hash requires C09 mode.' }
+elseif ($C08Candidate) {
+    if (-not $C08Hash -or $C07Candidate -or $C07Hash -or $ExecuteApprovedStart) { throw 'C08 needs only its reviewed SHA256 and current local-operation authorization.' }
+    $image = Join-Path $root 'UnityClient\Builds\C08-Candidate\final\bin\MainServer.exe'
+    $imageHash = $C08Hash.ToUpperInvariant()
+} elseif ($C08Hash) { throw 'C08 hash requires C08 mode.' }
+elseif ($C07Candidate) {
     if (-not $C07Hash -or $ExecuteApprovedStart) { throw 'C07 needs its reviewed SHA256 and uses current local-operation authorization.' }
     $image = Join-Path $root 'UnityClient\Builds\C07-Candidate\final\bin\MainServer.exe'
     $imageHash = $C07Hash.ToUpperInvariant()
@@ -22,10 +37,10 @@ $dllHashes = @{
     'hiredis.dll'='FC0D6F13F43ADE48A71F9FF3AFD9B9B0751165FC325D3A05D19A01999D29FE5C'
     'mysqlcppconn-9-vs14.dll'='2070CD998CDF625425DE4AA5476F131D92165068998CC634B13C4D3138E0F088'
 }
-if (-not $C07Candidate -and $PreflightOnly -eq ($ExecuteApprovedStart -eq 'R01-START-05/r1')) {
+if (-not $C07Candidate -and -not $C08Candidate -and -not $C09Candidate -and $PreflightOnly -eq ($ExecuteApprovedStart -eq 'R01-START-05/r1')) {
     throw 'Choose exactly one mode: -PreflightOnly, or the exact approved start identifier.'
 }
-if (-not $C07Candidate -and -not $PreflightOnly -and $ExecuteApprovedStart -ne 'R01-START-05/r1') {
+if (-not $C07Candidate -and -not $C08Candidate -and -not $C09Candidate -and -not $PreflightOnly -and $ExecuteApprovedStart -ne 'R01-START-05/r1') {
     throw 'Starting the candidate requires the separately approved R01-START-05/r1 identifier.'
 }
 

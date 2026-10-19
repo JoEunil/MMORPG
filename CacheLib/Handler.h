@@ -98,6 +98,7 @@ namespace Cache {
         void ProfileRename(Core::Message*& msg, uint64_t sessionID, Core::MsgProfileRenameBody* body);
 
         friend class Initializer;
+        friend class BazaarSearchFixture;
     public:
         void Process(Core::Message* msg);
     };

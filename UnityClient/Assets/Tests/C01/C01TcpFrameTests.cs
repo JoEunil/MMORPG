@@ -49,12 +49,55 @@ namespace C01.Tests
         [UnityTest, Timeout(30000)]
         public IEnumerator InvalidC01Frames_DisconnectWithoutDispatch()
         {
-            for (var kind = 0; kind < 6; kind++)
+            for (var kind = 0; kind < 10; kind++)
             {
                 var validation = CheckInvalidFrame(kind);
                 while (validation.MoveNext())
                     yield return validation.Current;
             }
+        }
+
+        [UnityTest, Timeout(30000)]
+        public IEnumerator C08SplitAckAndCoalescedSnapshotCrossTheRealTcpBoundary()
+        {
+            var handler = new RecordingHandler();
+            var socket = CreateSocket(handler);
+            var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var ack = Header(39, 17); ack[7] = 1;
+            var full = Header(63, 7); full[7] = 1; full[8] = 1;
+            BitConverter.GetBytes((ushort)1).CopyTo(full, 10);
+            BitConverter.GetBytes(1UL).CopyTo(full, 12);
+            var server = SendSplitThenCombined(listener, ack, full);
+            try
+            {
+                var connect = socket.Connect(IPAddress.Loopback.ToString(), ((IPEndPoint)listener.LocalEndpoint).Port);
+                yield return WaitFor(() => connect.IsCompleted, 5f);
+                if (connect.IsFaulted) throw connect.Exception;
+                yield return WaitFor(() => handler.Packets.Count == 2, 5f);
+                Assert.That(handler.Packets[0], Is.EqualTo(ack));
+                Assert.That(handler.Packets[1], Is.EqualTo(full));
+                yield return WaitFor(() => server.IsCompleted, 2f);
+            }
+            finally { socket.Dispose(); listener.Stop(); }
+        }
+
+        [UnityTest, Timeout(30000)]
+        public IEnumerator BazaarEmptyAndMaximumResponsesPassSplitAndCoalescedTcpBoundary()
+        {
+            var handler = new RecordingHandler(); var socket = CreateSocket(handler);
+            var listener = new TcpListener(IPAddress.Loopback, 0); listener.Start();
+            var empty = Header(15, 27); var maximum = Header(1185, 27);
+            var server = SendSplitThenCombined(listener, empty, maximum);
+            try
+            {
+                var connect = socket.Connect(IPAddress.Loopback.ToString(), ((IPEndPoint)listener.LocalEndpoint).Port);
+                yield return WaitFor(() => connect.IsCompleted, 5f); if (connect.IsFaulted) throw connect.Exception;
+                yield return WaitFor(() => handler.Packets.Count == 2, 5f);
+                Assert.That(handler.Packets[0], Is.EqualTo(empty)); Assert.That(handler.Packets[1], Is.EqualTo(maximum));
+                yield return WaitFor(() => server.IsCompleted, 2f);
+            }
+            finally { socket.Dispose(); listener.Stop(); }
         }
 
         private IEnumerator CheckInvalidFrame(int kind)
@@ -172,6 +215,17 @@ namespace C01.Tests
                     var badCount = Header(430, 4);
                     badCount[9] = 11;
                     return badCount;
+                case 6:
+                    var oldAck = Header(31, 17); oldAck[7] = 1;
+                    return oldAck;
+                case 7:
+                    var oldSnapshot = Header(10, 7); oldSnapshot[7] = 1;
+                    return oldSnapshot;
+                case 8:
+                    return Header(14, 27);
+                case 9:
+                    var badBazaarFlags = Header(15, 27); badBazaarFlags[7] = 1;
+                    return badBazaarFlags;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(kind));
             }
@@ -179,7 +233,7 @@ namespace C01.Tests
 
         private static byte[] Header(int length, byte opcode)
         {
-            var frame = new byte[length >= 8 && length <= 430 ? length : 8];
+            var frame = new byte[length >= 8 && length <= 1185 ? length : 8];
             frame[0] = 0xCD;
             frame[1] = 0xAB;
             frame[2] = (byte)length;

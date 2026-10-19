@@ -2,6 +2,10 @@ param(
     [switch]$PreflightOnly,
     [switch]$C07Candidate,
     [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$C07Hash,
+    [switch]$C08Candidate,
+    [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$C08Hash,
+    [switch]$C09Candidate,
+    [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$C09Hash,
     [int]$QuitHelperPid = 0,
     [ValidateSet('Original', 'New')][string]$QuitImage = 'Original',
     [long]$QuitStartTicks = 0,
@@ -16,7 +20,26 @@ $newRoot = 'C:\Users\joeun\Desktop\workspace\Game-UnityClient'
 $newHash = '01C6261AB5C3448E2BA5F336CE70FB20E4DBA4B9ED47AD70002F22C88594D108'
 $currentPid = 20024
 $currentStartTicks = 639279045410504905
-if ($C07Candidate) {
+if ($C09Candidate) {
+    if (-not $C09Hash -or $C07Candidate -or $C07Hash -or $C08Candidate -or $C08Hash) { throw 'C09 requires only its fixed reviewed SHA256.' }
+    if ($C09Hash.ToUpperInvariant() -ne 'ABA9491459EA2444D8862199104DAD8A8ADDBD19AA52687FBE085C9CC2C123F8') { throw 'C09 reviewed SHA256 mismatch.' }
+    $originalExe = Join-Path $newRoot 'UnityClient\Builds\C08-Candidate\final\bin\MainServer.exe'
+    $originalHash = 'B3D4E8B35F4475EFECE729A7425CB8ACF2D958C802128986B28ED883E1B462A7'
+    $newExe = Join-Path $newRoot 'UnityClient\Builds\C09-Candidate\final\bin\MainServer.exe'
+    $newHash = 'ABA9491459EA2444D8862199104DAD8A8ADDBD19AA52687FBE085C9CC2C123F8'
+    $currentPid = 35672
+    $currentStartTicks = 639279859750855209
+} elseif ($C09Hash) { throw 'C09 hash requires C09 mode.' }
+elseif ($C08Candidate) {
+    if (-not $C08Hash -or $C07Candidate -or $C07Hash) { throw 'C08 requires only its reviewed SHA256.' }
+    $originalExe = Join-Path $newRoot 'UnityClient\Builds\C07-Candidate\final\bin\MainServer.exe'
+    $originalHash = '9F5C42221EF11C109DA20E2ECFE1C46E7754861A7BF9BB90EC8A9958604D4C8F'
+    $newExe = Join-Path $newRoot 'UnityClient\Builds\C08-Candidate\final\bin\MainServer.exe'
+    $newHash = $C08Hash.ToUpperInvariant()
+    $currentPid = 27540
+    $currentStartTicks = 639279835005648240
+} elseif ($C08Hash) { throw 'C08 hash requires C08 mode.' }
+elseif ($C07Candidate) {
     if (-not $C07Hash) { throw 'C07 requires the reviewed candidate SHA256.' }
     $originalExe = $newExe
     $originalHash = $newHash
@@ -250,6 +273,8 @@ function Stop-Normally([Diagnostics.Process]$Process, [string]$ImageKind, [strin
     $deadlineUtcTicks = [DateTime]::UtcNow.AddSeconds(12).Ticks
     $arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $PSCommandPath + '" -QuitHelperPid ' + $Process.Id + ' -QuitImage ' + $ImageKind + ' -QuitStartTicks ' + $ticks + ' -QuitDeadlineUtcTicks ' + $deadlineUtcTicks
     if ($C07Candidate) { $arguments += ' -C07Candidate -C07Hash ' + $C07Hash }
+    if ($C08Candidate) { $arguments += ' -C08Candidate -C08Hash ' + $C08Hash }
+    if ($C09Candidate) { $arguments += ' -C09Candidate -C09Hash ' + $C09Hash }
     $helper = Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $helperOut -RedirectStandardError $helperErr
     # Pin the process handle before the child exits; do not rely on PassThru.ExitCode.
     try { $helperHandle = $helper.Handle } catch {
@@ -346,6 +371,8 @@ Assert-Listener $original.Id
 New-Item -ItemType Directory -Path $captures -Force | Out-Null
 New-Item -ItemType Directory -Path $evidenceFolder -ErrorAction Stop | Out-Null
 if ($C07Candidate) { Record 'C07 local test transition under current normal-server-operation authorization. No direct DB writes, force stop, or original-image replacement.' }
+elseif ($C08Candidate) { Record 'C08 local test transition under current normal-server-operation authorization. No direct DB writes, force stop, or original-image replacement.' }
+elseif ($C09Candidate) { Record 'C09 local test transition under current normal-server-operation authorization. No direct DB writes, force stop, or original-image replacement.' }
 else { Record 'R01-DEPLOY-04/r1; execution requires explicit approval recorded by Coordinator. Normal shutdown may persist dedicated character states; no direct DB writes or data restoration.' }
 Assert-EmptyWal
 Preserve-LogsAndWal 'before-current-stop'

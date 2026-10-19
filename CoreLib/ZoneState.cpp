@@ -4,6 +4,9 @@
 #include "ILogger.h"
 #include "StateManager.h"
 #include "LoggerGlobal.h"
+#include <algorithm>
+#include <cmath>
+#include <limits>
 
 namespace Core {
     void ZoneState::RemoveFromCell(CharacterState& character) {
@@ -30,70 +33,97 @@ namespace Core {
         // 임시로 스킬 고정
     }
 
-    // 상한에 도달하면 발급을 중단한다.
-    // wrap-around 시 이미 사용 중인 ID와 중복되어 다른 캐릭터의 상태를 덮어쓰기 때문에,fetch_add로 넘겨서 카운터를 굴리지 않고 CAS로 상한에서 정지시킨다.
-    uint32_t ZoneState::AcquireInternalID() {
-        uint32_t cur = m_internalIdGenerator.load(std::memory_order_relaxed);
-        while (cur < MAX_ZONE_INTERNAL_ID) {
-            if (m_internalIdGenerator.compare_exchange_weak(cur, cur + 1,
-                std::memory_order_relaxed, std::memory_order_relaxed))
-                return cur;
+    // The caller owns m_mutex (and the session shard for production transfers).
+    uint32_t ZoneState::ImmigrateCharLocked(uint64_t sessionID, const CharacterState& state) {
+        if (m_chars.size() >= MAX_ZONE_CAPACITY || m_sessionToIndex.contains(sessionID)
+            || m_generation == (std::numeric_limits<uint64_t>::max)()
+            || !std::isfinite(state.x) || !std::isfinite(state.y)
+            || state.x < m_area.x_min || state.x > m_area.x_max
+            || state.y < m_area.y_min || state.y > m_area.y_max)
+            return INVALID_ZONE_INTERNAL_ID;
+        const uint32_t id = m_internalIdGenerator.load(std::memory_order_relaxed);
+        if (id == INVALID_ZONE_INTERNAL_ID || id >= MAX_ZONE_INTERNAL_ID
+            || m_InternalIDToIndex.contains(id))
+            return INVALID_ZONE_INTERNAL_ID;
+        const auto index = static_cast<uint16_t>(m_chars.size());
+        const auto [x, y] = GetCell(state.x, state.y, m_area);
+        bool sessionInserted = false;
+        bool internalInserted = false;
+        try {
+            // Complete every allocating operation before changing source membership or ID/generation.
+            CharacterState incoming = state;
+            incoming.sessionID = sessionID;
+            incoming.zoneInternalID = id;
+            incoming.lastZone = m_zoneID;
+            incoming.dirtyBit = 0;
+            if (incoming.skillSlot.empty()) {
+                incoming.skillSlot = {{0, 0}, {1, 0}, {2, 0}};
+            }
+            else if (incoming.skillSlot.size() != 3) {
+                if (incoming.skillSlot.size() < 3)
+                    return INVALID_ZONE_INTERNAL_ID;
+                incoming.skillSlot.resize(3);
+            }
+            incoming.skillSlotCnt = 3;
+            auto& sessions = m_cells[y][x].charSessions;
+            sessions.reserve(sessions.size() + 1);
+            sessionInserted = m_sessionToIndex.emplace(sessionID, index).second;
+            if (!sessionInserted)
+                return INVALID_ZONE_INTERNAL_ID;
+            internalInserted = m_InternalIDToIndex.emplace(id, index).second;
+            if (!internalInserted) {
+                m_sessionToIndex.erase(sessionID);
+                return INVALID_ZONE_INTERNAL_ID;
+            }
+            // m_chars capacity is reserved at construction; moving CharacterState does not allocate.
+            m_chars.push_back(std::move(incoming));
+            AddToCell(m_chars.back(), x, y);
         }
-        return INVALID_ZONE_INTERNAL_ID;
+        catch (const std::bad_alloc&) {
+            if (internalInserted) m_InternalIDToIndex.erase(id);
+            if (sessionInserted) m_sessionToIndex.erase(sessionID);
+            return INVALID_ZONE_INTERNAL_ID;
+        }
+        m_internalIdGenerator.store(id + 1, std::memory_order_relaxed);
+        ++m_generation;
+        return id;
     }
 
-    uint32_t ZoneState::ImmigrateChar(uint64_t sessionID, CharacterState& state) {
-        // 추가 제거는 fullSnapshot에 적용됨
-        std::lock_guard<std::mutex> lock(m_mutex);
-
-        uint16_t index = static_cast<uint16_t>(m_chars.size());
-        if (index >= MAX_ZONE_CAPACITY) {
-            errorLogger->LogError("zone state", "zone full", "zoneID", m_zoneID, "sessionID", sessionID, "index", index);
-            return INVALID_ZONE_INTERNAL_ID;
-        }
+    void ZoneState::RemoveCharacterLocked(uint64_t sessionID) {
         auto it = m_sessionToIndex.find(sessionID);
-        if (it != m_sessionToIndex.end()) {
-            errorLogger->LogError("zone state", "ImmigrageChar Failed sessionID already exists","zoneID", m_zoneID, "sessionID", sessionID);
-            return INVALID_ZONE_INTERNAL_ID;
+        auto& character = m_chars[it->second];
+        const uint32_t id = character.zoneInternalID;
+        RemoveFromCell(character);
+        // Old casts must not find the same session again after a quick return.
+        for (auto& row : m_cells) {
+            for (auto& cell : row) {
+                std::erase_if(cell.activeSkills, [sessionID](const ActiveSkill& skill) {
+                    return skill.casterType == 0 && skill.sessionId == sessionID;
+                });
+                std::erase_if(cell.actionResults, [id](const ActionResult& result) {
+                    return result.casterType == 0 && result.zoneInternalId == id;
+                });
+                std::erase(cell.dirtyChar, id);
+            }
         }
-        // 실패한 진입이 ID를 소모하지 않도록 검증 이후에 발급한다.
-        state.zoneInternalID = AcquireInternalID();
-        if (state.zoneInternalID == INVALID_ZONE_INTERNAL_ID) {
-            errorLogger->LogError("zone state", "zoneInternalID exhausted", "zoneID", m_zoneID, "sessionID", sessionID);
-            return INVALID_ZONE_INTERNAL_ID;
+        const auto index = it->second;
+        if (index != m_chars.size() - 1) {
+            m_chars[index] = std::move(m_chars.back());
+            m_sessionToIndex.at(m_chars[index].sessionID) = index;
+            m_InternalIDToIndex.at(m_chars[index].zoneInternalID) = index;
         }
-        auto [x, y] = GetCell(state.x, state.y, m_area);
-        AddToCell(state, x, y);
-        state.lastZone = m_zoneID;
-        state.skillSlotCnt = 3;
-        state.skillSlot.emplace_back(0, 0);
-        state.skillSlot.emplace_back(1, 0);
-        state.skillSlot.emplace_back(2, 0);
-        m_chars.push_back(state);
-        m_sessionToIndex[sessionID] = index;
-        m_InternalIDToIndex[state.zoneInternalID] = index;
-        stateManager->SetZoneID(sessionID, m_zoneID);
-        
-        return state.zoneInternalID;
-    }
-    
-    bool ZoneState::EmigrateChar(uint64_t sessionID, CharacterState& o) {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        auto it = m_sessionToIndex.find(sessionID);
-        if (it == m_sessionToIndex.end()){
-            errorLogger->LogError("zone state", "EmigrageChar Failed sessionID not exists", "zoneID", m_zoneID, "sessionID", sessionID);
-            return false;
-        }
-        o = m_chars[it->second]; // out 복사
-        RemoveFromCell(m_chars[it->second]);
-        m_chars[it->second] = m_chars.back(); // swap
-
-        m_sessionToIndex[m_chars[it->second].sessionID] = it->second;
-        m_InternalIDToIndex[m_chars[it->second].zoneInternalID] = it->second;
-
         m_chars.pop_back();
-        m_sessionToIndex.erase(sessionID); 
-        m_InternalIDToIndex.erase(o.zoneInternalID); 
+        m_sessionToIndex.erase(it);
+        m_InternalIDToIndex.erase(id);
+    }
+
+    bool ZoneState::EmigrateChar(uint64_t sessionID, CharacterState& out) {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        auto it = m_sessionToIndex.find(sessionID);
+        if (it == m_sessionToIndex.end())
+            return false;
+        out = m_chars[it->second];
+        RemoveCharacterLocked(sessionID);
         return true;
     }
 
@@ -112,13 +142,13 @@ namespace Core {
     }
 
     void ZoneState::FlushCheat() {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        // now()가 무거워서 근사값으로 처리
-        auto timePoint = std::chrono::steady_clock::now();
-        for (auto [session, cheat]: m_cheatList)
+        std::vector<std::pair<uint64_t, uint16_t>> cheats;
         {
-            stateManager->Cheat(session, cheat, timePoint);
+            std::lock_guard<std::mutex> lock(m_mutex);
+            cheats.swap(m_cheatList);
         }
-		m_cheatList.clear();
+        const auto timePoint = std::chrono::steady_clock::now();
+        for (auto [session, cheat] : cheats)
+            stateManager->Cheat(session, cheat, timePoint);
     }
 }

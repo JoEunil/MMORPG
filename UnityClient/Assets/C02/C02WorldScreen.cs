@@ -11,7 +11,7 @@ using UnityEngine.InputSystem;
 
 namespace C02
 {
-    public enum C02Stage { Ready, Choosing, Entering, WaitingForZone, WaitingForFull, InWorld, Failed }
+    public enum C02Stage { Ready, Choosing, Entering, WaitingForZone, WaitingForFull, TransitionPending, ReconnectRequired, InWorld, Failed }
 
     public sealed class C02WorldScreen : MonoBehaviour
     {
@@ -21,6 +21,7 @@ namespace C02
         [SerializeField] private UnityEngine.UI.Button disconnectButton;
         [SerializeField] private TMP_Text entryStatusText;
         [SerializeField] private TMP_Text worldStatusText;
+        [SerializeField] private UnityEngine.UI.Button zoneTransitionButton;
         [SerializeField] private GameObject selectionPanel;
         [SerializeField] private GameObject background;
         [SerializeField] private GameObject worldRoot;
@@ -35,6 +36,8 @@ namespace C02
         private double nextMoveTime;
         private double progressDeadline;
         private double targetDeadline;
+        private double transitionDeadline;
+        private ushort transitionTargetZone;
         private readonly List<RaycastResult> uiHits = new List<RaycastResult>();
         public C02Stage Stage { get; private set; }
         public ulong SelectedCharacterID { get; private set; }
@@ -49,6 +52,7 @@ namespace C02
         public int EnterRequestCount { get; private set; }
         public event Action WorldStateChanged;
         private bool EntryPending => Stage == C02Stage.Entering || Stage == C02Stage.WaitingForZone || Stage == C02Stage.WaitingForFull;
+        private const double ZoneTransitionTimeoutSeconds = 12;
 
         private void OnEnable()
         {
@@ -59,6 +63,11 @@ namespace C02
             }
             enterButton.onClick.AddListener(EnterSelected);
             disconnectButton.onClick.AddListener(Disconnect);
+            if (zoneTransitionButton != null)
+            {
+                zoneTransitionButton.onClick.AddListener(RequestNearbyZoneChange);
+                zoneTransitionButton.gameObject.SetActive(false);
+            }
             loginScreen.ClientChanged += ChangeClient;
             loginScreen.CharacterListReceived += ListReceived;
             ChangeClient(loginScreen.Model);
@@ -153,8 +162,26 @@ namespace C02
 
         private void ZoneReceived(ushort zone, ulong chat, uint internalId, float x, float y)
         {
-            CancelMovement();
+            if (Stage == C02Stage.TransitionPending)
+            {
+                if (internalId == 0 || zone != transitionTargetZone || !InsideZone(zone, new Vector2(x, y)))
+                { RequireReconnect("The server returned an invalid Zone result. Disconnect and reconnect."); return; }
+                ZoneID = zone;
+                InternalID = internalId;
+                ZoneStartPosition = new Vector2(x, y);
+                ownFull = default;
+                HasOwnFull = false;
+                pendingFull.Clear();
+                ownCharacter.gameObject.SetActive(false);
+                worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
+                    "Zone {0} entered at ({1:F3}, {2:F3}). Waiting for your matching server state…\nPlease wait before taking another action.",
+                    zone, x, y);
+                UpdateZoneTransitionButton();
+                WorldStateChanged?.Invoke();
+                return;
+            }
             if (!EntryPending) return;
+            CancelMovement();
             if (internalId == 0 || !InsideZone(zone, new Vector2(x, y))) { Fail("Invalid server Zone result."); return; }
             ZoneID = zone;
             InternalID = internalId;
@@ -166,12 +193,29 @@ namespace C02
             pendingFull.Clear();
         }
 
-        private void ZoneFailed() { CancelMovement(); if (EntryPending) Fail("Zone entry was rejected."); }
+        private void ZoneFailed()
+        {
+            if (Stage == C02Stage.TransitionPending)
+            {
+                if (ZoneID == transitionTargetZone)
+                { RequireReconnect("Zone state became uncertain. Disconnect and reconnect."); return; }
+                transitionDeadline = 0;
+                transitionTargetZone = 0;
+                Stage = C02Stage.InWorld;
+                StopActions();
+                ShowPosition();
+                WorldStateChanged?.Invoke();
+                return;
+            }
+            CancelMovement();
+            if (EntryPending) Fail("Zone entry was rejected.");
+        }
 
         private void FullReceived(ushort count, FullStateField[] states)
         {
             if (states == null || count > states.Length) return;
-            if (!EntryPending && Stage != C02Stage.InWorld) return;
+            if (!EntryPending && Stage != C02Stage.InWorld && Stage != C02Stage.TransitionPending) return;
+            if (Stage == C02Stage.TransitionPending && ZoneID != transitionTargetZone) return;
             for (int i = 0; i < count; i++)
             {
                 var state = states[i];
@@ -192,12 +236,16 @@ namespace C02
             if (ownFull.hp == 0) StopActions();
             HasOwnFull = true;
             Stage = C02Stage.InWorld;
+            transitionDeadline = 0;
+            transitionTargetZone = 0;
+            ownCharacter.gameObject.SetActive(true);
             worldRoot.SetActive(true);
             worldHud.SetActive(true);
             selectionPanel.SetActive(false);
             background.SetActive(false);
             loginScreen.SetBusy(false);
             ShowPosition();
+            UpdateZoneTransitionButton();
             WorldStateChanged?.Invoke();
         }
 
@@ -260,6 +308,13 @@ namespace C02
 
         private void Update()
         {
+            if (Stage == C02Stage.TransitionPending)
+            {
+                if (Time.unscaledTimeAsDouble >= transitionDeadline)
+                    RequireReconnect("Zone transition timed out. Disconnect and reconnect before continuing.");
+                return;
+            }
+            if (Stage == C02Stage.ReconnectRequired) return;
             if (!CanAct || model == null || loginScreen.Data == null || !Application.isFocused)
             { CancelMovement(); return; }
             var events = EventSystem.current;
@@ -333,13 +388,62 @@ namespace C02
             loginScreen?.Data?.CancelMove();
         }
 
-        private void StopActions()
+        public void StopActions()
         {
             loginScreen?.Data?.CancelAction();
             CancelMovement();
         }
 
         private void OnApplicationFocus(bool focused) { if (!focused) CancelMovement(); }
+
+        private void RequestNearbyZoneChange()
+        {
+            if (!CanAct || model == null || loginScreen.Data == null ||
+                !TryNearbyZoneChange(ZoneID, ServerPosition, out var operation, out var targetZone)) return;
+
+            StopActions();
+            transitionTargetZone = targetZone;
+            transitionDeadline = Time.unscaledTimeAsDouble + ZoneTransitionTimeoutSeconds;
+            Stage = C02Stage.TransitionPending;
+            worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
+                "Requesting entry to Zone {0}…\nMovement and skills are paused until the server confirms the transition.", targetZone);
+            UpdateZoneTransitionButton();
+            WorldStateChanged?.Invoke();
+            try { model.ZoneChange(operation); }
+            catch (Exception) { ZoneFailed(); }
+        }
+
+        private void RequireReconnect(string message)
+        {
+            StopActions();
+            transitionDeadline = 0;
+            Stage = C02Stage.ReconnectRequired;
+            if (worldStatusText != null) worldStatusText.text = message;
+            UpdateZoneTransitionButton();
+            WorldStateChanged?.Invoke();
+        }
+
+        private void UpdateZoneTransitionButton()
+        {
+            if (zoneTransitionButton == null) return;
+            ushort targetZone = 0;
+            bool available = CanAct && TryNearbyZoneChange(ZoneID, ServerPosition, out _, out targetZone);
+            zoneTransitionButton.gameObject.SetActive(available);
+            zoneTransitionButton.interactable = available;
+            if (available && zoneTransitionButton.GetComponentInChildren<TMP_Text>(true) is TMP_Text label)
+                label.text = targetZone == 2 ? "ENTER ZONE 2  →" : "←  RETURN TO ZONE 1";
+        }
+
+        private static bool TryNearbyZoneChange(ushort zone, Vector2 position, out byte operation, out ushort targetZone)
+        {
+            operation = 0;
+            targetZone = 0;
+            if (!Finite(position.x) || !Finite(position.y) || position.x < 95 || position.x > 105 ||
+                position.y < -5 || position.y > 105) return false;
+            if (zone == 1) { operation = 4; targetZone = 2; return true; }
+            if (zone == 2) { operation = 3; targetZone = 1; return true; }
+            return false;
+        }
 
         // The authored hero faces local -Z (Vector3.back).
         internal static Quaternion ServerFacing(byte direction) => Quaternion.Euler(0,
@@ -358,6 +462,7 @@ namespace C02
             worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
                 "C02 / SERVER-CONFIRMED FIELD\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nClick the field to walk. Position is confirmed by the server.",
                 SelectedCharacterID, InternalID, ZoneID, ownFull.x, ownFull.y);
+            UpdateZoneTransitionButton();
         }
 
         private void ResetWorld()
@@ -370,6 +475,9 @@ namespace C02
             InternalID = 0;
             ZoneID = 0;
             ZoneStartPosition = Vector2.zero;
+            transitionDeadline = 0;
+            transitionTargetZone = 0;
+            if (zoneTransitionButton != null) zoneTransitionButton.gameObject.SetActive(false);
             if (worldRoot != null) worldRoot.SetActive(false);
             if (worldHud != null) worldHud.SetActive(false);
             if (selectionPanel != null) selectionPanel.SetActive(true);
@@ -399,6 +507,8 @@ namespace C02
             }
             if (enterButton != null) enterButton.onClick.RemoveListener(EnterSelected);
             if (disconnectButton != null) disconnectButton.onClick.RemoveListener(Disconnect);
+            if (zoneTransitionButton != null) zoneTransitionButton.onClick.RemoveListener(RequestNearbyZoneChange);
+            if (zoneTransitionButton != null) zoneTransitionButton.gameObject.SetActive(false);
             foreach (var choice in characterChoices)
                 if (choice != null) choice.onClick.RemoveAllListeners();
             if (worldRoot != null) worldRoot.SetActive(false);
@@ -410,6 +520,8 @@ namespace C02
             InternalID = 0;
             ZoneID = 0;
             ZoneStartPosition = Vector2.zero;
+            transitionDeadline = 0;
+            transitionTargetZone = 0;
             SelectedCharacterID = 0;
             Stage = C02Stage.Ready;
             WorldStateChanged?.Invoke();

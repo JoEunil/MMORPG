@@ -46,10 +46,10 @@ namespace C02.Tests
         }
 
         [TestCase(9, 1)]
-        [TestCase(52, 1)]
-        [TestCase(53, 2)]
-        [TestCase(54, 1)]
-        [TestCase(53, ushort.MaxValue)]
+        [TestCase(62, 1)]
+        [TestCase(63, 2)]
+        [TestCase(64, 1)]
+        [TestCase(63, ushort.MaxValue)]
         public void FullFrameWithTruncatedOrMismatchedCount_IsRejected(int frameLength, int count)
         {
             var frame = CreateFrame(frameLength, checked((ushort)count));
@@ -60,8 +60,8 @@ namespace C02.Tests
         private static byte[] CreateFullFrame(uint internalId, uint profileId, uint profileVersion,
             int hp, int mp, int maxHp, int maxMp, uint exp, ushort level, byte direction, float x, float y)
         {
-            var frame = CreateFrame(53, 1);
-            var offset = 10;
+            var frame = CreateFrame(63, 1);
+            var offset = 20;
             Write(frame, ref offset, internalId);
             Write(frame, ref offset, profileId);
             Write(frame, ref offset, profileVersion);
@@ -90,6 +90,11 @@ namespace C02.Tests
             }
             if (frame.Length >= 10)
                 Buffer.BlockCopy(BitConverter.GetBytes(count), 0, frame, 8, 2);
+            if (frame.Length >= 20)
+            {
+                BitConverter.GetBytes((ushort)1).CopyTo(frame, 10);
+                BitConverter.GetBytes(1UL).CopyTo(frame, 12);
+            }
             return frame;
         }
 

@@ -41,6 +41,8 @@ namespace ClientCore.PacketHelper
         PONG = 23, // 클라이언트 송신
         PROFILE_BATCH = 24,
         PROFILE_BATCH_RES = 25,
+        BAZAAR_SEARCH = 26,
+        BAZAAR_SEARCH_RES = 27,
     }
     
     public enum ZONE_CHANGE : byte
@@ -157,6 +159,18 @@ namespace ClientCore.PacketHelper
         public InventoryItem[] items;
     }
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct BazaarListing
+    {
+        public ulong listingID;
+        public ulong sellerCharacterID;
+        public uint itemID;
+        public ushort quantity;
+        public ulong price;
+        public ulong registeredAt;
+        public byte status;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ZoneChangeBody
     {
         public byte op;
@@ -171,6 +185,7 @@ namespace ClientCore.PacketHelper
         public uint zoneInternalID;
         public float startX;
         public float startY;
+        public ulong zoneGeneration;
     }
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ChatRequestBody
@@ -603,6 +618,41 @@ namespace ClientCore.PacketHelper
             return result;
         }
 
+        internal static byte[] SerializeBazaarRequest(uint requestID, ushort itemType, ushort page)
+        {
+            if (requestID == 0 || itemType < 1 || itemType > 3) throw new ArgumentException("Invalid bazaar search.");
+            var result = new byte[16];
+            BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
+            BitConverter.GetBytes(16U).CopyTo(result, 2);
+            result[6] = (byte)OP_CODE.BAZAAR_SEARCH;
+            BitConverter.GetBytes(requestID).CopyTo(result, 8);
+            BitConverter.GetBytes(itemType).CopyTo(result, 12);
+            BitConverter.GetBytes(page).CopyTo(result, 14);
+            return result;
+        }
+
+        internal static (uint requestID, byte status, BazaarListing[] rows) DeserializeBazaar(PacketHeader header, byte[] buffer)
+        {
+            if (header.flags != 0 || buffer.Length < 15 || buffer.Length > 1185 || header.length != buffer.Length)
+                throw new ArgumentException("Invalid bazaar response length or flags.");
+            uint requestID = BitConverter.ToUInt32(buffer, 8);
+            byte status = buffer[12];
+            ushort count = BitConverter.ToUInt16(buffer, 13);
+            if (requestID == 0 || status > 1 || count > 30 || status == 0 && count != 0 || buffer.Length != 15 + 39 * count)
+                throw new ArgumentException("Invalid bazaar response count or status.");
+            var rows = new BazaarListing[count];
+            var ids = new HashSet<ulong>();
+            for (int i = 0; i < count; i++)
+            {
+                rows[i] = ReadStruct<BazaarListing>(buffer, 15 + 39 * i);
+                var row = rows[i];
+                if (row.listingID == 0 || row.sellerCharacterID == 0 || row.itemID == 0 || row.quantity == 0 ||
+                    row.status != 0 || !ids.Add(row.listingID))
+                    throw new ArgumentException("Invalid bazaar listing.");
+            }
+            return (requestID, status, rows);
+        }
+
         // 고정 길이 패킷
         internal static STPacket<T> Deserialize<T>(PacketHeader header, byte[] buffer) where T : struct
         {
@@ -637,14 +687,18 @@ namespace ClientCore.PacketHelper
         }
 
         // 가변 길이 패킷, T는 필드 타입
-        public static (ushort count, T[] items) DeserializeVariablePacket<T> (PacketHeader header, byte[] buffer) where T : struct
+        public static (ushort count, ushort zoneID, ulong generation, T[] items) DeserializeVariablePacket<T> (PacketHeader header, byte[] buffer) where T : struct
         {
             int offset = Marshal.SizeOf<PacketHeader>();
-            if (buffer == null || header.length != buffer.Length || buffer.Length < offset + sizeof(ushort))
+            if (buffer == null || header.flags != FLAG_SIMULATION || header.length != buffer.Length || buffer.Length < offset + 12)
                 throw new ArgumentException("Invalid variable packet length.");
 
             ushort count = BitConverter.ToUInt16(buffer, offset);
-            offset += sizeof(ushort);
+            ushort zoneID = BitConverter.ToUInt16(buffer, offset + 2);
+            ulong generation = BitConverter.ToUInt64(buffer, offset + 4);
+            if (zoneID < 1 || zoneID > 4 || generation == 0)
+                throw new ArgumentException("Invalid simulation zone identity.");
+            offset += 12;
 
             int itemSize = Marshal.SizeOf<T>();
             // Validate before allocating or reading any unmanaged struct.
@@ -658,7 +712,20 @@ namespace ClientCore.PacketHelper
                 offset += itemSize;
             }
 
-            return (count, items);
+            return (count, zoneID, generation, items);
+        }
+
+        internal static STPacket<ZoneChangeResponseBody> DeserializeZoneChange(PacketHeader header, byte[] buffer)
+        {
+            if (header.flags != FLAG_SIMULATION || header.length != 39 || buffer.Length != 39)
+                throw new ArgumentException("Invalid zone response length or flags.");
+            var packet = Deserialize<ZoneChangeResponseBody>(header, buffer);
+            var body = packet.body;
+            if (body.resStatus > 1 || body.resStatus == 1 && (body.zoneID < 1 || body.zoneID > 4 ||
+                body.zoneGeneration == 0 || body.zoneInternalID == 0 || body.zoneInternalID == uint.MaxValue ||
+                float.IsNaN(body.startX) || float.IsInfinity(body.startX) || float.IsNaN(body.startY) || float.IsInfinity(body.startY)))
+                throw new ArgumentException("Invalid zone response identity.");
+            return packet;
         }
     }
 }

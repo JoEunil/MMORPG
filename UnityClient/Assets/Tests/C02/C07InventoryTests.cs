@@ -108,7 +108,7 @@ namespace C02.Tests
             {
                 var data = Activator.CreateInstance(typeof(ViewModel).Assembly.GetType("ClientCore.ViewData"), true); Data = (IViewDataUI)data;
                 Model = (ViewModel)Activator.CreateInstance(typeof(ViewModel), BindingFlags.NonPublic | BindingFlags.Instance, null, new object[] { Network, data, new NullLogger(), this }, null);
-                Model.ZoneChange(0); Model.ZoneChageReceived(1, 1, 1, 1, 0, 0); Drain();
+                C08TestSession.Ready(Model, Drain);
             }
             public void Post(Action job) => jobs.Enqueue(job);
             public void Drain() { while (jobs.Count > 0) jobs.Dequeue()(); }
@@ -117,7 +117,7 @@ namespace C02.Tests
         private sealed class NullLogger : ClientCore.ILogger { public void Log(string text) { } }
         private sealed class FakeNetwork : INetworkService
         {
-            public int Requests; public void RequestInventory() => Requests++;
+            public int Requests; public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() => Requests++;
             public Task Connect(string address, int port) => Task.CompletedTask; public void CharacterList() { } public void Enter(ulong id) { }
             public void Chat(string message, byte scope, ulong target) { } public void Profiles(uint[] ids) { } public void Action(byte dir, float x, float y, byte slot) { }
             public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void Log(string text) { }

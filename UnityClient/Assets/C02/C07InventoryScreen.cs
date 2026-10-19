@@ -130,13 +130,16 @@ namespace C02
 
         private void InventoryReceived(bool success)
         {
-            if (!requestPending || model == null || loginScreen.Model != model || !WorldAvailable) return;
+            if (!requestPending || model == null || loginScreen.Model != model) return;
+            if (!WorldAvailable && worldScreen.Stage != C02Stage.TransitionPending) return;
             requestPending = false;
             if (!success)
             {
                 hasInventoryResponse = false;
                 inventoryRows.text = string.Empty;
-                inventoryStatus.text = "Inventory request failed. Select Refresh to try again.";
+                inventoryStatus.text = worldScreen.Stage == C02Stage.TransitionPending
+                    ? "Inventory request failed during travel. Open the bag and refresh after arrival."
+                    : "Inventory request failed. Select Refresh to try again.";
                 UpdateControls();
                 return;
             }
@@ -155,7 +158,9 @@ namespace C02
             }
             inventoryRows.text = text.ToString();
             hasInventoryResponse = true;
-            inventoryStatus.text = snapshot.Count == 0 ? "No items." : snapshot.Count.ToString(CultureInfo.InvariantCulture) + " items";
+            inventoryStatus.text = worldScreen.Stage == C02Stage.TransitionPending
+                ? "Inventory response saved. Open the bag after arrival."
+                : snapshot.Count == 0 ? "No items." : snapshot.Count.ToString(CultureInfo.InvariantCulture) + " items";
             UpdateControls();
         }
 

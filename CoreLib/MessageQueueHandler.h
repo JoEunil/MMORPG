@@ -38,6 +38,7 @@ namespace Core {
 
         void CharacterListResponse(uint64_t sessionID, MsgCharacterListResBody* body);
         void CharacterStateResponse(uint64_t sessionID, MsgCharacterStateResBody* body);
+        void BazaarSearchResponse(uint64_t sessionID, MsgBazaarSearchResBody* body);
         void InventoryResponse(uint64_t sessionID, MsgInventoryResBody* body);
         void InventoryUpdateResponse(uint64_t sessionID, MsgInventoryUpdateResBody* body);
         void ProfileRenameResponse(uint64_t sessionID, MsgProfileRenameResBody* body);

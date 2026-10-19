@@ -149,9 +149,13 @@ namespace C02.Tests
 
         private static IViewDataUI NewData() => (IViewDataUI)Activator.CreateInstance(typeof(ViewModel).Assembly.GetType("ClientCore.ViewData", true), true);
 
-        private static ViewModel NewModel(IViewDataUI data, INetworkService network, IMainThreadDispatcher dispatcher) =>
-            (ViewModel)Activator.CreateInstance(typeof(ViewModel), BindingFlags.Instance | BindingFlags.NonPublic, null,
+        private static ViewModel NewModel(IViewDataUI data, INetworkService network, IMainThreadDispatcher dispatcher)
+        {
+            var model = (ViewModel)Activator.CreateInstance(typeof(ViewModel), BindingFlags.Instance | BindingFlags.NonPublic, null,
                 new object[] { network, (IViewDataModel)data, new NullLogger(), dispatcher }, null);
+            C08TestSession.Ready(model, ((QueuedDispatcher)dispatcher).Drain);
+            return model;
+        }
 
         private sealed class QueuedDispatcher : IMainThreadDispatcher
         {
@@ -165,7 +169,7 @@ namespace C02.Tests
             public event Action<string> OnDisconnected { add { } remove { } }
             public int SendCount;
             public Task Connect(string address, int port) => Task.CompletedTask;
-            public void Send(byte[] binary) { SendCount++; throw new InvalidOperationException("Detached test send failure."); }
+            public void Send(byte[] binary) { if (binary[6] == 16) return; SendCount++; throw new InvalidOperationException("Detached test send failure."); }
             public void Dispose() { }
         }
 
