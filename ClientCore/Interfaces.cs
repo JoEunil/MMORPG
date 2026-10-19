@@ -73,6 +73,7 @@ public struct InventoryItemView
         Task Login(string id, string pwd);
         void Enter(ulong charID);
         void Chat(string message, byte scope, ulong targetID);
+        void RequestInventory();
         void Error(string msg);
         void Log(string msg);
         void ZoneChange(int op);
@@ -163,6 +164,7 @@ namespace ClientCore.Services
 
         void Chat(string message, byte scope, ulong targetID);
         void Profiles(uint[] profileIds);
+        void RequestInventory();
         void Action(byte dir, float x, float y, byte skillSlot);
         void Pong(ulong serverTimeMs);
         void ZoneChange(byte op);

@@ -1,6 +1,30 @@
 # 작업 인계
 
+## 최신 — C07 인벤토리 후보 검증 / PR 직전 승인 준비
+
+C07 UI·ClientCore 조회 연결과 서버3제품(LobbyZone 캐릭터 귀속/Cache 응답 초기화/PacketWriter 경계)을 구현·독립리뷰했다. Unity57/57(기존45+신규12)·C++31/31(NonZone12+관련19) 실제통과. 격리C07 final/bin MainServer9F5C42221EF11C109DA20E2ECFE1C46E7754861A7BF9BB90EC8A9958604D4C8F, UnitTests8BD491F9… 빌드완료. 초기PDB/C1902와gtest DLL미포함 기동실패는보존, /Z7 실제ClCompile메타데이터와SolutionDir/런타임DLL로보완했다.
+
+R01 PID21008은 q/nativeexit0·무접속·WAL0·DB동일후종료, 기존종료GQCS995×8/AcceptEx10038×8로그guard중단보존. 독립분석으로기존IOCP종료경로임확인,제품NetLibrary변경0. poststop상태재확인후start-onlyC07모드로후보27540/9999(StartUtcTicks639279835005648240) 1회기동ready/error0. 원래R01이미지는보존했다. 정상클라이언트퇴장후CancelIoEx1168Warn1건은별도잔존.
+
+합성입력A/B/C/D는필드선택실패로보존/서버login전중단. 공용C02helper보완도최종원복(diff0). 전담진단후WindowsComputerUse 실제마우스와비밀미기록GameView문자입력으로 c07-physical-e 완료: 실제로그인/캐릭터5011/ENTER/BAG·Refresh·Close·재open/정상Disconnect, 실제inventorystatus0응답3개·rows0·UI클릭전후서버좌표동일/finishPASS. PNG1280x720 446210bytes root검수. `Captures/c07-physical-c07-physical-e.txt/.png`,C07_RESULTS/REVIEW참조. 실DBinventory행5011/5012모두없음READONLY확인; 실성공목록/빈성공은미검증이며성공/10행표시는fixture근거만. DB생성·재시딩없음.
+
+Play/runner/model/background=false·임시입력설정원복/게임Established0. Editor32900/login12424/DB5584/Redis4376/receiver17604-node13856유지. 다음미완료Zone전환은C08_CONTRACT.md읽기분석만완료,제품구현0. C07과섞지않는다. BRIEF/roles/asset-artist의최신참고작품철회·형태/비례/재질/조명품질방향을재확인했으며다른채팅정책편집은보존한다.
+
+현재C07은로컬커밋·구체PR본문준비후최종Slack승인을요청한다. 허용은기존PR27에이C07커밋일반push/본문갱신까지로요청하며,이전C06승인확대·forcepush·병합·배포·DB추가행·HTML공개는제외한다. 단계재개승인은요청하지않는다. 아래C06은이전완료기록.
+
+## 최신 완료 — C06 GitHub 전달 (2026-10-19)
+
+Unity Coordinator bot 발신 완료: 원 승인 스레드 결과 `1792384637.972259`, 완료 채널 결과 `1792384640.892189` (sender U0C9ZRTQ6F8 확인). 짧은 한 일·검증 결과·PR 링크로 알렸다.
+
+Slack 부모 `1792384400.175829`의 지정 사용자 `U0C9QEUHPMK` 회신 `1792384476.992639`, 원문 `승인 C06`을 커넥터로 확인하고 소비했다. 수신기→현재 채팅의 짧은 승인 전달도 실제 확인됐다. 같은 회신은 재실행하지 않는다.
+
+검증된 두 커밋 a2296d9 / 7c83226을 origin `codex/unity-ai-client`에 일반 push 완료. 원격 HEAD `7c83226fadb369de5a55e13d79a3b7479eba8be4` 확인. PR https://github.com/JoEunil/MMORPG/pull/27 생성(open, base master, commits 2) 및 현재 채팅 artifact 첨부 완료. 병합·배포·HTML 공개 없음. 코드 변경이 없어 테스트를 반복하지 않았다. 이후 로컬 정책·수신기 등록·인계 문서 수정은 추가 커밋/push하지 않았다. 아래 승인 대기·원격 미반영 표기는 과거 이력이다.
+
 ## 최신 완료 — C06 채팅 / Git 전달 준비
+
+Git 로컬2커밋완료: `a2296d9` 첫검증Unity/R01스냅샷, `7c83226` C06채팅/현재wire/profile/수신호환·최종결과34파일(3012+/292-). 명시소유파일만stage/토큰패턴·소스공백검사/다른정책파일미포함. 원격push/PR/병합/공개0. 완료bot1792384399.205529 https://aiagent-vqu1541.slack.com/archives/C0CA7BSKN3B/p1792384399205529 . 최종GitHub승인부모1792384400.175829 https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1792384400175829 /정확짧은회신 `승인 C06` 요청. 이부모만threads기존6개에추가/같은human·workspace·channel·Coordinator유지. 짧은수신기원문을받으면ID중복과이검증HEAD부터대조한다.
+
+이최종승인의정확범위는검증된두커밋HEAD7c83226의 `origin codex/unity-ai-client` 일반push와 `JoEunil/MMORPG` base master PR생성까지다. forcepush/병합/운영배포/HTML·Pages공개는제외. PR title후보 `feat: add Unity field client and server-backed chat`, body는C06_PR_BODY.md. 성공시반드시PR URL attach_artifact. 코드/테스트는커밋된상태, 이후회신·스레드등록기록과다른작업정책문서변경은현재로컬미커밋일수있으며무차별commit/push하지않는다. 사람승인아직미확인, 재개질문중복하지않는다.
 
 C06 구현·독립리뷰·컴파일·최종공통배치완료. Unity TestRunner45/45(.24s/신규wire/profile10+기존35), native c06-20261019-a PASS(129byte거부/입력보존/초점keys123→2초serverposMP동일·ownphase0/ownchat4·peerchat3실서버echo/한글/normaldisconnect), peer상대수신1/송신1/자기echo1/disposed1 PASS. 첫PNG3번째줄입력란겹침은보존, Setuphistory padding만44/82보완후영향화면Readability(actual한글3줄history존재/overflowfalse/rect비겹침/normaldisconnect)PASS·root직접PNG검수. 기능45/peer배치재실행없음. 서버제품추가변경0/서버01C626…동일. C06_RESULTS.md/C06_REVIEW.md참조.
 

@@ -1,5 +1,7 @@
 param(
     [switch]$PreflightOnly,
+    [switch]$C07Candidate,
+    [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$C07Hash,
     [int]$QuitHelperPid = 0,
     [ValidateSet('Original', 'New')][string]$QuitImage = 'Original',
     [long]$QuitStartTicks = 0,
@@ -12,6 +14,17 @@ $originalHash = 'C0F689BD0E58D3A20282143D5DD5C0C15514F42F192A6FF70568C2DDF312E82
 $newExe = 'C:\Users\joeun\Desktop\workspace\Game-UnityClient\UnityClient\Builds\R01-Candidate\bin\MainServer.exe'
 $newRoot = 'C:\Users\joeun\Desktop\workspace\Game-UnityClient'
 $newHash = '01C6261AB5C3448E2BA5F336CE70FB20E4DBA4B9ED47AD70002F22C88594D108'
+$currentPid = 20024
+$currentStartTicks = 639279045410504905
+if ($C07Candidate) {
+    if (-not $C07Hash) { throw 'C07 requires the reviewed candidate SHA256.' }
+    $originalExe = $newExe
+    $originalHash = $newHash
+    $newExe = Join-Path $newRoot 'UnityClient\Builds\C07-Candidate\final\bin\MainServer.exe'
+    $newHash = $C07Hash.ToUpperInvariant()
+    $currentPid = 21008
+    $currentStartTicks = 639279783172472051
+} elseif ($C07Hash) { throw 'C07 hash requires C07 mode.' }
 $captures = Join-Path $newRoot 'UnityClient\Captures'
 $requiredDlls = @{
     'event_core.dll'='028EF81FD65415BC48F5E2AB0AC073CC80E4F0496CFEF8F5CBB3380672710B17'
@@ -236,6 +249,7 @@ function Stop-Normally([Diagnostics.Process]$Process, [string]$ImageKind, [strin
     $helperErr = Join-Path $captures "r01-switch-$stamp-quit-$($Process.Id).err.txt"
     $deadlineUtcTicks = [DateTime]::UtcNow.AddSeconds(12).Ticks
     $arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $PSCommandPath + '" -QuitHelperPid ' + $Process.Id + ' -QuitImage ' + $ImageKind + ' -QuitStartTicks ' + $ticks + ' -QuitDeadlineUtcTicks ' + $deadlineUtcTicks
+    if ($C07Candidate) { $arguments += ' -C07Candidate -C07Hash ' + $C07Hash }
     $helper = Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $helperOut -RedirectStandardError $helperErr
     # Pin the process handle before the child exits; do not rely on PassThru.ExitCode.
     try { $helperHandle = $helper.Handle } catch {
@@ -326,12 +340,13 @@ function Start-Fixed([string]$Image, [string]$Hash, [string]$WorkingRoot, [strin
 Assert-NoTestFlags
 Assert-Image $originalExe $originalHash
 Assert-Image $newExe $newHash
-$original = Get-ExactProcess 20024 $originalExe $originalHash 639279045410504905
+$original = Get-ExactProcess $currentPid $originalExe $originalHash $currentStartTicks
 Assert-NoClients
 Assert-Listener $original.Id
 New-Item -ItemType Directory -Path $captures -Force | Out-Null
 New-Item -ItemType Directory -Path $evidenceFolder -ErrorAction Stop | Out-Null
-Record 'R01-DEPLOY-04/r1; execution requires explicit approval recorded by Coordinator. Normal shutdown may persist dedicated character states; no direct DB writes or data restoration.'
+if ($C07Candidate) { Record 'C07 local test transition under current normal-server-operation authorization. No direct DB writes, force stop, or original-image replacement.' }
+else { Record 'R01-DEPLOY-04/r1; execution requires explicit approval recorded by Coordinator. Normal shutdown may persist dedicated character states; no direct DB writes or data restoration.' }
 Assert-EmptyWal
 Preserve-LogsAndWal 'before-current-stop'
 $null = Save-PersistenceSnapshot 'before-current-stop'

@@ -1,5 +1,21 @@
 # GitHub 전달 상태 및 커밋 후보
 
+## 최신 — C07 로컬 후보 검증 / PR27 갱신 승인 전
+
+C07 가방 조회·ClientCore wire/수명 보완·서버3제품 최소 수정·회귀·운영 도구 C07 모드를 명시 파일로 묶는다. Unity57/57·C++31/31 및 실제 Windows 마우스 입력/서버 실패 응답3개/정상 종료/캡처 완료. 실서버 성공 목록은 테스트 DB 행 누락으로 미검증이며 C07_RESULTS.md에 명시했다.
+
+현재 원격 PR27은 여전히 C06 HEAD7c83226이다. C07은 로컬 커밋 후 승인 전에는 push하지 않는다. 최종 요청 범위는 그 C07 커밋 일반 push와 PR27 제목·본문 갱신만이다. 제목 후보 `feat: add Unity field client, chat and inventory query`, 본문 C07_PR_BODY.md. 병합·운영 배포·DB 행 추가·HTML 공개는 제외한다. BRIEF/WORKFLOW/SLACK_WORKFLOW/역할 정책, .codex/AGENTS, 로컬 수신기 등록 변경, C08 계약 분석은 C07 커밋에 섞지 않는다.
+
+## 최종 현재 — push / PR 완료 (2026-10-19)
+
+Slack 지정 사용자 회신 `1792384476.992639`의 `승인 C06` 원문을 확인하고, 승인된 두 커밋만 origin `codex/unity-ai-client`에 일반 push했다. 원격 HEAD는 `7c83226fadb369de5a55e13d79a3b7479eba8be4`로 검증 버전과 같다.
+
+PR: https://github.com/JoEunil/MMORPG/pull/27 (open, master 대상, 2 commits). 채팅 artifact 첨부 완료. 기존 서버 회귀29개·Unity45/45·실제 두 계정 채팅/한글/초점 차단·화면 보완 재검증·Slack12/12 근거를 PR에 기재했다. 코드 변경이 없어 전달 작업에서 테스트를 재실행하지 않았다. 병합·배포·HTML 공개는 수행하지 않았다. 로컬 미커밋 정책·수신기 등록·인계 문서는 이번 push에 포함하지 않았다. 아래 미반영·승인 대기는 이전 시점 이력이다.
+
+## 최종 현재 — 로컬2커밋 / push·PR 승인 대기
+
+`a2296d9` 검증된첫통합스냅샷과 `7c83226` C06채팅을분리해로컬커밋완료. C06은45회귀/실제계정2개송수신·한글·입력차단/화면겹침영향검증/전달12회귀·독립리뷰완료(C06_RESULTS.md). 원격push/PR생성은없다. UnityCoordinator앱부모1792384400.175829에서 `승인 C06` 한줄로이두커밋의작업브랜치push+PR생성만최종요청했다. 병합·운영배포·HTML공개는제외. 아래미커밋/아직다음단위는과거시점이다.
+
 ## 최신 — 로컬 스냅샷 커밋 완료 / 원격 미반영
 
 Coordinator가 C06 제품 변경 전에 명시 manifest1324개/약28MB로 첫 통합 검증 스냅샷을 로컬 커밋했다: `a2296d9` (`feat: snapshot validated Unity field client and disconnect fixes`). 원본 기준은1d5a3d6. `.codex`/루트AGENTS/실행WAL/빌드/원본캡처/비밀파일/C06계약문서는제외했다. 원격push/PR/병합/공개는없다. 원격master1d5a3d6와작업브랜치없음을root의실제ls-remote로도확인했다.

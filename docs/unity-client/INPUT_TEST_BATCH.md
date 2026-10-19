@@ -1,5 +1,9 @@
 # Unity 입력 테스트 배치
 
+## C07 묶음 완료 — 2026-10-19
+
+구현·독립리뷰후Unity57/57·서버31/31한배치통과. 합성마우스A~D 필드선택실패는보존하고관련없는성공회귀반복없음. 공유도우미보완은원복후실제Windows마우스 c07-physical-e로로그인/캐릭터5011/ENTER/BAG/Refresh/Close/재open/정상Disconnect확인. 실서버status0응답정확히3회,rows0,UI클릭이동차단,PNG1280x720 root검수. 실DBinventory행없어성공목록/빈성공은미실행,fixture성공과구분. Play/runner/모델/입력정리/게임연결0,서버27540유지. [검증과실패이력](C07_RESULTS.md).
+
 ## B05 완료 — 2026-10-19
 
 계정1/5011에서한배치PASS: native로그인·선택·ENTER→외곽이동→normaldisconnect→10초무접속→다음접속전READONLY좌표/HP/MP저장확인→재접속첫rawFull일치→normaldisconnect. 좌표(39,39)→(-3.426,-3.426), HP9975/MP10000유지. 캡처2장직접검수/Play·입력·접속정리완료. `Captures/b05-batch-final.txt` 및run20261019T034917239Z 증거참조. SQL정확commit시간/새스킬MP감소/HP0영속/전맵성능은미실행. 기존CancelIoEx1168경고2건잔존별도기록. 아래준비·대기는과거이력.
