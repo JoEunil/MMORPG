@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
 using C01;
 using ClientCore;
 using TMPro;
@@ -18,18 +17,25 @@ namespace C02
         [SerializeField] private GameObject bazaarPanel;
         [SerializeField] private Button marketButton;
         [SerializeField] private Button[] itemTypeButtons;
+        [SerializeField] private Button searchListingsButton;
+        [SerializeField] private Button myListingsButton;
         [SerializeField] private Button searchButton;
         [SerializeField] private Button previousPageButton;
         [SerializeField] private Button nextPageButton;
         [SerializeField] private Button closeButton;
         [SerializeField] private TMP_Text pageText;
-        [SerializeField] private TMP_Text rowsText;
+        [SerializeField] private Transform listingRows;
+        [SerializeField] private TMP_Text emptyStateText;
+        [SerializeField] private TMP_Text selectedDetailText;
+        [SerializeField] private C07InventoryScreen inventoryScreen;
         [SerializeField] private TMP_Text statusText;
         private IViewModelUI model;
         private ushort itemType = 1;
         private ushort page;
+        private bool myListings;
         private float requestDeadline;
         private bool requestPending;
+        private UnityEngine.UI.Button selectedListingButton;
         public bool IsOpen => bazaarPanel != null && bazaarPanel.activeSelf;
 
         private bool WorldAvailable => worldScreen != null && worldScreen.isActiveAndEnabled &&
@@ -40,7 +46,7 @@ namespace C02
             if (loginScreen == null || worldScreen == null || bazaarPanel == null || marketButton == null ||
                 itemTypeButtons == null || itemTypeButtons.Length != 3 || searchButton == null ||
                 previousPageButton == null || nextPageButton == null || closeButton == null ||
-                pageText == null || rowsText == null || statusText == null)
+                pageText == null || listingRows == null || emptyStateText == null || selectedDetailText == null || statusText == null)
             {
                 Debug.LogError("C09 bazaar references are missing.", this);
                 enabled = false;
@@ -51,7 +57,9 @@ namespace C02
             itemTypeButtons[0].onClick.AddListener(SelectPotion);
             itemTypeButtons[1].onClick.AddListener(SelectWeaponShield);
             itemTypeButtons[2].onClick.AddListener(SelectArmor);
-            searchButton.onClick.AddListener(Search);
+            if (searchListingsButton != null) searchListingsButton.onClick.AddListener(SelectSearchListings);
+            if (myListingsButton != null) myListingsButton.onClick.AddListener(SelectMyListings);
+            searchButton.onClick.AddListener(RefreshCurrentView);
             previousPageButton.onClick.AddListener(PreviousPage);
             nextPageButton.onClick.AddListener(NextPage);
             closeButton.onClick.AddListener(ClosePanel);
@@ -64,8 +72,10 @@ namespace C02
         {
             if (!requestPending || Time.unscaledTime < requestDeadline) return;
             CancelPending();
-            rowsText.text = string.Empty;
-            statusText.text = "Search timed out. Select Search to retry.";
+            ClearRows();
+            statusText.text = myListings
+                ? "My listings timed out. Select Refresh to retry."
+                : "Search timed out. Select Search to retry.";
             UpdateControls();
         }
 
@@ -75,6 +85,7 @@ namespace C02
             CancelPending();
             model = next;
             page = 0;
+            myListings = false;
             ClearResults();
             bazaarPanel.SetActive(false);
             if (model != null) model.OnBazaarReceived += BazaarReceived;
@@ -99,8 +110,56 @@ namespace C02
             if (!WorldAvailable || model == null || loginScreen.Model != model) return;
             if (bazaarPanel.activeSelf) { ClosePanel(); return; }
             worldScreen.StopActions();
+            if (inventoryScreen != null) inventoryScreen.ClosePanel();
+            myListings = false;
             bazaarPanel.SetActive(true);
             ClearResults();
+            Search();
+        }
+
+        private void SelectSearchListings()
+        {
+            SelectView(false);
+        }
+
+        private void SelectMyListings()
+        {
+            SelectView(true);
+        }
+
+        private void SelectView(bool showMyListings)
+        {
+            if (!bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model)
+                return;
+            if (myListings == showMyListings) return;
+            CancelPending();
+            myListings = showMyListings;
+            ClearResults();
+            UpdateControls();
+            RefreshCurrentView();
+        }
+
+        private void RefreshCurrentView()
+        {
+            if (myListings)
+            {
+                if (!bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model || requestPending)
+                    return;
+                worldScreen.StopActions();
+                ClearRows();
+                requestPending = true;
+                requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+                statusText.text = "Loading my listings…";
+                UpdateControls();
+                try { model.RequestBazaarMyList(); }
+                catch (Exception)
+                {
+                    CancelPending();
+                    statusText.text = "My listings failed. Select Refresh to retry.";
+                    UpdateControls();
+                }
+                return;
+            }
             Search();
         }
 
@@ -120,7 +179,7 @@ namespace C02
 
         private void Search()
         {
-            if (!bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model || requestPending)
+            if (myListings || !bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model || requestPending)
                 return;
             if (itemType < 1 || itemType > 3) return;
             worldScreen.StopActions();
@@ -152,9 +211,10 @@ namespace C02
             Search();
         }
 
-        private void ClosePanel()
+        public void ClosePanel()
         {
             CancelPending();
+            myListings = false;
             bazaarPanel.SetActive(false);
             ClearResults();
             UpdateControls();
@@ -171,34 +231,104 @@ namespace C02
             if (!success)
             {
                 ClearRows();
-                statusText.text = "Search failed. Select Search to retry.";
+                statusText.text = myListings
+                    ? "My listings failed. Select Refresh to retry."
+                    : "Search failed. Select Search to retry.";
                 UpdateControls();
                 return;
             }
             if (rows == null || rows.Count > 30)
             {
                 ClearRows();
-                statusText.text = "Search response was invalid. Select Search to retry.";
+                statusText.text = myListings
+                    ? "My listings response was invalid. Select Refresh to retry."
+                    : "Search response was invalid. Select Search to retry.";
                 UpdateControls();
                 return;
             }
 
-            var text = new StringBuilder(rows.Count * 100);
-            foreach (BazaarListingView listing in rows)
-            {
-                if (text.Length != 0) text.Append('\n');
-                text.Append("LISTING ").Append(listing.ListingID.ToString(CultureInfo.InvariantCulture))
-                    .Append("   ITEM ").Append(listing.ItemID.ToString(CultureInfo.InvariantCulture))
-                    .Append("   QTY ").Append(listing.Quantity.ToString(CultureInfo.InvariantCulture))
-                    .Append("   PRICE ").Append(listing.Price.ToString(CultureInfo.InvariantCulture))
-                    .Append("   SELLER ").Append(listing.SellerCharacterID.ToString(CultureInfo.InvariantCulture))
-                    .Append("   REGISTERED ").Append(listing.RegisteredAt.ToString(CultureInfo.InvariantCulture))
-                    .Append("   STATUS ").Append(listing.Status.ToString(CultureInfo.InvariantCulture));
-            }
-            rowsText.text = text.ToString();
-            statusText.text = rows.Count == 0 ? "No listings in " + ItemTypeName(itemType) + " on this page." :
-                rows.Count.ToString(CultureInfo.InvariantCulture) + " listings · " + ItemTypeName(itemType);
+            ClearRows();
+            for (int i = 0; i < rows.Count; i++) CreateListingRow(rows[i], i);
+            emptyStateText.gameObject.SetActive(rows.Count == 0);
+            emptyStateText.text = myListings ? "You have no listings." : "No listings on this page.";
+            statusText.text = myListings
+                ? rows.Count == 0 ? "You have no listings." : "My listings: " + rows.Count.ToString(CultureInfo.InvariantCulture) + " listings · up to 30 shown"
+                : rows.Count == 0 ? "No listings in " + ItemTypeName(itemType) + " on this page." :
+                    rows.Count.ToString(CultureInfo.InvariantCulture) + " listings · " + ItemTypeName(itemType);
             UpdateControls();
+        }
+
+        private void CreateListingRow(BazaarListingView listing, int index)
+        {
+            var rowObject = new GameObject("Listing-" + listing.ListingID.ToString(CultureInfo.InvariantCulture),
+                typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button), typeof(LayoutElement));
+            rowObject.transform.SetParent(listingRows, false);
+            var image = rowObject.GetComponent<UnityEngine.UI.Image>();
+            image.color = index % 2 == 0 ? new Color(.97f, .93f, .82f) : new Color(.92f, .87f, .73f);
+            var button = rowObject.GetComponent<UnityEngine.UI.Button>();
+            button.targetGraphic = image;
+            var layout = rowObject.GetComponent<LayoutElement>();
+            layout.minHeight = layout.preferredHeight = 52;
+
+            var accent = new GameObject("ItemAccent", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+            accent.transform.SetParent(rowObject.transform, false);
+            var accentRect = accent.GetComponent<RectTransform>();
+            accentRect.anchorMin = new Vector2(0, 0);
+            accentRect.anchorMax = new Vector2(0, 1);
+            accentRect.pivot = new Vector2(0, .5f);
+            accentRect.sizeDelta = new Vector2(5, 0);
+            accent.GetComponent<UnityEngine.UI.Image>().color = C11ItemPresentation.Accent(listing.ItemID);
+            accent.GetComponent<UnityEngine.UI.Image>().raycastTarget = false;
+
+            AddCell(rowObject.transform, "Badge", C11ItemPresentation.Badge(listing.ItemID), 0.02f, 0.09f,
+                TextAlignmentOptions.Center, 10, C11ItemPresentation.Accent(listing.ItemID));
+            AddCell(rowObject.transform, "Item", C11ItemPresentation.Name(listing.ItemID), 0.10f, 0.48f,
+                TextAlignmentOptions.MidlineLeft, 13, new Color(.22f, .17f, .10f));
+            AddCell(rowObject.transform, "Quantity", listing.Quantity.ToString(CultureInfo.InvariantCulture), 0.49f, 0.61f,
+                TextAlignmentOptions.Center, 12, new Color(.26f, .22f, .15f));
+            AddCell(rowObject.transform, "Price", listing.Price.ToString(CultureInfo.InvariantCulture), 0.62f, 0.81f,
+                TextAlignmentOptions.MidlineRight, 12, new Color(.20f, .25f, .16f));
+            AddCell(rowObject.transform, "State", ListingStatusName(listing.Status), 0.82f, 0.99f,
+                TextAlignmentOptions.Center, 11, new Color(.30f, .23f, .14f));
+            button.onClick.AddListener(() => SelectListing(listing, button));
+        }
+
+        private void SelectListing(BazaarListingView listing, UnityEngine.UI.Button button)
+        {
+            if (selectedListingButton != null)
+            {
+                var previous = selectedListingButton.GetComponent<UnityEngine.UI.Image>();
+                if (previous != null) previous.color = new Color(.97f, .93f, .82f);
+            }
+            selectedListingButton = button;
+            button.GetComponent<UnityEngine.UI.Image>().color = new Color(.82f, .77f, .62f);
+            selectedDetailText.text = C11ItemPresentation.Name(listing.ItemID) + "  ·  " + ListingStatusName(listing.Status) +
+                "\nQuantity " + listing.Quantity.ToString(CultureInfo.InvariantCulture) +
+                "  ·  Price " + listing.Price.ToString(CultureInfo.InvariantCulture) +
+                "\nListing #" + listing.ListingID.ToString(CultureInfo.InvariantCulture) +
+                "  ·  Seller #" + listing.SellerCharacterID.ToString(CultureInfo.InvariantCulture) +
+                "  ·  Registered " + listing.RegisteredAt.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private static TMP_Text AddCell(Transform parent, string name, string value, float left, float right,
+            TextAlignmentOptions alignment, int fontSize, Color color)
+        {
+            var cellObject = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+            cellObject.transform.SetParent(parent, false);
+            var rect = cellObject.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(left, 0);
+            rect.anchorMax = new Vector2(right, 1);
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            var text = cellObject.GetComponent<TextMeshProUGUI>();
+            text.font = TMP_Settings.defaultFontAsset;
+            text.fontSize = fontSize;
+            text.color = color;
+            text.text = value;
+            text.alignment = alignment;
+            text.enableWordWrapping = false;
+            text.overflowMode = TextOverflowModes.Ellipsis;
+            text.raycastTarget = false;
+            return text;
         }
 
         private void CancelPending()
@@ -208,7 +338,21 @@ namespace C02
             if (model != null) model.CancelBazaar();
         }
 
-        private void ClearRows() => rowsText.text = string.Empty;
+        private void ClearRows()
+        {
+            selectedListingButton = null;
+            if (listingRows == null) return;
+            for (int i = listingRows.childCount - 1; i >= 0; i--)
+            {
+                GameObject row = listingRows.GetChild(i).gameObject;
+                row.SetActive(false);
+                Destroy(row);
+            }
+            var scroll = listingRows.GetComponentInParent<ScrollRect>();
+            if (scroll != null) scroll.verticalNormalizedPosition = 1;
+            if (emptyStateText != null) emptyStateText.gameObject.SetActive(false);
+            if (selectedDetailText != null) selectedDetailText.text = "Select a listing to see its details.";
+        }
 
         private void ClearResults()
         {
@@ -221,23 +365,55 @@ namespace C02
         {
             bool available = WorldAvailable && model != null && loginScreen != null && loginScreen.Model == model;
             if (marketButton != null) marketButton.interactable = available;
-            if (searchButton != null) searchButton.interactable = available && bazaarPanel.activeSelf && !requestPending;
-            if (previousPageButton != null) previousPageButton.interactable = available && bazaarPanel.activeSelf && !requestPending && page > 0;
-            if (nextPageButton != null) nextPageButton.interactable = available && bazaarPanel.activeSelf && !requestPending && page < ushort.MaxValue;
+            if (searchButton != null)
+            {
+                searchButton.interactable = available && bazaarPanel.activeSelf && !requestPending;
+                var refreshLabel = searchButton.GetComponentInChildren<TMP_Text>(true);
+                if (refreshLabel != null) refreshLabel.text = myListings ? "REFRESH" : "SEARCH";
+            }
+            if (previousPageButton != null)
+            {
+                previousPageButton.gameObject.SetActive(!myListings);
+                previousPageButton.interactable = available && bazaarPanel.activeSelf && !myListings && !requestPending && page > 0;
+            }
+            if (nextPageButton != null)
+            {
+                nextPageButton.gameObject.SetActive(!myListings);
+                nextPageButton.interactable = available && bazaarPanel.activeSelf && !myListings && !requestPending && page < ushort.MaxValue;
+            }
+            if (pageText != null)
+            {
+                pageText.gameObject.SetActive(!myListings);
+                pageText.text = "Page " + ((uint)page + 1).ToString(CultureInfo.InvariantCulture);
+            }
+            if (searchListingsButton != null)
+            {
+                searchListingsButton.interactable = available && bazaarPanel.activeSelf;
+                var label = searchListingsButton.GetComponentInChildren<TMP_Text>(true);
+                if (label != null) label.text = (myListings ? string.Empty : "> ") + "SALES";
+            }
+            if (myListingsButton != null)
+            {
+                myListingsButton.interactable = available && bazaarPanel.activeSelf;
+                var label = myListingsButton.GetComponentInChildren<TMP_Text>(true);
+                if (label != null) label.text = (myListings ? "> " : string.Empty) + "MY LISTINGS";
+            }
             if (itemTypeButtons != null)
                 for (int i = 0; i < itemTypeButtons.Length; i++)
                     if (itemTypeButtons[i] != null)
                     {
+                        itemTypeButtons[i].gameObject.SetActive(!myListings);
                         itemTypeButtons[i].interactable = available && bazaarPanel != null && bazaarPanel.activeSelf && !requestPending;
                         var label = itemTypeButtons[i].GetComponentInChildren<TMP_Text>(true);
                         if (label != null) label.text = (itemType == i + 1 ? "> " : string.Empty) +
                             (i == 0 ? "POTIONS" : i == 1 ? "WEAPONS / SHIELDS" : "ARMOR");
                     }
             if (closeButton != null) closeButton.interactable = true;
-            if (pageText != null) pageText.text = "Page " + ((uint)page + 1).ToString(CultureInfo.InvariantCulture);
         }
 
         private static string ItemTypeName(ushort value) => value == 1 ? "potions" : value == 2 ? "weapons / shields" : "armor";
+
+        private static string ListingStatusName(byte status) => status == 0 ? "Trading" : status == 1 ? "Sold" : status == 2 ? "Claimed" : "Status #" + status.ToString(CultureInfo.InvariantCulture);
 
         private void OnDisable()
         {
@@ -250,13 +426,15 @@ namespace C02
                 if (itemTypeButtons[1] != null) itemTypeButtons[1].onClick.RemoveListener(SelectWeaponShield);
                 if (itemTypeButtons[2] != null) itemTypeButtons[2].onClick.RemoveListener(SelectArmor);
             }
-            if (searchButton != null) searchButton.onClick.RemoveListener(Search);
+            if (searchListingsButton != null) searchListingsButton.onClick.RemoveListener(SelectSearchListings);
+            if (myListingsButton != null) myListingsButton.onClick.RemoveListener(SelectMyListings);
+            if (searchButton != null) searchButton.onClick.RemoveListener(RefreshCurrentView);
             if (previousPageButton != null) previousPageButton.onClick.RemoveListener(PreviousPage);
             if (nextPageButton != null) nextPageButton.onClick.RemoveListener(NextPage);
             if (closeButton != null) closeButton.onClick.RemoveListener(ClosePanel);
             if (model != null) model.OnBazaarReceived -= BazaarReceived;
             CancelPending();
-            if (rowsText != null && statusText != null && pageText != null) ClearResults();
+            if (listingRows != null && statusText != null && pageText != null) ClearResults();
             if (bazaarPanel != null) bazaarPanel.SetActive(false);
         }
     }

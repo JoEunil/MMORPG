@@ -15,6 +15,7 @@ AI Agent 워크플로우로 기존 게임 서버에 연결하는 Unity 클라이
 - [캐릭터와 함께 필드를 오가는 과정](portfolio/field-travel.md) — 로그인부터 캐릭터 선택, 월드 진입과 구역 이동까지.
 - [거래소 조회 화면의 첫 버전](portfolio/bazaar-search.md) — 서버 매물 조회를 연결하고 실제 응답을 화면에 표시한 작업.
 - [내 매물 조회와 검색 전환](portfolio/my-listings.md) — 현재 캐릭터의 매물 조회, 새로고침과 판매 검색 복귀.
+- [아이템과 거래소 화면](portfolio/item-market.md) — 인벤토리와 거래소를 실제 아이템·매물 중심으로 정리한 화면 개선.
 
 ## AI Agent 워크플로우
 

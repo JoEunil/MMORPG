@@ -42,6 +42,8 @@ namespace ClientCore
         private bool _inventoryPending;
         private uint _bazaarRequestID;
         private uint _bazaarPending;
+        private enum BazaarRequestKind { None, Search, MyList }
+        private BazaarRequestKind _bazaarPendingKind;
         public event Action<bool> OnAuthReceived;
         public event Action<byte, ushort> OnCharacterListResult;
         public event Action<string> OnConnectionFailed;
@@ -285,30 +287,75 @@ namespace ClientCore
         public void RequestBazaar(ushort itemType, ushort page)
         {
             if (itemType < 1 || itemType > 3) throw new ArgumentOutOfRangeException(nameof(itemType));
-            if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || _bazaarPending != 0)
-                throw new InvalidOperationException("Bazaar search is unavailable or pending.");
-            if (_bazaarRequestID == uint.MaxValue) throw new InvalidOperationException("Reconnect before searching again.");
-            _bazaarPending = ++_bazaarRequestID;
-            _viewData.SetBazaar(Array.Empty<PacketHelper.BazaarListing>());
-            try { _network.RequestBazaar(_bazaarPending, itemType, page); }
-            catch { CancelBazaar(); throw; }
+            uint requestID = BeginBazaarRequest(BazaarRequestKind.Search);
+            try { _network.RequestBazaar(requestID, itemType, page); }
+            catch
+            {
+                lock (_sessionGate) if (_bazaarPending == requestID) CancelBazaar();
+                throw;
+            }
+        }
+
+        public void RequestBazaarMyList()
+        {
+            uint requestID = BeginBazaarRequest(BazaarRequestKind.MyList);
+            try { _network.RequestBazaarMyList(requestID); }
+            catch
+            {
+                lock (_sessionGate) if (_bazaarPending == requestID) CancelBazaar();
+                throw;
+            }
+        }
+
+        private uint BeginBazaarRequest(BazaarRequestKind kind)
+        {
+            lock (_sessionGate)
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || _bazaarPending != 0)
+                    throw new InvalidOperationException("Bazaar is unavailable or pending.");
+                if (_bazaarRequestID == uint.MaxValue) throw new InvalidOperationException("Reconnect before requesting bazaar again.");
+                _bazaarPending = ++_bazaarRequestID;
+                _bazaarPendingKind = kind;
+                _viewData.SetBazaar(Array.Empty<PacketHelper.BazaarListing>());
+                return _bazaarPending;
+            }
         }
 
         public void CancelBazaar()
         {
-            _bazaarPending = 0;
-            _viewData.SetBazaar(Array.Empty<PacketHelper.BazaarListing>());
+            lock (_sessionGate)
+            {
+                _bazaarPending = 0;
+                _bazaarPendingKind = BazaarRequestKind.None;
+                _viewData.SetBazaar(Array.Empty<PacketHelper.BazaarListing>());
+            }
         }
 
         public void BazaarReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows)
         {
+            ReceiveBazaar(requestID, status, rows, BazaarRequestKind.Search);
+        }
+
+        public void BazaarMyListReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows)
+        {
+            ReceiveBazaar(requestID, status, rows, BazaarRequestKind.MyList);
+        }
+
+        private void ReceiveBazaar(uint requestID, byte status, PacketHelper.BazaarListing[] rows, BazaarRequestKind kind)
+        {
+            // Own the values crossing the receive-thread/dispatcher boundary.
+            var snapshot = status == 1 ? (PacketHelper.BazaarListing[])rows.Clone() : Array.Empty<PacketHelper.BazaarListing>();
             _threadDispatcher.Post(() =>
             {
-                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || requestID == 0 || requestID != _bazaarPending) return;
-                _bazaarPending = 0;
-                bool success = status == 1;
-                _viewData.SetBazaar(success ? rows : Array.Empty<PacketHelper.BazaarListing>());
-                OnBazaarReceived?.Invoke(success);
+                lock (_sessionGate)
+                {
+                    if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || requestID == 0 ||
+                        requestID != _bazaarPending || kind != _bazaarPendingKind) return;
+                    _bazaarPending = 0;
+                    _bazaarPendingKind = BazaarRequestKind.None;
+                    _viewData.SetBazaar(snapshot);
+                }
+                OnBazaarReceived?.Invoke(status == 1);
             });
         }
 

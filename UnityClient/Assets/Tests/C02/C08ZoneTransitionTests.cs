@@ -120,15 +120,17 @@ namespace C02.Tests
 
                 fixture.SetItems(new InventoryItem { itemID = 42, quantity = 3, slot = 2 });
                 fixture.Receive(true);
-                Assert.That(fixture.Rows.text, Does.Contain("ITEM 42"));
-                Assert.That(fixture.Rows.text, Does.Contain("QTY 3"));
+                Assert.That(fixture.Grid.childCount, Is.EqualTo(1));
+                Assert.That(fixture.ItemName.text, Is.EqualTo("Item #42"));
+                Assert.That(fixture.ItemQuantity.text, Is.EqualTo("Qty 3"));
                 Assert.That(fixture.Panel.activeSelf, Is.False);
                 Assert.That(fixture.Refresh.interactable, Is.False, "Travel keeps bag requests locked.");
 
                 fixture.Arrive();
                 fixture.Bag.onClick.Invoke();
                 Assert.That(fixture.Panel.activeSelf, Is.True);
-                Assert.That(fixture.Rows.text, Does.Contain("ITEM 42"));
+                Assert.That(fixture.Grid.childCount, Is.EqualTo(1));
+                Assert.That(fixture.ItemName.text, Is.EqualTo("Item #42"));
                 Assert.That(fixture.Network.Requests, Is.EqualTo(1), "The saved response avoids a duplicate request after arrival.");
             }
         }
@@ -175,7 +177,9 @@ namespace C02.Tests
             public readonly GameObject Panel;
             public readonly Button Bag;
             public readonly Button Refresh;
-            public readonly TMP_Text Rows;
+            public readonly RectTransform Grid;
+            public TMP_Text ItemName => Grid.GetChild(0).Find("ItemName").GetComponent<TMP_Text>();
+            public TMP_Text ItemQuantity => Grid.GetChild(0).Find("ItemQuantity").GetComponent<TMP_Text>();
             public readonly TMP_Text Status;
             public readonly TMP_Text WorldStatus;
             public readonly FakeNetwork Network = new FakeNetwork();
@@ -218,8 +222,17 @@ namespace C02.Tests
                 SetPrivate(Screen, "bagButton", Bag);
                 SetPrivate(Screen, "refreshButton", Refresh);
                 SetPrivate(Screen, "closeButton", ButtonObject("close"));
-                Rows = Text("inventory rows");
-                SetPrivate(Screen, "inventoryRows", Rows);
+                var scrollObject = Child("inventory scroll");
+                var scroll = scrollObject.AddComponent<ScrollRect>();
+                var gridObject = Child("inventory grid");
+                Grid = (RectTransform)gridObject.transform;
+                scroll.content = Grid;
+                SetPrivate(Screen, "inventoryScroll", scroll);
+                SetPrivate(Screen, "inventoryGridContent", Grid);
+                SetPrivate(Screen, "detailBadge", Text("detail badge"));
+                SetPrivate(Screen, "detailName", Text("detail name"));
+                SetPrivate(Screen, "detailSlot", Text("detail slot"));
+                SetPrivate(Screen, "detailQuantity", Text("detail quantity"));
                 Status = Text("inventory status");
                 SetPrivate(Screen, "inventoryStatus", Status);
 
@@ -331,6 +344,7 @@ namespace C02.Tests
             public void Enter(ulong charID) { }
             public void Chat(string message, byte scope, ulong targetID) { }
             public void Profiles(uint[] profileIds) { }
+            public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() => Requests++;
             public void Action(byte dir, float x, float y, byte skillSlot) { }
             public void Pong(ulong serverTimeMs) { }

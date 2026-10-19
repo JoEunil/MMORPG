@@ -64,6 +64,12 @@ namespace Net {
             return false;
         }
 
+        if (opcode == Core::OP::BAZAAR_MY_LIST
+            && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::BazaarMyListRequestBody>))) {
+            m_gameSession.store(false, std::memory_order_release);
+            return false;
+        }
+
         if (GetLen() < packetLen)
             return false;
 

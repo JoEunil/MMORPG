@@ -4,6 +4,7 @@ using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -18,9 +19,13 @@ public static class C07InventorySetup
         var canvas = Object.FindFirstObjectByType<Canvas>();
         var login = Object.FindFirstObjectByType<C01LoginScreen>();
         var world = Object.FindFirstObjectByType<C02WorldScreen>();
+        var combat = Object.FindFirstObjectByType<C05CombatScreen>();
+        var bazaar = Object.FindFirstObjectByType<C09BazaarScreen>();
+        var eventSystems = Object.FindObjectsByType<EventSystem>(FindObjectsSortMode.None);
         var hud = canvas != null ? canvas.transform.Find("WorldHud") : null;
-        if (canvas == null || canvas.renderMode != RenderMode.ScreenSpaceOverlay || login == null || world == null || hud == null)
-            throw new System.InvalidOperationException("Expected the existing C02 overlay Canvas, WorldHud, C01LoginScreen, and C02WorldScreen.");
+        if (canvas == null || canvas.renderMode != RenderMode.ScreenSpaceOverlay || canvas.GetComponent<GraphicRaycaster>() == null ||
+            login == null || world == null || combat == null || bazaar == null || hud == null || eventSystems.Length != 1)
+            throw new System.InvalidOperationException("Expected the C02 overlay Canvas, one EventSystem, WorldHud, login, world, combat, and bazaar screens.");
 
         var bag = Button("C07BagButton", canvas.transform, "BAG", new Color(.48f, .34f, .15f, .98f));
         var bagRect = bag.GetComponent<RectTransform>();
@@ -55,9 +60,12 @@ public static class C07InventorySetup
         closeRect.sizeDelta = new Vector2(86, 32);
         close.GetComponentInChildren<TMP_Text>(true).fontSize = 11;
 
+        var oldRows = inner.transform.Find("InventoryRows");
+        if (oldRows != null) Undo.DestroyObjectImmediate(oldRows.gameObject);
+
         var scrollObject = FindOrCreate("InventoryScroll", inner.transform, typeof(RectTransform), typeof(ScrollRect));
         var scrollRect = scrollObject.GetComponent<RectTransform>();
-        Stretch(scrollRect, new RectOffset(15, 15, 72, 102));
+        Stretch(scrollRect, new RectOffset(15, 15, 72, 208));
         var viewportObject = FindOrCreate("InventoryViewport", scrollObject.transform, typeof(RectTransform), typeof(Image), typeof(Mask));
         var viewportRect = viewportObject.GetComponent<RectTransform>();
         Stretch(viewportRect, 0);
@@ -65,44 +73,70 @@ public static class C07InventorySetup
         viewportObject.GetComponent<Image>().raycastTarget = true;
         viewportObject.GetComponent<Mask>().showMaskGraphic = false;
 
-        var rowsObject = FindOrCreate("InventoryRows", viewportObject.transform, typeof(RectTransform), typeof(TextMeshProUGUI), typeof(ContentSizeFitter));
-        var rowsRect = rowsObject.GetComponent<RectTransform>();
-        rowsRect.anchorMin = new Vector2(0, 1);
-        rowsRect.anchorMax = Vector2.one;
-        rowsRect.pivot = new Vector2(.5f, 1);
-        rowsRect.anchoredPosition = Vector2.zero;
-        rowsRect.sizeDelta = Vector2.zero;
-        var rows = rowsObject.GetComponent<TextMeshProUGUI>();
-        rows.font = TMP_Settings.defaultFontAsset;
-        rows.fontSize = 15;
-        rows.color = new Color(.22f, .18f, .12f);
-        rows.richText = false;
-        rows.enableWordWrapping = false;
-        rows.overflowMode = TextOverflowModes.Overflow;
-        rows.lineSpacing = 8;
-        rows.alignment = TextAlignmentOptions.TopLeft;
-        rows.margin = new Vector4(12, 10, 8, 8);
-        rows.raycastTarget = false;
-        var fitter = rowsObject.GetComponent<ContentSizeFitter>();
+        var gridObject = FindOrCreate("InventoryGridContent", viewportObject.transform,
+            typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
+        var gridRect = gridObject.GetComponent<RectTransform>();
+        gridRect.anchorMin = new Vector2(0, 1);
+        gridRect.anchorMax = Vector2.one;
+        gridRect.pivot = new Vector2(.5f, 1);
+        gridRect.anchoredPosition = Vector2.zero;
+        gridRect.sizeDelta = Vector2.zero;
+        var grid = gridObject.GetComponent<GridLayoutGroup>();
+        grid.cellSize = new Vector2(120, 78);
+        grid.spacing = new Vector2(8, 8);
+        grid.padding = new RectOffset(10, 10, 10, 10);
+        grid.startCorner = GridLayoutGroup.Corner.UpperLeft;
+        grid.startAxis = GridLayoutGroup.Axis.Horizontal;
+        grid.childAlignment = TextAnchor.UpperLeft;
+        grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+        grid.constraintCount = 3;
+        var fitter = gridObject.GetComponent<ContentSizeFitter>();
         fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
         var scroll = scrollObject.GetComponent<ScrollRect>();
         scroll.viewport = viewportRect;
-        scroll.content = rowsRect;
+        scroll.content = gridRect;
         scroll.horizontal = false;
         scroll.vertical = true;
         scroll.movementType = ScrollRect.MovementType.Clamped;
         scroll.scrollSensitivity = 28;
 
+        var details = FindOrCreate("InventoryDetails", inner.transform, typeof(RectTransform), typeof(Image));
+        var detailsRect = details.GetComponent<RectTransform>();
+        detailsRect.anchorMin = Vector2.zero;
+        detailsRect.anchorMax = new Vector2(1, 0);
+        detailsRect.pivot = new Vector2(.5f, 0);
+        detailsRect.anchoredPosition = new Vector2(0, 52);
+        detailsRect.sizeDelta = new Vector2(-30, 128);
+        details.GetComponent<Image>().color = new Color(.88f, .81f, .65f, .92f);
+        details.GetComponent<Image>().raycastTarget = false;
+
+        var badge = Text("InventoryDetailBadge", details.transform, string.Empty, 13, Color.white);
+        badge.alignment = TextAlignmentOptions.Center;
+        badge.rectTransform.anchorMin = badge.rectTransform.anchorMax = badge.rectTransform.pivot = new Vector2(0, 1);
+        badge.rectTransform.anchoredPosition = new Vector2(10, -10);
+        badge.rectTransform.sizeDelta = new Vector2(30, 30);
+        var itemName = Text("InventoryDetailName", details.transform, "Select an item", 16, new Color(.23f, .19f, .13f));
+        itemName.alignment = TextAlignmentOptions.MidlineLeft;
+        SetTop(itemName.rectTransform, 8, 32);
+        itemName.rectTransform.anchoredPosition = new Vector2(20, -8);
+        itemName.rectTransform.sizeDelta = new Vector2(-60, 32);
+        var slot = Text("InventoryDetailSlot", details.transform, string.Empty, 12, new Color(.39f, .31f, .20f));
+        slot.alignment = TextAlignmentOptions.MidlineLeft;
+        SetTop(slot.rectTransform, 48, 22);
+        slot.rectTransform.sizeDelta = new Vector2(-20, 22);
+        var quantity = Text("InventoryDetailQuantity", details.transform, string.Empty, 12, new Color(.39f, .31f, .20f));
+        quantity.alignment = TextAlignmentOptions.MidlineLeft;
+        SetTop(quantity.rectTransform, 76, 22);
+        quantity.rectTransform.sizeDelta = new Vector2(-20, 22);
+
         var status = Text("InventoryStatus", inner.transform, string.Empty, 12, new Color(.31f, .24f, .15f));
         status.alignment = TextAlignmentOptions.MidlineLeft;
         status.enableWordWrapping = true;
-        status.rectTransform.anchorMin = Vector2.zero;
-        status.rectTransform.anchorMax = new Vector2(1, 0);
-        status.rectTransform.pivot = new Vector2(.5f, 0);
-        status.rectTransform.anchoredPosition = new Vector2(0, 54);
-        status.rectTransform.sizeDelta = new Vector2(-30, 40);
+        status.rectTransform.anchorMin = status.rectTransform.anchorMax = status.rectTransform.pivot = Vector2.zero;
+        status.rectTransform.anchoredPosition = new Vector2(15, 12);
+        status.rectTransform.sizeDelta = new Vector2(260, 34);
 
         var refresh = Button("InventoryRefreshButton", inner.transform, "REFRESH", new Color(.40f, .29f, .17f, 1f));
         var refreshRect = refresh.GetComponent<RectTransform>();
@@ -115,13 +149,23 @@ public static class C07InventorySetup
         var serialized = new SerializedObject(screen);
         serialized.FindProperty("loginScreen").objectReferenceValue = login;
         serialized.FindProperty("worldScreen").objectReferenceValue = world;
+        serialized.FindProperty("bazaarScreen").objectReferenceValue = bazaar;
         serialized.FindProperty("inventoryPanel").objectReferenceValue = panel;
         serialized.FindProperty("bagButton").objectReferenceValue = bag;
         serialized.FindProperty("refreshButton").objectReferenceValue = refresh;
         serialized.FindProperty("closeButton").objectReferenceValue = close;
-        serialized.FindProperty("inventoryRows").objectReferenceValue = rows;
+        serialized.FindProperty("inventoryScroll").objectReferenceValue = scroll;
+        serialized.FindProperty("inventoryGridContent").objectReferenceValue = gridRect;
+        serialized.FindProperty("detailBadge").objectReferenceValue = badge;
+        serialized.FindProperty("detailName").objectReferenceValue = itemName;
+        serialized.FindProperty("detailSlot").objectReferenceValue = slot;
+        serialized.FindProperty("detailQuantity").objectReferenceValue = quantity;
         serialized.FindProperty("inventoryStatus").objectReferenceValue = status;
         serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        var combatSerialized = new SerializedObject(combat);
+        combatSerialized.FindProperty("inventoryScreen").objectReferenceValue = screen;
+        combatSerialized.ApplyModifiedPropertiesWithoutUndo();
         panel.SetActive(false);
         bag.gameObject.SetActive(false);
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
@@ -139,14 +183,14 @@ public static class C07InventorySetup
 
     private static TMP_Text Text(string name, Transform parent, string value, int size, Color color)
     {
-        var text = FindOrCreate(name, parent, typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
-        text.font = TMP_Settings.defaultFontAsset;
-        text.text = value;
-        text.fontSize = size;
-        text.color = color;
-        text.richText = false;
-        text.raycastTarget = false;
-        return text;
+        var go = FindOrCreate(name, parent, typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
+        go.font = TMP_Settings.defaultFontAsset;
+        go.text = value;
+        go.fontSize = size;
+        go.color = color;
+        go.richText = false;
+        go.raycastTarget = false;
+        return go;
     }
 
     private static Button Button(string name, Transform parent, string label, Color color)

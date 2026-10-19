@@ -169,6 +169,15 @@ namespace Core {
                 if (sizeDelta >= 0)
                     *parseBody<BazaarSearchRequestBody>(packet.data()) = request;
             }
+            CountedView(uint64_t id, const BazaarMyListRequestBody& request, uint8_t flags = 0, int sizeDelta = 0)
+                : packet(sizeof(PacketStruct<BazaarMyListRequestBody>) + sizeDelta), session(id) {
+                auto* header = parseHeader(packet.data());
+                header->length = static_cast<uint32_t>(packet.size());
+                header->opcode = OP::BAZAAR_MY_LIST;
+                header->flags = flags;
+                if (sizeDelta >= 0)
+                    *parseBody<BazaarMyListRequestBody>(packet.data()) = request;
+            }
             CountedView(uint64_t id, OP opcode)
                 : packet(sizeof(PacketHeader)), session(id) {
                 auto* header = parseHeader(packet.data());
@@ -389,6 +398,17 @@ namespace Core {
             st->body.requestID = requestID;
             st->body.resStatus = 1;
             response->SetLength(sizeof(*st));
+            responses.Process(response);
+        }
+        void FinishMyList(uint32_t requestID, uint64_t characterID, int sizeDelta = 0) {
+            auto* response = messages.Acquire();
+            auto* st = reinterpret_cast<MsgStruct<MsgBazaarMyListResBody>*>(response->GetBuffer());
+            *st = {};
+            st->header = { 42, MSG_BAZAAR_MY_LIST_RES };
+            st->body.requestID = requestID;
+            st->body.resStatus = 1;
+            st->body.characterID = characterID;
+            response->SetLength(sizeof(*st) + sizeDelta);
             responses.Process(response);
         }
         bool CompleteLoadSuccessfully(Message& request) {
@@ -1007,6 +1027,132 @@ namespace Core {
         ASSERT_NE(empty, nullptr);
         EXPECT_EQ(empty->GetLength(), 15);
         EXPECT_EQ(parseBody<BazaarSearchResponseBody>(empty->GetBuffer())->resStatus, 1);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BazaarMyListUsesOnlyAuthenticatedFieldOwnerAndExactWireRequest) {
+        SessionData ready{};
+        ready.authenticated = ready.authCompleted = true;
+        ready.userID = 6982; ready.characterID = 5011; ready.zoneID = 1;
+        CountedView absent(42, BazaarMyListRequestBody{90});
+        handler.Process(&absent);
+        EXPECT_FALSE(loads.HasRequest());
+        for (int invalid = 0; invalid < 10; ++invalid) {
+            auto image = ready;
+            BazaarMyListRequestBody request{91};
+            uint8_t flags = 0;
+            int delta = 0;
+            if (invalid == 0) image.authenticated = false;
+            if (invalid == 1) image.authCompleted = false;
+            if (invalid == 2) image.userID = 0;
+            if (invalid == 3) image.characterID = 0;
+            if (invalid == 4) image.zoneID = 0;
+            if (invalid == 5) flags = FLAG_SIMULATION;
+            if (invalid == 6) delta = -1;
+            if (invalid == 7) delta = 1;
+            if (invalid == 8) request.requestID = 0;
+            if (invalid == 9) image.zoneID = ZONE_COUNT + 1;
+            SetSessionImage(image);
+            CountedView view(42, request, flags, delta);
+            handler.Process(&view);
+            EXPECT_FALSE(loads.HasRequest()) << invalid;
+            EXPECT_TRUE(iocp.sentOpcodes.empty()) << invalid;
+        }
+        SetSessionImage(ready);
+        CountedView good(42, BazaarMyListRequestBody{92});
+        handler.Process(&good);
+        auto request = loads.TakeRequest();
+        ASSERT_NE(request, nullptr);
+        EXPECT_EQ(request->GetLength(), sizeof(MsgStruct<MsgBazaarMyListBody>));
+        EXPECT_EQ(parseMsgHeader(request->GetBuffer())->messageType, MSG_BAZAAR_MY_LIST);
+        const auto* body = parseMsgBody<MsgBazaarMyListBody>(request->GetBuffer());
+        EXPECT_EQ(body->requestID, 92);
+        EXPECT_EQ(body->characterID, 5011);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BazaarMyListQueueFailureAndStaleOwnerResponsesAreSafe) {
+        SessionData ready{};
+        ready.authenticated = ready.authCompleted = true;
+        ready.userID = 6982; ready.characterID = 5011; ready.zoneID = 1;
+        SetSessionImage(ready);
+        loads.accept = false;
+        CountedView good(42, BazaarMyListRequestBody{123});
+        handler.Process(&good);
+        ASSERT_EQ(iocp.sentOpcodes.size(), 1);
+        ASSERT_EQ(iocp.lastPacket.size(), 15);
+        const auto* failed = parseBody<BazaarMyListResponseBody>(iocp.lastPacket.data());
+        EXPECT_EQ(failed->requestID, 123);
+        EXPECT_EQ(failed->resStatus, 0);
+        EXPECT_EQ(failed->count, 0);
+        FinishMyList(124, 5011);
+        ASSERT_EQ(iocp.sentOpcodes.size(), 2);
+        FinishMyList(124, 5012);
+        FinishMyList(124, 0);
+        FinishMyList(124, 5011, -1);
+        EXPECT_EQ(iocp.sentOpcodes.size(), 2);
+        ready.characterID = 5012;
+        SetSessionImage(ready);
+        FinishMyList(124, 5011);
+        EXPECT_EQ(iocp.sentOpcodes.size(), 2);
+        FinishMyList(125, 5012);
+        EXPECT_EQ(iocp.sentOpcodes.size(), 3);
+        state->SetZoneID(42, 0);
+        FinishMyList(125, 5012);
+        state->Disconnect(42);
+        FinishMyList(125, 5012);
+        EXPECT_EQ(iocp.sentOpcodes.size(), 3);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BazaarMyListWriterPacksStatesAndRejectsWrongOwnerOrInvalidRows) {
+        MsgBazaarMyListResBody body{};
+        body.requestID = 0x12345678;
+        body.characterID = 5011;
+        body.resStatus = 1;
+        body.count = 30;
+        for (uint16_t i = 0; i < body.count; ++i)
+            body.listings[i] = { uint64_t{100} + i, 5011, uint32_t{300} + i,
+                static_cast<uint16_t>(i + 1), uint64_t{400} + i, uint64_t{500} + i, static_cast<uint8_t>(i % 3) };
+        auto packet = writer.WriteBazaarMyListResponse(&body);
+        ASSERT_NE(packet, nullptr);
+        EXPECT_EQ(packet->GetLength(), 1185);
+        auto* header = parseHeader(packet->GetBuffer());
+        EXPECT_EQ(header->opcode, OP::BAZAAR_MY_LIST_RES);
+        EXPECT_EQ(header->length, 1185);
+        EXPECT_EQ(header->flags, 0);
+        EXPECT_EQ(packet->GetBuffer()[8], 0x78);
+        auto* rows = reinterpret_cast<BazaarSearchListing*>(packet->GetBuffer() + 15);
+        EXPECT_EQ(rows[29].listingID, 129);
+        EXPECT_EQ(rows[29].sellerCharacterID, 5011);
+        EXPECT_EQ(rows[29].itemID, 329);
+        EXPECT_EQ(rows[29].quantity, 30);
+        EXPECT_EQ(rows[29].price, 429);
+        EXPECT_EQ(rows[29].registeredAt, 529);
+        EXPECT_EQ(rows[29].status, 2);
+        EXPECT_EQ(rows[28].status, 1);
+        EXPECT_EQ(rows[27].status, 0);
+        for (int kind = 0; kind < 7; ++kind) {
+            auto invalid = body;
+            if (kind == 0) invalid.resStatus = 0;
+            if (kind == 1) invalid.count = 31;
+            if (kind == 2) invalid.resStatus = 2;
+            if (kind == 3) invalid.listings[29].quantity = 0;
+            if (kind == 4) invalid.listings[29].status = 3;
+            if (kind == 5) invalid.listings[29].sellerCharacterID = 5012;
+            if (kind == 6) invalid.listings[29].listingID = 0;
+            auto failed = writer.WriteBazaarMyListResponse(&invalid);
+            ASSERT_NE(failed, nullptr);
+            EXPECT_EQ(failed->GetLength(), 15);
+            const auto* response = parseBody<BazaarMyListResponseBody>(failed->GetBuffer());
+            EXPECT_EQ(response->requestID, body.requestID);
+            EXPECT_EQ(response->count, 0);
+            EXPECT_EQ(response->resStatus, 0);
+        }
+        body.count = 0;
+        auto empty = writer.WriteBazaarMyListResponse(&body);
+        ASSERT_NE(empty, nullptr);
+        EXPECT_EQ(empty->GetLength(), 15);
+        EXPECT_EQ(parseBody<BazaarMyListResponseBody>(empty->GetBuffer())->resStatus, 1);
+        body.requestID = 0;
+        EXPECT_EQ(writer.WriteBazaarMyListResponse(&body), nullptr);
     }
 
     TEST_F(NonZoneThreadPoolFixture, LateEnterCannotRebindCharacterInEmptyLobbyWindow) {

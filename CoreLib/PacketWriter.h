@@ -142,6 +142,7 @@ namespace Core {
 
         }
 
+        std::unique_ptr<IPacket, PacketDeleter> WriteBazaarMyListResponse(const MsgBazaarMyListResBody* body);
         std::unique_ptr<IPacket, PacketDeleter> WriteBazaarSearchResponse(const MsgBazaarSearchResBody* body);
 
         std::unique_ptr<IPacket, PacketDeleter> WriteProfileBatchRes(const ProfileEntry* entries, uint16_t count);

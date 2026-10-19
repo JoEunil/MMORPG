@@ -6,6 +6,8 @@ param(
     [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$C08Hash,
     [switch]$C09Candidate,
     [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$C09Hash,
+    [switch]$C10Candidate,
+    [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$C10Hash,
     [int]$QuitHelperPid = 0,
     [ValidateSet('Original', 'New')][string]$QuitImage = 'Original',
     [long]$QuitStartTicks = 0,
@@ -20,7 +22,17 @@ $newRoot = 'C:\Users\joeun\Desktop\workspace\Game-UnityClient'
 $newHash = '01C6261AB5C3448E2BA5F336CE70FB20E4DBA4B9ED47AD70002F22C88594D108'
 $currentPid = 20024
 $currentStartTicks = 639279045410504905
-if ($C09Candidate) {
+if ($C10Candidate) {
+    if (-not $C10Hash -or $C07Candidate -or $C07Hash -or $C08Candidate -or $C08Hash -or $C09Candidate -or $C09Hash) { throw 'C10 requires only its fixed reviewed SHA256.' }
+    if ($C10Hash.ToUpperInvariant() -ne '3D1011A6B7C8E2FE6A0ECC3C3B739E65EBBC340F4F80B0DF8E213073CAAB402E') { throw 'C10 reviewed SHA256 mismatch.' }
+    $originalExe = Join-Path $newRoot 'UnityClient\Builds\C09-Candidate\final\bin\MainServer.exe'
+    $originalHash = 'ABA9491459EA2444D8862199104DAD8A8ADDBD19AA52687FBE085C9CC2C123F8'
+    $newExe = Join-Path $newRoot 'UnityClient\Builds\C10-Delivery\bin\MainServer.exe'
+    $newHash = $C10Hash.ToUpperInvariant()
+    $currentPid = 36748
+    $currentStartTicks = 639279911885079875
+} elseif ($C10Hash) { throw 'C10 hash requires C10 mode.' }
+elseif ($C09Candidate) {
     if (-not $C09Hash -or $C07Candidate -or $C07Hash -or $C08Candidate -or $C08Hash) { throw 'C09 requires only its fixed reviewed SHA256.' }
     if ($C09Hash.ToUpperInvariant() -ne 'ABA9491459EA2444D8862199104DAD8A8ADDBD19AA52687FBE085C9CC2C123F8') { throw 'C09 reviewed SHA256 mismatch.' }
     $originalExe = Join-Path $newRoot 'UnityClient\Builds\C08-Candidate\final\bin\MainServer.exe'
@@ -275,6 +287,7 @@ function Stop-Normally([Diagnostics.Process]$Process, [string]$ImageKind, [strin
     if ($C07Candidate) { $arguments += ' -C07Candidate -C07Hash ' + $C07Hash }
     if ($C08Candidate) { $arguments += ' -C08Candidate -C08Hash ' + $C08Hash }
     if ($C09Candidate) { $arguments += ' -C09Candidate -C09Hash ' + $C09Hash }
+    if ($C10Candidate) { $arguments += ' -C10Candidate -C10Hash ' + $C10Hash }
     $helper = Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $helperOut -RedirectStandardError $helperErr
     # Pin the process handle before the child exits; do not rely on PassThru.ExitCode.
     try { $helperHandle = $helper.Handle } catch {
@@ -373,6 +386,7 @@ New-Item -ItemType Directory -Path $evidenceFolder -ErrorAction Stop | Out-Null
 if ($C07Candidate) { Record 'C07 local test transition under current normal-server-operation authorization. No direct DB writes, force stop, or original-image replacement.' }
 elseif ($C08Candidate) { Record 'C08 local test transition under current normal-server-operation authorization. No direct DB writes, force stop, or original-image replacement.' }
 elseif ($C09Candidate) { Record 'C09 local test transition under current normal-server-operation authorization. No direct DB writes, force stop, or original-image replacement.' }
+elseif ($C10Candidate) { Record 'C10 local test transition under current normal-server-operation authorization. No direct DB writes, force stop, or original-image replacement.' }
 else { Record 'R01-DEPLOY-04/r1; execution requires explicit approval recorded by Coordinator. Normal shutdown may persist dedicated character states; no direct DB writes or data restoration.' }
 Assert-EmptyWal
 Preserve-LogsAndWal 'before-current-stop'
