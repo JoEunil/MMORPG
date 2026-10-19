@@ -64,26 +64,8 @@ namespace Data {
 
     // 운영 환경에서는 json/데이터파일로 관리
     inline static const MonsterData monsters[] = {
-        {
-            0,          // id
-            1500,        // maxHp
-            5,          // attack
-            300,       // respawn
-            1.0f,       // moveSpeed
-            {
-                // Phase 0
-                {
-                    1.0f,
-                    0,
-                    2,
-                    {
-                        {0, 20},
-                        {0, 20},
-                    }
-                },
-            },
-            {10}            // reward
-        },
+        // Monster 0; generated from the scoped Unity content candidate.
+#include "../UnityClient/Exports/ServerData/Monster0.inc"
 
         {
             1,       

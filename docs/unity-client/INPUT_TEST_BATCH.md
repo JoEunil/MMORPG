@@ -1,3 +1,6 @@
+## 사냥 상태 검증 완료 — 최신
+
+사용자 입력 재개 지시에 따라 한 native 로그인→성장 표시→Ring1회→몬스터3개 HP500/1500와 게이지1/3→정상퇴장/바0→Playstop을 완료했다. 카메라 보완 전 표시 실패는 보존했고 최종 카메라 연결 후 실검증 PASS. HuntingState3/3 기통과를 반복하지 않았다. 후속 콘텐츠 편집은 기본값 그대로이므로 ContentExport2/2+native 동등성1개로 끝내고 게임 입력을 반복하지 않았다. 상세 HUNTING_STATE_RESULTS/CONTENT_EXPORT_RESULTS. 현재 입력 보류 지시 없음, 새 작업은 직접 영향 항목만 다음 묶음에 모은다.
 ## BAG01/BAG02 남은 가방 흐름 완료
 
 5011한native로그인→BAG cold status0→Refresh1회→status1/rows0/No items./카드0/좌표불변→대표PNG1→물리Close/Disconnect/modelnull/Playstop PASS. 두계정/시장왕복/HUD전투/전체회귀 반복0. 승인된2빈행 commit/READONLY는새strictq종료PASS뒤수행. PLAYER_HUD_RESULTS최상단참조. 이후새변경/실패근거없이동일흐름재실행금지.

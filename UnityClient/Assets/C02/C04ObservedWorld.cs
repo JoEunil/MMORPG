@@ -26,6 +26,7 @@ namespace C02
         {
             public MonsterFullField State;
             public GameObject Visual;
+            public C13EntityVitals Vitals;
             public double LastFullSeen;
         }
 
@@ -166,10 +167,13 @@ namespace C02
                 {
                     entry = new MonsterObservation { Visual = Instantiate(monsterPrefabs[state.monsterId], displayRoot) };
                     entry.Visual.name = "ObservedMonster " + state.internalId + " type " + state.monsterId;
+                    entry.Vitals = entry.Visual.AddComponent<C13EntityVitals>();
+                    entry.Vitals.SetCamera(worldScreen.ViewCamera);
                     monsters.Add(state.internalId, entry);
                 }
                 entry.State = state;
                 entry.LastFullSeen = now;
+                entry.Vitals.SetHealth(state.hp, state.maxHp);
                 Place(entry.Visual, state.x, state.y, state.dir);
             }
         }
@@ -244,6 +248,7 @@ namespace C02
                 if (pair.Value.deathSeen) { RemoveMonster(pair.Key); continue; }
                 var entry = monsters[pair.Key];
                 entry.State = pair.Value.state;
+                entry.Vitals.SetHealth(entry.State.hp, entry.State.maxHp);
                 Place(entry.Visual, entry.State.x, entry.State.y, entry.State.dir);
             }
         }
