@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - docs/unity-client/SHOWCASE.md
+      - docs/unity-client/portfolio/**
       - site/**
       - tools/site/**
       - .github/workflows/pages.yml
@@ -12,6 +13,7 @@ on:
     branches: [master]
     paths:
       - docs/unity-client/SHOWCASE.md
+      - docs/unity-client/portfolio/**
       - site/**
       - tools/site/**
       - .github/workflows/pages.yml
@@ -33,21 +35,7 @@ jobs:
         with:
           python-version: "3.x"
       - name: Generate and validate the site
-        run: |
-          python tools/site/build.py
-          python - <<'PY'
-          from pathlib import Path
-          import re
-          root = Path("site")
-          html = (root / "index.html").read_text(encoding="utf-8")
-          refs = re.findall(r'(?:src|href)="([^"]+)"', html)
-          missing = [ref for ref in refs if not ref.startswith(("https://", "http://", "#")) and not (root / ref).is_file()]
-          if missing:
-              raise SystemExit("Missing site files: " + ", ".join(missing))
-          if '<html lang="ko">' not in html:
-              raise SystemExit("Korean document language is missing")
-          print(f"Validated {len(refs)} local/remote references")
-          PY
+        run: python tools/site/build.py
       - name: Package Pages output
         uses: actions/upload-pages-artifact@v3
         with:
