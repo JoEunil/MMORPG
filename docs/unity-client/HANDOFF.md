@@ -1,3 +1,7 @@
+## 현재 완료 — 정상 종료 복구·빈 가방 실제 확인
+
+BAG02 승인1792410799.402169 소비/같은의사표시1792410787 별도실행0. 검토패치 actualcandidate2파일적용/빌드 SHA0F9D68FDEB63FA77F907571AB1814777EA7F5091E00861EB057C835C7E4E3E32. strict새q종료 PASS 뒤만 BAG01두360byte0행 commit1회/독립READONLY PASS. INSERT 반복금지. 승인start2회 모두소비, 현재PID31796 ticks639280079946206209/BAG02-Candidate/bin/9999Listen/Established0. Unity5011한native흐름 cold가방status0→Refresh1회→status1/rows0/No items./카드0/좌표불변→대표PNG1→Close/Disconnect/modelnull/Playstop. 기존HUD/전체103/C++회귀 반복0. char5011 HP6700MP9980/5012 HP10000MP9999·좌표그대로. 로그아웃CancelIoEx1168잔여1건 범위밖. 실제제품서버source는candidate의 IOCP.cpp, root원본과C10binary보존. 상세PLAYER_HUD_RESULTS최상단. 사이트현재범위/캡처갱신중, 다음같은PR36commit/push/ready, 병합·게시0.
+
 ## BAG02 구체 패치 후보 리뷰 완료 — 적용 전
 
 사용자 계속 지시에 따라 승인 비의존 후보 작업 진행. 지정 Slack 추가 회신은 직접 조회에서도 없음. docs/unity-client/BAG02.candidate.patch 양 경로 동일 SHA B36A7D0F767E2553BB333764F243457AFABEB492ADD16959D057217F18547EBA. 구현 담당 패치만 작성→독립 리뷰 P2 두 건(runtime fatal과 종료 구별/소켓 반환) 보완→최종 차단0. git apply --check --whitespace=error 및 메모리 PS AST 문법 통과. 실제 보호 소스/도구 변경·빌드·DB·서버·Unity 입력 실행0. 현재 MainServer0/9999 ListenEstablished0/numeric WAL0 확인. 승인 후 실제 적용·빌드·새 정상 종료 검증을 먼저 수행하고, 통과 뒤 기존 BAG01 두 행과 한 가방 입력 흐름을 이어간다. 새 PR/전체 회귀는 추가하지 않는다.

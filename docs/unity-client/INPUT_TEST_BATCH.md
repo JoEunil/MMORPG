@@ -1,3 +1,7 @@
+## BAG01/BAG02 남은 가방 흐름 완료
+
+5011한native로그인→BAG cold status0→Refresh1회→status1/rows0/No items./카드0/좌표불변→대표PNG1→물리Close/Disconnect/modelnull/Playstop PASS. 두계정/시장왕복/HUD전투/전체회귀 반복0. 승인된2빈행 commit/READONLY는새strictq종료PASS뒤수행. PLAYER_HUD_RESULTS최상단참조. 이후새변경/실패근거없이동일흐름재실행금지.
+
 ## 최신 — 남은 검증 축소
 
 HUD 검증은 종료했고 반복하지 않는다. BAG01 승인 후 5011 가방조회/필요한 Refresh1회/빈결과/정상퇴장을 한 입력 흐름으로 확인한다. DB 두 행은 SELECT로 함께 확인한다. 두계정/시장탭왕복·추가전투·전체자동회귀 재실행을 제외하며 대표 캡처1장만추가한다. 실패시원인분리,무한재시도없음. CURRENT_POLICY.md 최신 최소 검증을 따른다. 아래 광범위 계획은 이전 이력이다.
