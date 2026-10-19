@@ -1,3 +1,10 @@
+## BAG01 승인 확인 / 정상 종료 검사 중단 — 2026-10-19
+
+지정 Slack 사용자 U0C9QEUHPMK의 회신1792408921.550179 `승인 BAG01`을 부모1792407691.861929에서 직접 확인했다. 요청1792408332.366609와 일치. 이 회신은 정상 종료 1회 착수에 사용됐으며 중복 재실행하지 않는다. DB 승인은 유효하지만 필수 저장 검사 실패로 INSERT/COMMIT0이다.
+
+검토한 stop-only SHA31EDCE1C0C8D76CE498731206FA4E13BCDE6EE4230CC8AEA233D056A8157D2B9로 고정 C10 PID9060에 q 전달. helper/native exit0 확인 후 종료 오류 로그 증가로 기존 엄격 가드 ABORT. 신규 GQCS995 8건/AcceptEx10038 8건, MQ3/DB4 종료 로그 관찰, 종료 전후 캐릭터 동일. 별도 READ ONLY MainServer0/9999 Listen·Established0/numeric WAL0/두 inventory 행 누락 확인. 가드 PASS나 빈 가방 성공으로 보고하지 않는다. 서버는 현재 정지 상태이며 재기동·강제 종료·WAL 삭제·DB 쓰기·Unity 입력0. 로그인/DB/Redis 서비스는 조작하지 않았다.
+
+증거 Captures/r01-switch-20261019-203003-505-36920-evidence, bag01-stop-result.txt. stop wrapper는 기존 도구의 동일 prefix+좁은 entry이며 독립 리뷰 PASS, 제품/가드 소스 변경0. 종료 플래그 이후 취소 ACCEPT의 재등록이 원인. system.log의 기존 console 2줄도 전체 JSON 파싱과 맞지 않음. BAG02_REQUEST.md에 최소 제품 수정/엄격 로그 파싱/새 후보 1회 기동 후 새 정상 종료 근거 확보안을 준비했다. 현재 실패를 성공으로 재분류하거나 가드 완화 금지. BAG01 자체 재승인 불필요, 추가 서버 변경은 Slack BAG02 범위로 구분한다. HUD/전체 회귀 재시험0, PR36 draft 유지, 같은 PR에 후속 결과 반영.
 ## 현재 작업 — 플레이 HUD 검증 완료 / 가방 BAG01 승인 대기
 
 master d535b0d에서codex/player-hud-inventory생성/C10-Delivery/source재사용. 미반영공개설명ef03b18만3f751bd로cherry-pick. HUD소스5파일/C05게이지+새Setup/fixture,독립리뷰Sprite결함수정후차단0,EditorSetup저장/Scene통합. C02자동103/103·실제ABI360/offset/0blobcodec실행exit0. 실제Windows로그인5011→Ring버튼→MP10000→9980/HP공격감소와게이지일치→정상logout/게이지0. digit2초기실입력서버변화미관측은실패로보존/성공claim금지. 실캡처서버combat다음프레임HP7750/sample7800·0.78 구분. 최종READONLY5011 HP6700MP9980/좌표불변,5012기존값유지. Playfalse/Established0/MainServer9060/9999유지/서버재시작0/DB직접쓰기0. root-candidateScene/source/DLL5파일freeze동일(Captures/c12-final-freeze.txt).
