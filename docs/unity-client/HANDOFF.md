@@ -1,3 +1,8 @@
+## 현재 — 기존 콘텐츠 전체 편집 확장 검증 완료 / DATA01 게시 직전
+
+WORLD01회신1792420805.879599는eacb744를PR37에일반push하는데1회소비완료,같은PR본문/제목·attach갱신. Actions39271163496 success/추가공개0. 새codex/content-catalog에서C14기존asset/field/GUID보존+기존5skills3monsters전체export·CoreLib배열include연결·obsolete2inc제거완료. 보스3/4mana/cooldown0원문보완,최종독립review차단0. CatalogExport2/2+이전실제C++테이블전필드native1 PASS,asset기존prefix/meta일치/6파일freeze일치. 기존사냥/스폰/거래소회귀와게임입력반복0. 실제Inspector/캡처1·사이트6기능build/대상3HTTP200.
+
+CONTENT_CATALOG_RESULTS.md 상세,새부모1792420978.697599. 정확로컬commit뒤DATA01로게시승인요청예정,현재새확장push/PR갱신0/서버31796·DB유지. root원본Game/WIP보존. 다음기존거래소미연결경로읽기는독립진행중이며새프로토콜소유권/경제규칙을승인없이추가하지않는다.
 ## 현재 — 몬스터 배치 편집 검증 완료 / 게시 승인 직전
 
 codex/world-content는 PR37 head ded6c582에서분기. C15runtime/export/UITKInspector/실제asset·inc+ZoneState_Monsters.cpp 초기화숫자연결만완료,보호기하/AOI/큐/락/DB수정0. 최종독립review차단0. SpawnExport2/2, 실제Initializer nativeprobe241·type/ID/위치범위PASS, nativeInspector8→9/265→8/241복원·캡처1PASS. S01/사냥/전체회귀반복0. rootScenePlay/dirtyfalse,서버31796그대로/재시작·DB직접쓰기0. SPAWN_AUTHORING_RESULTS.md 참조.

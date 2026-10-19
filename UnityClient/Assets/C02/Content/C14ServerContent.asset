@@ -44,3 +44,183 @@ MonoBehaviour:
         delayTicks: 20
       - skillID: 0
         delayTicks: 20
+  otherSkills:
+  - skillID: 0
+    flags: 0
+    mana: 1
+    cooldownTicks: 20
+    phases:
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 6
+      action: 1
+      range: 1
+      range1: 2
+      range2: 0
+      attack: 5
+  - skillID: 2
+    flags: 2
+    mana: 20
+    cooldownTicks: 80
+    phases:
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 10
+      action: 1
+      range: 2
+      range1: 12
+      range2: 3
+      attack: 100
+  - skillID: 3
+    flags: 2
+    mana: 0
+    cooldownTicks: 0
+    phases:
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 20
+      action: 1
+      range: 3
+      range1: 10
+      range2: 30
+      attack: 100
+    - waitTicks: 10
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 20
+      action: 1
+      range: 4
+      range1: 10
+      range2: 30
+      attack: 100
+  - skillID: 4
+    flags: 2
+    mana: 0
+    cooldownTicks: 0
+    phases:
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 20
+      action: 1
+      range: 5
+      range1: 5
+      range2: 0
+      attack: 100
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 20
+      action: 1
+      range: 5
+      range1: 10
+      range2: 5
+      attack: 100
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 20
+      action: 1
+      range: 5
+      range1: 15
+      range2: 10
+      attack: 100
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 20
+      action: 1
+      range: 5
+      range1: 20
+      range2: 15
+      attack: 100
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 20
+      action: 1
+      range: 5
+      range1: 25
+      range2: 20
+      attack: 100
+  otherMonsters:
+  - id: 1
+    maxHp: 3000
+    attack: 8
+    respawnTicks: 500
+    moveSpeed: 1.2
+    rewardExp: 30
+    phases:
+    - hpThreshold: 1
+      steps:
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 1
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 20
+  - id: 2
+    maxHp: 10000
+    attack: 15
+    respawnTicks: 6000
+    moveSpeed: 0.6
+    rewardExp: 300
+    phases:
+    - hpThreshold: 1
+      steps:
+      - skillID: 3
+        delayTicks: 100
+      - skillID: 4
+        delayTicks: 100
+    - hpThreshold: 0.5
+      steps:
+      - skillID: 3
+        delayTicks: 50
+      - skillID: 4
+        delayTicks: 50
+      - skillID: 3
+        delayTicks: 50
+      - skillID: 4
+        delayTicks: 50
+    - hpThreshold: 0.2
+      steps:
+      - skillID: 4
+        delayTicks: 25
+      - skillID: 3
+        delayTicks: 25
+      - skillID: 4
+        delayTicks: 25
+      - skillID: 3
+        delayTicks: 25

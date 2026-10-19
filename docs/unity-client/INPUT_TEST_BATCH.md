@@ -1,3 +1,7 @@
+## 기존 콘텐츠 전체 편집 검증 종료
+
+CatalogExport2/2+이전C++5스킬/3몬스터전필드비교native1회 PASS. 기존asset값/GUID보존과실제Inspector확장항목표시확인. 기본수치와실행서버가그대로여서사냥/스폰/거래소게임입력·전체회귀를반복하지않는다. CONTENT_CATALOG_RESULTS.md 참조.
+
 ## 몬스터 배치 편집 검증 종료
 
 SpawnExport2/2+실제InitializeMonster native1회+Inspector실입력8→9→8복원 한 흐름 PASS. 기본수치동일·실행서버변경없어 추가게임입력/기존사냥반복0. 신규변경/실패근거없이동일검증반복금지. SPAWN_AUTHORING_RESULTS.md 참조.
