@@ -68,6 +68,8 @@ def parse_work(path):
             section["blocks"].append(("heading", line[4:].strip()))
         elif line:
             (section["blocks"] if section else intro).append(line)
+        elif section and section["blocks"] and section["blocks"][-1] != "":
+            section["blocks"].append("")
     if not title or not summary or status not in ("검증된 결과", "중간 결과"):
         raise ValueError(f"Incomplete portfolio metadata in {path.relative_to(ROOT)}")
     if INTERNAL_CODES.search(text):
@@ -96,6 +98,8 @@ def parse_showcase():
             section["blocks"].append(("heading", line[4:].strip()))
         elif line:
             (section["blocks"] if section else intro).append(line)
+        elif section and section["blocks"] and section["blocks"][-1] != "":
+            section["blocks"].append("")
     if not intro:
         raise ValueError("SHOWCASE.md needs a short public introduction")
     if INTERNAL_CODES.search("\n".join([title, *intro, *(b for s in sections for b in s["blocks"] if isinstance(b, str))])):
@@ -141,6 +145,9 @@ def render_blocks(blocks, source):
             list_items.clear()
 
     for block in blocks:
+        if block == "":
+            flush_paragraph(); flush_list()
+            continue
         if isinstance(block, tuple):
             flush_paragraph(); flush_list()
             out.append("<h3>" + escape(block[1]) + "</h3>")
@@ -162,19 +169,19 @@ def render_blocks(blocks, source):
     return "\n".join(out)
 
 
-def document(title, description, content, references):
-    ref_nav = "".join(f'<a href="{escape(url, quote=True)}">{escape(label)}</a>' for label, url in references)
+def document(title, description, content, references, site_title):
     ref_footer = "".join(f'<a href="{escape(url, quote=True)}">{escape(label)} ↗</a>' for label, url in references)
+    browser_title = title if title == site_title else f"{title} · {site_title}"
     return f'''<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="{escape(description, quote=True)}"><title>{escape(title)} · AI 게임 개발 포트폴리오</title>
+<meta name="description" content="{escape(description, quote=True)}"><title>{escape(browser_title)}</title>
 <link rel="stylesheet" href="{BASE}style.css"></head><body>
-<header class="site-header"><a class="brand" href="{BASE}">AI 게임 개발 포트폴리오</a><nav aria-label="주 메뉴"><a href="{BASE}#work">작업 결과</a>{ref_nav}</nav></header>
-{content}<footer class="site-footer"><a href="{BASE}">프로젝트 홈</a><span>Unity MMORPG</span>{ref_footer}</footer>
+<header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}#work">작업 결과</a><a href="{BASE}#workflow">AI 워크플로우</a><a href="{BASE}#legacy">기존 Unity</a></nav></header>
+{content}<footer class="site-footer"><a href="{BASE}">{escape(site_title)}</a>{ref_footer}</footer>
 </body></html>'''
 
 
-def build_work(work, references):
+def build_work(work, references, site_title):
     key = slug(work["source"].stem)
     detail_url = f"{BASE}work/{key}/index.html"
     history_url = f"{BASE}work/{key}/history.html"
@@ -197,8 +204,8 @@ def build_work(work, references):
 <p class="eyebrow">화면 기록</p><h1>{escape(work['title'])}</h1><p class="lead">작업 과정에서 남긴 실제 화면과 중간 결과입니다.</p><section class="content-section history-images">{''.join(history)}</section></main>'''
     folder = SITE / "work" / key
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / "index.html").write_text(document(work["title"], work["summary"], page_content, references), encoding="utf-8", newline="\n")
-    (folder / "history.html").write_text(document(work["title"] + " 화면 기록", work["summary"], history_content, references), encoding="utf-8", newline="\n")
+    (folder / "index.html").write_text(document(work["title"], work["summary"], page_content, references, site_title), encoding="utf-8", newline="\n")
+    (folder / "history.html").write_text(document(work["title"] + " 화면 기록", work["summary"], history_content, references, site_title), encoding="utf-8", newline="\n")
     return key, detail_url, history_url
 
 
@@ -221,25 +228,28 @@ def main():
     title, intro, home_sections, hero_image, references = parse_showcase()
     cards = []
     for work in works:
-        key, detail, history = build_work(work, references)
+        key, detail, history = build_work(work, references, title)
         card_image = find_image(work)
         media = f'<a class="card-image" href="{card_image[1]}" target="_blank" rel="noopener"><img src="{card_image[1]}" alt="{escape(card_image[0], quote=True)}" loading="lazy"></a>' if card_image else ""
         cards.append(f'<article class="work-card">{media}<div class="work-copy"><p class="eyebrow">{escape(work["status"])}</p><h3><a href="{detail}">{escape(work["title"])}</a></h3><p>{escape(work["summary"])}</p><div class="card-links"><a href="{detail}">작업 보기 →</a><a href="{history}">화면 이력</a></div></div></article>')
     project_section = next((s for s in home_sections if s["title"] == "프로젝트"), None)
-    process_section = next((s for s in home_sections if s["title"] == "함께 만든 방식"), None)
+    process_section = next((s for s in home_sections if s["title"] == "AI Agent 워크플로우"), None)
     experience_section = next((s for s in home_sections if s["title"] == "직접 확인하고 바꾼 점"), None)
+    legacy_section = next((s for s in home_sections if s["title"] == "기존 Unity 구현"), None)
     if not project_section:
         raise ValueError("SHOWCASE.md needs a concise '프로젝트' section")
     project_copy = render_blocks(project_section["blocks"], HOME_SOURCE)
     process_copy = render_blocks(process_section["blocks"], HOME_SOURCE) if process_section else ""
     experience_copy = render_blocks(experience_section["blocks"], HOME_SOURCE) if experience_section else ""
-    process_html = f'<section class="about section-wrap"><div><p class="eyebrow">개발 경험</p><h2>{escape(process_section["title"])}</h2></div><div>{process_copy}</div></section>' if process_copy else ""
+    legacy_copy = render_blocks(legacy_section["blocks"], HOME_SOURCE) if legacy_section else ""
+    process_html = f'<section class="about section-wrap" id="workflow"><div><h2>{escape(process_section["title"])}</h2></div><div>{process_copy}</div></section>' if process_copy else ""
     experience_html = f'<section class="experience section-wrap"><h2>{escape(experience_section["title"])}</h2>{experience_copy}</section>' if experience_copy else ""
+    legacy_html = f'<section class="legacy-section section-wrap" id="legacy"><h2>{escape(legacy_section["title"])}</h2><div class="legacy-body">{legacy_copy}</div></section>' if legacy_copy else ""
     hero = f'''<main><section class="home-hero"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><a class="button" href="#work">작업 결과 둘러보기</a></div><figure class="home-image"><a href="{hero_image[1]}" target="_blank" rel="noopener"><img src="{hero_image[1]}" alt="{escape(hero_image[0], quote=True)}"></a><figcaption>{escape(hero_image[0])}</figcaption></figure></section>
 <section class="section-wrap project-intro"><h2>{escape(project_section["title"])}</h2>{project_copy}</section>
 <section class="section-wrap" id="work"><div class="section-title"><div><p class="eyebrow">작업 사례</p><h2>작업과 결과</h2></div></div><div class="work-grid">{''.join(cards)}</div></section>
-{process_html}{experience_html}</main>'''
-    (SITE / "index.html").write_text(document(title, intro, hero, references), encoding="utf-8", newline="\n")
+{process_html}{experience_html}{legacy_html}</main>'''
+    (SITE / "index.html").write_text(document(title, intro, hero, references, title), encoding="utf-8", newline="\n")
     check_site()
     print(f"Built home and {len(works)} project pages with screen histories")
 
