@@ -281,6 +281,7 @@ namespace C02.Tests
         private sealed class FakeNetwork : INetworkService
         {
             public int Requests;
+            public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() => Requests++;
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void CharacterList() { }

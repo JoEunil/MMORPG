@@ -6,13 +6,21 @@ param(
     [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$C08Hash,
     [switch]$C09Candidate,
     [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$C09Hash,
+    [switch]$C10Candidate,
+    [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$C10Hash,
     [ValidateSet('R01-START-05/r1')][string]$ExecuteApprovedStart
 )
 $ErrorActionPreference = 'Stop'
 $root = 'C:\Users\joeun\Desktop\workspace\Game-UnityClient'
 $image = Join-Path $root 'UnityClient\Builds\R01-Candidate\bin\MainServer.exe'
 $imageHash = '01C6261AB5C3448E2BA5F336CE70FB20E4DBA4B9ED47AD70002F22C88594D108'
-if ($C09Candidate) {
+if ($C10Candidate) {
+    if (-not $C10Hash -or $C07Candidate -or $C07Hash -or $C08Candidate -or $C08Hash -or $C09Candidate -or $C09Hash -or $ExecuteApprovedStart) { throw 'C10 needs only its fixed reviewed SHA256 and current local-operation authorization.' }
+    if ($C10Hash.ToUpperInvariant() -ne '3D1011A6B7C8E2FE6A0ECC3C3B739E65EBBC340F4F80B0DF8E213073CAAB402E') { throw 'C10 reviewed SHA256 mismatch.' }
+    $image = Join-Path $root 'UnityClient\Builds\C10-Delivery\bin\MainServer.exe'
+    $imageHash = $C10Hash.ToUpperInvariant()
+} elseif ($C10Hash) { throw 'C10 hash requires C10 mode.' }
+elseif ($C09Candidate) {
     if (-not $C09Hash -or $C07Candidate -or $C07Hash -or $C08Candidate -or $C08Hash -or $ExecuteApprovedStart) { throw 'C09 needs only its fixed reviewed SHA256 and current local-operation authorization.' }
     if ($C09Hash.ToUpperInvariant() -ne 'ABA9491459EA2444D8862199104DAD8A8ADDBD19AA52687FBE085C9CC2C123F8') { throw 'C09 reviewed SHA256 mismatch.' }
     $image = Join-Path $root 'UnityClient\Builds\C09-Candidate\final\bin\MainServer.exe'
@@ -37,10 +45,10 @@ $dllHashes = @{
     'hiredis.dll'='FC0D6F13F43ADE48A71F9FF3AFD9B9B0751165FC325D3A05D19A01999D29FE5C'
     'mysqlcppconn-9-vs14.dll'='2070CD998CDF625425DE4AA5476F131D92165068998CC634B13C4D3138E0F088'
 }
-if (-not $C07Candidate -and -not $C08Candidate -and -not $C09Candidate -and $PreflightOnly -eq ($ExecuteApprovedStart -eq 'R01-START-05/r1')) {
+if (-not $C07Candidate -and -not $C08Candidate -and -not $C09Candidate -and -not $C10Candidate -and $PreflightOnly -eq ($ExecuteApprovedStart -eq 'R01-START-05/r1')) {
     throw 'Choose exactly one mode: -PreflightOnly, or the exact approved start identifier.'
 }
-if (-not $C07Candidate -and -not $C08Candidate -and -not $C09Candidate -and -not $PreflightOnly -and $ExecuteApprovedStart -ne 'R01-START-05/r1') {
+if (-not $C07Candidate -and -not $C08Candidate -and -not $C09Candidate -and -not $C10Candidate -and -not $PreflightOnly -and $ExecuteApprovedStart -ne 'R01-START-05/r1') {
     throw 'Starting the candidate requires the separately approved R01-START-05/r1 identifier.'
 }
 

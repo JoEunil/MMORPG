@@ -18,6 +18,8 @@ namespace C02
         [SerializeField] private GameObject bazaarPanel;
         [SerializeField] private Button marketButton;
         [SerializeField] private Button[] itemTypeButtons;
+        [SerializeField] private Button searchListingsButton;
+        [SerializeField] private Button myListingsButton;
         [SerializeField] private Button searchButton;
         [SerializeField] private Button previousPageButton;
         [SerializeField] private Button nextPageButton;
@@ -28,6 +30,7 @@ namespace C02
         private IViewModelUI model;
         private ushort itemType = 1;
         private ushort page;
+        private bool myListings;
         private float requestDeadline;
         private bool requestPending;
         public bool IsOpen => bazaarPanel != null && bazaarPanel.activeSelf;
@@ -51,7 +54,9 @@ namespace C02
             itemTypeButtons[0].onClick.AddListener(SelectPotion);
             itemTypeButtons[1].onClick.AddListener(SelectWeaponShield);
             itemTypeButtons[2].onClick.AddListener(SelectArmor);
-            searchButton.onClick.AddListener(Search);
+            if (searchListingsButton != null) searchListingsButton.onClick.AddListener(SelectSearchListings);
+            if (myListingsButton != null) myListingsButton.onClick.AddListener(SelectMyListings);
+            searchButton.onClick.AddListener(RefreshCurrentView);
             previousPageButton.onClick.AddListener(PreviousPage);
             nextPageButton.onClick.AddListener(NextPage);
             closeButton.onClick.AddListener(ClosePanel);
@@ -65,7 +70,9 @@ namespace C02
             if (!requestPending || Time.unscaledTime < requestDeadline) return;
             CancelPending();
             rowsText.text = string.Empty;
-            statusText.text = "Search timed out. Select Search to retry.";
+            statusText.text = myListings
+                ? "My listings timed out. Select Refresh to retry."
+                : "Search timed out. Select Search to retry.";
             UpdateControls();
         }
 
@@ -75,6 +82,7 @@ namespace C02
             CancelPending();
             model = next;
             page = 0;
+            myListings = false;
             ClearResults();
             bazaarPanel.SetActive(false);
             if (model != null) model.OnBazaarReceived += BazaarReceived;
@@ -99,8 +107,55 @@ namespace C02
             if (!WorldAvailable || model == null || loginScreen.Model != model) return;
             if (bazaarPanel.activeSelf) { ClosePanel(); return; }
             worldScreen.StopActions();
+            myListings = false;
             bazaarPanel.SetActive(true);
             ClearResults();
+            Search();
+        }
+
+        private void SelectSearchListings()
+        {
+            SelectView(false);
+        }
+
+        private void SelectMyListings()
+        {
+            SelectView(true);
+        }
+
+        private void SelectView(bool showMyListings)
+        {
+            if (!bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model)
+                return;
+            if (myListings == showMyListings) return;
+            CancelPending();
+            myListings = showMyListings;
+            ClearResults();
+            UpdateControls();
+            RefreshCurrentView();
+        }
+
+        private void RefreshCurrentView()
+        {
+            if (myListings)
+            {
+                if (!bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model || requestPending)
+                    return;
+                worldScreen.StopActions();
+                ClearRows();
+                requestPending = true;
+                requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+                statusText.text = "Loading my listings…";
+                UpdateControls();
+                try { model.RequestBazaarMyList(); }
+                catch (Exception)
+                {
+                    CancelPending();
+                    statusText.text = "My listings failed. Select Refresh to retry.";
+                    UpdateControls();
+                }
+                return;
+            }
             Search();
         }
 
@@ -120,7 +175,7 @@ namespace C02
 
         private void Search()
         {
-            if (!bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model || requestPending)
+            if (myListings || !bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model || requestPending)
                 return;
             if (itemType < 1 || itemType > 3) return;
             worldScreen.StopActions();
@@ -155,6 +210,7 @@ namespace C02
         private void ClosePanel()
         {
             CancelPending();
+            myListings = false;
             bazaarPanel.SetActive(false);
             ClearResults();
             UpdateControls();
@@ -171,14 +227,18 @@ namespace C02
             if (!success)
             {
                 ClearRows();
-                statusText.text = "Search failed. Select Search to retry.";
+                statusText.text = myListings
+                    ? "My listings failed. Select Refresh to retry."
+                    : "Search failed. Select Search to retry.";
                 UpdateControls();
                 return;
             }
             if (rows == null || rows.Count > 30)
             {
                 ClearRows();
-                statusText.text = "Search response was invalid. Select Search to retry.";
+                statusText.text = myListings
+                    ? "My listings response was invalid. Select Refresh to retry."
+                    : "Search response was invalid. Select Search to retry.";
                 UpdateControls();
                 return;
             }
@@ -187,17 +247,31 @@ namespace C02
             foreach (BazaarListingView listing in rows)
             {
                 if (text.Length != 0) text.Append('\n');
-                text.Append("LISTING ").Append(listing.ListingID.ToString(CultureInfo.InvariantCulture))
-                    .Append("   ITEM ").Append(listing.ItemID.ToString(CultureInfo.InvariantCulture))
-                    .Append("   QTY ").Append(listing.Quantity.ToString(CultureInfo.InvariantCulture))
-                    .Append("   PRICE ").Append(listing.Price.ToString(CultureInfo.InvariantCulture))
-                    .Append("   SELLER ").Append(listing.SellerCharacterID.ToString(CultureInfo.InvariantCulture))
-                    .Append("   REGISTERED ").Append(listing.RegisteredAt.ToString(CultureInfo.InvariantCulture))
-                    .Append("   STATUS ").Append(listing.Status.ToString(CultureInfo.InvariantCulture));
+                if (myListings)
+                {
+                    text.Append("Listing #").Append(listing.ListingID.ToString(CultureInfo.InvariantCulture))
+                        .Append(" · ").Append(ListingStatusName(listing.Status))
+                        .Append("\nItem ").Append(listing.ItemID.ToString(CultureInfo.InvariantCulture))
+                        .Append("  |  Quantity ").Append(listing.Quantity.ToString(CultureInfo.InvariantCulture))
+                        .Append("  |  Price ").Append(listing.Price.ToString(CultureInfo.InvariantCulture))
+                        .Append("\nRegistered ").Append(listing.RegisteredAt.ToString(CultureInfo.InvariantCulture));
+                }
+                else
+                {
+                    text.Append("LISTING ").Append(listing.ListingID.ToString(CultureInfo.InvariantCulture))
+                        .Append("   ITEM ").Append(listing.ItemID.ToString(CultureInfo.InvariantCulture))
+                        .Append("   QTY ").Append(listing.Quantity.ToString(CultureInfo.InvariantCulture))
+                        .Append("   PRICE ").Append(listing.Price.ToString(CultureInfo.InvariantCulture))
+                        .Append("   SELLER ").Append(listing.SellerCharacterID.ToString(CultureInfo.InvariantCulture))
+                        .Append("   REGISTERED ").Append(listing.RegisteredAt.ToString(CultureInfo.InvariantCulture))
+                        .Append("   STATUS ").Append(listing.Status.ToString(CultureInfo.InvariantCulture));
+                }
             }
             rowsText.text = text.ToString();
-            statusText.text = rows.Count == 0 ? "No listings in " + ItemTypeName(itemType) + " on this page." :
-                rows.Count.ToString(CultureInfo.InvariantCulture) + " listings · " + ItemTypeName(itemType);
+            statusText.text = myListings
+                ? rows.Count == 0 ? "You have no listings." : "My listings: " + rows.Count.ToString(CultureInfo.InvariantCulture) + " listings · up to 30 shown"
+                : rows.Count == 0 ? "No listings in " + ItemTypeName(itemType) + " on this page." :
+                    rows.Count.ToString(CultureInfo.InvariantCulture) + " listings · " + ItemTypeName(itemType);
             UpdateControls();
         }
 
@@ -221,23 +295,55 @@ namespace C02
         {
             bool available = WorldAvailable && model != null && loginScreen != null && loginScreen.Model == model;
             if (marketButton != null) marketButton.interactable = available;
-            if (searchButton != null) searchButton.interactable = available && bazaarPanel.activeSelf && !requestPending;
-            if (previousPageButton != null) previousPageButton.interactable = available && bazaarPanel.activeSelf && !requestPending && page > 0;
-            if (nextPageButton != null) nextPageButton.interactable = available && bazaarPanel.activeSelf && !requestPending && page < ushort.MaxValue;
+            if (searchButton != null)
+            {
+                searchButton.interactable = available && bazaarPanel.activeSelf && !requestPending;
+                var refreshLabel = searchButton.GetComponentInChildren<TMP_Text>(true);
+                if (refreshLabel != null) refreshLabel.text = myListings ? "REFRESH" : "SEARCH / REFRESH";
+            }
+            if (previousPageButton != null)
+            {
+                previousPageButton.gameObject.SetActive(!myListings);
+                previousPageButton.interactable = available && bazaarPanel.activeSelf && !myListings && !requestPending && page > 0;
+            }
+            if (nextPageButton != null)
+            {
+                nextPageButton.gameObject.SetActive(!myListings);
+                nextPageButton.interactable = available && bazaarPanel.activeSelf && !myListings && !requestPending && page < ushort.MaxValue;
+            }
+            if (pageText != null)
+            {
+                pageText.gameObject.SetActive(!myListings);
+                pageText.text = "Page " + ((uint)page + 1).ToString(CultureInfo.InvariantCulture);
+            }
+            if (searchListingsButton != null)
+            {
+                searchListingsButton.interactable = available && bazaarPanel.activeSelf;
+                var label = searchListingsButton.GetComponentInChildren<TMP_Text>(true);
+                if (label != null) label.text = (myListings ? string.Empty : "> ") + "SALES";
+            }
+            if (myListingsButton != null)
+            {
+                myListingsButton.interactable = available && bazaarPanel.activeSelf;
+                var label = myListingsButton.GetComponentInChildren<TMP_Text>(true);
+                if (label != null) label.text = (myListings ? "> " : string.Empty) + "MY LISTINGS";
+            }
             if (itemTypeButtons != null)
                 for (int i = 0; i < itemTypeButtons.Length; i++)
                     if (itemTypeButtons[i] != null)
                     {
+                        itemTypeButtons[i].gameObject.SetActive(!myListings);
                         itemTypeButtons[i].interactable = available && bazaarPanel != null && bazaarPanel.activeSelf && !requestPending;
                         var label = itemTypeButtons[i].GetComponentInChildren<TMP_Text>(true);
                         if (label != null) label.text = (itemType == i + 1 ? "> " : string.Empty) +
                             (i == 0 ? "POTIONS" : i == 1 ? "WEAPONS / SHIELDS" : "ARMOR");
                     }
             if (closeButton != null) closeButton.interactable = true;
-            if (pageText != null) pageText.text = "Page " + ((uint)page + 1).ToString(CultureInfo.InvariantCulture);
         }
 
         private static string ItemTypeName(ushort value) => value == 1 ? "potions" : value == 2 ? "weapons / shields" : "armor";
+
+        private static string ListingStatusName(byte status) => status == 0 ? "Trading" : status == 1 ? "Sold" : "Claimed";
 
         private void OnDisable()
         {
@@ -250,7 +356,9 @@ namespace C02
                 if (itemTypeButtons[1] != null) itemTypeButtons[1].onClick.RemoveListener(SelectWeaponShield);
                 if (itemTypeButtons[2] != null) itemTypeButtons[2].onClick.RemoveListener(SelectArmor);
             }
-            if (searchButton != null) searchButton.onClick.RemoveListener(Search);
+            if (searchListingsButton != null) searchListingsButton.onClick.RemoveListener(SelectSearchListings);
+            if (myListingsButton != null) myListingsButton.onClick.RemoveListener(SelectMyListings);
+            if (searchButton != null) searchButton.onClick.RemoveListener(RefreshCurrentView);
             if (previousPageButton != null) previousPageButton.onClick.RemoveListener(PreviousPage);
             if (nextPageButton != null) nextPageButton.onClick.RemoveListener(NextPage);
             if (closeButton != null) closeButton.onClick.RemoveListener(ClosePanel);

@@ -179,6 +179,33 @@ namespace Net {
         EXPECT_FALSE(context.CheckGameSession());
     }
 
+    TEST_F(NetworkRegressionTest, BazaarMyListExactPacketDispatchesAfterFragmentedReceive) {
+        auto bytes = MakeClientPacket(Core::OP::BAZAAR_MY_LIST, 12, 12);
+        *Core::parseBody<Core::BazaarMyListRequestBody>(bytes.data()) = {123};
+        EXPECT_TRUE(Receive(std::vector<uint8_t>(bytes.begin(), bytes.begin() + 8)));
+        EXPECT_EQ(dispatcher.processed, 0);
+        EXPECT_TRUE(Receive(std::vector<uint8_t>(bytes.begin() + 8, bytes.end())));
+        EXPECT_EQ(dispatcher.processed, 1);
+    }
+
+    TEST_F(NetworkRegressionTest, BazaarMyListSimulationFlagRejectsBeforeDispatcher) {
+        EXPECT_FALSE(Receive(MakeClientPacket(Core::OP::BAZAAR_MY_LIST, 12, 12, Core::FLAG_SIMULATION)));
+        EXPECT_EQ(dispatcher.processed, 0);
+        EXPECT_FALSE(context.CheckGameSession());
+    }
+
+    TEST_F(NetworkRegressionTest, BazaarMyListShortBodyRejectsBeforeDispatcher) {
+        EXPECT_FALSE(Receive(MakeClientPacket(Core::OP::BAZAAR_MY_LIST, 11, 11)));
+        EXPECT_EQ(dispatcher.processed, 0);
+        EXPECT_FALSE(context.CheckGameSession());
+    }
+
+    TEST_F(NetworkRegressionTest, BazaarMyListTrailingByteRejectsBeforeDispatcher) {
+        EXPECT_FALSE(Receive(MakeClientPacket(Core::OP::BAZAAR_MY_LIST, 13, 13)));
+        EXPECT_EQ(dispatcher.processed, 0);
+        EXPECT_FALSE(context.CheckGameSession());
+    }
+
     TEST_F(NetworkRegressionTest, RejectsZeroLengthPongWithoutLooping) {
         EXPECT_FALSE(Receive(MakeClientPacket(Core::OP::PONG, 0, sizeof(Core::PacketHeader))));
         EXPECT_FALSE(context.CheckGameSession());

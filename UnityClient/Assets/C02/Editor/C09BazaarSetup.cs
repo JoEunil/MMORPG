@@ -59,13 +59,18 @@ public static class C09BazaarSetup
             rect.anchorMin = new Vector2(0, 1);
             rect.anchorMax = new Vector2(0, 1);
             rect.pivot = new Vector2(0, 1);
-            rect.anchoredPosition = new Vector2(15 + i * 154, -58);
+            rect.anchoredPosition = new Vector2(15 + i * 154, -98);
             rect.sizeDelta = new Vector2(142, 34);
             typeButtons[i].GetComponentInChildren<TMP_Text>(true).fontSize = 10;
         }
 
+        var searchListings = Button("BazaarSearchListingsButton", paper.transform, "SALES", new Color(.42f, .30f, .16f, 1));
+        AnchorTopLeft(searchListings.GetComponent<RectTransform>(), 15, 58, 226, 34);
+        var myListings = Button("BazaarMyListingsButton", paper.transform, "MY LISTINGS", new Color(.42f, .30f, .16f, 1));
+        AnchorTopLeft(myListings.GetComponent<RectTransform>(), 249, 58, 226, 34);
+
         var scrollObject = FindOrCreate("BazaarScroll", paper.transform, typeof(RectTransform), typeof(ScrollRect));
-        Stretch(scrollObject.GetComponent<RectTransform>(), new RectOffset(14, 14, 100, 142));
+        Stretch(scrollObject.GetComponent<RectTransform>(), new RectOffset(14, 14, 140, 142));
         var viewport = FindOrCreate("BazaarViewport", scrollObject.transform, typeof(RectTransform), typeof(Image), typeof(Mask));
         Stretch(viewport.GetComponent<RectTransform>(), 0);
         viewport.GetComponent<Image>().color = new Color(.91f, .85f, .70f, .84f);
@@ -126,6 +131,8 @@ public static class C09BazaarSetup
         serialized.FindProperty("worldScreen").objectReferenceValue = world;
         serialized.FindProperty("bazaarPanel").objectReferenceValue = panel;
         serialized.FindProperty("marketButton").objectReferenceValue = market;
+        serialized.FindProperty("searchListingsButton").objectReferenceValue = searchListings;
+        serialized.FindProperty("myListingsButton").objectReferenceValue = myListings;
         serialized.FindProperty("itemTypeButtons").arraySize = typeButtons.Length;
         for (int i = 0; i < typeButtons.Length; i++) serialized.FindProperty("itemTypeButtons").GetArrayElementAtIndex(i).objectReferenceValue = typeButtons[i];
         serialized.FindProperty("searchButton").objectReferenceValue = search;
@@ -194,6 +201,12 @@ public static class C09BazaarSetup
         rect.pivot = new Vector2(.5f, 1);
         rect.anchoredPosition = new Vector2(0, -inset);
         rect.sizeDelta = new Vector2(-24, height);
+    }
+    private static void AnchorTopLeft(RectTransform rect, float x, float inset, float width, float height)
+    {
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1);
+        rect.anchoredPosition = new Vector2(x, -inset);
+        rect.sizeDelta = new Vector2(width, height);
     }
     private static void AnchorTopRight(RectTransform rect, float inset, float width, float height)
     {
