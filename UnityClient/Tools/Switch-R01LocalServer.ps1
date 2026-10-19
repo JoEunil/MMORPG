@@ -371,7 +371,7 @@ Assert-Listener $original.Id
 New-Item -ItemType Directory -Path $captures -Force | Out-Null
 New-Item -ItemType Directory -Path $evidenceFolder -ErrorAction Stop | Out-Null
 if ($C07Candidate) { Record 'C07 local test transition under current normal-server-operation authorization. No direct DB writes, force stop, or original-image replacement.' }
-if ($C08Candidate) { Record 'C08 local test transition under current normal-server-operation authorization. No direct DB writes, force stop, or original-image replacement.' }
+elseif ($C08Candidate) { Record 'C08 local test transition under current normal-server-operation authorization. No direct DB writes, force stop, or original-image replacement.' }
 elseif ($C09Candidate) { Record 'C09 local test transition under current normal-server-operation authorization. No direct DB writes, force stop, or original-image replacement.' }
 else { Record 'R01-DEPLOY-04/r1; execution requires explicit approval recorded by Coordinator. Normal shutdown may persist dedicated character states; no direct DB writes or data restoration.' }
 Assert-EmptyWal
