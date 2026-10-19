@@ -1,3 +1,8 @@
+## 현재 — 몬스터 배치 편집 검증 완료 / 게시 승인 직전
+
+codex/world-content는 PR37 head ded6c582에서분기. C15runtime/export/UITKInspector/실제asset·inc+ZoneState_Monsters.cpp 초기화숫자연결만완료,보호기하/AOI/큐/락/DB수정0. 최종독립review차단0. SpawnExport2/2, 실제Initializer nativeprobe241·type/ID/위치범위PASS, nativeInspector8→9/265→8/241복원·캡처1PASS. S01/사냥/전체회귀반복0. rootScenePlay/dirtyfalse,서버31796그대로/재시작·DB직접쓰기0. SPAWN_AUTHORING_RESULTS.md 참조.
+
+최신사용자지시를CURRENT_POLICY/DELIVERY/WORKFLOW/Coordinator/template/rootAGENTS에반영: PR게시직전Slack승인,그전push/PR갱신0. 지정부모1792420090.451099 수신기threads등록. PR37조회open/unmerged/head ded6 그대로. 로컬검증commit준비후 WORLD01에구체결과·PR37같은큰묶음갱신승인을요청한다. 새작은PR0/자동병합0/Pages게시0. 원본Game/rootWIP보존. 승인대기는일반완료별재개승인이아니라요청된게시통제다. 독립후속기획은계속가능.
 ## 현재 — 사냥 표시·기존 콘텐츠 편집 구현/리뷰/최소 검증 완료
 
 hunting-b 실제 입력 PASS는 직전 기록 유지. 후속 S01 실제 typedasset/CreateDefaultCandidate/ExportValidated 및 inc2개 생성·CoreLib 두 initializer include 연결 완료. 기본값/ID/파생값 보존, 보호 프로토콜/DB/인증/Zonequeue/locks 변경0. 독립 리뷰 maxHp>int.MaxValue P2 보완/최종차단0. ContentExport2/2와 실제 C++ 두 테이블 native probe1 PASS. 전체회귀·사냥입력반복0. rootEditor Playstop/새asset 실제Inspector 확인/실캡처, 실행 서버31796 그대로/기동·DB직접쓰기0. CONTENT_EXPORT_RESULTS.md 상세.

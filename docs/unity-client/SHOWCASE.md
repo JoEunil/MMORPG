@@ -17,7 +17,7 @@ AI Agent 워크플로우로 기존 게임 서버에 연결하는 Unity 클라이
 - [내 매물 조회와 검색 전환](portfolio/my-listings.md) — 현재 캐릭터의 매물 조회, 새로고침과 판매 검색 복귀.
 - [아이템과 거래소 화면](portfolio/item-market.md) — 인벤토리와 거래소를 실제 아이템·매물 중심으로 정리한 화면 개선.
 - [사냥 상태와 전투 HUD](portfolio/player-hud.md) — 캐릭터의 성장 정보와 주변 몬스터 체력을 표시하는 화면.
-- [스킬·몬스터 데이터 편집](portfolio/server-content.md) — Unity에서 기존 게임 데이터의 기본값을 다루는 작업.
+- [스킬·몬스터 데이터 편집](portfolio/server-content.md) — 스킬·몬스터 수치와 스폰 배치를 편집하고 서버 데이터로 내보내는 도구.
 
 ## AI Agent 워크플로우
 

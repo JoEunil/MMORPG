@@ -1,3 +1,7 @@
+## 몬스터 배치 편집 검증 종료
+
+SpawnExport2/2+실제InitializeMonster native1회+Inspector실입력8→9→8복원 한 흐름 PASS. 기본수치동일·실행서버변경없어 추가게임입력/기존사냥반복0. 신규변경/실패근거없이동일검증반복금지. SPAWN_AUTHORING_RESULTS.md 참조.
+
 ## 사냥 상태 검증 완료 — 최신
 
 사용자 입력 재개 지시에 따라 한 native 로그인→성장 표시→Ring1회→몬스터3개 HP500/1500와 게이지1/3→정상퇴장/바0→Playstop을 완료했다. 카메라 보완 전 표시 실패는 보존했고 최종 카메라 연결 후 실검증 PASS. HuntingState3/3 기통과를 반복하지 않았다. 후속 콘텐츠 편집은 기본값 그대로이므로 ContentExport2/2+native 동등성1개로 끝내고 게임 입력을 반복하지 않았다. 상세 HUNTING_STATE_RESULTS/CONTENT_EXPORT_RESULTS. 현재 입력 보류 지시 없음, 새 작업은 직접 영향 항목만 다음 묶음에 모은다.
