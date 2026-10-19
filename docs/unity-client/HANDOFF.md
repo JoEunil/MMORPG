@@ -1,3 +1,25 @@
+## 현재 완료 — 정상 종료 복구·빈 가방 실제 확인
+
+BAG02 승인1792410799.402169 소비/같은의사표시1792410787 별도실행0. 검토패치 actualcandidate2파일적용/빌드 SHA0F9D68FDEB63FA77F907571AB1814777EA7F5091E00861EB057C835C7E4E3E32. strict새q종료 PASS 뒤만 BAG01두360byte0행 commit1회/독립READONLY PASS. INSERT 반복금지. 승인start2회 모두소비, 현재PID31796 ticks639280079946206209/BAG02-Candidate/bin/9999Listen/Established0. Unity5011한native흐름 cold가방status0→Refresh1회→status1/rows0/No items./카드0/좌표불변→대표PNG1→Close/Disconnect/modelnull/Playstop. 기존HUD/전체103/C++회귀 반복0. char5011 HP6700MP9980/5012 HP10000MP9999·좌표그대로. 로그아웃CancelIoEx1168잔여1건 범위밖. 실제제품서버source는candidate의 IOCP.cpp, root원본과C10binary보존. 상세PLAYER_HUD_RESULTS최상단. 사이트현재범위/캡처갱신중, 다음같은PR36commit/push/ready, 병합·게시0.
+
+## BAG02 구체 패치 후보 리뷰 완료 — 적용 전
+
+사용자 계속 지시에 따라 승인 비의존 후보 작업 진행. 지정 Slack 추가 회신은 직접 조회에서도 없음. docs/unity-client/BAG02.candidate.patch 양 경로 동일 SHA B36A7D0F767E2553BB333764F243457AFABEB492ADD16959D057217F18547EBA. 구현 담당 패치만 작성→독립 리뷰 P2 두 건(runtime fatal과 종료 구별/소켓 반환) 보완→최종 차단0. git apply --check --whitespace=error 및 메모리 PS AST 문법 통과. 실제 보호 소스/도구 변경·빌드·DB·서버·Unity 입력 실행0. 현재 MainServer0/9999 ListenEstablished0/numeric WAL0 확인. 승인 후 실제 적용·빌드·새 정상 종료 검증을 먼저 수행하고, 통과 뒤 기존 BAG01 두 행과 한 가방 입력 흐름을 이어간다. 새 PR/전체 회귀는 추가하지 않는다.
+## BAG01 승인 확인 / 정상 종료 검사 중단 — 2026-10-19
+
+지정 Slack 사용자 U0C9QEUHPMK의 회신1792408921.550179 `승인 BAG01`을 부모1792407691.861929에서 직접 확인했다. 요청1792408332.366609와 일치. 이 회신은 정상 종료 1회 착수에 사용됐으며 중복 재실행하지 않는다. DB 승인은 유효하지만 필수 저장 검사 실패로 INSERT/COMMIT0이다.
+
+검토한 stop-only SHA31EDCE1C0C8D76CE498731206FA4E13BCDE6EE4230CC8AEA233D056A8157D2B9로 고정 C10 PID9060에 q 전달. helper/native exit0 확인 후 종료 오류 로그 증가로 기존 엄격 가드 ABORT. 신규 GQCS995 8건/AcceptEx10038 8건, MQ3/DB4 종료 로그 관찰, 종료 전후 캐릭터 동일. 별도 READ ONLY MainServer0/9999 Listen·Established0/numeric WAL0/두 inventory 행 누락 확인. 가드 PASS나 빈 가방 성공으로 보고하지 않는다. 서버는 현재 정지 상태이며 재기동·강제 종료·WAL 삭제·DB 쓰기·Unity 입력0. 로그인/DB/Redis 서비스는 조작하지 않았다.
+
+증거 Captures/r01-switch-20261019-203003-505-36920-evidence, bag01-stop-result.txt. stop wrapper는 기존 도구의 동일 prefix+좁은 entry이며 독립 리뷰 PASS, 제품/가드 소스 변경0. 종료 플래그 이후 취소 ACCEPT의 재등록이 원인. system.log의 기존 console 2줄도 전체 JSON 파싱과 맞지 않음. BAG02_REQUEST.md에 최소 제품 수정/엄격 로그 파싱/새 후보 1회 기동 후 새 정상 종료 근거 확보안을 준비했다. 현재 실패를 성공으로 재분류하거나 가드 완화 금지. BAG01 자체 재승인 불필요, 추가 서버 변경은 Slack BAG02 범위로 구분한다. HUD/전체 회귀 재시험0, PR36 draft 유지, 같은 PR에 후속 결과 반영.
+## 현재 작업 — 플레이 HUD 검증 완료 / 가방 BAG01 승인 대기
+
+master d535b0d에서codex/player-hud-inventory생성/C10-Delivery/source재사용. 미반영공개설명ef03b18만3f751bd로cherry-pick. HUD소스5파일/C05게이지+새Setup/fixture,독립리뷰Sprite결함수정후차단0,EditorSetup저장/Scene통합. C02자동103/103·실제ABI360/offset/0blobcodec실행exit0. 실제Windows로그인5011→Ring버튼→MP10000→9980/HP공격감소와게이지일치→정상logout/게이지0. digit2초기실입력서버변화미관측은실패로보존/성공claim금지. 실캡처서버combat다음프레임HP7750/sample7800·0.78 구분. 최종READONLY5011 HP6700MP9980/좌표불변,5012기존값유지. Playfalse/Established0/MainServer9060/9999유지/서버재시작0/DB직접쓰기0. root-candidateScene/source/DLL5파일freeze동일(Captures/c12-final-freeze.txt).
+
+가방은기존inventory행누락. 분석 NEXT_ITEM_CONTRACT,최소2행tool Prepare-C12EmptyInventory.cjs/defaultSELECT-only최종PASS. 실제 schema signedbigint는DDLunsigned와달라정확현재schema검사로후보맞춤/스키마변경0. 독립high리뷰P1live연결0만으로dirtyWAL배제못함→commit은정상q/drain·MainServer전체0·9999Listen/Established0·root모든numericredo/backpressure0필수가드,단독PK검사P2도수정/최종차단0. 보호DB실행은사람승인BAG01대기. UnityCoordinator부모1792407691.861929/요청1792408332.366609,지정 사용자U0C9QEUHPMK회신아직없음(직접thread조회). threads16번째등록/수신기대상그대로. 승인 후기존Switch/Start가드정상종료근거뒤만정확2빈행COMMIT·READONLY확인·가방실입력/Refresh/패널전환배치. 기존guardshutdownerrordelta/drain실패시우회0/commit0/강제종료삭제0. HUD전투기검증반복금지.
+
+사이트HUD사례+실원본PNG2추가/기존기능설명4·GUIDE이관완료. build/링크앵커/HTTP26파일11HTML/ZIP/원본bytesPASS,실브라우저1280·390넘침0·이미지800/333px로드·상세→이력→상세. 8789미리보기session35074/IABtab8를HUDdetail로유지. 새 PR은큰묶음하나의draft로준비하며BAG01반영·가방실입력은미완료로남긴다. 현재새commit/push/PR0/병합0/공개0,원본rootWIP/Game보존. 상세PLAYER_HUD_RESULTS/BAG01_REQUEST/리뷰2개. 아래과거HEAD/PR35시점기록은역사다.
+
 ## 最新 — 아이템·거래소 화면 묶음 최종 검증 완료
 
 codex/item-market-ui, C10-Delivery/source 재사용, master449a3ef+C10cherry76f03c0. UI카드/매물선택·패널전환+사이트/정책을한PR로준비. 독립리뷰차단0/재활성화캐시수정. Unity최종98/98(C08구형fixture5실패·컴파일전재시도실패이력보존→최신fixture확인후통과). 실제Windows item-ui-a 전체흐름시장4/가방2응답일치/가방1키차단/ownActions0/좌표·HPMP불변/정상logout,가방은기존DB누락실패이며양수실서버성공claim없음. 캡처후시장행100→52setup한줄리뷰수정,해당시장선택/scroll만추가실입력/30행52px·content1686/scroll0/정상logout통과. 소스/Scene/DLLroot-candidate13파일동일(item-ui-final-files.txt),Play/compile/dirtyfalse/9999Listen9060·Established0/서버재시작0.

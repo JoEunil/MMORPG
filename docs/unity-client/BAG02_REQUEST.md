@@ -1,0 +1,40 @@
+최신 결과: 승인 확인 후 실행 완료. 새 정상 종료 검사 통과 → 정확 빈 행2개 COMMIT·READ ONLY 검증 → 실제 가방 cold 실패/Refresh1회/빈 성공·정상퇴장 확인. PLAYER_HUD_RESULTS.md 최상단 참조. 아래는 당시 요청·검토 이력이다.
+
+# BAG02 — 정상 종료 오류 수정 및 가방 검증 재개 후보
+
+## 확인한 문제
+
+BAG01 지정 사용자 승인 회신1792408921.550179을 직접 확인하고 정상 q 종료를 한 번 수행했다. native exit0 이후 종료 오류 로그가 늘어 기존 가드가 중단했다. DB INSERT/COMMIT, 재기동, Unity 입력 검증은 수행하지 않았다.
+
+실행 증거: UnityClient/Captures/r01-switch-20261019-203003-505-36920-evidence 및 bag01-stop-result.txt. 신규 오류는 GQCS 995 8건과 AcceptEx 10038 8건이다. 캐시 MQ 3개·DB worker 4개의 종료 로그가 있으며 종료 전후 두 캐릭터 SELECT 값은 동일하다. 후속 READ ONLY에서 MainServer0, 9999 Listen/Established0, 모든 numeric WAL 0바이트, 두 inventory 행 누락을 확인했다. 이 별도 관찰은 가드 PASS를 뜻하지 않는다.
+
+## 원인과 허용할 최소 변경
+
+제품 후보 대상은 NetLibrary/IOCP.cpp 한 파일이다. IOCP::CleanUp이 실행 플래그를 끄고 listen 소켓을 닫으면 대기 ACCEPT가 취소 완료로 깨어난다. WorkerThreadFunc 실패 경로가 종료 중에도 PostAccept를 호출하여 닫힌 listen 소켓에 재등록하고 오류·fatal을 발생시킨다. 독립 읽기 리뷰에서 실제 로그와 일치함을 확인했다.
+
+- 취소된 ACCEPT의 소켓·버퍼·overlapped 반환을 유지한다. 종료 중 재등록을 막고, 실행 중 실패 처리와 fatal은 유지한다.
+- 종료 상태가 확인된 ACCEPT 취소 995만 예상 종료로 처리한다. 운영 중 오류나 다른 operation 오류를 전역 무시하지 않는다.
+- PostAccept 진입과 호출 도중 종료 경합을 처리한다. 종료 상태와 일치하는 995/10038만 자원을 정리하고 반환한다.
+- 수신 중단 뒤 도착한 ACCEPT 성공 완료의 미등록 소켓·버퍼도 반환한다. 프로토콜·DB·인증·거래·큐/락/풀 설계는 바꾸지 않는다.
+
+도구 후보 대상은 UnityClient/Tools/Switch-R01LocalServer.ps1의 종료 로그 읽기다. 실제 system.log에는 기존 console 텍스트 `Connected to Redis!(session)` 및 `server stop`도 있어 전체 줄 JSON 파싱은 별도의 형식 오류를 낸다. 정확히 이 두 기존 줄만 구별하고 JSON 이벤트는 엄격히 파싱하며, 그 밖의 비JSON은 실패로 남긴다. 오류 바이트 증가 금지, 캐시 MQ3/DB4, native exit0, 프로세스/포트 부재, WAL0, 캐릭터 불변 조건을 제거하거나 오류를 화이트리스트로 통과시키지 않는다.
+
+## 실행·검증·복구 범위
+
+위 두 파일의 최소 후보 구현·독립 리뷰·컴파일 후, 현재 보존한 실패 로그/WAL과 두 캐릭터 READ ONLY 불변 근거를 유지한 채 수정 서버를 로컬 9999에서 1회 기동하는 범위를 요청한다. 기존 실패를 성공으로 바꾸지 않고 새 서버의 별도 정상 종료 결과를 확보한다. 로그를 지우거나 현재 검사를 재실행해 실패를 덮지 않는다.
+
+검증은 직접 영향 2개(실행 중 ACCEPT 오류 처리 유지·종료 중 ACCEPT 자원 정리/재등록 방지)와 정상 시작→q 종료 한 번으로 제한한다. 전체 게임 회귀와 HUD 재시험은 하지 않는다. 새 종료가 동일한 엄격 조건을 통과한 뒤에만 기존 승인 BAG01의 두 빈 행을 반영하고, 같은 수정 서버를 기동하여 5011 가방 조회/필요시 Refresh 한 번/정상 퇴장 한 흐름을 확인한다.
+
+실패하면 DB 변경 없이 로그·WAL·빌드를 보존하고 중단한다. 강제 종료, WAL 삭제/재생, 데이터 초기화·자동 DELETE, 미검증 구버전 자동 복구는 하지 않는다. BAG01 자체 범위를 늘리지 않으며 새 아이템·재화·스키마·기존 캐릭터 수치 변경은 없다. 기동은 종료 검증용 1회와 DB 반영 후 가방 검증용 1회, 총 2회를 포함한다. PR36 하나에서 결과를 전달한다.
+
+현재는 승인 요청 후보 문서만 작성했다. 위 보호 서버/도구 소스 변경·빌드·기동은 아직 수행하지 않았다. 지정 Slack 회신 `승인 BAG02` 확인 후 진행한다.
+
+## 구체적인 패치 후보와 독립 리뷰
+
+후보: [BAG02.candidate.patch](BAG02.candidate.patch), SHA256 B36A7D0F767E2553BB333764F243457AFABEB492ADD16959D057217F18547EBA. 대상은 위 두 파일뿐이며 실제 제품/도구에는 아직 적용하지 않았다.
+
+독립 리뷰에서 두 예상 종료 판별이 runtime fatal과 구별되도록 기존 !m_receiving 조건을 함께 요구했고, AcceptBuffer 할당 실패 시 생성한 소켓도 반환하도록 보완했다. 최종 두 지적 해결/추가 차단0. 큐 전체 drain 보장이나 새 락·풀 설계는 포함하지 않는다.
+
+C10 후보 브랜치 기준 git apply --check --whitespace=error 통과, 수정 PowerShell의 메모리 내 AST 문법 검사 통과. 이는 적용 가능성과 문법의 정적 확인이며 컴파일·실서버 성공을 뜻하지 않는다. 실제 NetLibrary/IOCP.cpp SHA D87D5C3D76E2E7B5403600508ADA361F3E3565D7DDB6451D2B2321BC2DBC204B, Switch 도구 SHA F5AB3CC96712D957580B08DD9472AA8CE28C46EC4267F77CA3A295B079E40550 그대로다.
+
+지정 Slack의 BAG02 승인 원문이 아직 없어 적용·빌드·서버 기동·DB 반영·Unity 입력 검증은 미실행이다. 승인 후 같은 PR36에서 후속 결과를 반영한다.

@@ -266,7 +266,13 @@ function Assert-StopEvidence([long]$ErrorLength, [int]$UpdateFailureCount) {
     $errorPath = Join-Path $newRoot 'logs\error.log'
     if ((Get-Item -LiteralPath $errorPath).Length -ne $ErrorLength) { throw 'Shutdown error-log delta requires review; no startup will follow.' }
     if ((Get-CharacterUpdateFailureCount) -ne $UpdateFailureCount) { throw 'Character-state update failure requires review; no startup will follow.' }
-    $events = @(Get-Content -LiteralPath (Join-Path $newRoot 'logs\system.log') -Encoding UTF8 | ForEach-Object { $_ | ConvertFrom-Json -ErrorAction Stop })
+    $events = @(Get-Content -LiteralPath (Join-Path $newRoot 'logs\system.log') -Encoding UTF8 | ForEach-Object {
+        if (-not [string]::Equals($_, 'Connected to Redis!(session)', [StringComparison]::Ordinal) -and
+            -not [string]::Equals($_, 'server stop', [StringComparison]::Ordinal)) {
+            if ([string]::IsNullOrWhiteSpace($_)) { throw 'Unexpected empty line in system log.' }
+            $_ | ConvertFrom-Json -ErrorAction Stop
+        }
+    })
     $cacheStops = @($events | Where-Object { $_.event -eq 'cache mq' -and $_.msg -eq 'mq thread stopped' }).Count
     $dbStops = @($events | Where-Object { $_.event -eq 'DB worker thread' -and $_.msg -eq 'DB worker thread stopped' }).Count
     if ($cacheStops -ne 3 -or $dbStops -ne 4) { throw 'Expected cache MQ/DB worker drain termination evidence missing; no startup will follow.' }

@@ -180,12 +180,17 @@ namespace Net {
             {
                 DWORD err = GetLastError();
 
-                Core::errorLogger->LogWarn("iocp", "GetQueuedCompletionStatus failed", "error code", std::to_string(err), "socket", clientSocket);
+                const bool expectedShutdown = pOverlappedEx->op == IOOperation::ACCEPT &&
+                    err == ERROR_OPERATION_ABORTED && !m_isRunning.load(std::memory_order_relaxed) &&
+                    !m_receiving.load(std::memory_order_relaxed);
+                if (!expectedShutdown)
+                    Core::errorLogger->LogWarn("iocp", "GetQueuedCompletionStatus failed", "error code", std::to_string(err), "socket", clientSocket);
 
                 if (pOverlappedEx->op == IOOperation::ACCEPT) {
                     overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
                     closesocket(clientSocket); // 세션 등록 전 소켓 — 직접 닫기
-                    PostAccept();              // accept 슬롯 보충
+                    if (m_isRunning.load(std::memory_order_relaxed))
+                        PostAccept();          // accept 슬롯 보충
                 }
                 else {
                     CleanUpSocket(clientSocket, pOverlappedEx->sessionID); // RECV/SEND: 등록된 세션 정리
@@ -235,9 +240,11 @@ namespace Net {
             }
             case IOOperation::ACCEPT: {
                 // completion key는 listen 소켓
-                if (!m_receiving.load(std::memory_order_relaxed))
-                    break;
                 overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
+                if (!m_receiving.load(std::memory_order_relaxed) || !m_isRunning.load(std::memory_order_relaxed)) {
+                    closesocket(clientSocket);
+                    break;
+                }
                 setsockopt(clientSocket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&m_listenSock, sizeof(m_listenSock));
                 // NAGLE 알고리즘 OFF
                 BOOL nodelay = TRUE;
@@ -273,6 +280,8 @@ namespace Net {
 
     void IOCP::PostAccept()
     {
+        if (!m_isRunning.load(std::memory_order_relaxed))
+            return;
         SOCKET clientSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
         if (clientSocket == INVALID_SOCKET) {
             Core::errorLogger->LogWarn("iocp", "failed to create client socket");
@@ -295,6 +304,13 @@ namespace Net {
             // PREPOSTED_ACCEPT 만큼만 PostAccept가 유지되기 때문에 발생할 일이 없음. Accept가 실패될 순 있어도 PostAccept가 실패될 순 없음
             Core::errorLogger->LogError("iocp", "Failed to acquire Accept Buffer");
             overlappedExPool->Return(pOverlappedEx);
+            closesocket(clientSocket);
+            return;
+        }
+        if (!m_isRunning.load(std::memory_order_relaxed)) {
+            overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
+            overlappedExPool->Return(pOverlappedEx);
+            closesocket(clientSocket);
             return;
         }
         DWORD bytesReceived = 0;
@@ -312,11 +328,16 @@ namespace Net {
         if (bRet == FALSE) {
             int err = WSAGetLastError();
             if (err != ERROR_IO_PENDING) {
-                Core::errorLogger->LogError("iocp", "Critical: failed to post AcceptEx", "error", err);
+                const bool expectedShutdown = !m_isRunning.load(std::memory_order_relaxed) &&
+                    !m_receiving.load(std::memory_order_relaxed) &&
+                    (err == ERROR_OPERATION_ABORTED || err == WSAENOTSOCK);
+                if (!expectedShutdown) {
+                    Core::errorLogger->LogError("iocp", "Critical: failed to post AcceptEx", "error", err);
 
-                m_isRunning.store(false, std::memory_order_relaxed);
-                fatalError->store(true, std::memory_order_relaxed);
-                cv->notify_one();
+                    m_isRunning.store(false, std::memory_order_relaxed);
+                    fatalError->store(true, std::memory_order_relaxed);
+                    cv->notify_one();
+                }
 
                 overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
                 overlappedExPool->Return(pOverlappedEx);
