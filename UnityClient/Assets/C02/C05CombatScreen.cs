@@ -20,6 +20,8 @@ namespace C02
         [SerializeField] private TMP_Text vitalsText;
         [SerializeField] private TMP_Text combatStatusText;
         [SerializeField] private TMP_Text aimText;
+        [SerializeField] private UnityEngine.UI.Image hpFill;
+        [SerializeField] private UnityEngine.UI.Image mpFill;
         private IViewModelUI model;
         private Action<ushort, ActionResultField[]> actionResults;
         private int generation;
@@ -91,6 +93,8 @@ namespace C02
                 var state = worldScreen.OwnFull;
                 vitalsText.text = string.Format(CultureInfo.InvariantCulture, "HP {0} / {1}    MP {2} / {3}",
                     state.hp, state.maxHp, state.mp, state.maxMp);
+                if (hpFill != null) hpFill.fillAmount = GaugeAmount(state.hp, state.maxHp);
+                if (mpFill != null) mpFill.fillAmount = GaugeAmount(state.mp, state.maxMp);
                 aimText.text = "Line aim: " + LineDirection(state.dir);
                 if (state.hp == 0) combatStatusText.text = "HP 0 — movement and combat stopped. Disconnect to leave.";
                 else if (combatStatusText.text.StartsWith("HP 0", StringComparison.Ordinal)) combatStatusText.text = string.Empty;
@@ -99,6 +103,8 @@ namespace C02
             {
                 if (observedZone != 0 || ownId != 0) ResetObservation();
                 vitalsText.text = string.Empty;
+                if (hpFill != null) hpFill.fillAmount = 0;
+                if (mpFill != null) mpFill.fillAmount = 0;
                 aimText.text = string.Empty;
                 combatStatusText.text = string.Empty;
             }
@@ -162,6 +168,7 @@ namespace C02
         // Rectangular skill semantics differ from movement's vertical directions on this server.
         private static string LineDirection(byte dir) => dir == 0 ? "South" : dir == 1 ? "North" : dir == 2 ? "West" : "East";
         private static string SkillName(byte slot) => slot == 0 ? "Strike" : slot == 1 ? "Ring" : "Line";
+        private static float GaugeAmount(int current, int maximum) => maximum <= 0 ? 0 : Mathf.Clamp01((float)current / maximum);
         private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
 
         private void OnDisable()
@@ -183,6 +190,8 @@ namespace C02
                 foreach (var button in skillButtons) if (button != null) button.interactable = false;
             }
             if (vitalsText != null) vitalsText.text = string.Empty;
+            if (hpFill != null) hpFill.fillAmount = 0;
+            if (mpFill != null) mpFill.fillAmount = 0;
             if (combatStatusText != null) combatStatusText.text = string.Empty;
             if (aimText != null) aimText.text = string.Empty;
         }

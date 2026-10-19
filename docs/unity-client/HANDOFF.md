@@ -1,3 +1,11 @@
+## 현재 작업 — 플레이 HUD 검증 완료 / 가방 BAG01 승인 대기
+
+master d535b0d에서codex/player-hud-inventory생성/C10-Delivery/source재사용. 미반영공개설명ef03b18만3f751bd로cherry-pick. HUD소스5파일/C05게이지+새Setup/fixture,독립리뷰Sprite결함수정후차단0,EditorSetup저장/Scene통합. C02자동103/103·실제ABI360/offset/0blobcodec실행exit0. 실제Windows로그인5011→Ring버튼→MP10000→9980/HP공격감소와게이지일치→정상logout/게이지0. digit2초기실입력서버변화미관측은실패로보존/성공claim금지. 실캡처서버combat다음프레임HP7750/sample7800·0.78 구분. 최종READONLY5011 HP6700MP9980/좌표불변,5012기존값유지. Playfalse/Established0/MainServer9060/9999유지/서버재시작0/DB직접쓰기0. root-candidateScene/source/DLL5파일freeze동일(Captures/c12-final-freeze.txt).
+
+가방은기존inventory행누락. 분석 NEXT_ITEM_CONTRACT,최소2행tool Prepare-C12EmptyInventory.cjs/defaultSELECT-only최종PASS. 실제 schema signedbigint는DDLunsigned와달라정확현재schema검사로후보맞춤/스키마변경0. 독립high리뷰P1live연결0만으로dirtyWAL배제못함→commit은정상q/drain·MainServer전체0·9999Listen/Established0·root모든numericredo/backpressure0필수가드,단독PK검사P2도수정/최종차단0. 보호DB실행은사람승인BAG01대기. UnityCoordinator부모1792407691.861929/요청1792408332.366609,지정 사용자U0C9QEUHPMK회신아직없음(직접thread조회). threads16번째등록/수신기대상그대로. 승인 후기존Switch/Start가드정상종료근거뒤만정확2빈행COMMIT·READONLY확인·가방실입력/Refresh/패널전환배치. 기존guardshutdownerrordelta/drain실패시우회0/commit0/강제종료삭제0. HUD전투기검증반복금지.
+
+사이트HUD사례+실원본PNG2추가/기존기능설명4·GUIDE이관완료. build/링크앵커/HTTP26파일11HTML/ZIP/원본bytesPASS,실브라우저1280·390넘침0·이미지800/333px로드·상세→이력→상세. 8789미리보기session35074/IABtab8를HUDdetail로유지. 새 PR은큰묶음하나의draft로준비하며BAG01반영·가방실입력은미완료로남긴다. 현재새commit/push/PR0/병합0/공개0,원본rootWIP/Game보존. 상세PLAYER_HUD_RESULTS/BAG01_REQUEST/리뷰2개. 아래과거HEAD/PR35시점기록은역사다.
+
 ## 最新 — 아이템·거래소 화면 묶음 최종 검증 완료
 
 codex/item-market-ui, C10-Delivery/source 재사용, master449a3ef+C10cherry76f03c0. UI카드/매물선택·패널전환+사이트/정책을한PR로준비. 독립리뷰차단0/재활성화캐시수정. Unity최종98/98(C08구형fixture5실패·컴파일전재시도실패이력보존→최신fixture확인후통과). 실제Windows item-ui-a 전체흐름시장4/가방2응답일치/가방1키차단/ownActions0/좌표·HPMP불변/정상logout,가방은기존DB누락실패이며양수실서버성공claim없음. 캡처후시장행100→52setup한줄리뷰수정,해당시장선택/scroll만추가실입력/30행52px·content1686/scroll0/정상logout통과. 소스/Scene/DLLroot-candidate13파일동일(item-ui-final-files.txt),Play/compile/dirtyfalse/9999Listen9060·Established0/서버재시작0.
