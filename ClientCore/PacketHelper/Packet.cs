@@ -43,6 +43,8 @@ namespace ClientCore.PacketHelper
         PROFILE_BATCH_RES = 25,
         BAZAAR_SEARCH = 26,
         BAZAAR_SEARCH_RES = 27,
+        BAZAAR_MY_LIST = 28,
+        BAZAAR_MY_LIST_RES = 29,
     }
     
     public enum ZONE_CHANGE : byte
@@ -633,8 +635,33 @@ namespace ClientCore.PacketHelper
 
         internal static (uint requestID, byte status, BazaarListing[] rows) DeserializeBazaar(PacketHeader header, byte[] buffer)
         {
-            if (header.flags != 0 || buffer.Length < 15 || buffer.Length > 1185 || header.length != buffer.Length)
+            return ParseBazaarResponse(header, buffer, OP_CODE.BAZAAR_SEARCH_RES, 0);
+        }
+
+        internal static byte[] SerializeBazaarMyListRequest(uint requestID)
+        {
+            if (requestID == 0) throw new ArgumentException("Invalid bazaar my-list request ID.");
+            var result = new byte[12];
+            BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
+            BitConverter.GetBytes(12U).CopyTo(result, 2);
+            result[6] = (byte)OP_CODE.BAZAAR_MY_LIST;
+            BitConverter.GetBytes(requestID).CopyTo(result, 8);
+            return result;
+        }
+
+        internal static (uint requestID, byte status, BazaarListing[] rows) DeserializeBazaarMyList(PacketHeader header, byte[] buffer)
+        {
+            return ParseBazaarResponse(header, buffer, OP_CODE.BAZAAR_MY_LIST_RES, 2);
+        }
+
+        private static (uint requestID, byte status, BazaarListing[] rows) ParseBazaarResponse(PacketHeader header, byte[] buffer, OP_CODE opcode, byte maxRowStatus)
+        {
+            if (buffer == null || header.magic != MAGIC || header.opcode != (byte)opcode || header.flags != 0 ||
+                buffer.Length < 15 || buffer.Length > 1185 || header.length != buffer.Length)
                 throw new ArgumentException("Invalid bazaar response length or flags.");
+            var actual = ExtractHeader(buffer);
+            if (actual.magic != header.magic || actual.length != header.length || actual.opcode != header.opcode || actual.flags != header.flags)
+                throw new ArgumentException("Mismatched bazaar response header.");
             uint requestID = BitConverter.ToUInt32(buffer, 8);
             byte status = buffer[12];
             ushort count = BitConverter.ToUInt16(buffer, 13);
@@ -647,7 +674,7 @@ namespace ClientCore.PacketHelper
                 rows[i] = ReadStruct<BazaarListing>(buffer, 15 + 39 * i);
                 var row = rows[i];
                 if (row.listingID == 0 || row.sellerCharacterID == 0 || row.itemID == 0 || row.quantity == 0 ||
-                    row.status != 0 || !ids.Add(row.listingID))
+                    row.status > maxRowStatus || !ids.Add(row.listingID))
                     throw new ArgumentException("Invalid bazaar listing.");
             }
             return (requestID, status, rows);

@@ -77,6 +77,9 @@ namespace Core {
             case OP::INVENTORY_REQ:
                 GetInventory(p);
                 break;
+            case OP::BAZAAR_MY_LIST:
+                BazaarMyList(p);
+                break;
             case OP::BAZAAR_SEARCH:
                 BazaarSearch(p);
                 break;
@@ -188,6 +191,37 @@ namespace Core {
         msg->SetLength(sizeof(MsgStruct<MsgInventoryReqBody>));
         messageQueue->EnqueueMessage(msg);
         messagePool->Return(msg);
+    }
+
+    void NonZoneHandler::BazaarMyList(IPacketView* p) {
+        if (p->GetLength() != sizeof(PacketStruct<BazaarMyListRequestBody>))
+            return;
+        const auto* header = parseHeader(p->GetPtr());
+        const auto request = *parseBody<BazaarMyListRequestBody>(p->GetPtr());
+        if (header->length != p->GetLength() || header->flags != 0 || request.requestID == 0)
+            return;
+        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        if (characterID == 0)
+            return;
+        Message* msg = messagePool->Acquire();
+        if (msg != nullptr) {
+            auto* st = reinterpret_cast<MsgStruct<MsgBazaarMyListBody>*>(msg->GetBuffer());
+            st->header = { p->GetSessionID(), MSG_BAZAAR_MY_LIST };
+            st->body = { request.requestID, characterID };
+            msg->SetLength(sizeof(*st));
+            const bool queued = messageQueue->EnqueueMessage(msg);
+            messagePool->Return(msg);
+            if (queued)
+                return;
+        }
+        MsgBazaarMyListResBody failed{};
+        failed.requestID = request.requestID;
+        failed.characterID = characterID;
+        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
+            return;
+        auto response = writer->WriteBazaarMyListResponse(&failed);
+        if (response)
+            iocp->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
     void NonZoneHandler::BazaarSearch(IPacketView* p) {
