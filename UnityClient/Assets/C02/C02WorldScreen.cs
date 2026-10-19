@@ -388,7 +388,7 @@ namespace C02
             loginScreen?.Data?.CancelMove();
         }
 
-        private void StopActions()
+        public void StopActions()
         {
             loginScreen?.Data?.CancelAction();
             CancelMovement();

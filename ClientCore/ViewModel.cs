@@ -40,6 +40,8 @@ namespace ClientCore
         private uint _zoneInternalID;
         private volatile bool _awaitingZoneAck;
         private bool _inventoryPending;
+        private uint _bazaarRequestID;
+        private uint _bazaarPending;
         public event Action<bool> OnAuthReceived;
         public event Action<byte, ushort> OnCharacterListResult;
         public event Action<string> OnConnectionFailed;
@@ -48,6 +50,7 @@ namespace ClientCore
         public event Action<bool> OnCharacterListReceived;
         public event Action<byte, ulong, string, string> OnChatReceived;
         public event Action<bool> OnInventoryReceived;
+        public event Action<bool> OnBazaarReceived;
         public event Action<ushort, ulong, uint, float, float> OnZoneChageReceived;
         public event Action<ushort, DeltaUpdateField[]> OnDeltaReceived;
         public event Action<ushort, FullStateField[]> OnFullReceived;
@@ -106,6 +109,7 @@ namespace ClientCore
                 _lifetime.Cancel();
                 _inventoryPending = false;
                 _worldReady = false;
+                CancelBazaar();
                 _viewData.SetInventory(Array.Empty<PacketHelper.InventoryItem>());
                 ClientSession.AccessToken = null;
                 ClientSession.SessionToken = null;
@@ -143,6 +147,7 @@ namespace ClientCore
                 if (op == 0 && _zoneID != 0) return;
                 _zoneOperation = op;
                 _zonePending = true;
+                CancelBazaar();
                 _awaitingZoneAck = true;
                 _worldReady = false;
             }
@@ -274,6 +279,36 @@ namespace ClientCore
                 // Omitted IDs cannot acknowledge a batch: an empty reply may belong to a timed-out request.
                 // They remain pending until the existing dispatcher traffic observes its deadline.
                 RequestProfiles();
+            });
+        }
+
+        public void RequestBazaar(ushort itemType, ushort page)
+        {
+            if (itemType < 1 || itemType > 3) throw new ArgumentOutOfRangeException(nameof(itemType));
+            if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || _bazaarPending != 0)
+                throw new InvalidOperationException("Bazaar search is unavailable or pending.");
+            if (_bazaarRequestID == uint.MaxValue) throw new InvalidOperationException("Reconnect before searching again.");
+            _bazaarPending = ++_bazaarRequestID;
+            _viewData.SetBazaar(Array.Empty<PacketHelper.BazaarListing>());
+            try { _network.RequestBazaar(_bazaarPending, itemType, page); }
+            catch { CancelBazaar(); throw; }
+        }
+
+        public void CancelBazaar()
+        {
+            _bazaarPending = 0;
+            _viewData.SetBazaar(Array.Empty<PacketHelper.BazaarListing>());
+        }
+
+        public void BazaarReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows)
+        {
+            _threadDispatcher.Post(() =>
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || requestID == 0 || requestID != _bazaarPending) return;
+                _bazaarPending = 0;
+                bool success = status == 1;
+                _viewData.SetBazaar(success ? rows : Array.Empty<PacketHelper.BazaarListing>());
+                OnBazaarReceived?.Invoke(success);
             });
         }
 
@@ -412,6 +447,7 @@ namespace ClientCore
         {
             if (_lifetime.IsCancellationRequested) return;
             _connectionFailed = true;
+            CancelBazaar();
             _worldReady = false;
             _inventoryPending = false;
             _viewData.SetInventory(Array.Empty<PacketHelper.InventoryItem>());

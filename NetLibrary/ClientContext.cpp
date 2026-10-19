@@ -57,6 +57,13 @@ namespace Net {
             return false;
         }
 
+        // Search must never enter the simulation dispatcher or expose a short body.
+        if (opcode == Core::OP::BAZAAR_SEARCH
+            && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::BazaarSearchRequestBody>))) {
+            m_gameSession.store(false, std::memory_order_release);
+            return false;
+        }
+
         if (GetLen() < packetLen)
             return false;
 

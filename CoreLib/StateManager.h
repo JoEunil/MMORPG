@@ -175,6 +175,16 @@ namespace Core {
             return it->second.zoneID;
         }
 
+        bool IsFieldSession(uint64_t sessionID) {
+            auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+            std::shared_lock<std::shared_mutex> lock(shard.smutex);
+            const auto it = shard.sessionMap.find(sessionID);
+            return it != shard.sessionMap.end() && it->second.authCompleted
+                && it->second.authenticated && it->second.userID != 0
+                && it->second.characterID != 0 && it->second.zoneID > 0
+                && it->second.zoneID <= ZONE_COUNT;
+        }
+
         uint8_t HealthCheck(uint64_t sessionID) {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);

@@ -45,6 +45,10 @@ namespace ClientCore.Network
                     case OP_CODE.INVENTORY_RES:
                         HandleInventoryRes(Packet.DeserializeInventory(header, buffer));
                         return;
+                    case OP_CODE.BAZAAR_SEARCH_RES:
+                        var search = Packet.DeserializeBazaar(header, buffer);
+                        _viewModel.BazaarReceived(search.requestID, search.status, search.rows);
+                        return;
                 }
                 if ((header.flags & FLAG_SIMULATION) == FLAG_SIMULATION)
                 {
@@ -73,7 +77,7 @@ namespace ClientCore.Network
             catch (Exception e)
             {
                 // A malformed C06 frame must reach the socket's existing disconnect boundary.
-                if (buffer.Length >= 7 && (buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 21 || buffer[6] == 25)) throw;
+                if (buffer.Length >= 7 && (buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 21 || buffer[6] == 25 || buffer[6] == 27)) throw;
                 ErrorLog(e.Message);
             }
         }

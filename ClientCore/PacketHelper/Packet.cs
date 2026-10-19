@@ -41,6 +41,8 @@ namespace ClientCore.PacketHelper
         PONG = 23, // 클라이언트 송신
         PROFILE_BATCH = 24,
         PROFILE_BATCH_RES = 25,
+        BAZAAR_SEARCH = 26,
+        BAZAAR_SEARCH_RES = 27,
     }
     
     public enum ZONE_CHANGE : byte
@@ -156,6 +158,18 @@ namespace ClientCore.PacketHelper
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_INVENTORY_ITEMS)]
         public InventoryItem[] items;
     }
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct BazaarListing
+    {
+        public ulong listingID;
+        public ulong sellerCharacterID;
+        public uint itemID;
+        public ushort quantity;
+        public ulong price;
+        public ulong registeredAt;
+        public byte status;
+    }
+
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ZoneChangeBody
     {
@@ -602,6 +616,41 @@ namespace ClientCore.PacketHelper
                 Buffer.BlockCopy(BitConverter.GetBytes(profileIds[i]), 0, result, 10 + i * 4, 4);
             }
             return result;
+        }
+
+        internal static byte[] SerializeBazaarRequest(uint requestID, ushort itemType, ushort page)
+        {
+            if (requestID == 0 || itemType < 1 || itemType > 3) throw new ArgumentException("Invalid bazaar search.");
+            var result = new byte[16];
+            BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
+            BitConverter.GetBytes(16U).CopyTo(result, 2);
+            result[6] = (byte)OP_CODE.BAZAAR_SEARCH;
+            BitConverter.GetBytes(requestID).CopyTo(result, 8);
+            BitConverter.GetBytes(itemType).CopyTo(result, 12);
+            BitConverter.GetBytes(page).CopyTo(result, 14);
+            return result;
+        }
+
+        internal static (uint requestID, byte status, BazaarListing[] rows) DeserializeBazaar(PacketHeader header, byte[] buffer)
+        {
+            if (header.flags != 0 || buffer.Length < 15 || buffer.Length > 1185 || header.length != buffer.Length)
+                throw new ArgumentException("Invalid bazaar response length or flags.");
+            uint requestID = BitConverter.ToUInt32(buffer, 8);
+            byte status = buffer[12];
+            ushort count = BitConverter.ToUInt16(buffer, 13);
+            if (requestID == 0 || status > 1 || count > 30 || status == 0 && count != 0 || buffer.Length != 15 + 39 * count)
+                throw new ArgumentException("Invalid bazaar response count or status.");
+            var rows = new BazaarListing[count];
+            var ids = new HashSet<ulong>();
+            for (int i = 0; i < count; i++)
+            {
+                rows[i] = ReadStruct<BazaarListing>(buffer, 15 + 39 * i);
+                var row = rows[i];
+                if (row.listingID == 0 || row.sellerCharacterID == 0 || row.itemID == 0 || row.quantity == 0 ||
+                    row.status != 0 || !ids.Add(row.listingID))
+                    throw new ArgumentException("Invalid bazaar listing.");
+            }
+            return (requestID, status, rows);
         }
 
         // 고정 길이 패킷

@@ -30,6 +30,10 @@ namespace Core {
         case MSG_INVENTORY_UPDATE_RES:
             InventoryUpdateResponse(header->sessionID, parseMsgBody<MsgInventoryUpdateResBody>(msg->GetBuffer()));
             break;
+        case MSG_BAZAAR_SEARCH_RES:
+            if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarSearchResBody>))
+                BazaarSearchResponse(header->sessionID, parseMsgBody<MsgBazaarSearchResBody>(msg->GetBuffer()));
+            break;
         case MSG_PROFILE_RENAME_RES:
             ProfileRenameResponse(header->sessionID, parseMsgBody<MsgProfileRenameResBody>(msg->GetBuffer()));
             break;
@@ -79,6 +83,14 @@ namespace Core {
             return;
         }
         iocp->SendDataUnique(sessionID, std::move(p));
+    }
+
+    void MessageQueueHandler::BazaarSearchResponse(uint64_t sessionID, MsgBazaarSearchResBody* body) {
+        if (stateManager == nullptr || !stateManager->IsFieldSession(sessionID))
+            return;
+        auto p = writer->WriteBazaarSearchResponse(body);
+        if (p)
+            iocp->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::InventoryResponse(uint64_t sessionID, MsgInventoryResBody* body) {

@@ -70,7 +70,7 @@ namespace Core {
         };
 
         class TestPacket final : public IPacket {
-            std::array<uint8_t, 1024> bytes;
+            std::array<uint8_t, 2048> bytes;
             uint32_t length = 0;
         public:
             TestPacket() { bytes.fill(0xCD); }
@@ -96,6 +96,7 @@ namespace Core {
         public:
             std::vector<uint8_t> sentOpcodes;
             std::vector<uint8_t> authStatuses;
+            std::vector<uint8_t> lastPacket;
             void SendData(uint64_t, std::shared_ptr<IPacket> packet) override {
                 sentOpcodes.push_back(parseHeader(packet->GetBuffer())->opcode);
             }
@@ -104,6 +105,7 @@ namespace Core {
                 sentOpcodes.push_back(parseHeader(packet->GetBuffer())->opcode);
             }
             void SendDataUnique(uint64_t, std::unique_ptr<IPacket, PacketDeleter> packet) override {
+                lastPacket.assign(packet->GetBuffer(), packet->GetBuffer() + packet->GetLength());
                 const auto opcode = parseHeader(packet->GetBuffer())->opcode;
                 sentOpcodes.push_back(opcode);
                 if (opcode == OP::AUTH_RESPONSE)
@@ -116,7 +118,10 @@ namespace Core {
             std::condition_variable changed;
             std::unique_ptr<Message> pending;
         public:
+            bool accept = true;
+            bool HasRequest() { std::lock_guard lock(mutex); return pending != nullptr; }
             bool EnqueueMessage(Message* message) override {
+                if (!accept) return false;
                 auto copy = std::make_unique<Message>(message->GetLength());
                 std::memcpy(copy->GetBuffer(), message->GetBuffer(), message->GetLength());
                 copy->SetLength(message->GetLength());
@@ -154,6 +159,15 @@ namespace Core {
                 enter->header.length = static_cast<uint32_t>(packet.size());
                 enter->header.opcode = OP::ENTER_WORLD;
                 enter->body.characterID = characterID;
+            }
+            CountedView(uint64_t id, const BazaarSearchRequestBody& request, uint8_t flags = 0, int sizeDelta = 0)
+                : packet(sizeof(PacketStruct<BazaarSearchRequestBody>) + sizeDelta), session(id) {
+                auto* header = parseHeader(packet.data());
+                header->length = static_cast<uint32_t>(packet.size());
+                header->opcode = OP::BAZAAR_SEARCH;
+                header->flags = flags;
+                if (sizeDelta >= 0)
+                    *parseBody<BazaarSearchRequestBody>(packet.data()) = request;
             }
             CountedView(uint64_t id, OP opcode)
                 : packet(sizeof(PacketHeader)), session(id) {
@@ -358,6 +372,24 @@ namespace Core {
             flush.get();
             ZoneState::stateManager = previousManager;
             return released;
+        }
+        bool IsBoundTo(uint64_t sessionID, uint64_t characterID) {
+            return state->GetCharacterID(sessionID) == characterID;
+        }
+        void SetSessionImage(SessionData image) {
+            auto& shard = state->m_shards[42 & SHARD_SIZE_MASK];
+            std::unique_lock lock(shard.smutex);
+            shard.sessionMap[42] = image;
+        }
+        void FinishSearch(uint32_t requestID) {
+            auto* response = messages.Acquire();
+            auto* st = reinterpret_cast<MsgStruct<MsgBazaarSearchResBody>*>(response->GetBuffer());
+            *st = {};
+            st->header = { 42, MSG_BAZAAR_SEARCH_RES };
+            st->body.requestID = requestID;
+            st->body.resStatus = 1;
+            response->SetLength(sizeof(*st));
+            responses.Process(response);
         }
         bool CompleteLoadSuccessfully(Message& request) {
             auto* response = messages.Acquire();
@@ -864,6 +896,166 @@ namespace Core {
         ZoneChangeResult result;
         ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, result));
         EXPECT_TRUE(FlushReleasesZoneBeforeWaitingForShard());
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BazaarSearchValidatesFieldSessionFlagsLengthTypeAndRequestId) {
+        SessionData ready{};
+        ready.authenticated = ready.authCompleted = true;
+        ready.userID = 6982;
+        ready.characterID = 5011;
+        ready.zoneID = 1;
+        CountedView absent(42, BazaarSearchRequestBody{90, 1, 0});
+        handler.Process(&absent);
+        EXPECT_FALSE(loads.HasRequest());
+        EXPECT_TRUE(iocp.sentOpcodes.empty());
+        for (int invalid = 0; invalid < 11; ++invalid) {
+            auto image = ready;
+            BazaarSearchRequestBody request{91, 1, 65535};
+            uint8_t flags = 0;
+            int delta = 0;
+            if (invalid == 0) image.authenticated = false;
+            if (invalid == 1) image.authCompleted = false;
+            if (invalid == 2) image.userID = 0;
+            if (invalid == 3) image.characterID = 0;
+            if (invalid == 4) image.zoneID = 0;
+            if (invalid == 5) flags = FLAG_SIMULATION;
+            if (invalid == 6) delta = -1;
+            if (invalid == 7) delta = 1;
+            if (invalid == 8) request.requestID = 0;
+            if (invalid == 9) request.itemType = 0;
+            if (invalid == 10) request.itemType = 4;
+            SetSessionImage(image);
+            CountedView view(42, request, flags, delta);
+            handler.Process(&view);
+            EXPECT_FALSE(loads.HasRequest()) << invalid;
+            EXPECT_TRUE(iocp.sentOpcodes.empty()) << invalid;
+        }
+        SetSessionImage(ready);
+        CountedView good(42, BazaarSearchRequestBody{92, 3, 65535});
+        handler.Process(&good);
+        auto request = loads.TakeRequest();
+        ASSERT_NE(request, nullptr);
+        EXPECT_EQ(request->GetLength(), sizeof(MsgStruct<MsgBazaarSearchBody>));
+        EXPECT_EQ(parseMsgHeader(request->GetBuffer())->messageType, MSG_BAZAAR_SEARCH);
+        const auto* body = parseMsgBody<MsgBazaarSearchBody>(request->GetBuffer());
+        EXPECT_EQ(body->requestID, 92);
+        EXPECT_EQ(body->item_type, 3);
+        EXPECT_EQ(body->page, 65535);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BazaarSearchQueueRejectionReturnsCorrelatedFailureAndLateResponseDrops) {
+        SessionData ready{};
+        ready.authenticated = ready.authCompleted = true;
+        ready.userID = 6982; ready.characterID = 5011; ready.zoneID = 1;
+        SetSessionImage(ready);
+        loads.accept = false;
+        CountedView good(42, BazaarSearchRequestBody{123, 1, 0});
+        handler.Process(&good);
+        ASSERT_EQ(iocp.sentOpcodes.size(), 1);
+        ASSERT_EQ(iocp.lastPacket.size(), 15);
+        const auto* failed = parseBody<BazaarSearchResponseBody>(iocp.lastPacket.data());
+        EXPECT_EQ(failed->requestID, 123);
+        EXPECT_EQ(failed->resStatus, 0);
+        EXPECT_EQ(failed->count, 0);
+        FinishSearch(124);
+        ASSERT_EQ(iocp.sentOpcodes.size(), 2);
+        state->SetZoneID(42, 0); // This focused fixture has no Zone character to remove.
+        state->Disconnect(42);
+        FinishSearch(124);
+        EXPECT_EQ(iocp.sentOpcodes.size(), 2);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BazaarSearchWriterPacksThirtyRowsAndDropsInvalidBodyWithoutTail) {
+        MsgBazaarSearchResBody body{};
+        body.requestID = 0x12345678;
+        body.resStatus = 1;
+        body.count = 30;
+        for (uint16_t i = 0; i < body.count; ++i)
+            body.listings[i] = { uint64_t{100} + i, uint64_t{200} + i, uint32_t{300} + i,
+                static_cast<uint16_t>(i + 1), uint64_t{400} + i, uint64_t{500} + i, 0 };
+        auto packet = writer.WriteBazaarSearchResponse(&body);
+        ASSERT_NE(packet, nullptr);
+        EXPECT_EQ(packet->GetLength(), 1185);
+        auto* header = parseHeader(packet->GetBuffer());
+        EXPECT_EQ(header->opcode, OP::BAZAAR_SEARCH_RES);
+        EXPECT_EQ(header->length, 1185);
+        EXPECT_EQ(header->flags, 0);
+        EXPECT_EQ(packet->GetBuffer()[8], 0x78);
+        auto* rows = reinterpret_cast<BazaarSearchListing*>(packet->GetBuffer() + 15);
+        EXPECT_EQ(rows[29].listingID, 129);
+        EXPECT_EQ(rows[29].sellerCharacterID, 229);
+        EXPECT_EQ(rows[29].itemID, 329);
+        EXPECT_EQ(rows[29].quantity, 30);
+        EXPECT_EQ(rows[29].price, 429);
+        EXPECT_EQ(rows[29].registeredAt, 529);
+        for (int kind = 0; kind < 4; ++kind) {
+            auto invalid = body;
+            if (kind == 0) invalid.resStatus = 0;
+            if (kind == 1) invalid.count = 31;
+            if (kind == 2) invalid.resStatus = 2;
+            if (kind == 3) invalid.listings[29].quantity = 0;
+            auto failed = writer.WriteBazaarSearchResponse(&invalid);
+            ASSERT_NE(failed, nullptr);
+            EXPECT_EQ(failed->GetLength(), 15);
+            auto* response = parseBody<BazaarSearchResponseBody>(failed->GetBuffer());
+            EXPECT_EQ(response->requestID, body.requestID);
+            EXPECT_EQ(response->count, 0);
+            EXPECT_EQ(response->resStatus, 0);
+        }
+        body.count = 0;
+        auto empty = writer.WriteBazaarSearchResponse(&body);
+        ASSERT_NE(empty, nullptr);
+        EXPECT_EQ(empty->GetLength(), 15);
+        EXPECT_EQ(parseBody<BazaarSearchResponseBody>(empty->GetBuffer())->resStatus, 1);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, LateEnterCannotRebindCharacterInEmptyLobbyWindow) {
+        ASSERT_TRUE(LoadTransitionCharacter());
+        CharacterState original{};
+        ASSERT_TRUE(lobby.EmigrateChar(42, original));
+        EXPECT_EQ(state->GetZoneID(42), 0);
+        auto other = original;
+        ++other.characterID;
+        EXPECT_FALSE(lobby.ImmigrateChar(42, other));
+        EXPECT_TRUE(IsBoundTo(42, original.characterID));
+        EXPECT_FALSE(HasLobbyCharacter(42));
+        EXPECT_TRUE(lobby.ImmigrateChar(42, original));
+        EXPECT_FALSE(lobby.ImmigrateChar(42, original)); // Existing same-character duplicate policy.
+        EXPECT_TRUE(IsBoundTo(42, original.characterID));
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, LateEnterResponseRacingInitialAdmissionCannotReplaceBoundCharacter) {
+        PrepareZones();
+        ASSERT_TRUE(LoadTransitionCharacter());
+        Message request(sizeof(MsgStruct<MsgCharacterStateReqBody>));
+        auto* st = reinterpret_cast<MsgStruct<MsgCharacterStateReqBody>*>(request.GetBuffer());
+        *st = {};
+        st->header.sessionID = 42;
+        st->body.characterID = 9999;
+        std::promise<void> start;
+        auto gate = start.get_future().share();
+        auto enter = std::async(std::launch::async, [&, gate] {
+            gate.wait(); ZoneChangeResult result;
+            return state->ChangeZone(42, ZONE_CHANGE::ENTER, result);
+        });
+        auto late = std::async(std::launch::async, [&, gate] {
+            gate.wait(); return CompleteLoadSuccessfully(request);
+        });
+        start.set_value();
+        ASSERT_EQ(enter.wait_for(2s), std::future_status::ready);
+        ASSERT_EQ(late.wait_for(2s), std::future_status::ready);
+        EXPECT_TRUE(enter.get());
+        EXPECT_TRUE(late.get());
+        EXPECT_TRUE(IsBoundTo(42, 5042));
+        EXPECT_EQ(CharacterIn(1).characterID, 5042);
+        EXPECT_FALSE(HasLobbyCharacter(42));
+        const auto sent = iocp.sentOpcodes.size();
+        st->body.characterID = 5042;
+        ASSERT_TRUE(CompleteLoadSuccessfully(request));
+        st->body.characterID = 9999;
+        ASSERT_TRUE(CompleteLoadSuccessfully(request));
+        EXPECT_EQ(iocp.sentOpcodes.size(), sent); // Same or different late field responses send nothing.
+        EXPECT_TRUE(IsBoundTo(42, 5042));
     }
 
     TEST_F(NonZoneThreadPoolFixture, PendingEnterCompletionCannotRebindEmigratedCharacterOrInventory) {

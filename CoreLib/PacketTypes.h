@@ -7,7 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
-    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 25;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 27;
 
     enum OP : uint16_t {
         AUTH = 1,
@@ -40,6 +40,8 @@ namespace Core {
 
         PROFILE_BATCH = 24,     // 클라이언트 송신, 모르는 profile_id 목록 조회
         PROFILE_BATCH_RES = 25,
+        BAZAAR_SEARCH = 26,
+        BAZAAR_SEARCH_RES = 27,
     };
 
     enum ZONE_CHANGE: uint8_t {
@@ -72,6 +74,33 @@ namespace Core {
         uint8_t opcode;
         uint8_t flags = 0x00; // 첫번째 비트는 시뮬레이션 로직인지 나타냄, 0x01 ~ 0x80
     };
+
+    struct BazaarSearchRequestBody {
+        uint32_t requestID;
+        uint16_t itemType;
+        uint16_t page;
+    };
+
+    struct BazaarSearchListing {
+        uint64_t listingID;
+        uint64_t sellerCharacterID;
+        uint32_t itemID;
+        uint16_t quantity;
+        uint64_t price;
+        uint64_t registeredAt;
+        uint8_t status;
+    };
+
+    struct BazaarSearchResponseBody {
+        uint32_t requestID;
+        uint8_t resStatus;
+        uint16_t count;
+        // Followed by count packed BazaarSearchListing records.
+    };
+
+    static_assert(sizeof(BazaarSearchRequestBody) == 8);
+    static_assert(sizeof(BazaarSearchResponseBody) == 7);
+    static_assert(sizeof(BazaarSearchListing) == 39);
 
     struct AuthRequestBody {
         uint64_t userID;

@@ -208,11 +208,13 @@ namespace Core {
     };
 
     struct MsgBazaarSearchBody {
+        uint32_t requestID;
         uint16_t item_type;
         uint16_t  page;
     };
 
     struct MsgBazaarSearchResBody {
+        uint32_t requestID;
         uint8_t resStatus;
         uint16_t count;
         MsgBazaarListing listings[MAX_BAZAAR_SEARCH_RESULT];

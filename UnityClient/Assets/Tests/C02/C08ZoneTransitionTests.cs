@@ -331,7 +331,7 @@ namespace C02.Tests
             public void Enter(ulong charID) { }
             public void Chat(string message, byte scope, ulong targetID) { }
             public void Profiles(uint[] profileIds) { }
-            public void RequestInventory() => Requests++;
+            public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() => Requests++;
             public void Action(byte dir, float x, float y, byte skillSlot) { }
             public void Pong(ulong serverTimeMs) { }
             public void ZoneChange(byte op) { ZoneOperations++; LastZoneOperation = op; }

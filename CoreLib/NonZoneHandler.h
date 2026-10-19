@@ -24,6 +24,7 @@ namespace Core {
         void GetCharacterList(IPacketView* p);
         void GetCharacterState(IPacketView* p);
         void GetInventory(IPacketView* p);
+        void BazaarSearch(IPacketView* p);
         void Chat(IPacketView* p);
         void ZoneChange(IPacketView* p);
         void GetProfileBatch(IPacketView* p);

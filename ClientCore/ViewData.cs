@@ -137,6 +137,23 @@ namespace ClientCore
             }
         }
 
+        private readonly object _lockBazaar = new object();
+        private readonly List<BazaarListingView> _bazaar = new List<BazaarListingView>();
+        public void SetBazaar(BazaarListing[] rows)
+        {
+            lock (_lockBazaar)
+            {
+                _bazaar.Clear();
+                foreach (var row in rows)
+                    _bazaar.Add(new BazaarListingView { ListingID = row.listingID, SellerCharacterID = row.sellerCharacterID,
+                        ItemID = row.itemID, Quantity = row.quantity, Price = row.price, RegisteredAt = row.registeredAt, Status = row.status });
+            }
+        }
+        public List<BazaarListingView> GetBazaar()
+        {
+            lock (_lockBazaar) return new List<BazaarListingView>(_bazaar);
+        }
+
         private readonly object _lockInventory = new object();
         private List<InventoryItemView> _inventory = new List<InventoryItemView>();
 
