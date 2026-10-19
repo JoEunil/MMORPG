@@ -18,7 +18,7 @@ namespace C02.Tests
     public sealed class C07InventoryUiTests
     {
         [Test]
-        public void ServerRowsAreRenderedAndALaterFailureClearsPreviousInventory()
+        public void ServerItemsBecomeCardsAndALaterFailureClearsPreviousInventory()
         {
             using (var fixture = new Fixture())
             {
@@ -32,19 +32,21 @@ namespace C02.Tests
                 for (int slot = 9; slot >= 0; slot--)
                     tenRows[9 - slot] = new InventoryItem { itemID = (uint)(100 + slot), quantity = (ushort)(slot + 1), slot = (byte)slot };
                 fixture.Receive(true, tenRows);
-                Assert.That(fixture.Rows.text.Split('\n').Length, Is.EqualTo(10), "All ten actual response rows are rendered.");
-                Assert.That(fixture.Rows.text, Does.Contain("SLOT 01"));
-                Assert.That(fixture.Rows.text, Does.Contain("ITEM 101"));
-                Assert.That(fixture.Rows.text, Does.Contain("QTY 2"));
-                Assert.That(fixture.Rows.text.IndexOf("SLOT 01", StringComparison.Ordinal),
-                    Is.LessThan(fixture.Rows.text.IndexOf("SLOT 09", StringComparison.Ordinal)));
-                Assert.That(fixture.Rows.text, Does.Contain("SLOT 09"));
-                Assert.That(fixture.Rows.text, Does.Contain("ITEM 109"));
+
+                Button[] cards = fixture.Cards;
+                Assert.That(cards.Length, Is.EqualTo(10), "Each actual response item is represented by an active card.");
+                Assert.That(cards[0].transform.Find("ItemName").GetComponent<TMP_Text>().text, Is.EqualTo("Item #100"));
+                Assert.That(cards[9].transform.Find("ItemName").GetComponent<TMP_Text>().text, Is.EqualTo("Item #109"));
+                cards[1].onClick.Invoke();
+                Assert.That(fixture.DetailBadge.text, Is.EqualTo("?"));
+                Assert.That(fixture.DetailName.text, Is.EqualTo("Item #101"));
+                Assert.That(fixture.DetailSlot.text, Is.EqualTo("Slot 1"));
+                Assert.That(fixture.DetailQuantity.text, Is.EqualTo("Quantity 2"));
 
                 fixture.Refresh.onClick.Invoke();
-                Assert.That(fixture.Rows.text, Is.Empty, "The previous result is cleared while refreshing.");
+                Assert.That(fixture.Cards, Is.Empty, "The previous cards clear while refreshing.");
                 fixture.Receive(false);
-                Assert.That(fixture.Rows.text, Is.Empty);
+                Assert.That(fixture.Cards, Is.Empty);
                 Assert.That(fixture.Status.text, Does.Contain("failed"));
                 Assert.That(fixture.Login.Data.GetInventory(), Is.Empty);
                 Assert.That(fixture.Refresh.interactable, Is.True, "A definitive failure permits a manual retry.");
@@ -52,15 +54,51 @@ namespace C02.Tests
         }
 
         [Test]
-        public void EmptySuccessIsShownAsEmptyAndNotAsAnInventedRow()
+        public void KnownItemsUseServerBackedNamesAndAnEmptySuccessShowsNoInventedCard()
         {
             using (var fixture = new Fixture())
             {
                 fixture.OpenBag();
+                fixture.Receive(true,
+                    new InventoryItem { itemID = 1, quantity = 4, slot = 2 },
+                    new InventoryItem { itemID = 5, quantity = 1, slot = 3 });
+                Assert.That(fixture.Cards.Length, Is.EqualTo(2));
+                Assert.That(fixture.Cards[0].transform.Find("ItemName").GetComponent<TMP_Text>().text, Is.EqualTo("HP Potion"));
+                Assert.That(fixture.Cards[0].transform.Find("ItemQuantity").GetComponent<TMP_Text>().text, Is.EqualTo("Qty 4"));
+                Assert.That(fixture.Cards[1].transform.Find("ItemName").GetComponent<TMP_Text>().text, Is.EqualTo("Leather Armor"));
+                fixture.Cards[0].onClick.Invoke();
+                Assert.That(fixture.DetailBadge.text, Is.EqualTo("HP"));
+                Assert.That(fixture.DetailName.text, Is.EqualTo("HP Potion"));
+                Assert.That(fixture.DetailSlot.text, Is.EqualTo("Slot 2"));
+
+                fixture.Refresh.onClick.Invoke();
+                Assert.That(fixture.Cards, Is.Empty);
                 fixture.Receive(true);
-                Assert.That(fixture.Rows.text, Is.Empty);
+                Assert.That(fixture.Cards, Is.Empty);
                 Assert.That(fixture.Status.text, Is.EqualTo("No items."));
+                Assert.That(fixture.DetailName.text, Is.EqualTo("Select an item"));
                 Assert.That(fixture.Login.Data.GetInventory(), Is.Empty);
+            }
+        }
+
+        [Test]
+        public void ReenablingAfterSuccessRequestsFreshItemsInsteadOfKeepingAnEmptyCachedView()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.OpenBag();
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 3, slot = 0 });
+                Assert.That(fixture.Cards.Length, Is.EqualTo(1));
+                fixture.InvokeScreen("OnDisable");
+                Assert.That(fixture.Cards, Is.Empty);
+                fixture.InvokeScreen("OnEnable");
+                fixture.OpenBag();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2), "A cleared view must request a fresh snapshot on reactivation.");
+                fixture.Receive(true, new InventoryItem { itemID = 2, quantity = 7, slot = 0 });
+                Assert.That(fixture.Cards.Length, Is.EqualTo(1));
+                fixture.Cards[0].onClick.Invoke();
+                Assert.That(fixture.DetailName.text, Is.EqualTo("MP Potion"));
+                Assert.That(fixture.DetailQuantity.text, Is.EqualTo("Quantity 7"));
             }
         }
 
@@ -82,7 +120,7 @@ namespace C02.Tests
                 Assert.That(fixture.Network.Requests, Is.EqualTo(1));
 
                 fixture.Receive(true, new InventoryItem { itemID = 900, quantity = 1, slot = 0 });
-                Assert.That(fixture.Rows.text, Is.Empty, "A reply arriving after timeout cannot repopulate the UI.");
+                Assert.That(fixture.Cards, Is.Empty, "A reply arriving after timeout cannot repopulate the UI.");
                 Assert.That(fixture.Status.text, Does.Contain("Reconnect"));
                 Assert.That(fixture.Refresh.interactable, Is.False);
             }
@@ -121,8 +159,13 @@ namespace C02.Tests
             public readonly Button Bag;
             public readonly Button Refresh;
             public readonly Button Close;
-            public readonly TMP_Text Rows;
+            public readonly RectTransform Grid;
+            public readonly TMP_Text DetailBadge;
+            public readonly TMP_Text DetailName;
+            public readonly TMP_Text DetailSlot;
+            public readonly TMP_Text DetailQuantity;
             public readonly TMP_Text Status;
+            public Button[] Cards => Grid.GetComponentsInChildren<Button>();
             public FakeNetwork Network { get; private set; }
 
             public Fixture()
@@ -165,7 +208,22 @@ namespace C02.Tests
                 Bag = ButtonObject("bag");
                 Refresh = ButtonObject("refresh");
                 Close = ButtonObject("close");
-                Rows = Text("inventory rows");
+                var scrollObject = Child("inventory scroll");
+                var scroll = scrollObject.AddComponent<ScrollRect>();
+                var viewport = Child("inventory viewport");
+                viewport.transform.SetParent(scrollObject.transform, false);
+                viewport.AddComponent<Image>();
+                viewport.AddComponent<Mask>();
+                scroll.viewport = (RectTransform)viewport.transform;
+                var gridObject = Child("inventory grid");
+                gridObject.transform.SetParent(viewport.transform, false);
+                Grid = (RectTransform)gridObject.transform;
+                gridObject.AddComponent<GridLayoutGroup>();
+                scroll.content = Grid;
+                DetailName = Text("detail name");
+                DetailBadge = Text("detail badge");
+                DetailSlot = Text("detail slot");
+                DetailQuantity = Text("detail quantity");
                 Status = Text("inventory status");
                 SetPrivate(Screen, "loginScreen", Login);
                 SetPrivate(Screen, "worldScreen", World);
@@ -173,7 +231,12 @@ namespace C02.Tests
                 SetPrivate(Screen, "bagButton", Bag);
                 SetPrivate(Screen, "refreshButton", Refresh);
                 SetPrivate(Screen, "closeButton", Close);
-                SetPrivate(Screen, "inventoryRows", Rows);
+                SetPrivate(Screen, "inventoryScroll", scroll);
+                SetPrivate(Screen, "inventoryGridContent", Grid);
+                SetPrivate(Screen, "detailBadge", DetailBadge);
+                SetPrivate(Screen, "detailName", DetailName);
+                SetPrivate(Screen, "detailSlot", DetailSlot);
+                SetPrivate(Screen, "detailQuantity", DetailQuantity);
                 SetPrivate(Screen, "inventoryStatus", Status);
 
                 var client = CreateClient();
@@ -282,7 +345,8 @@ namespace C02.Tests
         {
             public int Requests;
             public void RequestBazaarMyList(uint requestID) { }
-            public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() => Requests++;
+            public void RequestBazaar(uint requestID, ushort itemType, ushort page) { }
+            public void RequestInventory() => Requests++;
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void CharacterList() { }
             public void Enter(ulong characterId) { }

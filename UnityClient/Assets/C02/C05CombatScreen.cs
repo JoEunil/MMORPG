@@ -15,6 +15,7 @@ namespace C02
         [SerializeField] private C01LoginScreen loginScreen;
         [SerializeField] private C02WorldScreen worldScreen;
         [SerializeField] private C09BazaarScreen bazaarScreen;
+        [SerializeField] private C07InventoryScreen inventoryScreen;
         [SerializeField] private UnityEngine.UI.Button[] skillButtons;
         [SerializeField] private TMP_Text vitalsText;
         [SerializeField] private TMP_Text combatStatusText;
@@ -118,7 +119,8 @@ namespace C02
         private bool InputAvailable()
         {
             if (!isActiveAndEnabled || model == null || loginScreen.Model != model || loginScreen.Data == null ||
-                !WorldAvailable || !worldScreen.CanAct || !Application.isFocused || bazaarScreen != null && bazaarScreen.IsOpen) return false;
+                !WorldAvailable || !worldScreen.CanAct || !Application.isFocused ||
+                bazaarScreen != null && bazaarScreen.IsOpen || inventoryScreen != null && inventoryScreen.IsOpen) return false;
             var events = EventSystem.current;
             if (events == null) return false;
             var input = events.currentSelectedGameObject != null

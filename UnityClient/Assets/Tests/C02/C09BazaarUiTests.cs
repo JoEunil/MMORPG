@@ -32,18 +32,25 @@ namespace C02.Tests
                         registeredAt = (ulong)(1700000000 + i), status = 0,
                     };
                 fixture.Receive(true, listings);
-                Assert.That(fixture.Rows.text.Split('\n').Length, Is.EqualTo(30));
-                Assert.That(fixture.Rows.text, Does.Contain("LISTING 1000"));
-                Assert.That(fixture.Rows.text, Does.Contain("ITEM 729"));
-                Assert.That(fixture.Rows.text, Does.Contain("QTY 30"));
-                Assert.That(fixture.Rows.text, Does.Contain("PRICE 9029"));
-                Assert.That(fixture.Rows.text, Does.Contain("SELLER 5029"));
-                Assert.That(fixture.Rows.text, Does.Contain("REGISTERED 1700000029"));
+                Assert.That(fixture.ActiveRowCount, Is.EqualTo(30));
+                var lastRow = fixture.Row(1029);
+                Assert.That(lastRow.Find("Item").GetComponent<TMP_Text>().text, Is.EqualTo("Item #729"));
+                Assert.That(lastRow.Find("Quantity").GetComponent<TMP_Text>().text, Is.EqualTo("30"));
+                Assert.That(lastRow.Find("Price").GetComponent<TMP_Text>().text, Is.EqualTo("9029"));
+                Assert.That(lastRow.Find("State").GetComponent<TMP_Text>().text, Is.EqualTo("Trading"));
+                lastRow.GetComponent<Button>().onClick.Invoke();
+                Assert.That(fixture.Detail.text, Does.Contain("Listing #1029"));
+                Assert.That(fixture.Detail.text, Does.Contain("Quantity 30"));
+                Assert.That(fixture.Detail.text, Does.Contain("Price 9029"));
+                Assert.That(fixture.Detail.text, Does.Contain("Seller #5029"));
+                Assert.That(fixture.Detail.text, Does.Contain("Registered 1700000029"));
 
                 fixture.Search.onClick.Invoke();
-                Assert.That(fixture.Rows.text, Is.Empty, "Refreshing clears the previous page before sending.");
+                Assert.That(fixture.ActiveRowCount, Is.Zero, "Refreshing clears the previous page before sending.");
+                Assert.That(fixture.EmptyState.gameObject.activeSelf, Is.False);
                 fixture.Receive(true);
-                Assert.That(fixture.Rows.text, Is.Empty);
+                Assert.That(fixture.ActiveRowCount, Is.Zero);
+                Assert.That(fixture.EmptyState.gameObject.activeSelf, Is.True);
                 Assert.That(fixture.Status.text, Is.EqualTo("No listings in potions on this page."));
             }
         }
@@ -55,9 +62,11 @@ namespace C02.Tests
             {
                 fixture.OpenMarket();
                 fixture.Receive(true, new BazaarListing { listingID = 8, itemID = 4, quantity = 2, price = 10 });
+                Assert.That(fixture.ActiveRowCount, Is.EqualTo(1));
+                Assert.That(fixture.Row(8).Find("Item").GetComponent<TMP_Text>().text, Is.EqualTo("Iron Shield"));
                 fixture.Search.onClick.Invoke();
                 fixture.Receive(false);
-                Assert.That(fixture.Rows.text, Is.Empty);
+                Assert.That(fixture.ActiveRowCount, Is.Zero);
                 Assert.That(fixture.Status.text, Does.Contain("failed"));
                 Assert.That(fixture.Search.interactable, Is.True);
                 fixture.Search.onClick.Invoke();
@@ -94,7 +103,7 @@ namespace C02.Tests
                 fixture.Close.onClick.Invoke();
                 Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.False);
                 fixture.Receive(firstId, true, new BazaarListing { listingID = 9, itemID = 2, quantity = 1, price = 3 });
-                Assert.That(fixture.Rows.text, Is.Empty);
+                Assert.That(fixture.ActiveRowCount, Is.Zero);
                 Assert.That(fixture.Panel.activeSelf, Is.False);
 
                 fixture.OpenMarket();
@@ -105,7 +114,7 @@ namespace C02.Tests
                 Assert.That(fixture.Status.text, Does.Contain("timed out"));
                 Assert.That(fixture.Search.interactable, Is.True, "A timed-out query can be retried with a new request ID.");
                 fixture.Receive(timedOutId, true, new BazaarListing { listingID = 10, itemID = 3, quantity = 1, price = 4 });
-                Assert.That(fixture.Rows.text, Is.Empty);
+                Assert.That(fixture.ActiveRowCount, Is.Zero);
                 fixture.Search.onClick.Invoke();
                 Assert.That(fixture.Network.Requests, Is.EqualTo(3));
                 Assert.That(fixture.Network.LastRequestID, Is.Not.EqualTo(timedOutId));
@@ -123,7 +132,7 @@ namespace C02.Tests
                 RaiseWorldChanged(fixture.World);
                 Assert.That(fixture.Panel.activeSelf, Is.False);
                 fixture.Receive(requestId, true, new BazaarListing { listingID = 12, itemID = 5, quantity = 1, price = 8 });
-                Assert.That(fixture.Rows.text, Is.Empty);
+                Assert.That(fixture.ActiveRowCount, Is.Zero);
                 Assert.That(fixture.Login.Data.GetBazaar(), Is.Empty,
                     "A cancelled reply must not repopulate the model behind the closed panel.");
             }
@@ -155,7 +164,17 @@ namespace C02.Tests
             public readonly GameObject Panel;
             public readonly Button Market, Search, Close, Next;
             public readonly Button[] TypeButtons;
-            public readonly TMP_Text Rows, Status;
+            public readonly Transform Rows;
+            public readonly TMP_Text EmptyState, Detail, Status;
+            public int ActiveRowCount
+            {
+                get
+                {
+                    int count = 0;
+                    for (int i = 0; i < Rows.childCount; i++) if (Rows.GetChild(i).gameObject.activeSelf) count++;
+                    return count;
+                }
+            }
             public FakeNetwork Network { get; private set; }
 
             public Fixture()
@@ -199,7 +218,12 @@ namespace C02.Tests
                 TypeButtons = new[] { ButtonObject("type1"), ButtonObject("type2"), ButtonObject("type3") };
                 var previous = ButtonObject("previous");
                 Next = ButtonObject("next");
-                Rows = Text("rows");
+                var rowsObject = Child("rows");
+                Rows = rowsObject.transform;
+                Rows.gameObject.AddComponent<VerticalLayoutGroup>();
+                Rows.gameObject.AddComponent<ContentSizeFitter>();
+                EmptyState = Text("empty state");
+                Detail = Text("selected detail");
                 Status = Text("status");
                 var page = Text("page");
                 Set(Screen, "loginScreen", Login);
@@ -212,7 +236,9 @@ namespace C02.Tests
                 Set(Screen, "nextPageButton", Next);
                 Set(Screen, "closeButton", Close);
                 Set(Screen, "pageText", page);
-                Set(Screen, "rowsText", Rows);
+                Set(Screen, "listingRows", Rows);
+                Set(Screen, "emptyStateText", EmptyState);
+                Set(Screen, "selectedDetailText", Detail);
                 Set(Screen, "statusText", Status);
                 Set(Combat, "loginScreen", Login);
                 Set(Combat, "worldScreen", World);
@@ -233,6 +259,7 @@ namespace C02.Tests
             }
 
             public void OpenMarket() => Market.onClick.Invoke();
+            public Transform Row(ulong id) => Rows.Find("Listing-" + id);
             public void Receive(bool success, params BazaarListing[] rows) => Receive(Network.LastRequestID, success, rows);
             public void Receive(uint requestID, bool success, params BazaarListing[] rows) =>
                 ((IViewModelNet)Login.Model).BazaarReceived(requestID, (byte)(success ? 1 : 0), rows ?? Array.Empty<BazaarListing>());

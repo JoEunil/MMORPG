@@ -29,15 +29,21 @@ namespace C02.Tests
                 uint myListId = fixture.Network.LastMyListID;
 
                 ((IViewModelNet)fixture.Login.Model).BazaarReceived(lateSearchId, 1, new[] { Listing(90, 0) });
-                Assert.That(fixture.ScreenRows.text, Is.Empty, "The previous tab's late response must not populate this view.");
+                Assert.That(fixture.ActiveRowCount, Is.Zero, "The previous tab's late response must not populate this view.");
                 Assert.That(fixture.Status.text, Is.EqualTo("Loading my listings…"));
 
                 ((IViewModelNet)fixture.Login.Model).BazaarMyListReceived(myListId, 1,
                     new[] { Listing(91, 1), Listing(92, 2) });
-                Assert.That(fixture.ScreenRows.text, Does.Contain("Listing #91 · Sold"));
-                Assert.That(fixture.ScreenRows.text, Does.Contain("Listing #92 · Claimed"));
-                Assert.That(fixture.ScreenRows.text, Does.Contain("Item 700  |  Quantity 2  |  Price 9000"));
-                Assert.That(fixture.ScreenRows.text, Does.Not.Contain("Available to claim"));
+                Assert.That(fixture.ActiveRowCount, Is.EqualTo(2));
+                Assert.That(fixture.Row(91).Find("State").GetComponent<TMP_Text>().text, Is.EqualTo("Sold"));
+                Assert.That(fixture.Row(92).Find("State").GetComponent<TMP_Text>().text, Is.EqualTo("Claimed"));
+                Assert.That(fixture.Row(91).Find("Item").GetComponent<TMP_Text>().text, Is.EqualTo("Item #700"));
+                Assert.That(fixture.Row(91).Find("Quantity").GetComponent<TMP_Text>().text, Is.EqualTo("2"));
+                Assert.That(fixture.Row(91).Find("Price").GetComponent<TMP_Text>().text, Is.EqualTo("9000"));
+                fixture.Row(91).GetComponent<Button>().onClick.Invoke();
+                Assert.That(fixture.Detail.text, Does.Contain("Listing #91"));
+                Assert.That(fixture.Detail.text, Does.Contain("Sold"));
+                Assert.That(fixture.Detail.text, Does.Not.Contain("Available to claim"));
                 Assert.That(fixture.Status.text, Is.EqualTo("My listings: 2 listings · up to 30 shown"));
                 Assert.That(fixture.Next.gameObject.activeSelf, Is.False, "My listings has no search pagination.");
             }
@@ -68,7 +74,32 @@ namespace C02.Tests
                 fixture.Close.onClick.Invoke();
                 ((IViewModelNet)fixture.Login.Model).BazaarMyListReceived(requestID, 1, new[] { Listing(93, 0) });
                 Assert.That(fixture.Panel.activeSelf, Is.False);
-                Assert.That(fixture.ScreenRows.text, Is.Empty);
+                Assert.That(fixture.ActiveRowCount, Is.Zero);
+            }
+        }
+
+        [Test]
+        public void MyListingsShowsEmptyStateAndRendersOneAndThirtyRows()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.OpenMarket();
+                fixture.MyListings.onClick.Invoke();
+                fixture.ReceiveMyList();
+                Assert.That(fixture.ActiveRowCount, Is.Zero);
+                Assert.That(fixture.EmptyState.gameObject.activeSelf, Is.True);
+
+                fixture.Search.onClick.Invoke();
+                ((IViewModelNet)fixture.Login.Model).BazaarMyListReceived(fixture.Network.LastMyListID, 1, new[] { Listing(201, 0) });
+                Assert.That(fixture.ActiveRowCount, Is.EqualTo(1));
+                Assert.That(fixture.EmptyState.gameObject.activeSelf, Is.False);
+
+                var rows = new BazaarListing[30];
+                for (int i = 0; i < rows.Length; i++) rows[i] = Listing((ulong)(300 + i), (byte)(i % 3));
+                fixture.Search.onClick.Invoke();
+                ((IViewModelNet)fixture.Login.Model).BazaarMyListReceived(fixture.Network.LastMyListID, 1, rows);
+                Assert.That(fixture.ActiveRowCount, Is.EqualTo(30));
+                Assert.That(fixture.Row(329).Find("State").GetComponent<TMP_Text>().text, Is.EqualTo("Claimed"));
             }
         }
 
@@ -93,7 +124,17 @@ namespace C02.Tests
             public readonly GameObject Panel;
             public readonly Button Market, Search, Close, Next, SearchListings, MyListings;
             public readonly Button[] TypeButtons;
-            public readonly TMP_Text ScreenRows, Status;
+            public readonly Transform ScreenRows;
+            public readonly TMP_Text EmptyState, Detail, Status;
+            public int ActiveRowCount
+            {
+                get
+                {
+                    int count = 0;
+                    for (int i = 0; i < ScreenRows.childCount; i++) if (ScreenRows.GetChild(i).gameObject.activeSelf) count++;
+                    return count;
+                }
+            }
             public readonly FakeNetwork Network;
 
             public Fixture()
@@ -138,7 +179,12 @@ namespace C02.Tests
                 TypeButtons = new[] { ButtonObject("type 1"), ButtonObject("type 2"), ButtonObject("type 3") };
                 var previous = ButtonObject("previous");
                 Next = ButtonObject("next");
-                ScreenRows = Text("rows");
+                var rowsObject = Child("rows");
+                ScreenRows = rowsObject.transform;
+                ScreenRows.gameObject.AddComponent<VerticalLayoutGroup>();
+                ScreenRows.gameObject.AddComponent<ContentSizeFitter>();
+                EmptyState = Text("empty state");
+                Detail = Text("selected detail");
                 Status = Text("status");
                 Set(Screen, "loginScreen", Login);
                 Set(Screen, "worldScreen", World);
@@ -152,7 +198,9 @@ namespace C02.Tests
                 Set(Screen, "nextPageButton", Next);
                 Set(Screen, "closeButton", Close);
                 Set(Screen, "pageText", Text("page"));
-                Set(Screen, "rowsText", ScreenRows);
+                Set(Screen, "listingRows", ScreenRows);
+                Set(Screen, "emptyStateText", EmptyState);
+                Set(Screen, "selectedDetailText", Detail);
                 Set(Screen, "statusText", Status);
                 root.AddComponent<EventSystem>();
 
@@ -179,6 +227,7 @@ namespace C02.Tests
             }
 
             public void OpenMarket() => Market.onClick.Invoke();
+            public Transform Row(ulong id) => ScreenRows.Find("Listing-" + id);
             public void ReceiveSearch() => ((IViewModelNet)Login.Model).BazaarReceived(Network.LastSearchID, 1, Array.Empty<BazaarListing>());
             public void ReceiveMyList() => ((IViewModelNet)Login.Model).BazaarMyListReceived(Network.LastMyListID, 1, Array.Empty<BazaarListing>());
 

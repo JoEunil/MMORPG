@@ -1,3 +1,9 @@
+## 最新 — 아이템·거래소 화면 묶음 최종 검증 완료
+
+codex/item-market-ui, C10-Delivery/source 재사용, master449a3ef+C10cherry76f03c0. UI카드/매물선택·패널전환+사이트/정책을한PR로준비. 독립리뷰차단0/재활성화캐시수정. Unity최종98/98(C08구형fixture5실패·컴파일전재시도실패이력보존→최신fixture확인후통과). 실제Windows item-ui-a 전체흐름시장4/가방2응답일치/가방1키차단/ownActions0/좌표·HPMP불변/정상logout,가방은기존DB누락실패이며양수실서버성공claim없음. 캡처후시장행100→52setup한줄리뷰수정,해당시장선택/scroll만추가실입력/30행52px·content1686/scroll0/정상logout통과. 소스/Scene/DLLroot-candidate13파일동일(item-ui-final-files.txt),Play/compile/dirtyfalse/9999Listen9060·Established0/서버재시작0.
+
+공개사례item-market.md와새실캡처2추가/이전이력보존. site22파일9HTML/HTTP·ZIP·원본bytes·링크앵커통과,브라우저홈→상세→이력→상세/1440·390넘침0. localpreview8789(session35074)/tab7. UnityCoordinator새부모1792405627.524579/threads15번째등록,완료시같은부모와완료채널에큰결과+PR하나만보고. 원본rootWIP/Game보존. 새PR게시준비이며아직push/PR생성/병합/공개0. 최종결과 ITEM_MARKET_RESULTS.md.
+
 # 작업 인계
 
 ## 최신 — C07 인벤토리 후보 검증 / PR 직전 승인 준비
