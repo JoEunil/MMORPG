@@ -30,6 +30,22 @@ namespace ClientCore.Network
             try
             {
                 var header = Packet.ExtractHeader(buffer);
+                // Parse chat/profile frames before simulation routing so invalid flags cannot bypass validation.
+                switch ((OP_CODE)header.opcode)
+                {
+                    case OP_CODE.CHAT_WHISPER:
+                        HandleChatWhisper(Packet.DeserializeChatWhisper(header, buffer));
+                        return;
+                    case OP_CODE.CHAT_BROADCAST:
+                        HandleChatBatch(Packet.DeserializeChatBatch(header, buffer));
+                        return;
+                    case OP_CODE.PROFILE_BATCH_RES:
+                        _viewModel.ProfilesReceived(Packet.DeserializeProfiles(header, buffer));
+                        return;
+                    case OP_CODE.INVENTORY_RES:
+                        HandleInventoryRes(Packet.DeserializeInventory(header, buffer));
+                        return;
+                }
                 if ((header.flags & FLAG_SIMULATION) == FLAG_SIMULATION)
                 {
                     _recvTick.Enqueue(buffer);
@@ -37,12 +53,6 @@ namespace ClientCore.Network
                 }
                 switch ((OP_CODE)header.opcode)
                 {
-                    case OP_CODE.CHAT_WHISPER:
-                        HandleChatWhisper(Packet.DeserializeChatWhisper(header, buffer));
-                        break;
-                    case OP_CODE.CHAT_BROADCAST:
-                        HandleChatBatch(Packet.DeserializeChatBatch(header, buffer));
-                        break;
                     case OP_CODE.AUTH_RESPONSE:
                         HandleAuthRes(Packet.Deserialize<AuthResponseBody>(header, buffer));
                         break;
@@ -51,9 +61,6 @@ namespace ClientCore.Network
                         break;
                     case OP_CODE.ENTER_WORLD_RESPONSE:
                         HandleEnterRes(Packet.Deserialize<EnterWorldResponseBody>(header, buffer));
-                        break;
-                    case OP_CODE.INVENTORY_RES:
-                        HandleInventoryRes(Packet.Deserialize<InventoryResBody>(header, buffer));
                         break;
                     case OP_CODE.PING:
                         HandlePing(Packet.Deserialize<Ping>(header, buffer));
@@ -65,6 +72,8 @@ namespace ClientCore.Network
             }
             catch (Exception e)
             {
+                // A malformed C06 frame must reach the socket's existing disconnect boundary.
+                if (buffer.Length >= 7 && (buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 21 || buffer[6] == 25)) throw;
                 ErrorLog(e.Message);
             }
         }
@@ -91,9 +100,9 @@ namespace ClientCore.Network
         {
             _viewModel.EnterReceived(packet.body.resStatus, packet.body.name, packet.body.attack, packet.body.level, packet.body.exp, packet.body.hp, packet.body.mp, packet.body.maxHp, packet.body.maxMp, packet.body.dir, packet.body.startX, packet.body.startY, packet.body.currentZone);
         }
-        private void HandleInventoryRes(STPacket<InventoryResBody> packet)
+        private void HandleInventoryRes(InventoryResBody body)
         {
-            _viewModel.InventoryReceived(packet.body.resStatus, packet.body.items);
+            _viewModel.InventoryReceived(body.resStatus, body.items);
         }
         public void HandleZoneChangeRes(STPacket<ZoneChangeResponseBody> packet)
         {

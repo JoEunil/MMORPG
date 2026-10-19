@@ -158,6 +158,7 @@ xcopy /Y "$(SolutionDir)External\mysqlconn\Debug\*.pdb" "$(OutDir)"</Command>
     <ClCompile Include="BaseLib\TripleBuffer.cpp" />
     <ClCompile Include="BaseLib\WAL.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="CoreLib\NonZoneThreadPool.cpp" />
     <ClCompile Include="CacheLib\ProfileCacheTest.cpp" />
     <ClCompile Include="CacheLib\CacheStorageTest.cpp" />
     <ClCompile Include="BaseLib\FixedObjectPool.cpp" />

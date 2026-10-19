@@ -55,6 +55,9 @@ public struct InventoryItemView
     // UI → ViewModel 호출
     public interface IViewModelUI
     {
+        event Action<bool> OnAuthReceived;
+        event Action<byte, ushort> OnCharacterListResult;
+        event Action<string> OnConnectionFailed;
         event Action<bool> OnEnterSuccess;
         event Action<bool> OnCharacterListReceived;
         event Action<byte, ulong, string, string> OnChatReceived;
@@ -70,6 +73,7 @@ public struct InventoryItemView
         Task Login(string id, string pwd);
         void Enter(ulong charID);
         void Chat(string message, byte scope, ulong targetID);
+        void RequestInventory();
         void Error(string msg);
         void Log(string msg);
         void ZoneChange(int op);
@@ -82,6 +86,7 @@ public struct InventoryItemView
         void ChatacterListReceived(byte resStatus, ushort ount, PacketHelper.CharacterInfo[] characters);
         void EnterReceived(byte resStatus, byte[] name, ushort attack, ushort level, uint exp, int hp, int mp, int maxHp, int maxMp, byte dir, float startX, float startY, ushort CurrentZone);
         void ChatReceived(Packet.Message message);
+        void ProfilesReceived(ProfileEntry[] profiles);
         void InventoryReceived(byte resStatus, PacketHelper.InventoryItem[] items);
         void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y);
         void DeltaReceived(ushort count, PacketHelper.DeltaUpdateField[] updates);
@@ -113,6 +118,9 @@ public struct InventoryItemView
     {
         long GetServerTimeMs();
         void UpdateMove(byte dir, float x, float y);
+        void UpdateAction(byte dir, float x, float y, byte skillSlot);
+        void CancelMove();
+        void CancelAction();
         void UpdateSkill(byte skillSlot);
         (ushort, List<CharacterInfoView>) GetCharList();
         List<InventoryItemView> GetInventory();
@@ -125,8 +133,9 @@ namespace ClientCore.Network
     {
         void Enqueue(byte[] buffer);
     }
-    public interface ITCPSocket
+    public interface ITCPSocket : IDisposable
     {
+        event Action<string> OnDisconnected;
         Task Connect(string address, int port);
         void Send(byte[] binary);
     }
@@ -154,6 +163,8 @@ namespace ClientCore.Services
         void Enter(ulong charID);
 
         void Chat(string message, byte scope, ulong targetID);
+        void Profiles(uint[] profileIds);
+        void RequestInventory();
         void Action(byte dir, float x, float y, byte skillSlot);
         void Pong(ulong serverTimeMs);
         void ZoneChange(byte op);

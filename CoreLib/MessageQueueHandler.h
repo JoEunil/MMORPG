@@ -44,6 +44,7 @@ namespace Core {
 
 
         friend class Initializer;
+        friend class NonZoneThreadPoolFixture;
     public:
         void Process(Message* m);
     };

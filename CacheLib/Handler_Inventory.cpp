@@ -10,11 +10,13 @@
 
 namespace Cache {
     void Handler::InventoryRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgInventoryReqBody* body) {
-        Result5 res = cache_inventory->Getter(body->characterID);
+        const auto characterID = body->characterID;
+        Result5 res = cache_inventory->Getter(characterID);
+        Core::MsgStruct<Core::MsgInventoryResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgInventoryResBody>*>(msg->GetBuffer());
+        st->body = {};
+        st->header.messageType = Core::MSG_INVENTORY_RES;
+        st->header.sessionID = sessionID;
         if (res.status == CACHE_STATUS::AVAILABLE) {
-            Core::MsgStruct<Core::MsgInventoryResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgInventoryResBody>*>(msg->GetBuffer());
-            st->header.messageType = Core::MSG_INVENTORY_RES;
-            st->header.sessionID = sessionID;
             st->body.resStatus = 1;
             uint16_t n = 0;
             for (int i = 0; i < MAX_INVENTORY && n < MAX_INVENTORY; i++) {
@@ -28,10 +30,7 @@ namespace Cache {
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgInventoryResBody>));
             messageQ->EnqueueMessage(msg);
         } else {
-            Core::MsgStruct<Core::MsgInventoryResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgInventoryResBody>*>(msg->GetBuffer());
-            st->header.messageType = Core::MSG_INVENTORY_RES;            
-            st->header.sessionID = sessionID;
-            st->body.resStatus = 0;
+            st->body.resStatus = Core::RES_STATUS::FAILED;
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgInventoryResBody>));
 			messageQ->EnqueueMessage(msg);
         }

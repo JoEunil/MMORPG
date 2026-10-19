@@ -15,7 +15,7 @@ namespace ClientCore
         // packet
         internal const int MAX_CHARNAME_LEN = 32;
         internal const int MAX_CHARACTER = 10;
-        internal const int MAX_INVENTORY_ITEMS = 128;
+        internal const int MAX_INVENTORY_ITEMS = 10;
         internal const int MAX_INVENTORY = 64;
         internal const int MAX_CHAT_PACKET = 10;
         // 서버(CoreLib/Config.h)와 값을 일치시킨다.

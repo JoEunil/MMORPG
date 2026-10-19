@@ -1,0 +1,5 @@
+{
+  "name": "C02.Runtime",
+  "references": ["C01.Runtime", "Unity.TextMeshPro", "Unity.ugui", "Unity.InputSystem"],
+  "autoReferenced": true
+}

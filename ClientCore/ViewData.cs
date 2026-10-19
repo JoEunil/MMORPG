@@ -28,16 +28,32 @@ namespace ClientCore
         }
 
         private readonly object _lockMove = new object();
-        private ActionData _actionState;
-        // 클라이언트가 로컬로 이동한 뒤의 최종 좌표를 기록한다.
+        private ActionData _actionState = new ActionData { waitSkillSlot = NONE_SKILL };
+        // 서버 확정 좌표에서 만든 다음 이동 후보를 기록한다.
         // 한 틱에 여러 번 호출돼도 마지막 좌표만 남으므로, 서버로는 틱당 한 번만 나간다.
         public void UpdateMove(byte dir, float x, float y)
         {
+            if (dir > 3 || float.IsNaN(x) || float.IsInfinity(x) || float.IsNaN(y) || float.IsInfinity(y))
+                throw new ArgumentException("Invalid movement state.");
             lock (_lockMove)
             {
                 _actionState.dir = dir;
                 _actionState.x = x;
                 _actionState.y = y;
+                _actionState.dirty = true;
+            }
+        }
+        // A cast always carries one confirmed position/direction/slot snapshot.
+        public void UpdateAction(byte dir, float x, float y, byte skillSlot)
+        {
+            if (dir > 3 || skillSlot > 2 || float.IsNaN(x) || float.IsInfinity(x) || float.IsNaN(y) || float.IsInfinity(y))
+                throw new ArgumentException("Invalid action state.");
+            lock (_lockMove)
+            {
+                _actionState.dir = dir;
+                _actionState.x = x;
+                _actionState.y = y;
+                _actionState.waitSkillSlot = skillSlot;
                 _actionState.dirty = true;
             }
         }
@@ -47,6 +63,22 @@ namespace ClientCore
             {
                 _actionState.waitSkillSlot = skillSlot;
                 _actionState.dirty = true;
+            }
+        }
+        public void CancelMove()
+        {
+            lock (_lockMove)
+            {
+                // Preserve an independently queued skill, if one exists.
+                _actionState.dirty = _actionState.waitSkillSlot != NONE_SKILL;
+            }
+        }
+        public void CancelAction()
+        {
+            lock (_lockMove)
+            {
+                _actionState.waitSkillSlot = NONE_SKILL;
+                _actionState.dirty = false;
             }
         }
         // 서버가 알려준 권위 좌표로 맞춘다 (입장·존 이동).
@@ -77,12 +109,15 @@ namespace ClientCore
         private ushort _charListCnt = 0;
         public void SetCharList(ushort count, CharacterInfo[] chars)
         {
+            if (chars == null || count > 10 || count > chars.Length)
+                throw new ArgumentException("Invalid character count.");
             lock (_lockCharList)
             {
                 _charListCnt = count;
                 _charList.Clear();
-                foreach (var c in chars)
+                for (int i = 0; i < count; i++)
                 {
+                    var c = chars[i];
                     string name = PacketHelper.EncodingHelper.DecodeUtf8(c.name);
                     _charList.Add(new CharacterInfoView
                     {
@@ -98,7 +133,7 @@ namespace ClientCore
         {
             lock (_lockCharList)
             {
-                return (_charListCnt, _charList);
+                return (_charListCnt, new List<CharacterInfoView>(_charList));
             }
         }
 
@@ -125,7 +160,7 @@ namespace ClientCore
         {
             lock (_lockInventory)
             {
-                return _inventory;
+                return new List<InventoryItemView>(_inventory);
             }
         }
     }

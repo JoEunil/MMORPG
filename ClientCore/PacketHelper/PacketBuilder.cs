@@ -48,6 +48,8 @@ namespace ClientCore.PacketHelper
             return Packet.SerializeChatPacket(header, body, message, scope, targetID);
         }
 
+        internal static byte[] CreateProfileRequest(uint[] profileIds) => Packet.SerializeProfileRequest(profileIds);
+
 
         internal static byte[] CreateZoneChangePacket(byte op)
         {

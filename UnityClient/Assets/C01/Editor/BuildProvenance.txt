@@ -1,0 +1,27 @@
+C01 implementation freeze candidate - 2026-10-18 KST
+Source HEAD: 1d5a3d69074a1de6bafde30f1ec4dfe5cac1a951
+ClientCore uses the seven modified original files listed below; no source copy in Unity.
+Build: powershell -NoProfile -ExecutionPolicy Bypass -File UnityClient/Tools/Build-ClientCore.ps1
+dotnet Release netstandard2.0: passed, 0 errors; NU1900 vulnerability-feed lookup warnings (network unavailable).
+Unity 6000.0.47f1 compile: completed, failed=false, errors=[], compilationFailed=false.
+Json: existing com.unity.nuget.newtonsoft-json 3.2.1 (package reports Json 13.0.2), assembly identity 13.0.0.0; no copied Json DLL.
+Scene: Assets/C01/C01.unity generated and saved through C01SceneBuilder.Build in connected Editor.
+Editor inspection: 2 TMP inputs, Password input masked, LoginButton found under C01Client/Canvas/C01Panel/SignIn, one EventSystem, default input UI actions assigned.
+UI and frame/list execution tests: NOT RUN by implementation owner; review and tester handoff next.
+Raw status/count are displayed only in Results/StatusText. status=0 remains No characters or list request failed.
+
+SHA256:
+0C7A8D051F621102D8AB39432A6DE46D7A73336949A3F6979DC5AEE9CDAB9E4D  ClientCore/ViewModel.cs
+91384F5CDF011A11E4E11D5BF9BAB86E769112F28039DF6A963680BCB7D3472C  ClientCore/Interfaces.cs
+F7E203DF46282A357FDE2723591161565D4AFBEEB27142365F0DA15717C56109  ClientCore/Initializer.cs
+D403374EBF038BCC9ACDAEAAF57245931CABAA2576AF4015DB520DA239B0624B  ClientCore/Network/TCPSocket.cs
+926D983C352057729D7DD4490C25467CC06F3F47264DE3EFBAC84E30304FBD6F  ClientCore/Services/NetworkService.cs
+66C5162D961A0B3175130BC06C7857119A054764C062595D05B945A6513589B9  ClientCore/ViewData.cs
+DF8B66201AFE3AFB257AC3E5EF180435EB4A587C67B873004B913D447570BB3E  ClientCore/Services/AuthService.cs
+38232295091B22D51B00344A8F0C947CE2425E9AAB7D39BA2F33F6449D633062  UnityClient/Assets/C01/C01.Runtime.asmdef
+CCE60BBE154911530BFF014EEC0E7FF0D6160ADF33DD85D40AF132C5FDAB2774  UnityClient/Assets/C01/C01LoginScreen.cs
+C156E44EF1177B22A864F0438C4928E8CB160A5DF6EF26584946DF9B442E6F95  UnityClient/Assets/C01/Editor/C01.Editor.asmdef
+BF8D2D903A8E92A575A08B4B12F05ED49709D946ED69AA29BC149BD7596A3CD1  UnityClient/Assets/C01/Editor/C01SceneBuilder.cs
+523AF6746927E14E10CBEA157A2ABF6BFCB9CAEFBB18781772C2B942D0783D30  UnityClient/Assets/C01/C01.unity
+E35B939EF42768E73E15BF81142B9F60E14C61AA8A83136E802CE5D295E32FFD  UnityClient/Tools/Build-ClientCore.ps1
+F0B68A72FA61C423EE5883B159768912DAAB76C00151C18702CA3C877326A01D  UnityClient/Assets/Plugins/ClientCore/ClientCore.dll
