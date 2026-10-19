@@ -22,3 +22,5 @@
 같은 브랜치에서 새 공개 사례와 최종 거래소/가방 오류 실제 캡처2개를 추가하고 이전 숫자목록 이력을 보존했다. SHOWCASE·작업별Markdown이 원본이며 생성HTML 본문을 직접 수정하지 않았다. 빌드의 링크/앵커 검사·HTTP22파일/9HTML bytes일치·ZIP·원본 이미지 동일성 통과. 실제 브라우저 홈→상세→이력→상세를 확인했고 desktop1440/mobile390에서 가로 넘침0, 이미지1280원본로드/표시800·333px를 확인했다. Captures/item-site-check.txt 및desktop/mobilePNG. 로컬 미리보기는 http://127.0.0.1:8789/MMORPG/ 이며 PR 승인/병합 전 공개Pages에 적용된 것으로 기록하지 않는다.
 
 소스 공백 검사는 통과했다. 생성 Scene에는 Unity가 저장한 빈 m_Name/m_EditorClassIdentifier/m_text 뒤 공백 33곳만 있으며 임의 수동 편집하지 않았다.
+
+2026-10-19 사용자 피드백 반영: 작업 상세4개의 문제 해결·에이전트 과정 반복을 구현 기능/현재 확인 범위로 교체했다. 초기 조회와 내 매물 페이지는 후속 화면으로 연결한다. GUIDE에 현재 설명/대표 캡처 동시 갱신·이전 화면 이력 보존을 명시했다. HTML 재생성/링크·HTTP22파일/ZIP·원본 캡처 동일성 통과, 실제브라우저 최신본문/desktop1213·mobile390넘침0·이미지로드확인. 게임/서버 변경과 Unity 재시험0. Captures/item-site-content-check.txt 및item-site-features-desktop/mobile.png.
