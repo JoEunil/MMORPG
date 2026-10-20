@@ -222,10 +222,9 @@ namespace C02.Tests
                     Is.True, "Server Full coordinates must match the displayed position and own-character transform.");
                 var invariant = CultureInfo.InvariantCulture;
                 var expectedWorldStatus = string.Format(invariant,
-                    "Character ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})",
-                    expectedCharacterID, receivedInternalID, receivedZone, ownFull.x, ownFull.y);
+                    "AREA {0}", receivedZone);
                 Assert.That(worldStatus.text.Contains(expectedWorldStatus), Is.True,
-                    "The world HUD must show the selected ID, actual Zone/internal ID, and server coordinates.");
+                    "The world HUD must show the actual current area; internal identity and coordinates are verified above.");
                 Assert.That(!worldStatus.text.Contains(password) && !loginStatus.text.Contains(password) &&
                     !entryStatus.text.Contains(password) && !worldStatus.text.Contains(loginId) &&
                     !entryStatus.text.Contains(loginId) && string.IsNullOrEmpty(passwordInput.text), Is.True,

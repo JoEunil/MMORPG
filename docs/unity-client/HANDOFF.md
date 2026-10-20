@@ -1,3 +1,10 @@
+## 최신 — 큰 묶음 게시 승인 요청 / 독립 후속 UI 완료
+
+게시 승인 CLASSIC01은 codex/classic-mmorpg-motion 정확 ee85f3f35cfd17d372dfc8e1e91c22121e663dfb(79files3342+/182-) 기준. push/PR0, fetch확인origin/master8690이HEAD조상. SlackUnityCoordinator bot요청1792487679.299269(부모1792480887.219109)/완료채널1792487683.184129. 지정사람의검증된새승인미소비. connectorread_thread가부모만반환하여새봇답글까지누락한결과는승인없음의확정근거로쓰지않음. 승인전이거나원문확인불가시push하지않는다. 승인되면현재후속HEAD가아니라위고정branch/ref만범위대조후게시한다.
+
+작은완료/PR대기로정지하지않고codex/classic-field-ui를ee85에서분기. 필드UI의내부ID/좌표나열을현재AREA·실제조작안내로교체하고,360x88헤더와내부Disconnect배치로정리. 서버상태/좌표/ID검증과fixture의기존바인딩assert유지. root5대상파일후보와동일확인/Classic-Field-UI/before백업뒤제한적동기화. 독립리뷰차단0/compileerrors0/기존OwnFull-Zone순서시나리오(False/True)2PASS(0.040647/0.0022622s). 새로그인·전투·시장회귀0. EditorCanvas/328x68텍스트/버튼범위확인,새실게임화면캡처는없으므로공개페이지는앞서검증된캡처유지. 후속은다음관련필드/아트큰묶음에포함/별도작은PR금지.
+
+실행서버22424/9999Listen1/정상퇴장후Established0읽기확인,112배치서버는미기동. 원본Game와root기존WIP보존. 전문누적신규7+재활성화23=30/tokenN/A. 다음미완료는대표필드/몬스터표면과실제배치·성장수치,새112실서버및4구역검증은관련완성묶음의다음1회배치로모은다.
 ## 최신 — 통합 입력 배치 종료·HUD 완성 후보
 
 동결후한로그인으로실제UI선택/입장→방향키이동/해제/수렴→Z/X/C서버시전→I/B패널/거래소30개실제아이콘→HP0차단→채팅I/B가드→정상Disconnect/Modelnull/모든패널숨김→Playstop확인. OS입력0/UnityInputSystem이벤트실제UI경로이며handler직접호출0. simulate_key도구의즉시InputSystem.Update가프레임edge를소비해최초시도미반응,normalplayerloop에KeyboardState이벤트만queue하여정상화/제품코드우회0. 최초가방cold실패뒤닫고다시열어Noitems성공/seed0. 원문 CLASSIC_INPUT_RESULTS.txt. HP0상태에서신규이동차단확인,alive채팅이동·4존왕복·새112실서버배치는미실행.

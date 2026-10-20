@@ -114,7 +114,7 @@ namespace C02.Tests
                 Assert.That(screen.ZoneID, Is.EqualTo((ushort)1));
                 Assert.That(screen.ServerPosition, Is.EqualTo(new Vector2(17.25f, -4.5f)));
                 Assert.That(screen.OwnPosition, Is.EqualTo(new Vector3(17.25f, 0, -4.5f)));
-                Assert.That(screen.StatusContainsOwnIDs, Is.True);
+                Assert.That(screen.StatusShowsCurrentArea, Is.True);
             }
         }
 
@@ -197,7 +197,7 @@ namespace C02.Tests
             public ushort ZoneID => screen.ZoneID;
             public Vector2 ServerPosition => screen.ServerPosition;
             public Vector3 OwnPosition => ((Transform)Get(screen, "ownCharacter")).position;
-            public bool StatusContainsOwnIDs => status.text.Contains("Character ID 42") && status.text.Contains("Internal ID 73");
+            public bool StatusShowsCurrentArea => status.text.Contains("AREA 1") && !status.text.Contains("Internal ID") && !status.text.Contains("Character ID");
 
             public void EnterPending()
             {

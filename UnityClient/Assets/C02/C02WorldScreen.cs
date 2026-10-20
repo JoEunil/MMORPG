@@ -176,8 +176,7 @@ namespace C02
                 pendingFull.Clear();
                 ownCharacter.gameObject.SetActive(false);
                 worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
-                    "Zone {0} entered at ({1:F3}, {2:F3}). Waiting for your matching server state…\nPlease wait before taking another action.",
-                    zone, x, y);
+                    "AREA {0}\nPreparing your character…", zone);
                 UpdateZoneTransitionButton();
                 WorldStateChanged?.Invoke();
                 return;
@@ -463,7 +462,7 @@ namespace C02
             transitionDeadline = Time.unscaledTimeAsDouble + ZoneTransitionTimeoutSeconds;
             Stage = C02Stage.TransitionPending;
             worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
-                "Requesting entry to Zone {0}…\nMovement and skills are paused until the server confirms the transition.", targetZone);
+                "Travelling to area {0}…\nMovement and skills will resume on arrival.", targetZone);
             UpdateZoneTransitionButton();
             WorldStateChanged?.Invoke();
             try { model.ZoneChange(operation); }
@@ -531,8 +530,7 @@ namespace C02
             ownCharacter.rotation = ServerFacing(ownFull.dir);
             RenderVisualPosition();
             worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
-                "C02 / SERVER-CONFIRMED FIELD\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nArrow keys move. Z / X / C use skills.",
-                SelectedCharacterID, InternalID, ZoneID, ownFull.x, ownFull.y);
+                "AREA {0}\nArrow keys · move    Z / X / C · skills\nI · inventory    B · market", ZoneID);
             UpdateZoneTransitionButton();
         }
 
