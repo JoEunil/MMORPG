@@ -1,3 +1,7 @@
+## 최신 — 기본 브랜치 이력 복구
+
+사용자복구·완료브랜치정리명시승인. codex/restore-master-history에서4cc541f(PR37+검증된후속리뷰)와원격문서f1b5e44를병합해두이력보존. 원본Game/rootWIP보존. 문서충돌은사용자AI경험/자동PR리뷰+배포된Pages/최신승인·최소검증을유지. 신규기능의push/PR전Slack승인규칙불변; 이번복구게시만현재직접요청으로승인. HISTORY_RECOVERY.md기준. 관련코드4cc와동일/기존native1+Unity2PASS재사용/사이트build·linkPASS. 복구뒤원격head·조상·완료PRbranch확인후안전한branch만삭제,미게시/추가커밋/사용중worktree보존. 강제push/reset/DB작업없음.
+
 ## 최신 — PR37 신규 페이즈 리뷰 수정
 
 두 지적 모두 실제 코드로 타당성 확인. 리스폰 phase/skillStep/tick 초기화와 non-final 정수HP gate 엄격 내림차순만 수정. codex/monster-phase-review는 PR37 실제 병합0f9b96d 기준; 거래소42dc·catalog848 보존. 독립리뷰 차단0/Release UnitTests build0/native1·Unity2 PASS. 최초 EditMode 발견0은 미실행으로 보존, PlayMode 해당2만 실행. 게임입력/실제export/서버재기동/DB쓰기0. 임시probe 제거/root확장catalog 동일검사 반영·기존값보존. 결과 PR37_PHASE_REVIEW_RESULTS.md. 현재 GitHub master f1b5e44는0f9후손아니며 C14코드없음(API확인). 자동복원·다른변경끼워넣기·push·PR0; 게시기준확인 전 로컬수정보존. 다른개발추가진행0.
