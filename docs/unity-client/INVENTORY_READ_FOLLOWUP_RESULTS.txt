@@ -9,3 +9,7 @@
 근거: Captures/inventory-read-retry-test-status.txt 및 inventory-read-lifecycle-test-status.txt. 테스트는 fake network/component lifecycle fixture이며 실제 서버 UI 재조회 성공을 의미하지 않는다.
 종료: Editor Playfalse/dirtyfalse/sceneC02/backgroundfalse/inputRunningfalse. 새 실제 로그인/입력0, 새 캡처0. 다음 관련 가방 묶음 입력 검증에 실제 I 열기→실패 시1회 재확인→실제응답 또는 최종실패 표시만 합친다. 초기 DB_READING에 .35초가 항상 충분하다고 보증하지 않고 두 번째 실패는 정직하게 남긴다.
 전달: PLAY03 게시 후보 d217f0a와 별도 후속 branch에 보존. 작은 PR·추가 승인 요청을 만들지 않는다. 새 공개 UI 성공 화면이 없어 사이트에는 이전 검증 범위/이력을 유지했다.
+
+실제 입력 최종 확인 — 2026-10-20 22:19 KST
+같은 전용 계정02 로그인1회: char5012 HP10000/MP9999 Zone5 실제 응답. I키 실제 InputSystem event로 가방 열기, 첫 서버응답 successTrue/count0, UI No items 확인. manual Refresh0·자동재조회0·서버재시작0·DB쓰기0. 이번 실제 실행은 warm/cold cache를 측정하지 않았고 자동재조회 경로를 실서버에서 재현한 증거는 아니다. 그 경로와 수명 경계는 앞선 자동2개 PASS를 그대로 사용하고 반복하지 않았다.
+대표 캡처 Captures/inventory-followup-live.png 직접 확인. 실제 빈 상태로 아이템 화면을 조작/합성하지 않음. I닫기→실제Disconnect→Modelnull→Playstop, dirtyfalse/inputRunningfalse/backgroundfalse/C01_TEST_LOGIN_ID null 복구. 정상 서버43240 유지. 로그인 evidence inventory-followup-login.txt, 실제응답 inventory-followup-live.txt, 퇴장 inventory-followup-disconnect.txt.
