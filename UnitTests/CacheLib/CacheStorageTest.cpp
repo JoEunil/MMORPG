@@ -447,6 +447,18 @@ namespace Cache {
             handler.messagePool = messages.get();
             handler.dbWorkerBazaar = stoppedWorker.get();
         }
+        void RequestBuy(int delta = 0) {
+            auto* msg = messages->Acquire();
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarBuyBody>*>(msg->GetBuffer());
+            st->header = {42, Core::MSG_BAZAAR_BUY}; st->body = {5011, UINT64_MAX, 123};
+            msg->SetLength(sizeof(*st) + delta); handler.Process(msg);
+        }
+        void RequestOutbox(int delta = 0) {
+            auto* msg = messages->Acquire();
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarCheckOutboxBody>*>(msg->GetBuffer());
+            st->header = {42, Core::MSG_BAZAAR_CHECK_OUTBOX}; st->body = {5011, 124};
+            msg->SetLength(sizeof(*st) + delta); handler.Process(msg);
+        }
         void RequestClaim(int delta = 0) {
             auto* msg = messages->Acquire();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarClaimBody>*>(msg->GetBuffer());
@@ -531,5 +543,79 @@ namespace Cache {
         RequestClaim(); EXPECT_EQ(responses.received, nullptr); ExpectPoolRestored();
         responses.accept = true;
         RequestClaim(-1); EXPECT_EQ(responses.received, nullptr); ExpectPoolRestored();
+    }
+}
+
+#include <CacheLib/BazaarPurchaseResult.h>
+namespace {
+    struct BuyRows {
+        int64_t status = 1;
+        uint64_t itemID = UINT32_MAX, quantity = UINT32_MAX, price = UINT64_MAX;
+        bool empty = false, throws = false;
+        bool next() { if (throws) throw std::runtime_error("fixture SQL result failure"); return !empty; }
+        bool isNull(const char*) { return false; }
+        int64_t getInt64(const char*) { return status; }
+        uint64_t getUInt64(const char* column) {
+            if (std::string_view(column) == "item_id") return itemID;
+            if (std::string_view(column) == "quantity") return quantity;
+            return price;
+        }
+    };
+    struct OutboxRows {
+        int count = 3, index = -1, throwAt = -1;
+        bool next() { ++index; if (index == throwAt) throw std::runtime_error("fixture partial read failure"); return index < count; }
+        bool isNull(const char*) { return false; }
+        uint64_t getUInt64(const char* column) {
+            if (std::string_view(column) == "event_id") return 100 + index;
+            if (std::string_view(column) == "item_id") return 1;
+            return index == 2 ? UINT32_MAX : 1;
+        }
+    };
+}
+namespace Cache {
+    TEST_F(BazaarMyListFixture, BazaarPurchaseSqlAndDeliveryPrefixKeepDedupAndSingleReturn) {
+        BuyRows rows;
+        Core::MsgBazaarBuyResBody bought{};
+        ParseBazaarBuyResult(&rows, bought);
+        EXPECT_EQ(bought.resStatus, 1); EXPECT_EQ(bought.itemID, UINT32_MAX);
+        EXPECT_EQ(bought.quantity, UINT32_MAX); EXPECT_EQ(bought.diamondSpent, UINT64_MAX);
+        rows.status = 4; rows.itemID = rows.quantity = rows.price = 0;
+        ParseBazaarBuyResult(&rows, bought); EXPECT_EQ(bought.resStatus, 4);
+        rows.status = 3;
+        ParseBazaarBuyResult(&rows, bought); EXPECT_EQ(bought.resStatus, 3);
+        rows.status = 2;
+        EXPECT_THROW(ParseBazaarBuyResult(&rows, bought), std::runtime_error); EXPECT_EQ(bought.resStatus, 5);
+        rows.status = 1; rows.itemID = uint64_t{UINT32_MAX} + 1;
+        EXPECT_THROW(ParseBazaarBuyResult(&rows, bought), std::runtime_error); EXPECT_EQ(bought.resStatus, 5);
+        rows.throws = true;
+        EXPECT_THROW(ParseBazaarBuyResult(&rows, bought), std::runtime_error); EXPECT_EQ(bought.resStatus, 5);
+        ParseBazaarBuyResult<BuyRows>(nullptr, bought); EXPECT_EQ(bought.resStatus, 5);
+        InventoryHarness inventory; inventory.Seed();
+        const auto deliver = [&](uint64_t eventID, uint32_t itemID, uint32_t quantity) { return inventory.DeliverItem(Character, eventID, itemID, quantity); };
+        OutboxRows events;
+        Core::MsgBazaarCheckOutboxResBody delivered{};
+        DeliverBazaarOutboxResult(&events, deliver, delivered);
+        EXPECT_EQ(delivered.resStatus, 1); EXPECT_EQ(delivered.deliveredCount, 2); EXPECT_EQ(delivered.blockedCount, 1);
+        EXPECT_EQ(inventory.Getter(Character).data.items[0].quantity, 2);
+        events.index = -1;
+        DeliverBazaarOutboxResult(&events, deliver, delivered);
+        EXPECT_EQ(delivered.deliveredCount, 0); EXPECT_EQ(delivered.duplicatedCount, 2); EXPECT_EQ(delivered.blockedCount, 1);
+        EXPECT_EQ(inventory.Getter(Character).data.items[0].quantity, 2);
+        events.index = -1; events.throwAt = 1;
+        DeliverBazaarOutboxResult(&events, deliver, delivered);
+        EXPECT_EQ(delivered.resStatus, 0); EXPECT_EQ(delivered.duplicatedCount, 1);
+        EXPECT_EQ(inventory.Getter(Character).data.items[0].quantity, 2);
+        RequestBuy(); ASSERT_NE(responses.received, nullptr);
+        const auto* buy = Core::parseMsgBody<Core::MsgBazaarBuyResBody>(responses.received->GetBuffer());
+        EXPECT_EQ(buy->resStatus, 5); EXPECT_EQ(buy->requestID, 123); EXPECT_EQ(buy->characterID, 5011); EXPECT_EQ(buy->listingID, UINT64_MAX);
+        EXPECT_EQ(buy->itemID, 0); EXPECT_EQ(buy->quantity, 0); EXPECT_EQ(buy->diamondSpent, 0); ExpectPoolRestored();
+        RequestOutbox(); ASSERT_NE(responses.received, nullptr);
+        const auto* outbox = Core::parseMsgBody<Core::MsgBazaarCheckOutboxResBody>(responses.received->GetBuffer());
+        EXPECT_EQ(outbox->resStatus, 0); EXPECT_EQ(outbox->requestID, 124); EXPECT_EQ(outbox->characterID, 5011);
+        EXPECT_EQ(outbox->deliveredCount, 0); EXPECT_EQ(outbox->duplicatedCount, 0); EXPECT_EQ(outbox->blockedCount, 0); ExpectPoolRestored();
+        responses.received.reset(); responses.accept = false;
+        RequestBuy(); RequestOutbox(); EXPECT_EQ(responses.received, nullptr); ExpectPoolRestored();
+        responses.accept = true;
+        RequestBuy(-1); RequestOutbox(1); EXPECT_EQ(responses.received, nullptr); ExpectPoolRestored();
     }
 }

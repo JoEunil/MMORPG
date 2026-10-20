@@ -34,6 +34,7 @@ namespace C02
         private bool requestTimedOut;
         private float requestDeadline;
         private bool hasInventoryResponse;
+        private bool refreshAfterCurrentRequest;
 
         public bool IsOpen => inventoryPanel != null && inventoryPanel.activeSelf;
 
@@ -84,6 +85,7 @@ namespace C02
             requestPending = false;
             requestTimedOut = false;
             hasInventoryResponse = false;
+            refreshAfterCurrentRequest = false;
             ClearInventoryCards();
             inventoryStatus.text = string.Empty;
             inventoryPanel.SetActive(false);
@@ -120,6 +122,14 @@ namespace C02
             UpdateControls();
         }
 
+        public void RefreshAfterDelivery()
+        {
+            hasInventoryResponse = false;
+            // Inventory replies have no request ID: finish an older read before issuing the fresh one.
+            if (requestPending) refreshAfterCurrentRequest = true;
+            else RequestInventory();
+        }
+
         private void RequestInventory()
         {
             if (!WorldAvailable || model == null || loginScreen.Model != model || requestPending || requestTimedOut)
@@ -150,6 +160,12 @@ namespace C02
             if (!requestPending || model == null || loginScreen.Model != model) return;
             if (!WorldAvailable && worldScreen.Stage != C02Stage.TransitionPending) return;
             requestPending = false;
+            if (refreshAfterCurrentRequest)
+            {
+                refreshAfterCurrentRequest = false;
+                RequestInventory();
+                return;
+            }
             if (!success)
             {
                 hasInventoryResponse = false;

@@ -127,6 +127,47 @@ namespace C02.Tests
         }
 
         [Test]
+        [Category("MarketPurchase")]
+        public void DeliveryRefreshesCachedInventoryAndWaitsForAnOlderReadBeforeOneFreshRequest()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.OpenBag();
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 3, slot = 0 });
+                Assert.That(fixture.Network.Requests, Is.EqualTo(1));
+                Assert.That(fixture.Cards[0].transform.Find("ItemName").GetComponent<TMP_Text>().text, Is.EqualTo("HP Potion"));
+                fixture.Close.onClick.Invoke();
+
+                fixture.Screen.RefreshAfterDelivery();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2), "Delivery invalidates a previously viewed bag and reads fresh inventory even while closed.");
+                Assert.That(fixture.Cards, Is.Empty, "Old cards cannot remain the delivery result.");
+                fixture.OpenBag();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2), "Opening during the delivery refresh must not issue another uncorrelated inventory read.");
+                fixture.Receive(true, new InventoryItem { itemID = 2, quantity = 7, slot = 0 });
+                Assert.That(fixture.Cards.Length, Is.EqualTo(1));
+                fixture.Cards[0].onClick.Invoke();
+                Assert.That(fixture.DetailName.text, Is.EqualTo("MP Potion"));
+                Assert.That(fixture.DetailQuantity.text, Is.EqualTo("Quantity 7"));
+
+                fixture.Refresh.onClick.Invoke();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(3));
+                fixture.Screen.RefreshAfterDelivery();
+                fixture.Screen.RefreshAfterDelivery();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(3), "Delivery notifications must wait for the older inventory response instead of overlapping reads.");
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 1, slot = 0 });
+                Assert.That(fixture.Network.Requests, Is.EqualTo(4), "Repeated delivery notifications coalesce into exactly one fresh read after the old response.");
+                Assert.That(fixture.Cards, Is.Empty, "The older response must not become the displayed post-delivery inventory.");
+                fixture.Receive(true, new InventoryItem { itemID = 5, quantity = 2, slot = 1 });
+                Assert.That(fixture.Network.Requests, Is.EqualTo(4));
+                Assert.That(fixture.Cards.Length, Is.EqualTo(1));
+                fixture.Cards[0].onClick.Invoke();
+                Assert.That(fixture.DetailName.text, Is.EqualTo("Leather Armor"));
+                Assert.That(fixture.DetailQuantity.text, Is.EqualTo("Quantity 2"));
+                Assert.That(fixture.Refresh.interactable, Is.True);
+            }
+        }
+
+        [Test]
         public void ANewClientModelClearsTheTimeoutLock()
         {
             using (var fixture = new Fixture())
@@ -344,6 +385,8 @@ namespace C02.Tests
         private sealed class FakeNetwork : INetworkService
         {
             public int Requests;
+            public void RequestBazaarBuy(uint requestID, ulong listingID) { }
+            public void RequestBazaarCheckOutbox(uint requestID) { }
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { }

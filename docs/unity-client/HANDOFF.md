@@ -1,3 +1,11 @@
+## 최신 — 거래소 구매·구매품 수령 묶음 검증 완료
+
+2026-10-20 사용자 계속진행. codex/market-purchase는미게시20b365e기반. MARKET_PURCHASE_RESULTS/CONTRACT/TASK에구현·리뷰·최소검증·실제실패이력과제한기록. Unity직접3최종PASS/native2PASS/실제5011한로그인가격확인→재화부족status4/spent0→빈배송status1→coldcache첫실패후BAG열기freshNoitems→normalDisconnect/modelnull/Playstop. wallet/outbox/top3 readonly전후동일/직접DBseed0. 실제성공거래·차감·배송영속화미검증. 기존대금수령20b도포함해큰PR한개게시요청예정,각각작은PR금지. MARKET01사람승인원문여전히없음/소비0. 새최종요청MARKET02가필요하며기존승인재사용금지.
+
+독립review차단0/기존회귀반복0. SceneEditor저장2버튼ref/style확인·추가빈필드12trailing공백만제거. rootEditorPlay/compile/dirtyfalse, DLL778E7D5486D0EBBECEF03EA62413EB00B06CBE02B36224910FE0B8CF58FEB1FD 빌드일치. MainServer23696/ticks639280615805924105/hashB5F72FDC20DBE0519630A762FD36C627F9799DBB98245B5EF981E4A37E7D6C5B/9999ready. 기존3096 q1회정상종료로그·process없음·portfree확인,도우미PassThruExitCode null로숫자exit0미확인,이력보존. 새기동확인한글인코딩오류는추가기동없이stdout준비와포트로재확인. 강제종료/DB초기화0. login17184/3000유지. 정상logout1168만기존비차단진단. 원본Game/rootWIP/pendingcatalog848f8b보존.
+
+사이트canonical갱신→HTMLbuildPASS→새실제PNG2/기존이력보존→browser상세/이력7이미지로드·713/375가로넘침없음. 미리보기localhost8790,정식게시0. 구매Slack부모1792463910.885979. 다음판매취소계약준비문서는독립로컬이며이번제품과혼합구현하지않음.
+
 ## 최신 — 거래소 판매대금 수령 연결 후보 검증 완료
 
 사용자 일반개발 재개에 따라 master0f9b96d 기반 codex/market-proceeds에서 내매물→대금수령 TCP/Core/Cache/ClientCore/Unity UI를 연결했다. 기존sp_bazaar_claim과DB경제규칙유지/스키마·프로시저변경0, 내부ABI와외부30/31동시빌드필수. 독립리뷰의status4표시·Handlerreturn/오류전파 수정과 최종Scene/fixture검토 차단0. MarketClaim Unity2/2 및 native독립2 최종PASS(실패Corefixture의zone0종료전제만보완후해당1개재시험;기대값유지). 실제5011 한로그인 search30→MyList0성공/Collect비활성→실PNG1→정상Close/Disconnect/modelnull/Playstop PASS. 지급성공은fixture만검증/실매물0이라실DB지급미검증,직접DB쓰기·실claim송신0. 실패/테스트관찰자NRE 및 빌드패키징문제근거는 MARKET_CLAIM_RESULTS와rootCaptures에보존했다.

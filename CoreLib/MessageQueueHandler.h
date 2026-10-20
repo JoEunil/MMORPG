@@ -38,6 +38,8 @@ namespace Core {
 
         void CharacterListResponse(uint64_t sessionID, MsgCharacterListResBody* body);
         void CharacterStateResponse(uint64_t sessionID, MsgCharacterStateResBody* body);
+        void BazaarBuyResponse(uint64_t sessionID, MsgBazaarBuyResBody* body);
+        void BazaarCheckOutboxResponse(uint64_t sessionID, MsgBazaarCheckOutboxResBody* body);
         void BazaarClaimResponse(uint64_t sessionID, MsgBazaarClaimResBody* body);
         void BazaarMyListResponse(uint64_t sessionID, MsgBazaarMyListResBody* body);
         void BazaarSearchResponse(uint64_t sessionID, MsgBazaarSearchResBody* body);

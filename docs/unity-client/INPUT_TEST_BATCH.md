@@ -1,3 +1,7 @@
+## 구매·구매품 수령 배치 완료
+
+Unity직접3최종PASS/native직접2PASS。실제5011한로그인→30매물→listing54 qty1/50가격확인→재화부족status4/spent0→명시수령status1/count0→cold첫가방status0뒤열기freshNoitems→정상Disconnect/modelnull/Playstop. 직접DBseed0/지갑·수령함전후동일. 실제성공거래·차감·배송은미검증. 실패수정후실패한UI1개만재시험/기존게임회귀반복0. MARKET_PURCHASE_RESULTS참조,새영향없으면추가반복금지.
+
 ## 거래소 판매대금 수령 연결 — 최소 배치 종료
 
 MarketClaim Unity2/2, 서버 독립2경계 최종PASS. 서버 TCP fixture의 실제종료 전제조건을 보완하고 실패항목1개만 재실행했으며 기대응답수는 유지했다. 5011 native 로그인→필드→거래소검색30→내매물0 성공/Collect비활성→실캡처1→Close/Disconnect modelnull→Playstop PASS. 실제매물없어 실DB지급성공 미검증, 직접DB쓰기·실claim송신0. 테스트관찰자의 비직렬화필드 접근NRE는 제품과분리해수정, 같은로그인에서관찰만계속했다. 관련로그와이력보존. MARKET_CLAIM_RESULTS.md/Captures/market-claim-*참조. 새영향없으면추가반복시험금지.

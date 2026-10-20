@@ -182,7 +182,9 @@ namespace C02.Tests
         private sealed class NullLogger : ClientCore.ILogger { public void Log(string message) { } }
         private sealed class FakeNetwork : INetworkService
         {
-            public readonly List<uint[]> Requests = new List<uint[]>(); public void RequestBazaarClaim(uint requestID, ulong listingID) { }
+            public readonly List<uint[]> Requests = new List<uint[]>(); public void RequestBazaarBuy(uint requestID, ulong listingID) { }
+            public void RequestBazaarCheckOutbox(uint requestID) { }
+            public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() { } public void Profiles(uint[] ids) => Requests.Add(ids);
             public Task Connect(string address, int port) => Task.CompletedTask; public void CharacterList() { } public void Enter(ulong id) { } public void Chat(string message, byte scope, ulong target) { } public void Action(byte dir, float x, float y, byte slot) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void Log(string message) { }

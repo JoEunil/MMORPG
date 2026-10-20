@@ -155,6 +155,63 @@ namespace C02.Tests
             }
         }
 
+        [Test]
+        [Category("MarketPurchase")]
+        public void PurchaseRequiresPriceConfirmationAndExplicitDeliveryAndDoesNotRetryUnknownResults()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.OpenMarket();
+                var first = Listing(1001, 0);
+                first.price = 4294967296UL;
+                ((IViewModelNet)fixture.Login.Model).BazaarReceived(fixture.Network.LastSearchID, 1,
+                    new[] { first, Listing(1002, 0) });
+                Assert.That(fixture.CheckOutbox.gameObject.activeSelf, Is.True);
+                fixture.Row(1001).GetComponent<Button>().onClick.Invoke();
+                fixture.Buy.onClick.Invoke();
+                Assert.That(fixture.Network.BuyRequests, Is.Zero, "The first click must display a price confirmation without sending a purchase.");
+                Assert.That(fixture.Status.text + fixture.Detail.text, Does.Contain("4294967296"));
+                fixture.Buy.onClick.Invoke();
+                fixture.Buy.onClick.Invoke();
+                Assert.That(fixture.Network.BuyRequests, Is.EqualTo(1));
+                Assert.That(fixture.Network.LastBuyListingID, Is.EqualTo(1001UL));
+                string pendingSelectionDetail = fixture.Detail.text;
+                fixture.Row(1002).GetComponent<Button>().onClick.Invoke();
+                Assert.That(fixture.Detail.text, Is.EqualTo(pendingSelectionDetail), "Selection cannot change while its purchase is pending.");
+                Assert.That(fixture.Network.LastBuyListingID, Is.EqualTo(1001UL));
+
+                ((IViewModelNet)fixture.Login.Model).BazaarBuyReceived(fixture.Network.LastBuyID, 1001, 1, 700, 2, 4294967297UL);
+                Assert.That(fixture.Status.text, Does.Contain("Purchased"));
+                Assert.That(fixture.Status.text, Does.Contain("4294967297"), "Display the server-confirmed u64 amount rather than the quoted price.");
+                Assert.That(fixture.Status.text, Does.Contain("Receive purchases"));
+                Assert.That(fixture.Network.CheckOutboxRequests, Is.Zero, "Purchase confirmation must not imply delivery or automatically request it.");
+                fixture.Buy.onClick.Invoke();
+                Assert.That(fixture.Network.BuyRequests, Is.EqualTo(1));
+
+                fixture.CheckOutbox.onClick.Invoke();
+                fixture.CheckOutbox.onClick.Invoke();
+                Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(1));
+                ((IViewModelNet)fixture.Login.Model).BazaarCheckOutboxReceived(fixture.Network.LastCheckOutboxID, 1, 2, 1, 1);
+                Assert.That(fixture.Status.text, Does.Contain("Received 2"));
+                Assert.That(fixture.Status.text, Does.Contain("already present 1"));
+                Assert.That(fixture.Status.text, Does.Contain("pending 1"));
+                Assert.That(fixture.Status.text.ToLowerInvariant(), Does.Contain("bag"), "A delivery pass can be partially reflected and must direct the player to inspect the bag.");
+
+                fixture.Row(1002).GetComponent<Button>().onClick.Invoke();
+                fixture.Buy.onClick.Invoke();
+                Assert.That(fixture.Network.BuyRequests, Is.EqualTo(1));
+                fixture.Buy.onClick.Invoke();
+                Assert.That(fixture.Network.BuyRequests, Is.EqualTo(2));
+                ((IViewModelNet)fixture.Login.Model).BazaarBuyReceived(fixture.Network.LastBuyID, 1002, 5, 0, 0, 0);
+                Assert.That(fixture.Status.text.ToLowerInvariant(), Does.Contain("unknown"));
+                Assert.That(fixture.Buy.interactable, Is.False);
+                fixture.Buy.onClick.Invoke();
+                fixture.Buy.onClick.Invoke();
+                Assert.That(fixture.Network.BuyRequests, Is.EqualTo(2), "An unknown committed result must not trigger another purchase.");
+                Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(1), "Delivery also remains an explicit action.");
+            }
+        }
+
         private static BazaarListing Listing(ulong id, byte status) => new BazaarListing
         {
             listingID = id,
@@ -174,7 +231,7 @@ namespace C02.Tests
             public readonly C02WorldScreen World;
             public readonly C09BazaarScreen Screen;
             public readonly GameObject Panel;
-            public readonly Button Market, Search, Close, Next, SearchListings, MyListings, Claim;
+            public readonly Button Market, Search, Close, Next, SearchListings, MyListings, Claim, Buy, CheckOutbox;
             public readonly Button[] TypeButtons;
             public readonly Transform ScreenRows;
             public readonly TMP_Text EmptyState, Detail, Status;
@@ -229,6 +286,8 @@ namespace C02.Tests
                 SearchListings = ButtonObject("search listings");
                 MyListings = ButtonObject("my listings");
                 Claim = ButtonObject("collect proceeds");
+                Buy = ButtonObject("buy selection");
+                CheckOutbox = ButtonObject("receive purchases");
                 TypeButtons = new[] { ButtonObject("type 1"), ButtonObject("type 2"), ButtonObject("type 3") };
                 var previous = ButtonObject("previous");
                 Next = ButtonObject("next");
@@ -246,6 +305,8 @@ namespace C02.Tests
                 Set(Screen, "searchListingsButton", SearchListings);
                 Set(Screen, "myListingsButton", MyListings);
                 Set(Screen, "claimButton", Claim);
+                Set(Screen, "buyButton", Buy);
+                Set(Screen, "checkOutboxButton", CheckOutbox);
                 Set(Screen, "itemTypeButtons", TypeButtons);
                 Set(Screen, "searchButton", Search);
                 Set(Screen, "previousPageButton", previous);
@@ -328,13 +389,17 @@ namespace C02.Tests
 
         private sealed class FakeNetwork : INetworkService
         {
-            public int MyListRequests, ClaimRequests;
-            public uint LastMyListID, LastSearchID, LastClaimID;
-            public ulong LastClaimListingID;
+            public int MyListRequests, ClaimRequests, BuyRequests, CheckOutboxRequests;
+            public uint LastMyListID, LastSearchID, LastClaimID, LastBuyID, LastCheckOutboxID;
+            public ulong LastClaimListingID, LastBuyListingID;
             public ushort LastItemType, LastPage;
             public void RequestBazaarMyList(uint requestID) { MyListRequests++; LastMyListID = requestID; }
             public void RequestBazaarClaim(uint requestID, ulong listingID)
             { ClaimRequests++; LastClaimID = requestID; LastClaimListingID = listingID; }
+            public void RequestBazaarBuy(uint requestID, ulong listingID)
+            { BuyRequests++; LastBuyID = requestID; LastBuyListingID = listingID; }
+            public void RequestBazaarCheckOutbox(uint requestID)
+            { CheckOutboxRequests++; LastCheckOutboxID = requestID; }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page)
             { LastSearchID = requestID; LastItemType = itemType; LastPage = page; }
             public Task Connect(string address, int port) => Task.CompletedTask;

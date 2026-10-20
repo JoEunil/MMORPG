@@ -52,6 +52,7 @@ namespace Cache {
             BazaarCancel(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCancelBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_BUY:
+            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarBuyBody>)) break;
             BazaarBuy(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarBuyBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_CLAIM:
@@ -60,6 +61,7 @@ namespace Cache {
             BazaarClaim(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarClaimBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_CHECK_OUTBOX:
+            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarCheckOutboxBody>)) break;
             BazaarCheckOutbox(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCheckOutboxBody>(msg->GetBuffer()));
             break;
         case Core::MSG_PROFILE_RENAME:

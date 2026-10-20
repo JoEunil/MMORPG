@@ -13,6 +13,7 @@
 #include "BazaarSearchResult.h"
 #include "BazaarMyListResult.h"
 #include "BazaarClaimResult.h"
+#include "BazaarPurchaseResult.h"
 
 namespace Cache {
     void Handler::BazaarMyList(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarMyListBody* body) {
@@ -194,28 +195,33 @@ namespace Cache {
     }
 
     void Handler::BazaarBuy(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarBuyBody* body) {
-        // One queued work owns the message throughout the purchase transaction.
-        EnqueueMessageWork(dbWorkerBazaar, msg, [msg, sessionID, body, this](DBConnectionBazaar* conn) {
-            uint64_t listingID = body->listingID;
-            auto res = conn->ExecuteSelect(16, listingID, body->characterID);
-            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarBuyResBody>*>(msg->GetBuffer());
-            st->header.sessionID = sessionID;
-            st->header.messageType = Core::MSG_BAZAAR_BUY_RES;
-            st->body = {};
-            st->body.listingID = listingID;
-            if (res && res->next()) {
-                st->body.resStatus = static_cast<uint8_t>(res->getUInt("result"));
-                st->body.itemID = res->getUInt("item_id");
-                st->body.quantity = static_cast<uint16_t>(res->getUInt("quantity"));
-                st->body.diamondSpent = res->getUInt("price");
-            }
-            else {
-                st->body.resStatus = 3;
-            }
-            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarBuyResBody>));
-            messageQ->EnqueueMessage(msg);
-            messagePool->Return(msg);
-        });
+        const auto request = *body;
+        auto* owned = msg;
+        const auto finish = [this, owned, sessionID, request](const Core::MsgBazaarBuyResBody& response) {
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarBuyResBody>*>(owned->GetBuffer());
+            st->header = { sessionID, Core::MSG_BAZAAR_BUY_RES };
+            st->body = response;
+            st->body.requestID = request.requestID;
+            st->body.listingID = request.listingID;
+            st->body.characterID = request.characterID;
+            owned->SetLength(sizeof(*st));
+            if (!messageQ->EnqueueMessage(owned))
+                Core::errorLogger->LogError("cache handler bazaar", "buy response queue rejected", "sessionID", sessionID);
+            messagePool->Return(owned);
+        };
+        const auto failed = [finish] {
+            Core::MsgBazaarBuyResBody response{};
+            response.resStatus = 5;
+            finish(response);
+        };
+        const auto outcome = dbWorkerBazaar->Enqueue([request, finish](DBConnectionBazaar* conn) {
+            auto result = conn->ExecuteSelect(16, request.listingID, request.characterID);
+            Core::MsgBazaarBuyResBody response{};
+            ParseBazaarBuyResult(result.get(), response);
+            finish(response);
+        }, nullptr, failed);
+        if (outcome != DBEnqueueResult::Queued) failed();
+        msg = nullptr;
     }
 
     void Handler::BazaarClaim(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarClaimBody* body) {
@@ -246,58 +252,32 @@ namespace Cache {
     }
 
     void Handler::BazaarCheckOutbox(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCheckOutboxBody* body) {
-        // buyer_outbox의 READY event를 인벤토리로 배송 (Outbox → Inbox).
-        // CLAIMED 전환은 여기서 하지 않는다 — 인벤토리 blob이 flush로 durable해진 뒤 CacheFlush가 수행.
-        EnqueueMessageWork(dbWorkerBazaar, msg, [msg, body, sessionID, this](DBConnectionBazaar* conn) {
-            // body는 msg 버퍼 내부를 가리키므로, 응답(st)이 같은 버퍼를 덮어쓰기 전에 먼저 읽어야 함
-            uint64_t characterID = body->characterID;
-
-            Core::MsgStruct<Core::MsgBazaarCheckOutboxResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarCheckOutboxResBody>*>(msg->GetBuffer());
-            st->header.sessionID = sessionID;
-            st->header.messageType = Core::MSG_BAZAAR_CHECK_OUTBOX_RES;
-            st->body.resStatus = 1;
-            st->body.deliveredCount = 0;
-            st->body.duplicatedCount = 0;
-            st->body.blockedCount = 0;
-
-            auto res = conn->ExecuteSelect(18, characterID);
-            if (!res) {
-                st->body.resStatus = 0; // select 실패 — 재시도 필요
-                Core::errorLogger->LogError("cache handler bazaar", "check outbox select failed", "char_id", characterID);
-            }
-            if (res) {
-                bool stop = false;
-                while (!stop && res->next()) {
-                    uint64_t eventID = res->getUInt64("event_id");
-                    uint32_t itemID = res->getUInt("item_id");
-                    uint32_t quantity = res->getUInt("quantity");
-
-                    switch (cache_inventory->DeliverItem(characterID, eventID, itemID, quantity)) {
-                    case CACHE_STATUS::AVAILABLE:
-                        st->body.deliveredCount++;
-                        CrashPoint("DELIVER"); // 배송 반영 후 flush 전
-                        break;
-                    case CACHE_STATUS::DUPLICATED:
-                        st->body.duplicatedCount++; // 이미 배송됨 — flush가 outbox를 CLAIMED로 수렴시킴
-                        break;
-                    case CACHE_STATUS::BLOCKED:
-                        // 인벤토리/ring 가득 — 배송 순서 유지를 위해 이후 event도 보류 (outbox READY 유지)
-                        st->body.blockedCount++;
-                        stop = true;
-                        break;
-                    default:
-                        // DB_READING / EVICTING / EMPTY — 캐시 미적재, 재시도 필요
-                        st->body.resStatus = 0;
-                        stop = true;
-                        break;
-                    }
-                }
-            }
-
-            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarCheckOutboxResBody>));
-            messageQ->EnqueueMessage(msg);
-            messagePool->Return(msg);
-            });
+        const auto request = *body;
+        auto* owned = msg;
+        const auto finish = [this, owned, sessionID, request](const Core::MsgBazaarCheckOutboxResBody& response) {
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarCheckOutboxResBody>*>(owned->GetBuffer());
+            st->header = { sessionID, Core::MSG_BAZAAR_CHECK_OUTBOX_RES };
+            st->body = response;
+            st->body.requestID = request.requestID;
+            st->body.characterID = request.characterID;
+            owned->SetLength(sizeof(*st));
+            if (!messageQ->EnqueueMessage(owned))
+                Core::errorLogger->LogError("cache handler bazaar", "outbox response queue rejected", "sessionID", sessionID);
+            messagePool->Return(owned);
+        };
+        const auto failed = [finish] { finish(Core::MsgBazaarCheckOutboxResBody{}); };
+        const auto outcome = dbWorkerBazaar->Enqueue([this, request, finish](DBConnectionBazaar* conn) {
+            auto result = conn->ExecuteSelect(18, request.characterID);
+            Core::MsgBazaarCheckOutboxResBody response{};
+            DeliverBazaarOutboxResult(result.get(), [this, characterID = request.characterID](uint64_t eventID, uint32_t itemID, uint32_t quantity) {
+                const auto status = cache_inventory->DeliverItem(characterID, eventID, itemID, quantity);
+                if (status == CACHE_STATUS::AVAILABLE) CrashPoint("DELIVER");
+                return status;
+            }, response);
+            finish(response); // Cache effects and event IDs flush together through the existing CacheFlush path.
+        }, nullptr, failed);
+        if (outcome != DBEnqueueResult::Queued) failed();
+        msg = nullptr;
     }
 
 

@@ -121,7 +121,9 @@ namespace C02.Tests
         private sealed class NullLogger : ClientCore.ILogger { public void Log(string text) { } }
         private sealed class FakeNetwork : INetworkService
         {
-            public readonly List<uint> IDs = new List<uint>(); public void RequestBazaarClaim(uint requestID, ulong listingID) { }
+            public readonly List<uint> IDs = new List<uint>(); public void RequestBazaarBuy(uint requestID, ulong listingID) { }
+            public void RequestBazaarCheckOutbox(uint requestID) { }
+            public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint id, ushort type, ushort page) => IDs.Add(id);
             public Task Connect(string address, int port) => Task.CompletedTask; public void CharacterList() { } public void Enter(ulong id) { }

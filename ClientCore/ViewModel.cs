@@ -42,7 +42,7 @@ namespace ClientCore
         private bool _inventoryPending;
         private uint _bazaarRequestID;
         private uint _bazaarPending;
-        private enum BazaarRequestKind { None, Search, MyList, Claim }
+        private enum BazaarRequestKind { None, Search, MyList, Claim, Buy, CheckOutbox }
         private BazaarRequestKind _bazaarPendingKind;
         private ulong _bazaarPendingListingID;
         public event Action<bool> OnAuthReceived;
@@ -55,6 +55,8 @@ namespace ClientCore
         public event Action<bool> OnInventoryReceived;
         public event Action<bool> OnBazaarReceived;
         public event Action<ulong, byte, ulong> OnBazaarClaimReceived;
+        public event Action<ulong, byte, uint, uint, ulong> OnBazaarBuyReceived;
+        public event Action<byte, uint, uint, uint> OnBazaarCheckOutboxReceived;
         public event Action<ushort, ulong, uint, float, float> OnZoneChageReceived;
         public event Action<ushort, DeltaUpdateField[]> OnDeltaReceived;
         public event Action<ushort, FullStateField[]> OnFullReceived;
@@ -321,6 +323,29 @@ namespace ClientCore
             }
         }
 
+        public void RequestBazaarBuy(ulong listingID)
+        {
+            if (listingID == 0) throw new ArgumentOutOfRangeException(nameof(listingID));
+            uint requestID = BeginBazaarRequest(BazaarRequestKind.Buy, listingID);
+            try { _network.RequestBazaarBuy(requestID, listingID); }
+            catch
+            {
+                lock (_sessionGate) if (_bazaarPending == requestID) CancelBazaar();
+                throw;
+            }
+        }
+
+        public void RequestBazaarCheckOutbox()
+        {
+            uint requestID = BeginBazaarRequest(BazaarRequestKind.CheckOutbox);
+            try { _network.RequestBazaarCheckOutbox(requestID); }
+            catch
+            {
+                lock (_sessionGate) if (_bazaarPending == requestID) CancelBazaar();
+                throw;
+            }
+        }
+
         private uint BeginBazaarRequest(BazaarRequestKind kind, ulong listingID = 0)
         {
             lock (_sessionGate)
@@ -331,7 +356,7 @@ namespace ClientCore
                 _bazaarPending = ++_bazaarRequestID;
                 _bazaarPendingKind = kind;
                 _bazaarPendingListingID = listingID;
-                if (kind != BazaarRequestKind.Claim)
+                if (kind == BazaarRequestKind.Search || kind == BazaarRequestKind.MyList)
                     _viewData.SetBazaar(Array.Empty<PacketHelper.BazaarListing>());
                 return _bazaarPending;
             }
@@ -373,6 +398,42 @@ namespace ClientCore
                     _bazaarPendingListingID = 0;
                 }
                 OnBazaarClaimReceived?.Invoke(listingID, status, diamondClaimed);
+            });
+        }
+
+        public void BazaarBuyReceived(uint requestID, ulong listingID, byte status, uint itemID, uint quantity, ulong diamondSpent)
+        {
+            if (requestID == 0 || listingID == 0 || (status != 0 && status != 1 && status != 3 && status != 4 && status != 5) ||
+                (status == 1 ? itemID == 0 || quantity == 0 : itemID != 0 || quantity != 0 || diamondSpent != 0)) return;
+            _threadDispatcher.Post(() =>
+            {
+                lock (_sessionGate)
+                {
+                    if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady ||
+                        requestID != _bazaarPending || _bazaarPendingKind != BazaarRequestKind.Buy ||
+                        listingID != _bazaarPendingListingID) return;
+                    _bazaarPending = 0;
+                    _bazaarPendingKind = BazaarRequestKind.None;
+                    _bazaarPendingListingID = 0;
+                }
+                OnBazaarBuyReceived?.Invoke(listingID, status, itemID, quantity, diamondSpent);
+            });
+        }
+
+        public void BazaarCheckOutboxReceived(uint requestID, byte status, uint delivered, uint duplicated, uint blocked)
+        {
+            if (requestID == 0 || status > 1 || (ulong)delivered + duplicated + blocked > 30) return;
+            _threadDispatcher.Post(() =>
+            {
+                lock (_sessionGate)
+                {
+                    if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady ||
+                        requestID != _bazaarPending || _bazaarPendingKind != BazaarRequestKind.CheckOutbox) return;
+                    _bazaarPending = 0;
+                    _bazaarPendingKind = BazaarRequestKind.None;
+                    _bazaarPendingListingID = 0;
+                }
+                OnBazaarCheckOutboxReceived?.Invoke(status, delivered, duplicated, blocked);
             });
         }
 

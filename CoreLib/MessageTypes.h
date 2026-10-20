@@ -246,14 +246,17 @@ namespace Core {
     struct MsgBazaarBuyBody {
         uint64_t characterID;
         uint64_t listingID;
+        uint32_t requestID;
     };
 
     struct MsgBazaarBuyResBody {
-		uint8_t  resStatus; // 0: 실패, 1: 성공, 2: listingID 조회 실패, 3: 프로시저 실패, 4: 다이아 부족
+        uint8_t resStatus; // 0: unavailable, 1: bought, 3: SQL rollback, 4: insufficient, 5: outcome unknown
         uint64_t listingID;
         uint32_t itemID;
-        uint16_t quantity;
-        uint32_t diamondSpent;
+        uint32_t quantity;
+        uint64_t diamondSpent;
+        uint32_t requestID;
+        uint64_t characterID;
     };
 
     struct MsgBazaarClaimBody {
@@ -272,13 +275,16 @@ namespace Core {
 
     struct MsgBazaarCheckOutboxBody {
         uint64_t characterID;
+        uint32_t requestID;
     };
 
     struct MsgBazaarCheckOutboxResBody {
-        uint8_t resStatus;       // 0: 실패(캐시 미적재 등, 재시도 필요), 1: 성공
-        uint8_t deliveredCount;  // 이번에 새로 지급된 event 수
-        uint8_t duplicatedCount; // dedup으로 스킵된 event 수 (이미 지급됨)
-        uint8_t blockedCount;    // 인벤토리/ring 가득으로 보류된 event 수 (READY 유지)
+        uint8_t resStatus; // A cache pass, never a durable acknowledgement; failure may retain a prefix.
+        uint32_t deliveredCount;
+        uint32_t duplicatedCount;
+        uint32_t blockedCount;
+        uint32_t requestID;
+        uint64_t characterID;
     };
 
     struct MsgProfileRenameBody {

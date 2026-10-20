@@ -44,6 +44,8 @@ namespace ClientCore.Services
             _sock.Send(Packet.SerializeBazaarRequest(requestID, itemType, page));
         public void RequestBazaarMyList(uint requestID) => _sock.Send(Packet.SerializeBazaarMyListRequest(requestID));
         public void RequestBazaarClaim(uint requestID, ulong listingID) => _sock.Send(Packet.SerializeBazaarClaimRequest(requestID, listingID));
+        public void RequestBazaarBuy(uint requestID, ulong listingID) => _sock.Send(Packet.SerializeBazaarBuyRequest(requestID, listingID));
+        public void RequestBazaarCheckOutbox(uint requestID) => _sock.Send(Packet.SerializeBazaarCheckOutboxRequest(requestID));
         public void Action(byte dir, float x, float y, byte skillSlot)
         {
             _sock.Send(PacketBuilder.CreateActionPacket(dir, x, y, skillSlot));

@@ -3,6 +3,50 @@
 #include "IPacket.h"
 #include "Config.h"
 namespace Core {
+    static_assert(sizeof(PacketStruct<BazaarBuyRequestBody>) == 20);
+    static_assert(sizeof(PacketStruct<BazaarBuyResponseBody>) == 37);
+    static_assert(sizeof(PacketStruct<BazaarCheckOutboxRequestBody>) == 12);
+    static_assert(sizeof(PacketStruct<BazaarCheckOutboxResponseBody>) == 25);
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarBuyResponse(const MsgBazaarBuyResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->listingID == 0)
+            return nullptr;
+        auto p = packetPool->AcquireUnique();
+        if (!p) return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<BazaarBuyResponseBody>*>(p->GetBuffer());
+        st->header = { MAGIC, sizeof(*st), OP::BAZAAR_BUY_RES, 0 };
+        st->body = {};
+        st->body.requestID = body->requestID;
+        st->body.listingID = body->listingID;
+        const bool valid = body->resStatus == 0 || body->resStatus == 1 || body->resStatus == 3 || body->resStatus == 4 || body->resStatus == 5;
+        st->body.resStatus = valid ? body->resStatus : 5;
+        if (st->body.resStatus == 1) {
+            if (body->itemID == 0 || body->quantity == 0) st->body.resStatus = 5;
+            else {
+                st->body.itemID = body->itemID;
+                st->body.quantity = body->quantity;
+                st->body.diamondSpent = body->diamondSpent;
+            }
+        }
+        p->SetLength(sizeof(*st));
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarCheckOutboxResponse(const MsgBazaarCheckOutboxResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->resStatus > 1
+            || static_cast<uint64_t>(body->deliveredCount) + body->duplicatedCount + body->blockedCount > 30)
+            return nullptr;
+        auto p = packetPool->AcquireUnique();
+        if (!p) return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<BazaarCheckOutboxResponseBody>*>(p->GetBuffer());
+        st->header = { MAGIC, sizeof(*st), OP::BAZAAR_CHECK_OUTBOX_RES, 0 };
+        st->body = { body->requestID, body->resStatus, body->deliveredCount, body->duplicatedCount, body->blockedCount };
+        p->SetLength(sizeof(*st));
+        return p;
+    }
+
     static_assert(sizeof(PacketStruct<BazaarClaimRequestBody>) == 20);
     static_assert(sizeof(PacketStruct<BazaarClaimResponseBody>) == 29);
 
