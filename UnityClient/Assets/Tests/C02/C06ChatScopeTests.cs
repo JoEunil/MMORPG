@@ -51,8 +51,10 @@ namespace C02.Tests
 
                 fixture.ScopeButtons[2].onClick.Invoke();
                 fixture.SendAs(2, "reply selected");
+                fixture.Receive(2, 555, "reply selected");
                 fixture.WhisperTargetButton.onClick.Invoke();
                 fixture.SendAs(2, "reply next");
+                fixture.Receive(2, 555, "reply next");
                 Assert.That(fixture.Network.ChatCalls[0], Is.EqualTo(( "reply selected", (byte)2, 600UL )));
                 Assert.That(fixture.Network.ChatCalls[1], Is.EqualTo(( "reply next", (byte)2, 601UL )));
                 for (ulong sender = 700; sender < 709; sender++) fixture.Receive(0, sender, "new incoming traffic");
@@ -70,6 +72,42 @@ namespace C02.Tests
                 oldHandler(2, 602, "late sender", "stale event");
                 Assert.That(fixture.ChatLog.text, Is.EqualTo(clearedLog));
                 Assert.That(fixture.WhisperLabel.text, Does.Not.Contain("#601"));
+                Assert.That(fixture.SendButton.interactable, Is.False);
+            }
+        }
+
+        [Test]
+        public void UnconfirmedWhisperPreservesDraftAndInvalidatesOnlyItsRecipient()
+        {
+            using (var fixture = new ChatFixture())
+            {
+                ((Action<ushort, ulong, uint, float, float>)Get(fixture.Chat, "zoneHandler"))(1, 555, 123, 10, 10);
+                fixture.Receive(0, 600, "target");
+                fixture.SendAs(2, "  keep this draft  ");
+                Assert.That(fixture.Input.text, Is.EqualTo("  keep this draft  "));
+                Assert.That(fixture.Input.interactable, Is.False);
+                fixture.SendButton.onClick.Invoke();
+                Assert.That(fixture.Network.ChatCalls.Count, Is.EqualTo(1));
+                fixture.Receive(2, 601, "keep this draft");
+                fixture.Receive(0, 555, "keep this draft");
+                Assert.That(fixture.SendStatus.text, Does.Contain("확인 중"));
+                Set(fixture.Chat, "whisperDeadline", Time.unscaledTime - 1);
+                Invoke(fixture.Chat, "Update");
+                Assert.That(fixture.Input.text, Is.EqualTo("  keep this draft  "));
+                Assert.That(fixture.Input.interactable, Is.True);
+                Assert.That(fixture.SendStatus.text, Does.Contain("초과"));
+                Assert.That(fixture.SendButton.interactable, Is.False);
+                Assert.That((List<KeyValuePair<ulong, string>>)Get(fixture.Chat, "whisperRecipients"),
+                    Has.None.Matches<KeyValuePair<ulong, string>>(recipient => recipient.Key == 600));
+                fixture.WhisperTargetButton.onClick.Invoke();
+                fixture.SendButton.onClick.Invoke();
+                fixture.Receive(2, 555, "keep this draft");
+                Assert.That(fixture.Input.text, Is.Empty);
+                Assert.That(fixture.SendStatus.text, Does.Contain("확인됨"));
+                fixture.SendAs(2, "logout pending");
+                fixture.Login.ReleaseClient();
+                Assert.That(Get(fixture.Chat, "pendingWhisper"), Is.Null);
+                Assert.That(fixture.Input.text, Is.Empty);
                 Assert.That(fixture.SendButton.interactable, Is.False);
             }
         }
