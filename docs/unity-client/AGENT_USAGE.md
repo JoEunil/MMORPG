@@ -81,3 +81,7 @@ whisper_review 신규1·재활성화1, 독립 원인분석과 패치검토 완�
 ## 몬스터 장비 표면 묶음
 
 monster_surface(asset_artist 지정 gpt-6.1-sol/medium) 신규1·재활성화1, whisper_review(code_reviewer 지정 gpt-6.1-sol/medium) 아트재검토1. 첫질감후보는어두워미채택, 보정1회후정적비교채택. 누적신규13/재활성화48/61회, tokenN/A. 원본알베도재사용으로이번새이미지생성0. 실제게임입력은반복하지않음.
+
+## 사냥 실입력과 결과 문서
+
+hunt_contract(server_analyst)신규1/최종근거리뷰재활성화1, hunt_batch_helper(unity_tester)신규1, hunt_public_results(progress_documenter)신규1. 소유권분리/Editor입력root단독. 누적신규16/재활성화49/65회. 실제tokenN/A. 관측helper컴파일·owner참조는root보완후같은접속에서정상화,처치1·EXP증가근거독립확인.

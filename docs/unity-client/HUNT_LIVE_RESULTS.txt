@@ -1,0 +1,20 @@
+사냥 실제 입력 묶음 — 2026-10-20 22:54 KST
+
+대상 후보: codex/inventory-read-followup 0f8c04c, 기존 정상 서버43240/포트9999 유지. 신규 서버·DB·ClientCore·게임 코드 변경 없이 기존 사냥 경로와 앞서 적용한 몬스터 장비 재질을 검증했다.
+최소 범위: 전용계정02 실제 UI로그인1접속→방향키접근→X2회→처치/EXP/화면정리→정상Disconnect→Playstop. 재접속·전체회귀·보스·다계정·아이템쓰기·초기화0. 사용자Esc로중단한이전배치는별도미실행기록이고이번명시재개로그인만성공1회다.
+
+실제 관측:
+- char5012 Zone5 진입: HP10000/MP9999/EXP0, 위치96.15,96.06.
+- 실제 방향키로대상10 사거리5.45까지접근: 위치123.16,123.07. 좌표주입/핸들러호출0.
+- X1: 몬스터10 HP1500→500(서버Full), 본인HP9875/MP9979/EXP0.
+- 6.5초후X2: 몬스터10 HP0 delta수신,2프레임후GameObject없음. 본인HP9850/MP9959/EXP10/level1.
+- 광역기에몬스터11도HP500부수피해. 단일대상만공격했다고기록하지않고일반몬스터1처치로기록.
+- REQUIRED_EVIDENCE serverHp0/visualAbsent/expIncreased 모두true, 관측시작56.9초에PASS.
+- 실제캡처 before/after2장직접확인. 처치대상사라짐·다른몹HP바·EXP10확인. 고블린 가죽/철 실제표현의과도한검정뭉침없음. 화면상몬스터크기가작아미세질감품질확정불가. 오크는직전정적미리보기만이며이번실게임검증아님.
+
+검증근거: ROOT Captures/hunt-resumed-login.txt, hunt-live-actions.txt, hunt-live-combat.txt, hunt-live-before.png/after.png, hunt-live-disconnect.txt. ROOT Builds/Hunt-Live/prepare-notes.txt 후반실제수신기록. 공개선별이미지site/media/releases/2026-10-20/hunting-before.png/after.png.
+독립읽기: hunt_contract 최종review blocker0, 로그·캡처·helper대조완료. helper최초evalcompile실패는Editor update delegate를Action→CallbackFunction으로정정, LoginScreen위치C01Client로정정했다. 제품코드·assert완화0, 같은접속에서관측만재개. FullHP500은delta라고오인하지않는다.
+종료: 실제Disconnect→Modelnull→Playfalse/dirtyfalse/inputRunningfalse/backgroundfalse/C01_TEST_LOGIN_ID null복구. 서버재시작/강제종료/직접DB쓰기0. 정상게임중HP/MP/EXP변경은유지하며임의회복·되돌리기0.
+제외/남은범위: 레벨업/리스폰/재접속EXP영속성/전체사냥난이도/오크실게임표현/보스/모든6구역왕복미검증. 이번결과만으로Zone밀도비율이나새회복규칙을확정하지않음. 새입력반복은직접미해결위험이생길때만수행.
+전문호출: 기존계약분석·도우미신규2회(직전신규15/재활성화48/63회) + hunt_contract 최종review재활성화1 + hunt_public_results문서신규1 = 신규16/재활성화49/65회. token실사용N/A.
+전달: 큰기능묶음원칙유지,이검증만작은PR생성0. 구현·사이트최종반영뒤관련후속묶음에통합하며게시직전Slack승인경계유지.

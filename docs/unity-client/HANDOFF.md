@@ -1,3 +1,8 @@
+## 최신 — 사냥 실입력 묶음 PASS / 후속 큰 PR 후보 준비
+
+명시재개후 전용계정02 로그인1회·방향키접근·X2회로 몬스터10 HP1500→500(Full)→0(delta)/화면제거/본인EXP0→10을확인했다. 몬스터11부수피해는있고처치1마리다. 실제스크린샷2장·고블린재질구분확인,미세질감/오크실게임/레벨업·리스폰·재접속EXP영속성은미검증. 독립근거리뷰blocker0. 정상Disconnect→Modelnull→Playfalse/dirtyfalse/inputRunningfalse/backgroundfalse/계정선택envnull복구. HUNT_LIVE_RESULTS.txt참조. 관측helper의콜백타입/화면owner오류는Builds도우미에서수정했고게임코드우회0. 같은접속에서완료,기존회귀반복0.
+
+공개전투상세/화면이력에실제전후사진추가,이전사진보존·내부ID비공개,생성/링크검사PASS·실제브라우저상세→이력탐색확인. 문서상태enum오류는기존중간결과로정정후생성PASS. PR39는GitHubREST로merged=true/헤드e143188확인. 후속가방재조회+실제가방화면·몬스터재질·사냥결과를한큰PR로준비하며이번사냥만작은PR만들지않는다. 새push/PR은최종Slack승인전보류. 전문신규16/재활성화49/65회/tokenN/A.
 ## 최신 — 가방 확인 완료 / 몬스터 장비 재질 후보 보존
 
 가방실제I입력·실제첫성공·Noitems표시·정상퇴장과공개이력추가까지6f11cbe로보존. 이어고블린/오크공유가죽·철2재질에기존texture만연결했다. 첫검정후보미채택/밝기보정두번째정적비교채택, builder최소조건동일화/compile0/독립읽기blocker0. 실제게임사냥시각완료는아님. MONSTER_SURFACE_TASK.md/RESULTS.txt 참조. 작은PR/push0, PR39는e143188까지별도고정. 현재후속브랜치에가방재조회와아트로컬후보보존,다음은사냥·처치/EXP와몬스터쿼터뷰가독성관련완성묶음을모아한번만실입력검증한다. 근거없이Zone밀도계수/가짜levelup/회복·부활추가금지. 전문13+48=61/tokenN/A. UnityPlayfalse/dirtyfalse,서버정상유지.
@@ -546,3 +551,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "C:/Users/joeun/Desktop/work
 C04 최종 Slack 완료 회신: bot U0C9ZRTQ6F8 /1792317842.067789 (부모1792310556.105339). https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1792317842067789
 
 C05 종료 보고 확정: Unity Coordinator bot 최종1792323650.522379, V03실제완료1792322671.215899, W03구성최종1792323664.776249. 모두 현재 등록 변경 스레드 회신이며 새 승인 요청 없음. 다음 재개 전 입력/개발 추가 실행 없음.
+
+## 사냥 입력 배치 중단 — 사용자 Esc
+
+hunt_contract와hunt_batch_helper2명을병렬배정해읽기분석/Builds관측도우미준비완료. 일반몹0 HP1500/EXP10, X반경8/피해1000/쿨6초계약확인. 실제로그인전텍스트입력이포커스상실로실패했고,컴퓨터조작재개시사용자물리Esc중단신호수신. 이후ComputerUse추가호출0. 이미큐에들어간재개도우미는editor_stop으로즉시종료,Playfalse/inputRunningfalse/dirtyfalse/backgroundfalse/계정선택환경null복구. 사냥·처치·EXP·실게임재질검증미실행,성공주장금지. 관측helper ROOT Builds/Hunt-Live/observe-hunt.cs/prepare-notes.txt준비만,Assets변경0. 사용자새입력허용전자동재개금지. 기존PR큰묶음정책유지/신규push·PR0. 전문신규15/재활성화48/활성화63회,tokenN/A.
