@@ -1,3 +1,7 @@
+## 최신 — 자동 브랜치 삭제 설정 반영
+
+사용자 GitHub 자동head branch삭제설정 적용통보를 지침에 반영. 원격자동삭제상태확인·예외만수동정리/로컬fetch-prune후미게시·고유커밋·worktree사용여부별도확인. 사용자통보근거이며API설정변경/관리권한확인주장없음. 문서만변경/기능시험·추가브랜치삭제없음. 새PR없이다음관련전달에포함.
+
 ## 최신 — 기본 브랜치 이력 복구
 
 사용자복구·완료브랜치정리명시승인. codex/restore-master-history에서4cc541f(PR37+검증된후속리뷰)와원격문서f1b5e44를병합해두이력보존. 원본Game/rootWIP보존. 문서충돌은사용자AI경험/자동PR리뷰+배포된Pages/최신승인·최소검증을유지. 신규기능의push/PR전Slack승인규칙불변; 이번복구게시만현재직접요청으로승인. HISTORY_RECOVERY.md기준. 관련코드4cc와동일/기존native1+Unity2PASS재사용/사이트build·linkPASS. 복구뒤원격head·조상·완료PRbranch확인후안전한branch만삭제,미게시/추가커밋/사용중worktree보존. 강제push/reset/DB작업없음.
