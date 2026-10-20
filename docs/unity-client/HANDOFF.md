@@ -555,3 +555,9 @@ C05 종료 보고 확정: Unity Coordinator bot 최종1792323650.522379, V03실�
 ## 사냥 입력 배치 중단 — 사용자 Esc
 
 hunt_contract와hunt_batch_helper2명을병렬배정해읽기분석/Builds관측도우미준비완료. 일반몹0 HP1500/EXP10, X반경8/피해1000/쿨6초계약확인. 실제로그인전텍스트입력이포커스상실로실패했고,컴퓨터조작재개시사용자물리Esc중단신호수신. 이후ComputerUse추가호출0. 이미큐에들어간재개도우미는editor_stop으로즉시종료,Playfalse/inputRunningfalse/dirtyfalse/backgroundfalse/계정선택환경null복구. 사냥·처치·EXP·실게임재질검증미실행,성공주장금지. 관측helper ROOT Builds/Hunt-Live/observe-hunt.cs/prepare-notes.txt준비만,Assets변경0. 사용자새입력허용전자동재개금지. 기존PR큰묶음정책유지/신규push·PR0. 전문신규15/재활성화48/활성화63회,tokenN/A.
+
+## PLAY04 승인 소비 및 PR40 게시 완료
+
+회신1792506150.157069/사용자U0C9QEUHPMK/parent1792487679.299269의정확승인PLAY04를봇인증·전체replies로확인하고1회소비했다. 승인frozenfd354a642af7ae181ff49bdc9ab653608c51e96d 그대로push/PR40 https://github.com/JoEunil/MMORPG/pull/40 생성·채팅첨부완료,REST head일치/open/mergedfalse/mergeabletrue확인. 원격master6ef6e5a조상확인. 병합·정식배포·추가게임시험0. 동일회신중복게시금지. Slack결과1792506268.944929. 전문16+49=65/tokenN/A변동0.
+
+게시브랜치는codex/inventory-read-followup/fd354a6로고정하고codex/field-play-followup를로컬분기했다. 다음관련개발·기록은이후속에서수행하며새범위게시에는기존최종Slack승인원칙적용. 이미통과한가방/처치/EXP최소입력반복금지. 현EditorPlayfalse/dirtyfalse/inputRunningfalse/backgroundfalse,로컬서버정상유지.
