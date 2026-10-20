@@ -77,3 +77,7 @@
 ## 귓속말 리뷰 수정 집계 보정
 
 whisper_review 신규1·재활성화1, 독립 원인분석과 패치검토 완료. 직전 누적56회에2회를 더해 신규12/재활성화46/활성화58회. token N/A. 이후 가방 실제입력과 문서 갱신은 Coordinator단독이며 전문호출 추가0.
+
+## 몬스터 장비 표면 묶음
+
+monster_surface(asset_artist 지정 gpt-6.1-sol/medium) 신규1·재활성화1, whisper_review(code_reviewer 지정 gpt-6.1-sol/medium) 아트재검토1. 첫질감후보는어두워미채택, 보정1회후정적비교채택. 누적신규13/재활성화48/61회, tokenN/A. 원본알베도재사용으로이번새이미지생성0. 실제게임입력은반복하지않음.
