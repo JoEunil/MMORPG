@@ -85,6 +85,7 @@ namespace Core {
         friend class ZoneBenchmarkAccess;
         friend class StateManager;
         friend class NonZoneThreadPoolFixture;
+        friend class MonsterBehaviorFixture;
     public:
         explicit ZoneState(uint16_t zone) {
             m_zoneID = zone;

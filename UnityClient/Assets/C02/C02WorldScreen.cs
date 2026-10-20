@@ -32,6 +32,8 @@ namespace C02
         private IViewModelUI model;
         private readonly Dictionary<uint, FullStateField> pendingFull = new Dictionary<uint, FullStateField>();
         private FullStateField ownFull;
+        private const float MovementUnitsPerSecond = 5f;
+        private const double MovementIntervalSeconds = 0.05;
         private Vector2 visualPosition;
         private bool hasVisualPosition;
         private double nextMoveTime;
@@ -360,11 +362,12 @@ namespace C02
             }
             if (now >= nextMoveTime)
             {
-                if (!TryMoveCandidate(ZoneID, ServerPosition, ServerPosition + direction, out var candidate, out var serverDirection))
+                if (!TryMoveCandidate(ZoneID, ServerPosition,
+                    ServerPosition + direction * (MovementUnitsPerSecond * (float)MovementIntervalSeconds), out var candidate, out var serverDirection))
                 { CancelMovement(); UpdateVisualPosition(Vector2.zero, Time.unscaledDeltaTime); return; }
                 // One candidate from the latest confirmed state. A long frame never catches up requests.
                 loginScreen.Data.UpdateMove(serverDirection, candidate.x, candidate.y);
-                nextMoveTime = now + 0.05;
+                nextMoveTime = now + MovementIntervalSeconds;
             }
             UpdateVisualPosition(direction, Time.unscaledDeltaTime);
         }
@@ -384,14 +387,14 @@ namespace C02
         {
             if (!HasOwnFull) return;
             if (!hasVisualPosition) { visualPosition = ServerPosition; hasVisualPosition = true; }
-            // The wire accepts at most one one-unit candidate per 50ms, so keep presentation at 20 units/second and within one unit of authority.
+            // Match the server's 0.25-unit budget per 50ms; prediction never changes authority.
             if (direction.sqrMagnitude > 0)
             {
-                Vector2 next = visualPosition + direction.normalized * (deltaSeconds * 20f);
+                Vector2 next = visualPosition + direction.normalized * (deltaSeconds * MovementUnitsPerSecond);
                 Vector2 offset = next - ServerPosition;
                 visualPosition = offset.magnitude > 1f ? ServerPosition + offset.normalized : next;
             }
-            else visualPosition = Vector2.MoveTowards(visualPosition, ServerPosition, deltaSeconds * 20f);
+            else visualPosition = Vector2.MoveTowards(visualPosition, ServerPosition, deltaSeconds * MovementUnitsPerSecond);
             RenderVisualPosition();
         }
 

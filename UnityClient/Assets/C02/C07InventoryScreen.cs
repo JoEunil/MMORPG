@@ -6,6 +6,8 @@ using ClientCore;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 namespace C02
 {
@@ -62,6 +64,14 @@ namespace C02
 
         private void Update()
         {
+            if (Application.isFocused && Keyboard.current != null && Keyboard.current.iKey.wasPressedThisFrame &&
+                EventSystem.current != null)
+            {
+                var selected = EventSystem.current.currentSelectedGameObject;
+                var input = selected != null ? selected.GetComponentInParent<TMP_InputField>() : null;
+                if (input == null || !input.isFocused) TogglePanel();
+            }
+
             if (!requestPending || Time.unscaledTime < requestDeadline) return;
             requestPending = false;
             requestTimedOut = true;
