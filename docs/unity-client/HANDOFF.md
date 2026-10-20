@@ -1,3 +1,7 @@
+## 최신 — 조작·화면 이동 후보 / 다음 맵AI 준비
+
+사용자최신지시: 새리깅제외·에셋/재질/조명개선, 맵/Cell·몬스터배치/이동서버변경허용, 로그인/선택/진입분리·I가방/B거래소·아이템자산UI를후속배정. MMORPG_REVISION_PLAN/CURRENT_POLICY/BRIEF/asset-artist수정. codex/classic-mmorpg-motion에서방향키·ZXC·최대1unit시각예측/연속표시·remote4표본75ms보간구현. 서버/wire/DB변경0. 독립리뷰발견속도/취소/테스트접근문제보완, 경계실패경로수렴추가. Unity컴파일errors0/직접자동2개최종PASS(원격fixture키타입수정후그1개만재시험); 최초실패원문보존. 실입력미실행: 다른게임창중첩관찰후활성화/키/마우스입력0, INPUT_TEST_BATCH추가. 테스트재개권한유지/중복승인요구0. 실제서비스9999=23696/3000=17184/DB·Redis정상read확인/재기동0. EditorAssets3제품파일원래기준일치확인후통합·backup editor-before/원본GameWIP·market42dc·catalog848유지. 결과MOTION_REVISION_RESULTS. AGENT_USAGE실제전문3명/생성3·재활성화6·총9회,토큰N/A. 후속맵/AI분석완료(MAP_AI_REVISION_TASK): 보행110vs장식240, 고속셀왕복, aggroTick증가누락후보. 후보서버수정/새UI아트/I/B아직구현0. 공개사이트에실동작개선주장/새캡처0이유기록,PR작게게시하지않고통합대기/push0. 자동심사컴파일미확인연쇄실행거절은성공상태단독확인뒤동일테스트정상승인,우회0.
+
 ## 최신 — 정통 판타지 개편 계획·활용지표 도입
 
 사용자새방향을 MMORPG_REVISION_PLAN.md와BRIEF/asset-artist에반영. 계획은방향정의→입력·속도/AI→대표화면→사냥터/성장→나머지UI→최소묶음검증. 서버3슬롯 ZXC/V미배정, 기존쿼터뷰·기능범위/라이선스·권한경계유지. AGENT_USAGE.md시작: 이번계획은기존Coordinator단독/전문생성0·재활성화0/토큰N/A(usage미노출)/과거수치소급0. 모델상향은추천이며실제설정전환0. 코드·에셋·입력시험0/기존70~80%를새개편완료율로재사용금지. 문서후보로컬보존/별도작은PR없음.

@@ -32,13 +32,11 @@ namespace C02
         private IViewModelUI model;
         private readonly Dictionary<uint, FullStateField> pendingFull = new Dictionary<uint, FullStateField>();
         private FullStateField ownFull;
-        private Vector2? moveTarget;
+        private Vector2 visualPosition;
+        private bool hasVisualPosition;
         private double nextMoveTime;
-        private double progressDeadline;
-        private double targetDeadline;
         private double transitionDeadline;
         private ushort transitionTargetZone;
-        private readonly List<RaycastResult> uiHits = new List<RaycastResult>();
         public C02Stage Stage { get; private set; }
         public ulong SelectedCharacterID { get; private set; }
         public ushort ZoneID { get; private set; }
@@ -172,6 +170,7 @@ namespace C02
                 ZoneStartPosition = new Vector2(x, y);
                 ownFull = default;
                 HasOwnFull = false;
+                hasVisualPosition = false;
                 pendingFull.Clear();
                 ownCharacter.gameObject.SetActive(false);
                 worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
@@ -183,6 +182,7 @@ namespace C02
             }
             if (!EntryPending) return;
             CancelMovement();
+            hasVisualPosition = false;
             if (internalId == 0 || !InsideZone(zone, new Vector2(x, y))) { Fail("Invalid server Zone result."); return; }
             ZoneID = zone;
             InternalID = internalId;
@@ -231,10 +231,15 @@ namespace C02
             if (state.dir > 3 || state.hp < 0 || state.mp < 0 || state.maxHp < 0 || state.maxMp < 0 ||
                 state.hp > state.maxHp || state.mp > state.maxMp || !InsideZone(ZoneID, new Vector2(state.x, state.y)))
             { Fail("Invalid server character state."); return; }
-            if (HasOwnFull && (state.x != ownFull.x || state.y != ownFull.y))
-                progressDeadline = Time.unscaledTimeAsDouble + 3;
+            Vector2 previousServer = HasOwnFull ? ServerPosition : new Vector2(state.x, state.y);
             ownFull = state;
-            if (ownFull.hp == 0) StopActions();
+            ReconcileVisual(previousServer, ServerPosition);
+            if (ownFull.hp == 0)
+            {
+                StopActions();
+                visualPosition = ServerPosition;
+                hasVisualPosition = true;
+            }
             HasOwnFull = true;
             Stage = C02Stage.InWorld;
             transitionDeadline = 0;
@@ -315,10 +320,10 @@ namespace C02
             {
                 if (!InsideZone(ZoneID, new Vector2(next.x, next.y)))
                 { Fail("Invalid server character position."); return; }
-                if (next.x != ownFull.x || next.y != ownFull.y)
-                    progressDeadline = Time.unscaledTimeAsDouble + 3;
+                Vector2 previousServer = ServerPosition;
                 ownFull = next;
-                if (ownFull.hp == 0) StopActions();
+                ReconcileVisual(previousServer, ServerPosition);
+                if (ownFull.hp == 0) { StopActions(); visualPosition = ServerPosition; }
                 ShowPosition();
                 WorldStateChanged?.Invoke();
             }
@@ -330,51 +335,82 @@ namespace C02
             {
                 if (Time.unscaledTimeAsDouble >= transitionDeadline)
                     RequireReconnect("Zone transition timed out. Disconnect and reconnect before continuing.");
+                UpdateVisualPosition(Vector2.zero, Time.unscaledDeltaTime);
                 return;
             }
-            if (Stage == C02Stage.ReconnectRequired) return;
-            if (!CanAct || model == null || loginScreen.Data == null || !Application.isFocused)
-            { CancelMovement(); return; }
+            if (Stage == C02Stage.ReconnectRequired)
+            { UpdateVisualPosition(Vector2.zero, Time.unscaledDeltaTime); return; }
+            if (!CanAct || model == null || loginScreen.Data == null || !Application.isFocused || Keyboard.current == null)
+            { CancelMovement(); UpdateVisualPosition(Vector2.zero, Time.unscaledDeltaTime); return; }
             var events = EventSystem.current;
             var selectedInput = events != null && events.currentSelectedGameObject != null
                 ? events.currentSelectedGameObject.GetComponentInParent<TMP_InputField>() : null;
-            if (events == null || selectedInput != null && selectedInput.isFocused)
-            { CancelMovement(); return; }
+            if (events == null || selectedInput != null && selectedInput.isFocused ||
+                Mouse.current != null && events.IsPointerOverGameObject())
+            { CancelMovement(); UpdateVisualPosition(Vector2.zero, Time.unscaledDeltaTime); return; }
 
             double now = Time.unscaledTimeAsDouble;
-            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+            var keyboard = Keyboard.current;
+            Vector2 direction = CameraRelativeDirection(keyboard, quarterViewCamera);
+            if (direction == Vector2.zero)
             {
                 CancelMovement();
-                var pointer = new PointerEventData(events) { position = Mouse.current.position.ReadValue() };
-                uiHits.Clear();
-                events.RaycastAll(pointer, uiHits);
-                foreach (var hit in uiHits)
-                    if (hit.module is UnityEngine.UI.GraphicRaycaster) return;
-                // The visible HUD uses non-raycast decorative graphics; its panel still blocks movement clicks.
-                var hudRect = worldHud.transform as RectTransform;
-                var canvas = worldHud.GetComponentInParent<Canvas>();
-                if (worldHud.activeInHierarchy && hudRect != null && RectTransformUtility.RectangleContainsScreenPoint(
-                    hudRect, pointer.position, canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null)) return;
-                var camera = quarterViewCamera.GetComponent<Camera>();
-                var surface = fieldPlane.GetComponent<Collider>();
-                // Only the existing base plane is a movement surface; decoration has no navigation rules.
-                if (camera == null || surface == null || !surface.Raycast(camera.ScreenPointToRay(pointer.position), out var ground, 1000)) return;
-                var target = new Vector2(ground.point.x, ground.point.z);
-                if (!InsideZone(ZoneID, target)) return;
-                moveTarget = target;
-                progressDeadline = now + 3;
-                targetDeadline = now + 15;
+                UpdateVisualPosition(Vector2.zero, Time.unscaledDeltaTime);
+                return;
             }
-            if (!moveTarget.HasValue) return;
-            if (now >= progressDeadline || now >= targetDeadline ||
-                (moveTarget.Value - ServerPosition).sqrMagnitude <= 0.05f * 0.05f)
-            { CancelMovement(); return; }
-            if (now < nextMoveTime) return;
-            if (!TryMoveCandidate(ZoneID, ServerPosition, moveTarget.Value, out var candidate, out var direction))
-            { CancelMovement(); return; }
-            // One candidate from the latest confirmed state. A long frame never catches up requests.
-            nextMoveTime = now + 0.05;
-            loginScreen.Data.UpdateMove(direction, candidate.x, candidate.y);
+            if (now >= nextMoveTime)
+            {
+                if (!TryMoveCandidate(ZoneID, ServerPosition, ServerPosition + direction, out var candidate, out var serverDirection))
+                { CancelMovement(); UpdateVisualPosition(Vector2.zero, Time.unscaledDeltaTime); return; }
+                // One candidate from the latest confirmed state. A long frame never catches up requests.
+                loginScreen.Data.UpdateMove(serverDirection, candidate.x, candidate.y);
+                nextMoveTime = now + 0.05;
+            }
+            UpdateVisualPosition(direction, Time.unscaledDeltaTime);
+        }
+
+        private static Vector2 CameraRelativeDirection(Keyboard keyboard, Transform cameraTransform)
+        {
+            Vector3 forward = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
+            Vector3 right = Vector3.ProjectOnPlane(cameraTransform.right, Vector3.up).normalized;
+            Vector2 input = new Vector2((keyboard.rightArrowKey.isPressed ? 1 : 0) - (keyboard.leftArrowKey.isPressed ? 1 : 0),
+                (keyboard.upArrowKey.isPressed ? 1 : 0) - (keyboard.downArrowKey.isPressed ? 1 : 0));
+            if (input.sqrMagnitude > 1) input.Normalize();
+            Vector3 world = right * input.x + forward * input.y;
+            return world.sqrMagnitude > 0 ? new Vector2(world.x, world.z).normalized : Vector2.zero;
+        }
+
+        private void UpdateVisualPosition(Vector2 direction, float deltaSeconds)
+        {
+            if (!HasOwnFull) return;
+            if (!hasVisualPosition) { visualPosition = ServerPosition; hasVisualPosition = true; }
+            // The wire accepts at most one one-unit candidate per 50ms, so keep presentation at 20 units/second and within one unit of authority.
+            if (direction.sqrMagnitude > 0)
+            {
+                Vector2 next = visualPosition + direction.normalized * (deltaSeconds * 20f);
+                Vector2 offset = next - ServerPosition;
+                visualPosition = offset.magnitude > 1f ? ServerPosition + offset.normalized : next;
+            }
+            else visualPosition = Vector2.MoveTowards(visualPosition, ServerPosition, deltaSeconds * 20f);
+            RenderVisualPosition();
+        }
+
+        private void ReconcileVisual(Vector2 previousServer, Vector2 server)
+        {
+            if (!hasVisualPosition || Vector2.Distance(previousServer, server) > 2f ||
+                Vector2.Distance(visualPosition, server) > 3f)
+            { visualPosition = server; hasVisualPosition = true; }
+        }
+
+        private void RenderVisualPosition()
+        {
+            if (!HasOwnFull || ownCharacter == null) return;
+            Vector2 position2 = hasVisualPosition ? visualPosition : ServerPosition;
+            var position = new Vector3(position2.x, 0, position2.y);
+            ownCharacter.position = position;
+            fieldPlane.position = new Vector3(ownFull.x, 0, ownFull.y);
+            quarterViewCamera.position = position + new Vector3(12, 16, -12);
+            quarterViewCamera.LookAt(position + Vector3.up);
         }
 
         private static bool InsideZone(ushort zone, Vector2 position)
@@ -402,7 +438,6 @@ namespace C02
 
         public void CancelMovement()
         {
-            moveTarget = null;
             loginScreen?.Data?.CancelMove();
         }
 
@@ -469,16 +504,11 @@ namespace C02
 
         private void ShowPosition()
         {
-            if (moveTarget.HasValue && (moveTarget.Value - ServerPosition).sqrMagnitude <= 0.05f * 0.05f)
-                CancelMovement();
-            var position = new Vector3(ownFull.x, 0, ownFull.y);
-            ownCharacter.position = position;
+            if (!hasVisualPosition) { visualPosition = ServerPosition; hasVisualPosition = true; }
             ownCharacter.rotation = ServerFacing(ownFull.dir);
-            fieldPlane.position = position;
-            quarterViewCamera.position = position + new Vector3(12, 16, -12);
-            quarterViewCamera.LookAt(position + Vector3.up);
+            RenderVisualPosition();
             worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
-                "C02 / SERVER-CONFIRMED FIELD\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nClick the field to walk. Position is confirmed by the server.",
+                "C02 / SERVER-CONFIRMED FIELD\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nArrow keys move. Z / X / C use skills.",
                 SelectedCharacterID, InternalID, ZoneID, ownFull.x, ownFull.y);
             UpdateZoneTransitionButton();
         }
@@ -486,6 +516,8 @@ namespace C02
         private void ResetWorld()
         {
             CancelMovement();
+            hasVisualPosition = false;
+            visualPosition = Vector2.zero;
             nextMoveTime = 0;
             pendingFull.Clear();
             ownFull = default;
@@ -507,6 +539,7 @@ namespace C02
         private void Fail(string message)
         {
             CancelMovement();
+            hasVisualPosition = false;
             loginScreen.ConnectionFailed(message);
             Stage = C02Stage.Failed;
             entryStatusText.text = message + " Sign in to retry.";

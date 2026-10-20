@@ -147,9 +147,9 @@ namespace C02
         private void Update()
         {
             if (!InputAvailable() || Keyboard.current == null) return;
-            if (Keyboard.current.digit1Key.wasPressedThisFrame) RequestSkill(0);
-            else if (Keyboard.current.digit2Key.wasPressedThisFrame) RequestSkill(1);
-            else if (Keyboard.current.digit3Key.wasPressedThisFrame) RequestSkill(2);
+            if (Keyboard.current.zKey.wasPressedThisFrame) RequestSkill(0);
+            else if (Keyboard.current.xKey.wasPressedThisFrame) RequestSkill(1);
+            else if (Keyboard.current.cKey.wasPressedThisFrame) RequestSkill(2);
         }
 
         private void ApplyResults(ushort count, ActionResultField[] results)
