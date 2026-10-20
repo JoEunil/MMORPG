@@ -2,9 +2,11 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { loadState, saveState, acceptEnvelope } from './slack-delivery.mjs';
+import { loadState, saveState, acceptEnvelope, acceptReply } from './slack-delivery.mjs';
 
-const [coordinator, codexPath, testReconnect] = process.argv.slice(2);
+const [coordinator, codexPath, ...options] = process.argv.slice(2);
+if (options.some(x => x !== '--test-reconnect' && !/^--catchup-thread=\d+\.\d{6}$/.test(x))) throw new Error('Unsupported receiver option.');
+const catchUpThreads = options.filter(x => x.startsWith('--catchup-thread=')).map(x => x.slice('--catchup-thread='.length));
 if (!/^[a-f0-9-]{36}$/.test(coordinator ?? '') || !codexPath) throw new Error('Explicit Coordinator and Codex path required.');
 if (coordinator !== '01a14d46-8b23-7590-8ad5-7efc20f8ecd9') throw new Error('Unexpected active client Coordinator.');
 const folder = fileURLToPath(new URL('.', import.meta.url));
@@ -20,13 +22,14 @@ const state = loadState(path);
 if (state.coordinator && state.coordinator !== coordinator) throw new Error('Stored Coordinator differs; review state before changing target.');
 state.coordinator = coordinator;
 saveState(path, state);
-let forceDisconnect = testReconnect === '--test-reconnect';
+let forceDisconnect = options.includes('--test-reconnect');
 let retryMs = 2000;
 
-async function api(method, token, body = {}) {
-  const response = await fetch(`https://slack.com/api/${method}`, {
-    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json; charset=utf-8' },
-    body: JSON.stringify(body), signal: AbortSignal.timeout(15000),
+async function api(method, token, body = {}, readOnly = false) {
+  const url = `https://slack.com/api/${method}` + (readOnly ? `?${new URLSearchParams(body)}` : '');
+  const response = await fetch(url, {
+    method: readOnly ? 'GET' : 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json; charset=utf-8' },
+    ...(readOnly ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(15000),
   });
   const result = await response.json();
   if (!result.ok) throw new Error('Slack API request failed');
@@ -44,6 +47,17 @@ function deliver(text, ts, thread) {
 const auth = await api('auth.test', botToken);
 if (auth.team_id !== 'T0C9ECC3GS3' || auth.user_id !== 'U0C9ZRTQ6F8') throw new Error('Unexpected bot/workspace.');
 console.log('BOT_AUTH_OK');
+config.threads = new Set(readFileSync(join(folder, 'threads.txt'), 'utf8').split(/\r?\n/).map(x => x.trim()).filter(Boolean));
+for (const thread of catchUpThreads) {
+  if (!config.threads.has(thread)) throw new Error('Catch-up thread is not registered.');
+  const replies = await api('conversations.replies', botToken, { channel: config.channel, ts: thread, limit: '100' }, true);
+  if (replies.has_more) throw new Error('Catch-up requires manual pagination review.');
+  for (const event of replies.messages ?? []) {
+    const result = acceptReply(state, { ...event, channel: config.channel }, config,
+      () => saveState(path, state), () => {}, deliver);
+    if (result !== 'ignored') console.log(`CATCHUP ${result} ${event.ts}`);
+  }
+}
 for (const [ts, item] of Object.entries(state.deliveries)) {
   if (item.status !== 'queued') console.log(`NEEDS_REVIEW ${ts}`);
 }

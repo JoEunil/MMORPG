@@ -846,7 +846,7 @@ namespace ClientCore.PacketHelper
             ushort count = BitConverter.ToUInt16(buffer, offset);
             ushort zoneID = BitConverter.ToUInt16(buffer, offset + 2);
             ulong generation = BitConverter.ToUInt64(buffer, offset + 4);
-            if (zoneID < 1 || zoneID > 4 || generation == 0)
+            if (zoneID < 1 || zoneID > 6 || generation == 0)
                 throw new ArgumentException("Invalid simulation zone identity.");
             offset += 12;
 
@@ -871,7 +871,7 @@ namespace ClientCore.PacketHelper
                 throw new ArgumentException("Invalid zone response length or flags.");
             var packet = Deserialize<ZoneChangeResponseBody>(header, buffer);
             var body = packet.body;
-            if (body.resStatus > 1 || body.resStatus == 1 && (body.zoneID < 1 || body.zoneID > 4 ||
+            if (body.resStatus > 1 || body.resStatus == 1 && (body.zoneID < 1 || body.zoneID > 6 ||
                 body.zoneGeneration == 0 || body.zoneInternalID == 0 || body.zoneInternalID == uint.MaxValue ||
                 float.IsNaN(body.startX) || float.IsInfinity(body.startX) || float.IsNaN(body.startY) || float.IsInfinity(body.startY)))
                 throw new ArgumentException("Invalid zone response identity.");

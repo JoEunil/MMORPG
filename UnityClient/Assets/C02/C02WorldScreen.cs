@@ -16,6 +16,8 @@ namespace C02
     public sealed class C02WorldScreen : MonoBehaviour
     {
         [SerializeField] private C01LoginScreen loginScreen;
+        [SerializeField] private C07InventoryScreen inventoryScreen;
+        [SerializeField] private C09BazaarScreen bazaarScreen;
         [SerializeField] private UnityEngine.UI.Button[] characterChoices;
         [SerializeField] private UnityEngine.UI.Button enterButton;
         [SerializeField] private UnityEngine.UI.Button disconnectButton;
@@ -32,7 +34,7 @@ namespace C02
         private IViewModelUI model;
         private readonly Dictionary<uint, FullStateField> pendingFull = new Dictionary<uint, FullStateField>();
         private FullStateField ownFull;
-        private const float MovementUnitsPerSecond = 5f;
+        private const float MovementUnitsPerSecond = 4f;
         private const double MovementIntervalSeconds = 0.05;
         private Vector2 visualPosition;
         private bool hasVisualPosition;
@@ -176,8 +178,7 @@ namespace C02
                 pendingFull.Clear();
                 ownCharacter.gameObject.SetActive(false);
                 worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
-                    "Zone {0} entered at ({1:F3}, {2:F3}). Waiting for your matching server state…\nPlease wait before taking another action.",
-                    zone, x, y);
+                    "AREA {0}\nPreparing your character…", zone);
                 UpdateZoneTransitionButton();
                 WorldStateChanged?.Invoke();
                 return;
@@ -349,7 +350,7 @@ namespace C02
             var selectedInput = events != null && events.currentSelectedGameObject != null
                 ? events.currentSelectedGameObject.GetComponentInParent<TMP_InputField>() : null;
             if (events == null || selectedInput != null && selectedInput.isFocused ||
-                Mouse.current != null && events.IsPointerOverGameObject())
+                inventoryScreen != null && inventoryScreen.IsOpen || bazaarScreen != null && bazaarScreen.IsOpen)
             { CancelMovement(); UpdateVisualPosition(Vector2.zero, Time.unscaledDeltaTime); return; }
 
             double now = Time.unscaledTimeAsDouble;
@@ -388,7 +389,7 @@ namespace C02
         {
             if (!HasOwnFull) return;
             if (!hasVisualPosition) { visualPosition = ServerPosition; hasVisualPosition = true; }
-            // Match the server's 0.25-unit budget per 50ms; prediction never changes authority.
+            // Match the server's 0.2-unit budget per 50ms; prediction never changes authority.
             if (direction.sqrMagnitude > 0)
             {
                 Vector2 next = visualPosition + direction.normalized * (deltaSeconds * MovementUnitsPerSecond);
@@ -419,7 +420,7 @@ namespace C02
 
         private static bool InsideZone(ushort zone, Vector2 position)
         {
-            if (zone < 1 || zone > 4 || !Finite(position.x) || !Finite(position.y)) return false;
+            if (zone < 1 || zone > 6 || !Finite(position.x) || !Finite(position.y)) return false;
             int column = (zone - 1) % 3, row = (zone - 1) / 3;
             return position.x >= column * 100 - 5 && position.x <= (column + 1) * 100 + 5 &&
                 position.y >= row * 100 - 5 && position.y <= (row + 1) * 100 + 5;
@@ -463,7 +464,7 @@ namespace C02
             transitionDeadline = Time.unscaledTimeAsDouble + ZoneTransitionTimeoutSeconds;
             Stage = C02Stage.TransitionPending;
             worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
-                "Requesting entry to Zone {0}…\nMovement and skills are paused until the server confirms the transition.", targetZone);
+                "Travelling to area {0}…\nMovement and skills will resume on arrival.", targetZone);
             UpdateZoneTransitionButton();
             WorldStateChanged?.Invoke();
             try { model.ZoneChange(operation); }
@@ -497,7 +498,7 @@ namespace C02
             targetZone = 0;
             if (!InsideZone(zone, position)) return false;
             int column = (zone - 1) % 3;
-            // Match StateManager's three-column layout; the fourth area is above area 1.
+            // Match StateManager's three-column, two-row layout.
             if (column < 2 && InsideZone((ushort)(zone + 1), position))
             { operation = 4; targetZone = (ushort)(zone + 1); return true; }
             if (column > 0 && InsideZone((ushort)(zone - 1), position))
@@ -531,7 +532,7 @@ namespace C02
             ownCharacter.rotation = ServerFacing(ownFull.dir);
             RenderVisualPosition();
             worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
-                "C02 / SERVER-CONFIRMED FIELD\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nArrow keys move. Z / X / C use skills.",
+                "C02 / SERVER-CONFIRMED FIELD\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nArrow keys move. Z / X / C use skills. I opens bag. B opens market.",
                 SelectedCharacterID, InternalID, ZoneID, ownFull.x, ownFull.y);
             UpdateZoneTransitionButton();
         }

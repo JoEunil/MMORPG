@@ -17,7 +17,7 @@ namespace Core {
     inline constexpr uint16_t MESSAGE_LEN = 2048;
     inline constexpr uint16_t MQ_THREADPOOL_SIZE = 2; // 수신 큐
 
-    inline constexpr uint16_t ZONE_COUNT = 4; // lobby 제외
+    inline constexpr uint16_t ZONE_COUNT = 6; // 3x2 field zones; lobby excluded.
 
     inline constexpr uint16_t MAX_INVENTORY_ITEMS = 10;
     inline constexpr uint8_t BROADCAST_THREADPOOL_SIZE = 6;
@@ -50,8 +50,8 @@ namespace Core {
     inline constexpr auto DELTA_SNAPSHOT_TICK = std::chrono::milliseconds(50);
     inline constexpr auto GAME_TICK = std::chrono::milliseconds(50);
 
-    inline constexpr float WORLD_MOVEMENT_SCALE = 0.25f;
-    inline constexpr float MOVE_BUDGET_PER_TICK = 1.0f * WORLD_MOVEMENT_SCALE; // 5 units/second at 50ms.
+    inline constexpr float WORLD_MOVEMENT_SCALE = 0.2f;
+    inline constexpr float MOVE_BUDGET_PER_TICK = 1.0f * WORLD_MOVEMENT_SCALE; // 4 units/second at 50ms.
     inline constexpr float MOVE_BUDGET_CAP = 3.0f;       // 이월 상한(네트워크 지터 허용). 서버에서 충돌 판정이 없다면, cap을 map의 가장 얇은 벽 두께로 제한해야 한다. 
     inline constexpr float MOVE_BUDGET_EPSILON = 0.001f; // float 오차로 정상 이동이 거부되지 않도록
 

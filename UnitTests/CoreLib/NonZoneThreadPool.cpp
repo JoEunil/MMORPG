@@ -350,10 +350,10 @@ namespace Core {
             std::lock_guard lock(z->m_mutex);
             return z->m_chars.size();
         }
-        void SetPosition(uint16_t zone, float x, float y) {
+        void SetPosition(uint16_t zone, float x, float y, uint64_t session = 42) {
             auto* z = state->GetZone(zone);
             std::lock_guard lock(z->m_mutex);
-            auto& character = z->m_chars.at(z->m_sessionToIndex.at(42));
+            auto& character = z->m_chars.at(z->m_sessionToIndex.at(session));
             character.x = x;
             character.y = y;
         }
@@ -895,8 +895,11 @@ namespace Core {
         EXPECT_FALSE(state->ChangeZone(42, 255, result));
     }
 
-    TEST_F(NonZoneThreadPoolFixture, ZoneTransferRejectsRowWrapAndMissingNeighbor) {
+    TEST_F(NonZoneThreadPoolFixture, ZoneTransferBlocksRowWrapAndConnectsSixZoneGrid) {
         PrepareZones();
+        ASSERT_NE(state->GetZone(5), nullptr);
+        ASSERT_NE(state->GetZone(6), nullptr);
+        EXPECT_EQ(state->GetZone(7), nullptr);
         ASSERT_TRUE(LoadTransitionCharacter(42, 3, 300, 100));
         ASSERT_TRUE(LoadTransitionCharacter(43, 4, 100, 100));
         ZoneChangeResult result;
@@ -904,11 +907,33 @@ namespace Core {
         ASSERT_TRUE(state->ChangeZone(43, ZONE_CHANGE::ENTER, result));
         EXPECT_FALSE(state->ChangeZone(42, ZONE_CHANGE::RIGHT, result));
         EXPECT_FALSE(state->ChangeZone(43, ZONE_CHANGE::LEFT, result));
-        EXPECT_FALSE(state->ChangeZone(42, ZONE_CHANGE::UP, result));
-        EXPECT_EQ(state->GetZoneID(42), 3);
+        EXPECT_EQ(state->GetZoneID(42), 3); // No row wrap from the right edge.
         EXPECT_EQ(state->GetZoneID(43), 4);
-        EXPECT_EQ(Generation(3), 1);
+
+        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::UP, result));
+        EXPECT_EQ(result.zoneID, 6); // Zone 3's lower neighbor is the new Zone 6.
+        EXPECT_EQ(state->GetZoneID(42), 6);
+        EXPECT_FALSE(state->ChangeZone(42, ZONE_CHANGE::UP, result)); // Zone 9 is not part of this 3x2 map.
+        EXPECT_EQ(state->GetZoneID(42), 6);
+        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::DOWN, result));
+        EXPECT_EQ(result.zoneID, 3);
+        EXPECT_EQ(state->GetZoneID(42), 3);
+
+        ASSERT_TRUE(state->ChangeZone(43, ZONE_CHANGE::RIGHT, result));
+        EXPECT_EQ(result.zoneID, 5);
+        EXPECT_EQ(state->GetZoneID(43), 5);
+        SetPosition(5, 200, 100, 43); // Shared edge between Zones 5 and 6.
+        ASSERT_TRUE(state->ChangeZone(43, ZONE_CHANGE::RIGHT, result));
+        EXPECT_EQ(result.zoneID, 6);
+        EXPECT_EQ(state->GetZoneID(43), 6);
+        ASSERT_TRUE(state->ChangeZone(43, ZONE_CHANGE::DOWN, result));
+        EXPECT_EQ(result.zoneID, 3);
+        EXPECT_EQ(state->GetZoneID(43), 3);
+
+        EXPECT_EQ(Generation(3), 3);
         EXPECT_EQ(Generation(4), 1);
+        EXPECT_EQ(Generation(5), 1);
+        EXPECT_EQ(Generation(6), 2);
     }
 
     TEST_F(NonZoneThreadPoolFixture, ZoneTransferPreflightsCapacityInternalIdAndGenerationBeforeRemoval) {

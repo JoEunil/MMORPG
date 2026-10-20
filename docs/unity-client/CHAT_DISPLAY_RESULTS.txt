@@ -1,0 +1,16 @@
+하단 HUD·채팅 실제 검증 및 화면 보완 — 2026-10-20
+
+Editor 복구: 살아 있는 Unity26496/SafeMode false에서 실제 Window/Pipeline Stop Server→Start Server로 검색 descriptor 복구. Editor 종료·보안 약화 없음. 이후 CLI7800 정상.
+실제 ui-map03: 승인 계정01 로그인→선택5011→월드, 실제 저장 HP0/MP9919 표기. UI Global/Zone/Whisper 송신과 계정02 native peer 응답 각각1회 확인. peer scopeReceived=1,1,1/scopeEchoed=1,1,1/statusPASS/disposed1, 자연 종료. 계정/비밀 출력·직접 DB 쓰기 없음.
+발견: 실제 채팅6행 중 최신 귓속말이 Truncate 때문에 보이지 않음. 네트워크 송수신 PASS와 화면 FAIL을 분리했다.
+수정: C06ChatScreen optional ScrollRect 참조, 메시지 후 콘텐츠 높이 계산·하단 이동. Setup에서 기존 로그를 Mask+ScrollRect viewport로 이동하고 ContentSizeFitter preferred-height/Overflow 사용. 보관12메시지·기존 이벤트 정리·실제 수신자 선택 계약 유지.
+자동 직접 영향: 기존 C06ChatScopeTests 2/2 PASS, 약0.55s. 대상 선택 고정/오래된 콜백 거부에 overflow 높이·하단 위치 assert를 합쳤다. 전체 회귀 반복 없음.
+실제 ui-map04/05: 발견한 표시 실패의 영향만 재검증. 실제 로그인 후 UI로 Global6메시지 송신/서버 echo, content103.75>viewport82, scroll0. 최근 문구는 보였으나 이전 행이 수신대상 줄과 겹쳐 최종화면 불합격. shader/stencil 확인 결과 clipping 고장이 아니라 RectOffset(top,bottom) 순서 오류임을 확인.
+최종: 같은 ui-map05 서버 세션에서 viewport offset만 올바르게 조정, targetBottom187/viewportMax183으로4px 분리. ui-map05-chat-boundary-fixed.png에서 최신 메시지와 수신자 줄의 비겹침 확인. 해당 배치 종료 뒤 Setup RectOffset(14,14,96,76)로 영구 수정·컴파일0오류·씬 저장. 최종 소스/씬 geometry viewportMin(41,101)/Max(497,183) 일치 확인. 캡처는 실제 세션 중 UI 위치 조정 결과이며 이후 같은 배치 전체를 다시 반복하지 않았다.
+독립 리뷰: map_compatibility 최종 소스/테스트/씬 참조 읽기 검토, blocker 없음. 초기 중복 viewport 지역변수 컴파일 오류는 이름 수정 후0오류. 읽기 리뷰를 실행 검증으로 계산하지 않음.
+종료: 정상 Disconnect→Modelnull→Playstop, 입력 coroutine 중지, runInBackground false, Scene dirty false. Assets 저작은 입력 종료 후 재개.
+남은 범위: 저장 HP0이므로 새 속도의 생존 이동·6구역 실제 탐험·처치/EXP 증가는 미실행. 이전 native/Unity 이동·경계 검증을 반복하지 않고 이 제한을 공개 설명에 반영.
+근거: Captures/ui-map03-hud-chat.png(최신줄잘림), ui-map03-chat-scroll-tests.txt, ui-map04-scroll-input.txt, ui-map05-mask-input.txt, ui-map05-chat-boundary-fixed.png(최종). Builds/UI-Chat-Map/ui-map03-peer-result.txt.
+지면: 원본 새 알베도를 detail로 저강도 시험했으나 동일 카메라 비교에서 흐릿해 보여 채택 보류. 원래 재질/빌더 복구 확인 LocalGroundGrain/.85/15x15. 원본과 비교 PNG는 내부에 보존, 새 재질 적용 성공으로 공개하지 않음.
+게시: 실제 최종 HUD PNG를 기존 전투 상세/이력에 추가하고 옛 화면 보존. 홈의 HUD/채팅 대기 문구 교정, 필드 상세의 옛 문구 연결 갱신. 큰 기능 묶음 후보만 로컬 보존. 새 push/PR/배포는 승인 전 보류.
+최종 추가: GitHub PR38 병합 확인(merge8e2becd). 원격 master fetch, ee85 포함 확인. 리뷰4323703901의 키보드 이동 hover 차단은 타당해 제거했다. TMP 입력 포커스와 HP0/Zone/focus/연결 가드 유지, 열린 가방·거래소는 명시 차단. 독립 리뷰에서 같은 GameObject 가정이 틀림을 발견했고 실제 C02Client↔Canvas를 serialized 참조로 연결했다. C07/C09 Setup도 재적용 시 참조를 저장한다. 첫 runtime lookup mismatch/재컴파일 전 null 검증 실패를 보존하며, 명시 unity recompile 최종0오류/0경고와 실제 scene inventoryBound/bazaarBound true·sceneSaved true로 확인했다. 이 guard 수정은 생존 계정의 실제 HUD-hover 방향키/패널 배치에 남기며 이미 수행한 HP0 채팅 입력을 이동 통과로 쓰지 않는다.

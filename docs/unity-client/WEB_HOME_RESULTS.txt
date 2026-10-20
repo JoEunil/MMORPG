@@ -1,0 +1,8 @@
+공개 홈 구성 개선 (2026-10-20)
+범위: SHOWCASE/PORTFOLIO_GUIDE, tools/site/build.py, site/style.css. 기존 작업 상세/화면 이력 URL과 미디어 유지. 새 호스팅/패키지/외부 이미지/Unity 변경 없음.
+반영: 상단 사람→총괄→전문 역할 도식, 기능 제작 흐름, 목표4개와 근거 있는 상태, 기존2D 인벤토리·거래소 포함7기능, 새 클라이언트 연결/개선 범위, 사용자 방향변경4개 전→후.
+검증: 홈+6상세+화면 이력 생성/내부 링크 검사 통과, git diff --check 통과. UI 내용 변경이라 게임 테스트 반복 없음.
+브라우저: 1280px desktop와390px mobile overflow=false. 모바일 역할2열/최소12px, 실제 작업 링크→아이템·거래소 상세→9개 이미지 이력 탐색 성공. viewport 임시 override 해제/QA 탭 닫음/사용자 탭 보존.
+리뷰: web_home_content 읽기 정적 리뷰, mobile3열·10px 위험을2열·12px로 수정. 과장된 신규 서버 기능/실플레이 완료 주장 없음.
+미리보기: http://127.0.0.1:8790/MMORPG/#workflow (기존 서버 재사용). 캡처 UnityClient/Captures/web-home-workflow-desktop.png, web-home-workflow-mobile.png.
+제한: 후속6구역·HUD·3범위 채팅의 새 게임 실입력은 앞 묶음에서 대기 중. 해당 화면을 새로 검증했다고 표시하지 않음. push/PR/정식 배포 없음.

@@ -163,6 +163,9 @@ public static class C07InventorySetup
         serialized.FindProperty("inventoryStatus").objectReferenceValue = status;
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
+        var worldSerialized = new SerializedObject(world);
+        worldSerialized.FindProperty("inventoryScreen").objectReferenceValue = screen;
+        worldSerialized.ApplyModifiedPropertiesWithoutUndo();
         var combatSerialized = new SerializedObject(combat);
         combatSerialized.FindProperty("inventoryScreen").objectReferenceValue = screen;
         combatSerialized.ApplyModifiedPropertiesWithoutUndo();

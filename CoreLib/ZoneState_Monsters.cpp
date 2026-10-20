@@ -7,7 +7,8 @@
 namespace Core {
     namespace {
         constexpr float MONSTER_WANDER_RADIUS = 6.0f;
-        constexpr float MONSTER_WANDER_SPEED = 0.6f * WORLD_MOVEMENT_SCALE;
+        constexpr float MONSTER_WANDER_SPEED = 0.375f * WORLD_MOVEMENT_SCALE;
+        constexpr float MONSTER_CHASE_SPEED_SCALE = 0.75f;
 
         uint32_t NextWanderValue(MonsterState& monster) {
             uint32_t value = monster.wanderSeed;
@@ -174,8 +175,8 @@ namespace Core {
             y += (dy > 0) ? 1 : -1;
         }
         auto& area = m_cells[monster.cellY][monster.cellX].area;
-        x *= monster.data->moveSpeed * WORLD_MOVEMENT_SCALE;
-        y *= monster.data->moveSpeed * WORLD_MOVEMENT_SCALE;
+        x *= monster.data->moveSpeed * MONSTER_CHASE_SPEED_SCALE * WORLD_MOVEMENT_SCALE;
+        y *= monster.data->moveSpeed * MONSTER_CHASE_SPEED_SCALE * WORLD_MOVEMENT_SCALE;
         if (x != 0) {
             if ((monster.x + x) < area.x_min or (monster.x + x) > area.x_max) {
                 monster.aggro = 0;

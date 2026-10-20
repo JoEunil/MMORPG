@@ -1,0 +1,8 @@
+귓속말 미응답 리뷰 수정 — 2026-10-20
+
+판정: 지적 타당. CoreLib/ChatThreadPool.cpp의 Whisper 대상 없음 경로는 echo 없이 return, 기존 UI는 즉시 입력 삭제/무기한대기였음.
+수정: C06ChatScreen만 단일 귓속말 pending, 입력 보존·잠금 및 중복 송신/수신자·범위 변경 차단. 본인 Whisper+정확한 메시지 echo에만 입력 비움. unrelated 채팅은 대기를 지우지 않음. 8초 unscaled timeout은 해당 수신자만 제거·선택 해제하고 입력 편집 복원, 확인 불가 안내. 자동 재전송 없음. 세션/월드 불가/disable cleanup 유지. 서버/프로토콜/Scene 변경 없음.
+독립 리뷰: whisper_review(code_reviewer) 최초 분석+패치 재검토, blocker0. 신규1/재활성화1 추가, 프로젝트 누적 신규12/재활성화46/활성화58, 실제 token N/A.
+검증: 명시 compile0오류0경고. C06ChatScopeTests PlayMode 한 배치3/3 PASS(total .7s): scope .243421s, timeout/원문보존/관련없는echo/성공echo/로그아웃 .1997897s, 최근상대/옛session .2067982s. 기존 순차송신 시험에 본인 echo를 공급해 단일 pending 정책 반영. 실서버 상대종료 입력은 미실행, 기존 전체채팅/로그인 재시험0.
+한계: timeout이 오프라인 확정은 아님. echo에 target/requestID 없어 동일 문구 수동재전송 뒤 극단적으로 늦은 과거 echo는 식별 불가. 자동재전송을 하지 않음. 원본 입력은 저장소/로그/증거에 수집하지 않음.
+복구: 이 클라이언트 수정 커밋 revert, 서버 전환 불필요. PLAY03 동일 PR39의 직접 리뷰 보완 범위로 반영. 독립 가방 재조회 코드는 제외 유지.

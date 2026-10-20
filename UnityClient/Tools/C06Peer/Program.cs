@@ -15,11 +15,15 @@ internal static class Program
     private static async Task<int> Main(string[] args)
     {
         // All command-line values are public run metadata; credentials never cross a process boundary.
-        if (args.Length < 3 || args.Length > 4 || !Regex.IsMatch(args[0], "^[A-Za-z0-9_-]{1,48}$") ||
-            args.Length == 4 && (!int.TryParse(args[3], out int limit) || limit < 30 || limit > 300))
+        if (args.Length < 3 || args.Length > 5 || !Regex.IsMatch(args[0], "^[A-Za-z0-9_-]{1,48}$") ||
+            args.Length >= 4 && (!int.TryParse(args[3], out int limit) || limit < 30 || limit > 600) ||
+            args.Length == 5 && args[4] != "--scopes")
         { Console.WriteLine("FAIL invalid-arguments"); return 2; }
         string runId = args[0], readyPath = Path.GetFullPath(args[1]), resultPath = Path.GetFullPath(args[2]);
-        int timeout = args.Length == 4 ? int.Parse(args[3]) : 180;
+        int timeout = args.Length >= 4 ? int.Parse(args[3]) : 180;
+        bool scopeMode = args.Length == 5;
+        var scopeReceived = new int[3];
+        var scopeEchoed = new int[3];
         string? loginId = null, password = null;
         Initializer? client = null;
         var deadline = Stopwatch.StartNew();
@@ -41,6 +45,20 @@ internal static class Program
             model.OnFullReceived += (count, states) => { for (int i = 0; i < count; i++) if (states[i].zoneInternalID == ownId && ownId != 0) ownFullSeen = true; };
             model.OnChatReceived += (scope, chat, _, text) =>
             {
+                if (scopeMode)
+                {
+                    if (scope > 2) return;
+                    string label = scope == 0 ? "global" : scope == 1 ? "zone" : "whisper";
+                    if (text == "C06 " + runId + " " + label && chat != ownChatId)
+                    {
+                        scopeReceived[scope]++;
+                        receivedChatId = chat;
+                        if (scopeReceived[scope] == 1)
+                            model.Chat("Peer " + runId + " " + label, scope, scope == 2 ? chat : 0);
+                    }
+                    if (text == "Peer " + runId + " " + label && chat == ownChatId) scopeEchoed[scope]++;
+                    return;
+                }
                 if (scope != 0) return;
                 if (text == expected && chat != ownChatId)
                 {
@@ -58,10 +76,21 @@ internal static class Program
             await PumpUntil(() => zoneSeen && ownFullSeen && ownChatId != 0, () => failed, deadline, timeout);
             Save(readyPath, "status=READY", "runId=" + runId, "chatId=" + ownChatId, "zone=" + zone, "internalId=" + ownId);
             Console.WriteLine("READY " + runId);
-            stage = "chat"; await PumpUntil(() => received == 1 && echoed == 1, () => failed || received > 1 || echoed > 1, deadline, timeout);
+            stage = "chat";
+            if (scopeMode)
+                await PumpUntil(() => scopeReceived.All(n => n == 1) && scopeEchoed.All(n => n == 1),
+                    () => failed || scopeReceived.Any(n => n > 1) || scopeEchoed.Any(n => n > 1), deadline, timeout);
+            else
+                await PumpUntil(() => received == 1 && echoed == 1, () => failed || received > 1 || echoed > 1, deadline, timeout);
             // Keep the loaded profile available briefly for the other client's normal profile request.
             var grace = Stopwatch.StartNew();
-            while (grace.Elapsed < TimeSpan.FromSeconds(3)) { Drain(); if (failed || received != 1 || echoed != 1) throw new InvalidOperationException(); await Task.Delay(10); }
+            while (grace.Elapsed < TimeSpan.FromSeconds(3))
+            {
+                Drain();
+                if (failed || (scopeMode ? scopeReceived.Any(n => n != 1) || scopeEchoed.Any(n => n != 1) : received != 1 || echoed != 1))
+                    throw new InvalidOperationException();
+                await Task.Delay(10);
+            }
             stage = "complete"; code = 0;
         }
         catch { Console.WriteLine("FAIL " + stage); }
@@ -69,7 +98,8 @@ internal static class Program
         {
             client?.Dispose(); loginId = null; password = null;
             Save(resultPath, "status=" + (code == 0 ? "PASS" : "FAIL"), "stage=" + stage, "runId=" + runId,
-                "chatId=" + ownChatId, "otherChatId=" + receivedChatId, "received=" + received, "sent=" + (sent ? 1 : 0), "echoed=" + echoed, "disposed=1");
+                "chatId=" + ownChatId, "otherChatId=" + receivedChatId, "received=" + received, "sent=" + (sent ? 1 : 0), "echoed=" + echoed,
+                "scopeReceived=" + string.Join(",", scopeReceived), "scopeEchoed=" + string.Join(",", scopeEchoed), "disposed=1");
         }
         Console.WriteLine(code == 0 ? "PASS normal-dispose" : "FAIL normal-dispose");
         return code;

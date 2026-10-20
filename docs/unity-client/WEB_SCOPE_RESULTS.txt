@@ -1,0 +1,9 @@
+공개 작업 범위 통합 결과 (2026-10-20)
+홈: 필드/전투/인벤토리/거래소/콘텐츠 편집 5카드. 거래소 단계별3카드는 제외하고 market 상세+history 하나로 통합, inventory 별도 상세+history 생성.
+보존: 기존3개MD 수정/삭제 없음, 고유 화면12개 = 시장10 + 인벤토리2. 구주소 bazaar-search/my-listings/item-market의 index/history는 대응 market 페이지로 연결.
+문구/UI: 지침 변경 이력으로 명칭 교정, 달라진 구현 섹션 삭제, 장식 eyebrow/우측 보조링크 제거, 의미 있는 진행상태는14px 이상으로 유지.
+검증: 홈+5상세/이력 생성 및 내부 링크 검사 PASS, 후보 diff --check PASS. 실제1280/390에서5카드·overflow=false·검사한 본문/캡션/링크14px 이상.
+브라우저: 거래소 상세→이력10개이미지 성공, 이전my-listings/history→market/history 이동 성공. viewport override 해제/QA탭 닫음/사용자탭 유지.
+리뷰: 별도 문서 담당이 renderer/CSS/신규MD 읽기 검토, 이미지 보존·구주소·실서버 성공 미검증 구분 확인. 차단 발견 없음.
+범위: 게임/서버 변경 및 게임 테스트 없음. 기존 게임 입력 잔여 상태 유지. 원격 push/PR/정식 배포 없음.
+미리보기 http://127.0.0.1:8790/MMORPG/#work. 웹 캡처 UnityClient/Captures/web-scope-groups-desktop.png 및 -mobile.png.

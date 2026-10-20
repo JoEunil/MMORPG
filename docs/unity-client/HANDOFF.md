@@ -1,3 +1,76 @@
+## 최신 — PR39 오프라인 귓속말 리뷰 수정
+
+서버는 끊긴 대상 귓속말을 echo없이 버리는 실제 경로가 있어 P2 타당. C06ChatScreen에서 입력을 보존한 단일 pending·8초 확인 기한·해당 수신자 무효화·정확 본인echo 확인을 구현했다. 서버/프로토콜 변경0·자동재전송0. 독립리뷰 blocker0/compile0/직접 영향3개 한배치 PASS. 실제 상대종료 입력은 미실행이며 기존 전체로그인/채팅회귀 반복0. WHISPER_TIMEOUT_RESULTS.txt 참조. 전문신규12/재활성화46/58회,tokenN/A. PLAY03의 동일PR39 리뷰 보완이며 별도 새기능범위·가방재조회는 포함하지 않는다.
+## 최신 — 생존 계정 실제 이동·구역 전환 완료 / 버튼 가림 수정
+
+기존 계정02/캐릭터5012가 HP10000/MP9999인 것을 실제 로그인1회로 확인했다. HUD 위 방향키 이동·I/B 열린패널 이동 차단과 실제1→4→5 경계 전환/서버좌표 보존/scenery(100,0,100) PASS. 계정01 HP0이 모든 생존 검증의 차단은 아니었다. 테스트 도우미의 Canvas오선택/카메라평면투영 오류는 제품 실패와 분리해 같은접속의 남은 단계만 재개했다. 새 전체 회귀/처치·EXP검증/DB쓰기·회복·리시딩0.
+
+실제 구역 이동 버튼이 HUD 뒤에 가려 Raycast 첫 hit가C05CombatPanel인 제품 결함을 발견했다. runtime에서 버튼pos(0,230)/size224x40로 옮겨 실제4→5 전환 확인한 뒤, 정상퇴장·Playstop 후 동일 소스/씬 geometry 저장. 별도 읽기 리뷰로 HUD·chat 비겹침과 재적용 경로 확인. 명시compile0오류/0경고, Playfalse/dirtyfalse/backgroundfalse/테스트계정선택환경값null 복구. ALIVE_TRAVEL_RESULTS.txt에 부분PASS·helperFAIL·실제UIFAIL·최종PASS를 보존한다.
+
+계정02 가방 읽기는 실패 안내였고 이번 범위는 열린 패널의 이동 차단만 PASS다. 모든6구역 왕복·사냥 난이도·처치/EXP는 미실행 유지. 새실제PNG expanded-field-alive.png를 기존 필드 상세/이력에 추가하고 이전 화면 보존. 홈+5상세/이력 생성·링크검사/실제브라우저 이미지 확인 PASS. 정확 cooldown은 현재패킷에 없어 계약만 분석하고 가짜 ready타이머는 추가하지 않았다.
+
+현재 후보 codex/classic-field-art에 기존 큰묶음+자연석+이동버튼수정과 실제검증을 함께 모았다. PLAY02는41080c9에고정된 과거게시요청이며 아직새승인원문없음. 더큰통합후보의검증/커밋후 기존요청을 PLAY03으로 대체해 한PR만 게시할 예정. 이전승인을새범위에확대하거나승인전push하지않는다. 전문누적신규10/재활성화43/활성화53,token N/A.
+## 후속 아트 — 낮은 자연석 후보 통합 완료
+
+codex/classic-field-art에서 V04 BuriedOutcrop/BuriedShrineStone50개의 MeshFilter만 전용 MeadowChamferedStone.asset으로 교체했다. 전용 Apply 메뉴는 기존 미저장편집/Play를 거절하고 Undo/명시저장, 전체V04재생성 없이 작동한다. 기존 공용Rock/성문/신전구조물/좌표/스폰/지면재질/조명 불변. 명시 compile0오류/0경고·sceneSaved true, scene diff는50개 mesh 참조뿐. 같은 카메라 before/after에서 직사각판 윤곽 개선 확인. 실제 게임 입력/회귀 반복0. 새메시144v/48tri/bounds±.5. FIELD_SCENERY_TASK.md 참조.
+
+독립 읽기 리뷰는 winding/범위/Undo/asset재사용을 확인했으며 'V04 메뉴가 없어 실행불가' 지적은 실제 기존씬의50개 적용 성공으로 반증해 비차단 처리. ROOT의 기존 ContinuousMeadow/ContinuousGround가 후보와 hash 다름을 확인했으나 원본 WIP 보존·복사/덮기0. static 비교는 같은 Editor 자산 조건이며 후보 전체시각동일성으로 확대하지 않음. 이 작은 아트 변화는 내부 비교만 기록하고 별도공개카드/작은PR 없이 다음아트묶음으로 모은다.
+
+전문 누적 신규10/재활성화41/활성화51/token N/A. PLAY02는 이전 codex/classic-field-ui/41080c9에만 고정, 봇요청1792495219.973689/완료요약1792495329.731209. 이 자연석 변경을 승인 요청 범위에 임의 추가하지 않는다. 새 push/PR 없음. 다음은 대표필드 아트·남은 생존 플레이 조건을 검토하고 관련구현을 모은다.
+## 현재 — PLAY02 게시 승인 요청 / 다음 필드 아트 저작
+
+후속 큰 묶음은 codex/classic-field-ui의 41080c9ab71585ef84e360da7bfa5545cdd0a83c에 고정했다. Unity Coordinator bot 요청1792495219.973689, channelC0C9VFZMV43/정확 부모1792487679.299269, 회신은 승인 PLAY02. 새 push/PR 없음. PR38 병합은 확인했으며 후속 요청은 병합 승인이 아니라 새 큰 PR 게시 범위다. 로컬 원본/검증 기록/이전 빌드는 보존한다. 전체 branch diff의 Unity 직렬화 trailing-space 진단은 기존 앞 커밋에도 있고 새 채팅 커밋 diff check는 PASS이며 이를 코드 오류로 확대하지 않는다.
+
+승인 대기로 정지하지 않고 codex/classic-field-art를 frozenHEAD에서 분기했다. 전문 아트 담당을 재활성화해 낮은 자연석의 직사각 판 윤곽을 V04 전용 메시로 개선 중이다. 기존 성문 Rock/신전구조물/서버판정/지면/조명은 제외, root만 Editor 조작한다. 새 지면 알베도는 미채택 유지. 다음 콘텐츠 분석은 후보 경로 재확인 완료했지만 실플레이 근거 없이 밀도 계수를 새 예비 구조로 추가하지 않는다. 에이전트 이번 아트 재활성화1 추가 누적50, tokens N/A.
+## 최종 갱신 — PR38 병합·키보드 이동 리뷰 반영
+
+PR38은 사용자에 의해 병합됨을 GitHub에서 확인했고 origin/master8e2becd에 ee85가 포함됨을 확인했다. 후속 후보는 기존 master를 덮어쓰지 않는다. 리뷰의 HUD 위 mouse hover에 따른 방향키 취소를 제거하고, 가방/거래소 열린 상태는 실제 Canvas의 패널 참조로 명시 차단했다. 동일 GameObject 추정은 독립 리뷰/실제 scene조회에서 실패해 serialized 참조와 C07/C09 Setup 연결로 수정했다. 명시 recompile0오류/0경고, 실제 inventoryBound/bazaarBound true/sceneSaved true. 실제 생존 이동/열린패널 입력은 다음 생존 배치에 포함하며 이번 컴파일 확인으로 통과 처리하지 않는다.
+
+다음 사냥터 분석은 요청 후보 루트에서 재확인 완료: PROGRESSION_CONTENT_TASK.md. 6x25 중복보다 작은 선택적 Zone 밀도 계수 후보이나, 실플레이 근거 없는 수치를 확정하거나 이를 완성된 성장 시스템으로 추가하지 않는다. 기존 EXP 보상은 있고 레벨업 문턱/회복·부활/포션 사용 경로는 없음. 독립 후속 저작이며 이번 게시 승인 후보에는 포함하지 않는다. 전문 누적 신규10/재활성화39/49회/token N/A.
+## 최신 — HUD·채팅 실입력 완료 / 다음 사냥터 콘텐츠 조사
+
+Unity Pipeline 검색 파일 소실은 실제 Editor 메뉴 Stop Server→Start Server로 복구했다. Editor 재시작·보안/권한 변경 없음. 실제 UI 로그인/선택/진입 뒤 저장 HP0·MP9919와 큰 ZXC 표기 확인, Global/Zone/Whisper 실제 송신/상대 peer 응답 각각 성공·peer 자연 종료. 최신 채팅 잘림 발견 뒤 ScrollRect/Mask/PreferredHeight로 고쳤고 기존2개 자동 검증 통과. 영향 재확인에서 수신대상 줄 겹침을 발견해 RectOffset top/bottom 순서를 수정했다. 최종 실제 세션 캡처 ui-map05-chat-boundary-fixed.png와 종료 후 저장 소스/씬 geometry 일치, 독립 읽기 리뷰 blocker0. CHAT_DISPLAY_RESULTS.txt에 실패/수정/성공 원문 위치 보존. 전체 회귀·새 서버 재기동·DB쓰기 없음.
+
+새 지면 알베도1종을 별도 아트 담당이 만들고 임시 detail로 같은 카메라 비교했으나 흐릿해 보여 채택 보류. 기존 Material/빌더 복구 확인 LocalGroundGrain/.85/15, 원본과 내부 비교만 보존. 이 후보를 재질 개선 성공으로 게시하지 않는다. 입력 배치 종료 뒤에만 Assets 저작했다.
+
+웹 기존 전투 상세/이력에 실제 최종 PNG 추가, 이전 화면 보존. 홈의 HUD/채팅 대기 문구 교정, 필드 상세에서 새 HUD로 연결. 홈+5상세/이력 생성·링크검사 PASS, 실제 브라우저에서 갱신 캡처와 설명 확인. 첫 생성의 지원하지 않는 상대링크는 기존 Pages 절대경로로 수정 후 성공. localhost8790/work/player-hud/는 로컬 미리보기이며 신규 push/PR/정식배포 없음.
+
+종료 상태: Editor26496 Playfalse/dirtyfalse/runInBackgroundfalse, 테스트 입력 중지/Modelnull. MainServer43240/9999 Listen, 접속0. Slack 수신기 SOCKET_READY/LISTENING 유지. PR38의 CLASSIC01 승인은 이미 소비됐으며 이번 후속 묶음에 재사용 금지. 다음 PR 게시 직전 PLAY02 Slack 승인 한 번만 요청하고 독립 작업을 계속한다.
+
+HP0 계정의 생존 이동·6구역 실제 탐험·처치/EXP 증가는 미실행 유지. 다음 작업은 기존 서버 계약 안의 구역별 사냥터 콘텐츠. 분석 담당의 첫 문서가 ROOT에 기록돼 후보 경로 대조/재작성 요청했으며, 검증 전 내용을 소스 수정 근거로 사용하지 않는다. 원본 문서는 보존. 에이전트 누적 신규10/재활성화37/활성화47, tokens N/A. ArtSource/FIELD_SURFACE_TASK와 다음 콘텐츠 분석은 독립 미게시 저작으로 보존한다.
+## 최신 — 기능 범위별 공개 작업 통합·작은 장식 제거
+
+홈 작업을 필드/전투/인벤토리/거래소/콘텐츠 편집5개로 구성했다. 거래소 검색·내 매물·구매·취소·수령은 market 상세와 이력1개로 통합하고 inventory 별도 상세/이력으로 분리했다. 이전3원본은 보존하되 생성목록에서 제외, 구3주소(index/history 각각)는 market 대응 페이지로 canonical/meta refresh. 이전12개 고유 이미지가 시장10+가방2에 모두 보존됨을 별도 읽기 리뷰로 확인했다. `달라진 구현` 전체와 작은 eyebrow/우측 보조링크 제거, `지침 변경 이력`으로 명칭 교정. 모든 본문·캡션·링크14px 이상. PORTFOLIO_GUIDE의 이전 요약섹션 요구도 최신 지시로 대체.
+
+홈+5상세/이력 생성·링크검사 및 후보 git diff --check PASS. 실제 desktop1280/mobile390에서5카드·장식라벨0·중복변경섹션0·overflow=false/최소14px 확인. 거래소 통합 이력10이미지, 구my-listings/history가market/history로 이동하는 실제 브라우저 경로 PASS. QA탭 닫음/viewport override 해제/기존사용자탭 새로고침·보존. 캡처 UnityClient/Captures/web-scope-groups-desktop.png 및 -mobile.png. Unity/서버/DB/게임테스트 반복 없음. 미리보기 http://127.0.0.1:8790/MMORPG/#work, 정식게시·push·PR 없음. 새 게임 실입력 잔여는 앞 기록을 따른다.
+
+## 최신 — 공개 홈의 워크플로우·진행 흐름 개편
+
+사용자 요청으로 대표 화면 다음에 큰 AI 워크플로우 도식을 배치하고 사람/총괄/전문 역할과 기능 제작 흐름을 분리했다. 목표4개와 실제 진행 상태, 기존2D 범위(인벤토리·거래소 포함), AI 새 클라이언트 연결/개선 부분, 사용자 방향변경4개를 표시했다. 작업 상세/화면 이력 링크와 이전 미디어 보존. 공개 원본 SHOWCASE/PORTFOLIO_GUIDE와 생성기·CSS만 수정, Unity/서버 변경·실입력시험 없음.
+
+별도 문서 담당 작성/읽기 리뷰 후 모바일3열 작은 글자 위험을2열/12px로 개선. 홈+6상세/화면 이력 생성 및 링크 검사 PASS, 데스크톱1280/모바일390 overflow=false, 실제 작업→상세→화면 이력 탐색 PASS. 캡처 UnityClient/Captures/web-home-workflow-desktop.png 및 -mobile.png. 새 게임 화면 촬영이 아니라 웹 미리보기 증거다. 현재 미리보기 http://127.0.0.1:8790/MMORPG/#workflow. 사이트 실제 배포·push·PR 생성 없음. 기존 PR38 및 후속 게임 후보의 승인 범위를 넓히지 않는다. 게임 실입력 잔여 배치는 앞 기록을 따른다.
+
+## 최신 — 맵·속도·하단 HUD·채팅 후보 / PR38 게시
+
+사용자 요청으로 기존 구역의 좌표·Cell 크기를 유지하고 4구역에서 6구역(3×2)으로 확장했다. 유저 4unit/s, 몬스터 배회·귀환 1.5unit/s, 추적 일반3/강화3.6/보스1.8unit/s로 서버·클라이언트를 맞췄다. 하단 HP/MP 게이지 확대·실제 수치 표시, 작은 스킬 버튼과 큰 Z/X/C 배지, Global/Zone/Whisper 탭·실제 받은 상대 선택을 구현했다. 좌상단 정보 Text UI는 사용자 요청대로 기존 정보를 복원했다. 귓속말 선택 상대가 새 수신자 때문에 바뀌는 문제를 리뷰 중 고쳤다.
+
+직접 영향 배치: native 몬스터2+6구역 전환1 PASS, Unity 채팅2+HUD1+패킷1+경계1+예측속도1 PASS. 넓은 회귀/기존 로그인·시장 테스트는 반복하지 않았다. 새 프로토콜 범위와 서버 이동 검증은 단순 UI 검증과 별도 필요한 직접 영향이다. ClientCore/MainServer/UnitTests 빌드 성공. 새 bin의 DLL 5개 누락으로 첫 native 실행이 로더에서 실패했으며 기존 검증 런타임을 복사해 해당 배치만 통과했다. NU1900 취약점 피드 연결 경고와 기존 C++ 경고는 보존했다.
+
+서버22424는 q 정상 종료·native exit0·WAL 정리·포트 해제 후 새 서버43240으로 정상 전환했다. 실제 경로 UnityClient/Builds/UI-Chat-Map/bin/MainServer.exe, startTicks639280880402959371, SHA256 55C2500FA6E45ABD8C224F560C50BEA0A754872268234B907CB316D4ECDE0C3F, 9999 Listen 확인. 새112마리 배치·6구역·느린 이동 포함. DB 초기화/직접 쓰기·강제 종료·다른 서비스 재기동 없음. 원본 실행 파일과 정상 종료 전 로그 보존.
+
+새 실입력은 미실행이다. Editor26496는 살아 있고 7800도 수신하지만 Library/Pipeline/.unity-pipeline-port가 사라져 CLI 검색 실패, SafeMode=false. UI 관찰도 다른 작업 창을 반환해 클릭·키 입력/창 활성화 없이 중단했다. Editor 종료·보안 설정 변경·인증 우회 없음. 이전 화면을 새 HUD 검증 캡처로 재사용하지 않는다. C06Peer --scopes 도우미 빌드 완료이나 실제 peer 실행도 미실행. 다음은 Editor 연결이 복구되면 한 로그인으로 HP/MP·ZXC 표기·채팅 세 범위와 새 필드를 확인하고 실제 캡처 1개를 남기는 것이다. HP0 계정의 생존 이동을 성공으로 기록하지 않는다.
+
+Slack 원인 확정: 숫자 timestamp 인자가 반올림돼 승인 요청1792487679.299269가 별도 부모로 생성됐고 수신기 등록 부모와 달랐다. bot auth.test 및 실제 replies에서 지정사용자 승인 CLASSIC01/회신1792487700.948979/정확 부모1792487679.299269 확인. 지정 스레드만 등록·검증된 acceptReply 필터를 통한 명시적 catch-up으로 queue 성공, SOCKET_READY/LISTENING 복귀. 발신에 소수6자리·정확 부모 사전검증 추가, 앞으로 timestamp는 따옴표 문자열만 사용. 권한/승인자/대상 Coordinator는 바꾸지 않았다. 과거 connector 누락 가설보다 이 확정 원인을 따른다.
+
+위 승인은 정확 ee85f3f35cfd17d372dfc8e1e91c22121e663dfb에만 적용했다. master8690 조상 확인 후 codex/classic-mmorpg-motion 일반 push와 PR38(https://github.com/JoEunil/MMORPG/pull/38) 생성·첨부 완료. 병합 없음. bot 동일 스레드 결과1792490088.188589. 현재 codex/classic-field-ui의 후속 변경은 PR38에 추가 push하지 않았고 다음 큰 묶음으로 보존한다. 동일 승인 회신 재수신 때 중복 게시 금지. 전문 누적 신규8/재활성화29/활성화37회, token N/A.
+
+## 최신 — 큰 묶음 게시 승인 요청 / 독립 후속 UI 완료
+
+게시 승인 CLASSIC01은 codex/classic-mmorpg-motion 정확 ee85f3f35cfd17d372dfc8e1e91c22121e663dfb(79files3342+/182-) 기준. push/PR0, fetch확인origin/master8690이HEAD조상. SlackUnityCoordinator bot요청1792487679.299269(부모1792480887.219109)/완료채널1792487683.184129. 지정사람의검증된새승인미소비. connectorread_thread가부모만반환하여새봇답글까지누락한결과는승인없음의확정근거로쓰지않음. 승인전이거나원문확인불가시push하지않는다. 승인되면현재후속HEAD가아니라위고정branch/ref만범위대조후게시한다.
+
+작은완료/PR대기로정지하지않고codex/classic-field-ui를ee85에서분기. 필드UI의내부ID/좌표나열을현재AREA·실제조작안내로교체하고,360x88헤더와내부Disconnect배치로정리. 서버상태/좌표/ID검증과fixture의기존바인딩assert유지. root5대상파일후보와동일확인/Classic-Field-UI/before백업뒤제한적동기화. 독립리뷰차단0/compileerrors0/기존OwnFull-Zone순서시나리오(False/True)2PASS(0.040647/0.0022622s). 새로그인·전투·시장회귀0. EditorCanvas/328x68텍스트/버튼범위확인,새실게임화면캡처는없으므로공개페이지는앞서검증된캡처유지. 후속은다음관련필드/아트큰묶음에포함/별도작은PR금지.
+
+실행서버22424/9999Listen1/정상퇴장후Established0읽기확인,112배치서버는미기동. 원본Game와root기존WIP보존. 전문누적신규7+재활성화23=30/tokenN/A. 다음미완료는대표필드/몬스터표면과실제배치·성장수치,새112실서버및4구역검증은관련완성묶음의다음1회배치로모은다.
 ## 최신 — 통합 입력 배치 종료·HUD 완성 후보
 
 동결후한로그인으로실제UI선택/입장→방향키이동/해제/수렴→Z/X/C서버시전→I/B패널/거래소30개실제아이콘→HP0차단→채팅I/B가드→정상Disconnect/Modelnull/모든패널숨김→Playstop확인. OS입력0/UnityInputSystem이벤트실제UI경로이며handler직접호출0. simulate_key도구의즉시InputSystem.Update가프레임edge를소비해최초시도미반응,normalplayerloop에KeyboardState이벤트만queue하여정상화/제품코드우회0. 최초가방cold실패뒤닫고다시열어Noitems성공/seed0. 원문 CLASSIC_INPUT_RESULTS.txt. HP0상태에서신규이동차단확인,alive채팅이동·4존왕복·새112실서버배치는미실행.
