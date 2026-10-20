@@ -246,16 +246,16 @@ public static class C02SceneBuilder
         }
         var hud = Find("WorldHud").GetComponent<RectTransform>();
         hud.anchorMin = hud.anchorMax = hud.pivot = new Vector2(0, 1);
-        hud.anchoredPosition = new Vector2(24, -20); hud.sizeDelta = new Vector2(360, 88);
+        hud.anchoredPosition = new Vector2(24, -20); hud.sizeDelta = new Vector2(560, 112);
         hud.GetComponent<UnityEngine.UI.Image>().color = new Color(.12f,.115f,.095f,.88f);
         var wt = Find("WorldStatusText").GetComponent<TMP_Text>();
-        wt.fontSize = 12; wt.color = new Color(.84f,.81f,.70f);
+        wt.fontSize = 13; wt.color = new Color(.84f,.81f,.70f);
         wt.rectTransform.offsetMin = new Vector2(16, 10); wt.rectTransform.offsetMax = new Vector2(-16, -10);
         var disconnect = Find("DisconnectButton").GetComponent<RectTransform>();
         disconnect.anchorMin = disconnect.anchorMax = disconnect.pivot = new Vector2(1, 0);
-        disconnect.anchoredPosition = new Vector2(-10, 8); disconnect.sizeDelta = new Vector2(106, 28);
+        disconnect.anchoredPosition = new Vector2(0, -49); disconnect.sizeDelta = new Vector2(142, 36);
         disconnect.GetComponent<UnityEngine.UI.Image>().color = new Color(.16f, .32f, .32f, .93f);
-        disconnect.GetComponentInChildren<TMP_Text>(true).fontSize = 12;
+        disconnect.GetComponentInChildren<TMP_Text>(true).fontSize = 14;
         var world = Find("C02World");
         Find("FieldPlane").GetComponent<Renderer>().enabled = false;
         var capsule = Find("Capsule"); capsule.GetComponent<Renderer>().enabled = false;
@@ -358,6 +358,7 @@ public static class C02SceneBuilder
             labelRect.anchorMin = Vector2.zero; labelRect.anchorMax = Vector2.one;
             labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
             var icon = rect.Find("SkillIcon"); if (icon != null) icon.gameObject.SetActive(false);
+            var keyBadge = rect.Find("SkillKeyBadge"); if (keyBadge != null) keyBadge.gameObject.SetActive(false);
             Frame(rect, button.GetComponent<UnityEngine.UI.Image>().color);
             buttons[slot] = button;
         }

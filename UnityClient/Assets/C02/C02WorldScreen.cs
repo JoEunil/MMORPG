@@ -32,7 +32,7 @@ namespace C02
         private IViewModelUI model;
         private readonly Dictionary<uint, FullStateField> pendingFull = new Dictionary<uint, FullStateField>();
         private FullStateField ownFull;
-        private const float MovementUnitsPerSecond = 5f;
+        private const float MovementUnitsPerSecond = 4f;
         private const double MovementIntervalSeconds = 0.05;
         private Vector2 visualPosition;
         private bool hasVisualPosition;
@@ -387,7 +387,7 @@ namespace C02
         {
             if (!HasOwnFull) return;
             if (!hasVisualPosition) { visualPosition = ServerPosition; hasVisualPosition = true; }
-            // Match the server's 0.25-unit budget per 50ms; prediction never changes authority.
+            // Match the server's 0.2-unit budget per 50ms; prediction never changes authority.
             if (direction.sqrMagnitude > 0)
             {
                 Vector2 next = visualPosition + direction.normalized * (deltaSeconds * MovementUnitsPerSecond);
@@ -418,7 +418,7 @@ namespace C02
 
         private static bool InsideZone(ushort zone, Vector2 position)
         {
-            if (zone < 1 || zone > 4 || !Finite(position.x) || !Finite(position.y)) return false;
+            if (zone < 1 || zone > 6 || !Finite(position.x) || !Finite(position.y)) return false;
             int column = (zone - 1) % 3, row = (zone - 1) / 3;
             return position.x >= column * 100 - 5 && position.x <= (column + 1) * 100 + 5 &&
                 position.y >= row * 100 - 5 && position.y <= (row + 1) * 100 + 5;
@@ -496,7 +496,7 @@ namespace C02
             targetZone = 0;
             if (!InsideZone(zone, position)) return false;
             int column = (zone - 1) % 3;
-            // Match StateManager's three-column layout; the fourth area is above area 1.
+            // Match StateManager's three-column, two-row layout.
             if (column < 2 && InsideZone((ushort)(zone + 1), position))
             { operation = 4; targetZone = (ushort)(zone + 1); return true; }
             if (column > 0 && InsideZone((ushort)(zone - 1), position))
@@ -530,7 +530,8 @@ namespace C02
             ownCharacter.rotation = ServerFacing(ownFull.dir);
             RenderVisualPosition();
             worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
-                "AREA {0}\nArrow keys · move    Z / X / C · skills\nI · inventory    B · market", ZoneID);
+                "C02 / SERVER-CONFIRMED FIELD\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nArrow keys move. Z / X / C use skills. I opens bag. B opens market.",
+                SelectedCharacterID, InternalID, ZoneID, ownFull.x, ownFull.y);
             UpdateZoneTransitionButton();
         }
 

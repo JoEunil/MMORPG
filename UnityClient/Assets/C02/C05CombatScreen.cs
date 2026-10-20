@@ -19,6 +19,8 @@ namespace C02
         [SerializeField] private UnityEngine.UI.Button[] skillButtons;
         [SerializeField] private GameObject combatPanel;
         [SerializeField] private TMP_Text vitalsText;
+        [SerializeField] private TMP_Text hpValueText;
+        [SerializeField] private TMP_Text mpValueText;
         [SerializeField] private TMP_Text combatStatusText;
         [SerializeField] private TMP_Text aimText;
         [SerializeField] private UnityEngine.UI.Image hpFill;
@@ -95,6 +97,8 @@ namespace C02
                 var state = worldScreen.OwnFull;
                 vitalsText.text = string.Format(CultureInfo.InvariantCulture, "HP {0} / {1}    MP {2} / {3}",
                     state.hp, state.maxHp, state.mp, state.maxMp);
+                if (hpValueText != null) hpValueText.text = string.Format(CultureInfo.InvariantCulture, "HP {0} / {1}", state.hp, state.maxHp);
+                if (mpValueText != null) mpValueText.text = string.Format(CultureInfo.InvariantCulture, "MP {0} / {1}", state.mp, state.maxMp);
                 if (hpFill != null) hpFill.fillAmount = GaugeAmount(state.hp, state.maxHp);
                 if (mpFill != null) mpFill.fillAmount = GaugeAmount(state.mp, state.maxMp);
                 aimText.text = string.Format(CultureInfo.InvariantCulture, "Lv {0}  EXP {1}  |  Line aim: {2}",
@@ -106,6 +110,8 @@ namespace C02
             {
                 if (observedZone != 0 || ownId != 0) ResetObservation();
                 vitalsText.text = string.Empty;
+                if (hpValueText != null) hpValueText.text = string.Empty;
+                if (mpValueText != null) mpValueText.text = string.Empty;
                 if (hpFill != null) hpFill.fillAmount = 0;
                 if (mpFill != null) mpFill.fillAmount = 0;
                 aimText.text = string.Empty;
@@ -194,6 +200,8 @@ namespace C02
                 foreach (var button in skillButtons) if (button != null) button.interactable = false;
             }
             if (vitalsText != null) vitalsText.text = string.Empty;
+            if (hpValueText != null) hpValueText.text = string.Empty;
+            if (mpValueText != null) mpValueText.text = string.Empty;
             if (hpFill != null) hpFill.fillAmount = 0;
             if (mpFill != null) mpFill.fillAmount = 0;
             if (combatStatusText != null) combatStatusText.text = string.Empty;

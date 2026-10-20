@@ -45,12 +45,16 @@ namespace C02.Tests
                 Assert.That(fixture.Hp.fillAmount, Is.Zero);
                 Assert.That(fixture.Mp.fillAmount, Is.Zero);
                 Assert.That(fixture.Status.text, Does.Contain("HP 0"));
+                Assert.That(fixture.HpValue.text, Is.EqualTo("HP 0 / 0"));
+                Assert.That(fixture.MpValue.text, Is.EqualTo("MP 0 / 0"));
                 Assert.That(fixture.Panel.activeSelf, Is.True, "Defeat keeps the server HP display visible.");
 
                 fixture.Logout();
                 Assert.That(fixture.Hp.fillAmount, Is.Zero);
                 Assert.That(fixture.Mp.fillAmount, Is.Zero);
                 Assert.That(fixture.Vitals.text, Is.Empty);
+                Assert.That(fixture.HpValue.text, Is.Empty);
+                Assert.That(fixture.MpValue.text, Is.Empty);
                 Assert.That(fixture.Panel.activeSelf, Is.False);
 
                 fixture.Reenter(new FullStateField
@@ -61,6 +65,8 @@ namespace C02.Tests
                 Assert.That(fixture.Hp.fillAmount, Is.EqualTo(.5f).Within(.001f));
                 Assert.That(fixture.Mp.fillAmount, Is.EqualTo(.5f).Within(.001f));
                 Assert.That(fixture.Vitals.text, Does.Contain("HP 40 / 80").And.Contain("MP 15 / 30"));
+                Assert.That(fixture.HpValue.text, Is.EqualTo("HP 40 / 80"));
+                Assert.That(fixture.MpValue.text, Is.EqualTo("MP 15 / 30"));
                 Assert.That(fixture.Panel.activeSelf, Is.True);
             }
         }
@@ -165,6 +171,8 @@ namespace C02.Tests
             public readonly UnityEngine.UI.Image Hp;
             public readonly UnityEngine.UI.Image Mp;
             public readonly TMP_Text Vitals;
+            public readonly TMP_Text HpValue;
+            public readonly TMP_Text MpValue;
             public readonly TMP_Text Status;
             public readonly TMP_Text Aim;
             public readonly GameObject Panel;
@@ -178,6 +186,10 @@ namespace C02.Tests
                 world = fixtureType.GetField("World", BindingFlags.Instance | BindingFlags.Public).GetValue(fixture);
                 model = fixtureType.GetField("Model", BindingFlags.Instance | BindingFlags.Public).GetValue(fixture);
                 Vitals = (TMP_Text)fixtureType.GetField("Vitals", BindingFlags.Instance | BindingFlags.Public).GetValue(fixture);
+                HpValue = Text("HP value");
+                MpValue = Text("MP value");
+                Set(combat, "hpValueText", HpValue);
+                Set(combat, "mpValueText", MpValue);
                 Status = (TMP_Text)fixtureType.GetField("Status", BindingFlags.Instance | BindingFlags.Public).GetValue(fixture);
                 Aim = (TMP_Text)combat.GetType().GetField("aimText", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(combat);
 
@@ -193,6 +205,8 @@ namespace C02.Tests
                 Set(combat, "hpFill", Hp);
                 Set(combat, "mpFill", Mp);
                 Panel = new GameObject("C12 separate panel fixture");
+                HpValue.transform.SetParent(Panel.transform, false);
+                MpValue.transform.SetParent(Panel.transform, false);
                 Set(combat, "combatPanel", Panel);
                 Invoke(combat, "WorldChanged");
             }
@@ -239,6 +253,9 @@ namespace C02.Tests
 
             private static void Set(object target, string name, object value) =>
                 target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(target, value);
+
+            private static TMP_Text Text(string name) =>
+                new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
 
             private static void Invoke(object target, string name, params object[] args) =>
                 target.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).Invoke(target, args);

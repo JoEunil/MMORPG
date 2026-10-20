@@ -1,3 +1,17 @@
+## 최신 — 맵·속도·하단 HUD·채팅 후보 / PR38 게시
+
+사용자 요청으로 기존 구역의 좌표·Cell 크기를 유지하고 4구역에서 6구역(3×2)으로 확장했다. 유저 4unit/s, 몬스터 배회·귀환 1.5unit/s, 추적 일반3/강화3.6/보스1.8unit/s로 서버·클라이언트를 맞췄다. 하단 HP/MP 게이지 확대·실제 수치 표시, 작은 스킬 버튼과 큰 Z/X/C 배지, Global/Zone/Whisper 탭·실제 받은 상대 선택을 구현했다. 좌상단 정보 Text UI는 사용자 요청대로 기존 정보를 복원했다. 귓속말 선택 상대가 새 수신자 때문에 바뀌는 문제를 리뷰 중 고쳤다.
+
+직접 영향 배치: native 몬스터2+6구역 전환1 PASS, Unity 채팅2+HUD1+패킷1+경계1+예측속도1 PASS. 넓은 회귀/기존 로그인·시장 테스트는 반복하지 않았다. 새 프로토콜 범위와 서버 이동 검증은 단순 UI 검증과 별도 필요한 직접 영향이다. ClientCore/MainServer/UnitTests 빌드 성공. 새 bin의 DLL 5개 누락으로 첫 native 실행이 로더에서 실패했으며 기존 검증 런타임을 복사해 해당 배치만 통과했다. NU1900 취약점 피드 연결 경고와 기존 C++ 경고는 보존했다.
+
+서버22424는 q 정상 종료·native exit0·WAL 정리·포트 해제 후 새 서버43240으로 정상 전환했다. 실제 경로 UnityClient/Builds/UI-Chat-Map/bin/MainServer.exe, startTicks639280880402959371, SHA256 55C2500FA6E45ABD8C224F560C50BEA0A754872268234B907CB316D4ECDE0C3F, 9999 Listen 확인. 새112마리 배치·6구역·느린 이동 포함. DB 초기화/직접 쓰기·강제 종료·다른 서비스 재기동 없음. 원본 실행 파일과 정상 종료 전 로그 보존.
+
+새 실입력은 미실행이다. Editor26496는 살아 있고 7800도 수신하지만 Library/Pipeline/.unity-pipeline-port가 사라져 CLI 검색 실패, SafeMode=false. UI 관찰도 다른 작업 창을 반환해 클릭·키 입력/창 활성화 없이 중단했다. Editor 종료·보안 설정 변경·인증 우회 없음. 이전 화면을 새 HUD 검증 캡처로 재사용하지 않는다. C06Peer --scopes 도우미 빌드 완료이나 실제 peer 실행도 미실행. 다음은 Editor 연결이 복구되면 한 로그인으로 HP/MP·ZXC 표기·채팅 세 범위와 새 필드를 확인하고 실제 캡처 1개를 남기는 것이다. HP0 계정의 생존 이동을 성공으로 기록하지 않는다.
+
+Slack 원인 확정: 숫자 timestamp 인자가 반올림돼 승인 요청1792487679.299269가 별도 부모로 생성됐고 수신기 등록 부모와 달랐다. bot auth.test 및 실제 replies에서 지정사용자 승인 CLASSIC01/회신1792487700.948979/정확 부모1792487679.299269 확인. 지정 스레드만 등록·검증된 acceptReply 필터를 통한 명시적 catch-up으로 queue 성공, SOCKET_READY/LISTENING 복귀. 발신에 소수6자리·정확 부모 사전검증 추가, 앞으로 timestamp는 따옴표 문자열만 사용. 권한/승인자/대상 Coordinator는 바꾸지 않았다. 과거 connector 누락 가설보다 이 확정 원인을 따른다.
+
+위 승인은 정확 ee85f3f35cfd17d372dfc8e1e91c22121e663dfb에만 적용했다. master8690 조상 확인 후 codex/classic-mmorpg-motion 일반 push와 PR38(https://github.com/JoEunil/MMORPG/pull/38) 생성·첨부 완료. 병합 없음. bot 동일 스레드 결과1792490088.188589. 현재 codex/classic-field-ui의 후속 변경은 PR38에 추가 push하지 않았고 다음 큰 묶음으로 보존한다. 동일 승인 회신 재수신 때 중복 게시 금지. 전문 누적 신규8/재활성화29/활성화37회, token N/A.
+
 ## 최신 — 큰 묶음 게시 승인 요청 / 독립 후속 UI 완료
 
 게시 승인 CLASSIC01은 codex/classic-mmorpg-motion 정확 ee85f3f35cfd17d372dfc8e1e91c22121e663dfb(79files3342+/182-) 기준. push/PR0, fetch확인origin/master8690이HEAD조상. SlackUnityCoordinator bot요청1792487679.299269(부모1792480887.219109)/완료채널1792487683.184129. 지정사람의검증된새승인미소비. connectorread_thread가부모만반환하여새봇답글까지누락한결과는승인없음의확정근거로쓰지않음. 승인전이거나원문확인불가시push하지않는다. 승인되면현재후속HEAD가아니라위고정branch/ref만범위대조후게시한다.

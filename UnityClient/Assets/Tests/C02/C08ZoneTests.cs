@@ -82,6 +82,19 @@ namespace C02.Tests
             p[8] = 1; Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(p), p }));
             p[9] = 1; p[19] = 1; p[31] = 1;
             Assert.DoesNotThrow(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(p), p }));
+            foreach (byte zone in new byte[] { 5, 6 })
+            {
+                p[9] = zone;
+                Assert.DoesNotThrow(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(p), p }));
+                var frame = new byte[20]; BitConverter.GetBytes((ushort)0xabcd).CopyTo(frame, 0);
+                BitConverter.GetBytes(20U).CopyTo(frame, 2); frame[6] = 7; frame[7] = 1;
+                BitConverter.GetBytes((ushort)zone).CopyTo(frame, 10); BitConverter.GetBytes(17UL).CopyTo(frame, 12);
+                Assert.That(Packet.DeserializeVariablePacket<FullStateField>(Packet.ExtractHeader(frame), frame).zoneID, Is.EqualTo(zone));
+                frame[10] = 7;
+                Assert.Throws<ArgumentException>(() => Packet.DeserializeVariablePacket<FullStateField>(Packet.ExtractHeader(frame), frame));
+            }
+            p[9] = 7; Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(p), p }));
+            p[9] = 1;
             p[7] = 0; Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(p), p }));
             var old = new byte[31]; Array.Copy(p, old, 31); old[7] = 1; BitConverter.GetBytes(31U).CopyTo(old, 2);
             Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(old), old }));

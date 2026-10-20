@@ -69,7 +69,7 @@ namespace Core {
     TEST(MonsterBehaviorTest, WandersWithinHomeAtScaledSpeedWithIdleVarianceAndRespawnReset) {
         MonsterBehaviorFixture fixture;
         constexpr size_t count = 16;
-        constexpr float speedPerTick = 0.6f * WORLD_MOVEMENT_SCALE;
+        constexpr float speedPerTick = 0.075f;
         for (uint16_t id = 0; id < count; ++id) {
             MonsterState monster{};
             monster.Initialize(0, id, 50.0f, 50.0f, 2, 2);
@@ -162,7 +162,7 @@ namespace Core {
         strong.y = 50.0f;
         strong.aggro = 700;
         fixture.zone.MoveToward(strong, target);
-        EXPECT_NEAR(strong.x, 50.3f, 0.0001f);
+        EXPECT_NEAR(strong.x, 50.18f, 0.0001f);
         strong.x = 60.9f; // Cell 2 ends at 61; do not migrate cell membership.
         target.x = 80.0f;
         fixture.zone.MoveToward(strong, target);

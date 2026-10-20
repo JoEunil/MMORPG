@@ -20,12 +20,12 @@ namespace C02.Tests
                 fixture.EnterWithOwnState();
                 fixture.Predict(Vector2.right, 0.05f);
                 Assert.That(fixture.ServerPosition, Is.EqualTo(new Vector2(10, 10)));
-                Assert.That(fixture.OwnPosition, Is.EqualTo(new Vector3(10.25f, 0, 10)),
+                Assert.That(fixture.OwnPosition, Is.EqualTo(new Vector3(10.2f, 0, 10)),
                     "A local intent moves the rendered character while the server snapshot stays authoritative.");
 
                 fixture.Delta(10.125f);
                 Assert.That(fixture.ServerPosition, Is.EqualTo(new Vector2(10.125f, 10)));
-                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.25f).Within(0.0001),
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.2f).Within(0.0001),
                     "A small server correction does not make packet callbacks jump the rendered character.");
 
                 fixture.CancelMovement();

@@ -1,0 +1,14 @@
+맵·HUD·채팅 묶음 결과 (2026-10-20)
+구현: 6구역(기존 좌표 보존), 유저4unit/s, 몬스터 배회1.5/추적3·3.6·1.8unit/s, 큰 HP/MP와 작은 스킬 버튼/큰 ZXC, Global/Zone/Whisper 및 실제 수신 상대 선택.
+리뷰: 별도 map_compatibility 검토. 귓속말 대상 자동 변경, Canvas 좁은 비율 겹침, 레거시 배지 재적용 문제를 보완. 차단 결함 없음.
+빌드: ClientCore, MainServer, UnitTests 성공. 새 native bin의 기존 런타임 DLL5개 누락을 복구한 뒤 직접 배치 통과. NU1900/기존 C++ 경고 보존.
+Native: 기존 몬스터 행동2 + 6구역 경계전환1 = 3 PASS (2ms).
+Unity: 채팅2 + 기존 HP0/logout HUD1 + 패킷범위1 + 구역경계1 + 자기 예측속도1 = 6 PASS. 새 전체 회귀 없음.
+Slack: 지정 사용자 CLASSIC01 회신1792487700.948979 확인, 올바른 부모 등록 후 catch-up queue 성공/실제 수신기 LISTENING. Timestamp 소수6자리/정확 부모 사전 확인으로 반올림 재발 방지.
+전달: 승인된 이전 ee85 후보만 PR38 게시. 현 후보는 로컬 보존/추가 push 없음/병합 없음.
+서버: 기존22424 정상 종료(exit0/WAL 정리/포트 해제), 새43240/9999 Listen 및 서버 준비 완료. 정상 전환 스크립트 기록 UnityClient/Builds/UI-Chat-Map/switch.txt.
+새 서버 SHA256: 55C2500FA6E45ABD8C224F560C50BEA0A754872268234B907CB316D4ECDE0C3F. 이전 이미지·로그 보존. 원본 Game/DB초기화/강제종료/비밀·권한 변경 없음.
+실입력: 미실행. Editor26496 alive/SafeMode false/7800 alive, 검색 파일 없음으로 CLI 연결 실패. 창 캡처가 다른 작업 화면을 반환해 클릭/키/강제 활성화하지 않았다. Peer --scopes 빌드만 성공, 실행하지 않음.
+남은 최소 검증: 연결 복구 후 한 로그인에서 HP/MP/ZXC 표기·3범위 채팅·새 필드 확인/실제 캡처1개. HP0 계정의 생존 이동은 통과 처리하지 않는다.
+공개 설명: 기존 화면 이력 보존/새 실화면 미검증 구분. 웹 홈+6상세 생성/내부 링크 검사 성공. 첫 시도 미지원 상태 문구를 기존 중간 결과 값으로 수정해 재생성 성공.
+근거 원문: UnityClient/Captures/ui-chat-map-{native,scope-tests,hud-test,wire-test,boundary-test,motion-test}.txt 및 slack-receiver-repaired.stdout.txt.
