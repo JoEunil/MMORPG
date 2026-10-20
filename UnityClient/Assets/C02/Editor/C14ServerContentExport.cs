@@ -10,7 +10,6 @@ namespace C02.Editor
     public static class C14ServerContentExport
     {
         public const string AssetPath = "Assets/C02/Content/C14ServerContent.asset";
-        private static readonly UTF8Encoding OutputEncoding = new UTF8Encoding(false);
 
         [MenuItem("C02/C14/Create Default Server Content Candidate")]
         public static void CreateDefaultCandidate()
@@ -51,9 +50,7 @@ namespace C02.Editor
             Validate(content);
             string skills = SkillsInitializer(content);
             string monsters = MonstersInitializer(content);
-            Directory.CreateDirectory(outputDirectory);
-            File.WriteAllText(Path.Combine(outputDirectory, "Skills.inc"), skills, OutputEncoding);
-            File.WriteAllText(Path.Combine(outputDirectory, "Monsters.inc"), monsters, OutputEncoding);
+            C14ExportPair.Write(outputDirectory, "Skills.inc", skills, "Monsters.inc", monsters);
         }
 
         private static void Validate(C14ServerContent content)
@@ -120,16 +117,21 @@ namespace C02.Editor
 
         private static void ValidateMonster(C14ServerContent.Monster monster)
         {
-            if (monster.maxHp == 0 || monster.maxHp > int.MaxValue || !Finite(monster.moveSpeed) || monster.moveSpeed <= 0)
-                throw new InvalidOperationException("Monster HP must fit the signed wire value and speed must be finite and positive.");
+            if (monster.maxHp == 0 || monster.maxHp > int.MaxValue || monster.respawnTicks == 0 || !Finite(monster.moveSpeed) || monster.moveSpeed <= 0)
+                throw new InvalidOperationException("Monster HP must fit the signed wire value, respawn ticks must be nonzero, and speed must be finite and positive.");
             if (monster.phases == null || monster.phases.Length < 1 || monster.phases.Length > 8)
                 throw new InvalidOperationException("Monsters require 1 to 8 phases.");
             float previousThreshold = float.PositiveInfinity;
-            foreach (var phase in monster.phases)
+            for (int phaseIndex = 0; phaseIndex < monster.phases.Length; phaseIndex++)
             {
+                var phase = monster.phases[phaseIndex];
                 if (phase == null || !Finite(phase.hpThreshold) || phase.hpThreshold <= 0 || phase.hpThreshold > 1 || phase.hpThreshold >= previousThreshold)
                     throw new InvalidOperationException("Monster HP thresholds must be finite, positive, at most 1, and strictly decreasing.");
                 previousThreshold = phase.hpThreshold;
+                // Match uint32_t(maxHp * hpThreshold); HP zero exits before phase transitions.
+                uint absoluteThreshold = (uint)((float)monster.maxHp * phase.hpThreshold);
+                if (phaseIndex < monster.phases.Length - 1 && absoluteThreshold < 2)
+                    throw new InvalidOperationException("Non-final monster phases require an absolute threshold above one HP.");
                 if (phase.steps == null || phase.steps.Length < 1 || phase.steps.Length > 16 || (phase.steps.Length & (phase.steps.Length - 1)) != 0)
                     throw new InvalidOperationException("Each monster phase requires a power-of-two step count from 1 to 16.");
                 foreach (var step in phase.steps)

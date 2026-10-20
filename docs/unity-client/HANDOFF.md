@@ -1,3 +1,7 @@
+## PR37 리뷰 수정 이식 완료 / 일반 개발 중단 유지
+
+리뷰전용분기332fbab는DATA01제외한PR37세지적수정·3/3및guard검증완료. PR37FIX01요청1792461166.269559/부모1792460883.167359 게시승인전·push0. 미게시catalog에도동일helper/경계검사/guard이식하고독립리뷰·CatalogExport2/2추가PASS,root통합catalog버전복원/asset불변/PlaycompileScenedirtyfalse. PR37_REVIEW_BACKPORT.md. 이번요청외기능/게임입력/서버DB작업·일반개발재개0,기존DATA01/wORLD01승인재소비금지.
+
 ## 현재 — 기존 콘텐츠 전체 편집 확장 검증 완료 / DATA01 게시 직전
 
 WORLD01회신1792420805.879599는eacb744를PR37에일반push하는데1회소비완료,같은PR본문/제목·attach갱신. Actions39271163496 success/추가공개0. 새codex/content-catalog에서C14기존asset/field/GUID보존+기존5skills3monsters전체export·CoreLib배열include연결·obsolete2inc제거완료. 보스3/4mana/cooldown0원문보완,최종독립review차단0. CatalogExport2/2+이전실제C++테이블전필드native1 PASS,asset기존prefix/meta일치/6파일freeze일치. 기존사냥/스폰/거래소회귀와게임입력반복0. 실제Inspector/캡처1·사이트6기능build/대상3HTTP200.
