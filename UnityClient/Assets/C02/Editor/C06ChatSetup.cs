@@ -67,11 +67,40 @@ public static class C06ChatSetup
         whisperTargetLabel.fontSize = 12;
         whisperTargetLabel.color = new Color(.88f, .81f, .68f);
 
-        var log = Text("ChatHistoryText", inner.transform, string.Empty, 13, new Color(.89f, .86f, .76f));
-        log.alignment = TextAlignmentOptions.BottomLeft;
+        var history = FindOrCreate("ChatHistoryViewport", inner.transform,
+            typeof(RectTransform), typeof(Image), typeof(Mask), typeof(ScrollRect));
+        var historyViewport = history.GetComponent<RectTransform>();
+        // RectOffset order is left, right, top, bottom; keep below the recipient row.
+        Stretch(historyViewport, new RectOffset(14, 14, 96, 76));
+        var historyImage = history.GetComponent<Image>();
+        historyImage.color = Color.white;
+        var oldRectMask = history.GetComponent<RectMask2D>();
+        if (oldRectMask != null) Undo.DestroyObjectImmediate(oldRectMask);
+        var historyMask = history.GetComponent<Mask>() ?? Undo.AddComponent<Mask>(history);
+        historyMask.showMaskGraphic = false;
+        historyImage.raycastTarget = true;
+        var previousLog = inner.transform.Find("ChatHistoryText");
+        if (previousLog != null) Undo.SetTransformParent(previousLog, history.transform, "Move chat into scroll view");
+        var log = Text("ChatHistoryText", history.transform, string.Empty, 13, new Color(.89f, .86f, .76f));
+        log.alignment = TextAlignmentOptions.TopLeft;
         log.enableWordWrapping = true;
-        log.overflowMode = TextOverflowModes.Truncate;
-        Stretch(log.rectTransform, new RectOffset(14, 14, 76, 96));
+        log.overflowMode = TextOverflowModes.Overflow;
+        log.rectTransform.anchorMin = new Vector2(0, 1);
+        log.rectTransform.anchorMax = Vector2.one;
+        log.rectTransform.pivot = new Vector2(.5f, 1);
+        log.rectTransform.anchoredPosition = Vector2.zero;
+        log.rectTransform.sizeDelta = Vector2.zero;
+        var fitter = log.GetComponent<ContentSizeFitter>() ?? Undo.AddComponent<ContentSizeFitter>(log.gameObject);
+        fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        var historyScroll = history.GetComponent<ScrollRect>();
+        historyScroll.viewport = historyViewport;
+        historyScroll.content = log.rectTransform;
+        historyScroll.horizontal = false;
+        historyScroll.vertical = true;
+        historyScroll.movementType = ScrollRect.MovementType.Clamped;
+        historyScroll.inertia = false;
+        historyScroll.scrollSensitivity = 24;
 
         var inputObject = FindOrCreate("ChatInput", inner.transform, typeof(RectTransform), typeof(Image), typeof(TMP_InputField));
         var inputRect = inputObject.GetComponent<RectTransform>();
@@ -123,6 +152,7 @@ public static class C06ChatSetup
         serialized.FindProperty("worldScreen").objectReferenceValue = world;
         serialized.FindProperty("chatPanel").objectReferenceValue = panel;
         serialized.FindProperty("chatLog").objectReferenceValue = log;
+        serialized.FindProperty("chatScroll").objectReferenceValue = historyScroll;
         serialized.FindProperty("sendStatus").objectReferenceValue = status;
         serialized.FindProperty("messageInput").objectReferenceValue = input;
         serialized.FindProperty("sendButton").objectReferenceValue = send;

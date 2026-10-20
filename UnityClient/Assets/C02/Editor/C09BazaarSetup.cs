@@ -182,6 +182,9 @@ public static class C09BazaarSetup
         serialized.FindProperty("statusText").objectReferenceValue = status;
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
+        var worldSerialized = new SerializedObject(world);
+        worldSerialized.FindProperty("bazaarScreen").objectReferenceValue = screen;
+        worldSerialized.ApplyModifiedPropertiesWithoutUndo();
         var combatSerialized = new SerializedObject(combat);
         combatSerialized.FindProperty("bazaarScreen").objectReferenceValue = screen;
         combatSerialized.ApplyModifiedPropertiesWithoutUndo();

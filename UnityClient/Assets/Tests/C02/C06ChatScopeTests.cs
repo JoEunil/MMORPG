@@ -56,6 +56,9 @@ namespace C02.Tests
                 Assert.That(fixture.Network.ChatCalls[0], Is.EqualTo(( "reply selected", (byte)2, 600UL )));
                 Assert.That(fixture.Network.ChatCalls[1], Is.EqualTo(( "reply next", (byte)2, 601UL )));
                 for (ulong sender = 700; sender < 709; sender++) fixture.Receive(0, sender, "new incoming traffic");
+                Assert.That(fixture.ChatScroll.content.rect.height, Is.GreaterThan(fixture.ChatScroll.viewport.rect.height));
+                Assert.That(fixture.ChatScroll.verticalNormalizedPosition, Is.EqualTo(0).Within(.001),
+                    "New messages must stay visible after the history exceeds the viewport.");
                 fixture.SendAs(2, "still the chosen recipient");
                 Assert.That(fixture.Network.ChatCalls[2], Is.EqualTo(( "still the chosen recipient", (byte)2, 601UL )),
                     "The bounded recent list must not evict and redirect the current recipient.");
@@ -86,6 +89,7 @@ namespace C02.Tests
             public readonly TMP_Text WhisperLabel;
             public readonly TMP_Text SendStatus;
             public readonly TMP_Text ChatLog;
+            public readonly ScrollRect ChatScroll;
             public readonly TMP_InputField Input;
             public readonly Button SendButton;
 
@@ -100,7 +104,7 @@ namespace C02.Tests
                 Set(initializer, "_viewModel", Model);
                 Set(initializer, "_data", data);
 
-                root = new GameObject("C06 scope fixture");
+                root = new GameObject("C06 scope fixture", typeof(RectTransform), typeof(Canvas));
                 root.SetActive(false);
                 Login = root.AddComponent<C01LoginScreen>();
                 Set(Login, "client", initializer);
@@ -130,6 +134,23 @@ namespace C02.Tests
                 Set(Chat, "worldScreen", World);
                 Set(Chat, "chatPanel", Child("chat panel"));
                 ChatLog = Text("chat log");
+                ChatLog.fontSize = 13;
+                ChatLog.overflowMode = TextOverflowModes.Overflow;
+                var history = Child("history viewport");
+                var viewport = history.GetComponent<RectTransform>();
+                viewport.sizeDelta = new Vector2(460, 40);
+                ChatLog.transform.SetParent(history.transform, false);
+                ChatLog.rectTransform.anchorMin = new Vector2(0, 1);
+                ChatLog.rectTransform.anchorMax = Vector2.one;
+                ChatLog.rectTransform.pivot = new Vector2(.5f, 1);
+                ChatLog.rectTransform.anchoredPosition = Vector2.zero;
+                ChatLog.rectTransform.sizeDelta = Vector2.zero;
+                ChatLog.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                ChatScroll = history.AddComponent<ScrollRect>();
+                ChatScroll.viewport = viewport;
+                ChatScroll.content = ChatLog.rectTransform;
+                ChatScroll.horizontal = false;
+                Set(Chat, "chatScroll", ChatScroll);
                 SendStatus = Text("send status");
                 Set(Chat, "chatLog", ChatLog);
                 Set(Chat, "sendStatus", SendStatus);

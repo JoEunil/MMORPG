@@ -16,6 +16,8 @@ namespace C02
     public sealed class C02WorldScreen : MonoBehaviour
     {
         [SerializeField] private C01LoginScreen loginScreen;
+        [SerializeField] private C07InventoryScreen inventoryScreen;
+        [SerializeField] private C09BazaarScreen bazaarScreen;
         [SerializeField] private UnityEngine.UI.Button[] characterChoices;
         [SerializeField] private UnityEngine.UI.Button enterButton;
         [SerializeField] private UnityEngine.UI.Button disconnectButton;
@@ -348,7 +350,7 @@ namespace C02
             var selectedInput = events != null && events.currentSelectedGameObject != null
                 ? events.currentSelectedGameObject.GetComponentInParent<TMP_InputField>() : null;
             if (events == null || selectedInput != null && selectedInput.isFocused ||
-                Mouse.current != null && events.IsPointerOverGameObject())
+                inventoryScreen != null && inventoryScreen.IsOpen || bazaarScreen != null && bazaarScreen.IsOpen)
             { CancelMovement(); UpdateVisualPosition(Vector2.zero, Time.unscaledDeltaTime); return; }
 
             double now = Time.unscaledTimeAsDouble;

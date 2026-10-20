@@ -1,3 +1,19 @@
+## 최종 갱신 — PR38 병합·키보드 이동 리뷰 반영
+
+PR38은 사용자에 의해 병합됨을 GitHub에서 확인했고 origin/master8e2becd에 ee85가 포함됨을 확인했다. 후속 후보는 기존 master를 덮어쓰지 않는다. 리뷰의 HUD 위 mouse hover에 따른 방향키 취소를 제거하고, 가방/거래소 열린 상태는 실제 Canvas의 패널 참조로 명시 차단했다. 동일 GameObject 추정은 독립 리뷰/실제 scene조회에서 실패해 serialized 참조와 C07/C09 Setup 연결로 수정했다. 명시 recompile0오류/0경고, 실제 inventoryBound/bazaarBound true/sceneSaved true. 실제 생존 이동/열린패널 입력은 다음 생존 배치에 포함하며 이번 컴파일 확인으로 통과 처리하지 않는다.
+
+다음 사냥터 분석은 요청 후보 루트에서 재확인 완료: PROGRESSION_CONTENT_TASK.md. 6x25 중복보다 작은 선택적 Zone 밀도 계수 후보이나, 실플레이 근거 없는 수치를 확정하거나 이를 완성된 성장 시스템으로 추가하지 않는다. 기존 EXP 보상은 있고 레벨업 문턱/회복·부활/포션 사용 경로는 없음. 독립 후속 저작이며 이번 게시 승인 후보에는 포함하지 않는다. 전문 누적 신규10/재활성화39/49회/token N/A.
+## 최신 — HUD·채팅 실입력 완료 / 다음 사냥터 콘텐츠 조사
+
+Unity Pipeline 검색 파일 소실은 실제 Editor 메뉴 Stop Server→Start Server로 복구했다. Editor 재시작·보안/권한 변경 없음. 실제 UI 로그인/선택/진입 뒤 저장 HP0·MP9919와 큰 ZXC 표기 확인, Global/Zone/Whisper 실제 송신/상대 peer 응답 각각 성공·peer 자연 종료. 최신 채팅 잘림 발견 뒤 ScrollRect/Mask/PreferredHeight로 고쳤고 기존2개 자동 검증 통과. 영향 재확인에서 수신대상 줄 겹침을 발견해 RectOffset top/bottom 순서를 수정했다. 최종 실제 세션 캡처 ui-map05-chat-boundary-fixed.png와 종료 후 저장 소스/씬 geometry 일치, 독립 읽기 리뷰 blocker0. CHAT_DISPLAY_RESULTS.txt에 실패/수정/성공 원문 위치 보존. 전체 회귀·새 서버 재기동·DB쓰기 없음.
+
+새 지면 알베도1종을 별도 아트 담당이 만들고 임시 detail로 같은 카메라 비교했으나 흐릿해 보여 채택 보류. 기존 Material/빌더 복구 확인 LocalGroundGrain/.85/15, 원본과 내부 비교만 보존. 이 후보를 재질 개선 성공으로 게시하지 않는다. 입력 배치 종료 뒤에만 Assets 저작했다.
+
+웹 기존 전투 상세/이력에 실제 최종 PNG 추가, 이전 화면 보존. 홈의 HUD/채팅 대기 문구 교정, 필드 상세에서 새 HUD로 연결. 홈+5상세/이력 생성·링크검사 PASS, 실제 브라우저에서 갱신 캡처와 설명 확인. 첫 생성의 지원하지 않는 상대링크는 기존 Pages 절대경로로 수정 후 성공. localhost8790/work/player-hud/는 로컬 미리보기이며 신규 push/PR/정식배포 없음.
+
+종료 상태: Editor26496 Playfalse/dirtyfalse/runInBackgroundfalse, 테스트 입력 중지/Modelnull. MainServer43240/9999 Listen, 접속0. Slack 수신기 SOCKET_READY/LISTENING 유지. PR38의 CLASSIC01 승인은 이미 소비됐으며 이번 후속 묶음에 재사용 금지. 다음 PR 게시 직전 PLAY02 Slack 승인 한 번만 요청하고 독립 작업을 계속한다.
+
+HP0 계정의 생존 이동·6구역 실제 탐험·처치/EXP 증가는 미실행 유지. 다음 작업은 기존 서버 계약 안의 구역별 사냥터 콘텐츠. 분석 담당의 첫 문서가 ROOT에 기록돼 후보 경로 대조/재작성 요청했으며, 검증 전 내용을 소스 수정 근거로 사용하지 않는다. 원본 문서는 보존. 에이전트 누적 신규10/재활성화37/활성화47, tokens N/A. ArtSource/FIELD_SURFACE_TASK와 다음 콘텐츠 분석은 독립 미게시 저작으로 보존한다.
 ## 최신 — 기능 범위별 공개 작업 통합·작은 장식 제거
 
 홈 작업을 필드/전투/인벤토리/거래소/콘텐츠 편집5개로 구성했다. 거래소 검색·내 매물·구매·취소·수령은 market 상세와 이력1개로 통합하고 inventory 별도 상세/이력으로 분리했다. 이전3원본은 보존하되 생성목록에서 제외, 구3주소(index/history 각각)는 market 대응 페이지로 canonical/meta refresh. 이전12개 고유 이미지가 시장10+가방2에 모두 보존됨을 별도 읽기 리뷰로 확인했다. `달라진 구현` 전체와 작은 eyebrow/우측 보조링크 제거, `지침 변경 이력`으로 명칭 교정. 모든 본문·캡션·링크14px 이상. PORTFOLIO_GUIDE의 이전 요약섹션 요구도 최신 지시로 대체.

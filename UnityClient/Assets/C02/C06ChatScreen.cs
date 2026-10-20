@@ -17,6 +17,7 @@ namespace C02
         [SerializeField] private C02WorldScreen worldScreen;
         [SerializeField] private GameObject chatPanel;
         [SerializeField] private TMP_Text chatLog;
+        [SerializeField] private ScrollRect chatScroll;
         [SerializeField] private TMP_Text sendStatus;
         [SerializeField] private TMP_InputField messageInput;
         [SerializeField] private Button sendButton;
@@ -263,6 +264,12 @@ namespace C02
             lines.Enqueue("[" + scopeLabel + "] " + name + ": " + safeMessage);
             while (lines.Count > MaxVisibleLines) lines.Dequeue();
             chatLog.text = string.Join("\n", lines);
+            if (chatScroll != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(chatLog.rectTransform);
+                Canvas.ForceUpdateCanvases();
+                chatScroll.verticalNormalizedPosition = 0;
+            }
             sendStatus.text = string.Empty;
             RefreshChatControls();
         }
