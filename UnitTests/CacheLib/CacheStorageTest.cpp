@@ -188,6 +188,7 @@ TEST(CacheWALRegression, NewNodeLsnExceedsTheLoadedDatabaseLsn) {
 
 
 #include <CacheLib/BazaarSearchResult.h>
+#include <CacheLib/BazaarRegisterResult.h>
 #include <CacheLib/Handler.h>
 #include <CacheLib/DBWorker.h>
 #include <CoreLib/IMessageQueue.h>
@@ -227,6 +228,23 @@ namespace {
             std::memcpy(received->GetBuffer(), msg->GetBuffer(), msg->GetLength());
             received->SetLength(msg->GetLength());
             return true;
+        }
+    };
+    class RegisterResponseQueue : public Core::IMessageQueue {
+    public:
+        int attempts = 0;
+        uint8_t status = 255;
+        bool accept = true;
+        bool throws = false;
+        bool EnqueueMessage(Core::Message* msg) override {
+            ++attempts;
+            const auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterResBody>*>(msg->GetBuffer());
+            EXPECT_EQ(msg->GetLength(), sizeof(*st));
+            EXPECT_EQ(st->header.sessionID, 42);
+            EXPECT_EQ(st->header.messageType, Core::MSG_BAZAAR_REGISTER_RES);
+            status = st->body.resStatus;
+            if (throws) throw std::runtime_error("fixture response queue threw");
+            return accept;
         }
     };
 }
@@ -467,6 +485,22 @@ namespace Cache {
             msg->SetLength(sizeof(*st) + delta);
             handler.Process(msg);
         }
+        void RequestRegister(InventoryHarness& inventory, CurrencyHarness& currency, RegisterResponseQueue& queue, uint16_t quantity = 3, int lengthDelta = 0) {
+            handler.cache_inventory = &inventory;
+            handler.cache_currency = &currency;
+            handler.messageQ = &queue;
+            auto* msg = messages->Acquire();
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterBody>*>(msg->GetBuffer());
+            st->header = {42, Core::MSG_BAZAAR_REGISTER};
+            st->body = {Character, 1, quantity, 100};
+            msg->SetLength(sizeof(*st) + lengthDelta);
+            if (lengthDelta != 0) handler.Process(msg);
+            else {
+                handler.BazaarRegister(msg, 42, &st->body);
+                EXPECT_EQ(msg, nullptr);
+            }
+            handler.messageQ = &responses;
+        }
         void ExpectPoolRestored() {
             std::vector<Core::Message*> held;
             for (size_t i = 0; i < MSGPOOL_SIZE; ++i) {
@@ -547,6 +581,56 @@ namespace Cache {
 }
 
 #include <CacheLib/BazaarPurchaseResult.h>
+TEST(BazaarRegisterSafety, SqlOutcomeNeverRefundsAnUnknownCommitAndRestoresAtMostOnce) {
+    // The product helper owns this decision boundary; no DB connection or durable writes are used.
+    for (int scenario = 0; scenario < 7; ++scenario) {
+        SCOPED_TRACE(scenario);
+        int inserts = 0, inventoryRestores = 0, goldRestores = 0, unknownReports = 0;
+        const auto status = Cache::ResolveBazaarRegister([&] {
+            ++inserts;
+            if (scenario == 1) throw sql::SQLException("fixture result lost after commit");
+            if (scenario == 2) throw 7; // Non-SQL worker failure is also uncertain.
+            if (scenario == 0) return 1;
+            if (scenario == 3) return -1;
+            return 0;
+        }, [&] {
+            ++inventoryRestores;
+            if (scenario == 6) throw std::runtime_error("fixture partially applied restore");
+            ++goldRestores;
+            return scenario != 5;
+        }, [&] { ++unknownReports; });
+        EXPECT_EQ(status, scenario == 0 ? 1 : scenario == 4 ? 0 : 5);
+        EXPECT_EQ(inserts, 1);
+        EXPECT_EQ(inventoryRestores, scenario >= 4 ? 1 : 0);
+        EXPECT_EQ(goldRestores, scenario >= 4 && scenario != 6 ? 1 : 0);
+        EXPECT_EQ(unknownReports, scenario == 0 || scenario == 4 ? 0 : 1);
+    }
+}
+
+namespace Cache {
+    TEST_F(BazaarMyListFixture, BazaarRegisterRejectionAndResponseFailureReturnOneMessageAndRestoreOnce) {
+        // Actual Handler + stopped DBWorker: no query can have run before rejection.
+        for (int scenario = 0; scenario < 8; ++scenario) {
+            SCOPED_TRACE(scenario);
+            InventoryHarness inventory;
+            inventory.Seed();
+            ASSERT_EQ(std::get<0>(inventory.PartialUpdate(Character, 1, 1, 3)), CACHE_STATUS::AVAILABLE);
+            const uint64_t initialGold = scenario == 3 ? 0 : 100;
+            CurrencyHarness currency(initialGold);
+            RegisterResponseQueue queue;
+            queue.accept = scenario != 1;
+            queue.throws = scenario == 2 || scenario == 7;
+            const uint16_t quantity = scenario == 4 ? 4 : scenario == 5 || scenario == 7 ? 0 : 3;
+            EXPECT_NO_THROW(RequestRegister(inventory, currency, queue, quantity, scenario == 6 ? -1 : 0));
+            EXPECT_EQ(queue.attempts, scenario == 6 ? 0 : 1);
+            if (scenario != 6) EXPECT_EQ(queue.status, scenario == 3 ? 3 : scenario == 4 ? 2 : scenario == 5 || scenario == 7 ? 4 : 0);
+            EXPECT_EQ(inventory.Getter(Character).data.items[0].quantity, 3);
+            EXPECT_EQ(currency.Getter(Character).data.gold, initialGold);
+            ExpectPoolRestored(); // Pool exhaustion + distinct addresses detect both leaks and double Return.
+        }
+    }
+}
+
 namespace {
     struct BuyRows {
         int64_t status = 1;

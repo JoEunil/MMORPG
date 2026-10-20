@@ -1,6 +1,7 @@
-﻿#include "Handler.h"
+#include "Handler.h"
 
 #include <algorithm>
+#include <memory>
 
 #include <CoreLib/Message.h>
 #include <CoreLib/MessageTypes.h>
@@ -15,6 +16,7 @@
 #include "BazaarClaimResult.h"
 #include "BazaarPurchaseResult.h"
 #include "BazaarCancelResult.h"
+#include "BazaarRegisterResult.h"
 
 namespace Cache {
     void Handler::BazaarMyList(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarMyListBody* body) {
@@ -70,102 +72,78 @@ namespace Cache {
     }
 
     void Handler::BazaarRegister(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarRegisterBody* body) {
-        auto it = Data::itemMap.find(body->itemID);
-        if (it == Data::itemMap.end() || body->quantity == 0) {
-            Core::MsgStruct<Core::MsgBazaarRegisterResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterResBody>*>(msg->GetBuffer());
-            st->header.sessionID = sessionID;
-            st->header.messageType = Core::MSG_BAZAAR_REGISTER_RES;
-            st->body.resStatus = 4; // invalid item
-            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarRegisterResBody>));
-            messageQ->EnqueueMessage(msg);
-            return;
-		}
+        const auto request = *body; // The response overwrites this buffer and the worker outlives this call.
+        struct PendingResponse {
+            Core::Message* message;
+            MessagePool* pool;
+            bool finished = false;
+            PendingResponse(Core::Message* message, MessagePool* pool) : message(message), pool(pool) {}
+            ~PendingResponse() { pool->Return(message); }
+        };
+        const auto pending = std::make_shared<PendingResponse>(msg, messagePool);
+        msg = nullptr; // All paths now share one Return, including a throwing response queue.
+        const auto finish = [this, pending, sessionID](uint8_t status) {
+            if (pending->finished) return;
+            pending->finished = true; // A worker failure callback cannot send a second response.
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterResBody>*>(pending->message->GetBuffer());
+            st->header = { sessionID, Core::MSG_BAZAAR_REGISTER_RES };
+            st->body = { status };
+            pending->message->SetLength(sizeof(*st));
+            if (!messageQ->EnqueueMessage(pending->message))
+                Core::errorLogger->LogError("cache handler bazaar", "register response queue rejected", "sessionID", sessionID);
+        };
 
-		uint16_t itemType = it->second.itemType;
-
-        // 1. 아이템 Iventory에서 제거
-        auto [inventoryStatus, itemID, slot, quantity] = cache_inventory->PartialUpdate(body->characterID, body->itemID, 2, -static_cast<int32_t>(body->quantity));
-        if (inventoryStatus != CACHE_STATUS::AVAILABLE) {
-            Core::MsgStruct<Core::MsgBazaarRegisterResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterResBody>*>(msg->GetBuffer());
-            st->header.sessionID = sessionID;
-            st->header.messageType = Core::MSG_BAZAAR_REGISTER_RES;
-            st->body.resStatus = 2; 
-            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarRegisterResBody>));
-            messageQ->EnqueueMessage(msg);
-            return;
-		}
-
-        // 2. 골드 차감
-
-        constexpr uint64_t BAZAAR_FEE_MIN    = 10;
-        constexpr uint64_t BAZAAR_FEE_RATE = 10;  // 10분의 1
-        uint64_t fee = std::max(BAZAAR_FEE_MIN, body->price / BAZAAR_FEE_RATE);
-
-        auto [feeStatus, gold] =  cache_currency->TryWithdrawCurrency(body->characterID, fee);
-
-        if (feeStatus != CACHE_STATUS::AVAILABLE) {
-            // inventory 롤백
-            auto [inventoryStatus, itemID, slot, quantity] = cache_inventory->PartialUpdate(body->characterID, body->itemID, 2, body->quantity);
+        const auto item = Data::itemMap.find(request.itemID);
+        constexpr uint64_t BAZAAR_FEE_MIN = 10;
+        constexpr uint64_t BAZAAR_FEE_RATE = 10;
+        const uint64_t fee = std::max(BAZAAR_FEE_MIN, request.price / BAZAAR_FEE_RATE);
+        const auto reportUnknown = [request, fee] {
+            Core::errorLogger->LogError("cache handler bazaar", "register result or compensation unknown; manual investigation required",
+                "char_id", request.characterID, "item_id", request.itemID, "quantity", request.quantity, "fee", fee);
+        };
+        const auto restore = [this, request, fee] {
+            const auto inventoryStatus = std::get<0>(cache_inventory->PartialUpdate(request.characterID, request.itemID, 2, request.quantity));
+            const auto feeStatus = std::get<0>(cache_currency->DepositCurrency(request.characterID, fee));
+            return inventoryStatus == CACHE_STATUS::AVAILABLE && feeStatus == CACHE_STATUS::AVAILABLE;
+        };
+        try {
+            if (item == Data::itemMap.end() || request.quantity == 0) {
+                finish(4);
+                return;
+            }
+            const auto inventoryStatus = std::get<0>(cache_inventory->PartialUpdate(request.characterID, request.itemID, 2, -static_cast<int32_t>(request.quantity)));
             if (inventoryStatus != CACHE_STATUS::AVAILABLE) {
-				Core::gameLogger->LogError("cache handler bazaar", "rollback failed after fee withdraw failed", "sessionID", sessionID, "char_id", body->characterID, "item_id", body->itemID, "quantity", body->quantity);
-                // 골드는 클라이언트에서 1차 체크 해야됨. 
+                finish(2);
+                return;
             }
-            Core::MsgStruct<Core::MsgBazaarRegisterResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterResBody>*>(msg->GetBuffer());
-            st->header.sessionID = sessionID;
-            st->header.messageType = Core::MSG_BAZAAR_REGISTER_RES;
-            st->body.resStatus = 3;
-            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarRegisterResBody>));
-            messageQ->EnqueueMessage(msg);
-            return;
+            const auto feeStatus = std::get<0>(cache_currency->TryWithdrawCurrency(request.characterID, fee));
+            if (feeStatus != CACHE_STATUS::AVAILABLE) {
+                // Gold was not withdrawn, so only restore the item. A failed/throwing restore is uncertain.
+                const auto restored = std::get<0>(cache_inventory->PartialUpdate(request.characterID, request.itemID, 2, request.quantity));
+                if (restored != CACHE_STATUS::AVAILABLE) reportUnknown();
+                finish(restored == CACHE_STATUS::AVAILABLE ? 3 : 5);
+                return;
+            }
+            const auto failed = [finish, reportUnknown] {
+                // The worker may fail before or after SQL; neither permits automatic compensation.
+                reportUnknown();
+                finish(5);
+            };
+            const auto outcome = dbWorkerBazaar->Enqueue([request, itemType = item->second.itemType, finish, restore, reportUnknown](DBConnectionBazaar* conn) {
+                const auto status = ResolveBazaarRegister([conn, request, itemType] {
+                    return conn->ExecuteUpdate(13, request.itemID, request.characterID, itemType, request.quantity, request.price);
+                }, restore, reportUnknown);
+                finish(status);
+            }, nullptr, failed);
+            if (outcome != DBEnqueueResult::Queued) {
+                // Rejection proves the worker never ran INSERT.
+                finish(ResolveBazaarRegister([] { return 0; }, restore, reportUnknown));
+            }
         }
-
-        // 3. bazaar에 등록 
-        if (!EnqueueMessageWork(dbWorkerBazaar, msg, [msg, sessionID, body, this, itemType, fee](DBConnectionBazaar* conn) {
-            int affected = 0;
-            try {
-                affected = conn->ExecuteUpdate(13, body->itemID, body->characterID, itemType, body->quantity, body->price);
-            }
-            catch (const sql::SQLException& e) {
-                Core::errorLogger->LogError("cache handler bazaar", "register query failed", "msg", e.what());
-            }
-
-            // 4. 실패 시 롤백
-            if (affected != 1) {
-                // inventory 롤백
-                auto [inventoryStatusL, itemID, slot, quantity] = cache_inventory->PartialUpdate(body->characterID, body->itemID, 2, body->quantity);
-                if (inventoryStatusL != CACHE_STATUS::AVAILABLE) {
-                    Core::gameLogger->LogError("cache handler bazaar", "rollback inventory failed after register bazaar failed", "sessionID", sessionID, "char_id", body->characterID, "item_id", body->itemID, "quantity", body->quantity);
-                }
-                // 골드 롤백
-                auto [feeStatusL, gold] = cache_currency->DepositCurrency(body->characterID, fee);
-                if (feeStatusL != CACHE_STATUS::AVAILABLE) {
-                    Core::gameLogger->LogError("cache handler bazaar", "rollback gold failed after register bazaar failed", "sessionID", sessionID, "char_id", body->characterID, "fee", fee);
-				}
-            }
-            // 5. 성공, 실패 응답
-            Core::MsgStruct<Core::MsgBazaarRegisterResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterResBody>*>(msg->GetBuffer());
-            st->header.sessionID = sessionID;
-            st->header.messageType = Core::MSG_BAZAAR_REGISTER_RES;
-            st->body.resStatus = affected == 1 ? 1 : 0;
-            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarRegisterResBody>));
-            messageQ->EnqueueMessage(msg);
-            messagePool->Return(msg);
-            return;
-            })) {
-            auto [inventoryStatusL, itemID, slot, quantity] = cache_inventory->PartialUpdate(body->characterID, body->itemID, 2, body->quantity);
-            if (inventoryStatusL != CACHE_STATUS::AVAILABLE)
-                Core::gameLogger->LogError("cache handler bazaar", "rollback inventory failed after register enqueue failed", "sessionID", sessionID, "char_id", body->characterID, "item_id", body->itemID, "quantity", body->quantity);
-
-            auto [feeStatusL, gold] = cache_currency->DepositCurrency(body->characterID, fee);
-            if (feeStatusL != CACHE_STATUS::AVAILABLE)
-                Core::gameLogger->LogError("cache handler bazaar", "rollback gold failed after register enqueue failed", "sessionID", sessionID, "char_id", body->characterID, "fee", fee);
-
-            Core::MsgStruct<Core::MsgBazaarRegisterResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterResBody>*>(msg->GetBuffer());
-            st->header.sessionID = sessionID;
-            st->header.messageType = Core::MSG_BAZAAR_REGISTER_RES;
-            st->body.resStatus = 0;
-            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarRegisterResBody>));
-            messageQ->EnqueueMessage(msg);
+        catch (...) {
+            // A cache mutation/enqueue/response exception can follow a partial effect. Do not retry it.
+            reportUnknown();
+            finish(5);
         }
     }
 

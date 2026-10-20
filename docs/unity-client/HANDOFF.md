@@ -1,3 +1,9 @@
+## 최신 — 등록 실패 처리 보완 검증 완료
+
+codex/market-register-safety(f2cfb34기준)에서내부등록만 request값복사/SQL불명·예상밖결과5자동보상0/명시0·queue거절checked보상·실패5/단일응답시도와RAII Return1회/길이가드. 기존fee공식·status1/2/3/4·DBschema/SQL/WAL/flush보존,외부등록wire/UI0. 독립리뷰P2invalidfinish try밖예외전파를try안이동·기존fixture invalid+throw조합추가로해소,최종review차단0. Release후보MainServer/UnitTestsbuild-final0/native직접2/2(48ms)한배치PASS。기존Unity시장회귀/입력/캡처반복0。SQLhelper모의결과+실제stoppedHandlerfixture이며queuedworker/Acquire실패/onFailure재진입·fee실패뒤실복원BLOCKED·실DBCOMMIT/crashatomicity미검증,정적리뷰구분. 실제서버·DB유지/재시작·seed0。rootAssets/Packages/ProjectSettings쓰기0. 원본Game/rootWIP/pendingcatalog보존.
+
+MARKET_REGISTER_CONTRACT/SAFETY_TASK/RESULTS참조. 새등록전체원자성·재시도멱등성·복구완료를주장하지않으며외부UI계속미지원. 화면변화없어canonical사이트의등록미지원설명·기존캡처유지이유기록。기존MARKET03게시승인은정확f2cfb34만이며새안전보완미포함/사람승인미확인·소비0/push0。새묶음로컬커밋후후속등록작업과합쳐게시검토,사전승인없이기존요청범위확대금지。새Slack부모1792466719.624229등록됨. 로컬테스트요약Captures/market-register-safety-native.txt,빌드Builds/Market-Register-Safety/build-final.txt。
+
 ## 최신 — 판매 취소·반환 연결 검증 완료
 
 codex/market-cancel는cb53db6기반이며판매취소외부36/37 req20/res21·내부34/35/ClientCore·UI2클릭과반환안내를추가했다. 기존내부cancel24/25/proc14/outbox/경제규칙유지. 독립리뷰P2응답전닫기가방stale해소(불명취소후같은모델수동open마다fresh). UI malformed flags실패를제품Handler의simulation전검증/37예외재전파로해소·변경경계독립재리뷰차단0. Unity2최종PASS(가방첫PASS유지/실패취소UI1만재시험),native단일1최종PASS(기존fixture loads.accept=false복원·기대유지). ReleaseCore/MainServer/UnitTests빌드PASS. 초기/m2작업노드진행없음→취소입력중단→별도obj-single/bin-single/m1빌드,직접vcxproj솔루션경로누락실패는Game.sln target으로복구. 실패이력보존/전체회귀반복0.

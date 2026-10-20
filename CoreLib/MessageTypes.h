@@ -233,7 +233,7 @@ namespace Core {
     };
 
     struct MsgBazaarRegisterResBody {
-        uint8_t  resStatus; // 0: 실패, 1: 성공, 2: 아이템 수량 부족, 3: 골드 부족, 4: 유효하지 않은 아이템
+        uint8_t  resStatus; // 0: 실패(보상 완료), 1: 성공, 2: 아이템 수량 부족, 3: 골드 부족, 4: 유효하지 않은 아이템, 5: 결과/보상 미확인(자동 재시도 금지)
     };
 
     struct MsgBazaarCancelBody {

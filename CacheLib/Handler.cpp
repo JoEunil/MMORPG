@@ -46,6 +46,7 @@ namespace Cache {
             BazaarSearch(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarSearchBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_REGISTER:
+            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarRegisterBody>)) break;
             BazaarRegister(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarRegisterBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_CANCEL:
