@@ -12,6 +12,7 @@ namespace C02
     public sealed class C06ChatScreen : MonoBehaviour
     {
         private const int MaxMessageBytes = 128;
+        private const float WhisperEchoTimeoutSeconds = 8f;
         private const int MaxVisibleLines = 12;
         [SerializeField] private C01LoginScreen loginScreen;
         [SerializeField] private C02WorldScreen worldScreen;
@@ -32,6 +33,9 @@ namespace C02
         private byte selectedScope;
         private ulong ownChatID;
         private ulong selectedWhisperID;
+        private string pendingWhisper;
+        private ulong pendingWhisperRecipient;
+        private float whisperDeadline;
 
         private bool WorldAvailable => worldScreen != null && worldScreen.isActiveAndEnabled &&
             worldScreen.Stage == C02Stage.InWorld && worldScreen.HasOwnFull && worldScreen.IsWorldVisible;
@@ -81,6 +85,16 @@ namespace C02
             ChangeClient(loginScreen.Model);
         }
 
+        private void Update()
+        {
+            if (pendingWhisper == null || Time.unscaledTime < whisperDeadline) return;
+            whisperRecipients.RemoveAll(recipient => recipient.Key == pendingWhisperRecipient);
+            if (selectedWhisperID == pendingWhisperRecipient) selectedWhisperID = 0;
+            pendingWhisper = null;
+            sendStatus.text = "전송 확인 시간이 초과됐습니다. 입력은 보존했습니다. 대상을 다시 확인하세요.";
+            RefreshChatControls();
+        }
+
         private void ChangeClient(IViewModelUI next)
         {
             if (model != null)
@@ -90,6 +104,7 @@ namespace C02
             }
             chatHandler = null;
             zoneHandler = null;
+            pendingWhisper = null;
             model = next;
             lines.Clear();
             whisperRecipients.Clear();
@@ -126,8 +141,11 @@ namespace C02
         {
             bool available = WorldAvailable && model != null && loginScreen.Model == model;
             chatPanel.SetActive(available);
-            messageInput.interactable = available;
-            if (!available) sendStatus.text = string.Empty;
+            if (!available)
+            {
+                pendingWhisper = null;
+                sendStatus.text = string.Empty;
+            }
             RefreshChatControls();
         }
 
@@ -137,7 +155,7 @@ namespace C02
 
         private void SelectScope(byte scope)
         {
-            if (scope > 2) return;
+            if (scope > 2 || pendingWhisper != null) return;
             selectedScope = scope;
             sendStatus.text = scope == 2 && selectedWhisperID == 0
                 ? "채팅을 받으면 실제 발신자를 답장 대상으로 선택할 수 있습니다."
@@ -147,6 +165,7 @@ namespace C02
 
         private void CycleWhisperRecipient()
         {
+            if (pendingWhisper != null) return;
             if (whisperRecipients.Count == 0)
             {
                 selectedWhisperID = 0;
@@ -170,7 +189,7 @@ namespace C02
                 {
                     var button = scopeButtons[i];
                     if (button == null) continue;
-                    button.interactable = available;
+                    button.interactable = available && pendingWhisper == null;
                     var image = button.GetComponent<Image>();
                     if (image != null) image.color = selectedScope == i
                         ? new Color(.58f, .39f, .15f, 1f)
@@ -183,20 +202,21 @@ namespace C02
                 if (whisperRecipients[i].Key == selectedWhisperID) { targetName = whisperRecipients[i].Value; break; }
             if (whisperTargetButton != null)
             {
-                whisperTargetButton.interactable = available && whisperRecipients.Count > 0;
+                whisperTargetButton.interactable = available && pendingWhisper == null && whisperRecipients.Count > 0;
                 if (whisperTargetButton.GetComponentInChildren<TMP_Text>() is TMP_Text targetText)
                     targetText.text = targetName == null
                         ? "귓속말 대상 없음 · 버튼으로 실제 수신자를 선택"
                         : "귓속말 대상: " + targetName + "  (다음 대상)";
             }
-            sendButton.interactable = available && (selectedScope != 2 || targetName != null);
+            messageInput.interactable = available && pendingWhisper == null;
+            sendButton.interactable = available && pendingWhisper == null && (selectedScope != 2 || targetName != null);
         }
 
         private void SubmitMessage(string _) => SendCurrentMessage();
 
         private void SendCurrentMessage()
         {
-            if (!WorldAvailable || model == null || loginScreen.Model != model || loginScreen.Data == null) return;
+            if (!WorldAvailable || model == null || loginScreen.Model != model || loginScreen.Data == null || pendingWhisper != null) return;
             string raw = messageInput.text ?? string.Empty;
             if (raw.IndexOf('\0') >= 0 || raw.IndexOf('\r') >= 0 || raw.IndexOf('\n') >= 0)
             {
@@ -226,13 +246,22 @@ namespace C02
                     RefreshChatControls();
                     return;
                 }
+                if (selectedScope == 2)
+                {
+                    pendingWhisper = message;
+                    pendingWhisperRecipient = selectedWhisperID;
+                    whisperDeadline = Time.unscaledTime + WhisperEchoTimeoutSeconds;
+                }
                 model.Chat(message, selectedScope, selectedScope == 2 ? selectedWhisperID : 0);
-                messageInput.SetTextWithoutNotify(string.Empty);
-                sendStatus.text = "전송 요청됨 · 서버 echo 대기";
+                if (selectedScope != 2) messageInput.SetTextWithoutNotify(string.Empty);
+                sendStatus.text = pendingWhisper != null ? "귓속말 전송 확인 중 · 입력 보존" : "전송 요청됨 · 서버 echo 대기";
+                RefreshChatControls();
             }
             catch (Exception)
             {
+                pendingWhisper = null;
                 sendStatus.text = "전송 요청에 실패했습니다. 입력을 확인해 주세요.";
+                RefreshChatControls();
             }
         }
 
@@ -270,7 +299,13 @@ namespace C02
                 Canvas.ForceUpdateCanvases();
                 chatScroll.verticalNormalizedPosition = 0;
             }
-            sendStatus.text = string.Empty;
+            if (pendingWhisper != null && scope == 2 && senderChatID == ownChatID && message == pendingWhisper)
+            {
+                pendingWhisper = null;
+                messageInput.SetTextWithoutNotify(string.Empty);
+                sendStatus.text = "귓속말 전송 확인됨";
+            }
+            else if (pendingWhisper == null) sendStatus.text = string.Empty;
             RefreshChatControls();
         }
 
@@ -294,6 +329,7 @@ namespace C02
             }
             chatHandler = null;
             zoneHandler = null;
+            pendingWhisper = null;
             model = null;
             lines.Clear();
             whisperRecipients.Clear();
