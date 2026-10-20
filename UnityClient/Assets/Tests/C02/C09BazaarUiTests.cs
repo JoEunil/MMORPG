@@ -329,6 +329,9 @@ namespace C02.Tests
             public int Requests;
             public uint LastRequestID;
             public ushort LastItemType, LastPage;
+            public void RequestBazaarBuy(uint requestID, ulong listingID) { }
+            public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
+            public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page)
             { Requests++; LastRequestID = requestID; LastItemType = itemType; LastPage = page; }

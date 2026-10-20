@@ -1,8 +1,30 @@
 #include "pch.h"
 #include "ZoneState.h"
 #include "../UnityClient/Exports/ServerData/MonsterSpawns.inc"
+#include <algorithm>
+#include <cmath>
 
 namespace Core {
+    namespace {
+        constexpr float MONSTER_WANDER_RADIUS = 6.0f;
+        constexpr float MONSTER_WANDER_SPEED = 0.6f * WORLD_MOVEMENT_SCALE;
+
+        uint32_t NextWanderValue(MonsterState& monster) {
+            uint32_t value = monster.wanderSeed;
+            value ^= value << 13;
+            value ^= value >> 17;
+            value ^= value << 5;
+            monster.wanderSeed = value == 0 ? 0xA341316Cu : value;
+            return monster.wanderSeed;
+        }
+
+        void SetDirection(MonsterState& monster, uint8_t direction) {
+            if (monster.dir == direction) return;
+            monster.dir = direction;
+            monster.dirtyBit |= 0x08;
+        }
+    }
+
     void ZoneState::InitializeMonster() {
         static_assert(CELLS_X == 5 && CELLS_Y == 5 && CELL_SIZE == 22, "Revalidate authored monster spawn geometry.");
         int uniqueId = 0;
@@ -14,12 +36,13 @@ namespace Core {
             {
                 auto& cell = m_cells[i][j];
                 auto& area = cell.area;
+                const int cellIndex = i * CELLS_X + j;
 
                 if (i == 2 && j == 2)
                     continue;
 
                 // 일반 몬스터
-                for (int k = 0; k < Data::REGULAR_MONSTERS_PER_CELL; k++)
+                for (int k = 0; k < Data::REGULAR_MONSTERS_BY_CELL[cellIndex]; k++)
                 {
                     int spawnX = area.x_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.x_max - area.x_min - Data::MONSTER_SPAWN_EDGE_INSET));
                     int spawnY = area.y_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.y_max - area.y_min - Data::MONSTER_SPAWN_EDGE_INSET));
@@ -34,7 +57,7 @@ namespace Core {
                 }
 
                 // 조금 센 일반 몬스터
-                for (int k = 0; k < Data::STRONG_MONSTERS_PER_CELL; k++)
+                for (int k = 0; k < Data::STRONG_MONSTERS_BY_CELL[cellIndex]; k++)
                 {
                     int spawnX = area.x_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.x_max - area.x_min - Data::MONSTER_SPAWN_EDGE_INSET));
                     int spawnY = area.y_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.y_max - area.y_min - Data::MONSTER_SPAWN_EDGE_INSET));
@@ -81,6 +104,11 @@ namespace Core {
                 continue;
             }
 
+            // Zone updates run every 50 ms, so the existing 100-tick aggro timeout is 5 seconds.
+            if (monster.aggro != 0 && ++monster.aggroTick >= monster.data->aggroTimeOut) {
+                monster.aggro = 0;
+                monster.aggroTick = 0;
+            }
 
             // 2. Phase 처리 (보스, 일반 동일하게)
             auto& phase = monster.data->phases[monster.phase];
@@ -91,12 +119,6 @@ namespace Core {
                 continue;
             }
 
-            // aggro 처리
-            if (monster.aggro != 0 && monster.aggroTick >= monster.data->aggroTimeOut) {
-                monster.aggro = 0;
-                monster.aggroTick = 0;
-            }
-
             if (monster.aggro == 0) {
                 MoveAround(monster);
                 continue;
@@ -105,6 +127,7 @@ namespace Core {
             auto it = m_InternalIDToIndex.find(monster.aggro);
             if (it == m_InternalIDToIndex.end()) {
                 monster.aggro = 0;
+                monster.aggroTick = 0;
                 continue;
             }
 
@@ -125,7 +148,7 @@ namespace Core {
                     );
                 monster.skillStep++;
                 monster.tick = 0;
-            } else if (monster.aggroTick >= step.delayTicks and monster.data->id == 2) {
+            } else if (monster.tick >= step.delayTicks and monster.data->id == 2) {
                 m_cells[monster.cellY][monster.cellX].activeSkills.emplace_back(
                     1, 0, 0, monster.internalID, 0, monster.dir, monster.x, monster.y, skill.skillID, 0, 0
                     );
@@ -139,8 +162,8 @@ namespace Core {
     }
 
     void ZoneState::MoveToward(MonsterState& monster, CharacterState& character) {
-        int dx = character.x - monster.x;
-        int dy = character.y - monster.y;
+        float dx = character.x - monster.x;
+        float dy = character.y - monster.y;
 
         // x, y 중 큰 거리 쪽으로만 이동 (상하좌우)
         float x = 0, y = 0;
@@ -151,21 +174,17 @@ namespace Core {
             y += (dy > 0) ? 1 : -1;
         }
         auto& area = m_cells[monster.cellY][monster.cellX].area;
-        x *= monster.data->moveSpeed;
-        y *= monster.data->moveSpeed;
+        x *= monster.data->moveSpeed * WORLD_MOVEMENT_SCALE;
+        y *= monster.data->moveSpeed * WORLD_MOVEMENT_SCALE;
         if (x != 0) {
             if ((monster.x + x) < area.x_min or (monster.x + x) > area.x_max) {
                 monster.aggro = 0;
                 monster.aggroTick = 0;
                 return;
             }
-            if (x > 0) 
-                monster.dir = 3;
-            else
-                monster.dir = 2;
+            SetDirection(monster, x > 0 ? 3 : 2);
             monster.x += x;
             monster.dirtyBit |= 0x02;
-            monster.dirtyBit |= 0x08;
         }
         if (y != 0) {
             if ((monster.y + y) < area.y_min or (monster.y + y) > area.y_max) {
@@ -173,47 +192,73 @@ namespace Core {
                 monster.aggroTick = 0;
                 return;
             }
-            if (y > 0)
-                monster.dir = 0;
-            else
-                monster.dir = 1;
+            SetDirection(monster, y > 0 ? 0 : 1);
             monster.y += y;
             monster.dirtyBit |= 0x04;
-            monster.dirtyBit |= 0x08;
         }
     }
 
     void ZoneState::MoveAround(MonsterState& monster) {
-        float speed = 0.6;
-        float dx = 0, dy = 0;
-
         auto& area = m_cells[monster.cellY][monster.cellX].area;
+        const float minX = (std::max)(area.x_min, monster.spawnX - MONSTER_WANDER_RADIUS);
+        const float maxX = (std::min)(area.x_max, monster.spawnX + MONSTER_WANDER_RADIUS);
+        const float minY = (std::max)(area.y_min, monster.spawnY - MONSTER_WANDER_RADIUS);
+        const float maxY = (std::min)(area.y_max, monster.spawnY + MONSTER_WANDER_RADIUS);
+        const float homeDx = monster.spawnX - monster.x;
+        const float homeDy = monster.spawnY - monster.y;
 
+        if (std::abs(homeDx) > MONSTER_WANDER_RADIUS || std::abs(homeDy) > MONSTER_WANDER_RADIUS) {
+            monster.wanderTicks = 0;
+            monster.wanderPauseTicks = 0;
+            const bool moveX = std::abs(homeDx) >= std::abs(homeDy);
+            const float distance = moveX ? homeDx : homeDy;
+            const float step = std::copysign((std::min)(std::abs(distance), MONSTER_WANDER_SPEED), distance);
+            if (moveX) {
+                SetDirection(monster, step > 0 ? 3 : 2);
+                monster.x += step;
+                monster.dirtyBit |= 0x02;
+            } else {
+                SetDirection(monster, step > 0 ? 0 : 1);
+                monster.y += step;
+                monster.dirtyBit |= 0x04;
+            }
+            return;
+        }
+
+        if (monster.wanderPauseTicks != 0) {
+            --monster.wanderPauseTicks;
+            return;
+        }
+        if (monster.wanderTicks == 0) {
+            const uint32_t choice = NextWanderValue(monster);
+            if ((choice & 3u) == 0) {
+                monster.wanderPauseTicks = static_cast<uint8_t>(10u + ((choice >> 2) % 21u));
+                return;
+            }
+            SetDirection(monster, static_cast<uint8_t>((choice >> 4) & 3u));
+            monster.wanderTicks = static_cast<uint8_t>(20u + ((choice >> 8) % 41u));
+        }
+
+        float dx = 0, dy = 0;
         switch (monster.dir) {
-        case 0: dy = speed; break; // 상
-        case 1: dy = -speed; break; // 하
-        case 2: dx = -speed; break; // 좌
-        case 3: dx = speed; break;  // 우
+        case 0: dy = MONSTER_WANDER_SPEED; break;
+        case 1: dy = -MONSTER_WANDER_SPEED; break;
+        case 2: dx = -MONSTER_WANDER_SPEED; break;
+        case 3: dx = MONSTER_WANDER_SPEED; break;
         }
-
-        // 영역 체크
-        if (monster.x + dx < area.x_min || monster.x + dx > area.x_max) {
-            monster.dir = (monster.dir == 2 ? 3 : 2); // 좌우 반전
-            monster.dirtyBit |= 0x08; // 방향 변경 표시
+        if (monster.x + dx < minX || monster.x + dx > maxX ||
+            monster.y + dy < minY || monster.y + dy > maxY) {
+            monster.wanderTicks = 0;
+            return;
         }
-        else
+        if (dx != 0) {
             monster.x += dx;
-
-        if (monster.y + dy < area.y_min || monster.y + dy > area.y_max) {
-            monster.dir = (monster.dir == 0 ? 1 : 0); // 상하 반전
-            monster.dirtyBit |= 0x08; // 방향 변경 표시
+            monster.dirtyBit |= 0x02;
         }
-        else
+        if (dy != 0) {
             monster.y += dy;
-
-        // 이동 표시
-        if (dx != 0) monster.dirtyBit |= 0x02;
-        if (dy != 0) monster.dirtyBit |= 0x04;
-        monster.dirtyBit |= 0x08; // 방향 변경 표시
+            monster.dirtyBit |= 0x04;
+        }
+        --monster.wanderTicks;
     }
 }

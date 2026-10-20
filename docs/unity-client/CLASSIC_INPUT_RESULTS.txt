@@ -1,0 +1,16 @@
+Classic integrated UI/input batch — 2026-10-20
+Candidate branch: codex/classic-mmorpg-motion (unpublished).
+Running server: PID22424, Classic-Integrated/bin/MainServer.exe; 241 legacy spawns. Hunt-Layout 112-spawn candidate was NOT deployed.
+No OS mouse/keyboard input. Real uGUI clicks through Unity InputSystem simulate_pointer. Credentials entered through existing secure GameView text events; values omitted. Normal-frame KeyboardState events were queued without invoking handlers or manually calling InputSystem.Update.
+PASS: one real account login -> server character list -> selected5011 -> ENTER -> InWorld/OwnFull.
+PASS: UpArrow down/up moved server position (103.06,11.04) -> (101.82,12.28). After release, server stayed unchanged and display converged exactly (101.82,0,12.28).
+PASS: normal-frame Z produced Strike released, MP9960->9959; X produced Ring cast, MP9939; C produced Line cast, MP9919. No hit/kill acknowledgement claim.
+PASS: I opened bag; first cold request returned failure. Closed/reopened with I and received genuine No items. No direct DB rows added. Nonempty live inventory remains unverified.
+PASS: B opened market with30 actual potion listings and30 non-null ItemIcon sprites. Opening market closed bag.
+PASS: actual monster damage reduced HP3500->0 during batch. At HP0, movement+Z left position and MP9919 unchanged, CanAct=false, defeat message and HUD remained visible.
+PASS: focused ChatInput then queued I+B; bag stayed open, market stayed closed. Movement/skill chat guard while alive was NOT separately checked because character had already reached HP0.
+PASS: actual Disconnect button -> Modelnull, StageReady, world/HUD/bag/market hidden; Play stopped normally.
+Tool observations: simulate_key press and down/up calls returned injection success but skill edge events were not observed. Package RuntimeInputCommand.cs calls InputSystem.Update synchronously; queuing events for the normal player loop fixed this without product changes or focus-guard bypass. Do not count the initial injection-success responses as game success.
+Observation helper initially looked for bag/market on C02Client and returned null; corrected read-only lookup without repeating login or changing product.
+Captures: classic-field-hp0.png, classic-market-icons.png. classic-hud-layout-preview.png is forced UI layout preview only and is not gameplay evidence.
+Unverified: all-four-zone actual round trip, new112 spawn layout in live server, long network latency prediction, 32/64px all-five-item live inventory comparison, nonempty inventory, trade success/DB/crash persistence. Existing native/export tests cover candidate112 initialization. No new purchase/claim/cancel writes or DB reset/seed performed.

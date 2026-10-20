@@ -9,6 +9,60 @@ namespace C02
 {
     public sealed class C04ObservedWorld : MonoBehaviour
     {
+        private const double PresentationDelay = 0.075;
+        private const int MotionSampleCapacity = 4;
+
+        private struct MotionSample
+        {
+            public double Time;
+            public float X;
+            public float Y;
+        }
+
+        private sealed class MotionHistory
+        {
+            private readonly MotionSample[] samples = new MotionSample[MotionSampleCapacity];
+            private int count;
+
+            public void Reset(double time, float x, float y)
+            {
+                count = 1;
+                samples[0] = new MotionSample { Time = time, X = x, Y = y };
+            }
+
+            public void Add(double time, float x, float y)
+            {
+                if (count != 0 && time <= samples[count - 1].Time)
+                {
+                    samples[count - 1] = new MotionSample { Time = time, X = x, Y = y };
+                    return;
+                }
+                if (count == samples.Length)
+                {
+                    Array.Copy(samples, 1, samples, 0, samples.Length - 1);
+                    count--;
+                }
+                samples[count++] = new MotionSample { Time = time, X = x, Y = y };
+            }
+
+            public Vector3 PositionAt(double time)
+            {
+                if (count == 1 || time <= samples[0].Time)
+                    return new Vector3(samples[0].X, 0, samples[0].Y);
+                for (int i = 1; i < count; i++)
+                {
+                    var next = samples[i];
+                    if (time > next.Time) continue;
+                    var previous = samples[i - 1];
+                    float amount = (float)((time - previous.Time) / (next.Time - previous.Time));
+                    return new Vector3(Mathf.Lerp(previous.X, next.X, amount), 0,
+                        Mathf.Lerp(previous.Y, next.Y, amount));
+                }
+                var latest = samples[count - 1];
+                return new Vector3(latest.X, 0, latest.Y);
+            }
+        }
+
         [SerializeField] private C01LoginScreen loginScreen;
         [SerializeField] private C02WorldScreen worldScreen;
         [SerializeField] private Transform displayRoot;
@@ -20,6 +74,7 @@ namespace C02
             public FullStateField State;
             public GameObject Visual;
             public double LastFullSeen;
+            public MotionHistory Motion = new MotionHistory();
         }
 
         private sealed class MonsterObservation
@@ -28,6 +83,7 @@ namespace C02
             public GameObject Visual;
             public C13EntityVitals Vitals;
             public double LastFullSeen;
+            public MotionHistory Motion = new MotionHistory();
         }
 
         private readonly Dictionary<uint, PlayerObservation> players = new Dictionary<uint, PlayerObservation>();
@@ -132,6 +188,7 @@ namespace C02
             }
             WorldChanged();
             Expire(Time.realtimeSinceStartupAsDouble);
+            RenderObservations(Time.realtimeSinceStartupAsDouble);
         }
 
         private void ApplyPlayerFull(ushort count, FullStateField[] states, double now)
@@ -145,11 +202,14 @@ namespace C02
                 {
                     entry = new PlayerObservation { Visual = Instantiate(playerPrefab, displayRoot) };
                     entry.Visual.name = "ObservedPlayer " + state.zoneInternalID;
+                    entry.Motion.Reset(now, state.x, state.y);
+                    entry.Visual.transform.position = new Vector3(state.x, 0, state.y);
                     players.Add(state.zoneInternalID, entry);
                 }
+                else entry.Motion.Add(now, state.x, state.y);
                 entry.State = state;
                 entry.LastFullSeen = now;
-                Place(entry.Visual, state.x, state.y, state.dir);
+                Face(entry.Visual, state.dir);
             }
         }
 
@@ -169,12 +229,15 @@ namespace C02
                     entry.Visual.name = "ObservedMonster " + state.internalId + " type " + state.monsterId;
                     entry.Vitals = entry.Visual.AddComponent<C13EntityVitals>();
                     entry.Vitals.SetCamera(worldScreen.ViewCamera);
+                    entry.Motion.Reset(now, state.x, state.y);
+                    entry.Visual.transform.position = new Vector3(state.x, 0, state.y);
                     monsters.Add(state.internalId, entry);
                 }
+                else entry.Motion.Add(now, state.x, state.y);
                 entry.State = state;
                 entry.LastFullSeen = now;
                 entry.Vitals.SetHealth(state.hp, state.maxHp);
-                Place(entry.Visual, state.x, state.y, state.dir);
+                Face(entry.Visual, state.dir);
             }
         }
 
@@ -205,8 +268,9 @@ namespace C02
             {
                 if (pair.Value.invalid || !ValidPlayer(pair.Value.state)) continue;
                 var entry = players[pair.Key];
+                entry.Motion.Add(Time.realtimeSinceStartupAsDouble, pair.Value.state.x, pair.Value.state.y);
                 entry.State = pair.Value.state;
-                Place(entry.Visual, entry.State.x, entry.State.y, entry.State.dir);
+                Face(entry.Visual, entry.State.dir);
             }
         }
 
@@ -247,9 +311,10 @@ namespace C02
                 if (pair.Value.invalid || !ValidMonster(pair.Value.state)) continue;
                 if (pair.Value.deathSeen) { RemoveMonster(pair.Key); continue; }
                 var entry = monsters[pair.Key];
+                entry.Motion.Add(Time.realtimeSinceStartupAsDouble, pair.Value.state.x, pair.Value.state.y);
                 entry.State = pair.Value.state;
                 entry.Vitals.SetHealth(entry.State.hp, entry.State.maxHp);
-                Place(entry.Visual, entry.State.x, entry.State.y, entry.State.dir);
+                Face(entry.Visual, entry.State.dir);
             }
         }
 
@@ -271,8 +336,17 @@ namespace C02
         private static bool ValidState(float x, float y, byte direction, int hp, int maxHp) =>
             !float.IsNaN(x) && !float.IsInfinity(x) && !float.IsNaN(y) && !float.IsInfinity(y) && direction <= 3 && maxHp > 0 && hp >= 0 && hp <= maxHp;
         private static float FloatBits(uint raw) => BitConverter.ToSingle(BitConverter.GetBytes(raw), 0);
-        private static void Place(GameObject visual, float x, float y, byte direction) =>
-            visual.transform.SetPositionAndRotation(new Vector3(x, 0, y), C02WorldScreen.ServerFacing(direction));
+        private static void Face(GameObject visual, byte direction) =>
+            visual.transform.rotation = C02WorldScreen.ServerFacing(direction);
+
+        private void RenderObservations(double now)
+        {
+            double presentationTime = now - PresentationDelay;
+            foreach (var entry in players.Values)
+                if (entry.Visual != null) entry.Visual.transform.position = entry.Motion.PositionAt(presentationTime);
+            foreach (var entry in monsters.Values)
+                if (entry.Visual != null) entry.Visual.transform.position = entry.Motion.PositionAt(presentationTime);
+        }
 
         private void RemovePlayer(uint id)
         {

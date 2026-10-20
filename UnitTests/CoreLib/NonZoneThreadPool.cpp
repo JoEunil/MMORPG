@@ -7,6 +7,8 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -21,6 +23,7 @@
 #include <CoreLib/PacketTypes.h>
 #include <CoreLib/StateManager.h>
 #include <CoreLib/ChatThreadPool.h>
+#include <CacheLib/BazaarCancelResult.h>
 
 namespace Core {
     namespace {
@@ -177,6 +180,43 @@ namespace Core {
                 header->flags = flags;
                 if (sizeDelta >= 0)
                     *parseBody<BazaarMyListRequestBody>(packet.data()) = request;
+            }
+            CountedView(uint64_t id, const BazaarClaimRequestBody& request, uint8_t flags = 0, int sizeDelta = 0)
+                : packet(sizeof(PacketStruct<BazaarClaimRequestBody>) + sizeDelta), session(id) {
+                auto* header = parseHeader(packet.data());
+                header->magic = MAGIC;
+                header->length = static_cast<uint32_t>(packet.size());
+                header->opcode = OP::BAZAAR_CLAIM;
+                header->flags = flags;
+                if (sizeDelta >= 0)
+                    *parseBody<BazaarClaimRequestBody>(packet.data()) = request;
+            }
+            CountedView(uint64_t id, const BazaarBuyRequestBody& request, uint8_t flags = 0, int sizeDelta = 0)
+                : packet(sizeof(PacketStruct<BazaarBuyRequestBody>) + sizeDelta), session(id) {
+                auto* header = parseHeader(packet.data());
+                header->magic = MAGIC;
+                header->length = static_cast<uint32_t>(packet.size());
+                header->opcode = OP::BAZAAR_BUY;
+                header->flags = flags;
+                if (sizeDelta >= 0) *parseBody<BazaarBuyRequestBody>(packet.data()) = request;
+            }
+            CountedView(uint64_t id, const BazaarCheckOutboxRequestBody& request, uint8_t flags = 0, int sizeDelta = 0)
+                : packet(sizeof(PacketStruct<BazaarCheckOutboxRequestBody>) + sizeDelta), session(id) {
+                auto* header = parseHeader(packet.data());
+                header->magic = MAGIC;
+                header->length = static_cast<uint32_t>(packet.size());
+                header->opcode = OP::BAZAAR_CHECK_OUTBOX;
+                header->flags = flags;
+                if (sizeDelta >= 0) *parseBody<BazaarCheckOutboxRequestBody>(packet.data()) = request;
+            }
+            CountedView(uint64_t id, const BazaarCancelListingRequestBody& request, uint8_t flags = 0, int sizeDelta = 0)
+                : packet(sizeof(PacketStruct<BazaarCancelListingRequestBody>) + sizeDelta), session(id) {
+                auto* header = parseHeader(packet.data());
+                header->magic = MAGIC;
+                header->length = static_cast<uint32_t>(packet.size());
+                header->opcode = OP::BAZAAR_CANCEL_LISTING;
+                header->flags = flags;
+                if (sizeDelta >= 0) *parseBody<BazaarCancelListingRequestBody>(packet.data()) = request;
             }
             CountedView(uint64_t id, OP opcode)
                 : packet(sizeof(PacketHeader)), session(id) {
@@ -410,6 +450,32 @@ namespace Core {
             st->body.characterID = characterID;
             response->SetLength(sizeof(*st) + sizeDelta);
             responses.Process(response);
+        }
+        void FinishClaim(const MsgBazaarClaimResBody& body, int sizeDelta = 0) {
+            auto* response = messages.Acquire();
+            auto* st = reinterpret_cast<MsgStruct<MsgBazaarClaimResBody>*>(response->GetBuffer());
+            st->header = { 42, MSG_BAZAAR_CLAIM_RES };
+            st->body = body;
+            response->SetLength(sizeof(*st) + sizeDelta);
+            responses.Process(response);
+        }
+        void FinishBuy(const MsgBazaarBuyResBody& body, int sizeDelta = 0) {
+            auto* response = messages.Acquire();
+            auto* st = reinterpret_cast<MsgStruct<MsgBazaarBuyResBody>*>(response->GetBuffer());
+            st->header = { 42, MSG_BAZAAR_BUY_RES }; st->body = body;
+            response->SetLength(sizeof(*st) + sizeDelta); responses.Process(response);
+        }
+        void FinishOutbox(const MsgBazaarCheckOutboxResBody& body, int sizeDelta = 0) {
+            auto* response = messages.Acquire();
+            auto* st = reinterpret_cast<MsgStruct<MsgBazaarCheckOutboxResBody>*>(response->GetBuffer());
+            st->header = { 42, MSG_BAZAAR_CHECK_OUTBOX_RES }; st->body = body;
+            response->SetLength(sizeof(*st) + sizeDelta); responses.Process(response);
+        }
+        void FinishCancelListing(const MsgBazaarCancelListingResBody& body, int sizeDelta = 0) {
+            auto* response = messages.Acquire();
+            auto* st = reinterpret_cast<MsgStruct<MsgBazaarCancelListingResBody>*>(response->GetBuffer());
+            st->header = { 42, MSG_BAZAAR_CANCEL_LISTING_RES }; st->body = body;
+            response->SetLength(sizeof(*st) + sizeDelta); responses.Process(response);
         }
         bool CompleteLoadSuccessfully(Message& request) {
             auto* response = messages.Acquire();
@@ -1027,6 +1093,204 @@ namespace Core {
         ASSERT_NE(empty, nullptr);
         EXPECT_EQ(empty->GetLength(), 15);
         EXPECT_EQ(parseBody<BazaarSearchResponseBody>(empty->GetBuffer())->resStatus, 1);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BazaarPurchaseWireOwnershipAndQueueFailuresPreserveDeliveryMeaning) {
+        SessionData ready{};
+        ready.authenticated = ready.authCompleted = true;
+        ready.userID = 6982; ready.characterID = 5011; ready.zoneID = 1;
+        CountedView buy(42, BazaarBuyRequestBody{123, UINT64_MAX});
+        CountedView outbox(42, BazaarCheckOutboxRequestBody{124});
+        handler.Process(&buy); handler.Process(&outbox);
+        EXPECT_FALSE(loads.HasRequest());
+        SetSessionImage(ready);
+        handler.Process(&buy);
+        auto request = loads.TakeRequest(); ASSERT_NE(request, nullptr);
+        const auto* purchased = parseMsgBody<MsgBazaarBuyBody>(request->GetBuffer());
+        EXPECT_EQ(purchased->characterID, 5011); EXPECT_EQ(purchased->listingID, UINT64_MAX); EXPECT_EQ(purchased->requestID, 123);
+        handler.Process(&outbox);
+        request = loads.TakeRequest(); ASSERT_NE(request, nullptr);
+        const auto* delivery = parseMsgBody<MsgBazaarCheckOutboxBody>(request->GetBuffer());
+        EXPECT_EQ(delivery->characterID, 5011); EXPECT_EQ(delivery->requestID, 124);
+        for (int invalid = 0; invalid < 7; ++invalid) {
+            auto image = ready;
+            if (invalid == 0) image.authenticated = false;
+            if (invalid == 1) image.characterID = 0;
+            SetSessionImage(image);
+            const uint8_t flags = invalid == 2 ? FLAG_SIMULATION : 0;
+            const int delta = invalid == 3 ? -1 : invalid == 4 ? 1 : 0;
+            CountedView badBuy(42, BazaarBuyRequestBody{invalid == 5 ? 0U : 123U, invalid == 6 ? 0ULL : UINT64_MAX}, flags, delta);
+            CountedView badOutbox(42, BazaarCheckOutboxRequestBody{invalid == 5 ? 0U : 124U}, flags, delta);
+            if (invalid == 6) parseHeader(badOutbox.GetPtr())->length++;
+            handler.Process(&badBuy); handler.Process(&badOutbox);
+            EXPECT_FALSE(loads.HasRequest()) << invalid;
+            EXPECT_TRUE(iocp.sentOpcodes.empty()) << invalid;
+        }
+        SetSessionImage(ready); loads.accept = false;
+        handler.Process(&buy);
+        ASSERT_EQ(iocp.lastPacket.size(), 37);
+        const auto* unknown = parseBody<BazaarBuyResponseBody>(iocp.lastPacket.data());
+        EXPECT_EQ(unknown->requestID, 123); EXPECT_EQ(unknown->listingID, UINT64_MAX);
+        EXPECT_EQ(unknown->resStatus, 5); EXPECT_EQ(unknown->itemID, 0); EXPECT_EQ(unknown->quantity, 0); EXPECT_EQ(unknown->diamondSpent, 0);
+        handler.Process(&outbox);
+        ASSERT_EQ(iocp.lastPacket.size(), 25);
+        EXPECT_EQ(parseBody<BazaarCheckOutboxResponseBody>(iocp.lastPacket.data())->requestID, 124);
+        EXPECT_EQ(parseBody<BazaarCheckOutboxResponseBody>(iocp.lastPacket.data())->resStatus, 0);
+        MsgBazaarBuyResBody bought{};
+        bought.requestID = 123; bought.listingID = UINT64_MAX; bought.characterID = 5011;
+        bought.resStatus = 1; bought.itemID = UINT32_MAX; bought.quantity = UINT32_MAX; bought.diamondSpent = UINT64_MAX;
+        FinishBuy(bought);
+        ASSERT_EQ(iocp.lastPacket.size(), 37);
+        const auto* success = parseBody<BazaarBuyResponseBody>(iocp.lastPacket.data());
+        EXPECT_EQ(success->quantity, UINT32_MAX); EXPECT_EQ(success->diamondSpent, UINT64_MAX);
+        EXPECT_EQ(parseHeader(iocp.lastPacket.data())->opcode, OP::BAZAAR_BUY_RES);
+        MsgBazaarCheckOutboxResBody partial{};
+        partial.requestID = 124; partial.characterID = 5011; partial.deliveredCount = 2; partial.duplicatedCount = 1; partial.blockedCount = 1;
+        FinishOutbox(partial);
+        const auto* prefix = parseBody<BazaarCheckOutboxResponseBody>(iocp.lastPacket.data());
+        EXPECT_EQ(prefix->resStatus, 0); EXPECT_EQ(prefix->deliveredCount, 2); EXPECT_EQ(prefix->duplicatedCount, 1); EXPECT_EQ(prefix->blockedCount, 1);
+        EXPECT_EQ(parseHeader(iocp.lastPacket.data())->opcode, OP::BAZAAR_CHECK_OUTBOX_RES);
+        ASSERT_EQ(iocp.sentOpcodes.size(), 4);
+        bought.characterID = 5012; FinishBuy(bought);
+        partial.characterID = 5012; FinishOutbox(partial);
+        bought.characterID = 5011; partial.characterID = 5011;
+        FinishBuy(bought, -1); FinishOutbox(partial, 1);
+        state->SetZoneID(42, 0); state->Disconnect(42); FinishBuy(bought); FinishOutbox(partial);
+        EXPECT_EQ(iocp.sentOpcodes.size(), 4);
+        bought.resStatus = 2;
+        auto invalid = writer.WriteBazaarBuyResponse(&bought); ASSERT_NE(invalid, nullptr);
+        EXPECT_EQ(parseBody<BazaarBuyResponseBody>(invalid->GetBuffer())->resStatus, 5);
+        EXPECT_EQ(parseBody<BazaarBuyResponseBody>(invalid->GetBuffer())->diamondSpent, 0);
+        partial.deliveredCount = UINT32_MAX;
+        EXPECT_EQ(writer.WriteBazaarCheckOutboxResponse(&partial), nullptr);
+
+        CountedView cancel(42, BazaarCancelListingRequestBody{125, 987654321ULL});
+        handler.Process(&cancel);
+        EXPECT_FALSE(loads.HasRequest());
+        loads.accept = true;
+        SetSessionImage(ready);
+        handler.Process(&cancel);
+        request = loads.TakeRequest(); ASSERT_NE(request, nullptr);
+        const auto* cancelRequest = parseMsgBody<MsgBazaarCancelListingBody>(request->GetBuffer());
+        EXPECT_EQ(cancelRequest->requestID, 125); EXPECT_EQ(cancelRequest->listingID, 987654321ULL);
+        EXPECT_EQ(cancelRequest->characterID, 5011);
+
+        MsgBazaarCancelListingResBody cancelled{};
+        cancelled.requestID = 125; cancelled.listingID = 987654321ULL; cancelled.characterID = 5011; cancelled.resStatus = 1;
+        FinishCancelListing(cancelled);
+        ASSERT_EQ(iocp.lastPacket.size(), 21);
+        const auto* cancelWire = parseBody<BazaarCancelListingResponseBody>(iocp.lastPacket.data());
+        EXPECT_EQ(cancelWire->requestID, 125); EXPECT_EQ(cancelWire->listingID, 987654321ULL);
+        EXPECT_EQ(cancelWire->resStatus, 1); EXPECT_EQ(parseHeader(iocp.lastPacket.data())->opcode, OP::BAZAAR_CANCEL_LISTING_RES);
+        EXPECT_EQ(iocp.sentOpcodes.size(), 5);
+        cancelled.characterID = 5012; FinishCancelListing(cancelled);
+        cancelled.characterID = 5011; FinishCancelListing(cancelled, -1);
+        cancelled.resStatus = 2; EXPECT_EQ(writer.WriteBazaarCancelListingResponse(&cancelled), nullptr);
+        cancelled.resStatus = 5;
+        ASSERT_NE(writer.WriteBazaarCancelListingResponse(&cancelled), nullptr);
+
+        struct CancelRows {
+            int64_t result = 1, pending = 1;
+            bool empty = false;
+            bool next() { return !empty; }
+            bool isNull(const char*) { return false; }
+            int64_t getInt64(const char* column) { return std::string_view(column) == "result" ? result : pending; }
+            uint64_t getUInt64(const char* column) {
+                if (std::string_view(column) == "event_id") return 765;
+                if (std::string_view(column) == "item_id") return 9;
+                return 2;
+            }
+        } row;
+        MsgBazaarCancelListingResBody parsed{};
+        parsed.resStatus = 5;
+        int returns = 0;
+        Cache::ParseBazaarCancelResult(&row, [&](uint64_t eventID, uint32_t itemID, uint32_t quantity) {
+            EXPECT_EQ(eventID, 765); EXPECT_EQ(itemID, 9); EXPECT_EQ(quantity, 2); ++returns;
+            return false; // A blocked cache pass does not undo the committed listing cancellation.
+        }, parsed);
+        EXPECT_EQ(parsed.resStatus, 1); EXPECT_EQ(returns, 1);
+        row.pending = 0; returns = 0;
+        Cache::ParseBazaarCancelResult(&row, [&](uint64_t, uint32_t, uint32_t) { ++returns; }, parsed);
+        EXPECT_EQ(parsed.resStatus, 1); EXPECT_EQ(returns, 0);
+        row.result = 0;
+        Cache::ParseBazaarCancelResult(&row, [&](uint64_t, uint32_t, uint32_t) { ++returns; }, parsed);
+        EXPECT_EQ(parsed.resStatus, 0); EXPECT_EQ(returns, 0);
+        row.empty = true;
+        EXPECT_THROW(Cache::ParseBazaarCancelResult(&row, [](uint64_t, uint32_t, uint32_t) {}, parsed), std::runtime_error);
+        EXPECT_EQ(parsed.resStatus, 5);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BazaarClaimWireOwnershipAndCorrelatedFailurePreserveFullWidthAmount) {
+        SessionData ready{};
+        ready.authenticated = ready.authCompleted = true;
+        ready.userID = 6982; ready.characterID = 5011; ready.zoneID = 1;
+        CountedView absent(42, BazaarClaimRequestBody{123, UINT64_MAX});
+        handler.Process(&absent);
+        EXPECT_FALSE(loads.HasRequest());
+        SetSessionImage(ready);
+        CountedView valid(42, BazaarClaimRequestBody{123, UINT64_MAX});
+        handler.Process(&valid);
+        auto request = loads.TakeRequest();
+        ASSERT_NE(request, nullptr);
+        const auto* claim = parseMsgBody<MsgBazaarClaimBody>(request->GetBuffer());
+        EXPECT_EQ(claim->requestID, 123);
+        EXPECT_EQ(claim->listingID, UINT64_MAX);
+        EXPECT_EQ(claim->characterID, 5011);
+        for (int invalid = 0; invalid < 12; ++invalid) {
+            auto image = ready;
+            BazaarClaimRequestBody body{123, UINT64_MAX};
+            uint8_t flags = 0; int delta = 0;
+            if (invalid == 0) image.authenticated = false;
+            if (invalid == 1) image.authCompleted = false;
+            if (invalid == 2) image.userID = 0;
+            if (invalid == 3) image.characterID = 0;
+            if (invalid == 4) image.zoneID = 0;
+            if (invalid == 5) flags = FLAG_SIMULATION;
+            if (invalid == 6) delta = -1;
+            if (invalid == 7) delta = 1;
+            if (invalid == 8) body.requestID = 0;
+            if (invalid == 9) body.listingID = 0;
+            SetSessionImage(image);
+            CountedView view(42, body, flags, delta);
+            if (invalid == 10) parseHeader(view.GetPtr())->length++;
+            if (invalid == 11) parseHeader(view.GetPtr())->magic = 0;
+            handler.Process(&view);
+            EXPECT_FALSE(loads.HasRequest()) << invalid;
+            EXPECT_TRUE(iocp.sentOpcodes.empty()) << invalid;
+        }
+        SetSessionImage(ready);
+        loads.accept = false;
+        handler.Process(&valid);
+        ASSERT_EQ(iocp.lastPacket.size(), 29);
+        const auto* failed = parseBody<BazaarClaimResponseBody>(iocp.lastPacket.data());
+        EXPECT_EQ(failed->requestID, 123); EXPECT_EQ(failed->listingID, UINT64_MAX);
+        EXPECT_EQ(failed->resStatus, 0); EXPECT_EQ(failed->diamondClaimed, 0);
+        MsgBazaarClaimResBody response{};
+        response.requestID = 124; response.listingID = UINT64_MAX;
+        response.characterID = 5011; response.resStatus = 1; response.diamondClaimed = UINT64_MAX;
+        FinishClaim(response);
+        ASSERT_EQ(iocp.sentOpcodes.size(), 2);
+        const auto* success = parseBody<BazaarClaimResponseBody>(iocp.lastPacket.data());
+        EXPECT_EQ(success->diamondClaimed, UINT64_MAX);
+        EXPECT_EQ(success->resStatus, 1);
+        EXPECT_EQ(parseHeader(iocp.lastPacket.data())->opcode, OP::BAZAAR_CLAIM_RES);
+        EXPECT_EQ(parseHeader(iocp.lastPacket.data())->flags, 0);
+        response.characterID = 5012; FinishClaim(response);
+        response.characterID = 5011; FinishClaim(response, -1);
+        // This fixture has no field topology; use its initialized lobby for a real session removal.
+        state->SetZoneID(42, 0);
+        state->Disconnect(42); FinishClaim(response);
+        EXPECT_EQ(iocp.sentOpcodes.size(), 2);
+        response.resStatus = 4;
+        auto duplicate = writer.WriteBazaarClaimResponse(&response);
+        ASSERT_NE(duplicate, nullptr);
+        EXPECT_EQ(parseBody<BazaarClaimResponseBody>(duplicate->GetBuffer())->diamondClaimed, 0);
+        response.resStatus = 255;
+        auto invalid = writer.WriteBazaarClaimResponse(&response);
+        ASSERT_NE(invalid, nullptr);
+        EXPECT_EQ(parseBody<BazaarClaimResponseBody>(invalid->GetBuffer())->resStatus, 0);
+        response.requestID = 0;
+        EXPECT_EQ(writer.WriteBazaarClaimResponse(&response), nullptr);
     }
 
     TEST_F(NonZoneThreadPoolFixture, BazaarMyListUsesOnlyAuthenticatedFieldOwnerAndExactWireRequest) {

@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <algorithm>
 
 #include <CacheLib/CacheFlush.h>
 #include <CacheLib/CacheStorageInventory.h>
@@ -187,6 +188,7 @@ TEST(CacheWALRegression, NewNodeLsnExceedsTheLoadedDatabaseLsn) {
 
 
 #include <CacheLib/BazaarSearchResult.h>
+#include <CacheLib/BazaarRegisterResult.h>
 #include <CacheLib/Handler.h>
 #include <CacheLib/DBWorker.h>
 #include <CoreLib/IMessageQueue.h>
@@ -219,11 +221,30 @@ namespace {
     class SearchResponseQueue : public Core::IMessageQueue {
     public:
         std::unique_ptr<Core::Message> received;
+        bool accept = true;
         bool EnqueueMessage(Core::Message* msg) override {
+            if (!accept) return false;
             received = std::make_unique<Core::Message>(msg->GetLength());
             std::memcpy(received->GetBuffer(), msg->GetBuffer(), msg->GetLength());
             received->SetLength(msg->GetLength());
             return true;
+        }
+    };
+    class RegisterResponseQueue : public Core::IMessageQueue {
+    public:
+        int attempts = 0;
+        uint8_t status = 255;
+        bool accept = true;
+        bool throws = false;
+        bool EnqueueMessage(Core::Message* msg) override {
+            ++attempts;
+            const auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterResBody>*>(msg->GetBuffer());
+            EXPECT_EQ(msg->GetLength(), sizeof(*st));
+            EXPECT_EQ(st->header.sessionID, 42);
+            EXPECT_EQ(st->header.messageType, Core::MSG_BAZAAR_REGISTER_RES);
+            status = st->body.resStatus;
+            if (throws) throw std::runtime_error("fixture response queue threw");
+            return accept;
         }
     };
 }
@@ -444,6 +465,53 @@ namespace Cache {
             handler.messagePool = messages.get();
             handler.dbWorkerBazaar = stoppedWorker.get();
         }
+        void RequestBuy(int delta = 0) {
+            auto* msg = messages->Acquire();
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarBuyBody>*>(msg->GetBuffer());
+            st->header = {42, Core::MSG_BAZAAR_BUY}; st->body = {5011, UINT64_MAX, 123};
+            msg->SetLength(sizeof(*st) + delta); handler.Process(msg);
+        }
+        void RequestOutbox(int delta = 0) {
+            auto* msg = messages->Acquire();
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarCheckOutboxBody>*>(msg->GetBuffer());
+            st->header = {42, Core::MSG_BAZAAR_CHECK_OUTBOX}; st->body = {5011, 124};
+            msg->SetLength(sizeof(*st) + delta); handler.Process(msg);
+        }
+        void RequestClaim(int delta = 0) {
+            auto* msg = messages->Acquire();
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarClaimBody>*>(msg->GetBuffer());
+            st->header = {42, Core::MSG_BAZAAR_CLAIM};
+            st->body = {5011, UINT64_MAX, 0x12345678};
+            msg->SetLength(sizeof(*st) + delta);
+            handler.Process(msg);
+        }
+        void RequestRegister(InventoryHarness& inventory, CurrencyHarness& currency, RegisterResponseQueue& queue, uint16_t quantity = 3, int lengthDelta = 0) {
+            handler.cache_inventory = &inventory;
+            handler.cache_currency = &currency;
+            handler.messageQ = &queue;
+            auto* msg = messages->Acquire();
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterBody>*>(msg->GetBuffer());
+            st->header = {42, Core::MSG_BAZAAR_REGISTER};
+            st->body = {Character, 1, quantity, 100};
+            msg->SetLength(sizeof(*st) + lengthDelta);
+            if (lengthDelta != 0) handler.Process(msg);
+            else {
+                handler.BazaarRegister(msg, 42, &st->body);
+                EXPECT_EQ(msg, nullptr);
+            }
+            handler.messageQ = &responses;
+        }
+        void ExpectPoolRestored() {
+            std::vector<Core::Message*> held;
+            for (size_t i = 0; i < MSGPOOL_SIZE; ++i) {
+                auto* msg = messages->Acquire();
+                ASSERT_NE(msg, nullptr);
+                EXPECT_EQ(std::find(held.begin(), held.end(), msg), held.end());
+                held.push_back(msg);
+            }
+            EXPECT_EQ(messages->Acquire(), nullptr);
+            for (auto* msg : held) messages->Return(msg);
+        }
         void RequestMyList() {
             auto* msg = messages->Acquire();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarMyListBody>*>(msg->GetBuffer());
@@ -465,5 +533,173 @@ namespace Cache {
         EXPECT_EQ(st->body.resStatus, 0);
         EXPECT_EQ(st->body.count, 0);
         EXPECT_EQ(st->body.listings[29].listingID, 0);
+    }
+}
+
+#include <CacheLib/BazaarClaimResult.h>
+namespace {
+    struct ClaimRows {
+        int64_t status = 1;
+        uint64_t amount = UINT64_MAX;
+        bool empty = false, throws = false;
+        bool next() { if (throws) throw std::runtime_error("fixture SQL read failure"); return !empty; }
+        bool isNull(const char*) { return false; }
+        int64_t getInt64(const char*) { return status; }
+        uint64_t getUInt64(const char*) { return amount; }
+    };
+}
+namespace Cache {
+    TEST_F(BazaarMyListFixture, BazaarClaimSqlFixtureAndQueueRejectionKeepCorrelationAndSingleReturn) {
+        ClaimRows rows;
+        Core::MsgBazaarClaimResBody body{};
+        ParseBazaarClaimResult(&rows, body);
+        EXPECT_EQ(body.resStatus, 1); EXPECT_EQ(body.diamondClaimed, UINT64_MAX);
+        rows.amount = 0; rows.status = 4;
+        ParseBazaarClaimResult(&rows, body);
+        EXPECT_EQ(body.resStatus, 4); EXPECT_EQ(body.diamondClaimed, 0);
+        rows.amount = UINT64_MAX;
+        EXPECT_THROW(ParseBazaarClaimResult(&rows, body), std::runtime_error);
+        EXPECT_EQ(body.resStatus, 0); EXPECT_EQ(body.diamondClaimed, 0);
+        rows.throws = true;
+        EXPECT_THROW(ParseBazaarClaimResult(&rows, body), std::runtime_error);
+        rows.throws = false; rows.empty = true;
+        ParseBazaarClaimResult(&rows, body);
+        EXPECT_EQ(body.resStatus, 0); EXPECT_EQ(body.diamondClaimed, 0);
+        RequestClaim();
+        ASSERT_NE(responses.received, nullptr);
+        const auto* result = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarClaimResBody>*>(responses.received->GetBuffer());
+        EXPECT_EQ(result->header.sessionID, 42); EXPECT_EQ(result->header.messageType, Core::MSG_BAZAAR_CLAIM_RES);
+        EXPECT_EQ(result->body.requestID, 0x12345678); EXPECT_EQ(result->body.characterID, 5011);
+        EXPECT_EQ(result->body.listingID, UINT64_MAX);
+        EXPECT_EQ(result->body.resStatus, 0); EXPECT_EQ(result->body.diamondClaimed, 0);
+        ExpectPoolRestored();
+        responses.received.reset(); responses.accept = false;
+        RequestClaim(); EXPECT_EQ(responses.received, nullptr); ExpectPoolRestored();
+        responses.accept = true;
+        RequestClaim(-1); EXPECT_EQ(responses.received, nullptr); ExpectPoolRestored();
+    }
+}
+
+#include <CacheLib/BazaarPurchaseResult.h>
+TEST(BazaarRegisterSafety, SqlOutcomeNeverRefundsAnUnknownCommitAndRestoresAtMostOnce) {
+    // The product helper owns this decision boundary; no DB connection or durable writes are used.
+    for (int scenario = 0; scenario < 7; ++scenario) {
+        SCOPED_TRACE(scenario);
+        int inserts = 0, inventoryRestores = 0, goldRestores = 0, unknownReports = 0;
+        const auto status = Cache::ResolveBazaarRegister([&] {
+            ++inserts;
+            if (scenario == 1) throw sql::SQLException("fixture result lost after commit");
+            if (scenario == 2) throw 7; // Non-SQL worker failure is also uncertain.
+            if (scenario == 0) return 1;
+            if (scenario == 3) return -1;
+            return 0;
+        }, [&] {
+            ++inventoryRestores;
+            if (scenario == 6) throw std::runtime_error("fixture partially applied restore");
+            ++goldRestores;
+            return scenario != 5;
+        }, [&] { ++unknownReports; });
+        EXPECT_EQ(status, scenario == 0 ? 1 : scenario == 4 ? 0 : 5);
+        EXPECT_EQ(inserts, 1);
+        EXPECT_EQ(inventoryRestores, scenario >= 4 ? 1 : 0);
+        EXPECT_EQ(goldRestores, scenario >= 4 && scenario != 6 ? 1 : 0);
+        EXPECT_EQ(unknownReports, scenario == 0 || scenario == 4 ? 0 : 1);
+    }
+}
+
+namespace Cache {
+    TEST_F(BazaarMyListFixture, BazaarRegisterRejectionAndResponseFailureReturnOneMessageAndRestoreOnce) {
+        // Actual Handler + stopped DBWorker: no query can have run before rejection.
+        for (int scenario = 0; scenario < 8; ++scenario) {
+            SCOPED_TRACE(scenario);
+            InventoryHarness inventory;
+            inventory.Seed();
+            ASSERT_EQ(std::get<0>(inventory.PartialUpdate(Character, 1, 1, 3)), CACHE_STATUS::AVAILABLE);
+            const uint64_t initialGold = scenario == 3 ? 0 : 100;
+            CurrencyHarness currency(initialGold);
+            RegisterResponseQueue queue;
+            queue.accept = scenario != 1;
+            queue.throws = scenario == 2 || scenario == 7;
+            const uint16_t quantity = scenario == 4 ? 4 : scenario == 5 || scenario == 7 ? 0 : 3;
+            EXPECT_NO_THROW(RequestRegister(inventory, currency, queue, quantity, scenario == 6 ? -1 : 0));
+            EXPECT_EQ(queue.attempts, scenario == 6 ? 0 : 1);
+            if (scenario != 6) EXPECT_EQ(queue.status, scenario == 3 ? 3 : scenario == 4 ? 2 : scenario == 5 || scenario == 7 ? 4 : 0);
+            EXPECT_EQ(inventory.Getter(Character).data.items[0].quantity, 3);
+            EXPECT_EQ(currency.Getter(Character).data.gold, initialGold);
+            ExpectPoolRestored(); // Pool exhaustion + distinct addresses detect both leaks and double Return.
+        }
+    }
+}
+
+namespace {
+    struct BuyRows {
+        int64_t status = 1;
+        uint64_t itemID = UINT32_MAX, quantity = UINT32_MAX, price = UINT64_MAX;
+        bool empty = false, throws = false;
+        bool next() { if (throws) throw std::runtime_error("fixture SQL result failure"); return !empty; }
+        bool isNull(const char*) { return false; }
+        int64_t getInt64(const char*) { return status; }
+        uint64_t getUInt64(const char* column) {
+            if (std::string_view(column) == "item_id") return itemID;
+            if (std::string_view(column) == "quantity") return quantity;
+            return price;
+        }
+    };
+    struct OutboxRows {
+        int count = 3, index = -1, throwAt = -1;
+        bool next() { ++index; if (index == throwAt) throw std::runtime_error("fixture partial read failure"); return index < count; }
+        bool isNull(const char*) { return false; }
+        uint64_t getUInt64(const char* column) {
+            if (std::string_view(column) == "event_id") return 100 + index;
+            if (std::string_view(column) == "item_id") return 1;
+            return index == 2 ? UINT32_MAX : 1;
+        }
+    };
+}
+namespace Cache {
+    TEST_F(BazaarMyListFixture, BazaarPurchaseSqlAndDeliveryPrefixKeepDedupAndSingleReturn) {
+        BuyRows rows;
+        Core::MsgBazaarBuyResBody bought{};
+        ParseBazaarBuyResult(&rows, bought);
+        EXPECT_EQ(bought.resStatus, 1); EXPECT_EQ(bought.itemID, UINT32_MAX);
+        EXPECT_EQ(bought.quantity, UINT32_MAX); EXPECT_EQ(bought.diamondSpent, UINT64_MAX);
+        rows.status = 4; rows.itemID = rows.quantity = rows.price = 0;
+        ParseBazaarBuyResult(&rows, bought); EXPECT_EQ(bought.resStatus, 4);
+        rows.status = 3;
+        ParseBazaarBuyResult(&rows, bought); EXPECT_EQ(bought.resStatus, 3);
+        rows.status = 2;
+        EXPECT_THROW(ParseBazaarBuyResult(&rows, bought), std::runtime_error); EXPECT_EQ(bought.resStatus, 5);
+        rows.status = 1; rows.itemID = uint64_t{UINT32_MAX} + 1;
+        EXPECT_THROW(ParseBazaarBuyResult(&rows, bought), std::runtime_error); EXPECT_EQ(bought.resStatus, 5);
+        rows.throws = true;
+        EXPECT_THROW(ParseBazaarBuyResult(&rows, bought), std::runtime_error); EXPECT_EQ(bought.resStatus, 5);
+        ParseBazaarBuyResult<BuyRows>(nullptr, bought); EXPECT_EQ(bought.resStatus, 5);
+        InventoryHarness inventory; inventory.Seed();
+        const auto deliver = [&](uint64_t eventID, uint32_t itemID, uint32_t quantity) { return inventory.DeliverItem(Character, eventID, itemID, quantity); };
+        OutboxRows events;
+        Core::MsgBazaarCheckOutboxResBody delivered{};
+        DeliverBazaarOutboxResult(&events, deliver, delivered);
+        EXPECT_EQ(delivered.resStatus, 1); EXPECT_EQ(delivered.deliveredCount, 2); EXPECT_EQ(delivered.blockedCount, 1);
+        EXPECT_EQ(inventory.Getter(Character).data.items[0].quantity, 2);
+        events.index = -1;
+        DeliverBazaarOutboxResult(&events, deliver, delivered);
+        EXPECT_EQ(delivered.deliveredCount, 0); EXPECT_EQ(delivered.duplicatedCount, 2); EXPECT_EQ(delivered.blockedCount, 1);
+        EXPECT_EQ(inventory.Getter(Character).data.items[0].quantity, 2);
+        events.index = -1; events.throwAt = 1;
+        DeliverBazaarOutboxResult(&events, deliver, delivered);
+        EXPECT_EQ(delivered.resStatus, 0); EXPECT_EQ(delivered.duplicatedCount, 1);
+        EXPECT_EQ(inventory.Getter(Character).data.items[0].quantity, 2);
+        RequestBuy(); ASSERT_NE(responses.received, nullptr);
+        const auto* buy = Core::parseMsgBody<Core::MsgBazaarBuyResBody>(responses.received->GetBuffer());
+        EXPECT_EQ(buy->resStatus, 5); EXPECT_EQ(buy->requestID, 123); EXPECT_EQ(buy->characterID, 5011); EXPECT_EQ(buy->listingID, UINT64_MAX);
+        EXPECT_EQ(buy->itemID, 0); EXPECT_EQ(buy->quantity, 0); EXPECT_EQ(buy->diamondSpent, 0); ExpectPoolRestored();
+        RequestOutbox(); ASSERT_NE(responses.received, nullptr);
+        const auto* outbox = Core::parseMsgBody<Core::MsgBazaarCheckOutboxResBody>(responses.received->GetBuffer());
+        EXPECT_EQ(outbox->resStatus, 0); EXPECT_EQ(outbox->requestID, 124); EXPECT_EQ(outbox->characterID, 5011);
+        EXPECT_EQ(outbox->deliveredCount, 0); EXPECT_EQ(outbox->duplicatedCount, 0); EXPECT_EQ(outbox->blockedCount, 0); ExpectPoolRestored();
+        responses.received.reset(); responses.accept = false;
+        RequestBuy(); RequestOutbox(); EXPECT_EQ(responses.received, nullptr); ExpectPoolRestored();
+        responses.accept = true;
+        RequestBuy(-1); RequestOutbox(1); EXPECT_EQ(responses.received, nullptr); ExpectPoolRestored();
     }
 }

@@ -6,6 +6,8 @@ using ClientCore;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 namespace C02
 {
@@ -23,6 +25,10 @@ namespace C02
         [SerializeField] private Button previousPageButton;
         [SerializeField] private Button nextPageButton;
         [SerializeField] private Button closeButton;
+        [SerializeField] private Button claimButton;
+        [SerializeField] private Button buyButton;
+        [SerializeField] private Button cancelListingButton;
+        [SerializeField] private Button checkOutboxButton;
         [SerializeField] private TMP_Text pageText;
         [SerializeField] private Transform listingRows;
         [SerializeField] private TMP_Text emptyStateText;
@@ -35,6 +41,15 @@ namespace C02
         private bool myListings;
         private float requestDeadline;
         private bool requestPending;
+        private enum WriteRequest { None, Claim, Buy, CheckOutbox, CancelListing }
+        private WriteRequest writeRequest;
+        private BazaarListingView selectedListing;
+        private bool buyConfirmation;
+        private bool cancelConfirmation;
+        private readonly Dictionary<ulong, byte> cancelOutcomes = new Dictionary<ulong, byte>();
+        private readonly Dictionary<ulong, byte> buyOutcomes = new Dictionary<ulong, byte>();
+        private readonly Dictionary<ulong, byte> claimOutcomes = new Dictionary<ulong, byte>();
+        private readonly HashSet<ulong> unresolvedClaims = new HashSet<ulong>();
         private UnityEngine.UI.Button selectedListingButton;
         public bool IsOpen => bazaarPanel != null && bazaarPanel.activeSelf;
 
@@ -63,6 +78,10 @@ namespace C02
             previousPageButton.onClick.AddListener(PreviousPage);
             nextPageButton.onClick.AddListener(NextPage);
             closeButton.onClick.AddListener(ClosePanel);
+            if (claimButton != null) claimButton.onClick.AddListener(ClaimSelectedListing);
+            if (buyButton != null) buyButton.onClick.AddListener(BuySelectedListing);
+            if (cancelListingButton != null) cancelListingButton.onClick.AddListener(CancelSelectedListing);
+            if (checkOutboxButton != null) checkOutboxButton.onClick.AddListener(CheckOutbox);
             loginScreen.ClientChanged += ChangeClient;
             worldScreen.WorldStateChanged += WorldChanged;
             ChangeClient(loginScreen.Model);
@@ -70,10 +89,23 @@ namespace C02
 
         private void Update()
         {
+            if (Application.isFocused && Keyboard.current != null && Keyboard.current.bKey.wasPressedThisFrame &&
+                EventSystem.current != null)
+            {
+                var selected = EventSystem.current.currentSelectedGameObject;
+                var input = selected != null ? selected.GetComponentInParent<TMP_InputField>() : null;
+                if (input == null || !input.isFocused) TogglePanel();
+            }
+
             if (!requestPending || Time.unscaledTime < requestDeadline) return;
+            WriteRequest previousWrite = writeRequest;
             CancelPending();
-            ClearRows();
-            statusText.text = myListings
+            if (previousWrite == WriteRequest.None) ClearRows();
+            statusText.text = previousWrite == WriteRequest.Claim ? "Collection result unknown. Check again after reconnecting; no automatic retry."
+                : previousWrite == WriteRequest.Buy ? "Purchase result unknown. Reconnect to check; no automatic retry."
+                : previousWrite == WriteRequest.CancelListing ? "Cancellation result unknown. Refresh my listings and receive items; no automatic retry."
+                : previousWrite == WriteRequest.CheckOutbox ? "Receipt result incomplete; items may have arrived. Check your bag, then retry manually."
+                : myListings
                 ? "My listings timed out. Select Refresh to retry."
                 : "Search timed out. Select Search to retry.";
             UpdateControls();
@@ -81,14 +113,32 @@ namespace C02
 
         private void ChangeClient(IViewModelUI next)
         {
-            if (model != null) model.OnBazaarReceived -= BazaarReceived;
+            if (model != null)
+            {
+                model.OnBazaarReceived -= BazaarReceived;
+                model.OnBazaarClaimReceived -= ClaimReceived;
+                model.OnBazaarBuyReceived -= BuyReceived;
+                model.OnBazaarCancelListingReceived -= CancelListingReceived;
+                model.OnBazaarCheckOutboxReceived -= CheckOutboxReceived;
+            }
             CancelPending();
+            claimOutcomes.Clear();
+            unresolvedClaims.Clear();
+            buyOutcomes.Clear();
+            cancelOutcomes.Clear();
             model = next;
             page = 0;
             myListings = false;
             ClearResults();
             bazaarPanel.SetActive(false);
-            if (model != null) model.OnBazaarReceived += BazaarReceived;
+            if (model != null)
+            {
+                model.OnBazaarReceived += BazaarReceived;
+                model.OnBazaarClaimReceived += ClaimReceived;
+                model.OnBazaarBuyReceived += BuyReceived;
+                model.OnBazaarCancelListingReceived += CancelListingReceived;
+                model.OnBazaarCheckOutboxReceived += CheckOutboxReceived;
+            }
             WorldChanged();
         }
 
@@ -131,6 +181,7 @@ namespace C02
         {
             if (!bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model)
                 return;
+            if (writeRequest != WriteRequest.None) return;
             if (myListings == showMyListings) return;
             CancelPending();
             myListings = showMyListings;
@@ -222,7 +273,7 @@ namespace C02
 
         private void BazaarReceived(bool success)
         {
-            if (!requestPending || model == null || loginScreen.Model != model || !WorldAvailable || !bazaarPanel.activeSelf)
+            if (!requestPending || writeRequest != WriteRequest.None || model == null || loginScreen.Model != model || !WorldAvailable || !bazaarPanel.activeSelf)
                 return;
             requestPending = false;
             List<BazaarListingView> rows = success && loginScreen.Data != null
@@ -280,8 +331,24 @@ namespace C02
             accent.GetComponent<UnityEngine.UI.Image>().color = C11ItemPresentation.Accent(listing.ItemID);
             accent.GetComponent<UnityEngine.UI.Image>().raycastTarget = false;
 
-            AddCell(rowObject.transform, "Badge", C11ItemPresentation.Badge(listing.ItemID), 0.02f, 0.09f,
+            TMP_Text badge = AddCell(rowObject.transform, "Badge", C11ItemPresentation.Badge(listing.ItemID), 0.02f, 0.09f,
                 TextAlignmentOptions.Center, 10, C11ItemPresentation.Accent(listing.ItemID));
+            Sprite icon = C11ItemPresentation.Icon(listing.ItemID);
+            if (icon != null)
+            {
+                badge.text = string.Empty;
+                var iconObject = new GameObject("ItemIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.Image));
+                iconObject.transform.SetParent(rowObject.transform, false);
+                var iconRect = iconObject.GetComponent<RectTransform>();
+                iconRect.anchorMin = new Vector2(0.02f, 0);
+                iconRect.anchorMax = new Vector2(0.09f, 1);
+                iconRect.offsetMin = new Vector2(3, 3);
+                iconRect.offsetMax = new Vector2(-3, -3);
+                var iconImage = iconObject.GetComponent<UnityEngine.UI.Image>();
+                iconImage.sprite = icon;
+                iconImage.preserveAspect = true;
+                iconImage.raycastTarget = false;
+            }
             AddCell(rowObject.transform, "Item", C11ItemPresentation.Name(listing.ItemID), 0.10f, 0.48f,
                 TextAlignmentOptions.MidlineLeft, 13, new Color(.22f, .17f, .10f));
             AddCell(rowObject.transform, "Quantity", listing.Quantity.ToString(CultureInfo.InvariantCulture), 0.49f, 0.61f,
@@ -295,12 +362,16 @@ namespace C02
 
         private void SelectListing(BazaarListingView listing, UnityEngine.UI.Button button)
         {
+            if (writeRequest != WriteRequest.None) return;
             if (selectedListingButton != null)
             {
                 var previous = selectedListingButton.GetComponent<UnityEngine.UI.Image>();
                 if (previous != null) previous.color = new Color(.97f, .93f, .82f);
             }
             selectedListingButton = button;
+            selectedListing = listing;
+            buyConfirmation = false;
+            cancelConfirmation = false;
             button.GetComponent<UnityEngine.UI.Image>().color = new Color(.82f, .77f, .62f);
             selectedDetailText.text = C11ItemPresentation.Name(listing.ItemID) + "  ·  " + ListingStatusName(listing.Status) +
                 "\nQuantity " + listing.Quantity.ToString(CultureInfo.InvariantCulture) +
@@ -308,6 +379,183 @@ namespace C02
                 "\nListing #" + listing.ListingID.ToString(CultureInfo.InvariantCulture) +
                 "  ·  Seller #" + listing.SellerCharacterID.ToString(CultureInfo.InvariantCulture) +
                 "  ·  Registered " + listing.RegisteredAt.ToString(CultureInfo.InvariantCulture);
+            if (claimOutcomes.TryGetValue(listing.ListingID, out byte outcome)) selectedDetailText.text += outcome == 1 ? "\nProceeds collected." : "\nNo pending proceeds were found.";
+            else if (unresolvedClaims.Contains(listing.ListingID)) selectedDetailText.text += "\nCollection result unknown. Reconnect to check.";
+            if (buyOutcomes.TryGetValue(listing.ListingID, out byte buyOutcome))
+                selectedDetailText.text += buyOutcome == 1 ? "\nPurchased. Use Receive purchases, then check your bag." : "\nPurchase result unknown. Reconnect to check.";
+            if (cancelOutcomes.TryGetValue(listing.ListingID, out byte cancelOutcome))
+                selectedDetailText.text += cancelOutcome == 1 ? "\nSale cancelled. Receive items and check your bag." : "\nCancellation result unknown. Refresh my listings and receive items.";
+            UpdateControls();
+        }
+
+        private void CancelSelectedListing()
+        {
+            if (!myListings || !IsOpen || !WorldAvailable || model == null || loginScreen.Model != model ||
+                requestPending || selectedListing.ListingID == 0 || selectedListing.Status != 0 ||
+                cancelOutcomes.ContainsKey(selectedListing.ListingID)) return;
+            if (!cancelConfirmation)
+            {
+                cancelConfirmation = true;
+                selectedDetailText.text = "Cancel sale of " + C11ItemPresentation.Name(selectedListing.ItemID) + " × " +
+                    selectedListing.Quantity.ToString(CultureInfo.InvariantCulture) + "?\nThe listing fee is not refunded.\nCancellation and item return are separate.\nSelect CONFIRM CANCELLATION to continue.";
+                statusText.text = "Confirm cancellation of your selected sale.";
+                UpdateControls();
+                return;
+            }
+            cancelConfirmation = false;
+            cancelOutcomes[selectedListing.ListingID] = 5;
+            requestPending = true;
+            writeRequest = WriteRequest.CancelListing;
+            requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+            statusText.text = "Cancelling sale…";
+            UpdateControls();
+            try { model.RequestBazaarCancelListing(selectedListing.ListingID); }
+            catch (Exception)
+            {
+                CancelPending();
+                statusText.text = "Cancellation result unknown. Refresh my listings and receive items; no automatic retry.";
+                UpdateControls();
+            }
+        }
+
+        private void CancelListingReceived(ulong listingID, byte status)
+        {
+            if (writeRequest != WriteRequest.CancelListing || !requestPending || listingID != selectedListing.ListingID ||
+                model == null || loginScreen.Model != model || !WorldAvailable || !IsOpen) return;
+            requestPending = false;
+            writeRequest = WriteRequest.None;
+            if (status == 0) cancelOutcomes.Remove(listingID);
+            else cancelOutcomes[listingID] = status == 1 ? (byte)1 : (byte)5;
+            // The existing server can attempt return delivery before replying, even if the result is unknown.
+            if (status != 0 && inventoryScreen != null)
+            {
+                if (status != 1) inventoryScreen.RequireFreshInventoryOnOpen();
+                inventoryScreen.RefreshAfterDelivery();
+            }
+            statusText.text = status == 1 ? "Sale cancelled. Receive items, then check your bag. The listing fee is not refunded."
+                : status == 0 ? "Sale could not be cancelled. Refresh my listings to check its current state."
+                : "Cancellation result unknown. Refresh my listings and receive items; no automatic retry.";
+            selectedDetailText.text = statusText.text;
+            UpdateControls();
+        }
+
+        private void BuySelectedListing()
+        {
+            if (myListings || !IsOpen || !WorldAvailable || model == null || loginScreen.Model != model ||
+                requestPending || selectedListing.ListingID == 0 || selectedListing.Status != 0 ||
+                buyOutcomes.ContainsKey(selectedListing.ListingID)) return;
+            if (!buyConfirmation)
+            {
+                buyConfirmation = true;
+                selectedDetailText.text = "Buy " + C11ItemPresentation.Name(selectedListing.ItemID) + " × " +
+                    selectedListing.Quantity.ToString(CultureInfo.InvariantCulture) + "?\nPrice " +
+                    selectedListing.Price.ToString(CultureInfo.InvariantCulture) + " diamonds.\nPurchase and item receipt are separate.\nSelect CONFIRM PURCHASE to continue.";
+                statusText.text = "Confirm the selected price before buying.";
+                UpdateControls();
+                return;
+            }
+            buyConfirmation = false;
+            buyOutcomes[selectedListing.ListingID] = 5; // A sent transaction can outlive its UI request.
+            requestPending = true;
+            writeRequest = WriteRequest.Buy;
+            requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+            statusText.text = "Purchasing…";
+            UpdateControls();
+            try { model.RequestBazaarBuy(selectedListing.ListingID); }
+            catch (Exception)
+            {
+                CancelPending();
+                statusText.text = "Purchase result unknown. Reconnect to check; no automatic retry.";
+                UpdateControls();
+            }
+        }
+
+        private void BuyReceived(ulong listingID, byte status, uint itemID, uint quantity, ulong amount)
+        {
+            if (writeRequest != WriteRequest.Buy || !requestPending || listingID != selectedListing.ListingID ||
+                model == null || loginScreen.Model != model || !WorldAvailable || !IsOpen) return;
+            requestPending = false;
+            writeRequest = WriteRequest.None;
+            if (status == 1 || status == 5) buyOutcomes[listingID] = status;
+            else buyOutcomes.Remove(listingID);
+            statusText.text = status == 1 ? "Purchased " + quantity.ToString(CultureInfo.InvariantCulture) + " × " +
+                    C11ItemPresentation.Name(itemID) + " for " + amount.ToString(CultureInfo.InvariantCulture) +
+                    " diamonds. Select Receive purchases, then check your bag."
+                : status == 0 ? "This listing is no longer available. No purchase was made."
+                : status == 4 ? "Not enough diamonds. No purchase was made."
+                : status == 3 ? "Purchase failed. No purchase was made; try again later."
+                : "Purchase result unknown. Reconnect to check; no automatic retry.";
+            UpdateControls();
+        }
+
+        private void CheckOutbox()
+        {
+            if (!IsOpen || !WorldAvailable || model == null || loginScreen.Model != model || requestPending) return;
+            buyConfirmation = false;
+            cancelConfirmation = false;
+            requestPending = true;
+            writeRequest = WriteRequest.CheckOutbox;
+            requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+            selectedDetailText.text = "Receiving pending purchases and returned items. Open your bag after receiving to check its contents.";
+            statusText.text = "Receiving pending items…";
+            UpdateControls();
+            try { model.RequestBazaarCheckOutbox(); }
+            catch (Exception)
+            {
+                CancelPending();
+                statusText.text = "Receipt result incomplete; items may have arrived. Check your bag, then retry manually.";
+                UpdateControls();
+            }
+        }
+
+        private void CheckOutboxReceived(byte status, uint delivered, uint duplicated, uint blocked)
+        {
+            if (writeRequest != WriteRequest.CheckOutbox || !requestPending || model == null ||
+                loginScreen.Model != model || !WorldAvailable || !IsOpen) return;
+            requestPending = false;
+            writeRequest = WriteRequest.None;
+            if (inventoryScreen != null) inventoryScreen.RefreshAfterDelivery();
+            statusText.text = status == 1 ? "Received " + delivered.ToString(CultureInfo.InvariantCulture) +
+                " · already present " + duplicated.ToString(CultureInfo.InvariantCulture) + " · pending " +
+                blocked.ToString(CultureInfo.InvariantCulture) + ". Check your bag."
+                : "Receipt result incomplete; items may have arrived. Check your bag, then retry manually.";
+            UpdateControls();
+        }
+
+        private void ClaimSelectedListing()
+        {
+            if (!myListings || !IsOpen || !WorldAvailable || model == null || loginScreen.Model != model ||
+                requestPending || selectedListing.ListingID == 0 || selectedListing.Status != 1 ||
+                claimOutcomes.ContainsKey(selectedListing.ListingID) || unresolvedClaims.Contains(selectedListing.ListingID)) return;
+            requestPending = true;
+            writeRequest = WriteRequest.Claim;
+            unresolvedClaims.Add(selectedListing.ListingID);
+            requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+            statusText.text = "Collecting sale proceeds…";
+            UpdateControls();
+            try { model.RequestBazaarClaim(selectedListing.ListingID); }
+            catch (Exception)
+            {
+                CancelPending();
+                statusText.text = "Collection result unknown. Reconnect to check; no automatic retry.";
+                UpdateControls();
+            }
+        }
+
+        private void ClaimReceived(ulong listingID, byte status, ulong amount)
+        {
+            if (writeRequest != WriteRequest.Claim || !requestPending || listingID != selectedListing.ListingID || model == null ||
+                loginScreen.Model != model || !WorldAvailable || !IsOpen) return;
+            requestPending = false;
+            writeRequest = WriteRequest.None;
+            if (status != 0) unresolvedClaims.Remove(listingID);
+            if (status == 1 || status == 4) claimOutcomes[listingID] = status;
+            statusText.text = status == 1 ? "Collected " + amount.ToString(CultureInfo.InvariantCulture) + " diamonds."
+                : status == 4 ? "Already collected or no pending proceeds were found."
+                : status == 2 ? "No sold listing owned by you was found."
+                : status == 3 ? "Collection failed. No proceeds were paid; try again later."
+                : "Collection result unknown. Reconnect to check; no automatic retry.";
+            UpdateControls();
         }
 
         private static TMP_Text AddCell(Transform parent, string name, string value, float left, float right,
@@ -333,14 +581,22 @@ namespace C02
 
         private void CancelPending()
         {
+            buyConfirmation = false;
+            cancelConfirmation = false;
             if (!requestPending) return;
+            if (writeRequest == WriteRequest.CancelListing && inventoryScreen != null)
+                inventoryScreen.RequireFreshInventoryOnOpen();
             requestPending = false;
+            writeRequest = WriteRequest.None;
             if (model != null) model.CancelBazaar();
         }
 
         private void ClearRows()
         {
             selectedListingButton = null;
+            selectedListing = default;
+            buyConfirmation = false;
+            cancelConfirmation = false;
             if (listingRows == null) return;
             for (int i = listingRows.childCount - 1; i >= 0; i--)
             {
@@ -351,7 +607,9 @@ namespace C02
             var scroll = listingRows.GetComponentInParent<ScrollRect>();
             if (scroll != null) scroll.verticalNormalizedPosition = 1;
             if (emptyStateText != null) emptyStateText.gameObject.SetActive(false);
-            if (selectedDetailText != null) selectedDetailText.text = "Select a listing to see its details.";
+            if (selectedDetailText != null) selectedDetailText.text = myListings
+                ? "Select a trading listing to cancel its sale, or a sold listing to collect proceeds."
+                : "Select a listing to see its details.";
         }
 
         private void ClearResults()
@@ -365,6 +623,43 @@ namespace C02
         {
             bool available = WorldAvailable && model != null && loginScreen != null && loginScreen.Model == model;
             if (marketButton != null) marketButton.interactable = available;
+            if (cancelListingButton != null)
+            {
+                cancelListingButton.gameObject.SetActive(myListings);
+                cancelListingButton.interactable = available && IsOpen && !requestPending && selectedListing.ListingID != 0 &&
+                    selectedListing.Status == 0 && !cancelOutcomes.ContainsKey(selectedListing.ListingID);
+                var label = cancelListingButton.GetComponentInChildren<TMP_Text>(true);
+                if (label != null) label.text = writeRequest == WriteRequest.CancelListing ? "CANCELLING…"
+                    : cancelOutcomes.TryGetValue(selectedListing.ListingID, out byte outcome) ? (outcome == 1 ? "CANCELLED" : "RESULT UNKNOWN")
+                    : cancelConfirmation ? "CONFIRM CANCELLATION" : "CANCEL SALE";
+            }
+            if (buyButton != null)
+            {
+                buyButton.gameObject.SetActive(!myListings);
+                buyButton.interactable = available && IsOpen && !requestPending && selectedListing.ListingID != 0 &&
+                    selectedListing.Status == 0 && !buyOutcomes.ContainsKey(selectedListing.ListingID);
+                var label = buyButton.GetComponentInChildren<TMP_Text>(true);
+                if (label != null) label.text = writeRequest == WriteRequest.Buy ? "PURCHASING…"
+                    : buyOutcomes.TryGetValue(selectedListing.ListingID, out byte outcome) ? (outcome == 1 ? "PURCHASED" : "RESULT UNKNOWN")
+                    : buyConfirmation ? "CONFIRM PURCHASE" : "BUY SELECTED";
+            }
+            if (checkOutboxButton != null)
+            {
+                checkOutboxButton.interactable = available && IsOpen && !requestPending;
+                var label = checkOutboxButton.GetComponentInChildren<TMP_Text>(true);
+                if (label != null) label.text = writeRequest == WriteRequest.CheckOutbox ? "RECEIVING…" : "RECEIVE ITEMS";
+            }
+            if (claimButton != null)
+            {
+                claimButton.gameObject.SetActive(myListings);
+                claimButton.interactable = available && IsOpen && !requestPending && selectedListing.ListingID != 0 &&
+                    selectedListing.Status == 1 && !claimOutcomes.ContainsKey(selectedListing.ListingID) &&
+                    !unresolvedClaims.Contains(selectedListing.ListingID);
+                var label = claimButton.GetComponentInChildren<TMP_Text>(true);
+                if (label != null) label.text = writeRequest == WriteRequest.Claim ? "COLLECTING…"
+                    : claimOutcomes.TryGetValue(selectedListing.ListingID, out byte outcome) ? (outcome == 1 ? "COLLECTED" : "NO PROCEEDS")
+                    : unresolvedClaims.Contains(selectedListing.ListingID) ? "RESULT UNKNOWN" : "COLLECT PROCEEDS";
+            }
             if (searchButton != null)
             {
                 searchButton.interactable = available && bazaarPanel.activeSelf && !requestPending;
@@ -388,13 +683,13 @@ namespace C02
             }
             if (searchListingsButton != null)
             {
-                searchListingsButton.interactable = available && bazaarPanel.activeSelf;
+                searchListingsButton.interactable = available && bazaarPanel.activeSelf && writeRequest == WriteRequest.None;
                 var label = searchListingsButton.GetComponentInChildren<TMP_Text>(true);
                 if (label != null) label.text = (myListings ? string.Empty : "> ") + "SALES";
             }
             if (myListingsButton != null)
             {
-                myListingsButton.interactable = available && bazaarPanel.activeSelf;
+                myListingsButton.interactable = available && bazaarPanel.activeSelf && writeRequest == WriteRequest.None;
                 var label = myListingsButton.GetComponentInChildren<TMP_Text>(true);
                 if (label != null) label.text = (myListings ? "> " : string.Empty) + "MY LISTINGS";
             }
@@ -432,7 +727,18 @@ namespace C02
             if (previousPageButton != null) previousPageButton.onClick.RemoveListener(PreviousPage);
             if (nextPageButton != null) nextPageButton.onClick.RemoveListener(NextPage);
             if (closeButton != null) closeButton.onClick.RemoveListener(ClosePanel);
-            if (model != null) model.OnBazaarReceived -= BazaarReceived;
+            if (claimButton != null) claimButton.onClick.RemoveListener(ClaimSelectedListing);
+            if (buyButton != null) buyButton.onClick.RemoveListener(BuySelectedListing);
+            if (cancelListingButton != null) cancelListingButton.onClick.RemoveListener(CancelSelectedListing);
+            if (checkOutboxButton != null) checkOutboxButton.onClick.RemoveListener(CheckOutbox);
+            if (model != null)
+            {
+                model.OnBazaarReceived -= BazaarReceived;
+                model.OnBazaarClaimReceived -= ClaimReceived;
+                model.OnBazaarBuyReceived -= BuyReceived;
+                model.OnBazaarCancelListingReceived -= CancelListingReceived;
+                model.OnBazaarCheckOutboxReceived -= CheckOutboxReceived;
+            }
             CancelPending();
             if (listingRows != null && statusText != null && pageText != null) ClearResults();
             if (bazaarPanel != null) bazaarPanel.SetActive(false);

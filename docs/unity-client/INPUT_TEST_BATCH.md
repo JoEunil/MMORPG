@@ -1,3 +1,34 @@
+## 최신 — 통합 입력 배치 수행
+
+한 로그인에서 실제 UI 입장·방향키 이동/해제·ZXC 서버 시전·I/B·채팅 I/B 가드·HP0 차단·정상 퇴장을 확인했다. 가방 첫 cold실패 후 다시 열어 빈 목록 성공, 시장30개 그림 확인. CLASSIC_INPUT_RESULTS.txt 참조. 4존 실제 왕복·새112배치 실서버·생존 중 채팅 이동/스킬 차단·비어있지 않은 가방은 미실행으로 유지하며 전체 접속을 다시 반복하지 않는다. 다음 관련 작업 변경의 직접 영향만 모은다.
+
+## 최신 — 통합 배치 미완료
+
+통합서버22424 정상기동/후속셀밀도아직미반영. 자동앞묶음3+C17상태1 PASS. Unity전용포인터빈로그인실제UI PASS,ID입력은AppFocus=false로실패/값0/로그인제출0/Play정상종료. 기존보안text helper 로그classic01 보존,OS입력0. 후속최종동결후한번로그인→선택→서버진입→방향키해제/ZXC→I/B→채팅포커스가드→정상퇴장으로실제배치합쳐검증. 예전click-to-walk fixture/내부handler호출로UI통과대체금지.
+
+## 최신 추가 — 이동 속도·AI·I/B 실입력 대기
+
+속도후보는서버/클라이언트5unit/s로정렬했고native2+Unity1PASS. 실제사냥에서는새AI통합서버의배회/멈춤/추적/해제/귀환과조작을한로그인으로확인한다. I가방/B거래소열기닫기·채팅입력중미발동도같은배치에추가. 현재캡처가다른게임/브라우저중첩을보여실입력0. 기존구매서버23696유지/새후보기동0. ARTSOURCE의포션PNG는아직패널미연결이므로아이템그림실표시통과아님.
+
+## 최신 미실행 — 방향키·ZXC·보간/예측
+
+자동2시나리오최종PASS/실입력아직미실행. 다른게임창중첩으로클릭·키입력0. 기존C04click-to-walk/moveTarget/화면=서버즉시일치배치는새입력과맞지않아그대로사용금지. 한로그인에서실방향키이동→해제/정지→ZXC→채팅/패널입력차단→퇴장으로합쳐실행한다. 화면예측≤1unit·서버좌표원점·수렴/재진입초기화·원격표시를관찰하고가능하면짧은영상1개만남긴다. 실행전에Assets동결/Editor조작자단독. 사용자의검증재개권한유지,새인간승인을요구하지않는다.
+
+## 판매 취소·반환 최소 배치 완료
+
+Unity2최종PASS(가방fresh첫PASS/취소UI malformed flags제품결함수정후실패1만재시험),native1최종PASS(기존큐거절fixture전제복원후해당1재시험). 기존배송중복회귀0. 실제5011한native로그인→시장검색30→MyList0/cancelvisible disabled→PNG1→Close/Disconnect modelnull/Playstop. 실제취소/반송/영속성미검증/seed0/서버23696유지/새서버기동0. MARKET_CANCEL_RESULTS및Captures/market-cancel-*참조. 새영향없으면추가반복금지.
+
+## 구매·구매품 수령 배치 완료
+
+Unity직접3최종PASS/native직접2PASS。실제5011한로그인→30매물→listing54 qty1/50가격확인→재화부족status4/spent0→명시수령status1/count0→cold첫가방status0뒤열기freshNoitems→정상Disconnect/modelnull/Playstop. 직접DBseed0/지갑·수령함전후동일. 실제성공거래·차감·배송은미검증. 실패수정후실패한UI1개만재시험/기존게임회귀반복0. MARKET_PURCHASE_RESULTS참조,새영향없으면추가반복금지.
+
+## 거래소 판매대금 수령 연결 — 최소 배치 종료
+
+MarketClaim Unity2/2, 서버 독립2경계 최종PASS. 서버 TCP fixture의 실제종료 전제조건을 보완하고 실패항목1개만 재실행했으며 기대응답수는 유지했다. 5011 native 로그인→필드→거래소검색30→내매물0 성공/Collect비활성→실캡처1→Close/Disconnect modelnull→Playstop PASS. 실제매물없어 실DB지급성공 미검증, 직접DB쓰기·실claim송신0. 테스트관찰자의 비직렬화필드 접근NRE는 제품과분리해수정, 같은로그인에서관찰만계속했다. 관련로그와이력보존. MARKET_CLAIM_RESULTS.md/Captures/market-claim-*참조. 새영향없으면추가반복시험금지.
+## 기존 콘텐츠 전체 편집 검증 종료
+
+CatalogExport2/2+이전C++5스킬/3몬스터전필드비교native1회 PASS. 기존asset값/GUID보존과실제Inspector확장항목표시확인. 기본수치와실행서버가그대로여서사냥/스폰/거래소게임입력·전체회귀를반복하지않는다. CONTENT_CATALOG_RESULTS.md 참조.
+
 ## 몬스터 배치 편집 검증 종료
 
 SpawnExport2/2+실제InitializeMonster native1회+Inspector실입력8→9→8복원 한 흐름 PASS. 기본수치동일·실행서버변경없어 추가게임입력/기존사냥반복0. 신규변경/실패근거없이동일검증반복금지. SPAWN_AUTHORING_RESULTS.md 참조.

@@ -39,6 +39,8 @@ namespace Core {
         MSG_BAZAAR_CLAIM_RES = 29,
         MSG_BAZAAR_CHECK_OUTBOX = 30,
         MSG_BAZAAR_CHECK_OUTBOX_RES = 31,
+        MSG_BAZAAR_CANCEL_LISTING = 34,
+        MSG_BAZAAR_CANCEL_LISTING_RES = 35,
 
         // 쓰기는 큐 한 경로로 모아 profile_id별 순서를 보장한다.
         MSG_PROFILE_RENAME = 32,
@@ -231,7 +233,7 @@ namespace Core {
     };
 
     struct MsgBazaarRegisterResBody {
-        uint8_t  resStatus; // 0: 실패, 1: 성공, 2: 아이템 수량 부족, 3: 골드 부족, 4: 유효하지 않은 아이템
+        uint8_t  resStatus; // 0: 실패(보상 완료), 1: 성공, 2: 아이템 수량 부족, 3: 골드 부족, 4: 유효하지 않은 아이템, 5: 결과/보상 미확인(자동 재시도 금지)
     };
 
     struct MsgBazaarCancelBody {
@@ -246,36 +248,58 @@ namespace Core {
     struct MsgBazaarBuyBody {
         uint64_t characterID;
         uint64_t listingID;
+        uint32_t requestID;
     };
 
     struct MsgBazaarBuyResBody {
-		uint8_t  resStatus; // 0: 실패, 1: 성공, 2: listingID 조회 실패, 3: 프로시저 실패, 4: 다이아 부족
+        uint8_t resStatus; // 0: unavailable, 1: bought, 3: SQL rollback, 4: insufficient, 5: outcome unknown
         uint64_t listingID;
         uint32_t itemID;
-        uint16_t quantity;
-        uint32_t diamondSpent;
+        uint32_t quantity;
+        uint64_t diamondSpent;
+        uint32_t requestID;
+        uint64_t characterID;
     };
 
     struct MsgBazaarClaimBody {
         uint64_t characterID;
         uint64_t listingID;
+        uint32_t requestID;
     };
 
     struct MsgBazaarClaimResBody {
-        uint8_t  resStatus;
+        uint8_t resStatus;
         uint64_t listingID;
-        uint32_t diamondClaimed;
+        uint64_t diamondClaimed;
+        uint32_t requestID;
+        uint64_t characterID;
     };
 
     struct MsgBazaarCheckOutboxBody {
         uint64_t characterID;
+        uint32_t requestID;
     };
 
     struct MsgBazaarCheckOutboxResBody {
-        uint8_t resStatus;       // 0: 실패(캐시 미적재 등, 재시도 필요), 1: 성공
-        uint8_t deliveredCount;  // 이번에 새로 지급된 event 수
-        uint8_t duplicatedCount; // dedup으로 스킵된 event 수 (이미 지급됨)
-        uint8_t blockedCount;    // 인벤토리/ring 가득으로 보류된 event 수 (READY 유지)
+        uint8_t resStatus; // A cache pass, never a durable acknowledgement; failure may retain a prefix.
+        uint32_t deliveredCount;
+        uint32_t duplicatedCount;
+        uint32_t blockedCount;
+        uint32_t requestID;
+        uint64_t characterID;
+    };
+
+    struct MsgBazaarCancelListingBody {
+        uint64_t characterID;
+        uint64_t listingID;
+        uint32_t requestID;
+    };
+
+    struct MsgBazaarCancelListingResBody {
+        uint8_t resStatus; // 1 confirms listing cancellation; item return delivery remains separate.
+        uint32_t requestID;
+        uint64_t listingID;
+        uint64_t characterID;
     };
 
     struct MsgProfileRenameBody {

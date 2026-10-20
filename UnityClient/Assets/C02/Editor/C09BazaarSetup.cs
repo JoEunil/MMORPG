@@ -121,16 +121,30 @@ public static class C09BazaarSetup
         detail.alignment = TextAlignmentOptions.MidlineLeft;
         Stretch(detail.rectTransform, 8);
 
-        var status = Text("BazaarStatus", paper.transform, string.Empty, 12, new Color(.30f, .22f, .12f));
+        var buy = Button("BazaarBuyButton", paper.transform, "BUY SELECTED", new Color(.39f, .27f, .14f, 1));
+        AnchorBottomLeft(buy.GetComponent<RectTransform>(), 14, 226, 32);
+        buy.GetComponent<RectTransform>().anchoredPosition = new Vector2(14, 94);
+        var cancelListing = Button("BazaarCancelListingButton", paper.transform, "CANCEL SALE", new Color(.39f, .27f, .14f, 1));
+        AnchorBottomLeft(cancelListing.GetComponent<RectTransform>(), 14, 226, 32);
+        cancelListing.GetComponent<RectTransform>().anchoredPosition = new Vector2(14, 94);
+        cancelListing.gameObject.SetActive(false);
+        var checkOutbox = Button("BazaarCheckOutboxButton", paper.transform, "RECEIVE ITEMS", new Color(.24f, .36f, .22f, 1));
+        AnchorBottomRight(checkOutbox.GetComponent<RectTransform>(), 14, 226, 32);
+        checkOutbox.GetComponent<RectTransform>().anchoredPosition = new Vector2(-14, 94);
+
+        var status = Text("BazaarStatus", paper.transform, string.Empty, 11, new Color(.30f, .22f, .12f));
         status.alignment = TextAlignmentOptions.MidlineLeft;
         status.rectTransform.anchorMin = new Vector2(0, 0);
         status.rectTransform.anchorMax = new Vector2(1, 0);
         status.rectTransform.pivot = new Vector2(.5f, 0);
-        status.rectTransform.anchoredPosition = new Vector2(0, 54);
-        status.rectTransform.sizeDelta = new Vector2(-30, 28);
+        status.rectTransform.anchoredPosition = new Vector2(0, 50);
+        status.rectTransform.sizeDelta = new Vector2(-30, 40);
 
         var search = Button("BazaarSearchButton", paper.transform, "SEARCH / REFRESH", new Color(.39f, .27f, .14f, 1));
         AnchorBottomLeft(search.GetComponent<RectTransform>(), 14, 128, 34);
+        var claim = Button("BazaarClaimButton", paper.transform, "COLLECT PROCEEDS", new Color(.24f, .36f, .22f, 1));
+        AnchorBottomRight(claim.GetComponent<RectTransform>(), 14, 190, 34);
+        claim.gameObject.SetActive(false);
         var page = Text("BazaarPage", paper.transform, "Page 1", 12, new Color(.27f, .20f, .12f));
         page.alignment = TextAlignmentOptions.Center;
         page.rectTransform.anchorMin = new Vector2(1, 0);
@@ -153,6 +167,10 @@ public static class C09BazaarSetup
         serialized.FindProperty("itemTypeButtons").arraySize = typeButtons.Length;
         for (int i = 0; i < typeButtons.Length; i++) serialized.FindProperty("itemTypeButtons").GetArrayElementAtIndex(i).objectReferenceValue = typeButtons[i];
         serialized.FindProperty("searchButton").objectReferenceValue = search;
+        serialized.FindProperty("claimButton").objectReferenceValue = claim;
+        serialized.FindProperty("buyButton").objectReferenceValue = buy;
+        serialized.FindProperty("cancelListingButton").objectReferenceValue = cancelListing;
+        serialized.FindProperty("checkOutboxButton").objectReferenceValue = checkOutbox;
         serialized.FindProperty("previousPageButton").objectReferenceValue = previous;
         serialized.FindProperty("nextPageButton").objectReferenceValue = next;
         serialized.FindProperty("closeButton").objectReferenceValue = close;

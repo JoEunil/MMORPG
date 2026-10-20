@@ -13,7 +13,7 @@ namespace C02.Tests
     {
         [Test]
         [Category("SpawnExport")]
-        public void DefaultCandidateExportsDeterministicUtf8LayoutConstants()
+        public void LegacyAndStarterLayoutsExportWithSafePerCellValidation()
         {
             var content = ScriptableObject.CreateInstance<C15MonsterSpawns>();
             string directory = Path.Combine(Path.GetTempPath(), "C15SpawnExport-" + Guid.NewGuid().ToString("N"));
@@ -28,12 +28,40 @@ namespace C02.Tests
                     "inline constexpr int REGULAR_MONSTERS_PER_CELL = 8;\n" +
                     "inline constexpr int STRONG_MONSTERS_PER_CELL = 2;\n" +
                     "inline constexpr int MONSTER_SPAWN_EDGE_INSET = 1;\n" +
+                    "inline constexpr int REGULAR_MONSTERS_BY_CELL[25] = {8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8};\n" +
+                    "inline constexpr int STRONG_MONSTERS_BY_CELL[25] = {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};\n" +
                     "}\n";
                 Assert.That(first, Is.EqualTo(new UTF8Encoding(false).GetBytes(expected)));
                 CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("ar-SA");
                 Export(content, directory);
                 Assert.That(File.ReadAllBytes(Path.Combine(directory, "MonsterSpawns.inc")), Is.EqualTo(first));
                 Assert.That(Directory.GetFiles(directory).Length, Is.EqualTo(1));
+
+                content.regularByCell = new[] { 0,0,2,3,4, 0,2,3,4,5, 2,3,0,5,6, 3,4,5,6,7, 4,5,6,7,8 };
+                content.strongByCell = new[] { 0,0,0,0,1, 0,0,0,1,1, 0,0,0,1,1, 0,1,1,1,2, 1,1,1,2,2 };
+                int total = 1;
+                for (int i = 0; i < 25; i++) total += content.regularByCell[i] + content.strongByCell[i];
+                Assert.That(total, Is.EqualTo(112));
+                Export(content, directory);
+                string output = Path.Combine(directory, "MonsterSpawns.inc");
+                byte[] custom = File.ReadAllBytes(output);
+                Assert.That(Encoding.UTF8.GetString(custom), Does.Contain("{0, 0, 2, 3, 4, 0, 2, 3, 4, 5, 2, 3, 0, 5, 6, 3, 4, 5, 6, 7, 4, 5, 6, 7, 8}"));
+                Action rejectsWithoutWriting = () =>
+                {
+                    var failure = Assert.Throws<TargetInvocationException>(() => Export(content, directory));
+                    Assert.That(failure.InnerException, Is.TypeOf<InvalidOperationException>());
+                    Assert.That(File.ReadAllBytes(output), Is.EqualTo(custom));
+                };
+                var regular = content.regularByCell;
+                content.regularByCell = new int[24]; rejectsWithoutWriting();
+                content.regularByCell = regular;
+                regular[0] = -1; rejectsWithoutWriting();
+                regular[0] = 1000; rejectsWithoutWriting();
+                regular[0] = 0; regular[12] = 1; rejectsWithoutWriting(); regular[12] = 0;
+                content.strongByCell = Array.Empty<int>();
+                Assert.DoesNotThrow(() => Export(content, directory), "Each empty array independently preserves legacy counts.");
+                Assert.That(File.ReadAllText(output), Does.Contain("STRONG_MONSTERS_BY_CELL[25] = {2, 2"));
+
             }
             finally
             {

@@ -67,7 +67,26 @@ namespace C02.Tests
                 Assert.That(fixture.Cards[0].transform.Find("ItemQuantity").GetComponent<TMP_Text>().text, Is.EqualTo("Qty 4"));
                 Assert.That(fixture.Cards[1].transform.Find("ItemName").GetComponent<TMP_Text>().text, Is.EqualTo("Leather Armor"));
                 fixture.Cards[0].onClick.Invoke();
-                Assert.That(fixture.DetailBadge.text, Is.EqualTo("HP"));
+                Assert.That(fixture.DetailBadge.text, Is.Empty);
+                Assert.That(C11ItemPresentation.Icon(1), Is.Not.Null, "The authored potion must import as a Sprite.");
+                Assert.That(fixture.Cards[0].GetComponentsInChildren<Image>(true),
+                    Has.Some.Matches<Image>(image => image.sprite == C11ItemPresentation.Icon(1)));
+                var detailIcon = fixture.DetailBadge.GetComponentInChildren<Image>(true);
+                Assert.That(detailIcon, Is.Not.Null);
+                Assert.That(detailIcon.gameObject, Is.Not.SameAs(fixture.DetailBadge.gameObject));
+                Assert.That(detailIcon.sprite, Is.SameAs(C11ItemPresentation.Icon(1)));
+                Assert.That(detailIcon.enabled, Is.True);
+                var distinctIcons = new System.Collections.Generic.HashSet<Sprite>();
+                for (uint itemID = 1; itemID <= 5; itemID++)
+                {
+                    var imported = C11ItemPresentation.Icon(itemID);
+                    Assert.That(imported, Is.Not.Null, "Each supported server item needs its own imported Sprite.");
+                    Assert.That(imported.texture.width, Is.LessThanOrEqualTo(256));
+                    distinctIcons.Add(imported);
+                }
+                Assert.That(distinctIcons.Count, Is.EqualTo(5), "Different item types must not reuse one icon.");
+                Assert.That(C11ItemPresentation.Icon(0), Is.Null);
+                Assert.That(C11ItemPresentation.Icon(42), Is.Null, "Unknown IDs must keep their explicit fallback.");
                 Assert.That(fixture.DetailName.text, Is.EqualTo("HP Potion"));
                 Assert.That(fixture.DetailSlot.text, Is.EqualTo("Slot 2"));
 
@@ -123,6 +142,70 @@ namespace C02.Tests
                 Assert.That(fixture.Cards, Is.Empty, "A reply arriving after timeout cannot repopulate the UI.");
                 Assert.That(fixture.Status.text, Does.Contain("Reconnect"));
                 Assert.That(fixture.Refresh.interactable, Is.False);
+            }
+        }
+
+        [Test, Category("MarketCancel")]
+        public void UnknownReturnKeepsManualBagOpensFreshEvenAfterAnEarlierReadCompletes()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.OpenBag();
+                fixture.Receive(true);
+                fixture.Close.onClick.Invoke();
+                fixture.Screen.RequireFreshInventoryOnOpen();
+                fixture.OpenBag();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2));
+                fixture.Close.onClick.Invoke();
+                fixture.Receive(true); // This read can predate the still-running cancellation's return.
+                fixture.OpenBag();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(3), "A pre-return response must not restore the stale-cache shortcut.");
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 2, slot = 0 });
+                Assert.That(fixture.Cards.Length, Is.EqualTo(1));
+                fixture.Cards[0].onClick.Invoke();
+                Assert.That(fixture.DetailName.text, Is.EqualTo("HP Potion"));
+                Assert.That(fixture.DetailQuantity.text, Is.EqualTo("Quantity 2"));
+            }
+        }
+
+        [Test]
+        [Category("MarketPurchase")]
+        public void DeliveryRefreshesCachedInventoryAndWaitsForAnOlderReadBeforeOneFreshRequest()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.OpenBag();
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 3, slot = 0 });
+                Assert.That(fixture.Network.Requests, Is.EqualTo(1));
+                Assert.That(fixture.Cards[0].transform.Find("ItemName").GetComponent<TMP_Text>().text, Is.EqualTo("HP Potion"));
+                fixture.Close.onClick.Invoke();
+
+                fixture.Screen.RefreshAfterDelivery();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2), "Delivery invalidates a previously viewed bag and reads fresh inventory even while closed.");
+                Assert.That(fixture.Cards, Is.Empty, "Old cards cannot remain the delivery result.");
+                fixture.OpenBag();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2), "Opening during the delivery refresh must not issue another uncorrelated inventory read.");
+                fixture.Receive(true, new InventoryItem { itemID = 2, quantity = 7, slot = 0 });
+                Assert.That(fixture.Cards.Length, Is.EqualTo(1));
+                fixture.Cards[0].onClick.Invoke();
+                Assert.That(fixture.DetailName.text, Is.EqualTo("MP Potion"));
+                Assert.That(fixture.DetailQuantity.text, Is.EqualTo("Quantity 7"));
+
+                fixture.Refresh.onClick.Invoke();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(3));
+                fixture.Screen.RefreshAfterDelivery();
+                fixture.Screen.RefreshAfterDelivery();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(3), "Delivery notifications must wait for the older inventory response instead of overlapping reads.");
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 1, slot = 0 });
+                Assert.That(fixture.Network.Requests, Is.EqualTo(4), "Repeated delivery notifications coalesce into exactly one fresh read after the old response.");
+                Assert.That(fixture.Cards, Is.Empty, "The older response must not become the displayed post-delivery inventory.");
+                fixture.Receive(true, new InventoryItem { itemID = 5, quantity = 2, slot = 1 });
+                Assert.That(fixture.Network.Requests, Is.EqualTo(4));
+                Assert.That(fixture.Cards.Length, Is.EqualTo(1));
+                fixture.Cards[0].onClick.Invoke();
+                Assert.That(fixture.DetailName.text, Is.EqualTo("Leather Armor"));
+                Assert.That(fixture.DetailQuantity.text, Is.EqualTo("Quantity 2"));
+                Assert.That(fixture.Refresh.interactable, Is.True);
             }
         }
 
@@ -344,6 +427,9 @@ namespace C02.Tests
         private sealed class FakeNetwork : INetworkService
         {
             public int Requests;
+            public void RequestBazaarBuy(uint requestID, ulong listingID) { }
+            public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
+            public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { }
             public void RequestInventory() => Requests++;

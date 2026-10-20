@@ -24,6 +24,20 @@ namespace C02.Editor
             Selection.activeObject = content;
         }
 
+        [MenuItem("C02/C14/Upgrade Existing Server Content Candidate")]
+        public static void UpgradeExistingCandidate()
+        {
+            var content = AssetDatabase.LoadAssetAtPath<C14ServerContent>(AssetPath);
+            if (content == null) throw new InvalidOperationException("The existing C14 content candidate was not found.");
+            var defaults = ScriptableObject.CreateInstance<C14ServerContent>();
+            if (content.otherSkills == null || content.otherSkills.Length == 0) content.otherSkills = defaults.otherSkills;
+            if (content.otherMonsters == null || content.otherMonsters.Length == 0) content.otherMonsters = defaults.otherMonsters;
+            EditorUtility.SetDirty(content);
+            AssetDatabase.SaveAssets();
+            UnityEngine.Object.DestroyImmediate(defaults);
+            Selection.activeObject = content;
+        }
+
         [MenuItem("C02/C14/Export Validated Server Content")]
         public static void ExportValidated()
         {
@@ -31,45 +45,82 @@ namespace C02.Editor
             ExportValidated(content, Path.Combine(Application.dataPath, "..", "Exports", "ServerData"));
         }
 
-        // Explicit output directory lets the two exporter scenarios use isolated temporary files.
         public static void ExportValidated(C14ServerContent content, string outputDirectory)
         {
             Validate(content);
-            string ring = RingInitializer(content.ring);
-            string monster = MonsterInitializer(content.monster0);
-            C14ExportPair.Write(outputDirectory, "PlayerRing.inc", ring, "Monster0.inc", monster);
+            string skills = SkillsInitializer(content);
+            string monsters = MonstersInitializer(content);
+            C14ExportPair.Write(outputDirectory, "Skills.inc", skills, "Monsters.inc", monsters);
         }
 
         private static void Validate(C14ServerContent content)
         {
             if (content == null || content.ring == null || content.monster0 == null)
-                throw new InvalidOperationException("The Ring and monster 0 candidate data are required.");
-            var ring = content.ring;
-            if (ring.skillID != 1 || ring.flags < 0 || (ring.flags & ~3) != 0)
-                throw new InvalidOperationException("Only skill 1 and the existing crit/AOE flag bits are supported.");
-            if (ring.phases == null || ring.phases.Length != 2 || ring.phases[0] == null || ring.phases[1] == null ||
-                ring.phases[0].action != C14SkillAction.Charging || ring.phases[1].action != C14SkillAction.Hit)
-                throw new InvalidOperationException("Ring requires its two phases in Charging, Hit order.");
-            foreach (var phase in ring.phases)
+                throw new InvalidOperationException("The existing Ring and monster 0 candidate data are required.");
+            var skills = new C14ServerContent.RingSkill[5];
+            skills[1] = content.ring;
+            if (content.otherSkills == null || content.otherSkills.Length != 4)
+                throw new InvalidOperationException("The existing skill IDs 0, 2, 3, and 4 are required exactly once.");
+            foreach (var skill in content.otherSkills)
             {
-                if (!Enum.IsDefined(typeof(C14SkillAction), phase.action) || !Enum.IsDefined(typeof(C14SkillRange), phase.range) ||
+                if (skill == null || skill.skillID < 0 || skill.skillID >= skills.Length || skill.skillID == 1 || skills[skill.skillID] != null)
+                    throw new InvalidOperationException("Skill IDs 0 to 4 must be present exactly once.");
+                skills[skill.skillID] = skill;
+            }
+            for (int id = 0; id < skills.Length; id++)
+            {
+                if (skills[id] == null || skills[id].skillID != id || skills[id].flags < 0 || (skills[id].flags & ~3) != 0)
+                    throw new InvalidOperationException("Skill IDs 0 to 4 and existing crit/AOE flags are required.");
+                ValidateSkill(skills[id]);
+            }
+
+            var monsters = new C14ServerContent.Monster[3];
+            monsters[0] = content.monster0;
+            if (content.otherMonsters == null || content.otherMonsters.Length != 2)
+                throw new InvalidOperationException("The existing monster IDs 1 and 2 are required exactly once.");
+            foreach (var monster in content.otherMonsters)
+            {
+                if (monster == null || monster.id < 0 || monster.id >= monsters.Length || monster.id == 0 || monsters[monster.id] != null)
+                    throw new InvalidOperationException("Monster IDs 0 to 2 must be present exactly once.");
+                monsters[monster.id] = monster;
+            }
+            for (int id = 0; id < monsters.Length; id++)
+            {
+                if (monsters[id] == null || monsters[id].id != id)
+                    throw new InvalidOperationException("Monster IDs 0 to 2 must be present exactly once.");
+                ValidateMonster(monsters[id]);
+            }
+        }
+
+        private static void ValidateSkill(C14ServerContent.RingSkill skill)
+        {
+            int expectedPhases = skill.skillID == 3 ? 4 : skill.skillID == 4 ? 10 : 2;
+            if (skill.phases == null || skill.phases.Length != expectedPhases)
+                throw new InvalidOperationException("Each existing skill must retain its current phase count.");
+            for (int i = 0; i < skill.phases.Length; i++)
+            {
+                var phase = skill.phases[i];
+                C14SkillAction expectedAction = (i & 1) == 0 ? C14SkillAction.Charging : C14SkillAction.Hit;
+                if (phase == null || phase.action != expectedAction || !Enum.IsDefined(typeof(C14SkillRange), phase.range) ||
                     !Finite(phase.range1) || !Finite(phase.range2) || phase.range1 < 0 || phase.range2 < 0)
-                    throw new InvalidOperationException("Ring phase actions and finite range values must match the existing server types.");
+                    throw new InvalidOperationException("Skill phases must keep the existing Charging/Hit order and finite ranges.");
                 if (phase.range == C14SkillRange.None)
                 {
                     if (phase.range1 != 0 || phase.range2 != 0 || phase.action == C14SkillAction.Hit)
-                        throw new InvalidOperationException("An empty range requires zero dimensions and cannot be the Hit phase.");
+                        throw new InvalidOperationException("An empty range requires zero dimensions and cannot be a Hit phase.");
                 }
                 else if (phase.range1 <= 0 ||
                     ((phase.range == C14SkillRange.Rectangle || phase.range == C14SkillRange.Boss1_1 || phase.range == C14SkillRange.Boss1_2) && phase.range2 <= 0))
-                    throw new InvalidOperationException("The selected Ring range requires positive dimensions.");
+                    throw new InvalidOperationException("The selected skill range requires positive dimensions.");
             }
+        }
 
-            var monster = content.monster0;
-            if (monster.id != 0 || monster.maxHp == 0 || monster.maxHp > int.MaxValue || monster.respawnTicks == 0 || !Finite(monster.moveSpeed) || monster.moveSpeed <= 0)
-                throw new InvalidOperationException("Only monster 0 with positive signed-wire HP, nonzero respawn ticks, and finite positive speed is supported.");
+        private static void ValidateMonster(C14ServerContent.Monster monster)
+        {
+            if (monster.maxHp == 0 || monster.maxHp > int.MaxValue || monster.respawnTicks == 0 || !Finite(monster.moveSpeed) || monster.moveSpeed <= 0)
+                throw new InvalidOperationException("Monster HP must fit the signed wire value, respawn ticks must be nonzero, and speed must be finite and positive.");
             if (monster.phases == null || monster.phases.Length < 1 || monster.phases.Length > 8)
-                throw new InvalidOperationException("Monster 0 requires 1 to 8 phases.");
+                throw new InvalidOperationException("Monsters require 1 to 8 phases.");
             float previousThreshold = float.PositiveInfinity;
             uint previousAbsoluteThreshold = uint.MaxValue;
             for (int phaseIndex = 0; phaseIndex < monster.phases.Length; phaseIndex++)
@@ -94,30 +145,43 @@ namespace C02.Editor
             }
         }
 
-        private static string RingInitializer(C14ServerContent.RingSkill ring)
+        private static string SkillsInitializer(C14ServerContent content)
         {
-            var text = new StringBuilder("// Generated by C14ServerContentExport. Do not edit.\nSkillData{\n");
-            text.AppendFormat(CultureInfo.InvariantCulture, "    {0}, {1},\n    {2}, {3},\n    {{\n", ring.skillID, ring.flags, ring.mana, ring.cooldownTicks);
-            foreach (var phase in ring.phases)
-                text.AppendFormat(CultureInfo.InvariantCulture, "        SkillPhase{{ {0}, {1}, {{SkillRangeType::{2}, {3}, {4}}}, {5} }},\n",
-                    phase.waitTicks, (byte)phase.action, phase.range, Float(phase.range1), Float(phase.range2), phase.attack);
-            return text.Append("    }\n},\n").ToString();
+            var skills = new C14ServerContent.RingSkill[5];
+            skills[1] = content.ring;
+            foreach (var skill in content.otherSkills) skills[skill.skillID] = skill;
+            var text = new StringBuilder("// Generated by C14ServerContentExport. Do not edit.\n");
+            foreach (var skill in skills)
+            {
+                text.AppendFormat(CultureInfo.InvariantCulture, "SkillData{{\n    {0}, {1},\n    {2}, {3},\n    {{\n",
+                    skill.skillID, skill.flags, skill.mana, skill.cooldownTicks);
+                foreach (var phase in skill.phases)
+                    text.AppendFormat(CultureInfo.InvariantCulture, "        SkillPhase{{ {0}, {1}, {{SkillRangeType::{2}, {3}, {4}}}, {5} }},\n",
+                        phase.waitTicks, (byte)phase.action, phase.range, Float(phase.range1), Float(phase.range2), phase.attack);
+                text.Append("    }\n},\n");
+            }
+            return text.ToString();
         }
 
-        private static string MonsterInitializer(C14ServerContent.Monster monster)
+        private static string MonstersInitializer(C14ServerContent content)
         {
-            var text = new StringBuilder("// Generated by C14ServerContentExport. Do not edit.\n{\n");
-            text.AppendFormat(CultureInfo.InvariantCulture, "    {0},\n    {1},\n    {2},\n    {3},\n    {4},\n    {{\n",
-                monster.id, monster.maxHp, monster.attack, monster.respawnTicks, Float(monster.moveSpeed));
-            for (int phaseIndex = 0; phaseIndex < monster.phases.Length; phaseIndex++)
+            var monsters = new C14ServerContent.Monster[3];
+            monsters[0] = content.monster0;
+            foreach (var monster in content.otherMonsters) monsters[monster.id] = monster;
+            var text = new StringBuilder("// Generated by C14ServerContentExport. Do not edit.\n");
+            foreach (var monster in monsters)
             {
-                var phase = monster.phases[phaseIndex];
-                text.AppendFormat(CultureInfo.InvariantCulture, "        {{ {0}, 0, {1},\n            {{\n", Float(phase.hpThreshold), phase.steps.Length);
-                foreach (var step in phase.steps)
-                    text.AppendFormat(CultureInfo.InvariantCulture, "                {{ {0}, {1} }},\n", step.skillID, step.delayTicks);
-                text.Append("            }\n        },\n");
+                text.AppendFormat(CultureInfo.InvariantCulture, "{{\n    {0},\n    {1},\n    {2},\n    {3},\n    {4},\n    {{\n",
+                    monster.id, monster.maxHp, monster.attack, monster.respawnTicks, Float(monster.moveSpeed));
+                foreach (var phase in monster.phases)
+                {
+                    text.AppendFormat(CultureInfo.InvariantCulture, "        {{ {0}, 0, {1},\n            {{\n", Float(phase.hpThreshold), phase.steps.Length);
+                    foreach (var step in phase.steps)
+                        text.AppendFormat(CultureInfo.InvariantCulture, "                {{ {0}, {1} }},\n", step.skillID, step.delayTicks);
+                    text.Append("            }\n        },\n");
+                }
+                text.AppendFormat(CultureInfo.InvariantCulture, "    }},\n    {{{0}}}\n}},\n", monster.rewardExp);
             }
-            text.AppendFormat(CultureInfo.InvariantCulture, "    }},\n    {{{0}}}\n}},\n", monster.rewardExp);
             return text.ToString();
         }
 
