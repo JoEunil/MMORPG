@@ -1,8 +1,8 @@
 param(
     [Parameter(Mandatory=$true)][string]$MessageFile,
     [ValidateSet('C0C9VFZMV43','C0CA7BSKN3B')][string]$ChannelId = 'C0C9VFZMV43',
-    [string]$ThreadTs,
-    [string]$UpdateTs
+    [ValidatePattern('^\d+\.\d{6}$')][string]$ThreadTs,
+    [ValidatePattern('^\d+\.\d{6}$')][string]$UpdateTs
 )
 $ErrorActionPreference = 'Stop'
 $taskBstr = [IntPtr]::Zero
@@ -26,6 +26,13 @@ try {
         throw 'Expected Unity Coordinator bot identity was not verified.'
     }
     if ($ChannelId -eq 'C0CA7BSKN3B' -and ($ThreadTs -or $UpdateTs)) { throw 'Completion channel accepts new summaries only.' }
+    if ($ThreadTs) {
+        $taskStage = 'verify-thread'
+        $taskThread = Invoke-RestMethod -Method Get -Uri ('https://slack.com/api/conversations.replies?channel=' + $ChannelId + '&ts=' + $ThreadTs + '&limit=1') -Headers $taskHeaders -TimeoutSec 20
+        if (!$taskThread.ok -or !$taskThread.messages -or $taskThread.messages[0].ts -ne $ThreadTs) {
+            throw 'The exact Slack parent timestamp was not found; pass it as a quoted string.'
+        }
+    }
     $taskBody = @{ channel=$ChannelId; text=$taskText; unfurl_links=$false; unfurl_media=$false }
     if ($ThreadTs) { $taskBody.thread_ts = $ThreadTs }
     $taskMethod = 'chat.postMessage'
@@ -36,6 +43,9 @@ try {
     if (!$taskPosted.ok) {
         if ([string]$taskPosted.error -match '^[a-z_]+$') { $taskSafeError = [string]$taskPosted.error }
         throw 'Slack post failed; inspect before retrying an unknown outcome.'
+    }
+    if ($ThreadTs -and $taskPosted.message.thread_ts -ne $ThreadTs) {
+        throw 'Slack returned a different thread; inspect the posted message before retrying.'
     }
     [pscustomobject]@{ SenderUserID=$taskAuth.user_id; Channel=$taskPosted.channel; Ts=$taskPosted.ts;
         Link=('https://aiagent-vqu1541.slack.com/archives/' + $taskPosted.channel + '/p' + $taskPosted.ts.Replace('.','')) }

@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory = $true)][string]$Coordinator,
     [Parameter(Mandatory = $true)][string]$CodexPath,
-    [switch]$TestReconnect
+    [switch]$TestReconnect,
+    [ValidatePattern('^\d+\.\d{6}$')][string]$CatchUpThread
 )
 $ErrorActionPreference = 'Stop'
 if ($Coordinator -ne '01a14d46-8b23-7590-8ad5-7efc20f8ecd9') { throw 'Unexpected active client Coordinator.' }
@@ -20,6 +21,7 @@ try {
     $env:UNITY_SLACK_BOT_TOKEN = [System.Net.NetworkCredential]::new('', $tokens.BotToken).Password
     $receiverArgs = @((Join-Path $PSScriptRoot 'slack-receiver.mjs'), $Coordinator, $CodexPath)
     if ($TestReconnect) { $receiverArgs += '--test-reconnect' }
+    if ($CatchUpThread) { $receiverArgs += ('--catchup-thread=' + $CatchUpThread) }
     & node @receiverArgs
     if ($LASTEXITCODE -ne 0) { throw 'Slack receiver stopped with an error.' }
 }
