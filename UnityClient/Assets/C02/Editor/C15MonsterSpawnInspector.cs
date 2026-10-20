@@ -17,11 +17,13 @@ namespace C02.Editor
         {
             var root = new VisualElement();
             AddNote(root, "고정 5×5 배치 · 셀 폭 22 · 중앙 (2,2) 셀은 보스 1마리");
-            AddNote(root, "나머지 24개 셀은 같은 개수로 편집합니다. 아래 값은 저작 상한이며 서버 하드캡이 아닙니다.");
+            AddNote(root, "셀별 배열을 비우면 기존 공통 개수를 사용합니다. 배열은 y × 5 + x 순서의 25개이며 중앙 값은 0입니다.");
             AddNote(root, "셀 표기 순서: 일반 + 강한 몬스터");
             root.Add(new PropertyField(serializedObject.FindProperty("regularPerCell"), "일반 몬스터 / 셀"));
             root.Add(new PropertyField(serializedObject.FindProperty("strongPerCell"), "강한 몬스터 / 셀"));
             root.Add(new PropertyField(serializedObject.FindProperty("edgeInset"), "외곽 여백 (1–21)"));
+            root.Add(new PropertyField(serializedObject.FindProperty("regularByCell"), "셀별 일반 개수 (선택)"));
+            root.Add(new PropertyField(serializedObject.FindProperty("strongByCell"), "셀별 강한 개수 (선택)"));
             grid = new VisualElement();
             grid.style.marginTop = 6;
             root.Add(grid);
@@ -53,7 +55,21 @@ namespace C02.Editor
             int regular = serializedObject.FindProperty("regularPerCell").intValue;
             int strong = serializedObject.FindProperty("strongPerCell").intValue;
             int inset = serializedObject.FindProperty("edgeInset").intValue;
-            string cell = $"{regular} + {strong}";
+            int[] regularCounts, strongCounts;
+            try
+            {
+                var content = (C15MonsterSpawns)target;
+                C15MonsterSpawnExport.Validate(content);
+                regularCounts = C15MonsterSpawnExport.EffectiveCounts(content.regularByCell, regular, "regular");
+                strongCounts = C15MonsterSpawnExport.EffectiveCounts(content.strongByCell, strong, "strong");
+            }
+            catch (Exception error)
+            {
+                grid.Clear();
+                preview.text = "배치 값을 수정하면 미리보기가 표시됩니다.";
+                validation.text = error.Message;
+                return;
+            }
             grid.Clear();
             for (int y = 0; y < 5; y++)
             {
@@ -62,7 +78,7 @@ namespace C02.Editor
                 for (int x = 0; x < 5; x++)
                 {
                     bool boss = x == 2 && y == 2;
-                    var cellLabel = new Label(boss ? "Boss\n1" : cell);
+                    var cellLabel = new Label(boss ? "Boss\n1" : $"{regularCounts[y * 5 + x]} + {strongCounts[y * 5 + x]}");
                     cellLabel.style.flexGrow = 1;
                     cellLabel.style.flexBasis = 0;
                     cellLabel.style.height = 36;
@@ -85,16 +101,10 @@ namespace C02.Editor
                 }
                 grid.Add(row);
             }
-            preview.text = $"Zone 합계 {24L * (long)(regular + (long)strong) + 1L}마리 · 좌표 오프셋 {inset}–21";
-            try
-            {
-                C15MonsterSpawnExport.Validate((C15MonsterSpawns)target);
-                validation.text = "저작 값이 유효합니다.";
-            }
-            catch (Exception error)
-            {
-                validation.text = error.Message;
-            }
+            long total = 1;
+            for (int i = 0; i < 25; i++) total += (long)regularCounts[i] + strongCounts[i];
+            preview.text = $"Zone 합계 {total}마리 · 좌표 오프셋 {inset}–21";
+            validation.text = "저작 값이 유효합니다.";
         }
     }
 }

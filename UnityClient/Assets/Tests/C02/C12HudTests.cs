@@ -36,6 +36,7 @@ namespace C02.Tests
         {
             using (var fixture = new HudFixture())
             {
+                Assert.That(fixture.Panel.activeSelf, Is.True);
                 fixture.Full(new FullStateField
                 {
                     zoneInternalID = 73, hp = 0, maxHp = 0, mp = 0, maxMp = 0,
@@ -44,11 +45,13 @@ namespace C02.Tests
                 Assert.That(fixture.Hp.fillAmount, Is.Zero);
                 Assert.That(fixture.Mp.fillAmount, Is.Zero);
                 Assert.That(fixture.Status.text, Does.Contain("HP 0"));
+                Assert.That(fixture.Panel.activeSelf, Is.True, "Defeat keeps the server HP display visible.");
 
                 fixture.Logout();
                 Assert.That(fixture.Hp.fillAmount, Is.Zero);
                 Assert.That(fixture.Mp.fillAmount, Is.Zero);
                 Assert.That(fixture.Vitals.text, Is.Empty);
+                Assert.That(fixture.Panel.activeSelf, Is.False);
 
                 fixture.Reenter(new FullStateField
                 {
@@ -58,6 +61,7 @@ namespace C02.Tests
                 Assert.That(fixture.Hp.fillAmount, Is.EqualTo(.5f).Within(.001f));
                 Assert.That(fixture.Mp.fillAmount, Is.EqualTo(.5f).Within(.001f));
                 Assert.That(fixture.Vitals.text, Does.Contain("HP 40 / 80").And.Contain("MP 15 / 30"));
+                Assert.That(fixture.Panel.activeSelf, Is.True);
             }
         }
 
@@ -163,6 +167,7 @@ namespace C02.Tests
             public readonly TMP_Text Vitals;
             public readonly TMP_Text Status;
             public readonly TMP_Text Aim;
+            public readonly GameObject Panel;
             public C02WorldScreen World => (C02WorldScreen)world;
 
             public HudFixture()
@@ -187,6 +192,8 @@ namespace C02.Tests
                 Mp.type = UnityEngine.UI.Image.Type.Filled;
                 Set(combat, "hpFill", Hp);
                 Set(combat, "mpFill", Mp);
+                Panel = new GameObject("C12 separate panel fixture");
+                Set(combat, "combatPanel", Panel);
                 Invoke(combat, "WorldChanged");
             }
 
@@ -227,6 +234,7 @@ namespace C02.Tests
                 UnityEngine.Object.DestroyImmediate(hpObject);
                 UnityEngine.Object.DestroyImmediate(mpObject);
                 Invoke(fixture, "Dispose");
+                UnityEngine.Object.DestroyImmediate(Panel);
             }
 
             private static void Set(object target, string name, object value) =>

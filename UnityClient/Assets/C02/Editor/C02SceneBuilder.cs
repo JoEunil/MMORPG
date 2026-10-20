@@ -316,12 +316,12 @@ public static class C02SceneBuilder
             throw new System.InvalidOperationException("C05 requires the C02 scene in Edit Mode.");
         var screen = Object.FindFirstObjectByType<C02WorldScreen>();
         var hud = ((GameObject)new SerializedObject(screen).FindProperty("worldHud").objectReferenceValue).transform;
-        var panel = hud.Find("C05CombatPanel") as RectTransform;
+        var panel = (hud.Find("C05CombatPanel") ?? hud.parent.Find("C05CombatPanel")) as RectTransform;
         if (panel == null)
         {
             panel = new GameObject("C05CombatPanel", typeof(RectTransform), typeof(UnityEngine.UI.Image)).GetComponent<RectTransform>();
-            panel.SetParent(hud, false);
         }
+        panel.SetParent(hud, false);
         panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(0, 0);
         panel.anchoredPosition = new Vector2(0, -246);
         panel.sizeDelta = new Vector2(560, 184);
@@ -341,7 +341,7 @@ public static class C02SceneBuilder
         var aim = Label("C05Aim", 12, new Vector2(14, -37), new Vector2(532, 22));
         var status = Label("C05Status", 12, new Vector2(14, -115), new Vector2(532, 62));
         var buttons = new UnityEngine.UI.Button[3];
-        var labels = new[] { "1  STRIKE", "2  RING", "3  LINE" };
+        var labels = new[] { "Z  STRIKE", "X  RING", "C  LINE" };
         for (int slot = 0; slot < 3; slot++)
         {
             string name = "C05Skill" + slot;
@@ -354,6 +354,10 @@ public static class C02SceneBuilder
             button.GetComponent<UnityEngine.UI.Image>().raycastTarget = true;
             button.GetComponentInChildren<TMP_Text>().text = labels[slot];
             button.GetComponentInChildren<TMP_Text>().color = new Color(.94f, .86f, .65f);
+            var labelRect = button.GetComponentInChildren<TMP_Text>().rectTransform;
+            labelRect.anchorMin = Vector2.zero; labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
+            var icon = rect.Find("SkillIcon"); if (icon != null) icon.gameObject.SetActive(false);
             Frame(rect, button.GetComponent<UnityEngine.UI.Image>().color);
             buttons[slot] = button;
         }
@@ -361,6 +365,7 @@ public static class C02SceneBuilder
         var refs = new SerializedObject(combat);
         refs.FindProperty("loginScreen").objectReferenceValue = Object.FindFirstObjectByType<C01LoginScreen>();
         refs.FindProperty("worldScreen").objectReferenceValue = screen;
+        refs.FindProperty("combatPanel").objectReferenceValue = panel.gameObject;
         var slots = refs.FindProperty("skillButtons"); slots.arraySize = 3;
         for (int slot = 0; slot < 3; slot++) slots.GetArrayElementAtIndex(slot).objectReferenceValue = buttons[slot];
         refs.FindProperty("vitalsText").objectReferenceValue = vitals;
@@ -752,10 +757,13 @@ public static class C02SceneBuilder
     private static void Hero(Transform parent, Vector3 position, float scale)
     {
         var root = new GameObject("V01Hero").transform; root.SetParent(parent,false); root.localPosition=position; root.localScale=Vector3.one*scale;
-        var steel=Material("GuardSteel",new Color(.40f,.43f,.44f)); steel.SetFloat("_Metallic",.68f); steel.SetFloat("_Smoothness",.32f);
-        var edge=Material("WornSteelEdge",new Color(.48f,.50f,.49f)); edge.SetFloat("_Metallic",.67f); edge.SetFloat("_Smoothness",.36f);
+        var steel=Material("GuardSteel",new Color(.85f,.87f,.88f)); steel.SetFloat("_Metallic",.72f); steel.SetFloat("_Smoothness",.43f);
+        steel.mainTexture=AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/C02/Art/Textures/worn-steel-albedo-v1.png"); steel.mainTextureScale=new Vector2(2,2);
+        var edge=Material("WornSteelEdge",new Color(.85f,.87f,.88f)); edge.SetFloat("_Metallic",.72f); edge.SetFloat("_Smoothness",.43f);
+        edge.mainTexture=steel.mainTexture; edge.mainTextureScale=steel.mainTextureScale;
         var bronze=Material("AgedBronze",new Color(.40f,.31f,.19f)); bronze.SetFloat("_Metallic",.65f);
-        var leather=Material("OiledLeather",new Color(.15f,.105f,.075f));
+        var leather=Material("OiledLeather",new Color(.56f,.48f,.41f)); leather.SetFloat("_Metallic",0); leather.SetFloat("_Smoothness",.25f);
+        leather.mainTexture=AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/C02/Art/Textures/oiled-leather-albedo-v1.png"); leather.mainTextureScale=new Vector2(2,2);
         var cloth=Material("FadedCrimson",new Color(.29f,.075f,.065f)); cloth.SetFloat("_Cull",0);
         var chain=Material("Chainmail",new Color(.24f,.26f,.26f)); chain.SetFloat("_Metallic",.6f); chain.mainTexture=DetailTexture("MailLinks",2);
         var black=Material("VisorRecess",new Color(.035f,.039f,.038f));

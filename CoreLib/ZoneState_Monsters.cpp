@@ -36,12 +36,13 @@ namespace Core {
             {
                 auto& cell = m_cells[i][j];
                 auto& area = cell.area;
+                const int cellIndex = i * CELLS_X + j;
 
                 if (i == 2 && j == 2)
                     continue;
 
                 // 일반 몬스터
-                for (int k = 0; k < Data::REGULAR_MONSTERS_PER_CELL; k++)
+                for (int k = 0; k < Data::REGULAR_MONSTERS_BY_CELL[cellIndex]; k++)
                 {
                     int spawnX = area.x_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.x_max - area.x_min - Data::MONSTER_SPAWN_EDGE_INSET));
                     int spawnY = area.y_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.y_max - area.y_min - Data::MONSTER_SPAWN_EDGE_INSET));
@@ -56,7 +57,7 @@ namespace Core {
                 }
 
                 // 조금 센 일반 몬스터
-                for (int k = 0; k < Data::STRONG_MONSTERS_PER_CELL; k++)
+                for (int k = 0; k < Data::STRONG_MONSTERS_BY_CELL[cellIndex]; k++)
                 {
                     int spawnX = area.x_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.x_max - area.x_min - Data::MONSTER_SPAWN_EDGE_INSET));
                     int spawnY = area.y_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.y_max - area.y_min - Data::MONSTER_SPAWN_EDGE_INSET));

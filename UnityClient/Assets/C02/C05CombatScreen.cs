@@ -17,6 +17,7 @@ namespace C02
         [SerializeField] private C09BazaarScreen bazaarScreen;
         [SerializeField] private C07InventoryScreen inventoryScreen;
         [SerializeField] private UnityEngine.UI.Button[] skillButtons;
+        [SerializeField] private GameObject combatPanel;
         [SerializeField] private TMP_Text vitalsText;
         [SerializeField] private TMP_Text combatStatusText;
         [SerializeField] private TMP_Text aimText;
@@ -86,6 +87,7 @@ namespace C02
 
         private void WorldChanged()
         {
+            if (combatPanel != null) combatPanel.SetActive(WorldAvailable);
             if (WorldAvailable)
             {
                 if (observedZone == 0) { observedZone = worldScreen.ZoneID; ownId = worldScreen.InternalID; }
@@ -97,7 +99,7 @@ namespace C02
                 if (mpFill != null) mpFill.fillAmount = GaugeAmount(state.mp, state.maxMp);
                 aimText.text = string.Format(CultureInfo.InvariantCulture, "Lv {0}  EXP {1}  |  Line aim: {2}",
                     state.level, state.exp, LineDirection(state.dir));
-                if (state.hp == 0) combatStatusText.text = "HP 0 — movement and combat stopped. Disconnect to leave.";
+                if (state.hp == 0) combatStatusText.text = "HP 0 — defeated. Disconnect to leave.";
                 else if (combatStatusText.text.StartsWith("HP 0", StringComparison.Ordinal)) combatStatusText.text = string.Empty;
             }
             else
@@ -174,6 +176,7 @@ namespace C02
 
         private void OnDisable()
         {
+            if (combatPanel != null) combatPanel.SetActive(false);
             loginScreen?.Data?.CancelAction();
             worldScreen?.CancelMovement();
             Unsubscribe();

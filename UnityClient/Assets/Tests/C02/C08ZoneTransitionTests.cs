@@ -101,8 +101,15 @@ namespace C02.Tests
             AssertMapping(2, new Vector2(105.01f, 50), false, 0, 0);
             AssertMapping(1, new Vector2(100, 105.01f), false, 0, 0);
             AssertMapping(1, new Vector2(100, -5.01f), false, 0, 0);
-            AssertMapping(3, new Vector2(200, 50), false, 0, 0);
-            AssertMapping(4, new Vector2(50, 100), false, 0, 0);
+            AssertMapping(2, new Vector2(200, 50), true, 4, 3);
+            AssertMapping(3, new Vector2(200, 50), true, 3, 2);
+            AssertMapping(1, new Vector2(50, 100), true, 1, 4);
+            AssertMapping(4, new Vector2(50, 100), true, 2, 1);
+            AssertMapping(2, new Vector2(150, 100), false, 0, 0);
+            AssertMapping(3, new Vector2(300, 50), false, 0, 0);
+            AssertMapping(4, new Vector2(100, 150), false, 0, 0);
+            AssertMapping(1, new Vector2(50, 94.99f), false, 0, 0);
+            AssertMapping(4, new Vector2(50, 105.01f), false, 0, 0);
             AssertMapping(1, new Vector2(float.NaN, 50), false, 0, 0);
             AssertMapping(2, new Vector2(100, float.PositiveInfinity), false, 0, 0);
         }

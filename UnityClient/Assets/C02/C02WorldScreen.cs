@@ -252,6 +252,7 @@ namespace C02
             selectionPanel.SetActive(false);
             background.SetActive(false);
             loginScreen.SetBusy(false);
+            PlaceFieldForZone();
             ShowPosition();
             UpdateZoneTransitionButton();
             WorldStateChanged?.Invoke();
@@ -487,18 +488,37 @@ namespace C02
             zoneTransitionButton.gameObject.SetActive(available);
             zoneTransitionButton.interactable = available;
             if (available && zoneTransitionButton.GetComponentInChildren<TMP_Text>(true) is TMP_Text label)
-                label.text = targetZone == 2 ? "ENTER ZONE 2  →" : "←  RETURN TO ZONE 1";
+                label.text = "TRAVEL TO AREA " + targetZone.ToString(CultureInfo.InvariantCulture);
         }
 
         private static bool TryNearbyZoneChange(ushort zone, Vector2 position, out byte operation, out ushort targetZone)
         {
             operation = 0;
             targetZone = 0;
-            if (!Finite(position.x) || !Finite(position.y) || position.x < 95 || position.x > 105 ||
-                position.y < -5 || position.y > 105) return false;
-            if (zone == 1) { operation = 4; targetZone = 2; return true; }
-            if (zone == 2) { operation = 3; targetZone = 1; return true; }
+            if (!InsideZone(zone, position)) return false;
+            int column = (zone - 1) % 3;
+            // Match StateManager's three-column layout; the fourth area is above area 1.
+            if (column < 2 && InsideZone((ushort)(zone + 1), position))
+            { operation = 4; targetZone = (ushort)(zone + 1); return true; }
+            if (column > 0 && InsideZone((ushort)(zone - 1), position))
+            { operation = 3; targetZone = (ushort)(zone - 1); return true; }
+            if (InsideZone((ushort)(zone + 3), position))
+            { operation = 1; targetZone = (ushort)(zone + 3); return true; }
+            if (zone > 3 && InsideZone((ushort)(zone - 3), position))
+            { operation = 2; targetZone = (ushort)(zone - 3); return true; }
             return false;
+        }
+
+        private void PlaceFieldForZone()
+        {
+            // Move only authored scenery. Actors and camera remain in server world coordinates.
+            Vector3 origin = new Vector3(((ZoneID - 1) % 3) * 100, 0, ((ZoneID - 1) / 3) * 100);
+            var scenery = worldRoot.transform.Find("V04MeanderingMeadow");
+            if (scenery != null) scenery.localPosition = origin;
+            scenery = worldRoot.transform.Find("V03FieldSurround");
+            if (scenery != null) scenery.localPosition = origin;
+            scenery = worldRoot.transform.Find("V01Outpost");
+            if (scenery != null) scenery.localPosition = origin + new Vector3(10, 0, 10);
         }
 
         // The authored hero faces local -Z (Vector3.back).

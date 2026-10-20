@@ -331,8 +331,24 @@ namespace C02
             accent.GetComponent<UnityEngine.UI.Image>().color = C11ItemPresentation.Accent(listing.ItemID);
             accent.GetComponent<UnityEngine.UI.Image>().raycastTarget = false;
 
-            AddCell(rowObject.transform, "Badge", C11ItemPresentation.Badge(listing.ItemID), 0.02f, 0.09f,
+            TMP_Text badge = AddCell(rowObject.transform, "Badge", C11ItemPresentation.Badge(listing.ItemID), 0.02f, 0.09f,
                 TextAlignmentOptions.Center, 10, C11ItemPresentation.Accent(listing.ItemID));
+            Sprite icon = C11ItemPresentation.Icon(listing.ItemID);
+            if (icon != null)
+            {
+                badge.text = string.Empty;
+                var iconObject = new GameObject("ItemIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.Image));
+                iconObject.transform.SetParent(rowObject.transform, false);
+                var iconRect = iconObject.GetComponent<RectTransform>();
+                iconRect.anchorMin = new Vector2(0.02f, 0);
+                iconRect.anchorMax = new Vector2(0.09f, 1);
+                iconRect.offsetMin = new Vector2(3, 3);
+                iconRect.offsetMax = new Vector2(-3, -3);
+                var iconImage = iconObject.GetComponent<UnityEngine.UI.Image>();
+                iconImage.sprite = icon;
+                iconImage.preserveAspect = true;
+                iconImage.raycastTarget = false;
+            }
             AddCell(rowObject.transform, "Item", C11ItemPresentation.Name(listing.ItemID), 0.10f, 0.48f,
                 TextAlignmentOptions.MidlineLeft, 13, new Color(.22f, .17f, .10f));
             AddCell(rowObject.transform, "Quantity", listing.Quantity.ToString(CultureInfo.InvariantCulture), 0.49f, 0.61f,

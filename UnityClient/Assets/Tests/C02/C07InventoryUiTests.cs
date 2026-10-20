@@ -67,7 +67,26 @@ namespace C02.Tests
                 Assert.That(fixture.Cards[0].transform.Find("ItemQuantity").GetComponent<TMP_Text>().text, Is.EqualTo("Qty 4"));
                 Assert.That(fixture.Cards[1].transform.Find("ItemName").GetComponent<TMP_Text>().text, Is.EqualTo("Leather Armor"));
                 fixture.Cards[0].onClick.Invoke();
-                Assert.That(fixture.DetailBadge.text, Is.EqualTo("HP"));
+                Assert.That(fixture.DetailBadge.text, Is.Empty);
+                Assert.That(C11ItemPresentation.Icon(1), Is.Not.Null, "The authored potion must import as a Sprite.");
+                Assert.That(fixture.Cards[0].GetComponentsInChildren<Image>(true),
+                    Has.Some.Matches<Image>(image => image.sprite == C11ItemPresentation.Icon(1)));
+                var detailIcon = fixture.DetailBadge.GetComponentInChildren<Image>(true);
+                Assert.That(detailIcon, Is.Not.Null);
+                Assert.That(detailIcon.gameObject, Is.Not.SameAs(fixture.DetailBadge.gameObject));
+                Assert.That(detailIcon.sprite, Is.SameAs(C11ItemPresentation.Icon(1)));
+                Assert.That(detailIcon.enabled, Is.True);
+                var distinctIcons = new System.Collections.Generic.HashSet<Sprite>();
+                for (uint itemID = 1; itemID <= 5; itemID++)
+                {
+                    var imported = C11ItemPresentation.Icon(itemID);
+                    Assert.That(imported, Is.Not.Null, "Each supported server item needs its own imported Sprite.");
+                    Assert.That(imported.texture.width, Is.LessThanOrEqualTo(256));
+                    distinctIcons.Add(imported);
+                }
+                Assert.That(distinctIcons.Count, Is.EqualTo(5), "Different item types must not reuse one icon.");
+                Assert.That(C11ItemPresentation.Icon(0), Is.Null);
+                Assert.That(C11ItemPresentation.Icon(42), Is.Null, "Unknown IDs must keep their explicit fallback.");
                 Assert.That(fixture.DetailName.text, Is.EqualTo("HP Potion"));
                 Assert.That(fixture.DetailSlot.text, Is.EqualTo("Slot 2"));
 

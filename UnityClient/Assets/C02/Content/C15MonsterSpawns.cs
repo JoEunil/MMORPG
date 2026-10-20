@@ -8,5 +8,7 @@ namespace C02
         public int regularPerCell = 8;
         public int strongPerCell = 2;
         public int edgeInset = 1;
+        public int[] regularByCell;
+        public int[] strongByCell;
     }
 }

@@ -17,6 +17,13 @@ public static class C12HudSetup
             throw new System.InvalidOperationException("C12 requires the saved C02 scene.");
         var fillSprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
         if (fillSprite == null) throw new System.InvalidOperationException("The built-in uGUI sprite required by the HP/MP gauges is unavailable.");
+        var icons = new[] {
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-000-strike-v1.png"),
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-001-ring-v1.png"),
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-002-line-v1.png")
+        };
+        if (System.Array.Exists(icons, icon => icon == null))
+            throw new System.InvalidOperationException("Import all three skill icons as Sprites before applying the HUD.");
 
         var screen = Object.FindFirstObjectByType<C02WorldScreen>(FindObjectsInactive.Include);
         var login = Object.FindFirstObjectByType<C01LoginScreen>(FindObjectsInactive.Include);
@@ -26,7 +33,7 @@ public static class C12HudSetup
         if (hudReference == null || hudReference.objectReferenceValue == null)
             throw new System.InvalidOperationException("The existing WorldHud reference is missing.");
         var hud = ((GameObject)hudReference.objectReferenceValue).transform;
-        var panel = hud.Find("C05CombatPanel") as RectTransform;
+        var panel = (hud.Find("C05CombatPanel") ?? hud.parent.Find("C05CombatPanel")) as RectTransform;
         if (panel == null) throw new System.InvalidOperationException("The existing C05CombatPanel is missing.");
         var vitals = ExistingText(panel, "C05Vitals");
         var aim = ExistingText(panel, "C05Aim");
@@ -42,46 +49,68 @@ public static class C12HudSetup
                 throw new System.InvalidOperationException("All three existing C05 skill buttons and labels are required.");
         }
 
-        panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(0, 1);
-        panel.anchoredPosition = new Vector2(0, -116);
-        panel.sizeDelta = new Vector2(420, 132);
+        panel.SetParent(hud.parent, false);
+        panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(.5f, 0);
+        panel.anchoredPosition = new Vector2(0, 12);
+        panel.sizeDelta = new Vector2(232, 158);
         var background = panel.GetComponent<UnityEngine.UI.Image>();
         background.color = new Color(.105f, .12f, .13f, .94f);
         background.raycastTarget = true;
 
-        PlaceText(vitals, 13, new Vector2(12, -7), new Vector2(396, 20));
-        PlaceText(aim, 11, new Vector2(12, -48), new Vector2(396, 18));
-        PlaceText(status, 10, new Vector2(12, -107), new Vector2(396, 24));
+        PlaceText(vitals, 12, new Vector2(12, -7), new Vector2(208, 20));
+        PlaceText(aim, 10, new Vector2(12, -48), new Vector2(208, 18));
+        PlaceText(status, 10, new Vector2(12, -138), new Vector2(208, 18));
+        vitals.enableAutoSizing = true;
+        vitals.fontSizeMin = 9;
+        vitals.fontSizeMax = 12;
         vitals.alignment = TextAlignmentOptions.Left;
         aim.alignment = TextAlignmentOptions.Left;
         status.alignment = TextAlignmentOptions.Left;
         status.enableWordWrapping = false;
 
-        var hpFill = Gauge(panel, "C12HpTrack", new Vector2(12, -32), new Vector2(190, 9),
-            new Color(.16f, .19f, .17f, .96f), new Color(.28f, .76f, .37f, 1), fillSprite);
-        var mpFill = Gauge(panel, "C12MpTrack", new Vector2(218, -32), new Vector2(190, 9),
+        var hpFill = Gauge(panel, "C12HpTrack", new Vector2(12, -32), new Vector2(100, 9),
+            new Color(.19f, .11f, .1f, .96f), new Color(.72f, .2f, .16f, 1), fillSprite);
+        var mpFill = Gauge(panel, "C12MpTrack", new Vector2(120, -32), new Vector2(100, 9),
             new Color(.14f, .17f, .22f, .96f), new Color(.3f, .62f, .95f, 1), fillSprite);
 
-        var labels = new[] { "1  STRIKE", "2  RING", "3  LINE" };
+        var labels = new[] { "Z  STRIKE", "X  RING", "C  LINE" };
         for (int i = 0; i < buttons.Length; i++)
         {
             var rect = buttons[i].GetComponent<RectTransform>();
             rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1);
-            rect.anchoredPosition = new Vector2(12 + i * 135, -70);
-            rect.sizeDelta = new Vector2(126, 32);
+            rect.anchoredPosition = new Vector2(12 + i * 72, -67);
+            rect.sizeDelta = new Vector2(64, 68);
             var image = buttons[i].GetComponent<UnityEngine.UI.Image>();
             image.color = new Color(.27f, .25f, .19f, 1);
             image.raycastTarget = true;
             var label = buttons[i].GetComponentInChildren<TMP_Text>();
             label.text = labels[i];
-            label.fontSize = 12;
+            label.fontSize = 10;
             label.color = new Color(.96f, .87f, .65f);
             label.alignment = TextAlignmentOptions.Center;
+            label.raycastTarget = false;
+            label.rectTransform.anchorMin = label.rectTransform.anchorMax = label.rectTransform.pivot = new Vector2(.5f, 0);
+            label.rectTransform.anchoredPosition = new Vector2(0, 1);
+            label.rectTransform.sizeDelta = new Vector2(64, 15);
+            var iconRect = rect.Find("SkillIcon") as RectTransform;
+            if (iconRect == null)
+                iconRect = new GameObject("SkillIcon", typeof(RectTransform), typeof(UnityEngine.UI.Image)).GetComponent<RectTransform>();
+            iconRect.SetParent(rect, false);
+            iconRect.gameObject.SetActive(true);
+            iconRect.anchorMin = iconRect.anchorMax = iconRect.pivot = new Vector2(.5f, 1);
+            iconRect.anchoredPosition = new Vector2(0, -3);
+            iconRect.sizeDelta = new Vector2(48, 48);
+            var icon = iconRect.GetComponent<UnityEngine.UI.Image>();
+            icon.sprite = icons[i];
+            icon.color = Color.white;
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
         }
 
         var combatRefs = new SerializedObject(combat);
         combatRefs.FindProperty("loginScreen").objectReferenceValue = login;
         combatRefs.FindProperty("worldScreen").objectReferenceValue = screen;
+        combatRefs.FindProperty("combatPanel").objectReferenceValue = panel.gameObject;
         var slots = combatRefs.FindProperty("skillButtons");
         slots.arraySize = buttons.Length;
         for (int i = 0; i < buttons.Length; i++) slots.GetArrayElementAtIndex(i).objectReferenceValue = buttons[i];
@@ -92,6 +121,7 @@ public static class C12HudSetup
         combatRefs.FindProperty("mpFill").objectReferenceValue = mpFill;
         combatRefs.ApplyModifiedPropertiesWithoutUndo();
         combat.enabled = true;
+        panel.gameObject.SetActive(screen.CanAct);
 
         EditorUtility.SetDirty(panel);
         EditorUtility.SetDirty(combat);

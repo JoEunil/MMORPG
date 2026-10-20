@@ -26,6 +26,7 @@ namespace C02
         [SerializeField] private ScrollRect inventoryScroll;
         [SerializeField] private RectTransform inventoryGridContent;
         [SerializeField] private TMP_Text detailBadge;
+        private Image detailIcon;
         [SerializeField] private TMP_Text detailName;
         [SerializeField] private TMP_Text detailSlot;
         [SerializeField] private TMP_Text detailQuantity;
@@ -224,12 +225,16 @@ namespace C02
             var accentRect = accent.GetComponent<RectTransform>();
             SetTopLeft(accentRect, 6f, 6f, 28f, 28f);
             var accentImage = accent.GetComponent<Image>();
-            accentImage.color = C11ItemPresentation.Accent(item.ItemID);
+            Sprite icon = C11ItemPresentation.Icon(item.ItemID);
+            accentImage.sprite = icon;
+            accentImage.preserveAspect = icon != null;
+            accentImage.color = icon != null ? Color.white : C11ItemPresentation.Accent(item.ItemID);
             accentImage.raycastTarget = false;
 
             var badge = CreateText("ItemBadge", accent.transform, C11ItemPresentation.Badge(item.ItemID), 10,
                 Color.white, TextAlignmentOptions.Center);
             Stretch(badge.rectTransform, 0);
+            badge.gameObject.SetActive(icon == null);
 
             var name = CreateText("ItemName", cardObject.transform, C11ItemPresentation.Name(item.ItemID), 13,
                 new Color(.23f, .19f, .13f), TextAlignmentOptions.MidlineLeft);
@@ -254,7 +259,23 @@ namespace C02
                 var button = child.GetComponent<Button>();
                 if (button != null) button.GetComponent<Image>().color = button == selectedCard ? SelectedCardColor : CardColor;
             }
-            detailBadge.text = C11ItemPresentation.Badge(item.ItemID);
+            Sprite icon = C11ItemPresentation.Icon(item.ItemID);
+            if (icon != null)
+            {
+                if (detailIcon == null)
+                {
+                    var iconObject = new GameObject("DetailItemIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                    iconObject.transform.SetParent(detailBadge.transform, false);
+                    Stretch(iconObject.GetComponent<RectTransform>(), 0);
+                    detailIcon = iconObject.GetComponent<Image>();
+                    detailIcon.preserveAspect = true;
+                    detailIcon.raycastTarget = false;
+                }
+                detailIcon.sprite = icon;
+                detailIcon.enabled = true;
+            }
+            else if (detailIcon != null) detailIcon.enabled = false;
+            detailBadge.text = icon != null ? string.Empty : C11ItemPresentation.Badge(item.ItemID);
             detailBadge.color = C11ItemPresentation.Accent(item.ItemID);
             detailName.text = C11ItemPresentation.Name(item.ItemID);
             detailSlot.text = "Slot " + item.Slot.ToString(CultureInfo.InvariantCulture);
@@ -274,7 +295,11 @@ namespace C02
                 }
                 else DestroyImmediate(child.gameObject);
             }
-            if (detailBadge != null) detailBadge.text = string.Empty;
+            if (detailBadge != null)
+            {
+                detailBadge.text = string.Empty;
+                if (detailIcon != null) detailIcon.enabled = false;
+            }
             if (detailName != null) detailName.text = "Select an item";
             if (detailSlot != null) detailSlot.text = string.Empty;
             if (detailQuantity != null) detailQuantity.text = string.Empty;
