@@ -2,6 +2,10 @@
 #include <cstdint>
 #include "SkillData.h"
 
+#if __has_include("../UnityClient/Exports/ServerData/C14Export.pending")
+#error C14 server content export is pending; do not compile a mixed generated content snapshot.
+#endif
+
 namespace Data {
     static constexpr int MAX_STEPS_PER_PHASE = 16;
     static constexpr int MAX_PHASES = 8;

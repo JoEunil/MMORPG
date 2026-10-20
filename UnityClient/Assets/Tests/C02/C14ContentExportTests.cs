@@ -9,6 +9,7 @@ using UnityEngine;
 
 namespace C02.Tests
 {
+    [Category("ExportPairReview")]
     public sealed class C14ContentExportTests
     {
         [Test]
@@ -110,6 +111,20 @@ namespace C02.Tests
                 content.monster0.phases[0].steps[0].skillID = 0;
                 content.monster0.phases = new[] { monsterPhases[0], new C14ServerContent.MonsterPhase() };
                 assertPreserved();
+                content.monster0.phases = monsterPhases;
+                content.monster0.respawnTicks = 0;
+                assertPreserved();
+                content.monster0.respawnTicks = 300;
+                content.monster0.phases = new[]
+                {
+                    new C14ServerContent.MonsterPhase { hpThreshold = 0.0001f },
+                    new C14ServerContent.MonsterPhase { hpThreshold = 0.00001f }
+                };
+                assertPreserved(); // First absolute threshold truncates to zero.
+                content.monster0.phases[0].hpThreshold = 0.001f;
+                assertPreserved(); // Absolute one cannot be crossed while HP is positive.
+                content.monster0.phases[0].hpThreshold = 1;
+                Assert.DoesNotThrow(() => Export(content, directory)); // The final threshold is not a transition gate.
             }
             finally
             {
