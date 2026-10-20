@@ -38,8 +38,8 @@ public static class C02SceneBuilder
 
         var buttonRect = button.GetComponent<RectTransform>();
         buttonRect.anchorMin = buttonRect.anchorMax = buttonRect.pivot = new Vector2(.5f, 0);
-        buttonRect.anchoredPosition = new Vector2(40, 24);
-        buttonRect.sizeDelta = new Vector2(276, 48);
+        buttonRect.anchoredPosition = new Vector2(0, 230);
+        buttonRect.sizeDelta = new Vector2(224, 40);
         var image = button.GetComponent<UnityEngine.UI.Image>();
         image.color = new Color(.48f, .34f, .15f, .98f);
         image.raycastTarget = true;

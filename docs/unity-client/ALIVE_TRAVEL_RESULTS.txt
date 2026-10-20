@@ -1,0 +1,16 @@
+생존 이동·패널 차단·확장 필드 최소 실입력 — 2026-10-20
+
+동결 대상: codex/classic-field-art 7b320e5 기반. Editor26496/7800, 기존 서버43240/9999. 입력 담당 Coordinator 단독, 실행 중 Assets/Packages/ProjectSettings 저작0. 이전 native/Unity 전체 검증 반복0, 새 자동 fixture0.
+로그인1회: 기존 DPAPI 전용 계정02를 선택해 실제 UI 로그인→캐릭터5012 선택→월드 진입. 실제 저장 HP10000/MP9999/zone1/(42.76,49.47). 계정01 HP0을 전체 테스트 환경 차단으로 보던 판단을 교정했다. DB 직접 변경·회복/재시딩·새 계정 생성 없음.
+입력 경로: KeyboardState/MouseState를 정상 player-loop에 queue, 실제 EventSystem/Button/InputField 경로만 사용. handler/Update 직접 호출0, 포커스 가드 유지. frame1725→12559→103001로 실제 프레임 진행 확인.
+통과: 실제 HUD 위 pointer-over-UI true에서 방향키 유지→서버 이동1.400009unit→해제. HP10000 유지. I 가방/B 거래소 열린 중 방향키 입력에도 서버 좌표 변화<=.05. 닫기 후 이동 가능.
+도우미 수정: 첫 motion 도우미는 FindFirst Canvas가 월드 Canvas를 골라 panel null 실패. 제품 UI 가방은 실제 열려 있었고, 재로그인 없이 실제 C07/C09 컴포넌트를 찾는 남은 panel 단계만 실행해 통과. 첫 travel 도우미는 카메라 forward의 pitch 성분을 수평 정규화하지 않아 입력 전 방향 정확도 검증에서 실패. 제품과 같은 ProjectOnPlane.normalized로 수정, 출발 좌표가 변하지 않았음을 확인했다.
+실제 제품 결함: zone1/(43.75,96.06) 경계에 도착했으나 TRAVEL4 클릭이 타임아웃. 버튼 center(680,48)의 실제 RaycastAll=[C05CombatPanel,C08ZoneTransitionButton]로 하단 HUD가 이동 버튼을 가림을 확인했다.
+최소 수정: runtime preview에서 bottom-center pos(0,230)/size224x40로 옮겨 firstHit=C08ZoneTransitionButton 확인. 별도 읽기 리뷰에서 HUD top212와18px, chat right514와14px 분리 및 재적용 경로 확인. 입력 중 에셋은 저장하지 않았다.
+남은 동일 접속: 실제 TRAVEL4 클릭→zone4/(43.75,96.06), 방향키로 동쪽 이동→실제 TRAVEL5 클릭→zone5/(96.15,96.06). 각 전환 앞뒤 서버좌표 차이<=1, HP10000 유지. V04 scenery origin=(100,0,100) 확인. 모든6구역 왕복·처치·EXP 증가·사냥 난이도 검증으로 확대하지 않는다.
+영구화: 정상 실제 Disconnect→Modelnull→입력 coroutine 종료→Playstop 후 C02SceneBuilder.ApplyC08ZoneTransitionUI의2값을 같은 geometry로 수정. 명시 unity recompile0오류/0경고, 저장 씬 pos(0,230)/size224x40/dirtyfalse 확인. button component/서버 Zone 계약은 그대로이며 별도 재로그인/전체 배치 반복0. 기존 backgroundfalse/계정선택 환경값null 복구.
+가방 관찰: account02의 가방 읽기는 실패 안내를 보였다. 이 실행은 열린 패널의 이동 차단만 확인했으며 아이템 목록 성공으로 기록하지 않는다. 재요청·등록·구매 등 쓰기 입력 없음.
+근거: Captures/resume-alive-login.txt, resume-alive-motion.txt(부분PASS+helperFAIL), resume-alive-panels.txt(PASS), resume-alive-travel.txt(helperFAIL), resume-alive-travel02.txt(UIFAIL), resume-alive-travel03.txt(PASS), resume-alive-disconnect.txt(PASS).
+대표 화면: Captures/resume-zone5-field.png → site/media/releases/2026-10-20/expanded-field-alive.png. 실제 세션 runtime 배치 조정 캡처이며 종료 후 동일 소스/씬 geometry 저장. 첫 가방 실패 화면 resume-alive-field.png는 내부 근거만 보존.
+웹: 필드 상세/이력에 실제 새 화면을 추가하고 기존 캡처 보존. HUD·홈 진행 문구에서 생존 이동 미실행 표기를 교정하되 사냥 검증은 남김. 홈+5상세/이력 생성·링크검사와 실제 브라우저 새 이미지 표시 PASS. 웹 때문에 게임 재시험0.
+후속: 정확 cooldown remaining은 패킷에 없어 SKILL_FEEDBACK_TASK.md에 계약 한계를 기록했다. 서버-ready처럼 보이는 가짜 타이머를 이번 수정에 추가하지 않았다.

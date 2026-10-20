@@ -1,3 +1,12 @@
+## 최신 — 생존 계정 실제 이동·구역 전환 완료 / 버튼 가림 수정
+
+기존 계정02/캐릭터5012가 HP10000/MP9999인 것을 실제 로그인1회로 확인했다. HUD 위 방향키 이동·I/B 열린패널 이동 차단과 실제1→4→5 경계 전환/서버좌표 보존/scenery(100,0,100) PASS. 계정01 HP0이 모든 생존 검증의 차단은 아니었다. 테스트 도우미의 Canvas오선택/카메라평면투영 오류는 제품 실패와 분리해 같은접속의 남은 단계만 재개했다. 새 전체 회귀/처치·EXP검증/DB쓰기·회복·리시딩0.
+
+실제 구역 이동 버튼이 HUD 뒤에 가려 Raycast 첫 hit가C05CombatPanel인 제품 결함을 발견했다. runtime에서 버튼pos(0,230)/size224x40로 옮겨 실제4→5 전환 확인한 뒤, 정상퇴장·Playstop 후 동일 소스/씬 geometry 저장. 별도 읽기 리뷰로 HUD·chat 비겹침과 재적용 경로 확인. 명시compile0오류/0경고, Playfalse/dirtyfalse/backgroundfalse/테스트계정선택환경값null 복구. ALIVE_TRAVEL_RESULTS.txt에 부분PASS·helperFAIL·실제UIFAIL·최종PASS를 보존한다.
+
+계정02 가방 읽기는 실패 안내였고 이번 범위는 열린 패널의 이동 차단만 PASS다. 모든6구역 왕복·사냥 난이도·처치/EXP는 미실행 유지. 새실제PNG expanded-field-alive.png를 기존 필드 상세/이력에 추가하고 이전 화면 보존. 홈+5상세/이력 생성·링크검사/실제브라우저 이미지 확인 PASS. 정확 cooldown은 현재패킷에 없어 계약만 분석하고 가짜 ready타이머는 추가하지 않았다.
+
+현재 후보 codex/classic-field-art에 기존 큰묶음+자연석+이동버튼수정과 실제검증을 함께 모았다. PLAY02는41080c9에고정된 과거게시요청이며 아직새승인원문없음. 더큰통합후보의검증/커밋후 기존요청을 PLAY03으로 대체해 한PR만 게시할 예정. 이전승인을새범위에확대하거나승인전push하지않는다. 전문누적신규10/재활성화43/활성화53,token N/A.
 ## 후속 아트 — 낮은 자연석 후보 통합 완료
 
 codex/classic-field-art에서 V04 BuriedOutcrop/BuriedShrineStone50개의 MeshFilter만 전용 MeadowChamferedStone.asset으로 교체했다. 전용 Apply 메뉴는 기존 미저장편집/Play를 거절하고 Undo/명시저장, 전체V04재생성 없이 작동한다. 기존 공용Rock/성문/신전구조물/좌표/스폰/지면재질/조명 불변. 명시 compile0오류/0경고·sceneSaved true, scene diff는50개 mesh 참조뿐. 같은 카메라 before/after에서 직사각판 윤곽 개선 확인. 실제 게임 입력/회귀 반복0. 새메시144v/48tri/bounds±.5. FIELD_SCENERY_TASK.md 참조.
