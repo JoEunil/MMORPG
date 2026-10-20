@@ -71,6 +71,10 @@ public struct InventoryItemView
         event Action<byte, ulong, string, string> OnChatReceived;
         event Action<bool> OnInventoryReceived;
         event Action<bool> OnBazaarReceived;
+        event Action<ulong, byte, ulong> OnBazaarClaimReceived;
+        event Action<ulong, byte, uint, uint, ulong> OnBazaarBuyReceived;
+        event Action<byte, uint, uint, uint> OnBazaarCheckOutboxReceived;
+        event Action<ulong, byte> OnBazaarCancelListingReceived;
         event Action<ushort, ulong, uint, float, float> OnZoneChageReceived;
         event Action<ushort, DeltaUpdateField[]> OnDeltaReceived;
         event Action<ushort, FullStateField[]> OnFullReceived;
@@ -85,6 +89,10 @@ public struct InventoryItemView
         void RequestInventory();
         void RequestBazaar(ushort itemType, ushort page);
         void RequestBazaarMyList();
+        void RequestBazaarClaim(ulong listingID);
+        void RequestBazaarBuy(ulong listingID);
+        void RequestBazaarCheckOutbox();
+        void RequestBazaarCancelListing(ulong listingID);
         void CancelBazaar();
         void Error(string msg);
         void Log(string msg);
@@ -102,6 +110,10 @@ public struct InventoryItemView
         void InventoryReceived(byte resStatus, PacketHelper.InventoryItem[] items);
         void BazaarReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows);
         void BazaarMyListReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows);
+        void BazaarClaimReceived(uint requestID, ulong listingID, byte status, ulong diamondClaimed);
+        void BazaarBuyReceived(uint requestID, ulong listingID, byte status, uint itemID, uint quantity, ulong diamondSpent);
+        void BazaarCheckOutboxReceived(uint requestID, byte status, uint delivered, uint duplicated, uint blocked);
+        void BazaarCancelListingReceived(uint requestID, ulong listingID, byte status);
         void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y, ulong generation);
         void DeltaReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.DeltaUpdateField[] updates);
         void FullReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.FullStateField[] states);
@@ -183,6 +195,10 @@ namespace ClientCore.Services
         void RequestInventory();
         void RequestBazaar(uint requestID, ushort itemType, ushort page);
         void RequestBazaarMyList(uint requestID);
+        void RequestBazaarClaim(uint requestID, ulong listingID);
+        void RequestBazaarBuy(uint requestID, ulong listingID);
+        void RequestBazaarCheckOutbox(uint requestID);
+        void RequestBazaarCancelListing(uint requestID, ulong listingID);
         void Action(byte dir, float x, float y, byte skillSlot);
         void Pong(ulong serverTimeMs);
         void ZoneChange(byte op);

@@ -22,6 +22,35 @@
 
 두 지적 모두 실제 코드로 타당성 확인. 리스폰 phase/skillStep/tick 초기화와 non-final 정수HP gate 엄격 내림차순만 수정. codex/monster-phase-review는 PR37 실제 병합0f9b96d 기준; 거래소42dc·catalog848 보존. 독립리뷰 차단0/Release UnitTests build0/native1·Unity2 PASS. 최초 EditMode 발견0은 미실행으로 보존, PlayMode 해당2만 실행. 게임입력/실제export/서버재기동/DB쓰기0. 임시probe 제거/root확장catalog 동일검사 반영·기존값보존. 결과 PR37_PHASE_REVIEW_RESULTS.md. 현재 GitHub master f1b5e44는0f9후손아니며 C14코드없음(API확인). 자동복원·다른변경끼워넣기·push·PR0; 게시기준확인 전 로컬수정보존. 다른개발추가진행0.
 
+## 최신 — 등록 실패 처리 보완 검증 완료
+
+codex/market-register-safety(f2cfb34기준)에서내부등록만 request값복사/SQL불명·예상밖결과5자동보상0/명시0·queue거절checked보상·실패5/단일응답시도와RAII Return1회/길이가드. 기존fee공식·status1/2/3/4·DBschema/SQL/WAL/flush보존,외부등록wire/UI0. 독립리뷰P2invalidfinish try밖예외전파를try안이동·기존fixture invalid+throw조합추가로해소,최종review차단0. Release후보MainServer/UnitTestsbuild-final0/native직접2/2(48ms)한배치PASS。기존Unity시장회귀/입력/캡처반복0。SQLhelper모의결과+실제stoppedHandlerfixture이며queuedworker/Acquire실패/onFailure재진입·fee실패뒤실복원BLOCKED·실DBCOMMIT/crashatomicity미검증,정적리뷰구분. 실제서버·DB유지/재시작·seed0。rootAssets/Packages/ProjectSettings쓰기0. 원본Game/rootWIP/pendingcatalog보존.
+
+MARKET_REGISTER_CONTRACT/SAFETY_TASK/RESULTS참조. 새등록전체원자성·재시도멱등성·복구완료를주장하지않으며외부UI계속미지원. 화면변화없어canonical사이트의등록미지원설명·기존캡처유지이유기록。기존MARKET03게시승인은정확f2cfb34만이며새안전보완미포함/사람승인미확인·소비0/push0。새묶음로컬커밋후후속등록작업과합쳐게시검토,사전승인없이기존요청범위확대금지。새Slack부모1792466719.624229등록됨. 로컬테스트요약Captures/market-register-safety-native.txt,빌드Builds/Market-Register-Safety/build-final.txt。
+
+## 최신 — 판매 취소·반환 연결 검증 완료
+
+codex/market-cancel는cb53db6기반이며판매취소외부36/37 req20/res21·내부34/35/ClientCore·UI2클릭과반환안내를추가했다. 기존내부cancel24/25/proc14/outbox/경제규칙유지. 독립리뷰P2응답전닫기가방stale해소(불명취소후같은모델수동open마다fresh). UI malformed flags실패를제품Handler의simulation전검증/37예외재전파로해소·변경경계독립재리뷰차단0. Unity2최종PASS(가방첫PASS유지/실패취소UI1만재시험),native단일1최종PASS(기존fixture loads.accept=false복원·기대유지). ReleaseCore/MainServer/UnitTests빌드PASS. 초기/m2작업노드진행없음→취소입력중단→별도obj-single/bin-single/m1빌드,직접vcxproj솔루션경로누락실패는Game.sln target으로복구. 실패이력보존/전체회귀반복0.
+
+실제5011 native한로그인→검색30→MyList0/cancelvisible disabled→PNG1→Close/Disconnect Modelnull/Playstop PASS. 프레임28382→35912/정적화면대신진행확인. 본인매물없어실취소TCP/DB·반송·배송영속화미실행,자동fixture와구분. 기존구매서버23696/ticks639280615805924105/9999유지,새취소서버는빌드만(hash49F77953B5CA8693BD0FFB0E8338B6695B01842CA5AE323FE09C169AF807A490)/기동0. 준비된정상전환helper미실행. 강제종료/DB쓰기·seed/서버재시작0. DLLF1AAA78C6C236AA7D96E11771938B6B8FC925A31D81B52FCAD28D4552C4105FB 빌드일치. rootEditorPlay/compile/dirtyfalse,원본Game/rootWIP/pendingcatalog848보존.
+
+사이트MD/실제PNG1추가/HTMLbuildPASS/상세·이력이미지8로드넘침없음/브라우저스크린샷확인。새스타일변경없어이전mobile회귀반복0. localhost8790미리보기유지/정식게시0. MARKET02사람승인미확인/소비0/push0。취소까지동결한큰거래소묶음으로최종요청을갱신할예정이며기존MARKET02원문승인이새취소범위까지허용한것으로해석하지않는다. 다음등록준비는NEXT_MARKET_REGISTER_TASK.md 독립문서만/현재UI연결만으로안전하지않아영속중복방지최소계약검토필요,제품변경0. 소스상처리만있는등록을가짜성공으로노출하지않음.
+
+## 최신 — 거래소 구매·구매품 수령 묶음 검증 완료
+
+2026-10-20 사용자 계속진행. codex/market-purchase는미게시20b365e기반. MARKET_PURCHASE_RESULTS/CONTRACT/TASK에구현·리뷰·최소검증·실제실패이력과제한기록. Unity직접3최종PASS/native2PASS/실제5011한로그인가격확인→재화부족status4/spent0→빈배송status1→coldcache첫실패후BAG열기freshNoitems→normalDisconnect/modelnull/Playstop. wallet/outbox/top3 readonly전후동일/직접DBseed0. 실제성공거래·차감·배송영속화미검증. 기존대금수령20b도포함해큰PR한개게시요청예정,각각작은PR금지. MARKET01사람승인원문여전히없음/소비0. 새최종요청MARKET02가필요하며기존승인재사용금지.
+
+독립review차단0/기존회귀반복0. SceneEditor저장2버튼ref/style확인·추가빈필드12trailing공백만제거. rootEditorPlay/compile/dirtyfalse, DLL778E7D5486D0EBBECEF03EA62413EB00B06CBE02B36224910FE0B8CF58FEB1FD 빌드일치. MainServer23696/ticks639280615805924105/hashB5F72FDC20DBE0519630A762FD36C627F9799DBB98245B5EF981E4A37E7D6C5B/9999ready. 기존3096 q1회정상종료로그·process없음·portfree확인,도우미PassThruExitCode null로숫자exit0미확인,이력보존. 새기동확인한글인코딩오류는추가기동없이stdout준비와포트로재확인. 강제종료/DB초기화0. login17184/3000유지. 정상logout1168만기존비차단진단. 원본Game/rootWIP/pendingcatalog848f8b보존.
+
+사이트canonical갱신→HTMLbuildPASS→새실제PNG2/기존이력보존→browser상세/이력7이미지로드·713/375가로넘침없음. 미리보기localhost8790,정식게시0. 구매Slack부모1792463910.885979. 다음판매취소계약준비문서는독립로컬이며이번제품과혼합구현하지않음.
+
+## 최신 — 거래소 판매대금 수령 연결 후보 검증 완료
+
+사용자 일반개발 재개에 따라 master0f9b96d 기반 codex/market-proceeds에서 내매물→대금수령 TCP/Core/Cache/ClientCore/Unity UI를 연결했다. 기존sp_bazaar_claim과DB경제규칙유지/스키마·프로시저변경0, 내부ABI와외부30/31동시빌드필수. 독립리뷰의status4표시·Handlerreturn/오류전파 수정과 최종Scene/fixture검토 차단0. MarketClaim Unity2/2 및 native독립2 최종PASS(실패Corefixture의zone0종료전제만보완후해당1개재시험;기대값유지). 실제5011 한로그인 search30→MyList0성공/Collect비활성→실PNG1→정상Close/Disconnect/modelnull/Playstop PASS. 지급성공은fixture만검증/실매물0이라실DB지급미검증,직접DB쓰기·실claim송신0. 실패/테스트관찰자NRE 및 빌드패키징문제근거는 MARKET_CLAIM_RESULTS와rootCaptures에보존했다.
+
+rootEditor26496/PlaycompileScenedirtyfalse, ordinary후보MainServer3096/9999ready/SHA5CC6280B6E5297B77AAB4318321D531598E666F606A924E087F1057ADC4E1E7D,로그인17184/3000,DB·Redis재시작0. 시작전logs/WAL백업. DLL45D9219...과원본Release빌드byte일치. 정상종료CancelIoEx1168만사용자정의비차단진단유지. root원본Game/WIP/pendingcontent848f8b보존.
+
+공개MD/실캡처/이력/생성검증·브라우저desktop/mobile/이력링크PASS. localhost8790 미리보기와GitHub정식배포구분. 다음은이정확큰묶음로컬커밋→UnityCoordinatorSlack게시승인요청. 기존PR37FIX/WORLD/DATA회신재사용금지. NEXT_MARKET_TRADE_TASK는root독립준비에만쓰고현재게시묶음에섞지않는다.
 ## PR37 리뷰 수정 — 검증 완료 / 게시 승인 전
 
 사용자10/20리뷰요청3건만처리,일반개발중단유지. codex/pr37-review-fixes는실제PRhead eacb744에서분기,DATA01 ea01991은codex/content-catalog에보존. respawn0/비최종절삭threshold<2거부·pair stage/backup/실패rollback/중단marker·두C++소비자빌드guard완료,독립리뷰차단0. Unity타깃3/3+격리C++marker정상/차단검증PASS. 실제게임입력/서버재시작/DB쓰기/사이트화면변경0. PR37_EXPORT_REVIEW_RESULTS.md. 로컬commit뒤PR37FIX01Slack게시승인필요,현재push0. root기존catalogasset/runtime유지하고검증용exporter만overlay,검증뒤pendingcatalog에도fix이식·root복원예정.

@@ -6,6 +6,17 @@
 
 자동2시나리오최종PASS/실입력아직미실행. 다른게임창중첩으로클릭·키입력0. 기존C04click-to-walk/moveTarget/화면=서버즉시일치배치는새입력과맞지않아그대로사용금지. 한로그인에서실방향키이동→해제/정지→ZXC→채팅/패널입력차단→퇴장으로합쳐실행한다. 화면예측≤1unit·서버좌표원점·수렴/재진입초기화·원격표시를관찰하고가능하면짧은영상1개만남긴다. 실행전에Assets동결/Editor조작자단독. 사용자의검증재개권한유지,새인간승인을요구하지않는다.
 
+## 판매 취소·반환 최소 배치 완료
+
+Unity2최종PASS(가방fresh첫PASS/취소UI malformed flags제품결함수정후실패1만재시험),native1최종PASS(기존큐거절fixture전제복원후해당1재시험). 기존배송중복회귀0. 실제5011한native로그인→시장검색30→MyList0/cancelvisible disabled→PNG1→Close/Disconnect modelnull/Playstop. 실제취소/반송/영속성미검증/seed0/서버23696유지/새서버기동0. MARKET_CANCEL_RESULTS및Captures/market-cancel-*참조. 새영향없으면추가반복금지.
+
+## 구매·구매품 수령 배치 완료
+
+Unity직접3최종PASS/native직접2PASS。실제5011한로그인→30매물→listing54 qty1/50가격확인→재화부족status4/spent0→명시수령status1/count0→cold첫가방status0뒤열기freshNoitems→정상Disconnect/modelnull/Playstop. 직접DBseed0/지갑·수령함전후동일. 실제성공거래·차감·배송은미검증. 실패수정후실패한UI1개만재시험/기존게임회귀반복0. MARKET_PURCHASE_RESULTS참조,새영향없으면추가반복금지.
+
+## 거래소 판매대금 수령 연결 — 최소 배치 종료
+
+MarketClaim Unity2/2, 서버 독립2경계 최종PASS. 서버 TCP fixture의 실제종료 전제조건을 보완하고 실패항목1개만 재실행했으며 기대응답수는 유지했다. 5011 native 로그인→필드→거래소검색30→내매물0 성공/Collect비활성→실캡처1→Close/Disconnect modelnull→Playstop PASS. 실제매물없어 실DB지급성공 미검증, 직접DB쓰기·실claim송신0. 테스트관찰자의 비직렬화필드 접근NRE는 제품과분리해수정, 같은로그인에서관찰만계속했다. 관련로그와이력보존. MARKET_CLAIM_RESULTS.md/Captures/market-claim-*참조. 새영향없으면추가반복시험금지.
 ## 몬스터 배치 편집 검증 종료
 
 SpawnExport2/2+실제InitializeMonster native1회+Inspector실입력8→9→8복원 한 흐름 PASS. 기본수치동일·실행서버변경없어 추가게임입력/기존사냥반복0. 신규변경/실패근거없이동일검증반복금지. SPAWN_AUTHORING_RESULTS.md 참조.

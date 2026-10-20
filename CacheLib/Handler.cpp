@@ -46,19 +46,28 @@ namespace Cache {
             BazaarSearch(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarSearchBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_REGISTER:
+            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarRegisterBody>)) break;
             BazaarRegister(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarRegisterBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_CANCEL:
             BazaarCancel(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCancelBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_BUY:
+            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarBuyBody>)) break;
             BazaarBuy(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarBuyBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_CLAIM:
+            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarClaimBody>))
+                break;
             BazaarClaim(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarClaimBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_CHECK_OUTBOX:
+            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarCheckOutboxBody>)) break;
             BazaarCheckOutbox(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCheckOutboxBody>(msg->GetBuffer()));
+            break;
+        case Core::MSG_BAZAAR_CANCEL_LISTING:
+            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarCancelListingBody>)) break;
+            BazaarCancelListing(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCancelListingBody>(msg->GetBuffer()));
             break;
         case Core::MSG_PROFILE_RENAME:
             ProfileRename(msg, header->sessionID, Core::parseMsgBody<Core::MsgProfileRenameBody>(msg->GetBuffer()));

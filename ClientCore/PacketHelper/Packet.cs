@@ -45,6 +45,14 @@ namespace ClientCore.PacketHelper
         BAZAAR_SEARCH_RES = 27,
         BAZAAR_MY_LIST = 28,
         BAZAAR_MY_LIST_RES = 29,
+        BAZAAR_CLAIM = 30,
+        BAZAAR_CLAIM_RES = 31,
+        BAZAAR_BUY = 32,
+        BAZAAR_BUY_RES = 33,
+        BAZAAR_CHECK_OUTBOX = 34,
+        BAZAAR_CHECK_OUTBOX_RES = 35,
+        BAZAAR_CANCEL_LISTING = 36,
+        BAZAAR_CANCEL_LISTING_RES = 37,
     }
     
     public enum ZONE_CHANGE : byte
@@ -636,6 +644,121 @@ namespace ClientCore.PacketHelper
         internal static (uint requestID, byte status, BazaarListing[] rows) DeserializeBazaar(PacketHeader header, byte[] buffer)
         {
             return ParseBazaarResponse(header, buffer, OP_CODE.BAZAAR_SEARCH_RES, 0);
+        }
+
+        internal static byte[] SerializeBazaarBuyRequest(uint requestID, ulong listingID)
+        {
+            if (requestID == 0 || listingID == 0) throw new ArgumentException("Invalid bazaar buy.");
+            var result = new byte[20];
+            BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
+            BitConverter.GetBytes(20U).CopyTo(result, 2);
+            result[6] = (byte)OP_CODE.BAZAAR_BUY;
+            BitConverter.GetBytes(requestID).CopyTo(result, 8);
+            BitConverter.GetBytes(listingID).CopyTo(result, 12);
+            return result;
+        }
+
+        internal static byte[] SerializeBazaarCheckOutboxRequest(uint requestID)
+        {
+            if (requestID == 0) throw new ArgumentException("Invalid bazaar outbox request.");
+            var result = new byte[12];
+            BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
+            BitConverter.GetBytes(12U).CopyTo(result, 2);
+            result[6] = (byte)OP_CODE.BAZAAR_CHECK_OUTBOX;
+            BitConverter.GetBytes(requestID).CopyTo(result, 8);
+            return result;
+        }
+
+        internal static byte[] SerializeBazaarCancelListingRequest(uint requestID, ulong listingID)
+        {
+            if (requestID == 0 || listingID == 0) throw new ArgumentOutOfRangeException();
+            var result = new byte[20];
+            BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
+            BitConverter.GetBytes(20U).CopyTo(result, 2);
+            result[6] = (byte)OP_CODE.BAZAAR_CANCEL_LISTING;
+            BitConverter.GetBytes(requestID).CopyTo(result, 8);
+            BitConverter.GetBytes(listingID).CopyTo(result, 12);
+            return result;
+        }
+
+        internal static (uint requestID, ulong listingID, byte status) DeserializeBazaarCancelListing(PacketHeader header, byte[] buffer)
+        {
+            if (buffer == null || buffer.Length != 21 || header.magic != MAGIC || header.length != 21
+                || header.opcode != (byte)OP_CODE.BAZAAR_CANCEL_LISTING_RES || header.flags != 0)
+                throw new ArgumentException("Invalid marketplace cancel response.");
+            var actual = ExtractHeader(buffer);
+            if (actual.magic != header.magic || actual.length != header.length || actual.opcode != header.opcode || actual.flags != header.flags)
+                throw new ArgumentException("Mismatched marketplace cancel response header.");
+            uint requestID = BitConverter.ToUInt32(buffer, 8);
+            ulong listingID = BitConverter.ToUInt64(buffer, 12);
+            byte status = buffer[20];
+            if (requestID == 0 || listingID == 0 || (status != 0 && status != 1 && status != 5))
+                throw new ArgumentException("Invalid marketplace cancel response values.");
+            return (requestID, listingID, status);
+        }
+
+        internal static (uint requestID, ulong listingID, byte status, uint itemID, uint quantity, ulong diamondSpent) DeserializeBazaarBuy(PacketHeader header, byte[] buffer)
+        {
+            if (buffer == null || buffer.Length != 37 || header.magic != MAGIC || header.length != 37 ||
+                header.opcode != (byte)OP_CODE.BAZAAR_BUY_RES || header.flags != 0)
+                throw new ArgumentException("Invalid bazaar buy response envelope.");
+            var actual = ExtractHeader(buffer);
+            if (actual.magic != header.magic || actual.length != header.length || actual.opcode != header.opcode || actual.flags != header.flags)
+                throw new ArgumentException("Mismatched bazaar buy header.");
+            uint requestID = BitConverter.ToUInt32(buffer, 8);
+            ulong listingID = BitConverter.ToUInt64(buffer, 12);
+            byte status = buffer[20];
+            uint itemID = BitConverter.ToUInt32(buffer, 21), quantity = BitConverter.ToUInt32(buffer, 25);
+            ulong amount = BitConverter.ToUInt64(buffer, 29);
+            if (requestID == 0 || listingID == 0 || (status != 0 && status != 1 && status != 3 && status != 4 && status != 5) ||
+                (status == 1 ? itemID == 0 || quantity == 0 : itemID != 0 || quantity != 0 || amount != 0))
+                throw new ArgumentException("Invalid bazaar buy result.");
+            return (requestID, listingID, status, itemID, quantity, amount);
+        }
+
+        internal static (uint requestID, byte status, uint delivered, uint duplicated, uint blocked) DeserializeBazaarCheckOutbox(PacketHeader header, byte[] buffer)
+        {
+            if (buffer == null || buffer.Length != 25 || header.magic != MAGIC || header.length != 25 ||
+                header.opcode != (byte)OP_CODE.BAZAAR_CHECK_OUTBOX_RES || header.flags != 0)
+                throw new ArgumentException("Invalid bazaar outbox response envelope.");
+            var actual = ExtractHeader(buffer);
+            if (actual.magic != header.magic || actual.length != header.length || actual.opcode != header.opcode || actual.flags != header.flags)
+                throw new ArgumentException("Mismatched bazaar outbox header.");
+            uint requestID = BitConverter.ToUInt32(buffer, 8);
+            byte status = buffer[12];
+            uint delivered = BitConverter.ToUInt32(buffer, 13), duplicated = BitConverter.ToUInt32(buffer, 17), blocked = BitConverter.ToUInt32(buffer, 21);
+            if (requestID == 0 || status > 1 || (ulong)delivered + duplicated + blocked > 30)
+                throw new ArgumentException("Invalid bazaar outbox result.");
+            return (requestID, status, delivered, duplicated, blocked);
+        }
+
+        internal static byte[] SerializeBazaarClaimRequest(uint requestID, ulong listingID)
+        {
+            if (requestID == 0 || listingID == 0) throw new ArgumentException("Invalid bazaar claim.");
+            var result = new byte[20];
+            BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
+            BitConverter.GetBytes(20U).CopyTo(result, 2);
+            result[6] = (byte)OP_CODE.BAZAAR_CLAIM;
+            BitConverter.GetBytes(requestID).CopyTo(result, 8);
+            BitConverter.GetBytes(listingID).CopyTo(result, 12);
+            return result;
+        }
+
+        internal static (uint requestID, ulong listingID, byte status, ulong diamondClaimed) DeserializeBazaarClaim(PacketHeader header, byte[] buffer)
+        {
+            if (buffer == null || buffer.Length != 29 || header.magic != MAGIC || header.length != 29 ||
+                header.opcode != (byte)OP_CODE.BAZAAR_CLAIM_RES || header.flags != 0)
+                throw new ArgumentException("Invalid bazaar claim response envelope.");
+            var actual = ExtractHeader(buffer);
+            if (actual.magic != header.magic || actual.length != header.length || actual.opcode != header.opcode || actual.flags != header.flags)
+                throw new ArgumentException("Mismatched bazaar claim header.");
+            uint requestID = BitConverter.ToUInt32(buffer, 8);
+            ulong listingID = BitConverter.ToUInt64(buffer, 12);
+            byte status = buffer[20];
+            ulong amount = BitConverter.ToUInt64(buffer, 21);
+            if (requestID == 0 || listingID == 0 || status > 4 || status != 1 && amount != 0)
+                throw new ArgumentException("Invalid bazaar claim result.");
+            return (requestID, listingID, status, amount);
         }
 
         internal static byte[] SerializeBazaarMyListRequest(uint requestID)

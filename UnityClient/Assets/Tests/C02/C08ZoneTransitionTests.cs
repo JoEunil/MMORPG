@@ -344,6 +344,9 @@ namespace C02.Tests
             public void Enter(ulong charID) { }
             public void Chat(string message, byte scope, ulong targetID) { }
             public void Profiles(uint[] profileIds) { }
+            public void RequestBazaarBuy(uint requestID, ulong listingID) { }
+            public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
+            public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() => Requests++;
             public void Action(byte dir, float x, float y, byte skillSlot) { }
