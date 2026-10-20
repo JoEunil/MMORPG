@@ -51,6 +51,8 @@ namespace ClientCore.PacketHelper
         BAZAAR_BUY_RES = 33,
         BAZAAR_CHECK_OUTBOX = 34,
         BAZAAR_CHECK_OUTBOX_RES = 35,
+        BAZAAR_CANCEL_LISTING = 36,
+        BAZAAR_CANCEL_LISTING_RES = 37,
     }
     
     public enum ZONE_CHANGE : byte
@@ -665,6 +667,34 @@ namespace ClientCore.PacketHelper
             result[6] = (byte)OP_CODE.BAZAAR_CHECK_OUTBOX;
             BitConverter.GetBytes(requestID).CopyTo(result, 8);
             return result;
+        }
+
+        internal static byte[] SerializeBazaarCancelListingRequest(uint requestID, ulong listingID)
+        {
+            if (requestID == 0 || listingID == 0) throw new ArgumentOutOfRangeException();
+            var result = new byte[20];
+            BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
+            BitConverter.GetBytes(20U).CopyTo(result, 2);
+            result[6] = (byte)OP_CODE.BAZAAR_CANCEL_LISTING;
+            BitConverter.GetBytes(requestID).CopyTo(result, 8);
+            BitConverter.GetBytes(listingID).CopyTo(result, 12);
+            return result;
+        }
+
+        internal static (uint requestID, ulong listingID, byte status) DeserializeBazaarCancelListing(PacketHeader header, byte[] buffer)
+        {
+            if (buffer == null || buffer.Length != 21 || header.magic != MAGIC || header.length != 21
+                || header.opcode != (byte)OP_CODE.BAZAAR_CANCEL_LISTING_RES || header.flags != 0)
+                throw new ArgumentException("Invalid marketplace cancel response.");
+            var actual = ExtractHeader(buffer);
+            if (actual.magic != header.magic || actual.length != header.length || actual.opcode != header.opcode || actual.flags != header.flags)
+                throw new ArgumentException("Mismatched marketplace cancel response header.");
+            uint requestID = BitConverter.ToUInt32(buffer, 8);
+            ulong listingID = BitConverter.ToUInt64(buffer, 12);
+            byte status = buffer[20];
+            if (requestID == 0 || listingID == 0 || (status != 0 && status != 1 && status != 5))
+                throw new ArgumentException("Invalid marketplace cancel response values.");
+            return (requestID, listingID, status);
         }
 
         internal static (uint requestID, ulong listingID, byte status, uint itemID, uint quantity, ulong diamondSpent) DeserializeBazaarBuy(PacketHeader header, byte[] buffer)

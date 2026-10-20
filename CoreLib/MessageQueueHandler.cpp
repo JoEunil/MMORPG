@@ -38,6 +38,10 @@ namespace Core {
             if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarCheckOutboxResBody>))
                 BazaarCheckOutboxResponse(header->sessionID, parseMsgBody<MsgBazaarCheckOutboxResBody>(msg->GetBuffer()));
             break;
+        case MSG_BAZAAR_CANCEL_LISTING_RES:
+            if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarCancelListingResBody>))
+                BazaarCancelListingResponse(header->sessionID, parseMsgBody<MsgBazaarCancelListingResBody>(msg->GetBuffer()));
+            break;
         case MSG_BAZAAR_CLAIM_RES:
             if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarClaimResBody>))
                 BazaarClaimResponse(header->sessionID, parseMsgBody<MsgBazaarClaimResBody>(msg->GetBuffer()));
@@ -112,6 +116,13 @@ namespace Core {
         if (stateManager == nullptr || body->characterID == 0
             || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
         auto p = writer->WriteBazaarCheckOutboxResponse(body);
+        if (p) iocp->SendDataUnique(sessionID, std::move(p));
+    }
+
+    void MessageQueueHandler::BazaarCancelListingResponse(uint64_t sessionID, MsgBazaarCancelListingResBody* body) {
+        if (stateManager == nullptr || body->characterID == 0
+            || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
+        auto p = writer->WriteBazaarCancelListingResponse(body);
         if (p) iocp->SendDataUnique(sessionID, std::move(p));
     }
 

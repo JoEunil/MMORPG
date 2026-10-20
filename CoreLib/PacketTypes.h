@@ -7,7 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
-    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 35;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 37;
 
     enum OP : uint16_t {
         AUTH = 1,
@@ -50,6 +50,8 @@ namespace Core {
         BAZAAR_BUY_RES = 33,
         BAZAAR_CHECK_OUTBOX = 34,
         BAZAAR_CHECK_OUTBOX_RES = 35,
+        BAZAAR_CANCEL_LISTING = 36,
+        BAZAAR_CANCEL_LISTING_RES = 37,
     };
 
     enum ZONE_CHANGE: uint8_t {
@@ -103,10 +105,14 @@ namespace Core {
         uint32_t duplicatedCount;
         uint32_t blockedCount;
     };
+    struct BazaarCancelListingRequestBody { uint32_t requestID; uint64_t listingID; };
+    struct BazaarCancelListingResponseBody { uint32_t requestID; uint64_t listingID; uint8_t resStatus; };
     static_assert(sizeof(BazaarBuyRequestBody) == 12);
     static_assert(sizeof(BazaarBuyResponseBody) == 29);
     static_assert(sizeof(BazaarCheckOutboxRequestBody) == 4);
     static_assert(sizeof(BazaarCheckOutboxResponseBody) == 17);
+    static_assert(sizeof(BazaarCancelListingRequestBody) == 12);
+    static_assert(sizeof(BazaarCancelListingResponseBody) == 13);
 
     struct BazaarClaimRequestBody {
         uint32_t requestID;

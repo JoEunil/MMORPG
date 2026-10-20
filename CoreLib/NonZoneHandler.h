@@ -29,6 +29,7 @@ namespace Core {
         void BazaarClaim(IPacketView* p);
         void BazaarBuy(IPacketView* p);
         void BazaarCheckOutbox(IPacketView* p);
+        void BazaarCancelListing(IPacketView* p);
         void Chat(IPacketView* p);
         void ZoneChange(IPacketView* p);
         void GetProfileBatch(IPacketView* p);

@@ -124,7 +124,11 @@ public static class C09BazaarSetup
         var buy = Button("BazaarBuyButton", paper.transform, "BUY SELECTED", new Color(.39f, .27f, .14f, 1));
         AnchorBottomLeft(buy.GetComponent<RectTransform>(), 14, 226, 32);
         buy.GetComponent<RectTransform>().anchoredPosition = new Vector2(14, 94);
-        var checkOutbox = Button("BazaarCheckOutboxButton", paper.transform, "RECEIVE PURCHASES", new Color(.24f, .36f, .22f, 1));
+        var cancelListing = Button("BazaarCancelListingButton", paper.transform, "CANCEL SALE", new Color(.39f, .27f, .14f, 1));
+        AnchorBottomLeft(cancelListing.GetComponent<RectTransform>(), 14, 226, 32);
+        cancelListing.GetComponent<RectTransform>().anchoredPosition = new Vector2(14, 94);
+        cancelListing.gameObject.SetActive(false);
+        var checkOutbox = Button("BazaarCheckOutboxButton", paper.transform, "RECEIVE ITEMS", new Color(.24f, .36f, .22f, 1));
         AnchorBottomRight(checkOutbox.GetComponent<RectTransform>(), 14, 226, 32);
         checkOutbox.GetComponent<RectTransform>().anchoredPosition = new Vector2(-14, 94);
 
@@ -165,6 +169,7 @@ public static class C09BazaarSetup
         serialized.FindProperty("searchButton").objectReferenceValue = search;
         serialized.FindProperty("claimButton").objectReferenceValue = claim;
         serialized.FindProperty("buyButton").objectReferenceValue = buy;
+        serialized.FindProperty("cancelListingButton").objectReferenceValue = cancelListing;
         serialized.FindProperty("checkOutboxButton").objectReferenceValue = checkOutbox;
         serialized.FindProperty("previousPageButton").objectReferenceValue = previous;
         serialized.FindProperty("nextPageButton").objectReferenceValue = next;

@@ -418,6 +418,7 @@ namespace C02.Tests
             public readonly List<uint> BuyIDs = new List<uint>(); public readonly List<uint> OutboxIDs = new List<uint>();
             public void RequestBazaarBuy(uint requestID, ulong listingID) => BuyIDs.Add(requestID);
             public void RequestBazaarCheckOutbox(uint requestID) => OutboxIDs.Add(requestID);
+            public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
             public void RequestBazaarClaim(uint requestID, ulong listingID) => ClaimIDs.Add(requestID);
             public void RequestBazaarMyList(uint requestID) { MyListIDs.Add(requestID); if (FailMyList) throw new InvalidOperationException("Fixture send failure"); }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) => SearchIDs.Add(requestID);

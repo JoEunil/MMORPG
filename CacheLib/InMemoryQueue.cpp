@@ -24,6 +24,7 @@ namespace Cache {
             case Core::MSG_BAZAAR_BUY:
             case Core::MSG_BAZAAR_CLAIM:
             case Core::MSG_BAZAAR_CHECK_OUTBOX:
+            case Core::MSG_BAZAAR_CANCEL_LISTING:
             case Core::MSG_PROFILE_RENAME:
             case Core::MSG_INVENTORY_UPDATE:
                 return Base::Priority::Droppable;

@@ -126,6 +126,29 @@ namespace C02.Tests
             }
         }
 
+        [Test, Category("MarketCancel")]
+        public void UnknownReturnKeepsManualBagOpensFreshEvenAfterAnEarlierReadCompletes()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.OpenBag();
+                fixture.Receive(true);
+                fixture.Close.onClick.Invoke();
+                fixture.Screen.RequireFreshInventoryOnOpen();
+                fixture.OpenBag();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2));
+                fixture.Close.onClick.Invoke();
+                fixture.Receive(true); // This read can predate the still-running cancellation's return.
+                fixture.OpenBag();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(3), "A pre-return response must not restore the stale-cache shortcut.");
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 2, slot = 0 });
+                Assert.That(fixture.Cards.Length, Is.EqualTo(1));
+                fixture.Cards[0].onClick.Invoke();
+                Assert.That(fixture.DetailName.text, Is.EqualTo("HP Potion"));
+                Assert.That(fixture.DetailQuantity.text, Is.EqualTo("Quantity 2"));
+            }
+        }
+
         [Test]
         [Category("MarketPurchase")]
         public void DeliveryRefreshesCachedInventoryAndWaitsForAnOlderReadBeforeOneFreshRequest()
@@ -386,7 +409,7 @@ namespace C02.Tests
         {
             public int Requests;
             public void RequestBazaarBuy(uint requestID, ulong listingID) { }
-            public void RequestBazaarCheckOutbox(uint requestID) { }
+            public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { }

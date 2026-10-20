@@ -15,7 +15,7 @@ AI Agent 워크플로우로 기존 게임 서버에 연결하는 Unity 클라이
 - [캐릭터와 함께 필드를 오가는 과정](portfolio/field-travel.md) — 로그인부터 캐릭터 선택, 월드 진입과 구역 이동까지.
 - [거래소 조회 화면의 첫 버전](portfolio/bazaar-search.md) — 서버 매물 조회를 연결하고 실제 응답을 화면에 표시한 작업.
 - [내 매물 조회와 검색 전환](portfolio/my-listings.md) — 현재 캐릭터의 매물 조회, 새로고침과 판매 검색 복귀.
-- [아이템과 거래소 화면](portfolio/item-market.md) — 아이템·매물 확인, 구매 요청과 별도 수령, 내 매물 대금 수령 흐름.
+- [아이템과 거래소 화면](portfolio/item-market.md) — 아이템·매물 확인, 구매·판매 취소와 아이템 수령, 판매대금 수령 흐름.
 - [내 매물 대금 수령](portfolio/item-market.md#내-매물-대금-수령) — 선택한 내 매물의 서버 수령 결과를 표시합니다. 실서버 지급은 아직 확인되지 않았습니다.
 - [사냥 상태와 전투 HUD](portfolio/player-hud.md) — 캐릭터의 성장 정보와 주변 몬스터 체력을 표시하는 화면.
 - [스킬·몬스터 데이터 편집](portfolio/server-content.md) — 스킬·몬스터 수치와 스폰 배치를 편집하고 서버 데이터로 내보내는 도구.

@@ -39,6 +39,8 @@ namespace Core {
         MSG_BAZAAR_CLAIM_RES = 29,
         MSG_BAZAAR_CHECK_OUTBOX = 30,
         MSG_BAZAAR_CHECK_OUTBOX_RES = 31,
+        MSG_BAZAAR_CANCEL_LISTING = 34,
+        MSG_BAZAAR_CANCEL_LISTING_RES = 35,
 
         // 쓰기는 큐 한 경로로 모아 profile_id별 순서를 보장한다.
         MSG_PROFILE_RENAME = 32,
@@ -284,6 +286,19 @@ namespace Core {
         uint32_t duplicatedCount;
         uint32_t blockedCount;
         uint32_t requestID;
+        uint64_t characterID;
+    };
+
+    struct MsgBazaarCancelListingBody {
+        uint64_t characterID;
+        uint64_t listingID;
+        uint32_t requestID;
+    };
+
+    struct MsgBazaarCancelListingResBody {
+        uint8_t resStatus; // 1 confirms listing cancellation; item return delivery remains separate.
+        uint32_t requestID;
+        uint64_t listingID;
         uint64_t characterID;
     };
 

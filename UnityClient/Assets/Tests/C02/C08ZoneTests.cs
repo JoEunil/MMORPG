@@ -108,7 +108,7 @@ namespace C02.Tests
             public int Zones; public void ZoneChange(byte op) => Zones++;
             public Task Connect(string address, int port) => Task.CompletedTask; public void CharacterList() { } public void Enter(ulong id) { }
             public void Chat(string message, byte scope, ulong target) { } public void Profiles(uint[] ids) { } public void RequestBazaarBuy(uint requestID, ulong listingID) { }
-            public void RequestBazaarCheckOutbox(uint requestID) { }
+            public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() { }

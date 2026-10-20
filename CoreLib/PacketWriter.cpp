@@ -7,6 +7,8 @@ namespace Core {
     static_assert(sizeof(PacketStruct<BazaarBuyResponseBody>) == 37);
     static_assert(sizeof(PacketStruct<BazaarCheckOutboxRequestBody>) == 12);
     static_assert(sizeof(PacketStruct<BazaarCheckOutboxResponseBody>) == 25);
+    static_assert(sizeof(PacketStruct<BazaarCancelListingRequestBody>) == 20);
+    static_assert(sizeof(PacketStruct<BazaarCancelListingResponseBody>) == 21);
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarBuyResponse(const MsgBazaarBuyResBody* body) {
         if (body == nullptr || body->requestID == 0 || body->listingID == 0)
@@ -43,6 +45,19 @@ namespace Core {
         auto* st = reinterpret_cast<PacketStruct<BazaarCheckOutboxResponseBody>*>(p->GetBuffer());
         st->header = { MAGIC, sizeof(*st), OP::BAZAAR_CHECK_OUTBOX_RES, 0 };
         st->body = { body->requestID, body->resStatus, body->deliveredCount, body->duplicatedCount, body->blockedCount };
+        p->SetLength(sizeof(*st));
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarCancelListingResponse(const MsgBazaarCancelListingResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->listingID == 0 || body->characterID == 0
+            || (body->resStatus != 0 && body->resStatus != 1 && body->resStatus != 5)) return nullptr;
+        auto p = packetPool->AcquireUnique();
+        if (!p) return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<BazaarCancelListingResponseBody>*>(p->GetBuffer());
+        st->header = { MAGIC, sizeof(*st), OP::BAZAAR_CANCEL_LISTING_RES, 0 };
+        st->body = { body->requestID, body->listingID, body->resStatus };
         p->SetLength(sizeof(*st));
         return p;
     }

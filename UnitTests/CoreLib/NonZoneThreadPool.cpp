@@ -7,6 +7,8 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -21,6 +23,7 @@
 #include <CoreLib/PacketTypes.h>
 #include <CoreLib/StateManager.h>
 #include <CoreLib/ChatThreadPool.h>
+#include <CacheLib/BazaarCancelResult.h>
 
 namespace Core {
     namespace {
@@ -205,6 +208,15 @@ namespace Core {
                 header->opcode = OP::BAZAAR_CHECK_OUTBOX;
                 header->flags = flags;
                 if (sizeDelta >= 0) *parseBody<BazaarCheckOutboxRequestBody>(packet.data()) = request;
+            }
+            CountedView(uint64_t id, const BazaarCancelListingRequestBody& request, uint8_t flags = 0, int sizeDelta = 0)
+                : packet(sizeof(PacketStruct<BazaarCancelListingRequestBody>) + sizeDelta), session(id) {
+                auto* header = parseHeader(packet.data());
+                header->magic = MAGIC;
+                header->length = static_cast<uint32_t>(packet.size());
+                header->opcode = OP::BAZAAR_CANCEL_LISTING;
+                header->flags = flags;
+                if (sizeDelta >= 0) *parseBody<BazaarCancelListingRequestBody>(packet.data()) = request;
             }
             CountedView(uint64_t id, OP opcode)
                 : packet(sizeof(PacketHeader)), session(id) {
@@ -457,6 +469,12 @@ namespace Core {
             auto* response = messages.Acquire();
             auto* st = reinterpret_cast<MsgStruct<MsgBazaarCheckOutboxResBody>*>(response->GetBuffer());
             st->header = { 42, MSG_BAZAAR_CHECK_OUTBOX_RES }; st->body = body;
+            response->SetLength(sizeof(*st) + sizeDelta); responses.Process(response);
+        }
+        void FinishCancelListing(const MsgBazaarCancelListingResBody& body, int sizeDelta = 0) {
+            auto* response = messages.Acquire();
+            auto* st = reinterpret_cast<MsgStruct<MsgBazaarCancelListingResBody>*>(response->GetBuffer());
+            st->header = { 42, MSG_BAZAAR_CANCEL_LISTING_RES }; st->body = body;
             response->SetLength(sizeof(*st) + sizeDelta); responses.Process(response);
         }
         bool CompleteLoadSuccessfully(Message& request) {
@@ -1145,6 +1163,61 @@ namespace Core {
         EXPECT_EQ(parseBody<BazaarBuyResponseBody>(invalid->GetBuffer())->diamondSpent, 0);
         partial.deliveredCount = UINT32_MAX;
         EXPECT_EQ(writer.WriteBazaarCheckOutboxResponse(&partial), nullptr);
+
+        CountedView cancel(42, BazaarCancelListingRequestBody{125, 987654321ULL});
+        handler.Process(&cancel);
+        EXPECT_FALSE(loads.HasRequest());
+        loads.accept = true;
+        SetSessionImage(ready);
+        handler.Process(&cancel);
+        request = loads.TakeRequest(); ASSERT_NE(request, nullptr);
+        const auto* cancelRequest = parseMsgBody<MsgBazaarCancelListingBody>(request->GetBuffer());
+        EXPECT_EQ(cancelRequest->requestID, 125); EXPECT_EQ(cancelRequest->listingID, 987654321ULL);
+        EXPECT_EQ(cancelRequest->characterID, 5011);
+
+        MsgBazaarCancelListingResBody cancelled{};
+        cancelled.requestID = 125; cancelled.listingID = 987654321ULL; cancelled.characterID = 5011; cancelled.resStatus = 1;
+        FinishCancelListing(cancelled);
+        ASSERT_EQ(iocp.lastPacket.size(), 21);
+        const auto* cancelWire = parseBody<BazaarCancelListingResponseBody>(iocp.lastPacket.data());
+        EXPECT_EQ(cancelWire->requestID, 125); EXPECT_EQ(cancelWire->listingID, 987654321ULL);
+        EXPECT_EQ(cancelWire->resStatus, 1); EXPECT_EQ(parseHeader(iocp.lastPacket.data())->opcode, OP::BAZAAR_CANCEL_LISTING_RES);
+        EXPECT_EQ(iocp.sentOpcodes.size(), 5);
+        cancelled.characterID = 5012; FinishCancelListing(cancelled);
+        cancelled.characterID = 5011; FinishCancelListing(cancelled, -1);
+        cancelled.resStatus = 2; EXPECT_EQ(writer.WriteBazaarCancelListingResponse(&cancelled), nullptr);
+        cancelled.resStatus = 5;
+        ASSERT_NE(writer.WriteBazaarCancelListingResponse(&cancelled), nullptr);
+
+        struct CancelRows {
+            int64_t result = 1, pending = 1;
+            bool empty = false;
+            bool next() { return !empty; }
+            bool isNull(const char*) { return false; }
+            int64_t getInt64(const char* column) { return std::string_view(column) == "result" ? result : pending; }
+            uint64_t getUInt64(const char* column) {
+                if (std::string_view(column) == "event_id") return 765;
+                if (std::string_view(column) == "item_id") return 9;
+                return 2;
+            }
+        } row;
+        MsgBazaarCancelListingResBody parsed{};
+        parsed.resStatus = 5;
+        int returns = 0;
+        Cache::ParseBazaarCancelResult(&row, [&](uint64_t eventID, uint32_t itemID, uint32_t quantity) {
+            EXPECT_EQ(eventID, 765); EXPECT_EQ(itemID, 9); EXPECT_EQ(quantity, 2); ++returns;
+            return false; // A blocked cache pass does not undo the committed listing cancellation.
+        }, parsed);
+        EXPECT_EQ(parsed.resStatus, 1); EXPECT_EQ(returns, 1);
+        row.pending = 0; returns = 0;
+        Cache::ParseBazaarCancelResult(&row, [&](uint64_t, uint32_t, uint32_t) { ++returns; }, parsed);
+        EXPECT_EQ(parsed.resStatus, 1); EXPECT_EQ(returns, 0);
+        row.result = 0;
+        Cache::ParseBazaarCancelResult(&row, [&](uint64_t, uint32_t, uint32_t) { ++returns; }, parsed);
+        EXPECT_EQ(parsed.resStatus, 0); EXPECT_EQ(returns, 0);
+        row.empty = true;
+        EXPECT_THROW(Cache::ParseBazaarCancelResult(&row, [](uint64_t, uint32_t, uint32_t) {}, parsed), std::runtime_error);
+        EXPECT_EQ(parsed.resStatus, 5);
     }
 
     TEST_F(NonZoneThreadPoolFixture, BazaarClaimWireOwnershipAndCorrelatedFailurePreserveFullWidthAmount) {

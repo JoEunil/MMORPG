@@ -1,3 +1,7 @@
+## 판매 취소·반환 최소 배치 완료
+
+Unity2최종PASS(가방fresh첫PASS/취소UI malformed flags제품결함수정후실패1만재시험),native1최종PASS(기존큐거절fixture전제복원후해당1재시험). 기존배송중복회귀0. 실제5011한native로그인→시장검색30→MyList0/cancelvisible disabled→PNG1→Close/Disconnect modelnull/Playstop. 실제취소/반송/영속성미검증/seed0/서버23696유지/새서버기동0. MARKET_CANCEL_RESULTS및Captures/market-cancel-*참조. 새영향없으면추가반복금지.
+
 ## 구매·구매품 수령 배치 완료
 
 Unity직접3최종PASS/native직접2PASS。실제5011한로그인→30매물→listing54 qty1/50가격확인→재화부족status4/spent0→명시수령status1/count0→cold첫가방status0뒤열기freshNoitems→정상Disconnect/modelnull/Playstop. 직접DBseed0/지갑·수령함전후동일. 실제성공거래·차감·배송은미검증. 실패수정후실패한UI1개만재시험/기존게임회귀반복0. MARKET_PURCHASE_RESULTS참조,새영향없으면추가반복금지.

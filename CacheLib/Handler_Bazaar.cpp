@@ -14,6 +14,7 @@
 #include "BazaarMyListResult.h"
 #include "BazaarClaimResult.h"
 #include "BazaarPurchaseResult.h"
+#include "BazaarCancelResult.h"
 
 namespace Cache {
     void Handler::BazaarMyList(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarMyListBody* body) {
@@ -218,6 +219,39 @@ namespace Cache {
             auto result = conn->ExecuteSelect(16, request.listingID, request.characterID);
             Core::MsgBazaarBuyResBody response{};
             ParseBazaarBuyResult(result.get(), response);
+            finish(response);
+        }, nullptr, failed);
+        if (outcome != DBEnqueueResult::Queued) failed();
+        msg = nullptr;
+    }
+
+    void Handler::BazaarCancelListing(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCancelListingBody* body) {
+        const auto request = *body;
+        auto* owned = msg;
+        const auto finish = [this, owned, sessionID, request](const Core::MsgBazaarCancelListingResBody& response) {
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarCancelListingResBody>*>(owned->GetBuffer());
+            st->header = { sessionID, Core::MSG_BAZAAR_CANCEL_LISTING_RES };
+            st->body = response;
+            st->body.requestID = request.requestID;
+            st->body.listingID = request.listingID;
+            st->body.characterID = request.characterID;
+            owned->SetLength(sizeof(*st));
+            if (!messageQ->EnqueueMessage(owned))
+                Core::errorLogger->LogError("cache handler bazaar", "cancel response queue rejected", "sessionID", sessionID);
+            messagePool->Return(owned);
+        };
+        const auto failed = [finish] {
+            Core::MsgBazaarCancelListingResBody response{};
+            response.resStatus = 5;
+            finish(response);
+        };
+        const auto outcome = dbWorkerBazaar->Enqueue([this, request, finish](DBConnectionBazaar* conn) {
+            auto result = conn->ExecuteSelect(14, request.listingID, request.characterID);
+            Core::MsgBazaarCancelListingResBody response{};
+            response.resStatus = 5;
+            Cache::ParseBazaarCancelResult(result.get(), [this, characterID = request.characterID](uint64_t eventID, uint32_t itemID, uint32_t quantity) {
+                return cache_inventory->DeliverItem(characterID, eventID, itemID, quantity);
+            }, response);
             finish(response);
         }, nullptr, failed);
         if (outcome != DBEnqueueResult::Queued) failed();

@@ -83,6 +83,9 @@ namespace Core {
             case OP::BAZAAR_CHECK_OUTBOX:
                 BazaarCheckOutbox(p);
                 break;
+            case OP::BAZAAR_CANCEL_LISTING:
+                BazaarCancelListing(p);
+                break;
             case OP::BAZAAR_CLAIM:
                 BazaarClaim(p);
                 break;
@@ -265,6 +268,35 @@ namespace Core {
         auto response = writer->WriteBazaarCheckOutboxResponse(&failed);
         if (response)
             iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+    }
+
+    void NonZoneHandler::BazaarCancelListing(IPacketView* p) {
+        if (p->GetLength() != sizeof(PacketStruct<BazaarCancelListingRequestBody>)) return;
+        const auto* header = parseHeader(p->GetPtr());
+        const auto request = *parseBody<BazaarCancelListingRequestBody>(p->GetPtr());
+        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_CANCEL_LISTING
+            || header->length != p->GetLength() || header->flags != 0
+            || request.requestID == 0 || request.listingID == 0) return;
+        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        if (characterID == 0) return;
+        Message* msg = messagePool->Acquire();
+        if (msg != nullptr) {
+            auto* st = reinterpret_cast<MsgStruct<MsgBazaarCancelListingBody>*>(msg->GetBuffer());
+            st->header = { p->GetSessionID(), MSG_BAZAAR_CANCEL_LISTING };
+            st->body = { characterID, request.listingID, request.requestID };
+            msg->SetLength(sizeof(*st));
+            const bool queued = messageQueue->EnqueueMessage(msg);
+            messagePool->Return(msg);
+            if (queued) return;
+        }
+        MsgBazaarCancelListingResBody failed{};
+        failed.requestID = request.requestID;
+        failed.listingID = request.listingID;
+        failed.characterID = characterID;
+        failed.resStatus = 5;
+        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
+        auto response = writer->WriteBazaarCancelListingResponse(&failed);
+        if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
     void NonZoneHandler::BazaarClaim(IPacketView* p) {

@@ -1,3 +1,11 @@
+## 최신 — 판매 취소·반환 연결 검증 완료
+
+codex/market-cancel는cb53db6기반이며판매취소외부36/37 req20/res21·내부34/35/ClientCore·UI2클릭과반환안내를추가했다. 기존내부cancel24/25/proc14/outbox/경제규칙유지. 독립리뷰P2응답전닫기가방stale해소(불명취소후같은모델수동open마다fresh). UI malformed flags실패를제품Handler의simulation전검증/37예외재전파로해소·변경경계독립재리뷰차단0. Unity2최종PASS(가방첫PASS유지/실패취소UI1만재시험),native단일1최종PASS(기존fixture loads.accept=false복원·기대유지). ReleaseCore/MainServer/UnitTests빌드PASS. 초기/m2작업노드진행없음→취소입력중단→별도obj-single/bin-single/m1빌드,직접vcxproj솔루션경로누락실패는Game.sln target으로복구. 실패이력보존/전체회귀반복0.
+
+실제5011 native한로그인→검색30→MyList0/cancelvisible disabled→PNG1→Close/Disconnect Modelnull/Playstop PASS. 프레임28382→35912/정적화면대신진행확인. 본인매물없어실취소TCP/DB·반송·배송영속화미실행,자동fixture와구분. 기존구매서버23696/ticks639280615805924105/9999유지,새취소서버는빌드만(hash49F77953B5CA8693BD0FFB0E8338B6695B01842CA5AE323FE09C169AF807A490)/기동0. 준비된정상전환helper미실행. 강제종료/DB쓰기·seed/서버재시작0. DLLF1AAA78C6C236AA7D96E11771938B6B8FC925A31D81B52FCAD28D4552C4105FB 빌드일치. rootEditorPlay/compile/dirtyfalse,원본Game/rootWIP/pendingcatalog848보존.
+
+사이트MD/실제PNG1추가/HTMLbuildPASS/상세·이력이미지8로드넘침없음/브라우저스크린샷확인。새스타일변경없어이전mobile회귀반복0. localhost8790미리보기유지/정식게시0. MARKET02사람승인미확인/소비0/push0。취소까지동결한큰거래소묶음으로최종요청을갱신할예정이며기존MARKET02원문승인이새취소범위까지허용한것으로해석하지않는다. 다음등록준비는NEXT_MARKET_REGISTER_TASK.md 독립문서만/현재UI연결만으로안전하지않아영속중복방지최소계약검토필요,제품변경0. 소스상처리만있는등록을가짜성공으로노출하지않음.
+
 ## 최신 — 거래소 구매·구매품 수령 묶음 검증 완료
 
 2026-10-20 사용자 계속진행. codex/market-purchase는미게시20b365e기반. MARKET_PURCHASE_RESULTS/CONTRACT/TASK에구현·리뷰·최소검증·실제실패이력과제한기록. Unity직접3최종PASS/native2PASS/실제5011한로그인가격확인→재화부족status4/spent0→빈배송status1→coldcache첫실패후BAG열기freshNoitems→normalDisconnect/modelnull/Playstop. wallet/outbox/top3 readonly전후동일/직접DBseed0. 실제성공거래·차감·배송영속화미검증. 기존대금수령20b도포함해큰PR한개게시요청예정,각각작은PR금지. MARKET01사람승인원문여전히없음/소비0. 새최종요청MARKET02가필요하며기존승인재사용금지.

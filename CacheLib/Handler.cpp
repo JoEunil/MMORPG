@@ -64,6 +64,10 @@ namespace Cache {
             if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarCheckOutboxBody>)) break;
             BazaarCheckOutbox(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCheckOutboxBody>(msg->GetBuffer()));
             break;
+        case Core::MSG_BAZAAR_CANCEL_LISTING:
+            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarCancelListingBody>)) break;
+            BazaarCancelListing(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCancelListingBody>(msg->GetBuffer()));
+            break;
         case Core::MSG_PROFILE_RENAME:
             ProfileRename(msg, header->sessionID, Core::parseMsgBody<Core::MsgProfileRenameBody>(msg->GetBuffer()));
             break;

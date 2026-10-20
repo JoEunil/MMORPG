@@ -35,6 +35,7 @@ namespace C02
         private float requestDeadline;
         private bool hasInventoryResponse;
         private bool refreshAfterCurrentRequest;
+        private bool refreshOnOpenAfterUncertainDelivery;
 
         public bool IsOpen => inventoryPanel != null && inventoryPanel.activeSelf;
 
@@ -86,6 +87,7 @@ namespace C02
             requestTimedOut = false;
             hasInventoryResponse = false;
             refreshAfterCurrentRequest = false;
+            refreshOnOpenAfterUncertainDelivery = false;
             ClearInventoryCards();
             inventoryStatus.text = string.Empty;
             inventoryPanel.SetActive(false);
@@ -111,7 +113,7 @@ namespace C02
                 worldScreen.StopActions();
             }
             inventoryPanel.SetActive(open);
-            if (open && !hasInventoryResponse && !requestTimedOut && !requestPending)
+            if (open && (!hasInventoryResponse || refreshOnOpenAfterUncertainDelivery) && !requestTimedOut && !requestPending)
                 RequestInventory();
             UpdateControls();
         }
@@ -128,6 +130,12 @@ namespace C02
             // Inventory replies have no request ID: finish an older read before issuing the fresh one.
             if (requestPending) refreshAfterCurrentRequest = true;
             else RequestInventory();
+        }
+
+        public void RequireFreshInventoryOnOpen()
+        {
+            // A lost mutation response can arrive after an earlier bag read; keep manual opens fresh for this model.
+            refreshOnOpenAfterUncertainDelivery = true;
         }
 
         private void RequestInventory()
