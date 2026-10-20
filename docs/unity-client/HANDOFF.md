@@ -1,3 +1,13 @@
+## 최신 — 가방 읽기 후보 최소 검증 완료 / 웹 기존 범위 정정
+
+codex/inventory-read-followup에서 C07InventoryScreen의 명시 실패 뒤 GET1회 재확인만 구현했다. 기존 readonly도구로5011/5012 inventory행present/BLOB360확인, cold-cache인지는환경확정하지않음. 닫기/Zone/모델교체/disable 예약취소, timeout·exception·writes 재시도0, 실제성공만empty로표시. 독립읽기리뷰blocker0/명시compile0/새직접PlayMode2개 각각1회PASS. 실제신규로그인/입력은0이므로다음가방묶음에표시확인을남긴다. INVENTORY_READ_FOLLOWUP_RESULTS.txt. EditorPlayfalse/dirtyfalse/backgroundfalse/inputRunningfalse. 작은후속PR요청없음. 전문신규11/재활성화45/56회/tokenN/A.
+
+사용자 최신정정: 기존직접구현2D Unity에는이동·몬스터·스킬·채팅·월드진입만있었고인벤토리/거래소는없었다. Unity가방/거래소화면은AI Agent추가로SHOWCASE·상세·PORTFOLIO_GUIDE·ROOT AGENTS/guide에정정. 기존서버기능과Unity기존화면혼동금지. 작업과결과대표사진은해당상세로연결하고상세사진확대는유지. 생성·링크검사와실제사진클릭→inventory상세진입확인. 웹정정은별도커밋으로PLAY03게시후보에도반영해야하며미수정d217을그대로게시하지않는다.
+## 게시 요청 최신 — PLAY03 / 가방 읽기 독립 후속 착수
+
+기존 PLAY02 요청 뒤 지정사람 새회신이없음을 봇 auth.test+실제 replies(has_morefalse)로 확인하고, 같은 앱 메시지1792495219.973689를 최신 PLAY03으로 갱신했다. channelC0C9VFZMV43/parent1792487679.299269 유지. 대상은 codex/classic-field-art의 d217f0a2dc00f014d4735fb407817111ed0e823a (필드/HUD/chat/웹/자연석/이동버튼/실제생존이동의 큰1묶음). PLAY02/CLASSIC01 회신은 이 후보 게시에 적용하지 않는다. 현재 push/PR 신규0. 완료채널 봇요약1792496854.442739.
+
+게시 후보를 고정하고 codex/inventory-read-followup를 d217f0a에서 분기했다. 다음 미완료는 실제 account02/char5012 가방조회실패. 기존 분석 담당에게 후보루트의 실제 서버/캐시/DB 읽기 계약만 배정했으며 코드/DB/서버/Editor 변경은 아직 없다. 정상빈가방인지 조회실패인지 구분하기 전 에러를 성공으로 바꾸지 않는다. 계정01 HP0·계정02 HP10000의 실제상태/정상Zone5저장 보존. 전문신규10/재활성화44/54회/token N/A.
 ## 최신 — 생존 계정 실제 이동·구역 전환 완료 / 버튼 가림 수정
 
 기존 계정02/캐릭터5012가 HP10000/MP9999인 것을 실제 로그인1회로 확인했다. HUD 위 방향키 이동·I/B 열린패널 이동 차단과 실제1→4→5 경계 전환/서버좌표 보존/scenery(100,0,100) PASS. 계정01 HP0이 모든 생존 검증의 차단은 아니었다. 테스트 도우미의 Canvas오선택/카메라평면투영 오류는 제품 실패와 분리해 같은접속의 남은 단계만 재개했다. 새 전체 회귀/처치·EXP검증/DB쓰기·회복·리시딩0.
