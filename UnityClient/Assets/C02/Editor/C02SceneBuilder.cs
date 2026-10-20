@@ -632,6 +632,7 @@ public static class C02SceneBuilder
         ground.GetComponent<MeshFilter>().sharedMesh=mesh; ground.GetComponent<MeshRenderer>().sharedMaterial=meadow;
         // Existing original meshes are reused; no external or generated model dependency.
         var rock = outpost.Find("RoadsideRock1"); var grass = outpost.Find("GrassClump0"); var pine=outpost.Find("Pine0");
+        var meadowStoneMesh = MeadowStoneMesh();
         var limestone=V04Material("MossWeatheredStone",new Color(.46f,.47f,.38f),"WeatheredLimestone");
         var grassMat=V04Material("MeadowTufts",new Color(.31f,.39f,.18f),"Moss");
         var random=new System.Random(42613);
@@ -652,6 +653,7 @@ public static class C02SceneBuilder
             if(i%3==0)
             {
                 var stone=Object.Instantiate(rock.gameObject,group);stone.SetActive(true);stone.name="BuriedOutcrop";stone.transform.localPosition=new Vector3(.7f,-.08f,.5f);stone.transform.localRotation=Quaternion.Euler(0,Rand(0,360),0);stone.transform.localScale=new Vector3(Rand(.7f,1.7f),.22f,Rand(.6f,1.4f));stone.GetComponent<Renderer>().sharedMaterial=limestone;
+                stone.GetComponent<MeshFilter>().sharedMesh = meadowStoneMesh;
             }
         }
         // Forest masses stay outside the playable square, rather than implying invisible interior walls.
@@ -668,6 +670,7 @@ public static class C02SceneBuilder
         {
             float x=41+Rand(-2.8f,2.8f),z=55+Rand(-2.5f,2.5f);
             var stone=Object.Instantiate(rock.gameObject,root);stone.SetActive(true);stone.name="BuriedShrineStone"+i;stone.transform.localPosition=new Vector3(x,-.02f,z);stone.transform.localRotation=Quaternion.Euler(0,Rand(-25,35),0);stone.transform.localScale=new Vector3(Rand(.7f,1.6f),Rand(.12f,.28f),Rand(.5f,1.1f));stone.GetComponent<Renderer>().sharedMaterial=limestone;
+            stone.GetComponent<MeshFilter>().sharedMesh = meadowStoneMesh;
         }
         for(int i=0;i<3;i++)
         {
@@ -688,6 +691,89 @@ public static class C02SceneBuilder
             var ridge=Object.Instantiate(previous.Find("DistantRidge"+i).gameObject,root);ridge.SetActive(true);ridge.name="DistantForestRidge"+i;
         }
         AssetDatabase.SaveAssets();EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
+    }
+
+    [MenuItem("C02/Art/Apply Meadow Stone Mesh")]
+    public static void ApplyMeadowStoneMesh()
+    {
+        var scene = EditorSceneManager.GetActiveScene();
+        if (EditorApplication.isPlaying || scene.path != "Assets/C02/C02.unity")
+            throw new System.InvalidOperationException("Meadow stone authoring requires C02 in Edit Mode.");
+        if (scene.isDirty) throw new System.InvalidOperationException("Save existing C02 edits before applying and saving meadow stones.");
+        Transform field = null;
+        foreach (var sceneRoot in scene.GetRootGameObjects())
+        {
+            var world = System.Array.Find(sceneRoot.GetComponentsInChildren<Transform>(true), t => t.name == "C02World");
+            if (world != null) { field = world.Find("V04MeanderingMeadow"); break; }
+        }
+        if (field == null) throw new System.InvalidOperationException("Apply V04 before replacing meadow stones.");
+        var mesh = MeadowStoneMesh();
+        int count = 0;
+        Undo.IncrementCurrentGroup();
+        int undoGroup = Undo.GetCurrentGroup();
+        Undo.SetCurrentGroupName("Apply Meadow Stone Mesh");
+        foreach (var filter in field.GetComponentsInChildren<MeshFilter>(true))
+        {
+            if (filter.name != "BuriedOutcrop" && !filter.name.StartsWith("BuriedShrineStone", System.StringComparison.Ordinal)) continue;
+            if (filter.sharedMesh == mesh) continue;
+            Undo.RecordObject(filter, "Replace meadow stone mesh");
+            filter.sharedMesh = mesh;
+            EditorUtility.SetDirty(filter);
+            count++;
+        }
+        Undo.CollapseUndoOperations(undoGroup);
+        AssetDatabase.SaveAssetIfDirty(mesh);
+        if (count > 0)
+        {
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(scene)) throw new System.InvalidOperationException("Meadow stone scene save failed.");
+        }
+        Debug.Log("Meadow stone mesh applied to " + count + " low stones. Scene saved when changed; mesh replacement supports Undo.");
+    }
+
+    private static Mesh MeadowStoneMesh()
+    {
+        const string folder = "Assets/C02/Art/V04";
+        const string path = folder + "/MeadowChamferedStone.asset";
+        var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+        if (mesh != null) return mesh;
+        if (!AssetDatabase.IsValidFolder(folder)) AssetDatabase.CreateFolder("Assets/C02/Art", "V04");
+        // Unequal eight-sided footprint, broad sloping shoulders and an offset crown.
+        // Unit-height bounds preserve the buried stones' existing ankle-height transforms.
+        var outline = new[] { new Vector2(-.48f,-.19f), new Vector2(-.26f,-.46f), new Vector2(.13f,-.50f),
+            new Vector2(.45f,-.28f), new Vector2(.50f,.10f), new Vector2(.23f,.43f),
+            new Vector2(-.12f,.50f), new Vector2(-.50f,.23f) };
+        var shoulders = new[] { .20f,.31f,.24f,.18f,.28f,.34f,.23f,.29f };
+        var vertices = new System.Collections.Generic.List<Vector3>();
+        var triangles = new System.Collections.Generic.List<int>();
+        var uv = new System.Collections.Generic.List<Vector2>();
+        void Triangle(Vector3 a, Vector3 b, Vector3 c)
+        {
+            int start = vertices.Count;
+            vertices.Add(a); vertices.Add(b); vertices.Add(c);
+            uv.Add(new Vector2(a.x+.5f,a.z+.5f)); uv.Add(new Vector2(b.x+.5f,b.z+.5f)); uv.Add(new Vector2(c.x+.5f,c.z+.5f));
+            triangles.Add(start); triangles.Add(start+1); triangles.Add(start+2);
+        }
+        for (int i = 0; i < outline.Length; i++)
+        {
+            int next = (i+1)%outline.Length;
+            var a = outline[i]; var b = outline[next];
+            var lowA = new Vector3(a.x*.83f,-.5f,a.y*.83f);
+            var lowB = new Vector3(b.x*.83f,-.5f,b.y*.83f);
+            var rimA = new Vector3(a.x,-.10f,a.y); var rimB = new Vector3(b.x,-.10f,b.y);
+            var topA = new Vector3(a.x*.69f+.035f,shoulders[i],a.y*.72f-.025f);
+            var topB = new Vector3(b.x*.69f+.035f,shoulders[next],b.y*.72f-.025f);
+            // Counterclockwise outline viewed from above: reverse top winding for +Y.
+            Triangle(lowA,rimA,rimB); Triangle(lowA,rimB,lowB);
+            Triangle(rimA,topA,topB); Triangle(rimA,topB,rimB);
+            Triangle(topA,new Vector3(-.055f,.5f,.045f),topB);
+            Triangle(lowA,lowB,new Vector3(0,-.5f,0));
+        }
+        mesh = new Mesh { name = "MeadowChamferedStone" };
+        mesh.SetVertices(vertices); mesh.SetTriangles(triangles,0); mesh.SetUVs(0,uv);
+        mesh.RecalculateNormals(); mesh.RecalculateBounds();
+        AssetDatabase.CreateAsset(mesh,path);
+        return mesh;
     }
 
     private static Material Material(string name, Color color)

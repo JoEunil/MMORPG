@@ -1,3 +1,15 @@
+## 후속 아트 — 낮은 자연석 후보 통합 완료
+
+codex/classic-field-art에서 V04 BuriedOutcrop/BuriedShrineStone50개의 MeshFilter만 전용 MeadowChamferedStone.asset으로 교체했다. 전용 Apply 메뉴는 기존 미저장편집/Play를 거절하고 Undo/명시저장, 전체V04재생성 없이 작동한다. 기존 공용Rock/성문/신전구조물/좌표/스폰/지면재질/조명 불변. 명시 compile0오류/0경고·sceneSaved true, scene diff는50개 mesh 참조뿐. 같은 카메라 before/after에서 직사각판 윤곽 개선 확인. 실제 게임 입력/회귀 반복0. 새메시144v/48tri/bounds±.5. FIELD_SCENERY_TASK.md 참조.
+
+독립 읽기 리뷰는 winding/범위/Undo/asset재사용을 확인했으며 'V04 메뉴가 없어 실행불가' 지적은 실제 기존씬의50개 적용 성공으로 반증해 비차단 처리. ROOT의 기존 ContinuousMeadow/ContinuousGround가 후보와 hash 다름을 확인했으나 원본 WIP 보존·복사/덮기0. static 비교는 같은 Editor 자산 조건이며 후보 전체시각동일성으로 확대하지 않음. 이 작은 아트 변화는 내부 비교만 기록하고 별도공개카드/작은PR 없이 다음아트묶음으로 모은다.
+
+전문 누적 신규10/재활성화41/활성화51/token N/A. PLAY02는 이전 codex/classic-field-ui/41080c9에만 고정, 봇요청1792495219.973689/완료요약1792495329.731209. 이 자연석 변경을 승인 요청 범위에 임의 추가하지 않는다. 새 push/PR 없음. 다음은 대표필드 아트·남은 생존 플레이 조건을 검토하고 관련구현을 모은다.
+## 현재 — PLAY02 게시 승인 요청 / 다음 필드 아트 저작
+
+후속 큰 묶음은 codex/classic-field-ui의 41080c9ab71585ef84e360da7bfa5545cdd0a83c에 고정했다. Unity Coordinator bot 요청1792495219.973689, channelC0C9VFZMV43/정확 부모1792487679.299269, 회신은 승인 PLAY02. 새 push/PR 없음. PR38 병합은 확인했으며 후속 요청은 병합 승인이 아니라 새 큰 PR 게시 범위다. 로컬 원본/검증 기록/이전 빌드는 보존한다. 전체 branch diff의 Unity 직렬화 trailing-space 진단은 기존 앞 커밋에도 있고 새 채팅 커밋 diff check는 PASS이며 이를 코드 오류로 확대하지 않는다.
+
+승인 대기로 정지하지 않고 codex/classic-field-art를 frozenHEAD에서 분기했다. 전문 아트 담당을 재활성화해 낮은 자연석의 직사각 판 윤곽을 V04 전용 메시로 개선 중이다. 기존 성문 Rock/신전구조물/서버판정/지면/조명은 제외, root만 Editor 조작한다. 새 지면 알베도는 미채택 유지. 다음 콘텐츠 분석은 후보 경로 재확인 완료했지만 실플레이 근거 없이 밀도 계수를 새 예비 구조로 추가하지 않는다. 에이전트 이번 아트 재활성화1 추가 누적50, tokens N/A.
 ## 최종 갱신 — PR38 병합·키보드 이동 리뷰 반영
 
 PR38은 사용자에 의해 병합됨을 GitHub에서 확인했고 origin/master8e2becd에 ee85가 포함됨을 확인했다. 후속 후보는 기존 master를 덮어쓰지 않는다. 리뷰의 HUD 위 mouse hover에 따른 방향키 취소를 제거하고, 가방/거래소 열린 상태는 실제 Canvas의 패널 참조로 명시 차단했다. 동일 GameObject 추정은 독립 리뷰/실제 scene조회에서 실패해 serialized 참조와 C07/C09 Setup 연결로 수정했다. 명시 recompile0오류/0경고, 실제 inventoryBound/bazaarBound true/sceneSaved true. 실제 생존 이동/열린패널 입력은 다음 생존 배치에 포함하며 이번 컴파일 확인으로 통과 처리하지 않는다.
