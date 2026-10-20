@@ -55,6 +55,8 @@ namespace Cache {
             BazaarBuy(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarBuyBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_CLAIM:
+            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarClaimBody>))
+                break;
             BazaarClaim(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarClaimBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_CHECK_OUTBOX:

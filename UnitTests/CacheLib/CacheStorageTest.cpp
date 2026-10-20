@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <algorithm>
 
 #include <CacheLib/CacheFlush.h>
 #include <CacheLib/CacheStorageInventory.h>
@@ -219,7 +220,9 @@ namespace {
     class SearchResponseQueue : public Core::IMessageQueue {
     public:
         std::unique_ptr<Core::Message> received;
+        bool accept = true;
         bool EnqueueMessage(Core::Message* msg) override {
+            if (!accept) return false;
             received = std::make_unique<Core::Message>(msg->GetLength());
             std::memcpy(received->GetBuffer(), msg->GetBuffer(), msg->GetLength());
             received->SetLength(msg->GetLength());
@@ -444,6 +447,25 @@ namespace Cache {
             handler.messagePool = messages.get();
             handler.dbWorkerBazaar = stoppedWorker.get();
         }
+        void RequestClaim(int delta = 0) {
+            auto* msg = messages->Acquire();
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarClaimBody>*>(msg->GetBuffer());
+            st->header = {42, Core::MSG_BAZAAR_CLAIM};
+            st->body = {5011, UINT64_MAX, 0x12345678};
+            msg->SetLength(sizeof(*st) + delta);
+            handler.Process(msg);
+        }
+        void ExpectPoolRestored() {
+            std::vector<Core::Message*> held;
+            for (size_t i = 0; i < MSGPOOL_SIZE; ++i) {
+                auto* msg = messages->Acquire();
+                ASSERT_NE(msg, nullptr);
+                EXPECT_EQ(std::find(held.begin(), held.end(), msg), held.end());
+                held.push_back(msg);
+            }
+            EXPECT_EQ(messages->Acquire(), nullptr);
+            for (auto* msg : held) messages->Return(msg);
+        }
         void RequestMyList() {
             auto* msg = messages->Acquire();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarMyListBody>*>(msg->GetBuffer());
@@ -465,5 +487,49 @@ namespace Cache {
         EXPECT_EQ(st->body.resStatus, 0);
         EXPECT_EQ(st->body.count, 0);
         EXPECT_EQ(st->body.listings[29].listingID, 0);
+    }
+}
+
+#include <CacheLib/BazaarClaimResult.h>
+namespace {
+    struct ClaimRows {
+        int64_t status = 1;
+        uint64_t amount = UINT64_MAX;
+        bool empty = false, throws = false;
+        bool next() { if (throws) throw std::runtime_error("fixture SQL read failure"); return !empty; }
+        bool isNull(const char*) { return false; }
+        int64_t getInt64(const char*) { return status; }
+        uint64_t getUInt64(const char*) { return amount; }
+    };
+}
+namespace Cache {
+    TEST_F(BazaarMyListFixture, BazaarClaimSqlFixtureAndQueueRejectionKeepCorrelationAndSingleReturn) {
+        ClaimRows rows;
+        Core::MsgBazaarClaimResBody body{};
+        ParseBazaarClaimResult(&rows, body);
+        EXPECT_EQ(body.resStatus, 1); EXPECT_EQ(body.diamondClaimed, UINT64_MAX);
+        rows.amount = 0; rows.status = 4;
+        ParseBazaarClaimResult(&rows, body);
+        EXPECT_EQ(body.resStatus, 4); EXPECT_EQ(body.diamondClaimed, 0);
+        rows.amount = UINT64_MAX;
+        EXPECT_THROW(ParseBazaarClaimResult(&rows, body), std::runtime_error);
+        EXPECT_EQ(body.resStatus, 0); EXPECT_EQ(body.diamondClaimed, 0);
+        rows.throws = true;
+        EXPECT_THROW(ParseBazaarClaimResult(&rows, body), std::runtime_error);
+        rows.throws = false; rows.empty = true;
+        ParseBazaarClaimResult(&rows, body);
+        EXPECT_EQ(body.resStatus, 0); EXPECT_EQ(body.diamondClaimed, 0);
+        RequestClaim();
+        ASSERT_NE(responses.received, nullptr);
+        const auto* result = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarClaimResBody>*>(responses.received->GetBuffer());
+        EXPECT_EQ(result->header.sessionID, 42); EXPECT_EQ(result->header.messageType, Core::MSG_BAZAAR_CLAIM_RES);
+        EXPECT_EQ(result->body.requestID, 0x12345678); EXPECT_EQ(result->body.characterID, 5011);
+        EXPECT_EQ(result->body.listingID, UINT64_MAX);
+        EXPECT_EQ(result->body.resStatus, 0); EXPECT_EQ(result->body.diamondClaimed, 0);
+        ExpectPoolRestored();
+        responses.received.reset(); responses.accept = false;
+        RequestClaim(); EXPECT_EQ(responses.received, nullptr); ExpectPoolRestored();
+        responses.accept = true;
+        RequestClaim(-1); EXPECT_EQ(responses.received, nullptr); ExpectPoolRestored();
     }
 }

@@ -168,6 +168,7 @@ namespace C02.Tests
         {
             public event Action<string> OnDisconnected { add { } remove { } }
             public int SendCount;
+            public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void Send(byte[] binary) { if (binary[6] == 16) return; SendCount++; throw new InvalidOperationException("Detached test send failure."); }
             public void Dispose() { }

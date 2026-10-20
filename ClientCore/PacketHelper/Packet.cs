@@ -45,6 +45,8 @@ namespace ClientCore.PacketHelper
         BAZAAR_SEARCH_RES = 27,
         BAZAAR_MY_LIST = 28,
         BAZAAR_MY_LIST_RES = 29,
+        BAZAAR_CLAIM = 30,
+        BAZAAR_CLAIM_RES = 31,
     }
     
     public enum ZONE_CHANGE : byte
@@ -636,6 +638,35 @@ namespace ClientCore.PacketHelper
         internal static (uint requestID, byte status, BazaarListing[] rows) DeserializeBazaar(PacketHeader header, byte[] buffer)
         {
             return ParseBazaarResponse(header, buffer, OP_CODE.BAZAAR_SEARCH_RES, 0);
+        }
+
+        internal static byte[] SerializeBazaarClaimRequest(uint requestID, ulong listingID)
+        {
+            if (requestID == 0 || listingID == 0) throw new ArgumentException("Invalid bazaar claim.");
+            var result = new byte[20];
+            BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
+            BitConverter.GetBytes(20U).CopyTo(result, 2);
+            result[6] = (byte)OP_CODE.BAZAAR_CLAIM;
+            BitConverter.GetBytes(requestID).CopyTo(result, 8);
+            BitConverter.GetBytes(listingID).CopyTo(result, 12);
+            return result;
+        }
+
+        internal static (uint requestID, ulong listingID, byte status, ulong diamondClaimed) DeserializeBazaarClaim(PacketHeader header, byte[] buffer)
+        {
+            if (buffer == null || buffer.Length != 29 || header.magic != MAGIC || header.length != 29 ||
+                header.opcode != (byte)OP_CODE.BAZAAR_CLAIM_RES || header.flags != 0)
+                throw new ArgumentException("Invalid bazaar claim response envelope.");
+            var actual = ExtractHeader(buffer);
+            if (actual.magic != header.magic || actual.length != header.length || actual.opcode != header.opcode || actual.flags != header.flags)
+                throw new ArgumentException("Mismatched bazaar claim header.");
+            uint requestID = BitConverter.ToUInt32(buffer, 8);
+            ulong listingID = BitConverter.ToUInt64(buffer, 12);
+            byte status = buffer[20];
+            ulong amount = BitConverter.ToUInt64(buffer, 21);
+            if (requestID == 0 || listingID == 0 || status > 4 || status != 1 && amount != 0)
+                throw new ArgumentException("Invalid bazaar claim result.");
+            return (requestID, listingID, status, amount);
         }
 
         internal static byte[] SerializeBazaarMyListRequest(uint requestID)

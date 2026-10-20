@@ -131,6 +131,9 @@ public static class C09BazaarSetup
 
         var search = Button("BazaarSearchButton", paper.transform, "SEARCH / REFRESH", new Color(.39f, .27f, .14f, 1));
         AnchorBottomLeft(search.GetComponent<RectTransform>(), 14, 128, 34);
+        var claim = Button("BazaarClaimButton", paper.transform, "COLLECT PROCEEDS", new Color(.24f, .36f, .22f, 1));
+        AnchorBottomRight(claim.GetComponent<RectTransform>(), 14, 190, 34);
+        claim.gameObject.SetActive(false);
         var page = Text("BazaarPage", paper.transform, "Page 1", 12, new Color(.27f, .20f, .12f));
         page.alignment = TextAlignmentOptions.Center;
         page.rectTransform.anchorMin = new Vector2(1, 0);
@@ -153,6 +156,7 @@ public static class C09BazaarSetup
         serialized.FindProperty("itemTypeButtons").arraySize = typeButtons.Length;
         for (int i = 0; i < typeButtons.Length; i++) serialized.FindProperty("itemTypeButtons").GetArrayElementAtIndex(i).objectReferenceValue = typeButtons[i];
         serialized.FindProperty("searchButton").objectReferenceValue = search;
+        serialized.FindProperty("claimButton").objectReferenceValue = claim;
         serialized.FindProperty("previousPageButton").objectReferenceValue = previous;
         serialized.FindProperty("nextPageButton").objectReferenceValue = next;
         serialized.FindProperty("closeButton").objectReferenceValue = close;

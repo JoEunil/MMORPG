@@ -3,6 +3,27 @@
 #include "IPacket.h"
 #include "Config.h"
 namespace Core {
+    static_assert(sizeof(PacketStruct<BazaarClaimRequestBody>) == 20);
+    static_assert(sizeof(PacketStruct<BazaarClaimResponseBody>) == 29);
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarClaimResponse(const MsgBazaarClaimResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->listingID == 0)
+            return nullptr;
+        auto p = packetPool->AcquireUnique();
+        if (!p)
+            return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<BazaarClaimResponseBody>*>(p->GetBuffer());
+        st->header = { MAGIC, sizeof(*st), OP::BAZAAR_CLAIM_RES, 0 };
+        st->body = {};
+        st->body.requestID = body->requestID;
+        st->body.listingID = body->listingID;
+        st->body.resStatus = body->resStatus <= 4 ? body->resStatus : 0;
+        st->body.diamondClaimed = st->body.resStatus == 1 ? body->diamondClaimed : 0;
+        p->SetLength(sizeof(*st));
+        return p;
+    }
+
     static_assert(sizeof(MsgStruct<MsgBazaarSearchResBody>) <= MESSAGE_LEN);
 
     static_assert(sizeof(MsgStruct<MsgBazaarMyListResBody>) <= MESSAGE_LEN);

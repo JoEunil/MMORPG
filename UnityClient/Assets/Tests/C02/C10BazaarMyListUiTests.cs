@@ -103,6 +103,58 @@ namespace C02.Tests
             }
         }
 
+        [Test]
+        [Category("MarketClaim")]
+        public void CollectProceedsCorrelatesSelectionAndLeavesTimeoutUnresolvedWithoutRetry()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.OpenMarket();
+                Assert.That(fixture.Claim.gameObject.activeSelf, Is.False);
+                fixture.MyListings.onClick.Invoke();
+                ((IViewModelNet)fixture.Login.Model).BazaarMyListReceived(fixture.Network.LastMyListID, 1,
+                    new[] { Listing(901, 1), Listing(902, 1) });
+                Assert.That(fixture.Claim.interactable, Is.False, "A sold listing must be selected first.");
+                fixture.Row(901).GetComponent<Button>().onClick.Invoke();
+                Assert.That(fixture.Claim.interactable, Is.True);
+                fixture.Claim.onClick.Invoke();
+                fixture.Claim.onClick.Invoke();
+                Assert.That(fixture.Network.ClaimRequests, Is.EqualTo(1));
+                Assert.That(fixture.Network.LastClaimListingID, Is.EqualTo(901UL));
+                Assert.That(fixture.Claim.interactable, Is.False);
+                Assert.That(fixture.Status.text, Is.EqualTo("Collecting sale proceeds…"));
+
+                uint firstRequestID = fixture.Network.LastClaimID;
+                ((IViewModelNet)fixture.Login.Model).BazaarClaimReceived(firstRequestID, 902, 1, 9000);
+                Assert.That(fixture.Status.text, Is.EqualTo("Collecting sale proceeds…"),
+                    "A response for a different listing must not consume the pending selection.");
+                ((IViewModelNet)fixture.Login.Model).BazaarClaimReceived(firstRequestID, 901, 1, 4294967296UL);
+                Assert.That(fixture.Status.text, Is.EqualTo("Collected 4294967296 diamonds."));
+                Assert.That(fixture.Claim.interactable, Is.False);
+                fixture.Claim.onClick.Invoke();
+                Assert.That(fixture.Network.ClaimRequests, Is.EqualTo(1), "A completed listing cannot be collected again in this session.");
+
+                fixture.Row(902).GetComponent<Button>().onClick.Invoke();
+                Assert.That(fixture.Claim.interactable, Is.True);
+                fixture.Claim.onClick.Invoke();
+                uint timedOutRequestID = fixture.Network.LastClaimID;
+                Assert.That(fixture.Network.ClaimRequests, Is.EqualTo(2));
+                Set(fixture.Screen, "requestDeadline", Time.unscaledTime - 1);
+                typeof(C09BazaarScreen).GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .Invoke(fixture.Screen, null);
+                Assert.That(fixture.Status.text, Does.Contain("result unknown"));
+                Assert.That(fixture.Status.text, Does.Contain("no automatic retry"));
+                Assert.That(fixture.Claim.interactable, Is.False);
+                string unknownResult = fixture.Status.text;
+                ((IViewModelNet)fixture.Login.Model).BazaarClaimReceived(timedOutRequestID, 902, 1, 9000);
+                fixture.Claim.onClick.Invoke();
+                typeof(C09BazaarScreen).GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .Invoke(fixture.Screen, null);
+                Assert.That(fixture.Status.text, Is.EqualTo(unknownResult));
+                Assert.That(fixture.Network.ClaimRequests, Is.EqualTo(2), "Timeout cancels presentation, not the DB transaction, and must not retry.");
+            }
+        }
+
         private static BazaarListing Listing(ulong id, byte status) => new BazaarListing
         {
             listingID = id,
@@ -122,7 +174,7 @@ namespace C02.Tests
             public readonly C02WorldScreen World;
             public readonly C09BazaarScreen Screen;
             public readonly GameObject Panel;
-            public readonly Button Market, Search, Close, Next, SearchListings, MyListings;
+            public readonly Button Market, Search, Close, Next, SearchListings, MyListings, Claim;
             public readonly Button[] TypeButtons;
             public readonly Transform ScreenRows;
             public readonly TMP_Text EmptyState, Detail, Status;
@@ -176,6 +228,7 @@ namespace C02.Tests
                 Close = ButtonObject("close");
                 SearchListings = ButtonObject("search listings");
                 MyListings = ButtonObject("my listings");
+                Claim = ButtonObject("collect proceeds");
                 TypeButtons = new[] { ButtonObject("type 1"), ButtonObject("type 2"), ButtonObject("type 3") };
                 var previous = ButtonObject("previous");
                 Next = ButtonObject("next");
@@ -192,6 +245,7 @@ namespace C02.Tests
                 Set(Screen, "marketButton", Market);
                 Set(Screen, "searchListingsButton", SearchListings);
                 Set(Screen, "myListingsButton", MyListings);
+                Set(Screen, "claimButton", Claim);
                 Set(Screen, "itemTypeButtons", TypeButtons);
                 Set(Screen, "searchButton", Search);
                 Set(Screen, "previousPageButton", previous);
@@ -274,10 +328,13 @@ namespace C02.Tests
 
         private sealed class FakeNetwork : INetworkService
         {
-            public int MyListRequests;
-            public uint LastMyListID, LastSearchID;
+            public int MyListRequests, ClaimRequests;
+            public uint LastMyListID, LastSearchID, LastClaimID;
+            public ulong LastClaimListingID;
             public ushort LastItemType, LastPage;
             public void RequestBazaarMyList(uint requestID) { MyListRequests++; LastMyListID = requestID; }
+            public void RequestBazaarClaim(uint requestID, ulong listingID)
+            { ClaimRequests++; LastClaimID = requestID; LastClaimListingID = listingID; }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page)
             { LastSearchID = requestID; LastItemType = itemType; LastPage = page; }
             public Task Connect(string address, int port) => Task.CompletedTask;

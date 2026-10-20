@@ -117,7 +117,8 @@ namespace C02.Tests
         private sealed class NullLogger : ClientCore.ILogger { public void Log(string text) { } }
         private sealed class FakeNetwork : INetworkService
         {
-            public int Requests; public void RequestBazaarMyList(uint requestID) { }
+            public int Requests; public void RequestBazaarClaim(uint requestID, ulong listingID) { }
+            public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() => Requests++;
             public Task Connect(string address, int port) => Task.CompletedTask; public void CharacterList() { } public void Enter(ulong id) { }
             public void Chat(string message, byte scope, ulong target) { } public void Profiles(uint[] ids) { } public void Action(byte dir, float x, float y, byte slot) { }

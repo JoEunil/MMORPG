@@ -49,6 +49,10 @@ namespace ClientCore.Network
                         var search = Packet.DeserializeBazaar(header, buffer);
                         _viewModel.BazaarReceived(search.requestID, search.status, search.rows);
                         return;
+                    case OP_CODE.BAZAAR_CLAIM_RES:
+                        var claim = Packet.DeserializeBazaarClaim(header, buffer);
+                        _viewModel.BazaarClaimReceived(claim.requestID, claim.listingID, claim.status, claim.diamondClaimed);
+                        return;
                     case OP_CODE.BAZAAR_MY_LIST_RES:
                         var myList = Packet.DeserializeBazaarMyList(header, buffer);
                         _viewModel.BazaarMyListReceived(myList.requestID, myList.status, myList.rows);
@@ -81,7 +85,7 @@ namespace ClientCore.Network
             catch (Exception e)
             {
                 // A malformed C06 frame must reach the socket's existing disconnect boundary.
-                if (buffer.Length >= 7 && (buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 21 || buffer[6] == 25 || buffer[6] == 27 || buffer[6] == 29)) throw;
+                if (buffer.Length >= 7 && (buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 21 || buffer[6] == 25 || buffer[6] == 27 || buffer[6] == 29 || buffer[6] == 31)) throw;
                 ErrorLog(e.Message);
             }
         }

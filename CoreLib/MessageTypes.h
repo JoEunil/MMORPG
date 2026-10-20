@@ -259,12 +259,15 @@ namespace Core {
     struct MsgBazaarClaimBody {
         uint64_t characterID;
         uint64_t listingID;
+        uint32_t requestID;
     };
 
     struct MsgBazaarClaimResBody {
-        uint8_t  resStatus;
+        uint8_t resStatus;
         uint64_t listingID;
-        uint32_t diamondClaimed;
+        uint64_t diamondClaimed;
+        uint32_t requestID;
+        uint64_t characterID;
     };
 
     struct MsgBazaarCheckOutboxBody {

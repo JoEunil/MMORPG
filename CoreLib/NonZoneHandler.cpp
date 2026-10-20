@@ -77,6 +77,9 @@ namespace Core {
             case OP::INVENTORY_REQ:
                 GetInventory(p);
                 break;
+            case OP::BAZAAR_CLAIM:
+                BazaarClaim(p);
+                break;
             case OP::BAZAAR_MY_LIST:
                 BazaarMyList(p);
                 break;
@@ -191,6 +194,39 @@ namespace Core {
         msg->SetLength(sizeof(MsgStruct<MsgInventoryReqBody>));
         messageQueue->EnqueueMessage(msg);
         messagePool->Return(msg);
+    }
+
+    void NonZoneHandler::BazaarClaim(IPacketView* p) {
+        if (p->GetLength() != sizeof(PacketStruct<BazaarClaimRequestBody>))
+            return;
+        const auto* header = parseHeader(p->GetPtr());
+        const auto request = *parseBody<BazaarClaimRequestBody>(p->GetPtr());
+        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_CLAIM
+            || header->length != p->GetLength() || header->flags != 0
+            || request.requestID == 0 || request.listingID == 0)
+            return;
+        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        if (characterID == 0)
+            return;
+        Message* msg = messagePool->Acquire();
+        if (msg != nullptr) {
+            auto* st = reinterpret_cast<MsgStruct<MsgBazaarClaimBody>*>(msg->GetBuffer());
+            st->header = { p->GetSessionID(), MSG_BAZAAR_CLAIM };
+            st->body = { characterID, request.listingID, request.requestID };
+            msg->SetLength(sizeof(*st));
+            const bool queued = messageQueue->EnqueueMessage(msg);
+            messagePool->Return(msg);
+            if (queued)
+                return;
+        }
+        MsgBazaarClaimResBody failed{};
+        failed.requestID = request.requestID;
+        failed.listingID = request.listingID;
+        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
+            return;
+        auto response = writer->WriteBazaarClaimResponse(&failed);
+        if (response)
+            iocp->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
     void NonZoneHandler::BazaarMyList(IPacketView* p) {

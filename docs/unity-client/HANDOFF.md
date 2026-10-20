@@ -1,3 +1,10 @@
+## 최신 — 거래소 판매대금 수령 연결 후보 검증 완료
+
+사용자 일반개발 재개에 따라 master0f9b96d 기반 codex/market-proceeds에서 내매물→대금수령 TCP/Core/Cache/ClientCore/Unity UI를 연결했다. 기존sp_bazaar_claim과DB경제규칙유지/스키마·프로시저변경0, 내부ABI와외부30/31동시빌드필수. 독립리뷰의status4표시·Handlerreturn/오류전파 수정과 최종Scene/fixture검토 차단0. MarketClaim Unity2/2 및 native독립2 최종PASS(실패Corefixture의zone0종료전제만보완후해당1개재시험;기대값유지). 실제5011 한로그인 search30→MyList0성공/Collect비활성→실PNG1→정상Close/Disconnect/modelnull/Playstop PASS. 지급성공은fixture만검증/실매물0이라실DB지급미검증,직접DB쓰기·실claim송신0. 실패/테스트관찰자NRE 및 빌드패키징문제근거는 MARKET_CLAIM_RESULTS와rootCaptures에보존했다.
+
+rootEditor26496/PlaycompileScenedirtyfalse, ordinary후보MainServer3096/9999ready/SHA5CC6280B6E5297B77AAB4318321D531598E666F606A924E087F1057ADC4E1E7D,로그인17184/3000,DB·Redis재시작0. 시작전logs/WAL백업. DLL45D9219...과원본Release빌드byte일치. 정상종료CancelIoEx1168만사용자정의비차단진단유지. root원본Game/WIP/pendingcontent848f8b보존.
+
+공개MD/실캡처/이력/생성검증·브라우저desktop/mobile/이력링크PASS. localhost8790 미리보기와GitHub정식배포구분. 다음은이정확큰묶음로컬커밋→UnityCoordinatorSlack게시승인요청. 기존PR37FIX/WORLD/DATA회신재사용금지. NEXT_MARKET_TRADE_TASK는root독립준비에만쓰고현재게시묶음에섞지않는다.
 ## PR37 리뷰 수정 — 검증 완료 / 게시 승인 전
 
 사용자10/20리뷰요청3건만처리,일반개발중단유지. codex/pr37-review-fixes는실제PRhead eacb744에서분기,DATA01 ea01991은codex/content-catalog에보존. respawn0/비최종절삭threshold<2거부·pair stage/backup/실패rollback/중단marker·두C++소비자빌드guard완료,독립리뷰차단0. Unity타깃3/3+격리C++marker정상/차단검증PASS. 실제게임입력/서버재시작/DB쓰기/사이트화면변경0. PR37_EXPORT_REVIEW_RESULTS.md. 로컬commit뒤PR37FIX01Slack게시승인필요,현재push0. root기존catalogasset/runtime유지하고검증용exporter만overlay,검증뒤pendingcatalog에도fix이식·root복원예정.

@@ -178,6 +178,16 @@ namespace Core {
                 if (sizeDelta >= 0)
                     *parseBody<BazaarMyListRequestBody>(packet.data()) = request;
             }
+            CountedView(uint64_t id, const BazaarClaimRequestBody& request, uint8_t flags = 0, int sizeDelta = 0)
+                : packet(sizeof(PacketStruct<BazaarClaimRequestBody>) + sizeDelta), session(id) {
+                auto* header = parseHeader(packet.data());
+                header->magic = MAGIC;
+                header->length = static_cast<uint32_t>(packet.size());
+                header->opcode = OP::BAZAAR_CLAIM;
+                header->flags = flags;
+                if (sizeDelta >= 0)
+                    *parseBody<BazaarClaimRequestBody>(packet.data()) = request;
+            }
             CountedView(uint64_t id, OP opcode)
                 : packet(sizeof(PacketHeader)), session(id) {
                 auto* header = parseHeader(packet.data());
@@ -408,6 +418,14 @@ namespace Core {
             st->body.requestID = requestID;
             st->body.resStatus = 1;
             st->body.characterID = characterID;
+            response->SetLength(sizeof(*st) + sizeDelta);
+            responses.Process(response);
+        }
+        void FinishClaim(const MsgBazaarClaimResBody& body, int sizeDelta = 0) {
+            auto* response = messages.Acquire();
+            auto* st = reinterpret_cast<MsgStruct<MsgBazaarClaimResBody>*>(response->GetBuffer());
+            st->header = { 42, MSG_BAZAAR_CLAIM_RES };
+            st->body = body;
             response->SetLength(sizeof(*st) + sizeDelta);
             responses.Process(response);
         }
@@ -1027,6 +1045,79 @@ namespace Core {
         ASSERT_NE(empty, nullptr);
         EXPECT_EQ(empty->GetLength(), 15);
         EXPECT_EQ(parseBody<BazaarSearchResponseBody>(empty->GetBuffer())->resStatus, 1);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BazaarClaimWireOwnershipAndCorrelatedFailurePreserveFullWidthAmount) {
+        SessionData ready{};
+        ready.authenticated = ready.authCompleted = true;
+        ready.userID = 6982; ready.characterID = 5011; ready.zoneID = 1;
+        CountedView absent(42, BazaarClaimRequestBody{123, UINT64_MAX});
+        handler.Process(&absent);
+        EXPECT_FALSE(loads.HasRequest());
+        SetSessionImage(ready);
+        CountedView valid(42, BazaarClaimRequestBody{123, UINT64_MAX});
+        handler.Process(&valid);
+        auto request = loads.TakeRequest();
+        ASSERT_NE(request, nullptr);
+        const auto* claim = parseMsgBody<MsgBazaarClaimBody>(request->GetBuffer());
+        EXPECT_EQ(claim->requestID, 123);
+        EXPECT_EQ(claim->listingID, UINT64_MAX);
+        EXPECT_EQ(claim->characterID, 5011);
+        for (int invalid = 0; invalid < 12; ++invalid) {
+            auto image = ready;
+            BazaarClaimRequestBody body{123, UINT64_MAX};
+            uint8_t flags = 0; int delta = 0;
+            if (invalid == 0) image.authenticated = false;
+            if (invalid == 1) image.authCompleted = false;
+            if (invalid == 2) image.userID = 0;
+            if (invalid == 3) image.characterID = 0;
+            if (invalid == 4) image.zoneID = 0;
+            if (invalid == 5) flags = FLAG_SIMULATION;
+            if (invalid == 6) delta = -1;
+            if (invalid == 7) delta = 1;
+            if (invalid == 8) body.requestID = 0;
+            if (invalid == 9) body.listingID = 0;
+            SetSessionImage(image);
+            CountedView view(42, body, flags, delta);
+            if (invalid == 10) parseHeader(view.GetPtr())->length++;
+            if (invalid == 11) parseHeader(view.GetPtr())->magic = 0;
+            handler.Process(&view);
+            EXPECT_FALSE(loads.HasRequest()) << invalid;
+            EXPECT_TRUE(iocp.sentOpcodes.empty()) << invalid;
+        }
+        SetSessionImage(ready);
+        loads.accept = false;
+        handler.Process(&valid);
+        ASSERT_EQ(iocp.lastPacket.size(), 29);
+        const auto* failed = parseBody<BazaarClaimResponseBody>(iocp.lastPacket.data());
+        EXPECT_EQ(failed->requestID, 123); EXPECT_EQ(failed->listingID, UINT64_MAX);
+        EXPECT_EQ(failed->resStatus, 0); EXPECT_EQ(failed->diamondClaimed, 0);
+        MsgBazaarClaimResBody response{};
+        response.requestID = 124; response.listingID = UINT64_MAX;
+        response.characterID = 5011; response.resStatus = 1; response.diamondClaimed = UINT64_MAX;
+        FinishClaim(response);
+        ASSERT_EQ(iocp.sentOpcodes.size(), 2);
+        const auto* success = parseBody<BazaarClaimResponseBody>(iocp.lastPacket.data());
+        EXPECT_EQ(success->diamondClaimed, UINT64_MAX);
+        EXPECT_EQ(success->resStatus, 1);
+        EXPECT_EQ(parseHeader(iocp.lastPacket.data())->opcode, OP::BAZAAR_CLAIM_RES);
+        EXPECT_EQ(parseHeader(iocp.lastPacket.data())->flags, 0);
+        response.characterID = 5012; FinishClaim(response);
+        response.characterID = 5011; FinishClaim(response, -1);
+        // This fixture has no field topology; use its initialized lobby for a real session removal.
+        state->SetZoneID(42, 0);
+        state->Disconnect(42); FinishClaim(response);
+        EXPECT_EQ(iocp.sentOpcodes.size(), 2);
+        response.resStatus = 4;
+        auto duplicate = writer.WriteBazaarClaimResponse(&response);
+        ASSERT_NE(duplicate, nullptr);
+        EXPECT_EQ(parseBody<BazaarClaimResponseBody>(duplicate->GetBuffer())->diamondClaimed, 0);
+        response.resStatus = 255;
+        auto invalid = writer.WriteBazaarClaimResponse(&response);
+        ASSERT_NE(invalid, nullptr);
+        EXPECT_EQ(parseBody<BazaarClaimResponseBody>(invalid->GetBuffer())->resStatus, 0);
+        response.requestID = 0;
+        EXPECT_EQ(writer.WriteBazaarClaimResponse(&response), nullptr);
     }
 
     TEST_F(NonZoneThreadPoolFixture, BazaarMyListUsesOnlyAuthenticatedFieldOwnerAndExactWireRequest) {

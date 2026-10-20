@@ -23,6 +23,7 @@ namespace C02
         [SerializeField] private Button previousPageButton;
         [SerializeField] private Button nextPageButton;
         [SerializeField] private Button closeButton;
+        [SerializeField] private Button claimButton;
         [SerializeField] private TMP_Text pageText;
         [SerializeField] private Transform listingRows;
         [SerializeField] private TMP_Text emptyStateText;
@@ -35,6 +36,11 @@ namespace C02
         private bool myListings;
         private float requestDeadline;
         private bool requestPending;
+        private bool claimPending;
+        private ulong selectedListingID;
+        private byte selectedListingStatus;
+        private readonly Dictionary<ulong, byte> claimOutcomes = new Dictionary<ulong, byte>();
+        private readonly HashSet<ulong> unresolvedClaims = new HashSet<ulong>();
         private UnityEngine.UI.Button selectedListingButton;
         public bool IsOpen => bazaarPanel != null && bazaarPanel.activeSelf;
 
@@ -63,6 +69,7 @@ namespace C02
             previousPageButton.onClick.AddListener(PreviousPage);
             nextPageButton.onClick.AddListener(NextPage);
             closeButton.onClick.AddListener(ClosePanel);
+            if (claimButton != null) claimButton.onClick.AddListener(ClaimSelectedListing);
             loginScreen.ClientChanged += ChangeClient;
             worldScreen.WorldStateChanged += WorldChanged;
             ChangeClient(loginScreen.Model);
@@ -71,9 +78,11 @@ namespace C02
         private void Update()
         {
             if (!requestPending || Time.unscaledTime < requestDeadline) return;
+            bool wasClaim = claimPending;
             CancelPending();
-            ClearRows();
-            statusText.text = myListings
+            if (!wasClaim) ClearRows();
+            statusText.text = wasClaim ? "Collection result unknown. Check again after reconnecting; no automatic retry."
+                : myListings
                 ? "My listings timed out. Select Refresh to retry."
                 : "Search timed out. Select Search to retry.";
             UpdateControls();
@@ -81,14 +90,24 @@ namespace C02
 
         private void ChangeClient(IViewModelUI next)
         {
-            if (model != null) model.OnBazaarReceived -= BazaarReceived;
+            if (model != null)
+            {
+                model.OnBazaarReceived -= BazaarReceived;
+                model.OnBazaarClaimReceived -= ClaimReceived;
+            }
             CancelPending();
+            claimOutcomes.Clear();
+            unresolvedClaims.Clear();
             model = next;
             page = 0;
             myListings = false;
             ClearResults();
             bazaarPanel.SetActive(false);
-            if (model != null) model.OnBazaarReceived += BazaarReceived;
+            if (model != null)
+            {
+                model.OnBazaarReceived += BazaarReceived;
+                model.OnBazaarClaimReceived += ClaimReceived;
+            }
             WorldChanged();
         }
 
@@ -131,6 +150,7 @@ namespace C02
         {
             if (!bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model)
                 return;
+            if (claimPending) return;
             if (myListings == showMyListings) return;
             CancelPending();
             myListings = showMyListings;
@@ -222,7 +242,7 @@ namespace C02
 
         private void BazaarReceived(bool success)
         {
-            if (!requestPending || model == null || loginScreen.Model != model || !WorldAvailable || !bazaarPanel.activeSelf)
+            if (!requestPending || claimPending || model == null || loginScreen.Model != model || !WorldAvailable || !bazaarPanel.activeSelf)
                 return;
             requestPending = false;
             List<BazaarListingView> rows = success && loginScreen.Data != null
@@ -295,12 +315,15 @@ namespace C02
 
         private void SelectListing(BazaarListingView listing, UnityEngine.UI.Button button)
         {
+            if (claimPending) return;
             if (selectedListingButton != null)
             {
                 var previous = selectedListingButton.GetComponent<UnityEngine.UI.Image>();
                 if (previous != null) previous.color = new Color(.97f, .93f, .82f);
             }
             selectedListingButton = button;
+            selectedListingID = listing.ListingID;
+            selectedListingStatus = listing.Status;
             button.GetComponent<UnityEngine.UI.Image>().color = new Color(.82f, .77f, .62f);
             selectedDetailText.text = C11ItemPresentation.Name(listing.ItemID) + "  ·  " + ListingStatusName(listing.Status) +
                 "\nQuantity " + listing.Quantity.ToString(CultureInfo.InvariantCulture) +
@@ -308,6 +331,43 @@ namespace C02
                 "\nListing #" + listing.ListingID.ToString(CultureInfo.InvariantCulture) +
                 "  ·  Seller #" + listing.SellerCharacterID.ToString(CultureInfo.InvariantCulture) +
                 "  ·  Registered " + listing.RegisteredAt.ToString(CultureInfo.InvariantCulture);
+            if (claimOutcomes.TryGetValue(listing.ListingID, out byte outcome)) selectedDetailText.text += outcome == 1 ? "\nProceeds collected." : "\nNo pending proceeds were found.";
+            else if (unresolvedClaims.Contains(listing.ListingID)) selectedDetailText.text += "\nCollection result unknown. Reconnect to check.";
+            UpdateControls();
+        }
+
+        private void ClaimSelectedListing()
+        {
+            if (!myListings || !IsOpen || !WorldAvailable || model == null || loginScreen.Model != model ||
+                requestPending || selectedListingID == 0 || selectedListingStatus != 1 ||
+                claimOutcomes.ContainsKey(selectedListingID) || unresolvedClaims.Contains(selectedListingID)) return;
+            requestPending = claimPending = true;
+            unresolvedClaims.Add(selectedListingID);
+            requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+            statusText.text = "Collecting sale proceeds…";
+            UpdateControls();
+            try { model.RequestBazaarClaim(selectedListingID); }
+            catch (Exception)
+            {
+                CancelPending();
+                statusText.text = "Collection result unknown. Reconnect to check; no automatic retry.";
+                UpdateControls();
+            }
+        }
+
+        private void ClaimReceived(ulong listingID, byte status, ulong amount)
+        {
+            if (!claimPending || !requestPending || listingID != selectedListingID || model == null ||
+                loginScreen.Model != model || !WorldAvailable || !IsOpen) return;
+            requestPending = claimPending = false;
+            if (status != 0) unresolvedClaims.Remove(listingID);
+            if (status == 1 || status == 4) claimOutcomes[listingID] = status;
+            statusText.text = status == 1 ? "Collected " + amount.ToString(CultureInfo.InvariantCulture) + " diamonds."
+                : status == 4 ? "Already collected or no pending proceeds were found."
+                : status == 2 ? "No sold listing owned by you was found."
+                : status == 3 ? "Collection failed. No proceeds were paid; try again later."
+                : "Collection result unknown. Reconnect to check; no automatic retry.";
+            UpdateControls();
         }
 
         private static TMP_Text AddCell(Transform parent, string name, string value, float left, float right,
@@ -335,12 +395,14 @@ namespace C02
         {
             if (!requestPending) return;
             requestPending = false;
+            claimPending = false;
             if (model != null) model.CancelBazaar();
         }
 
         private void ClearRows()
         {
             selectedListingButton = null;
+            selectedListingID = 0;
             if (listingRows == null) return;
             for (int i = listingRows.childCount - 1; i >= 0; i--)
             {
@@ -351,7 +413,9 @@ namespace C02
             var scroll = listingRows.GetComponentInParent<ScrollRect>();
             if (scroll != null) scroll.verticalNormalizedPosition = 1;
             if (emptyStateText != null) emptyStateText.gameObject.SetActive(false);
-            if (selectedDetailText != null) selectedDetailText.text = "Select a listing to see its details.";
+            if (selectedDetailText != null) selectedDetailText.text = myListings
+                ? "Select a sold listing to request its proceeds. Sold listings may already be collected."
+                : "Select a listing to see its details.";
         }
 
         private void ClearResults()
@@ -365,6 +429,17 @@ namespace C02
         {
             bool available = WorldAvailable && model != null && loginScreen != null && loginScreen.Model == model;
             if (marketButton != null) marketButton.interactable = available;
+            if (claimButton != null)
+            {
+                claimButton.gameObject.SetActive(myListings);
+                claimButton.interactable = available && IsOpen && !requestPending && selectedListingID != 0 &&
+                    selectedListingStatus == 1 && !claimOutcomes.ContainsKey(selectedListingID) &&
+                    !unresolvedClaims.Contains(selectedListingID);
+                var label = claimButton.GetComponentInChildren<TMP_Text>(true);
+                if (label != null) label.text = claimPending ? "COLLECTING…"
+                    : claimOutcomes.TryGetValue(selectedListingID, out byte outcome) ? (outcome == 1 ? "COLLECTED" : "NO PROCEEDS")
+                    : unresolvedClaims.Contains(selectedListingID) ? "RESULT UNKNOWN" : "COLLECT PROCEEDS";
+            }
             if (searchButton != null)
             {
                 searchButton.interactable = available && bazaarPanel.activeSelf && !requestPending;
@@ -388,13 +463,13 @@ namespace C02
             }
             if (searchListingsButton != null)
             {
-                searchListingsButton.interactable = available && bazaarPanel.activeSelf;
+                searchListingsButton.interactable = available && bazaarPanel.activeSelf && !claimPending;
                 var label = searchListingsButton.GetComponentInChildren<TMP_Text>(true);
                 if (label != null) label.text = (myListings ? string.Empty : "> ") + "SALES";
             }
             if (myListingsButton != null)
             {
-                myListingsButton.interactable = available && bazaarPanel.activeSelf;
+                myListingsButton.interactable = available && bazaarPanel.activeSelf && !claimPending;
                 var label = myListingsButton.GetComponentInChildren<TMP_Text>(true);
                 if (label != null) label.text = (myListings ? "> " : string.Empty) + "MY LISTINGS";
             }
@@ -432,7 +507,12 @@ namespace C02
             if (previousPageButton != null) previousPageButton.onClick.RemoveListener(PreviousPage);
             if (nextPageButton != null) nextPageButton.onClick.RemoveListener(NextPage);
             if (closeButton != null) closeButton.onClick.RemoveListener(ClosePanel);
-            if (model != null) model.OnBazaarReceived -= BazaarReceived;
+            if (claimButton != null) claimButton.onClick.RemoveListener(ClaimSelectedListing);
+            if (model != null)
+            {
+                model.OnBazaarReceived -= BazaarReceived;
+                model.OnBazaarClaimReceived -= ClaimReceived;
+            }
             CancelPending();
             if (listingRows != null && statusText != null && pageText != null) ClearResults();
             if (bazaarPanel != null) bazaarPanel.SetActive(false);

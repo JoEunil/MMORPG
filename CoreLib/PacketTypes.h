@@ -7,7 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
-    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 29;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 31;
 
     enum OP : uint16_t {
         AUTH = 1,
@@ -44,6 +44,8 @@ namespace Core {
         BAZAAR_SEARCH_RES = 27,
         BAZAAR_MY_LIST = 28,
         BAZAAR_MY_LIST_RES = 29,
+        BAZAAR_CLAIM = 30,
+        BAZAAR_CLAIM_RES = 31,
     };
 
     enum ZONE_CHANGE: uint8_t {
@@ -76,6 +78,21 @@ namespace Core {
         uint8_t opcode;
         uint8_t flags = 0x00; // 첫번째 비트는 시뮬레이션 로직인지 나타냄, 0x01 ~ 0x80
     };
+
+    struct BazaarClaimRequestBody {
+        uint32_t requestID;
+        uint64_t listingID;
+    };
+
+    struct BazaarClaimResponseBody {
+        uint32_t requestID;
+        uint64_t listingID;
+        uint8_t resStatus;
+        uint64_t diamondClaimed;
+    };
+
+    static_assert(sizeof(BazaarClaimRequestBody) == 12);
+    static_assert(sizeof(BazaarClaimResponseBody) == 21);
 
     struct BazaarMyListRequestBody {
         uint32_t requestID;

@@ -481,6 +481,7 @@ namespace C02.Tests
         private sealed class NullLogger : ClientCore.ILogger { public void Log(string message) { } }
         private sealed class NoNetwork : INetworkService
         {
+            public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() { } public void Profiles(uint[] profileIds) { }
             public Task Connect(string address, int port) => Task.CompletedTask;

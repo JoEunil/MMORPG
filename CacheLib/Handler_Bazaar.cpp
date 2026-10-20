@@ -12,6 +12,7 @@
 #include "MessagePool.h"
 #include "BazaarSearchResult.h"
 #include "BazaarMyListResult.h"
+#include "BazaarClaimResult.h"
 
 namespace Cache {
     void Handler::BazaarMyList(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarMyListBody* body) {
@@ -218,33 +219,30 @@ namespace Cache {
     }
 
     void Handler::BazaarClaim(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarClaimBody* body) {
-        // listing status가 sold인 listingID에 대해서 판매자가 claim 요청
-		// 판매자에게 diamond 지급, status 'CLAIMED'로 변경
-        EnqueueMessageWork(dbWorkerBazaar, msg, [msg, sessionID, body, this](DBConnectionBazaar* conn) {
-            auto res = conn->ExecuteSelect(17, body->listingID, body->characterID);
-            if (!res || !res->next()) {
-                Core::MsgStruct<Core::MsgBazaarClaimResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarClaimResBody>*>(msg->GetBuffer());
-                st->header.sessionID = sessionID;
-                st->header.messageType = Core::MSG_BAZAAR_CLAIM_RES;
-                st->body.resStatus = 0;
-                msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarClaimResBody>));
-                messageQ->EnqueueMessage(msg);
-                messagePool->Return(msg);
-                return;
-            }
-
-            uint8_t resultCode = res->getUInt("result");
-            uint32_t claimed = res->getUInt("diamond");
-
-            Core::MsgStruct<Core::MsgBazaarClaimResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarClaimResBody>*>(msg->GetBuffer());
-            st->header.sessionID = sessionID;
-            st->header.messageType = Core::MSG_BAZAAR_CLAIM_RES;
-            st->body.resStatus = resultCode;
-            st->body.diamondClaimed = claimed;
-            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgBazaarClaimResBody>));
-            messageQ->EnqueueMessage(msg);
-            messagePool->Return(msg);
-            });
+        const auto request = *body;
+        auto* owned = msg;
+        const auto finish = [this, owned, sessionID, request](const Core::MsgBazaarClaimResBody& response) {
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarClaimResBody>*>(owned->GetBuffer());
+            st->header = { sessionID, Core::MSG_BAZAAR_CLAIM_RES };
+            st->body = response;
+            st->body.requestID = request.requestID;
+            st->body.listingID = request.listingID;
+            st->body.characterID = request.characterID;
+            owned->SetLength(sizeof(*st));
+            if (!messageQ->EnqueueMessage(owned))
+                Core::errorLogger->LogError("cache handler bazaar", "claim response queue rejected", "sessionID", sessionID);
+            messagePool->Return(owned);
+        };
+        const auto failed = [finish] { finish(Core::MsgBazaarClaimResBody{}); };
+        const auto outcome = dbWorkerBazaar->Enqueue([request, finish](DBConnectionBazaar* conn) {
+            auto result = conn->ExecuteSelect(17, request.listingID, request.characterID);
+            Core::MsgBazaarClaimResBody response{};
+            ParseBazaarClaimResult(result.get(), response);
+            finish(response);
+        }, nullptr, failed);
+        if (outcome != DBEnqueueResult::Queued)
+            failed();
+        msg = nullptr; // Async work or synchronous rejection owns the single Return.
     }
 
     void Handler::BazaarCheckOutbox(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCheckOutboxBody* body) {
