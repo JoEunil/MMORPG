@@ -193,7 +193,7 @@ def render_workflow(section):
     steps = ''.join(f'<li>{diagram_node(item)}</li>' for item in groups["작업 흐름"])
     feedback = ''.join(f'<li>{diagram_node(item)}</li>' for item in groups["피드백"])
     return f'''<section class="workflow" id="workflow"><div class="section-wrap">
-<div class="section-title"><div><p class="eyebrow">사람이 방향을 정하고, AI가 실행합니다</p><h2>{escape(section['title'])}</h2></div><a class="text-link" href="#work">실제 결과 보기 ↗</a></div>
+<div class="section-title"><h2>{escape(section['title'])}</h2></div>
 <div class="workflow-layout"><div class="agent-diagram"><h3>누가 어떤 일을 하나요?</h3><ol class="agent-chain" aria-label="사람의 판단에서 총괄 에이전트의 배정으로">{chain}</ol>
 <div class="agent-branches"><p class="branch-label">필요한 전문 역할을 배정</p><ul class="agent-roles">{roles}</ul></div></div>
 <div class="flow-diagram"><h3>하나의 기능이 만들어지는 흐름</h3><ol class="workflow-steps">{steps}</ol><ul class="workflow-feedback">{feedback}</ul></div></div></div></section>'''
@@ -206,18 +206,7 @@ def render_journey(section):
         label, _, detail = item.partition(" — ")
         status, _, description = detail.partition(" · ")
         stages.append(f'<li><span class="stage-state">{escape(status)}</span><h3>{escape(label)}</h3><p>{escape(description)}</p></li>')
-    return f'''<section class="section-wrap journey" id="journey"><div class="section-title"><div><p class="eyebrow">기능 연결에서 플레이 경험으로</p><h2>{escape(section['title'])}</h2></div></div><ol class="journey-track">{''.join(stages)}</ol></section>'''
-
-
-def render_changes(section):
-    groups = diagram_items(section)
-    columns = []
-    for title, items in groups.items():
-        if not title:
-            continue
-        entries = ''.join(f'<li>{diagram_node(item)}</li>' for item in items)
-        columns.append(f'<div class="change-group"><h3>{escape(title)}</h3><ul>{entries}</ul></div>')
-    return f'<section class="section-wrap changes" id="changes"><div class="section-title"><h2>{escape(section["title"])}</h2><a class="text-link" href="#work">기능별 화면 보기 ↗</a></div><div class="change-columns">{"".join(columns)}</div></section>'
+    return f'''<section class="section-wrap journey" id="journey"><div class="section-title"><h2>{escape(section['title'])}</h2></div><ol class="journey-track">{''.join(stages)}</ol></section>'''
 
 
 def render_decisions(section):
@@ -231,7 +220,7 @@ def render_decisions(section):
         else:
             heading = f'<h3 class="decision-shift">{escape(label)}</h3>'
         entries.append(f'<li>{heading}<span>{escape(detail)}</span></li>')
-    return f'<section class="section-wrap decisions" id="decisions"><div class="section-title"><div><p class="eyebrow">개발하며 바뀐 선택</p><h2>{escape(section["title"])}</h2></div></div><ol class="decision-track">{"".join(entries)}</ol></section>'
+    return f'<section class="section-wrap decisions" id="decisions"><div class="section-title"><h2>{escape(section["title"])}</h2></div><ol class="decision-track">{"".join(entries)}</ol></section>'
 
 
 def document(title, description, content, references, site_title):
@@ -261,12 +250,12 @@ def build_work(work, references, site_title):
     preview = find_image(work)
     preview_html = f'<figure class="detail-preview"><a href="{preview[1]}" target="_blank" rel="noopener"><img src="{preview[1]}" alt="{escape(preview[0], quote=True)}"></a><figcaption>{escape(preview[0])}</figcaption></figure>' if preview else ""
     page_content = f'''<main class="page narrow"><a class="back-link" href="{BASE}#work">← 작업 목록</a>
-<p class="eyebrow">{escape(work['status'])}</p><h1>{escape(work['title'])}</h1><p class="lead">{escape(work['summary'])}</p>
+<p class="work-status">{escape(work['status'])}</p><h1>{escape(work['title'])}</h1><p class="lead">{escape(work['summary'])}</p>
 <div class="page-actions"><a class="button" href="{history_url}">화면 변화 보기</a></div>
 {preview_html}
 {''.join(sections)}</main>'''
     history_content = f'''<main class="page narrow"><a class="back-link" href="{detail_url}">← 작업으로 돌아가기</a>
-<p class="eyebrow">화면 기록</p><h1>{escape(work['title'])}</h1><p class="lead">작업 과정에서 남긴 실제 화면과 중간 결과입니다.</p><section class="content-section history-images">{''.join(history)}</section></main>'''
+<p class="work-status">화면 기록</p><h1>{escape(work['title'])}</h1><p class="lead">작업 과정에서 남긴 실제 화면과 중간 결과입니다.</p><section class="content-section history-images">{''.join(history)}</section></main>'''
     folder = SITE / "work" / key
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "index.html").write_text(document(work["title"], work["summary"], page_content, references, site_title), encoding="utf-8", newline="\n")
@@ -287,7 +276,12 @@ def find_image(work):
 def main():
     if not CONTENT.is_dir():
         raise SystemExit(f"Portfolio content directory not found: {CONTENT.relative_to(ROOT)}")
-    works = [parse_work(path) for path in sorted(CONTENT.glob("*.md"))]
+    # Earlier stages now share the market's detail and screen history.
+    legacy_market_pages = ("bazaar-search", "my-listings", "item-market")
+    work_order = ("field-travel", "player-hud", "inventory", "market", "server-content")
+    paths = [path for path in CONTENT.glob("*.md") if path.stem not in legacy_market_pages]
+    paths.sort(key=lambda path: (work_order.index(path.stem) if path.stem in work_order else len(work_order), path.stem))
+    works = [parse_work(path) for path in paths]
     if not works:
         raise SystemExit("Add at least one reviewed project page under docs/unity-client/portfolio/")
     title, intro, home_sections, hero_image, references = parse_showcase()
@@ -296,23 +290,30 @@ def main():
         key, detail, history = build_work(work, references, title)
         card_image = find_image(work)
         media = f'<a class="card-image" href="{card_image[1]}" target="_blank" rel="noopener"><img src="{card_image[1]}" alt="{escape(card_image[0], quote=True)}" loading="lazy"></a>' if card_image else ""
-        cards.append(f'<article class="work-card">{media}<div class="work-copy"><p class="eyebrow">{escape(work["status"])}</p><h3><a href="{detail}">{escape(work["title"])}</a></h3><p>{escape(work["summary"])}</p><div class="card-links"><a href="{detail}">작업 보기 →</a><a href="{history}">화면 이력</a></div></div></article>')
+        cards.append(f'<article class="work-card">{media}<div class="work-copy"><p class="work-status">{escape(work["status"])}</p><h3><a href="{detail}">{escape(work["title"])}</a></h3><p>{escape(work["summary"])}</p><div class="card-links"><a href="{detail}">작업 보기 →</a><a href="{history}">화면 이력</a></div></div></article>')
     sections_by_title = {section["title"]: section for section in home_sections}
     process_html = render_workflow(sections_by_title["AI Agent 워크플로우"])
     journey_html = render_journey(sections_by_title["큰 목표와 진행 흐름"])
-    changes_html = render_changes(sections_by_title["달라진 구현"])
-    decisions_html = render_decisions(sections_by_title["방향 변경 이력"])
+    decisions_html = render_decisions(sections_by_title["지침 변경 이력"])
     legacy_section = sections_by_title["기존 Unity 구현"]
     legacy_copy = render_blocks(legacy_section["blocks"], HOME_SOURCE)
-    legacy_html = f'<section class="legacy-section section-wrap" id="legacy"><div class="section-title"><div><p class="eyebrow">개발의 출발점</p><h2>{escape(legacy_section["title"])}</h2></div><a class="text-link" href="#changes">현재 달라진 점 ↓</a></div><div class="legacy-body">{legacy_copy}</div></section>'
-    hero = f'''<main id="top"><section class="home-hero"><div class="home-copy"><p class="eyebrow">MMORPG / UNITY / AI AGENTS</p><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#workflow">어떻게 만들고 있나요? ↓</a><a class="text-link" href="#work">작업 결과 둘러보기 ↗</a></div></div><figure class="home-image"><a href="{hero_image[1]}" target="_blank" rel="noopener"><img src="{hero_image[1]}" alt="{escape(hero_image[0], quote=True)}"></a><figcaption>{escape(hero_image[0])}</figcaption></figure></section>
+    legacy_html = f'<section class="legacy-section section-wrap" id="legacy"><div class="section-title"><h2>{escape(legacy_section["title"])}</h2></div><div class="legacy-body">{legacy_copy}</div></section>'
+    hero = f'''<main id="top"><section class="home-hero"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#work">작업 결과 보기</a></div></div><figure class="home-image"><a href="{hero_image[1]}" target="_blank" rel="noopener"><img src="{hero_image[1]}" alt="{escape(hero_image[0], quote=True)}"></a><figcaption>{escape(hero_image[0])}</figcaption></figure></section>
 {process_html}
 {journey_html}
 {legacy_html}
-{changes_html}
-<section class="section-wrap work-section" id="work"><div class="section-title"><div><p class="eyebrow">기능별 실제 화면과 변화</p><h2>작업과 결과</h2></div><a class="text-link" href="#decisions">방향이 바뀐 과정 ↓</a></div><div class="work-grid">{''.join(cards)}</div></section>
+<section class="section-wrap work-section" id="work"><div class="section-title"><h2>작업과 결과</h2></div><div class="work-grid">{''.join(cards)}</div></section>
 {decisions_html}</main>'''
     (SITE / "index.html").write_text(document(title, intro, hero, references, title), encoding="utf-8", newline="\n")
+    for old_key in legacy_market_pages:
+        folder = SITE / "work" / old_key
+        folder.mkdir(parents=True, exist_ok=True)
+        for page in ("index.html", "history.html"):
+            target = f"{BASE}work/market/{page}"
+            content = f'<main class="page narrow"><h1>거래소</h1><p>거래소 작업과 이전 화면을 한곳에 모았습니다.</p><a class="button" href="{target}">거래소 보기</a></main>'
+            html = document("거래소", "통합된 거래소 작업으로 이동합니다.", content, references, title)
+            html = html.replace("</head>", f'<link rel="canonical" href="{target}"><meta http-equiv="refresh" content="0;url={target}"></head>')
+            (folder / page).write_text(html, encoding="utf-8", newline="\n")
     check_site()
     print(f"Built home and {len(works)} project pages with screen histories")
 

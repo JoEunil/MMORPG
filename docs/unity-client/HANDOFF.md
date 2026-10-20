@@ -1,3 +1,9 @@
+## 최신 — 기능 범위별 공개 작업 통합·작은 장식 제거
+
+홈 작업을 필드/전투/인벤토리/거래소/콘텐츠 편집5개로 구성했다. 거래소 검색·내 매물·구매·취소·수령은 market 상세와 이력1개로 통합하고 inventory 별도 상세/이력으로 분리했다. 이전3원본은 보존하되 생성목록에서 제외, 구3주소(index/history 각각)는 market 대응 페이지로 canonical/meta refresh. 이전12개 고유 이미지가 시장10+가방2에 모두 보존됨을 별도 읽기 리뷰로 확인했다. `달라진 구현` 전체와 작은 eyebrow/우측 보조링크 제거, `지침 변경 이력`으로 명칭 교정. 모든 본문·캡션·링크14px 이상. PORTFOLIO_GUIDE의 이전 요약섹션 요구도 최신 지시로 대체.
+
+홈+5상세/이력 생성·링크검사 및 후보 git diff --check PASS. 실제 desktop1280/mobile390에서5카드·장식라벨0·중복변경섹션0·overflow=false/최소14px 확인. 거래소 통합 이력10이미지, 구my-listings/history가market/history로 이동하는 실제 브라우저 경로 PASS. QA탭 닫음/viewport override 해제/기존사용자탭 새로고침·보존. 캡처 UnityClient/Captures/web-scope-groups-desktop.png 및 -mobile.png. Unity/서버/DB/게임테스트 반복 없음. 미리보기 http://127.0.0.1:8790/MMORPG/#work, 정식게시·push·PR 없음. 새 게임 실입력 잔여는 앞 기록을 따른다.
+
 ## 최신 — 공개 홈의 워크플로우·진행 흐름 개편
 
 사용자 요청으로 대표 화면 다음에 큰 AI 워크플로우 도식을 배치하고 사람/총괄/전문 역할과 기능 제작 흐름을 분리했다. 목표4개와 실제 진행 상태, 기존2D 범위(인벤토리·거래소 포함), AI 새 클라이언트 연결/개선 부분, 사용자 방향변경4개를 표시했다. 작업 상세/화면 이력 링크와 이전 미디어 보존. 공개 원본 SHOWCASE/PORTFOLIO_GUIDE와 생성기·CSS만 수정, Unity/서버 변경·실입력시험 없음.
