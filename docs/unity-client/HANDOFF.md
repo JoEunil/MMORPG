@@ -55,6 +55,15 @@ rootEditor26496/PlaycompileScenedirtyfalse, ordinary후보MainServer3096/9999rea
 
 사용자10/20리뷰요청3건만처리,일반개발중단유지. codex/pr37-review-fixes는실제PRhead eacb744에서분기,DATA01 ea01991은codex/content-catalog에보존. respawn0/비최종절삭threshold<2거부·pair stage/backup/실패rollback/중단marker·두C++소비자빌드guard완료,독립리뷰차단0. Unity타깃3/3+격리C++marker정상/차단검증PASS. 실제게임입력/서버재시작/DB쓰기/사이트화면변경0. PR37_EXPORT_REVIEW_RESULTS.md. 로컬commit뒤PR37FIX01Slack게시승인필요,현재push0. root기존catalogasset/runtime유지하고검증용exporter만overlay,검증뒤pendingcatalog에도fix이식·root복원예정.
 
+## PR37 리뷰 수정 이식 완료 / 일반 개발 중단 유지
+
+리뷰전용분기332fbab는DATA01제외한PR37세지적수정·3/3및guard검증완료. PR37FIX01요청1792461166.269559/부모1792460883.167359 게시승인전·push0. 미게시catalog에도동일helper/경계검사/guard이식하고독립리뷰·CatalogExport2/2추가PASS,root통합catalog버전복원/asset불변/PlaycompileScenedirtyfalse. PR37_REVIEW_BACKPORT.md. 이번요청외기능/게임입력/서버DB작업·일반개발재개0,기존DATA01/wORLD01승인재소비금지.
+
+## 현재 — 기존 콘텐츠 전체 편집 확장 검증 완료 / DATA01 게시 직전
+
+WORLD01회신1792420805.879599는eacb744를PR37에일반push하는데1회소비완료,같은PR본문/제목·attach갱신. Actions39271163496 success/추가공개0. 새codex/content-catalog에서C14기존asset/field/GUID보존+기존5skills3monsters전체export·CoreLib배열include연결·obsolete2inc제거완료. 보스3/4mana/cooldown0원문보완,최종독립review차단0. CatalogExport2/2+이전실제C++테이블전필드native1 PASS,asset기존prefix/meta일치/6파일freeze일치. 기존사냥/스폰/거래소회귀와게임입력반복0. 실제Inspector/캡처1·사이트6기능build/대상3HTTP200.
+
+CONTENT_CATALOG_RESULTS.md 상세,새부모1792420978.697599. 정확로컬commit뒤DATA01로게시승인요청예정,현재새확장push/PR갱신0/서버31796·DB유지. root원본Game/WIP보존. 다음기존거래소미연결경로읽기는독립진행중이며새프로토콜소유권/경제규칙을승인없이추가하지않는다.
 ## 현재 — 몬스터 배치 편집 검증 완료 / 게시 승인 직전
 
 codex/world-content는 PR37 head ded6c582에서분기. C15runtime/export/UITKInspector/실제asset·inc+ZoneState_Monsters.cpp 초기화숫자연결만완료,보호기하/AOI/큐/락/DB수정0. 최종독립review차단0. SpawnExport2/2, 실제Initializer nativeprobe241·type/ID/위치범위PASS, nativeInspector8→9/265→8/241복원·캡처1PASS. S01/사냥/전체회귀반복0. rootScenePlay/dirtyfalse,서버31796그대로/재시작·DB직접쓰기0. SPAWN_AUTHORING_RESULTS.md 참조.

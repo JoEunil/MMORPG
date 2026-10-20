@@ -17,6 +17,10 @@ Unity직접3최종PASS/native직접2PASS。실제5011한로그인→30매물→l
 ## 거래소 판매대금 수령 연결 — 최소 배치 종료
 
 MarketClaim Unity2/2, 서버 독립2경계 최종PASS. 서버 TCP fixture의 실제종료 전제조건을 보완하고 실패항목1개만 재실행했으며 기대응답수는 유지했다. 5011 native 로그인→필드→거래소검색30→내매물0 성공/Collect비활성→실캡처1→Close/Disconnect modelnull→Playstop PASS. 실제매물없어 실DB지급성공 미검증, 직접DB쓰기·실claim송신0. 테스트관찰자의 비직렬화필드 접근NRE는 제품과분리해수정, 같은로그인에서관찰만계속했다. 관련로그와이력보존. MARKET_CLAIM_RESULTS.md/Captures/market-claim-*참조. 새영향없으면추가반복시험금지.
+## 기존 콘텐츠 전체 편집 검증 종료
+
+CatalogExport2/2+이전C++5스킬/3몬스터전필드비교native1회 PASS. 기존asset값/GUID보존과실제Inspector확장항목표시확인. 기본수치와실행서버가그대로여서사냥/스폰/거래소게임입력·전체회귀를반복하지않는다. CONTENT_CATALOG_RESULTS.md 참조.
+
 ## 몬스터 배치 편집 검증 종료
 
 SpawnExport2/2+실제InitializeMonster native1회+Inspector실입력8→9→8복원 한 흐름 PASS. 기본수치동일·실행서버변경없어 추가게임입력/기존사냥반복0. 신규변경/실패근거없이동일검증반복금지. SPAWN_AUTHORING_RESULTS.md 참조.
