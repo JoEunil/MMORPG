@@ -1,3 +1,8 @@
+## 최신 웹 정정 완료 — 게시 후보 ref 갱신
+
+사용자 지시로 기존2D Unity 범위는 이동/몬스터/스킬/채팅/월드진입5개로 정정, Unity 인벤토리·거래소는AI Agent추가로구분. SHOWCASE/두상세/PORTFOLIO_GUIDE와ROOT AGENTS·guide반영. 작업목록5개사진href를각상세로변경하고 상세/이력의사진확대는유지. 생성/링크검사·실제대표사진클릭→인벤토리상세이동PASS, 캡처web-photo-details.png.
+
+웹정정커밋94048c7만기존큰묶음에cherry-pick하여PLAY03게시대상codex/classic-field-art는cbfefdfffc373c1711bcaf6e15929bee208c1caa로갱신됐다(d217+직접요청웹정정). 대기중같은PLAY03요청범위이며새요청번호/작은PR없음. 현재codex/inventory-read-followup에는별도재조회후보7704165와웹정정94048c7이있고, 새재조회코드는게시대상에들어가지않는다. 정확해당branch/ref만push가능,여전히사람승인전게시0. 기존승인메시지1792495219.973689를업데이트하며receiverparent1792487679.299269유지.
 ## 최신 — 가방 읽기 후보 최소 검증 완료 / 웹 기존 범위 정정
 
 codex/inventory-read-followup에서 C07InventoryScreen의 명시 실패 뒤 GET1회 재확인만 구현했다. 기존 readonly도구로5011/5012 inventory행present/BLOB360확인, cold-cache인지는환경확정하지않음. 닫기/Zone/모델교체/disable 예약취소, timeout·exception·writes 재시도0, 실제성공만empty로표시. 독립읽기리뷰blocker0/명시compile0/새직접PlayMode2개 각각1회PASS. 실제신규로그인/입력은0이므로다음가방묶음에표시확인을남긴다. INVENTORY_READ_FOLLOWUP_RESULTS.txt. EditorPlayfalse/dirtyfalse/backgroundfalse/inputRunningfalse. 작은후속PR요청없음. 전문신규11/재활성화45/56회/tokenN/A.
