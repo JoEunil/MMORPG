@@ -1,3 +1,30 @@
+## PR37 리뷰 수정 — 검증 완료 / 게시 승인 전
+
+사용자10/20리뷰요청3건만처리,일반개발중단유지. codex/pr37-review-fixes는실제PRhead eacb744에서분기,DATA01 ea01991은codex/content-catalog에보존. respawn0/비최종절삭threshold<2거부·pair stage/backup/실패rollback/중단marker·두C++소비자빌드guard완료,독립리뷰차단0. Unity타깃3/3+격리C++marker정상/차단검증PASS. 실제게임입력/서버재시작/DB쓰기/사이트화면변경0. PR37_EXPORT_REVIEW_RESULTS.md. 로컬commit뒤PR37FIX01Slack게시승인필요,현재push0. root기존catalogasset/runtime유지하고검증용exporter만overlay,검증뒤pendingcatalog에도fix이식·root복원예정.
+
+## 현재 — 몬스터 배치 편집 검증 완료 / 게시 승인 직전
+
+codex/world-content는 PR37 head ded6c582에서분기. C15runtime/export/UITKInspector/실제asset·inc+ZoneState_Monsters.cpp 초기화숫자연결만완료,보호기하/AOI/큐/락/DB수정0. 최종독립review차단0. SpawnExport2/2, 실제Initializer nativeprobe241·type/ID/위치범위PASS, nativeInspector8→9/265→8/241복원·캡처1PASS. S01/사냥/전체회귀반복0. rootScenePlay/dirtyfalse,서버31796그대로/재시작·DB직접쓰기0. SPAWN_AUTHORING_RESULTS.md 참조.
+
+최신사용자지시를CURRENT_POLICY/DELIVERY/WORKFLOW/Coordinator/template/rootAGENTS에반영: PR게시직전Slack승인,그전push/PR갱신0. 지정부모1792420090.451099 수신기threads등록. PR37조회open/unmerged/head ded6 그대로. 로컬검증commit준비후 WORLD01에구체결과·PR37같은큰묶음갱신승인을요청한다. 새작은PR0/자동병합0/Pages게시0. 원본Game/rootWIP보존. 승인대기는일반완료별재개승인이아니라요청된게시통제다. 독립후속기획은계속가능.
+## 현재 — 사냥 표시·기존 콘텐츠 편집 구현/리뷰/최소 검증 완료
+
+hunting-b 실제 입력 PASS는 직전 기록 유지. 후속 S01 실제 typedasset/CreateDefaultCandidate/ExportValidated 및 inc2개 생성·CoreLib 두 initializer include 연결 완료. 기본값/ID/파생값 보존, 보호 프로토콜/DB/인증/Zonequeue/locks 변경0. 독립 리뷰 maxHp>int.MaxValue P2 보완/최종차단0. ContentExport2/2와 실제 C++ 두 테이블 native probe1 PASS. 전체회귀·사냥입력반복0. rootEditor Playstop/새asset 실제Inspector 확인/실캡처, 실행 서버31796 그대로/기동·DB직접쓰기0. CONTENT_EXPORT_RESULTS.md 상세.
+
+candidate codex/hunting-state(master5bf5318)에서 사냥+콘텐츠편집+사이트를 큰PR하나로 전달 준비. 사이트6작업/이력 build성공, 대상 홈/변경상세·이력/두이미지HTTP200. 새본체배포나Pages공개claim없음. root원본WIP와원본Game보존, Git은C10-Delivery/source 지정파일만. Slack현재후속부모1792418862.300769/사냥부모1792414210.840089, 중복BAG승인재소비금지. 다음은한묶음Git전달과짧은Slack결과, 별도재개승인요청없음.
+## 현재 — 사냥 표시 검증 완료 / 기존 수치 내보내기 저작 중
+
+사용자 Unity입력재개 명시확인. hunting-b native로그인→카메라수평40바→Ring1회/실제3몬스터HP500/1500/바0.3333→실캡처1→정상Disconnect/modelnull바0/Playstop PASS. 자동3/3기통과반복0. 최종전투저장5011 HP3500MP9960 Lv1EXP0좌표그대로/5012그대로, DB직접쓰기0/서버31796유지. HUNTING_STATE_RESULTS.md 상세. 사냥Slack결과1792418861.009939/sameparent1792414210.840089.
+
+후속 BRIEF S01/P01 콘텐츠범위 Ring1/monster0의 기본값유지 Unity typedasset→검증export→C++initializer연결을실제구현담당에게배정. CONTENT_EXPORT_TASK.md 범위/제외/자동2+native동등성1 계획. 새부모1792418862.300769 생성·threads등록, 수신기대상변경0. 현재코드저작중/Editorasset생성·export·컴파일·시험은리뷰후/사냥실입력추가재시험0. 같은codex/hunting-state 큰PR묶음,현재새PR0/미커밋WIP보존. 기존보호프로토콜/DB/Zonequeue/locks변경금지. 원본Game와rootWIP보존.
+
+## PR36 병합·CancelIoEx 경고 분류 정정 / Unity 입력 중단 유지
+
+직접 GitHub조회로 PR36 merged=true/merge5bf53185b69c85ce090175cc9eaeefd55310f88d 확인. origin/master fetch 후 기존HEAD88d90a5와tree내용차이0 확인. 미커밋 사냥 상태 변경은 보존해 codex/hunting-state를 origin/master에서 생성했다. 닫힌PR36에후속push하지않으며 다음검증묶음을큰PR하나로전달한다.
+
+사용자 설명 및 IOCP.cpp CleanUpSocket 두 경로/공식 CancelIoEx 문서 확인: 현재 관측 error1168(ERROR_NOT_FOUND)은 취소할 outstanding I/O 요청 없음이며 완료와 취소 사이 정상 종료 경합으로 처리한다. 지정된 소켓 종료의 CancelIoEx1168만 알려진 비차단 진단으로 분류, 기존 미해결 문제 표기는 과거 기록으로 정정. 다른오류/일반오류로그전체/강제종료/WAL·저장검사는변경하지않는다. 서버소스/로그레벨변경·빌드·실행시험0.
+
+사냥상태작업은 미커밋보존. 자동categoryHuntingState3/3PASS(최초0건발견은미포함/임포트후실행). 실제첫로그인FullLv1EXP0표시PASS, C13Camera.main이로그인preview카메라여서기울어진바확인FAIL→정상퇴장/Playstop후 worldScreen.ViewCamera 명시연결최소수정/독립리뷰PASS. 다음표시재검증 Play시작뒤사용자물리Esc로ComputerUse중단. Unity마우스/키보드자동입력재개하지않음, 현재Play상태의실시간변경도추가조작하지않음. 최종실입력·캡처·사이트·커밋/PR전달미완료. 원본Game/rootWIP보존. 소스freeze hunting-freeze.txt, 사전실패hunting-live.txt. 다음UI입력은사용자명시재개뒤카메라표시와기존Ring1회만검증,전체3자동/HUD회귀반복금지.
 ## 현재 완료 — 정상 종료 복구·빈 가방 실제 확인
 
 BAG02 승인1792410799.402169 소비/같은의사표시1792410787 별도실행0. 검토패치 actualcandidate2파일적용/빌드 SHA0F9D68FDEB63FA77F907571AB1814777EA7F5091E00861EB057C835C7E4E3E32. strict새q종료 PASS 뒤만 BAG01두360byte0행 commit1회/독립READONLY PASS. INSERT 반복금지. 승인start2회 모두소비, 현재PID31796 ticks639280079946206209/BAG02-Candidate/bin/9999Listen/Established0. Unity5011한native흐름 cold가방status0→Refresh1회→status1/rows0/No items./카드0/좌표불변→대표PNG1→Close/Disconnect/modelnull/Playstop. 기존HUD/전체103/C++회귀 반복0. char5011 HP6700MP9980/5012 HP10000MP9999·좌표그대로. 로그아웃CancelIoEx1168잔여1건 범위밖. 실제제품서버source는candidate의 IOCP.cpp, root원본과C10binary보존. 상세PLAYER_HUD_RESULTS최상단. 사이트현재범위/캡처갱신중, 다음같은PR36commit/push/ready, 병합·게시0.

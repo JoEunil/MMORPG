@@ -1,4 +1,7 @@
 ﻿#include "pch.h"
+#if __has_include("../UnityClient/Exports/ServerData/C14Export.pending")
+#error C14 server content export is pending; do not compile a mixed generated content snapshot.
+#endif
 #include "SkillData.h"
 
 namespace Data {
@@ -13,15 +16,8 @@ namespace Data {
                 SkillPhase{ 6, 1, {SkillRangeType::Circle, 2.0f, 0.0f}, 5 }, // 타격 처리
             },
         },
-         // 원형 스킬 광역기
-        SkillData{
-            1, 2,
-            20, 120,
-            {
-                SkillPhase{ 0, 0, {SkillRangeType::None, 0, 0}, 0 },  // charging
-                SkillPhase{ 16, 1, {SkillRangeType::Circle, 8.0f, 0}, 100 } // hit
-            }
-        },
+        // Ring skill 1; generated from the scoped Unity content candidate.
+#include "../UnityClient/Exports/ServerData/PlayerRing.inc"
         // 바라보는 방향 직사각형
         SkillData{
             2, 2,

@@ -115,6 +115,39 @@ namespace C02.Tests
         }
 
         [Test]
+        [Category("HuntingState")]
+        public void MonsterVitalsFollowValidatedServerHealthAndEndWithDeath()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                fixture.Monsters(100, Monster(0, 2));
+                var visual = fixture.Visual("monsters", (ushort)0);
+                Assert.That(fixture.VitalsRatio(visual), Is.EqualTo(0.7f).Within(0.001f));
+
+                var lowHealth = Monster(1, 2);
+                lowHealth.hp = 1;
+                lowHealth.maxHp = 1500;
+                fixture.Monsters(100, lowHealth);
+                var lowHealthFill = fixture.VitalsFill(fixture.Visual("monsters", (ushort)1));
+                Assert.That(lowHealthFill.anchorMax.x, Is.EqualTo(1f / 1500f).Within(0.000001f),
+                    "A positive low-HP ratio must retain a positive fill width.");
+                Assert.That(lowHealthFill.rect.width, Is.GreaterThan(0));
+                fixture.MonsterDeltas(new MonsterDeltaField { internalId = 1, fieldId = 0, fieldVal = 0 });
+
+                fixture.MonsterDeltas(new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 25 });
+                Assert.That(fixture.VitalsRatio(visual), Is.EqualTo(0.25f).Within(0.001f));
+
+                fixture.MonsterDeltas(new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 101 });
+                Assert.That(fixture.MonsterState(0).hp, Is.EqualTo(25));
+                Assert.That(fixture.VitalsRatio(visual), Is.EqualTo(0.25f).Within(0.001f), "Malformed HP must leave both state and bar unchanged.");
+
+                fixture.MonsterDeltas(new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 0 });
+                Assert.That(fixture.Count("monsters"), Is.Zero);
+                Assert.That(visual.activeSelf, Is.False);
+            }
+        }
+
+        [Test]
         public void InvalidEntitiesDoNotPoisonOtherIds_AndDeltaCoordinatesAndHpAreAtomic()
         {
             using (var fixture = new ObservationFixture())
@@ -404,6 +437,13 @@ namespace C02.Tests
             public FullStateField PlayerState(uint id) => (FullStateField)EntryField("players", id, "State");
             public MonsterFullField MonsterState(ushort id) => (MonsterFullField)EntryField("monsters", id, "State");
             public GameObject Visual(string name, object id) => (GameObject)EntryField(name, id, "Visual");
+            public float VitalsRatio(GameObject visual)
+            {
+                return VitalsFill(visual).anchorMax.x;
+            }
+            public RectTransform VitalsFill(GameObject visual) =>
+                (RectTransform)typeof(C13EntityVitals).GetField("fillTransform", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .GetValue(visual.GetComponent<C13EntityVitals>());
             public void CloseWorld() => Invoke(world, "ResetWorld");
             public void DisableObserver() => observer.enabled = false;
             public void OpenWorld()

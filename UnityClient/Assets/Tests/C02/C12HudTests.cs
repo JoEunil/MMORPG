@@ -71,6 +71,84 @@ namespace C02.Tests
             Assert.That((float)method.Invoke(null, new object[] { current, maximum }), Is.EqualTo(expected));
         }
 
+        [Test]
+        [Category("HuntingState")]
+        public void OwnGrowthFullAndDeltasKeepRawServerValuesAndIgnoreOtherEntities()
+        {
+            using (var fixture = new HudFixture())
+            {
+                fixture.Full(new FullStateField
+                {
+                    zoneInternalID = 73, hp = 100, maxHp = 100, mp = 50, maxMp = 50,
+                    level = 37, exp = 4000000001U, x = 10, y = 10, dir = 3
+                });
+                Assert.That(fixture.Aim.text, Is.EqualTo("Lv 37  EXP 4000000001  |  Line aim: East"));
+
+                fixture.Full(new FullStateField { zoneInternalID = 99, level = 1, exp = 2 });
+                fixture.Delta(
+                    new DeltaUpdateField { zoneInternalID = 99, fieldID = 4, fieldVal = 3 },
+                    new DeltaUpdateField { zoneInternalID = 99, fieldID = 5, fieldVal = uint.MaxValue });
+                Assert.That(fixture.Aim.text, Is.EqualTo("Lv 37  EXP 4000000001  |  Line aim: East"));
+                Assert.That(fixture.World.CanAct, Is.True);
+
+                fixture.Delta(
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 4, fieldVal = uint.MaxValue },
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 5, fieldVal = ushort.MaxValue },
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 6, fieldVal = 2 });
+                Assert.That(fixture.World.OwnFull.exp, Is.EqualTo(uint.MaxValue));
+                Assert.That(fixture.World.OwnFull.level, Is.EqualTo(ushort.MaxValue));
+                Assert.That(fixture.Aim.text, Is.EqualTo("Lv 65535  EXP 4294967295  |  Line aim: West"));
+                Assert.That(fixture.Vitals.text, Is.EqualTo("HP 100 / 100    MP 50 / 50"));
+                Assert.That(fixture.Hp.fillAmount, Is.EqualTo(1));
+                Assert.That(fixture.Mp.fillAmount, Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        [Category("HuntingState")]
+        public void GrowthClearsOnLogoutThenUsesPendingEntryAndRejectsAnOverflowingLevel()
+        {
+            using (var fixture = new HudFixture())
+            {
+                fixture.Delta(
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 4, fieldVal = 90 },
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 5, fieldVal = 7 });
+                Assert.That(fixture.Aim.text, Is.EqualTo("Lv 7  EXP 90  |  Line aim: East"));
+                fixture.Logout();
+                fixture.Delta(
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 4, fieldVal = 999 },
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 5, fieldVal = 99 });
+                Assert.That(fixture.Aim.text, Is.Empty);
+                Assert.That(fixture.World.HasOwnFull, Is.False);
+
+                fixture.ReenterPending(new[]
+                {
+                    new FullStateField { zoneInternalID = 99, level = 1, exp = 2 },
+                    new FullStateField
+                    {
+                        zoneInternalID = 73, hp = 40, maxHp = 80, mp = 15, maxMp = 30,
+                        level = 8, exp = 100, x = 10, y = 10, dir = 3
+                    }
+                },
+                    new DeltaUpdateField { zoneInternalID = 99, fieldID = 5, fieldVal = 65536 },
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 4, fieldVal = 54321 },
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 5, fieldVal = 9 });
+                Assert.That(fixture.Aim.text, Is.EqualTo("Lv 9  EXP 54321  |  Line aim: East"));
+                Assert.That(fixture.World.OwnFull.exp, Is.EqualTo(54321));
+                Assert.That(fixture.World.OwnFull.level, Is.EqualTo(9));
+                Assert.That(fixture.World.CanAct, Is.True, "Another pending entity's malformed level cannot abort own entry.");
+
+                fixture.Delta(new DeltaUpdateField { zoneInternalID = 73, fieldID = 5, fieldVal = 65536 });
+                Assert.That(fixture.World.Stage, Is.EqualTo(C02Stage.Failed));
+                Assert.That(fixture.World.HasOwnFull, Is.False);
+                Assert.That(fixture.World.CanAct, Is.False);
+                Assert.That(fixture.Aim.text, Is.Empty);
+                Assert.That(fixture.Vitals.text, Is.Empty);
+                Assert.That(fixture.Hp.fillAmount, Is.Zero);
+                Assert.That(fixture.Mp.fillAmount, Is.Zero);
+            }
+        }
+
         private sealed class HudFixture : IDisposable
         {
             private readonly object fixture;
@@ -84,6 +162,8 @@ namespace C02.Tests
             public readonly UnityEngine.UI.Image Mp;
             public readonly TMP_Text Vitals;
             public readonly TMP_Text Status;
+            public readonly TMP_Text Aim;
+            public C02WorldScreen World => (C02WorldScreen)world;
 
             public HudFixture()
             {
@@ -94,6 +174,7 @@ namespace C02.Tests
                 model = fixtureType.GetField("Model", BindingFlags.Instance | BindingFlags.Public).GetValue(fixture);
                 Vitals = (TMP_Text)fixtureType.GetField("Vitals", BindingFlags.Instance | BindingFlags.Public).GetValue(fixture);
                 Status = (TMP_Text)fixtureType.GetField("Status", BindingFlags.Instance | BindingFlags.Public).GetValue(fixture);
+                Aim = (TMP_Text)combat.GetType().GetField("aimText", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(combat);
 
                 hpObject = new GameObject("C12 HP fixture", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.Image));
                 mpObject = new GameObject("C12 MP fixture", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.Image));
@@ -125,6 +206,17 @@ namespace C02.Tests
                     .Invoke(world, new object[] { C02Stage.Entering });
                 Invoke(world, "ZoneReceived", (ushort)1, 0UL, 73U, 10f, 10f);
                 Full(state);
+            }
+
+            public void ReenterPending(FullStateField[] states, params DeltaUpdateField[] updates)
+            {
+                typeof(C02WorldScreen).GetProperty("Stage").GetSetMethod(true)
+                    .Invoke(world, new object[] { C02Stage.Entering });
+                Invoke(world, "FullReceived", (ushort)states.Length, states);
+                Delta(updates);
+                Assert.That(World.Stage, Is.EqualTo(C02Stage.Entering));
+                Assert.That(Aim.text, Is.Empty, "Pending Full and Delta cannot display before the matching Zone arrives.");
+                Invoke(world, "ZoneReceived", (ushort)1, 0UL, 73U, 10f, 10f);
             }
 
             public void Dispose()

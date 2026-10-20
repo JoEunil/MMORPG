@@ -45,6 +45,7 @@ namespace C02
         public uint InternalID { get; private set; }
         public bool HasOwnFull { get; private set; }
         public FullStateField OwnFull => ownFull;
+        public Transform ViewCamera => quarterViewCamera;
         public bool CanAct => isActiveAndEnabled && Stage == C02Stage.InWorld && HasOwnFull && ownFull.hp > 0;
         public bool IsWorldVisible => worldRoot.activeSelf;
         public Vector2 ServerPosition => new Vector2(ownFull.x, ownFull.y);
@@ -258,7 +259,8 @@ namespace C02
             for (int i = 0; i < count; i++)
             {
                 var update = updates[i];
-                if (update.fieldID != 0 && update.fieldID != 1 && update.fieldID != 6 && update.fieldID != 7 && update.fieldID != 8) continue;
+                if (update.fieldID != 0 && update.fieldID != 1 && update.fieldID != 4 && update.fieldID != 5 &&
+                    update.fieldID != 6 && update.fieldID != 7 && update.fieldID != 8) continue;
                 if (HasOwnFull && update.zoneInternalID == InternalID)
                 {
                     if (update.fieldID == 0 || update.fieldID == 1)
@@ -266,6 +268,12 @@ namespace C02
                         if (update.fieldVal > (uint)(update.fieldID == 0 ? next.maxHp : next.maxMp))
                         { Fail("Invalid server character vitals."); return; }
                         if (update.fieldID == 0) next.hp = (int)update.fieldVal; else next.mp = (int)update.fieldVal;
+                    }
+                    else if (update.fieldID == 4) next.exp = update.fieldVal;
+                    else if (update.fieldID == 5)
+                    {
+                        if (update.fieldVal > ushort.MaxValue) { Fail("Invalid server character level."); return; }
+                        next.level = (ushort)update.fieldVal;
                     }
                     else if (update.fieldID == 6)
                     {
@@ -284,6 +292,16 @@ namespace C02
                 {
                     if (update.fieldID == 0) state.hp = unchecked((int)update.fieldVal);
                     else if (update.fieldID == 1) state.mp = unchecked((int)update.fieldVal);
+                    else if (update.fieldID == 4) state.exp = update.fieldVal;
+                    else if (update.fieldID == 5)
+                    {
+                        if (update.fieldVal > ushort.MaxValue)
+                        {
+                            pendingFull.Remove(update.zoneInternalID);
+                            continue;
+                        }
+                        state.level = (ushort)update.fieldVal;
+                    }
                     else if (update.fieldID == 6) state.dir = update.fieldVal <= 3 ? (byte)update.fieldVal : byte.MaxValue;
                     else
                     {

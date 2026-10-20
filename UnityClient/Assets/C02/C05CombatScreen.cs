@@ -95,7 +95,8 @@ namespace C02
                     state.hp, state.maxHp, state.mp, state.maxMp);
                 if (hpFill != null) hpFill.fillAmount = GaugeAmount(state.hp, state.maxHp);
                 if (mpFill != null) mpFill.fillAmount = GaugeAmount(state.mp, state.maxMp);
-                aimText.text = "Line aim: " + LineDirection(state.dir);
+                aimText.text = string.Format(CultureInfo.InvariantCulture, "Lv {0}  EXP {1}  |  Line aim: {2}",
+                    state.level, state.exp, LineDirection(state.dir));
                 if (state.hp == 0) combatStatusText.text = "HP 0 — movement and combat stopped. Disconnect to leave.";
                 else if (combatStatusText.text.StartsWith("HP 0", StringComparison.Ordinal)) combatStatusText.text = string.Empty;
             }

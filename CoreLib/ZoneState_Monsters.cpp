@@ -1,11 +1,13 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "ZoneState.h"
+#include "../UnityClient/Exports/ServerData/MonsterSpawns.inc"
 
 namespace Core {
     void ZoneState::InitializeMonster() {
+        static_assert(CELLS_X == 5 && CELLS_Y == 5 && CELL_SIZE == 22, "Revalidate authored monster spawn geometry.");
         int uniqueId = 0;
 
-        // 1. 일반 몬스터(0) : 셀마다 8마리
+        // Generated counts preserve the existing per-cell type order and rand() distribution.
         for (int i = 0; i < CELLS_Y; i++)
         {
             for (int j = 0; j < CELLS_X; j++)
@@ -16,11 +18,11 @@ namespace Core {
                 if (i == 2 && j == 2)
                     continue;
 
-                // 일반몬스터 8마리
-                for (int k = 0; k < 8; k++)
+                // 일반 몬스터
+                for (int k = 0; k < Data::REGULAR_MONSTERS_PER_CELL; k++)
                 {
-                    int spawnX = area.x_min + 1 + (rand() % (int)(area.x_max - area.x_min - 1));
-                    int spawnY = area.y_min + 1 + (rand() % (int)(area.y_max - area.y_min - 1));
+                    int spawnX = area.x_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.x_max - area.x_min - Data::MONSTER_SPAWN_EDGE_INSET));
+                    int spawnY = area.y_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.y_max - area.y_min - Data::MONSTER_SPAWN_EDGE_INSET));
 
                     uint16_t monsterType = 0;
 
@@ -31,11 +33,11 @@ namespace Core {
                     uniqueId++;
                 }
 
-                // 조금 센 일반 몬스터 2마리
-                for (int k = 0; k < 2; k++)
+                // 조금 센 일반 몬스터
+                for (int k = 0; k < Data::STRONG_MONSTERS_PER_CELL; k++)
                 {
-                    int spawnX = area.x_min + 1 + (rand() % (int)(area.x_max - area.x_min - 1));
-                    int spawnY = area.y_min + 1 + (rand() % (int)(area.y_max - area.y_min - 1));
+                    int spawnX = area.x_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.x_max - area.x_min - Data::MONSTER_SPAWN_EDGE_INSET));
+                    int spawnY = area.y_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.y_max - area.y_min - Data::MONSTER_SPAWN_EDGE_INSET));
 
                     uint16_t monsterType = 1;
 
