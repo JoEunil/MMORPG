@@ -133,6 +133,43 @@ namespace C02.Tests
             }
         }
 
+        [Test]
+        [Category("MonsterPhaseReview")]
+        public void TransitionThresholdsMustRemainDistinctAfterHpQuantization()
+        {
+            var content = ScriptableObject.CreateInstance<C14ServerContent>();
+            string directory = Path.Combine(Path.GetTempPath(), "C14PhaseReview-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                Export(content, directory);
+                byte[] ringBefore = File.ReadAllBytes(Path.Combine(directory, "PlayerRing.inc"));
+                byte[] monsterBefore = File.ReadAllBytes(Path.Combine(directory, "Monster0.inc"));
+                content.monster0.phases = new[]
+                {
+                    new C14ServerContent.MonsterPhase { hpThreshold = 0.5005f },
+                    new C14ServerContent.MonsterPhase { hpThreshold = 0.5004f },
+                    new C14ServerContent.MonsterPhase { hpThreshold = 0.1f }
+                };
+                Assert.That((uint)(1500f * 0.5005f), Is.EqualTo(750u));
+                Assert.That((uint)(1500f * 0.5004f), Is.EqualTo(750u));
+                var failure = Assert.Throws<TargetInvocationException>(() => Export(content, directory));
+                Assert.That(failure.InnerException, Is.TypeOf<InvalidOperationException>());
+                Assert.That(File.ReadAllBytes(Path.Combine(directory, "PlayerRing.inc")), Is.EqualTo(ringBefore));
+                Assert.That(File.ReadAllBytes(Path.Combine(directory, "Monster0.inc")), Is.EqualTo(monsterBefore));
+                // Adjacent integer gates are valid; the final phase is not a transition gate.
+                content.monster0.phases[1].hpThreshold = 0.4999f;
+                Assert.DoesNotThrow(() => Export(content, directory));
+                content.monster0.phases = new[] { content.monster0.phases[0],
+                    new C14ServerContent.MonsterPhase { hpThreshold = 0.5004f } };
+                Assert.DoesNotThrow(() => Export(content, directory));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(content);
+                if (Directory.Exists(directory)) Directory.Delete(directory, true);
+            }
+        }
+
         private static void Export(C14ServerContent content, string directory)
         {
             var exporter = Type.GetType("C02.Editor.C14ServerContentExport, C02.Editor", true);

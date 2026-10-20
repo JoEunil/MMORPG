@@ -1,3 +1,7 @@
+## 최신 — PR37 신규 페이즈 리뷰 수정
+
+두 지적 모두 실제 코드로 타당성 확인. 리스폰 phase/skillStep/tick 초기화와 non-final 정수HP gate 엄격 내림차순만 수정. codex/monster-phase-review는 PR37 실제 병합0f9b96d 기준; 거래소42dc·catalog848 보존. 독립리뷰 차단0/Release UnitTests build0/native1·Unity2 PASS. 최초 EditMode 발견0은 미실행으로 보존, PlayMode 해당2만 실행. 게임입력/실제export/서버재기동/DB쓰기0. 임시probe 제거/root확장catalog 동일검사 반영·기존값보존. 결과 PR37_PHASE_REVIEW_RESULTS.md. 현재 GitHub master f1b5e44는0f9후손아니며 C14코드없음(API확인). 자동복원·다른변경끼워넣기·push·PR0; 게시기준확인 전 로컬수정보존. 다른개발추가진행0.
+
 ## PR37 리뷰 수정 — 검증 완료 / 게시 승인 전
 
 사용자10/20리뷰요청3건만처리,일반개발중단유지. codex/pr37-review-fixes는실제PRhead eacb744에서분기,DATA01 ea01991은codex/content-catalog에보존. respawn0/비최종절삭threshold<2거부·pair stage/backup/실패rollback/중단marker·두C++소비자빌드guard완료,독립리뷰차단0. Unity타깃3/3+격리C++marker정상/차단검증PASS. 실제게임입력/서버재시작/DB쓰기/사이트화면변경0. PR37_EXPORT_REVIEW_RESULTS.md. 로컬commit뒤PR37FIX01Slack게시승인필요,현재push0. root기존catalogasset/runtime유지하고검증용exporter만overlay,검증뒤pendingcatalog에도fix이식·root복원예정.

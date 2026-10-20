@@ -71,6 +71,7 @@ namespace C02.Editor
             if (monster.phases == null || monster.phases.Length < 1 || monster.phases.Length > 8)
                 throw new InvalidOperationException("Monster 0 requires 1 to 8 phases.");
             float previousThreshold = float.PositiveInfinity;
+            uint previousAbsoluteThreshold = uint.MaxValue;
             for (int phaseIndex = 0; phaseIndex < monster.phases.Length; phaseIndex++)
             {
                 var phase = monster.phases[phaseIndex];
@@ -79,8 +80,12 @@ namespace C02.Editor
                 previousThreshold = phase.hpThreshold;
                 // Match uint32_t(maxHp * hpThreshold); HP zero exits before phase transitions.
                 uint absoluteThreshold = (uint)((float)monster.maxHp * phase.hpThreshold);
-                if (phaseIndex < monster.phases.Length - 1 && absoluteThreshold < 2)
-                    throw new InvalidOperationException("Non-final monster phases require an absolute threshold above one HP.");
+                if (phaseIndex < monster.phases.Length - 1)
+                {
+                    if (absoluteThreshold < 2 || absoluteThreshold >= previousAbsoluteThreshold)
+                        throw new InvalidOperationException("Non-final monster phases require strictly decreasing absolute thresholds above one HP.");
+                    previousAbsoluteThreshold = absoluteThreshold;
+                }
                 if (phase.steps == null || phase.steps.Length < 1 || phase.steps.Length > 16 || (phase.steps.Length & (phase.steps.Length - 1)) != 0)
                     throw new InvalidOperationException("Each monster phase requires a power-of-two step count from 1 to 16.");
                 foreach (var step in phase.steps)

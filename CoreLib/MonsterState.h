@@ -52,6 +52,9 @@ namespace Core {
             aggro = 0;
             aggroTick = 0;
             respawnTick = data->respawn;
+            tick = 0;
+            skillStep = 0;
+            phase = 0;
         }
     };
 }
