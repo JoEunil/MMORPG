@@ -161,6 +161,7 @@ xcopy /Y "$(SolutionDir)External\mysqlconn\Debug\*.pdb" "$(OutDir)"</Command>
     <ClCompile Include="CoreLib\NonZoneThreadPool.cpp" />
     <ClCompile Include="CoreLib\MonsterState.cpp" />
     <ClCompile Include="CoreLib\MonsterBehavior.cpp" />
+    <ClCompile Include="CoreLib\SkillRange.cpp" />
     <ClCompile Include="CacheLib\ProfileCacheTest.cpp" />
     <ClCompile Include="CacheLib\CacheStorageTest.cpp" />
     <ClCompile Include="BaseLib\FixedObjectPool.cpp" />

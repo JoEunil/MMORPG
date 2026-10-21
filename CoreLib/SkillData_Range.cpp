@@ -23,9 +23,9 @@ namespace Data {
             switch (dir)
             {
             case 0:
-                return (dx >= -halfWidth && dx <= halfWidth && dy <= 0 && dy >= -range1);
-            case 1: 
                 return (dx >= -halfWidth && dx <= halfWidth && dy >= 0 && dy <= range1);
+            case 1:
+                return (dx >= -halfWidth && dx <= halfWidth && dy <= 0 && dy >= -range1);
             case 2: 
                 return (dy >= -halfWidth && dy <= halfWidth && dx <= 0 && dx >= -range1);
             case 3: 

@@ -1,3 +1,15 @@
+## 최신 — 직선 스킬 실제 방향·범위 검증 완료 / 플레이어 재질 후속
+
+사용자직접보안창처리확인후 같은전용계정접속1회/C1회로dir0(+Y)시전·12×3윤곽실제화면·대상HP1500→500/피해1000확인. 서버Rectangle수직교정+own서버시전윤곽후보통합. 독립리뷰P1/P2없음/compile0/기존C05fixture영향재검증1PASS. 첫helper과도정렬조건timeout/C0는보존하고같은접속에서보조도구만수정,전체회귀·재빌드0. LINE_AIM_RESULTS.txt 참조. 정상Disconnect→Playfalse/dirtyfalse/inputRunningfalse/backgroundfalse/envnull복구. 새push/PR0,기존PR40merged.
+
+공개전투상세·화면이력에2026-10-21실제시전PNG추가,이전사진보존. 다음미완료대표화면의플레이어금속·가죽재질기존texture활용검토를hero_surface_followup에배정. 해당작업자CAND3재질및Hero재질부분만,Editor는root. 입력종료후저작이며다음아트는정적비교만/추가로그인없음. 전문신규21/재활성화52/73/tokenN/A(직선표시구현·독립리뷰·플레이어아트각신규1).
+## 최신 — 직선 C 방향 수정 후보 / Windows보안창 실입력 차단
+
+PR40은merged확인/masterb99ae13정상병합. 후속field-play-followup에서 실제서버Rectangle0/1만이동규약에맞추고HUD0North/1South로교정. 독립리뷰완료/native네방향1PASS/HUD기존fixture1PASS/Unitycompile0/MainServer·UnitTests빌드성공. LINE_AIM_TASK.md/RESULTS.txt참조. 서버후보4892/9999ready,로그인35532/3000·DB/Redis정상,원본exe보존.
+
+실입력은Windows보안Node.js네트워크허용창에차단: 창미조작,첫Click포커스가드실패/성공로그인·C시전0. Playstop/dirtyfalse/inputRunningfalse/backgroundfalse/계정envnull복구. 사용자가직접보안창처리한뒤수직C1회·실제대상HP변화만최소배치재개. 자동시험으로실입력완료처리금지/보안권한변경·다른runtime우회금지. 새push·PR0,개별작은PR없음. 공개새성공화면없어기존사이트유지.
+
+전문신규18/재활성화52/70/tokenN/A. PR38/39/40원격자동삭제확인,local끝난3branch는master포함·고유0·사용worktree없음확인후안전삭제. 현재field-play-followup/root원본·다른checkout보존.
 ## 최신 — 사냥 실입력 묶음 PASS / 후속 큰 PR 후보 준비
 
 명시재개후 전용계정02 로그인1회·방향키접근·X2회로 몬스터10 HP1500→500(Full)→0(delta)/화면제거/본인EXP0→10을확인했다. 몬스터11부수피해는있고처치1마리다. 실제스크린샷2장·고블린재질구분확인,미세질감/오크실게임/레벨업·리스폰·재접속EXP영속성은미검증. 독립근거리뷰blocker0. 정상Disconnect→Modelnull→Playfalse/dirtyfalse/inputRunningfalse/backgroundfalse/계정선택envnull복구. HUNT_LIVE_RESULTS.txt참조. 관측helper의콜백타입/화면owner오류는Builds도우미에서수정했고게임코드우회0. 같은접속에서완료,기존회귀반복0.
@@ -555,3 +567,9 @@ C05 종료 보고 확정: Unity Coordinator bot 최종1792323650.522379, V03실�
 ## 사냥 입력 배치 중단 — 사용자 Esc
 
 hunt_contract와hunt_batch_helper2명을병렬배정해읽기분석/Builds관측도우미준비완료. 일반몹0 HP1500/EXP10, X반경8/피해1000/쿨6초계약확인. 실제로그인전텍스트입력이포커스상실로실패했고,컴퓨터조작재개시사용자물리Esc중단신호수신. 이후ComputerUse추가호출0. 이미큐에들어간재개도우미는editor_stop으로즉시종료,Playfalse/inputRunningfalse/dirtyfalse/backgroundfalse/계정선택환경null복구. 사냥·처치·EXP·실게임재질검증미실행,성공주장금지. 관측helper ROOT Builds/Hunt-Live/observe-hunt.cs/prepare-notes.txt준비만,Assets변경0. 사용자새입력허용전자동재개금지. 기존PR큰묶음정책유지/신규push·PR0. 전문신규15/재활성화48/활성화63회,tokenN/A.
+
+## PLAY04 승인 소비 및 PR40 게시 완료
+
+회신1792506150.157069/사용자U0C9QEUHPMK/parent1792487679.299269의정확승인PLAY04를봇인증·전체replies로확인하고1회소비했다. 승인frozenfd354a642af7ae181ff49bdc9ab653608c51e96d 그대로push/PR40 https://github.com/JoEunil/MMORPG/pull/40 생성·채팅첨부완료,REST head일치/open/mergedfalse/mergeabletrue확인. 원격master6ef6e5a조상확인. 병합·정식배포·추가게임시험0. 동일회신중복게시금지. Slack결과1792506268.944929. 전문16+49=65/tokenN/A변동0.
+
+게시브랜치는codex/inventory-read-followup/fd354a6로고정하고codex/field-play-followup를로컬분기했다. 다음관련개발·기록은이후속에서수행하며새범위게시에는기존최종Slack승인원칙적용. 이미통과한가방/처치/EXP최소입력반복금지. 현EditorPlayfalse/dirtyfalse/inputRunningfalse/backgroundfalse,로컬서버정상유지.

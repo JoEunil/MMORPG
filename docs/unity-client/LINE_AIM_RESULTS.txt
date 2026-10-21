@@ -1,0 +1,38 @@
+직선 스킬 방향 교정 후보 — 2026-10-21
+
+제품수정: 서버 CoreLib/SkillData_Range.cpp Rectangle의0/1 수직부호를movement규약0=+Y/1=-Y에일치. C05CombatScreen HUD0North/1South. 수평2/3·길이12·폭3·경계포함·피해·MP·쿨다운·packet/DB·몬스터데이터변경0. 범위프리뷰UI는현재없으며추가구현0.
+독립분석/리뷰 line_aim_contract: 원본2D·쿼터뷰·서버이동모두+Ydir0, 클라flip은실제facing변경이므로서버교정타당. 현재몬스터skill0/1/3/4에는Rectangle없어추가전체몬스터회귀0. 알려진test오류forward2를range12밖기대로쓴것은실행전정적리뷰로12.01에교정. 기존assert삭제·완화0.
+구현 line_aim_implementation, 수용후빌드/테스트root. ROOT C05소유2파일은HEAD본문동일확인·백업뒤동기화. Assets배치동안추가쓰기0.
+
+최소자동검증:
+- native SkillRange.RectangleUsesMovementDirectionsAndInclusiveBounds 1/1 PASS 0ms. 4방향각앞6/끝12/측면1.5경계hit,뒤/폭1.51/길이12.01reject.
+- Unity C05CombatTests.AimTextUsesMovementDirections_AndPhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear 기존시나리오에실제FullReceived→WorldChanged→HUD기대4개통합,1/1PASS .0754189s. 기존lifecycle/phasesassert보존. 새getter별도시험0/전체회귀0.
+- 명시Unitycompile0오류0경고. MainServer Release빌드0오류/225기존코드위치경고,UnitTests0오류/88경고. 원문Builds/Line-Aim/main-build.txt,unit-build.txt. 수정밖WAL/hiredis/NetTimer기존영역경고는범위밖리팩터링으로지우지않음.
+- candidateexeSHA174D68D6CB3F58A383B61F1B463E0840E5DE615597E755FFD5E83A6DEFB32030.
+
+실행환경: 재개시Unity/로그인/게임중지,DBMySQL84·Redis정상. 기존Unity정상open/PID35696/7800ready,기존login정상시작PID35532/3000Listen. native직접검증후새game후보4892/9999Listen·준비완료확인. 기존UI-Chat-Mapexe보존/강제종료·중복기동·직접DB쓰기0.
+실입력 BLOCKED: Node.js Windows보안공용/개인네트워크허용창이실제화면에나타남. securitypermissionUI조작금지로미조작. 로그인helper는첫Click의focus가드에서종료되어성공로그인/시전0. Playstop/계정선택envnull/backgroundfalse/inputRunningfalse/dirtyfalse복구. 실제C수직적중/HP감소는미실행이며자동PASS로대체하지않음. 사용자직접보안창처리필요. 이차단을다른Node/권한설정/자동클릭으로우회하지않음.
+
+전달: 코드후보로컬보존/새push·PR0. 서버패치중요변경이므로실제검증후관련묶음최종PR직전Slack승인유지. 공개사이트는실제새성공화면이없어기존사냥기록유지. 새자동성공이미지합성0.
+복구: 이로컬수정revert와보존된이전서버빌드의정상전환. 정상테스트서비스는실행상태유지하며강제종료하지않음.
+브랜치정리: PR40 merged/masterb99ae13확인및정상merge. 원격PR38/39/40작업branch자동삭제확인·fetchprune. 로컬3branch는master조상·checkoutworktree없음·고유미게시0확인후gitbranch-d안전정리. 활성root/다른worktree/기존미완변경보존.
+전문활용: 신규18/재활성화52/70회(이번line계약/구현각신규1+각리뷰·수정재활성화1,기존hunt_batch_helper준비재활성화1). actualtokenN/A. 도우미실행미확인과제품검증분리.
+2026-10-21 후속 — 서버 확정 범위 윤곽 및 실제 C 검증 완료
+- 위 '범위 프리뷰 없음/보안 차단'은 앞선 단계 이력이다. 사용자가 보안 창을 직접 처리 완료했다고 명시했고 실제 창이 사라졌음을 확인했다. 보안 UI 조작/권한 변경/다른 런타임 우회0.
+- own 서버 skill2 phase0의 x/y/dir만 12×3 LineRenderer로 표시. phase1/HP0/월드불가/Zone·ownID·client교체/disable 및 2초 unscaled 만료에 정리. 패킷에 치수 없음: 현재 서버 skill2 고정 계약으로만 표시. cooldown/ready/가짜 피해 예측 없음.
+- 독립 line_preview_review 읽기 P1/P2 없음. 향후 standalone build의 Shader.Find URP/Unlit 포함 확인은 별도 남음. 현재 Editor 화면에서 실제 shader 렌더 확인.
+- 검토 동결한 두 파일만 ROOT6af9da5 본문 동일 확인·백업 후 동기화. compile0오류0경고. 같은 기존 C05 fixture 영향 재검증1/1PASS 0.0620775s. 앞선0.0754189와 합쳐 새 시험2개로 집계하지 않음. native/서버 재빌드·전체회귀0.
+- 실제 로그인1회 char5012 HP9225/MP9959/EXP10/Zone5. 첫 접근은 helper가 폭±.7/길이9라는 불필요한 좁은 조건으로7회 정렬 뒤 timeout, C0. 같은 접속에서 실제12×3보다 여유를 둔 폭±1.1/길이11로 보조도구만 수정. 16.9초 뒤 정렬dx.66/dy10.94/dir0/HUDNorth, C1회.
+- 서버 phase0/1 dir0 x131.52/y113.89 수신. 윤곽 실제enabled=true/4corners=(130.02,.05,113.89),(133.02,.05,113.89),(133.02,.05,125.89),(130.02,.05,125.89). 실제 PNG로 금색 윤곽/시전 방향 확인.
+- 동일 대상10 HP1500→500 delta 수신, 피해1000. 처치/EXP증가/재접속영속성은 이번 범위 아님. 종료시HP9225/화면MP9939. 로그 line-aim-20261021T032207Z.txt(실패보존),line-aim-20261021T032308Z.txt(PASS),line-aim-login-resumed.txt,전후PNG는ROOT/UnityClient/Captures.
+- 정상 실제 Disconnect→modelnull→Playfalse/dirtyfalse/inputRunningfalse/backgroundfalse/계정선택envnull 복구. 현재서비스 정상유지/강제종료0. 첫 sandbox 프로세스조회 누락은 호스트의4892/35532/35696 재조회로 정정, 불필요 재시작0.
+- 공개 player-hud 상세/화면이력에 새 실제 시전 PNG 추가, 이전 사냥 이미지보존. 새push/PR0. 다음 대표화면 플레이어 재질 저작은 실제 입력 종료 뒤 착수.
+플레이어 재질 후속 조사 결과: hero_surface_followup이실제씬/ObservedPlayer prefab에서GuardSteel·WornSteelEdge·OiledLeather연결과기존albedo/Repeat2×2/기존재질값일치확인. 현재누락0이므로근거없는수치변경·에셋수정0. 미사용Steel.mat을수정해품질개선으로보고하지않음. 이번대표화면에실제보이는재질을기준으로추가개선지점만후속선택한다.
+공개생성/링크검사PASS,실제브라우저사냥상세화면이력에서새캡처와설명·이전사진보존확인. 로컬미리보기8790정상복구(외부공개0).
+2026-10-21 PR41 리뷰 후속 — 범위 표시 셰이더 빌드 포함
+- 지적 타당: C05CombatScreen의 URP/Unlit 이름 검색만으로는 Player build 포함을 보장하지 않음. 기존 프로젝트의 Always Included 목록에도 없었음.
+- 최소 수정: ProjectSettings/GraphicsSettings.asset m_AlwaysIncludedShaders에 실제 URP17.0.4 Unlit.shader(GUID650dd9526735d5b46b79224bc6e94025/fileID4800000) 참조1행 추가. 이 행을 제거하면 원본 설정과 개행 정규화 후 완전히 일치. runtime 코드·12×3 범위·phase/TTL/정리·Scene·서버 변경0.
+- 확인: 실제 Editor 패키지 경로/GUID 일치, 저장된 설정을 별도로 재로딩해 참조1개/목록7→8 확인. shader supported=true/ShaderHasError=false. 독립 pr41_shader_review P1/P2없음. diffcheck PASS. 변경은 셰이더 포함 설정이므로 기존 전투·로그인·전체 회귀를 반복하지 않음.
+- 설정 저장 API가 메모리에만 반영돼 파일 대조에서 발견함. 원본 백업이 불변임을 확인하고 파일에 정확한 참조1행만 반영한 뒤 실제 저장 파일 재로딩으로 검증. 다른 미저장 에셋을 일괄 저장하지 않음.
+- 제한: 전체 standalone build·새 Player 실행·실제 빌드 크기 증가는 이번에 미검증. Editor 정상 렌더를 Player 실행 성공으로 보고하지 않음. Always Included는 해당 shader의 빌드 포함량을 늘릴 수 있으나 프로젝트의 다른 stripping 설정은 변경하지 않음.
+- Editor Playfalse/Scene dirtyfalse. 기존 ROOT WIP 보존. 사용자가 요청한 기존 PR41 리뷰 보완만 게시하며, 별도 UI01/필드 아트는 포함하지 않음.

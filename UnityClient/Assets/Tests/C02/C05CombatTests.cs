@@ -26,7 +26,7 @@ namespace C02.Tests
             tests.QueuedActionResultsCaptureSubscribers_AndDisposeSuppressesLateDelivery();
             tests.ActionResultWireIs21Bytes_AndMalformedCountsAreRejected();
             tests.OwnHpMpDeltaStopsPendingActionsAtZero_AndKeepsServerVitals();
-            tests.PhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear();
+            tests.AimTextUsesMovementDirections_AndPhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear();
             return "C05 detached fixtures: 7/7 passed; no Play, real input, socket, server cast, or live HP0.";
         }
 
@@ -195,17 +195,45 @@ namespace C02.Tests
         }
 
         [Test]
-        public void PhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear()
+        public void AimTextUsesMovementDirections_AndPhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear()
         {
             using (var f = new CombatFixture())
             {
+                var directions = new[] { "North", "South", "West", "East" };
+                for (byte dir = 0; dir < directions.Length; dir++)
+                {
+                    f.Full(dir);
+                    Assert.That(f.Aim.text, Does.EndWith("Line aim: " + directions[dir]));
+                }
+                f.World.transform.position = new Vector3(60f, 0f, 70f);
+                f.World.transform.localScale = new Vector3(2f, 1f, 2f);
                 var action = new ActionResultField { casterType = 0, casterId = 73, skillSlot = 2, skillId = 2, dir = 3, x = 10, y = 10, skillPhase = 1 };
                 var current = (Action<ushort, ActionResultField[]>)Get(f.Combat, "actionResults");
                 current(1, new[] { action });
                 Assert.That(f.Status.text, Is.EqualTo("Line released"));
                 action.skillPhase = 0;
+                action.dir = 0;
                 current(1, new[] { action });
                 Assert.That(f.Status.text, Is.EqualTo("Line cast"));
+                var preview = (LineRenderer)Get(f.Combat, "linePreview");
+                Assert.That(preview != null && preview.enabled && preview.useWorldSpace && preview.loop, Is.True);
+                Assert.That(preview.transform.parent, Is.SameAs(f.World.transform));
+                Assert.That(preview.positionCount, Is.EqualTo(4));
+                Assert.That(preview.GetPosition(0), Is.EqualTo(new Vector3(8.5f, 0.05f, 10f)));
+                Assert.That(preview.GetPosition(1), Is.EqualTo(new Vector3(11.5f, 0.05f, 10f)));
+                Assert.That(preview.GetPosition(2), Is.EqualTo(new Vector3(11.5f, 0.05f, 22f)));
+                Assert.That(preview.GetPosition(3), Is.EqualTo(new Vector3(8.5f, 0.05f, 22f)));
+                Set(f.Combat, "linePreviewDeadline", Time.unscaledTime - 1f);
+                Invoke(f.Combat, "Update");
+                Assert.That(preview.enabled, Is.False, "The unscaled two-second lifetime clears a lost release.");
+                current(1, new[] { action });
+                Assert.That(preview.enabled, Is.True);
+                var otherCaster = action; otherCaster.casterType = 1;
+                current(1, new[] { otherCaster });
+                Assert.That(preview.enabled, Is.True, "Monster actions do not replace the player's range preview.");
+                action.skillPhase = 1;
+                current(1, new[] { action });
+                Assert.That(preview.enabled, Is.False, "The server's matching release hides the outline.");
                 action.skillSlot = 1; action.skillId = 1; action.skillPhase = 1;
                 current(1, new[] { action });
                 Assert.That(f.Status.text, Is.EqualTo("Ring released"));
@@ -220,10 +248,24 @@ namespace C02.Tests
                 current(1, new[] { action });
                 Assert.That(f.Status.text, Is.Empty, "Old session callbacks cannot repaint the new observation.");
                 var active = (Action<ushort, ActionResultField[]>)Get(f.Combat, "actionResults");
+                action.skillSlot = 2; action.skillId = 2; action.skillPhase = 0;
+                active(1, new[] { action });
+                preview = (LineRenderer)Get(f.Combat, "linePreview");
+                Assert.That(preview.enabled, Is.True);
+                f.Delta(new DeltaUpdateField { zoneInternalID = 73, fieldID = 0, fieldVal = 0 });
+                Assert.That(preview.enabled, Is.False, "An authoritative HP 0 update removes the preview.");
+                f.Full();
+                active(1, new[] { action });
+                Assert.That(preview.enabled, Is.True);
+                Set(f.World, "transitionTargetZone", (ushort)2);
+                typeof(C02WorldScreen).GetProperty("Stage").GetSetMethod(true).Invoke(f.World, new object[] { C02Stage.TransitionPending });
+                Invoke(f.World, "ZoneReceived", (ushort)2, 0UL, 74U, 10f, 10f);
+                Assert.That(preview.enabled, Is.False, "Changing zone/own character clears the previous cast outline.");
                 f.Data.UpdateAction(3, 10, 10, 1);
                 f.DisableCombat();
                 active(1, new[] { action });
                 Assert.That(f.Status.text, Is.Empty);
+                Assert.That(preview.enabled, Is.False);
                 Assert.That(((IViewDataModel)f.Data).GetActionState().Item1, Is.False);
             }
         }
@@ -235,7 +277,7 @@ namespace C02.Tests
             public readonly C05CombatScreen Combat;
             public readonly IViewDataUI Data;
             public readonly ViewModel Model;
-            public readonly TMP_Text Vitals, Status;
+            public readonly TMP_Text Vitals, Status, Aim;
             public readonly UnityEngine.UI.Button[] Buttons;
             public CombatFixture()
             {
@@ -251,7 +293,8 @@ namespace C02.Tests
                 foreach (var name in new[] { "ownCharacter", "fieldPlane", "quarterViewCamera" }) Set(World, name, Child(name).transform);
                 Set(Combat, "loginScreen", login); Set(Combat, "worldScreen", World);
                 Buttons = new[] { Button("strike"), Button("ring"), Button("line") }; Set(Combat, "skillButtons", Buttons);
-                Vitals = Text("vitals"); Status = Text("phase"); Set(Combat, "vitalsText", Vitals); Set(Combat, "combatStatusText", Status); Set(Combat, "aimText", Text("aim"));
+                Vitals = Text("vitals"); Status = Text("phase"); Aim = Text("aim");
+                Set(Combat, "vitalsText", Vitals); Set(Combat, "combatStatusText", Status); Set(Combat, "aimText", Aim);
                 Data = NewData(); Model = NewModel(Data, new QueuedDispatcher());
                 var initializer = new Initializer(); Set(initializer, "_viewModel", Model); Set(initializer, "_data", Data); Set(login, "client", initializer);
                 root.SetActive(true);
@@ -261,7 +304,7 @@ namespace C02.Tests
                 typeof(C02WorldScreen).GetProperty("Stage").GetSetMethod(true).Invoke(World, new object[] { C02Stage.Entering });
                 Invoke(World, "ZoneReceived", (ushort)1, 0UL, 73U, 10f, 10f); Full();
             }
-            public void Full() => Invoke(World, "FullReceived", (ushort)1, new[] { new FullStateField { zoneInternalID = 73, hp = 100, mp = 50, maxHp = 100, maxMp = 50, x = 10, y = 10, dir = 3 } });
+            public void Full(byte dir = 3) => Invoke(World, "FullReceived", (ushort)1, new[] { new FullStateField { zoneInternalID = 73, hp = 100, mp = 50, maxHp = 100, maxMp = 50, x = 10, y = 10, dir = dir } });
             public void Delta(params DeltaUpdateField[] updates) => Invoke(World, "DeltaReceived", (ushort)updates.Length, updates);
             private GameObject Child(string name) { var child = new GameObject(name, typeof(RectTransform)); child.transform.SetParent(root.transform); return child; }
             private TMP_Text Text(string name) => Child(name).AddComponent<TextMeshProUGUI>();
