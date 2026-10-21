@@ -1,3 +1,14 @@
+최신 후속 — 실제 모델 모션 검증 (2026-10-21)
+기존 C19 PlayMode fixture 하나를 ObservedPlayer/MonsterType0/1/2 네 실제 프리팹으로 확장.
+실제 shoulder/hip child 존재·보행 leg 회전·공격 arm 회전·피격 visual 이동·reset,
+actor root position/rotation 및 Runtime HP/LineRenderer 부모 보존 모두 PASS.
+최종 compile errors=[]; 자동 배치 1회 total1/passed1/failed0, 0.7306676s.
+독립 최종 P1/P2 없음. 최초 정적 리뷰의 프레임 순서 문제는 실행 전 수정.
+ROOT Builds/Actor-Motion-Models에 기존 fixture 백업. ROOT/CAND fixture 바이트 동일.
+제품/서버 코드 변경0, 실제 키보드/마우스/로그인0. 실제 외관/플레이 검증 아님.
+PR43 기존 WORLD02 범위의 검증 보완이며 AUTHOR01 새 기능 게시 승인을 대신하지 않음.
+아래 승인 대기/첫 플레이어 단독 검증은 과거 시점 기록.
+
 2026-10-21 — 확대 맵·이동·파츠 모션 로컬 후보
 
 범위

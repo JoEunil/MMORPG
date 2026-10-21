@@ -1,3 +1,7 @@
+## 실제 몬스터 파츠 모션 검증 — 2026-10-21
+
+zone_spawn_review(code_reviewer/gpt-6.1-sol medium) 재활성화2회: 기존 단일 fixture의 4모델 확장과 타이밍 검토. CRLF 치환 미적용으로 초기 리뷰 지적이 남은 사실을 Coordinator가 확인하고 yield null→이동→EOF 순서로 실제 수정했다. 최종 읽기 P1/P2 없음. 컴파일 오류0/PlayMode1PASS, 실제 입력0. 누적 신규48/재활성화98/활성화146, 실제 토큰N/A. 생산 모션 코드는 수정하지 않았다.
+
 ## 주기 Full 루트 회전 보정 — 2026-10-21
 
 zone_spawn_review(code_reviewer/gpt-6.1-sol medium) 재활성화1: monster Full의중복root Face제거와최초seed/서버dir보존/기존Delta정책 일치 확인, P1P2없음. Coordinator구현/통합과PlayMode기존fixture1PASS/compile0을확인했다. 실제입력0.
