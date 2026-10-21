@@ -20,28 +20,58 @@ namespace C02.Tests
                 fixture.EnterWithOwnState();
                 fixture.Predict(Vector2.right, 0.05f);
                 Assert.That(fixture.ServerPosition, Is.EqualTo(new Vector2(10, 10)));
-                Assert.That(fixture.OwnPosition, Is.EqualTo(new Vector3(10.2f, 0, 10)),
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.3f).Within(0.0001),
                     "A local intent moves the rendered character while the server snapshot stays authoritative.");
 
-                fixture.Delta(10.125f);
-                Assert.That(fixture.ServerPosition, Is.EqualTo(new Vector2(10.125f, 10)));
-                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.2f).Within(0.0001),
+                fixture.Predict(Vector2.right, 0.05f);
+                fixture.Predict(Vector2.right, 0.05f);
+                Assert.That(fixture.InputTarget.x, Is.EqualTo(10.6f).Within(0.0001),
+                    "Held intent accumulates across delayed confirmations, bounded to 0.6 units ahead.");
+                fixture.Delta(10.3f);
+                Assert.That(fixture.ServerPosition, Is.EqualTo(new Vector2(10.3f, 10)));
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.6f).Within(0.0001),
                     "A small server correction does not make packet callbacks jump the rendered character.");
+                fixture.Predict(Vector2.right, 0.05f);
+                Assert.That(fixture.InputTarget.x, Is.EqualTo(10.9f).Within(0.0001),
+                    "A delayed confirmation frees bounded lead without rebuilding every target from that snapshot.");
+                fixture.Delta(10.6f);
 
                 fixture.CancelMovement();
                 fixture.Predict(Vector2.zero, 0.025f);
                 fixture.Predict(Vector2.zero, 0.025f);
-                Assert.That(fixture.OwnPosition, Is.EqualTo(new Vector3(10.125f, 0, 10)),
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.6f).Within(0.0001),
                     "After input cancellation, the frame update eases the visual back to current authority.");
+                Assert.That(fixture.HasMovementIntent, Is.False);
+                Assert.That(fixture.InputTarget, Is.EqualTo(fixture.ServerPosition));
+
+                fixture.Predict(Vector2.one, 0.05f);
+                Assert.That(Vector2.Distance(fixture.ServerPosition, fixture.VisualPosition), Is.EqualTo(0.3f).Within(0.0001),
+                    "Diagonal held input uses the same speed as a cardinal direction.");
+                fixture.CancelMovement();
+                fixture.Predict(Vector2.zero, 0.05f);
+                fixture.Predict(Vector2.right, 0.05f);
+                for (int i = 0; i < 10; i++) fixture.Predict(Vector2.right, 0.05f);
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.6f).Within(0.0001),
+                    "When authority stops advancing, the rendered actor settles even while a key remains held.");
+                Assert.That(Vector2.Distance(fixture.InputTarget, fixture.ServerPosition), Is.LessThanOrEqualTo(0.3001f),
+                    "A stale server receives only a single-tick bounded probe, with no accumulated invisible walk.");
 
                 fixture.Delta(15f);
                 Assert.That(fixture.ServerPosition, Is.EqualTo(new Vector2(15, 10)));
                 Assert.That(fixture.OwnPosition, Is.EqualTo(new Vector3(15, 0, 10)),
                     "A large server correction snaps to the authoritative position.");
+                Assert.That(fixture.HasMovementIntent, Is.False);
+                Assert.That(fixture.InputTarget, Is.EqualTo(fixture.ServerPosition));
+                fixture.Predict(Vector2.one, 10f);
+                Assert.That(Vector2.Distance(fixture.InputTarget, fixture.ServerPosition), Is.LessThanOrEqualTo(0.3001f),
+                    "A large frame never integrates a backlog of missed input ticks.");
+                Assert.That(Vector2.Distance(fixture.VisualPosition, fixture.ServerPosition), Is.LessThanOrEqualTo(0.3001f));
 
                 fixture.ResetWorld();
                 Assert.That(fixture.HasOwnFull, Is.False);
                 Assert.That(fixture.HasVisualPosition, Is.False);
+                Assert.That(fixture.HasMovementIntent, Is.False);
+                Assert.That(fixture.InputTarget, Is.EqualTo(Vector2.zero));
             }
         }
 
@@ -88,6 +118,9 @@ namespace C02.Tests
             public Vector3 OwnPosition => ((Transform)Get(screen, "ownCharacter")).position;
             public bool HasOwnFull => screen.HasOwnFull;
             public bool HasVisualPosition => (bool)Get(screen, "hasVisualPosition");
+            public Vector2 InputTarget => (Vector2)Get(screen, "inputTarget");
+            public Vector2 VisualPosition => (Vector2)Get(screen, "visualPosition");
+            public bool HasMovementIntent => (bool)Get(screen, "hasMovementIntent");
 
             public void EnterWithOwnState()
             {

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <array>
 #include <cstdint>
 #include <algorithm>
@@ -6,15 +6,20 @@
 #include "Config.h"
 
 namespace Core {
-    inline constexpr float ZONE_SIZE = 100.0f;     // zone 한 칸 크기
-    inline constexpr int ZONE_HORIZON = 3; // 3x3
-    inline constexpr int ZONE_VERTICAL = 3;
+    inline constexpr float ZONE_SIZE = 200.0f;     // zone 한 칸 크기
+    inline constexpr int ZONE_HORIZON = 3; // 3 columns, 2 rows
+    inline constexpr int ZONE_VERTICAL = 2;
     inline constexpr float TRANSITION_BUFFER = 5.0f; // 겹치는 영역
 
-    static constexpr int CELL_SIZE = 22; // 5 * 5
-    static constexpr int CELLS_X = (TRANSITION_BUFFER * 2 + ZONE_SIZE) / CELL_SIZE;
-    static constexpr int CELLS_Y = (TRANSITION_BUFFER * 2 + ZONE_SIZE) / CELL_SIZE;
+    static constexpr int CELL_SIZE = 42; // 5 * 5
+    static_assert(CELL_SIZE > 0 && ZONE_SIZE > 0 && TRANSITION_BUFFER >= 0);
+    static constexpr float ZONE_SPAN = TRANSITION_BUFFER * 2 + ZONE_SIZE;
+    static constexpr int WHOLE_CELLS = static_cast<int>(ZONE_SPAN / CELL_SIZE);
+    static constexpr int CELLS_X = WHOLE_CELLS + (WHOLE_CELLS * CELL_SIZE < ZONE_SPAN ? 1 : 0);
+    static constexpr int CELLS_Y = CELLS_X;
     static constexpr int CELL_CAPACITY = MAX_ZONE_CAPACITY / (CELLS_X * CELLS_Y) * 2;
+    static_assert(CELLS_X > 0 && CELLS_X <= 256 && CELLS_Y <= 256 && CELL_CAPACITY > 0,
+        "AOI Cell dimensions must fit actor cell indices and retain a positive capacity.");
 
     struct ActionResult {
         uint8_t casterType;
@@ -106,10 +111,10 @@ namespace Core {
                 Cell& cell = cells[cy][cx];
 
                 cell.area.x_min = area.x_min + cx * CELL_SIZE;
-                cell.area.x_max = cell.area.x_min + CELL_SIZE;
+                cell.area.x_max = (std::min)(cell.area.x_min + CELL_SIZE, area.x_max);
 
                 cell.area.y_min = area.y_min + cy * CELL_SIZE;
-                cell.area.y_max = cell.area.y_min + CELL_SIZE;
+                cell.area.y_max = (std::min)(cell.area.y_min + CELL_SIZE, area.y_max);
 
                 cell.charSessions.reserve(CELL_CAPACITY);
                 cell.monsterIndexes.reserve(CELL_CAPACITY);

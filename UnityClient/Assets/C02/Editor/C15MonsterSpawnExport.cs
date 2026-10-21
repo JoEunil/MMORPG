@@ -75,8 +75,8 @@ namespace C02.Editor
                 throw new InvalidOperationException("Monster spawn content is required.");
             if (content.regularPerCell < 0 || content.strongPerCell < 0)
                 throw new InvalidOperationException("Monster counts per cell cannot be negative.");
-            if (content.edgeInset < 1 || content.edgeInset > 21)
-                throw new InvalidOperationException("The spawn edge inset must be between 1 and 21.");
+            if (content.edgeInset < 1 || content.edgeInset > 41)
+                throw new InvalidOperationException("The spawn edge inset must be between 1 and 41.");
 
             int[] regularCounts = EffectiveCounts(content.regularByCell, content.regularPerCell, "regular");
             int[] strongCounts = EffectiveCounts(content.strongByCell, content.strongPerCell, "strong");

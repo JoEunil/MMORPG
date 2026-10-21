@@ -1,14 +1,33 @@
 #include "pch.h"
 #include "ZoneState.h"
+#include "WorldMap.h"
 #include "../UnityClient/Exports/ServerData/MonsterSpawns.inc"
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 namespace Core {
     namespace {
         constexpr float MONSTER_WANDER_RADIUS = 6.0f;
         constexpr float MONSTER_WANDER_SPEED = 0.375f * WORLD_MOVEMENT_SCALE;
         constexpr float MONSTER_CHASE_SPEED_SCALE = 0.75f;
+
+        std::pair<int, int> ChooseSpawn(const CellArea& area) {
+            const int minX = static_cast<int>(area.x_min) + Data::MONSTER_SPAWN_EDGE_INSET;
+            const int minY = static_cast<int>(area.y_min) + Data::MONSTER_SPAWN_EDGE_INSET;
+            const int width = static_cast<int>(area.x_max - area.x_min - Data::MONSTER_SPAWN_EDGE_INSET);
+            const int height = static_cast<int>(area.y_max - area.y_min - Data::MONSTER_SPAWN_EDGE_INSET);
+            const int x = minX + rand() % width;
+            const int y = minY + rand() % height;
+            if (WorldMap::CanTraverse(x, y, x, y))
+                return {x, y};
+            // Retain the authored count and owning cell; no extra random draws on the existing layout.
+            for (int row = minY; row < minY + height; ++row)
+                for (int column = minX; column < minX + width; ++column)
+                    if (WorldMap::CanTraverse(column, row, column, row))
+                        return {column, row};
+            throw std::runtime_error("World map has no legal monster spawn in an authored cell.");
+        }
 
         uint32_t NextWanderValue(MonsterState& monster) {
             uint32_t value = monster.wanderSeed;
@@ -27,10 +46,10 @@ namespace Core {
     }
 
     void ZoneState::InitializeMonster() {
-        static_assert(CELLS_X == 5 && CELLS_Y == 5 && CELL_SIZE == 22, "Revalidate authored monster spawn geometry.");
+        static_assert(CELLS_X == 5 && CELLS_Y == 5, "Revalidate authored monster spawn cell counts.");
         int uniqueId = 0;
 
-        // Generated counts preserve the existing per-cell type order and rand() distribution.
+        // Generated counts preserve per-cell type order; open-map rand() distribution is unchanged.
         for (int i = 0; i < CELLS_Y; i++)
         {
             for (int j = 0; j < CELLS_X; j++)
@@ -45,8 +64,7 @@ namespace Core {
                 // 일반 몬스터
                 for (int k = 0; k < Data::REGULAR_MONSTERS_BY_CELL[cellIndex]; k++)
                 {
-                    int spawnX = area.x_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.x_max - area.x_min - Data::MONSTER_SPAWN_EDGE_INSET));
-                    int spawnY = area.y_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.y_max - area.y_min - Data::MONSTER_SPAWN_EDGE_INSET));
+                    const auto [spawnX, spawnY] = ChooseSpawn(area);
 
                     uint16_t monsterType = 0;
 
@@ -60,8 +78,7 @@ namespace Core {
                 // 조금 센 일반 몬스터
                 for (int k = 0; k < Data::STRONG_MONSTERS_BY_CELL[cellIndex]; k++)
                 {
-                    int spawnX = area.x_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.x_max - area.x_min - Data::MONSTER_SPAWN_EDGE_INSET));
-                    int spawnY = area.y_min + Data::MONSTER_SPAWN_EDGE_INSET + (rand() % (int)(area.y_max - area.y_min - Data::MONSTER_SPAWN_EDGE_INSET));
+                    const auto [spawnX, spawnY] = ChooseSpawn(area);
 
                     uint16_t monsterType = 1;
 
@@ -83,6 +100,9 @@ namespace Core {
 
             int spawnX = (area.x_min + area.x_max) / 2;
             int spawnY = (area.y_min + area.y_max) / 2;
+
+            if (!WorldMap::CanTraverse(spawnX, spawnY, spawnX, spawnY))
+                throw std::runtime_error("World map blocks the authored boss spawn.");
 
             uint16_t monsterType = 2;
 
@@ -142,7 +162,19 @@ namespace Core {
             int dy = target.y - monster.y;
             int dist2 = dx * dx + dy * dy;
 
-            if (dist2 <= 2 and monster.tick >= step.delayTicks)
+            bool inCastRange = dist2 <= 2;
+            if ((monster.data->id == 0 || monster.data->id == 1) && skill.skillID == 0)
+            {
+                const auto hitPhase = std::find_if(skill.phases.begin(), skill.phases.end(), [](const Data::SkillPhase& phase) {
+                    return phase.actionID == static_cast<uint8_t>(Data::SkillActionType::Hit);
+                });
+                if (hitPhase != skill.phases.end())
+                {
+                    inCastRange = hitPhase->range.InRange(monster.dir, monster.x, monster.y, target.x, target.y);
+                }
+            }
+
+            if (inCastRange and monster.tick >= step.delayTicks)
             {
                 m_cells[monster.cellY][monster.cellX].activeSkills.emplace_back(
                     1, 0, 0, monster.internalID, 0, monster.dir, monster.x, monster.y, skill.skillID, 0, 0
@@ -183,6 +215,8 @@ namespace Core {
                 monster.aggroTick = 0;
                 return;
             }
+            if (!WorldMap::CanTraverse(monster.x, monster.y, monster.x + x, monster.y))
+                return;
             SetDirection(monster, x > 0 ? 3 : 2);
             monster.x += x;
             monster.dirtyBit |= 0x02;
@@ -193,6 +227,8 @@ namespace Core {
                 monster.aggroTick = 0;
                 return;
             }
+            if (!WorldMap::CanTraverse(monster.x, monster.y, monster.x, monster.y + y))
+                return;
             SetDirection(monster, y > 0 ? 0 : 1);
             monster.y += y;
             monster.dirtyBit |= 0x04;
@@ -214,6 +250,9 @@ namespace Core {
             const bool moveX = std::abs(homeDx) >= std::abs(homeDy);
             const float distance = moveX ? homeDx : homeDy;
             const float step = std::copysign((std::min)(std::abs(distance), MONSTER_WANDER_SPEED), distance);
+            if (!WorldMap::CanTraverse(monster.x, monster.y,
+                monster.x + (moveX ? step : 0.0f), monster.y + (moveX ? 0.0f : step)))
+                return;
             if (moveX) {
                 SetDirection(monster, step > 0 ? 3 : 2);
                 monster.x += step;
@@ -248,7 +287,8 @@ namespace Core {
         case 3: dx = MONSTER_WANDER_SPEED; break;
         }
         if (monster.x + dx < minX || monster.x + dx > maxX ||
-            monster.y + dy < minY || monster.y + dy > maxY) {
+            monster.y + dy < minY || monster.y + dy > maxY ||
+            !WorldMap::CanTraverse(monster.x, monster.y, monster.x + dx, monster.y + dy)) {
             monster.wanderTicks = 0;
             return;
         }

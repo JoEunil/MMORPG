@@ -1,4 +1,64 @@
+## 실제 몬스터 파츠 모션 검증 — 2026-10-21
+
+zone_spawn_review(code_reviewer/gpt-6.1-sol medium) 재활성화2회: 기존 단일 fixture의 4모델 확장과 타이밍 검토. CRLF 치환 미적용으로 초기 리뷰 지적이 남은 사실을 Coordinator가 확인하고 yield null→이동→EOF 순서로 실제 수정했다. 최종 읽기 P1/P2 없음. 컴파일 오류0/PlayMode1PASS, 실제 입력0. 누적 신규48/재활성화98/활성화146, 실제 토큰N/A. 생산 모션 코드는 수정하지 않았다.
+
+## 주기 Full 루트 회전 보정 — 2026-10-21
+
+zone_spawn_review(code_reviewer/gpt-6.1-sol medium) 재활성화1: monster Full의중복root Face제거와최초seed/서버dir보존/기존Delta정책 일치 확인, P1P2없음. Coordinator구현/통합과PlayMode기존fixture1PASS/compile0을확인했다. 실제입력0.
+
+직전 로컬후속48/95/143에 이어 누적신규48/재활성화96/활성화144, 실제토큰N/A. AUTHOR01대기브랜치의기능/아트실행은여기에중복계상하지않는다.
+
+## PR43 Full 피해 강조 리뷰 — 2026-10-21
+
+zone_spawn_review(code_reviewer/gpt-6.1-sol medium) 재활성화1회로 기존 monster Full의 피해 강조 누락과 최소 수정·확장 fixture를 독립 검토했다. 최종 코드상 차단 없음. Coordinator가 compile0/PlayMode 자동1PASS를 확인했고 최초 EditMode 호출의 Awake 미초기화 실패는 보존했다. 실제 입력0이다.
+
+직전 구역별 배치 로컬 후속 4f14839의 누적45/87/132에 이어 신규45/재활성화88/활성화133, 실제 토큰 N/A. 해당 후속의 에이전트2명·재활성화2회 상세는 그 브랜치 기록을 유지하며 PR43에 새 기능을 섞지 않는다.
+
+## 월드 격자·시각 이동·파츠 모션 — 2026-10-21
+
+| 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 확인한 결과 |
+| --- | --- | ---: | ---: | --- |
+| world_grid_contract | server_analyst / gpt-6.1-sol medium | 1 | 0 | Zone/Cell 경계·스폰·A* 연결 계약 분석 |
+| world_grid_server | worker / gpt-6.1-sol high | 1 | 1 | 통행 격자·서버 충돌·확대/안전 재배치와 기존 검증 보완 |
+| movement_reconciliation | worker / gpt-6.1-sol high | 1 | 0 | 누적 입력 목표·속도/정체 제한·서버 상태와 시각 위치 분리 |
+| actor_motion_inventory | asset_artist / gpt-6.1-sol medium | 1 | 1 | 실제 분절 모델 조사·보행/공격/피격 파츠 모션 |
+| world_grid_review | code_reviewer / gpt-6.1-sol medium | 1 | 2 | 지면 basis 검증 보완 후 최종 P1/P2 없음·250100칸 일치 |
+| movement_actor_review | code_reviewer / gpt-6.1-sol medium | 1 | 1 | 이동·모션·실제 Scene 참조 검토, 최종 P1/P2 없음 |
+
+이번 신규6/재활성화5/활성화11, 누적 신규43/재활성화85/활성화128. 실제 토큰은 도구에서 확인할 수 없어 N/A다. 고정 리뷰 역할의 설정은 medium이며 high로 변경됐다고 기록하지 않는다. Coordinator가 최종 서버/단위 빌드·native4PASS·이동/실제 모델 모션 각1PASS·확대 경계 직접 assertion·compile0을 확인했다. 실제 입력/새 서버 적용은 미실행이며 Coordinator 작업을 전문 역할 활성화로 중복 계산하지 않는다.
+
+## HP0 이후 흐름 — 2026-10-21
+
+| 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 확인한 결과 |
+| --- | --- | ---: | ---: | --- |
+| hunting_recovery_contract | server_analyst / gpt-6.1-sol medium | 1 | 0 | 회복/부활 미지원과 HP 저장·재진입/정상 종료 계약 읽기 |
+| defeated_screen | client_implementer / gpt-6-luna medium | 1 | 1 | 패배 안내·정상 종료와 기존 fixture 보완. 오래된 이동 상태 참조를 현 계약으로 정정 |
+| defeated_flow_review | code_reviewer / gpt-6.1-sol medium | 1 | 1 | 최종 P1/P2 없음. 최초 기존 moveTarget 누락은 실행에서 발견, 정정 후 기대 보존 재검토 |
+
+누적 신규37/재활성화80/활성화117, 실제 토큰 N/A. Coordinator가 최소 fixture 최종1PASS/compile0을 확인했다. 첫실패 보존, 실입력은 사용자 명시 보류. 실제 입력 미실행을 성공으로 세지 않는다.
+
 # 에이전트 활용 기록
+
+## 사냥 화면·근접 거리·보스 예고
+
+| 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 확인한 결과 |
+| --- | --- | ---: | ---: | --- |
+| combat_feedback_gap | server_analyst / gpt-6.1-sol medium | 1 | 3 | HP·일반몹 예고·시전 거리 원인 확인, 다음 기존 보스 범위 계약 읽기 |
+| monster_hit_feedback | client_implementer / gpt-6-luna medium | 1 | 5 | HP·Circle·근접 거리·보스 두 공격 예고 구현. skill3 ROOT 오저작은 root 복구, skill4는 지정 CAND 작성 |
+| monster_feedback_review | code_reviewer / gpt-6.1-sol medium | 1 | 12 | 기존 서버·보스·관측 helper와 실제 증거/공개 설명 검토. 최종 P1/P2 없음, HP0 원문 로그 재확인은 불가 |
+| monster_feedback_observer | unity_tester / gpt-6-luna medium | 1 | 2 | 보스 관측 helper 초안 준비. root가 lookup/tuple/기하·짝지음 보완, 실제 입력 미실행 |
+
+누적신규34/재활성화78/활성화112,실제토큰N/A. root가최종compile0/자동2PASS·실제한접속X1회/동일대상HP강조복원·반경2예고와해제·정상종료·새PNG2장·웹생성/탐색을확인했다. helper코드준비를게임시험성공으로대신세지않으며,누적에는다음거리계약읽기1회와서버후보구현1회의재활성화가포함된다. MONSTER_FEEDBACK_RESULTS.txt참조.
+
+Coordinator 추가 실행: 기존 서버 한 접속의 보스 예고/해제 관측 PASS와 실제 PNG2장 확인. 후퇴 가드 FAIL·HP0 직접 관찰은 별도 기록. 서버 후보 미적용이며 역할 활성화 수에 Coordinator 작업을 더하지 않는다. BOSS_LIVE_RESULTS.txt 참조.
+
+## PR41 셰이더 포함 리뷰
+
+pr41_shader_review(code_reviewer/gpt-6.1-sol medium)신규1,설정1행·실제URP패키지GUID·런타임불변독립검토/P1P2없음. 누적신규30/재활성화56/활성화86,실제토큰N/A. Coordinator가저장설정재로딩참조1개와ShaderHasError=false를확인. 전체standalone빌드·실행성공으로표현하지않으며기존전투시험반복0.
+
+## 필드 진입로 비교 — 로컬 채택
+
+field_route_art(asset_artist / gpt-6.1-sol medium) 신규1·재활성화2, entry_trail_review(code_reviewer / gpt-6.1-sol medium) 신규1·재활성화1. 누적 신규29·재활성화56·활성화85, 실제 토큰 N/A. 첫 후보는 코드 리뷰·컴파일을 통과했으나 에디터 화면의 딱딱한 경계 때문에 미채택하고 해당 실험만 복구했다. 두 번째 가장자리 완화 후보는 독립 최종 리뷰·compile0·같은 구도 정적 비교·중복/무변경 확인 후 소폭 보강으로 채택했다. 코드 통과와 시각 채택을 구분하며 신규 로그인·기능 테스트는 없다. ENTRY_TRAIL_RESULTS.txt 참조.
 
 ## 최신 집계 — 진행 중
 

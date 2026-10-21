@@ -1,3 +1,118 @@
+## 최신 — 실제 몬스터 3종 파츠 모션 자동 확인
+
+기존 C19 단일 PlayMode fixture를 플레이어·고블린·오크·골렘 실제 프리팹 4개로 확장했다. 각 모델의 실제 어깨/다리 파츠 연결, 보행·공격·피격과 actor root/HUD·범위선 부모 보존 및 pose reset을 확인했다. 제품 모션 코드는 변경하지 않았다. 최초 정적 리뷰에서 발견한 프레임 순서 문제를 실행 전 수정했고 최종 독립 P1/P2 없음, compile0, 자동1회1PASS(0.7306676s). 실제 입력·서버 접속/교체0이며 외관/실제 조작감은 미확인이다.
+
+기존 PR43 승인 범위의 검증 보완만 게시하고 AUTHOR01 미승인 기능은 별도 보존한다. ROOT에는 테스트 파일만 baseline 가드/백업 후 동기화했다. zone_spawn_review 재활성화2회 추가, 누적 신규48/재활성화98/전체146, 실제 토큰N/A. 다음 입력 배치는 사용자 보류 유지.
+
+## 최신 — 주기 Full의 몬스터 루트 회전 보정
+
+AUTHOR01 원문 사람 회신은 현재 확인되지 않아 후속 게시를 보류했다. 승인 대기와 독립적으로 기존 PR43 범위의 회전 스냅 경로를 보완했다. C04 monster Full만 매번 Face(root,dir)를 호출해 C19의 child 보간 회전을 꺾을 수 있어 마지막 중복 Face1줄을 제거했다. 최초 생성 Face·서버 상태dir·이동/공격 child 회전은 유지한다. 위치나 공격 없이 dir필드만 바뀌면 마지막 표시 방향을 유지하며 기존Delta와같은정책이다.
+
+기존 FullCreatesSeparateKinds fixture8줄확장·PlayMode자동1PASS(0.1194668s)/compile0·독립최종P1P2없음. 초기180도·dir3상태보존·root무회전·기존수명검증유지. 실제입력/로그인/서버변경0, 전체시각품질·실제끊김해결을주장하지않는다. PR43_REVIEW_RESULTS.txt 최신참조. zone_spawn_review 재활성화1추가, 누적 신규48/재활성화96/전체144/tokenN/A. 이 수정은WORLD02기존모션범위에만게시하며 AUTHOR01미승인새기능을섞지않는다.
+
+## 이전 — PR43 Full 스냅샷 피해 강조 리뷰 수정
+
+WORLD02 지정 사용자 원문 승인1792564891.374529를 요청1792564212.382599/parent1792487679.299269와 대조해 소비했고 PR43 https://github.com/JoEunil/MMORPG/pull/43 으로 5fa1855를 게시했다. 새 기능 후속 codex/zone-spawn-authoring=4f14839는 별도 로컬 보존이며 PR43에 섞지 않는다.
+
+사용자 지적 discussion_r4333816125는 타당하다. Full이 HP 감소를 먼저 반영하면 다음 같은HP Delta는 감소가 아니어서 금색 피드백이 누락됐다. 기존 monster의 Full 감소 분기에만 PulseDamage를 추가하고 초기Full/동일HP/회복은 제외했다. 기존 fixture 하나를 확장해 Full-first 감소·중복 억제·기존delta/death/disable을 확인했다. 독립 최종 차단 없음/compile0/PlayMode 자동1PASS(0.1093939s), 실제 입력0/서버변경0. 최초 EditMode 직접 호출은 Awake 미실행 NRE라 실패 보존 후 올바른 PlayMode로 실행했다. 실제 입력 검증을 재개한 것이 아니다. PR43_REVIEW_RESULTS.txt 참조.
+
+활성화 추가: zone_spawn_review 재활성화1, 직전 로컬 후속 누적45/87에서 신규45/재활성화88/전체133, 실제 토큰 N/A. 다음 후속으로 돌아갈 때 PR43 수정 커밋을 일반 merge로 포함한다. 기존 승인 범위 내 리뷰 보정만 PR43에 push하며 새 기능 승인 요청은 만들지 않는다.
+
+## 이전 — 확대 맵·충돌 export·이동/모션 로컬 후보 / 입력 보류
+
+제품 후보 dba6bff8daa4ce8458be12afadecc86e15bf266a 로컬 보존, fetch 후 origin/master 대비 behind0/ahead14(기존 관련 사냥 커밋 포함), 작업 폴더 clean 확인. Unity Coordinator 앱이 WORLD02 전체 묶음 게시 승인을 기존 등록 스레드에 요청했다: reply1792564212.382599/parent1792487679.299269. HUNT01의 e16fcf4 단독 범위와 구분하고 WORLD02 지정 사용자 원문 승인·회신 중복 확인 전 push/PR0. 승인 대기는 게시에만 적용하며 사용자 보류 중인 실제 입력은 자동 재개하지 않는다.
+
+codex/world-motion-revision은 6f5cd00에서 분기한 로컬 후보이며 새 push/PR0이다. 600×400·Zone200·Cell42×5×5, Unity 고정 지면/벽18개에서 610×410 통행 격자를 생성했다. Unity/C++ 250100칸·차단2900 전체 일치, 최종 서버/단위검증 빌드 PASS·native4PASS·Unity 이동1PASS/모션1PASS·확대 경계 직접 assertion PASS·compile0·독립 최종 P1/P2없음. WORLD_MOTION_RESULTS.txt와 WORLD_MAP_HANDOFF.md 참조.
+
+사용자가 안전 지점 재배치를 선택했다. 초기 입장의 구역 밖/막힌 유한 좌표만 안전 지점으로 옮기고 정상 좌표·HP0·나머지 캐릭터 상태는 보존한다. NaN/무한은 거부하며 실패하면 로비 원본을 유지한다. 실시간 구역 전환 재배치·DB 직접 수정0. 사용자 A*를 대신 구현하지 않았고 Cell 간 몬스터 소속 갱신 주의점을 인계했다. 플레이어6unit/s·0.6단위 예측 한계·350ms 정체 정리와 정적 파츠 기반 보행/공격/피격을 연결했다. wire4방향은 유지하며 ACK 재연이나 신규 리깅 완료를 주장하지 않는다.
+
+Unity 입력은 사용자 지시로 계속 보류하고 새 로그인0/서버 재시작0/강제종료0이다. 기존 종료 도우미 정책 차단을 다른 경로로 우회하지 않는다. 최종 EditorPlayfalse/dirtyfalse/inputfalse/backgroundfalse. 큰 관련 PR 직전에 새 범위의 Unity Coordinator 앱 승인이 필요하며 HUNT01의 e16fcf4 동결 범위를 이 변경에 재사용하지 않는다. 현재 활성화 누적 신규43/재활성화85/전체128, 실제 토큰 N/A.
+
+## 최신 — HP0 안내 로컬 구현 / 사용자 요청으로 입력 보류
+
+codex/hunting-flow-followup에서 C05 패배 안내/LOG OUT과 기존 fixture를 보완했다. 서버 회복/부활은 없고 기존 정상 연결 종료만 재사용한다. 최종 독립 P1/P2없음/compile0/영향 fixture1PASS. 첫 실행의 오래된 moveTarget 참조 NRE는 실패 로그 보존 후 visualPosition 예측정지 검증으로 수정했고 HP100 복원 assertion은 유지했다. DEFEATED_FLOW_RESULTS.txt 참조.
+
+Unity 네이티브 조회에서 다른 게임 화면이 반환돼 클릭0/로그인0으로 멈췄다. 사용자가 '입력 검증은 나중에'라고 명시했다. 새 실입력은 자동 재개하지 않으며 다음 배치에 HP0 실제 패널/정상 로그아웃만 남긴다. EditorPlayfalse/dirtyfalse/inputfalse/backgroundfalse, 기존 서비스·DB 유지. 실제 HP0 화면 캡처/공개 완료 주장0.
+
+앞선 사냥 게시후보 codex/field-readability-followup=e16fcf48546b64c2d29f6bb61ab786982a284e54는 불변. 봇 HUNT01 요청1792561093.076979/parent1792487679.299269, 지정 사용자 승인 전 push/PR0. 새 UI 후속을 그 승인 범위에 섞지 않는다. 다음 게시 때 원격 상태와 승인 원문·중복회신 확인. 사용량 신규37/재활성화80/활성화117/tokenN/A.
+
+## 최신 — 보스 실화면 확인 완료 / 서버 상태 정정
+
+호스트 권한의 읽기 전용 재확인에서 기존 Line-Aim MainServer PID4892와 MainWindowHandle=0을 확인했다. 제한된 프로세스 조회의 빈 결과를 종료로 오인한 직전 안내를 정정한다. 서버 종료 원인 조사나 재기동 조건으로 사용하지 않는다. 수동 콘솔 q 요청은 Slack1792560827.200079에서 취소됐고 종료 도우미의 정책 차단을 우회하지 않는다. 새 Monster-Melee 후보는 미적용이다.
+
+기존 서버 한 접속에서 보스 부채꼴 두 단계와 사각 고리 처음·두 번째·마지막 단계의 형상·대응 Hit 해제를 실제 확인했다. 후퇴 입력 가드 FAIL과 뒤의 HP0 관찰은 표시 PASS와 분리했다. 실제 PNG2장과 공개 화면 이력을 추가했고 전체 생존/난이도 검증 성공을 주장하지 않는다. 상세 BOSS_LIVE_RESULTS.txt. 독립 증거·공개 설명 리뷰 P1/P2 없음, HP0은 당시 Coordinator 직접 조회 관찰이며 보존 로그에서 독립 재확인하지 못했다. 제품 재시험 없이 웹 확인·큰 PR 게시 후보 정리를 이어간다. 전문 신규34/재활성화78/활성화112, 실제 토큰 N/A.
+
+## 최신 정정 — 숨김 서버 안내와 현재 상태
+
+이전 MainServer는 숨김 창으로 실행되어 사용자에게 콘솔 q 입력을 요청한 안내가 잘못됐다. Unity Coordinator 앱 Slack 1792560827.200079에서 수동 종료 요청을 취소했다. 이후 재확인에서 PID4892 및 MainServer 이름 프로세스가 없고 netstat의 9999 TCP 항목도 없었다. 종료 원인·정상 종료 여부는 아직 미확인이다. 기존 서버가 유지 중이라는 아래 기록은 당시 관찰이며 현재 상태가 아니다. 대체 종료·강제 종료·새 서버 시작은 수행하지 않았다.
+
+기존 서버가 실행 중이던 앞선 배치에서 보스 부채꼴·사각 예고와 대응 Hit 해제는 실제 확인했고 선별 PNG2장과 BOSS_LIVE_RESULTS.txt를 후보에 추가했다. 마지막 후퇴 입력 가드 실패 및 이후 캐릭터 HP0은 표시 검증 통과와 별도로 보존한다. 새 근접거리 서버 수정은 native 검증만 완료됐으며 실제 배포·입력 검증은 미실행이다. 새 push/PR은 아직 없다.
+
+## 현재 인계 — 병합 전달 정리 완료, 실제 사냥 배치는 수동 종료 대기
+
+PR42 병합·공개 거래소 최신PNG실표시·원격자동삭제·완료로컬브랜치/worktree 안전정리를마쳤다. 사냥후보602c39a는제품변경없는일반merge로최신기본브랜치를포함한다. 생성HTML17개는UI01-Delivery/merged-preview-backup보존. 새사냥후보push/PR0, UI01승인재사용금지.
+
+readonly 보스관측helper ROOT Builds/Boss-Preview/observe-live.cs 준비완료. root가초안의로그인컴포넌트/tuple명/center반경검사/innerHit정리·pendingcenter짝지음/timeout상태를보완했고독립최종P1P2없음. eval_file은실제컴파일후EditMode첫가드 Play mode required에서예상중단했으며구독·입력·실제게임관측0. 이확인을기능PASS로세지않는다. helper는같은보스필수5pair의형상·대응Hit만개별확인/최대PNG2요청/120초또는모델·Zone·Play종료시정리하며NOT OBSERVED/INCOMPLETE와FAIL을구분한다. helper초안과notes원본을보존했다.
+
+현재Slack수동q완료회신없음/기존Line-Aim서버4892·9999listen유지를직접확인했다. WindowsPowerShell 실행정책차단을우회하거나강제종료하지않는다. 수동정상종료요청은Slack1792559075.384329 하나를유지한다. 실제종료·포트해제·정상로그조건뒤만새후보시작/한실입력에근접거리와보스두공격·해제·실제PNG를확인한다. 새공개보스결과는아직0. 전문신규34/재활성화77/활성화111/tokenN/A(관측helper준비1·최종읽기리뷰1추가).
+## PR42 전달 정리 — 2026-10-21
+
+GitHub PR42 merged/e1df6e7·원격head자동삭제·0376bb3 기본브랜치포함을확인했다. 사냥후보는602c39a 일반merge로두인계기록을보존했고merge전후Unity/서버/site의추가diff0이라게임시험을반복하지않았다. 완료worktree UI01-Delivery/source는clean/고유커밋0/Editor미사용을확인한뒤제거하고codex/combat-ui-followup을일반-d삭제했다. ignored생성HTML17개는UI01-Delivery/merged-preview-backup에경로가드후보존. 현재사냥후보/ROOT사용자WIP·원본Game은보존했다.
+
+실제공개 https://joeunil.github.io/MMORPG/work/market/history.html 의최신2026-10-21 매물그림·가격설명과PNG실표시를브라우저로확인했다. 공개사이트가새사냥/보스후보까지게시됐다는뜻은아니다. 수동q완료회신은없고기존Line-Aim서버4892는계속실행중이다. 실제입력은OS정책차단으로대기하며readonly보스관측helper만준비중이다. 전문신규34/재활성화76/활성화110/tokenN/A.
+## 최신 — PR42 병합 반영, 사냥 실입력은 수동 종료 대기
+
+GitHub에서 PR42 merged/e1df6e7 및 head0376bb3의 기본브랜치 포함을 확인했다. fetch --prune로 원격 작업브랜치 자동삭제 확인, 현재 사냥 후보에는 일반 merge로 두 인계 기록을 모두 보존했다. Unity/서버/공개 산출물의 HEAD 대비 추가 diff는 없고 인계 기록 충돌만 해결했다. 제품 변경이 없어 기존 통과 검증을 반복하지 않는다. 아래 PR42 open 상태는 이전 이력이다. 수동 q 종료 회신은 아직 확인되지 않고 기존 서버4892는 유지된다.
+
+## 현재 인계 — 사냥 화면 큰 묶음 로컬 완료 / 실제 입력은 수동 서버 종료 대기
+
+필드진입로0f44d8b + 일반몹 HP/Circle d317658 + 서버근접거리0fbb8fa + 보스부채꼴72dda0f 위에 skill4정사각고리를 구현했다. skill4는CAND절대경로 두파일만작성/ROOT최종baseline가드와백업뒤선별동기화. 최종독립P1P2없음/compile0/영향기존fixture1개1회PASS(0.13초),ROOT/CAND바이트일치. fixture 큐 검증P2는oldSource스냅샷·새모델선생성·pending1·교체후대상등록/Drain으로실제조건을복구했다. BOSS_PREVIEW_RESULTS.txt최신참조. 실제보스화면·새근접거리배포/입력은아직미실행.
+
+정상서버전환helper는WindowsPowerShell 실행정책 UnauthorizedAccess로로드차단/q0. 기존PID4892/start639281488935754256/Line-Aim서버9999listen유지·새Monster-Melee0 재확인. 실행정책변경/Bypass/다른종료경로/강제종료0. Slack앱1792559075.384329에사용자직접q정상종료요청. 읽기전용nativeexitobserver54393은5분TIMEOUT·종료완료/추가조작0. 이후사람종료회신이오면HANDOFF/실제process·포트·정상WAL종료로그와관찰기록을대조한다. nativeexit미확인은미확인으로유지하며,이미종료된서버를재종료하려고반복하지않는다. 정상종료조건확인뒤만검증된Monster-Melee/bin/MainServer.exe(SHA256D1304586478F8F583D091797D2942B0C3720AA53CD6F1C891D66DFAD420C6261)를시작하고보스·거리실입력을한접속에합친다. 현재테스트서버프로세스는원본유지,Login/DB/Redis조작0.
+
+UI PR42는open/0376bb3 별도유지. 새사냥묶음push/PR0/UI01재사용금지,큰관련PR로모은다. 실화면미확인보스는공개사이트성공으로추가하지않았다. 전문신규34/재활성화75/활성화109/tokenN/A. EditorPlayfalse/dirtyfalse/입력runnerfalse/backgroundfalse/envclear. 현재입력테스트의차단은미승인이아닌실제OS정책이며우회하지않는다.
+## 실제 서버 전환 차단 — WindowsPowerShell 실행 정책
+
+정상 전환 보조3파일은 독립 읽기 리뷰를 통과했으나 WindowsPowerShell이 quit-line-aim.ps1을 실행 정책 UnauthorizedAccess로 로드하지 않았다. q전송0/oldPID4892·start639281488935754256·9999listen유지/새Monster-Melee프로세스0을 실제 재확인했다. 실행정책변경·ExecutionPolicyBypass·대체 종료경로·강제종료0. UnityCoordinator앱Slack1792559075.384329에 사용자 직접 콘솔q정상종료 및 ‘서버 종료 완료’ 회신을 요청했다. 이것은 PR 승인 요청이 아니라 실제 OS차단에 필요한 수동 조치다.
+
+ROOT Builds/Monster-Melee/manual-stop-observation.txt에 입력 없는 nativeexit 관찰을 준비했고 호스트execsession54393은 최대5분 동안 동일프로세스 핸들만 기다린다. 종료가 확인되지 않으면 timeout으로 기록하고 어떤 프로세스 조작도 하지 않는다. 회신 수신 시 실제로그·종료코드·포트free를 대조한 뒤 검증된 후보를 시작한다. 현재 코드/배치 준비는 독립적으로 계속하며 skill4 정사각 고리 구현 담당을 CAND 절대경로 두파일에 배정했다. 전문 신규34/재활성화72/활성화106,tokenN/A(전환helper읽기리뷰1·skill4구현재활성화1추가).
+## 최신 — 보스 부채꼴 예고 후보 검증 완료
+
+기존 type2 skill3의 두 부채꼴을 월드 고정 중심/두 독립 renderer·TTL/대응 Hit 제거로 연결했다. 기존 C04 fixture1개 확장·1회 PASS(0.13초), compile0/독립 최종 P1P2없음. ROOT 오저작은 후보 불일치 리뷰가 발견했고 두 파일 diff·백업·정확 이식으로 복구했다. 지역변수 충돌과 fixture TTL 순서만 root가 보완, 최종ROOT/CAND바이트일치. 상세 BOSS_PREVIEW_RESULTS.txt. 서버 배포/새실입력·보스 공개 캡처는 미실행, 기존 일반몹 실입력과 구분한다.
+
+근접 거리 서버 수정은0fbb8fa 로컬 보존/빌드 및 native1PASS, 실행 중 Line-Aim 서버 유지. UI PR42 open/0376bb3, 새 게임 묶음 push/PR0. 전문 신규34/재활성화70/활성화104/tokenN/A. EditorPlayfalse/dirtyfalse/입력runnerfalse/backgroundfalse/envclear. 다음 입력 배치에 서버 시전 거리·보스 예고를 모으며 skill4 정사각 고리는 아직 미지원이다.
+## 최신 — 몬스터 근접 시전 거리 후보 검증 완료
+
+종류0/1 skill0이 반경 밖에서 시전하던 int 거리 절삭을 첫 Hit 범위 재사용으로 보정했다. 정확2phase 제약은 서버에서 제거했고 Hit없는 구성·skill1·보스·delay/속도/DB/wire는 유지했다. 독립 리뷰 P1/P2없음, CoreLib/MainServer/UnitTests Release x64 빌드 성공, 기존 native 시나리오1개 확장/1회 PASS. 초기 빌드 경로·props·복사 대기 실패와 수정은 MONSTER_MELEE_RESULTS.txt에 보존했다. 실행 중 서버 교체·새실입력0이며 다음 관련 배치에 실제 거리 관측을 합친다.
+
+현재 사냥 화면/필드 후보와 한 브랜치로 모으며 UI PR42는 여전히 open/0376bb3이다. UI01 승인은 이미 게시1회 소비됐고 새 사냥/서버 게시에는 재사용하지 않는다. 새push/PR/병합0. 다음 미완료는 기존 보스 공격 예고의 실제 phase 계약 읽기이며 신규 기능·수치·프로토콜 변경을 전제하지 않는다. 전문 신규34/재활성화66/활성화100, 실제 토큰N/A.
+## UI01 승인 소비·PR42 게시 / 다음 서버 시전 거리 후보
+
+PR41 merged/default027764257acc6f4dbfd9a4d546e07a366b830dee 확인·fetchprune로원격head자동삭제확인. UI01 원문회신1792555509.126329를1회소비해codex/combat-ui-followup을master정상merge,동결605c2fb Assets/미디어/공개본문불변을대조한뒤일반push/PR42 https://github.com/JoEunil/MMORPG/pull/42 생성·채팅첨부. 최종head0376bb3,25files/필드아트·사냥피드백미포함. UI01중복소비금지/PR42병합·UI정식Pages배포0. UI게시용worktree는UnityClient/Builds/C10-Delivery/UI01-Delivery/source,현재ROOT실행프로젝트와분리. 새게임재시험0. 처음빈배열포장오판으로push보류뒤PR API가headinvalid422(생성0)를반환했고읽기확인후push성공시에만PR API를호출해최종PR1개를만들었다.
+
+새사냥화면후보d317658은현재field-readability-followup에보존,master도정상merge완료. 실제일반몹시전중심과대상거리2.60이반경2밖이던원인은서버int dx/dy절삭으로확인됨. 다음같은사냥묶음에서종류0/1·skill0만기존첫Hit의InRange를시전조건에재사용하는최소수정을구현중. skill1시전거리·보스·delay/속도·DB/wire는유지한다. 서버소유2파일은monster_hit_feedback,root원본서버쓰기0. 아직이서버수정빌드·native·배포·새입력은미실행. 전문신규34/재활성화63/97/tokenN/A.
+
+## 현재 — 사냥 화면 묶음 실제 검증 완료
+
+CAND codex/field-readability-followup에서필드진입로후속에몬스터HP강조·일반/강한몹지원Circle예고를모았다. C04/C13/기존C04fixture/BindC04·Scene2refs·Material,서버변경0. 최종독립리뷰·compile0/MonsterFeedback_2개1batchPASS. 계정02한접속/방향키접근/X1회로동일몹11HP1500→500/금색HP바·.2초초록복원/서버고정중심반경2빨간원32점·phase1해제PASS. helper타입·로그인컴포넌트·정적PASS조건오류는제품변경없이같은접속에서보완했으며최초실패기록유지. MONSTER_FEEDBACK_RESULTS.txt참조.
+
+실제Disconnect→Modelnull/Playfalse/dirtyfalse/inputRunningfalse/backgroundfalse/계정선택envnull. 서비스유지/재시작0. 공개player-hud최신PNG2장·이력/홈기존성장확인문장정정·생성링크/브라우저확인PASS. 큰관련게임화면묶음으로보존하고새작업을작은PR로내지않는다. 기존UI01동결605c2fb와게시승인분리.
+
+다음좁은서버읽기분석은실제몹시전중심과player거리약2.60/skill0반경2의추적종료계약확인이다. 아직수정·추가시험없음. 전문신규34/재활성화62/96/tokenN/A.
+
+## 최신 — PR41 셰이더 포함 수정·UI01 승인 확인
+
+사용자가 전달한 범위 표시 shader stripping P2를 검토해 실제 package URP17.0.4 Unlit.shader GUID650dd9526735d5b46b79224bc6e94025를 GraphicsSettings AlwaysIncluded에1행추가했다. 저장파일재로딩참조1개/목록8/ShaderErrorfalse/독립리뷰P1P2없음,다른설정불변. runtime/Scene/서버변경·새게임시험0. 전체standalone빌드·실행·용량은미검증. 기존PR41에ccff218일반push했고후속CAND정상merge로보존. 상세LINE_AIM_RESULTS.txt최신후속.
+
+UI01 지정사용자 회신1792555509.126329 원문 ‘승인 UI01’을 정확parent1792487679.299269/channelC0C9VFZMV43에서 봇auth.test·replies(has_morefalse)로확인했다. 아직게시소비하지않음: PR41현재open이므로기존서버변경중복을피해UI는로컬동결유지. 실제PR41병합/default포함뒤codex/combat-ui-followup을일반merge로갱신해UI01동결605c2fb범위만게시하며새아트0f44d8b는미포함. 앞선‘사람회신미확인’은이기록으로갱신한다. 봇인증첫시도ContentType누락은올바른JSON요청으로정정했고동일앱U0C9ZRTQ6F8/teamT0C9ECC3GS3를검증했다.
+
+전문pr41_shader_review(code_reviewer/gpt-6.1-sol medium)신규1추가,누적신규30/재활성화56/활성화86/tokenN/A. ROOTPlayfalse/dirtyfalse,기존서비스·WIP보존. 새PR/병합/정식배포0.
+
+## 현재 — PR41 문서 리뷰 정정·필드 로컬 후보 보존
+
+사용자 전달 리뷰의 실입력 상태 지적은 타당했다. 별도 PR41-Review worktree에서 C05_CONTRACT.md 최신 설명만 실제 C1회/dir0/12×3/동일 대상HP1500→500 완료로 정정해 99c4379로 기존 PR41에 일반 push했다. 게임 코드·추가 테스트·새 PR·병합은 없다. 원격 분기0 확인 후 게시했으며 PR41는 open/head99c4379다. 동일 스레드 앱 요약1792555645.991909. 후속 CAND에도 일반 merge로 정정을 보존했다. UI01 제품 동결 범위는 그대로이며 PR41 병합 확인 때 이 문서 수정도 포함해 이력을 보존한다.
+
+CAND codex/field-readability-followup에서 진입로 대표 구간 후보를 보존했다. 첫 opaque ribbon은 실제 에디터 전후 비교에서 미채택, 새 실험 자식·자체 생성 메시만 백업 후 제거/기존 Scene 백업과 바이트 일치 확인. 두 번째 feather 후보는 최종 독립 리뷰·compile0·동일 정적 비교 후 소폭 보강으로 채택했다. scene 신규4블록/부모자식1행만 이식·다른 candidate 블록 동일, 기존 ROOT 지면 WIP 보존. 전용객체1/collider0/재적용무변경/ShaderErrorfalse, 투명 끝단의 축퇴2면은 결과 기록에 명시했다. ENTRY_TRAIL_TASK.md/RESULTS.txt 참조. Playfalse/dirtyfalse, 추가 로그인0. 전문 신규29/재활성화56/85/tokenN/A. 작은 구간만 별도 PR/승인 요청하지 않으며 다음 관련 필드 묶음으로 모은다.
 ## UI01 승인 소비·PR42 게시 완료
 
 지정사용자U0C9QEUHPMK의원문‘승인 UI01’ 회신1792555509.126329/parent1792487679.299269/channelC0C9VFZMV43를봇auth.test·전체replies로확인해1회소비했다. PR41 merged/default027764257acc6f4dbfd9a4d546e07a366b830dee 포함확인후동결605c2fb 제품·미디어·공개본문diff0을대조하고codex/combat-ui-followup에origin/master정상merge. 25files UI묶음만일반push/PR42 https://github.com/JoEunil/MMORPG/pull/42 생성·채팅첨부완료. 필드아트0f44d8b/사냥피드백d317658은미포함. 병합·새UI정식Pages배포0. 동일UI01회신재수신시재게시금지.

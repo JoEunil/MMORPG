@@ -1,0 +1,49 @@
+최신 후속 — 실제 모델 모션 검증 (2026-10-21)
+기존 C19 PlayMode fixture 하나를 ObservedPlayer/MonsterType0/1/2 네 실제 프리팹으로 확장.
+실제 shoulder/hip child 존재·보행 leg 회전·공격 arm 회전·피격 visual 이동·reset,
+actor root position/rotation 및 Runtime HP/LineRenderer 부모 보존 모두 PASS.
+최종 compile errors=[]; 자동 배치 1회 total1/passed1/failed0, 0.7306676s.
+독립 최종 P1/P2 없음. 최초 정적 리뷰의 프레임 순서 문제는 실행 전 수정.
+ROOT Builds/Actor-Motion-Models에 기존 fixture 백업. ROOT/CAND fixture 바이트 동일.
+제품/서버 코드 변경0, 실제 키보드/마우스/로그인0. 실제 외관/플레이 검증 아님.
+PR43 기존 WORLD02 범위의 검증 보완이며 AUTHOR01 새 기능 게시 승인을 대신하지 않음.
+아래 승인 대기/첫 플레이어 단독 검증은 과거 시점 기록.
+
+2026-10-21 — 확대 맵·이동·파츠 모션 로컬 후보
+
+범위
+600x400 코어/6구역, Zone200, AOI Cell42/5x5. Unity 고정 지면과 벽18개를 610x410 타일로 export.
+서버/Unity 동일 250100칸, 차단2900. 주변 객체 Cell과 경로 격자는 별도다.
+서버 플레이어 이동 예산6unit/s, 몬스터 기존 속도 배율 유지. 양측 이동 선분 충돌/모서리 끼기 차단.
+초기 입장 구역 밖/막힌 유한 좌표는 사용자 선택에 따라 안전 지점으로 이동.
+정상 좌표/HP0/식별자/스킬 상태 보존, 비유한 좌표 거부, 실시간 구역 전환은 재배치하지 않음.
+누적 입력 목표 0.6단위 한계/350ms 정체 정리/20Hz 요청, 시각 회전·대각 정규화.
+기존 정적 파츠의 보행·서버 확정 공격·HP 감소 피격. actor root/HUD/범위선 보존.
+
+실행 근거 (ROOT UnityClient/Builds/World-Motion, ignored local logs)
+MainServer-expanded-build.txt: Release x64 BUILD PASS.
+UnitTests-expanded-build.txt: Release x64 BUILD PASS. 기존 변환/NetTimer 경고는 남아 있음.
+native-expanded-result.txt: WorldMapTest 2개 + 기존 입장/왕복 fixture 2개 = 4 PASS (총 3ms).
+  경계/벽/모서리 양방향, 예산 clamp 후 선분·몬스터 경계,
+  유효 왕복의 좌표/HP/재사용 상태, 구형 Zone5 좌표·막힌 저장 위치 안전 이동,
+  HP0 보존, 수용량 부족/닫힌 세션/NaN 입장 거부 및 로비 보존.
+unity-movement-result.txt: C16OwnMotionTests 1 PASS, 지연/선행 한계/정체/대각/정지/초기화.
+unity-actor-result.txt: C19ActorMotionTests.RealModelAnimatesPartsWithoutMovingAuthorityOrRuntimeAttachments 1 PASS (0.208393s).
+직접 eval: C03MovementTests.CandidatesStayWithinOneUnitAndZone_AndUseMovementDirections PASS.
+  확대 경계의 기존 assertion을 분리 호출한 것으로 실제 입력/NUnit 배치 통과와 구분.
+Unity recompile_status: compilationFailed=false, errors=[];
+최종 Editor playing=false/dirty=false/input runner=false/runInBackground=false.
+독립 서버·이동/모션 리뷰 최종 P1/P2 없음. 지면 회전·전단 검증 지적은 실제 basis 검사로 수정.
+
+제한/미실행
+Unity 입력은 사용자 요청으로 보류: 새 로그인0, 마우스/키보드 입력0, 실사냥/외관 확인 미실행.
+기존 Line-Aim 서버를 교체/정상 재시작/강제종료하지 않음. 종료 도우미 정책 차단 우회0.
+DB 직접 수정/초기화0. A* 경로 탐색·몬스터 Cell 간 소속 이동은 사용자 작업이며 미구현.
+4방향 skill wire 유지, 모델의 시각 방향만 연속 회전. ACK/sequence 재연·완전 예측 아님.
+신규 리깅/스킨 애니메이션 클립 없음. 실제 화면 품질/고지연 체감은 다음 입력 배치에서 확인.
+공개 그림은 실제 export 데이터 시각화이며 실행 게임 캡처가 아님.
+기존 ROOT WIP 보존, Scene은 새 map blocks와 root child/명시 map ref만 후보에 선별 반영.
+새 push/PR0. 게시 전 새 변경 범위로 Unity Coordinator 앱 Slack 승인 필요.
+공개 초안: tools/site/build.py PASS (home+5개 작업/화면 이력), 실제 IAB에서 server-content 제목/맵 그림/미적용·A* 제한 설명 표시 확인.
+로컬 제품 커밋 dba6bff8daa4ce8458be12afadecc86e15bf266a. fetch 후 기본 브랜치 포함(behind0/ahead14).
+봇 WORLD02 게시 승인 요청1792564212.382599, 기존 등록 parent1792487679.299269. 사람 승인 대기, push0/PR0 유지.

@@ -1,0 +1,17 @@
+필드 진입로 정적 비교 결과 — 2026-10-21
+
+한 일: 기존 첫 곡선 중 local z4..32에 장식 흙길 메시 한 개 추가. 폭 약3.2, ground -.035 위 -.015. 기존 흙 텍스처와 UV transform만 읽고 새 feather shader/material로 가장자리·양끝을 섞음. 전체 V04 새 생성도 같은 helper를 호출하며 기존 필드를 통째로 재생성하지 않음.
+
+문제 해결: 첫 opaque 재질 후보는 띠처럼 보여 미채택. 자체 새 객체·mesh만 백업 후 제거했고 ROOT Scene 백업과 바이트 일치 확인. 두 번째 후보의 양쪽·양끝 vertex alpha fade를 동일 정적 구도로 비교해 소폭 보강으로 채택. 첫 after 파일은 최종 비교 경로에 덮어써 별도 미채택 PNG가 남지 않았으며, 실패 후보 소스·mesh는 보존됨.
+
+최소 확인: 독립 코드 리뷰 최초/최종 P1/P2 없음. 최종 Unity compile 0 errors/0 warnings, shader supported/ShaderHasError=false. Scene path C02, Playfalse/dirtyfalse. 전용 객체1/145정점/224삼각형/collider0/재적용 changed=false. 뒤집힌 삼각형0. 끝 좌표 clamp로 완전 투명 끝단에 면적0 삼각형2·0 normal 정점1 존재: unlit shader는 normal을 사용하지 않으며 보이는 범위에서 뒤집힘 없음. 모든 normal이 +Y라는 최초 가정은 확인 결과와 구분함.
+
+캡처: ROOT UnityClient/Captures/entry-trail-before.png, entry-trail-after.png. local(16,22), offset(12,16,-12), ortho13, 1280x720 동일. 임시 camera/RenderTexture 제거와 world active 상태 복원. 에디터 정적 비교이며 실제 사냥·이동 동작 검증이 아님. 신규 로그인·기능 회귀·서버 재시작0.
+
+동기화: ROOT Scene 전후 공통 블록 중 변경1(기존부모의 자식 참조1행), 신규4(GameObject/Transform/MeshFilter/MeshRenderer)만 CAND로 이식. 나머지 candidate 블록 전부 동일 확인. helper/shader와 새 asset/meta만 전달. 기존 ROOT 지면 텍스처/Material WIP와 원본 서버·다른 개발 변경 보존. 동기화 확인 도우미의 반복 파싱이 느려 중단한 뒤 같은 검사 결과를 한 번 캐시해 재개했으며 게임/테스트 실패로 집계하지 않음.
+
+공개: 이번 에디터 비교에는 기존 ROOT 지면 WIP가 포함되므로 정확한 전체 candidate 플레이 캡처로 게시하지 않음. 작은 장식 한 구간으로 별도 공개 작업 카드·PR·게시 승인을 만들지 않으며 다음 관련 필드 묶음의 최종 화면과 함께 갱신. 현재 UI01 동결 후보/승인 요청에 이 아트를 추가하지 않음.
+
+PR41 별도 사용자 리뷰: C05_CONTRACT 최신 실입력 미실행 문구가 이미 완료된 LINE_AIM_RESULTS 후속 기록과 모순돼 타당한 지적. 99c43799a4126c01d93bfe4403299eec5d9e3c34 문서1개 정정만 기존 PR에 일반 push, remote open/head일치 확인. 추가 게임 시험0/새 PR0. 후속 CAND 정상 merge로 같은 정정 보존.
+
+전문 신규29/재활성화56/활성화85, 토큰 N/A. 코드 통과와 첫 미채택 시각 결과를 구분. 아직 PR41 미병합·UI01 사람 승인 미확인, 기존 게시 경계 유지.

@@ -630,6 +630,7 @@ public static class C02SceneBuilder
         mesh.uv=new[]{Vector2.zero,Vector2.up,Vector2.one,Vector2.right}; mesh.triangles=new[]{0,1,2,0,2,3}; mesh.RecalculateNormals();mesh.RecalculateBounds();EditorUtility.SetDirty(mesh);
         var ground=new GameObject("ContinuousWalkableMeadow",typeof(MeshFilter),typeof(MeshRenderer));ground.transform.SetParent(root,false);
         ground.GetComponent<MeshFilter>().sharedMesh=mesh; ground.GetComponent<MeshRenderer>().sharedMaterial=meadow;
+        C18EntryTrailSetup.ApplyToField(root, false);
         // Existing original meshes are reused; no external or generated model dependency.
         var rock = outpost.Find("RoadsideRock1"); var grass = outpost.Find("GrassClump0"); var pine=outpost.Find("Pine0");
         var meadowStoneMesh = MeadowStoneMesh();
@@ -1107,6 +1108,8 @@ public static class C02SceneBuilder
         refs.FindProperty("playerPrefab").objectReferenceValue=AssetDatabase.LoadAssetAtPath<GameObject>(folder+"ObservedPlayer.prefab");
         var types=refs.FindProperty("monsterPrefabs");types.arraySize=3;
         for(int type=0;type<3;type++)types.GetArrayElementAtIndex(type).objectReferenceValue=AssetDatabase.LoadAssetAtPath<GameObject>(folder+"MonsterType"+type+".prefab");
+        refs.FindProperty("serverContent").objectReferenceValue=AssetDatabase.LoadAssetAtPath<C14ServerContent>("Assets/C02/Content/C14ServerContent.asset");
+        refs.FindProperty("monsterRangeMaterial").objectReferenceValue=AssetDatabase.LoadAssetAtPath<Material>(folder+"MonsterRange.mat");
         refs.ApplyModifiedPropertiesWithoutUndo();observed.enabled=true;
     }
 

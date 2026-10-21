@@ -1,0 +1,13 @@
+HP0 안내와 정상 퇴장 — 2026-10-21
+
+구현: C05CombatScreen의 작은 HP0 상태문을 기존 Canvas 중앙 패배 안내와 LOG OUT 버튼으로 보완했다. 기존 loginScreen.ConnectionFailed("Session closed.") 종료를 재사용한다. CanAct/스킬 차단과 범위 정리는 유지한다. 살아 있는 서버 Full·모델/구역 변경·월드 이탈·disable 때 숨기고 destroy 때 생성 패널을 제거한다. Scene/Material/서버/ClientCore/DB/프로토콜 변경0.
+
+계약 조사: 현 서버에는 캐릭터 회복·부활·포션 사용 처리 경로가 없으며 정상 퇴장 HP를 저장하고 진입 때 적재한다. 실제 DB 저장 성공은 이번 읽기 조사로 확인하지 않았다. HP0 클라이언트 가드를 풀거나 재접속이 회복이라고 안내하지 않았다. 버튼은 인증을 해제해 로그인 화면으로 돌아가며 즉시 캐릭터 선택 복귀가 아니다.
+
+리뷰: 독립 코드 리뷰와 fixture 정정 재검토에서 최종 P1/P2 없음. 최초 리뷰는 기존 삭제된 moveTarget 필드 참조를 놓쳤다. 첫 자동 실행은 이 오래된 fixture 참조에서 NRE/1FAIL했다. 실패 원본 ROOT Builds/Defeated-Flow/automatic-first-failure.txt 보존. 제품 코드가 아닌 fixture를 현 visualPosition 예측 상태로 수정하고 HP0에서 서버 위치로 스냅되는지 검증했다. 이전 status문구 assertion은 새 실제 안내의 제목·본문 관찰로 교체했다. 기존 HP100/CanAct=true 복원과 행동취소 기대는 보존했다.
+
+최소 검증: 최종 컴파일 오류0. 기존 C05CombatTests.OwnHpMpDeltaStopsPendingActionsAtZero_AndKeepsServerVitals 하나만 영향 재실행/1PASS/0FAIL, 전체0.14초/시나리오0.0977969초. fixture에는 실제 Initializer와 ClientChanged 이벤트를 설정해 LOG OUT→ConnectionFailed→ReleaseClient→Ready/modelnull/패널숨김을 확인한다. 분리 fixture의 onClick 호출은 실입력 성공이 아니다. 전체 회귀0.
+
+실입력: 미실행. 실제 로그인→서버HP0→패널→실제LOG OUT 한 흐름의 보조 도구를 ROOT Builds/Defeated-Flow/live-ui.cs에 준비했으나, Unity 대상 네이티브 조회에서 다른 게임 화면이 반환되어 클릭0/로그인0으로 중단했다. 사용자가 '입력 검증은 나중에'라고 명시해 보류한다. 실제 캡처/공개 성공 설명은 추가하지 않는다. 상태 주입/새전투/DB변경0.
+
+종료: Editor playingfalse/dirtyfalse/inputfalse/backgroundfalse 확인. 두 ROOT 소스는 변경 전 백업과 e16fcf4 내용 일치 가드 후 CAND에서 정확 동기화했고 다른 ROOT WIP는 보존했다. 앞선 HUNT01 후보 codex/field-readability-followup e16fcf4는 불변이며 이 후속은 별도 codex/hunting-flow-followup에만 있다. 새 push/PR0. 관련 후속과 큰 묶음으로 모으고 실입력 보류를 문서로 완료 처리하지 않는다.

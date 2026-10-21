@@ -1,0 +1,19 @@
+사냥 화면 피드백 묶음 — 2026-10-21
+
+구현: C04 유효 생존 HP Delta 감소 뒤만 C13 HP바를0.2초금색강조,확정fill비율은즉시반영. Full/동일HP/이동/invalid는시작근거아님. 기존몬스터0/1의skill0/1중현재C14의2단계Charging→CircleHit만ActionResult고정월드xy에빨간32점원으로표시. phase1/HP0/관측소멸·Zone·모델변경/disable/TTL정리. 새서버기능·패킷·DB변경0. 빌더는기존C14와새MonsterRange.mat직접참조2개만연결. Scene동기화는C04기존component2refs만,나머지candidate전체블록동일. Material의실제URPUnlitshader가Scene dependency에포함됨/ShaderHasErrorfalse.
+
+리뷰: HP초기·합친최종·SceneMaterial각독립검토P1P2없음. root는중간저작에서playerID와monsterID같은숫자를거부하는검사를발견해수정요청했고,서로다른ID공간/id0·같은ID7정상예고를fixture에반영했다. 숫자반경테이블·런타임Shader.Find·새Manager는추가하지않음.
+
+최소자동: 최종Unitycompile0오류0경고. MonsterFeedback_ 필터1batch/2개2PASS/0FAIL/전체0.16초. ActionResultShowsSupportedServerRingsAndExpiresWithObservation0.1028264초,DamagePulseUsesObservedDeltaAndRestoresForInvalidDeathAndDisable0.0110375초. ROOT Captures/monster-feedback-automatic.txt. 기능확인전Assets·Packages·ProjectSettings동결,통과뒤반복실행0.
+
+실제한접속: 승인계정02/char5012/Zone5/초기HP9225·MP9939·EXP10. 실제UI로그인·선택·진입1회. 처음target11이배회해설정거리밖이라입력전guard에서X0으로중단한기록유지;같은접속에서방향키로접근한뒤X1회만입력. 대상11 type0 HP1500→500 MonsterDelta수신/HPbar비율.3333/금색(1,.78,.2)실화면/0.2초후초록(.35,.85,.32)복원확인.
+
+동일대상11 casterType1/slot0/skill0 phase0: 서버중심(133.200,123.475),worldSpace32points/반경min=max2.000/중심오차0,실제붉은원PNG확인. phase1수신뒤activefalse/정리확인. 동일ID의HP감소·금색·비율·복원및동일ID의원기하·visible·cleanup교집합이실제관측PASS조건. 관측시간56.9초/원본log ROOT Builds/Monster-Feedback/ROOTCaptures/monster-feedback-20261021T043408Z.txt. 원본PNG first-gold-hp/first-circle2장,직접확인. 실제강한몹반경8·보스·새처치/EXP·standalonebuild는이번실행범위아님.
+
+도우미한계/수정: 최초관측도우미의EditorApplication.CallbackFunction타입컴파일오류와C01컴포넌트를C02Client에서찾은가드실패를각각수정해같은접속에서관측시작,그전공격입력0. 카드부재판단은잘못된ROOT문서경로때문이라실제candidate카드로정정. 사전정적검토에서반경분산만통과시키던조건을C14실제반경비교로보완하고,phase1활성여부·같은ID증거연결·sticky실패를수정. 제품검증성공으로도우미실패를숨기지않음. Native화면refresh의잘못된옵션은재관측했고다른앱입력0.
+
+종료: 실제Disconnect버튼→Modelnull/입력runnerfalse→Playstop/dirtyfalse/backgroundfalse/계정선택환경null. 관측기PASS종료때model이벤트와Editorupdate구독해제. 기존서비스정상유지,강제종료·서버재시작·데이터직접쓰기0.
+
+공개: player-hud상세·이력에현재원형예고/HP강조2장추가/이전사진보존. SHOWCASE의이미완료한처치·EXP확인을미실행이라하던문장정정. 생성·링크검사PASS/실제브라우저최신대표사진로드·상세→이력의새두캡션및이전사진보존확인. 새파일 monster-circle-preview.png,monster-hit-feedback.png. 정식Pages게시완료로보고하지않음.
+
+전문: 신규34/재활성화62/총96/tokenN/A. 현재다음계약분석1회포함: 실제장면에서일반몹시전중심과player사이약2.60인데반경2공격을시작한AI거리계약을읽는중. 아직서버오류확정·수정·새시험은없음. 작은단계별새PR/새승인요청0,UI01은승인된별도동결범위로유지.

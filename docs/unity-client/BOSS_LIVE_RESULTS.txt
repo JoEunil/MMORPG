@@ -1,0 +1,10 @@
+보스 예고 실제 배치 — 2026-10-21
+
+실행 대상: 새 근접거리 서버를 배포하지 않고 기존 Line-Aim MainServer PID4892/hash174D68D6...32030을 유지했다. 이 서버의 기존 보스 skill3/4 데이터로 클라이언트 예고만 검증했다. 서버 종료 도우미 OS정책을 우회하거나 대체 종료/재기동하지 않았다. 새 근접거리0fbb8fa는 빌드/native1PASS 상태이며 실제 서버 적용·거리 입력 성공으로 재분류하지 않는다.
+동결: Assets/Packages/ProjectSettings 쓰기0, Editor 조작 root1명, 다른 에이전트 모두완료. 계정02 실제Canvas로그인/캐릭터5012선택/Zone5 진입1회. 시작 HP8925/MP9919/EXP10, 프레임2077→10131의진행확인. 실제방향키접근 및X키 총3회, 재로그인0/DB직접수정0.
+첫 시도: boss111 HP10000→9000 관측, 두 부채꼴 phase0/2 geometry 및 대응Hit해제PASS. 120초관측은사각미수신으로INCOMPLETE, pair2/preview+Hit4/pass/FAIL0/PNG1. 최초log/캡처유지. 서버 소스의 aggro100tick(5초)·공격step 대기 계약을 확인했다. 정확한 당시 AI 상태는 측정하지 않았으며 한 번 공격으로 다음 패턴이 보장된다고 가정할 수 없다.
+두 번째: MP20소모/보스HP9000유지,보스적중미확인·원인미확정. 사각만관측45초는pair0/INCOMPLETE/FAIL0. 입력helper의PASS는키입력·후퇴종료일뿐보스패턴통과가아니다. 재시도기록을삭제/성공대체하지않음.
+마지막: 같은접속에서가까운거리로접근하고X1회,보스HP9000→8000감소를별도확인. 로그boss-preview-20261021T052923Z에서동일boss111/slot0의skill3 charge0/2, skill4 charge0/2/8 모두geometryPass=True 및대응Hitinactive=True. 28.2초/pair5/검사10PASS/FAIL0,이관측창에서필수세사각pair와두부채꼴pair모두확인. 새첫fan/square PNG2장실제파일크기700454/696408bytes·root직접view확인. 여러시전이겹친실제화면이며정밀castID/취소추적보증은아님.
+입력 제한: 마지막 후퇴helper는InvalidOperationException 입력가드에서FAIL했다. 로그에는실패의세부guard조건이없으므로원인을단정하지않는다. 이후 Coordinator의 직접 조회에서 OwnFull HP0/CanAct 상태를 확인했다. 이 값은 별도 원문 로그에 저장하지 않아 독립 리뷰로 재확인하지 못했다. 관측PASS와입력/생존FAIL을분리하며생존사냥전체PASS로표현하지않는다. 캐릭터HP0은정상게임상태로보존/임의회복·부활·재시딩0.
+종료: 실제Disconnect버튼→ModelnullPASS,Playstop/dirtyfalse/inputRunningfalse/backgroundfalse/계정선택envclear. 모든observer는timeout또는PASS에서event·Editor update구독해제. 기존Login/DB/Redis/게임서버유지. 추가로그인/전체자동회귀0.
+근거: ROOT Captures/boss-preview-login.txt, boss-preview-one-x.txt, boss-preview-one-square-x.txt, boss-preview-final-square-x.txt, boss-preview-disconnect.txt 및 Builds/Boss-Preview/ROOTCaptures의052445Z/052727Z/052923Z 로그. 공개선별은마지막fan/square2장만새파일로추가/기존화면보존.

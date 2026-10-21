@@ -2,6 +2,8 @@
 #include "StateManager.h"
 #include "Initializer.h"
 #include "ChatThreadPool.h"
+#include "WorldMap.h"
+#include <algorithm>
 #include <cmath>
 
 namespace Core {
@@ -28,8 +30,43 @@ namespace Core {
             if (destination == nullptr)
                 return false;
             std::unique_lock destinationLock(destination->m_mutex);
+            CharacterState incoming = loaded->second;
+            if (!std::isfinite(incoming.x) || !std::isfinite(incoming.y))
+                return false; // Corrupt coordinates are not a map-version relocation.
+            if (incoming.x < destination->m_area.x_min || incoming.x > destination->m_area.x_max
+                || incoming.y < destination->m_area.y_min || incoming.y > destination->m_area.y_max
+                || !WorldMap::CanTraverse(incoming.x, incoming.y, incoming.x, incoming.y)) {
+                // Saved coordinates can become invalid after a fixed-map revision. Relocate only
+                // on lobby entry; live Zone transfers must still prove their existing position.
+                incoming.x = destination->m_area.x_min + TRANSITION_BUFFER + 10.0f;
+                incoming.y = destination->m_area.y_min + TRANSITION_BUFFER + 10.0f;
+                if (!WorldMap::CanTraverse(incoming.x, incoming.y, incoming.x, incoming.y)) {
+                    const auto& safeArea = destination->m_cells[0][0].area;
+                    const int firstX = (std::max)(0, static_cast<int>(std::floor((safeArea.x_min - WorldMap::OriginX) / WorldMap::TileSize)));
+                    const int firstY = (std::max)(0, static_cast<int>(std::floor((safeArea.y_min - WorldMap::OriginY) / WorldMap::TileSize)));
+                    const int lastX = (std::min)(WorldMap::Width - 1, static_cast<int>(std::floor((safeArea.x_max - WorldMap::OriginX) / WorldMap::TileSize)));
+                    const int lastY = (std::min)(WorldMap::Height - 1, static_cast<int>(std::floor((safeArea.y_max - WorldMap::OriginY) / WorldMap::TileSize)));
+                    bool found = false;
+                    for (int y = firstY; y <= lastY && !found; ++y) {
+                        for (int x = firstX; x <= lastX; ++x) {
+                            const float safeX = WorldMap::OriginX + (x + 0.5f) * WorldMap::TileSize;
+                            const float safeY = WorldMap::OriginY + (y + 0.5f) * WorldMap::TileSize;
+                            if (safeX < safeArea.x_min || safeX > safeArea.x_max
+                                || safeY < safeArea.y_min || safeY > safeArea.y_max
+                                || !WorldMap::CanTraverse(safeX, safeY, safeX, safeY))
+                                continue;
+                            incoming.x = safeX;
+                            incoming.y = safeY;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                        return false; // The original lobby row and session are still intact.
+                }
+            }
             // Immigration copies and prepares the destination before removing the lobby row.
-            if (destination->ImmigrateCharLocked(sessionID, loaded->second) == INVALID_ZONE_INTERNAL_ID)
+            if (destination->ImmigrateCharLocked(sessionID, incoming) == INVALID_ZONE_INTERNAL_ID)
                 return false;
             const auto& entered = destination->m_chars.back();
             result = {destinationID, 0, entered.zoneInternalID, entered.x, entered.y, destination->m_generation};
