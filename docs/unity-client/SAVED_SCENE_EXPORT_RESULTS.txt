@@ -1,0 +1,13 @@
+SAVED AUTHORING SCENE EXPORT GUARD — 2026-10-21
+Parent bundle: MAP01 / codex/world-map-export. Publication approval still pending.
+Problem: menu path accepted unsaved scene state; Inspector checked active Scene rather than the authoring object's actual Scene. This could export a map not reproducible from the saved Unity scene, or reject unrelated dirty scenes.
+Change: public BakeAndExport validates the author's Scene (valid/loaded/saved/clean) and persistent map asset before any bake/output. Both entry points use it. Existing detached-fixture snapshot API is internal; successful interactive export saves only its navigation asset, never the Scene or unrelated assets.
+Review: independent code reviewer, no P1/P2 findings. Root source baseline checked and backed up before syncing three owned files.
+Verification: Unity compile0; one focused direct EditMode batch, 2 PASS:
+- InteractiveExportChecksAuthorSceneAndMapBeforeWriting .4537s: unsaved Scene rejection, dirty author Scene with another active Scene rejection, nonpersistent map rejection, unrelated dirty active Scene permits valid export; old output/array retained on rejection, original Scene dirty unchanged.
+- FailedExportPreservesPreviousMapAndDirtyState .0145s: readonly output leaves previous snapshot/array and clean/dirty state intact.
+Final active Scene dirty=false, playing=false, input runner=false. No actual Unity mouse/keyboard input, login, game service restart, DB/Redis or generated runtime map changes. Temporary fixture scenes/assets cleaned up.
+Remaining: C++ output success followed by asset-save failure is not a crash-atomic two-file transaction. Real input remains held. No new server/ClientCore changes; no repeat native/server tests warranted.
+Follow-up analysis: neighboring owner-Zone entity visibility is still not implemented. Existing owner-only AOI, ClientCore owner filtering and Zone-local entity IDs mean it requires explicit multi-Zone ownership/stamp/identity design, not simply sending adjacent Full packets. No A*/Monster AI edits. Current persistent Scene already supplies full ground; Additive streaming is not required merely to display ground at this map size.
+Agent usage this turn: new2 (map_followup_contract/server_analyst/gpt-6.1-sol medium; export_saved_scene_review/code_reviewer/gpt-6.1-sol medium), reactivation0. Cumulative new57/reactivation127/total184. Actual tokens N/A.
+Public site unchanged: this is an editor export validation fix, with no new game image or public feature beyond the existing map-export description. No repeated web/game tests.

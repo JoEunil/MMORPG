@@ -31,11 +31,8 @@ public sealed class C24MapAuthoringInspector : Editor
             var author = (C20MapAuthoring)target;
             try
             {
-                if (UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene().isDirty)
-                    throw new InvalidOperationException("씬을 먼저 저장한 뒤 내보내세요.");
                 string path = Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, "../../CoreLib/Generated"));
                 C20WorldMapExport.BakeAndExport(author, path);
-                AssetDatabase.SaveAssetIfDirty(author.map);
                 summary.text = "전체 맵 내보내기 완료: " + Path.Combine(path, "WorldMap.inc");
             }
             catch (Exception exception)

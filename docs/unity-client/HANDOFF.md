@@ -1,3 +1,10 @@
+## 최신 — 맵 내보내기 저장 Scene 검사 보완
+
+MAP01 후보에 저장 상태 검사를 보완했다. 메뉴/Inspector 모두 author 소속 Scene(valid/loaded/saved/clean)과 영속 map을 확인한 뒤 내보내며 무관한 active Scene dirty로 차단하지 않는다. 기존 snapshot API는 detached fixture용 internal로 유지했다. 기존 저작 Scene 자동 저장은 하지 않으며 해당 nav 자산만 기존처럼 저장한다.
+
+독립 P1/P2없음, compile0, 직접 EditMode2PASS(저장/영속성·activeScene구분/기존출력보존, readonly복구). 원본Scene dirtyfalse/Playfalse/inputfalse. SAVED_SCENE_EXPORT_RESULTS.txt 참조. ROOT3파일은 이전HEAD일치 확인·백업 후 동기화했고 서버/ClientCore/실제생성맵/DB변경0이다. 이 작은 보완은 기존 MAP01 큰 PR에 합치며 별도 PR·새 승인요청을 늘리지 않는다. Slack 재확인에서 MAP01 지정사용자 답장 없음(마지막37번 봇 요청), push/PR0 유지.
+
+이웃 Zone 엔티티 시야는 여전히 owner-only AOI/Zone-local ID라 후속 설계가 필요하다. 인접 Full 단순 전송으로 해결하지 않았으며 사용자 몬스터 AI는 건드리지 않는다. 다음 남은 배포/실입력은 버전동기 전환 및 명시 입력재개 조건을 따른다. 현재 허용된 직접 영향 구현·자동 검증은 완료했다. 전문 신규57/재활성화127/전체184, 토큰 N/A.
 ## 게시 대기 — MAP01
 
 로컬 제품 커밋 80e3633 / codex/world-map-export. Unity Coordinator 봇 U0C9ZRTQ6F8이 기존 스레드에 MAP01 요청1792583875.856059를 발송했고 완료채널1792583879.687239에도 핵심 결과를 남겼다. AUTHOR01은 이번 통합 게시 요청으로 대체했으며 승인됐다고 간주하지 않는다. 지정 사용자 U0C9QEUHPMK의 정확한 `승인 MAP01` 원문 확인 전 push/PR0. 승인 뒤 원격 fetch/분기 점검·일반 push·큰 PR 하나·artifact 첨부를 수행한다. 병합/실입력 재개로 해석하지 않는다. 브라우저 로컬 확인 http://127.0.0.1:8791/MMORPG/work/field-travel/ (현재 미리보기 프로세스만 실행, 게임 서버 아님).

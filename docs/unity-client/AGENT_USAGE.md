@@ -1,3 +1,8 @@
+## 저장 Scene 기반 맵 내보내기 보완 — 2026-10-21
+
+신규2: map_followup_contract(server_analyst/gpt-6.1-sol medium)은 이웃 AOI의 실제 미구현 경계와 Exporter 저장 Scene 결함/최소안을 읽기 분석했다. export_saved_scene_review(code_reviewer/gpt-6.1-sol medium)는 고정된 exporter/Inspector/fixture3파일을 독립 리뷰해 P1/P2없음을 확인했다. 재활성화0, 실행중 메시지는 추가횟수로 세지 않았다.
+
+Coordinator가 3파일 수정·baseline보존 동기화·compile0·최소 직접assertion2PASS를 확인했다. 실제 입력/서버/DB조작0. 누적 신규57/재활성화127/활성화184, 실제토큰/비용 N/A. MAP01 게시 승인 대기이며 완료를 게시/실플레이 성공으로 대신하지 않는다.
 ## 맵 Exporter·서버 전환 — 2026-10-21
 
 이번 작업 신규5: server_zone_contract(server_analyst/gpt-6.1-sol medium), map_export_contract(explorer/실제 모델 미확인), layout_export_impl(client_implementer/gpt-6-luna medium), server_transition_impl(worker/실제 모델 미확인), transition_contract_review(default/gpt-6.1-sol high, 도구 지정 확인). 계약 분석/출력 구현/서버·ClientCore 구현/동시성 독립 리뷰에 분담했다.

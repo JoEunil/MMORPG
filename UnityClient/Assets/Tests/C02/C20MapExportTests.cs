@@ -127,6 +127,78 @@ namespace C02.Tests
             }
         }
 
+        [Test]
+        public void InteractiveExportChecksAuthorSceneAndMapBeforeWriting()
+        {
+            var originalScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            bool originalDirty = originalScene.isDirty;
+            var authorScene = UnityEditor.SceneManagement.EditorSceneManager.NewScene(
+                UnityEditor.SceneManagement.NewSceneSetup.EmptyScene, UnityEditor.SceneManagement.NewSceneMode.Additive);
+            var unrelatedScene = default(UnityEngine.SceneManagement.Scene);
+            string folderName = "__C24Export-" + Guid.NewGuid().ToString("N");
+            string folder = "Assets/" + folderName;
+            string directory = Path.Combine(Path.GetTempPath(), folderName);
+            C20WorldMap transientMap = null;
+            try
+            {
+                UnityEngine.SceneManagement.SceneManager.SetActiveScene(authorScene);
+                AssetDatabase.CreateFolder("Assets", folderName);
+                var author = CreateAuthor();
+                var savedMap = author.map;
+                AssetDatabase.CreateAsset(savedMap, folder + "/Map.asset");
+                Directory.CreateDirectory(directory);
+                string output = Path.Combine(directory, "WorldMap.inc");
+                File.WriteAllText(output, "previous snapshot");
+                byte[] previous = savedMap.walkable;
+                var exporter = Type.GetType("C20WorldMapExport, C02.Editor", true);
+                var interactive = exporter.GetMethod("BakeAndExport", BindingFlags.Public | BindingFlags.Static,
+                    null, new[] { typeof(C20MapAuthoring), typeof(string) }, null);
+                Action export = () => interactive.Invoke(null, new object[] { author, directory });
+
+                var failure = Assert.Throws<TargetInvocationException>(() => export());
+                Assert.That(failure.InnerException.Message, Does.Contain("scene"));
+                Assert.That(savedMap.walkable, Is.SameAs(previous));
+                Assert.That(File.ReadAllText(output), Is.EqualTo("previous snapshot"));
+
+                Assert.That(UnityEditor.SceneManagement.EditorSceneManager.SaveScene(authorScene, folder + "/Map.unity"), Is.True);
+                UnityEngine.SceneManagement.SceneManager.SetActiveScene(originalScene);
+                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(authorScene);
+                failure = Assert.Throws<TargetInvocationException>(() => export());
+                Assert.That(failure.InnerException.Message, Does.Contain("scene"));
+                Assert.That(authorScene.isDirty, Is.True);
+                Assert.That(savedMap.walkable, Is.SameAs(previous));
+                Assert.That(File.ReadAllText(output), Is.EqualTo("previous snapshot"));
+
+                Assert.That(UnityEditor.SceneManagement.EditorSceneManager.SaveScene(authorScene), Is.True);
+                transientMap = ScriptableObject.CreateInstance<C20WorldMap>();
+                author.map = transientMap;
+                failure = Assert.Throws<TargetInvocationException>(() => export());
+                Assert.That(failure.InnerException.Message, Does.Contain("project asset"));
+                Assert.That(File.ReadAllText(output), Is.EqualTo("previous snapshot"));
+                author.map = savedMap;
+
+                unrelatedScene = UnityEditor.SceneManagement.EditorSceneManager.NewScene(
+                    UnityEditor.SceneManagement.NewSceneSetup.EmptyScene, UnityEditor.SceneManagement.NewSceneMode.Additive);
+                UnityEngine.SceneManagement.SceneManager.SetActiveScene(unrelatedScene);
+                UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(unrelatedScene);
+                export();
+                Assert.That(unrelatedScene.isDirty, Is.True);
+                Assert.That(authorScene.isDirty, Is.False);
+                Assert.That(EditorUtility.IsDirty(savedMap), Is.False);
+                Assert.That(File.ReadAllText(output), Does.Contain("WalkableBits"));
+                Assert.That(File.ReadAllText(output), Does.Contain("ZoneColumns = 3"));
+                Assert.That(originalScene.isDirty, Is.EqualTo(originalDirty));
+            }
+            finally
+            {
+                if (transientMap != null) Object.DestroyImmediate(transientMap);
+                if (unrelatedScene.IsValid()) UnityEditor.SceneManagement.EditorSceneManager.CloseScene(unrelatedScene, true);
+                if (authorScene.IsValid()) UnityEditor.SceneManagement.EditorSceneManager.CloseScene(authorScene, true);
+                UnityEngine.SceneManagement.SceneManager.SetActiveScene(originalScene);
+                AssetDatabase.DeleteAsset(folder);
+                if (Directory.Exists(directory)) Directory.Delete(directory, true);
+            }
+        }
         private static C20MapAuthoring CreateAuthor()
         {
             var author = new GameObject("Detached map export fixture").AddComponent<C20MapAuthoring>();
@@ -153,7 +225,7 @@ namespace C02.Tests
         private static void BakeAndExport(C20MapAuthoring author, string directory)
         {
             var exporter = Type.GetType("C20WorldMapExport, C02.Editor", true);
-            exporter.GetMethod("BakeAndExport", BindingFlags.Public | BindingFlags.Static,
+            exporter.GetMethod("BakeAndExportSnapshot", BindingFlags.NonPublic | BindingFlags.Static,
                 null, new[] { typeof(C20MapAuthoring), typeof(string) }, null)
                 .Invoke(null, new object[] { author, directory });
         }

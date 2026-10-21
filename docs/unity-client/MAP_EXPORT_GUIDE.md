@@ -31,7 +31,7 @@ AOI Cell(0,0)은 구역 로컬 좌하단이다. 25개 사각형은 중첩을 포
 
 ## 에디터 사용
 
-1. C02 Scene에서 C02World/C20FixedWorldMap의 C20MapAuthoring을 선택한다. 실제 게임 입력이나 Play는 필요 없다.
+1. C02 Scene에서 C02World/C20FixedWorldMap의 C20MapAuthoring을 선택한다. 실제 게임 입력이나 Play는 필요 없다. 메뉴와 Inspector 모두 해당 오브젝트가 속한 Scene을 저장해야 내보낼 수 있다. 다른 Scene이 활성화돼 있어도 검사 대상은 저작 Scene이다. NavigationGrid도 프로젝트에 저장된 에셋이어야 한다.
 2. Ground와 Obstacles에 내보낼 정적 BoxCollider만 명시한다. 장식 풀과 이동 엔티티는 제외한다. Actor Clearance는 반지름에 대한 보수적 여유다.
 3. Zone Columns/Rows, Core Size, Transition Margin, Content Version을 확인한다. Preview Zone Id는 검토할 구역을 고른다. 출력에서는 다른 구역을 제거하지 않고 전체 레이아웃을 하나의 일관된 snapshot으로 저장한다.
 4. Scene Gizmo: 파랑은 구역 전체, 초록은 전용 영역, 주황은 중첩, 흰색은 선택 구역의 AOI25, 빨강은 로컬 원점이다. 저장된 NavigationGrid 보기 버튼은 통행 배열 미리보기로 이동한다. 씬을 바꾼 뒤에는 이전 bake와 다를 수 있다.
@@ -70,3 +70,5 @@ ActorClearance는 현재 한 가지 값으로 전체 통행 격자에 적용한�
 서버는 내보낸 Zone 수/행·열/core/여유/5×5 Cell이 현재 서버 공간 설정과 일치하는지 컴파일 시 검사한다. 9구역 예시를 실서버에 적용하려면 서버 Zone 수와 관련 소비자도 함께 바꿔야 하며, 예시 파일만 덮어써 잘못된 구역 배치를 조용히 실행할 수는 없다.
 
 새 wire는 이전 실행 서버와 호환되지 않는다. 후보 MainServer와 ClientCore DLL을 같은 버전으로 전환해야 한다. DB/계정/기존 HP·아이템 초기화는 하지 않는다. 작업 브랜치는 codex/world-map-export이며, 원본 Game의 별도 미완료 AI 소스는 그대로 보존했다.
+
+이웃 Zone이 소유한 엔티티를 경계 너머로 함께 표시하는 기능은 남아 있다. 현재 owner-only AOI/클라이언트 필터/Zone-local ID를 함께 바꿔야 하므로 이웃의 Full만 추가 송신하면 안 된다. 사용자 몬스터 AI의 A* 연결과도 구분해 후속 작업으로 다룬다.

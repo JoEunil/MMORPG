@@ -16,13 +16,25 @@ public static class C20WorldMapExport
         if (authors.Length != 1) throw new InvalidOperationException("Exactly one fixed world map authoring root is required.");
         string directory = Path.GetFullPath(Path.Combine(Application.dataPath, "../../CoreLib/Generated"));
         BakeAndExport(authors[0], directory);
-        AssetDatabase.SaveAssetIfDirty(authors[0].map);
         Debug.Log("World navigation baked from explicit ground and solid objects; C++ snapshot exported. No A* or live server restart.");
+    }
+
+    public static void BakeAndExport(C20MapAuthoring author, string outputDirectory)
+    {
+        if (author == null || author.map == null)
+            throw new InvalidOperationException("A map authoring root and map are required.");
+        var scene = author.gameObject.scene;
+        if (!scene.IsValid() || !scene.isLoaded || string.IsNullOrEmpty(scene.path) || scene.isDirty)
+            throw new InvalidOperationException("Save the map authoring object's scene before exporting.");
+        if (!AssetDatabase.Contains(author.map) || string.IsNullOrEmpty(AssetDatabase.GetAssetPath(author.map)))
+            throw new InvalidOperationException("Save the navigation map as a project asset before exporting.");
+        BakeAndExportSnapshot(author, outputDirectory);
+        AssetDatabase.SaveAssetIfDirty(author.map);
     }
 
     // Preserve the user's previous baked array and dirty state if either step fails.
     // This is exception recovery, not a crash-atomic transaction across Unity and C++ files.
-    public static void BakeAndExport(C20MapAuthoring author, string outputDirectory)
+    internal static void BakeAndExportSnapshot(C20MapAuthoring author, string outputDirectory)
     {
         if (EditorApplication.isPlaying) throw new InvalidOperationException("Bake the map in Edit Mode.");
         if (author == null || author.map == null)
