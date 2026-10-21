@@ -1,3 +1,11 @@
+## 최신 — 고정 맵 지면 질감 로컬 반영 / 입력 보류
+
+codex/zone-spawn-authoring의 기존 AUTHOR01 미게시 묶음에 고정 지면 재질을 보완했다. 단색 Meadow 복제에 기존 LocalGroundGrain을 연결한 FixedGround 재질을 만들고 기존 NavigationGround의 재질 참조 한 곳만 바꿨다. 향후 생성 Setup도 같은 재질을 사용한다. 맵 크기·Collider·서버·통행 자산은 불변이다.
+
+석축 발치의 풀·잔돌 배치는 두 정적 비교에서 개선이 작아 반려했고 새 C23 스크립트·meta를 제품에서 제외했다. 지면 후보도 반복 도로 무늬는 반려하고 입자 질감만 채택했다. 독립 최종 P1/P2 없음, 컴파일 오류 0, 저장된 Scene의 분리 렌더가 채택 표본과 픽셀 동일함을 확인했다. 실제 플레이/입력 검증은 실행하지 않았다. 반복 질감과 자연스러운 지형 표현은 남아 있다. FIXED_GROUND_RESULTS.txt 참조.
+
+ROOT Scene은 전후 기존 block 1개(MeshRenderer 재질)만 달랐고 추가/삭제 0이었다. CAND의 이전 block 일치 후 해당 변경만 이식해 사용자 WIP를 보존했다. 실제 입력은 계속 보류한다. PR44 이동·전투·채팅 후보 b3b06ea와 혼합하지 않으며 AUTHOR01 사람 승인 원문 미확인으로 이 새 묶음은 push/PR 하지 않았다. 신규50/재활성화117/전체167, 토큰 N/A.
+
 ## 最新 — 맵 내보내기 실패 시 이전 격자 보존
 
 C20 BakeAndExport가 실제 walkable을 바꾼 뒤 출력에 실패하면 Unity만 새 격자로 남는 P2를 보완했다. Bake/Export 예외 시 이전 배열 참조와 원래 dirty 상태를 복구하며 성공 메뉴는 해당 map만 저장한다. 사용자 bounds/collider 편집은 되돌리지 않는다. C++ 출력 성공 후 자산 저장 실패/프로세스중단까지 두파일 원자성을 보장하는 변경은 아니다.
