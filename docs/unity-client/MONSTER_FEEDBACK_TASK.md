@@ -16,4 +16,12 @@
 
 phase0에서 빨간 원 윤곽을 표시하고 phase1/HP0/관측 제거·만료/Zone·모델 교체/disable/TTL에 정리한다. 원은 움직이는 몬스터 보간 위치를 따라가지 않고 서버 시전 좌표에 고정한다. 빌드 참조가 있는 전용 Material을 사용하고 runtime Shader.Find나 새 Material 생성은 하지 않는다. 기존 관측 source/generation 가드를 재사용한다.
 
+## 다음 — 근접 몬스터의 시전 시작 거리
+
+실제 원형 예고 관측에서 시전 중심과 대상의 거리가 약2.604로 반경2 밖이었다. 서버 분석 결과 추적 정지 반경3이 아니라 `UpdateMonster`의 int dx/dy 절삭 때문에 (1.682,1.987)이 (1,1)로 판정된 것이 원인이다. 실제 타격 때 정지 상태나 헛침 결과까지 관측한 것은 아니다.
+
+최소 수정은 종류0/1에서 선택 skill0만 기존 첫 Hit range.InRange를 시전 시작 조건으로 재사용한다. skill1의 반경8을 시작 거리로 확대하지 않고 보스의 기존 분기·delay·추적 속도·고정 시전 위치·피해 판정·프로토콜·DB를 유지한다. 소유는 candidate CoreLib/ZoneState_Monsters.cpp와 UnitTests/CoreLib/MonsterBehavior.cpp 두 파일뿐이다. 기존 native fixture 한 시나리오로 반경 밖2.604는 추적/경계2.0은시전,기존skill1·보스 동작 보존을 확인한다. 구현·독립 리뷰 뒤 직접 native만 실행하며, 실제 거리 관측은 다음 관련 실행 묶음에 합친다. 현재 이미 통과한 HP 강조·예고 입력은 반복하지 않는다. 이 후보가 완료됐다고 기록하거나 기존 서버를 미검증 빌드로 바로 교체하지 않는다.
+
 범위 확장 소유는 C04/C13/기존 관측 fixture와 C02SceneBuilder의 BindC04 참조 연결뿐이다. root만 새 Material/meta와 Scene 참조2개를 작성한다. 기능 실행은 두 변경을 모두 동결·독립 검토한 뒤 MonsterFeedback_ 시나리오2개와 한 실제 접속 배치로 끝낸다. 배치 중 Assets/Packages/ProjectSettings 쓰기를 중단한다. 실제 입력은 가까운 일반 몬스터에 X1회와 몬스터 phase0/1·HP 강조 관측만 수행하며 구매·다계정·이전 전체 회귀는 제외한다.
+
+근접 거리 후보는 독립 리뷰·서버 빌드·기존 native 1회 PASS까지 완료했다. 서버 배포/새 실입력은 미실행이며 상세는 MONSTER_MELEE_RESULTS.txt를 따른다.

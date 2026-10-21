@@ -142,7 +142,19 @@ namespace Core {
             int dy = target.y - monster.y;
             int dist2 = dx * dx + dy * dy;
 
-            if (dist2 <= 2 and monster.tick >= step.delayTicks)
+            bool inCastRange = dist2 <= 2;
+            if ((monster.data->id == 0 || monster.data->id == 1) && skill.skillID == 0)
+            {
+                const auto hitPhase = std::find_if(skill.phases.begin(), skill.phases.end(), [](const Data::SkillPhase& phase) {
+                    return phase.actionID == static_cast<uint8_t>(Data::SkillActionType::Hit);
+                });
+                if (hitPhase != skill.phases.end())
+                {
+                    inCastRange = hitPhase->range.InRange(monster.dir, monster.x, monster.y, target.x, target.y);
+                }
+            }
+
+            if (inCastRange and monster.tick >= step.delayTicks)
             {
                 m_cells[monster.cellY][monster.cellX].activeSkills.emplace_back(
                     1, 0, 0, monster.internalID, 0, monster.dir, monster.x, monster.y, skill.skillID, 0, 0

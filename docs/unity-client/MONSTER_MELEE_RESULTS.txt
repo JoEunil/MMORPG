@@ -1,0 +1,11 @@
+몬스터 근접 시전 거리 보정 — 2026-10-21
+
+원인: 실제 시전 중심/대상 차이 (1.682,1.987), 거리 약2.604인데 기존 int dx/dy는(1,1)로 절삭되어 반경2 밖에서 skill0을 시작했다.
+수정: 종류0/1 skill0만 첫 Hit phase의 기존 range.InRange를 재사용한다. Hit가 없는 구성은 기존 조건을 유지한다. 클라이언트 예고의 정확2phase 제한을 서버로 옮기지 않는다. skill1·보스·delay·속도·damage·wire·DB는 변경하지 않았다.
+독립 리뷰: monster_feedback_review의 서버2파일 정적 검토 P1/P2 없음. 실제 모델 설정 변경 없음.
+빌드: CoreLib/MainServer/UnitTests Release x64 성공. 후보 출력은 ROOT UnityClient/Builds/Monster-Melee/bin이며 실행 중 Line-Aim 서버 파일과 분리했다. 기존 변환·deprecated·SSE 경고를 남겼으며 경고0으로 주장하지 않는다.
+초기 준비 실패: SolutionDir 누락 헤더 오류, 잘못된 props import 이름으로 gtest 누락/PDB 오류, 슬래시 OutDir의 xcopy 대화 대기를 확인했다. 올바른 SolutionDir/ForceImportAfterCppTargets/Windows 경로로 수정. 대기에 걸린 이번 빌드 xcopy만 신원 확인 후 정리했고 서버 프로세스는 중단하지 않았다. 최초 로그는 같은 빌드 폴더에 보존한다.
+최소 native: MonsterBehaviorTest.AggroTicksAdvanceOnceAndClearOnTimeoutOrMissingTarget 1회/1 PASS, 0ms. 기존 fixture에 반경 밖 추적·반경2 경계 시전·skill1 기존 시전 조건을 추가하고 기존 보스 간격/aggro 단정은 보존했다. 테스트 기대를 완화하지 않았다.
+범위: 서버 새 후보 배포/실제 입력은 아직 미실행. 앞선 HP강조·원형예고 실입력 성공을 이 서버 수정 실입력으로 재분류하지 않는다. 전체 회귀·추가 로그인·DB 변경0.
+복구: 이 변경의 ZoneState_Monsters.cpp 범위 조건만 되돌리면 이전 정책이며 실행 중 이전 서버는 그대로 유지된다. 다음 관련 게임 입력 묶음에서 실제 시전 거리 관측을 합친다.
+원본 로그: ROOT UnityClient/Builds/Monster-Melee/{core,main,unit}-build.txt 및 native-result.txt.

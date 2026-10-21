@@ -1,3 +1,14 @@
+## 최신 — 몬스터 근접 시전 거리 후보 검증 완료
+
+종류0/1 skill0이 반경 밖에서 시전하던 int 거리 절삭을 첫 Hit 범위 재사용으로 보정했다. 정확2phase 제약은 서버에서 제거했고 Hit없는 구성·skill1·보스·delay/속도/DB/wire는 유지했다. 독립 리뷰 P1/P2없음, CoreLib/MainServer/UnitTests Release x64 빌드 성공, 기존 native 시나리오1개 확장/1회 PASS. 초기 빌드 경로·props·복사 대기 실패와 수정은 MONSTER_MELEE_RESULTS.txt에 보존했다. 실행 중 서버 교체·새실입력0이며 다음 관련 배치에 실제 거리 관측을 합친다.
+
+현재 사냥 화면/필드 후보와 한 브랜치로 모으며 UI PR42는 여전히 open/0376bb3이다. UI01 승인은 이미 게시1회 소비됐고 새 사냥/서버 게시에는 재사용하지 않는다. 새push/PR/병합0. 다음 미완료는 기존 보스 공격 예고의 실제 phase 계약 읽기이며 신규 기능·수치·프로토콜 변경을 전제하지 않는다. 전문 신규34/재활성화66/활성화100, 실제 토큰N/A.
+## UI01 승인 소비·PR42 게시 / 다음 서버 시전 거리 후보
+
+PR41 merged/default027764257acc6f4dbfd9a4d546e07a366b830dee 확인·fetchprune로원격head자동삭제확인. UI01 원문회신1792555509.126329를1회소비해codex/combat-ui-followup을master정상merge,동결605c2fb Assets/미디어/공개본문불변을대조한뒤일반push/PR42 https://github.com/JoEunil/MMORPG/pull/42 생성·채팅첨부. 최종head0376bb3,25files/필드아트·사냥피드백미포함. UI01중복소비금지/PR42병합·UI정식Pages배포0. UI게시용worktree는UnityClient/Builds/C10-Delivery/UI01-Delivery/source,현재ROOT실행프로젝트와분리. 새게임재시험0. 처음빈배열포장오판으로push보류뒤PR API가headinvalid422(생성0)를반환했고읽기확인후push성공시에만PR API를호출해최종PR1개를만들었다.
+
+새사냥화면후보d317658은현재field-readability-followup에보존,master도정상merge완료. 실제일반몹시전중심과대상거리2.60이반경2밖이던원인은서버int dx/dy절삭으로확인됨. 다음같은사냥묶음에서종류0/1·skill0만기존첫Hit의InRange를시전조건에재사용하는최소수정을구현중. skill1시전거리·보스·delay/속도·DB/wire는유지한다. 서버소유2파일은monster_hit_feedback,root원본서버쓰기0. 아직이서버수정빌드·native·배포·새입력은미실행. 전문신규34/재활성화63/97/tokenN/A.
+
 ## 현재 — 사냥 화면 묶음 실제 검증 완료
 
 CAND codex/field-readability-followup에서필드진입로후속에몬스터HP강조·일반/강한몹지원Circle예고를모았다. C04/C13/기존C04fixture/BindC04·Scene2refs·Material,서버변경0. 최종독립리뷰·compile0/MonsterFeedback_2개1batchPASS. 계정02한접속/방향키접근/X1회로동일몹11HP1500→500/금색HP바·.2초초록복원/서버고정중심반경2빨간원32점·phase1해제PASS. helper타입·로그인컴포넌트·정적PASS조건오류는제품변경없이같은접속에서보완했으며최초실패기록유지. MONSTER_FEEDBACK_RESULTS.txt참조.

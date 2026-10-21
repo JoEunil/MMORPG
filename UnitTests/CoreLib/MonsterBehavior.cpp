@@ -201,5 +201,61 @@ namespace Core {
         fixture.Update();
         EXPECT_EQ(fixture.MonsterAt(0).aggro, 0u);
         EXPECT_EQ(fixture.MonsterAt(0).aggroTick, 0u);
+
+        MonsterBehaviorFixture rangeFixture;
+        Data::MonsterData regularData(0, 100, 1, 30, 1.0f,
+            {{1.0f, 0, 2, {{0, 100}, {0, 100}}}}, {0});
+        MonsterState regular{};
+        regular.Initialize(0, 42, 50.0f, 50.0f, 2, 2);
+        regular.data = &regularData;
+        regular.hp = 100;
+        regular.aggro = 701;
+        regular.tick = 100;
+        rangeFixture.AddMonster(regular);
+        CharacterState justOutside{};
+        justOutside.zoneInternalID = 701;
+        justOutside.x = 51.682f;
+        justOutside.y = 51.987f;
+        rangeFixture.AddCharacter(justOutside);
+
+        rangeFixture.Update();
+        EXPECT_EQ(rangeFixture.ActiveSkillCount(), 0u);
+        EXPECT_FLOAT_EQ(rangeFixture.MonsterAt(0).x, 50.0f);
+        EXPECT_NEAR(rangeFixture.MonsterAt(0).y, 50.15f, 0.0001f);
+
+        CharacterState circleBoundary{};
+        circleBoundary.zoneInternalID = 702;
+        circleBoundary.x = 52.0f;
+        circleBoundary.y = rangeFixture.MonsterAt(0).y;
+        rangeFixture.AddCharacter(circleBoundary);
+        rangeFixture.MonsterAt(0).aggro = 702;
+        rangeFixture.MonsterAt(0).tick = 100;
+        rangeFixture.Update();
+        ASSERT_EQ(rangeFixture.ActiveSkillCount(), 1u);
+        const auto& skillZero = rangeFixture.CellAt(2, 2).activeSkills[0];
+        EXPECT_EQ(skillZero.skillId, 0u);
+        EXPECT_FLOAT_EQ(skillZero.x, rangeFixture.MonsterAt(0).x);
+        EXPECT_FLOAT_EQ(skillZero.y, rangeFixture.MonsterAt(0).y);
+
+        Data::MonsterData skillOneData(1, 100, 1, 30, 1.2f,
+            {{1.0f, 0, 2, {{1, 100}, {1, 100}}}}, {1});
+        MonsterState strongCaster{};
+        strongCaster.Initialize(1, 43, 60.0f, 60.0f, 2, 2);
+        strongCaster.data = &skillOneData;
+        strongCaster.hp = 100;
+        strongCaster.aggro = 703;
+        strongCaster.tick = 100;
+        rangeFixture.AddMonster(strongCaster);
+        CharacterState insideSkillOneRange{};
+        insideSkillOneRange.zoneInternalID = 703;
+        insideSkillOneRange.x = 61.682f;
+        insideSkillOneRange.y = 61.987f;
+        rangeFixture.AddCharacter(insideSkillOneRange);
+        rangeFixture.Update();
+        ASSERT_EQ(rangeFixture.ActiveSkillCount(), 2u);
+        const auto& skillOne = rangeFixture.CellAt(2, 2).activeSkills[1];
+        EXPECT_EQ(skillOne.skillId, 1u);
+        EXPECT_FLOAT_EQ(skillOne.x, 60.0f);
+        EXPECT_FLOAT_EQ(skillOne.y, 60.0f);
     }
 }
