@@ -1,3 +1,9 @@
+## 最新 — 맵 내보내기 실패 시 이전 격자 보존
+
+C20 BakeAndExport가 실제 walkable을 바꾼 뒤 출력에 실패하면 Unity만 새 격자로 남는 P2를 보완했다. Bake/Export 예외 시 이전 배열 참조와 원래 dirty 상태를 복구하며 성공 메뉴는 해당 map만 저장한다. 사용자 bounds/collider 편집은 되돌리지 않는다. C++ 출력 성공 후 자산 저장 실패/프로세스중단까지 두파일 원자성을 보장하는 변경은 아니다.
+
+독립 최종P1/P2없음/compile0/분리 EditMode 직접 assertion2개 한 배치PASS(정상벽1칸 배열·비트동일/readonly출력실패·기존clean/dirty배열보존). NUnit runner나 실제입력통과 아님. 실제map/export파일/서버변경0, Scene clean/Playfalse/inputfalse. NAVIGATION_EXPORT_RESULTS.txt 참조. zone_spawn_review 분석1·최종리뷰1 재활성화2 추가, 신규48/재활성화100/전체148/tokenN/A. AUTHOR01 미게시저작묶음에만모으며 PR43제품추가0/새push·PR0.
+
 ## 최신 — 실제 몬스터 3종 파츠 모션 자동 확인
 
 기존 C19 단일 PlayMode fixture를 플레이어·고블린·오크·골렘 실제 프리팹 4개로 확장했다. 각 모델의 실제 어깨/다리 파츠 연결, 보행·공격·피격과 actor root/HUD·범위선 부모 보존 및 pose reset을 확인했다. 제품 모션 코드는 변경하지 않았다. 최초 정적 리뷰에서 발견한 프레임 순서 문제를 실행 전 수정했고 최종 독립 P1/P2 없음, compile0, 자동1회1PASS(0.7306676s). 실제 입력·서버 접속/교체0이며 외관/실제 조작감은 미확인이다.

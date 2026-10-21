@@ -14,11 +14,34 @@ public static class C20WorldMapExport
         if (EditorApplication.isPlaying) throw new InvalidOperationException("Bake the map in Edit Mode.");
         var authors = UnityEngine.Object.FindObjectsByType<C20MapAuthoring>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         if (authors.Length != 1) throw new InvalidOperationException("Exactly one fixed world map authoring root is required.");
-        Bake(authors[0]);
         string directory = Path.GetFullPath(Path.Combine(Application.dataPath, "../../CoreLib/Generated"));
-        Export(authors[0].map, directory);
-        AssetDatabase.SaveAssets();
+        BakeAndExport(authors[0], directory);
+        AssetDatabase.SaveAssetIfDirty(authors[0].map);
         Debug.Log("World navigation baked from explicit ground and solid objects; C++ snapshot exported. No A* or live server restart.");
+    }
+
+    // Preserve the user's previous baked array and dirty state if either step fails.
+    // This is exception recovery, not a crash-atomic transaction across Unity and C++ files.
+    public static void BakeAndExport(C20MapAuthoring author, string outputDirectory)
+    {
+        if (EditorApplication.isPlaying) throw new InvalidOperationException("Bake the map in Edit Mode.");
+        if (author == null || author.map == null)
+            throw new InvalidOperationException("A map authoring root and map are required.");
+        var map = author.map;
+        byte[] previous = map.walkable;
+        bool wasDirty = EditorUtility.IsDirty(map);
+        try
+        {
+            Bake(author);
+            Export(map, outputDirectory);
+        }
+        catch
+        {
+            map.walkable = previous;
+            if (wasDirty) EditorUtility.SetDirty(map);
+            else EditorUtility.ClearDirty(map);
+            throw;
+        }
     }
 
     public static void Bake(C20MapAuthoring author)
@@ -100,6 +123,8 @@ public static class C20WorldMapExport
         text.Append("\n};\n");
         Directory.CreateDirectory(outputDirectory);
         string destination = Path.Combine(outputDirectory, "WorldMap.inc");
+        if (File.Exists(destination) && (File.GetAttributes(destination) & FileAttributes.ReadOnly) != 0)
+            throw new UnauthorizedAccessException("The navigation export is read-only; the previous snapshot was preserved.");
         string temporary = Path.Combine(outputDirectory, ".WorldMap-" + Guid.NewGuid().ToString("N") + ".tmp");
         try
         {
