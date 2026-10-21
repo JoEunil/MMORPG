@@ -5,6 +5,7 @@
 #include "ILogger.h"
 #include "PacketWriter.h"
 #include "StateManager.h"
+#include "WorldMap.h"
 
 namespace Core {
     // 틱마다 이동 예산을 보충한다. Move()가 이 예산에서 이동 거리를 차감하므로,
@@ -70,6 +71,11 @@ namespace Core {
                 m_cheatList.emplace_back(sessionID, 1);
             }
         }
+
+        // A blocked map step is normal input, not a cheat, and spends no movement budget.
+        // Check the budget-clamped segment, not just its endpoint (thin walls cannot be skipped).
+        if (!WorldMap::CanTraverse(character.x, character.y, x, y))
+            return;
 
         character.moveBudget -= dist;
         if (character.moveBudget < 0.0f)

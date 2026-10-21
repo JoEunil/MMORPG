@@ -1,5 +1,6 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "ZoneState.h"
+#include "WorldMap.h"
 #include "IPacket.h"
 #include "ILogger.h"
 #include "StateManager.h"
@@ -39,7 +40,8 @@ namespace Core {
             || m_generation == (std::numeric_limits<uint64_t>::max)()
             || !std::isfinite(state.x) || !std::isfinite(state.y)
             || state.x < m_area.x_min || state.x > m_area.x_max
-            || state.y < m_area.y_min || state.y > m_area.y_max)
+            || state.y < m_area.y_min || state.y > m_area.y_max
+            || !WorldMap::CanTraverse(state.x, state.y, state.x, state.y))
             return INVALID_ZONE_INTERNAL_ID;
         const uint32_t id = m_internalIdGenerator.load(std::memory_order_relaxed);
         if (id == INVALID_ZONE_INTERNAL_ID || id >= MAX_ZONE_INTERNAL_ID

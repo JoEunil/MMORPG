@@ -72,6 +72,9 @@
     <ClCompile Include="CoreLib\MonsterBehavior.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="CoreLib\WorldMap.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
     <ClCompile Include="BaseLib\DrainableSemaphore.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>

@@ -1,6 +1,7 @@
-﻿#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 
 #include <chrono>
+#include <cmath>
 #include <condition_variable>
 #include <cstring>
 #include <future>
@@ -23,6 +24,7 @@
 #include <CoreLib/PacketTypes.h>
 #include <CoreLib/StateManager.h>
 #include <CoreLib/ChatThreadPool.h>
+#include <CoreLib/WorldMap.h>
 #include <CacheLib/BazaarCancelResult.h>
 
 namespace Core {
@@ -320,13 +322,13 @@ namespace Core {
                 state->m_states.emplace(id, std::make_unique<ZoneState>(id));
         }
         bool LoadTransitionCharacter(uint64_t session = 42, uint16_t zone = 1,
-            float x = 100, float y = 50) {
+            float x = ZONE_SIZE, float y = ZONE_SIZE * 0.5f, int hp = 75) {
             state->BeginAuth(session);
             if (!state->CompleteAuth(session, 6982, true)) return false;
             CharacterState character{};
             character.sessionID = session;
             character.characterID = 5000 + session;
-            character.hp = 75;
+            character.hp = hp;
             character.mp = 61;
             character.lastZone = zone;
             character.x = x;
@@ -339,6 +341,10 @@ namespace Core {
             auto* z = state->GetZone(zone);
             std::lock_guard lock(z->m_mutex);
             return z->m_chars.at(z->m_sessionToIndex.at(session));
+        }
+        CharacterState CharacterInLobby(uint64_t session = 42) {
+            std::lock_guard lock(lobby.m_mutex);
+            return lobby.m_chars.at(session);
         }
         uint64_t Generation(uint16_t zone) {
             auto* z = state->GetZone(zone);
@@ -862,6 +868,47 @@ namespace Core {
         ASSERT_TRUE(state->ChangeZone(43, ZONE_CHANGE::ENTER, peer));
         EXPECT_GT(peer.generation, back.generation);
         EXPECT_EQ(Generation(1), 3);
+
+        // Expansion invalidates this old Zone 5 coordinate; entry alone may choose a safe point.
+        ASSERT_TRUE(LoadTransitionCharacter(44, 5, 131, 121, 0));
+        const auto saved = CharacterInLobby(44);
+        ZoneChangeResult relocated;
+        ASSERT_TRUE(state->ChangeZone(44, ZONE_CHANGE::ENTER, relocated));
+        EXPECT_EQ(relocated.zoneID, 5);
+        EXPECT_FLOAT_EQ(relocated.x, ZONE_SIZE + 10.0f);
+        EXPECT_FLOAT_EQ(relocated.y, ZONE_SIZE + 10.0f);
+        const auto migrated = CharacterIn(5, 44);
+        EXPECT_EQ(migrated.hp, 0); // Relocation is not recovery or resurrection.
+        EXPECT_EQ(migrated.mp, 61);
+        EXPECT_EQ(migrated.characterID, 5044u);
+        EXPECT_EQ(migrated.sessionID, 44u);
+        EXPECT_EQ(migrated.profileId, saved.profileId);
+        EXPECT_EQ(migrated.profileVersion, saved.profileVersion);
+        EXPECT_EQ(migrated.maxHp, saved.maxHp);
+        EXPECT_EQ(migrated.maxMp, saved.maxMp);
+        EXPECT_EQ(migrated.exp, saved.exp);
+        EXPECT_EQ(migrated.level, saved.level);
+        EXPECT_EQ(migrated.attack, saved.attack);
+        EXPECT_EQ(migrated.dir, saved.dir);
+        EXPECT_EQ(migrated.skillSlotCnt, 3);
+        ASSERT_EQ(migrated.skillSlot.size(), 3u);
+        EXPECT_EQ(migrated.skillSlot[0].skillID, 0);
+        EXPECT_EQ(migrated.skillSlot[0].skillCoolDownTick, 17);
+        EXPECT_EQ(migrated.skillSlot[1].skillID, 1);
+        EXPECT_EQ(migrated.skillSlot[1].skillCoolDownTick, 21);
+        EXPECT_EQ(migrated.skillSlot[2].skillID, 2);
+        EXPECT_EQ(migrated.skillSlot[2].skillCoolDownTick, 0);
+        EXPECT_TRUE(WorldMap::CanTraverse(migrated.x, migrated.y, migrated.x, migrated.y));
+        EXPECT_FALSE(HasLobbyCharacter(44));
+
+        // A blocked saved point inside a valid Zone uses the same entry-only policy.
+        const float blockedX = WorldMap::OriginX + 0.5f * WorldMap::TileSize;
+        const float blockedY = WorldMap::OriginY + 0.5f * WorldMap::TileSize;
+        ASSERT_FALSE(WorldMap::CanTraverse(blockedX, blockedY, blockedX, blockedY));
+        ASSERT_TRUE(LoadTransitionCharacter(45, 1, blockedX, blockedY));
+        ASSERT_TRUE(state->ChangeZone(45, ZONE_CHANGE::ENTER, relocated));
+        EXPECT_FLOAT_EQ(relocated.x, 10.0f);
+        EXPECT_FLOAT_EQ(relocated.y, 10.0f);
     }
 
     TEST_F(NonZoneThreadPoolFixture, ZoneTransferRejectsDistantNonFiniteAndRepeatedDirectionWithoutMutation) {
@@ -872,7 +919,7 @@ namespace Core {
         const auto original = CharacterIn(1);
         const std::pair<float, float> invalid[] = {
             {50, 50}, {std::numeric_limits<float>::quiet_NaN(), 50},
-            {std::numeric_limits<float>::infinity(), 50}, {100, -std::numeric_limits<float>::infinity()}
+            {std::numeric_limits<float>::infinity(), 50}, {ZONE_SIZE, -std::numeric_limits<float>::infinity()}
         };
         for (const auto& [x, y] : invalid) {
             SetPosition(1, x, y);
@@ -886,7 +933,7 @@ namespace Core {
             EXPECT_EQ(retained.skillSlot[0].skillCoolDownTick, 17);
             EXPECT_EQ(state->GetZoneID(42), 1);
         }
-        SetPosition(1, 100, 50);
+        SetPosition(1, ZONE_SIZE, ZONE_SIZE * 0.5f);
         ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::RIGHT, result));
         EXPECT_FALSE(state->ChangeZone(42, ZONE_CHANGE::RIGHT, result));
         EXPECT_EQ(state->GetZoneID(42), 2);
@@ -900,8 +947,8 @@ namespace Core {
         ASSERT_NE(state->GetZone(5), nullptr);
         ASSERT_NE(state->GetZone(6), nullptr);
         EXPECT_EQ(state->GetZone(7), nullptr);
-        ASSERT_TRUE(LoadTransitionCharacter(42, 3, 300, 100));
-        ASSERT_TRUE(LoadTransitionCharacter(43, 4, 100, 100));
+        ASSERT_TRUE(LoadTransitionCharacter(42, 3, ZONE_SIZE * 3 - 1.0f, ZONE_SIZE));
+        ASSERT_TRUE(LoadTransitionCharacter(43, 4, ZONE_SIZE, ZONE_SIZE));
         ZoneChangeResult result;
         ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, result));
         ASSERT_TRUE(state->ChangeZone(43, ZONE_CHANGE::ENTER, result));
@@ -922,7 +969,7 @@ namespace Core {
         ASSERT_TRUE(state->ChangeZone(43, ZONE_CHANGE::RIGHT, result));
         EXPECT_EQ(result.zoneID, 5);
         EXPECT_EQ(state->GetZoneID(43), 5);
-        SetPosition(5, 200, 100, 43); // Shared edge between Zones 5 and 6.
+        SetPosition(5, ZONE_SIZE * 2, ZONE_SIZE, 43); // Shared edge between Zones 5 and 6.
         ASSERT_TRUE(state->ChangeZone(43, ZONE_CHANGE::RIGHT, result));
         EXPECT_EQ(result.zoneID, 6);
         EXPECT_EQ(state->GetZoneID(43), 6);
@@ -959,16 +1006,32 @@ namespace Core {
 
     TEST_F(NonZoneThreadPoolFixture, FailedInitialAdmissionPreservesLobbyAndClosedSessionCannotEnter) {
         PrepareZones();
-        ASSERT_TRUE(LoadTransitionCharacter(42, 2, 50, 50)); // Outside saved Zone.
+        ASSERT_TRUE(LoadTransitionCharacter(43, 1, (std::numeric_limits<float>::quiet_NaN)(), 10));
+        ZoneChangeResult invalidResult;
+        EXPECT_FALSE(state->ChangeZone(43, ZONE_CHANGE::ENTER, invalidResult));
+        EXPECT_TRUE(HasLobbyCharacter(43));
+        EXPECT_TRUE(std::isnan(CharacterInLobby(43).x));
+        EXPECT_EQ(state->GetZoneID(43), 0);
+        ASSERT_TRUE(LoadTransitionCharacter(42, 2, 50, 50)); // Invalid saved coordinates can relocate.
+        const auto saved = CharacterInLobby();
+        ExhaustDestination(2, 0); // Capacity must still fail without consuming the lobby character.
         ZoneChangeResult result;
         EXPECT_FALSE(state->ChangeZone(42, ZONE_CHANGE::ENTER, result));
         EXPECT_TRUE(HasLobbyCharacter(42));
         EXPECT_EQ(state->GetZoneID(42), 0);
         EXPECT_EQ(Generation(2), 0);
+        const auto retained = CharacterInLobby();
+        EXPECT_FLOAT_EQ(retained.x, saved.x);
+        EXPECT_FLOAT_EQ(retained.y, saved.y);
+        EXPECT_EQ(retained.hp, saved.hp);
+        EXPECT_EQ(retained.mp, saved.mp);
+        EXPECT_EQ(retained.characterID, saved.characterID);
+        EXPECT_EQ(retained.lastZone, saved.lastZone);
+        EXPECT_EQ(retained.skillSlot[0].skillCoolDownTick, saved.skillSlot[0].skillCoolDownTick);
         state->Disconnect(42);
         EXPECT_FALSE(state->ChangeZone(42, ZONE_CHANGE::ENTER, result));
         EXPECT_FALSE(HasLobbyCharacter(42));
-        EXPECT_EQ(Characters(2), 0);
+        EXPECT_EQ(Characters(2), MAX_ZONE_CAPACITY);
     }
 
     TEST_F(NonZoneThreadPoolFixture, TransferRacingDisconnectOrCleanupLeavesNoCharacterOrSession) {

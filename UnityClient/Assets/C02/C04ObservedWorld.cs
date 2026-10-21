@@ -75,6 +75,7 @@ namespace C02
         {
             public FullStateField State;
             public GameObject Visual;
+            public C19ActorMotion ActorMotion;
             public double LastFullSeen;
             public MotionHistory Motion = new MotionHistory();
         }
@@ -84,6 +85,7 @@ namespace C02
             public MonsterFullField State;
             public GameObject Visual;
             public C13EntityVitals Vitals;
+            public C19ActorMotion ActorMotion;
             public LineRenderer RangePreview;
             public double RangeUntil;
             public LineRenderer BossFanPreviewFirst;
@@ -217,14 +219,20 @@ namespace C02
                 {
                     entry = new PlayerObservation { Visual = Instantiate(playerPrefab, displayRoot) };
                     entry.Visual.name = "ObservedPlayer " + state.zoneInternalID;
+                    entry.ActorMotion = entry.Visual.AddComponent<C19ActorMotion>();
+                    entry.ActorMotion.Configure();
+                    Face(entry.Visual, state.dir);
                     entry.Motion.Reset(now, state.x, state.y);
                     entry.Visual.transform.position = new Vector3(state.x, 0, state.y);
                     players.Add(state.zoneInternalID, entry);
                 }
-                else entry.Motion.Add(now, state.x, state.y);
+                else
+                {
+                    entry.Motion.Add(now, state.x, state.y);
+                    if (state.hp < entry.State.hp) entry.ActorMotion.PlayHit();
+                }
                 entry.State = state;
                 entry.LastFullSeen = now;
-                Face(entry.Visual, state.dir);
             }
         }
 
@@ -242,13 +250,20 @@ namespace C02
                 {
                     entry = new MonsterObservation { Visual = Instantiate(monsterPrefabs[state.monsterId], displayRoot) };
                     entry.Visual.name = "ObservedMonster " + state.internalId + " type " + state.monsterId;
+                    entry.ActorMotion = entry.Visual.AddComponent<C19ActorMotion>();
+                    entry.ActorMotion.Configure();
                     entry.Vitals = entry.Visual.AddComponent<C13EntityVitals>();
                     entry.Vitals.SetCamera(worldScreen.ViewCamera);
+                    Face(entry.Visual, state.dir);
                     entry.Motion.Reset(now, state.x, state.y);
                     entry.Visual.transform.position = new Vector3(state.x, 0, state.y);
                     monsters.Add(state.internalId, entry);
                 }
-                else entry.Motion.Add(now, state.x, state.y);
+                else
+                {
+                    entry.Motion.Add(now, state.x, state.y);
+                    if (state.hp < entry.State.hp) entry.ActorMotion.PlayHit();
+                }
                 entry.State = state;
                 entry.LastFullSeen = now;
                 entry.Vitals.SetHealth(state.hp, state.maxHp);
@@ -283,9 +298,9 @@ namespace C02
             {
                 if (pair.Value.invalid || !ValidPlayer(pair.Value.state)) continue;
                 var entry = players[pair.Key];
+                if (pair.Value.state.hp < entry.State.hp) entry.ActorMotion.PlayHit();
                 entry.Motion.Add(Time.realtimeSinceStartupAsDouble, pair.Value.state.x, pair.Value.state.y);
                 entry.State = pair.Value.state;
-                Face(entry.Visual, entry.State.dir);
             }
         }
 
@@ -330,9 +345,26 @@ namespace C02
                 entry.Motion.Add(Time.realtimeSinceStartupAsDouble, pair.Value.state.x, pair.Value.state.y);
                 entry.State = pair.Value.state;
                 entry.Vitals.SetHealth(entry.State.hp, entry.State.maxHp);
-                if (damaged) entry.Vitals.PulseDamage();
-                Face(entry.Visual, entry.State.dir);
+                if (damaged) { entry.Vitals.PulseDamage(); entry.ActorMotion.PlayHit(); }
             }
+        }
+
+        private void PresentActionMotion(ActionResultField result)
+        {
+            if (serverContent == null || result.dir > 3 || !Finite(result.x) || !Finite(result.y)) return;
+            if (result.casterType == 0 && (result.skillSlot > 2 || result.skillId != result.skillSlot) ||
+                result.casterType == 1 && result.skillSlot != 0) return;
+            var skill = result.skillId == 1 ? serverContent.ring : serverContent.otherSkills == null ? null :
+                Array.Find(serverContent.otherSkills, value => value != null && value.skillID == result.skillId);
+            if (skill == null || skill.skillID != result.skillId || skill.phases == null || result.skillPhase >= skill.phases.Length) return;
+            var phase = skill.phases[result.skillPhase];
+            if (phase == null || phase.action != C14SkillAction.Charging && phase.action != C14SkillAction.Hit) return;
+            bool released = phase.action == C14SkillAction.Hit;
+            if (result.casterType == 0 && players.TryGetValue(result.casterId, out var player) && player.State.hp > 0)
+                player.ActorMotion.PlayAttack(result.dir, released);
+            else if (result.casterType == 1 && result.casterId <= ushort.MaxValue &&
+                monsters.TryGetValue((ushort)result.casterId, out var monster) && monster.State.hp > 0)
+                monster.ActorMotion.PlayAttack(result.dir, released);
         }
 
         private void ApplyMonsterActionResults(ushort count, ActionResultField[] results)
@@ -341,6 +373,7 @@ namespace C02
             for (int i = 0; i < count; i++)
             {
                 var result = results[i];
+                PresentActionMotion(result);
                 if (result.casterType != 1 || result.casterId > ushort.MaxValue || result.skillSlot != 0 ||
                     result.dir > 3 || result.skillPhase > 9 || float.IsNaN(result.x) || float.IsInfinity(result.x) ||
                     float.IsNaN(result.y) || float.IsInfinity(result.y) ||
@@ -558,6 +591,7 @@ namespace C02
         private static bool ValidMonster(MonsterFullField state) => state.monsterId <= 2 && ValidState(state.x, state.y, state.dir, state.hp, state.maxHp);
         private static bool ValidState(float x, float y, byte direction, int hp, int maxHp) =>
             !float.IsNaN(x) && !float.IsInfinity(x) && !float.IsNaN(y) && !float.IsInfinity(y) && direction <= 3 && maxHp > 0 && hp >= 0 && hp <= maxHp;
+        private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
         private static float FloatBits(uint raw) => BitConverter.ToSingle(BitConverter.GetBytes(raw), 0);
         private static void Face(GameObject visual, byte direction) =>
             visual.transform.rotation = C02WorldScreen.ServerFacing(direction);

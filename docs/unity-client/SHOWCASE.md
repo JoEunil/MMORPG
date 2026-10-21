@@ -71,7 +71,7 @@ Unity 인벤토리·거래소 화면은 AI Agent 작업에서 추가했습니다
 - [전투와 상태 표시](portfolio/player-hud.md) — 스킬 시전과 서버 전투 결과, 캐릭터·몬스터 상태를 확인하는 화면.
 - [인벤토리](portfolio/inventory.md) — 아이템 그림·수량과 선택 상세를 보여주는 가방 화면.
 - [거래소](portfolio/market.md) — 매물 조회부터 구매·취소·수령까지 거래소의 화면 변화와 확인 범위.
-- [콘텐츠 편집](portfolio/server-content.md) — 스킬·몬스터 수치와 배치 데이터를 편집해 서버 콘텐츠로 내보내는 도구.
+- [콘텐츠 편집](portfolio/server-content.md) — 스킬·몬스터 설정과 맵의 통행·충돌 데이터를 Unity에서 편집해 서버로 내보내는 도구.
 
 ## 참고 링크
 

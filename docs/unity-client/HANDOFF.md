@@ -1,3 +1,11 @@
+## 최신 — 확대 맵·충돌 export·이동/모션 로컬 후보 / 입력 보류
+
+codex/world-motion-revision은 6f5cd00에서 분기한 로컬 후보이며 새 push/PR0이다. 600×400·Zone200·Cell42×5×5, Unity 고정 지면/벽18개에서 610×410 통행 격자를 생성했다. Unity/C++ 250100칸·차단2900 전체 일치, 최종 서버/단위검증 빌드 PASS·native4PASS·Unity 이동1PASS/모션1PASS·확대 경계 직접 assertion PASS·compile0·독립 최종 P1/P2없음. WORLD_MOTION_RESULTS.txt와 WORLD_MAP_HANDOFF.md 참조.
+
+사용자가 안전 지점 재배치를 선택했다. 초기 입장의 구역 밖/막힌 유한 좌표만 안전 지점으로 옮기고 정상 좌표·HP0·나머지 캐릭터 상태는 보존한다. NaN/무한은 거부하며 실패하면 로비 원본을 유지한다. 실시간 구역 전환 재배치·DB 직접 수정0. 사용자 A*를 대신 구현하지 않았고 Cell 간 몬스터 소속 갱신 주의점을 인계했다. 플레이어6unit/s·0.6단위 예측 한계·350ms 정체 정리와 정적 파츠 기반 보행/공격/피격을 연결했다. wire4방향은 유지하며 ACK 재연이나 신규 리깅 완료를 주장하지 않는다.
+
+Unity 입력은 사용자 지시로 계속 보류하고 새 로그인0/서버 재시작0/강제종료0이다. 기존 종료 도우미 정책 차단을 다른 경로로 우회하지 않는다. 최종 EditorPlayfalse/dirtyfalse/inputfalse/backgroundfalse. 큰 관련 PR 직전에 새 범위의 Unity Coordinator 앱 승인이 필요하며 HUNT01의 e16fcf4 동결 범위를 이 변경에 재사용하지 않는다. 현재 활성화 누적 신규43/재활성화85/전체128, 실제 토큰 N/A.
+
 ## 최신 — HP0 안내 로컬 구현 / 사용자 요청으로 입력 보류
 
 codex/hunting-flow-followup에서 C05 패배 안내/LOG OUT과 기존 fixture를 보완했다. 서버 회복/부활은 없고 기존 정상 연결 종료만 재사용한다. 최종 독립 P1/P2없음/compile0/영향 fixture1PASS. 첫 실행의 오래된 moveTarget 참조 NRE는 실패 로그 보존 후 visualPosition 예측정지 검증으로 수정했고 HP100 복원 assertion은 유지했다. DEFEATED_FLOW_RESULTS.txt 참조.

@@ -129,6 +129,12 @@
     <ClInclude Include="Cell.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="WorldMap.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="Generated\WorldMap.inc">
+      <Filter>Data</Filter>
+    </ClInclude>
     <ClInclude Include="LoggerGlobal.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>

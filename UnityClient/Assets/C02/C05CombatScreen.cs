@@ -303,6 +303,8 @@ namespace C02
                 if (result.casterType != 0 || result.casterId != ownId || result.casterId == 0 || result.dir > 3 ||
                     result.skillSlot > 2 || result.skillId != result.skillSlot || result.skillPhase > 1 ||
                     !Finite(result.x) || !Finite(result.y)) continue;
+                if (worldScreen.OwnFull.hp > 0)
+                    worldScreen.ActorMotion?.PlayAttack(result.dir, result.skillPhase != 0);
                 combatStatusText.text = SkillName(result.skillSlot) + (result.skillPhase == 0 ? " cast" : " released");
                 if (result.skillSlot == 2)
                 {

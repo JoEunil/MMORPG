@@ -109,7 +109,7 @@ namespace C02.Tests
         public void CandidatesStayWithinOneUnitAndZone_AndUseMovementDirections()
         {
             var origin = new Vector2(10, 10);
-            var targets = new[] { new Vector2(10, 105), new Vector2(10, -5), new Vector2(-5, 10), new Vector2(105, 10), new Vector2(100, 100) };
+            var targets = new[] { new Vector2(10, C20WorldMap.ZoneSize + 5), new Vector2(10, -5), new Vector2(-5, 10), new Vector2(C20WorldMap.ZoneSize + 5, 10), new Vector2(C20WorldMap.ZoneSize, C20WorldMap.ZoneSize) };
             var expected = new byte[] { 0, 1, 2, 3, 3 };
             for (int i = 0; i < targets.Length; i++)
             {
@@ -122,7 +122,7 @@ namespace C02.Tests
                 Assert.That(repeated[3], Is.EqualTo(args[3]), "No accumulated distance without a new server origin.");
             }
             Assert.That(Candidate(new object[] { (ushort)1, origin, origin, Vector2.zero, (byte)0 }), Is.False);
-            Assert.That(Candidate(new object[] { (ushort)1, origin, new Vector2(106, 10), Vector2.zero, (byte)0 }), Is.False);
+            Assert.That(Candidate(new object[] { (ushort)1, origin, new Vector2(C20WorldMap.ZoneSize + 6, 10), Vector2.zero, (byte)0 }), Is.False);
             Assert.That(Candidate(new object[] { (ushort)5, origin, targets[0], Vector2.zero, (byte)0 }), Is.False);
             Assert.That(Candidate(new object[] { (ushort)1, new Vector2(-6, 10), origin, Vector2.zero, (byte)0 }), Is.False);
             Assert.That(Candidate(new object[] { (ushort)1, origin, new Vector2(float.NaN, 10), Vector2.zero, (byte)0 }), Is.False);

@@ -173,6 +173,8 @@
     <ClInclude Include="SkillData.h" />
     <ClInclude Include="StateManager.h" />
     <ClInclude Include="Cell.h" />
+    <ClInclude Include="WorldMap.h" />
+    <ClInclude Include="Generated\WorldMap.inc" />
     <ClInclude Include="ZoneHandler.h" />
     <ClInclude Include="ZoneState.h" />
     <ClInclude Include="ZoneThreadSet.h" />

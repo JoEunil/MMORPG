@@ -1,3 +1,16 @@
+## 월드 격자·시각 이동·파츠 모션 — 2026-10-21
+
+| 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 확인한 결과 |
+| --- | --- | ---: | ---: | --- |
+| world_grid_contract | server_analyst / gpt-6.1-sol medium | 1 | 0 | Zone/Cell 경계·스폰·A* 연결 계약 분석 |
+| world_grid_server | worker / gpt-6.1-sol high | 1 | 1 | 통행 격자·서버 충돌·확대/안전 재배치와 기존 검증 보완 |
+| movement_reconciliation | worker / gpt-6.1-sol high | 1 | 0 | 누적 입력 목표·속도/정체 제한·서버 상태와 시각 위치 분리 |
+| actor_motion_inventory | asset_artist / gpt-6.1-sol medium | 1 | 1 | 실제 분절 모델 조사·보행/공격/피격 파츠 모션 |
+| world_grid_review | code_reviewer / gpt-6.1-sol medium | 1 | 2 | 지면 basis 검증 보완 후 최종 P1/P2 없음·250100칸 일치 |
+| movement_actor_review | code_reviewer / gpt-6.1-sol medium | 1 | 1 | 이동·모션·실제 Scene 참조 검토, 최종 P1/P2 없음 |
+
+이번 신규6/재활성화5/활성화11, 누적 신규43/재활성화85/활성화128. 실제 토큰은 도구에서 확인할 수 없어 N/A다. 고정 리뷰 역할의 설정은 medium이며 high로 변경됐다고 기록하지 않는다. Coordinator가 최종 서버/단위 빌드·native4PASS·이동/실제 모델 모션 각1PASS·확대 경계 직접 assertion·compile0을 확인했다. 실제 입력/새 서버 적용은 미실행이며 Coordinator 작업을 전문 역할 활성화로 중복 계산하지 않는다.
+
 ## HP0 이후 흐름 — 2026-10-21
 
 | 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 확인한 결과 |
