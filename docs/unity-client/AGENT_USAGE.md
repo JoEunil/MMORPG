@@ -1,3 +1,13 @@
+## 고정 필드 석축 외관 — 2026-10-21
+
+| 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 확인한 결과 |
+| --- | --- | ---: | ---: | --- |
+| fixed_wall_art_direction | asset_artist / gpt-6.1-sol medium | 1 | 1 | 실제 전후 이미지·기존 자산 검토, 평평한 석재 재사용 권장/정적 개선 채택/끝면 틈 잔여 |
+| fixed_wall_visuals | client_implementer / gpt-6-luna medium | 1 | 0 | 고정벽 외관만 바꾸는 Editor helper 구현, 기존 소스·재질 재사용 |
+| zone_spawn_review | code_reviewer / gpt-6.1-sol medium | 0 | 2 | 원래 collider 보존/자산 보호/멱등성 및 meta·Undo 보정 검토, 최종 차단 없음 |
+
+이번 신규2/재활성화3/활성화5, 누적 신규48/재활성화92/활성화140, 실제 토큰 N/A. Coordinator가 원본/후보 자산 대조·Editor 임포트/구조·전후 렌더/선별 Scene 동기화를 수행했으며 역할 호출로 중복 세지 않는다. meta EOF/Undo저장 문제와 첫capture차단을 숨기지 않고 결과문서에 기록했다. 실제 입력·서버 테스트는 미실행이다.
+
 ## 맵 통행 Inspector — 2026-10-21
 
 navigation_preview_editor(client_implementer/gpt-6-luna medium) 신규1: 기존 자산용 UI Toolkit Inspector와 제한된 통행 이미지·정보·정리 구현. zone_spawn_review(code_reviewer/gpt-6.1-sol medium) 재활성화1: 배열 방향/차단 축소/메모리/수명/자동저장 없음 검토, 최종 차단 없음. Coordinator가 좁은 창 폭과 재Bake 안내 문구를 보완했고 compile0/직접 Inspector2시나리오/실제 생성 이미지를 확인했다.

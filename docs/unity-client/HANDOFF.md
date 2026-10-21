@@ -1,4 +1,12 @@
-## 최신 — 맵·몬스터 배치 편집 로컬 후속 검증 완료
+## 최신 — 고정 벽 석축 외관 로컬 적용·정적 비교 완료
+
+codex/zone-spawn-authoring=16b5c50 위에서 C21FixedWallVisuals 도구·공유메시2개를 추가하고 기존벽18개의 MeshFilter/Renderer 참조36블록만 바꿨다. 기존 cuboid석재·WeatheredLimestone/FoundationStone을 재사용한5단엇갈림 석축이다. 원래 collider18개/transform/통행배열/서버불변을 확인했다. 1056정점×벽18·공유Mesh2개/재적용no-op PASS, compile0/독립최종차단없음. 동일카메라·조명의preview 전후를 아트담당이채택했으나 가까운끝면의어두운틈은 잔여문제로기록했다. 실제사냥/전체필드품질통과아님. FIXED_WALL_ART_RESULTS.md 참조.
+
+실제Editor가EOF개행없는새meta를거부한문제는GUID유지·LF추가로복구했고, Undo지연dirty는SaveScene전FlushUndoRecordObjects로보완했다. 다음프레임staticcapture와최종dirtyfalse확인. 원본Scene전후동일블록검사로후보에36참조만이식해ROOTWIP보존. 동기화도우미초안의반복파싱은중단후1회캐시검사로바꿔완료했고제품실패와구분한다.
+
+실입력보류/로그인0/서버재시작0/DB수정0/PR43추가push0. 실제PNG2장은내부evidence로보존하고국소에디터비교를대표게임캡처로사이트에내보내지않는다. 편집후속과같은큰관련PR로모은다. 에이전트 누적 신규48/재활성화92/전체140, 실제토큰N/A. EditorPlayfalse/dirtyfalse/inputfalse/backgroundfalse.
+
+## 이전 — 맵·몬스터 배치 편집 로컬 후속 검증 완료
 
 codex/zone-spawn-authoring의 구역별 배치 편집에 C20WorldMap 전용 UI Toolkit Inspector를 더했다. raw250100배열을 숨기고 저장 격자/통행·차단 합계/원점·상한미포함/방향을 표시한다. Preview는1024²로제한·장애물보수축소·좁은창100%폭max480·refresh/invalid/disable때임시Texture정리. 실제asset/Scene/mapexport/서버변경0이며 저장배열을 현재원점/치수로해석한그림이지 Scene과자동동기화된것이아님을명시했다.
 
