@@ -104,3 +104,7 @@ hero_surface_followup 최종: 씬/ObservedPlayer prefab 실제연결확인,추�
 다음 hunting_balance_plan(game_planner/gpt-6-luna medium) 신규1, 실제사냥근거에기초한단일후속카드저작. 신규22/재활성화52/74/tokenN/A. 독립로컬기획이며실제추가게임완료0.
 
 기획리뷰결과: X/C반복배치제안은이미검증한피해와겹쳐지금실행불수용. HUNTING_BALANCE_NEXT.md는실제후속변경시병합할관찰후보로격하. 수치/스폰임의조정0,추가로그인/테스트0. 기획산출물을제품완료로보고하지않음.
+
+## 스킬 아이콘 설명 — 구현·리뷰·최소실입력 완료
+
+skill_help_ui(client_implementer:gpt-6-luna/medium)신규1,skill_help_review(code_reviewer:gpt-6.1-sol/medium)신규1. 실제C14참조UI·fixture확장/한글glyph P2발견후영문교정/hover반복write정리,compile0·기존fixture1PASS·실제3hover/이탈/가방억제/ownCast0. 누적신규24/재활성화52/76,actualtokenN/A. 메신저중간상태조회는추가활성0. PLAY05승인으로기존전투후보만PR41게시했고새도움말은로컬후속묶음.

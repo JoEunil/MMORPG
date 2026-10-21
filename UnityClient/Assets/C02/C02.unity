@@ -203130,6 +203130,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 04582a513ddc46ffbd1558fac9d3305e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  serverContent: {fileID: 11400000, guid: e20a847d2d4fa094088b01f4c513165b, type: 2}
   loginScreen: {fileID: 944951139}
   worldScreen: {fileID: 1741877131}
   bazaarScreen: {fileID: 734912172}

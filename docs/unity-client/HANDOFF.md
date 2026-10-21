@@ -1,3 +1,10 @@
+## 최신 — PR41 게시 완료 / 스킬 도움말 후속 검증 완료
+
+UnityCoordinator봇정확스레드1792487679.299269의새회신1792553482.431239,지정사용자U0C9QEUHPMK원문승인PLAY05를auth.test/replies(has_morefalse)로확인하고1회소비. fetchprune/masterb99ae13포함·frozena7bbc1a불변·동일headopenPR0확인후codex/field-play-followup일반push/PR41 https://github.com/JoEunil/MMORPG/pull/41 생성·채팅첨부. HEAD a7bbc1a4deae7106ce61d10876aa954d80e9112d,13파일281+/11-. 새hoverUI미포함. 병합/Pages정식배포0. 중복회신재게시금지.
+
+후속codex/hunting-balance-followup에서C05스킬hover설명/C14asset연결+씬참조1행/C12재적용/기존fixture확장. 서버수치/DB변경0. 독립리뷰한글glyphP2를영문표현으로수정/반복hoverUIwrite정리,compile0/영향fixture1PASS. 실제접속1회/세hover·이탈숨김/가방열림억제/ownCast0확인,정상퇴장/Playfalse/dirtyfalse/runnerfalse/backgroundfalse/envnull복구. SKILL_HELP_TASK.md/RESULTS.txt참조. 실제캡처/웹기록추가,이후관련UI묶음으로모으며작은PR/새승인요청0. 기존PLAY05승인확대금지.
+
+개편계획의오래된실입력대기문구를검증된부분범위로교정. 전문신규24/재활성화52/76/tokenN/A. ROOT원본WIP/기존빌드·다른worktree보존. 입력중Assets쓰기0.
 ## 최신 — 전투 개선 PR 후보 고정 / 다음 사냥 구성 착수
 
 게시후보 codex/field-play-followup = a7bbc1a4deae7106ce61d10876aa954d80e9112d. native서버수직방향교정+본인서버시전12×3윤곽+영향회귀+실제C1회/대상HP-1000+공개화면을한전투묶음으로동결. UnityCoordinator앱U0C9ZRTQ6F8이정확parent1792487679.299269에요청1792553253.051229발송,응답명령승인PLAY05. 원문사람승인전push/PR0. 이전PLAY04재사용금지.
@@ -582,3 +589,5 @@ hunt_contract와hunt_batch_helper2명을병렬배정해읽기분석/Builds관측
 ## 후속 검토 정리 — 반복 전투 시험 미배정
 
 hunting_balance_plan 카드의X/C추가비교시험은이미확인한피해와중복되므로지금실행하지않는다. HUNTING_BALANCE_NEXT.md는향후실제스킬역할/배치변경시한배치에합칠관찰후보로한정했다. 표본없는밀도/스탯변경은보류,현재게임추가변경0. 플레이어재질도실제연결누락없어수정0. 완료채널C0CA7BSKN3B에앱요약1792553423.331299발송. PLAY05요청1792553253.051229는동결a7bbc1a전투후보에만적용하고후속기획branch는게시범위와분리한다. 다음작업선택시이카드를추가시험의무로해석하지말것.
+후속정리: 실제내용에맞춰로컬후속브랜치를codex/combat-ui-followup으로이름정리. 스킬도움말은최소검증·실제캡처·웹확인까지완료,관련UI추가분과함께큰다음PR로모은다. 승인된PR41은frozena7bbc1a만/스킬도움말미포함. 새브랜치push0.
+
