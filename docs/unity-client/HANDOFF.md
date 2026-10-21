@@ -1,3 +1,11 @@
+## 최신 — 주기 Full의 몬스터 루트 회전 보정
+
+원격 PR43 보정2f5a49bcbd351f6324037467902be6ba77a4cde1를 로컬 후속에 일반 merge했다. AUTHOR01 요청의 신규 기능·아트 후보 범위는 그대로이며 기준PR의보정만포함했다. 제품충돌0, 양쪽인계/사용량기록보존, 문서통합으로게임검증재실행없음.
+
+AUTHOR01 원문 사람 회신은 현재 확인되지 않아 후속 게시를 보류했다. 승인 대기와 독립적으로 기존 PR43 범위의 회전 스냅 경로를 보완했다. C04 monster Full만 매번 Face(root,dir)를 호출해 C19의 child 보간 회전을 꺾을 수 있어 마지막 중복 Face1줄을 제거했다. 최초 생성 Face·서버 상태dir·이동/공격 child 회전은 유지한다. 위치나 공격 없이 dir필드만 바뀌면 마지막 표시 방향을 유지하며 기존Delta와같은정책이다.
+
+기존 FullCreatesSeparateKinds fixture8줄확장·PlayMode자동1PASS(0.1194668s)/compile0·독립최종P1P2없음. 초기180도·dir3상태보존·root무회전·기존수명검증유지. 실제입력/로그인/서버변경0, 전체시각품질·실제끊김해결을주장하지않는다. PR43_REVIEW_RESULTS.txt 최신참조. zone_spawn_review 재활성화1추가, 누적 신규48/재활성화96/전체144/tokenN/A. 이 수정은WORLD02기존모션범위에만게시하며 AUTHOR01미승인새기능을섞지않는다.
+
 ## 최신 — 석축 끝면 보완·편집 후속 전달 정리
 
 제품 후보1e8a84d4504b86de3dcfe1538867a14848ef2c69 로컬보존/clean, 기존PR43 head28a122e 대비32파일/1226추가81삭제 후속묶음을 확인했다. AUTHOR01 push·후속PR 게시승인을 Unity Coordinator 앱으로 요청: reply1792567614.239479/등록parent1792487679.299269/지정사용자U0C9QEUHPMK. 승인전새push/PR0. 원문회신·중복소비확인후만진행한다. PR43 open이면 그 head브랜치를base로 후속diff만게시하고,이미병합됐으면최신master를일반merge해같은범위만남는지확인한다. 사용자병합검토를대행하지않는다. 실제입력은새게시승인으로재개하지않는다.
