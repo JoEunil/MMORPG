@@ -1,5 +1,9 @@
 # 에이전트 활용 기록
 
+## PR41 셰이더 포함 리뷰
+
+pr41_shader_review(code_reviewer/gpt-6.1-sol medium)신규1,설정1행·실제URP패키지GUID·런타임불변독립검토/P1P2없음. 누적신규30/재활성화56/활성화86,실제토큰N/A. Coordinator가저장설정재로딩참조1개와ShaderHasError=false를확인. 전체standalone빌드·실행성공으로표현하지않으며기존전투시험반복0.
+
 ## 필드 진입로 비교 — 로컬 채택
 
 field_route_art(asset_artist / gpt-6.1-sol medium) 신규1·재활성화2, entry_trail_review(code_reviewer / gpt-6.1-sol medium) 신규1·재활성화1. 누적 신규29·재활성화56·활성화85, 실제 토큰 N/A. 첫 후보는 코드 리뷰·컴파일을 통과했으나 에디터 화면의 딱딱한 경계 때문에 미채택하고 해당 실험만 복구했다. 두 번째 가장자리 완화 후보는 독립 최종 리뷰·compile0·같은 구도 정적 비교·중복/무변경 확인 후 소폭 보강으로 채택했다. 코드 통과와 시각 채택을 구분하며 신규 로그인·기능 테스트는 없다. ENTRY_TRAIL_RESULTS.txt 참조.

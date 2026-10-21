@@ -1,3 +1,11 @@
+## 최신 — PR41 셰이더 포함 수정·UI01 승인 확인
+
+사용자가 전달한 범위 표시 shader stripping P2를 검토해 실제 package URP17.0.4 Unlit.shader GUID650dd9526735d5b46b79224bc6e94025를 GraphicsSettings AlwaysIncluded에1행추가했다. 저장파일재로딩참조1개/목록8/ShaderErrorfalse/독립리뷰P1P2없음,다른설정불변. runtime/Scene/서버변경·새게임시험0. 전체standalone빌드·실행·용량은미검증. 기존PR41에ccff218일반push했고후속CAND정상merge로보존. 상세LINE_AIM_RESULTS.txt최신후속.
+
+UI01 지정사용자 회신1792555509.126329 원문 ‘승인 UI01’을 정확parent1792487679.299269/channelC0C9VFZMV43에서 봇auth.test·replies(has_morefalse)로확인했다. 아직게시소비하지않음: PR41현재open이므로기존서버변경중복을피해UI는로컬동결유지. 실제PR41병합/default포함뒤codex/combat-ui-followup을일반merge로갱신해UI01동결605c2fb범위만게시하며새아트0f44d8b는미포함. 앞선‘사람회신미확인’은이기록으로갱신한다. 봇인증첫시도ContentType누락은올바른JSON요청으로정정했고동일앱U0C9ZRTQ6F8/teamT0C9ECC3GS3를검증했다.
+
+전문pr41_shader_review(code_reviewer/gpt-6.1-sol medium)신규1추가,누적신규30/재활성화56/활성화86/tokenN/A. ROOTPlayfalse/dirtyfalse,기존서비스·WIP보존. 새PR/병합/정식배포0.
+
 ## 현재 — PR41 문서 리뷰 정정·필드 로컬 후보 보존
 
 사용자 전달 리뷰의 실입력 상태 지적은 타당했다. 별도 PR41-Review worktree에서 C05_CONTRACT.md 최신 설명만 실제 C1회/dir0/12×3/동일 대상HP1500→500 완료로 정정해 99c4379로 기존 PR41에 일반 push했다. 게임 코드·추가 테스트·새 PR·병합은 없다. 원격 분기0 확인 후 게시했으며 PR41는 open/head99c4379다. 동일 스레드 앱 요약1792555645.991909. 후속 CAND에도 일반 merge로 정정을 보존했다. UI01 제품 동결 범위는 그대로이며 PR41 병합 확인 때 이 문서 수정도 포함해 이력을 보존한다.
