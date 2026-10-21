@@ -1,4 +1,10 @@
-## 최신 — PR43 Full 스냅샷 피해 강조 리뷰 수정
+## 최신 — 맵·몬스터 배치 편집 로컬 후속 검증 완료
+
+codex/zone-spawn-authoring의 구역별 배치 편집에 C20WorldMap 전용 UI Toolkit Inspector를 더했다. raw250100배열을 숨기고 저장 격자/통행·차단 합계/원점·상한미포함/방향을 표시한다. Preview는1024²로제한·장애물보수축소·좁은창100%폭max480·refresh/invalid/disable때임시Texture정리. 실제asset/Scene/mapexport/서버변경0이며 저장배열을 현재원점/치수로해석한그림이지 Scene과자동동기화된것이아님을명시했다.
+
+독립 최종 차단 없음/compile0/직접 Inspector 검증2시나리오PASS. 실제610×410이미지와 차단2900, 작은비대칭패턴의좌표방향·큰맵축소/invalid/sprite수명/스타일속성 확인. 실제윈도우렌더·모바일 UI·게임입력검증과구분한다. NAVIGATION_EDITOR_RESULTS.txt 참조. 앞선 C15 native/서버/사냥 전체회귀는 반복하지 않았다. 기존 PR43은open/28a122e에서유지하고 후속 새push/PR0. 입력보류/새로그인0/서버교체0 유지. 에이전트 누적 신규46/재활성화89/전체135, tokenN/A.
+
+## 이전 — PR43 Full 스냅샷 피해 강조 리뷰 수정
 
 원격 PR43 head28a122e578f4927fef5fba3d0d96dcb8c19fe7d1 반영 확인. 로컬 후속으로 일반 merge하며 아래 구역별 배치 기록과 리뷰 기록을 모두 보존했다. 제품 파일 충돌/추가 수정 없음, 이미 통과한 검증은 반복하지 않는다.
 

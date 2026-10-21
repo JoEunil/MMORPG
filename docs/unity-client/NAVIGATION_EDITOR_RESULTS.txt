@@ -1,0 +1,22 @@
+2026-10-21 — 맵 통행 자산 Inspector
+
+범위: 신규 C20WorldMapInspector.cs/.meta, UI Toolkit. 기존 raw byte[] 대신 저장된 통행 격자 이미지.
+원점/타일/치수 편집 유지, 통행/차단 합계와 반개구간 경계·저장배열/reBake 안내.
+최대1024², 하나라도 막힌 타일이면 해당 축소픽셀은 차단색. 원본tile의 y-major = Texture아래에서위로Z.
+Style width100%, max480. texture HideAndDontSave/point/clamp, refresh/invalid/disable 정리.
+원점·치수 편집은 배열 해석을 바꾸므로 Scene geometry와맞춘뒤 기존메뉴로다시bake/export해야함.
+자동저장/자동Bake/경로탐색/새서버기능 없음.
+
+동결 후 검증: ROOT UnityClient/Builds/Navigation-Editor/preview-result.txt
+compile0, 독립 zone_spawn_review 최종 코드상 차단 없음.
+직접 Editor.CreateEditor/CreateInspectorGUI 두 시나리오 PASS, NUnit/실제 입력 아님.
+1. 실제 자산610x410/차단2900/상한605,405와 생성texture 확인, 작은2x2비대칭패턴 색 순서로 방향 확인.
+   이미지style의percent폭/max480 확인, disable시UnityTexture가파괴되는지 확인.
+2. 1025x2를513x1로축소해한칸장애물보존·마지막부분그룹유지, invalidbyte2/배열길이오류의이미지제거 확인.
+실제 저장격자의 Inspector texture를 stored-grid-preview.png로 보존하고 직접 시각 확인함.
+실제 Editor창의폰트/레이아웃·반응형실측·게임화면캡처 검증과는 구분.
+
+데이터/Scene/서버/wire/AI 변경0. 기존 C20자산 git diff0.
+실제입력0/로그인0/서버재시작0, 사용자입력보류유지. 앞서완료한C15/native/사냥검증재실행0.
+공개 원본에는 확인한 편집기 기능과 저장스냅샷 한계만 반영, 새 게임캡처나 실제난이도성공 주장0.
+다음 큰 관련 PR로 모으며 PR43에 새범위 push0.

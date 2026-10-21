@@ -1,3 +1,9 @@
+## 맵 통행 Inspector — 2026-10-21
+
+navigation_preview_editor(client_implementer/gpt-6-luna medium) 신규1: 기존 자산용 UI Toolkit Inspector와 제한된 통행 이미지·정보·정리 구현. zone_spawn_review(code_reviewer/gpt-6.1-sol medium) 재활성화1: 배열 방향/차단 축소/메모리/수명/자동저장 없음 검토, 최종 차단 없음. Coordinator가 좁은 창 폭과 재Bake 안내 문구를 보완했고 compile0/직접 Inspector2시나리오/실제 생성 이미지를 확인했다.
+
+누적 신규46/재활성화89/활성화135, 실제 토큰 N/A. 실제 Unity 입력·네트워크 플레이·실제 Inspector 창 렌더 검증은 실행하지 않았다. 로그는 NAVIGATION_EDITOR_RESULTS.txt.
+
 ## PR43 Full 피해 강조 리뷰 — 2026-10-21
 
 zone_spawn_review(code_reviewer/gpt-6.1-sol medium) 재활성화1회로 기존 monster Full의 피해 강조 누락과 최소 수정·확장 fixture를 독립 검토했다. 최종 코드상 차단 없음. Coordinator가 compile0/PlayMode 자동1PASS를 확인했고 최초 EditMode 호출의 Awake 미초기화 실패는 보존했다. 실제 입력0이다.

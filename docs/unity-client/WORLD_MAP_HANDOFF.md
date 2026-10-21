@@ -15,6 +15,8 @@ AOI용 Zone/Cell을 유지하고, 충돌·길찾기용 1단위 격자를 별도�
 3. `Content/C20WorldMap.asset`과 `CoreLib/Generated/WorldMap.inc`가 같은 통행 스냅샷을 담는다. 서버 출력은 임시 파일을 완전히 쓴 뒤 단일 atomic replace로 교체한다.
 4. 서버를 다시 빌드해야 적용된다. Scene 편집이나 export만으로 현재 서버가 바뀌지 않는다.
 
+통행 자산의 전용 Inspector는 원시 배열 대신 저장된 격자와 통행/차단 합계를 표시한다. 큰 맵은 최대1024²로 보수적 축소하므로 한 픽셀의 빨강이 그 안의 모든 타일 차단을 뜻하지는 않는다. 원점·치수 변경은 기존 바이트의 해석도 바꾸므로 지면과 맞춘 뒤 다시 bake/export한다. Inspector는 Scene 변경을 자동 bake하거나 서버에 전달하지 않는다.
+
 ## A*가 사용할 계약
 
 - 서버 `CoreLib/WorldMap.h`, namespace `Core::WorldMap`의 `OriginX/Y`, `TileSize`, `Width/Height`, `WalkableBits`를 사용한다. 배열은 y-major, bit=1이면 통행 가능이다.
