@@ -29,3 +29,10 @@
 - 공개 player-hud 상세/화면이력에 새 실제 시전 PNG 추가, 이전 사냥 이미지보존. 새push/PR0. 다음 대표화면 플레이어 재질 저작은 실제 입력 종료 뒤 착수.
 플레이어 재질 후속 조사 결과: hero_surface_followup이실제씬/ObservedPlayer prefab에서GuardSteel·WornSteelEdge·OiledLeather연결과기존albedo/Repeat2×2/기존재질값일치확인. 현재누락0이므로근거없는수치변경·에셋수정0. 미사용Steel.mat을수정해품질개선으로보고하지않음. 이번대표화면에실제보이는재질을기준으로추가개선지점만후속선택한다.
 공개생성/링크검사PASS,실제브라우저사냥상세화면이력에서새캡처와설명·이전사진보존확인. 로컬미리보기8790정상복구(외부공개0).
+2026-10-21 PR41 리뷰 후속 — 범위 표시 셰이더 빌드 포함
+- 지적 타당: C05CombatScreen의 URP/Unlit 이름 검색만으로는 Player build 포함을 보장하지 않음. 기존 프로젝트의 Always Included 목록에도 없었음.
+- 최소 수정: ProjectSettings/GraphicsSettings.asset m_AlwaysIncludedShaders에 실제 URP17.0.4 Unlit.shader(GUID650dd9526735d5b46b79224bc6e94025/fileID4800000) 참조1행 추가. 이 행을 제거하면 원본 설정과 개행 정규화 후 완전히 일치. runtime 코드·12×3 범위·phase/TTL/정리·Scene·서버 변경0.
+- 확인: 실제 Editor 패키지 경로/GUID 일치, 저장된 설정을 별도로 재로딩해 참조1개/목록7→8 확인. shader supported=true/ShaderHasError=false. 독립 pr41_shader_review P1/P2없음. diffcheck PASS. 변경은 셰이더 포함 설정이므로 기존 전투·로그인·전체 회귀를 반복하지 않음.
+- 설정 저장 API가 메모리에만 반영돼 파일 대조에서 발견함. 원본 백업이 불변임을 확인하고 파일에 정확한 참조1행만 반영한 뒤 실제 저장 파일 재로딩으로 검증. 다른 미저장 에셋을 일괄 저장하지 않음.
+- 제한: 전체 standalone build·새 Player 실행·실제 빌드 크기 증가는 이번에 미검증. Editor 정상 렌더를 Player 실행 성공으로 보고하지 않음. Always Included는 해당 shader의 빌드 포함량을 늘릴 수 있으나 프로젝트의 다른 stripping 설정은 변경하지 않음.
+- Editor Playfalse/Scene dirtyfalse. 기존 ROOT WIP 보존. 사용자가 요청한 기존 PR41 리뷰 보완만 게시하며, 별도 UI01/필드 아트는 포함하지 않음.
