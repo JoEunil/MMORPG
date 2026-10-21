@@ -86,6 +86,10 @@ namespace C02
             public C13EntityVitals Vitals;
             public LineRenderer RangePreview;
             public double RangeUntil;
+            public LineRenderer BossFanPreviewFirst;
+            public double BossFanUntilFirst;
+            public LineRenderer BossFanPreviewSecond;
+            public double BossFanUntilSecond;
             public double LastFullSeen;
             public MotionHistory Motion = new MotionHistory();
         }
@@ -335,12 +339,81 @@ namespace C02
             {
                 var result = results[i];
                 if (result.casterType != 1 || result.casterId > ushort.MaxValue || result.skillSlot != 0 ||
-                    result.dir > 3 || result.skillPhase > 1 || float.IsNaN(result.x) || float.IsInfinity(result.x) ||
+                    result.dir > 3 || result.skillPhase > 3 || float.IsNaN(result.x) || float.IsInfinity(result.x) ||
                     float.IsNaN(result.y) || float.IsInfinity(result.y) ||
-                    !monsters.TryGetValue((ushort)result.casterId, out var entry) || entry.State.hp == 0 || entry.State.monsterId > 1 ||
-                    entry.State.monsterId == 0 && result.skillId != 0 || entry.State.monsterId == 1 && result.skillId > 1)
+                    !monsters.TryGetValue((ushort)result.casterId, out var entry) || entry.State.hp == 0)
                     continue;
 
+                if (entry.State.monsterId == 2)
+                {
+                    if (result.skillId != 3) continue;
+                    if (result.skillPhase == 1 || result.skillPhase == 3)
+                    {
+                        LineRenderer matchingPreview = result.skillPhase == 1 ? entry.BossFanPreviewFirst : entry.BossFanPreviewSecond;
+                        if (matchingPreview != null) matchingPreview.gameObject.SetActive(false);
+                        continue;
+                    }
+                    if (result.skillPhase != 0 && result.skillPhase != 2) continue;
+                    if (serverContent == null || monsterRangeMaterial == null || serverContent.otherSkills == null) continue;
+                    C14ServerContent.RingSkill bossSkill = Array.Find(serverContent.otherSkills,
+                        candidate => candidate != null && candidate.skillID == 3);
+                    if (bossSkill == null || bossSkill.skillID != 3 || bossSkill.phases == null || bossSkill.phases.Length != 4 ||
+                        bossSkill.phases[0] == null || bossSkill.phases[0].action != C14SkillAction.Charging ||
+                        bossSkill.phases[1] == null || bossSkill.phases[1].action != C14SkillAction.Hit ||
+                        bossSkill.phases[2] == null || bossSkill.phases[2].action != C14SkillAction.Charging ||
+                        bossSkill.phases[3] == null || bossSkill.phases[3].action != C14SkillAction.Hit)
+                        continue;
+
+                    int hitIndex = result.skillPhase + 1;
+                    var bossHit = bossSkill.phases[hitIndex];
+                    C14SkillRange expectedRange = result.skillPhase == 0 ? C14SkillRange.Boss1_1 : C14SkillRange.Boss1_2;
+                    if (bossHit.range != expectedRange || float.IsNaN(bossHit.range1) || float.IsInfinity(bossHit.range1) ||
+                        bossHit.range1 <= 0 || bossHit.waitTicks == 0) continue;
+
+                    bool firstFan = result.skillPhase == 0;
+                    LineRenderer preview = firstFan ? entry.BossFanPreviewFirst : entry.BossFanPreviewSecond;
+                    if (preview == null)
+                    {
+                        var visual = new GameObject(firstFan ? "Boss Fan Preview First" : "Boss Fan Preview Second");
+                        visual.transform.SetParent(entry.Visual.transform, false);
+                        preview = visual.AddComponent<LineRenderer>();
+                        preview.sharedMaterial = monsterRangeMaterial;
+                        preview.useWorldSpace = true;
+                        preview.loop = true;
+                        preview.widthMultiplier = 0.1f;
+                        preview.startColor = preview.endColor = Color.red;
+                        if (firstFan) entry.BossFanPreviewFirst = preview;
+                        else entry.BossFanPreviewSecond = preview;
+                    }
+
+                    preview.positionCount = 36;
+                    preview.SetPosition(0, new Vector3(result.x, 0.055f, result.y));
+                    float sweepStep = result.skillPhase == 0 ? 7.5f : 3.75f;
+                    for (int point = 0; point <= 16; point++)
+                    {
+                        float firstAngle = result.skillPhase == 0 ? 30f + point * sweepStep : 330f + point * sweepStep;
+                        preview.SetPosition(point + 1, new Vector3(
+                            result.x + Mathf.Cos(firstAngle * Mathf.Deg2Rad) * bossHit.range1, 0.055f,
+                            result.y + Mathf.Sin(firstAngle * Mathf.Deg2Rad) * bossHit.range1));
+                    }
+                    preview.SetPosition(18, new Vector3(result.x, 0.055f, result.y));
+                    for (int point = 0; point <= 16; point++)
+                    {
+                        float secondAngle = result.skillPhase == 0 ? 210f + point * sweepStep : 150f + point * sweepStep;
+                        preview.SetPosition(point + 19, new Vector3(
+                            result.x + Mathf.Cos(secondAngle * Mathf.Deg2Rad) * bossHit.range1, 0.055f,
+                            result.y + Mathf.Sin(secondAngle * Mathf.Deg2Rad) * bossHit.range1));
+                    }
+                    preview.gameObject.SetActive(true);
+                    double deadline = Time.realtimeSinceStartupAsDouble + 0.05 * bossHit.waitTicks + 0.1;
+                    if (firstFan) entry.BossFanUntilFirst = deadline;
+                    else entry.BossFanUntilSecond = deadline;
+                    continue;
+                }
+
+                if (entry.State.monsterId > 1 || result.skillPhase > 1 ||
+                    entry.State.monsterId == 0 && result.skillId != 0 || entry.State.monsterId == 1 && result.skillId > 1)
+                    continue;
                 if (result.skillPhase == 1)
                 {
                     if (entry.RangePreview != null) entry.RangePreview.gameObject.SetActive(false);
@@ -413,6 +486,8 @@ namespace C02
             {
                 if (entry.Visual != null) entry.Visual.transform.position = entry.Motion.PositionAt(presentationTime);
                 if (entry.RangePreview != null && now >= entry.RangeUntil) entry.RangePreview.gameObject.SetActive(false);
+                if (entry.BossFanPreviewFirst != null && now >= entry.BossFanUntilFirst) entry.BossFanPreviewFirst.gameObject.SetActive(false);
+                if (entry.BossFanPreviewSecond != null && now >= entry.BossFanUntilSecond) entry.BossFanPreviewSecond.gameObject.SetActive(false);
             }
         }
 

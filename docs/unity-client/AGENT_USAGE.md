@@ -1,15 +1,15 @@
 # 에이전트 활용 기록
 
-## 사냥 화면 피드백 — 검증 완료, 다음 거리 계약 분석 중
+## 사냥 화면·근접 거리·보스 예고
 
 | 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 확인한 결과 |
 | --- | --- | ---: | ---: | --- |
 | combat_feedback_gap | server_analyst / gpt-6.1-sol medium | 1 | 3 | HP·일반몹 예고·시전 거리 원인 확인, 다음 기존 보스 범위 계약 읽기 |
-| monster_hit_feedback | client_implementer / gpt-6-luna medium | 1 | 3 | HP강조·Circle예고 완료, 서버 skill0 첫 Hit 범위 재사용 및 불필요한 phase 제약 제거 |
-| monster_feedback_review | code_reviewer / gpt-6.1-sol medium | 1 | 3 | 기존 화면 및 서버 시전 거리 2파일 독립 검토, P1/P2 없음 |
+| monster_hit_feedback | client_implementer / gpt-6-luna medium | 1 | 4 | HP·Circle 및 서버 근접 거리 후보 완료. 보스 예고 ROOT 오저작은 root가 후보 대조·복구 |
+| monster_feedback_review | code_reviewer / gpt-6.1-sol medium | 1 | 6 | 서버 거리 및 보스 경로 불일치 발견·이식본·fixture 순서 최종 검토, P1/P2 없음 |
 | monster_feedback_observer | unity_tester / gpt-6-luna medium | 1 | 1 | 관측helper준비·정적수정. 실행시타입·컴포넌트오류는root가같은접속에서보완 |
 
-누적신규34/재활성화66/활성화100,실제토큰N/A. root가최종compile0/자동2PASS·실제한접속X1회/동일대상HP강조복원·반경2예고와해제·정상종료·새PNG2장·웹생성/탐색을확인했다. helper코드준비를게임시험성공으로대신세지않으며,누적에는다음거리계약읽기1회와서버후보구현1회의재활성화가포함된다. MONSTER_FEEDBACK_RESULTS.txt참조.
+누적신규34/재활성화70/활성화104,실제토큰N/A. root가최종compile0/자동2PASS·실제한접속X1회/동일대상HP강조복원·반경2예고와해제·정상종료·새PNG2장·웹생성/탐색을확인했다. helper코드준비를게임시험성공으로대신세지않으며,누적에는다음거리계약읽기1회와서버후보구현1회의재활성화가포함된다. MONSTER_FEEDBACK_RESULTS.txt참조.
 
 ## PR41 셰이더 포함 리뷰
 

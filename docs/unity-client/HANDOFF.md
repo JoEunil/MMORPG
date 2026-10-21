@@ -1,3 +1,8 @@
+## 최신 — 보스 부채꼴 예고 후보 검증 완료
+
+기존 type2 skill3의 두 부채꼴을 월드 고정 중심/두 독립 renderer·TTL/대응 Hit 제거로 연결했다. 기존 C04 fixture1개 확장·1회 PASS(0.13초), compile0/독립 최종 P1P2없음. ROOT 오저작은 후보 불일치 리뷰가 발견했고 두 파일 diff·백업·정확 이식으로 복구했다. 지역변수 충돌과 fixture TTL 순서만 root가 보완, 최종ROOT/CAND바이트일치. 상세 BOSS_PREVIEW_RESULTS.txt. 서버 배포/새실입력·보스 공개 캡처는 미실행, 기존 일반몹 실입력과 구분한다.
+
+근접 거리 서버 수정은0fbb8fa 로컬 보존/빌드 및 native1PASS, 실행 중 Line-Aim 서버 유지. UI PR42 open/0376bb3, 새 게임 묶음 push/PR0. 전문 신규34/재활성화70/활성화104/tokenN/A. EditorPlayfalse/dirtyfalse/입력runnerfalse/backgroundfalse/envclear. 다음 입력 배치에 서버 시전 거리·보스 예고를 모으며 skill4 정사각 고리는 아직 미지원이다.
 ## 최신 — 몬스터 근접 시전 거리 후보 검증 완료
 
 종류0/1 skill0이 반경 밖에서 시전하던 int 거리 절삭을 첫 Hit 범위 재사용으로 보정했다. 정확2phase 제약은 서버에서 제거했고 Hit없는 구성·skill1·보스·delay/속도/DB/wire는 유지했다. 독립 리뷰 P1/P2없음, CoreLib/MainServer/UnitTests Release x64 빌드 성공, 기존 native 시나리오1개 확장/1회 PASS. 초기 빌드 경로·props·복사 대기 실패와 수정은 MONSTER_MELEE_RESULTS.txt에 보존했다. 실행 중 서버 교체·새실입력0이며 다음 관련 배치에 실제 거리 관측을 합친다.

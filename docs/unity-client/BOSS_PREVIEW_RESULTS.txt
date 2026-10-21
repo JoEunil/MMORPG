@@ -1,0 +1,9 @@
+보스 부채꼴 예고 — 2026-10-21
+
+범위: 보스 type2 skill3의 Charging0/2와 대응 Hit1/3만 표시한다. 실제 C14의 4phase action 구성 및 각 Hit range type/radius/waitTicks를 검증한다. 첫 두 부채꼴은30~150/210~330도, 다음은330~390/150~210도. 서버 atan2 월드X/Z 기준이며 dir과 미사용 range2로 회전/폭을 만들지 않는다. 고정 ActionResult x/y를 중심으로36점 LineRenderer 두 개를 따로 유지한다. 각 Hit/TTL은 대응 예고만 제거하며 skill4는 무시한다. 기존 Circle/HP 강조와 material 참조를 재사용하고 Scene/서버/DB/프로토콜 변경0.
+리뷰: 이름충돌 hit를 bossHit로 수정한 최종 제품과 fixture 순서 교정을 독립 검토, P1/P2 없음. 두 독립 구간은 서버가 다음 시전을 시작했을 때 이전의 다른 구간을 보존한다. castID가 없으므로 완전한 시전 식별/취소나 정밀 카운트다운을 주장하지 않는다.
+경로 복구: 구현자가 지정 CAND 대신 ROOT 두 파일에 작성해 최초 리뷰가 후보 불일치를 발견했다. root가 CAND HEAD 대비 no-index diff를 확인해 보스 관련130+/4-만 있음을 대조하고 양쪽 파일을 Builds/Boss-Preview/path-recovery에 백업 후 CAND로 이식했다. 타인 WIP 일괄 복사/되돌리기0. 최종 테스트/후보 두 파일 SHA256 일치.
+검증 보존: 보스 TTL용 미래 Render가 기존 Circle/HP0 단정의 활성 전제를 약화시키지 않도록 그 기존 검사 뒤로 이동했다. 모델 교체 전 보스 예고 활성/교체 후 제거를 추가했다. 기존 assertion 완화/삭제0.
+최소 자동: 최종 Unity compile 오류0/경고0. 기존 MonsterFeedback_ActionResultShowsSupportedServerRingsAndExpiresWithObservation 한 개만 확장·1회 실행, 1PASS/0FAIL, 전체0.13초/해당0.1008052초. 최초 실패 테스트0. 원본 상태 파일은 ROOT Builds/Boss-Preview/automatic-original.txt.
+실제 화면: 보스 예고/근접 거리 새 후보 서버 배포·실입력은 아직 미실행. 일반몹 HP·Circle의 이전 실제 입력 성공을 새 보스 성공으로 재분류하지 않았다. 공개 새 보스 캡처/웹 갱신0이며 실화면 확인 후 반영한다. skill4 정사각 고리는 여전히 미지원.
+종료: Playfalse/dirtyfalse/C01EditorInputRun.Runningfalse/backgroundfalse/accountEnvCleartrue. 실행 중 서버 유지. 추가 로그인·전체 회귀0. 다음 서버 전환 관련 입력 배치에 거리·보스 예고 관측을 함께 모은다.
