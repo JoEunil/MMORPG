@@ -1,3 +1,9 @@
+## 스킬 예고·발동 pulse — 2026-10-21
+
+skill_feedback_fix(client_implementer/gpt-6-luna medium) 재활성화1: 예고/발동renderer분리·확장/가늘어짐·수명정리와기존fixture보완. zone_spawn_review(code_reviewer/gpt-6.1-sol medium) 재활성화1: 독립최종P1/P2없음. Coordinator는동기화/compile0·최소1fixture1회PASS·분리정적미리보기의동시표시를확인했다. 실입력0.
+
+신규50/재활성화109/활성화159, 실제tokenN/A. 정적sample를live시전성공/피해ACK로세지않는다.
+
 ## 스킬 쿨타임 가독성 후속 — 2026-10-21
 
 skill_feedback_fix(client_implementer/gpt-6-luna medium) 재활성화1: 기존이름/키를보존하는iconradial/시간·기존fixture확장. zone_spawn_review(code_reviewer/gpt-6.1-sol medium) 재활성화2: 제품/UI수명·전환보존검사읽기, 실패2회뒤유효Zone/Fullcount/완료사전조건독립확인. Coordinator가staticpreview겹침수정·테스트데이터좌표/개수수정과최종1PASS/compile0확인. 실제입력0.

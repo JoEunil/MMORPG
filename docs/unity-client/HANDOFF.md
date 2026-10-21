@@ -1,3 +1,11 @@
+## 最新 — 스킬 예고·발동 효과 분리와 pulse 검증 완료
+
+C05가예고/발동에같은linePreview를쓰던경로를분리했다. acceptedownphase1의별도renderer/Material/기본world정점/deadline으로.35초범위내확장(.2→1)·굵기감소(.22→.025)를표현한다. 다른스킬hit가Ccharging예고를덮지않고C자체phase1은예고를지운다. TTL·HP0·모델/Zone교체·disable/destroy정리독립. 기존particle에셋이생긴것은아니다.
+
+독립P1P2없음/compile0/기존C05fixture1개1회1PASS(.1762622s). ROOT2파일기준검사·백업후동기화, 새서버·입력0. 실제Guard/지면의분리previewScene에의도적으로두표본효과를렌더한PNG로동시표시확인, 실제접속/피해확정/움직이는외관검증아님. SKILL_RELEASE_RESULTS.txt 참조. FEEL01기존스킬효과범위로같은PR44에모으며별도PR/승인요청생성0.
+
+skill_feedback_fix재활성화1/zone_spawn_review재활성화1추가, 누적신규50/재활성화109/전체159/tokenN/A. 실제입력은계속보류하고AUTHOR01저작후보는별도보존한다.
+
 ## 최신 — 아이콘 쿨타임 표시 후속 검증 완료
 
 기존PR44동일쿨타임표시범위로 실제SkillIcon위radial/시간을추가하고이름·키를보존했다. staticpreview실제버튼클론에서숫자/키겹침을발견해하단45%/14px+outline으로보완했다. sample시간은미리보기입력값이며실제서버관측아님. sprite없는경우숫자만·raycastfalse·만료/교체/disable정리/재Enable중복없음. 신규Scene/Prefab/서버수정0.

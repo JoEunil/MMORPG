@@ -1,0 +1,12 @@
+2026-10-21 — Independent animated release pulse
+
+Cause: C05 ShowReleaseEffect reused linePreview, so a different own skill's Hit could replace a pending C charging outline. Existing release presentation was static.
+Change: dedicated release renderer/material/world-origin/base vertices/deadline. Only accepted own phase1 drives it; Circle/Rectangle authored bounds and server direction retained. During .35s, scale .2->1 and width .22->.025; no alpha-only fade dependence on opaque Unlit. Single latest-release visual reused; charging C preview remains independent. Its own C phase1 still removes that cast preview.
+HP0/client or zone change/disable/destroy clear both relevant channels. Preview and release TTL remain separate. Shader inclusion is unchanged from the already included URP Unlit reference. No new shader/material asset, Scene, prefab, server, A*, protocol, authority or skill rules.
+Independent zone_spawn_review: no P1/P2. Existing fixture moved old release assertions to dedicated renderer and added preservation of a concurrent C outline, circle start/mid expansion, narrowing, expiry and disable cleanup; previous cooldown/stale-session/zone assertions retained.
+Compile: completed, errors=[], compilationFailed=false.
+One frozen existing C05 AimTextUsesMovementDirections_AndPhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear run once: total1/passed1/failed0, .1762622s (total .22s).
+ROOT/CAND only two owned files synchronized after HEAD comparison, originals backed up under Builds/Play-Feedback. No full regression, socket/login, server replacement or Unity keyboard/mouse input.
+Static preview: isolated preview scene, actual Guard prefab + existing Meadow material + deliberately supplied Line charging and Ring hit sample at55% progress. Two renderers visible simultaneously. evidence/2026-10-21/skill-release-preview.png is a static test visualization, not live gameplay or damage confirmation. It verifies simultaneous appearance, not moving quality in a real fight. Still outline geometry, not a particle art asset.
+Real input remains on hold. Live effect timing/visibility alongside actual camera and server response remains for the held integrated batch.
+All follow-up work stays in existing FEEL01-approved PR44 skill feedback scope; separate AUTHOR01 candidate unchanged.

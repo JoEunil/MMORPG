@@ -276,21 +276,43 @@ namespace C02.Tests
                 Assert.That(preview.enabled, Is.True, "Monster actions do not replace the player's range preview.");
                 action.skillPhase = 1;
                 current(1, new[] { action });
-                Assert.That(preview.enabled, Is.True, "Release draws a separate short-lived bright effect after the range preview ends.");
-                Assert.That(preview.widthMultiplier, Is.EqualTo(0.22f));
-                Assert.That((Color32)preview.startColor, Is.EqualTo((Color32)new Color(1f, 0.92f, 0.52f, 1f)),
+                var releaseEffect = (LineRenderer)Get(f.Combat, "releaseEffect");
+                Assert.That(releaseEffect, Is.Not.SameAs(preview));
+                Assert.That(preview.enabled, Is.False, "The caster's own C release hides its range preview.");
+                Assert.That(releaseEffect.enabled && releaseEffect.positionCount == 4, Is.True,
+                    "The C release rectangle uses its dedicated renderer.");
+                Assert.That(releaseEffect.widthMultiplier, Is.EqualTo(0.22f).Within(0.002f));
+                Assert.That((Color32)releaseEffect.startColor, Is.EqualTo((Color32)new Color(1f, 0.92f, 0.52f, 1f)),
                     "LineRenderer stores its gradient as 8-bit colors.");
-                Assert.That((float)Get(f.Combat, "linePreviewDeadline") - Time.unscaledTime,
+                Assert.That((float)Get(f.Combat, "releaseEffectDeadline") - Time.unscaledTime,
                     Is.EqualTo(0.35f).Within(0.1f), "The hit effect has a shorter lifetime than the cast preview.");
                 Assert.That(((float[])Get(f.Combat, "cooldownDeadlines"))[2], Is.EqualTo(confirmedCooldown),
                     "The release phase does not restart the cooldown estimate.");
+                action.skillSlot = 2; action.skillId = 2; action.skillPhase = 0;
+                current(1, new[] { action });
+                Assert.That(preview.enabled && preview.positionCount == 4, Is.True);
+                var previewPoint = preview.GetPosition(0);
                 action.skillSlot = 1; action.skillId = 1; action.skillPhase = 1;
                 current(1, new[] { action });
                 Assert.That(f.Status.text, Is.EqualTo("Ring released"));
-                Assert.That(preview.positionCount, Is.EqualTo(32), "Ring release uses the authored circle outline.");
+                Assert.That(preview.enabled && preview.positionCount == 4 && preview.GetPosition(0) == previewPoint, Is.True,
+                    "Another skill's release leaves the C cast preview geometry untouched.");
+                Assert.That(releaseEffect.enabled && releaseEffect.positionCount == 32, Is.True,
+                    "Ring release uses a separate authored circle outline.");
+                Assert.That(Vector3.Distance(releaseEffect.GetPosition(0), (Vector3)Get(f.Combat, "releaseEffectOrigin")),
+                    Is.EqualTo(0.65f).Within(0.01f), "The pulse begins at one fifth of the authored radius.");
+                Set(f.Combat, "releaseEffectDeadline", Time.unscaledTime + 0.175f);
+                Invoke(f.Combat, "Update");
+                Assert.That(Vector3.Distance(releaseEffect.GetPosition(0), (Vector3)Get(f.Combat, "releaseEffectOrigin")),
+                    Is.EqualTo(1.95f).Within(0.03f), "The circle expands with its remaining lifetime.");
+                Assert.That(releaseEffect.widthMultiplier, Is.EqualTo(0.1225f).Within(0.003f),
+                    "The pulse line narrows as it expands.");
+                Set(f.Combat, "releaseEffectDeadline", Time.unscaledTime - 0.001f);
+                Invoke(f.Combat, "Update");
+                Assert.That(releaseEffect.enabled, Is.False, "The pulse renderer is disabled when its deadline expires.");
                 action.skillSlot = 2; action.skillId = 2; action.skillPhase = 0;
                 current(1, new[] { action });
-                Assert.That(preview.positionCount, Is.EqualTo(4), "Line cast restores its four-point range after a circle effect.");
+                Assert.That(preview.positionCount, Is.EqualTo(4), "Line cast retains its four-point range after a circle effect.");
                 ((float[])Get(f.Combat, "cooldownDeadlines"))[2] = Time.unscaledTime - 1f;
                 Invoke(f.Combat, "Update");
                 Assert.That(cooldownOverlay.gameObject.activeSelf, Is.False, "The radial overlay hides when its estimate expires.");
@@ -336,11 +358,16 @@ namespace C02.Tests
                     "Zone transfer preserves the current character's estimate without a new cast.");
                 Assert.That(cooldownOverlay.gameObject.activeSelf, Is.True, "A new zone shows the same character's remaining estimate again.");
                 active(1, new[] { action });
+                action.skillPhase = 1;
+                active(1, new[] { action });
+                var currentRelease = (LineRenderer)Get(f.Combat, "releaseEffect");
+                Assert.That(currentRelease.enabled, Is.True);
                 f.Data.UpdateAction(3, 10, 10, 1);
                 f.DisableCombat();
                 active(1, new[] { action });
                 Assert.That(f.Status.text, Is.Empty);
                 Assert.That(preview.enabled, Is.False);
+                Assert.That(currentRelease.enabled, Is.False, "Disabling combat clears the release pulse.");
                 Assert.That(cooldownOverlay.gameObject.activeSelf, Is.False, "Disabling combat hides its cooldown overlay.");
                 Assert.That(((IViewDataModel)f.Data).GetActionState().Item1, Is.False);
                 int iconChildren = f.Buttons[2].transform.Find("SkillIcon").childCount;

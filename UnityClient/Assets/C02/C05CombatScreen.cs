@@ -32,6 +32,11 @@ namespace C02
         private LineRenderer linePreview;
         private Material linePreviewMaterial;
         private float linePreviewDeadline;
+        private LineRenderer releaseEffect;
+        private Material releaseEffectMaterial;
+        private readonly Vector3[] releaseEffectBasePositions = new Vector3[32];
+        private Vector3 releaseEffectOrigin;
+        private float releaseEffectDeadline;
         private readonly float[] cooldownDeadlines = new float[3];
         private readonly GameObject[] cooldownOverlays = new GameObject[3];
         private GameObject skillTooltip;
@@ -47,6 +52,9 @@ namespace C02
         private const float LinePreviewLifetime = 2f;
         private const float ServerTickSeconds = 0.05f;
         private const float ReleaseEffectLifetime = 0.35f;
+        private const float ReleaseEffectStartScale = 0.2f;
+        private const float ReleaseEffectStartWidth = 0.22f;
+        private const float ReleaseEffectEndWidth = 0.025f;
 
         private bool WorldAvailable => worldScreen != null && worldScreen.isActiveAndEnabled &&
             worldScreen.Stage == C02Stage.InWorld && worldScreen.HasOwnFull;
@@ -76,6 +84,7 @@ namespace C02
         private void ChangeClient(IViewModelUI next)
         {
             HideLinePreview();
+            HideReleaseEffect();
             HideSkillTooltip();
             HideDefeatPanel();
             Unsubscribe();
@@ -133,6 +142,7 @@ namespace C02
                 if (state.hp == 0)
                 {
                     HideLinePreview();
+                    HideReleaseEffect();
                     HideSkillTooltip();
                     combatStatusText.text = string.Empty;
                     ShowDefeatPanel();
@@ -153,6 +163,7 @@ namespace C02
             else
             {
                 HideLinePreview();
+                HideReleaseEffect();
                 HideSkillTooltip();
                 HideDefeatPanel();
                 if (worldScreen.Stage != C02Stage.TransitionPending && worldScreen.Stage != C02Stage.WaitingForZone &&
@@ -178,6 +189,7 @@ namespace C02
         private void ResetObservation()
         {
             HideLinePreview();
+            HideReleaseEffect();
             HideSkillTooltip();
             HideDefeatPanel();
             Unsubscribe();
@@ -309,6 +321,7 @@ namespace C02
         {
             if (linePreview != null && linePreview.enabled && Time.unscaledTime >= linePreviewDeadline)
                 HideLinePreview();
+            UpdateReleaseEffect();
             UpdateSkillTooltip();
             UpdateCooldownOverlays();
             if (!InputAvailable() || Keyboard.current == null) return;
@@ -322,6 +335,7 @@ namespace C02
             if (!WorldAvailable || worldScreen.OwnFull.hp == 0)
             {
                 HideLinePreview();
+                HideReleaseEffect();
                 return;
             }
             if (results == null || count > results.Length) return;
@@ -416,31 +430,29 @@ namespace C02
                 phase.range != C14SkillRange.Circle && phase.range != C14SkillRange.Rectangle ||
                 !Finite(phase.range1) || phase.range1 <= 0 ||
                 phase.range == C14SkillRange.Rectangle && (!Finite(phase.range2) || phase.range2 <= 0)) return;
-            if (linePreview == null)
+            if (releaseEffect == null)
             {
                 var shader = Shader.Find("Universal Render Pipeline/Unlit");
                 if (shader == null) return;
-                var effectObject = new GameObject("C05 Skill Release Effect");
+                var effectObject = new GameObject("C05 Skill Release Pulse");
                 effectObject.transform.SetParent(worldScreen.transform, false);
-                linePreview = effectObject.AddComponent<LineRenderer>();
-                linePreviewMaterial = new Material(shader);
-                linePreview.sharedMaterial = linePreviewMaterial;
-                linePreview.useWorldSpace = true;
-                linePreview.loop = true;
+                releaseEffect = effectObject.AddComponent<LineRenderer>();
+                releaseEffectMaterial = new Material(shader) { color = new Color(1f, 0.92f, 0.52f, 1f) };
+                releaseEffect.sharedMaterial = releaseEffectMaterial;
+                releaseEffect.useWorldSpace = true;
+                releaseEffect.loop = true;
             }
 
-            linePreview.positionCount = phase.range == C14SkillRange.Circle ? 32 : 4;
-            linePreview.widthMultiplier = 0.22f;
-            linePreviewMaterial.color = new Color(1f, 0.92f, 0.52f, 1f);
-            linePreview.startColor = linePreview.endColor = linePreviewMaterial.color;
+            releaseEffect.positionCount = phase.range == C14SkillRange.Circle ? 32 : 4;
+            releaseEffect.startColor = releaseEffect.endColor = releaseEffectMaterial.color;
+            releaseEffectOrigin = new Vector3(result.x, 0.07f, result.y);
             if (phase.range == C14SkillRange.Circle)
             {
-                for (int point = 0; point < linePreview.positionCount; point++)
+                for (int point = 0; point < releaseEffect.positionCount; point++)
                 {
-                    float angle = Mathf.PI * 2f * point / linePreview.positionCount;
-                    linePreview.SetPosition(point, new Vector3(
-                        result.x + Mathf.Cos(angle) * phase.range1, 0.07f,
-                        result.y + Mathf.Sin(angle) * phase.range1));
+                    float angle = Mathf.PI * 2f * point / releaseEffect.positionCount;
+                    releaseEffectBasePositions[point] = releaseEffectOrigin + new Vector3(
+                        Mathf.Cos(angle) * phase.range1, 0, Mathf.Sin(angle) * phase.range1);
                 }
             }
             else
@@ -452,33 +464,56 @@ namespace C02
                 switch (result.dir)
                 {
                     case 0:
-                        linePreview.SetPosition(0, new Vector3(x - halfWidth, 0.07f, z));
-                        linePreview.SetPosition(1, new Vector3(x + halfWidth, 0.07f, z));
-                        linePreview.SetPosition(2, new Vector3(x + halfWidth, 0.07f, z + length));
-                        linePreview.SetPosition(3, new Vector3(x - halfWidth, 0.07f, z + length));
+                        releaseEffectBasePositions[0] = new Vector3(x - halfWidth, 0.07f, z);
+                        releaseEffectBasePositions[1] = new Vector3(x + halfWidth, 0.07f, z);
+                        releaseEffectBasePositions[2] = new Vector3(x + halfWidth, 0.07f, z + length);
+                        releaseEffectBasePositions[3] = new Vector3(x - halfWidth, 0.07f, z + length);
                         break;
                     case 1:
-                        linePreview.SetPosition(0, new Vector3(x - halfWidth, 0.07f, z));
-                        linePreview.SetPosition(1, new Vector3(x + halfWidth, 0.07f, z));
-                        linePreview.SetPosition(2, new Vector3(x + halfWidth, 0.07f, z - length));
-                        linePreview.SetPosition(3, new Vector3(x - halfWidth, 0.07f, z - length));
+                        releaseEffectBasePositions[0] = new Vector3(x - halfWidth, 0.07f, z);
+                        releaseEffectBasePositions[1] = new Vector3(x + halfWidth, 0.07f, z);
+                        releaseEffectBasePositions[2] = new Vector3(x + halfWidth, 0.07f, z - length);
+                        releaseEffectBasePositions[3] = new Vector3(x - halfWidth, 0.07f, z - length);
                         break;
                     case 2:
-                        linePreview.SetPosition(0, new Vector3(x, 0.07f, z - halfWidth));
-                        linePreview.SetPosition(1, new Vector3(x, 0.07f, z + halfWidth));
-                        linePreview.SetPosition(2, new Vector3(x - length, 0.07f, z + halfWidth));
-                        linePreview.SetPosition(3, new Vector3(x - length, 0.07f, z - halfWidth));
+                        releaseEffectBasePositions[0] = new Vector3(x, 0.07f, z - halfWidth);
+                        releaseEffectBasePositions[1] = new Vector3(x, 0.07f, z + halfWidth);
+                        releaseEffectBasePositions[2] = new Vector3(x - length, 0.07f, z + halfWidth);
+                        releaseEffectBasePositions[3] = new Vector3(x - length, 0.07f, z - halfWidth);
                         break;
                     default:
-                        linePreview.SetPosition(0, new Vector3(x, 0.07f, z - halfWidth));
-                        linePreview.SetPosition(1, new Vector3(x, 0.07f, z + halfWidth));
-                        linePreview.SetPosition(2, new Vector3(x + length, 0.07f, z + halfWidth));
-                        linePreview.SetPosition(3, new Vector3(x + length, 0.07f, z - halfWidth));
+                        releaseEffectBasePositions[0] = new Vector3(x, 0.07f, z - halfWidth);
+                        releaseEffectBasePositions[1] = new Vector3(x, 0.07f, z + halfWidth);
+                        releaseEffectBasePositions[2] = new Vector3(x + length, 0.07f, z + halfWidth);
+                        releaseEffectBasePositions[3] = new Vector3(x + length, 0.07f, z - halfWidth);
                         break;
                 }
             }
-            linePreview.enabled = true;
-            linePreviewDeadline = Time.unscaledTime + ReleaseEffectLifetime;
+            releaseEffect.enabled = true;
+            releaseEffectDeadline = Time.unscaledTime + ReleaseEffectLifetime;
+            UpdateReleaseEffect();
+        }
+
+        private void UpdateReleaseEffect()
+        {
+            if (releaseEffect == null || !releaseEffect.enabled) return;
+            float remaining = releaseEffectDeadline - Time.unscaledTime;
+            if (remaining <= 0)
+            {
+                HideReleaseEffect();
+                return;
+            }
+            float progress = Mathf.Clamp01(1f - remaining / ReleaseEffectLifetime);
+            float scale = Mathf.Lerp(ReleaseEffectStartScale, 1f, progress);
+            for (int i = 0; i < releaseEffect.positionCount; i++)
+                releaseEffect.SetPosition(i, releaseEffectOrigin + (releaseEffectBasePositions[i] - releaseEffectOrigin) * scale);
+            releaseEffect.widthMultiplier = Mathf.Lerp(ReleaseEffectStartWidth, ReleaseEffectEndWidth, progress);
+        }
+
+        private void HideReleaseEffect()
+        {
+            if (releaseEffect != null) releaseEffect.enabled = false;
+            releaseEffectDeadline = 0;
         }
 
         private bool TryGetSkill(int slot, out C14ServerContent.RingSkill skill)
@@ -700,6 +735,7 @@ namespace C02
         private void OnDisable()
         {
             HideLinePreview();
+            HideReleaseEffect();
             HideSkillTooltip();
             HideDefeatPanel();
             Array.Clear(cooldownDeadlines, 0, cooldownDeadlines.Length);
@@ -734,6 +770,7 @@ namespace C02
         private void OnDestroy()
         {
             HideLinePreview();
+            HideReleaseEffect();
             if (defeatPanel != null)
             {
                 if (Application.isPlaying) Destroy(defeatPanel);
@@ -758,6 +795,18 @@ namespace C02
                 if (Application.isPlaying) Destroy(linePreviewMaterial);
                 else DestroyImmediate(linePreviewMaterial);
                 linePreviewMaterial = null;
+            }
+            if (releaseEffect != null)
+            {
+                if (Application.isPlaying) Destroy(releaseEffect.gameObject);
+                else DestroyImmediate(releaseEffect.gameObject);
+                releaseEffect = null;
+            }
+            if (releaseEffectMaterial != null)
+            {
+                if (Application.isPlaying) Destroy(releaseEffectMaterial);
+                else DestroyImmediate(releaseEffectMaterial);
+                releaseEffectMaterial = null;
             }
         }
     }
