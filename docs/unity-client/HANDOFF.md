@@ -1,3 +1,9 @@
+## UI01 승인 소비·PR42 게시 완료
+
+지정사용자U0C9QEUHPMK의원문‘승인 UI01’ 회신1792555509.126329/parent1792487679.299269/channelC0C9VFZMV43를봇auth.test·전체replies로확인해1회소비했다. PR41 merged/default027764257acc6f4dbfd9a4d546e07a366b830dee 포함확인후동결605c2fb 제품·미디어·공개본문diff0을대조하고codex/combat-ui-followup에origin/master정상merge. 25files UI묶음만일반push/PR42 https://github.com/JoEunil/MMORPG/pull/42 생성·채팅첨부완료. 필드아트0f44d8b/사냥피드백d317658은미포함. 병합·새UI정식Pages배포0. 동일UI01회신재수신시재게시금지.
+
+새UI기능수정없어게임재시험0,웹생성·링크확인PASS. 첫중복확인명령의빈배열포장으로push가보류됐으나뒤PR호출이headinvalid422로실패했다(생성0). 실제빈목록·원격branch없음을읽어확인후의존실행guard를적용해정상push·PR1개만생성했다. 재시도결과를복수PR성공으로세지않는다.
+
 ## 게시 승인 대기 — UI01 큰 UI 묶음
 
 후보 codex/combat-ui-followup / 605c2fb44ea0d94131498221ab12fa114294af98. PR41후속diff는스킬설명+가방·거래소시각개선/최소검증/웹/실제캡처·기록을한묶음(25files404+/70-)으로고정. UnityCoordinator앱정확부모1792487679.299269에요청1792555155.564869,명령승인UI01발송. 완료채널요약1792555156.237329. 현재새push/PR0,사람회신미확인. PLAY05는이미PR41게시1회소비했으며재사용금지.
