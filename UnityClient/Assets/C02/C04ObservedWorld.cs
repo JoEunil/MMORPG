@@ -262,7 +262,11 @@ namespace C02
                 else
                 {
                     entry.Motion.Add(now, state.x, state.y);
-                    if (state.hp < entry.State.hp) entry.ActorMotion.PlayHit();
+                    if (state.hp < entry.State.hp)
+                    {
+                        entry.Vitals.PulseDamage();
+                        entry.ActorMotion.PlayHit();
+                    }
                 }
                 entry.State = state;
                 entry.LastFullSeen = now;

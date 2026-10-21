@@ -1,0 +1,20 @@
+2026-10-21 PR43 — Full snapshot 피해 강조 누락
+
+리뷰 discussion_r4333816125 검토: 타당함.
+ApplyMonsterFull 기존 entry에서 HP감소시 PlayHit만 호출, Delta는 PulseDamage도 호출.
+Full이 먼저 HP를 갱신하면 이후 동일HP Delta에서는 감소가 없어 금색 강조가 영구 누락되는 순서가 가능함.
+최소 수정: 기존 monster Full HP감소 분기에 PulseDamage 추가. 초기 생성·동일HP·증가·invalid/dead 경로는 그대로.
+
+검증
+기존 C04 damage feedback fixture 하나 확장, 독립 zone_spawn_review 최종 코드상 차단 없음.
+compile0. 최초 EditMode 직접호출은 Awake 초기화가 없어 C13EntityVitals.SetHealth NRE 실패.
+실패 로그 ROOT UnityClient/Builds/PR43-Review/full-damage-first-failure.txt 보존.
+올바른 PlayMode로 기존 fixture1개만 실행, 1PASS/0.1093939s (전체0.15s).
+근거 full-damage-playmode-result.txt. 초기Full 무강조/Full-first 감소의 HP비율·금색,
+만료 후 같은HP Delta/Full 무재발/HP증가 무반응 및 기존Delta·invalid·death·disable assertion 유지.
+ROOT/CAND 제품·fixture 동일. Unity 마우스/키보드 입력0·로그인0·서버변경0, 입력 보류 유지.
+새 테스트를 늘리거나 assertion을 약화하지 않았으며 전체 회귀는 재실행하지 않음.
+
+다음 구역별 배치 편집은 codex/zone-spawn-authoring=4f14839에 로컬 보존.
+후속 서버/단위 빌드·C15 assertion2·Inspector복제본 표시·기본100% native6구역 fixture1PASS,
+실제density/AI/aggro/A*/입력/서버교체 변경0. PR43에는 이 후속 범위를 섞지 않음.

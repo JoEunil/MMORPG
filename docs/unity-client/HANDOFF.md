@@ -1,4 +1,12 @@
-## 최신 — 확대 맵·충돌 export·이동/모션 로컬 후보 / 입력 보류
+## 최신 — PR43 Full 스냅샷 피해 강조 리뷰 수정
+
+WORLD02 지정 사용자 원문 승인1792564891.374529를 요청1792564212.382599/parent1792487679.299269와 대조해 소비했고 PR43 https://github.com/JoEunil/MMORPG/pull/43 으로 5fa1855를 게시했다. 새 기능 후속 codex/zone-spawn-authoring=4f14839는 별도 로컬 보존이며 PR43에 섞지 않는다.
+
+사용자 지적 discussion_r4333816125는 타당하다. Full이 HP 감소를 먼저 반영하면 다음 같은HP Delta는 감소가 아니어서 금색 피드백이 누락됐다. 기존 monster의 Full 감소 분기에만 PulseDamage를 추가하고 초기Full/동일HP/회복은 제외했다. 기존 fixture 하나를 확장해 Full-first 감소·중복 억제·기존delta/death/disable을 확인했다. 독립 최종 차단 없음/compile0/PlayMode 자동1PASS(0.1093939s), 실제 입력0/서버변경0. 최초 EditMode 직접 호출은 Awake 미실행 NRE라 실패 보존 후 올바른 PlayMode로 실행했다. 실제 입력 검증을 재개한 것이 아니다. PR43_REVIEW_RESULTS.txt 참조.
+
+활성화 추가: zone_spawn_review 재활성화1, 직전 로컬 후속 누적45/87에서 신규45/재활성화88/전체133, 실제 토큰 N/A. 다음 후속으로 돌아갈 때 PR43 수정 커밋을 일반 merge로 포함한다. 기존 승인 범위 내 리뷰 보정만 PR43에 push하며 새 기능 승인 요청은 만들지 않는다.
+
+## 이전 — 확대 맵·충돌 export·이동/모션 로컬 후보 / 입력 보류
 
 제품 후보 dba6bff8daa4ce8458be12afadecc86e15bf266a 로컬 보존, fetch 후 origin/master 대비 behind0/ahead14(기존 관련 사냥 커밋 포함), 작업 폴더 clean 확인. Unity Coordinator 앱이 WORLD02 전체 묶음 게시 승인을 기존 등록 스레드에 요청했다: reply1792564212.382599/parent1792487679.299269. HUNT01의 e16fcf4 단독 범위와 구분하고 WORLD02 지정 사용자 원문 승인·회신 중복 확인 전 push/PR0. 승인 대기는 게시에만 적용하며 사용자 보류 중인 실제 입력은 자동 재개하지 않는다.
 
