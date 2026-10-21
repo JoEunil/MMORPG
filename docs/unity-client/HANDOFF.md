@@ -1,3 +1,7 @@
+## 현재 재개 지점 — PR41와 전투 UI 로컬 후속
+
+PR41(전투방향/범위)은Slack PLAY05 지정회신1792553482.431239를1회소비해게시·채팅첨부완료. frozenhead a7bbc1a,origin/masterb99ae13포함,병합0. 추가승인없이같은PR을중복생성하지않는다.
+현재CAND branch codex/combat-ui-followup,스킬tooltip검증커밋fda711d72e347fec15dbfdc32ff2d7fd1e2b2ce2. 서버콘텐츠기반3스킬hover/이탈/가방억제/ownCast0 실제PASS·기존fixture1PASS·compile0·캡처/웹기록/독립리뷰한글P2교정완료. 이새UI는PR41에미포함·로컬보존,다음관련UI묶음과큰PR로모은다. 게시권한이확대된것은아니다. SKILL_HELP_RESULTS.txt참조. 실제배치종료/Playfalse/dirtyfalse/inputfalse/backgroundfalse/envnull,서비스정상유지. 전문신규24/재활성화52/76/tokenN/A. 원본ROOT미완변경보존.
 ## 최신 — PR41 게시 완료 / 스킬 도움말 후속 검증 완료
 
 UnityCoordinator봇정확스레드1792487679.299269의새회신1792553482.431239,지정사용자U0C9QEUHPMK원문승인PLAY05를auth.test/replies(has_morefalse)로확인하고1회소비. fetchprune/masterb99ae13포함·frozena7bbc1a불변·동일headopenPR0확인후codex/field-play-followup일반push/PR41 https://github.com/JoEunil/MMORPG/pull/41 생성·채팅첨부. HEAD a7bbc1a4deae7106ce61d10876aa954d80e9112d,13파일281+/11-. 새hoverUI미포함. 병합/Pages정식배포0. 중복회신재게시금지.
@@ -590,4 +594,3 @@ hunt_contract와hunt_batch_helper2명을병렬배정해읽기분석/Builds관측
 
 hunting_balance_plan 카드의X/C추가비교시험은이미확인한피해와중복되므로지금실행하지않는다. HUNTING_BALANCE_NEXT.md는향후실제스킬역할/배치변경시한배치에합칠관찰후보로한정했다. 표본없는밀도/스탯변경은보류,현재게임추가변경0. 플레이어재질도실제연결누락없어수정0. 완료채널C0CA7BSKN3B에앱요약1792553423.331299발송. PLAY05요청1792553253.051229는동결a7bbc1a전투후보에만적용하고후속기획branch는게시범위와분리한다. 다음작업선택시이카드를추가시험의무로해석하지말것.
 후속정리: 실제내용에맞춰로컬후속브랜치를codex/combat-ui-followup으로이름정리. 스킬도움말은최소검증·실제캡처·웹확인까지완료,관련UI추가분과함께큰다음PR로모은다. 승인된PR41은frozena7bbc1a만/스킬도움말미포함. 새브랜치push0.
-
