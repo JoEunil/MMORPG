@@ -1,3 +1,10 @@
+## 최신 — 직선 C 방향 수정 후보 / Windows보안창 실입력 차단
+
+PR40은merged확인/masterb99ae13정상병합. 후속field-play-followup에서 실제서버Rectangle0/1만이동규약에맞추고HUD0North/1South로교정. 독립리뷰완료/native네방향1PASS/HUD기존fixture1PASS/Unitycompile0/MainServer·UnitTests빌드성공. LINE_AIM_TASK.md/RESULTS.txt참조. 서버후보4892/9999ready,로그인35532/3000·DB/Redis정상,원본exe보존.
+
+실입력은Windows보안Node.js네트워크허용창에차단: 창미조작,첫Click포커스가드실패/성공로그인·C시전0. Playstop/dirtyfalse/inputRunningfalse/backgroundfalse/계정envnull복구. 사용자가직접보안창처리한뒤수직C1회·실제대상HP변화만최소배치재개. 자동시험으로실입력완료처리금지/보안권한변경·다른runtime우회금지. 새push·PR0,개별작은PR없음. 공개새성공화면없어기존사이트유지.
+
+전문신규18/재활성화52/70/tokenN/A. PR38/39/40원격자동삭제확인,local끝난3branch는master포함·고유0·사용worktree없음확인후안전삭제. 현재field-play-followup/root원본·다른checkout보존.
 ## 최신 — 사냥 실입력 묶음 PASS / 후속 큰 PR 후보 준비
 
 명시재개후 전용계정02 로그인1회·방향키접근·X2회로 몬스터10 HP1500→500(Full)→0(delta)/화면제거/본인EXP0→10을확인했다. 몬스터11부수피해는있고처치1마리다. 실제스크린샷2장·고블린재질구분확인,미세질감/오크실게임/레벨업·리스폰·재접속EXP영속성은미검증. 독립근거리뷰blocker0. 정상Disconnect→Modelnull→Playfalse/dirtyfalse/inputRunningfalse/backgroundfalse/계정선택envnull복구. HUNT_LIVE_RESULTS.txt참조. 관측helper의콜백타입/화면owner오류는Builds도우미에서수정했고게임코드우회0. 같은접속에서완료,기존회귀반복0.

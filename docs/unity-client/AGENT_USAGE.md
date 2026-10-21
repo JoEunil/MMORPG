@@ -85,3 +85,7 @@ monster_surface(asset_artist 지정 gpt-6.1-sol/medium) 신규1·재활성화1, 
 ## 사냥 실입력과 결과 문서
 
 hunt_contract(server_analyst)신규1/최종근거리뷰재활성화1, hunt_batch_helper(unity_tester)신규1, hunt_public_results(progress_documenter)신규1. 소유권분리/Editor입력root단독. 누적신규16/재활성화49/65회. 실제tokenN/A. 관측helper컴파일·owner참조는root보완후같은접속에서정상화,처치1·EXP증가근거독립확인.
+
+## 직선 스킬 방향 묶음 — 진행 중
+
+line_aim_contract(server_analyst)신규1/독립리뷰재활성화1, line_aim_implementation(client_implementer)신규1/test보완재활성화1, hunt_batch_helper(unity_tester)준비재활성화1. 누적신규18/재활성화52/70회,실제tokenN/A. root가잘못된테스트범위기대를실행전발견·수정요청. native1/HUD1통과,실제입력은Windows보안창차단으로미실행. 보안창대리조작0/사람직접처리필요.

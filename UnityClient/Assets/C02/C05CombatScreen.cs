@@ -174,8 +174,8 @@ namespace C02
             }
         }
 
-        // Rectangular skill semantics differ from movement's vertical directions on this server.
-        private static string LineDirection(byte dir) => dir == 0 ? "South" : dir == 1 ? "North" : dir == 2 ? "West" : "East";
+        // Matches movement: 0=North, 1=South, 2=West, 3=East.
+        private static string LineDirection(byte dir) => dir == 0 ? "North" : dir == 1 ? "South" : dir == 2 ? "West" : "East";
         private static string SkillName(byte slot) => slot == 0 ? "Strike" : slot == 1 ? "Ring" : "Line";
         private static float GaugeAmount(int current, int maximum) => maximum <= 0 ? 0 : Mathf.Clamp01((float)current / maximum);
         private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);

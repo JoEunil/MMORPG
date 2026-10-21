@@ -26,7 +26,7 @@ namespace C02.Tests
             tests.QueuedActionResultsCaptureSubscribers_AndDisposeSuppressesLateDelivery();
             tests.ActionResultWireIs21Bytes_AndMalformedCountsAreRejected();
             tests.OwnHpMpDeltaStopsPendingActionsAtZero_AndKeepsServerVitals();
-            tests.PhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear();
+            tests.AimTextUsesMovementDirections_AndPhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear();
             return "C05 detached fixtures: 7/7 passed; no Play, real input, socket, server cast, or live HP0.";
         }
 
@@ -195,10 +195,16 @@ namespace C02.Tests
         }
 
         [Test]
-        public void PhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear()
+        public void AimTextUsesMovementDirections_AndPhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear()
         {
             using (var f = new CombatFixture())
             {
+                var directions = new[] { "North", "South", "West", "East" };
+                for (byte dir = 0; dir < directions.Length; dir++)
+                {
+                    f.Full(dir);
+                    Assert.That(f.Aim.text, Does.EndWith("Line aim: " + directions[dir]));
+                }
                 var action = new ActionResultField { casterType = 0, casterId = 73, skillSlot = 2, skillId = 2, dir = 3, x = 10, y = 10, skillPhase = 1 };
                 var current = (Action<ushort, ActionResultField[]>)Get(f.Combat, "actionResults");
                 current(1, new[] { action });
@@ -235,7 +241,7 @@ namespace C02.Tests
             public readonly C05CombatScreen Combat;
             public readonly IViewDataUI Data;
             public readonly ViewModel Model;
-            public readonly TMP_Text Vitals, Status;
+            public readonly TMP_Text Vitals, Status, Aim;
             public readonly UnityEngine.UI.Button[] Buttons;
             public CombatFixture()
             {
@@ -251,7 +257,8 @@ namespace C02.Tests
                 foreach (var name in new[] { "ownCharacter", "fieldPlane", "quarterViewCamera" }) Set(World, name, Child(name).transform);
                 Set(Combat, "loginScreen", login); Set(Combat, "worldScreen", World);
                 Buttons = new[] { Button("strike"), Button("ring"), Button("line") }; Set(Combat, "skillButtons", Buttons);
-                Vitals = Text("vitals"); Status = Text("phase"); Set(Combat, "vitalsText", Vitals); Set(Combat, "combatStatusText", Status); Set(Combat, "aimText", Text("aim"));
+                Vitals = Text("vitals"); Status = Text("phase"); Aim = Text("aim");
+                Set(Combat, "vitalsText", Vitals); Set(Combat, "combatStatusText", Status); Set(Combat, "aimText", Aim);
                 Data = NewData(); Model = NewModel(Data, new QueuedDispatcher());
                 var initializer = new Initializer(); Set(initializer, "_viewModel", Model); Set(initializer, "_data", Data); Set(login, "client", initializer);
                 root.SetActive(true);
@@ -261,7 +268,7 @@ namespace C02.Tests
                 typeof(C02WorldScreen).GetProperty("Stage").GetSetMethod(true).Invoke(World, new object[] { C02Stage.Entering });
                 Invoke(World, "ZoneReceived", (ushort)1, 0UL, 73U, 10f, 10f); Full();
             }
-            public void Full() => Invoke(World, "FullReceived", (ushort)1, new[] { new FullStateField { zoneInternalID = 73, hp = 100, mp = 50, maxHp = 100, maxMp = 50, x = 10, y = 10, dir = 3 } });
+            public void Full(byte dir = 3) => Invoke(World, "FullReceived", (ushort)1, new[] { new FullStateField { zoneInternalID = 73, hp = 100, mp = 50, maxHp = 100, maxMp = 50, x = 10, y = 10, dir = dir } });
             public void Delta(params DeltaUpdateField[] updates) => Invoke(World, "DeltaReceived", (ushort)updates.Length, updates);
             private GameObject Child(string name) { var child = new GameObject(name, typeof(RectTransform)); child.transform.SetParent(root.transform); return child; }
             private TMP_Text Text(string name) => Child(name).AddComponent<TextMeshProUGUI>();

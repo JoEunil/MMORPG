@@ -1,0 +1,19 @@
+직선 스킬 방향 교정 후보 — 2026-10-21
+
+제품수정: 서버 CoreLib/SkillData_Range.cpp Rectangle의0/1 수직부호를movement규약0=+Y/1=-Y에일치. C05CombatScreen HUD0North/1South. 수평2/3·길이12·폭3·경계포함·피해·MP·쿨다운·packet/DB·몬스터데이터변경0. 범위프리뷰UI는현재없으며추가구현0.
+독립분석/리뷰 line_aim_contract: 원본2D·쿼터뷰·서버이동모두+Ydir0, 클라flip은실제facing변경이므로서버교정타당. 현재몬스터skill0/1/3/4에는Rectangle없어추가전체몬스터회귀0. 알려진test오류forward2를range12밖기대로쓴것은실행전정적리뷰로12.01에교정. 기존assert삭제·완화0.
+구현 line_aim_implementation, 수용후빌드/테스트root. ROOT C05소유2파일은HEAD본문동일확인·백업뒤동기화. Assets배치동안추가쓰기0.
+
+최소자동검증:
+- native SkillRange.RectangleUsesMovementDirectionsAndInclusiveBounds 1/1 PASS 0ms. 4방향각앞6/끝12/측면1.5경계hit,뒤/폭1.51/길이12.01reject.
+- Unity C05CombatTests.AimTextUsesMovementDirections_AndPhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear 기존시나리오에실제FullReceived→WorldChanged→HUD기대4개통합,1/1PASS .0754189s. 기존lifecycle/phasesassert보존. 새getter별도시험0/전체회귀0.
+- 명시Unitycompile0오류0경고. MainServer Release빌드0오류/225기존코드위치경고,UnitTests0오류/88경고. 원문Builds/Line-Aim/main-build.txt,unit-build.txt. 수정밖WAL/hiredis/NetTimer기존영역경고는범위밖리팩터링으로지우지않음.
+- candidateexeSHA174D68D6CB3F58A383B61F1B463E0840E5DE615597E755FFD5E83A6DEFB32030.
+
+실행환경: 재개시Unity/로그인/게임중지,DBMySQL84·Redis정상. 기존Unity정상open/PID35696/7800ready,기존login정상시작PID35532/3000Listen. native직접검증후새game후보4892/9999Listen·준비완료확인. 기존UI-Chat-Mapexe보존/강제종료·중복기동·직접DB쓰기0.
+실입력 BLOCKED: Node.js Windows보안공용/개인네트워크허용창이실제화면에나타남. securitypermissionUI조작금지로미조작. 로그인helper는첫Click의focus가드에서종료되어성공로그인/시전0. Playstop/계정선택envnull/backgroundfalse/inputRunningfalse/dirtyfalse복구. 실제C수직적중/HP감소는미실행이며자동PASS로대체하지않음. 사용자직접보안창처리필요. 이차단을다른Node/권한설정/자동클릭으로우회하지않음.
+
+전달: 코드후보로컬보존/새push·PR0. 서버패치중요변경이므로실제검증후관련묶음최종PR직전Slack승인유지. 공개사이트는실제새성공화면이없어기존사냥기록유지. 새자동성공이미지합성0.
+복구: 이로컬수정revert와보존된이전서버빌드의정상전환. 정상테스트서비스는실행상태유지하며강제종료하지않음.
+브랜치정리: PR40 merged/masterb99ae13확인및정상merge. 원격PR38/39/40작업branch자동삭제확인·fetchprune. 로컬3branch는master조상·checkoutworktree없음·고유미게시0확인후gitbranch-d안전정리. 활성root/다른worktree/기존미완변경보존.
+전문활용: 신규18/재활성화52/70회(이번line계약/구현각신규1+각리뷰·수정재활성화1,기존hunt_batch_helper준비재활성화1). actualtokenN/A. 도우미실행미확인과제품검증분리.
