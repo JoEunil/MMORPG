@@ -1,3 +1,10 @@
+## 게시 승인 대기 — UI01 큰 UI 묶음
+
+후보 codex/combat-ui-followup / 605c2fb44ea0d94131498221ab12fa114294af98. PR41후속diff는스킬설명+가방·거래소시각개선/최소검증/웹/실제캡처·기록을한묶음(25files404+/70-)으로고정. UnityCoordinator앱정확부모1792487679.299269에요청1792555155.564869,명령승인UI01발송. 완료채널요약1792555156.237329. 현재새push/PR0,사람회신미확인. PLAY05는이미PR41게시1회소비했으며재사용금지.
+
+게시전조건: 지정사용자UI01원문확인·중복회신ID검사와PR41실제병합/기본브랜치포함을모두확인한다. UI01이먼저와도PR41미병합이면새UI PR에기존서버변경을중복포함하지않고로컬보존. PR41병합뒤fetchprune/일반merge로이력보존하고605c2fb제품diff·검증대상불변을대조한뒤승인범위만일반push/큰PR1개생성·첨부. 동결이후문서상태갱신만으로재로그인/전체회귀하지않음. 새실질수정이있으면직접영향만검증. 자동원격브랜치삭제는PR41병합확인뒤에만정리하며현재openbranch삭제금지.
+
+EditorPlayfalse/dirtyfalse/inputfalse/backgroundfalse/envnull/기존서비스유지. 원본ROOT·기존Game미완변경보존. 전문신규27/재활성화53/80/tokenN/A. 관련완료캡처와실제웹미리보기는market/history 최신구간에서확인가능.
 ## 최신 — 스킬 설명·가방·거래소 UI 큰 묶음 검증 완료
 
 CAND codex/combat-ui-followup에서기존스킬tooltip에가방120×110카드/그림56·상세64/거래소행74·그림50/가격·상세글자/선택색복원을합쳤다. 서버·ClientCore·wire·DB변경0. C07/C09기존fixture각1개최종PASS/최종compile0/독립최종P1P2없음. 실제한접속I빈가방/B30개실매물조회/Listing54가격50선택·배타닫기확인,구매·취소·수령미실행. 초기아이콘이름겹침은같은접속runtimepivot(.5,.5)로정정·캡처하고정상종료후동일source/Setup/Scene에영구화. ITEM_VISUALS_TASK.md/RESULTS.txt참조. 아이템든실서버가방은여전히미확인.
