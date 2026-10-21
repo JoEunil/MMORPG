@@ -1,3 +1,15 @@
+## 현재 인계 — 사냥 화면 큰 묶음 로컬 완료 / 실제 입력은 수동 서버 종료 대기
+
+필드진입로0f44d8b + 일반몹 HP/Circle d317658 + 서버근접거리0fbb8fa + 보스부채꼴72dda0f 위에 skill4정사각고리를 구현했다. skill4는CAND절대경로 두파일만작성/ROOT최종baseline가드와백업뒤선별동기화. 최종독립P1P2없음/compile0/영향기존fixture1개1회PASS(0.13초),ROOT/CAND바이트일치. fixture 큐 검증P2는oldSource스냅샷·새모델선생성·pending1·교체후대상등록/Drain으로실제조건을복구했다. BOSS_PREVIEW_RESULTS.txt최신참조. 실제보스화면·새근접거리배포/입력은아직미실행.
+
+정상서버전환helper는WindowsPowerShell 실행정책 UnauthorizedAccess로로드차단/q0. 기존PID4892/start639281488935754256/Line-Aim서버9999listen유지·새Monster-Melee0 재확인. 실행정책변경/Bypass/다른종료경로/강제종료0. Slack앱1792559075.384329에사용자직접q정상종료요청. 읽기전용nativeexitobserver54393은5분TIMEOUT·종료완료/추가조작0. 이후사람종료회신이오면HANDOFF/실제process·포트·정상WAL종료로그와관찰기록을대조한다. nativeexit미확인은미확인으로유지하며,이미종료된서버를재종료하려고반복하지않는다. 정상종료조건확인뒤만검증된Monster-Melee/bin/MainServer.exe(SHA256D1304586478F8F583D091797D2942B0C3720AA53CD6F1C891D66DFAD420C6261)를시작하고보스·거리실입력을한접속에합친다. 현재테스트서버프로세스는원본유지,Login/DB/Redis조작0.
+
+UI PR42는open/0376bb3 별도유지. 새사냥묶음push/PR0/UI01재사용금지,큰관련PR로모은다. 실화면미확인보스는공개사이트성공으로추가하지않았다. 전문신규34/재활성화75/활성화109/tokenN/A. EditorPlayfalse/dirtyfalse/입력runnerfalse/backgroundfalse/envclear. 현재입력테스트의차단은미승인이아닌실제OS정책이며우회하지않는다.
+## 실제 서버 전환 차단 — WindowsPowerShell 실행 정책
+
+정상 전환 보조3파일은 독립 읽기 리뷰를 통과했으나 WindowsPowerShell이 quit-line-aim.ps1을 실행 정책 UnauthorizedAccess로 로드하지 않았다. q전송0/oldPID4892·start639281488935754256·9999listen유지/새Monster-Melee프로세스0을 실제 재확인했다. 실행정책변경·ExecutionPolicyBypass·대체 종료경로·강제종료0. UnityCoordinator앱Slack1792559075.384329에 사용자 직접 콘솔q정상종료 및 ‘서버 종료 완료’ 회신을 요청했다. 이것은 PR 승인 요청이 아니라 실제 OS차단에 필요한 수동 조치다.
+
+ROOT Builds/Monster-Melee/manual-stop-observation.txt에 입력 없는 nativeexit 관찰을 준비했고 호스트execsession54393은 최대5분 동안 동일프로세스 핸들만 기다린다. 종료가 확인되지 않으면 timeout으로 기록하고 어떤 프로세스 조작도 하지 않는다. 회신 수신 시 실제로그·종료코드·포트free를 대조한 뒤 검증된 후보를 시작한다. 현재 코드/배치 준비는 독립적으로 계속하며 skill4 정사각 고리 구현 담당을 CAND 절대경로 두파일에 배정했다. 전문 신규34/재활성화72/활성화106,tokenN/A(전환helper읽기리뷰1·skill4구현재활성화1추가).
 ## 최신 — 보스 부채꼴 예고 후보 검증 완료
 
 기존 type2 skill3의 두 부채꼴을 월드 고정 중심/두 독립 renderer·TTL/대응 Hit 제거로 연결했다. 기존 C04 fixture1개 확장·1회 PASS(0.13초), compile0/독립 최종 P1P2없음. ROOT 오저작은 후보 불일치 리뷰가 발견했고 두 파일 diff·백업·정확 이식으로 복구했다. 지역변수 충돌과 fixture TTL 순서만 root가 보완, 최종ROOT/CAND바이트일치. 상세 BOSS_PREVIEW_RESULTS.txt. 서버 배포/새실입력·보스 공개 캡처는 미실행, 기존 일반몹 실입력과 구분한다.

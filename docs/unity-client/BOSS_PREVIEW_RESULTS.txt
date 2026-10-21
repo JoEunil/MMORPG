@@ -1,3 +1,12 @@
+최신 — 정사각 고리 예고까지 후보 검증 완료
+
+skill4의10phase Charging/Hit×5를 추가했다. 각 pair에서 C14의 Boss2 range1/2를 변 길이로 해석해 바깥/안쪽4점윤곽을 별도로 표시하고 inner0은 생략한다. finite/0<=inner<outer/positivewaitTicks/실제phase구성을 검사한다. 단계별 고정ActionResult중심·독립TTL·대응Hit 제거, skill3와의 중첩을 유지한다. 서버/콘텐츠수치/Material/Scene 변경0.
+
+독립리뷰는 최종 P1/P2 없음. fixture의 중간 MonsterActions 및 NewModel 생성이 대기 큐를 소모하는 P2를 발견해 순서만 바꾸는 수정이 불충분함을 확인했다. 최종은 이전 NetworkModel 스냅샷→다음 모델 선생성→이전 source의 실제 ActionResultReceived 큐 등록/QueuedCount1→Bind→새 타깃 Full 설치→Drain 순서로 검증한다. 일반Circle 및 활성boss/square의 모델교체 정리 단정도 유지했다. 기대값 완화/삭제0.
+
+최종 compile 오류0/경고0. 기존 관측 시나리오1개만 확장·1회 실행/1PASS/0FAIL, 전체0.13초/해당0.0975366초. 원본ROOT Builds/Boss-Preview/square-compile.txt 및 square-automatic-original.txt. 최종ROOT/CAND 두파일 SHA256일치. 최종test후Assets추가변경0. 앞선skill3검증 이후 실제skill4제품변경이 생겨 영향시나리오1개만 재실행했으며 전체회귀/새로그인0.
+
+서버 전환은 WindowsPowerShell 실행정책이 정상종료helper로드를 막아 q전송0/새후보시작0/이전PID4892유지. 설정변경·우회·강제종료0, Slack1792559075.384329에 사용자 직접q정상종료 요청. 입력없는5분 exitobserver도timeout으로 끝났고 추가조작0. 실제 보스 두 공격 및 새거리 서버의 입력·캡처는 아직 미실행이며 기존일반몹 성공과 구분한다. 공개 보스캡처/웹본문추가0. 아래는skill3시점의이력이다.
 보스 부채꼴 예고 — 2026-10-21
 
 범위: 보스 type2 skill3의 Charging0/2와 대응 Hit1/3만 표시한다. 실제 C14의 4phase action 구성 및 각 Hit range type/radius/waitTicks를 검증한다. 첫 두 부채꼴은30~150/210~330도, 다음은330~390/150~210도. 서버 atan2 월드X/Z 기준이며 dir과 미사용 range2로 회전/폭을 만들지 않는다. 고정 ActionResult x/y를 중심으로36점 LineRenderer 두 개를 따로 유지한다. 각 Hit/TTL은 대응 예고만 제거하며 skill4는 무시한다. 기존 Circle/HP 강조와 material 참조를 재사용하고 Scene/서버/DB/프로토콜 변경0.

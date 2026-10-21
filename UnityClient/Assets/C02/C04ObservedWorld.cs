@@ -90,6 +90,9 @@ namespace C02
             public double BossFanUntilFirst;
             public LineRenderer BossFanPreviewSecond;
             public double BossFanUntilSecond;
+            public readonly LineRenderer[] BossSquareOuterPreviews = new LineRenderer[5];
+            public readonly LineRenderer[] BossSquareInnerPreviews = new LineRenderer[5];
+            public readonly double[] BossSquareUntil = new double[5];
             public double LastFullSeen;
             public MotionHistory Motion = new MotionHistory();
         }
@@ -339,13 +342,95 @@ namespace C02
             {
                 var result = results[i];
                 if (result.casterType != 1 || result.casterId > ushort.MaxValue || result.skillSlot != 0 ||
-                    result.dir > 3 || result.skillPhase > 3 || float.IsNaN(result.x) || float.IsInfinity(result.x) ||
+                    result.dir > 3 || result.skillPhase > 9 || float.IsNaN(result.x) || float.IsInfinity(result.x) ||
                     float.IsNaN(result.y) || float.IsInfinity(result.y) ||
                     !monsters.TryGetValue((ushort)result.casterId, out var entry) || entry.State.hp == 0)
                     continue;
 
                 if (entry.State.monsterId == 2)
                 {
+                    if (result.skillId == 4)
+                    {
+                        if (serverContent == null || serverContent.otherSkills == null) continue;
+                        C14ServerContent.RingSkill bossSquareSkill = Array.Find(serverContent.otherSkills,
+                            candidate => candidate != null && candidate.skillID == 4);
+                        if (bossSquareSkill == null || bossSquareSkill.skillID != 4 || bossSquareSkill.phases == null || bossSquareSkill.phases.Length != 10)
+                            continue;
+                        bool supportedPhases = true;
+                        for (int phaseIndex = 0; phaseIndex < bossSquareSkill.phases.Length; phaseIndex++)
+                        {
+                            var phase = bossSquareSkill.phases[phaseIndex];
+                            if (phase == null || phase.action != (phaseIndex % 2 == 0 ? C14SkillAction.Charging : C14SkillAction.Hit))
+                            {
+                                supportedPhases = false;
+                                break;
+                            }
+                        }
+                        if (!supportedPhases) continue;
+
+                        int pairIndex = result.skillPhase / 2;
+                        if ((result.skillPhase & 1) != 0)
+                        {
+                            if (entry.BossSquareOuterPreviews[pairIndex] != null)
+                                entry.BossSquareOuterPreviews[pairIndex].gameObject.SetActive(false);
+                            if (entry.BossSquareInnerPreviews[pairIndex] != null)
+                                entry.BossSquareInnerPreviews[pairIndex].gameObject.SetActive(false);
+                            continue;
+                        }
+                        if (monsterRangeMaterial == null) continue;
+
+                        var bossSquareHit = bossSquareSkill.phases[result.skillPhase + 1];
+                        if (bossSquareHit.range != C14SkillRange.Boss2 || float.IsNaN(bossSquareHit.range1) ||
+                            float.IsInfinity(bossSquareHit.range1) || float.IsNaN(bossSquareHit.range2) ||
+                            float.IsInfinity(bossSquareHit.range2) || bossSquareHit.range1 <= 0 ||
+                            bossSquareHit.range2 < 0 || bossSquareHit.range2 >= bossSquareHit.range1 || bossSquareHit.waitTicks == 0)
+                            continue;
+
+                        LineRenderer outer = entry.BossSquareOuterPreviews[pairIndex];
+                        if (outer == null)
+                        {
+                            var visual = new GameObject("Boss Square Outer Preview " + pairIndex);
+                            visual.transform.SetParent(entry.Visual.transform, false);
+                            outer = visual.AddComponent<LineRenderer>();
+                            outer.sharedMaterial = monsterRangeMaterial;
+                            outer.useWorldSpace = true;
+                            outer.loop = true;
+                            outer.positionCount = 4;
+                            outer.widthMultiplier = 0.1f;
+                            outer.startColor = outer.endColor = Color.red;
+                            entry.BossSquareOuterPreviews[pairIndex] = outer;
+                        }
+                        SetSquarePreview(outer, result.x, result.y, bossSquareHit.range1);
+                        outer.gameObject.SetActive(true);
+
+                        if (bossSquareHit.range2 > 0)
+                        {
+                            LineRenderer inner = entry.BossSquareInnerPreviews[pairIndex];
+                            if (inner == null)
+                            {
+                                var visual = new GameObject("Boss Square Inner Preview " + pairIndex);
+                                visual.transform.SetParent(entry.Visual.transform, false);
+                                inner = visual.AddComponent<LineRenderer>();
+                                inner.sharedMaterial = monsterRangeMaterial;
+                                inner.useWorldSpace = true;
+                                inner.loop = true;
+                                inner.positionCount = 4;
+                                inner.widthMultiplier = 0.1f;
+                                inner.startColor = inner.endColor = Color.red;
+                                entry.BossSquareInnerPreviews[pairIndex] = inner;
+                            }
+                            SetSquarePreview(inner, result.x, result.y, bossSquareHit.range2);
+                            inner.gameObject.SetActive(true);
+                        }
+                        else if (entry.BossSquareInnerPreviews[pairIndex] != null)
+                        {
+                            entry.BossSquareInnerPreviews[pairIndex].gameObject.SetActive(false);
+                        }
+
+                        entry.BossSquareUntil[pairIndex] = Time.realtimeSinceStartupAsDouble + 0.05 * bossSquareHit.waitTicks + 0.1;
+                        continue;
+                    }
+
                     if (result.skillId != 3) continue;
                     if (result.skillPhase == 1 || result.skillPhase == 3)
                     {
@@ -488,7 +573,24 @@ namespace C02
                 if (entry.RangePreview != null && now >= entry.RangeUntil) entry.RangePreview.gameObject.SetActive(false);
                 if (entry.BossFanPreviewFirst != null && now >= entry.BossFanUntilFirst) entry.BossFanPreviewFirst.gameObject.SetActive(false);
                 if (entry.BossFanPreviewSecond != null && now >= entry.BossFanUntilSecond) entry.BossFanPreviewSecond.gameObject.SetActive(false);
+                for (int pairIndex = 0; pairIndex < entry.BossSquareOuterPreviews.Length; pairIndex++)
+                {
+                    if (now < entry.BossSquareUntil[pairIndex]) continue;
+                    if (entry.BossSquareOuterPreviews[pairIndex] != null)
+                        entry.BossSquareOuterPreviews[pairIndex].gameObject.SetActive(false);
+                    if (entry.BossSquareInnerPreviews[pairIndex] != null)
+                        entry.BossSquareInnerPreviews[pairIndex].gameObject.SetActive(false);
+                }
             }
+        }
+
+        private static void SetSquarePreview(LineRenderer preview, float x, float y, float sideLength)
+        {
+            float halfLength = sideLength * 0.5f;
+            preview.SetPosition(0, new Vector3(x - halfLength, 0.055f, y - halfLength));
+            preview.SetPosition(1, new Vector3(x - halfLength, 0.055f, y + halfLength));
+            preview.SetPosition(2, new Vector3(x + halfLength, 0.055f, y + halfLength));
+            preview.SetPosition(3, new Vector3(x + halfLength, 0.055f, y - halfLength));
         }
 
         private void RemovePlayer(uint id)

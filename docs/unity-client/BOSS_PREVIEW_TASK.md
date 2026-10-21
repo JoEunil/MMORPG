@@ -9,3 +9,12 @@
 소유: 구현자는 CAND C04ObservedWorld.cs 및 기존 C04ObservationTests.cs만 수정한다. ROOT 동기화/Editor는 Coordinator만. Scene/Material/콘텐츠/서버/다른 파일은 변경하지 않는다. 다른 담당자 변경을 보존한다.
 
 최소검증: 동결·독립 리뷰 뒤 컴파일 및 기존 관측 fixture에 새 직접 시나리오1개만 추가해 두 모양의 좌표·방향무관·고정중심·중첩/대응 Hit·skill4무시·수명정리를 묶는다. 일반몹 자동2개/기존 로그인 회귀를 재실행하지 않는다. 실제 보스 화면은 다음 서버 교체 관련 입력 배치에 합치며 자동 성공으로 실제 화면 완료를 대신하지 않는다. 공개 사이트는 실제 캡처 확인 뒤 갱신한다.
+## 다음 — 기존 정사각 고리 공격
+
+skill4의 실제10phase Charging/Hit×5만 지원한다. phase0/2/4/6/8의 다음 Hit Boss2에서 range1=바깥 변 길이(5/10/15/20/25), range2=안쪽 제외 변 길이(0/5/10/15/20)를 읽는다. x/y 고정, dir 무관이며 halfLength±로 외곽/안쪽 사각 윤곽 두 개를 분리해 그린다. range2=0에는 안쪽 윤곽을 그리지 않는다(서버 정확 중심 제외를 별도 면적이나 피해로 주장하지 않음). finite·0<=inner<outer/positivewaitTicks 검증. 각 pair의 독립 renderer·deadline만 유지하며 해당 Hit는 그 pair만 정리한다. 기존skill3예고를 지우지 않는다. 미관측 단계는 타이머로 먼저 시작하지 않는다.
+
+구현 소유는 아래 CAND 절대경로 두 파일만이다. ROOT 동명 파일은 쓰기 금지이며 사용자가 가진 변경을 되돌리지 않는다.
+C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source/UnityClient/Assets/C02/C04ObservedWorld.cs
+C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source/UnityClient/Assets/Tests/C02/C04ObservationTests.cs
+
+기존 boss3 fields와 일반몹 로직의 범용 재구성은 하지 않는다. 필요한 square 단계별 상태만 추가하고 현재 material·관측 visual 수명을 재사용한다. 기존 직접 fixture1개를 확장해 0/1/4단계 사각 크기·고정 중심·dir무관·중첩·대응Hit/TTL/modelclear만 묶어 확인한다. source와 tests 모두 absolute경로로 읽고 저장한 뒤 CAND git diff에 자신의 변경이 있는지 확인한다. 실행은 동결·리뷰 후 root만 한다. 실제 서버 전환은 WindowsPowerShell 실행정책이 종료 도우미를 차단해 q가 전송되지 않았고 기존 서버를 유지했다. 실행 정책·다른 도우미 경로로 우회하지 않으며 Slack1792559075.384329에 수동 정상 종료 요청을 남겼다. 새 실제 입력은 아직 미실행이다.
