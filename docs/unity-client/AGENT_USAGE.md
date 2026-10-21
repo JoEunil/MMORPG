@@ -1,3 +1,13 @@
+## 이동·스킬·채팅 피드백 — 2026-10-21
+
+| 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 검증된 기여 |
+| --- | --- | ---: | ---: | --- |
+| skill_feedback_fix | client_implementer / gpt-6-luna medium | 1 | 2 | 발동 효과·쿨타임추정/기존fixture 확장, 원형뒤직선정점 복구·키배지보존 |
+| chat_focus_fix | client_implementer / gpt-6-luna medium | 1 | 0 | 채팅 자동navigation차단·성공send/Escape초점해제·기존fixture보완 |
+| zone_spawn_review | code_reviewer / gpt-6.1-sol medium | 0 | 2 | 독립제품/테스트리뷰, 잔여정점·key-release검사시점 P2발견 |
+
+Coordinator는C02/C19이동방향분리/시각선행축소/반동강화와최종통합을담당했다. 자동4대상중초기3PASS·스킬색표현FAIL후Color32정확비교로해당1만PASS, 실입력0. 신규50/재활성화104/활성화154, 실제토큰N/A. 계측이없으므로모델별토큰이나비용을추정해서채우지않는다.
+
 ## 실제 몬스터 파츠 모션 검증 — 2026-10-21
 
 zone_spawn_review(code_reviewer/gpt-6.1-sol medium) 재활성화2회: 기존 단일 fixture의 4모델 확장과 타이밍 검토. CRLF 치환 미적용으로 초기 리뷰 지적이 남은 사실을 Coordinator가 확인하고 yield null→이동→EOF 순서로 실제 수정했다. 최종 읽기 P1/P2 없음. 컴파일 오류0/PlayMode1PASS, 실제 입력0. 누적 신규48/재활성화98/활성화146, 실제 토큰N/A. 생산 모션 코드는 수정하지 않았다.

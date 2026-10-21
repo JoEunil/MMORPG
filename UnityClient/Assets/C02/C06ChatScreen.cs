@@ -5,6 +5,7 @@ using C01;
 using ClientCore;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace C02
@@ -71,6 +72,12 @@ namespace C02
             }
             chatLog.richText = false;
             messageInput.lineType = TMP_InputField.LineType.SingleLine;
+            messageInput.navigation = new Navigation { mode = Navigation.Mode.None };
+            sendButton.navigation = new Navigation { mode = Navigation.Mode.None };
+            if (scopeButtons != null)
+                foreach (var scopeButton in scopeButtons)
+                    if (scopeButton != null) scopeButton.navigation = new Navigation { mode = Navigation.Mode.None };
+            if (whisperTargetButton != null) whisperTargetButton.navigation = new Navigation { mode = Navigation.Mode.None };
             sendButton.onClick.AddListener(SendCurrentMessage);
             messageInput.onSubmit.AddListener(SubmitMessage);
             if (scopeButtons != null && scopeButtons.Length == 3)
@@ -87,6 +94,11 @@ namespace C02
 
         private void Update()
         {
+            if (messageInput.isFocused && Input.GetKeyDown(KeyCode.Escape))
+            {
+                messageInput.DeactivateInputField();
+                EventSystem.current?.SetSelectedGameObject(null);
+            }
             if (pendingWhisper == null || Time.unscaledTime < whisperDeadline) return;
             whisperRecipients.RemoveAll(recipient => recipient.Key == pendingWhisperRecipient);
             if (selectedWhisperID == pendingWhisperRecipient) selectedWhisperID = 0;
@@ -253,6 +265,7 @@ namespace C02
                     whisperDeadline = Time.unscaledTime + WhisperEchoTimeoutSeconds;
                 }
                 model.Chat(message, selectedScope, selectedScope == 2 ? selectedWhisperID : 0);
+                EventSystem.current?.SetSelectedGameObject(null);
                 if (selectedScope != 2) messageInput.SetTextWithoutNotify(string.Empty);
                 sendStatus.text = pendingWhisper != null ? "귓속말 전송 확인 중 · 입력 보존" : "전송 요청됨 · 서버 echo 대기";
                 RefreshChatControls();

@@ -32,6 +32,7 @@ namespace C02
         private LineRenderer linePreview;
         private Material linePreviewMaterial;
         private float linePreviewDeadline;
+        private readonly float[] cooldownDeadlines = new float[3];
         private GameObject skillTooltip;
         private TMP_Text skillTooltipText;
         private GameObject defeatPanel;
@@ -42,6 +43,8 @@ namespace C02
         private const float LineRangeLength = 12f;
         private const float LineRangeWidth = 3f;
         private const float LinePreviewLifetime = 2f;
+        private const float ServerTickSeconds = 0.05f;
+        private const float ReleaseEffectLifetime = 0.35f;
 
         private bool WorldAvailable => worldScreen != null && worldScreen.isActiveAndEnabled &&
             worldScreen.Stage == C02Stage.InWorld && worldScreen.HasOwnFull;
@@ -77,6 +80,7 @@ namespace C02
             model = next;
             observedZone = 0;
             ownId = 0;
+            Array.Clear(cooldownDeadlines, 0, cooldownDeadlines.Length);
             combatStatusText.text = string.Empty;
             Subscribe();
             WorldChanged();
@@ -135,6 +139,9 @@ namespace C02
                 HideLinePreview();
                 HideSkillTooltip();
                 HideDefeatPanel();
+                if (worldScreen.Stage != C02Stage.TransitionPending && worldScreen.Stage != C02Stage.WaitingForZone &&
+                    worldScreen.Stage != C02Stage.WaitingForFull)
+                    Array.Clear(cooldownDeadlines, 0, cooldownDeadlines.Length);
                 if (observedZone != 0 || ownId != 0) ResetObservation();
                 vitalsText.text = string.Empty;
                 if (hpValueText != null) hpValueText.text = string.Empty;
@@ -146,6 +153,7 @@ namespace C02
             }
             foreach (var button in skillButtons)
                 if (button != null) button.interactable = model != null && WorldAvailable && worldScreen.CanAct;
+            UpdateCooldownLabels();
         }
 
         private void ResetObservation()
@@ -282,6 +290,7 @@ namespace C02
             if (linePreview != null && linePreview.enabled && Time.unscaledTime >= linePreviewDeadline)
                 HideLinePreview();
             UpdateSkillTooltip();
+            UpdateCooldownLabels();
             if (!InputAvailable() || Keyboard.current == null) return;
             if (Keyboard.current.zKey.wasPressedThisFrame) RequestSkill(0);
             else if (Keyboard.current.xKey.wasPressedThisFrame) RequestSkill(1);
@@ -306,12 +315,19 @@ namespace C02
                 if (worldScreen.OwnFull.hp > 0)
                     worldScreen.ActorMotion?.PlayAttack(result.dir, result.skillPhase != 0);
                 combatStatusText.text = SkillName(result.skillSlot) + (result.skillPhase == 0 ? " cast" : " released");
-                if (result.skillSlot == 2)
+                if (result.skillPhase == 0)
                 {
-                    if (result.skillPhase == 0) ShowLinePreview(result);
-                    else HideLinePreview();
+                    if (TryGetSkill(result.skillSlot, out var skill) && skill.cooldownTicks > 0)
+                        cooldownDeadlines[result.skillSlot] = Time.unscaledTime + skill.cooldownTicks * ServerTickSeconds;
+                    if (result.skillSlot == 2) ShowLinePreview(result);
+                }
+                else
+                {
+                    if (result.skillSlot == 2) HideLinePreview();
+                    ShowReleaseEffect(result);
                 }
             }
+            UpdateCooldownLabels();
         }
 
         private void ShowLinePreview(ActionResultField result)
@@ -328,9 +344,12 @@ namespace C02
                 linePreview.useWorldSpace = true;
                 linePreview.loop = true;
                 linePreview.positionCount = 4;
-                linePreview.widthMultiplier = 0.12f;
-                linePreview.startColor = linePreview.endColor = linePreviewMaterial.color;
             }
+
+            linePreview.widthMultiplier = 0.12f;
+            linePreview.positionCount = 4;
+            linePreviewMaterial.color = new Color(1f, 0.72f, 0.16f, 1f);
+            linePreview.startColor = linePreview.endColor = linePreviewMaterial.color;
 
             // ActionResult has no dimensions; this outline mirrors the fixed server skill 2 contract (12 x 3).
             // Points use server x/y as global X/Z, so the C02Client parent transform does not offset the range.
@@ -367,6 +386,102 @@ namespace C02
             }
             linePreview.enabled = true;
             linePreviewDeadline = Time.unscaledTime + LinePreviewLifetime;
+        }
+
+        private void ShowReleaseEffect(ActionResultField result)
+        {
+            if (!TryGetSkill(result.skillSlot, out var skill) || skill.phases == null || result.skillPhase >= skill.phases.Length) return;
+            var phase = skill.phases[result.skillPhase];
+            if (phase == null || phase.action != C14SkillAction.Hit ||
+                phase.range != C14SkillRange.Circle && phase.range != C14SkillRange.Rectangle ||
+                !Finite(phase.range1) || phase.range1 <= 0 ||
+                phase.range == C14SkillRange.Rectangle && (!Finite(phase.range2) || phase.range2 <= 0)) return;
+            if (linePreview == null)
+            {
+                var shader = Shader.Find("Universal Render Pipeline/Unlit");
+                if (shader == null) return;
+                var effectObject = new GameObject("C05 Skill Release Effect");
+                effectObject.transform.SetParent(worldScreen.transform, false);
+                linePreview = effectObject.AddComponent<LineRenderer>();
+                linePreviewMaterial = new Material(shader);
+                linePreview.sharedMaterial = linePreviewMaterial;
+                linePreview.useWorldSpace = true;
+                linePreview.loop = true;
+            }
+
+            linePreview.positionCount = phase.range == C14SkillRange.Circle ? 32 : 4;
+            linePreview.widthMultiplier = 0.22f;
+            linePreviewMaterial.color = new Color(1f, 0.92f, 0.52f, 1f);
+            linePreview.startColor = linePreview.endColor = linePreviewMaterial.color;
+            if (phase.range == C14SkillRange.Circle)
+            {
+                for (int point = 0; point < linePreview.positionCount; point++)
+                {
+                    float angle = Mathf.PI * 2f * point / linePreview.positionCount;
+                    linePreview.SetPosition(point, new Vector3(
+                        result.x + Mathf.Cos(angle) * phase.range1, 0.07f,
+                        result.y + Mathf.Sin(angle) * phase.range1));
+                }
+            }
+            else
+            {
+                float halfWidth = phase.range2 * 0.5f;
+                float length = phase.range1;
+                float x = result.x;
+                float z = result.y;
+                switch (result.dir)
+                {
+                    case 0:
+                        linePreview.SetPosition(0, new Vector3(x - halfWidth, 0.07f, z));
+                        linePreview.SetPosition(1, new Vector3(x + halfWidth, 0.07f, z));
+                        linePreview.SetPosition(2, new Vector3(x + halfWidth, 0.07f, z + length));
+                        linePreview.SetPosition(3, new Vector3(x - halfWidth, 0.07f, z + length));
+                        break;
+                    case 1:
+                        linePreview.SetPosition(0, new Vector3(x - halfWidth, 0.07f, z));
+                        linePreview.SetPosition(1, new Vector3(x + halfWidth, 0.07f, z));
+                        linePreview.SetPosition(2, new Vector3(x + halfWidth, 0.07f, z - length));
+                        linePreview.SetPosition(3, new Vector3(x - halfWidth, 0.07f, z - length));
+                        break;
+                    case 2:
+                        linePreview.SetPosition(0, new Vector3(x, 0.07f, z - halfWidth));
+                        linePreview.SetPosition(1, new Vector3(x, 0.07f, z + halfWidth));
+                        linePreview.SetPosition(2, new Vector3(x - length, 0.07f, z + halfWidth));
+                        linePreview.SetPosition(3, new Vector3(x - length, 0.07f, z - halfWidth));
+                        break;
+                    default:
+                        linePreview.SetPosition(0, new Vector3(x, 0.07f, z - halfWidth));
+                        linePreview.SetPosition(1, new Vector3(x, 0.07f, z + halfWidth));
+                        linePreview.SetPosition(2, new Vector3(x + length, 0.07f, z + halfWidth));
+                        linePreview.SetPosition(3, new Vector3(x + length, 0.07f, z - halfWidth));
+                        break;
+                }
+            }
+            linePreview.enabled = true;
+            linePreviewDeadline = Time.unscaledTime + ReleaseEffectLifetime;
+        }
+
+        private bool TryGetSkill(int slot, out C14ServerContent.RingSkill skill)
+        {
+            skill = slot == 1 ? serverContent?.ring : serverContent?.otherSkills == null ? null :
+                Array.Find(serverContent.otherSkills, candidate => candidate != null && candidate.skillID == slot);
+            return skill != null && skill.skillID == slot;
+        }
+
+        private void UpdateCooldownLabels()
+        {
+            if (skillButtons == null) return;
+            for (int i = 0; i < skillButtons.Length && i < cooldownDeadlines.Length; i++)
+            {
+                if (skillButtons[i] == null) continue;
+                var label = skillButtons[i].transform.Find("SkillName")?.GetComponent<TMP_Text>() ??
+                    skillButtons[i].GetComponentInChildren<TMP_Text>();
+                if (label == null) continue;
+                float remaining = cooldownDeadlines[i] - Time.unscaledTime;
+                label.text = remaining > 0
+                    ? string.Format(CultureInfo.InvariantCulture, "~{0:0.0}s", remaining)
+                    : SkillName((byte)i).ToUpperInvariant();
+            }
         }
 
         private void HideLinePreview()
@@ -502,6 +617,8 @@ namespace C02
             HideLinePreview();
             HideSkillTooltip();
             HideDefeatPanel();
+            Array.Clear(cooldownDeadlines, 0, cooldownDeadlines.Length);
+            UpdateCooldownLabels();
             if (combatPanel != null) combatPanel.SetActive(false);
             loginScreen?.Data?.CancelAction();
             worldScreen?.CancelMovement();

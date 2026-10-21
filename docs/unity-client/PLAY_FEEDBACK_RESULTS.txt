@@ -1,0 +1,26 @@
+2026-10-21 — Local player movement, skill and chat feedback revision
+
+Scope: C02WorldScreen/C19ActorMotion/C05CombatScreen/C06ChatScreen and four existing fixtures. Branch codex/play-feedback-revision starts from PR43 5d4d524, not unpublished authoring features. No server/ClientCore/protocol/scene/prefab/material edits.
+
+Findings and change
+- C19 used every rendered actor-root displacement as locomotion. Returning a predicted local position to authority therefore turned it backwards. Own actors now pass explicit movement intent; only forward-projected displacement drives their stride; no-input correction preserves facing. Observed actors retain interpolated-displacement locomotion.
+- Requests keep the bounded two-tick 0.6-unit lead, but rendering predicts only one tick (0.3). Opposite input discards old pending lead immediately. Late authority cannot point pending input against current intent; only progress along current intent refreshes the stale timer. Server positions remain authoritative. This reduces lead and decouples facing; it does not eliminate all reconciliation or add sequence/ACK replay.
+- Existing accepted HP loss already triggers monster hit. Increased visual-only displacement from .025 to .06 of model height and lean from 9 to 15 degrees; actor root/HUD/range remain separate. No new rigging.
+- Accepted own phase1 now renders a .35s bright Circle/Rectangle release outline using current content data; charging Line preview remains distinct. Shared renderer resets to four vertices after a circular effect. This is an outline effect, not new particle art or a damage acknowledgement.
+- Accepted own phase0 starts displayed ~cooldown from authored cooldownTicks * 50ms (server sets cooldown on accepted Skill in that tick). No remaining-time packet exists, so it is explicitly an estimate; it does not override server permission or block requests. Current character/client observation guards retained; SkillName updates leave key badges intact.
+- Chat controls Navigation.None prevents arrow navigation into chat. Successful send deselects chat; Escape exits focus. Validation/send failure and whisper draft/timeout behavior stay intact. Automatic navigation is a plausible source of the reported symptom; native reproduction not performed.
+
+Review: two specialized client implementers owned disjoint C05 and C06 files; zone_spawn_review independently reviewed all product changes and extended fixtures. Circle-to-Line residual vertices fixed before execution. Final test timing P2 fixed by waiting for LateUpdate before key-release assertions. Coordinator checked the one-line timing correction. No outstanding product P1/P2 identified.
+Compile: completed, errors=[], compilationFailed=false.
+Minimal execution: four directly affected existing fixtures selected by category PlayFeedbackRevision, one batch. Earlier OR-name filter selected ZERO and is not a pass.
+First actual batch: total4/passed3/failed1, 1.22s.
+ C06 GlobalZoneAndMissingWhisperTargetUseOnlyTheirValidScopes PASS .145184s.
+ C16 OwnFullAndDeltaKeepServerAuthorityWhileVisualPredictionReconcilesAndResets PASS .0075271s.
+ C19 RealModelAnimatesPartsWithoutMovingAuthorityOrRuntimeAttachments PASS .8618404s (4 actual models plus own-input/backward-correction and key-release facing).
+ C05 initial FAIL: exact float Color(1,.92,.52,1) compared to LineRenderer's 8-bit gradient Color(1,.9215686,.5215686,1).
+Fixed test to compare Color32 storage values exactly, not loose tolerance or altered production. C05 only rerun: PASS .1482454s, total .2s. Other three not repeated. Existing invalid/foreign/stale model and reused shape assertions retained.
+Evidence: ROOT Builds/Play-Feedback/first-batch-result.txt and skill-recheck-result.txt; source backups for all8 files. ROOT/CAND final owned file bytes match. No full regression/socket/login/input capture.
+Editor final playing=false/dirty=false/input runner=false/runInBackground=false. Native Unity input remains explicitly held.
+Host readonly observed PID4892 Line-Aim/bin/MainServer.exe still running; no stop/start/forcekill/policy workaround. New world candidate not deployed by this work; exact running binary speed was not re-derived from source.
+Limits: live rubber-back severity, actual VFX/cooldown appearance, chat spontaneous-focus reproduction, server/client candidate matching all remain for held live batch. No live screenshot claims; existing public images remain historical.
+Rollback: revert this branch's client changes together; server unchanged. Authoring b4b2786 remains separate. New push/PR requires FEEL01 bot approval; none yet.

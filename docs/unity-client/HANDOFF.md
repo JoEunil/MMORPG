@@ -1,3 +1,11 @@
+## 최신 — 이동 방향·스킬·채팅 피드백 로컬 후보
+
+codex/play-feedback-revision은 PR43=5d4d524에서 분기한 이번8파일 묶음이며 미게시 맵저작 b4b2786과 분리했다. 자기 캐릭터의 입력 방향/보정 변위를 분리하고 시각선행 .3·요청선행 .6을 유지, 반전입력의 오래된목표 폐기/실제진행만 stale해제. 몬스터 기존 피격반동 강화, 서버발동 phase1 짧은효과와 phase0 기준 ~쿨타임추정표시, 채팅 NavigationNone/성공전송·Escape초점해제를 구현했다. 서버/ClientCore/DB변경0.
+
+compile0, 독립제품 차단없음. 영향4fixture배치:3PASS/스킬색상Color32표현FAIL→테스트만저장표현맞춰해당1개재검1PASS. 최초ORfilter0선택은미실행. ROOT8파일baseline일치/백업후동기화, EditorPlayfalse/dirtyfalse/inputfalse/backgroundfalse. 실제입력보류/서버전환0/실제rubber완전해결·화면품질주장0. 기존 Line-Aim숨김서버4892유지. PLAY_FEEDBACK_RESULTS.txt 참조.
+
+전문신규2(skill_feedback_fix/chat_focus_fix client_implementer gpt-6-luna medium), skill_feedback_fix재활성화2/zone_spawn_review재활성화2, 누적신규50/재활성화104/전체154/tokenN/A. 게시전FEEL01봇승인요청예정, AUTHOR01승인재사용금지. 실제계정/생존/정상서버전환조건과입력보류해제뒤에만1회통합실입력으로확인한다.
+
 ## 최신 — 실제 몬스터 3종 파츠 모션 자동 확인
 
 기존 C19 단일 PlayMode fixture를 플레이어·고블린·오크·골렘 실제 프리팹 4개로 확장했다. 각 모델의 실제 어깨/다리 파츠 연결, 보행·공격·피격과 actor root/HUD·범위선 부모 보존 및 pose reset을 확인했다. 제품 모션 코드는 변경하지 않았다. 최초 정적 리뷰에서 발견한 프레임 순서 문제를 실행 전 수정했고 최종 독립 P1/P2 없음, compile0, 자동1회1PASS(0.7306676s). 실제 입력·서버 접속/교체0이며 외관/실제 조작감은 미확인이다.

@@ -214,6 +214,7 @@ namespace C02.Tests
         }
 
         [Test]
+        [Category("PlayFeedbackRevision")]
         public void AimTextUsesMovementDirections_AndPhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear()
         {
             using (var f = new CombatFixture())
@@ -250,6 +251,9 @@ namespace C02.Tests
                 Assert.That(preview.GetPosition(1), Is.EqualTo(new Vector3(11.5f, 0.05f, 10f)));
                 Assert.That(preview.GetPosition(2), Is.EqualTo(new Vector3(11.5f, 0.05f, 22f)));
                 Assert.That(preview.GetPosition(3), Is.EqualTo(new Vector3(8.5f, 0.05f, 22f)));
+                float confirmedCooldown = (float)((float[])Get(f.Combat, "cooldownDeadlines"))[2];
+                Assert.That(confirmedCooldown - Time.unscaledTime, Is.EqualTo(f.serverContent.otherSkills[1].cooldownTicks * 0.05f).Within(0.1f),
+                    "The estimate starts from the server-confirmed cast and reads the existing skill data ticks.");
                 Set(f.Combat, "linePreviewDeadline", Time.unscaledTime - 1f);
                 Invoke(f.Combat, "Update");
                 Assert.That(preview.enabled, Is.False, "The unscaled two-second lifetime clears a lost release.");
@@ -260,10 +264,21 @@ namespace C02.Tests
                 Assert.That(preview.enabled, Is.True, "Monster actions do not replace the player's range preview.");
                 action.skillPhase = 1;
                 current(1, new[] { action });
-                Assert.That(preview.enabled, Is.False, "The server's matching release hides the outline.");
+                Assert.That(preview.enabled, Is.True, "Release draws a separate short-lived bright effect after the range preview ends.");
+                Assert.That(preview.widthMultiplier, Is.EqualTo(0.22f));
+                Assert.That((Color32)preview.startColor, Is.EqualTo((Color32)new Color(1f, 0.92f, 0.52f, 1f)),
+                    "LineRenderer stores its gradient as 8-bit colors.");
+                Assert.That((float)Get(f.Combat, "linePreviewDeadline") - Time.unscaledTime,
+                    Is.EqualTo(0.35f).Within(0.1f), "The hit effect has a shorter lifetime than the cast preview.");
+                Assert.That(((float[])Get(f.Combat, "cooldownDeadlines"))[2], Is.EqualTo(confirmedCooldown),
+                    "The release phase does not restart the cooldown estimate.");
                 action.skillSlot = 1; action.skillId = 1; action.skillPhase = 1;
                 current(1, new[] { action });
                 Assert.That(f.Status.text, Is.EqualTo("Ring released"));
+                Assert.That(preview.positionCount, Is.EqualTo(32), "Ring release uses the authored circle outline.");
+                action.skillSlot = 2; action.skillId = 2; action.skillPhase = 0;
+                current(1, new[] { action });
+                Assert.That(preview.positionCount, Is.EqualTo(4), "Line cast restores its four-point range after a circle effect.");
                 string confirmed = f.Status.text;
                 var bad = action; bad.casterType = 1; current(1, new[] { bad });
                 bad = action; bad.casterId = 99; current(1, new[] { bad });
@@ -304,7 +319,7 @@ namespace C02.Tests
         private sealed class CombatFixture : IDisposable
         {
             private readonly GameObject root;
-            private readonly C14ServerContent serverContent;
+            public readonly C14ServerContent serverContent;
             public readonly C02WorldScreen World;
             public readonly C05CombatScreen Combat;
             public readonly IViewDataUI Data;
@@ -331,6 +346,11 @@ namespace C02.Tests
                 Set(Combat, "serverContent", serverContent);
                 Set(Combat, "combatPanel", Child("combat panel"));
                 Buttons = new[] { Button("strike"), Button("ring"), Button("line") }; Set(Combat, "skillButtons", Buttons);
+                for (int i = 0; i < Buttons.Length; i++)
+                {
+                    var label = Text("skill label");
+                    label.transform.SetParent(Buttons[i].transform, false);
+                }
                 Vitals = Text("vitals"); Status = Text("phase"); Aim = Text("aim");
                 Set(Combat, "vitalsText", Vitals); Set(Combat, "combatStatusText", Status); Set(Combat, "aimText", Aim);
                 Data = NewData(); Model = NewModel(Data, new QueuedDispatcher());

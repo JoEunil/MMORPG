@@ -13,6 +13,7 @@ namespace C02.Tests
     {
         [Test]
         [Category("MotionRevision")]
+        [Category("PlayFeedbackRevision")]
         public void OwnFullAndDeltaKeepServerAuthorityWhileVisualPredictionReconcilesAndResets()
         {
             using (var fixture = new WorldFixture())
@@ -27,10 +28,12 @@ namespace C02.Tests
                 fixture.Predict(Vector2.right, 0.05f);
                 Assert.That(fixture.InputTarget.x, Is.EqualTo(10.6f).Within(0.0001),
                     "Held intent accumulates across delayed confirmations, bounded to 0.6 units ahead.");
+                Assert.That(fixture.VisualPosition.x, Is.EqualTo(10.3f).Within(.0001f),
+                    "A two-tick request lead does not become two ticks of rendered prediction.");
                 fixture.Delta(10.3f);
                 Assert.That(fixture.ServerPosition, Is.EqualTo(new Vector2(10.3f, 10)));
-                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.6f).Within(0.0001),
-                    "A small server correction does not make packet callbacks jump the rendered character.");
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.3f).Within(0.0001),
+                    "Presentation leads by one tick, and callbacks do not jump the rendered character.");
                 fixture.Predict(Vector2.right, 0.05f);
                 Assert.That(fixture.InputTarget.x, Is.EqualTo(10.9f).Within(0.0001),
                     "A delayed confirmation frees bounded lead without rebuilding every target from that snapshot.");
@@ -55,6 +58,15 @@ namespace C02.Tests
                     "When authority stops advancing, the rendered actor settles even while a key remains held.");
                 Assert.That(Vector2.Distance(fixture.InputTarget, fixture.ServerPosition), Is.LessThanOrEqualTo(0.3001f),
                     "A stale server receives only a single-tick bounded probe, with no accumulated invisible walk.");
+
+                fixture.Delta(10.9f);
+                fixture.Predict(Vector2.right, .05f);
+                fixture.Predict(Vector2.left, .05f);
+                Assert.That(fixture.InputTarget.x, Is.LessThan(fixture.ServerPosition.x),
+                    "Reversing input immediately discards the old forward request lead.");
+                fixture.Delta(11.1f);
+                Assert.That(fixture.InputTarget.x, Is.LessThanOrEqualTo(fixture.ServerPosition.x),
+                    "A delayed rightward confirmation cannot turn the current leftward request back to the right.");
 
                 fixture.Delta(15f);
                 Assert.That(fixture.ServerPosition, Is.EqualTo(new Vector2(15, 10)));

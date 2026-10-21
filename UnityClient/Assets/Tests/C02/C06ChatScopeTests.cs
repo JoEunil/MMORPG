@@ -9,6 +9,7 @@ using ClientCore.Services;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace C02.Tests
@@ -16,11 +17,19 @@ namespace C02.Tests
     public sealed class C06ChatScopeTests
     {
         [Test]
+        [Category("PlayFeedbackRevision")]
         public void GlobalZoneAndMissingWhisperTargetUseOnlyTheirValidScopes()
         {
             using (var fixture = new ChatFixture())
             {
+                Assert.That(fixture.Input.navigation.mode, Is.EqualTo(Navigation.Mode.None));
+                Assert.That(fixture.SendButton.navigation.mode, Is.EqualTo(Navigation.Mode.None));
+                Assert.That(fixture.ScopeButtons, Has.All.Matches<Button>(button => button.navigation.mode == Navigation.Mode.None));
+                Assert.That(fixture.WhisperTargetButton.navigation.mode, Is.EqualTo(Navigation.Mode.None));
+                EventSystem.current.SetSelectedGameObject(fixture.Input.gameObject);
                 fixture.SendAs(0, "global line");
+                Assert.That(EventSystem.current.currentSelectedGameObject, Is.Null,
+                    "An accepted chat send returns keyboard focus to game controls.");
                 fixture.SendAs(1, "zone line");
                 Assert.That(fixture.Network.ChatCalls.Count, Is.EqualTo(2));
                 Assert.That(fixture.Network.ChatCalls[0], Is.EqualTo(( "global line", (byte)0, 0UL )));
@@ -142,7 +151,7 @@ namespace C02.Tests
                 Set(initializer, "_viewModel", Model);
                 Set(initializer, "_data", data);
 
-                root = new GameObject("C06 scope fixture", typeof(RectTransform), typeof(Canvas));
+                root = new GameObject("C06 scope fixture", typeof(RectTransform), typeof(Canvas), typeof(EventSystem));
                 root.SetActive(false);
                 Login = root.AddComponent<C01LoginScreen>();
                 Set(Login, "client", initializer);
