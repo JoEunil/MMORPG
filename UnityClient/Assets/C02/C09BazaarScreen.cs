@@ -319,7 +319,7 @@ namespace C02
             var button = rowObject.GetComponent<UnityEngine.UI.Button>();
             button.targetGraphic = image;
             var layout = rowObject.GetComponent<LayoutElement>();
-            layout.minHeight = layout.preferredHeight = 52;
+            layout.minHeight = layout.preferredHeight = 74;
 
             var accent = new GameObject("ItemAccent", typeof(RectTransform), typeof(UnityEngine.UI.Image));
             accent.transform.SetParent(rowObject.transform, false);
@@ -331,8 +331,8 @@ namespace C02
             accent.GetComponent<UnityEngine.UI.Image>().color = C11ItemPresentation.Accent(listing.ItemID);
             accent.GetComponent<UnityEngine.UI.Image>().raycastTarget = false;
 
-            TMP_Text badge = AddCell(rowObject.transform, "Badge", C11ItemPresentation.Badge(listing.ItemID), 0.02f, 0.09f,
-                TextAlignmentOptions.Center, 10, C11ItemPresentation.Accent(listing.ItemID));
+            TMP_Text badge = AddCell(rowObject.transform, "Badge", C11ItemPresentation.Badge(listing.ItemID), 0.02f, 0.13f,
+                TextAlignmentOptions.Center, 14, C11ItemPresentation.Accent(listing.ItemID));
             Sprite icon = C11ItemPresentation.Icon(listing.ItemID);
             if (icon != null)
             {
@@ -340,23 +340,23 @@ namespace C02
                 var iconObject = new GameObject("ItemIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.Image));
                 iconObject.transform.SetParent(rowObject.transform, false);
                 var iconRect = iconObject.GetComponent<RectTransform>();
-                iconRect.anchorMin = new Vector2(0.02f, 0);
-                iconRect.anchorMax = new Vector2(0.09f, 1);
-                iconRect.offsetMin = new Vector2(3, 3);
-                iconRect.offsetMax = new Vector2(-3, -3);
+                iconRect.anchorMin = iconRect.anchorMax = new Vector2(0.075f, 0.5f);
+                iconRect.pivot = new Vector2(0.5f, 0.5f);
+                iconRect.anchoredPosition = Vector2.zero;
+                iconRect.sizeDelta = new Vector2(50, 50);
                 var iconImage = iconObject.GetComponent<UnityEngine.UI.Image>();
                 iconImage.sprite = icon;
                 iconImage.preserveAspect = true;
                 iconImage.raycastTarget = false;
             }
-            AddCell(rowObject.transform, "Item", C11ItemPresentation.Name(listing.ItemID), 0.10f, 0.48f,
-                TextAlignmentOptions.MidlineLeft, 13, new Color(.22f, .17f, .10f));
+            AddCell(rowObject.transform, "Item", C11ItemPresentation.Name(listing.ItemID), 0.14f, 0.48f,
+                TextAlignmentOptions.MidlineLeft, 16, new Color(.22f, .17f, .10f));
             AddCell(rowObject.transform, "Quantity", listing.Quantity.ToString(CultureInfo.InvariantCulture), 0.49f, 0.61f,
-                TextAlignmentOptions.Center, 12, new Color(.26f, .22f, .15f));
+                TextAlignmentOptions.Center, 14, new Color(.26f, .22f, .15f));
             AddCell(rowObject.transform, "Price", listing.Price.ToString(CultureInfo.InvariantCulture), 0.62f, 0.81f,
-                TextAlignmentOptions.MidlineRight, 12, new Color(.20f, .25f, .16f));
+                TextAlignmentOptions.MidlineRight, 16, new Color(.20f, .25f, .16f));
             AddCell(rowObject.transform, "State", ListingStatusName(listing.Status), 0.82f, 0.99f,
-                TextAlignmentOptions.Center, 11, new Color(.30f, .23f, .14f));
+                TextAlignmentOptions.Center, 14, new Color(.30f, .23f, .14f));
             button.onClick.AddListener(() => SelectListing(listing, button));
         }
 
@@ -366,13 +366,15 @@ namespace C02
             if (selectedListingButton != null)
             {
                 var previous = selectedListingButton.GetComponent<UnityEngine.UI.Image>();
-                if (previous != null) previous.color = new Color(.97f, .93f, .82f);
+                if (previous != null)
+                    previous.color = selectedListingButton.transform.GetSiblingIndex() % 2 == 0
+                        ? new Color(.97f, .93f, .82f) : new Color(.92f, .87f, .73f);
             }
             selectedListingButton = button;
             selectedListing = listing;
             buyConfirmation = false;
             cancelConfirmation = false;
-            button.GetComponent<UnityEngine.UI.Image>().color = new Color(.82f, .77f, .62f);
+            button.GetComponent<UnityEngine.UI.Image>().color = new Color(.76f, .68f, .46f);
             selectedDetailText.text = C11ItemPresentation.Name(listing.ItemID) + "  ·  " + ListingStatusName(listing.Status) +
                 "\nQuantity " + listing.Quantity.ToString(CultureInfo.InvariantCulture) +
                 "  ·  Price " + listing.Price.ToString(CultureInfo.InvariantCulture) +

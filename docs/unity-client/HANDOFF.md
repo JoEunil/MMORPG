@@ -1,3 +1,10 @@
+## 최신 — 스킬 설명·가방·거래소 UI 큰 묶음 검증 완료
+
+CAND codex/combat-ui-followup에서기존스킬tooltip에가방120×110카드/그림56·상세64/거래소행74·그림50/가격·상세글자/선택색복원을합쳤다. 서버·ClientCore·wire·DB변경0. C07/C09기존fixture각1개최종PASS/최종compile0/독립최종P1P2없음. 실제한접속I빈가방/B30개실매물조회/Listing54가격50선택·배타닫기확인,구매·취소·수령미실행. 초기아이콘이름겹침은같은접속runtimepivot(.5,.5)로정정·캡처하고정상종료후동일source/Setup/Scene에영구화. ITEM_VISUALS_TASK.md/RESULTS.txt참조. 아이템든실서버가방은여전히미확인.
+
+ROOT에잘못쓴fixture rollback으로빠진기존수량assert1행은동기화가드가발견해backup+정확diff확인후보존복원. 최초fixtureprelayout100×100실패는actualGridlayout측정순서만보정,기대값유지. Scene기존11component의UIdelta만CAND이식/다른ROOTWIP보존. 공개inventory/market상세와실제최종캡처2장추가/기존사진보존,생성링크·실제웹확인PASS.
+
+정상Disconnect/Playfalse/dirtyfalse/inputfalse/backgroundfalse/envnull,서비스유지. 전문신규27/재활성화53/80/tokenN/A. PR41는open/mergeabletrue/a7bbc1a로별도유지,새UI는아직push/PR0. 스킬설명+가방/시장한큰UI묶음으로다음게시승인요청준비,PLAY05재사용금지.
 ## 현재 재개 지점 — PR41와 전투 UI 로컬 후속
 
 PR41(전투방향/범위)은Slack PLAY05 지정회신1792553482.431239를1회소비해게시·채팅첨부완료. frozenhead a7bbc1a,origin/masterb99ae13포함,병합0. 추가승인없이같은PR을중복생성하지않는다.

@@ -1,0 +1,14 @@
+가방·거래소 아이템 표현 결과 — 2026-10-21
+
+제품: 기존C07카드120×110/아이콘56/수량badge14·원문수량/이름14,상세icon64와본문시작x86분리. 기존C09행74/아이콘50/이름16·수량14·가격16·상태14/헤더13/선택상세14. 선택해제시생성순서짝·홀기본배경색복원. 기존resources5종그림·unknownID?와실제ID/수량·가격원문유지. 가짜아이템·빈슬롯용량·장착/소비·새거래등록0.
+조회·구매·취소·수령·응답/불명결과·재시도·이벤트수명로직변경0,서버/ClientCore/DB·wire변경0. 기존C07/C09Setup에서도같은geometry재현. Scene는기존가방grid·상세Rect·거래소header·상세TMP의11component만,ROOT이전블록과CAND대상블록일치확인후선별delta이식. 전체Scene재생성/다른WIP덮기0.
+역할: bag_item_visuals/market_item_visuals 각각client_implementer지정gpt-6-luna/medium 신규1, item_visual_review(code_reviewer지정gpt-6.1-sol/medium)신규1/최종수정재검토재활성화1. 누적신규27/재활성화53/80/tokenN/A.
+독립읽기리뷰: 최초서버/거래/수명변경없음·raycastfalse·fallback보존확인. 실제화면에서발견한아이콘pivot오류는초기리뷰도놓쳤고,최종재검토후P1/P2차단없음. 큰ulong가격은기존처럼목록ellipsis가능하나선택상세/확인에원문보존. 실제가격50표시는읽기확인,최대가격UI경계실입력은이번범위아님.
+최소자동: C07InventoryUiTests.ServerItemsBecomeCardsAndALaterFailureClearsPreviousInventory 최종1/1PASS .106118s. unknownID10개/knownID1 Sprite·수량·선택·이후실패정리. 최초.1209183s실패는GridLayout계산전기본100×100을읽은fixture관측순서오류. ForceRebuildLayoutImmediate후actual rect.size를읽도록하고기대120×110/56/64및기존assert유지. 상세Stretch의sizeDelta0을64로기대한부분도실행전정적검토로rect.size에교정. 실패기록보존/assert삭제로통과시키지않음.
+C09BazaarUiTests.SearchRendersThirtyRealRowsAndEmptySuccessHasNoInventedRows 1/1PASS .098959s.30개실제응답행/원문price9029/다른행선택뒤짝·홀색복원/빈결과정리. 스타일상수별assert나열은최소화하고데이터·선택보존중심. 최종명시compile0오류0경고. 새전체회귀/native빌드/게임서버재기동0.
+동기화경계: C07작업자가초기fixture패치를ROOT오경로에썼다되돌리는과정에서기존Qty4 assertion한줄삭제가남아root동일본문가드가중단. 다른차이0임을no-index diff로확인하고ROOT백업후수량4검증을유지한최종CAND본을동기화. 다른원본변경보존. 이초기중단때컴파일확인은새후보PASS로세지않음.
+Editor: compile뒤연결reset은읽기조회로미적용/Scene파일동일을확인한후동일배치저장만1회. Undo의지연dirty로NUnit시작이Save확인창에서대기했고,직접확인한본인UI변경을Save로보존해같은시험재개. 보안/권한창아님. 이후Undo.Flush를적용해최종dirtyfalse확인.
+실제입력: 한접속char5012/HP9225/MP9939/Zone5, I가방Noitems/activecards0/grid120×110→B거래소30listings/potions→Listing54선택/HP Potion/quantity1/price50/그림50. 기존실제데이터만,구매·취소·수령쓰기버튼미조작. I/B배타·B닫기PASS. 아이템이든실서버가방미확인(known아이템카드는UIfixture근거만).
+실제초기캡처에서icon-name겹침발견: iconRect anchor와pivot을(.075,.5)로같이두어오른쪽으로치우침. 최초item-visual-market.png는실패증거보존. 같은접속에서순수runtimeUIpivot(.5,.5)보정/상세font14확대뒤실제행클릭/선택확인. iconRight838.9<nameLeft843.28, 최종item-visual-market-fixed.png. 정상Disconnect/Playstop뒤동일sourceanchor/pivot분리·Setup/Scene14로영구화,최종compile0와독립재검토완료. runtime값은UI배치만수정/게임필드·좌표·아이템주입0. 레이아웃만의동일값반영뒤추가로그인/전체시험반복0.
+근거ROOT Captures/item-visual-login.txt,item-visual-ui.txt,item-visual-overlap-fixed.txt,item-visual-bag.png,item-visual-market.png(초기겹침),item-visual-market-fixed.png,item-visual-disconnect.txt. Builds/Item-Visuals/baseline원본보존. 정상퇴장modelnull→Playfalse/dirtyfalse/inputfalse/backgroundfalse/envnull. 서비스그대로/DB직접쓰기0/정상계정저장외데이터조작0.
+공개: inventory/market자연어상세와화면이력에실제최종2PNG만추가,과거사진보존·초기겹침/fixture가짜화면미게시. 사이트생성/링크검사PASS,실제브라우저market화면이력에서새그림과설명확인. 스킬설명과가방·거래소표현을하나의다음UI묶음으로전달하며작은PR분할0. PR41open/mergeabletrue/head a7bbc1a는별도고정·기존PLAY05승인재사용금지.

@@ -69,7 +69,7 @@ public static class C09BazaarSetup
         var myListings = Button("BazaarMyListingsButton", paper.transform, "MY LISTINGS", new Color(.42f, .30f, .16f, 1));
         AnchorTopLeft(myListings.GetComponent<RectTransform>(), 249, 58, 226, 34);
 
-        Header("BazaarItemHeader", paper.transform, "ITEM", .10f, .48f, TextAlignmentOptions.MidlineLeft);
+        Header("BazaarItemHeader", paper.transform, "ITEM", .14f, .48f, TextAlignmentOptions.MidlineLeft);
         Header("BazaarQuantityHeader", paper.transform, "QTY", .49f, .61f, TextAlignmentOptions.Center);
         Header("BazaarPriceHeader", paper.transform, "PRICE", .62f, .81f, TextAlignmentOptions.MidlineRight);
         Header("BazaarStateHeader", paper.transform, "STATE", .82f, .99f, TextAlignmentOptions.Center);
@@ -116,7 +116,7 @@ public static class C09BazaarSetup
         var detailPanel = FindOrCreate("BazaarSelectedDetailPanel", paper.transform, typeof(RectTransform), typeof(Image));
         AnchorBottomStretch(detailPanel.GetComponent<RectTransform>(), 132, 14, 88);
         detailPanel.GetComponent<Image>().color = new Color(.90f, .84f, .70f, 1);
-        var detail = Text("BazaarSelectedDetail", detailPanel.transform, "Select a listing to see its details.", 11,
+        var detail = Text("BazaarSelectedDetail", detailPanel.transform, "Select a listing to see its details.", 14,
             new Color(.28f, .22f, .14f));
         detail.alignment = TextAlignmentOptions.MidlineLeft;
         Stretch(detail.rectTransform, 8);
@@ -277,7 +277,7 @@ public static class C09BazaarSetup
     }
     private static void Header(string name, Transform parent, string value, float left, float right, TextAlignmentOptions alignment)
     {
-        var text = Text(name, parent, value, 9, new Color(.38f, .29f, .17f));
+        var text = Text(name, parent, value, 13, new Color(.38f, .29f, .17f));
         text.alignment = alignment;
         var rect = text.rectTransform;
         rect.anchorMin = new Vector2(left, 1);

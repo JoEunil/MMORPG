@@ -27,7 +27,7 @@ namespace C02
         [SerializeField] private ScrollRect inventoryScroll;
         [SerializeField] private RectTransform inventoryGridContent;
         [SerializeField] private TMP_Text detailBadge;
-        private Image detailIcon;
+        private UnityEngine.UI.Image detailIcon;
         [SerializeField] private TMP_Text detailName;
         [SerializeField] private TMP_Text detailSlot;
         [SerializeField] private TMP_Text detailQuantity;
@@ -251,39 +251,56 @@ namespace C02
         private void AddInventoryCard(InventoryItemView item)
         {
             var cardObject = new GameObject("InventoryItemCard", typeof(RectTransform), typeof(CanvasRenderer),
-                typeof(Image), typeof(Button));
+                typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button));
             cardObject.transform.SetParent(inventoryGridContent, false);
-            var background = cardObject.GetComponent<Image>();
+            var background = cardObject.GetComponent<UnityEngine.UI.Image>();
             background.color = CardColor;
-            var button = cardObject.GetComponent<Button>();
+            var button = cardObject.GetComponent<UnityEngine.UI.Button>();
             button.targetGraphic = background;
 
-            var accent = new GameObject("ItemAccent", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            var accent = new GameObject("ItemAccent", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.Image));
             accent.transform.SetParent(cardObject.transform, false);
             var accentRect = accent.GetComponent<RectTransform>();
-            SetTopLeft(accentRect, 6f, 6f, 28f, 28f);
-            var accentImage = accent.GetComponent<Image>();
+            SetTopLeft(accentRect, 32f, 6f, 56f, 56f);
+            var accentImage = accent.GetComponent<UnityEngine.UI.Image>();
             Sprite icon = C11ItemPresentation.Icon(item.ItemID);
             accentImage.sprite = icon;
             accentImage.preserveAspect = icon != null;
             accentImage.color = icon != null ? Color.white : C11ItemPresentation.Accent(item.ItemID);
             accentImage.raycastTarget = false;
 
-            var badge = CreateText("ItemBadge", accent.transform, C11ItemPresentation.Badge(item.ItemID), 10,
+            var badge = CreateText("ItemBadge", accent.transform, C11ItemPresentation.Badge(item.ItemID), 14,
                 Color.white, TextAlignmentOptions.Center);
             Stretch(badge.rectTransform, 0);
             badge.gameObject.SetActive(icon == null);
 
-            var name = CreateText("ItemName", cardObject.transform, C11ItemPresentation.Name(item.ItemID), 13,
+            var quantityBadge = new GameObject("QuantityBadge", typeof(RectTransform), typeof(CanvasRenderer),
+                typeof(UnityEngine.UI.Image));
+            quantityBadge.transform.SetParent(cardObject.transform, false);
+            var quantityBadgeImage = quantityBadge.GetComponent<UnityEngine.UI.Image>();
+            quantityBadgeImage.color = new Color(.30f, .22f, .13f, .96f);
+            quantityBadgeImage.raycastTarget = false;
+            var quantityBadgeRect = quantityBadge.GetComponent<RectTransform>();
+            quantityBadgeRect.anchorMin = quantityBadgeRect.anchorMax = quantityBadgeRect.pivot = new Vector2(1, 1);
+            quantityBadgeRect.anchoredPosition = new Vector2(-8f, -44f);
+            quantityBadgeRect.sizeDelta = new Vector2(44f, 22f);
+
+            var name = CreateText("ItemName", cardObject.transform, C11ItemPresentation.Name(item.ItemID), 14,
                 new Color(.23f, .19f, .13f), TextAlignmentOptions.MidlineLeft);
-            SetTopRight(name.rectTransform, 40f, 5f, 5f, 32f);
-            name.enableWordWrapping = true;
+            name.rectTransform.anchorMin = new Vector2(0, 0);
+            name.rectTransform.anchorMax = new Vector2(1, 0);
+            name.rectTransform.pivot = new Vector2(.5f, 0);
+            name.rectTransform.anchoredPosition = new Vector2(0, 5f);
+            name.rectTransform.sizeDelta = new Vector2(-10f, 22f);
+            name.enableWordWrapping = false;
             name.overflowMode = TextOverflowModes.Ellipsis;
 
             var quantity = CreateText("ItemQuantity", cardObject.transform,
-                "Qty " + item.Quantity.ToString(CultureInfo.InvariantCulture), 11,
-                new Color(.39f, .31f, .20f), TextAlignmentOptions.MidlineLeft);
-            SetTopRight(quantity.rectTransform, 40f, 5f, 39f, 20f);
+                item.Quantity.ToString(CultureInfo.InvariantCulture), 14,
+                new Color(.98f, .91f, .76f), TextAlignmentOptions.Center);
+            quantity.rectTransform.anchorMin = quantity.rectTransform.anchorMax = quantity.rectTransform.pivot = new Vector2(1, 1);
+            quantity.rectTransform.anchoredPosition = quantityBadgeRect.anchoredPosition;
+            quantity.rectTransform.sizeDelta = quantityBadgeRect.sizeDelta;
 
             button.onClick.AddListener(() => SelectItem(item, button));
         }
@@ -294,18 +311,18 @@ namespace C02
             selectedCard = card;
             foreach (Transform child in inventoryGridContent)
             {
-                var button = child.GetComponent<Button>();
-                if (button != null) button.GetComponent<Image>().color = button == selectedCard ? SelectedCardColor : CardColor;
+                var button = child.GetComponent<UnityEngine.UI.Button>();
+                if (button != null) button.GetComponent<UnityEngine.UI.Image>().color = button == selectedCard ? SelectedCardColor : CardColor;
             }
             Sprite icon = C11ItemPresentation.Icon(item.ItemID);
             if (icon != null)
             {
                 if (detailIcon == null)
                 {
-                    var iconObject = new GameObject("DetailItemIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                    var iconObject = new GameObject("DetailItemIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.Image));
                     iconObject.transform.SetParent(detailBadge.transform, false);
                     Stretch(iconObject.GetComponent<RectTransform>(), 0);
-                    detailIcon = iconObject.GetComponent<Image>();
+                    detailIcon = iconObject.GetComponent<UnityEngine.UI.Image>();
                     detailIcon.preserveAspect = true;
                     detailIcon.raycastTarget = false;
                 }

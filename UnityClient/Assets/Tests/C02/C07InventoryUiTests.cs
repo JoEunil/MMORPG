@@ -44,6 +44,21 @@ namespace C02.Tests
                 Assert.That(fixture.DetailQuantity.text, Is.EqualTo("Quantity 2"));
 
                 fixture.Refresh.onClick.Invoke();
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 4, slot = 2 });
+                Button knownCard = fixture.Cards[0];
+                var itemIcon = knownCard.transform.Find("ItemAccent");
+                var quantity = knownCard.transform.Find("ItemQuantity").GetComponent<TMP_Text>();
+                Assert.That(fixture.Cards.Length, Is.EqualTo(1));
+                UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(fixture.Grid);
+                Assert.That(((RectTransform)knownCard.transform).rect.size, Is.EqualTo(new Vector2(120, 110)));
+                Assert.That(((RectTransform)itemIcon).sizeDelta, Is.EqualTo(new Vector2(56, 56)));
+                Assert.That(quantity.text, Is.EqualTo("4"));
+                Assert.That(itemIcon.GetComponent<UnityEngine.UI.Image>().sprite, Is.SameAs(C11ItemPresentation.Icon(1)));
+                knownCard.onClick.Invoke();
+                Assert.That(knownCard.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.99f, .96f, .86f, 1f)));
+                Assert.That(((RectTransform)fixture.DetailBadge.rectTransform.GetChild(0)).rect.size, Is.EqualTo(new Vector2(64, 64)));
+
+                fixture.Refresh.onClick.Invoke();
                 Assert.That(fixture.Cards, Is.Empty, "The previous cards clear while refreshing.");
                 fixture.Receive(false);
                 Assert.That(fixture.Cards, Is.Empty);
@@ -123,7 +138,7 @@ namespace C02.Tests
                     new InventoryItem { itemID = 5, quantity = 1, slot = 3 });
                 Assert.That(fixture.Cards.Length, Is.EqualTo(2));
                 Assert.That(fixture.Cards[0].transform.Find("ItemName").GetComponent<TMP_Text>().text, Is.EqualTo("HP Potion"));
-                Assert.That(fixture.Cards[0].transform.Find("ItemQuantity").GetComponent<TMP_Text>().text, Is.EqualTo("Qty 4"));
+                Assert.That(fixture.Cards[0].transform.Find("ItemQuantity").GetComponent<TMP_Text>().text, Is.EqualTo("4"));
                 Assert.That(fixture.Cards[1].transform.Find("ItemName").GetComponent<TMP_Text>().text, Is.EqualTo("Leather Armor"));
                 fixture.Cards[0].onClick.Invoke();
                 Assert.That(fixture.DetailBadge.text, Is.Empty);
@@ -360,10 +375,11 @@ namespace C02.Tests
                 var gridObject = Child("inventory grid");
                 gridObject.transform.SetParent(viewport.transform, false);
                 Grid = (RectTransform)gridObject.transform;
-                gridObject.AddComponent<GridLayoutGroup>();
+                gridObject.AddComponent<GridLayoutGroup>().cellSize = new Vector2(120, 110);
                 scroll.content = Grid;
                 DetailName = Text("detail name");
                 DetailBadge = Text("detail badge");
+                DetailBadge.rectTransform.sizeDelta = new Vector2(64, 64);
                 DetailSlot = Text("detail slot");
                 DetailQuantity = Text("detail quantity");
                 Status = Text("inventory status");
