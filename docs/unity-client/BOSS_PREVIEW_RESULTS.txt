@@ -1,3 +1,7 @@
+## 최신 실제 배치 완료
+
+보스 예고·대응 해제 실화면과 PNG2장 확인. 마지막 후퇴 입력 실패/이후 HP0 직접 관찰은 별도 제한이며 생존 전체 통과가 아니다. 새 근접거리 서버는 미적용. 수동 q 요청 취소/기존 서버 숨김 실행 유지. BOSS_LIVE_RESULTS.txt와 최신 HANDOFF를 우선한다.
+
 최신 — 정사각 고리 예고까지 후보 검증 완료
 
 skill4의10phase Charging/Hit×5를 추가했다. 각 pair에서 C14의 Boss2 range1/2를 변 길이로 해석해 바깥/안쪽4점윤곽을 별도로 표시하고 inner0은 생략한다. finite/0<=inner<outer/positivewaitTicks/실제phase구성을 검사한다. 단계별 고정ActionResult중심·독립TTL·대응Hit 제거, skill3와의 중첩을 유지한다. 서버/콘텐츠수치/Material/Scene 변경0.
