@@ -1,0 +1,40 @@
+WORLD MAP EXPORT / SERVER-OWNED TRANSITION — 2026-10-21
+Candidate: codex/world-map-export, based on c1c09dd (unpublished authoring bundle).
+Scope: Unity layout/obstacle/nav exporter, movement-driven Zone ownership, epoch-fenced ACTION/ACK, paired Player+Monster bootstrap and resync. No Monster AI/A*/Cell roaming behavior changes.
+
+Implemented
+- Actual 3x2 six-zone layout, core200/margin5/span210, local origin at expanded lower-left; AOI5x5/Cell42 independent of navigation tile1.
+- WorldMap.inc contains layout, origins, exclusive/overlap bounds, eight neighbors, direct crossings, obstacle AABB/clearance, versions and existing navigation bits as one output.
+- Separate 3x3 nine-zone example compiled; actual server still six zones. Existing nav bits preserved (SHA256 322279FBB426C958A065F1D017FDAF11BB16C3C9CAA82C51222BCB35D08B5430).
+- Server validates move/collision before ordered-lock transfer; hysteresis/outer bounds/corner gates and failed-transfer rollback. Legacy client directional transfer requests rejected.
+- Stale movement fenced by ownershipEpoch; initial Player and Monster Full share bootstrap identity. Empty Monster Full included; missing/mixed halves trigger timeout/resync.
+- Bootstrap and periodic traffic use same FIFO broadcast queue; capture+enqueue under Zone lock, one consumer. Client retains old field and locks actions until both categories arrive.
+
+Final verification (one focused batch; only affected failures rerun)
+- Independent final concurrency/protocol review: no P1/P2 findings.
+- Unity compile: 0 errors.
+- Direct EditMode assertions: exporter 3 PASS (snapshot/coordinates, readonly preservation, disconnected overlap and blocked diagonal).
+- Generated actual6/example9 C++ compile+run: PASS.
+- Direct ClientCore assertions: 3 PASS (paired bootstrap/stale epoch/resync/duplicate ACK, market cancellation, wire validation).
+- Unity PlayMode: 1 PASS, AutomaticTransitionWaitsForBothBootstrapCategories (.1237446s); synthetic fixture, not native input.
+- Native targeted tests: 4 PASS / 5ms (wire+queued bootstrap, hysteresis+stale input, corner+outer edge, failed transfer rollback).
+- Final ClientCore build PASS (NU1900: offline vulnerability metadata unavailable); MainServer and UnitTests builds PASS after layout compile guards.
+- Native tests predate compile-only layout assertions; runtime logic unchanged, no repeat execution.
+- Site generated successfully; host local HTTP 200 and browser page text/navigation checked at localhost8791. Existing game screenshot retained with explicit previous-method caption. New live game capture not produced.
+
+Failures and corrections
+- Export string brace FormatException and generated std::array closing brace corrected; initial failed evidence retained in ignored Builds/World-Export.
+- Fixture tuple type/static packet-size assumptions updated without weakening assertions.
+- Duplicate queued ACK and old queued periodic Full ordering defects fixed after independent review.
+- Native packaging xcopy prompt loop canceled normally with Ctrl-C (no force kill/server stop); repeated generated log capped with original-size note. Final build skips only postbuild packaging via supported MSBuild option; required runtime DLL copied manually. Compilation/tests not disabled.
+- Broad merge of open PR44 rejected by automatic approval review. No retry/bypass. Narrow independently reviewed movement baseline integration in C02WorldScreen/C19ActorMotion/C16OwnMotionTests was separately approved by platform; unrelated combat/chat/hit-strength changes excluded. PR44 remains open.
+
+Limits / deployment / rollback
+- No actual Unity keyboard/mouse input, login, service restart, new MainServer launch, DB/Redis mutation or public deployment.
+- New protocol requires matching candidate MainServer + ClientCore DLL; old server is incompatible. Restore both old artifacts together if later deployment fails; normal stop only, no force kill authorized here.
+- Single broadcast consumer ensures FIFO; throughput/load not measured. Queue or partial-send loss relies on bootstrap timeout/resync.
+- No Additive Scene streaming or cross-owner neighbor AOI implementation. Existing same-zone AOI remains.
+- Obstacle bake is conservative world AABB; one actor-clearance grid, no dynamic/per-monster-radius navigation.
+- Original Game and ROOT server/ClientCore WIP preserved. Active Unity adapter/DLL subset guarded/backed up; ROOT preexisting PR44 hit-strength remains, not imported into candidate.
+- Push/PR pending new MAP01 bot Slack approval for combined authoring/export/transition bundle; old AUTHOR01 not assumed consumed.
+See MAP_EXPORT_GUIDE.md for Monster AI handoff and INPUT_TEST_BATCH.md for held live verification.

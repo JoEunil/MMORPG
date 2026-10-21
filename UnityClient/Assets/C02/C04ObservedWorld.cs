@@ -126,7 +126,7 @@ namespace C02
         }
 
         private bool WorldAvailable => worldScreen != null && worldScreen.isActiveAndEnabled &&
-            worldScreen.Stage == C02Stage.InWorld && worldScreen.HasOwnFull && displayRoot != null &&
+            (worldScreen.Stage == C02Stage.InWorld || worldScreen.Stage == C02Stage.TransitionPending) && worldScreen.HasOwnFull && displayRoot != null &&
             displayRoot.gameObject.activeInHierarchy;
 
         private void ChangeClient(IViewModelUI next)
@@ -204,7 +204,8 @@ namespace C02
                 return;
             }
             WorldChanged();
-            Expire(Time.realtimeSinceStartupAsDouble);
+            // A delayed bootstrap must not age out the field being shown during transition.
+            if (worldScreen.Stage != C02Stage.TransitionPending) Expire(Time.realtimeSinceStartupAsDouble);
             RenderObservations(Time.realtimeSinceStartupAsDouble);
         }
 

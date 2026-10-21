@@ -20,7 +20,7 @@ namespace Core {
     inline constexpr uint16_t ZONE_COUNT = 6; // 3x2 field zones; lobby excluded.
 
     inline constexpr uint16_t MAX_INVENTORY_ITEMS = 10;
-    inline constexpr uint8_t BROADCAST_THREADPOOL_SIZE = 6;
+    inline constexpr uint8_t BROADCAST_THREADPOOL_SIZE = 1; // A single ordered consumer preserves each zone's queued packet order.
     inline constexpr uint16_t NON_ZONE_THREADPOOL_SIZE = 3;
     
     inline constexpr uint16_t SHARD_SIZE = 8; // stateManager의 session - zone 매핑 샤드, 접근하는 스레드풀 크기의 2~4배 정도

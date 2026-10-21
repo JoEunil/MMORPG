@@ -7,7 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
-    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 37;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 38;
 
     enum OP : uint16_t {
         AUTH = 1,
@@ -52,10 +52,11 @@ namespace Core {
         BAZAAR_CHECK_OUTBOX_RES = 35,
         BAZAAR_CANCEL_LISTING = 36,
         BAZAAR_CANCEL_LISTING_RES = 37,
+        ZONE_RESYNC = 38,
     };
 
     enum ZONE_CHANGE: uint8_t {
-        ENTER = 0,
+        ENTER = 0, // Client requests lobby entry only; live transitions are server-owned.
         UP = 1,
         DOWN = 2,
         LEFT = 3,
@@ -232,6 +233,7 @@ namespace Core {
     struct ZoneChangeBody {
         uint8_t op; // 0: 로비 zone에서 진입, 1 ~ 4: 상하좌우 인접 zone으로 이동
     };
+    struct ZoneResyncBody { uint64_t ownershipEpoch; };
 
     struct ZoneChangeResponseBody {
         uint8_t resStatus;
@@ -240,6 +242,7 @@ namespace Core {
         uint32_t zoneInternalID;
         float startX, startY;
         uint64_t zoneGeneration;
+        uint64_t ownershipEpoch;
     };
 
     struct ChatRequestBody {
@@ -273,6 +276,7 @@ namespace Core {
         uint8_t dir;      // 상, 하, 좌, 우 — 애니메이션/스킬 시전 방향
         float x, y;       // 이동 후 최종 좌표(절대). 서버가 경과 시간 대비 이동량을 검증한다.
         uint8_t skillSlot;
+        uint64_t ownershipEpoch;
     };
 
     struct ActionResultField {
@@ -323,6 +327,9 @@ namespace Core {
         uint16_t count;
         uint16_t zoneID;
         uint64_t zoneGeneration;
+        uint64_t ownershipEpoch;
+        uint64_t bootstrapID;
+        uint8_t bootstrapEnd;
         FullStateField states[MAX_ZONE_CAPACITY];
     };
 
@@ -353,6 +360,9 @@ namespace Core {
         uint16_t count;
         uint16_t zoneID;
         uint64_t zoneGeneration;
+        uint64_t ownershipEpoch;
+        uint64_t bootstrapID;
+        uint8_t bootstrapEnd;
         MonsterFullField states[MAX_MONSTER_COUNT];
     };
 

@@ -16,10 +16,17 @@ namespace Core {
     class StateManager;
     class CorePerfCollector;
     class BroadcastThreadPool {
-        using BroadcastWork = std::unique_ptr<std::pair<std::vector<std::shared_ptr<IPacket>>, std::vector<std::shared_ptr<IPacket>>>>;
+        struct BroadcastWork {
+            std::vector<std::shared_ptr<IPacket>> headers;
+            std::vector<std::shared_ptr<IPacket>> chunks;
+            uint16_t zoneID = 0;
+            uint64_t targetSessionID = 0;
+            bool targeted = false;
+        };
+        using BroadcastWorkPtr = std::unique_ptr<BroadcastWork>;
 
         std::vector<std::thread> m_threads;
-        Base::BlockingQueue<BroadcastWork, BROADCAST_QUEUE_SIZE, false> m_workQ;
+        Base::BlockingQueue<BroadcastWorkPtr, BROADCAST_QUEUE_SIZE, false> m_workQ;
 
         std::atomic<bool> m_running = false;
         void Initialize(IIOCP* i, StateManager* s, CorePerfCollector* p, PacketWriter* pw) {
@@ -62,12 +69,16 @@ namespace Core {
         PacketWriter* writer = nullptr;
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
+        friend class NonZoneThreadPoolFixture;
     public:
         ~BroadcastThreadPool() {
             Stop();
         }
 
         void EnqueueWork(std::vector<std::shared_ptr<IPacket>> headers, std::vector<std::shared_ptr<IPacket>> chunks, uint16_t zoneID);
+        bool EnqueueBootstrap(uint64_t sessionID, uint16_t zoneID,
+            std::shared_ptr<IPacket> playerHeader, std::shared_ptr<IPacket> playerChunk,
+            std::shared_ptr<IPacket> monsterHeader, std::shared_ptr<IPacket> monsterChunk);
     };
 
 }

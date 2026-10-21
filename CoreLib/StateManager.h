@@ -23,6 +23,9 @@
 namespace Core {
     struct SessionData {
         uint16_t zoneID = 0;
+        uint64_t ownershipEpoch = 0;
+        uint64_t bootstrapSequence = 0;
+        uint64_t chatID = 0;
         uint64_t userID = 0;
         uint64_t characterID = 0;
         uint16_t cheatCount = 0;
@@ -46,6 +49,7 @@ namespace Core {
         uint32_t internalID = 0;
         float x = 0, y = 0;
         uint64_t generation = 0;
+        uint64_t ownershipEpoch = 0;
     };
     class StateManager {
         std::unordered_map<uint16_t, std::unique_ptr<Core::ZoneState>> m_states;
@@ -225,6 +229,8 @@ namespace Core {
         }
         void Disconnect(uint64_t sessionID);
         bool ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result);
+        bool ProcessAction(uint64_t sessionID, uint16_t routeZoneID, const ActionRequestBody& action, ZoneChangeResult& transition);
+        bool SendBootstrap(uint64_t sessionID, uint64_t ownershipEpoch);
         void EnqueueDisconnectMsg(CharacterState& temp, uint64_t sessionID);
         void UpdateProfileVersion(uint64_t sessionID, uint32_t version);
 

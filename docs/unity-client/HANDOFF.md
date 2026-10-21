@@ -1,3 +1,12 @@
+## 최신 — 맵 Exporter·서버 주도 전환 로컬 완료 / 게시 승인 준비
+
+codex/world-map-export는 c1c09dd의 미게시 맵 저작 묶음을 이어받았다. Unity 레이아웃/장애물/통행 데이터를 한 WorldMap.inc로 내보내고, 검증된 이동에 따른 서버 owner 전환·epoch·Player/Monster 첫 Full 쌍·재동기화를 구현했다. 실제 6구역 유지, 별도 9구역 출력 예시만 검증했다. 몬스터 AI/A*/Cell 이동 제한은 변경하지 않았으며 후속 AI는 MAP_EXPORT_GUIDE.md를 따른다.
+
+독립 최종 P1/P2 없음, compile0, exporter 직접3/C++생성물6·9/ClientCore직접3/Unity합성PlayMode1/native4 최종PASS, MainServer·UnitTests·ClientCore 최종빌드PASS. WORLD_EXPORT_TRANSITION_RESULTS.txt에 실패·수정·검증 범위를 기록했다. 실제 입력·서버배포·DB/Redis 변경0. 새 wire는 구서버와 호환되지 않아 서버/DLL 동시 버전 전환이 필요하다. 단일 broadcast 소비자 부하 검증, Additive streaming/이웃 Zone AOI, 실제 조작감은 완료 아님.
+
+원본 Game/ROOT 서버·ClientCore WIP 보존. 활성 Unity에는 가드·백업 후 adapter/DLL/테스트만 동기화했다. PR44 전체 merge는 자동승인 검토가 거절하여 실행하지 않았고, 독립 리뷰한 이동 baseline 3파일만 별도 플랫폼 승인으로 통합했다. 전투/채팅/피격강도는 제외, ROOT 기존 PR44 피격강도는 보존했다. PR44는 b3b06ea OPEN 상태 확인.
+
+공개 설명 원본 field-travel.md와 생성 사이트를 갱신하고 로컬 HTTP200·브라우저 본문/탐색을 확인했다. 기존 게임 캡처는 이전 전환 방식으로 표시하며 새 실화면 검증으로 주장하지 않는다. 이전 AUTHOR01 승인 미확인을 새 승인으로 대신하지 않는다. 이번 합친 후보의 로컬 커밋 후 MAP01을 Unity Coordinator 앱에 요청하며 승인 전 push/PR0. Unity 실입력은 사용자 재개 전까지 보류한다. 누적 전문 신규55/재활성화127/전체182, 실제 토큰 N/A.
 ## 최신 — 고정 맵 지면 질감 로컬 반영 / 입력 보류
 
 codex/zone-spawn-authoring의 기존 AUTHOR01 미게시 묶음에 고정 지면 재질을 보완했다. 단색 Meadow 복제에 기존 LocalGroundGrain을 연결한 FixedGround 재질을 만들고 기존 NavigationGround의 재질 참조 한 곳만 바꿨다. 향후 생성 Setup도 같은 재질을 사용한다. 맵 크기·Collider·서버·통행 자산은 불변이다.

@@ -1,3 +1,10 @@
+## 맵 Exporter·서버 전환 — 2026-10-21
+
+이번 작업 신규5: server_zone_contract(server_analyst/gpt-6.1-sol medium), map_export_contract(explorer/실제 모델 미확인), layout_export_impl(client_implementer/gpt-6-luna medium), server_transition_impl(worker/실제 모델 미확인), transition_contract_review(default/gpt-6.1-sol high, 도구 지정 확인). 계약 분석/출력 구현/서버·ClientCore 구현/동시성 독립 리뷰에 분담했다.
+
+재활성화10: zone_spawn_review 5회(Exporter 초기·연결·이웃/직접통행·이동부분통합·서버초기리뷰), layout_export_impl 3회(테스트 이관/실제 적용/좌표수정), server_transition_impl 1회(큐 순서 수정), transition_contract_review 1회(최종 재검토). send_message는 별도 활성화로 세지 않았다. 고정 code_reviewer의 설정이 바뀌었다고 주장하지 않으며 고난도 리뷰는 별도 high 에이전트로 넘겼다.
+
+확인 결과: layout/통행 원본 일치, server epoch/ordered locks/queue bootstrap 보정, 최종 독립 P1/P2없음, 직접 영향 자동검증 통과. Coordinator는 Editor 단독 조작·통합·최소 배치·원본보존/공개설명 확인을 담당했다. 실제 입력/새 서버 배포는 미실행이다. 누적 신규55/재활성화127/전체182(직전50/117/167에 더함). 실제 에이전트별 토큰/비용 N/A, 활성화 횟수를 토큰 사용량으로 대체하지 않는다.
 ## 지면 비교·석축 발치 시안 반려 — 2026-10-21
 
 이번 작업 전문 재활성화 7회: fixed_wall_art_direction 4회(배치안, 첫 비교, 폭 조정 후 비교, 지면 비교), zone_spawn_review 3회(초안, 비활성 Collider 수정 후, 최종 지면 diff). 새 에이전트 생성 0. 풀 배치 두 안은 반려, 기존 입자 질감 지면은 정적 비교 범위에서 채택했다. Coordinator가 코드/Editor/선택 통합을 맡았고 최종 리뷰 P1/P2 없음·컴파일 오류0을 확인했다. 실제 Unity 입력/서버 테스트 0.

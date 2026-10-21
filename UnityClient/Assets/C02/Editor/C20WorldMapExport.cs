@@ -33,7 +33,8 @@ public static class C20WorldMapExport
         try
         {
             Bake(author);
-            Export(map, outputDirectory);
+            var layout = C24WorldLayout.Build(author.zoneColumns, author.zoneRows, author.zoneCoreSize, author.transitionMargin);
+            C24WorldLayoutExport.Export(map, author, layout, outputDirectory);
         }
         catch
         {
@@ -102,6 +103,11 @@ public static class C20WorldMapExport
     public static void Export(C20WorldMap map, string outputDirectory)
     {
         if (map == null || !map.IsValid) throw new InvalidOperationException("Bake a valid map before export.");
+        ExportSnapshot(map, null, null, outputDirectory);
+    }
+
+    internal static void ExportSnapshot(C20WorldMap map, C20MapAuthoring author, C24WorldLayout layout, string outputDirectory)
+    {
         var bits = new ulong[(map.walkable.Length + 63) / 64];
         bool any = false;
         for (int i = 0; i < map.walkable.Length; i++)
@@ -121,6 +127,7 @@ public static class C20WorldMapExport
             if (i % 6 == 5) text.Append('\n');
         }
         text.Append("\n};\n");
+        if (author != null) C24WorldLayoutExport.AppendMetadata(text, author, layout);
         Directory.CreateDirectory(outputDirectory);
         string destination = Path.Combine(outputDirectory, "WorldMap.inc");
         if (File.Exists(destination) && (File.GetAttributes(destination) & FileAttributes.ReadOnly) != 0)

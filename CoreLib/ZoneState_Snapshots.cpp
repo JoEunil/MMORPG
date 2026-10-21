@@ -5,9 +5,53 @@
 #include "ILogger.h"
 #include "PacketWriter.h"
 #include "StateManager.h"
+#include "WorldMap.h"
 
 
 namespace Core {
+    bool ZoneState::EnqueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch, uint64_t bootstrapID) {
+        if (broadcast == nullptr || writer == nullptr) return false;
+        std::lock_guard<std::mutex> lock(m_mutex);
+        auto own = m_sessionToIndex.find(sessionID);
+        if (own == m_sessionToIndex.end() || ownershipEpoch == 0 || bootstrapID == 0) return false;
+        const auto& character = m_chars[own->second];
+        const int ownCell = character.cellY * CELLS_X + character.cellX;
+        auto players = writer->GetBootstrapFullHeader(false, m_zoneID, m_generation, ownershipEpoch, bootstrapID);
+        auto playerChunk = writer->GetInitialChunk(true);
+        auto monsters = writer->GetBootstrapFullHeader(true, m_zoneID, m_generation, ownershipEpoch, bootstrapID);
+        auto monsterChunk = writer->GetInitialChunk(true);
+        if (!players || !playerChunk || !monsters || !monsterChunk)
+            return false;
+        size_t playerBytes = 0;
+        uint16_t playerCount = 0;
+        for (int cellIndex : AOI[ownCell]) {
+            const int cy = cellIndex / CELLS_X;
+            const int cx = cellIndex % CELLS_X;
+            for (uint64_t member : m_cells[cy][cx].charSessions) {
+                auto it = m_sessionToIndex.find(member);
+                if (it == m_sessionToIndex.end() || !writer->WriteFullField(playerChunk, m_chars[it->second])) return false;
+                playerBytes += sizeof(FullStateField);
+                ++playerCount;
+            }
+        }
+        size_t monsterBytes = 0;
+        uint16_t monsterCount = 0;
+        for (int cellIndex : AOI[ownCell]) {
+            const int cy = cellIndex / CELLS_X;
+            const int cx = cellIndex % CELLS_X;
+            for (uint16_t index : m_cells[cy][cx].monsterIndexes) {
+                if (index >= m_monsters.size() || !writer->WriteMonsterFullField(monsterChunk, m_monsters[index])) return false;
+                monsterBytes += sizeof(MonsterFullField);
+                ++monsterCount;
+            }
+        }
+        writer->AddChunk(players, playerBytes, playerCount);
+        writer->AddChunk(monsters, monsterBytes, monsterCount);
+        // Keep capture and registration under the same Zone lock so later deltas enqueue behind it.
+        return broadcast->EnqueueBootstrap(sessionID, m_zoneID, std::move(players), std::move(playerChunk),
+            std::move(monsters), std::move(monsterChunk));
+    }
+
     void ZoneState::UpdateSessionSnapshot() {
         for (int i = 0; i < CELLS_Y; i++)
         {

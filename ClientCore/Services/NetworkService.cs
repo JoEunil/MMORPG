@@ -47,15 +47,17 @@ namespace ClientCore.Services
         public void RequestBazaarBuy(uint requestID, ulong listingID) => _sock.Send(Packet.SerializeBazaarBuyRequest(requestID, listingID));
         public void RequestBazaarCheckOutbox(uint requestID) => _sock.Send(Packet.SerializeBazaarCheckOutboxRequest(requestID));
         public void RequestBazaarCancelListing(uint requestID, ulong listingID) => _sock.Send(Packet.SerializeBazaarCancelListingRequest(requestID, listingID));
-        public void Action(byte dir, float x, float y, byte skillSlot)
+        public void Action(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch)
         {
-            _sock.Send(PacketBuilder.CreateActionPacket(dir, x, y, skillSlot));
+            _sock.Send(PacketBuilder.CreateActionPacket(dir, x, y, skillSlot, ownershipEpoch));
         }
 
         public void ZoneChange(byte op)
         {
             _sock.Send(PacketBuilder.CreateZoneChangePacket(op));
         }
+
+        public void ZoneResync(ulong ownershipEpoch) => _sock.Send(PacketBuilder.CreateZoneResyncPacket(ownershipEpoch));
 
         public void Pong(ulong serverTimeMs)
         {

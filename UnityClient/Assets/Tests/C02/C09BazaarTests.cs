@@ -91,10 +91,11 @@ namespace C02.Tests
             using (var f = new Fixture())
             {
                 int events = 0; f.Model.OnBazaarReceived += _ => events++;
-                f.Model.RequestBazaar(1, 0); f.Model.ZoneChange(4);
+                f.Model.RequestBazaar(1, 0);
+                C08TestSession.BeginAutomaticTransition(f.Model, f.Drain);
                 f.Model.BazaarReceived(f.Network.IDs[0], 1, Rows()); f.Drain(); Assert.That(events, Is.Zero);
                 Assert.Throws<InvalidOperationException>(() => f.Model.RequestBazaar(1, 0));
-                f.Model.ZoneChageReceived(0, 0, 0, 0, 0, 0, 0); f.Drain();
+                C08TestSession.CompleteAutomaticTransition(f.Model, f.Drain);
                 f.Model.RequestBazaar(1, 0); f.Model.BazaarReceived(f.Network.IDs[1], 1, Rows()); f.Model.Dispose(); f.Drain();
                 Assert.That(events, Is.Zero); Assert.That(f.Data.GetBazaar(), Is.Empty);
             }
@@ -128,7 +129,7 @@ namespace C02.Tests
             public void RequestBazaar(uint id, ushort type, ushort page) => IDs.Add(id);
             public Task Connect(string address, int port) => Task.CompletedTask; public void CharacterList() { } public void Enter(ulong id) { }
             public void Chat(string message, byte scope, ulong target) { } public void Profiles(uint[] ids) { } public void RequestInventory() { }
-            public void Action(byte dir, float x, float y, byte slot) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void Log(string text) { }
+            public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void Log(string text) { }
         }
     }
 }

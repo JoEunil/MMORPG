@@ -130,23 +130,23 @@ namespace ClientCore.Network
         }
         public void HandleZoneChangeRes(STPacket<ZoneChangeResponseBody> packet)
         {
-            _viewModel.ZoneChageReceived(packet.body.resStatus, packet.body.zoneID, packet.body.chatID, packet.body.zoneInternalID, packet.body.startX, packet.body.startY, packet.body.zoneGeneration);
+            _viewModel.ZoneChageReceived(packet.body.resStatus, packet.body.zoneID, packet.body.chatID, packet.body.zoneInternalID, packet.body.startX, packet.body.startY, packet.body.zoneGeneration, packet.body.ownershipEpoch);
         }
         public void HandleDeltaUpdate((ushort count, ushort zoneID, ulong generation, DeltaUpdateField[] items) res)
         {
             _viewModel.DeltaReceived(res.zoneID, res.generation, res.count, res.items);
         }
-        public void HandleFullState((ushort count, ushort zoneID, ulong generation, FullStateField[] items) res)
+        public void HandleFullState((ushort count, ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, FullStateField[] items) res)
         {
-            _viewModel.FullReceived(res.zoneID, res.generation, res.count, res.items);
+            _viewModel.FullReceived(res.zoneID, res.generation, res.ownershipEpoch, res.bootstrapID, res.bootstrapEnd, res.count, res.items);
         } 
         public void HandleMonsterDelta((ushort count, ushort zoneID, ulong generation, MonsterDeltaField[] items) res)
         {
             _viewModel.MonsterDeltaReceived(res.zoneID, res.generation, res.count, res.items);
         }
-        public void HandleMonsterFull((ushort count, ushort zoneID, ulong generation, MonsterFullField[] items) res)
+        public void HandleMonsterFull((ushort count, ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, MonsterFullField[] items) res)
         {
-            _viewModel.MonsterFullReceived(res.zoneID, res.generation, res.count, res.items);
+            _viewModel.MonsterFullReceived(res.zoneID, res.generation, res.ownershipEpoch, res.bootstrapID, res.bootstrapEnd, res.count, res.items);
         }
         public void HandleActionReult((ushort count, ushort zoneID, ulong generation, ActionResultField[] items) res)
         {

@@ -62,13 +62,13 @@ namespace ClientCore.Network
                                 _handler.HandleDeltaUpdate(Packet.DeserializeVariablePacket<DeltaUpdateField>(header, curr));
                                 break;
                             case OP_CODE.ZONE_FULL_STATE_BROADCAST:
-                                _handler.HandleFullState(Packet.DeserializeVariablePacket<FullStateField>(header, curr));
+                                _handler.HandleFullState(Packet.DeserializeFullSnapshot<FullStateField>(header, curr));
                                 break;
                             case OP_CODE.MONSTER_DELTA_UPDATE_BROADCAST:
                                 _handler.HandleMonsterDelta(Packet.DeserializeVariablePacket<MonsterDeltaField>(header, curr));
                                 break;
                             case OP_CODE.MONSTER_FULL_STATE_BROADCAST:
-                                _handler.HandleMonsterFull(Packet.DeserializeVariablePacket<MonsterFullField>(header, curr));
+                                _handler.HandleMonsterFull(Packet.DeserializeFullSnapshot<MonsterFullField>(header, curr));
                                 break;
                             case OP_CODE.ACTION_RESULT:
                                 _handler.HandleActionReult(Packet.DeserializeVariablePacket<ActionResultField>(header, curr));

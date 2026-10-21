@@ -74,6 +74,12 @@ namespace Core {
             case OP::ZONE_CHANGE:
                 ZoneChange(p);
                 break;
+            case OP::ZONE_RESYNC:
+                if (p->GetLength() == sizeof(PacketStruct<ZoneResyncBody>)) {
+                    const auto* body = parseBody<ZoneResyncBody>(p->GetPtr());
+                    stateManager->SendBootstrap(p->GetSessionID(), body->ownershipEpoch);
+                }
+                break;
             case OP::INVENTORY_REQ:
                 GetInventory(p);
                 break;
@@ -458,9 +464,11 @@ namespace Core {
         // ChangeZone releases the shard and all Zone locks before network transmission.
         auto response = success
             ? writer->WriteZoneChangeSucess(result.zoneID, result.chatID, result.internalID,
-                result.x, result.y, result.generation)
+                result.x, result.y, result.generation, result.ownershipEpoch)
             : writer->WriteZoneChangeFailed();
         if (response)
             iocp->SendDataUnique(session, std::move(response));
+        if (success)
+            stateManager->SendBootstrap(session, result.ownershipEpoch);
     }
 }
