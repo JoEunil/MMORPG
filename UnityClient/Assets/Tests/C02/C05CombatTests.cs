@@ -177,20 +177,39 @@ namespace C02.Tests
             {
                 Assert.That(f.World.CanAct, Is.True);
                 f.Data.UpdateAction(3, 10, 10, 2);
-                Set(f.World, "moveTarget", (Vector2?)new Vector2(20, 20));
+                Set(f.World, "visualPosition", f.World.ServerPosition + new Vector2(0.4f, -0.25f));
                 f.Delta(new DeltaUpdateField { zoneInternalID = 73, fieldID = 1, fieldVal = 31 },
                     new DeltaUpdateField { zoneInternalID = 73, fieldID = 0, fieldVal = 0 });
                 Assert.That(f.World.OwnFull.mp, Is.EqualTo(31)); Assert.That(f.World.OwnFull.hp, Is.Zero);
                 Assert.That(f.Vitals.text, Does.Contain("HP 0 / 100").And.Contain("MP 31 / 50"));
-                Assert.That(f.Status.text, Does.Contain("movement and combat stopped"));
-                Assert.That(f.World.CanAct, Is.False); Assert.That(Get(f.World, "moveTarget"), Is.Null);
+                Assert.That(f.World.CanAct, Is.False);
+                Assert.That((Vector2)Get(f.World, "visualPosition"), Is.EqualTo(f.World.ServerPosition),
+                    "HP 0 stops local visual prediction at the latest server-confirmed position.");
                 Assert.That(((IViewDataModel)f.Data).GetActionState().Item1, Is.False);
                 Invoke(f.Combat, "RequestSkill", (byte)1);
                 Assert.That(((IViewDataModel)f.Data).GetActionState().Item1, Is.False);
                 foreach (var button in f.Buttons) Assert.That(button.interactable, Is.False);
+                var defeatPanel = (GameObject)Get(f.Combat, "defeatPanel");
+                Assert.That(defeatPanel != null && defeatPanel.activeSelf, Is.True);
+                Assert.That(defeatPanel.transform.Find("Defeat Message/Title").GetComponent<TMP_Text>().text, Is.EqualTo("DEFEATED"));
+                Assert.That(defeatPanel.transform.Find("Defeat Message/Message").GetComponent<TMP_Text>().text,
+                    Does.Contain("Your character has fallen.").And.Contain("return to the login screen."));
+
                 f.Full();
                 Assert.That(f.World.OwnFull.hp, Is.EqualTo(100));
                 Assert.That(f.World.CanAct, Is.True, "A later actual Full owns the confirmed state; there is no local resurrection.");
+                Assert.That(defeatPanel.activeSelf, Is.False, "A server-confirmed living state hides the defeat panel.");
+
+                f.Delta(new DeltaUpdateField { zoneInternalID = 73, fieldID = 0, fieldVal = 0 });
+                Assert.That(f.World.OwnFull.hp, Is.Zero);
+                Assert.That(defeatPanel.activeSelf, Is.True);
+                var logout = defeatPanel.GetComponentInChildren<UnityEngine.UI.Button>(true);
+                Assert.That(logout.GetComponentInChildren<TMP_Text>(true).text, Is.EqualTo("LOG OUT"));
+                logout.onClick.Invoke();
+                Assert.That(((TMP_Text)Get(Get(f.Combat, "loginScreen"), "statusText")).text, Does.Contain("Session closed."));
+                Assert.That(f.World.Stage, Is.EqualTo(C02Stage.Ready));
+                Assert.That(Get(f.Combat, "model"), Is.Null, "ConnectionFailed releases the bound model through ClientChanged(null).");
+                Assert.That(defeatPanel.activeSelf, Is.False, "Leaving through the existing connection-close path hides the defeat panel.");
             }
         }
 
@@ -295,6 +314,7 @@ namespace C02.Tests
             public CombatFixture()
             {
                 root = new GameObject("C05 detached fixture"); root.SetActive(false);
+                root.AddComponent<Canvas>(); root.AddComponent<UnityEngine.UI.GraphicRaycaster>();
                 var login = root.AddComponent<C01LoginScreen>(); World = root.AddComponent<C02WorldScreen>(); Combat = root.AddComponent<C05CombatScreen>();
                 Set(login, "loginIdInput", Child("id").AddComponent<TMP_InputField>());
                 Set(login, "passwordInput", Child("password").AddComponent<TMP_InputField>());

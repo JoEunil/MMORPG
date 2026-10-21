@@ -1,3 +1,11 @@
+## 최신 — HP0 안내 로컬 구현 / 사용자 요청으로 입력 보류
+
+codex/hunting-flow-followup에서 C05 패배 안내/LOG OUT과 기존 fixture를 보완했다. 서버 회복/부활은 없고 기존 정상 연결 종료만 재사용한다. 최종 독립 P1/P2없음/compile0/영향 fixture1PASS. 첫 실행의 오래된 moveTarget 참조 NRE는 실패 로그 보존 후 visualPosition 예측정지 검증으로 수정했고 HP100 복원 assertion은 유지했다. DEFEATED_FLOW_RESULTS.txt 참조.
+
+Unity 네이티브 조회에서 다른 게임 화면이 반환돼 클릭0/로그인0으로 멈췄다. 사용자가 '입력 검증은 나중에'라고 명시했다. 새 실입력은 자동 재개하지 않으며 다음 배치에 HP0 실제 패널/정상 로그아웃만 남긴다. EditorPlayfalse/dirtyfalse/inputfalse/backgroundfalse, 기존 서비스·DB 유지. 실제 HP0 화면 캡처/공개 완료 주장0.
+
+앞선 사냥 게시후보 codex/field-readability-followup=e16fcf48546b64c2d29f6bb61ab786982a284e54는 불변. 봇 HUNT01 요청1792561093.076979/parent1792487679.299269, 지정 사용자 승인 전 push/PR0. 새 UI 후속을 그 승인 범위에 섞지 않는다. 다음 게시 때 원격 상태와 승인 원문·중복회신 확인. 사용량 신규37/재활성화80/활성화117/tokenN/A.
+
 ## 최신 — 보스 실화면 확인 완료 / 서버 상태 정정
 
 호스트 권한의 읽기 전용 재확인에서 기존 Line-Aim MainServer PID4892와 MainWindowHandle=0을 확인했다. 제한된 프로세스 조회의 빈 결과를 종료로 오인한 직전 안내를 정정한다. 서버 종료 원인 조사나 재기동 조건으로 사용하지 않는다. 수동 콘솔 q 요청은 Slack1792560827.200079에서 취소됐고 종료 도우미의 정책 차단을 우회하지 않는다. 새 Monster-Melee 후보는 미적용이다.

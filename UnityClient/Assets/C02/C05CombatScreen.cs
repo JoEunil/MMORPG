@@ -34,6 +34,7 @@ namespace C02
         private float linePreviewDeadline;
         private GameObject skillTooltip;
         private TMP_Text skillTooltipText;
+        private GameObject defeatPanel;
         private int tooltipSlot = -1;
         private int generation;
         private ushort observedZone;
@@ -70,6 +71,7 @@ namespace C02
         {
             HideLinePreview();
             HideSkillTooltip();
+            HideDefeatPanel();
             Unsubscribe();
             generation++;
             model = next;
@@ -108,7 +110,17 @@ namespace C02
                 if (observedZone == 0) { observedZone = worldScreen.ZoneID; ownId = worldScreen.InternalID; }
                 else if (observedZone != worldScreen.ZoneID || ownId != worldScreen.InternalID) ResetObservation();
                 var state = worldScreen.OwnFull;
-                if (state.hp == 0) { HideLinePreview(); HideSkillTooltip(); }
+                if (state.hp == 0)
+                {
+                    HideLinePreview();
+                    HideSkillTooltip();
+                    combatStatusText.text = string.Empty;
+                    ShowDefeatPanel();
+                }
+                else
+                {
+                    HideDefeatPanel();
+                }
                 vitalsText.text = string.Format(CultureInfo.InvariantCulture, "HP {0} / {1}    MP {2} / {3}",
                     state.hp, state.maxHp, state.mp, state.maxMp);
                 if (hpValueText != null) hpValueText.text = string.Format(CultureInfo.InvariantCulture, "HP {0} / {1}", state.hp, state.maxHp);
@@ -117,13 +129,12 @@ namespace C02
                 if (mpFill != null) mpFill.fillAmount = GaugeAmount(state.mp, state.maxMp);
                 aimText.text = string.Format(CultureInfo.InvariantCulture, "Lv {0}  EXP {1}  |  Line aim: {2}",
                     state.level, state.exp, LineDirection(state.dir));
-                if (state.hp == 0) combatStatusText.text = "HP 0 — defeated. Disconnect to leave.";
-                else if (combatStatusText.text.StartsWith("HP 0", StringComparison.Ordinal)) combatStatusText.text = string.Empty;
             }
             else
             {
                 HideLinePreview();
                 HideSkillTooltip();
+                HideDefeatPanel();
                 if (observedZone != 0 || ownId != 0) ResetObservation();
                 vitalsText.text = string.Empty;
                 if (hpValueText != null) hpValueText.text = string.Empty;
@@ -141,6 +152,7 @@ namespace C02
         {
             HideLinePreview();
             HideSkillTooltip();
+            HideDefeatPanel();
             Unsubscribe();
             generation++;
             observedZone = WorldAvailable ? worldScreen.ZoneID : (ushort)0;
@@ -148,6 +160,101 @@ namespace C02
             combatStatusText.text = string.Empty;
             Subscribe();
         }
+
+        private void ShowDefeatPanel()
+        {
+            if (defeatPanel == null)
+            {
+                var canvas = combatPanel != null ? combatPanel.GetComponentInParent<Canvas>() : null;
+                if (canvas == null) return;
+
+                defeatPanel = new GameObject("C05 Defeated", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.Image));
+                defeatPanel.transform.SetParent(canvas.transform, false);
+                var overlayRect = defeatPanel.GetComponent<RectTransform>();
+                overlayRect.anchorMin = Vector2.zero;
+                overlayRect.anchorMax = Vector2.one;
+                overlayRect.offsetMin = Vector2.zero;
+                overlayRect.offsetMax = Vector2.zero;
+                var overlay = defeatPanel.GetComponent<UnityEngine.UI.Image>();
+                overlay.color = new Color(0.025f, 0.02f, 0.015f, 0.68f);
+                overlay.raycastTarget = true;
+
+                var cardObject = new GameObject("Defeat Message", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.Image));
+                cardObject.transform.SetParent(defeatPanel.transform, false);
+                var cardRect = cardObject.GetComponent<RectTransform>();
+                cardRect.anchorMin = cardRect.anchorMax = new Vector2(0.5f, 0.5f);
+                cardRect.sizeDelta = new Vector2(380, 220);
+                var card = cardObject.GetComponent<UnityEngine.UI.Image>();
+                card.color = new Color(0.13f, 0.095f, 0.055f, 0.99f);
+                card.raycastTarget = false;
+
+                var titleObject = new GameObject("Title", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+                titleObject.transform.SetParent(cardObject.transform, false);
+                var titleRect = titleObject.GetComponent<RectTransform>();
+                titleRect.anchorMin = titleRect.anchorMax = new Vector2(0.5f, 0.5f);
+                titleRect.anchoredPosition = new Vector2(0, 58);
+                titleRect.sizeDelta = new Vector2(340, 48);
+                var title = titleObject.GetComponent<TextMeshProUGUI>();
+                title.font = aimText.font;
+                title.fontSize = 30;
+                title.fontStyle = FontStyles.Bold;
+                title.color = new Color(0.96f, 0.76f, 0.36f);
+                title.alignment = TextAlignmentOptions.Center;
+                title.raycastTarget = false;
+                title.text = "DEFEATED";
+
+                var messageObject = new GameObject("Message", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+                messageObject.transform.SetParent(cardObject.transform, false);
+                var messageRect = messageObject.GetComponent<RectTransform>();
+                messageRect.anchorMin = messageRect.anchorMax = new Vector2(0.5f, 0.5f);
+                messageRect.anchoredPosition = new Vector2(0, 4);
+                messageRect.sizeDelta = new Vector2(330, 60);
+                var message = messageObject.GetComponent<TextMeshProUGUI>();
+                message.font = aimText.font;
+                message.fontSize = 18;
+                message.color = new Color(0.91f, 0.88f, 0.81f);
+                message.alignment = TextAlignmentOptions.Center;
+                message.raycastTarget = false;
+                message.text = "Your character has fallen.\nLog out to return to the login screen.";
+
+                var buttonObject = new GameObject("Log Out", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button));
+                buttonObject.transform.SetParent(cardObject.transform, false);
+                var buttonRect = buttonObject.GetComponent<RectTransform>();
+                buttonRect.anchorMin = buttonRect.anchorMax = new Vector2(0.5f, 0.5f);
+                buttonRect.anchoredPosition = new Vector2(0, -68);
+                buttonRect.sizeDelta = new Vector2(190, 48);
+                var buttonImage = buttonObject.GetComponent<UnityEngine.UI.Image>();
+                buttonImage.color = new Color(0.35f, 0.12f, 0.075f, 1f);
+                var button = buttonObject.GetComponent<UnityEngine.UI.Button>();
+                button.targetGraphic = buttonImage;
+                button.onClick.AddListener(LeaveAfterDefeat);
+
+                var buttonLabelObject = new GameObject("Label", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+                buttonLabelObject.transform.SetParent(buttonObject.transform, false);
+                var buttonLabelRect = buttonLabelObject.GetComponent<RectTransform>();
+                buttonLabelRect.anchorMin = Vector2.zero;
+                buttonLabelRect.anchorMax = Vector2.one;
+                buttonLabelRect.offsetMin = buttonLabelRect.offsetMax = Vector2.zero;
+                var buttonLabel = buttonLabelObject.GetComponent<TextMeshProUGUI>();
+                buttonLabel.font = aimText.font;
+                buttonLabel.fontSize = 20;
+                buttonLabel.fontStyle = FontStyles.Bold;
+                buttonLabel.color = new Color(1f, 0.9f, 0.69f);
+                buttonLabel.alignment = TextAlignmentOptions.Center;
+                buttonLabel.raycastTarget = false;
+                buttonLabel.text = "LOG OUT";
+            }
+
+            defeatPanel.SetActive(true);
+            defeatPanel.transform.SetAsLastSibling();
+        }
+
+        private void HideDefeatPanel()
+        {
+            if (defeatPanel != null) defeatPanel.SetActive(false);
+        }
+
+        private void LeaveAfterDefeat() => loginScreen.ConnectionFailed("Session closed.");
 
         private bool InputAvailable()
         {
@@ -392,6 +499,7 @@ namespace C02
         {
             HideLinePreview();
             HideSkillTooltip();
+            HideDefeatPanel();
             if (combatPanel != null) combatPanel.SetActive(false);
             loginScreen?.Data?.CancelAction();
             worldScreen?.CancelMovement();
@@ -421,6 +529,12 @@ namespace C02
         private void OnDestroy()
         {
             HideLinePreview();
+            if (defeatPanel != null)
+            {
+                if (Application.isPlaying) Destroy(defeatPanel);
+                else DestroyImmediate(defeatPanel);
+                defeatPanel = null;
+            }
             if (skillTooltip != null)
             {
                 if (Application.isPlaying) Destroy(skillTooltip);

@@ -1,3 +1,13 @@
+## HP0 이후 흐름 — 2026-10-21
+
+| 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 확인한 결과 |
+| --- | --- | ---: | ---: | --- |
+| hunting_recovery_contract | server_analyst / gpt-6.1-sol medium | 1 | 0 | 회복/부활 미지원과 HP 저장·재진입/정상 종료 계약 읽기 |
+| defeated_screen | client_implementer / gpt-6-luna medium | 1 | 1 | 패배 안내·정상 종료와 기존 fixture 보완. 오래된 이동 상태 참조를 현 계약으로 정정 |
+| defeated_flow_review | code_reviewer / gpt-6.1-sol medium | 1 | 1 | 최종 P1/P2 없음. 최초 기존 moveTarget 누락은 실행에서 발견, 정정 후 기대 보존 재검토 |
+
+누적 신규37/재활성화80/활성화117, 실제 토큰 N/A. Coordinator가 최소 fixture 최종1PASS/compile0을 확인했다. 첫실패 보존, 실입력은 사용자 명시 보류. 실제 입력 미실행을 성공으로 세지 않는다.
+
 # 에이전트 활용 기록
 
 ## 사냥 화면·근접 거리·보스 예고
