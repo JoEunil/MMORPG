@@ -5,4 +5,5 @@ inline constexpr int STRONG_MONSTERS_PER_CELL = 2;
 inline constexpr int MONSTER_SPAWN_EDGE_INSET = 1;
 inline constexpr int REGULAR_MONSTERS_BY_CELL[25] = {0, 0, 2, 3, 4, 0, 2, 3, 4, 5, 2, 3, 0, 5, 6, 3, 4, 5, 6, 7, 4, 5, 6, 7, 8};
 inline constexpr int STRONG_MONSTERS_BY_CELL[25] = {0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 2, 1, 1, 1, 2, 2};
+inline constexpr int MONSTER_ZONE_DENSITY_PERCENT[6] = {100, 100, 100, 100, 100, 100};
 }

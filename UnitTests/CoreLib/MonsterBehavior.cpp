@@ -1,6 +1,7 @@
-﻿#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 
 #include <CoreLib/ZoneState.h>
+#include <CoreLib/WorldMap.h>
 #include <algorithm>
 #include <cmath>
 #include <set>
@@ -8,7 +9,8 @@
 namespace Core {
     class MonsterBehaviorFixture {
     public:
-        ZoneState zone{1};
+        explicit MonsterBehaviorFixture(uint16_t zoneID = 1) : zone(zoneID) {}
+        ZoneState zone;
 
         void AddMonster(const MonsterState& monster) { zone.m_monsters.push_back(monster); }
 
@@ -28,42 +30,46 @@ namespace Core {
     };
 
     TEST(SpawnLayoutTest, StarterLayoutLeavesEntryCellsEmptyAndBuildsAllServerReferences) {
-        MonsterBehaviorFixture fixture;
-        fixture.InitializeSpawns();
-        const int regular[25] = {0,0,2,3,4, 0,2,3,4,5, 2,3,0,5,6, 3,4,5,6,7, 4,5,6,7,8};
-        const int strong[25] = {0,0,0,0,1, 0,0,0,1,1, 0,0,0,1,1, 0,1,1,1,2, 1,1,1,2,2};
-        ASSERT_EQ(fixture.Monsters().size(), 112u);
-        std::set<uint32_t> seen;
-        int regularTotal = 0, strongTotal = 0, bossTotal = 0;
-        for (int y = 0; y < 5; ++y) {
-            for (int x = 0; x < 5; ++x) {
-                const auto& cell = fixture.CellAt(x, y);
-                const bool boss = x == 2 && y == 2;
-                const int slot = y * 5 + x;
-                ASSERT_EQ(cell.monsterIndexes.size(), static_cast<size_t>(boss ? 1 : regular[slot] + strong[slot]));
-                for (size_t n = 0; n < cell.monsterIndexes.size(); ++n) {
-                    const auto index = cell.monsterIndexes[n];
-                    ASSERT_LT(index, fixture.Monsters().size());
-                    EXPECT_TRUE(seen.insert(index).second);
-                    const auto& monster = fixture.Monsters()[index];
-                    EXPECT_EQ(monster.internalID, index);
-                    EXPECT_EQ(monster.cellX, x); EXPECT_EQ(monster.cellY, y);
-                    EXPECT_EQ(monster.data->id, boss ? 2 : (n < static_cast<size_t>(regular[slot]) ? 0 : 1));
-                    EXPECT_FLOAT_EQ(monster.x, monster.spawnX); EXPECT_FLOAT_EQ(monster.y, monster.spawnY);
-                    if (boss) {
-                        ++bossTotal;
-                        EXPECT_FLOAT_EQ(monster.x, (cell.area.x_min + cell.area.x_max) / 2);
-                        EXPECT_FLOAT_EQ(monster.y, (cell.area.y_min + cell.area.y_max) / 2);
-                    } else {
-                        if (monster.data->id == 0) ++regularTotal; else ++strongTotal;
-                        EXPECT_GE(monster.x, cell.area.x_min + 1); EXPECT_LE(monster.x, cell.area.x_max - 1);
-                        EXPECT_GE(monster.y, cell.area.y_min + 1); EXPECT_LE(monster.y, cell.area.y_max - 1);
+        for (uint16_t zoneID = 1; zoneID <= ZONE_COUNT; ++zoneID) {
+            SCOPED_TRACE(zoneID);
+            MonsterBehaviorFixture fixture(zoneID);
+            fixture.InitializeSpawns();
+            const int regular[25] = {0,0,2,3,4, 0,2,3,4,5, 2,3,0,5,6, 3,4,5,6,7, 4,5,6,7,8};
+            const int strong[25] = {0,0,0,0,1, 0,0,0,1,1, 0,0,0,1,1, 0,1,1,1,2, 1,1,1,2,2};
+            ASSERT_EQ(fixture.Monsters().size(), 112u);
+            std::set<uint32_t> seen;
+            int regularTotal = 0, strongTotal = 0, bossTotal = 0;
+            for (int y = 0; y < 5; ++y) {
+                for (int x = 0; x < 5; ++x) {
+                    const auto& cell = fixture.CellAt(x, y);
+                    const bool boss = x == 2 && y == 2;
+                    const int slot = y * 5 + x;
+                    ASSERT_EQ(cell.monsterIndexes.size(), static_cast<size_t>(boss ? 1 : regular[slot] + strong[slot]));
+                    for (size_t n = 0; n < cell.monsterIndexes.size(); ++n) {
+                        const auto index = cell.monsterIndexes[n];
+                        ASSERT_LT(index, fixture.Monsters().size());
+                        EXPECT_TRUE(seen.insert(index).second);
+                        const auto& monster = fixture.Monsters()[index];
+                        EXPECT_EQ(monster.internalID, index);
+                        EXPECT_EQ(monster.cellX, x); EXPECT_EQ(monster.cellY, y);
+                        EXPECT_EQ(monster.data->id, boss ? 2 : (n < static_cast<size_t>(regular[slot]) ? 0 : 1));
+                        EXPECT_FLOAT_EQ(monster.x, monster.spawnX); EXPECT_FLOAT_EQ(monster.y, monster.spawnY);
+                        EXPECT_TRUE(WorldMap::CanTraverse(monster.x, monster.y, monster.x, monster.y));
+                        if (boss) {
+                            ++bossTotal;
+                            EXPECT_FLOAT_EQ(monster.x, (cell.area.x_min + cell.area.x_max) / 2);
+                            EXPECT_FLOAT_EQ(monster.y, (cell.area.y_min + cell.area.y_max) / 2);
+                        } else {
+                            if (monster.data->id == 0) ++regularTotal; else ++strongTotal;
+                            EXPECT_GE(monster.x, cell.area.x_min + 1); EXPECT_LE(monster.x, cell.area.x_max - 1);
+                            EXPECT_GE(monster.y, cell.area.y_min + 1); EXPECT_LE(monster.y, cell.area.y_max - 1);
+                        }
                     }
                 }
             }
+            EXPECT_EQ(regularTotal, 94); EXPECT_EQ(strongTotal, 17); EXPECT_EQ(bossTotal, 1);
+            EXPECT_EQ(seen.size(), 112u);
         }
-        EXPECT_EQ(regularTotal, 94); EXPECT_EQ(strongTotal, 17); EXPECT_EQ(bossTotal, 1);
-        EXPECT_EQ(seen.size(), 112u);
     }
 
     TEST(MonsterBehaviorTest, WandersWithinHomeAtScaledSpeedWithIdleVarianceAndRespawnReset) {

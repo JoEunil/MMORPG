@@ -47,6 +47,26 @@ namespace Core {
 
     void ZoneState::InitializeMonster() {
         static_assert(CELLS_X == 5 && CELLS_Y == 5, "Revalidate authored monster spawn cell counts.");
+        static_assert(ZONE_COUNT == 6, "Revalidate authored Zone density count.");
+        static_assert(sizeof(Data::MONSTER_ZONE_DENSITY_PERCENT) / sizeof(Data::MONSTER_ZONE_DENSITY_PERCENT[0]) == ZONE_COUNT,
+            "Authored density must have one value per field Zone.");
+        static_assert([] {
+            for (int percent : Data::MONSTER_ZONE_DENSITY_PERCENT) {
+                if (percent < 50 || percent > 200) return false;
+                int64_t total = 1; // The central boss is never scaled.
+                for (int cell = 0; cell < 25; ++cell) {
+                    if (Data::REGULAR_MONSTERS_BY_CELL[cell] < 0 || Data::STRONG_MONSTERS_BY_CELL[cell] < 0)
+                        return false;
+                    total += int64_t{Data::REGULAR_MONSTERS_BY_CELL[cell]} * percent / 100;
+                    total += int64_t{Data::STRONG_MONSTERS_BY_CELL[cell]} * percent / 100;
+                }
+                if (total > MAX_MONSTER_COUNT) return false;
+            }
+            return Data::REGULAR_MONSTERS_BY_CELL[12] == 0 && Data::STRONG_MONSTERS_BY_CELL[12] == 0;
+        }(), "Authored Zone spawn density exceeds the supported range or capacity.");
+        if (m_zoneID < 1 || m_zoneID > ZONE_COUNT)
+            throw std::runtime_error("Monster spawning requires a valid field Zone.");
+        const int densityPercent = Data::MONSTER_ZONE_DENSITY_PERCENT[m_zoneID - 1];
         int uniqueId = 0;
 
         // Generated counts preserve per-cell type order; open-map rand() distribution is unchanged.
@@ -62,7 +82,8 @@ namespace Core {
                     continue;
 
                 // 일반 몬스터
-                for (int k = 0; k < Data::REGULAR_MONSTERS_BY_CELL[cellIndex]; k++)
+                const int regularCount = static_cast<int>(int64_t{Data::REGULAR_MONSTERS_BY_CELL[cellIndex]} * densityPercent / 100);
+                for (int k = 0; k < regularCount; k++)
                 {
                     const auto [spawnX, spawnY] = ChooseSpawn(area);
 
@@ -76,7 +97,8 @@ namespace Core {
                 }
 
                 // 조금 센 일반 몬스터
-                for (int k = 0; k < Data::STRONG_MONSTERS_BY_CELL[cellIndex]; k++)
+                const int strongCount = static_cast<int>(int64_t{Data::STRONG_MONSTERS_BY_CELL[cellIndex]} * densityPercent / 100);
+                for (int k = 0; k < strongCount; k++)
                 {
                     const auto [spawnX, spawnY] = ChooseSpawn(area);
 

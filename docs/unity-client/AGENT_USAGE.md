@@ -1,3 +1,12 @@
+## 구역별 몬스터 배치 편집 — 2026-10-21
+
+| 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 확인한 결과 |
+| --- | --- | ---: | ---: | --- |
+| zone_spawn_authoring | client_implementer / gpt-6-luna medium | 1 | 1 | C15 선택 밀도·합계·원자 출력·기존 fixture 보완 |
+| zone_spawn_review | code_reviewer / gpt-6.1-sol medium | 1 | 1 | 구역 번호 P2 수정 후 최종 코드상 차단 없음 |
+
+이번 신규2/재활성화2/활성화4, 누적 신규45/재활성화87/활성화132, 실제 토큰 N/A. 서버 최소 연결·최종 통합은 Coordinator가 담당하며 전문 역할 호출 수로 세지 않는다. Unity 입력은 보류하며 직접 호출한 assertion과 실제 입력/NUnit 실행을 구분한다. 최종 검증 기록은 ZONE_SPAWN_RESULTS.txt를 따른다.
+
 ## 월드 격자·시각 이동·파츠 모션 — 2026-10-21
 
 | 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 확인한 결과 |

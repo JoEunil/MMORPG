@@ -1,0 +1,33 @@
+2026-10-21 — 구역별 몬스터 배치 편집 후속
+
+기준: PR43 head 5fa1855에서 codex/zone-spawn-authoring 분기. PR43에 새 범위 추가 push0.
+WORLD02 사람 승인1792564891.374529 소비, PR43 게시·bot thread1792565044.529839 및 완료채널1792565455.729279 전달.
+
+구현
+C15 선택적 zoneDensityPercent int[6], null/empty는100%, 설정 시50..200.
+기존 y-major25셀/종류별 기본 개수를 (long)count*percent/100으로 내림, 중앙보스1은 고정.
+MONSTER_ZONE_DENSITY_PERCENT[6] export, 서버는 m_zoneID-1 선택, compile-time 범위/길이/최대1000 확인.
+Inspector에100% 기준셀표와 Zone1..6 적용합계 표시. 미사용 Zone0 표시 P2는 수정 후 독립 재검토 통과.
+export는 기존 파일 선삭제 없이 고유temp write→File.Replace/Move, 실패 때 temp정리.
+InitializeMonster 이후 AI/aggro/A* diff0. 실제 자산/스탯/보상/스폰밀도 변경0.
+
+확인 근거 — ROOT UnityClient/Builds/Zone-Spawn (ignored)
+unity-export-result.txt: 기존 C15 assertion 시나리오2개 직접 eval 호출 PASS.
+ legacy/100%·25배열 보존/혼합density·잘못된 길이/값/예산 초과 거부.
+ readonly 출력 교체 실제 실패에서 기존 sentinel바이트·파일수 보존, 임시파일 제거 PASS.
+ NUnit runner/실제 입력을 실행한 것으로 세지 않음.
+unity-preview-result.txt: 실제 Inspector.CreateInspectorGUI를 자산 복제본에 구성하고 preview Label 확인 PASS.
+ 50%=46,100%=112,150%=157,200%=223. Zone1..6 표시, Zone0 없음.
+ 서버 기본 출력은100x6, 실제asset SHA256 CDA63C06C8A52715AA1CEE2E9AD29652F000185239D29EDC4FAF6C9A2FA5D883 유지.
+Unity recompile_status compilationFailed=false/errors=[], 최종 playing/dirty/input/background=false.
+MainServer-build.txt: Release x64 PASS. UnitTests-build/native 결과는 아래 최종 상태를 따른다.
+독립 zone_spawn_review 최종 코드상 차단 없음.
+
+제한
+50..200%의 실제 서버 초기화는 미실행이며 기본100% native 결과와 구분한다.
+Unity 마우스/키보드 입력·새 로그인·서버 교체·DB수정0. 난이도/생존/처치 밸런스 실측 아님.
+실제 새 Inspector 캡처 없음. 공개 원본에는 기능과 미적용 한계만 추가, 기존 캡처를 새화면이라 주장하지 않음.
+새 후속은 큰 관련 PR까지 로컬로 모으며 별도 작은 PR/게시 승인 요청을 만들지 않음.
+
+최종 native 상태: PASS — UnitTests Release x64 빌드 PASS, 기존 SpawnLayout fixture 1개(6구역) PASS/1ms.
+6구역 모두112, 일반94/강한17/중앙보스1, 시작 셀 비움·인덱스/종류/Cell/좌표/통행 보존 확인.

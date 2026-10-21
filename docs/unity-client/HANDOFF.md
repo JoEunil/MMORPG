@@ -1,4 +1,12 @@
-## 최신 — 확대 맵·충돌 export·이동/모션 로컬 후보 / 입력 보류
+## 최신 — WORLD02 승인 소비·PR43 게시 / 구역별 배치 후속
+
+지정 사용자 U0C9QEUHPMK의 Slack 원문 ‘승인 WORLD02’, 회신1792564891.374529를 요청1792564212.382599/등록parent1792487679.299269와 대조했다. 5fa18554e463c8014a5651e1df60b1e9d89281b4를 일반 push했고 PR43 https://github.com/JoEunil/MMORPG/pull/43 으로 기존 사냥·월드·이동·모션 전체를 한 묶음 게시했다. 해당 회신은 소비 완료이며 중복 push/PR 생성에 사용하지 않는다. 봇 결과 안내1792565044.529839. 사용자 병합 검토 대기, 병합/Pages 배포0.
+
+다음 codex/zone-spawn-authoring은 PR43 head에서 분기한 로컬 후속이다. ZONE_SPAWN_TASK.md의 기존 C15 구역별 밀도 편집/서버 초기화 연결만 진행하며 실제 자산은 모두100%·구역당112 유지, AI/aggro/A* 수정0. Unity 실입력 보류·서버 교체0을 유지한다. 승인된 PR43에 이 새 범위를 추가 push하지 않는다.
+
+후속 최종 서버/단위 빌드 PASS·기존 C15 assertion2개 직접 호출 PASS·실제 Inspector 복제본 합계46/112/157/223 확인·native초기화1개(6구역) PASS, compile0·독립 최종 차단 없음. 기본100% 서버 초기화만 실행했고 다른density의 서버초기화는 미실행이다. ZONE_SPAWN_RESULTS.txt 참조. 로컬 보존 후 사용자가 전달한 PR43 full snapshot 피해 강조 리뷰를 우선 검토한다.
+
+## 이전 — 확대 맵·충돌 export·이동/모션 로컬 후보 / 입력 보류
 
 제품 후보 dba6bff8daa4ce8458be12afadecc86e15bf266a 로컬 보존, fetch 후 origin/master 대비 behind0/ahead14(기존 관련 사냥 커밋 포함), 작업 폴더 clean 확인. Unity Coordinator 앱이 WORLD02 전체 묶음 게시 승인을 기존 등록 스레드에 요청했다: reply1792564212.382599/parent1792487679.299269. HUNT01의 e16fcf4 단독 범위와 구분하고 WORLD02 지정 사용자 원문 승인·회신 중복 확인 전 push/PR0. 승인 대기는 게시에만 적용하며 사용자 보류 중인 실제 입력은 자동 재개하지 않는다.
 

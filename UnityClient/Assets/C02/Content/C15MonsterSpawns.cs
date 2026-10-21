@@ -10,5 +10,6 @@ namespace C02
         public int edgeInset = 1;
         public int[] regularByCell;
         public int[] strongByCell;
+        public int[] zoneDensityPercent;
     }
 }
