@@ -1,3 +1,9 @@
+## 석축 끝면 후속 — 2026-10-21
+
+fixed_wall_visuals(client_implementer/gpt-6-luna medium), zone_spawn_review(code_reviewer/gpt-6.1-sol medium), fixed_wall_art_direction(asset_artist/gpt-6.1-sol medium)를 각1회 재활성화했다. 기존 메시 안의 끝면 캡 추가·범위/자산보호 검토·동일 구도 이미지 채택을 확인했다. Coordinator가 소유 자산 기준 일치·백업·GUID보존 갱신과 구조/이미지를 확인했다.
+
+이번 신규0/재활성화3/활성화3, 누적 신규48/재활성화95/활성화143, 실제 토큰 N/A. 같은 사냥·서버 검증을 반복하거나 정적 비교를 실입력 성공으로 세지 않는다.
+
 ## 고정 필드 석축 외관 — 2026-10-21
 
 | 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 확인한 결과 |

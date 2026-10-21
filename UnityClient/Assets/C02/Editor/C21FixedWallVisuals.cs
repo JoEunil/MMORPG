@@ -190,6 +190,10 @@ public static class C21FixedWallVisuals
             }
         }
 
+        AddTemplateBlock(sourceVertices, sourceUvs, sourceTriangles, bounds, vertices, uvs, stones,
+            longX, -.488f, .024f, 0, .98f);
+        AddTemplateBlock(sourceVertices, sourceUvs, sourceTriangles, bounds, vertices, uvs, stones,
+            longX, .488f, .024f, 0, .98f);
         AddMortar(vertices, uvs, mortar, longX);
         var mesh = new Mesh { name = name };
         mesh.SetVertices(vertices); mesh.SetUVs(0, uvs);

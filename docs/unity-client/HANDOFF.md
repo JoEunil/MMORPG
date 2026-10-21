@@ -1,4 +1,10 @@
-## 최신 — 고정 벽 석축 외관 로컬 적용·정적 비교 완료
+## 최신 — 석축 끝면 보완·편집 후속 전달 정리
+
+8e5cdbf 이후 남았던 끝면 검은틈을 기존석재의양끝캡2개로메웠다. 생성메시2개만기준원문일치·백업뒤CopySerialized로갱신해GUID/Scene참조를유지했다. helper의기존asset자동덮어쓰기금지는유지한다. 1104정점/벽·공유메시2·Collider범위/통행해시불변/재적용no-op/compile0·독립P1P2없음·같은구도전후이미지채택. 실제입력/플레이외관은미실행, 끝면평평함은남은한계다. FIXED_WALL_ART_RESULTS.md 최신참조. 누적 신규48/재활성화95/전체143,tokenN/A.
+
+구역별몬스터편집/맵Inspector/석축후속은codex/zone-spawn-authoring 한묶음이다. PR43 open/head28a122e의실입력보류를유지하며 새후속을PR43에추가push하지않는다. 앞선PR과중복되지않는다음큰PR로전달준비하며 지정앱승인전push/PR0.
+
+## 이전 — 고정 벽 석축 외관 로컬 적용·정적 비교 완료
 
 codex/zone-spawn-authoring=16b5c50 위에서 C21FixedWallVisuals 도구·공유메시2개를 추가하고 기존벽18개의 MeshFilter/Renderer 참조36블록만 바꿨다. 기존 cuboid석재·WeatheredLimestone/FoundationStone을 재사용한5단엇갈림 석축이다. 원래 collider18개/transform/통행배열/서버불변을 확인했다. 1056정점×벽18·공유Mesh2개/재적용no-op PASS, compile0/독립최종차단없음. 동일카메라·조명의preview 전후를 아트담당이채택했으나 가까운끝면의어두운틈은 잔여문제로기록했다. 실제사냥/전체필드품질통과아님. FIXED_WALL_ART_RESULTS.md 참조.
 
