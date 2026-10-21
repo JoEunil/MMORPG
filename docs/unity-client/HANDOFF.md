@@ -1,3 +1,13 @@
+## 최신 — PR43 Full 스냅샷 피해 강조 리뷰 수정
+
+원격 PR43 head28a122e578f4927fef5fba3d0d96dcb8c19fe7d1 반영 확인. 로컬 후속으로 일반 merge하며 아래 구역별 배치 기록과 리뷰 기록을 모두 보존했다. 제품 파일 충돌/추가 수정 없음, 이미 통과한 검증은 반복하지 않는다.
+
+WORLD02 지정 사용자 원문 승인1792564891.374529를 요청1792564212.382599/parent1792487679.299269와 대조해 소비했고 PR43 https://github.com/JoEunil/MMORPG/pull/43 으로 5fa1855를 게시했다. 새 기능 후속 codex/zone-spawn-authoring=4f14839는 별도 로컬 보존이며 PR43에 섞지 않는다.
+
+사용자 지적 discussion_r4333816125는 타당하다. Full이 HP 감소를 먼저 반영하면 다음 같은HP Delta는 감소가 아니어서 금색 피드백이 누락됐다. 기존 monster의 Full 감소 분기에만 PulseDamage를 추가하고 초기Full/동일HP/회복은 제외했다. 기존 fixture 하나를 확장해 Full-first 감소·중복 억제·기존delta/death/disable을 확인했다. 독립 최종 차단 없음/compile0/PlayMode 자동1PASS(0.1093939s), 실제 입력0/서버변경0. 최초 EditMode 직접 호출은 Awake 미실행 NRE라 실패 보존 후 올바른 PlayMode로 실행했다. 실제 입력 검증을 재개한 것이 아니다. PR43_REVIEW_RESULTS.txt 참조.
+
+활성화 추가: zone_spawn_review 재활성화1, 직전 로컬 후속 누적45/87에서 신규45/재활성화88/전체133, 실제 토큰 N/A. 다음 후속으로 돌아갈 때 PR43 수정 커밋을 일반 merge로 포함한다. 기존 승인 범위 내 리뷰 보정만 PR43에 push하며 새 기능 승인 요청은 만들지 않는다.
+
 ## 최신 — WORLD02 승인 소비·PR43 게시 / 구역별 배치 후속
 
 지정 사용자 U0C9QEUHPMK의 Slack 원문 ‘승인 WORLD02’, 회신1792564891.374529를 요청1792564212.382599/등록parent1792487679.299269와 대조했다. 5fa18554e463c8014a5651e1df60b1e9d89281b4를 일반 push했고 PR43 https://github.com/JoEunil/MMORPG/pull/43 으로 기존 사냥·월드·이동·모션 전체를 한 묶음 게시했다. 해당 회신은 소비 완료이며 중복 push/PR 생성에 사용하지 않는다. 봇 결과 안내1792565044.529839. 사용자 병합 검토 대기, 병합/Pages 배포0.

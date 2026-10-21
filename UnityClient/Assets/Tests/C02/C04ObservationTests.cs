@@ -156,6 +156,23 @@ namespace C02.Tests
                 var visual = fixture.Visual("monsters", (ushort)0);
                 var fill = fixture.VitalsImage(visual);
                 var healthColor = fill.color;
+                Assert.That(healthColor, Is.EqualTo(new Color(0.35f, 0.85f, 0.32f, 1f)),
+                    "The initial Full establishes HP without claiming observed damage.");
+                Assert.That((float)Get(visual.GetComponent<C13EntityVitals>(), "damagePulseUntil"), Is.Zero);
+
+                var damagedFull = Monster(0, 0); damagedFull.hp = 60;
+                fixture.Monsters(100, damagedFull);
+                Assert.That(fixture.VitalsRatio(visual), Is.EqualTo(0.6f).Within(0.001f));
+                Assert.That(fill.color, Is.EqualTo(new Color(1f, 0.78f, 0.2f, 1f)),
+                    "A Full that first reveals an HP decrease pulses just like an accepted Delta.");
+                Set(visual.GetComponent<C13EntityVitals>(), "damagePulseUntil", Time.unscaledTime - 1f);
+                Invoke(visual.GetComponent<C13EntityVitals>(), "LateUpdate");
+                fixture.MonsterDeltaPacket(new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 60 });
+                fixture.Monsters(100, damagedFull);
+                Assert.That(fill.color, Is.EqualTo(healthColor), "The matching Delta and same-HP Full do not replay damage.");
+                Assert.That((float)Get(visual.GetComponent<C13EntityVitals>(), "damagePulseUntil"), Is.Zero);
+                fixture.Monsters(100, Monster(0, 0));
+                Assert.That(fill.color, Is.EqualTo(healthColor), "An HP increase is not damage.");
 
                 fixture.MonsterDeltaPacket(new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 50 });
                 Assert.That(fixture.MonsterState(0).hp, Is.EqualTo(50));
@@ -168,7 +185,7 @@ namespace C02.Tests
                 var sameHealthFull = Monster(0, 0); sameHealthFull.hp = 40;
                 fixture.Monsters(100, sameHealthFull);
                 Assert.That((float)Get(visual.GetComponent<C13EntityVitals>(), "damagePulseUntil"), Is.EqualTo(refreshedDeadline),
-                    "Full updates retain authoritative fill without starting another pulse.");
+                    "A same-HP Full retains authoritative fill without starting another pulse.");
 
                 Set(visual.GetComponent<C13EntityVitals>(), "damagePulseUntil", Time.unscaledTime - 1f);
                 Invoke(visual.GetComponent<C13EntityVitals>(), "LateUpdate");
