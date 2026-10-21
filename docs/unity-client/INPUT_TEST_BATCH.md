@@ -132,3 +132,8 @@ R01-CLOSE-03/r1候補구현·격리회귀는최신채팅의명시적지시로재
 ## 2026-10-21 직선 스킬 묶음 최소 배치 — 완료
 
 기존native네방향1PASS,영향C05기존fixture1PASS(최종.0620775s). 실제전용계정접속1회/방향키접근/C1회로서버dir0·12×3윤곽화면·동일몬스터HP1500→500확인. 첫정렬helpertimeout/C0는실패근거보존후같은접속에서계속. 정상퇴장/Playfalse/dirtyfalse/inputRunningfalse/backgroundfalse/envnull. 새전체회귀0. LINE_AIM_RESULTS.txt 참조. 다음입력은새기능묶음동결뒤에만배정.
+## 2026-10-21 스킬 도움말 배치 완료
+기존전투fixture1PASS .0690566s/compile0. 실제접속1회에세아이콘hover·pointerexit숨김·가방열림억제·ownCast0확인. 스킬피해/처치/채팅/이동회귀0. SKILL_HELP_RESULTS.txt 참조. 정상퇴장/Playfalse/dirtyfalse/backgroundfalse/envnull,이묶음실입력종료.
+
+## 2026-10-21 아이템 표현 배치 — 완료
+기존가방/거래소각1개최종PASS. 실제접속1회로I빈가방/B실매물30개조회·선택·배타닫기확인. 같은접속의아이콘겹침보정후확인만추가,로그인반복0/거래실행0. 최초fixture실패/초기캡처보존,ITEM_VISUALS_RESULTS.txt참조. 정상종료/Playfalse/dirtyfalse/inputfalse/backgroundfalse/envnull.

@@ -199,6 +199,14 @@ namespace C02.Tests
         {
             using (var f = new CombatFixture())
             {
+                Invoke(f.Combat, "ShowSkillTooltip", 1);
+                var tooltip = (TMP_Text)Get(f.Combat, "skillTooltipText");
+                Assert.That(tooltip.text, Does.Contain("X · Ring").And.Contain("Circle · Radius 3.25 · MP 17"),
+                    "The tooltip reads the serialized C14 skill asset, including edited mana and range values.");
+                Assert.That(((GameObject)Get(f.Combat, "skillTooltip")).activeSelf, Is.True);
+                Invoke(f.Combat, "HideSkillTooltip");
+                Assert.That(((GameObject)Get(f.Combat, "skillTooltip")).activeSelf, Is.False);
+
                 var directions = new[] { "North", "South", "West", "East" };
                 for (byte dir = 0; dir < directions.Length; dir++)
                 {
@@ -257,10 +265,14 @@ namespace C02.Tests
                 f.Full();
                 active(1, new[] { action });
                 Assert.That(preview.enabled, Is.True);
+                Invoke(f.Combat, "ShowSkillTooltip", 1);
+                Assert.That(((GameObject)Get(f.Combat, "skillTooltip")).activeSelf, Is.True);
                 Set(f.World, "transitionTargetZone", (ushort)2);
                 typeof(C02WorldScreen).GetProperty("Stage").GetSetMethod(true).Invoke(f.World, new object[] { C02Stage.TransitionPending });
                 Invoke(f.World, "ZoneReceived", (ushort)2, 0UL, 74U, 10f, 10f);
                 Assert.That(preview.enabled, Is.False, "Changing zone/own character clears the previous cast outline.");
+                Assert.That(((GameObject)Get(f.Combat, "skillTooltip")).activeSelf, Is.False,
+                    "Changing zone hides the transient skill help.");
                 f.Data.UpdateAction(3, 10, 10, 1);
                 f.DisableCombat();
                 active(1, new[] { action });
@@ -273,6 +285,7 @@ namespace C02.Tests
         private sealed class CombatFixture : IDisposable
         {
             private readonly GameObject root;
+            private readonly C14ServerContent serverContent;
             public readonly C02WorldScreen World;
             public readonly C05CombatScreen Combat;
             public readonly IViewDataUI Data;
@@ -292,6 +305,11 @@ namespace C02.Tests
                 foreach (var name in new[] { "selectionPanel", "background", "worldRoot", "worldHud" }) Set(World, name, Child(name));
                 foreach (var name in new[] { "ownCharacter", "fieldPlane", "quarterViewCamera" }) Set(World, name, Child(name).transform);
                 Set(Combat, "loginScreen", login); Set(Combat, "worldScreen", World);
+                serverContent = ScriptableObject.CreateInstance<C14ServerContent>();
+                serverContent.ring.mana = 17;
+                serverContent.ring.phases[1].range1 = 3.25f;
+                Set(Combat, "serverContent", serverContent);
+                Set(Combat, "combatPanel", Child("combat panel"));
                 Buttons = new[] { Button("strike"), Button("ring"), Button("line") }; Set(Combat, "skillButtons", Buttons);
                 Vitals = Text("vitals"); Status = Text("phase"); Aim = Text("aim");
                 Set(Combat, "vitalsText", Vitals); Set(Combat, "combatStatusText", Status); Set(Combat, "aimText", Aim);
@@ -319,6 +337,7 @@ namespace C02.Tests
                 DisableCombat();
                 if (Get(World, "model") != null) Invoke(World, "OnDisable");
                 UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(serverContent);
             }
         }
         private static IViewDataUI NewData() => (IViewDataUI)Activator.CreateInstance(typeof(ViewModel).Assembly.GetType("ClientCore.ViewData", true), true);

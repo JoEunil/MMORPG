@@ -1,0 +1,12 @@
+스킬 아이콘 설명 결과 — 2026-10-21
+
+제품: C05CombatScreen에 C14ServerContent 참조, 서버 콘텐츠의 slot0/1/2 첫Hit 범위·mana를 읽는 hover 설명 추가. C12 설정에서도 기존 같은 자산 연결. C02 scene의 기존 C05 컴포넌트에 참조1행만 추가. 별도 시스템·컴포넌트·스킬판정·서버/ClientCore/DB 변경0.
+표시: 320×96 기존갈색/금색 설명창1개, TMPfont16/제목20, raycastfalse. 실제3버튼rect/Overlay eventCamera null·비Overlay worldCamera 필요. 동일hover재포맷/UIwrite방지를위한slot1개만추적, 이탈/입력불가/HP0/Zone·session/disable에서숨김, 파괴시정리. 고정콘텐츠에대한설명이며실시간쿨다운/피해판정예측아님.
+독립리뷰 skill_help_review에서한국어glyph누락P2확인. 기존LiberationSans/영문UI와맞춰Circle/Radius/Line/Length/Width로교정, source/fixture에해당한글0확인. 반복매프레임UIwrite도root가hover변경때로한정. 추가P1/P2없음. 실제최종화면에문자모두표시/잘림없음확인.
+ROOT저작: C05/C12/test3파일이b4b4340본문동일임을개행정규화비교/백업한뒤최종후보동기화. C14.cs/.asset은ROOT/CAND개행정규화동일확인. 실제깨끗한C02씬에참조1개만SerializedObject로추가/명시SaveScene,백업대비추가참조행제거하면전체본문동일=true.
+검증: 명시compile0오류0경고. 기존 C05CombatTests.AimTextUsesMovementDirections_AndPhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear 1/1PASS .0690566s. 실제asset에없는기본값을하드코드하지않고fixture의ring mana17/range3.25를읽는문자열·zonecleanup을통합. 이fixture는실제pointer통과아님.
+실입력: 한접속char5012/HP9225/MP9939/Zone5에서실제mouse정상이벤트로세아이콘hover. Z Strike Circle Radius2 MP1, X Ring Circle Radius8 MP20, C Line Length12 Width3 MP20확인. pointerexit숨김/실제I가방열림중hover억제/I닫기PASS,own서버ActionResultCount0. 스킬시전/피해·처치/이동회귀0. ROOT Captures/skill-help-login.txt,skill-help-hover.txt,skill-help-hover.png,skill-help-disconnect.txt근거.
+정상실제Disconnect→modelnull/runnerfalse확인뒤Playstop. playfalse/dirtyfalse/inputfalse/backgroundfalse/envnull복구. 서비스재시작·native빌드·DB쓰기·추가전체회귀0.
+공개: player-hud상세/화면이력에실제hoverPNG추가,기존범위/사냥사진보존. 후속UI는로컬묶음보존하며작은별도PR요청0. 기존PLAY05승인은이번hover에확대사용하지않음.
+전문사용: skill_help_ui(client_implementer:gpt-6-luna/medium)신규1,skill_help_review(code_reviewer:gpt-6.1-sol/medium)신규1. 누적신규24/재활성화52/76/tokenN/A. 총괄자체수정·도구조회는전문활성추가0.
+웹 생성/링크검사PASS, 실제8790사냥화면이력에서새도움말캡처/설명및기존시전·처치사진보존확인. 게임입력재시험없음. 후속브랜치명은실제내용에맞춰codex/combat-ui-followup으로정리한다.

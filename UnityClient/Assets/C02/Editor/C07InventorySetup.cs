@@ -82,7 +82,7 @@ public static class C07InventorySetup
         gridRect.anchoredPosition = Vector2.zero;
         gridRect.sizeDelta = Vector2.zero;
         var grid = gridObject.GetComponent<GridLayoutGroup>();
-        grid.cellSize = new Vector2(120, 78);
+        grid.cellSize = new Vector2(120, 110);
         grid.spacing = new Vector2(8, 8);
         grid.padding = new RectOffset(10, 10, 10, 10);
         grid.startCorner = GridLayoutGroup.Corner.UpperLeft;
@@ -116,20 +116,22 @@ public static class C07InventorySetup
         badge.alignment = TextAlignmentOptions.Center;
         badge.rectTransform.anchorMin = badge.rectTransform.anchorMax = badge.rectTransform.pivot = new Vector2(0, 1);
         badge.rectTransform.anchoredPosition = new Vector2(10, -10);
-        badge.rectTransform.sizeDelta = new Vector2(30, 30);
+        badge.rectTransform.sizeDelta = new Vector2(64, 64);
         var itemName = Text("InventoryDetailName", details.transform, "Select an item", 16, new Color(.23f, .19f, .13f));
         itemName.alignment = TextAlignmentOptions.MidlineLeft;
         SetTop(itemName.rectTransform, 8, 32);
-        itemName.rectTransform.anchoredPosition = new Vector2(20, -8);
-        itemName.rectTransform.sizeDelta = new Vector2(-60, 32);
+        itemName.rectTransform.anchoredPosition = new Vector2(37, -8);
+        itemName.rectTransform.sizeDelta = new Vector2(-98, 32);
         var slot = Text("InventoryDetailSlot", details.transform, string.Empty, 12, new Color(.39f, .31f, .20f));
         slot.alignment = TextAlignmentOptions.MidlineLeft;
         SetTop(slot.rectTransform, 48, 22);
-        slot.rectTransform.sizeDelta = new Vector2(-20, 22);
+        slot.rectTransform.anchoredPosition = new Vector2(37, -48);
+        slot.rectTransform.sizeDelta = new Vector2(-98, 22);
         var quantity = Text("InventoryDetailQuantity", details.transform, string.Empty, 12, new Color(.39f, .31f, .20f));
         quantity.alignment = TextAlignmentOptions.MidlineLeft;
         SetTop(quantity.rectTransform, 76, 22);
-        quantity.rectTransform.sizeDelta = new Vector2(-20, 22);
+        quantity.rectTransform.anchoredPosition = new Vector2(37, -76);
+        quantity.rectTransform.sizeDelta = new Vector2(-98, 22);
 
         var status = Text("InventoryStatus", inner.transform, string.Empty, 12, new Color(.31f, .24f, .15f));
         status.alignment = TextAlignmentOptions.MidlineLeft;

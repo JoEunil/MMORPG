@@ -38,12 +38,18 @@ namespace C02.Tests
                 Assert.That(lastRow.Find("Quantity").GetComponent<TMP_Text>().text, Is.EqualTo("30"));
                 Assert.That(lastRow.Find("Price").GetComponent<TMP_Text>().text, Is.EqualTo("9029"));
                 Assert.That(lastRow.Find("State").GetComponent<TMP_Text>().text, Is.EqualTo("Trading"));
+                Assert.That(lastRow.GetComponent<UnityEngine.UI.LayoutElement>().preferredHeight, Is.EqualTo(74));
                 lastRow.GetComponent<Button>().onClick.Invoke();
+                Assert.That(lastRow.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.76f, .68f, .46f)));
                 Assert.That(fixture.Detail.text, Does.Contain("Listing #1029"));
                 Assert.That(fixture.Detail.text, Does.Contain("Quantity 30"));
                 Assert.That(fixture.Detail.text, Does.Contain("Price 9029"));
                 Assert.That(fixture.Detail.text, Does.Contain("Seller #5029"));
                 Assert.That(fixture.Detail.text, Does.Contain("Registered 1700000029"));
+                fixture.Row(1000).GetComponent<Button>().onClick.Invoke();
+                Assert.That(lastRow.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.92f, .87f, .73f)));
+                Assert.That(fixture.Row(1000).GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.76f, .68f, .46f)));
+                Assert.That(fixture.Detail.text, Does.Contain("Price 9000"));
 
                 fixture.Search.onClick.Invoke();
                 Assert.That(fixture.ActiveRowCount, Is.Zero, "Refreshing clears the previous page before sending.");

@@ -27,7 +27,9 @@ public static class C12HudSetup
 
         var screen = Object.FindFirstObjectByType<C02WorldScreen>(FindObjectsInactive.Include);
         var login = Object.FindFirstObjectByType<C01LoginScreen>(FindObjectsInactive.Include);
+        var serverContent = AssetDatabase.LoadAssetAtPath<C14ServerContent>("Assets/C02/Content/C14ServerContent.asset");
         if (screen == null || login == null) throw new System.InvalidOperationException("The existing C02 world and login screens are required.");
+        if (serverContent == null) throw new System.InvalidOperationException("The existing C14 server skill content is required.");
         var screenRefs = new SerializedObject(screen);
         var hudReference = screenRefs.FindProperty("worldHud");
         if (hudReference == null || hudReference.objectReferenceValue == null)
@@ -135,6 +137,7 @@ public static class C12HudSetup
         var combatRefs = new SerializedObject(combat);
         combatRefs.FindProperty("loginScreen").objectReferenceValue = login;
         combatRefs.FindProperty("worldScreen").objectReferenceValue = screen;
+        combatRefs.FindProperty("serverContent").objectReferenceValue = serverContent;
         combatRefs.FindProperty("combatPanel").objectReferenceValue = panel.gameObject;
         var slots = combatRefs.FindProperty("skillButtons");
         slots.arraySize = buttons.Length;

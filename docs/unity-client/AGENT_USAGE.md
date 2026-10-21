@@ -100,3 +100,21 @@ line_aim_contract(server_analyst)신규1/독립리뷰재활성화1, line_aim_imp
 
 누적 신규21/재활성화52/활성화73, 실제 토큰 N/A. Coordinator는컴파일/영향fixture1PASS와같은실제접속에서C1회·대상HP-1000·범위화면을확인. 최초helper정렬timeout(C0)보존/실제서버12×3안쪽정렬로보완,제품실패/시험성공과분리. 메시지/상태조회는활성화추가0.
 hero_surface_followup 최종: 씬/ObservedPlayer prefab 실제연결확인,추가누락없어파일수정0. 임의파라미터조정으로개선완료집계하지않음. 신규21/재활성화52/73/tokenN/A 유지.
+
+다음 hunting_balance_plan(game_planner/gpt-6-luna medium) 신규1, 실제사냥근거에기초한단일후속카드저작. 신규22/재활성화52/74/tokenN/A. 독립로컬기획이며실제추가게임완료0.
+
+기획리뷰결과: X/C반복배치제안은이미검증한피해와겹쳐지금실행불수용. HUNTING_BALANCE_NEXT.md는실제후속변경시병합할관찰후보로격하. 수치/스폰임의조정0,추가로그인/테스트0. 기획산출물을제품완료로보고하지않음.
+
+## 스킬 아이콘 설명 — 구현·리뷰·최소실입력 완료
+
+skill_help_ui(client_implementer:gpt-6-luna/medium)신규1,skill_help_review(code_reviewer:gpt-6.1-sol/medium)신규1. 실제C14참조UI·fixture확장/한글glyph P2발견후영문교정/hover반복write정리,compile0·기존fixture1PASS·실제3hover/이탈/가방억제/ownCast0. 누적신규24/재활성화52/76,actualtokenN/A. 메신저중간상태조회는추가활성0. PLAY05승인으로기존전투후보만PR41게시했고새도움말은로컬후속묶음.
+
+## 가방·거래소 아이템 표현 — 2026-10-21
+
+| 에이전트 | 역할/실제 설정 | 신규 | 재활성화 | 실제 결과 |
+| --- | --- | --- | --- | --- |
+| bag_item_visuals | client_implementer / gpt-6-luna medium | 1 | 0 | 가방카드/상세·fixture완료. ROOT오경로fixture/rollback삭제1행은총괄가드로발견해백업후복원 |
+| market_item_visuals | client_implementer / gpt-6-luna medium | 1 | 0 | 거래소행/선택색복원·fixture완료. 초기pivot정렬은실제화면겹침으로총괄수정 |
+| item_visual_review | code_reviewer / gpt-6.1-sol medium | 1 | 1 | 계약/배치읽기리뷰및최종pivot/Scene값재확인,초기겹침놓침은실제검증으로보완 |
+
+누적신규27/재활성화53/활성화80,실제tokenN/A. 총괄이기존UI자동2개와실제동일접속조회/선택/겹침보정·최종캡처를확인했다. 가방fixture관측타이밍1실패와최종PASS를분리하며호출수/테스트수증가를성과로보지않음. 가방에아이템이든실서버화면은미확인.
