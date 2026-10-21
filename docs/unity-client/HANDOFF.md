@@ -1,3 +1,9 @@
+## 현재 — PR41 문서 리뷰 정정·필드 로컬 후보 보존
+
+사용자 전달 리뷰의 실입력 상태 지적은 타당했다. 별도 PR41-Review worktree에서 C05_CONTRACT.md 최신 설명만 실제 C1회/dir0/12×3/동일 대상HP1500→500 완료로 정정해 99c4379로 기존 PR41에 일반 push했다. 게임 코드·추가 테스트·새 PR·병합은 없다. 원격 분기0 확인 후 게시했으며 PR41는 open/head99c4379다. 동일 스레드 앱 요약1792555645.991909. 후속 CAND에도 일반 merge로 정정을 보존했다. UI01 제품 동결 범위는 그대로이며 PR41 병합 확인 때 이 문서 수정도 포함해 이력을 보존한다.
+
+CAND codex/field-readability-followup에서 진입로 대표 구간 후보를 보존했다. 첫 opaque ribbon은 실제 에디터 전후 비교에서 미채택, 새 실험 자식·자체 생성 메시만 백업 후 제거/기존 Scene 백업과 바이트 일치 확인. 두 번째 feather 후보는 최종 독립 리뷰·compile0·동일 정적 비교 후 소폭 보강으로 채택했다. scene 신규4블록/부모자식1행만 이식·다른 candidate 블록 동일, 기존 ROOT 지면 WIP 보존. 전용객체1/collider0/재적용무변경/ShaderErrorfalse, 투명 끝단의 축퇴2면은 결과 기록에 명시했다. ENTRY_TRAIL_TASK.md/RESULTS.txt 참조. Playfalse/dirtyfalse, 추가 로그인0. 전문 신규29/재활성화56/85/tokenN/A. 작은 구간만 별도 PR/승인 요청하지 않으며 다음 관련 필드 묶음으로 모은다.
+
 ## 게시 승인 대기 — UI01 큰 UI 묶음
 
 후보 codex/combat-ui-followup / 605c2fb44ea0d94131498221ab12fa114294af98. PR41후속diff는스킬설명+가방·거래소시각개선/최소검증/웹/실제캡처·기록을한묶음(25files404+/70-)으로고정. UnityCoordinator앱정확부모1792487679.299269에요청1792555155.564869,명령승인UI01발송. 완료채널요약1792555156.237329. 현재새push/PR0,사람회신미확인. PLAY05는이미PR41게시1회소비했으며재사용금지.
