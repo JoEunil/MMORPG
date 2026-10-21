@@ -1,3 +1,6 @@
+## 게시 대기 — MAP01
+
+로컬 제품 커밋 80e3633 / codex/world-map-export. Unity Coordinator 봇 U0C9ZRTQ6F8이 기존 스레드에 MAP01 요청1792583875.856059를 발송했고 완료채널1792583879.687239에도 핵심 결과를 남겼다. AUTHOR01은 이번 통합 게시 요청으로 대체했으며 승인됐다고 간주하지 않는다. 지정 사용자 U0C9QEUHPMK의 정확한 `승인 MAP01` 원문 확인 전 push/PR0. 승인 뒤 원격 fetch/분기 점검·일반 push·큰 PR 하나·artifact 첨부를 수행한다. 병합/실입력 재개로 해석하지 않는다. 브라우저 로컬 확인 http://127.0.0.1:8791/MMORPG/work/field-travel/ (현재 미리보기 프로세스만 실행, 게임 서버 아님).
 ## 최신 — 맵 Exporter·서버 주도 전환 로컬 완료 / 게시 승인 준비
 
 codex/world-map-export는 c1c09dd의 미게시 맵 저작 묶음을 이어받았다. Unity 레이아웃/장애물/통행 데이터를 한 WorldMap.inc로 내보내고, 검증된 이동에 따른 서버 owner 전환·epoch·Player/Monster 첫 Full 쌍·재동기화를 구현했다. 실제 6구역 유지, 별도 9구역 출력 예시만 검증했다. 몬스터 AI/A*/Cell 이동 제한은 변경하지 않았으며 후속 AI는 MAP_EXPORT_GUIDE.md를 따른다.
