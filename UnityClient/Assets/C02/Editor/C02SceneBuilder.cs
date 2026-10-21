@@ -1135,6 +1135,14 @@ public static class C02SceneBuilder
     {
         string path="Assets/C02/Art/C04/"+name+".mat";var mat=AssetDatabase.LoadAssetAtPath<Material>(path);
         if(mat==null){mat=new Material(Shader.Find("Universal Render Pipeline/Lit"));AssetDatabase.CreateAsset(mat,path);}
+        if(name=="ScavengedLeather" || name=="DarkForgedIron")
+        {
+            bool leather=name=="ScavengedLeather";
+            var texture=AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/C02/Art/Textures/"+(leather?"oiled-leather-albedo-v1.png":"worn-steel-albedo-v1.png"));
+            if(texture==null)throw new System.InvalidOperationException("Monster surface texture is missing.");
+            mat.SetTexture("_BaseMap",texture);mat.SetTextureScale("_BaseMap",new Vector2(2,2));
+            color=leather?new Color(.72f,.66f,.59f,1):new Color(.65f,.68f,.67f,1);
+        }
         mat.color=color;mat.SetFloat("_Metallic",metallic);mat.SetFloat("_Smoothness",metallic>0?.28f:.14f);EditorUtility.SetDirty(mat);return mat;
     }
 

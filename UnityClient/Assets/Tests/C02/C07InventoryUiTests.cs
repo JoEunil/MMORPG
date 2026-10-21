@@ -54,6 +54,65 @@ namespace C02.Tests
         }
 
         [Test]
+        public void FailureRetriesOnceThenShowsTheServerConfirmedEmptyInventoryOrStopsAfterASecondFailure()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.OpenBag();
+                fixture.Receive(false);
+                Assert.That(fixture.Network.Requests, Is.EqualTo(1));
+                Assert.That(fixture.Status.text, Does.Contain("Checking once more"));
+
+                SetPrivate(fixture.Screen, "failureRetryDeadline", Time.unscaledTime - 1f);
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2), "The scheduled retry sends exactly one real inventory request.");
+                fixture.Receive(true);
+                Assert.That(fixture.Status.text, Is.EqualTo("No items."), "Only the successful empty response is shown as an empty bag.");
+                Assert.That(fixture.Cards, Is.Empty);
+
+                fixture.Refresh.onClick.Invoke();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(3), "Manual refresh starts a new one-retry budget.");
+                fixture.Receive(false);
+                SetPrivate(fixture.Screen, "failureRetryDeadline", Time.unscaledTime - 1f);
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(4));
+                fixture.Receive(false);
+                Assert.That(fixture.Status.text, Is.EqualTo("Inventory request failed. Select Refresh to try again."));
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(4), "A second failure does not schedule another request.");
+            }
+        }
+
+        [Test]
+        public void ClosingOrReplacingTheClientCancelsTheScheduledFailureRetryAndIgnoresOldReplies()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.OpenBag();
+                IViewModelUI originalModel = fixture.Login.Model;
+                fixture.Receive(false);
+                fixture.Close.onClick.Invoke();
+                SetPrivate(fixture.Screen, "failureRetryDeadline", Time.unscaledTime - 1f);
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(1), "Closing the bag cancels its scheduled retry.");
+
+                fixture.OpenBag();
+                fixture.Receive(false);
+                var replacement = fixture.CreateClient();
+                SetPrivate(fixture.Login, "client", replacement.Initializer);
+                fixture.RaiseClientChanged(replacement.Model);
+                fixture.SetWorldReady();
+                ((IViewModelNet)originalModel).InventoryReceived(0, Array.Empty<InventoryItem>());
+                SetPrivate(fixture.Screen, "failureRetryDeadline", Time.unscaledTime - 1f);
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2), "Replacing the client cancels the retry and an old-model reply is ignored.");
+
+                fixture.OpenBag();
+                Assert.That(replacement.Network.Requests, Is.EqualTo(1));
+            }
+        }
+
+        [Test]
         public void KnownItemsUseServerBackedNamesAndAnEmptySuccessShowsNoInventedCard()
         {
             using (var fixture = new Fixture())

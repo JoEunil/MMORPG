@@ -14,6 +14,7 @@ namespace C02
     public sealed class C07InventoryScreen : MonoBehaviour
     {
         private const float RequestTimeoutSeconds = 8f;
+        private const float FailureRetryDelaySeconds = .35f;
         private static readonly Color CardColor = new Color(.94f, .89f, .76f, 1f);
         private static readonly Color SelectedCardColor = new Color(.99f, .96f, .86f, 1f);
         [SerializeField] private C01LoginScreen loginScreen;
@@ -36,6 +37,9 @@ namespace C02
         private bool requestPending;
         private bool requestTimedOut;
         private float requestDeadline;
+        private bool failureRetryScheduled;
+        private bool failureRetryAttempted;
+        private float failureRetryDeadline;
         private bool hasInventoryResponse;
         private bool refreshAfterCurrentRequest;
         private bool refreshOnOpenAfterUncertainDelivery;
@@ -75,6 +79,19 @@ namespace C02
                 if (input == null || !input.isFocused) TogglePanel();
             }
 
+            if (failureRetryScheduled)
+            {
+                if (!IsOpen || !WorldAvailable || model == null || loginScreen.Model != model)
+                {
+                    CancelFailureRetry();
+                }
+                else if (Time.unscaledTime >= failureRetryDeadline)
+                {
+                    CancelFailureRetry();
+                    SendInventoryRequest();
+                }
+            }
+
             if (!requestPending || Time.unscaledTime < requestDeadline) return;
             requestPending = false;
             requestTimedOut = true;
@@ -92,6 +109,7 @@ namespace C02
                 WorldChanged();
                 return;
             }
+            CancelFailureRetry();
             if (model != null) model.OnInventoryReceived -= InventoryReceived;
             model = next;
             requestPending = false;
@@ -109,6 +127,7 @@ namespace C02
         private void WorldChanged()
         {
             bool available = WorldAvailable && model != null && loginScreen.Model == model;
+            if (!available || !IsOpen) CancelFailureRetry();
             bagButton.gameObject.SetActive(available);
             if (!available) inventoryPanel.SetActive(false);
             UpdateControls();
@@ -123,6 +142,7 @@ namespace C02
                 if (bazaarScreen != null) bazaarScreen.ClosePanel();
                 worldScreen.StopActions();
             }
+            else CancelFailureRetry();
             inventoryPanel.SetActive(open);
             if (open && (!hasInventoryResponse || refreshOnOpenAfterUncertainDelivery) && !requestTimedOut && !requestPending)
                 RequestInventory();
@@ -131,6 +151,7 @@ namespace C02
 
         public void ClosePanel()
         {
+            CancelFailureRetry();
             inventoryPanel.SetActive(false);
             UpdateControls();
         }
@@ -150,6 +171,13 @@ namespace C02
         }
 
         private void RequestInventory()
+        {
+            CancelFailureRetry();
+            failureRetryAttempted = false;
+            SendInventoryRequest();
+        }
+
+        private void SendInventoryRequest()
         {
             if (!WorldAvailable || model == null || loginScreen.Model != model || requestPending || requestTimedOut)
                 return;
@@ -189,9 +217,19 @@ namespace C02
             {
                 hasInventoryResponse = false;
                 ClearInventoryCards();
-                inventoryStatus.text = worldScreen.Stage == C02Stage.TransitionPending
-                    ? "Inventory request failed during travel. Open the bag and refresh after arrival."
-                    : "Inventory request failed. Select Refresh to try again.";
+                if (IsOpen && WorldAvailable && !failureRetryAttempted)
+                {
+                    failureRetryAttempted = true;
+                    failureRetryScheduled = true;
+                    failureRetryDeadline = Time.unscaledTime + FailureRetryDelaySeconds;
+                    inventoryStatus.text = "Inventory request failed. Checking once more…";
+                }
+                else
+                {
+                    inventoryStatus.text = worldScreen.Stage == C02Stage.TransitionPending
+                        ? "Inventory request failed during travel. Open the bag and refresh after arrival."
+                        : "Inventory request failed. Select Refresh to try again.";
+                }
                 UpdateControls();
                 return;
             }
@@ -355,6 +393,7 @@ namespace C02
 
         private void OnDisable()
         {
+            CancelFailureRetry();
             if (loginScreen != null) loginScreen.ClientChanged -= ChangeClient;
             if (worldScreen != null) worldScreen.WorldStateChanged -= WorldChanged;
             if (bagButton != null) bagButton.onClick.RemoveListener(TogglePanel);
@@ -369,6 +408,11 @@ namespace C02
             hasInventoryResponse = false;
             ClearInventoryCards();
             if (inventoryPanel != null) inventoryPanel.SetActive(false);
+        }
+
+        private void CancelFailureRetry()
+        {
+            failureRetryScheduled = false;
         }
     }
 }

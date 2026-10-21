@@ -1,6 +1,37 @@
+## 최신 — 사냥 실입력 묶음 PASS / 후속 큰 PR 후보 준비
+
+명시재개후 전용계정02 로그인1회·방향키접근·X2회로 몬스터10 HP1500→500(Full)→0(delta)/화면제거/본인EXP0→10을확인했다. 몬스터11부수피해는있고처치1마리다. 실제스크린샷2장·고블린재질구분확인,미세질감/오크실게임/레벨업·리스폰·재접속EXP영속성은미검증. 독립근거리뷰blocker0. 정상Disconnect→Modelnull→Playfalse/dirtyfalse/inputRunningfalse/backgroundfalse/계정선택envnull복구. HUNT_LIVE_RESULTS.txt참조. 관측helper의콜백타입/화면owner오류는Builds도우미에서수정했고게임코드우회0. 같은접속에서완료,기존회귀반복0.
+
+공개전투상세/화면이력에실제전후사진추가,이전사진보존·내부ID비공개,생성/링크검사PASS·실제브라우저상세→이력탐색확인. 문서상태enum오류는기존중간결과로정정후생성PASS. PR39는GitHubREST로merged=true/헤드e143188확인. 후속가방재조회+실제가방화면·몬스터재질·사냥결과를한큰PR로준비하며이번사냥만작은PR만들지않는다. 새push/PR은최종Slack승인전보류. 전문신규16/재활성화49/65회/tokenN/A.
+## 최신 — 가방 확인 완료 / 몬스터 장비 재질 후보 보존
+
+가방실제I입력·실제첫성공·Noitems표시·정상퇴장과공개이력추가까지6f11cbe로보존. 이어고블린/오크공유가죽·철2재질에기존texture만연결했다. 첫검정후보미채택/밝기보정두번째정적비교채택, builder최소조건동일화/compile0/독립읽기blocker0. 실제게임사냥시각완료는아님. MONSTER_SURFACE_TASK.md/RESULTS.txt 참조. 작은PR/push0, PR39는e143188까지별도고정. 현재후속브랜치에가방재조회와아트로컬후보보존,다음은사냥·처치/EXP와몬스터쿼터뷰가독성관련완성묶음을모아한번만실입력검증한다. 근거없이Zone밀도계수/가짜levelup/회복·부활추가금지. 전문13+48=61/tokenN/A. UnityPlayfalse/dirtyfalse,서버정상유지.
+## 최신 — 가방 실제 표시 검증 완료
+
+전용계정02 실제로그인1회/I입력→가방첫응답successTrue/count0→Noitems확인, 정상닫기/Disconnect/Playstop. 자동재조회는이번실서버에서발생하지않았고 앞선직접자동2개증거와분리. 새캡처1장직접확인/공개가방상세와이력추가. DB쓰기·재시딩·서버재시작·기존전체회귀0. INVENTORY_READ_FOLLOWUP_RESULTS.txt 참조. 신규작은PR/게시승인요청은만들지않고관련다음묶음에보존. 다음미완료는몬스터재질·사냥시각품질이며스폰밀도값은교전근거없이임의확정하지않는다.
 ## 최신 — PR39 오프라인 귓속말 리뷰 수정
 
 서버는 끊긴 대상 귓속말을 echo없이 버리는 실제 경로가 있어 P2 타당. C06ChatScreen에서 입력을 보존한 단일 pending·8초 확인 기한·해당 수신자 무효화·정확 본인echo 확인을 구현했다. 서버/프로토콜 변경0·자동재전송0. 독립리뷰 blocker0/compile0/직접 영향3개 한배치 PASS. 실제 상대종료 입력은 미실행이며 기존 전체로그인/채팅회귀 반복0. WHISPER_TIMEOUT_RESULTS.txt 참조. 전문신규12/재활성화46/58회,tokenN/A. PLAY03의 동일PR39 리뷰 보완이며 별도 새기능범위·가방재조회는 포함하지 않는다.
+## 최신 — PLAY03 승인 확인 및 PR39 게시 완료
+
+지정 사용자 U0C9QEUHPMK의 PLAY03 승인 회신1792496872.325939를 봇 인증·정확 스레드1792487679.299269 전체 읽기로 확인하고 1회 소비했다. 원격 master8ba45e1의 문서 변경을 정상 병합해 보존했다. 충돌3개는 최신 검증 기록·사용자 정정을 유지했고 게임/웹 구현 diff는 frozen cbfefdff 대비0이다. 사이트 생성 PASS, 게임 재시험0.
+
+게시 branch codex/classic-field-art, HEAD7de7cbde41972c91bd36805564579ea9f005ccfb. 일반push 및 PR39 https://github.com/JoEunil/MMORPG/pull/39 생성·채팅첨부 완료. 병합·정식배포0. 같은 승인 재수신 시 재게시 금지. 독립 가방 재조회7704165는 미포함이며 codex/inventory-read-followup으로 복귀한다. 다음은 가방 관련 묶음의 남은 실제 표시 검증·기능 작업이며 기존 통과한 이동/채팅 전체를 반복하지 않는다.
+## 최신 웹 정정 완료 — 게시 후보 ref 갱신
+
+사용자 지시로 기존2D Unity 범위는 이동/몬스터/스킬/채팅/월드진입5개로 정정, Unity 인벤토리·거래소는AI Agent추가로구분. SHOWCASE/두상세/PORTFOLIO_GUIDE와ROOT AGENTS·guide반영. 작업목록5개사진href를각상세로변경하고 상세/이력의사진확대는유지. 생성/링크검사·실제대표사진클릭→인벤토리상세이동PASS, 캡처web-photo-details.png.
+
+웹정정커밋94048c7만기존큰묶음에cherry-pick하여PLAY03게시대상codex/classic-field-art는cbfefdfffc373c1711bcaf6e15929bee208c1caa로갱신됐다(d217+직접요청웹정정). 대기중같은PLAY03요청범위이며새요청번호/작은PR없음. 현재codex/inventory-read-followup에는별도재조회후보7704165와웹정정94048c7이있고, 새재조회코드는게시대상에들어가지않는다. 정확해당branch/ref만push가능,여전히사람승인전게시0. 기존승인메시지1792495219.973689를업데이트하며receiverparent1792487679.299269유지.
+## 최신 — 가방 읽기 후보 최소 검증 완료 / 웹 기존 범위 정정
+
+codex/inventory-read-followup에서 C07InventoryScreen의 명시 실패 뒤 GET1회 재확인만 구현했다. 기존 readonly도구로5011/5012 inventory행present/BLOB360확인, cold-cache인지는환경확정하지않음. 닫기/Zone/모델교체/disable 예약취소, timeout·exception·writes 재시도0, 실제성공만empty로표시. 독립읽기리뷰blocker0/명시compile0/새직접PlayMode2개 각각1회PASS. 실제신규로그인/입력은0이므로다음가방묶음에표시확인을남긴다. INVENTORY_READ_FOLLOWUP_RESULTS.txt. EditorPlayfalse/dirtyfalse/backgroundfalse/inputRunningfalse. 작은후속PR요청없음. 전문신규11/재활성화45/56회/tokenN/A.
+
+사용자 최신정정: 기존직접구현2D Unity에는이동·몬스터·스킬·채팅·월드진입만있었고인벤토리/거래소는없었다. Unity가방/거래소화면은AI Agent추가로SHOWCASE·상세·PORTFOLIO_GUIDE·ROOT AGENTS/guide에정정. 기존서버기능과Unity기존화면혼동금지. 작업과결과대표사진은해당상세로연결하고상세사진확대는유지. 생성·링크검사와실제사진클릭→inventory상세진입확인. 웹정정은별도커밋으로PLAY03게시후보에도반영해야하며미수정d217을그대로게시하지않는다.
+## 게시 요청 최신 — PLAY03 / 가방 읽기 독립 후속 착수
+
+기존 PLAY02 요청 뒤 지정사람 새회신이없음을 봇 auth.test+실제 replies(has_morefalse)로 확인하고, 같은 앱 메시지1792495219.973689를 최신 PLAY03으로 갱신했다. channelC0C9VFZMV43/parent1792487679.299269 유지. 대상은 codex/classic-field-art의 d217f0a2dc00f014d4735fb407817111ed0e823a (필드/HUD/chat/웹/자연석/이동버튼/실제생존이동의 큰1묶음). PLAY02/CLASSIC01 회신은 이 후보 게시에 적용하지 않는다. 현재 push/PR 신규0. 완료채널 봇요약1792496854.442739.
+
+게시 후보를 고정하고 codex/inventory-read-followup를 d217f0a에서 분기했다. 다음 미완료는 실제 account02/char5012 가방조회실패. 기존 분석 담당에게 후보루트의 실제 서버/캐시/DB 읽기 계약만 배정했으며 코드/DB/서버/Editor 변경은 아직 없다. 정상빈가방인지 조회실패인지 구분하기 전 에러를 성공으로 바꾸지 않는다. 계정01 HP0·계정02 HP10000의 실제상태/정상Zone5저장 보존. 전문신규10/재활성화44/54회/token N/A.
 ## 최신 — 생존 계정 실제 이동·구역 전환 완료 / 버튼 가림 수정
 
 기존 계정02/캐릭터5012가 HP10000/MP9999인 것을 실제 로그인1회로 확인했다. HUD 위 방향키 이동·I/B 열린패널 이동 차단과 실제1→4→5 경계 전환/서버좌표 보존/scenery(100,0,100) PASS. 계정01 HP0이 모든 생존 검증의 차단은 아니었다. 테스트 도우미의 Canvas오선택/카메라평면투영 오류는 제품 실패와 분리해 같은접속의 남은 단계만 재개했다. 새 전체 회귀/처치·EXP검증/DB쓰기·회복·리시딩0.
@@ -520,3 +551,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "C:/Users/joeun/Desktop/work
 C04 최종 Slack 완료 회신: bot U0C9ZRTQ6F8 /1792317842.067789 (부모1792310556.105339). https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1792317842067789
 
 C05 종료 보고 확정: Unity Coordinator bot 최종1792323650.522379, V03실제완료1792322671.215899, W03구성최종1792323664.776249. 모두 현재 등록 변경 스레드 회신이며 새 승인 요청 없음. 다음 재개 전 입력/개발 추가 실행 없음.
+
+## 사냥 입력 배치 중단 — 사용자 Esc
+
+hunt_contract와hunt_batch_helper2명을병렬배정해읽기분석/Builds관측도우미준비완료. 일반몹0 HP1500/EXP10, X반경8/피해1000/쿨6초계약확인. 실제로그인전텍스트입력이포커스상실로실패했고,컴퓨터조작재개시사용자물리Esc중단신호수신. 이후ComputerUse추가호출0. 이미큐에들어간재개도우미는editor_stop으로즉시종료,Playfalse/inputRunningfalse/dirtyfalse/backgroundfalse/계정선택환경null복구. 사냥·처치·EXP·실게임재질검증미실행,성공주장금지. 관측helper ROOT Builds/Hunt-Live/observe-hunt.cs/prepare-notes.txt준비만,Assets변경0. 사용자새입력허용전자동재개금지. 기존PR큰묶음정책유지/신규push·PR0. 전문신규15/재활성화48/활성화63회,tokenN/A.
