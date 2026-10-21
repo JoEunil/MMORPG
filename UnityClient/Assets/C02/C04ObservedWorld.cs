@@ -271,7 +271,6 @@ namespace C02
                 entry.State = state;
                 entry.LastFullSeen = now;
                 entry.Vitals.SetHealth(state.hp, state.maxHp);
-                Face(entry.Visual, state.dir);
             }
         }
 

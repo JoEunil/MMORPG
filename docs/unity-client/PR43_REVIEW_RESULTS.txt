@@ -1,3 +1,14 @@
+2026-10-21 PR43 — 주기 Full 방향 스냅 보정
+
+ApplyMonsterFull 마지막Face가매Full마다관측actor root를4방향회전시켜C19child의부드러운worldfacing을꺾는경로확인.
+기존playerFull/Delta는root를생성시만설정한다. Monster도마지막중복Face1줄만제거해같게맞췄다.
+최초seed/서버dir필드/C19이동방향·서버확정공격회전은유지. 이동·공격없는dir단독변경은기존Delta와같이표시회전을강제하지않음.
+기존 FullCreatesSeparateKinds_ExcludesOwn_AndOnlyFullRenewsThreeSecondLifetime fixture확장,
+초기root180/새Full의dir3보존/root회전불변과기존Full수명계약확인.
+ROOT Builds/PR43-Review/facing-result.txt: PlayMode자동1PASS/0.1194668s(전체0.16s),compile0/독립P1P2없음.
+실제게임입력/로그인/서버변경0. 이자동검증은실제이동체감·전체러버밴딩해결의근거가아님.
+기존WORLD02모션PR43범위만보정하고미승인AUTHOR01후속은별도보존.
+
 2026-10-21 PR43 — Full snapshot 피해 강조 누락
 
 리뷰 discussion_r4333816125 검토: 타당함.

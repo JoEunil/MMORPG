@@ -64,6 +64,14 @@ namespace C02.Tests
                 fixture.Monsters(100, Monster(0, 0), Monster(42, 1), Monster(43, 2));
                 Assert.That(fixture.Count("players"), Is.EqualTo(1), "Own ID is excluded; player HP0 is not deletion.");
                 Assert.That(fixture.Count("monsters"), Is.EqualTo(3), "Monster ID0 and types0/1/2 are valid; same numeric player ID is separate.");
+                var monsterVisual = fixture.Visual("monsters", (ushort)0);
+                Quaternion initialFacing = monsterVisual.transform.rotation;
+                Assert.That(Quaternion.Angle(initialFacing, Quaternion.Euler(0, 180, 0)), Is.LessThan(.001f));
+                var directionFull = Monster(0, 0); directionFull.dir = 3;
+                fixture.Monsters(100, directionFull);
+                Assert.That(fixture.MonsterState(0).dir, Is.EqualTo(3), "Accepted server direction remains available to state consumers.");
+                Assert.That(Quaternion.Angle(monsterVisual.transform.rotation, initialFacing), Is.LessThan(.001f),
+                    "A periodic Full cannot rotate the actor root underneath its smoothly turning visual.");
                 fixture.Players(101);
                 fixture.Monsters(101);
                 fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 7, fieldVal = Bits(12) });

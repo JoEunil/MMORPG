@@ -1,4 +1,10 @@
-## 최신 — PR43 Full 스냅샷 피해 강조 리뷰 수정
+## 최신 — 주기 Full의 몬스터 루트 회전 보정
+
+AUTHOR01 원문 사람 회신은 현재 확인되지 않아 후속 게시를 보류했다. 승인 대기와 독립적으로 기존 PR43 범위의 회전 스냅 경로를 보완했다. C04 monster Full만 매번 Face(root,dir)를 호출해 C19의 child 보간 회전을 꺾을 수 있어 마지막 중복 Face1줄을 제거했다. 최초 생성 Face·서버 상태dir·이동/공격 child 회전은 유지한다. 위치나 공격 없이 dir필드만 바뀌면 마지막 표시 방향을 유지하며 기존Delta와같은정책이다.
+
+기존 FullCreatesSeparateKinds fixture8줄확장·PlayMode자동1PASS(0.1194668s)/compile0·독립최종P1P2없음. 초기180도·dir3상태보존·root무회전·기존수명검증유지. 실제입력/로그인/서버변경0, 전체시각품질·실제끊김해결을주장하지않는다. PR43_REVIEW_RESULTS.txt 최신참조. zone_spawn_review 재활성화1추가, 누적 신규48/재활성화96/전체144/tokenN/A. 이 수정은WORLD02기존모션범위에만게시하며 AUTHOR01미승인새기능을섞지않는다.
+
+## 이전 — PR43 Full 스냅샷 피해 강조 리뷰 수정
 
 WORLD02 지정 사용자 원문 승인1792564891.374529를 요청1792564212.382599/parent1792487679.299269와 대조해 소비했고 PR43 https://github.com/JoEunil/MMORPG/pull/43 으로 5fa1855를 게시했다. 새 기능 후속 codex/zone-spawn-authoring=4f14839는 별도 로컬 보존이며 PR43에 섞지 않는다.
 
