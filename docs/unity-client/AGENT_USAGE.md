@@ -89,3 +89,14 @@ hunt_contract(server_analyst)신규1/최종근거리뷰재활성화1, hunt_batch
 ## 직선 스킬 방향 묶음 — 진행 중
 
 line_aim_contract(server_analyst)신규1/독립리뷰재활성화1, line_aim_implementation(client_implementer)신규1/test보완재활성화1, hunt_batch_helper(unity_tester)준비재활성화1. 누적신규18/재활성화52/70회,실제tokenN/A. root가잘못된테스트범위기대를실행전발견·수정요청. native1/HUD1통과,실제입력은Windows보안창차단으로미실행. 보안창대리조작0/사람직접처리필요.
+
+## 직선 범위 표시 및 플레이어 표면 후속 — 2026-10-21
+
+| 에이전트 | 역할/실제 설정 | 신규 | 재활성화 | 확인한 결과 |
+| --- | --- | --- | --- | --- |
+| line_preview_implementation | client_implementer / gpt-6-luna medium | 1 | 0 | own 서버시전12×3윤곽·수명정리, 기존fixture확장 완료. 최초 과거방향 해석은저작전정정 |
+| line_preview_review | code_reviewer / gpt-6.1-sol medium | 1 | 0 | P1/P2없음,독립읽기리뷰완료;standalone shader포함은후속 |
+| hero_surface_followup | asset_artist / gpt-6.1-sol medium | 1 | 0 | 플레이어금속/가죽의기존texture활용후보조사중,실제개선완료아님 |
+
+누적 신규21/재활성화52/활성화73, 실제 토큰 N/A. Coordinator는컴파일/영향fixture1PASS와같은실제접속에서C1회·대상HP-1000·범위화면을확인. 최초helper정렬timeout(C0)보존/실제서버12×3안쪽정렬로보완,제품실패/시험성공과분리. 메시지/상태조회는활성화추가0.
+hero_surface_followup 최종: 씬/ObservedPlayer prefab 실제연결확인,추가누락없어파일수정0. 임의파라미터조정으로개선완료집계하지않음. 신규21/재활성화52/73/tokenN/A 유지.

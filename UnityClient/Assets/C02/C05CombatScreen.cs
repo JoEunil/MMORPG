@@ -27,9 +27,15 @@ namespace C02
         [SerializeField] private UnityEngine.UI.Image mpFill;
         private IViewModelUI model;
         private Action<ushort, ActionResultField[]> actionResults;
+        private LineRenderer linePreview;
+        private Material linePreviewMaterial;
+        private float linePreviewDeadline;
         private int generation;
         private ushort observedZone;
         private uint ownId;
+        private const float LineRangeLength = 12f;
+        private const float LineRangeWidth = 3f;
+        private const float LinePreviewLifetime = 2f;
 
         private bool WorldAvailable => worldScreen != null && worldScreen.isActiveAndEnabled &&
             worldScreen.Stage == C02Stage.InWorld && worldScreen.HasOwnFull;
@@ -57,6 +63,7 @@ namespace C02
 
         private void ChangeClient(IViewModelUI next)
         {
+            HideLinePreview();
             Unsubscribe();
             generation++;
             model = next;
@@ -95,6 +102,7 @@ namespace C02
                 if (observedZone == 0) { observedZone = worldScreen.ZoneID; ownId = worldScreen.InternalID; }
                 else if (observedZone != worldScreen.ZoneID || ownId != worldScreen.InternalID) ResetObservation();
                 var state = worldScreen.OwnFull;
+                if (state.hp == 0) HideLinePreview();
                 vitalsText.text = string.Format(CultureInfo.InvariantCulture, "HP {0} / {1}    MP {2} / {3}",
                     state.hp, state.maxHp, state.mp, state.maxMp);
                 if (hpValueText != null) hpValueText.text = string.Format(CultureInfo.InvariantCulture, "HP {0} / {1}", state.hp, state.maxHp);
@@ -108,6 +116,7 @@ namespace C02
             }
             else
             {
+                HideLinePreview();
                 if (observedZone != 0 || ownId != 0) ResetObservation();
                 vitalsText.text = string.Empty;
                 if (hpValueText != null) hpValueText.text = string.Empty;
@@ -123,6 +132,7 @@ namespace C02
 
         private void ResetObservation()
         {
+            HideLinePreview();
             Unsubscribe();
             generation++;
             observedZone = WorldAvailable ? worldScreen.ZoneID : (ushort)0;
@@ -154,6 +164,8 @@ namespace C02
 
         private void Update()
         {
+            if (linePreview != null && linePreview.enabled && Time.unscaledTime >= linePreviewDeadline)
+                HideLinePreview();
             if (!InputAvailable() || Keyboard.current == null) return;
             if (Keyboard.current.zKey.wasPressedThisFrame) RequestSkill(0);
             else if (Keyboard.current.xKey.wasPressedThisFrame) RequestSkill(1);
@@ -162,7 +174,12 @@ namespace C02
 
         private void ApplyResults(ushort count, ActionResultField[] results)
         {
-            if (!WorldAvailable || worldScreen.OwnFull.hp == 0 || results == null || count > results.Length) return;
+            if (!WorldAvailable || worldScreen.OwnFull.hp == 0)
+            {
+                HideLinePreview();
+                return;
+            }
+            if (results == null || count > results.Length) return;
             for (int i = 0; i < count; i++)
             {
                 var result = results[i];
@@ -171,7 +188,73 @@ namespace C02
                     result.skillSlot > 2 || result.skillId != result.skillSlot || result.skillPhase > 1 ||
                     !Finite(result.x) || !Finite(result.y)) continue;
                 combatStatusText.text = SkillName(result.skillSlot) + (result.skillPhase == 0 ? " cast" : " released");
+                if (result.skillSlot == 2)
+                {
+                    if (result.skillPhase == 0) ShowLinePreview(result);
+                    else HideLinePreview();
+                }
             }
+        }
+
+        private void ShowLinePreview(ActionResultField result)
+        {
+            if (linePreview == null)
+            {
+                var shader = Shader.Find("Universal Render Pipeline/Unlit");
+                if (shader == null) return;
+                var previewObject = new GameObject("C05 Line Skill Range");
+                previewObject.transform.SetParent(worldScreen.transform, false);
+                linePreview = previewObject.AddComponent<LineRenderer>();
+                linePreviewMaterial = new Material(shader) { color = new Color(1f, 0.72f, 0.16f, 1f) };
+                linePreview.sharedMaterial = linePreviewMaterial;
+                linePreview.useWorldSpace = true;
+                linePreview.loop = true;
+                linePreview.positionCount = 4;
+                linePreview.widthMultiplier = 0.12f;
+                linePreview.startColor = linePreview.endColor = linePreviewMaterial.color;
+            }
+
+            // ActionResult has no dimensions; this outline mirrors the fixed server skill 2 contract (12 x 3).
+            // Points use server x/y as global X/Z, so the C02Client parent transform does not offset the range.
+            float halfWidth = LineRangeWidth * 0.5f;
+            float x = result.x;
+            float z = result.y;
+            const float groundY = 0.05f;
+            switch (result.dir)
+            {
+                case 0:
+                    linePreview.SetPosition(0, new Vector3(x - halfWidth, groundY, z));
+                    linePreview.SetPosition(1, new Vector3(x + halfWidth, groundY, z));
+                    linePreview.SetPosition(2, new Vector3(x + halfWidth, groundY, z + LineRangeLength));
+                    linePreview.SetPosition(3, new Vector3(x - halfWidth, groundY, z + LineRangeLength));
+                    break;
+                case 1:
+                    linePreview.SetPosition(0, new Vector3(x - halfWidth, groundY, z));
+                    linePreview.SetPosition(1, new Vector3(x + halfWidth, groundY, z));
+                    linePreview.SetPosition(2, new Vector3(x + halfWidth, groundY, z - LineRangeLength));
+                    linePreview.SetPosition(3, new Vector3(x - halfWidth, groundY, z - LineRangeLength));
+                    break;
+                case 2:
+                    linePreview.SetPosition(0, new Vector3(x, groundY, z - halfWidth));
+                    linePreview.SetPosition(1, new Vector3(x, groundY, z + halfWidth));
+                    linePreview.SetPosition(2, new Vector3(x - LineRangeLength, groundY, z + halfWidth));
+                    linePreview.SetPosition(3, new Vector3(x - LineRangeLength, groundY, z - halfWidth));
+                    break;
+                default:
+                    linePreview.SetPosition(0, new Vector3(x, groundY, z - halfWidth));
+                    linePreview.SetPosition(1, new Vector3(x, groundY, z + halfWidth));
+                    linePreview.SetPosition(2, new Vector3(x + LineRangeLength, groundY, z + halfWidth));
+                    linePreview.SetPosition(3, new Vector3(x + LineRangeLength, groundY, z - halfWidth));
+                    break;
+            }
+            linePreview.enabled = true;
+            linePreviewDeadline = Time.unscaledTime + LinePreviewLifetime;
+        }
+
+        private void HideLinePreview()
+        {
+            if (linePreview != null) linePreview.enabled = false;
+            linePreviewDeadline = 0;
         }
 
         // Matches movement: 0=North, 1=South, 2=West, 3=East.
@@ -182,6 +265,7 @@ namespace C02
 
         private void OnDisable()
         {
+            HideLinePreview();
             if (combatPanel != null) combatPanel.SetActive(false);
             loginScreen?.Data?.CancelAction();
             worldScreen?.CancelMovement();
@@ -206,6 +290,23 @@ namespace C02
             if (mpFill != null) mpFill.fillAmount = 0;
             if (combatStatusText != null) combatStatusText.text = string.Empty;
             if (aimText != null) aimText.text = string.Empty;
+        }
+
+        private void OnDestroy()
+        {
+            HideLinePreview();
+            if (linePreview != null)
+            {
+                if (Application.isPlaying) Destroy(linePreview.gameObject);
+                else DestroyImmediate(linePreview.gameObject);
+                linePreview = null;
+            }
+            if (linePreviewMaterial != null)
+            {
+                if (Application.isPlaying) Destroy(linePreviewMaterial);
+                else DestroyImmediate(linePreviewMaterial);
+                linePreviewMaterial = null;
+            }
         }
     }
 }

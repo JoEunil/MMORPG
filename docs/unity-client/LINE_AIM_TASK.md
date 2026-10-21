@@ -7,3 +7,6 @@
 종료: 방향판정/UI직접검증통과+실제일치확인또는실제차단사유. 반대방향의몬스터유도·범위시험을여러계정/여러접속으로반복하지않는다. 성공예정만으로기록하지않음.
 역할: line_aim_contract(server_analyst)신규1/리뷰재활성화1, line_aim_implementation(client_implementer)신규1/수정재활성화1. 총괄이테스트코드의잘못된forward*2외부기대를정적으로발견하여실제길이12밖으로정정지시. 실행실패숨김/기존assert약화아님. 누적신규18/재활성화51/69회, tokenN/A.
 복구: 기존서버exe로정상전환및이커밋revert, DB마이그레이션없음. 실행플랫폼승인은프로젝트Slack과별도유지.
+같은후속묶음에직선시전범위윤곽추가저작: own서버skill2phase0에서만12×3기하표시,phase1/World불가/HP0/Zone/session/disable에정리. 미응답시최대2초TTL은시각정리용이며쿨다운/ready판정아님. 실제게임입력은Windows보안창사람처리전보류,입력없는코드·자동검증만계속한다.
+
+현재 검증: 사용자보안창직접처리뒤 실제C1회/dir0범위/HP-1000 완료. 세부 LINE_AIM_RESULTS.txt 후속 기록 우선. 다음 같은 대표화면의 플레이어 금속·가죽 기존texture 활용을 입력종료후 검토하며 큰묶음으로 보존한다.

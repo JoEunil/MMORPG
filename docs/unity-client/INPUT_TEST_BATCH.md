@@ -128,3 +128,7 @@ R01-CLOSE-03/r1候補구현·격리회귀는최신채팅의명시적지시로재
 실제 PNG38장과 GIF640×360/32프레임/6.14초를 검수했다. 캐릭터 애니메이션 통과를 의미하지 않는다. 중앙 캡처는 대표 지면 밖 미완성 아트를 보여준다. 전체 검증 결과는 Captures/c04-batch-final.txt.
 
 종료: Play/compile/background/runner=false, Recorder0·peer0·game9999 established0, 임시 Mouse 제거/기존장치 보존. 최초 orphan peer는 정확한 대상·전용 콘솔 검사 후 정상 stdin exit0로 종료했다. 기존 서비스/원본 Game 미완료 변경 유지. 후속 입력 검증은 새 변경의 작업 카드에 모으며 이번 배치를 근거 없이 반복하지 않는다.
+
+## 2026-10-21 직선 스킬 묶음 최소 배치 — 완료
+
+기존native네방향1PASS,영향C05기존fixture1PASS(최종.0620775s). 실제전용계정접속1회/방향키접근/C1회로서버dir0·12×3윤곽화면·동일몬스터HP1500→500확인. 첫정렬helpertimeout/C0는실패근거보존후같은접속에서계속. 정상퇴장/Playfalse/dirtyfalse/inputRunningfalse/backgroundfalse/envnull. 새전체회귀0. LINE_AIM_RESULTS.txt 참조. 다음입력은새기능묶음동결뒤에만배정.

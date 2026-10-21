@@ -1,3 +1,8 @@
+## 최신 — 직선 스킬 실제 방향·범위 검증 완료 / 플레이어 재질 후속
+
+사용자직접보안창처리확인후 같은전용계정접속1회/C1회로dir0(+Y)시전·12×3윤곽실제화면·대상HP1500→500/피해1000확인. 서버Rectangle수직교정+own서버시전윤곽후보통합. 독립리뷰P1/P2없음/compile0/기존C05fixture영향재검증1PASS. 첫helper과도정렬조건timeout/C0는보존하고같은접속에서보조도구만수정,전체회귀·재빌드0. LINE_AIM_RESULTS.txt 참조. 정상Disconnect→Playfalse/dirtyfalse/inputRunningfalse/backgroundfalse/envnull복구. 새push/PR0,기존PR40merged.
+
+공개전투상세·화면이력에2026-10-21실제시전PNG추가,이전사진보존. 다음미완료대표화면의플레이어금속·가죽재질기존texture활용검토를hero_surface_followup에배정. 해당작업자CAND3재질및Hero재질부분만,Editor는root. 입력종료후저작이며다음아트는정적비교만/추가로그인없음. 전문신규21/재활성화52/73/tokenN/A(직선표시구현·독립리뷰·플레이어아트각신규1).
 ## 최신 — 직선 C 방향 수정 후보 / Windows보안창 실입력 차단
 
 PR40은merged확인/masterb99ae13정상병합. 후속field-play-followup에서 실제서버Rectangle0/1만이동규약에맞추고HUD0North/1South로교정. 독립리뷰완료/native네방향1PASS/HUD기존fixture1PASS/Unitycompile0/MainServer·UnitTests빌드성공. LINE_AIM_TASK.md/RESULTS.txt참조. 서버후보4892/9999ready,로그인35532/3000·DB/Redis정상,원본exe보존.
