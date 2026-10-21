@@ -1,5 +1,7 @@
 ## 최신 — 확대 맵·충돌 export·이동/모션 로컬 후보 / 입력 보류
 
+제품 후보 dba6bff8daa4ce8458be12afadecc86e15bf266a 로컬 보존, fetch 후 origin/master 대비 behind0/ahead14(기존 관련 사냥 커밋 포함), 작업 폴더 clean 확인. Unity Coordinator 앱이 WORLD02 전체 묶음 게시 승인을 기존 등록 스레드에 요청했다: reply1792564212.382599/parent1792487679.299269. HUNT01의 e16fcf4 단독 범위와 구분하고 WORLD02 지정 사용자 원문 승인·회신 중복 확인 전 push/PR0. 승인 대기는 게시에만 적용하며 사용자 보류 중인 실제 입력은 자동 재개하지 않는다.
+
 codex/world-motion-revision은 6f5cd00에서 분기한 로컬 후보이며 새 push/PR0이다. 600×400·Zone200·Cell42×5×5, Unity 고정 지면/벽18개에서 610×410 통행 격자를 생성했다. Unity/C++ 250100칸·차단2900 전체 일치, 최종 서버/단위검증 빌드 PASS·native4PASS·Unity 이동1PASS/모션1PASS·확대 경계 직접 assertion PASS·compile0·독립 최종 P1/P2없음. WORLD_MOTION_RESULTS.txt와 WORLD_MAP_HANDOFF.md 참조.
 
 사용자가 안전 지점 재배치를 선택했다. 초기 입장의 구역 밖/막힌 유한 좌표만 안전 지점으로 옮기고 정상 좌표·HP0·나머지 캐릭터 상태는 보존한다. NaN/무한은 거부하며 실패하면 로비 원본을 유지한다. 실시간 구역 전환 재배치·DB 직접 수정0. 사용자 A*를 대신 구현하지 않았고 Cell 간 몬스터 소속 갱신 주의점을 인계했다. 플레이어6unit/s·0.6단위 예측 한계·350ms 정체 정리와 정적 파츠 기반 보행/공격/피격을 연결했다. wire4방향은 유지하며 ACK 재연이나 신규 리깅 완료를 주장하지 않는다.

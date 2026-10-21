@@ -33,3 +33,6 @@ DB 직접 수정/초기화0. A* 경로 탐색·몬스터 Cell 간 소속 이동�
 공개 그림은 실제 export 데이터 시각화이며 실행 게임 캡처가 아님.
 기존 ROOT WIP 보존, Scene은 새 map blocks와 root child/명시 map ref만 후보에 선별 반영.
 새 push/PR0. 게시 전 새 변경 범위로 Unity Coordinator 앱 Slack 승인 필요.
+공개 초안: tools/site/build.py PASS (home+5개 작업/화면 이력), 실제 IAB에서 server-content 제목/맵 그림/미적용·A* 제한 설명 표시 확인.
+로컬 제품 커밋 dba6bff8daa4ce8458be12afadecc86e15bf266a. fetch 후 기본 브랜치 포함(behind0/ahead14).
+봇 WORLD02 게시 승인 요청1792564212.382599, 기존 등록 parent1792487679.299269. 사람 승인 대기, push0/PR0 유지.
