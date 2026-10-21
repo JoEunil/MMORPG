@@ -33,6 +33,7 @@ namespace C02
         private Material linePreviewMaterial;
         private float linePreviewDeadline;
         private readonly float[] cooldownDeadlines = new float[3];
+        private readonly GameObject[] cooldownOverlays = new GameObject[3];
         private GameObject skillTooltip;
         private TMP_Text skillTooltipText;
         private GameObject defeatPanel;
@@ -40,6 +41,7 @@ namespace C02
         private int generation;
         private ushort observedZone;
         private uint ownId;
+        private ulong observedCharacterId;
         private const float LineRangeLength = 12f;
         private const float LineRangeWidth = 3f;
         private const float LinePreviewLifetime = 2f;
@@ -61,6 +63,7 @@ namespace C02
             skillButtons[0].onClick.AddListener(Strike);
             skillButtons[1].onClick.AddListener(Ring);
             skillButtons[2].onClick.AddListener(Line);
+            EnsureCooldownOverlays();
             loginScreen.ClientChanged += ChangeClient;
             worldScreen.WorldStateChanged += WorldChanged;
             ChangeClient(loginScreen.Model);
@@ -80,7 +83,9 @@ namespace C02
             model = next;
             observedZone = 0;
             ownId = 0;
+            observedCharacterId = 0;
             Array.Clear(cooldownDeadlines, 0, cooldownDeadlines.Length);
+            UpdateCooldownOverlays();
             combatStatusText.text = string.Empty;
             Subscribe();
             WorldChanged();
@@ -111,8 +116,19 @@ namespace C02
             if (combatPanel != null) combatPanel.SetActive(WorldAvailable);
             if (WorldAvailable)
             {
-                if (observedZone == 0) { observedZone = worldScreen.ZoneID; ownId = worldScreen.InternalID; }
-                else if (observedZone != worldScreen.ZoneID || ownId != worldScreen.InternalID) ResetObservation();
+                if (observedZone == 0)
+                {
+                    observedZone = worldScreen.ZoneID;
+                    ownId = worldScreen.InternalID;
+                    observedCharacterId = worldScreen.SelectedCharacterID;
+                }
+                else if (observedZone != worldScreen.ZoneID || ownId != worldScreen.InternalID ||
+                    observedCharacterId != worldScreen.SelectedCharacterID)
+                {
+                    if (observedCharacterId != worldScreen.SelectedCharacterID)
+                        Array.Clear(cooldownDeadlines, 0, cooldownDeadlines.Length);
+                    ResetObservation();
+                }
                 var state = worldScreen.OwnFull;
                 if (state.hp == 0)
                 {
@@ -141,7 +157,10 @@ namespace C02
                 HideDefeatPanel();
                 if (worldScreen.Stage != C02Stage.TransitionPending && worldScreen.Stage != C02Stage.WaitingForZone &&
                     worldScreen.Stage != C02Stage.WaitingForFull)
+                {
                     Array.Clear(cooldownDeadlines, 0, cooldownDeadlines.Length);
+                    observedCharacterId = 0;
+                }
                 if (observedZone != 0 || ownId != 0) ResetObservation();
                 vitalsText.text = string.Empty;
                 if (hpValueText != null) hpValueText.text = string.Empty;
@@ -153,7 +172,7 @@ namespace C02
             }
             foreach (var button in skillButtons)
                 if (button != null) button.interactable = model != null && WorldAvailable && worldScreen.CanAct;
-            UpdateCooldownLabels();
+            UpdateCooldownOverlays();
         }
 
         private void ResetObservation()
@@ -165,6 +184,7 @@ namespace C02
             generation++;
             observedZone = WorldAvailable ? worldScreen.ZoneID : (ushort)0;
             ownId = WorldAvailable ? worldScreen.InternalID : 0;
+            observedCharacterId = WorldAvailable ? worldScreen.SelectedCharacterID : 0;
             combatStatusText.text = string.Empty;
             Subscribe();
         }
@@ -290,7 +310,7 @@ namespace C02
             if (linePreview != null && linePreview.enabled && Time.unscaledTime >= linePreviewDeadline)
                 HideLinePreview();
             UpdateSkillTooltip();
-            UpdateCooldownLabels();
+            UpdateCooldownOverlays();
             if (!InputAvailable() || Keyboard.current == null) return;
             if (Keyboard.current.zKey.wasPressedThisFrame) RequestSkill(0);
             else if (Keyboard.current.xKey.wasPressedThisFrame) RequestSkill(1);
@@ -327,7 +347,7 @@ namespace C02
                     ShowReleaseEffect(result);
                 }
             }
-            UpdateCooldownLabels();
+            UpdateCooldownOverlays();
         }
 
         private void ShowLinePreview(ActionResultField result)
@@ -468,19 +488,84 @@ namespace C02
             return skill != null && skill.skillID == slot;
         }
 
-        private void UpdateCooldownLabels()
+        private void EnsureCooldownOverlays()
         {
-            if (skillButtons == null) return;
-            for (int i = 0; i < skillButtons.Length && i < cooldownDeadlines.Length; i++)
+            for (int i = 0; i < skillButtons.Length && i < cooldownOverlays.Length; i++)
             {
-                if (skillButtons[i] == null) continue;
-                var label = skillButtons[i].transform.Find("SkillName")?.GetComponent<TMP_Text>() ??
-                    skillButtons[i].GetComponentInChildren<TMP_Text>();
-                if (label == null) continue;
+                var icon = skillButtons[i].transform.Find("SkillIcon");
+                if (icon == null) continue;
+                var overlay = icon.Find("C05CooldownOverlay");
+                if (overlay == null)
+                {
+                    var overlayObject = new GameObject("C05CooldownOverlay", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                    overlayObject.transform.SetParent(icon, false);
+                    var rect = overlayObject.GetComponent<RectTransform>();
+                    rect.anchorMin = Vector2.zero;
+                    rect.anchorMax = Vector2.one;
+                    rect.offsetMin = Vector2.zero;
+                    rect.offsetMax = Vector2.zero;
+                    overlay = overlayObject.transform;
+                }
+                cooldownOverlays[i] = overlay.gameObject;
+                var mask = overlay.GetComponent<Image>();
+                var iconImage = icon.GetComponent<Image>();
+                mask.sprite = iconImage != null ? iconImage.sprite : null;
+                mask.type = Image.Type.Filled;
+                mask.fillMethod = Image.FillMethod.Radial360;
+                mask.fillOrigin = (int)Image.Origin360.Top;
+                mask.fillClockwise = false;
+                mask.color = new Color(0f, 0f, 0f, 0.62f);
+                mask.raycastTarget = false;
+                mask.enabled = mask.sprite != null;
+
+                var textTransform = overlay.Find("Time");
+                TMP_Text text;
+                if (textTransform == null)
+                {
+                    var textObject = new GameObject("Time", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+                    textObject.transform.SetParent(overlay, false);
+                    textTransform = textObject.transform;
+                }
+                text = textTransform.GetComponent<TMP_Text>();
+                var name = skillButtons[i].transform.Find("SkillName")?.GetComponent<TMP_Text>();
+                if (name == null) name = skillButtons[i].GetComponentInChildren<TMP_Text>();
+                if (name != null) text.font = name.font;
+                text.fontSize = 14;
+                text.enableAutoSizing = false;
+                text.outlineColor = new Color32(0, 0, 0, 230);
+                text.outlineWidth = .15f;
+                text.color = new Color(1f, 0.96f, 0.72f, 1f);
+                text.alignment = TextAlignmentOptions.Center;
+                text.enableWordWrapping = false;
+                text.raycastTarget = false;
+                var textRect = text.rectTransform;
+                textRect.anchorMin = Vector2.zero;
+                textRect.anchorMax = new Vector2(1, .45f);
+                textRect.offsetMin = Vector2.zero;
+                textRect.offsetMax = Vector2.zero;
+                text.text = string.Empty;
+                cooldownOverlays[i].SetActive(false);
+            }
+        }
+
+        private void UpdateCooldownOverlays()
+        {
+            for (int i = 0; i < cooldownOverlays.Length; i++)
+            {
+                var overlay = cooldownOverlays[i];
+                if (overlay == null) continue;
                 float remaining = cooldownDeadlines[i] - Time.unscaledTime;
-                label.text = remaining > 0
-                    ? string.Format(CultureInfo.InvariantCulture, "~{0:0.0}s", remaining)
-                    : SkillName((byte)i).ToUpperInvariant();
+                if (!WorldAvailable || remaining <= 0 || !TryGetSkill(i, out var skill) || skill.cooldownTicks == 0)
+                {
+                    overlay.SetActive(false);
+                    continue;
+                }
+                var mask = overlay.GetComponent<Image>();
+                mask.enabled = mask.sprite != null;
+                mask.fillAmount = Mathf.Clamp01(remaining / (skill.cooldownTicks * ServerTickSeconds));
+                var text = overlay.transform.Find("Time").GetComponent<TMP_Text>();
+                text.text = string.Format(CultureInfo.InvariantCulture, remaining >= 10 ? "~{0:0}s" : "~{0:0.0}s", remaining);
+                overlay.SetActive(true);
             }
         }
 
@@ -618,7 +703,7 @@ namespace C02
             HideSkillTooltip();
             HideDefeatPanel();
             Array.Clear(cooldownDeadlines, 0, cooldownDeadlines.Length);
-            UpdateCooldownLabels();
+            UpdateCooldownOverlays();
             if (combatPanel != null) combatPanel.SetActive(false);
             loginScreen?.Data?.CancelAction();
             worldScreen?.CancelMovement();
@@ -627,6 +712,7 @@ namespace C02
             model = null;
             observedZone = 0;
             ownId = 0;
+            observedCharacterId = 0;
             if (loginScreen != null) loginScreen.ClientChanged -= ChangeClient;
             if (worldScreen != null) worldScreen.WorldStateChanged -= WorldChanged;
             if (skillButtons != null && skillButtons.Length == 3)

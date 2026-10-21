@@ -1,3 +1,9 @@
+## 스킬 쿨타임 가독성 후속 — 2026-10-21
+
+skill_feedback_fix(client_implementer/gpt-6-luna medium) 재활성화1: 기존이름/키를보존하는iconradial/시간·기존fixture확장. zone_spawn_review(code_reviewer/gpt-6.1-sol medium) 재활성화2: 제품/UI수명·전환보존검사읽기, 실패2회뒤유효Zone/Fullcount/완료사전조건독립확인. Coordinator가staticpreview겹침수정·테스트데이터좌표/개수수정과최종1PASS/compile0확인. 실제입력0.
+
+누적신규50/재활성화107/활성화157, 실제tokenN/A. 정적렌더sample을실제게임성공으로계상하지않는다.
+
 ## 이동·스킬·채팅 피드백 — 2026-10-21
 
 | 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 검증된 기여 |

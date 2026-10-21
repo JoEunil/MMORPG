@@ -1,3 +1,17 @@
+## 최신 — 아이콘 쿨타임 표시 후속 검증 완료
+
+기존PR44동일쿨타임표시범위로 실제SkillIcon위radial/시간을추가하고이름·키를보존했다. staticpreview실제버튼클론에서숫자/키겹침을발견해하단45%/14px+outline으로보완했다. sample시간은미리보기입력값이며실제서버관측아님. sprite없는경우숫자만·raycastfalse·만료/교체/disable정리/재Enable중복없음. 신규Scene/Prefab/서버수정0.
+
+compile0/독립제품P1P2없음/기존C05fixture1개최종1PASS(.165313s). samecharzone보존검사에서기존fixture의잘못된Zone2좌표10과Fullcount2/array1을순차발견,210/count1과StageInWorld사전assert로수정후해당1개만재검했다. 실패2로그보존, 테스트맞추려제품수정/검사완화0. COOLDOWN_UI_RESULTS.txt/내부정적PNG참조. 실제입력계속보류.
+
+skill_feedback_fix재활성화1/zone_spawn_review재활성화2추가: 누적신규50/재활성화107/전체157/tokenN/A. PR44FEEL01승인범위의표시보완으로같은PR에만갱신, AUTHOR01별도보존.
+
+## 최신 — FEEL01 게시 완료 / 쿨타임 가독성 후속
+
+지정사용자U0C9QEUHPMK의 FEEL01 승인1792577854.023769를 요청1792574327.417219와 대조해 소비하고 3df7106를 PR44 https://github.com/JoEunil/MMORPG/pull/44 에 게시·artifact첨부했다. 봇게시안내1792577929.672859. 병합/실제입력재개권한으로확장하지않는다. 제품테스트/재시험은게시때반복하지않았다.
+
+다음미완료는작은SkillName의~시간을아이콘상의숫자·radial와이프로보완하는동일스킬HUD범위다. skill_feedback_fix에게C05/기존C05fixture만재배정, 동결후영향1개만확인한다. 실제입력보류유지. authoring b4b2786은별도미게시보존. 재활성화1추가 누적신규50/재활성화105/활성화155/tokenN/A(아직완료결과아님).
+
 ## FEEL01 승인 원문 확인 — 게시 진행
 
 등록 parent1792487679.299269/채널C0C9VFZMV43에서 지정 사용자U0C9QEUHPMK의 회신1792577854.023769 원문 ‘승인 FEEL01’을 요청1792574327.417219와 대조했다. 기존 회신 소비 기록0, 원격 behind0/작업폴더 clean을 확인했다. 승인 범위는 이동·전투·채팅 후보1758b2c와 검증/공개설명 묶음이며 맵저작AUTHOR01/실입력재개/병합 승인이 아니다. 이제 일반push·PR게시1회에 소비한다.
