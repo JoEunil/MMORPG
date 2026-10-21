@@ -1,10 +1,16 @@
+## 게시 준비 — 최신 master 포함 / FEEL01 대기
+
+제품1758b2c를로컬커밋한뒤PR43 merged/bf58f1d·원격head자동삭제를확인했다. b6178a4 일반merge로origin/master를포함했고제품/테스트추가diff0이라재시험하지않았다. 완료world-motion로컬branch는기본브랜치포함·고유0·worktree미사용확인후-d정리. 미게시authoring b4b2786·원본ROOT WIP보존. 현후보는master대비14파일/298추가26삭제(아래요청기록추가는별도문서변경).
+
+Unity Coordinator 봇1792574327.417219로 FEEL01 push·PR게시승인요청을발송했다. 최신원문회신·중복소비확인전게시0, 실제입력보류유지. Slack요청은실입력재개승인이아니다. 공개텍스트는기존두기능상세에후보/미확인범위를명시했고build.py성공·새실제캡처0.
+
 ## 최신 — 이동 방향·스킬·채팅 피드백 로컬 후보
 
 codex/play-feedback-revision은 PR43=5d4d524에서 분기한 이번8파일 묶음이며 미게시 맵저작 b4b2786과 분리했다. 자기 캐릭터의 입력 방향/보정 변위를 분리하고 시각선행 .3·요청선행 .6을 유지, 반전입력의 오래된목표 폐기/실제진행만 stale해제. 몬스터 기존 피격반동 강화, 서버발동 phase1 짧은효과와 phase0 기준 ~쿨타임추정표시, 채팅 NavigationNone/성공전송·Escape초점해제를 구현했다. 서버/ClientCore/DB변경0.
 
 compile0, 독립제품 차단없음. 영향4fixture배치:3PASS/스킬색상Color32표현FAIL→테스트만저장표현맞춰해당1개재검1PASS. 최초ORfilter0선택은미실행. ROOT8파일baseline일치/백업후동기화, EditorPlayfalse/dirtyfalse/inputfalse/backgroundfalse. 실제입력보류/서버전환0/실제rubber완전해결·화면품질주장0. 기존 Line-Aim숨김서버4892유지. PLAY_FEEDBACK_RESULTS.txt 참조.
 
-전문신규2(skill_feedback_fix/chat_focus_fix client_implementer gpt-6-luna medium), skill_feedback_fix재활성화2/zone_spawn_review재활성화2, 누적신규50/재활성화104/전체154/tokenN/A. 게시전FEEL01봇승인요청예정, AUTHOR01승인재사용금지. 실제계정/생존/정상서버전환조건과입력보류해제뒤에만1회통합실입력으로확인한다.
+전문신규2(skill_feedback_fix/chat_focus_fix client_implementer gpt-6-luna medium), skill_feedback_fix재활성화2/zone_spawn_review재활성화2, 누적신규50/재활성화104/전체154/tokenN/A. 게시전FEEL01봇승인요청1792574327.417219(등록parent1792487679.299269/지정U0C9QEUHPMK), 원문사람회신전push·PR0, AUTHOR01승인재사용금지. 실제계정/생존/정상서버전환조건과입력보류해제뒤에만1회통합실입력으로확인한다.
 
 ## 최신 — 실제 몬스터 3종 파츠 모션 자동 확인
 
