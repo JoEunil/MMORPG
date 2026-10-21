@@ -148,6 +148,122 @@ namespace C02.Tests
         }
 
         [Test]
+        public void MonsterFeedback_DamagePulseUsesObservedDeltaAndRestoresForInvalidDeathAndDisable()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                fixture.Monsters(100, Monster(0, 0));
+                var visual = fixture.Visual("monsters", (ushort)0);
+                var fill = fixture.VitalsImage(visual);
+                var healthColor = fill.color;
+
+                fixture.MonsterDeltaPacket(new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 50 });
+                Assert.That(fixture.MonsterState(0).hp, Is.EqualTo(50));
+                Assert.That(fill.color, Is.EqualTo(new Color(1f, 0.78f, 0.2f, 1f)), "Only the accepted server HP decrease pulses gold.");
+                float firstDeadline = (float)Get(visual.GetComponent<C13EntityVitals>(), "damagePulseUntil");
+                fixture.MonsterDeltaPacket(new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 40 });
+                float refreshedDeadline = (float)Get(visual.GetComponent<C13EntityVitals>(), "damagePulseUntil");
+                Assert.That(refreshedDeadline, Is.GreaterThanOrEqualTo(firstDeadline),
+                    "A later hit refreshes the pulse deadline.");
+                var sameHealthFull = Monster(0, 0); sameHealthFull.hp = 40;
+                fixture.Monsters(100, sameHealthFull);
+                Assert.That((float)Get(visual.GetComponent<C13EntityVitals>(), "damagePulseUntil"), Is.EqualTo(refreshedDeadline),
+                    "Full updates retain authoritative fill without starting another pulse.");
+
+                Set(visual.GetComponent<C13EntityVitals>(), "damagePulseUntil", Time.unscaledTime - 1f);
+                Invoke(visual.GetComponent<C13EntityVitals>(), "LateUpdate");
+                Assert.That(fill.color, Is.EqualTo(healthColor), "The normal green fill returns after the pulse deadline.");
+
+                fixture.MonsterDeltaPacket(
+                    new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 40 },
+                    new MonsterDeltaField { internalId = 0, fieldId = 1, fieldVal = Bits(14) });
+                Assert.That(fill.color, Is.EqualTo(healthColor), "Same HP and movement do not pulse.");
+                fixture.MonsterDeltaPacket(new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 101 });
+                Assert.That(fill.color, Is.EqualTo(healthColor), "An invalid HP batch does not pulse.");
+
+                fixture.MonsterDeltaPacket(new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 0 });
+                Assert.That(visual.activeSelf, Is.False);
+                Assert.That(fill.color, Is.EqualTo(healthColor), "Removing a dead monster disables its vitals and restores green immediately.");
+
+                fixture.Monsters(101, Monster(0, 0));
+                var recreated = fixture.Visual("monsters", (ushort)0);
+                fixture.MonsterDeltaPacket(new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 60 });
+                var recreatedVitals = recreated.GetComponent<C13EntityVitals>();
+                var recreatedFill = fixture.VitalsImage(recreated);
+                Assert.That(recreatedFill.color, Is.EqualTo(new Color(1f, 0.78f, 0.2f, 1f)));
+                recreatedVitals.enabled = false;
+                Assert.That(recreatedFill.color, Is.EqualTo(healthColor), "Disabling vitals ends the pulse immediately.");
+            }
+        }
+
+        [Test]
+        public void MonsterFeedback_ActionResultShowsSupportedServerRingsAndExpiresWithObservation()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                fixture.ConfigureMonsterRange();
+                fixture.Monsters(100, Monster(0, 0), Monster(1, 1), Monster(2, 2), Monster(7, 0));
+                double receivedAt = Time.realtimeSinceStartupAsDouble;
+                fixture.MonsterActions(
+                    MonsterAction(0, 0, 0, 0, 50, 60),
+                    MonsterAction(1, 0, 1, 0, -4, 9),
+                    MonsterAction(2, 0, 0, 0, 5, 6),
+                    MonsterAction(99, 0, 0, 0, 7, 8),
+                    MonsterAction(7, 0, 0, 0, 1, 2),
+                    MonsterAction(0, 1, 1, 0, 30, 40));
+
+                var smallRing = fixture.MonsterRange(0);
+                double smallRingDeadline = fixture.RangeDeadline(0);
+                Assert.That(smallRing, Is.Not.Null);
+                Assert.That(smallRing.gameObject.activeSelf, Is.True);
+                Assert.That(smallRing.positionCount, Is.EqualTo(32));
+                Assert.That(smallRing.loop, Is.True);
+                Assert.That(smallRing.useWorldSpace, Is.True);
+                Assert.That(smallRing.sharedMaterial, Is.SameAs(fixture.RangeMaterial));
+                Assert.That(smallRing.GetPosition(0).x, Is.EqualTo(52).Within(0.001f));
+                Assert.That(smallRing.GetPosition(0).y, Is.EqualTo(0.055f).Within(0.001f));
+                Assert.That(smallRing.GetPosition(0).z, Is.EqualTo(60).Within(0.001f));
+                Assert.That(fixture.RangeDeadline(0) - receivedAt, Is.InRange(0.39, 0.42), "Skill 0 cleanup follows its authored six-tick Hit wait plus grace.");
+                Assert.That(fixture.MonsterRange(2), Is.Null, "Bosses have no preview in this slice.");
+                var sameNumericId = fixture.MonsterRange(7);
+                Assert.That(sameNumericId, Is.Not.Null, "Monster and player IDs are separate namespaces even when the number matches.");
+                Assert.That(sameNumericId.GetPosition(0).x, Is.EqualTo(3).Within(0.001f));
+                Assert.That(fixture.Count("monsters"), Is.EqualTo(4), "Unobserved monster IDs do not create observations.");
+                var invalidAction = MonsterAction(0, 0, 0, 0, 50, 60); invalidAction.x = float.NaN;
+                fixture.MonsterActions(invalidAction);
+                invalidAction = MonsterAction(0, 0, 0, 0, 50, 60); invalidAction.dir = 4;
+                fixture.MonsterActions(invalidAction);
+                Assert.That(fixture.RangeDeadline(0), Is.EqualTo(smallRingDeadline), "Invalid coordinates and directions cannot renew a preview.");
+
+                var largeRing = fixture.MonsterRange(1);
+                Assert.That(largeRing, Is.Not.Null);
+                Assert.That(largeRing.GetPosition(0).x, Is.EqualTo(4).Within(0.001f));
+                Assert.That(largeRing.GetPosition(0).z, Is.EqualTo(9).Within(0.001f));
+                Assert.That(fixture.RangeDeadline(1) - receivedAt, Is.InRange(0.89, 0.92), "Skill 1 cleanup follows its authored sixteen-tick Hit wait plus grace.");
+
+                fixture.MonsterActions(MonsterAction(0, 0, 0, 1, 50, 60));
+                Assert.That(smallRing.gameObject.activeSelf, Is.False, "The server Hit phase hides the charging preview.");
+                fixture.MonsterActions(MonsterAction(0, 0, 0, 0, 50, 60));
+                fixture.Render(fixture.RangeDeadline(0) + 0.01);
+                Assert.That(smallRing.gameObject.activeSelf, Is.False, "The cleanup grace expires without becoming a damage or hit indicator.");
+
+                fixture.MonsterDeltaPacket(new MonsterDeltaField { internalId = 1, fieldId = 0, fieldVal = 0 });
+                Assert.That(largeRing.gameObject.activeInHierarchy, Is.False, "HP0 removal hides its child preview with the observed monster.");
+
+                fixture.QueueMonsterActions(MonsterAction(0, 0, 0, 0, 20, 21));
+                fixture.Bind(fixture.NewModel());
+                fixture.Drain();
+                fixture.Monsters(101, Monster(0, 0));
+                Assert.That(fixture.MonsterRange(0), Is.Null, "A queued result from the replaced model cannot add a preview.");
+
+                fixture.MonsterActions(MonsterAction(0, 0, 0, 0, 20, 21));
+                var clearedPreview = fixture.MonsterRange(0).gameObject;
+                fixture.CloseWorld();
+                Assert.That(clearedPreview.activeInHierarchy, Is.False, "World clear removes the per-observation preview.");
+            }
+        }
+
+        [Test]
         public void InvalidEntitiesDoNotPoisonOtherIds_AndDeltaCoordinatesAndHpAreAtomic()
         {
             using (var fixture = new ObservationFixture())
@@ -344,6 +460,8 @@ namespace C02.Tests
 
         private static FullStateField Player(uint id) => new FullStateField { zoneInternalID = id, hp = 70, maxHp = 100, x = 11, y = 12, dir = 0 };
         private static MonsterFullField Monster(ushort id, ushort type) => new MonsterFullField { internalId = id, monsterId = type, hp = 70, maxHp = 100, x = 11, y = 12, dir = 0 };
+        private static ActionResultField MonsterAction(uint id, byte skillSlot, uint skillId, ushort phase, float x, float y) =>
+            new ActionResultField { casterType = 1, casterId = id, skillSlot = skillSlot, skillId = skillId, skillPhase = phase, dir = 0, x = x, y = y };
         private static uint Bits(float value) => BitConverter.ToUInt32(BitConverter.GetBytes(value), 0);
 
         private static byte[] Frame<T>(byte opcode, T state) where T : struct
@@ -383,6 +501,8 @@ namespace C02.Tests
             private readonly C04ObservedWorld observer;
             private readonly QueuedDispatcher dispatcher = new QueuedDispatcher();
             private readonly List<ViewModel> models = new List<ViewModel>();
+            private C14ServerContent rangeContent;
+            public Material RangeMaterial { get; private set; }
 
             public ObservationFixture()
             {
@@ -419,6 +539,13 @@ namespace C02.Tests
             }
 
             public ViewModel NewModel() { var model = C04ObservationTests.NewModel(dispatcher); models.Add(model); return model; }
+            public void ConfigureMonsterRange()
+            {
+                rangeContent = ScriptableObject.CreateInstance<C14ServerContent>();
+                RangeMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+                Set(observer, "serverContent", rangeContent);
+                Set(observer, "monsterRangeMaterial", RangeMaterial);
+            }
             public void Bind(ViewModel model) => Invoke(observer, "ChangeClient", model);
             public void Drain() => dispatcher.Drain();
             public int QueuedCount => dispatcher.Count;
@@ -428,6 +555,21 @@ namespace C02.Tests
             public void Monsters(double now, params MonsterFullField[] states) => Invoke(observer, "ApplyMonsterFull", (ushort)states.Length, states, now);
             public void PlayerDeltas(params DeltaUpdateField[] updates) => Invoke(observer, "ApplyPlayerDelta", (ushort)updates.Length, updates);
             public void MonsterDeltas(params MonsterDeltaField[] updates) => Invoke(observer, "ApplyMonsterDelta", (ushort)updates.Length, updates);
+            public void MonsterDeltaPacket(params MonsterDeltaField[] updates)
+            {
+                ((IViewModelNet)models[models.Count - 1]).MonsterDeltaReceived(1, 1, (ushort)updates.Length, updates);
+                dispatcher.Drain();
+            }
+            public void MonsterActions(params ActionResultField[] results)
+            {
+                QueueMonsterActions(results);
+                dispatcher.Drain();
+            }
+            public void QueueMonsterActions(params ActionResultField[] results) =>
+                ((IViewModelNet)models[models.Count - 1]).ActionResultReceived(1, 1, (ushort)results.Length, results);
+            public void Render(double now) => Invoke(observer, "RenderObservations", now);
+            public LineRenderer MonsterRange(ushort id) => (LineRenderer)EntryField("monsters", id, "RangePreview");
+            public double RangeDeadline(ushort id) => (double)EntryField("monsters", id, "RangeUntil");
             public void Expire(double now) => Invoke(observer, "Expire", now);
             public void RemovePlayer(uint id) => Invoke(observer, "RemovePlayer", id);
             public void RemoveMonster(ushort id) => Invoke(observer, "RemoveMonster", id);
@@ -444,6 +586,9 @@ namespace C02.Tests
             public RectTransform VitalsFill(GameObject visual) =>
                 (RectTransform)typeof(C13EntityVitals).GetField("fillTransform", BindingFlags.Instance | BindingFlags.NonPublic)
                     .GetValue(visual.GetComponent<C13EntityVitals>());
+            public UnityEngine.UI.Image VitalsImage(GameObject visual) =>
+                (UnityEngine.UI.Image)typeof(C13EntityVitals).GetField("fillImage", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .GetValue(visual.GetComponent<C13EntityVitals>());
             public void CloseWorld() => Invoke(world, "ResetWorld");
             public void DisableObserver() => observer.enabled = false;
             public void OpenWorld()
@@ -456,6 +601,8 @@ namespace C02.Tests
             {
                 UnityEngine.Object.DestroyImmediate(root);
                 foreach (var model in models) model.Dispose();
+                if (RangeMaterial != null) UnityEngine.Object.DestroyImmediate(RangeMaterial);
+                if (rangeContent != null) UnityEngine.Object.DestroyImmediate(rangeContent);
             }
 
             private object EntryField(string name, object id, string field)

@@ -1,3 +1,11 @@
+## 현재 — 사냥 화면 묶음 실제 검증 완료
+
+CAND codex/field-readability-followup에서필드진입로후속에몬스터HP강조·일반/강한몹지원Circle예고를모았다. C04/C13/기존C04fixture/BindC04·Scene2refs·Material,서버변경0. 최종독립리뷰·compile0/MonsterFeedback_2개1batchPASS. 계정02한접속/방향키접근/X1회로동일몹11HP1500→500/금색HP바·.2초초록복원/서버고정중심반경2빨간원32점·phase1해제PASS. helper타입·로그인컴포넌트·정적PASS조건오류는제품변경없이같은접속에서보완했으며최초실패기록유지. MONSTER_FEEDBACK_RESULTS.txt참조.
+
+실제Disconnect→Modelnull/Playfalse/dirtyfalse/inputRunningfalse/backgroundfalse/계정선택envnull. 서비스유지/재시작0. 공개player-hud최신PNG2장·이력/홈기존성장확인문장정정·생성링크/브라우저확인PASS. 큰관련게임화면묶음으로보존하고새작업을작은PR로내지않는다. 기존UI01동결605c2fb와게시승인분리.
+
+다음좁은서버읽기분석은실제몹시전중심과player거리약2.60/skill0반경2의추적종료계약확인이다. 아직수정·추가시험없음. 전문신규34/재활성화62/96/tokenN/A.
+
 ## 최신 — PR41 셰이더 포함 수정·UI01 승인 확인
 
 사용자가 전달한 범위 표시 shader stripping P2를 검토해 실제 package URP17.0.4 Unlit.shader GUID650dd9526735d5b46b79224bc6e94025를 GraphicsSettings AlwaysIncluded에1행추가했다. 저장파일재로딩참조1개/목록8/ShaderErrorfalse/독립리뷰P1P2없음,다른설정불변. runtime/Scene/서버변경·새게임시험0. 전체standalone빌드·실행·용량은미검증. 기존PR41에ccff218일반push했고후속CAND정상merge로보존. 상세LINE_AIM_RESULTS.txt최신후속.

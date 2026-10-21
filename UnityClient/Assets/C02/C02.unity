@@ -203119,6 +203119,8 @@ MonoBehaviour:
   - {fileID: 5378685674011603634, guid: 9f89d5b40f8d855468e16ce5b8771536, type: 3}
   - {fileID: 708508871452867573, guid: 5b885cd4875169840b239e6a4acf709e, type: 3}
   - {fileID: 8327654446723712000, guid: 704f642f5d3537346a091e8f224c044e, type: 3}
+  serverContent: {fileID: 11400000, guid: e20a847d2d4fa094088b01f4c513165b, type: 2}
+  monsterRangeMaterial: {fileID: 2100000, guid: 558c630027d260440b74e345bc11bb52, type: 2}
 --- !u!114 &1741877134
 MonoBehaviour:
   m_ObjectHideFlags: 0

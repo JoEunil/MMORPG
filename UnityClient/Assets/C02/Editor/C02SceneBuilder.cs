@@ -1108,6 +1108,8 @@ public static class C02SceneBuilder
         refs.FindProperty("playerPrefab").objectReferenceValue=AssetDatabase.LoadAssetAtPath<GameObject>(folder+"ObservedPlayer.prefab");
         var types=refs.FindProperty("monsterPrefabs");types.arraySize=3;
         for(int type=0;type<3;type++)types.GetArrayElementAtIndex(type).objectReferenceValue=AssetDatabase.LoadAssetAtPath<GameObject>(folder+"MonsterType"+type+".prefab");
+        refs.FindProperty("serverContent").objectReferenceValue=AssetDatabase.LoadAssetAtPath<C14ServerContent>("Assets/C02/Content/C14ServerContent.asset");
+        refs.FindProperty("monsterRangeMaterial").objectReferenceValue=AssetDatabase.LoadAssetAtPath<Material>(folder+"MonsterRange.mat");
         refs.ApplyModifiedPropertiesWithoutUndo();observed.enabled=true;
     }
 

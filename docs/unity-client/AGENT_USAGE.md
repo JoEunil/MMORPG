@@ -1,5 +1,16 @@
 # 에이전트 활용 기록
 
+## 사냥 화면 피드백 — 검증 완료, 다음 거리 계약 분석 중
+
+| 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 확인한 결과 |
+| --- | --- | ---: | ---: | --- |
+| combat_feedback_gap | server_analyst / gpt-6.1-sol medium | 1 | 2 | HP·일반몹원형예고계약확인,현재추적종료거리분석중 |
+| monster_hit_feedback | client_implementer / gpt-6-luna medium | 1 | 1 | HP강조·지원Circle예고·기존fixture2시나리오완료 |
+| monster_feedback_review | code_reviewer / gpt-6.1-sol medium | 1 | 2 | 최초/통합/SceneMaterial독립검토P1P2없음 |
+| monster_feedback_observer | unity_tester / gpt-6-luna medium | 1 | 1 | 관측helper준비·정적수정. 실행시타입·컴포넌트오류는root가같은접속에서보완 |
+
+누적신규34/재활성화62/활성화96,실제토큰N/A. root가최종compile0/자동2PASS·실제한접속X1회/동일대상HP강조복원·반경2예고와해제·정상종료·새PNG2장·웹생성/탐색을확인했다. helper코드준비를게임시험성공으로대신세지않으며,누적에는다음거리계약읽기1재활성화가포함된다. MONSTER_FEEDBACK_RESULTS.txt참조.
+
 ## PR41 셰이더 포함 리뷰
 
 pr41_shader_review(code_reviewer/gpt-6.1-sol medium)신규1,설정1행·실제URP패키지GUID·런타임불변독립검토/P1P2없음. 누적신규30/재활성화56/활성화86,실제토큰N/A. Coordinator가저장설정재로딩참조1개와ShaderHasError=false를확인. 전체standalone빌드·실행성공으로표현하지않으며기존전투시험반복0.

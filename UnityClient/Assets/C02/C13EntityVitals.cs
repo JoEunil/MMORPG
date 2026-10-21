@@ -7,7 +7,9 @@ namespace C02
     {
         private RectTransform barTransform;
         private RectTransform fillTransform;
+        private UnityEngine.UI.Image fillImage;
         private Transform viewCamera;
+        private float damagePulseUntil;
 
         private void Awake()
         {
@@ -48,8 +50,8 @@ namespace C02
             fillTransform.anchorMax = Vector2.one;
             fillTransform.offsetMin = new Vector2(0, 1);
             fillTransform.offsetMax = new Vector2(0, -1);
-            var fillImage = fill.GetComponent<Image>();
-            fillImage.type = Image.Type.Simple;
+            fillImage = fill.GetComponent<UnityEngine.UI.Image>();
+            fillImage.type = UnityEngine.UI.Image.Type.Simple;
             fillImage.color = new Color(0.35f, 0.85f, 0.32f, 1f);
             fillImage.raycastTarget = false;
             canvasObject.transform.localRotation = Quaternion.identity;
@@ -60,6 +62,12 @@ namespace C02
             fillTransform.anchorMax = new Vector2(Mathf.Clamp01((float)hp / maxHp), 1f);
         }
 
+        public void PulseDamage()
+        {
+            fillImage.color = new Color(1f, 0.78f, 0.2f, 1f);
+            damagePulseUntil = Time.unscaledTime + 0.2f;
+        }
+
         public void SetCamera(Transform cameraTransform)
         {
             viewCamera = cameraTransform;
@@ -68,6 +76,17 @@ namespace C02
         private void LateUpdate()
         {
             if (viewCamera != null) barTransform.rotation = viewCamera.rotation;
+            if (damagePulseUntil != 0f && Time.unscaledTime >= damagePulseUntil)
+            {
+                fillImage.color = new Color(0.35f, 0.85f, 0.32f, 1f);
+                damagePulseUntil = 0f;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (fillImage != null) fillImage.color = new Color(0.35f, 0.85f, 0.32f, 1f);
+            damagePulseUntil = 0f;
         }
     }
 }

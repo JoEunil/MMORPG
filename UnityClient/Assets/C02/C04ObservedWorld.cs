@@ -68,6 +68,8 @@ namespace C02
         [SerializeField] private Transform displayRoot;
         [SerializeField] private GameObject playerPrefab;
         [SerializeField] private GameObject[] monsterPrefabs;
+        [SerializeField] private C14ServerContent serverContent;
+        [SerializeField] private Material monsterRangeMaterial;
 
         private sealed class PlayerObservation
         {
@@ -82,6 +84,8 @@ namespace C02
             public MonsterFullField State;
             public GameObject Visual;
             public C13EntityVitals Vitals;
+            public LineRenderer RangePreview;
+            public double RangeUntil;
             public double LastFullSeen;
             public MotionHistory Motion = new MotionHistory();
         }
@@ -96,6 +100,7 @@ namespace C02
         private Action<ushort, DeltaUpdateField[]> playerDelta;
         private Action<ushort, MonsterFullField[]> monsterFull;
         private Action<ushort, MonsterDeltaField[]> monsterDelta;
+        private Action<ushort, ActionResultField[]> actionResults;
 
         private void OnEnable()
         {
@@ -136,10 +141,12 @@ namespace C02
             playerDelta = (count, updates) => { if (Accept(source, version)) ApplyPlayerDelta(count, updates); };
             monsterFull = (count, states) => { if (Accept(source, version)) ApplyMonsterFull(count, states, Time.realtimeSinceStartupAsDouble); };
             monsterDelta = (count, updates) => { if (Accept(source, version)) ApplyMonsterDelta(count, updates); };
+            actionResults = (count, results) => { if (Accept(source, version)) ApplyMonsterActionResults(count, results); };
             model.OnFullReceived += playerFull;
             model.OnDeltaReceived += playerDelta;
             model.OnMonsterFullReceived += monsterFull;
             model.OnMonsterDeltaReceived += monsterDelta;
+            model.OnActionResultReceived += actionResults;
         }
 
         private void Unsubscribe()
@@ -149,6 +156,7 @@ namespace C02
             model.OnDeltaReceived -= playerDelta;
             model.OnMonsterFullReceived -= monsterFull;
             model.OnMonsterDeltaReceived -= monsterDelta;
+            model.OnActionResultReceived -= actionResults;
         }
 
         private void WorldChanged()
@@ -311,10 +319,67 @@ namespace C02
                 if (pair.Value.invalid || !ValidMonster(pair.Value.state)) continue;
                 if (pair.Value.deathSeen) { RemoveMonster(pair.Key); continue; }
                 var entry = monsters[pair.Key];
+                bool damaged = pair.Value.state.hp < entry.State.hp;
                 entry.Motion.Add(Time.realtimeSinceStartupAsDouble, pair.Value.state.x, pair.Value.state.y);
                 entry.State = pair.Value.state;
                 entry.Vitals.SetHealth(entry.State.hp, entry.State.maxHp);
+                if (damaged) entry.Vitals.PulseDamage();
                 Face(entry.Visual, entry.State.dir);
+            }
+        }
+
+        private void ApplyMonsterActionResults(ushort count, ActionResultField[] results)
+        {
+            if (results == null || count > results.Length) return;
+            for (int i = 0; i < count; i++)
+            {
+                var result = results[i];
+                if (result.casterType != 1 || result.casterId > ushort.MaxValue || result.skillSlot != 0 ||
+                    result.dir > 3 || result.skillPhase > 1 || float.IsNaN(result.x) || float.IsInfinity(result.x) ||
+                    float.IsNaN(result.y) || float.IsInfinity(result.y) ||
+                    !monsters.TryGetValue((ushort)result.casterId, out var entry) || entry.State.hp == 0 || entry.State.monsterId > 1 ||
+                    entry.State.monsterId == 0 && result.skillId != 0 || entry.State.monsterId == 1 && result.skillId > 1)
+                    continue;
+
+                if (result.skillPhase == 1)
+                {
+                    if (entry.RangePreview != null) entry.RangePreview.gameObject.SetActive(false);
+                    continue;
+                }
+                if (serverContent == null || monsterRangeMaterial == null) continue;
+
+                C14ServerContent.RingSkill skill = result.skillId == 1 ? serverContent.ring :
+                    serverContent.otherSkills == null ? null : Array.Find(serverContent.otherSkills,
+                        candidate => candidate != null && candidate.skillID == result.skillId);
+                if (skill == null || skill.skillID != result.skillId || skill.phases == null || skill.phases.Length != 2 ||
+                    skill.phases[0] == null || skill.phases[0].action != C14SkillAction.Charging || skill.phases[1] == null)
+                    continue;
+                var hit = skill.phases[1];
+                if (hit.action != C14SkillAction.Hit || hit.range != C14SkillRange.Circle || float.IsNaN(hit.range1) || float.IsInfinity(hit.range1) ||
+                    hit.range1 <= 0 || hit.waitTicks == 0) continue;
+
+                if (entry.RangePreview == null)
+                {
+                    var preview = new GameObject("Monster Range Preview");
+                    preview.transform.SetParent(entry.Visual.transform, false);
+                    entry.RangePreview = preview.AddComponent<LineRenderer>();
+                    entry.RangePreview.sharedMaterial = monsterRangeMaterial;
+                    entry.RangePreview.useWorldSpace = true;
+                    entry.RangePreview.loop = true;
+                    entry.RangePreview.positionCount = 32;
+                    entry.RangePreview.widthMultiplier = 0.1f;
+                    entry.RangePreview.startColor = entry.RangePreview.endColor = Color.red;
+                }
+
+                for (int point = 0; point < entry.RangePreview.positionCount; point++)
+                {
+                    float angle = Mathf.PI * 2f * point / entry.RangePreview.positionCount;
+                    entry.RangePreview.SetPosition(point, new Vector3(
+                        result.x + Mathf.Cos(angle) * hit.range1, 0.055f,
+                        result.y + Mathf.Sin(angle) * hit.range1));
+                }
+                entry.RangePreview.gameObject.SetActive(true);
+                entry.RangeUntil = Time.realtimeSinceStartupAsDouble + 0.05 * hit.waitTicks + 0.1;
             }
         }
 
@@ -345,7 +410,10 @@ namespace C02
             foreach (var entry in players.Values)
                 if (entry.Visual != null) entry.Visual.transform.position = entry.Motion.PositionAt(presentationTime);
             foreach (var entry in monsters.Values)
+            {
                 if (entry.Visual != null) entry.Visual.transform.position = entry.Motion.PositionAt(presentationTime);
+                if (entry.RangePreview != null && now >= entry.RangeUntil) entry.RangePreview.gameObject.SetActive(false);
+            }
         }
 
         private void RemovePlayer(uint id)
