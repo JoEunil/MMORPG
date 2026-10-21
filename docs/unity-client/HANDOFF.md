@@ -1,3 +1,15 @@
+## 현재 인계 — 병합 전달 정리 완료, 실제 사냥 배치는 수동 종료 대기
+
+PR42 병합·공개 거래소 최신PNG실표시·원격자동삭제·완료로컬브랜치/worktree 안전정리를마쳤다. 사냥후보602c39a는제품변경없는일반merge로최신기본브랜치를포함한다. 생성HTML17개는UI01-Delivery/merged-preview-backup보존. 새사냥후보push/PR0, UI01승인재사용금지.
+
+readonly 보스관측helper ROOT Builds/Boss-Preview/observe-live.cs 준비완료. root가초안의로그인컴포넌트/tuple명/center반경검사/innerHit정리·pendingcenter짝지음/timeout상태를보완했고독립최종P1P2없음. eval_file은실제컴파일후EditMode첫가드 Play mode required에서예상중단했으며구독·입력·실제게임관측0. 이확인을기능PASS로세지않는다. helper는같은보스필수5pair의형상·대응Hit만개별확인/최대PNG2요청/120초또는모델·Zone·Play종료시정리하며NOT OBSERVED/INCOMPLETE와FAIL을구분한다. helper초안과notes원본을보존했다.
+
+현재Slack수동q완료회신없음/기존Line-Aim서버4892·9999listen유지를직접확인했다. WindowsPowerShell 실행정책차단을우회하거나강제종료하지않는다. 수동정상종료요청은Slack1792559075.384329 하나를유지한다. 실제종료·포트해제·정상로그조건뒤만새후보시작/한실입력에근접거리와보스두공격·해제·실제PNG를확인한다. 새공개보스결과는아직0. 전문신규34/재활성화77/활성화111/tokenN/A(관측helper준비1·최종읽기리뷰1추가).
+## PR42 전달 정리 — 2026-10-21
+
+GitHub PR42 merged/e1df6e7·원격head자동삭제·0376bb3 기본브랜치포함을확인했다. 사냥후보는602c39a 일반merge로두인계기록을보존했고merge전후Unity/서버/site의추가diff0이라게임시험을반복하지않았다. 완료worktree UI01-Delivery/source는clean/고유커밋0/Editor미사용을확인한뒤제거하고codex/combat-ui-followup을일반-d삭제했다. ignored생성HTML17개는UI01-Delivery/merged-preview-backup에경로가드후보존. 현재사냥후보/ROOT사용자WIP·원본Game은보존했다.
+
+실제공개 https://joeunil.github.io/MMORPG/work/market/history.html 의최신2026-10-21 매물그림·가격설명과PNG실표시를브라우저로확인했다. 공개사이트가새사냥/보스후보까지게시됐다는뜻은아니다. 수동q완료회신은없고기존Line-Aim서버4892는계속실행중이다. 실제입력은OS정책차단으로대기하며readonly보스관측helper만준비중이다. 전문신규34/재활성화76/활성화110/tokenN/A.
 ## 최신 — PR42 병합 반영, 사냥 실입력은 수동 종료 대기
 
 GitHub에서 PR42 merged/e1df6e7 및 head0376bb3의 기본브랜치 포함을 확인했다. fetch --prune로 원격 작업브랜치 자동삭제 확인, 현재 사냥 후보에는 일반 merge로 두 인계 기록을 모두 보존했다. Unity/서버/공개 산출물의 HEAD 대비 추가 diff는 없고 인계 기록 충돌만 해결했다. 제품 변경이 없어 기존 통과 검증을 반복하지 않는다. 아래 PR42 open 상태는 이전 이력이다. 수동 q 종료 회신은 아직 확인되지 않고 기존 서버4892는 유지된다.

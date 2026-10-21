@@ -6,10 +6,10 @@
 | --- | --- | ---: | ---: | --- |
 | combat_feedback_gap | server_analyst / gpt-6.1-sol medium | 1 | 3 | HP·일반몹 예고·시전 거리 원인 확인, 다음 기존 보스 범위 계약 읽기 |
 | monster_hit_feedback | client_implementer / gpt-6-luna medium | 1 | 5 | HP·Circle·근접 거리·보스 두 공격 예고 구현. skill3 ROOT 오저작은 root 복구, skill4는 지정 CAND 작성 |
-| monster_feedback_review | code_reviewer / gpt-6.1-sol medium | 1 | 10 | 서버 거리·보스 예고·정상전환 helper 읽기 검토. 경로 불일치와 큐 검증 P2 발견 후 최종 수정 확인 |
-| monster_feedback_observer | unity_tester / gpt-6-luna medium | 1 | 1 | 관측helper준비·정적수정. 실행시타입·컴포넌트오류는root가같은접속에서보완 |
+| monster_feedback_review | code_reviewer / gpt-6.1-sol medium | 1 | 11 | 기존 서버·보스 검토와 마지막 readonly 관측 helper 검토. 최종 P1/P2 없음, 실제 입력 미검증 |
+| monster_feedback_observer | unity_tester / gpt-6-luna medium | 1 | 2 | 보스 관측 helper 초안 준비. root가 lookup/tuple/기하·짝지음 보완, 실제 입력 미실행 |
 
-누적신규34/재활성화75/활성화109,실제토큰N/A. root가최종compile0/자동2PASS·실제한접속X1회/동일대상HP강조복원·반경2예고와해제·정상종료·새PNG2장·웹생성/탐색을확인했다. helper코드준비를게임시험성공으로대신세지않으며,누적에는다음거리계약읽기1회와서버후보구현1회의재활성화가포함된다. MONSTER_FEEDBACK_RESULTS.txt참조.
+누적신규34/재활성화77/활성화111,실제토큰N/A. root가최종compile0/자동2PASS·실제한접속X1회/동일대상HP강조복원·반경2예고와해제·정상종료·새PNG2장·웹생성/탐색을확인했다. helper코드준비를게임시험성공으로대신세지않으며,누적에는다음거리계약읽기1회와서버후보구현1회의재활성화가포함된다. MONSTER_FEEDBACK_RESULTS.txt참조.
 
 ## PR41 셰이더 포함 리뷰
 

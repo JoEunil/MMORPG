@@ -16,3 +16,4 @@ skill4의10phase Charging/Hit×5를 추가했다. 각 pair에서 C14의 Boss2 ra
 최소 자동: 최종 Unity compile 오류0/경고0. 기존 MonsterFeedback_ActionResultShowsSupportedServerRingsAndExpiresWithObservation 한 개만 확장·1회 실행, 1PASS/0FAIL, 전체0.13초/해당0.1008052초. 최초 실패 테스트0. 원본 상태 파일은 ROOT Builds/Boss-Preview/automatic-original.txt.
 실제 화면: 보스 예고/근접 거리 새 후보 서버 배포·실입력은 아직 미실행. 일반몹 HP·Circle의 이전 실제 입력 성공을 새 보스 성공으로 재분류하지 않았다. 공개 새 보스 캡처/웹 갱신0이며 실화면 확인 후 반영한다. skill4 정사각 고리는 여전히 미지원.
 종료: Playfalse/dirtyfalse/C01EditorInputRun.Runningfalse/backgroundfalse/accountEnvCleartrue. 실행 중 서버 유지. 추가 로그인·전체 회귀0. 다음 서버 전환 관련 입력 배치에 거리·보스 예고 관측을 함께 모은다.
+후속 관측 준비: readonly helper와notes는ROOT Builds/Boss-Preview에보존. 초안lookup/tuple명/중심반경검사등은root가수정하고독립최종P1P2없음. Editor eval_file은컴파일후EditMode가드에서예상중단/구독·입력0. 실제게임PASS/캡처로세지않음. PR42 merged/default e1df6e7 및 공개시장최신사진확인/로컬완료브랜치정리,새사냥후보게시0. 수동서버정상종료회신미확인으로실제입력은계속대기.
