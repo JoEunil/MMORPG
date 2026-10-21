@@ -100,3 +100,7 @@ line_aim_contract(server_analyst)신규1/독립리뷰재활성화1, line_aim_imp
 
 누적 신규21/재활성화52/활성화73, 실제 토큰 N/A. Coordinator는컴파일/영향fixture1PASS와같은실제접속에서C1회·대상HP-1000·범위화면을확인. 최초helper정렬timeout(C0)보존/실제서버12×3안쪽정렬로보완,제품실패/시험성공과분리. 메시지/상태조회는활성화추가0.
 hero_surface_followup 최종: 씬/ObservedPlayer prefab 실제연결확인,추가누락없어파일수정0. 임의파라미터조정으로개선완료집계하지않음. 신규21/재활성화52/73/tokenN/A 유지.
+
+다음 hunting_balance_plan(game_planner/gpt-6-luna medium) 신규1, 실제사냥근거에기초한단일후속카드저작. 신규22/재활성화52/74/tokenN/A. 독립로컬기획이며실제추가게임완료0.
+
+기획리뷰결과: X/C반복배치제안은이미검증한피해와겹쳐지금실행불수용. HUNTING_BALANCE_NEXT.md는실제후속변경시병합할관찰후보로격하. 수치/스폰임의조정0,추가로그인/테스트0. 기획산출물을제품완료로보고하지않음.
