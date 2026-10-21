@@ -1,3 +1,7 @@
+## 최신 — PR42 병합 반영, 사냥 실입력은 수동 종료 대기
+
+GitHub에서 PR42 merged/e1df6e7 및 head0376bb3의 기본브랜치 포함을 확인했다. fetch --prune로 원격 작업브랜치 자동삭제 확인, 현재 사냥 후보에는 일반 merge로 두 인계 기록을 모두 보존했다. Unity/서버/공개 산출물의 HEAD 대비 추가 diff는 없고 인계 기록 충돌만 해결했다. 제품 변경이 없어 기존 통과 검증을 반복하지 않는다. 아래 PR42 open 상태는 이전 이력이다. 수동 q 종료 회신은 아직 확인되지 않고 기존 서버4892는 유지된다.
+
 ## 현재 인계 — 사냥 화면 큰 묶음 로컬 완료 / 실제 입력은 수동 서버 종료 대기
 
 필드진입로0f44d8b + 일반몹 HP/Circle d317658 + 서버근접거리0fbb8fa + 보스부채꼴72dda0f 위에 skill4정사각고리를 구현했다. skill4는CAND절대경로 두파일만작성/ROOT최종baseline가드와백업뒤선별동기화. 최종독립P1P2없음/compile0/영향기존fixture1개1회PASS(0.13초),ROOT/CAND바이트일치. fixture 큐 검증P2는oldSource스냅샷·새모델선생성·pending1·교체후대상등록/Drain으로실제조건을복구했다. BOSS_PREVIEW_RESULTS.txt최신참조. 실제보스화면·새근접거리배포/입력은아직미실행.
@@ -47,6 +51,11 @@ UI01 지정사용자 회신1792555509.126329 원문 ‘승인 UI01’을 정확p
 사용자 전달 리뷰의 실입력 상태 지적은 타당했다. 별도 PR41-Review worktree에서 C05_CONTRACT.md 최신 설명만 실제 C1회/dir0/12×3/동일 대상HP1500→500 완료로 정정해 99c4379로 기존 PR41에 일반 push했다. 게임 코드·추가 테스트·새 PR·병합은 없다. 원격 분기0 확인 후 게시했으며 PR41는 open/head99c4379다. 동일 스레드 앱 요약1792555645.991909. 후속 CAND에도 일반 merge로 정정을 보존했다. UI01 제품 동결 범위는 그대로이며 PR41 병합 확인 때 이 문서 수정도 포함해 이력을 보존한다.
 
 CAND codex/field-readability-followup에서 진입로 대표 구간 후보를 보존했다. 첫 opaque ribbon은 실제 에디터 전후 비교에서 미채택, 새 실험 자식·자체 생성 메시만 백업 후 제거/기존 Scene 백업과 바이트 일치 확인. 두 번째 feather 후보는 최종 독립 리뷰·compile0·동일 정적 비교 후 소폭 보강으로 채택했다. scene 신규4블록/부모자식1행만 이식·다른 candidate 블록 동일, 기존 ROOT 지면 WIP 보존. 전용객체1/collider0/재적용무변경/ShaderErrorfalse, 투명 끝단의 축퇴2면은 결과 기록에 명시했다. ENTRY_TRAIL_TASK.md/RESULTS.txt 참조. Playfalse/dirtyfalse, 추가 로그인0. 전문 신규29/재활성화56/85/tokenN/A. 작은 구간만 별도 PR/승인 요청하지 않으며 다음 관련 필드 묶음으로 모은다.
+## UI01 승인 소비·PR42 게시 완료
+
+지정사용자U0C9QEUHPMK의원문‘승인 UI01’ 회신1792555509.126329/parent1792487679.299269/channelC0C9VFZMV43를봇auth.test·전체replies로확인해1회소비했다. PR41 merged/default027764257acc6f4dbfd9a4d546e07a366b830dee 포함확인후동결605c2fb 제품·미디어·공개본문diff0을대조하고codex/combat-ui-followup에origin/master정상merge. 25files UI묶음만일반push/PR42 https://github.com/JoEunil/MMORPG/pull/42 생성·채팅첨부완료. 필드아트0f44d8b/사냥피드백d317658은미포함. 병합·새UI정식Pages배포0. 동일UI01회신재수신시재게시금지.
+
+새UI기능수정없어게임재시험0,웹생성·링크확인PASS. 첫중복확인명령의빈배열포장으로push가보류됐으나뒤PR호출이headinvalid422로실패했다(생성0). 실제빈목록·원격branch없음을읽어확인후의존실행guard를적용해정상push·PR1개만생성했다. 재시도결과를복수PR성공으로세지않는다.
 
 ## 게시 승인 대기 — UI01 큰 UI 묶음
 
