@@ -84,6 +84,22 @@ namespace C02.Tests
                 Assert.That(fixture.HasVisualPosition, Is.False);
                 Assert.That(fixture.HasMovementIntent, Is.False);
                 Assert.That(fixture.InputTarget, Is.EqualTo(Vector2.zero));
+
+                fixture.EnterWithOwnState();
+                fixture.Predict(Vector2.right, .05f);
+                fixture.Predict(Vector2.right, .05f);
+                Assert.That(fixture.InputTarget.x - fixture.ServerPosition.x, Is.EqualTo(.6f).Within(.0001f));
+                fixture.Predict(Vector2.up, .05f);
+                Assert.That(fixture.InputTarget.x, Is.EqualTo(fixture.ServerPosition.x).Within(.0001f),
+                    "A perpendicular turn drops all unacknowledged rightward lead.");
+                Assert.That(fixture.InputTarget.y - fixture.ServerPosition.y, Is.EqualTo(.3f).Within(.0001f));
+                fixture.Predict(Vector2.one, .05f);
+                Vector2 diagonalLead = fixture.InputTarget - fixture.ServerPosition;
+                Assert.That(Vector2.Distance(diagonalLead, Vector2.one.normalized * .3f), Is.LessThan(.0001f),
+                    "A 45-degree heading change also starts with only the current input's lead.");
+                fixture.Predict(Vector2.one, .05f);
+                Assert.That(Vector2.Distance(fixture.InputTarget - fixture.ServerPosition, Vector2.one.normalized * .6f),
+                    Is.LessThan(.0001f), "Unchanged held direction still accumulates its bounded lead.");
             }
         }
 

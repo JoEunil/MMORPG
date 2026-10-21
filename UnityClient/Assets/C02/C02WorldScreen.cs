@@ -416,7 +416,8 @@ namespace C02
             ActorMotion?.SetMovementIntent(direction);
             if (direction.sqrMagnitude > 0 && ownFull.hp > 0)
             {
-                if (!hasMovementIntent || Vector2.Dot(direction, movementDirection) < 0)
+                // Every heading change discards unacknowledged lead from the released direction.
+                if (!hasMovementIntent || (direction - movementDirection).sqrMagnitude > .000001f)
                 { inputTarget = ServerPosition; secondsWithoutProgress = 0; }
                 movementDirection = direction;
                 hasMovementIntent = true;

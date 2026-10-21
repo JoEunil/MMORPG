@@ -1,3 +1,9 @@
+## 最新 — PR44 직각 전환 리뷰 보완
+
+r4335755574 타당. Dot<0 조건을 정규화된 heading차이제곱>.000001로바꿔직각/45도전환도미확정lead폐기, 동일방향누적은유지한다. 독립P1P2없음/compile0/기존C16fixture1개1회PASS(.0419121s), 기존권위/반전/정체/리셋assert유지. ROOT2파일기준가드/백업동기화, 실입력보류/서버변경0. PR44_TURN_RESULTS.txt 참조. 기존PR44리뷰수정범위로만게시한다. 공개기능설명변화없어별도카드/캡처생성0.
+
+zone_spawn_review재활성화1추가: 신규50/재활성화110/전체160/tokenN/A. AUTHOR01후보와사용자WIP보존.
+
 ## 最新 — 스킬 예고·발동 효과 분리와 pulse 검증 완료
 
 C05가예고/발동에같은linePreview를쓰던경로를분리했다. acceptedownphase1의별도renderer/Material/기본world정점/deadline으로.35초범위내확장(.2→1)·굵기감소(.22→.025)를표현한다. 다른스킬hit가Ccharging예고를덮지않고C자체phase1은예고를지운다. TTL·HP0·모델/Zone교체·disable/destroy정리독립. 기존particle에셋이생긴것은아니다.
