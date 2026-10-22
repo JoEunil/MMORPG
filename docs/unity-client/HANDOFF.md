@@ -1,3 +1,7 @@
+## 최신 — PR46 입력 결과·최신 master 통합
+
+사용자의 이번 직접 지시로 입력검증·관련수정·캡처를 기존PR46에추가한다. 521c7a8(master PR44)을일반merge한PR45 02ce634를PR46에일반merge해선행충돌을해결했다. 문서충돌만양쪽기록보존,최종C02WorldScreen/C05CombatScreen/C19ActorMotion은실제로검증한ROOT와바이트동일확인. 기능/UI재시험은반복하지않는다. 사이트build/로컬링크검사통과. Playfalse/dirtyfalse/backgroundfalse,원본GameWIP보존. 입력재개상태를유지하되상시반복테스트는하지않는다. 병합·masterPages배포는사용자검토대기다.
+
 ## 최신 master 이력 보존 — 2026-10-22
 
 PR44가 병합된 origin/master521c7a8을 일반 merge로 보존했다. 제품 코드는 자동 병합됐고 충돌한 AGENT_USAGE/HANDOFF/INPUT_TEST_BATCH는 양쪽 기록을 모두 보존했다. 원본 Game/ROOT WIP와 실행 서버는 변경하지 않았다. 선행 PR45 충돌 해소 후 이 merge를 기존 PR46에 이어 반영한다. 강제push/PR병합0.
