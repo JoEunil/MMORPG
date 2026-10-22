@@ -133,7 +133,7 @@ namespace C02
             if (visual == null || direction > 3) return;
             this.released = released;
             attackStarted = Time.unscaledTime;
-            attackUntil = attackStarted + (released ? .32f : .55f);
+            attackUntil = attackStarted + (released ? .44f : .55f);
             facing = C02WorldScreen.ServerFacing(direction);
             hasFacing = true;
         }
@@ -162,11 +162,14 @@ namespace C02
             bool attacking = now < attackUntil;
             float dt = Mathf.Max(Time.unscaledDeltaTime, .0001f);
             float locomotionDistance = useMovementIntent ? Mathf.Max(0, Vector3.Dot(delta, intent)) : distance;
-            float targetWalk = Mathf.Clamp01(locomotionDistance / dt / Mathf.Max(1f, height));
-            walking = Mathf.MoveTowards(walking, targetWalk, dt * 10f);
+            float worldHeight = Mathf.Max(.5f, height * Mathf.Abs(visual.lossyScale.y));
+            float targetWalk = Mathf.Clamp01(locomotionDistance / dt / (worldHeight * 1.5f));
+            walking = Mathf.MoveTowards(walking, targetWalk, dt * 8f);
             if (locomotionDistance > .0001f)
             {
-                stride += locomotionDistance / Mathf.Max(.5f, height * visual.lossyScale.y * .65f) * Mathf.PI * 2f;
+                // A full cycle includes both feet. Cap cadence so delayed snapshots/corrections
+                // cannot produce the old rapid windmill gait at the faster running speed.
+                stride += Mathf.Min(locomotionDistance / (worldHeight * 1.7f), dt * 2.6f) * Mathf.PI * 2f;
             }
             Vector3 facingDirection = useMovementIntent ? intent : delta;
             if (!attacking && facingDirection.sqrMagnitude > .00000001f)
@@ -177,20 +180,46 @@ namespace C02
             }
             float swing = Mathf.Sin(stride) * walking;
             float attack = attacking ? Mathf.Clamp01((now - attackStarted) / (attackUntil - attackStarted)) : 1f;
-            float armAttack = !attacking ? 0 : released ? Mathf.Lerp(-70f, 65f, Mathf.Sin(attack * Mathf.PI)) * (1f - attack) :
-                -65f * Mathf.SmoothStep(0, 1, Mathf.Min(1f, attack * 3));
+            Vector3 swordPose = Vector3.zero;
+            float torsoTurn = 0;
+            if (attacking)
+            {
+                Vector3 ready = new Vector3(-62, -20, 26);
+                Vector3 followThrough = new Vector3(52, 24, -48);
+                if (!released)
+                {
+                    float preparation = Mathf.SmoothStep(0, 1, Mathf.Clamp01(attack / .7f));
+                    swordPose = ready * preparation;
+                    torsoTurn = -12f * preparation;
+                }
+                else if (attack < .32f)
+                {
+                    // Short accelerating cut; the remaining time is a deliberate recovery.
+                    float cut = attack / .32f;
+                    cut *= cut;
+                    swordPose = Vector3.Lerp(ready, followThrough, cut);
+                    torsoTurn = Mathf.Lerp(-12, 16, cut);
+                }
+                else
+                {
+                    float recovery = Mathf.SmoothStep(0, 1, (attack - .32f) / .68f);
+                    swordPose = Vector3.Lerp(followThrough, Vector3.zero, recovery);
+                    torsoTurn = Mathf.Lerp(16, 0, recovery);
+                }
+            }
             for (int side = 0; side < 2; side++)
             {
                 float sign = side == 0 ? -1 : 1;
-                if (legs[side] != null) legs[side].localRotation = Quaternion.Euler(swing * sign * 24f, 0, 0);
-                if (arms[side] != null) arms[side].localRotation = Quaternion.Euler(
-                    side == 1 && attacking ? armAttack : -swing * sign * 18f, 0,
-                    side == 0 && attacking ? -12f * Mathf.Sin(attack * Mathf.PI) : 0);
+                float gaitWeight = attacking ? .35f : 1f;
+                if (legs[side] != null) legs[side].localRotation = Quaternion.Euler(swing * sign * 22f * gaitWeight, 0, 0);
+                if (arms[side] != null) arms[side].localRotation = Quaternion.Euler(side == 1 && attacking ? swordPose :
+                    side == 0 && attacking ? new Vector3(-18, 0, -10) * Mathf.Sin(attack * Mathf.PI) :
+                    new Vector3(-swing * sign * 10f, 0, 0));
             }
             float hit = hitUntil > now ? Mathf.Sin((hitUntil - now) / .2f * Mathf.PI) : 0;
-            float bob = (1f - Mathf.Cos(stride * 2f)) * .008f * height * walking;
-            visual.localPosition = restPosition + new Vector3(0, bob, hit * height * .06f);
-            Quaternion lean = Quaternion.Euler(hit * -15f + walking * 2f, 0, swing * 1.4f);
+            float bob = (1f - Mathf.Cos(stride * 2f)) * .004f * height * walking;
+            visual.localPosition = restPosition + new Vector3(0, bob, hit * height * .025f);
+            Quaternion lean = Quaternion.Euler(hit * -10f + walking * 3f, torsoTurn, swing * .65f);
             Quaternion localFacing = hasFacing ? Quaternion.Inverse(visual.parent.rotation) * facing : restRotation;
             visual.localRotation = Quaternion.Slerp(visual.localRotation, localFacing * lean, Mathf.Clamp01(dt * 18f));
         }

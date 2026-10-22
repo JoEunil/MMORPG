@@ -1,3 +1,13 @@
+## 이동·모션·맵 직접 소비 후보 — 2026-10-22
+
+| 에이전트 | 신규 | 재활성화 | 확인한 결과 |
+| --- | ---: | ---: | --- |
+| movement_feel_revision / worker (gpt-6.1-sol high) | 1 | 2 | 이동 후보·Export 소비 서버 구현, 실행은 Coordinator |
+| field_motion_art_revision / asset_artist (gpt-6.1-sol medium) | 1 | 3 | 모션·고정 필드 저작 도구, 이동/Export 독립 리뷰 |
+| feel02_server_review / code_reviewer (gpt-6.1-sol medium) | 1 | 2 | 서버 geometry 소비 독립 리뷰, P1/P2 없음 |
+
+누적 신규69/재활성화152/활성화221. 실제 토큰·비용 N/A. 실행 중 메시지는 활성화로 세지 않는다. 로컬 구현·독립 리뷰·핵심 자동/실입력 검증은 완료했으며 게시 승인 대기다.
+
 ## Unity 입력·종료 수명 보완 — 2026-10-22
 
 map_server_finish_audit/explorer 재활성화1: 과거 모션 객체 파괴/화면 종료 경로를 읽기 감사했다. town_switch_review/code_reviewer(gpt-6.1-sol medium) 재활성화1: Unity null가드10곳과 종료fixture 독립검토/최종P1P2없음. Coordinator가 한 번의 실제 접속/입력·캡처·정상퇴장·READONLY저장조회와 수명가드/fixture를 수행했다. 누적신규65/재활성화140/활성화205, 토큰·비용N/A. 입력 도구 실패와 해결을 제품 결함과 구분했다.

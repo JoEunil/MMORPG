@@ -8,20 +8,9 @@
 #include <limits>
 
 namespace Core {
-    static_assert(WorldMap::FormatVersion == 1 && WorldMap::Zones.size() == ZONE_COUNT
-        && WorldMap::ZoneColumns == ZONE_HORIZON && WorldMap::ZoneRows == ZONE_VERTICAL,
-        "Exported zone layout must match the configured server world.");
-    static_assert(WorldMap::ZoneCoreSize == ZONE_SIZE && WorldMap::TransitionMargin == TRANSITION_BUFFER
-        && CELLS_X == 5 && CELLS_Y == 5 && WorldMap::Zones[0].aoiCellSize == CELL_SIZE,
-        "Exported zone bounds and 5x5 AOI cells must match the server spatial configuration.");
     static_assert(TOWN_ZONE_ID == 1 && TOWN_SPAWN_X >= 0 && TOWN_SPAWN_X <= ZONE_SIZE
         && TOWN_SPAWN_Y >= 0 && TOWN_SPAWN_Y <= ZONE_SIZE,
         "Town respawn must remain inside Zone 1.");
-
-    static_assert(WorldMap::FormatVersion == 1);
-    static_assert(WorldMap::ZoneColumns == ZONE_HORIZON && WorldMap::ZoneRows == ZONE_VERTICAL);
-    static_assert(WorldMap::Zones.size() == ZONE_COUNT);
-    static_assert(WorldMap::ZoneCoreSize == ZONE_SIZE && WorldMap::TransitionMargin == TRANSITION_BUFFER);
 
     bool StateManager::ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result) {
         result = {};
@@ -287,14 +276,15 @@ namespace Core {
             const auto& current = zone->m_chars[it->second];
             x = current.x; y = current.y;
         }
-        const int column = (routeZoneID - 1) % ZONE_HORIZON;
-        const int row = (routeZoneID - 1) / ZONE_HORIZON;
-        const float coreMinX = column * ZONE_SIZE;
-        const float coreMinY = row * ZONE_SIZE;
-        const int nextColumnRaw = x >= coreMinX + ZONE_SIZE + TRANSITION_BUFFER ? column + 1
-            : x <= coreMinX - TRANSITION_BUFFER ? column - 1 : column;
-        const int nextRowRaw = y >= coreMinY + ZONE_SIZE + TRANSITION_BUFFER ? row + 1
-            : y <= coreMinY - TRANSITION_BUFFER ? row - 1 : row;
+        const auto& layout = WorldMap::Zones[routeZoneID - 1];
+        const int column = layout.column;
+        const int row = layout.row;
+        const float minX = layout.originX + layout.localBounds.x;
+        const float minY = layout.originY + layout.localBounds.y;
+        const int nextColumnRaw = x >= minX + layout.localBounds.width ? column + 1
+            : x <= minX ? column - 1 : column;
+        const int nextRowRaw = y >= minY + layout.localBounds.height ? row + 1
+            : y <= minY ? row - 1 : row;
         // Do not let an out-of-layout column wrap into another valid row's zone ID.
         const int nextColumn = (std::clamp)(nextColumnRaw, 0, static_cast<int>(ZONE_HORIZON) - 1);
         const int nextRow = (std::clamp)(nextRowRaw, 0, static_cast<int>(ZONE_VERTICAL) - 1);
@@ -303,7 +293,6 @@ namespace Core {
         if (destinationID >= 1 && destinationID <= ZONE_COUNT && destinationID != routeZoneID
             && session->second.ownershipEpoch != (std::numeric_limits<uint64_t>::max)()) {
             if (nextColumn != column && nextRow != row) {
-                const auto& layout = WorldMap::Zones[routeZoneID - 1];
                 bool directCrossingAllowed = false;
                 for (size_t i = 0; i < layout.neighborIds.size(); ++i) {
                     if (layout.neighborIds[i] == destinationID) {

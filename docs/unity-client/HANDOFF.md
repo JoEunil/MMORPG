@@ -1,3 +1,13 @@
+## 최신 — 이동·모션·필드와 Unity Export 직접 소비 완료 / FEEL02 게시 요청 준비 — 2026-10-22
+
+로컬 codex/field-feel-revision에서 PR45 public Export 누락을 차단하고 author 필수 완전 export 경로를 추가했다. 서버 Config/Cell/StateManager의 공간 중복 상수를 제거해 Generated/WorldMap.inc를 직접 사용한다. Cell AOI 구조·6구역 몬스터 콘텐츠·사용자 AI/A*는 보존했다. Unity에서 실제 bake한 generated 파일은 기존 nav/layout과 동일하며 새 서버 빌드/6구역·25Cell 일치 fixture 통과.
+
+플레이어9/.45, 요청선행1.8·시각예측.9, 중복 전송gate 제거와 정지/방향 보정, 절차 보행·베기·회수, 고정 길·식생·36수목을 구현했다. 독립 리뷰 P1/P2 없음/Unitycompile0/직접3묶음PASS. 최초 실입력6.33/s 실패를 보존하고 request horizon 병목을 고쳐 영향 검증만 재수행했다. 최종직선26.712/3.004s=8.89/s·직각/반전 maxReverseStep0·정지오차<.0001,서버cast/release·팔회전79.99도 확인. 입력은모의InputSystem,로그인/선택/진입/퇴장은실제마우스다. 변동/고지연·몬스터교전은미검증.
+
+서버31724를정상q/nativeexit0·drain·WAL0/저장불변확인뒤 Feel02서버44432/SHA405EF89670B87EE364B2604268C435498B704F2543FFE2B0AF2F24F82B34C596로정상전환했다. 첫helper는PSModulePath상속문제로q전에중단했고Windows표준모듈prefix만자식생성동안복구해해결했다. 기존실행정책/guard불변,강제종료/DB직접수정0. 공용helper에도같은수정보존. 최종Playfalse/dirtyfalse/backgroundfalse,DB5012 Zone1(89.4087143,61.9688454),HP10000/MP9938/EXP10,5011불변. ROOT/CAND 검증제품/Scene/DLL일치,원본GameWIP보존.
+
+FEEL02_RESULTS.txt와최신공개MD/선별화면참조,sitebuild/linkPASS. API리뷰수정은PR45에,나머지큰묶음은기존PR46에통합하는Slack최종승인요청을준비한다. 이번새범위에과거MAP02/STOP01승인을재사용하지않는다. 아직push/PR수정/병합/Pages배포0. 전문누적신규69/재활성화152/전체221/토큰N/A.
+
 ## PR45 리뷰 보완 전달 완료 — 2026-10-22
 
 PR45 f44d687에두리뷰수정을일반push했고PR46 80e55b9에같은내용을일반merge했다. GitHub두PR Open/mergeabletrue확인,본문에수정·검증·실제부하미실행을반영했다. UnityCoordinator봇스레드1792656092.713099/완료채널1792656093.403019보고완료. PR병합/새wire/서버재기동/DB변경/Unity재입력0. 누적전문신규66/재활성화145/전체211/토큰N/A. 작업완료로그로아래예정문구보다우선한다.

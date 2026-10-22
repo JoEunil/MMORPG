@@ -1,3 +1,7 @@
+## 최신 — 서버 공간 값은 Unity Export에서 직접 파생
+
+WorldMap.inc의 Zones/ZoneCoreSize/TransitionMargin/ZoneColumns/ZoneRows를 서버 Config·Cell·StateManager가 직접 사용한다. 같은 수치를 서버에 수작업으로 다시 맞추지 않는다. Cell.h는 AOI 실행 자료구조이며 nav 격자와 별개로 유지한다. 내보내기 후 서버 재빌드·정상 전환이 필요하다. 현재 6구역 후보 서버 빌드·실행과 전 구역/AOI 일치 fixture 통과; 사용자 AI/A*는 변경하지 않았다. FEEL02_RESULTS.txt 참조.
+
 # Unity 맵과 서버 A* 연결 지점
 
 ## 서버 AI 작업에 바로 사용할 연결 지점
