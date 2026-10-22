@@ -228,7 +228,7 @@ namespace Core {
         town->UpdateSessionSnapshot();
         result = {TOWN_ZONE_ID, session->second.chatID, entered.zoneInternalID, entered.x, entered.y,
             town->m_generation, session->second.ownershipEpoch};
-        chat->EnqueueZoneLeave(sessionID, sourceID);
+        // Joining removes the old membership; one event cannot leave a half-applied leave/join pair.
         chat->EnqueueZoneJoin(sessionID, TOWN_ZONE_ID);
         return true;
     }
