@@ -12,6 +12,10 @@ Unity 방향키 실입력은 사용자 최신 지시로 보류하며 서버 prob
 
 현재 6구역 중 Zone 1은 마을이며 MonsterSpawns.inc의 마을 밀도는 반드시 0이다. 일반·강화·보스 생성 없이 시작하고 나머지 구역은 기존 배치를 유지한다. 사망자가 명시적으로 귀환하면 서버가 Zone 1 전역 좌표 (10,10)의 통행 가능 여부와 HP0·소유권을 확인하고 HP/MP를 회복한다. 새 opcode 39 때문에 서버/DLL을 함께 전환해야 한다. STOP01 승인 후 새 마을 서버로 정상 전환했고 실제 HP0 캐릭터가 사냥터에서 마을로 귀환해 HP/MP 최대·EXP 보존·관측 몬스터0을 확인했다. TOWN_RESPAWN_LIVE_RESULTS.txt를 따른다. 몬스터 AI/A*나 전체 생존 경계 이동 검증은 별개다.
 
+## PR45 리뷰 보완 — Dummy 도구의 동일 wire 사용
+
+DummyClients도 ACTION26/ownershipEpoch와 확장 구역 응답·첫 Full 쌍을 사용한다. 서버/ClientCore 규약을 낮추지 않으며 예전18바이트 Dummy 행동 패킷은 현재 후보에서 지원하지 않는다. 안전한 네트워크 없는 검증은 DummyClients의 --protocol-self-test 모드다. 인자가 없는 기존5000클라이언트 부하 모드는 이번에 실행하지 않았다. 실제 처리량은 별도 서버 지표와 함께 확인해야 한다. PR45_REVIEW_RESULTS.txt 참조.
+
 ## 실행 상태 — 2026-10-22
 
 같은 후보 MainServer와 ClientCore로 실제 접속·사망 귀환·HP/MP 회복·정상 퇴장 및 저장을 확인했다(TOWN_RESPAWN_LIVE_RESULTS.txt). Map Exporter와 관련 서버 완료를 목표로, 남은 생존 충돌/자동 경계 전환을 MAP_SERVER_COMPLETION_TASK.md에서 마무리한다. 이웃 Zone 합동 AOI·Scene streaming·사용자 A*는 별도 범위다.

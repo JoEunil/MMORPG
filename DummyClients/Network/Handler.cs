@@ -15,31 +15,44 @@ namespace ClientCore.Network
         {
             _viewModel = viewModel;
         }
-        public void HandleResponse(int index, byte[] buffer)
+        public void HandleResponse(int index, ClientSession session, byte[] buffer)
         {
             try
             {
                 var header = Packet.ExtractHeader(buffer);
                 if ((header.flags & FLAG_SIMULATION) == FLAG_SIMULATION)
                 {
-                    if ((OP_CODE)header.opcode == OP_CODE.ZONE_CHANGE_RESPONSE)
-                        HandleZoneChange(index, Packet.Deserialize<ZoneChangeResponseBody>(header, buffer));
+                    switch ((OP_CODE)header.opcode)
+                    {
+                        case OP_CODE.ZONE_CHANGE_RESPONSE:
+                            HandleZoneChange(session, header, buffer);
+                            break;
+                        case OP_CODE.ZONE_FULL_STATE_BROADCAST:
+                            HandleFull(index, session, header, buffer, false);
+                            break;
+                        case OP_CODE.MONSTER_FULL_STATE_BROADCAST:
+                            HandleFull(index, session, header, buffer, true);
+                            break;
+                        case OP_CODE.ZONE_DELTA_UPDATE_BROADCAST:
+                            HandleDelta(session, header, buffer);
+                            break;
+                    }
                     return;
                 }
                 switch ((OP_CODE)header.opcode)
                 {
                     case OP_CODE.AUTH_RESPONSE:
-                        HandleAuthRes(index, Packet.Deserialize<AuthResponseBody>(header, buffer));
+                        HandleAuthRes(index, session, Packet.Deserialize<AuthResponseBody>(header, buffer));
                         break;
                     case OP_CODE.CHARACTER_LIST_RESPONSE:
-                        HandleCharacterList(index, Packet.Deserialize<CharacterListResponseBody>(header, buffer));
+                        HandleCharacterList(index, session, Packet.Deserialize<CharacterListResponseBody>(header, buffer));
                         break;
                     case OP_CODE.ENTER_WORLD_RESPONSE:
-                        HandleEnterRes(index, Packet.Deserialize<EnterWorldResponseBody>(header, buffer));
+                        HandleEnterRes(index, session, Packet.Deserialize<EnterWorldResponseBody>(header, buffer));
                         break;
 
                     case OP_CODE.PING:
-                        HandlePing(index, Packet.Deserialize<Ping>(header, buffer));
+                        HandlePing(index, session, Packet.Deserialize<Ping>(header, buffer));
                         break;
                     default:
                         break;
@@ -55,7 +68,10 @@ namespace ClientCore.Network
         public static bool ShouldHandle(byte opcode, byte flags)
         {
             if ((flags & FLAG_SIMULATION) == FLAG_SIMULATION)
-                return (OP_CODE)opcode == OP_CODE.ZONE_CHANGE_RESPONSE;
+                return (OP_CODE)opcode == OP_CODE.ZONE_CHANGE_RESPONSE ||
+                    (OP_CODE)opcode == OP_CODE.ZONE_FULL_STATE_BROADCAST ||
+                    (OP_CODE)opcode == OP_CODE.ZONE_DELTA_UPDATE_BROADCAST ||
+                    (OP_CODE)opcode == OP_CODE.MONSTER_FULL_STATE_BROADCAST;
 
             switch ((OP_CODE)opcode)
             {
@@ -68,25 +84,96 @@ namespace ClientCore.Network
                     return false;
             }
         }
-        private void HandleAuthRes(int index, STPacket<AuthResponseBody> packet)
+        private void HandleAuthRes(int index, ClientSession session, STPacket<AuthResponseBody> packet)
         {
-            _viewModel.AuthReceived(index, packet.body.resStatus);
+            _viewModel.AuthReceived(index, session, packet.body.resStatus);
         }
-        private void HandleCharacterList(int index, STPacket<CharacterListResponseBody> packet)
+        private void HandleCharacterList(int index, ClientSession session, STPacket<CharacterListResponseBody> packet)
         {
-            _viewModel.ChatacterListReceived(index, packet.body.resStatus, packet.body.count, packet.body.characters);
+            _viewModel.ChatacterListReceived(index, session, packet.body.resStatus, packet.body.count, packet.body.characters);
         }
-        private void HandleEnterRes(int index, STPacket<EnterWorldResponseBody> packet)
+        private void HandleEnterRes(int index, ClientSession session, STPacket<EnterWorldResponseBody> packet)
         {
-            _viewModel.EnterReceived(index, packet.body.resStatus, packet.body.name, packet.body.attack, packet.body.level, packet.body.exp, packet.body.hp, packet.body.mp, packet.body.maxHp, packet.body.maxMp, packet.body.dir, packet.body.startX, packet.body.startY, packet.body.currentZone);
+            _viewModel.EnterReceived(index, session, packet.body.resStatus, packet.body.name, packet.body.attack, packet.body.level, packet.body.exp, packet.body.hp, packet.body.mp, packet.body.maxHp, packet.body.maxMp, packet.body.dir, packet.body.startX, packet.body.startY, packet.body.currentZone);
         }
-        private void HandleZoneChange(int index, STPacket<ZoneChangeResponseBody> packet)
+        private void HandleZoneChange(ClientSession session, PacketHeader header, byte[] buffer)
         {
-            _viewModel.ZoneChageReceived(index, packet.body.resStatus, packet.body.startX, packet.body.startY);
+            STPacket<ZoneChangeResponseBody> packet;
+            try { packet = Packet.DeserializeZoneChange(header, buffer); }
+            catch (ArgumentException) { return; }
+            var body = packet.body;
+            if (body.resStatus == 1)
+                session.SetZoneOwnership(body.zoneID, body.zoneGeneration, body.ownershipEpoch,
+                    body.zoneInternalID, body.startX, body.startY);
         }
-        public void HandlePing(int index, STPacket<Ping> packet)
+
+        private static void HandleFull(int index, ClientSession session, PacketHeader header, byte[] buffer, bool monsters)
         {
-            _viewModel.PingReceived(index, packet.body.serverTimeMs, packet.body.rtt);
+            const int packetHeaderSize = 8;
+            const int snapshotPrefixSize = 29;
+            if (header.flags != FLAG_SIMULATION || header.length != buffer.Length || header.length < packetHeaderSize + snapshotPrefixSize) return;
+            ushort count = BitConverter.ToUInt16(buffer, packetHeaderSize);
+            ushort zoneID = BitConverter.ToUInt16(buffer, packetHeaderSize + 2);
+            ulong generation = BitConverter.ToUInt64(buffer, packetHeaderSize + 4);
+            ulong epoch = BitConverter.ToUInt64(buffer, packetHeaderSize + 12);
+            ulong bootstrapID = BitConverter.ToUInt64(buffer, packetHeaderSize + 20);
+            byte bootstrapEnd = buffer[packetHeaderSize + 28];
+            int fieldSize = monsters ? System.Runtime.InteropServices.Marshal.SizeOf<MonsterFullField>() :
+                System.Runtime.InteropServices.Marshal.SizeOf<FullStateField>();
+            int maxCount = monsters ? MAX_MONSTER_COUNT : MAX_ZONE_CAPACITY;
+            if (count > maxCount || zoneID < 1 || zoneID > 6 || generation == 0 || bootstrapEnd > 1 ||
+                ((bootstrapID == 0) != (epoch == 0)) ||
+                (long)packetHeaderSize + snapshotPrefixSize + (long)count * fieldSize != buffer.Length) return;
+
+            if (monsters)
+            {
+                session.ObserveMonsterFull(zoneID, generation, epoch, bootstrapID, bootstrapEnd != 0);
+                Program.CountReady(index, session);
+                return;
+            }
+            bool ownFound = false;
+            float ownX = 0, ownY = 0;
+            int offset = packetHeaderSize + snapshotPrefixSize;
+            for (int i = 0; i < count; i++, offset += fieldSize)
+            {
+                var state = Packet.ReadStruct<FullStateField>(buffer, offset);
+                if (session.OwnZoneInternalID == state.zoneInternalID)
+                {
+                    ownFound = true;
+                    ownX = state.x;
+                    ownY = state.y;
+                }
+            }
+            session.ObservePlayerFull(zoneID, generation, epoch, bootstrapID, bootstrapEnd != 0, ownFound, ownX, ownY);
+            Program.CountReady(index, session);
+        }
+
+        private static void HandleDelta(ClientSession session, PacketHeader header, byte[] buffer)
+        {
+            const int packetHeaderSize = 8;
+            const int snapshotPrefixSize = 12;
+            int fieldSize = System.Runtime.InteropServices.Marshal.SizeOf<DeltaUpdateField>();
+            if (header.flags != FLAG_SIMULATION || header.length != buffer.Length || header.length < packetHeaderSize + snapshotPrefixSize) return;
+            ushort count = BitConverter.ToUInt16(buffer, packetHeaderSize);
+            ushort zoneID = BitConverter.ToUInt16(buffer, packetHeaderSize + 2);
+            ulong generation = BitConverter.ToUInt64(buffer, packetHeaderSize + 4);
+            if (count > DELTA_UPDATE_COUNT || zoneID < 1 || zoneID > 6 || generation == 0 ||
+                (long)packetHeaderSize + snapshotPrefixSize + (long)count * fieldSize != buffer.Length) return;
+            uint ownID = session.OwnZoneInternalID;
+            float? ownX = null, ownY = null;
+            int offset = packetHeaderSize + snapshotPrefixSize;
+            for (int i = 0; i < count; i++, offset += fieldSize)
+            {
+                var field = Packet.ReadStruct<DeltaUpdateField>(buffer, offset);
+                if (field.zoneInternalID != ownID) continue;
+                if (field.fieldID == 7) ownX = BitConverter.Int32BitsToSingle(unchecked((int)field.fieldVal));
+                else if (field.fieldID == 8) ownY = BitConverter.Int32BitsToSingle(unchecked((int)field.fieldVal));
+            }
+            session.ObserveDelta(zoneID, generation, ownID, ownX, ownY);
+        }
+        public void HandlePing(int index, ClientSession session, STPacket<Ping> packet)
+        {
+            _viewModel.PingReceived(index, session, packet.body.serverTimeMs, packet.body.rtt);
         }
 
     }
