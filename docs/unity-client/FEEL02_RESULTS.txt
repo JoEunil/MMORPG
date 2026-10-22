@@ -1,3 +1,5 @@
+Publication update — 2026-10-22: designated Slack FEEL02 approval1792658980.975439 verified against request1792658283.786519. Export API correction published to PR45; remaining validated bundle and captures integrated into existing PR46. Both PRs open/unmerged; no master Pages deployment. Historical local-candidate statements below describe the pre-approval verification point.
+
 FEEL02 — 2026-10-22 local candidate
 
 Implemented:

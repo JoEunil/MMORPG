@@ -1,3 +1,11 @@
+## FEEL02 게시 완료 — 2026-10-22
+
+Slack지정사람1792658980.975439의 FEEL02 승인을 요청1792658283.786519와 대조해 소비했다. PR45에는 내보내기 리뷰 수정2파일만2104de1로, 기존PR46에는 이동·모션·필드장식·Unity Export 서버직접소비·검증기록·선별캡처를일반merge/push로반영했다. GitHub에서PR45 head2104de1/PR46 headd483003와본문갱신/Open/mergeabletrue/미병합을확인했다. 이기록자체의후속커밋도같은PR46에보존한다.
+
+통합직후전체파일이검증한codex/field-feel-revision과동일(diff0)이었고사이트build/linkPASS. 게임·서버·Unity시험은반복하지않았다. 이전chat singleJoin리뷰수정도보존됐고원본Game/ROOTWIP불변이다. PR45는master기준,PR46은선행PR45기준을유지하며사용자PR검토를기다린다. 새PR/강제push/PR병합/masterPages배포/서버재전환0. 실행서버44432는마지막chat1행수정전바이너리이므로그변경실제기동검증으로확대하지않는다.
+
+FEEL02 승인대기는해소됐다. Git작업정본은현재codex/town-respawn이며이전후보field-feel-revision도현재브랜치에포함돼있다. 열린PR의브랜치는삭제하지않는다. 다음서버AI/A*·몬스터Cell제약변경은사용자작업으로남기며이번게시요청밖의개발을추가하지않는다.
+
 ## FEEL02 승인 확인·기존 PR 통합 — 2026-10-22
 
 지정사람 U0C9QEUHPMK의 Slack회신1792658980.975439(승인 FEEL02)를 같은 parent1792487679.299269의 봇요청1792658283.786519와 대조했다. PR45의 내보내기 API수정과 기존PR46의 이동·모션·맵 작업묶음 게시 범위로 소비한다. 채팅 중복 승인 질문/새PR/강제push/병합·master공개0.
