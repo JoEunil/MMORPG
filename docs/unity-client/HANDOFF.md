@@ -1,3 +1,7 @@
+## 최신 게시 인계 — MAP02 최종 승인 대기
+
+로컬커밋6aa5ef2/codex/town-respawn. Unity Coordinator 앱 U0C9ZRTQ6F8이 기존 parent1792487679.299269에 MAP02 요청1792652267.839149를 보냈다. 지정 사용자 승인 전 push/PR46수정/병합/Pages배포0. 기존 MAP01/TOWN01 승인을 새 게시에 재사용하지 않는다. 다음 신호는 이 후보의 게시에만 적용하고 Unity 입력은 별도 명시 재개 전 계속 보류한다. 서버 통합 검증은 완료했고 사용자 몬스터AI/A*를 대신 진행하지 않는다.
+
 ## 最新 — Map Exporter·서버 실제 연결 검증 완료 / 2026-10-22
 
 Unity 입력은 사용자 최신 답변으로 보류한다. 서버31724를 유지한 채 공개 ClientCore 이동으로 장애물 차단(x61.5 유지/nav x62 blocked)·Zone1→2(x208/epoch2)→1(x192/epoch3)·양쪽 첫 Player/Monster Full 수신을 확인했다. HP10000 유지/정상퇴장·READ ONLY DB5012 (192,10)/MP10000/EXP10 저장,5011불변. 직접 DB수정/서버교체/AI변경0.
