@@ -1,3 +1,9 @@
+## PR46 채팅 귀환 리뷰 수정·검증 완료 — 2026-10-22
+
+리뷰지적타당. cross-zone귀환의 별도 EnqueueZoneLeave만제거하고 목적지Join1개로전환한다. ProcessZoneJoin의이전구역제거기능을재사용한다. 독립리뷰P1P2없음/실제PR46브랜치UnitTests Release빌드PASS/기존귀환2fixture PASS총3ms. 큐포화·durable실패주입/Unity입력/서버재전환0. 결과는PR46_CHAT_REVIEW_RESULTS.txt. 이수정은Join자체큐등록실패전반을복구하는것이아니다.
+
+제품수정3be07eb와기록6445f87을기존PR46에일반push했고GitHub head6445f87/Open/미병합을확인했다. 별도FEEL02미게시기능묶음/승인대기는보존한다. 실행중44432서버는이번chat1행수정전바이너리이며교체하지않았다. 병합/Pages배포0. 원본Game/ROOTWIP보존.
+
 ## FEEL02 최종 게시 승인 대기 — 2026-10-22
 
 로컬 API수정63aa106와 큰묶음2840dcb/codex/field-feel-revision. UnityCoordinator봇(U0C9ZRTQ6F8)이 기존 작업 parent1792487679.299269에 FEEL02 요청1792658283.786519를 발신했고 완료채널1792658299.373589에도 핵심 결과를 남겼다. 지정사람 승인 전 push/PR45·46수정/병합/Pages배포0. 승인되면 fetch/분기확인 후 API수정만 PR45로 전달하고 나머지는 기존 큰PR46에 통합한다. 강제push/새작은PR0. 최신 서버44432/UnityPlayfalse·dirtyfalse·backgroundfalse,실제제품검증완료. 반복시험하지 않는다.
