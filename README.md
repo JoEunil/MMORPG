@@ -4,7 +4,20 @@ C++20과 Windows IOCP로 만든 개인 프로젝트다. 이동, 스킬, 몬스�
 클라이언트의 요청을 서버에서 판정하는 Server Authoritative 구조로, 여러 사용자가 같은 월드 상태를 공유하는 MMORPG 서버를 만드는 것이 목표다.  
 수천 명의 동시 접속과 한 유저의 시야에 수백 명이 들어오는 조건을 전제로, 상태 전파 비용·스레드 간 작업 전달·DB 저장 전 장애 복구를 중심으로 설계했다.  
 
-[포트폴리오 PPT](https://docs.google.com/presentation/d/1Sz7WlzlE4qYqyXO43ad0i0CYAFvzJMR2/edit?usp=sharing&ouid=104250523129405797740&rtpof=true&sd=true) · [2,000명 접속 시연 영상](https://youtu.be/2q2kZwI3uSQ) · [AI 활용 게임 개발 결과](https://joeunil.github.io/MMORPG/) · [빌드 및 실행](BUILD.md)
+[포트폴리오 PPT](https://docs.google.com/presentation/d/1Sz7WlzlE4qYqyXO43ad0i0CYAFvzJMR2/edit?usp=sharing&ouid=104250523129405797740&rtpof=true&sd=true) · [2,000명 접속 시연 영상](https://youtu.be/2q2kZwI3uSQ) · [빌드 및 실행](BUILD.md)
+
+## AI 활용과 클라이언트 개발
+
+**[AI AGENT 클라이언트 개발 작업](https://joeunil.github.io/MMORPG/)**  
+실제 게임 화면과 개발 과정, 에이전트 활용 경험을 정리한 별도 웹사이트다. 개발하면서 계속 갱신하고 있다.
+
+<a href="https://joeunil.github.io/MMORPG/">
+  <img src="site/media/field.png" alt="AI로 개발 중인 Unity 클라이언트 화면 — 클릭하면 웹 포트폴리오로 이동" width="640">
+</a>
+
+서버 개발에서는 AI를 설계 검토·코드 리뷰·일부 테스트 코드 작성에만 제한적으로 활용했다.  
+새 Unity 클라이언트에서는 인벤토리·거래소 UI까지 포함해, AI 에이전트 워크플로우로 개발 전반을 맡기는 방식을 시도하고 있다.  
+→ [AI 에이전트 클라이언트 개발](AI-AGENT.md) · [게임 서버 개발에서 AI 활용에 대한 고찰](AI-REFLECTION.md)
 
 ## 주요 설계
 
@@ -62,13 +75,6 @@ WAL은 성공 응답 전에 fsync를 기다리지 않는다. 마지막으로 디
 GameServer는 단일 프로세스로 실행한다. NetLibrary는 네트워크와 세션, CoreLib는 게임 로직, CacheLib는 캐시와 DB I/O, ExternalLib는 로그와 세션 인증을 담당한다. 로그인 서버는 Node.js, DB는 MySQL, 세션 저장소는 Redis를 사용한다.
 
 서버 분리 구상은 [설계 결정](DesignDecisions.md#6-분산-확장-구상--미구현)에 적었다. 아직 구현하지 않았다. 위 Unity 시연과 동봉 실행 파일은 과거 버전이며, 최신 서버의 캐릭터 이름 정보(Profile) 패킷에 맞춰 클라이언트 갱신이 필요하다.
-
-## AI 활용과 클라이언트 개발
-
-서버 개발에서는 AI를 설계 검토·코드 리뷰·일부 테스트 코드 작성에만 제한적으로 활용했다.  
-새 Unity 클라이언트에서는 인벤토리·거래소 UI까지 포함해, AI 에이전트 워크플로우로 개발 전반을 맡기는 방식을 시도하고 있다.  
-진행 중인 화면과 작업 결과는 [AI 활용 게임 개발 웹 포트폴리오](https://joeunil.github.io/MMORPG/)에 게시하고, 개발하면서 계속 갱신하고 있다.  
-→ [게임 서버 개발에서 AI 활용에 대한 고찰](AI-REFLECTION.md) · [AI 에이전트 클라이언트 개발](AI-AGENT.md)  
 
 ## 앞으로 할 일
 
