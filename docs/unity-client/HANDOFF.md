@@ -1,3 +1,10 @@
+## MAP01 승인 확인·입력 재개 — 2026-10-22
+
+지정사용자 U0C9QEUHPMK의 Slack 원문1792646408.310839 `승인 MAP01`을 요청1792583875.856059/parent1792487679.299269와 대조해 승인 확인했다. 현재 맵 저작/Exporter/서버owner전환/동기화·복귀안내 통합 후보 게시에만 소비한다. 채팅의 Unity 입력 재개 지시도 확인했다. 병합 승인은 아니다.
+
+fetch/prune 후 최신 master(c1a1202 README, bf58f1d PR43병합) 두 커밋을 일반merge로 보존, 제품diff변경0. PR44 전체병합/forcepush/reset은 하지 않는다. 본문에는 자동검증/실제미검증을 구분하고 큰 PR 하나로 게시한다.
+
+호스트에서 기존 MainServer/9999·로그인3000 미실행, MySQL/Redis Running 확인. READ ONLY 지정계정조회에서 5011/5012 모두 HP0이다. 이번 입력 배치는 HP0 로그인/상태·조작차단/정상퇴장만 가능하며 생존 이동·경계전환/전투는 차단으로 남긴다. 자동회복/DB초기화·HP덮어쓰기하지 않는다. 새 후보서버와 현Unity ClientCore는 같은새wire로 맞춘 뒤 실행하며 Editor조작 Coordinator단독/Assets동결 유지.
 ## 最新 — 전환 실패 복귀 안내 보완 / 2026-10-22
 
 MAP01 후보의 C17에서 ReconnectRequired 때 기존 LoadingPanel/EntryReturnButton을 재사용해 안내와 로그인 복귀를 표시한다. 기존 WorldHud 종료 버튼도 있어 종료 경로 자체의 신규 구현으로 주장하지 않는다. 자동 재접속/로그아웃 없이 사용자가 버튼을 누를 때 기존 ConnectionFailed 정리 경로를 사용한다. Scene/서버/프로토콜/DB 변경0.
