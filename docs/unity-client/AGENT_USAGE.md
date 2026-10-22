@@ -1,3 +1,7 @@
+## 종료 정책 원인·수정 후보 검토 — 2026-10-22
+
+town_switch_review 재활성화1(기존 code_reviewer/gpt-6.1-sol medium)은 process정책한줄diff와가드보존을읽기검토했다. 보안경계high기준에따라 stop_policy_review 신규1(default/gpt-6.1-sol high 도구지정)에게정확한후보/부모명령을별도로검토시켰고최종P1P2없음이다. 기존전환리뷰어누적신규1/재활성화1이며이번진단전체누적신규63/재활성화129/활성화192, 실제토큰·비용N/A. Coordinator가PS7/WindowsPS5.1의서로다른effectivepolicy·MOTW없음원인확인과STOP01봇요청/구문검사를담당했다. 정책수정실행·서버전환·실제입력0. 리뷰통과를권한승인이나실행통과로세지않는다.
+
 ## 마을 PR 게시·전환 사전 점검 — 2026-10-22
 
 town_switch_review(code_reviewer/gpt-6.1-sol medium) 신규1/재활성화0. 기존 서버 전환 도구의 고정 대상 변경과 실행정책 우회 옵션 제거만 읽기 검토했으며 P1/P2없음이다. Coordinator가 사람 Slack승인 대조·PR46게시/artifact첨부와 표준 WindowsPowerShell PreflightOnly 실행을 진행했다. OS가 스크립트 로드 전 UnauthorizedAccess로 차단하여 q/기동/실제입력0, 기존서버유지 확인. 정책변경·대체런타임·강제종료0. 누적 신규62/재활성화128/활성화190, 실제토큰·비용N/A. 실행중 단순 메시지는 활성화로 세지 않는다.

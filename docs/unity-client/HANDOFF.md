@@ -1,3 +1,9 @@
+## 최신 — 정상 종료 차단 원인 확정 / STOP01 대기
+
+실제종료런타임 WindowsPowerShell5.1.26100.9711은전scopeUndefined→effectiveRestricted, 주작업PS7은LocalMachineRemoteSigned다. 이전진단이두런타임정책을혼동해파일로드전차단을반복했다. 스크립트MOTW없음/FullLanguage이며서버q·drain실패아니다. 동일런타임부모/자식에만명시적RemoteSigned를주는수정후보를구문/독립high리뷰P1P2없음확인했고미실행이다. SHA E49DF4275C8CB82AD63F915ED5A415DEE5590E0E503D25397DA06298EF42B646.
+
+권한변경보호경계라UnityCoordinator앱STOP01 요청1792649355.942189/parent1792487679.299269에정확한범위를요청했다. 아직지정사람답장없음/정책변경·q·새서버기동·DB쓰기·Unity입력0. 영구설정0/Bypass0/다른runtime0. 사람승인과별개로플랫폼허용이필요하며거절시우회금지. 승인확인후같은WindowsPS5.1에프로세스RemoteSigned+PreflightOnly→같은후보본실행→nativeexit0/drain/WAL/준비확인→실제HP0귀환한접속순서다. SERVER_SHUTDOWN_POLICY_RESULTS.txt 참조. ROOTserver24024유지, Editor14976ready/Play미실행. 누적전문신규63/재활성화129/전체192/tokenN/A.
+
 ## 최신 — PR46 게시 / 마을 실제 귀환은 Windows 정책 차단
 
 TOWN01 지정사람 승인1792648570.091499를 확인해 https://github.com/JoEunil/MMORPG/pull/46 게시·artifact첨부했다. 선행PR45가open이라 base는codex/world-map-export, town43파일diff만제공한다. 병합/이력교체0. 이전미게시표현은과거기록이다.

@@ -44,3 +44,8 @@ Git 상태/diff 확인과 문서 편집은 진행할 수 있다. 위 권한은 �
 커밋 0899e57의 변경은 login.login_log의 PRIMARY KEY(log_id) 추가다. 현재 DB 조회는 ER_NO_SUCH_TABLE을 반환해 키만 빠진 것이 아니라 테이블 자체가 없음을 확인했다. 로그인 라우트는 로그인 로그 INSERT 오류를 응답에 전달하지 않으므로 앞선 계정 로그인 성공은 로그 저장 검증이 아니다. 사용자의 명시적 승인 후 저장소 정의 그대로 해당 테이블만 생성했다. 적용 SQL은 login-log-schema.sql에 기록했다. 기존 users 데이터와 init.sql 전체는 건드리지 않는다.
 
 검증 완료: PRIMARY KEY(log_id)와 idx_login(login_id, logged_at)을 확인했다. 전용 계정 unity_ai_01·unity_ai_02의 실제 로그인 성공 후 시험 User-Agent로 조회해 로그 2건(log_id 1, 2), succeed=1, IP와 저장 시각 기록을 확인했다. 로그인 실패 시나리오는 이번 검증 범위에 포함하지 않았다. 기존 데이터 초기화·서버 코드 수정·에이전트 개발은 수행하지 않았다.
+## 정상 종료 도우미의 실행 정책 — 2026-10-22
+
+부모 PowerShell의 정책을 자식 런타임 정책으로 간주하지 않는다. 현재 PS7은 RemoteSigned지만 기존 종료 도구가 고정 호출하는 Windows PowerShell5.1은 모든 scope Undefined→effective Restricted라 파일 로드 전에 차단된다. 실제 실행 파일로 `Get-ExecutionPolicy`와 `-List`를 읽어 먼저 확인한다. 같은 실패를 반복하거나 다른 런타임·inline 실행으로 바꾸지 않는다.
+
+프로세스/자식에만 RemoteSigned를 명시하는 검토 후보는 STOP01 승인 전 미실행이다. 영구 사용자/시스템 정책은 변경하지 않는다. 승인 후에도 플랫폼 허용이 필요하고 거절 시 중단한다. 상세 SERVER_SHUTDOWN_POLICY_RESULTS.txt와 HANDOFF.md를 따른다.
