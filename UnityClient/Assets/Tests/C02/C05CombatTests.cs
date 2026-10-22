@@ -11,6 +11,7 @@ using ClientCore.Services;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace C02.Tests
 {
@@ -214,6 +215,7 @@ namespace C02.Tests
         }
 
         [Test]
+        [Category("PlayFeedbackRevision")]
         public void AimTextUsesMovementDirections_AndPhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear()
         {
             using (var f = new CombatFixture())
@@ -250,6 +252,20 @@ namespace C02.Tests
                 Assert.That(preview.GetPosition(1), Is.EqualTo(new Vector3(11.5f, 0.05f, 10f)));
                 Assert.That(preview.GetPosition(2), Is.EqualTo(new Vector3(11.5f, 0.05f, 22f)));
                 Assert.That(preview.GetPosition(3), Is.EqualTo(new Vector3(8.5f, 0.05f, 22f)));
+                float confirmedCooldown = (float)((float[])Get(f.Combat, "cooldownDeadlines"))[2];
+                Assert.That(confirmedCooldown - Time.unscaledTime, Is.EqualTo(f.serverContent.otherSkills[1].cooldownTicks * 0.05f).Within(0.1f),
+                    "The estimate starts from the server-confirmed cast and reads the existing skill data ticks.");
+                var cooldownOverlay = f.Buttons[2].transform.Find("SkillIcon/C05CooldownOverlay");
+                Assert.That(cooldownOverlay.gameObject.activeSelf, Is.True);
+                Assert.That(cooldownOverlay.GetComponent<Image>().sprite, Is.Not.Null, "The radial Image uses the fixture skill icon sprite.");
+                Assert.That(cooldownOverlay.GetComponent<Image>().type, Is.EqualTo(Image.Type.Filled));
+                Assert.That(cooldownOverlay.GetComponent<Image>().fillMethod, Is.EqualTo(Image.FillMethod.Radial360));
+                Assert.That(cooldownOverlay.GetComponent<Image>().fillAmount, Is.GreaterThan(0.98f));
+                Assert.That(cooldownOverlay.GetComponentInChildren<TMP_Text>().text, Does.StartWith("~"));
+                Assert.That(cooldownOverlay.Find("Time").GetComponent<TMP_Text>().font,
+                    Is.SameAs(f.Buttons[2].transform.Find("SkillName").GetComponent<TMP_Text>().font));
+                Assert.That(f.Buttons[2].transform.Find("SkillName").GetComponent<TMP_Text>().text, Is.EqualTo("LINE"));
+                Assert.That(f.Buttons[2].transform.Find("SkillKey").GetComponent<TMP_Text>().text, Is.EqualTo("C"));
                 Set(f.Combat, "linePreviewDeadline", Time.unscaledTime - 1f);
                 Invoke(f.Combat, "Update");
                 Assert.That(preview.enabled, Is.False, "The unscaled two-second lifetime clears a lost release.");
@@ -260,10 +276,48 @@ namespace C02.Tests
                 Assert.That(preview.enabled, Is.True, "Monster actions do not replace the player's range preview.");
                 action.skillPhase = 1;
                 current(1, new[] { action });
-                Assert.That(preview.enabled, Is.False, "The server's matching release hides the outline.");
+                var releaseEffect = (LineRenderer)Get(f.Combat, "releaseEffect");
+                Assert.That(releaseEffect, Is.Not.SameAs(preview));
+                Assert.That(preview.enabled, Is.False, "The caster's own C release hides its range preview.");
+                Assert.That(releaseEffect.enabled && releaseEffect.positionCount == 4, Is.True,
+                    "The C release rectangle uses its dedicated renderer.");
+                Assert.That(releaseEffect.widthMultiplier, Is.EqualTo(0.22f).Within(0.002f));
+                Assert.That((Color32)releaseEffect.startColor, Is.EqualTo((Color32)new Color(1f, 0.92f, 0.52f, 1f)),
+                    "LineRenderer stores its gradient as 8-bit colors.");
+                Assert.That((float)Get(f.Combat, "releaseEffectDeadline") - Time.unscaledTime,
+                    Is.EqualTo(0.35f).Within(0.1f), "The hit effect has a shorter lifetime than the cast preview.");
+                Assert.That(((float[])Get(f.Combat, "cooldownDeadlines"))[2], Is.EqualTo(confirmedCooldown),
+                    "The release phase does not restart the cooldown estimate.");
+                action.skillSlot = 2; action.skillId = 2; action.skillPhase = 0;
+                current(1, new[] { action });
+                Assert.That(preview.enabled && preview.positionCount == 4, Is.True);
+                var previewPoint = preview.GetPosition(0);
                 action.skillSlot = 1; action.skillId = 1; action.skillPhase = 1;
                 current(1, new[] { action });
                 Assert.That(f.Status.text, Is.EqualTo("Ring released"));
+                Assert.That(preview.enabled && preview.positionCount == 4 && preview.GetPosition(0) == previewPoint, Is.True,
+                    "Another skill's release leaves the C cast preview geometry untouched.");
+                Assert.That(releaseEffect.enabled && releaseEffect.positionCount == 32, Is.True,
+                    "Ring release uses a separate authored circle outline.");
+                Assert.That(Vector3.Distance(releaseEffect.GetPosition(0), (Vector3)Get(f.Combat, "releaseEffectOrigin")),
+                    Is.EqualTo(0.65f).Within(0.01f), "The pulse begins at one fifth of the authored radius.");
+                Set(f.Combat, "releaseEffectDeadline", Time.unscaledTime + 0.175f);
+                Invoke(f.Combat, "Update");
+                Assert.That(Vector3.Distance(releaseEffect.GetPosition(0), (Vector3)Get(f.Combat, "releaseEffectOrigin")),
+                    Is.EqualTo(1.95f).Within(0.03f), "The circle expands with its remaining lifetime.");
+                Assert.That(releaseEffect.widthMultiplier, Is.EqualTo(0.1225f).Within(0.003f),
+                    "The pulse line narrows as it expands.");
+                Set(f.Combat, "releaseEffectDeadline", Time.unscaledTime - 0.001f);
+                Invoke(f.Combat, "Update");
+                Assert.That(releaseEffect.enabled, Is.False, "The pulse renderer is disabled when its deadline expires.");
+                action.skillSlot = 2; action.skillId = 2; action.skillPhase = 0;
+                current(1, new[] { action });
+                Assert.That(preview.positionCount, Is.EqualTo(4), "Line cast retains its four-point range after a circle effect.");
+                ((float[])Get(f.Combat, "cooldownDeadlines"))[2] = Time.unscaledTime - 1f;
+                Invoke(f.Combat, "Update");
+                Assert.That(cooldownOverlay.gameObject.activeSelf, Is.False, "The radial overlay hides when its estimate expires.");
+                Assert.That(f.Buttons[2].transform.Find("SkillName").GetComponent<TMP_Text>().text, Is.EqualTo("LINE"));
+                Assert.That(f.Buttons[2].transform.Find("SkillKey").GetComponent<TMP_Text>().text, Is.EqualTo("C"));
                 string confirmed = f.Status.text;
                 var bad = action; bad.casterType = 1; current(1, new[] { bad });
                 bad = action; bad.casterId = 99; current(1, new[] { bad });
@@ -286,25 +340,50 @@ namespace C02.Tests
                 Assert.That(preview.enabled, Is.True);
                 Invoke(f.Combat, "ShowSkillTooltip", 1);
                 Assert.That(((GameObject)Get(f.Combat, "skillTooltip")).activeSelf, Is.True);
+                float beforeTransition = ((float[])Get(f.Combat, "cooldownDeadlines"))[2];
                 Set(f.World, "transitionTargetZone", (ushort)2);
                 typeof(C02WorldScreen).GetProperty("Stage").GetSetMethod(true).Invoke(f.World, new object[] { C02Stage.TransitionPending });
-                Invoke(f.World, "ZoneReceived", (ushort)2, 0UL, 74U, 10f, 10f);
+                Invoke(f.World, "ZoneReceived", (ushort)2, 0UL, 74U, 210f, 10f);
                 Assert.That(preview.enabled, Is.False, "Changing zone/own character clears the previous cast outline.");
                 Assert.That(((GameObject)Get(f.Combat, "skillTooltip")).activeSelf, Is.False,
                     "Changing zone hides the transient skill help.");
+                Invoke(f.World, "FullReceived", (ushort)1, new[]
+                {
+                    new FullStateField { zoneInternalID = 74, hp = 100, mp = 50, maxHp = 100, maxMp = 50, x = 210, y = 10, dir = 3 }
+                });
+                Assert.That(f.World.Stage, Is.EqualTo(C02Stage.InWorld), "The fixture must actually finish a valid zone transfer.");
+                action.casterId = 74; action.skillPhase = 0; action.x = 210;
+                active = (Action<ushort, ActionResultField[]>)Get(f.Combat, "actionResults");
+                Assert.That(((float[])Get(f.Combat, "cooldownDeadlines"))[2], Is.EqualTo(beforeTransition),
+                    "Zone transfer preserves the current character's estimate without a new cast.");
+                Assert.That(cooldownOverlay.gameObject.activeSelf, Is.True, "A new zone shows the same character's remaining estimate again.");
+                active(1, new[] { action });
+                action.skillPhase = 1;
+                active(1, new[] { action });
+                var currentRelease = (LineRenderer)Get(f.Combat, "releaseEffect");
+                Assert.That(currentRelease.enabled, Is.True);
                 f.Data.UpdateAction(3, 10, 10, 1);
                 f.DisableCombat();
                 active(1, new[] { action });
                 Assert.That(f.Status.text, Is.Empty);
                 Assert.That(preview.enabled, Is.False);
+                Assert.That(currentRelease.enabled, Is.False, "Disabling combat clears the release pulse.");
+                Assert.That(cooldownOverlay.gameObject.activeSelf, Is.False, "Disabling combat hides its cooldown overlay.");
                 Assert.That(((IViewDataModel)f.Data).GetActionState().Item1, Is.False);
+                int iconChildren = f.Buttons[2].transform.Find("SkillIcon").childCount;
+                f.EnableCombat();
+                Assert.That(f.Buttons[2].transform.Find("SkillIcon").childCount, Is.EqualTo(iconChildren),
+                    "Re-enabling reuses the existing overlay instead of adding another UI object.");
+                Assert.That(cooldownOverlay.gameObject.activeSelf, Is.False);
+                f.DisableCombat();
             }
         }
 
         private sealed class CombatFixture : IDisposable
         {
             private readonly GameObject root;
-            private readonly C14ServerContent serverContent;
+            private readonly Sprite sprite;
+            public readonly C14ServerContent serverContent;
             public readonly C02WorldScreen World;
             public readonly C05CombatScreen Combat;
             public readonly IViewDataUI Data;
@@ -331,6 +410,17 @@ namespace C02.Tests
                 Set(Combat, "serverContent", serverContent);
                 Set(Combat, "combatPanel", Child("combat panel"));
                 Buttons = new[] { Button("strike"), Button("ring"), Button("line") }; Set(Combat, "skillButtons", Buttons);
+                sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f));
+                for (int i = 0; i < Buttons.Length; i++)
+                {
+                    var icon = new GameObject("SkillIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                    icon.transform.SetParent(Buttons[i].transform, false);
+                    icon.GetComponent<Image>().sprite = sprite;
+                    var label = Text("SkillName"); label.text = new[] { "STRIKE", "RING", "LINE" }[i];
+                    label.transform.SetParent(Buttons[i].transform, false);
+                    var key = Text("SkillKey"); key.text = new[] { "Z", "X", "C" }[i];
+                    key.transform.SetParent(Buttons[i].transform, false);
+                }
                 Vitals = Text("vitals"); Status = Text("phase"); Aim = Text("aim");
                 Set(Combat, "vitalsText", Vitals); Set(Combat, "combatStatusText", Status); Set(Combat, "aimText", Aim);
                 Data = NewData(); Model = NewModel(Data, new QueuedDispatcher());
@@ -352,12 +442,18 @@ namespace C02.Tests
                 Combat.enabled = false;
                 if (Get(Combat, "model") != null) Invoke(Combat, "OnDisable");
             }
+            public void EnableCombat()
+            {
+                Combat.enabled = true;
+                if (Get(Combat, "model") == null) Invoke(Combat, "OnEnable");
+            }
             public void Dispose()
             {
                 DisableCombat();
                 if (Get(World, "model") != null) Invoke(World, "OnDisable");
                 UnityEngine.Object.DestroyImmediate(root);
                 UnityEngine.Object.DestroyImmediate(serverContent);
+                UnityEngine.Object.DestroyImmediate(sprite);
             }
         }
         private static IViewDataUI NewData() => (IViewDataUI)Activator.CreateInstance(typeof(ViewModel).Assembly.GetType("ClientCore.ViewData", true), true);

@@ -15,6 +15,8 @@ namespace C02
         private Vector3 previousPosition;
         private Quaternion facing;
         private bool hasFacing;
+        private bool useMovementIntent;
+        private Vector2 movementIntent;
         private float height;
         private float stride;
         private float walking;
@@ -116,6 +118,15 @@ namespace C02
             return joint;
         }
 
+        // Local input owns facing; reconciliation displacement must never become a walking direction.
+        // Observed actors continue to derive locomotion from their interpolated position.
+        public void SetMovementIntent(Vector2 direction)
+        {
+            useMovementIntent = true;
+            movementIntent = !float.IsNaN(direction.x) && !float.IsInfinity(direction.x) &&
+                !float.IsNaN(direction.y) && !float.IsInfinity(direction.y) ? direction.normalized : Vector2.zero;
+        }
+
         // Call only for accepted server action phases; this does not send or confirm damage.
         public void PlayAttack(byte direction, bool released)
         {
@@ -140,6 +151,7 @@ namespace C02
             previousPosition = transform.position;
             delta.y = 0;
             float distance = delta.magnitude;
+            Vector3 intent = new Vector3(movementIntent.x, 0, movementIntent.y);
             if (distance > Mathf.Max(4f, height * visual.lossyScale.y * 2f))
             {
                 ResetPose();
@@ -149,17 +161,19 @@ namespace C02
             float now = Time.unscaledTime;
             bool attacking = now < attackUntil;
             float dt = Mathf.Max(Time.unscaledDeltaTime, .0001f);
-            float targetWalk = Mathf.Clamp01(distance / dt / Mathf.Max(1f, height));
+            float locomotionDistance = useMovementIntent ? Mathf.Max(0, Vector3.Dot(delta, intent)) : distance;
+            float targetWalk = Mathf.Clamp01(locomotionDistance / dt / Mathf.Max(1f, height));
             walking = Mathf.MoveTowards(walking, targetWalk, dt * 10f);
-            if (distance > .0001f)
+            if (locomotionDistance > .0001f)
             {
-                stride += distance / Mathf.Max(.5f, height * visual.lossyScale.y * .65f) * Mathf.PI * 2f;
-                if (!attacking)
-                {
-                    // Authored models face -Z. The server's four-way skill direction is unaffected.
-                    facing = Quaternion.LookRotation(-delta.normalized, Vector3.up);
-                    hasFacing = true;
-                }
+                stride += locomotionDistance / Mathf.Max(.5f, height * visual.lossyScale.y * .65f) * Mathf.PI * 2f;
+            }
+            Vector3 facingDirection = useMovementIntent ? intent : delta;
+            if (!attacking && facingDirection.sqrMagnitude > .00000001f)
+            {
+                // Authored models face -Z. Skill wire direction is unchanged.
+                facing = Quaternion.LookRotation(-facingDirection.normalized, Vector3.up);
+                hasFacing = true;
             }
             float swing = Mathf.Sin(stride) * walking;
             float attack = attacking ? Mathf.Clamp01((now - attackStarted) / (attackUntil - attackStarted)) : 1f;
@@ -175,8 +189,8 @@ namespace C02
             }
             float hit = hitUntil > now ? Mathf.Sin((hitUntil - now) / .2f * Mathf.PI) : 0;
             float bob = (1f - Mathf.Cos(stride * 2f)) * .008f * height * walking;
-            visual.localPosition = restPosition + new Vector3(0, bob, hit * height * .025f);
-            Quaternion lean = Quaternion.Euler(hit * -9f + walking * 2f, 0, swing * 1.4f);
+            visual.localPosition = restPosition + new Vector3(0, bob, hit * height * .06f);
+            Quaternion lean = Quaternion.Euler(hit * -15f + walking * 2f, 0, swing * 1.4f);
             Quaternion localFacing = hasFacing ? Quaternion.Inverse(visual.parent.rotation) * facing : restRotation;
             visual.localRotation = Quaternion.Slerp(visual.localRotation, localFacing * lean, Mathf.Clamp01(dt * 18f));
         }
@@ -189,6 +203,7 @@ namespace C02
             visual.localPosition = restPosition;
             visual.localRotation = restRotation;
             hasFacing = false;
+            movementIntent = Vector2.zero;
             for (int side = 0; side < 2; side++)
             {
                 if (arms[side] != null) arms[side].localRotation = Quaternion.identity;

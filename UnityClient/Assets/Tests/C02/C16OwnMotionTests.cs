@@ -13,6 +13,7 @@ namespace C02.Tests
     {
         [Test]
         [Category("MotionRevision")]
+        [Category("PlayFeedbackRevision")]
         public void OwnFullAndDeltaKeepServerAuthorityWhileVisualPredictionReconcilesAndResets()
         {
             using (var fixture = new WorldFixture())
@@ -27,10 +28,12 @@ namespace C02.Tests
                 fixture.Predict(Vector2.right, 0.05f);
                 Assert.That(fixture.InputTarget.x, Is.EqualTo(10.6f).Within(0.0001),
                     "Held intent accumulates across delayed confirmations, bounded to 0.6 units ahead.");
+                Assert.That(fixture.VisualPosition.x, Is.EqualTo(10.3f).Within(.0001f),
+                    "A two-tick request lead does not become two ticks of rendered prediction.");
                 fixture.Delta(10.3f);
                 Assert.That(fixture.ServerPosition, Is.EqualTo(new Vector2(10.3f, 10)));
-                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.6f).Within(0.0001),
-                    "A small server correction does not make packet callbacks jump the rendered character.");
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.3f).Within(0.0001),
+                    "Presentation leads by one tick, and callbacks do not jump the rendered character.");
                 fixture.Predict(Vector2.right, 0.05f);
                 Assert.That(fixture.InputTarget.x, Is.EqualTo(10.9f).Within(0.0001),
                     "A delayed confirmation frees bounded lead without rebuilding every target from that snapshot.");
@@ -56,6 +59,15 @@ namespace C02.Tests
                 Assert.That(Vector2.Distance(fixture.InputTarget, fixture.ServerPosition), Is.LessThanOrEqualTo(0.3001f),
                     "A stale server receives only a single-tick bounded probe, with no accumulated invisible walk.");
 
+                fixture.Delta(10.9f);
+                fixture.Predict(Vector2.right, .05f);
+                fixture.Predict(Vector2.left, .05f);
+                Assert.That(fixture.InputTarget.x, Is.LessThan(fixture.ServerPosition.x),
+                    "Reversing input immediately discards the old forward request lead.");
+                fixture.Delta(11.1f);
+                Assert.That(fixture.InputTarget.x, Is.LessThanOrEqualTo(fixture.ServerPosition.x),
+                    "A delayed rightward confirmation cannot turn the current leftward request back to the right.");
+
                 fixture.Delta(15f);
                 Assert.That(fixture.ServerPosition, Is.EqualTo(new Vector2(15, 10)));
                 Assert.That(fixture.OwnPosition, Is.EqualTo(new Vector3(15, 0, 10)),
@@ -72,6 +84,22 @@ namespace C02.Tests
                 Assert.That(fixture.HasVisualPosition, Is.False);
                 Assert.That(fixture.HasMovementIntent, Is.False);
                 Assert.That(fixture.InputTarget, Is.EqualTo(Vector2.zero));
+
+                fixture.EnterWithOwnState();
+                fixture.Predict(Vector2.right, .05f);
+                fixture.Predict(Vector2.right, .05f);
+                Assert.That(fixture.InputTarget.x - fixture.ServerPosition.x, Is.EqualTo(.6f).Within(.0001f));
+                fixture.Predict(Vector2.up, .05f);
+                Assert.That(fixture.InputTarget.x, Is.EqualTo(fixture.ServerPosition.x).Within(.0001f),
+                    "A perpendicular turn drops all unacknowledged rightward lead.");
+                Assert.That(fixture.InputTarget.y - fixture.ServerPosition.y, Is.EqualTo(.3f).Within(.0001f));
+                fixture.Predict(Vector2.one, .05f);
+                Vector2 diagonalLead = fixture.InputTarget - fixture.ServerPosition;
+                Assert.That(Vector2.Distance(diagonalLead, Vector2.one.normalized * .3f), Is.LessThan(.0001f),
+                    "A 45-degree heading change also starts with only the current input's lead.");
+                fixture.Predict(Vector2.one, .05f);
+                Assert.That(Vector2.Distance(fixture.InputTarget - fixture.ServerPosition, Vector2.one.normalized * .6f),
+                    Is.LessThan(.0001f), "Unchanged held direction still accumulates its bounded lead.");
             }
         }
 

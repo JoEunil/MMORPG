@@ -1,0 +1,13 @@
+2026-10-21 — Skill icon cooldown display (PR44 follow-up)
+
+Runtime C05 uses actual SkillIcon sprite for a non-raycast radial dark overlay plus ~time. Name and key badge stay unchanged. Sprite absent: mask disabled, numerical estimate remains. Deadline contract is unchanged; server still validates requests.
+Overlay is found/reused beneath each icon; expired/disabled/unavailable observations hide it. Existing character change clears estimate; same-character zone transition preserves it. OnDestroy cleans owned UI children. No Scene/Prefab/assets/server/ClientCore changes.
+Independent product review: no P1/P2. Review caught a test that recast before checking zone preservation; Coordinator checks old deadline/overlay before any new cast.
+Static visual QA: actual three scene buttons cloned into a separate preview scene, no gameplay input. Ready/estimated6.0s/estimated0.8s are deliberate display samples, not server observations. First render exposed overlap with key badge. Coordinator moved time to bottom45%, fixed14px/outline and compact integer seconds above10; second render confirms separation. See evidence/2026-10-21/cooldown-icon-preview.png. This is a magnified static UI preview, not a live HUD/gameplay capture.
+Compile errors=[]/compilationFailed=false.
+Only existing C05 AimTextUsesMovementDirections_AndPhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear extended and run.
+First FAIL: prior fixture used Zone2 x10 outside current bounds, entering reconnect state and clearing estimate. Fixed fixture x210; product unchanged.
+Second FAIL: prior fixture declared Full count2 with one state, so Full ignored. Fixed count1 and added explicit StageInWorld prerequisite; exact deadline/overlay assertions retained. Independent final reading confirmed valid path.
+Final targeted rerun 1PASS/0FAIL, .165313s (total.21s). No repeated movement/chat/full regression. Both failures preserved under ROOT Builds/Play-Feedback/cooldown-overlay-first-result.txt and second-result.txt, final-result.txt.
+ROOT/CAND two owned files synchronized after HEAD comparison/backups. Real Unity keyboard/mouse/login/server restart=0; current input hold remains. Actual HUD interaction and end-to-end cooldown matching remain untested.
+Related FEEL01-approved skill-display scope stays in PR44; no new small PR. Prior AUTHOR01 map work remains separate. No new approval for unrelated scope claimed.

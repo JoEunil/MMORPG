@@ -40,6 +40,7 @@ namespace C02
         private const float StaleMovementSeconds = 0.35f;
         private Vector2 inputTarget;
         private bool hasMovementIntent;
+        private Vector2 movementDirection;
         private float secondsWithoutProgress;
         private const double MovementIntervalSeconds = 0.05;
         private Vector2 visualPosition;
@@ -411,9 +412,14 @@ namespace C02
             float elapsed = Finite(deltaSeconds) ? Mathf.Max(0, deltaSeconds) : 0;
             // Only one tick of held input is integrated after a frame hitch.
             float step = Mathf.Min(elapsed, (float)MovementIntervalSeconds) * MovementUnitsPerSecond;
+            direction = direction.normalized;
+            ActorMotion?.SetMovementIntent(direction);
             if (direction.sqrMagnitude > 0 && ownFull.hp > 0)
             {
-                if (!hasMovementIntent) { inputTarget = ServerPosition; secondsWithoutProgress = 0; }
+                // Every heading change discards unacknowledged lead from the released direction.
+                if (!hasMovementIntent || (direction - movementDirection).sqrMagnitude > .000001f)
+                { inputTarget = ServerPosition; secondsWithoutProgress = 0; }
+                movementDirection = direction;
                 hasMovementIntent = true;
                 secondsWithoutProgress = Mathf.Min(StaleMovementSeconds, secondsWithoutProgress + elapsed);
                 bool stale = secondsWithoutProgress >= StaleMovementSeconds;
@@ -430,7 +436,10 @@ namespace C02
                     CancelMovement();
                     stale = true;
                 }
-                Vector2 visualTarget = stale ? ServerPosition : inputTarget;
+                // Requests may lead by two ticks, but presentation predicts at most one tick.
+                float visualLead = MovementUnitsPerSecond * (float)MovementIntervalSeconds;
+                Vector2 visualTarget = stale ? ServerPosition : ServerPosition +
+                    Vector2.ClampMagnitude(inputTarget - ServerPosition, visualLead);
                 Vector2 next = Vector2.MoveTowards(visualPosition, visualTarget, step);
                 next = ServerPosition + Vector2.ClampMagnitude(next - ServerPosition, MaximumInputLead);
                 visualPosition = worldMap == null || worldMap.CanTraverse(visualPosition, next) ? next : ServerPosition;
@@ -455,14 +464,15 @@ namespace C02
             }
             else if ((server - previousServer).sqrMagnitude > 0.000001f)
             {
-                secondsWithoutProgress = 0;
+                if (!hasMovementIntent || Vector2.Dot(server - previousServer, movementDirection) > .000001f)
+                    secondsWithoutProgress = 0;
                 // No sequence/ACK exists: keep only bounded current intent, never replay requests.
                 if (hasMovementIntent)
                 {
                     Vector2 pending = inputTarget - server;
                     // A server correction that passes the pending target must not request a walk back to it.
-                    inputTarget = Vector2.Dot(pending, inputTarget - previousServer) < 0
-                        ? server : server + Vector2.ClampMagnitude(pending, MaximumInputLead);
+                    inputTarget = server + movementDirection *
+                        Mathf.Clamp(Vector2.Dot(pending, movementDirection), 0, MaximumInputLead);
                     if (worldMap != null && !worldMap.CanTraverse(server, inputTarget)) CancelMovement();
                 }
             }
@@ -506,6 +516,8 @@ namespace C02
         {
             loginScreen?.Data?.CancelMove();
             hasMovementIntent = false;
+            movementDirection = Vector2.zero;
+            ActorMotion?.SetMovementIntent(Vector2.zero);
             inputTarget = ServerPosition;
             secondsWithoutProgress = 0;
             nextMoveTime = 0;

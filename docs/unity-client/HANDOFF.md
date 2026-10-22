@@ -1,3 +1,49 @@
+## 最新 — PR44 직각 전환 리뷰 보완
+
+r4335755574 타당. Dot<0 조건을 정규화된 heading차이제곱>.000001로바꿔직각/45도전환도미확정lead폐기, 동일방향누적은유지한다. 독립P1P2없음/compile0/기존C16fixture1개1회PASS(.0419121s), 기존권위/반전/정체/리셋assert유지. ROOT2파일기준가드/백업동기화, 실입력보류/서버변경0. PR44_TURN_RESULTS.txt 참조. 기존PR44리뷰수정범위로만게시한다. 공개기능설명변화없어별도카드/캡처생성0.
+
+zone_spawn_review재활성화1추가: 신규50/재활성화110/전체160/tokenN/A. AUTHOR01후보와사용자WIP보존.
+
+## 最新 — 스킬 예고·발동 효과 분리와 pulse 검증 완료
+
+C05가예고/발동에같은linePreview를쓰던경로를분리했다. acceptedownphase1의별도renderer/Material/기본world정점/deadline으로.35초범위내확장(.2→1)·굵기감소(.22→.025)를표현한다. 다른스킬hit가Ccharging예고를덮지않고C자체phase1은예고를지운다. TTL·HP0·모델/Zone교체·disable/destroy정리독립. 기존particle에셋이생긴것은아니다.
+
+독립P1P2없음/compile0/기존C05fixture1개1회1PASS(.1762622s). ROOT2파일기준검사·백업후동기화, 새서버·입력0. 실제Guard/지면의분리previewScene에의도적으로두표본효과를렌더한PNG로동시표시확인, 실제접속/피해확정/움직이는외관검증아님. SKILL_RELEASE_RESULTS.txt 참조. FEEL01기존스킬효과범위로같은PR44에모으며별도PR/승인요청생성0.
+
+skill_feedback_fix재활성화1/zone_spawn_review재활성화1추가, 누적신규50/재활성화109/전체159/tokenN/A. 실제입력은계속보류하고AUTHOR01저작후보는별도보존한다.
+
+## 최신 — 아이콘 쿨타임 표시 후속 검증 완료
+
+기존PR44동일쿨타임표시범위로 실제SkillIcon위radial/시간을추가하고이름·키를보존했다. staticpreview실제버튼클론에서숫자/키겹침을발견해하단45%/14px+outline으로보완했다. sample시간은미리보기입력값이며실제서버관측아님. sprite없는경우숫자만·raycastfalse·만료/교체/disable정리/재Enable중복없음. 신규Scene/Prefab/서버수정0.
+
+compile0/독립제품P1P2없음/기존C05fixture1개최종1PASS(.165313s). samecharzone보존검사에서기존fixture의잘못된Zone2좌표10과Fullcount2/array1을순차발견,210/count1과StageInWorld사전assert로수정후해당1개만재검했다. 실패2로그보존, 테스트맞추려제품수정/검사완화0. COOLDOWN_UI_RESULTS.txt/내부정적PNG참조. 실제입력계속보류.
+
+skill_feedback_fix재활성화1/zone_spawn_review재활성화2추가: 누적신규50/재활성화107/전체157/tokenN/A. PR44FEEL01승인범위의표시보완으로같은PR에만갱신, AUTHOR01별도보존.
+
+## 최신 — FEEL01 게시 완료 / 쿨타임 가독성 후속
+
+지정사용자U0C9QEUHPMK의 FEEL01 승인1792577854.023769를 요청1792574327.417219와 대조해 소비하고 3df7106를 PR44 https://github.com/JoEunil/MMORPG/pull/44 에 게시·artifact첨부했다. 봇게시안내1792577929.672859. 병합/실제입력재개권한으로확장하지않는다. 제품테스트/재시험은게시때반복하지않았다.
+
+다음미완료는작은SkillName의~시간을아이콘상의숫자·radial와이프로보완하는동일스킬HUD범위다. skill_feedback_fix에게C05/기존C05fixture만재배정, 동결후영향1개만확인한다. 실제입력보류유지. authoring b4b2786은별도미게시보존. 재활성화1추가 누적신규50/재활성화105/활성화155/tokenN/A(아직완료결과아님).
+
+## FEEL01 승인 원문 확인 — 게시 진행
+
+등록 parent1792487679.299269/채널C0C9VFZMV43에서 지정 사용자U0C9QEUHPMK의 회신1792577854.023769 원문 ‘승인 FEEL01’을 요청1792574327.417219와 대조했다. 기존 회신 소비 기록0, 원격 behind0/작업폴더 clean을 확인했다. 승인 범위는 이동·전투·채팅 후보1758b2c와 검증/공개설명 묶음이며 맵저작AUTHOR01/실입력재개/병합 승인이 아니다. 이제 일반push·PR게시1회에 소비한다.
+
+## 게시 준비 — 최신 master 포함 / FEEL01 대기
+
+제품1758b2c를로컬커밋한뒤PR43 merged/bf58f1d·원격head자동삭제를확인했다. b6178a4 일반merge로origin/master를포함했고제품/테스트추가diff0이라재시험하지않았다. 완료world-motion로컬branch는기본브랜치포함·고유0·worktree미사용확인후-d정리. 미게시authoring b4b2786·원본ROOT WIP보존. 현후보는master대비14파일/298추가26삭제(아래요청기록추가는별도문서변경).
+
+Unity Coordinator 봇1792574327.417219로 FEEL01 push·PR게시승인요청을발송했다. 최신원문회신·중복소비확인전게시0, 실제입력보류유지. Slack요청은실입력재개승인이아니다. 공개텍스트는기존두기능상세에후보/미확인범위를명시했고build.py성공·새실제캡처0.
+
+## 최신 — 이동 방향·스킬·채팅 피드백 로컬 후보
+
+codex/play-feedback-revision은 PR43=5d4d524에서 분기한 이번8파일 묶음이며 미게시 맵저작 b4b2786과 분리했다. 자기 캐릭터의 입력 방향/보정 변위를 분리하고 시각선행 .3·요청선행 .6을 유지, 반전입력의 오래된목표 폐기/실제진행만 stale해제. 몬스터 기존 피격반동 강화, 서버발동 phase1 짧은효과와 phase0 기준 ~쿨타임추정표시, 채팅 NavigationNone/성공전송·Escape초점해제를 구현했다. 서버/ClientCore/DB변경0.
+
+compile0, 독립제품 차단없음. 영향4fixture배치:3PASS/스킬색상Color32표현FAIL→테스트만저장표현맞춰해당1개재검1PASS. 최초ORfilter0선택은미실행. ROOT8파일baseline일치/백업후동기화, EditorPlayfalse/dirtyfalse/inputfalse/backgroundfalse. 실제입력보류/서버전환0/실제rubber완전해결·화면품질주장0. 기존 Line-Aim숨김서버4892유지. PLAY_FEEDBACK_RESULTS.txt 참조.
+
+전문신규2(skill_feedback_fix/chat_focus_fix client_implementer gpt-6-luna medium), skill_feedback_fix재활성화2/zone_spawn_review재활성화2, 누적신규50/재활성화104/전체154/tokenN/A. 게시전FEEL01봇승인요청1792574327.417219(등록parent1792487679.299269/지정U0C9QEUHPMK), 원문사람회신전push·PR0, AUTHOR01승인재사용금지. 실제계정/생존/정상서버전환조건과입력보류해제뒤에만1회통합실입력으로확인한다.
+
 ## 최신 — 실제 몬스터 3종 파츠 모션 자동 확인
 
 기존 C19 단일 PlayMode fixture를 플레이어·고블린·오크·골렘 실제 프리팹 4개로 확장했다. 각 모델의 실제 어깨/다리 파츠 연결, 보행·공격·피격과 actor root/HUD·범위선 부모 보존 및 pose reset을 확인했다. 제품 모션 코드는 변경하지 않았다. 최초 정적 리뷰에서 발견한 프레임 순서 문제를 실행 전 수정했고 최종 독립 P1/P2 없음, compile0, 자동1회1PASS(0.7306676s). 실제 입력·서버 접속/교체0이며 외관/실제 조작감은 미확인이다.
