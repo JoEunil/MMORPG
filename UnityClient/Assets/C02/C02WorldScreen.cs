@@ -179,7 +179,7 @@ namespace C02
                 if (internalId == 0 || zone != transitionTargetZone || !InsideZone(zone, new Vector2(x, y)))
                 { RequireReconnect("The server returned an invalid Zone result. Disconnect and reconnect."); return; }
                 CancelMovement();
-                ActorMotion?.ResetPose();
+                if (ActorMotion != null) ActorMotion.ResetPose();
                 ZoneID = zone;
                 InternalID = internalId;
                 ZoneStartPosition = new Vector2(x, y);
@@ -196,7 +196,7 @@ namespace C02
             }
             if (!EntryPending) return;
             CancelMovement();
-            ActorMotion?.ResetPose();
+            if (ActorMotion != null) ActorMotion.ResetPose();
             hasVisualPosition = false;
             if (internalId == 0 || !InsideZone(zone, new Vector2(x, y))) { Fail("Invalid server Zone result."); return; }
             ZoneID = zone;
@@ -347,8 +347,8 @@ namespace C02
                 Vector2 previousServer = ServerPosition;
                 ownFull = next;
                 ReconcileVisual(previousServer, ServerPosition);
-                if (lostHp) ActorMotion?.PlayHit();
-                if (ownFull.hp == 0) { StopActions(); visualPosition = ServerPosition; ActorMotion?.ResetPose(); }
+                if (lostHp && ActorMotion != null) ActorMotion.PlayHit();
+                if (ownFull.hp == 0) { StopActions(); visualPosition = ServerPosition; if (ActorMotion != null) ActorMotion.ResetPose(); }
                 ShowPosition();
                 WorldStateChanged?.Invoke();
             }
@@ -414,7 +414,7 @@ namespace C02
             // Only one tick of held input is integrated after a frame hitch.
             float step = Mathf.Min(elapsed, (float)MovementIntervalSeconds) * MovementUnitsPerSecond;
             direction = direction.normalized;
-            ActorMotion?.SetMovementIntent(direction);
+            if (ActorMotion != null) ActorMotion.SetMovementIntent(direction);
             if (direction.sqrMagnitude > 0 && ownFull.hp > 0)
             {
                 // Every heading change discards unacknowledged lead from the released direction.
@@ -461,7 +461,7 @@ namespace C02
                 CancelMovement();
                 visualPosition = server;
                 hasVisualPosition = true;
-                ActorMotion?.ResetPose();
+                if (ActorMotion != null) ActorMotion.ResetPose();
             }
             else if ((server - previousServer).sqrMagnitude > 0.000001f)
             {
@@ -521,7 +521,7 @@ namespace C02
             loginScreen?.Data?.CancelMove();
             hasMovementIntent = false;
             movementDirection = Vector2.zero;
-            ActorMotion?.SetMovementIntent(Vector2.zero);
+            if (ActorMotion != null) ActorMotion.SetMovementIntent(Vector2.zero);
             inputTarget = ServerPosition;
             secondsWithoutProgress = 0;
             nextMoveTime = 0;
@@ -541,7 +541,7 @@ namespace C02
             if (targetZone == 0 || targetZone > 6)
             { RequireReconnect("The server returned an unsupported area. Disconnect and reconnect."); return; }
             StopActions();
-            ActorMotion?.ResetPose();
+            if (ActorMotion != null) ActorMotion.ResetPose();
             transitionTargetZone = targetZone;
             transitionDeadline = Time.unscaledTimeAsDouble + ZoneTransitionTimeoutSeconds;
             Stage = C02Stage.TransitionPending;
@@ -602,7 +602,7 @@ namespace C02
         private void ResetWorld()
         {
             CancelMovement();
-            ActorMotion?.ResetPose();
+            if (ActorMotion != null) ActorMotion.ResetPose();
             hasVisualPosition = false;
             visualPosition = Vector2.zero;
             nextMoveTime = 0;
@@ -639,7 +639,7 @@ namespace C02
         private void OnDisable()
         {
             CancelMovement();
-            ActorMotion?.ResetPose();
+            if (ActorMotion != null) ActorMotion.ResetPose();
             hasVisualPosition = false;
             if (loginScreen != null)
             {

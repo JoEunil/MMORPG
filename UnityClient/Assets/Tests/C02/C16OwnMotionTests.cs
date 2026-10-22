@@ -13,6 +13,24 @@ namespace C02.Tests
     {
         [Test]
         [Category("MotionRevision")]
+        public void DisableAfterActorDestroyed_ClearsWorldWithoutAccessingNativeMotion()
+        {
+            using (var fixture = new WorldFixture())
+            {
+                fixture.EnterWithOwnState();
+                Assert.That(fixture.ActorMotion, Is.Not.Null);
+                UnityEngine.Object.DestroyImmediate(fixture.ActorMotion);
+                Assert.That((object)fixture.ActorMotion, Is.Not.Null, "A managed wrapper still exists.");
+                Assert.That(fixture.ActorMotion == null, Is.True, "Unity considers the native component destroyed.");
+                Assert.DoesNotThrow(() => fixture.DisableScreen());
+                Assert.That(fixture.HasOwnFull, Is.False);
+                Assert.That(fixture.HasVisualPosition, Is.False);
+                Assert.That(fixture.Stage, Is.EqualTo("Ready"));
+            }
+        }
+
+        [Test]
+        [Category("MotionRevision")]
         public void HeldInputCanReachAdjacentZoneEdge_WhileServerStateBoundsStayStrict()
         {
             using (var fixture = new WorldFixture())
@@ -182,6 +200,8 @@ namespace C02.Tests
             public Vector2 VisualPosition => (Vector2)Get(screen, "visualPosition");
             public bool HasMovementIntent => (bool)Get(screen, "hasMovementIntent");
             public string Stage => screen.Stage.ToString();
+            public C19ActorMotion ActorMotion => screen.ActorMotion;
+            public void DisableScreen() => Invoke(screen, "OnDisable");
 
             public void EnterWithOwnState(float x = 10f, float y = 10f)
             {
