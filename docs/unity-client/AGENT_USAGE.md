@@ -1,3 +1,6 @@
+## MAP01 게시·실입력 재개 — 2026-10-22
+
+test_health_contract(server_analyst/gpt-6.1-sol medium) 신규1/재활성화0. HP0 두계정의 기존 회복 미지원/종료저장 덮어쓰기 위험과 1행복구 안전전제를 읽기분석했고 실제DB쓰기0. Coordinator가 Slack원문 승인대조·일반merge/push/PR45·같은버전서버기동과 실제UI 한접속의HP0차단/정상퇴장·캡처/공개범위 확인을 담당했다. 생존이동/자동경계는 미실행. 누적신규59/재활성화127/활성화186, 실제토큰·비용N/A.
 ## 전환 실패 복귀 UI — 2026-10-22
 
 transition_recovery_review(code_reviewer/gpt-6.1-sol medium) 신규1/재활성화0. C17 제품/기존fixture2파일 읽기독립리뷰 P1/P2없음. Coordinator가 실제씬 버튼/부모/serialized listener0 확인, 기존 두파일 baseline보존 동기화, Editor재실행·자동PlayMode1PASS를 확인했다. 최초 directEdit 호출 실패는 lifecycle mode오류로 보존하고 제품/assertion 수정 없이 올바른 모드로 검증했다. 실제 입력/네트워크복귀/서버조작0.
