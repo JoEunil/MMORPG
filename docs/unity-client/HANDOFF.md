@@ -1,3 +1,7 @@
+## 게시 인계 — 마을 귀환
+
+로컬 제품커밋1f5546e / codex/town-respawn. Unity Coordinator 봇 U0C9ZRTQ6F8이 기존parent1792487679.299269에 TOWN01 요청1792648326.480519를 발송했고 완료채널1792648340.998619에도 요약했다. 지정사용자 새승인 미확인/push·PR0. MAP01 승인은재사용하지않는다. 실제귀환입력은구서버정상종료·새서버/DLL전환대기다.
+
 ## 최신 — 마을·사망 귀환 로컬 후보 / 2026-10-22
 
 codex/town-respawn은 MAP01 PR45 head9e7bec6에서 분리했다. Zone1 전체 몬스터0(보스포함), 타5구역112유지. HP0 Return to Town→서버소유권/epoch검사→Zone1(10,10) 최대HP/MP·EXP/아이템/재화보존을 구현했다. opcode39와 기존ZoneAck/첫Full쌍을 사용해 서버/DLL 동시전환이 필요하다. 초기로그인HP0보존/AI·A*·Cell이동제약은불변. MAPHP01 DB직접복구요청은봇1792646986.673599수정으로취소했고미실행이다.
