@@ -45,6 +45,41 @@ namespace C02.Tests
         }
 
         [Test]
+        public void PublicExportRequiresLayoutAndPreservesPreviousSnapshot()
+        {
+            var author = CreateAuthor();
+            string directory = Path.Combine(Path.GetTempPath(), "C20PublicExport-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            string output = Path.Combine(directory, "WorldMap.inc");
+            File.WriteAllText(output, "previous complete snapshot");
+            try
+            {
+                var exporter = typeof(C20MapAuthoring).Assembly.GetType("C20WorldMapExport") ??
+                    System.Array.Find(AppDomain.CurrentDomain.GetAssemblies(), a => a.GetType("C20WorldMapExport") != null)?.GetType("C20WorldMapExport");
+                Assert.That(exporter, Is.Not.Null);
+                var legacy = exporter.GetMethod("Export", new[] { typeof(C20WorldMap), typeof(string) });
+                var failure = Assert.Throws<TargetInvocationException>(() => legacy.Invoke(null, new object[] { author.map, directory }));
+                Assert.That(failure.InnerException, Is.TypeOf<InvalidOperationException>());
+                Assert.That(File.ReadAllText(output), Is.EqualTo("previous complete snapshot"));
+                BakeAndExport(author, directory);
+                var complete = exporter.GetMethod("Export", new[] { typeof(C20WorldMap), typeof(C20MapAuthoring), typeof(string) });
+                complete.Invoke(null, new object[] { author.map, author, directory });
+                string snapshot = File.ReadAllText(output);
+                Assert.That(snapshot, Does.Contain("FormatVersion = 1"));
+                Assert.That(snapshot, Does.Contain("ZoneColumns = 3"));
+                Assert.That(snapshot, Does.Contain("C24ZoneLayout, 9> Zones"));
+                Assert.That(snapshot, Does.Contain("WalkableBits"));
+                Assert.That(Directory.GetFiles(directory).Length, Is.EqualTo(1));
+            }
+            finally
+            {
+                Object.DestroyImmediate(author.map);
+                Object.DestroyImmediate(author.gameObject);
+                if (Directory.Exists(directory)) Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
         public void FailedExportPreservesPreviousMapAndDirtyState()
         {
             var author = CreateAuthor();
