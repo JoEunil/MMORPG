@@ -69,36 +69,39 @@ namespace ClientCore.PacketHelper
             return Packet.Serialize(packet);
         }
 
-        // header(8) + dir(1) + x(4) + y(4) + skillSlot(1)
-        internal const int ACTION_PACKET_SIZE = 18;
+        // header(8) + dir(1) + x(4) + y(4) + skillSlot(1) + ownershipEpoch(8)
+        internal const int ACTION_PACKET_SIZE = 26;
         private const int ACTION_OFFSET_DIR = 8;
         private const int ACTION_OFFSET_X = 9;
         private const int ACTION_OFFSET_Y = 13;
         private const int ACTION_OFFSET_SKILL = 17;
+        private const int ACTION_OFFSET_EPOCH = 18;
 
-        internal static byte[] CreateActionPacketFast(byte dir, float x, float y, byte skillSlot)
+        internal static byte[] CreateActionPacketFast(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch)
         {
             var buf = new byte[ACTION_PACKET_SIZE]; // 0으로 초기화됨
             buf[0] = unchecked((byte)MAGIC);
             buf[1] = (byte)(MAGIC >> 8);
-            buf[2] = ACTION_PACKET_SIZE;           // length(uint32 LE) — 18이라 상위 3바이트는 0
+            buf[2] = ACTION_PACKET_SIZE;           // length(uint32 LE) — 26이라 상위 3바이트는 0
             buf[6] = (byte)OP_CODE.ACTION;
             buf[7] = FLAG_SIMULATION;
             buf[ACTION_OFFSET_DIR] = dir;
             BitConverter.TryWriteBytes(buf.AsSpan(ACTION_OFFSET_X), x);
             BitConverter.TryWriteBytes(buf.AsSpan(ACTION_OFFSET_Y), y);
             buf[ACTION_OFFSET_SKILL] = skillSlot;
+            BitConverter.TryWriteBytes(buf.AsSpan(ACTION_OFFSET_EPOCH), ownershipEpoch);
             return buf;
         }
 
-        internal static byte[] CreateActionPacket(byte dir, float x, float y, byte skillSlot)
+        internal static byte[] CreateActionPacket(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch)
         {
             var body = new ActionRequestBody
             {
                 dir = dir,
                 x = x,
                 y = y,
-                skillSlot = skillSlot
+                skillSlot = skillSlot,
+                ownershipEpoch = ownershipEpoch
             };
 
             var header = new PacketHeader
@@ -117,6 +120,16 @@ namespace ClientCore.PacketHelper
             };
 
             return Packet.Serialize(packet);
+        }
+
+        internal static byte[] CreateZoneResyncPacket(ulong ownershipEpoch)
+        {
+            var body = new ZoneResyncBody { ownershipEpoch = ownershipEpoch };
+            return Packet.Serialize(new STPacket<ZoneResyncBody>
+            {
+                header = new PacketHeader { magic = MAGIC, opcode = (byte)OP_CODE.ZONE_RESYNC },
+                body = body
+            });
         }
 
         internal static byte[] CreateCharacterListPacket()

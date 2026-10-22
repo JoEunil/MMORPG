@@ -14,11 +14,47 @@ public static class C20WorldMapExport
         if (EditorApplication.isPlaying) throw new InvalidOperationException("Bake the map in Edit Mode.");
         var authors = UnityEngine.Object.FindObjectsByType<C20MapAuthoring>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         if (authors.Length != 1) throw new InvalidOperationException("Exactly one fixed world map authoring root is required.");
-        Bake(authors[0]);
         string directory = Path.GetFullPath(Path.Combine(Application.dataPath, "../../CoreLib/Generated"));
-        Export(authors[0].map, directory);
-        AssetDatabase.SaveAssets();
+        BakeAndExport(authors[0], directory);
         Debug.Log("World navigation baked from explicit ground and solid objects; C++ snapshot exported. No A* or live server restart.");
+    }
+
+    public static void BakeAndExport(C20MapAuthoring author, string outputDirectory)
+    {
+        if (author == null || author.map == null)
+            throw new InvalidOperationException("A map authoring root and map are required.");
+        var scene = author.gameObject.scene;
+        if (!scene.IsValid() || !scene.isLoaded || string.IsNullOrEmpty(scene.path) || scene.isDirty)
+            throw new InvalidOperationException("Save the map authoring object's scene before exporting.");
+        if (!AssetDatabase.Contains(author.map) || string.IsNullOrEmpty(AssetDatabase.GetAssetPath(author.map)))
+            throw new InvalidOperationException("Save the navigation map as a project asset before exporting.");
+        BakeAndExportSnapshot(author, outputDirectory);
+        AssetDatabase.SaveAssetIfDirty(author.map);
+    }
+
+    // Preserve the user's previous baked array and dirty state if either step fails.
+    // This is exception recovery, not a crash-atomic transaction across Unity and C++ files.
+    internal static void BakeAndExportSnapshot(C20MapAuthoring author, string outputDirectory)
+    {
+        if (EditorApplication.isPlaying) throw new InvalidOperationException("Bake the map in Edit Mode.");
+        if (author == null || author.map == null)
+            throw new InvalidOperationException("A map authoring root and map are required.");
+        var map = author.map;
+        byte[] previous = map.walkable;
+        bool wasDirty = EditorUtility.IsDirty(map);
+        try
+        {
+            Bake(author);
+            var layout = C24WorldLayout.Build(author.zoneColumns, author.zoneRows, author.zoneCoreSize, author.transitionMargin);
+            C24WorldLayoutExport.Export(map, author, layout, outputDirectory);
+        }
+        catch
+        {
+            map.walkable = previous;
+            if (wasDirty) EditorUtility.SetDirty(map);
+            else EditorUtility.ClearDirty(map);
+            throw;
+        }
     }
 
     public static void Bake(C20MapAuthoring author)
@@ -78,7 +114,21 @@ public static class C20WorldMapExport
 
     public static void Export(C20WorldMap map, string outputDirectory)
     {
-        if (map == null || !map.IsValid) throw new InvalidOperationException("Bake a valid map before export.");
+        throw new InvalidOperationException("Server snapshots require layout metadata. Use Export(map, author, outputDirectory) or BakeAndExport(author, outputDirectory).");
+    }
+
+    public static void Export(C20WorldMap map, C20MapAuthoring author, string outputDirectory)
+    {
+        if (author == null || author.map != map)
+            throw new InvalidOperationException("The baked map and its authoring root are required.");
+        var layout = C24WorldLayout.Build(author.zoneColumns, author.zoneRows, author.zoneCoreSize, author.transitionMargin);
+        C24WorldLayoutExport.Export(map, author, layout, outputDirectory);
+    }
+
+    internal static void ExportSnapshot(C20WorldMap map, C20MapAuthoring author, C24WorldLayout layout, string outputDirectory)
+    {
+        if (map == null || !map.IsValid || author == null || layout == null)
+            throw new InvalidOperationException("A complete navigation and layout snapshot is required.");
         var bits = new ulong[(map.walkable.Length + 63) / 64];
         bool any = false;
         for (int i = 0; i < map.walkable.Length; i++)
@@ -98,8 +148,11 @@ public static class C20WorldMapExport
             if (i % 6 == 5) text.Append('\n');
         }
         text.Append("\n};\n");
+        C24WorldLayoutExport.AppendMetadata(text, author, layout);
         Directory.CreateDirectory(outputDirectory);
         string destination = Path.Combine(outputDirectory, "WorldMap.inc");
+        if (File.Exists(destination) && (File.GetAttributes(destination) & FileAttributes.ReadOnly) != 0)
+            throw new UnauthorizedAccessException("The navigation export is read-only; the previous snapshot was preserved.");
         string temporary = Path.Combine(outputDirectory, ".WorldMap-" + Guid.NewGuid().ToString("N") + ".tmp");
         try
         {

@@ -157,7 +157,7 @@ namespace C02.Tests
                 int events = 0; f.Model.OnBazaarReceived += _ => events++;
                 f.Model.RequestBazaarMyList(); uint old = f.Network.MyListIDs[0];
                 f.Model.BazaarMyListReceived(old, 1, Rows());
-                if (ending == "zone") f.Model.ZoneChange(4);
+                if (ending == "zone") C08TestSession.BeginAutomaticTransition(f.Model, f.Drain);
                 else if (ending == "disconnect") f.Model.Error("Fixture disconnect");
                 else f.Model.Dispose();
                 f.Model.BazaarMyListReceived(old, 1, Rows()); f.Drain();
@@ -165,7 +165,7 @@ namespace C02.Tests
                 Assert.Throws<InvalidOperationException>(() => f.Model.RequestBazaarMyList());
                 if (ending == "zone")
                 {
-                    f.Model.ZoneChageReceived(0, 0, 0, 0, 0, 0, 0); f.Drain();
+                    C08TestSession.CompleteAutomaticTransition(f.Model, f.Drain);
                     f.Model.RequestBazaarMyList();
                     f.Model.BazaarMyListReceived(old, 1, Rows());
                     f.Model.BazaarMyListReceived(f.Network.MyListIDs[1], 1, Array.Empty<BazaarListing>()); f.Drain();
@@ -424,7 +424,7 @@ namespace C02.Tests
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) => SearchIDs.Add(requestID);
             public Task Connect(string address, int port) => Task.CompletedTask; public void CharacterList() { } public void Enter(ulong id) { }
             public void Chat(string message, byte scope, ulong target) { } public void Profiles(uint[] ids) { } public void RequestInventory() { }
-            public void Action(byte dir, float x, float y, byte slot) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void Log(string text) { }
+            public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void Log(string text) { }
         }
     }
 }

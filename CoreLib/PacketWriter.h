@@ -80,6 +80,7 @@ namespace Core {
             return true;
         }
         std::shared_ptr<IPacket> GetFullHeader(uint16_t zoneID, uint64_t generation);
+        std::shared_ptr<IPacket> GetBootstrapFullHeader(bool monsters, uint16_t zoneID, uint64_t generation, uint64_t ownershipEpoch, uint64_t bootstrapID);
         bool WriteFullField(std::shared_ptr<IPacket> p, const CharacterState& state);
 
         std::shared_ptr<IPacket> GetMonsterDeltaHeader(uint16_t zoneID, uint64_t generation) {
@@ -152,7 +153,7 @@ namespace Core {
         std::unique_ptr<IPacket, PacketDeleter> WriteProfileBatchRes(const ProfileEntry* entries, uint16_t count);
 
         std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeFailed();
-        std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y, uint64_t generation);
+        std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y, uint64_t generation, uint64_t ownershipEpoch);
 
         std::unique_ptr<IPacket, PacketDeleter>  GetPingPacket(uint64_t rtt,uint64_t nowMs) override {
             auto p = packetPool->AcquireUnique();

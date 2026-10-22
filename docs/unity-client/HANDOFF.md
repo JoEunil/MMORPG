@@ -1,3 +1,71 @@
+## 最新 — PR45 리뷰 두 건 수정 / 2026-10-22
+
+두 P1 모두 PR45 단독 기준으로 유효하다. PR46에만 있던 경계 목표0.6 허용/fixture를 PR45에 같은 hunk로 이식했다. 기존경계fixture·실제Unity왕복근거재사용/서버임계값변경0/Unity재입력0.
+
+DummyClients를 ACTION26/ACK47·ownershipEpoch와 첫Player/MonsterFull쌍 준비에 맞췄다. 청크/빈Monster·최신generation·권위좌표반영/lead0.6/2초×3resync를지원하며 구소켓응답은캡처session으로만처리해새슬롯오염을막았다. 독립최종P1P2없음,NET8빌드PASS(경고27/오류0),네트워크없는protocol-self-test1회PASS. namespace/접근성중간빌드실패는기록보존했다.
+
+PR45_REVIEW_RESULTS.txt 참조. 실제부하/서버교체/DB변경0,AI/A*·원본GameWIP보존. 기존PR45게시후PR46에일반merge로이어반영한다. 새PR/강제push/PR병합은하지않는다.
+
+## 최신 master 이력 보존 — 2026-10-22
+
+PR44가 병합된 origin/master521c7a8을 일반 merge로 보존했다. 제품 코드는 자동 병합됐고 충돌한 AGENT_USAGE/HANDOFF/INPUT_TEST_BATCH는 양쪽 기록을 모두 보존했다. 원본 Game/ROOT WIP와 실행 서버는 변경하지 않았다. 선행 PR45 충돌 해소 후 이 merge를 기존 PR46에 이어 반영한다. 강제push/PR병합0.
+
+## 최신 — MAP01 PR45 게시 / 입력 재개·HP0 배치 완료
+
+MAP01 지정사용자 승인1792646408.310839를 확인해 https://github.com/JoEunil/MMORPG/pull/45 하나로 게시하고 artifact첨부했다. 최신 master README/PR43이력을 일반merge 보존, PR44전체병합/강제push/병합0. 승인재사용금지. 이번 채팅으로 실제 Unity 입력이 재개됐으며 오래된 보류 문구보다 우선한다.
+
+기존 서버/3000/9999가 모두 없음을 확인하고 보존·플래그검사 후 로그인node PID43004와 같은wire의 새 MainServer PID24024(숨김, World-Export/bin)를 시작해 Ready/두포트 확인했다. 강제종료/원본실행파일교체/서비스재시작0. 서버는 현재 실행중이며 보이지 않는 콘솔을 종료됐다고 오인하지 않는다.
+
+실제입력 한접속: 전용01 Sign-in/선택/필드진입→HP0·CanActfalse/Right·C차단/위치MP불변→패배 LOG OUT→인증해제·Ready/로그인복귀 확인→Playstop. 자세한 값/캡처/초기계측오류는 MAP01_LIVE_RESULTS.txt에 기록했다. ROOT2계정 READ ONLY 전후동일/HP초기화0. 사용자WIP 보존, 테스트중Assets쓰기0.
+
+계정둘모두HP0이라 생존경계·이동/충돌/모션은 미실행이다. HP복구후보는 5012의HP만0→10000, 정상서버종료·DBdrain확인/프로세스·포트부재·소유/전체예상상태검사/1행트랜잭션 조건으로 준비했으며 미실행. 봇MAPHP01요청1792646986.673599(기존parent), 지정사용자승인 전 적용금지. 별도 새회복시스템/몬스터AI0. 다음입력은재개상태 유지하되 생존조건 마련전 반복로그인하지 않는다. 누적전문 신규59/재활성화127/전체186/tokenN/A.
+## MAP01 승인 확인·입력 재개 — 2026-10-22
+
+지정사용자 U0C9QEUHPMK의 Slack 원문1792646408.310839 `승인 MAP01`을 요청1792583875.856059/parent1792487679.299269와 대조해 승인 확인했다. 현재 맵 저작/Exporter/서버owner전환/동기화·복귀안내 통합 후보 게시에만 소비한다. 채팅의 Unity 입력 재개 지시도 확인했다. 병합 승인은 아니다.
+
+fetch/prune 후 최신 master(c1a1202 README, bf58f1d PR43병합) 두 커밋을 일반merge로 보존, 제품diff변경0. PR44 전체병합/forcepush/reset은 하지 않는다. 본문에는 자동검증/실제미검증을 구분하고 큰 PR 하나로 게시한다.
+
+호스트에서 기존 MainServer/9999·로그인3000 미실행, MySQL/Redis Running 확인. READ ONLY 지정계정조회에서 5011/5012 모두 HP0이다. 이번 입력 배치는 HP0 로그인/상태·조작차단/정상퇴장만 가능하며 생존 이동·경계전환/전투는 차단으로 남긴다. 자동회복/DB초기화·HP덮어쓰기하지 않는다. 새 후보서버와 현Unity ClientCore는 같은새wire로 맞춘 뒤 실행하며 Editor조작 Coordinator단독/Assets동결 유지.
+## 最新 — 전환 실패 복귀 안내 보완 / 2026-10-22
+
+MAP01 후보의 C17에서 ReconnectRequired 때 기존 LoadingPanel/EntryReturnButton을 재사용해 안내와 로그인 복귀를 표시한다. 기존 WorldHud 종료 버튼도 있어 종료 경로 자체의 신규 구현으로 주장하지 않는다. 자동 재접속/로그아웃 없이 사용자가 버튼을 누를 때 기존 ConnectionFailed 정리 경로를 사용한다. Scene/서버/프로토콜/DB 변경0.
+
+독립 P1/P2없음, Editor 소스 import/recompile up_to_date, 기존 fixture 자동PlayMode1PASS(.059604s). 잘못된 direct EditMode 호출의 OnEnable 미실행/null label FAIL도 로그 보존, 제품/assertion변경 없이 올바른 모드로 실행했다. TRANSITION_RECOVERY_RESULTS.txt 참조. 테스트의 수동 Stage초기화를 실제 네트워크 복귀 통과로 주장하지 않는다. 실제씬버튼/persistent listener0확인, 최종 C02Scene dirtyfalse/Playfalse/inputfalse, 원본2파일 baseline가드/백업후동기화. Unity actual입력 보류·사용자 AI 미변경 유지.
+
+Slack 읽기에서 MAP01 사람답장 없음. 게시 승인 전 push/PR0, 작은 복귀 보완은 기존 큰 MAP01에 합친다. PR44 OPEN/b3b06ea 재확인·병합/정리0. 전문 누적 신규58/재활성화127/전체185, 실제토큰N/A.
+## 최신 — 맵 내보내기 저장 Scene 검사 보완
+
+MAP01 후보에 저장 상태 검사를 보완했다. 메뉴/Inspector 모두 author 소속 Scene(valid/loaded/saved/clean)과 영속 map을 확인한 뒤 내보내며 무관한 active Scene dirty로 차단하지 않는다. 기존 snapshot API는 detached fixture용 internal로 유지했다. 기존 저작 Scene 자동 저장은 하지 않으며 해당 nav 자산만 기존처럼 저장한다.
+
+독립 P1/P2없음, compile0, 직접 EditMode2PASS(저장/영속성·activeScene구분/기존출력보존, readonly복구). 원본Scene dirtyfalse/Playfalse/inputfalse. SAVED_SCENE_EXPORT_RESULTS.txt 참조. ROOT3파일은 이전HEAD일치 확인·백업 후 동기화했고 서버/ClientCore/실제생성맵/DB변경0이다. 이 작은 보완은 기존 MAP01 큰 PR에 합치며 별도 PR·새 승인요청을 늘리지 않는다. Slack 재확인에서 MAP01 지정사용자 답장 없음(마지막37번 봇 요청), push/PR0 유지.
+
+이웃 Zone 엔티티 시야는 여전히 owner-only AOI/Zone-local ID라 후속 설계가 필요하다. 인접 Full 단순 전송으로 해결하지 않았으며 사용자 몬스터 AI는 건드리지 않는다. 다음 남은 배포/실입력은 버전동기 전환 및 명시 입력재개 조건을 따른다. 현재 허용된 직접 영향 구현·자동 검증은 완료했다. 전문 신규57/재활성화127/전체184, 토큰 N/A.
+## 게시 대기 — MAP01
+
+로컬 제품 커밋 80e3633 / codex/world-map-export. Unity Coordinator 봇 U0C9ZRTQ6F8이 기존 스레드에 MAP01 요청1792583875.856059를 발송했고 완료채널1792583879.687239에도 핵심 결과를 남겼다. AUTHOR01은 이번 통합 게시 요청으로 대체했으며 승인됐다고 간주하지 않는다. 지정 사용자 U0C9QEUHPMK의 정확한 `승인 MAP01` 원문 확인 전 push/PR0. 승인 뒤 원격 fetch/분기 점검·일반 push·큰 PR 하나·artifact 첨부를 수행한다. 병합/실입력 재개로 해석하지 않는다. 브라우저 로컬 확인 http://127.0.0.1:8791/MMORPG/work/field-travel/ (현재 미리보기 프로세스만 실행, 게임 서버 아님).
+## 최신 — 맵 Exporter·서버 주도 전환 로컬 완료 / 게시 승인 준비
+
+codex/world-map-export는 c1c09dd의 미게시 맵 저작 묶음을 이어받았다. Unity 레이아웃/장애물/통행 데이터를 한 WorldMap.inc로 내보내고, 검증된 이동에 따른 서버 owner 전환·epoch·Player/Monster 첫 Full 쌍·재동기화를 구현했다. 실제 6구역 유지, 별도 9구역 출력 예시만 검증했다. 몬스터 AI/A*/Cell 이동 제한은 변경하지 않았으며 후속 AI는 MAP_EXPORT_GUIDE.md를 따른다.
+
+독립 최종 P1/P2 없음, compile0, exporter 직접3/C++생성물6·9/ClientCore직접3/Unity합성PlayMode1/native4 최종PASS, MainServer·UnitTests·ClientCore 최종빌드PASS. WORLD_EXPORT_TRANSITION_RESULTS.txt에 실패·수정·검증 범위를 기록했다. 실제 입력·서버배포·DB/Redis 변경0. 새 wire는 구서버와 호환되지 않아 서버/DLL 동시 버전 전환이 필요하다. 단일 broadcast 소비자 부하 검증, Additive streaming/이웃 Zone AOI, 실제 조작감은 완료 아님.
+
+원본 Game/ROOT 서버·ClientCore WIP 보존. 활성 Unity에는 가드·백업 후 adapter/DLL/테스트만 동기화했다. PR44 전체 merge는 자동승인 검토가 거절하여 실행하지 않았고, 독립 리뷰한 이동 baseline 3파일만 별도 플랫폼 승인으로 통합했다. 전투/채팅/피격강도는 제외, ROOT 기존 PR44 피격강도는 보존했다. PR44는 b3b06ea OPEN 상태 확인.
+
+공개 설명 원본 field-travel.md와 생성 사이트를 갱신하고 로컬 HTTP200·브라우저 본문/탐색을 확인했다. 기존 게임 캡처는 이전 전환 방식으로 표시하며 새 실화면 검증으로 주장하지 않는다. 이전 AUTHOR01 승인 미확인을 새 승인으로 대신하지 않는다. 이번 합친 후보의 로컬 커밋 후 MAP01을 Unity Coordinator 앱에 요청하며 승인 전 push/PR0. Unity 실입력은 사용자 재개 전까지 보류한다. 누적 전문 신규55/재활성화127/전체182, 실제 토큰 N/A.
+## 최신 — 고정 맵 지면 질감 로컬 반영 / 입력 보류
+
+codex/zone-spawn-authoring의 기존 AUTHOR01 미게시 묶음에 고정 지면 재질을 보완했다. 단색 Meadow 복제에 기존 LocalGroundGrain을 연결한 FixedGround 재질을 만들고 기존 NavigationGround의 재질 참조 한 곳만 바꿨다. 향후 생성 Setup도 같은 재질을 사용한다. 맵 크기·Collider·서버·통행 자산은 불변이다.
+
+석축 발치의 풀·잔돌 배치는 두 정적 비교에서 개선이 작아 반려했고 새 C23 스크립트·meta를 제품에서 제외했다. 지면 후보도 반복 도로 무늬는 반려하고 입자 질감만 채택했다. 독립 최종 P1/P2 없음, 컴파일 오류 0, 저장된 Scene의 분리 렌더가 채택 표본과 픽셀 동일함을 확인했다. 실제 플레이/입력 검증은 실행하지 않았다. 반복 질감과 자연스러운 지형 표현은 남아 있다. FIXED_GROUND_RESULTS.txt 참조.
+
+ROOT Scene은 전후 기존 block 1개(MeshRenderer 재질)만 달랐고 추가/삭제 0이었다. CAND의 이전 block 일치 후 해당 변경만 이식해 사용자 WIP를 보존했다. 실제 입력은 계속 보류한다. PR44 이동·전투·채팅 후보 b3b06ea와 혼합하지 않으며 AUTHOR01 사람 승인 원문 미확인으로 이 새 묶음은 push/PR 하지 않았다. 신규50/재활성화117/전체167, 토큰 N/A.
+
+## 最新 — 맵 내보내기 실패 시 이전 격자 보존
+
+C20 BakeAndExport가 실제 walkable을 바꾼 뒤 출력에 실패하면 Unity만 새 격자로 남는 P2를 보완했다. Bake/Export 예외 시 이전 배열 참조와 원래 dirty 상태를 복구하며 성공 메뉴는 해당 map만 저장한다. 사용자 bounds/collider 편집은 되돌리지 않는다. C++ 출력 성공 후 자산 저장 실패/프로세스중단까지 두파일 원자성을 보장하는 변경은 아니다.
+
+독립 최종P1/P2없음/compile0/분리 EditMode 직접 assertion2개 한 배치PASS(정상벽1칸 배열·비트동일/readonly출력실패·기존clean/dirty배열보존). NUnit runner나 실제입력통과 아님. 실제map/export파일/서버변경0, Scene clean/Playfalse/inputfalse. NAVIGATION_EXPORT_RESULTS.txt 참조. zone_spawn_review 분석1·최종리뷰1 재활성화2 추가, 신규48/재활성화100/전체148/tokenN/A. AUTHOR01 미게시저작묶음에만모으며 PR43제품추가0/새push·PR0.
+
 ## 最新 — PR44 직각 전환 리뷰 보완
 
 r4335755574 타당. Dot<0 조건을 정규화된 heading차이제곱>.000001로바꿔직각/45도전환도미확정lead폐기, 동일방향누적은유지한다. 독립P1P2없음/compile0/기존C16fixture1개1회PASS(.0419121s), 기존권위/반전/정체/리셋assert유지. ROOT2파일기준가드/백업동기화, 실입력보류/서버변경0. PR44_TURN_RESULTS.txt 참조. 기존PR44리뷰수정범위로만게시한다. 공개기능설명변화없어별도카드/캡처생성0.
@@ -52,17 +120,51 @@ compile0, 독립제품 차단없음. 영향4fixture배치:3PASS/스킬색상Colo
 
 ## 최신 — 주기 Full의 몬스터 루트 회전 보정
 
+원격 PR43 보정2f5a49bcbd351f6324037467902be6ba77a4cde1를 로컬 후속에 일반 merge했다. AUTHOR01 요청의 신규 기능·아트 후보 범위는 그대로이며 기준PR의보정만포함했다. 제품충돌0, 양쪽인계/사용량기록보존, 문서통합으로게임검증재실행없음.
+
 AUTHOR01 원문 사람 회신은 현재 확인되지 않아 후속 게시를 보류했다. 승인 대기와 독립적으로 기존 PR43 범위의 회전 스냅 경로를 보완했다. C04 monster Full만 매번 Face(root,dir)를 호출해 C19의 child 보간 회전을 꺾을 수 있어 마지막 중복 Face1줄을 제거했다. 최초 생성 Face·서버 상태dir·이동/공격 child 회전은 유지한다. 위치나 공격 없이 dir필드만 바뀌면 마지막 표시 방향을 유지하며 기존Delta와같은정책이다.
 
 기존 FullCreatesSeparateKinds fixture8줄확장·PlayMode자동1PASS(0.1194668s)/compile0·독립최종P1P2없음. 초기180도·dir3상태보존·root무회전·기존수명검증유지. 실제입력/로그인/서버변경0, 전체시각품질·실제끊김해결을주장하지않는다. PR43_REVIEW_RESULTS.txt 최신참조. zone_spawn_review 재활성화1추가, 누적 신규48/재활성화96/전체144/tokenN/A. 이 수정은WORLD02기존모션범위에만게시하며 AUTHOR01미승인새기능을섞지않는다.
 
+## 최신 — 석축 끝면 보완·편집 후속 전달 정리
+
+제품 후보1e8a84d4504b86de3dcfe1538867a14848ef2c69 로컬보존/clean, 기존PR43 head28a122e 대비32파일/1226추가81삭제 후속묶음을 확인했다. AUTHOR01 push·후속PR 게시승인을 Unity Coordinator 앱으로 요청: reply1792567614.239479/등록parent1792487679.299269/지정사용자U0C9QEUHPMK. 승인전새push/PR0. 원문회신·중복소비확인후만진행한다. PR43 open이면 그 head브랜치를base로 후속diff만게시하고,이미병합됐으면최신master를일반merge해같은범위만남는지확인한다. 사용자병합검토를대행하지않는다. 실제입력은새게시승인으로재개하지않는다.
+
+8e5cdbf 이후 남았던 끝면 검은틈을 기존석재의양끝캡2개로메웠다. 생성메시2개만기준원문일치·백업뒤CopySerialized로갱신해GUID/Scene참조를유지했다. helper의기존asset자동덮어쓰기금지는유지한다. 1104정점/벽·공유메시2·Collider범위/통행해시불변/재적용no-op/compile0·독립P1P2없음·같은구도전후이미지채택. 실제입력/플레이외관은미실행, 끝면평평함은남은한계다. FIXED_WALL_ART_RESULTS.md 최신참조. 누적 신규48/재활성화95/전체143,tokenN/A.
+
+구역별몬스터편집/맵Inspector/석축후속은codex/zone-spawn-authoring 한묶음이다. PR43 open/head28a122e의실입력보류를유지하며 새후속을PR43에추가push하지않는다. 앞선PR과중복되지않는다음큰PR로전달준비하며 지정앱승인전push/PR0.
+
+## 이전 — 고정 벽 석축 외관 로컬 적용·정적 비교 완료
+
+codex/zone-spawn-authoring=16b5c50 위에서 C21FixedWallVisuals 도구·공유메시2개를 추가하고 기존벽18개의 MeshFilter/Renderer 참조36블록만 바꿨다. 기존 cuboid석재·WeatheredLimestone/FoundationStone을 재사용한5단엇갈림 석축이다. 원래 collider18개/transform/통행배열/서버불변을 확인했다. 1056정점×벽18·공유Mesh2개/재적용no-op PASS, compile0/독립최종차단없음. 동일카메라·조명의preview 전후를 아트담당이채택했으나 가까운끝면의어두운틈은 잔여문제로기록했다. 실제사냥/전체필드품질통과아님. FIXED_WALL_ART_RESULTS.md 참조.
+
+실제Editor가EOF개행없는새meta를거부한문제는GUID유지·LF추가로복구했고, Undo지연dirty는SaveScene전FlushUndoRecordObjects로보완했다. 다음프레임staticcapture와최종dirtyfalse확인. 원본Scene전후동일블록검사로후보에36참조만이식해ROOTWIP보존. 동기화도우미초안의반복파싱은중단후1회캐시검사로바꿔완료했고제품실패와구분한다.
+
+실입력보류/로그인0/서버재시작0/DB수정0/PR43추가push0. 실제PNG2장은내부evidence로보존하고국소에디터비교를대표게임캡처로사이트에내보내지않는다. 편집후속과같은큰관련PR로모은다. 에이전트 누적 신규48/재활성화92/전체140, 실제토큰N/A. EditorPlayfalse/dirtyfalse/inputfalse/backgroundfalse.
+
+## 이전 — 맵·몬스터 배치 편집 로컬 후속 검증 완료
+
+codex/zone-spawn-authoring의 구역별 배치 편집에 C20WorldMap 전용 UI Toolkit Inspector를 더했다. raw250100배열을 숨기고 저장 격자/통행·차단 합계/원점·상한미포함/방향을 표시한다. Preview는1024²로제한·장애물보수축소·좁은창100%폭max480·refresh/invalid/disable때임시Texture정리. 실제asset/Scene/mapexport/서버변경0이며 저장배열을 현재원점/치수로해석한그림이지 Scene과자동동기화된것이아님을명시했다.
+
+독립 최종 차단 없음/compile0/직접 Inspector 검증2시나리오PASS. 실제610×410이미지와 차단2900, 작은비대칭패턴의좌표방향·큰맵축소/invalid/sprite수명/스타일속성 확인. 실제윈도우렌더·모바일 UI·게임입력검증과구분한다. NAVIGATION_EDITOR_RESULTS.txt 참조. 앞선 C15 native/서버/사냥 전체회귀는 반복하지 않았다. 기존 PR43은open/28a122e에서유지하고 후속 새push/PR0. 입력보류/새로그인0/서버교체0 유지. 에이전트 누적 신규46/재활성화89/전체135, tokenN/A.
+
 ## 이전 — PR43 Full 스냅샷 피해 강조 리뷰 수정
+
+원격 PR43 head28a122e578f4927fef5fba3d0d96dcb8c19fe7d1 반영 확인. 로컬 후속으로 일반 merge하며 아래 구역별 배치 기록과 리뷰 기록을 모두 보존했다. 제품 파일 충돌/추가 수정 없음, 이미 통과한 검증은 반복하지 않는다.
 
 WORLD02 지정 사용자 원문 승인1792564891.374529를 요청1792564212.382599/parent1792487679.299269와 대조해 소비했고 PR43 https://github.com/JoEunil/MMORPG/pull/43 으로 5fa1855를 게시했다. 새 기능 후속 codex/zone-spawn-authoring=4f14839는 별도 로컬 보존이며 PR43에 섞지 않는다.
 
 사용자 지적 discussion_r4333816125는 타당하다. Full이 HP 감소를 먼저 반영하면 다음 같은HP Delta는 감소가 아니어서 금색 피드백이 누락됐다. 기존 monster의 Full 감소 분기에만 PulseDamage를 추가하고 초기Full/동일HP/회복은 제외했다. 기존 fixture 하나를 확장해 Full-first 감소·중복 억제·기존delta/death/disable을 확인했다. 독립 최종 차단 없음/compile0/PlayMode 자동1PASS(0.1093939s), 실제 입력0/서버변경0. 최초 EditMode 직접 호출은 Awake 미실행 NRE라 실패 보존 후 올바른 PlayMode로 실행했다. 실제 입력 검증을 재개한 것이 아니다. PR43_REVIEW_RESULTS.txt 참조.
 
 활성화 추가: zone_spawn_review 재활성화1, 직전 로컬 후속 누적45/87에서 신규45/재활성화88/전체133, 실제 토큰 N/A. 다음 후속으로 돌아갈 때 PR43 수정 커밋을 일반 merge로 포함한다. 기존 승인 범위 내 리뷰 보정만 PR43에 push하며 새 기능 승인 요청은 만들지 않는다.
+
+## 최신 — WORLD02 승인 소비·PR43 게시 / 구역별 배치 후속
+
+지정 사용자 U0C9QEUHPMK의 Slack 원문 ‘승인 WORLD02’, 회신1792564891.374529를 요청1792564212.382599/등록parent1792487679.299269와 대조했다. 5fa18554e463c8014a5651e1df60b1e9d89281b4를 일반 push했고 PR43 https://github.com/JoEunil/MMORPG/pull/43 으로 기존 사냥·월드·이동·모션 전체를 한 묶음 게시했다. 해당 회신은 소비 완료이며 중복 push/PR 생성에 사용하지 않는다. 봇 결과 안내1792565044.529839. 사용자 병합 검토 대기, 병합/Pages 배포0.
+
+다음 codex/zone-spawn-authoring은 PR43 head에서 분기한 로컬 후속이다. ZONE_SPAWN_TASK.md의 기존 C15 구역별 밀도 편집/서버 초기화 연결만 진행하며 실제 자산은 모두100%·구역당112 유지, AI/aggro/A* 수정0. Unity 실입력 보류·서버 교체0을 유지한다. 승인된 PR43에 이 새 범위를 추가 push하지 않는다.
+
+후속 최종 서버/단위 빌드 PASS·기존 C15 assertion2개 직접 호출 PASS·실제 Inspector 복제본 합계46/112/157/223 확인·native초기화1개(6구역) PASS, compile0·독립 최종 차단 없음. 기본100% 서버 초기화만 실행했고 다른density의 서버초기화는 미실행이다. ZONE_SPAWN_RESULTS.txt 참조. 로컬 보존 후 사용자가 전달한 PR43 full snapshot 피해 강조 리뷰를 우선 검토한다.
 
 ## 이전 — 확대 맵·충돌 export·이동/모션 로컬 후보 / 입력 보류
 

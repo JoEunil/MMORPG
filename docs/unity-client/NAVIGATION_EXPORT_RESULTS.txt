@@ -1,0 +1,16 @@
+2026-10-21 — Navigation export exception recovery
+
+Cause: BakeAndExport previously assigned a newly baked walkable array and marked the map dirty before Export could fail. A later asset save could preserve a Unity-only candidate.
+Change: retain previous walkable reference and original dirty state; restore both on Bake/Export exception. Successful menu action saves only its map asset, not unrelated dirty assets. Read-only output is rejected explicitly. User-authored bounds/colliders are not reverted.
+
+Independent review: zone_spawn_review final code P1/P2 none.
+Unity compile: completed, failed=false, errors=[], compilationFailed=false.
+Frozen Edit Mode direct assertion batch: 2 scenarios PASS in one eval, not an NUnit runner result or live UI test.
+1. Detached 4x4 map, one small wall: Unity 16 cells match generated 0x000000000000FFDFULL; expected tile5 blocked; exactly one output file; dirty=true after success.
+2. Read-only existing output, original clean and dirty map states: exception type UnauthorizedAccessException; previous array reference/content and dirty flag preserved; existing output bytes unchanged; no additional files.
+The read-only precheck does not exercise a late File.Replace failure or crash recovery.
+Limits: asset-save failure/process interruption after successful output are not crash-atomic across Unity/C++; these are not guaranteed by this change. No new transaction framework.
+Editor final playing=false/scene dirty=false/input runner=false. Real input/login/server restart/production map export=0. Tests use temporary output only.
+ROOT exporter synchronized after matching HEAD source, backup Builds/Navigation-Export-Recovery/C20WorldMapExport.before.cs.txt; new fixture/meta only other Assets writes. User WIP preserved.
+Public explanation stays in existing content-editing feature; no new card/capture/claim of live gameplay.
+Local authoring bundle only; PR43 unchanged by this new fix. AUTHOR01 human approval not yet verified, new push/PR=0.

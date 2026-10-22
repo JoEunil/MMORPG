@@ -13,6 +13,38 @@ namespace C02.Tests
     {
         [Test]
         [Category("MotionRevision")]
+        public void HeldInputCanReachAdjacentZoneEdge_WhileServerStateBoundsStayStrict()
+        {
+            using (var fixture = new WorldFixture())
+            {
+                fixture.EnterWithOwnState(204.8f);
+                fixture.Predict(Vector2.right, 0.05f);
+
+                Assert.That(fixture.ServerPosition.x, Is.EqualTo(204.8f).Within(0.0001f));
+                Assert.That(fixture.InputTarget.x, Is.EqualTo(205.1f).Within(0.0001f),
+                    "A local target may lead across the owner boundary without cancelling held input.");
+                Assert.That(fixture.HasMovementIntent, Is.True);
+                Assert.That(InsideZone(1, new Vector2(205.1f, 10)), Is.False,
+                    "Authoritative snapshots keep the original Zone 1 bounds.");
+
+                var move = new object[] { (ushort)1, fixture.ServerPosition, fixture.InputTarget, Vector2.zero, (byte)0 };
+                Assert.That(Candidate(move), Is.True,
+                    "The boundary target remains eligible for the existing move request path.");
+                Assert.That((byte)move[4], Is.EqualTo(3));
+
+                fixture.Predict(Vector2.right, 0.05f);
+                Assert.That(fixture.InputTarget.x - fixture.ServerPosition.x, Is.EqualTo(0.6f).Within(0.0001f),
+                    "Boundary input retains the existing two-tick lead cap.");
+
+                fixture.AuthoritativeFullAt(205.1f);
+                Assert.That(fixture.Stage, Is.EqualTo("Failed"),
+                    "A server snapshot beyond the owner bounds is still rejected.");
+                Assert.That(fixture.ServerPosition.x, Is.EqualTo(204.8f).Within(0.0001f));
+            }
+        }
+
+        [Test]
+        [Category("MotionRevision")]
         [Category("PlayFeedbackRevision")]
         public void OwnFullAndDeltaKeepServerAuthorityWhileVisualPredictionReconcilesAndResets()
         {
@@ -149,17 +181,18 @@ namespace C02.Tests
             public Vector2 InputTarget => (Vector2)Get(screen, "inputTarget");
             public Vector2 VisualPosition => (Vector2)Get(screen, "visualPosition");
             public bool HasMovementIntent => (bool)Get(screen, "hasMovementIntent");
+            public string Stage => screen.Stage.ToString();
 
-            public void EnterWithOwnState()
+            public void EnterWithOwnState(float x = 10f, float y = 10f)
             {
                 var stage = typeof(C02WorldScreen).GetProperty("Stage");
                 stage.GetSetMethod(true).Invoke(screen, new[] { Enum.Parse(stage.PropertyType, "Entering") });
                 typeof(C02WorldScreen).GetProperty("SelectedCharacterID").GetSetMethod(true).Invoke(screen, new object[] { 42UL });
-                Invoke(screen, "ZoneReceived", (ushort)1, (ulong)0, (uint)73, 10f, 10f);
+                Invoke(screen, "ZoneReceived", (ushort)1, (ulong)0, (uint)73, x, y);
                 Invoke(screen, "FullReceived", (ushort)1, new[] { new FullStateField
                 {
                     zoneInternalID = 73, hp = 80, mp = 30, maxHp = 100, maxMp = 40,
-                    level = 5, dir = 3, x = 10f, y = 10f
+                    level = 5, dir = 3, x = x, y = y
                 }});
             }
 
@@ -175,6 +208,12 @@ namespace C02.Tests
                 }});
 
             public void CancelMovement() => screen.CancelMovement();
+
+            public void AuthoritativeFullAt(float x) => Invoke(screen, "FullReceived", (ushort)1, new[] { new FullStateField
+            {
+                zoneInternalID = 73, hp = 80, mp = 30, maxHp = 100, maxMp = 40,
+                level = 5, dir = 3, x = x, y = 10f
+            }});
 
             public void ResetWorld() => Invoke(screen, "ResetWorld");
 
@@ -197,5 +236,11 @@ namespace C02.Tests
             private static void Invoke(C02WorldScreen target, string name, params object[] args) =>
                 typeof(C02WorldScreen).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic).Invoke(target, args);
         }
+
+        private static bool InsideZone(ushort zone, Vector2 position) => (bool)typeof(C02WorldScreen)
+            .GetMethod("InsideZone", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, new object[] { zone, position });
+
+        private static bool Candidate(object[] args) => (bool)typeof(C02WorldScreen)
+            .GetMethod("TryMoveCandidate", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, args);
     }
 }

@@ -404,9 +404,7 @@ namespace C02.Tests
                 var modelType = typeof(IViewModelUI).Assembly.GetType("ClientCore.ViewModel", true);
                 var model = (IViewModelUI)Activator.CreateInstance(modelType, BindingFlags.Instance | BindingFlags.NonPublic, null,
                     new object[] { Network, data, new NullLogger(), new InlineDispatcher() }, null);
-                model.ZoneChange(0);
-                ((IViewModelNet)model).ZoneChageReceived(1, 1, 0, 1, 10, 10, 1);
-                ((IViewModelNet)model).FullReceived(1, 1, 1, new[] { new FullStateField { zoneInternalID = 1, hp = 100 } });
+                Set(model, "_worldReady", true);
                 client = new Initializer();
                 Set(client, "_viewModel", model);
                 Set(client, "_data", data);
@@ -489,9 +487,9 @@ namespace C02.Tests
             public void Chat(string message, byte scope, ulong targetId) { }
             public void Profiles(uint[] profileIds) { }
             public void RequestInventory() { }
-            public void Action(byte direction, float x, float y, byte skillSlot) { }
+            public void Action(byte direction, float x, float y, byte skillSlot, ulong ownershipEpoch) { }
             public void Pong(ulong serverTimeMs) { }
-            public void ZoneChange(byte op) { }
+            public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { }
             public void Log(string message) { }
         }
 

@@ -19,9 +19,9 @@ namespace C02.Tests
         public static string RunPureChecks()
         {
             var tests = new C08ZoneTransitionTests();
-            tests.ZoneTransitionButtonTargetsOnlyTheRealNeighborInsideTheSharedBoundary();
-            tests.TransitionRequestIsSingleAndRejectionRestoresConfirmedWorld();
-            tests.AcknowledgementKeepsActionsLockedUntilMatchingSelfFull();
+            tests.TransitionSignalNeedsNewOwnershipAndKeepsOldWorldUntilBaseline();
+            tests.StaleOrRejectedZoneResultLeavesConfirmedWorldUsable();
+            tests.AutomaticTransitionWaitsForBothBootstrapCategories();
             tests.TransitionTimeoutRequiresReconnect();
             tests.PendingInventoryReplyDuringTransitionIsSavedWithoutUnlockingBagInput();
             tests.FailedInventoryReplyDuringTransitionAllowsManualRetryAfterArrival();
@@ -29,46 +29,41 @@ namespace C02.Tests
         }
 
         [Test]
-        public void TransitionRequestIsSingleAndRejectionRestoresConfirmedWorld()
+        public void StaleOrRejectedZoneResultLeavesConfirmedWorldUsable()
         {
             using (var fixture = new InventoryFixture())
             {
-                int before = fixture.Network.ZoneOperations;
-                fixture.RequestTransition();
-                fixture.RequestTransition();
-                Assert.That(fixture.Network.ZoneOperations - before, Is.EqualTo(1));
-                Assert.That(fixture.Network.LastZoneOperation, Is.EqualTo(4));
-                Assert.That(fixture.World.Stage, Is.EqualTo(C02Stage.TransitionPending));
-                Assert.That(fixture.World.CanAct, Is.False);
-
-                ((IViewModelNet)fixture.Model).ZoneChageReceived(0, 0, 0, 0, 0, 0, 0);
+                ((IViewModelNet)fixture.Model).ZoneChageReceived(0, 0, 0, 0, 0, 0, 0, 0);
                 Assert.That(fixture.World.Stage, Is.EqualTo(C02Stage.InWorld));
                 Assert.That(fixture.World.ZoneID, Is.EqualTo(1));
                 Assert.That(fixture.World.InternalID, Is.EqualTo(11));
                 Assert.That(fixture.World.OwnFull.hp, Is.EqualTo(80));
                 Assert.That(fixture.World.OwnFull.mp, Is.EqualTo(70));
                 Assert.That(fixture.World.CanAct, Is.True);
+                Assert.That(fixture.Network.ZoneOperations, Is.Zero, "Live travel is initiated by movement, not a ZoneChange request.");
             }
         }
 
         [Test]
-        public void AcknowledgementKeepsActionsLockedUntilMatchingSelfFull()
+        public void AutomaticTransitionWaitsForBothBootstrapCategories()
         {
             using (var fixture = new InventoryFixture())
             {
-                fixture.RequestTransition();
-                ((IViewModelNet)fixture.Model).ZoneChageReceived(1, 2, 0, 12, 100, 50, 2);
+                fixture.BeginTransition();
                 Assert.That(fixture.World.Stage, Is.EqualTo(C02Stage.TransitionPending));
-                Assert.That(fixture.World.ZoneID, Is.EqualTo(2));
-                Assert.That(fixture.World.HasOwnFull, Is.False);
+                Assert.That(fixture.World.ZoneID, Is.EqualTo(1), "The last confirmed zone stays visible until the complete baseline arrives.");
+                Assert.That(fixture.World.InternalID, Is.EqualTo(11));
+                Assert.That(fixture.World.HasOwnFull, Is.True);
                 Assert.That(fixture.World.CanAct, Is.False);
 
-                ((IViewModelNet)fixture.Model).FullReceived(2, 2, 1,
-                    new[] { new FullStateField { zoneInternalID = 11, hp = 80, mp = 70, maxHp = 100, maxMp = 100, x = 100, y = 50 } });
-                Assert.That(fixture.World.CanAct, Is.False, "A different internal ID cannot unlock the new Zone.");
-                ((IViewModelNet)fixture.Model).FullReceived(2, 2, 1,
-                    new[] { new FullStateField { zoneInternalID = 12, hp = 75, mp = 65, maxHp = 100, maxMp = 100, x = 100, y = 50 } });
+                fixture.PlayerBootstrap();
+                Assert.That(fixture.World.Stage, Is.EqualTo(C02Stage.TransitionPending), "Player state alone does not complete the paired baseline.");
+                Assert.That(fixture.World.ZoneID, Is.EqualTo(1));
+                Assert.That(fixture.World.CanAct, Is.False);
+                fixture.MonsterBootstrap();
                 Assert.That(fixture.World.Stage, Is.EqualTo(C02Stage.InWorld));
+                Assert.That(fixture.World.ZoneID, Is.EqualTo(2));
+                Assert.That(fixture.World.InternalID, Is.EqualTo(12));
                 Assert.That(fixture.World.CanAct, Is.True);
                 Assert.That(fixture.World.OwnFull.hp, Is.EqualTo(75));
                 Assert.That(fixture.World.OwnFull.mp, Is.EqualTo(65));
@@ -80,7 +75,7 @@ namespace C02.Tests
         {
             using (var fixture = new InventoryFixture())
             {
-                fixture.RequestTransition();
+                fixture.BeginTransition();
                 SetPrivate(fixture.World, "transitionDeadline", Time.unscaledTimeAsDouble - 1);
                 typeof(C02WorldScreen).GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic)
                     .Invoke(fixture.World, null);
@@ -91,34 +86,18 @@ namespace C02.Tests
         }
 
         [Test]
-        public void ZoneTransitionButtonTargetsOnlyTheRealNeighborInsideTheSharedBoundary()
+        public void TransitionSignalNeedsNewOwnershipAndKeepsOldWorldUntilBaseline()
         {
-            AssertMapping(1, new Vector2(100, 50), true, 4, 2);
-            AssertMapping(2, new Vector2(100, 50), true, 3, 1);
-            AssertMapping(1, new Vector2(95, -5), true, 4, 2);
-            AssertMapping(2, new Vector2(105, 105), true, 3, 1);
-            AssertMapping(1, new Vector2(94.99f, 50), false, 0, 0);
-            AssertMapping(2, new Vector2(105.01f, 50), false, 0, 0);
-            AssertMapping(1, new Vector2(100, 105.01f), false, 0, 0);
-            AssertMapping(1, new Vector2(100, -5.01f), false, 0, 0);
-            AssertMapping(2, new Vector2(200, 50), true, 4, 3);
-            AssertMapping(3, new Vector2(200, 50), true, 3, 2);
-            AssertMapping(1, new Vector2(50, 100), true, 1, 4);
-            AssertMapping(4, new Vector2(50, 100), true, 2, 1);
-            AssertMapping(2, new Vector2(150, 100), true, 1, 5);
-            AssertMapping(3, new Vector2(300, 50), false, 0, 0);
-            AssertMapping(4, new Vector2(100, 150), true, 4, 5);
-            AssertMapping(5, new Vector2(200, 150), true, 4, 6);
-            AssertMapping(6, new Vector2(200, 150), true, 3, 5);
-            AssertMapping(3, new Vector2(250, 100), true, 1, 6);
-            AssertMapping(6, new Vector2(250, 100), true, 2, 3);
-            AssertMapping(6, new Vector2(250, 200), false, 0, 0);
-            AssertMapping(6, new Vector2(300, 150), false, 0, 0);
-            AssertMapping(7, new Vector2(50, 250), false, 0, 0);
-            AssertMapping(1, new Vector2(50, 94.99f), false, 0, 0);
-            AssertMapping(4, new Vector2(50, 105.01f), false, 0, 0);
-            AssertMapping(1, new Vector2(float.NaN, 50), false, 0, 0);
-            AssertMapping(2, new Vector2(100, float.PositiveInfinity), false, 0, 0);
+            using (var fixture = new InventoryFixture())
+            {
+                fixture.BeginTransition();
+                Assert.That(fixture.Network.LastActionEpoch, Is.EqualTo(1));
+                Assert.That(fixture.Network.ZoneOperations, Is.Zero);
+                Assert.That(fixture.World.Stage, Is.EqualTo(C02Stage.TransitionPending));
+                Assert.That(fixture.World.ZoneID, Is.EqualTo(1));
+                Assert.That(fixture.World.OwnFull.hp, Is.EqualTo(80));
+                Assert.That(fixture.World.CanAct, Is.False);
+            }
         }
 
         [Test]
@@ -166,17 +145,6 @@ namespace C02.Tests
                 fixture.Refresh.onClick.Invoke();
                 Assert.That(fixture.Network.Requests, Is.EqualTo(2));
             }
-        }
-
-        private static void AssertMapping(ushort zone, Vector2 position, bool expected, byte operation, ushort targetZone)
-        {
-            var args = new object[] { zone, position, (byte)0, (ushort)0 };
-            bool available = (bool)typeof(C02WorldScreen)
-                .GetMethod("TryNearbyZoneChange", BindingFlags.Static | BindingFlags.NonPublic)
-                .Invoke(null, args);
-            Assert.That(available, Is.EqualTo(expected), $"Zone {zone} at {position} transition eligibility.");
-            Assert.That((byte)args[2], Is.EqualTo(operation));
-            Assert.That((ushort)args[3], Is.EqualTo(targetZone));
         }
 
         private sealed class InventoryFixture : IDisposable
@@ -256,16 +224,16 @@ namespace C02.Tests
                     BindingFlags.Instance | BindingFlags.NonPublic, null,
                     new object[] { Network, viewData, new NullLogger(), new InlineDispatcher() }, null);
                 SetPrivate(model, "_worldReady", true);
+                SetPrivate(model, "_zoneID", (ushort)1);
+                SetPrivate(model, "_zoneGeneration", 1UL);
+                SetPrivate(model, "_ownershipEpoch", 1UL);
+                SetPrivate(model, "_zoneInternalID", 11U);
+                ((IViewDataModel)viewData).SetOwnershipEpoch(1);
+                ((IViewDataModel)viewData).SetPosition(100, 50);
                 var initializer = new Initializer();
                 SetPrivate(initializer, "_viewModel", model);
                 SetPrivate(initializer, "_data", viewData);
                 SetPrivate(Login, "client", initializer);
-                model.ZoneChange(0);
-                ((IViewModelNet)model).ZoneChageReceived(1, 1, 1, 11, 100, 50, 1);
-                ((IViewModelNet)model).FullReceived(1, 1, 1, new[]
-                {
-                    new FullStateField { zoneInternalID = 11, hp = 80, mp = 70, maxHp = 100, maxMp = 100, x = 100, y = 50 }
-                });
                 root.SetActive(true);
                 Arrive();
             }
@@ -273,20 +241,21 @@ namespace C02.Tests
             public void OpenBag() => Bag.onClick.Invoke();
             public void BeginTransition()
             {
-                RequestTransition();
+                ((IViewDataUI)viewData).UpdateMove(3, 101, 50);
+                ((IViewModelTick)model).SendUpdate();
+                ((IViewModelNet)model).ZoneChageReceived(1, 2, 500, 12, 205, 50, 2, 2);
             }
-            public void RequestTransition() => typeof(C02WorldScreen)
-                .GetMethod("RequestNearbyZoneChange", BindingFlags.Instance | BindingFlags.NonPublic)
-                .Invoke(World, null);
+            public void PlayerBootstrap() => ((IViewModelNet)model).FullReceived(2, 2, 2, 2, true, 1, new[]
+            {
+                new FullStateField { zoneInternalID = 12, hp = 75, mp = 65, maxHp = 100, maxMp = 100, x = 205, y = 50 }
+            });
+            public void MonsterBootstrap() => ((IViewModelNet)model).MonsterFullReceived(2, 2, 2, 2, true, 0, Array.Empty<MonsterFullField>());
             public void Arrive()
             {
                 if (World.Stage == C02Stage.TransitionPending)
                 {
-                    ((IViewModelNet)model).ZoneChageReceived(1, 2, 0, 12, 100, 50, 2);
-                    ((IViewModelNet)model).FullReceived(2, 2, 1, new[]
-                    {
-                        new FullStateField { zoneInternalID = 12, hp = 80, mp = 70, maxHp = 100, maxMp = 100, x = 100, y = 50 }
-                    });
+                    PlayerBootstrap();
+                    MonsterBootstrap();
                     return;
                 }
                 SetPrivateProperty(World, "Stage", C02Stage.InWorld);
@@ -353,6 +322,7 @@ namespace C02.Tests
             public int Requests;
             public int ZoneOperations;
             public byte LastZoneOperation;
+            public ulong LastActionEpoch;
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void CharacterList() { }
             public void Enter(ulong charID) { }
@@ -363,9 +333,9 @@ namespace C02.Tests
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() => Requests++;
-            public void Action(byte dir, float x, float y, byte skillSlot) { }
+            public void Action(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch) => LastActionEpoch = ownershipEpoch;
             public void Pong(ulong serverTimeMs) { }
-            public void ZoneChange(byte op) { ZoneOperations++; LastZoneOperation = op; }
+            public void ZoneChange(byte op) { ZoneOperations++; LastZoneOperation = op; } public void ZoneResync(ulong ownershipEpoch) { }
             public void Log(string message) { }
         }
     }

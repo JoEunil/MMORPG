@@ -18,6 +18,7 @@ namespace ClientCore
         public float x, y;   // 클라이언트가 로컬로 이동한 뒤의 최종 좌표
         public bool dirty;
         public byte waitSkillSlot;
+        public ulong ownershipEpoch;
     }
     public struct CharacterInfoView
     {
@@ -76,6 +77,7 @@ public struct InventoryItemView
         event Action<byte, uint, uint, uint> OnBazaarCheckOutboxReceived;
         event Action<ulong, byte> OnBazaarCancelListingReceived;
         event Action<ushort, ulong, uint, float, float> OnZoneChageReceived;
+        event Action<ulong, ushort> OnZoneTransitionStarted;
         event Action<ushort, DeltaUpdateField[]> OnDeltaReceived;
         event Action<ushort, FullStateField[]> OnFullReceived;
         event Action<ushort, MonsterDeltaField[]> OnMonsterDeltaReceived;
@@ -114,11 +116,11 @@ public struct InventoryItemView
         void BazaarBuyReceived(uint requestID, ulong listingID, byte status, uint itemID, uint quantity, ulong diamondSpent);
         void BazaarCheckOutboxReceived(uint requestID, byte status, uint delivered, uint duplicated, uint blocked);
         void BazaarCancelListingReceived(uint requestID, ulong listingID, byte status);
-        void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y, ulong generation);
+        void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y, ulong generation, ulong ownershipEpoch);
         void DeltaReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.DeltaUpdateField[] updates);
-        void FullReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.FullStateField[] states);
+        void FullReceived(ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, ushort count, PacketHelper.FullStateField[] states);
         void MonsterDeltaReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.MonsterDeltaField[] updates);
-        void MonsterFullReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.MonsterFullField[] states);
+        void MonsterFullReceived(ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, ushort count, PacketHelper.MonsterFullField[] states);
         void ActionResultReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.ActionResultField[] states);
         void PingReceived(ulong servertimeMs, ulong rtt);
         void Error(string msg);
@@ -134,7 +136,9 @@ public struct InventoryItemView
     {
         long GetServerTimeMs();
         void UpdateServerTime(long serverTime);
-        (bool, byte, float, float, byte) GetActionState();
+        (bool, byte, float, float, byte, ulong) GetActionState();
+        void SetOwnershipEpoch(ulong ownershipEpoch);
+        void CancelAction();
         void SetPosition(float x, float y);
         void SetCharList(ushort count, CharacterInfo[] chars);
         void SetInventory(InventoryItem[] items);
@@ -175,9 +179,9 @@ namespace ClientCore.Network
     {
         void HandleZoneChangeRes(PacketHelper.STPacket<PacketHelper.ZoneChangeResponseBody> packet);
         void HandleDeltaUpdate((ushort count, ushort zoneID, ulong generation, DeltaUpdateField[] items) res);
-        void HandleFullState((ushort count, ushort zoneID, ulong generation, FullStateField[] items) res);
+        void HandleFullState((ushort count, ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, FullStateField[] items) res);
         void HandleMonsterDelta((ushort count, ushort zoneID, ulong generation, MonsterDeltaField[] items) res);
-        void HandleMonsterFull((ushort count, ushort zoneID, ulong generation, MonsterFullField[] items) res);
+        void HandleMonsterFull((ushort count, ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, MonsterFullField[] items) res);
         void HandleActionReult((ushort count, ushort zoneID, ulong generation, ActionResultField[] items) res);
     }
 }
@@ -199,9 +203,10 @@ namespace ClientCore.Services
         void RequestBazaarBuy(uint requestID, ulong listingID);
         void RequestBazaarCheckOutbox(uint requestID);
         void RequestBazaarCancelListing(uint requestID, ulong listingID);
-        void Action(byte dir, float x, float y, byte skillSlot);
+        void Action(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch);
         void Pong(ulong serverTimeMs);
         void ZoneChange(byte op);
+        void ZoneResync(ulong ownershipEpoch);
         void Log(string msg);
     }
 }

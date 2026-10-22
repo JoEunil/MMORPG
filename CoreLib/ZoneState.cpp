@@ -119,6 +119,22 @@ namespace Core {
         m_InternalIDToIndex.erase(id);
     }
 
+    void ZoneState::RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint16_t dirtyBit) {
+        auto it = m_sessionToIndex.find(sessionID);
+        if (it == m_sessionToIndex.end()) return;
+        auto& character = m_chars[it->second];
+        if (character.x != x || character.y != y) {
+            RemoveFromCell(character);
+            character.x = x;
+            character.y = y;
+            auto [cellX, cellY] = GetCell(x, y, m_area);
+            AddToCell(character, static_cast<uint8_t>(cellX), static_cast<uint8_t>(cellY));
+        }
+        character.dir = dir;
+        character.moveBudget = moveBudget;
+        character.dirtyBit = dirtyBit;
+    }
+
     bool ZoneState::EmigrateChar(uint64_t sessionID, CharacterState& out) {
         std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_sessionToIndex.find(sessionID);

@@ -1,5 +1,6 @@
 ﻿using ClientCore;
 using ClientCore.Network;
+using ClientCore.PacketHelper;
 using ClientCore.Services;
 using System;
 using System.Collections.Generic;
@@ -24,11 +25,15 @@ static class Program
             return null;
         return sessions[index]?.GetSocket();
     }
-    static public void SetSessionPosition(int index, float x, float y)
+    static public ClientSession? GetSession(int index)
     {
-        if (index < 0 || index >= sessions.Length)
-            return;
-        sessions[index]?.SetPosition(x, y);
+        if (index < 0 || index >= sessions.Length) return null;
+        return sessions[index];
+    }
+    static public void CountReady(int index, ClientSession session)
+    {
+        if (ReferenceEquals(GetSession(index), session) && session.TryMarkReadyCounted())
+            Interlocked.Increment(ref _ready);
     }
     static public void Initialize(int count)
     {
@@ -97,10 +102,6 @@ static class Program
         await Task.WhenAll(tasks);
         Console.WriteLine("connect ");
     }
-    static public void Ready()
-    {
-        Interlocked.Increment(ref _ready);
-    }
     static public void StartAction()
     {
         int last = -1, stable = 0;
@@ -114,10 +115,8 @@ static class Program
             Thread.Sleep(1000);
         }
     }
-    // 서버 틱당 이동 예산(MOVE_BUDGET_PER_TICK = 1.0)의 절반만 쓴다. Unity 클라이언트와 같은 속도다.
-    // 예산과 동일하게 맞추면 부하 상황에서 서버 틱이 밀릴 때
-    // 정상 이동이 거부되고 치트 카운트가 쌓여 세션이 끊긴다.
-    private const float MOVE_STEP = 0.5f;
+    // Keep simulator requests below the server's per-tick movement budget.
+    private const float MOVE_STEP = 0.2f;
 
     static public void Action()
     {
@@ -136,24 +135,123 @@ static class Program
             if (session == null)
                 continue;
             alive++;
+            long now = Environment.TickCount64;
+            byte[]? resync = session.BuildBootstrapResyncPacket(now);
+            if (resync != null)
+                _ = SendPacketAsync(session, resync, idx);
+            if (session.TakeBootstrapFailureReport(now))
+                Console.Error.WriteLine($"bootstrap failed after 3 resync attempts for session {idx + 1}; actions remain disabled");
             byte[] pkt = session.BuildMovePacket(dir, MOVE_STEP);
             if (pkt == null)
                 continue; // 아직 시작 좌표를 못 받은 세션
-            _ = SendActionAsync(session.GetSocket(), pkt, idx);
+            _ = SendActionAsync(session, pkt, idx);
         }
         _count = alive;
     }
-    static async Task SendActionAsync(TCPSocket sock, byte[] pkt, int idx)
+    static async Task SendActionAsync(ClientSession session, byte[] pkt, int idx)
     {
+        var sock = session.GetSocket();
         // 하나 끊겨도 전체는 계속. 죽은 슬롯만 비우고 소켓 정리.
         if (!await _network.SendPacket(sock, pkt))
         {
-            sessions[idx] = null;
+            if (ReferenceEquals(sessions[idx], session)) sessions[idx] = null;
             sock.Close();
         }
     }
-    static async Task Main(string[] args)
+    static async Task SendPacketAsync(ClientSession session, byte[] pkt, int idx)
     {
+        var sock = session.GetSocket();
+        if (!await _network.SendPacket(sock, pkt))
+        {
+            if (ReferenceEquals(sessions[idx], session)) sessions[idx] = null;
+            sock.Close();
+        }
+    }
+    private static void RunProtocolSelfTest()
+    {
+        static void Require(bool condition, string name)
+        {
+            if (!condition) throw new InvalidOperationException("protocol self-test failed: " + name);
+        }
+
+        const ulong epoch = 0x0102030405060708;
+        var fast = PacketBuilder.CreateActionPacketFast(3, 12.5f, -4.25f, Config.NONE_SKILL, epoch);
+        var marshalled = PacketBuilder.CreateActionPacket(3, 12.5f, -4.25f, Config.NONE_SKILL, epoch);
+        Require(fast.Length == 26 && marshalled.Length == 26 && fast.AsSpan().SequenceEqual(marshalled), "both action builders emit the 26-byte epoch frame");
+        Require(BitConverter.ToUInt64(fast, 18) == epoch, "action epoch offset");
+        Require(Handler.ShouldHandle((byte)OP_CODE.ZONE_FULL_STATE_BROADCAST, Config.FLAG_SIMULATION) &&
+            Handler.ShouldHandle((byte)OP_CODE.ZONE_DELTA_UPDATE_BROADCAST, Config.FLAG_SIMULATION), "snapshot frames pass the receive filter");
+
+        var session = new ClientSession(new TCPSocket(0));
+        session.SetZoneOwnership(1, 10, 20, 77, 8, 9);
+        session.ObservePlayerFull(1, 10, 19, 300, true, true, 30, 40);
+        session.ObserveMonsterFull(1, 10, 19, 300, true);
+        Require(session.BuildMovePacket(3, MOVE_STEP) == null, "old ownership bootstrap cannot enable actions");
+        session.ObservePlayerFull(1, 10, 20, 301, false, true, 30, 40);
+        session.ObservePlayerFull(1, 10, 20, 301, true, false, 0, 0);
+        session.ObserveMonsterFull(1, 10, 20, 302, true);
+        Require(session.BuildMovePacket(3, MOVE_STEP) == null, "different bootstrap IDs cannot complete the pair");
+        session.ObservePlayerFull(1, 10, 20, 302, true, true, 30, 40);
+        session.ObserveMonsterFull(1, 10, 20, 302, true); // Empty monster snapshots are valid.
+        Require(session.BuildMovePacket(3, MOVE_STEP) != null, "matching player and empty-monster bootstrap enables actions");
+
+        session.SetZoneOwnership(2, 11, 21, 78, 50, 6);
+        session.SetZoneOwnership(1, 10, 20, 77, 999, 999);
+        Require(session.OwnZoneInternalID == 78, "old zone ownership acknowledgement cannot replace the current binding");
+        Require(session.BuildMovePacket(3, MOVE_STEP) == null, "zone transition disables actions until its new bootstrap");
+        session.ObservePlayerFull(1, 10, 20, 301, true, true, 999, 999);
+        session.ObservePlayerFull(2, 11, 21, 400, true, true, 51, 7);
+        session.ObserveMonsterFull(2, 11, 21, 400, true);
+        session.ObserveDelta(2, 10, 78, 800, 800);
+        session.ObserveDelta(2, 12, 78, 52, 8.5f);
+        session.ObserveDelta(2, 11, 78, 999, 999);
+        var moved = session.BuildMovePacket(3, MOVE_STEP)!;
+        Require(Math.Abs(BitConverter.ToSingle(moved, 9) - 52.2f) < 0.001f && Math.Abs(BitConverter.ToSingle(moved, 13) - 8.5f) < 0.001f,
+            "newer generation delta rebases movement while stale generation is ignored");
+
+        var ack = new byte[47];
+        BitConverter.TryWriteBytes(ack.AsSpan(0), Config.MAGIC);
+        BitConverter.TryWriteBytes(ack.AsSpan(2), 47u);
+        ack[6] = (byte)OP_CODE.ZONE_CHANGE_RESPONSE;
+        ack[7] = Config.FLAG_SIMULATION;
+        ack[8] = 1;
+        BitConverter.TryWriteBytes(ack.AsSpan(9), (ushort)2);
+        BitConverter.TryWriteBytes(ack.AsSpan(11), 900ul);
+        BitConverter.TryWriteBytes(ack.AsSpan(19), 78u);
+        BitConverter.TryWriteBytes(ack.AsSpan(23), 52f);
+        BitConverter.TryWriteBytes(ack.AsSpan(27), 8f);
+        BitConverter.TryWriteBytes(ack.AsSpan(31), 11ul);
+        BitConverter.TryWriteBytes(ack.AsSpan(39), 21ul);
+        var ackHeader = Packet.ExtractHeader(ack);
+        Require(Packet.DeserializeZoneChange(ackHeader, ack).body.ownershipEpoch == 21, "zone acknowledgement decodes generation and epoch");
+
+        Initialize(1);
+        var currentSession = GetSession(0)!;
+        currentSession.SetZoneOwnership(1, 10, 20, 90, 8, 9);
+        var capturedOldSession = new ClientSession(new TCPSocket(0));
+        capturedOldSession.SetZoneOwnership(1, 10, 19, 77, 8, 9);
+        new Handler().HandleResponse(0, capturedOldSession, ack);
+        Require(currentSession.OwnZoneInternalID == 90 && capturedOldSession.OwnZoneInternalID == 78,
+            "response captured by a replaced session cannot mutate the current slot");
+
+        bool rejectedShortAck = false;
+        try { Packet.DeserializeZoneChange(ackHeader, ack[..^1]); }
+        catch (ArgumentException) { rejectedShortAck = true; }
+        Require(rejectedShortAck, "invalid acknowledgement length is rejected");
+        Console.WriteLine("protocol self-test: PASS (action frames, bootstrap pair/epoch, authoritative movement, replaced-session isolation, invalid length)");
+    }
+    static async Task<int> Main(string[] args)
+    {
+        if (args.Length != 0)
+        {
+            if (args.Length == 1 && args[0] == "--protocol-self-test")
+            {
+                RunProtocolSelfTest();
+                return 0;
+            }
+            Console.Error.WriteLine("Usage: DummyClients [--protocol-self-test]");
+            return 2;
+        }
         // 하이브리드 CPU: P코어(논리 0~11)에만 배치 → tick/수신 continuation이 E코어로 강등돼 stall하는 것 방지.
         try
         {

@@ -76,7 +76,6 @@ namespace C02
             disconnectButton.onClick.AddListener(Disconnect);
             if (zoneTransitionButton != null)
             {
-                zoneTransitionButton.onClick.AddListener(RequestNearbyZoneChange);
                 zoneTransitionButton.gameObject.SetActive(false);
             }
             loginScreen.ClientChanged += ChangeClient;
@@ -98,6 +97,7 @@ namespace C02
             if (model == null) return;
             model.OnEnterSuccess += EnterReceived;
             model.OnZoneChageReceived += ZoneReceived;
+            model.OnZoneTransitionStarted += ZoneTransitionStarted;
             model.OnZoneChageFailed += ZoneFailed;
             model.OnFullReceived += FullReceived;
             model.OnDeltaReceived += DeltaReceived;
@@ -109,6 +109,7 @@ namespace C02
             {
                 model.OnEnterSuccess -= EnterReceived;
                 model.OnZoneChageReceived -= ZoneReceived;
+                model.OnZoneTransitionStarted -= ZoneTransitionStarted;
                 model.OnZoneChageFailed -= ZoneFailed;
                 model.OnFullReceived -= FullReceived;
                 model.OnDeltaReceived -= DeltaReceived;
@@ -427,7 +428,7 @@ namespace C02
                     ? ServerPosition + direction.normalized * (MovementUnitsPerSecond * (float)MovementIntervalSeconds)
                     : inputTarget + direction.normalized * step;
                 target = ServerPosition + Vector2.ClampMagnitude(target - ServerPosition, MaximumInputLead);
-                if (InsideZone(ZoneID, target) && (worldMap == null ||
+                if (InsideZoneBounds(ZoneID, target, MaximumInputLead) && (worldMap == null ||
                     worldMap.CanTraverse(inputTarget, target) && worldMap.CanTraverse(ServerPosition, target)))
                     inputTarget = target;
                 else
@@ -490,18 +491,21 @@ namespace C02
         }
 
         private static bool InsideZone(ushort zone, Vector2 position)
+            => InsideZoneBounds(zone, position, 0);
+
+        private static bool InsideZoneBounds(ushort zone, Vector2 position, float extraMargin)
         {
             if (zone < 1 || zone > 6 || !Finite(position.x) || !Finite(position.y)) return false;
             int column = (zone - 1) % 3, row = (zone - 1) / 3;
-            return position.x >= column * C20WorldMap.ZoneSize - 5 && position.x <= (column + 1) * C20WorldMap.ZoneSize + 5 &&
-                position.y >= row * C20WorldMap.ZoneSize - 5 && position.y <= (row + 1) * C20WorldMap.ZoneSize + 5;
+            return position.x >= column * C20WorldMap.ZoneSize - 5 - extraMargin && position.x <= (column + 1) * C20WorldMap.ZoneSize + 5 + extraMargin &&
+                position.y >= row * C20WorldMap.ZoneSize - 5 - extraMargin && position.y <= (row + 1) * C20WorldMap.ZoneSize + 5 + extraMargin;
         }
 
         private static bool TryMoveCandidate(ushort zone, Vector2 origin, Vector2 target, out Vector2 candidate, out byte direction)
         {
             candidate = origin;
             direction = 0;
-            if (!InsideZone(zone, origin) || !InsideZone(zone, target)) return false;
+            if (!InsideZone(zone, origin) || !InsideZoneBounds(zone, target, MaximumInputLead)) return false;
             Vector2 delta = target - origin;
             float distance = delta.magnitude;
             if (distance <= 0.05f) return false;
@@ -531,21 +535,21 @@ namespace C02
 
         private void OnApplicationFocus(bool focused) { if (!focused) CancelMovement(); }
 
-        private void RequestNearbyZoneChange()
+        private void ZoneTransitionStarted(ulong ownershipEpoch, ushort targetZone)
         {
-            if (!CanAct || model == null || loginScreen.Data == null ||
-                !TryNearbyZoneChange(ZoneID, ServerPosition, out var operation, out var targetZone)) return;
-
+            if ((Stage != C02Stage.InWorld && Stage != C02Stage.TransitionPending) || !HasOwnFull) return;
+            if (targetZone == 0 || targetZone > 6)
+            { RequireReconnect("The server returned an unsupported area. Disconnect and reconnect."); return; }
             StopActions();
+            ActorMotion?.ResetPose();
             transitionTargetZone = targetZone;
             transitionDeadline = Time.unscaledTimeAsDouble + ZoneTransitionTimeoutSeconds;
             Stage = C02Stage.TransitionPending;
             worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
-                "Travelling to area {0}…\nMovement and skills will resume on arrival.", targetZone);
+                "Travelling to area {0}…\nWaiting for the complete server state.", targetZone);
+            // Keep the previous field and actors visible until the paired baseline is ready.
             UpdateZoneTransitionButton();
             WorldStateChanged?.Invoke();
-            try { model.ZoneChange(operation); }
-            catch (Exception) { ZoneFailed(); }
         }
 
         private void RequireReconnect(string message)
@@ -560,31 +564,8 @@ namespace C02
 
         private void UpdateZoneTransitionButton()
         {
-            if (zoneTransitionButton == null) return;
-            ushort targetZone = 0;
-            bool available = CanAct && TryNearbyZoneChange(ZoneID, ServerPosition, out _, out targetZone);
-            zoneTransitionButton.gameObject.SetActive(available);
-            zoneTransitionButton.interactable = available;
-            if (available && zoneTransitionButton.GetComponentInChildren<TMP_Text>(true) is TMP_Text label)
-                label.text = "TRAVEL TO AREA " + targetZone.ToString(CultureInfo.InvariantCulture);
-        }
-
-        private static bool TryNearbyZoneChange(ushort zone, Vector2 position, out byte operation, out ushort targetZone)
-        {
-            operation = 0;
-            targetZone = 0;
-            if (!InsideZone(zone, position)) return false;
-            int column = (zone - 1) % 3;
-            // Match StateManager's three-column, two-row layout.
-            if (column < 2 && InsideZone((ushort)(zone + 1), position))
-            { operation = 4; targetZone = (ushort)(zone + 1); return true; }
-            if (column > 0 && InsideZone((ushort)(zone - 1), position))
-            { operation = 3; targetZone = (ushort)(zone - 1); return true; }
-            if (InsideZone((ushort)(zone + 3), position))
-            { operation = 1; targetZone = (ushort)(zone + 3); return true; }
-            if (zone > 3 && InsideZone((ushort)(zone - 3), position))
-            { operation = 2; targetZone = (ushort)(zone - 3); return true; }
-            return false;
+            // The server decides ownership from validated movement; there is no manual travel request.
+            if (zoneTransitionButton != null) zoneTransitionButton.gameObject.SetActive(false);
         }
 
         private void PlaceFieldForZone()
@@ -663,7 +644,6 @@ namespace C02
             }
             if (enterButton != null) enterButton.onClick.RemoveListener(EnterSelected);
             if (disconnectButton != null) disconnectButton.onClick.RemoveListener(Disconnect);
-            if (zoneTransitionButton != null) zoneTransitionButton.onClick.RemoveListener(RequestNearbyZoneChange);
             if (zoneTransitionButton != null) zoneTransitionButton.gameObject.SetActive(false);
             foreach (var choice in characterChoices)
                 if (choice != null) choice.onClick.RemoveAllListeners();

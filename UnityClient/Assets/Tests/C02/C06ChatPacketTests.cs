@@ -103,7 +103,7 @@ namespace C02.Tests
                 f.Expire();
                 f.Model.ChatReceived(new Packet.Message { senderID = 123, senderProfileId = 7 }); f.Drain();
                 Assert.That(f.Network.Requests.Count, Is.EqualTo(1));
-                f.Model.FullReceived(1, 1, 1, new[] { new FullStateField { zoneInternalID = 8, profileId = 7, profileVersion = 1 } }); f.Drain();
+                f.Model.FullReceived(1, 1, 0, 0, false, 1, new[] { new FullStateField { zoneInternalID = 8, profileId = 7, profileVersion = 1 } }); f.Drain();
                 Assert.That(f.Network.Requests.Count, Is.EqualTo(2));
                 f.Model.ProfilesReceived(new[] { new ProfileEntry { profileId = 7, version = 1, name = "Actual" } }); f.Drain();
                 f.Model.ChatReceived(new Packet.Message { senderID = 123, senderProfileId = 7 }); f.Drain(); Assert.That(name, Is.EqualTo("Actual"));
@@ -114,7 +114,7 @@ namespace C02.Tests
             using (var f = new Fixture())
             {
                 string name = null; f.Model.OnChatReceived += (_, _, n, _) => name = n;
-                f.Model.FullReceived(1, 1, 1, new[] { new FullStateField { zoneInternalID = 8, profileId = 7, profileVersion = 1 } }); f.Drain();
+                f.Model.FullReceived(1, 1, 0, 0, false, 1, new[] { new FullStateField { zoneInternalID = 8, profileId = 7, profileVersion = 1 } }); f.Drain();
                 f.Model.ProfilesReceived(new[] { new ProfileEntry { profileId = 7, version = 1, name = "First" } }); f.Drain();
                 f.Model.DeltaReceived(1, 1, 1, new[] { new DeltaUpdateField { zoneInternalID = 8, fieldID = 9, fieldVal = 3 } }); f.Drain();
                 f.Model.ProfilesReceived(new[] { new ProfileEntry { profileId = 7, version = 2, name = "Late" } }); f.Drain();
@@ -131,7 +131,7 @@ namespace C02.Tests
             using (var f = new Fixture())
             {
                 var states = Enumerable.Range(1, 51).Select(i => new FullStateField { zoneInternalID = (uint)i, profileId = (uint)i, profileVersion = 1 }).ToArray();
-                f.Model.FullReceived(1, 1, 51, states); f.Drain(); Assert.That(f.Network.Requests[0].Length, Is.EqualTo(50));
+                f.Model.FullReceived(1, 1, 0, 0, false, 51, states); f.Drain(); Assert.That(f.Network.Requests[0].Length, Is.EqualTo(50));
                 f.Model.ProfilesReceived(Array.Empty<ProfileEntry>()); f.Drain(); f.Expire();
                 f.Model.ChatReceived(new Packet.Message { senderID = 3, senderProfileId = 1 }); f.Drain();
                 Assert.That(f.Network.Requests[1], Is.EqualTo(new uint[] { 51 }));
@@ -148,7 +148,7 @@ namespace C02.Tests
         {
             using (var f = new Fixture())
             {
-                f.Model.FullReceived(1, 1, 1, new[] { new FullStateField { zoneInternalID = 8, profileId = 7, profileVersion = 1 } }); f.Drain();
+                f.Model.FullReceived(1, 1, 0, 0, false, 1, new[] { new FullStateField { zoneInternalID = 8, profileId = 7, profileVersion = 1 } }); f.Drain();
                 f.Expire();
                 f.Model.DeltaReceived(1, 1, 1, new[] { new DeltaUpdateField { zoneInternalID = 8, fieldID = 9, fieldVal = 2 } }); f.Drain();
                 Assert.That(f.Network.Requests.Count, Is.EqualTo(2));
@@ -187,7 +187,7 @@ namespace C02.Tests
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() { } public void Profiles(uint[] ids) => Requests.Add(ids);
-            public Task Connect(string address, int port) => Task.CompletedTask; public void CharacterList() { } public void Enter(ulong id) { } public void Chat(string message, byte scope, ulong target) { } public void Action(byte dir, float x, float y, byte slot) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void Log(string message) { }
+            public Task Connect(string address, int port) => Task.CompletedTask; public void CharacterList() { } public void Enter(ulong id) { } public void Chat(string message, byte scope, ulong target) { } public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void Log(string message) { }
         }
     }
 }

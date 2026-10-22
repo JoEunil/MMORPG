@@ -20,6 +20,7 @@
 #include <CoreLib/MessagePool.h>
 #include <CoreLib/MessageQueueHandler.h>
 #include <CoreLib/NonZoneThreadPool.h>
+#include <CoreLib/BroadcastThreadPool.h>
 #include <CoreLib/PacketWriter.h>
 #include <CoreLib/PacketTypes.h>
 #include <CoreLib/StateManager.h>
@@ -260,6 +261,8 @@ namespace Core {
         ControlledAuth auth;
         TestPacketPool packetPool;
         PacketWriter writer;
+        BroadcastThreadPool broadcast;
+        CorePerfCollector broadcastPerf;
         RecordingIOCP iocp;
         LobbyZone lobby;
         MessagePool messages;
@@ -271,6 +274,7 @@ namespace Core {
         std::unique_ptr<ChatThreadPool> transitionChat;
 
         void SetUp() override {
+            broadcastPerf.Initialize();
             state->lobbyZone = &lobby; // Only the zone0 dependency; no Zone/topology initialization.
             lobby.Initialize(state.get());
             writer.Initialize(&packetPool, &packetPool, &packetPool);
@@ -295,6 +299,12 @@ namespace Core {
         void TearDown() override {
             auth.Open();
             StopWorker();
+            broadcast.Stop();
+        }
+        BroadcastThreadPool::BroadcastWorkPtr PopBroadcastWork() {
+            BroadcastThreadPool::BroadcastWorkPtr work;
+            EXPECT_TRUE(broadcast.m_workQ.pop(work));
+            return work;
         }
         CountedView& Enqueue(uint64_t id = 42, uint64_t userID = 6982) {
             views.push_back(std::make_unique<CountedView>(id));
@@ -315,6 +325,10 @@ namespace Core {
         }
         void ResetZones() { state->m_states.clear(); }
         void PrepareZones() {
+            broadcast.Initialize(&iocp, state.get(), &broadcastPerf, &writer);
+            broadcast.m_running.store(true, std::memory_order_relaxed);
+            ZoneState::Initialize(&broadcast, &writer, state.get(), &broadcastPerf);
+            state->iocp = &iocp;
             transitionChat = std::make_unique<ChatThreadPool>();
             state->chat = transitionChat.get();
             state->mq = &loads;
@@ -351,6 +365,16 @@ namespace Core {
             std::lock_guard lock(z->m_mutex);
             return z->m_generation;
         }
+        uint64_t OwnershipEpoch(uint64_t sessionID = 42) {
+            auto& shard = state->m_shards[sessionID & SHARD_SIZE_MASK];
+            std::shared_lock lock(shard.smutex);
+            return shard.sessionMap.at(sessionID).ownershipEpoch;
+        }
+        uint64_t BootstrapSequence(uint64_t sessionID = 42) {
+            auto& shard = state->m_shards[sessionID & SHARD_SIZE_MASK];
+            std::shared_lock lock(shard.smutex);
+            return shard.sessionMap.at(sessionID).bootstrapSequence;
+        }
         size_t Characters(uint16_t zone) {
             auto* z = state->GetZone(zone);
             std::lock_guard lock(z->m_mutex);
@@ -362,6 +386,11 @@ namespace Core {
             auto& character = z->m_chars.at(z->m_sessionToIndex.at(session));
             character.x = x;
             character.y = y;
+        }
+        void SetMoveBudget(uint16_t zone, float budget, uint64_t session = 42) {
+            auto* z = state->GetZone(zone);
+            std::lock_guard lock(z->m_mutex);
+            z->m_chars.at(z->m_sessionToIndex.at(session)).moveBudget = budget;
         }
         void ExhaustDestination(uint16_t zone, int kind) {
             auto* z = state->GetZone(zone);
@@ -796,10 +825,10 @@ namespace Core {
         }
     }
     TEST_F(NonZoneThreadPoolFixture, ZoneWireCarriesStampAndChunkCountWithoutLeakingFailedAck) {
-        static_assert(sizeof(PacketStruct<ZoneChangeResponseBody>) == 39);
-        static_assert(offsetof(FullSnapshotBody, states) == 12);
+        static_assert(sizeof(PacketStruct<ZoneChangeResponseBody>) == 47);
+        static_assert(offsetof(FullSnapshotBody, states) == 29);
         static_assert(offsetof(DeltaSnapshotBody, updates) == 12);
-        static_assert(offsetof(MonsterFullSnapshotBody, states) == 12);
+        static_assert(offsetof(MonsterFullSnapshotBody, states) == 29);
         static_assert(offsetof(MonsterDeltaSnapshotBody, updates) == 12);
         static_assert(offsetof(ActionResultBody, actions) == 12);
         const uint64_t generation = 0x123456789ABCDEF0ULL;
@@ -811,63 +840,101 @@ namespace Core {
         const uint8_t opcodes[] = {7, 8, 9, 10, 12};
         for (size_t i = 0; i < std::size(packets); ++i) {
             ASSERT_NE(packets[i], nullptr);
-            ASSERT_EQ(packets[i]->GetLength(), 20);
+            const size_t baseLength = i == 0 || i == 2 ? 37 : 20;
+            ASSERT_EQ(packets[i]->GetLength(), baseLength);
             auto* header = parseHeader(packets[i]->GetBuffer());
             EXPECT_EQ(header->opcode, opcodes[i]);
             EXPECT_EQ(header->flags, FLAG_SIMULATION);
             writer.AddChunk(packets[i], 86, 2);
             auto* body = parseBody<FullSnapshotBody>(packets[i]->GetBuffer());
-            EXPECT_EQ(header->length, 106);
+            EXPECT_EQ(header->length, baseLength + 86);
             EXPECT_EQ(body->count, 2);
             EXPECT_EQ(body->zoneID, 2);
             EXPECT_EQ(body->zoneGeneration, generation);
         }
-        auto ack = writer.WriteZoneChangeSucess(2, 99, 3, 100, 50, generation);
+        auto ack = writer.WriteZoneChangeSucess(2, 99, 3, 100, 50, generation, 7);
         ASSERT_NE(ack, nullptr);
-        ASSERT_EQ(ack->GetLength(), 39);
+        ASSERT_EQ(ack->GetLength(), 47);
         EXPECT_EQ(parseBody<ZoneChangeResponseBody>(ack->GetBuffer())->zoneGeneration, generation);
+        EXPECT_EQ(parseBody<ZoneChangeResponseBody>(ack->GetBuffer())->ownershipEpoch, 7);
         EXPECT_EQ(parseHeader(ack->GetBuffer())->flags, FLAG_SIMULATION);
         auto failed = writer.WriteZoneChangeFailed();
         ASSERT_NE(failed, nullptr);
-        ASSERT_EQ(failed->GetLength(), 39);
+        ASSERT_EQ(failed->GetLength(), 47);
         for (size_t i = sizeof(PacketHeader); i < failed->GetLength(); ++i)
             EXPECT_EQ(failed->GetBuffer()[i], 0);
         EXPECT_EQ(parseHeader(failed->GetBuffer())->flags, FLAG_SIMULATION);
     }
 
-    TEST_F(NonZoneThreadPoolFixture, ZoneRoundTripPreservesVitalsCooldownsAndRemovesOldCasts) {
+    TEST_F(NonZoneThreadPoolFixture, BootstrapPairsSameEpochAndSequenceIncludingEmptyMonsterFull) {
         PrepareZones();
         ASSERT_TRUE(LoadTransitionCharacter());
-        ZoneChangeResult entry, outward, back;
+        ZoneChangeResult entry;
+        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, entry));
+        ASSERT_TRUE(state->SendBootstrap(42, entry.ownershipEpoch));
+        ASSERT_TRUE(state->SendBootstrap(42, entry.ownershipEpoch));
+        EXPECT_EQ(BootstrapSequence(), 2);
+        auto firstWork = PopBroadcastWork();
+        auto secondWork = PopBroadcastWork();
+        ASSERT_NE(firstWork, nullptr);
+        ASSERT_NE(secondWork, nullptr);
+        EXPECT_TRUE(firstWork->targeted);
+        EXPECT_EQ(firstWork->targetSessionID, 42);
+        EXPECT_EQ(firstWork->zoneID, 1);
+        ASSERT_EQ(firstWork->headers.size(), 2);
+        ASSERT_EQ(firstWork->chunks.size(), 2);
+        const auto* playerHeader = parseBody<FullSnapshotBody>(firstWork->headers[0]->GetBuffer());
+        const auto* monsterHeader = parseBody<MonsterFullSnapshotBody>(firstWork->headers[1]->GetBuffer());
+        EXPECT_EQ(playerHeader->count, 1);
+        EXPECT_EQ(monsterHeader->count, 0);
+        EXPECT_EQ(playerHeader->zoneID, monsterHeader->zoneID);
+        EXPECT_EQ(playerHeader->zoneGeneration, monsterHeader->zoneGeneration);
+        EXPECT_EQ(playerHeader->ownershipEpoch, entry.ownershipEpoch);
+        EXPECT_EQ(monsterHeader->ownershipEpoch, entry.ownershipEpoch);
+        EXPECT_EQ(playerHeader->bootstrapID, 1);
+        EXPECT_EQ(monsterHeader->bootstrapID, 1);
+        EXPECT_EQ(playerHeader->bootstrapEnd, 1);
+        EXPECT_EQ(monsterHeader->bootstrapEnd, 1);
+        EXPECT_EQ(firstWork->chunks[1]->GetLength(), 0);
+        EXPECT_EQ(playerHeader->states[0].zoneInternalID, entry.internalID);
+        EXPECT_TRUE(secondWork->targeted);
+        const auto* secondPlayer = parseBody<FullSnapshotBody>(secondWork->headers[0]->GetBuffer());
+        const auto* secondMonster = parseBody<MonsterFullSnapshotBody>(secondWork->headers[1]->GetBuffer());
+        EXPECT_EQ(playerHeader->bootstrapID, monsterHeader->bootstrapID);
+        EXPECT_EQ(secondPlayer->bootstrapID, secondMonster->bootstrapID);
+        EXPECT_LT(playerHeader->bootstrapID, secondPlayer->bootstrapID);
+        EXPECT_EQ(playerHeader->ownershipEpoch, secondPlayer->ownershipEpoch);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, ClientDirectedZoneOpsAreRejectedAndEntryRelocationPreservesCharacterState) {
+        PrepareZones();
+        ASSERT_TRUE(LoadTransitionCharacter());
+        ZoneChangeResult entry, rejected;
         ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, entry));
         EXPECT_EQ(entry.zoneID, 1);
         EXPECT_EQ(entry.generation, 1);
+        EXPECT_EQ(entry.ownershipEpoch, 1);
         const auto original = CharacterIn(1);
         AddOldCast();
-        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::RIGHT, outward));
-        EXPECT_EQ(Characters(1), 0);
-        EXPECT_EQ(Characters(2), 1);
-        EXPECT_TRUE(OldCastRemoved());
-        EXPECT_EQ(outward.zoneID, 2);
-        EXPECT_EQ(outward.generation, 1);
-        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::LEFT, back));
-        EXPECT_EQ(back.generation, 2);
-        EXPECT_NE(back.internalID, original.zoneInternalID);
+        for (uint8_t op : {ZONE_CHANGE::UP, ZONE_CHANGE::DOWN, ZONE_CHANGE::LEFT, ZONE_CHANGE::RIGHT})
+            EXPECT_FALSE(state->ChangeZone(42, op, rejected));
+        EXPECT_EQ(Characters(1), 1);
+        EXPECT_EQ(Characters(2), 0);
+        EXPECT_FALSE(OldCastRemoved());
         const auto returned = CharacterIn(1);
+        EXPECT_EQ(returned.zoneInternalID, original.zoneInternalID);
         EXPECT_EQ(returned.hp, original.hp);
         EXPECT_EQ(returned.mp, original.mp);
         EXPECT_EQ(returned.x, original.x);
         EXPECT_EQ(returned.y, original.y);
-        ASSERT_EQ(returned.skillSlot.size(), 3);
-        EXPECT_EQ(returned.skillSlotCnt, 3);
-        EXPECT_EQ(returned.skillSlot[0].skillCoolDownTick, 17);
-        EXPECT_EQ(returned.skillSlot[1].skillCoolDownTick, 21);
-        // A different player's admission advances the Zone stamp without invalidating this entry.
+        EXPECT_EQ(state->GetZoneID(42), 1);
+        EXPECT_EQ(OwnershipEpoch(), entry.ownershipEpoch);
+        // A different player's admission advances the Zone stamp without changing this session epoch.
         ASSERT_TRUE(LoadTransitionCharacter(43));
         ZoneChangeResult peer;
         ASSERT_TRUE(state->ChangeZone(43, ZONE_CHANGE::ENTER, peer));
-        EXPECT_GT(peer.generation, back.generation);
-        EXPECT_EQ(Generation(1), 3);
+        EXPECT_GT(peer.generation, entry.generation);
+        EXPECT_EQ(Generation(1), 2);
 
         // Expansion invalidates this old Zone 5 coordinate; entry alone may choose a safe point.
         ASSERT_TRUE(LoadTransitionCharacter(44, 5, 131, 121, 0));
@@ -911,95 +978,90 @@ namespace Core {
         EXPECT_FLOAT_EQ(relocated.y, 10.0f);
     }
 
-    TEST_F(NonZoneThreadPoolFixture, ZoneTransferRejectsDistantNonFiniteAndRepeatedDirectionWithoutMutation) {
+    TEST_F(NonZoneThreadPoolFixture, ServerMovementCrossesHysteresisAndStaleEpochCannotRepeatTransfer) {
         PrepareZones();
         ASSERT_TRUE(LoadTransitionCharacter());
-        ZoneChangeResult result;
-        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, result));
-        const auto original = CharacterIn(1);
-        const std::pair<float, float> invalid[] = {
-            {50, 50}, {std::numeric_limits<float>::quiet_NaN(), 50},
-            {std::numeric_limits<float>::infinity(), 50}, {ZONE_SIZE, -std::numeric_limits<float>::infinity()}
-        };
-        for (const auto& [x, y] : invalid) {
-            SetPosition(1, x, y);
-            EXPECT_FALSE(state->ChangeZone(42, ZONE_CHANGE::RIGHT, result));
-            EXPECT_EQ(Generation(1), 1);
-            EXPECT_EQ(Generation(2), 0);
-            const auto retained = CharacterIn(1);
-            EXPECT_EQ(retained.zoneInternalID, original.zoneInternalID);
-            EXPECT_EQ(retained.hp, original.hp);
-            EXPECT_EQ(retained.mp, original.mp);
-            EXPECT_EQ(retained.skillSlot[0].skillCoolDownTick, 17);
-            EXPECT_EQ(state->GetZoneID(42), 1);
-        }
-        SetPosition(1, ZONE_SIZE, ZONE_SIZE * 0.5f);
-        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::RIGHT, result));
-        EXPECT_FALSE(state->ChangeZone(42, ZONE_CHANGE::RIGHT, result));
-        EXPECT_EQ(state->GetZoneID(42), 2);
+        ZoneChangeResult entry, transfer, stale;
+        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, entry));
+        SetMoveBudget(1, 10.0f);
+        ActionRequestBody outward{0, 205.0f, 100.0f, 255, entry.ownershipEpoch};
+        ASSERT_TRUE(state->ProcessAction(42, 1, outward, transfer));
+        EXPECT_EQ(transfer.zoneID, 2);
+        EXPECT_EQ(transfer.ownershipEpoch, entry.ownershipEpoch + 1);
+        EXPECT_FLOAT_EQ(transfer.x, 205.0f); // Forward handoff occurs at core edge + 5.
+        EXPECT_EQ(Characters(1), 0);
+        EXPECT_EQ(Characters(2), 1);
         EXPECT_EQ(Generation(2), 1);
-        EXPECT_EQ(Generation(3), 0);
-        EXPECT_FALSE(state->ChangeZone(42, 255, result));
+        EXPECT_EQ(OwnershipEpoch(), transfer.ownershipEpoch);
+
+        ActionRequestBody reverse{3, 195.0f, 100.0f, 255, transfer.ownershipEpoch};
+        SetMoveBudget(2, 10.0f);
+        ASSERT_TRUE(state->ProcessAction(42, 2, reverse, stale));
+        EXPECT_EQ(stale.zoneID, 1);
+        EXPECT_EQ(stale.ownershipEpoch, transfer.ownershipEpoch + 1);
+        EXPECT_EQ(state->GetZoneID(42), 1);
+        EXPECT_FLOAT_EQ(stale.x, 195.0f); // Reverse handoff uses the new zone's core edge - 5.
+
+        ActionRequestBody oldAction{3, 195.0f, 100.0f, 255, transfer.ownershipEpoch};
+        ZoneChangeResult repair;
+        ASSERT_TRUE(state->ProcessAction(42, 2, oldAction, repair));
+        EXPECT_EQ(repair.zoneID, 1);
+        EXPECT_EQ(repair.ownershipEpoch, stale.ownershipEpoch);
+        EXPECT_EQ(repair.chatID, entry.chatID);
+        EXPECT_EQ(state->GetZoneID(42), 1);
+        EXPECT_EQ(OwnershipEpoch(), stale.ownershipEpoch);
     }
 
-    TEST_F(NonZoneThreadPoolFixture, ZoneTransferBlocksRowWrapAndConnectsSixZoneGrid) {
+    TEST_F(NonZoneThreadPoolFixture, AutomaticCornerHandoffUsesAuthoredCrossingAndOuterEdgeDoesNotWrap) {
         PrepareZones();
         ASSERT_NE(state->GetZone(5), nullptr);
         ASSERT_NE(state->GetZone(6), nullptr);
         EXPECT_EQ(state->GetZone(7), nullptr);
-        ASSERT_TRUE(LoadTransitionCharacter(42, 3, ZONE_SIZE * 3 - 1.0f, ZONE_SIZE));
-        ASSERT_TRUE(LoadTransitionCharacter(43, 4, ZONE_SIZE, ZONE_SIZE));
-        ZoneChangeResult result;
-        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, result));
-        ASSERT_TRUE(state->ChangeZone(43, ZONE_CHANGE::ENTER, result));
-        EXPECT_FALSE(state->ChangeZone(42, ZONE_CHANGE::RIGHT, result));
-        EXPECT_FALSE(state->ChangeZone(43, ZONE_CHANGE::LEFT, result));
-        EXPECT_EQ(state->GetZoneID(42), 3); // No row wrap from the right edge.
-        EXPECT_EQ(state->GetZoneID(43), 4);
+        ASSERT_TRUE(LoadTransitionCharacter(42, 1, ZONE_SIZE, ZONE_SIZE));
+        ZoneChangeResult entry, diagonal;
+        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, entry));
+        SetMoveBudget(1, 10.0f);
+        ActionRequestBody corner{0, ZONE_SIZE + TRANSITION_BUFFER, ZONE_SIZE + TRANSITION_BUFFER, 255, entry.ownershipEpoch};
+        ASSERT_TRUE(state->ProcessAction(42, 1, corner, diagonal));
+        EXPECT_EQ(diagonal.zoneID, 5); // Authored direct corner crossing is enabled for 1→5.
+        EXPECT_EQ(diagonal.ownershipEpoch, entry.ownershipEpoch + 1);
+        EXPECT_EQ(state->GetZoneID(42), 5);
 
-        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::UP, result));
-        EXPECT_EQ(result.zoneID, 6); // Zone 3's lower neighbor is the new Zone 6.
-        EXPECT_EQ(state->GetZoneID(42), 6);
-        EXPECT_FALSE(state->ChangeZone(42, ZONE_CHANGE::UP, result)); // Zone 9 is not part of this 3x2 map.
-        EXPECT_EQ(state->GetZoneID(42), 6);
-        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::DOWN, result));
-        EXPECT_EQ(result.zoneID, 3);
-        EXPECT_EQ(state->GetZoneID(42), 3);
-
-        ASSERT_TRUE(state->ChangeZone(43, ZONE_CHANGE::RIGHT, result));
-        EXPECT_EQ(result.zoneID, 5);
-        EXPECT_EQ(state->GetZoneID(43), 5);
-        SetPosition(5, ZONE_SIZE * 2, ZONE_SIZE, 43); // Shared edge between Zones 5 and 6.
-        ASSERT_TRUE(state->ChangeZone(43, ZONE_CHANGE::RIGHT, result));
-        EXPECT_EQ(result.zoneID, 6);
-        EXPECT_EQ(state->GetZoneID(43), 6);
-        ASSERT_TRUE(state->ChangeZone(43, ZONE_CHANGE::DOWN, result));
-        EXPECT_EQ(result.zoneID, 3);
-        EXPECT_EQ(state->GetZoneID(43), 3);
-
-        EXPECT_EQ(Generation(3), 3);
-        EXPECT_EQ(Generation(4), 1);
-        EXPECT_EQ(Generation(5), 1);
-        EXPECT_EQ(Generation(6), 2);
+        ASSERT_TRUE(LoadTransitionCharacter(43, 3, 600.0f, 100.0f));
+        ZoneChangeResult edgeEntry, edgeResult;
+        ASSERT_TRUE(state->ChangeZone(43, ZONE_CHANGE::ENTER, edgeEntry));
+        SetMoveBudget(3, 10.0f, 43);
+        ActionRequestBody outward{0, 604.0f, 100.0f, 255, edgeEntry.ownershipEpoch};
+        ASSERT_TRUE(state->ProcessAction(43, 3, outward, edgeResult));
+        EXPECT_EQ(state->GetZoneID(43), 3); // The outermost column has no east owner; ID arithmetic must not wrap.
+        EXPECT_EQ(Characters(3), 1);
+        EXPECT_EQ(Characters(4), 0);
     }
 
-    TEST_F(NonZoneThreadPoolFixture, ZoneTransferPreflightsCapacityInternalIdAndGenerationBeforeRemoval) {
+    TEST_F(NonZoneThreadPoolFixture, FailedAutomaticTransferRestoresOriginalMovementAndSourceMembership) {
         for (int kind = 0; kind < 3; ++kind) {
             ResetZones();
             PrepareZones();
             ASSERT_TRUE(LoadTransitionCharacter());
             ZoneChangeResult result;
             ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, result));
+            const uint64_t epoch = result.ownershipEpoch;
+            SetMoveBudget(1, 10.0f);
             const auto original = CharacterIn(1);
             ExhaustDestination(2, kind);
-            EXPECT_FALSE(state->ChangeZone(42, ZONE_CHANGE::RIGHT, result));
+        ActionRequestBody crossing{0, 205.0f, 100.0f, 255, epoch};
+            EXPECT_FALSE(state->ProcessAction(42, 1, crossing, result));
             const auto retained = CharacterIn(1);
             EXPECT_EQ(state->GetZoneID(42), 1);
             EXPECT_EQ(retained.zoneInternalID, original.zoneInternalID);
             EXPECT_EQ(retained.hp, original.hp);
             EXPECT_EQ(retained.mp, original.mp);
+            EXPECT_FLOAT_EQ(retained.x, original.x);
+            EXPECT_FLOAT_EQ(retained.y, original.y);
+            EXPECT_FLOAT_EQ(retained.moveBudget, original.moveBudget);
             EXPECT_EQ(retained.skillSlot[1].skillCoolDownTick, 21);
             EXPECT_EQ(Generation(1), 1);
+            EXPECT_EQ(OwnershipEpoch(), epoch);
             state->Disconnect(42);
         }
     }
@@ -1041,12 +1103,14 @@ namespace Core {
             ASSERT_TRUE(LoadTransitionCharacter());
             ZoneChangeResult result;
             ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, result));
+            SetMoveBudget(1, 10.0f);
+            ActionRequestBody crossing{0, 205.0f, 100.0f, 255, result.ownershipEpoch};
             std::promise<void> start;
             auto gate = start.get_future().share();
             auto transfer = std::async(std::launch::async, [&, gate] {
                 gate.wait();
                 ZoneChangeResult ignored;
-                state->ChangeZone(42, ZONE_CHANGE::RIGHT, ignored);
+                state->ProcessAction(42, 1, crossing, ignored);
             });
             auto closing = std::async(std::launch::async, [&, gate, cleanup] {
                 gate.wait();

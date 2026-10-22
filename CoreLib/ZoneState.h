@@ -80,6 +80,7 @@ namespace Core {
         void AddToCell(CharacterState& character,  uint8_t x, uint8_t y);
         uint32_t ImmigrateCharLocked(uint64_t sessionID, const CharacterState& user);
         void RemoveCharacterLocked(uint64_t sessionID);
+        void RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint16_t dirtyBit);
         void UpdateSessionSnapshot();
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
@@ -127,6 +128,7 @@ namespace Core {
         void DeltaSnapshotMonster();
         void FullSnapshot();
         void FullSnapshotMonster();
+        bool EnqueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch, uint64_t bootstrapID);
         void ActionSnapshot();
         void ReplenishMoveBudget();
         void Move(uint64_t sessionID, uint8_t dir, float x, float y);

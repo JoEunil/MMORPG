@@ -457,17 +457,17 @@ namespace C02.Tests
                 fixture.OpenWorld();
                 old(1, new[] { Player(42) });
                 Assert.That(fixture.Count("players"), Is.Zero, "A previously captured generation cannot populate a new world.");
-                ((IViewModelNet)source).FullReceived(1, 1, 1, new[] { Player(43) });
+                ((IViewModelNet)source).FullReceived(1, 1, 0, 0, false, 1, new[] { Player(43) });
                 fixture.Drain();
                 Assert.That(fixture.Count("players"), Is.EqualTo(1), "Current source callbacks must be reattached after a world reset.");
                 var previousClient = fixture.PlayerCallback;
                 var next = fixture.NewModel();
                 fixture.Bind(next);
                 previousClient(1, new[] { Player(44) });
-                ((IViewModelNet)source).FullReceived(1, 1, 1, new[] { Player(45) });
+                ((IViewModelNet)source).FullReceived(1, 1, 0, 0, false, 1, new[] { Player(45) });
                 fixture.Drain();
                 Assert.That(fixture.Count("players"), Is.Zero);
-                ((IViewModelNet)next).MonsterFullReceived(1, 1, 1, new[] { Monster(0, 0) });
+                ((IViewModelNet)next).MonsterFullReceived(1, 1, 0, 0, false, 1, new[] { Monster(0, 0) });
                 fixture.Drain();
                 Assert.That(fixture.Count("monsters"), Is.EqualTo(1));
                 var beforeDisable = fixture.MonsterCallback;
@@ -542,9 +542,9 @@ namespace C02.Tests
                 var net = (IViewModelNet)model;
                 fixture.Players(100, Player(43));
                 fixture.Monsters(100, Monster(1, 1));
-                net.FullReceived(1, 1, 1, new[] { Player(42) });
+                net.FullReceived(1, 1, 0, 0, false, 1, new[] { Player(42) });
                 net.DeltaReceived(1, 1, 1, new[] { new DeltaUpdateField { zoneInternalID = 43, fieldID = 7, fieldVal = Bits(99) } });
-                net.MonsterFullReceived(1, 1, 1, new[] { Monster(0, 0) });
+                net.MonsterFullReceived(1, 1, 0, 0, false, 1, new[] { Monster(0, 0) });
                 net.MonsterDeltaReceived(1, 1, 1, new[] { new MonsterDeltaField { internalId = 1, fieldId = 1, fieldVal = Bits(99) } });
                 Assert.That(fixture.QueuedCount, Is.EqualTo(4));
                 fixture.CloseWorld();
@@ -556,9 +556,9 @@ namespace C02.Tests
                 Assert.That(fixture.Count("monsters"), Is.EqualTo(1));
                 Assert.That(fixture.PlayerState(43).x, Is.EqualTo(11), "Old queued Delta cannot modify a newly observed ID.");
                 Assert.That(fixture.MonsterState(1).x, Is.EqualTo(11));
-                net.FullReceived(1, 1, 1, new[] { Player(42) });
+                net.FullReceived(1, 1, 0, 0, false, 1, new[] { Player(42) });
                 net.DeltaReceived(1, 1, 1, new[] { new DeltaUpdateField { zoneInternalID = 43, fieldID = 7, fieldVal = Bits(14) } });
-                net.MonsterFullReceived(1, 1, 1, new[] { Monster(0, 0) });
+                net.MonsterFullReceived(1, 1, 0, 0, false, 1, new[] { Monster(0, 0) });
                 net.MonsterDeltaReceived(1, 1, 1, new[] { new MonsterDeltaField { internalId = 1, fieldId = 1, fieldVal = Bits(15) } });
                 fixture.Drain();
                 Assert.That(fixture.Count("players"), Is.EqualTo(2));
@@ -579,16 +579,16 @@ namespace C02.Tests
             model.OnMonsterFullReceived += (_, __) => callbacks++;
             model.OnMonsterDeltaReceived += (_, __) => callbacks++;
             var net = (IViewModelNet)model;
-            net.FullReceived(1, 1, 1, new[] { Player(42) });
+            net.FullReceived(1, 1, 0, 0, false, 1, new[] { Player(42) });
             net.DeltaReceived(1, 1, 0, Array.Empty<DeltaUpdateField>());
-            net.MonsterFullReceived(1, 1, 1, new[] { Monster(0, 0) });
+            net.MonsterFullReceived(1, 1, 0, 0, false, 1, new[] { Monster(0, 0) });
             net.MonsterDeltaReceived(1, 1, 0, Array.Empty<MonsterDeltaField>());
             Assert.That(dispatcher.Count, Is.EqualTo(4));
             model.Dispose();
             dispatcher.Drain();
-            net.FullReceived(1, 1, 1, new[] { Player(42) });
+            net.FullReceived(1, 1, 0, 0, false, 1, new[] { Player(42) });
             net.DeltaReceived(1, 1, 0, Array.Empty<DeltaUpdateField>());
-            net.MonsterFullReceived(1, 1, 1, new[] { Monster(0, 0) });
+            net.MonsterFullReceived(1, 1, 0, 0, false, 1, new[] { Monster(0, 0) });
             net.MonsterDeltaReceived(1, 1, 0, Array.Empty<MonsterDeltaField>());
             Assert.That(callbacks, Is.Zero);
             Assert.That(dispatcher.Count, Is.Zero);
@@ -782,9 +782,9 @@ namespace C02.Tests
             public void CharacterList() { }
             public void Enter(ulong character) { }
             public void Chat(string message, byte scope, ulong target) { }
-            public void Action(byte direction, float x, float y, byte skill) { }
+            public void Action(byte direction, float x, float y, byte skill, ulong ownershipEpoch) { }
             public void Pong(ulong time) { }
-            public void ZoneChange(byte operation) { }
+            public void ZoneChange(byte operation) { } public void ZoneResync(ulong ownershipEpoch) { }
             public void Log(string message) { }
         }
     }

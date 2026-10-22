@@ -5,8 +5,21 @@
 #include "WorldMap.h"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace Core {
+    static_assert(WorldMap::FormatVersion == 1 && WorldMap::Zones.size() == ZONE_COUNT
+        && WorldMap::ZoneColumns == ZONE_HORIZON && WorldMap::ZoneRows == ZONE_VERTICAL,
+        "Exported zone layout must match the configured server world.");
+    static_assert(WorldMap::ZoneCoreSize == ZONE_SIZE && WorldMap::TransitionMargin == TRANSITION_BUFFER
+        && CELLS_X == 5 && CELLS_Y == 5 && WorldMap::Zones[0].aoiCellSize == CELL_SIZE,
+        "Exported zone bounds and 5x5 AOI cells must match the server spatial configuration.");
+
+    static_assert(WorldMap::FormatVersion == 1);
+    static_assert(WorldMap::ZoneColumns == ZONE_HORIZON && WorldMap::ZoneRows == ZONE_VERTICAL);
+    static_assert(WorldMap::Zones.size() == ZONE_COUNT);
+    static_assert(WorldMap::ZoneCoreSize == ZONE_SIZE && WorldMap::TransitionMargin == TRANSITION_BUFFER);
+
     bool StateManager::ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result) {
         result = {};
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
@@ -16,7 +29,8 @@ namespace Core {
             || !session->second.authCompleted || session->second.characterID == 0)
             return false;
         const uint16_t sourceID = session->second.zoneID;
-        if ((op == ZONE_CHANGE::ENTER) != (sourceID == 0))
+        if (op != ZONE_CHANGE::ENTER || sourceID != 0
+            || session->second.ownershipEpoch == (std::numeric_limits<uint64_t>::max)())
             return false;
 
         if (sourceID == 0) {
@@ -69,56 +83,140 @@ namespace Core {
             if (destination->ImmigrateCharLocked(sessionID, incoming) == INVALID_ZONE_INTERNAL_ID)
                 return false;
             const auto& entered = destination->m_chars.back();
+            ++session->second.ownershipEpoch;
             result = {destinationID, 0, entered.zoneInternalID, entered.x, entered.y, destination->m_generation};
+            result.ownershipEpoch = session->second.ownershipEpoch;
             lobbyZone->m_chars.erase(loaded);
             session->second.zoneID = destinationID;
             result.chatID = chat->AddChatSession(sessionID, destinationID, entered.profileId);
+            session->second.chatID = result.chatID;
             chat->EnqueueZoneJoin(sessionID, destinationID);
             return true;
         }
 
-        int destinationID = sourceID;
-        const int column = (sourceID - 1) % ZONE_HORIZON;
-        switch (op) {
-        case ZONE_CHANGE::UP: destinationID += ZONE_HORIZON; break;
-        case ZONE_CHANGE::DOWN: destinationID -= ZONE_HORIZON; break;
-        case ZONE_CHANGE::LEFT:
-            if (column == 0) return false;
-            --destinationID;
-            break;
-        case ZONE_CHANGE::RIGHT:
-            if (column == ZONE_HORIZON - 1) return false;
-            ++destinationID;
-            break;
-        default: return false;
+        return false;
+    }
+
+    bool StateManager::ProcessAction(uint64_t sessionID, uint16_t routeZoneID, const ActionRequestBody& action, ZoneChangeResult& transition) {
+        transition = {};
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock sessionLock(shard.smutex);
+        auto session = shard.sessionMap.find(sessionID);
+        if (session == shard.sessionMap.end() || !session->second.authenticated || !session->second.authCompleted
+            || session->second.zoneID == 0 || session->second.zoneID > ZONE_COUNT)
+            return false;
+        if (session->second.zoneID != routeZoneID || session->second.ownershipEpoch != action.ownershipEpoch) {
+            auto currentZone = GetZone(session->second.zoneID);
+            if (currentZone == nullptr || session->second.ownershipEpoch == 0) return false;
+            std::lock_guard zoneLock(currentZone->m_mutex);
+            auto current = currentZone->m_sessionToIndex.find(sessionID);
+            if (current == currentZone->m_sessionToIndex.end()) return false;
+            const auto& character = currentZone->m_chars[current->second];
+            transition = {session->second.zoneID, session->second.chatID, character.zoneInternalID, character.x, character.y,
+                currentZone->m_generation, session->second.ownershipEpoch};
+            return true;
         }
-        if (destinationID <= 0 || destinationID > ZONE_COUNT)
+        auto zone = GetZone(routeZoneID);
+        if (zone == nullptr)
             return false;
-        auto source = GetZone(sourceID);
-        auto destination = GetZone(static_cast<uint16_t>(destinationID));
-        if (source == nullptr || destination == nullptr)
-            return false;
-        // All transfers use ascending Zone order after the session shard.
-        std::unique_lock firstLock(sourceID < destinationID ? source->m_mutex : destination->m_mutex);
-        std::unique_lock secondLock(sourceID < destinationID ? destination->m_mutex : source->m_mutex);
-        auto character = source->m_sessionToIndex.find(sessionID);
-        if (character == source->m_sessionToIndex.end())
-            return false;
-        const auto& current = source->m_chars[character->second];
-        if (current.characterID != session->second.characterID
-            || !std::isfinite(current.x) || !std::isfinite(current.y)
-            || current.x < source->m_area.x_min || current.x > source->m_area.x_max
-            || current.y < source->m_area.y_min || current.y > source->m_area.y_max)
-            return false;
-        if (destination->ImmigrateCharLocked(sessionID, current) == INVALID_ZONE_INTERNAL_ID)
-            return false;
-        source->RemoveCharacterLocked(sessionID);
-        session->second.zoneID = static_cast<uint16_t>(destinationID);
-        const auto& entered = destination->m_chars.back();
-        result = {static_cast<uint16_t>(destinationID), 0, entered.zoneInternalID,
-            entered.x, entered.y, destination->m_generation};
-        chat->EnqueueZoneJoin(sessionID, static_cast<uint16_t>(destinationID));
+        float previousX = 0, previousY = 0, previousBudget = 0;
+        uint8_t previousDir = 0;
+        uint16_t previousDirty = 0;
+        {
+            std::lock_guard sourceLock(zone->m_mutex);
+            auto it = zone->m_sessionToIndex.find(sessionID);
+            if (it == zone->m_sessionToIndex.end()) return false;
+            const auto& current = zone->m_chars[it->second];
+            previousX = current.x; previousY = current.y; previousBudget = current.moveBudget;
+            previousDir = current.dir; previousDirty = current.dirtyBit;
+        }
+        zone->Move(sessionID, action.dir, action.x, action.y);
+        float x = 0, y = 0;
+        {
+            std::lock_guard sourceLock(zone->m_mutex);
+            auto it = zone->m_sessionToIndex.find(sessionID);
+            if (it == zone->m_sessionToIndex.end()) return false;
+            const auto& current = zone->m_chars[it->second];
+            x = current.x; y = current.y;
+        }
+        const int column = (routeZoneID - 1) % ZONE_HORIZON;
+        const int row = (routeZoneID - 1) / ZONE_HORIZON;
+        const float coreMinX = column * ZONE_SIZE;
+        const float coreMinY = row * ZONE_SIZE;
+        const int nextColumnRaw = x >= coreMinX + ZONE_SIZE + TRANSITION_BUFFER ? column + 1
+            : x <= coreMinX - TRANSITION_BUFFER ? column - 1 : column;
+        const int nextRowRaw = y >= coreMinY + ZONE_SIZE + TRANSITION_BUFFER ? row + 1
+            : y <= coreMinY - TRANSITION_BUFFER ? row - 1 : row;
+        // Do not let an out-of-layout column wrap into another valid row's zone ID.
+        const int nextColumn = (std::clamp)(nextColumnRaw, 0, static_cast<int>(ZONE_HORIZON) - 1);
+        const int nextRow = (std::clamp)(nextRowRaw, 0, static_cast<int>(ZONE_VERTICAL) - 1);
+        const int destinationID = nextRow * ZONE_HORIZON + nextColumn + 1;
+        bool mayTransition = true;
+        if (destinationID >= 1 && destinationID <= ZONE_COUNT && destinationID != routeZoneID
+            && session->second.ownershipEpoch != (std::numeric_limits<uint64_t>::max)()) {
+            if (nextColumn != column && nextRow != row) {
+                const auto& layout = WorldMap::Zones[routeZoneID - 1];
+                bool directCrossingAllowed = false;
+                for (size_t i = 0; i < layout.neighborIds.size(); ++i) {
+                    if (layout.neighborIds[i] == destinationID) {
+                        directCrossingAllowed = layout.directCrossings[i];
+                        break;
+                    }
+                }
+                mayTransition = directCrossingAllowed;
+            }
+        }
+        if (mayTransition && destinationID >= 1 && destinationID <= ZONE_COUNT && destinationID != routeZoneID
+            && session->second.ownershipEpoch != (std::numeric_limits<uint64_t>::max)()) {
+            auto destination = GetZone(static_cast<uint16_t>(destinationID));
+            if (destination != nullptr) {
+                std::unique_lock firstLock(routeZoneID < destinationID ? zone->m_mutex : destination->m_mutex);
+                std::unique_lock secondLock(routeZoneID < destinationID ? destination->m_mutex : zone->m_mutex);
+                auto it = zone->m_sessionToIndex.find(sessionID);
+                if (it == zone->m_sessionToIndex.end() || session->second.zoneID != routeZoneID
+                    || session->second.ownershipEpoch != action.ownershipEpoch)
+                    return false;
+                CharacterState current = zone->m_chars[it->second];
+                if (destination->ImmigrateCharLocked(sessionID, current) == INVALID_ZONE_INTERNAL_ID) {
+                    zone->RestoreMovementLocked(sessionID, previousX, previousY, previousDir, previousBudget, previousDirty);
+                    return false;
+                }
+                zone->RemoveCharacterLocked(sessionID);
+                session->second.zoneID = static_cast<uint16_t>(destinationID);
+                ++session->second.ownershipEpoch;
+                zone->UpdateSessionSnapshot();
+                destination->UpdateSessionSnapshot();
+                const auto& entered = destination->m_chars.back();
+                transition = {static_cast<uint16_t>(destinationID), session->second.chatID, entered.zoneInternalID,
+                    entered.x, entered.y, destination->m_generation, session->second.ownershipEpoch};
+                chat->EnqueueZoneJoin(sessionID, static_cast<uint16_t>(destinationID));
+                secondLock.unlock();
+                firstLock.unlock();
+                destination->Skill(sessionID, action.skillSlot);
+                destination->DirtyCheck(sessionID);
+                return true;
+            }
+        }
+        zone->Skill(sessionID, action.skillSlot);
+        zone->DirtyCheck(sessionID);
         return true;
+    }
+
+    bool StateManager::SendBootstrap(uint64_t sessionID, uint64_t ownershipEpoch) {
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock sessionLock(shard.smutex);
+        auto session = shard.sessionMap.find(sessionID);
+        if (session == shard.sessionMap.end() || session->second.zoneID == 0
+            || session->second.ownershipEpoch != ownershipEpoch)
+            return false;
+        if (session->second.bootstrapSequence == (std::numeric_limits<uint64_t>::max)())
+            return false;
+        const uint64_t bootstrapID = ++session->second.bootstrapSequence;
+        auto zone = GetZone(session->second.zoneID);
+        if (zone == nullptr) return false;
+        // Lock order remains shard → Zone. Snapshot construction and registration on the single
+        // broadcast queue happen while the Zone lock is held, preserving later delta/full order.
+        return zone->EnqueueBootstrap(sessionID, ownershipEpoch, bootstrapID);
     }
 
     void StateManager::CleanUp() {

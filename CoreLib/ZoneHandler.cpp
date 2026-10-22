@@ -13,12 +13,14 @@
 
 namespace Core {
     void ZoneHandler::ProcessAction(const ActionRequestBody* body, uint64_t sessionID, uint16_t zoneID) {
-        auto zoneState = stateManager->GetZone(zoneID);
-        // 한 틱에서 마지막 입력으로 업데이트. 
-
-        zoneState->Move(sessionID, body->dir, body->x, body->y);
-        zoneState->Skill(sessionID, body->skillSlot);
-        zoneState->DirtyCheck(sessionID);
+        ZoneChangeResult transition;
+        if (!stateManager->ProcessAction(sessionID, zoneID, *body, transition) || transition.zoneID == 0)
+            return;
+        auto response = writer->WriteZoneChangeSucess(transition.zoneID, transition.chatID, transition.internalID,
+            transition.x, transition.y, transition.generation, transition.ownershipEpoch);
+        if (response)
+            iocp->SendDataUnique(sessionID, std::move(response));
+        stateManager->SendBootstrap(sessionID, transition.ownershipEpoch);
     }
 
     void ZoneHandler::Process(IPacketView* p, uint16_t zoneID) {
@@ -26,7 +28,8 @@ namespace Core {
         switch (p->GetOpcode())
         {
             case OP::ACTION:
-                ProcessAction(parseBody<ActionRequestBody>(p->GetPtr()), p->GetSessionID(), zoneID);
+                if (p->GetLength() == sizeof(PacketStruct<ActionRequestBody>))
+                    ProcessAction(parseBody<ActionRequestBody>(p->GetPtr()), p->GetSessionID(), zoneID);
                 break;
             default:
                 errorLogger->LogInfo("zone Handler", "UnDefined OPCODE", "zone", zoneID, "opcode", p->GetOpcode(), "session", p->GetSessionID());

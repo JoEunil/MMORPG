@@ -62,11 +62,11 @@ namespace ClientCore.Services
             }
             return true;
         }
-        public async Task<bool> Action(TCPSocket sock, byte dir, float x, float y, byte skillSlot)
+        public async Task<bool> Action(TCPSocket sock, byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch)
         {
             try
             {
-                await sock.Send(PacketBuilder.CreateActionPacket(dir, x, y, skillSlot));
+                await sock.Send(PacketBuilder.CreateActionPacket(dir, x, y, skillSlot, ownershipEpoch));
             }
             catch (Exception ex)
             {

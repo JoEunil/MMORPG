@@ -69,7 +69,7 @@ namespace Core {
             nonZoneThreadPool.Start();
             broadcastPool.Start();
             ZoneState::Initialize(&broadcastPool, &writer, &stateManager, &perfCollector);
-            zoneHandler.Initialize(&stateManager);
+            zoneHandler.Initialize(&stateManager, iocp, &writer);
             nonZoneHandler.Initialize(iocp, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone, &chat);
             nonZoneHandler.InitializeProfileCache(profileCache);
             zoneThreadSet.Start();

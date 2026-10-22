@@ -1,4 +1,4 @@
-﻿using ClientCore.Network;
+using ClientCore.Network;
 using ClientCore.PacketHelper;
 using ClientCore.Services;
 using System;
@@ -37,7 +37,20 @@ namespace ClientCore
         // Only the dispatcher reads or writes the accepted simulation identity.
         private ushort _zoneID;
         private ulong _zoneGeneration;
+        private ulong _ownershipEpoch;
         private uint _zoneInternalID;
+        private ulong _pendingOwnershipEpoch;
+        private ulong _pendingBootstrapID;
+        private ulong _pendingChatID;
+        private uint _pendingZoneInternalID;
+        private ushort _pendingZoneID;
+        private float _pendingStartX, _pendingStartY;
+        private ulong _pendingGeneration;
+        private long _bootstrapDeadline;
+        private bool _playerBootstrapEnd;
+        private bool _monsterBootstrapEnd;
+        private PacketHelper.FullStateField[] _bootstrapPlayers;
+        private PacketHelper.MonsterFullField[] _bootstrapMonsters;
         private volatile bool _awaitingZoneAck;
         private bool _inventoryPending;
         private uint _bazaarRequestID;
@@ -59,6 +72,7 @@ namespace ClientCore
         public event Action<byte, uint, uint, uint> OnBazaarCheckOutboxReceived;
         public event Action<ulong, byte> OnBazaarCancelListingReceived;
         public event Action<ushort, ulong, uint, float, float> OnZoneChageReceived;
+        public event Action<ulong, ushort> OnZoneTransitionStarted;
         public event Action<ushort, DeltaUpdateField[]> OnDeltaReceived;
         public event Action<ushort, FullStateField[]> OnFullReceived;
         public event Action<ushort, MonsterDeltaField[]> OnMonsterDeltaReceived;
@@ -148,7 +162,7 @@ namespace ClientCore
         {
             lock (_sessionGate)
             {
-                if (op < 0 || op > 4) throw new ArgumentOutOfRangeException(nameof(op));
+                if (op != (int)ZONE_CHANGE.ENTER) throw new ArgumentOutOfRangeException(nameof(op));
                 if (_lifetime.IsCancellationRequested || _connectionFailed || _zonePending) return;
                 if (op != 0 && !_worldReady) return;
                 if (op == 0 && _zoneID != 0) return;
@@ -169,15 +183,34 @@ namespace ClientCore
         // Client Tick 루프
         public void SendUpdate()
         {
-            (bool, byte, float, float, byte) res;
+            (bool, byte, float, float, byte, ulong) res;
+            ulong resyncEpoch = 0;
             lock (_sessionGate)
             {
-                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady) return;
-                res = _viewData.GetActionState();
+                if (_lifetime.IsCancellationRequested || _connectionFailed) return;
+                if (!_worldReady)
+                {
+                    if (_pendingOwnershipEpoch != 0 && Stopwatch.GetTimestamp() >= _bootstrapDeadline)
+                    {
+                        resyncEpoch = _pendingOwnershipEpoch;
+                        _bootstrapDeadline = Stopwatch.GetTimestamp() + 2 * Stopwatch.Frequency;
+                    }
+                    else return;
+                    res = default;
+                }
+                else
+                    res = _viewData.GetActionState();
+            }
+            if (resyncEpoch != 0)
+            {
+                try { _network.ZoneResync(resyncEpoch); }
+                catch (Exception) { Error("Zone baseline resync request failed."); }
+                return;
             }
             // Do not hold the session lock across socket I/O: receive callbacks also use it.
             if (!res.Item1 || _lifetime.IsCancellationRequested || _connectionFailed || !_worldReady) return;
-            try { _network.Action(res.Item2, res.Item3, res.Item4, res.Item5); }
+            if (res.Item6 == 0) return;
+            try { _network.Action(res.Item2, res.Item3, res.Item4, res.Item5, res.Item6); }
             catch (Exception) { Error("Movement request failed."); }
         }
 
@@ -509,31 +542,58 @@ namespace ClientCore
             });
         }
 
-        public void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y, ulong generation)
+        public void ZoneChageReceived(byte resStatus, ushort zoneID, ulong chatID, uint zoneInternalID, float x, float y, ulong generation, ulong ownershipEpoch)
         {
             lock (_sessionGate)
             {
-                if (_lifetime.IsCancellationRequested || !_zonePending) return;
-                _zonePending = false;
+                if (_lifetime.IsCancellationRequested) return;
                 bool success = resStatus == 1;
-                bool wasInWorld = _zoneOperation != 0;
+                bool requestPending = _zonePending;
+                bool automaticTransition = success && !requestPending && ownershipEpoch > _ownershipEpoch;
+                if (!requestPending && !automaticTransition) return;
+                if (success && ownershipEpoch <= _ownershipEpoch) return;
+                if (requestPending) _zonePending = false;
+                bool wasInWorld = _zoneID != 0;
                 _threadDispatcher.Post(() =>
                 {
                     if (_lifetime.IsCancellationRequested || _connectionFailed) return;
-                    _awaitingZoneAck = false;
-                    if (success)
+                    // Multiple repair ACKs can be queued before the dispatcher accepts the first.
+                    // A duplicate success is never a failed transition.
+                    if (success && ownershipEpoch <= _ownershipEpoch) return;
+                    if (success && ownershipEpoch > _ownershipEpoch)
                     {
-                        _worldReady = false;
-                        _zoneID = zoneID;
-                        _zoneGeneration = generation;
-                        _zoneInternalID = zoneInternalID;
+                        lock (_sessionGate)
+                        {
+                            _awaitingZoneAck = true;
+                            _worldReady = false;
+                            _ownershipEpoch = ownershipEpoch;
+                            _bootstrapDeadline = Stopwatch.GetTimestamp() + 2 * Stopwatch.Frequency;
+                            _pendingOwnershipEpoch = ownershipEpoch;
+                            _pendingBootstrapID = 0;
+                        }
+                        _pendingZoneID = zoneID;
+                        _pendingChatID = chatID;
+                        _pendingZoneInternalID = zoneInternalID;
+                        _pendingStartX = x;
+                        _pendingStartY = y;
+                        _pendingGeneration = generation;
+                        _bootstrapPlayers = null;
+                        _bootstrapMonsters = null;
+                        _playerBootstrapEnd = false;
+                        _monsterBootstrapEnd = false;
+                        _viewData.CancelAction();
                         _viewData.SetPosition(x, y);
-                        _entityProfiles.Clear();
-                        OnZoneChageReceived?.Invoke(zoneID, chatID, zoneInternalID, x, y);
+                        _viewData.SetOwnershipEpoch(ownershipEpoch);
+                        if (wasInWorld)
+                        {
+                            CancelBazaar();
+                            OnZoneTransitionStarted?.Invoke(ownershipEpoch, zoneID);
+                        }
                     }
                     else
                     {
                         _worldReady = wasInWorld;
+                        _awaitingZoneAck = false;
                         OnZoneChageFailed?.Invoke();
                     }
                 });
@@ -557,21 +617,18 @@ namespace ClientCore
                 subscribers?.Invoke(count, updates);
             });
         }
-        public void FullReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.FullStateField[] states)
+        public void FullReceived(ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, ushort count, PacketHelper.FullStateField[] states)
         {
             if (_lifetime.IsCancellationRequested) return;
+            if (bootstrapID != 0)
+            {
+                BootstrapReceived(false, zoneID, generation, ownershipEpoch, bootstrapID, bootstrapEnd, states, null);
+                return;
+            }
             var subscribers = OnFullReceived;
             _threadDispatcher.Post(() =>
             {
-                if (!AcceptSimulation(zoneID, generation)) return;
-                if (!_worldReady)
-                {
-                    bool hasSelf = false;
-                    for (int i = 0; i < count; i++)
-                        if (states[i].zoneInternalID == _zoneInternalID) { hasSelf = true; break; }
-                    if (!hasSelf) return;
-                    _worldReady = true;
-                }
+                if (!AcceptSimulation(zoneID, generation) || !_worldReady) return;
                 for (int i = 0; i < count; i++)
                 {
                     _entityProfiles[states[i].zoneInternalID] = states[i].profileId;
@@ -590,13 +647,84 @@ namespace ClientCore
                 if (AcceptSimulation(zoneID, generation) && _worldReady) subscribers?.Invoke(count, updates);
             });
         }
-        public void MonsterFullReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.MonsterFullField[] states)
+        public void MonsterFullReceived(ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, ushort count, PacketHelper.MonsterFullField[] states)
         {
             if (_lifetime.IsCancellationRequested) return;
+            if (bootstrapID != 0)
+            {
+                BootstrapReceived(true, zoneID, generation, ownershipEpoch, bootstrapID, bootstrapEnd, null, states);
+                return;
+            }
             var subscribers = OnMonsterFullReceived;
             _threadDispatcher.Post(() =>
             {
                 if (AcceptSimulation(zoneID, generation) && _worldReady) subscribers?.Invoke(count, states);
+            });
+        }
+
+        private void BootstrapReceived(bool monsters, ushort zoneID, ulong generation, ulong ownershipEpoch,
+            ulong bootstrapID, bool bootstrapEnd, PacketHelper.FullStateField[] players, PacketHelper.MonsterFullField[] monsterStates)
+        {
+            _threadDispatcher.Post(() =>
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed || ownershipEpoch != _pendingOwnershipEpoch
+                    || bootstrapID == 0 || zoneID != _pendingZoneID || generation < _pendingGeneration || !bootstrapEnd)
+                    return;
+                if (bootstrapID < _pendingBootstrapID) return;
+                if (bootstrapID > _pendingBootstrapID)
+                {
+                    _pendingBootstrapID = bootstrapID;
+                    _bootstrapPlayers = null;
+                    _bootstrapMonsters = null;
+                    _playerBootstrapEnd = false;
+                    _monsterBootstrapEnd = false;
+                }
+                if (generation > _pendingGeneration)
+                {
+                    _pendingGeneration = generation;
+                    _bootstrapPlayers = null;
+                    _bootstrapMonsters = null;
+                    _playerBootstrapEnd = false;
+                    _monsterBootstrapEnd = false;
+                }
+                if (monsters)
+                {
+                    _bootstrapMonsters = monsterStates ?? Array.Empty<PacketHelper.MonsterFullField>();
+                    _monsterBootstrapEnd = true;
+                }
+                else
+                {
+                    _bootstrapPlayers = players ?? Array.Empty<PacketHelper.FullStateField>();
+                    _playerBootstrapEnd = true;
+                }
+                if (!_playerBootstrapEnd || !_monsterBootstrapEnd || _bootstrapPlayers == null || _bootstrapMonsters == null)
+                    return;
+                bool hasSelf = false;
+                foreach (var state in _bootstrapPlayers)
+                    if (state.zoneInternalID == _pendingZoneInternalID) { hasSelf = true; break; }
+                if (!hasSelf) return; // The periodic timeout requests a fresh, complete baseline.
+
+                _zoneID = _pendingZoneID;
+                _zoneGeneration = _pendingGeneration;
+                _zoneInternalID = _pendingZoneInternalID;
+                _viewData.SetPosition(_pendingStartX, _pendingStartY);
+                _entityProfiles.Clear();
+                foreach (var state in _bootstrapPlayers)
+                {
+                    _entityProfiles[state.zoneInternalID] = state.profileId;
+                    ObserveProfile(state.profileId, state.profileVersion);
+                }
+                RequestProfiles();
+                OnZoneChageReceived?.Invoke(_zoneID, _pendingChatID, _zoneInternalID, _pendingStartX, _pendingStartY);
+                OnFullReceived?.Invoke((ushort)_bootstrapPlayers.Length, _bootstrapPlayers);
+                OnMonsterFullReceived?.Invoke((ushort)_bootstrapMonsters.Length, _bootstrapMonsters);
+                lock (_sessionGate)
+                {
+                    _pendingOwnershipEpoch = 0;
+                    _pendingBootstrapID = 0;
+                    _awaitingZoneAck = false;
+                    _worldReady = true;
+                }
             });
         }
         public void ActionResultReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.ActionResultField[] actions)

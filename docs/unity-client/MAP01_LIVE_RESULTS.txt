@@ -1,0 +1,29 @@
+MAP01 PUBLICATION / LIVE INPUT — 2026-10-22
+Approval: human U0C9QEUHPMK / C0C9VFZMV43 / parent1792487679.299269 / reply1792646408.310839 / exact approval MAP01. Matched request1792583875.856059 and consumed once for this bundle. Chat explicitly resumes native Unity input.
+PR: https://github.com/JoEunil/MMORPG/pull/45 ; branch codex/world-map-export. Ordinary fetch/prune and merge preserved origin/master c1a1202 README + PR43 history; no broad PR44 merge/reset/forcepush. PR attached to this task. Merge/public Pages deployment not performed.
+
+Environment
+- Host preflight: no MainServer process and ports9999/3000 unused; MySQL84/Redis already running. No service restarts.
+- Existing logs and empty redo.1/backpressure.1 preserved to ignored live-map01 before startup. TEST* initialization flags absent across process/user/machine.
+- Started existing Game/Login node service PID43004 and verified candidate World-Export/bin/MainServer.exe PID24024, hidden per Windows policy. Ports3000/9999 listening; server stdout ready. No old process stop/force kill, no executable overwrite.
+- Active ClientCore DLL hash matches candidate; same new wire as candidate server. Native dependency DLLs copied from existing known C10 runtime only when absent.
+- ROOT has preexisting PR44 combat/chat feedback, preserved; tested map/entry/ClientCore source subset matches current candidate. Full ROOT art/combat equivalence is not claimed.
+
+One actual input session
+- Existing DPAPI test-account loader prepared account01 fields privately; credential typing is setup, not a native-input assertion. No password/token printed/stored in repository or capture.
+- computer-use sky selected unique Unity C02 window from inventory, activated it; every click/key used fresh window state. Actual Sign in click, character row selection, Enter field click.
+- New server accepted character5011/Zone1/internal1; InWorld and OwnFull true, position(101.824341,12.2797346), HP0, MP9919, EXP0. Old and new monster visuals observed, frames5095→19749→22896→33432 show advancing play.
+- Actual Right and C key input: CanAct=false; server position and MP unchanged. Defeated panel and LOG OUT shown. No alive movement/collision/corner/skill-damage claims.
+- Actual LOG OUT click: sign-in screen returned; Authenticated=false, IsBusy=false, Stage=Ready, HasOwnFull=false. Password field cleared. Normal disconnect, then Play stopped.
+- Actual captures: live-map01/hp0-field.png and logout.png; viewed local HP0 PNG, no secrets. HP0 field image copied as public selected media, caption distinguishes this from alive travel.
+- READ ONLY after logout: both dedicated character rows retain HP0 and same position/MP/EXP/other inspected state as preflight. No manual HP/MP/EXP/position/DB/Redis update.
+- Instrumentation typo OwnInternalID caused an eval-only compile failure, corrected to existing InternalID; product code unchanged and no test repeated to conceal failure.
+
+Limits / next step
+- Both dedicated test characters are HP0. Alive automatic boundary handoff, collision/motion feel and combat remain unexecuted; input is resumed, not paused again.
+- Server startup is verified; server remains running hidden at World-Export/bin. Do not assume a visible console or force terminate it.
+- HP-only restoration candidate prepared in ignored live-map01/restore-test-health.cjs (syntax checked only, NOT EXECUTED). Requires separately verified MAPHP01 Slack approval, exact owner/state, normal MainServer exit+DB-worker drain confirmed independently, absent process/port, row lock and 1-row HP-only update. Port absence alone is insufficient evidence of normal drain. Other selected columns must remain equal or rollback.
+- server_analyst confirmed no existing character revive/potion/natural HP recovery path and warned running state/queued shutdown write could overwrite DB-only HP edits. No new recovery system implemented.
+- MAPHP01 request bot U0C9ZRTQ6F8 / parent1792487679.299269 / ts1792646986.673599; no approval yet consumed.
+- Site built home+5 pages; browser checked updated field detail and actual screenshot rendering. Existing capture history preserved. New public capture is HP0 input, not auto-transition proof.
+Agent: test_health_contract(server_analyst/gpt-6.1-sol medium) new1/reactivation0; cumulative new59/reactivation127/total186, tokens N/A.

@@ -28,6 +28,8 @@ namespace C02.Tests
                 var signIn = Child("SignIn"); var results = Child("Results"); var loading = Child("Loading");
                 var text = Child("LoadingText", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TMP_Text>();
                 var button = Child("Return", typeof(RectTransform), typeof(Button)).GetComponent<Button>();
+                var buttonLabel = Child("ReturnLabel", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TMP_Text>();
+                buttonLabel.transform.SetParent(button.transform, false);
                 void Bind(string name, object value) => typeof(C17EntryPresentation).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(screen, value);
                 Bind("login", login); Bind("world", world); Bind("signIn", signIn); Bind("results", results);
                 Bind("loadingPanel", loading); Bind("loadingText", text); Bind("returnButton", button);
@@ -58,10 +60,26 @@ namespace C02.Tests
                     Assert.That(text.text, Is.Not.Empty); Assert.That(text.text, Does.Not.Contain("%"));
                     Assert.That(button.transform.parent, Is.EqualTo(loading.transform));
                 }
-                foreach (var stage in new[] { C02Stage.InWorld, C02Stage.TransitionPending, C02Stage.ReconnectRequired })
+                foreach (var stage in new[] { C02Stage.InWorld, C02Stage.TransitionPending })
                 {
                     Stage(stage); Assert.That(signIn.activeSelf || results.activeSelf || loading.activeSelf, Is.False);
                 }
+                Stage(C02Stage.ReconnectRequired);
+                Assert.That(loading.activeSelf, Is.True);
+                Assert.That(signIn.activeSelf || results.activeSelf, Is.False);
+                Assert.That(button.gameObject.activeInHierarchy, Is.True);
+                Assert.That(button.transform.parent, Is.EqualTo(loading.transform));
+                Assert.That(buttonLabel.text, Is.EqualTo("Return to sign-in"));
+                Assert.That(text.text, Does.Contain("reconnect"));
+                Assert.That(login.Authenticated, Is.True, "The recovery screen must wait for the user's return action.");
+                button.onClick.Invoke();
+                Assert.That(login.Authenticated, Is.False);
+                Assert.That(status.text, Does.Contain("Session closed"));
+                Stage(C02Stage.Ready);
+                Assert.That(signIn.activeSelf, Is.True);
+                Assert.That(loading.activeSelf, Is.False);
+
+                Property(login, "Authenticated", true);
                 Stage(C02Stage.Entering);
                 button.onClick.Invoke();
                 Assert.That(login.Authenticated, Is.False);

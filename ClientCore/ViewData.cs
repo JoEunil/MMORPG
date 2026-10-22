@@ -92,11 +92,17 @@ namespace ClientCore
             }
         }
 
-        public (bool, byte, float, float, byte) GetActionState()
+        public void SetOwnershipEpoch(ulong ownershipEpoch)
+        {
+            lock (_lockMove)
+                _actionState.ownershipEpoch = ownershipEpoch;
+        }
+
+        public (bool, byte, float, float, byte, ulong) GetActionState()
         {
             lock (_lockMove)
             {
-                var res = (_actionState.dirty, _actionState.dir, _actionState.x, _actionState.y, _actionState.waitSkillSlot);
+                var res = (_actionState.dirty, _actionState.dir, _actionState.x, _actionState.y, _actionState.waitSkillSlot, _actionState.ownershipEpoch);
                 _actionState.waitSkillSlot = NONE_SKILL;
                 _actionState.dirty = false;
                 // 좌표는 이벤트가 아니라 상태이므로 초기화하지 않는다.

@@ -18,7 +18,7 @@ namespace C02.Tests
         public static string RunPureChecks()
         {
             var tests = new C03MovementTests();
-            tests.FirstMovementPacket_Is18BytesSkill255_AndLastValueWins();
+            tests.FirstMovementPacket_Is26BytesAndCarriesOwnershipEpoch();
             tests.InvalidMovementCannotReplacePendingValue_AndCancelClearsIt();
             tests.ActionSendFailure_ReachesConnectionFailure_AndStopsFutureTicks();
             tests.DisposeSuppressesPendingAction();
@@ -28,9 +28,10 @@ namespace C02.Tests
         }
 
         [Test]
-        public void FirstMovementPacket_Is18BytesSkill255_AndLastValueWins()
+        public void FirstMovementPacket_Is26BytesAndCarriesOwnershipEpoch()
         {
             var data = NewData();
+            ((IViewDataModel)data).SetOwnershipEpoch(17);
             Assert.That(((IViewDataModel)data).GetActionState().Item5, Is.EqualTo(255));
             data.UpdateMove(0, 10, 11);
             data.UpdateMove(3, 11, 10);
@@ -38,16 +39,17 @@ namespace C02.Tests
             Assert.That(state.Item1, Is.True);
             var packet = (byte[])typeof(ViewModel).Assembly.GetType("ClientCore.PacketHelper.PacketBuilder", true)
                 .GetMethod("CreateActionPacket", BindingFlags.Static | BindingFlags.NonPublic)
-                .Invoke(null, new object[] { state.Item2, state.Item3, state.Item4, state.Item5 });
-            Assert.That(packet.Length, Is.EqualTo(18));
+                .Invoke(null, new object[] { state.Item2, state.Item3, state.Item4, state.Item5, state.Item6 });
+            Assert.That(packet.Length, Is.EqualTo(26));
             Assert.That(BitConverter.ToUInt16(packet, 0), Is.EqualTo(0xABCD));
-            Assert.That(BitConverter.ToUInt32(packet, 2), Is.EqualTo(18U));
+            Assert.That(BitConverter.ToUInt32(packet, 2), Is.EqualTo(26U));
             Assert.That(packet[6], Is.EqualTo(11));
             Assert.That(packet[7], Is.EqualTo(1));
             Assert.That(packet[8], Is.EqualTo(3));
             Assert.That(BitConverter.ToSingle(packet, 9), Is.EqualTo(11));
             Assert.That(BitConverter.ToSingle(packet, 13), Is.EqualTo(10));
             Assert.That(packet[17], Is.EqualTo(255));
+            Assert.That(BitConverter.ToUInt64(packet, 18), Is.EqualTo(17UL));
             Assert.That(((IViewDataModel)data).GetActionState().Item1, Is.False);
         }
 

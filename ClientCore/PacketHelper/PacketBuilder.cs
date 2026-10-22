@@ -71,14 +71,25 @@ namespace ClientCore.PacketHelper
             return Packet.Serialize(packet);
         }
 
-        internal static byte[] CreateActionPacket(byte dir, float x, float y, byte skillSlot)
+        internal static byte[] CreateZoneResyncPacket(ulong ownershipEpoch)
+        {
+            var packet = new STPacket<ZoneResyncBody>
+            {
+                header = new PacketHeader { magic = MAGIC, length = 0, opcode = (byte)OP_CODE.ZONE_RESYNC, flags = 0 },
+                body = new ZoneResyncBody { ownershipEpoch = ownershipEpoch }
+            };
+            return Packet.Serialize(packet);
+        }
+
+        internal static byte[] CreateActionPacket(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch)
         {
             var body = new ActionRequestBody
             {
                 dir = dir,
                 x = x,
                 y = y,
-                skillSlot = skillSlot
+                skillSlot = skillSlot,
+                ownershipEpoch = ownershipEpoch
             };
 
             var header = new PacketHeader

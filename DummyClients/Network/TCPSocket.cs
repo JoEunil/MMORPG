@@ -123,8 +123,10 @@ namespace ClientCore.Network
                 {
                     while (TryReadPacket(ref buffer, out byte[] packet))
                     {
-                        if (packet != null)
-                            _handler.HandleResponse(_index, packet);
+                        if (packet == null) continue;
+                        var session = Program.GetSession(_index);
+                        if (session != null && ReferenceEquals(session.GetSocket(), this))
+                            _handler.HandleResponse(_index, session, packet);
                     }
                     consumed = buffer.Start;
                     examined = buffer.End;

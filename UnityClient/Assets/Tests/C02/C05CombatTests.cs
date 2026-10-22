@@ -43,7 +43,7 @@ namespace C02.Tests
             Assert.Throws<ArgumentException>(() => data.UpdateAction(0, 1, float.PositiveInfinity, 0));
             Assert.Throws<ArgumentException>(() => data.UpdateAction(0, 1, 2, 3));
             var state = ((IViewDataModel)data).GetActionState();
-            Assert.That(state, Is.EqualTo((true, (byte)3, 15f, 16f, (byte)2)));
+            Assert.That(state, Is.EqualTo((true, (byte)3, 15f, 16f, (byte)2, 0UL)));
             state = ((IViewDataModel)data).GetActionState();
             Assert.That(state.Item1, Is.False);
             Assert.That(state.Item5, Is.EqualTo(255));
@@ -115,15 +115,15 @@ namespace C02.Tests
             var cancelled = ((IViewDataModel)data).GetActionState();
             Assert.That(cancelled.Item1, Is.False); Assert.That(cancelled.Item5, Is.EqualTo(255));
             data.UpdateMove(0, 15, 17);
-            Assert.That(((IViewDataModel)data).GetActionState(), Is.EqualTo((true, (byte)0, 15f, 17f, (byte)255)));
+            Assert.That(((IViewDataModel)data).GetActionState(), Is.EqualTo((true, (byte)0, 15f, 17f, (byte)255, 0UL)));
             data.UpdateAction(1, 15, 17, 1);
             data.CancelMove();
-            Assert.That(((IViewDataModel)data).GetActionState(), Is.EqualTo((true, (byte)1, 15f, 17f, (byte)1)),
+            Assert.That(((IViewDataModel)data).GetActionState(), Is.EqualTo((true, (byte)1, 15f, 17f, (byte)1, 0UL)),
                 "Movement-only cancellation still preserves an independently queued cast.");
             data.UpdateAction(2, 15, 17, 0);
             data.CancelAction();
             data.UpdateAction(3, 15, 17, 2);
-            Assert.That(((IViewDataModel)data).GetActionState(), Is.EqualTo((true, (byte)3, 15f, 17f, (byte)2)));
+            Assert.That(((IViewDataModel)data).GetActionState(), Is.EqualTo((true, (byte)3, 15f, 17f, (byte)2, 0UL)));
         }
 
         [Test]
@@ -478,7 +478,7 @@ namespace C02.Tests
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() { } public void Profiles(uint[] profileIds) { }
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void CharacterList() { } public void Enter(ulong id) { } public void Chat(string msg, byte scope, ulong target) { }
-            public void Action(byte dir, float x, float y, byte slot) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void Log(string msg) { }
+            public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void Log(string msg) { }
         }
     }
 }

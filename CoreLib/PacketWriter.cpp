@@ -340,7 +340,7 @@ namespace Core {
         }
         p->Clear();
         auto p_st = reinterpret_cast<PacketStruct<FullSnapshotBody>*>(p->GetBuffer());
-        p_st->header.length = sizeof(PacketHeader) + sizeof(uint16_t) * 2 + sizeof(uint64_t);
+        p_st->header.length = sizeof(PacketHeader) + sizeof(uint16_t) * 2 + sizeof(uint64_t) * 3 + sizeof(uint8_t);
         p->SetLength(p_st->header.length);
         p_st->header.opcode = OP::ZONE_FULL_STATE_BROADCAST;
         p_st->header.magic = MAGIC;
@@ -349,6 +349,32 @@ namespace Core {
         p_st->body.count = 0;
         p_st->body.zoneID = zoneID;
         p_st->body.zoneGeneration = generation;
+        p_st->body.ownershipEpoch = 0;
+        p_st->body.bootstrapID = 0;
+        p_st->body.bootstrapEnd = 0;
+        return p;
+    }
+
+    std::shared_ptr<IPacket> PacketWriter::GetBootstrapFullHeader(bool monsters, uint16_t zoneID, uint64_t generation, uint64_t ownershipEpoch, uint64_t bootstrapID) {
+        auto p = packetPool->Acquire();
+        if (!p) return nullptr;
+        p->Clear();
+        const uint32_t opcode = monsters ? OP::MONSTER_FULL_STATE_BROADCAST : OP::ZONE_FULL_STATE_BROADCAST;
+        auto* header = reinterpret_cast<PacketHeader*>(p->GetBuffer());
+        header->length = sizeof(PacketHeader) + sizeof(uint16_t) * 2 + sizeof(uint64_t) * 3 + sizeof(uint8_t);
+        header->magic = MAGIC;
+        header->opcode = static_cast<uint8_t>(opcode);
+        header->flags = FLAG_SIMULATION;
+        if (monsters) {
+            auto* body = reinterpret_cast<MonsterFullSnapshotBody*>(p->GetBuffer() + sizeof(PacketHeader));
+            body->count = 0; body->zoneID = zoneID; body->zoneGeneration = generation;
+            body->ownershipEpoch = ownershipEpoch; body->bootstrapID = bootstrapID; body->bootstrapEnd = 1;
+        } else {
+            auto* body = reinterpret_cast<FullSnapshotBody*>(p->GetBuffer() + sizeof(PacketHeader));
+            body->count = 0; body->zoneID = zoneID; body->zoneGeneration = generation;
+            body->ownershipEpoch = ownershipEpoch; body->bootstrapID = bootstrapID; body->bootstrapEnd = 1;
+        }
+        p->SetLength(header->length);
         return p;
     }
 
@@ -381,7 +407,7 @@ namespace Core {
         }
         p->Clear();
         auto p_st = reinterpret_cast<PacketStruct<MonsterFullSnapshotBody>*>(p->GetBuffer());
-        p_st->header.length = sizeof(PacketHeader) + sizeof(uint16_t) * 2 + sizeof(uint64_t);
+        p_st->header.length = sizeof(PacketHeader) + sizeof(uint16_t) * 2 + sizeof(uint64_t) * 3 + sizeof(uint8_t);
         p->SetLength(p_st->header.length);
         p_st->header.opcode = OP::MONSTER_FULL_STATE_BROADCAST;
         p_st->header.magic = MAGIC;
@@ -390,6 +416,9 @@ namespace Core {
         p_st->body.count = 0;
         p_st->body.zoneID = zoneID;
         p_st->body.zoneGeneration = generation;
+        p_st->body.ownershipEpoch = 0;
+        p_st->body.bootstrapID = 0;
+        p_st->body.bootstrapEnd = 0;
         return p;
     }
 
@@ -495,7 +524,7 @@ namespace Core {
         return p;
     }
 
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y, uint64_t generation) {
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y, uint64_t generation, uint64_t ownershipEpoch) {
         auto p = packetPool->AcquireUnique();
         if (p == nullptr) {
             return nullptr;
@@ -515,6 +544,7 @@ namespace Core {
         p_st->body.startY = y;
         p_st->body.zoneInternalID = zoneInternalID;
         p_st->body.zoneGeneration = generation;
+        p_st->body.ownershipEpoch = ownershipEpoch;
         return p;
     }
 }

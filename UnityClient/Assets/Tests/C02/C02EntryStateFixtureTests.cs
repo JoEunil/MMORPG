@@ -39,7 +39,7 @@ namespace C02.Tests
             ((IViewModelNet)model).EnterReceived(1, Array.Empty<byte>(), 0, 0, 0, 100, 100, 100, 100, 0, 8, 9, 0);
             dispatcher.Drain();
             Assert.That(network.ZoneChangeCount, Is.EqualTo(1));
-            ((IViewModelNet)model).ZoneChageReceived(0, 0, 0, 0, 0, 0, 1);
+            ((IViewModelNet)model).ZoneChageReceived(0, 0, 0, 0, 0, 0, 1, 0);
             Assert.That(zoneFailed, Is.False);
             dispatcher.Drain();
             Assert.That(zoneFailed, Is.True);
@@ -60,8 +60,9 @@ namespace C02.Tests
             model.Enter(789UL);
             var net = (IViewModelNet)model;
             net.EnterReceived(1, Array.Empty<byte>(), 0, 0, 0, 100, 100, 100, 100, 0, 2, 3, 0);
-            net.ZoneChageReceived(1, 4, 5, 6, 7, 8, 1);
-            net.FullReceived(1, 1, 0, Array.Empty<FullStateField>());
+            net.ZoneChageReceived(1, 4, 5, 6, 7, 8, 1, 1);
+            net.FullReceived(4, 1, 1, 1, true, 1, new[] { new FullStateField { zoneInternalID = 6 } });
+            net.MonsterFullReceived(4, 1, 1, 1, true, 0, Array.Empty<MonsterFullField>());
             ((IDisposable)model).Dispose();
             dispatcher.Drain();
 
@@ -277,9 +278,10 @@ namespace C02.Tests
             public void CharacterList() { }
             public void Enter(ulong charID) => EnteredCharacterID = charID;
             public void Chat(string message, byte scope, ulong targetID) { }
-            public void Action(byte dir, float x, float y, byte skillSlot) { }
+            public void Action(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch) { }
             public void Pong(ulong serverTimeMs) { }
             public void ZoneChange(byte op) => ZoneChangeCount++;
+            public void ZoneResync(ulong ownershipEpoch) { }
             public void Log(string msg) { }
         }
 

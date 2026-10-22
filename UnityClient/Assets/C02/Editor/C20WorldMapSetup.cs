@@ -47,7 +47,7 @@ public static class C20WorldMapSetup
             groundObject.transform.localScale = new Vector3(C20WorldMap.ZoneSize * 3 + 10, .1f, C20WorldMap.ZoneSize * 2 + 10);
             author.ground = groundObject.GetComponent<BoxCollider>();
             author.ground.isTrigger = true;
-            var groundMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/C02/Art/Meadow.mat");
+            var groundMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/C02/Art/FixedWorldWalls/FixedGround.mat");
             if (groundMaterial == null) throw new InvalidOperationException("Existing ground material is required.");
             groundObject.GetComponent<MeshRenderer>().sharedMaterial = groundMaterial;
             var material = AssetDatabase.LoadAssetAtPath<Material>("Assets/C02/Art/PaleStone.mat");

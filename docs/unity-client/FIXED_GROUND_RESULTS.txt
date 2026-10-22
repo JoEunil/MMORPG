@@ -1,0 +1,16 @@
+2026-10-21 — Fixed ground material
+Scope: existing NavigationGround material only; no runtime movement/server/navigation changes.
+Product: FixedGround.mat/meta; C02.unity renderer802799593 material GUID; C20WorldMapSetup one path.
+Source: existing Meadow.mat + V04/LocalGroundGrain.asset; BaseMap scale100x150. No new paid/external asset or shader.
+Rejected: first wall-foot layout and wider grass variant; almost no useful contact improvement. Draft C23 source/meta excluded from ROOT/CAND Assets, ignored local prototype retained.
+Rejected: EarthAndGrass repeated road texture creates obvious parallel paths.
+Adopted: grain surface compared at identical preview scene camera/light (1280x720, orthographic8). Existing fixed map cloned; not a game screenshot or server result.
+Independent final review: no P1/P2. Compile: completed/errors0. No NUnit or native input run for this reversible visual change.
+Saved material render exactly matched accepted preview pixels. Scene saved/clean; EditMode; input runner false; original18obstacles unchanged.
+ROOT before/after Scene: same block IDs; changed existing MeshRenderer802799593 only. CAND previous block matched before selective replacement.
+Navigation SHA256 unchanged: 322279FBB426C958A065F1D017FDAF11BB16C3C9CAA82C51222BCB35D08B5430.
+Evidence: evidence/2026-10-21/fixed-ground-before.png, fixed-ground-after.png. Both static Editor preview renders.
+Limits: still uniform and visibly repeating; no natural terrain/whole-field quality completion claim. Actual current camera/actors/live feel unverified while input held.
+Publication: add to existing local AUTHOR01 bundle; no new push/PR/approval request. PR44 untouched.
+Public site: unchanged; no verified new gameplay capture. Next resumed input batch folds ground appearance into existing field inspection instead of adding another login.
+Rollback: restore old ground material reference and Setup path; remove only new unused FixedGround asset/meta. Original Meadow and grain assets unchanged.

@@ -53,6 +53,7 @@ namespace ClientCore.PacketHelper
         BAZAAR_CHECK_OUTBOX_RES = 35,
         BAZAAR_CANCEL_LISTING = 36,
         BAZAAR_CANCEL_LISTING_RES = 37,
+        ZONE_RESYNC = 38,
     }
     
     public enum ZONE_CHANGE : byte
@@ -185,6 +186,8 @@ namespace ClientCore.PacketHelper
     {
         public byte op;
     }
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct ZoneResyncBody { public ulong ownershipEpoch; }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ZoneChangeResponseBody
@@ -196,6 +199,7 @@ namespace ClientCore.PacketHelper
         public float startX;
         public float startY;
         public ulong zoneGeneration;
+        public ulong ownershipEpoch;
     }
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ChatRequestBody
@@ -246,6 +250,7 @@ namespace ClientCore.PacketHelper
         public byte dir;      // 애니메이션/스킬 시전 방향
         public float x, y;    // 이동 후 최종 좌표(절대). 서버가 경과 시간 대비 이동량을 검증한다.
         public byte skillSlot;
+        public ulong ownershipEpoch;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -865,14 +870,40 @@ namespace ClientCore.PacketHelper
             return (count, zoneID, generation, items);
         }
 
+        public static (ushort count, ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, T[] items)
+            DeserializeFullSnapshot<T>(PacketHeader header, byte[] buffer) where T : struct
+        {
+            const int snapshotHeaderSize = 29;
+            int offset = Marshal.SizeOf<PacketHeader>();
+            if (buffer == null || header.flags != FLAG_SIMULATION || header.length != buffer.Length || buffer.Length < offset + snapshotHeaderSize)
+                throw new ArgumentException("Invalid full snapshot length.");
+            ushort count = BitConverter.ToUInt16(buffer, offset);
+            ushort zoneID = BitConverter.ToUInt16(buffer, offset + 2);
+            ulong generation = BitConverter.ToUInt64(buffer, offset + 4);
+            ulong ownershipEpoch = BitConverter.ToUInt64(buffer, offset + 12);
+            ulong bootstrapID = BitConverter.ToUInt64(buffer, offset + 20);
+            byte bootstrapEnd = buffer[offset + 28];
+            if (zoneID < 1 || zoneID > 6 || generation == 0 || bootstrapEnd > 1 ||
+                (bootstrapID == 0) != (ownershipEpoch == 0))
+                throw new ArgumentException("Invalid full snapshot identity.");
+            offset += snapshotHeaderSize;
+            int itemSize = Marshal.SizeOf<T>();
+            if ((long)offset + (long)count * itemSize != buffer.Length)
+                throw new ArgumentException("Invalid full snapshot count or item length.");
+            T[] items = new T[count];
+            for (int i = 0; i < count; i++, offset += itemSize)
+                items[i] = ReadStruct<T>(buffer, offset);
+            return (count, zoneID, generation, ownershipEpoch, bootstrapID, bootstrapEnd != 0, items);
+        }
+
         internal static STPacket<ZoneChangeResponseBody> DeserializeZoneChange(PacketHeader header, byte[] buffer)
         {
-            if (header.flags != FLAG_SIMULATION || header.length != 39 || buffer.Length != 39)
+            if (header.flags != FLAG_SIMULATION || header.length != 47 || buffer.Length != 47)
                 throw new ArgumentException("Invalid zone response length or flags.");
             var packet = Deserialize<ZoneChangeResponseBody>(header, buffer);
             var body = packet.body;
             if (body.resStatus > 1 || body.resStatus == 1 && (body.zoneID < 1 || body.zoneID > 6 ||
-                body.zoneGeneration == 0 || body.zoneInternalID == 0 || body.zoneInternalID == uint.MaxValue ||
+                body.zoneGeneration == 0 || body.ownershipEpoch == 0 || body.zoneInternalID == 0 || body.zoneInternalID == uint.MaxValue ||
                 float.IsNaN(body.startX) || float.IsInfinity(body.startX) || float.IsNaN(body.startY) || float.IsInfinity(body.startY)))
                 throw new ArgumentException("Invalid zone response identity.");
             return packet;

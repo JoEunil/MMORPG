@@ -55,6 +55,7 @@ namespace Core {
             return true;
         }
         friend class Initializer;
+        friend class NonZoneThreadPoolFixture;
     public:
         void Start() {
             m_thread = std::thread(&CorePerfCollector::ThreadFunc, this);
