@@ -1,0 +1,10 @@
+PR46 town spawn regression correction — 2026-10-22
+
+Finding4345933255 is valid: existing SpawnLayoutTest expected112 for Zone1, but approved town behavior creates0. Before correction the focused test failed with actual0/expected112.
+Change: for TOWN_ZONE_ID assert the monster array empty and every AOI Cell monsterIndexes empty, then continue to the existing hunting-zone assertions.
+Preserved: all non-town zones still require112 total;94 regular/17 strong/1boss; original per-cell counts, unique references, IDs, positions and walkability assertions are unchanged.
+Production code, AI/A*, authored spawn content and map data are unchanged.
+Independent review: no P1/P2; explicit town assertions do not weaken hunting coverage.
+Validation: isolated Release/x64 UnitTests build PASS (existing warnings remain); only SpawnLayoutTest.StarterLayoutLeavesEntryCellsEmptyAndBuildsAllServerReferences executed, PASS0ms/total1ms. Full suite, Unity input, server restart and DB operations were not performed.
+Initial build linked the test executable but post-build xcopy failed MSB3073/code4 because the Feel02 runtime directory had an in-use mysql DLL. No test ran from that failed build. Rebuilt into isolated PR46-SpawnReview/bin without disabling copy/guards; build exit0/test exit0. Runtime mysql DLL SHA unchanged (2070CD998CDF625425DE4AA5476F131D92165068998CC634B13C4D3138E0F088).
+No gameplay/public content change; website regeneration and captures were not needed.

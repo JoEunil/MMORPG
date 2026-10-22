@@ -1,3 +1,9 @@
+## PR46 마을 몬스터 수 테스트 리뷰 수정 — 2026-10-22
+
+사용자의직접반영지시에따라 discussion4345933255를수정했다. SpawnLayoutTest에서마을은monster배열0과전체25Cell의monsterIndexes0을검사하고,사냥터112마리·일반94/강화17/보스1·위치/통행/고유참조검증은그대로보존했다. 제품/AI/맵/DB변경0. 독립리뷰P1P2없음/전용출력Release빌드PASS/관련fixture1개PASS0ms(total1ms). 첫빌드의postcopy는실행서버DLL잠금으로실패해테스트실행없이중단했고전용출력으로분리해해결했다. 서버정지/재시작/Unity입력0,기존런타임DLL해시불변. PR46_SPAWN_TEST_RESULTS.txt참조.
+
+원격PR45병합(master efd9a1f)과자동head삭제를확인해fetch --prune했고PR46기준은현재master다. 열린PR46에이번테스트와기록만추가하며새PR/강제push/병합0. 공개기능변화가없어사이트갱신/캡처/전체회귀는추가하지않는다. 이번검증은전체CoreLib suite통과주장이아니다.
+
 ## FEEL02 게시 완료 — 2026-10-22
 
 Slack지정사람1792658980.975439의 FEEL02 승인을 요청1792658283.786519와 대조해 소비했다. PR45에는 내보내기 리뷰 수정2파일만2104de1로, 기존PR46에는 이동·모션·필드장식·Unity Export 서버직접소비·검증기록·선별캡처를일반merge/push로반영했다. GitHub에서PR45 head2104de1/PR46 headd483003와본문갱신/Open/mergeabletrue/미병합을확인했다. 이기록자체의후속커밋도같은PR46에보존한다.

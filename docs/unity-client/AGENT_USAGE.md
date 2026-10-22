@@ -1,3 +1,7 @@
+## PR46 마을 배치 테스트 리뷰 — 2026-10-22
+
+feel02_server_review/code_reviewer(Sol medium) 재활성화1: 마을0/전체Cell빈참조검증과사냥터기존기대유지7행수정검토,P1P2없음. Coordinator가독립출력빌드와관련fixture1개만실행했다. 누적신규69/재활성화154/활성화223,실제토큰·비용N/A. 서버/Unity입력0.
+
 ## PR46 채팅 귀환 리뷰 — 2026-10-22
 
 feel02_server_review/code_reviewer(Sol medium) 재활성화1: 단일Join으로전환하는1행diff와실패범위독립검토,추가P1P2없음. Coordinator가실제PR46후보빌드와기존귀환2fixture를수행했다. 이전미게시FEEL02후보까지포함한누적신규69/재활성화153/활성화222,실제토큰·비용N/A. 이번전용추가실입력/서버재시작0.
