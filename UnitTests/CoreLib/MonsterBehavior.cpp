@@ -34,6 +34,13 @@ namespace Core {
             SCOPED_TRACE(zoneID);
             MonsterBehaviorFixture fixture(zoneID);
             fixture.InitializeSpawns();
+            if (zoneID == TOWN_ZONE_ID) {
+                ASSERT_TRUE(fixture.Monsters().empty());
+                for (int y = 0; y < CELLS_Y; ++y)
+                    for (int x = 0; x < CELLS_X; ++x)
+                        EXPECT_TRUE(fixture.CellAt(x, y).monsterIndexes.empty());
+                continue;
+            }
             const int regular[25] = {0,0,2,3,4, 0,2,3,4,5, 2,3,0,5,6, 3,4,5,6,7, 4,5,6,7,8};
             const int strong[25] = {0,0,0,0,1, 0,0,0,1,1, 0,0,0,1,1, 0,1,1,1,2, 1,1,1,2,2};
             ASSERT_EQ(fixture.Monsters().size(), 112u);

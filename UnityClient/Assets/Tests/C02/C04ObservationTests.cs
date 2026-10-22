@@ -784,7 +784,7 @@ namespace C02.Tests
             public void Chat(string message, byte scope, ulong target) { }
             public void Action(byte direction, float x, float y, byte skill, ulong ownershipEpoch) { }
             public void Pong(ulong time) { }
-            public void ZoneChange(byte operation) { } public void ZoneResync(ulong ownershipEpoch) { }
+            public void ZoneChange(byte operation) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { }
             public void Log(string message) { }
         }
     }

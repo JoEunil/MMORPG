@@ -80,6 +80,9 @@ namespace Core {
                     stateManager->SendBootstrap(p->GetSessionID(), body->ownershipEpoch);
                 }
                 break;
+            case OP::RESPAWN_TO_TOWN:
+                RespawnToTown(p);
+                break;
             case OP::INVENTORY_REQ:
                 GetInventory(p);
                 break;
@@ -462,6 +465,26 @@ namespace Core {
         const bool success = p->GetLength() == sizeof(PacketStruct<ZoneChangeBody>)
             && stateManager->ChangeZone(session, parseBody<ZoneChangeBody>(p->GetPtr())->op, result);
         // ChangeZone releases the shard and all Zone locks before network transmission.
+        auto response = success
+            ? writer->WriteZoneChangeSucess(result.zoneID, result.chatID, result.internalID,
+                result.x, result.y, result.generation, result.ownershipEpoch)
+            : writer->WriteZoneChangeFailed();
+        if (response)
+            iocp->SendDataUnique(session, std::move(response));
+        if (success)
+            stateManager->SendBootstrap(session, result.ownershipEpoch);
+    }
+
+    void NonZoneHandler::RespawnToTown(IPacketView* p) {
+        ZoneChangeResult result;
+        const auto session = p->GetSessionID();
+        const bool validHeader = p->GetLength() == sizeof(PacketStruct<RespawnToTownBody>)
+            && parseHeader(p->GetPtr())->magic == MAGIC
+            && parseHeader(p->GetPtr())->opcode == OP::RESPAWN_TO_TOWN
+            && parseHeader(p->GetPtr())->length == p->GetLength()
+            && parseHeader(p->GetPtr())->flags == 0;
+        const bool success = validHeader
+            && stateManager->RespawnToTown(session, *parseBody<RespawnToTownBody>(p->GetPtr()), result);
         auto response = success
             ? writer->WriteZoneChangeSucess(result.zoneID, result.chatID, result.internalID,
                 result.x, result.y, result.generation, result.ownershipEpoch)

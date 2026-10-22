@@ -16,7 +16,7 @@ namespace C02.Editor
         public override VisualElement CreateInspectorGUI()
         {
             var root = new VisualElement();
-            AddNote(root, "고정 5×5 배치 · 셀 폭 42 · 중앙 (2,2) 셀은 보스 1마리");
+            AddNote(root, "1구역은 몬스터 없는 마을입니다. 나머지 사냥 구역은 5×5 배치 · 셀 폭 42 · 중앙 보스 1마리입니다.");
             AddNote(root, "셀별 배열을 비우면 기존 공통 개수를 사용합니다. 배열은 y × 5 + x 순서의 25개이며 중앙 값은 0입니다.");
             AddNote(root, "표의 셀 개수는 100% 기준이며 표기 순서는 일반 + 강한 몬스터입니다. 아래에서 구역별 적용 합계를 확인합니다.");
             root.Add(new PropertyField(serializedObject.FindProperty("regularPerCell"), "일반 몬스터 / 셀"));
@@ -24,7 +24,7 @@ namespace C02.Editor
             root.Add(new PropertyField(serializedObject.FindProperty("edgeInset"), "외곽 여백 (1–41)"));
             root.Add(new PropertyField(serializedObject.FindProperty("regularByCell"), "셀별 일반 개수 (선택)"));
             root.Add(new PropertyField(serializedObject.FindProperty("strongByCell"), "셀별 강한 개수 (선택)"));
-            root.Add(new PropertyField(serializedObject.FindProperty("zoneDensityPercent"), "Zone별 밀도 (%) · 선택, 비우면 모두 100%"));
+            root.Add(new PropertyField(serializedObject.FindProperty("zoneDensityPercent"), "구역별 밀도 (%) · 마을은 0%, 사냥 구역은 50–200%"));
             grid = new VisualElement();
             grid.style.marginTop = 6;
             root.Add(grid);
@@ -106,10 +106,10 @@ namespace C02.Editor
             var zoneTotals = new string[6];
             for (int zone = 0; zone < zoneTotals.Length; zone++)
             {
-                long total = 1;
+                long total = zone + 1 == C15MonsterSpawnExport.TownZoneId ? 0 : 1;
                 for (int cell = 0; cell < 25; cell++)
                     total += (long)regularCounts[cell] * densities[zone] / 100 + (long)strongCounts[cell] * densities[zone] / 100;
-                zoneTotals[zone] = $"Zone {zone + 1}: {total}마리 ({densities[zone]}%)";
+                zoneTotals[zone] = zone + 1 == C15MonsterSpawnExport.TownZoneId ? "Zone 1: 마을 · 몬스터 0마리" : $"Zone {zone + 1}: {total}마리 ({densities[zone]}%)";
             }
             preview.text = $"{string.Join(" · ", zoneTotals)}\n좌표 오프셋 {inset}–41";
             validation.text = "저작 값이 유효합니다.";

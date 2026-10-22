@@ -99,6 +99,7 @@ public struct InventoryItemView
         void Error(string msg);
         void Log(string msg);
         void ZoneChange(int op);
+        bool RequestRespawn();
     }
 
     // 네트워크 → ViewModel 호출
@@ -207,6 +208,7 @@ namespace ClientCore.Services
         void Pong(ulong serverTimeMs);
         void ZoneChange(byte op);
         void ZoneResync(ulong ownershipEpoch);
+        void RespawnToTown(ulong ownershipEpoch);
         void Log(string msg);
     }
 }

@@ -1,0 +1,67 @@
+Town transition and actual-input verification — 2026-10-22
+
+Authorization
+- STOP01 exact human U0C9QEUHPMK reply1792649722.237479 matched bot request
+  1792649355.942189, parent1792487679.299269. Consumed only for this transition.
+- TOWN01 posting authorization remains for PR46; no merge authorization consumed.
+
+Normal server transition PASS
+- Reviewed initial script SHA E49DF4275C8CB82AD63F915ED5A415DEE5590E0E503D25397DA06298EF42B646.
+- Standard WindowsPS5.1 process/child RemoteSigned only. No Bypass, persistent
+  CurrentUser/LocalMachine changes, alternate runtime or force kill.
+- Preflight PASS. Existing PID24024 received normal q from helper27328 exit0.
+  Original code checked native server exit0 before stopped-Original evidence.
+- First transition stopped after exit because ROOT's stale tool treated plain
+  'Connected to Redis!(session)' as JSON. Also known plain 'server stop'.
+  Canonical CAND already had strict handling of exactly these two source-proven
+  strings; ROOT execution copy was out of sync. Raw logs retained, not rewritten.
+- Resume candidate high review found ignored PreflightOnly; restored snapshot
+  comparison/exit before execution. Final high P1/P2 none, syntax PASS.
+  Resume SHA 3CB6F3448F7A9547CDD8B2D006B6AE70B7BFB99C59736343315D5B250473F05C.
+- Rechecked prior native-exit control-flow evidence, current/stopped log hashes,
+  unchanged error/game hashes, exactly3 cache MQ and4 DB worker stopped records,
+  WAL0 and identical dedicated-character snapshots. Resume preflight PASS.
+- Resume launched new Town-Respawn/bin/MainServer.exe PID31724, ready on9999,
+  runtime DLL paths/hashes verified; original binary retained. No rollback needed.
+  New SHA674973626D13FC64EAB878822C7E985476DEAF96D2DE98EB3CA67E296170A2EC.
+- Receipts ROOT UnityClient/Captures:
+  r01-switch-20261022-151556-261-40080.txt (+evidence)
+  r01-switch-20261022-151942-186-42692.txt (+evidence)
+
+Actual native Unity one-session PASS
+- Frozen Assets/Packages/ProjectSettings; no editing/reimport during test.
+- Account02 credential fields privately prepared from DPAPI data in memory;
+  no secret printed/stored. Setup did not submit login or invoke game handlers.
+- Actual sky Sign in click -> character5012 row click -> Enter field click.
+- Before return: frame18573, InWorld/OwnFulltrue, Zone5/internal1, HP0/10000,
+  MP9859/10000, EXP10, position210,210, CanActfalse, observed monsters2.
+  Initial invalid saved position was relocated by the existing entry policy;
+  HP0 was preserved, not auto-healed by login.
+- Actual RETURN TO TOWN click -> frame27422, InWorld/OwnFulltrue, Zone1/internal1,
+  position10,10, HP10000/max10000, MP10000/max10000, EXP10, CanActtrue,
+  observed monsters0, TOWN/SAFE AREA visible, defeat overlay gone.
+- Capture after-return at frame32675: actual GameView, no injected state.
+  Before/after PNGs locally viewed; matching selected copies added to site media.
+- Actual Disconnect click -> frame37242, authenticatedfalse/busyfalse, Ready,
+  HasOwnFullfalse, sign-in returned/password cleared. Play stopped normally.
+- Final Editor playingfalse/pausedfalse/dirtyfalse/backgroundfalse/inputRunnerfalse.
+- Postlogout READ ONLY DB:5012 Zone1(10,10), HP/MP10000, EXP10/level1/attack10;
+  5011 unchanged (HP0,MP9919,EXP0,Zone1 original position). Direct DB writes0.
+- Server31724 remains running hidden; login/DB/Redis services retained.
+- Fresh WindowsPS5.1 Get-ExecutionPolicy after exit reports Restricted again:
+  process-only approval did not change permanent policy.
+
+Tooling / limits
+- CLI updated beta13->beta14 per skill. Pipeline's unsupported editor_status
+  probe caused Editor ErrorPause at frame2173 before native login. Unpaused,
+  verified actual subsequent advancing frames; not a game runtime failure.
+- Python Store alias failed to launch for website build; bundled Python used.
+- No broad automatic rerun, repeated login, extra death or combat test.
+- Town scenery reuses existing outpost, no new village/NPC art claim.
+- User AI/A* / Cell movement constraint untouched. Future cross-zone monsters
+  still need an explicit no-town-entry rule in that separate AI implementation.
+- Site generated home+5 pages/local links validated; actual browser loaded field
+  detail with new image links/history. Public master/Pages deployment not done.
+- ROOT reusable switch tool backed up then synced to canonical strict parser;
+  canonical child Bypass replaced by process RemoteSigned, reviewed P1/P2 none.
+- Specialist cumulative new63/reactivation131/total194, actual tokens/cost N/A.

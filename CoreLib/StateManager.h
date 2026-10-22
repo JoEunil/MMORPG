@@ -24,6 +24,7 @@ namespace Core {
     struct SessionData {
         uint16_t zoneID = 0;
         uint64_t ownershipEpoch = 0;
+        uint64_t lastRespawnRequestEpoch = 0;
         uint64_t bootstrapSequence = 0;
         uint64_t chatID = 0;
         uint64_t userID = 0;
@@ -118,6 +119,7 @@ namespace Core {
                 return true; // Preserve first-completion-wins state, including failure.
             it->second.userID = userID;
             it->second.zoneID = 0;
+            it->second.lastRespawnRequestEpoch = 0;
             it->second.characterID = 0;
             it->second.cheatCount = 0;
             it->second.lastCheatTime = std::chrono::steady_clock::now();
@@ -229,6 +231,7 @@ namespace Core {
         }
         void Disconnect(uint64_t sessionID);
         bool ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result);
+        bool RespawnToTown(uint64_t sessionID, const RespawnToTownBody& request, ZoneChangeResult& result);
         bool ProcessAction(uint64_t sessionID, uint16_t routeZoneID, const ActionRequestBody& action, ZoneChangeResult& transition);
         bool SendBootstrap(uint64_t sessionID, uint64_t ownershipEpoch);
         void EnqueueDisconnectMsg(CharacterState& temp, uint64_t sessionID);

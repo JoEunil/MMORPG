@@ -7,7 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
-    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 38;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 39;
 
     enum OP : uint16_t {
         AUTH = 1,
@@ -53,6 +53,7 @@ namespace Core {
         BAZAAR_CANCEL_LISTING = 36,
         BAZAAR_CANCEL_LISTING_RES = 37,
         ZONE_RESYNC = 38,
+        RESPAWN_TO_TOWN = 39,
     };
 
     enum ZONE_CHANGE: uint8_t {
@@ -234,6 +235,8 @@ namespace Core {
         uint8_t op; // 0: 로비 zone에서 진입, 1 ~ 4: 상하좌우 인접 zone으로 이동
     };
     struct ZoneResyncBody { uint64_t ownershipEpoch; };
+    struct RespawnToTownBody { uint64_t ownershipEpoch; };
+    static_assert(sizeof(RespawnToTownBody) == sizeof(uint64_t));
 
     struct ZoneChangeResponseBody {
         uint8_t resStatus;

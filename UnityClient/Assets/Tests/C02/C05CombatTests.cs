@@ -194,16 +194,25 @@ namespace C02.Tests
                 Assert.That(defeatPanel != null && defeatPanel.activeSelf, Is.True);
                 Assert.That(defeatPanel.transform.Find("Defeat Message/Title").GetComponent<TMP_Text>().text, Is.EqualTo("DEFEATED"));
                 Assert.That(defeatPanel.transform.Find("Defeat Message/Message").GetComponent<TMP_Text>().text,
-                    Does.Contain("Your character has fallen.").And.Contain("return to the login screen."));
+                    Does.Contain("Your character has fallen.").And.Contain("Return to town"));
 
+                var respawn = defeatPanel.transform.Find("Defeat Message/Return to Town").GetComponent<UnityEngine.UI.Button>();
+                Assert.That(respawn.GetComponentInChildren<TMP_Text>(true).text, Is.EqualTo("RETURN TO TOWN"));
+                respawn.onClick.Invoke();
+                Assert.That(f.World.OwnFull.hp, Is.Zero, "Only the server may restore HP, not the button.");
+                Assert.That(f.World.CanAct, Is.False);
                 f.Full();
                 Assert.That(f.World.OwnFull.hp, Is.EqualTo(100));
                 Assert.That(f.World.CanAct, Is.True, "A later actual Full owns the confirmed state; there is no local resurrection.");
                 Assert.That(defeatPanel.activeSelf, Is.False, "A server-confirmed living state hides the defeat panel.");
+                Set(f.Combat, "respawnDeadline", 999999d);
+                respawn.interactable = false;
+                Invoke(f.Combat, "HideDefeatPanel");
 
                 f.Delta(new DeltaUpdateField { zoneInternalID = 73, fieldID = 0, fieldVal = 0 });
                 Assert.That(f.World.OwnFull.hp, Is.Zero);
                 Assert.That(defeatPanel.activeSelf, Is.True);
+                Assert.That(respawn.interactable, Is.True, "A subsequent death must allow another recovery request.");
                 var logout = defeatPanel.GetComponentInChildren<UnityEngine.UI.Button>(true);
                 Assert.That(logout.GetComponentInChildren<TMP_Text>(true).text, Is.EqualTo("LOG OUT"));
                 logout.onClick.Invoke();
@@ -478,7 +487,7 @@ namespace C02.Tests
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() { } public void Profiles(uint[] profileIds) { }
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void CharacterList() { } public void Enter(ulong id) { } public void Chat(string msg, byte scope, ulong target) { }
-            public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void Log(string msg) { }
+            public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { } public void Log(string msg) { }
         }
     }
 }

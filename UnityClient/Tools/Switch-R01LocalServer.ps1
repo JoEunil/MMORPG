@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$PreflightOnly,
     [switch]$C07Candidate,
     [ValidatePattern('^[A-Fa-f0-9]{64}$')][string]$C07Hash,
@@ -289,12 +289,19 @@ function Stop-Normally([Diagnostics.Process]$Process, [string]$ImageKind, [strin
     $helperOut = Join-Path $captures "r01-switch-$stamp-quit-$($Process.Id).out.txt"
     $helperErr = Join-Path $captures "r01-switch-$stamp-quit-$($Process.Id).err.txt"
     $deadlineUtcTicks = [DateTime]::UtcNow.AddSeconds(12).Ticks
-    $arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $PSCommandPath + '" -QuitHelperPid ' + $Process.Id + ' -QuitImage ' + $ImageKind + ' -QuitStartTicks ' + $ticks + ' -QuitDeadlineUtcTicks ' + $deadlineUtcTicks
+    # Process-only policy for explicitly approved normal-server operations; no persistent policy change.
+    $arguments = '-NoProfile -ExecutionPolicy RemoteSigned -File "' + $PSCommandPath + '" -QuitHelperPid ' + $Process.Id + ' -QuitImage ' + $ImageKind + ' -QuitStartTicks ' + $ticks + ' -QuitDeadlineUtcTicks ' + $deadlineUtcTicks
     if ($C07Candidate) { $arguments += ' -C07Candidate -C07Hash ' + $C07Hash }
     if ($C08Candidate) { $arguments += ' -C08Candidate -C08Hash ' + $C08Hash }
     if ($C09Candidate) { $arguments += ' -C09Candidate -C09Hash ' + $C09Hash }
     if ($C10Candidate) { $arguments += ' -C10Candidate -C10Hash ' + $C10Hash }
-    $helper = Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $helperOut -RedirectStandardError $helperErr
+    # PowerShell 7's inherited PSModulePath can hide Windows PowerShell's Get-FileHash/CIM modules.
+    # Restore only the child's standard Windows module search prefix; no policy is changed here.
+    $previousModulePath = $env:PSModulePath
+    try {
+        $env:PSModulePath = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\Modules;" + $previousModulePath
+        $helper = Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $helperOut -RedirectStandardError $helperErr
+    } finally { $env:PSModulePath = $previousModulePath }
     # Pin the process handle before the child exits; do not rely on PassThru.ExitCode.
     try { $helperHandle = $helper.Handle } catch {
         Record "ABORT: cannot pin quit helper PID=$($helper.Id); outcome inconclusive; no further process actions."

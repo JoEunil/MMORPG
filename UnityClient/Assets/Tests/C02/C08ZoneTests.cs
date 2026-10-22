@@ -160,7 +160,7 @@ namespace C02.Tests
         {
             public int Zones; public ulong LastActionEpoch; public ulong LastResyncEpoch;
             public void ZoneChange(byte op) => Zones++;
-            public void ZoneResync(ulong ownershipEpoch) => LastResyncEpoch = ownershipEpoch;
+            public void ZoneResync(ulong ownershipEpoch) => LastResyncEpoch = ownershipEpoch; public void RespawnToTown(ulong ownershipEpoch) { }
             public Task Connect(string address, int port) => Task.CompletedTask; public void CharacterList() { } public void Enter(ulong id) { }
             public void Chat(string message, byte scope, ulong target) { } public void Profiles(uint[] ids) { } public void RequestBazaarBuy(uint requestID, ulong listingID) { }
             public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }

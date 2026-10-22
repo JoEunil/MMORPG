@@ -35,8 +35,10 @@ namespace C02
         private IViewModelUI model;
         private readonly Dictionary<uint, FullStateField> pendingFull = new Dictionary<uint, FullStateField>();
         private FullStateField ownFull;
-        private const float MovementUnitsPerSecond = 6f;
-        private const float MaximumInputLead = 0.6f;
+        private const float MovementUnitsPerSecond = 9f;
+        // Request horizon covers the send/server/snapshot/receive cycle; presentation stays tighter.
+        private const float MaximumRequestLead = 1.8f;
+        private const float MaximumVisualLead = 0.9f;
         private const float StaleMovementSeconds = 0.35f;
         private Vector2 inputTarget;
         private bool hasMovementIntent;
@@ -45,7 +47,8 @@ namespace C02
         private const double MovementIntervalSeconds = 0.05;
         private Vector2 visualPosition;
         private bool hasVisualPosition;
-        private double nextMoveTime;
+        private float secondsWithoutInput;
+        private Vector2 visualCorrectionVelocity;
         private double transitionDeadline;
         private ushort transitionTargetZone;
         public C02Stage Stage { get; private set; }
@@ -179,7 +182,7 @@ namespace C02
                 if (internalId == 0 || zone != transitionTargetZone || !InsideZone(zone, new Vector2(x, y)))
                 { RequireReconnect("The server returned an invalid Zone result. Disconnect and reconnect."); return; }
                 CancelMovement();
-                ActorMotion?.ResetPose();
+                if (ActorMotion != null) ActorMotion.ResetPose();
                 ZoneID = zone;
                 InternalID = internalId;
                 ZoneStartPosition = new Vector2(x, y);
@@ -196,7 +199,7 @@ namespace C02
             }
             if (!EntryPending) return;
             CancelMovement();
-            ActorMotion?.ResetPose();
+            if (ActorMotion != null) ActorMotion.ResetPose();
             hasVisualPosition = false;
             if (internalId == 0 || !InsideZone(zone, new Vector2(x, y))) { Fail("Invalid server Zone result."); return; }
             ZoneID = zone;
@@ -347,8 +350,8 @@ namespace C02
                 Vector2 previousServer = ServerPosition;
                 ownFull = next;
                 ReconcileVisual(previousServer, ServerPosition);
-                if (lostHp) ActorMotion?.PlayHit();
-                if (ownFull.hp == 0) { StopActions(); visualPosition = ServerPosition; ActorMotion?.ResetPose(); }
+                if (lostHp && ActorMotion != null) ActorMotion.PlayHit();
+                if (ownFull.hp == 0) { StopActions(); visualPosition = ServerPosition; if (ActorMotion != null) ActorMotion.ResetPose(); }
                 ShowPosition();
                 WorldStateChanged?.Invoke();
             }
@@ -374,7 +377,6 @@ namespace C02
                 inventoryScreen != null && inventoryScreen.IsOpen || bazaarScreen != null && bazaarScreen.IsOpen)
             { CancelMovement(); UpdateVisualPosition(Vector2.zero, Time.unscaledDeltaTime); return; }
 
-            double now = Time.unscaledTimeAsDouble;
             var keyboard = Keyboard.current;
             Vector2 direction = CameraRelativeDirection(keyboard, quarterViewCamera);
             if (direction == Vector2.zero)
@@ -384,14 +386,14 @@ namespace C02
                 return;
             }
             UpdateVisualPosition(direction, Time.unscaledDeltaTime);
-            if (hasMovementIntent && now >= nextMoveTime)
+            if (hasMovementIntent)
             {
                 if (TryMoveCandidate(ZoneID, ServerPosition, inputTarget, out var candidate, out var serverDirection) &&
                     (worldMap == null || worldMap.CanTraverse(ServerPosition, candidate)))
                     loginScreen.Data.UpdateMove(serverDirection, candidate.x, candidate.y);
                 else loginScreen.Data.CancelMove();
-                // Coalesce one bounded target; a long frame never catches up requests.
-                nextMoveTime = now + MovementIntervalSeconds;
+                // ClientTick already coalesces the latest target into one send per 50ms.
+                // A second frame-based timer adds drift and can miss a whole network tick.
             }
         }
 
@@ -410,16 +412,25 @@ namespace C02
         {
             if (!HasOwnFull) return;
             if (!hasVisualPosition) { visualPosition = ServerPosition; hasVisualPosition = true; }
+            if (ownFull.hp == 0)
+            {
+                visualPosition = ServerPosition;
+                visualCorrectionVelocity = Vector2.zero;
+                RenderVisualPosition();
+                return;
+            }
             float elapsed = Finite(deltaSeconds) ? Mathf.Max(0, deltaSeconds) : 0;
             // Only one tick of held input is integrated after a frame hitch.
             float step = Mathf.Min(elapsed, (float)MovementIntervalSeconds) * MovementUnitsPerSecond;
             direction = direction.normalized;
-            ActorMotion?.SetMovementIntent(direction);
+            if (ActorMotion != null) ActorMotion.SetMovementIntent(direction);
             if (direction.sqrMagnitude > 0 && ownFull.hp > 0)
             {
+                secondsWithoutInput = 0;
                 // Every heading change discards unacknowledged lead from the released direction.
+                if (!hasMovementIntent) secondsWithoutProgress = 0;
                 if (!hasMovementIntent || (direction - movementDirection).sqrMagnitude > .000001f)
-                { inputTarget = ServerPosition; secondsWithoutProgress = 0; }
+                    inputTarget = ServerPosition;
                 movementDirection = direction;
                 hasMovementIntent = true;
                 secondsWithoutProgress = Mathf.Min(StaleMovementSeconds, secondsWithoutProgress + elapsed);
@@ -427,8 +438,8 @@ namespace C02
                 Vector2 target = stale
                     ? ServerPosition + direction.normalized * (MovementUnitsPerSecond * (float)MovementIntervalSeconds)
                     : inputTarget + direction.normalized * step;
-                target = ServerPosition + Vector2.ClampMagnitude(target - ServerPosition, MaximumInputLead);
-                if (InsideZoneBounds(ZoneID, target, MaximumInputLead) && (worldMap == null ||
+                target = ServerPosition + Vector2.ClampMagnitude(target - ServerPosition, MaximumRequestLead);
+                if (InsideZoneBounds(ZoneID, target, MaximumRequestLead) && (worldMap == null ||
                     worldMap.CanTraverse(inputTarget, target) && worldMap.CanTraverse(ServerPosition, target)))
                     inputTarget = target;
                 else
@@ -437,18 +448,33 @@ namespace C02
                     CancelMovement();
                     stale = true;
                 }
-                // Requests may lead by two ticks, but presentation predicts at most one tick.
-                float visualLead = MovementUnitsPerSecond * (float)MovementIntervalSeconds;
-                Vector2 visualTarget = stale ? ServerPosition : ServerPosition +
-                    Vector2.ClampMagnitude(inputTarget - ServerPosition, visualLead);
-                Vector2 next = Vector2.MoveTowards(visualPosition, visualTarget, step);
-                next = ServerPosition + Vector2.ClampMagnitude(next - ServerPosition, MaximumInputLead);
-                visualPosition = worldMap == null || worldMap.CanTraverse(visualPosition, next) ? next : ServerPosition;
+                // Integrate presentation from its current position, including on a turn.
+                // Rebuilding it from delayed authority pulls the actor back on every reversal.
+                Vector2 next;
+                if (stale)
+                    next = Vector2.SmoothDamp(visualPosition, ServerPosition, ref visualCorrectionVelocity,
+                        .12f, MovementUnitsPerSecond, Mathf.Min(elapsed, (float)MovementIntervalSeconds));
+                else
+                {
+                    visualCorrectionVelocity = Vector2.zero;
+                    next = visualPosition + direction * step;
+                }
+                next = ServerPosition + Vector2.ClampMagnitude(next - ServerPosition, MaximumVisualLead);
+                visualPosition = worldMap == null || worldMap.CanTraverse(visualPosition, next) &&
+                    worldMap.CanTraverse(ServerPosition, next) ? next : ServerPosition;
             }
             else
             {
                 if (hasMovementIntent) CancelMovement();
-                visualPosition = Vector2.MoveTowards(visualPosition, ServerPosition, step);
+                secondsWithoutInput += elapsed;
+                // Let already sent movement arrive after key-up before easing any remaining error.
+                // Releasing input still cancels unsent requests immediately.
+                if (secondsWithoutInput >= .1f)
+                {
+                    Vector2 next = Vector2.SmoothDamp(visualPosition, ServerPosition, ref visualCorrectionVelocity,
+                        .12f, MovementUnitsPerSecond, Mathf.Min(elapsed, (float)MovementIntervalSeconds));
+                    visualPosition = worldMap == null || worldMap.CanTraverse(visualPosition, next) ? next : ServerPosition;
+                }
             }
             RenderVisualPosition();
         }
@@ -461,7 +487,8 @@ namespace C02
                 CancelMovement();
                 visualPosition = server;
                 hasVisualPosition = true;
-                ActorMotion?.ResetPose();
+                visualCorrectionVelocity = Vector2.zero;
+                if (ActorMotion != null) ActorMotion.ResetPose();
             }
             else if ((server - previousServer).sqrMagnitude > 0.000001f)
             {
@@ -473,7 +500,7 @@ namespace C02
                     Vector2 pending = inputTarget - server;
                     // A server correction that passes the pending target must not request a walk back to it.
                     inputTarget = server + movementDirection *
-                        Mathf.Clamp(Vector2.Dot(pending, movementDirection), 0, MaximumInputLead);
+                        Mathf.Clamp(Vector2.Dot(pending, movementDirection), 0, MaximumRequestLead);
                     if (worldMap != null && !worldMap.CanTraverse(server, inputTarget)) CancelMovement();
                 }
             }
@@ -505,11 +532,11 @@ namespace C02
         {
             candidate = origin;
             direction = 0;
-            if (!InsideZone(zone, origin) || !InsideZoneBounds(zone, target, MaximumInputLead)) return false;
+            if (!InsideZone(zone, origin) || !InsideZoneBounds(zone, target, MaximumRequestLead)) return false;
             Vector2 delta = target - origin;
             float distance = delta.magnitude;
             if (distance <= 0.05f) return false;
-            candidate = origin + delta * (Mathf.Min(1, distance) / distance);
+            candidate = origin + delta * (Mathf.Min(MaximumRequestLead, distance) / distance);
             // Movement convention: 0=+Y, 1=-Y, 2=-X, 3=+X. Ties choose X.
             direction = Mathf.Abs(delta.y) > Mathf.Abs(delta.x)
                 ? (byte)(delta.y >= 0 ? 0 : 1) : (byte)(delta.x < 0 ? 2 : 3);
@@ -519,12 +546,16 @@ namespace C02
         public void CancelMovement()
         {
             loginScreen?.Data?.CancelMove();
+            if (hasMovementIntent)
+            {
+                secondsWithoutInput = 0;
+                visualCorrectionVelocity = Vector2.zero;
+            }
             hasMovementIntent = false;
             movementDirection = Vector2.zero;
-            ActorMotion?.SetMovementIntent(Vector2.zero);
+            if (ActorMotion != null) ActorMotion.SetMovementIntent(Vector2.zero);
             inputTarget = ServerPosition;
             secondsWithoutProgress = 0;
-            nextMoveTime = 0;
         }
 
         public void StopActions()
@@ -541,7 +572,7 @@ namespace C02
             if (targetZone == 0 || targetZone > 6)
             { RequireReconnect("The server returned an unsupported area. Disconnect and reconnect."); return; }
             StopActions();
-            ActorMotion?.ResetPose();
+            if (ActorMotion != null) ActorMotion.ResetPose();
             transitionTargetZone = targetZone;
             transitionDeadline = Time.unscaledTimeAsDouble + ZoneTransitionTimeoutSeconds;
             Stage = C02Stage.TransitionPending;
@@ -577,7 +608,11 @@ namespace C02
             scenery = worldRoot.transform.Find("V03FieldSurround");
             if (scenery != null) scenery.localPosition = origin;
             scenery = worldRoot.transform.Find("V01Outpost");
-            if (scenery != null) scenery.localPosition = origin + new Vector3(10, 0, 10);
+            if (scenery != null)
+            {
+                scenery.gameObject.SetActive(ZoneID == 1);
+                scenery.localPosition = origin + new Vector3(10, 0, 10);
+            }
         }
 
         // The authored hero faces local -Z (Vector3.back).
@@ -590,18 +625,19 @@ namespace C02
             // Root facing is seeded on entry. C19 turns only the visual model during movement/actions.
             RenderVisualPosition();
             worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
-                "C02 / SERVER-CONFIRMED FIELD\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nArrow keys move. Z / X / C use skills. I opens bag. B opens market.",
-                SelectedCharacterID, InternalID, ZoneID, ownFull.x, ownFull.y);
+                "C02 / SERVER-CONFIRMED FIELD · {5}\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nArrow keys move. Z / X / C use skills. I opens bag. B opens market.",
+                SelectedCharacterID, InternalID, ZoneID, ownFull.x, ownFull.y, ZoneID == 1 ? "TOWN / SAFE AREA" : "HUNTING FIELD");
             UpdateZoneTransitionButton();
         }
 
         private void ResetWorld()
         {
             CancelMovement();
-            ActorMotion?.ResetPose();
+            if (ActorMotion != null) ActorMotion.ResetPose();
             hasVisualPosition = false;
             visualPosition = Vector2.zero;
-            nextMoveTime = 0;
+            secondsWithoutInput = 0;
+            visualCorrectionVelocity = Vector2.zero;
             pendingFull.Clear();
             ownFull = default;
             HasOwnFull = false;
@@ -635,7 +671,7 @@ namespace C02
         private void OnDisable()
         {
             CancelMovement();
-            ActorMotion?.ResetPose();
+            if (ActorMotion != null) ActorMotion.ResetPose();
             hasVisualPosition = false;
             if (loginScreen != null)
             {

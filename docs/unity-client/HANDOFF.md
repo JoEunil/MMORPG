@@ -1,3 +1,135 @@
+## 맵 서버 인계 정리 — 2026-10-22
+
+사용자 다음 미완료 작업 지시에 따라 Exporter→서버 연결을 읽기 감사했다. 추가 코드 결함은 확인하지 못했고 기존 입력 통과가 미완료로 남은 안내와 6/.6 이전 수치를 수정했다. MAP_EXPORT_GUIDE/WORLD_MAP_HANDOFF/MAP_SERVER_COMPLETION_TASK를 실제 9단위/초·request1.8·visual.9와 생성 데이터 직접 파생, 완료된 벽/경계 입력 배치에 맞췄다. 6구역 콘텐츠 guard·AI/A* 사용자 소유·이웃 AOI/9구역/가변 지연 미완료는 유지한다. 제품/생성 데이터/환경 변경 없이 문서만 수정하므로 빌드·Unity·서버 테스트를 재실행하지 않았다. git diff --check 통과. 공개 화면 변화가 없어 사이트 생성과 캡처도 반복하지 않는다. 기존 PR46에 인계 보완만 모으며 병합·공개는 하지 않는다.
+
+## PR46 마을 몬스터 수 테스트 리뷰 수정 — 2026-10-22
+
+사용자의직접반영지시에따라 discussion4345933255를수정했다. SpawnLayoutTest에서마을은monster배열0과전체25Cell의monsterIndexes0을검사하고,사냥터112마리·일반94/강화17/보스1·위치/통행/고유참조검증은그대로보존했다. 제품/AI/맵/DB변경0. 독립리뷰P1P2없음/전용출력Release빌드PASS/관련fixture1개PASS0ms(total1ms). 첫빌드의postcopy는실행서버DLL잠금으로실패해테스트실행없이중단했고전용출력으로분리해해결했다. 서버정지/재시작/Unity입력0,기존런타임DLL해시불변. PR46_SPAWN_TEST_RESULTS.txt참조.
+
+원격PR45병합(master efd9a1f)과자동head삭제를확인해fetch --prune했고PR46기준은현재master다. 열린PR46에이번테스트와기록만추가하며새PR/강제push/병합0. 공개기능변화가없어사이트갱신/캡처/전체회귀는추가하지않는다. 이번검증은전체CoreLib suite통과주장이아니다.
+
+## FEEL02 게시 완료 — 2026-10-22
+
+Slack지정사람1792658980.975439의 FEEL02 승인을 요청1792658283.786519와 대조해 소비했다. PR45에는 내보내기 리뷰 수정2파일만2104de1로, 기존PR46에는 이동·모션·필드장식·Unity Export 서버직접소비·검증기록·선별캡처를일반merge/push로반영했다. GitHub에서PR45 head2104de1/PR46 headd483003와본문갱신/Open/mergeabletrue/미병합을확인했다. 이기록자체의후속커밋도같은PR46에보존한다.
+
+통합직후전체파일이검증한codex/field-feel-revision과동일(diff0)이었고사이트build/linkPASS. 게임·서버·Unity시험은반복하지않았다. 이전chat singleJoin리뷰수정도보존됐고원본Game/ROOTWIP불변이다. PR45는master기준,PR46은선행PR45기준을유지하며사용자PR검토를기다린다. 새PR/강제push/PR병합/masterPages배포/서버재전환0. 실행서버44432는마지막chat1행수정전바이너리이므로그변경실제기동검증으로확대하지않는다.
+
+FEEL02 승인대기는해소됐다. Git작업정본은현재codex/town-respawn이며이전후보field-feel-revision도현재브랜치에포함돼있다. 열린PR의브랜치는삭제하지않는다. 다음서버AI/A*·몬스터Cell제약변경은사용자작업으로남기며이번게시요청밖의개발을추가하지않는다.
+
+## FEEL02 승인 확인·기존 PR 통합 — 2026-10-22
+
+지정사람 U0C9QEUHPMK의 Slack회신1792658980.975439(승인 FEEL02)를 같은 parent1792487679.299269의 봇요청1792658283.786519와 대조했다. PR45의 내보내기 API수정과 기존PR46의 이동·모션·맵 작업묶음 게시 범위로 소비한다. 채팅 중복 승인 질문/새PR/강제push/병합·master공개0.
+
+fetch후두원격분기고유커밋0확인,PR45에는검증API63aa106만cherry-pick2104de1로일반push했다. PR46에는최신PR45와검증후보codex/field-feel-revision을충돌없이일반merge했다. 통합결과전체파일이검증후보와동일(diff0)하고사이트build/link검사PASS이므로게임/서버/Unity입력을재실행하지않는다. PR46본문·선별화면·원격head확인을이어수행한다. 기존채팅귀환singleJoin수정도보존했다. AI/A*·몬스터Cell제약·6구역실행범위불변.
+
+## PR46 채팅 리뷰 전달 완료 — 2026-10-22
+
+PR46 head6445f87/Open/미병합 확인. UnityCoordinator봇 작업스레드1792658812.487949에 핵심 결과 전달했다. 게시본에는 채팅 귀환1행수정과검증기록만추가했다. 미게시FEEL02후보에일반merge2c21c41로같은리뷰수정을보존했고문서충돌은양쪽이력보존,제품diff추가0이라재시험하지않았다. FEEL02 요청1792658283.786519는계속승인대기이며후보push/새PR/병합/공개0. 서버44432와Unity입력상태변경0.
+
+## PR46 채팅 귀환 리뷰 수정·검증 완료 — 2026-10-22
+
+리뷰지적타당. cross-zone귀환의 별도 EnqueueZoneLeave만제거하고 목적지Join1개로전환한다. ProcessZoneJoin의이전구역제거기능을재사용한다. 독립리뷰P1P2없음/실제PR46브랜치UnitTests Release빌드PASS/기존귀환2fixture PASS총3ms. 큐포화·durable실패주입/Unity입력/서버재전환0. 결과는PR46_CHAT_REVIEW_RESULTS.txt. 이수정은Join자체큐등록실패전반을복구하는것이아니다.
+
+제품수정3be07eb와기록6445f87을기존PR46에일반push했고GitHub head6445f87/Open/미병합을확인했다. 별도FEEL02미게시기능묶음/승인대기는보존한다. 실행중44432서버는이번chat1행수정전바이너리이며교체하지않았다. 병합/Pages배포0. 원본Game/ROOTWIP보존.
+
+## FEEL02 최종 게시 승인 대기 — 2026-10-22
+
+로컬 API수정63aa106와 큰묶음2840dcb/codex/field-feel-revision. UnityCoordinator봇(U0C9ZRTQ6F8)이 기존 작업 parent1792487679.299269에 FEEL02 요청1792658283.786519를 발신했고 완료채널1792658299.373589에도 핵심 결과를 남겼다. 지정사람 승인 전 push/PR45·46수정/병합/Pages배포0. 승인되면 fetch/분기확인 후 API수정만 PR45로 전달하고 나머지는 기존 큰PR46에 통합한다. 강제push/새작은PR0. 최신 서버44432/UnityPlayfalse·dirtyfalse·backgroundfalse,실제제품검증완료. 반복시험하지 않는다.
+
+## 최신 — 이동·모션·필드와 Unity Export 직접 소비 완료 / FEEL02 게시 요청 준비 — 2026-10-22
+
+로컬 codex/field-feel-revision에서 PR45 public Export 누락을 차단하고 author 필수 완전 export 경로를 추가했다. 서버 Config/Cell/StateManager의 공간 중복 상수를 제거해 Generated/WorldMap.inc를 직접 사용한다. Cell AOI 구조·6구역 몬스터 콘텐츠·사용자 AI/A*는 보존했다. Unity에서 실제 bake한 generated 파일은 기존 nav/layout과 동일하며 새 서버 빌드/6구역·25Cell 일치 fixture 통과.
+
+플레이어9/.45, 요청선행1.8·시각예측.9, 중복 전송gate 제거와 정지/방향 보정, 절차 보행·베기·회수, 고정 길·식생·36수목을 구현했다. 독립 리뷰 P1/P2 없음/Unitycompile0/직접3묶음PASS. 최초 실입력6.33/s 실패를 보존하고 request horizon 병목을 고쳐 영향 검증만 재수행했다. 최종직선26.712/3.004s=8.89/s·직각/반전 maxReverseStep0·정지오차<.0001,서버cast/release·팔회전79.99도 확인. 입력은모의InputSystem,로그인/선택/진입/퇴장은실제마우스다. 변동/고지연·몬스터교전은미검증.
+
+서버31724를정상q/nativeexit0·drain·WAL0/저장불변확인뒤 Feel02서버44432/SHA405EF89670B87EE364B2604268C435498B704F2543FFE2B0AF2F24F82B34C596로정상전환했다. 첫helper는PSModulePath상속문제로q전에중단했고Windows표준모듈prefix만자식생성동안복구해해결했다. 기존실행정책/guard불변,강제종료/DB직접수정0. 공용helper에도같은수정보존. 최종Playfalse/dirtyfalse/backgroundfalse,DB5012 Zone1(89.4087143,61.9688454),HP10000/MP9938/EXP10,5011불변. ROOT/CAND 검증제품/Scene/DLL일치,원본GameWIP보존.
+
+FEEL02_RESULTS.txt와최신공개MD/선별화면참조,sitebuild/linkPASS. API리뷰수정은PR45에,나머지큰묶음은기존PR46에통합하는Slack최종승인요청을준비한다. 이번새범위에과거MAP02/STOP01승인을재사용하지않는다. 아직push/PR수정/병합/Pages배포0. 전문누적신규69/재활성화152/전체221/토큰N/A.
+
+## PR45 리뷰 보완 전달 완료 — 2026-10-22
+
+PR45 f44d687에두리뷰수정을일반push했고PR46 80e55b9에같은내용을일반merge했다. GitHub두PR Open/mergeabletrue확인,본문에수정·검증·실제부하미실행을반영했다. UnityCoordinator봇스레드1792656092.713099/완료채널1792656093.403019보고완료. PR병합/새wire/서버재기동/DB변경/Unity재입력0. 누적전문신규66/재활성화145/전체211/토큰N/A. 작업완료로그로아래예정문구보다우선한다.
+
+## 最新 — PR45 리뷰 수정·PR46 연계
+
+PR45 f44d687에 경계 요청 패치와 DummyClients 새wire/세션상태 대응을 게시했다. 같은 변경을 PR46에 일반merge로 이어 반영한다. C16충돌은PR46의동일경계fixture+추가종료수명fixture를모두보존한ours를선택했고,진행문서3개는양쪽기록보존. Unity제품/fixture는기존PR46과동일, Dummy는검증한PR45와동일이므로재실행하지않는다. 독립리뷰최종P1P2없음/빌드PASS(경고27)/오프라인self-test1회PASS. 실제부하·서버조작·Unity입력·PR병합0.
+
+## 입력 검증 전달 완료 — 2026-10-22
+
+제품b07346f/최신master통합fafda2a를PR46에일반push했고GitHub head일치·PR45/46 mergeabletrue/Open을확인했다. 제목·본문·실제캡처/공개설명을갱신,병합·Pages배포0. UnityCoordinator봇작업스레드1792654710.732219/완료채널1792654711.419819에핵심전달완료. 입력배치는종료했고재개권한은유지하되반복실행하지않는다. 서버31724유지,EditorPlayfalse/dirtyfalse/backgroundfalse. 다음서버AI/A*는사용자작업이며대신구현하지않는다. 새교전/지연별조작감/모든코너는미실행항목으로보존한다.
+
+## 최신 — PR46 입력 결과·최신 master 통합
+
+사용자의 이번 직접 지시로 입력검증·관련수정·캡처를 기존PR46에추가한다. 521c7a8(master PR44)을일반merge한PR45 02ce634를PR46에일반merge해선행충돌을해결했다. 문서충돌만양쪽기록보존,최종C02WorldScreen/C05CombatScreen/C19ActorMotion은실제로검증한ROOT와바이트동일확인. 기능/UI재시험은반복하지않는다. 사이트build/로컬링크검사통과. Playfalse/dirtyfalse/backgroundfalse,원본GameWIP보존. 입력재개상태를유지하되상시반복테스트는하지않는다. 병합·masterPages배포는사용자검토대기다.
+
+## 최신 master 이력 보존 — 2026-10-22
+
+PR44가 병합된 origin/master521c7a8을 일반 merge로 보존했다. 제품 코드는 자동 병합됐고 충돌한 AGENT_USAGE/HANDOFF/INPUT_TEST_BATCH는 양쪽 기록을 모두 보존했다. 원본 Game/ROOT WIP와 실행 서버는 변경하지 않았다. 선행 PR45 충돌 해소 후 이 merge를 기존 PR46에 이어 반영한다. 강제push/PR병합0.
+
+## 最新 — 2026-10-22 입력 배치 완료·종료 수명 보완
+
+사용자 재개 지시에 따라 한 접속에서 살아있는 캐릭터의 1→2→1 자동 전환/첫 상태/조작 복귀, 동시 방향키 이동·벽 차단·정지, C 스킬 범위/발동효과/쿨타임, I가방/B거래소 토글·거래소 중 이동 차단·채팅 포커스 없음, 실제Disconnect/Playstop을 확인했다. 키 입력은 InputSystem 모의 상태, 로그인/선택/퇴장은 실제 마우스이며 내부 게임 핸들러로 대체하지 않았다. MAP_UNITY_INPUT_RESULTS.txt와선별캡처참조. 새몬스터교전·지연별rubberback정량평가·모든코너는이번통과에포함하지않는다.
+
+누적 과거콘솔의 destroyed ActorMotion→C02.OnDisable 경로를확인해10호출에Unity !=null검사를추가했다. 새입력오류로오인하지않고C19사용자수치는보존했다. 독립최종P1P2없음/compile0/종료수명fixture1 PASS0.0217s. 최종EditorPlayfalse/dirtyfalse/backgroundfalse,DB5012(66.1045,40.0412941)/HP10000/MP9960/EXP10 정상저장·5011불변,서버31724유지. 이번채팅의PR46추가요청범위에서같은PR에결과·수정·캡처를합치며새PR/서버변경/AI변경0.
+
+## MAP02 게시 완료
+
+MAP02 지정사람회신1792652427.487009 확인 후 일반push로 PR46을갱신했다. GitHub head16df9bf와원격일치/clean확인, 제목·본문에경계입력수정과실제서버검증·Unity입력보류를반영했다. artifact첨부완료. 봇작업스레드1792652509.802729/완료채널1792652510.498809로요약전달. PR46 OPEN/기준codex/world-map-export 유지, PR45 선행/병합·masterPages배포0. 입력/재검증/서버조작0. 이문단은게시완료인계기록이며기존대기문구보다우선한다.
+
+## MAP02 승인 확인·PR46 통합 — 2026-10-22
+
+지정사용자 U0C9QEUHPMK의 승인 MAP02 회신1792652427.487009를 parent1792487679.299269의 요청1792652267.839149와 대조했다. 기존PR46에6aa5ef2 경계입력수정·실제서버검증과관련기록을추가하는범위로만소비한다. fetch후원격대비로컬2커밋앞섬/원격고유커밋0/작업트리clean확인. 일반push로같은PR을갱신하며병합·masterPages배포는하지않는다. Unity실제·모의키입력은사용자지시로계속보류하며테스트재실행0.
+
+## 최신 게시 인계 — MAP02 최종 승인 대기
+
+로컬커밋6aa5ef2/codex/town-respawn. Unity Coordinator 앱 U0C9ZRTQ6F8이 기존 parent1792487679.299269에 MAP02 요청1792652267.839149를 보냈다. 지정 사용자 승인 전 push/PR46수정/병합/Pages배포0. 기존 MAP01/TOWN01 승인을 새 게시에 재사용하지 않는다. 다음 신호는 이 후보의 게시에만 적용하고 Unity 입력은 별도 명시 재개 전 계속 보류한다. 서버 통합 검증은 완료했고 사용자 몬스터AI/A*를 대신 진행하지 않는다.
+
+## 最新 — Map Exporter·서버 실제 연결 검증 완료 / 2026-10-22
+
+Unity 입력은 사용자 최신 답변으로 보류한다. 서버31724를 유지한 채 공개 ClientCore 이동으로 장애물 차단(x61.5 유지/nav x62 blocked)·Zone1→2(x208/epoch2)→1(x192/epoch3)·양쪽 첫 Player/Monster Full 수신을 확인했다. HP10000 유지/정상퇴장·READ ONLY DB5012 (192,10)/MP10000/EXP10 저장,5011불변. 직접 DB수정/서버교체/AI변경0.
+
+C02의 로컬 입력 목표만 기존lead0.6까지 경계 밖 허용해205 도달 전 입력취소 결함을 고쳤다. 권위상태 경계는 유지하고 focused fixture1 PASS/compile0/독립 최종P1P2없음. 서버probe 첫 시도는 도구10초 timeout으로43.599983에서중단, 시간산정만수정한 영향경로1회재개PASS/exit0. 실패와근거는MAP_SERVER_COMPLETION_RESULTS.txt. Unity 키/UI통과로세지않는다. 현재EditorPlayfalse/dirtyfalse/backgroundfalse.
+
+활성6구역 exporter→실행서버 충돌/자동전환 범위는완료. Unity 방향키/화면복귀는나중에한배치, 사용자AI/A*·몬스터Cell제한·9구역활성/이웃합동AOI는제외. 기존큰PR46에합칠로컬후보이며게시전Slack최종승인예정. 전문누적신규65/재활성화138/전체203/tokenN/A.
+
+## 최신 — 마을 서버 전환·실제 귀환 완료 / 2026-10-22
+
+STOP01 지정사람1792649722.237479를요청1792649355.942189와대조해이번전환에소비했다. 프로세스RemoteSigned로preflight통과→기존24024정상q/helper27328exit0/서버nativeexit0통과. 낡은ROOT실행사본의system.log일반문자JSON오인이시작을차단해원본로그보존후canonical기존두줄엄격허용과대조했다. Resume의Preflight경계P2도실행전수정/독립high최종P1P2없음. native종료경로·동일로그해시·3MQ/4DB종료·WAL0·DB스냅샷불변재확인뒤Town-Respawn/bin서버31724(시작2026-10-22T15:19:46.65356+09:00/9999ready/DLL검사)로정상전환완료. 영구정책/강제종료/DB직접수정0,WindowsPS5.1최종Restricted복귀.
+
+실제Unity한접속:02Sign-in→5012선택/진입→Zone5 HP0 MP9859 EXP10(210,210)→RETURN TO TOWN 실제click→Zone1(10,10) HP/MP10000 EXP10·monsters0·CanActtrue·안전지역표시→실제Disconnect→authenticatedfalse/Ready→Playstop. 최종dirtyfalse/pausedfalse/backgroundfalse/inputRunnerfalse. READONLYDB에서5012귀환상태저장/5011불변확인. TOWN_RESPAWN_LIVE_RESULTS.txt와실제PNG두장참조. 새캐릭터AI/전체이동회귀/새마을아트0.
+
+서버31724는계속숨김실행중이다. 원본Game/ROOT서버·ClientCore WIP보존,ROOT공용전환도구는백업후canonical엄격파서와동기화했다. 공용도구의자식Bypass→RemoteSigned만수정했고최종독립P1/P2없음. 새정책변경에STOP01재사용금지. 기존PR46에실제결과/선별캡처/공개원본을추가하며병합·masterPages배포0. 전문누적신규63/재활성화131/전체194/토큰N/A.
+
+## 최신 — 정상 종료 차단 원인 확정 / STOP01 대기
+
+실제종료런타임 WindowsPowerShell5.1.26100.9711은전scopeUndefined→effectiveRestricted, 주작업PS7은LocalMachineRemoteSigned다. 이전진단이두런타임정책을혼동해파일로드전차단을반복했다. 스크립트MOTW없음/FullLanguage이며서버q·drain실패아니다. 동일런타임부모/자식에만명시적RemoteSigned를주는수정후보를구문/독립high리뷰P1P2없음확인했고미실행이다. SHA E49DF4275C8CB82AD63F915ED5A415DEE5590E0E503D25397DA06298EF42B646.
+
+권한변경보호경계라UnityCoordinator앱STOP01 요청1792649355.942189/parent1792487679.299269에정확한범위를요청했다. 아직지정사람답장없음/정책변경·q·새서버기동·DB쓰기·Unity입력0. 영구설정0/Bypass0/다른runtime0. 사람승인과별개로플랫폼허용이필요하며거절시우회금지. 승인확인후같은WindowsPS5.1에프로세스RemoteSigned+PreflightOnly→같은후보본실행→nativeexit0/drain/WAL/준비확인→실제HP0귀환한접속순서다. SERVER_SHUTDOWN_POLICY_RESULTS.txt 참조. ROOTserver24024유지, Editor14976ready/Play미실행. 누적전문신규63/재활성화129/전체192/tokenN/A.
+
+## 최신 — PR46 게시 / 마을 실제 귀환은 Windows 정책 차단
+
+TOWN01 지정사람 승인1792648570.091499를 확인해 https://github.com/JoEunil/MMORPG/pull/46 게시·artifact첨부했다. 선행PR45가open이라 base는codex/world-map-export, town43파일diff만제공한다. 병합/이력교체0. 이전미게시표현은과거기록이다.
+
+기존전환도구의로컬고정사본을현재image/PID/startticks/hash로맞추고 ExecutionPolicy Bypass를삭제했다. 독립리뷰P1/P2없음/구문통과. 동일WindowsPowerShell -NoProfile -File -PreflightOnly는SecurityError/UnauthorizedAccess(스크립트실행비활성)로로드전차단/exit1. 정책변경·대체런타임/도우미·q·강제종료·새서버기동·DB쓰기0. ROOT기존MainServer24024(World-Export/bin),9999solelisten/noestablished를재확인했다. 새서버/DLL동시전환전39요청금지. 실제귀환입력/새캡처는미실행이며정상종료경로가마련되어야재개할수있다. 상세TOWN_RESPAWN_RESULTS.txt. 전문누적신규62/재활성화128/전체190/토큰N/A.
+
+## TOWN01 승인 확인 — 2026-10-22
+
+지정사용자 U0C9QEUHPMK의 Slack1792648570.091499 원문 승인 TOWN01을 요청1792648326.480519/parent1792487679.299269와 대조했다. 이번 마을·명시적귀환 후보 게시에만 소비하며 병합승인은 아니다. 채팅의 정상서버전환·Unity실제귀환검증 직접 요청도 확인했다. PR45가 아직open이므로 codex/world-map-export를 base로 마을diff만 새PR하나에 담고 선행PR병합후master대상을 조정한다. 원격fetch확인/이력교체0.
+
+## 게시 인계 — 마을 귀환
+
+로컬 제품커밋1f5546e / codex/town-respawn. Unity Coordinator 봇 U0C9ZRTQ6F8이 기존parent1792487679.299269에 TOWN01 요청1792648326.480519를 발송했고 완료채널1792648340.998619에도 요약했다. 지정사용자 새승인 미확인/push·PR0. MAP01 승인은재사용하지않는다. 실제귀환입력은구서버정상종료·새서버/DLL전환대기다.
+
+## 최신 — 마을·사망 귀환 로컬 후보 / 2026-10-22
+
+codex/town-respawn은 MAP01 PR45 head9e7bec6에서 분리했다. Zone1 전체 몬스터0(보스포함), 타5구역112유지. HP0 Return to Town→서버소유권/epoch검사→Zone1(10,10) 최대HP/MP·EXP/아이템/재화보존을 구현했다. opcode39와 기존ZoneAck/첫Full쌍을 사용해 서버/DLL 동시전환이 필요하다. 초기로그인HP0보존/AI·A*·Cell이동제약은불변. MAPHP01 DB직접복구요청은봇1792646986.673599수정으로취소했고미실행이다.
+
+독립최종P1/P2없음. ACK유실재시도는동일커밋응답만재전달/추가회복0, 다음사망버튼재활성화보완. ClientCore/MainServer/UnitTests빌드PASS·compile0·Unity기존2/native핵심2PASS. 최초native fixture private접근 C2248은기존friend fixture내로이동해제품/검증조건변경없이해결했고실패로그보존. TOWN_RESPAWN_RESULTS.txt 참조.
+
+ROOT Unity는기존PR44차이를보존한hunk/백업후동기화,DLL같은빌드. 원본ROOT/Game서버·ClientCore WIP보존. 현재MainServer24024는여전히숨김World-Export/bin 구MAP01서버다. 새마을서버시작/실제귀환입력/신규캡처0. 기존quit-helper Windows정책차단을우회하지않으며정상종료·저장완료후만전환한다. 공개사이트는새실행결과가없어유지했다.
+
+기존MAP01승인재사용금지/새push·PR0. 새TOWN01을UnityCoordinator앱으로요청할후보다. Unity실입력은재개상태이며구서버에39요청을보내지않는다. 전문누적신규61/재활성화128/전체189/tokenN/A.
+
 ## 最新 — PR45 리뷰 두 건 수정 / 2026-10-22
 
 두 P1 모두 PR45 단독 기준으로 유효하다. PR46에만 있던 경계 목표0.6 허용/fixture를 PR45에 같은 hunk로 이식했다. 기존경계fixture·실제Unity왕복근거재사용/서버임계값변경0/Unity재입력0.

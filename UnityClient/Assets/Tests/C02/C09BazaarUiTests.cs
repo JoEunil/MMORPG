@@ -347,7 +347,7 @@ namespace C02.Tests
             public void RequestInventory() { }
             public void Action(byte direction, float x, float y, byte skillSlot, ulong ownershipEpoch) { }
             public void Pong(ulong serverTimeMs) { }
-            public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { }
+            public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { }
             public void Log(string message) { }
         }
         private sealed class InlineDispatcher : IMainThreadDispatcher { public void Post(Action job) => job(); }

@@ -8,17 +8,9 @@
 #include <limits>
 
 namespace Core {
-    static_assert(WorldMap::FormatVersion == 1 && WorldMap::Zones.size() == ZONE_COUNT
-        && WorldMap::ZoneColumns == ZONE_HORIZON && WorldMap::ZoneRows == ZONE_VERTICAL,
-        "Exported zone layout must match the configured server world.");
-    static_assert(WorldMap::ZoneCoreSize == ZONE_SIZE && WorldMap::TransitionMargin == TRANSITION_BUFFER
-        && CELLS_X == 5 && CELLS_Y == 5 && WorldMap::Zones[0].aoiCellSize == CELL_SIZE,
-        "Exported zone bounds and 5x5 AOI cells must match the server spatial configuration.");
-
-    static_assert(WorldMap::FormatVersion == 1);
-    static_assert(WorldMap::ZoneColumns == ZONE_HORIZON && WorldMap::ZoneRows == ZONE_VERTICAL);
-    static_assert(WorldMap::Zones.size() == ZONE_COUNT);
-    static_assert(WorldMap::ZoneCoreSize == ZONE_SIZE && WorldMap::TransitionMargin == TRANSITION_BUFFER);
+    static_assert(TOWN_ZONE_ID == 1 && TOWN_SPAWN_X >= 0 && TOWN_SPAWN_X <= ZONE_SIZE
+        && TOWN_SPAWN_Y >= 0 && TOWN_SPAWN_Y <= ZONE_SIZE,
+        "Town respawn must remain inside Zone 1.");
 
     bool StateManager::ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result) {
         result = {};
@@ -39,7 +31,7 @@ namespace Core {
             if (loaded == lobbyZone->m_chars.end()
                 || loaded->second.characterID != session->second.characterID)
                 return false;
-            const uint16_t destinationID = loaded->second.lastZone == 0 ? 1 : loaded->second.lastZone;
+            const uint16_t destinationID = loaded->second.lastZone == 0 ? TOWN_ZONE_ID : loaded->second.lastZone;
             auto destination = GetZone(destinationID);
             if (destination == nullptr)
                 return false;
@@ -97,6 +89,150 @@ namespace Core {
         return false;
     }
 
+    bool StateManager::RespawnToTown(uint64_t sessionID, const RespawnToTownBody& request, ZoneChangeResult& result) {
+        result = {};
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock sessionLock(shard.smutex);
+        auto session = shard.sessionMap.find(sessionID);
+        if (session == shard.sessionMap.end() || !session->second.authenticated || !session->second.authCompleted
+            || session->second.userID == 0 || session->second.characterID == 0
+            || session->second.zoneID == 0 || session->second.zoneID > ZONE_COUNT
+            || !WorldMap::CanTraverse(TOWN_SPAWN_X, TOWN_SPAWN_Y, TOWN_SPAWN_X, TOWN_SPAWN_Y))
+            return false;
+
+        const uint16_t sourceID = session->second.zoneID;
+        auto source = GetZone(sourceID);
+        auto town = GetZone(TOWN_ZONE_ID);
+        if (source == nullptr || town == nullptr)
+            return false;
+
+        // If the commit succeeded but its ACK was not observed, replay only that same
+        // request while the session still owns the untouched town respawn state.
+        if (session->second.ownershipEpoch != request.ownershipEpoch) {
+            if (request.ownershipEpoch == (std::numeric_limits<uint64_t>::max)()
+                || request.ownershipEpoch + 1 != session->second.ownershipEpoch
+                || session->second.lastRespawnRequestEpoch != request.ownershipEpoch
+                || sourceID != TOWN_ZONE_ID)
+                return false;
+            std::lock_guard zoneLock(town->m_mutex);
+            auto member = town->m_sessionToIndex.find(sessionID);
+            if (member == town->m_sessionToIndex.end()) return false;
+            const auto& character = town->m_chars[member->second];
+            if (character.characterID != session->second.characterID || character.hp <= 0
+                || character.hp != character.maxHp || character.mp != character.maxMp
+                || character.x != TOWN_SPAWN_X || character.y != TOWN_SPAWN_Y)
+                return false;
+            result = {TOWN_ZONE_ID, session->second.chatID, character.zoneInternalID,
+                character.x, character.y, town->m_generation, session->second.ownershipEpoch};
+            return true;
+        }
+        if (session->second.ownershipEpoch == (std::numeric_limits<uint64_t>::max)())
+            return false;
+
+        auto clearPlayerEffects = [sessionID](ZoneState& zone, uint32_t internalID) {
+            for (auto& row : zone.m_cells) {
+                for (auto& cell : row) {
+                    std::erase_if(cell.activeSkills, [sessionID](const ActiveSkill& skill) {
+                        return skill.casterType == 0 && skill.sessionId == sessionID;
+                    });
+                    std::erase_if(cell.actionResults, [internalID](const ActionResult& action) {
+                        return action.casterType == 0 && action.zoneInternalId == internalID;
+                    });
+                    std::erase(cell.dirtyChar, internalID);
+                }
+            }
+        };
+
+        if (sourceID == TOWN_ZONE_ID) {
+            std::lock_guard zoneLock(town->m_mutex);
+            auto member = town->m_sessionToIndex.find(sessionID);
+            if (member == town->m_sessionToIndex.end()) return false;
+            auto& character = town->m_chars[member->second];
+            if (character.characterID != session->second.characterID || character.hp != 0
+                || character.maxHp <= 0 || character.maxMp < 0)
+                return false;
+            const auto [newCellX, newCellY] = GetCell(TOWN_SPAWN_X, TOWN_SPAWN_Y, town->m_area);
+            auto& destinationCell = town->m_cells[newCellY][newCellX];
+            if (character.cellX != newCellX || character.cellY != newCellY) {
+                try {
+                    destinationCell.charSessions.reserve(destinationCell.charSessions.size() + 1);
+                }
+                catch (const std::bad_alloc&) {
+                    return false;
+                }
+            }
+            try {
+                destinationCell.dirtyChar.reserve(destinationCell.dirtyChar.size() + 1);
+            }
+            catch (const std::bad_alloc&) {
+                return false;
+            }
+            const uint32_t internalID = character.zoneInternalID;
+            clearPlayerEffects(*town, internalID);
+            const bool movedCell = character.cellX != newCellX || character.cellY != newCellY;
+            if (movedCell) town->RemoveFromCell(character);
+            character.hp = character.maxHp;
+            character.mp = character.maxMp;
+            character.x = TOWN_SPAWN_X;
+            character.y = TOWN_SPAWN_Y;
+            character.dir = 0;
+            character.moveBudget = 0.0f;
+            character.dirtyBit |= 0x1C3; // hp, mp, direction, x and y
+            if (movedCell)
+                town->AddToCell(character, static_cast<uint8_t>(newCellX), static_cast<uint8_t>(newCellY));
+            destinationCell.dirtyChar.push_back(internalID);
+            if (movedCell) town->UpdateSessionSnapshot();
+            session->second.lastRespawnRequestEpoch = request.ownershipEpoch;
+            ++session->second.ownershipEpoch;
+            result = {TOWN_ZONE_ID, session->second.chatID, internalID, character.x, character.y,
+                town->m_generation, session->second.ownershipEpoch};
+            return true;
+        }
+
+        ZoneState* first = sourceID < TOWN_ZONE_ID ? source : town;
+        ZoneState* second = sourceID < TOWN_ZONE_ID ? town : source;
+        std::unique_lock firstLock(first->m_mutex);
+        std::unique_lock secondLock(second->m_mutex);
+        auto member = source->m_sessionToIndex.find(sessionID);
+        if (member == source->m_sessionToIndex.end()) return false;
+        const CharacterState current = source->m_chars[member->second];
+        if (current.characterID != session->second.characterID || current.hp != 0
+            || current.maxHp <= 0 || current.maxMp < 0)
+            return false;
+
+        CharacterState incoming = current;
+        incoming.hp = incoming.maxHp;
+        incoming.mp = incoming.maxMp;
+        incoming.x = TOWN_SPAWN_X;
+        incoming.y = TOWN_SPAWN_Y;
+        incoming.dir = 0;
+        incoming.moveBudget = 0.0f;
+        const auto [townCellX, townCellY] = GetCell(TOWN_SPAWN_X, TOWN_SPAWN_Y, town->m_area);
+        try {
+            town->m_cells[townCellY][townCellX].dirtyChar.reserve(
+                town->m_cells[townCellY][townCellX].dirtyChar.size() + 1);
+        }
+        catch (const std::bad_alloc&) {
+            return false;
+        }
+        if (town->ImmigrateCharLocked(sessionID, incoming) == INVALID_ZONE_INTERNAL_ID)
+            return false; // The source character and session ownership are still unchanged.
+        auto& entered = town->m_chars.back();
+        entered.dirtyBit = 0x1C3;
+        town->m_cells[entered.cellY][entered.cellX].dirtyChar.push_back(entered.zoneInternalID);
+        source->RemoveCharacterLocked(sessionID);
+        session->second.zoneID = TOWN_ZONE_ID;
+        session->second.lastRespawnRequestEpoch = request.ownershipEpoch;
+        ++session->second.ownershipEpoch;
+        source->UpdateSessionSnapshot();
+        town->UpdateSessionSnapshot();
+        result = {TOWN_ZONE_ID, session->second.chatID, entered.zoneInternalID, entered.x, entered.y,
+            town->m_generation, session->second.ownershipEpoch};
+        // Joining removes the old membership; one event cannot leave a half-applied leave/join pair.
+        chat->EnqueueZoneJoin(sessionID, TOWN_ZONE_ID);
+        return true;
+    }
+
     bool StateManager::ProcessAction(uint64_t sessionID, uint16_t routeZoneID, const ActionRequestBody& action, ZoneChangeResult& transition) {
         transition = {};
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
@@ -116,6 +252,7 @@ namespace Core {
                 currentZone->m_generation, session->second.ownershipEpoch};
             return true;
         }
+        session->second.lastRespawnRequestEpoch = 0;
         auto zone = GetZone(routeZoneID);
         if (zone == nullptr)
             return false;
@@ -139,14 +276,15 @@ namespace Core {
             const auto& current = zone->m_chars[it->second];
             x = current.x; y = current.y;
         }
-        const int column = (routeZoneID - 1) % ZONE_HORIZON;
-        const int row = (routeZoneID - 1) / ZONE_HORIZON;
-        const float coreMinX = column * ZONE_SIZE;
-        const float coreMinY = row * ZONE_SIZE;
-        const int nextColumnRaw = x >= coreMinX + ZONE_SIZE + TRANSITION_BUFFER ? column + 1
-            : x <= coreMinX - TRANSITION_BUFFER ? column - 1 : column;
-        const int nextRowRaw = y >= coreMinY + ZONE_SIZE + TRANSITION_BUFFER ? row + 1
-            : y <= coreMinY - TRANSITION_BUFFER ? row - 1 : row;
+        const auto& layout = WorldMap::Zones[routeZoneID - 1];
+        const int column = layout.column;
+        const int row = layout.row;
+        const float minX = layout.originX + layout.localBounds.x;
+        const float minY = layout.originY + layout.localBounds.y;
+        const int nextColumnRaw = x >= minX + layout.localBounds.width ? column + 1
+            : x <= minX ? column - 1 : column;
+        const int nextRowRaw = y >= minY + layout.localBounds.height ? row + 1
+            : y <= minY ? row - 1 : row;
         // Do not let an out-of-layout column wrap into another valid row's zone ID.
         const int nextColumn = (std::clamp)(nextColumnRaw, 0, static_cast<int>(ZONE_HORIZON) - 1);
         const int nextRow = (std::clamp)(nextRowRaw, 0, static_cast<int>(ZONE_VERTICAL) - 1);
@@ -155,7 +293,6 @@ namespace Core {
         if (destinationID >= 1 && destinationID <= ZONE_COUNT && destinationID != routeZoneID
             && session->second.ownershipEpoch != (std::numeric_limits<uint64_t>::max)()) {
             if (nextColumn != column && nextRow != row) {
-                const auto& layout = WorldMap::Zones[routeZoneID - 1];
                 bool directCrossingAllowed = false;
                 for (size_t i = 0; i < layout.neighborIds.size(); ++i) {
                     if (layout.neighborIds[i] == destinationID) {

@@ -281,7 +281,7 @@ namespace C02.Tests
             public void Action(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch) { }
             public void Pong(ulong serverTimeMs) { }
             public void ZoneChange(byte op) => ZoneChangeCount++;
-            public void ZoneResync(ulong ownershipEpoch) { }
+            public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { }
             public void Log(string msg) { }
         }
 

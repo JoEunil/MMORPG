@@ -1,0 +1,66 @@
+Normal shutdown repeated block — root cause / 2026-10-22
+
+RESOLVED: STOP01 reply1792649722.237479 verified; process-only RemoteSigned
+preflight and normal q/exit0 succeeded. A second stale ROOT log parser blocked
+startup after shutdown, repaired from canonical strict two-plain-message policy
+with independent high review and preserved raw evidence. Resume preflight/3MQ/
+4DB drain/WAL0/snapshot comparison passed; new town server31724 ready and actual
+town-return input passed. WindowsPS5.1 policy returned Restricted after process
+exit. See TOWN_RESPAWN_LIVE_RESULTS.txt; pending notes below are historical.
+
+Observed, read-only
+- Main shell: PowerShell7; LocalMachine RemoteSigned, other scopes Undefined.
+- Actual existing quit launcher: Windows PowerShell5.1.26100.9711.
+  All five scopes Undefined; Get-ExecutionPolicy reports Restricted.
+  LanguageMode FullLanguage; no MachinePolicy/UserPolicy configured.
+- Switch-TownLocalServer.ps1 has only :$DATA stream, no Zone.Identifier.
+- Therefore not an Internet mark/signature error, missing administrator, a
+  running server deadlock or q/drain failure. File loading is denied first.
+- Earlier diagnostics read PowerShell7 policy and treated it as if it applied
+  to the explicitly launched Windows PowerShell5.1. This missed runtime mismatch
+  caused repeated attempts at a known-blocked script entry point.
+- MainServer24024 at World-Export/bin remains unchanged; no new stop attempt,
+  forced stop, new server startup or direct DB write during diagnosis.
+
+Official mechanism reference
+https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies?view=powershell-5.1
+Undefined in all scopes defaults to Restricted on Windows clients.
+Process execution policy affects only that PowerShell session and children,
+does not write CurrentUser/LocalMachine policy; Group Policy remains higher.
+
+Prepared repair, NOT EXECUTED / STOP01 approval pending
+- Same Windows PowerShell5.1 executable, no runtime substitution.
+- Parent command: powershell.exe -NoProfile -ExecutionPolicy RemoteSigned
+  -File <reviewed local Switch-TownLocalServer-ProcessPolicy.ps1> -PreflightOnly.
+  After preflight passes, same command without PreflightOnly performs transition.
+- Only diff inside script: the dedicated child gets explicit RemoteSigned too.
+- Process/children only, no persistent Set-ExecutionPolicy, Unblock-File,
+  Bypass/Unrestricted, certificate install, Windows setting change or force kill.
+- This explicitly broadens script execution for that process from Restricted;
+  local scripts may run, downloaded unsigned scripts remain checked. It is a
+  protected policy change, not claimed as already authorized by generic restart.
+- File SHA256 E49DF4275C8CB82AD63F915ED5A415DEE5590E0E503D25397DA06298EF42B646.
+- Existing PID/path/startticks/hash, no-clients, exclusive-console deadline,
+  normal q/native exit0/cache-MQ+DB drain, WAL/persistence checks and conditional
+  rollback guards retained. No product/server/DLL changes or rebuild needed.
+- Existing reviewer medium and separate gpt-6.1-sol high security reviewer
+  both found no P1/P2. Hash/diff/scope only reviewed; neither executed tool.
+- Unity Coordinator bot request STOP01 / parent1792487679.299269 /
+  ts1792649355.942189. No matching human approval consumed yet.
+- Slack approval does not supersede platform auto-review/OS control. If platform
+  rejects the proposed policy change, stop and report; do not use another runtime,
+  inline script content or new helper to evade the denial.
+
+Next after verified approval and platform allowance
+1. Check exact policy in runtime being launched, pinned binary/script hashes,
+   same old server identity and absence of connected clients.
+2. Run approved process-scoped preflight; stop on any unexpected result.
+3. Normal q transition; native exit0 and cache/DB drain before new server startup.
+4. Matching new server/DLL; one actual HP0 login/Return to Town/HP-MP recovery,
+   town empty-monster observation and normal logout; capture actual result.
+5. Update same PR46 and selected public evidence; no unrelated regression.
+
+Editor readiness only: running Unity14976/project ROOT UnityClient/port7800
+ready. No Play/input was started against old server. CLI installed beta13 and
+beta14 update available; no unrelated tool upgrade was applied during diagnosis.
+Agent cumulative: new63/reactivation129/total192, actual tokens/cost N/A.

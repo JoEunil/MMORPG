@@ -286,7 +286,7 @@ namespace C02.Tests
             public void Enter(ulong id) { }
             public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch) { }
             public void Pong(ulong time) { }
-            public void ZoneChange(byte operation) { } public void ZoneResync(ulong ownershipEpoch) { }
+            public void ZoneChange(byte operation) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { }
             public void Log(string message) { }
             public void Profiles(uint[] profileIds) { }
             public void RequestInventory() { }

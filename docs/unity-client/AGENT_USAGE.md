@@ -1,3 +1,60 @@
+## 맵 인계 감사 — 2026-10-22
+
+map_remaining_audit/explorer 신규1·재활성화1: Exporter/서버 연결 읽기 감사, 이전 문서의 입력 보류 판단은 최신 HANDOFF/실입력 결과 대조 후 정정했다. 이동 수치·서버 생성 데이터 파생·6/9구역 구분과 과거 계획 상태의 불일치를 확인했고 Coordinator가 문서만 수정했다. 테스트 재실행0. 누적 신규70/재활성화155/전체225, 실제 토큰·비용N/A.
+
+## PR46 마을 배치 테스트 리뷰 — 2026-10-22
+
+feel02_server_review/code_reviewer(Sol medium) 재활성화1: 마을0/전체Cell빈참조검증과사냥터기존기대유지7행수정검토,P1P2없음. Coordinator가독립출력빌드와관련fixture1개만실행했다. 누적신규69/재활성화154/활성화223,실제토큰·비용N/A. 서버/Unity입력0.
+
+## PR46 채팅 귀환 리뷰 — 2026-10-22
+
+feel02_server_review/code_reviewer(Sol medium) 재활성화1: 단일Join으로전환하는1행diff와실패범위독립검토,추가P1P2없음. Coordinator가실제PR46후보빌드와기존귀환2fixture를수행했다. 이전미게시FEEL02후보까지포함한누적신규69/재활성화153/활성화222,실제토큰·비용N/A. 이번전용추가실입력/서버재시작0.
+
+## 이동·모션·맵 직접 소비 후보 — 2026-10-22
+
+| 에이전트 | 신규 | 재활성화 | 확인한 결과 |
+| --- | ---: | ---: | --- |
+| movement_feel_revision / worker (gpt-6.1-sol high) | 1 | 2 | 이동 후보·Export 소비 서버 구현, 실행은 Coordinator |
+| field_motion_art_revision / asset_artist (gpt-6.1-sol medium) | 1 | 3 | 모션·고정 필드 저작 도구, 이동/Export 독립 리뷰 |
+| feel02_server_review / code_reviewer (gpt-6.1-sol medium) | 1 | 2 | 서버 geometry 소비 독립 리뷰, P1/P2 없음 |
+
+누적 신규69/재활성화152/활성화221. 실제 토큰·비용 N/A. 실행 중 메시지는 활성화로 세지 않는다. 로컬 구현·독립 리뷰·핵심 자동/실입력 검증은 완료했으며 게시 승인 대기다.
+
+## Unity 입력·종료 수명 보완 — 2026-10-22
+
+map_server_finish_audit/explorer 재활성화1: 과거 모션 객체 파괴/화면 종료 경로를 읽기 감사했다. town_switch_review/code_reviewer(gpt-6.1-sol medium) 재활성화1: Unity null가드10곳과 종료fixture 독립검토/최종P1P2없음. Coordinator가 한 번의 실제 접속/입력·캡처·정상퇴장·READONLY저장조회와 수명가드/fixture를 수행했다. 누적신규65/재활성화140/활성화205, 토큰·비용N/A. 입력 도구 실패와 해결을 제품 결함과 구분했다.
+
+## 맵·서버 연결 마무리 — 2026-10-22
+
+| 에이전트 | 신규 | 재활성화 | 확인한 결과 |
+| --- | ---: | ---: | --- |
+| map_server_finish_audit / explorer | 1 | 1 | generated 서버 연결 감사와 경계 입력 취소 원인 분석 |
+| map_border_input_fix / client_implementer·gpt-6-luna medium | 1 | 2 | C02 경계 목표·fixture, 공개 ClientCore 서버 probe 구현 |
+| town_switch_review / code_reviewer·gpt-6.1-sol medium | 0 | 4 | 입력 helper/fixture와 probe 독립 리뷰; overload·timeout·관측 여유 지적 후 최종 P1/P2 없음 |
+
+이번 신규2/재활성화7, 누적 신규65/재활성화138/활성화203. Coordinator가 ROOT hunk동기화·컴파일/fixture1·실제서버probe와실패원인수정·정상퇴장후READONLY저장조회·기록을담당했다. Unity실입력은사용자보류이며probe성공과구분한다. 실제토큰·비용N/A. 실행중메시지는활성화에추가하지않는다.
+
+## 정상 전환·마을 귀환 실제 배치 — 2026-10-22
+
+stop_policy_review(default/gpt-6.1-sol high) 재활성화2: 로그 파서 재개 후보의 PreflightOnly 무시 P2를 발견해 실행 전 수정/최종P1P2없음 확인, 실제 전환 후 공용 도구·캡처·공개 설명을 읽기 최종 검토했다. 단순 실행중 메시지는 추가 활성화로 세지 않는다. Coordinator가 STOP01 사람승인대조·정상전환/실제입력한접속·READONLY저장조회·캡처/사이트를 수행했다. 누적 신규63/재활성화131/활성화194, 실제 토큰·비용N/A. 중간 로그형식실패/Editor도구probe일시정지와수정을성공결과와함께기록했다. 실제 게임 재시험을 리뷰어가 했다고 세지 않는다.
+
+## 종료 정책 원인·수정 후보 검토 — 2026-10-22
+
+town_switch_review 재활성화1(기존 code_reviewer/gpt-6.1-sol medium)은 process정책한줄diff와가드보존을읽기검토했다. 보안경계high기준에따라 stop_policy_review 신규1(default/gpt-6.1-sol high 도구지정)에게정확한후보/부모명령을별도로검토시켰고최종P1P2없음이다. 기존전환리뷰어누적신규1/재활성화1이며이번진단전체누적신규63/재활성화129/활성화192, 실제토큰·비용N/A. Coordinator가PS7/WindowsPS5.1의서로다른effectivepolicy·MOTW없음원인확인과STOP01봇요청/구문검사를담당했다. 정책수정실행·서버전환·실제입력0. 리뷰통과를권한승인이나실행통과로세지않는다.
+
+## 마을 PR 게시·전환 사전 점검 — 2026-10-22
+
+town_switch_review(code_reviewer/gpt-6.1-sol medium) 신규1/재활성화0. 기존 서버 전환 도구의 고정 대상 변경과 실행정책 우회 옵션 제거만 읽기 검토했으며 P1/P2없음이다. Coordinator가 사람 Slack승인 대조·PR46게시/artifact첨부와 표준 WindowsPowerShell PreflightOnly 실행을 진행했다. OS가 스크립트 로드 전 UnauthorizedAccess로 차단하여 q/기동/실제입력0, 기존서버유지 확인. 정책변경·대체런타임·강제종료0. 누적 신규62/재활성화128/활성화190, 실제토큰·비용N/A. 실행중 단순 메시지는 활성화로 세지 않는다.
+
+## 마을·사망 귀환 — 2026-10-22
+
+| 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 확인한 결과 |
+| --- | --- | ---: | ---: | --- |
+| town_respawn_server | worker / 상속 모델 미확인 | 1 | 1 | 서버·ClientCore·핵심 native fixture 구현. ACK 유실 재요청 복구 보완 |
+| town_respawn_review | default / gpt-6.1-sol high 도구 지정 | 1 | 0 | 서버 소유권·원자성·재요청/화면 독립 검토. ACK 유실과 다음 사망 버튼 비활성 지적 후 최종 P1/P2 없음 |
+
+Coordinator가 Town 스폰 0·Exporter/Inspector·Unity 귀환 버튼·기존 fixture/DLL 동기화와 검증을 담당한다. 누적 신규61/재활성화128/활성화189, 실제 토큰·비용 N/A. 실행 중 추가 메시지는 재활성화로 세지 않는다. 실제 서버 귀환 입력은 새 서버 정상 전환 전까지 미실행이다.
+
 ## PR45 경계·DummyClients 리뷰 보완 — 2026-10-22
 
 map_server_finish_audit/explorer 재활성화1: 실제 Dummy/server/ClientCore wire와 최소 대응 경계를 분석. dummy_epoch_fix/worker(상속 모델명 미확인) 신규1·재활성화1: Dummy8파일 구현·청크/세대·캡처세션 경합 보완. town_switch_review/code_reviewer(gpt-6.1-sol medium) 재활성화3: 최종 wire/상태 및 TOCTOU P2 발견·해결/접근성1줄 확인. Coordinator가 경계패치port·빌드중 namespace/접근성 수정·오프라인self-test1회/기록/통합을 담당했다. 누적신규66/재활성화145/활성화211, 실제토큰·비용N/A. 실제부하/Unity입력은추가실행하지않았다.

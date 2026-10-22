@@ -14,6 +14,34 @@ namespace Core {
         static size_t CheatCount(const ZoneState& zone) { return zone.m_cheatList.size(); }
     };
 
+    TEST(WorldMapTest, ExportedLayoutDefinesZoneBoundsAndAoiCellLookup) {
+        for (const auto& layout : WorldMap::Zones) {
+            ZoneArea area{};
+            ZoneInit(area, static_cast<uint16_t>(layout.id));
+            EXPECT_FLOAT_EQ(area.x_min, layout.originX + layout.localBounds.x);
+            EXPECT_FLOAT_EQ(area.x_max, layout.originX + layout.localBounds.x + layout.localBounds.width);
+            EXPECT_FLOAT_EQ(area.y_min, layout.originY + layout.localBounds.y);
+            EXPECT_FLOAT_EQ(area.y_max, layout.originY + layout.localBounds.y + layout.localBounds.height);
+
+            std::array<std::array<Cell, CELLS_X>, CELLS_Y> cells;
+            CellInit(cells, area);
+            for (int y = 0; y < CELLS_Y; ++y) {
+                for (int x = 0; x < CELLS_X; ++x) {
+                    const auto& exported = layout.aoiCells[y * CELLS_X + x];
+                    const auto& actual = cells[y][x].area;
+                    EXPECT_FLOAT_EQ(actual.x_min, layout.originX + exported.x);
+                    EXPECT_FLOAT_EQ(actual.x_max, layout.originX + exported.x + exported.width);
+                    EXPECT_FLOAT_EQ(actual.y_min, layout.originY + exported.y);
+                    EXPECT_FLOAT_EQ(actual.y_max, layout.originY + exported.y + exported.height);
+                    const auto [cellX, cellY] = GetCell((actual.x_min + actual.x_max) * .5f,
+                        (actual.y_min + actual.y_max) * .5f, area);
+                    EXPECT_EQ(cellX, x);
+                    EXPECT_EQ(cellY, y);
+                }
+            }
+        }
+    }
+
     TEST(WorldMapTest, RejectsBoundsSweptWallsAndCornerCutsInBothDirections) {
         auto bits = WorldMap::WalkableBits;
         bits.fill(~uint64_t{0});

@@ -32,6 +32,7 @@ namespace Core {
         void BazaarCancelListing(IPacketView* p);
         void Chat(IPacketView* p);
         void ZoneChange(IPacketView* p);
+        void RespawnToTown(IPacketView* p);
         void GetProfileBatch(IPacketView* p);
         ISessionAuth* auth = nullptr;
         IDBCache* cache = nullptr;

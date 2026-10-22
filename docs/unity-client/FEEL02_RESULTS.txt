@@ -1,0 +1,80 @@
+Publication update — 2026-10-22: designated Slack FEEL02 approval1792658980.975439 verified against request1792658283.786519. Export API correction published to PR45; remaining validated bundle and captures integrated into existing PR46. Both PRs open/unmerged; no master Pages deployment. Historical local-candidate statements below describe the pre-approval verification point.
+
+FEEL02 — 2026-10-22 local candidate
+
+Implemented:
+- Player speed 6 -> 9; server budget .45/50ms. ClientTick alone coalesces sends.
+- Request horizon 1.8; visual lead .9; continuous turns, bounded stale/wall correction, stop grace/smoothing. No new wire/ACK replay.
+- Existing static-part walk cadence reduced; attack preparation/cut/recovery and hit recoil tuned. No new rigging.
+- Editor-authored paths, low foliage, buried stone, 36 trees within existing 18 solid footprints. Decorative colliders=0. Nav bits/layout unchanged.
+- Public map-only Export now rejects before any output write. Author-required Export writes complete navigation+layout metadata.
+- Server zone count, bounds, rows/columns, overlap and AOI size derive from Generated/WorldMap.inc. Cell AOI containers/neighbors remain. AI/A* and monster Cell constraints untouched.
+
+Review / automation:
+Independent movement, exporter and server geometry reviews: no remaining P1/P2.
+Unity compile: 0 errors. Initial direct groups movement/boundary, public complete export, actor parts motion PASS.
+After request-horizon fix: direct movement candidate/boundary/150ms confirmation fixture PASS; no unrelated re-run.
+MainServer Release/x64 build PASS. UnitTests build PASS; WorldMapTest.ExportedLayoutDefinesZoneBoundsAndAoiCellLookup PASS (all 6 zones/25 cells each).
+Build attempts: sandboxed /m build cancelled before completion; custom global IntDir caused C1083 then literal-property LNK1181. Restored project default per-project intermediates, final build exit0. Existing compiler/link warnings remain; no claim of warning-free build.
+Unity CLI update check could not reach CDN (DNS); existing CLI successfully drove the installed Editor.
+
+Runtime transition:
+Existing Town31724 image preserved. First q helper stopped before q because PS7-inherited PSModulePath hid Windows PowerShell Get-FileHash. Standard Windows module prefix restored only during child creation; parent env restored in finally, execution policy/guards unchanged. Independent review PASS.
+Retry normal q helper27660 exit0 / server31724 native exit0 / 3MQ+4DB drain / no new shutdown errors / WAL0 / persistence unchanged.
+New Feel02 MainServer44432 SHA256405EF89670B87EE364B2604268C435498B704F2543FFE2B0AF2F24F82B34C596 ready9999; DLL paths/hashes verified. No force stop, DB direct writes, permanent policy change, original Game edits.
+
+Actual Unity evidence:
+User explicitly approved using Unity during this turn. Real mouse login/selection/enter/Disconnect; queued InputSystem keyboard states processed by normal game frames (not game-handler calls, not OS keyboard).
+Initial clear-path measure 12.681/2.004sec (~6.33/s) FAILED speed target. Kept evidence live-input.txt. Request .9 feedback window was too short for pipeline confirmation delay; request1.8/visual.9 fix reviewed and retested.
+Final east 26.712/3.004sec (~8.89/s), max reverse step0, max visual lead.9. North turn7.933/1.003sec, west reversal8.082/1sec, max reverse step0. Stop after already sent requests settled to authority; accepted post-release drift.910, final error<.0001. Does not prove immediate server stop or full ACK replay.
+C cast MP9960->9940; final Z cast/release observed, arms2/max rotation79.99434 degrees; MP9939->9938 in single attack observation. No monster combat/hit claim (Town monsters0).
+Final read-ui: no selected input/text focus, movement intent0. Playfalse/dirtyfalse/backgroundfalse after normal Disconnect and Play stop.
+Read-only persistence:5012 Zone1(89.4087143,61.9688454),HP10000,MP9938,EXP10;5011 unchanged.
+Reviewed Root/CAND movement, motion, scene and ClientCore.dll are byte-identical. Nav asset differs only empty YAML field whitespace; generated WorldMap.inc unchanged after actual Unity bake.
+
+Limits / restore:
+Current map/content is 3x2/6 zones; existing six-zone authored monster-density guard remains. 9-zone content startup, user AI/A*, neighboring-zone joint AOI and variable/high-latency behavior are not validated.
+Map data is compiled from the generated snapshot, not runtime hot reload: Export -> rebuild same checkout -> normal server transition.
+Rollback: preserve prior Town binary/hash; use exact-process guarded normal q/exit/drain/persistence workflow before restarting prior binary. No data reset.
+Final local candidate only; push/PR integration requires fresh FEEL02 Slack approval. Existing PR45/46 remain open and untouched during this turn.
+
+--- unity-fixtures.txt ---
+Movement+boundary: PASS
+Complete public map export: PASS
+Actor parts motion: PASS
+
+--- spatial-test.txt ---
+Note: Google Test filter = WorldMapTest.ExportedLayoutDefinesZoneBoundsAndAoiCellLookup
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from WorldMapTest
+[ RUN      ] WorldMapTest.ExportedLayoutDefinesZoneBoundsAndAoiCellLookup
+[       OK ] WorldMapTest.ExportedLayoutDefinesZoneBoundsAndAoiCellLookup (0 ms)
+[----------] 1 test from WorldMapTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (0 ms total)
+[  PASSED  ] 1 test.
+
+--- movement-followup.txt ---
+PASS movement request horizon / visual bound / delayed confirmation / boundary
+--- live-input.txt ---
+east seconds=2.004 frames=451 acceptedDistance=12.681 maxReverseStep=0.0000 maxLead=0.9000 server=(78.79, 40.04) visual=(79.34, 40.04) hp=10000 mp=9960
+north-turn seconds=2.004 frames=478 acceptedDistance=12.607 maxReverseStep=0.0000 maxLead=0.9000 server=(78.79, 52.65) visual=(78.79, 53.53) hp=10000 mp=9960
+west-reverse seconds=1.000 frames=238 acceptedDistance=7.348 maxReverseStep=0.0000 maxLead=0.9000 server=(71.45, 53.12) visual=(70.86, 53.24) hp=10000 mp=9960
+stop seconds=0.801 frames=190 acceptedDistance=0.286 maxReverseStep=0.0000 maxLead=0.6028 server=(71.17, 53.12) visual=(71.17, 53.12) hp=10000 mp=9960
+line-cast seconds=0.354 frames=66 acceptedDistance=0.000 maxReverseStep=0.0000 maxLead=0.0000 server=(71.17, 53.12) visual=(71.17, 53.12) hp=10000 mp=9940
+settle seconds=0.804 frames=112 acceptedDistance=0.000 maxReverseStep=0.0000 maxLead=0.0000 server=(71.17, 53.12) visual=(71.17, 53.12) hp=10000 mp=9940
+COMPLETE frame=27417
+
+--- live-input-v2.txt ---
+east-v2 seconds=3.004 frames=649 acceptedDistance=26.712 maxReverseStep=0.0000 maxLead=0.9000 server=(97.88, 53.12) visual=(97.73, 53.12) hp=10000 mp=9940
+north-turn-v2 seconds=1.003 frames=214 acceptedDistance=7.933 maxReverseStep=0.0000 maxLead=0.9000 server=(98.35, 61.04) visual=(98.15, 61.19) hp=10000 mp=9940
+west-reverse-v2 seconds=1.000 frames=214 acceptedDistance=8.082 maxReverseStep=0.0000 maxLead=0.9000 server=(90.32, 61.97) visual=(90.26, 61.78) hp=10000 mp=9940
+stop-v2 seconds=0.801 frames=166 acceptedDistance=0.910 maxReverseStep=0.0000 maxLead=0.8768 server=(89.41, 61.97) visual=(89.41, 61.97) hp=10000 mp=9940
+strike-v2 seconds=0.450 frames=89 acceptedDistance=0.000 maxReverseStep=0.0000 maxLead=0.0001 server=(89.41, 61.97) visual=(89.41, 61.97) hp=10000 mp=9939
+settle-v2 seconds=0.803 frames=165 acceptedDistance=0.000 maxReverseStep=0.0000 maxLead=0.0000 server=(89.41, 61.97) visual=(89.41, 61.97) hp=10000 mp=9939
+COMPLETE frame=16622
+
+--- attack-motion.txt ---
+cast=True released=True maxArmRotation=79.99434 arms=2 frame=29250

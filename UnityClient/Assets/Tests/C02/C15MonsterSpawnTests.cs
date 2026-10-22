@@ -28,9 +28,10 @@ namespace C02.Tests
                     "inline constexpr int REGULAR_MONSTERS_PER_CELL = 8;\n" +
                     "inline constexpr int STRONG_MONSTERS_PER_CELL = 2;\n" +
                     "inline constexpr int MONSTER_SPAWN_EDGE_INSET = 1;\n" +
+                    "inline constexpr int MONSTER_TOWN_ZONE_ID = 1;\n" +
                     "inline constexpr int REGULAR_MONSTERS_BY_CELL[25] = {8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 0, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8};\n" +
                     "inline constexpr int STRONG_MONSTERS_BY_CELL[25] = {2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2};\n" +
-                    "inline constexpr int MONSTER_ZONE_DENSITY_PERCENT[6] = {100, 100, 100, 100, 100, 100};\n" +
+                    "inline constexpr int MONSTER_ZONE_DENSITY_PERCENT[6] = {0, 100, 100, 100, 100, 100};\n" +
                     "}\n";
                 Assert.That(first, Is.EqualTo(new UTF8Encoding(false).GetBytes(expected)));
                 CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("ar-SA");
@@ -47,12 +48,12 @@ namespace C02.Tests
                 string output = Path.Combine(directory, "MonsterSpawns.inc");
                 byte[] custom = File.ReadAllBytes(output);
                 Assert.That(Encoding.UTF8.GetString(custom), Does.Contain("{0, 0, 2, 3, 4, 0, 2, 3, 4, 5, 2, 3, 0, 5, 6, 3, 4, 5, 6, 7, 4, 5, 6, 7, 8}"));
-                Assert.That(Encoding.UTF8.GetString(custom), Does.Contain("MONSTER_ZONE_DENSITY_PERCENT[6] = {100, 100, 100, 100, 100, 100}"));
-                content.zoneDensityPercent = new[] { 50, 100, 150, 200, 50, 100 };
+                Assert.That(Encoding.UTF8.GetString(custom), Does.Contain("MONSTER_ZONE_DENSITY_PERCENT[6] = {0, 100, 100, 100, 100, 100}"));
+                content.zoneDensityPercent = new[] { 0, 100, 150, 200, 50, 100 };
                 Export(content, directory);
                 string scaled = File.ReadAllText(output);
                 Assert.That(scaled, Does.Contain("REGULAR_MONSTERS_BY_CELL[25] = {0, 0, 2, 3, 4, 0, 2, 3, 4, 5, 2, 3, 0, 5, 6, 3, 4, 5, 6, 7, 4, 5, 6, 7, 8}"));
-                Assert.That(scaled, Does.Contain("MONSTER_ZONE_DENSITY_PERCENT[6] = {50, 100, 150, 200, 50, 100}"));
+                Assert.That(scaled, Does.Contain("MONSTER_ZONE_DENSITY_PERCENT[6] = {0, 100, 150, 200, 50, 100}"));
                 custom = File.ReadAllBytes(output);
                 Action rejectsWithoutWriting = () =>
                 {
@@ -66,16 +67,18 @@ namespace C02.Tests
                 regular[0] = -1; rejectsWithoutWriting();
                 regular[0] = 1000; rejectsWithoutWriting();
                 regular[0] = 0; regular[12] = 1; rejectsWithoutWriting(); regular[12] = 0;
+                content.zoneDensityPercent = new[] { 100, 100, 100, 100, 100, 100 };
+                rejectsWithoutWriting();
                 content.zoneDensityPercent = new[] { 100, 100, 100, 100, 100 };
                 rejectsWithoutWriting();
-                content.zoneDensityPercent = new[] { 100, 100, 49, 100, 100, 100 };
+                content.zoneDensityPercent = new[] { 0, 100, 49, 100, 100, 100 };
                 rejectsWithoutWriting();
-                content.zoneDensityPercent = new[] { 100, 100, 201, 100, 100, 100 };
+                content.zoneDensityPercent = new[] { 0, 100, 201, 100, 100, 100 };
                 rejectsWithoutWriting();
                 content.regularByCell = null;
                 content.regularPerCell = 41;
                 content.strongByCell = new int[25];
-                content.zoneDensityPercent = new[] { 200, 100, 100, 100, 100, 100 };
+                content.zoneDensityPercent = new[] { 0, 200, 100, 100, 100, 100 };
                 rejectsWithoutWriting();
                 content.regularPerCell = 8;
                 content.regularByCell = regular;

@@ -22,7 +22,7 @@ namespace C02.Tests
             tests.InvalidMovementCannotReplacePendingValue_AndCancelClearsIt();
             tests.ActionSendFailure_ReachesConnectionFailure_AndStopsFutureTicks();
             tests.DisposeSuppressesPendingAction();
-            tests.CandidatesStayWithinOneUnitAndZone_AndUseMovementDirections();
+            tests.CandidatesStayWithinRequestHorizonAndZone_AndUseMovementDirections();
             tests.AuthoredHeroForward_FacesEachConfirmedServerDirection();
             return "C03 pure regression: 6/6 passed. No Play, scene state, input, socket, or runtime fixture.";
         }
@@ -108,7 +108,7 @@ namespace C02.Tests
         }
 
         [Test]
-        public void CandidatesStayWithinOneUnitAndZone_AndUseMovementDirections()
+        public void CandidatesStayWithinRequestHorizonAndZone_AndUseMovementDirections()
         {
             var origin = new Vector2(10, 10);
             var targets = new[] { new Vector2(10, C20WorldMap.ZoneSize + 5), new Vector2(10, -5), new Vector2(-5, 10), new Vector2(C20WorldMap.ZoneSize + 5, 10), new Vector2(C20WorldMap.ZoneSize, C20WorldMap.ZoneSize) };
@@ -117,14 +117,14 @@ namespace C02.Tests
             {
                 var args = new object[] { (ushort)1, origin, targets[i], Vector2.zero, (byte)0 };
                 Assert.That(Candidate(args), Is.True);
-                Assert.That(Vector2.Distance(origin, (Vector2)args[3]), Is.EqualTo(1).Within(0.00001));
+                Assert.That(Vector2.Distance(origin, (Vector2)args[3]), Is.EqualTo(1.8f).Within(0.00001));
                 Assert.That((byte)args[4], Is.EqualTo(expected[i]));
                 var repeated = new object[] { (ushort)1, origin, targets[i], Vector2.zero, (byte)0 };
                 Candidate(repeated);
                 Assert.That(repeated[3], Is.EqualTo(args[3]), "No accumulated distance without a new server origin.");
             }
             Assert.That(Candidate(new object[] { (ushort)1, origin, origin, Vector2.zero, (byte)0 }), Is.False);
-            Assert.That(Candidate(new object[] { (ushort)1, origin, new Vector2(C20WorldMap.ZoneSize + 6, 10), Vector2.zero, (byte)0 }), Is.False);
+            Assert.That(Candidate(new object[] { (ushort)1, origin, new Vector2(C20WorldMap.ZoneSize + 7, 10), Vector2.zero, (byte)0 }), Is.False);
             Assert.That(Candidate(new object[] { (ushort)5, origin, targets[0], Vector2.zero, (byte)0 }), Is.False);
             Assert.That(Candidate(new object[] { (ushort)1, new Vector2(-6, 10), origin, Vector2.zero, (byte)0 }), Is.False);
             Assert.That(Candidate(new object[] { (ushort)1, origin, new Vector2(float.NaN, 10), Vector2.zero, (byte)0 }), Is.False);
