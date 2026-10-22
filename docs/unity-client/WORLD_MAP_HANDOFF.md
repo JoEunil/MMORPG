@@ -1,5 +1,20 @@
 # Unity 맵과 서버 A* 연결 지점
 
+## 서버 AI 작업에 바로 사용할 연결 지점
+
+| 대상 | 현재 계약 |
+| --- | --- |
+| 정적 맵 원본 | Unity C20MapAuthoring의 명시한 지면/벽 → CoreLib/Generated/WorldMap.inc |
+| 서버 소비 API | CoreLib/WorldMap.h의 IsWalkable / CanTraverse, Unity 런타임 의존 없음 |
+| 경로 노드 | 독립 1단위 navigation 격자. AOI Cell25를 길찾기 노드로 사용하지 않음 |
+| 좌표 | 전역 Unity X/Z = 서버 X/Y. Zone 로컬 경로는 해당 ZoneOrigin을 더해 조회 |
+| 모서리 | 대각선 이웃도 CanTraverse로 검사. 격자선/모서리에 닿은 양쪽 타일이 모두 열려야 함 |
+| 현재 영역 | 600×400 코어, 3×2/6구역, 각 core200·overlap10, AOI5×5·Cell42 |
+| 마을 | Zone1 몬스터 생성0. 후속 몬스터 구역 이동을 만들 때 마을 진입 금지 별도 적용 |
+| 몬스터 Cell 이동 | 현재 제한 유지. 후속 해제 시 monsterIndexes·cellX/Y 및 스냅샷/스킬 참조를 함께 갱신 |
+
+현재 생성 데이터와 서버 이동 검증이 연결돼 있다. 사용자가 AI를 개편할 때 exporter나 격자를 새로 만들 필요는 없다. 이웃 Zone 합동 AOI·몬스터의 Zone 간 소유권 이전·A* 자체가 이미 구현된 것으로 해석하지 않는다. 살아있는 충돌/자동 전환 마무리 상태는 MAP_SERVER_COMPLETION_TASK.md를 따른다.
+
 ## 마을과 부활 — 2026-10-22
 
 Zone 1은 몬스터를 생성하지 않는 마을이다. 보스도 제외하며 사냥은 Zone 2~6에 둔다. 사용자의 후속 AI/A*에서 몬스터 구역 이동을 추가하면 마을로의 진입을 별도로 금지해야 한다. 이번에는 AI·기존 Cell 이동 제한을 바꾸지 않았으므로 마을 침입을 막는 범용 AI 경계를 구현했다고 주장하지 않는다. 서버가 처리하는 명시적 사망 귀환 좌표는 전역 (10,10), HP/MP 최대 회복이며 EXP·재산은 보존한다. 초기 로그인 위치 보정은 HP0를 유지하는 기존 정책 그대로다. 새 서버 전환 후 실제 HP0 진입→귀환→HP/MP 최대·EXP 보존·몬스터0·정상 퇴장/저장까지 확인했다(TOWN_RESPAWN_LIVE_RESULTS.txt).

@@ -1,0 +1,21 @@
+Map Exporter / server completion — 2026-10-22
+Scope: active 3x2 / 6 zones; generated navigation bits + server collision + server-owned transition. AI/A*, monster Cell movement limit, 9-zone activation and neighbor-zone combined AOI excluded.
+
+Product change: C02 local held-input target accepts existing 0.6 lead beyond owner bounds, allowing 204.8 -> 205.1 edge request. Authoritative Full/Delta/origin bounds stay strict. Server/wire/generated content unchanged; MainServer31724 unchanged, no rebuild/restart needed.
+Independent review: final P1/P2 none. Reviewer found reflection overload ambiguity (renamed helper before test), probe outbound timeout and snapshot observation margin (fixed before real execution).
+Unity compile: explicit recompile completed/errors0. First fixture eval referenced stale imported assembly (missing test method); unchanged fixture rerun after recompile PASS.
+Focused fixture: HeldInputCanReachAdjacentZoneEdge_WhileServerStateBoundsStayStrict PASS, 0.0199s. Checks local205.1 / lead0.6 / invalid authoritative205.1 rejected. Synthetic fixture is not native input proof.
+
+C04Peer --map-check: actual local server through public ClientCore UpdateMove, no Unity input, private game-state injection or direct DB writes. Build .NET9 Release PASS / 0 warnings / 0 errors. Noargs path preserved by review, not separately executed.
+First attempt FAIL / stage town-start at (10,43.599983), HP10000: test-tool first segment10s deadline was too short; server error not observed. Failure output preserved. Actual effective progress below theoretical6 units/s because probe requests are spaced100ms from observed server state. Timeout adjusted, not speed/assertions. Added wall-y stage and limited known-safe corridor resume guard x10/y10..44.01; overall120s remains.
+One affected route retry PASS / exit0:
+  start Zone1 (10,43.599983)
+  wall y44 / x61.5 -> repeated east attempts1.5s / authoritative maxX61.5; exported nav tile x62 blocked (wall63..65 + clearance raster). Fresh position snapshot observed.
+  Zone2 x208 / epoch2 / Player+Monster first Full ready / observed monsters2 (AOI count, not total zone population).
+  return Zone1 x192 / epoch3 / both first Full ready / HP10000.
+  Normal CancelMove/Dispose; port9999 listen31724 only / no established connection after exit.
+READ ONLY DB after:5012 Zone1(192,10), HP10000 MP10000 EXP10 dir2;5011 unchanged. Normal gameplay persistence only, no reset/transaction/direct write.
+
+Unity actual/input-system key validation: PAUSED by latest user '입력은 나중에, 서버 쪽 검증부터 진행'. Play setup private prefill submitted=false, other game detected, no clicks/keys/login submit this turn. Cleanup playing=false/dirty=false/background=false. No new live screenshot; previous town screenshots remain dated evidence.
+Server-related map scope complete at network integration level. Later explicit input resume: one native held-key wall/1->2->1/UI unlock batch remains. User may start AI/A* from WORLD_MAP_HANDOFF.md and WorldMap::CanTraverse/IsWalkable; no further exporter framework required.
+Publication: local candidate only until final Slack posting approval; append to existing large PR46, no new tiny PR, merge/master Pages not performed.

@@ -1,3 +1,13 @@
+## 맵·서버 연결 마무리 — 2026-10-22
+
+| 에이전트 | 신규 | 재활성화 | 확인한 결과 |
+| --- | ---: | ---: | --- |
+| map_server_finish_audit / explorer | 1 | 1 | generated 서버 연결 감사와 경계 입력 취소 원인 분석 |
+| map_border_input_fix / client_implementer·gpt-6-luna medium | 1 | 2 | C02 경계 목표·fixture, 공개 ClientCore 서버 probe 구현 |
+| town_switch_review / code_reviewer·gpt-6.1-sol medium | 0 | 4 | 입력 helper/fixture와 probe 독립 리뷰; overload·timeout·관측 여유 지적 후 최종 P1/P2 없음 |
+
+이번 신규2/재활성화7, 누적 신규65/재활성화138/활성화203. Coordinator가 ROOT hunk동기화·컴파일/fixture1·실제서버probe와실패원인수정·정상퇴장후READONLY저장조회·기록을담당했다. Unity실입력은사용자보류이며probe성공과구분한다. 실제토큰·비용N/A. 실행중메시지는활성화에추가하지않는다.
+
 ## 정상 전환·마을 귀환 실제 배치 — 2026-10-22
 
 stop_policy_review(default/gpt-6.1-sol high) 재활성화2: 로그 파서 재개 후보의 PreflightOnly 무시 P2를 발견해 실행 전 수정/최종P1P2없음 확인, 실제 전환 후 공용 도구·캡처·공개 설명을 읽기 최종 검토했다. 단순 실행중 메시지는 추가 활성화로 세지 않는다. Coordinator가 STOP01 사람승인대조·정상전환/실제입력한접속·READONLY저장조회·캡처/사이트를 수행했다. 누적 신규63/재활성화131/활성화194, 실제 토큰·비용N/A. 중간 로그형식실패/Editor도구probe일시정지와수정을성공결과와함께기록했다. 실제 게임 재시험을 리뷰어가 했다고 세지 않는다.

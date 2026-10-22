@@ -1,3 +1,11 @@
+## 最新 — Map Exporter·서버 실제 연결 검증 완료 / 2026-10-22
+
+Unity 입력은 사용자 최신 답변으로 보류한다. 서버31724를 유지한 채 공개 ClientCore 이동으로 장애물 차단(x61.5 유지/nav x62 blocked)·Zone1→2(x208/epoch2)→1(x192/epoch3)·양쪽 첫 Player/Monster Full 수신을 확인했다. HP10000 유지/정상퇴장·READ ONLY DB5012 (192,10)/MP10000/EXP10 저장,5011불변. 직접 DB수정/서버교체/AI변경0.
+
+C02의 로컬 입력 목표만 기존lead0.6까지 경계 밖 허용해205 도달 전 입력취소 결함을 고쳤다. 권위상태 경계는 유지하고 focused fixture1 PASS/compile0/독립 최종P1P2없음. 서버probe 첫 시도는 도구10초 timeout으로43.599983에서중단, 시간산정만수정한 영향경로1회재개PASS/exit0. 실패와근거는MAP_SERVER_COMPLETION_RESULTS.txt. Unity 키/UI통과로세지않는다. 현재EditorPlayfalse/dirtyfalse/backgroundfalse.
+
+활성6구역 exporter→실행서버 충돌/자동전환 범위는완료. Unity 방향키/화면복귀는나중에한배치, 사용자AI/A*·몬스터Cell제한·9구역활성/이웃합동AOI는제외. 기존큰PR46에합칠로컬후보이며게시전Slack최종승인예정. 전문누적신규65/재활성화138/전체203/tokenN/A.
+
 ## 최신 — 마을 서버 전환·실제 귀환 완료 / 2026-10-22
 
 STOP01 지정사람1792649722.237479를요청1792649355.942189와대조해이번전환에소비했다. 프로세스RemoteSigned로preflight통과→기존24024정상q/helper27328exit0/서버nativeexit0통과. 낡은ROOT실행사본의system.log일반문자JSON오인이시작을차단해원본로그보존후canonical기존두줄엄격허용과대조했다. Resume의Preflight경계P2도실행전수정/독립high최종P1P2없음. native종료경로·동일로그해시·3MQ/4DB종료·WAL0·DB스냅샷불변재확인뒤Town-Respawn/bin서버31724(시작2026-10-22T15:19:46.65356+09:00/9999ready/DLL검사)로정상전환완료. 영구정책/강제종료/DB직접수정0,WindowsPS5.1최종Restricted복귀.
