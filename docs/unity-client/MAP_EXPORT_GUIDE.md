@@ -14,7 +14,7 @@ map-only public Export는 metadata 없는 파일을 쓰기 전에 예외로 중�
 
 실행 중인6구역 서버에서 내보낸 장애물의 통행 차단과 Zone1→2→1 자동 소유권 전환을 공개 ClientCore 요청으로 확인했다. 각 전환의 증가 epoch와 첫 Player/Monster Full 쌍을 확인했고 정상퇴장 후 저장도 확인했다. 상세는 MAP_SERVER_COMPLETION_RESULTS.txt. 서버/wire 추가변경은 없고 C02 로컬 경계 입력 목표만 보완했다.
 
-Unity 방향키 실입력은 사용자 최신 지시로 보류하며 서버 probe를 화면 검증으로 대신하지 않는다. AI/A*와 몬스터 Cell 이동 제한은 사용자 후속 작업이다. 활성6구역과9구역 내보내기 지원, owner 전환과 이웃 Zone 합동 AOI를 구분한다.
+이 서버 probe 이후 Unity 입력 배치도 완료했다(MAP_UNITY_INPUT_RESULTS.txt). 두 결과는 별도 근거이며 서버 probe를 화면 검증으로 대신하지 않는다. AI/A*와 몬스터 Cell 이동 제한은 사용자 후속 작업이다. 활성6구역과9구역 내보내기 지원, owner 전환과 이웃 Zone 합동 AOI를 구분한다.
 
 ## 마을·사망 귀환 실행 계약 — 2026-10-22
 
@@ -26,7 +26,7 @@ DummyClients도 ACTION26/ownershipEpoch와 확장 구역 응답·첫 Full 쌍을
 
 ## 실행 상태 — 2026-10-22
 
-같은 후보 MainServer와 ClientCore로 실제 접속·사망 귀환·HP/MP 회복·정상 퇴장 및 저장을 확인했다(TOWN_RESPAWN_LIVE_RESULTS.txt). Map Exporter와 관련 서버 완료를 목표로, 남은 생존 충돌/자동 경계 전환을 MAP_SERVER_COMPLETION_TASK.md에서 마무리한다. 이웃 Zone 합동 AOI·Scene streaming·사용자 A*는 별도 범위다.
+호환되는 MainServer와 ClientCore로 실제 접속·사망 귀환·HP/MP 회복·정상 퇴장 및 저장을 확인했다(TOWN_RESPAWN_LIVE_RESULTS.txt). 이후 생존 벽 충돌과 자동 경계 왕복도 확인해 Map Exporter·서버 연결 묶음을 완료했다(MAP_UNITY_INPUT_RESULTS.txt). FEEL02_RESULTS.txt는 후속 이동·모션 후보의 별도 관찰이다. 이웃 Zone 합동 AOI·Scene streaming·사용자 A*는 별도 범위다.
 
 # Unity 맵 내보내기와 서버 연결
 
@@ -63,13 +63,13 @@ AOI Cell(0,0)은 구역 로컬 좌하단이다. 25개 사각형은 중첩을 포
 
 1. C02 Scene에서 C02World/C20FixedWorldMap의 C20MapAuthoring을 선택한다. 실제 게임 입력이나 Play는 필요 없다. 메뉴와 Inspector 모두 해당 오브젝트가 속한 Scene을 저장해야 내보낼 수 있다. 다른 Scene이 활성화돼 있어도 검사 대상은 저작 Scene이다. NavigationGrid도 프로젝트에 저장된 에셋이어야 한다.
 2. Ground와 Obstacles에 내보낼 정적 BoxCollider만 명시한다. 장식 풀과 이동 엔티티는 제외한다. Actor Clearance는 반지름에 대한 보수적 여유다.
-3. Zone Columns/Rows, Core Size, Transition Margin, Content Version을 확인한다. Preview Zone Id는 검토할 구역을 고른다. 출력에서는 다른 구역을 제거하지 않고 전체 레이아웃을 하나의 일관된 snapshot으로 저장한다.
+3. Unity 저작값인 Zone Columns/Rows, Core Size, Transition Margin, Content Version을 확인한다. 서버 공간 값은 이 출력에서 파생한다. Preview Zone Id는 검토할 구역을 고른다. 출력에서는 다른 구역을 제거하지 않고 전체 레이아웃을 하나의 일관된 snapshot으로 저장한다.
 4. Scene Gizmo: 파랑은 구역 전체, 초록은 전용 영역, 주황은 중첩, 흰색은 선택 구역의 AOI25, 빨강은 로컬 원점이다. 저장된 NavigationGrid 보기 버튼은 통행 배열 미리보기로 이동한다. 씬을 바꾼 뒤에는 이전 bake와 다를 수 있다.
 5. Scene을 저장하고 전체 맵 검증 및 내보내기 버튼 또는 C02 > World > Bake and Export Navigation 메뉴를 실행한다.
 
 출력은 `CoreLib/Generated/WorldMap.inc` 한 파일이다. nav와 layout을 따로 덮어쓰지 않는다. 전 데이터를 준비한 뒤 임시 파일을 교체하며 실패하면 이전 통행 배열/dirty 및 기존 출력이 유지된다. 프로세스 중단과 Unity 자산 저장까지 하나의 트랜잭션으로 보장하는 것은 아니다.
 
-3×3 예시를 만들려면 Rows=3뿐 아니라 바닥/NavigationGrid도 610×610으로 맞춘다. 현재 서버는 여전히 6구역이므로 예시 출력만으로 9구역 서버가 활성화되지는 않는다.
+3×3 예시를 만들려면 Columns=3, Rows=3으로 지정하고 바닥/NavigationGrid도 610×610으로 맞춘다. 현재 서버는 여전히 6구역이므로 예시 출력만으로 9구역 서버가 활성화되지는 않는다.
 
 ## 출력과 서버 사용
 
@@ -87,7 +87,7 @@ FormatVersion과 ContentVersion, ZoneColumns/Rows, ZoneCoreSize, TransitionMargi
 
 독립 리뷰와 직접 영향 검증에서 정상 출력/좌표·AOI·장애물, readonly 실패 보존, 중첩 전체 막힘 거부·대각 직접 통행 구분을 확인했다. 최초 출력 FormatException과 std::array 오류는 수정·실패 기록을 보존했고 6/9 출력 모두 C++ 컴파일·실행을 통과했다. 해당 exporter 코드를 변경하지 않은 후속 작업에서 이 검증을 반복하지 않는다.
 
-서버 자동 전환·첫 Full 동기화도 구현하고 직접 영향 자동 검증을 통과했다(WORLD_EXPORT_TRANSITION_RESULTS.txt). 새 마을 서버가 해당 생성물을 사용하며 실제 접속·귀환을 확인했다. 남은 생존 이동 검증과 경계 입력 보완은 MAP_SERVER_COMPLETION_TASK.md를 따른다. 자동·실제·미실행 범위를 구분한다.
+서버 자동 전환·첫 Full 동기화도 구현하고 직접 영향 자동 검증을 통과했다(WORLD_EXPORT_TRANSITION_RESULTS.txt). 생성물을 사용하는 서버에서 실제 귀환과 벽 정지·1→2→1 이동·조작 복귀까지 확인했다(TOWN_RESPAWN_LIVE_RESULTS.txt, MAP_UNITY_INPUT_RESULTS.txt). 현재 이동 수치와 후속 실입력 결과는 FEEL02_RESULTS.txt를 따른다. 이 근거는 모든 모서리·가변 지연·새 몬스터 교전의 검증을 뜻하지 않는다.
 
 ## 몬스터 AI 작업 인계
 
@@ -97,8 +97,8 @@ Map Exporter와 이번 마무리는 AI 상태 머신을 변경하지 않는다. 
 
 ActorClearance는 현재 한 가지 값으로 전체 통행 격자에 적용한다. 몬스터마다 다른 반지름을 지원하는 다중 통행 격자를 이번 작업에서 추가한 것은 아니다. 큰 모델을 위한 여유는 후속 AI/콘텐츠 작업에서 명시적으로 결정한다.
 
-서버는 내보낸 Zone 수/행·열/core/여유/5×5 Cell이 현재 서버 공간 설정과 일치하는지 컴파일 시 검사한다. 9구역 예시를 실서버에 적용하려면 서버 Zone 수와 관련 소비자도 함께 바꿔야 하며, 예시 파일만 덮어써 잘못된 구역 배치를 조용히 실행할 수는 없다.
+서버 Config.h의 ZONE_COUNT와 Cell.h의 core 크기·행열·중첩·AOI Cell 크기는 생성 데이터에서 직접 파생한다. 별도 서버 공간 상수를 수작업으로 맞추지 않는다. Format 1의 AOI 5×5 컨테이너와 콘텐츠 검증은 유지한다. 현재 몬스터 밀도 데이터와 ZoneState_Monsters.cpp의 guard는 6구역용이므로 9구역 예시만 교체하면 서버 빌드가 거부된다. 9구역 활성화는 해당 콘텐츠와 소비자를 함께 준비할 별도 작업이다.
 
-새 wire는 이전 서버와 호환되지 않아 MainServer와 ClientCore DLL을 같은 버전으로 전환했다. 현재 큰 전달 묶음은 맵 PR45와 그 위의 마을 PR46이며 원본 Game의 별도 미완료 AI 소스는 보존한다. DB/계정/아이템 초기화나 직접 HP 복구는 하지 않았고, 실제 사망 귀환의 회복·위치 저장은 정상 게임 경로의 결과다.
+새 wire는 이전 서버와 호환되지 않아 MainServer와 ClientCore DLL을 같은 버전으로 전환했다. 맵 PR45는 master에 병합됐고 관련 마을·이동 보완은 master 기준 PR46에 모았다. 원본 Game의 별도 미완료 AI 소스는 보존한다. DB/계정/아이템 초기화나 직접 HP 복구는 하지 않았고, 실제 사망 귀환의 회복·위치 저장은 정상 게임 경로의 결과다.
 
 이웃 Zone이 소유한 엔티티를 경계 너머로 함께 표시하는 기능은 남아 있다. 현재 owner-only AOI/클라이언트 필터/Zone-local ID를 함께 바꿔야 하므로 이웃의 Full만 추가 송신하면 안 된다. 사용자 몬스터 AI의 A* 연결과도 구분해 후속 작업으로 다룬다.

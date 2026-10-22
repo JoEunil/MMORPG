@@ -1,3 +1,7 @@
+## 맵 서버 인계 정리 — 2026-10-22
+
+사용자 다음 미완료 작업 지시에 따라 Exporter→서버 연결을 읽기 감사했다. 추가 코드 결함은 확인하지 못했고 기존 입력 통과가 미완료로 남은 안내와 6/.6 이전 수치를 수정했다. MAP_EXPORT_GUIDE/WORLD_MAP_HANDOFF/MAP_SERVER_COMPLETION_TASK를 실제 9단위/초·request1.8·visual.9와 생성 데이터 직접 파생, 완료된 벽/경계 입력 배치에 맞췄다. 6구역 콘텐츠 guard·AI/A* 사용자 소유·이웃 AOI/9구역/가변 지연 미완료는 유지한다. 제품/생성 데이터/환경 변경 없이 문서만 수정하므로 빌드·Unity·서버 테스트를 재실행하지 않았다. git diff --check 통과. 공개 화면 변화가 없어 사이트 생성과 캡처도 반복하지 않는다. 기존 PR46에 인계 보완만 모으며 병합·공개는 하지 않는다.
+
 ## PR46 마을 몬스터 수 테스트 리뷰 수정 — 2026-10-22
 
 사용자의직접반영지시에따라 discussion4345933255를수정했다. SpawnLayoutTest에서마을은monster배열0과전체25Cell의monsterIndexes0을검사하고,사냥터112마리·일반94/강화17/보스1·위치/통행/고유참조검증은그대로보존했다. 제품/AI/맵/DB변경0. 독립리뷰P1P2없음/전용출력Release빌드PASS/관련fixture1개PASS0ms(total1ms). 첫빌드의postcopy는실행서버DLL잠금으로실패해테스트실행없이중단했고전용출력으로분리해해결했다. 서버정지/재시작/Unity입력0,기존런타임DLL해시불변. PR46_SPAWN_TEST_RESULTS.txt참조.

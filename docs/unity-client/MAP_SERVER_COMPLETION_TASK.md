@@ -1,5 +1,13 @@
 # Map Exporter·서버 연결 마무리
 
+## 완료 상태 — 2026-10-22
+
+아래 계획의 서버 연결과 생존 입력 배치는 완료했다. 생성 맵의 벽 차단·자동 소유권 전환·epoch/첫 Full 수신은 MAP_SERVER_COMPLETION_RESULTS.txt, Unity 벽 정지·1→2→1 이동·조작 복귀는 MAP_UNITY_INPUT_RESULTS.txt에 기록했다. 후속 이동 속도는 9단위/초·요청 선행 1.8·시각 선행 0.9이며 FEEL02_RESULTS.txt의 실제 관찰을 따른다. 아래 0.6과 입력 보류 문구는 당시 계획이며 현재 설정이나 미완료 항목으로 재사용하지 않는다.
+
+동일한 테스트는 반복하지 않는다. 사용자에게 넘길 AI/A*·몬스터 Cell 이동 제약, 이웃 Zone 합동 AOI, 9구역 콘텐츠 활성화와 가변 지연 검증은 이번 완료 범위 밖이다. 현재 소비 계약과 연결 지점은 MAP_EXPORT_GUIDE.md와 WORLD_MAP_HANDOFF.md를 따른다.
+
+## 당시 작업 계획
+
 2026-10-22 사용자 목표: Map Exporter와 관련 서버 적용까지 완료한다. 기존 6구역·AOI25·별도 navigation grid를 유지하며, 사용자 담당 몬스터 AI/A*와 Cell 이동 제한은 변경하지 않는다.
 
 이미 완료한 exporter 생성물/실패 보존·6/9 예시 컴파일·서버 이동/소유권/epoch/첫 Full 쌍 자동 검증과 마을 실제 귀환을 반복하지 않는다. 이 묶음은 남은 살아있는 캐릭터의 벽 충돌과 자동 경계 전환을 끝내는 데 집중한다. Additive Scene streaming/이웃 Zone 합동 AOI나 9구역 활성화 완료로 확대 해석하지 않는다.
