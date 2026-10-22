@@ -1,3 +1,7 @@
+## 입력 검증 전달 완료 — 2026-10-22
+
+제품b07346f/최신master통합fafda2a를PR46에일반push했고GitHub head일치·PR45/46 mergeabletrue/Open을확인했다. 제목·본문·실제캡처/공개설명을갱신,병합·Pages배포0. UnityCoordinator봇작업스레드1792654710.732219/완료채널1792654711.419819에핵심전달완료. 입력배치는종료했고재개권한은유지하되반복실행하지않는다. 서버31724유지,EditorPlayfalse/dirtyfalse/backgroundfalse. 다음서버AI/A*는사용자작업이며대신구현하지않는다. 새교전/지연별조작감/모든코너는미실행항목으로보존한다.
+
 ## 최신 — PR46 입력 결과·최신 master 통합
 
 사용자의 이번 직접 지시로 입력검증·관련수정·캡처를 기존PR46에추가한다. 521c7a8(master PR44)을일반merge한PR45 02ce634를PR46에일반merge해선행충돌을해결했다. 문서충돌만양쪽기록보존,최종C02WorldScreen/C05CombatScreen/C19ActorMotion은실제로검증한ROOT와바이트동일확인. 기능/UI재시험은반복하지않는다. 사이트build/로컬링크검사통과. Playfalse/dirtyfalse/backgroundfalse,원본GameWIP보존. 입력재개상태를유지하되상시반복테스트는하지않는다. 병합·masterPages배포는사용자검토대기다.
