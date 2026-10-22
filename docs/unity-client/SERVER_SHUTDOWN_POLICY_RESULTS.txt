@@ -1,5 +1,13 @@
 Normal shutdown repeated block — root cause / 2026-10-22
 
+RESOLVED: STOP01 reply1792649722.237479 verified; process-only RemoteSigned
+preflight and normal q/exit0 succeeded. A second stale ROOT log parser blocked
+startup after shutdown, repaired from canonical strict two-plain-message policy
+with independent high review and preserved raw evidence. Resume preflight/3MQ/
+4DB drain/WAL0/snapshot comparison passed; new town server31724 ready and actual
+town-return input passed. WindowsPS5.1 policy returned Restricted after process
+exit. See TOWN_RESPAWN_LIVE_RESULTS.txt; pending notes below are historical.
+
 Observed, read-only
 - Main shell: PowerShell7; LocalMachine RemoteSigned, other scopes Undefined.
 - Actual existing quit launcher: Windows PowerShell5.1.26100.9711.

@@ -1,3 +1,11 @@
+## 최신 — 마을 서버 전환·실제 귀환 완료 / 2026-10-22
+
+STOP01 지정사람1792649722.237479를요청1792649355.942189와대조해이번전환에소비했다. 프로세스RemoteSigned로preflight통과→기존24024정상q/helper27328exit0/서버nativeexit0통과. 낡은ROOT실행사본의system.log일반문자JSON오인이시작을차단해원본로그보존후canonical기존두줄엄격허용과대조했다. Resume의Preflight경계P2도실행전수정/독립high최종P1P2없음. native종료경로·동일로그해시·3MQ/4DB종료·WAL0·DB스냅샷불변재확인뒤Town-Respawn/bin서버31724(시작2026-10-22T15:19:46.65356+09:00/9999ready/DLL검사)로정상전환완료. 영구정책/강제종료/DB직접수정0,WindowsPS5.1최종Restricted복귀.
+
+실제Unity한접속:02Sign-in→5012선택/진입→Zone5 HP0 MP9859 EXP10(210,210)→RETURN TO TOWN 실제click→Zone1(10,10) HP/MP10000 EXP10·monsters0·CanActtrue·안전지역표시→실제Disconnect→authenticatedfalse/Ready→Playstop. 최종dirtyfalse/pausedfalse/backgroundfalse/inputRunnerfalse. READONLYDB에서5012귀환상태저장/5011불변확인. TOWN_RESPAWN_LIVE_RESULTS.txt와실제PNG두장참조. 새캐릭터AI/전체이동회귀/새마을아트0.
+
+서버31724는계속숨김실행중이다. 원본Game/ROOT서버·ClientCore WIP보존,ROOT공용전환도구는백업후canonical엄격파서와동기화했다. 공용도구의자식Bypass→RemoteSigned만수정했고최종독립P1/P2없음. 새정책변경에STOP01재사용금지. 기존PR46에실제결과/선별캡처/공개원본을추가하며병합·masterPages배포0. 전문누적신규63/재활성화131/전체194/토큰N/A.
+
 ## 최신 — 정상 종료 차단 원인 확정 / STOP01 대기
 
 실제종료런타임 WindowsPowerShell5.1.26100.9711은전scopeUndefined→effectiveRestricted, 주작업PS7은LocalMachineRemoteSigned다. 이전진단이두런타임정책을혼동해파일로드전차단을반복했다. 스크립트MOTW없음/FullLanguage이며서버q·drain실패아니다. 동일런타임부모/자식에만명시적RemoteSigned를주는수정후보를구문/독립high리뷰P1P2없음확인했고미실행이다. SHA E49DF4275C8CB82AD63F915ED5A415DEE5590E0E503D25397DA06298EF42B646.

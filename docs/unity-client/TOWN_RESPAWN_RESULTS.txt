@@ -1,5 +1,11 @@
 Town / explicit death respawn candidate — 2026-10-22
 
+LATEST: STOP01 approval verified, normal server transition and actual native
+one-session town return PASS. Zone5 HP0/MP9859/EXP10 -> actual button ->
+Zone1(10,10),HP/MP10000,EXP10,monsters0; normal logout/READ ONLY persistence PASS.
+New server31724 remains running hidden; permanent Windows policy unchanged.
+See TOWN_RESPAWN_LIVE_RESULTS.txt. Earlier blocked/unexecuted notes below are history.
+
 Follow-up: posting approved, live transition blocked before execution
 - Human U0C9QEUHPMK reply1792648570.091499 '승인 TOWN01' matched
   bot request1792648326.480519 in parent1792487679.299269.

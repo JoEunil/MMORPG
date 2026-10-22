@@ -48,4 +48,4 @@ Git 상태/diff 확인과 문서 편집은 진행할 수 있다. 위 권한은 �
 
 부모 PowerShell의 정책을 자식 런타임 정책으로 간주하지 않는다. 현재 PS7은 RemoteSigned지만 기존 종료 도구가 고정 호출하는 Windows PowerShell5.1은 모든 scope Undefined→effective Restricted라 파일 로드 전에 차단된다. 실제 실행 파일로 `Get-ExecutionPolicy`와 `-List`를 읽어 먼저 확인한다. 같은 실패를 반복하거나 다른 런타임·inline 실행으로 바꾸지 않는다.
 
-프로세스/자식에만 RemoteSigned를 명시하는 검토 후보는 STOP01 승인 전 미실행이다. 영구 사용자/시스템 정책은 변경하지 않는다. 승인 후에도 플랫폼 허용이 필요하고 거절 시 중단한다. 상세 SERVER_SHUTDOWN_POLICY_RESULTS.txt와 HANDOFF.md를 따른다.
+STOP01 사람 승인 확인 후 이번 프로세스/자식에만 RemoteSigned를 적용해 정상 전환과 실제 귀환을 완료했다. 종료 뒤 WindowsPS5.1의 실제 정책은 Restricted로 돌아왔으며 영구 사용자/시스템 정책은 불변이다. 이 승인으로 미래 정책 변경을 자동 허용하지 않는다. 실행 사본은 낡은 ROOT 대신 canonical 작업 브랜치의 도구와 대조해 만든다. 기존 system.log의 정확한 일반 로그 두 줄 처리도 포함해야 하며 나머지 비정상 로그는 계속 차단한다. 상세 TOWN_RESPAWN_LIVE_RESULTS.txt와 HANDOFF.md를 따른다.

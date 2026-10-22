@@ -289,7 +289,8 @@ function Stop-Normally([Diagnostics.Process]$Process, [string]$ImageKind, [strin
     $helperOut = Join-Path $captures "r01-switch-$stamp-quit-$($Process.Id).out.txt"
     $helperErr = Join-Path $captures "r01-switch-$stamp-quit-$($Process.Id).err.txt"
     $deadlineUtcTicks = [DateTime]::UtcNow.AddSeconds(12).Ticks
-    $arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $PSCommandPath + '" -QuitHelperPid ' + $Process.Id + ' -QuitImage ' + $ImageKind + ' -QuitStartTicks ' + $ticks + ' -QuitDeadlineUtcTicks ' + $deadlineUtcTicks
+    # Process-only policy for explicitly approved normal-server operations; no persistent policy change.
+    $arguments = '-NoProfile -ExecutionPolicy RemoteSigned -File "' + $PSCommandPath + '" -QuitHelperPid ' + $Process.Id + ' -QuitImage ' + $ImageKind + ' -QuitStartTicks ' + $ticks + ' -QuitDeadlineUtcTicks ' + $deadlineUtcTicks
     if ($C07Candidate) { $arguments += ' -C07Candidate -C07Hash ' + $C07Hash }
     if ($C08Candidate) { $arguments += ' -C08Candidate -C08Hash ' + $C08Hash }
     if ($C09Candidate) { $arguments += ' -C09Candidate -C09Hash ' + $C09Hash }

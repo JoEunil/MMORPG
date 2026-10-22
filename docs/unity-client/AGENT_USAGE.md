@@ -1,3 +1,7 @@
+## 정상 전환·마을 귀환 실제 배치 — 2026-10-22
+
+stop_policy_review(default/gpt-6.1-sol high) 재활성화2: 로그 파서 재개 후보의 PreflightOnly 무시 P2를 발견해 실행 전 수정/최종P1P2없음 확인, 실제 전환 후 공용 도구·캡처·공개 설명을 읽기 최종 검토했다. 단순 실행중 메시지는 추가 활성화로 세지 않는다. Coordinator가 STOP01 사람승인대조·정상전환/실제입력한접속·READONLY저장조회·캡처/사이트를 수행했다. 누적 신규63/재활성화131/활성화194, 실제 토큰·비용N/A. 중간 로그형식실패/Editor도구probe일시정지와수정을성공결과와함께기록했다. 실제 게임 재시험을 리뷰어가 했다고 세지 않는다.
+
 ## 종료 정책 원인·수정 후보 검토 — 2026-10-22
 
 town_switch_review 재활성화1(기존 code_reviewer/gpt-6.1-sol medium)은 process정책한줄diff와가드보존을읽기검토했다. 보안경계high기준에따라 stop_policy_review 신규1(default/gpt-6.1-sol high 도구지정)에게정확한후보/부모명령을별도로검토시켰고최종P1P2없음이다. 기존전환리뷰어누적신규1/재활성화1이며이번진단전체누적신규63/재활성화129/활성화192, 실제토큰·비용N/A. Coordinator가PS7/WindowsPS5.1의서로다른effectivepolicy·MOTW없음원인확인과STOP01봇요청/구문검사를담당했다. 정책수정실행·서버전환·실제입력0. 리뷰통과를권한승인이나실행통과로세지않는다.
