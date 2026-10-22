@@ -11,6 +11,7 @@ namespace C02.Tests
     public sealed class C19ActorMotionTests
     {
         [UnityTest]
+        [Category("PlayFeedbackRevision")]
         public IEnumerator RealModelAnimatesPartsWithoutMovingAuthorityOrRuntimeAttachments()
         {
             foreach (string model in new[] { "ObservedPlayer", "MonsterType0", "MonsterType1", "MonsterType2" })
@@ -51,6 +52,24 @@ namespace C02.Tests
                     motion.ResetPose();
                     Assert.That(visual.localPosition, Is.EqualTo(rest));
                     Assert.That(Quaternion.Angle(arm.localRotation, Quaternion.identity), Is.LessThan(.001f));
+                    if (model == "ObservedPlayer")
+                    {
+                        motion.SetMovementIntent(Vector2.right);
+                        yield return new WaitForSecondsRealtime(.15f);
+                        Assert.That(Vector3.Dot(visual.TransformDirection(Vector3.back), Vector3.right), Is.GreaterThan(.5f));
+                        actor.transform.position -= Vector3.right * .3f;
+                        yield return new WaitForEndOfFrame();
+                        Assert.That(Vector3.Dot(visual.TransformDirection(Vector3.back), Vector3.right), Is.GreaterThan(.5f),
+                            "A backward position correction must not turn the local actor against held input.");
+                        motion.SetMovementIntent(Vector2.zero);
+                        actor.transform.position -= Vector3.right * .1f;
+                        yield return null;
+                        yield return new WaitForEndOfFrame();
+                        Assert.That(Vector3.Dot(visual.TransformDirection(Vector3.back), Vector3.right), Is.GreaterThan(.5f),
+                            "Reconciliation after key release preserves the last facing.");
+                        Assert.That(Quaternion.Angle(leg.localRotation, Quaternion.identity), Is.LessThan(.001f),
+                            "Correction displacement does not animate idle local legs.");
+                    }
                 }
                 finally { Object.DestroyImmediate(actor); }
             }
