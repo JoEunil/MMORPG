@@ -1,0 +1,17 @@
+WORLD TRANSITION RECOVERY UI — 2026-10-22
+Candidate: codex/world-map-export, parent MAP01. No new push/PR approval inferred from continue message.
+
+Change: ReconnectRequired now reuses the existing C17 LoadingPanel and EntryReturnButton to explain that synchronization failed and offer Return to sign-in. InWorld/TransitionPending keep their existing hidden entry-panel behavior. User's explicit return action invokes the existing login.ConnectionFailed cleanup; there is no automatic logout/reconnect/new service/protocol.
+The WorldHud already has a DisconnectButton: this is a clearer direct recovery UI, not a claim that no previous disconnect path existed.
+
+Read-only actual-scene check: EntryReturnButton under LoadingPanel/C01Panel/Canvas/C01Client, serialized persistent listeners0; separate DisconnectButton under WorldHud. No scene/prefab/material/asset edits.
+Independent reviewer: no P1/P2 findings, no unnecessary abstraction.
+Compile: Editor imported sources; recompile reported up_to_date, no evaluation compiler diagnostics.
+First execution: direct EditMode invocation of a lifecycle-dependent PlayMode fixture failed the new buttonLabel assertion (null), because MonoBehaviour.OnEnable did not run. Initial failure preserved in ignored Builds/World-Export/recovery-ui-initial-failure.txt. Product/assertions were not modified to hide this failure.
+Correct-mode execution: existing C17EntryPresentationTests fixture, automatic PlayMode1 PASS (.059604s, total .1s). Covers ordinary entry/choosing, InWorld/TransitionPending visibility, recovery panel/button label, no disconnect before click, existing Button.onClick path clearing Auth, subsequent UI reset, entry cancellation.
+Limits: fixture world disabled and Stage(Ready) injected after cleanup; actual networking-driven world-reset/login return is not proven. No native keyboard/mouse, server login, service stop/start, DB/Redis or live timeout reproduction.
+Final Editor: Assets/C02/C02.unity / dirty=false / playing=false / input=false.
+Original ROOT two-file baseline checked, backed up and synced. Original Game/server/ClientCore WIP preserved.
+Public content unchanged: the existing map-transition feature page already describes synchronization; no new live screenshot/feature claim. Remaining real timeout/return observation joins the held input batch, no extra login/full regression.
+MAP01 still awaiting designated-user reply on registered Slack parent. PR44 independently confirmed open at b3b06ea; no merge/branch cleanup.
+Specialist this turn: transition_recovery_review(code_reviewer/gpt-6.1-sol medium) new1/reactivation0. Cumulative new58/reactivation127/total185, actual tokens N/A.

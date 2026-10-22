@@ -1,3 +1,10 @@
+## 最新 — 전환 실패 복귀 안내 보완 / 2026-10-22
+
+MAP01 후보의 C17에서 ReconnectRequired 때 기존 LoadingPanel/EntryReturnButton을 재사용해 안내와 로그인 복귀를 표시한다. 기존 WorldHud 종료 버튼도 있어 종료 경로 자체의 신규 구현으로 주장하지 않는다. 자동 재접속/로그아웃 없이 사용자가 버튼을 누를 때 기존 ConnectionFailed 정리 경로를 사용한다. Scene/서버/프로토콜/DB 변경0.
+
+독립 P1/P2없음, Editor 소스 import/recompile up_to_date, 기존 fixture 자동PlayMode1PASS(.059604s). 잘못된 direct EditMode 호출의 OnEnable 미실행/null label FAIL도 로그 보존, 제품/assertion변경 없이 올바른 모드로 실행했다. TRANSITION_RECOVERY_RESULTS.txt 참조. 테스트의 수동 Stage초기화를 실제 네트워크 복귀 통과로 주장하지 않는다. 실제씬버튼/persistent listener0확인, 최종 C02Scene dirtyfalse/Playfalse/inputfalse, 원본2파일 baseline가드/백업후동기화. Unity actual입력 보류·사용자 AI 미변경 유지.
+
+Slack 읽기에서 MAP01 사람답장 없음. 게시 승인 전 push/PR0, 작은 복귀 보완은 기존 큰 MAP01에 합친다. PR44 OPEN/b3b06ea 재확인·병합/정리0. 전문 누적 신규58/재활성화127/전체185, 실제토큰N/A.
 ## 최신 — 맵 내보내기 저장 Scene 검사 보완
 
 MAP01 후보에 저장 상태 검사를 보완했다. 메뉴/Inspector 모두 author 소속 Scene(valid/loaded/saved/clean)과 영속 map을 확인한 뒤 내보내며 무관한 active Scene dirty로 차단하지 않는다. 기존 snapshot API는 detached fixture용 internal로 유지했다. 기존 저작 Scene 자동 저장은 하지 않으며 해당 nav 자산만 기존처럼 저장한다.

@@ -41,7 +41,7 @@ namespace C02
             bool showResults = !inField && !waitingForEntry && characterListReady && stage == C02Stage.Choosing;
             bool waitingForLoginResponse = login.IsBusy && (!login.Authenticated || login.ListResponseCount == 0);
             bool showSignIn = !inField && !waitingForEntry && (!showResults || waitingForLoginResponse);
-            bool showLoading = waitingForEntry;
+            bool showLoading = waitingForEntry || stage == C02Stage.ReconnectRequired;
 
             signIn.SetActive(showSignIn);
             results.SetActive(showResults);
@@ -51,6 +51,7 @@ namespace C02
                 C02Stage.Entering => "Entering the world…",
                 C02Stage.WaitingForZone => "Opening the field…",
                 C02Stage.WaitingForFull => "Preparing your character…",
+                C02Stage.ReconnectRequired => "The field could not be synchronized.\nReturn to sign-in to reconnect safely.",
                 _ => string.Empty,
             };
 
@@ -65,7 +66,8 @@ namespace C02
                 returnButton.transform.SetAsLastSibling();
             }
             if (returnLabel != null)
-                returnLabel.text = showLoading ? "Cancel entry and change account" : "Change account";
+                returnLabel.text = stage == C02Stage.ReconnectRequired ? "Return to sign-in" :
+                    showLoading ? "Cancel entry and change account" : "Change account";
         }
 
         private void ReturnToSignIn()

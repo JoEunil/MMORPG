@@ -1,3 +1,8 @@
+## 전환 실패 복귀 UI — 2026-10-22
+
+transition_recovery_review(code_reviewer/gpt-6.1-sol medium) 신규1/재활성화0. C17 제품/기존fixture2파일 읽기독립리뷰 P1/P2없음. Coordinator가 실제씬 버튼/부모/serialized listener0 확인, 기존 두파일 baseline보존 동기화, Editor재실행·자동PlayMode1PASS를 확인했다. 최초 directEdit 호출 실패는 lifecycle mode오류로 보존하고 제품/assertion 수정 없이 올바른 모드로 검증했다. 실제 입력/네트워크복귀/서버조작0.
+
+누적 신규58/재활성화127/활성화185, 토큰/비용 N/A. 역할메시지는 실행중 전달이므로 추가활성화로 중복계상하지 않는다.
 ## 저장 Scene 기반 맵 내보내기 보완 — 2026-10-21
 
 신규2: map_followup_contract(server_analyst/gpt-6.1-sol medium)은 이웃 AOI의 실제 미구현 경계와 Exporter 저장 Scene 결함/최소안을 읽기 분석했다. export_saved_scene_review(code_reviewer/gpt-6.1-sol medium)는 고정된 exporter/Inspector/fixture3파일을 독립 리뷰해 P1/P2없음을 확인했다. 재활성화0, 실행중 메시지는 추가횟수로 세지 않았다.
