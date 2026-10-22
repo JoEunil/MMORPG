@@ -1,8 +1,26 @@
+## PR46 채팅 리뷰 전달 완료 — 2026-10-22
+
+PR46 head6445f87/Open/미병합 확인. UnityCoordinator봇 작업스레드1792658812.487949에 핵심 결과 전달했다. 게시본에는 채팅 귀환1행수정과검증기록만추가했다. 미게시FEEL02후보에일반merge2c21c41로같은리뷰수정을보존했고문서충돌은양쪽이력보존,제품diff추가0이라재시험하지않았다. FEEL02 요청1792658283.786519는계속승인대기이며후보push/새PR/병합/공개0. 서버44432와Unity입력상태변경0.
+
 ## PR46 채팅 귀환 리뷰 수정·검증 완료 — 2026-10-22
 
 리뷰지적타당. cross-zone귀환의 별도 EnqueueZoneLeave만제거하고 목적지Join1개로전환한다. ProcessZoneJoin의이전구역제거기능을재사용한다. 독립리뷰P1P2없음/실제PR46브랜치UnitTests Release빌드PASS/기존귀환2fixture PASS총3ms. 큐포화·durable실패주입/Unity입력/서버재전환0. 결과는PR46_CHAT_REVIEW_RESULTS.txt. 이수정은Join자체큐등록실패전반을복구하는것이아니다.
 
-제품수정3be07eb만기존PR46에반영하고별도FEEL02미게시기능묶음/승인대기는보존한다. 실행중44432서버는이번chat1행수정전바이너리이며교체하지않았다. 병합/Pages배포0. 원본Game/ROOTWIP보존.
+제품수정3be07eb와기록6445f87을기존PR46에일반push했고GitHub head6445f87/Open/미병합을확인했다. 별도FEEL02미게시기능묶음/승인대기는보존한다. 실행중44432서버는이번chat1행수정전바이너리이며교체하지않았다. 병합/Pages배포0. 원본Game/ROOTWIP보존.
+
+## FEEL02 최종 게시 승인 대기 — 2026-10-22
+
+로컬 API수정63aa106와 큰묶음2840dcb/codex/field-feel-revision. UnityCoordinator봇(U0C9ZRTQ6F8)이 기존 작업 parent1792487679.299269에 FEEL02 요청1792658283.786519를 발신했고 완료채널1792658299.373589에도 핵심 결과를 남겼다. 지정사람 승인 전 push/PR45·46수정/병합/Pages배포0. 승인되면 fetch/분기확인 후 API수정만 PR45로 전달하고 나머지는 기존 큰PR46에 통합한다. 강제push/새작은PR0. 최신 서버44432/UnityPlayfalse·dirtyfalse·backgroundfalse,실제제품검증완료. 반복시험하지 않는다.
+
+## 최신 — 이동·모션·필드와 Unity Export 직접 소비 완료 / FEEL02 게시 요청 준비 — 2026-10-22
+
+로컬 codex/field-feel-revision에서 PR45 public Export 누락을 차단하고 author 필수 완전 export 경로를 추가했다. 서버 Config/Cell/StateManager의 공간 중복 상수를 제거해 Generated/WorldMap.inc를 직접 사용한다. Cell AOI 구조·6구역 몬스터 콘텐츠·사용자 AI/A*는 보존했다. Unity에서 실제 bake한 generated 파일은 기존 nav/layout과 동일하며 새 서버 빌드/6구역·25Cell 일치 fixture 통과.
+
+플레이어9/.45, 요청선행1.8·시각예측.9, 중복 전송gate 제거와 정지/방향 보정, 절차 보행·베기·회수, 고정 길·식생·36수목을 구현했다. 독립 리뷰 P1/P2 없음/Unitycompile0/직접3묶음PASS. 최초 실입력6.33/s 실패를 보존하고 request horizon 병목을 고쳐 영향 검증만 재수행했다. 최종직선26.712/3.004s=8.89/s·직각/반전 maxReverseStep0·정지오차<.0001,서버cast/release·팔회전79.99도 확인. 입력은모의InputSystem,로그인/선택/진입/퇴장은실제마우스다. 변동/고지연·몬스터교전은미검증.
+
+서버31724를정상q/nativeexit0·drain·WAL0/저장불변확인뒤 Feel02서버44432/SHA405EF89670B87EE364B2604268C435498B704F2543FFE2B0AF2F24F82B34C596로정상전환했다. 첫helper는PSModulePath상속문제로q전에중단했고Windows표준모듈prefix만자식생성동안복구해해결했다. 기존실행정책/guard불변,강제종료/DB직접수정0. 공용helper에도같은수정보존. 최종Playfalse/dirtyfalse/backgroundfalse,DB5012 Zone1(89.4087143,61.9688454),HP10000/MP9938/EXP10,5011불변. ROOT/CAND 검증제품/Scene/DLL일치,원본GameWIP보존.
+
+FEEL02_RESULTS.txt와최신공개MD/선별화면참조,sitebuild/linkPASS. API리뷰수정은PR45에,나머지큰묶음은기존PR46에통합하는Slack최종승인요청을준비한다. 이번새범위에과거MAP02/STOP01승인을재사용하지않는다. 아직push/PR수정/병합/Pages배포0. 전문누적신규69/재활성화152/전체221/토큰N/A.
 
 ## PR45 리뷰 보완 전달 완료 — 2026-10-22
 

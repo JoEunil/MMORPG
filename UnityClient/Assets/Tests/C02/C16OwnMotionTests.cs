@@ -39,7 +39,7 @@ namespace C02.Tests
                 fixture.Predict(Vector2.right, 0.05f);
 
                 Assert.That(fixture.ServerPosition.x, Is.EqualTo(204.8f).Within(0.0001f));
-                Assert.That(fixture.InputTarget.x, Is.EqualTo(205.1f).Within(0.0001f),
+                Assert.That(fixture.InputTarget.x, Is.EqualTo(205.25f).Within(0.0001f),
                     "A local target may lead across the owner boundary without cancelling held input.");
                 Assert.That(fixture.HasMovementIntent, Is.True);
                 Assert.That(InsideZone(1, new Vector2(205.1f, 10)), Is.False,
@@ -50,9 +50,15 @@ namespace C02.Tests
                     "The boundary target remains eligible for the existing move request path.");
                 Assert.That((byte)move[4], Is.EqualTo(3));
 
-                fixture.Predict(Vector2.right, 0.05f);
-                Assert.That(fixture.InputTarget.x - fixture.ServerPosition.x, Is.EqualTo(0.6f).Within(0.0001f),
-                    "Boundary input retains the existing two-tick lead cap.");
+                for (int i = 0; i < 3; i++) fixture.Predict(Vector2.right, .05f);
+                Assert.That(fixture.InputTarget.x - fixture.ServerPosition.x, Is.EqualTo(1.8f).Within(0.0001f),
+                    "Boundary requests retain a four-tick horizon while authority is delayed.");
+                Assert.That(Vector2.Distance(fixture.VisualPosition, fixture.ServerPosition), Is.EqualTo(.9f).Within(.0001f),
+                    "The longer request horizon does not increase rendered prediction.");
+                move = new object[] { (ushort)1, fixture.ServerPosition, fixture.InputTarget, Vector2.zero, (byte)0 };
+                Assert.That(Candidate(move), Is.True);
+                Assert.That(Vector2.Distance(fixture.ServerPosition, (Vector2)move[3]), Is.EqualTo(1.8f).Within(.0001f),
+                    "The request builder must not silently shorten the horizon to one unit.");
 
                 fixture.AuthoritativeFullAt(205.1f);
                 Assert.That(fixture.Stage, Is.EqualTo("Failed"),
@@ -71,50 +77,59 @@ namespace C02.Tests
                 fixture.EnterWithOwnState();
                 fixture.Predict(Vector2.right, 0.05f);
                 Assert.That(fixture.ServerPosition, Is.EqualTo(new Vector2(10, 10)));
-                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.3f).Within(0.0001),
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.45f).Within(0.0001),
                     "A local intent moves the rendered character while the server snapshot stays authoritative.");
 
                 fixture.Predict(Vector2.right, 0.05f);
-                fixture.Predict(Vector2.right, 0.05f);
-                Assert.That(fixture.InputTarget.x, Is.EqualTo(10.6f).Within(0.0001),
-                    "Held intent accumulates across delayed confirmations, bounded to 0.6 units ahead.");
-                Assert.That(fixture.VisualPosition.x, Is.EqualTo(10.3f).Within(.0001f),
-                    "A two-tick request lead does not become two ticks of rendered prediction.");
-                fixture.Delta(10.3f);
-                Assert.That(fixture.ServerPosition, Is.EqualTo(new Vector2(10.3f, 10)));
-                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.3f).Within(0.0001),
-                    "Presentation leads by one tick, and callbacks do not jump the rendered character.");
-                fixture.Predict(Vector2.right, 0.05f);
                 Assert.That(fixture.InputTarget.x, Is.EqualTo(10.9f).Within(0.0001),
+                    "Held intent integrates two ticks while confirmations are delayed.");
+                Assert.That(fixture.VisualPosition.x, Is.EqualTo(10.9f).Within(.0001f));
+                fixture.Delta(10.45f);
+                Assert.That(fixture.ServerPosition.x, Is.EqualTo(10.45f).Within(.0001f));
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.9f).Within(0.0001),
+                    "A delayed confirmation does not jump the rendered character backwards.");
+                fixture.Predict(Vector2.right, 0.05f);
+                Assert.That(fixture.InputTarget.x, Is.EqualTo(11.35f).Within(0.0001),
                     "A delayed confirmation frees bounded lead without rebuilding every target from that snapshot.");
-                fixture.Delta(10.6f);
+                fixture.Delta(10.9f);
 
                 fixture.CancelMovement();
                 fixture.Predict(Vector2.zero, 0.025f);
                 fixture.Predict(Vector2.zero, 0.025f);
-                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.6f).Within(0.0001),
-                    "After input cancellation, the frame update eases the visual back to current authority.");
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(11.35f).Within(0.0001),
+                    "Key-up stops presentation without immediately rewinding an in-flight movement tick.");
                 Assert.That(fixture.HasMovementIntent, Is.False);
                 Assert.That(fixture.InputTarget, Is.EqualTo(fixture.ServerPosition));
+                fixture.Delta(11.35f);
+                fixture.Predict(Vector2.zero, .05f);
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(11.35f).Within(.0001f),
+                    "An already sent final target can catch up without a backwards/forwards rubber band.");
+                fixture.AuthoritativeFullAt(11.35f);
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(11.35f).Within(.0001f));
 
                 fixture.Predict(Vector2.one, 0.05f);
-                Assert.That(Vector2.Distance(fixture.ServerPosition, fixture.VisualPosition), Is.EqualTo(0.3f).Within(0.0001),
+                Assert.That(Vector2.Distance(fixture.ServerPosition, fixture.VisualPosition), Is.EqualTo(0.45f).Within(0.0001),
                     "Diagonal held input uses the same speed as a cardinal direction.");
                 fixture.CancelMovement();
-                fixture.Predict(Vector2.zero, 0.05f);
+                for (int i = 0; i < 30; i++) fixture.Predict(Vector2.zero, .05f);
+                Assert.That(Vector2.Distance(fixture.VisualPosition, fixture.ServerPosition), Is.LessThan(.0001f),
+                    "Unconfirmed presentation still settles onto authority after the key-up grace.");
                 fixture.Predict(Vector2.right, 0.05f);
-                for (int i = 0; i < 10; i++) fixture.Predict(Vector2.right, 0.05f);
-                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.6f).Within(0.0001),
+                for (int i = 0; i < 30; i++) fixture.Predict(Vector2.right, 0.05f);
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(11.35f).Within(0.0001),
                     "When authority stops advancing, the rendered actor settles even while a key remains held.");
-                Assert.That(Vector2.Distance(fixture.InputTarget, fixture.ServerPosition), Is.LessThanOrEqualTo(0.3001f),
+                Assert.That(Vector2.Distance(fixture.InputTarget, fixture.ServerPosition), Is.LessThanOrEqualTo(0.4501f),
                     "A stale server receives only a single-tick bounded probe, with no accumulated invisible walk.");
 
-                fixture.Delta(10.9f);
+                fixture.Delta(11.8f);
                 fixture.Predict(Vector2.right, .05f);
+                float beforeReverse = fixture.VisualPosition.x;
                 fixture.Predict(Vector2.left, .05f);
                 Assert.That(fixture.InputTarget.x, Is.LessThan(fixture.ServerPosition.x),
                     "Reversing input immediately discards the old forward request lead.");
-                fixture.Delta(11.1f);
+                Assert.That(fixture.VisualPosition.x, Is.LessThan(beforeReverse),
+                    "The visual immediately follows the new heading from its rendered position.");
+                fixture.Delta(12.25f);
                 Assert.That(fixture.InputTarget.x, Is.LessThanOrEqualTo(fixture.ServerPosition.x),
                     "A delayed rightward confirmation cannot turn the current leftward request back to the right.");
 
@@ -125,9 +140,9 @@ namespace C02.Tests
                 Assert.That(fixture.HasMovementIntent, Is.False);
                 Assert.That(fixture.InputTarget, Is.EqualTo(fixture.ServerPosition));
                 fixture.Predict(Vector2.one, 10f);
-                Assert.That(Vector2.Distance(fixture.InputTarget, fixture.ServerPosition), Is.LessThanOrEqualTo(0.3001f),
+                Assert.That(Vector2.Distance(fixture.InputTarget, fixture.ServerPosition), Is.LessThanOrEqualTo(0.4501f),
                     "A large frame never integrates a backlog of missed input ticks.");
-                Assert.That(Vector2.Distance(fixture.VisualPosition, fixture.ServerPosition), Is.LessThanOrEqualTo(0.3001f));
+                Assert.That(Vector2.Distance(fixture.VisualPosition, fixture.ServerPosition), Is.LessThanOrEqualTo(0.9001f));
 
                 fixture.ResetWorld();
                 Assert.That(fixture.HasOwnFull, Is.False);
@@ -137,19 +152,57 @@ namespace C02.Tests
 
                 fixture.EnterWithOwnState();
                 fixture.Predict(Vector2.right, .05f);
-                fixture.Predict(Vector2.right, .05f);
-                Assert.That(fixture.InputTarget.x - fixture.ServerPosition.x, Is.EqualTo(.6f).Within(.0001f));
+                Vector2 beforeTurn = fixture.VisualPosition;
                 fixture.Predict(Vector2.up, .05f);
                 Assert.That(fixture.InputTarget.x, Is.EqualTo(fixture.ServerPosition.x).Within(.0001f),
                     "A perpendicular turn drops all unacknowledged rightward lead.");
-                Assert.That(fixture.InputTarget.y - fixture.ServerPosition.y, Is.EqualTo(.3f).Within(.0001f));
+                Assert.That(fixture.InputTarget.y - fixture.ServerPosition.y, Is.EqualTo(.45f).Within(.0001f));
+                Assert.That(fixture.VisualPosition.x, Is.EqualTo(beforeTurn.x).Within(.0001f),
+                    "A perpendicular turn does not drag the rendered actor sideways towards an old snapshot.");
+                Assert.That(fixture.VisualPosition.y - beforeTurn.y, Is.EqualTo(.45f).Within(.0001f));
                 fixture.Predict(Vector2.one, .05f);
                 Vector2 diagonalLead = fixture.InputTarget - fixture.ServerPosition;
-                Assert.That(Vector2.Distance(diagonalLead, Vector2.one.normalized * .3f), Is.LessThan(.0001f),
+                Assert.That(Vector2.Distance(diagonalLead, Vector2.one.normalized * .45f), Is.LessThan(.0001f),
                     "A 45-degree heading change also starts with only the current input's lead.");
                 fixture.Predict(Vector2.one, .05f);
-                Assert.That(Vector2.Distance(fixture.InputTarget - fixture.ServerPosition, Vector2.one.normalized * .6f),
+                Assert.That(Vector2.Distance(fixture.InputTarget - fixture.ServerPosition, Vector2.one.normalized * .9f),
                     Is.LessThan(.0001f), "Unchanged held direction still accumulates its bounded lead.");
+
+                fixture.ResetWorld();
+                fixture.EnterWithOwnState();
+                for (int frame = 1; frame <= 12; frame++)
+                {
+                    float previousX = fixture.VisualPosition.x;
+                    fixture.Predict(Vector2.right, 1f / 60f);
+                    Assert.That(fixture.VisualPosition.x - previousX, Is.EqualTo(.15f).Within(.0001f),
+                        "Between 50ms authority updates, 60fps presentation advances continuously at 9 units/s.");
+                    if (frame % 3 == 0) fixture.Delta(fixture.InputTarget.x);
+                }
+                Assert.That(fixture.ServerPosition.x, Is.EqualTo(11.8f).Within(.0001f));
+
+                fixture.ResetWorld();
+                fixture.EnterWithOwnState();
+                float acceptedX = 10;
+                float budget = 0;
+                var acceptedByFrame = new float[121];
+                for (int frame = 1; frame <= 120; frame++)
+                {
+                    // A 50ms authoritative step is observed 150ms later, independently of rendering.
+                    if (frame > 9 && frame % 3 == 0) fixture.Delta(acceptedByFrame[frame - 9]);
+                    fixture.Predict(Vector2.right, 1f / 60f);
+                    Assert.That(Vector2.Distance(fixture.VisualPosition, fixture.ServerPosition), Is.LessThanOrEqualTo(.9001f));
+                    if (frame % 3 != 0) continue;
+
+                    var request = new object[] { (ushort)1, fixture.ServerPosition, fixture.InputTarget, Vector2.zero, (byte)0 };
+                    Assert.That(Candidate(request), Is.True);
+                    budget = Mathf.Min(3, budget + .45f);
+                    float nextX = Mathf.MoveTowards(acceptedX, ((Vector2)request[3]).x, budget);
+                    budget -= Mathf.Abs(nextX - acceptedX);
+                    acceptedX = nextX;
+                    acceptedByFrame[frame] = acceptedX;
+                }
+                Assert.That(acceptedX - 10, Is.EqualTo(18f).Within(.001f),
+                    "A 150ms confirmation delay must not turn the 9-units/s request stream into a feedback-limited 6-units/s stream.");
             }
         }
 

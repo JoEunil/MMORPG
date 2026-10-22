@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <chrono>
+#include "WorldMap.h"
 
 namespace Core {
     inline constexpr uint8_t CHANNEL_ID = 1;
@@ -17,7 +18,11 @@ namespace Core {
     inline constexpr uint16_t MESSAGE_LEN = 2048;
     inline constexpr uint16_t MQ_THREADPOOL_SIZE = 2; // 수신 큐
 
-    inline constexpr uint16_t ZONE_COUNT = 6; // 3x2 field zones; lobby excluded.
+    static_assert(WorldMap::FormatVersion == 1 && WorldMap::ZoneColumns > 0 && WorldMap::ZoneRows > 0
+        && WorldMap::Zones.size() == WorldMap::ZoneColumns * WorldMap::ZoneRows
+        && WorldMap::Zones.size() <= UINT16_MAX,
+        "The exported world must contain a complete supported layout with wire-compatible zone IDs.");
+    inline constexpr uint16_t ZONE_COUNT = static_cast<uint16_t>(WorldMap::Zones.size()); // Lobby excluded.
     inline constexpr uint16_t TOWN_ZONE_ID = 1;
     inline constexpr float TOWN_SPAWN_X = 10.0f;
     inline constexpr float TOWN_SPAWN_Y = 10.0f;
@@ -54,7 +59,7 @@ namespace Core {
     inline constexpr auto GAME_TICK = std::chrono::milliseconds(50);
 
     inline constexpr float WORLD_MOVEMENT_SCALE = 0.2f;
-    inline constexpr float MOVE_BUDGET_PER_TICK = 0.3f; // Player: 6 units/second at 50ms; monster scale stays separate.
+    inline constexpr float MOVE_BUDGET_PER_TICK = 0.45f; // Player: 9 units/second at 50ms; monster scale stays separate.
     inline constexpr float MOVE_BUDGET_CAP = 3.0f;       // 이월 상한(네트워크 지터 허용). 서버에서 충돌 판정이 없다면, cap을 map의 가장 얇은 벽 두께로 제한해야 한다. 
     inline constexpr float MOVE_BUDGET_EPSILON = 0.001f; // float 오차로 정상 이동이 거부되지 않도록
 

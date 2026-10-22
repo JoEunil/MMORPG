@@ -1,3 +1,11 @@
+## 최신 후보 — 서버 공간 설정도 Export에서 직접 사용 / 2026-10-22
+
+통행 비트에 더해 Config의 구역 수와 Cell의 구역 크기·행열·중첩·AOI Cell 크기를 WorldMap.inc에서 파생한다. ZoneInit과 소유권 전환 경계는 exported Zones를 사용한다. Cell.h는 AOI 실행 컨테이너와 인접 송신 처리이므로 유지한다. nav tile과 AOI Cell은 별개다.
+
+map-only public Export는 metadata 없는 파일을 쓰기 전에 예외로 중단한다. Export(map, author, outputDirectory) 또는 BakeAndExport(author, outputDirectory)를 사용해 완전한 snapshot 하나를 내보낸다. 산출물을 수작업으로 고치지 않는다. 내보낸 체크아웃에서 서버 재빌드·정상 전환이 필요하며 서버 hot reload는 없다.
+
+현재 실행 콘텐츠는 6구역이다. 기존 몬스터 배치의 6구역 밀도 guard는 유지해 9구역 콘텐츠 활성화를 완료한 것으로 주장하지 않는다. 사용자 AI/A*와 Cell 이동 제한은 수정하지 않는다. 새 후보 서버 빌드와 실제 Unity 진입, 전 구역/AOI 일치 fixture 통과. FEEL02_RESULTS.txt에 근거를 기록했다.
+
 ## 최신 — Unity 입력 경로도 확인 / 2026-10-22
 
 한 번의 실제 접속에서 InputSystem 방향키로 1→2→1 전환과 첫 상태 후 조작 복귀·벽 앞 정지를 확인했다. 실제 마우스로 로그인/선택/진입/퇴장했고 I/B/C 입력과 실제 서버 상태도 확인했다. MAP_UNITY_INPUT_RESULTS.txt 참조. 이전 입력 보류/미실행 설명은 과거 기록이다. 이웃 Zone 합동 AOI·모든 코너·지연별 시각 보정과 몬스터 AI의 검증으로 확대하지 않는다.

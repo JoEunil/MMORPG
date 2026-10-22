@@ -6,17 +6,19 @@
 #include "Config.h"
 
 namespace Core {
-    inline constexpr float ZONE_SIZE = 200.0f;     // zone 한 칸 크기
-    inline constexpr int ZONE_HORIZON = 3; // 3 columns, 2 rows
-    inline constexpr int ZONE_VERTICAL = 2;
-    inline constexpr float TRANSITION_BUFFER = 5.0f; // 겹치는 영역
+    inline constexpr float ZONE_SIZE = WorldMap::ZoneCoreSize;
+    inline constexpr int ZONE_HORIZON = WorldMap::ZoneColumns;
+    inline constexpr int ZONE_VERTICAL = WorldMap::ZoneRows;
+    inline constexpr float TRANSITION_BUFFER = WorldMap::TransitionMargin;
 
-    static constexpr int CELL_SIZE = 42; // 5 * 5
+    static constexpr float CELL_SIZE = WorldMap::Zones[0].aoiCellSize;
     static_assert(CELL_SIZE > 0 && ZONE_SIZE > 0 && TRANSITION_BUFFER >= 0);
-    static constexpr float ZONE_SPAN = TRANSITION_BUFFER * 2 + ZONE_SIZE;
-    static constexpr int WHOLE_CELLS = static_cast<int>(ZONE_SPAN / CELL_SIZE);
-    static constexpr int CELLS_X = WHOLE_CELLS + (WHOLE_CELLS * CELL_SIZE < ZONE_SPAN ? 1 : 0);
-    static constexpr int CELLS_Y = CELLS_X;
+    static constexpr float ZONE_SPAN = WorldMap::Zones[0].span;
+    // Format 1 always exports a uniform 5x5 AOI partition, separate from navigation tiles.
+    static constexpr int CELLS_X = 5;
+    static constexpr int CELLS_Y = 5;
+    static_assert(WorldMap::Zones[0].aoiCells.size() == CELLS_X * CELLS_Y,
+        "The exported AOI partition must retain the format's 25 cells.");
     static constexpr int CELL_CAPACITY = MAX_ZONE_CAPACITY / (CELLS_X * CELLS_Y) * 2;
     static_assert(CELLS_X > 0 && CELLS_X <= 256 && CELLS_Y <= 256 && CELL_CAPACITY > 0,
         "AOI Cell dimensions must fit actor cell indices and retain a positive capacity.");
@@ -96,12 +98,11 @@ namespace Core {
     }
 
     inline void ZoneInit(ZoneArea& z, uint16_t zone) {
-        int x = (zone - 1) % ZONE_HORIZON;
-        int y = (zone - 1) / ZONE_HORIZON;
-        z.x_min = x * ZONE_SIZE - TRANSITION_BUFFER;
-        z.x_max = (x + 1) * ZONE_SIZE + TRANSITION_BUFFER;
-        z.y_min = y * ZONE_SIZE - TRANSITION_BUFFER;
-        z.y_max = (y + 1) * ZONE_SIZE + TRANSITION_BUFFER;
+        const auto& layout = WorldMap::Zones[zone - 1];
+        z.x_min = layout.originX + layout.localBounds.x;
+        z.x_max = z.x_min + layout.localBounds.width;
+        z.y_min = layout.originY + layout.localBounds.y;
+        z.y_max = z.y_min + layout.localBounds.height;
     }
 
     inline void CellInit(std::array<std::array<Cell, CELLS_X>, CELLS_Y>& cells, const ZoneArea& area) {
