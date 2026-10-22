@@ -289,22 +289,18 @@ namespace Core {
         const int nextColumn = (std::clamp)(nextColumnRaw, 0, static_cast<int>(ZONE_HORIZON) - 1);
         const int nextRow = (std::clamp)(nextRowRaw, 0, static_cast<int>(ZONE_VERTICAL) - 1);
         const int destinationID = nextRow * ZONE_HORIZON + nextColumn + 1;
-        bool mayTransition = true;
-        if (destinationID >= 1 && destinationID <= ZONE_COUNT && destinationID != routeZoneID
-            && session->second.ownershipEpoch != (std::numeric_limits<uint64_t>::max)()) {
-            if (nextColumn != column && nextRow != row) {
-                bool directCrossingAllowed = false;
-                for (size_t i = 0; i < layout.neighborIds.size(); ++i) {
-                    if (layout.neighborIds[i] == destinationID) {
-                        directCrossingAllowed = layout.directCrossings[i];
-                        break;
-                    }
+        bool mayTransition = destinationID >= 1 && destinationID <= ZONE_COUNT && destinationID != routeZoneID
+            && session->second.ownershipEpoch != (std::numeric_limits<uint64_t>::max)();
+        if (mayTransition && nextColumn != column && nextRow != row) {
+            mayTransition = false;
+            for (size_t i = 0; i < layout.neighborIds.size(); ++i) {
+                if (layout.neighborIds[i] == destinationID) {
+                    mayTransition = layout.directCrossings[i];
+                    break;
                 }
-                mayTransition = directCrossingAllowed;
             }
         }
-        if (mayTransition && destinationID >= 1 && destinationID <= ZONE_COUNT && destinationID != routeZoneID
-            && session->second.ownershipEpoch != (std::numeric_limits<uint64_t>::max)()) {
+        if (mayTransition) {
             auto destination = GetZone(static_cast<uint16_t>(destinationID));
             if (destination != nullptr) {
                 std::unique_lock firstLock(routeZoneID < destinationID ? zone->m_mutex : destination->m_mutex);
@@ -351,8 +347,8 @@ namespace Core {
         const uint64_t bootstrapID = ++session->second.bootstrapSequence;
         auto zone = GetZone(session->second.zoneID);
         if (zone == nullptr) return false;
-        // Lock order remains shard → Zone. Snapshot construction and registration on the single
-        // broadcast queue happen while the Zone lock is held, preserving later delta/full order.
+        // Lock order remains shard → Zone. Capture and enqueue on the Zone's worker queue
+        // happen under the Zone lock, preserving later delta/full order.
         return zone->EnqueueBootstrap(sessionID, ownershipEpoch, bootstrapID);
     }
 

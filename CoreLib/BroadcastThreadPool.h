@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include <atomic>
+#include <array>
 #include <memory>
 #include <thread>
 #include <vector>
@@ -21,12 +22,14 @@ namespace Core {
             std::vector<std::shared_ptr<IPacket>> chunks;
             uint16_t zoneID = 0;
             uint64_t targetSessionID = 0;
-            bool targeted = false;
         };
         using BroadcastWorkPtr = std::unique_ptr<BroadcastWork>;
 
         std::vector<std::thread> m_threads;
-        Base::BlockingQueue<BroadcastWorkPtr, BROADCAST_QUEUE_SIZE, false> m_workQ;
+        using WorkQueue = Base::BlockingQueue<BroadcastWorkPtr, BROADCAST_QUEUE_SIZE, false>;
+        // One consumer per queue preserves each Zone's bootstrap/full/delta order.
+        std::array<WorkQueue, BROADCAST_THREADPOOL_SIZE> m_workQueues;
+        std::atomic<size_t> m_queuedWorkCount = 0; // Shared queue budget, not a per-worker multiplier.
 
         std::atomic<bool> m_running = false;
         void Initialize(IIOCP* i, StateManager* s, CorePerfCollector* p, PacketWriter* pw) {
@@ -59,7 +62,8 @@ namespace Core {
             return true;
         }
 
-        void ThreadFunc();
+        void ThreadFunc(size_t workerIndex);
+        bool Enqueue(BroadcastWorkPtr work);
         void Start();
         void Stop();
 

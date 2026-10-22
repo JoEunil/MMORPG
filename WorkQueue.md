@@ -102,7 +102,7 @@ Cache 측 worker는 DB와 외부 I/O 대기가 처리 시간을 지배한다. Ho
 | --- | --- | --- | --- | --- |
 | Zone | `LockFreeQueue` + game tick | Full 시 drop | HardStop | 고정 tick이 consumer 실행 시점을 결정하므로 별도 wake-up이 필요 없다. |
 | Chat | `NonBlockingBackPressureQueue` + 15ms batch loop | Chat·Lifecycle drop, Zone Join·Leave defer | HardStop | Batch window 동안 dequeue가 block되면 안 된다. |
-| Broadcast | `BlockingQueue` + Semaphore | Full 시 drop | HardStop | Idle worker는 block한다. Core hot path에서 enqueue하므로 producer는 대기하지 않는다. |
+| Broadcast | 워커별 `BlockingQueue` + Semaphore | 전체 대기 작업 512개 초과 시 drop | HardStop | 같은 Zone은 같은 워커 큐로 보내 송신 순서를 유지한다. 워커 수는 Zone 수와 독립적이다. Producer는 대기하지 않는다. |
 | NonZone | `BlockingBackPressureQueue` + Semaphore | Work drop, Disconnect defer | Drain | Idle worker는 block한다. Disconnect를 보존하기 위해 BackPressure를 적용한다. |
 | Core InMemory | `RingQueue` + Mutex/CV | Full 시 거부 | HardStop | Cache 응답 전달 경로는 producer의 non-blocking을 요구하지 않아 Mutex/CV로 queue와 종료 상태를 함께 관리한다. |
 | Cache InMemory | `BlockingBackPressureQueue` + Semaphore | Disconnect State Important, 나머지 Droppable | Drain | Core hot path에서 enqueue하므로 producer는 대기하지 않는다. Disconnect 시 생성한 최종 상태를 보존하기 위해 BackPressure를 적용한다. |

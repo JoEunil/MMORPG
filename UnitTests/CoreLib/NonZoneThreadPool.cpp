@@ -120,6 +120,39 @@ namespace Core {
             }
         };
 
+        // Hold one send while another Zone must keep making progress.
+        class BlockingBroadcastIOCP final : public IIOCP {
+            std::mutex mutex;
+            std::condition_variable changed;
+            std::vector<uint8_t> opcodes;
+            bool released = false;
+        public:
+            void SendData(uint64_t, std::shared_ptr<IPacket>) override {}
+            void SendDataUnique(uint64_t, std::unique_ptr<IPacket, PacketDeleter>) override {}
+            void SendDataChunks(uint64_t, std::shared_ptr<IPacket> header,
+                std::vector<std::shared_ptr<IPacket>>&) override {
+                std::unique_lock lock(mutex);
+                const auto opcode = parseHeader(header->GetBuffer())->opcode;
+                opcodes.push_back(opcode);
+                changed.notify_all();
+                if (opcode == 1)
+                    changed.wait(lock, [&] { return released; });
+            }
+            bool WaitFor(size_t count) {
+                std::unique_lock lock(mutex);
+                return changed.wait_for(lock, 2s, [&] { return opcodes.size() >= count; });
+            }
+            void Release() {
+                std::lock_guard lock(mutex);
+                released = true;
+                changed.notify_all();
+            }
+            std::vector<uint8_t> Sent() {
+                std::lock_guard lock(mutex);
+                return opcodes;
+            }
+        };
+
         class ControlledLoadQueue final : public IMessageQueue {
             std::mutex mutex;
             std::condition_variable changed;
@@ -302,11 +335,28 @@ namespace Core {
             StopWorker();
             broadcast.Stop();
         }
-        BroadcastThreadPool::BroadcastWorkPtr PopBroadcastWork() {
+        BroadcastThreadPool::BroadcastWorkPtr PopBroadcastWork(uint16_t zoneID = 1) {
             BroadcastThreadPool::BroadcastWorkPtr work;
-            EXPECT_TRUE(broadcast.m_workQ.pop(work));
+            EXPECT_TRUE(broadcast.m_workQueues[(zoneID - 1) % BROADCAST_THREADPOOL_SIZE].pop(work));
+            broadcast.m_queuedWorkCount.fetch_sub(1, std::memory_order_relaxed);
             return work;
         }
+        void StartBroadcast(IIOCP& transport) {
+            broadcast.iocp = &transport;
+            broadcast.Start();
+        }
+        void StopBroadcast() { broadcast.Stop(); }
+        bool EnqueueBroadcastPair(uint16_t zoneID, uint8_t firstOpcode) {
+            auto player = packetPool.Acquire();
+            auto monster = packetPool.Acquire();
+            parseHeader(player->GetBuffer())->opcode = firstOpcode;
+            parseHeader(monster->GetBuffer())->opcode = firstOpcode + 1;
+            player->SetLength(sizeof(PacketHeader));
+            monster->SetLength(sizeof(PacketHeader));
+            return broadcast.EnqueueBootstrap(42, zoneID, std::move(player), packetPool.Acquire(),
+                std::move(monster), packetPool.Acquire());
+        }
+        size_t QueuedBroadcastCount() const { return broadcast.m_queuedWorkCount.load(); }
         CountedView& Enqueue(uint64_t id = 42, uint64_t userID = 6982) {
             views.push_back(std::make_unique<CountedView>(id));
             auto& view = *views.back();
@@ -898,7 +948,6 @@ namespace Core {
         auto secondWork = PopBroadcastWork();
         ASSERT_NE(firstWork, nullptr);
         ASSERT_NE(secondWork, nullptr);
-        EXPECT_TRUE(firstWork->targeted);
         EXPECT_EQ(firstWork->targetSessionID, 42);
         EXPECT_EQ(firstWork->zoneID, 1);
         ASSERT_EQ(firstWork->headers.size(), 2);
@@ -916,14 +965,57 @@ namespace Core {
         EXPECT_EQ(playerHeader->bootstrapEnd, 1);
         EXPECT_EQ(monsterHeader->bootstrapEnd, 1);
         EXPECT_EQ(firstWork->chunks[1]->GetLength(), 0);
-        EXPECT_EQ(playerHeader->states[0].zoneInternalID, entry.internalID);
-        EXPECT_TRUE(secondWork->targeted);
+        ASSERT_EQ(firstWork->chunks[0]->GetLength(), sizeof(FullStateField));
+        const auto* playerState = reinterpret_cast<const FullStateField*>(firstWork->chunks[0]->GetBuffer());
+        EXPECT_EQ(playerState->zoneInternalID, entry.internalID);
+        EXPECT_EQ(secondWork->targetSessionID, 42);
         const auto* secondPlayer = parseBody<FullSnapshotBody>(secondWork->headers[0]->GetBuffer());
         const auto* secondMonster = parseBody<MonsterFullSnapshotBody>(secondWork->headers[1]->GetBuffer());
         EXPECT_EQ(playerHeader->bootstrapID, monsterHeader->bootstrapID);
         EXPECT_EQ(secondPlayer->bootstrapID, secondMonster->bootstrapID);
         EXPECT_LT(playerHeader->bootstrapID, secondPlayer->bootstrapID);
         EXPECT_EQ(playerHeader->ownershipEpoch, secondPlayer->ownershipEpoch);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BroadcastPreservesZoneOrderWithoutBlockingOtherZones) {
+        PrepareZones();
+        BlockingBroadcastIOCP transport;
+        ASSERT_TRUE(EnqueueBroadcastPair(1, 1));
+        ASSERT_TRUE(EnqueueBroadcastPair(1, 3));
+        StartBroadcast(transport);
+        EXPECT_TRUE(transport.WaitFor(1));
+        EXPECT_TRUE(EnqueueBroadcastPair(2, 5));
+        EXPECT_TRUE(transport.WaitFor(3));
+        EXPECT_EQ(transport.Sent(), (std::vector<uint8_t>{1, 5, 6}));
+        transport.Release();
+        EXPECT_TRUE(transport.WaitFor(6));
+        StopBroadcast();
+        EXPECT_EQ(transport.Sent(), (std::vector<uint8_t>{1, 5, 6, 2, 3, 4}));
+        EXPECT_EQ(QueuedBroadcastCount(), 0u);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BroadcastQueueBudgetIsSharedAcrossWorkers) {
+        PrepareZones();
+        for (size_t i = 0; i < BROADCAST_QUEUE_SIZE; ++i)
+            ASSERT_TRUE(EnqueueBroadcastPair(static_cast<uint16_t>(i % ZONE_COUNT + 1), 1));
+        EXPECT_FALSE(EnqueueBroadcastPair(2, 1));
+        EXPECT_EQ(QueuedBroadcastCount(), BROADCAST_QUEUE_SIZE);
+        ASSERT_NE(PopBroadcastWork(), nullptr);
+        EXPECT_TRUE(EnqueueBroadcastPair(2, 1));
+        EXPECT_EQ(QueuedBroadcastCount(), BROADCAST_QUEUE_SIZE);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BroadcastAcceptsMissingFirstHeaderWithoutDereferencingIt) {
+        PrepareZones();
+        std::vector<std::shared_ptr<IPacket>> headers(CELLS_X * CELLS_Y);
+        std::vector<std::shared_ptr<IPacket>> chunks(headers.size());
+        headers[1] = packetPool.Acquire();
+        broadcast.EnqueueWork(std::move(headers), std::move(chunks), 1);
+        ASSERT_EQ(QueuedBroadcastCount(), 1u);
+        auto work = PopBroadcastWork();
+        ASSERT_NE(work, nullptr);
+        EXPECT_EQ(work->headers[0], nullptr);
+        EXPECT_NE(work->headers[1], nullptr);
     }
 
     TEST_F(NonZoneThreadPoolFixture, ClientDirectedZoneOpsAreRejectedAndEntryRelocationPreservesCharacterState) {
