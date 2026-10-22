@@ -1,3 +1,7 @@
+## PR45 리뷰 보완 전달 완료 — 2026-10-22
+
+PR45 f44d687에두리뷰수정을일반push했고PR46 80e55b9에같은내용을일반merge했다. GitHub두PR Open/mergeabletrue확인,본문에수정·검증·실제부하미실행을반영했다. UnityCoordinator봇스레드1792656092.713099/완료채널1792656093.403019보고완료. PR병합/새wire/서버재기동/DB변경/Unity재입력0. 누적전문신규66/재활성화145/전체211/토큰N/A. 작업완료로그로아래예정문구보다우선한다.
+
 ## 最新 — PR45 리뷰 수정·PR46 연계
 
 PR45 f44d687에 경계 요청 패치와 DummyClients 새wire/세션상태 대응을 게시했다. 같은 변경을 PR46에 일반merge로 이어 반영한다. C16충돌은PR46의동일경계fixture+추가종료수명fixture를모두보존한ours를선택했고,진행문서3개는양쪽기록보존. Unity제품/fixture는기존PR46과동일, Dummy는검증한PR45와동일이므로재실행하지않는다. 독립리뷰최종P1P2없음/빌드PASS(경고27)/오프라인self-test1회PASS. 실제부하·서버조작·Unity입력·PR병합0.
