@@ -43,6 +43,39 @@ namespace Core {
             monster.dir = direction;
             monster.dirtyBit |= 0x08;
         }
+
+        MonsterBehavior HomeBehavior(const MonsterState& monster) {
+            if (std::abs(monster.spawnX - monster.x) > MONSTER_WANDER_RADIUS ||
+                std::abs(monster.spawnY - monster.y) > MONSTER_WANDER_RADIUS)
+                return MonsterBehavior::Returning;
+            return MonsterBehavior::Wandering;
+        }
+
+        bool InMonsterCastRange(const MonsterState& monster, const CharacterState& target,
+            const Data::SkillData& skill) {
+            if ((monster.data->id == 0 || monster.data->id == 1) && skill.skillID == 0) {
+                const auto hitPhase = std::find_if(skill.phases.begin(), skill.phases.end(), [](const Data::SkillPhase& phase) {
+                    return phase.actionID == static_cast<uint8_t>(Data::SkillActionType::Hit);
+                });
+                if (hitPhase != skill.phases.end())
+                    return hitPhase->range.InRange(monster.dir, monster.x, monster.y, target.x, target.y);
+            }
+
+            // Preserve the existing integer-distance check for the other skills.
+            const int dx = static_cast<int>(target.x - monster.x);
+            const int dy = static_cast<int>(target.y - monster.y);
+            return dx * dx + dy * dy <= 2;
+        }
+
+        MonsterBehavior CombatBehavior(const MonsterState& monster, const CharacterState& target) {
+            const auto& phase = monster.data->phases[monster.phase];
+            const auto& step = phase.steps[monster.skillStep & (phase.stepCnt - 1)];
+            const auto& skill = Data::skillList[step.skillID];
+            if (monster.tick >= step.delayTicks &&
+                (monster.data->id == 2 || InMonsterCastRange(monster, target, skill)))
+                return MonsterBehavior::Attacking;
+            return MonsterBehavior::Chasing;
+        }
     }
 
     void ZoneState::InitializeMonster() {
@@ -143,81 +176,68 @@ namespace Core {
         for (auto& monster : m_monsters)
         {
             monster.tick++;
-
-            // 1. 죽은 몬스터 respawn
+            CharacterState* target = nullptr;
             if (monster.hp == 0) {
+                monster.behavior = MonsterBehavior::Dead;
+            }
+            else {
+                if (monster.aggro != 0 && ++monster.aggroTick >= monster.data->aggroTimeOut) {
+                    monster.aggro = 0;
+                    monster.aggroTick = 0;
+                }
+
+                // HP phases are attack patterns, separate from the behavior state.
+                const auto& phase = monster.data->phases[monster.phase];
+                if (monster.phase < monster.data->phasesCnt - 1 && monster.hp < phase.hpThresholdAbs) {
+                    monster.phase++;
+                    monster.tick = 0;
+                    monster.skillStep = 0;
+                    monster.behavior = monster.aggro != 0 ? MonsterBehavior::Chasing : HomeBehavior(monster);
+                    continue;
+                }
+
+                if (monster.aggro != 0) {
+                    const auto it = m_InternalIDToIndex.find(monster.aggro);
+                    if (it == m_InternalIDToIndex.end()) {
+                        monster.aggro = 0;
+                        monster.aggroTick = 0;
+                        monster.behavior = HomeBehavior(monster);
+                        continue; // Resume movement on the next tick, as before.
+                    }
+                    target = &m_chars[it->second];
+                }
+
+                monster.behavior = target ? CombatBehavior(monster, *target) : HomeBehavior(monster);
+            }
+
+            switch (monster.behavior) {
+            case MonsterBehavior::Wandering:
+                MoveAround(monster);
+                break;
+            case MonsterBehavior::Returning:
+                MoveMonsterHome(monster);
+                break;
+            case MonsterBehavior::Chasing:
+                MoveToward(monster, *target);
+                break;
+            case MonsterBehavior::Attacking:
+                UseMonsterSkill(monster);
+                break;
+            case MonsterBehavior::Dead:
                 if (--monster.respawnTick == 0)
                     monster.Respawn();
-                continue;
-            }
-
-            // Zone updates run every 50 ms, so the existing 100-tick aggro timeout is 5 seconds.
-            if (monster.aggro != 0 && ++monster.aggroTick >= monster.data->aggroTimeOut) {
-                monster.aggro = 0;
-                monster.aggroTick = 0;
-            }
-
-            // 2. Phase 처리 (보스, 일반 동일하게)
-            auto& phase = monster.data->phases[monster.phase];
-            if (monster.hp < phase.hpThresholdAbs && monster.phase < monster.data->phasesCnt - 1) {
-                monster.phase++;
-                monster.tick = 0; // phase 전환 시 tick 초기화
-                monster.skillStep = 0;
-                continue;
-            }
-
-            if (monster.aggro == 0) {
-                MoveAround(monster);
-                continue;
-            }
-
-            auto it = m_InternalIDToIndex.find(monster.aggro);
-            if (it == m_InternalIDToIndex.end()) {
-                monster.aggro = 0;
-                monster.aggroTick = 0;
-                continue;
-            }
-
-            auto& target = m_chars[it->second];
-
-            auto& step = phase.steps[monster.skillStep & (phase.stepCnt - 1)];
-            auto& skill = Data::skillList[step.skillID];
-
-            // 통합해서 쓸려면..   
-            int dx = target.x - monster.x;
-            int dy = target.y - monster.y;
-            int dist2 = dx * dx + dy * dy;
-
-            bool inCastRange = dist2 <= 2;
-            if ((monster.data->id == 0 || monster.data->id == 1) && skill.skillID == 0)
-            {
-                const auto hitPhase = std::find_if(skill.phases.begin(), skill.phases.end(), [](const Data::SkillPhase& phase) {
-                    return phase.actionID == static_cast<uint8_t>(Data::SkillActionType::Hit);
-                });
-                if (hitPhase != skill.phases.end())
-                {
-                    inCastRange = hitPhase->range.InRange(monster.dir, monster.x, monster.y, target.x, target.y);
-                }
-            }
-
-            if (inCastRange and monster.tick >= step.delayTicks)
-            {
-                m_cells[monster.cellY][monster.cellX].activeSkills.emplace_back(
-                    1, 0, 0, monster.internalID, 0, monster.dir, monster.x, monster.y, skill.skillID, 0, 0
-                    );
-                monster.skillStep++;
-                monster.tick = 0;
-            } else if (monster.tick >= step.delayTicks and monster.data->id == 2) {
-                m_cells[monster.cellY][monster.cellX].activeSkills.emplace_back(
-                    1, 0, 0, monster.internalID, 0, monster.dir, monster.x, monster.y, skill.skillID, 0, 0
-                    );
-                monster.skillStep++;
-                monster.tick = 0;
-            } else {
-                MoveToward(monster, target);
+                break;
             }
         }
+    }
 
+    void ZoneState::UseMonsterSkill(MonsterState& monster) {
+        const auto& phase = monster.data->phases[monster.phase];
+        const auto& step = phase.steps[monster.skillStep & (phase.stepCnt - 1)];
+        m_cells[monster.cellY][monster.cellX].activeSkills.emplace_back(
+            1, 0, 0, monster.internalID, 0, monster.dir, monster.x, monster.y, step.skillID, 0, 0);
+        monster.skillStep++;
+        monster.tick = 0;
     }
 
     void ZoneState::MoveToward(MonsterState& monster, CharacterState& character) {
@@ -239,6 +259,7 @@ namespace Core {
             if ((monster.x + x) < area.x_min or (monster.x + x) > area.x_max) {
                 monster.aggro = 0;
                 monster.aggroTick = 0;
+                monster.behavior = HomeBehavior(monster);
                 return;
             }
             if (!WorldMap::CanTraverse(monster.x, monster.y, monster.x + x, monster.y))
@@ -251,6 +272,7 @@ namespace Core {
             if ((monster.y + y) < area.y_min or (monster.y + y) > area.y_max) {
                 monster.aggro = 0;
                 monster.aggroTick = 0;
+                monster.behavior = HomeBehavior(monster);
                 return;
             }
             if (!WorldMap::CanTraverse(monster.x, monster.y, monster.x, monster.y + y))
@@ -261,35 +283,36 @@ namespace Core {
         }
     }
 
+    void ZoneState::MoveMonsterHome(MonsterState& monster) {
+        const float homeDx = monster.spawnX - monster.x;
+        const float homeDy = monster.spawnY - monster.y;
+        monster.wanderTicks = 0;
+        monster.wanderPauseTicks = 0;
+        const bool moveX = std::abs(homeDx) >= std::abs(homeDy);
+        const float distance = moveX ? homeDx : homeDy;
+        const float step = std::copysign((std::min)(std::abs(distance), MONSTER_WANDER_SPEED), distance);
+        if (!WorldMap::CanTraverse(monster.x, monster.y,
+            monster.x + (moveX ? step : 0.0f), monster.y + (moveX ? 0.0f : step)))
+            return;
+        if (moveX) {
+            SetDirection(monster, step > 0 ? 3 : 2);
+            monster.x += step;
+            monster.dirtyBit |= 0x02;
+        }
+        else {
+            SetDirection(monster, step > 0 ? 0 : 1);
+            monster.y += step;
+            monster.dirtyBit |= 0x04;
+        }
+        monster.behavior = HomeBehavior(monster);
+    }
+
     void ZoneState::MoveAround(MonsterState& monster) {
         auto& area = m_cells[monster.cellY][monster.cellX].area;
         const float minX = (std::max)(area.x_min, monster.spawnX - MONSTER_WANDER_RADIUS);
         const float maxX = (std::min)(area.x_max, monster.spawnX + MONSTER_WANDER_RADIUS);
         const float minY = (std::max)(area.y_min, monster.spawnY - MONSTER_WANDER_RADIUS);
         const float maxY = (std::min)(area.y_max, monster.spawnY + MONSTER_WANDER_RADIUS);
-        const float homeDx = monster.spawnX - monster.x;
-        const float homeDy = monster.spawnY - monster.y;
-
-        if (std::abs(homeDx) > MONSTER_WANDER_RADIUS || std::abs(homeDy) > MONSTER_WANDER_RADIUS) {
-            monster.wanderTicks = 0;
-            monster.wanderPauseTicks = 0;
-            const bool moveX = std::abs(homeDx) >= std::abs(homeDy);
-            const float distance = moveX ? homeDx : homeDy;
-            const float step = std::copysign((std::min)(std::abs(distance), MONSTER_WANDER_SPEED), distance);
-            if (!WorldMap::CanTraverse(monster.x, monster.y,
-                monster.x + (moveX ? step : 0.0f), monster.y + (moveX ? 0.0f : step)))
-                return;
-            if (moveX) {
-                SetDirection(monster, step > 0 ? 3 : 2);
-                monster.x += step;
-                monster.dirtyBit |= 0x02;
-            } else {
-                SetDirection(monster, step > 0 ? 0 : 1);
-                monster.y += step;
-                monster.dirtyBit |= 0x04;
-            }
-            return;
-        }
 
         if (monster.wanderPauseTicks != 0) {
             --monster.wanderPauseTicks;

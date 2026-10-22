@@ -4,6 +4,14 @@
 #include "SkillData.h"
 
 namespace Core {
+    enum class MonsterBehavior : uint8_t {
+        Wandering,
+        Returning,
+        Chasing,
+        Attacking,
+        Dead,
+    };
+
     struct MonsterState {
         uint16_t internalID;
         const Data::MonsterData* data;  // static data pointer
@@ -15,6 +23,7 @@ namespace Core {
 
 
         float spawnX, spawnY;
+        MonsterBehavior behavior = MonsterBehavior::Wandering;
         uint32_t aggro; // 어그로 대상의 zoneInternalID
         uint32_t aggroTick; // At 50 ms per zone tick, timeout 100 is 5 seconds.
         uint8_t cellX;
@@ -39,6 +48,8 @@ namespace Core {
             dir = 2;
             aggro = 0;
             aggroTick = 0;
+            behavior = MonsterBehavior::Wandering;
+            attacked = 0;
             tick = 0;
             skillStep = 0;
             phase = 0;
@@ -60,6 +71,7 @@ namespace Core {
             dir = 1;
             aggro = 0;
             aggroTick = 0;
+            behavior = MonsterBehavior::Wandering;
             respawnTick = data->respawn;
             tick = 0;
             skillStep = 0;

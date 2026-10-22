@@ -82,6 +82,8 @@ namespace Core {
         void RemoveCharacterLocked(uint64_t sessionID);
         void RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint16_t dirtyBit);
         void UpdateSessionSnapshot();
+        void MoveMonsterHome(MonsterState& monster);
+        void UseMonsterSkill(MonsterState& monster);
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
         friend class StateManager;

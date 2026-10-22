@@ -27,6 +27,7 @@ namespace Core {
         monster.aggroTick = 55;
         monster.tick = 9876;
         monster.phase = 1;
+        monster.behavior = MonsterBehavior::Dead;
         monster.skillStep = 3;
         monster.respawnTick = 1;
 
@@ -41,6 +42,7 @@ namespace Core {
         EXPECT_EQ(monster.respawnTick, 73u);
         EXPECT_EQ(monster.tick, 0u);
         EXPECT_EQ(monster.phase, 0u);
+        EXPECT_EQ(monster.behavior, MonsterBehavior::Wandering);
         EXPECT_EQ(monster.skillStep, 0u);
         EXPECT_EQ(monster.internalID, 42);
         EXPECT_EQ(monster.cellX, 6);

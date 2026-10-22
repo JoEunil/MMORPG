@@ -55,7 +55,7 @@ namespace Data {
             phasesCnt(phaseList.size()),
             reward(reward)
         {
-            aggroTimeOut = 100; // 10초간 공격 없을 시. aggro 해제.
+            aggroTimeOut = 100; // 50ms 틱 기준 5초간 교전이 없으면 어그로 해제.
             int i = 0;
             for (auto& p : phaseList) {
                 phases[i] = p;

@@ -21,11 +21,14 @@ namespace Core {
         }
 
         MonsterState& MonsterAt(size_t index) { return zone.m_monsters[index]; }
+        CharacterState& CharacterAt(size_t index) { return zone.m_chars[index]; }
         size_t ActiveSkillCount() const { return zone.m_cells[2][2].activeSkills.size(); }
         void Update() { zone.UpdateMonster(); }
         void InitializeSpawns() { zone.InitializeMonster(); }
         const std::vector<MonsterState>& Monsters() const { return zone.m_monsters; }
         const Cell& CellAt(int x, int y) const { return zone.m_cells[y][x]; }
+        float HomeX() const { const auto& area = CellAt(2, 2).area; return (area.x_min + area.x_max) * 0.5f; }
+        float HomeY() const { const auto& area = CellAt(2, 2).area; return (area.y_min + area.y_max) * 0.5f; }
 
     };
 
@@ -79,13 +82,146 @@ namespace Core {
         }
     }
 
+    TEST(MonsterBehaviorTest, SwitchesBetweenChasingAndAttackingWithoutChangingSkillCadence) {
+        MonsterBehaviorFixture fixture;
+        const float x = fixture.HomeX(), y = fixture.HomeY();
+        Data::MonsterData data(0, 100, 1, 30, 1.0f,
+            {{1.0f, 0, 2, {{0, 2}, {0, 2}}}}, {0});
+        MonsterState monster{};
+        monster.Initialize(0, 42, x, y, 2, 2);
+        monster.data = &data;
+        monster.hp = 100;
+        monster.aggro = 700;
+        fixture.AddMonster(monster);
+        CharacterState target{};
+        target.zoneInternalID = 700;
+        target.x = x + 5.0f;
+        target.y = y;
+        fixture.AddCharacter(target);
+
+        fixture.Update();
+        EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Chasing);
+        EXPECT_NEAR(fixture.MonsterAt(0).x, x + 0.15f, 0.0001f);
+        EXPECT_EQ(fixture.ActiveSkillCount(), 0u);
+
+        fixture.CharacterAt(0).x = x + 2.0f;
+        fixture.Update();
+        EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Attacking);
+        EXPECT_EQ(fixture.ActiveSkillCount(), 1u);
+        EXPECT_EQ(fixture.MonsterAt(0).tick, 0u);
+        EXPECT_EQ(fixture.MonsterAt(0).skillStep, 1u);
+        EXPECT_NEAR(fixture.MonsterAt(0).x, x + 0.15f, 0.0001f);
+
+        fixture.Update();
+        EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Chasing);
+        EXPECT_EQ(fixture.ActiveSkillCount(), 1u);
+        EXPECT_NEAR(fixture.MonsterAt(0).x, x + 0.30f, 0.0001f);
+        fixture.Update();
+        EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Attacking);
+        EXPECT_EQ(fixture.ActiveSkillCount(), 2u);
+    }
+
+    TEST(MonsterBehaviorTest, LostTargetReturnsToWanderRadiusAndCanBeProvokedAgain) {
+        MonsterBehaviorFixture fixture;
+        const float x = fixture.HomeX(), y = fixture.HomeY();
+        MonsterState monster{};
+        monster.Initialize(0, 42, x, y, 2, 2);
+        monster.x = x + 6.1f;
+        monster.aggro = 999;
+        monster.wanderTicks = 10;
+        monster.wanderPauseTicks = 3;
+        fixture.AddMonster(monster);
+
+        fixture.Update();
+        EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Returning);
+        EXPECT_EQ(fixture.MonsterAt(0).aggro, 0u);
+        EXPECT_FLOAT_EQ(fixture.MonsterAt(0).x, x + 6.1f);
+        fixture.Update();
+        EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Returning);
+        EXPECT_NEAR(fixture.MonsterAt(0).x, x + 6.025f, 0.0001f);
+        EXPECT_EQ(fixture.MonsterAt(0).wanderTicks, 0);
+        EXPECT_EQ(fixture.MonsterAt(0).wanderPauseTicks, 0);
+        fixture.Update();
+        EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Wandering);
+        EXPECT_NEAR(fixture.MonsterAt(0).x, x + 5.95f, 0.0001f);
+
+        CharacterState target{};
+        target.zoneInternalID = 700;
+        target.x = x + 10.0f;
+        target.y = y;
+        fixture.AddCharacter(target);
+        fixture.MonsterAt(0).x = x + 8.0f;
+        fixture.MonsterAt(0).aggro = 999;
+        fixture.Update();
+        EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Returning);
+        fixture.MonsterAt(0).aggro = 700;
+        fixture.Update();
+        EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Chasing);
+        EXPECT_NEAR(fixture.MonsterAt(0).x, x + 8.15f, 0.0001f);
+    }
+
+    TEST(MonsterBehaviorTest, PhaseChangeResetsSkillPatternAndDeathWaitsForRespawn) {
+        MonsterBehaviorFixture fixture;
+        const float x = fixture.HomeX(), y = fixture.HomeY();
+        Data::MonsterData data(2, 100, 1, 3, 0.6f,
+            {{1.0f, 0, 2, {{3, 5}, {4, 5}}},
+             {0.5f, 0, 2, {{4, 2}, {3, 2}}}}, {0});
+        MonsterState monster{};
+        monster.Initialize(2, 42, x, y, 2, 2);
+        monster.data = &data;
+        monster.hp = 99;
+        monster.aggro = 700;
+        monster.tick = 5;
+        monster.skillStep = 1;
+        fixture.AddMonster(monster);
+        CharacterState target{};
+        target.zoneInternalID = 700;
+        target.x = x + 5.0f;
+        target.y = y;
+        fixture.AddCharacter(target);
+
+        fixture.Update();
+        EXPECT_EQ(fixture.MonsterAt(0).phase, 1);
+        EXPECT_EQ(fixture.MonsterAt(0).skillStep, 0);
+        EXPECT_EQ(fixture.MonsterAt(0).tick, 0u);
+        EXPECT_EQ(fixture.ActiveSkillCount(), 0u);
+        EXPECT_FLOAT_EQ(fixture.MonsterAt(0).x, x);
+        fixture.Update();
+        EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Chasing);
+        fixture.Update();
+        EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Attacking);
+        ASSERT_EQ(fixture.ActiveSkillCount(), 1u);
+        EXPECT_EQ(fixture.CellAt(2, 2).activeSkills[0].skillId, 4);
+
+        fixture.MonsterAt(0).hp = 0;
+        fixture.MonsterAt(0).respawnTick = 2;
+        const auto aggroTick = fixture.MonsterAt(0).aggroTick;
+        const auto deathX = fixture.MonsterAt(0).x;
+        fixture.Update();
+        EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Dead);
+        EXPECT_EQ(fixture.MonsterAt(0).respawnTick, 1u);
+        EXPECT_EQ(fixture.MonsterAt(0).aggroTick, aggroTick);
+        EXPECT_FLOAT_EQ(fixture.MonsterAt(0).x, deathX);
+        EXPECT_EQ(fixture.ActiveSkillCount(), 1u);
+        fixture.Update();
+        EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Wandering);
+        EXPECT_EQ(fixture.MonsterAt(0).hp, 100);
+        EXPECT_EQ(fixture.MonsterAt(0).phase, 0);
+        EXPECT_EQ(fixture.MonsterAt(0).skillStep, 0);
+        EXPECT_EQ(fixture.MonsterAt(0).tick, 0u);
+        EXPECT_EQ(fixture.MonsterAt(0).aggro, 0u);
+        EXPECT_FLOAT_EQ(fixture.MonsterAt(0).x, x);
+        EXPECT_EQ(fixture.ActiveSkillCount(), 1u);
+    }
+
     TEST(MonsterBehaviorTest, WandersWithinHomeAtScaledSpeedWithIdleVarianceAndRespawnReset) {
         MonsterBehaviorFixture fixture;
+        const auto& area = fixture.CellAt(2, 2).area;
         constexpr size_t count = 16;
         constexpr float speedPerTick = 0.075f;
         for (uint16_t id = 0; id < count; ++id) {
             MonsterState monster{};
-            monster.Initialize(0, id, 50.0f, 50.0f, 2, 2);
+            monster.Initialize(0, id, fixture.HomeX(), fixture.HomeY(), 2, 2);
             fixture.AddMonster(monster);
         }
         const uint32_t firstMonsterSeed = fixture.MonsterAt(0).wanderSeed;
@@ -107,10 +243,10 @@ namespace Core {
                 if (distance == 0.0f) ++idleTicks;
                 EXPECT_LE(std::abs(monster.x - monster.spawnX), 6.0f);
                 EXPECT_LE(std::abs(monster.y - monster.spawnY), 6.0f);
-                EXPECT_GE(monster.x, 39.0f);
-                EXPECT_LE(monster.x, 61.0f);
-                EXPECT_GE(monster.y, 39.0f);
-                EXPECT_LE(monster.y, 61.0f);
+                EXPECT_GE(monster.x, area.x_min);
+                EXPECT_LE(monster.x, area.x_max);
+                EXPECT_GE(monster.y, area.y_min);
+                EXPECT_LE(monster.y, area.y_max);
             }
         }
 
@@ -141,12 +277,13 @@ namespace Core {
 
     TEST(MonsterBehaviorTest, AggroTicksAdvanceOnceAndClearOnTimeoutOrMissingTarget) {
         MonsterBehaviorFixture fixture;
+        const float x = fixture.HomeX(), y = fixture.HomeY();
         Data::MonsterData timeoutData(0, 100, 1, 30, 1.0f,
             {{1.0f, 0, 2, {{0, 100}, {0, 100}}}}, {0});
         timeoutData.aggroTimeOut = 3;
 
         MonsterState monster{};
-        monster.Initialize(0, 42, 50.0f, 50.0f, 2, 2);
+        monster.Initialize(0, 42, x, y, 2, 2);
         monster.data = &timeoutData;
         monster.hp = 100;
         monster.aggro = 700;
@@ -154,8 +291,8 @@ namespace Core {
 
         CharacterState target{};
         target.zoneInternalID = 700;
-        target.x = 55.0f;
-        target.y = 50.0f;
+        target.x = x + 5.0f;
+        target.y = y;
         fixture.AddCharacter(target);
 
         fixture.Update();
@@ -166,33 +303,36 @@ namespace Core {
         fixture.Update();
         EXPECT_EQ(fixture.MonsterAt(0).aggro, 0u);
         EXPECT_EQ(fixture.MonsterAt(0).aggroTick, 0u);
+        EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Wandering);
 
         Data::MonsterData strongData(1, 100, 1, 30, 1.2f,
             {{1.0f, 0, 2, {{0, 100}, {0, 100}}}}, {0});
         auto& strong = fixture.MonsterAt(0);
         strong.data = &strongData;
-        strong.x = 50.0f;
-        strong.y = 50.0f;
+        strong.x = x;
+        strong.y = y;
         strong.aggro = 700;
         fixture.zone.MoveToward(strong, target);
-        EXPECT_NEAR(strong.x, 50.18f, 0.0001f);
-        strong.x = 60.9f; // Cell 2 ends at 61; do not migrate cell membership.
-        target.x = 80.0f;
+        EXPECT_NEAR(strong.x, x + 0.18f, 0.0001f);
+        const float cellEdge = fixture.CellAt(2, 2).area.x_max;
+        strong.x = cellEdge - 0.1f;
+        target.x = cellEdge + 20.0f;
         fixture.zone.MoveToward(strong, target);
-        EXPECT_FLOAT_EQ(strong.x, 60.9f);
+        EXPECT_FLOAT_EQ(strong.x, cellEdge - 0.1f);
         EXPECT_EQ(strong.aggro, 0u);
         EXPECT_EQ(strong.aggroTick, 0u);
+        EXPECT_EQ(strong.behavior, MonsterBehavior::Returning);
 
         MonsterBehaviorFixture bossFixture;
         Data::MonsterData bossData(2, 100, 1, 30, 0.6f,
             {{1.0f, 0, 2, {{0, 2}, {0, 2}}}}, {0});
         MonsterState boss{};
-        boss.Initialize(2, 7, 50.0f, 50.0f, 2, 2);
+        boss.Initialize(2, 7, x, y, 2, 2);
         boss.data = &bossData;
         boss.hp = 100;
         boss.aggro = 700;
         bossFixture.AddMonster(boss);
-        target.x = 55.0f;
+        target.x = x + 5.0f;
         bossFixture.AddCharacter(target);
         bossFixture.Update();
         EXPECT_EQ(bossFixture.ActiveSkillCount(), 0u);
@@ -219,7 +359,7 @@ namespace Core {
         Data::MonsterData regularData(0, 100, 1, 30, 1.0f,
             {{1.0f, 0, 2, {{0, 100}, {0, 100}}}}, {0});
         MonsterState regular{};
-        regular.Initialize(0, 42, 50.0f, 50.0f, 2, 2);
+        regular.Initialize(0, 42, x, y, 2, 2);
         regular.data = &regularData;
         regular.hp = 100;
         regular.aggro = 701;
@@ -227,18 +367,18 @@ namespace Core {
         rangeFixture.AddMonster(regular);
         CharacterState justOutside{};
         justOutside.zoneInternalID = 701;
-        justOutside.x = 51.682f;
-        justOutside.y = 51.987f;
+        justOutside.x = x + 1.682f;
+        justOutside.y = y + 1.987f;
         rangeFixture.AddCharacter(justOutside);
 
         rangeFixture.Update();
         EXPECT_EQ(rangeFixture.ActiveSkillCount(), 0u);
-        EXPECT_FLOAT_EQ(rangeFixture.MonsterAt(0).x, 50.0f);
-        EXPECT_NEAR(rangeFixture.MonsterAt(0).y, 50.15f, 0.0001f);
+        EXPECT_FLOAT_EQ(rangeFixture.MonsterAt(0).x, x);
+        EXPECT_NEAR(rangeFixture.MonsterAt(0).y, y + 0.15f, 0.0001f);
 
         CharacterState circleBoundary{};
         circleBoundary.zoneInternalID = 702;
-        circleBoundary.x = 52.0f;
+        circleBoundary.x = x + 2.0f;
         circleBoundary.y = rangeFixture.MonsterAt(0).y;
         rangeFixture.AddCharacter(circleBoundary);
         rangeFixture.MonsterAt(0).aggro = 702;
@@ -253,7 +393,7 @@ namespace Core {
         Data::MonsterData skillOneData(1, 100, 1, 30, 1.2f,
             {{1.0f, 0, 2, {{1, 100}, {1, 100}}}}, {1});
         MonsterState strongCaster{};
-        strongCaster.Initialize(1, 43, 60.0f, 60.0f, 2, 2);
+        strongCaster.Initialize(1, 43, x + 10.0f, y + 10.0f, 2, 2);
         strongCaster.data = &skillOneData;
         strongCaster.hp = 100;
         strongCaster.aggro = 703;
@@ -261,14 +401,14 @@ namespace Core {
         rangeFixture.AddMonster(strongCaster);
         CharacterState insideSkillOneRange{};
         insideSkillOneRange.zoneInternalID = 703;
-        insideSkillOneRange.x = 61.682f;
-        insideSkillOneRange.y = 61.987f;
+        insideSkillOneRange.x = x + 11.682f;
+        insideSkillOneRange.y = y + 11.987f;
         rangeFixture.AddCharacter(insideSkillOneRange);
         rangeFixture.Update();
         ASSERT_EQ(rangeFixture.ActiveSkillCount(), 2u);
         const auto& skillOne = rangeFixture.CellAt(2, 2).activeSkills[1];
         EXPECT_EQ(skillOne.skillId, 1u);
-        EXPECT_FLOAT_EQ(skillOne.x, 60.0f);
-        EXPECT_FLOAT_EQ(skillOne.y, 60.0f);
+        EXPECT_FLOAT_EQ(skillOne.x, x + 10.0f);
+        EXPECT_FLOAT_EQ(skillOne.y, y + 10.0f);
     }
 }
