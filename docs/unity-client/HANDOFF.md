@@ -1,3 +1,7 @@
+## PR46 채팅 리뷰 전달 완료 — 2026-10-22
+
+PR46 head6445f87/Open/미병합 확인. UnityCoordinator봇 작업스레드1792658812.487949에 핵심 결과 전달했다. 게시본에는 채팅 귀환1행수정과검증기록만추가했다. 미게시FEEL02후보에일반merge2c21c41로같은리뷰수정을보존했고문서충돌은양쪽이력보존,제품diff추가0이라재시험하지않았다. FEEL02 요청1792658283.786519는계속승인대기이며후보push/새PR/병합/공개0. 서버44432와Unity입력상태변경0.
+
 ## PR46 채팅 귀환 리뷰 수정·검증 완료 — 2026-10-22
 
 리뷰지적타당. cross-zone귀환의 별도 EnqueueZoneLeave만제거하고 목적지Join1개로전환한다. ProcessZoneJoin의이전구역제거기능을재사용한다. 독립리뷰P1P2없음/실제PR46브랜치UnitTests Release빌드PASS/기존귀환2fixture PASS총3ms. 큐포화·durable실패주입/Unity입력/서버재전환0. 결과는PR46_CHAT_REVIEW_RESULTS.txt. 이수정은Join자체큐등록실패전반을복구하는것이아니다.
