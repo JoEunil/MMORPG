@@ -35,6 +35,9 @@ namespace C02
         private GameObject skillTooltip;
         private TMP_Text skillTooltipText;
         private GameObject defeatPanel;
+        private UnityEngine.UI.Button respawnButton;
+        private TMP_Text defeatMessage;
+        private double respawnDeadline;
         private int tooltipSlot = -1;
         private int generation;
         private ushort observedZone;
@@ -215,14 +218,15 @@ namespace C02
                 message.color = new Color(0.91f, 0.88f, 0.81f);
                 message.alignment = TextAlignmentOptions.Center;
                 message.raycastTarget = false;
-                message.text = "Your character has fallen.\nLog out to return to the login screen.";
+                message.text = "Your character has fallen.\nReturn to town to recover, or log out.";
+                defeatMessage = message;
 
                 var buttonObject = new GameObject("Log Out", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button));
                 buttonObject.transform.SetParent(cardObject.transform, false);
                 var buttonRect = buttonObject.GetComponent<RectTransform>();
                 buttonRect.anchorMin = buttonRect.anchorMax = new Vector2(0.5f, 0.5f);
-                buttonRect.anchoredPosition = new Vector2(0, -68);
-                buttonRect.sizeDelta = new Vector2(190, 48);
+                buttonRect.anchoredPosition = new Vector2(88, -68);
+                buttonRect.sizeDelta = new Vector2(158, 48);
                 var buttonImage = buttonObject.GetComponent<UnityEngine.UI.Image>();
                 buttonImage.color = new Color(0.35f, 0.12f, 0.075f, 1f);
                 var button = buttonObject.GetComponent<UnityEngine.UI.Button>();
@@ -243,17 +247,43 @@ namespace C02
                 buttonLabel.alignment = TextAlignmentOptions.Center;
                 buttonLabel.raycastTarget = false;
                 buttonLabel.text = "LOG OUT";
+                var respawnObject = Instantiate(buttonObject, cardObject.transform);
+                respawnObject.name = "Return to Town";
+                respawnObject.GetComponent<RectTransform>().anchoredPosition = new Vector2(-88, -68);
+                respawnObject.GetComponent<UnityEngine.UI.Image>().color = new Color(.13f, .32f, .27f, 1f);
+                respawnButton = respawnObject.GetComponent<UnityEngine.UI.Button>();
+                respawnButton.onClick.RemoveAllListeners();
+                respawnButton.onClick.AddListener(ReturnToTown);
+                var respawnLabel = respawnObject.GetComponentInChildren<TMP_Text>();
+                respawnLabel.fontSize = 16;
+                respawnLabel.text = "RETURN TO TOWN";
             }
 
             defeatPanel.SetActive(true);
             defeatPanel.transform.SetAsLastSibling();
+            if (respawnButton != null) respawnButton.interactable = Time.unscaledTimeAsDouble >= respawnDeadline;
         }
 
         private void HideDefeatPanel()
         {
             if (defeatPanel != null) defeatPanel.SetActive(false);
+            respawnDeadline = 0;
+            if (defeatMessage != null) defeatMessage.text = "Your character has fallen.\nReturn to town to recover, or log out.";
         }
 
+        private void ReturnToTown()
+        {
+            if (!WorldAvailable || model == null || worldScreen.OwnFull.hp != 0 ||
+                Time.unscaledTimeAsDouble < respawnDeadline) return;
+            if (!model.RequestRespawn())
+            {
+                if (defeatMessage != null) defeatMessage.text = "Cannot request town recovery yet.\nTry again or log out.";
+                return;
+            }
+            respawnDeadline = Time.unscaledTimeAsDouble + 8;
+            respawnButton.interactable = false;
+            defeatMessage.text = "Returning to town…\nWaiting for the server.";
+        }
         private void LeaveAfterDefeat() => loginScreen.ConnectionFailed("Session closed.");
 
         private bool InputAvailable()
@@ -279,6 +309,13 @@ namespace C02
 
         private void Update()
         {
+            if (respawnDeadline > 0 && Time.unscaledTimeAsDouble >= respawnDeadline &&
+                defeatPanel != null && defeatPanel.activeSelf)
+            {
+                respawnDeadline = 0;
+                if (respawnButton != null) respawnButton.interactable = WorldAvailable && worldScreen.OwnFull.hp == 0;
+                if (defeatMessage != null) defeatMessage.text = "No recovery response yet.\nTry again or log out.";
+            }
             if (linePreview != null && linePreview.enabled && Time.unscaledTime >= linePreviewDeadline)
                 HideLinePreview();
             UpdateSkillTooltip();

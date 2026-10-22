@@ -18,6 +18,9 @@ namespace Core {
     inline constexpr uint16_t MQ_THREADPOOL_SIZE = 2; // 수신 큐
 
     inline constexpr uint16_t ZONE_COUNT = 6; // 3x2 field zones; lobby excluded.
+    inline constexpr uint16_t TOWN_ZONE_ID = 1;
+    inline constexpr float TOWN_SPAWN_X = 10.0f;
+    inline constexpr float TOWN_SPAWN_Y = 10.0f;
 
     inline constexpr uint16_t MAX_INVENTORY_ITEMS = 10;
     inline constexpr uint8_t BROADCAST_THREADPOOL_SIZE = 1; // A single ordered consumer preserves each zone's queued packet order.

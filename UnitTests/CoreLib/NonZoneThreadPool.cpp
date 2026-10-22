@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <condition_variable>
@@ -359,6 +360,25 @@ namespace Core {
         CharacterState CharacterInLobby(uint64_t session = 42) {
             std::lock_guard lock(lobby.m_mutex);
             return lobby.m_chars.at(session);
+        }
+        void VerifyTownAndHuntingSpawns() {
+            auto* town = state->GetZone(TOWN_ZONE_ID);
+            std::lock_guard townLock(town->m_mutex);
+            EXPECT_TRUE(town->m_monsters.empty());
+            for (const auto& row : town->m_cells)
+                for (const auto& cell : row)
+                    EXPECT_TRUE(cell.monsterIndexes.empty());
+            auto* hunt = state->GetZone(2);
+            std::lock_guard huntLock(hunt->m_mutex);
+            ASSERT_EQ(hunt->m_monsters.size(), 112u);
+            EXPECT_EQ(std::count_if(hunt->m_monsters.begin(), hunt->m_monsters.end(),
+                [](const MonsterState& monster) { return monster.data->id == 2; }), 1);
+        }
+        template<class Update>
+        void UpdateCharacter(uint16_t zone, uint64_t session, Update update) {
+            auto* z = state->GetZone(zone);
+            std::lock_guard lock(z->m_mutex);
+            update(z->m_chars.at(z->m_sessionToIndex.at(session)));
         }
         uint64_t Generation(uint16_t zone) {
             auto* z = state->GetZone(zone);
@@ -1010,6 +1030,92 @@ namespace Core {
         EXPECT_EQ(repair.chatID, entry.chatID);
         EXPECT_EQ(state->GetZoneID(42), 1);
         EXPECT_EQ(OwnershipEpoch(), stale.ownershipEpoch);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, ExplicitRespawnRestoresVitalsAndMovesCrossZoneOrWithinTownWithoutChangingProgress) {
+        PrepareZones();
+        state->GetZone(TOWN_ZONE_ID)->InitializeMonster();
+        state->GetZone(2)->InitializeMonster();
+        VerifyTownAndHuntingSpawns();
+        ASSERT_TRUE(LoadTransitionCharacter(42, 2, 210.0f, 100.0f, 0));
+        ZoneChangeResult entry, respawn;
+        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, entry));
+        UpdateCharacter(2, 42, [](CharacterState& character) {
+            character.maxHp = 1200;
+            character.maxMp = 340;
+            character.mp = 17;
+            character.exp = 98765;
+            character.level = 12;
+            character.attack = 77;
+        });
+        const RespawnToTownBody request{entry.ownershipEpoch};
+        ASSERT_TRUE(state->RespawnToTown(42, request, respawn));
+        EXPECT_EQ(respawn.zoneID, TOWN_ZONE_ID);
+        EXPECT_EQ(respawn.ownershipEpoch, entry.ownershipEpoch + 1);
+        EXPECT_FLOAT_EQ(respawn.x, TOWN_SPAWN_X);
+        EXPECT_FLOAT_EQ(respawn.y, TOWN_SPAWN_Y);
+        EXPECT_EQ(state->GetZoneID(42), TOWN_ZONE_ID);
+        EXPECT_EQ(Characters(2), 0);
+        EXPECT_EQ(Characters(TOWN_ZONE_ID), 1);
+        const auto restored = CharacterIn(TOWN_ZONE_ID);
+        EXPECT_EQ(restored.hp, 1200);
+        EXPECT_EQ(restored.mp, 340);
+        EXPECT_EQ(restored.exp, 98765u);
+        EXPECT_EQ(restored.level, 12);
+        EXPECT_EQ(restored.attack, 77);
+        EXPECT_EQ(restored.characterID, 5042u);
+        EXPECT_EQ(restored.lastZone, TOWN_ZONE_ID);
+        EXPECT_EQ(restored.moveBudget, 0.0f);
+        EXPECT_TRUE(WorldMap::CanTraverse(restored.x, restored.y, restored.x, restored.y));
+        EXPECT_EQ(OwnershipEpoch(), respawn.ownershipEpoch);
+
+        ASSERT_TRUE(LoadTransitionCharacter(43, TOWN_ZONE_ID, 60.0f, 60.0f, 0));
+        ZoneChangeResult townEntry, sameZoneRespawn;
+        ASSERT_TRUE(state->ChangeZone(43, ZONE_CHANGE::ENTER, townEntry));
+        UpdateCharacter(TOWN_ZONE_ID, 43, [](CharacterState& character) {
+            character.maxHp = 800;
+            character.maxMp = 200;
+            character.mp = 6;
+        });
+        ASSERT_TRUE(state->RespawnToTown(43, RespawnToTownBody{townEntry.ownershipEpoch}, sameZoneRespawn));
+        EXPECT_EQ(sameZoneRespawn.ownershipEpoch, townEntry.ownershipEpoch + 1);
+        EXPECT_EQ(CharacterIn(TOWN_ZONE_ID, 43).hp, 800);
+        EXPECT_EQ(CharacterIn(TOWN_ZONE_ID, 43).mp, 200);
+        EXPECT_FLOAT_EQ(CharacterIn(TOWN_ZONE_ID, 43).x, TOWN_SPAWN_X);
+        EXPECT_FLOAT_EQ(CharacterIn(TOWN_ZONE_ID, 43).y, TOWN_SPAWN_Y);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, RespawnRejectsLivingAndStaleRequestsAndRepairsLostAckIdempotently) {
+        PrepareZones();
+        ASSERT_TRUE(LoadTransitionCharacter(44, 2, 210.0f, 100.0f, 100));
+        ZoneChangeResult entry, respawn;
+        ASSERT_TRUE(state->ChangeZone(44, ZONE_CHANGE::ENTER, entry));
+        UpdateCharacter(2, 44, [](CharacterState& character) {
+            character.maxHp = 1000;
+            character.maxMp = 100;
+        });
+        EXPECT_FALSE(state->RespawnToTown(44, RespawnToTownBody{entry.ownershipEpoch}, respawn));
+        EXPECT_EQ(state->GetZoneID(44), 2);
+        UpdateCharacter(2, 44, [](CharacterState& character) { character.hp = 0; });
+        EXPECT_FALSE(state->RespawnToTown(44, RespawnToTownBody{entry.ownershipEpoch - 1}, respawn));
+        ASSERT_TRUE(state->RespawnToTown(44, RespawnToTownBody{entry.ownershipEpoch}, respawn));
+        const auto committedEpoch = respawn.ownershipEpoch;
+        const auto committedCharacter = CharacterIn(TOWN_ZONE_ID, 44);
+        ZoneChangeResult retriedAck;
+        ASSERT_TRUE(state->RespawnToTown(44, RespawnToTownBody{entry.ownershipEpoch}, retriedAck));
+        EXPECT_EQ(retriedAck.ownershipEpoch, committedEpoch);
+        const auto afterRetry = CharacterIn(TOWN_ZONE_ID, 44);
+        EXPECT_EQ(afterRetry.hp, committedCharacter.hp);
+        EXPECT_EQ(afterRetry.mp, committedCharacter.mp);
+        EXPECT_FLOAT_EQ(afterRetry.x, committedCharacter.x);
+        EXPECT_FLOAT_EQ(afterRetry.y, committedCharacter.y);
+        EXPECT_EQ(OwnershipEpoch(44), committedEpoch);
+        ActionRequestBody resume{0, afterRetry.x, afterRetry.y, 255, committedEpoch};
+        ZoneChangeResult noTransition;
+        ASSERT_TRUE(state->ProcessAction(44, TOWN_ZONE_ID, resume, noTransition));
+        EXPECT_FALSE(state->RespawnToTown(44, RespawnToTownBody{entry.ownershipEpoch}, retriedAck));
+        EXPECT_EQ(state->GetZoneID(44), TOWN_ZONE_ID);
+        EXPECT_EQ(OwnershipEpoch(44), committedEpoch);
     }
 
     TEST_F(NonZoneThreadPoolFixture, AutomaticCornerHandoffUsesAuthoredCrossingAndOuterEdgeDoesNotWrap) {

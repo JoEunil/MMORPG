@@ -1,0 +1,64 @@
+Town / explicit death respawn candidate — 2026-10-22
+
+Branch: codex/town-respawn, based on MAP01 PR45 head 9e7bec6.
+Scope: Zone1 no regular/strong/boss spawn; other five zones retain 112 each.
+Death button sends new RESPawn-to-town opcode39 / uint64 ownershipEpoch.
+Server validates authenticated completed session, bound character, HP0, epoch,
+positive maxHP/nonnegative maxMP and authored walkable town position (10,10).
+Same-zone and cross-zone paths restore max HP/MP, preserve character/progress,
+advance ownership epoch and reuse ZoneAck plus paired Player/Monster bootstrap.
+Initial login still preserves HP0. No DB direct HP/MP/EXP/position writes.
+
+Independent review
+- town_respawn_review (gpt-6.1-sol high): final P1/P2 none.
+- ACK loss: exact committed respawn may replay the same authoritative ACK while
+  its untouched town state is still owned. Replay never heals or advances epoch.
+  Current-epoch action invalidates its receipt; stale/living requests rejected.
+- UI next-death button reactivation repaired; no local HP mutation on click.
+- Final native fixture compile correction moves private accesses into existing
+  friend fixture helpers, preserving all assertions and production boundaries.
+
+Validation completed
+- ClientCore build PASS / errors0; existing offline NU1900 metadata warning.
+- Unity import/recompile errors0; actual C15 export Town density0 and valid
+  authored WorldMap spawn (10,10); final Scene dirtyfalse/Playfalse.
+- Direct EditMode existing fixture2 PASS:
+  LegacyAndStarterLayoutsExportWithSafePerCellValidation 0.0630s
+  OwnHpMpDeltaStopsPendingActionsAtZero_AndKeepsServerVitals 0.0442s
+- MainServer Release x64 build PASS, single worker host build.
+- UnitTests Release x64 build PASS.
+- Native exact2 PASS, 3ms total:
+  ExplicitRespawnRestoresVitalsAndMovesCrossZoneOrWithinTownWithoutChangingProgress
+  RespawnRejectsLivingAndStaleRequestsAndRepairsLostAckIdempotently
+- No broad regression or repeated actual login.
+
+Failures / repairs retained
+- Initial sandbox MSBuild worker connections stalled; canceled its exec session
+  and rebuilt on host with single worker. No game process termination.
+- First UnitTests build C2248: TEST_F generated subclass is not a friend.
+  Moved private accesses into the existing friend fixture; assertions unchanged.
+  Original failure log retained under ignored Builds/Town-Respawn.
+- Existing compiler conversion/external warnings and NetTimer packing/link
+  warning retained; not presented as newly fixed.
+
+Runtime / remaining
+- Last host inspection: old MAP01 MainServer PID24024 at World-Export/bin remains
+  running hidden. New town binary was NOT started alongside or over it.
+- Prior Windows PowerShell quit-helper policy restriction remains recorded.
+  No policy bypass, alternate quit helper, forced termination or DB reset.
+- New town actual-input / live server response / screenshot NOT EXECUTED.
+  Must normally stop old server, verify save/drain and run matching server/DLL.
+- ROOT Unity owned hunks and DLL synchronized after backups; original ROOT/Game
+  server/ClientCore WIP untouched. Candidate canonical source is C10-Delivery/source.
+- No new town art/NPC systems; existing outpost scenery is shown only in Town.
+- User AI/A* and Cell movement constraints untouched. Future monster cross-zone
+  AI must explicitly exclude town; this is not a universal AI safe-zone barrier.
+- Public site unchanged: no new live result or capture to publish. MAP01 history
+  stays visible; no old image relabeled as new town evidence.
+- MAPHP01 request canceled by bot update at1792646986.673599; never applied.
+- New TOWN01 approval required before push/PR; MAP01 approval not reused.
+
+Artifacts (ignored, ROOT UnityClient/Builds/Town-Respawn): server-build.txt,
+native-build-first-failure.txt, native-build.txt, native-tests.txt,
+unity-tests.txt, run-unity-tests.cs, unity-owned.patch, backup/, bin/.
+Agent counts: new61 / reactivation128 / total189, actual tokens/cost N/A.

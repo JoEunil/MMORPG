@@ -81,6 +81,16 @@ namespace ClientCore.PacketHelper
             return Packet.Serialize(packet);
         }
 
+        internal static byte[] CreateRespawnToTownPacket(ulong ownershipEpoch)
+        {
+            var packet = new STPacket<RespawnToTownBody>
+            {
+                header = new PacketHeader { magic = MAGIC, length = 0, opcode = (byte)OP_CODE.RESPAWN_TO_TOWN, flags = 0 },
+                body = new RespawnToTownBody { ownershipEpoch = ownershipEpoch }
+            };
+            return Packet.Serialize(packet);
+        }
+
         internal static byte[] CreateActionPacket(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch)
         {
             var body = new ActionRequestBody

@@ -574,7 +574,11 @@ namespace C02
             scenery = worldRoot.transform.Find("V03FieldSurround");
             if (scenery != null) scenery.localPosition = origin;
             scenery = worldRoot.transform.Find("V01Outpost");
-            if (scenery != null) scenery.localPosition = origin + new Vector3(10, 0, 10);
+            if (scenery != null)
+            {
+                scenery.gameObject.SetActive(ZoneID == 1);
+                scenery.localPosition = origin + new Vector3(10, 0, 10);
+            }
         }
 
         // The authored hero faces local -Z (Vector3.back).
@@ -587,8 +591,8 @@ namespace C02
             // Root facing is seeded on entry. C19 turns only the visual model during movement/actions.
             RenderVisualPosition();
             worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
-                "C02 / SERVER-CONFIRMED FIELD\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nArrow keys move. Z / X / C use skills. I opens bag. B opens market.",
-                SelectedCharacterID, InternalID, ZoneID, ownFull.x, ownFull.y);
+                "C02 / SERVER-CONFIRMED FIELD · {5}\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nArrow keys move. Z / X / C use skills. I opens bag. B opens market.",
+                SelectedCharacterID, InternalID, ZoneID, ownFull.x, ownFull.y, ZoneID == 1 ? "TOWN / SAFE AREA" : "HUNTING FIELD");
             UpdateZoneTransitionButton();
         }
 

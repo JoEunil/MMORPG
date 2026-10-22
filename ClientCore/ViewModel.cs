@@ -24,6 +24,9 @@ namespace ClientCore
         private readonly object _sessionGate = new object();
         private bool _enterPending;
         private bool _zonePending;
+        private bool _respawnPending;
+        private long _respawnRetryDeadline;
+        private int _selfHP;
         private volatile bool _connectionFailed;
         // Profile state belongs to the existing main-thread dispatcher, never the tick thread.
         private readonly Dictionary<uint, ProfileEntry> _profiles = new Dictionary<uint, ProfileEntry>();
@@ -130,6 +133,8 @@ namespace ClientCore
                 _lifetime.Cancel();
                 _inventoryPending = false;
                 _worldReady = false;
+                _respawnPending = false;
+                _zonePending = false;
                 CancelBazaar();
                 _viewData.SetInventory(Array.Empty<PacketHelper.InventoryItem>());
                 ClientSession.AccessToken = null;
@@ -177,6 +182,44 @@ namespace ClientCore
             {
                 lock (_sessionGate) _zonePending = false;
                 Error("Zone entry request failed.");
+            }
+        }
+
+        public bool RequestRespawn()
+        {
+            ulong epoch;
+            lock (_sessionGate)
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed || _ownershipEpoch == 0)
+                    return false;
+                if (_respawnPending)
+                {
+                    if (!_zonePending || Stopwatch.GetTimestamp() < _respawnRetryDeadline)
+                        return false;
+                    _respawnRetryDeadline = Stopwatch.GetTimestamp() + 8 * Stopwatch.Frequency;
+                }
+                else
+                {
+                    if (!_worldReady || _zonePending || _selfHP != 0)
+                        return false;
+                    _respawnPending = true;
+                    _zonePending = true;
+                    _awaitingZoneAck = true;
+                    _worldReady = false;
+                    _respawnRetryDeadline = Stopwatch.GetTimestamp() + 8 * Stopwatch.Frequency;
+                    _viewData.CancelAction();
+                }
+                epoch = _ownershipEpoch;
+            }
+            try
+            {
+                _network.RespawnToTown(epoch);
+                return true;
+            }
+            catch (Exception)
+            {
+                _logger.Log("Respawn request could not be sent.");
+                return false;
             }
         }
 
@@ -247,6 +290,7 @@ namespace ClientCore
             {
                 if (_lifetime.IsCancellationRequested || !_enterPending) return;
                 _enterPending = false;
+                _selfHP = hp;
                 _threadDispatcher.Post(() =>
                 {
                     if (!_lifetime.IsCancellationRequested) OnEnterSuccess?.Invoke(success);
@@ -594,6 +638,11 @@ namespace ClientCore
                     {
                         _worldReady = wasInWorld;
                         _awaitingZoneAck = false;
+                        if (_respawnPending)
+                        {
+                            _respawnPending = false;
+                            _respawnRetryDeadline = 0;
+                        }
                         OnZoneChageFailed?.Invoke();
                     }
                 });
@@ -611,8 +660,12 @@ namespace ClientCore
             {
                 if (!AcceptSimulation(zoneID, generation) || !_worldReady) return;
                 for (int i = 0; i < count; i++)
+                {
+                    if (updates[i].zoneInternalID == _zoneInternalID && updates[i].fieldID == 0)
+                        _selfHP = unchecked((int)updates[i].fieldVal);
                     if (updates[i].fieldID == 9 && _entityProfiles.TryGetValue(updates[i].zoneInternalID, out var id))
                         ObserveProfile(id, updates[i].fieldVal);
+                }
                 RequestProfiles();
                 subscribers?.Invoke(count, updates);
             });
@@ -631,6 +684,8 @@ namespace ClientCore
                 if (!AcceptSimulation(zoneID, generation) || !_worldReady) return;
                 for (int i = 0; i < count; i++)
                 {
+                    if (states[i].zoneInternalID == _zoneInternalID)
+                        _selfHP = states[i].hp;
                     _entityProfiles[states[i].zoneInternalID] = states[i].profileId;
                     ObserveProfile(states[i].profileId, states[i].profileVersion);
                 }
@@ -713,6 +768,8 @@ namespace ClientCore
                 {
                     _entityProfiles[state.zoneInternalID] = state.profileId;
                     ObserveProfile(state.profileId, state.profileVersion);
+                    if (state.zoneInternalID == _pendingZoneInternalID)
+                        _selfHP = state.hp;
                 }
                 RequestProfiles();
                 OnZoneChageReceived?.Invoke(_zoneID, _pendingChatID, _zoneInternalID, _pendingStartX, _pendingStartY);
@@ -722,6 +779,8 @@ namespace ClientCore
                 {
                     _pendingOwnershipEpoch = 0;
                     _pendingBootstrapID = 0;
+                    _respawnPending = false;
+                    _respawnRetryDeadline = 0;
                     _awaitingZoneAck = false;
                     _worldReady = true;
                 }
@@ -749,9 +808,16 @@ namespace ClientCore
         {
             if (_lifetime.IsCancellationRequested) return;
             _connectionFailed = true;
+            lock (_sessionGate)
+            {
+                _worldReady = false;
+                _zonePending = false;
+                _respawnPending = false;
+                _respawnRetryDeadline = 0;
+                _awaitingZoneAck = false;
+                _inventoryPending = false;
+            }
             CancelBazaar();
-            _worldReady = false;
-            _inventoryPending = false;
             _viewData.SetInventory(Array.Empty<PacketHelper.InventoryItem>());
             _viewData.SetCharList(0, Array.Empty<PacketHelper.CharacterInfo>());
             _threadDispatcher.Post(() =>

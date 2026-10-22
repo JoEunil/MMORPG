@@ -1,3 +1,13 @@
+## 최신 — 마을·사망 귀환 로컬 후보 / 2026-10-22
+
+codex/town-respawn은 MAP01 PR45 head9e7bec6에서 분리했다. Zone1 전체 몬스터0(보스포함), 타5구역112유지. HP0 Return to Town→서버소유권/epoch검사→Zone1(10,10) 최대HP/MP·EXP/아이템/재화보존을 구현했다. opcode39와 기존ZoneAck/첫Full쌍을 사용해 서버/DLL 동시전환이 필요하다. 초기로그인HP0보존/AI·A*·Cell이동제약은불변. MAPHP01 DB직접복구요청은봇1792646986.673599수정으로취소했고미실행이다.
+
+독립최종P1/P2없음. ACK유실재시도는동일커밋응답만재전달/추가회복0, 다음사망버튼재활성화보완. ClientCore/MainServer/UnitTests빌드PASS·compile0·Unity기존2/native핵심2PASS. 최초native fixture private접근 C2248은기존friend fixture내로이동해제품/검증조건변경없이해결했고실패로그보존. TOWN_RESPAWN_RESULTS.txt 참조.
+
+ROOT Unity는기존PR44차이를보존한hunk/백업후동기화,DLL같은빌드. 원본ROOT/Game서버·ClientCore WIP보존. 현재MainServer24024는여전히숨김World-Export/bin 구MAP01서버다. 새마을서버시작/실제귀환입력/신규캡처0. 기존quit-helper Windows정책차단을우회하지않으며정상종료·저장완료후만전환한다. 공개사이트는새실행결과가없어유지했다.
+
+기존MAP01승인재사용금지/새push·PR0. 새TOWN01을UnityCoordinator앱으로요청할후보다. Unity실입력은재개상태이며구서버에39요청을보내지않는다. 전문누적신규61/재활성화128/전체189/tokenN/A.
+
 ## 최신 — MAP01 PR45 게시 / 입력 재개·HP0 배치 완료
 
 MAP01 지정사용자 승인1792646408.310839를 확인해 https://github.com/JoEunil/MMORPG/pull/45 하나로 게시하고 artifact첨부했다. 최신 master README/PR43이력을 일반merge 보존, PR44전체병합/강제push/병합0. 승인재사용금지. 이번 채팅으로 실제 Unity 입력이 재개됐으며 오래된 보류 문구보다 우선한다.

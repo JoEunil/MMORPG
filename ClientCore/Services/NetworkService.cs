@@ -58,6 +58,7 @@ namespace ClientCore.Services
         }
 
         public void ZoneResync(ulong ownershipEpoch) => _sock.Send(PacketBuilder.CreateZoneResyncPacket(ownershipEpoch));
+        public void RespawnToTown(ulong ownershipEpoch) => _sock.Send(PacketBuilder.CreateRespawnToTownPacket(ownershipEpoch));
 
         public void Pong(ulong serverTimeMs)
         {

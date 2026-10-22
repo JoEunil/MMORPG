@@ -1,3 +1,12 @@
+## 마을·사망 귀환 — 2026-10-22
+
+| 에이전트 | 역할 / 실제 설정 | 신규 | 재활성화 | 확인한 결과 |
+| --- | --- | ---: | ---: | --- |
+| town_respawn_server | worker / 상속 모델 미확인 | 1 | 1 | 서버·ClientCore·핵심 native fixture 구현. ACK 유실 재요청 복구 보완 |
+| town_respawn_review | default / gpt-6.1-sol high 도구 지정 | 1 | 0 | 서버 소유권·원자성·재요청/화면 독립 검토. ACK 유실과 다음 사망 버튼 비활성 지적 후 최종 P1/P2 없음 |
+
+Coordinator가 Town 스폰 0·Exporter/Inspector·Unity 귀환 버튼·기존 fixture/DLL 동기화와 검증을 담당한다. 누적 신규61/재활성화128/활성화189, 실제 토큰·비용 N/A. 실행 중 추가 메시지는 재활성화로 세지 않는다. 실제 서버 귀환 입력은 새 서버 정상 전환 전까지 미실행이다.
+
 ## MAP01 게시·실입력 재개 — 2026-10-22
 
 test_health_contract(server_analyst/gpt-6.1-sol medium) 신규1/재활성화0. HP0 두계정의 기존 회복 미지원/종료저장 덮어쓰기 위험과 1행복구 안전전제를 읽기분석했고 실제DB쓰기0. Coordinator가 Slack원문 승인대조·일반merge/push/PR45·같은버전서버기동과 실제UI 한접속의HP0차단/정상퇴장·캡처/공개범위 확인을 담당했다. 생존이동/자동경계는 미실행. 누적신규59/재활성화127/활성화186, 실제토큰·비용N/A.

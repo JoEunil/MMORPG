@@ -54,6 +54,7 @@ namespace ClientCore.PacketHelper
         BAZAAR_CANCEL_LISTING = 36,
         BAZAAR_CANCEL_LISTING_RES = 37,
         ZONE_RESYNC = 38,
+        RESPAWN_TO_TOWN = 39,
     }
     
     public enum ZONE_CHANGE : byte
@@ -188,6 +189,8 @@ namespace ClientCore.PacketHelper
     }
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ZoneResyncBody { public ulong ownershipEpoch; }
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct RespawnToTownBody { public ulong ownershipEpoch; }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ZoneChangeResponseBody

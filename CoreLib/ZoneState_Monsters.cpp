@@ -51,7 +51,9 @@ namespace Core {
         static_assert(sizeof(Data::MONSTER_ZONE_DENSITY_PERCENT) / sizeof(Data::MONSTER_ZONE_DENSITY_PERCENT[0]) == ZONE_COUNT,
             "Authored density must have one value per field Zone.");
         static_assert([] {
-            for (int percent : Data::MONSTER_ZONE_DENSITY_PERCENT) {
+            for (int zone = 0; zone < ZONE_COUNT; ++zone) {
+                const int percent = Data::MONSTER_ZONE_DENSITY_PERCENT[zone];
+                if (zone + 1 == TOWN_ZONE_ID) { if (percent != 0) return false; continue; }
                 if (percent < 50 || percent > 200) return false;
                 int64_t total = 1; // The central boss is never scaled.
                 for (int cell = 0; cell < 25; ++cell) {
@@ -66,6 +68,8 @@ namespace Core {
         }(), "Authored Zone spawn density exceeds the supported range or capacity.");
         if (m_zoneID < 1 || m_zoneID > ZONE_COUNT)
             throw std::runtime_error("Monster spawning requires a valid field Zone.");
+        static_assert(Data::MONSTER_TOWN_ZONE_ID == TOWN_ZONE_ID, "Town spawn authoring must match server ownership.");
+        if (m_zoneID == TOWN_ZONE_ID) return;
         const int densityPercent = Data::MONSTER_ZONE_DENSITY_PERCENT[m_zoneID - 1];
         int uniqueId = 0;
 

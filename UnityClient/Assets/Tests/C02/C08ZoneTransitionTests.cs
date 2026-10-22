@@ -335,7 +335,7 @@ namespace C02.Tests
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() => Requests++;
             public void Action(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch) => LastActionEpoch = ownershipEpoch;
             public void Pong(ulong serverTimeMs) { }
-            public void ZoneChange(byte op) { ZoneOperations++; LastZoneOperation = op; } public void ZoneResync(ulong ownershipEpoch) { }
+            public void ZoneChange(byte op) { ZoneOperations++; LastZoneOperation = op; } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { }
             public void Log(string message) { }
         }
     }
