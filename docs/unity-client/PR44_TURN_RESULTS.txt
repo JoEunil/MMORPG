@@ -1,0 +1,6 @@
+2026-10-21 PR44 discussion_r4335755574 — perpendicular heading change
+Review valid: Dot<0 discarded only opposite lead; perpendicular Dot0 kept the old queued target and mixed released-axis movement into the next request.
+Fix: compare normalized heading difference squared > .000001 (float noise allowance), discarding pending lead on perpendicular/45-degree/opposite change; unchanged heading continues accumulation.
+Independent zone_spawn_review final P1/P2 none. Compile errors=[]/compilationFailed=false.
+Existing C16 movement fixture extended, single PlayMode run: total1/passed1/failed0, .0419121s (total .09s). Rightward .6 unacknowledged lead -> up target x=serverX/y+ .3; up->diagonal starts current direction .3; held diagonal accumulates .6. Existing authority/reversal/stale/hitch/reset checks retained.
+ROOT two owned files matched HEAD before backup/sync; actual keyboard/mouse/login/server edits=0. Input hold remains. Public feature explanation unchanged: this is an internal correction within the existing movement feature, no new showcase card/capture needed.

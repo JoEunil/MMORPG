@@ -189,8 +189,8 @@ namespace C02
             }
             float hit = hitUntil > now ? Mathf.Sin((hitUntil - now) / .2f * Mathf.PI) : 0;
             float bob = (1f - Mathf.Cos(stride * 2f)) * .008f * height * walking;
-            visual.localPosition = restPosition + new Vector3(0, bob, hit * height * .025f);
-            Quaternion lean = Quaternion.Euler(hit * -9f + walking * 2f, 0, swing * 1.4f);
+            visual.localPosition = restPosition + new Vector3(0, bob, hit * height * .06f);
+            Quaternion lean = Quaternion.Euler(hit * -15f + walking * 2f, 0, swing * 1.4f);
             Quaternion localFacing = hasFacing ? Quaternion.Inverse(visual.parent.rotation) * facing : restRotation;
             visual.localRotation = Quaternion.Slerp(visual.localRotation, localFacing * lean, Mathf.Clamp01(dt * 18f));
         }
