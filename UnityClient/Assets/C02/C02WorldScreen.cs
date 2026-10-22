@@ -428,7 +428,7 @@ namespace C02
                     ? ServerPosition + direction.normalized * (MovementUnitsPerSecond * (float)MovementIntervalSeconds)
                     : inputTarget + direction.normalized * step;
                 target = ServerPosition + Vector2.ClampMagnitude(target - ServerPosition, MaximumInputLead);
-                if (InsideZone(ZoneID, target) && (worldMap == null ||
+                if (InsideZoneBounds(ZoneID, target, MaximumInputLead) && (worldMap == null ||
                     worldMap.CanTraverse(inputTarget, target) && worldMap.CanTraverse(ServerPosition, target)))
                     inputTarget = target;
                 else
@@ -491,18 +491,21 @@ namespace C02
         }
 
         private static bool InsideZone(ushort zone, Vector2 position)
+            => InsideZoneBounds(zone, position, 0);
+
+        private static bool InsideZoneBounds(ushort zone, Vector2 position, float extraMargin)
         {
             if (zone < 1 || zone > 6 || !Finite(position.x) || !Finite(position.y)) return false;
             int column = (zone - 1) % 3, row = (zone - 1) / 3;
-            return position.x >= column * C20WorldMap.ZoneSize - 5 && position.x <= (column + 1) * C20WorldMap.ZoneSize + 5 &&
-                position.y >= row * C20WorldMap.ZoneSize - 5 && position.y <= (row + 1) * C20WorldMap.ZoneSize + 5;
+            return position.x >= column * C20WorldMap.ZoneSize - 5 - extraMargin && position.x <= (column + 1) * C20WorldMap.ZoneSize + 5 + extraMargin &&
+                position.y >= row * C20WorldMap.ZoneSize - 5 - extraMargin && position.y <= (row + 1) * C20WorldMap.ZoneSize + 5 + extraMargin;
         }
 
         private static bool TryMoveCandidate(ushort zone, Vector2 origin, Vector2 target, out Vector2 candidate, out byte direction)
         {
             candidate = origin;
             direction = 0;
-            if (!InsideZone(zone, origin) || !InsideZone(zone, target)) return false;
+            if (!InsideZone(zone, origin) || !InsideZoneBounds(zone, target, MaximumInputLead)) return false;
             Vector2 delta = target - origin;
             float distance = delta.magnitude;
             if (distance <= 0.05f) return false;

@@ -1,3 +1,7 @@
+## PR45 경계·DummyClients 리뷰 보완 — 2026-10-22
+
+map_server_finish_audit/explorer 재활성화1: 실제 Dummy/server/ClientCore wire와 최소 대응 경계를 분석. dummy_epoch_fix/worker(상속 모델명 미확인) 신규1·재활성화1: Dummy8파일 구현·청크/세대·캡처세션 경합 보완. town_switch_review/code_reviewer(gpt-6.1-sol medium) 재활성화3: 최종 wire/상태 및 TOCTOU P2 발견·해결/접근성1줄 확인. Coordinator가 경계패치port·빌드중 namespace/접근성 수정·오프라인self-test1회/기록/통합을 담당했다. 누적신규66/재활성화145/활성화211, 실제토큰·비용N/A. 실제부하/Unity입력은추가실행하지않았다.
+
 ## MAP01 게시·실입력 재개 — 2026-10-22
 
 test_health_contract(server_analyst/gpt-6.1-sol medium) 신규1/재활성화0. HP0 두계정의 기존 회복 미지원/종료저장 덮어쓰기 위험과 1행복구 안전전제를 읽기분석했고 실제DB쓰기0. Coordinator가 Slack원문 승인대조·일반merge/push/PR45·같은버전서버기동과 실제UI 한접속의HP0차단/정상퇴장·캡처/공개범위 확인을 담당했다. 생존이동/자동경계는 미실행. 누적신규59/재활성화127/활성화186, 실제토큰·비용N/A.

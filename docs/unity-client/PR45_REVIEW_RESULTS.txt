@@ -1,0 +1,18 @@
+PR45 review corrections / 2026-10-22
+Both review findings valid against PR45 alone.
+
+1. Boundary handoff: server requires accepted205/195 etc; PR45 client rejected205.1 before send. PR46 already contained6aa5ef2 local target margin0.6 and focused fixture. Ported the identical C02WorldScreen + C16OwnMotionTests hunks into PR45; server threshold/overlap/origin/authoritative Full/Delta validation unchanged. Prior focused fixture PASS0.0199s and actual Unity1->2->1 InputSystem path on PR46 are evidence for the same patch, not newly executed PR45 UI validation. No redundant Unity input run.
+
+2. Dummy protocol: legacy ACTION18 vs server26, ACK31 vs server47, no bootstrap/epoch tracking. Updated both normal/fast ACTION builders with ownershipEpoch at offset18LE; expanded ACK47 and strict exact lengths. Full prefix37 and Delta prefix20 parsing now reach the dummy session, including empty monster snapshots. Await matched own Player Full(chunks/end) and Monster Full pair before action; fence zone/generation/epoch/bootstrap. Rebase own coordinates from valid Full/Delta, reduce per-tick step0.5->0.2 against server0.3 budget, cap unacknowledged lead0.6. Bootstrap missing:2s retry/max3; report once and keep action blocked without valid pair. No server protocol relaxation/new wire.
+
+Independent review found a receive-slot TOCTOU: old socket could pass check before replacement and Handler then re-fetch a new session. Fixed by capturing ClientSession once and passing it through ownership/full/delta and AUTH/list/ENTER/PING follow-up sends; no index-based session re-fetch in Handler/ViewModel. Offline replaced-session ACK assertion verifies new binding unchanged. Final P1/P2 none.
+
+Build1 failed CS0103x8: Program self-test namespace missing. Added using ClientCore.PacketHelper.
+Build after captured-session change failed CS0051x4: public ViewModel methods used internal ClientSession. Made standalone tool ViewModel internal, matching original internal constructor; separately reviewed.
+Final .NET8 Release build PASS/exit0, errors0/warnings27(nullable/platform warnings retained; baseline build not repeated). Full build output in ignored Builds/PR45-Review/dummy-build.txt.
+One command: dotnet Builds/PR45-Review/dummy/DummyClients.dll --protocol-self-test
+PASS/exit0: both ACTION builders exact26/epoch18, snapshot receive filter, old epoch and mismatched bootstrap blocked, bootstrap metadata/empty Monster, transition barrier, newer authoritative delta/stale generation rejection, ACK epoch/length, replaced-session isolation. Initializes one in-memory socket wrapper only; no Connect/Login/ClientTick.Start/affinity/load path. Unknown args usage branch reviewed; noargs5000-client default was not executed.
+Raw result: Session initialized1; protocol self-test: PASS(action frames, bootstrap pair/epoch, authoritative movement, replaced-session isolation, invalid length).
+
+No server rebuild/restart, no live load benchmark, no DB/secret changes, no new Unity input. Do not interpret offline pass as actual server movement/skill throughput. Delta wire lacks epoch; use existing zone/generation fence without inventing stronger ordering. Normal default load mode still must be explicitly run and evaluated with server-side metrics separately.
+Scope: DummyClients8 files + identical boundaryport + records. Canonical CAND only; ROOT/Game server/ClientCore and ROOT Dummy WIP preserved. Public game UI/media unchanged by this compatibility fix, so no new capture/site rebuild needed.

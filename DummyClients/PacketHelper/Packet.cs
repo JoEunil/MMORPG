@@ -41,6 +41,7 @@ namespace ClientCore.PacketHelper
         PONG = 23, // 클라이언트 송신
         PROFILE_BATCH = 24,
         PROFILE_BATCH_RES = 25,
+        ZONE_RESYNC = 38,
     }
     
     public enum ZONE_CHANGE : byte
@@ -163,6 +164,12 @@ namespace ClientCore.PacketHelper
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    internal struct ZoneResyncBody
+    {
+        public ulong ownershipEpoch;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ZoneChangeResponseBody
     {
         public byte resStatus;
@@ -171,6 +178,8 @@ namespace ClientCore.PacketHelper
         public uint zoneInternalID;
         public float startX;
         public float startY;
+        public ulong zoneGeneration;
+        public ulong ownershipEpoch;
     }
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ChatRequestBody
@@ -214,6 +223,7 @@ namespace ClientCore.PacketHelper
         public byte dir;      // 애니메이션/스킬 시전 방향
         public float x, y;    // 이동 후 최종 좌표(절대). 서버가 경과 시간 대비 이동량을 검증한다.
         public byte skillSlot;
+        public ulong ownershipEpoch;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -248,6 +258,8 @@ namespace ClientCore.PacketHelper
     public struct DeltaSnapshotBody
     {
         public ushort count;
+        public ushort zoneID;
+        public ulong zoneGeneration;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = DELTA_UPDATE_COUNT)]
         public DeltaUpdateField[] updates;
@@ -275,6 +287,11 @@ namespace ClientCore.PacketHelper
     public struct FullSnapshotBody
     {
         public ushort count;
+        public ushort zoneID;
+        public ulong zoneGeneration;
+        public ulong ownershipEpoch;
+        public ulong bootstrapID;
+        public byte bootstrapEnd;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_ZONE_CAPACITY)]
         public FullStateField[] states;
@@ -292,6 +309,8 @@ namespace ClientCore.PacketHelper
     public struct MonsterDeltaSnapshotBody
     {
         public ushort count;
+        public ushort zoneID;
+        public ulong zoneGeneration;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_MONSTER_DELTA)]
         public MonsterDeltaField[] updates;
@@ -314,6 +333,11 @@ namespace ClientCore.PacketHelper
     public struct MonsterFullSnapshotBody
     {
         public ushort count;
+        public ushort zoneID;
+        public ulong zoneGeneration;
+        public ulong ownershipEpoch;
+        public ulong bootstrapID;
+        public byte bootstrapEnd;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_MONSTER_COUNT)]
         public MonsterFullField[] states;
@@ -340,6 +364,7 @@ namespace ClientCore.PacketHelper
     }
     public class Packet
     {
+
         
         private static T ByteArrayToStructure<T>(byte[] bytes) where T : struct
         {
@@ -567,6 +592,21 @@ namespace ClientCore.PacketHelper
                 packet.body = default(T);
             }
 
+            return packet;
+        }
+
+        internal static STPacket<ZoneChangeResponseBody> DeserializeZoneChange(PacketHeader header, byte[] buffer)
+        {
+            if (buffer == null || header.magic != MAGIC || header.opcode != (byte)OP_CODE.ZONE_CHANGE_RESPONSE ||
+                header.flags != FLAG_SIMULATION || header.length != 47 || buffer.Length != 47)
+                throw new ArgumentException("Invalid zone response frame.");
+            var packet = Deserialize<ZoneChangeResponseBody>(header, buffer);
+            var body = packet.body;
+            if (body.resStatus > 1 || body.resStatus == 1 && (body.zoneID < 1 || body.zoneID > 6 ||
+                body.zoneInternalID == 0 || body.zoneInternalID == uint.MaxValue || body.zoneGeneration == 0 ||
+                body.ownershipEpoch == 0 || float.IsNaN(body.startX) || float.IsInfinity(body.startX) ||
+                float.IsNaN(body.startY) || float.IsInfinity(body.startY)))
+                throw new ArgumentException("Invalid zone response identity.");
             return packet;
         }
         public static T ReadStruct<T>(byte[] buffer, int offset) where T : struct

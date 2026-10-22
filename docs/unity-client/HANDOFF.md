@@ -1,3 +1,11 @@
+## 最新 — PR45 리뷰 두 건 수정 / 2026-10-22
+
+두 P1 모두 PR45 단독 기준으로 유효하다. PR46에만 있던 경계 목표0.6 허용/fixture를 PR45에 같은 hunk로 이식했다. 기존경계fixture·실제Unity왕복근거재사용/서버임계값변경0/Unity재입력0.
+
+DummyClients를 ACTION26/ACK47·ownershipEpoch와 첫Player/MonsterFull쌍 준비에 맞췄다. 청크/빈Monster·최신generation·권위좌표반영/lead0.6/2초×3resync를지원하며 구소켓응답은캡처session으로만처리해새슬롯오염을막았다. 독립최종P1P2없음,NET8빌드PASS(경고27/오류0),네트워크없는protocol-self-test1회PASS. namespace/접근성중간빌드실패는기록보존했다.
+
+PR45_REVIEW_RESULTS.txt 참조. 실제부하/서버교체/DB변경0,AI/A*·원본GameWIP보존. 기존PR45게시후PR46에일반merge로이어반영한다. 새PR/강제push/PR병합은하지않는다.
+
 ## 최신 master 이력 보존 — 2026-10-22
 
 PR44가 병합된 origin/master521c7a8을 일반 merge로 보존했다. 제품 코드는 자동 병합됐고 충돌한 AGENT_USAGE/HANDOFF/INPUT_TEST_BATCH는 양쪽 기록을 모두 보존했다. 원본 Game/ROOT WIP와 실행 서버는 변경하지 않았다. 선행 PR45 충돌 해소 후 이 merge를 기존 PR46에 이어 반영한다. 강제push/PR병합0.

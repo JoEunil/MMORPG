@@ -1,3 +1,7 @@
+## PR45 리뷰 보완 — Dummy 도구의 동일 wire 사용
+
+DummyClients도 ACTION26/ownershipEpoch와 확장 구역 응답·첫 Full 쌍을 사용한다. 서버/ClientCore 규약을 낮추지 않으며 예전18바이트 Dummy 행동 패킷은 현재 후보에서 지원하지 않는다. 안전한 네트워크 없는 검증은 DummyClients의 --protocol-self-test 모드다. 인자가 없는 기존5000클라이언트 부하 모드는 이번에 실행하지 않았다. 실제 처리량은 별도 서버 지표와 함께 확인해야 한다. PR45_REVIEW_RESULTS.txt 참조.
+
 ## 실행 상태 — 2026-10-22
 
 같은후보 MainServer와ClientCore로 실제UI접속/HP0필드진입·조작차단·정상퇴장을 확인했다. HP복구는 하지 않았으며 생존이동/자동구역경계 확인은 남아 있다. 아래의 미기동/입력보류 설명은 최초검증시점 기록이며 최신결과는 MAP01_LIVE_RESULTS.txt를 따른다.
