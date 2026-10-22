@@ -1,5 +1,31 @@
 Town / explicit death respawn candidate — 2026-10-22
 
+Follow-up: posting approved, live transition blocked before execution
+- Human U0C9QEUHPMK reply1792648570.091499 '승인 TOWN01' matched
+  bot request1792648326.480519 in parent1792487679.299269.
+- Published https://github.com/JoEunil/MMORPG/pull/46, attached to task.
+  Base codex/world-map-export because prerequisite PR45 remains open.
+  Only town changes are shown; no merge/force push/PR44 integration.
+- Existing switch tool's pinned paths/PID/startticks/hashes were updated for
+  this exact old/new binary pair in an ignored local execution copy. Removed
+  ExecutionPolicy Bypass; Windows policy and runtime were not changed.
+- town_switch_review (code_reviewer/gpt-6.1-sol medium) read-only diff review:
+  P1/P2 none; hashes match; identity/deadline/exclusive console/q/native exit0/
+  persistence/drain/conditional rollback guards retained.
+- WindowsPowerShell -NoProfile -File Switch-TownLocalServer.ps1 -PreflightOnly
+  exited1 before script load with SecurityError/UnauthorizedAccess:
+  'running scripts is disabled on this system'. Actual q0/start0/DB write0.
+- No alternate runtime/helper/policy bypass was attempted after rejection.
+- Host reinspection: original PID24024 / World-Export/bin remains running;
+  sole 9999 listener24024, no clients. Town binary not running.
+- ROOT/CAND ClientCore DLL SHA256 identical:
+  1799E406D8040AA18D9D2F7446DD9E34AA75234D29F1CAB6EC6DBCB616EA0795.
+- Real town button input/response/capture still NOT EXECUTED. A policy-compliant
+  normal shutdown path or administrator-resolved execution block is needed.
+  Do not send opcode39 to the old backend or substitute a fake HP/state injection.
+- Agent cumulative new62/reactivation128/total190, actual tokens/cost N/A.
+- Earlier 'new approval required / not published' notes below are historical.
+
 Branch: codex/town-respawn, based on MAP01 PR45 head 9e7bec6.
 Scope: Zone1 no regular/strong/boss spawn; other five zones retain 112 each.
 Death button sends new RESPawn-to-town opcode39 / uint64 ownershipEpoch.

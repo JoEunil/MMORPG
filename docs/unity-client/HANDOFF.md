@@ -1,3 +1,9 @@
+## 최신 — PR46 게시 / 마을 실제 귀환은 Windows 정책 차단
+
+TOWN01 지정사람 승인1792648570.091499를 확인해 https://github.com/JoEunil/MMORPG/pull/46 게시·artifact첨부했다. 선행PR45가open이라 base는codex/world-map-export, town43파일diff만제공한다. 병합/이력교체0. 이전미게시표현은과거기록이다.
+
+기존전환도구의로컬고정사본을현재image/PID/startticks/hash로맞추고 ExecutionPolicy Bypass를삭제했다. 독립리뷰P1/P2없음/구문통과. 동일WindowsPowerShell -NoProfile -File -PreflightOnly는SecurityError/UnauthorizedAccess(스크립트실행비활성)로로드전차단/exit1. 정책변경·대체런타임/도우미·q·강제종료·새서버기동·DB쓰기0. ROOT기존MainServer24024(World-Export/bin),9999solelisten/noestablished를재확인했다. 새서버/DLL동시전환전39요청금지. 실제귀환입력/새캡처는미실행이며정상종료경로가마련되어야재개할수있다. 상세TOWN_RESPAWN_RESULTS.txt. 전문누적신규62/재활성화128/전체190/토큰N/A.
+
 ## TOWN01 승인 확인 — 2026-10-22
 
 지정사용자 U0C9QEUHPMK의 Slack1792648570.091499 원문 승인 TOWN01을 요청1792648326.480519/parent1792487679.299269와 대조했다. 이번 마을·명시적귀환 후보 게시에만 소비하며 병합승인은 아니다. 채팅의 정상서버전환·Unity실제귀환검증 직접 요청도 확인했다. PR45가 아직open이므로 codex/world-map-export를 base로 마을diff만 새PR하나에 담고 선행PR병합후master대상을 조정한다. 원격fetch확인/이력교체0.
