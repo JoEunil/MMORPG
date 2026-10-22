@@ -1,3 +1,7 @@
+## PR46 채팅 귀환 리뷰 — 2026-10-22
+
+feel02_server_review/code_reviewer(Sol medium) 재활성화1: 단일Join으로전환하는1행diff와실패범위독립검토,추가P1P2없음. Coordinator가실제PR46후보빌드와기존귀환2fixture를수행했다. 이전미게시FEEL02후보까지포함한누적신규69/재활성화153/활성화222,실제토큰·비용N/A. 이번전용추가실입력/서버재시작0.
+
 ## Unity 입력·종료 수명 보완 — 2026-10-22
 
 map_server_finish_audit/explorer 재활성화1: 과거 모션 객체 파괴/화면 종료 경로를 읽기 감사했다. town_switch_review/code_reviewer(gpt-6.1-sol medium) 재활성화1: Unity null가드10곳과 종료fixture 독립검토/최종P1P2없음. Coordinator가 한 번의 실제 접속/입력·캡처·정상퇴장·READONLY저장조회와 수명가드/fixture를 수행했다. 누적신규65/재활성화140/활성화205, 토큰·비용N/A. 입력 도구 실패와 해결을 제품 결함과 구분했다.

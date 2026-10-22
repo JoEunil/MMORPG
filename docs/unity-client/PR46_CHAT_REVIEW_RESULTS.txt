@@ -1,0 +1,9 @@
+PR46 town respawn chat transition review — 2026-10-22
+
+Finding: valid. Cross-zone respawn committed game ownership, then separately enqueued Leave and Join. If Leave was accepted but Join failed, the accepted Leave sequence could set chat membership to zone0.
+Correction: remove only EnqueueZoneLeave(sessionID, sourceID); retain one EnqueueZoneJoin(sessionID, TOWN_ZONE_ID), matching normal movement transfer.
+ProcessZoneJoin already removes the old membership before adding the destination; same-zone respawn and lost-ACK repair remain unchanged.
+Scope: no queue/lock/durable logger redesign, wire/DB/AI changes or Unity changes. A Join enqueue failure can still leave old chat membership; this patch removes the specific partial Leave/Join window, not every queue failure.
+Independent code review: finding valid; no new P1/P2.
+Validation: PR46 branch Release/x64 UnitTests build PASS (existing warnings remain); ExplicitRespawnRestoresVitalsAndMovesCrossZoneOrWithinTownWithoutChangingProgress PASS 1ms; RespawnRejectsLivingAndStaleRequestsAndRepairsLostAckIdempotently PASS 1ms; total2 PASS 3ms. These cover gameplay respawn/ACK behavior, not queue-failure injection. No live server/Unity inputs or saturation/durable failure injection performed.
+FEEL02 movement/map candidate remains separate and unpublished; its pending approval is not reused for this review correction.

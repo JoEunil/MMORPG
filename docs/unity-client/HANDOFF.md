@@ -1,3 +1,9 @@
+## PR46 채팅 귀환 리뷰 수정·검증 완료 — 2026-10-22
+
+리뷰지적타당. cross-zone귀환의 별도 EnqueueZoneLeave만제거하고 목적지Join1개로전환한다. ProcessZoneJoin의이전구역제거기능을재사용한다. 독립리뷰P1P2없음/실제PR46브랜치UnitTests Release빌드PASS/기존귀환2fixture PASS총3ms. 큐포화·durable실패주입/Unity입력/서버재전환0. 결과는PR46_CHAT_REVIEW_RESULTS.txt. 이수정은Join자체큐등록실패전반을복구하는것이아니다.
+
+제품수정3be07eb만기존PR46에반영하고별도FEEL02미게시기능묶음/승인대기는보존한다. 실행중44432서버는이번chat1행수정전바이너리이며교체하지않았다. 병합/Pages배포0. 원본Game/ROOTWIP보존.
+
 ## PR45 리뷰 보완 전달 완료 — 2026-10-22
 
 PR45 f44d687에두리뷰수정을일반push했고PR46 80e55b9에같은내용을일반merge했다. GitHub두PR Open/mergeabletrue확인,본문에수정·검증·실제부하미실행을반영했다. UnityCoordinator봇스레드1792656092.713099/완료채널1792656093.403019보고완료. PR병합/새wire/서버재기동/DB변경/Unity재입력0. 누적전문신규66/재활성화145/전체211/토큰N/A. 작업완료로그로아래예정문구보다우선한다.
