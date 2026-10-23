@@ -1,3 +1,9 @@
+## CLEAN01 최종 게시 승인 대기 — 2026-10-23
+
+UnityCoordinator앱 새작업parent/request1792748383.070499에 승인 CLEAN01을 요청했다. 전달branch codex/client-structure-cleanup/master f67ca1a기준,제품c4bcff8+공통지침c7efb88와사용자AI설명정정문서/최종인계를한PR로묶는다. ROOT수신registry자동등록,실제수신기재기동launcher26868/Node33572/listening·health2.7s확인. 현재3표시검사PASS/독립리뷰P1P2없음,실제게임/서버AI변경0. 후보제품은검증c306f4d와동일하며문서갱신때문에재시험하지않는다.
+
+승인원문은고정human U0C9QEUHPMK/채널C0C9VFZMV43/이새부모에서확인하고회신ID·HANDOFF기소비여부대조후일반fetch/push와새PR1개생성·artifact첨부한다. PR46은이미병합됐으므로수정하지않는다. 이전SLACK01/수신확인으로게시하지않으며,이승인은게임서버AI변경/병합/강제push승인이아니다. PR본문초안은ROOTUnityClient/Builds/ClientCleanup/pr-body.txt. 승인전push/PR0.
+
 ## 클라이언트 구조 정리 후보·최소 검증 완료 — 2026-10-23
 
 사용자재개지시로중복/불필요상태정리만진행했다. C11 아이템4분기→단일정의표,C07 selectedCard중복필드/SetTopRight불용함수제거,C05사각형계산/C04동일LineRenderer설정통합. 제품4파일순감64행,신규Manager/인터페이스/파일이동/직렬화·메타·asmdef변경0. 사용자가변경한서버몬스터AI/Cell이동/스킬phase/프로토콜은변경0. 가방/시장요청머신은실패의미가달라유지했다.

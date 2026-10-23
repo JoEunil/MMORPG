@@ -1,3 +1,7 @@
+## 최신 — 사용자 서버 AI 변경과 내보내기 구분 / 2026-10-23
+
+사용자가 A* 없이 상태 머신 추상화·몬스터 Cell 간 이동·목표 도착 후 10~30틱 배회 대기·이동한 위치의 스킬 phase 시전을 변경했다고 알렸다. 배회 대기는 Wandering의 wanderPauseTicks이며 별도 WanderPhase enum은 없다. 아래 Cell 제한과 A* 후속 계획은 이전 Exporter 후보의 기록으로만 읽는다. 통행 데이터·AOI Cell·Zone 소유권은 계속 구분하며 사용자 변경을 덮어쓰지 않는다. 새 서버 소스 통합 및 실행 검증은 이번 지침 수정과 별개다.
+
 ## 최신 후보 — 서버 공간 설정도 Export에서 직접 사용 / 2026-10-22
 
 통행 비트에 더해 Config의 구역 수와 Cell의 구역 크기·행열·중첩·AOI Cell 크기를 WorldMap.inc에서 파생한다. ZoneInit과 소유권 전환 경계는 exported Zones를 사용한다. Cell.h는 AOI 실행 컨테이너와 인접 송신 처리이므로 유지한다. nav tile과 AOI Cell은 별개다.
@@ -89,11 +93,11 @@ FormatVersion과 ContentVersion, ZoneColumns/Rows, ZoneCoreSize, TransitionMargi
 
 서버 자동 전환·첫 Full 동기화도 구현하고 직접 영향 자동 검증을 통과했다(WORLD_EXPORT_TRANSITION_RESULTS.txt). 생성물을 사용하는 서버에서 실제 귀환과 벽 정지·1→2→1 이동·조작 복귀까지 확인했다(TOWN_RESPAWN_LIVE_RESULTS.txt, MAP_UNITY_INPUT_RESULTS.txt). 현재 이동 수치와 후속 실입력 결과는 FEEL02_RESULTS.txt를 따른다. 이 근거는 모든 모서리·가변 지연·새 몬스터 교전의 검증을 뜻하지 않는다.
 
-## 몬스터 AI 작업 인계
+## 몬스터 AI 인계 — 내보내기 당시 기록
 
 Map Exporter와 이번 마무리는 AI 상태 머신을 변경하지 않는다. 앞선 마을 작업에서 `ZoneState_Monsters.cpp`의 초기 스폰만 마을0으로 제한한 것과 AI 개편을 구분한다. 기존 추적은 현재 Cell의 area를 넘으면 aggro를 풀고, 배회도 해당 Cell과 spawn 반경 안으로 제한한다. 내비게이션 선분 검사는 이미 사용 중이지만 A* 탐색은 없다.
 
-후속 A*에서는 WorldMap의 통행 bits/IsWalkable/CanTraverse를 사용하고, 구역 로컬 경로를 쓰면 ZoneOrigin을 더해 글로벌 좌표로 조회한다. Cell 밖으로 이동시키려면 좌표뿐 아니라 m_cells의 monsterIndexes 및 monster.cellX/cellY 소속을 함께 갱신해야 한다. AOI Cell을 A* 노드로 사용하지 않는다.
+통행 데이터 조회에는 WorldMap의 통행 bits/IsWalkable/CanTraverse를 사용하고, 구역 로컬 경로를 쓰면 ZoneOrigin을 더해 글로벌 좌표로 조회한다. Cell 밖으로 이동시키려면 좌표뿐 아니라 m_cells의 monsterIndexes 및 monster.cellX/cellY 소속을 함께 갱신해야 한다. AOI Cell을 A* 노드로 사용하지 않는다.
 
 ActorClearance는 현재 한 가지 값으로 전체 통행 격자에 적용한다. 몬스터마다 다른 반지름을 지원하는 다중 통행 격자를 이번 작업에서 추가한 것은 아니다. 큰 모델을 위한 여유는 후속 AI/콘텐츠 작업에서 명시적으로 결정한다.
 
