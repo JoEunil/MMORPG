@@ -1,0 +1,26 @@
+성채 아트·하단 상태창·차징 영역 / 2026-10-23
+
+범위: ART01 후속을 같은 codex/knight-art-direction 묶음에 통합. HP 604x34 / MP 604x27 하단 전용 plate, 스킬 strip 상단 분리, 채팅/가방/시장 바닥 여백. 실제 uGUI control과 C05 lifecycle 참조 유지.
+C05 자체 캐릭터 accepted phase0에 authored Hit range와 waitTicks를 사용해 3슬롯 Circle/Rectangle translucent filled mesh + growing fill 표시. phase별 서버 위치/방향을 사용하고 사망/구역/세션/disable/timeout에 정리. 별도 charge/release meshes와 buffers로 unrelated release가 charge를 지우지 않도록 수정. 기존 cooldown 계약 유지.
+기사: 40-sided curved breastplate, shoulder curvature, tempered steel albedo and procedural linear normal, tangent data on UV meshes, existing named pivots/serialized prefab GUID 유지. 리깅 없음.
+필드: 원래 obstacle18개에 bevel stone modules/closed iron gates/buttresses/battlements/banners/torches, ground 밖 서·남쪽 성벽과 oak silhouettes, grass/paving. 5 builtin imagegen original bitmap 생성·원본 보존. 기존 URP 조명/scene reflection/ACES·color·bloom Profile serialized components 추가. 메뉴 삽화는 방향 참조이며 동일한 3D 품질 달성으로 주장하지 않음.
+
+검증 (최종 제품 저작 동결 후)
+- Unity native recompile_status completed, compilationFailed=false/errors=[] (6000.0.47f1).
+- 독립 리뷰 P2: unrelated release charge 제거 / facade protrusion / normal tangents 누락 수정. 최종 신규 P1/P2 없음. 마지막 ambient/exposure 색값 조정은 동일 책임 내 시각 피드백이며 구조 변경 없음.
+- C05 AimTextUsesMovementDirections_AndPhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear PASS.
+- C05 ChargeTelegraphsFillAllSkillShapesShowProgressAndReleaseAtEachServerPhasePosition PASS. 3슬롯 면·progress,4방향,세션/사망/해제·unrelated charge 보존 포함.
+- 18개 Masonry의 모든 Renderer XZ bounds가 원래 obstacle footprint 내 PASS, new environment colliders0, 실제 ObservedPlayer UV meshes missing tangents0.
+- C19/서버/로그인/이동 과거 PASS 반복0. Play/실입력/서버 재시작/실전 피해 검증0. detached component checks와 staged Editor render를 UI 실행 성공으로 보고하지 않음.
+- native final-state: Playing=False, shader compiler error0, temporary camera/fixture잔여0,Scene saved/dirty=False. PC_RPAsset의 기존 HDR=true이며 에디터 version reserialize diff3개는 전달하지 않음.
+- 모든 네비게이션/map asset/서버/AI/프로토콜 diff0 (최종 Git 범위검사). 기존 blocked footprints와 colliders 유지. Grass는 통행 가능한 낮은 비충돌 장식.
+
+미디어
+citadel-hud-preview.png: 실제 field/model/uGUI Editor 렌더, 임시 HP760/1000·MP320/500/chat 예시. 복원 후 Scene에 저장하지 않음.
+citadel-walls-preview.png / citadel-obstacle-preview.png: 실제 authored environment Editor 렌더, 임시 카메라 복원.
+citadel-charge-preview.gif: 실제 Unity 렌더 PNG20프레임960x540, staged accepted phase/charge timestamps. 순서/팔레트 변환만 하여 조립. 실서버/입력 영상 아님.
+초기 HDR 렌더 캡처의 어두움은 half-float readback 색 공간 차이와 환경광을 대조해 sRGB 출력으로 확인. 실제 조명전환 방식(single PreviewSun)은 보존.
+site build/link validation PASS, 기존 날짜별 화면 보존. 실제 브라우저 새 HUD/GIF 로드 확인. Standalone 성능/실전 조작감은 미검증.
+
+전달
+ART01 요청은 사용자 범위 확장으로 무효. ART02 새 요청을 같은 art 부모1792754611.740799에 남긴 뒤 정확한 승인 전 push/PR/Pages배포 보류. 승인 시 원격 fetch와 PR48 상태를 확인해 기존 이력을 보존. 서버·사용자 AI를 변경하거나 승인 없이 병합하지 않음.

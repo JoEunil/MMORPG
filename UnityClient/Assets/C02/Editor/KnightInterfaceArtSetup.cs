@@ -80,15 +80,25 @@ public static class KnightInterfaceArtSetup
         }
         var hud = ((GameObject)refs.FindProperty("worldHud").objectReferenceValue).transform;
         var combat = hud.parent.Find("C05CombatPanel") as RectTransform;
-        SkinPanel(combat, 6);
-        combat.sizeDelta = new Vector2(360, 174);
+        combat.GetComponent<Image>().color = Color.clear;
+        foreach (string ornament in new[] { "ForgedFrame", "FrameOrnaments" })
+            if (combat.Find(ornament) != null) combat.Find(ornament).gameObject.SetActive(false);
+        combat.sizeDelta = new Vector2(660, 196);
         combat.anchoredPosition = new Vector2(0, 8);
-        Gauge(combat, "C12HpTrack", -14, 28, new Color(.68f, .055f, .075f));
-        Gauge(combat, "C12MpTrack", -48, 20, new Color(.065f, .29f, .64f));
+        var vitalsPlate = Child(combat, "VitalsPlate");
+        Place(vitalsPlate, new Vector2(0, 1), new Vector2(0, -94), new Vector2(660, 102));
+        SkinPanel(vitalsPlate, 8);
+        vitalsPlate.SetAsFirstSibling();
+        Gauge(combat, "C12HpTrack", -110, 34, new Color(.68f, .055f, .075f));
+        Gauge(combat, "C12MpTrack", -153, 27, new Color(.065f, .29f, .64f));
+        var skillPlate = Child(combat, "SkillPlate");
+        Place(skillPlate, new Vector2(0, 1), new Vector2(219, -8), new Vector2(222, 78));
+        SkinPanel(skillPlate, 10);
+        skillPlate.SetAsFirstSibling();
         for (int i = 0; i < 3; i++)
         {
             var skill = combat.Find("C05Skill" + i) as RectTransform;
-            Place(skill, new Vector2(0, 1), new Vector2(86 + i * 66, -80), new Vector2(56, 62));
+            Place(skill, new Vector2(0, 1), new Vector2(236 + i * 66, -16), new Vector2(56, 62));
             SkinButton(skill.GetComponent<Button>(), 12);
             var key = skill.Find("SkillKeyBadge/SkillKey")?.GetComponent<TMP_Text>();
             if (key != null) { key.fontSize = 22; key.color = Color.white; key.fontStyle = FontStyles.Bold; }
@@ -103,6 +113,7 @@ public static class KnightInterfaceArtSetup
         {
             var panel = hud.parent.Find(name) as RectTransform;
             SkinPanel(panel, 6);
+            if (name != "C06ChatPanel") panel.anchoredPosition = new Vector2(-24, 118);
             foreach (var image in panel.GetComponentsInChildren<Image>(true))
                 if (image.name == "InventoryParchment" || image.name == "BazaarParchment" || image.name == "ChatInset")
                 { image.sprite = leather; image.type = Image.Type.Simple; image.color = new Color(.62f, .54f, .43f); }
@@ -110,6 +121,7 @@ public static class KnightInterfaceArtSetup
         }
         var chat = hud.parent.Find("C06ChatPanel") as RectTransform;
         chat.sizeDelta = new Vector2(400, 260);
+        chat.anchoredPosition = new Vector2(24, 118);
         var inset = chat.Find("ChatInset");
         var inputRect = inset.Find("ChatInput") as RectTransform;
         inputRect.sizeDelta = new Vector2(266, 34);
@@ -139,7 +151,7 @@ public static class KnightInterfaceArtSetup
     private static void Gauge(RectTransform panel, string name, float y, float height, Color color)
     {
         var track = panel.Find(name) as RectTransform;
-        Place(track, new Vector2(0, 1), new Vector2(28, y), new Vector2(304, height));
+        Place(track, new Vector2(0, 1), new Vector2(28, y), new Vector2(604, height));
         track.GetComponent<Image>().color = new Color(.045f, .035f, .03f);
         var fill = track.Find("Fill").GetComponent<Image>();
         fill.color = color;
@@ -149,7 +161,7 @@ public static class KnightInterfaceArtSetup
         shine.GetComponent<Image>().color = new Color(1, .94f, .78f, .16f);
         Border(track, 24);
         foreach (var text in track.GetComponentsInChildren<TMP_Text>(true))
-        { text.fontSize = height > 24 ? 18 : 15; text.color = new Color(.98f, .94f, .83f); text.transform.SetAsLastSibling(); }
+        { text.fontSize = height > 30 ? 23 : 19; text.color = new Color(.98f, .94f, .83f); text.transform.SetAsLastSibling(); }
     }
 
     private static void SkinPanel(RectTransform rect, float multiplier)

@@ -1,3 +1,13 @@
+## 성채 필드·대형 하단 게이지·차징 — 2026-10-23
+
+| 담당 | 신규 | 재활성화 | 실제 결과 |
+| --- | ---: | ---: | --- |
+| knight_visual_refinement / asset_artist | 0 | 2 | 원래 충돌 footprint를 지키는 석벽/철문/수목 geometry 및 돌출 장식 수정 |
+| knight_attack_presentation / worker | 0 | 2 | 면 형태 3스킬 차징·관련 fixture, 별도 release lifetime 보완 |
+| knight_art_review / code_reviewer | 0 | 3 | charge/범위/재질·Volume 검토, P2 3건 발견 후 최종 신규 P1/P2 없음 |
+
+Coordinator가 기존 Editor를 단독 조작해 UI·기사 재질/접선·조명 통합, builtin imagegen5건, 관련2검사와 bounds 검사, 실제 Editor 렌더/GIF·공개 MD 갱신을 수행했다. 전용 tester 신규 실행/모델 변경 없음. 누적 신규77/재활성화173/활성화250. 실제 토큰·비용은 미노출 N/A. 단순 메시지는 활성화에서 제외.
+
 ## 기사 아트·게임 UI·스킬 연출 — 2026-10-23
 
 | 담당 | 신규 | 재활성화 | 실제 결과 |

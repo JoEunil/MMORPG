@@ -49,15 +49,15 @@ Mesh:
       format: 0
       dimension: 3
     - stream: 0
-      offset: 0
-      format: 0
-      dimension: 0
-    - stream: 0
-      offset: 0
-      format: 0
-      dimension: 0
-    - stream: 0
       offset: 24
+      format: 0
+      dimension: 4
+    - stream: 0
+      offset: 0
+      format: 0
+      dimension: 0
+    - stream: 0
+      offset: 40
       format: 0
       dimension: 2
     - stream: 0
@@ -96,8 +96,8 @@ Mesh:
       offset: 0
       format: 0
       dimension: 0
-    m_DataSize: 288
-    _typelessdata: 46c480bdc2d27f3dc49488bb9e0c39bf100c083d72b130bf0000003f0000003f464c13bde2b4f63a8cd4e0bc25e610bfa46f62bed34f4bbf295c0f3e0ad7233f8c56cebd4086733d81dc303dcc7b64bfcc8782beb17dbebe8fc2753e3d0a173fe4268ebdd772d93d7c824e3c88c240bffe16e73e842ff5becdcc4c3e713d0a3f15cef3bc761ca73d0999f6bcd74ccbbec2cb983e9e2f5ebf295c0f3e295c0f3f7a89dfbce876c23aeafa9cbc42ee14be24d97bbf8efdd63d295c0f3e0ad7233fc892bcbd50e4713d52c9523d9adc30bf94c160bdbb8c383f8fc2753e3d0a173f40c678bddfa1d83de01aab3cfd620d3d46d47f3fd79f433ccdcc4c3e713d0a3f02bfacbc7e4ba63d66bfb2bcf5082d3f4260773ef33d32bf295c0f3e295c0f3f
+    m_DataSize: 432
+    _typelessdata: 46c480bdc2d27f3dc49488bb9e0c39bf100c083d72b130bf8b5231be16c679bf15a1093e000080bf0000003f0000003f464c13bde2b4f63a8cd4e0bc25e610bfa46f62bed34f4bbfc67a68be156162bf2be8d03e000080bf295c0f3e0ad7233f8c56cebd4086733d81dc303dcc7b64bfcc8782beb17dbebe3de76c3e1a8777bfe94cdc3d0000803f8fc2753e3d0a173fe4268ebdd772d93d7c824e3c88c240bffe16e73e842ff5bea729d5be90ea63bfa2ea3cbe0000803fcdcc4c3e713d0a3f15cef3bc761ca73d0999f6bcd74ccbbec2cb983e9e2f5ebf5da304bf7b7b5abfac1467bd000080bf295c0f3e295c0f3f7a89dfbce876c23aeafa9cbc42ee14be24d97bbf8efdd63d24897b3cc9add43de7957e3f000080bf295c0f3e0ad7233fc892bcbd50e4713d52c9523d9adc30bf94c160bdbb8c383fbe821bbd449d7f3f4645223d000080bf8fc2753e3d0a173f40c678bddfa1d83de01aab3cfd620d3d46d47f3fd79f433c4e19d8b9ff8143bc55fb7f3f0000803fcdcc4c3e713d0a3f02bfacbc7e4ba63d66bfb2bcf5082d3f4260773ef33d32bf374f2cbeea6a783f9f7e313e0000803f295c0f3e295c0f3f
   m_CompressedMesh:
     m_Vertices:
       m_NumItems: 0

@@ -72,7 +72,7 @@ public static class KnightVisualRefinement
 
         // Each replacement remains on the original object; added details follow that object's motion.
         Replace(visual, "Breastplate", Shell("Breastplate", new[] {1.13f,1.17f,1.23f,1.40f,1.55f,1.60f,1.63f},
-            new[] {.18f,.196f,.193f,.243f,.268f,.242f,.212f},
+            new[] {.18f,.196f,.193f,.257f,.286f,.257f,.218f},
             new[] {.139f,.160f,.168f,.195f,.178f,.147f,.123f}, .025f), steel);
         Transform breast = visual.Find("Breastplate");
         ClearDetails(breast);
@@ -163,6 +163,12 @@ public static class KnightVisualRefinement
         Extrusion("KnightShieldCrest",shield,new[]{new Vector2(-.435f,1.40f),new Vector2(-.411f,1.29f),new Vector2(-.345f,1.26f),new Vector2(-.411f,1.23f),new Vector2(-.435f,1.10f),new Vector2(-.459f,1.23f),new Vector2(-.525f,1.26f),new Vector2(-.459f,1.29f)},-.229f,.013f,gold);
         foreach(string old in new[]{"ShieldInsignia","ShieldInsigniaBar"})
             if(visual.Find(old)!=null) visual.Find(old).GetComponent<MeshRenderer>().enabled=false;
+        foreach(var filter in visual.GetComponentsInChildren<MeshFilter>(true))
+        {
+            var mesh=filter.sharedMesh;
+            if(mesh!=null && mesh.uv.Length==mesh.vertexCount && mesh.tangents.Length!=mesh.vertexCount)
+            {mesh.RecalculateTangents();EditorUtility.SetDirty(mesh);}
+        }
     }
 
     private static void PreviewLighting(Transform diorama)
@@ -209,13 +215,13 @@ public static class KnightVisualRefinement
         string path=Folder+name+".asset";
         var mesh=AssetDatabase.LoadAssetAtPath<Mesh>(path);
         if(mesh==null){mesh=new Mesh{name=name};AssetDatabase.CreateAsset(mesh,path);}else mesh.Clear();
-        mesh.SetVertices(vertices);mesh.SetTriangles(triangles,0);mesh.SetUVs(0,uv);mesh.RecalculateNormals();mesh.RecalculateBounds();
+        mesh.SetVertices(vertices);mesh.SetTriangles(triangles,0);mesh.SetUVs(0,uv);mesh.RecalculateNormals();mesh.RecalculateTangents();mesh.RecalculateBounds();
         EditorUtility.SetDirty(mesh);return mesh;
     }
 
     private static Mesh Shell(string name,float[] heights,float[] widths,float[] depths,float keel)
     {
-        const int sides=24;
+        const int sides=40;
         var v=new List<Vector3>();var t=new List<int>();var uv=new List<Vector2>();
         for(int j=0;j<heights.Length;j++)for(int i=0;i<=sides;i++)
         {
@@ -248,7 +254,8 @@ public static class KnightVisualRefinement
         {
             float a=Mathf.PI*.08f+Mathf.PI*.84f*i/16;
             float radius=row==0?.82f:row==3?.96f:1f;
-            v.Add(center+new Vector3(-Mathf.Cos(a)*width*radius,(.5f-row/3f)*height,-Mathf.Sin(a)*depth*radius));
+            float crown=Mathf.Sin(a)*.045f*(1f-row/3f);
+            v.Add(center+new Vector3(-Mathf.Cos(a)*width*radius,(.5f-row/3f)*height+crown,-Mathf.Sin(a)*depth*radius));
             uv.Add(new Vector2(i/16f,row/3f));
         }
         for(int row=0;row<3;row++)for(int i=0;i<16;i++){int a=row*17+i;t.AddRange(new[]{a,a+17,a+1,a+1,a+17,a+18});}
@@ -330,7 +337,29 @@ public static class KnightVisualRefinement
             }
             texture.SetPixels(pixels);texture.Apply(true,false);AssetDatabase.CreateAsset(texture,path);
         }
-        steel.mainTexture=texture;edge.mainTexture=texture;steel.mainTextureScale=new Vector2(2,3);edge.mainTextureScale=new Vector2(2,3);
+        var albedo=AssetDatabase.LoadAssetAtPath<Texture2D>(Folder+"tempered-steel-albedo.png");
+        if(albedo==null)throw new FileNotFoundException("Import the tempered-steel material source before refinement.");
+        steel.mainTexture=albedo;steel.color=new Color(.74f,.80f,.87f);steel.mainTextureScale=new Vector2(1.4f,1.4f);
+        steel.SetFloat("_Metallic",.76f);steel.SetFloat("_Smoothness",.48f);
+        edge.mainTexture=texture;edge.color=new Color(.52f,.57f,.63f);edge.mainTextureScale=new Vector2(2,3);
+        edge.SetFloat("_Metallic",.88f);edge.SetFloat("_Smoothness",.68f);
+        string normalPath=Folder+"ForgedMicroNormal.asset";
+        var normal=AssetDatabase.LoadAssetAtPath<Texture2D>(normalPath);
+        if(normal==null)
+        {
+            normal=new Texture2D(128,128,TextureFormat.RGBA32,true,true){name="ForgedMicroNormal",wrapMode=TextureWrapMode.Repeat,filterMode=FilterMode.Trilinear};
+            var normals=new Color[128*128];
+            for(int y=0;y<128;y++)for(int x=0;x<128;x++)
+            {
+                float dx=Mathf.PerlinNoise((x+1)*.34f,y*.06f)-Mathf.PerlinNoise((x-1)*.34f,y*.06f);
+                float dy=Mathf.PerlinNoise(x*.34f,(y+1)*.06f)-Mathf.PerlinNoise(x*.34f,(y-1)*.06f);
+                Vector3 n=new Vector3(-dx*.5f,-dy*.5f,1).normalized;
+                normals[y*128+x]=new Color(n.x*.5f+.5f,n.y*.5f+.5f,n.z*.5f+.5f,1);
+            }
+            normal.SetPixels(normals);normal.Apply(true,false);AssetDatabase.CreateAsset(normal,normalPath);
+        }
+        steel.SetTexture("_BumpMap",normal);steel.SetFloat("_BumpScale",.55f);steel.EnableKeyword("_NORMALMAP");
+        EditorUtility.SetDirty(steel);EditorUtility.SetDirty(edge);
     }
 
     private static Material MaterialAsset(string name,Color color,float metallic,float smoothness)

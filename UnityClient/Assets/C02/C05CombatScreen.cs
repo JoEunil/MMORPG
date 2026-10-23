@@ -30,15 +30,21 @@ namespace C02
         [SerializeField] private UnityEngine.UI.Image mpFill;
         private IViewModelUI model;
         private Action<ushort, ActionResultField[]> actionResults;
-        private LineRenderer linePreview;
-        private Material previewMaterial;
-        private float linePreviewDeadline;
         private GameObject releaseEffectRoot;
         private MeshRenderer releaseEffectRenderer;
         private Mesh releaseEffectMesh;
         private ParticleSystem releaseSparks;
         private Material releaseEffectMaterial;
         private Material sparkMaterial;
+        private GameObject chargeTelegraphRoot;
+        private MeshRenderer chargeTelegraphRenderer;
+        private Mesh chargeTelegraphMesh;
+        private Material chargeTelegraphMaterial;
+        private readonly Vector3[] chargeVertices = new Vector3[512];
+        private readonly Color[] chargeColors = new Color[512];
+        private readonly int[] chargeTriangles = new int[2048];
+        private int chargeVertexCount;
+        private int chargeIndexCount;
         private readonly Vector3[] releaseBaseVertices = new Vector3[512];
         private readonly Vector3[] releaseVertices = new Vector3[512];
         private readonly float[] releaseVertexRise = new float[512];
@@ -49,6 +55,17 @@ namespace C02
         private Vector3 releaseEffectOrigin;
         private float releaseEffectDeadline;
         private byte releaseEffectSlot;
+        private bool chargeTelegraphActive;
+        private byte chargeTelegraphSlot;
+        private C14SkillRange chargeTelegraphRange;
+        private Vector3 chargeTelegraphOrigin;
+        private byte chargeTelegraphDirection;
+        private float chargeTelegraphRadius;
+        private float chargeTelegraphLength;
+        private float chargeTelegraphWidth;
+        private float chargeTelegraphStarted;
+        private float chargeTelegraphDeadline;
+        private float chargeTelegraphDuration;
         private readonly float[] cooldownDeadlines = new float[3];
         private readonly GameObject[] cooldownOverlays = new GameObject[3];
         private GameObject skillTooltip;
@@ -62,9 +79,6 @@ namespace C02
         private ushort observedZone;
         private uint ownId;
         private ulong observedCharacterId;
-        private const float LineRangeLength = 12f;
-        private const float LineRangeWidth = 3f;
-        private const float LinePreviewLifetime = 2f;
         private const float ServerTickSeconds = 0.05f;
         private const float ReleaseEffectLifetime = 0.35f;
         private const int EffectArcSegments = 36;
@@ -97,7 +111,7 @@ namespace C02
 
         private void ChangeClient(IViewModelUI next)
         {
-            HideLinePreview();
+            HideChargeTelegraph();
             HideReleaseEffect();
             HideSkillTooltip();
             HideDefeatPanel();
@@ -155,7 +169,7 @@ namespace C02
                 var state = worldScreen.OwnFull;
                 if (state.hp == 0)
                 {
-                    HideLinePreview();
+                    HideChargeTelegraph();
                     HideReleaseEffect();
                     HideSkillTooltip();
                     combatStatusText.text = string.Empty;
@@ -176,7 +190,7 @@ namespace C02
             }
             else
             {
-                HideLinePreview();
+                HideChargeTelegraph();
                 HideReleaseEffect();
                 HideSkillTooltip();
                 HideDefeatPanel();
@@ -202,7 +216,7 @@ namespace C02
 
         private void ResetObservation()
         {
-            HideLinePreview();
+            HideChargeTelegraph();
             HideReleaseEffect();
             HideSkillTooltip();
             HideDefeatPanel();
@@ -367,8 +381,7 @@ namespace C02
                 if (respawnButton != null) respawnButton.interactable = WorldAvailable && worldScreen.OwnFull.hp == 0;
                 if (defeatMessage != null) defeatMessage.text = "No recovery response yet.\nTry again or log out.";
             }
-            if (linePreview != null && linePreview.enabled && Time.unscaledTime >= linePreviewDeadline)
-                HideLinePreview();
+            UpdateChargeTelegraph();
             UpdateReleaseEffect();
             UpdateSkillTooltip();
             UpdateCooldownOverlays();
@@ -382,7 +395,7 @@ namespace C02
         {
             if (!WorldAvailable || worldScreen.OwnFull.hp == 0)
             {
-                HideLinePreview();
+                HideChargeTelegraph();
                 HideReleaseEffect();
                 return;
             }
@@ -405,42 +418,47 @@ namespace C02
                 {
                     if (TryGetSkill(result.skillSlot, out var skill) && skill.cooldownTicks > 0)
                         cooldownDeadlines[result.skillSlot] = Time.unscaledTime + skill.cooldownTicks * ServerTickSeconds;
-                    if (result.skillSlot == 2) ShowLinePreview(result);
+                    if (result.skillSlot <= 2) ShowChargeTelegraph(result);
                 }
                 else
                 {
-                    if (result.skillSlot == 2) HideLinePreview();
+                    if (chargeTelegraphActive && chargeTelegraphSlot == result.skillSlot) HideChargeTelegraph();
+                    HideReleaseEffect();
                     ShowReleaseEffect(result);
                 }
             }
             UpdateCooldownOverlays();
         }
 
-        private void ShowLinePreview(ActionResultField result)
+        private void ShowChargeTelegraph(ActionResultField result)
         {
-            if (linePreview == null)
+            HideChargeTelegraph();
+            if (!TryGetSkill(result.skillSlot, out var skill) || skill.phases == null || skill.phases.Length < 2 ||
+                skill.phases[0] == null || skill.phases[0].action != C14SkillAction.Charging || skill.phases[1] == null) return;
+            var hit = skill.phases[1];
+            if (hit.action != C14SkillAction.Hit || hit.waitTicks == 0 || !Finite(hit.range1) || hit.range1 <= 0) return;
+            if (hit.range == C14SkillRange.Circle)
             {
-                previewMaterial = CreateSkillMaterial();
-                if (previewMaterial == null) return;
-                var previewObject = new GameObject("C05 Line Skill Range");
-                previewObject.transform.SetParent(worldScreen.transform, false);
-                linePreview = previewObject.AddComponent<LineRenderer>();
-                linePreview.sharedMaterial = previewMaterial;
-                linePreview.useWorldSpace = true;
-                linePreview.loop = true;
-                linePreview.positionCount = 4;
+                if (!Finite(hit.range2) || hit.range2 != 0) return;
             }
-
-            linePreview.widthMultiplier = 0.12f;
-            linePreview.positionCount = 4;
-            linePreview.startColor = linePreview.endColor = new Color(1f, 0.72f, 0.16f, 0.92f);
-
-            // ActionResult has no dimensions; this outline mirrors the fixed server skill 2 contract (12 x 3).
-            // Points use server x/y as global X/Z, so the C02Client parent transform does not offset the range.
-            for (int point = 0; point < 4; point++)
-                linePreview.SetPosition(point, RectangleCorner(result, point, 0.05f, LineRangeLength, LineRangeWidth));
-            linePreview.enabled = true;
-            linePreviewDeadline = Time.unscaledTime + LinePreviewLifetime;
+            else if (hit.range == C14SkillRange.Rectangle)
+            {
+                if (!Finite(hit.range2) || hit.range2 <= 0) return;
+            }
+            else return;
+            if (!EnsureChargeTelegraph()) return;
+            chargeTelegraphActive = true;
+            chargeTelegraphSlot = result.skillSlot;
+            chargeTelegraphRange = hit.range;
+            chargeTelegraphOrigin = new Vector3(result.x, .07f, result.y);
+            chargeTelegraphDirection = result.dir;
+            chargeTelegraphRadius = hit.range1;
+            chargeTelegraphLength = hit.range1;
+            chargeTelegraphWidth = hit.range2;
+            chargeTelegraphStarted = Time.unscaledTime;
+            chargeTelegraphDuration = hit.waitTicks * ServerTickSeconds;
+            chargeTelegraphDeadline = chargeTelegraphStarted + chargeTelegraphDuration;
+            UpdateChargeTelegraph();
         }
 
         private void ShowReleaseEffect(ActionResultField result)
@@ -545,6 +563,24 @@ namespace C02
             particleRenderer.renderMode = ParticleSystemRenderMode.Billboard;
             particleRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             particleRenderer.receiveShadows = false;
+            return true;
+        }
+
+        private bool EnsureChargeTelegraph()
+        {
+            if (chargeTelegraphRoot != null) return true;
+            chargeTelegraphMaterial = CreateSkillMaterial();
+            if (chargeTelegraphMaterial == null) return false;
+            chargeTelegraphRoot = new GameObject("C05 Skill Charge Area");
+            chargeTelegraphRoot.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            chargeTelegraphMesh = new Mesh { name = "C05 Skill Charge Mesh" };
+            chargeTelegraphMesh.MarkDynamic();
+            chargeTelegraphRoot.AddComponent<MeshFilter>().sharedMesh = chargeTelegraphMesh;
+            chargeTelegraphRenderer = chargeTelegraphRoot.AddComponent<MeshRenderer>();
+            chargeTelegraphRenderer.sharedMaterial = chargeTelegraphMaterial;
+            chargeTelegraphRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            chargeTelegraphRenderer.receiveShadows = false;
+            chargeTelegraphRenderer.enabled = false;
             return true;
         }
 
@@ -722,6 +758,96 @@ namespace C02
                 : new Vector3(result.x + reach, height, result.y + side);
         }
 
+        private void UpdateChargeTelegraph()
+        {
+            if (!chargeTelegraphActive || chargeTelegraphMesh == null || chargeTelegraphRenderer == null) return;
+            if (!WorldAvailable || worldScreen.OwnFull.hp == 0 || Time.unscaledTime >= chargeTelegraphDeadline)
+            {
+                HideChargeTelegraph();
+                return;
+            }
+
+            float progress = Mathf.Clamp01((Time.unscaledTime - chargeTelegraphStarted) / chargeTelegraphDuration);
+            chargeVertexCount = chargeIndexCount = 0;
+            float pulse = .82f + .18f * Mathf.Sin(Time.unscaledTime * 7f);
+            var baseColor = new Color(.55f, .22f, .045f, .2f);
+            var progressColor = new Color(1f, .72f, .24f, .34f);
+            if (chargeTelegraphRange == C14SkillRange.Circle)
+            {
+                AddCircleTelegraph(chargeTelegraphRadius, baseColor);
+                AddCircleTelegraph(chargeTelegraphRadius * progress, progressColor);
+            }
+            else
+            {
+                var action = new ActionResultField
+                {
+                    dir = chargeTelegraphDirection,
+                    x = chargeTelegraphOrigin.x,
+                    y = chargeTelegraphOrigin.z
+                };
+                AddRectangleTelegraph(action, chargeTelegraphLength, chargeTelegraphWidth, baseColor);
+                AddRectangleTelegraph(action, chargeTelegraphLength * progress, chargeTelegraphWidth, progressColor);
+            }
+            AddCircleTelegraph(.12f + .05f * pulse, new Color(1f, .86f, .48f, .36f));
+
+            chargeTelegraphMesh.Clear();
+            chargeTelegraphMesh.SetVertices(chargeVertices, 0, chargeVertexCount);
+            chargeTelegraphMesh.SetColors(chargeColors, 0, chargeVertexCount);
+            chargeTelegraphMesh.SetTriangles(chargeTriangles, 0, chargeIndexCount, 0, false);
+            float extent = chargeTelegraphRange == C14SkillRange.Circle
+                ? chargeTelegraphRadius : Mathf.Max(chargeTelegraphLength, chargeTelegraphWidth);
+            chargeTelegraphMesh.bounds = new Bounds(chargeTelegraphOrigin + Vector3.up * .06f,
+                new Vector3(extent * 2f + .5f, .3f, extent * 2f + .5f));
+            chargeTelegraphMaterial.color = new Color(1f, 1f, 1f, pulse);
+            chargeTelegraphRenderer.enabled = true;
+        }
+
+        private void AddCircleTelegraph(float radius, Color color)
+        {
+            const int segments = 40;
+            int center = chargeVertexCount;
+            WriteChargeVertex(chargeTelegraphOrigin + Vector3.up * .055f, color);
+            int previous = -1;
+            for (int i = 0; i <= segments; i++)
+            {
+                float angle = i * (Mathf.PI * 2f / segments);
+                int current = chargeVertexCount;
+                WriteChargeVertex(chargeTelegraphOrigin + new Vector3(Mathf.Cos(angle) * radius, .055f,
+                    Mathf.Sin(angle) * radius), color);
+                if (previous >= 0) AddChargeTriangle(center, previous, current);
+                previous = current;
+            }
+        }
+
+        private void AddRectangleTelegraph(ActionResultField origin, float length, float width, Color color)
+        {
+            int first = chargeVertexCount;
+            for (int point = 0; point < 4; point++)
+                WriteChargeVertex(RectangleCorner(origin, point, .055f, length, width), color);
+            AddChargeTriangle(first, first + 1, first + 2);
+            AddChargeTriangle(first, first + 2, first + 3);
+        }
+
+        private void WriteChargeVertex(Vector3 position, Color color)
+        {
+            chargeVertices[chargeVertexCount] = position;
+            chargeColors[chargeVertexCount++] = color;
+        }
+
+        private void AddChargeTriangle(int a, int b, int c)
+        {
+            chargeTriangles[chargeIndexCount++] = a;
+            chargeTriangles[chargeIndexCount++] = b;
+            chargeTriangles[chargeIndexCount++] = c;
+        }
+
+        private void HideChargeTelegraph()
+        {
+            chargeTelegraphActive = false;
+            chargeTelegraphDeadline = 0;
+            if (chargeTelegraphRenderer != null) chargeTelegraphRenderer.enabled = false;
+        }
+
         private void UpdateReleaseEffect()
         {
             if (releaseEffectRenderer == null || !releaseEffectRenderer.enabled) return;
@@ -773,6 +899,23 @@ namespace C02
             DestroyMaterial(sparkMaterial);
             releaseEffectMaterial = null;
             sparkMaterial = null;
+
+            Mesh chargeMesh = chargeTelegraphMesh;
+            if (chargeTelegraphRoot != null)
+            {
+                if (Application.isPlaying) Destroy(chargeTelegraphRoot);
+                else DestroyImmediate(chargeTelegraphRoot);
+            }
+            if (chargeMesh != null)
+            {
+                if (Application.isPlaying) Destroy(chargeMesh);
+                else DestroyImmediate(chargeMesh);
+            }
+            chargeTelegraphRoot = null;
+            chargeTelegraphRenderer = null;
+            chargeTelegraphMesh = null;
+            DestroyMaterial(chargeTelegraphMaterial);
+            chargeTelegraphMaterial = null;
         }
 
         private void DestroyMaterial(Material material)
@@ -868,12 +1011,6 @@ namespace C02
                 text.text = string.Format(CultureInfo.InvariantCulture, remaining >= 10 ? "~{0:0}s" : "~{0:0.0}s", remaining);
                 overlay.SetActive(true);
             }
-        }
-
-        private void HideLinePreview()
-        {
-            if (linePreview != null) linePreview.enabled = false;
-            linePreviewDeadline = 0;
         }
 
         private void UpdateSkillTooltip()
@@ -1000,7 +1137,7 @@ namespace C02
 
         private void OnDisable()
         {
-            HideLinePreview();
+            HideChargeTelegraph();
             HideReleaseEffect();
             HideSkillTooltip();
             HideDefeatPanel();
@@ -1035,7 +1172,7 @@ namespace C02
 
         private void OnDestroy()
         {
-            HideLinePreview();
+            HideChargeTelegraph();
             HideReleaseEffect();
             if (defeatPanel != null)
             {
@@ -1050,14 +1187,6 @@ namespace C02
                 skillTooltip = null;
                 skillTooltipText = null;
             }
-            if (linePreview != null)
-            {
-                if (Application.isPlaying) Destroy(linePreview.gameObject);
-                else DestroyImmediate(linePreview.gameObject);
-                linePreview = null;
-            }
-            DestroyMaterial(previewMaterial);
-            previewMaterial = null;
             DestroyEffectObjects();
         }
     }

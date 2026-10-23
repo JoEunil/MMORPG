@@ -1,3 +1,12 @@
+## 성채·하단 UI·차징 최종 후보 — ART02 / 2026-10-23
+
+사용자 확장 범위를 같은 art 묶음으로 구현/독립리뷰/최소검증했다. 대형 bottom HP/MP,3슬롯 filled area와 charging progress,기사 metal/normal/tangents와 성벽·수목·ground/lighting. 서버/AI/nav/mapdata/protocol 변경0. 관련 C05 2개·18footprint/새Collider0/UV접선 PASS,컴파일/셰이더오류0. Play/실입력/서버교전0; 미디어는 실제 Editor 렌더+staged phases/HUD예시를 명시. 기존 PASS 반복0. 상세 CITADEL_ART_RESULTS.txt.
+
+공개 MD/화면이력과 localhost8791 갱신·실제브라우저 확인. 원본 메뉴삽화와 실제3D를 구분하고 과거 미디어 보존. 제품 정본은 UnityClient/Builds/C10-Delivery/source,Editor는ROOT. 같은부모1792754611.740799에 ART02 최종 게시승인 요청 예정. 이전 ART01 무효 유지; ART02 정확한 사람답장 전 push/PR/Pages0. PR48 기반 원격상태는 승인후 fetch로 먼저 대조.
+
+## ART01 후속 확장 중 — 이전 게시 요청 무효 / 2026-10-23
+
+사용자 후속지시로 하단 전용 대형 HP/MP, 반투명 면 범위와 차징, 진입 삽화 기준 기사/필드 품질·성벽을 같은 아트 묶음에서 대대적으로 보완한다. ART01 부모1792754611.740799에 무효/보완중 통지1792755484.412779 완료. ART01 답장이 도착해도 현재 요청과 불일치하므로 게시하지 않고 최종 ART02 요청을 준비한다. 서버 AI는 계속 사용자 소유. 고정 맵의 collision/navigation은 기존 blocked footprint/월드외곽 안에서 시각 구조만 보강하며 새 walkable구간을 보이지않는 벽으로 막지 않는다. 현재 ROOT 테스트 C05는 구현자가 의도치 않게 먼저 수정했으므로 원본을 덮어 복구하지 말고 최종 CAND와 대조하여 통합한다. 저작중/검사전이며 새변경미검증.
 ## ART01 게시 승인 대기 — 2026-10-23
 
 검증한 아트 후보3d48eb2를 UnityCoordinator 앱(U0C9ZRTQ6F8) 새 부모1792754611.740799에 게시 승인 요청했다. 링크 https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1792754611740799 . ROOT SlackReceiver/threads.txt 자동등록을 대조한다. 요청 직전 실제 Node33572/listening·고정Coordinator·health6.3s 확인. 사람의 ART01 답장 왕복/적용은 아직 미완료이며 queued/과거CLEAN01을 승인으로 사용하지 않는다.
