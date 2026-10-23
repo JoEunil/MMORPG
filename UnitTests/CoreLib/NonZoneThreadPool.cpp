@@ -386,6 +386,70 @@ namespace Core {
             for (uint16_t id = 1; id <= ZONE_COUNT; ++id)
                 state->m_states.emplace(id, std::make_unique<ZoneState>(id));
         }
+        void PrepareCrossingMonster() {
+            auto* zone = state->GetZone(1);
+            const auto& area = zone->m_cells[2][2].area;
+            const float y = (area.y_min + area.y_max) * 0.5f;
+            MonsterState moving{};
+            moving.Initialize(0, 0, area.x_max - 0.1f, y, 2, 2);
+            moving.SetAggro(700);
+            zone->m_monsters.push_back(moving);
+            zone->m_cells[2][2].monsterIndexes.push_back(0);
+            MonsterState dead{};
+            dead.Initialize(0, 1, moving.x, y, 2, 2);
+            dead.hp = 0;
+            dead.dirtyBit = 0x01;
+            zone->m_monsters.push_back(dead);
+            zone->m_cells[2][2].monsterIndexes.push_back(1);
+            CharacterState target{};
+            target.zoneInternalID = 700;
+            target.hp = 100;
+            target.x = area.x_max + 5.0f;
+            target.y = y;
+            zone->m_chars.push_back(target);
+            zone->m_InternalIDToIndex.emplace(700, 0);
+        }
+        void RespawnCrossingMonster() {
+            auto* zone = state->GetZone(1);
+            zone->m_monsters[0].hp = 0;
+            zone->m_monsters[0].respawnTick = 1;
+            zone->UpdateMonster();
+        }
+        Cell& PhaseCell(int x) { return state->GetZone(1)->m_cells[2][x]; }
+        CharacterState& PhasePlayer(size_t index) { return state->GetZone(1)->m_chars[index]; }
+        MonsterState& PhaseMonster(size_t index) { return state->GetZone(1)->m_monsters[index]; }
+        void MovePhaseMonster(size_t index, float x, float y) {
+            auto* zone = state->GetZone(1);
+            zone->SetMonsterPosition(zone->m_monsters[index], x, y);
+        }
+        void PrepareSkillPhaseActors() {
+            auto* zone = state->GetZone(1);
+            for (uint16_t index = 0; index < 2; ++index) {
+                const uint8_t cellX = index == 0 ? 0 : 2;
+                const auto& area = PhaseCell(cellX).area;
+                CharacterState player{};
+                player.sessionID = 42 + index;
+                player.zoneInternalID = 700 + index;
+                player.hp = player.maxHp = 500;
+                player.mp = 100;
+                player.attack = 2;
+                player.dir = 3;
+                player.x = (area.x_min + area.x_max) * 0.5f;
+                player.y = (area.y_min + area.y_max) * 0.5f;
+                player.cellX = cellX;
+                player.cellY = 2;
+                player.skillSlotCnt = 1;
+                player.skillSlot = {{0, 0}};
+                zone->m_sessionToIndex.emplace(player.sessionID, index);
+                zone->m_InternalIDToIndex.emplace(player.zoneInternalID, index);
+                zone->m_chars.push_back(player);
+                PhaseCell(cellX).charSessions.push_back(player.sessionID);
+                MonsterState monster{};
+                monster.Initialize(0, index, player.x, player.y, cellX, 2);
+                zone->m_monsters.push_back(monster);
+                PhaseCell(cellX).monsterIndexes.push_back(index);
+            }
+        }
         bool LoadTransitionCharacter(uint64_t session = 42, uint16_t zone = 1,
             float x = ZONE_SIZE, float y = ZONE_SIZE * 0.5f, int hp = 75) {
             state->BeginAuth(session);
@@ -894,6 +958,98 @@ namespace Core {
             EXPECT_EQ(response->body.items[i].slot, body.items[i].slot);
         }
     }
+    TEST_F(NonZoneThreadPoolFixture, PlayerSkillHitAndActionPacketFollowTheCurrentPositionAcrossCells) {
+        PrepareZones();
+        PrepareSkillPhaseActors();
+        auto* zone = state->GetZone(1);
+        zone->Skill(42, 0);
+        zone->ApplySkill(); // Charging at the input position.
+        ASSERT_EQ(PhaseCell(0).activeSkills.size(), 1u);
+        PhaseCell(0).actionResults.clear();
+        const float newX = PhasePlayer(1).x, newY = PhasePlayer(1).y;
+        auto& player = PhasePlayer(0);
+        player.x = newX;
+        player.y = newY;
+        player.dir = 1;
+        player.cellX = 2;
+        PhaseCell(0).charSessions.clear();
+        PhaseCell(2).charSessions.push_back(player.sessionID);
+        PhaseCell(0).activeSkills[0].currentTick = Data::skillList[0].phases[1].tick;
+        zone->ApplySkill();
+        EXPECT_EQ(PhaseMonster(0).hp, PhaseMonster(0).data->maxHp);
+        EXPECT_EQ(PhaseMonster(1).hp, PhaseMonster(1).data->maxHp - player.attack * Data::skillList[0].phases[1].attack);
+        EXPECT_TRUE(PhaseCell(0).activeSkills.empty());
+        EXPECT_TRUE(PhaseCell(0).actionResults.empty());
+        ASSERT_EQ(PhaseCell(2).actionResults.size(), 1u);
+        zone->ActionSnapshot();
+        auto work = PopBroadcastWork();
+        EXPECT_EQ(work->chunks[2 * CELLS_X], nullptr);
+        ASSERT_NE(work->chunks[2 * CELLS_X + 2], nullptr);
+        ASSERT_EQ(work->chunks[2 * CELLS_X + 2]->GetCount(), 1);
+        const auto* action = reinterpret_cast<const ActionResultField*>(work->chunks[2 * CELLS_X + 2]->GetBuffer());
+        EXPECT_FLOAT_EQ(action->x, newX);
+        EXPECT_FLOAT_EQ(action->y, newY);
+        EXPECT_EQ(action->dir, 3);
+        EXPECT_EQ(action->skillPhase, 1);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, MonsterSkillHitFollowsTheCurrentPositionAcrossCells) {
+        PrepareZones();
+        PrepareSkillPhaseActors();
+        auto* zone = state->GetZone(1);
+        const auto& caster = PhaseMonster(0);
+        PhaseCell(0).activeSkills.emplace_back(1, 0, 0, 0, 0, 3, caster.x, caster.y, 0, 0, 0);
+        zone->ApplySkill();
+        ASSERT_EQ(PhaseCell(0).activeSkills.size(), 1u);
+        PhaseCell(0).actionResults.clear();
+        MovePhaseMonster(0, PhasePlayer(1).x, PhasePlayer(1).y);
+        PhaseMonster(0).dir = 1;
+        PhaseCell(0).activeSkills[0].currentTick = Data::skillList[0].phases[1].tick;
+        zone->ApplySkill();
+        EXPECT_EQ(PhasePlayer(0).hp, 500);
+        EXPECT_EQ(PhasePlayer(1).hp, 500 - caster.data->attack * Data::skillList[0].phases[1].attack);
+        EXPECT_TRUE(PhaseCell(0).activeSkills.empty());
+        EXPECT_TRUE(PhaseCell(0).actionResults.empty());
+        ASSERT_EQ(PhaseCell(2).actionResults.size(), 1u);
+        const auto& action = PhaseCell(2).actionResults[0];
+        EXPECT_FLOAT_EQ(action.x, caster.x);
+        EXPECT_FLOAT_EQ(action.y, caster.y);
+        EXPECT_EQ(action.dir, 3);
+        EXPECT_EQ(action.skillPhase, 1);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, MonsterCellCrossingAndRespawnSendFullStateInTheCurrentCell) {
+        PrepareZones();
+        PrepareCrossingMonster();
+        auto* zone = state->GetZone(1);
+        zone->UpdateMonster();
+        zone->DeltaSnapshotMonster();
+        ASSERT_EQ(QueuedBroadcastCount(), 1u);
+        auto work = PopBroadcastWork();
+        const size_t oldCell = 2 * CELLS_X + 2;
+        const size_t newCell = oldCell + 1;
+        ASSERT_EQ(parseHeader(work->headers[newCell]->GetBuffer())->opcode, OP::MONSTER_FULL_STATE_BROADCAST);
+        ASSERT_EQ(work->chunks[newCell]->GetCount(), 1);
+        const auto* full = reinterpret_cast<const MonsterFullField*>(work->chunks[newCell]->GetBuffer());
+        EXPECT_EQ(full->internalId, 0);
+        EXPECT_GT(full->hp, 0);
+        ASSERT_EQ(work->chunks[oldCell]->GetCount(), 1);
+        const auto* dead = reinterpret_cast<const MonsterFullField*>(work->chunks[oldCell]->GetBuffer());
+        EXPECT_EQ(dead->internalId, 1);
+        EXPECT_EQ(dead->hp, 0);
+
+        RespawnCrossingMonster();
+        zone->DeltaSnapshotMonster();
+        ASSERT_EQ(QueuedBroadcastCount(), 1u);
+        work = PopBroadcastWork();
+        EXPECT_EQ(parseHeader(work->headers[oldCell]->GetBuffer())->opcode, OP::MONSTER_FULL_STATE_BROADCAST);
+        ASSERT_EQ(work->chunks[oldCell]->GetCount(), 1);
+        full = reinterpret_cast<const MonsterFullField*>(work->chunks[oldCell]->GetBuffer());
+        EXPECT_EQ(full->internalId, 0);
+        EXPECT_GT(full->hp, 0);
+        EXPECT_EQ(work->chunks[newCell]->GetCount(), 0);
+    }
+
     TEST_F(NonZoneThreadPoolFixture, ZoneWireCarriesStampAndChunkCountWithoutLeakingFailedAck) {
         static_assert(sizeof(PacketStruct<ZoneChangeResponseBody>) == 47);
         static_assert(offsetof(FullSnapshotBody, states) == 29);

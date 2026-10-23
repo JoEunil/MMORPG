@@ -42,6 +42,7 @@ namespace Core {
         std::mutex m_mutex;
 
         uint64_t m_deltaTickCounter;
+        bool m_monsterCellsChanged = false;
         uint16_t m_zoneID;
         uint64_t m_generation = 0; // Incremented only by a committed admission, under m_mutex.
         ZoneArea m_area;
@@ -84,6 +85,9 @@ namespace Core {
         void UpdateSessionSnapshot();
         void MoveMonsterHome(MonsterState& monster);
         void UseMonsterSkill(MonsterState& monster);
+        void SetMonsterPosition(MonsterState& monster, float x, float y);
+        bool MoveMonster(MonsterState& monster, float x, float y);
+        void FullSnapshotMonsterLocked();
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
         friend class StateManager;
@@ -141,7 +145,7 @@ namespace Core {
         void SkillCoolDown();
         void ApplySkill();
         void PopSkill(int idx, std::vector<ActiveSkill>& list);
-        void ProcessCellActiveSkills(Cell& cell, int idx);
+        void ProcessCellActiveSkills(Cell& cell);
         void ApplyHit(std::optional<std::reference_wrapper<CharacterState>> caster, ActiveSkill& skill, int idx);
         void MoveToward(MonsterState& monster, CharacterState& character);
         void MoveAround(MonsterState& monster);

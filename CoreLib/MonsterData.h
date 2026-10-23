@@ -35,6 +35,7 @@ namespace Data {
         uint32_t respawn;
         uint32_t aggroTimeOut; // 어그로 풀리는 시점
         float moveSpeed;
+        float chaseDistance = 20.0f; // Distance from the monster's position when combat starts.
 
         uint8_t phasesCnt;        
         Phase phases[MAX_PHASES];          // phase 1개면 일반 몬스터

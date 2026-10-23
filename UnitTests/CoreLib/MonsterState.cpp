@@ -47,5 +47,23 @@ namespace Core {
         EXPECT_EQ(monster.internalID, 42);
         EXPECT_EQ(monster.cellX, 6);
         EXPECT_EQ(monster.cellY, 9);
+        EXPECT_FLOAT_EQ(monster.aggroX, monster.spawnX);
+        EXPECT_FLOAT_EQ(monster.aggroY, monster.spawnY);
+        EXPECT_FLOAT_EQ(monster.wanderTargetX, monster.spawnX);
+        EXPECT_FLOAT_EQ(monster.wanderTargetY, monster.spawnY);
+    }
+
+    TEST(MonsterStateTest, AggroPositionChangesOnlyWhenStartingANewCombat) {
+        MonsterState monster{};
+        monster.Initialize(0, 0, 100.0f, 100.0f, 2, 2);
+        monster.x = 105.0f;
+        monster.SetAggro(700);
+        monster.x = 110.0f;
+        monster.SetAggro(701);
+        EXPECT_FLOAT_EQ(monster.aggroX, 105.0f);
+        EXPECT_EQ(monster.aggro, 701u);
+        monster.aggro = 0;
+        monster.SetAggro(702);
+        EXPECT_FLOAT_EQ(monster.aggroX, 110.0f);
     }
 }

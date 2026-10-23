@@ -59,6 +59,8 @@ Actor를 적용하더라도 이 상태 공유 범위에는 엔티티 하나보�
 
 실행할 작업은 큐로 넘기고, 완료된 전송 대상 목록은 Triple Buffer로 공유한다.  
 Zone은 Bounded MPMC Queue를 틱마다 확인하고, Broadcast 워커(리플리케이션 전송 담당)는 별도 큐에서 패킷 Chunk를 꺼내 송신한다. 두 큐는 full이면 drop을 집계한다.  
+여러 Broadcast 워커가 같은 Zone의 패킷을 처리하면 송신 순서가 바뀔 수 있다는 제약은 인지하고 있었고, [DummyTest2](DummyTest2.md)에도 기록해 두었다. 클라이언트가 seq로 오래된 패킷을 버리도록 계획했으나, 이후 클라이언트 구현에서 seq 처리를 반영하고 순서 역전을 검증하는 과정을 놓쳤다.  
+다시 검토하면서 변경 필드만 담는 Delta는 오래된 패킷을 버리면 다른 필드의 변경까지 누락될 수 있어, 서버에서 송신 순서를 유지하기로 했다. 같은 Zone의 작업은 같은 Broadcast 워커 큐에서 순서대로 송신한다.  
 Broadcast가 참조하는 Cell별 session ID 목록은 기존 읽기 참조가 모두 반환된 뒤 새 읽기에서 최신 목록으로 교체한다.  
 큐 포화·종료 정책과 두 자료구조의 진행 보장은 상세 문서에 정리했다.  
 → [작업 큐](WorkQueue.md), [Triple Buffer](TripleBuffer.md), [WorkerQueue 벤치마크](Benchmark_WorkerQueue.md)  

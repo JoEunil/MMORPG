@@ -33,7 +33,7 @@ namespace Core {
 			for (int j = 0; j < CELLS_X; j++)
 			{
 				auto& cell = m_cells[i][j];
-				ProcessCellActiveSkills(cell, i * CELLS_X + j);
+				ProcessCellActiveSkills(cell);
 			}
 		}
 	}
@@ -43,7 +43,7 @@ namespace Core {
 		list.pop_back();
 	}
 
-	void ZoneState::ProcessCellActiveSkills(Cell& cell, int idx) {
+	void ZoneState::ProcessCellActiveSkills(Cell& cell) {
 		for (int k = 0; k < cell.activeSkills.size(); k++)
 		{
 			auto& skill = cell.activeSkills[k];
@@ -60,6 +60,8 @@ namespace Core {
 					continue;
 				}
 				caster = m_chars[it->second];
+				skill.x = caster->get().x;
+				skill.y = caster->get().y;
 			}
 			else {
 				if (m_monsters[skill.monsterId].hp == 0) {
@@ -67,11 +69,16 @@ namespace Core {
 					k--;
 					continue;
 				}
+				skill.x = m_monsters[skill.monsterId].x;
+				skill.y = m_monsters[skill.monsterId].y;
 			}
+			// Keep the timer list stable; resolve each phase around the caster's current position.
+			const auto [cellX, cellY] = GetCell(skill.x, skill.y, m_area);
+			const int effectCellIndex = cellY * CELLS_X + cellX;
 			auto actionID = skillData.phases[skill.currentPhase].actionID;
 			if (actionID == 1)
-				ApplyHit(caster, skill, idx);
-			cell.actionResults.emplace_back(
+				ApplyHit(caster, skill, effectCellIndex);
+			m_cells[cellY][cellX].actionResults.emplace_back(
 			skill.casterType,
 			skill.zoneInternalId,
 			skill.monsterId,
@@ -119,10 +126,9 @@ namespace Core {
 							// 보스몬스터의 경우 hitter list로 보상 분배하도록 처리해야됨.
 							caster.exp += m_monsters[mon].data->reward.exp;
 							caster.dirtyBit |= 0x10; // exp
-							cell.dirtyChar.push_back(caster.zoneInternalID);
+							m_cells[caster.cellY][caster.cellX].dirtyChar.push_back(caster.zoneInternalID);
 						}
-						m_monsters[mon].aggro = caster.zoneInternalID;
-						m_monsters[mon].aggroTick = 0;
+						m_monsters[mon].SetAggro(caster.zoneInternalID);
 						m_monsters[mon].dirtyBit |= 0x01; // hp
 						if (!AOE)
 							break;

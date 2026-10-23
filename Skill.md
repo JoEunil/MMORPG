@@ -62,7 +62,7 @@ Monster AI 로직에 대한 추가 내용은 [Monster 구현 설명](Monster.md)
 ## 3. 시연
 ![gif 로드 실패](images/SkillAOI.gif)
 ![gif 로드 실패](images/BossMonster.gif)
-- 스킬 시전 위치는 캐스터의 움직임을 따라가지 않고, 최초 시전 위치를 기준으로 모든 SkillPhase가 수행된다.
+- 각 SkillPhase는 실행 시점의 시전자 위치를 기준으로 타격을 판정하고 이펙트를 전송한다. Cell을 이동했으면 현재 위치의 Cell 주변을 검색한다. 방향은 최초 시전 방향을 유지한다.
 - dirtyBit 필드를 잘못 사용하여 몬스터 움직임 처리가 Delta Update에서 제대로 처리되지 못했다. 
 - 보간 처리 때문에 이를 인지하지 못했다. (수정 완료)
 

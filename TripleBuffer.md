@@ -19,12 +19,19 @@ Triple Buffer는 3개의 버퍼를 사용하여 다음을 보장한다:
 > 본래 그래픽 렌더링 파이프라인(GPU)에서 프레임 생성 속도와 모니터 출력 속도(V-Sync) 차이로 인한 티어링(Tearing) 및 지연(Lag) 현상을 방지하기 위해 고안된 기법이다.
 
 ## 3. 초기 도입 배경
+
 ### 시스템 요구사항
 - 시나리오: Zone 스레드(Writer)가 브로드캐스트 패킷을 생성하여 ThreadPool(Reader)로 넘김.
 - 제약 사항: 패킷에는 전송 대상 정보가 없으므로, Worker 스레드는 다시 Zone에서 '전송 대상 목록'을 받아와야 함.
 - 구조: SPMC (Single Producer - Multiple Consumer)
 	- Writer: 개별 Zone 스레드 (1개)
 	- Reader: 브로드캐스트 ThreadPool (N개, 공유됨)
+
+### 송신 순서 처리 계획과 변경
+
+처음에는 여러 Zone의 전송 작업을 공유 워커 풀에서 처리하고, 같은 Zone의 전송 대상 목록도 여러 워커가 동시에 읽도록 설계했다. SPMC Triple Buffer는 이 읽기 구조를 지원하기 위해 구현했다.  
+송신 순서가 바뀔 수 있다는 점은 인지하고 있었고, [DummyTest2](DummyTest2.md)에도 클라이언트가 seq로 오래된 패킷을 버리도록 계획해 두었다. 이후 클라이언트 구현에서 이 처리와 순서 역전 검증을 놓쳤다.  
+다시 검토한 뒤 Delta의 변경 필드를 추가로 누락시키지 않도록 서버에서 송신 순서를 유지하기로 했다. 현재는 같은 Zone을 같은 워커 큐에서 처리하므로 Zone별 reader는 하나지만, 기존 SPMC 구현과 검증 기록은 유지했다. → [설계 결정](DesignDecisions.md#24-작업-큐와-triple-buffer)  
 
 ### 해결해야 할 Pain Point
 1. 동기화 비용: writer가 zone 스레드이기 때문에 mutex를 적용하기에 부적합. 
