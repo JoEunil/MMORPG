@@ -1,3 +1,6 @@
+## 공개 홈 지침 이력·가독성 보완 — 2026-10-23
+
+사용자 요청으로 주요 지침9개를 공개 MD에 정리: 미술/입력/UI/리깅 제외/최소 검증·큰묶음/Unity맵 공유/사람AI·Agent 역할/코드단순성/확인 가능한 활용 기록. 본문18px,도식·캡션 최소16px,이력 제목19px/설명18px,모바일 한열. Nav 지침변경 바로가기 추가. build/linkPASS,실제browser9항목·desktop18px/mobile390 가로넘침0·caption16px 확인,viewport reset. 게임/Unity 재시험0,새Agent0. 같은ART02 공개결과 보완에 로컬통합/원격게시0. 승인요청은기존ART02유지.
 ## 홈 설명·하단 HUD 후속 피드백 반영 — 2026-10-23
 
 웹: 중복되는 큰 목표/진행 흐름과 메뉴를 삭제, 소개를 실제 개발 결과 중심으로 축약. 작업 목록 설명을 제목 아래에 두고 본문16px·링크15px로 확대. 기존 미종료 모바일 @media block을 닫아 후속 CSS가 desktop에도 적용되도록 수정. MD 원본과 generator/style만 편집, generated HTML 별도수정0. build/링크검증PASS, desktop display:block/본문16px와 mobile390 가로넘침없음 확인, viewport reset. 새 specialist실행0/게임 테스트반복0.
