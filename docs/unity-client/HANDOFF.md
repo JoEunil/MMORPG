@@ -1,3 +1,8 @@
+## ART03 최종 게시 승인 대기 — 2026-10-23
+
+로컬 제품후보5743b68를 UnityCoordinator 앱U0C9ZRTQ6F8으로 동일아트부모1792754611.740799에 최종요청1792759717.600819 게시했다. 링크 https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1792759717600819 . 직전 실제Node33572/listening·고정Coordinator·health7.2s 확인. 정확한지정사람U0C9QEUHPMK의이부모 `승인 ART03`만현재대기로처리,회신ID·기소비확인후같은스레드적용결과회신한다. ART01/ART02 지연승인은새게시승인아님. 새사람승인수신/소비0,원격게시0.
+
+승인후fetch/PR48·base상태대조→일반push→기사/UI/성벽/플레이어·몬스터연출큰PR1개→artifact첨부. 강제push/자동병합/AI개발확대금지. 실제접속전투/standalone성능미검증유지. 미리보기localhost8791/player-hud/history 최신GIF·몬스터영역. 제품검사3개와fixtureteardownPASS/Scene생성effects0/이미PASS한기능검사반복0.
 ## ART03 씬 무결성 최종 보완 — 2026-10-23
 
 테스트/촬영의EditMode생명주기누락으로이전ART02Scene에도runtimeC05효과잔여물이저장된것확인. 자동검토는이름일괄삭제를거절/미실행. readonlyID·owner·Mesh·좌표대조+독립리뷰의외부참조검사후고유ID18개고정/전체사전검증/backup의더좁은작업이승인되어정리. 전역에셋삭제0/정상게임참조0. C05fixtureDispose에OnDestroy명시호출추가/own effect2종종료·Scene생성root0 smokePASS. 제품C05VFX불변/이미통과한3검사반복0. Scene공통블록은materialref/SceneRoots와3float오차만변경,우리이전생성잔여90block제거. 상세 SKILL_PRESENTATION_RESULTS.txt. 전문누적78/180/258,토큰N/A.
