@@ -1,3 +1,6 @@
+## ART02 게시 승인 대기 — 2026-10-23
+
+로컬 후보5951ef9를 UnityCoordinator 앱U0C9ZRTQ6F8으로 부모1792754611.740799에 최종요청1792757218.985169 게시했다. 링크 https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1792757218985169 . 직전 실제Node33572/listening·고정Coordinator·health0.8s 확인. 정확한 지정사람U0C9QEUHPMK의 이 부모 `승인 ART02`만 현재대기에 적용하고 회신ID/기소비를 대조해 처리결과 회신한다. ART01은 무효이며 아직 새 사람승인 수신/소비0. 승인후 fetch→PR48/base대조→일반push/큰PR1개→artifact첨부. 승인전 원격게시/Pages0. 미리보기localhost8791의 player-hud와field-travel 화면이력. 완료채널에는 로컬보완결과만 별도 메시지로 남긴다.
 ## 성채·하단 UI·차징 최종 후보 — ART02 / 2026-10-23
 
 사용자 확장 범위를 같은 art 묶음으로 구현/독립리뷰/최소검증했다. 대형 bottom HP/MP,3슬롯 filled area와 charging progress,기사 metal/normal/tangents와 성벽·수목·ground/lighting. 서버/AI/nav/mapdata/protocol 변경0. 관련 C05 2개·18footprint/새Collider0/UV접선 PASS,컴파일/셰이더오류0. Play/실입력/서버교전0; 미디어는 실제 Editor 렌더+staged phases/HUD예시를 명시. 기존 PASS 반복0. 상세 CITADEL_ART_RESULTS.txt.
