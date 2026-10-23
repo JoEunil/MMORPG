@@ -1,3 +1,8 @@
+## ART01 게시 승인 대기 — 2026-10-23
+
+검증한 아트 후보3d48eb2를 UnityCoordinator 앱(U0C9ZRTQ6F8) 새 부모1792754611.740799에 게시 승인 요청했다. 링크 https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1792754611740799 . ROOT SlackReceiver/threads.txt 자동등록을 대조한다. 요청 직전 실제 Node33572/listening·고정Coordinator·health6.3s 확인. 사람의 ART01 답장 왕복/적용은 아직 미완료이며 queued/과거CLEAN01을 승인으로 사용하지 않는다.
+
+지정사람U0C9QEUHPMK의 이 부모 원문 `승인 ART01`을 수신하면 회신ID·요청·현재 대기·기소비 여부를 확인해 같은 부모로 처리 결과를 남긴 뒤 fetch/분기대조→큰PR1개 게시·artifact첨부한다. PR48 기반 상태를 먼저 확인하고 이력 보존, 강제push/자동병합/서버교전 확대0. 승인 전 push/새PR/Pages배포0. 미리보기 http://127.0.0.1:8791/MMORPG/work/player-hud/history.html 와 실제 모델/메뉴 삽화/예시HUD 구분을 유지한다.
 ## 기사·UI·스킬 아트 후보 완료 — 2026-10-23
 
 사용자 아트 강화 요청을 codex/knight-art-direction에서 묶었다. 기존 정적 기사에 닫힌 판금·능선/문장·브러시 금속/붉은 천, 진입 전용 보조 조명, 기존 uGUI의 생성 배경/금속 프레임/가죽·확대 HP/MP와 Z/X/C, 슬롯별 횡베기·회전·내려찍기와 정점색 검흔/수직 참격/지면 파쇄를 반영했다. 기존 Scene/Prefab GUID·컨트롤·C17 생명주기/ActionResult phase 좌표·방향을 재사용하고 관찰 플레이어도 슬롯을 전달한다. 서버/프로토콜/사용자 몬스터 AI/이동 변경0.
