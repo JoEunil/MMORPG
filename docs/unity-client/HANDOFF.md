@@ -1,3 +1,9 @@
+## 홈 설명·하단 HUD 후속 피드백 반영 — 2026-10-23
+
+웹: 중복되는 큰 목표/진행 흐름과 메뉴를 삭제, 소개를 실제 개발 결과 중심으로 축약. 작업 목록 설명을 제목 아래에 두고 본문16px·링크15px로 확대. 기존 미종료 모바일 @media block을 닫아 후속 CSS가 desktop에도 적용되도록 수정. MD 원본과 generator/style만 편집, generated HTML 별도수정0. build/링크검증PASS, desktop display:block/본문16px와 mobile390 가로넘침없음 확인, viewport reset. 새 specialist실행0/게임 테스트반복0.
+
+Unity: 사용자 피드백으로 HP402.667x22.667/MP402.667x18 (이전604x34/604x27의2/3),frame440x68/rightbottom24,8. skillicon크기유지/동일부모 내 위배치, chat400x260/leftbottom24,8. 기존 runtime·serialized control/lifecycle 불변. 컴파일PASS/실제Editor 렌더겹침확인,예시값복원. 새capture citadel-hud-right-preview.png/이전화면보존. 서버/AI/스킬코드변경0. ART02 같은묶음의 화면보완으로 기존승인요청 유지/원격게시0.
+
 ## ART02 게시 승인 대기 — 2026-10-23
 
 로컬 후보5951ef9를 UnityCoordinator 앱U0C9ZRTQ6F8으로 부모1792754611.740799에 최종요청1792757218.985169 게시했다. 링크 https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1792757218985169 . 직전 실제Node33572/listening·고정Coordinator·health0.8s 확인. 정확한 지정사람U0C9QEUHPMK의 이 부모 `승인 ART02`만 현재대기에 적용하고 회신ID/기소비를 대조해 처리결과 회신한다. ART01은 무효이며 아직 새 사람승인 수신/소비0. 승인후 fetch→PR48/base대조→일반push/큰PR1개→artifact첨부. 승인전 원격게시/Pages0. 미리보기localhost8791의 player-hud와field-travel 화면이력. 완료채널에는 로컬보완결과만 별도 메시지로 남긴다.

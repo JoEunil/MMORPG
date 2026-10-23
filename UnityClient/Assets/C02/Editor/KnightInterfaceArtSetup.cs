@@ -83,22 +83,21 @@ public static class KnightInterfaceArtSetup
         combat.GetComponent<Image>().color = Color.clear;
         foreach (string ornament in new[] { "ForgedFrame", "FrameOrnaments" })
             if (combat.Find(ornament) != null) combat.Find(ornament).gameObject.SetActive(false);
-        combat.sizeDelta = new Vector2(660, 196);
-        combat.anchoredPosition = new Vector2(0, 8);
+        Place(combat, new Vector2(1, 0), new Vector2(-24, 8), new Vector2(440, 158));
         var vitalsPlate = Child(combat, "VitalsPlate");
-        Place(vitalsPlate, new Vector2(0, 1), new Vector2(0, -94), new Vector2(660, 102));
+        Place(vitalsPlate, new Vector2(0, 1), new Vector2(0, -90), new Vector2(440, 68));
         SkinPanel(vitalsPlate, 8);
         vitalsPlate.SetAsFirstSibling();
-        Gauge(combat, "C12HpTrack", -110, 34, new Color(.68f, .055f, .075f));
-        Gauge(combat, "C12MpTrack", -153, 27, new Color(.065f, .29f, .64f));
+        Gauge(combat, "C12HpTrack", -100.667f, 22.667f, new Color(.68f, .055f, .075f));
+        Gauge(combat, "C12MpTrack", -129.333f, 18, new Color(.065f, .29f, .64f));
         var skillPlate = Child(combat, "SkillPlate");
-        Place(skillPlate, new Vector2(0, 1), new Vector2(219, -8), new Vector2(222, 78));
+        Place(skillPlate, new Vector2(0, 1), new Vector2(109, -8), new Vector2(222, 78));
         SkinPanel(skillPlate, 10);
         skillPlate.SetAsFirstSibling();
         for (int i = 0; i < 3; i++)
         {
             var skill = combat.Find("C05Skill" + i) as RectTransform;
-            Place(skill, new Vector2(0, 1), new Vector2(236 + i * 66, -16), new Vector2(56, 62));
+            Place(skill, new Vector2(0, 1), new Vector2(126 + i * 66, -16), new Vector2(56, 62));
             SkinButton(skill.GetComponent<Button>(), 12);
             var key = skill.Find("SkillKeyBadge/SkillKey")?.GetComponent<TMP_Text>();
             if (key != null) { key.fontSize = 22; key.color = Color.white; key.fontStyle = FontStyles.Bold; }
@@ -121,7 +120,7 @@ public static class KnightInterfaceArtSetup
         }
         var chat = hud.parent.Find("C06ChatPanel") as RectTransform;
         chat.sizeDelta = new Vector2(400, 260);
-        chat.anchoredPosition = new Vector2(24, 118);
+        chat.anchoredPosition = new Vector2(24, 8);
         var inset = chat.Find("ChatInset");
         var inputRect = inset.Find("ChatInput") as RectTransform;
         inputRect.sizeDelta = new Vector2(266, 34);
@@ -151,7 +150,7 @@ public static class KnightInterfaceArtSetup
     private static void Gauge(RectTransform panel, string name, float y, float height, Color color)
     {
         var track = panel.Find(name) as RectTransform;
-        Place(track, new Vector2(0, 1), new Vector2(28, y), new Vector2(604, height));
+        Place(track, new Vector2(0, 1), new Vector2(18.667f, y), new Vector2(402.667f, height));
         track.GetComponent<Image>().color = new Color(.045f, .035f, .03f);
         var fill = track.Find("Fill").GetComponent<Image>();
         fill.color = color;
@@ -159,9 +158,9 @@ public static class KnightInterfaceArtSetup
         shine.anchorMin = new Vector2(0, .7f); shine.anchorMax = new Vector2(1, .84f);
         shine.offsetMin = new Vector2(3, 0); shine.offsetMax = new Vector2(-3, 0);
         shine.GetComponent<Image>().color = new Color(1, .94f, .78f, .16f);
-        Border(track, 24);
+        Border(track, 16);
         foreach (var text in track.GetComponentsInChildren<TMP_Text>(true))
-        { text.fontSize = height > 30 ? 23 : 19; text.color = new Color(.98f, .94f, .83f); text.transform.SetAsLastSibling(); }
+        { text.fontSize = height > 20 ? 18 : 15; text.color = new Color(.98f, .94f, .83f); text.transform.SetAsLastSibling(); }
     }
 
     private static void SkinPanel(RectTransform rect, float multiplier)

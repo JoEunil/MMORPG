@@ -199,15 +199,6 @@ def render_workflow(section):
 <div class="flow-diagram"><h3>하나의 기능이 만들어지는 흐름</h3><ol class="workflow-steps">{steps}</ol><ul class="workflow-feedback">{feedback}</ul></div></div></div></section>'''
 
 
-def render_journey(section):
-    items = diagram_items(section)[""]
-    stages = []
-    for item in items:
-        label, _, detail = item.partition(" — ")
-        status, _, description = detail.partition(" · ")
-        stages.append(f'<li><span class="stage-state">{escape(status)}</span><h3>{escape(label)}</h3><p>{escape(description)}</p></li>')
-    return f'''<section class="section-wrap journey" id="journey"><div class="section-title"><h2>{escape(section['title'])}</h2></div><ol class="journey-track">{''.join(stages)}</ol></section>'''
-
 
 def render_decisions(section):
     entries = []
@@ -230,7 +221,7 @@ def document(title, description, content, references, site_title):
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="{escape(description, quote=True)}"><title>{escape(browser_title)}</title>
 <link rel="stylesheet" href="{BASE}style.css"></head><body>
-<header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}#workflow">AI 워크플로우</a><a href="{BASE}#journey">목표와 진행</a><a href="{BASE}#work">작업 결과</a><a href="{BASE}#legacy">기존 Unity</a></nav></header>
+<header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}#workflow">AI 워크플로우</a><a href="{BASE}#work">작업 결과</a><a href="{BASE}#legacy">기존 Unity</a></nav></header>
 {content}<footer class="site-footer"><a href="{BASE}">{escape(site_title)}</a>{ref_footer}</footer>
 </body></html>'''
 
@@ -293,16 +284,15 @@ def main():
         cards.append(f'<article class="work-card">{media}<div class="work-copy"><p class="work-status">{escape(work["status"])}</p><h3><a href="{detail}">{escape(work["title"])}</a></h3><p>{escape(work["summary"])}</p><div class="card-links"><a href="{detail}">작업 보기 →</a><a href="{history}">화면 이력</a></div></div></article>')
     sections_by_title = {section["title"]: section for section in home_sections}
     process_html = render_workflow(sections_by_title["AI Agent 워크플로우"])
-    journey_html = render_journey(sections_by_title["큰 목표와 진행 흐름"])
+    work_intro = next(block for block in sections_by_title["작업 둘러보기"]["blocks"] if isinstance(block, str) and block and not block.startswith("- "))
     decisions_html = render_decisions(sections_by_title["지침 변경 이력"])
     legacy_section = sections_by_title["기존 Unity 구현"]
     legacy_copy = render_blocks(legacy_section["blocks"], HOME_SOURCE)
     legacy_html = f'<section class="legacy-section section-wrap" id="legacy"><div class="section-title"><h2>{escape(legacy_section["title"])}</h2></div><div class="legacy-body">{legacy_copy}</div></section>'
     hero = f'''<main id="top"><section class="home-hero"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#work">작업 결과 보기</a></div></div><figure class="home-image"><a href="{hero_image[1]}" target="_blank" rel="noopener"><img src="{hero_image[1]}" alt="{escape(hero_image[0], quote=True)}"></a><figcaption>{escape(hero_image[0])}</figcaption></figure></section>
 {process_html}
-{journey_html}
 {legacy_html}
-<section class="section-wrap work-section" id="work"><div class="section-title"><h2>작업과 결과</h2></div><div class="work-grid">{''.join(cards)}</div></section>
+<section class="section-wrap work-section" id="work"><div class="section-title work-heading"><h2>작업과 결과</h2><p>{inline(work_intro)}</p></div><div class="work-grid">{''.join(cards)}</div></section>
 {decisions_html}</main>'''
     (SITE / "index.html").write_text(document(title, intro, hero, references, title), encoding="utf-8", newline="\n")
     for old_key in legacy_market_pages:

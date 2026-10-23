@@ -1,3 +1,12 @@
+최신 후속: 홈 설명·하단 HUD 후속 피드백 반영 — 2026-10-23
+
+웹: 중복되는 큰 목표/진행 흐름과 메뉴를 삭제, 소개를 실제 개발 결과 중심으로 축약. 작업 목록 설명을 제목 아래에 두고 본문16px·링크15px로 확대. 기존 미종료 모바일 @media block을 닫아 후속 CSS가 desktop에도 적용되도록 수정. MD 원본과 generator/style만 편집, generated HTML 별도수정0. build/링크검증PASS, desktop display:block/본문16px와 mobile390 가로넘침없음 확인, viewport reset. 새 specialist실행0/게임 테스트반복0.
+
+Unity: 사용자 피드백으로 HP402.667x22.667/MP402.667x18 (이전604x34/604x27의2/3),frame440x68/rightbottom24,8. skillicon크기유지/동일부모 내 위배치, chat400x260/leftbottom24,8. 기존 runtime·serialized control/lifecycle 불변. 컴파일PASS/실제Editor 렌더겹침확인,예시값복원. 새capture citadel-hud-right-preview.png/이전화면보존. 서버/AI/스킬코드변경0. ART02 같은묶음의 화면보완으로 기존승인요청 유지/원격게시0.
+
+
+이하 최초 ART02 후보 기록
+
 성채 아트·하단 상태창·차징 영역 / 2026-10-23
 
 범위: ART01 후속을 같은 codex/knight-art-direction 묶음에 통합. HP 604x34 / MP 604x27 하단 전용 plate, 스킬 strip 상단 분리, 채팅/가방/시장 바닥 여백. 실제 uGUI control과 C05 lifecycle 참조 유지.
