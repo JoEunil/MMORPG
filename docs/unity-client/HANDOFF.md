@@ -1,3 +1,11 @@
+## 클라이언트 구조 정리 후보·최소 검증 완료 — 2026-10-23
+
+사용자재개지시로중복/불필요상태정리만진행했다. C11 아이템4분기→단일정의표,C07 selectedCard중복필드/SetTopRight불용함수제거,C05사각형계산/C04동일LineRenderer설정통합. 제품4파일순감64행,신규Manager/인터페이스/파일이동/직렬화·메타·asmdef변경0. 사용자가변경한서버몬스터AI/Cell이동/스킬phase/프로토콜은변경0. 가방/시장요청머신은실패의미가달라유지했다.
+
+독립최종P1P2없음,Unity6000.0.47f1배치컴파일및관련3컴포넌트검사PASS0.37642s. 실제로그인/입력/서버접속/전체회귀반복0. ROOT제품4파일은baseline일치확인·백업후반영했고기존ROOT테스트3파일은검증동결본hash확인후원본복구했다. 결과CLIENT_CLEANUP_RESULTS.txt와ROOTUnityClient/Builds/ClientCleanup/results.xml. CLI업데이트CDNDNS실패는설치된Editor실제검증과구분했다.
+
+PR46은master f67ca1a에병합/원격head자동삭제확인. 현재전달branch codex/client-structure-cleanup은origin/master기준이며검증제품c306f4d→c4bcff8을동일내용cherry-pick했다. 기존공통/코드개선지침도같은묶음에포함하며미승인Slack복구코드5a6a827/76a2b12는포함하지않는다. 제품동일이라재시험0. 공개화면/기능불변이라사이트/캡처변경0. 최종로컬커밋후이새변경묶음전용Slack부모에서게시승인요청;원문승인전push/PR생성0,SLACK01등과거승인재사용금지.
+
 ## 맵 서버 인계 정리 — 2026-10-22
 
 사용자 다음 미완료 작업 지시에 따라 Exporter→서버 연결을 읽기 감사했다. 추가 코드 결함은 확인하지 못했고 기존 입력 통과가 미완료로 남은 안내와 6/.6 이전 수치를 수정했다. MAP_EXPORT_GUIDE/WORLD_MAP_HANDOFF/MAP_SERVER_COMPLETION_TASK를 실제 9단위/초·request1.8·visual.9와 생성 데이터 직접 파생, 완료된 벽/경계 입력 배치에 맞췄다. 6구역 콘텐츠 guard·AI/A* 사용자 소유·이웃 AOI/9구역/가변 지연 미완료는 유지한다. 제품/생성 데이터/환경 변경 없이 문서만 수정하므로 빌드·Unity·서버 테스트를 재실행하지 않았다. git diff --check 통과. 공개 화면 변화가 없어 사이트 생성과 캡처도 반복하지 않는다. 기존 PR46에 인계 보완만 모으며 병합·공개는 하지 않는다.
