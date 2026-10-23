@@ -4,6 +4,14 @@
 #include "SkillData.h"
 
 namespace Core {
+    enum class MonsterBehavior : uint8_t {
+        Wandering,
+        Returning,
+        Chasing,
+        Attacking,
+        Dead,
+    };
+
     struct MonsterState {
         uint16_t internalID;
         const Data::MonsterData* data;  // static data pointer
@@ -15,8 +23,10 @@ namespace Core {
 
 
         float spawnX, spawnY;
+        MonsterBehavior behavior = MonsterBehavior::Wandering;
         uint32_t aggro; // 어그로 대상의 zoneInternalID
         uint32_t aggroTick; // At 50 ms per zone tick, timeout 100 is 5 seconds.
+        float aggroX, aggroY;
         uint8_t cellX;
         uint8_t cellY;
         uint32_t respawnTick;
@@ -24,7 +34,7 @@ namespace Core {
         uint16_t skillStep;
         uint8_t phase;
         uint32_t wanderSeed;
-        uint8_t wanderTicks;
+        float wanderTargetX, wanderTargetY;
         uint8_t wanderPauseTicks;
         
         void Initialize(uint16_t monsterID , uint16_t id, float posX, float posY, uint8_t CellX, uint8_t CellY) {
@@ -39,6 +49,10 @@ namespace Core {
             dir = 2;
             aggro = 0;
             aggroTick = 0;
+            aggroX = x;
+            aggroY = y;
+            behavior = MonsterBehavior::Wandering;
+            attacked = 0;
             tick = 0;
             skillStep = 0;
             phase = 0;
@@ -47,9 +61,19 @@ namespace Core {
             wanderSeed = 0x9E3779B9u ^ (static_cast<uint32_t>(id) + 1u) * 0x85EBCA6Bu ^
                 (static_cast<uint32_t>(CellX) << 16) ^ CellY;
             if (wanderSeed == 0) wanderSeed = 0xA341316Cu;
-            wanderTicks = 0;
+            wanderTargetX = x;
+            wanderTargetY = y;
             wanderPauseTicks = 0;
             dirtyBit = 0;
+        }
+
+        void SetAggro(uint32_t targetID) {
+            if (aggro == 0) {
+                aggroX = x;
+                aggroY = y;
+            }
+            aggro = targetID;
+            aggroTick = 0;
         }
 
         void Respawn() {
@@ -60,6 +84,9 @@ namespace Core {
             dir = 1;
             aggro = 0;
             aggroTick = 0;
+            aggroX = x;
+            aggroY = y;
+            behavior = MonsterBehavior::Wandering;
             respawnTick = data->respawn;
             tick = 0;
             skillStep = 0;
@@ -67,7 +94,8 @@ namespace Core {
             wanderSeed = 0x9E3779B9u ^ (static_cast<uint32_t>(internalID) + 1u) * 0x85EBCA6Bu ^
                 (static_cast<uint32_t>(cellX) << 16) ^ cellY;
             if (wanderSeed == 0) wanderSeed = 0xA341316Cu;
-            wanderTicks = 0;
+            wanderTargetX = x;
+            wanderTargetY = y;
             wanderPauseTicks = 0;
             attacked = 0;
             dirtyBit = 0x0F;

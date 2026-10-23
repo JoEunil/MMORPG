@@ -216,12 +216,16 @@ namespace Core {
     }
 
     void ZoneState::DeltaSnapshotMonster() {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_monsterCellsChanged) {
+            FullSnapshotMonsterLocked();
+            return;
+        }
         m_deltaTickCounter++;
         if (m_deltaTickCounter & 1) {
             // 2틱 당 한번만 처리
             return;
         }
-        std::lock_guard<std::mutex> lock(m_mutex);
         std::vector<std::shared_ptr<IPacket>> chunks;
         std::vector<std::shared_ptr<IPacket>> headers;
         chunks.resize(CELLS_X * CELLS_Y);
@@ -286,6 +290,11 @@ namespace Core {
 
     void ZoneState::FullSnapshotMonster() {
         std::lock_guard<std::mutex> lock(m_mutex);
+        FullSnapshotMonsterLocked();
+    }
+
+    void ZoneState::FullSnapshotMonsterLocked() {
+        bool complete = true;
         std::vector<std::shared_ptr<IPacket>> chunks;
         std::vector<std::shared_ptr<IPacket>> headers;
         chunks.resize(CELLS_X * CELLS_Y);
@@ -300,6 +309,7 @@ namespace Core {
                 auto chunk = writer->GetInitialChunk();
                 auto header = writer->GetMonsterFullHeader(m_zoneID, m_generation);
                 if (chunk == nullptr || header == nullptr) {
+                    complete = false;
                     sysLogger->LogError("zone state", "failed to acquire packet", "zoneID", m_zoneID, "cellX", j, "cellY", i);
                     continue;
                 }
@@ -319,15 +329,20 @@ namespace Core {
                     continue;
                 for (auto& monsterIdx : cell.monsterIndexes)
                 {
-                    if (m_monsters[monsterIdx].hp == 0)
+                    auto& monster = m_monsters[monsterIdx];
+                    if (monster.hp == 0 && !(monster.dirtyBit & 0x01))
                         continue;
-                    writer->WriteMonsterFullField(chunks[idx], m_monsters[monsterIdx]);
-                    m_monsters[monsterIdx].attacked = 0;
-                    m_monsters[monsterIdx].dirtyBit = 0x0;
+                    if (!writer->WriteMonsterFullField(chunks[idx], monster)) {
+                        complete = false;
+                        continue;
+                    }
+                    monster.attacked = 0;
+                    monster.dirtyBit = 0x0;
                 }
             }
         }
         broadcast->EnqueueWork(headers, chunks, m_zoneID);
+        m_monsterCellsChanged = !complete;
     }
 
     void ZoneState::ActionSnapshot() {

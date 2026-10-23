@@ -109,11 +109,11 @@ namespace Core {
         monster.Initialize(0, 0, legalCenterX + 0.5f * WorldMap::TileSize -
             0.375f * WORLD_MOVEMENT_SCALE, testY, 4, 4);
         monster.dir = 3;
-        monster.wanderTicks = 1;
+        monster.wanderTargetX = monster.x + 0.375f * WORLD_MOVEMENT_SCALE;
         const float beforeWanderX = monster.x;
         zone.MoveAround(monster);
         EXPECT_FLOAT_EQ(monster.x, beforeWanderX);
-        EXPECT_EQ(monster.wanderTicks, 0);
+        EXPECT_GT(monster.wanderPauseTicks, 0);
         EXPECT_EQ(monster.dirtyBit, 0);
     }
 }

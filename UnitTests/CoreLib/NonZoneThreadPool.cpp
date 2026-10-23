@@ -120,6 +120,39 @@ namespace Core {
             }
         };
 
+        // Hold one send while another Zone must keep making progress.
+        class BlockingBroadcastIOCP final : public IIOCP {
+            std::mutex mutex;
+            std::condition_variable changed;
+            std::vector<uint8_t> opcodes;
+            bool released = false;
+        public:
+            void SendData(uint64_t, std::shared_ptr<IPacket>) override {}
+            void SendDataUnique(uint64_t, std::unique_ptr<IPacket, PacketDeleter>) override {}
+            void SendDataChunks(uint64_t, std::shared_ptr<IPacket> header,
+                std::vector<std::shared_ptr<IPacket>>&) override {
+                std::unique_lock lock(mutex);
+                const auto opcode = parseHeader(header->GetBuffer())->opcode;
+                opcodes.push_back(opcode);
+                changed.notify_all();
+                if (opcode == 1)
+                    changed.wait(lock, [&] { return released; });
+            }
+            bool WaitFor(size_t count) {
+                std::unique_lock lock(mutex);
+                return changed.wait_for(lock, 2s, [&] { return opcodes.size() >= count; });
+            }
+            void Release() {
+                std::lock_guard lock(mutex);
+                released = true;
+                changed.notify_all();
+            }
+            std::vector<uint8_t> Sent() {
+                std::lock_guard lock(mutex);
+                return opcodes;
+            }
+        };
+
         class ControlledLoadQueue final : public IMessageQueue {
             std::mutex mutex;
             std::condition_variable changed;
@@ -302,11 +335,28 @@ namespace Core {
             StopWorker();
             broadcast.Stop();
         }
-        BroadcastThreadPool::BroadcastWorkPtr PopBroadcastWork() {
+        BroadcastThreadPool::BroadcastWorkPtr PopBroadcastWork(uint16_t zoneID = 1) {
             BroadcastThreadPool::BroadcastWorkPtr work;
-            EXPECT_TRUE(broadcast.m_workQ.pop(work));
+            EXPECT_TRUE(broadcast.m_workQueues[(zoneID - 1) % BROADCAST_THREADPOOL_SIZE].pop(work));
+            broadcast.m_queuedWorkCount.fetch_sub(1, std::memory_order_relaxed);
             return work;
         }
+        void StartBroadcast(IIOCP& transport) {
+            broadcast.iocp = &transport;
+            broadcast.Start();
+        }
+        void StopBroadcast() { broadcast.Stop(); }
+        bool EnqueueBroadcastPair(uint16_t zoneID, uint8_t firstOpcode) {
+            auto player = packetPool.Acquire();
+            auto monster = packetPool.Acquire();
+            parseHeader(player->GetBuffer())->opcode = firstOpcode;
+            parseHeader(monster->GetBuffer())->opcode = firstOpcode + 1;
+            player->SetLength(sizeof(PacketHeader));
+            monster->SetLength(sizeof(PacketHeader));
+            return broadcast.EnqueueBootstrap(42, zoneID, std::move(player), packetPool.Acquire(),
+                std::move(monster), packetPool.Acquire());
+        }
+        size_t QueuedBroadcastCount() const { return broadcast.m_queuedWorkCount.load(); }
         CountedView& Enqueue(uint64_t id = 42, uint64_t userID = 6982) {
             views.push_back(std::make_unique<CountedView>(id));
             auto& view = *views.back();
@@ -335,6 +385,70 @@ namespace Core {
             state->mq = &loads;
             for (uint16_t id = 1; id <= ZONE_COUNT; ++id)
                 state->m_states.emplace(id, std::make_unique<ZoneState>(id));
+        }
+        void PrepareCrossingMonster() {
+            auto* zone = state->GetZone(1);
+            const auto& area = zone->m_cells[2][2].area;
+            const float y = (area.y_min + area.y_max) * 0.5f;
+            MonsterState moving{};
+            moving.Initialize(0, 0, area.x_max - 0.1f, y, 2, 2);
+            moving.SetAggro(700);
+            zone->m_monsters.push_back(moving);
+            zone->m_cells[2][2].monsterIndexes.push_back(0);
+            MonsterState dead{};
+            dead.Initialize(0, 1, moving.x, y, 2, 2);
+            dead.hp = 0;
+            dead.dirtyBit = 0x01;
+            zone->m_monsters.push_back(dead);
+            zone->m_cells[2][2].monsterIndexes.push_back(1);
+            CharacterState target{};
+            target.zoneInternalID = 700;
+            target.hp = 100;
+            target.x = area.x_max + 5.0f;
+            target.y = y;
+            zone->m_chars.push_back(target);
+            zone->m_InternalIDToIndex.emplace(700, 0);
+        }
+        void RespawnCrossingMonster() {
+            auto* zone = state->GetZone(1);
+            zone->m_monsters[0].hp = 0;
+            zone->m_monsters[0].respawnTick = 1;
+            zone->UpdateMonster();
+        }
+        Cell& PhaseCell(int x) { return state->GetZone(1)->m_cells[2][x]; }
+        CharacterState& PhasePlayer(size_t index) { return state->GetZone(1)->m_chars[index]; }
+        MonsterState& PhaseMonster(size_t index) { return state->GetZone(1)->m_monsters[index]; }
+        void MovePhaseMonster(size_t index, float x, float y) {
+            auto* zone = state->GetZone(1);
+            zone->SetMonsterPosition(zone->m_monsters[index], x, y);
+        }
+        void PrepareSkillPhaseActors() {
+            auto* zone = state->GetZone(1);
+            for (uint16_t index = 0; index < 2; ++index) {
+                const uint8_t cellX = index == 0 ? 0 : 2;
+                const auto& area = PhaseCell(cellX).area;
+                CharacterState player{};
+                player.sessionID = 42 + index;
+                player.zoneInternalID = 700 + index;
+                player.hp = player.maxHp = 500;
+                player.mp = 100;
+                player.attack = 2;
+                player.dir = 3;
+                player.x = (area.x_min + area.x_max) * 0.5f;
+                player.y = (area.y_min + area.y_max) * 0.5f;
+                player.cellX = cellX;
+                player.cellY = 2;
+                player.skillSlotCnt = 1;
+                player.skillSlot = {{0, 0}};
+                zone->m_sessionToIndex.emplace(player.sessionID, index);
+                zone->m_InternalIDToIndex.emplace(player.zoneInternalID, index);
+                zone->m_chars.push_back(player);
+                PhaseCell(cellX).charSessions.push_back(player.sessionID);
+                MonsterState monster{};
+                monster.Initialize(0, index, player.x, player.y, cellX, 2);
+                zone->m_monsters.push_back(monster);
+                PhaseCell(cellX).monsterIndexes.push_back(index);
+            }
         }
         bool LoadTransitionCharacter(uint64_t session = 42, uint16_t zone = 1,
             float x = ZONE_SIZE, float y = ZONE_SIZE * 0.5f, int hp = 75) {
@@ -844,6 +958,98 @@ namespace Core {
             EXPECT_EQ(response->body.items[i].slot, body.items[i].slot);
         }
     }
+    TEST_F(NonZoneThreadPoolFixture, PlayerSkillHitAndActionPacketFollowTheCurrentPositionAcrossCells) {
+        PrepareZones();
+        PrepareSkillPhaseActors();
+        auto* zone = state->GetZone(1);
+        zone->Skill(42, 0);
+        zone->ApplySkill(); // Charging at the input position.
+        ASSERT_EQ(PhaseCell(0).activeSkills.size(), 1u);
+        PhaseCell(0).actionResults.clear();
+        const float newX = PhasePlayer(1).x, newY = PhasePlayer(1).y;
+        auto& player = PhasePlayer(0);
+        player.x = newX;
+        player.y = newY;
+        player.dir = 1;
+        player.cellX = 2;
+        PhaseCell(0).charSessions.clear();
+        PhaseCell(2).charSessions.push_back(player.sessionID);
+        PhaseCell(0).activeSkills[0].currentTick = Data::skillList[0].phases[1].tick;
+        zone->ApplySkill();
+        EXPECT_EQ(PhaseMonster(0).hp, PhaseMonster(0).data->maxHp);
+        EXPECT_EQ(PhaseMonster(1).hp, PhaseMonster(1).data->maxHp - player.attack * Data::skillList[0].phases[1].attack);
+        EXPECT_TRUE(PhaseCell(0).activeSkills.empty());
+        EXPECT_TRUE(PhaseCell(0).actionResults.empty());
+        ASSERT_EQ(PhaseCell(2).actionResults.size(), 1u);
+        zone->ActionSnapshot();
+        auto work = PopBroadcastWork();
+        EXPECT_EQ(work->chunks[2 * CELLS_X], nullptr);
+        ASSERT_NE(work->chunks[2 * CELLS_X + 2], nullptr);
+        ASSERT_EQ(work->chunks[2 * CELLS_X + 2]->GetCount(), 1);
+        const auto* action = reinterpret_cast<const ActionResultField*>(work->chunks[2 * CELLS_X + 2]->GetBuffer());
+        EXPECT_FLOAT_EQ(action->x, newX);
+        EXPECT_FLOAT_EQ(action->y, newY);
+        EXPECT_EQ(action->dir, 3);
+        EXPECT_EQ(action->skillPhase, 1);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, MonsterSkillHitFollowsTheCurrentPositionAcrossCells) {
+        PrepareZones();
+        PrepareSkillPhaseActors();
+        auto* zone = state->GetZone(1);
+        const auto& caster = PhaseMonster(0);
+        PhaseCell(0).activeSkills.emplace_back(1, 0, 0, 0, 0, 3, caster.x, caster.y, 0, 0, 0);
+        zone->ApplySkill();
+        ASSERT_EQ(PhaseCell(0).activeSkills.size(), 1u);
+        PhaseCell(0).actionResults.clear();
+        MovePhaseMonster(0, PhasePlayer(1).x, PhasePlayer(1).y);
+        PhaseMonster(0).dir = 1;
+        PhaseCell(0).activeSkills[0].currentTick = Data::skillList[0].phases[1].tick;
+        zone->ApplySkill();
+        EXPECT_EQ(PhasePlayer(0).hp, 500);
+        EXPECT_EQ(PhasePlayer(1).hp, 500 - caster.data->attack * Data::skillList[0].phases[1].attack);
+        EXPECT_TRUE(PhaseCell(0).activeSkills.empty());
+        EXPECT_TRUE(PhaseCell(0).actionResults.empty());
+        ASSERT_EQ(PhaseCell(2).actionResults.size(), 1u);
+        const auto& action = PhaseCell(2).actionResults[0];
+        EXPECT_FLOAT_EQ(action.x, caster.x);
+        EXPECT_FLOAT_EQ(action.y, caster.y);
+        EXPECT_EQ(action.dir, 3);
+        EXPECT_EQ(action.skillPhase, 1);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, MonsterCellCrossingAndRespawnSendFullStateInTheCurrentCell) {
+        PrepareZones();
+        PrepareCrossingMonster();
+        auto* zone = state->GetZone(1);
+        zone->UpdateMonster();
+        zone->DeltaSnapshotMonster();
+        ASSERT_EQ(QueuedBroadcastCount(), 1u);
+        auto work = PopBroadcastWork();
+        const size_t oldCell = 2 * CELLS_X + 2;
+        const size_t newCell = oldCell + 1;
+        ASSERT_EQ(parseHeader(work->headers[newCell]->GetBuffer())->opcode, OP::MONSTER_FULL_STATE_BROADCAST);
+        ASSERT_EQ(work->chunks[newCell]->GetCount(), 1);
+        const auto* full = reinterpret_cast<const MonsterFullField*>(work->chunks[newCell]->GetBuffer());
+        EXPECT_EQ(full->internalId, 0);
+        EXPECT_GT(full->hp, 0);
+        ASSERT_EQ(work->chunks[oldCell]->GetCount(), 1);
+        const auto* dead = reinterpret_cast<const MonsterFullField*>(work->chunks[oldCell]->GetBuffer());
+        EXPECT_EQ(dead->internalId, 1);
+        EXPECT_EQ(dead->hp, 0);
+
+        RespawnCrossingMonster();
+        zone->DeltaSnapshotMonster();
+        ASSERT_EQ(QueuedBroadcastCount(), 1u);
+        work = PopBroadcastWork();
+        EXPECT_EQ(parseHeader(work->headers[oldCell]->GetBuffer())->opcode, OP::MONSTER_FULL_STATE_BROADCAST);
+        ASSERT_EQ(work->chunks[oldCell]->GetCount(), 1);
+        full = reinterpret_cast<const MonsterFullField*>(work->chunks[oldCell]->GetBuffer());
+        EXPECT_EQ(full->internalId, 0);
+        EXPECT_GT(full->hp, 0);
+        EXPECT_EQ(work->chunks[newCell]->GetCount(), 0);
+    }
+
     TEST_F(NonZoneThreadPoolFixture, ZoneWireCarriesStampAndChunkCountWithoutLeakingFailedAck) {
         static_assert(sizeof(PacketStruct<ZoneChangeResponseBody>) == 47);
         static_assert(offsetof(FullSnapshotBody, states) == 29);
@@ -898,7 +1104,6 @@ namespace Core {
         auto secondWork = PopBroadcastWork();
         ASSERT_NE(firstWork, nullptr);
         ASSERT_NE(secondWork, nullptr);
-        EXPECT_TRUE(firstWork->targeted);
         EXPECT_EQ(firstWork->targetSessionID, 42);
         EXPECT_EQ(firstWork->zoneID, 1);
         ASSERT_EQ(firstWork->headers.size(), 2);
@@ -916,14 +1121,57 @@ namespace Core {
         EXPECT_EQ(playerHeader->bootstrapEnd, 1);
         EXPECT_EQ(monsterHeader->bootstrapEnd, 1);
         EXPECT_EQ(firstWork->chunks[1]->GetLength(), 0);
-        EXPECT_EQ(playerHeader->states[0].zoneInternalID, entry.internalID);
-        EXPECT_TRUE(secondWork->targeted);
+        ASSERT_EQ(firstWork->chunks[0]->GetLength(), sizeof(FullStateField));
+        const auto* playerState = reinterpret_cast<const FullStateField*>(firstWork->chunks[0]->GetBuffer());
+        EXPECT_EQ(playerState->zoneInternalID, entry.internalID);
+        EXPECT_EQ(secondWork->targetSessionID, 42);
         const auto* secondPlayer = parseBody<FullSnapshotBody>(secondWork->headers[0]->GetBuffer());
         const auto* secondMonster = parseBody<MonsterFullSnapshotBody>(secondWork->headers[1]->GetBuffer());
         EXPECT_EQ(playerHeader->bootstrapID, monsterHeader->bootstrapID);
         EXPECT_EQ(secondPlayer->bootstrapID, secondMonster->bootstrapID);
         EXPECT_LT(playerHeader->bootstrapID, secondPlayer->bootstrapID);
         EXPECT_EQ(playerHeader->ownershipEpoch, secondPlayer->ownershipEpoch);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BroadcastPreservesZoneOrderWithoutBlockingOtherZones) {
+        PrepareZones();
+        BlockingBroadcastIOCP transport;
+        ASSERT_TRUE(EnqueueBroadcastPair(1, 1));
+        ASSERT_TRUE(EnqueueBroadcastPair(1, 3));
+        StartBroadcast(transport);
+        EXPECT_TRUE(transport.WaitFor(1));
+        EXPECT_TRUE(EnqueueBroadcastPair(2, 5));
+        EXPECT_TRUE(transport.WaitFor(3));
+        EXPECT_EQ(transport.Sent(), (std::vector<uint8_t>{1, 5, 6}));
+        transport.Release();
+        EXPECT_TRUE(transport.WaitFor(6));
+        StopBroadcast();
+        EXPECT_EQ(transport.Sent(), (std::vector<uint8_t>{1, 5, 6, 2, 3, 4}));
+        EXPECT_EQ(QueuedBroadcastCount(), 0u);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BroadcastQueueBudgetIsSharedAcrossWorkers) {
+        PrepareZones();
+        for (size_t i = 0; i < BROADCAST_QUEUE_SIZE; ++i)
+            ASSERT_TRUE(EnqueueBroadcastPair(static_cast<uint16_t>(i % ZONE_COUNT + 1), 1));
+        EXPECT_FALSE(EnqueueBroadcastPair(2, 1));
+        EXPECT_EQ(QueuedBroadcastCount(), BROADCAST_QUEUE_SIZE);
+        ASSERT_NE(PopBroadcastWork(), nullptr);
+        EXPECT_TRUE(EnqueueBroadcastPair(2, 1));
+        EXPECT_EQ(QueuedBroadcastCount(), BROADCAST_QUEUE_SIZE);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BroadcastAcceptsMissingFirstHeaderWithoutDereferencingIt) {
+        PrepareZones();
+        std::vector<std::shared_ptr<IPacket>> headers(CELLS_X * CELLS_Y);
+        std::vector<std::shared_ptr<IPacket>> chunks(headers.size());
+        headers[1] = packetPool.Acquire();
+        broadcast.EnqueueWork(std::move(headers), std::move(chunks), 1);
+        ASSERT_EQ(QueuedBroadcastCount(), 1u);
+        auto work = PopBroadcastWork();
+        ASSERT_NE(work, nullptr);
+        EXPECT_EQ(work->headers[0], nullptr);
+        EXPECT_NE(work->headers[1], nullptr);
     }
 
     TEST_F(NonZoneThreadPoolFixture, ClientDirectedZoneOpsAreRejectedAndEntryRelocationPreservesCharacterState) {

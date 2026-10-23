@@ -11,6 +11,7 @@ namespace Core {
         constexpr float MONSTER_WANDER_RADIUS = 6.0f;
         constexpr float MONSTER_WANDER_SPEED = 0.375f * WORLD_MOVEMENT_SCALE;
         constexpr float MONSTER_CHASE_SPEED_SCALE = 0.75f;
+        constexpr float MONSTER_ARRIVAL_DISTANCE = 0.05f;
 
         std::pair<int, int> ChooseSpawn(const CellArea& area) {
             const int minX = static_cast<int>(area.x_min) + Data::MONSTER_SPAWN_EDGE_INSET;
@@ -42,6 +43,50 @@ namespace Core {
             if (monster.dir == direction) return;
             monster.dir = direction;
             monster.dirtyBit |= 0x08;
+        }
+
+        MonsterBehavior HomeBehavior(const MonsterState& monster) {
+            if (std::abs(monster.spawnX - monster.x) > MONSTER_WANDER_RADIUS ||
+                std::abs(monster.spawnY - monster.y) > MONSTER_WANDER_RADIUS)
+                return MonsterBehavior::Returning;
+            return MonsterBehavior::Wandering;
+        }
+
+        void PauseWandering(MonsterState& monster) {
+            monster.wanderTargetX = monster.x;
+            monster.wanderTargetY = monster.y;
+            monster.wanderPauseTicks = static_cast<uint8_t>(10u + NextWanderValue(monster) % 21u);
+        }
+
+        void EndMonsterCombat(MonsterState& monster) {
+            monster.aggro = 0;
+            monster.aggroTick = 0;
+            monster.behavior = HomeBehavior(monster);
+            PauseWandering(monster);
+        }
+
+        bool InMonsterCastRange(const MonsterState& monster, const CharacterState& target,
+            const Data::SkillData& skill) {
+            if ((monster.data->id == 0 || monster.data->id == 1) && skill.skillID == 0) {
+                const auto hitPhase = std::find_if(skill.phases.begin(), skill.phases.end(), [](const Data::SkillPhase& phase) {
+                    return phase.actionID == static_cast<uint8_t>(Data::SkillActionType::Hit);
+                });
+                if (hitPhase != skill.phases.end())
+                    return hitPhase->range.InRange(monster.dir, monster.x, monster.y, target.x, target.y);
+            }
+            const float dx = target.x - monster.x;
+            const float dy = target.y - monster.y;
+            return dx * dx + dy * dy <= 2.0f;
+        }
+
+        MonsterBehavior CombatBehavior(const MonsterState& monster, const CharacterState& target) {
+            const auto& phase = monster.data->phases[monster.phase];
+            const auto& step = phase.steps[monster.skillStep & (phase.stepCnt - 1)];
+            const auto& skill = Data::skillList[step.skillID];
+            if (monster.tick >= step.delayTicks &&
+                (monster.data->id == 2 || InMonsterCastRange(monster, target, skill)))
+                return MonsterBehavior::Attacking;
+            return MonsterBehavior::Chasing;
         }
     }
 
@@ -140,192 +185,192 @@ namespace Core {
         }
     }
     void ZoneState::UpdateMonster() {
-        for (auto& monster : m_monsters)
-        {
+        std::lock_guard lock(m_mutex);
+        for (auto& monster : m_monsters) {
             monster.tick++;
-
-            // 1. 죽은 몬스터 respawn
+            CharacterState* target = nullptr;
             if (monster.hp == 0) {
-                if (--monster.respawnTick == 0)
-                    monster.Respawn();
-                continue;
+                monster.behavior = MonsterBehavior::Dead;
             }
-
-            // Zone updates run every 50 ms, so the existing 100-tick aggro timeout is 5 seconds.
-            if (monster.aggro != 0 && ++monster.aggroTick >= monster.data->aggroTimeOut) {
-                monster.aggro = 0;
-                monster.aggroTick = 0;
-            }
-
-            // 2. Phase 처리 (보스, 일반 동일하게)
-            auto& phase = monster.data->phases[monster.phase];
-            if (monster.hp < phase.hpThresholdAbs && monster.phase < monster.data->phasesCnt - 1) {
-                monster.phase++;
-                monster.tick = 0; // phase 전환 시 tick 초기화
-                monster.skillStep = 0;
-                continue;
-            }
-
-            if (monster.aggro == 0) {
-                MoveAround(monster);
-                continue;
-            }
-
-            auto it = m_InternalIDToIndex.find(monster.aggro);
-            if (it == m_InternalIDToIndex.end()) {
-                monster.aggro = 0;
-                monster.aggroTick = 0;
-                continue;
-            }
-
-            auto& target = m_chars[it->second];
-
-            auto& step = phase.steps[monster.skillStep & (phase.stepCnt - 1)];
-            auto& skill = Data::skillList[step.skillID];
-
-            // 통합해서 쓸려면..   
-            int dx = target.x - monster.x;
-            int dy = target.y - monster.y;
-            int dist2 = dx * dx + dy * dy;
-
-            bool inCastRange = dist2 <= 2;
-            if ((monster.data->id == 0 || monster.data->id == 1) && skill.skillID == 0)
-            {
-                const auto hitPhase = std::find_if(skill.phases.begin(), skill.phases.end(), [](const Data::SkillPhase& phase) {
-                    return phase.actionID == static_cast<uint8_t>(Data::SkillActionType::Hit);
-                });
-                if (hitPhase != skill.phases.end())
-                {
-                    inCastRange = hitPhase->range.InRange(monster.dir, monster.x, monster.y, target.x, target.y);
+            else {
+                const float aggroDx = monster.x - monster.aggroX;
+                const float aggroDy = monster.y - monster.aggroY;
+                if (monster.aggro != 0 &&
+                    (++monster.aggroTick >= monster.data->aggroTimeOut ||
+                     aggroDx * aggroDx + aggroDy * aggroDy >= monster.data->chaseDistance * monster.data->chaseDistance)) {
+                    EndMonsterCombat(monster);
                 }
-            }
 
-            if (inCastRange and monster.tick >= step.delayTicks)
-            {
-                m_cells[monster.cellY][monster.cellX].activeSkills.emplace_back(
-                    1, 0, 0, monster.internalID, 0, monster.dir, monster.x, monster.y, skill.skillID, 0, 0
-                    );
-                monster.skillStep++;
-                monster.tick = 0;
-            } else if (monster.tick >= step.delayTicks and monster.data->id == 2) {
-                m_cells[monster.cellY][monster.cellX].activeSkills.emplace_back(
-                    1, 0, 0, monster.internalID, 0, monster.dir, monster.x, monster.y, skill.skillID, 0, 0
-                    );
-                monster.skillStep++;
-                monster.tick = 0;
-            } else {
-                MoveToward(monster, target);
+                // HP phases are attack patterns, separate from the behavior state.
+                const auto& phase = monster.data->phases[monster.phase];
+                if (monster.phase < monster.data->phasesCnt - 1 && monster.hp < phase.hpThresholdAbs) {
+                    monster.phase++;
+                    monster.tick = 0;
+                    monster.skillStep = 0;
+                    monster.behavior = monster.aggro != 0 ? MonsterBehavior::Chasing : HomeBehavior(monster);
+                    continue;
+                }
+
+                if (monster.aggro != 0) {
+                    const auto it = m_InternalIDToIndex.find(monster.aggro);
+                    if (it == m_InternalIDToIndex.end() || m_chars[it->second].hp <= 0) {
+                        EndMonsterCombat(monster);
+                        continue;
+                    }
+                    target = &m_chars[it->second];
+                }
+                if (target)
+                    monster.behavior = CombatBehavior(monster, *target);
+                else if (monster.behavior == MonsterBehavior::Chasing || monster.behavior == MonsterBehavior::Attacking)
+                    EndMonsterCombat(monster);
+
+            }
+            switch (monster.behavior) {
+            case MonsterBehavior::Wandering:
+                MoveAround(monster);
+                break;
+            case MonsterBehavior::Returning:
+                MoveMonsterHome(monster);
+                break;
+            case MonsterBehavior::Chasing:
+                MoveToward(monster, *target);
+                break;
+            case MonsterBehavior::Attacking:
+                UseMonsterSkill(monster);
+                break;
+            case MonsterBehavior::Dead:
+                if (--monster.respawnTick == 0) {
+                    SetMonsterPosition(monster, monster.spawnX, monster.spawnY);
+                    monster.Respawn();
+                    m_monsterCellsChanged = true;
+                }
+                break;
             }
         }
+    }
 
+    void ZoneState::UseMonsterSkill(MonsterState& monster) {
+        const auto& phase = monster.data->phases[monster.phase];
+        const auto& step = phase.steps[monster.skillStep & (phase.stepCnt - 1)];
+        m_cells[monster.cellY][monster.cellX].activeSkills.emplace_back(
+            1, 0, 0, monster.internalID, 0, monster.dir, monster.x, monster.y, step.skillID, 0, 0);
+        monster.skillStep++;
+        monster.tick = 0;
+    }
+
+    void ZoneState::SetMonsterPosition(MonsterState& monster, float x, float y) {
+        const auto [cellX, cellY] = GetCell(x, y, m_area);
+        if (cellX != monster.cellX || cellY != monster.cellY) {
+            auto& oldMembers = m_cells[monster.cellY][monster.cellX].monsterIndexes;
+            auto& newMembers = m_cells[cellY][cellX].monsterIndexes;
+            newMembers.push_back(monster.internalID);
+            const auto member = std::find(oldMembers.begin(), oldMembers.end(), monster.internalID);
+            if (member != oldMembers.end()) {
+                *member = oldMembers.back();
+                oldMembers.pop_back();
+            }
+            monster.cellX = static_cast<uint8_t>(cellX);
+            monster.cellY = static_cast<uint8_t>(cellY);
+            m_monsterCellsChanged = true;
+        }
+        if (monster.x != x) monster.dirtyBit |= 0x02;
+        if (monster.y != y) monster.dirtyBit |= 0x04;
+        monster.x = x;
+        monster.y = y;
+    }
+
+    bool ZoneState::MoveMonster(MonsterState& monster, float x, float y) {
+        if (x < m_area.x_min || x > m_area.x_max || y < m_area.y_min || y > m_area.y_max ||
+            !WorldMap::CanTraverse(monster.x, monster.y, x, y))
+            return false;
+        const float dx = x - monster.x;
+        const float dy = y - monster.y;
+        if (dx == 0.0f && dy == 0.0f) return true;
+        SetDirection(monster, std::abs(dx) > std::abs(dy) ? (dx > 0 ? 3 : 2) : (dy > 0 ? 0 : 1));
+        SetMonsterPosition(monster, x, y);
+        return true;
     }
 
     void ZoneState::MoveToward(MonsterState& monster, CharacterState& character) {
-        float dx = character.x - monster.x;
-        float dy = character.y - monster.y;
+        const float dx = character.x - monster.x;
+        const float dy = character.y - monster.y;
+        const float speed = monster.data->moveSpeed * MONSTER_CHASE_SPEED_SCALE * WORLD_MOVEMENT_SCALE;
+        float x = monster.x, y = monster.y;
+        if (std::abs(dx) > std::abs(dy))
+            x += std::copysign((std::min)(std::abs(dx), speed), dx);
+        else if (dy != 0.0f)
+            y += std::copysign((std::min)(std::abs(dy), speed), dy);
 
-        // x, y 중 큰 거리 쪽으로만 이동 (상하좌우)
-        float x = 0, y = 0;
-        if (std::abs(dx) > std::abs(dy)) {
-            x += (dx > 0) ? 1 : -1;
+        const float aggroDx = x - monster.aggroX;
+        const float aggroDy = y - monster.aggroY;
+        if (aggroDx * aggroDx + aggroDy * aggroDy > monster.data->chaseDistance * monster.data->chaseDistance ||
+            x < m_area.x_min || x > m_area.x_max || y < m_area.y_min || y > m_area.y_max) {
+            EndMonsterCombat(monster);
+            return;
         }
-        else if (dy != 0) {
-            y += (dy > 0) ? 1 : -1;
+        MoveMonster(monster, x, y);
+    }
+
+    void ZoneState::MoveMonsterHome(MonsterState& monster) {
+        const float dx = monster.spawnX - monster.x;
+        const float dy = monster.spawnY - monster.y;
+        const bool moveX = std::abs(dx) >= std::abs(dy);
+        const float stepX = std::copysign((std::min)(std::abs(dx), MONSTER_WANDER_SPEED), dx);
+        const float stepY = std::copysign((std::min)(std::abs(dy), MONSTER_WANDER_SPEED), dy);
+        // Try the other axis if the preferred step is blocked. This is not pathfinding.
+        if (moveX) {
+            if (!MoveMonster(monster, monster.x + stepX, monster.y) && stepY != 0.0f)
+                MoveMonster(monster, monster.x, monster.y + stepY);
         }
-        auto& area = m_cells[monster.cellY][monster.cellX].area;
-        x *= monster.data->moveSpeed * MONSTER_CHASE_SPEED_SCALE * WORLD_MOVEMENT_SCALE;
-        y *= monster.data->moveSpeed * MONSTER_CHASE_SPEED_SCALE * WORLD_MOVEMENT_SCALE;
-        if (x != 0) {
-            if ((monster.x + x) < area.x_min or (monster.x + x) > area.x_max) {
-                monster.aggro = 0;
-                monster.aggroTick = 0;
-                return;
-            }
-            if (!WorldMap::CanTraverse(monster.x, monster.y, monster.x + x, monster.y))
-                return;
-            SetDirection(monster, x > 0 ? 3 : 2);
-            monster.x += x;
-            monster.dirtyBit |= 0x02;
+        else {
+            if (!MoveMonster(monster, monster.x, monster.y + stepY) && stepX != 0.0f)
+                MoveMonster(monster, monster.x + stepX, monster.y);
         }
-        if (y != 0) {
-            if ((monster.y + y) < area.y_min or (monster.y + y) > area.y_max) {
-                monster.aggro = 0;
-                monster.aggroTick = 0;
-                return;
-            }
-            if (!WorldMap::CanTraverse(monster.x, monster.y, monster.x, monster.y + y))
-                return;
-            SetDirection(monster, y > 0 ? 0 : 1);
-            monster.y += y;
-            monster.dirtyBit |= 0x04;
-        }
+        monster.behavior = HomeBehavior(monster);
+        if (monster.behavior == MonsterBehavior::Wandering)
+            PauseWandering(monster);
     }
 
     void ZoneState::MoveAround(MonsterState& monster) {
-        auto& area = m_cells[monster.cellY][monster.cellX].area;
-        const float minX = (std::max)(area.x_min, monster.spawnX - MONSTER_WANDER_RADIUS);
-        const float maxX = (std::min)(area.x_max, monster.spawnX + MONSTER_WANDER_RADIUS);
-        const float minY = (std::max)(area.y_min, monster.spawnY - MONSTER_WANDER_RADIUS);
-        const float maxY = (std::min)(area.y_max, monster.spawnY + MONSTER_WANDER_RADIUS);
-        const float homeDx = monster.spawnX - monster.x;
-        const float homeDy = monster.spawnY - monster.y;
-
-        if (std::abs(homeDx) > MONSTER_WANDER_RADIUS || std::abs(homeDy) > MONSTER_WANDER_RADIUS) {
-            monster.wanderTicks = 0;
-            monster.wanderPauseTicks = 0;
-            const bool moveX = std::abs(homeDx) >= std::abs(homeDy);
-            const float distance = moveX ? homeDx : homeDy;
-            const float step = std::copysign((std::min)(std::abs(distance), MONSTER_WANDER_SPEED), distance);
-            if (!WorldMap::CanTraverse(monster.x, monster.y,
-                monster.x + (moveX ? step : 0.0f), monster.y + (moveX ? 0.0f : step)))
-                return;
-            if (moveX) {
-                SetDirection(monster, step > 0 ? 3 : 2);
-                monster.x += step;
-                monster.dirtyBit |= 0x02;
-            } else {
-                SetDirection(monster, step > 0 ? 0 : 1);
-                monster.y += step;
-                monster.dirtyBit |= 0x04;
-            }
-            return;
-        }
-
         if (monster.wanderPauseTicks != 0) {
             --monster.wanderPauseTicks;
             return;
         }
-        if (monster.wanderTicks == 0) {
-            const uint32_t choice = NextWanderValue(monster);
-            if ((choice & 3u) == 0) {
-                monster.wanderPauseTicks = static_cast<uint8_t>(10u + ((choice >> 2) % 21u));
+        float dx = monster.wanderTargetX - monster.x;
+        float dy = monster.wanderTargetY - monster.y;
+        if (dx * dx + dy * dy <= MONSTER_ARRIVAL_DISTANCE * MONSTER_ARRIVAL_DISTANCE) {
+            bool found = false;
+            for (int attempt = 0; attempt < 8; ++attempt) {
+                const float offsetX = (static_cast<float>(NextWanderValue(monster) % 2001u) / 1000.0f - 1.0f) * MONSTER_WANDER_RADIUS;
+                const float offsetY = (static_cast<float>(NextWanderValue(monster) % 2001u) / 1000.0f - 1.0f) * MONSTER_WANDER_RADIUS;
+                const float x = monster.spawnX + offsetX, y = monster.spawnY + offsetY;
+                if (offsetX * offsetX + offsetY * offsetY > MONSTER_WANDER_RADIUS * MONSTER_WANDER_RADIUS ||
+                    x < m_area.x_min || x > m_area.x_max || y < m_area.y_min || y > m_area.y_max ||
+                    !WorldMap::CanTraverse(monster.x, monster.y, x, y))
+                    continue;
+                dx = x - monster.x;
+                dy = y - monster.y;
+                if (dx * dx + dy * dy <= MONSTER_ARRIVAL_DISTANCE * MONSTER_ARRIVAL_DISTANCE)
+                    continue;
+                monster.wanderTargetX = x;
+                monster.wanderTargetY = y;
+                found = true;
+                break;
+            }
+            if (!found) {
+                PauseWandering(monster);
                 return;
             }
-            SetDirection(monster, static_cast<uint8_t>((choice >> 4) & 3u));
-            monster.wanderTicks = static_cast<uint8_t>(20u + ((choice >> 8) % 41u));
         }
-
-        float dx = 0, dy = 0;
-        switch (monster.dir) {
-        case 0: dy = MONSTER_WANDER_SPEED; break;
-        case 1: dy = -MONSTER_WANDER_SPEED; break;
-        case 2: dx = -MONSTER_WANDER_SPEED; break;
-        case 3: dx = MONSTER_WANDER_SPEED; break;
-        }
-        if (monster.x + dx < minX || monster.x + dx > maxX ||
-            monster.y + dy < minY || monster.y + dy > maxY ||
-            !WorldMap::CanTraverse(monster.x, monster.y, monster.x + dx, monster.y + dy)) {
-            monster.wanderTicks = 0;
+        const float distance = std::sqrt(dx * dx + dy * dy);
+        const float scale = (std::min)(MONSTER_WANDER_SPEED, distance) / distance;
+        if (!MoveMonster(monster, monster.x + dx * scale, monster.y + dy * scale)) {
+            PauseWandering(monster);
             return;
         }
-        if (dx != 0) {
-            monster.x += dx;
-            monster.dirtyBit |= 0x02;
-        }
-        if (dy != 0) {
-            monster.y += dy;
-            monster.dirtyBit |= 0x04;
-        }
-        --monster.wanderTicks;
+        dx = monster.wanderTargetX - monster.x;
+        dy = monster.wanderTargetY - monster.y;
+        if (dx * dx + dy * dy <= MONSTER_ARRIVAL_DISTANCE * MONSTER_ARRIVAL_DISTANCE)
+            PauseWandering(monster);
     }
 }

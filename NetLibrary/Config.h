@@ -14,10 +14,8 @@ namespace Net {
 	inline constexpr uint32_t NORMAL_PACKET_LENGTH = 512;
 	inline constexpr uint32_t BIG_PACKET_LENGTH = 32768;
 	inline constexpr uint32_t GIANT_PACKET_LENGTH = 256 * 1024;
-	static_assert(GIANT_PACKET_LENGTH >= sizeof(Core::PacketHeader) + sizeof(uint16_t) * 2
-		+ sizeof(uint64_t) * 3 + sizeof(uint8_t) + Core::MAX_ZONE_CAPACITY * sizeof(Core::FullStateField));
-	static_assert(GIANT_PACKET_LENGTH >= sizeof(Core::PacketHeader) + sizeof(uint16_t) * 2
-		+ sizeof(uint64_t) * 3 + sizeof(uint8_t) + Core::MAX_MONSTER_COUNT * sizeof(Core::MonsterFullField));
+	static_assert(GIANT_PACKET_LENGTH >= sizeof(Core::PacketStruct<Core::FullSnapshotBody>));
+	static_assert(GIANT_PACKET_LENGTH >= sizeof(Core::PacketStruct<Core::MonsterFullSnapshotBody>));
 	static_assert(GIANT_PACKET_LENGTH >= Core::MAX_ZONE_CAPACITY * 10 * sizeof(Core::DeltaUpdateField));
 
 	inline constexpr uint32_t PACKETPOOL_SIZE = 30000;
