@@ -582,6 +582,7 @@ namespace C02.Tests
             public void Dispose()
             {
                 DisableCombat();
+                Invoke(Combat, "OnDestroy"); // Detached Edit Mode fixtures do not receive destruction callbacks.
                 if (Get(World, "model") != null) Invoke(World, "OnDisable");
                 UnityEngine.Object.DestroyImmediate(root);
                 UnityEngine.Object.DestroyImmediate(serverContent);

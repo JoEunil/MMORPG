@@ -141,6 +141,13 @@ public static class KnightInterfaceArtSetup
         var combatRefs = new SerializedObject(world.GetComponent<C05CombatScreen>());
         combatRefs.FindProperty("skillEffectMaterial").objectReferenceValue = material;
         combatRefs.ApplyModifiedPropertiesWithoutUndo();
+        var observed = world.GetComponent<C04ObservedWorld>();
+        if (observed != null)
+        {
+            var observedRefs = new SerializedObject(observed);
+            observedRefs.FindProperty("monsterRangeMaterial").objectReferenceValue = material;
+            observedRefs.ApplyModifiedPropertiesWithoutUndo();
+        }
         EditorUtility.SetDirty(material);
         AssetDatabase.SaveAssets();
         EditorSceneManager.MarkSceneDirty(scene);

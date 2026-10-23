@@ -1,0 +1,30 @@
+스킬별 모션과 몬스터 특수 범위 / ART03 / 2026-10-23
+
+범위
+C19: 기존 PlayAttack signature/mesh joint ownership 유지. 0 짧은횡베기+상체/방패/stance,1braced wide sweep+in-place visual spin,2overhead/weighteddownstroke/recovery. arm/leg pose slerp, 이동의 root/facing/state권위변경0. 비공격 gait팔복원. 신규리깅/Manager/서버변경0.
+C04: 기존OnActionResultReceived 처리경로 사용. 실제content phase별charging/hit와waitTicks/형태로visual모션슬롯선택. monster의wire skillSlot를player스킬슬롯으로해석하지않음. 기본skillId0는groundpreview만생략/모션유지. 특수skill1circle/3twofan/4square-ring을trianglemesh filled area로표시. 각phase의server좌표anchor/독립phase/중앙hole/Hit해제/timeout/HP0/Full·Delta·despawn·session·disable정리보존. chargealpha .14→.58. 기존monsterRangeMaterial serialize 참조를 build-safe SteelSkillGlow.mat로연결,저작도구도동일배선. 신규shader/material필드0. C05의좋은차징/내려찍기VFX/shader/콘텐츠수치변경0.
+
+검토
+독립 C19 리뷰P2 비공격 gait팔제거발견→기존목표복원후확인. C04 새P1P2없음;phase좌표/fan반전/annulushole/메시수명확인. 마지막fixture타이밍수정은assert유지/실제지속이동으로보강,제품변경아님.
+
+직접검증
+Unity6000.0.47f1 native compilationFailed=false/errors=[];shadererror0.
+C19 KnightSkillSlotsHaveDistinctChargeCutAndRecoveryPosesWithoutMovingAuthority PlayMode PASS .060705s.
+C04 MonsterActions_FillChargingSkillAreasKeepPhasePositionsAndSkipBasicTelegraphs PlayMode PASS .1137968s. basic제외/circle/fan/squarehole/brightness/독립해제·수명/phase좌표 포함.
+C19 RealModelAnimatesPartsWithoutMovingAuthorityOrRuntimeAttachments PlayMode PASS 1.4884293s. 실제player+3monster의보행/공격/피격과root/부착물보존.
+최초 C04 detached EditMode호출은C13Awake부재로NullReference,즉시PlayMode테스트러너로전환. 실제게임실패로기록하지않고미충족lifecycle시도보존.
+최초 C19 보행fixture는single位置step후1frame에서legangle0 실패. 프레임시간에맞춘2.5unit/s 지속이동 .15s로모사하고기존assert유지. 실패fixture만다시PASS,이미PASS한Knight/C04반복0. 전체회귀/이동·로그인·서버검사반복0.
+네이티브테스트러너만사용/사용자keyboard·mouse입력0/실제서버교전0. 최종Playfalse/Scene저장dirtyfalse,촬영용object/mesh/RT복원. 원본Game의사용자AI/서버·프로토콜·mapsnapshot/contentdiff0.
+
+미디어
+knight-strike/sweep/cleave-motion-preview.gif: 실제prefab/제품C19·C05의30PNG프레임960x540을순서·팔레트변환만조립. staged accepted phase/진행시간/방향,근접카메라. 실제시간게임입력영상아님.
+monster-circle/fan/square-ring-filled-preview.png: 실제monster prefab/제품C04 geometry builder/SkillTelegraph로render한Editor미리보기. LiveActionResult검증캡처가아니며packet→표시 경로는위PlayModefixture로확인. 마지막프로덕션차징/메시색상을사용/사진수정0.
+site build/linkPASS,실제browser새모션GIF구간확인,과거캡처보존. Standalone기기성능/실전조작감 미검증.
+
+전달
+기존ART02게시요청보류/ART03으로대체. 같은큰아트브랜치/PR에통합,최종Slack요청전로컬커밋. 원문ART03승인전push/PR/Pages0. 승인후fetch·PR48/base상태대조,forcepush/자동병합/AI확대0.
+
+最終 씬 무결성 정정
+최초 이름기반 preview 정리안은 auto-review가 정상 런타임 effect까지 제거할 위험으로 거절하여 미실행. 우회하지 않고 Editor readonly ownership 검사와 독립리뷰로 재조사했다. C05 실제 component의 effectRoot참조둘다null,모든해당루트는Renderer.disabled/프로시저Mesh/실제테스트·scratch좌표,외부참조는SceneRoots뿐임을확인했다. inspected GlobalObjectId18개를고정하고모두사전검증→백업→정확한루트만정리하는더좁은작업이승인되어실행됐다. 전역재질/에셋삭제0. 최초 ART02 Scene에도10루트의우리테스트잔여물이있어같이제거했다.
+C05CombatTests Dispose에서EditMode의누락OnDestroy를명시호출1줄추가,제품C05효과코드수정0. 별도fixtureteardown확인PASS:자신이만든두효과종료후alive0/Scene생성root0. 기존게임검사반복0.
+Scene block audit:추가저작블록0/과거생성잔여블록90제거,공통블록변경5개=monsterRangeMaterial ref+SceneRoots정리+기존UI좌표float roundoff3개뿐. 맵/충돌/authoring/다른게임오브젝트불변. backup·ownership증거ROOTBuilds/CitadelArt/scene-before-scoped-cleanup.unity,preview-ownership.txt,preview-object-ids.txt. 이전 임시오브젝트0 판정이 카메라/fixture이름만확인했던불충분한검사임을정정. 최종generatedeffectroot0.

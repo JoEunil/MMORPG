@@ -1,3 +1,13 @@
+## 스킬 동작·몬스터 특수 영역 — 2026-10-23
+
+| 담당 | 신규 | 재활성화 | 실제 결과 |
+| --- | ---: | ---: | --- |
+| knight_attack_presentation / worker | 0 | 3 | 세 스킬 몸통·하체/포즈 보간, gait팔 회귀복원, 지속보행 fixture 보완 |
+| monster_cast_presentation / worker | 1 | 0 | C04 기존수신경로의 filled 영역·charge, 기본공격영역제외, shape기반모션·직접fixture |
+| knight_art_review / code_reviewer | 0 | 4 | C19/보행수정/C04범위 및 씬 잔여물 독립감사, fixture 종료 P2 확인·보완 |
+
+Coordinator가 기존재질배선·씬통합,관련PlayMode3검사/실패fixture만재확인,실제모델/geometry Editor프리뷰·3GIF조립과공개MD갱신을수행했다. 별도tester/문서Agent0,이미지생성0. 활성화누적 신규78/재활성화180/전체258. 실제미노출토큰·비용N/A. 슬롯부족으로실행실패한review호출은활성화에서제외.
+
 ## 성채 필드·대형 하단 게이지·차징 — 2026-10-23
 
 | 담당 | 신규 | 재활성화 | 실제 결과 |

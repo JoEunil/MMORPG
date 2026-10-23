@@ -222,57 +222,56 @@ namespace C02.Tests
         }
 
         [Test]
-        public void MonsterFeedback_ActionResultShowsSupportedServerRingsAndExpiresWithObservation()
+        public void MonsterActions_FillChargingSkillAreasKeepPhasePositionsAndSkipBasicTelegraphs()
         {
             using (var fixture = new ObservationFixture())
             {
                 fixture.ConfigureMonsterRange();
-                fixture.Monsters(100, Monster(0, 0), Monster(1, 1), Monster(2, 2), Monster(7, 0));
+                fixture.Content.ring.phases[1].waitTicks = 6;
+                fixture.Content.ring.phases[1].range1 = 2;
+                fixture.Monsters(100, Monster(0, 0), Monster(1, 1), Monster(2, 2), Monster(7, 1));
                 double receivedAt = Time.realtimeSinceStartupAsDouble;
                 fixture.MonsterActions(
                     MonsterAction(0, 0, 0, 0, 50, 60),
                     MonsterAction(1, 0, 1, 0, -4, 9),
                     MonsterAction(2, 0, 0, 0, 5, 6),
                     MonsterAction(99, 0, 0, 0, 7, 8),
-                    MonsterAction(7, 0, 0, 0, 1, 2),
-                    MonsterAction(0, 1, 1, 0, 30, 40));
+                    MonsterAction(7, 0, 1, 0, 1, 2));
 
-                var smallRing = fixture.MonsterRange(0);
-                double smallRingDeadline = fixture.RangeDeadline(0);
+                Assert.That(fixture.MonsterRange(0), Is.Null, "Skill 0 is the monster's basic attack: it animates without a ground-area telegraph.");
+                var smallRing = fixture.MonsterRange(1);
+                double smallRingDeadline = fixture.RangeDeadline(1);
+                var circleMesh = smallRing.GetComponent<MeshFilter>().sharedMesh;
                 Assert.That(smallRing, Is.Not.Null);
                 Assert.That(smallRing.gameObject.activeSelf, Is.True);
-                Assert.That(smallRing.positionCount, Is.EqualTo(32));
-                Assert.That(smallRing.loop, Is.True);
-                Assert.That(smallRing.useWorldSpace, Is.True);
+                Assert.That(circleMesh.vertexCount, Is.EqualTo(41));
+                Assert.That(circleMesh.triangles.Length, Is.EqualTo(120), "The circle is a filled triangle fan, not a boundary line.");
                 Assert.That(smallRing.sharedMaterial, Is.SameAs(fixture.RangeMaterial));
-                Assert.That(smallRing.GetPosition(0).x, Is.EqualTo(52).Within(0.001f));
-                Assert.That(smallRing.GetPosition(0).y, Is.EqualTo(0.055f).Within(0.001f));
-                Assert.That(smallRing.GetPosition(0).z, Is.EqualTo(60).Within(0.001f));
-                Assert.That(fixture.RangeDeadline(0) - receivedAt, Is.InRange(0.39, 0.42), "Skill 0 cleanup follows its authored six-tick Hit wait plus grace.");
+                Assert.That(circleMesh.vertices[1].x, Is.EqualTo(-2).Within(0.001f));
+                Assert.That(circleMesh.vertices[1].y, Is.EqualTo(0.06f).Within(0.001f));
+                Assert.That(circleMesh.vertices[1].z, Is.EqualTo(9).Within(0.001f));
+                float initialCharge = circleMesh.colors[0].a;
+                Assert.That(smallRingDeadline - receivedAt, Is.InRange(0.39, 0.42), "The preview uses the authored six-tick Hit delay plus cleanup grace.");
+                fixture.Render(receivedAt + .2);
+                Assert.That(circleMesh.colors[0].a, Is.GreaterThan(initialCharge), "The translucent filled area brightens while its cast charges.");
                 var sameNumericId = fixture.MonsterRange(7);
                 Assert.That(sameNumericId, Is.Not.Null, "Monster and player IDs are separate namespaces even when the number matches.");
-                Assert.That(sameNumericId.GetPosition(0).x, Is.EqualTo(3).Within(0.001f));
+                Assert.That(sameNumericId.GetComponent<MeshFilter>().sharedMesh.vertices[1].x, Is.EqualTo(3).Within(0.001f));
                 Assert.That(fixture.Count("monsters"), Is.EqualTo(4), "Unobserved monster IDs do not create observations.");
-                var invalidAction = MonsterAction(0, 0, 0, 0, 50, 60); invalidAction.x = float.NaN;
+                var invalidAction = MonsterAction(1, 0, 1, 0, 50, 60); invalidAction.x = float.NaN;
                 fixture.MonsterActions(invalidAction);
-                invalidAction = MonsterAction(0, 0, 0, 0, 50, 60); invalidAction.dir = 4;
+                invalidAction = MonsterAction(1, 0, 1, 0, 50, 60); invalidAction.dir = 4;
                 fixture.MonsterActions(invalidAction);
-                Assert.That(fixture.RangeDeadline(0), Is.EqualTo(smallRingDeadline), "Invalid coordinates and directions cannot renew a preview.");
+                Assert.That(fixture.RangeDeadline(1), Is.EqualTo(smallRingDeadline), "Invalid coordinates and directions cannot renew a preview.");
 
-                var largeRing = fixture.MonsterRange(1);
-                Assert.That(largeRing, Is.Not.Null);
-                Assert.That(largeRing.GetPosition(0).x, Is.EqualTo(4).Within(0.001f));
-                Assert.That(largeRing.GetPosition(0).z, Is.EqualTo(9).Within(0.001f));
-                Assert.That(fixture.RangeDeadline(1) - receivedAt, Is.InRange(0.89, 0.92), "Skill 1 cleanup follows its authored sixteen-tick Hit wait plus grace.");
-
-                fixture.MonsterActions(MonsterAction(0, 0, 0, 1, 50, 60));
+                fixture.MonsterActions(MonsterAction(1, 0, 1, 1, -4, 9));
                 Assert.That(smallRing.gameObject.activeSelf, Is.False, "The server Hit phase hides the charging preview.");
-                fixture.MonsterActions(MonsterAction(0, 0, 0, 0, 50, 60));
-                fixture.Render(fixture.RangeDeadline(0) + 0.01);
+                fixture.MonsterActions(MonsterAction(1, 0, 1, 0, -4, 9));
+                fixture.Render(fixture.RangeDeadline(1) + 0.01);
                 Assert.That(smallRing.gameObject.activeSelf, Is.False, "The cleanup grace expires without becoming a damage or hit indicator.");
 
                 fixture.MonsterDeltaPacket(new MonsterDeltaField { internalId = 1, fieldId = 0, fieldVal = 0 });
-                Assert.That(largeRing.gameObject.activeInHierarchy, Is.False, "HP0 removal hides its child preview with the observed monster.");
+                Assert.That(smallRing.gameObject.activeInHierarchy, Is.False, "HP0 removal destroys the telegraph with its observed monster.");
 
                 double bossFirstReceivedAt = Time.realtimeSinceStartupAsDouble;
                 var bossFirstAction = MonsterAction(2, 0, 3, 0, 5, 6); bossFirstAction.dir = 3;
@@ -280,14 +279,15 @@ namespace C02.Tests
                 var bossFirst = fixture.BossFanPreview(2, false);
                 double bossFirstDeadline = fixture.BossFanDeadline(2, false);
                 Assert.That(bossFirst, Is.Not.Null);
-                Assert.That(bossFirst.positionCount, Is.EqualTo(36));
-                Assert.That(bossFirst.loop, Is.True);
+                var fanMesh = bossFirst.GetComponent<MeshFilter>().sharedMesh;
+                Assert.That(fanMesh.vertexCount, Is.EqualTo(36));
+                Assert.That(fanMesh.triangles.Length, Is.EqualTo(96), "Both server-authored fan sectors have filled triangles.");
                 Assert.That(bossFirst.sharedMaterial, Is.SameAs(fixture.RangeMaterial));
-                Assert.That(bossFirst.GetPosition(0), Is.EqualTo(new Vector3(5, 0.055f, 6)));
-                Assert.That(bossFirst.GetPosition(1).x, Is.EqualTo(5 + Mathf.Cos(30 * Mathf.Deg2Rad) * 10).Within(0.001f));
-                Assert.That(bossFirst.GetPosition(1).z, Is.EqualTo(6 + Mathf.Sin(30 * Mathf.Deg2Rad) * 10).Within(0.001f));
-                Assert.That(bossFirst.GetPosition(17).x, Is.EqualTo(5 + Mathf.Cos(150 * Mathf.Deg2Rad) * 10).Within(0.001f));
-                Assert.That(bossFirst.GetPosition(19).z, Is.EqualTo(6 + Mathf.Sin(210 * Mathf.Deg2Rad) * 10).Within(0.001f));
+                Assert.That(fanMesh.vertices[0], Is.EqualTo(new Vector3(5, 0.06f, 6)));
+                Assert.That(fanMesh.vertices[1].x, Is.EqualTo(5 + Mathf.Cos(30 * Mathf.Deg2Rad) * 10).Within(0.001f));
+                Assert.That(fanMesh.vertices[1].z, Is.EqualTo(6 + Mathf.Sin(30 * Mathf.Deg2Rad) * 10).Within(0.001f));
+                Assert.That(fanMesh.vertices[17].x, Is.EqualTo(5 + Mathf.Cos(150 * Mathf.Deg2Rad) * 10).Within(0.001f));
+                Assert.That(fanMesh.vertices[19].z, Is.EqualTo(6 + Mathf.Sin(210 * Mathf.Deg2Rad) * 10).Within(0.001f));
                 Assert.That(bossFirstDeadline - bossFirstReceivedAt, Is.InRange(1.09, 1.12));
 
                 double bossSecondReceivedAt = Time.realtimeSinceStartupAsDouble;
@@ -297,11 +297,12 @@ namespace C02.Tests
                 Assert.That(bossSecond, Is.Not.Null);
                 Assert.That(bossSecond, Is.Not.SameAs(bossFirst));
                 Assert.That(bossFirst.gameObject.activeSelf, Is.True, "A second Charging phase preserves the first preview.");
-                Assert.That(bossSecond.GetPosition(1).x, Is.EqualTo(15 + Mathf.Cos(330 * Mathf.Deg2Rad) * 10).Within(0.001f));
-                Assert.That(bossSecond.GetPosition(17).z, Is.EqualTo(16 + Mathf.Sin(390 * Mathf.Deg2Rad) * 10).Within(0.001f));
-                Assert.That(bossSecond.GetPosition(19).z, Is.EqualTo(16 + Mathf.Sin(150 * Mathf.Deg2Rad) * 10).Within(0.001f));
-                Assert.That(bossSecond.GetPosition(35).x, Is.EqualTo(15 + Mathf.Cos(210 * Mathf.Deg2Rad) * 10).Within(0.001f));
-                Assert.That(bossSecond.GetPosition(0).x, Is.EqualTo(15).Within(0.001f), "The preview keeps the server's fixed cast center despite later direction/position.");
+                var secondFanMesh = bossSecond.GetComponent<MeshFilter>().sharedMesh;
+                Assert.That(secondFanMesh.vertices[1].x, Is.EqualTo(15 + Mathf.Cos(330 * Mathf.Deg2Rad) * 10).Within(0.001f));
+                Assert.That(secondFanMesh.vertices[17].z, Is.EqualTo(16 + Mathf.Sin(390 * Mathf.Deg2Rad) * 10).Within(0.001f));
+                Assert.That(secondFanMesh.vertices[19].z, Is.EqualTo(16 + Mathf.Sin(150 * Mathf.Deg2Rad) * 10).Within(0.001f));
+                Assert.That(secondFanMesh.vertices[35].x, Is.EqualTo(15 + Mathf.Cos(210 * Mathf.Deg2Rad) * 10).Within(0.001f));
+                Assert.That(secondFanMesh.vertices[0].x, Is.EqualTo(15).Within(0.001f), "The preview stays anchored to this phase's server cast center.");
                 Assert.That(fixture.BossFanDeadline(2, true) - bossSecondReceivedAt, Is.InRange(1.09, 1.12));
 
                 fixture.MonsterActions(MonsterAction(2, 0, 3, 1, 5, 6));
@@ -329,31 +330,31 @@ namespace C02.Tests
                 fixture.MonsterActions(bossSquareFirstAction);
                 var squareOuter0 = fixture.BossSquarePreview(2, 0, false);
                 Assert.That(squareOuter0, Is.Not.Null);
-                Assert.That(squareOuter0.loop, Is.True);
-                Assert.That(squareOuter0.useWorldSpace, Is.True);
+                Assert.That(squareOuter0.GetComponent<MeshFilter>().sharedMesh.vertexCount, Is.EqualTo(4));
+                Assert.That(squareOuter0.GetComponent<MeshFilter>().sharedMesh.triangles.Length, Is.EqualTo(6));
                 Assert.That(squareOuter0.sharedMaterial, Is.SameAs(fixture.RangeMaterial));
-                Assert.That(squareOuter0.GetPosition(0), Is.EqualTo(new Vector3(-12.5f, 0.055f, 17.5f)));
-                Assert.That(fixture.BossSquarePreview(2, 0, true), Is.Null, "Range2 zero has no inner outline.");
+                Assert.That(squareOuter0.GetComponent<MeshFilter>().sharedMesh.vertices[0], Is.EqualTo(new Vector3(-12.5f, 0.06f, 17.5f)));
                 Assert.That(fixture.BossSquareDeadline(2, 0) - Time.realtimeSinceStartupAsDouble, Is.InRange(1.09, 1.11));
                 Assert.That(bossFirst.gameObject.activeSelf, Is.True, "Skill 4 does not replace the skill 3 preview.");
 
                 var bossSquareSecondAction = MonsterAction(2, 0, 4, 2, 8, 9); bossSquareSecondAction.dir = 1;
                 fixture.MonsterActions(bossSquareSecondAction);
                 var squareOuter1 = fixture.BossSquarePreview(2, 1, false);
-                var squareInner1 = fixture.BossSquarePreview(2, 1, true);
-                Assert.That(squareOuter1.GetPosition(0), Is.EqualTo(new Vector3(3, 0.055f, 4)));
-                Assert.That(squareInner1, Is.Not.Null);
-                Assert.That(squareInner1.GetPosition(0), Is.EqualTo(new Vector3(5.5f, 0.055f, 6.5f)));
+                var squareMesh1 = squareOuter1.GetComponent<MeshFilter>().sharedMesh;
+                Assert.That(squareMesh1.vertexCount, Is.EqualTo(16));
+                Assert.That(squareMesh1.triangles.Length, Is.EqualTo(24), "The filled square ring leaves the server-defined center hole open.");
+                Assert.That(squareMesh1.vertices[0], Is.EqualTo(new Vector3(3, 0.06f, 4)));
+                Assert.That(squareMesh1.vertices[3], Is.EqualTo(new Vector3(5.5f, 0.06f, 6.5f)));
                 Assert.That(fixture.BossSquareDeadline(2, 1) - Time.realtimeSinceStartupAsDouble, Is.InRange(1.09, 1.11));
 
                 var bossSquareFifthAction = MonsterAction(2, 0, 4, 8, 3, 4); bossSquareFifthAction.dir = 3;
                 fixture.MonsterActions(bossSquareFifthAction);
                 var squareOuter4 = fixture.BossSquarePreview(2, 4, false);
-                var squareInner4 = fixture.BossSquarePreview(2, 4, true);
-                Assert.That(squareOuter4.GetPosition(0), Is.EqualTo(new Vector3(-9.5f, 0.055f, -8.5f)));
-                Assert.That(squareInner4.GetPosition(0), Is.EqualTo(new Vector3(-7, 0.055f, -6)));
+                var squareMesh4 = squareOuter4.GetComponent<MeshFilter>().sharedMesh;
+                Assert.That(squareMesh4.vertices[0], Is.EqualTo(new Vector3(-9.5f, 0.06f, -8.5f)));
+                Assert.That(squareMesh4.vertices[3], Is.EqualTo(new Vector3(-7, 0.06f, -6)));
                 Assert.That(fixture.BossSquareDeadline(2, 4) - Time.realtimeSinceStartupAsDouble, Is.InRange(1.09, 1.11));
-                Assert.That(squareOuter1.GetPosition(0).x, Is.EqualTo(3).Within(0.001f), "Square outlines remain axis aligned and keep the ActionResult center despite dir changes.");
+                Assert.That(squareMesh1.vertices[0].x, Is.EqualTo(3).Within(0.001f), "The square fill remains axis aligned and uses the ActionResult center despite dir changes.");
 
                 fixture.MonsterActions(MonsterAction(2, 0, 4, 1, -10, 20));
                 Assert.That(squareOuter0.gameObject.activeSelf, Is.False, "Hit phase 1 removes only the first square pair.");
@@ -361,11 +362,9 @@ namespace C02.Tests
                 Assert.That(squareOuter4.gameObject.activeSelf, Is.True);
                 fixture.MonsterActions(MonsterAction(2, 0, 4, 3, 8, 9));
                 Assert.That(squareOuter1.gameObject.activeSelf, Is.False);
-                Assert.That(squareInner1.gameObject.activeSelf, Is.False);
                 Assert.That(squareOuter4.gameObject.activeSelf, Is.True, "A Hit clears only its corresponding later pair.");
                 fixture.MonsterActions(MonsterAction(2, 0, 4, 9, 3, 4));
                 Assert.That(squareOuter4.gameObject.activeSelf, Is.False);
-                Assert.That(squareInner4.gameObject.activeSelf, Is.False);
                 Assert.That(bossFirst.gameObject.activeSelf, Is.True, "Skill 4 Hit phases leave skill 3 previews untouched.");
 
                 fixture.MonsterActions(
@@ -374,25 +373,24 @@ namespace C02.Tests
                 fixture.Render(Math.Max(fixture.BossSquareDeadline(2, 0), fixture.BossSquareDeadline(2, 1)) + 0.01);
                 Assert.That(squareOuter0.gameObject.activeSelf, Is.False, "The first square pair expires from its own authored TTL.");
                 Assert.That(squareOuter1.gameObject.activeSelf, Is.False, "The second square pair expires without extending the first.");
-                Assert.That(squareInner1.gameObject.activeSelf, Is.False);
-
                 fixture.MonsterActions(MonsterAction(2, 0, 4, 0, -10, 20));
                 var clearedSquare = fixture.BossSquarePreview(2, 0, false).gameObject;
                 Assert.That(clearedSquare.activeSelf, Is.True);
                 fixture.MonsterActions(bossFirstAction);
                 Assert.That(bossFirst.gameObject.activeSelf, Is.True);
+                fixture.Monsters(101, Monster(0, 1));
                 var oldSource = fixture.NetworkModel;
                 var nextModel = fixture.NewModel();
-                oldSource.ActionResultReceived(1, 1, 1, new[] { MonsterAction(0, 0, 0, 0, 20, 21) });
+                oldSource.ActionResultReceived(1, 1, 1, new[] { MonsterAction(0, 0, 1, 0, 20, 21) });
                 Assert.That(fixture.QueuedCount, Is.EqualTo(1), "The old source callback must still be pending at replacement.");
                 fixture.Bind(nextModel);
                 Assert.That(bossFirst.gameObject.activeInHierarchy, Is.False, "Model replacement removes active boss previews.");
                 Assert.That(clearedSquare.activeInHierarchy, Is.False, "Model replacement removes active square previews.");
-                fixture.Monsters(101, Monster(0, 0));
+                fixture.Monsters(101, Monster(0, 1));
                 fixture.Drain();
                 Assert.That(fixture.MonsterRange(0), Is.Null, "A queued result from the replaced model cannot add a preview.");
 
-                fixture.MonsterActions(MonsterAction(0, 0, 0, 0, 20, 21));
+                fixture.MonsterActions(MonsterAction(0, 0, 1, 0, 20, 21));
                 var clearedPreview = fixture.MonsterRange(0).gameObject;
                 fixture.CloseWorld();
                 Assert.That(clearedPreview.activeInHierarchy, Is.False, "World clear removes the per-observation preview.");
@@ -639,6 +637,7 @@ namespace C02.Tests
             private readonly List<ViewModel> models = new List<ViewModel>();
             private C14ServerContent rangeContent;
             public Material RangeMaterial { get; private set; }
+            public C14ServerContent Content => rangeContent;
 
             public ObservationFixture()
             {
@@ -705,16 +704,16 @@ namespace C02.Tests
             public void QueueMonsterActions(params ActionResultField[] results) =>
                 ((IViewModelNet)models[models.Count - 1]).ActionResultReceived(1, 1, (ushort)results.Length, results);
             public void Render(double now) => Invoke(observer, "RenderObservations", now);
-            public LineRenderer MonsterRange(ushort id) => (LineRenderer)EntryField("monsters", id, "RangePreview");
-            public double RangeDeadline(ushort id) => (double)EntryField("monsters", id, "RangeUntil");
-            public LineRenderer BossFanPreview(ushort id, bool second) =>
-                (LineRenderer)EntryField("monsters", id, second ? "BossFanPreviewSecond" : "BossFanPreviewFirst");
+            public MeshRenderer MonsterRange(ushort id) => PreviewRenderer(EntryField("monsters", id, "RangePreview"));
+            public double RangeDeadline(ushort id) => PreviewDeadline(EntryField("monsters", id, "RangePreview"));
+            public MeshRenderer BossFanPreview(ushort id, bool second) =>
+                PreviewRenderer(EntryField("monsters", id, second ? "BossFanPreviewSecond" : "BossFanPreviewFirst"));
             public double BossFanDeadline(ushort id, bool second) =>
-                (double)EntryField("monsters", id, second ? "BossFanUntilSecond" : "BossFanUntilFirst");
-            public LineRenderer BossSquarePreview(ushort id, int pair, bool inner) =>
-                (LineRenderer)((Array)EntryField("monsters", id, inner ? "BossSquareInnerPreviews" : "BossSquareOuterPreviews")).GetValue(pair);
+                PreviewDeadline(EntryField("monsters", id, second ? "BossFanPreviewSecond" : "BossFanPreviewFirst"));
+            public MeshRenderer BossSquarePreview(ushort id, int pair, bool inner) => inner ? null :
+                PreviewRenderer(((Array)EntryField("monsters", id, "BossSquarePreviews")).GetValue(pair));
             public double BossSquareDeadline(ushort id, int pair) =>
-                ((double[])EntryField("monsters", id, "BossSquareUntil"))[pair];
+                PreviewDeadline(((Array)EntryField("monsters", id, "BossSquarePreviews")).GetValue(pair));
             public void Expire(double now) => Invoke(observer, "Expire", now);
             public void RemovePlayer(uint id) => Invoke(observer, "RemovePlayer", id);
             public void RemoveMonster(ushort id) => Invoke(observer, "RemoveMonster", id);
@@ -755,6 +754,9 @@ namespace C02.Tests
                 var entry = ((IDictionary)Get(observer, name))[id];
                 return entry.GetType().GetField(field).GetValue(entry);
             }
+            private static MeshRenderer PreviewRenderer(object preview) => preview == null ? null :
+                (MeshRenderer)preview.GetType().GetField("Renderer").GetValue(preview);
+            private static double PreviewDeadline(object preview) => (double)preview.GetType().GetField("Deadline").GetValue(preview);
             private GameObject Child(string name) { var child = new GameObject(name, typeof(RectTransform)); child.transform.SetParent(root.transform, false); return child; }
             private UnityEngine.UI.Button Button(string name) => Child(name).AddComponent<UnityEngine.UI.Button>();
             private TMP_Text Text(string name) => Child(name).AddComponent<TextMeshProUGUI>();

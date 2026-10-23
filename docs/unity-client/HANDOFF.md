@@ -1,3 +1,20 @@
+## ART03 씬 무결성 최종 보완 — 2026-10-23
+
+테스트/촬영의EditMode생명주기누락으로이전ART02Scene에도runtimeC05효과잔여물이저장된것확인. 자동검토는이름일괄삭제를거절/미실행. readonlyID·owner·Mesh·좌표대조+독립리뷰의외부참조검사후고유ID18개고정/전체사전검증/backup의더좁은작업이승인되어정리. 전역에셋삭제0/정상게임참조0. C05fixtureDispose에OnDestroy명시호출추가/own effect2종종료·Scene생성root0 smokePASS. 제품C05VFX불변/이미통과한3검사반복0. Scene공통블록은materialref/SceneRoots와3float오차만변경,우리이전생성잔여90block제거. 상세 SKILL_PRESENTATION_RESULTS.txt. 전문누적78/180/258,토큰N/A.
+
+## 스킬별 모션·몬스터 특수 영역 완료 — ART03 후보 / 2026-10-23
+
+기본횡베기/주변회전/전방내려찍기를상체·방패·stance연동과phase별부드러운포즈로보완. 좋은C05차징/내려찍기VFX유지. 몬스터ActionResult원래구독중이며특수circle/fan/square-ring을filled+chargealpha로교체,기본skill0는영역없이모션만. 각phase실제server위치/독립해제/HP0·sessioncleanup유지. 서버AI/프로토콜/수치/map변경0.
+
+독립리뷰gait팔P2수정/최종새P1P2없음,관련PlayMode3검사PASS. 초기detachedAwake실패와singleframe보행fixture실패·지속이동보강은 SKILL_PRESENTATION_RESULTS.txt에보존. 이미PASS검사반복0,실입력/서버교전0. 근접스킬GIF3+몬스터filled에디터미리보기3/기존화면이력보존,site build/browser확인. 사용량78/179/257,토큰N/A. ROOT Editor생산버전저장/Playfalse.
+
+같은큰art묶음으로로컬커밋후부모1792754611.740799에ART03최종게시요청. 이전ART02보류/무효이며정확한ART03원문답장전push/PR/Pages0. 최종요청ts는게시후기록. 게시시먼저원격fetch와PR48/base대조.
+
+## 스킬별 모션·몬스터 범위 후속 저작 — 2026-10-23
+
+사용자요청: 기존 좋은 플레이어 내려찍기VFX/차징유지,스킬별 자연스러운 준비/타격/회수와 monster기본공격동작/특수범위filled. C19+직접fixture는 knight_attack_presentation, C04+직접fixture는 monster_cast_presentation, Editor/직렬화/캡처는Coordinator. 서버AI/프로토콜/콘텐츠수치변경금지. 기존 ActionResult구독은존재하며 각phase서버위치기준.
+
+ART02 게시요청은 최종후보보완중으로 보류한다. 새범위와최소검증을완료한 ART03 요청으로 대체예정. ART02 지연승인만으로 현재저작버전 게시하지않는다. 이미통과한 unrelated검사반복0. 새검증은 C19 1개와C04 직접영향1~2개/에디터연출캡처로묶는다. 별도서버/AI작업재개아님.
 ## 공개 홈 지침 이력·가독성 보완 — 2026-10-23
 
 사용자 요청으로 주요 지침9개를 공개 MD에 정리: 미술/입력/UI/리깅 제외/최소 검증·큰묶음/Unity맵 공유/사람AI·Agent 역할/코드단순성/확인 가능한 활용 기록. 본문18px,도식·캡션 최소16px,이력 제목19px/설명18px,모바일 한열. Nav 지침변경 바로가기 추가. build/linkPASS,실제browser9항목·desktop18px/mobile390 가로넘침0·caption16px 확인,viewport reset. 게임/Unity 재시험0,새Agent0. 같은ART02 공개결과 보완에 로컬통합/원격게시0. 승인요청은기존ART02유지.
