@@ -388,6 +388,43 @@ namespace C02.Tests
             }
         }
 
+        [Test]
+        public void RectanglePreviewAndReleaseUseEachServerPhasePositionInAllFourDirections()
+        {
+            using (var f = new CombatFixture())
+            {
+                f.World.transform.position = new Vector3(60f, 0f, 70f);
+                f.World.transform.localScale = new Vector3(2f, 1f, 2f);
+                var received = (Action<ushort, ActionResultField[]>)Get(f.Combat, "actionResults");
+                var castFarCorners = new[]
+                {
+                    new Vector3(21.5f, .05f, 42f), new Vector3(21.5f, .05f, 18f),
+                    new Vector3(8f, .05f, 31.5f), new Vector3(32f, .05f, 31.5f),
+                };
+                var releaseFarCorners = new[]
+                {
+                    new Vector3(22.3f, .07f, 35.4f), new Vector3(22.3f, .07f, 30.6f),
+                    new Vector3(19.6f, .07f, 33.3f), new Vector3(24.4f, .07f, 33.3f),
+                };
+                for (byte dir = 0; dir < 4; dir++)
+                {
+                    var phase = new ActionResultField { casterType = 0, casterId = 73, skillSlot = 2,
+                        skillId = 2, dir = dir, x = 20, y = 30, skillPhase = 0 };
+                    received(1, new[] { phase });
+                    var preview = (LineRenderer)Get(f.Combat, "linePreview");
+                    Assert.That(preview.enabled && preview.positionCount == 4 && preview.useWorldSpace, Is.True);
+                    Assert.That(Vector3.Distance(preview.GetPosition(2), castFarCorners[dir]), Is.LessThan(.001f));
+                    phase.skillPhase = 1; phase.x = 22; phase.y = 33;
+                    received(1, new[] { phase });
+                    var effect = (LineRenderer)Get(f.Combat, "releaseEffect");
+                    Assert.That(preview.enabled, Is.False);
+                    Assert.That(effect.enabled && effect.positionCount == 4 && effect.useWorldSpace, Is.True);
+                    Assert.That(Vector3.Distance(effect.GetPosition(2), releaseFarCorners[dir]), Is.LessThan(.01f),
+                        "The expanding hit outline must use this phase's server position, not the cast position.");
+                }
+            }
+        }
+
         private sealed class CombatFixture : IDisposable
         {
             private readonly GameObject root;

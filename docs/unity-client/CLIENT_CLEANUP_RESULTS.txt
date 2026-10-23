@@ -1,0 +1,23 @@
+Client structure cleanup / 2026-10-23
+
+Architecture observed before editing:
+C01LoginScreen -> Initializer / IViewModelUI + IViewDataUI.
+ClientCore network reception -> existing handler/ViewModel -> dispatcher jobs drained by C01LoginScreen.Update -> bound screen events.
+C02WorldScreen owns character/Zone/bootstrap state; C04ObservedWorld owns observed entity visuals, interpolation history and lifetime.
+C05CombatScreen presents confirmed action phases, range preview, hit pulse and cooldown; server result x/y is phase-local authority.
+C07InventoryScreen and C09BazaarScreen own their separate read/retry vs non-idempotent mutation lifetimes; both use C11ItemPresentation for item identity and art.
+No new network/input/UI framework is needed for these paths.
+
+Batch scope frozen:
+- C11ItemPresentation: replace four repeated ID switches with one readonly item definition table. Keep public API, IDs/names/badges/colors/resource paths, unknown fallback and lazy Sprite cache behavior.
+- C07InventoryScreen: remove unreferenced SetTopRight, remove selectedCard field used only as a same-method alias; compare existing card parameter directly.
+- C05CombatScreen: replace duplicated cast/hit rectangle direction switches with one private allocation-free corner calculation. Keep winding, height, dimensions, renderer lifetime and each phase's result position.
+- C04ObservedWorld: consolidate four identical red LineRenderer creation blocks inside their current owner. Keep shapes, result positions, parent, names, material, width and deadlines.
+No files/types/assets moved or renamed; no .meta/Scene/Prefab/asmdef/ClientCore/server/AI/protocol/timing changes.
+
+Review: independent 4-file review and C04-only follow-up found no remaining P1/P2. Coordinator retained distinct bag/market request machines because their failure semantics differ. No generic helper layer, manager or new interface introduced.
+
+Validation plan: compile in installed Unity6000.0.47f1, then exactly three component integration checks: known item bag UI/selection/icons; four-direction cast->moved-position hit outline; existing combined monster range shapes/lifetime. No login/game-server/native input, full regression or repeated already-passed movement tests. Runtime game verification and AI integration are not claimed.
+ROOT source files matched canonical pre-edit baseline; backed up and mirrored only four product files. ROOT's older test files are temporarily backed up and frozen to canonical tests for this batch, and must be restored only if still byte-identical to the tested candidate after the Editor exits.
+
+Completed validation: Unity PlayMode batch XML reports total3/passed3/failed0, duration0.37642s. Item UI0.102200s, rectangle0.023742s, monster range/lifetime0.209504s. Compiled assemblies successfully; existing obsolete TMP warnings remain. Editor process exited after batch. ROOT original tests restored only after byte-identical frozen-hash checks; four candidate product sources remain mirrored. No full regression/input/server test repeated. Installed CLI update check hit CDN DNS failure; actual installed Editor build/test completed independently. Final delivery branch and Slack pre-publication approval remain to prepare.

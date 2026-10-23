@@ -33,7 +33,6 @@ namespace C02
         [SerializeField] private TMP_Text detailQuantity;
         [SerializeField] private TMP_Text inventoryStatus;
         private IViewModelUI model;
-        private Button selectedCard;
         private bool requestPending;
         private bool requestTimedOut;
         private float requestDeadline;
@@ -308,11 +307,10 @@ namespace C02
         private void SelectItem(InventoryItemView item, Button card)
         {
             if (!IsOpen || !card.isActiveAndEnabled) return;
-            selectedCard = card;
             foreach (Transform child in inventoryGridContent)
             {
                 var button = child.GetComponent<UnityEngine.UI.Button>();
-                if (button != null) button.GetComponent<UnityEngine.UI.Image>().color = button == selectedCard ? SelectedCardColor : CardColor;
+                if (button != null) button.GetComponent<UnityEngine.UI.Image>().color = button == card ? SelectedCardColor : CardColor;
             }
             Sprite icon = C11ItemPresentation.Icon(item.ItemID);
             if (icon != null)
@@ -339,7 +337,6 @@ namespace C02
 
         private void ClearInventoryCards()
         {
-            selectedCard = null;
             for (int i = inventoryGridContent != null ? inventoryGridContent.childCount - 1 : -1; i >= 0; i--)
             {
                 Transform child = inventoryGridContent.GetChild(i);
@@ -397,15 +394,6 @@ namespace C02
             rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1);
             rect.anchoredPosition = new Vector2(left, -top);
             rect.sizeDelta = new Vector2(width, height);
-        }
-
-        private static void SetTopRight(RectTransform rect, float left, float right, float top, float height)
-        {
-            rect.anchorMin = new Vector2(0, 1);
-            rect.anchorMax = new Vector2(1, 1);
-            rect.pivot = new Vector2(.5f, 1);
-            rect.anchoredPosition = new Vector2((left - right) * .5f, -top);
-            rect.sizeDelta = new Vector2(-left - right, height);
         }
 
         private void OnDisable()
