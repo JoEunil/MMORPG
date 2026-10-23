@@ -23,6 +23,7 @@ namespace C02
         private float attackStarted;
         private float attackUntil;
         private bool released;
+        private byte attackSlot;
         private float hitUntil;
 
         public void Configure()
@@ -128,12 +129,13 @@ namespace C02
         }
 
         // Call only for accepted server action phases; this does not send or confirm damage.
-        public void PlayAttack(byte direction, bool released)
+        public void PlayAttack(byte direction, bool released, byte skillSlot = 0, float chargeDuration = 0)
         {
             if (visual == null || direction > 3) return;
             this.released = released;
+            attackSlot = skillSlot <= 2 ? skillSlot : (byte)0;
             attackStarted = Time.unscaledTime;
-            attackUntil = attackStarted + (released ? .44f : .55f);
+            attackUntil = attackStarted + (released ? (attackSlot == 2 ? .58f : .48f) : Mathf.Max(.52f, chargeDuration + .08f));
             facing = C02WorldScreen.ServerFacing(direction);
             hasFacing = true;
         }
@@ -184,27 +186,78 @@ namespace C02
             float torsoTurn = 0;
             if (attacking)
             {
-                Vector3 ready = new Vector3(-62, -20, 26);
-                Vector3 followThrough = new Vector3(52, 24, -48);
-                if (!released)
+                if (attackSlot == 2)
                 {
-                    float preparation = Mathf.SmoothStep(0, 1, Mathf.Clamp01(attack / .7f));
-                    swordPose = ready * preparation;
-                    torsoTurn = -12f * preparation;
+                    // The rectangular skill is a deliberate overhead wind-up followed by a weighted cleave.
+                    Vector3 overhead = new Vector3(-145, -8, 24);
+                    Vector3 impact = new Vector3(78, 12, -22);
+                    if (!released)
+                    {
+                        float windup = Mathf.SmoothStep(0, 1, Mathf.Clamp01(attack / .7f));
+                        swordPose = overhead * windup;
+                        torsoTurn = -18f * windup;
+                    }
+                    else if (attack < .38f)
+                    {
+                        float cleave = attack / .38f;
+                        cleave = cleave * cleave * (3f - 2f * cleave);
+                        swordPose = Vector3.Lerp(overhead, impact, cleave);
+                        torsoTurn = Mathf.Lerp(-18f, 22f, cleave);
+                    }
+                    else
+                    {
+                        float recovery = Mathf.SmoothStep(0, 1, (attack - .38f) / .62f);
+                        swordPose = Vector3.Lerp(impact, Vector3.zero, recovery);
+                        torsoTurn = Mathf.Lerp(22f, 0, recovery);
+                    }
                 }
-                else if (attack < .32f)
+                else if (attackSlot == 1)
                 {
-                    // Short accelerating cut; the remaining time is a deliberate recovery.
-                    float cut = attack / .32f;
-                    cut *= cut;
-                    swordPose = Vector3.Lerp(ready, followThrough, cut);
-                    torsoTurn = Mathf.Lerp(-12, 16, cut);
+                    Vector3 guard = new Vector3(-78, -18, 32);
+                    Vector3 sweepPose = new Vector3(-28, 8, 150);
+                    if (!released)
+                    {
+                        float brace = Mathf.SmoothStep(0, 1, Mathf.Clamp01(attack / .65f));
+                        swordPose = guard * brace;
+                        torsoTurn = -10f * brace;
+                    }
+                    else if (attack < .62f)
+                    {
+                        float sweep = attack / .62f;
+                        swordPose = Vector3.Lerp(guard, sweepPose, Mathf.SmoothStep(0, 1, sweep));
+                        torsoTurn = 18f * Mathf.Sin(sweep * Mathf.PI);
+                    }
+                    else
+                    {
+                        float recovery = Mathf.SmoothStep(0, 1, (attack - .62f) / .38f);
+                        swordPose = Vector3.Lerp(sweepPose, Vector3.zero, recovery);
+                        torsoTurn = 4f * Mathf.Sin(recovery * Mathf.PI);
+                    }
                 }
                 else
                 {
-                    float recovery = Mathf.SmoothStep(0, 1, (attack - .32f) / .68f);
-                    swordPose = Vector3.Lerp(followThrough, Vector3.zero, recovery);
-                    torsoTurn = Mathf.Lerp(16, 0, recovery);
+                    Vector3 ready = new Vector3(-62, -20, 26);
+                    Vector3 followThrough = new Vector3(52, 24, -48);
+                    if (!released)
+                    {
+                        float preparation = Mathf.SmoothStep(0, 1, Mathf.Clamp01(attack / .7f));
+                        swordPose = ready * preparation;
+                        torsoTurn = -12f * preparation;
+                    }
+                    else if (attack < .32f)
+                    {
+                        // Short accelerating cut; the remaining time is a deliberate recovery.
+                        float cut = attack / .32f;
+                        cut *= cut;
+                        swordPose = Vector3.Lerp(ready, followThrough, cut);
+                        torsoTurn = Mathf.Lerp(-12, 16, cut);
+                    }
+                    else
+                    {
+                        float recovery = Mathf.SmoothStep(0, 1, (attack - .32f) / .68f);
+                        swordPose = Vector3.Lerp(followThrough, Vector3.zero, recovery);
+                        torsoTurn = Mathf.Lerp(16, 0, recovery);
+                    }
                 }
             }
             for (int side = 0; side < 2; side++)
@@ -220,6 +273,12 @@ namespace C02
             float bob = (1f - Mathf.Cos(stride * 2f)) * .004f * height * walking;
             visual.localPosition = restPosition + new Vector3(0, bob, hit * height * .025f);
             Quaternion lean = Quaternion.Euler(hit * -10f + walking * 3f, torsoTurn, swing * .65f);
+            if (attacking && released && attackSlot == 1)
+            {
+                // Full in-place turn returns to the server-facing direction at recovery.
+                float spin = -360f * Mathf.SmoothStep(0, 1, Mathf.Clamp01(attack / .72f));
+                lean *= Quaternion.Euler(0, spin, 0);
+            }
             Quaternion localFacing = hasFacing ? Quaternion.Inverse(visual.parent.rotation) * facing : restRotation;
             visual.localRotation = Quaternion.Slerp(visual.localRotation, localFacing * lean, Mathf.Clamp01(dt * 18f));
         }

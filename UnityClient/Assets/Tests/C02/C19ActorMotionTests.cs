@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System.Collections;
+using System.Reflection;
 using C02;
 using NUnit.Framework;
 using UnityEditor;
@@ -10,6 +11,70 @@ namespace C02.Tests
 {
     public sealed class C19ActorMotionTests
     {
+        [Test]
+        [Category("PlayFeedbackRevision")]
+        public void KnightSkillSlotsHaveDistinctChargeCutAndRecoveryPosesWithoutMovingAuthority()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/C02/Art/C04/ObservedPlayer.prefab");
+            Assert.That(prefab, Is.Not.Null);
+            var actor = Object.Instantiate(prefab);
+            try
+            {
+                actor.transform.SetPositionAndRotation(new Vector3(7f, 0f, 11f), Quaternion.Euler(0f, 37f, 0f));
+                var motion = actor.AddComponent<C19ActorMotion>();
+                motion.Configure();
+                motion.ResetPose();
+                var visual = actor.transform.Find("V01Hero") ?? actor.transform.Find("GuardVisual");
+                Assert.That(visual, Is.Not.Null);
+                var swordArm = visual.Find("Shoulder1");
+                Assert.That(swordArm, Is.Not.Null);
+
+                Vector3 authorityPosition = actor.transform.position;
+                Quaternion authorityRotation = actor.transform.rotation;
+                var lateUpdate = typeof(C19ActorMotion).GetMethod("LateUpdate", BindingFlags.Instance | BindingFlags.NonPublic);
+                Assert.That(lateUpdate, Is.Not.Null);
+                var chargePoses = new Quaternion[3];
+                var releasePoses = new Quaternion[3];
+                var durations = new[] { .48f, .48f, .58f };
+                var releaseProgress = new[] { .2f, .35f, .2f };
+
+                for (byte slot = 0; slot < 3; slot++)
+                {
+                    motion.PlayAttack(0, false, slot, .44f);
+                    SetAttackProgress(motion, .52f, .5f);
+                    lateUpdate.Invoke(motion, null);
+                    chargePoses[slot] = swordArm.localRotation;
+                    AssertAuthority(actor, authorityPosition, authorityRotation);
+                }
+                Assert.That(Quaternion.Angle(chargePoses[0], chargePoses[1]), Is.GreaterThan(5f));
+                Assert.That(Quaternion.Angle(chargePoses[1], chargePoses[2]), Is.GreaterThan(5f));
+
+                for (byte slot = 0; slot < 3; slot++)
+                {
+                    motion.PlayAttack(0, true, slot);
+                    SetAttackProgress(motion, durations[slot], releaseProgress[slot]);
+                    lateUpdate.Invoke(motion, null);
+                    releasePoses[slot] = swordArm.localRotation;
+                    Assert.That(Quaternion.Angle(releasePoses[slot], Quaternion.identity), Is.GreaterThan(5f),
+                        "Each server-confirmed release has a visible weapon pose.");
+                    AssertAuthority(actor, authorityPosition, authorityRotation);
+                }
+                Assert.That(Quaternion.Angle(releasePoses[0], releasePoses[1]), Is.GreaterThan(10f));
+                Assert.That(Quaternion.Angle(releasePoses[1], releasePoses[2]), Is.GreaterThan(10f));
+
+                for (byte slot = 0; slot < 3; slot++)
+                {
+                    motion.PlayAttack(0, true, slot);
+                    SetAttackProgress(motion, durations[slot], .995f);
+                    lateUpdate.Invoke(motion, null);
+                    Assert.That(Quaternion.Angle(swordArm.localRotation, Quaternion.identity), Is.LessThan(3f),
+                        "The weapon returns smoothly to its resting pose after each skill.");
+                    AssertAuthority(actor, authorityPosition, authorityRotation);
+                }
+            }
+            finally { Object.DestroyImmediate(actor); }
+        }
+
         [UnityTest]
         [Category("PlayFeedbackRevision")]
         public IEnumerator RealModelAnimatesPartsWithoutMovingAuthorityOrRuntimeAttachments()
@@ -73,6 +138,21 @@ namespace C02.Tests
                 }
                 finally { Object.DestroyImmediate(actor); }
             }
+        }
+
+        private static void SetAttackProgress(C19ActorMotion motion, float duration, float progress)
+        {
+            float now = Time.unscaledTime;
+            typeof(C19ActorMotion).GetField("attackStarted", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(motion, now - duration * progress);
+            typeof(C19ActorMotion).GetField("attackUntil", BindingFlags.Instance | BindingFlags.NonPublic)
+                .SetValue(motion, now + duration * (1f - progress));
+        }
+
+        private static void AssertAuthority(GameObject actor, Vector3 position, Quaternion rotation)
+        {
+            Assert.That(actor.transform.position, Is.EqualTo(position), "Presentation never moves the authoritative actor root.");
+            Assert.That(actor.transform.rotation, Is.EqualTo(rotation), "Presentation never rotates the authoritative actor root.");
         }
     }
 }

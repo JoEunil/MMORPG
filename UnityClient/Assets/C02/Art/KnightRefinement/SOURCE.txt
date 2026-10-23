@@ -1,0 +1,9 @@
+Knight refinement source and usage
+
+Original mesh geometry and procedural surface texture authored for this repository through Unity Editor mesh APIs. No imported model, external game asset, scraped image, purchased asset, AI-generated bitmap, or external 3D generation service is used by this refinement tool.
+
+Assets are created by KnightVisualRefinement.Apply() / Refine(Transform). Existing knight part names, pivots, mesh assets, material assets and their GUIDs are retained; new renderer references point to sibling generated assets here. Network state and the server collision/skill contracts are not modified.
+
+Material target: Unity URP Lit. BrushedSteel is a native 256 x 256 repeatable mipmapped texture, trilinear filtering, anisotropy 4. Generated metal/cloth mesh detail is original project code output and follows the repository's existing license terms. No separate third-party attribution is required.
+
+Visual direction: adult closed-helmet knight, layered graphite steel with brighter rolled edges, restrained aged brass, dark oxblood textile; embossed chest/shield heraldry, keel breastplate, sallet crest and visor brow, articulated shoulder bevels, narrow fuller blade and swept guard. This file documents provenance; it does not assert runtime visual acceptance or performance validation.

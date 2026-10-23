@@ -1,3 +1,12 @@
+## 기사 아트·게임 UI·스킬 연출 — 2026-10-23
+
+| 담당 | 신규 | 재활성화 | 실제 결과 |
+| --- | ---: | ---: | --- |
+| knight_visual_refinement / asset_artist | 1 | 1 | 기존 기사 메시·재질 도구와 확대 렌더 피드백의 겹판/안감/메뉴 조명 보완 |
+| knight_attack_presentation / worker | 1 | 5 | 슬롯별 모션·검흔/파쇄, 관련 fixture 갱신, 리뷰와 화면 피드백 반영 |
+| knight_art_review / code_reviewer | 1 | 4 | 수명/좌표/색상/메시/참조 독립 검토, P2 3건 발견 및 최종 P1/P2 없음 |
+
+Coordinator가 기존 uGUI 스킨·직렬화 자산·Scene 통합, builtin 이미지 생성 2건, 실제 Unity 렌더/GIF·직접 영향 검사·무입력 Play 확인을 수행했다. 전용 tester/진행 문서 Agent는 실행하지 않았다. 누적 신규77/재활성화166/활성화243, 실제 미노출 토큰·비용은 N/A. 실행 중 메시지/단순 문서 저장은 활성화로 세지 않는다.
 ## 클라이언트 구조 정리 묶음 — 2026-10-23
 
 client_cleanup_inventory/explorer 신규1: 표시·요청 책임과 안전한 중복/불용 후보 읽기 분석. item_presentation_cleanup/worker 신규1: C11 단일정의표·C07 중복필드/불용함수 제거. presentation_cleanup_review/code_reviewer 신규1·재활성화1: 4파일 독립리뷰와 C04 생성중복 추가diff만 검토,P1P2없음. Coordinator가 C05/C04와 기존fixture 보강·Unity컴파일/관련3검사(PASS총0.37642s)·통합 수행. 실제사용누적신규74/재활성화156/전체230,미노출토큰·비용N/A. 단순문서갱신/메시지는활성화로세지않음.

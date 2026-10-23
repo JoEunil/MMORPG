@@ -365,7 +365,9 @@ namespace C02
             if (phase == null || phase.action != C14SkillAction.Charging && phase.action != C14SkillAction.Hit) return;
             bool released = phase.action == C14SkillAction.Hit;
             if (result.casterType == 0 && players.TryGetValue(result.casterId, out var player) && player.State.hp > 0)
-                player.ActorMotion.PlayAttack(result.dir, released);
+                player.ActorMotion.PlayAttack(result.dir, released, result.skillSlot,
+                    !released && skill.phases.Length > 1 && skill.phases[1] != null
+                        ? Mathf.Min(skill.phases[1].waitTicks * .05f, 2f) : 0);
             else if (result.casterType == 1 && result.casterId <= ushort.MaxValue &&
                 monsters.TryGetValue((ushort)result.casterId, out var monster) && monster.State.hp > 0)
                 monster.ActorMotion.PlayAttack(result.dir, released);

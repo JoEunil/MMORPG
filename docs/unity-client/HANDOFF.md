@@ -1,3 +1,12 @@
+## 기사·UI·스킬 아트 후보 완료 — 2026-10-23
+
+사용자 아트 강화 요청을 codex/knight-art-direction에서 묶었다. 기존 정적 기사에 닫힌 판금·능선/문장·브러시 금속/붉은 천, 진입 전용 보조 조명, 기존 uGUI의 생성 배경/금속 프레임/가죽·확대 HP/MP와 Z/X/C, 슬롯별 횡베기·회전·내려찍기와 정점색 검흔/수직 참격/지면 파쇄를 반영했다. 기존 Scene/Prefab GUID·컨트롤·C17 생명주기/ActionResult phase 좌표·방향을 재사용하고 관찰 플레이어도 슬롯을 전달한다. 서버/프로토콜/사용자 몬스터 AI/이동 변경0.
+
+독립 리뷰 P2 3건과 도구 재적용 null·neck gap 보완, 최종 P1/P2 없음. 관련 detached 3검사 PASS, 렌더 피드백 후 geometry 관련 C05 2개만 다시 PASS(C19 재시험0). Unity컴파일0·셰이더오류false, Play 무입력 로그인1회와 프레임진행 확인. CLI 구버전 명령 오류의 ErrorPause는 실제 paused 상태를 보고 재개했으며 새 제품 오류 없음. 실입력/서버교전/standalone성능은 미검증, PNG/GIF는 실제 Editor모델+synthetic phase, HUD는 임시예시값임을 구분했다. 최종 Playfalse/dirtyfalse/backgroundfalse. 테스트 동안 자산저장0. 결과 KNIGHT_ART_RESULTS.txt.
+
+공개 MD·선별 미디어와 site생성/linkPASS, http://127.0.0.1:8791/MMORPG/work/player-hud/history.html 실제브라우저 확인. 생성 메뉴 삽화는 실제 3D 결과로 보고하지 않는다. 현재 미리보기 PID38948/Unity25240. ROOT기존Scene/prefab이CAND HEAD와같음을백업비교후적용,원본GameAI불변. 전문누적77/166/243,토큰N/A.
+
+로컬 커밋 후 새 ART01 Slack 부모에 게시 승인 요청한다. CLEAN01/PR48과 다른 작업이며 원문 승인 전 push/새PR/병합/Pages배포0. 게시 시 먼저 fetch로 PR48 포함/병합 여부를 대조해 이력을 보존하며 원격 base를 선택한다. 무관한 게임 개발을 자동 재개하지 않는다.
 ## CLEAN01 게시 완료 — PR48 / 2026-10-23
 
 Slack1792751818.000039의승인 CLEAN01을부모1792748383.070499와대조해소비했고 https://github.com/JoEunil/MMORPG/pull/48 하나로게시·artifact첨부했다. master기준codex/client-structure-cleanup 일반push,게시확인기준bd37d32. 공통/코드개선지침과클라이언트4파일중복정리/직접영향검사/사용자AI설명정정을같은PR에담았다. 서버·사용자몬스터AI·프로토콜diff0,검증c306f4d대비Assetsdiff0,테스트재실행0. 제품코드변경후Unity관련3검사PASS근거는기존결과를그대로사용한다. 과거승인대기문구보다이완료기록이우선한다. PR병합/추가게임개발/서버조작/별도Slack복구코드게시0.
