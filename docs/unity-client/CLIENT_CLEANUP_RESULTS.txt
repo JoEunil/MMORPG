@@ -1,3 +1,5 @@
+Published 2026-10-23: CLEAN01 reply1792751818.000039 verified and consumed. PR48 https://github.com/JoEunil/MMORPG/pull/48 / master <- codex/client-structure-cleanup / initial published headbd37d32. One PR includes code guidelines and client cleanup. Tested Assets identical to c306f4d; no test rerun, server or monster AI changes. No merge.
+
 Client structure cleanup / 2026-10-23
 
 Architecture observed before editing:
@@ -20,7 +22,7 @@ Review: independent 4-file review and C04-only follow-up found no remaining P1/P
 Validation plan: compile in installed Unity6000.0.47f1, then exactly three component integration checks: known item bag UI/selection/icons; four-direction cast->moved-position hit outline; existing combined monster range shapes/lifetime. No login/game-server/native input, full regression or repeated already-passed movement tests. Runtime game verification and AI integration are not claimed.
 ROOT source files matched canonical pre-edit baseline; backed up and mirrored only four product files. ROOT's older test files are temporarily backed up and frozen to canonical tests for this batch, and must be restored only if still byte-identical to the tested candidate after the Editor exits.
 
-Completed validation: Unity PlayMode batch XML reports total3/passed3/failed0, duration0.37642s. Item UI0.102200s, rectangle0.023742s, monster range/lifetime0.209504s. Compiled assemblies successfully; existing obsolete TMP warnings remain. Editor process exited after batch. ROOT original tests restored only after byte-identical frozen-hash checks; four candidate product sources remain mirrored. No full regression/input/server test repeated. Installed CLI update check hit CDN DNS failure; actual installed Editor build/test completed independently. Final delivery branch and Slack pre-publication approval remain to prepare.
+Completed validation: Unity PlayMode batch XML reports total3/passed3/failed0, duration0.37642s. Item UI0.102200s, rectangle0.023742s, monster range/lifetime0.209504s. Compiled assemblies successfully; existing obsolete TMP warnings remain. Editor process exited after batch. ROOT original tests restored only after byte-identical frozen-hash checks; four candidate product sources remain mirrored. No full regression/input/server test repeated. Installed CLI update check hit CDN DNS failure; actual installed Editor build/test completed independently. Delivery branch and Slack approval are recorded below; publication is complete as noted at the top.
 
 Delivery: origin/master f67ca1a (PR46 merged) -> codex/client-structure-cleanup. Product c4bcff8 matches tested c306f4d; no re-run. Include code-quality guidance in same user-facing batch; exclude unapproved Slack recovery tool commits. Public behavior/media unchanged, so no site regeneration/captures. Product-only diff: 77 insertions/141 deletions =64 fewer lines, clarity comes from single item identity/geometry/setup ownership rather than line-count alone.
 
