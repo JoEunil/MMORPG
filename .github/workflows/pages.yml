@@ -5,14 +5,15 @@ on:
     branches: [master]
     paths:
       - docs/unity-client/SHOWCASE.md
+      - docs/unity-client/AGENT_USAGE.md
       - docs/unity-client/portfolio/**
       - site/**
       - tools/site/**
       - .github/workflows/pages.yml
   pull_request:
-    branches: [master]
     paths:
       - docs/unity-client/SHOWCASE.md
+      - docs/unity-client/AGENT_USAGE.md
       - docs/unity-client/portfolio/**
       - site/**
       - tools/site/**

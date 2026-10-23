@@ -1,3 +1,9 @@
+## 아트·활용 지표 PR 게시 완료 — 2026-10-23
+
+PR49 https://github.com/JoEunil/MMORPG/pull/49 생성/현재채팅첨부 완료. head codex/knight-art-direction, base codex/client-structure-cleanup(PR48선행),GitHub mergeable 확인. ART03 회신1792760233.285059는 위 수신기록에서1회소비완료. 서버AI diff0/병합0/Pages배포0.
+
+PR생성후 Actions가비어있는원인은기존pages.yml의pull_request base=master필터였다. 사이트관련PR은base와관계없이build/artifact만실행하도록필터제거,AGENT_USAGE.md도push/PR경로에추가했다. deploy는계속master에서만실행. 이미통과한게임/웹테스트반복0. 이설정은활용기록단독변경도빌드에반영한다.
+
 ## ART03 승인 수신·적용 — 2026-10-23
 
 Slack 부모1792754611.740799에서 지정 사용자U0C9QEUHPMK의 회신1792760233.285059 `승인 ART03`을 원문 조회로 확인했다. 요청1792759717.600819·현재 대기와 일치하고 기존 소비 기록이 없어 1회 적용했다. 앱 처리확인1792760301.497159. 승인 범위는 기사/필드/UI/스킬·몬스터 표시와 공개 활성화 지표이며 서버AI 변경·자동병합은 포함하지 않는다.
