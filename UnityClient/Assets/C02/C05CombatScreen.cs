@@ -18,6 +18,7 @@ namespace C02
         [SerializeField] private C09BazaarScreen bazaarScreen;
         [SerializeField] private C07InventoryScreen inventoryScreen;
         [SerializeField] private C14ServerContent serverContent;
+        [SerializeField] private Material skillEffectMaterial;
         [SerializeField] private UnityEngine.UI.Button[] skillButtons;
         [SerializeField] private GameObject combatPanel;
         [SerializeField] private TMP_Text vitalsText;
@@ -29,14 +30,42 @@ namespace C02
         [SerializeField] private UnityEngine.UI.Image mpFill;
         private IViewModelUI model;
         private Action<ushort, ActionResultField[]> actionResults;
-        private LineRenderer linePreview;
-        private Material linePreviewMaterial;
-        private float linePreviewDeadline;
-        private LineRenderer releaseEffect;
+        private GameObject releaseEffectRoot;
+        private MeshRenderer releaseEffectRenderer;
+        private Mesh releaseEffectMesh;
+        private ParticleSystem releaseSparks;
         private Material releaseEffectMaterial;
-        private readonly Vector3[] releaseEffectBasePositions = new Vector3[32];
+        private Material sparkMaterial;
+        private GameObject chargeTelegraphRoot;
+        private MeshRenderer chargeTelegraphRenderer;
+        private Mesh chargeTelegraphMesh;
+        private Material chargeTelegraphMaterial;
+        private readonly Vector3[] chargeVertices = new Vector3[512];
+        private readonly Color[] chargeColors = new Color[512];
+        private readonly int[] chargeTriangles = new int[2048];
+        private int chargeVertexCount;
+        private int chargeIndexCount;
+        private readonly Vector3[] releaseBaseVertices = new Vector3[512];
+        private readonly Vector3[] releaseVertices = new Vector3[512];
+        private readonly float[] releaseVertexRise = new float[512];
+        private readonly Color[] releaseColors = new Color[512];
+        private readonly int[] releaseTriangles = new int[2048];
+        private int releaseVertexCount;
+        private int releaseIndexCount;
         private Vector3 releaseEffectOrigin;
         private float releaseEffectDeadline;
+        private byte releaseEffectSlot;
+        private bool chargeTelegraphActive;
+        private byte chargeTelegraphSlot;
+        private C14SkillRange chargeTelegraphRange;
+        private Vector3 chargeTelegraphOrigin;
+        private byte chargeTelegraphDirection;
+        private float chargeTelegraphRadius;
+        private float chargeTelegraphLength;
+        private float chargeTelegraphWidth;
+        private float chargeTelegraphStarted;
+        private float chargeTelegraphDeadline;
+        private float chargeTelegraphDuration;
         private readonly float[] cooldownDeadlines = new float[3];
         private readonly GameObject[] cooldownOverlays = new GameObject[3];
         private GameObject skillTooltip;
@@ -50,14 +79,10 @@ namespace C02
         private ushort observedZone;
         private uint ownId;
         private ulong observedCharacterId;
-        private const float LineRangeLength = 12f;
-        private const float LineRangeWidth = 3f;
-        private const float LinePreviewLifetime = 2f;
         private const float ServerTickSeconds = 0.05f;
         private const float ReleaseEffectLifetime = 0.35f;
-        private const float ReleaseEffectStartScale = 0.2f;
-        private const float ReleaseEffectStartWidth = 0.22f;
-        private const float ReleaseEffectEndWidth = 0.025f;
+        private const int EffectArcSegments = 36;
+        private const float EffectGroundHeight = 0.12f;
 
         private bool WorldAvailable => worldScreen != null && worldScreen.isActiveAndEnabled &&
             worldScreen.Stage == C02Stage.InWorld && worldScreen.HasOwnFull;
@@ -86,7 +111,7 @@ namespace C02
 
         private void ChangeClient(IViewModelUI next)
         {
-            HideLinePreview();
+            HideChargeTelegraph();
             HideReleaseEffect();
             HideSkillTooltip();
             HideDefeatPanel();
@@ -144,7 +169,7 @@ namespace C02
                 var state = worldScreen.OwnFull;
                 if (state.hp == 0)
                 {
-                    HideLinePreview();
+                    HideChargeTelegraph();
                     HideReleaseEffect();
                     HideSkillTooltip();
                     combatStatusText.text = string.Empty;
@@ -165,7 +190,7 @@ namespace C02
             }
             else
             {
-                HideLinePreview();
+                HideChargeTelegraph();
                 HideReleaseEffect();
                 HideSkillTooltip();
                 HideDefeatPanel();
@@ -191,7 +216,7 @@ namespace C02
 
         private void ResetObservation()
         {
-            HideLinePreview();
+            HideChargeTelegraph();
             HideReleaseEffect();
             HideSkillTooltip();
             HideDefeatPanel();
@@ -356,8 +381,7 @@ namespace C02
                 if (respawnButton != null) respawnButton.interactable = WorldAvailable && worldScreen.OwnFull.hp == 0;
                 if (defeatMessage != null) defeatMessage.text = "No recovery response yet.\nTry again or log out.";
             }
-            if (linePreview != null && linePreview.enabled && Time.unscaledTime >= linePreviewDeadline)
-                HideLinePreview();
+            UpdateChargeTelegraph();
             UpdateReleaseEffect();
             UpdateSkillTooltip();
             UpdateCooldownOverlays();
@@ -371,7 +395,7 @@ namespace C02
         {
             if (!WorldAvailable || worldScreen.OwnFull.hp == 0)
             {
-                HideLinePreview();
+                HideChargeTelegraph();
                 HideReleaseEffect();
                 return;
             }
@@ -383,51 +407,58 @@ namespace C02
                 if (result.casterType != 0 || result.casterId != ownId || result.casterId == 0 || result.dir > 3 ||
                     result.skillSlot > 2 || result.skillId != result.skillSlot || result.skillPhase > 1 ||
                     !Finite(result.x) || !Finite(result.y)) continue;
+                float chargeDuration = 0;
+                if (result.skillPhase == 0 && TryGetSkill(result.skillSlot, out var castingSkill) &&
+                    castingSkill.phases != null && castingSkill.phases.Length > 1 && castingSkill.phases[1] != null)
+                    chargeDuration = Mathf.Min(castingSkill.phases[1].waitTicks * ServerTickSeconds, 2f);
                 if (worldScreen.OwnFull.hp > 0)
-                    worldScreen.ActorMotion?.PlayAttack(result.dir, result.skillPhase != 0);
+                    worldScreen.ActorMotion?.PlayAttack(result.dir, result.skillPhase != 0, result.skillSlot, chargeDuration);
                 combatStatusText.text = SkillName(result.skillSlot) + (result.skillPhase == 0 ? " cast" : " released");
                 if (result.skillPhase == 0)
                 {
                     if (TryGetSkill(result.skillSlot, out var skill) && skill.cooldownTicks > 0)
                         cooldownDeadlines[result.skillSlot] = Time.unscaledTime + skill.cooldownTicks * ServerTickSeconds;
-                    if (result.skillSlot == 2) ShowLinePreview(result);
+                    if (result.skillSlot <= 2) ShowChargeTelegraph(result);
                 }
                 else
                 {
-                    if (result.skillSlot == 2) HideLinePreview();
+                    if (chargeTelegraphActive && chargeTelegraphSlot == result.skillSlot) HideChargeTelegraph();
+                    HideReleaseEffect();
                     ShowReleaseEffect(result);
                 }
             }
             UpdateCooldownOverlays();
         }
 
-        private void ShowLinePreview(ActionResultField result)
+        private void ShowChargeTelegraph(ActionResultField result)
         {
-            if (linePreview == null)
+            HideChargeTelegraph();
+            if (!TryGetSkill(result.skillSlot, out var skill) || skill.phases == null || skill.phases.Length < 2 ||
+                skill.phases[0] == null || skill.phases[0].action != C14SkillAction.Charging || skill.phases[1] == null) return;
+            var hit = skill.phases[1];
+            if (hit.action != C14SkillAction.Hit || hit.waitTicks == 0 || !Finite(hit.range1) || hit.range1 <= 0) return;
+            if (hit.range == C14SkillRange.Circle)
             {
-                var shader = Shader.Find("Universal Render Pipeline/Unlit");
-                if (shader == null) return;
-                var previewObject = new GameObject("C05 Line Skill Range");
-                previewObject.transform.SetParent(worldScreen.transform, false);
-                linePreview = previewObject.AddComponent<LineRenderer>();
-                linePreviewMaterial = new Material(shader) { color = new Color(1f, 0.72f, 0.16f, 1f) };
-                linePreview.sharedMaterial = linePreviewMaterial;
-                linePreview.useWorldSpace = true;
-                linePreview.loop = true;
-                linePreview.positionCount = 4;
+                if (!Finite(hit.range2) || hit.range2 != 0) return;
             }
-
-            linePreview.widthMultiplier = 0.12f;
-            linePreview.positionCount = 4;
-            linePreviewMaterial.color = new Color(1f, 0.72f, 0.16f, 1f);
-            linePreview.startColor = linePreview.endColor = linePreviewMaterial.color;
-
-            // ActionResult has no dimensions; this outline mirrors the fixed server skill 2 contract (12 x 3).
-            // Points use server x/y as global X/Z, so the C02Client parent transform does not offset the range.
-            for (int point = 0; point < 4; point++)
-                linePreview.SetPosition(point, RectangleCorner(result, point, 0.05f, LineRangeLength, LineRangeWidth));
-            linePreview.enabled = true;
-            linePreviewDeadline = Time.unscaledTime + LinePreviewLifetime;
+            else if (hit.range == C14SkillRange.Rectangle)
+            {
+                if (!Finite(hit.range2) || hit.range2 <= 0) return;
+            }
+            else return;
+            if (!EnsureChargeTelegraph()) return;
+            chargeTelegraphActive = true;
+            chargeTelegraphSlot = result.skillSlot;
+            chargeTelegraphRange = hit.range;
+            chargeTelegraphOrigin = new Vector3(result.x, .07f, result.y);
+            chargeTelegraphDirection = result.dir;
+            chargeTelegraphRadius = hit.range1;
+            chargeTelegraphLength = hit.range1;
+            chargeTelegraphWidth = hit.range2;
+            chargeTelegraphStarted = Time.unscaledTime;
+            chargeTelegraphDuration = hit.waitTicks * ServerTickSeconds;
+            chargeTelegraphDeadline = chargeTelegraphStarted + chargeTelegraphDuration;
+            UpdateChargeTelegraph();
         }
 
         private void ShowReleaseEffect(ActionResultField result)
@@ -438,39 +469,281 @@ namespace C02
                 phase.range != C14SkillRange.Circle && phase.range != C14SkillRange.Rectangle ||
                 !Finite(phase.range1) || phase.range1 <= 0 ||
                 phase.range == C14SkillRange.Rectangle && (!Finite(phase.range2) || phase.range2 <= 0)) return;
-            if (releaseEffect == null)
-            {
-                var shader = Shader.Find("Universal Render Pipeline/Unlit");
-                if (shader == null) return;
-                var effectObject = new GameObject("C05 Skill Release Pulse");
-                effectObject.transform.SetParent(worldScreen.transform, false);
-                releaseEffect = effectObject.AddComponent<LineRenderer>();
-                releaseEffectMaterial = new Material(shader) { color = new Color(1f, 0.92f, 0.52f, 1f) };
-                releaseEffect.sharedMaterial = releaseEffectMaterial;
-                releaseEffect.useWorldSpace = true;
-                releaseEffect.loop = true;
-            }
-
-            releaseEffect.positionCount = phase.range == C14SkillRange.Circle ? 32 : 4;
-            releaseEffect.startColor = releaseEffect.endColor = releaseEffectMaterial.color;
+            if (!EnsureReleaseEffect()) return;
             releaseEffectOrigin = new Vector3(result.x, 0.07f, result.y);
-            if (phase.range == C14SkillRange.Circle)
+            releaseEffectSlot = result.skillSlot;
+            Vector3 forward = C02WorldScreen.ServerFacing(result.dir) * Vector3.back;
+            Vector3 right = Vector3.Cross(Vector3.up, forward);
+            releaseVertexCount = releaseIndexCount = 0;
+            if (result.skillSlot == 0)
             {
-                for (int point = 0; point < releaseEffect.positionCount; point++)
-                {
-                    float angle = Mathf.PI * 2f * point / releaseEffect.positionCount;
-                    releaseEffectBasePositions[point] = releaseEffectOrigin + new Vector3(
-                        Mathf.Cos(angle) * phase.range1, 0, Mathf.Sin(angle) * phase.range1);
-                }
+                // The crescent hangs around the knight's waist and stays narrow like the blade path.
+                AddArcRibbon(forward, right, -62f, 62f, phase.range1 * .84f, phase.range1,
+                    22, .84f, .18f, .98f);
+                AddArcRibbon(forward, right, -48f, 48f, phase.range1 * .91f, phase.range1 * .97f,
+                    18, .92f, .08f, 1.02f);
+            }
+            else if (result.skillSlot == 1)
+            {
+                // A raised, returning sweep leaves a broad airy trace around the spinning blade.
+                AddArcRibbon(forward, right, -138f, 138f, phase.range1 * .68f, phase.range1 * .96f,
+                    EffectArcSegments, .76f, .48f, .7f);
+                AddArcRibbon(forward, right, -112f, 112f, phase.range1 * .84f, phase.range1 * .91f,
+                    30, .9f, .2f, .76f);
             }
             else
             {
-                for (int point = 0; point < 4; point++)
-                    releaseEffectBasePositions[point] = RectangleCorner(result, point, 0.07f, phase.range1, phase.range2);
+                // A slender descending blade sweep leads the force along narrow, broken ground seams.
+                float length = phase.range1;
+                float width = Mathf.Min(phase.range2 * .12f, .36f);
+                AddDirectionalRibbon(forward, right, .2f, length, width, 0f, .12f, 24, .48f);
+                AddGroundFracture(forward, right, length * .3f, length, -phase.range2 * .25f, .11f, 10, .88f, 0);
+                AddGroundFracture(forward, right, length * .38f, length * .96f, phase.range2 * .25f, .09f, 10, .82f, 1);
+                AddGroundFracture(forward, right, length * .52f, length * .88f, 0f, .055f, 8, .64f, 2);
+                float slashSpan = Mathf.Min(phase.range2 * .46f, 1.05f);
+                AddDescendingBladeSlash(forward, right, length * .27f, slashSpan, .17f, .68f, 0);
+                AddDescendingBladeSlash(forward, right, length * .27f, slashSpan, .052f, .98f, 1);
             }
-            releaseEffect.enabled = true;
+            releaseEffectMesh.Clear();
+            releaseEffectMesh.SetVertices(releaseBaseVertices, 0, releaseVertexCount);
+            releaseEffectMesh.SetColors(releaseColors, 0, releaseVertexCount);
+            releaseEffectMesh.SetTriangles(releaseTriangles, 0, releaseIndexCount, 0, false);
+            float extent = Mathf.Max(phase.range1 * 1.2f, 2f);
+            releaseEffectMesh.bounds = new Bounds(releaseEffectOrigin + Vector3.up * 1.3f,
+                new Vector3(extent * 2f, 5.6f, extent * 2f));
+            releaseEffectMaterial.color = Color.white;
+            releaseEffectRenderer.enabled = true;
             releaseEffectDeadline = Time.unscaledTime + ReleaseEffectLifetime;
+            EmitReleaseSparks(result, forward, right, phase.range1);
             UpdateReleaseEffect();
+        }
+
+        private bool EnsureReleaseEffect()
+        {
+            if (releaseEffectRoot != null) return true;
+            releaseEffectMaterial = CreateSkillMaterial();
+            if (releaseEffectMaterial == null) return false;
+            releaseEffectRoot = new GameObject("C05 Knight Skill Effect");
+            releaseEffectRoot.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            releaseEffectMesh = new Mesh { name = "C05 Knight Skill Mesh" };
+            releaseEffectMesh.MarkDynamic();
+            releaseEffectRoot.AddComponent<MeshFilter>().sharedMesh = releaseEffectMesh;
+            releaseEffectRenderer = releaseEffectRoot.AddComponent<MeshRenderer>();
+            releaseEffectRenderer.sharedMaterial = releaseEffectMaterial;
+            releaseEffectRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            releaseEffectRenderer.receiveShadows = false;
+
+            var sparkObject = new GameObject("C05 Sword Sparks");
+            sparkObject.transform.SetParent(releaseEffectRoot.transform, false);
+            releaseSparks = sparkObject.AddComponent<ParticleSystem>();
+            releaseSparks.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = releaseSparks.main;
+            main.duration = 1f;
+            main.loop = false;
+            main.playOnAwake = false;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(.24f, .42f);
+            main.startSpeed = 0;
+            main.startSize = new ParticleSystem.MinMaxCurve(.045f, .105f);
+            main.startColor = new Color(1f, .67f, .22f, .98f);
+            main.maxParticles = 64;
+            main.gravityModifier = .7f;
+            var emission = releaseSparks.emission;
+            emission.enabled = false;
+            var shape = releaseSparks.shape;
+            shape.enabled = false;
+            var particleRenderer = releaseSparks.GetComponent<ParticleSystemRenderer>();
+            sparkMaterial = CreateSkillMaterial();
+            if (sparkMaterial == null)
+            {
+                DestroyEffectObjects();
+                return false;
+            }
+            particleRenderer.sharedMaterial = sparkMaterial;
+            particleRenderer.renderMode = ParticleSystemRenderMode.Billboard;
+            particleRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            particleRenderer.receiveShadows = false;
+            return true;
+        }
+
+        private bool EnsureChargeTelegraph()
+        {
+            if (chargeTelegraphRoot != null) return true;
+            chargeTelegraphMaterial = CreateSkillMaterial();
+            if (chargeTelegraphMaterial == null) return false;
+            chargeTelegraphRoot = new GameObject("C05 Skill Charge Area");
+            chargeTelegraphRoot.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            chargeTelegraphMesh = new Mesh { name = "C05 Skill Charge Mesh" };
+            chargeTelegraphMesh.MarkDynamic();
+            chargeTelegraphRoot.AddComponent<MeshFilter>().sharedMesh = chargeTelegraphMesh;
+            chargeTelegraphRenderer = chargeTelegraphRoot.AddComponent<MeshRenderer>();
+            chargeTelegraphRenderer.sharedMaterial = chargeTelegraphMaterial;
+            chargeTelegraphRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            chargeTelegraphRenderer.receiveShadows = false;
+            chargeTelegraphRenderer.enabled = false;
+            return true;
+        }
+
+        private Material CreateSkillMaterial()
+        {
+            if (skillEffectMaterial != null) return new Material(skillEffectMaterial);
+            // Test fixtures lack the serialized build-safe asset; the live scene is wired to it.
+            var shader = Shader.Find("Universal Render Pipeline/Unlit");
+            return shader == null ? null : new Material(shader);
+        }
+
+        private void AddArcRibbon(Vector3 forward, Vector3 right, float startDegrees, float endDegrees,
+            float innerRadius, float outerRadius, int segments, float alpha, float rise, float lift)
+        {
+            for (int i = 0; i <= segments; i++)
+            {
+                float t = (float)i / segments;
+                float angle = Mathf.Lerp(startDegrees, endDegrees, t) * Mathf.Deg2Rad;
+                Vector3 radial = forward * Mathf.Cos(angle) + right * Mathf.Sin(angle);
+                float taper = Mathf.Sin(t * Mathf.PI);
+                int first = releaseVertexCount;
+                float verticalOffset = EffectGroundHeight + lift;
+                WriteVertex(releaseEffectOrigin + radial * innerRadius + Vector3.up * verticalOffset,
+                    rise, new Color(1f, .96f, .72f, alpha * (.35f + taper * .65f)));
+                WriteVertex(releaseEffectOrigin + radial * outerRadius + Vector3.up * verticalOffset,
+                    rise * .35f, new Color(1f, .48f, .12f, alpha * (.15f + taper * .85f)));
+                if (i == 0) continue;
+                int previous = first - 2;
+                AddTriangle(previous, previous + 1, first);
+                AddTriangle(first, previous + 1, first + 1);
+            }
+        }
+
+        private void AddGroundFracture(Vector3 forward, Vector3 right, float start, float end,
+            float sideOffset, float width, int segments, float alpha, int seed)
+        {
+            for (int i = 0; i <= segments; i++)
+            {
+                float t = (float)i / segments;
+                float taper = Mathf.Sin(t * Mathf.PI);
+                float zigzag = ((i + seed) % 2 == 0 ? -1f : 1f) * width * .72f;
+                float distance = Mathf.Lerp(start, end, t);
+                Vector3 center = releaseEffectOrigin + forward * distance +
+                    right * (sideOffset + zigzag) + Vector3.up * (EffectGroundHeight + .012f);
+                float halfWidth = width * (.12f + taper * .6f);
+                int first = releaseVertexCount;
+                WriteVertex(center - right * halfWidth, .035f, new Color(1f, .36f, .08f, alpha * (.2f + taper * .72f)));
+                WriteVertex(center + right * halfWidth, .025f, new Color(1f, .86f, .4f, alpha * (.14f + taper * .68f)));
+                if (i == 0) continue;
+                int previous = first - 2;
+                AddTriangle(previous, previous + 1, first);
+                AddTriangle(first, previous + 1, first + 1);
+            }
+        }
+
+        private void AddDescendingBladeSlash(Vector3 forward, Vector3 right, float distance,
+            float halfSpan, float halfThickness, float alpha, int seed)
+        {
+            const int segments = 20;
+            for (int i = 0; i <= segments; i++)
+            {
+                float t = (float)i / segments;
+                float side = Mathf.Lerp(-halfSpan, halfSpan, t);
+                float y = .34f + 2.15f * (1f - t) + .2f * Mathf.Sin(t * Mathf.PI);
+                float forwardCurve = .12f + .58f * Mathf.Sin(t * Mathf.PI);
+                Vector3 center = releaseEffectOrigin + forward * (distance + forwardCurve) +
+                    right * side + Vector3.up * y;
+                float slope = -2.15f / (halfSpan * 2f) +
+                    .2f * Mathf.PI * Mathf.Cos(t * Mathf.PI) / (halfSpan * 2f);
+                Vector3 normal = (Vector3.up - right * slope).normalized;
+                int first = releaseVertexCount;
+                float edgeFade = Mathf.Sin(t * Mathf.PI);
+                float stagger = seed == 0 ? 0f : .012f;
+                WriteVertex(center - normal * (halfThickness + stagger), .55f * (1f - t),
+                    new Color(1f, .45f, .12f, alpha * (.25f + edgeFade * .55f)));
+                WriteVertex(center + normal * (halfThickness + stagger), .72f * (1f - t),
+                    new Color(1f, .98f, .78f, alpha * (.35f + edgeFade * .62f)));
+                if (i == 0) continue;
+                int previous = first - 2;
+                AddTriangle(previous, previous + 1, first);
+                AddTriangle(first, previous + 1, first + 1);
+            }
+        }
+
+        private void AddDirectionalRibbon(Vector3 forward, Vector3 right, float start, float end, float width,
+            float sideOffset, float rise, int segments, float alpha)
+        {
+            for (int i = 0; i <= segments; i++)
+            {
+                float t = (float)i / segments;
+                float taper = Mathf.Sin(t * Mathf.PI);
+                float distance = Mathf.Lerp(start, end, t);
+                float curve = Mathf.Sin(t * Mathf.PI) * sideOffset * .12f;
+                Vector3 center = releaseEffectOrigin + forward * distance + right * (sideOffset + curve) +
+                    Vector3.up * EffectGroundHeight;
+                float halfWidth = width * (.12f + taper * .88f);
+                int first = releaseVertexCount;
+                WriteVertex(center - right * halfWidth, rise * (1f - t),
+                    new Color(1f, .53f, .16f, alpha * (.12f + taper * .72f)));
+                WriteVertex(center + right * halfWidth, rise * (1f - t),
+                    new Color(1f, .96f, .76f, alpha * (.2f + taper * .8f)));
+                if (i == 0) continue;
+                int previous = first - 2;
+                AddTriangle(previous, previous + 1, first);
+                AddTriangle(first, previous + 1, first + 1);
+            }
+        }
+
+        private void WriteVertex(Vector3 position, float rise, Color color)
+        {
+            int index = releaseVertexCount++;
+            releaseBaseVertices[index] = position;
+            releaseVertices[index] = position;
+            releaseVertexRise[index] = rise;
+            releaseColors[index] = color;
+        }
+
+        private void AddTriangle(int a, int b, int c)
+        {
+            releaseTriangles[releaseIndexCount++] = a;
+            releaseTriangles[releaseIndexCount++] = b;
+            releaseTriangles[releaseIndexCount++] = c;
+        }
+
+        private void EmitReleaseSparks(ActionResultField result, Vector3 forward, Vector3 right, float range)
+        {
+            releaseSparks.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            for (int i = 0; i < 22; i++)
+            {
+                float t = (float)i / 22f;
+                Vector3 position;
+                Vector3 velocity;
+                if (result.skillSlot == 1)
+                {
+                    float angle = t * Mathf.PI * 2f;
+                    Vector3 radial = forward * Mathf.Cos(angle) + right * Mathf.Sin(angle);
+                    position = releaseEffectOrigin + radial * (range * .7f) + Vector3.up * .2f;
+                    velocity = radial * (2.3f + (i % 4) * .35f) + Vector3.up * (.8f + (i % 3) * .25f);
+                }
+                else if (result.skillSlot == 2)
+                {
+                    position = releaseEffectOrigin + forward * (range * (.2f + .72f * t)) +
+                        right * (Mathf.Sin(i * 2.1f) * .65f) + Vector3.up * (.24f + (i % 3) * .08f);
+                    velocity = forward * (3.2f + (i % 5) * .35f) + right * (Mathf.Sin(i * 1.7f) * 1.3f) +
+                        Vector3.up * (1.8f + (i % 4) * .4f);
+                }
+                else
+                {
+                    float angle = Mathf.Lerp(-1.05f, 1.05f, t);
+                    Vector3 radial = forward * Mathf.Cos(angle) + right * Mathf.Sin(angle);
+                    position = releaseEffectOrigin + radial * range * .78f + Vector3.up * .24f;
+                    velocity = radial * (2f + (i % 4) * .3f) + Vector3.up * (.9f + (i % 4) * .28f);
+                }
+                var particle = new ParticleSystem.EmitParams
+                {
+                    position = position,
+                    velocity = velocity,
+                    startColor = i % 5 == 0 ? new Color(1f, .96f, .78f, 1f) : new Color(1f, .48f, .12f, .96f),
+                    startSize = .055f + (i % 3) * .018f,
+                    startLifetime = .22f + (i % 4) * .045f
+                };
+                releaseSparks.Emit(particle, 1);
+            }
         }
 
         // Cast preview and hit pulse share the same server direction and winding.
@@ -485,9 +758,99 @@ namespace C02
                 : new Vector3(result.x + reach, height, result.y + side);
         }
 
+        private void UpdateChargeTelegraph()
+        {
+            if (!chargeTelegraphActive || chargeTelegraphMesh == null || chargeTelegraphRenderer == null) return;
+            if (!WorldAvailable || worldScreen.OwnFull.hp == 0 || Time.unscaledTime >= chargeTelegraphDeadline)
+            {
+                HideChargeTelegraph();
+                return;
+            }
+
+            float progress = Mathf.Clamp01((Time.unscaledTime - chargeTelegraphStarted) / chargeTelegraphDuration);
+            chargeVertexCount = chargeIndexCount = 0;
+            float pulse = .82f + .18f * Mathf.Sin(Time.unscaledTime * 7f);
+            var baseColor = new Color(.55f, .22f, .045f, .2f);
+            var progressColor = new Color(1f, .72f, .24f, .34f);
+            if (chargeTelegraphRange == C14SkillRange.Circle)
+            {
+                AddCircleTelegraph(chargeTelegraphRadius, baseColor);
+                AddCircleTelegraph(chargeTelegraphRadius * progress, progressColor);
+            }
+            else
+            {
+                var action = new ActionResultField
+                {
+                    dir = chargeTelegraphDirection,
+                    x = chargeTelegraphOrigin.x,
+                    y = chargeTelegraphOrigin.z
+                };
+                AddRectangleTelegraph(action, chargeTelegraphLength, chargeTelegraphWidth, baseColor);
+                AddRectangleTelegraph(action, chargeTelegraphLength * progress, chargeTelegraphWidth, progressColor);
+            }
+            AddCircleTelegraph(.12f + .05f * pulse, new Color(1f, .86f, .48f, .36f));
+
+            chargeTelegraphMesh.Clear();
+            chargeTelegraphMesh.SetVertices(chargeVertices, 0, chargeVertexCount);
+            chargeTelegraphMesh.SetColors(chargeColors, 0, chargeVertexCount);
+            chargeTelegraphMesh.SetTriangles(chargeTriangles, 0, chargeIndexCount, 0, false);
+            float extent = chargeTelegraphRange == C14SkillRange.Circle
+                ? chargeTelegraphRadius : Mathf.Max(chargeTelegraphLength, chargeTelegraphWidth);
+            chargeTelegraphMesh.bounds = new Bounds(chargeTelegraphOrigin + Vector3.up * .06f,
+                new Vector3(extent * 2f + .5f, .3f, extent * 2f + .5f));
+            chargeTelegraphMaterial.color = new Color(1f, 1f, 1f, pulse);
+            chargeTelegraphRenderer.enabled = true;
+        }
+
+        private void AddCircleTelegraph(float radius, Color color)
+        {
+            const int segments = 40;
+            int center = chargeVertexCount;
+            WriteChargeVertex(chargeTelegraphOrigin + Vector3.up * .055f, color);
+            int previous = -1;
+            for (int i = 0; i <= segments; i++)
+            {
+                float angle = i * (Mathf.PI * 2f / segments);
+                int current = chargeVertexCount;
+                WriteChargeVertex(chargeTelegraphOrigin + new Vector3(Mathf.Cos(angle) * radius, .055f,
+                    Mathf.Sin(angle) * radius), color);
+                if (previous >= 0) AddChargeTriangle(center, previous, current);
+                previous = current;
+            }
+        }
+
+        private void AddRectangleTelegraph(ActionResultField origin, float length, float width, Color color)
+        {
+            int first = chargeVertexCount;
+            for (int point = 0; point < 4; point++)
+                WriteChargeVertex(RectangleCorner(origin, point, .055f, length, width), color);
+            AddChargeTriangle(first, first + 1, first + 2);
+            AddChargeTriangle(first, first + 2, first + 3);
+        }
+
+        private void WriteChargeVertex(Vector3 position, Color color)
+        {
+            chargeVertices[chargeVertexCount] = position;
+            chargeColors[chargeVertexCount++] = color;
+        }
+
+        private void AddChargeTriangle(int a, int b, int c)
+        {
+            chargeTriangles[chargeIndexCount++] = a;
+            chargeTriangles[chargeIndexCount++] = b;
+            chargeTriangles[chargeIndexCount++] = c;
+        }
+
+        private void HideChargeTelegraph()
+        {
+            chargeTelegraphActive = false;
+            chargeTelegraphDeadline = 0;
+            if (chargeTelegraphRenderer != null) chargeTelegraphRenderer.enabled = false;
+        }
+
         private void UpdateReleaseEffect()
         {
-            if (releaseEffect == null || !releaseEffect.enabled) return;
+            if (releaseEffectRenderer == null || !releaseEffectRenderer.enabled) return;
             float remaining = releaseEffectDeadline - Time.unscaledTime;
             if (remaining <= 0)
             {
@@ -495,16 +858,71 @@ namespace C02
                 return;
             }
             float progress = Mathf.Clamp01(1f - remaining / ReleaseEffectLifetime);
-            float scale = Mathf.Lerp(ReleaseEffectStartScale, 1f, progress);
-            for (int i = 0; i < releaseEffect.positionCount; i++)
-                releaseEffect.SetPosition(i, releaseEffectOrigin + (releaseEffectBasePositions[i] - releaseEffectOrigin) * scale);
-            releaseEffect.widthMultiplier = Mathf.Lerp(ReleaseEffectStartWidth, ReleaseEffectEndWidth, progress);
+            float scale = Mathf.Lerp(.18f, 1.08f, progress);
+            float fall = releaseEffectSlot == 2 ? 1f - progress : 0;
+            for (int i = 0; i < releaseVertexCount; i++)
+            {
+                Vector3 offset = releaseBaseVertices[i] - releaseEffectOrigin;
+                releaseVertices[i] = releaseEffectOrigin + new Vector3(offset.x * scale,
+                    offset.y + releaseVertexRise[i] * fall, offset.z * scale);
+            }
+            releaseEffectMesh.SetVertices(releaseVertices, 0, releaseVertexCount,
+                UnityEngine.Rendering.MeshUpdateFlags.DontRecalculateBounds);
+            releaseEffectMaterial.color = new Color(1f, 1f, 1f, Mathf.Lerp(1f, .28f, progress));
         }
 
         private void HideReleaseEffect()
         {
-            if (releaseEffect != null) releaseEffect.enabled = false;
+            if (releaseEffectRenderer != null) releaseEffectRenderer.enabled = false;
+            if (releaseSparks != null) releaseSparks.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             releaseEffectDeadline = 0;
+        }
+
+        private void DestroyEffectObjects()
+        {
+            Mesh mesh = releaseEffectMesh;
+            if (releaseEffectRoot != null)
+            {
+                if (Application.isPlaying) Destroy(releaseEffectRoot);
+                else DestroyImmediate(releaseEffectRoot);
+            }
+            if (mesh != null)
+            {
+                if (Application.isPlaying) Destroy(mesh);
+                else DestroyImmediate(mesh);
+            }
+            releaseEffectRoot = null;
+            releaseEffectRenderer = null;
+            releaseEffectMesh = null;
+            releaseSparks = null;
+            DestroyMaterial(releaseEffectMaterial);
+            DestroyMaterial(sparkMaterial);
+            releaseEffectMaterial = null;
+            sparkMaterial = null;
+
+            Mesh chargeMesh = chargeTelegraphMesh;
+            if (chargeTelegraphRoot != null)
+            {
+                if (Application.isPlaying) Destroy(chargeTelegraphRoot);
+                else DestroyImmediate(chargeTelegraphRoot);
+            }
+            if (chargeMesh != null)
+            {
+                if (Application.isPlaying) Destroy(chargeMesh);
+                else DestroyImmediate(chargeMesh);
+            }
+            chargeTelegraphRoot = null;
+            chargeTelegraphRenderer = null;
+            chargeTelegraphMesh = null;
+            DestroyMaterial(chargeTelegraphMaterial);
+            chargeTelegraphMaterial = null;
+        }
+
+        private void DestroyMaterial(Material material)
+        {
+            if (material == null) return;
+            if (Application.isPlaying) Destroy(material);
+            else DestroyImmediate(material);
         }
 
         private bool TryGetSkill(int slot, out C14ServerContent.RingSkill skill)
@@ -593,12 +1011,6 @@ namespace C02
                 text.text = string.Format(CultureInfo.InvariantCulture, remaining >= 10 ? "~{0:0}s" : "~{0:0.0}s", remaining);
                 overlay.SetActive(true);
             }
-        }
-
-        private void HideLinePreview()
-        {
-            if (linePreview != null) linePreview.enabled = false;
-            linePreviewDeadline = 0;
         }
 
         private void UpdateSkillTooltip()
@@ -725,7 +1137,7 @@ namespace C02
 
         private void OnDisable()
         {
-            HideLinePreview();
+            HideChargeTelegraph();
             HideReleaseEffect();
             HideSkillTooltip();
             HideDefeatPanel();
@@ -760,7 +1172,7 @@ namespace C02
 
         private void OnDestroy()
         {
-            HideLinePreview();
+            HideChargeTelegraph();
             HideReleaseEffect();
             if (defeatPanel != null)
             {
@@ -775,30 +1187,7 @@ namespace C02
                 skillTooltip = null;
                 skillTooltipText = null;
             }
-            if (linePreview != null)
-            {
-                if (Application.isPlaying) Destroy(linePreview.gameObject);
-                else DestroyImmediate(linePreview.gameObject);
-                linePreview = null;
-            }
-            if (linePreviewMaterial != null)
-            {
-                if (Application.isPlaying) Destroy(linePreviewMaterial);
-                else DestroyImmediate(linePreviewMaterial);
-                linePreviewMaterial = null;
-            }
-            if (releaseEffect != null)
-            {
-                if (Application.isPlaying) Destroy(releaseEffect.gameObject);
-                else DestroyImmediate(releaseEffect.gameObject);
-                releaseEffect = null;
-            }
-            if (releaseEffectMaterial != null)
-            {
-                if (Application.isPlaying) Destroy(releaseEffectMaterial);
-                else DestroyImmediate(releaseEffectMaterial);
-                releaseEffectMaterial = null;
-            }
+            DestroyEffectObjects();
         }
     }
 }

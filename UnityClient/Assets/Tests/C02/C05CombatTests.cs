@@ -4,6 +4,9 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 using C01;
 using ClientCore;
 using ClientCore.PacketHelper;
@@ -253,14 +256,17 @@ namespace C02.Tests
                 action.dir = 0;
                 current(1, new[] { action });
                 Assert.That(f.Status.text, Is.EqualTo("Line cast"));
-                var preview = (LineRenderer)Get(f.Combat, "linePreview");
-                Assert.That(preview != null && preview.enabled && preview.useWorldSpace && preview.loop, Is.True);
-                Assert.That(preview.transform.parent, Is.SameAs(f.World.transform));
-                Assert.That(preview.positionCount, Is.EqualTo(4));
-                Assert.That(preview.GetPosition(0), Is.EqualTo(new Vector3(8.5f, 0.05f, 10f)));
-                Assert.That(preview.GetPosition(1), Is.EqualTo(new Vector3(11.5f, 0.05f, 10f)));
-                Assert.That(preview.GetPosition(2), Is.EqualTo(new Vector3(11.5f, 0.05f, 22f)));
-                Assert.That(preview.GetPosition(3), Is.EqualTo(new Vector3(8.5f, 0.05f, 22f)));
+                var telegraph = (MeshRenderer)Get(f.Combat, "chargeTelegraphRenderer");
+                var telegraphMesh = (Mesh)Get(f.Combat, "chargeTelegraphMesh");
+                Assert.That(telegraph.enabled && telegraphMesh.vertexCount >= 8 && telegraphMesh.triangles.Length >= 12, Is.True,
+                    "The accepted Line charging phase displays a translucent filled area and progress shape.");
+                Assert.That((bool)Get(f.Combat, "chargeTelegraphActive"), Is.True);
+                Assert.That(telegraph.transform.parent, Is.Null);
+                var telegraphVertices = (Vector3[])Get(f.Combat, "chargeVertices");
+                Assert.That(telegraphVertices[0], Is.EqualTo(new Vector3(8.5f, 0.055f, 10f)));
+                Assert.That(telegraphVertices[1], Is.EqualTo(new Vector3(11.5f, 0.055f, 10f)));
+                Assert.That(telegraphVertices[2], Is.EqualTo(new Vector3(11.5f, 0.055f, 22f)));
+                Assert.That(telegraphVertices[3], Is.EqualTo(new Vector3(8.5f, 0.055f, 22f)));
                 float confirmedCooldown = (float)((float[])Get(f.Combat, "cooldownDeadlines"))[2];
                 Assert.That(confirmedCooldown - Time.unscaledTime, Is.EqualTo(f.serverContent.otherSkills[1].cooldownTicks * 0.05f).Within(0.1f),
                     "The estimate starts from the server-confirmed cast and reads the existing skill data ticks.");
@@ -275,53 +281,63 @@ namespace C02.Tests
                     Is.SameAs(f.Buttons[2].transform.Find("SkillName").GetComponent<TMP_Text>().font));
                 Assert.That(f.Buttons[2].transform.Find("SkillName").GetComponent<TMP_Text>().text, Is.EqualTo("LINE"));
                 Assert.That(f.Buttons[2].transform.Find("SkillKey").GetComponent<TMP_Text>().text, Is.EqualTo("C"));
-                Set(f.Combat, "linePreviewDeadline", Time.unscaledTime - 1f);
+                Set(f.Combat, "chargeTelegraphDeadline", Time.unscaledTime - 0.001f);
                 Invoke(f.Combat, "Update");
-                Assert.That(preview.enabled, Is.False, "The unscaled two-second lifetime clears a lost release.");
+                Assert.That(telegraph.enabled, Is.False, "The authored charge wait clears the telegraph if no release arrives.");
                 current(1, new[] { action });
-                Assert.That(preview.enabled, Is.True);
+                Assert.That(telegraph.enabled && (bool)Get(f.Combat, "chargeTelegraphActive"), Is.True);
                 var otherCaster = action; otherCaster.casterType = 1;
                 current(1, new[] { otherCaster });
-                Assert.That(preview.enabled, Is.True, "Monster actions do not replace the player's range preview.");
+                Assert.That(telegraph.enabled, Is.True, "Monster actions do not replace the player's charge area.");
                 action.skillPhase = 1;
                 current(1, new[] { action });
-                var releaseEffect = (LineRenderer)Get(f.Combat, "releaseEffect");
-                Assert.That(releaseEffect, Is.Not.SameAs(preview));
-                Assert.That(preview.enabled, Is.False, "The caster's own C release hides its range preview.");
-                Assert.That(releaseEffect.enabled && releaseEffect.positionCount == 4, Is.True,
-                    "The C release rectangle uses its dedicated renderer.");
-                Assert.That(releaseEffect.widthMultiplier, Is.EqualTo(0.22f).Within(0.002f));
-                Assert.That((Color32)releaseEffect.startColor, Is.EqualTo((Color32)new Color(1f, 0.92f, 0.52f, 1f)),
-                    "LineRenderer stores its gradient as 8-bit colors.");
+                var releaseEffect = (MeshRenderer)Get(f.Combat, "releaseEffectRenderer");
+                var releaseMesh = (Mesh)Get(f.Combat, "releaseEffectMesh");
+                Assert.That(releaseEffect, Is.Not.Null);
+                Assert.That(releaseMesh, Is.Not.Null);
+                Assert.That((bool)Get(f.Combat, "chargeTelegraphActive"), Is.False,
+                    "The caster's own C release hides its charge area before drawing the hit effect.");
+                Assert.That(releaseEffect.enabled && releaseMesh.vertexCount > 0 && releaseMesh.triangles.Length > 0, Is.True,
+                    "The C release uses a visible mesh ribbon rather than the charging fill.");
+                Assert.That(releaseEffect.transform.parent, Is.Null, "The world-space effect must not inherit the transformed world root.");
+                Assert.That(releaseEffect.transform.position, Is.EqualTo(Vector3.zero));
                 Assert.That((float)Get(f.Combat, "releaseEffectDeadline") - Time.unscaledTime,
-                    Is.EqualTo(0.35f).Within(0.1f), "The hit effect has a shorter lifetime than the cast preview.");
+                    Is.EqualTo(0.35f).Within(0.1f), "The hit effect uses its short visual lifetime.");
                 Assert.That(((float[])Get(f.Combat, "cooldownDeadlines"))[2], Is.EqualTo(confirmedCooldown),
                     "The release phase does not restart the cooldown estimate.");
                 action.skillSlot = 2; action.skillId = 2; action.skillPhase = 0;
                 current(1, new[] { action });
-                Assert.That(preview.enabled && preview.positionCount == 4, Is.True);
-                var previewPoint = preview.GetPosition(0);
+                Assert.That((bool)Get(f.Combat, "chargeTelegraphActive"), Is.True);
+                Assert.That(telegraph.enabled, Is.True);
                 action.skillSlot = 1; action.skillId = 1; action.skillPhase = 1;
                 current(1, new[] { action });
                 Assert.That(f.Status.text, Is.EqualTo("Ring released"));
-                Assert.That(preview.enabled && preview.positionCount == 4 && preview.GetPosition(0) == previewPoint, Is.True,
-                    "Another skill's release leaves the C cast preview geometry untouched.");
-                Assert.That(releaseEffect.enabled && releaseEffect.positionCount == 32, Is.True,
-                    "Ring release uses a separate authored circle outline.");
-                Assert.That(Vector3.Distance(releaseEffect.GetPosition(0), (Vector3)Get(f.Combat, "releaseEffectOrigin")),
-                    Is.EqualTo(0.65f).Within(0.01f), "The pulse begins at one fifth of the authored radius.");
+                Assert.That((bool)Get(f.Combat, "chargeTelegraphActive"), Is.True,
+                    "Releasing Ring must preserve the unrelated Line charge area.");
+                Assert.That(telegraph.enabled, Is.True,
+                    "The Line charge renderer remains visible while Ring uses its independent release renderer.");
+                Assert.That(releaseEffect.enabled && releaseMesh.vertexCount > 0, Is.True,
+                    "Ring release uses a broad sweeping mesh ribbon.");
+                var baseVertices = (Vector3[])Get(f.Combat, "releaseBaseVertices");
+                var animatedVertices = (Vector3[])Get(f.Combat, "releaseVertices");
+                var origin = (Vector3)Get(f.Combat, "releaseEffectOrigin");
+                Vector3 baseSweepOffset = baseVertices[1] - origin;
+                Assert.That(new Vector2(baseSweepOffset.x, baseSweepOffset.z).magnitude, Is.EqualTo(.96f * 3.25f).Within(0.01f),
+                    "The authored sweep layer stays just inside the server-provided planar ring boundary.");
+                Vector3 initialSweepPoint = animatedVertices[1];
                 Set(f.Combat, "releaseEffectDeadline", Time.unscaledTime + 0.175f);
                 Invoke(f.Combat, "Update");
-                Assert.That(Vector3.Distance(releaseEffect.GetPosition(0), (Vector3)Get(f.Combat, "releaseEffectOrigin")),
-                    Is.EqualTo(1.95f).Within(0.03f), "The circle expands with its remaining lifetime.");
-                Assert.That(releaseEffect.widthMultiplier, Is.EqualTo(0.1225f).Within(0.003f),
-                    "The pulse line narrows as it expands.");
+                Vector3 animatedSweepOffset = animatedVertices[1] - origin;
+                Assert.That(new Vector2(animatedSweepOffset.x, animatedSweepOffset.z).magnitude, Is.EqualTo(.63f * .96f * 3.25f).Within(0.04f),
+                    "The mesh sweep scales with its remaining lifetime.");
+                Assert.That(animatedVertices[1], Is.Not.EqualTo(initialSweepPoint));
                 Set(f.Combat, "releaseEffectDeadline", Time.unscaledTime - 0.001f);
                 Invoke(f.Combat, "Update");
-                Assert.That(releaseEffect.enabled, Is.False, "The pulse renderer is disabled when its deadline expires.");
+                Assert.That(releaseEffect.enabled, Is.False, "The mesh renderer is disabled when its deadline expires.");
                 action.skillSlot = 2; action.skillId = 2; action.skillPhase = 0;
                 current(1, new[] { action });
-                Assert.That(preview.positionCount, Is.EqualTo(4), "Line cast retains its four-point range after a circle effect.");
+                Assert.That((bool)Get(f.Combat, "chargeTelegraphActive"), Is.True,
+                    "A new Line charge rebuilds its rectangle after the Ring release effect.");
                 ((float[])Get(f.Combat, "cooldownDeadlines"))[2] = Time.unscaledTime - 1f;
                 Invoke(f.Combat, "Update");
                 Assert.That(cooldownOverlay.gameObject.activeSelf, Is.False, "The radial overlay hides when its estimate expires.");
@@ -340,20 +356,20 @@ namespace C02.Tests
                 var active = (Action<ushort, ActionResultField[]>)Get(f.Combat, "actionResults");
                 action.skillSlot = 2; action.skillId = 2; action.skillPhase = 0;
                 active(1, new[] { action });
-                preview = (LineRenderer)Get(f.Combat, "linePreview");
-                Assert.That(preview.enabled, Is.True);
+                Assert.That((bool)Get(f.Combat, "chargeTelegraphActive"), Is.True);
+                Assert.That(telegraph.enabled, Is.True);
                 f.Delta(new DeltaUpdateField { zoneInternalID = 73, fieldID = 0, fieldVal = 0 });
-                Assert.That(preview.enabled, Is.False, "An authoritative HP 0 update removes the preview.");
+                Assert.That(telegraph.enabled, Is.False, "An authoritative HP 0 update removes the charge area.");
                 f.Full();
                 active(1, new[] { action });
-                Assert.That(preview.enabled, Is.True);
+                Assert.That(telegraph.enabled, Is.True);
                 Invoke(f.Combat, "ShowSkillTooltip", 1);
                 Assert.That(((GameObject)Get(f.Combat, "skillTooltip")).activeSelf, Is.True);
                 float beforeTransition = ((float[])Get(f.Combat, "cooldownDeadlines"))[2];
                 Set(f.World, "transitionTargetZone", (ushort)2);
                 typeof(C02WorldScreen).GetProperty("Stage").GetSetMethod(true).Invoke(f.World, new object[] { C02Stage.TransitionPending });
                 Invoke(f.World, "ZoneReceived", (ushort)2, 0UL, 74U, 210f, 10f);
-                Assert.That(preview.enabled, Is.False, "Changing zone/own character clears the previous cast outline.");
+                Assert.That(telegraph.enabled, Is.False, "Changing zone/own character clears the previous charge area.");
                 Assert.That(((GameObject)Get(f.Combat, "skillTooltip")).activeSelf, Is.False,
                     "Changing zone hides the transient skill help.");
                 Invoke(f.World, "FullReceived", (ushort)1, new[]
@@ -369,14 +385,14 @@ namespace C02.Tests
                 active(1, new[] { action });
                 action.skillPhase = 1;
                 active(1, new[] { action });
-                var currentRelease = (LineRenderer)Get(f.Combat, "releaseEffect");
+                var currentRelease = (MeshRenderer)Get(f.Combat, "releaseEffectRenderer");
                 Assert.That(currentRelease.enabled, Is.True);
                 f.Data.UpdateAction(3, 10, 10, 1);
                 f.DisableCombat();
                 active(1, new[] { action });
                 Assert.That(f.Status.text, Is.Empty);
-                Assert.That(preview.enabled, Is.False);
-                Assert.That(currentRelease.enabled, Is.False, "Disabling combat clears the release pulse.");
+                Assert.That(telegraph.enabled, Is.False);
+                Assert.That(currentRelease.enabled, Is.False, "Disabling combat clears the release mesh.");
                 Assert.That(cooldownOverlay.gameObject.activeSelf, Is.False, "Disabling combat hides its cooldown overlay.");
                 Assert.That(((IViewDataModel)f.Data).GetActionState().Item1, Is.False);
                 int iconChildren = f.Buttons[2].transform.Find("SkillIcon").childCount;
@@ -389,38 +405,104 @@ namespace C02.Tests
         }
 
         [Test]
-        public void RectanglePreviewAndReleaseUseEachServerPhasePositionInAllFourDirections()
+        public void ChargeTelegraphsFillAllSkillShapesShowProgressAndReleaseAtEachServerPhasePosition()
         {
             using (var f = new CombatFixture())
             {
                 f.World.transform.position = new Vector3(60f, 0f, 70f);
                 f.World.transform.localScale = new Vector3(2f, 1f, 2f);
                 var received = (Action<ushort, ActionResultField[]>)Get(f.Combat, "actionResults");
-                var castFarCorners = new[]
+                var expectedForward = new[] { Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
+
+                for (byte slot = 0; slot < 3; slot++)
                 {
-                    new Vector3(21.5f, .05f, 42f), new Vector3(21.5f, .05f, 18f),
-                    new Vector3(8f, .05f, 31.5f), new Vector3(32f, .05f, 31.5f),
-                };
-                var releaseFarCorners = new[]
-                {
-                    new Vector3(22.3f, .07f, 35.4f), new Vector3(22.3f, .07f, 30.6f),
-                    new Vector3(19.6f, .07f, 33.3f), new Vector3(24.4f, .07f, 33.3f),
-                };
+                    var charge = new ActionResultField { casterType = 0, casterId = 73, skillSlot = slot,
+                        skillId = slot, dir = 0, x = 20, y = 30, skillPhase = 0 };
+                    received(1, new[] { charge });
+                    var renderer = (MeshRenderer)Get(f.Combat, "chargeTelegraphRenderer");
+                    var mesh = (Mesh)Get(f.Combat, "chargeTelegraphMesh");
+                    var vertices = (Vector3[])Get(f.Combat, "chargeVertices");
+                    Assert.That((bool)Get(f.Combat, "chargeTelegraphActive"), Is.True);
+                    Assert.That(renderer.enabled && mesh.triangles.Length > 0, Is.True);
+                    Assert.That(renderer.transform.parent, Is.Null);
+                    Assert.That((Vector3)Get(f.Combat, "chargeTelegraphOrigin"), Is.EqualTo(new Vector3(20f, .07f, 30f)));
+                    Assert.That(((Color[])Get(f.Combat, "chargeColors"))[0].a, Is.LessThan(.4f),
+                        "Charging fills are translucent and remain quieter than the release effect.");
+
+                    float duration = (float)Get(f.Combat, "chargeTelegraphDuration");
+                    Set(f.Combat, "chargeTelegraphStarted", Time.unscaledTime - duration * .5f);
+                    Invoke(f.Combat, "Update");
+                    if (slot < 2)
+                    {
+                        float expectedRadius = slot == 0 ? 2f : 3.25f;
+                        Vector3 edge = vertices[1] - new Vector3(20f, .07f, 30f);
+                        Assert.That(new Vector2(edge.x, edge.z).magnitude, Is.EqualTo(expectedRadius).Within(.01f),
+                            "Circle fill dimensions come from the server skill hit phase.");
+                        Vector3 progressEdge = vertices[43] - new Vector3(20f, .07f, 30f);
+                        Assert.That(new Vector2(progressEdge.x, progressEdge.z).magnitude, Is.EqualTo(expectedRadius * .5f).Within(.03f),
+                            "The brighter inner fill visibly advances during the authored wait.");
+                    }
+                    else
+                    {
+                        Assert.That(vertices[0], Is.EqualTo(new Vector3(18.5f, .055f, 30f)));
+                        Assert.That(vertices[1], Is.EqualTo(new Vector3(21.5f, .055f, 30f)));
+                        Assert.That(vertices[2], Is.EqualTo(new Vector3(21.5f, .055f, 42f)));
+                        Vector3 progressEnd = (vertices[6] + vertices[7]) * .5f;
+                        Assert.That(Vector3.Distance(new Vector3(progressEnd.x, 0f, progressEnd.z),
+                            new Vector3(20f, 0f, 30f)), Is.EqualTo(6f).Within(.03f),
+                            "The brighter rectangle fill advances toward the skill's far edge.");
+                    }
+                    Set(f.Combat, "chargeTelegraphDeadline", Time.unscaledTime - .001f);
+                    Invoke(f.Combat, "Update");
+                    Assert.That(renderer.enabled, Is.False, "Each telegraph clears at its server-authored wait deadline.");
+                }
+
                 for (byte dir = 0; dir < 4; dir++)
                 {
                     var phase = new ActionResultField { casterType = 0, casterId = 73, skillSlot = 2,
                         skillId = 2, dir = dir, x = 20, y = 30, skillPhase = 0 };
                     received(1, new[] { phase });
-                    var preview = (LineRenderer)Get(f.Combat, "linePreview");
-                    Assert.That(preview.enabled && preview.positionCount == 4 && preview.useWorldSpace, Is.True);
-                    Assert.That(Vector3.Distance(preview.GetPosition(2), castFarCorners[dir]), Is.LessThan(.001f));
+                    var chargeRenderer = (MeshRenderer)Get(f.Combat, "chargeTelegraphRenderer");
+                    Assert.That(chargeRenderer.enabled && (bool)Get(f.Combat, "chargeTelegraphActive"), Is.True);
+                    var chargeVertices = (Vector3[])Get(f.Combat, "chargeVertices");
+                    Vector3 chargeFarCenter = (chargeVertices[2] + chargeVertices[3]) * .5f;
+                    Vector3 chargeForward = Vector3.ProjectOnPlane(chargeFarCenter - new Vector3(20f, .055f, 30f), Vector3.up).normalized;
+                    Assert.That(Vector3.Dot(chargeForward, expectedForward[dir]), Is.GreaterThan(.999f),
+                        "The filled rectangle follows all four server directions.");
                     phase.skillPhase = 1; phase.x = 22; phase.y = 33;
                     received(1, new[] { phase });
-                    var effect = (LineRenderer)Get(f.Combat, "releaseEffect");
-                    Assert.That(preview.enabled, Is.False);
-                    Assert.That(effect.enabled && effect.positionCount == 4 && effect.useWorldSpace, Is.True);
-                    Assert.That(Vector3.Distance(effect.GetPosition(2), releaseFarCorners[dir]), Is.LessThan(.01f),
-                        "The expanding hit outline must use this phase's server position, not the cast position.");
+                    Assert.That((bool)Get(f.Combat, "chargeTelegraphActive"), Is.False);
+                    Assert.That(chargeRenderer.enabled, Is.False);
+                    var effect = (MeshRenderer)Get(f.Combat, "releaseEffectRenderer");
+                    Assert.That(effect.enabled, Is.True);
+                    Assert.That(effect.transform.parent, Is.Null);
+                    Assert.That(effect.transform.position, Is.EqualTo(Vector3.zero));
+                    var mesh = (Mesh)Get(f.Combat, "releaseEffectMesh");
+                    var vertices = (Vector3[])Get(f.Combat, "releaseBaseVertices");
+                    var origin = new Vector3(22f, .07f, 33f);
+                    Assert.That((Vector3)Get(f.Combat, "releaseEffectOrigin"), Is.EqualTo(origin),
+                        "The release mesh starts at this phase's server position, not the cast position.");
+                    Vector3 endCenter = (vertices[48] + vertices[49]) * .5f;
+                    Vector3 forward = Vector3.ProjectOnPlane(endCenter - origin, Vector3.up).normalized;
+                    Assert.That(Vector3.Dot(forward, expectedForward[dir]), Is.GreaterThan(.999f),
+                        "The mesh ribbon follows the authoritative phase direction in all four wire directions.");
+                    Assert.That(Vector3.Distance(endCenter, origin), Is.EqualTo(12f).Within(.01f),
+                        "The base mesh keeps the server rectangle's authored range.");
+                    var animated = (Vector3[])Get(f.Combat, "releaseVertices");
+                    Vector3 animatedEnd = (animated[48] + animated[49]) * .5f;
+                    Assert.That(Vector3.Dot(Vector3.ProjectOnPlane(animatedEnd - origin, Vector3.up).normalized,
+                        expectedForward[dir]), Is.GreaterThan(.999f),
+                        "The animated impact keeps its server direction.");
+                    Assert.That(Vector3.Distance(animatedEnd, origin), Is.EqualTo(2.16f).Within(.06f),
+                        "The mesh animation begins from the server phase origin.");
+                    Set(f.Combat, "releaseEffectDeadline", Time.unscaledTime + 0.175f);
+                    Invoke(f.Combat, "Update");
+                    animatedEnd = (animated[48] + animated[49]) * .5f;
+                    Assert.That(Vector3.Dot(Vector3.ProjectOnPlane(animatedEnd - origin, Vector3.up).normalized,
+                        expectedForward[dir]), Is.GreaterThan(.999f));
+                    Assert.That(Vector3.Distance(animatedEnd, origin), Is.EqualTo(7.56f).Within(.08f),
+                        "The same server-anchored ribbon advances outward during its visible lifetime.");
+                    Assert.That(mesh.vertexCount, Is.GreaterThan(48));
                 }
             }
         }
@@ -454,6 +536,10 @@ namespace C02.Tests
                 serverContent.ring.mana = 17;
                 serverContent.ring.phases[1].range1 = 3.25f;
                 Set(Combat, "serverContent", serverContent);
+#if UNITY_EDITOR
+                var effectMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/C02/Art/KnightRefinement/SteelSkillGlow.mat");
+                if (effectMaterial != null) Set(Combat, "skillEffectMaterial", effectMaterial);
+#endif
                 Set(Combat, "combatPanel", Child("combat panel"));
                 Buttons = new[] { Button("strike"), Button("ring"), Button("line") }; Set(Combat, "skillButtons", Buttons);
                 sprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f));
@@ -496,6 +582,7 @@ namespace C02.Tests
             public void Dispose()
             {
                 DisableCombat();
+                Invoke(Combat, "OnDestroy"); // Detached Edit Mode fixtures do not receive destruction callbacks.
                 if (Get(World, "model") != null) Invoke(World, "OnDisable");
                 UnityEngine.Object.DestroyImmediate(root);
                 UnityEngine.Object.DestroyImmediate(serverContent);

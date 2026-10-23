@@ -1,3 +1,78 @@
+## 아트·활용 지표 PR 게시 완료 — 2026-10-23
+
+PR49 https://github.com/JoEunil/MMORPG/pull/49 생성/현재채팅첨부 완료. head codex/knight-art-direction, base codex/client-structure-cleanup(PR48선행),GitHub mergeable 확인. ART03 회신1792760233.285059는 위 수신기록에서1회소비완료. 서버AI diff0/병합0/Pages배포0.
+
+PR생성후 Actions가비어있는원인은기존pages.yml의pull_request base=master필터였다. 사이트관련PR은base와관계없이build/artifact만실행하도록필터제거,AGENT_USAGE.md도push/PR경로에추가했다. deploy는계속master에서만실행. 이미통과한게임/웹테스트반복0. 이설정은활용기록단독변경도빌드에반영한다.
+
+## ART03 승인 수신·적용 — 2026-10-23
+
+Slack 부모1792754611.740799에서 지정 사용자U0C9QEUHPMK의 회신1792760233.285059 `승인 ART03`을 원문 조회로 확인했다. 요청1792759717.600819·현재 대기와 일치하고 기존 소비 기록이 없어 1회 적용했다. 앱 처리확인1792760301.497159. 승인 범위는 기사/필드/UI/스킬·몬스터 표시와 공개 활성화 지표이며 서버AI 변경·자동병합은 포함하지 않는다.
+
+fetch 후 master는 사용자 AI PR47 병합e930c44, 구조 정리 PR48은 open/head9a85d33인 것을 확인했다. 아트 브랜치는 PR48을 기반으로 하므로 중복 정리 diff를 피하도록 codex/client-structure-cleanup을 base로 한 PR 하나로 게시한다. PR48을 먼저 병합한 뒤 master 대상으로 통합한다. 기존 PASS 검증 반복0,실제접속전투·Player성능 미검증 유지. ART03 승인은 소비됐으므로 지연 전달로 다시 게시하지 않는다.
+
+## 공개 에이전트 활성화 지표 반영 — 2026-10-23
+
+사용자 요청으로 홈 워크플로우 아래 누적 신규78/재활성화181/합계259와 최근 확인한 에이전트4개의 표·상대 막대를 추가했다. 최근 상세는 신규4/재활성화25/합계29이며 전체 누적에 포함된다. 과거 귀속 불명 수치를 임의 배정하지 않았고 토큰 N/A를 명시했다. AGENT_USAGE 공개 집계→기존 site generator로 연결하여 숫자 중복 관리 없이 갱신한다. 공개 기준에도 범위·기준일과 기록 동시 갱신을 반영했다.
+
+site build/내부 링크 PASS, 실제 브라우저 desktop·390px 표4행/합계·가로넘침0 확인. 게임/Unity 테스트 반복0. 이번 감사는 기존 독립 리뷰 에이전트 재활성화1회로 기록했다. 같은 아트 묶음 ART03 게시 승인 대기 유지, push/PR/Pages 미실행. 미리보기 http://127.0.0.1:8791/MMORPG/#agent-usage .
+
+## ART03 최종 게시 승인 대기 — 2026-10-23
+
+로컬 제품후보5743b68를 UnityCoordinator 앱U0C9ZRTQ6F8으로 동일아트부모1792754611.740799에 최종요청1792759717.600819 게시했다. 링크 https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1792759717600819 . 직전 실제Node33572/listening·고정Coordinator·health7.2s 확인. 정확한지정사람U0C9QEUHPMK의이부모 `승인 ART03`만현재대기로처리,회신ID·기소비확인후같은스레드적용결과회신한다. ART01/ART02 지연승인은새게시승인아님. 새사람승인수신/소비0,원격게시0.
+
+승인후fetch/PR48·base상태대조→일반push→기사/UI/성벽/플레이어·몬스터연출큰PR1개→artifact첨부. 강제push/자동병합/AI개발확대금지. 실제접속전투/standalone성능미검증유지. 미리보기localhost8791/player-hud/history 최신GIF·몬스터영역. 제품검사3개와fixtureteardownPASS/Scene생성effects0/이미PASS한기능검사반복0.
+## ART03 씬 무결성 최종 보완 — 2026-10-23
+
+테스트/촬영의EditMode생명주기누락으로이전ART02Scene에도runtimeC05효과잔여물이저장된것확인. 자동검토는이름일괄삭제를거절/미실행. readonlyID·owner·Mesh·좌표대조+독립리뷰의외부참조검사후고유ID18개고정/전체사전검증/backup의더좁은작업이승인되어정리. 전역에셋삭제0/정상게임참조0. C05fixtureDispose에OnDestroy명시호출추가/own effect2종종료·Scene생성root0 smokePASS. 제품C05VFX불변/이미통과한3검사반복0. Scene공통블록은materialref/SceneRoots와3float오차만변경,우리이전생성잔여90block제거. 상세 SKILL_PRESENTATION_RESULTS.txt. 전문누적78/180/258,토큰N/A.
+
+## 스킬별 모션·몬스터 특수 영역 완료 — ART03 후보 / 2026-10-23
+
+기본횡베기/주변회전/전방내려찍기를상체·방패·stance연동과phase별부드러운포즈로보완. 좋은C05차징/내려찍기VFX유지. 몬스터ActionResult원래구독중이며특수circle/fan/square-ring을filled+chargealpha로교체,기본skill0는영역없이모션만. 각phase실제server위치/독립해제/HP0·sessioncleanup유지. 서버AI/프로토콜/수치/map변경0.
+
+독립리뷰gait팔P2수정/최종새P1P2없음,관련PlayMode3검사PASS. 초기detachedAwake실패와singleframe보행fixture실패·지속이동보강은 SKILL_PRESENTATION_RESULTS.txt에보존. 이미PASS검사반복0,실입력/서버교전0. 근접스킬GIF3+몬스터filled에디터미리보기3/기존화면이력보존,site build/browser확인. 사용량78/179/257,토큰N/A. ROOT Editor생산버전저장/Playfalse.
+
+같은큰art묶음으로로컬커밋후부모1792754611.740799에ART03최종게시요청. 이전ART02보류/무효이며정확한ART03원문답장전push/PR/Pages0. 최종요청ts는게시후기록. 게시시먼저원격fetch와PR48/base대조.
+
+## 스킬별 모션·몬스터 범위 후속 저작 — 2026-10-23
+
+사용자요청: 기존 좋은 플레이어 내려찍기VFX/차징유지,스킬별 자연스러운 준비/타격/회수와 monster기본공격동작/특수범위filled. C19+직접fixture는 knight_attack_presentation, C04+직접fixture는 monster_cast_presentation, Editor/직렬화/캡처는Coordinator. 서버AI/프로토콜/콘텐츠수치변경금지. 기존 ActionResult구독은존재하며 각phase서버위치기준.
+
+ART02 게시요청은 최종후보보완중으로 보류한다. 새범위와최소검증을완료한 ART03 요청으로 대체예정. ART02 지연승인만으로 현재저작버전 게시하지않는다. 이미통과한 unrelated검사반복0. 새검증은 C19 1개와C04 직접영향1~2개/에디터연출캡처로묶는다. 별도서버/AI작업재개아님.
+## 공개 홈 지침 이력·가독성 보완 — 2026-10-23
+
+사용자 요청으로 주요 지침9개를 공개 MD에 정리: 미술/입력/UI/리깅 제외/최소 검증·큰묶음/Unity맵 공유/사람AI·Agent 역할/코드단순성/확인 가능한 활용 기록. 본문18px,도식·캡션 최소16px,이력 제목19px/설명18px,모바일 한열. Nav 지침변경 바로가기 추가. build/linkPASS,실제browser9항목·desktop18px/mobile390 가로넘침0·caption16px 확인,viewport reset. 게임/Unity 재시험0,새Agent0. 같은ART02 공개결과 보완에 로컬통합/원격게시0. 승인요청은기존ART02유지.
+## 홈 설명·하단 HUD 후속 피드백 반영 — 2026-10-23
+
+웹: 중복되는 큰 목표/진행 흐름과 메뉴를 삭제, 소개를 실제 개발 결과 중심으로 축약. 작업 목록 설명을 제목 아래에 두고 본문16px·링크15px로 확대. 기존 미종료 모바일 @media block을 닫아 후속 CSS가 desktop에도 적용되도록 수정. MD 원본과 generator/style만 편집, generated HTML 별도수정0. build/링크검증PASS, desktop display:block/본문16px와 mobile390 가로넘침없음 확인, viewport reset. 새 specialist실행0/게임 테스트반복0.
+
+Unity: 사용자 피드백으로 HP402.667x22.667/MP402.667x18 (이전604x34/604x27의2/3),frame440x68/rightbottom24,8. skillicon크기유지/동일부모 내 위배치, chat400x260/leftbottom24,8. 기존 runtime·serialized control/lifecycle 불변. 컴파일PASS/실제Editor 렌더겹침확인,예시값복원. 새capture citadel-hud-right-preview.png/이전화면보존. 서버/AI/스킬코드변경0. ART02 같은묶음의 화면보완으로 기존승인요청 유지/원격게시0.
+
+## ART02 게시 승인 대기 — 2026-10-23
+
+로컬 후보5951ef9를 UnityCoordinator 앱U0C9ZRTQ6F8으로 부모1792754611.740799에 최종요청1792757218.985169 게시했다. 링크 https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1792757218985169 . 직전 실제Node33572/listening·고정Coordinator·health0.8s 확인. 정확한 지정사람U0C9QEUHPMK의 이 부모 `승인 ART02`만 현재대기에 적용하고 회신ID/기소비를 대조해 처리결과 회신한다. ART01은 무효이며 아직 새 사람승인 수신/소비0. 승인후 fetch→PR48/base대조→일반push/큰PR1개→artifact첨부. 승인전 원격게시/Pages0. 미리보기localhost8791의 player-hud와field-travel 화면이력. 완료채널에는 로컬보완결과만 별도 메시지로 남긴다.
+## 성채·하단 UI·차징 최종 후보 — ART02 / 2026-10-23
+
+사용자 확장 범위를 같은 art 묶음으로 구현/독립리뷰/최소검증했다. 대형 bottom HP/MP,3슬롯 filled area와 charging progress,기사 metal/normal/tangents와 성벽·수목·ground/lighting. 서버/AI/nav/mapdata/protocol 변경0. 관련 C05 2개·18footprint/새Collider0/UV접선 PASS,컴파일/셰이더오류0. Play/실입력/서버교전0; 미디어는 실제 Editor 렌더+staged phases/HUD예시를 명시. 기존 PASS 반복0. 상세 CITADEL_ART_RESULTS.txt.
+
+공개 MD/화면이력과 localhost8791 갱신·실제브라우저 확인. 원본 메뉴삽화와 실제3D를 구분하고 과거 미디어 보존. 제품 정본은 UnityClient/Builds/C10-Delivery/source,Editor는ROOT. 같은부모1792754611.740799에 ART02 최종 게시승인 요청 예정. 이전 ART01 무효 유지; ART02 정확한 사람답장 전 push/PR/Pages0. PR48 기반 원격상태는 승인후 fetch로 먼저 대조.
+
+## ART01 후속 확장 중 — 이전 게시 요청 무효 / 2026-10-23
+
+사용자 후속지시로 하단 전용 대형 HP/MP, 반투명 면 범위와 차징, 진입 삽화 기준 기사/필드 품질·성벽을 같은 아트 묶음에서 대대적으로 보완한다. ART01 부모1792754611.740799에 무효/보완중 통지1792755484.412779 완료. ART01 답장이 도착해도 현재 요청과 불일치하므로 게시하지 않고 최종 ART02 요청을 준비한다. 서버 AI는 계속 사용자 소유. 고정 맵의 collision/navigation은 기존 blocked footprint/월드외곽 안에서 시각 구조만 보강하며 새 walkable구간을 보이지않는 벽으로 막지 않는다. 현재 ROOT 테스트 C05는 구현자가 의도치 않게 먼저 수정했으므로 원본을 덮어 복구하지 말고 최종 CAND와 대조하여 통합한다. 저작중/검사전이며 새변경미검증.
+## ART01 게시 승인 대기 — 2026-10-23
+
+검증한 아트 후보3d48eb2를 UnityCoordinator 앱(U0C9ZRTQ6F8) 새 부모1792754611.740799에 게시 승인 요청했다. 링크 https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1792754611740799 . ROOT SlackReceiver/threads.txt 자동등록을 대조한다. 요청 직전 실제 Node33572/listening·고정Coordinator·health6.3s 확인. 사람의 ART01 답장 왕복/적용은 아직 미완료이며 queued/과거CLEAN01을 승인으로 사용하지 않는다.
+
+지정사람U0C9QEUHPMK의 이 부모 원문 `승인 ART01`을 수신하면 회신ID·요청·현재 대기·기소비 여부를 확인해 같은 부모로 처리 결과를 남긴 뒤 fetch/분기대조→큰PR1개 게시·artifact첨부한다. PR48 기반 상태를 먼저 확인하고 이력 보존, 강제push/자동병합/서버교전 확대0. 승인 전 push/새PR/Pages배포0. 미리보기 http://127.0.0.1:8791/MMORPG/work/player-hud/history.html 와 실제 모델/메뉴 삽화/예시HUD 구분을 유지한다.
+## 기사·UI·스킬 아트 후보 완료 — 2026-10-23
+
+사용자 아트 강화 요청을 codex/knight-art-direction에서 묶었다. 기존 정적 기사에 닫힌 판금·능선/문장·브러시 금속/붉은 천, 진입 전용 보조 조명, 기존 uGUI의 생성 배경/금속 프레임/가죽·확대 HP/MP와 Z/X/C, 슬롯별 횡베기·회전·내려찍기와 정점색 검흔/수직 참격/지면 파쇄를 반영했다. 기존 Scene/Prefab GUID·컨트롤·C17 생명주기/ActionResult phase 좌표·방향을 재사용하고 관찰 플레이어도 슬롯을 전달한다. 서버/프로토콜/사용자 몬스터 AI/이동 변경0.
+
+독립 리뷰 P2 3건과 도구 재적용 null·neck gap 보완, 최종 P1/P2 없음. 관련 detached 3검사 PASS, 렌더 피드백 후 geometry 관련 C05 2개만 다시 PASS(C19 재시험0). Unity컴파일0·셰이더오류false, Play 무입력 로그인1회와 프레임진행 확인. CLI 구버전 명령 오류의 ErrorPause는 실제 paused 상태를 보고 재개했으며 새 제품 오류 없음. 실입력/서버교전/standalone성능은 미검증, PNG/GIF는 실제 Editor모델+synthetic phase, HUD는 임시예시값임을 구분했다. 최종 Playfalse/dirtyfalse/backgroundfalse. 테스트 동안 자산저장0. 결과 KNIGHT_ART_RESULTS.txt.
+
+공개 MD·선별 미디어와 site생성/linkPASS, http://127.0.0.1:8791/MMORPG/work/player-hud/history.html 실제브라우저 확인. 생성 메뉴 삽화는 실제 3D 결과로 보고하지 않는다. 현재 미리보기 PID38948/Unity25240. ROOT기존Scene/prefab이CAND HEAD와같음을백업비교후적용,원본GameAI불변. 전문누적77/166/243,토큰N/A.
+
+로컬 커밋 후 새 ART01 Slack 부모에 게시 승인 요청한다. CLEAN01/PR48과 다른 작업이며 원문 승인 전 push/새PR/병합/Pages배포0. 게시 시 먼저 fetch로 PR48 포함/병합 여부를 대조해 이력을 보존하며 원격 base를 선택한다. 무관한 게임 개발을 자동 재개하지 않는다.
 ## CLEAN01 게시 완료 — PR48 / 2026-10-23
 
 Slack1792751818.000039의승인 CLEAN01을부모1792748383.070499와대조해소비했고 https://github.com/JoEunil/MMORPG/pull/48 하나로게시·artifact첨부했다. master기준codex/client-structure-cleanup 일반push,게시확인기준bd37d32. 공통/코드개선지침과클라이언트4파일중복정리/직접영향검사/사용자AI설명정정을같은PR에담았다. 서버·사용자몬스터AI·프로토콜diff0,검증c306f4d대비Assetsdiff0,테스트재실행0. 제품코드변경후Unity관련3검사PASS근거는기존결과를그대로사용한다. 과거승인대기문구보다이완료기록이우선한다. PR병합/추가게임개발/서버조작/별도Slack복구코드게시0.

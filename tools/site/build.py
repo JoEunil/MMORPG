@@ -199,14 +199,31 @@ def render_workflow(section):
 <div class="flow-diagram"><h3>하나의 기능이 만들어지는 흐름</h3><ol class="workflow-steps">{steps}</ol><ul class="workflow-feedback">{feedback}</ul></div></div></div></section>'''
 
 
-def render_journey(section):
-    items = diagram_items(section)[""]
-    stages = []
-    for item in items:
-        label, _, detail = item.partition(" — ")
-        status, _, description = detail.partition(" · ")
-        stages.append(f'<li><span class="stage-state">{escape(status)}</span><h3>{escape(label)}</h3><p>{escape(description)}</p></li>')
-    return f'''<section class="section-wrap journey" id="journey"><div class="section-title"><h2>{escape(section['title'])}</h2></div><ol class="journey-track">{''.join(stages)}</ol></section>'''
+
+def render_agent_usage(section):
+    # Only the explicitly reconciled summary is public; historical notes mix deltas and totals.
+    ledger = (ROOT / "docs/unity-client/AGENT_USAGE.md").read_text(encoding="utf-8")
+    summary = ledger.split("## 공개 집계\n", 1)[1].split("\n## ", 1)[0]
+    date = re.search(r"^기준일: (.+)$", summary, re.M).group(1)
+    scope = re.search(r"^상세 범위: (.+)$", summary, re.M).group(1)
+    new = int(re.search(r"^누적 신규: (\d+)$", summary, re.M).group(1))
+    resumed = int(re.search(r"^누적 재활성화: (\d+)$", summary, re.M).group(1))
+    agents = []
+    for line in summary.splitlines():
+        match = re.fullmatch(r"\| ([^|]+) \| ([^|]+) \| (\d+) \| (\d+) \|", line)
+        if match:
+            agents.append((match[2].strip(), int(match[3]), int(match[4])))
+    if not agents or sum(a[1] for a in agents) > new or sum(a[2] for a in agents) > resumed:
+        raise ValueError("Public agent counts must fit the recorded cumulative totals")
+    recent_new = sum(a[1] for a in agents)
+    recent_resumed = sum(a[2] for a in agents)
+    peak = max(a[1] + a[2] for a in agents)
+    rows = ''.join(f'<tr><th scope="row">{escape(name)}<span class="usage-bar" style="--fill:{(created + restarted) / peak * 100:.1f}%" aria-hidden="true"></span></th><td>{created}</td><td>{restarted}</td><td>{created + restarted}</td></tr>' for name, created, restarted in agents)
+    copy = render_blocks(section["blocks"], HOME_SOURCE)
+    return f'''<section class="section-wrap agent-usage" id="agent-usage"><div class="section-title"><h2>{escape(section['title'])}</h2></div>
+<div class="usage-copy">{copy}</div><dl class="usage-totals"><div><dt>기록된 누적 활성화</dt><dd>{new + resumed}<span>회</span></dd></div><div><dt>신규 실행</dt><dd>{new}<span>회</span></dd></div><div><dt>재활성화</dt><dd>{resumed}<span>회</span></dd></div></dl>
+<h3>최근 작업의 에이전트별 활성화</h3><p class="usage-scope">{escape(scope)} · {escape(date)} 기준</p>
+<div class="usage-table-wrap"><table class="usage-table"><caption class="sr-only">최근 작업에 참여한 에이전트별 신규 실행과 재활성화 횟수</caption><thead><tr><th scope="col">담당 에이전트</th><th scope="col">신규</th><th scope="col">재활성화</th><th scope="col">합계</th></tr></thead><tbody>{rows}</tbody><tfoot><tr><th scope="row">최근 작업 합계</th><td>{recent_new}</td><td>{recent_resumed}</td><td>{recent_new + recent_resumed}</td></tr></tfoot></table></div></section>'''
 
 
 def render_decisions(section):
@@ -230,7 +247,7 @@ def document(title, description, content, references, site_title):
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="{escape(description, quote=True)}"><title>{escape(browser_title)}</title>
 <link rel="stylesheet" href="{BASE}style.css"></head><body>
-<header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}#workflow">AI 워크플로우</a><a href="{BASE}#journey">목표와 진행</a><a href="{BASE}#work">작업 결과</a><a href="{BASE}#legacy">기존 Unity</a></nav></header>
+<header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}#workflow">AI 워크플로우</a><a href="{BASE}#work">작업 결과</a><a href="{BASE}#legacy">기존 Unity</a><a href="{BASE}#decisions">지침 변경</a><a href="{BASE}#agent-usage">활용 지표</a></nav></header>
 {content}<footer class="site-footer"><a href="{BASE}">{escape(site_title)}</a>{ref_footer}</footer>
 </body></html>'''
 
@@ -293,16 +310,17 @@ def main():
         cards.append(f'<article class="work-card">{media}<div class="work-copy"><p class="work-status">{escape(work["status"])}</p><h3><a href="{detail}">{escape(work["title"])}</a></h3><p>{escape(work["summary"])}</p><div class="card-links"><a href="{detail}">작업 보기 →</a><a href="{history}">화면 이력</a></div></div></article>')
     sections_by_title = {section["title"]: section for section in home_sections}
     process_html = render_workflow(sections_by_title["AI Agent 워크플로우"])
-    journey_html = render_journey(sections_by_title["큰 목표와 진행 흐름"])
+    usage_html = render_agent_usage(sections_by_title["Agent 활용 지표"])
+    work_intro = next(block for block in sections_by_title["작업 둘러보기"]["blocks"] if isinstance(block, str) and block and not block.startswith("- "))
     decisions_html = render_decisions(sections_by_title["지침 변경 이력"])
     legacy_section = sections_by_title["기존 Unity 구현"]
     legacy_copy = render_blocks(legacy_section["blocks"], HOME_SOURCE)
     legacy_html = f'<section class="legacy-section section-wrap" id="legacy"><div class="section-title"><h2>{escape(legacy_section["title"])}</h2></div><div class="legacy-body">{legacy_copy}</div></section>'
     hero = f'''<main id="top"><section class="home-hero"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#work">작업 결과 보기</a></div></div><figure class="home-image"><a href="{hero_image[1]}" target="_blank" rel="noopener"><img src="{hero_image[1]}" alt="{escape(hero_image[0], quote=True)}"></a><figcaption>{escape(hero_image[0])}</figcaption></figure></section>
 {process_html}
-{journey_html}
+{usage_html}
 {legacy_html}
-<section class="section-wrap work-section" id="work"><div class="section-title"><h2>작업과 결과</h2></div><div class="work-grid">{''.join(cards)}</div></section>
+<section class="section-wrap work-section" id="work"><div class="section-title work-heading"><h2>작업과 결과</h2><p>{inline(work_intro)}</p></div><div class="work-grid">{''.join(cards)}</div></section>
 {decisions_html}</main>'''
     (SITE / "index.html").write_text(document(title, intro, hero, references, title), encoding="utf-8", newline="\n")
     for old_key in legacy_market_pages:

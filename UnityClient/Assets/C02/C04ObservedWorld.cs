@@ -80,23 +80,97 @@ namespace C02
             public MotionHistory Motion = new MotionHistory();
         }
 
+        private sealed class SkillTelegraph
+        {
+            public MeshRenderer Renderer;
+            public Mesh Mesh;
+            public double StartedAt;
+            public double Deadline;
+            public float Duration;
+            private Color[] colors;
+
+            public void Show(Transform parent, Material material, string name, Vector3[] vertices, int[] triangles,
+                double now, float duration)
+            {
+                if (Renderer == null)
+                {
+                    var visual = new GameObject(name);
+                    visual.transform.SetParent(parent, false);
+                    var filter = visual.AddComponent<MeshFilter>();
+                    Renderer = visual.AddComponent<MeshRenderer>();
+                    Renderer.sharedMaterial = material;
+                    Renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    Renderer.receiveShadows = false;
+                    Mesh = new Mesh { name = name + " Mesh" };
+                    Mesh.MarkDynamic();
+                    filter.sharedMesh = Mesh;
+                }
+                Mesh.Clear();
+                Mesh.vertices = vertices;
+                Mesh.triangles = triangles;
+                colors = new Color[vertices.Length];
+                Mesh.colors = colors;
+                Mesh.RecalculateBounds();
+                StartedAt = now;
+                Duration = duration;
+                Deadline = now + duration + 0.1;
+                Renderer.gameObject.SetActive(true);
+                Render(now);
+            }
+
+            public void Render(double now)
+            {
+                if (Renderer == null || !Renderer.gameObject.activeSelf) return;
+                if (now >= Deadline)
+                {
+                    Renderer.gameObject.SetActive(false);
+                    return;
+                }
+                float charge = Duration <= 0 ? 1 : Mathf.Clamp01((float)((now - StartedAt) / Duration));
+                float alpha = Mathf.Lerp(0.14f, 0.58f, charge);
+                for (int i = 0; i < colors.Length; i++) colors[i] = new Color(1f, 0.18f, 0.045f, alpha);
+                Mesh.colors = colors;
+            }
+
+            public void Clear()
+            {
+                if (Renderer != null) Renderer.gameObject.SetActive(false);
+            }
+
+            public void Dispose()
+            {
+                if (Renderer != null)
+                {
+                    Renderer.gameObject.SetActive(false);
+                    UnityEngine.Object.Destroy(Renderer.gameObject);
+                }
+                if (Mesh != null) UnityEngine.Object.Destroy(Mesh);
+                Renderer = null;
+                Mesh = null;
+                colors = null;
+            }
+        }
+
         private sealed class MonsterObservation
         {
             public MonsterFullField State;
             public GameObject Visual;
             public C13EntityVitals Vitals;
             public C19ActorMotion ActorMotion;
-            public LineRenderer RangePreview;
-            public double RangeUntil;
-            public LineRenderer BossFanPreviewFirst;
-            public double BossFanUntilFirst;
-            public LineRenderer BossFanPreviewSecond;
-            public double BossFanUntilSecond;
-            public readonly LineRenderer[] BossSquareOuterPreviews = new LineRenderer[5];
-            public readonly LineRenderer[] BossSquareInnerPreviews = new LineRenderer[5];
-            public readonly double[] BossSquareUntil = new double[5];
+            public SkillTelegraph RangePreview;
+            public SkillTelegraph BossFanPreviewFirst;
+            public SkillTelegraph BossFanPreviewSecond;
+            public readonly SkillTelegraph[] BossSquarePreviews = new SkillTelegraph[5];
             public double LastFullSeen;
             public MotionHistory Motion = new MotionHistory();
+
+            public void DisposeTelegraphs()
+            {
+                RangePreview?.Dispose();
+                BossFanPreviewFirst?.Dispose();
+                BossFanPreviewSecond?.Dispose();
+                foreach (var preview in BossSquarePreviews) preview?.Dispose();
+            }
         }
 
         private readonly Dictionary<uint, PlayerObservation> players = new Dictionary<uint, PlayerObservation>();
@@ -364,11 +438,27 @@ namespace C02
             var phase = skill.phases[result.skillPhase];
             if (phase == null || phase.action != C14SkillAction.Charging && phase.action != C14SkillAction.Hit) return;
             bool released = phase.action == C14SkillAction.Hit;
+            byte motionSlot = result.skillSlot;
+            if (result.casterType == 1)
+            {
+                if (result.skillId == 0) motionSlot = 0;
+                else
+                {
+                    var shapePhase = released ? phase : result.skillPhase + 1 < skill.phases.Length
+                        ? skill.phases[result.skillPhase + 1] : phase;
+                    if (shapePhase == null) return;
+                    motionSlot = shapePhase.range == C14SkillRange.Circle || shapePhase.range == C14SkillRange.Boss1_1 ||
+                        shapePhase.range == C14SkillRange.Boss1_2 ? (byte)1 :
+                        shapePhase.range == C14SkillRange.Rectangle || shapePhase.range == C14SkillRange.Boss2 ? (byte)2 : (byte)0;
+                }
+            }
+            float chargeDuration = !released && result.skillPhase + 1 < skill.phases.Length && skill.phases[result.skillPhase + 1] != null
+                ? Mathf.Min(skill.phases[result.skillPhase + 1].waitTicks * .05f, 2f) : 0;
             if (result.casterType == 0 && players.TryGetValue(result.casterId, out var player) && player.State.hp > 0)
-                player.ActorMotion.PlayAttack(result.dir, released);
+                player.ActorMotion.PlayAttack(result.dir, released, motionSlot, chargeDuration);
             else if (result.casterType == 1 && result.casterId <= ushort.MaxValue &&
                 monsters.TryGetValue((ushort)result.casterId, out var monster) && monster.State.hp > 0)
-                monster.ActorMotion.PlayAttack(result.dir, released);
+                monster.ActorMotion.PlayAttack(result.dir, released, motionSlot, chargeDuration);
         }
 
         private void ApplyMonsterActionResults(ushort count, ActionResultField[] results)
@@ -408,10 +498,7 @@ namespace C02
                         int pairIndex = result.skillPhase / 2;
                         if ((result.skillPhase & 1) != 0)
                         {
-                            if (entry.BossSquareOuterPreviews[pairIndex] != null)
-                                entry.BossSquareOuterPreviews[pairIndex].gameObject.SetActive(false);
-                            if (entry.BossSquareInnerPreviews[pairIndex] != null)
-                                entry.BossSquareInnerPreviews[pairIndex].gameObject.SetActive(false);
+                            entry.BossSquarePreviews[pairIndex]?.Clear();
                             continue;
                         }
                         if (monsterRangeMaterial == null) continue;
@@ -423,40 +510,18 @@ namespace C02
                             bossSquareHit.range2 < 0 || bossSquareHit.range2 >= bossSquareHit.range1 || bossSquareHit.waitTicks == 0)
                             continue;
 
-                        LineRenderer outer = entry.BossSquareOuterPreviews[pairIndex];
-                        if (outer == null)
-                        {
-                            outer = CreateRangePreview(entry.Visual.transform, "Boss Square Outer Preview " + pairIndex, 4);
-                            entry.BossSquareOuterPreviews[pairIndex] = outer;
-                        }
-                        SetSquarePreview(outer, result.x, result.y, bossSquareHit.range1);
-                        outer.gameObject.SetActive(true);
-
-                        if (bossSquareHit.range2 > 0)
-                        {
-                            LineRenderer inner = entry.BossSquareInnerPreviews[pairIndex];
-                            if (inner == null)
-                            {
-                                inner = CreateRangePreview(entry.Visual.transform, "Boss Square Inner Preview " + pairIndex, 4);
-                                entry.BossSquareInnerPreviews[pairIndex] = inner;
-                            }
-                            SetSquarePreview(inner, result.x, result.y, bossSquareHit.range2);
-                            inner.gameObject.SetActive(true);
-                        }
-                        else if (entry.BossSquareInnerPreviews[pairIndex] != null)
-                        {
-                            entry.BossSquareInnerPreviews[pairIndex].gameObject.SetActive(false);
-                        }
-
-                        entry.BossSquareUntil[pairIndex] = Time.realtimeSinceStartupAsDouble + 0.05 * bossSquareHit.waitTicks + 0.1;
+                        if (entry.BossSquarePreviews[pairIndex] == null) entry.BossSquarePreviews[pairIndex] = new SkillTelegraph();
+                        BuildBossSquare(result.x, result.y, bossSquareHit.range1, bossSquareHit.range2, out var squareVertices, out var squareTriangles);
+                        entry.BossSquarePreviews[pairIndex].Show(displayRoot, monsterRangeMaterial, "Boss Square Telegraph " + pairIndex,
+                            squareVertices, squareTriangles, Time.realtimeSinceStartupAsDouble, bossSquareHit.waitTicks * .05f);
                         continue;
                     }
 
                     if (result.skillId != 3) continue;
                     if (result.skillPhase == 1 || result.skillPhase == 3)
                     {
-                        LineRenderer matchingPreview = result.skillPhase == 1 ? entry.BossFanPreviewFirst : entry.BossFanPreviewSecond;
-                        if (matchingPreview != null) matchingPreview.gameObject.SetActive(false);
+                        SkillTelegraph matchingPreview = result.skillPhase == 1 ? entry.BossFanPreviewFirst : entry.BossFanPreviewSecond;
+                        if (matchingPreview != null) matchingPreview.Clear();
                         continue;
                     }
                     if (result.skillPhase != 0 && result.skillPhase != 2) continue;
@@ -477,46 +542,24 @@ namespace C02
                         bossHit.range1 <= 0 || bossHit.waitTicks == 0) continue;
 
                     bool firstFan = result.skillPhase == 0;
-                    LineRenderer preview = firstFan ? entry.BossFanPreviewFirst : entry.BossFanPreviewSecond;
+                    SkillTelegraph preview = firstFan ? entry.BossFanPreviewFirst : entry.BossFanPreviewSecond;
                     if (preview == null)
                     {
-                        preview = CreateRangePreview(entry.Visual.transform,
-                            firstFan ? "Boss Fan Preview First" : "Boss Fan Preview Second", 36);
+                        preview = new SkillTelegraph();
                         if (firstFan) entry.BossFanPreviewFirst = preview;
                         else entry.BossFanPreviewSecond = preview;
                     }
-
-                    preview.positionCount = 36;
-                    preview.SetPosition(0, new Vector3(result.x, 0.055f, result.y));
-                    float sweepStep = result.skillPhase == 0 ? 7.5f : 3.75f;
-                    for (int point = 0; point <= 16; point++)
-                    {
-                        float firstAngle = result.skillPhase == 0 ? 30f + point * sweepStep : 330f + point * sweepStep;
-                        preview.SetPosition(point + 1, new Vector3(
-                            result.x + Mathf.Cos(firstAngle * Mathf.Deg2Rad) * bossHit.range1, 0.055f,
-                            result.y + Mathf.Sin(firstAngle * Mathf.Deg2Rad) * bossHit.range1));
-                    }
-                    preview.SetPosition(18, new Vector3(result.x, 0.055f, result.y));
-                    for (int point = 0; point <= 16; point++)
-                    {
-                        float secondAngle = result.skillPhase == 0 ? 210f + point * sweepStep : 150f + point * sweepStep;
-                        preview.SetPosition(point + 19, new Vector3(
-                            result.x + Mathf.Cos(secondAngle * Mathf.Deg2Rad) * bossHit.range1, 0.055f,
-                            result.y + Mathf.Sin(secondAngle * Mathf.Deg2Rad) * bossHit.range1));
-                    }
-                    preview.gameObject.SetActive(true);
-                    double deadline = Time.realtimeSinceStartupAsDouble + 0.05 * bossHit.waitTicks + 0.1;
-                    if (firstFan) entry.BossFanUntilFirst = deadline;
-                    else entry.BossFanUntilSecond = deadline;
+                    BuildBossFan(result.x, result.y, bossHit.range1, result.skillPhase == 0, out var fanVertices, out var fanTriangles);
+                    preview.Show(displayRoot, monsterRangeMaterial, firstFan ? "Boss Fan Telegraph First" : "Boss Fan Telegraph Second",
+                        fanVertices, fanTriangles, Time.realtimeSinceStartupAsDouble, bossHit.waitTicks * .05f);
                     continue;
                 }
 
-                if (entry.State.monsterId > 1 || result.skillPhase > 1 ||
-                    entry.State.monsterId == 0 && result.skillId != 0 || entry.State.monsterId == 1 && result.skillId > 1)
+                if (entry.State.monsterId != 1 || result.skillId != 1 || result.skillPhase > 1)
                     continue;
                 if (result.skillPhase == 1)
                 {
-                    if (entry.RangePreview != null) entry.RangePreview.gameObject.SetActive(false);
+                    entry.RangePreview?.Clear();
                     continue;
                 }
                 if (serverContent == null || monsterRangeMaterial == null) continue;
@@ -531,35 +574,73 @@ namespace C02
                 if (hit.action != C14SkillAction.Hit || hit.range != C14SkillRange.Circle || float.IsNaN(hit.range1) || float.IsInfinity(hit.range1) ||
                     hit.range1 <= 0 || hit.waitTicks == 0) continue;
 
-                if (entry.RangePreview == null)
-                {
-                    entry.RangePreview = CreateRangePreview(entry.Visual.transform, "Monster Range Preview", 32);
-                }
-
-                for (int point = 0; point < entry.RangePreview.positionCount; point++)
-                {
-                    float angle = Mathf.PI * 2f * point / entry.RangePreview.positionCount;
-                    entry.RangePreview.SetPosition(point, new Vector3(
-                        result.x + Mathf.Cos(angle) * hit.range1, 0.055f,
-                        result.y + Mathf.Sin(angle) * hit.range1));
-                }
-                entry.RangePreview.gameObject.SetActive(true);
-                entry.RangeUntil = Time.realtimeSinceStartupAsDouble + 0.05 * hit.waitTicks + 0.1;
+                if (entry.RangePreview == null) entry.RangePreview = new SkillTelegraph();
+                BuildCircle(result.x, result.y, hit.range1, out var circleVertices, out var circleTriangles);
+                entry.RangePreview.Show(displayRoot, monsterRangeMaterial, "Monster Circle Telegraph", circleVertices, circleTriangles,
+                    Time.realtimeSinceStartupAsDouble, hit.waitTicks * .05f);
             }
         }
 
-        private LineRenderer CreateRangePreview(Transform parent, string name, int pointCount)
+        private Vector3 PreviewPoint(float x, float z) => displayRoot.InverseTransformPoint(new Vector3(x, 0.06f, z));
+
+        private void BuildCircle(float x, float z, float radius, out Vector3[] vertices, out int[] triangles)
         {
-            var visual = new GameObject(name);
-            visual.transform.SetParent(parent, false);
-            var preview = visual.AddComponent<LineRenderer>();
-            preview.sharedMaterial = monsterRangeMaterial;
-            preview.useWorldSpace = true;
-            preview.loop = true;
-            preview.positionCount = pointCount;
-            preview.widthMultiplier = 0.1f;
-            preview.startColor = preview.endColor = Color.red;
-            return preview;
+            const int segments = 40;
+            vertices = new Vector3[segments + 1]; triangles = new int[segments * 3];
+            vertices[0] = PreviewPoint(x, z);
+            for (int i = 0; i < segments; i++)
+            {
+                float angle = Mathf.PI * 2 * i / segments;
+                vertices[i + 1] = PreviewPoint(x + Mathf.Cos(angle) * radius, z + Mathf.Sin(angle) * radius);
+                int t = i * 3; triangles[t] = 0; triangles[t + 1] = i + 1; triangles[t + 2] = (i + 1) % segments + 1;
+            }
+        }
+
+        private void BuildBossFan(float x, float z, float radius, bool first, out Vector3[] vertices, out int[] triangles)
+        {
+            const int segments = 16;
+            vertices = new Vector3[(segments + 2) * 2]; triangles = new int[segments * 3 * 2];
+            for (int sector = 0; sector < 2; sector++)
+            {
+                int vertexOffset = sector * (segments + 2), triangleOffset = sector * segments * 3;
+                vertices[vertexOffset] = PreviewPoint(x, z);
+                float start = first ? (sector == 0 ? 30 : 210) : (sector == 0 ? 330 : 150);
+                float step = first ? 7.5f : 3.75f;
+                for (int i = 0; i <= segments; i++)
+                {
+                    float angle = (start + i * step) * Mathf.Deg2Rad;
+                    vertices[vertexOffset + i + 1] = PreviewPoint(x + Mathf.Cos(angle) * radius, z + Mathf.Sin(angle) * radius);
+                    if (i < segments)
+                    {
+                        int t = triangleOffset + i * 3;
+                        triangles[t] = vertexOffset; triangles[t + 1] = vertexOffset + i + 1; triangles[t + 2] = vertexOffset + i + 2;
+                    }
+                }
+            }
+        }
+
+        private void BuildBossSquare(float x, float z, float outerSide, float innerSide, out Vector3[] vertices, out int[] triangles)
+        {
+            float outerHalf = outerSide * .5f;
+            var outer = new[] { PreviewPoint(x - outerHalf, z - outerHalf), PreviewPoint(x - outerHalf, z + outerHalf),
+                PreviewPoint(x + outerHalf, z + outerHalf), PreviewPoint(x + outerHalf, z - outerHalf) };
+            if (innerSide <= 0)
+            {
+                vertices = outer;
+                triangles = new[] { 0, 1, 2, 0, 2, 3 };
+                return;
+            }
+            float innerHalf = innerSide * .5f;
+            var inner = new[] { PreviewPoint(x - innerHalf, z - innerHalf), PreviewPoint(x - innerHalf, z + innerHalf),
+                PreviewPoint(x + innerHalf, z + innerHalf), PreviewPoint(x + innerHalf, z - innerHalf) };
+            vertices = new Vector3[16]; triangles = new int[24];
+            for (int side = 0; side < 4; side++)
+            {
+                int next = (side + 1) % 4, v = side * 4, t = side * 6;
+                vertices[v] = outer[side]; vertices[v + 1] = outer[next]; vertices[v + 2] = inner[next]; vertices[v + 3] = inner[side];
+                triangles[t] = v; triangles[t + 1] = v + 1; triangles[t + 2] = v + 2;
+                triangles[t + 3] = v; triangles[t + 4] = v + 2; triangles[t + 5] = v + 3;
+            }
         }
 
         private void Expire(double now)
@@ -592,27 +673,11 @@ namespace C02
             foreach (var entry in monsters.Values)
             {
                 if (entry.Visual != null) entry.Visual.transform.position = entry.Motion.PositionAt(presentationTime);
-                if (entry.RangePreview != null && now >= entry.RangeUntil) entry.RangePreview.gameObject.SetActive(false);
-                if (entry.BossFanPreviewFirst != null && now >= entry.BossFanUntilFirst) entry.BossFanPreviewFirst.gameObject.SetActive(false);
-                if (entry.BossFanPreviewSecond != null && now >= entry.BossFanUntilSecond) entry.BossFanPreviewSecond.gameObject.SetActive(false);
-                for (int pairIndex = 0; pairIndex < entry.BossSquareOuterPreviews.Length; pairIndex++)
-                {
-                    if (now < entry.BossSquareUntil[pairIndex]) continue;
-                    if (entry.BossSquareOuterPreviews[pairIndex] != null)
-                        entry.BossSquareOuterPreviews[pairIndex].gameObject.SetActive(false);
-                    if (entry.BossSquareInnerPreviews[pairIndex] != null)
-                        entry.BossSquareInnerPreviews[pairIndex].gameObject.SetActive(false);
-                }
+                entry.RangePreview?.Render(now);
+                entry.BossFanPreviewFirst?.Render(now);
+                entry.BossFanPreviewSecond?.Render(now);
+                foreach (var preview in entry.BossSquarePreviews) preview?.Render(now);
             }
-        }
-
-        private static void SetSquarePreview(LineRenderer preview, float x, float y, float sideLength)
-        {
-            float halfLength = sideLength * 0.5f;
-            preview.SetPosition(0, new Vector3(x - halfLength, 0.055f, y - halfLength));
-            preview.SetPosition(1, new Vector3(x - halfLength, 0.055f, y + halfLength));
-            preview.SetPosition(2, new Vector3(x + halfLength, 0.055f, y + halfLength));
-            preview.SetPosition(3, new Vector3(x + halfLength, 0.055f, y - halfLength));
         }
 
         private void RemovePlayer(uint id)
@@ -625,6 +690,7 @@ namespace C02
         private void RemoveMonster(ushort id)
         {
             if (!monsters.TryGetValue(id, out var entry)) return;
+            entry.DisposeTelegraphs();
             if (entry.Visual != null) { entry.Visual.SetActive(false); Destroy(entry.Visual); }
             monsters.Remove(id);
         }
@@ -634,7 +700,10 @@ namespace C02
             foreach (var entry in players.Values)
                 if (entry.Visual != null) { entry.Visual.SetActive(false); Destroy(entry.Visual); }
             foreach (var entry in monsters.Values)
+            {
+                entry.DisposeTelegraphs();
                 if (entry.Visual != null) { entry.Visual.SetActive(false); Destroy(entry.Visual); }
+            }
             players.Clear();
             monsters.Clear();
         }

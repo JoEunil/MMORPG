@@ -1,0 +1,11 @@
+Citadel field artwork — 2026-10-23
+
+Original geometry: Unity Editor Mesh API in CitadelEnvironmentArt.cs. Bevelled ashlar, battlements, closed gates, buttresses, banners, torch brackets, branch meshes, crossed foliage cards, meadow detail and entry paving. Combined by material per spatial chunk. No external models or franchise assets.
+
+Five original bitmap assets generated with the built-in imagegen tool for this project, unchanged source PNGs retained in the artwork folders. Prompts requested repeatable, evenly lit texture maps with no scene/perspective or game IP: limestone-surface.png (rough warm-grey limestone surface, no brick pattern), oak-bark.png (vertical ridged oak bark), meadow-ground.png (seamless muted grass/earth), oak-leaf-cluster.png (isolated oak foliage with true transparent background); tempered-steel-albedo.png is in the sibling KnightRefinement folder. Original tool outputs retained locally under .codex/generated_images/01a14d46-8b23-7590-8ad5-7efc20f8ecd9/. No third-party source or purchased asset.
+
+Materials use the existing URP Lit pipeline. Repeated albedo textures, mipmaps and anisotropy 4; foliage uses double-sided AlphaClip .32 with genuine alpha. Environment lighting: scene ambient trilight, custom procedural reflection cubemap, restrained ACES/color grading/bloom via a serialized VolumeProfile and component subassets. The existing shared PreviewSun remains the single directional light as in the scene builder; FieldLight remains disabled to avoid double exposure.
+
+All solid wall masses AND facade ornaments stay inside all 18 existing blocked XZ footprints (verified from renderer bounds). Exterior walls and oak trunks are outside the exported ground. Grass is low nonblocking detail. No new colliders or navigation edits. Closed gates deliberately represent blocked locations. Legacy V01Outpost/C27FixedFieldDressing are retained but disabled. Torch fire is emissive geometry. No server, AI, spawn or generated map data changed.
+
+Screenshots and GIF are Editor renders; staged phase timing and temporary HUD sample values are explicitly captioned. They do not prove live input, standalone performance or illustrated AAA quality. Geometry follows repository license; generated images have no separate external asset license.

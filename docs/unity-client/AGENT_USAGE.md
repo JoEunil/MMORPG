@@ -1,3 +1,52 @@
+## 공개 집계
+
+기준일: 2026-10-23
+누적 신규: 78
+누적 재활성화: 181
+상세 범위: 기사·필드·전투 표현과 활용 기록 정리
+
+| 에이전트 | 공개 이름 | 신규 | 재활성화 |
+| --- | --- | ---: | ---: |
+| knight_visual_refinement | 기사·필드 아트 | 1 | 3 |
+| knight_attack_presentation | 플레이어 전투 구현 | 1 | 10 |
+| knight_art_review | 독립 리뷰 | 1 | 12 |
+| monster_cast_presentation | 몬스터 전투 구현 | 1 | 0 |
+
+공개 데이터는 위 요약 한 곳에서 관리한다. 상세29회는 최근 아트28회와 이번 지표 감사1회다. 이전 원장은 증분/누적/브랜치 인계가 혼재하여 전체 에이전트별로 추정 합산하지 않는다. 225→230 구간 신규1명의 귀속 근거가 없어 이전230회는 기록된 누적으로만 표시한다. 토큰·비용은 미노출 N/A. 다음 전문 실행/재활성화 기록 시 이 공개 집계도 실제 증분만 갱신한다.
+
+## 공개 지표 감사 — 2026-10-23
+
+knight_art_review/code_reviewer 재활성화1: 전체 원장의 중복·인계 혼재와 최근 아트28회 확정/누적 대조를 읽기 감사했다. 제품/Editor/게임검사0. 누적 기록 신규78/재활성화181/활성화259. 개별 상세29회와 전체259회를 구분, 미제공토큰 추정0.
+
+## 스킬 동작·몬스터 특수 영역 — 2026-10-23
+
+| 담당 | 신규 | 재활성화 | 실제 결과 |
+| --- | ---: | ---: | --- |
+| knight_attack_presentation / worker | 0 | 3 | 세 스킬 몸통·하체/포즈 보간, gait팔 회귀복원, 지속보행 fixture 보완 |
+| monster_cast_presentation / worker | 1 | 0 | C04 기존수신경로의 filled 영역·charge, 기본공격영역제외, shape기반모션·직접fixture |
+| knight_art_review / code_reviewer | 0 | 4 | C19/보행수정/C04범위 및 씬 잔여물 독립감사, fixture 종료 P2 확인·보완 |
+
+Coordinator가 기존재질배선·씬통합,관련PlayMode3검사/실패fixture만재확인,실제모델/geometry Editor프리뷰·3GIF조립과공개MD갱신을수행했다. 별도tester/문서Agent0,이미지생성0. 활성화누적 신규78/재활성화180/전체258. 실제미노출토큰·비용N/A. 슬롯부족으로실행실패한review호출은활성화에서제외.
+
+## 성채 필드·대형 하단 게이지·차징 — 2026-10-23
+
+| 담당 | 신규 | 재활성화 | 실제 결과 |
+| --- | ---: | ---: | --- |
+| knight_visual_refinement / asset_artist | 0 | 2 | 원래 충돌 footprint를 지키는 석벽/철문/수목 geometry 및 돌출 장식 수정 |
+| knight_attack_presentation / worker | 0 | 2 | 면 형태 3스킬 차징·관련 fixture, 별도 release lifetime 보완 |
+| knight_art_review / code_reviewer | 0 | 3 | charge/범위/재질·Volume 검토, P2 3건 발견 후 최종 신규 P1/P2 없음 |
+
+Coordinator가 기존 Editor를 단독 조작해 UI·기사 재질/접선·조명 통합, builtin imagegen5건, 관련2검사와 bounds 검사, 실제 Editor 렌더/GIF·공개 MD 갱신을 수행했다. 전용 tester 신규 실행/모델 변경 없음. 누적 신규77/재활성화173/활성화250. 실제 토큰·비용은 미노출 N/A. 단순 메시지는 활성화에서 제외.
+
+## 기사 아트·게임 UI·스킬 연출 — 2026-10-23
+
+| 담당 | 신규 | 재활성화 | 실제 결과 |
+| --- | ---: | ---: | --- |
+| knight_visual_refinement / asset_artist | 1 | 1 | 기존 기사 메시·재질 도구와 확대 렌더 피드백의 겹판/안감/메뉴 조명 보완 |
+| knight_attack_presentation / worker | 1 | 5 | 슬롯별 모션·검흔/파쇄, 관련 fixture 갱신, 리뷰와 화면 피드백 반영 |
+| knight_art_review / code_reviewer | 1 | 4 | 수명/좌표/색상/메시/참조 독립 검토, P2 3건 발견 및 최종 P1/P2 없음 |
+
+Coordinator가 기존 uGUI 스킨·직렬화 자산·Scene 통합, builtin 이미지 생성 2건, 실제 Unity 렌더/GIF·직접 영향 검사·무입력 Play 확인을 수행했다. 전용 tester/진행 문서 Agent는 실행하지 않았다. 누적 신규77/재활성화166/활성화243, 실제 미노출 토큰·비용은 N/A. 실행 중 메시지/단순 문서 저장은 활성화로 세지 않는다.
 ## 클라이언트 구조 정리 묶음 — 2026-10-23
 
 client_cleanup_inventory/explorer 신규1: 표시·요청 책임과 안전한 중복/불용 후보 읽기 분석. item_presentation_cleanup/worker 신규1: C11 단일정의표·C07 중복필드/불용함수 제거. presentation_cleanup_review/code_reviewer 신규1·재활성화1: 4파일 독립리뷰와 C04 생성중복 추가diff만 검토,P1P2없음. Coordinator가 C05/C04와 기존fixture 보강·Unity컴파일/관련3검사(PASS총0.37642s)·통합 수행. 실제사용누적신규74/재활성화156/전체230,미노출토큰·비용N/A. 단순문서갱신/메시지는활성화로세지않음.
