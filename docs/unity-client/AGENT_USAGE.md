@@ -1,3 +1,7 @@
+## 클라이언트 구조 정리 묶음 — 2026-10-23
+
+client_cleanup_inventory/explorer 신규1: 표시·요청 책임과 안전한 중복/불용 후보 읽기 분석. item_presentation_cleanup/worker 신규1: C11 단일정의표·C07 중복필드/불용함수 제거. presentation_cleanup_review/code_reviewer 신규1·재활성화1: 4파일 독립리뷰와 C04 생성중복 추가diff만 검토,P1P2없음. Coordinator가 C05/C04와 기존fixture 보강·Unity컴파일/관련3검사(PASS총0.37642s)·통합 수행. 실제사용누적신규74/재활성화156/전체230,미노출토큰·비용N/A. 단순문서갱신/메시지는활성화로세지않음.
+
 ## 맵 인계 감사 — 2026-10-22
 
 map_remaining_audit/explorer 신규1·재활성화1: Exporter/서버 연결 읽기 감사, 이전 문서의 입력 보류 판단은 최신 HANDOFF/실입력 결과 대조 후 정정했다. 이동 수치·서버 생성 데이터 파생·6/9구역 구분과 과거 계획 상태의 불일치를 확인했고 Coordinator가 문서만 수정했다. 테스트 재실행0. 누적 신규70/재활성화155/전체225, 실제 토큰·비용N/A.

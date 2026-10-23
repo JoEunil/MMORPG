@@ -1,8 +1,12 @@
+## 최신 — 사용자 몬스터 동작 정정 / 2026-10-23
+
+A*는 적용하지 않았고 Cell 간 이동과 상태 머신 추상화는 사용자가 변경했다. 목표 이동→도착 후 wanderPauseTicks 10~30틱 대기→다음 목표 선택을 Wandering의 50ms 틱에서 처리하며 별도 WanderPhase enum은 없다. 스킬 phase는 이동한 위치에서 시전한다. 아래 과거 출생 Cell 제한/후속 A* 설명은 당시 내보내기 후보 기록이며 현재 제약이나 구현 계획으로 재사용하지 않는다. 이 문서 수정은 사용자의 새 서버 소스 통합·실행 검증을 뜻하지 않는다.
+
 ## 최신 — 서버 공간 값은 Unity Export에서 직접 파생
 
 WorldMap.inc의 Zones/ZoneCoreSize/TransitionMargin/ZoneColumns/ZoneRows를 서버 Config·Cell·StateManager가 직접 사용한다. 같은 수치를 서버에 수작업으로 다시 맞추지 않는다. Cell.h는 AOI 실행 자료구조이며 nav 격자와 별개로 유지한다. 내보내기 후 서버 재빌드·정상 전환이 필요하다. 현재 6구역 후보 서버 빌드·실행과 전 구역/AOI 일치 fixture 통과; 사용자 AI/A*는 변경하지 않았다. FEEL02_RESULTS.txt 참조.
 
-# Unity 맵과 서버 A* 연결 지점
+# Unity 맵과 서버 이동 연결 지점
 
 ## 서버 AI 작업에 바로 사용할 연결 지점
 
@@ -15,7 +19,7 @@ WorldMap.inc의 Zones/ZoneCoreSize/TransitionMargin/ZoneColumns/ZoneRows를 서�
 | 모서리 | 대각선 이웃도 CanTraverse로 검사. 격자선/모서리에 닿은 양쪽 타일이 모두 열려야 함 |
 | 현재 영역 | 600×400 코어, 3×2/6구역, 각 core200·overlap10, AOI5×5·Cell42 |
 | 마을 | Zone1 몬스터 생성0. 후속 몬스터 구역 이동을 만들 때 마을 진입 금지 별도 적용 |
-| 몬스터 Cell 이동 | 현재 제한 유지. 후속 해제 시 monsterIndexes·cellX/Y 및 스냅샷/스킬 참조를 함께 갱신 |
+| 몬스터 Cell 이동 | 사용자 변경으로 Cell 간 이동 가능. 실제 통합 시 monsterIndexes·cellX/Y 및 스냅샷/스킬 참조 갱신 경로 확인 |
 
 현재 생성 데이터와 서버 이동 검증이 연결돼 있다. 사용자가 AI를 개편할 때 exporter나 격자를 새로 만들 필요는 없다. 이웃 Zone 합동 AOI·몬스터의 Zone 간 소유권 이전·A* 자체가 이미 구현된 것으로 해석하지 않는다. 살아있는 충돌/자동 전환 마무리 상태는 MAP_SERVER_COMPLETION_TASK.md를 따른다.
 
@@ -42,13 +46,13 @@ AOI용 Zone/Cell을 유지하고, 충돌·길찾기용 1단위 격자를 별도�
 
 통행 자산의 전용 Inspector는 원시 배열 대신 저장된 격자와 통행/차단 합계를 표시한다. 큰 맵은 최대1024²로 보수적 축소하므로 한 픽셀의 빨강이 그 안의 모든 타일 차단을 뜻하지는 않는다. 원점·치수 변경은 기존 바이트의 해석도 바꾸므로 지면과 맞춘 뒤 다시 bake/export한다. Inspector는 Scene 변경을 자동 bake하거나 서버에 전달하지 않는다.
 
-## A*가 사용할 계약
+## 통행 데이터 조회 계약
 
 - 서버 `CoreLib/WorldMap.h`, namespace `Core::WorldMap`의 `OriginX/Y`, `TileSize`, `Width/Height`, `WalkableBits`를 사용한다. 배열은 y-major, bit=1이면 통행 가능이다.
 - Unity X/Z는 서버 X/Y와 1:1이다. 셀 좌표는 `floor((world-origin)/TileSize)`, 노드 중심은 `origin+(index+0.5)*TileSize`이다.
-- `IsWalkable(x,y)`는 노드의 통행 여부를, `CanTraverse(ax,ay,bx,by)`는 두 노드 사이의 실제 이동 가능 여부를 확인한다. A* 이웃 확장에도 후자를 적용해 대각 모서리 통과 규칙을 일치시킨다.
+- `IsWalkable(x,y)`는 노드의 통행 여부를, `CanTraverse(ax,ay,bx,by)`는 두 노드 사이의 실제 이동 가능 여부를 확인한다. 이동 선분에는 후자를 적용해 대각 모서리 통과 규칙을 일치시킨다. 이 API가 있다고 A*를 구현한 것은 아니다.
 - CanTraverse는 선분이 지나가는 모든 격자를 검사한다. 선분이 격자선 위에 놓이거나 모서리에 닿으면 양옆 타일도 통행 가능해야 한다. 범위 밖·비유한 좌표는 차단한다.
-- 현재 캐릭터 이동과 몬스터의 기존 이동 후보에 이 검사를 연결했다. A*·aggro 경로 탐색 자체는 사용자가 구현할 영역으로 남겼다.
+- 현재 캐릭터 이동과 몬스터의 기존 이동 후보에 이 검사를 연결했다. 사용자는 A*를 적용하지 않았으며 상태 머신과 Cell 이동·배회/스킬 동작을 변경했다고 알렸다. 최신 통합 소스 확인과 구분한다.
 
 ## 경계 처리 판단
 

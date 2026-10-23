@@ -1,3 +1,25 @@
+## CLEAN01 게시 완료 — PR48 / 2026-10-23
+
+Slack1792751818.000039의승인 CLEAN01을부모1792748383.070499와대조해소비했고 https://github.com/JoEunil/MMORPG/pull/48 하나로게시·artifact첨부했다. master기준codex/client-structure-cleanup 일반push,게시확인기준bd37d32. 공통/코드개선지침과클라이언트4파일중복정리/직접영향검사/사용자AI설명정정을같은PR에담았다. 서버·사용자몬스터AI·프로토콜diff0,검증c306f4d대비Assetsdiff0,테스트재실행0. 제품코드변경후Unity관련3검사PASS근거는기존결과를그대로사용한다. 과거승인대기문구보다이완료기록이우선한다. PR병합/추가게임개발/서버조작/별도Slack복구코드게시0.
+
+## CLEAN01 승인 확인·게시 진행 — 2026-10-23
+
+지정사람U0C9QEUHPMK/채널C0C9VFZMV43/부모1792748383.070499의원문 승인 CLEAN01(회신1792751818.000039)을Slack검색에서확인했다. 현재채팅의같은게시지시와일치하며인계에기소비없음대조. 코드개선지침+클라이언트구조정리만master기준새PR1개로게시하는범위로소비한다. fetch후원격고유커밋0/로컬3개ahead,제품은검증c306f4d와diff0. 이미통과한검사재실행0/서버·사용자몬스터AI변경0. 일반push→PR생성→artifact첨부→같은Slack스레드결과순서로진행하며병합·강제push·게임개발확대승인은아니다.
+
+## CLEAN01 최종 게시 승인 대기 — 2026-10-23
+
+UnityCoordinator앱 새작업parent/request1792748383.070499에 승인 CLEAN01을 요청했다. 전달branch codex/client-structure-cleanup/master f67ca1a기준,제품c4bcff8+공통지침c7efb88와사용자AI설명정정문서/최종인계를한PR로묶는다. ROOT수신registry자동등록,실제수신기재기동launcher26868/Node33572/listening·health2.7s확인. 현재3표시검사PASS/독립리뷰P1P2없음,실제게임/서버AI변경0. 후보제품은검증c306f4d와동일하며문서갱신때문에재시험하지않는다.
+
+승인원문은고정human U0C9QEUHPMK/채널C0C9VFZMV43/이새부모에서확인하고회신ID·HANDOFF기소비여부대조후일반fetch/push와새PR1개생성·artifact첨부한다. PR46은이미병합됐으므로수정하지않는다. 이전SLACK01/수신확인으로게시하지않으며,이승인은게임서버AI변경/병합/강제push승인이아니다. PR본문초안은ROOTUnityClient/Builds/ClientCleanup/pr-body.txt. 승인전push/PR0.
+
+## 클라이언트 구조 정리 후보·최소 검증 완료 — 2026-10-23
+
+사용자재개지시로중복/불필요상태정리만진행했다. C11 아이템4분기→단일정의표,C07 selectedCard중복필드/SetTopRight불용함수제거,C05사각형계산/C04동일LineRenderer설정통합. 제품4파일순감64행,신규Manager/인터페이스/파일이동/직렬화·메타·asmdef변경0. 사용자가변경한서버몬스터AI/Cell이동/스킬phase/프로토콜은변경0. 가방/시장요청머신은실패의미가달라유지했다.
+
+독립최종P1P2없음,Unity6000.0.47f1배치컴파일및관련3컴포넌트검사PASS0.37642s. 실제로그인/입력/서버접속/전체회귀반복0. ROOT제품4파일은baseline일치확인·백업후반영했고기존ROOT테스트3파일은검증동결본hash확인후원본복구했다. 결과CLIENT_CLEANUP_RESULTS.txt와ROOTUnityClient/Builds/ClientCleanup/results.xml. CLI업데이트CDNDNS실패는설치된Editor실제검증과구분했다.
+
+PR46은master f67ca1a에병합/원격head자동삭제확인. 현재전달branch codex/client-structure-cleanup은origin/master기준이며검증제품c306f4d→c4bcff8을동일내용cherry-pick했다. 기존공통/코드개선지침도같은묶음에포함하며미승인Slack복구코드5a6a827/76a2b12는포함하지않는다. 제품동일이라재시험0. 공개화면/기능불변이라사이트/캡처변경0. 최종로컬커밋후이새변경묶음전용Slack부모에서게시승인요청;원문승인전push/PR생성0,SLACK01등과거승인재사용금지.
+
 ## 맵 서버 인계 정리 — 2026-10-22
 
 사용자 다음 미완료 작업 지시에 따라 Exporter→서버 연결을 읽기 감사했다. 추가 코드 결함은 확인하지 못했고 기존 입력 통과가 미완료로 남은 안내와 6/.6 이전 수치를 수정했다. MAP_EXPORT_GUIDE/WORLD_MAP_HANDOFF/MAP_SERVER_COMPLETION_TASK를 실제 9단위/초·request1.8·visual.9와 생성 데이터 직접 파생, 완료된 벽/경계 입력 배치에 맞췄다. 6구역 콘텐츠 guard·AI/A* 사용자 소유·이웃 AOI/9구역/가변 지연 미완료는 유지한다. 제품/생성 데이터/환경 변경 없이 문서만 수정하므로 빌드·Unity·서버 테스트를 재실행하지 않았다. git diff --check 통과. 공개 화면 변화가 없어 사이트 생성과 캡처도 반복하지 않는다. 기존 PR46에 인계 보완만 모으며 병합·공개는 하지 않는다.

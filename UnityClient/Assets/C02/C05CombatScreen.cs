@@ -424,37 +424,8 @@ namespace C02
 
             // ActionResult has no dimensions; this outline mirrors the fixed server skill 2 contract (12 x 3).
             // Points use server x/y as global X/Z, so the C02Client parent transform does not offset the range.
-            float halfWidth = LineRangeWidth * 0.5f;
-            float x = result.x;
-            float z = result.y;
-            const float groundY = 0.05f;
-            switch (result.dir)
-            {
-                case 0:
-                    linePreview.SetPosition(0, new Vector3(x - halfWidth, groundY, z));
-                    linePreview.SetPosition(1, new Vector3(x + halfWidth, groundY, z));
-                    linePreview.SetPosition(2, new Vector3(x + halfWidth, groundY, z + LineRangeLength));
-                    linePreview.SetPosition(3, new Vector3(x - halfWidth, groundY, z + LineRangeLength));
-                    break;
-                case 1:
-                    linePreview.SetPosition(0, new Vector3(x - halfWidth, groundY, z));
-                    linePreview.SetPosition(1, new Vector3(x + halfWidth, groundY, z));
-                    linePreview.SetPosition(2, new Vector3(x + halfWidth, groundY, z - LineRangeLength));
-                    linePreview.SetPosition(3, new Vector3(x - halfWidth, groundY, z - LineRangeLength));
-                    break;
-                case 2:
-                    linePreview.SetPosition(0, new Vector3(x, groundY, z - halfWidth));
-                    linePreview.SetPosition(1, new Vector3(x, groundY, z + halfWidth));
-                    linePreview.SetPosition(2, new Vector3(x - LineRangeLength, groundY, z + halfWidth));
-                    linePreview.SetPosition(3, new Vector3(x - LineRangeLength, groundY, z - halfWidth));
-                    break;
-                default:
-                    linePreview.SetPosition(0, new Vector3(x, groundY, z - halfWidth));
-                    linePreview.SetPosition(1, new Vector3(x, groundY, z + halfWidth));
-                    linePreview.SetPosition(2, new Vector3(x + LineRangeLength, groundY, z + halfWidth));
-                    linePreview.SetPosition(3, new Vector3(x + LineRangeLength, groundY, z - halfWidth));
-                    break;
-            }
+            for (int point = 0; point < 4; point++)
+                linePreview.SetPosition(point, RectangleCorner(result, point, 0.05f, LineRangeLength, LineRangeWidth));
             linePreview.enabled = true;
             linePreviewDeadline = Time.unscaledTime + LinePreviewLifetime;
         }
@@ -494,41 +465,24 @@ namespace C02
             }
             else
             {
-                float halfWidth = phase.range2 * 0.5f;
-                float length = phase.range1;
-                float x = result.x;
-                float z = result.y;
-                switch (result.dir)
-                {
-                    case 0:
-                        releaseEffectBasePositions[0] = new Vector3(x - halfWidth, 0.07f, z);
-                        releaseEffectBasePositions[1] = new Vector3(x + halfWidth, 0.07f, z);
-                        releaseEffectBasePositions[2] = new Vector3(x + halfWidth, 0.07f, z + length);
-                        releaseEffectBasePositions[3] = new Vector3(x - halfWidth, 0.07f, z + length);
-                        break;
-                    case 1:
-                        releaseEffectBasePositions[0] = new Vector3(x - halfWidth, 0.07f, z);
-                        releaseEffectBasePositions[1] = new Vector3(x + halfWidth, 0.07f, z);
-                        releaseEffectBasePositions[2] = new Vector3(x + halfWidth, 0.07f, z - length);
-                        releaseEffectBasePositions[3] = new Vector3(x - halfWidth, 0.07f, z - length);
-                        break;
-                    case 2:
-                        releaseEffectBasePositions[0] = new Vector3(x, 0.07f, z - halfWidth);
-                        releaseEffectBasePositions[1] = new Vector3(x, 0.07f, z + halfWidth);
-                        releaseEffectBasePositions[2] = new Vector3(x - length, 0.07f, z + halfWidth);
-                        releaseEffectBasePositions[3] = new Vector3(x - length, 0.07f, z - halfWidth);
-                        break;
-                    default:
-                        releaseEffectBasePositions[0] = new Vector3(x, 0.07f, z - halfWidth);
-                        releaseEffectBasePositions[1] = new Vector3(x, 0.07f, z + halfWidth);
-                        releaseEffectBasePositions[2] = new Vector3(x + length, 0.07f, z + halfWidth);
-                        releaseEffectBasePositions[3] = new Vector3(x + length, 0.07f, z - halfWidth);
-                        break;
-                }
+                for (int point = 0; point < 4; point++)
+                    releaseEffectBasePositions[point] = RectangleCorner(result, point, 0.07f, phase.range1, phase.range2);
             }
             releaseEffect.enabled = true;
             releaseEffectDeadline = Time.unscaledTime + ReleaseEffectLifetime;
             UpdateReleaseEffect();
+        }
+
+        // Cast preview and hit pulse share the same server direction and winding.
+        private static Vector3 RectangleCorner(ActionResultField result, int point, float height, float length, float width)
+        {
+            float halfWidth = width * 0.5f;
+            float side = point == 0 || point == 3 ? -halfWidth : halfWidth;
+            float reach = point < 2 ? 0 : length;
+            if (result.dir == 1 || result.dir == 2) reach = -reach;
+            return result.dir < 2
+                ? new Vector3(result.x + side, height, result.y + reach)
+                : new Vector3(result.x + reach, height, result.y + side);
         }
 
         private void UpdateReleaseEffect()

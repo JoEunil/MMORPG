@@ -426,15 +426,7 @@ namespace C02
                         LineRenderer outer = entry.BossSquareOuterPreviews[pairIndex];
                         if (outer == null)
                         {
-                            var visual = new GameObject("Boss Square Outer Preview " + pairIndex);
-                            visual.transform.SetParent(entry.Visual.transform, false);
-                            outer = visual.AddComponent<LineRenderer>();
-                            outer.sharedMaterial = monsterRangeMaterial;
-                            outer.useWorldSpace = true;
-                            outer.loop = true;
-                            outer.positionCount = 4;
-                            outer.widthMultiplier = 0.1f;
-                            outer.startColor = outer.endColor = Color.red;
+                            outer = CreateRangePreview(entry.Visual.transform, "Boss Square Outer Preview " + pairIndex, 4);
                             entry.BossSquareOuterPreviews[pairIndex] = outer;
                         }
                         SetSquarePreview(outer, result.x, result.y, bossSquareHit.range1);
@@ -445,15 +437,7 @@ namespace C02
                             LineRenderer inner = entry.BossSquareInnerPreviews[pairIndex];
                             if (inner == null)
                             {
-                                var visual = new GameObject("Boss Square Inner Preview " + pairIndex);
-                                visual.transform.SetParent(entry.Visual.transform, false);
-                                inner = visual.AddComponent<LineRenderer>();
-                                inner.sharedMaterial = monsterRangeMaterial;
-                                inner.useWorldSpace = true;
-                                inner.loop = true;
-                                inner.positionCount = 4;
-                                inner.widthMultiplier = 0.1f;
-                                inner.startColor = inner.endColor = Color.red;
+                                inner = CreateRangePreview(entry.Visual.transform, "Boss Square Inner Preview " + pairIndex, 4);
                                 entry.BossSquareInnerPreviews[pairIndex] = inner;
                             }
                             SetSquarePreview(inner, result.x, result.y, bossSquareHit.range2);
@@ -496,14 +480,8 @@ namespace C02
                     LineRenderer preview = firstFan ? entry.BossFanPreviewFirst : entry.BossFanPreviewSecond;
                     if (preview == null)
                     {
-                        var visual = new GameObject(firstFan ? "Boss Fan Preview First" : "Boss Fan Preview Second");
-                        visual.transform.SetParent(entry.Visual.transform, false);
-                        preview = visual.AddComponent<LineRenderer>();
-                        preview.sharedMaterial = monsterRangeMaterial;
-                        preview.useWorldSpace = true;
-                        preview.loop = true;
-                        preview.widthMultiplier = 0.1f;
-                        preview.startColor = preview.endColor = Color.red;
+                        preview = CreateRangePreview(entry.Visual.transform,
+                            firstFan ? "Boss Fan Preview First" : "Boss Fan Preview Second", 36);
                         if (firstFan) entry.BossFanPreviewFirst = preview;
                         else entry.BossFanPreviewSecond = preview;
                     }
@@ -555,15 +533,7 @@ namespace C02
 
                 if (entry.RangePreview == null)
                 {
-                    var preview = new GameObject("Monster Range Preview");
-                    preview.transform.SetParent(entry.Visual.transform, false);
-                    entry.RangePreview = preview.AddComponent<LineRenderer>();
-                    entry.RangePreview.sharedMaterial = monsterRangeMaterial;
-                    entry.RangePreview.useWorldSpace = true;
-                    entry.RangePreview.loop = true;
-                    entry.RangePreview.positionCount = 32;
-                    entry.RangePreview.widthMultiplier = 0.1f;
-                    entry.RangePreview.startColor = entry.RangePreview.endColor = Color.red;
+                    entry.RangePreview = CreateRangePreview(entry.Visual.transform, "Monster Range Preview", 32);
                 }
 
                 for (int point = 0; point < entry.RangePreview.positionCount; point++)
@@ -576,6 +546,20 @@ namespace C02
                 entry.RangePreview.gameObject.SetActive(true);
                 entry.RangeUntil = Time.realtimeSinceStartupAsDouble + 0.05 * hit.waitTicks + 0.1;
             }
+        }
+
+        private LineRenderer CreateRangePreview(Transform parent, string name, int pointCount)
+        {
+            var visual = new GameObject(name);
+            visual.transform.SetParent(parent, false);
+            var preview = visual.AddComponent<LineRenderer>();
+            preview.sharedMaterial = monsterRangeMaterial;
+            preview.useWorldSpace = true;
+            preview.loop = true;
+            preview.positionCount = pointCount;
+            preview.widthMultiplier = 0.1f;
+            preview.startColor = preview.endColor = Color.red;
+            return preview;
         }
 
         private void Expire(double now)
