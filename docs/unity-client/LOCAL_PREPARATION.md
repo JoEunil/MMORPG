@@ -1,51 +1,29 @@
-# 로컬 테스트 환경과 변경 권한
+# 로컬 환경 대조와 정상 전환
 
-현재는 준비 단계다. 게임 개발과 전문 에이전트 실행은 사용자의 별도 시작 지시까지 대기한다. 아래 미확정 항목은 자동 실행하지 않는다.
+현재 목표·입력·실행 후보는 HANDOFF, 권한은 AGENTS.md를 따른다. 아래는 2026-10-24 감사 관찰과 확인 절차이며 영구 실행 상태가 아니다.
 
-## 확인한 실행 환경
+## 위치
 
-| 대상 | 실행 경로 / 작업 위치 | 확인 결과 |
-| --- | --- | --- |
-| MySQL | 서비스 MySQL84, C:/Program Files/MySQL/MySQL Server 8.4/bin/mysqld.exe | 실행 중, 3306 수신. 로그인 설정은 localhost의 login DB. 사용자가 로컬 테스트용임을 확인 |
-| Redis | 서비스 Redis, C:/Program Files/Redis/redis-server.exe | 실행 중, 6379 수신 |
-| 로그인 서버 | C:/Users/joeun/Desktop/workspace/Game/Login, node ./bin/www | .env와 node_modules 존재. 3000 수신, 실행 PID 22328 |
-| 게임 서버 | C:/Users/joeun/Desktop/workspace/Game/x64/Release/MainServer.exe | 파일 존재. 9999 수신, 실행 PID 14072. 작업 위치는 원본 Game 루트. 준비 완료 로그 확인 |
-| 클라이언트 소스 | 작업 체크아웃의 ClientCore/ClientCore.csproj | netstandard2.0, Newtonsoft.Json 13.0.3 |
+- Editor: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient
+- Git 정본: 위 프로젝트 Builds/C10-Delivery/source
+- 사용자 서버: C:/Users/joeun/Desktop/workspace/Game — 사용자 AI/미완료 변경 보존
+- ClientCore: 정본 ClientCore/ClientCore.csproj → UnityClient/Assets/Plugins/ClientCore/ClientCore.dll
+- 기존 비밀: 실제 사용자 LOCALAPPDATA/UnityCoordinator의 Windows 계정 암호화 파일. 내용을 출력하지 않는다.
 
-원본 Game의 기존 바이너리는 작업 체크아웃에서 빌드한 산출물이 아니다. 소스/빌드 일치는 미검증이며 기능 변경 후 통합 테스트에는 해당 변경 기준 빌드가 필요하다. 실행 전에 TEST_BAZAAR/TEST_CACHE/TEST_CACHE_DURABLE 환경 변수가 설정되지 않았는지 확인한다. 내부 통합 테스트·초기화 모드는 자동 실행하지 않는다.
+## 실행 전
 
-## 서버·계정 준비 허용 범위
+실제 프로젝트·컴파일·Play·프레임, 서버 실행 파일·작업 폴더·소스 기준·DLL, 포트·소유 프로세스, TEST_BAZAAR/TEST_CACHE/TEST_CACHE_DURABLE 초기화 모드 미설정을 확인한다. 전용 계정·아이템·재화가 부족하면 미검증으로 남기며 DB seed로 통과시키지 않는다.
 
-사용자 허용 완료: 위 기존 로그인/게임 서버 시작, 전용 계정 unity_ai_01·unity_ai_02 생성 및 로그인 확인. 기존 MySQL/Redis를 사용하되 서비스 재시작·기존 데이터 초기화·기존 계정 수정은 허용하지 않는다. 계정이 이미 존재하면 비밀번호를 덮어쓰지 않고 사용자에게 확인한다.
+감사 시 Unity6000.0.47f1/Pipeline7800, Login3000·MySQL3306·Redis6379·미리보기8791 수신, MainServer9999 미수신을 확인했다. 옛 PID나 파일 존재로 현재 실행/소스 일치를 단정하지 않는다.
 
-게임 계정은 DB 관리자 계정과 다르다. 회원가입은 POST /auth/signup(login_id, password, email, phone_number), 로그인은 POST /auth/login이다. DB에 직접 INSERT하지 않고 기존 API를 사용한다. 임의 비밀번호·응답 JWT·세션 토큰은 문서나 출력에 남기지 않는다. 전용 계정 비밀은 사용자 Windows 계정으로 암호화해 저장소 밖에 보관한다. 계정 생성/로그인 성공과 게임 월드 진입 성공은 별도 검증이다.
+전용 unity_ai_01/02와 기존 비밀을 재사용한다. 비밀번호 덮어쓰기·DB HP복구·재화 seed·초기화는 하지 않는다. 정상 게임 상태 변경과 DB 직접 수정을 구분한다.
 
-## ClientCore·Git 기본 권한
+## 정상 종료·복구
 
-| 작업 | 현재 상태 |
-| --- | --- |
-| ClientCore 읽기·호환성 분석 | 허용 |
-| 원본 ClientCore 소스 수정 | 개발 시작 후 Unity 최소 호환 수정 허용. 프로토콜 의미 변경 등 범위 확대는 별도 승인 |
-| 확정 기획의 서버 콘텐츠 변경 | P01 허용 범위 유지. 개발 시작 후 적용 |
-| DB/인증/경제 정책/새 프로토콜/Zone·큐·락·풀 변경 | 별도 승인 |
-| 로컬 commit | 개발 시작 후 관련 검증을 통과한 작업만 codex/unity-ai-client 브랜치에 허용. 사용자 변경은 포함하지 않음 |
-| push·PR 생성·master 병합·공개/배포 | 미확정: 자동 실행하지 않음 |
+현재 대상을 식별하고 기존 q 정상 종료·저장을 확인한다. 기존 전환 도구의 시간 제한·복구 조건을 지킨다. 종료 미확인 시 강제 종료하지 않는다. 원본 빌드·복구 위치를 보존하고 서버/DLL 동시 버전이 필요한 변경은 혼용하지 않는다.
 
-Git 상태/diff 확인과 문서 편집은 진행할 수 있다. 위 권한은 행동 지침이며 기술적인 파일 접근 차단을 의미하지 않는다. push·병합·공개는 별도 사용자 승인을 받은 뒤 실행한다. 이번 준비 중에는 커밋하지 않는다.
-## 준비 검증 결과
+부모 shell 정책을 자식 런타임 정책으로 가정하지 않는다. 실제 실행 파일의 정책·표준입력·로그로 도구 차단과 제품 결함을 구분한다. 과거 STOP01의 프로세스 한정 정책 승인은 미래 변경 승인이 아니다. 다른 shell/inline 경로로 우회하지 않는다.
 
-- unity_ai_01·unity_ai_02: 기존 회원가입 API로 생성하고 로그인 성공 응답과 토큰 발급을 확인했다(2/2). 비밀번호는 %LOCALAPPDATA%/UnityCoordinator/test-accounts.xml에 Windows 계정으로 암호화해 보관한다. 토큰/비밀번호는 문서에 기록하지 않는다.
-- 게임 서버 최초 시작은 bazaar.sp_bazaar_cancel 누락으로 실패했다. 사용자의 명시적 요청으로 Resources/DB/procedure.sql의 해당 CREATE PROCEDURE 정의만 기존 bazaar DB에 반영했다. 기존 루틴이 없음을 확인했으며 init.sql·시딩·다른 프로시저 교체는 실행하지 않았다.
-- 반영 후 게임 서버의 준비 완료 로그와 9999 수신, 로그인 서버의 3000 수신을 확인했다. MySQL·Redis 서비스는 재시작하지 않았다.
-- 실행 바이너리 SHA256: 529D16A75BD84417ADCFC4DD632830758D6F2939362B367FF0170B41511A9BD6. 이 값은 파일 식별용이며 소스/빌드 일치 증명은 아니다.
-- 로그인 API 검증까지 완료했다. 캐릭터 준비·게임 월드 진입·두 클라이언트 동기화는 개발 단계의 통합 검증으로 남긴다. 게임 개발·하위 에이전트 실행·Git 커밋은 시작하지 않았다.
-## 추가 스키마 점검
+종료 시 Play·background·임시 설정·연결과 서버 유지/종료 상태를 복원·기록한다. MySQL/Redis 재시작·계정/기존 데이터 변경은 별도 승인 경계를 유지한다.
 
-커밋 0899e57의 변경은 login.login_log의 PRIMARY KEY(log_id) 추가다. 현재 DB 조회는 ER_NO_SUCH_TABLE을 반환해 키만 빠진 것이 아니라 테이블 자체가 없음을 확인했다. 로그인 라우트는 로그인 로그 INSERT 오류를 응답에 전달하지 않으므로 앞선 계정 로그인 성공은 로그 저장 검증이 아니다. 사용자의 명시적 승인 후 저장소 정의 그대로 해당 테이블만 생성했다. 적용 SQL은 login-log-schema.sql에 기록했다. 기존 users 데이터와 init.sql 전체는 건드리지 않는다.
-
-검증 완료: PRIMARY KEY(log_id)와 idx_login(login_id, logged_at)을 확인했다. 전용 계정 unity_ai_01·unity_ai_02의 실제 로그인 성공 후 시험 User-Agent로 조회해 로그 2건(log_id 1, 2), succeed=1, IP와 저장 시각 기록을 확인했다. 로그인 실패 시나리오는 이번 검증 범위에 포함하지 않았다. 기존 데이터 초기화·서버 코드 수정·에이전트 개발은 수행하지 않았다.
-## 정상 종료 도우미의 실행 정책 — 2026-10-22
-
-부모 PowerShell의 정책을 자식 런타임 정책으로 간주하지 않는다. 현재 PS7은 RemoteSigned지만 기존 종료 도구가 고정 호출하는 Windows PowerShell5.1은 모든 scope Undefined→effective Restricted라 파일 로드 전에 차단된다. 실제 실행 파일로 `Get-ExecutionPolicy`와 `-List`를 읽어 먼저 확인한다. 같은 실패를 반복하거나 다른 런타임·inline 실행으로 바꾸지 않는다.
-
-STOP01 사람 승인 확인 후 이번 프로세스/자식에만 RemoteSigned를 적용해 정상 전환과 실제 귀환을 완료했다. 종료 뒤 WindowsPS5.1의 실제 정책은 Restricted로 돌아왔으며 영구 사용자/시스템 정책은 불변이다. 이 승인으로 미래 정책 변경을 자동 허용하지 않는다. 실행 사본은 낡은 ROOT 대신 canonical 작업 브랜치의 도구와 대조해 만든다. 기존 system.log의 정확한 일반 로그 두 줄 처리도 포함해야 하며 나머지 비정상 로그는 계속 차단한다. 상세 TOWN_RESPAWN_LIVE_RESULTS.txt와 HANDOFF.md를 따른다.
+초기 DB 준비·승인·실행 기록은 [원문 이력](history/2026-10-24-guideline-audit/README.md)에 보존한다.

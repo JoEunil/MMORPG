@@ -1,8 +1,8 @@
 ## 공개 집계
 
 기준일: 2026-10-24
-누적 신규: 84
-누적 재활성화: 189
+누적 신규: 86
+누적 재활성화: 190
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-24
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
@@ -11,12 +11,12 @@
 | server_analyst | 서버 분석 Agent | 14 | 41 |
 | client_implementer | 구현 Agent | 32 | 43 |
 | asset_artist | 아트 Agent | 11 | 20 |
-| code_reviewer | 리뷰 Agent | 21 | 79 |
+| code_reviewer | 리뷰 Agent | 22 | 80 |
 | unity_tester | 테스트 Agent | 2 | 3 |
-| progress_documenter | 기록 Agent | 2 | 3 |
+| progress_documenter | 기록 Agent | 3 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체273회(신규84·재활성화189)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체276회(신규86·재활성화190)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -106,6 +106,8 @@
 | ground_surface_refresh | 아트 Agent | 1 | 1 |
 | market_wallet_connection | 구현 Agent | 1 | 0 |
 | economy_connection_review | 리뷰 Agent | 1 | 5 |
+| audit_guideline_conflicts | 리뷰 Agent | 1 | 1 |
+| guideline_role_cleanup | 기록 Agent | 1 | 0 |
 | economy_ui_checks | 구현 Agent | 1 | 2 |
 | market_visual_controls | 구현 Agent | 1 | 0 |
 
@@ -490,3 +492,7 @@ market_visual_controls 신규1: 기존 거래소에 아이템 상세 카드·재
 ## 거래소 닫기·구역 이동의 재화 수명 리뷰 — 2026-10-24
 
 economy_connection_review 재활성화1: 닫힌 창의 진행 거래 상관성·잔액 갱신과 구역 이동 후 조회 재개를 독립 읽기 검토했다. 구현·해당 fixture 실행은 Coordinator가 담당했고 활성화로 세지 않았다. 누적84/189/273, 토큰N/A.
+
+## 지침 전체 감사·적용 — 2026-10-24
+
+audit_guideline_conflicts 신규1은 이전 읽기 감사, 재활성화1은 적용 후보의 충돌·유효규칙 보존 검토다. guideline_role_cleanup 기록 Agent 신규1은 역할 문서9개 간소화만 담당했다. 총괄 직접 구현·설정 대조·문서 검사는 제외한다. 누적86/190/276, 실제 역할 모델이 노출되지 않은 실행은 추정하지 않으며 토큰/비용 N/A. 과거 집계 원문은 감사 이력의 AGENT_USAGE.md에 보존했다.
