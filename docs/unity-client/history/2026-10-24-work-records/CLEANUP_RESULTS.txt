@@ -7,3 +7,4 @@ New broken relative Markdown links: 0. Already-missing local captures in affecte
 Original guideline-audit history unchanged. SHA256 manifest covers all 212 relocated records.
 Relocation check initially caught snapshot pointers and missing-capture relative paths; links regenerated from Git originals before final verification.
 No game code, AI, DB, runtime or Unity input changes. No game tests repeated.
+Metadata validation: manifest header excluded from record count; generated index/manifest/result/attribute line endings normalized to LF. Archive record hashes all212 PASS.
