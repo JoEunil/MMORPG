@@ -43,22 +43,23 @@ h1, h2, h3 { word-break: keep-all; letter-spacing: -.035em; }
 .section-title { margin-bottom: 28px; }
 .section-title h2 { font-size: 34px; line-height: 1.4; margin: 0; }
 .workflow { background: #f2f6fd; border-top: 1px solid #c5d4ec; border-bottom: 1px solid #c5d4ec; }
-.workflow-layout { display: grid; gap: 36px; }
+.diagram-intro { max-width: 48em; margin: 12px 0 0; color: var(--muted); font-size: 19px; }
 .workflow h3 { margin: 0 0 20px; font-size: 23px; }
-.workflow ol, .workflow ul { padding: 0; list-style: none; }
-.workflow strong, .workflow span { display: block; }
-.workflow strong { font-size: 19px; }
-.workflow span { font-size: 18px; line-height: 1.7; color: #344660; margin-top: 6px; }
-.agent-chain { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
+.workflow ol, .workflow ul, .execution-flow ol, .execution-flow ul { padding: 0; list-style: none; }
+.workflow strong, .workflow span, .execution-flow strong, .execution-flow span { display: block; }
+.workflow strong, .execution-flow strong { font-size: 19px; }
+.workflow span, .execution-flow span { font-size: 18px; line-height: 1.7; color: #344660; margin-top: 6px; }
+.agent-chain { max-width: 680px; margin: 0 auto; display: grid; gap: 38px; text-align: center; }
 .agent-chain li { position: relative; padding: 18px 22px; border: 1px solid #b6c7e1; border-left: 4px solid #95723a; border-radius: 5px; background: #fff; }
 .agent-chain li + li { border-left-color: var(--accent); }
-.agent-chain li + li::before { content: "→"; position: absolute; left: -29px; top: 24px; color: var(--accent); font-size: 24px; }
-.agent-chain strong { font-size: 22px; }
-.agent-branches { padding-top: 22px; }
-.branch-label { font-size: 18px; font-weight: 650; color: #344660; margin: 0 0 18px; }
-.agent-roles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px 28px; margin: 0; }
-.agent-roles li { border-top: 2px solid #8da7d0; padding-top: 12px; }
-.flow-diagram { border-top: 1px solid #b6c7e1; padding-top: 28px; }
+.agent-chain li + li::before { content: "↓"; position: absolute; left: calc(50% - 12px); top: -39px; color: var(--accent); font-size: 26px; }
+.agent-chain strong { font-size: 24px; }
+.agent-branches { position: relative; padding-top: 50px; }
+.agent-branches::before { content: "↓"; position: absolute; top: 0; left: calc(50% - 12px); font-size: 28px; color: var(--accent); }
+.branch-label { font-size: 18px; font-weight: 650; color: #344660; margin: 0 0 20px; text-align: center; }
+.agent-roles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; margin: 0; padding: 28px !important; background: white; border: 1px solid #b6c7e1; border-radius: 6px; }
+.agent-roles li { border-left: 3px solid #8da7d0; padding-left: 16px; }
+.execution-flow { padding-top: 48px; padding-bottom: 48px; border-bottom: 1px solid var(--line); }
 .workflow-steps { margin: 0; counter-reset: step; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; }
 .workflow-steps li { position: relative; padding-top: 48px; counter-increment: step; }
 .workflow-steps li::before { content: counter(step, decimal-leading-zero); position: absolute; top: 0; left: 0; width: 34px; height: 34px; border: 1px solid #91a9cf; border-radius: 50%; background: white; color: var(--accent); font-size: 18px; line-height: 33px; text-align: center; font-weight: 750; }
@@ -118,7 +119,7 @@ h1, h2, h3 { word-break: keep-all; letter-spacing: -.035em; }
 .page .lead { margin: 16px 0 24px; }
 .page-actions { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
 .content-section { padding: 32px 0; border-bottom: 1px solid var(--line); }
-.content-section h2 { font-size: 28px; margin: 0 0 18px; }
+.content-section h2 { font-size: 28px; margin: 0 0 20px; text-align: center; }
 .content-section h3 { font-size: 22px; margin: 28px 0 12px; }
 .content-section p { margin: 0 0 16px; color: #334155; }
 .content-section ul { padding-left: 24px; color: #334155; }
@@ -147,9 +148,10 @@ h1, h2, h3 { word-break: keep-all; letter-spacing: -.035em; }
   .section-title h2 { font-size: 28px; }
   .workflow h3 { font-size: 21px; }
   .agent-chain { grid-template-columns: 1fr; gap: 30px; }
-  .agent-chain li + li::before { content: "↓"; top: -31px; left: 18px; }
+  .agent-chain li + li::before { content: "↓"; top: -31px; left: calc(50% - 12px); }
   .agent-chain li { padding: 16px 18px; }
-  .workflow-layout { gap: 28px; }
+  .agent-roles { padding: 20px !important; gap: 24px; }
+  .diagram-intro { font-size: 18px; }
   .workflow-steps { grid-template-columns: 1fr; gap: 24px; }
   .workflow-steps li { padding: 0 0 0 48px; }
   .workflow-steps li:not(:last-child)::after { left: 17px; top: 40px; bottom: -16px; width: 0; border-top: 0; border-left: 1px solid #91a9cf; }

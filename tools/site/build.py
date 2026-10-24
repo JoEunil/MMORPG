@@ -183,13 +183,20 @@ def render_workflow(section):
     agents = groups["에이전트 구성"]
     chain = ''.join(f'<li>{diagram_node(item)}</li>' for item in agents[:2])
     roles = ''.join(f'<li>{diagram_node(item)}</li>' for item in agents[2:])
+    intro = next(b for b in section["blocks"] if isinstance(b, str) and b and not b.startswith("- "))
+    return f'''<section class="workflow" id="workflow"><div class="section-wrap">
+<div class="section-title"><h2>{escape(section['title'])}</h2><p class="diagram-intro">{escape(intro)}</p></div>
+<div class="agent-diagram"><ol class="agent-chain" aria-label="사용자에서 총괄 Agent로 이어지는 역할 연결">{chain}</ol>
+<div class="agent-branches"><p class="branch-label">작업에 필요한 전문 Agent를 선택해 배정</p><ul class="agent-roles" aria-label="총괄 Agent가 배정하는 전문 역할">{roles}</ul></div></div></div></section>'''
+
+
+def render_execution_flow(section):
+    groups = diagram_items(section)
     steps = ''.join(f'<li>{diagram_node(item)}</li>' for item in groups["작업 흐름"])
     feedback = ''.join(f'<li>{diagram_node(item)}</li>' for item in groups["피드백"])
-    return f'''<section class="workflow" id="workflow"><div class="section-wrap">
-<div class="section-title"><h2>{escape(section['title'])}</h2></div>
-<div class="workflow-layout"><div class="agent-diagram"><h3>누가 어떤 일을 하나요?</h3><ol class="agent-chain" aria-label="사람의 판단에서 총괄 에이전트의 배정으로">{chain}</ol>
-<div class="agent-branches"><p class="branch-label">필요한 전문 역할을 배정</p><ul class="agent-roles">{roles}</ul></div></div>
-<div class="flow-diagram"><h3>하나의 기능이 만들어지는 흐름</h3><ol class="workflow-steps">{steps}</ol><ul class="workflow-feedback">{feedback}</ul></div></div></div></section>'''
+    intro = next(b for b in section["blocks"] if isinstance(b, str) and b and not b.startswith("- "))
+    return f'''<section class="execution-flow section-wrap" id="execution-flow"><div class="section-title"><h2>{escape(section['title'])}</h2><p class="diagram-intro">{escape(intro)}</p></div>
+<ol class="workflow-steps" aria-label="기능 구현의 진행 순서">{steps}</ol><ul class="workflow-feedback">{feedback}</ul></section>'''
 
 
 
@@ -319,6 +326,7 @@ def main():
         cards.append(f'<article class="work-card">{media}<div class="work-copy"><p class="work-status">{escape(work["status"])}</p><h3><a href="{detail}">{escape(work["title"])}</a></h3><p>{escape(work["summary"])}</p><div class="card-links"><a href="{detail}">작업 보기 →</a><a href="{history}">화면 이력</a></div></div></article>')
     sections_by_title = {section["title"]: section for section in home_sections}
     process_html = render_workflow(sections_by_title["AI Agent 워크플로우"])
+    execution_html = render_execution_flow(sections_by_title["하나의 기능이 만들어지는 흐름"])
     usage_html = render_agent_usage(sections_by_title["Agent 활용 지표"])
     work_intro = next(block for block in sections_by_title["작업 둘러보기"]["blocks"] if isinstance(block, str) and block and not block.startswith("- "))
     decisions_html = render_decisions(sections_by_title["지침 변경 이력"])
@@ -327,6 +335,7 @@ def main():
     legacy_html = f'<section class="legacy-section section-wrap" id="legacy"><div class="section-title"><h2>{escape(legacy_section["title"])}</h2></div><div class="legacy-body">{legacy_copy}</div></section>'
     hero = f'''<main id="top"><section class="home-hero"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#work">작업 결과 보기</a><a class="text-link" href="#workflow">AI Agent 워크플로우</a><a class="text-link" href="#legacy">기존 Unity 구현</a></div></div></section>
 {process_html}
+{execution_html}
 {legacy_html}
 <section class="section-wrap work-section" id="work"><div class="section-title work-heading"><h2>작업과 결과</h2><p>{inline(work_intro)}</p></div><div class="work-grid">{''.join(cards)}</div></section>
 {usage_html}

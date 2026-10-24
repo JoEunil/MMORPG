@@ -12,3 +12,6 @@ Fixed path site/media/ai-agent-preview.png; README links to the existing public 
 SHOWCASE README image selection is copied on build, not rendered as a home hero. Selected source shows latest HUD/chat/wallet, explicitly Editor sample, not a successful live trade.
 Hash equality PASS; replaced existing alias with another version image then sync restored the selected bytes PASS. Archived/source images untouched; old site/media/field.png retained. No Unity tests.
 Selection is an Agent decision per completed feature bundle, not an unreliable newest-file heuristic. DELIVERY records refresh/alt/commit rules. Root's unrelated older README preserved.
+
+WORKFLOW SEPARATION FOLLOW-UP:
+Separate workflow composition and execution-flow sections/H2s. Larger vertical user/coordinator connection, visible expert-role group; independent five-step feature flow on white background. Desktop1280/scrollWidth1265 and mobile390/scrollWidth375: no horizontal overflow. Actual screenshots reviewed; viewport reset. Capture workflow-separated.jpg. Site build/link validation PASS. User directly authorized GitHub publication; earlier no-push status is historical. No game tests repeated.
