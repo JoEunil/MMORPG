@@ -1,3 +1,8 @@
+## ECON01 PR50 게시 완료 — 2026-10-24
+
+승인회신1792832876.214609를1회적용해 codex/play-economy-refresh를일반push하고 master대상PR50 ‘게임 화면·거래소 판매와 재화 표시 개선’을게시했다. https://github.com/JoEunil/MMORPG/pull/50 . 현재채팅artifact첨부완료. API재조회open/draftfalse/mergeabletrue,자동병합·masterpush·Pages정식배포0. 사용자AI diff0. 제품476377a·승인인계59e89e4에추가제품수정없음. 관련추가코드작업없음,이미PASS한테스트반복0.
+
+GitHub Pages PR build40080919953 completed/success 확인 https://github.com/JoEunil/MMORPG/actions/runs/40080919953 . 사이트배포는사용자master병합후기존Actions정책으로처리한다. 서버와DLL동시적용/실제판매·차감미검증(전용계정재화행없음)을PR본문에명시했다. DBseed허용으로해석하지않는다. 남은검증은정상재화데이터준비뒤실거래흐름이며새기능·몬스터AI·무관한PR로확대하지않는다. 브랜치정리는사용자병합확인후수명정책에따른다.
 ## ECON01 승인 원문 확인·1회 적용 — 2026-10-24
 
 Slack 작업부모1792827478.780979의 지정사용자U0C9QEUHPMK 회신1792832876.214609 `승인 ECON01`을커넥터원문으로확인했다. 요청1792832364.323779·현재대기·제품후보476377a/인계f4a7e64와일치하고기소비기록없음을확인해1회적용했다. UnityCoordinator앱처리확인1792832975.882269. 사용자채팅도같은묶음PR게시를명시했다. METRIC01/ART03재사용0.
