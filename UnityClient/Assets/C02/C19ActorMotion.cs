@@ -12,6 +12,7 @@ namespace C02
         private Quaternion restRotation;
         private readonly Transform[] arms = new Transform[2];
         private readonly Transform[] legs = new Transform[2];
+        private Transform upperBody;
         private readonly Quaternion[] phaseStartArms = new Quaternion[2];
         private readonly Quaternion[] phaseStartLegs = new Quaternion[2];
         private Vector3 previousPosition;
@@ -27,7 +28,9 @@ namespace C02
         private bool released;
         private byte attackSlot;
         private bool guardMotion;
+        private bool spinPendingCompletion;
         private Quaternion phaseStartVisualRotation;
+        private Quaternion phaseStartUpperBodyRotation;
         private float phaseTransitionStarted;
         private float phaseTransitionUntil;
         private float hitUntil;
@@ -79,6 +82,16 @@ namespace C02
                     arms[side] = CreateJoint(kind, sign, true, shoulder);
                     legs[side] = CreateJoint(kind, sign, false, hip);
                 }
+            }
+            if (guardMotion)
+            {
+                upperBody = new GameObject("UpperBody").transform;
+                upperBody.SetParent(visual, false);
+                upperBody.localPosition = new Vector3(0f, 1.025f, 0f);
+                var upperParts = new List<Transform>();
+                foreach (Transform child in visual)
+                    if (child != upperBody && child != legs[0] && child != legs[1]) upperParts.Add(child);
+                foreach (var part in upperParts) part.SetParent(upperBody, true);
             }
             ResetPose();
         }
@@ -151,12 +164,14 @@ namespace C02
                     phaseStartLegs[side] = legs[side] != null ? legs[side].localRotation : Quaternion.identity;
                 }
                 phaseStartVisualRotation = visual.localRotation;
+                phaseStartUpperBodyRotation = upperBody != null ? upperBody.localRotation : Quaternion.identity;
                 phaseTransitionStarted = now;
                 phaseTransitionUntil = now + .1f;
             }
             else phaseTransitionUntil = 0;
             this.released = released;
             attackSlot = nextAttackSlot;
+            spinPendingCompletion = guardMotion && released && attackSlot == 1;
             attackStarted = Time.unscaledTime;
             attackUntil = attackStarted + (released ? (attackSlot == 2 ? .58f : .48f) : Mathf.Max(.52f, chargeDuration + .08f));
             facing = C02WorldScreen.ServerFacing(direction);
@@ -214,6 +229,7 @@ namespace C02
             Vector3 leftLegPose = Vector3.zero;
             Vector3 rightLegPose = Vector3.zero;
             float torsoTurn = 0;
+            float torsoPitch = 0;
             float bodySpin = 0;
             if (attacking)
             {
@@ -227,6 +243,7 @@ namespace C02
                         float windup = Mathf.SmoothStep(0, 1, Mathf.Clamp01(attack / .7f));
                         swordPose = overhead * windup;
                         torsoTurn = -18f * windup;
+                        torsoPitch = 4f * windup;
                         supportArmPose = new Vector3(-34f, -8f, -18f) * windup;
                         leftLegPose = new Vector3(8f, 0f, -6f) * windup;
                         rightLegPose = new Vector3(-4f, 0f, 4f) * windup;
@@ -236,6 +253,7 @@ namespace C02
                         float cleave = 1f - Mathf.Pow(1f - attack / .38f, 3f);
                         swordPose = Vector3.Lerp(overhead, impact, cleave);
                         torsoTurn = Mathf.Lerp(-18f, 22f, cleave);
+                        torsoPitch = Mathf.Lerp(4f, -7f, cleave);
                         supportArmPose = Vector3.Lerp(new Vector3(-34f, -8f, -18f), new Vector3(22f, 0f, -24f), cleave);
                         leftLegPose = Vector3.Lerp(new Vector3(8f, 0f, -6f), new Vector3(-8f, 0f, -10f), cleave);
                         rightLegPose = Vector3.Lerp(new Vector3(-4f, 0f, 4f), new Vector3(7f, 0f, 6f), cleave);
@@ -245,6 +263,7 @@ namespace C02
                         float recovery = Mathf.SmoothStep(0, 1, (attack - .38f) / .62f);
                         swordPose = Vector3.Lerp(impact, Vector3.zero, recovery);
                         torsoTurn = Mathf.Lerp(22f, 0, recovery);
+                        torsoPitch = Mathf.Lerp(-7f, 0f, recovery);
                         supportArmPose = Vector3.Lerp(new Vector3(22f, 0f, -24f), Vector3.zero, recovery);
                         leftLegPose = Vector3.Lerp(new Vector3(-8f, 0f, -10f), Vector3.zero, recovery);
                         rightLegPose = Vector3.Lerp(new Vector3(7f, 0f, 6f), Vector3.zero, recovery);
@@ -259,6 +278,7 @@ namespace C02
                         float brace = Mathf.SmoothStep(0, 1, Mathf.Clamp01(attack / .65f));
                         swordPose = guard * brace;
                         torsoTurn = -10f * brace;
+                        torsoPitch = 2f * brace;
                         supportArmPose = new Vector3(-42f, 0f, 18f) * brace;
                         leftLegPose = new Vector3(7f, 0f, -8f) * brace;
                         rightLegPose = new Vector3(-5f, 0f, 6f) * brace;
@@ -268,6 +288,7 @@ namespace C02
                         float sweep = attack / .62f;
                         swordPose = Vector3.Lerp(guard, sweepPose, Mathf.SmoothStep(0, 1, sweep));
                         torsoTurn = 18f * Mathf.Sin(sweep * Mathf.PI);
+                        torsoPitch = -3f * Mathf.Sin(sweep * Mathf.PI);
                         supportArmPose = Vector3.Lerp(new Vector3(-42f, 0f, 18f), new Vector3(28f, 0f, -34f), sweep);
                         leftLegPose = Vector3.Lerp(new Vector3(7f, 0f, -8f), new Vector3(-5f, 0f, -12f), sweep);
                         rightLegPose = Vector3.Lerp(new Vector3(-5f, 0f, 6f), new Vector3(8f, 0f, 8f), sweep);
@@ -277,11 +298,12 @@ namespace C02
                         float recovery = Mathf.SmoothStep(0, 1, (attack - .62f) / .38f);
                         swordPose = Vector3.Lerp(sweepPose, Vector3.zero, recovery);
                         torsoTurn = 4f * Mathf.Sin(recovery * Mathf.PI);
+                        torsoPitch = 0f;
                         supportArmPose = Vector3.Lerp(new Vector3(28f, 0f, -34f), Vector3.zero, recovery);
                         leftLegPose = Vector3.Lerp(new Vector3(-5f, 0f, -12f), Vector3.zero, recovery);
                         rightLegPose = Vector3.Lerp(new Vector3(8f, 0f, 8f), Vector3.zero, recovery);
                     }
-                    if (released)
+                    if (released && !guardMotion)
                         bodySpin = -360f * Mathf.SmoothStep(0, 1, attack);
                 }
                 else
@@ -293,6 +315,7 @@ namespace C02
                         float preparation = Mathf.SmoothStep(0, 1, Mathf.Clamp01(attack / .7f));
                         swordPose = ready * preparation;
                         torsoTurn = -12f * preparation;
+                        torsoPitch = 3f * preparation;
                         supportArmPose = new Vector3(-26f, 0f, -12f) * preparation;
                         leftLegPose = new Vector3(5f, 0f, -5f) * preparation;
                         rightLegPose = new Vector3(-3f, 0f, 3f) * preparation;
@@ -303,6 +326,7 @@ namespace C02
                         float cut = 1f - Mathf.Pow(1f - attack / .32f, 3f);
                         swordPose = Vector3.Lerp(ready, followThrough, cut);
                         torsoTurn = Mathf.Lerp(-12, 16, cut);
+                        torsoPitch = Mathf.Lerp(3f, -4f, cut);
                         supportArmPose = Vector3.Lerp(new Vector3(-26f, 0f, -12f), new Vector3(18f, 0f, -28f), cut);
                         leftLegPose = Vector3.Lerp(new Vector3(5f, 0f, -5f), new Vector3(-7f, 0f, -9f), cut);
                         rightLegPose = Vector3.Lerp(new Vector3(-3f, 0f, 3f), new Vector3(6f, 0f, 5f), cut);
@@ -312,6 +336,7 @@ namespace C02
                         float recovery = Mathf.SmoothStep(0, 1, (attack - .32f) / .68f);
                         swordPose = Vector3.Lerp(followThrough, Vector3.zero, recovery);
                         torsoTurn = Mathf.Lerp(16, 0, recovery);
+                        torsoPitch = Mathf.Lerp(-4f, 0f, recovery);
                         supportArmPose = Vector3.Lerp(new Vector3(18f, 0f, -28f), Vector3.zero, recovery);
                         leftLegPose = Vector3.Lerp(new Vector3(-7f, 0f, -9f), Vector3.zero, recovery);
                         rightLegPose = Vector3.Lerp(new Vector3(6f, 0f, 5f), Vector3.zero, recovery);
@@ -340,12 +365,37 @@ namespace C02
             float hit = hitUntil > now ? Mathf.Sin((hitUntil - now) / .2f * Mathf.PI) : 0;
             float bob = (1f - Mathf.Cos(stride * 2f)) * .004f * height * walking;
             visual.localPosition = restPosition + new Vector3(0, bob, hit * height * .025f);
-            Quaternion lean = Quaternion.Euler(hit * -10f + walking * 3f, torsoTurn, swing * .65f);
-            if (bodySpin != 0) lean *= Quaternion.Euler(0, bodySpin, 0);
             Quaternion localFacing = hasFacing ? Quaternion.Inverse(visual.parent.rotation) * facing : restRotation;
-            Quaternion targetVisualRotation = localFacing * lean;
+            bool directSpin = false;
+            if (guardMotion && released && attackSlot == 1)
+            {
+                if (attacking)
+                {
+                    bodySpin = -360f * Mathf.SmoothStep(0, 1, attack);
+                    spinPendingCompletion = true;
+                    directSpin = true;
+                }
+                else if (spinPendingCompletion)
+                {
+                    bodySpin = -360f;
+                    spinPendingCompletion = false;
+                    directSpin = true;
+                }
+            }
+            Quaternion targetVisualRotation = guardMotion ? localFacing :
+                localFacing * Quaternion.Euler(hit * -10f + walking * 3f, torsoTurn, swing * .65f) *
+                Quaternion.AngleAxis(bodySpin, Vector3.up);
             if (phaseTransition) targetVisualRotation = Quaternion.Slerp(phaseStartVisualRotation, targetVisualRotation, phaseBlend);
-            visual.localRotation = Quaternion.Slerp(visual.localRotation, targetVisualRotation, Mathf.Clamp01(dt * 18f));
+            if (directSpin)
+                visual.localRotation = targetVisualRotation * Quaternion.AngleAxis(bodySpin, Vector3.up);
+            else
+                visual.localRotation = Quaternion.Slerp(visual.localRotation, targetVisualRotation, Mathf.Clamp01(dt * 18f));
+            if (upperBody != null)
+            {
+                Quaternion upperPose = Quaternion.Euler(torsoPitch + hit * -10f + walking * 3f, torsoTurn, swing * .65f);
+                if (phaseTransition) upperPose = Quaternion.Slerp(phaseStartUpperBodyRotation, upperPose, phaseBlend);
+                upperBody.localRotation = Quaternion.Slerp(upperBody.localRotation, upperPose, poseResponse);
+            }
         }
 
         public void ResetPose()
@@ -353,10 +403,12 @@ namespace C02
             previousPosition = transform.position;
             walking = stride = attackStarted = attackUntil = hitUntil = 0;
             released = false;
+            spinPendingCompletion = false;
             phaseTransitionStarted = phaseTransitionUntil = 0;
             if (visual == null) return;
             visual.localPosition = restPosition;
             visual.localRotation = restRotation;
+            if (upperBody != null) upperBody.localRotation = Quaternion.identity;
             hasFacing = false;
             movementIntent = Vector2.zero;
             for (int side = 0; side < 2; side++)
