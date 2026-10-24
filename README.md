@@ -12,7 +12,7 @@ C++20과 Windows IOCP로 만든 개인 프로젝트다. 이동, 스킬, 몬스�
 실제 게임 화면과 개발 과정, 에이전트 활용 경험을 정리한 별도 웹사이트다. 개발하면서 계속 갱신하고 있다.
 
 <a href="https://joeunil.github.io/MMORPG/">
-  <img src="site/media/field.png" alt="AI로 개발 중인 Unity 클라이언트 화면 — 클릭하면 웹 포트폴리오로 이동" width="640">
+  <img src="site/media/ai-agent-preview.png" alt="AI Agent Unity 클라이언트 에디터 미리보기 — 표시 수치는 예시이며 클릭하면 작업 사이트로 이동" width="640">
 </a>
 
 서버 개발에서는 AI를 설계 검토·코드 리뷰·일부 테스트 코드 작성에만 제한적으로 활용했다.  

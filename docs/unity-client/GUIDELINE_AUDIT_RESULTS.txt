@@ -1,0 +1,15 @@
+AGENT GUIDELINE AUDIT / APPLICATION — 2026-10-24
+Authorization: user approved proposed guideline changes, preservation, settings comparison and concise Slack report. No game development or PR publication requested.
+Scope: root AGENTS, current pointers/runbooks, nine role guides, current brief/revision, handoff, input ledger authority marker, usage ledger and existing project agent settings.
+Preservation: editor and Git checkout originals kept separately. 46 guideline/config originals + two usage ledger originals =48. MANIFEST records SHA256 and size. Each archived file verified byte-for-byte. Archive .gitattributes disables newline normalization so Git preserves original bytes.
+Core: 32911 ->15587 bytes; handoff ~247305 ->~3KB. Historical decisions remain in archive, not active execution rules.
+Policy: one current rule for PR approval, current input state only in HANDOFF, normal local restart permission retained, actual platform restrictions retained, no new forced approvals for routine corrections. Fixture/editor/live/server/deploy evidence distinguished.
+Architecture: ClientCore reuse, packet consumers, GUID/serialization, minimal classes, actor/phase/ownership lifecycle, user monster AI and no-A* scope retained.
+Art/public: actual game camera comparison, no new rigging, human evaluation separate, original 2D scope correction, grouped feature pages, source-per-page and selected versioned media preserved.
+Settings: parsed TOML. Only max_concurrent_threads_per_session=2 removed from existing ROOT project config. Existing default models/reasoning/enabled retained. Seven role profiles copied unchanged to Git checkout. Global model/MCP/permissions/security not written. Actual provided platform slots/runtime reload not claimed changed.
+Tool drift: active Slack tools are ROOT/UnityClient/Tools and can differ from older Git tool copies; runbook names active target. No Slack tool code was changed or silently synchronized.
+Checks: archive48 hashes PASS; updated docs50 local links PASS; core/handoff size PASS; root/config vs archived config minus single override PASS; seven profile equality/TOML PASS; site generation/links/usage totals86/190/276 PASS; git diff whitespace PASS.
+Independent review: no material policy/input/ownership/source conflict. Two notes resolved: local delivery scope explicit; archive count and hashes verified.
+Operational scenarios read-through: small UI avoids full roles/tests; editor/Git drift detected; unsupported function not invented; same-PR fix no duplicate approval; new contract scope clarified; input hold respected; fixture not called live success; stale Slack reply not consumed; representative art before expansion; short resume state locatable. These are static instruction checks, not executed agent benchmarks.
+No Unity compile/Play/input/game tests or server restart. No server/AI/game source/DB changes. No push/PR/merge/deploy. Local guidelines applied to active Editor checkout and Git source only.
+Agent usage: previous audit reviewer new1 + application review reactivation1, role documenter new1. Prior273 ->276; coordinator direct work excluded; tokens N/A.

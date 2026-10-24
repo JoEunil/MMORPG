@@ -3,6 +3,7 @@
 from html import escape
 from pathlib import Path
 import re
+import shutil
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -104,14 +105,6 @@ def parse_showcase():
         raise ValueError("SHOWCASE.md needs a short public introduction")
     if INTERNAL_CODES.search("\n".join([title, *intro, *(b for s in sections for b in s["blocks"] if isinstance(b, str))])):
         raise ValueError("SHOWCASE.md contains an internal identifier or test count")
-    hero_section = next((s for s in sections if s["title"] == "대표 화면"), None)
-    if not hero_section:
-        raise ValueError("SHOWCASE.md must explicitly select an image under '대표 화면'")
-    hero = next((IMAGE.fullmatch(b) for b in hero_section["blocks"] if isinstance(b, str) and IMAGE.fullmatch(b)), None)
-    if not hero:
-        raise ValueError("SHOWCASE.md '대표 화면' section needs one selected image")
-    hero_alt, hero_ref = hero.groups()
-    hero_url = local_image_path(HOME_SOURCE.relative_to(ROOT), hero_ref)
     references = []
     ref_section = next((s for s in sections if s["title"] == "참고 링크"), None)
     if ref_section:
@@ -126,7 +119,7 @@ def parse_showcase():
                     if not href.startswith("https://"):
                         raise ValueError(f"Reference links must use HTTPS: {href}")
                     references.append((label, href))
-    return title, " ".join(intro), sections, (hero_alt, hero_url), references
+    return title, " ".join(intro), sections, references
 
 
 def render_blocks(blocks, source):
@@ -190,13 +183,20 @@ def render_workflow(section):
     agents = groups["에이전트 구성"]
     chain = ''.join(f'<li>{diagram_node(item)}</li>' for item in agents[:2])
     roles = ''.join(f'<li>{diagram_node(item)}</li>' for item in agents[2:])
+    intro = next(b for b in section["blocks"] if isinstance(b, str) and b and not b.startswith("- "))
+    return f'''<section class="workflow" id="workflow"><div class="section-wrap">
+<div class="section-title"><h2>{escape(section['title'])}</h2><p class="diagram-intro">{escape(intro)}</p></div>
+<div class="agent-diagram"><ol class="agent-chain" aria-label="사용자에서 총괄 Agent로 이어지는 역할 연결">{chain}</ol>
+<div class="agent-branches"><p class="branch-label">작업에 필요한 전문 Agent를 선택해 배정</p><ul class="agent-roles" aria-label="총괄 Agent가 배정하는 전문 역할">{roles}</ul></div></div></div></section>'''
+
+
+def render_execution_flow(section):
+    groups = diagram_items(section)
     steps = ''.join(f'<li>{diagram_node(item)}</li>' for item in groups["작업 흐름"])
     feedback = ''.join(f'<li>{diagram_node(item)}</li>' for item in groups["피드백"])
-    return f'''<section class="workflow" id="workflow"><div class="section-wrap">
-<div class="section-title"><h2>{escape(section['title'])}</h2></div>
-<div class="workflow-layout"><div class="agent-diagram"><h3>누가 어떤 일을 하나요?</h3><ol class="agent-chain" aria-label="사람의 판단에서 총괄 에이전트의 배정으로">{chain}</ol>
-<div class="agent-branches"><p class="branch-label">필요한 전문 역할을 배정</p><ul class="agent-roles">{roles}</ul></div></div>
-<div class="flow-diagram"><h3>하나의 기능이 만들어지는 흐름</h3><ol class="workflow-steps">{steps}</ol><ul class="workflow-feedback">{feedback}</ul></div></div></div></section>'''
+    intro = next(b for b in section["blocks"] if isinstance(b, str) and b and not b.startswith("- "))
+    return f'''<section class="execution-flow section-wrap" id="execution-flow"><div class="section-title"><h2>{escape(section['title'])}</h2><p class="diagram-intro">{escape(intro)}</p></div>
+<ol class="workflow-steps" aria-label="기능 구현의 진행 순서">{steps}</ol><ul class="workflow-feedback">{feedback}</ul></section>'''
 
 
 
@@ -221,9 +221,9 @@ def render_agent_usage(section):
     rows = ''.join(f'<tr><th scope="row">{escape(name)}<span class="usage-bar" style="--fill:{(created + restarted) / peak * 100:.1f}%" aria-hidden="true"></span></th><td>{created}</td><td>{restarted}</td><td>{created + restarted}</td></tr>' for name, created, restarted in agents)
     copy = render_blocks(section["blocks"], HOME_SOURCE)
     return f'''<section class="section-wrap agent-usage" id="agent-usage"><div class="section-title"><h2>{escape(section['title'])}</h2></div>
-<div class="usage-copy">{copy}</div><dl class="usage-totals"><div><dt>기록된 누적 활성화</dt><dd>{new + resumed}<span>회</span></dd></div><div><dt>신규 실행</dt><dd>{new}<span>회</span></dd></div><div><dt>재활성화</dt><dd>{resumed}<span>회</span></dd></div></dl>
-<h3>전체 역할별 활성화</h3><p class="usage-scope">{escape(scope)} · {escape(date)} 기준</p>
-<div class="usage-table-wrap"><table class="usage-table"><caption class="sr-only">기록 시작 이후 전체 역할별 신규 실행과 재활성화 횟수</caption><thead><tr><th scope="col">역할</th><th scope="col">신규</th><th scope="col">재활성화</th><th scope="col">합계</th></tr></thead><tbody>{rows}</tbody><tfoot><tr><th scope="row">전체 합계</th><td>{role_new}</td><td>{role_resumed}</td><td>{role_new + role_resumed}</td></tr></tfoot></table></div></section>'''
+<div class="usage-copy">{copy}</div><dl class="usage-totals"><div><dt>전체 실행</dt><dd>{new + resumed}<span>회</span></dd></div><div><dt>새 Agent 실행</dt><dd>{new}<span>회</span></dd></div><div><dt>후속 작업 실행</dt><dd>{resumed}<span>회</span></dd></div></dl>
+<h3>역할별 실행 횟수</h3><p class="usage-scope">{escape(scope)} · {escape(date)} 기준</p>
+<div class="usage-table-wrap"><table class="usage-table"><caption class="sr-only">기록 시작 이후 역할별 새 Agent 실행·후속 작업 실행·전체 실행 횟수</caption><thead><tr><th scope="col">역할</th><th scope="col">새 Agent 실행</th><th scope="col">후속 작업 실행</th><th scope="col">전체 실행</th></tr></thead><tbody>{rows}</tbody><tfoot><tr><th scope="row">전체 합계</th><td>{role_new}</td><td>{role_resumed}</td><td>{role_new + role_resumed}</td></tr></tfoot></table></div></section>'''
 
 
 def render_decisions(section):
@@ -290,6 +290,21 @@ def find_image(work):
     return None
 
 
+def sync_readme_preview(home_sections):
+    section = next(s for s in home_sections if s["title"] == "README 대표 이미지")
+    images = [IMAGE.fullmatch(b) for b in section["blocks"] if isinstance(b, str) and IMAGE.fullmatch(b)]
+    if len(images) != 1:
+        raise ValueError("Select exactly one README image in SHOWCASE.md")
+    url = local_image_path(HOME_SOURCE.relative_to(ROOT), images[0][2])
+    source = SITE / unquote(url[len(BASE):])
+    target = SITE / "media/ai-agent-preview.png"
+    if source == target or source.suffix.lower() != ".png":
+        raise ValueError("README preview must select an original PNG, not its fixed-path copy")
+    if (ROOT / "README.md").read_text(encoding="utf-8").count('src="site/media/ai-agent-preview.png"') != 1:
+        raise ValueError("README must display the fixed preview path exactly once")
+    shutil.copyfile(source, target)
+
+
 def main():
     if not CONTENT.is_dir():
         raise SystemExit(f"Portfolio content directory not found: {CONTENT.relative_to(ROOT)}")
@@ -301,7 +316,8 @@ def main():
     works = [parse_work(path) for path in paths]
     if not works:
         raise SystemExit("Add at least one reviewed project page under docs/unity-client/portfolio/")
-    title, intro, home_sections, hero_image, references = parse_showcase()
+    title, intro, home_sections, references = parse_showcase()
+    sync_readme_preview(home_sections)
     cards = []
     for work in works:
         key, detail, history = build_work(work, references, title)
@@ -310,17 +326,19 @@ def main():
         cards.append(f'<article class="work-card">{media}<div class="work-copy"><p class="work-status">{escape(work["status"])}</p><h3><a href="{detail}">{escape(work["title"])}</a></h3><p>{escape(work["summary"])}</p><div class="card-links"><a href="{detail}">작업 보기 →</a><a href="{history}">화면 이력</a></div></div></article>')
     sections_by_title = {section["title"]: section for section in home_sections}
     process_html = render_workflow(sections_by_title["AI Agent 워크플로우"])
+    execution_html = render_execution_flow(sections_by_title["하나의 기능이 만들어지는 흐름"])
     usage_html = render_agent_usage(sections_by_title["Agent 활용 지표"])
     work_intro = next(block for block in sections_by_title["작업 둘러보기"]["blocks"] if isinstance(block, str) and block and not block.startswith("- "))
     decisions_html = render_decisions(sections_by_title["지침 변경 이력"])
     legacy_section = sections_by_title["기존 Unity 구현"]
     legacy_copy = render_blocks(legacy_section["blocks"], HOME_SOURCE)
     legacy_html = f'<section class="legacy-section section-wrap" id="legacy"><div class="section-title"><h2>{escape(legacy_section["title"])}</h2></div><div class="legacy-body">{legacy_copy}</div></section>'
-    hero = f'''<main id="top"><section class="home-hero"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#work">작업 결과 보기</a></div></div><figure class="home-image"><a href="{hero_image[1]}" target="_blank" rel="noopener"><img src="{hero_image[1]}" alt="{escape(hero_image[0], quote=True)}"></a><figcaption>{escape(hero_image[0])}</figcaption></figure></section>
+    hero = f'''<main id="top"><section class="home-hero"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#work">작업 결과 보기</a><a class="text-link" href="#workflow">AI Agent 워크플로우</a><a class="text-link" href="#legacy">기존 Unity 구현</a></div></div></section>
 {process_html}
-{usage_html}
+{execution_html}
 {legacy_html}
 <section class="section-wrap work-section" id="work"><div class="section-title work-heading"><h2>작업과 결과</h2><p>{inline(work_intro)}</p></div><div class="work-grid">{''.join(cards)}</div></section>
+{usage_html}
 {decisions_html}</main>'''
     (SITE / "index.html").write_text(document(title, intro, hero, references, title), encoding="utf-8", newline="\n")
     for old_key in legacy_market_pages:
