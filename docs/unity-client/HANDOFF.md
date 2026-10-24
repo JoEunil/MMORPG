@@ -1,3 +1,7 @@
+## METRIC01 게시 승인 대기 — 2026-10-24
+
+로컬후보a46875a. 새Slack부모1792826671.311379/채널C0C9VFZMV43 https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1792826671311379 에 UnityCoordinator앱U0C9ZRTQ6F8으로요청게시/threads.txt자동등록완료. 지정사용자U0C9QEUHPMK의이부모 `승인 METRIC01`만현재대기대상이며수신시회신ID/기소비/요청범위확인후적용한다. 이전ART03은소비완료/재사용금지. 현재새승인수신0,push/PR0. 수신기실제Node19616·listening·고정대상·health4.3s/SOCKET_READY확인,신규사람왕복은미검증.
+
 ## 전체 역할별 Agent 활용 집계 보완 — 2026-10-24
 
 사용자 요청으로 최근 아트29회 부분표를 기록 시작 이후 전체259회 표로 대체했다. 기획1,서버분석54,구현70,아트29,리뷰94,테스트5,기록5,역할미확인1. 신규78/재활성화181과일치. 기준선11개 누적표와후속증분을중복제거하여77인스턴스258회귀속확인,225→230누적의추가신규1명은추정하지않았다. 근거 AGENT_USAGE.md와 AGENT_ROLE_RECONCILIATION.txt. 도구 worker/explorer명이아닌배정책임으로분류했고총괄직접시험·문서작업/메시지는제외. 이번새Agent0/게임검사0.
