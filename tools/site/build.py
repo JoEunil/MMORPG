@@ -201,7 +201,7 @@ def render_workflow(section):
 
 
 def render_agent_usage(section):
-    # Only the explicitly reconciled summary is public; historical notes mix deltas and totals.
+    # Publish the reconciled role totals, including explicitly unassigned historical activations.
     ledger = (ROOT / "docs/unity-client/AGENT_USAGE.md").read_text(encoding="utf-8")
     summary = ledger.split("## 공개 집계\n", 1)[1].split("\n## ", 1)[0]
     date = re.search(r"^기준일: (.+)$", summary, re.M).group(1)
@@ -213,17 +213,17 @@ def render_agent_usage(section):
         match = re.fullmatch(r"\| ([^|]+) \| ([^|]+) \| (\d+) \| (\d+) \|", line)
         if match:
             agents.append((match[2].strip(), int(match[3]), int(match[4])))
-    if not agents or sum(a[1] for a in agents) > new or sum(a[2] for a in agents) > resumed:
-        raise ValueError("Public agent counts must fit the recorded cumulative totals")
-    recent_new = sum(a[1] for a in agents)
-    recent_resumed = sum(a[2] for a in agents)
+    if not agents or sum(a[1] for a in agents) != new or sum(a[2] for a in agents) != resumed:
+        raise ValueError("Public role counts must equal the recorded cumulative totals")
+    role_new = sum(a[1] for a in agents)
+    role_resumed = sum(a[2] for a in agents)
     peak = max(a[1] + a[2] for a in agents)
     rows = ''.join(f'<tr><th scope="row">{escape(name)}<span class="usage-bar" style="--fill:{(created + restarted) / peak * 100:.1f}%" aria-hidden="true"></span></th><td>{created}</td><td>{restarted}</td><td>{created + restarted}</td></tr>' for name, created, restarted in agents)
     copy = render_blocks(section["blocks"], HOME_SOURCE)
     return f'''<section class="section-wrap agent-usage" id="agent-usage"><div class="section-title"><h2>{escape(section['title'])}</h2></div>
 <div class="usage-copy">{copy}</div><dl class="usage-totals"><div><dt>기록된 누적 활성화</dt><dd>{new + resumed}<span>회</span></dd></div><div><dt>신규 실행</dt><dd>{new}<span>회</span></dd></div><div><dt>재활성화</dt><dd>{resumed}<span>회</span></dd></div></dl>
-<h3>최근 작업의 에이전트별 활성화</h3><p class="usage-scope">{escape(scope)} · {escape(date)} 기준</p>
-<div class="usage-table-wrap"><table class="usage-table"><caption class="sr-only">최근 작업에 참여한 에이전트별 신규 실행과 재활성화 횟수</caption><thead><tr><th scope="col">담당 에이전트</th><th scope="col">신규</th><th scope="col">재활성화</th><th scope="col">합계</th></tr></thead><tbody>{rows}</tbody><tfoot><tr><th scope="row">최근 작업 합계</th><td>{recent_new}</td><td>{recent_resumed}</td><td>{recent_new + recent_resumed}</td></tr></tfoot></table></div></section>'''
+<h3>전체 역할별 활성화</h3><p class="usage-scope">{escape(scope)} · {escape(date)} 기준</p>
+<div class="usage-table-wrap"><table class="usage-table"><caption class="sr-only">기록 시작 이후 전체 역할별 신규 실행과 재활성화 횟수</caption><thead><tr><th scope="col">역할</th><th scope="col">신규</th><th scope="col">재활성화</th><th scope="col">합계</th></tr></thead><tbody>{rows}</tbody><tfoot><tr><th scope="row">전체 합계</th><td>{role_new}</td><td>{role_resumed}</td><td>{role_new + role_resumed}</td></tr></tfoot></table></div></section>'''
 
 
 def render_decisions(section):

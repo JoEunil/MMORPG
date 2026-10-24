@@ -1,3 +1,11 @@
+## 전체 역할별 Agent 활용 집계 보완 — 2026-10-24
+
+사용자 요청으로 최근 아트29회 부분표를 기록 시작 이후 전체259회 표로 대체했다. 기획1,서버분석54,구현70,아트29,리뷰94,테스트5,기록5,역할미확인1. 신규78/재활성화181과일치. 기준선11개 누적표와후속증분을중복제거하여77인스턴스258회귀속확인,225→230누적의추가신규1명은추정하지않았다. 근거 AGENT_USAGE.md와 AGENT_ROLE_RECONCILIATION.txt. 도구 worker/explorer명이아닌배정책임으로분류했고총괄직접시험·문서작업/메시지는제외. 이번새Agent0/게임검사0.
+
+site build/내부링크PASS,전체합계강제일치검증·실제브라우저8행확인. localhost8791미리보기꺼져있어정상재시작PID30328. PR48/49는사용자병합및원격자동삭제완료확인,지난ART03재소비0. 새브랜치 codex/agent-role-metrics는현재origin/master358adb5에서시작. 공개지표보완만로컬커밋하고새작업부모에서 METRIC01 게시승인을요청한다. Unity/서버AI변경0.
+
+Slack수신기는과거health뿐이고실제33572없음확인. stop마커없음·현재설치codexqueue도움말·고정Coordinator대조후기존Start도구숨김재시작. 비밀/권한/실행정책변경0. 새사람답장왕복은아직미검증.
+
 ## 아트·활용 지표 PR 게시 완료 — 2026-10-23
 
 PR49 https://github.com/JoEunil/MMORPG/pull/49 생성/현재채팅첨부 완료. head codex/knight-art-direction, base codex/client-structure-cleanup(PR48선행),GitHub mergeable 확인. ART03 회신1792760233.285059는 위 수신기록에서1회소비완료. 서버AI diff0/병합0/Pages배포0.

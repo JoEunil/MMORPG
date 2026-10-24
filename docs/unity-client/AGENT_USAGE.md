@@ -1,18 +1,106 @@
 ## 공개 집계
 
-기준일: 2026-10-23
+기준일: 2026-10-24
 누적 신규: 78
 누적 재활성화: 181
-상세 범위: 기사·필드·전투 표현과 활용 기록 정리
+상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-24
 
-| 에이전트 | 공개 이름 | 신규 | 재활성화 |
+| 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
-| knight_visual_refinement | 기사·필드 아트 | 1 | 3 |
-| knight_attack_presentation | 플레이어 전투 구현 | 1 | 10 |
-| knight_art_review | 독립 리뷰 | 1 | 12 |
-| monster_cast_presentation | 몬스터 전투 구현 | 1 | 0 |
+| game_planner | 기획 Agent | 1 | 0 |
+| server_analyst | 서버 분석 Agent | 13 | 41 |
+| client_implementer | 구현 Agent | 29 | 41 |
+| asset_artist | 아트 Agent | 10 | 19 |
+| code_reviewer | 리뷰 Agent | 20 | 74 |
+| unity_tester | 테스트 Agent | 2 | 3 |
+| progress_documenter | 기록 Agent | 2 | 3 |
+| unassigned | 역할 미확인 | 1 | 0 |
 
-공개 데이터는 위 요약 한 곳에서 관리한다. 상세29회는 최근 아트28회와 이번 지표 감사1회다. 이전 원장은 증분/누적/브랜치 인계가 혼재하여 전체 에이전트별로 추정 합산하지 않는다. 225→230 구간 신규1명의 귀속 근거가 없어 이전230회는 기록된 누적으로만 표시한다. 토큰·비용은 미노출 N/A. 다음 전문 실행/재활성화 기록 시 이 공개 집계도 실제 증분만 갱신한다.
+공개 집계는 전체259회와 일치한다. 기존 ‘최근 아트29회’ 부분 표를 전체 원장 대조로 대체했다. 실제 인스턴스77개의 신규77/재활성화181=258회는 아래 귀속 근거로 확인했고, 225→230 구간의 추가 신규1회는 기존 누적에만 존재하여 역할 미확인으로 보존한다. 이를 임의 역할에 배정하지 않는다. 역할은 배정된 기능 책임 기준이며 worker/explorer 같은 도구 유형이 아니다. 하나의 인스턴스가 후속 리뷰를 도왔어도 같은 배정 역할로 유지해 중복 계상하지 않는다. Coordinator의 직접 구현·시험·기록과 메시지·조회는 제외한다. 실제 토큰·비용 N/A. 이후 실제 활성화 때 아래 인스턴스 원장과 공개 역할 합계를 함께 갱신한다.
+
+## 전체 역할별 귀속 근거 — 2026-10-24
+
+이 문서의 ‘최신 집계 — 진행 중’ 11개 인스턴스 누적표를 기준선으로 삼고, 그 이후 작업별 명시 증분을 시간순으로 한 번씩 더했다. 오래된 누적 스냅샷은 다시 더하지 않았다. 작업 제목별 대조 근거는 AGENT_ROLE_RECONCILIATION.txt를 따른다. 이번 웹·집계 수정은 Coordinator 직접 작업이며 새 전문 Agent 활성화0이다.
+
+| 에이전트 | 역할 | 신규 | 재활성화 |
+| --- | --- | ---: | ---: |
+| motion_contract | 서버 분석 Agent | 1 | 6 |
+| motion_own | 구현 Agent | 1 | 1 |
+| motion_remote | 구현 Agent | 1 | 2 |
+| classic_item_art | 아트 Agent | 1 | 0 |
+| map_compatibility | 서버 분석 Agent | 1 | 26 |
+| hud_revision | 구현 Agent | 1 | 1 |
+| item_icon_ui | 구현 Agent | 1 | 3 |
+| web_home_content | 기록 Agent | 1 | 3 |
+| classic_item_set | 아트 Agent | 1 | 2 |
+| field_surface | 아트 Agent | 1 | 1 |
+| inventory_read_ui | 구현 Agent | 1 | 0 |
+| whisper_review | 리뷰 Agent | 1 | 2 |
+| monster_surface | 아트 Agent | 1 | 1 |
+| hunt_contract | 서버 분석 Agent | 1 | 1 |
+| hunt_batch_helper | 테스트 Agent | 1 | 1 |
+| hunt_public_results | 기록 Agent | 1 | 0 |
+| line_aim_contract | 서버 분석 Agent | 1 | 1 |
+| line_aim_implementation | 구현 Agent | 1 | 1 |
+| line_preview_implementation | 구현 Agent | 1 | 0 |
+| line_preview_review | 리뷰 Agent | 1 | 0 |
+| hero_surface_followup | 아트 Agent | 1 | 0 |
+| hunting_balance_plan | 기획 Agent | 1 | 0 |
+| skill_help_ui | 구현 Agent | 1 | 0 |
+| skill_help_review | 리뷰 Agent | 1 | 0 |
+| bag_item_visuals | 구현 Agent | 1 | 0 |
+| market_item_visuals | 구현 Agent | 1 | 0 |
+| item_visual_review | 리뷰 Agent | 1 | 1 |
+| field_route_art | 아트 Agent | 1 | 2 |
+| entry_trail_review | 리뷰 Agent | 1 | 1 |
+| pr41_shader_review | 리뷰 Agent | 1 | 0 |
+| combat_feedback_gap | 서버 분석 Agent | 1 | 3 |
+| monster_hit_feedback | 구현 Agent | 1 | 5 |
+| monster_feedback_review | 리뷰 Agent | 1 | 12 |
+| monster_feedback_observer | 테스트 Agent | 1 | 2 |
+| hunting_recovery_contract | 서버 분석 Agent | 1 | 0 |
+| defeated_screen | 구현 Agent | 1 | 1 |
+| defeated_flow_review | 리뷰 Agent | 1 | 1 |
+| world_grid_contract | 서버 분석 Agent | 1 | 0 |
+| world_grid_server | 구현 Agent | 1 | 1 |
+| movement_reconciliation | 구현 Agent | 1 | 0 |
+| actor_motion_inventory | 아트 Agent | 1 | 1 |
+| world_grid_review | 리뷰 Agent | 1 | 2 |
+| movement_actor_review | 리뷰 Agent | 1 | 1 |
+| zone_spawn_authoring | 구현 Agent | 1 | 1 |
+| zone_spawn_review | 리뷰 Agent | 1 | 25 |
+| navigation_preview_editor | 구현 Agent | 1 | 0 |
+| fixed_wall_art_direction | 아트 Agent | 1 | 6 |
+| fixed_wall_visuals | 구현 Agent | 1 | 1 |
+| skill_feedback_fix | 구현 Agent | 1 | 4 |
+| chat_focus_fix | 구현 Agent | 1 | 0 |
+| server_zone_contract | 서버 분석 Agent | 1 | 0 |
+| map_export_contract | 서버 분석 Agent | 1 | 0 |
+| layout_export_impl | 구현 Agent | 1 | 3 |
+| server_transition_impl | 구현 Agent | 1 | 1 |
+| transition_contract_review | 리뷰 Agent | 1 | 1 |
+| map_followup_contract | 서버 분석 Agent | 1 | 0 |
+| export_saved_scene_review | 리뷰 Agent | 1 | 0 |
+| transition_recovery_review | 리뷰 Agent | 1 | 0 |
+| test_health_contract | 서버 분석 Agent | 1 | 0 |
+| town_respawn_server | 구현 Agent | 1 | 1 |
+| town_respawn_review | 리뷰 Agent | 1 | 0 |
+| town_switch_review | 리뷰 Agent | 1 | 9 |
+| stop_policy_review | 리뷰 Agent | 1 | 2 |
+| map_server_finish_audit | 서버 분석 Agent | 1 | 3 |
+| map_border_input_fix | 구현 Agent | 1 | 2 |
+| dummy_epoch_fix | 구현 Agent | 1 | 1 |
+| movement_feel_revision | 구현 Agent | 1 | 2 |
+| field_motion_art_revision | 아트 Agent | 1 | 3 |
+| feel02_server_review | 리뷰 Agent | 1 | 4 |
+| map_remaining_audit | 서버 분석 Agent | 1 | 1 |
+| client_cleanup_inventory | 구현 Agent | 1 | 0 |
+| item_presentation_cleanup | 구현 Agent | 1 | 0 |
+| presentation_cleanup_review | 리뷰 Agent | 1 | 1 |
+| knight_visual_refinement | 아트 Agent | 1 | 3 |
+| knight_attack_presentation | 구현 Agent | 1 | 10 |
+| knight_art_review | 리뷰 Agent | 1 | 12 |
+| monster_cast_presentation | 구현 Agent | 1 | 0 |
 
 ## 공개 지표 감사 — 2026-10-23
 
