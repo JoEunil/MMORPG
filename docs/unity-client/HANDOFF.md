@@ -1,3 +1,7 @@
+## 재화 수명 보완 게시 확인 — 2026-10-24
+
+23cc71f 일반push 후 GitHub PR50 open/head일치 확인. UnityCoordinator앱 결과 작업스레드1792834440.943609·완료채널1792834441.607599 게시 확인. 같은범위 리뷰수정으로 추가승인/새PR 없음, 병합/배포 미실행.
+
 ## PR50 재화 HUD 수명 리뷰 보완 — 2026-10-24
 
 두 지적 모두 유효: ClosePanel→CancelBazaar가 이미 전송한 판매/구매/수령 응답을 버려 wallet refresh를 놓쳤고, Zone 이동의 VM wallet 취소 후 화면 requested=true가 남았다. C09 기존 상태에서 재화 변경 write3종만 창닫기 뒤 상관성/선택/기존timeout을 유지하며 재열기 중 조회로 덮지 않는다. Buy/Claim은 숨긴 창에서도 응답을 처리하고 Register 성공도 창을 다시 열지 않는다. 단순 조회/취소매물/수령함의 기존 panel 취소 규칙은 유지한다. timeout은 mutation 재시도 없이 wallet만 조회한다. World unavailable 때 wallet UI 플래그·예약·retry예산·known값 초기화, destination bootstrap 다음Update 새 read. ClientCore/서버/DB/몬스터AI 변경0.
