@@ -243,6 +243,8 @@ namespace {
             EXPECT_EQ(st->header.sessionID, 42);
             EXPECT_EQ(st->header.messageType, Core::MSG_BAZAAR_REGISTER_RES);
             status = st->body.resStatus;
+            EXPECT_EQ(st->body.requestID, 0x12345678);
+            EXPECT_EQ(st->body.characterID, Character);
             if (throws) throw std::runtime_error("fixture response queue threw");
             return accept;
         }
@@ -492,7 +494,7 @@ namespace Cache {
             auto* msg = messages->Acquire();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterBody>*>(msg->GetBuffer());
             st->header = {42, Core::MSG_BAZAAR_REGISTER};
-            st->body = {Character, 1, quantity, 100};
+            st->body = {Character, 1, quantity, 100, 0x12345678, 0};
             msg->SetLength(sizeof(*st) + lengthDelta);
             if (lengthDelta != 0) handler.Process(msg);
             else {

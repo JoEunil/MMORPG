@@ -25,6 +25,35 @@ namespace C02.Tests
         }
 
         [Test]
+        public void RegisterRequestKeepsSlotQuantityAndFullWidthDiamondPrice()
+        {
+            var serialize = typeof(Packet).GetMethod("SerializeBazaarRegisterRequest", BindingFlags.NonPublic | BindingFlags.Static);
+            var bytes = (byte[])serialize.Invoke(null, new object[] { 91U, (byte)7, (ushort)513, 0x100000002UL });
+            Assert.That(bytes.Length, Is.EqualTo(23)); Assert.That(bytes[6], Is.EqualTo(40));
+            Assert.That(BitConverter.ToUInt32(bytes, 8), Is.EqualTo(91));
+            Assert.That(bytes[12], Is.EqualTo(7)); Assert.That(BitConverter.ToUInt16(bytes, 13), Is.EqualTo(513));
+            Assert.That(BitConverter.ToUInt64(bytes, 15), Is.EqualTo(0x100000002UL));
+            Assert.Throws<TargetInvocationException>(() => serialize.Invoke(null, new object[] { 0U, (byte)0, (ushort)1, 1UL }));
+        }
+
+        [Test]
+        public void WalletResponsesPreserveUlongBalancesAndRejectMalformedFrames()
+        {
+            var gold = WalletFrame(43, 1, 0x100000002UL);
+            var parseGold = typeof(Packet).GetMethod("DeserializeWalletGold", BindingFlags.NonPublic | BindingFlags.Static);
+            var parsed = ((uint requestID, byte status, ulong gold))parseGold.Invoke(null, new object[] { Packet.ExtractHeader(gold), gold });
+            Assert.That(parsed.requestID, Is.EqualTo(23)); Assert.That(parsed.status, Is.EqualTo(1));
+            Assert.That(parsed.gold, Is.EqualTo(0x100000002UL));
+
+            var diamond = WalletFrame(44, 1, ulong.MaxValue);
+            var parseDiamond = typeof(Packet).GetMethod("DeserializeWalletDiamond", BindingFlags.NonPublic | BindingFlags.Static);
+            var parsedDiamond = ((uint requestID, byte status, ulong diamond))parseDiamond.Invoke(null, new object[] { Packet.ExtractHeader(diamond), diamond });
+            Assert.That(parsedDiamond.diamond, Is.EqualTo(ulong.MaxValue));
+            diamond[12] = 2;
+            Assert.Throws<TargetInvocationException>(() => parseDiamond.Invoke(null, new object[] { Packet.ExtractHeader(diamond), diamond }));
+        }
+
+        [Test]
         public void EmptyFailureAndThirtyPackedRowsAreDistinctAndPreserveUlongValues()
         {
             Assert.That(Marshal.SizeOf<BazaarListing>(), Is.EqualTo(39));
@@ -103,6 +132,12 @@ namespace C02.Tests
 
         private static BazaarListing[] Rows() => new[] { new BazaarListing { listingID = 1, sellerCharacterID = 5011, itemID = 1, quantity = 2, price = ulong.MaxValue, registeredAt = ulong.MaxValue } };
         private static byte[] Request(uint id, ushort type, ushort page) => (byte[])typeof(Packet).GetMethod("SerializeBazaarRequest", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, new object[] { id, type, page });
+        private static byte[] WalletFrame(byte opcode, byte status, ulong balance)
+        {
+            var p = new byte[21]; BitConverter.GetBytes((ushort)0xabcd).CopyTo(p, 0); BitConverter.GetBytes(21U).CopyTo(p, 2);
+            p[6] = opcode; BitConverter.GetBytes(23U).CopyTo(p, 8); p[12] = status; BitConverter.GetBytes(balance).CopyTo(p, 13);
+            return p;
+        }
         private static (uint requestID, byte status, BazaarListing[] rows) Parse(byte[] p) => ((uint, byte, BazaarListing[]))typeof(Packet).GetMethod("DeserializeBazaar", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, new object[] { Packet.ExtractHeader(p), p });
         private static void Reject(byte[] p) => Assert.Throws<TargetInvocationException>(() => Parse(p));
         private static byte[] Frame(uint id, byte status, ushort count)
@@ -127,6 +162,8 @@ namespace C02.Tests
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint id, ushort type, ushort page) => IDs.Add(id);
+            public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
+            public void RequestWallet(uint requestID) { }
             public Task Connect(string address, int port) => Task.CompletedTask; public void CharacterList() { } public void Enter(ulong id) { }
             public void Chat(string message, byte scope, ulong target) { } public void Profiles(uint[] ids) { } public void RequestInventory() { }
             public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { } public void Log(string text) { }

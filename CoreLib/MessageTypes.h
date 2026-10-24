@@ -148,11 +148,14 @@ namespace Core {
 
     struct MsgCurrencyReqBody {
         uint64_t characterID;
+        uint32_t requestID;
     };
 
     struct MsgCurrencyResBody {
         uint8_t resStatus;
         uint64_t gold;
+        uint32_t requestID;
+        uint64_t characterID;
     };
 
     struct MsgCurrencyDepositBody {
@@ -167,6 +170,7 @@ namespace Core {
 
     struct MsgDiamondReqBody {
         uint64_t characterID;
+        uint32_t requestID;
     };
 
     struct MsgDiamondResBody {
@@ -174,6 +178,8 @@ namespace Core {
         uint64_t diamond;
         uint64_t totalEarned;
         uint64_t totalSpent;
+        uint32_t requestID;
+        uint64_t characterID;
     };
 
     struct MsgDiamondDepositBody {
@@ -230,10 +236,14 @@ namespace Core {
         uint32_t itemID;
         uint16_t quantity;
         uint64_t price;
+        uint32_t requestID;
+        uint8_t inventorySlot;
     };
 
     struct MsgBazaarRegisterResBody {
         uint8_t  resStatus; // 0: 실패(보상 완료), 1: 성공, 2: 아이템 수량 부족, 3: 골드 부족, 4: 유효하지 않은 아이템, 5: 결과/보상 미확인(자동 재시도 금지)
+        uint32_t requestID;
+        uint64_t characterID;
     };
 
     struct MsgBazaarCancelBody {

@@ -55,6 +55,11 @@ namespace ClientCore.PacketHelper
         BAZAAR_CANCEL_LISTING_RES = 37,
         ZONE_RESYNC = 38,
         RESPAWN_TO_TOWN = 39,
+        BAZAAR_REGISTER = 40,
+        BAZAAR_REGISTER_RES = 41,
+        WALLET_REQUEST = 42,
+        WALLET_GOLD_RES = 43,
+        WALLET_DIAMOND_RES = 44,
     }
     
     public enum ZONE_CHANGE : byte
@@ -181,6 +186,24 @@ namespace ClientCore.PacketHelper
         public ulong registeredAt;
         public byte status;
     }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct BazaarRegisterRequestBody
+    {
+        public uint requestID;
+        public byte inventorySlot;
+        public ushort quantity;
+        public ulong totalDiamondPrice;
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct BazaarRegisterResponseBody { public uint requestID; public byte resStatus; }
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct WalletRequestBody { public uint requestID; }
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct WalletGoldResponseBody { public uint requestID; public byte resStatus; public ulong gold; }
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct WalletDiamondResponseBody { public uint requestID; public byte resStatus; public ulong diamond; }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ZoneChangeBody
@@ -652,6 +675,74 @@ namespace ClientCore.PacketHelper
         internal static (uint requestID, byte status, BazaarListing[] rows) DeserializeBazaar(PacketHeader header, byte[] buffer)
         {
             return ParseBazaarResponse(header, buffer, OP_CODE.BAZAAR_SEARCH_RES, 0);
+        }
+
+        internal static byte[] SerializeBazaarRegisterRequest(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice)
+        {
+            if (requestID == 0 || inventorySlot >= MAX_INVENTORY_ITEMS || quantity == 0 || totalDiamondPrice == 0)
+                throw new ArgumentException("Invalid bazaar registration.");
+            var result = new byte[23];
+            BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
+            BitConverter.GetBytes((uint)result.Length).CopyTo(result, 2);
+            result[6] = (byte)OP_CODE.BAZAAR_REGISTER;
+            BitConverter.GetBytes(requestID).CopyTo(result, 8);
+            result[12] = inventorySlot;
+            BitConverter.GetBytes(quantity).CopyTo(result, 13);
+            BitConverter.GetBytes(totalDiamondPrice).CopyTo(result, 15);
+            return result;
+        }
+
+        internal static (uint requestID, byte status) DeserializeBazaarRegister(PacketHeader header, byte[] buffer)
+        {
+            if (!HasExactResponse(header, buffer, OP_CODE.BAZAAR_REGISTER_RES, 13))
+                throw new ArgumentException("Invalid bazaar registration response.");
+            uint requestID = BitConverter.ToUInt32(buffer, 8);
+            byte status = buffer[12];
+            if (requestID == 0 || status > 5) throw new ArgumentException("Invalid bazaar registration result.");
+            return (requestID, status);
+        }
+
+        internal static byte[] SerializeWalletRequest(uint requestID)
+        {
+            if (requestID == 0) throw new ArgumentException("Invalid wallet request ID.");
+            var result = new byte[12];
+            BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
+            BitConverter.GetBytes(12U).CopyTo(result, 2);
+            result[6] = (byte)OP_CODE.WALLET_REQUEST;
+            BitConverter.GetBytes(requestID).CopyTo(result, 8);
+            return result;
+        }
+
+        internal static (uint requestID, byte status, ulong gold) DeserializeWalletGold(PacketHeader header, byte[] buffer)
+        {
+            if (!HasExactResponse(header, buffer, OP_CODE.WALLET_GOLD_RES, 21))
+                throw new ArgumentException("Invalid wallet gold response.");
+            uint requestID = BitConverter.ToUInt32(buffer, 8);
+            byte status = buffer[12];
+            ulong gold = BitConverter.ToUInt64(buffer, 13);
+            if (requestID == 0 || status > 1 || status == 0 && gold != 0)
+                throw new ArgumentException("Invalid wallet gold result.");
+            return (requestID, status, gold);
+        }
+
+        internal static (uint requestID, byte status, ulong diamond) DeserializeWalletDiamond(PacketHeader header, byte[] buffer)
+        {
+            if (!HasExactResponse(header, buffer, OP_CODE.WALLET_DIAMOND_RES, 21))
+                throw new ArgumentException("Invalid wallet diamond response.");
+            uint requestID = BitConverter.ToUInt32(buffer, 8);
+            byte status = buffer[12];
+            ulong diamond = BitConverter.ToUInt64(buffer, 13);
+            if (requestID == 0 || status > 1 || status == 0 && diamond != 0)
+                throw new ArgumentException("Invalid wallet diamond result.");
+            return (requestID, status, diamond);
+        }
+
+        private static bool HasExactResponse(PacketHeader header, byte[] buffer, OP_CODE opcode, uint length)
+        {
+            if (buffer == null || buffer.Length != length || header.magic != MAGIC || header.length != length ||
+                header.opcode != (byte)opcode || header.flags != 0) return false;
+            var actual = ExtractHeader(buffer);
+            return actual.magic == header.magic && actual.length == header.length && actual.opcode == header.opcode && actual.flags == header.flags;
         }
 
         internal static byte[] SerializeBazaarBuyRequest(uint requestID, ulong listingID)

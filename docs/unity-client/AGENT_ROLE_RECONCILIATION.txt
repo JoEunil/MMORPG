@@ -1,0 +1,112 @@
+원장의 최신 집계 11개 행은 이전 스냅샷을 대체하고, 이후 명시된 증분만 시간순으로 더했다.
+최신 집계 — 진행 중: create motion_contract / 6
+최신 집계 — 진행 중: create motion_own / 1
+최신 집계 — 진행 중: create motion_remote / 2
+최신 집계 — 진행 중: create classic_item_art / 0
+최신 집계 — 진행 중: create map_compatibility / 26
+최신 집계 — 진행 중: create hud_revision / 1
+최신 집계 — 진행 중: create item_icon_ui / 3
+최신 집계 — 진행 중: create web_home_content / 3
+최신 집계 — 진행 중: create classic_item_set / 2
+최신 집계 — 진행 중: create field_surface / 1
+최신 집계 — 진행 중: create inventory_read_ui / 0
+귓속말 리뷰 수정 집계 보정: create whisper_review / 1
+몬스터 장비 표면 묶음: create monster_surface / 1
+몬스터 장비 표면 묶음: resume whisper_review / 1
+사냥 실입력과 결과 문서: create hunt_contract / 1
+사냥 실입력과 결과 문서: create hunt_batch_helper / 0
+사냥 실입력과 결과 문서: create hunt_public_results / 0
+직선 스킬 방향 묶음: create line_aim_contract / 1
+직선 스킬 방향 묶음: create line_aim_implementation / 1
+직선 스킬 방향 묶음: resume hunt_batch_helper / 1
+직선 범위 표시 및 플레이어 표면 후속: create line_preview_implementation / 0
+직선 범위 표시 및 플레이어 표면 후속: create line_preview_review / 0
+직선 범위 표시 및 플레이어 표면 후속: create hero_surface_followup / 0
+다음 hunting_balance_plan: create hunting_balance_plan / 0
+스킬 아이콘 설명: create skill_help_ui / 0
+스킬 아이콘 설명: create skill_help_review / 0
+가방·거래소 아이템 표현: create bag_item_visuals market_item_visuals / 0
+가방·거래소 아이템 표현: create item_visual_review / 1
+필드 진입로 비교: create field_route_art / 2
+필드 진입로 비교: create entry_trail_review / 1
+PR41 셰이더 포함 리뷰: create pr41_shader_review / 0
+사냥 화면·근접 거리·보스 예고: create combat_feedback_gap / 3
+사냥 화면·근접 거리·보스 예고: create monster_hit_feedback / 5
+사냥 화면·근접 거리·보스 예고: create monster_feedback_review / 12
+사냥 화면·근접 거리·보스 예고: create monster_feedback_observer / 2
+HP0 이후 흐름: create hunting_recovery_contract / 0
+HP0 이후 흐름: create defeated_screen / 1
+HP0 이후 흐름: create defeated_flow_review / 1
+월드 격자·시각 이동·파츠 모션: create world_grid_contract / 0
+월드 격자·시각 이동·파츠 모션: create world_grid_server / 1
+월드 격자·시각 이동·파츠 모션: create movement_reconciliation / 0
+월드 격자·시각 이동·파츠 모션: create actor_motion_inventory / 1
+월드 격자·시각 이동·파츠 모션: create world_grid_review / 2
+월드 격자·시각 이동·파츠 모션: create movement_actor_review / 1
+구역별 몬스터 배치 편집: create zone_spawn_authoring / 1
+구역별 몬스터 배치 편집: create zone_spawn_review / 1
+PR43 Full 피해 강조 리뷰: resume zone_spawn_review / 1
+맵 통행 Inspector: resume zone_spawn_review / 1
+맵 통행 Inspector: create navigation_preview_editor / 0
+고정 필드 석축 외관: create fixed_wall_art_direction / 1
+고정 필드 석축 외관: create fixed_wall_visuals / 0
+고정 필드 석축 외관: resume zone_spawn_review / 2
+석축 끝면 후속: resume fixed_wall_visuals / 1
+석축 끝면 후속: resume zone_spawn_review / 1
+석축 끝면 후속: resume fixed_wall_art_direction / 1
+주기 Full 루트 회전 보정: resume zone_spawn_review / 1
+실제 몬스터 파츠 모션 검증: resume zone_spawn_review / 2
+맵 내보내기 예외 복구: resume zone_spawn_review / 2
+이동·스킬·채팅 피드백: create skill_feedback_fix / 2
+이동·스킬·채팅 피드백: create chat_focus_fix / 0
+이동·스킬·채팅 피드백: resume zone_spawn_review / 2
+스킬 쿨타임 가독성 후속: resume skill_feedback_fix / 1
+스킬 쿨타임 가독성 후속: resume zone_spawn_review / 2
+스킬 예고·발동 pulse: resume skill_feedback_fix / 1
+스킬 예고·발동 pulse: resume zone_spawn_review / 1
+PR44 직각 전환 리뷰: resume zone_spawn_review / 1
+지면 비교·석축 발치 시안 반려: resume fixed_wall_art_direction / 4
+지면 비교·석축 발치 시안 반려: resume zone_spawn_review / 3
+맵 Exporter·서버 전환: create server_zone_contract map_export_contract / 0
+맵 Exporter·서버 전환: create layout_export_impl / 3
+맵 Exporter·서버 전환: create server_transition_impl / 1
+맵 Exporter·서버 전환: create transition_contract_review / 1
+맵 Exporter·서버 전환: resume zone_spawn_review / 5
+저장 Scene 기반 맵 내보내기 보완: create map_followup_contract / 0
+저장 Scene 기반 맵 내보내기 보완: create export_saved_scene_review / 0
+전환 실패 복귀 UI: create transition_recovery_review / 0
+MAP01 게시·실입력 재개: create test_health_contract / 0
+마을·사망 귀환: create town_respawn_server / 1
+마을·사망 귀환: create town_respawn_review / 0
+마을 PR 게시·전환 사전 점검: create town_switch_review / 0
+종료 정책 원인·수정 후보 검토: resume town_switch_review / 1
+종료 정책 원인·수정 후보 검토: create stop_policy_review / 0
+정상 전환·마을 귀환 실제 배치: resume stop_policy_review / 2
+맵·서버 연결 마무리: create map_server_finish_audit / 1
+맵·서버 연결 마무리: create map_border_input_fix / 2
+맵·서버 연결 마무리: resume town_switch_review / 4
+Unity 입력·종료 수명 보완: resume map_server_finish_audit / 1
+Unity 입력·종료 수명 보완: resume town_switch_review / 1
+PR45 경계·DummyClients 리뷰 보완: resume map_server_finish_audit / 1
+PR45 경계·DummyClients 리뷰 보완: create dummy_epoch_fix / 1
+PR45 경계·DummyClients 리뷰 보완: resume town_switch_review / 3
+이동·모션·맵 직접 소비 후보: create movement_feel_revision / 2
+이동·모션·맵 직접 소비 후보: create field_motion_art_revision / 3
+이동·모션·맵 직접 소비 후보: create feel02_server_review / 2
+PR46 채팅 귀환 리뷰: resume feel02_server_review / 1
+PR46 마을 배치 테스트 리뷰: resume feel02_server_review / 1
+맵 인계 감사: create map_remaining_audit / 1
+클라이언트 구조 정리 묶음: create client_cleanup_inventory item_presentation_cleanup / 0
+클라이언트 구조 정리 묶음: create presentation_cleanup_review / 1
+기사 아트·게임 UI·스킬 연출: create knight_visual_refinement / 1
+기사 아트·게임 UI·스킬 연출: create knight_attack_presentation / 5
+기사 아트·게임 UI·스킬 연출: create knight_art_review / 4
+성채 필드·대형 하단 게이지·차징: resume knight_visual_refinement / 2
+성채 필드·대형 하단 게이지·차징: resume knight_attack_presentation / 2
+성채 필드·대형 하단 게이지·차징: resume knight_art_review / 3
+스킬 동작·몬스터 특수 영역: resume knight_attack_presentation / 3
+스킬 동작·몬스터 특수 영역: resume knight_art_review / 4
+스킬 동작·몬스터 특수 영역: create monster_cast_presentation / 0
+공개 지표 감사: resume knight_art_review / 1
+
+합계: 역할 확인 신규77/재활성화181=258. 역할 미확인 신규1. 전체78/181=259. 총괄 직접 작업 제외.

@@ -69,6 +69,18 @@ namespace ClientCore.Network
                         var myList = Packet.DeserializeBazaarMyList(header, buffer);
                         _viewModel.BazaarMyListReceived(myList.requestID, myList.status, myList.rows);
                         return;
+                    case OP_CODE.BAZAAR_REGISTER_RES:
+                        var registered = Packet.DeserializeBazaarRegister(header, buffer);
+                        _viewModel.BazaarRegisterReceived(registered.requestID, registered.status);
+                        return;
+                    case OP_CODE.WALLET_GOLD_RES:
+                        var gold = Packet.DeserializeWalletGold(header, buffer);
+                        _viewModel.WalletGoldReceived(gold.requestID, gold.status, gold.gold);
+                        return;
+                    case OP_CODE.WALLET_DIAMOND_RES:
+                        var diamond = Packet.DeserializeWalletDiamond(header, buffer);
+                        _viewModel.WalletDiamondReceived(diamond.requestID, diamond.status, diamond.diamond);
+                        return;
                 }
                 if ((header.flags & FLAG_SIMULATION) == FLAG_SIMULATION)
                 {
@@ -97,7 +109,7 @@ namespace ClientCore.Network
             catch (Exception e)
             {
                 // A malformed C06 frame must reach the socket's existing disconnect boundary.
-                if (buffer.Length >= 7 && (buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 21 || buffer[6] == 25 || buffer[6] == 27 || buffer[6] == 29 || buffer[6] == 31 || buffer[6] == 33 || buffer[6] == 35 || buffer[6] == 37)) throw;
+                if (buffer.Length >= 7 && (buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 21 || buffer[6] == 25 || buffer[6] == 27 || buffer[6] == 29 || buffer[6] == 31 || buffer[6] == 33 || buffer[6] == 35 || buffer[6] == 37 || buffer[6] == 41 || buffer[6] == 43 || buffer[6] == 44)) throw;
                 ErrorLog(e.Message);
             }
         }

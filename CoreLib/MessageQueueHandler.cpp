@@ -54,6 +54,18 @@ namespace Core {
             if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarSearchResBody>))
                 BazaarSearchResponse(header->sessionID, parseMsgBody<MsgBazaarSearchResBody>(msg->GetBuffer()));
             break;
+        case MSG_BAZAAR_REGISTER_RES:
+            if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarRegisterResBody>))
+                BazaarRegisterResponse(header->sessionID, parseMsgBody<MsgBazaarRegisterResBody>(msg->GetBuffer()));
+            break;
+        case MSG_CURRENCY_RES:
+            if (msg->GetLength() == sizeof(MsgStruct<MsgCurrencyResBody>))
+                WalletGoldResponse(header->sessionID, parseMsgBody<MsgCurrencyResBody>(msg->GetBuffer()));
+            break;
+        case MSG_DIAMOND_RES:
+            if (msg->GetLength() == sizeof(MsgStruct<MsgDiamondResBody>))
+                WalletDiamondResponse(header->sessionID, parseMsgBody<MsgDiamondResBody>(msg->GetBuffer()));
+            break;
         case MSG_PROFILE_RENAME_RES:
             ProfileRenameResponse(header->sessionID, parseMsgBody<MsgProfileRenameResBody>(msg->GetBuffer()));
             break;
@@ -150,6 +162,27 @@ namespace Core {
         auto p = writer->WriteBazaarSearchResponse(body);
         if (p)
             iocp->SendDataUnique(sessionID, std::move(p));
+    }
+
+    void MessageQueueHandler::BazaarRegisterResponse(uint64_t sessionID, MsgBazaarRegisterResBody* body) {
+        if (stateManager == nullptr || body->characterID == 0
+            || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
+        auto p = writer->WriteBazaarRegisterResponse(body);
+        if (p) iocp->SendDataUnique(sessionID, std::move(p));
+    }
+
+    void MessageQueueHandler::WalletGoldResponse(uint64_t sessionID, MsgCurrencyResBody* body) {
+        if (stateManager == nullptr || body->characterID == 0
+            || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
+        auto p = writer->WriteWalletGoldResponse(body);
+        if (p) iocp->SendDataUnique(sessionID, std::move(p));
+    }
+
+    void MessageQueueHandler::WalletDiamondResponse(uint64_t sessionID, MsgDiamondResBody* body) {
+        if (stateManager == nullptr || body->characterID == 0
+            || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
+        auto p = writer->WriteWalletDiamondResponse(body);
+        if (p) iocp->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::InventoryResponse(uint64_t sessionID, MsgInventoryResBody* body) {

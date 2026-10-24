@@ -291,6 +291,8 @@ namespace C02.Tests
             public void Profiles(uint[] profileIds) { }
             public void RequestInventory() { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { }
+            public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
+            public void RequestWallet(uint requestID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarBuy(uint requestID, ulong listingID) { }

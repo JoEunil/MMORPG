@@ -79,36 +79,8 @@ public static class KnightInterfaceArtSetup
             if (t.name == "Title") { t.text = "ENTER THE REALM"; t.fontSize = 24; t.characterSpacing = 2; }
         }
         var hud = ((GameObject)refs.FindProperty("worldHud").objectReferenceValue).transform;
-        var combat = hud.parent.Find("C05CombatPanel") as RectTransform;
-        combat.GetComponent<Image>().color = Color.clear;
-        foreach (string ornament in new[] { "ForgedFrame", "FrameOrnaments" })
-            if (combat.Find(ornament) != null) combat.Find(ornament).gameObject.SetActive(false);
-        Place(combat, new Vector2(1, 0), new Vector2(-24, 8), new Vector2(440, 158));
-        var vitalsPlate = Child(combat, "VitalsPlate");
-        Place(vitalsPlate, new Vector2(0, 1), new Vector2(0, -90), new Vector2(440, 68));
-        SkinPanel(vitalsPlate, 8);
-        vitalsPlate.SetAsFirstSibling();
-        Gauge(combat, "C12HpTrack", -100.667f, 22.667f, new Color(.68f, .055f, .075f));
-        Gauge(combat, "C12MpTrack", -129.333f, 18, new Color(.065f, .29f, .64f));
-        var skillPlate = Child(combat, "SkillPlate");
-        Place(skillPlate, new Vector2(0, 1), new Vector2(109, -8), new Vector2(222, 78));
-        SkinPanel(skillPlate, 10);
-        skillPlate.SetAsFirstSibling();
-        for (int i = 0; i < 3; i++)
-        {
-            var skill = combat.Find("C05Skill" + i) as RectTransform;
-            Place(skill, new Vector2(0, 1), new Vector2(126 + i * 66, -16), new Vector2(56, 62));
-            SkinButton(skill.GetComponent<Button>(), 12);
-            var key = skill.Find("SkillKeyBadge/SkillKey")?.GetComponent<TMP_Text>();
-            if (key != null) { key.fontSize = 22; key.color = Color.white; key.fontStyle = FontStyles.Bold; }
-            var label = skill.Find("SkillName")?.GetComponent<TMP_Text>();
-            if (label != null) label.gameObject.SetActive(false); // icon + large Z/X/C already identify the action
-        }
-        var aim = combat.Find("C05Aim")?.GetComponent<TMP_Text>();
-        if (aim != null) aim.gameObject.SetActive(false); // facing remains in the existing upper-left world information
-        var status = combat.Find("C05Status")?.GetComponent<TMP_Text>();
-        if (status != null) status.gameObject.SetActive(false); // server response remains available in the upper-left info
-        foreach (string name in new[] { "C07InventoryPanel", "C09BazaarPanel", "C06ChatPanel" })
+        ApplyRestrainedHud();
+        foreach (string name in new[] { "C07InventoryPanel" })
         {
             var panel = hud.parent.Find(name) as RectTransform;
             SkinPanel(panel, 6);
@@ -118,16 +90,8 @@ public static class KnightInterfaceArtSetup
                 { image.sprite = leather; image.type = Image.Type.Simple; image.color = new Color(.62f, .54f, .43f); }
             foreach (var button in panel.GetComponentsInChildren<Button>(true)) SkinButton(button, 20);
         }
-        var chat = hud.parent.Find("C06ChatPanel") as RectTransform;
-        chat.sizeDelta = new Vector2(400, 260);
-        chat.anchoredPosition = new Vector2(24, 8);
-        var inset = chat.Find("ChatInset");
-        var inputRect = inset.Find("ChatInput") as RectTransform;
-        inputRect.sizeDelta = new Vector2(266, 34);
-        string[] scopes = { "ChatGlobalButton", "ChatZoneButton", "ChatWhisperButton" };
-        for (int i = 0; i < scopes.Length; i++)
-            Place(inset.Find(scopes[i]) as RectTransform, new Vector2(0, 1), new Vector2(12 + i * 122, -36), new Vector2(116, 28));
-        (inset.Find("ChatWhisperTargetButton") as RectTransform).sizeDelta = new Vector2(370, 24);
+        C06ChatSetup.ApplyCleanStyle();
+        C09BazaarSetup.ApplyCleanStyle();
         foreach (string name in new[] { "C07BagButton", "C09MarketButton" })
             SkinButton(hud.parent.Find(name).GetComponent<Button>(), 16);
         SkinButton(hud.Find("DisconnectButton").GetComponent<Button>(), 16);
@@ -154,20 +118,68 @@ public static class KnightInterfaceArtSetup
         if (!EditorSceneManager.SaveScene(scene)) throw new InvalidOperationException("Could not save interface art.");
     }
 
+    [MenuItem("Tools/Client Art/Refine HUD Layout")]
+    public static void ApplyRestrainedHud()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+            throw new InvalidOperationException("HUD authoring requires Edit Mode.");
+        var world = UnityEngine.Object.FindFirstObjectByType<C02WorldScreen>(FindObjectsInactive.Include);
+        if (world == null) throw new InvalidOperationException("The existing world screen is required.");
+        var worldRefs = new SerializedObject(world);
+        var hud = (GameObject)worldRefs.FindProperty("worldHud").objectReferenceValue;
+        var combat = hud.transform.parent.Find("C05CombatPanel") as RectTransform;
+        if (combat == null) throw new InvalidOperationException("The existing combat HUD is required.");
+        combat.anchorMin = new Vector2(0, 0); combat.anchorMax = new Vector2(1, 0);
+        combat.pivot = new Vector2(.5f, 0); combat.anchoredPosition = new Vector2(0, 8);
+        combat.sizeDelta = new Vector2(0, 78);
+        combat.GetComponent<Image>().color = Color.clear;
+        combat.GetComponent<Image>().raycastTarget = false;
+        foreach (var part in combat.GetComponentsInChildren<Transform>(true))
+            if (part.name == "ForgedFrame" || part.name == "FrameOrnaments" || part.name == "GaugeGlint") part.gameObject.SetActive(false);
+        var vitals = Child(combat, "VitalsPlate");
+        Place(vitals, new Vector2(1, 0), new Vector2(-24, 0), new Vector2(440, 68));
+        PlainSurface(vitals, new Color(.035f, .045f, .055f, .92f));
+        vitals.SetAsFirstSibling();
+        Gauge(combat, "C12HpTrack", 34.667f, 22.667f, new Color(.64f, .12f, .15f));
+        Gauge(combat, "C12MpTrack", 10.667f, 18, new Color(.12f, .34f, .65f));
+        var skills = Child(combat, "SkillPlate");
+        Place(skills, new Vector2(.5f, 0), Vector2.zero, new Vector2(222, 78));
+        PlainSurface(skills, new Color(.035f, .045f, .055f, .9f));
+        skills.SetAsFirstSibling();
+        for (int i = 0; i < 3; i++)
+        {
+            var skill = combat.Find("C05Skill" + i) as RectTransform;
+            Place(skill, new Vector2(.5f, 0), new Vector2((i - 1) * 66, 8), new Vector2(56, 62));
+            PlainSurface(skill, new Color(.15f, .18f, .21f));
+            var button = skill.GetComponent<Button>();
+            var colors = ColorBlock.defaultColorBlock;
+            colors.highlightedColor = new Color(1.2f, 1.2f, 1.2f);
+            button.colors = colors;
+            var badge = skill.Find("SkillKeyBadge") as RectTransform;
+            if (badge != null) PlainSurface(badge, new Color(.04f, .05f, .065f, .92f));
+            var key = badge != null ? badge.Find("SkillKey")?.GetComponent<TMP_Text>() : null;
+            if (key != null) { key.fontSize = 22; key.color = Color.white; key.fontStyle = FontStyles.Bold; }
+            var name = skill.Find("SkillName"); if (name != null) name.gameObject.SetActive(false);
+        }
+        var aim = combat.Find("C05Aim"); if (aim != null) aim.gameObject.SetActive(false);
+        var status = combat.Find("C05Status"); if (status != null) status.gameObject.SetActive(false);
+        EditorSceneManager.MarkSceneDirty(world.gameObject.scene);
+    }
+
+    private static void PlainSurface(RectTransform rect, Color color)
+    {
+        var image = rect.GetComponent<Image>();
+        image.sprite = null; image.type = Image.Type.Simple; image.color = color;
+    }
+
     private static void Gauge(RectTransform panel, string name, float y, float height, Color color)
     {
         var track = panel.Find(name) as RectTransform;
-        Place(track, new Vector2(0, 1), new Vector2(18.667f, y), new Vector2(402.667f, height));
-        track.GetComponent<Image>().color = new Color(.045f, .035f, .03f);
-        var fill = track.Find("Fill").GetComponent<Image>();
-        fill.color = color;
-        var shine = Child(track, "GaugeGlint");
-        shine.anchorMin = new Vector2(0, .7f); shine.anchorMax = new Vector2(1, .84f);
-        shine.offsetMin = new Vector2(3, 0); shine.offsetMax = new Vector2(-3, 0);
-        shine.GetComponent<Image>().color = new Color(1, .94f, .78f, .16f);
-        Border(track, 16);
+        Place(track, new Vector2(1, 0), new Vector2(-42.667f, y), new Vector2(402.667f, height));
+        PlainSurface(track, new Color(.08f, .095f, .11f));
+        track.Find("Fill").GetComponent<Image>().color = color;
         foreach (var text in track.GetComponentsInChildren<TMP_Text>(true))
-        { text.fontSize = height > 20 ? 18 : 15; text.color = new Color(.98f, .94f, .83f); text.transform.SetAsLastSibling(); }
+        { text.fontSize = height > 20 ? 18 : 15; text.color = new Color(.94f, .96f, .98f); text.transform.SetAsLastSibling(); }
     }
 
     private static void SkinPanel(RectTransform rect, float multiplier)

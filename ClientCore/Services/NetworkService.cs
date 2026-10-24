@@ -42,6 +42,9 @@ namespace ClientCore.Services
         public void RequestInventory() => _sock.Send(PacketBuilder.CreateInventoryRequestPacket());
         public void RequestBazaar(uint requestID, ushort itemType, ushort page) =>
             _sock.Send(Packet.SerializeBazaarRequest(requestID, itemType, page));
+        public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) =>
+            _sock.Send(Packet.SerializeBazaarRegisterRequest(requestID, inventorySlot, quantity, totalDiamondPrice));
+        public void RequestWallet(uint requestID) => _sock.Send(Packet.SerializeWalletRequest(requestID));
         public void RequestBazaarMyList(uint requestID) => _sock.Send(Packet.SerializeBazaarMyListRequest(requestID));
         public void RequestBazaarClaim(uint requestID, ulong listingID) => _sock.Send(Packet.SerializeBazaarClaimRequest(requestID, listingID));
         public void RequestBazaarBuy(uint requestID, ulong listingID) => _sock.Send(Packet.SerializeBazaarBuyRequest(requestID, listingID));

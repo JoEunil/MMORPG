@@ -1,0 +1,43 @@
+PLAY / ECONOMY / PRESENTATION CANDIDATE — 2026-10-24
+Scope: detailed ground albedo+authored normal, clean existing chat/market uGUI, bag-backed sale registration, gold fee/stack-total diamonds, wallet HUD and existing server/ClientCore connection. Monster AI untouched.
+
+Builds:
+- ClientCore Release/netstandard2.0 PASS, compiler errors0. NU1900 dependency vulnerability-feed lookup unavailable, not a compile failure.
+- MainServer Release/x64 PASS (economy-server-build.txt).
+- Changed IntegrationTestBazaar.h real-slot fixture included in incremental MainServer PASS (economy-fixture-build.txt). TEST_BAZAAR/DB-seeding harness NOT executed.
+- Unity recompile completed/failed=false/errors=[]; new nine serialized UI references present.
+
+Direct checks (new changes only):
+- RegisterRequestKeepsSlotQuantityAndFullWidthDiamondPrice PASS.
+- WalletResponsesPreserveUlongBalancesAndRejectMalformedFrames PASS.
+- WalletShowsEachSuccessfulBalanceAndIgnoresLatePreviousRequest PASS, including queued post-trade refresh (old balance100/200 -> new request ->90/150).
+- SellingBagStackShowsFeeAndBlocksRetryAfterUnknownResult PASS: real returned bag slot7, qty2, total95 diamonds, minimum10 gold fee, expected gold90, seller no diamond debit, two-button confirmation and no second write after uncertain outcome.
+- These are direct calls to existing NUnit fixture methods through Editor eval, not a claimed NUnitRunner XML run or live successful trade.
+
+Failed preparation attempts retained (not hidden):
+1 Edit Mode UI fixtures did not run the required MonoBehaviour lifecycle; use Play Mode.
+2 Fixture search Button lacked TMP label; added the real control shape.
+3 Editor copy had old wallet-before-open sequence; synchronize verified candidate order.
+4 Expected wording 'outcome unknown' differed from real 'Sale result unknown'; assert actual meaning and keep retry-count checks.
+Passed packet tests were not repeated; only changed/failing UI cases were rerun. Original movement/combat batch was not repeated here.
+
+Read-only independent review fixed:
+- Cold cache read failed permanently -> read-only max2 retries,1s interval.
+- Integration harness slot0 assumptions -> actual ADD response slot.
+- Bootstrap callbacks precede VM worldReady -> first wallet request next Update.
+- In-flight wallet swallowed post-trade refresh -> one queued follow-up read on reply/timeout.
+- Bazaar panel behind combat HUD -> top sibling on opening.
+Final reviewer: code-level no blocking issue; execution remains Coordinator's evidence.
+
+Live server/UI:
+- Same candidate DLL/server, native sign-in/selection/enter and real market search show actual potion listings; sale tab opens.
+- Wallet read failure displayed as '--', not invented zero. Inventory first cold read failed; successful sale/fee debit/diamond change NOT verified.
+- Read-only dedicated-row inspection: game.characters_inventory5011/5012 present; game.characters_currency both missing; bazaar.characters_diamond both missing. No row inserts, DB seed/reset/schema change.
+- Normal UI logout, Playfalse/backgroundfalse/scene dirtyfalse; server PTY83811 q shutdown exit0.
+
+Presentation:
+- Final actual ground material CitadelMeadow; obsolete ContinuousWalkableMeadow renderer disabled, existing18 obstacle colliders unchanged. Map export data and monster AI diff0.
+- Preview images ground-chat-wallet-preview.png and market-sale-preview.png are isolated Editor render with explicit sample values/items, NOT a live completed sale. Preview lighting is temporary, source scene unchanged.
+- Site generator/link validation PASS; browser image -> market detail and current270 activation totals confirmed.
+
+Delivery: one codex/play-economy-refresh candidate, final Slack PR approval required before push/PR. Old METRIC01 covers metrics only and must not publish this expanded candidate.

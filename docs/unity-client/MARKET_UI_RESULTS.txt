@@ -1,0 +1,17 @@
+MARKET UI / RESTRAINED HUD FOLLOW-UP — 2026-10-24
+Scope: existing PR50, no server/monster AI/economy/data changes.
+Compile: Unity recompile completed, errors0.
+Play Mode direct fixture invocation, not NUnit runner XML:
+SearchRendersThirtyRealRowsAndEmptySuccessHasNoInventedRows PASS 0.0832s
+WalletShowsEachSuccessfulBalanceAndIgnoresLatePreviousRequest PASS 0.0116s
+SellingBagStackShowsFeeAndBlocksRetryAfterUnknownResult PASS 0.0191s
+No repeated movement/combat/packet/server tests.
+After fixture freeze: only input background shade adjusted; recompile and final Editor render PASS.
+HUD: existing C05 parent/bindings preserved; HP corner delta0.001386px; three skill anchors(.5,0); decorative frames inactive; fullwidth root raycast=false.
+Market: selected icon/name/quantity; diamond price; state badge; sale total/fee/remaining gold controls; unknown values --; existing two-step write confirmation and uncertain-result block preserved.
+C10 existing display assertions updated (formatted 9,000 and 4,294,967,296, selected price instead of internal listingID); no full C10 rerun.
+Preview: 1280x720 isolated Editor PreviewScene, sample balances/items/HP/chat and capture-only lighting. Not live successful sale. Original scene unchanged by capture.
+Source scene saved after targeted setup; product GUID/reference owners retained. Unity serializer empty YAML values have native trailing spaces; no unrelated bulk whitespace rewrite.
+Public source: portfolio/market.md and player-hud.md; old screenshots retained; site build/link PASS; browser current featured image points to market-controls-preview.png.
+Final runtime: EditMode, scene dirtyfalse, backgroundfalse; no game server restart/input batch.
+Remaining: successful actual trade/debits require real currency data. No DB seed executed.

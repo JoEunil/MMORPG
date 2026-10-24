@@ -1,3 +1,85 @@
+## 재화 수명 보완 게시 확인 — 2026-10-24
+
+23cc71f 일반push 후 GitHub PR50 open/head일치 확인. UnityCoordinator앱 결과 작업스레드1792834440.943609·완료채널1792834441.607599 게시 확인. 같은범위 리뷰수정으로 추가승인/새PR 없음, 병합/배포 미실행.
+
+## PR50 재화 HUD 수명 리뷰 보완 — 2026-10-24
+
+두 지적 모두 유효: ClosePanel→CancelBazaar가 이미 전송한 판매/구매/수령 응답을 버려 wallet refresh를 놓쳤고, Zone 이동의 VM wallet 취소 후 화면 requested=true가 남았다. C09 기존 상태에서 재화 변경 write3종만 창닫기 뒤 상관성/선택/기존timeout을 유지하며 재열기 중 조회로 덮지 않는다. Buy/Claim은 숨긴 창에서도 응답을 처리하고 Register 성공도 창을 다시 열지 않는다. 단순 조회/취소매물/수령함의 기존 panel 취소 규칙은 유지한다. timeout은 mutation 재시도 없이 wallet만 조회한다. World unavailable 때 wallet UI 플래그·예약·retry예산·known값 초기화, destination bootstrap 다음Update 새 read. ClientCore/서버/DB/몬스터AI 변경0.
+
+Unity 컴파일 PASS. 기존 fixture에 신규2경로: 닫기+재열기+닫기 후 판매/구매/대금수령의 잔액 갱신(3case·mutation1회 유지), 구역이동중 VM실제cancel→옛응답무시→bootstrap 다음Update fresh read 통과. 처음행이름오류/수령탭이생성한조회완료시점누락은fixture보정; PASS된구역/판매/구매반복0,최종미통과claim만재확인PASS. 최종Close유지범위를재화3종으로좁히고일반cancel/outbox의기존조건복원 후 컴파일확인; 이미검증한3enum경로조건불변. Editor Playfalse/dirtyfalse/backgroundfalse 복원. 실거래/실입력 재검증0. 근거 WALLET_LIFECYCLE_RESULTS.txt. 독립 리뷰 차단없음, 리뷰 재활성화1(전체84/189/273). 기존 PR50에 관련수정으로 일반push, 같은Slack부모1792827478.780979 결과회신. 공개시각변경없음/새capture없음, 지표site build/link PASS.
+## UI 보완 PR50 반영 확인 — 2026-10-24
+
+제품 c3704de 일반 push 및 GitHub PR50 head 일치/open/mergeable 확인. 기존 PR본문에 변경 UI와 새 미리보기 링크를 추가했다. Unity Coordinator 앱 작업 스레드 결과1792833982.447879 게시 확인. 병합/정식배포 미실행, 제품 뒤 인계 기록만 추가하며 기존 PASS 반복0.
+
+## 거래소 시각 UI·HUD 간소화 — 2026-10-24
+
+사용자의 후속 요청을 기존 PR50 관련 보완으로 반영했다. 거래소 아이템 카드·다이아 가격 아이콘·판매 상태 배지·골드 수수료/예상 잔액 행·분리된 수량/가격 입력란을 기존 C09 화면에 통합했다. HP/MP 오른쪽 하단 위치 유지(저작 전후 모서리 차이 약0.0014px), 프레임/광택 제거, Z/X/C를 채팅과 게이지 사이 하단 중앙으로 이동했다. 기존 C05 상태/참조 유지, 전체폭 투명 HUD의 raycastTarget=false. 서버/몬스터AI/경제규칙/DB 변경0.
+
+Editor 재컴파일 PASS, 동결 후 Play Mode에서 변경 C09 fixture 3개(검색/재화 상관성/판매 수수료·미확정 중복차단) PASS. NUnit runner XML 결과가 아닌 기존 fixture 직접 실행이다. C10의 기존 표시 문자열 assertion3곳을 현재 천단위 가격/공개ID 제거에 맞췄으며 C10 전체 실행0. 이후 입력란 배경색만 구분하고 컴파일·에디터 렌더 확인, 기존 검사 반복0. 독립 읽기 리뷰 차단 결함 없음. 실제 판매 성공·재화 차감은 여전히 미검증(전용계정 재화행 없음), 미디어는 예시값 Editor PreviewScene이며 원본 scene 변형0.
+
+CAND/ROOT C02.scene 동기화, EditMode/dirtyfalse/backgroundfalse. 신규 이미지 restrained-hud-preview.png/market-controls-preview.png로 과거 이미지 보존. 공개 MD→site build/link PASS, 실제 브라우저 새 대표 이미지 링크 확인. 전문 활성화 구현 신규1/리뷰 재활성화1, 누적84/188/272. 기존 승인 범위의 UI 피드백이므로 PR50에 일반 push하며 별도 PR/중복 승인/병합/정식배포는 하지 않는다. 같은 Slack 부모1792827478.780979에 결과 회신한다.
+## ECON01 PR50 게시 완료 — 2026-10-24
+
+승인회신1792832876.214609를1회적용해 codex/play-economy-refresh를일반push하고 master대상PR50 ‘게임 화면·거래소 판매와 재화 표시 개선’을게시했다. https://github.com/JoEunil/MMORPG/pull/50 . 현재채팅artifact첨부완료. API재조회open/draftfalse/mergeabletrue,자동병합·masterpush·Pages정식배포0. 사용자AI diff0. 제품476377a·승인인계59e89e4에추가제품수정없음. 관련추가코드작업없음,이미PASS한테스트반복0.
+
+GitHub Pages PR build40080919953 completed/success 확인 https://github.com/JoEunil/MMORPG/actions/runs/40080919953 . 사이트배포는사용자master병합후기존Actions정책으로처리한다. 서버와DLL동시적용/실제판매·차감미검증(전용계정재화행없음)을PR본문에명시했다. DBseed허용으로해석하지않는다. 남은검증은정상재화데이터준비뒤실거래흐름이며새기능·몬스터AI·무관한PR로확대하지않는다. 브랜치정리는사용자병합확인후수명정책에따른다.
+## ECON01 승인 원문 확인·1회 적용 — 2026-10-24
+
+Slack 작업부모1792827478.780979의 지정사용자U0C9QEUHPMK 회신1792832876.214609 `승인 ECON01`을커넥터원문으로확인했다. 요청1792832364.323779·현재대기·제품후보476377a/인계f4a7e64와일치하고기소비기록없음을확인해1회적용했다. UnityCoordinator앱처리확인1792832975.882269. 사용자채팅도같은묶음PR게시를명시했다. METRIC01/ART03재사용0.
+
+원격fetch후origin/master358adb5불변,분기0/4,동명원격작업브랜치없음/작업트리clean/사용자AI2파일diff0. 관련제품·자료는모두현재후보에포함되었고새게임코드보완없음. 기존PASS검증반복0. 실제등록완료·재화차감미검증은테스트계정currency/diamond행없음때문이며승인은DBseed/초기화허용이아니다. 이한계·동시서버DLL버전적용을PR본문에명시한다. 일반push→master대상큰PR1개→첨부→앱결과회신예정;병합·공개는미실행.
+## ECON01 최종 게시 승인 대기 — 2026-10-24
+
+제품후보476377a를UnityCoordinator앱U0C9ZRTQ6F8으로작업부모1792827478.780979에요청1792832364.323779 게시했다. https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1792832364323779 . 지정사람U0C9QEUHPMK의이부모정확한 `승인 ECON01`만현재대기대상이다. 회신ID/현재요청/기소비를대조해동일앱스레드로처리결과를남긴뒤fetch/후보대조→일반push→master대상큰PR1개→artifact첨부한다. 승인전push/PR/Pages0,자동병합0. 제품후보뒤인계기록커밋은상태기록만이며검증내용불변이다.
+
+기존METRIC01부모1792826671.311379에는대체/종료1792832368.456359를남겼다. 옛METRIC01·ART03지연승인으로이확장묶음을게시하지않는다. 요청직전실제Node19616/phase=listening/고정Coordinator/updatedAt08:58:28UTC·clock08:58:31UTC/파일age2.39s확인. ConvertFromJson의DateTime암시변환으로계산한9시간오차는clock·파일mtime·NodeUTC대조로수신기장애가아님을확인했고재시작/권한변경하지않았다. 새사람답장왕복/소비는아직0.
+
+현재Unity정상EditMode/dirtyfalse/backgroundfalse,로컬9999서버정상종료. 미검증은재화행없는전용계정의실제등록완료·수수료차감·다이아거래이며임의DBseed없음. API40~44/DLL과서버는동시버전적용필요,이전baseline서버에새DLL혼용금지. 관련최소검증과정/실패보정/최종결과는PLAY_ECONOMY_RESULTS.txt. 다음작업은새기능확대가아닌현재후보게시승인처리다.
+## 플레이 화면·거래소 판매·재화 후보 완료 — 2026-10-24
+
+사용자 최신지시: 바닥재질/간결한채팅/판매등록/재화표시를 큰 PR 하나로. 몬스터AI 금지/기존PASS반복금지. 정본 CAND=ROOT/UnityClient/Builds/C10-Delivery/source,브랜치 codex/play-economy-refresh. 원격fetch후origin/master358adb5변경없음/분기0ahead-base,기존지표2커밋을같은묶음으로포함한다.
+
+구현: 바닥알베도+독립normal/실제CitadelMeadow지면,이를가리던이전단일구역시각floorRenderer만disable(18장애물/콜라이더/nav/export데이터불변). 기존uGUI채팅장식축소,거래소3탭/가방아이콘판매선택/수량·스택전체다이아가격/골드fee=max(10,price/10)확인/미확정재등록차단. 골드·다이아HUD,현Core/Cache/ClientCore op40~44연결,요청ID/서버characterbinding,부분조회실패표시. coldcache조회최대2회재시도/초기bootstrap다음프레임조회/기존조회중거래후갱신예약/상단모달수정. 경제규칙변경0/DB행삽입·스키마·초기화0/사용자AI diff0.
+
+검증: ClientCore Release PASS,MainServer Release+x64 PASS,변경된통합fixture실slot헤더포함증분빌드PASS. 새UI2 fixture(판매/Wallet상관성+후속갱신),새packet2검사PASS. 최초EditMode생명주기/fixture라벨/Editor동기화순서/문구불일치실패는 PLAY_ECONOMY_RESULTS.txt에보존. 통과packet반복0,이전이동/전투배치반복0. 독립리뷰최종코드상차단없음. 실제서버매물조회/판매탭진입/정상Logout,전용5011/5012 inventory행present·currency/diamond모두missing을readonly확인. 실제판매완료·재화차감은미검증이며--를가짜0으로대체하지않음. TEST_BAZAAR DBseed하네스미실행. 이번입력조작결과와이전baseline사냥결과를혼합하지않는다.
+
+실행정리: Playfalse/Scenedirtyfalse/backgroundfalse/새UI9참조누락0/18obstacles,서버PTY83811 q→exit0. ROOT/CAND Scene·DLL·재질일치. PreviewScene으로새화면2장촬영(예시재화·아이템/촬영용조명명시),원본scene변경0. 공개MD→sitegenerator/linkPASS,브라우저사진→거래소상세/270지표확인. 미리보기 http://127.0.0.1:8791/MMORPG/work/market/ .
+
+전문활성화 이번신규2/재활성화5: economy_connection_review 리뷰1+3, economy_ui_checks 구현1+2. 전체신규83/재활성화187/270,토큰N/A. 총괄입력·문서직접작업미계상. 게시직전최종Slack요청을이작업부모1792827478.780979에 ECON01로보낼예정. METRIC01은이확장묶음에서대체되어기소비금지. 승인전push/PR/Pages0. 상세 PLAY_ECONOMY_RESULTS.txt/PLAY_ECONOMY_INPUT_RESULTS.txt. 승인후fetch→현재후보대조→일반push→큰PR1개→artifact첨부;병합은사용자가한다.
+## 후속 후보 빌드 확인 — 2026-10-24
+
+입력 배치 후 CAND의 새 거래소 등록/재화 연결 ClientCore Release 빌드 PASS(NU1900 취약성목록 network 조회 경고1, 컴파일오류0). 서버 MainServer Release/x64 및 의존 lib 빌드 exit0. 최초 제한 환경 MSBuild는 로그 없이 대기하여 정확히 확인한 해당 build/node만 취소한 뒤 승인된 로컬 도구 실행으로 성공했다. 게임 서버 강제종료0/새 경제 서버 기동0. 로그 ROOT Builds/Play-Economy/economy-server-build.txt. C09BazaarUiTests 신규 인터페이스 stub과 새 실제 행/선택/전체묶음다이아 가격 표현에 맞는 assertion을 보정했으며 해당 Unity 테스트는 아직 미실행이다. ROOT는 기존 검증 버전 유지, 미동기화 경제 UI/ground 독립리뷰·Unity컴파일/변경영향검증·Scene적용·공개갱신·최종커밋/Slack게시승인이 남았다. 미완료를 통과로 보고하지 않는다.
+## 入力 배치 재개·실서버 확인 — 2026-10-24
+
+최신 사용자 입력 재개 요청으로 로그인/캐릭터선택/월드진입/로그아웃을 native 마우스로 완료. Windows 짧은 키 탭은 게임 반영을 확인하지 못해 통과로 기록하지 않았다. 지속 이동·스킬은 기존 Keyboard의 Unity InputSystem QueueStateEvent → 제품 Update → 실서버 응답으로 확인했으며 좌표/HP/패킷 핸들러 직접 주입은 하지 않았다. 이동 (89.41,61.97)→(89.41,72.91), 수직 방향전환 후 (80.31,72.91), 정지 drift0. Zone1→2 경계205 자동전환, Z/X/C 각 phase0+1 및 MP9938→9897 확인. 사냥터 몬스터11 HP1500→500, 캐릭터10000→9975/monsterPhases3 확인. 처치·EXP증가 검증은 실행하지 않았다.
+
+몬스터가 캐릭터와 정확히 같은 서버좌표에 있을 때 모델이 가려졌으며 renderer29개 active/유효 material 확인 후 입력으로 거리를 벌리자 실제 모델 표시를 확인했다. 사용자 AI의 좌표 겹침 정책은 변경하지 않았다. 검증 중 관찰 대기에도 서버 전투가 진행되어 후속 HP8425/8025를 관찰했으며 로그인 시 HP복구/DB수정0. 정상 로그아웃 후 Playfalse/backgroundfalse/Scenedirtyfalse 복원, 서버 PTY20081에 q로 정상 종료(exit0). 상세·캡처는 ROOT UnityClient/Builds/Play-Economy/live-input-details.txt, live-*-run.txt/png. 현재 검증은 기존 baseline이며 CAND의 미컴파일 경제UI/ground 후보 통과가 아니다.
+
+Slack UnityCoordinator 앱 결과1792829566.022909를 기존 작업부모1792827478.780979에 게시했다. 전문에이전트 활성화 추가0, 총괄 직접 입력은 지표에서 제외. market_wallet_connection 구현 완료(미빌드/독립리뷰 전), 다음은 관련 빌드와 UI fixture 정합성/직접 영향 최소검증. 기존 PASS 입력은 반복하지 않는다.
+## 플레이·경제 UI 묶음 진행 중 / 입력 도구 중지 — 2026-10-24
+
+최신 사용자: 실전조작→바닥텍스처/간결한채팅/거래소판매등록·수수료/골드·다이아HUD. AI는사용자구현,A*없음/장애물배회이번제외. 새작업Slack부모1792827478.780979 https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1792827478780979 자동등록. 소스브랜치 codex/play-economy-refresh는전체지표미게시커밋57d80b8에서시작,원격master358adb5까지포함. METRIC01은이전지표게시요청으로새경제범위승인아님;최종게시요청은묶음완료뒤준비한다.
+
+ROOT Editor14964/6000.0.47f1/7800를설치본으로복구. ROOT4제품파일(C04/C05/C19/Scene)은CAND와일치. MySQL/Redis기존running,Login기존Game/Login node30472정상시작/개인비밀출력0. 사용자AI원본Game와CAND의ZoneState_Monsters.cpp·MonsterState.h해시일치확인/AI수정0. baseline native격리빌드완료,최초forward-slash OutDir의xcopy입력반복실패는정확한copy shell/child만중단후Windows경로로성공. 게임서버강제종료0. Play-Economy/bin baselineexe를PTY세션45906으로시작(ready),종료시q+newline으로서버종료/exit0확인. 현재9999수신없음.
+
+실입력: 전용02입력란만DPAPI메모리로prefill,실제로그인버튼/선택/월드/이동·전투입력0. ComputerUse가물리Esc중지반환,사용자가‘컴퓨터입력해도돼’로재허용했으나이턴도구가동일중지상태반환해서더호출하지않았다. 숨은InputSystem/핸들러호출로우회0. Play정상stop/backgroundfalse/Scenedirtyfalse복원. 실제조작검증미실행,사용자재허용사실은유지하되도구중지상태해제전컴퓨터도구반복하지않는다.
+
+CAND WIP(미컴파일/미커밋): C09기존화면에wallet1곳소유/금액조회·8s실패표시,가방판매목록·확인·수수료/전체묶음다이아가격·미확인재등록차단. 기존rowbuilder공유/등록후mylist·wallet재조회. C06/C09Setup간결한판넬/하단채팅/새saleform·wallet직렬화후보, KnightInterfaceArtSetup에서이두UI과장스킨제외. 아직ROOT에동기화/Scene적용하지않음. root수정담당은Coordinator이며agent는CAND만편집중. C09BazaarUiTests의기존가격/행색/내부IDexpectation은새UI표현에맞춰의미보존정정및신규판매·지갑1~2핵심검사필요. 인터페이스stub중해당테스트파일만Coordinator소유.
+
+역할: market_wallet_contract/server_analyst 신규1 읽기완료(판매fee=max(10,price/10)gold;구매listing.price다이아/판매claim지급;묶음전체가격;register/walletTCP없음); ground_surface_refresh/asset_artist 신규1+재활성화1 완료(7ground파일/normal/CitadelEnvironmentArt.ApplyGroundSurface전용,ROOT미적용·미렌더); market_wallet_connection/worker 신규1 진행중(기존CoreLib/CacheLib/ClientCore경계op40~44/register+wallet·세션/요청상관성·관련stub;AI/UI/Git금지). API RequestWallet/OnWalletReceived(byte goldStatus,ulong gold,byte diamondStatus,ulong diamond), RequestBazaarRegister(byte slot,ushort qty,ulong totalPrice)/OnBazaarRegisterReceived(byte status). walletstatus1성공0실패,register0rollback/1success/2itemshort/3goldshort/4invalid/5unknown. 추가UI새Manager0. 최종빌드·직접2~3검사·독립리뷰·저작화면후정확한보고필요. 작업중인변경을일괄커밋/원격게시하지않는다.
+
+## METRIC01 게시 승인 대기 — 2026-10-24
+
+로컬후보a46875a. 새Slack부모1792826671.311379/채널C0C9VFZMV43 https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1792826671311379 에 UnityCoordinator앱U0C9ZRTQ6F8으로요청게시/threads.txt자동등록완료. 지정사용자U0C9QEUHPMK의이부모 `승인 METRIC01`만현재대기대상이며수신시회신ID/기소비/요청범위확인후적용한다. 이전ART03은소비완료/재사용금지. 현재새승인수신0,push/PR0. 수신기실제Node19616·listening·고정대상·health4.3s/SOCKET_READY확인,신규사람왕복은미검증.
+
+## 전체 역할별 Agent 활용 집계 보완 — 2026-10-24
+
+사용자 요청으로 최근 아트29회 부분표를 기록 시작 이후 전체259회 표로 대체했다. 기획1,서버분석54,구현70,아트29,리뷰94,테스트5,기록5,역할미확인1. 신규78/재활성화181과일치. 기준선11개 누적표와후속증분을중복제거하여77인스턴스258회귀속확인,225→230누적의추가신규1명은추정하지않았다. 근거 AGENT_USAGE.md와 AGENT_ROLE_RECONCILIATION.txt. 도구 worker/explorer명이아닌배정책임으로분류했고총괄직접시험·문서작업/메시지는제외. 이번새Agent0/게임검사0.
+
+site build/내부링크PASS,전체합계강제일치검증·실제브라우저8행확인. localhost8791미리보기꺼져있어정상재시작PID30328. PR48/49는사용자병합및원격자동삭제완료확인,지난ART03재소비0. 새브랜치 codex/agent-role-metrics는현재origin/master358adb5에서시작. 공개지표보완만로컬커밋하고새작업부모에서 METRIC01 게시승인을요청한다. Unity/서버AI변경0.
+
+Slack수신기는과거health뿐이고실제33572없음확인. stop마커없음·현재설치codexqueue도움말·고정Coordinator대조후기존Start도구숨김재시작. 비밀/권한/실행정책변경0. 새사람답장왕복은아직미검증.
+
 ## 아트·활용 지표 PR 게시 완료 — 2026-10-23
 
 PR49 https://github.com/JoEunil/MMORPG/pull/49 생성/현재채팅첨부 완료. head codex/knight-art-direction, base codex/client-structure-cleanup(PR48선행),GitHub mergeable 확인. ART03 회신1792760233.285059는 위 수신기록에서1회소비완료. 서버AI diff0/병합0/Pages배포0.

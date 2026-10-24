@@ -149,6 +149,9 @@ namespace Core {
         std::unique_ptr<IPacket, PacketDeleter> WriteBazaarClaimResponse(const MsgBazaarClaimResBody* body);
         std::unique_ptr<IPacket, PacketDeleter> WriteBazaarMyListResponse(const MsgBazaarMyListResBody* body);
         std::unique_ptr<IPacket, PacketDeleter> WriteBazaarSearchResponse(const MsgBazaarSearchResBody* body);
+        std::unique_ptr<IPacket, PacketDeleter> WriteBazaarRegisterResponse(const MsgBazaarRegisterResBody* body);
+        std::unique_ptr<IPacket, PacketDeleter> WriteWalletGoldResponse(const MsgCurrencyResBody* body);
+        std::unique_ptr<IPacket, PacketDeleter> WriteWalletDiamondResponse(const MsgDiamondResBody* body);
 
         std::unique_ptr<IPacket, PacketDeleter> WriteProfileBatchRes(const ProfileEntry* entries, uint16_t count);
 
