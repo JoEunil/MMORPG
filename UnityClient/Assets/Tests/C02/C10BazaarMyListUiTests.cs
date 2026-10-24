@@ -39,9 +39,9 @@ namespace C02.Tests
                 Assert.That(fixture.Row(92).Find("State").GetComponent<TMP_Text>().text, Is.EqualTo("Claimed"));
                 Assert.That(fixture.Row(91).Find("Item").GetComponent<TMP_Text>().text, Is.EqualTo("Item #700"));
                 Assert.That(fixture.Row(91).Find("Quantity").GetComponent<TMP_Text>().text, Is.EqualTo("2"));
-                Assert.That(fixture.Row(91).Find("Price").GetComponent<TMP_Text>().text, Is.EqualTo("9000"));
+                Assert.That(fixture.Row(91).Find("Price").GetComponent<TMP_Text>().text, Is.EqualTo("9,000"));
                 fixture.Row(91).GetComponent<Button>().onClick.Invoke();
-                Assert.That(fixture.Detail.text, Does.Contain("Listing #91"));
+                Assert.That(fixture.Detail.text, Does.Contain("9,000 diamonds"));
                 Assert.That(fixture.Detail.text, Does.Contain("Sold"));
                 Assert.That(fixture.Detail.text, Does.Not.Contain("Available to claim"));
                 Assert.That(fixture.Status.text, Is.EqualTo("My listings: 2 listings · up to 30 shown"));
@@ -170,7 +170,7 @@ namespace C02.Tests
                 fixture.Row(1001).GetComponent<Button>().onClick.Invoke();
                 fixture.Buy.onClick.Invoke();
                 Assert.That(fixture.Network.BuyRequests, Is.Zero, "The first click must display a price confirmation without sending a purchase.");
-                Assert.That(fixture.Status.text + fixture.Detail.text, Does.Contain("4294967296"));
+                Assert.That(fixture.Status.text + fixture.Detail.text, Does.Contain("4,294,967,296"));
                 fixture.Buy.onClick.Invoke();
                 fixture.Buy.onClick.Invoke();
                 Assert.That(fixture.Network.BuyRequests, Is.EqualTo(1));

@@ -1,3 +1,10 @@
+## 거래소 시각 UI·HUD 간소화 — 2026-10-24
+
+사용자의 후속 요청을 기존 PR50 관련 보완으로 반영했다. 거래소 아이템 카드·다이아 가격 아이콘·판매 상태 배지·골드 수수료/예상 잔액 행·분리된 수량/가격 입력란을 기존 C09 화면에 통합했다. HP/MP 오른쪽 하단 위치 유지(저작 전후 모서리 차이 약0.0014px), 프레임/광택 제거, Z/X/C를 채팅과 게이지 사이 하단 중앙으로 이동했다. 기존 C05 상태/참조 유지, 전체폭 투명 HUD의 raycastTarget=false. 서버/몬스터AI/경제규칙/DB 변경0.
+
+Editor 재컴파일 PASS, 동결 후 Play Mode에서 변경 C09 fixture 3개(검색/재화 상관성/판매 수수료·미확정 중복차단) PASS. NUnit runner XML 결과가 아닌 기존 fixture 직접 실행이다. C10의 기존 표시 문자열 assertion3곳을 현재 천단위 가격/공개ID 제거에 맞췄으며 C10 전체 실행0. 이후 입력란 배경색만 구분하고 컴파일·에디터 렌더 확인, 기존 검사 반복0. 독립 읽기 리뷰 차단 결함 없음. 실제 판매 성공·재화 차감은 여전히 미검증(전용계정 재화행 없음), 미디어는 예시값 Editor PreviewScene이며 원본 scene 변형0.
+
+CAND/ROOT C02.scene 동기화, EditMode/dirtyfalse/backgroundfalse. 신규 이미지 restrained-hud-preview.png/market-controls-preview.png로 과거 이미지 보존. 공개 MD→site build/link PASS, 실제 브라우저 새 대표 이미지 링크 확인. 전문 활성화 구현 신규1/리뷰 재활성화1, 누적84/188/272. 기존 승인 범위의 UI 피드백이므로 PR50에 일반 push하며 별도 PR/중복 승인/병합/정식배포는 하지 않는다. 같은 Slack 부모1792827478.780979에 결과 회신한다.
 ## ECON01 PR50 게시 완료 — 2026-10-24
 
 승인회신1792832876.214609를1회적용해 codex/play-economy-refresh를일반push하고 master대상PR50 ‘게임 화면·거래소 판매와 재화 표시 개선’을게시했다. https://github.com/JoEunil/MMORPG/pull/50 . 현재채팅artifact첨부완료. API재조회open/draftfalse/mergeabletrue,자동병합·masterpush·Pages정식배포0. 사용자AI diff0. 제품476377a·승인인계59e89e4에추가제품수정없음. 관련추가코드작업없음,이미PASS한테스트반복0.

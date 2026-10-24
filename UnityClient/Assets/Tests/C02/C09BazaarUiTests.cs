@@ -37,20 +37,21 @@ namespace C02.Tests
                 var lastRow = fixture.Row(1029);
                 Assert.That(lastRow.Find("Item").GetComponent<TMP_Text>().text, Is.EqualTo("Item #729"));
                 Assert.That(lastRow.Find("Quantity").GetComponent<TMP_Text>().text, Is.EqualTo("30"));
-                Assert.That(lastRow.Find("Price").GetComponent<TMP_Text>().text, Is.EqualTo("9,029 D"));
+                Assert.That(lastRow.Find("Price").GetComponent<TMP_Text>().text, Is.EqualTo("9,029"));
+                Assert.That(lastRow.Find("DiamondMark").GetComponent<Image>(), Is.Not.Null);
                 Assert.That(lastRow.Find("State").GetComponent<TMP_Text>().text, Is.EqualTo("Trading"));
+                Assert.That(lastRow.Find("StateBadge").GetComponent<Image>(), Is.Not.Null);
                 Assert.That(lastRow.GetComponent<UnityEngine.UI.LayoutElement>().preferredHeight, Is.EqualTo(74));
                 lastRow.GetComponent<Button>().onClick.Invoke();
                 Assert.That(lastRow.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.20f, .29f, .34f)));
-                Assert.That(fixture.Detail.text, Does.Contain("Item #729"));
-                Assert.That(fixture.Detail.text, Does.Contain("Quantity 30"));
-                Assert.That(fixture.Detail.text, Does.Contain("Stack total 9,029 diamonds"));
-                Assert.That(fixture.Detail.text, Does.Contain("Purchase deducts diamonds"));
-                Assert.That(fixture.Detail.text, Does.Contain("Receive items delivers them to your bag"));
+                Assert.That(fixture.SelectedName.text, Is.EqualTo("Item #729"));
+                Assert.That(fixture.SelectedQuantity.text, Is.EqualTo("× 30"));
+                Assert.That(fixture.Detail.text, Does.Contain("9,029 diamonds"));
+                Assert.That(fixture.Detail.text, Does.Contain("buyer pays"));
                 fixture.Row(1000).GetComponent<Button>().onClick.Invoke();
                 Assert.That(lastRow.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.09f, .11f, .14f)));
                 Assert.That(fixture.Row(1000).GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.20f, .29f, .34f)));
-                Assert.That(fixture.Detail.text, Does.Contain("Stack total 9,000 diamonds"));
+                Assert.That(fixture.Detail.text, Does.Contain("9,000 diamonds"));
 
                 fixture.Search.onClick.Invoke();
                 Assert.That(fixture.ActiveRowCount, Is.Zero, "Refreshing clears the previous page before sending.");
@@ -167,17 +168,17 @@ namespace C02.Tests
             {
                 uint initialRequest = fixture.Network.LastWalletRequestID;
                 fixture.ReceiveWallet(initialRequest, 1, 123456, 0, 0);
-                Assert.That(fixture.WalletGold.text, Is.EqualTo("GOLD  123,456"));
-                Assert.That(fixture.WalletDiamond.text, Is.EqualTo("DIAMONDS  --"));
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("123,456"));
+                Assert.That(fixture.WalletDiamond.text, Is.EqualTo("--"));
 
                 fixture.OpenMarket();
                 uint currentRequest = fixture.Network.LastWalletRequestID;
                 Assert.That(currentRequest, Is.Not.EqualTo(initialRequest));
                 fixture.ReceiveWallet(initialRequest, 1, 1, 1, 2);
-                Assert.That(fixture.WalletGold.text, Is.EqualTo("GOLD  …"), "A late pair cannot replace the pending wallet request.");
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("…"), "A late pair cannot replace the pending wallet request.");
                 fixture.ReceiveWallet(currentRequest, 1, 9876543210, 1, 7654321);
-                Assert.That(fixture.WalletGold.text, Is.EqualTo("GOLD  9,876,543,210"));
-                Assert.That(fixture.WalletDiamond.text, Is.EqualTo("DIAMONDS  7,654,321"));
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("9,876,543,210"));
+                Assert.That(fixture.WalletDiamond.text, Is.EqualTo("7,654,321"));
                 Invoke(fixture.Screen, "RefreshWallet");
                 uint beforeTrade = fixture.Network.LastWalletRequestID;
                 Invoke(fixture.Screen, "RefreshWallet"); // A completed trade requests a fresh balance while the old read is pending.
@@ -187,8 +188,8 @@ namespace C02.Tests
                 uint afterTrade = fixture.Network.LastWalletRequestID;
                 Assert.That(afterTrade, Is.Not.EqualTo(beforeTrade), "A pending read cannot swallow the post-trade refresh.");
                 fixture.ReceiveWallet(afterTrade, 1, 90, 1, 150);
-                Assert.That(fixture.WalletGold.text, Is.EqualTo("GOLD  90"));
-                Assert.That(fixture.WalletDiamond.text, Is.EqualTo("DIAMONDS  150"));
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("90"));
+                Assert.That(fixture.WalletDiamond.text, Is.EqualTo("150"));
             }
         }
 
@@ -209,10 +210,11 @@ namespace C02.Tests
                 item.GetComponent<Button>().onClick.Invoke();
                 fixture.Quantity.text = "2";
                 fixture.Price.text = "95";
-                Assert.That(fixture.SaleSummary.text, Does.Contain("Stack total: 95 diamonds"));
-                Assert.That(fixture.SaleSummary.text, Does.Contain("Registration fee: 10 gold"));
-                Assert.That(fixture.SaleSummary.text, Does.Contain("Estimated gold after listing: 90"));
-                Assert.That(fixture.SaleSummary.text, Does.Contain("no diamonds deducted from the seller"));
+                Assert.That(fixture.SaleStackValue.text, Is.EqualTo("95"));
+                Assert.That(fixture.SaleFeeValue.text, Is.EqualTo("10"));
+                Assert.That(fixture.SaleGoldAfterValue.text, Is.EqualTo("90"));
+                Assert.That(fixture.SaleSummary.text, Does.Contain("Buyer pays diamonds"));
+                Assert.That(fixture.SaleSummary.text, Does.Contain("not refunded"));
 
                 fixture.Register.onClick.Invoke();
                 Assert.That(fixture.Register.interactable, Is.True, "The first press reviews the sale without sending it.");
@@ -246,6 +248,7 @@ namespace C02.Tests
             public readonly Transform Rows;
             public readonly TMP_Text EmptyState, Detail, Status;
             public readonly TMP_Text WalletGold, WalletDiamond, SaleSummary;
+            public readonly TMP_Text SaleStackValue, SaleFeeValue, SaleGoldAfterValue, SelectedName, SelectedQuantity;
             public readonly TMP_InputField Quantity, Price;
             public int ActiveRowCount
             {
@@ -309,6 +312,13 @@ namespace C02.Tests
                 WalletGold = Text("wallet gold");
                 WalletDiamond = Text("wallet diamonds");
                 SaleSummary = Text("sale summary");
+                SaleStackValue = Text("stack total");
+                SaleFeeValue = Text("gold fee");
+                SaleGoldAfterValue = Text("gold after");
+                SelectedName = Text("selected item name");
+                SelectedQuantity = Text("selected item quantity");
+                var selectedIconObject = Child("selected item icon");
+                var selectedIcon = selectedIconObject.AddComponent<Image>();
                 Quantity = Input("sale quantity");
                 Price = Input("sale price");
                 SellItems = ButtonObject("sell items");
@@ -329,6 +339,9 @@ namespace C02.Tests
                 Set(Screen, "listingRows", Rows);
                 Set(Screen, "emptyStateText", EmptyState);
                 Set(Screen, "selectedDetailText", Detail);
+                Set(Screen, "selectedItemIcon", selectedIcon);
+                Set(Screen, "selectedItemNameText", SelectedName);
+                Set(Screen, "selectedItemQuantityText", SelectedQuantity);
                 Set(Screen, "statusText", Status);
                 Set(Screen, "sellItemsButton", SellItems);
                 Set(Screen, "registerButton", Register);
@@ -336,6 +349,9 @@ namespace C02.Tests
                 Set(Screen, "quantityInput", Quantity);
                 Set(Screen, "priceInput", Price);
                 Set(Screen, "saleSummaryText", SaleSummary);
+                Set(Screen, "saleStackValueText", SaleStackValue);
+                Set(Screen, "saleFeeValueText", SaleFeeValue);
+                Set(Screen, "saleGoldAfterValueText", SaleGoldAfterValue);
                 Set(Screen, "walletHud", walletHud);
                 Set(Screen, "walletGoldText", WalletGold);
                 Set(Screen, "walletDiamondText", WalletDiamond);

@@ -41,6 +41,12 @@ namespace C02
         [SerializeField] private TMP_InputField quantityInput;
         [SerializeField] private TMP_InputField priceInput;
         [SerializeField] private TMP_Text saleSummaryText;
+        [SerializeField] private TMP_Text saleStackValueText;
+        [SerializeField] private TMP_Text saleFeeValueText;
+        [SerializeField] private TMP_Text saleGoldAfterValueText;
+        [SerializeField] private Image selectedItemIcon;
+        [SerializeField] private TMP_Text selectedItemNameText;
+        [SerializeField] private TMP_Text selectedItemQuantityText;
         [SerializeField] private GameObject walletHud;
         [SerializeField] private TMP_Text walletGoldText;
         [SerializeField] private TMP_Text walletDiamondText;
@@ -407,9 +413,9 @@ namespace C02
                 iconImage.preserveAspect = true;
                 iconImage.raycastTarget = false;
             }
-            AddCell(rowObject.transform, "Item", C11ItemPresentation.Name(itemID), 0.14f, 0.48f,
+            AddCell(rowObject.transform, "Item", C11ItemPresentation.Name(itemID), 0.14f, 0.40f,
                 TextAlignmentOptions.MidlineLeft, 16, new Color(.94f, .95f, .97f));
-            AddCell(rowObject.transform, "Quantity", quantity.ToString(CultureInfo.InvariantCulture), 0.49f, 0.61f,
+            AddCell(rowObject.transform, "Quantity", quantity.ToString(CultureInfo.InvariantCulture), 0.41f, 0.50f,
                 TextAlignmentOptions.Center, 14, new Color(.80f, .85f, .90f));
             return rowObject;
         }
@@ -419,10 +425,21 @@ namespace C02
             var rowObject = CreateItemRow(listing.ItemID, listing.Quantity, index);
             rowObject.name = "Listing-" + listing.ListingID.ToString(CultureInfo.InvariantCulture);
             var button = rowObject.GetComponent<UnityEngine.UI.Button>();
-            AddCell(rowObject.transform, "Price", listing.Price.ToString("N0", CultureInfo.InvariantCulture) + " D", .62f, .81f,
-                TextAlignmentOptions.MidlineRight, 16, new Color(.49f, .83f, .96f));
-            AddCell(rowObject.transform, "State", ListingStatusName(listing.Status), .82f, .99f,
-                TextAlignmentOptions.Center, 14, new Color(.77f, .82f, .88f));
+            AddCurrencyMark(rowObject.transform, "DiamondMark", false, .525f);
+            AddCell(rowObject.transform, "Price", listing.Price.ToString("N0", CultureInfo.InvariantCulture), .56f, .77f,
+                TextAlignmentOptions.MidlineRight, 14, new Color(.72f, .87f, .93f));
+            var stateBadge = new GameObject("StateBadge", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+            stateBadge.transform.SetParent(rowObject.transform, false);
+            var stateRect = stateBadge.GetComponent<RectTransform>();
+            stateRect.anchorMin = stateRect.anchorMax = new Vector2(.885f, .5f);
+            stateRect.pivot = new Vector2(.5f, .5f);
+            stateRect.sizeDelta = new Vector2(60, 27);
+            stateBadge.GetComponent<UnityEngine.UI.Image>().color = listing.Status == 0
+                ? new Color(.20f, .34f, .29f, .9f) : new Color(.25f, .27f, .30f, .9f);
+            stateBadge.GetComponent<UnityEngine.UI.Image>().raycastTarget = false;
+            var state = AddCell(rowObject.transform, "State", ListingStatusName(listing.Status), .78f, .99f,
+                TextAlignmentOptions.Center, 13, new Color(.84f, .88f, .87f));
+            stateRect.SetAsFirstSibling();
             button.onClick.AddListener(() => SelectListing(listing, button));
         }
 
@@ -441,16 +458,15 @@ namespace C02
             buyConfirmation = false;
             cancelConfirmation = false;
             button.GetComponent<UnityEngine.UI.Image>().color = new Color(.20f, .29f, .34f);
-            selectedDetailText.text = C11ItemPresentation.Name(listing.ItemID) + "  ·  " + ListingStatusName(listing.Status) +
-                "\nQuantity " + listing.Quantity.ToString(CultureInfo.InvariantCulture) +
-                "  ·  Stack total " + listing.Price.ToString("N0", CultureInfo.InvariantCulture) + " diamonds" +
-                "\nPurchase deducts diamonds; Receive items delivers them to your bag.";
-            if (claimOutcomes.TryGetValue(listing.ListingID, out byte outcome)) selectedDetailText.text += outcome == 1 ? "\nProceeds collected." : "\nNo pending proceeds were found.";
-            else if (unresolvedClaims.Contains(listing.ListingID)) selectedDetailText.text += "\nCollection result unknown. Reconnect to check.";
+            ShowSelectedItem(listing.ItemID, listing.Quantity);
+            selectedDetailText.text = listing.Price.ToString("N0", CultureInfo.InvariantCulture) + " diamonds · " + ListingStatusName(listing.Status) +
+                (myListings ? "" : " · buyer pays; collect item separately");
+            if (claimOutcomes.TryGetValue(listing.ListingID, out byte outcome)) selectedDetailText.text = outcome == 1 ? "Proceeds collected." : "No proceeds to collect.";
+            else if (unresolvedClaims.Contains(listing.ListingID)) selectedDetailText.text = "Collection result unknown · reconnect to check.";
             if (buyOutcomes.TryGetValue(listing.ListingID, out byte buyOutcome))
-                selectedDetailText.text += buyOutcome == 1 ? "\nPurchased. Use Receive purchases, then check your bag." : "\nPurchase result unknown. Reconnect to check.";
+                selectedDetailText.text = buyOutcome == 1 ? "Purchased · receive items to your bag." : "Purchase result unknown · reconnect to check.";
             if (cancelOutcomes.TryGetValue(listing.ListingID, out byte cancelOutcome))
-                selectedDetailText.text += cancelOutcome == 1 ? "\nSale cancelled. Receive items and check your bag." : "\nCancellation result unknown. Refresh my listings and receive items.";
+                selectedDetailText.text = cancelOutcome == 1 ? "Sale cancelled · receive returned item." : "Cancellation result unknown · refresh listings.";
             UpdateControls();
         }
 
@@ -462,9 +478,8 @@ namespace C02
             if (!cancelConfirmation)
             {
                 cancelConfirmation = true;
-                selectedDetailText.text = "Cancel sale of " + C11ItemPresentation.Name(selectedListing.ItemID) + " × " +
-                    selectedListing.Quantity.ToString(CultureInfo.InvariantCulture) + "?\nThe listing fee is not refunded.\nCancellation and item return are separate.\nSelect CONFIRM CANCELLATION to continue.";
-                statusText.text = "Confirm cancellation of your selected sale.";
+                selectedDetailText.text = "Fee is not refunded.\nReceive returned items separately.";
+                statusText.text = "Press again to cancel the sale.";
                 UpdateControls();
                 return;
             }
@@ -513,10 +528,8 @@ namespace C02
             if (!buyConfirmation)
             {
                 buyConfirmation = true;
-                selectedDetailText.text = "Buy " + C11ItemPresentation.Name(selectedListing.ItemID) + " × " +
-                    selectedListing.Quantity.ToString(CultureInfo.InvariantCulture) + "?\nPrice " +
-                    selectedListing.Price.ToString(CultureInfo.InvariantCulture) + " diamonds.\nPurchase and item receipt are separate.\nSelect CONFIRM PURCHASE to continue.";
-                statusText.text = "Confirm the selected price before buying.";
+                selectedDetailText.text = "Buy for " + selectedListing.Price.ToString("N0", CultureInfo.InvariantCulture) + " diamonds?";
+                statusText.text = "Press again to confirm purchase.";
                 UpdateControls();
                 return;
             }
@@ -683,6 +696,9 @@ namespace C02
             if (selectedDetailText != null) selectedDetailText.text = myListings
                 ? "Select a trading listing to cancel its sale, or a sold listing to collect proceeds."
                 : "Select a listing to see its details.";
+            if (selectedItemIcon != null) { selectedItemIcon.sprite = null; selectedItemIcon.enabled = false; }
+            if (selectedItemNameText != null) selectedItemNameText.text = selling ? "Select an item" : "Select a listing";
+            if (selectedItemQuantityText != null) selectedItemQuantityText.text = string.Empty;
         }
 
         private void ClearResults()
@@ -836,8 +852,8 @@ namespace C02
 
         private void ShowWallet()
         {
-            if (walletGoldText != null) walletGoldText.text = "GOLD  " + (goldKnown ? gold.ToString("N0", CultureInfo.InvariantCulture) : walletPending ? "…" : "--");
-            if (walletDiamondText != null) walletDiamondText.text = "DIAMONDS  " + (diamondKnown ? diamonds.ToString("N0", CultureInfo.InvariantCulture) : walletPending ? "…" : "--");
+            if (walletGoldText != null) walletGoldText.text = goldKnown ? gold.ToString("N0", CultureInfo.InvariantCulture) : walletPending ? "…" : "--";
+            if (walletDiamondText != null) walletDiamondText.text = diamondKnown ? diamonds.ToString("N0", CultureInfo.InvariantCulture) : walletPending ? "…" : "--";
         }
 
         private void SelectSellItems()
@@ -884,7 +900,8 @@ namespace C02
                     saleItem = selected;
                     quantityInput.SetTextWithoutNotify("1");
                     registerConfirmation = false;
-                    selectedDetailText.text = C11ItemPresentation.Name(selected.ItemID) + " × " + selected.Quantity + " available · slot " + selected.Slot;
+                    ShowSelectedItem(selected.ItemID, selected.Quantity);
+                    selectedDetailText.text = "Slot " + selected.Slot.ToString(CultureInfo.InvariantCulture) + " selected";
                     UpdateSaleSummary();
                     UpdateControls();
                 });
@@ -914,12 +931,47 @@ namespace C02
         private void UpdateSaleSummary()
         {
             if (saleSummaryText == null) return;
-            if (!TrySaleValues(out ushort quantity, out ulong price))
-            { saleSummaryText.text = "Choose an item and enter a valid quantity and stack total."; return; }
+            bool valid = TrySaleValues(out ushort quantity, out ulong price);
+            if (!valid)
+            {
+                if (saleStackValueText != null) saleStackValueText.text = "--";
+                if (saleFeeValueText != null) saleFeeValueText.text = "--";
+                if (saleGoldAfterValueText != null) saleGoldAfterValueText.text = "--";
+                saleSummaryText.text = saleItem.ItemID == 0 ? "Select an item and enter its total price." : "Enter a valid quantity and total price.";
+                return;
+            }
             ulong fee = Math.Max(10UL, price / 10UL);
-            saleSummaryText.text = "Stack total: " + price.ToString("N0", CultureInfo.InvariantCulture) + " diamonds\nRegistration fee: " + fee.ToString("N0", CultureInfo.InvariantCulture) + " gold (not refunded)\n" +
-                (goldKnown ? gold >= fee ? "Estimated gold after listing: " + (gold - fee).ToString("N0", CultureInfo.InvariantCulture) : "Not enough gold for the fee."
-                    : "Gold balance unavailable; the server checks the fee.") + "\nDiamonds are paid by the buyer; no diamonds deducted from the seller.";
+            if (saleStackValueText != null) saleStackValueText.text = price.ToString("N0", CultureInfo.InvariantCulture);
+            if (saleFeeValueText != null) saleFeeValueText.text = fee.ToString("N0", CultureInfo.InvariantCulture);
+            if (saleGoldAfterValueText != null) saleGoldAfterValueText.text = goldKnown && gold >= fee
+                ? (gold - fee).ToString("N0", CultureInfo.InvariantCulture) : goldKnown ? "Short" : "--";
+            saleSummaryText.text = goldKnown && gold < fee ? "Not enough gold\nFee is not refunded." :
+                !goldKnown ? "Balance unavailable\nServer checks the fee." : "Buyer pays diamonds\nListing fee is not refunded.";
+        }
+
+        private void ShowSelectedItem(uint itemID, ushort quantity)
+        {
+            if (selectedItemNameText != null) selectedItemNameText.text = C11ItemPresentation.Name(itemID);
+            if (selectedItemQuantityText != null) selectedItemQuantityText.text = "× " + quantity.ToString(CultureInfo.InvariantCulture);
+            if (selectedItemIcon != null)
+            {
+                selectedItemIcon.sprite = C11ItemPresentation.Icon(itemID);
+                selectedItemIcon.enabled = selectedItemIcon.sprite != null;
+            }
+        }
+
+        private static void AddCurrencyMark(Transform parent, string name, bool goldMark, float anchorX)
+        {
+            var mark = new GameObject(name, typeof(RectTransform), typeof(UnityEngine.UI.Image));
+            mark.transform.SetParent(parent, false);
+            var rect = mark.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = new Vector2(anchorX, .5f);
+            rect.pivot = new Vector2(.5f, .5f);
+            rect.sizeDelta = goldMark ? new Vector2(14, 8) : new Vector2(10, 10);
+            rect.localRotation = goldMark ? Quaternion.identity : Quaternion.Euler(0, 0, 45);
+            var image = mark.GetComponent<UnityEngine.UI.Image>();
+            image.color = goldMark ? new Color(.91f, .70f, .31f) : new Color(.47f, .79f, .89f);
+            image.raycastTarget = false;
         }
 
         private void RegisterSale()
