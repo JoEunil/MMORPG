@@ -2,7 +2,7 @@
 
 기준일: 2026-10-24
 누적 신규: 84
-누적 재활성화: 188
+누적 재활성화: 189
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-24
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
@@ -11,12 +11,12 @@
 | server_analyst | 서버 분석 Agent | 14 | 41 |
 | client_implementer | 구현 Agent | 32 | 43 |
 | asset_artist | 아트 Agent | 11 | 20 |
-| code_reviewer | 리뷰 Agent | 21 | 78 |
+| code_reviewer | 리뷰 Agent | 21 | 79 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 2 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체272회(신규84·재활성화188)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체273회(신규84·재활성화189)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -105,7 +105,7 @@
 | market_wallet_contract | 서버 분석 Agent | 1 | 0 |
 | ground_surface_refresh | 아트 Agent | 1 | 1 |
 | market_wallet_connection | 구현 Agent | 1 | 0 |
-| economy_connection_review | 리뷰 Agent | 1 | 4 |
+| economy_connection_review | 리뷰 Agent | 1 | 5 |
 | economy_ui_checks | 구현 Agent | 1 | 2 |
 | market_visual_controls | 구현 Agent | 1 | 0 |
 
@@ -486,3 +486,7 @@ skill_help_ui(client_implementer:gpt-6-luna/medium)신규1,skill_help_review(cod
 ## 거래소 시각 UI·절제된 HUD 보완 — 2026-10-24
 
 market_visual_controls 신규1: 기존 거래소에 아이템 상세 카드·재화 아이콘·가격/수수료/예상 잔액 행을 통합했다. economy_connection_review 재활성화1: 기존 상태 소유권·바인딩·HUD 입력 차단을 읽기 검토했다. 총괄이 HUD 배치·에디터 적용·변경 UI 3검사를 수행했으며 별도 활성화로 세지 않았다. 누적84/188/272, 토큰N/A.
+
+## 거래소 닫기·구역 이동의 재화 수명 리뷰 — 2026-10-24
+
+economy_connection_review 재활성화1: 닫힌 창의 진행 거래 상관성·잔액 갱신과 구역 이동 후 조회 재개를 독립 읽기 검토했다. 구현·해당 fixture 실행은 Coordinator가 담당했고 활성화로 세지 않았다. 누적84/189/273, 토큰N/A.

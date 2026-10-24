@@ -233,6 +233,86 @@ namespace C02.Tests
             }
         }
 
+        [TestCase("register")]
+        [TestCase("buy")]
+        [TestCase("claim")]
+        public void ClosedMarketReconcilesBalancesAfterRegisterBuyAndClaim(string operation)
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.ReceiveWallet(fixture.Network.LastWalletRequestID, 1, 100, 1, 200);
+                fixture.OpenMarket();
+                fixture.ReceiveWallet(fixture.Network.LastWalletRequestID, 1, 100, 1, 200);
+                var net = (IViewModelNet)fixture.Login.Model;
+                if (operation == "register")
+                {
+                    fixture.Receive(true);
+                    fixture.SellItems.onClick.Invoke();
+                    fixture.ReceiveInventory(new InventoryItem { slot = 7, itemID = 1, quantity = 5 });
+                    fixture.Rows.Find("Listing-0").GetComponent<Button>().onClick.Invoke();
+                    fixture.Quantity.text = "2";
+                    fixture.Price.text = "95";
+                    fixture.Register.onClick.Invoke();
+                    fixture.Register.onClick.Invoke();
+                }
+                else
+                {
+                    if (operation == "claim") fixture.MyListings.onClick.Invoke();
+                    var listing = new BazaarListing { listingID = 91, itemID = 1, quantity = 2, price = 50, status = (byte)(operation == "claim" ? 1 : 0) };
+                    if (operation == "claim") net.BazaarMyListReceived(fixture.Network.LastRequestID, 1, new[] { listing });
+                    else fixture.Receive(true, listing);
+                    fixture.ReceiveWallet(fixture.Network.LastWalletRequestID, 1, 100, 1, 200);
+                    fixture.Row(91).GetComponent<Button>().onClick.Invoke();
+                    if (operation == "buy") { fixture.Buy.onClick.Invoke(); fixture.Buy.onClick.Invoke(); }
+                    else fixture.Claim.onClick.Invoke();
+                }
+                Assert.That(fixture.Network.Mutations, Is.EqualTo(1), operation);
+                uint writeID = fixture.Network.LastWriteID;
+                uint oldWallet = fixture.Network.LastWalletRequestID;
+                fixture.Close.onClick.Invoke();
+                Assert.That(fixture.Panel.activeSelf, Is.False);
+                // Reopening while the write is pending must not replace its correlation or selection.
+                fixture.OpenMarket();
+                fixture.Close.onClick.Invoke();
+                if (operation == "register") net.BazaarRegisterReceived(writeID, 1);
+                else if (operation == "buy") net.BazaarBuyReceived(writeID, 91, 1, 1, 2, 50);
+                else net.BazaarClaimReceived(writeID, 91, 1, 50);
+                Assert.That(fixture.Network.LastWalletRequestID, Is.Not.EqualTo(oldWallet), operation);
+                fixture.ReceiveWallet(fixture.Network.LastWalletRequestID, 1, 90, 1, 150);
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("90"), operation);
+                Assert.That(fixture.WalletDiamond.text, Is.EqualTo("150"), operation);
+                Assert.That(fixture.Panel.activeSelf, Is.False);
+                Assert.That(fixture.Network.Mutations, Is.EqualTo(1), "Only balance reads may be retried.");
+            }
+        }
+
+        [Test]
+        public void ZoneTransitionRestartsCanceledWalletAfterBootstrapWithoutOpeningMarket()
+        {
+            using (var fixture = new Fixture())
+            {
+                uint canceled = fixture.Network.LastWalletRequestID;
+                fixture.Login.Model.ZoneChange(0); // Real ViewModel cancellation path; fake transport only.
+                SetProperty(fixture.World, "Stage", C02Stage.TransitionPending);
+                RaiseWorldChanged(fixture.World);
+                fixture.ReceiveWallet(canceled, 1, 999, 1, 999);
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("--"));
+                SetProperty(fixture.World, "Stage", C02Stage.InWorld);
+                RaiseWorldChanged(fixture.World); // UI notification precedes ViewModel readiness.
+                Set(fixture.Login.Model, "_worldReady", true);
+                Invoke(fixture.Screen, "Update");
+                uint fresh = fixture.Network.LastWalletRequestID;
+                Assert.That(fresh, Is.Not.EqualTo(canceled));
+                fixture.ReceiveWallet(canceled, 1, 999, 1, 999);
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("…"));
+                fixture.ReceiveWallet(fresh, 1, 80, 1, 120);
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("80"));
+                Assert.That(fixture.WalletDiamond.text, Is.EqualTo("120"));
+                Assert.That(fixture.Panel.activeSelf, Is.False);
+                Assert.That(fixture.Network.Mutations, Is.Zero);
+            }
+        }
+
         private sealed class Fixture : IDisposable
         {
             private readonly GameObject root;
@@ -244,6 +324,7 @@ namespace C02.Tests
             public readonly GameObject Panel;
             public readonly Button Market, Search, Close, Next;
             public readonly Button SellItems, Register;
+            public readonly Button Buy, Claim, MyListings;
             public readonly Button[] TypeButtons;
             public readonly Transform Rows;
             public readonly TMP_Text EmptyState, Detail, Status;
@@ -299,6 +380,9 @@ namespace C02.Tests
                 Market = ButtonObject("market");
                 Search = ButtonObject("search");
                 Close = ButtonObject("close");
+                Buy = ButtonObject("buy");
+                Claim = ButtonObject("claim");
+                MyListings = ButtonObject("my listings");
                 TypeButtons = new[] { ButtonObject("type1"), ButtonObject("type2"), ButtonObject("type3") };
                 var previous = ButtonObject("previous");
                 Next = ButtonObject("next");
@@ -335,6 +419,9 @@ namespace C02.Tests
                 Set(Screen, "previousPageButton", previous);
                 Set(Screen, "nextPageButton", Next);
                 Set(Screen, "closeButton", Close);
+                Set(Screen, "buyButton", Buy);
+                Set(Screen, "claimButton", Claim);
+                Set(Screen, "myListingsButton", MyListings);
                 Set(Screen, "pageText", page);
                 Set(Screen, "listingRows", Rows);
                 Set(Screen, "emptyStateText", EmptyState);
@@ -451,20 +538,22 @@ namespace C02.Tests
         private sealed class FakeNetwork : INetworkService
         {
             public int RegisterRequests, InventoryRequests, WalletRequests;
+            public int Mutations;
+            public uint LastWriteID;
             public uint LastWalletRequestID;
             public byte LastRegisterSlot;
             public ushort LastRegisterQuantity;
             public ulong LastRegisterPrice;
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice)
-            { RegisterRequests++; LastRegisterSlot = inventorySlot; LastRegisterQuantity = quantity; LastRegisterPrice = totalDiamondPrice; }
+            { RegisterRequests++; Mutations++; LastWriteID = requestID; LastRegisterSlot = inventorySlot; LastRegisterQuantity = quantity; LastRegisterPrice = totalDiamondPrice; }
             public void RequestWallet(uint requestID) { WalletRequests++; LastWalletRequestID = requestID; }
             public int Requests;
             public uint LastRequestID;
             public ushort LastItemType, LastPage;
-            public void RequestBazaarBuy(uint requestID, ulong listingID) { }
+            public void RequestBazaarBuy(uint requestID, ulong listingID) { Mutations++; LastWriteID = requestID; }
             public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
-            public void RequestBazaarClaim(uint requestID, ulong listingID) { }
-            public void RequestBazaarMyList(uint requestID) { }
+            public void RequestBazaarClaim(uint requestID, ulong listingID) { Mutations++; LastWriteID = requestID; }
+            public void RequestBazaarMyList(uint requestID) { LastRequestID = requestID; }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page)
             { Requests++; LastRequestID = requestID; LastItemType = itemType; LastPage = page; }
             public Task Connect(string address, int port) => Task.CompletedTask;

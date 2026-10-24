@@ -1,3 +1,8 @@
+## PR50 재화 HUD 수명 리뷰 보완 — 2026-10-24
+
+두 지적 모두 유효: ClosePanel→CancelBazaar가 이미 전송한 판매/구매/수령 응답을 버려 wallet refresh를 놓쳤고, Zone 이동의 VM wallet 취소 후 화면 requested=true가 남았다. C09 기존 상태에서 재화 변경 write3종만 창닫기 뒤 상관성/선택/기존timeout을 유지하며 재열기 중 조회로 덮지 않는다. Buy/Claim은 숨긴 창에서도 응답을 처리하고 Register 성공도 창을 다시 열지 않는다. 단순 조회/취소매물/수령함의 기존 panel 취소 규칙은 유지한다. timeout은 mutation 재시도 없이 wallet만 조회한다. World unavailable 때 wallet UI 플래그·예약·retry예산·known값 초기화, destination bootstrap 다음Update 새 read. ClientCore/서버/DB/몬스터AI 변경0.
+
+Unity 컴파일 PASS. 기존 fixture에 신규2경로: 닫기+재열기+닫기 후 판매/구매/대금수령의 잔액 갱신(3case·mutation1회 유지), 구역이동중 VM실제cancel→옛응답무시→bootstrap 다음Update fresh read 통과. 처음행이름오류/수령탭이생성한조회완료시점누락은fixture보정; PASS된구역/판매/구매반복0,최종미통과claim만재확인PASS. 최종Close유지범위를재화3종으로좁히고일반cancel/outbox의기존조건복원 후 컴파일확인; 이미검증한3enum경로조건불변. Editor Playfalse/dirtyfalse/backgroundfalse 복원. 실거래/실입력 재검증0. 근거 WALLET_LIFECYCLE_RESULTS.txt. 독립 리뷰 차단없음, 리뷰 재활성화1(전체84/189/273). 기존 PR50에 관련수정으로 일반push, 같은Slack부모1792827478.780979 결과회신. 공개시각변경없음/새capture없음, 지표site build/link PASS.
 ## UI 보완 PR50 반영 확인 — 2026-10-24
 
 제품 c3704de 일반 push 및 GitHub PR50 head 일치/open/mergeable 확인. 기존 PR본문에 변경 UI와 새 미리보기 링크를 추가했다. Unity Coordinator 앱 작업 스레드 결과1792833982.447879 게시 확인. 병합/정식배포 미실행, 제품 뒤 인계 기록만 추가하며 기존 PASS 반복0.

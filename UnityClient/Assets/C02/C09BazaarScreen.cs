@@ -143,6 +143,7 @@ namespace C02
             if (!requestPending || Time.unscaledTime < requestDeadline) return;
             WriteRequest previousWrite = writeRequest;
             CancelPending();
+            if (previousWrite == WriteRequest.Register || previousWrite == WriteRequest.Buy || previousWrite == WriteRequest.Claim) RefreshWallet();
             if (previousWrite == WriteRequest.None) ClearRows();
             statusText.text = previousWrite == WriteRequest.Register ? "Sale result unknown. Check My listings and your bag before trying again; no automatic retry."
                 : previousWrite == WriteRequest.Claim ? "Collection result unknown. Check again after reconnecting; no automatic retry."
@@ -206,6 +207,12 @@ namespace C02
             if (walletHud != null) walletHud.SetActive(available);
             if (!available)
             {
+                // ClientCore cancels wallet reads on transfer; restart after destination bootstrap.
+                walletRequested = walletPending = goldKnown = diamondKnown = false;
+                walletRetryAt = 0;
+                walletRetries = 0;
+                walletRefreshQueued = false;
+                ShowWallet();
                 CancelPending();
                 bazaarPanel.SetActive(false);
                 ClearResults();
@@ -219,6 +226,13 @@ namespace C02
             if (bazaarPanel.activeSelf) { ClosePanel(); return; }
             worldScreen.StopActions();
             if (inventoryScreen != null) inventoryScreen.ClosePanel();
+            if (requestPending && writeRequest != WriteRequest.None)
+            {
+                bazaarPanel.SetActive(true);
+                bazaarPanel.transform.SetAsLastSibling();
+                UpdateControls();
+                return;
+            }
             selling = false;
             myListings = false;
             bazaarPanel.SetActive(true);
@@ -328,9 +342,11 @@ namespace C02
 
         public void ClosePanel()
         {
+            bazaarPanel.SetActive(false);
+            // Retain balance-changing writes while keeping ordinary panel reads cancellable.
+            if (requestPending && (writeRequest == WriteRequest.Register || writeRequest == WriteRequest.Buy || writeRequest == WriteRequest.Claim)) return;
             CancelPending();
             myListings = false;
-            bazaarPanel.SetActive(false);
             ClearResults();
             UpdateControls();
         }
@@ -552,7 +568,7 @@ namespace C02
         private void BuyReceived(ulong listingID, byte status, uint itemID, uint quantity, ulong amount)
         {
             if (writeRequest != WriteRequest.Buy || !requestPending || listingID != selectedListing.ListingID ||
-                model == null || loginScreen.Model != model || !WorldAvailable || !IsOpen) return;
+                model == null || loginScreen.Model != model || !WorldAvailable) return;
             RefreshWallet();
             requestPending = false;
             writeRequest = WriteRequest.None;
@@ -625,7 +641,7 @@ namespace C02
         private void ClaimReceived(ulong listingID, byte status, ulong amount)
         {
             if (writeRequest != WriteRequest.Claim || !requestPending || listingID != selectedListing.ListingID || model == null ||
-                loginScreen.Model != model || !WorldAvailable || !IsOpen) return;
+                loginScreen.Model != model || !WorldAvailable) return;
             RefreshWallet();
             requestPending = false;
             writeRequest = WriteRequest.None;
@@ -1008,7 +1024,7 @@ namespace C02
                 : status == 4 ? "That item cannot be listed."
                 : status == 0 ? "Sale failed and was rolled back. Refresh your bag before retrying."
                 : "Sale outcome unknown. Check My listings and your bag; no automatic retry.";
-            if (status == 1) { selling = false; myListings = true; ClearRows(); RefreshCurrentView(); }
+            if (status == 1 && IsOpen) { selling = false; myListings = true; ClearRows(); RefreshCurrentView(); }
             UpdateControls();
         }
 

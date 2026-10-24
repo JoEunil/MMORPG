@@ -1,0 +1,18 @@
+PR50 WALLET LIFECYCLE REVIEW FIX — 2026-10-24
+Both findings valid against the current candidate.
+Production change only C09BazaarScreen.cs, existing state owner retained.
+Close retains pending Register/Buy/Claim correlation and selection, including reopen/close; late matched reply refreshes wallet without reopening the panel or retrying a mutation.
+Other reads, cancel-listing and outbox retain panel cancellation semantics.
+World unavailable resets UI wallet requested/pending/known/retry/queue state. Next available Update reads fresh balances; no periodic polling.
+Timeout refreshes balances only; no automatic mutation resend.
+Compile: Unity completed errors0, including final narrowing to the three money-changing write kinds.
+Direct existing fixture invocation in Play Mode, fake transport + real ViewModel correlation:
+- register close/reopen/close, matching result, new wallet read, HUD values, mutation count1: PASS.
+- buy same path: PASS.
+- claim same path: PASS after completing the MyListings-triggered wallet read in fixture setup.
+- real VM ZoneChange wallet cancellation, UI unavailable reset, old responses ignored, destination-ready next-frame read, closed panel, mutation0: PASS.
+Initial test failure: incorrect SaleSlot-7 fixture row name; corrected to existing Listing-0. No product fix masked.
+Second test failure: claim setup had an unfinished MyListings wallet read; existing post-trade queuing was correct. Completed that read; reran claim only.
+Already-passed register/buy/zone paths not repeated. No server build, native input, actual DB trade or old regression rerun.
+Independent code review: no blocking defect. Editor restored Playfalse/dirtyfalse/backgroundfalse.
+Server/ClientCore/AI/protocol/data changes0. Actual successful live trade/debit remains unverified, as recorded in PR50.
