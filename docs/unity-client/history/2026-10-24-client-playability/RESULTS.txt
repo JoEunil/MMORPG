@@ -1,0 +1,13 @@
+Client playability resume — 2026-10-24
+Scope: key-up presentation reconciliation; unchanged server, AI, protocol, speed9u/s and existing turn handling.
+Finding: 100ms idle grace can rewind a rendered lead before a final movement snapshot arriving200ms after release, then correct forward. Read-only server analysis confirmed9u/s vs0.45u/50ms agreement; not a speed mismatch.
+Change: use existing StaleMovementSeconds350ms on key-up, matching stalled held-input handling. CancelMove/input intent still clears immediately; no authoritative position edits or new request/ACK/manager.
+Tradeoff: unconfirmed collision/prediction error may remain250ms longer. This does not solve latency above350ms or prove live network feel.
+Independent read review: resume_movement_contract initial analysis + follow-up review, no requested correction.
+Verification: Unity6000.0.47f1, latest CLI1.0.0-beta.14; Editor C02 Scene playingfalse/dirtyfalse/backgroundfalse before and after.
+Recompile completed/failedfalse/errors[]. Actual Unity PlayMode run_tests filtered ReleaseWaitsForDelayedFinalSnapshot_AndStillSettlesWithoutReply: total2/pass2/fail0/skip0, duration0.08s.
+True case: no rollback for200ms, delayed final delta catches rendered stop. False case: hold300ms, start settling360ms, converge after bounded follow-up; no new movement target while released.
+These are deterministic fixture calls through production update/reconcile methods, not live input or a real delayed socket test. No passed movement/turn/combat/market suites repeated.
+Next: artist read-only actual-material analysis + three equivalent temporary previews, user selection pending. Saved actual .mat values differ from generator defaults; no Apply/EnsureAssets run. Initial rear view replaced with consistent front view + existing reflection probe. Source Scene remains clean; no material/prefab mutation.
+Public game descriptions/media unchanged because new art is unselected and motion feel is not live-verified. Only actual Agent activation totals updated, 89new/191follow-up/280total. README representative image retained.
+Slack: new work parent 1792851292.773949. App parent posted; existing registry File.Replace registration failed and exact posted parent was recovered under registry mutex. No duplicate post. Live receiver/reply processing not claimed verified.

@@ -206,6 +206,48 @@ namespace C02.Tests
             }
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        [Category("MovementStopLatency")]
+        public void ReleaseWaitsForDelayedFinalSnapshot_AndStillSettlesWithoutReply(bool finalSnapshotArrives)
+        {
+            using (var fixture = new WorldFixture())
+            {
+                fixture.EnterWithOwnState();
+                fixture.Predict(Vector2.right, .05f);
+                fixture.Predict(Vector2.right, .05f);
+                float stoppedX = fixture.VisualPosition.x;
+                fixture.CancelMovement();
+
+                // The last movement response takes 200ms after key-up to arrive.
+                for (int frame = 0; frame < 4; frame++)
+                {
+                    fixture.Predict(Vector2.zero, .05f);
+                    Assert.That(fixture.VisualPosition.x, Is.EqualTo(stoppedX).Within(.0001f),
+                        "Do not rewind to stale authority while the final move is still in flight.");
+                    Assert.That(fixture.HasMovementIntent, Is.False);
+                    Assert.That(fixture.InputTarget, Is.EqualTo(fixture.ServerPosition),
+                        "Waiting for presentation must not queue new movement after release.");
+                }
+
+                if (finalSnapshotArrives) fixture.Delta(stoppedX);
+                else
+                {
+                    fixture.Predict(Vector2.zero, .05f);
+                    fixture.Predict(Vector2.zero, .05f);
+                    Assert.That(fixture.VisualPosition.x, Is.EqualTo(stoppedX).Within(.0001f));
+                    fixture.Predict(Vector2.zero, .06f);
+                    Assert.That(fixture.VisualPosition.x, Is.LessThan(stoppedX),
+                        "Missing responses must still start settling within the bounded stale window.");
+                }
+
+                for (int frame = 0; frame < 30; frame++) fixture.Predict(Vector2.zero, .05f);
+                Assert.That(fixture.VisualPosition.x, Is.EqualTo(fixture.ServerPosition.x).Within(.0001f));
+                Assert.That(fixture.ServerPosition.x, Is.EqualTo(finalSnapshotArrives ? stoppedX : 10).Within(.0001f),
+                    "Presentation never advances the authoritative position itself.");
+            }
+        }
+
         private sealed class WorldFixture : IDisposable
         {
             private readonly GameObject root;
