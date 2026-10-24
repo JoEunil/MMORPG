@@ -7,3 +7,8 @@ Checks: site generation + all local links PASS. Browser desktop1213/scrollWidth1
 Browser automation note: heading-level filter was not supported by this connector; used exact observed heading name. Initial screenshots during smooth scrolling were not treated as final proof.
 Captures: ROOT UnityClient/Builds/Play-Economy/site-home-readable.jpg and site-mobile-readable.jpg, actual browser screenshots, not game/runtime tests.
 No new agent activation; previous usage276 unchanged. No Unity/game/server tests, server code or AI changes. No media deletion. No push/PR/deploy. Existing guideline commit c4d0f21 preserved as parent.
+README PREVIEW FOLLOW-UP:
+Fixed path site/media/ai-agent-preview.png; README links to the existing public site.
+SHOWCASE README image selection is copied on build, not rendered as a home hero. Selected source shows latest HUD/chat/wallet, explicitly Editor sample, not a successful live trade.
+Hash equality PASS; replaced existing alias with another version image then sync restored the selected bytes PASS. Archived/source images untouched; old site/media/field.png retained. No Unity tests.
+Selection is an Agent decision per completed feature bundle, not an unreliable newest-file heuristic. DELIVERY records refresh/alt/commit rules. Root's unrelated older README preserved.

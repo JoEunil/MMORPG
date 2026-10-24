@@ -19,6 +19,12 @@ SHOWCASE 원본·build.py·CSS만 웹 화면에 반영했다. 생성 HTML 직접
 
 상세 SITE_READABILITY_RESULTS.txt. Agent 새 활성화0/총괄 직접 작업, 전체276 유지. Unity·서버·게임 검증 반복0. 로컬 반영·커밋만 하며 push/새PR/배포0.
 
+## README 대표 이미지
+
+README는 site/media/ai-agent-preview.png 고정 경로를 표시한다. SHOWCASE의 README 대표 이미지에서 버전별 원본PNG 한 장을 선택하면 build.py가 해당 파일을 고정 경로에 복사/덮어쓴다. 현재 선택은 releases/2026-10-24/restrained-hud-preview.png(현재 HUD·채팅·재화의 에디터 예시)다. 홈페이지 상단에는 다시 표시하지 않는다.
+
+매 작업 묶음 결과를 정리할 때 대표성을 판단하고 선택·alt를 맞춘다. 새 화면이 덜 대표적이거나 시각 변화가 없으면 유지한다. 버전별 원본은 보존한다. 복사 해시·기존 복사본 덮어쓰기·홈 비노출·이전 미디어 보존 확인 PASS. ROOT README는 오래된 별도 문서이므로 덮어쓰지 않았고 Git 정본 README만 변경했다. 로컬 후보이며 GitHub 게시 후 같은 커밋의 이미지로 갱신된다. 앱 결과 회신1792837519.680859.
+
 ## 이전 완료와 남은 제한
 
 지침 통합 c4d0f21, 원문48개 해시 보존·문서/설정 검사 완료. 결과 GUIDELINE_AUDIT_RESULTS.txt, 원문 history/2026-10-24-guideline-audit. 고정 동시 제한2만 제거했으며 실제 플랫폼 슬롯·세션 재로딩 확대는 주장하지 않는다.

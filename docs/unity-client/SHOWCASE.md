@@ -79,3 +79,7 @@ Unity 인벤토리·거래소 화면은 AI Agent 작업에서 추가했습니다
 
 - [기존 서버 포트폴리오](https://github.com/JoEunil/MMORPG)
 - [서버 설계 PPT](https://docs.google.com/presentation/d/1Sz7WlzlE4qYqyXO43ad0i0CYAFvzJMR2/edit)
+
+## README 대표 이미지
+
+![현재 HUD·채팅·재화 배치를 보여주는 에디터 미리보기](../../site/media/releases/2026-10-24/restrained-hud-preview.png)

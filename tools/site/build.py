@@ -3,6 +3,7 @@
 from html import escape
 from pathlib import Path
 import re
+import shutil
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -282,6 +283,21 @@ def find_image(work):
     return None
 
 
+def sync_readme_preview(home_sections):
+    section = next(s for s in home_sections if s["title"] == "README 대표 이미지")
+    images = [IMAGE.fullmatch(b) for b in section["blocks"] if isinstance(b, str) and IMAGE.fullmatch(b)]
+    if len(images) != 1:
+        raise ValueError("Select exactly one README image in SHOWCASE.md")
+    url = local_image_path(HOME_SOURCE.relative_to(ROOT), images[0][2])
+    source = SITE / unquote(url[len(BASE):])
+    target = SITE / "media/ai-agent-preview.png"
+    if source == target or source.suffix.lower() != ".png":
+        raise ValueError("README preview must select an original PNG, not its fixed-path copy")
+    if (ROOT / "README.md").read_text(encoding="utf-8").count('src="site/media/ai-agent-preview.png"') != 1:
+        raise ValueError("README must display the fixed preview path exactly once")
+    shutil.copyfile(source, target)
+
+
 def main():
     if not CONTENT.is_dir():
         raise SystemExit(f"Portfolio content directory not found: {CONTENT.relative_to(ROOT)}")
@@ -294,6 +310,7 @@ def main():
     if not works:
         raise SystemExit("Add at least one reviewed project page under docs/unity-client/portfolio/")
     title, intro, home_sections, references = parse_showcase()
+    sync_readme_preview(home_sections)
     cards = []
     for work in works:
         key, detail, history = build_work(work, references, title)
