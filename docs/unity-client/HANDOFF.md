@@ -45,3 +45,5 @@ PR50은 master21d99ea에 병합 완료. 기존 조작·UI 검증은 PLAY_ECONOMY
 ## GitHub 반영 완료
 
 사용자의 직접 게시 요청으로 codex/site-readability를 일반 push하고 PR51 https://github.com/JoEunil/MMORPG/pull/51 을 생성했다. 구현 후보44fd978, 기존4개 커밋 포함. 사용자 검토 전 병합·정식 배포는 하지 않았다. 다음은 PR 검토 결과 대응이며 무관한 게임 개발을 자동 재개하지 않는다.
+
+후속: 지침 변경 이력의 파란 변경 후 제목을 검정(#171717)으로 변경. 생성·링크 및 브라우저 실제 색상/화면 확인 완료. 기존 PR51에 포함.
