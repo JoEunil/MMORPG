@@ -1,22 +1,22 @@
 ## 공개 집계
 
 기준일: 2026-10-24
-누적 신규: 90
-누적 재활성화: 192
+누적 신규: 93
+누적 재활성화: 195
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-24
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 2 | 0 |
 | server_analyst | 서버 분석 Agent | 15 | 42 |
-| client_implementer | 구현 Agent | 32 | 43 |
-| asset_artist | 아트 Agent | 12 | 21 |
-| code_reviewer | 리뷰 Agent | 22 | 80 |
+| client_implementer | 구현 Agent | 33 | 45 |
+| asset_artist | 아트 Agent | 13 | 22 |
+| code_reviewer | 리뷰 Agent | 23 | 80 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체282회(신규90·재활성화192)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체288회(신규93·재활성화195)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -508,3 +508,7 @@ resume_movement_contract 서버 분석 Agent 신규1·후속1은 서버 속도/�
 ## 다음 기획·아트 묶음 선택지 — 2026-10-24
 
 next_planning_options 기획 Agent 신규1, knight_material_options 아트 Agent 후속1. 기존 기능·제약을 대조해 캐릭터/전투·마을/필드·가방/거래소의 작업 후보와 대표 확인 결과를 제안했다. 제안이며 선택·구현·검증 완료가 아니다. 총괄이 두 제안을 묶어 BRIEF에 미선택 후보로 남겼다. 누적90/192/282, 토큰·비용 N/A. 이번 게임 테스트 추가0.
+
+## 기사 대표 구현 — 2026-10-24
+
+실제 실행 증분: knight_form_combat 아트 신규1·후속1, knight_attack_continuity 구현 신규1·후속2, knight_representative_review 리뷰 신규1. 후속은 각각 직렬화 참조 보존과 독립 리뷰 조건 보완이다. Coordinator의 에디터 적용·렌더·검증은 제외하며 실제 토큰·비용은 N/A다. 최종 검증 결과는 이번 작업 이력의 RESULTS.txt를 따른다.

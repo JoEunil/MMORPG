@@ -12,6 +12,8 @@ namespace C02
         private Quaternion restRotation;
         private readonly Transform[] arms = new Transform[2];
         private readonly Transform[] legs = new Transform[2];
+        private readonly Quaternion[] phaseStartArms = new Quaternion[2];
+        private readonly Quaternion[] phaseStartLegs = new Quaternion[2];
         private Vector3 previousPosition;
         private Quaternion facing;
         private bool hasFacing;
@@ -24,6 +26,10 @@ namespace C02
         private float attackUntil;
         private bool released;
         private byte attackSlot;
+        private bool guardMotion;
+        private Quaternion phaseStartVisualRotation;
+        private float phaseTransitionStarted;
+        private float phaseTransitionUntil;
         private float hitUntil;
 
         public void Configure()
@@ -56,6 +62,7 @@ namespace C02
             height = Mathf.Max(height, 1f);
 
             bool guard = visual.Find("Breastplate") != null;
+            guardMotion = guard;
             string kind = guard ? "Guard" : visual.Find("GoblinTorso") != null ? "Goblin" :
                 visual.Find("OrcTorso") != null ? "Orc" : visual.Find("GolemTorso") != null ? "Golem" : null;
             if (kind != null)
@@ -132,8 +139,24 @@ namespace C02
         public void PlayAttack(byte direction, bool released, byte skillSlot = 0, float chargeDuration = 0)
         {
             if (visual == null || direction > 3) return;
+            float now = Time.unscaledTime;
+            byte nextAttackSlot = skillSlot <= 2 ? skillSlot : (byte)0;
+            if (guardMotion && !this.released && released && now < attackUntil && nextAttackSlot == attackSlot)
+            {
+                // Keep the accepted charging pose as the release clip's starting pose.
+                // Monster motion remains on its existing phase transition path.
+                for (int side = 0; side < 2; side++)
+                {
+                    phaseStartArms[side] = arms[side] != null ? arms[side].localRotation : Quaternion.identity;
+                    phaseStartLegs[side] = legs[side] != null ? legs[side].localRotation : Quaternion.identity;
+                }
+                phaseStartVisualRotation = visual.localRotation;
+                phaseTransitionStarted = now;
+                phaseTransitionUntil = now + .1f;
+            }
+            else phaseTransitionUntil = 0;
             this.released = released;
-            attackSlot = skillSlot <= 2 ? skillSlot : (byte)0;
+            attackSlot = nextAttackSlot;
             attackStarted = Time.unscaledTime;
             attackUntil = attackStarted + (released ? (attackSlot == 2 ? .58f : .48f) : Mathf.Max(.52f, chargeDuration + .08f));
             facing = C02WorldScreen.ServerFacing(direction);
@@ -181,6 +204,10 @@ namespace C02
                 hasFacing = true;
             }
             float swing = Mathf.Sin(stride) * walking;
+            bool phaseTransition = guardMotion && now < phaseTransitionUntil;
+            float phaseBlend = phaseTransition
+                ? Mathf.SmoothStep(0, 1, Mathf.Clamp01((now - phaseTransitionStarted) / (phaseTransitionUntil - phaseTransitionStarted)))
+                : 1f;
             float attack = attacking ? Mathf.Clamp01((now - attackStarted) / (attackUntil - attackStarted)) : 1f;
             Vector3 swordPose = Vector3.zero;
             Vector3 supportArmPose = Vector3.zero;
@@ -299,14 +326,16 @@ namespace C02
                 Vector3 legPose = side == 0 ? leftLegPose : rightLegPose;
                 Quaternion targetLeg = Quaternion.Euler(swing * sign * 22f * gaitWeight + legPose.x,
                     legPose.y, legPose.z);
+                if (phaseTransition) targetLeg = Quaternion.Slerp(phaseStartLegs[side], targetLeg, phaseBlend);
                 if (legs[side] != null) legs[side].localRotation = Quaternion.Slerp(legs[side].localRotation, targetLeg, poseResponse);
                 Vector3 armPose;
                 if (attacking)
                     armPose = side == 1 ? swordPose : supportArmPose + new Vector3(-18f, 0f, -10f) * Mathf.Sin(attack * Mathf.PI);
                 else
                     armPose = new Vector3(-swing * sign * 10f, 0f, 0f);
-                if (arms[side] != null) arms[side].localRotation = Quaternion.Slerp(arms[side].localRotation,
-                    Quaternion.Euler(armPose), poseResponse);
+                Quaternion targetArm = Quaternion.Euler(armPose);
+                if (phaseTransition) targetArm = Quaternion.Slerp(phaseStartArms[side], targetArm, phaseBlend);
+                if (arms[side] != null) arms[side].localRotation = Quaternion.Slerp(arms[side].localRotation, targetArm, poseResponse);
             }
             float hit = hitUntil > now ? Mathf.Sin((hitUntil - now) / .2f * Mathf.PI) : 0;
             float bob = (1f - Mathf.Cos(stride * 2f)) * .004f * height * walking;
@@ -314,13 +343,17 @@ namespace C02
             Quaternion lean = Quaternion.Euler(hit * -10f + walking * 3f, torsoTurn, swing * .65f);
             if (bodySpin != 0) lean *= Quaternion.Euler(0, bodySpin, 0);
             Quaternion localFacing = hasFacing ? Quaternion.Inverse(visual.parent.rotation) * facing : restRotation;
-            visual.localRotation = Quaternion.Slerp(visual.localRotation, localFacing * lean, Mathf.Clamp01(dt * 18f));
+            Quaternion targetVisualRotation = localFacing * lean;
+            if (phaseTransition) targetVisualRotation = Quaternion.Slerp(phaseStartVisualRotation, targetVisualRotation, phaseBlend);
+            visual.localRotation = Quaternion.Slerp(visual.localRotation, targetVisualRotation, Mathf.Clamp01(dt * 18f));
         }
 
         public void ResetPose()
         {
             previousPosition = transform.position;
             walking = stride = attackStarted = attackUntil = hitUntil = 0;
+            released = false;
+            phaseTransitionStarted = phaseTransitionUntil = 0;
             if (visual == null) return;
             visual.localPosition = restPosition;
             visual.localRotation = restRotation;
