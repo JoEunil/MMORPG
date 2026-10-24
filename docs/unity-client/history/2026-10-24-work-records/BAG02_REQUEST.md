@@ -31,7 +31,7 @@ BAG01 지정 사용자 승인 회신1792408921.550179을 직접 확인하고 정
 
 ## 구체적인 패치 후보와 독립 리뷰
 
-후보: [BAG02.candidate.patch](BAG02.candidate.patch), SHA256 B36A7D0F767E2553BB333764F243457AFABEB492ADD16959D057217F18547EBA. 대상은 위 두 파일뿐이며 실제 제품/도구에는 아직 적용하지 않았다.
+후보: [BAG02.candidate.patch](../../BAG02.candidate.patch), SHA256 B36A7D0F767E2553BB333764F243457AFABEB492ADD16959D057217F18547EBA. 대상은 위 두 파일뿐이며 실제 제품/도구에는 아직 적용하지 않았다.
 
 독립 리뷰에서 두 예상 종료 판별이 runtime fatal과 구별되도록 기존 !m_receiving 조건을 함께 요구했고, AcceptBuffer 할당 실패 시 생성한 소켓도 반환하도록 보완했다. 최종 두 지적 해결/추가 차단0. 큐 전체 drain 보장이나 새 락·풀 설계는 포함하지 않는다.
 

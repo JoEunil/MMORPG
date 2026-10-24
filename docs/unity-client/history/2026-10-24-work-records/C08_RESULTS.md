@@ -8,12 +8,12 @@
 
 ## 검증
 
-- 서버 회귀 39/39 통과, 25ms: [c08-server-regression.txt](../../UnityClient/Captures/c08-server-regression.txt).
-- Unity 첫 공통 회귀는 71개 중 69 통과·2 실패였다. 원인은 테스트 fixture가 초기 진입 응답을 전환 요청으로 세고, 인벤토리 UI 테스트가 실제 ViewModel 응답 경로를 건너뛴 점이었다. 기대 조건은 유지하고 fixture 경로만 수정·독립 리뷰한 뒤 영향받은 6개를 재검증해 6/6 통과했다. 첫 실패는 [원본](../../UnityClient/Captures/c08-unity-first.txt), 수정 후 결과는 [영향 회귀](../../UnityClient/Captures/c08-unity-affected.txt). 이는 서로 다른 실행의 결과이며 71개 전체를 수정 후 다시 돌렸다는 뜻은 아니다.
-- TCP 경계 회귀 3/3 통과, 1.18초: [c08-tcp-regression.txt](../../UnityClient/Captures/c08-tcp-regression.txt). 첫 실제 서버 입력에서 구형 ACK 길이 검사가 수신을 막아 진입 실패했다. 길이 검사와 실제 분할·병합 TCP 회귀를 보완하고 독립 리뷰한 뒤 재검증했다.
+- 서버 회귀 39/39 통과, 25ms: [c08-server-regression.txt](../../../../UnityClient/Captures/c08-server-regression.txt).
+- Unity 첫 공통 회귀는 71개 중 69 통과·2 실패였다. 원인은 테스트 fixture가 초기 진입 응답을 전환 요청으로 세고, 인벤토리 UI 테스트가 실제 ViewModel 응답 경로를 건너뛴 점이었다. 기대 조건은 유지하고 fixture 경로만 수정·독립 리뷰한 뒤 영향받은 6개를 재검증해 6/6 통과했다. 첫 실패는 [원본](../../../../UnityClient/Captures/c08-unity-first.txt), 수정 후 결과는 [영향 회귀](../../../../UnityClient/Captures/c08-unity-affected.txt). 이는 서로 다른 실행의 결과이며 71개 전체를 수정 후 다시 돌렸다는 뜻은 아니다.
+- TCP 경계 회귀 3/3 통과, 1.18초: [c08-tcp-regression.txt](../../../../UnityClient/Captures/c08-tcp-regression.txt). 첫 실제 서버 입력에서 구형 ACK 길이 검사가 수신을 막아 진입 실패했다. 길이 검사와 실제 분할·병합 TCP 회귀를 보완하고 독립 리뷰한 뒤 재검증했다.
 - Unity TestRunner에서 최종 기준으로 성공한 서로 다른 fixture는 71+3=74개다. Unity 실행 기록의 총 실행 횟수는 71+6+3=80이다. 수정 전 2개 실패는 첫 결과에만 존재하며, 실패 수정 후 영향받은 6개를 통과했다. 수정 전후 실행을 합산해 모든 74개가 한 번에 통과했다고 표현하지 않는다.
-- 실제 입력 배치 [첫 시도 기록](../../UnityClient/Captures/c08-physical-c08-physical-b.txt)에서는 물리 마우스로 Zone 1→2→1 이동은 됐지만 helper가 로그아웃 초기화 상태를 새 도착으로 오인해 정상 UI 종료 판정이 실패했다. observer를 고쳐도 실패를 성공으로 바꾸지 않게 보존했고, 수정 후 독립 리뷰했다.
-- [최종 실입력 기록](../../UnityClient/Captures/c08-physical-c08-physical-c.txt): 재접속 후 이동 전에 확인한 Full 상태가 Zone 1, 좌표(101.084167, 10.7436523), HP 9975/MP 10000으로 저장 상태와 일치했다. 물리 입력으로 Zone 1→2 이동, Zone 2 이동, Zone 1 복귀를 수행했고, Zone 1 복귀 및 일반 UI 연결 종료까지 통과했다. [Zone 1 캡처](../../UnityClient/Captures/c08-physical-c08-physical-c-zone1.png), [Zone 2 캡처](../../UnityClient/Captures/c08-physical-c08-physical-c-zone2.png).
+- 실제 입력 배치 [첫 시도 기록](../../../../UnityClient/Captures/c08-physical-c08-physical-b.txt)에서는 물리 마우스로 Zone 1→2→1 이동은 됐지만 helper가 로그아웃 초기화 상태를 새 도착으로 오인해 정상 UI 종료 판정이 실패했다. observer를 고쳐도 실패를 성공으로 바꾸지 않게 보존했고, 수정 후 독립 리뷰했다.
+- [최종 실입력 기록](../../../../UnityClient/Captures/c08-physical-c08-physical-c.txt): 재접속 후 이동 전에 확인한 Full 상태가 Zone 1, 좌표(101.084167, 10.7436523), HP 9975/MP 10000으로 저장 상태와 일치했다. 물리 입력으로 Zone 1→2 이동, Zone 2 이동, Zone 1 복귀를 수행했고, Zone 1 복귀 및 일반 UI 연결 종료까지 통과했다. [Zone 1 캡처](../../../../UnityClient/Captures/c08-physical-c08-physical-c-zone1.png), [Zone 2 캡처](../../../../UnityClient/Captures/c08-physical-c08-physical-c-zone2.png).
 
 ## 한계와 운영 상태
 

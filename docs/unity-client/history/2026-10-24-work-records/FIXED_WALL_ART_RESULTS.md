@@ -2,7 +2,7 @@
 
 ## 끝면 후속 보강
 
-![끝면의 검은 가로 틈을 메운 석축 에디터 비교](evidence/2026-10-21/fixed-wall-endcap.png)
+![끝면의 검은 가로 틈을 메운 석축 에디터 비교](../../evidence/2026-10-21/fixed-wall-endcap.png)
 
 같은 카메라·조명에서 끝면의 검은 가로 틈이 사라졌고 아트담당이 채택했다. 끝면은 측면보다 평평하고 균일해 보이며, 실제 플레이 조명·거리에서의 외관은 미확인이다. 아래 최초 비교와 이미지는 이력으로 유지한다.
 
@@ -16,7 +16,7 @@
 
 | 변경 전 | 변경 후 |
 | --- | --- |
-| ![단색 직육면체 벽의 에디터 비교](evidence/2026-10-21/fixed-wall-before.png) | ![기존 석재로 보완한 벽의 에디터 비교](evidence/2026-10-21/fixed-wall-after.png) |
+| ![단색 직육면체 벽의 에디터 비교](../../evidence/2026-10-21/fixed-wall-before.png) | ![기존 석재로 보완한 벽의 에디터 비교](../../evidence/2026-10-21/fixed-wall-after.png) |
 
 비교는 실제 `C20FixedWorldMap`의 복제본을 별도 Preview Scene으로 옮긴 뒤 카메라1280×720/orthographic12/target(64,1.35,44)/offset(12,16,-12), directional light1.5·rotation(45,-35,0)로 렌더했다. 양쪽이 같은 조건이며 원본 Scene을 활성화하거나 로그인하지 않았다. 기존 Meadow/PaleStone/WeatheredLimestone/FoundationStone/V02 돌·StoneGrain의 ROOT/CAND 원문이 줄바꿈 정규화 후 일치함을 확인했다.
 

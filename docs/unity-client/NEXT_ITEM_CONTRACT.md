@@ -12,7 +12,7 @@
 
 - 서버 기준은 `master d535b0df77ad17fb26cab3dbc2ee6ef1e97c7f53`, 조사 경로는 `UnityClient/Builds/C10-Delivery/source`다. 조사 시작 당시 작업 폴더 HEAD는 설명 후속 `ef03b18`, 조사 중 총괄의 다음 묶음 준비로 `3f751bdb46042d1b5a294b823b801f6ee016a310`이 됐다. 아래 핵심 inventory 서버/Core 파일은 d535b0d와 diff가 없음을 확인했다. HEAD 이동을 코드 구현 완료로 해석하지 않는다.
 - `UnityClient/Captures/c07-inventory-db-metadata.txt`: 5011·5012 모두 `row=missing`. 기존 도구의 READ ONLY 결과를 재사용했으며 이번 분석에서는 새 DB 조회를 실행하지 않았다. 현재 DB 상태를 새로 확인한 증거는 아니다.
-- `docs/unity-client/C02_DB_REVIEW.md`: 전용 캐릭터 준비는 profile+characters 총 4행이었다. inventory/currency/diamond는 쓰기 대상에서 명시적으로 제외됐다. 누락은 당시 제한된 준비 범위와 일치한다.
+- `docs/unity-client/history/2026-10-24-work-records/C02_DB_REVIEW.md`: 전용 캐릭터 준비는 profile+characters 총 4행이었다. inventory/currency/diamond는 쓰기 대상에서 명시적으로 제외됐다. 누락은 당시 제한된 준비 범위와 일치한다.
 - `Resources/DB/createCharacter.sql:54`: 기존 대량 개발 캐릭터 생성 절차는 characters 다음에 별도 inventory 행을 INSERT한다. `Resources/DB/init.sql:54`의 inventory 테이블은 별도 PK/BLOB 테이블이며 이 DDL 자체는 자동 행 생성 기능이 아니다. 대량 생성 SQL은 실행하면 안 된다.
 
 ## 실제 요청 → SQL → 화면

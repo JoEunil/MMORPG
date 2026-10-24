@@ -28,4 +28,4 @@ Unity Coordinator bot 요청1792328185.787879(부모1792326328.900739) 발신 �
 
 승인 확인: 지정 사람 U0C9QEUHPMK가 V04부모1792326340.552749의 회신1792328764.170199에 `R01 스레드의 !coord 승인 R01-REGRESSION-02/r1 추가회귀 재개`라고 답했다. Coordinator가 search와전체thread에서 원문·요청ID/r1을 대조해 이 정확한 범위를 수용했다. 최신 채팅도 같은 회귀 재개를 직접 지시했다. 앞에 문장이 있어 자동수신 필터에는 걸리지 않았으며 수동 확인/수용으로 기록하고 같은 회신을 중복 실행하지 않는다. 추가 보호 범위나 운영 승인을 뜻하지 않는다. 플랫폼 도구 심사는 별도다.
 
-실행 완료: 네 friend와 기존 fixture 확장2개·격리빌드exit0·독립리뷰 후 별도 tester가 고정F60BFB7D…를 한 번 실행했다. 기존3 PASS/늦은AUTH·ENTER2 FAIL(exit1). 정상 Disconnect 완료 뒤 AUTH는 Core session을 재생성하고 ENTER는 lobby character를 남겼다. [실패 원문](../../UnityClient/Captures/r01-late-completion-regression.txt)을 보존했고 기대/제품을 고치거나 재실행하지 않았다. 제품 보완은 별도 [R01-CLOSE-03/r1](R01_CLOSE_REQUEST.md) 요청으로 준비한다. 실서버 전환/SQL/Unity 검증은 여전히 미실행이다.
+실행 완료: 네 friend와 기존 fixture 확장2개·격리빌드exit0·독립리뷰 후 별도 tester가 고정F60BFB7D…를 한 번 실행했다. 기존3 PASS/늦은AUTH·ENTER2 FAIL(exit1). 정상 Disconnect 완료 뒤 AUTH는 Core session을 재생성하고 ENTER는 lobby character를 남겼다. [실패 원문](../../../../UnityClient/Captures/r01-late-completion-regression.txt)을 보존했고 기대/제품을 고치거나 재실행하지 않았다. 제품 보완은 별도 [R01-CLOSE-03/r1](R01_CLOSE_REQUEST.md) 요청으로 준비한다. 실서버 전환/SQL/Unity 검증은 여전히 미실행이다.

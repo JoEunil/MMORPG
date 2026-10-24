@@ -1,0 +1,9 @@
+Document cleanup — 2026-10-24
+Archived: 212 records, including full old HANDOFF/PROGRESS.
+Root Markdown 192 -> 35; TXT 53 -> 1.
+Contract/active guideline/role/usage files preserved. Source, SQL and candidate patches stay in place.
+PR51 merged verified; current HANDOFF has no old review-wait state or Slack reply ID backlog.
+New broken relative Markdown links: 0. Already-missing local captures in affected records: 41 (not claimed repaired).
+Original guideline-audit history unchanged. SHA256 manifest covers all 212 relocated records.
+Relocation check initially caught snapshot pointers and missing-capture relative paths; links regenerated from Git originals before final verification.
+No game code, AI, DB, runtime or Unity input changes. No game tests repeated.

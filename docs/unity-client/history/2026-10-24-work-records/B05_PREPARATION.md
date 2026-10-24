@@ -16,7 +16,7 @@
 
 ## C05 실입력 helper 재사용 판단
 
-- 기존 실입력 helper는 [`UnityClient/Assets/Tests/C02/C05LiveBatchUiTests.cs`](../../UnityClient/Assets/Tests/C02/C05LiveBatchUiTests.cs)다. 최종 동결본 SHA256은 `AC7ACEE8969BA1C43514C204FB217FE35DD905E7F91E2254C7FE45ECAEE2A8B2`.
+- 기존 실입력 helper는 [`UnityClient/Assets/Tests/C02/C05LiveBatchUiTests.cs`](../../../../UnityClient/Assets/Tests/C02/C05LiveBatchUiTests.cs)다. 최종 동결본 SHA256은 `AC7ACEE8969BA1C43514C204FB217FE35DD905E7F91E2254C7FE45ECAEE2A8B2`.
 - 실제 실행 진입점은 `C05LiveBatchUiTests.StartAccountOneCombat()`, `StartAccountTwoLogin()`, `StartAccountTwoBossAggro()`, `StartAccountTwoHpZero()`, `StartAccountOneHpZero()`다. Unity가 Play 중일 때 해당 static 진입점을 실행하면 공통 `C01.Tests.C01EditorInputRun.Start(IEnumerator, outputPath, passMessage)`가 Editor update loop에서 native InputSystem 키/마우스 동작을 진행하고 `UnityClient/Captures/c05-*.txt`에 결과를 남긴다. 이들은 테스트 method/menu가 아니라 Play 중 호출하는 helper 진입점이다. 이번 준비 단계에서는 호출하지 않았다.
 - B05에서 재사용하는 코드: 기존 C02 `RealCharacterSelectionAndEntry_AndCapture`의 실제 UI 로그인/목록/선택/ENTER와 C01 `C01EditorInputRun` Editor-update runner를 그대로 호출한다. 별도 raw observer는 scene 로드 직후 `ClientChanged`에 붙어 Zone 내부 ID 및 해당 캐릭터의 **첫 raw Full**을 수집한다. C05의 native `ClickAt`, 화면 투영·시야 검사, `RecordApproachClick` raycast/HUD 겹침 진단 및 `WaitFor`를 재사용하고, B05 자체 bounded loop가 HP0 이벤트를 매 클릭/서버 진행 대기 뒤 검사해 다음 클릭을 중단한다. 마지막 Visual 대조는 보간 settling 뒤 0.02-unit 허용오차다.
 - C02 진입 helper는 세 개 고정 산출물(`c02-live-character-list.png`, `c02-live-entry.png`, `c02-live-entry-ui.txt`)을 덮어쓸 수 있다. B05는 실행 전 존재하는 파일을 run/phase 고유 이름으로 CreateNew 복사해 보존한다. B05의 PNG/TXT/baseline도 기존 파일을 덮어쓰지 않는다.

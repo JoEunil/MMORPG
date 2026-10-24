@@ -62,8 +62,10 @@ GitHub 저장소에 PR이 올라오면 Codex 코드 리뷰가 자동으로 실�
 |---|---|
 | [기획](docs/unity-client/BRIEF.md) | 화면·조작·기존 서버 기능과 구현 범위 |
 | [개편 계획](docs/unity-client/MMORPG_REVISION_PLAN.md) · [에이전트 활용 기록](docs/unity-client/AGENT_USAGE.md) | 현재 개편 범위와 역할별 작업·확인 가능한 사용량 기록 |
-| [현재 운영 기준](docs/unity-client/CURRENT_POLICY.md) · [공통 지침](docs/unity-client/AGENTS.template.md) | 최신 진행·승인·검증 기준과 작업 공간 공통 규칙 |
+| [현재 운영 기준](docs/unity-client/CURRENT_POLICY.md) · [공통 지침](AGENTS.md) | 최신 진행·승인·검증 기준과 작업 공간 공통 규칙 |
 | [워크플로우](docs/unity-client/WORKFLOW.md) | 작업 배정·구현·리뷰·검증 순서 |
 | [구축 가이드](docs/unity-client/PIPELINE_GUIDE.md) | 역할·모델·연결 준비와 서버 변경 범위 |
-| [연결 안내](docs/unity-client/MCP_SETUP.md) · [MCP 범위](docs/unity-client/MCP_CAPABILITIES.md) | Unity·Slack·테스트 환경 연결 |
+| [로컬 환경](docs/unity-client/LOCAL_PREPARATION.md) · [MCP 범위](docs/unity-client/MCP_CAPABILITIES.md) | Unity·Slack·테스트 환경 연결 |
 | [결과 게시](docs/unity-client/DELIVERY.md) | 공개 결과·캡처·Pages 게시 기준 |
+
+완료된 작업·리뷰·검증 기록은 [작업 이력](docs/unity-client/history/2026-10-24-work-records/README.md)에 보존합니다. 현재 문서는 [문서 안내](docs/unity-client/README.md)에서 구분해 볼 수 있습니다.

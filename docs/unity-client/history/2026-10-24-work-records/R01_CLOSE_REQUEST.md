@@ -1,6 +1,6 @@
 # R01-CLOSE-03/r1 — 정상 TCP 종료 뒤 AUTH·ENTER 재삽입 방지 후보 요청
 
-Coordinator 소유. [실패 기록](../../UnityClient/Captures/r01-late-completion-regression.txt), [원인·최소 후보](R01_CLOSE_ANALYSIS.md), [후보 patch](R01_CLOSE_03_candidate.patch), [독립 리뷰](R01_CLOSE_REVIEW.md)를 근거로 한다. 아직 이 제품 보완은 적용·빌드·실행하지 않았다.
+Coordinator 소유. [실패 기록](../../../../UnityClient/Captures/r01-late-completion-regression.txt), [원인·최소 후보](R01_CLOSE_ANALYSIS.md), [후보 patch](../../R01_CLOSE_03_candidate.patch), [독립 리뷰](R01_CLOSE_REVIEW.md)를 근거로 한다. 아직 이 제품 보완은 적용·빌드·실행하지 않았다.
 
 루트 AGENTS.md는 “DB 스키마·인증/소유권·재화/거래 정책·새 프로토콜 계약·Zone/큐/락/풀·운영 작업과 원본 ClientCore 포괄 수정은 별도”라고 정한다. 이번은 인증 완료·세션 잠금 경계의 제품 변경이며, 앞선 R01-REGRESSION-02/r1의 테스트 접근점 승인에 포함되지 않는다.
 

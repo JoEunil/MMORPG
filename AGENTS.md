@@ -8,6 +8,7 @@
 - 사용자의 최신 명시 지시를 적용한다. 과거 기록은 현재 권한이나 실행 명령이 아니다. 충돌이 남으면 해당 의존 작업만 보류하고 근거·대안을 제시한다.
 - 공통 행동은 이 파일, 현재 목표·후보·입력 허용·승인 대기는 [HANDOFF](docs/unity-client/HANDOFF.md), 상세 절차는 아래 문서를 정본으로 관리한다. 같은 규칙을 여러 파일에 복제하지 않는다.
 - [공통 개발 기준](docs/unity-client/DEVELOPMENT_GUIDELINES.md)은 코드 품질의 세부 기준이다. 과거 원문은 [지침 이력](docs/unity-client/history/2026-10-24-guideline-audit/README.md)에 보존하며 현재 명령으로 읽지 않는다.
+- 문서 분류와 이력 위치는 [문서 안내](docs/unity-client/README.md)를 따른다. 완료 기록을 실행 지침으로 읽거나 HANDOFF에 다시 누적하지 않는다.
 - 작은 작업은 관련 문서만 읽는다. 역할 배정 시 해당 roles 문서, 서버 계약 작업 시 실제 관련 계약, 공개 작업 시 PORTFOLIO_GUIDE를 추가로 읽는다.
 
 ## 2. 역할과 책임

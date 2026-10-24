@@ -6,7 +6,7 @@
 
 ## 직접 읽은 증거
 
-요청에 적힌 161741 접두 파일은 없었다. 실제 최신 전환 receipt는 [r01-switch-20261019-161737-878-19764.txt](../../UnityClient/Captures/r01-switch-20261019-161737-878-19764.txt), 증거는 동일 stem의 `-evidence/`다. 161710 receipt는 앞선 preflight-only이며 종료 입력을 보내지 않았다.
+요청에 적힌 161741 접두 파일은 없었다. 실제 최신 전환 receipt는 [r01-switch-20261019-161737-878-19764.txt](../../../../UnityClient/Captures/r01-switch-20261019-161737-878-19764.txt), 증거는 동일 stem의 `-evidence/`다. 161710 receipt는 앞선 preflight-only이며 종료 입력을 보내지 않았다.
 
 - `before-current-stop-error.log` 416바이트가 `stopped-Original-error.log` 2824바이트의 동일 prefix임을 바이트 단위로 확인했다. 신규 2408바이트는 정확히 16행이다. `GetQueuedCompletionStatus failed`/995가 8개, `Critical: failed to post AcceptEx`/10038이 8개이고 10022는 없다. timestamp는 `1792394269008`과 `1792394269009`뿐이다. 기존 CancelIoEx/1168 3개는 prefix에 있으며 신규 delta가 아니다. 현재 `logs/error.log`도 보존된 stopped 파일과 동일했다.
 - system 로그의 `IOCP CleanUp`은 `1792394269008`, IOCP worker stopped 8개는 9008~9010이다. JSON 행에서 cache MQ stopped 3개와 DB worker stopped 4개가 9023~9024에 확인되고, WAL manager thread stopped는 9039다. 종료 순서와 오류 발생 시점이 일치한다. 이들은 개별 SQL commit 영수증이 아니다.

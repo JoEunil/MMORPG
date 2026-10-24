@@ -66,4 +66,4 @@ PNG는 [Game View 캡처](https://docs.unity3d.com/Packages/com.unity.pipeline@0
 3. 전용 테스트 Scene에서 생성→속성 변경→저장/재열기→컴파일→작은 테스트→HUD 포함 캡처 검증.
 4. 그 뒤 실제 서버의 이동/스킬→두 계정 동기화→연결이 준비된 거래소→대표 GIF 순서로 검증.
 
-참고 명령은 `unity command --caller plugin --skill unity-cli --project-path <대상>`이다. 이번에는 실행 가능한 CLI와 대상 프로젝트 연결이 없어 실제 명령 목록 조회까지 수행하지 않았다. 구축 순서는 [MCP_SETUP.md](MCP_SETUP.md), 테스트/캡처 수용 조건은 [DELIVERY.md](DELIVERY.md)를 따른다.
+참고 명령은 `unity command --caller plugin --skill unity-cli --project-path <대상>`이다. 이번에는 실행 가능한 CLI와 대상 프로젝트 연결이 없어 실제 명령 목록 조회까지 수행하지 않았다. 현재 도구·연결 기준은 [PIPELINE_GUIDE.md](PIPELINE_GUIDE.md), 테스트/캡처 기준은 [DELIVERY.md](DELIVERY.md)를 따른다. [초기 구축 기록](history/2026-10-24-work-records/MCP_SETUP.md)은 당시 기록이며 현재 연결 성공의 근거가 아니다.

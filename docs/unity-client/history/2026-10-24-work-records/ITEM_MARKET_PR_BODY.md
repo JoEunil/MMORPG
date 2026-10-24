@@ -4,4 +4,4 @@
 
 테스트 계정의 인벤토리는 기존 서버 조회 실패를 오류로 표시하며, 아이템 카드 성공 표시는 fixture로 확인했습니다. 실제 아이템 보유 조회와 매매 기능은 아직 포함하지 않습니다.
 
-서버 변경은 기존 승인된 내 매물 조회 연결을 함께 반영한 범위입니다. 새 DB 변경·거래 정책·서버 재기동은 없습니다. 상세 검증: docs/unity-client/ITEM_MARKET_RESULTS.md.
+서버 변경은 기존 승인된 내 매물 조회 연결을 함께 반영한 범위입니다. 새 DB 변경·거래 정책·서버 재기동은 없습니다. 상세 검증: docs/unity-client/history/2026-10-24-work-records/ITEM_MARKET_RESULTS.md.

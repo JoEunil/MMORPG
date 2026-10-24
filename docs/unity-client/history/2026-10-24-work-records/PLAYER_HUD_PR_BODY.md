@@ -4,4 +4,4 @@
 
 검증: Unity103/103, 빈 데이터 ABI·codec, 실제 스킬 버튼/HP·MP 게이지/로그아웃, 사이트 빌드·링크·26파일/11HTML·데스크톱/모바일 확인. 숫자 단축키 서버 반영·정상 빈 가방 실입력은 아직 미확인입니다.
 
-서버 제품 코드는 바꾸지 않았고, 직접 DB 쓰기·재기동·매매·스키마 변경은 수행하지 않았습니다. 상세 검증: docs/unity-client/PLAYER_HUD_RESULTS.md.
+서버 제품 코드는 바꾸지 않았고, 직접 DB 쓰기·재기동·매매·스키마 변경은 수행하지 않았습니다. 상세 검증: docs/unity-client/history/2026-10-24-work-records/PLAYER_HUD_RESULTS.md.

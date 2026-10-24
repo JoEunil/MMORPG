@@ -11,7 +11,7 @@
 ## 실제 처리 순서
 
 1. C01 `IViewDataUI.GetCharList()`의 count개 중 하나를 선택한다. 목록 외 ID, 숫자 입력 ID, 타 계정/기존 사용자 캐릭터는 사용하지 않는다. `IViewModelUI.Enter(charID)`→`NetworkService.Enter`→`PacketBuilder.CreateEnterWorldPacket`.
-2. `CoreLib/NonZoneHandler.cpp:GetCharacterState`는 세션에서 userID를 얻고 channel=1/선택 charID를 내부 요청에 담는다. `CacheLib/Handler.cpp:CharacterStateRequest`→QUERY_3로 profile 조인 캐릭터 상태를 읽는다. 없음/실패는 status=0, 있으면 status=1. 현재 SQL은 charID만 조건으로 사용한다. 소유권 누락은 별도 [C02-AUTH-01/r1](SERVER_REQUESTS.md)이며 클라이언트 제약으로 해결됐다고 주장하지 않는다.
+2. `CoreLib/NonZoneHandler.cpp:GetCharacterState`는 세션에서 userID를 얻고 channel=1/선택 charID를 내부 요청에 담는다. `CacheLib/Handler.cpp:CharacterStateRequest`→QUERY_3로 profile 조인 캐릭터 상태를 읽는다. 없음/실패는 status=0, 있으면 status=1. 현재 SQL은 charID만 조건으로 사용한다. 소유권 누락은 별도 [C02-AUTH-01/r1](history/2026-10-24-work-records/SERVER_REQUESTS.md)이며 클라이언트 제약으로 해결됐다고 주장하지 않는다.
 3. `CoreLib/MessageQueueHandler.cpp:CharacterStateResponse`는 성공 시 `LobbyZone.h:ImmigrateChar`로 세션/캐릭터를 로비 Zone0에 넣고 opcode6을 송신한다. 이 응답에는 charID/internalID가 없으며 아직 필드 입장 완료가 아니다.
 4. 기존 `ViewModel.EnterReceived`는 status!=0일 때 좌표를 seed하고 `ZoneChange(ENTER=0)`를 자동 송신한다. Unity UI가 별도로 ENTER를 다시 보내지 않는다. 실패라면 자동 후속 요청/도형 표시를 하지 않는다.
 5. `NonZoneHandler.cpp:ZoneChange`의 ENTER는 현재 Zone0인지 확인→로비에서 캐릭터 꺼냄→lastZone=0이면1→해당 기존 Zone의 `ZoneState.cpp:ImmigrateChar`→서버가 발급한 internalID 확보→chat 세션 등록→opcode17 응답. 실패는 status=0이며 나머지 필드로 성공 상태를 만들지 않는다.
@@ -55,7 +55,7 @@ profileId/profileVersion은 Full 구조 정렬에 필수지만 **PROFILE_BATCH 2
 ## 표시·검증 범위와 승인 분리
 
 - 승인 대기 없이 가능한 클라이언트 작업: 목록 count행 선택/중복 진입 방지/취소·오류 상태, 기존 Enter→Zone 흐름 연결, 고정 쿼터뷰 카메라·평면·단일 도형, 서버 `(x,y)`→Unity `(x,0,z=y)` 1:1 좌표, characterID와 internalID/Zone/좌표의 구분 표시, 최소 parser fixtures·컴파일·리뷰. 입력 이동·전투를 새로 연결하지 않는다.
-- 실서버 입장 검증 전 필요한 보호 운영 승인: [C02-DB-01/r1](SERVER_REQUESTS.md)의 지정 계정 캐릭터 1개씩 준비. 현재 빈 목록을 가짜 성공/유령 캐릭터로 바꾸지 않는다. 승인 전에는 fixture 결과와 실제 Zone 진입 미검증을 구분한다.
+- 실서버 입장 검증 전 필요한 보호 운영 승인: [C02-DB-01/r1](history/2026-10-24-work-records/SERVER_REQUESTS.md)의 지정 계정 캐릭터 1개씩 준비. 현재 빈 목록을 가짜 성공/유령 캐릭터로 바꾸지 않는다. 승인 전에는 fixture 결과와 실제 Zone 진입 미검증을 구분한다.
 - C02-AUTH-01/r1은 발견된 기존 소유권 누락의 별도 보호 영역 변경 후보다. 서버 코드 수정/빌드/재시작을 자동 수행하지 않는다. C02에서는 목록 밖 ID나 타 계정 접속 시험을 제외한다.
 - 필요한 검증: exact Full43 fixture/profile 값·x/y offset, 잘린/과대count 거부, Enter 실패/Zone 실패/종료 후 응답 안전, 실제 목록의 선택 ID→opcode6→opcode17→자신의 Full ID/좌표 일치, 동일 계정 정상 접속 종료→재로그인 후 유령 도형/이벤트 중복 없음. 수정한 경계만 검증하고 넓은 전투·채팅 회귀 체계는 만들지 않는다.
 - 복구: 적용한 C02 ClientCore/DLL/UI만 기능 단위로 되돌리고 C01/다른 사용자 변경을 보존. 테스트 캐릭터 생성은 자동 되돌리기 대상이 아니며 DB 요청의 별도 복구 경계를 따른다. 이번 조사 자체에는 실행/테스트/캡처 근거가 없다.
