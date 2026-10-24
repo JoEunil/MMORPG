@@ -41,3 +41,7 @@ PR50은 master21d99ea에 병합 완료. 기존 조작·UI 검증은 PLAY_ECONOMY
 ## 워크플로우 도식 분리
 
 사용자 후속 요청으로 에이전트 구성과 기능 제작 순서를 각각 별도 section/H2로 분리했다. 구성도는 사용자→총괄→필요한 전문 역할 연결을 크게 표시하고, 기능 제작은 별도 흰 배경의 5단계 흐름으로 표시한다. 데스크톱1280/scrollWidth1265·모바일390/scrollWidth375 넘침 없음, 실제 화면 확인 완료. workflow-separated.jpg 저장·viewport 복원 완료. 게임 검증 반복 없음.
+
+## GitHub 반영 완료
+
+사용자의 직접 게시 요청으로 codex/site-readability를 일반 push하고 PR51 https://github.com/JoEunil/MMORPG/pull/51 을 생성했다. 구현 후보44fd978, 기존4개 커밋 포함. 사용자 검토 전 병합·정식 배포는 하지 않았다. 다음은 PR 검토 결과 대응이며 무관한 게임 개발을 자동 재개하지 않는다.
