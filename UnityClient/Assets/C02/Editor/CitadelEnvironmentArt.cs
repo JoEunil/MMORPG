@@ -75,6 +75,7 @@ public static class CitadelEnvironmentArt
         if(groundRenderer!=null)
         {
             var groundMaterial=MaterialAsset("CitadelMeadow",Color.white,0,.12f,"meadow-ground.png");
+            ConfigureGroundSurface(groundMaterial);
             if(groundMaterial.mainTexture==null)throw new FileNotFoundException("Import the meadow ground material source.");
             groundMaterial.mainTextureScale=new Vector2(ground.size.x/4f,ground.size.z/4f);
             groundRenderer.sharedMaterial=groundMaterial;
@@ -85,6 +86,61 @@ public static class CitadelEnvironmentArt
         AssetDatabase.SaveAssets();EditorSceneManager.MarkSceneDirty(scene);
         if(!EditorSceneManager.SaveScene(scene))throw new IOException("Could not save the environment scene.");
         Debug.Log("Citadel art: 18 collision-aligned masonry modules, exterior town wall/oaks and six meadow detail chunks. Navigation/export/server data unchanged.");
+    }
+
+    [MenuItem("Tools/Client Art/Refresh Ground Surface Only")]
+    public static void ApplyGroundSurface()
+    {
+        if(EditorApplication.isPlayingOrWillChangePlaymode)
+            throw new InvalidOperationException("Ground surface authoring requires Edit Mode.");
+        var material=AssetDatabase.LoadAssetAtPath<Material>(Folder+"CitadelMeadow.mat");
+        if(material==null)throw new FileNotFoundException("The existing CitadelMeadow material is required.");
+        ConfigureGroundSurface(material);
+        var author=Object.FindFirstObjectByType<C20MapAuthoring>(FindObjectsInactive.Include);
+        if(author==null || author.ground==null)throw new InvalidOperationException("The authored world ground is required.");
+        var renderer=author.ground.GetComponent<MeshRenderer>();
+        if(renderer==null)throw new InvalidOperationException("The authored world ground renderer is required.");
+        renderer.sharedMaterial=material;
+        renderer.enabled=true;
+        // The old single-zone cosmetic floor sits above the exported world surface and hides its texture.
+        var legacy=author.transform.parent.Find("V04MeanderingMeadow/ContinuousWalkableMeadow");
+        if(legacy!=null && legacy.TryGetComponent<MeshRenderer>(out var legacyRenderer))legacyRenderer.enabled=false;
+        EditorSceneManager.MarkSceneDirty(author.gameObject.scene);
+        AssetDatabase.SaveAssets();
+        Debug.Log("Ground surface refreshed; obsolete cosmetic floor hidden. Existing texture scale, collision geometry, lighting and navigation are unchanged.");
+    }
+
+    private static void ConfigureGroundSurface(Material material)
+    {
+        var albedo=ImportGroundTexture("meadow-ground.png",false);
+        var normal=ImportGroundTexture("meadow-ground-normal.png",true);
+        material.SetTexture("_BaseMap",albedo);
+        material.SetTexture("_MainTex",albedo);
+        material.SetTexture("_BumpMap",normal);
+        material.SetFloat("_BumpScale",.25f);
+        material.SetFloat("_Smoothness",.12f);
+        material.EnableKeyword("_NORMALMAP");
+        EditorUtility.SetDirty(material);
+    }
+
+    private static Texture2D ImportGroundTexture(string name,bool normal)
+    {
+        string path=Folder+name;
+        var importer=AssetImporter.GetAtPath(path) as TextureImporter;
+        if(importer==null)throw new FileNotFoundException("Import the ground texture source before refreshing: "+path);
+        importer.textureType=normal?TextureImporterType.NormalMap:TextureImporterType.Default;
+        importer.convertToNormalmap=false;
+        importer.sRGBTexture=!normal;
+        importer.mipmapEnabled=true;
+        importer.wrapMode=TextureWrapMode.Repeat;
+        importer.filterMode=FilterMode.Trilinear;
+        importer.anisoLevel=8;
+        importer.maxTextureSize=2048;
+        importer.npotScale=TextureImporterNPOTScale.None;
+        importer.textureCompression=TextureImporterCompression.CompressedHQ;
+        importer.compressionQuality=100;
+        importer.SaveAndReimport();
+        return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
     }
 
     private static void Lighting(Transform world)

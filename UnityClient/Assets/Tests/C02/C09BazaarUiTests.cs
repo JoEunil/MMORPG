@@ -23,6 +23,7 @@ namespace C02.Tests
             using (var fixture = new Fixture())
             {
                 fixture.OpenMarket();
+                fixture.ReceiveWallet(fixture.Network.LastWalletRequestID, 1, 100, 1, 0);
                 var listings = new BazaarListing[30];
                 for (int i = 0; i < listings.Length; i++)
                     listings[i] = new BazaarListing
@@ -36,20 +37,20 @@ namespace C02.Tests
                 var lastRow = fixture.Row(1029);
                 Assert.That(lastRow.Find("Item").GetComponent<TMP_Text>().text, Is.EqualTo("Item #729"));
                 Assert.That(lastRow.Find("Quantity").GetComponent<TMP_Text>().text, Is.EqualTo("30"));
-                Assert.That(lastRow.Find("Price").GetComponent<TMP_Text>().text, Is.EqualTo("9029"));
+                Assert.That(lastRow.Find("Price").GetComponent<TMP_Text>().text, Is.EqualTo("9,029 D"));
                 Assert.That(lastRow.Find("State").GetComponent<TMP_Text>().text, Is.EqualTo("Trading"));
                 Assert.That(lastRow.GetComponent<UnityEngine.UI.LayoutElement>().preferredHeight, Is.EqualTo(74));
                 lastRow.GetComponent<Button>().onClick.Invoke();
-                Assert.That(lastRow.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.76f, .68f, .46f)));
-                Assert.That(fixture.Detail.text, Does.Contain("Listing #1029"));
+                Assert.That(lastRow.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.20f, .29f, .34f)));
+                Assert.That(fixture.Detail.text, Does.Contain("Item #729"));
                 Assert.That(fixture.Detail.text, Does.Contain("Quantity 30"));
-                Assert.That(fixture.Detail.text, Does.Contain("Price 9029"));
-                Assert.That(fixture.Detail.text, Does.Contain("Seller #5029"));
-                Assert.That(fixture.Detail.text, Does.Contain("Registered 1700000029"));
+                Assert.That(fixture.Detail.text, Does.Contain("Stack total 9,029 diamonds"));
+                Assert.That(fixture.Detail.text, Does.Contain("Purchase deducts diamonds"));
+                Assert.That(fixture.Detail.text, Does.Contain("Receive items delivers them to your bag"));
                 fixture.Row(1000).GetComponent<Button>().onClick.Invoke();
-                Assert.That(lastRow.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.92f, .87f, .73f)));
-                Assert.That(fixture.Row(1000).GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.76f, .68f, .46f)));
-                Assert.That(fixture.Detail.text, Does.Contain("Price 9000"));
+                Assert.That(lastRow.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.09f, .11f, .14f)));
+                Assert.That(fixture.Row(1000).GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.20f, .29f, .34f)));
+                Assert.That(fixture.Detail.text, Does.Contain("Stack total 9,000 diamonds"));
 
                 fixture.Search.onClick.Invoke();
                 Assert.That(fixture.ActiveRowCount, Is.Zero, "Refreshing clears the previous page before sending.");
@@ -159,6 +160,77 @@ namespace C02.Tests
             }
         }
 
+        [Test]
+        public void WalletShowsEachSuccessfulBalanceAndIgnoresLatePreviousRequest()
+        {
+            using (var fixture = new Fixture())
+            {
+                uint initialRequest = fixture.Network.LastWalletRequestID;
+                fixture.ReceiveWallet(initialRequest, 1, 123456, 0, 0);
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("GOLD  123,456"));
+                Assert.That(fixture.WalletDiamond.text, Is.EqualTo("DIAMONDS  --"));
+
+                fixture.OpenMarket();
+                uint currentRequest = fixture.Network.LastWalletRequestID;
+                Assert.That(currentRequest, Is.Not.EqualTo(initialRequest));
+                fixture.ReceiveWallet(initialRequest, 1, 1, 1, 2);
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("GOLD  …"), "A late pair cannot replace the pending wallet request.");
+                fixture.ReceiveWallet(currentRequest, 1, 9876543210, 1, 7654321);
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("GOLD  9,876,543,210"));
+                Assert.That(fixture.WalletDiamond.text, Is.EqualTo("DIAMONDS  7,654,321"));
+                Invoke(fixture.Screen, "RefreshWallet");
+                uint beforeTrade = fixture.Network.LastWalletRequestID;
+                Invoke(fixture.Screen, "RefreshWallet"); // A completed trade requests a fresh balance while the old read is pending.
+                fixture.ReceiveWallet(beforeTrade, 1, 100, 1, 200);
+                Set(fixture.Screen, "walletRetryAt", Time.unscaledTime - .001f);
+                Invoke(fixture.Screen, "Update");
+                uint afterTrade = fixture.Network.LastWalletRequestID;
+                Assert.That(afterTrade, Is.Not.EqualTo(beforeTrade), "A pending read cannot swallow the post-trade refresh.");
+                fixture.ReceiveWallet(afterTrade, 1, 90, 1, 150);
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("GOLD  90"));
+                Assert.That(fixture.WalletDiamond.text, Is.EqualTo("DIAMONDS  150"));
+            }
+        }
+
+        [Test]
+        public void SellingBagStackShowsFeeAndBlocksRetryAfterUnknownResult()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.OpenMarket();
+                fixture.ReceiveWallet(fixture.Network.LastWalletRequestID, 1, 100, 1, 0);
+                fixture.Receive(true);
+                fixture.SellItems.onClick.Invoke();
+                Assert.That(fixture.Network.InventoryRequests, Is.EqualTo(1));
+                fixture.ReceiveInventory(new InventoryItem { itemID = 4, quantity = 5, slot = 7 });
+
+                var item = fixture.Rows.Find("Listing-0");
+                Assert.That(item, Is.Not.Null, "The sale list is populated from the returned bag slots.");
+                item.GetComponent<Button>().onClick.Invoke();
+                fixture.Quantity.text = "2";
+                fixture.Price.text = "95";
+                Assert.That(fixture.SaleSummary.text, Does.Contain("Stack total: 95 diamonds"));
+                Assert.That(fixture.SaleSummary.text, Does.Contain("Registration fee: 10 gold"));
+                Assert.That(fixture.SaleSummary.text, Does.Contain("Estimated gold after listing: 90"));
+                Assert.That(fixture.SaleSummary.text, Does.Contain("no diamonds deducted from the seller"));
+
+                fixture.Register.onClick.Invoke();
+                Assert.That(fixture.Register.interactable, Is.True, "The first press reviews the sale without sending it.");
+                fixture.Register.onClick.Invoke();
+                Assert.That(fixture.Network.RegisterRequests, Is.EqualTo(1));
+                Assert.That(fixture.Network.LastRegisterSlot, Is.EqualTo((byte)7));
+                Assert.That(fixture.Network.LastRegisterQuantity, Is.EqualTo((ushort)2));
+                Assert.That(fixture.Network.LastRegisterPrice, Is.EqualTo(95UL));
+
+                Set(fixture.Screen, "requestDeadline", Time.unscaledTime - 1);
+                Invoke(fixture.Screen, "Update");
+                Assert.That(fixture.Status.text, Does.Contain("Sale result unknown"));
+                Assert.That(fixture.Register.interactable, Is.False);
+                fixture.Register.onClick.Invoke();
+                Assert.That(fixture.Network.RegisterRequests, Is.EqualTo(1), "An unknown result cannot submit the same sale again blindly.");
+            }
+        }
+
         private sealed class Fixture : IDisposable
         {
             private readonly GameObject root;
@@ -169,9 +241,12 @@ namespace C02.Tests
             public readonly C09BazaarScreen Screen;
             public readonly GameObject Panel;
             public readonly Button Market, Search, Close, Next;
+            public readonly Button SellItems, Register;
             public readonly Button[] TypeButtons;
             public readonly Transform Rows;
             public readonly TMP_Text EmptyState, Detail, Status;
+            public readonly TMP_Text WalletGold, WalletDiamond, SaleSummary;
+            public readonly TMP_InputField Quantity, Price;
             public int ActiveRowCount
             {
                 get
@@ -231,6 +306,15 @@ namespace C02.Tests
                 EmptyState = Text("empty state");
                 Detail = Text("selected detail");
                 Status = Text("status");
+                WalletGold = Text("wallet gold");
+                WalletDiamond = Text("wallet diamonds");
+                SaleSummary = Text("sale summary");
+                Quantity = Input("sale quantity");
+                Price = Input("sale price");
+                SellItems = ButtonObject("sell items");
+                Register = ButtonObject("register sale");
+                var saleForm = Child("sale form");
+                var walletHud = Child("wallet HUD");
                 var page = Text("page");
                 Set(Screen, "loginScreen", Login);
                 Set(Screen, "worldScreen", World);
@@ -246,6 +330,15 @@ namespace C02.Tests
                 Set(Screen, "emptyStateText", EmptyState);
                 Set(Screen, "selectedDetailText", Detail);
                 Set(Screen, "statusText", Status);
+                Set(Screen, "sellItemsButton", SellItems);
+                Set(Screen, "registerButton", Register);
+                Set(Screen, "saleForm", saleForm);
+                Set(Screen, "quantityInput", Quantity);
+                Set(Screen, "priceInput", Price);
+                Set(Screen, "saleSummaryText", SaleSummary);
+                Set(Screen, "walletHud", walletHud);
+                Set(Screen, "walletGoldText", WalletGold);
+                Set(Screen, "walletDiamondText", WalletDiamond);
                 Set(Combat, "loginScreen", Login);
                 Set(Combat, "worldScreen", World);
                 Set(Combat, "skillButtons", new[] { ButtonObject("strike"), ButtonObject("ring"), ButtonObject("line") });
@@ -262,6 +355,7 @@ namespace C02.Tests
                 SetProperty(World, "HasOwnFull", true);
                 Set(World, "ownFull", new FullStateField { hp = 100, zoneInternalID = 1 });
                 RaiseWorldChanged(World);
+                Invoke(Screen, "Update");
             }
 
             public void OpenMarket() => Market.onClick.Invoke();
@@ -269,6 +363,14 @@ namespace C02.Tests
             public void Receive(bool success, params BazaarListing[] rows) => Receive(Network.LastRequestID, success, rows);
             public void Receive(uint requestID, bool success, params BazaarListing[] rows) =>
                 ((IViewModelNet)Login.Model).BazaarReceived(requestID, (byte)(success ? 1 : 0), rows ?? Array.Empty<BazaarListing>());
+            public void ReceiveWallet(uint requestID, byte goldStatus, ulong gold, byte diamondStatus, ulong diamonds)
+            {
+                var network = (IViewModelNet)Login.Model;
+                network.WalletGoldReceived(requestID, goldStatus, gold);
+                network.WalletDiamondReceived(requestID, diamondStatus, diamonds);
+            }
+            public void ReceiveInventory(params InventoryItem[] items) =>
+                ((IViewModelNet)Login.Model).InventoryReceived(1, items);
 
             private (Initializer Initializer, IViewModelUI Model, FakeNetwork Network) CreateClient()
             {
@@ -311,6 +413,8 @@ namespace C02.Tests
                 go.transform.SetParent(root.transform, false);
                 var button = go.GetComponent<Button>();
                 button.targetGraphic = go.GetComponent<Image>();
+                var label = Text("Label");
+                label.transform.SetParent(go.transform, false);
                 return button;
             }
             private TMP_Text Text(string name)
@@ -330,6 +434,14 @@ namespace C02.Tests
 
         private sealed class FakeNetwork : INetworkService
         {
+            public int RegisterRequests, InventoryRequests, WalletRequests;
+            public uint LastWalletRequestID;
+            public byte LastRegisterSlot;
+            public ushort LastRegisterQuantity;
+            public ulong LastRegisterPrice;
+            public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice)
+            { RegisterRequests++; LastRegisterSlot = inventorySlot; LastRegisterQuantity = quantity; LastRegisterPrice = totalDiamondPrice; }
+            public void RequestWallet(uint requestID) { WalletRequests++; LastWalletRequestID = requestID; }
             public int Requests;
             public uint LastRequestID;
             public ushort LastItemType, LastPage;
@@ -344,7 +456,7 @@ namespace C02.Tests
             public void Enter(ulong characterId) { }
             public void Chat(string message, byte scope, ulong targetId) { }
             public void Profiles(uint[] profileIds) { }
-            public void RequestInventory() { }
+            public void RequestInventory() { InventoryRequests++; }
             public void Action(byte direction, float x, float y, byte skillSlot, ulong ownershipEpoch) { }
             public void Pong(ulong serverTimeMs) { }
             public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { }

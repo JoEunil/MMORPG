@@ -58,9 +58,19 @@ namespace ClientCore
         private bool _inventoryPending;
         private uint _bazaarRequestID;
         private uint _bazaarPending;
-        private enum BazaarRequestKind { None, Search, MyList, Claim, Buy, CheckOutbox, CancelListing }
+        private long _bazaarPendingDeadline;
+        private bool _bazaarTimeoutPosted;
+        private enum BazaarRequestKind { None, Search, MyList, Register, Claim, Buy, CheckOutbox, CancelListing }
         private BazaarRequestKind _bazaarPendingKind;
         private ulong _bazaarPendingListingID;
+        private uint _walletRequestID;
+        private uint _walletPending;
+        private ulong _walletGeneration;
+        private long _walletPendingDeadline;
+        private bool _walletTimeoutPosted;
+        private bool _walletGoldReceived, _walletDiamondReceived;
+        private byte _walletGoldStatus, _walletDiamondStatus;
+        private ulong _walletGold, _walletDiamond;
         public event Action<bool> OnAuthReceived;
         public event Action<byte, ushort> OnCharacterListResult;
         public event Action<string> OnConnectionFailed;
@@ -70,6 +80,8 @@ namespace ClientCore
         public event Action<byte, ulong, string, string> OnChatReceived;
         public event Action<bool> OnInventoryReceived;
         public event Action<bool> OnBazaarReceived;
+        public event Action<byte> OnBazaarRegisterReceived;
+        public event Action<byte, ulong, byte, ulong> OnWalletReceived;
         public event Action<ulong, byte, ulong> OnBazaarClaimReceived;
         public event Action<ulong, byte, uint, uint, ulong> OnBazaarBuyReceived;
         public event Action<byte, uint, uint, uint> OnBazaarCheckOutboxReceived;
@@ -136,6 +148,7 @@ namespace ClientCore
                 _respawnPending = false;
                 _zonePending = false;
                 CancelBazaar();
+                CancelWalletLocked();
                 _viewData.SetInventory(Array.Empty<PacketHelper.InventoryItem>());
                 ClientSession.AccessToken = null;
                 ClientSession.SessionToken = null;
@@ -173,6 +186,7 @@ namespace ClientCore
                 if (op == 0 && _zoneID != 0) return;
                 _zoneOperation = op;
                 _zonePending = true;
+                CancelWalletLocked();
                 CancelBazaar();
                 _awaitingZoneAck = true;
                 _worldReady = false;
@@ -226,6 +240,7 @@ namespace ClientCore
         // Client Tick 루프
         public void SendUpdate()
         {
+            QueueExpiredEconomyRequests();
             (bool, byte, float, float, byte, ulong) res;
             ulong resyncEpoch = 0;
             lock (_sessionGate)
@@ -389,6 +404,45 @@ namespace ClientCore
             }
         }
 
+        public void RequestBazaarRegister(byte inventorySlot, ushort quantity, ulong totalDiamondPrice)
+        {
+            if (inventorySlot >= Config.MAX_INVENTORY_ITEMS || quantity == 0 || totalDiamondPrice == 0)
+                throw new ArgumentOutOfRangeException();
+            uint requestID = BeginBazaarRequest(BazaarRequestKind.Register);
+            try { _network.RequestBazaarRegister(requestID, inventorySlot, quantity, totalDiamondPrice); }
+            catch
+            {
+                lock (_sessionGate) if (_bazaarPending == requestID) CancelBazaar();
+                throw;
+            }
+        }
+
+        public void RequestWallet()
+        {
+            uint requestID;
+            lock (_sessionGate)
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || _walletPending != 0)
+                    throw new InvalidOperationException("Wallet is unavailable or a request is pending.");
+                if (_walletRequestID == uint.MaxValue) throw new InvalidOperationException("Reconnect before requesting wallet again.");
+                if (_walletGeneration == ulong.MaxValue) throw new InvalidOperationException("Reconnect before requesting wallet again.");
+                requestID = ++_walletRequestID;
+                _walletPending = requestID;
+                _walletGeneration++;
+                _walletPendingDeadline = Stopwatch.GetTimestamp() + 5 * Stopwatch.Frequency;
+                _walletTimeoutPosted = false;
+                _walletGoldReceived = _walletDiamondReceived = false;
+                _walletGoldStatus = _walletDiamondStatus = 0;
+                _walletGold = _walletDiamond = 0;
+            }
+            try { _network.RequestWallet(requestID); }
+            catch
+            {
+                lock (_sessionGate) if (_walletPending == requestID) CancelWalletLocked();
+                throw;
+            }
+        }
+
         public void RequestBazaarClaim(ulong listingID)
         {
             if (listingID == 0) throw new ArgumentOutOfRangeException(nameof(listingID));
@@ -446,6 +500,8 @@ namespace ClientCore
                 _bazaarPending = ++_bazaarRequestID;
                 _bazaarPendingKind = kind;
                 _bazaarPendingListingID = listingID;
+                _bazaarPendingDeadline = kind == BazaarRequestKind.Register ? Stopwatch.GetTimestamp() + 8 * Stopwatch.Frequency : 0;
+                _bazaarTimeoutPosted = false;
                 if (kind == BazaarRequestKind.Search || kind == BazaarRequestKind.MyList)
                     _viewData.SetBazaar(Array.Empty<PacketHelper.BazaarListing>());
                 return _bazaarPending;
@@ -459,8 +515,79 @@ namespace ClientCore
                 _bazaarPending = 0;
                 _bazaarPendingKind = BazaarRequestKind.None;
                 _bazaarPendingListingID = 0;
+                _bazaarPendingDeadline = 0;
+                _bazaarTimeoutPosted = false;
                 _viewData.SetBazaar(Array.Empty<PacketHelper.BazaarListing>());
             }
+        }
+
+        private void CancelWalletLocked()
+        {
+            if (_walletGeneration != ulong.MaxValue) _walletGeneration++;
+            _walletPending = 0;
+            _walletPendingDeadline = 0;
+            _walletTimeoutPosted = false;
+            _walletGoldReceived = _walletDiamondReceived = false;
+            _walletGoldStatus = _walletDiamondStatus = 0;
+            _walletGold = _walletDiamond = 0;
+        }
+
+        private void QueueExpiredEconomyRequests()
+        {
+            uint registerRequestID = 0, walletRequestID = 0;
+            ulong walletGeneration = 0;
+            long now = Stopwatch.GetTimestamp();
+            lock (_sessionGate)
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed) return;
+                if (_bazaarPendingKind == BazaarRequestKind.Register && _bazaarPendingDeadline != 0 &&
+                    now >= _bazaarPendingDeadline && !_bazaarTimeoutPosted)
+                {
+                    _bazaarTimeoutPosted = true;
+                    registerRequestID = _bazaarPending;
+                }
+                if (_walletPending != 0 && now >= _walletPendingDeadline && !_walletTimeoutPosted)
+                {
+                    _walletTimeoutPosted = true;
+                    walletRequestID = _walletPending;
+                    walletGeneration = _walletGeneration;
+                }
+            }
+            if (registerRequestID != 0)
+                _threadDispatcher.Post(() => BazaarRegisterTimedOut(registerRequestID));
+            if (walletRequestID != 0)
+                _threadDispatcher.Post(() => WalletTimedOut(walletRequestID, walletGeneration));
+        }
+
+        private void BazaarRegisterTimedOut(uint requestID)
+        {
+            lock (_sessionGate)
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady ||
+                    requestID != _bazaarPending || _bazaarPendingKind != BazaarRequestKind.Register) return;
+                _bazaarPending = 0;
+                _bazaarPendingKind = BazaarRequestKind.None;
+                _bazaarPendingDeadline = 0;
+                _bazaarTimeoutPosted = false;
+            }
+            OnBazaarRegisterReceived?.Invoke(5); // The server may have committed; never retry automatically.
+        }
+
+        private void WalletTimedOut(uint requestID, ulong generation)
+        {
+            byte goldStatus, diamondStatus;
+            ulong gold, diamond;
+            lock (_sessionGate)
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady ||
+                    requestID != _walletPending || generation != _walletGeneration) return;
+                goldStatus = _walletGoldReceived ? _walletGoldStatus : (byte)0;
+                diamondStatus = _walletDiamondReceived ? _walletDiamondStatus : (byte)0;
+                gold = goldStatus == 1 ? _walletGold : 0;
+                diamond = diamondStatus == 1 ? _walletDiamond : 0;
+                CancelWalletLocked();
+            }
+            OnWalletReceived?.Invoke(goldStatus, gold, diamondStatus, diamond);
         }
 
         public void BazaarReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows)
@@ -471,6 +598,76 @@ namespace ClientCore
         public void BazaarMyListReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows)
         {
             ReceiveBazaar(requestID, status, rows, BazaarRequestKind.MyList);
+        }
+
+        public void BazaarRegisterReceived(uint requestID, byte status)
+        {
+            if (requestID == 0 || status > 5) return;
+            _threadDispatcher.Post(() =>
+            {
+                lock (_sessionGate)
+                {
+                    if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady ||
+                        requestID != _bazaarPending || _bazaarPendingKind != BazaarRequestKind.Register) return;
+                    _bazaarPending = 0;
+                    _bazaarPendingKind = BazaarRequestKind.None;
+                    _bazaarPendingDeadline = 0;
+                    _bazaarTimeoutPosted = false;
+                }
+                OnBazaarRegisterReceived?.Invoke(status);
+            });
+        }
+
+        public void WalletGoldReceived(uint requestID, byte status, ulong gold)
+        {
+            ReceiveWalletPart(requestID, status, gold, true);
+        }
+
+        public void WalletDiamondReceived(uint requestID, byte status, ulong diamond)
+        {
+            ReceiveWalletPart(requestID, status, diamond, false);
+        }
+
+        private void ReceiveWalletPart(uint requestID, byte status, ulong amount, bool gold)
+        {
+            if (requestID == 0 || status > 1 || status == 0 && amount != 0) return;
+            ulong generation;
+            lock (_sessionGate)
+            {
+                if (requestID != _walletPending || _walletPending == 0) return;
+                generation = _walletGeneration;
+            }
+            _threadDispatcher.Post(() =>
+            {
+                byte goldStatus, diamondStatus;
+                ulong goldAmount, diamondAmount;
+                lock (_sessionGate)
+                {
+                    if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady ||
+                        requestID != _walletPending || generation != _walletGeneration) return;
+                    if (gold)
+                    {
+                        if (_walletGoldReceived) return;
+                        _walletGoldReceived = true;
+                        _walletGoldStatus = status;
+                        _walletGold = status == 1 ? amount : 0;
+                    }
+                    else
+                    {
+                        if (_walletDiamondReceived) return;
+                        _walletDiamondReceived = true;
+                        _walletDiamondStatus = status;
+                        _walletDiamond = status == 1 ? amount : 0;
+                    }
+                    if (!_walletGoldReceived || !_walletDiamondReceived) return;
+                    goldStatus = _walletGoldStatus;
+                    diamondStatus = _walletDiamondStatus;
+                    goldAmount = _walletGoldStatus == 1 ? _walletGold : 0;
+                    diamondAmount = _walletDiamondStatus == 1 ? _walletDiamond : 0;
+                    CancelWalletLocked();
+                }
+                OnWalletReceived?.Invoke(goldStatus, goldAmount, diamondStatus, diamondAmount);
+            });
         }
 
         public void BazaarClaimReceived(uint requestID, ulong listingID, byte status, ulong diamondClaimed)
@@ -596,6 +793,7 @@ namespace ClientCore
                 bool automaticTransition = success && !requestPending && ownershipEpoch > _ownershipEpoch;
                 if (!requestPending && !automaticTransition) return;
                 if (success && ownershipEpoch <= _ownershipEpoch) return;
+                if (success) CancelWalletLocked();
                 if (requestPending) _zonePending = false;
                 bool wasInWorld = _zoneID != 0;
                 _threadDispatcher.Post(() =>
@@ -816,6 +1014,7 @@ namespace ClientCore
                 _respawnRetryDeadline = 0;
                 _awaitingZoneAck = false;
                 _inventoryPending = false;
+                CancelWalletLocked();
             }
             CancelBazaar();
             _viewData.SetInventory(Array.Empty<PacketHelper.InventoryItem>());

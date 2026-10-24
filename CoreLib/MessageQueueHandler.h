@@ -44,6 +44,9 @@ namespace Core {
         void BazaarClaimResponse(uint64_t sessionID, MsgBazaarClaimResBody* body);
         void BazaarMyListResponse(uint64_t sessionID, MsgBazaarMyListResBody* body);
         void BazaarSearchResponse(uint64_t sessionID, MsgBazaarSearchResBody* body);
+        void BazaarRegisterResponse(uint64_t sessionID, MsgBazaarRegisterResBody* body);
+        void WalletGoldResponse(uint64_t sessionID, MsgCurrencyResBody* body);
+        void WalletDiamondResponse(uint64_t sessionID, MsgDiamondResBody* body);
         void InventoryResponse(uint64_t sessionID, MsgInventoryResBody* body);
         void InventoryUpdateResponse(uint64_t sessionID, MsgInventoryUpdateResBody* body);
         void ProfileRenameResponse(uint64_t sessionID, MsgProfileRenameResBody* body);

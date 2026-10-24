@@ -104,6 +104,12 @@ namespace Core {
             case OP::BAZAAR_SEARCH:
                 BazaarSearch(p);
                 break;
+            case OP::BAZAAR_REGISTER:
+                BazaarRegister(p);
+                break;
+            case OP::WALLET_REQUEST:
+                WalletRequest(p);
+                break;
             case OP::PROFILE_BATCH:
                 GetProfileBatch(p);
                 break;
@@ -246,6 +252,85 @@ namespace Core {
         auto response = writer->WriteBazaarBuyResponse(&failed);
         if (response)
             iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+    }
+
+    void NonZoneHandler::BazaarRegister(IPacketView* p) {
+        if (p->GetLength() != sizeof(PacketStruct<BazaarRegisterRequestBody>)) return;
+        const auto* header = parseHeader(p->GetPtr());
+        const auto request = *parseBody<BazaarRegisterRequestBody>(p->GetPtr());
+        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_REGISTER || header->length != p->GetLength()
+            || header->flags != 0 || request.requestID == 0 || request.inventorySlot >= MAX_INVENTORY_ITEMS
+            || request.quantity == 0 || request.totalDiamondPrice == 0) return;
+        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        if (characterID == 0) return;
+
+        Message* msg = messagePool->Acquire();
+        if (msg != nullptr) {
+            auto* st = reinterpret_cast<MsgStruct<MsgBazaarRegisterBody>*>(msg->GetBuffer());
+            st->header = { p->GetSessionID(), MSG_BAZAAR_REGISTER };
+            st->body = { characterID, 0, request.quantity, request.totalDiamondPrice,
+                request.requestID, request.inventorySlot };
+            msg->SetLength(sizeof(*st));
+            const bool queued = messageQueue->EnqueueMessage(msg);
+            messagePool->Return(msg);
+            if (queued) return;
+        }
+
+        MsgBazaarRegisterResBody failed{};
+        failed.requestID = request.requestID;
+        failed.characterID = characterID;
+        failed.resStatus = 0;
+        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
+        auto response = writer->WriteBazaarRegisterResponse(&failed);
+        if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+    }
+
+    void NonZoneHandler::WalletRequest(IPacketView* p) {
+        if (p->GetLength() != sizeof(PacketStruct<WalletRequestBody>)) return;
+        const auto* header = parseHeader(p->GetPtr());
+        const auto request = *parseBody<WalletRequestBody>(p->GetPtr());
+        if (header->magic != MAGIC || header->opcode != OP::WALLET_REQUEST || header->length != p->GetLength()
+            || header->flags != 0 || request.requestID == 0) return;
+        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        if (characterID == 0) return;
+
+        Message* gold = messagePool->Acquire();
+        if (gold != nullptr) {
+            auto* st = reinterpret_cast<MsgStruct<MsgCurrencyReqBody>*>(gold->GetBuffer());
+            st->header = { p->GetSessionID(), MSG_CURRENCY_REQ };
+            st->body = { characterID, request.requestID };
+            gold->SetLength(sizeof(*st));
+            const bool queued = messageQueue->EnqueueMessage(gold);
+            messagePool->Return(gold);
+            if (!queued) gold = nullptr;
+        }
+        if (gold == nullptr) {
+            MsgCurrencyResBody failed{};
+            failed.requestID = request.requestID;
+            failed.characterID = characterID;
+            auto response = writer->WriteWalletGoldResponse(&failed);
+            if (response && stateManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
+                iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+        }
+
+        Message* diamond = messagePool->Acquire();
+        if (diamond != nullptr) {
+            auto* st = reinterpret_cast<MsgStruct<MsgDiamondReqBody>*>(diamond->GetBuffer());
+            st->header = { p->GetSessionID(), MSG_DIAMOND_REQ };
+            st->body = { characterID, request.requestID };
+            diamond->SetLength(sizeof(*st));
+            const bool queued = messageQueue->EnqueueMessage(diamond);
+            messagePool->Return(diamond);
+            if (!queued) diamond = nullptr;
+        }
+        if (diamond == nullptr) {
+            MsgDiamondResBody failed{};
+            failed.requestID = request.requestID;
+            failed.characterID = characterID;
+            auto response = writer->WriteWalletDiamondResponse(&failed);
+            if (response && stateManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
+                iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+        }
     }
 
     void NonZoneHandler::BazaarCheckOutbox(IPacketView* p) {

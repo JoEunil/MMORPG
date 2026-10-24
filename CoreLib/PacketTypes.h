@@ -7,7 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
-    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 39;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 44;
 
     enum OP : uint16_t {
         AUTH = 1,
@@ -54,6 +54,11 @@ namespace Core {
         BAZAAR_CANCEL_LISTING_RES = 37,
         ZONE_RESYNC = 38,
         RESPAWN_TO_TOWN = 39,
+        BAZAAR_REGISTER = 40,
+        BAZAAR_REGISTER_RES = 41,
+        WALLET_REQUEST = 42,
+        WALLET_GOLD_RES = 43,
+        WALLET_DIAMOND_RES = 44,
     };
 
     enum ZONE_CHANGE: uint8_t {
@@ -171,6 +176,22 @@ namespace Core {
     static_assert(sizeof(BazaarSearchRequestBody) == 8);
     static_assert(sizeof(BazaarSearchResponseBody) == 7);
     static_assert(sizeof(BazaarSearchListing) == 39);
+
+    struct BazaarRegisterRequestBody {
+        uint32_t requestID;
+        uint8_t inventorySlot;
+        uint16_t quantity;
+        uint64_t totalDiamondPrice;
+    };
+    struct BazaarRegisterResponseBody { uint32_t requestID; uint8_t resStatus; };
+    struct WalletRequestBody { uint32_t requestID; };
+    struct WalletGoldResponseBody { uint32_t requestID; uint8_t resStatus; uint64_t gold; };
+    struct WalletDiamondResponseBody { uint32_t requestID; uint8_t resStatus; uint64_t diamond; };
+    static_assert(sizeof(BazaarRegisterRequestBody) == 15);
+    static_assert(sizeof(BazaarRegisterResponseBody) == 5);
+    static_assert(sizeof(WalletRequestBody) == 4);
+    static_assert(sizeof(WalletGoldResponseBody) == 13);
+    static_assert(sizeof(WalletDiamondResponseBody) == 13);
 
     struct AuthRequestBody {
         uint64_t userID;

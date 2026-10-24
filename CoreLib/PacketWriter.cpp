@@ -9,6 +9,47 @@ namespace Core {
     static_assert(sizeof(PacketStruct<BazaarCheckOutboxResponseBody>) == 25);
     static_assert(sizeof(PacketStruct<BazaarCancelListingRequestBody>) == 20);
     static_assert(sizeof(PacketStruct<BazaarCancelListingResponseBody>) == 21);
+    static_assert(sizeof(PacketStruct<BazaarRegisterRequestBody>) == 23);
+    static_assert(sizeof(PacketStruct<BazaarRegisterResponseBody>) == 13);
+    static_assert(sizeof(PacketStruct<WalletRequestBody>) == 12);
+    static_assert(sizeof(PacketStruct<WalletGoldResponseBody>) == 21);
+    static_assert(sizeof(PacketStruct<WalletDiamondResponseBody>) == 21);
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarRegisterResponse(const MsgBazaarRegisterResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 5) return nullptr;
+        auto p = packetPool->AcquireUnique();
+        if (!p) return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<BazaarRegisterResponseBody>*>(p->GetBuffer());
+        st->header = { MAGIC, sizeof(*st), OP::BAZAAR_REGISTER_RES, 0 };
+        st->body = { body->requestID, body->resStatus };
+        p->SetLength(sizeof(*st));
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteWalletGoldResponse(const MsgCurrencyResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 1) return nullptr;
+        auto p = packetPool->AcquireUnique();
+        if (!p) return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<WalletGoldResponseBody>*>(p->GetBuffer());
+        st->header = { MAGIC, sizeof(*st), OP::WALLET_GOLD_RES, 0 };
+        st->body = { body->requestID, body->resStatus, body->resStatus == 1 ? body->gold : 0 };
+        p->SetLength(sizeof(*st));
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteWalletDiamondResponse(const MsgDiamondResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 1) return nullptr;
+        auto p = packetPool->AcquireUnique();
+        if (!p) return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<WalletDiamondResponseBody>*>(p->GetBuffer());
+        st->header = { MAGIC, sizeof(*st), OP::WALLET_DIAMOND_RES, 0 };
+        st->body = { body->requestID, body->resStatus, body->resStatus == 1 ? body->diamond : 0 };
+        p->SetLength(sizeof(*st));
+        return p;
+    }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarBuyResponse(const MsgBazaarBuyResBody* body) {
         if (body == nullptr || body->requestID == 0 || body->listingID == 0)

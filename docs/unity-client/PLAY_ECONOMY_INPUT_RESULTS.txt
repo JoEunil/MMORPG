@@ -1,0 +1,22 @@
+2026-10-24 live input batch — existing baseline (not uncompiled economy/ground WIP)
+Native mouse: sign-in, character selection, enter field, logout PASS.
+Sustained keys: existing Keyboard InputSystem QueueStateEvent -> production Update -> live server.
+Native Windows short key taps were not confirmed; do not equate simulated held keys with hardware holds.
+No direct coordinates/HP/result packet or UI-handler injection.
+Live server session, real native login; held direction/skill via Unity InputSystem queue. No position/HP/state injection.
+movement start=(89.41, 61.97) end=(89.41, 72.91) distance=10.94538 frames=443
+perpendicular endpoint=(80.31, 72.91) idle drift=0
+server action slot=0 phase=0
+server action slot=0 phase=1
+server action slot=1 phase=0
+server action slot=1 phase=1
+server action slot=2 phase=0
+server action slot=2 phase=1
+MP before=9938 after=9897 HP=10000 zone=1
+travel start=(80.31, 72.91) end=(205.00, 72.91) zone=2 hp=10000
+combat approach id=11 distance=1.006456 player=(240.22, 67.41) target=240.8424,66.61415
+combat target HP=1500 -> 500 own HP=10000 -> 9975 ownPhases=2 monsterPhases=3 exp=10
+retreat endpoint=(240.32, 77.94) HP=8425; prior monster renderer active with exact same server coordinate as player, not missing renderer.
+
+No kill/EXP-increase check. Monster/player overlap is actual server coordinates; renderer visible after movement separates them. User monster AI unchanged.
+Normal logout; Play false/background false/scene dirty false. MainServer q shutdown exit 0. Slack app result 1792829566.022909 in work thread 1792827478.780979.

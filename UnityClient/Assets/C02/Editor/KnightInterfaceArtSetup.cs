@@ -108,7 +108,7 @@ public static class KnightInterfaceArtSetup
         if (aim != null) aim.gameObject.SetActive(false); // facing remains in the existing upper-left world information
         var status = combat.Find("C05Status")?.GetComponent<TMP_Text>();
         if (status != null) status.gameObject.SetActive(false); // server response remains available in the upper-left info
-        foreach (string name in new[] { "C07InventoryPanel", "C09BazaarPanel", "C06ChatPanel" })
+        foreach (string name in new[] { "C07InventoryPanel" })
         {
             var panel = hud.parent.Find(name) as RectTransform;
             SkinPanel(panel, 6);
@@ -118,16 +118,8 @@ public static class KnightInterfaceArtSetup
                 { image.sprite = leather; image.type = Image.Type.Simple; image.color = new Color(.62f, .54f, .43f); }
             foreach (var button in panel.GetComponentsInChildren<Button>(true)) SkinButton(button, 20);
         }
-        var chat = hud.parent.Find("C06ChatPanel") as RectTransform;
-        chat.sizeDelta = new Vector2(400, 260);
-        chat.anchoredPosition = new Vector2(24, 8);
-        var inset = chat.Find("ChatInset");
-        var inputRect = inset.Find("ChatInput") as RectTransform;
-        inputRect.sizeDelta = new Vector2(266, 34);
-        string[] scopes = { "ChatGlobalButton", "ChatZoneButton", "ChatWhisperButton" };
-        for (int i = 0; i < scopes.Length; i++)
-            Place(inset.Find(scopes[i]) as RectTransform, new Vector2(0, 1), new Vector2(12 + i * 122, -36), new Vector2(116, 28));
-        (inset.Find("ChatWhisperTargetButton") as RectTransform).sizeDelta = new Vector2(370, 24);
+        C06ChatSetup.ApplyCleanStyle();
+        C09BazaarSetup.ApplyCleanStyle();
         foreach (string name in new[] { "C07BagButton", "C09MarketButton" })
             SkinButton(hud.parent.Find(name).GetComponent<Button>(), 16);
         SkinButton(hud.Find("DisconnectButton").GetComponent<Button>(), 16);

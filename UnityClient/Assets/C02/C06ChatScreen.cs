@@ -204,8 +204,8 @@ namespace C02
                     button.interactable = available && pendingWhisper == null;
                     var image = button.GetComponent<Image>();
                     if (image != null) image.color = selectedScope == i
-                        ? new Color(.58f, .39f, .15f, 1f)
-                        : new Color(.23f, .19f, .13f, 1f);
+                        ? new Color(.16f, .27f, .34f, 1f)
+                        : new Color(.07f, .10f, .14f, .94f);
                 }
             }
 

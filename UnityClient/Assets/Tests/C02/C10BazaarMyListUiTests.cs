@@ -481,6 +481,8 @@ namespace C02.Tests
             { CheckOutboxRequests++; LastCheckOutboxID = requestID; }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page)
             { LastSearchID = requestID; LastItemType = itemType; LastPage = page; }
+            public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
+            public void RequestWallet(uint requestID) { }
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void CharacterList() { }
             public void Enter(ulong characterId) { }

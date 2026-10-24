@@ -25,6 +25,8 @@ namespace Core {
         void GetCharacterState(IPacketView* p);
         void GetInventory(IPacketView* p);
         void BazaarSearch(IPacketView* p);
+        void BazaarRegister(IPacketView* p);
+        void WalletRequest(IPacketView* p);
         void BazaarMyList(IPacketView* p);
         void BazaarClaim(IPacketView* p);
         void BazaarBuy(IPacketView* p);

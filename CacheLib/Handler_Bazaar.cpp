@@ -72,7 +72,7 @@ namespace Cache {
     }
 
     void Handler::BazaarRegister(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarRegisterBody* body) {
-        const auto request = *body; // The response overwrites this buffer and the worker outlives this call.
+        auto request = *body; // The response overwrites this buffer and the worker outlives this call.
         struct PendingResponse {
             Core::Message* message;
             MessagePool* pool;
@@ -82,17 +82,39 @@ namespace Cache {
         };
         const auto pending = std::make_shared<PendingResponse>(msg, messagePool);
         msg = nullptr; // All paths now share one Return, including a throwing response queue.
-        const auto finish = [this, pending, sessionID](uint8_t status) {
+        const auto finish = [this, pending, sessionID, request](uint8_t status) {
             if (pending->finished) return;
             pending->finished = true; // A worker failure callback cannot send a second response.
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterResBody>*>(pending->message->GetBuffer());
             st->header = { sessionID, Core::MSG_BAZAAR_REGISTER_RES };
-            st->body = { status };
+            st->body = { status, request.requestID, request.characterID };
             pending->message->SetLength(sizeof(*st));
             if (!messageQ->EnqueueMessage(pending->message))
                 Core::errorLogger->LogError("cache handler bazaar", "register response queue rejected", "sessionID", sessionID);
         };
 
+        const auto inventory = cache_inventory->Getter(request.characterID);
+        if (request.inventorySlot >= MAX_INVENTORY || inventory.status != CACHE_STATUS::AVAILABLE) {
+            finish(0);
+            return;
+        }
+        const auto& selected = inventory.data.items[request.inventorySlot];
+        if (selected.itemID == 0 || selected.slot != request.inventorySlot || request.quantity == 0 || request.price == 0) {
+            finish(4);
+            return;
+        }
+        request.itemID = selected.itemID;
+        if (selected.quantity < request.quantity) {
+            finish(2);
+            return;
+        }
+        // Inventory insertion stacks by item ID, so duplicate IDs would make slot-based removal ambiguous.
+        for (uint16_t slot = 0; slot < MAX_INVENTORY; ++slot) {
+            if (slot != request.inventorySlot && inventory.data.items[slot].itemID == request.itemID) {
+                finish(4);
+                return;
+            }
+        }
         const auto item = Data::itemMap.find(request.itemID);
         constexpr uint64_t BAZAAR_FEE_MIN = 10;
         constexpr uint64_t BAZAAR_FEE_RATE = 10;

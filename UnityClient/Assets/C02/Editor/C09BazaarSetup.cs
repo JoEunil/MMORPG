@@ -180,6 +180,51 @@ public static class C09BazaarSetup
         serialized.FindProperty("selectedDetailText").objectReferenceValue = detail;
         serialized.FindProperty("inventoryScreen").objectReferenceValue = canvas.GetComponent<C07InventoryScreen>();
         serialized.FindProperty("statusText").objectReferenceValue = status;
+        var sell = Button("BazaarSellItemsButton", paper.transform, "SELL ITEMS", new Color(.14f,.20f,.24f,1));
+        AnchorTopLeft(sell.GetComponent<RectTransform>(), 487, 58, 260, 34);
+        var form = FindOrCreate("SaleForm", paper.transform, typeof(RectTransform));
+        var formRect = form.GetComponent<RectTransform>();
+        formRect.anchorMin = formRect.anchorMax = formRect.pivot = new Vector2(1,1);
+        formRect.anchoredPosition = new Vector2(-14,-276);
+        formRect.sizeDelta = new Vector2(270,252);
+        var qtyLabel = Text("QuantityLabel", form.transform, "QUANTITY", 14, Color.white);
+        AnchorTopLeft(qtyLabel.rectTransform,0,0,82,20);
+        var priceLabel = Text("PriceLabel", form.transform, "STACK TOTAL · DIAMONDS", 13, new Color(.55f,.83f,.94f));
+        AnchorTopLeft(priceLabel.rectTransform,88,0,182,20);
+        var quantity = SaleInput("Quantity",form.transform,"1",0,82);
+        var price = SaleInput("TotalDiamondPrice",form.transform,"100",88,182);
+        var summary = Text("FeeSummary",form.transform,"Choose an item to review the fee.",15,new Color(.90f,.91f,.94f));
+        AnchorTopLeft(summary.rectTransform,0,65,270,135);
+        summary.alignment = TextAlignmentOptions.TopLeft;
+        summary.enableWordWrapping = true;
+        var register = Button("RegisterSaleButton",form.transform,"REVIEW SALE",new Color(.16f,.30f,.33f,1));
+        AnchorTopLeft(register.GetComponent<RectTransform>(),0,208,270,34);
+        form.SetActive(false);
+        var wallet = FindOrCreate("WalletHud",canvas.transform,typeof(RectTransform),typeof(Image));
+        var walletRect=wallet.GetComponent<RectTransform>();
+        walletRect.anchorMin=walletRect.anchorMax=walletRect.pivot=new Vector2(1,1);
+        walletRect.anchoredPosition=new Vector2(-24,-76);walletRect.sizeDelta=new Vector2(430,32);
+        wallet.GetComponent<Image>().color=new Color(.035f,.05f,.065f,.88f);
+        wallet.GetComponent<Image>().raycastTarget=false;
+        var gold=Text("Gold",wallet.transform,"GOLD  --",16,new Color(.94f,.76f,.39f));
+        var diamond=Text("Diamonds",wallet.transform,"DIAMONDS  --",16,new Color(.52f,.84f,.96f));
+        gold.rectTransform.anchorMin=Vector2.zero;gold.rectTransform.anchorMax=new Vector2(.5f,1);
+        gold.rectTransform.offsetMin=new Vector2(10,0);gold.rectTransform.offsetMax=new Vector2(-6,0);
+        diamond.rectTransform.anchorMin=new Vector2(.5f,0);diamond.rectTransform.anchorMax=Vector2.one;
+        diamond.rectTransform.offsetMin=new Vector2(6,0);diamond.rectTransform.offsetMax=new Vector2(-10,0);
+        gold.alignment=diamond.alignment=TextAlignmentOptions.MidlineRight;
+        gold.enableAutoSizing=diamond.enableAutoSizing=true;
+        gold.fontSizeMin=diamond.fontSizeMin=12;gold.fontSizeMax=diamond.fontSizeMax=16;
+        wallet.SetActive(false);
+        serialized.FindProperty("sellItemsButton").objectReferenceValue=sell;
+        serialized.FindProperty("registerButton").objectReferenceValue=register;
+        serialized.FindProperty("saleForm").objectReferenceValue=form;
+        serialized.FindProperty("quantityInput").objectReferenceValue=quantity;
+        serialized.FindProperty("priceInput").objectReferenceValue=price;
+        serialized.FindProperty("saleSummaryText").objectReferenceValue=summary;
+        serialized.FindProperty("walletHud").objectReferenceValue=wallet;
+        serialized.FindProperty("walletGoldText").objectReferenceValue=gold;
+        serialized.FindProperty("walletDiamondText").objectReferenceValue=diamond;
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
         var worldSerialized = new SerializedObject(world);
@@ -188,10 +233,66 @@ public static class C09BazaarSetup
         var combatSerialized = new SerializedObject(combat);
         combatSerialized.FindProperty("bazaarScreen").objectReferenceValue = screen;
         combatSerialized.ApplyModifiedPropertiesWithoutUndo();
+        ApplyCleanStyle();
         panel.SetActive(false);
         market.gameObject.SetActive(false);
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
         EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
+    }
+
+    private static TMP_InputField SaleInput(string name,Transform parent,string initial,float x,float width)
+    {
+        var go=FindOrCreate(name,parent,typeof(RectTransform),typeof(Image),typeof(TMP_InputField));
+        AnchorTopLeft(go.GetComponent<RectTransform>(),x,24,width,32);
+        go.GetComponent<Image>().color=new Color(.025f,.035f,.045f,1);
+        var input=go.GetComponent<TMP_InputField>();
+        var viewport=FindOrCreate("Viewport",go.transform,typeof(RectTransform),typeof(RectMask2D));
+        Stretch(viewport.GetComponent<RectTransform>(),5);
+        var text=Text("Text",viewport.transform,initial,16,Color.white);
+        Stretch(text.rectTransform,0);text.alignment=TextAlignmentOptions.MidlineLeft;
+        input.targetGraphic=go.GetComponent<Image>();input.textViewport=viewport.GetComponent<RectTransform>();
+        input.textComponent=text;input.contentType=TMP_InputField.ContentType.IntegerNumber;
+        input.characterLimit=20;input.lineType=TMP_InputField.LineType.SingleLine;
+        input.navigation=new Navigation{mode=Navigation.Mode.None};input.SetTextWithoutNotify(initial);
+        return input;
+    }
+
+    public static void ApplyCleanStyle()
+    {
+        var canvas=Object.FindFirstObjectByType<Canvas>();
+        var panel=canvas!=null?canvas.transform.Find("C09BazaarPanel") as RectTransform:null;
+        if(panel==null)return;
+        panel.anchorMin=panel.anchorMax=panel.pivot=new Vector2(1,1);
+        panel.anchoredPosition=new Vector2(-24,-118);panel.sizeDelta=new Vector2(780,555);
+        foreach(var image in panel.GetComponentsInChildren<Image>(true))
+        {
+            if(image.name=="ForgedFrame"||image.name=="FrameOrnaments"){image.gameObject.SetActive(false);continue;}
+            image.sprite=null;image.type=Image.Type.Simple;
+            image.color=image.GetComponent<Button>()!=null?new Color(.14f,.18f,.22f,1):new Color(.06f,.08f,.10f,.98f);
+        }
+        foreach(var button in panel.GetComponentsInChildren<Button>(true))
+        {button.navigation=new Navigation{mode=Navigation.Mode.None};var colors=ColorBlock.defaultColorBlock;colors.highlightedColor=new Color(1.3f,1.3f,1.3f);button.colors=colors;}
+        foreach(var text in panel.GetComponentsInChildren<TMP_Text>(true))
+        {text.color=new Color(.88f,.91f,.95f);text.fontSize=Mathf.Max(14,text.fontSize);}
+        var paper=panel.Find("BazaarParchment");if(paper==null)return;
+        var title=paper.Find("BazaarTitle").GetComponent<TMP_Text>();title.text="ITEM EXCHANGE";title.fontSize=21;
+        AnchorTopLeft(paper.Find("BazaarSearchListingsButton") as RectTransform,15,58,236,34);
+        AnchorTopLeft(paper.Find("BazaarMyListingsButton") as RectTransform,251,58,236,34);
+        if(paper.Find("BazaarSellItemsButton")!=null)AnchorTopLeft(paper.Find("BazaarSellItemsButton") as RectTransform,487,58,260,34);
+        Stretch(paper.Find("BazaarScroll") as RectTransform,new RectOffset(14,310,158,146));
+        // Column headers use the same left-hand list width as runtime rows.
+        AnchorTopLeft(paper.Find("BazaarItemHeader") as RectTransform,78,132,150,22);
+        AnchorTopLeft(paper.Find("BazaarQuantityHeader") as RectTransform,237,132,54,22);
+        AnchorTopLeft(paper.Find("BazaarPriceHeader") as RectTransform,295,132,85,22);
+        AnchorTopLeft(paper.Find("BazaarStateHeader") as RectTransform,384,132,68,22);
+        var detail=paper.Find("BazaarSelectedDetailPanel") as RectTransform;
+        detail.anchorMin=detail.anchorMax=detail.pivot=new Vector2(1,1);
+        detail.anchoredPosition=new Vector2(-14,-148);detail.sizeDelta=new Vector2(270,120);
+        var status=paper.Find("BazaarStatus") as RectTransform;
+        status.anchorMin=status.anchorMax=status.pivot=new Vector2(0,0);
+        status.anchoredPosition=new Vector2(14,40);status.sizeDelta=new Vector2(450,44);
+        var close=paper.Find("BazaarCloseButton") as RectTransform;
+        close.anchoredPosition=new Vector2(-12,-12);
     }
 
     private static GameObject FindOrCreate(string name, Transform parent, params System.Type[] components)

@@ -124,6 +124,23 @@ namespace Test {
         }
     };
 
+    static uint8_t WaitForAddedInventorySlot(CacheNode& node) {
+        auto* response = node.Wait();
+        if (response == nullptr)
+            throw std::runtime_error("Inventory add response timed out before bazaar registration");
+        if (response->GetLength() < sizeof(Core::MsgStruct<Core::MsgInventoryUpdateResBody>)) {
+            SafeReturn(response);
+            throw std::runtime_error("Inventory add response was too short for bazaar registration");
+        }
+        auto* body = GetBody<Core::MsgInventoryUpdateResBody>(response);
+        const bool added = body->resStatus == 1 && body->slot < Core::MAX_INVENTORY_ITEMS;
+        const auto slot = static_cast<uint8_t>(body->slot);
+        SafeReturn(response);
+        if (!added)
+            throw std::runtime_error("Inventory add did not return a valid slot for bazaar registration");
+        return slot;
+    }
+
     // outbox 배송 요청 + 결과 반환
     static Core::MsgBazaarCheckOutboxResBody SendCheckOutbox(CacheNode& node, uint64_t charID, uint64_t sessionID) {
         Core::MsgBazaarCheckOutboxBody body{};
@@ -307,8 +324,8 @@ namespace Test {
 		SafeReturn(msg);
         auto* res = node.Wait();
         auto* addRes = GetBody<Core::MsgInventoryUpdateResBody>(res);
-        std::cout << std::format("  추가: status={} itemID={} qty={}\n",
-            addRes->resStatus, addRes->itemID, addRes->itemQuantity);
+        std::cout << std::format("  추가: status={} itemID={} qty={} slot={}\n",
+            addRes->resStatus, addRes->itemID, addRes->itemQuantity, addRes->slot);
         SafeReturn(res);
 
         // 제거 (HP포션 2개)
@@ -351,6 +368,7 @@ namespace Test {
 
         Core::MsgCurrencyReqBody reqBody{};
         reqBody.characterID = CHAR_A;
+        reqBody.requestID = 2001;
         auto msg1 = MakeMsg(Core::MSG_CURRENCY_REQ, SESSION_A, reqBody);
         node.Send(msg1);
         SafeReturn(msg1);
@@ -382,6 +400,7 @@ namespace Test {
 
         Core::MsgDiamondReqBody reqBody{};
         reqBody.characterID = CHAR_A;
+        reqBody.requestID = 3001;
         auto msg2 = MakeMsg(Core::MSG_DIAMOND_REQ, SESSION_A, reqBody);
         node.Send(msg2);
         SafeReturn(msg2);
@@ -428,7 +447,7 @@ namespace Test {
             auto msg = MakeMsg(Core::MSG_INVENTORY_UPDATE, SESSION_A, addItem);
             seller.Send(msg);
             SafeReturn(msg);
-            SafeReturn(seller.Wait());
+            const auto inventorySlot = WaitForAddedInventorySlot(seller);
 
             // buyer: 다이아 충전
             Core::MsgDiamondDepositBody diamondDeposit{};
@@ -449,6 +468,8 @@ namespace Test {
             regBody.itemID = 3;
             regBody.quantity = 1;
             regBody.price = 100;
+            regBody.requestID = 4001;
+            regBody.inventorySlot = inventorySlot;
             auto msg3 = MakeMsg(Core::MSG_BAZAAR_REGISTER, SESSION_A, regBody);
             seller.Send(msg3);
             SafeReturn(msg3);
@@ -534,13 +555,15 @@ namespace Test {
             seller.Send(msg1);
             SafeReturn(msg1);
 
-            SafeReturn(seller.Wait());
+            const auto inventorySlot = WaitForAddedInventorySlot(seller);
 
             Core::MsgBazaarRegisterBody regBody{};
             regBody.characterID = CHAR_A;
             regBody.itemID = 4;
             regBody.quantity = 1;
             regBody.price = 200;
+            regBody.requestID = 5001;
+            regBody.inventorySlot = inventorySlot;
             auto msg2 = MakeMsg(Core::MSG_BAZAAR_REGISTER, SESSION_A, regBody);
             seller.Send(msg2);
             SafeReturn(msg2);
@@ -643,13 +666,15 @@ namespace Test {
                 auto msg1 = MakeMsg(Core::MSG_INVENTORY_UPDATE, SESSION_A, addItem);
                 seller.Send(msg1);
                 SafeReturn(msg1);
-                SafeReturn(seller.Wait());
+                const auto inventorySlot = WaitForAddedInventorySlot(seller);
 
                 Core::MsgBazaarRegisterBody regBody{};
                 regBody.characterID = CHAR_A;
                 regBody.itemID = 3;
                 regBody.quantity = 1;
                 regBody.price = 100;
+                regBody.requestID = 6001;
+                regBody.inventorySlot = inventorySlot;
                 auto msg2 = MakeMsg(Core::MSG_BAZAAR_REGISTER, SESSION_A, regBody);
                 seller.Send(msg2);
                 SafeReturn(msg2);
@@ -739,13 +764,15 @@ namespace Test {
                 auto msg1 = MakeMsg(Core::MSG_INVENTORY_UPDATE, SESSION_A, addItem);
                 seller.Send(msg1);
                 SafeReturn(msg1);
-                SafeReturn(seller.Wait());
+                const auto inventorySlot = WaitForAddedInventorySlot(seller);
 
                 Core::MsgBazaarRegisterBody regBody{};
                 regBody.characterID = CHAR_A;
                 regBody.itemID = 1;
                 regBody.quantity = 1;
                 regBody.price = 50;
+                regBody.requestID = 7001;
+                regBody.inventorySlot = inventorySlot;
                 auto msg2 = MakeMsg(Core::MSG_BAZAAR_REGISTER, SESSION_A, regBody);
                 seller.Send(msg2);
                 SafeReturn(msg2);
@@ -863,13 +890,15 @@ namespace Test {
             auto msg1 = MakeMsg(Core::MSG_INVENTORY_UPDATE, SESSION_A, addItem);
             seller.Send(msg1);
             SafeReturn(msg1);
-            SafeReturn(seller.Wait());
+            const auto inventorySlot = WaitForAddedInventorySlot(seller);
 
             Core::MsgBazaarRegisterBody regBody{};
             regBody.characterID = CHAR_A;
             regBody.itemID = 1;
             regBody.quantity = 1;
             regBody.price = 50;
+            regBody.requestID = 8001;
+            regBody.inventorySlot = inventorySlot;
             auto msg2 = MakeMsg(Core::MSG_BAZAAR_REGISTER, SESSION_A, regBody);
             seller.Send(msg2);
             SafeReturn(msg2);

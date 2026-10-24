@@ -1,22 +1,22 @@
 ## 공개 집계
 
 기준일: 2026-10-24
-누적 신규: 78
-누적 재활성화: 181
+누적 신규: 83
+누적 재활성화: 187
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-24
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 1 | 0 |
-| server_analyst | 서버 분석 Agent | 13 | 41 |
-| client_implementer | 구현 Agent | 29 | 41 |
-| asset_artist | 아트 Agent | 10 | 19 |
-| code_reviewer | 리뷰 Agent | 20 | 74 |
+| server_analyst | 서버 분석 Agent | 14 | 41 |
+| client_implementer | 구현 Agent | 31 | 43 |
+| asset_artist | 아트 Agent | 11 | 20 |
+| code_reviewer | 리뷰 Agent | 21 | 77 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 2 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 전체259회와 일치한다. 기존 ‘최근 아트29회’ 부분 표를 전체 원장 대조로 대체했다. 실제 인스턴스77개의 신규77/재활성화181=258회는 아래 귀속 근거로 확인했고, 225→230 구간의 추가 신규1회는 기존 누적에만 존재하여 역할 미확인으로 보존한다. 이를 임의 역할에 배정하지 않는다. 역할은 배정된 기능 책임 기준이며 worker/explorer 같은 도구 유형이 아니다. 하나의 인스턴스가 후속 리뷰를 도왔어도 같은 배정 역할로 유지해 중복 계상하지 않는다. Coordinator의 직접 구현·시험·기록과 메시지·조회는 제외한다. 실제 토큰·비용 N/A. 이후 실제 활성화 때 아래 인스턴스 원장과 공개 역할 합계를 함께 갱신한다.
+공개 집계는 기록 시작 이후 전체270회(신규83·재활성화187)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -101,6 +101,20 @@
 | knight_attack_presentation | 구현 Agent | 1 | 10 |
 | knight_art_review | 리뷰 Agent | 1 | 12 |
 | monster_cast_presentation | 구현 Agent | 1 | 0 |
+
+| market_wallet_contract | 서버 분석 Agent | 1 | 0 |
+| ground_surface_refresh | 아트 Agent | 1 | 1 |
+| market_wallet_connection | 구현 Agent | 1 | 0 |
+| economy_connection_review | 리뷰 Agent | 1 | 3 |
+| economy_ui_checks | 구현 Agent | 1 | 2 |
+
+## 플레이·경제 UI 검토·검증 보완 — 2026-10-24
+
+economy_connection_review 신규1·재활성화3: 경제 서버/ClientCore/화면의 읽기 리뷰와 cold-cache/실제슬롯/조회중 갱신예약 수정 재검토, 최종 코드상 차단 없음. economy_ui_checks 신규1·재활성화2: 판매·재화 fixture와 기존 통합 harness의 실제 슬롯 사용을 보완했다. 실행은 Coordinator가 담당했으며 초기 fixture 실패와 보정도 결과 문서에 남긴다. 새 전문 테스트/기록 Agent0, Coordinator의 실제 입력 검증은 제외. 누적83/187/270, 토큰N/A.
+
+## 플레이·경제 UI 초기 진행 — 2026-10-24
+
+market_wallet_contract/server_analyst 신규1: 기존수수료/구매/정산/금액형·사용자AI파일동일성읽기분석완료. ground_surface_refresh/asset_artist 신규1·재활성화1: ground분석후전용알베도/독립normal·재질저작완료,ROOT렌더미실행. market_wallet_connection/worker(구현) 신규1: TCP/ClientCore기존경계연결진행중이며완료/검증성공으로세지않음. Coordinator가UI WIP/실행준비/정상기동·q종료를담당했고실제game입력은도구Esc차단으로미실행. 새tester/기록Agent0,누적신규81/재활성화182/263회,토큰N/A.
 
 ## 공개 지표 감사 — 2026-10-23
 

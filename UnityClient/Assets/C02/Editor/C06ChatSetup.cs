@@ -161,9 +161,37 @@ public static class C06ChatSetup
         for (int i = 0; i < scopes.Length; i++) scopeProperty.GetArrayElementAtIndex(i).objectReferenceValue = scopes[i];
         serialized.FindProperty("whisperTargetButton").objectReferenceValue = whisperTarget;
         serialized.ApplyModifiedPropertiesWithoutUndo();
+        ApplyCleanStyle();
         panel.SetActive(false);
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
         EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
+    }
+
+    public static void ApplyCleanStyle()
+    {
+        var canvas=Object.FindFirstObjectByType<Canvas>();
+        var panel=canvas!=null?canvas.transform.Find("C06ChatPanel") as RectTransform:null;
+        if(panel==null)return;
+        panel.sizeDelta=new Vector2(430,238);panel.anchoredPosition=new Vector2(24,8);
+        foreach(var image in panel.GetComponentsInChildren<Image>(true))
+        {
+            if(image.name=="ForgedFrame"||image.name=="FrameOrnaments"){image.gameObject.SetActive(false);continue;}
+            image.sprite=null;image.type=Image.Type.Simple;
+            if(image.name=="ChatHistoryViewport")continue;
+            image.color=image.GetComponent<Button>()!=null?new Color(.10f,.13f,.17f,.94f):new Color(.035f,.05f,.065f,.82f);
+        }
+        foreach(var button in panel.GetComponentsInChildren<Button>(true))button.colors=ColorBlock.defaultColorBlock;
+        var inner=panel.Find("ChatInset");
+        var title=inner.Find("ChatTitle");if(title!=null)title.gameObject.SetActive(false);
+        string[] names={"ChatGlobalButton","ChatZoneButton","ChatWhisperButton"};
+        for(int i=0;i<names.Length;i++)SetTopLeft(inner.Find(names[i]) as RectTransform,10+i*136,8,130,26);
+        SetTopLeft(inner.Find("ChatWhisperTargetButton") as RectTransform,10,38,404,22);
+        Stretch(inner.Find("ChatHistoryViewport") as RectTransform,new RectOffset(12,12,66,68));
+        var input=inner.Find("ChatInput") as RectTransform;input.sizeDelta=new Vector2(318,32);input.anchoredPosition=new Vector2(10,8);
+        var send=inner.Find("ChatSendButton") as RectTransform;send.sizeDelta=new Vector2(84,32);send.anchoredPosition=new Vector2(-10,8);
+        foreach(var text in panel.GetComponentsInChildren<TMP_Text>(true))
+        {text.fontSize=Mathf.Max(14,text.fontSize);text.color=new Color(.86f,.90f,.95f);}
+        inner.Find("ChatHistoryViewport/ChatHistoryText").GetComponent<TMP_Text>().fontSize=16;
     }
 
     private static GameObject FindOrCreate(string name, Transform parent, params System.Type[] components)

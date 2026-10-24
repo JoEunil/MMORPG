@@ -333,6 +333,8 @@ namespace C02.Tests
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() => Requests++;
+            public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
+            public void RequestWallet(uint requestID) { }
             public void Action(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch) => LastActionEpoch = ownershipEpoch;
             public void Pong(ulong serverTimeMs) { }
             public void ZoneChange(byte op) { ZoneOperations++; LastZoneOperation = op; } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { }

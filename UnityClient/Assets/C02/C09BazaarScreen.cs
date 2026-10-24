@@ -35,13 +35,32 @@ namespace C02
         [SerializeField] private TMP_Text selectedDetailText;
         [SerializeField] private C07InventoryScreen inventoryScreen;
         [SerializeField] private TMP_Text statusText;
+        [SerializeField] private Button sellItemsButton;
+        [SerializeField] private Button registerButton;
+        [SerializeField] private GameObject saleForm;
+        [SerializeField] private TMP_InputField quantityInput;
+        [SerializeField] private TMP_InputField priceInput;
+        [SerializeField] private TMP_Text saleSummaryText;
+        [SerializeField] private GameObject walletHud;
+        [SerializeField] private TMP_Text walletGoldText;
+        [SerializeField] private TMP_Text walletDiamondText;
+        private bool selling;
+        private bool registerConfirmation;
+        private bool registrationUncertain;
+        private InventoryItemView saleItem;
+        private bool walletRequested, walletPending, goldKnown, diamondKnown;
+        private float walletDeadline;
+        private float walletRetryAt;
+        private int walletRetries;
+        private bool walletRefreshQueued;
+        private ulong gold, diamonds;
         private IViewModelUI model;
         private ushort itemType = 1;
         private ushort page;
         private bool myListings;
         private float requestDeadline;
         private bool requestPending;
-        private enum WriteRequest { None, Claim, Buy, CheckOutbox, CancelListing }
+        private enum WriteRequest { None, Claim, Buy, CheckOutbox, CancelListing, Register }
         private WriteRequest writeRequest;
         private BazaarListingView selectedListing;
         private bool buyConfirmation;
@@ -82,6 +101,10 @@ namespace C02
             if (buyButton != null) buyButton.onClick.AddListener(BuySelectedListing);
             if (cancelListingButton != null) cancelListingButton.onClick.AddListener(CancelSelectedListing);
             if (checkOutboxButton != null) checkOutboxButton.onClick.AddListener(CheckOutbox);
+            if (sellItemsButton != null) sellItemsButton.onClick.AddListener(SelectSellItems);
+            if (registerButton != null) registerButton.onClick.AddListener(RegisterSale);
+            if (quantityInput != null) quantityInput.onValueChanged.AddListener(SaleInputChanged);
+            if (priceInput != null) priceInput.onValueChanged.AddListener(SaleInputChanged);
             loginScreen.ClientChanged += ChangeClient;
             worldScreen.WorldStateChanged += WorldChanged;
             ChangeClient(loginScreen.Model);
@@ -89,6 +112,13 @@ namespace C02
 
         private void Update()
         {
+            // Bootstrap callbacks run before ClientCore marks the world ready; request on the next frame.
+            if (!walletRequested && WorldAvailable) RefreshWallet();
+            if (walletRetryAt > 0 && Time.unscaledTime >= walletRetryAt && WorldAvailable && !walletPending)
+            {
+                walletRetryAt = 0;
+                RefreshWallet();
+            }
             if (Application.isFocused && Keyboard.current != null && Keyboard.current.bKey.wasPressedThisFrame &&
                 EventSystem.current != null)
             {
@@ -97,11 +127,19 @@ namespace C02
                 if (input == null || !input.isFocused) TogglePanel();
             }
 
+            if (walletPending && Time.unscaledTime >= walletDeadline)
+            {
+                walletPending = false;
+                goldKnown = diamondKnown = false;
+                ShowWallet();
+                if (walletRefreshQueued) { walletRefreshQueued = false; walletRetryAt = Time.unscaledTime + .01f; }
+            }
             if (!requestPending || Time.unscaledTime < requestDeadline) return;
             WriteRequest previousWrite = writeRequest;
             CancelPending();
             if (previousWrite == WriteRequest.None) ClearRows();
-            statusText.text = previousWrite == WriteRequest.Claim ? "Collection result unknown. Check again after reconnecting; no automatic retry."
+            statusText.text = previousWrite == WriteRequest.Register ? "Sale result unknown. Check My listings and your bag before trying again; no automatic retry."
+                : previousWrite == WriteRequest.Claim ? "Collection result unknown. Check again after reconnecting; no automatic retry."
                 : previousWrite == WriteRequest.Buy ? "Purchase result unknown. Reconnect to check; no automatic retry."
                 : previousWrite == WriteRequest.CancelListing ? "Cancellation result unknown. Refresh my listings and receive items; no automatic retry."
                 : previousWrite == WriteRequest.CheckOutbox ? "Receipt result incomplete; items may have arrived. Check your bag, then retry manually."
@@ -115,6 +153,9 @@ namespace C02
         {
             if (model != null)
             {
+                model.OnWalletReceived -= WalletReceived;
+                model.OnInventoryReceived -= SaleInventoryReceived;
+                model.OnBazaarRegisterReceived -= RegisterReceived;
                 model.OnBazaarReceived -= BazaarReceived;
                 model.OnBazaarClaimReceived -= ClaimReceived;
                 model.OnBazaarBuyReceived -= BuyReceived;
@@ -127,12 +168,22 @@ namespace C02
             buyOutcomes.Clear();
             cancelOutcomes.Clear();
             model = next;
+            selling = registerConfirmation = registrationUncertain = false;
+            walletRequested = walletPending = goldKnown = diamondKnown = false;
+            walletRetryAt = 0;
+            walletRetries = 0;
+            walletRefreshQueued = false;
+            saleItem = default;
+            ShowWallet();
             page = 0;
             myListings = false;
             ClearResults();
             bazaarPanel.SetActive(false);
             if (model != null)
             {
+                model.OnWalletReceived += WalletReceived;
+                model.OnInventoryReceived += SaleInventoryReceived;
+                model.OnBazaarRegisterReceived += RegisterReceived;
                 model.OnBazaarReceived += BazaarReceived;
                 model.OnBazaarClaimReceived += ClaimReceived;
                 model.OnBazaarBuyReceived += BuyReceived;
@@ -146,6 +197,7 @@ namespace C02
         {
             bool available = WorldAvailable && model != null && loginScreen.Model == model;
             marketButton.gameObject.SetActive(available);
+            if (walletHud != null) walletHud.SetActive(available);
             if (!available)
             {
                 CancelPending();
@@ -161,8 +213,11 @@ namespace C02
             if (bazaarPanel.activeSelf) { ClosePanel(); return; }
             worldScreen.StopActions();
             if (inventoryScreen != null) inventoryScreen.ClosePanel();
+            selling = false;
             myListings = false;
             bazaarPanel.SetActive(true);
+            bazaarPanel.transform.SetAsLastSibling();
+            RefreshWallet();
             ClearResults();
             Search();
         }
@@ -182,7 +237,8 @@ namespace C02
             if (!bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model)
                 return;
             if (writeRequest != WriteRequest.None) return;
-            if (myListings == showMyListings) return;
+            if (!selling && myListings == showMyListings) return;
+            selling = false;
             CancelPending();
             myListings = showMyListings;
             ClearResults();
@@ -192,6 +248,8 @@ namespace C02
 
         private void RefreshCurrentView()
         {
+            RefreshWallet();
+            if (selling) { LoadSaleItems(); return; }
             if (myListings)
             {
                 if (!bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model || requestPending)
@@ -230,7 +288,7 @@ namespace C02
 
         private void Search()
         {
-            if (myListings || !bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model || requestPending)
+            if (selling || myListings || !bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model || requestPending)
                 return;
             if (itemType < 1 || itemType > 3) return;
             worldScreen.StopActions();
@@ -273,7 +331,7 @@ namespace C02
 
         private void BazaarReceived(bool success)
         {
-            if (!requestPending || writeRequest != WriteRequest.None || model == null || loginScreen.Model != model || !WorldAvailable || !bazaarPanel.activeSelf)
+            if (selling || !requestPending || writeRequest != WriteRequest.None || model == null || loginScreen.Model != model || !WorldAvailable || !bazaarPanel.activeSelf)
                 return;
             requestPending = false;
             List<BazaarListingView> rows = success && loginScreen.Data != null
@@ -309,13 +367,13 @@ namespace C02
             UpdateControls();
         }
 
-        private void CreateListingRow(BazaarListingView listing, int index)
+        private GameObject CreateItemRow(uint itemID, ushort quantity, int index)
         {
-            var rowObject = new GameObject("Listing-" + listing.ListingID.ToString(CultureInfo.InvariantCulture),
+            var rowObject = new GameObject("Listing-" + index.ToString(CultureInfo.InvariantCulture),
                 typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button), typeof(LayoutElement));
             rowObject.transform.SetParent(listingRows, false);
             var image = rowObject.GetComponent<UnityEngine.UI.Image>();
-            image.color = index % 2 == 0 ? new Color(.97f, .93f, .82f) : new Color(.92f, .87f, .73f);
+            image.color = index % 2 == 0 ? new Color(.12f, .14f, .17f) : new Color(.09f, .11f, .14f);
             var button = rowObject.GetComponent<UnityEngine.UI.Button>();
             button.targetGraphic = image;
             var layout = rowObject.GetComponent<LayoutElement>();
@@ -328,12 +386,12 @@ namespace C02
             accentRect.anchorMax = new Vector2(0, 1);
             accentRect.pivot = new Vector2(0, .5f);
             accentRect.sizeDelta = new Vector2(5, 0);
-            accent.GetComponent<UnityEngine.UI.Image>().color = C11ItemPresentation.Accent(listing.ItemID);
+            accent.GetComponent<UnityEngine.UI.Image>().color = C11ItemPresentation.Accent(itemID);
             accent.GetComponent<UnityEngine.UI.Image>().raycastTarget = false;
 
-            TMP_Text badge = AddCell(rowObject.transform, "Badge", C11ItemPresentation.Badge(listing.ItemID), 0.02f, 0.13f,
-                TextAlignmentOptions.Center, 14, C11ItemPresentation.Accent(listing.ItemID));
-            Sprite icon = C11ItemPresentation.Icon(listing.ItemID);
+            TMP_Text badge = AddCell(rowObject.transform, "Badge", C11ItemPresentation.Badge(itemID), 0.02f, 0.13f,
+                TextAlignmentOptions.Center, 14, C11ItemPresentation.Accent(itemID));
+            Sprite icon = C11ItemPresentation.Icon(itemID);
             if (icon != null)
             {
                 badge.text = string.Empty;
@@ -349,14 +407,22 @@ namespace C02
                 iconImage.preserveAspect = true;
                 iconImage.raycastTarget = false;
             }
-            AddCell(rowObject.transform, "Item", C11ItemPresentation.Name(listing.ItemID), 0.14f, 0.48f,
-                TextAlignmentOptions.MidlineLeft, 16, new Color(.22f, .17f, .10f));
-            AddCell(rowObject.transform, "Quantity", listing.Quantity.ToString(CultureInfo.InvariantCulture), 0.49f, 0.61f,
-                TextAlignmentOptions.Center, 14, new Color(.26f, .22f, .15f));
-            AddCell(rowObject.transform, "Price", listing.Price.ToString(CultureInfo.InvariantCulture), 0.62f, 0.81f,
-                TextAlignmentOptions.MidlineRight, 16, new Color(.20f, .25f, .16f));
-            AddCell(rowObject.transform, "State", ListingStatusName(listing.Status), 0.82f, 0.99f,
-                TextAlignmentOptions.Center, 14, new Color(.30f, .23f, .14f));
+            AddCell(rowObject.transform, "Item", C11ItemPresentation.Name(itemID), 0.14f, 0.48f,
+                TextAlignmentOptions.MidlineLeft, 16, new Color(.94f, .95f, .97f));
+            AddCell(rowObject.transform, "Quantity", quantity.ToString(CultureInfo.InvariantCulture), 0.49f, 0.61f,
+                TextAlignmentOptions.Center, 14, new Color(.80f, .85f, .90f));
+            return rowObject;
+        }
+
+        private void CreateListingRow(BazaarListingView listing, int index)
+        {
+            var rowObject = CreateItemRow(listing.ItemID, listing.Quantity, index);
+            rowObject.name = "Listing-" + listing.ListingID.ToString(CultureInfo.InvariantCulture);
+            var button = rowObject.GetComponent<UnityEngine.UI.Button>();
+            AddCell(rowObject.transform, "Price", listing.Price.ToString("N0", CultureInfo.InvariantCulture) + " D", .62f, .81f,
+                TextAlignmentOptions.MidlineRight, 16, new Color(.49f, .83f, .96f));
+            AddCell(rowObject.transform, "State", ListingStatusName(listing.Status), .82f, .99f,
+                TextAlignmentOptions.Center, 14, new Color(.77f, .82f, .88f));
             button.onClick.AddListener(() => SelectListing(listing, button));
         }
 
@@ -368,19 +434,17 @@ namespace C02
                 var previous = selectedListingButton.GetComponent<UnityEngine.UI.Image>();
                 if (previous != null)
                     previous.color = selectedListingButton.transform.GetSiblingIndex() % 2 == 0
-                        ? new Color(.97f, .93f, .82f) : new Color(.92f, .87f, .73f);
+                        ? new Color(.12f, .14f, .17f) : new Color(.09f, .11f, .14f);
             }
             selectedListingButton = button;
             selectedListing = listing;
             buyConfirmation = false;
             cancelConfirmation = false;
-            button.GetComponent<UnityEngine.UI.Image>().color = new Color(.76f, .68f, .46f);
+            button.GetComponent<UnityEngine.UI.Image>().color = new Color(.20f, .29f, .34f);
             selectedDetailText.text = C11ItemPresentation.Name(listing.ItemID) + "  ·  " + ListingStatusName(listing.Status) +
                 "\nQuantity " + listing.Quantity.ToString(CultureInfo.InvariantCulture) +
-                "  ·  Price " + listing.Price.ToString(CultureInfo.InvariantCulture) +
-                "\nListing #" + listing.ListingID.ToString(CultureInfo.InvariantCulture) +
-                "  ·  Seller #" + listing.SellerCharacterID.ToString(CultureInfo.InvariantCulture) +
-                "  ·  Registered " + listing.RegisteredAt.ToString(CultureInfo.InvariantCulture);
+                "  ·  Stack total " + listing.Price.ToString("N0", CultureInfo.InvariantCulture) + " diamonds" +
+                "\nPurchase deducts diamonds; Receive items delivers them to your bag.";
             if (claimOutcomes.TryGetValue(listing.ListingID, out byte outcome)) selectedDetailText.text += outcome == 1 ? "\nProceeds collected." : "\nNo pending proceeds were found.";
             else if (unresolvedClaims.Contains(listing.ListingID)) selectedDetailText.text += "\nCollection result unknown. Reconnect to check.";
             if (buyOutcomes.TryGetValue(listing.ListingID, out byte buyOutcome))
@@ -476,6 +540,7 @@ namespace C02
         {
             if (writeRequest != WriteRequest.Buy || !requestPending || listingID != selectedListing.ListingID ||
                 model == null || loginScreen.Model != model || !WorldAvailable || !IsOpen) return;
+            RefreshWallet();
             requestPending = false;
             writeRequest = WriteRequest.None;
             if (status == 1 || status == 5) buyOutcomes[listingID] = status;
@@ -548,6 +613,7 @@ namespace C02
         {
             if (writeRequest != WriteRequest.Claim || !requestPending || listingID != selectedListing.ListingID || model == null ||
                 loginScreen.Model != model || !WorldAvailable || !IsOpen) return;
+            RefreshWallet();
             requestPending = false;
             writeRequest = WriteRequest.None;
             if (status != 0) unresolvedClaims.Remove(listingID);
@@ -586,6 +652,11 @@ namespace C02
             buyConfirmation = false;
             cancelConfirmation = false;
             if (!requestPending) return;
+            if (writeRequest == WriteRequest.Register)
+            {
+                registrationUncertain = true;
+                if (inventoryScreen != null) inventoryScreen.RequireFreshInventoryOnOpen();
+            }
             if (writeRequest == WriteRequest.CancelListing && inventoryScreen != null)
                 inventoryScreen.RequireFreshInventoryOnOpen();
             requestPending = false;
@@ -637,7 +708,7 @@ namespace C02
             }
             if (buyButton != null)
             {
-                buyButton.gameObject.SetActive(!myListings);
+                buyButton.gameObject.SetActive(!myListings && !selling);
                 buyButton.interactable = available && IsOpen && !requestPending && selectedListing.ListingID != 0 &&
                     selectedListing.Status == 0 && !buyOutcomes.ContainsKey(selectedListing.ListingID);
                 var label = buyButton.GetComponentInChildren<TMP_Text>(true);
@@ -705,7 +776,188 @@ namespace C02
                         if (label != null) label.text = (itemType == i + 1 ? "> " : string.Empty) +
                             (i == 0 ? "POTIONS" : i == 1 ? "WEAPONS / SHIELDS" : "ARMOR");
                     }
+            if (saleForm != null) saleForm.SetActive(selling);
+            var priceHeader = bazaarPanel != null ? bazaarPanel.transform.Find("BazaarParchment/BazaarPriceHeader") : null;
+            var stateHeader = bazaarPanel != null ? bazaarPanel.transform.Find("BazaarParchment/BazaarStateHeader") : null;
+            if (priceHeader != null) priceHeader.GetComponent<TMP_Text>().text = selling ? "BAG SLOT" : "TOTAL D";
+            if (stateHeader != null) stateHeader.gameObject.SetActive(!selling);
+            if (sellItemsButton != null) sellItemsButton.interactable = available && IsOpen && !requestPending;
+            if (registerButton != null)
+            {
+                registerButton.interactable = available && selling && !requestPending && !registrationUncertain && saleItem.ItemID != 0;
+                var label = registerButton.GetComponentInChildren<TMP_Text>(true);
+                if (label != null) label.text = registrationUncertain ? "CHECK MY LISTINGS" : registerConfirmation ? "CONFIRM SALE" : "REVIEW SALE";
+            }
+            if (quantityInput != null) quantityInput.interactable = !requestPending && !registrationUncertain;
+            if (priceInput != null) priceInput.interactable = !requestPending && !registrationUncertain;
+            if (checkOutboxButton != null) checkOutboxButton.gameObject.SetActive(!selling);
+            if (searchButton != null && selling) searchButton.GetComponentInChildren<TMP_Text>(true).text = "REFRESH BAG";
+            if (previousPageButton != null && selling) previousPageButton.gameObject.SetActive(false);
+            if (nextPageButton != null && selling) nextPageButton.gameObject.SetActive(false);
+            if (pageText != null && selling) pageText.gameObject.SetActive(false);
+            if (itemTypeButtons != null && selling) foreach (var button in itemTypeButtons) button?.gameObject.SetActive(false);
             if (closeButton != null) closeButton.interactable = true;
+        }
+
+        private void RefreshWallet()
+        {
+            if (!WorldAvailable || model == null || loginScreen.Model != model) return;
+            if (walletPending) { walletRefreshQueued = true; return; }
+            walletRequested = walletPending = true;
+            goldKnown = diamondKnown = false;
+            walletDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+            ShowWallet();
+            try { model.RequestWallet(); }
+            catch (Exception) { walletPending = false; ShowWallet(); }
+        }
+
+        private void WalletReceived(byte goldStatus, ulong goldBalance, byte diamondStatus, ulong diamondBalance)
+        {
+            if (!walletPending || model == null || loginScreen.Model != model || !WorldAvailable) return;
+            walletPending = false;
+            goldKnown = goldStatus == 1;
+            diamondKnown = diamondStatus == 1;
+            gold = goldBalance;
+            diamonds = diamondBalance;
+            ShowWallet();
+            UpdateSaleSummary();
+            // A first read can start an asynchronous cache load. Retry reads only, with a fixed limit.
+            if (walletRefreshQueued)
+            {
+                walletRefreshQueued = false;
+                walletRetryAt = Time.unscaledTime + .01f;
+            }
+            else if ((!goldKnown || !diamondKnown) && walletRetries < 2)
+            {
+                walletRetries++;
+                walletRetryAt = Time.unscaledTime + 1f;
+            }
+        }
+
+        private void ShowWallet()
+        {
+            if (walletGoldText != null) walletGoldText.text = "GOLD  " + (goldKnown ? gold.ToString("N0", CultureInfo.InvariantCulture) : walletPending ? "…" : "--");
+            if (walletDiamondText != null) walletDiamondText.text = "DIAMONDS  " + (diamondKnown ? diamonds.ToString("N0", CultureInfo.InvariantCulture) : walletPending ? "…" : "--");
+        }
+
+        private void SelectSellItems()
+        {
+            if (!IsOpen || !WorldAvailable || model == null || requestPending) return;
+            selling = true;
+            myListings = false;
+            saleItem = default;
+            registerConfirmation = false;
+            LoadSaleItems();
+        }
+
+        private void LoadSaleItems()
+        {
+            if (!selling || requestPending || !WorldAvailable || model == null || loginScreen.Model != model) return;
+            ClearRows();
+            saleItem = default;
+            requestPending = true;
+            requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+            statusText.text = "Loading items from your bag…";
+            UpdateSaleSummary();
+            UpdateControls();
+            try { model.RequestInventory(); }
+            catch (Exception) { requestPending = false; statusText.text = "Bag lookup failed. Refresh to retry."; UpdateControls(); }
+        }
+
+        private void SaleInventoryReceived(bool success)
+        {
+            if (!selling || !IsOpen || !requestPending || writeRequest != WriteRequest.None || model == null || loginScreen.Model != model || !WorldAvailable) return;
+            requestPending = false;
+            ClearRows();
+            var items = success && loginScreen.Data != null ? loginScreen.Data.GetInventory() : null;
+            if (items == null) { statusText.text = "Bag lookup failed. Refresh to retry."; UpdateControls(); return; }
+            int index = 0;
+            foreach (var item in items)
+            {
+                if (item.ItemID == 0 || item.Quantity == 0) continue;
+                var row = CreateItemRow(item.ItemID, item.Quantity, index++);
+                AddCell(row.transform, "Slot", "Slot " + item.Slot, .62f, .99f, TextAlignmentOptions.MidlineRight, 15, new Color(.8f, .85f, .9f));
+                var selected = item;
+                row.GetComponent<UnityEngine.UI.Button>().onClick.AddListener(() =>
+                {
+                    if (requestPending || registrationUncertain) return;
+                    saleItem = selected;
+                    quantityInput.SetTextWithoutNotify("1");
+                    registerConfirmation = false;
+                    selectedDetailText.text = C11ItemPresentation.Name(selected.ItemID) + " × " + selected.Quantity + " available · slot " + selected.Slot;
+                    UpdateSaleSummary();
+                    UpdateControls();
+                });
+            }
+            emptyStateText.gameObject.SetActive(index == 0);
+            emptyStateText.text = "Your bag has no items to sell.";
+            statusText.text = registrationUncertain ? "Previous sale outcome unknown. Check My listings and refresh your bag; do not repeat blindly."
+                : "Choose an item, quantity and total diamond price.";
+            UpdateControls();
+        }
+
+        private void SaleInputChanged(string value)
+        {
+            registerConfirmation = false;
+            UpdateSaleSummary();
+            UpdateControls();
+        }
+
+        private bool TrySaleValues(out ushort quantity, out ulong price)
+        {
+            quantity = 0; price = 0;
+            return saleItem.ItemID != 0 && quantityInput != null && priceInput != null &&
+                ushort.TryParse(quantityInput.text, NumberStyles.None, CultureInfo.InvariantCulture, out quantity) && quantity > 0 && quantity <= saleItem.Quantity &&
+                ulong.TryParse(priceInput.text, NumberStyles.None, CultureInfo.InvariantCulture, out price) && price > 0;
+        }
+
+        private void UpdateSaleSummary()
+        {
+            if (saleSummaryText == null) return;
+            if (!TrySaleValues(out ushort quantity, out ulong price))
+            { saleSummaryText.text = "Choose an item and enter a valid quantity and stack total."; return; }
+            ulong fee = Math.Max(10UL, price / 10UL);
+            saleSummaryText.text = "Stack total: " + price.ToString("N0", CultureInfo.InvariantCulture) + " diamonds\nRegistration fee: " + fee.ToString("N0", CultureInfo.InvariantCulture) + " gold (not refunded)\n" +
+                (goldKnown ? gold >= fee ? "Estimated gold after listing: " + (gold - fee).ToString("N0", CultureInfo.InvariantCulture) : "Not enough gold for the fee."
+                    : "Gold balance unavailable; the server checks the fee.") + "\nDiamonds are paid by the buyer; no diamonds deducted from the seller.";
+        }
+
+        private void RegisterSale()
+        {
+            if (!selling || !IsOpen || !WorldAvailable || model == null || loginScreen.Model != model || requestPending || registrationUncertain) return;
+            if (!TrySaleValues(out ushort quantity, out ulong price))
+            { statusText.text = "Choose a bag item, valid quantity and positive stack total."; return; }
+            if (goldKnown && gold < Math.Max(10UL, price / 10UL))
+            { statusText.text = "Not enough gold for the registration fee."; return; }
+            if (!registerConfirmation)
+            { registerConfirmation = true; UpdateSaleSummary(); statusText.text = "Review the gold fee and stack total, then confirm."; UpdateControls(); return; }
+            registrationUncertain = true;
+            requestPending = true;
+            writeRequest = WriteRequest.Register;
+            requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+            statusText.text = "Registering sale…";
+            UpdateControls();
+            try { model.RequestBazaarRegister(saleItem.Slot, quantity, price); }
+            catch (Exception) { CancelPending(); statusText.text = "Sale outcome unknown. Check My listings and your bag; no automatic retry."; UpdateControls(); }
+        }
+
+        private void RegisterReceived(byte status)
+        {
+            if (!requestPending || writeRequest != WriteRequest.Register || model == null || loginScreen.Model != model || !WorldAvailable) return;
+            requestPending = false;
+            writeRequest = WriteRequest.None;
+            registerConfirmation = false;
+            registrationUncertain = status == 5 || status > 5;
+            RefreshWallet();
+            if (inventoryScreen != null) inventoryScreen.RequireFreshInventoryOnOpen();
+            statusText.text = status == 1 ? "Sale listed. Gold fee deducted; diamonds are paid when purchased. Refresh My listings."
+                : status == 2 ? "Not enough items in that bag slot. Refresh your bag."
+                : status == 3 ? "Not enough gold for the listing fee."
+                : status == 4 ? "That item cannot be listed."
+                : status == 0 ? "Sale failed and was rolled back. Refresh your bag before retrying."
+                : "Sale outcome unknown. Check My listings and your bag; no automatic retry.";
+            if (status == 1) { selling = false; myListings = true; ClearRows(); RefreshCurrentView(); }
+            UpdateControls();
         }
 
         private static string ItemTypeName(ushort value) => value == 1 ? "potions" : value == 2 ? "weapons / shields" : "armor";
@@ -714,6 +966,10 @@ namespace C02
 
         private void OnDisable()
         {
+            if (sellItemsButton != null) sellItemsButton.onClick.RemoveListener(SelectSellItems);
+            if (registerButton != null) registerButton.onClick.RemoveListener(RegisterSale);
+            if (quantityInput != null) quantityInput.onValueChanged.RemoveListener(SaleInputChanged);
+            if (priceInput != null) priceInput.onValueChanged.RemoveListener(SaleInputChanged);
             if (loginScreen != null) loginScreen.ClientChanged -= ChangeClient;
             if (worldScreen != null) worldScreen.WorldStateChanged -= WorldChanged;
             if (marketButton != null) marketButton.onClick.RemoveListener(TogglePanel);
@@ -735,6 +991,9 @@ namespace C02
             if (checkOutboxButton != null) checkOutboxButton.onClick.RemoveListener(CheckOutbox);
             if (model != null)
             {
+                model.OnWalletReceived -= WalletReceived;
+                model.OnInventoryReceived -= SaleInventoryReceived;
+                model.OnBazaarRegisterReceived -= RegisterReceived;
                 model.OnBazaarReceived -= BazaarReceived;
                 model.OnBazaarClaimReceived -= ClaimReceived;
                 model.OnBazaarBuyReceived -= BuyReceived;
