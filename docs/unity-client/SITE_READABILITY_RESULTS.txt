@@ -1,0 +1,9 @@
+SITE READABILITY — 2026-10-24
+Request: remove the top field-movement screenshot and improve visibility/readability.
+Source: SHOWCASE.md removed only home hero-image section; old media files preserved. build.py removed mandatory hero parsing/rendering rather than editing generated HTML.
+Layout: compact full-width introduction; direct work/workflow/legacy links; workflow expanded across desktop width; work listing before long usage metrics; legacy scope retained near the top.
+Style: darker body/secondary text, 18px diagram descriptions, 19px desktop body/card text, larger headings and links, clearer borders, sticky navigation. Mobile layout becomes one column and vertical workflow.
+Checks: site generation + all local links PASS. Browser desktop1213/scrollWidth1198 and mobile390/scrollWidth375: no horizontal overflow. Hero images0; work appears before metrics. Mobile work-image click navigated to field-travel detail with correct heading. Temporary viewport reset.
+Browser automation note: heading-level filter was not supported by this connector; used exact observed heading name. Initial screenshots during smooth scrolling were not treated as final proof.
+Captures: ROOT UnityClient/Builds/Play-Economy/site-home-readable.jpg and site-mobile-readable.jpg, actual browser screenshots, not game/runtime tests.
+No new agent activation; previous usage276 unchanged. No Unity/game/server tests, server code or AI changes. No media deletion. No push/PR/deploy. Existing guideline commit c4d0f21 preserved as parent.

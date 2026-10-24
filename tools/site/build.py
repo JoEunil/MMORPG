@@ -104,14 +104,6 @@ def parse_showcase():
         raise ValueError("SHOWCASE.md needs a short public introduction")
     if INTERNAL_CODES.search("\n".join([title, *intro, *(b for s in sections for b in s["blocks"] if isinstance(b, str))])):
         raise ValueError("SHOWCASE.md contains an internal identifier or test count")
-    hero_section = next((s for s in sections if s["title"] == "대표 화면"), None)
-    if not hero_section:
-        raise ValueError("SHOWCASE.md must explicitly select an image under '대표 화면'")
-    hero = next((IMAGE.fullmatch(b) for b in hero_section["blocks"] if isinstance(b, str) and IMAGE.fullmatch(b)), None)
-    if not hero:
-        raise ValueError("SHOWCASE.md '대표 화면' section needs one selected image")
-    hero_alt, hero_ref = hero.groups()
-    hero_url = local_image_path(HOME_SOURCE.relative_to(ROOT), hero_ref)
     references = []
     ref_section = next((s for s in sections if s["title"] == "참고 링크"), None)
     if ref_section:
@@ -126,7 +118,7 @@ def parse_showcase():
                     if not href.startswith("https://"):
                         raise ValueError(f"Reference links must use HTTPS: {href}")
                     references.append((label, href))
-    return title, " ".join(intro), sections, (hero_alt, hero_url), references
+    return title, " ".join(intro), sections, references
 
 
 def render_blocks(blocks, source):
@@ -301,7 +293,7 @@ def main():
     works = [parse_work(path) for path in paths]
     if not works:
         raise SystemExit("Add at least one reviewed project page under docs/unity-client/portfolio/")
-    title, intro, home_sections, hero_image, references = parse_showcase()
+    title, intro, home_sections, references = parse_showcase()
     cards = []
     for work in works:
         key, detail, history = build_work(work, references, title)
@@ -316,11 +308,11 @@ def main():
     legacy_section = sections_by_title["기존 Unity 구현"]
     legacy_copy = render_blocks(legacy_section["blocks"], HOME_SOURCE)
     legacy_html = f'<section class="legacy-section section-wrap" id="legacy"><div class="section-title"><h2>{escape(legacy_section["title"])}</h2></div><div class="legacy-body">{legacy_copy}</div></section>'
-    hero = f'''<main id="top"><section class="home-hero"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#work">작업 결과 보기</a></div></div><figure class="home-image"><a href="{hero_image[1]}" target="_blank" rel="noopener"><img src="{hero_image[1]}" alt="{escape(hero_image[0], quote=True)}"></a><figcaption>{escape(hero_image[0])}</figcaption></figure></section>
+    hero = f'''<main id="top"><section class="home-hero"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#work">작업 결과 보기</a><a class="text-link" href="#workflow">AI Agent 워크플로우</a><a class="text-link" href="#legacy">기존 Unity 구현</a></div></div></section>
 {process_html}
-{usage_html}
 {legacy_html}
 <section class="section-wrap work-section" id="work"><div class="section-title work-heading"><h2>작업과 결과</h2><p>{inline(work_intro)}</p></div><div class="work-grid">{''.join(cards)}</div></section>
+{usage_html}
 {decisions_html}</main>'''
     (SITE / "index.html").write_text(document(title, intro, hero, references, title), encoding="utf-8", newline="\n")
     for old_key in legacy_market_pages:
