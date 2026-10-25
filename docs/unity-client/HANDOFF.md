@@ -2,22 +2,22 @@
 
 ## 현재 작업
 
-마을·필드와 플레이 마감을 새 큰 PR 하나로 준비했다. 기존 선택인 기사 형상·스킬별 모션, 성곽길A, 가방A, 간소화 거래소B를 유지한다. PR52는 master2e0de28에 병합됐고 이전 게시 승인 CLIENTART02는 소비 완료다. PLAYSESSION01의 지정 사용자 Slack 승인을 대조했고 이 묶음을 PR53으로 일반 push·게시했다.
+사용자가 PR53을 직접 검토하는 동안 다음 클라이언트 묶음을 진행하라고 지시했다. 새 로컬 브랜치 codex/client-ui-interaction에 가방·거래소 Esc 닫기와 채팅 기록 스크롤 보존을 구현했다. 기존 기사·성곽길A·가방A·간소화 거래소B 선택을 유지하며 새로운 취향 선택은 필요하지 않았다. 앞으로 필요해지면 관련 샘플을 한 번에 묶는다.
 
-- 완료: 이동이 미소비 시전 스냅샷을 덮지 않도록 보존, 거래소 수령 중 닫기/시간초과 후 가방 갱신, 가방 앞순서 보완. 독립 읽기 리뷰, 관련 자동3개, ClientCore·Unity 컴파일 통과. 이미 통과한 전체 테스트는 반복하지 않았다.
-- 완료: 길·식생 재질 조정, 기존 메시2개로 마을 포장을 사냥터 진입 경계까지 연결. 확장 전 북/동 원경2개가 실제 길을 가리던 문제를 숨김으로 해결했다. 통행·충돌·스폰·서버·프로토콜·경제·DB·사용자 몬스터 AI는 변경하지 않았다. 레벨 동선은 [BRIEF](BRIEF.md), 상세 근거는 [RESULTS](history/2026-10-24-client-playability/RESULTS.txt).
-- 실제 확인: 로그인/캐릭터 선택/필드, 입력 시스템 키 이벤트로 이동+C 준비·타격/MP20 감소/정지 후 드리프트0, 버튼으로 빈 가방·거래소 목록. I/B native 이벤트는 이번 배치에서 열리지 않아 원인 미확인·미검증이다. 가방 앞순서 수정 후 실입력 재열기는 하지 않았다. 재화--/빈 가방이므로 실거래 성공·차감, 연장 길 전체 실제 왕복, 최신 사용자 AI 평가는 미확인이다.
-- 입력 허용 유지. 새로운 방향·서버 기능을 임의로 늘리지 않는다. 게시 승인 대기 중 독립 로컬 작업은 가능하지만 이미 통과한 검증을 반복하지 않는다.
+- 완료: 열린 가방/거래소에서 Esc는 기존 ClosePanel 경로를 사용한다. 기존 대기 거래 보존·불확실한 수령 후 가방 갱신·자동 재전송 금지는 유지한다. 채팅은 이전 기록을 읽을 때 스크롤 비율을 보존하고 최신 위치/자기 echo에는 아래를 따라간다. 같은 문장 고정 기능은 아니다.
+- 검증: 독립 코드 리뷰 차단 없음, Unity 컴파일 통과, 새 영향 PlayMode 자동3사례만 통과(채팅2/Esc1). 입력은 InputSystem/가짜 네트워크 fixture이며 native 실입력·실거래 성공으로 보고하지 않는다. 이미 통과한 게임 테스트는 반복하지 않았다.
+- 기존 미확인: I/B native 입력 도달 문제는 코드상 결함이 없어 임의 수정하지 않았다. 빈 가방/미확인 재화 때문에 성공 거래 차감·아이템 보유 실화면 미검증, 연장 길 전체 실제 왕복도 미검증이다.
+- 금지: 사용자 몬스터 AI·서버·패킷·경제·DB·충돌·스폰 변경. 이번 작업은 기존 UI 안의 동작만 바꿨다. 입력 허용 유지.
 
 ## 정본과 실행
 
-- Git: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, codex/client-play-session-polish. origin/master2e0de28에서 분기.
-- Editor: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient, PID38396/6000.0.47f1/Pipeline7800. 마지막 확인 Edit/clean/backgroundfalse/컴파일 오류0. CAND ClientCore DLL과 두 plugin 동일, ROOT의 오래된 ClientCore 원본은 수정하지 않았다.
-- 이번에 시작한 MainServer는 소유 PTY에서 q 종료/exit0, Game/Login 서비스는 소유 PTY Ctrl+C로 종료.3000/9999 리스너 없음, 원래 꺼진 상태로 복원. Redis/MySQL 유지. Play-Economy 서버의 최신 사용자 AI 포함 여부는 미확인이다.
-- 실행·촬영 원본: ROOT/UnityClient/Builds/Play-Session. 공개 자료는 CAND Markdown에서 생성, 로컬 미리보기 http://127.0.0.1:8791/MMORPG/ (preview session70047). 웹 브라우저 연결은 기존 오류 탭 URL 정책에 차단돼 다른 브라우저 우회 없이 중단; 사이트 생성·내부 링크 검사는 통과하고 이미지 파일은 별도 시각 확인했다.
+- Git: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, codex/client-ui-interaction. PR53 head552c5fe 기반으로 다음 작업만 로컬 누적한다. master는2e0de28, PR53은 현재 검토 중이므로 이전 브랜치/이력을 정리하거나 PR53에 새 범위를 섞지 않는다.
+- Editor: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient, PID38396/6000.0.47f1/Pipeline7800 확인. 마지막 Edit/clean/backgroundfalse/컴파일 오류0. Scene·Prefab·Material·ClientCore DLL 변경 없음.
+- 이번에 서버/로그인 서비스를 시작하지 않았다. 기존 서비스 상태와 사용자 AI를 유지했다. 공개 자료는 CAND Markdown에서 생성하며 레이아웃 변화가 없어 새 이미지/게임 촬영은 생략했다.
+- 상세 근거·과거 결과: [RESULTS](history/2026-10-24-client-playability/RESULTS.txt). 목표·기획/아트 선택: [BRIEF](BRIEF.md).
 
-## 게시와 Slack
+## Slack·게시·다음 행동
 
-새 묶음 부모1792903229.965669, Unity Coordinator 앱. 수신기 PID39232/listening/고정 Coordinator/등록 스레드 확인. 후보11335f6(제품·자료19파일)의 PLAYSESSION01 게시 승인을 요청했다. 요청1792904955.846829, 부모1792903229.965669, bot U0C9ZRTQ6F8를 읽기로 확인했다. 지정 사용자 U0C9QEUHPMK의 회신1792909726.009609(승인 PLAYSESSION01)을 같은 부모에서 직접 읽어 요청·후보·현재 대기·기소비 없음과 대조, 1회 적용해 게시 완료했다. 제품 후보11335f6 이후는 인계/승인 메타데이터만 바뀌었다. 병합·Pages 배포는 승인 범위에 포함되지 않는다. 이전 승인이나 단순 수신확인을 새 승인으로 사용하지 않는다.
+이번 묶음은 Unity Coordinator 앱 새 부모1792915030.606889. 새 게시 승인은 요청/수신하지 않았다. PR53의 PLAYSESSION01 회신1792909726.009609는 PR53 게시에 소비 완료이며 이 묶음에 재사용하지 않는다.
 
-게시 결과: [PR53](https://github.com/JoEunil/MMORPG/pull/53), head codex/client-play-session-polish, base master2e0de28. 현재 채팅 첨부 완료, 미병합. 다음 행동은 PR의 사이트 Actions 결과와 사용자 리뷰 확인이며 게임 전체 검증을 반복하거나 새 서버/AI 작업을 시작하지 않는다. 승인 회신1792909726.009609는 이 게시에 소비 완료다.
+[PR53](https://github.com/JoEunil/MMORPG/pull/53)은 사용자 검토용으로 유지한다. head552c5fe 사이트 Actions40169324854 성공/미리보기 artifact12589192115를 확인했으며 병합·정식 Pages 배포는 하지 않았다. 이번 작은 마감은 다음 큰 PR에 누적하며 별도 작은 PR을 만들지 않는다. 다음은 기존 미확인 입력 경로·아이템/거래 실데이터 조건을 필요한 범위에서 확인하고, 같은 기능 묶음의 남은 부분을 고른다. 데이터 변경·미지원 기능·새 미술 방향은 임의로 추가하지 않는다.

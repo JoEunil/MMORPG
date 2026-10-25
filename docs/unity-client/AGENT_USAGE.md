@@ -2,7 +2,7 @@
 
 기준일: 2026-10-25
 누적 신규: 103
-누적 재활성화: 211
+누적 재활성화: 213
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-25
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
@@ -11,12 +11,12 @@
 | server_analyst | 서버 분석 Agent | 16 | 43 |
 | client_implementer | 구현 Agent | 36 | 52 |
 | asset_artist | 아트 Agent | 16 | 25 |
-| code_reviewer | 리뷰 Agent | 25 | 84 |
+| code_reviewer | 리뷰 Agent | 25 | 86 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체314회(신규103·재활성화211)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체316회(신규103·재활성화213)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -528,3 +528,7 @@ batch_direction_samples 아트 신규1로 마을 입구·가방·판매 흐름�
 ## 플레이 마감·마을에서 사냥터 동선 — 2026-10-25
 
 신규5: market_play_session(구현), movement_play_review(리뷰), play_server_baseline(서버 분석), field_readability_art(아트), level_design_next_batch(기획). 후속8: bag_grid_right_details1(시전 스냅샷 보존), market_play_session1(fixture 참조 보정), play_server_baseline1(기존 로그인 서비스 경로), field_readability_art1(길 연장), level_design_next_batch1(실제 통행·지원 범위), movement_play_review3(구현·동선 설명·옛 원경 및 가방 앞순서 검토). 실제 신규/후속 실행만 더해 전체314=103+211이다. 총괄의 코드 통합·Unity 입력·촬영·문서 작업은 제외하며 토큰·비용 N/A다.
+
+## 가방·거래소·채팅 조작 마감 — 2026-10-25
+
+movement_play_review 리뷰 Agent 후속2: 기존 I/B 경로 조사에서 확정 결함이 없음을 보고했고, 새 Esc 닫기/채팅 스크롤 보존과 직접 영향 테스트를 독립 읽기 검토했다. 신규0, 누적316=103+213. 총괄의 구현·자동 UI3사례·Unity 창 활성화·기록은 활성화에 포함하지 않으며 토큰·비용 N/A다.

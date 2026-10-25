@@ -10,6 +10,8 @@ using ClientCore.Services;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
@@ -340,6 +342,47 @@ namespace C02.Tests
                 ((IViewModelNet)fixture.Login.Model).BazaarCheckOutboxReceived(
                     fixture.Network.LastCheckOutboxRequestID, 1, 1, 0, 0);
                 Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(1), "A stale response must never cause an automatic delivery retry.");
+            }
+        }
+
+        [Test]
+        public void EscapeClosesBagAndPendingOutboxWithoutRepeatingDelivery()
+        {
+            Assert.That(Application.isFocused, Is.True, "Keyboard-path verification requires the Editor to have focus.");
+            var keyboard = InputSystem.AddDevice<Keyboard>();
+            try
+            {
+                using (var fixture = new Fixture())
+                {
+                    var bagPanel = Get<GameObject>(fixture.InventoryScreen, "inventoryPanel");
+                    bagPanel.SetActive(true);
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
+                    InputSystem.Update();
+                    Invoke(fixture.InventoryScreen, "Update");
+                    Assert.That(bagPanel.activeSelf, Is.False);
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    InputSystem.Update();
+
+                    fixture.OpenMarket();
+                    fixture.Receive(true);
+                    fixture.CheckOutbox.onClick.Invoke();
+                    Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(1));
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
+                    InputSystem.Update();
+                    Invoke(fixture.Screen, "Update");
+                    Assert.That(fixture.Panel.activeSelf, Is.False);
+                    Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.False);
+                    Assert.That(Get<bool>(fixture.InventoryScreen, "refreshOnOpenAfterUncertainDelivery"), Is.True);
+                    ((IViewModelNet)fixture.Login.Model).BazaarCheckOutboxReceived(
+                        fixture.Network.LastCheckOutboxRequestID, 1, 1, 0, 0);
+                    Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(1));
+                }
+            }
+            finally
+            {
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                InputSystem.Update();
+                InputSystem.RemoveDevice(keyboard);
             }
         }
 

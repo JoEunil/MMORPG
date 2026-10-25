@@ -303,6 +303,10 @@ namespace C02
             }
             string scopeLabel = scope == 0 ? "Global" : scope == 1 ? "Zone" : "Whisper";
             string safeMessage = message.Replace('\0', ' ').Replace('\r', ' ').Replace('\n', ' ');
+            float historyPosition = chatScroll != null ? chatScroll.verticalNormalizedPosition : 0;
+            bool followLatest = chatScroll == null || chatScroll.content == null || chatScroll.viewport == null ||
+                chatScroll.content.rect.height <= chatScroll.viewport.rect.height || historyPosition <= .02f ||
+                senderChatID == ownChatID;
             lines.Enqueue("[" + scopeLabel + "] " + name + ": " + safeMessage);
             while (lines.Count > MaxVisibleLines) lines.Dequeue();
             chatLog.text = string.Join("\n", lines);
@@ -310,7 +314,8 @@ namespace C02
             {
                 LayoutRebuilder.ForceRebuildLayoutImmediate(chatLog.rectTransform);
                 Canvas.ForceUpdateCanvases();
-                chatScroll.verticalNormalizedPosition = 0;
+                // Incoming traffic follows the tail only while the reader is already there.
+                chatScroll.verticalNormalizedPosition = followLatest ? 0 : historyPosition;
             }
             if (pendingWhisper != null && scope == 2 && senderChatID == ownChatID && message == pendingWhisper)
             {

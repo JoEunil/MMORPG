@@ -125,12 +125,15 @@ namespace C02
                 walletRetryAt = 0;
                 RefreshWallet();
             }
-            if (Application.isFocused && Keyboard.current != null && Keyboard.current.bKey.wasPressedThisFrame &&
-                EventSystem.current != null)
+            if (Application.isFocused && Keyboard.current != null)
             {
-                var selected = EventSystem.current.currentSelectedGameObject;
-                var input = selected != null ? selected.GetComponentInParent<TMP_InputField>() : null;
-                if (input == null || !input.isFocused) TogglePanel();
+                if (IsOpen && Keyboard.current.escapeKey.wasPressedThisFrame) ClosePanel();
+                else if (Keyboard.current.bKey.wasPressedThisFrame && EventSystem.current != null)
+                {
+                    var selected = EventSystem.current.currentSelectedGameObject;
+                    var input = selected != null ? selected.GetComponentInParent<TMP_InputField>() : null;
+                    if (input == null || !input.isFocused) TogglePanel();
+                }
             }
 
             if (walletPending && Time.unscaledTime >= walletDeadline)
