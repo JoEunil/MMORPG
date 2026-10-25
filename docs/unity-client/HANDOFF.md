@@ -19,4 +19,3 @@ CLIENTUI01 요청1792918308.079019/부모1792915030.606889/회신1792918532.2808
 상세 근거: [RESULTS](history/2026-10-24-client-playability/RESULTS.txt), 목표와 선택: [BRIEF](BRIEF.md). 에디터 자세 미리보기 ROOT/UnityClient/Builds/Play-Session/monster-defeat-editor-preview.png는 실서버 처치 증명이 아니다.
 
 실행 복원: ownedMainPTY1437 q종료0,LoginPTY7294 CtrlC종료1,포트3000/9999미수신,Edit/clean/backgroundfalse. 상세first-hunt-live-details/run.txt. 새 공개화면은 실제 서버+합성키로 명시했다.
-
