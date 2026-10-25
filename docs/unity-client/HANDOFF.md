@@ -12,5 +12,7 @@
 ## 현재 상태·공개 자료
 Editor Edit/clean/backgroundfalse, 입력 허용 유지. 이번 서버 시작 없음. localhost8793/result.html 적용 화면은 에디터 예시/샘플 값이며 비교 보드는 /index.html. 공개 원본3상세·실제 Agent집계356(130신규/226후속)·사이트빌드/링크 반영. README 대표는 기존 실제 사냥 화면 유지. 게임 코드 외에 의사결정 지원 명칭·Luna 배정·동일역할 다중실행 지침 수정 포함. 전역 지침은 C:/Users/joeun/.codex/AGENTS.md, 실행 모델 변경을 문서만으로 단정하지 않음.
 
+의사결정 지원 기록: history/2026-10-25-decision-support/README.md에 실제 브라우저 구간 캡처7장, 당시HTML/기획JSON/기준이미지5개, 채팅선택 JSON·manifest 보존. 선택표시는 확정채팅을 기록용으로재현한것이며 직접클릭/자동수신증거아님. SHOWCASE의 실제 비교·선택 예시에 대표캡처 연결, 사이트빌드/링크·8791브라우저 확인. 게임·Unity입력·Agent추가호출 없음.
+
 ## Git·승인
 PR54 merged. 최종 fetch 후 origin/master e06d45f 대비 HEAD는 ahead7/behind0 확인. PR55 아직 생성 안함. NEARBYCOMBAT01 요청1792926182.742749/부모1792922124.815219는 확장 전 후보 요청이므로 현재 누적 후보 게시 승인으로 소비하지 않는다. 제품·자료·지침 후보 c5d3bf4(누적28파일, 서버경로0)를 로컬 커밋했다. 같은 앱 부모1792922124.815219에 NEARBYART01 게시 요청1792935701.770159를 전송했고 현재 사람 승인 미수신/미소비다. 수신기39232/listening/고정Coordinator/등록부모와 fresh health를 확인했다. 정상push+master대상 새PR1개만, 병합·배포 제외. localhost8793/result.html 브라우저 확인 완료, 탭6 보존. 승인 전 push/새PR/병합/배포 없음. 승인 대기에서는 독립 로컬 범위만 진행하며 미승인을 승인으로 추정하지 않는다.

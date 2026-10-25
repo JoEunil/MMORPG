@@ -1,0 +1,112 @@
+{
+  "record_date": "2026-10-25",
+  "capture_url": "http://127.0.0.1:8793/",
+  "capture_method": "Browser screenshot, unedited viewport PNG",
+  "selection_provenance": "User chat; selection controls reconstructed for record",
+  "files": [
+    {
+      "path": "board/index.html",
+      "bytes": 30199,
+      "sha256": "8a32929c67d4cc2008521a26dcf1ac209c6c08857361a916ec676ebf1d1b3667"
+    },
+    {
+      "path": "board/media/bag-grid-right-details.png",
+      "bytes": 986356,
+      "sha256": "26cce79a4c94d6cdb488b6daf7dbb7b513eeabb98d33cf19025d9b8bf00ef58a",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "path": "board/media/fieldbound-road-editor.png",
+      "bytes": 1752279,
+      "sha256": "538c00fb2f260b5a0ff27f38509c60afac418868f5755528e40fcbc4b4d10c91",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "path": "board/media/hud-live-growth.png",
+      "bytes": 1756070,
+      "sha256": "9e1410905686b8a5e80a1d29262873cdd150952608634fd44976c0f65f135ce9",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "path": "board/media/market-simple-fee.png",
+      "bytes": 965424,
+      "sha256": "0fb3e0a2e26f77f5f5ba5af8d9fa26022b0b7687b908f7f30405a192786d42c0",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "path": "board/media/town-road-approach.png",
+      "bytes": 1759279,
+      "sha256": "8326eb63cc8bdafd9fa77b2019794793d12f2e7d0776af267a3508d63b4c1779",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "path": "board/planning-options.json",
+      "bytes": 2507,
+      "sha256": "0702f5dc227f37024344bca2029a8a1b16ef26fdebe0bbf340c60ad167c934f9"
+    },
+    {
+      "path": "captures/decision-support-combat.png",
+      "bytes": 82203,
+      "sha256": "3d11c70ad39fff2301ee5d616899543c419f6970ac4789e5f658701b68ccd532",
+      "width": 65536,
+      "height": 4292542531
+    },
+    {
+      "path": "captures/decision-support-hunting.png",
+      "bytes": 85359,
+      "sha256": "c80f76f462e63a2185f846fcd8bebcbb01615aa5d29b263afc9f7f13b5fbf6b7",
+      "width": 65536,
+      "height": 4292542531
+    },
+    {
+      "path": "captures/decision-support-overview.png",
+      "bytes": 61041,
+      "sha256": "29a5ff5eb51eef9153f1569a1beffe56e03faf82b52578814858166901b9dd10",
+      "width": 65536,
+      "height": 4292542531
+    },
+    {
+      "path": "captures/decision-support-planning.png",
+      "bytes": 76099,
+      "sha256": "6de1119093ba1bb0c6d886e229f47633cdbcb7931b87ee077322ce4f1f8abcdd",
+      "width": 65536,
+      "height": 4292542531
+    },
+    {
+      "path": "captures/decision-support-selection.png",
+      "bytes": 60382,
+      "sha256": "8c39ff889a73370ece60d542a51f474724afaec8ffdc2c10dbda79399171bf93",
+      "width": 65536,
+      "height": 4292542531
+    },
+    {
+      "path": "captures/decision-support-town.png",
+      "bytes": 80220,
+      "sha256": "bdd19c92a7e56bbfa86b583c1df3fdc9b615813fb4067113a98498fcd2fd8cc3",
+      "width": 65536,
+      "height": 4292542531
+    },
+    {
+      "path": "captures/decision-support-ui.png",
+      "bytes": 88309,
+      "sha256": "e042ecdef4968c01ad7e03f5cf0dbbeeaf2c1940168105bf4edf11f5bf6e2a2a",
+      "width": 65536,
+      "height": 4292542531
+    },
+    {
+      "path": "README.md",
+      "bytes": 2988,
+      "sha256": "74474c0e7dba2a0346482681f6eb1f4439698d9c5f70732cacae2cd05c08abfa"
+    },
+    {
+      "path": "selection.json",
+      "bytes": 626,
+      "sha256": "622892139b4330cacb5916638d93a9ebffa8aaa13a3ca0553c80363138edc6d7"
+    }
+  ]
+}
