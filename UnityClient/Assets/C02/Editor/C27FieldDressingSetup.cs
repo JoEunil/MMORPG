@@ -219,6 +219,86 @@ public static class C27FieldDressingSetup
         Debug.Log("Courtyard road tidied with existing cobbles, flat edging and low verge. Walls, banners, torches, spawn and navigation unchanged.");
     }
 
+    [MenuItem("C02/Art/Extend Town Road To Field")]
+    public static void ExtendTownRoadToField()
+    {
+        var scene = EditorSceneManager.GetActiveScene();
+        if (EditorApplication.isPlayingOrWillChangePlaymode || scene.path != "Assets/C02/C02.unity" || scene.isDirty)
+            throw new InvalidOperationException("Open the clean, saved C02 scene in Edit Mode.");
+        var authors = Object.FindObjectsByType<C20MapAuthoring>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        if (authors.Length != 1 || authors[0].map == null || !authors[0].map.IsValid ||
+            authors[0].obstacles == null || authors[0].obstacles.Length != 18)
+            throw new InvalidOperationException("The existing baked world map is required.");
+        var author = authors[0];
+        Transform citadel = author.transform.parent == null ? null : author.transform.parent.Find("CitadelEnvironment");
+        Transform root = citadel == null ? null : citadel.Find("TownRoadApproach");
+        if (root == null || !citadel.gameObject.activeSelf || !root.gameObject.activeSelf || root.position != Vector3.zero ||
+            root.rotation != Quaternion.identity || root.lossyScale != Vector3.one ||
+            root.GetComponentsInChildren<Collider>(true).Length != 0)
+            throw new InvalidOperationException("The existing unscaled, presentation-only courtyard road is required.");
+        const string folder = "Assets/C02/Art/CitadelEnvironment/";
+        var mesh = AssetDatabase.LoadAssetAtPath<Mesh>(folder + "Meadow0_WornRoadStone.asset");
+        var material = AssetDatabase.LoadAssetAtPath<Material>(folder + "WornRoadStone.mat");
+        var approach = root.Find("EastboundCobbles")?.GetComponent<MeshFilter>();
+        var approachRenderer = approach == null ? null : approach.GetComponent<MeshRenderer>();
+        if (mesh == null || material == null || approach == null || approach.sharedMesh != mesh ||
+            approachRenderer == null || Mathf.Abs(approachRenderer.bounds.max.x - 100) > 1)
+            throw new InvalidOperationException("The existing cobbled approach must end near x100 before extending it.");
+        Bounds bounds = mesh.bounds;
+        if (bounds.size.x < 40 || bounds.size.x > 50 || bounds.min.z < 8 || bounds.max.z > 12)
+            throw new InvalidOperationException("Unexpected source road bounds; review the authored strip before extending it.");
+        var scale = new Vector3(52.5f / bounds.size.x, 1, 1);
+        Vector3[] vertices = mesh.vertices;
+        float step = author.map.tileSize * .5f;
+        // Two existing mesh instances span x100..205 without changing road width or navigation.
+        for (int segment = 0; segment < 2; segment++)
+        {
+            float start = 100 + segment * 52.5f;
+            var offset = new Vector3(start - bounds.min.x * scale.x, 0, 0);
+            foreach (Vector3 vertex in vertices)
+            {
+                Vector3 point = Vector3.Scale(vertex, scale) + offset;
+                if (!author.map.IsWalkable(point.x, point.z) || NearObstacle(author, point, .5f))
+                    throw new InvalidOperationException("The extended road vertices must remain on clear baked navigation.");
+            }
+            for (float x = start; x <= start + 52.5f + step; x += step)
+                for (float z = bounds.min.z; z <= bounds.max.z + step; z += step)
+                {
+                    var point = new Vector3(Mathf.Min(x, start + 52.5f), 0, Mathf.Min(z, bounds.max.z));
+                    if (!author.map.IsWalkable(point.x, point.z) || NearObstacle(author, point, .5f))
+                        throw new InvalidOperationException("The complete extended road strip must remain walkable.");
+                }
+        }
+        Undo.IncrementCurrentGroup();
+        int undoGroup = Undo.GetCurrentGroup();
+        Undo.SetCurrentGroupName("Extend town road to field");
+        try
+        {
+            for (int segment = 0; segment < 2; segment++)
+                RoadMesh(root, "FieldboundCobbles_" + segment, mesh, material,
+                    new Vector3(100 + segment * 52.5f - bounds.min.x * scale.x, 0, 0), scale, 0);
+            // These two old one-zone horizons now cross the expanded playable world.
+            // Keep the south/west exterior backdrop and preserve the original objects for rollback.
+            foreach (string name in new[] { "DistantForestRidge0", "DistantForestRidge1" })
+            {
+                var ridge = author.transform.parent.Find("V04MeanderingMeadow/" + name);
+                if (ridge == null) continue;
+                Undo.RecordObject(ridge.gameObject, "Clear obsolete interior horizon");
+                ridge.gameObject.SetActive(false);
+            }
+            EditorSceneManager.MarkSceneDirty(scene);
+            Undo.FlushUndoRecordObjects();
+            if (!EditorSceneManager.SaveScene(scene)) throw new InvalidOperationException("Saving the fieldbound road failed.");
+        }
+        catch
+        {
+            Undo.RevertAllDownToGroup(undoGroup);
+            throw;
+        }
+        finally { Undo.CollapseUndoOperations(undoGroup); }
+        Debug.Log("Town road extended visually from x100 to x205 using two existing mesh instances. Navigation, collision, spawn and AI unchanged.");
+    }
+
     private static Transform RoadObject(Transform parent, string name)
     {
         Transform child = parent.Find(name);

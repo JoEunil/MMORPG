@@ -45,13 +45,14 @@ namespace C02.Tests
             Assert.Throws<ArgumentException>(() => data.UpdateAction(0, float.NaN, 2, 0));
             Assert.Throws<ArgumentException>(() => data.UpdateAction(0, 1, float.PositiveInfinity, 0));
             Assert.Throws<ArgumentException>(() => data.UpdateAction(0, 1, 2, 3));
+            data.UpdateMove(1, 99, 100);
             var state = ((IViewDataModel)data).GetActionState();
             Assert.That(state, Is.EqualTo((true, (byte)3, 15f, 16f, (byte)2, 0UL)));
             state = ((IViewDataModel)data).GetActionState();
             Assert.That(state.Item1, Is.False);
             Assert.That(state.Item5, Is.EqualTo(255));
-            data.UpdateMove(0, 15, 17);
-            Assert.That(((IViewDataModel)data).GetActionState().Item5, Is.EqualTo(255));
+            data.UpdateMove(2, 17, 18);
+            Assert.That(((IViewDataModel)data).GetActionState(), Is.EqualTo((true, (byte)2, 17f, 18f, (byte)255, 0UL)));
         }
 
         [Test]

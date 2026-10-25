@@ -684,7 +684,7 @@ namespace C02
                 registrationUncertain = true;
                 if (inventoryScreen != null) inventoryScreen.RequireFreshInventoryOnOpen();
             }
-            if (writeRequest == WriteRequest.CancelListing && inventoryScreen != null)
+            if ((writeRequest == WriteRequest.CancelListing || writeRequest == WriteRequest.CheckOutbox) && inventoryScreen != null)
                 inventoryScreen.RequireFreshInventoryOnOpen();
             requestPending = false;
             writeRequest = WriteRequest.None;

@@ -123,6 +123,27 @@ public static class CitadelEnvironmentArt
         EditorUtility.SetDirty(material);
     }
 
+    [MenuItem("Tools/Client Art/Refresh Road And Verge Materials Only")]
+    public static void RefreshRoadAndVergeMaterials()
+    {
+        var scene=EditorSceneManager.GetActiveScene();
+        if(EditorApplication.isPlayingOrWillChangePlaymode || scene.path!="Assets/C02/C02.unity" || scene.isDirty)
+            throw new InvalidOperationException("Open the clean, saved C02 scene in Edit Mode before refreshing road materials.");
+        var road=AssetDatabase.LoadAssetAtPath<Material>(Folder+"WornRoadStone.mat");
+        var verge=AssetDatabase.LoadAssetAtPath<Material>(Folder+"OakLeaves.mat");
+        if(road==null || verge==null)
+            throw new FileNotFoundException("The existing road and low-verge materials are required.");
+        // The limestone albedo is already shaded. A second dark tint hides its grain.
+        road.color=new Color(.52f,.49f,.40f);
+        road.SetFloat("_Smoothness",.12f);
+        verge.color=new Color(.31f,.39f,.17f);
+        verge.SetFloat("_Smoothness",.12f);
+        EditorUtility.SetDirty(road);
+        EditorUtility.SetDirty(verge);
+        AssetDatabase.SaveAssets();
+        Debug.Log("Existing road and low-verge material tints refreshed. Geometry, placement, lighting and navigation are unchanged.");
+    }
+
     private static Texture2D ImportGroundTexture(string name,bool normal)
     {
         string path=Folder+name;
@@ -357,12 +378,12 @@ public static class CitadelEnvironmentArt
         iron=MaterialAsset("ForgedIron",new Color(.085f,.096f,.105f),.76f,.35f,null);
         wood=MaterialAsset("AgedOak",new Color(.27f,.20f,.13f),0,.17f,"oak-bark.png");
         cloth=MaterialAsset("HeraldicBurgundy",new Color(.25f,.025f,.041f),0,.16f,null);
-        leaf=MaterialAsset("OakLeaves",new Color(.25f,.33f,.12f),0,.16f,null);
+        leaf=MaterialAsset("OakLeaves",new Color(.31f,.39f,.17f),0,.12f,null);
         canopy=MaterialAsset("OakCanopyCutout",new Color(.75f,.80f,.60f),0,.15f,"oak-leaf-cluster.png");
         if(canopy.mainTexture==null)throw new FileNotFoundException("Import the authored transparent oak leaf cluster before applying citadel art.");
         canopy.SetFloat("_AlphaClip",1);canopy.SetFloat("_Cutoff",.32f);canopy.SetFloat("_Surface",0);canopy.SetFloat("_ZWrite",1);
         canopy.EnableKeyword("_ALPHATEST_ON");canopy.SetOverrideTag("RenderType","TransparentCutout");canopy.renderQueue=(int)RenderQueue.AlphaTest;EditorUtility.SetDirty(canopy);
-        earth=MaterialAsset("WornRoadStone",new Color(.37f,.34f,.25f),0,.17f,"limestone-surface.png");
+        earth=MaterialAsset("WornRoadStone",new Color(.52f,.49f,.40f),0,.12f,"limestone-surface.png");
         fire=MaterialAsset("TorchAmber",new Color(1f,.37f,.065f),0,.5f,null);fire.EnableKeyword("_EMISSION");fire.SetColor("_EmissionColor",new Color(3.5f,.65f,.06f));EditorUtility.SetDirty(fire);
         block=BevelBlock();shaft=BranchMesh();leafMesh=LeafMesh();
         canopyCard=StoreMesh("CanopyClusterCard",new List<Vector3>{new Vector3(-.5f,-.5f,0),new Vector3(.5f,-.5f,0),new Vector3(.5f,.5f,0),new Vector3(-.5f,.5f,0)},new List<int>{0,2,1,0,3,2},new List<Vector2>{Vector2.zero,Vector2.right,Vector2.one,Vector2.up});

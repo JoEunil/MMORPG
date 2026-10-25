@@ -37,6 +37,7 @@ namespace ClientCore
                 throw new ArgumentException("Invalid movement state.");
             lock (_lockMove)
             {
+                if (_actionState.waitSkillSlot != NONE_SKILL) return;
                 _actionState.dir = dir;
                 _actionState.x = x;
                 _actionState.y = y;
