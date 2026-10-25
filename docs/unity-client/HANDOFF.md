@@ -2,12 +2,15 @@
 
 ## 현재 작업
 
-현재 요청: I/B 전달 원인 확인·해결, 남은 클라이언트 검증 계속. 제품 코드 결함은 아직 확인하지 못했다. 자동화 도구 전달 경로의 구체적 차이를 확인했다.
+현재 요청의 남은 패널 조작과 마을–사냥터 길 왕복을 실제 서버 세션에서 완료했다. 새 제품 코드 변경은 없고 기존 로컬 UI 묶음의 실서버 근거와 공개 화면을 보완했다.
 
-- 현재 sky.press_key i/Shift_L+i/Tab을 Unity InputEventTrace로 비교: 각각 TEXT가 관찰됐고 I 눌림 STAT은 없음. 장치는 Keyboard RawInput id1, DynamicUpdate, GameView 포커스/프레임 진행 정상. 이전 wasPressedThisFrame 0의 관찰과 일치한다. 도구 내부 OS 구현이나 물리 키 실패로 일반화하지 않는다.
-- 사용자 물리 입력 완료 답변 후 I=1/B=1, frame171937 확인. 자동화 TEXT 전달과 달리 물리 키 상태는 정상이다. 로그인 화면의 입력 전달만 확인했으며 월드 패널 성공까지 주장하지 않는다. 관찰기/SessionState 제거, Edit/clean/compilingfalse/backgroundfalse 복원 완료.
-- LOCAL_PREPARATION에 TEXT와 키 상태 구분 및 기존 정상 PlayerLoop QueueStateEvent 재사용 절차를 기록했다. 합성 키는 native 성공으로 보고하지 않는다. 제품에 문자 단축키 fallback을 추가하지 않았다. 서버/AI/DB/설정 변경 없음.
-- next_batch_readiness가 길 전체 왕복 5관찰점과 현재 서버가 필요한 증거를 ROOT/UnityClient/Builds/Decision-Next/readiness-r2.txt에 준비했다. 새 선택 질문/독립 제품 수정 근거 없음. 물리 입력 비교 뒤 기존 실제 계정/서버 조건을 확인하고 길 왕복과 패널 조작을 묶는다. 기존 통과 테스트 반복 없음.
+- 패널: 정상 PlayerLoop QueueStateEvent 합성 키로 I 가방 열기 → B 거래소 전환/가방 닫힘 → Esc 모두 닫힘, 서버 위치 불변. 실제 빈 가방·매물30개 표시. native 키 조작으로 보고하지 않는다. 보유 아이템/재화가 없어 성공 거래 차감은 미검증이다.
+- 왕복: 마을(10.61,9.66) → 기존 길 끝(99.68,9.66) → 이음(151.92,9.66) → 사냥터(209.96,9.66) → 기존 사냥 구간(280.14,9.66) → 마을(9.89,9.66). Zone1→2→1 및 각 정지점 drift0, HP7875 유지. 전체6구역/고지연/최신 사용자AI 검증은 아니다.
+- 첫 러너는 Camera.main을 사용해 잘못된 방향으로 경계에 닿았다. 실제 입력 기준 world.ViewCamera로 러너만 고쳐 길 구간만 재검증했고 통과한 패널은 반복하지 않았다. 실패 근거 보존. 제품 결함/지도 수정으로 처리하지 않는다.
+- 실제 로그인/선택/진입/로그아웃은 마우스 클릭, 보호된 자격증명은 기존 GameView 텍스트 helper 사용. 이동/패널은 합성 키. 위치·HP·모델 주입/DB 수정/서버AI 수정 없음.
+- owned MainServer PTY49355 ROOT cwd에서 기존 WAL/log를 사용, q 정상 종료 exit0. Login PTY98654 Game/Login에서 실행 후 Ctrl+C 종료 exit1. 포트3000/9999 미수신, Unity Edit/clean/compilingfalse/backgroundfalse 복원. 임시 입력 해제, Redis/MySQL 변경 없음.
+- 공개 인벤토리/거래소/필드에 실제 캡처3개와 검증 범위를 추가했다. 기존 이미지는 보존한다. 상세 근거 ROOT/UnityClient/Builds/Play-Session/panel-route-details.txt 및 route-followup-details.txt/run.txt.
+- 남은 것은 실제 보유 데이터 조건의 거래 차감과 더 넓은 플레이/아트 평가다. 기존 범위 안의 별도 구현 결함은 확인하지 못했고 새 선택 대기는 없다. DB를 채워 완료시키지 않는다. 새 PR 게시 승인 요청/수신 및 push는 아직 없다.
 
 ### 보존한 클라이언트 묶음
 
@@ -15,14 +18,14 @@
 
 - 완료: 열린 가방/거래소에서 Esc는 기존 ClosePanel 경로를 사용한다. 기존 대기 거래 보존·불확실한 수령 후 가방 갱신·자동 재전송 금지는 유지한다. 채팅은 이전 기록을 읽을 때 스크롤 비율을 보존하고 최신 위치/자기 echo에는 아래를 따라간다. 같은 문장 고정 기능은 아니다.
 - 검증: 독립 코드 리뷰 차단 없음, Unity 컴파일 통과, 새 영향 PlayMode 자동3사례만 통과(채팅2/Esc1). 입력은 InputSystem/가짜 네트워크 fixture이며 native 실입력·실거래 성공으로 보고하지 않는다. 이미 통과한 게임 테스트는 반복하지 않았다.
-- 기존 미확인: I/B native 입력 도달 문제는 코드상 결함이 없어 임의 수정하지 않았다. 빈 가방/미확인 재화 때문에 성공 거래 차감·아이템 보유 실화면 미검증, 연장 길 전체 실제 왕복도 미검증이다.
+- 기존 미확인: I/B native 입력 도달 문제는 코드상 결함이 없어 임의 수정하지 않았다. 빈 가방/미확인 재화 때문에 성공 거래 차감·아이템 보유 실화면 미검증, 연장 길 전체 왕복은 위 실서버 합성키 배치에서 완료했다.
 - 금지: 사용자 몬스터 AI·서버·패킷·경제·DB·충돌·스폰 변경. 이번 작업은 기존 UI 안의 동작만 바꿨다. 입력 허용 유지.
 
 ## 정본과 실행
 
 - Git: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, codex/client-ui-interaction. PR53 head552c5fe 기반으로 다음 작업만 로컬 누적한다. master는2e0de28, PR53은 현재 검토 중이므로 이전 브랜치/이력을 정리하거나 PR53에 새 범위를 섞지 않는다.
 - Editor: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient, PID38396/6000.0.47f1/Pipeline7800 확인. 현재 Edit/clean/backgroundfalse/compilingfalse 복원 확인. Scene·Prefab·Material·ClientCore DLL 변경 없음.
-- 이번에 서버/로그인 서비스를 시작하지 않았다. 기존 서비스 상태와 사용자 AI를 유지했다. 공개 자료는 CAND Markdown에서 생성하며 레이아웃 변화가 없어 새 이미지/게임 촬영은 생략했다.
+- 이번 배치에서 기존 서버/로그인 서비스를 정상 시작·종료했으며 사용자 AI는 수정하지 않았다. 공개 자료는 CAND Markdown에서 생성하고 실제 캡처3개를 추가했다.
 - 상세 근거·과거 결과: [RESULTS](history/2026-10-24-client-playability/RESULTS.txt). 목표·기획/아트 선택: [BRIEF](BRIEF.md).
 
 ## Slack·게시·다음 행동
@@ -31,4 +34,4 @@
 
 보존한 UI 묶음은 부모1792915030.606889. 새 게시 승인은 요청/수신하지 않았다. PR53의 PLAYSESSION01 회신1792909726.009609는 PR53 게시에 소비 완료이며 이 묶음에 재사용하지 않는다.
 
-[PR53](https://github.com/JoEunil/MMORPG/pull/53)은 사용자 검토용으로 유지한다. head552c5fe 사이트 Actions40169324854 성공/미리보기 artifact12589192115를 확인했으며 병합·정식 Pages 배포는 하지 않았다. 이번 작은 마감은 다음 큰 PR에 누적하며 별도 작은 PR을 만들지 않는다. 다음은 기존 미확인 입력 경로·아이템/거래 실데이터 조건을 필요한 범위에서 확인하고, 같은 기능 묶음의 남은 부분을 고른다. 데이터 변경·미지원 기능·새 미술 방향은 임의로 추가하지 않는다.
+[PR53](https://github.com/JoEunil/MMORPG/pull/53)은 사용자 검토용으로 유지한다. head552c5fe 사이트 Actions40169324854 성공/미리보기 artifact12589192115를 확인했으며 병합·정식 Pages 배포는 하지 않았다. 이번 작은 마감은 다음 큰 PR에 누적하며 별도 작은 PR을 만들지 않는다. 입력 전달 원인과 패널·길 왕복 확인은 완료했다. 남은 실제 아이템/재화 조건의 거래 검증은 정상 보유 데이터가 필요하며, 다음 제품 작업은 확인된 결함 또는 사용자 선택을 근거로 정한다. 데이터 변경·미지원 기능·새 미술 방향은 임의로 추가하지 않는다.
