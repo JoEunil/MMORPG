@@ -467,9 +467,9 @@ namespace C02
             {
                 if (hasMovementIntent) CancelMovement();
                 secondsWithoutInput += elapsed;
-                // Let already sent movement arrive after key-up before easing any remaining error.
-                // Releasing input still cancels unsent requests immediately.
-                if (secondsWithoutInput >= .1f)
+                // With no movement ACK, use the same bounded wait as stalled held input.
+                // A shorter key-up wait rewinds before delayed final snapshots can arrive.
+                if (secondsWithoutInput >= StaleMovementSeconds)
                 {
                     Vector2 next = Vector2.SmoothDamp(visualPosition, ServerPosition, ref visualCorrectionVelocity,
                         .12f, MovementUnitsPerSecond, Mathf.Min(elapsed, (float)MovementIntervalSeconds));

@@ -132,6 +132,128 @@ public static class C27FieldDressingSetup
         Debug.Log("Authored fixed six-zone paths, low meadow clusters and wall groves. Navigation/colliders/material assets unchanged.");
     }
 
+    [MenuItem("C02/Art/Apply Courtyard Road Approach")]
+    public static void ApplyCourtyardApproach()
+    {
+        var scene = EditorSceneManager.GetActiveScene();
+        if (EditorApplication.isPlayingOrWillChangePlaymode || scene.path != "Assets/C02/C02.unity" || scene.isDirty)
+            throw new InvalidOperationException("Open the saved C02 scene in Edit Mode.");
+        var authors = Object.FindObjectsByType<C20MapAuthoring>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        if (authors.Length != 1 || authors[0].map == null || !authors[0].map.IsValid ||
+            authors[0].obstacles == null || authors[0].obstacles.Length != 18)
+            throw new InvalidOperationException("The existing baked world map is required.");
+        var author = authors[0];
+        Transform world = author.transform.parent;
+        Transform citadel = world == null ? null : world.Find("CitadelEnvironment");
+        if (citadel == null || !citadel.gameObject.activeSelf || citadel.position != Vector3.zero ||
+            citadel.rotation != Quaternion.identity || citadel.lossyScale != Vector3.one)
+            throw new InvalidOperationException("The active, unscaled Citadel environment is required.");
+        const string folder = "Assets/C02/Art/CitadelEnvironment/";
+        var roadMesh = AssetDatabase.LoadAssetAtPath<Mesh>(folder + "Meadow0_WornRoadStone.asset");
+        var stoneMesh = AssetDatabase.LoadAssetAtPath<Mesh>(folder + "BevelledAshlar.asset");
+        var leafMesh = AssetDatabase.LoadAssetAtPath<Mesh>(folder + "CuppedOakLeaf.asset");
+        var roadMaterial = AssetDatabase.LoadAssetAtPath<Material>(folder + "WornRoadStone.mat");
+        var stoneMaterial = AssetDatabase.LoadAssetAtPath<Material>(folder + "WeatheredLimestone.mat");
+        var leafMaterial = AssetDatabase.LoadAssetAtPath<Material>(folder + "OakLeaves.mat");
+        if (roadMesh == null || stoneMesh == null || leafMesh == null || roadMaterial == null ||
+            stoneMaterial == null || leafMaterial == null)
+            throw new InvalidOperationException("Existing Citadel road, stone and foliage assets are required.");
+        // Continue the existing eastbound cobbles (x7..53, z9..11). The exterior
+        // gates are scenery beyond navigation, not a new passage or destination.
+        Vector3 extension = new Vector3(46.9f, 0, 0);
+        foreach (Vector3 vertex in roadMesh.vertices)
+        {
+            Vector3 point = vertex + extension;
+            if (!author.map.IsWalkable(point.x, point.z) || NearObstacle(author, point, .5f))
+                throw new InvalidOperationException("The existing road extension must remain on clear baked navigation.");
+        }
+        // Check the interior as well as the vertices, so no road triangle visually
+        // bridges a blocked tile. Half-tile sampling covers this fixed axis-aligned strip.
+        Bounds roadBounds = roadMesh.bounds;
+        roadBounds.center += extension;
+        float sampleStep = author.map.tileSize * .5f;
+        for (float x = roadBounds.min.x; x <= roadBounds.max.x + sampleStep; x += sampleStep)
+            for (float z = roadBounds.min.z; z <= roadBounds.max.z + sampleStep; z += sampleStep)
+            {
+                var point = new Vector3(Mathf.Min(x, roadBounds.max.x), 0, Mathf.Min(z, roadBounds.max.z));
+                if (!author.map.IsWalkable(point.x, point.z) || NearObstacle(author, point, .5f))
+                    throw new InvalidOperationException("The complete courtyard road strip must remain walkable.");
+            }
+        Transform root = citadel.Find("TownRoadApproach");
+        if (root != null && root.GetComponentsInChildren<Collider>(true).Length != 0)
+            throw new InvalidOperationException("The owned approach must remain presentation-only.");
+        Undo.IncrementCurrentGroup();
+        int undoGroup = Undo.GetCurrentGroup();
+        Undo.SetCurrentGroupName("Tidy courtyard road approach");
+        try
+        {
+            root = RoadObject(citadel, "TownRoadApproach");
+            RoadMesh(root, "EastboundCobbles", roadMesh, roadMaterial, extension, Vector3.one, 0);
+            for (int marker = 0; marker < 8; marker++)
+            {
+                float x = 56 + marker * 6;
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    string suffix = marker + "_" + side;
+                    // Ankle-flat accents leave the centre and safe spawn visibly open.
+                    RoadMesh(root, "RoadEdge_" + suffix, stoneMesh, stoneMaterial,
+                        new Vector3(x, .025f, 10 + side * 2.25f), new Vector3(.85f, .045f, .38f), side * 4);
+                    for (int leaf = 0; leaf < 3; leaf++)
+                    {
+                        var plant = RoadMesh(root, "LowVerge_" + suffix + "_" + leaf, leafMesh, leafMaterial,
+                            new Vector3(x + leaf * .24f, .10f, 10 + side * 3.15f), new Vector3(.32f, .22f, .32f), marker * 47 + leaf * 63);
+                        plant.localRotation *= Quaternion.Euler(52, 0, 0);
+                    }
+                }
+            }
+            EditorSceneManager.MarkSceneDirty(scene);
+            Undo.FlushUndoRecordObjects();
+            if (!EditorSceneManager.SaveScene(scene)) throw new InvalidOperationException("Saving the courtyard road failed.");
+        }
+        catch
+        {
+            Undo.RevertAllDownToGroup(undoGroup);
+            throw;
+        }
+        finally { Undo.CollapseUndoOperations(undoGroup); }
+        Debug.Log("Courtyard road tidied with existing cobbles, flat edging and low verge. Walls, banners, torches, spawn and navigation unchanged.");
+    }
+
+    private static Transform RoadObject(Transform parent, string name)
+    {
+        Transform child = parent.Find(name);
+        if (child == null)
+        {
+            child = new GameObject(name).transform;
+            Undo.RegisterCreatedObjectUndo(child.gameObject, "Tidy courtyard road approach");
+            child.SetParent(parent, false);
+        }
+        Undo.RecordObject(child, "Tidy courtyard road approach");
+        child.localPosition = Vector3.zero;
+        child.localRotation = Quaternion.identity;
+        child.localScale = Vector3.one;
+        return child;
+    }
+
+    private static Transform RoadMesh(Transform parent, string name, Mesh mesh, Material material,
+        Vector3 position, Vector3 scale, float yaw)
+    {
+        Transform child = RoadObject(parent, name);
+        var filter = child.GetComponent<MeshFilter>();
+        if (filter == null) filter = Undo.AddComponent<MeshFilter>(child.gameObject);
+        var renderer = child.GetComponent<MeshRenderer>();
+        if (renderer == null) renderer = Undo.AddComponent<MeshRenderer>(child.gameObject);
+        Undo.RecordObject(filter, "Tidy courtyard road approach");
+        Undo.RecordObject(renderer, "Tidy courtyard road approach");
+        filter.sharedMesh = mesh;
+        renderer.sharedMaterial = material;
+        child.localPosition = position;
+        child.localScale = scale;
+        child.localRotation = Quaternion.Euler(0, yaw, 0);
+        GameObjectUtility.SetStaticEditorFlags(child.gameObject, StaticEditorFlags.BatchingStatic);
+        return child;
+    }
+
     private static void AddTrail(Transform region, C20MapAuthoring author, Mesh mesh, Material material,
         Vector2 a, Vector2 b, int section)
     {

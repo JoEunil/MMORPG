@@ -15,8 +15,8 @@ namespace C02
     {
         private const float RequestTimeoutSeconds = 8f;
         private const float FailureRetryDelaySeconds = .35f;
-        private static readonly Color CardColor = new Color(.94f, .89f, .76f, 1f);
-        private static readonly Color SelectedCardColor = new Color(.99f, .96f, .86f, 1f);
+        private static readonly Color CardColor = new Color(.16f, .18f, .20f, 1f);
+        private static readonly Color SelectedCardColor = new Color(.38f, .30f, .20f, 1f);
         [SerializeField] private C01LoginScreen loginScreen;
         [SerializeField] private C02WorldScreen worldScreen;
         [SerializeField] private C09BazaarScreen bazaarScreen;
@@ -256,6 +256,7 @@ namespace C02
             background.color = CardColor;
             var button = cardObject.GetComponent<UnityEngine.UI.Button>();
             button.targetGraphic = background;
+            button.transition = Selectable.Transition.None;
 
             var accent = new GameObject("ItemAccent", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.Image));
             accent.transform.SetParent(cardObject.transform, false);
@@ -277,7 +278,7 @@ namespace C02
                 typeof(UnityEngine.UI.Image));
             quantityBadge.transform.SetParent(cardObject.transform, false);
             var quantityBadgeImage = quantityBadge.GetComponent<UnityEngine.UI.Image>();
-            quantityBadgeImage.color = new Color(.30f, .22f, .13f, .96f);
+            quantityBadgeImage.color = new Color(.08f, .10f, .12f, .98f);
             quantityBadgeImage.raycastTarget = false;
             var quantityBadgeRect = quantityBadge.GetComponent<RectTransform>();
             quantityBadgeRect.anchorMin = quantityBadgeRect.anchorMax = quantityBadgeRect.pivot = new Vector2(1, 1);
@@ -285,7 +286,7 @@ namespace C02
             quantityBadgeRect.sizeDelta = new Vector2(44f, 22f);
 
             var name = CreateText("ItemName", cardObject.transform, C11ItemPresentation.Name(item.ItemID), 14,
-                new Color(.23f, .19f, .13f), TextAlignmentOptions.MidlineLeft);
+                new Color(.88f, .91f, .95f), TextAlignmentOptions.MidlineLeft);
             name.rectTransform.anchorMin = new Vector2(0, 0);
             name.rectTransform.anchorMax = new Vector2(1, 0);
             name.rectTransform.pivot = new Vector2(.5f, 0);

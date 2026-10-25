@@ -27,19 +27,23 @@ namespace C02.Tests
                 motion.ResetPose();
                 var visual = actor.transform.Find("V01Hero") ?? actor.transform.Find("GuardVisual");
                 Assert.That(visual, Is.Not.Null);
-                var swordArm = visual.Find("Shoulder1");
-                var supportArm = visual.Find("Shoulder-1");
+                var upperBody = visual.Find("UpperBody");
+                var swordArm = upperBody != null ? upperBody.Find("Shoulder1") : visual.Find("Shoulder1");
+                var supportArm = upperBody != null ? upperBody.Find("Shoulder-1") : visual.Find("Shoulder-1");
                 var leftLeg = visual.Find("Hip-1");
                 var rightLeg = visual.Find("Hip1");
                 Assert.That(swordArm, Is.Not.Null);
                 Assert.That(supportArm, Is.Not.Null);
                 Assert.That(leftLeg, Is.Not.Null);
                 Assert.That(rightLeg, Is.Not.Null);
+                Assert.That(upperBody, Is.Not.Null);
+                Assert.That(swordArm.parent, Is.EqualTo(upperBody));
+                Assert.That(supportArm.parent, Is.EqualTo(upperBody));
+                Assert.That(leftLeg.parent, Is.EqualTo(visual));
+                Assert.That(rightLeg.parent, Is.EqualTo(visual));
 
                 Vector3 authorityPosition = actor.transform.position;
                 Quaternion authorityRotation = actor.transform.rotation;
-                var lateUpdate = typeof(C19ActorMotion).GetMethod("LateUpdate", BindingFlags.Instance | BindingFlags.NonPublic);
-                Assert.That(lateUpdate, Is.Not.Null);
                 var chargePoses = new Quaternion[3];
                 var releasePoses = new Quaternion[3];
                 var supportPoses = new Quaternion[3];
@@ -47,31 +51,75 @@ namespace C02.Tests
                 var leftLegPoses = new Quaternion[3];
                 var rightLegPoses = new Quaternion[3];
                 var durations = new[] { .48f, .48f, .58f };
-                var releaseProgress = new[] { .2f, .35f, .2f };
 
                 for (byte slot = 0; slot < 3; slot++)
                 {
-                    motion.PlayAttack(0, false, slot, .44f);
-                    SetAttackProgress(motion, .52f, .5f);
-                    ApplyPose(lateUpdate, motion);
+                    motion.PlayAttack(0, false, slot);
+                    yield return new WaitForSecondsRealtime(.3f);
                     chargePoses[slot] = swordArm.localRotation;
                     supportPoses[slot] = supportArm.localRotation;
-                    torsoPoses[slot] = visual.localRotation;
+                    torsoPoses[slot] = upperBody.localRotation;
                     AssertAuthority(actor, authorityPosition, authorityRotation);
 
+                    float releaseStarted = Time.unscaledTime;
+                    Vector3 ringFacing = visual.TransformDirection(Vector3.back);
+                    Quaternion previousRootRotation = visual.localRotation;
+                    float ringRotationDegrees = 0f;
                     motion.PlayAttack(0, true, slot);
-                    SetAttackProgress(motion, durations[slot], releaseProgress[slot]);
-                    lateUpdate.Invoke(motion, null);
+                    yield return new WaitForEndOfFrame();
+                    if (slot == 1)
+                    {
+                        ringRotationDegrees += Quaternion.Angle(previousRootRotation, visual.localRotation);
+                        previousRootRotation = visual.localRotation;
+                    }
                     Quaternion firstPhaseFrame = swordArm.localRotation;
-                    ApplyPose(lateUpdate, motion);
+                    Assert.That(Quaternion.Angle(firstPhaseFrame, chargePoses[slot]), Is.LessThan(5f),
+                        "The knight starts the release from its displayed charging pose.");
+                    yield return new WaitForSecondsRealtime(.12f);
                     releasePoses[slot] = swordArm.localRotation;
-                    Assert.That(Quaternion.Angle(firstPhaseFrame, chargePoses[slot]),
-                        Is.LessThanOrEqualTo(Quaternion.Angle(releasePoses[slot], chargePoses[slot]) + .1f),
-                        "A server phase change eases toward the new pose instead of snapping the blade.");
                     leftLegPoses[slot] = leftLeg.localRotation;
                     rightLegPoses[slot] = rightLeg.localRotation;
                     Assert.That(Quaternion.Angle(releasePoses[slot], Quaternion.identity), Is.GreaterThan(5f),
                         "Each server-confirmed release has a visible weapon pose.");
+                    Assert.That(Quaternion.Angle(firstPhaseFrame, releasePoses[slot]), Is.GreaterThan(5f),
+                        "The release progresses into its attack pose after the charging transition.");
+                    if (slot == 1)
+                    {
+                        ringRotationDegrees += Quaternion.Angle(previousRootRotation, visual.localRotation);
+                        previousRootRotation = visual.localRotation;
+                    }
+                    AssertAuthority(actor, authorityPosition, authorityRotation);
+
+                    // A frame can straddle the deadline by different amounts. Check the
+                    // observable recovered pose after the clip, not a fixed angular delta
+                    // across an unspecified number of rendered frames.
+                    while (Time.unscaledTime - releaseStarted < durations[slot] + .2f)
+                    {
+                        yield return null;
+                        if (slot == 1)
+                        {
+                            ringRotationDegrees += Quaternion.Angle(previousRootRotation, visual.localRotation);
+                            previousRootRotation = visual.localRotation;
+                        }
+                    }
+                    yield return new WaitForEndOfFrame();
+                    if (slot == 1)
+                        ringRotationDegrees += Quaternion.Angle(previousRootRotation, visual.localRotation);
+                    Assert.That(Quaternion.Angle(swordArm.localRotation, Quaternion.identity), Is.LessThan(3f),
+                        "The weapon settles at its resting pose after each skill.");
+                    if (slot == 1)
+                    {
+                        Assert.That(ringRotationDegrees, Is.GreaterThan(300f),
+                            "The released ring skill completes a tracked full-body turn across rendered frames.");
+                        Assert.That(Vector3.Angle(ringFacing, visual.TransformDirection(Vector3.back)), Is.LessThan(1f),
+                            "The ring sweep completes a full turn and returns to its accepted facing.");
+                        motion.SetMovementIntent(Vector2.right);
+                        yield return new WaitForSecondsRealtime(.2f);
+                        yield return new WaitForEndOfFrame();
+                        Assert.That(Vector3.Dot(visual.TransformDirection(Vector3.back), Vector3.right), Is.GreaterThan(.95f),
+                            "After the completion frame, normal facing smoothing follows the next movement direction.");
+                        motion.SetMovementIntent(Vector2.zero);
+                    }
                     AssertAuthority(actor, authorityPosition, authorityRotation);
                 }
                 Assert.That(Quaternion.Angle(chargePoses[0], chargePoses[1]), Is.GreaterThan(5f));
@@ -85,15 +133,23 @@ namespace C02.Tests
                 Assert.That(Quaternion.Angle(releasePoses[0], releasePoses[1]), Is.GreaterThan(10f));
                 Assert.That(Quaternion.Angle(releasePoses[1], releasePoses[2]), Is.GreaterThan(10f));
 
-                for (byte slot = 0; slot < 3; slot++)
-                {
-                    motion.PlayAttack(0, true, slot);
-                    SetAttackProgress(motion, durations[slot], .995f);
-                    ApplyPose(lateUpdate, motion);
-                    Assert.That(Quaternion.Angle(swordArm.localRotation, Quaternion.identity), Is.LessThan(3f),
-                        "The weapon returns smoothly to its resting pose after each skill.");
-                    AssertAuthority(actor, authorityPosition, authorityRotation);
-                }
+                var transitionUntil = typeof(C19ActorMotion).GetField("phaseTransitionUntil", BindingFlags.Instance | BindingFlags.NonPublic);
+                motion.ResetPose();
+                motion.PlayAttack(0, true, 0);
+                Assert.That((float)transitionUntil.GetValue(motion), Is.Zero,
+                    "A first release without an observed charge has no phase blend.");
+                motion.ResetPose();
+                motion.PlayAttack(0, false, 0);
+                yield return new WaitForSecondsRealtime(.56f);
+                motion.PlayAttack(0, true, 0);
+                Assert.That((float)transitionUntil.GetValue(motion), Is.Zero,
+                    "An expired charge cannot blend into a later release.");
+                motion.ResetPose();
+                motion.PlayAttack(0, false, 0);
+                yield return new WaitForSecondsRealtime(.08f);
+                motion.PlayAttack(0, true, 1);
+                Assert.That((float)transitionUntil.GetValue(motion), Is.Zero,
+                    "A release from another skill slot cannot reuse the charge pose.");
             }
             finally { Object.DestroyImmediate(actor); }
         }
@@ -114,7 +170,8 @@ namespace C02.Tests
                     var motion = actor.AddComponent<C19ActorMotion>(); motion.Configure(); motion.Configure();
                     var visual = actor.transform.Find("GuardVisual") ?? actor.transform.Find("MotionVisual");
                     Assert.That(visual, Is.Not.Null);
-                    var arm = visual.Find("Shoulder1");
+                    var upperBody = visual.Find("UpperBody");
+                    var arm = upperBody != null ? upperBody.Find("Shoulder1") : visual.Find("Shoulder1");
                     Assert.That(arm, Is.Not.Null, "The real attacking arm must be attached to its shoulder pivot: " + model);
                     Assert.That(arm.childCount, Is.GreaterThan(0));
                     var leg = visual.Find("Hip1");
@@ -168,20 +225,6 @@ namespace C02.Tests
                 }
                 finally { Object.DestroyImmediate(actor); }
             }
-        }
-
-        private static void SetAttackProgress(C19ActorMotion motion, float duration, float progress)
-        {
-            float now = Time.unscaledTime;
-            typeof(C19ActorMotion).GetField("attackStarted", BindingFlags.Instance | BindingFlags.NonPublic)
-                .SetValue(motion, now - duration * progress);
-            typeof(C19ActorMotion).GetField("attackUntil", BindingFlags.Instance | BindingFlags.NonPublic)
-                .SetValue(motion, now + duration * (1f - progress));
-        }
-
-        private static void ApplyPose(System.Reflection.MethodInfo lateUpdate, C19ActorMotion motion)
-        {
-            for (int i = 0; i < 18; i++) lateUpdate.Invoke(motion, null);
         }
 
         private static void AssertAuthority(GameObject actor, Vector3 position, Quaternion rotation)

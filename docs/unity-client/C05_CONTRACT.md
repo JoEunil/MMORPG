@@ -1,6 +1,6 @@
 ## 최신 후보 보정 — 2026-10-21
 
-이하 본문은 2026-10-18의 과거 실행 버전 분석이다. 현재 후보는 서버 Rectangle의 수직 방향을 이동 규약 0=+Y(North)/1=-Y(South)에 맞게 교정했다. 수평 2=-X/3=+X, 길이·폭·피해·wire는 불변이다. 현재 계약은 [LINE_AIM_TASK.md](LINE_AIM_TASK.md), [LINE_AIM_RESULTS.txt](LINE_AIM_RESULTS.txt)와 후보 소스 `CoreLib/SkillData_Range.cpp`를 기준으로 한다. ROOT의 기존 서버 소스나 과거 본문의 0=-Y/1=+Y를 최신 계약으로 재사용하지 않는다.
+이하 본문은 2026-10-18의 과거 실행 버전 분석이다. 현재 후보는 서버 Rectangle의 수직 방향을 이동 규약 0=+Y(North)/1=-Y(South)에 맞게 교정했다. 수평 2=-X/3=+X, 길이·폭·피해·wire는 불변이다. 현재 계약은 [LINE_AIM_TASK.md](history/2026-10-24-work-records/LINE_AIM_TASK.md), [LINE_AIM_RESULTS.txt](history/2026-10-24-work-records/LINE_AIM_RESULTS.txt)와 후보 소스 `CoreLib/SkillData_Range.cpp`를 기준으로 한다. ROOT의 기존 서버 소스나 과거 본문의 0=-Y/1=+Y를 최신 계약으로 재사용하지 않는다.
 
 네 방향 직접 자동 검증과 HUD 검증을 통과했다. 초기 Windows 보안 창 차단은 사용자가 직접 처리한 뒤 해소됐으며, 같은 날 후속 실제 접속에서 C키 1회로 서버 방향 0(+Y), 12×3 범위 윤곽, 동일 대상 HP 1500→500(피해 1000)을 확인했다. 실입력 검증은 완료됐으며, 초기 차단 이력을 이유로 반복하지 않는다. 처치·EXP 증가·재접속 영속성은 이번 검증 범위가 아니다. 상세 근거와 정상 종료 상태는 LINE_AIM_RESULTS.txt의 ‘후속 — 서버 확정 범위 윤곽 및 실제 C 검증 완료’를 따른다.
 

@@ -200,7 +200,11 @@ namespace C02.Tests
             {
                 fixture.OpenMarket();
                 fixture.ReceiveWallet(fixture.Network.LastWalletRequestID, 1, 100, 1, 0);
-                fixture.Receive(true);
+                fixture.Receive(true, new BazaarListing { listingID = 77, itemID = 4, quantity = 2, price = 123 });
+                fixture.Row(77).GetComponent<Button>().onClick.Invoke();
+                fixture.Buy.onClick.Invoke();
+                Assert.That(fixture.Status.text, Does.Contain("deduct 123 diamonds"));
+                Assert.That(fixture.Network.Mutations, Is.Zero, "Reviewing a purchase must not send the transaction.");
                 fixture.SellItems.onClick.Invoke();
                 Assert.That(fixture.Network.InventoryRequests, Is.EqualTo(1));
                 fixture.ReceiveInventory(new InventoryItem { itemID = 4, quantity = 5, slot = 7 });
@@ -208,13 +212,12 @@ namespace C02.Tests
                 var item = fixture.Rows.Find("Listing-0");
                 Assert.That(item, Is.Not.Null, "The sale list is populated from the returned bag slots.");
                 item.GetComponent<Button>().onClick.Invoke();
+                fixture.SaleGoldAfterValue.text = "unchanged";
                 fixture.Quantity.text = "2";
                 fixture.Price.text = "95";
-                Assert.That(fixture.SaleStackValue.text, Is.EqualTo("95"));
                 Assert.That(fixture.SaleFeeValue.text, Is.EqualTo("10"));
-                Assert.That(fixture.SaleGoldAfterValue.text, Is.EqualTo("90"));
-                Assert.That(fixture.SaleSummary.text, Does.Contain("Buyer pays diamonds"));
-                Assert.That(fixture.SaleSummary.text, Does.Contain("not refunded"));
+                Assert.That(fixture.SaleGoldAfterValue.text, Is.EqualTo("unchanged"), "The hidden legacy balance field must not be updated.");
+                Assert.That(fixture.SaleSummary.text, Is.EqualTo("Gold fee only."));
 
                 fixture.Register.onClick.Invoke();
                 Assert.That(fixture.Register.interactable, Is.True, "The first press reviews the sale without sending it.");

@@ -475,8 +475,7 @@ namespace C02
             cancelConfirmation = false;
             button.GetComponent<UnityEngine.UI.Image>().color = new Color(.20f, .29f, .34f);
             ShowSelectedItem(listing.ItemID, listing.Quantity);
-            selectedDetailText.text = listing.Price.ToString("N0", CultureInfo.InvariantCulture) + " diamonds · " + ListingStatusName(listing.Status) +
-                (myListings ? "" : " · buyer pays; collect item separately");
+            selectedDetailText.text = listing.Price.ToString("N0", CultureInfo.InvariantCulture) + " diamonds · " + ListingStatusName(listing.Status);
             if (claimOutcomes.TryGetValue(listing.ListingID, out byte outcome)) selectedDetailText.text = outcome == 1 ? "Proceeds collected." : "No proceeds to collect.";
             else if (unresolvedClaims.Contains(listing.ListingID)) selectedDetailText.text = "Collection result unknown · reconnect to check.";
             if (buyOutcomes.TryGetValue(listing.ListingID, out byte buyOutcome))
@@ -544,8 +543,7 @@ namespace C02
             if (!buyConfirmation)
             {
                 buyConfirmation = true;
-                selectedDetailText.text = "Buy for " + selectedListing.Price.ToString("N0", CultureInfo.InvariantCulture) + " diamonds?";
-                statusText.text = "Press again to confirm purchase.";
+                statusText.text = "Confirm purchase: deduct " + selectedListing.Price.ToString("N0", CultureInfo.InvariantCulture) + " diamonds. Press again to buy.";
                 UpdateControls();
                 return;
             }
@@ -947,22 +945,17 @@ namespace C02
         private void UpdateSaleSummary()
         {
             if (saleSummaryText == null) return;
-            bool valid = TrySaleValues(out ushort quantity, out ulong price);
+            bool valid = TrySaleValues(out _, out ulong price);
             if (!valid)
             {
-                if (saleStackValueText != null) saleStackValueText.text = "--";
                 if (saleFeeValueText != null) saleFeeValueText.text = "--";
-                if (saleGoldAfterValueText != null) saleGoldAfterValueText.text = "--";
                 saleSummaryText.text = saleItem.ItemID == 0 ? "Select an item and enter its total price." : "Enter a valid quantity and total price.";
                 return;
             }
             ulong fee = Math.Max(10UL, price / 10UL);
-            if (saleStackValueText != null) saleStackValueText.text = price.ToString("N0", CultureInfo.InvariantCulture);
             if (saleFeeValueText != null) saleFeeValueText.text = fee.ToString("N0", CultureInfo.InvariantCulture);
-            if (saleGoldAfterValueText != null) saleGoldAfterValueText.text = goldKnown && gold >= fee
-                ? (gold - fee).ToString("N0", CultureInfo.InvariantCulture) : goldKnown ? "Short" : "--";
-            saleSummaryText.text = goldKnown && gold < fee ? "Not enough gold\nFee is not refunded." :
-                !goldKnown ? "Balance unavailable\nServer checks the fee." : "Buyer pays diamonds\nListing fee is not refunded.";
+            saleSummaryText.text = goldKnown && gold < fee ? "Not enough gold." :
+                !goldKnown ? "Server will check the gold fee." : "Gold fee only.";
         }
 
         private void ShowSelectedItem(uint itemID, ushort quantity)
@@ -998,7 +991,7 @@ namespace C02
             if (goldKnown && gold < Math.Max(10UL, price / 10UL))
             { statusText.text = "Not enough gold for the registration fee."; return; }
             if (!registerConfirmation)
-            { registerConfirmation = true; UpdateSaleSummary(); statusText.text = "Review the gold fee and stack total, then confirm."; UpdateControls(); return; }
+            { registerConfirmation = true; UpdateSaleSummary(); statusText.text = "Confirm listing: only the displayed gold fee is deducted."; UpdateControls(); return; }
             registrationUncertain = true;
             requestPending = true;
             writeRequest = WriteRequest.Register;

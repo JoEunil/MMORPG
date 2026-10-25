@@ -72,26 +72,25 @@ public static class KnightVisualRefinement
 
         // Each replacement remains on the original object; added details follow that object's motion.
         Replace(visual, "Breastplate", Shell("Breastplate", new[] {1.13f,1.17f,1.23f,1.40f,1.55f,1.60f,1.63f},
-            new[] {.18f,.196f,.193f,.257f,.286f,.257f,.218f},
-            new[] {.139f,.160f,.168f,.195f,.178f,.147f,.123f}, .025f), steel);
+            new[] {.175f,.188f,.187f,.248f,.266f,.244f,.207f},
+            new[] {.134f,.153f,.163f,.185f,.170f,.142f,.120f}, .025f), steel);
         Transform breast = visual.Find("Breastplate");
-        ClearDetails(breast);
-        Stroke("KnightChestRidge", breast, new[] {new Vector3(0,1.18f,-.192f),new Vector3(0,1.41f,-.225f),new Vector3(0,1.58f,-.18f)}, .009f, edge);
+        Stroke("KnightChestRidge", breast, new[] {new Vector3(0,1.18f,-.181f),new Vector3(0,1.41f,-.211f),new Vector3(0,1.58f,-.181f)}, .009f, edge);
         for (int s = -1; s <= 1; s += 2)
         {
-            Stroke("KnightChestFlute" + s, breast, new[] {new Vector3(s*.058f,1.23f,-.178f),new Vector3(s*.105f,1.44f,-.183f),new Vector3(s*.187f,1.565f,-.132f)}, .004f, edge);
-            Stroke("KnightCollarTrim" + s, breast, new[] {new Vector3(0,1.59f,-.164f),new Vector3(s*.11f,1.59f,-.157f),new Vector3(s*.213f,1.615f,-.101f)}, .007f, gold);
+            Stroke("KnightChestFlute" + s, breast, new[] {new Vector3(s*.058f,1.23f,-.166f),new Vector3(s*.105f,1.44f,-.171f),new Vector3(s*.178f,1.565f,-.126f)}, .004f, edge);
+            Stroke("KnightCollarTrim" + s, breast, new[] {new Vector3(0,1.59f,-.176f),new Vector3(s*.11f,1.59f,-.143f),new Vector3(s*.188f,1.615f,-.070f)}, .007f, gold);
         }
         // Small embossed heraldry reads as metal relief, rather than a separate bright cube.
-        Extrusion("KnightChestHeraldry", breast, new[] {new Vector2(0,1.49f),new Vector2(.018f,1.445f),new Vector2(.060f,1.423f),new Vector2(.018f,1.405f),new Vector2(0,1.36f),new Vector2(-.018f,1.405f),new Vector2(-.060f,1.423f),new Vector2(-.018f,1.445f)}, -.222f, .007f, gold);
+        Extrusion("KnightChestHeraldry", breast, new[] {new Vector2(0,1.49f),new Vector2(.018f,1.445f),new Vector2(.060f,1.423f),new Vector2(.018f,1.405f),new Vector2(0,1.36f),new Vector2(-.018f,1.405f),new Vector2(-.060f,1.423f),new Vector2(-.018f,1.445f)}, -.207f, .007f, gold);
 
         Replace(visual, "HelmetShell", Shell("Sallet", new[] {1.745f,1.78f,1.86f,1.95f,2.035f,2.075f},
             new[] {.105f,.127f,.129f,.119f,.070f,.005f}, new[] {.123f,.145f,.149f,.134f,.078f,.014f}, .014f), steel);
         Replace(visual, "Gorget", Shell("ClosedGorget", new[] {1.61f,1.65f,1.71f,1.775f},
-            new[] {.22f,.16f,.108f,.105f}, new[] {.14f,.12f,.105f,.105f}, .003f), steel);
-        Transform helmet = visual.Find("HelmetShell"); ClearDetails(helmet);
+            new[] {.198f,.147f,.108f,.105f}, new[] {.133f,.114f,.105f,.105f}, .003f), steel);
+        Transform helmet = visual.Find("HelmetShell");
         Stroke("KnightHelmetCrest", helmet, new[] {new Vector3(0,1.955f,-.14f),new Vector3(0,2.06f,-.066f),new Vector3(0,2.09f,.014f),new Vector3(0,2.04f,.08f),new Vector3(0,1.91f,.145f)}, .008f, edge);
-        Transform visor = visual.Find("Visor"); ClearDetails(visor);
+        Transform visor = visual.Find("Visor");
         Stroke("KnightBrow", visor, new[] {new Vector3(-.123f,1.93f,-.10f),new Vector3(-.075f,1.934f,-.157f),new Vector3(0,1.925f,-.18f),new Vector3(.075f,1.934f,-.157f),new Vector3(.123f,1.93f,-.10f)}, .009f, edge);
         Stroke("KnightBevor", visor, new[] {new Vector3(-.105f,1.80f,-.10f),new Vector3(0,1.775f,-.163f),new Vector3(.105f,1.80f,-.10f)}, .008f, gold);
 
@@ -106,50 +105,61 @@ public static class KnightVisualRefinement
             // Closed overlapping shells eliminate the open, saw-toothed hems of the old tubes.
             // Their local axis still follows the original hip/knee/ankle pivots.
             Replace(visual,"Trouser"+s,Shell("ClosedPaddedLeg",new[]{-.018f,.035f,.28f,.47f},
-                new[]{.106f,.111f,.089f,.074f},new[]{.090f,.095f,.077f,.066f},0f),cloth);
+                new[]{.097f,.102f,.085f,.073f},new[]{.086f,.090f,.074f,.065f},0f),cloth);
             Replace(visual,"Cuissard"+s,Shell("ClosedCuissard",new[]{0f,.02f,.15f,.29f,.325f},
-                new[]{.097f,.111f,.104f,.088f,.080f},new[]{.083f,.095f,.089f,.079f,.074f},.006f),steel);
+                new[]{.091f,.101f,.096f,.084f,.077f},new[]{.079f,.087f,.083f,.075f,.071f},.006f),steel);
             Replace(visual,"KneeCop"+s,Shell("ClosedKneeCop",new[]{-.012f,.012f,.065f,.11f},
                 new[]{.076f,.090f,.086f,.070f},new[]{.070f,.081f,.078f,.064f},.009f),edge);
             Replace(visual,"Greave"+s,Shell("ClosedGreave",new[]{-.015f,.035f,.20f,.35f,.41f},
                 new[]{.076f,.087f,.076f,.059f,.049f},new[]{.070f,.080f,.066f,.051f,.045f},.009f),steel);
             Replace(visual,"Sabatons"+s,Shell("ArticulatedSabaton",new[]{.026f,.045f,.09f,.13f,.19f,.23f},
-                new[]{.079f,.081f,.078f,.069f,.052f,.047f},new[]{.178f,.183f,.178f,.142f,.076f,.059f},0f),steel);
+                new[]{.073f,.076f,.074f,.067f,.052f,.047f},new[]{.154f,.160f,.157f,.131f,.076f,.059f},0f),steel);
             Replace(visual,"Boot"+s,Shell("BootSole",new[]{.005f,.018f,.04f},
-                new[]{.080f,.082f,.077f},new[]{.180f,.185f,.179f},0f),leather);
+                new[]{.075f,.077f,.073f},new[]{.156f,.163f,.157f},0f),leather);
+
+            // Taper the armor along the existing limb-local axes; leave motion pivots intact.
+            // The flared elbow/cuff overlap their neighboring shells without balloon-like joints.
+            Replace(visual,"UpperArmPlate"+s,Shell("ClosedRerebrace",new[]{-.006f,.018f,.075f,.150f,.180f},
+                new[]{.067f,.073f,.070f,.061f,.058f},new[]{.058f,.065f,.062f,.054f,.051f},.003f),steel);
+            Replace(visual,"ElbowCop"+s,Shell("ClosedCouter",new[]{-.010f,.008f,.033f,.062f,.082f},
+                new[]{.060f,.074f,.078f,.070f,.060f},new[]{.056f,.068f,.073f,.065f,.055f},.004f),edge);
+            Replace(visual,"Vambrace"+s,Shell("ClosedVambrace",new[]{-.008f,.016f,.070f,.168f,.221f},
+                new[]{.060f,.066f,.062f,.048f,.043f},new[]{.054f,.060f,.057f,.044f,.040f},.005f),steel);
+            Replace(visual,"GauntletCuff"+s,Shell("ClosedGauntletCuff",new[]{-.008f,.006f,.031f,.058f},
+                new[]{.051f,.056f,.049f,.043f},new[]{.047f,.052f,.045f,.039f},.002f),edge);
 
             for (int layer = 0; layer < 3; layer++)
             {
                 string name = "ShoulderLame" + s + layer;
-                Transform plate = visual.Find(name); ClearDetails(plate);
+                Transform plate = visual.Find(name);
                 float x = s*(.275f + layer*.022f), y = 1.62f-layer*.045f;
-                Replace(visual, name, Shoulder(name, new Vector3(x,y,0), .155f-layer*.014f, .149f-layer*.009f, .09f), steel);
+                Replace(visual, name, Shoulder(name, new Vector3(x,y,0), .137f-layer*.012f, .138f-layer*.009f, .084f), steel);
                 var curve = new List<Vector3>();
-                for (int i=0;i<=10;i++) { float a=Mathf.PI*i/10; curve.Add(new Vector3(x+Mathf.Cos(a)*(.154f-layer*.014f),y-.043f,-Mathf.Sin(a)*(.15f-layer*.009f))); }
+                for (int i=0;i<=32;i++) { float a=Mathf.PI*2*i/32; curve.Add(new Vector3(x+Mathf.Cos(a)*(.136f-layer*.012f),y-.011f,Mathf.Sin(a)*(.137f-layer*.009f))); }
                 Stroke("KnightPauldronEdge", plate, curve.ToArray(), .006f, edge);
             }
-            Transform vambrace=visual.Find("Vambrace"+s); ClearDetails(vambrace);
+            Transform vambrace=visual.Find("Vambrace"+s);
             Stroke("KnightBracerRidge",vambrace,new[]{new Vector3(s*.38f,1.285f,-.089f),new Vector3(s*.368f,1.12f,-.10f)},.006f,edge);
-            Transform knee=visual.Find("KneeCop"+s); ClearDetails(knee);
-            Extrusion("KnightKneeWing",knee,new[]{new Vector2(s*.14f,.64f),new Vector2(s*.24f,.59f),new Vector2(s*.20f,.54f),new Vector2(s*.14f,.56f)},-.075f,.012f,steel);
-            Transform greave=visual.Find("Greave"+s); ClearDetails(greave);
+            Transform knee=visual.Find("KneeCop"+s);
+            Extrusion("KnightKneeWing",knee,new[]{new Vector2(s*.14f,.64f),new Vector2(s*.224f,.59f),new Vector2(s*.192f,.54f),new Vector2(s*.14f,.56f)},-.075f,.012f,steel);
+            Transform greave=visual.Find("Greave"+s);
             Stroke("KnightShinRidge",greave,new[]{new Vector3(s*.143f,.53f,-.084f),new Vector3(s*.154f,.22f,-.052f)},.008f,edge);
-            Transform shoe=visual.Find("Sabatons"+s); ClearDetails(shoe);
+            Transform shoe=visual.Find("Sabatons"+s);
             for(int i=0;i<3;i++) Stroke("KnightFootLame"+i,shoe,new[]{new Vector3(s*.155f-.054f,.104f,-.11f-i*.032f),new Vector3(s*.155f,.12f,-.12f-i*.032f),new Vector3(s*.155f+.054f,.104f,-.11f-i*.032f)},.004f,edge);
         }
 
-        Transform sword=visual.Find("SwordBlade"); ClearDetails(sword);
+        Transform sword=visual.Find("SwordBlade");
         // The original blade points down in its rest pose; retain the pivot used by sword motion.
         var blade = ExtrudedBlade();
         sword.GetComponent<MeshFilter>().sharedMesh=blade;
         sword.GetComponent<MeshRenderer>().sharedMaterial=edge;
         Stroke("KnightBladeFuller",sword,new[]{new Vector3(0,.27f,-.009f),new Vector3(0,.80f,-.009f)},.003f,dark,false);
         Transform guard=visual.Find("SwordGuard");
-        guard.GetComponent<MeshRenderer>().enabled=false; ClearDetails(guard);
+        guard.GetComponent<MeshRenderer>().enabled=false;
         // The replacement guard follows the original sword blade, in blade-local coordinates.
         Extrusion("KnightSweptGuard",sword,new[]{new Vector2(-.118f,.905f),new Vector2(-.095f,.935f),new Vector2(-.039f,.932f),new Vector2(0,.916f),new Vector2(.039f,.932f),new Vector2(.095f,.935f),new Vector2(.118f,.905f),new Vector2(.078f,.912f),new Vector2(0,.900f),new Vector2(-.078f,.912f)},-.020f,.035f,gold,false);
 
-        Transform shield=visual.Find("ShieldForgedRim"); ClearDetails(shield);
+        Transform shield=visual.Find("ShieldForgedRim");
         Vector2[] outline={new Vector2(-.19f,.29f),new Vector2(.19f,.29f),new Vector2(.20f,.03f),new Vector2(.14f,-.18f),new Vector2(0,-.34f),new Vector2(-.14f,-.18f),new Vector2(-.20f,.03f)};
         var rim = new Vector3[outline.Length+1];
         for(int i=0;i<rim.Length;i++){Vector2 p=outline[i%outline.Length];rim[i]=new Vector3(-.435f+p.x,1.19f+p.y,-.186f+Mathf.Abs(p.x)*.16f);}
@@ -187,13 +197,6 @@ public static class KnightVisualRefinement
         }
     }
 
-    private static void ClearDetails(Transform part)
-    {
-        if(part==null) throw new InvalidOperationException("An expected knight part is absent.");
-        for(int i=part.childCount-1;i>=0;i--)
-            if(part.GetChild(i).name.StartsWith("Knight",StringComparison.Ordinal)) Object.DestroyImmediate(part.GetChild(i).gameObject);
-    }
-
     private static void Replace(Transform visual,string name,Mesh mesh,Material material)
     {
         var part=visual.Find(name);
@@ -204,10 +207,24 @@ public static class KnightVisualRefinement
 
     private static Transform MeshPart(string name,Transform parent,Mesh mesh,Material material)
     {
-        var go=new GameObject(name,typeof(MeshFilter),typeof(MeshRenderer));
-        go.transform.SetParent(parent,false);
-        go.GetComponent<MeshFilter>().sharedMesh=mesh; go.GetComponent<MeshRenderer>().sharedMaterial=material;
-        return go.transform;
+        // Generated details keep their serialized object IDs when authoring is reapplied.
+        // Obsolete details must be removed explicitly instead of rebuilding every child.
+        var part=parent.Find(name);
+        if(part==null)
+        {
+            part=new GameObject(name,typeof(MeshFilter),typeof(MeshRenderer)).transform;
+            part.SetParent(parent,false);
+        }
+        var filter=part.GetComponent<MeshFilter>();
+        var renderer=part.GetComponent<MeshRenderer>();
+        if(filter==null || renderer==null)
+            throw new InvalidOperationException("Knight detail name is occupied by an incompatible object: "+name);
+        part.localPosition=Vector3.zero;
+        part.localRotation=Quaternion.identity;
+        part.localScale=Vector3.one;
+        filter.sharedMesh=mesh;
+        renderer.sharedMaterial=material;
+        return part;
     }
 
     private static Mesh SaveMesh(string name,List<Vector3> vertices,List<int> triangles,List<Vector2> uv)
@@ -249,16 +266,22 @@ public static class KnightVisualRefinement
     private static Mesh Shoulder(string name,Vector3 center,float width,float depth,float height)
     {
         var v=new List<Vector3>();var t=new List<int>();var uv=new List<Vector2>();
-        // Three rounded/bevelled courses, not flat cone-like shoulder slices.
-        for(int row=0;row<4;row++)for(int i=0;i<=16;i++)
+        // A complete rounded cap joins front, crown and rear; the old open front strip
+        // read as a bright rectangular shelf at the game's elevated camera angle.
+        const int sides=32;
+        float[] angles={0f,.35f,.70f,1.10f,1.45f,1.70f};
+        for(int row=0;row<angles.Length;row++)for(int i=0;i<=sides;i++)
         {
-            float a=Mathf.PI*.08f+Mathf.PI*.84f*i/16;
-            float radius=row==0?.82f:row==3?.96f:1f;
-            float crown=Mathf.Sin(a)*.045f*(1f-row/3f);
-            v.Add(center+new Vector3(-Mathf.Cos(a)*width*radius,(.5f-row/3f)*height+crown,-Mathf.Sin(a)*depth*radius));
-            uv.Add(new Vector2(i/16f,row/3f));
+            float a=Mathf.PI*2*i/sides;
+            float radius=Mathf.Sin(angles[row]);
+            v.Add(center+new Vector3(Mathf.Cos(a)*width*radius,Mathf.Cos(angles[row])*height,Mathf.Sin(a)*depth*radius));
+            uv.Add(new Vector2(i/(float)sides,row/(float)(angles.Length-1)));
         }
-        for(int row=0;row<3;row++)for(int i=0;i<16;i++){int a=row*17+i;t.AddRange(new[]{a,a+17,a+1,a+1,a+17,a+18});}
+        for(int row=0;row<angles.Length-1;row++)for(int i=0;i<sides;i++)
+        {
+            int a=row*(sides+1)+i,b=a+sides+1;
+            t.AddRange(new[]{a,a+1,b,a+1,b+1,b});
+        }
         return SaveMesh(name,v,t,uv);
     }
 
