@@ -1,7 +1,7 @@
 ## 공개 집계
 
 기준일: 2026-10-25
-누적 신규: 114
+누적 신규: 117
 누적 재활성화: 220
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-25
 
@@ -9,15 +9,15 @@
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 4 | 3 |
 | server_analyst | 서버 분석 Agent | 17 | 43 |
-| client_implementer | 구현 Agent | 38 | 53 |
+| client_implementer | 구현 Agent | 39 | 53 |
 | asset_artist | 아트 Agent | 17 | 25 |
-| code_reviewer | 리뷰 Agent | 28 | 88 |
+| code_reviewer | 리뷰 Agent | 30 | 88 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
 | decision_curator | 선택지 Agent | 3 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체334회(신규114·재활성화220)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체337회(신규117·재활성화220)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -562,3 +562,7 @@ first_hunt_review 리뷰 신규1: 첫 사냥 피드백 diff 독립 검토. 결�
 
 first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교기준 검토 배정. 실행검증과 별도.
 
+
+## HUD·잔액 복구 묶음 — 2026-10-25
+
+신규3: hud_remaining_scope(리뷰 책임: 미완료 코드 조사), wallet_read_recovery(구현), wallet_recovery_review(독립 리뷰). 역할별 증분은 리뷰2·구현1이며 토큰/비용 N/A. 총괄의 실제 HUD 입력·캡처는 활성화로 세지 않는다.

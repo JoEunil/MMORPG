@@ -80,4 +80,4 @@
 
 ## README 대표 이미지
 
-![현재 HUD·채팅·재화 배치를 보여주는 에디터 미리보기](../../site/media/releases/2026-10-24/restrained-hud-preview.png)
+![실제 사냥 중 전투·성장 HUD를 보여주는 게임 화면](../../site/media/releases/2026-10-25/hud-live-growth.png)
