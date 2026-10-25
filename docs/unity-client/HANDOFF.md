@@ -13,7 +13,7 @@ PR54에는 패널/채팅 조작, 스킬 안내/몬스터 쓰러짐, HP·레벨·
 독립리뷰 차단없음, 컴파일0오류/경고, 신규NearbyPlayerVitals1사례 통과(.087s), ROOT/CAND2파일 동기화. 임시PreviewScene 실제기존prefab 1280x720 배치/피격색 확인. 예시HP·촬영조명이며 실제 다중접속 검증 아님. 원본 ROOT/UnityClient/Builds/Play-Session/nearby-player-vitals-preview.png. 실제 다중세션은 미실행.
 
 ## 입력·다음 행동
-실제 입력 허용 유지. 현재 Editor Edit/clean/backgroundfalse; 직전 owned Main q종료0/LoginCtrlC종료1, DB/Redis 유지. 후속은 미게시 로컬 누적하며 이 작은 변경만 새 PR/승인으로 나누지 않는다. 관련 클라이언트 묶음과 실제 관찰 조건을 더 모아 게시 직전 Slack 승인 요청. 현재 새 승인/취향 선택 대기 없음. 새 작업 묶음은 새 앱 부모, 같은 묶음은 기존 스레드.
+실제 입력 허용 유지. 현재 Editor Edit/clean/backgroundfalse; 직전 owned Main q종료0/LoginCtrlC종료1, DB/Redis 유지. 후속은 미게시 로컬 누적하며 이 작은 변경만 새 PR/승인으로 나누지 않는다. 관련 클라이언트 묶음과 실제 관찰 조건을 더 모아 게시 직전 Slack 승인 요청. 현재 새 승인/취향 선택 대기 없음. 후속 앱 부모1792922124.815219(자동 등록 완료). 새 작업 묶음은 새 앱 부모, 같은 묶음은 기존 스레드.
 로그인/진입 후속조사는 현재 계약 내 정당한 단독변경 없음. 빈목록/조회실패 모호성을 임의 재시도로 감추지 않는다.
 
 상세 [RESULTS](history/2026-10-24-client-playability/RESULTS.txt), 범위 [BRIEF](BRIEF.md).
