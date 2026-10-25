@@ -79,6 +79,8 @@ namespace C02
         private ushort observedZone;
         private uint ownId;
         private ulong observedCharacterId;
+        private int pendingSkillSlot = -1;
+        private float combatStatusDeadline;
         private const float ServerTickSeconds = 0.05f;
         private const float ReleaseEffectLifetime = 0.35f;
         private const int EffectArcSegments = 36;
@@ -99,6 +101,14 @@ namespace C02
             skillButtons[0].onClick.AddListener(Strike);
             skillButtons[1].onClick.AddListener(Ring);
             skillButtons[2].onClick.AddListener(Line);
+            combatStatusText.gameObject.SetActive(true);
+            combatStatusText.rectTransform.anchorMin = combatStatusText.rectTransform.anchorMax = new Vector2(.5f, 0);
+            combatStatusText.rectTransform.pivot = new Vector2(.5f, 0);
+            combatStatusText.rectTransform.anchoredPosition = new Vector2(0, 82);
+            combatStatusText.rectTransform.sizeDelta = new Vector2(460, 40);
+            combatStatusText.fontSize = 16;
+            combatStatusText.alignment = TextAlignmentOptions.Center;
+            combatStatusText.raycastTarget = false;
             EnsureCooldownOverlays();
             loginScreen.ClientChanged += ChangeClient;
             worldScreen.WorldStateChanged += WorldChanged;
@@ -123,7 +133,7 @@ namespace C02
             observedCharacterId = 0;
             Array.Clear(cooldownDeadlines, 0, cooldownDeadlines.Length);
             UpdateCooldownOverlays();
-            combatStatusText.text = string.Empty;
+            ClearCombatStatus();
             Subscribe();
             WorldChanged();
         }
@@ -172,7 +182,7 @@ namespace C02
                     HideChargeTelegraph();
                     HideReleaseEffect();
                     HideSkillTooltip();
-                    combatStatusText.text = string.Empty;
+                    ClearCombatStatus();
                     ShowDefeatPanel();
                 }
                 else
@@ -207,7 +217,7 @@ namespace C02
                 if (hpFill != null) hpFill.fillAmount = 0;
                 if (mpFill != null) mpFill.fillAmount = 0;
                 aimText.text = string.Empty;
-                combatStatusText.text = string.Empty;
+                ClearCombatStatus();
             }
             foreach (var button in skillButtons)
                 if (button != null) button.interactable = model != null && WorldAvailable && worldScreen.CanAct;
@@ -225,7 +235,7 @@ namespace C02
             observedZone = WorldAvailable ? worldScreen.ZoneID : (ushort)0;
             ownId = WorldAvailable ? worldScreen.InternalID : 0;
             observedCharacterId = WorldAvailable ? worldScreen.SelectedCharacterID : 0;
-            combatStatusText.text = string.Empty;
+            ClearCombatStatus();
             Subscribe();
         }
 
@@ -369,11 +379,46 @@ namespace C02
             worldScreen.CancelMovement();
             var state = worldScreen.OwnFull;
             loginScreen.Data.UpdateAction(state.dir, state.x, state.y, slot);
-            combatStatusText.text = SkillName(slot) + " requested";
+            ShowSkillRequest(slot);
+        }
+
+        private void ShowSkillRequest(byte slot)
+        {
+            string advisory = string.Empty;
+            if (TryGetSkill(slot, out var skill) && worldScreen.OwnFull.mp < skill.mana)
+                advisory = string.Format(CultureInfo.InvariantCulture, " · low MP ({0}/{1})", worldScreen.OwnFull.mp, skill.mana);
+            else if (cooldownDeadlines[slot] > Time.unscaledTime)
+                advisory = string.Format(CultureInfo.InvariantCulture, " · cooldown ~{0:0.0}s", cooldownDeadlines[slot] - Time.unscaledTime);
+            combatStatusText.text = SkillName(slot) + " requesting" + advisory;
+            // Presentation only: phase broadcasts have no request ID or rejection reason.
+            pendingSkillSlot = slot;
+            combatStatusDeadline = Time.unscaledTime + 8;
+        }
+
+        private void ClearCombatStatus()
+        {
+            pendingSkillSlot = -1;
+            combatStatusDeadline = 0;
+            if (combatStatusText != null) combatStatusText.text = string.Empty;
+        }
+
+        private void UpdateCombatStatus(float now)
+        {
+            if (combatStatusDeadline > 0 && now >= combatStatusDeadline)
+            {
+                if (pendingSkillSlot >= 0)
+                {
+                    combatStatusText.text = SkillName((byte)pendingSkillSlot) + ": no confirmation received";
+                    pendingSkillSlot = -1;
+                    combatStatusDeadline = now + 3;
+                }
+                else ClearCombatStatus();
+            }
         }
 
         private void Update()
         {
+            UpdateCombatStatus(Time.unscaledTime);
             if (respawnDeadline > 0 && Time.unscaledTimeAsDouble >= respawnDeadline &&
                 defeatPanel != null && defeatPanel.activeSelf)
             {
@@ -413,7 +458,12 @@ namespace C02
                     chargeDuration = Mathf.Min(castingSkill.phases[1].waitTicks * ServerTickSeconds, 2f);
                 if (worldScreen.OwnFull.hp > 0)
                     worldScreen.ActorMotion?.PlayAttack(result.dir, result.skillPhase != 0, result.skillSlot, chargeDuration);
-                combatStatusText.text = SkillName(result.skillSlot) + (result.skillPhase == 0 ? " cast" : " released");
+                if (pendingSkillSlot < 0 || pendingSkillSlot == result.skillSlot)
+                {
+                    pendingSkillSlot = -1;
+                    combatStatusText.text = SkillName(result.skillSlot) + (result.skillPhase == 0 ? " charging" : " released");
+                    combatStatusDeadline = Time.unscaledTime + 3;
+                }
                 if (result.skillPhase == 0)
                 {
                     if (TryGetSkill(result.skillSlot, out var skill) && skill.cooldownTicks > 0)
@@ -1116,7 +1166,8 @@ namespace C02
             string key = slot == 0 ? "Z" : slot == 1 ? "X" : "C";
             string name = SkillName((byte)slot);
             skillTooltipText.text = string.Format(CultureInfo.InvariantCulture,
-                "<size=20><b>{0} · {1}</b></size>\n{2} · MP {3}", key, name, shape, skill.mana);
+                "<size=20><b>{0} · {1}</b></size>\n{2} · MP {3}\nCooldown {4:0.##}s · ~ estimated", key, name, shape, skill.mana,
+                skill.cooldownTicks * ServerTickSeconds);
             skillTooltip.SetActive(true);
             skillTooltip.transform.SetAsLastSibling();
             tooltipSlot = slot;
@@ -1166,7 +1217,7 @@ namespace C02
             if (mpValueText != null) mpValueText.text = string.Empty;
             if (hpFill != null) hpFill.fillAmount = 0;
             if (mpFill != null) mpFill.fillAmount = 0;
-            if (combatStatusText != null) combatStatusText.text = string.Empty;
+            ClearCombatStatus();
             if (aimText != null) aimText.text = string.Empty;
         }
 

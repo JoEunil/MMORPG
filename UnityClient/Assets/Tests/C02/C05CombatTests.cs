@@ -256,7 +256,7 @@ namespace C02.Tests
                 action.skillPhase = 0;
                 action.dir = 0;
                 current(1, new[] { action });
-                Assert.That(f.Status.text, Is.EqualTo("Line cast"));
+                Assert.That(f.Status.text, Is.EqualTo("Line charging"));
                 var telegraph = (MeshRenderer)Get(f.Combat, "chargeTelegraphRenderer");
                 var telegraphMesh = (Mesh)Get(f.Combat, "chargeTelegraphMesh");
                 Assert.That(telegraph.enabled && telegraphMesh.vertexCount >= 8 && telegraphMesh.triangles.Length >= 12, Is.True,
@@ -505,6 +505,65 @@ namespace C02.Tests
                         "The same server-anchored ribbon advances outward during its visible lifetime.");
                     Assert.That(mesh.vertexCount, Is.GreaterThan(48));
                 }
+            }
+        }
+
+        [Test]
+        public void FirstHuntFeedback_UnconfirmedRequestExpires_AndAdvisoriesDoNotClaimRejection()
+        {
+            using (var f = new CombatFixture())
+            {
+                f.Delta(new DeltaUpdateField { zoneInternalID = 73, fieldID = 1, fieldVal = 5 });
+                Invoke(f.Combat, "ShowSkillRequest", (byte)1);
+                Assert.That(f.Status.gameObject.activeSelf, Is.True, "The existing HUD feedback label is visible.");
+                Assert.That(f.Status.text, Does.Contain("Ring requesting").And.Contain("low MP (5/17)"));
+                Assert.That(f.World.CanAct && f.Buttons[1].interactable, Is.True,
+                    "The advisory leaves server authority and input availability intact.");
+                float deadline = (float)Get(f.Combat, "combatStatusDeadline");
+                Invoke(f.Combat, "UpdateCombatStatus", deadline - .01f);
+                Assert.That(f.Status.text, Does.Contain("requesting"));
+                Invoke(f.Combat, "UpdateCombatStatus", deadline);
+                Assert.That(f.Status.text, Is.EqualTo("Ring: no confirmation received"));
+                Assert.That((int)Get(f.Combat, "pendingSkillSlot"), Is.EqualTo(-1));
+                Invoke(f.Combat, "UpdateCombatStatus", deadline + 3);
+                Assert.That(f.Status.text, Is.Empty);
+
+                f.Full();
+                ((float[])Get(f.Combat, "cooldownDeadlines"))[1] = Time.unscaledTime + 2;
+                Invoke(f.Combat, "ShowSkillRequest", (byte)1);
+                Assert.That(f.Status.text, Does.Contain("requesting").And.Contain("cooldown ~"));
+                Assert.That(f.Buttons[1].interactable, Is.True, "Estimated cooldown never disables the skill.");
+                f.DisableCombat();
+                Assert.That(f.Status.text, Is.Empty);
+                Assert.That((int)Get(f.Combat, "pendingSkillSlot"), Is.EqualTo(-1));
+                Assert.That((float)Get(f.Combat, "combatStatusDeadline"), Is.Zero);
+            }
+        }
+
+        [Test]
+        public void FirstHuntFeedback_OnlyMatchingOwnPhasesReplaceRequest_AndReleaseExpires()
+        {
+            using (var f = new CombatFixture())
+            {
+                Invoke(f.Combat, "ShowSkillRequest", (byte)1);
+                var received = (Action<ushort, ActionResultField[]>)Get(f.Combat, "actionResults");
+                var phase = new ActionResultField { casterType = 0, casterId = 99, skillSlot = 1,
+                    skillId = 1, dir = 3, x = 10, y = 10, skillPhase = 0 };
+                received(1, new[] { phase });
+                Assert.That(f.Status.text, Is.EqualTo("Ring requesting"));
+                phase.casterId = 73; phase.skillSlot = 0; phase.skillId = 0;
+                received(1, new[] { phase });
+                Assert.That(f.Status.text, Is.EqualTo("Ring requesting"), "Another slot cannot confirm this display's request.");
+                phase.skillSlot = 1; phase.skillId = 1;
+                received(1, new[] { phase });
+                Assert.That(f.Status.text, Is.EqualTo("Ring charging"));
+                Assert.That((int)Get(f.Combat, "pendingSkillSlot"), Is.EqualTo(-1));
+                phase.skillPhase = 1;
+                received(1, new[] { phase });
+                Assert.That(f.Status.text, Is.EqualTo("Ring released"));
+                Assert.That(f.World.OwnFull.exp, Is.Zero, "A skill phase cannot invent a hit, kill, or reward.");
+                Invoke(f.Combat, "UpdateCombatStatus", (float)Get(f.Combat, "combatStatusDeadline"));
+                Assert.That(f.Status.text, Is.Empty);
             }
         }
 

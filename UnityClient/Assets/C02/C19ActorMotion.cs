@@ -34,6 +34,8 @@ namespace C02
         private float phaseTransitionStarted;
         private float phaseTransitionUntil;
         private float hitUntil;
+        private float defeatStarted = -1f;
+        private Quaternion defeatStartRotation;
 
         public void Configure()
         {
@@ -151,7 +153,7 @@ namespace C02
         // Call only for accepted server action phases; this does not send or confirm damage.
         public void PlayAttack(byte direction, bool released, byte skillSlot = 0, float chargeDuration = 0)
         {
-            if (visual == null || direction > 3) return;
+            if (visual == null || direction > 3 || defeatStarted >= 0) return;
             float now = Time.unscaledTime;
             byte nextAttackSlot = skillSlot <= 2 ? skillSlot : (byte)0;
             if (guardMotion && !this.released && released && now < attackUntil && nextAttackSlot == attackSlot)
@@ -181,12 +183,39 @@ namespace C02
         // Call on an observed HP decrease, never on the first health snapshot.
         public void PlayHit()
         {
-            if (visual != null) hitUntil = Time.unscaledTime + .2f;
+            if (visual != null && defeatStarted < 0) hitUntil = Time.unscaledTime + .2f;
+        }
+
+        // Only the removed monster's mesh parts remain for this brief presentation.
+        public bool PlayDefeat()
+        {
+            if (visual == null) return false;
+            if (defeatStarted >= 0) return true;
+            defeatStarted = Time.unscaledTime;
+            defeatStartRotation = visual.localRotation;
+            attackUntil = hitUntil = 0;
+            return true;
         }
 
         private void LateUpdate()
         {
             if (visual == null) return;
+            if (defeatStarted >= 0)
+            {
+                float elapsed = Time.unscaledTime - defeatStarted;
+                float fall = Mathf.SmoothStep(0, 1, Mathf.Clamp01(elapsed / .4f));
+                visual.localRotation = defeatStartRotation * Quaternion.Euler(80f * fall, 0, 12f * fall);
+                visual.localPosition = restPosition + Vector3.up * (Mathf.Sin(fall * Mathf.PI) * height * .04f);
+                for (int side = 0; side < 2; side++)
+                {
+                    if (arms[side] != null) arms[side].localRotation = Quaternion.Slerp(arms[side].localRotation,
+                        Quaternion.Euler(25f, 0, side == 0 ? -25f : 25f), Mathf.Clamp01(Time.unscaledDeltaTime * 12f));
+                    if (legs[side] != null) legs[side].localRotation = Quaternion.Slerp(legs[side].localRotation,
+                        Quaternion.identity, Mathf.Clamp01(Time.unscaledDeltaTime * 12f));
+                }
+                if (elapsed >= .7f) { gameObject.SetActive(false); Destroy(gameObject); }
+                return;
+            }
             Vector3 delta = transform.position - previousPosition;
             previousPosition = transform.position;
             delta.y = 0;
@@ -402,6 +431,7 @@ namespace C02
         {
             previousPosition = transform.position;
             walking = stride = attackStarted = attackUntil = hitUntil = 0;
+            defeatStarted = -1f;
             released = false;
             spinPendingCompletion = false;
             phaseTransitionStarted = phaseTransitionUntil = 0;

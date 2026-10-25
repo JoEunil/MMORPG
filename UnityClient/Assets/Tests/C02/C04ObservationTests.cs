@@ -18,6 +18,65 @@ namespace C02.Tests
     // Detached state fixtures. These do not count as real UI input, server observation, or account sessions.
     public sealed class C04ObservationTests
     {
+#if UNITY_EDITOR
+        [UnityEngine.TestTools.UnityTest]
+        public IEnumerator FirstHuntFeedback_MonsterDefeatKeepsOnlyBriefVisualAndLiveFullResetsIt()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/C02/Art/C04/MonsterType0.prefab");
+                Assert.That(prefab, Is.Not.Null);
+                fixture.UseMonsterPrefabs(prefab);
+                var dead = Monster(0, 0); dead.hp = 0;
+                fixture.Monsters(Time.realtimeSinceStartupAsDouble, dead);
+                Assert.That(fixture.Count("monsters"), Is.Zero, "An initial dead Full never creates a defeat replay.");
+                fixture.Monsters(Time.realtimeSinceStartupAsDouble, Monster(0, 0));
+                var actor = fixture.Visual("monsters", (ushort)0);
+                var visual = actor.transform.Find("MotionVisual");
+                var motion = actor.GetComponent<C19ActorMotion>();
+                Quaternion initial = visual.localRotation;
+                Vector3 authority = actor.transform.position;
+                Quaternion facing = actor.transform.rotation;
+                fixture.MonsterDeltas(
+                    new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 0 },
+                    new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 50 });
+                Assert.That(fixture.Count("monsters"), Is.Zero, "HP0 wins within the accepted batch and removes observation immediately.");
+                Assert.That(actor.activeSelf, Is.True, "Only the short defeat visual remains.");
+                Assert.That(actor.transform.Find("MonsterVitals").gameObject.activeSelf, Is.False);
+                foreach (var collider in actor.GetComponentsInChildren<Collider>()) Assert.That(collider.enabled, Is.False);
+                float started = (float)Get(motion, "defeatStarted");
+                fixture.Monsters(Time.realtimeSinceStartupAsDouble, dead);
+                fixture.MonsterDeltas(new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 70 });
+                Assert.That(fixture.Count("monsters"), Is.Zero, "Unknown Delta cannot respawn the removed actor.");
+                Assert.That((float)Get(motion, "defeatStarted"), Is.EqualTo(started));
+                yield return new WaitForSecondsRealtime(.2f);
+                Assert.That(Quaternion.Angle(initial, visual.localRotation), Is.GreaterThan(15f));
+                Assert.That(actor.transform.position, Is.EqualTo(authority));
+                Assert.That(actor.transform.rotation, Is.EqualTo(facing));
+                fixture.Monsters(Time.realtimeSinceStartupAsDouble, Monster(0, 0));
+                var respawn = fixture.Visual("monsters", (ushort)0);
+                Assert.That(respawn, Is.Not.SameAs(actor));
+                Assert.That(actor.activeSelf, Is.False, "The live Full immediately clears the same-ID old visual.");
+                Assert.That((float)Get(respawn.GetComponent<C19ActorMotion>(), "defeatStarted"), Is.LessThan(0));
+                Assert.That(respawn.transform.Find("MonsterVitals").gameObject.activeSelf, Is.True);
+                fixture.Monsters(Time.realtimeSinceStartupAsDouble, dead);
+                Assert.That(fixture.Count("monsters"), Is.Zero, "An observed HP0 Full also starts defeat.");
+                yield return new WaitForSecondsRealtime(.8f);
+                Assert.That(respawn == null, Is.True, "The presentation cleans itself up within its bounded lifetime.");
+                fixture.Monsters(Time.realtimeSinceStartupAsDouble, Monster(0, 0));
+                var cleared = fixture.Visual("monsters", (ushort)0);
+                fixture.MonsterDeltas(new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 0 });
+                fixture.Clear();
+                Assert.That(cleared.activeSelf, Is.False, "World clearing also clears a pending defeat visual.");
+                fixture.Monsters(Time.realtimeSinceStartupAsDouble, Monster(0, 0));
+                var disabled = fixture.Visual("monsters", (ushort)0);
+                fixture.MonsterDeltas(new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 0 });
+                fixture.DisableObserver();
+                Assert.That(disabled.activeSelf, Is.False, "Disabling observation also clears pending presentation.");
+            }
+        }
+#endif
+
         [Test]
         public void MonsterPacketsUse25And8ByteFields_AllowIdZero_AndRejectMalformedCounts()
         {
@@ -674,6 +733,7 @@ namespace C02.Tests
             }
 
             public ViewModel NewModel() { var model = C04ObservationTests.NewModel(dispatcher); models.Add(model); return model; }
+            public void UseMonsterPrefabs(GameObject prefab) => Set(observer, "monsterPrefabs", new[] { prefab, prefab, prefab });
             public IViewModelNet NetworkModel => models[models.Count - 1];
             public void ConfigureMonsterRange()
             {
@@ -716,7 +776,7 @@ namespace C02.Tests
                 PreviewDeadline(((Array)EntryField("monsters", id, "BossSquarePreviews")).GetValue(pair));
             public void Expire(double now) => Invoke(observer, "Expire", now);
             public void RemovePlayer(uint id) => Invoke(observer, "RemovePlayer", id);
-            public void RemoveMonster(ushort id) => Invoke(observer, "RemoveMonster", id);
+            public void RemoveMonster(ushort id) => Invoke(observer, "RemoveMonster", id, false);
             public void Clear() => Invoke(observer, "ClearObservations");
             public void DestroyDisplayRoot() => UnityEngine.Object.DestroyImmediate(((Transform)Get(observer, "displayRoot")).gameObject);
             public int Count(string name) => ((IDictionary)Get(observer, name)).Count;

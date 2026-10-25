@@ -1,23 +1,23 @@
 ## 공개 집계
 
 기준일: 2026-10-25
-누적 신규: 110
-누적 재활성화: 216
+누적 신규: 114
+누적 재활성화: 217
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-25
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
-| game_planner | 기획 Agent | 3 | 1 |
+| game_planner | 기획 Agent | 4 | 2 |
 | server_analyst | 서버 분석 Agent | 17 | 43 |
-| client_implementer | 구현 Agent | 36 | 52 |
+| client_implementer | 구현 Agent | 38 | 52 |
 | asset_artist | 아트 Agent | 17 | 25 |
-| code_reviewer | 리뷰 Agent | 27 | 87 |
+| code_reviewer | 리뷰 Agent | 28 | 87 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
 | decision_curator | 선택지 Agent | 3 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체326회(신규110·재활성화216)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체331회(신규114·재활성화217)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -549,4 +549,10 @@ input_path_cause 리뷰(explorer) 신규1, next_batch_readiness 선택지(defaul
 물리 입력 비교 후 live_batch_server_readiness 서버 분석 신규1로 다음 실서버 묶음의 기존 실행 경로·호환 근거를 읽기 검토했다. 누적325=110+215. 총괄 물리 입력 관찰은 집계 제외.
 
 2026-10-25 CLIENTUI01 게시 준비: next_batch_readiness 후속 실행1회(선택지 Agent). 패널·왕복 완료 후 BRIEF와 관련 코드를 읽기 전용 대조했으며 추가 확정 결함/새 선택 필요 없음. 테스트 반복·제품 수정 없음.
+
+
+2026-10-25 첫 사냥 피드백: next_playable_bundle 기획 신규1·후속1(후속은 범위 확정/종료 안내이며 새 산출물 없음), combat_feedback_bundle·monster_defeat_presentation 구현 신규2. 기획은 코드/서버 경로 근거로 누락을 식별했고 구현은 진행 중. 도구 호출/총괄 직접작업 제외.
+
+
+first_hunt_review 리뷰 신규1: 첫 사냥 피드백 diff 독립 검토. 결과와 실행 검증은 별도 기록.
 
