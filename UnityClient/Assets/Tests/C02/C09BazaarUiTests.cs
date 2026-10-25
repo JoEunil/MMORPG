@@ -316,9 +316,37 @@ namespace C02.Tests
             }
         }
 
+        [TestCase("close")]
+        [TestCase("timeout")]
+        public void AbandonedOutboxRefreshesInventoryBeforeNextOpen(string abandonment)
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.OpenMarket();
+                fixture.Receive(true);
+                fixture.CheckOutbox.onClick.Invoke();
+                Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(1));
+
+                if (abandonment == "close") fixture.Close.onClick.Invoke();
+                else
+                {
+                    Set(fixture.Screen, "requestDeadline", Time.unscaledTime - 1);
+                    Invoke(fixture.Screen, "Update");
+                }
+
+                Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.False);
+                Assert.That(Get<bool>(fixture.InventoryScreen, "refreshOnOpenAfterUncertainDelivery"), Is.True,
+                    "Outbox delivery can finish after its response is cancelled, so the next bag open must read fresh inventory.");
+                ((IViewModelNet)fixture.Login.Model).BazaarCheckOutboxReceived(
+                    fixture.Network.LastCheckOutboxRequestID, 1, 1, 0, 0);
+                Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(1), "A stale response must never cause an automatic delivery retry.");
+            }
+        }
+
         private sealed class Fixture : IDisposable
         {
             private readonly GameObject root;
+            private readonly GameObject inventoryRoot;
             private readonly List<Initializer> clients = new List<Initializer>();
             public readonly C01LoginScreen Login;
             public readonly C02WorldScreen World;
@@ -327,7 +355,8 @@ namespace C02.Tests
             public readonly GameObject Panel;
             public readonly Button Market, Search, Close, Next;
             public readonly Button SellItems, Register;
-            public readonly Button Buy, Claim, MyListings;
+            public readonly Button Buy, Claim, MyListings, CheckOutbox;
+            public readonly C07InventoryScreen InventoryScreen;
             public readonly Button[] TypeButtons;
             public readonly Transform Rows;
             public readonly TMP_Text EmptyState, Detail, Status;
@@ -349,6 +378,13 @@ namespace C02.Tests
             {
                 root = new GameObject("C09 bazaar fixture");
                 root.SetActive(false);
+                inventoryRoot = new GameObject("C07 inventory fixture");
+                inventoryRoot.SetActive(false);
+                InventoryScreen = inventoryRoot.AddComponent<C07InventoryScreen>();
+                var inventoryPanel = new GameObject("C07 inventory panel");
+                inventoryPanel.transform.SetParent(inventoryRoot.transform, false);
+                inventoryPanel.SetActive(false);
+                Set(InventoryScreen, "inventoryPanel", inventoryPanel);
                 Login = root.AddComponent<C01LoginScreen>();
                 World = root.AddComponent<C02WorldScreen>();
                 Screen = root.AddComponent<C09BazaarScreen>();
@@ -386,6 +422,7 @@ namespace C02.Tests
                 Buy = ButtonObject("buy");
                 Claim = ButtonObject("claim");
                 MyListings = ButtonObject("my listings");
+                CheckOutbox = ButtonObject("receive items");
                 TypeButtons = new[] { ButtonObject("type1"), ButtonObject("type2"), ButtonObject("type3") };
                 var previous = ButtonObject("previous");
                 Next = ButtonObject("next");
@@ -425,6 +462,8 @@ namespace C02.Tests
                 Set(Screen, "buyButton", Buy);
                 Set(Screen, "claimButton", Claim);
                 Set(Screen, "myListingsButton", MyListings);
+                Set(Screen, "checkOutboxButton", CheckOutbox);
+                Set(Screen, "inventoryScreen", InventoryScreen);
                 Set(Screen, "pageText", page);
                 Set(Screen, "listingRows", Rows);
                 Set(Screen, "emptyStateText", EmptyState);
@@ -534,15 +573,16 @@ namespace C02.Tests
             public void Dispose()
             {
                 if (root != null) UnityEngine.Object.DestroyImmediate(root);
+                if (inventoryRoot != null) UnityEngine.Object.DestroyImmediate(inventoryRoot);
                 foreach (var client in clients) client.Dispose();
             }
         }
 
         private sealed class FakeNetwork : INetworkService
         {
-            public int RegisterRequests, InventoryRequests, WalletRequests;
+            public int RegisterRequests, InventoryRequests, WalletRequests, CheckOutboxRequests;
             public int Mutations;
-            public uint LastWriteID;
+            public uint LastWriteID, LastCheckOutboxRequestID;
             public uint LastWalletRequestID;
             public byte LastRegisterSlot;
             public ushort LastRegisterQuantity;
@@ -554,7 +594,8 @@ namespace C02.Tests
             public uint LastRequestID;
             public ushort LastItemType, LastPage;
             public void RequestBazaarBuy(uint requestID, ulong listingID) { Mutations++; LastWriteID = requestID; }
-            public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
+            public void RequestBazaarCheckOutbox(uint requestID) { CheckOutboxRequests++; LastCheckOutboxRequestID = requestID; }
+            public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
             public void RequestBazaarClaim(uint requestID, ulong listingID) { Mutations++; LastWriteID = requestID; }
             public void RequestBazaarMyList(uint requestID) { LastRequestID = requestID; }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page)

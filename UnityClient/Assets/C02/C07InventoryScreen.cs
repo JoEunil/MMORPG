@@ -143,6 +143,7 @@ namespace C02
             }
             else CancelFailureRetry();
             inventoryPanel.SetActive(open);
+            if (open) inventoryPanel.transform.SetAsLastSibling();
             if (open && (!hasInventoryResponse || refreshOnOpenAfterUncertainDelivery) && !requestTimedOut && !requestPending)
                 RequestInventory();
             UpdateControls();
