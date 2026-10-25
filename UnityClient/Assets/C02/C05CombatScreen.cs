@@ -81,6 +81,11 @@ namespace C02
         private ulong observedCharacterId;
         private int pendingSkillSlot = -1;
         private float combatStatusDeadline;
+        private int observedHp = -1;
+        private Color hpFillColor;
+        private Color growthTextColor;
+        private float hpLossDeadline;
+        private float growthDeadline;
         private const float ServerTickSeconds = 0.05f;
         private const float ReleaseEffectLifetime = 0.35f;
         private const int EffectArcSegments = 36;
@@ -109,6 +114,15 @@ namespace C02
             combatStatusText.fontSize = 16;
             combatStatusText.alignment = TextAlignmentOptions.Center;
             combatStatusText.raycastTarget = false;
+            aimText.gameObject.SetActive(true);
+            aimText.rectTransform.anchorMin = aimText.rectTransform.anchorMax = new Vector2(1, 0);
+            aimText.rectTransform.pivot = new Vector2(1, 0);
+            aimText.rectTransform.anchoredPosition = new Vector2(-24, 74);
+            aimText.rectTransform.sizeDelta = new Vector2(440, 24);
+            aimText.fontSize = 16;
+            aimText.alignment = TextAlignmentOptions.MidlineRight;
+            aimText.raycastTarget = false;
+            growthTextColor = aimText.color;
             EnsureCooldownOverlays();
             loginScreen.ClientChanged += ChangeClient;
             worldScreen.WorldStateChanged += WorldChanged;
@@ -121,6 +135,8 @@ namespace C02
 
         private void ChangeClient(IViewModelUI next)
         {
+            ResetVitalsFeedback();
+            aimText.text = string.Empty;
             HideChargeTelegraph();
             HideReleaseEffect();
             HideSkillTooltip();
@@ -195,11 +211,27 @@ namespace C02
                 if (mpValueText != null) mpValueText.text = string.Format(CultureInfo.InvariantCulture, "MP {0} / {1}", state.mp, state.maxMp);
                 if (hpFill != null) hpFill.fillAmount = GaugeAmount(state.hp, state.maxHp);
                 if (mpFill != null) mpFill.fillAmount = GaugeAmount(state.mp, state.maxMp);
-                aimText.text = string.Format(CultureInfo.InvariantCulture, "Lv {0}  EXP {1}  |  Line aim: {2}",
-                    state.level, state.exp, LineDirection(state.dir));
+                if (hpFill != null)
+                {
+                    if (observedHp < 0) hpFillColor = hpFill.color;
+                    else if (state.hp < observedHp)
+                    {
+                        hpLossDeadline = Time.unscaledTime + .45f;
+                        hpFill.color = new Color(1f, .54f, .48f, hpFillColor.a);
+                    }
+                    observedHp = state.hp;
+                }
+                string growth = string.Format(CultureInfo.InvariantCulture, "Lv {0}  EXP {1}", state.level, state.exp);
+                if (aimText.text.Length > 0 && aimText.text != growth)
+                {
+                    growthDeadline = Time.unscaledTime + 1.2f;
+                    aimText.color = new Color(1f, .85f, .38f, growthTextColor.a);
+                }
+                aimText.text = growth;
             }
             else
             {
+                ResetVitalsFeedback();
                 HideChargeTelegraph();
                 HideReleaseEffect();
                 HideSkillTooltip();
@@ -226,6 +258,8 @@ namespace C02
 
         private void ResetObservation()
         {
+            ResetVitalsFeedback();
+            aimText.text = string.Empty;
             HideChargeTelegraph();
             HideReleaseEffect();
             HideSkillTooltip();
@@ -237,6 +271,29 @@ namespace C02
             observedCharacterId = WorldAvailable ? worldScreen.SelectedCharacterID : 0;
             ClearCombatStatus();
             Subscribe();
+        }
+
+        private void ResetVitalsFeedback()
+        {
+            if (observedHp >= 0 && hpFill != null) hpFill.color = hpFillColor;
+            if (aimText != null) aimText.color = growthTextColor;
+            observedHp = -1;
+            hpLossDeadline = 0;
+            growthDeadline = 0;
+        }
+
+        private void UpdateVitalsFeedback(float now)
+        {
+            if (hpLossDeadline > 0 && now >= hpLossDeadline)
+            {
+                if (hpFill != null) hpFill.color = hpFillColor;
+                hpLossDeadline = 0;
+            }
+            if (growthDeadline > 0 && now >= growthDeadline)
+            {
+                aimText.color = growthTextColor;
+                growthDeadline = 0;
+            }
         }
 
         private void ShowDefeatPanel()
@@ -418,6 +475,7 @@ namespace C02
 
         private void Update()
         {
+            UpdateVitalsFeedback(Time.unscaledTime);
             UpdateCombatStatus(Time.unscaledTime);
             if (respawnDeadline > 0 && Time.unscaledTimeAsDouble >= respawnDeadline &&
                 defeatPanel != null && defeatPanel.activeSelf)
@@ -1180,14 +1238,13 @@ namespace C02
             if (skillTooltipText != null) skillTooltipText.text = string.Empty;
         }
 
-        // Matches movement: 0=North, 1=South, 2=West, 3=East.
-        private static string LineDirection(byte dir) => dir == 0 ? "North" : dir == 1 ? "South" : dir == 2 ? "West" : "East";
         private static string SkillName(byte slot) => slot == 0 ? "Strike" : slot == 1 ? "Ring" : "Line";
         private static float GaugeAmount(int current, int maximum) => maximum <= 0 ? 0 : Mathf.Clamp01((float)current / maximum);
         private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
 
         private void OnDisable()
         {
+            ResetVitalsFeedback();
             HideChargeTelegraph();
             HideReleaseEffect();
             HideSkillTooltip();

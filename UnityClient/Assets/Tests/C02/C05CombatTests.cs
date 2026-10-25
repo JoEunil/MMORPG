@@ -241,11 +241,10 @@ namespace C02.Tests
                 Invoke(f.Combat, "HideSkillTooltip");
                 Assert.That(((GameObject)Get(f.Combat, "skillTooltip")).activeSelf, Is.False);
 
-                var directions = new[] { "North", "South", "West", "East" };
-                for (byte dir = 0; dir < directions.Length; dir++)
+                for (byte dir = 0; dir < 4; dir++)
                 {
                     f.Full(dir);
-                    Assert.That(f.Aim.text, Does.EndWith("Line aim: " + directions[dir]));
+                    Assert.That(f.Aim.text, Is.EqualTo("Lv 0  EXP 0"), "Facing changes do not add internal aiming details to the growth HUD.");
                 }
                 f.World.transform.position = new Vector3(60f, 0f, 70f);
                 f.World.transform.localScale = new Vector3(2f, 1f, 2f);
