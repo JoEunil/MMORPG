@@ -75,6 +75,7 @@ namespace C02
         {
             public FullStateField State;
             public GameObject Visual;
+            public C13EntityVitals Vitals;
             public C19ActorMotion ActorMotion;
             public double LastFullSeen;
             public MotionHistory Motion = new MotionHistory();
@@ -297,6 +298,8 @@ namespace C02
                 {
                     entry = new PlayerObservation { Visual = Instantiate(playerPrefab, displayRoot) };
                     entry.Visual.name = "ObservedPlayer " + state.zoneInternalID;
+                    entry.Vitals = entry.Visual.AddComponent<C13EntityVitals>();
+                    entry.Vitals.SetCamera(worldScreen.ViewCamera);
                     entry.ActorMotion = entry.Visual.AddComponent<C19ActorMotion>();
                     entry.ActorMotion.Configure();
                     Face(entry.Visual, state.dir);
@@ -307,10 +310,15 @@ namespace C02
                 else
                 {
                     entry.Motion.Add(now, state.x, state.y);
-                    if (state.hp < entry.State.hp) entry.ActorMotion.PlayHit();
+                    if (state.hp < entry.State.hp)
+                    {
+                        entry.Vitals.PulseDamage();
+                        entry.ActorMotion.PlayHit();
+                    }
                 }
                 entry.State = state;
                 entry.LastFullSeen = now;
+                entry.Vitals.SetHealth(state.hp, state.maxHp);
             }
         }
 
@@ -380,9 +388,14 @@ namespace C02
             {
                 if (pair.Value.invalid || !ValidPlayer(pair.Value.state)) continue;
                 var entry = players[pair.Key];
-                if (pair.Value.state.hp < entry.State.hp) entry.ActorMotion.PlayHit();
+                if (pair.Value.state.hp < entry.State.hp)
+                {
+                    entry.Vitals.PulseDamage();
+                    entry.ActorMotion.PlayHit();
+                }
                 entry.Motion.Add(Time.realtimeSinceStartupAsDouble, pair.Value.state.x, pair.Value.state.y);
                 entry.State = pair.Value.state;
+                entry.Vitals.SetHealth(entry.State.hp, entry.State.maxHp);
             }
         }
 

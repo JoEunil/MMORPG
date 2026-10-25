@@ -78,6 +78,62 @@ namespace C02.Tests
 #endif
 
         [Test]
+        public void NearbyPlayerVitals_FollowAcceptedHealthWithoutMonsterDeathAndResetWithObservation()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                fixture.Players(100, Player(7), Player(42));
+                Assert.That(fixture.Count("players"), Is.EqualTo(1), "The local player's HUD remains separate.");
+                var visual = fixture.Visual("players", (uint)42);
+                var vitals = visual.GetComponent<C13EntityVitals>();
+                var fill = fixture.VitalsImage(visual);
+                var normalColor = fill.color;
+                Assert.That(fixture.VitalsRatio(visual), Is.EqualTo(.7f).Within(.001f));
+                Assert.That((float)Get(vitals, "damagePulseUntil"), Is.Zero, "Initial Full establishes a baseline.");
+
+                var damaged = Player(42); damaged.hp = 60;
+                fixture.Players(101, damaged);
+                Assert.That(fixture.VitalsRatio(visual), Is.EqualTo(.6f).Within(.001f));
+                Assert.That(fill.color, Is.EqualTo(new Color(1f, .78f, .2f, 1f)), "Full damage pulses too.");
+                Set(vitals, "damagePulseUntil", Time.unscaledTime - 1f);
+                Invoke(vitals, "LateUpdate");
+                fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 60 });
+                Assert.That(fill.color, Is.EqualTo(normalColor), "A matching Delta does not replay damage.");
+                fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 101 });
+                Assert.That(fixture.PlayerState(42).hp, Is.EqualTo(60));
+                Assert.That(fixture.VitalsRatio(visual), Is.EqualTo(.6f).Within(.001f));
+                Assert.That(fill.color, Is.EqualTo(normalColor), "Rejected HP cannot pulse.");
+
+                fixture.PlayerDeltas(
+                    new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 40 },
+                    new DeltaUpdateField { zoneInternalID = 42, fieldID = 2, fieldVal = 200 });
+                Assert.That(fixture.VitalsRatio(visual), Is.EqualTo(.2f).Within(.001f));
+                Assert.That(fill.color, Is.EqualTo(new Color(1f, .78f, .2f, 1f)), "Delta damage uses accepted max HP.");
+                fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 0 });
+                Assert.That(fixture.Count("players"), Is.EqualTo(1));
+                Assert.That(visual.activeSelf, Is.True, "Remote HP0 does not apply monster despawn behavior.");
+                Assert.That(fixture.VitalsRatio(visual), Is.Zero);
+                Assert.That((float)Get(visual.GetComponent<C19ActorMotion>(), "defeatStarted"), Is.LessThan(0));
+
+                Set(vitals, "damagePulseUntil", Time.unscaledTime - 1f);
+                Invoke(vitals, "LateUpdate");
+                fixture.Players(102, Player(42));
+                Assert.That(fixture.Visual("players", (uint)42), Is.SameAs(visual));
+                Assert.That(fixture.VitalsRatio(visual), Is.EqualTo(.7f).Within(.001f));
+                Assert.That(fill.color, Is.EqualTo(normalColor), "Recovery is not damage.");
+                fixture.Expire(105);
+                Assert.That(fixture.Count("players"), Is.Zero);
+                Assert.That(visual.activeSelf, Is.False, "AOI expiry removes the bar with its actor.");
+                fixture.Players(106, Player(42));
+                var renewed = fixture.Visual("players", (uint)42);
+                Assert.That(renewed, Is.Not.SameAs(visual));
+                Assert.That((float)Get(renewed.GetComponent<C13EntityVitals>(), "damagePulseUntil"), Is.Zero);
+                fixture.DisableObserver();
+                Assert.That(renewed.activeSelf, Is.False, "Observer cleanup also removes player vitals.");
+            }
+        }
+
+        [Test]
         public void MonsterPacketsUse25And8ByteFields_AllowIdZero_AndRejectMalformedCounts()
         {
             Assert.That(Marshal.SizeOf<MonsterFullField>(), Is.EqualTo(25));
