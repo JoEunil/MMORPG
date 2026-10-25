@@ -2,12 +2,12 @@
 
 ## 현재 작업
 
-사용자가 클라이언트 작업을 재개하고 선택지를 다음 작업까지 선행 준비하도록 지시했다. 선택지 준비·UI 코드 감사·아트 잔여 점검을 독립 Agent 3개로 나눴다. 기존 UI 작업 eb60d8e와 역할 지침 6a36bb5 및 PR53은 보존한다.
+현재 요청: I/B 전달 원인 확인·해결, 남은 클라이언트 검증 계속. 제품 코드 결함은 아직 확인하지 못했다. 자동화 도구 전달 경로의 구체적 차이를 확인했다.
 
-- 다음 1~2묶음 선택 준비를 WORKFLOW/선택지 역할에 반영했다. 준비 후 슬롯을 반환하고 새 근거/답변 때 재활성화한다. 현재 기존 선택으로 진행 가능해 새 질문/시안은 억지로 만들지 않았다. BRIEF 참조.
-- UI 수명·아트 조사에서 확정된 새 결함은 없었다. 거래소 Esc 동작 변경은 취향 제안일 뿐이라 적용하지 않았다. 길 연장·기사 모션을 반복 제작하지 않았다.
-- 남은 native I/B 전달만 점검: 현재 Unity Play 로그인 화면, GameView 포커스 true, frame620→8176 동안 sky.press_key I/B 후 InputSystem.onAfterUpdate 관찰의 wasPressedThisFrame 집계는 각각0. 패널/서버 핸들러 이전에 입력이 관찰되지 않았으며 원인은 미확정이다. 실제 월드 패널 조작 성공이나 사용자 물리 키보드 결함으로 일반화하지 않는다. 제품 수정/서버 시작 없음. 관찰기 제거 후 Edit/clean/backgroundfalse/compilingfalse 복원.
-- 다음은 native 입력 도구 전달 문제를 분리 확인하고, 해결 후 기존 길 전체 왕복 및 패널 조작을 한 배치로 검증한다. 성공 거래는 실제 아이템/재화 조건이 필요하며 DB를 만들지 않는다. 기존 통과 테스트 반복 없음. 입력 허용 유지.
+- 현재 sky.press_key i/Shift_L+i/Tab을 Unity InputEventTrace로 비교: 각각 TEXT가 관찰됐고 I 눌림 STAT은 없음. 장치는 Keyboard RawInput id1, DynamicUpdate, GameView 포커스/프레임 진행 정상. 이전 wasPressedThisFrame 0의 관찰과 일치한다. 도구 내부 OS 구현이나 물리 키 실패로 일반화하지 않는다.
+- 사용자 물리 입력 완료 답변 후 I=1/B=1, frame171937 확인. 자동화 TEXT 전달과 달리 물리 키 상태는 정상이다. 로그인 화면의 입력 전달만 확인했으며 월드 패널 성공까지 주장하지 않는다. 관찰기/SessionState 제거, Edit/clean/compilingfalse/backgroundfalse 복원 완료.
+- LOCAL_PREPARATION에 TEXT와 키 상태 구분 및 기존 정상 PlayerLoop QueueStateEvent 재사용 절차를 기록했다. 합성 키는 native 성공으로 보고하지 않는다. 제품에 문자 단축키 fallback을 추가하지 않았다. 서버/AI/DB/설정 변경 없음.
+- next_batch_readiness가 길 전체 왕복 5관찰점과 현재 서버가 필요한 증거를 ROOT/UnityClient/Builds/Decision-Next/readiness-r2.txt에 준비했다. 새 선택 질문/독립 제품 수정 근거 없음. 물리 입력 비교 뒤 기존 실제 계정/서버 조건을 확인하고 길 왕복과 패널 조작을 묶는다. 기존 통과 테스트 반복 없음.
 
 ### 보존한 클라이언트 묶음
 
@@ -21,7 +21,7 @@
 ## 정본과 실행
 
 - Git: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, codex/client-ui-interaction. PR53 head552c5fe 기반으로 다음 작업만 로컬 누적한다. master는2e0de28, PR53은 현재 검토 중이므로 이전 브랜치/이력을 정리하거나 PR53에 새 범위를 섞지 않는다.
-- Editor: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient, PID38396/6000.0.47f1/Pipeline7800 확인. 마지막 Edit/clean/backgroundfalse/컴파일 오류0. Scene·Prefab·Material·ClientCore DLL 변경 없음.
+- Editor: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient, PID38396/6000.0.47f1/Pipeline7800 확인. 현재 Edit/clean/backgroundfalse/compilingfalse 복원 확인. Scene·Prefab·Material·ClientCore DLL 변경 없음.
 - 이번에 서버/로그인 서비스를 시작하지 않았다. 기존 서비스 상태와 사용자 AI를 유지했다. 공개 자료는 CAND Markdown에서 생성하며 레이아웃 변화가 없어 새 이미지/게임 촬영은 생략했다.
 - 상세 근거·과거 결과: [RESULTS](history/2026-10-24-client-playability/RESULTS.txt). 목표·기획/아트 선택: [BRIEF](BRIEF.md).
 
