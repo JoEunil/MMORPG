@@ -19,3 +19,5 @@ CLIENTUI01 요청1792918308.079019/부모1792915030.606889/회신1792918532.2808
 상세 근거: [RESULTS](history/2026-10-24-client-playability/RESULTS.txt), 목표와 선택: [BRIEF](BRIEF.md). 에디터 자세 미리보기 ROOT/UnityClient/Builds/Play-Session/monster-defeat-editor-preview.png는 실서버 처치 증명이 아니다.
 
 실행 복원: ownedMainPTY1437 q종료0,LoginPTY7294 CtrlC종료1,포트3000/9999미수신,Edit/clean/backgroundfalse. 상세first-hunt-live-details/run.txt. 새 공개화면은 실제 서버+합성키로 명시했다.
+
+현재 게시 대기: HUNTFEEDBACK01, 후보206e627(제품5dfccbc/실검증d09584f), 부모1792918959.109849,요청1792920307.807119. 추가13파일을 기존PR54에 push/설명갱신하는 범위, 병합제외. 회신 아직미소비. 수신기39232/listening/고정대상/등록스레드 확인. 다음 작업은 분리된 로컬 브랜치에서 진행하며 승인 후보를 바꾸지 않는다.
