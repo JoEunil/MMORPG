@@ -55,8 +55,9 @@ namespace C02.Tests
                 Assert.That(quantity.text, Is.EqualTo("4"));
                 Assert.That(itemIcon.GetComponent<UnityEngine.UI.Image>().sprite, Is.SameAs(C11ItemPresentation.Icon(1)));
                 knownCard.onClick.Invoke();
-                Assert.That(knownCard.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.99f, .96f, .86f, 1f)));
-                Assert.That(((RectTransform)fixture.DetailBadge.rectTransform.GetChild(0)).rect.size, Is.EqualTo(new Vector2(64, 64)));
+                Assert.That(knownCard.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.38f, .30f, .20f, 1f)));
+                Assert.That(knownCard.transition, Is.EqualTo(Selectable.Transition.None));
+                Assert.That(((RectTransform)fixture.DetailBadge.rectTransform.GetChild(0)).rect.size, Is.EqualTo(new Vector2(96, 96)));
 
                 fixture.Refresh.onClick.Invoke();
                 Assert.That(fixture.Cards, Is.Empty, "The previous cards clear while refreshing.");
@@ -379,7 +380,7 @@ namespace C02.Tests
                 scroll.content = Grid;
                 DetailName = Text("detail name");
                 DetailBadge = Text("detail badge");
-                DetailBadge.rectTransform.sizeDelta = new Vector2(64, 64);
+                DetailBadge.rectTransform.sizeDelta = new Vector2(96, 96);
                 DetailSlot = Text("detail slot");
                 DetailQuantity = Text("detail quantity");
                 Status = Text("inventory status");

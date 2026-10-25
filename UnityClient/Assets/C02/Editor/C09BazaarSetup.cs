@@ -204,24 +204,23 @@ public static class C09BazaarSetup
         var formRect = form.GetComponent<RectTransform>();
         formRect.anchorMin = formRect.anchorMax = formRect.pivot = new Vector2(1,1);
         formRect.anchoredPosition = new Vector2(-14,-276);
-        formRect.sizeDelta = new Vector2(270,252);
+        formRect.sizeDelta = new Vector2(270,192);
         var qtyLabel = Text("QuantityLabel", form.transform, "QUANTITY", 14, Color.white);
         AnchorTopLeft(qtyLabel.rectTransform,0,0,82,20);
-        var priceLabel = Text("PriceLabel", form.transform, "STACK TOTAL · DIAMONDS", 13, new Color(.55f,.83f,.94f));
+        var priceLabel = Text("PriceLabel", form.transform, "TOTAL PRICE · DIAMONDS", 13, new Color(.55f,.83f,.94f));
         AnchorTopLeft(priceLabel.rectTransform,88,0,182,20);
         var quantity = SaleInput("Quantity",form.transform,"1",0,82);
         var price = SaleInput("TotalDiamondPrice",form.transform,"100",88,182);
-        var stackLabel = Text("StackTotalLabel", form.transform, "STACK TOTAL", 13, new Color(.80f,.84f,.87f));
-        AnchorTopLeft(stackLabel.rectTransform, 0, 68, 118, 24);
+        Text("StackTotalLabel", form.transform, "STACK TOTAL", 13, new Color(.80f,.84f,.87f));
         CreateCurrencyMark("StackDiamondMark", form.transform, false, 132, 80, false);
         var stackValue = Text("StackTotalValue", form.transform, "--", 15, new Color(.70f,.86f,.93f));
         AnchorTopLeft(stackValue.rectTransform, 152, 68, 118, 24);
         stackValue.alignment = TextAlignmentOptions.MidlineRight;
         var feeLabel = Text("GoldFeeLabel", form.transform, "GOLD FEE", 13, new Color(.80f,.84f,.87f));
-        AnchorTopLeft(feeLabel.rectTransform, 0, 98, 118, 24);
-        CreateCurrencyMark("GoldFeeMark", form.transform, true, 132, 110, false);
+        AnchorTopLeft(feeLabel.rectTransform, 0, 68, 118, 24);
+        CreateCurrencyMark("GoldFeeMark", form.transform, true, 132, 80, false);
         var feeValue = Text("GoldFeeValue", form.transform, "--", 15, new Color(.94f,.78f,.45f));
-        AnchorTopLeft(feeValue.rectTransform, 152, 98, 118, 24);
+        AnchorTopLeft(feeValue.rectTransform, 152, 68, 118, 24);
         feeValue.alignment = TextAlignmentOptions.MidlineRight;
         var afterLabel = Text("GoldAfterLabel", form.transform, "GOLD AFTER", 13, new Color(.80f,.84f,.87f));
         AnchorTopLeft(afterLabel.rectTransform, 0, 128, 118, 24);
@@ -230,12 +229,12 @@ public static class C09BazaarSetup
         AnchorTopLeft(afterValue.rectTransform, 152, 128, 118, 24);
         afterValue.alignment = TextAlignmentOptions.MidlineRight;
         var summary = Text("FeeSummary",form.transform,"Select an item and enter its total price.",13,new Color(.78f,.82f,.85f));
-        AnchorTopLeft(summary.rectTransform,0,158,270,38);
+        AnchorTopLeft(summary.rectTransform,0,100,270,38);
         summary.alignment = TextAlignmentOptions.MidlineLeft;
         summary.enableWordWrapping = true;
         summary.overflowMode = TextOverflowModes.Ellipsis;
         var register = Button("RegisterSaleButton",form.transform,"REVIEW SALE",new Color(.16f,.30f,.33f,1));
-        AnchorTopLeft(register.GetComponent<RectTransform>(),0,208,270,34);
+        AnchorTopLeft(register.GetComponent<RectTransform>(),0,154,270,34);
         form.SetActive(false);
         var wallet = FindOrCreate("WalletHud",canvas.transform,typeof(RectTransform),typeof(Image));
         var walletRect=wallet.GetComponent<RectTransform>();
@@ -359,6 +358,27 @@ public static class C09BazaarSetup
         status.anchoredPosition=new Vector2(14,40);status.sizeDelta=new Vector2(450,44);
         var close=paper.Find("BazaarCloseButton") as RectTransform;
         close.anchoredPosition=new Vector2(-12,-12);
+        // Keep legacy generated objects so existing serialized references remain valid, but hide redundant totals.
+        var saleForm=paper.Find("SaleForm");
+        if(saleForm!=null)
+        {
+            foreach(var name in new[]{"StackTotalLabel","StackDiamondMark","StackTotalValue","GoldAfterLabel","GoldAfterMark","GoldAfterValue"})
+            {
+                var obsolete=saleForm.Find(name);
+                if(obsolete!=null)obsolete.gameObject.SetActive(false);
+            }
+            saleForm.GetComponent<RectTransform>().sizeDelta=new Vector2(270,192);
+            var feeLabel=saleForm.Find("GoldFeeLabel") as RectTransform;
+            var feeMark=saleForm.Find("GoldFeeMark") as RectTransform;
+            var feeValue=saleForm.Find("GoldFeeValue") as RectTransform;
+            var feeSummary=saleForm.Find("FeeSummary") as RectTransform;
+            var registerButton=saleForm.Find("RegisterSaleButton") as RectTransform;
+            if(feeLabel!=null)AnchorTopLeft(feeLabel,0,68,118,24);
+            if(feeMark!=null)AnchorTopLeft(feeMark,132,80,14,8);
+            if(feeValue!=null)AnchorTopLeft(feeValue,152,68,118,24);
+            if(feeSummary!=null)AnchorTopLeft(feeSummary,0,100,270,38);
+            if(registerButton!=null)AnchorTopLeft(registerButton,0,154,270,34);
+        }
     }
 
     private static GameObject FindOrCreate(string name, Transform parent, params System.Type[] components)
