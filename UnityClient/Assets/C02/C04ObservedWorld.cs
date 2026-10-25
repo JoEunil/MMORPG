@@ -77,6 +77,7 @@ namespace C02
             public GameObject Visual;
             public C13EntityVitals Vitals;
             public C19ActorMotion ActorMotion;
+            public SkillTelegraph RangePreview;
             public double LastFullSeen;
             public MotionHistory Motion = new MotionHistory();
         }
@@ -89,10 +90,12 @@ namespace C02
             public double Deadline;
             public float Duration;
             private Color[] colors;
+            private Color tint;
 
             public void Show(Transform parent, Material material, string name, Vector3[] vertices, int[] triangles,
-                double now, float duration)
+                double now, float duration, Color? tint = null)
             {
+                this.tint = tint ?? new Color(1f, 0.18f, 0.045f, 1f);
                 if (Renderer == null)
                 {
                     var visual = new GameObject(name);
@@ -129,7 +132,7 @@ namespace C02
                 }
                 float charge = Duration <= 0 ? 1 : Mathf.Clamp01((float)((now - StartedAt) / Duration));
                 float alpha = Mathf.Lerp(0.14f, 0.58f, charge);
-                for (int i = 0; i < colors.Length; i++) colors[i] = new Color(1f, 0.18f, 0.045f, alpha);
+                for (int i = 0; i < colors.Length; i++) colors[i] = new Color(tint.r, tint.g, tint.b, alpha);
                 Mesh.colors = colors;
             }
 
@@ -313,12 +316,14 @@ namespace C02
                     if (state.hp < entry.State.hp)
                     {
                         entry.Vitals.PulseDamage();
-                        entry.ActorMotion.PlayHit();
+                        if (state.hp > 0) entry.ActorMotion.PlayHit();
                     }
                 }
                 entry.State = state;
                 entry.LastFullSeen = now;
                 entry.Vitals.SetHealth(state.hp, state.maxHp);
+                entry.ActorMotion.SetDowned(state.hp == 0);
+                if (state.hp == 0) entry.RangePreview?.Clear();
             }
         }
 
@@ -388,10 +393,12 @@ namespace C02
             {
                 if (pair.Value.invalid || !ValidPlayer(pair.Value.state)) continue;
                 var entry = players[pair.Key];
+                entry.ActorMotion.SetDowned(pair.Value.state.hp == 0);
+                if (pair.Value.state.hp == 0) entry.RangePreview?.Clear();
                 if (pair.Value.state.hp < entry.State.hp)
                 {
                     entry.Vitals.PulseDamage();
-                    entry.ActorMotion.PlayHit();
+                    if (pair.Value.state.hp > 0) entry.ActorMotion.PlayHit();
                 }
                 entry.Motion.Add(Time.realtimeSinceStartupAsDouble, pair.Value.state.x, pair.Value.state.y);
                 entry.State = pair.Value.state;
@@ -485,6 +492,7 @@ namespace C02
             {
                 var result = results[i];
                 PresentActionMotion(result);
+                PresentPlayerSkill(result);
                 if (result.casterType != 1 || result.casterId > ushort.MaxValue || result.skillSlot != 0 ||
                     result.dir > 3 || result.skillPhase > 9 || float.IsNaN(result.x) || float.IsInfinity(result.x) ||
                     float.IsNaN(result.y) || float.IsInfinity(result.y) ||
@@ -598,6 +606,45 @@ namespace C02
             }
         }
 
+        private void PresentPlayerSkill(ActionResultField result)
+        {
+            if (result.casterType != 0 || result.casterId == ownId || result.skillSlot > 2 ||
+                result.skillId != result.skillSlot || result.dir > 3 || !Finite(result.x) || !Finite(result.y) ||
+                serverContent == null || monsterRangeMaterial == null ||
+                !players.TryGetValue(result.casterId, out var entry) || entry.State.hp == 0) return;
+            var skill = result.skillId == 1 ? serverContent.ring : serverContent.otherSkills == null ? null :
+                Array.Find(serverContent.otherSkills, value => value != null && value.skillID == result.skillId);
+            if (skill == null || skill.skillID != result.skillId || skill.phases == null || result.skillPhase >= skill.phases.Length) return;
+            var phase = skill.phases[result.skillPhase];
+            if (phase == null) return;
+            bool charging = phase.action == C14SkillAction.Charging;
+            var hit = charging && result.skillPhase + 1 < skill.phases.Length ? skill.phases[result.skillPhase + 1] : phase;
+            if (hit == null || hit.action != C14SkillAction.Hit || !Finite(hit.range1) || hit.range1 <= 0 ||
+                charging && hit.waitTicks == 0) return;
+            Vector3[] vertices;
+            int[] triangles;
+            if (hit.range == C14SkillRange.Circle && hit.range2 == 0)
+                BuildCircle(result.x, result.y, hit.range1, out vertices, out triangles);
+            else if (hit.range == C14SkillRange.Rectangle && Finite(hit.range2) && hit.range2 > 0)
+            {
+                vertices = new Vector3[4];
+                for (int point = 0; point < 4; point++)
+                {
+                    float side = (point == 0 || point == 3 ? -.5f : .5f) * hit.range2;
+                    float reach = point < 2 ? 0 : hit.range1;
+                    if (result.dir == 1 || result.dir == 2) reach = -reach;
+                    vertices[point] = result.dir < 2 ? PreviewPoint(result.x + side, result.y + reach) :
+                        PreviewPoint(result.x + reach, result.y + side);
+                }
+                triangles = new[] { 0, 1, 2, 0, 2, 3 };
+            }
+            else return;
+            if (entry.RangePreview == null) entry.RangePreview = new SkillTelegraph();
+            entry.RangePreview.Show(displayRoot, monsterRangeMaterial, "Player Skill Area " + result.casterId,
+                vertices, triangles, Time.realtimeSinceStartupAsDouble, charging ? hit.waitTicks * .05f : .12f,
+                charging ? new Color(.25f, .72f, 1f) : new Color(1f, .82f, .38f));
+        }
+
         private Vector3 PreviewPoint(float x, float z) => displayRoot.InverseTransformPoint(new Vector3(x, 0.06f, z));
 
         private void BuildCircle(float x, float z, float radius, out Vector3[] vertices, out int[] triangles)
@@ -686,7 +733,10 @@ namespace C02
         {
             double presentationTime = now - PresentationDelay;
             foreach (var entry in players.Values)
+            {
                 if (entry.Visual != null) entry.Visual.transform.position = entry.Motion.PositionAt(presentationTime);
+                entry.RangePreview?.Render(now);
+            }
             foreach (var entry in monsters.Values)
             {
                 if (entry.Visual != null) entry.Visual.transform.position = entry.Motion.PositionAt(presentationTime);
@@ -700,6 +750,7 @@ namespace C02
         private void RemovePlayer(uint id)
         {
             if (!players.TryGetValue(id, out var entry)) return;
+            entry.RangePreview?.Dispose();
             if (entry.Visual != null) { entry.Visual.SetActive(false); Destroy(entry.Visual); }
             players.Remove(id);
         }
@@ -734,7 +785,10 @@ namespace C02
         private void ClearObservations()
         {
             foreach (var entry in players.Values)
+            {
+                entry.RangePreview?.Dispose();
                 if (entry.Visual != null) { entry.Visual.SetActive(false); Destroy(entry.Visual); }
+            }
             foreach (var entry in monsters.Values)
             {
                 entry.DisposeTelegraphs();

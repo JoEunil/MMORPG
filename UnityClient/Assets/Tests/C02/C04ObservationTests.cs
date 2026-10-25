@@ -77,6 +77,108 @@ namespace C02.Tests
         }
 #endif
 
+#if UNITY_EDITOR
+        [UnityEngine.TestTools.UnityTest]
+        public IEnumerator NearbyCombatBundle_DownedPlayersPersistRecoverAndCleanUpWithoutDefeatReplay()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                fixture.UsePlayerPrefab(UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/C02/Art/C04/ObservedPlayer.prefab"));
+                var dead = Player(42); dead.hp = 0;
+                fixture.Players(Time.realtimeSinceStartupAsDouble, dead);
+                var actor = fixture.Visual("players", (uint)42);
+                var motion = actor.GetComponent<C19ActorMotion>();
+                Assert.That((bool)Get(motion, "downed"), Is.True, "An initial zero-HP Full establishes the downed pose.");
+                Assert.That((float)Get(motion, "defeatStarted"), Is.LessThan(0), "Player observation never starts monster disposal.");
+                Assert.That((float)Get(actor.GetComponent<C13EntityVitals>(), "damagePulseUntil"), Is.Zero);
+                var body = (Transform)Get(motion, "visual");
+                Assert.That(body, Is.Not.Null);
+                Assert.That(body.name, Is.EqualTo("GuardVisual"), "The real knight prefab uses its authored visual root.");
+                var pose = body.localRotation;
+                motion.PlayAttack(3, true, 2); motion.PlayHit();
+                yield return new WaitForSecondsRealtime(.8f);
+                Assert.That(actor != null && actor.activeSelf, Is.True);
+                Assert.That(Quaternion.Angle(body.localRotation, pose), Is.LessThan(.01f));
+                fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 30 });
+                Assert.That(fixture.Visual("players", (uint)42), Is.SameAs(actor));
+                Assert.That((bool)Get(motion, "downed"), Is.False);
+                Assert.That(Quaternion.Angle(body.localRotation, pose), Is.GreaterThan(60));
+                fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 0 });
+                Assert.That((bool)Get(motion, "downed"), Is.True);
+                fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42));
+                Assert.That((bool)Get(motion, "downed"), Is.False, "Full recovery also restores the same actor.");
+                fixture.Players(Time.realtimeSinceStartupAsDouble, dead);
+                fixture.RemovePlayer(42);
+                Assert.That(actor.activeSelf, Is.False);
+                fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42));
+                var renewed = fixture.Visual("players", (uint)42);
+                Assert.That((bool)Get(renewed.GetComponent<C19ActorMotion>(), "downed"), Is.False);
+                fixture.CloseWorld();
+                Assert.That(renewed.activeSelf, Is.False);
+            }
+        }
+#endif
+
+        [Test]
+        public void NearbyCombatBundle_RemoteSkillAreasUseAcceptedPhaseGeometryAndBoundedObservationLifetime()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                fixture.ConfigureMonsterRange();
+                fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42));
+                var action = new ActionResultField { casterType = 0, casterId = 42, skillSlot = 1, skillId = 1, skillPhase = 0, dir = 0, x = 20, y = 30 };
+                fixture.MonsterActions(action);
+                var area = fixture.PlayerRange(42);
+                Assert.That(area, Is.Not.Null);
+                var mesh = area.GetComponent<MeshFilter>().sharedMesh;
+                Assert.That(mesh.vertices.Length, Is.EqualTo(41));
+                Assert.That(mesh.vertices[0], Is.EqualTo(new Vector3(20, .06f, 30)));
+                Assert.That(mesh.bounds.size.x, Is.EqualTo(16).Within(.001f));
+                double deadline = fixture.PlayerRangeDeadline(42);
+                var invalid = action; invalid.casterId = 7;
+                fixture.MonsterActions(invalid);
+                invalid.casterId = 999; fixture.MonsterActions(invalid);
+                invalid = action; invalid.skillId = 2; fixture.MonsterActions(invalid);
+                invalid = action; invalid.dir = 4; fixture.MonsterActions(invalid);
+                invalid = action; invalid.x = float.NaN; fixture.MonsterActions(invalid);
+                invalid = action; invalid.skillPhase = 99; fixture.MonsterActions(invalid);
+                Assert.That(fixture.PlayerRangeDeadline(42), Is.EqualTo(deadline), "Rejected actions cannot refresh the area.");
+                action.skillSlot = 2; action.skillId = 2;
+                for (byte direction = 0; direction < 4; direction++)
+                {
+                    action.dir = direction;
+                    fixture.MonsterActions(action);
+                    mesh = area.GetComponent<MeshFilter>().sharedMesh;
+                    Assert.That(mesh.vertices.Length, Is.EqualTo(4));
+                    Assert.That(direction < 2 ? mesh.bounds.size.z : mesh.bounds.size.x, Is.EqualTo(12).Within(.001f));
+                    Assert.That(direction < 2 ? mesh.bounds.size.x : mesh.bounds.size.z, Is.EqualTo(3).Within(.001f));
+                    float signedReach = direction == 0 ? mesh.bounds.center.z - 30 : direction == 1 ? 30 - mesh.bounds.center.z :
+                        direction == 2 ? 20 - mesh.bounds.center.x : mesh.bounds.center.x - 20;
+                    Assert.That(signedReach, Is.EqualTo(6).Within(.001f));
+                }
+                action.skillPhase = 1;
+                fixture.MonsterActions(action);
+                Assert.That(mesh.colors[0].r, Is.GreaterThan(mesh.colors[0].b), "Accepted Hit changes charge blue into a short gold release.");
+                fixture.Render(fixture.PlayerRangeDeadline(42) + .01);
+                Assert.That(area.gameObject.activeSelf, Is.False);
+                action.skillPhase = 0; fixture.MonsterActions(action);
+                fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 0 });
+                Assert.That(area.gameObject.activeSelf, Is.False);
+                fixture.MonsterActions(action);
+                Assert.That(area.gameObject.activeSelf, Is.False, "Dead casters cannot start another charge.");
+                fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42)); fixture.MonsterActions(action);
+                fixture.RemovePlayer(42);
+                Assert.That(area.gameObject.activeSelf, Is.False, "AOI removal disposes the remote skill area.");
+                fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42)); fixture.MonsterActions(action);
+                area = fixture.PlayerRange(42);
+                fixture.Clear();
+                Assert.That(area.gameObject.activeSelf, Is.False);
+                fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42)); fixture.MonsterActions(action);
+                area = fixture.PlayerRange(42); fixture.DisableObserver();
+                Assert.That(area.gameObject.activeSelf, Is.False);
+            }
+        }
+
         [Test]
         public void NearbyPlayerVitals_FollowAcceptedHealthWithoutMonsterDeathAndResetWithObservation()
         {
@@ -790,6 +892,7 @@ namespace C02.Tests
 
             public ViewModel NewModel() { var model = C04ObservationTests.NewModel(dispatcher); models.Add(model); return model; }
             public void UseMonsterPrefabs(GameObject prefab) => Set(observer, "monsterPrefabs", new[] { prefab, prefab, prefab });
+            public void UsePlayerPrefab(GameObject prefab) => Set(observer, "playerPrefab", prefab);
             public IViewModelNet NetworkModel => models[models.Count - 1];
             public void ConfigureMonsterRange()
             {
@@ -821,6 +924,8 @@ namespace C02.Tests
                 ((IViewModelNet)models[models.Count - 1]).ActionResultReceived(1, 1, (ushort)results.Length, results);
             public void Render(double now) => Invoke(observer, "RenderObservations", now);
             public MeshRenderer MonsterRange(ushort id) => PreviewRenderer(EntryField("monsters", id, "RangePreview"));
+            public MeshRenderer PlayerRange(uint id) => PreviewRenderer(EntryField("players", id, "RangePreview"));
+            public double PlayerRangeDeadline(uint id) => PreviewDeadline(EntryField("players", id, "RangePreview"));
             public double RangeDeadline(ushort id) => PreviewDeadline(EntryField("monsters", id, "RangePreview"));
             public MeshRenderer BossFanPreview(ushort id, bool second) =>
                 PreviewRenderer(EntryField("monsters", id, second ? "BossFanPreviewSecond" : "BossFanPreviewFirst"));
