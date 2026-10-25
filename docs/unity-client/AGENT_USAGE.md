@@ -1,7 +1,7 @@
 ## 공개 집계
 
 기준일: 2026-10-25
-누적 신규: 104
+누적 신규: 107
 누적 재활성화: 215
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-25
 
@@ -10,14 +10,14 @@
 | game_planner | 기획 Agent | 3 | 1 |
 | server_analyst | 서버 분석 Agent | 16 | 43 |
 | client_implementer | 구현 Agent | 36 | 52 |
-| asset_artist | 아트 Agent | 16 | 25 |
-| code_reviewer | 리뷰 Agent | 25 | 87 |
+| asset_artist | 아트 Agent | 17 | 25 |
+| code_reviewer | 리뷰 Agent | 26 | 87 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
-| decision_curator | 선택지 Agent | 1 | 1 |
+| decision_curator | 선택지 Agent | 2 | 1 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체319회(신규104·재활성화215)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체322회(신규107·재활성화215)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -537,3 +537,7 @@ movement_play_review 리뷰 Agent 후속2: 기존 I/B 경로 조사에서 확정
 ## 역할 모델·병렬 배정·선택 입출력 정비 — 2026-10-25
 
 decision_route_smoke 선택지 Agent 신규1·후속1: 새 decision_curator 지침을 명시한 default/Sol medium 배정으로 모의 질문 반환과 답변/개정 불일치 연결을 점검했다. 프로필은 추가했으나 현재 도구 역할 목록에는 미노출이며 사용자·Slack 직통 수신 검증이나 실제 선택은 아니다. movement_play_review 리뷰 Agent 후속1: 변경 지침·TOML의 권한/기존 규칙 보존·비동기 경로를 독립 검토했다. 전체319=104+215, 총괄 직접 편집/정적 검사/메시지는 제외, 토큰·비용 N/A. 기존 기획·구현·아트 역할 정의의 새 모델/추론 노출을 확인했으며 기존 실행 Agent의 모델까지 바뀌었다고 추정하지 않는다.
+
+## 다음 묶음 선행 준비와 잔여 조사 — 2026-10-25
+
+신규3: future_choice_batch 선택지(default Sol medium), client_remaining_audit 리뷰(explorer), field_asset_finish 아트(asset_artist). 실제 준비·읽기 검토만 수행했고 새 사용자 선택이나 제품 수정은 없었다. 전체322=107+215. 총괄의 지침 수정·native 입력 관찰·보고는 제외하며 토큰/비용 N/A.
