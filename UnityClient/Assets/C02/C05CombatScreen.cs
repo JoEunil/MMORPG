@@ -589,7 +589,7 @@ namespace C02
                 AddArcRibbon(forward, right, -62f, 62f, phase.range1 * .84f, phase.range1,
                     22, .84f, .18f, .98f);
                 AddArcRibbon(forward, right, -48f, 48f, phase.range1 * .91f, phase.range1 * .97f,
-                    18, .92f, .08f, 1.02f);
+                    18, .62f, .08f, 1.02f);
             }
             else if (result.skillSlot == 1)
             {
@@ -597,7 +597,7 @@ namespace C02
                 AddArcRibbon(forward, right, -138f, 138f, phase.range1 * .68f, phase.range1 * .96f,
                     EffectArcSegments, .76f, .48f, .7f);
                 AddArcRibbon(forward, right, -112f, 112f, phase.range1 * .84f, phase.range1 * .91f,
-                    30, .9f, .2f, .76f);
+                    30, .6f, .2f, .76f);
             }
             else
             {
@@ -816,9 +816,9 @@ namespace C02
         private void EmitReleaseSparks(ActionResultField result, Vector3 forward, Vector3 right, float range)
         {
             releaseSparks.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-            for (int i = 0; i < 22; i++)
+            for (int i = 0; i < 14; i++)
             {
-                float t = (float)i / 22f;
+                float t = (float)i / 14f;
                 Vector3 position;
                 Vector3 velocity;
                 if (result.skillSlot == 1)
@@ -848,7 +848,7 @@ namespace C02
                     velocity = velocity,
                     startColor = i % 5 == 0 ? new Color(1f, .96f, .78f, 1f) : new Color(1f, .48f, .12f, .96f),
                     startSize = .055f + (i % 3) * .018f,
-                    startLifetime = .22f + (i % 4) * .045f
+                    startLifetime = .18f + (i % 4) * .035f
                 };
                 releaseSparks.Emit(particle, 1);
             }
@@ -877,9 +877,9 @@ namespace C02
 
             float progress = Mathf.Clamp01((Time.unscaledTime - chargeTelegraphStarted) / chargeTelegraphDuration);
             chargeVertexCount = chargeIndexCount = 0;
-            float pulse = .82f + .18f * Mathf.Sin(Time.unscaledTime * 7f);
-            var baseColor = new Color(.55f, .22f, .045f, .2f);
-            var progressColor = new Color(1f, .72f, .24f, .34f);
+            float pulse = .92f + .08f * Mathf.Sin(Time.unscaledTime * 7f);
+            var baseColor = new Color(.55f, .22f, .045f, .1f);
+            var progressColor = new Color(1f, .72f, .24f, .18f);
             if (chargeTelegraphRange == C14SkillRange.Circle)
             {
                 AddCircleTelegraph(chargeTelegraphRadius, baseColor);
@@ -896,7 +896,7 @@ namespace C02
                 AddRectangleTelegraph(action, chargeTelegraphLength, chargeTelegraphWidth, baseColor);
                 AddRectangleTelegraph(action, chargeTelegraphLength * progress, chargeTelegraphWidth, progressColor);
             }
-            AddCircleTelegraph(.12f + .05f * pulse, new Color(1f, .86f, .48f, .36f));
+            AddCircleTelegraph(.12f + .05f * pulse, new Color(1f, .86f, .48f, .2f));
 
             chargeTelegraphMesh.Clear();
             chargeTelegraphMesh.SetVertices(chargeVertices, 0, chargeVertexCount);

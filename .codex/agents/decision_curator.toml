@@ -1,7 +1,7 @@
 name = "decision_curator"
-description = "기획·아트 비교안을 한 묶음으로 정리하고 사용자 선택의 입력·출력을 추적한다."
-model = "gpt-6.1-sol"
-model_reasoning_effort = "medium"
+description = "Decision Support Agent — 의사결정 지원. 대안별 장단점 비교와 선택을 지원하고 사용자 답변의 적용 범위를 연결한다."
+model = "gpt-6-luna"
+model_reasoning_effort = "low"
 
 developer_instructions = """
 먼저 루트 AGENTS.md와 docs/unity-client/roles/decision-curator.md를 읽고 따른다.

@@ -1,23 +1,23 @@
 ## 공개 집계
 
 기준일: 2026-10-25
-누적 신규: 123
-누적 재활성화: 223
+누적 신규: 130
+누적 재활성화: 226
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-25
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 6 | 3 |
 | server_analyst | 서버 분석 Agent | 17 | 43 |
-| client_implementer | 구현 Agent | 42 | 54 |
-| asset_artist | 아트 Agent | 17 | 25 |
-| code_reviewer | 리뷰 Agent | 31 | 90 |
+| client_implementer | 구현 Agent | 44 | 55 |
+| asset_artist | 아트 Agent | 19 | 26 |
+| code_reviewer | 리뷰 Agent | 32 | 91 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
-| decision_curator | 선택지 Agent | 3 | 2 |
+| decision_curator | 의사결정 지원 Agent | 5 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체346회(신규123·재활성화223)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체356회(신규130·재활성화226)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -574,3 +574,11 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 
 ## 주변 플레이어 전투 묶음 — 2026-10-25
 신규4: observed_play_bundle_scope(기획), player_down_pose/remote_combat_bundle(구현2), nearby_bundle_review(통합 리뷰). 후속1: remote_combat_bundle 테스트 프리팹 참조 보정. 메시지 교환/총괄 검증은 활성화 제외. 토큰·비용 N/A.
+
+2026-10-25 의사결정 지원 병렬 준비: decision_gameplay_options와 decision_visual_options 신규 각1회. default/gpt-6-luna/low로 기획 텍스트 비교와 기존 화면·비교 축 취합을 각각 배정했다. 산출물은 준비 중이며 구현·사용자 선택·품질 승인은 아니다. 전체348=125+223. 총괄 직접 편집·조회는 제외, 토큰·비용 N/A.
+
+2026-10-25 비교 보드 제작: planning_art_comparison_board 아트 Agent 신규1회(asset_artist 고정 gpt-6.1-sol/high). 기존 화면 근거와 SVG/HTML 배치 시안을 하나의 로컬 비교 보드로 제작하도록 배정했다. 의사결정 지원 두 실행은 기획 선택지3개와 실제/에디터 화면 근거를 반환 완료. 이번 전체349=126+223이며 서로 다른 실행을 기록했다. 게임 구현이나 취향 선택 완료가 아니다.
+
+2026-10-25 planning_art_comparison_board 아트 Agent 후속1회: 전투 A/B의 예시 게이지와 범위 크기를 동일하게 맞춰 장식강도만 비교하도록 교정. 로컬 보드 완성, 총괄 브라우저에서 초기 미선택·추천7개선택·초기화·확대 확인. 사용자 선택은 아직 미수신. 전체350=126+224.
+
+2026-10-25 일괄 선택 구현: selected_environment_dressing 아트 신규1(Sol/high), selected_hud_inventory_ui 구현 신규1·후속1(default/Luna medium), selected_combat_presentation 구현 신규1(Sol/medium), selected_art_bundle_review 리뷰 신규1·후속1(Sol/medium). 담당은 환경·HUD/가방·전투 독립 파일로 나눴고 총괄이 Editor 통합·렌더를 직접 수행했다. 리뷰 P2 기존 가방 프레임 잔존과 저작 도구의 비활성 월드 전제 문제를 수정하고 정적 재검토했다. 전체356=130+226, 총괄·도구호출은 제외, 토큰·비용 N/A.

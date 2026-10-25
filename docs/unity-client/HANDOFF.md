@@ -1,18 +1,16 @@
 # 현재 인계 — 2026-10-25
 
 ## 목표·정본
-주변 플레이어 체력·피격·쓰러짐/회복·원격스킬을 하나의 PR로 준비 완료. Git 정본 C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, branch codex/nearby-player-feedback. ROOT C:/Users/joeun/Desktop/workspace/Game-UnityClient, Editor ROOT/UnityClient6000.0.47f1/Pipeline7800. ROOT/CAND C04/C19/테스트3파일 동기화.
+주변 플레이어 전투 표시와 사용자가 고른 전투·환경·HUD/가방 표현을 큰 PR 하나로 준비한다. Git 정본 C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, branch codex/nearby-player-feedback. Editor ROOT C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient, 6000.0.47f1/Pipeline7800, pid39320. ROOT/CAND 제품 파일 동기화.
 
-## 기준과 게시
-PR54는 사용자 병합 지시 후 GitHub merged=true·origin/master e06d45f 확인, 정상 merge로 현재 브랜치에 통합. 기존 로컬 변경 보존. PR55는 아직 생성하지 않음. 이전 HUDWALLET01 채팅 게시 승인과 HUNTFEEDBACK01 Slack1792920766.249229는 소비완료이며 이번 새 PR 승인으로 쓰지 않는다.
+## 현재 결과
+사용자 채팅으로 비교안 아트 A/A/A/A·기획 A/A/B 선택 완료(BRIEF 정본). 전투 예고·보조잔상 절제, 길·첫 사냥터 가장자리 낮은 소품과 진입 랜드마크, 가방 그림/이름 위계와 낮은 장식 적용. 기존 하단 채팅/중앙 스킬/오른쪽 HPMP와 기사 형상 유지. 환경83renderer/0collider, 반복 적용 수 동일. 기존 주변전투 후보 구현·검증도 보존한다. 서버·사용자AI·DB·패킷·DLL·통행/스폰·재질/텍스처 변경 없음.
 
-## 이번 묶음
-서버HP로 주변 플레이어 게이지·피격 강조, HP0는 객체를 유지하며 쓰러짐/공격억제, 양수HP 회복시 자세복원. 실제 C14/ActionResult 위치·방향·phase로 원/직사각형 차징·짧은 발동 영역. own/unknown/dead/잘못된데이터 제외, 만료/AOI/구역/종료 정리. 기존 몬스터 동작 유지. 서버·사용자AI·DB·패킷·DLL·에셋 변경 없음. 이름 표시는 공개API가 없어 이번범위 제외.
-모든 구현 완료 후 통합 독립리뷰 차단없음. 컴파일0/0. 신규2통합검사 최종통과: 원격영역 .025s, 쓰러짐 .946s. 쓰러짐 첫실패는 테스트의 잘못된 MotionVisual 참조를 실제 GuardVisual로 교정한 것, 조건 완화 없음. 실패항목만 재실행, 기존 통과검사 반복없음.
-Play 임시장면 기존에셋+예시패킷 렌더1280x720 확인/공개 캡션 명시. 실제 다중접속의 가시성/시점은 미실행. README 대표는 기존 실제사냥 화면 유지. 실제거래/재화차감은 기존 데이터 부족으로 미검증; seed하지 않음.
+## 리뷰·검증
+통합 독립리뷰에서 기존 가방 ForgedFrame 잔존 P2를 수정, 로그인 상태 비활성 월드의 저작 도구 guard도 실제 상태 대조 후 교정·재검토. 최종 컴파일0errors/0warnings. 적용 반복·콜라이더/직렬화참조 확인, 1280x720 환경·가방·기존 Z/X/C 메시 에디터 렌더 확인. 실입력/실거래/최신 전투 조작감은 이번에 미실행, 기존 통과 검사는 반복하지 않음. 미리보기 도구의 참조/샘플ID/RT해제 오류 수정, 마지막 영향 렌더 후 새 오류 없음. CLI/Pipeline 호환 probe 오류는 상세 이력에 구분 보존. Unity 생성 YAML 공백 경고는 숨기거나 수동 편집하지 않음. 상세 history/2026-10-24-client-playability/RESULTS.txt.
 
-## 상태·다음 행동
-현재 Edit/clean/backgroundfalse. 실제입력 허용 유지. 이번에는 서버 시작하지 않음. WORKFLOW에 전체구현→통합리뷰→묶음검증→자료→게시승인 순서 명시.
-후보2809efd(9파일) 전체 커밋·사이트빌드/링크검사 완료. NEARBYCOMBAT01 정상push+새PR 한 건 게시 승인 대기. 요청1792926182.742749, 사람 회신 아직 미수신/미소비. 수신기39232/listening/고정Coordinator/등록부모 확인. 동일 작업 부모1792922124.815219 사용. 승인 전 push없음, 병합/배포 제외. 승인 이후 원격 기준 재확인하고 게시하며 작은 후속별로 PR을 나누지 않는다.
+## 현재 상태·공개 자료
+Editor Edit/clean/backgroundfalse, 입력 허용 유지. 이번 서버 시작 없음. localhost8793/result.html 적용 화면은 에디터 예시/샘플 값이며 비교 보드는 /index.html. 공개 원본3상세·실제 Agent집계356(130신규/226후속)·사이트빌드/링크 반영. README 대표는 기존 실제 사냥 화면 유지. 게임 코드 외에 의사결정 지원 명칭·Luna 배정·동일역할 다중실행 지침 수정 포함. 전역 지침은 C:/Users/joeun/.codex/AGENTS.md, 실행 모델 변경을 문서만으로 단정하지 않음.
 
-상세 [RESULTS](history/2026-10-24-client-playability/RESULTS.txt), 범위 [BRIEF](BRIEF.md).
+## Git·승인
+PR54 merged·origin/master e06d45f는 기존 확인 기준이며 게시 전 원격 재확인 필요. PR55 아직 생성 안함. NEARBYCOMBAT01 요청1792926182.742749/부모1792922124.815219는 확장 전 후보 요청이므로 현재 누적 후보 게시 승인으로 소비하지 않는다. 현재 묶음의 구체 diff·리뷰·검증을 로컬 커밋 후 같은 앱 스레드에 갱신해 NEARBYART01 한 번으로 게시 승인을 요청한다. 승인 전 push/새PR/병합/배포 없음. 승인 대기에서는 독립 로컬 범위만 진행하며 미승인을 승인으로 추정하지 않는다.

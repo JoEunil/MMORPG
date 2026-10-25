@@ -79,16 +79,17 @@ public static class KnightInterfaceArtSetup
             if (t.name == "Title") { t.text = "ENTER THE REALM"; t.fontSize = 24; t.characterSpacing = 2; }
         }
         var hud = ((GameObject)refs.FindProperty("worldHud").objectReferenceValue).transform;
-        ApplyRestrainedHud();
         foreach (string name in new[] { "C07InventoryPanel" })
         {
             var panel = hud.parent.Find(name) as RectTransform;
-            SkinPanel(panel, 6);
+            if (panel == null) throw new InvalidOperationException("The existing inventory panel is required.");
+            // The four-pixel inset reveals a restrained edge around the inventory surface.
+            var panelImage = panel.GetComponent<Image>();
+            panelImage.sprite = null;
+            panelImage.color = new Color(.40f, .47f, .52f, .98f);
+            foreach (string part in new[] { "ForgedFrame", "FrameOrnaments" })
+                panel.Find(part)?.gameObject.SetActive(false);
             if (name != "C06ChatPanel") panel.anchoredPosition = new Vector2(-24, 118);
-            foreach (var image in panel.GetComponentsInChildren<Image>(true))
-                if (image.name == "InventoryParchment" || image.name == "BazaarParchment" || image.name == "ChatInset")
-                { image.sprite = leather; image.type = Image.Type.Simple; image.color = new Color(.62f, .54f, .43f); }
-            foreach (var button in panel.GetComponentsInChildren<Button>(true)) SkinButton(button, 20);
         }
         C06ChatSetup.ApplyCleanStyle();
         C09BazaarSetup.ApplyCleanStyle();
@@ -112,6 +113,7 @@ public static class KnightInterfaceArtSetup
             observedRefs.FindProperty("monsterRangeMaterial").objectReferenceValue = material;
             observedRefs.ApplyModifiedPropertiesWithoutUndo();
         }
+        ApplyRestrainedHud();
         EditorUtility.SetDirty(material);
         AssetDatabase.SaveAssets();
         EditorSceneManager.MarkSceneDirty(scene);
@@ -163,6 +165,14 @@ public static class KnightInterfaceArtSetup
         }
         var aim = combat.Find("C05Aim"); if (aim != null) aim.gameObject.SetActive(false);
         var status = combat.Find("C05Status"); if (status != null) status.gameObject.SetActive(false);
+        foreach (var button in new[] { hud.transform.parent.Find("C07BagButton"),
+            hud.transform.parent.Find("C09MarketButton"), hud.transform.Find("DisconnectButton") })
+        {
+            if (button == null) continue;
+            PlainSurface(button as RectTransform, new Color(.08f, .10f, .12f, .96f));
+            foreach (string name in new[] { "ForgedFrame", "FrameOrnaments" })
+                button.Find(name)?.gameObject.SetActive(false);
+        }
         EditorSceneManager.MarkSceneDirty(world.gameObject.scene);
     }
 
