@@ -1,7 +1,7 @@
 ## 공개 집계
 
 기준일: 2026-10-25
-누적 신규: 93
+누적 신규: 94
 누적 재활성화: 199
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-25
 
@@ -10,13 +10,13 @@
 | game_planner | 기획 Agent | 2 | 0 |
 | server_analyst | 서버 분석 Agent | 15 | 42 |
 | client_implementer | 구현 Agent | 33 | 47 |
-| asset_artist | 아트 Agent | 13 | 23 |
+| asset_artist | 아트 Agent | 14 | 23 |
 | code_reviewer | 리뷰 Agent | 23 | 81 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체292회(신규93·재활성화199)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체293회(신규94·재활성화199)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -516,3 +516,7 @@ next_planning_options 기획 Agent 신규1, knight_material_options 아트 Agent
 ## 현재 기사 형상 유지·전투 동작 보완 — 2026-10-25
 
 실제 후속 실행4: knight_attack_continuity 구현2(동작 구현/회전 종료 및 이름 참조 보완), knight_form_combat 아트1(기존 동작·효과 시간 분석), knight_representative_review 리뷰1(계층·회전 종료·참조 독립 검토). 신규0이며 누적 신규93·후속199·전체292다. Coordinator의 실시간 촬영·GIF 인코딩·직접 영향 테스트2개·통합 기록은 호출 수에서 제외한다. 실제 토큰·비용 N/A.
+
+## 일괄 방향 선택 샘플 — 2026-10-25
+
+batch_direction_samples 아트 신규1로 마을 입구·가방·판매 흐름의 비교용 HTML/SVG 샘플을 준비한다. 제품 Unity 구현·서버 검증으로 집계하지 않는다. Coordinator의 지침 통합·로컬 브라우저 점검은 활성화에서 제외하며 토큰·비용 N/A다.
