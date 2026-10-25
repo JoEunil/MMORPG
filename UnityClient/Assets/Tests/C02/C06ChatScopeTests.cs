@@ -121,6 +121,26 @@ namespace C02.Tests
             }
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void IncomingChatPreservesHistoryOrFollowsTheLatestAsSelected(bool readingHistory)
+        {
+            using (var fixture = new ChatFixture())
+            {
+                ((Action<ushort, ulong, uint, float, float>)Get(fixture.Chat, "zoneHandler"))(1, 555, 123, 10, 10);
+                for (int i = 0; i < 11; i++) fixture.Receive(0, 600, "history line " + i);
+                Assert.That(fixture.ChatScroll.content.rect.height, Is.GreaterThan(fixture.ChatScroll.viewport.rect.height));
+                fixture.ChatScroll.verticalNormalizedPosition = readingHistory ? .65f : 0;
+                fixture.Receive(1, 601, "new incoming line");
+                Assert.That(fixture.ChatScroll.verticalNormalizedPosition, Is.EqualTo(readingHistory ? .65f : 0).Within(.001));
+                fixture.Receive(0, 600, "bounded history evicts its oldest entry");
+                Assert.That(fixture.ChatScroll.verticalNormalizedPosition, Is.EqualTo(readingHistory ? .65f : 0).Within(.001));
+                fixture.Receive(0, 555, "my own echo");
+                Assert.That(fixture.ChatScroll.verticalNormalizedPosition, Is.EqualTo(0).Within(.001),
+                    "The user's own outgoing message brings its echo into view.");
+            }
+        }
+
         private sealed class ChatFixture : IDisposable
         {
             private readonly GameObject root;

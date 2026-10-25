@@ -1,22 +1,23 @@
 ## 공개 집계
 
 기준일: 2026-10-25
-누적 신규: 103
-누적 재활성화: 211
+누적 신규: 117
+누적 재활성화: 221
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-25
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
-| game_planner | 기획 Agent | 3 | 1 |
-| server_analyst | 서버 분석 Agent | 16 | 43 |
-| client_implementer | 구현 Agent | 36 | 52 |
-| asset_artist | 아트 Agent | 16 | 25 |
-| code_reviewer | 리뷰 Agent | 25 | 84 |
+| game_planner | 기획 Agent | 4 | 3 |
+| server_analyst | 서버 분석 Agent | 17 | 43 |
+| client_implementer | 구현 Agent | 39 | 53 |
+| asset_artist | 아트 Agent | 17 | 25 |
+| code_reviewer | 리뷰 Agent | 30 | 89 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
+| decision_curator | 선택지 Agent | 3 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체314회(신규103·재활성화211)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체338회(신규117·재활성화221)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -528,3 +529,42 @@ batch_direction_samples 아트 신규1로 마을 입구·가방·판매 흐름�
 ## 플레이 마감·마을에서 사냥터 동선 — 2026-10-25
 
 신규5: market_play_session(구현), movement_play_review(리뷰), play_server_baseline(서버 분석), field_readability_art(아트), level_design_next_batch(기획). 후속8: bag_grid_right_details1(시전 스냅샷 보존), market_play_session1(fixture 참조 보정), play_server_baseline1(기존 로그인 서비스 경로), field_readability_art1(길 연장), level_design_next_batch1(실제 통행·지원 범위), movement_play_review3(구현·동선 설명·옛 원경 및 가방 앞순서 검토). 실제 신규/후속 실행만 더해 전체314=103+211이다. 총괄의 코드 통합·Unity 입력·촬영·문서 작업은 제외하며 토큰·비용 N/A다.
+
+## 가방·거래소·채팅 조작 마감 — 2026-10-25
+
+movement_play_review 리뷰 Agent 후속2: 기존 I/B 경로 조사에서 확정 결함이 없음을 보고했고, 새 Esc 닫기/채팅 스크롤 보존과 직접 영향 테스트를 독립 읽기 검토했다. 신규0, 누적316=103+213. 총괄의 구현·자동 UI3사례·Unity 창 활성화·기록은 활성화에 포함하지 않으며 토큰·비용 N/A다.
+
+## 역할 모델·병렬 배정·선택 입출력 정비 — 2026-10-25
+
+decision_route_smoke 선택지 Agent 신규1·후속1: 새 decision_curator 지침을 명시한 default/Sol medium 배정으로 모의 질문 반환과 답변/개정 불일치 연결을 점검했다. 프로필은 추가했으나 현재 도구 역할 목록에는 미노출이며 사용자·Slack 직통 수신 검증이나 실제 선택은 아니다. movement_play_review 리뷰 Agent 후속1: 변경 지침·TOML의 권한/기존 규칙 보존·비동기 경로를 독립 검토했다. 전체319=104+215, 총괄 직접 편집/정적 검사/메시지는 제외, 토큰·비용 N/A. 기존 기획·구현·아트 역할 정의의 새 모델/추론 노출을 확인했으며 기존 실행 Agent의 모델까지 바뀌었다고 추정하지 않는다.
+
+## 다음 묶음 선행 준비와 잔여 조사 — 2026-10-25
+
+신규3: future_choice_batch 선택지(default Sol medium), client_remaining_audit 리뷰(explorer), field_asset_finish 아트(asset_artist). 실제 준비·읽기 검토만 수행했고 새 사용자 선택이나 제품 수정은 없었다. 전체322=107+215. 총괄의 지침 수정·native 입력 관찰·보고는 제외하며 토큰/비용 N/A.
+
+## 입력 원인 조사와 후속 준비 — 2026-10-25
+
+input_path_cause 리뷰(explorer) 신규1, next_batch_readiness 선택지(default Sol medium) 신규1. 코드/기존 근거와 다음 왕복 관찰점만 준비했다. 전체324=109+215. 총괄의 원시 입력 관찰은 활성화에서 제외하며 토큰/비용 N/A.
+
+물리 입력 비교 후 live_batch_server_readiness 서버 분석 신규1로 다음 실서버 묶음의 기존 실행 경로·호환 근거를 읽기 검토했다. 누적325=110+215. 총괄 물리 입력 관찰은 집계 제외.
+
+2026-10-25 CLIENTUI01 게시 준비: next_batch_readiness 후속 실행1회(선택지 Agent). 패널·왕복 완료 후 BRIEF와 관련 코드를 읽기 전용 대조했으며 추가 확정 결함/새 선택 필요 없음. 테스트 반복·제품 수정 없음.
+
+
+2026-10-25 첫 사냥 피드백: next_playable_bundle 기획 신규1·후속1(후속은 범위 확정/종료 안내이며 새 산출물 없음), combat_feedback_bundle·monster_defeat_presentation 구현 신규2. 기획은 코드/서버 경로 근거로 누락을 식별했고 구현은 진행 중. 도구 호출/총괄 직접작업 제외.
+
+
+first_hunt_review 리뷰 신규1: 첫 사냥 피드백 diff 독립 검토. 결과와 실행 검증은 별도 기록.
+
+
+2026-10-25 다음HUD묶음: next_playable_bundle 기획후속1(숨겨진 성장정보/피격표현 실제계약 확인), combat_feedback_bundle 구현후속1(기존HUD 통합). PR54 통과 테스트 재실행 없음.
+
+
+first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교기준 검토 배정. 실행검증과 별도.
+
+
+## HUD·잔액 복구 묶음 — 2026-10-25
+
+신규3: hud_remaining_scope(리뷰 책임: 미완료 코드 조사), wallet_read_recovery(구현), wallet_recovery_review(독립 리뷰). 역할별 증분은 리뷰2·구현1이며 토큰/비용 N/A. 총괄의 실제 HUD 입력·캡처는 활성화로 세지 않는다.
+
+후속1: hud_remaining_scope가 로그인/캐릭터 진입의 다음 범위를 조사했다. 현재 계약에서 정당한 클라이언트 단독 변경을 찾지 못해 기능을 임의 추가하지 않았다. 리뷰 책임 재활성화1로 기록한다.

@@ -10,6 +10,8 @@ using ClientCore.Services;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
@@ -158,6 +160,55 @@ namespace C02.Tests
                 Assert.That(action.Item1, Is.False, "Opening the modal clears movement and queued skill actions.");
                 Assert.That(InvokeBool(fixture.Combat, "InputAvailable"), Is.False,
                     "Digit-key skills are blocked while the market modal is visible.");
+            }
+        }
+
+        [Test]
+        public void WalletReadRecovery_StartupFailuresAndTimeoutsRetryWithoutReplayingWrites()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.ReceiveWallet(fixture.Network.LastWalletRequestID, 1, 100, 1, 200);
+                fixture.Network.ThrowWalletRequest = true;
+                Invoke(fixture.Screen, "RefreshWallet");
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("--"));
+                Set(fixture.Screen, "walletRetryAt", Time.unscaledTime - .001f);
+                Invoke(fixture.Screen, "Update");
+                fixture.Network.ThrowWalletRequest = false;
+                Set(fixture.Screen, "walletRetryAt", Time.unscaledTime - .001f);
+                Invoke(fixture.Screen, "Update");
+                fixture.ReceiveWallet(fixture.Network.LastWalletRequestID, 1, 90, 1, 150);
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("90"));
+                Assert.That(fixture.WalletDiamond.text, Is.EqualTo("150"));
+                Assert.That(fixture.Network.WalletRequests, Is.EqualTo(4));
+                Assert.That(fixture.Network.Mutations, Is.Zero);
+            }
+
+            using (var fixture = new Fixture())
+            {
+                uint expired = fixture.Network.LastWalletRequestID;
+                Set(fixture.Screen, "walletDeadline", Time.unscaledTime - 1);
+                Invoke(fixture.Screen, "Update");
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("--"));
+                // The UI does not cancel ClientCore's request: let its correlated timeout finish first.
+                Set(fixture.Login.Model, "_walletPendingDeadline", 0L);
+                Invoke(fixture.Login.Model, "QueueExpiredEconomyRequests");
+                Set(fixture.Screen, "walletRetryAt", Time.unscaledTime - .001f);
+                Invoke(fixture.Screen, "Update");
+                uint retry = fixture.Network.LastWalletRequestID;
+                Assert.That(retry, Is.Not.EqualTo(expired));
+                fixture.ReceiveWallet(expired, 1, 999, 1, 999);
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("…"));
+                fixture.ReceiveWallet(retry, 0, 0, 0, 0);
+                Set(fixture.Screen, "walletRetryAt", Time.unscaledTime - .001f);
+                Invoke(fixture.Screen, "Update");
+                fixture.ReceiveWallet(fixture.Network.LastWalletRequestID, 0, 0, 0, 0);
+                Assert.That(fixture.Network.WalletRequests, Is.EqualTo(3));
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("--"));
+                Assert.That(fixture.WalletDiamond.text, Is.EqualTo("--"));
+                Assert.That(typeof(C09BazaarScreen).GetField("walletRetryAt", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .GetValue(fixture.Screen), Is.EqualTo(0f), "Exhausted reads wait for an explicit refresh or new world.");
+                Assert.That(fixture.Network.Mutations, Is.Zero);
             }
         }
 
@@ -340,6 +391,47 @@ namespace C02.Tests
                 ((IViewModelNet)fixture.Login.Model).BazaarCheckOutboxReceived(
                     fixture.Network.LastCheckOutboxRequestID, 1, 1, 0, 0);
                 Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(1), "A stale response must never cause an automatic delivery retry.");
+            }
+        }
+
+        [Test]
+        public void EscapeClosesBagAndPendingOutboxWithoutRepeatingDelivery()
+        {
+            Assert.That(Application.isFocused, Is.True, "Keyboard-path verification requires the Editor to have focus.");
+            var keyboard = InputSystem.AddDevice<Keyboard>();
+            try
+            {
+                using (var fixture = new Fixture())
+                {
+                    var bagPanel = Get<GameObject>(fixture.InventoryScreen, "inventoryPanel");
+                    bagPanel.SetActive(true);
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
+                    InputSystem.Update();
+                    Invoke(fixture.InventoryScreen, "Update");
+                    Assert.That(bagPanel.activeSelf, Is.False);
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    InputSystem.Update();
+
+                    fixture.OpenMarket();
+                    fixture.Receive(true);
+                    fixture.CheckOutbox.onClick.Invoke();
+                    Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(1));
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
+                    InputSystem.Update();
+                    Invoke(fixture.Screen, "Update");
+                    Assert.That(fixture.Panel.activeSelf, Is.False);
+                    Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.False);
+                    Assert.That(Get<bool>(fixture.InventoryScreen, "refreshOnOpenAfterUncertainDelivery"), Is.True);
+                    ((IViewModelNet)fixture.Login.Model).BazaarCheckOutboxReceived(
+                        fixture.Network.LastCheckOutboxRequestID, 1, 1, 0, 0);
+                    Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(1));
+                }
+            }
+            finally
+            {
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                InputSystem.Update();
+                InputSystem.RemoveDevice(keyboard);
             }
         }
 
@@ -584,12 +676,18 @@ namespace C02.Tests
             public int Mutations;
             public uint LastWriteID, LastCheckOutboxRequestID;
             public uint LastWalletRequestID;
+            public bool ThrowWalletRequest;
             public byte LastRegisterSlot;
             public ushort LastRegisterQuantity;
             public ulong LastRegisterPrice;
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice)
             { RegisterRequests++; Mutations++; LastWriteID = requestID; LastRegisterSlot = inventorySlot; LastRegisterQuantity = quantity; LastRegisterPrice = totalDiamondPrice; }
-            public void RequestWallet(uint requestID) { WalletRequests++; LastWalletRequestID = requestID; }
+            public void RequestWallet(uint requestID)
+            {
+                WalletRequests++;
+                LastWalletRequestID = requestID;
+                if (ThrowWalletRequest) throw new InvalidOperationException("Simulated wallet transport startup failure.");
+            }
             public int Requests;
             public uint LastRequestID;
             public ushort LastItemType, LastPage;

@@ -1,10 +1,10 @@
 name = "client_implementer"
 description = "확정된 명세에 따라 Unity 클라이언트와 허용된 호환 변경을 최소 구현한다."
-model = "gpt-6-luna"
+model = "gpt-6.1-sol"
 model_reasoning_effort = "medium"
 developer_instructions = """
 먼저 루트 AGENTS.md와 docs/unity-client/roles/implementer.md를 읽고 따른다.
 Coordinator가 지정한 파일과 완료 조건만 구현한다. 새 추상화, 별칭 변수, 중복 상태, 미래 확장 구조를 만들지 않는다.
-네트워크 수명, 프로토콜, 동시성 변경이면 구현 전에 Coordinator에게 Sol/high 인계를 요청한다.
+네트워크 수명, 프로토콜, 동시성의 어려운 판단은 범위·근거를 제시해 별도 Sol/high 분석을 배정받는다. 작은 구현마다 멈추지 않는다.
 """
 

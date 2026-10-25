@@ -79,6 +79,13 @@ namespace C02
         private ushort observedZone;
         private uint ownId;
         private ulong observedCharacterId;
+        private int pendingSkillSlot = -1;
+        private float combatStatusDeadline;
+        private int observedHp = -1;
+        private Color hpFillColor;
+        private Color growthTextColor;
+        private float hpLossDeadline;
+        private float growthDeadline;
         private const float ServerTickSeconds = 0.05f;
         private const float ReleaseEffectLifetime = 0.35f;
         private const int EffectArcSegments = 36;
@@ -99,6 +106,23 @@ namespace C02
             skillButtons[0].onClick.AddListener(Strike);
             skillButtons[1].onClick.AddListener(Ring);
             skillButtons[2].onClick.AddListener(Line);
+            combatStatusText.gameObject.SetActive(true);
+            combatStatusText.rectTransform.anchorMin = combatStatusText.rectTransform.anchorMax = new Vector2(.5f, 0);
+            combatStatusText.rectTransform.pivot = new Vector2(.5f, 0);
+            combatStatusText.rectTransform.anchoredPosition = new Vector2(0, 82);
+            combatStatusText.rectTransform.sizeDelta = new Vector2(460, 40);
+            combatStatusText.fontSize = 16;
+            combatStatusText.alignment = TextAlignmentOptions.Center;
+            combatStatusText.raycastTarget = false;
+            aimText.gameObject.SetActive(true);
+            aimText.rectTransform.anchorMin = aimText.rectTransform.anchorMax = new Vector2(1, 0);
+            aimText.rectTransform.pivot = new Vector2(1, 0);
+            aimText.rectTransform.anchoredPosition = new Vector2(-24, 74);
+            aimText.rectTransform.sizeDelta = new Vector2(440, 24);
+            aimText.fontSize = 16;
+            aimText.alignment = TextAlignmentOptions.MidlineRight;
+            aimText.raycastTarget = false;
+            growthTextColor = aimText.color;
             EnsureCooldownOverlays();
             loginScreen.ClientChanged += ChangeClient;
             worldScreen.WorldStateChanged += WorldChanged;
@@ -111,6 +135,8 @@ namespace C02
 
         private void ChangeClient(IViewModelUI next)
         {
+            ResetVitalsFeedback();
+            aimText.text = string.Empty;
             HideChargeTelegraph();
             HideReleaseEffect();
             HideSkillTooltip();
@@ -123,7 +149,7 @@ namespace C02
             observedCharacterId = 0;
             Array.Clear(cooldownDeadlines, 0, cooldownDeadlines.Length);
             UpdateCooldownOverlays();
-            combatStatusText.text = string.Empty;
+            ClearCombatStatus();
             Subscribe();
             WorldChanged();
         }
@@ -172,7 +198,7 @@ namespace C02
                     HideChargeTelegraph();
                     HideReleaseEffect();
                     HideSkillTooltip();
-                    combatStatusText.text = string.Empty;
+                    ClearCombatStatus();
                     ShowDefeatPanel();
                 }
                 else
@@ -185,11 +211,27 @@ namespace C02
                 if (mpValueText != null) mpValueText.text = string.Format(CultureInfo.InvariantCulture, "MP {0} / {1}", state.mp, state.maxMp);
                 if (hpFill != null) hpFill.fillAmount = GaugeAmount(state.hp, state.maxHp);
                 if (mpFill != null) mpFill.fillAmount = GaugeAmount(state.mp, state.maxMp);
-                aimText.text = string.Format(CultureInfo.InvariantCulture, "Lv {0}  EXP {1}  |  Line aim: {2}",
-                    state.level, state.exp, LineDirection(state.dir));
+                if (hpFill != null)
+                {
+                    if (observedHp < 0) hpFillColor = hpFill.color;
+                    else if (state.hp < observedHp)
+                    {
+                        hpLossDeadline = Time.unscaledTime + .45f;
+                        hpFill.color = new Color(1f, .54f, .48f, hpFillColor.a);
+                    }
+                    observedHp = state.hp;
+                }
+                string growth = string.Format(CultureInfo.InvariantCulture, "Lv {0}  EXP {1}", state.level, state.exp);
+                if (aimText.text.Length > 0 && aimText.text != growth)
+                {
+                    growthDeadline = Time.unscaledTime + 1.2f;
+                    aimText.color = new Color(1f, .85f, .38f, growthTextColor.a);
+                }
+                aimText.text = growth;
             }
             else
             {
+                ResetVitalsFeedback();
                 HideChargeTelegraph();
                 HideReleaseEffect();
                 HideSkillTooltip();
@@ -207,7 +249,7 @@ namespace C02
                 if (hpFill != null) hpFill.fillAmount = 0;
                 if (mpFill != null) mpFill.fillAmount = 0;
                 aimText.text = string.Empty;
-                combatStatusText.text = string.Empty;
+                ClearCombatStatus();
             }
             foreach (var button in skillButtons)
                 if (button != null) button.interactable = model != null && WorldAvailable && worldScreen.CanAct;
@@ -216,6 +258,8 @@ namespace C02
 
         private void ResetObservation()
         {
+            ResetVitalsFeedback();
+            aimText.text = string.Empty;
             HideChargeTelegraph();
             HideReleaseEffect();
             HideSkillTooltip();
@@ -225,8 +269,31 @@ namespace C02
             observedZone = WorldAvailable ? worldScreen.ZoneID : (ushort)0;
             ownId = WorldAvailable ? worldScreen.InternalID : 0;
             observedCharacterId = WorldAvailable ? worldScreen.SelectedCharacterID : 0;
-            combatStatusText.text = string.Empty;
+            ClearCombatStatus();
             Subscribe();
+        }
+
+        private void ResetVitalsFeedback()
+        {
+            if (observedHp >= 0 && hpFill != null) hpFill.color = hpFillColor;
+            if (aimText != null) aimText.color = growthTextColor;
+            observedHp = -1;
+            hpLossDeadline = 0;
+            growthDeadline = 0;
+        }
+
+        private void UpdateVitalsFeedback(float now)
+        {
+            if (hpLossDeadline > 0 && now >= hpLossDeadline)
+            {
+                if (hpFill != null) hpFill.color = hpFillColor;
+                hpLossDeadline = 0;
+            }
+            if (growthDeadline > 0 && now >= growthDeadline)
+            {
+                aimText.color = growthTextColor;
+                growthDeadline = 0;
+            }
         }
 
         private void ShowDefeatPanel()
@@ -369,11 +436,47 @@ namespace C02
             worldScreen.CancelMovement();
             var state = worldScreen.OwnFull;
             loginScreen.Data.UpdateAction(state.dir, state.x, state.y, slot);
-            combatStatusText.text = SkillName(slot) + " requested";
+            ShowSkillRequest(slot);
+        }
+
+        private void ShowSkillRequest(byte slot)
+        {
+            string advisory = string.Empty;
+            if (TryGetSkill(slot, out var skill) && worldScreen.OwnFull.mp < skill.mana)
+                advisory = string.Format(CultureInfo.InvariantCulture, " · low MP ({0}/{1})", worldScreen.OwnFull.mp, skill.mana);
+            else if (cooldownDeadlines[slot] > Time.unscaledTime)
+                advisory = string.Format(CultureInfo.InvariantCulture, " · cooldown ~{0:0.0}s", cooldownDeadlines[slot] - Time.unscaledTime);
+            combatStatusText.text = SkillName(slot) + " requesting" + advisory;
+            // Presentation only: phase broadcasts have no request ID or rejection reason.
+            pendingSkillSlot = slot;
+            combatStatusDeadline = Time.unscaledTime + 8;
+        }
+
+        private void ClearCombatStatus()
+        {
+            pendingSkillSlot = -1;
+            combatStatusDeadline = 0;
+            if (combatStatusText != null) combatStatusText.text = string.Empty;
+        }
+
+        private void UpdateCombatStatus(float now)
+        {
+            if (combatStatusDeadline > 0 && now >= combatStatusDeadline)
+            {
+                if (pendingSkillSlot >= 0)
+                {
+                    combatStatusText.text = SkillName((byte)pendingSkillSlot) + ": no confirmation received";
+                    pendingSkillSlot = -1;
+                    combatStatusDeadline = now + 3;
+                }
+                else ClearCombatStatus();
+            }
         }
 
         private void Update()
         {
+            UpdateVitalsFeedback(Time.unscaledTime);
+            UpdateCombatStatus(Time.unscaledTime);
             if (respawnDeadline > 0 && Time.unscaledTimeAsDouble >= respawnDeadline &&
                 defeatPanel != null && defeatPanel.activeSelf)
             {
@@ -413,7 +516,12 @@ namespace C02
                     chargeDuration = Mathf.Min(castingSkill.phases[1].waitTicks * ServerTickSeconds, 2f);
                 if (worldScreen.OwnFull.hp > 0)
                     worldScreen.ActorMotion?.PlayAttack(result.dir, result.skillPhase != 0, result.skillSlot, chargeDuration);
-                combatStatusText.text = SkillName(result.skillSlot) + (result.skillPhase == 0 ? " cast" : " released");
+                if (pendingSkillSlot < 0 || pendingSkillSlot == result.skillSlot)
+                {
+                    pendingSkillSlot = -1;
+                    combatStatusText.text = SkillName(result.skillSlot) + (result.skillPhase == 0 ? " charging" : " released");
+                    combatStatusDeadline = Time.unscaledTime + 3;
+                }
                 if (result.skillPhase == 0)
                 {
                     if (TryGetSkill(result.skillSlot, out var skill) && skill.cooldownTicks > 0)
@@ -1116,7 +1224,8 @@ namespace C02
             string key = slot == 0 ? "Z" : slot == 1 ? "X" : "C";
             string name = SkillName((byte)slot);
             skillTooltipText.text = string.Format(CultureInfo.InvariantCulture,
-                "<size=20><b>{0} · {1}</b></size>\n{2} · MP {3}", key, name, shape, skill.mana);
+                "<size=20><b>{0} · {1}</b></size>\n{2} · MP {3}\nCooldown {4:0.##}s · ~ estimated", key, name, shape, skill.mana,
+                skill.cooldownTicks * ServerTickSeconds);
             skillTooltip.SetActive(true);
             skillTooltip.transform.SetAsLastSibling();
             tooltipSlot = slot;
@@ -1129,14 +1238,13 @@ namespace C02
             if (skillTooltipText != null) skillTooltipText.text = string.Empty;
         }
 
-        // Matches movement: 0=North, 1=South, 2=West, 3=East.
-        private static string LineDirection(byte dir) => dir == 0 ? "North" : dir == 1 ? "South" : dir == 2 ? "West" : "East";
         private static string SkillName(byte slot) => slot == 0 ? "Strike" : slot == 1 ? "Ring" : "Line";
         private static float GaugeAmount(int current, int maximum) => maximum <= 0 ? 0 : Mathf.Clamp01((float)current / maximum);
         private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
 
         private void OnDisable()
         {
+            ResetVitalsFeedback();
             HideChargeTelegraph();
             HideReleaseEffect();
             HideSkillTooltip();
@@ -1166,7 +1274,7 @@ namespace C02
             if (mpValueText != null) mpValueText.text = string.Empty;
             if (hpFill != null) hpFill.fillAmount = 0;
             if (mpFill != null) mpFill.fillAmount = 0;
-            if (combatStatusText != null) combatStatusText.text = string.Empty;
+            ClearCombatStatus();
             if (aimText != null) aimText.text = string.Empty;
         }
 

@@ -175,6 +175,7 @@ namespace C02
 
         private readonly Dictionary<uint, PlayerObservation> players = new Dictionary<uint, PlayerObservation>();
         private readonly Dictionary<ushort, MonsterObservation> monsters = new Dictionary<ushort, MonsterObservation>();
+        private readonly List<(ushort Id, GameObject Visual)> defeatedVisuals = new List<(ushort, GameObject)>();
         private IViewModelUI model;
         private int generation;
         private ushort observedZone;
@@ -272,9 +273,11 @@ namespace C02
 
         private void Update()
         {
+            for (int i = defeatedVisuals.Count - 1; i >= 0; i--)
+                if (defeatedVisuals[i].Visual == null) defeatedVisuals.RemoveAt(i);
             if (!WorldAvailable || model == null)
             {
-                if (observedZone != 0 || players.Count != 0 || monsters.Count != 0) WorldChanged();
+                if (observedZone != 0 || players.Count != 0 || monsters.Count != 0 || defeatedVisuals.Count != 0) WorldChanged();
                 return;
             }
             WorldChanged();
@@ -318,7 +321,8 @@ namespace C02
             {
                 var state = states[i];
                 if (!ValidMonster(state)) continue;
-                if (state.hp == 0) { RemoveMonster(state.internalId); continue; }
+                if (state.hp == 0) { RemoveMonster(state.internalId, true); continue; }
+                ClearDefeatedVisual(state.internalId);
                 if (monsters.TryGetValue(state.internalId, out var entry) && entry.State.monsterId != state.monsterId)
                 { RemoveMonster(state.internalId); entry = null; }
                 if (entry == null)
@@ -417,7 +421,7 @@ namespace C02
             foreach (var pair in candidates)
             {
                 if (pair.Value.invalid || !ValidMonster(pair.Value.state)) continue;
-                if (pair.Value.deathSeen) { RemoveMonster(pair.Key); continue; }
+                if (pair.Value.deathSeen) { RemoveMonster(pair.Key, true); continue; }
                 var entry = monsters[pair.Key];
                 bool damaged = pair.Value.state.hp < entry.State.hp;
                 entry.Motion.Add(Time.realtimeSinceStartupAsDouble, pair.Value.state.x, pair.Value.state.y);
@@ -687,12 +691,31 @@ namespace C02
             players.Remove(id);
         }
 
-        private void RemoveMonster(ushort id)
+        private void RemoveMonster(ushort id, bool defeated = false)
         {
             if (!monsters.TryGetValue(id, out var entry)) return;
             entry.DisposeTelegraphs();
-            if (entry.Visual != null) { entry.Visual.SetActive(false); Destroy(entry.Visual); }
             monsters.Remove(id);
+            if (entry.Visual == null) return;
+            if (defeated && entry.ActorMotion.PlayDefeat())
+            {
+                entry.Vitals.enabled = false;
+                entry.Visual.transform.Find("MonsterVitals")?.gameObject.SetActive(false);
+                foreach (var collider in entry.Visual.GetComponentsInChildren<Collider>()) collider.enabled = false;
+                defeatedVisuals.Add((id, entry.Visual));
+            }
+            else { entry.Visual.SetActive(false); Destroy(entry.Visual); }
+        }
+
+        private void ClearDefeatedVisual(ushort id)
+        {
+            for (int i = defeatedVisuals.Count - 1; i >= 0; i--)
+            {
+                var defeated = defeatedVisuals[i];
+                if (defeated.Id != id) continue;
+                if (defeated.Visual != null) { defeated.Visual.SetActive(false); Destroy(defeated.Visual); }
+                defeatedVisuals.RemoveAt(i);
+            }
         }
 
         private void ClearObservations()
@@ -706,6 +729,9 @@ namespace C02
             }
             players.Clear();
             monsters.Clear();
+            foreach (var defeated in defeatedVisuals)
+                if (defeated.Visual != null) { defeated.Visual.SetActive(false); Destroy(defeated.Visual); }
+            defeatedVisuals.Clear();
         }
 
         private void OnDisable()

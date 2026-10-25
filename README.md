@@ -1,4 +1,4 @@
-﻿# C++ MMORPG 서버
+# C++ MMORPG 서버
 
 C++20과 Windows IOCP로 만든 개인 프로젝트다. 이동, 스킬, 몬스터, 인벤토리, 거래소, 채팅을 구현했다.  
 클라이언트의 요청을 서버에서 판정하는 Server Authoritative 구조로, 여러 사용자가 같은 월드 상태를 공유하는 MMORPG 서버를 만드는 것이 목표다.  
@@ -12,7 +12,7 @@ C++20과 Windows IOCP로 만든 개인 프로젝트다. 이동, 스킬, 몬스�
 실제 게임 화면과 개발 과정, 에이전트 활용 경험을 정리한 별도 웹사이트다. 개발하면서 계속 갱신하고 있다.
 
 <a href="https://joeunil.github.io/MMORPG/">
-  <img src="site/media/ai-agent-preview.png" alt="AI Agent Unity 클라이언트 에디터 미리보기 — 표시 수치는 예시이며 클릭하면 작업 사이트로 이동" width="640">
+  <img src="site/media/ai-agent-preview.png" alt="AI Agent Unity 클라이언트 실제 사냥 화면 — 클릭하면 작업 사이트로 이동" width="640">
 </a>
 
 서버 개발에서는 AI를 설계 검토·코드 리뷰·일부 테스트 코드 작성에만 제한적으로 활용했다.  

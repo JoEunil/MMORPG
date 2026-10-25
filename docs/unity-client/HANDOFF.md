@@ -1,23 +1,26 @@
 # 현재 인계 — 2026-10-25
 
-## 현재 작업
+## 현재 목표·분기
+작은 PR을 만들지 않고 사용자 기능 묶음으로 누적한다. PR54 전투 후속은 승인 후 게시했고 다음 플레이어 HUD 묶음을 별도 로컬 브랜치에서 진행했다.
 
-마을·필드와 플레이 마감을 새 큰 PR 하나로 준비했다. 기존 선택인 기사 형상·스킬별 모션, 성곽길A, 가방A, 간소화 거래소B를 유지한다. PR52는 master2e0de28에 병합됐고 이전 게시 승인 CLIENTART02는 소비 완료다. PLAYSESSION01의 지정 사용자 Slack 승인을 대조했고 이 묶음을 PR53으로 일반 push·게시했다.
+- Git 정본 C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source. 현재 codex/player-vitals-feedback, PR54 후보3806a9f에서 분기했다. codex/client-ui-interaction은 PR54 후보3806a9f 보존. PR55는 아직 생성하지 않았다.
+- Editor C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient,6000.0.47f1/Pipeline7800. 현재 다음HUD 제품파일이 반영돼 있으므로 PR54 후보 실입력 검증 상태와 혼동하지 않는다. 원격 master7289a73에 PR53 병합 확인.
 
-- 완료: 이동이 미소비 시전 스냅샷을 덮지 않도록 보존, 거래소 수령 중 닫기/시간초과 후 가방 갱신, 가방 앞순서 보완. 독립 읽기 리뷰, 관련 자동3개, ClientCore·Unity 컴파일 통과. 이미 통과한 전체 테스트는 반복하지 않았다.
-- 완료: 길·식생 재질 조정, 기존 메시2개로 마을 포장을 사냥터 진입 경계까지 연결. 확장 전 북/동 원경2개가 실제 길을 가리던 문제를 숨김으로 해결했다. 통행·충돌·스폰·서버·프로토콜·경제·DB·사용자 몬스터 AI는 변경하지 않았다. 레벨 동선은 [BRIEF](BRIEF.md), 상세 근거는 [RESULTS](history/2026-10-24-client-playability/RESULTS.txt).
-- 실제 확인: 로그인/캐릭터 선택/필드, 입력 시스템 키 이벤트로 이동+C 준비·타격/MP20 감소/정지 후 드리프트0, 버튼으로 빈 가방·거래소 목록. I/B native 이벤트는 이번 배치에서 열리지 않아 원인 미확인·미검증이다. 가방 앞순서 수정 후 실입력 재열기는 하지 않았다. 재화--/빈 가방이므로 실거래 성공·차감, 연장 길 전체 실제 왕복, 최신 사용자 AI 평가는 미확인이다.
-- 입력 허용 유지. 새로운 방향·서버 기능을 임의로 늘리지 않는다. 게시 승인 대기 중 독립 로컬 작업은 가능하지만 이미 통과한 검증을 반복하지 않는다.
+## PR54 게시 완료
+패널·채팅 조작, 에이전트 흐름과 실제 캡처를 게시한 PR54 head1eaf6b5는 사이트Actions40178614489 success. 전투 후속 제품5dfccbc/실제근거d09584f/정리206e627/승인기록3806a9f를 기존 PR54에 정상 push하고 제목·설명을 갱신했다.
 
-## 정본과 실행
+전투 후속은 독립리뷰·컴파일·신규자동3사례 통과. 실제 서버·합성방향키/X로 HP1500→500→0, 요청/charging/released·추정쿨다운·쓰러짐 확인. 서버/몬스터AI/DB 수정 없음. 실제캡처2장과 사이트빌드 완료. ownedMain q종료0/LoginCtrlC종료1/포트3000·9999미수신/Edit·clean·backgroundfalse 복원. 통과 테스트 반복하지 않는다.
 
-- Git: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, codex/client-play-session-polish. origin/master2e0de28에서 분기.
-- Editor: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient, PID38396/6000.0.47f1/Pipeline7800. 마지막 확인 Edit/clean/backgroundfalse/컴파일 오류0. CAND ClientCore DLL과 두 plugin 동일, ROOT의 오래된 ClientCore 원본은 수정하지 않았다.
-- 이번에 시작한 MainServer는 소유 PTY에서 q 종료/exit0, Game/Login 서비스는 소유 PTY Ctrl+C로 종료.3000/9999 리스너 없음, 원래 꺼진 상태로 복원. Redis/MySQL 유지. Play-Economy 서버의 최신 사용자 AI 포함 여부는 미확인이다.
-- 실행·촬영 원본: ROOT/UnityClient/Builds/Play-Session. 공개 자료는 CAND Markdown에서 생성, 로컬 미리보기 http://127.0.0.1:8791/MMORPG/ (preview session70047). 웹 브라우저 연결은 기존 오류 탭 URL 정책에 차단돼 다른 브라우저 우회 없이 중단; 사이트 생성·내부 링크 검사는 통과하고 이미지 파일은 별도 시각 확인했다.
+HUNTFEEDBACK01: 후보206e627(이후승인기록만3806a9f), 부모1792918959.109849,요청1792920307.807119. 추가13파일을 기존PR54에 정상push·설명갱신하는 범위이며 병합·배포 제외. 지정 사용자 U0C9QEUHPMK 회신1792920766.249229를 원문 대조하고 1회 소비 완료. 승인 범위의 codex/client-ui-interaction 3806a9f만 게시했으며 다음 HUD 510c794는 미게시. 수신기39232/listening/고정Coordinator·등록스레드 확인. 승인 도착 시 현재 다음브랜치를 push하지 말고 codex/client-ui-interaction의 고정 후보만 게시한다. CLIENTUI01 회신1792918532.280879는 기존PR54 게시에 소비 완료이며 새 승인으로 재사용하지 않는다.
 
-## 게시와 Slack
+## 다음 HUD 묶음
+현재 레벨·EXP가 숨겨진 C05Aim을 재사용해 HP위 우측 표시. 실제HP감소 .45초 게이지 강조와 레벨/EXP변화1.2초 글자 강조. 최초Full·재접속·구역/캐릭터/ID변경에서 비교기준·색 초기화. 서버원값만 쓰고 다음레벨백분율·처치보상은 추정하지 않는다.
 
-새 묶음 부모1792903229.965669, Unity Coordinator 앱. 수신기 PID39232/listening/고정 Coordinator/등록 스레드 확인. 후보11335f6(제품·자료19파일)의 PLAYSESSION01 게시 승인을 요청했다. 요청1792904955.846829, 부모1792903229.965669, bot U0C9ZRTQ6F8를 읽기로 확인했다. 지정 사용자 U0C9QEUHPMK의 회신1792909726.009609(승인 PLAYSESSION01)을 같은 부모에서 직접 읽어 요청·후보·현재 대기·기소비 없음과 대조, 1회 적용해 게시 완료했다. 제품 후보11335f6 이후는 인계/승인 메타데이터만 바뀌었다. 병합·Pages 배포는 승인 범위에 포함되지 않는다. 이전 승인이나 단순 수신확인을 새 승인으로 사용하지 않는다.
+독립리뷰 차단없음, 컴파일0오류, 신규PlayerVitalsFeedback2사례 통과. ROOT/CAND제품1·테스트2파일 동기화. 실제 서버·합성 방향키/X로 HP강조·EXP20→30 표시와 1280x720 배치/색 복귀 확인. 실제캡처2장과 공개문서/README 대표이미지 갱신. Scene/Prefab/DLL/서버/AI/DB 변경 없음. 실제입력 허용 유지. 새 미술방향 선택 대기 없음.
 
-게시 결과: [PR53](https://github.com/JoEunil/MMORPG/pull/53), head codex/client-play-session-polish, base master2e0de28. 현재 채팅 첨부 완료, 미병합. 다음 행동은 PR의 사이트 Actions 결과와 사용자 리뷰 확인이며 게임 전체 검증을 반복하거나 새 서버/AI 작업을 시작하지 않는다. 승인 회신1792909726.009609는 이 게시에 소비 완료다.
+## 다음 행동
+PR54 게시·설명 갱신 완료. 게시 head3806a9f의 사이트 Actions40181375540 success 확인(정식 Pages 배포 아님). 승인 처리 앱 회신1792921061.275009·완료채널1792921062.092639 기록. HUD와 잔액 조회 복구를 현재브랜치에 누적 완료. C09 시작예외/UI시간초과도 기존 최대2회 조회복구를 재사용하며 거래 재시도 없음. 독립리뷰·컴파일·신규WalletReadRecovery1사례 통과. 기존HUD2사례는 반복하지 않음. 성공거래 차감은 실제보유데이터 부족으로 미검증; DB를 채우지 않는다. 열린 PR54에 이번 전체 묶음을 추가하는 HUDWALLET01 후보64542e0 승인 대기(제품195e2f3 이후 README 실제촬영 표기/집계 기록만 보완). 요청1792921603.305979, 지정 사람 회신 미수신/미소비. PR54 3806a9f→이번 15파일 추가 정상push·설명갱신만 요청했다. 별도 PR55를 만들지 않으며 승인 전 push 없음. 같은 묶음 부모1792920540.953299 사용.
+
+상세근거 [RESULTS](history/2026-10-24-client-playability/RESULTS.txt), 목표·선택 [BRIEF](BRIEF.md).
+
+후속 로그인/캐릭터 진입 조사: 현재 계약 내 정당한 클라이언트 단독 결함 없음. 빈 목록/조회실패 모호성은 ClientCore API·서버 응답 제약이므로 자동 재시도 기능을 임의 추가하지 않음. 새 선택 필요 없음. 현 승인 후보 게시 외에 근거 있는 추가 범위는 현재 없음.

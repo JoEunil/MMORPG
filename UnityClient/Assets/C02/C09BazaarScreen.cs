@@ -125,12 +125,15 @@ namespace C02
                 walletRetryAt = 0;
                 RefreshWallet();
             }
-            if (Application.isFocused && Keyboard.current != null && Keyboard.current.bKey.wasPressedThisFrame &&
-                EventSystem.current != null)
+            if (Application.isFocused && Keyboard.current != null)
             {
-                var selected = EventSystem.current.currentSelectedGameObject;
-                var input = selected != null ? selected.GetComponentInParent<TMP_InputField>() : null;
-                if (input == null || !input.isFocused) TogglePanel();
+                if (IsOpen && Keyboard.current.escapeKey.wasPressedThisFrame) ClosePanel();
+                else if (Keyboard.current.bKey.wasPressedThisFrame && EventSystem.current != null)
+                {
+                    var selected = EventSystem.current.currentSelectedGameObject;
+                    var input = selected != null ? selected.GetComponentInParent<TMP_InputField>() : null;
+                    if (input == null || !input.isFocused) TogglePanel();
+                }
             }
 
             if (walletPending && Time.unscaledTime >= walletDeadline)
@@ -138,7 +141,7 @@ namespace C02
                 walletPending = false;
                 goldKnown = diamondKnown = false;
                 ShowWallet();
-                if (walletRefreshQueued) { walletRefreshQueued = false; walletRetryAt = Time.unscaledTime + .01f; }
+                ScheduleWalletRetry();
             }
             if (!requestPending || Time.unscaledTime < requestDeadline) return;
             WriteRequest previousWrite = writeRequest;
@@ -838,7 +841,12 @@ namespace C02
             walletDeadline = Time.unscaledTime + RequestTimeoutSeconds;
             ShowWallet();
             try { model.RequestWallet(); }
-            catch (Exception) { walletPending = false; ShowWallet(); }
+            catch (Exception)
+            {
+                walletPending = false;
+                ShowWallet();
+                ScheduleWalletRetry();
+            }
         }
 
         private void WalletReceived(byte goldStatus, ulong goldBalance, byte diamondStatus, ulong diamondBalance)
@@ -851,7 +859,13 @@ namespace C02
             diamonds = diamondBalance;
             ShowWallet();
             UpdateSaleSummary();
-            // A first read can start an asynchronous cache load. Retry reads only, with a fixed limit.
+            if (!goldKnown || !diamondKnown || walletRefreshQueued) ScheduleWalletRetry();
+        }
+
+        private void ScheduleWalletRetry()
+        {
+            // Startup failures and missing responses share the same bounded read retry budget.
+            // ClientCore retains ownership of outstanding request IDs and their cancellation.
             if (walletRefreshQueued)
             {
                 walletRefreshQueued = false;
