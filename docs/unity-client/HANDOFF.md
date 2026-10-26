@@ -26,3 +26,6 @@ RADAR01/r1: PR55에 레이더 후보와 공개 근거만 추가, 병합 제외. 
 ## 아이템 흐름 게시 승인 대기 — ITEMFLOW01/r1
 후보8b35577dd50020fbb6ebbb77bd0e9d7764fcd8d8, branch codex/inventory-market-handoff. 실제fetch한부모origin/codex/nearby-player-feedback=db1292294f9eebeda2ebdb74c085247289530f10와diff9파일을대조해제품3파일+문서만확인,레이더12파일없음. Unity Coordinator앱U0C9ZRTQ6F8 새부모/요청1793012032.698299·채널C0C9VFZMV43 등록완료. 지정U0C9QEUHPMK `승인 ITEMFLOW01` 대기,회신없음/미소비. 수신기21196/listening·고정대상·freshhealth30초이내대조. 새PR게시/원격push/병합없음.
 승인후PR55실제병합/부모상태를다시확인하고이번9파일만새PR에표시되도록base를정한다. PR생성후현재채팅첨부·CI확인·같은앱스레드처리회신. 레이더RADAR01/r1(부모1793010905.268759,후보b1d470b,별도branch837970a보존)도여전히별도대기이며승인상호재사용금지. 제품3파일은Astra통과후변경0. 이미통과검사반복0.
+
+
+ITEMFLOW01/r1 처리완료: 지정사용자회신1793013099.132149를실제Slack요청1793012032.698299/후보manifest/미소비와대조해1회소비. PR56 https://github.com/JoEunil/MMORPG/pull/56, head98e1a32f01d0de1b8a12be818ea6b841d72a1632, base codex/nearby-player-feedback. 코드3파일Astra통과후변경0/검사반복0. 병합없음. RADAR01지정회신1793013105.315639도확인했으며최신채팅의직사각형/legend·Radar제거를같은범위후속으로반영중이다. 원형후보를그대로게시하지않고영향검증/검수후PR55에반영하며추가승인요구없음.
