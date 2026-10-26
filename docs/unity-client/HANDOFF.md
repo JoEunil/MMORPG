@@ -1,7 +1,7 @@
 # 현재 인계 — 2026-10-26
 
 ## 목표·정본
-사용자 승인과 최신 피드백에 따라 PR55의 실제 지형 미니맵을 직사각형으로 바꾸고 제목·범례를 제거해 게시 완료했다. 가방·거래소 흐름은 별도 PR56으로 게시했다. 병합은 사용자 몫이다.
+PR55는사용자병합완료. 최신요청대로PR56의가방·거래소메뉴를그림중심으로바꾸어게시완료했다. PR56은사용자검토대기이며자동병합하지않는다.
 - Git 정본 C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, 현재 codex/inventory-market-handoff.
 - Editor C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient, 마지막 Unity6000.0.47f1/PID43612/Pipeline7800. ROOT의 PR56제품3파일과 Git의 PR55기준은 다르므로 전체후보동일이라고보지않는다.
 - 사용자 서버/몬스터AI·DB·패킷·DLL·통행/스폰은 변경하지 않는다.
@@ -26,3 +26,5 @@ PR55제품07805ef/Actions40314440577 success,최신문서head809c8cb. PR56최신
 
 ## 최신 피드백 — 메뉴 아이콘 / PR56
 PR55는사용자병합완료(f3e27bd)·원격head자동삭제확인,PR56 base master자동조정및실제master정상merge완료. 현재 PR56의가방/거래소아이콘개선: 투명판54x54/생성가죽가방·곡선저울그림/상시Market·Bag이름숨김/I·B14유지. Button/키/네트워크동작불변. KIAhelper/Scene/새PNG/meta제품4파일,manifest ROOT/Builds/MenuIcons(정확UnityClient/Builds/MenuIcons). ROOT/CAND일치·compile0·두해상도격리렌더sourceUnchangedtrue·정적클릭연결확인·Astra영향검수통과. 새기능검사0/기존통과검사반복0,실제클릭·키·서버거래새검증아님. 기록menu-icon-art.txt에생성prompt/provenance보존. 사용자직접PR56보완지시로재승인요청없이동일PR에게시,병합은하지않는다. 원격게시/CI확인후Slack같은ITEMFLOW01스레드에핵심결과회신.
+
+메뉴개선게시완료: PR56제품headc49ade6e79ff5e2e648bee259c0210c034a49291,Actions40316624103 success. 4제품파일Astra검수후변경0/기능검사반복0,EditorC02Edit/clean/backgroundfalse. 미리보기8793/mmorpg-reference/result.html갱신. PR55로컬branchcodex/nearby-player-feedback은origin/master포함·미사용worktree확인후-d정리,원격자동삭제확인. 다른사용자branch/worktree/서버변경보존. 승인대기없음.
