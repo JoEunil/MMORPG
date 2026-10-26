@@ -28,3 +28,5 @@ quality_reviewer=Astra/medium을 단계별 복합 상황 자문·사용자 전�
 사용자 async답변 B로 HPMP오른쪽아래 유지확정(BRIEF정본). 제품14파일(C#저작4+Scene+기존재질9)과관련공개원본/화면 준비. 코드리뷰차단0, 최종컴파일/두해상도렌더/반복적용435UI/9controllerrefs/입력라우팅/월드geometry유지 확인. Astra중간자문 반영 후 최종게시검수통과. 기존잔디무늬/어두운갑옷면은개선여지, 이번실입력/Play/실서버미실행. 사용자AI/서버/DB/키/충돌/geometry/새shader·texture변경0.
 ROOT/CAND제품14파일동기화·manifest고정, 기존ROOT차이5재질보존. 이행/검수상세 history/2026-10-24-client-playability/RESULTS.txt. 공개 player-hud/field-travel와선별Editor이미지 갱신. 대표README이미지는기존실제사냥유지. 실제Agent누적371=137+234.
 다음: HUDREF01/r1을 Unity Coordinator 새부모Slack에 게시승인 요청하고 지정사용자·스레드·현재후보/기소비 대조 후 기존PR55에 한묶음으로push한다. B취향선택이나과거NEARBYART승인을새게시승인으로사용하지않는다. 현재새 PR생성/병합/배포없음. 승인대기중제품후보변경금지, 관련없는개발자동확장금지. localhost8793/mmorpg-reference/는선택당시시안, /result.html은실제적용Editor예시다.
+
+게시 승인 대기: HUDREF01/r1, 후보7ff93fd46f41ccf14d79162dfa6cf19c2dc6d843, 채널C0C9VFZMV43·부모/요청1793005532.862209·지정사용자U0C9QEUHPMK. 회신 미수신/미소비. BotU0C9ZRTQ6F8발신과자동스레드등록확인, receiver21196/listening·고정Coordinator일치·health파일UTC갱신8초이내 및updatedAt진행확인. DateTimeOffset파싱9시간오차는mtime/DateTime.UtcNow로구분해장애로오인하지않음. 제품후보14파일은Astra판정이후변경없음.
