@@ -174,3 +174,5 @@ Read WorldMinimap source: centre already authoritative ServerPosition. Astra sit
 208x156,가로±40m/세로±30m,양축2.6px/m. 자기중앙/N/20·40원/실제atlas/6px원형점유지,배경·관찰점·링rectclip. 제목/legend자식삭제. 제품4파일 ROOT/CAND동일manifest Builds/MinimapRect/candidate-manifest.json. 다른ROOT의C07/C09후속은복사하지않고PR56에분리했다.
 컴파일0,변경MinimapRectangleKeepsUniformScaleIncludesCornersAndClipsMarkersAndAtlas 1/1최초통과(.1733399s),기존lifecycle/가방검사반복0. 두해상도Editor격리렌더sourceUnchangedtrue,clean/path/backupbyte일치guard후Scene저장. 독립Sol리뷰차단0·Astra/medium4파일영향검수통과. 샘플개체/HUD값이며실입력/실서버다중접속검증아님. 서버/AI/DB/wire/Core/DLL변경0. 사이트빌드통과,README대표기존실제사냥유지.
 ITEMFLOW01은별도회신1793013099.132149를1회소비해PR56게시완료,0263b67cf53df048828221b114ca8a916c2c27ca의Actions40313760296 success확인. PR56제품3파일은검수후변경0. 병합/정식배포없음.
+
+RADAR01/r1 회신1793013105.315639는최신직사각형피드백과함께1회소비완료,재사용금지. PR55게시제품4파일은Astra검수후변경0. ROOT Editor C02Edit/clean/backgroundfalse,208x156/titleAbsent/legendAbsent확인. CI확인후PR56에부모를정상merge해차등범위를정리하며새게임검사는반복하지않는다.
