@@ -10,5 +10,5 @@ WorldMinimap.cs와 기존 shader2파일 동결. 원래 지도 UV와 음수 overl
 컴파일 완료·오류0, shader errorfalse. 두 해상도 렌더 성공/sourceScene unchanged, 기존 통과 검사 반복0. 실제 입력/실서버/player build 성공은 새로 주장하지 않는다. Astra/medium 영향 검수 통과·필수 수정0, 두 화면과 고정2파일 해시 확인. 검수 후 제품 변경0.
 
 ## 다음 행동·Slack
-검수 후 같은 PR56에 정상 push·제품 commit 사이트CI를 확인하고 Unity Coordinator 앱 ITEMFLOW01 스레드1793012032.698299에 짧게 회신한다. 기존 승인1793013099.132149는 기소비이며 새 승인으로 사용하지 않는다. 앞 재화·스킬85494bd/Actions40329057651 success는 과거 근거이고 이번 제품CI와 구분한다.
+제품598b61d2a32d3f16fefbeff62ef9b75c5ff8cc39를 PR56에 정상 push했고 사이트 build/preview Actions40329879726 success를 확인했다. 정식 Pages 배포나 병합은 하지 않았다. Unity Coordinator 앱 ITEMFLOW01 스레드1793012032.698299에 핵심 결과 회신. 기존 승인1793013099.132149는 기소비이며 새 승인으로 사용하지 않는다. 앞 재화·스킬85494bd/Actions40329057651 success는 과거 근거이고 이번 제품CI와 구분한다.
 상세·이전 인계는 history/2026-10-24-client-playability/minimap-feather-results.txt와 HANDOFF-before-minimap-feather.md에 보존. 실제 Agent402=신규142+후속260, 토큰/비용N/A.
