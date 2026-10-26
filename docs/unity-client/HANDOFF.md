@@ -30,3 +30,5 @@ PR55는사용자병합완료(f3e27bd)·원격head자동삭제확인,PR56 base ma
 메뉴개선게시완료: PR56제품headc49ade6e79ff5e2e648bee259c0210c034a49291,Actions40316624103 success. 4제품파일Astra검수후변경0/기능검사반복0,EditorC02Edit/clean/backgroundfalse. 미리보기8793/mmorpg-reference/result.html갱신. PR55로컬branchcodex/nearby-player-feedback은origin/master포함·미사용worktree확인후-d정리,원격자동삭제확인. 다른사용자branch/worktree/서버변경보존. 승인대기없음.
 
 최신스타일피드백: 사용자실사감과다지적에메뉴아이콘v2손그림풍으로교체. 레이아웃/입력변경0,Scene texture2줄/helper경로1줄+PNG/meta4파일만. 두해상도/컴파일0/Astra v1·v2비교검수통과. 실제사용자만족은미확인,기존기능검사반복0. 같은PR56에게시하며새승인요청/병합없음.
+
+v2게시완료: PR56제품82bab80319c47ad2382c4484abe28239c61faeb9,Actions40317708856 success. 4제품파일검수후변경0·배치/크기/클릭/키불변·기존검사반복0·실입력/거래미검증유지. v1과이전화면보존,병합하지않음.
