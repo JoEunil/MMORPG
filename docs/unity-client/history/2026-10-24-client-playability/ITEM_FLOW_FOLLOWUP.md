@@ -14,3 +14,8 @@ Unity6000.0.47f1/PID43612, CLI1.0.0-beta.14 최신확인. 컴파일오류0. Play
 사용자 몬스터AI/서버/DB/wire/Core/DLL/Scene/재질변경0. ROOT/CAND Plugin ClientCore.dll SHA256 DF871CE1FDA3C676D5A4F34CF414876EFED2E69E483C5F34A5A9DEB7FAF7F49B 일치. ROOT ClientCore 원본과 CAND 원본 차이는 보존했고 실제CAND pending계약·동일DLL로검증했다.
 ROOT Editor에는 미게시 radar 제품이 남고 새Git브랜치에는 게시baseline만있다. 이중범위를같은전체후보라고보고하지않는다. 이번3파일hash는정본과Editor일치하며검사는아이템흐름fixture에한정했다. 실제입력/실서버성공거래증거아님. 시각배치변경없어새캡처/이미통과화면검사반복없음.
 Astra/medium 종합검수 통과·필수수정0. 제품3파일·집중2검사결과·공개설명을확인했고별도PR분리타당판정. 사이트빌드/링크와diff whitespace검사통과. Editor는C02Edit/clean/compilingfalse/backgroundfalse로복원. RADAR01 후보12파일변경없음,별도브랜치에보존. 실제게시/병합/배포없음.
+
+
+## 아이템 흐름 게시 승인 대기 — ITEMFLOW01/r1
+후보8b35577dd50020fbb6ebbb77bd0e9d7764fcd8d8, branch codex/inventory-market-handoff. 실제fetch한부모origin/codex/nearby-player-feedback=db1292294f9eebeda2ebdb74c085247289530f10와diff9파일을대조해제품3파일+문서만확인,레이더12파일없음. Unity Coordinator앱U0C9ZRTQ6F8 새부모/요청1793012032.698299·채널C0C9VFZMV43 등록완료. 지정U0C9QEUHPMK `승인 ITEMFLOW01` 대기,회신없음/미소비. 수신기21196/listening·고정대상·freshhealth30초이내대조. 새PR게시/원격push/병합없음.
+승인후PR55실제병합/부모상태를다시확인하고이번9파일만새PR에표시되도록base를정한다. PR생성후현재채팅첨부·CI확인·같은앱스레드처리회신. 레이더RADAR01/r1(부모1793010905.268759,후보b1d470b,별도branch837970a보존)도여전히별도대기이며승인상호재사용금지. 제품3파일은Astra통과후변경0. 이미통과검사반복0.
