@@ -1,23 +1,23 @@
 ## 공개 집계
 
 기준일: 2026-10-26
-누적 신규: 131
-누적 재활성화: 226
+누적 신규: 134
+누적 재활성화: 229
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-26
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 6 | 3 |
 | server_analyst | 서버 분석 Agent | 17 | 43 |
-| client_implementer | 구현 Agent | 44 | 55 |
+| client_implementer | 구현 Agent | 45 | 57 |
 | asset_artist | 아트 Agent | 19 | 26 |
-| code_reviewer | 리뷰 Agent | 32 | 91 |
+| code_reviewer | 리뷰 Agent | 33 | 92 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
-| decision_curator | 의사결정 지원 Agent | 6 | 2 |
+| decision_curator | 의사결정 지원 Agent | 7 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체357회(신규131·재활성화226)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체363회(신규134·재활성화229)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -584,3 +584,8 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 2026-10-25 일괄 선택 구현: selected_environment_dressing 아트 신규1(Sol/high), selected_hud_inventory_ui 구현 신규1·후속1(default/Luna medium), selected_combat_presentation 구현 신규1(Sol/medium), selected_art_bundle_review 리뷰 신규1·후속1(Sol/medium). 담당은 환경·HUD/가방·전투 독립 파일로 나눴고 총괄이 Editor 통합·렌더를 직접 수행했다. 리뷰 P2 기존 가방 프레임 잔존과 저작 도구의 비활성 월드 전제 문제를 수정하고 정적 재검토했다. 전체356=130+226, 총괄·도구호출은 제외, 토큰·비용 N/A.
 
 2026-10-26 resume_client_scope 의사결정 지원 Agent 신규1회(decision_curator/gpt-6-luna/low): 현재 계획·결과 기록을 읽기 전용 대조, 새 구현 묶음 근거 없음과 기존 실입력/실거래 데이터 미검증을 구분했다. 일부 추정 파일명은 실제 경로와 맞지 않아 총괄이 사용하지 않음. 새 구현·테스트는 없음. 전체357=131+226, 총괄 Slack/Git·복구는 활성화 제외, 토큰·비용 N/A.
+
+
+## PR55 후속 정합 보완 — 2026-10-26
+
+실제 신규3: pr55_combat_followup_scan(리뷰), pr55_inventory_followup_scan(구현 분석), pr55_decision_followup_scope(의사결정 지원). 실제 후속3: selected_combat_presentation(구현), pr55_inventory_followup_scan(구현), pr55_combat_followup_scan(통합 리뷰). 구현 증분 신규1/후속2, 리뷰 신규1/후속1, 의사결정 지원 신규1/후속0. 합계363=134+229. 총괄의 Unity 검증·문서·Git 작업은 호출 수에 포함하지 않았다. 실제 토큰·비용 N/A.

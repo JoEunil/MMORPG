@@ -78,6 +78,49 @@ namespace C02.Tests
 #endif
 
 #if UNITY_EDITOR
+        [Test]
+        [Category("PR55Followup")]
+        public void NearbyCombatBundle_DownedRecoveryKeepsLatestFacingAndLifecycleResetsIt()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                fixture.UsePlayerPrefab(UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/C02/Art/C04/ObservedPlayer.prefab"));
+                fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42));
+                var actor = fixture.Visual("players", (uint)42);
+                var motion = actor.GetComponent<C19ActorMotion>();
+                var body = (Transform)Get(motion, "visual");
+                Quaternion rest = body.localRotation;
+                // Consume the initial spawn displacement before testing an accepted attack heading.
+                Invoke(motion, "LateUpdate");
+                foreach (byte direction in new byte[] { 3, 1 })
+                {
+                    motion.PlayAttack(direction, true, 2);
+                    Set(motion, "attackStarted", Time.unscaledTime - .15f);
+                    Invoke(motion, "LateUpdate");
+                    Quaternion expected = Quaternion.Inverse(body.parent.rotation) * Quaternion.Euler(0, direction == 3 ? 270 : 0, 0);
+                    fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 0 });
+                    Assert.That((bool)Get(motion, "hasFacing"), Is.True);
+                    Assert.That(Quaternion.Angle(body.localRotation, expected), Is.GreaterThan(60));
+                    if (direction == 3)
+                        fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 30 });
+                    else fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42));
+                    Assert.That((bool)Get(motion, "downed"), Is.False);
+                    Assert.That(Quaternion.Angle(body.localRotation, expected), Is.LessThan(.01f),
+                        "Recovery restores upright facing, without reusing the attack or downed rotation.");
+                    Invoke(motion, "LateUpdate");
+                    Assert.That(Quaternion.Angle(body.localRotation, expected), Is.LessThan(.01f),
+                        "Standing still after recovery keeps the last accepted heading.");
+                }
+                actor.SetActive(false);
+                Assert.That((bool)Get(motion, "hasFacing"), Is.False);
+                Assert.That(Quaternion.Angle(body.localRotation, rest), Is.LessThan(.01f));
+                actor.SetActive(true);
+                Assert.That((bool)Get(motion, "hasFacing"), Is.False);
+                Assert.That(Quaternion.Angle(body.localRotation, rest), Is.LessThan(.01f),
+                    "The normal disable/enable lifecycle still performs a full pose reset.");
+            }
+        }
+
         [UnityEngine.TestTools.UnityTest]
         public IEnumerator NearbyCombatBundle_DownedPlayersPersistRecoverAndCleanUpWithoutDefeatReplay()
         {

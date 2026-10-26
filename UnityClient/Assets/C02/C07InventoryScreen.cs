@@ -42,6 +42,9 @@ namespace C02
         private bool hasInventoryResponse;
         private bool refreshAfterCurrentRequest;
         private bool refreshOnOpenAfterUncertainDelivery;
+        private bool hasSelectedItem;
+        private byte selectedSlot;
+        private uint selectedItemID;
 
         public bool IsOpen => inventoryPanel != null && inventoryPanel.activeSelf;
 
@@ -131,7 +134,15 @@ namespace C02
             bool available = WorldAvailable && model != null && loginScreen.Model == model;
             if (!available || !IsOpen) CancelFailureRetry();
             bagButton.gameObject.SetActive(available);
-            if (!available) inventoryPanel.SetActive(false);
+            if (!available)
+            {
+                inventoryPanel.SetActive(false);
+                if (worldScreen == null || worldScreen.Stage != C02Stage.TransitionPending)
+                {
+                    hasInventoryResponse = false;
+                    ClearInventoryCards();
+                }
+            }
             UpdateControls();
         }
 
@@ -187,7 +198,7 @@ namespace C02
 
             requestPending = true;
             requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
-            ClearInventoryCards();
+            ClearInventoryCards(preserveSelection: true);
             inventoryStatus.text = "Requesting inventory…";
             UpdateControls();
             try
@@ -241,7 +252,19 @@ namespace C02
                 ? new List<InventoryItemView>(loginScreen.Data.GetInventory())
                 : new List<InventoryItemView>();
             snapshot.Sort((left, right) => left.Slot.CompareTo(right.Slot));
-            foreach (InventoryItemView item in snapshot) AddInventoryCard(item);
+            bool restoredSelection = false;
+            foreach (InventoryItemView item in snapshot)
+            {
+                AddInventoryCard(item);
+                if (hasSelectedItem && item.Slot == selectedSlot && item.ItemID == selectedItemID)
+                {
+                    Button card = inventoryGridContent.GetChild(inventoryGridContent.childCount - 1)
+                        .GetComponent<Button>();
+                    ApplySelection(item, card);
+                    restoredSelection = true;
+                }
+            }
+            if (hasSelectedItem && !restoredSelection) ClearSelectedItem();
             inventoryScroll.StopMovement();
             inventoryScroll.verticalNormalizedPosition = 1f;
             hasInventoryResponse = true;
@@ -312,6 +335,14 @@ namespace C02
         private void SelectItem(InventoryItemView item, Button card)
         {
             if (!IsOpen || !card.isActiveAndEnabled) return;
+            hasSelectedItem = true;
+            selectedSlot = item.Slot;
+            selectedItemID = item.ItemID;
+            ApplySelection(item, card);
+        }
+
+        private void ApplySelection(InventoryItemView item, Button card)
+        {
             foreach (Transform child in inventoryGridContent)
             {
                 var button = child.GetComponent<UnityEngine.UI.Button>();
@@ -340,7 +371,7 @@ namespace C02
             detailQuantity.text = "Quantity " + item.Quantity.ToString(CultureInfo.InvariantCulture);
         }
 
-        private void ClearInventoryCards()
+        private void ClearInventoryCards(bool preserveSelection = false)
         {
             for (int i = inventoryGridContent != null ? inventoryGridContent.childCount - 1 : -1; i >= 0; i--)
             {
@@ -360,6 +391,14 @@ namespace C02
             if (detailName != null) detailName.text = "Select an item";
             if (detailSlot != null) detailSlot.text = string.Empty;
             if (detailQuantity != null) detailQuantity.text = string.Empty;
+            if (!preserveSelection) ClearSelectedItem();
+        }
+
+        private void ClearSelectedItem()
+        {
+            hasSelectedItem = false;
+            selectedSlot = 0;
+            selectedItemID = 0;
         }
 
         private void UpdateControls()

@@ -191,11 +191,16 @@ namespace C02
         public void SetDowned(bool value)
         {
             if (visual == null || downed == value || defeatStarted >= 0) return;
-            Quaternion currentRotation = visual.localRotation;
+            Quaternion retainedFacing = facing;
+            bool retainedHasFacing = hasFacing;
             ResetPose();
+            facing = retainedFacing;
+            hasFacing = retainedHasFacing;
+            Quaternion localFacing = hasFacing ? Quaternion.Inverse(visual.parent.rotation) * facing : restRotation;
+            visual.localRotation = localFacing;
             downed = value;
             if (!downed) return;
-            visual.localRotation = currentRotation * Quaternion.Euler(80f, 0, 12f);
+            visual.localRotation = localFacing * Quaternion.Euler(80f, 0, 12f);
             for (int side = 0; side < 2; side++)
                 if (arms[side] != null)
                     arms[side].localRotation = Quaternion.Euler(25f, 0, side == 0 ? -25f : 25f);

@@ -70,6 +70,61 @@ namespace C02.Tests
         }
 
         [Test]
+        [Category("PR55Followup")]
+        public void RefreshRestoresSelectionOnlyForTheSameSlotAndItem()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.OpenBag();
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 3, slot = 2 });
+                fixture.Cards[0].onClick.Invoke();
+                Assert.That(fixture.DetailQuantity.text, Is.EqualTo("Quantity 3"));
+
+                fixture.Refresh.onClick.Invoke();
+                Assert.That(fixture.Cards, Is.Empty, "A pending read clears stale cards and details.");
+                Assert.That(fixture.DetailName.text, Is.EqualTo("Select an item"));
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 8, slot = 2 });
+                Assert.That(fixture.Cards[0].GetComponent<Image>().color, Is.EqualTo(new Color(.38f, .30f, .20f, 1f)));
+                Assert.That(fixture.DetailName.text, Is.EqualTo("HP Potion"));
+                Assert.That(fixture.DetailQuantity.text, Is.EqualTo("Quantity 8"));
+
+                fixture.Refresh.onClick.Invoke();
+                fixture.Close.onClick.Invoke();
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 9, slot = 2 });
+                Assert.That(fixture.Panel.activeSelf, Is.False, "A closed bag stays closed when its response arrives.");
+                Assert.That(fixture.DetailQuantity.text, Is.EqualTo("Quantity 9"));
+                fixture.Bag.onClick.Invoke();
+
+                fixture.Refresh.onClick.Invoke();
+                fixture.Receive(true, new InventoryItem { itemID = 2, quantity = 6, slot = 2 });
+                Assert.That(fixture.Cards[0].GetComponent<Image>().color, Is.EqualTo(new Color(.16f, .18f, .20f, 1f)));
+                Assert.That(fixture.DetailName.text, Is.EqualTo("Select an item"), "A slot reused for another item must not inherit selection.");
+                Assert.That(fixture.DetailQuantity.text, Is.Empty);
+
+                fixture.Cards[0].onClick.Invoke();
+                fixture.Refresh.onClick.Invoke();
+                fixture.Receive(true);
+                Assert.That(fixture.Cards, Is.Empty, "A removed item clears the selected details.");
+                Assert.That(fixture.DetailName.text, Is.EqualTo("Select an item"));
+                fixture.Refresh.onClick.Invoke();
+                fixture.Receive(true, new InventoryItem { itemID = 2, quantity = 6, slot = 2 });
+                Assert.That(fixture.DetailName.text, Is.EqualTo("Select an item"), "A reappearing item is not automatically selected.");
+                fixture.Cards[0].onClick.Invoke();
+                fixture.Refresh.onClick.Invoke();
+                fixture.Receive(false);
+                Assert.That(fixture.Cards, Is.Empty);
+                Assert.That(fixture.DetailName.text, Is.EqualTo("Select an item"), "A failed read clears selected details.");
+                Assert.That(fixture.DetailSlot.text, Is.Empty);
+                SetPrivate(fixture.Screen, "failureRetryDeadline", Time.unscaledTime - 1f);
+                fixture.InvokeScreen("Update");
+                fixture.Receive(true, new InventoryItem { itemID = 2, quantity = 5, slot = 2 });
+                Assert.That(fixture.Cards[0].GetComponent<Image>().color, Is.EqualTo(new Color(.16f, .18f, .20f, 1f)),
+                    "A later retry does not revive a selection cleared by failure.");
+                Assert.That(fixture.DetailName.text, Is.EqualTo("Select an item"));
+            }
+        }
+
+        [Test]
         public void FailureRetriesOnceThenShowsTheServerConfirmedEmptyInventoryOrStopsAfterASecondFailure()
         {
             using (var fixture = new Fixture())
