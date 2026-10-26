@@ -1,0 +1,20 @@
+{
+  "status": "completed",
+  "duration": 0.19,
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "inconclusive": 0
+  },
+  "results": [
+    {
+      "FullName": "C02.Tests.C09BazaarUiTests.ListingRowsUseAssignedDiamondSpriteWithoutBlockingSelection",
+      "Status": "Passed",
+      "Duration": 0.1442019,
+      "Message": null,
+      "StackTrace": null
+    }
+  ]
+}

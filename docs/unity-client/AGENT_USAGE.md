@@ -1,24 +1,24 @@
 ## 공개 집계
 
 기준일: 2026-10-26
-누적 신규: 140
-누적 재활성화: 257
+누적 신규: 142
+누적 재활성화: 259
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-26
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 6 | 3 |
 | server_analyst | 서버 분석 Agent | 17 | 43 |
-| client_implementer | 구현 Agent | 47 | 62 |
-| asset_artist | 아트 Agent | 21 | 30 |
-| code_reviewer | 리뷰 Agent | 34 | 98 |
-| quality_reviewer | 종합 검수 Agent | 1 | 13 |
+| client_implementer | 구현 Agent | 48 | 62 |
+| asset_artist | 아트 Agent | 21 | 31 |
+| code_reviewer | 리뷰 Agent | 34 | 99 |
+| quality_reviewer | 종합 검수 Agent | 2 | 13 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
 | decision_curator | 의사결정 지원 Agent | 7 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체397회(신규140·재활성화257)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체401회(신규142·재활성화259)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -652,3 +652,7 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 
 ## 메뉴 내부 빈면·대비 보완 — 2026-10-26
 실제후속1: quality_gate_setup_review(Astra/medium),v5원본·두해상도시각영향검수통과/필수수정0. 신규0,누적397=140+257. 벡터편집·래스터화·Unity교체·렌더는총괄직접작업/이미지gen0/기능검사반복0. 사용자공백지적의대상일치/만족은미확인. 토큰·비용N/A.
+
+
+## 재화·스킬 아이콘 — 2026-10-26
+실제 신규2: currency_skill_ui_wiring(구현 Agent/Sol high 명시), currency_skill_quality_gate(종합 검수 Agent/Astra medium 명시). 기존 quality_gate_setup_review는 현재 live agent 목록에 없으므로 재활성화로 추정하지 않고 신규 인스턴스를 배정했다. 실제 후속2: hud_menu_icon_art(아트 Sol high 고정), item_ui_followup_audit(리뷰 Sol high). 총괄의 Scene 저작·컴파일·집중 fixture1개 실행·격리 렌더·문서/사이트 작업은 활성화에서 제외한다. 누적401=142+259, 토큰·비용N/A. 종합 검수 결과는 HANDOFF와 상세 기록을 따른다.

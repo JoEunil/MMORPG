@@ -18,9 +18,9 @@ public static class C12HudSetup
         var fillSprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
         if (fillSprite == null) throw new System.InvalidOperationException("The built-in uGUI sprite required by the HP/MP gauges is unavailable.");
         var icons = new[] {
-            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-000-strike-v1.png"),
-            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-001-ring-v1.png"),
-            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-002-line-v1.png")
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-strike-icon-v2.png"),
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-ring-icon-v2.png"),
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-line-icon-v2.png")
         };
         if (System.Array.Exists(icons, icon => icon == null))
             throw new System.InvalidOperationException("Import all three skill icons as Sprites before applying the HUD.");
@@ -106,8 +106,8 @@ public static class C12HudSetup
             iconRect.SetParent(rect, false);
             iconRect.gameObject.SetActive(true);
             iconRect.anchorMin = iconRect.anchorMax = iconRect.pivot = new Vector2(.5f, 1);
-            iconRect.anchoredPosition = new Vector2(0, -3);
-            iconRect.sizeDelta = new Vector2(38, 38);
+            iconRect.anchoredPosition = new Vector2(3, -18);
+            iconRect.sizeDelta = new Vector2(40, 40);
             var icon = iconRect.GetComponent<UnityEngine.UI.Image>();
             icon.sprite = icons[i];
             icon.color = Color.white;

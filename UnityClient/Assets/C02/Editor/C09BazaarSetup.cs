@@ -266,6 +266,8 @@ public static class C09BazaarSetup
         serialized.FindProperty("walletHud").objectReferenceValue=wallet;
         serialized.FindProperty("walletGoldText").objectReferenceValue=gold;
         serialized.FindProperty("walletDiamondText").objectReferenceValue=diamond;
+        serialized.FindProperty("diamondCurrencyIcon").objectReferenceValue =
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Currency/diamond-currency-icon-v1.png");
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
         var worldSerialized = new SerializedObject(world);
@@ -283,8 +285,13 @@ public static class C09BazaarSetup
 
     private static void CreateCurrencyMark(string name, Transform parent, bool gold, float x, float y, bool walletHud)
     {
-        var image = FindOrCreate(name, parent, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
-        image.color = gold ? new Color(.91f, .70f, .31f) : new Color(.47f, .79f, .89f);
+        var image = FindOrCreate(name, parent, typeof(RectTransform), typeof(UnityEngine.UI.Image)).GetComponent<UnityEngine.UI.Image>();
+        var icon = AssetDatabase.LoadAssetAtPath<Sprite>(gold
+            ? "Assets/C02/Art/Currency/gold-currency-icon-v1.png"
+            : "Assets/C02/Art/Currency/diamond-currency-icon-v1.png");
+        image.sprite = icon;
+        image.preserveAspect = true;
+        image.color = icon != null ? Color.white : gold ? new Color(.91f, .70f, .31f) : new Color(.47f, .79f, .89f);
         image.raycastTarget = false;
         var rect = image.rectTransform;
         if (walletHud)
@@ -297,8 +304,8 @@ public static class C09BazaarSetup
             rect.anchorMin = rect.anchorMax = new Vector2(0, 1);
             rect.anchoredPosition = new Vector2(x, -y);
         }
-        rect.sizeDelta = gold ? new Vector2(14, 8) : new Vector2(10, 10);
-        rect.localRotation = gold ? Quaternion.identity : Quaternion.Euler(0, 0, 45);
+        rect.sizeDelta = icon != null ? new Vector2(16, 16) : gold ? new Vector2(14, 8) : new Vector2(10, 10);
+        rect.localRotation = icon != null || gold ? Quaternion.identity : Quaternion.Euler(0, 0, 45);
     }
 
     private static TMP_InputField SaleInput(string name,Transform parent,string initial,float x,float width)

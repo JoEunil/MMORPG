@@ -50,6 +50,7 @@ namespace C02
         [SerializeField] private GameObject walletHud;
         [SerializeField] private TMP_Text walletGoldText;
         [SerializeField] private TMP_Text walletDiamondText;
+        [SerializeField] private Sprite diamondCurrencyIcon;
         private bool selling;
         private bool saleInventoryReplyReady;
         private bool registerConfirmation;
@@ -452,7 +453,7 @@ namespace C02
             var rowObject = CreateItemRow(listing.ItemID, listing.Quantity, index);
             rowObject.name = "Listing-" + listing.ListingID.ToString(CultureInfo.InvariantCulture);
             var button = rowObject.GetComponent<UnityEngine.UI.Button>();
-            AddCurrencyMark(rowObject.transform, "DiamondMark", false, .525f);
+            AddCurrencyMark(rowObject.transform, "DiamondMark", false, .525f, diamondCurrencyIcon);
             AddCell(rowObject.transform, "Price", listing.Price.ToString("N0", CultureInfo.InvariantCulture), .56f, .77f,
                 TextAlignmentOptions.MidlineRight, 14, new Color(.72f, .87f, .93f));
             var stateBadge = new GameObject("StateBadge", typeof(RectTransform), typeof(UnityEngine.UI.Image));
@@ -1018,17 +1019,19 @@ namespace C02
             }
         }
 
-        private static void AddCurrencyMark(Transform parent, string name, bool goldMark, float anchorX)
+        private static void AddCurrencyMark(Transform parent, string name, bool goldMark, float anchorX, Sprite icon)
         {
             var mark = new GameObject(name, typeof(RectTransform), typeof(UnityEngine.UI.Image));
             mark.transform.SetParent(parent, false);
             var rect = mark.GetComponent<RectTransform>();
             rect.anchorMin = rect.anchorMax = new Vector2(anchorX, .5f);
             rect.pivot = new Vector2(.5f, .5f);
-            rect.sizeDelta = goldMark ? new Vector2(14, 8) : new Vector2(10, 10);
-            rect.localRotation = goldMark ? Quaternion.identity : Quaternion.Euler(0, 0, 45);
+            rect.sizeDelta = icon != null ? new Vector2(16, 16) : goldMark ? new Vector2(14, 8) : new Vector2(10, 10);
+            rect.localRotation = icon != null || goldMark ? Quaternion.identity : Quaternion.Euler(0, 0, 45);
             var image = mark.GetComponent<UnityEngine.UI.Image>();
-            image.color = goldMark ? new Color(.91f, .70f, .31f) : new Color(.47f, .79f, .89f);
+            image.sprite = icon;
+            image.preserveAspect = true;
+            image.color = icon != null ? Color.white : goldMark ? new Color(.91f, .70f, .31f) : new Color(.47f, .79f, .89f);
             image.raycastTarget = false;
         }
 

@@ -220,6 +220,8 @@ public static class KnightInterfaceArtSetup
             var colors = ColorBlock.defaultColorBlock;
             colors.highlightedColor = new Color(1.16f, 1.16f, 1.16f);
             skill.GetComponent<Button>().colors = colors;
+            var skillIcon = skill.Find("SkillIcon") as RectTransform;
+            if (skillIcon != null) Place(skillIcon, new Vector2(.5f, 1), new Vector2(3, -18), new Vector2(40, 40));
             var badge = skill.Find("SkillKeyBadge") as RectTransform;
             if (badge != null) PlainSurface(badge, new Color(.04f, .05f, .065f, .92f));
             var key = badge != null ? badge.Find("SkillKey")?.GetComponent<TMP_Text>() : null;
@@ -243,8 +245,10 @@ public static class KnightInterfaceArtSetup
             PlainSurface(wallet, new Color(.055f, .065f, .07f, .25f));
             Place(wallet.Find("Gold") as RectTransform, new Vector2(0, 1), new Vector2(28, 0), new Vector2(108, 30));
             Place(wallet.Find("Diamonds") as RectTransform, new Vector2(0, 1), new Vector2(164, 0), new Vector2(108, 30));
-            Place(wallet.Find("GoldMark") as RectTransform, new Vector2(0, .5f), new Vector2(8, 0), new Vector2(13, 8));
-            Place(wallet.Find("DiamondMark") as RectTransform, new Vector2(0, .5f), new Vector2(145, 0), new Vector2(10, 10));
+            Place(wallet.Find("GoldMark") as RectTransform, new Vector2(0, .5f), new Vector2(3, 0), new Vector2(20, 20));
+            Place(wallet.Find("DiamondMark") as RectTransform, new Vector2(0, .5f), new Vector2(140, 0), new Vector2(20, 20));
+            wallet.Find("GoldMark").localRotation = Quaternion.identity;
+            wallet.Find("DiamondMark").localRotation = Quaternion.identity;
             foreach (var text in wallet.GetComponentsInChildren<TMP_Text>(true)) text.fontSize = 17;
         }
         MenuButton(hud.transform.parent.Find("C07BagButton") as RectTransform, false);

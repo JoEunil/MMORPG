@@ -20,6 +20,33 @@ namespace C02.Tests
     public sealed class C09BazaarUiTests
     {
         [Test]
+        [Category("CurrencySkillIcons")]
+        public void ListingRowsUseAssignedDiamondSpriteWithoutBlockingSelection()
+        {
+            var icon = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 2, 2), new Vector2(.5f, .5f));
+            try
+            {
+                using (var fixture = new Fixture())
+                {
+                    Set(fixture.Screen, "diamondCurrencyIcon", icon);
+                    fixture.OpenMarket();
+                    fixture.Receive(true, new BazaarListing { listingID = 77, itemID = 1, quantity = 1, price = 20 });
+                    var row = fixture.Row(77);
+                    var mark = row.Find("DiamondMark").GetComponent<UnityEngine.UI.Image>();
+                    Assert.That(mark.sprite, Is.SameAs(icon));
+                    Assert.That(mark.color, Is.EqualTo(Color.white));
+                    Assert.That(mark.preserveAspect, Is.True);
+                    Assert.That(mark.rectTransform.sizeDelta, Is.EqualTo(new Vector2(16, 16)));
+                    Assert.That(Quaternion.Angle(mark.rectTransform.localRotation, Quaternion.identity), Is.LessThan(.001f));
+                    Assert.That(mark.raycastTarget, Is.False);
+                    row.GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
+                    Assert.That(fixture.Detail.text, Is.EqualTo("20 diamonds · Trading"));
+                }
+            }
+            finally { UnityEngine.Object.DestroyImmediate(icon); }
+        }
+
+        [Test]
         [Category("MarketSelectionPolish")]
         public void SelectingListingsClearsOnlyPendingConfirmationAndKeepsTransactionResults()
         {
