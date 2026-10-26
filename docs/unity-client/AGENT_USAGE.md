@@ -2,7 +2,7 @@
 
 기준일: 2026-10-26
 누적 신규: 145
-누적 재활성화: 265
+누적 재활성화: 266
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-26
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
@@ -12,13 +12,13 @@
 | client_implementer | 구현 Agent | 49 | 63 |
 | asset_artist | 아트 Agent | 23 | 32 |
 | code_reviewer | 리뷰 Agent | 34 | 99 |
-| quality_reviewer | 종합 검수 Agent | 2 | 17 |
+| quality_reviewer | 종합 검수 Agent | 2 | 18 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
 | decision_curator | 의사결정 지원 Agent | 7 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체410회(신규145·재활성화265)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체411회(신규145·재활성화266)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -671,3 +671,7 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 
 ## 가방·거래소 선택 적용과 메뉴 가시성 — 2026-10-26
 실제 후속3: selected_hud_bba(구현 Agent/Sol high, 내부패널4파일), bag_market_options_art(아트 Agent/Sol high고정, 메뉴v6원본/atlas), currency_skill_quality_gate(Astra medium, 고정8파일게시검수). 신규0,누적410=145+265. 총괄의wrapper제거·수수료아이콘저작크기수정·Scene/native import·격리렌더·문서는활성화제외. 토큰/비용N/A,기존게임통과검사반복0.
+
+
+## 메뉴 회색 대비 — 2026-10-26
+실제 후속1: currency_skill_quality_gate(Astra medium), 팔레트/새참조4파일과두해상도시각영향검수통과·필수수정0. 신규0,누적411=145+266. nativeSVG팔레트/래스터/Scene/렌더는총괄직접작업,토큰/비용N/A. 기존게임검사반복0.

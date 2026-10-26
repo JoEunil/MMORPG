@@ -1,0 +1,18 @@
+[
+  {
+    "Path": "UnityClient/Assets/C02/Editor/KnightInterfaceArtSetup.cs",
+    "SHA256": "00D18EFC537BC01DF40A44C891123C8E8ED056333E54270106E7ACCDA3319968"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/C02.unity",
+    "SHA256": "7B882462426EF445D2FBF536DD82ABE9E47AAF92873573990C3E256A8D5674C9"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/CitadelEnvironment/hud-menu-icons-v7.png",
+    "SHA256": "18D024197FCEFFCD2B35D6A87E091487D200B873D63CF3CF2CA240AE813FBDEB"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/CitadelEnvironment/hud-menu-icons-v7.png.meta",
+    "SHA256": "C5D892BAE0D909CE06040BCA95F2DBEBA07EE7EDD2C104E66CC9C8F9890A2E7B"
+  }
+]

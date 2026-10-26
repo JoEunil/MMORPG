@@ -1,0 +1,1 @@
+2026-10-26: User requested near-grey menu colours to contrast yellow/green ground. Existing native v6 geometry, alpha, cell UVs and shape outlines preserved; only palette changed to cool silver/slate. No imagegen, external asset, package or economic/input changes. v6 preserved. Source SVG and renderer remain paired. Actual colour acceptance still requires user feedback.
