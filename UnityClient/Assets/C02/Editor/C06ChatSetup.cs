@@ -172,26 +172,34 @@ public static class C06ChatSetup
         var canvas=Object.FindFirstObjectByType<Canvas>();
         var panel=canvas!=null?canvas.transform.Find("C06ChatPanel") as RectTransform:null;
         if(panel==null)return;
-        panel.sizeDelta=new Vector2(430,238);panel.anchoredPosition=new Vector2(24,8);
+        panel.sizeDelta=new Vector2(360,170);panel.anchoredPosition=new Vector2(24,24);
         foreach(var image in panel.GetComponentsInChildren<Image>(true))
         {
             if(image.name=="ForgedFrame"||image.name=="FrameOrnaments"){image.gameObject.SetActive(false);continue;}
             image.sprite=null;image.type=Image.Type.Simple;
             if(image.name=="ChatHistoryViewport")continue;
-            image.color=image.GetComponent<Button>()!=null?new Color(.10f,.13f,.17f,.94f):new Color(.035f,.05f,.065f,.82f);
+            image.color=image.GetComponent<Button>()!=null?new Color(.10f,.13f,.17f,.72f):new Color(.035f,.05f,.065f,.64f);
         }
         foreach(var button in panel.GetComponentsInChildren<Button>(true))button.colors=ColorBlock.defaultColorBlock;
         var inner=panel.Find("ChatInset");
+        panel.GetComponent<Image>().color=new Color(.055f,.07f,.075f,.22f);
+        inner.GetComponent<Image>().color=new Color(.035f,.05f,.065f,.38f);
         var title=inner.Find("ChatTitle");if(title!=null)title.gameObject.SetActive(false);
         string[] names={"ChatGlobalButton","ChatZoneButton","ChatWhisperButton"};
-        for(int i=0;i<names.Length;i++)SetTopLeft(inner.Find(names[i]) as RectTransform,10+i*136,8,130,26);
-        SetTopLeft(inner.Find("ChatWhisperTargetButton") as RectTransform,10,38,404,22);
-        Stretch(inner.Find("ChatHistoryViewport") as RectTransform,new RectOffset(12,12,66,68));
-        var input=inner.Find("ChatInput") as RectTransform;input.sizeDelta=new Vector2(318,32);input.anchoredPosition=new Vector2(10,8);
-        var send=inner.Find("ChatSendButton") as RectTransform;send.sizeDelta=new Vector2(84,32);send.anchoredPosition=new Vector2(-10,8);
+        for(int i=0;i<names.Length;i++)SetTopLeft(inner.Find(names[i]) as RectTransform,10+i*112,8,108,24);
+        SetTopLeft(inner.Find("ChatWhisperTargetButton") as RectTransform,10,36,334,20);
+        Stretch(inner.Find("ChatHistoryViewport") as RectTransform,new RectOffset(12,12,60,62));
+        var input=inner.Find("ChatInput") as RectTransform;input.sizeDelta=new Vector2(250,30);input.anchoredPosition=new Vector2(10,8);
+        var send=inner.Find("ChatSendButton") as RectTransform;send.sizeDelta=new Vector2(78,30);send.anchoredPosition=new Vector2(-10,8);
         foreach(var text in panel.GetComponentsInChildren<TMP_Text>(true))
         {text.fontSize=Mathf.Max(14,text.fontSize);text.color=new Color(.86f,.90f,.95f);}
-        inner.Find("ChatHistoryViewport/ChatHistoryText").GetComponent<TMP_Text>().fontSize=16;
+        inner.Find("ChatHistoryViewport/ChatHistoryText").GetComponent<TMP_Text>().fontSize=14;
+        var target=inner.Find("ChatWhisperTargetButton").GetComponentInChildren<TMP_Text>(true);
+        target.enableWordWrapping=false;target.overflowMode=TextOverflowModes.Ellipsis;
+        var status=inner.Find("ChatStatusText").GetComponent<TMP_Text>();
+        status.fontSize=14;status.enableWordWrapping=false;status.overflowMode=TextOverflowModes.Ellipsis;
+        status.rectTransform.anchoredPosition=new Vector2(0,42);
+        status.rectTransform.sizeDelta=new Vector2(-24,18);
     }
 
     private static GameObject FindOrCreate(string name, Transform parent, params System.Type[] components)

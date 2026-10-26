@@ -18,6 +18,166 @@ namespace C02.Tests
     // Detached state fixtures. These do not count as real UI input, server observation, or account sessions.
     public sealed class C04ObservationTests
     {
+        [Test]
+        [Category("WorldMinimap")]
+        public void MinimapRectangleKeepsUniformScaleIncludesCornersAndClipsMarkersAndAtlas()
+        {
+            var map = ScriptableObject.CreateInstance<C20WorldMap>();
+            var atlas = new Texture2D(4, 4);
+            try
+            {
+                map.origin = new Vector2(-29, -28); map.tileSize = 2; map.width = 39; map.height = 40;
+                map.walkable = new byte[map.width * map.height];
+                for (int i = 0; i < map.walkable.Length; i++) map.walkable[i] = 1;
+                using (var fixture = new ObservationFixture())
+                {
+                    var other = Player(42); other.x = 21; other.y = 22;
+                    var corner = Player(43); corner.x = 46; corner.y = 37;
+                    fixture.Players(100, Player(7), other, corner);
+                    var monster = Monster(0, 0); monster.x = 1; monster.y = 2;
+                    var rim = Monster(1, 0); rim.x = 50;
+                    var distant = Monster(2, 0); distant.x = 51.1f;
+                    fixture.Monsters(100, monster, rim, distant);
+                    var minimap = fixture.CreateMinimap(map);
+                    minimap.rectTransform.sizeDelta = new Vector2(208, 156);
+                    Set(minimap, "terrainAtlas", atlas);
+                    var atlasBounds = new Rect(-29, -28, 60, 80);
+                    Set(minimap, "atlasBounds", atlasBounds);
+                    Assert.That(minimap.mainTexture, Is.SameAs(atlas));
+                    using (var vertices = new UnityEngine.UI.VertexHelper())
+                    {
+                        PopulateMinimap(minimap, vertices);
+                        AssertMinimapColorCentre(vertices, new Color32(74, 219, 115, 255), Vector2.zero);
+                        AssertMinimapColorCentre(vertices, new Color32(174, 181, 184, 255), new Vector2(58.5f, 45.5f));
+                        var vertex = new UnityEngine.UIVertex();
+                        int grey = 0, red = 0, atlasVertices = 0;
+                        for (int i = 0; i < vertices.currentVertCount; i++)
+                        {
+                            vertices.PopulateUIVertex(ref vertex, i);
+                            Assert.That(vertex.position.x, Is.InRange(-104.001f, 104.001f));
+                            Assert.That(vertex.position.y, Is.InRange(-78.001f, 78.001f),
+                                "The rectangular map covers 80 by 60 metres without stretching either axis.");
+                            if (vertex.color.Equals(new Color32(174, 181, 184, 255))) grey++;
+                            if (vertex.color.Equals(new Color32(235, 74, 64, 255))) red++;
+                            if (vertex.uv0.x < 0) continue;
+                            atlasVertices++;
+                            Vector2 world = fixture.World.ServerPosition + (Vector2)vertex.position / 2.6f;
+                            Assert.That(world.x, Is.InRange(atlasBounds.xMin - .001f, atlasBounds.xMax + .001f));
+                            Assert.That(world.y, Is.InRange(atlasBounds.yMin - .001f, atlasBounds.yMax + .001f));
+                            Assert.That(vertex.uv0.x, Is.EqualTo((world.x - atlasBounds.xMin) / atlasBounds.width).Within(.0001f));
+                            Assert.That(vertex.uv0.y, Is.EqualTo((world.y - atlasBounds.yMin) / atlasBounds.height).Within(.0001f),
+                                "Positive world Y maps toward the north/top of the atlas.");
+                        }
+                        Assert.That(grey, Is.EqualTo(24), "A player beyond circular radius but inside the rectangular corner is shown.");
+                        Assert.That(red, Is.GreaterThan(12), "The near-edge monster keeps a circular dot clipped at the rectangle.");
+                        Assert.That(red, Is.LessThan(30), "The outside-rectangle monster does not become an edge marker.");
+                        Assert.That(atlasVertices, Is.GreaterThan(0));
+                    }
+                    var own = fixture.World.OwnFull; own.x += 5; own.y += 5; Set(fixture.World, "ownFull", own);
+                    Set(minimap, "nextRefresh", 0f); Invoke(minimap, "Update");
+                    using (var vertices = new UnityEngine.UI.VertexHelper())
+                    {
+                        PopulateMinimap(minimap, vertices);
+                        AssertMinimapColorCentre(vertices, new Color32(74, 219, 115, 255), Vector2.zero);
+                        AssertMinimapColorCentre(vertices, new Color32(174, 181, 184, 255), new Vector2(45.5f, 32.5f));
+                    }
+                    Set(minimap, "terrainAtlas", null);
+                    using (var vertices = new UnityEngine.UI.VertexHelper())
+                    {
+                        PopulateMinimap(minimap, vertices);
+                        bool navigationShown = false;
+                        var vertex = new UnityEngine.UIVertex();
+                        for (int i = 0; i < vertices.currentVertCount; i++)
+                        {
+                            vertices.PopulateUIVertex(ref vertex, i);
+                            Assert.That(vertex.uv0.x, Is.LessThan(0), "No atlas texture is sampled in navigation fallback.");
+                            Assert.That(vertex.position.x, Is.InRange(-104.001f, 104.001f));
+                            Assert.That(vertex.position.y, Is.InRange(-78.001f, 78.001f));
+                            navigationShown |= vertex.color.Equals(new Color32(79, 91, 72, 235));
+                        }
+                        Assert.That(navigationShown, Is.True, "A missing bake keeps the existing navigation background available.");
+                    }
+                }
+            }
+            finally { UnityEngine.Object.DestroyImmediate(atlas); UnityEngine.Object.DestroyImmediate(map); }
+        }
+
+        [Test]
+        [Category("WorldMinimap")]
+        public void MinimapClearsDepartedDefeatedAndStaleWorldObservationsWithoutHidingDeadSelf()
+        {
+            var map = ScriptableObject.CreateInstance<C20WorldMap>();
+            try
+            {
+                map.origin = new Vector2(-50, -50); map.width = map.height = 120;
+                map.walkable = new byte[map.width * map.height];
+                using (var fixture = new ObservationFixture())
+                {
+                    fixture.Players(100, Player(42)); fixture.Monsters(100, Monster(0, 0));
+                    var minimap = fixture.CreateMinimap(map);
+                    var group = (CanvasGroup)Get(minimap, "panelGroup");
+                    var players = new List<Vector2>(); var monsters = new List<Vector2>();
+                    Assert.That(fixture.Observer.CopyMinimapPositions(players, monsters), Is.True);
+                    Assert.That(players.Count, Is.EqualTo(1)); Assert.That(monsters.Count, Is.EqualTo(1));
+                    fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 7, fieldVal = Bits(18) });
+                    fixture.MonsterDeltas(new MonsterDeltaField { internalId = 0, fieldId = 2, fieldVal = Bits(19) });
+                    fixture.Observer.CopyMinimapPositions(players, monsters);
+                    Assert.That(players[0], Is.EqualTo(new Vector2(18, 12)));
+                    Assert.That(monsters[0], Is.EqualTo(new Vector2(11, 19)));
+                    fixture.RemovePlayer(42);
+                    fixture.MonsterDeltas(new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 0 });
+                    fixture.Observer.CopyMinimapPositions(players, monsters);
+                    Assert.That(players, Is.Empty); Assert.That(monsters, Is.Empty);
+                    var own = fixture.World.OwnFull; own.hp = 0; Set(fixture.World, "ownFull", own);
+                    Set(minimap, "nextRefresh", 0f); Invoke(minimap, "Update");
+                    Assert.That(group.alpha, Is.EqualTo(1), "HP0 is not a reason to hide the local player's map.");
+                    typeof(C02WorldScreen).GetProperty("Stage").GetSetMethod(true).Invoke(fixture.World,
+                        new object[] { C02Stage.TransitionPending });
+                    ((Action)Get(fixture.World, "WorldStateChanged"))?.Invoke();
+                    Assert.That(group.alpha, Is.Zero, "Transition hides the whole panel immediately.");
+                    players.Add(Vector2.one); monsters.Add(Vector2.one);
+                    Assert.That(fixture.Observer.CopyMinimapPositions(players, monsters), Is.False);
+                    Assert.That(players, Is.Empty); Assert.That(monsters, Is.Empty);
+                    typeof(C02WorldScreen).GetProperty("Stage").GetSetMethod(true).Invoke(fixture.World,
+                        new object[] { C02Stage.InWorld });
+                    typeof(C02WorldScreen).GetProperty("ZoneID").GetSetMethod(true).Invoke(fixture.World, new object[] { (ushort)2 });
+                    Assert.That(fixture.Observer.CopyMinimapPositions(players, monsters), Is.False, "Old ownership cannot leak positions.");
+                    fixture.CloseWorld();
+                    Assert.That(group.alpha, Is.Zero);
+                    using (var vertices = new UnityEngine.UI.VertexHelper())
+                    { PopulateMinimap(minimap, vertices); Assert.That(vertices.currentVertCount, Is.Zero); }
+                    fixture.OpenWorld(); Set(minimap, "nextRefresh", 0f); Invoke(minimap, "Update");
+                    Assert.That(group.alpha, Is.EqualTo(1), "The always-active panel can recover on the next world entry.");
+                    fixture.DisableObserver();
+                    Assert.That(fixture.Observer.CopyMinimapPositions(players, monsters), Is.False);
+                    Assert.That(players, Is.Empty); Assert.That(monsters, Is.Empty);
+                    minimap.enabled = false;
+                    Assert.That(group.alpha, Is.Zero);
+                }
+            }
+            finally { UnityEngine.Object.DestroyImmediate(map); }
+        }
+
+        private static void PopulateMinimap(WorldMinimap minimap, UnityEngine.UI.VertexHelper vertices) =>
+            typeof(WorldMinimap).GetMethod("OnPopulateMesh", BindingFlags.Instance | BindingFlags.NonPublic,
+                null, new[] { typeof(UnityEngine.UI.VertexHelper) }, null).Invoke(minimap, new object[] { vertices });
+
+        private static void AssertMinimapColorCentre(UnityEngine.UI.VertexHelper vertices, Color32 color, Vector2 expected)
+        {
+            Vector2 centre = Vector2.zero;
+            int count = 0;
+            var vertex = new UnityEngine.UIVertex();
+            for (int i = 0; i < vertices.currentVertCount; i++)
+            {
+                vertices.PopulateUIVertex(ref vertex, i);
+                if (!vertex.color.Equals(color)) continue;
+                Assert.That(vertex.uv0.x, Is.LessThan(0), "Overlay colours must not be multiplied by the terrain atlas.");
+                centre += (Vector2)vertex.position; count++;
+            }
+            Assert.That(count, Is.GreaterThan(0));
+            Assert.That(Vector2.Distance(centre / count, expected), Is.LessThan(.001f));
+        }
+
 #if UNITY_EDITOR
         [UnityEngine.TestTools.UnityTest]
         public IEnumerator FirstHuntFeedback_MonsterDefeatKeepsOnlyBriefVisualAndLiveFullResetsIt()
@@ -76,6 +236,207 @@ namespace C02.Tests
             }
         }
 #endif
+
+#if UNITY_EDITOR
+        [Test]
+        [Category("PR55Followup")]
+        public void NearbyCombatBundle_DownedRecoveryKeepsLatestFacingAndLifecycleResetsIt()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                fixture.UsePlayerPrefab(UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/C02/Art/C04/ObservedPlayer.prefab"));
+                fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42));
+                var actor = fixture.Visual("players", (uint)42);
+                var motion = actor.GetComponent<C19ActorMotion>();
+                var body = (Transform)Get(motion, "visual");
+                Quaternion rest = body.localRotation;
+                // Consume the initial spawn displacement before testing an accepted attack heading.
+                Invoke(motion, "LateUpdate");
+                foreach (byte direction in new byte[] { 3, 1 })
+                {
+                    motion.PlayAttack(direction, true, 2);
+                    Set(motion, "attackStarted", Time.unscaledTime - .15f);
+                    Invoke(motion, "LateUpdate");
+                    Quaternion expected = Quaternion.Inverse(body.parent.rotation) * Quaternion.Euler(0, direction == 3 ? 270 : 0, 0);
+                    fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 0 });
+                    Assert.That((bool)Get(motion, "hasFacing"), Is.True);
+                    Assert.That(Quaternion.Angle(body.localRotation, expected), Is.GreaterThan(60));
+                    if (direction == 3)
+                        fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 30 });
+                    else fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42));
+                    Assert.That((bool)Get(motion, "downed"), Is.False);
+                    Assert.That(Quaternion.Angle(body.localRotation, expected), Is.LessThan(.01f),
+                        "Recovery restores upright facing, without reusing the attack or downed rotation.");
+                    Invoke(motion, "LateUpdate");
+                    Assert.That(Quaternion.Angle(body.localRotation, expected), Is.LessThan(.01f),
+                        "Standing still after recovery keeps the last accepted heading.");
+                }
+                actor.SetActive(false);
+                Assert.That((bool)Get(motion, "hasFacing"), Is.False);
+                Assert.That(Quaternion.Angle(body.localRotation, rest), Is.LessThan(.01f));
+                actor.SetActive(true);
+                Assert.That((bool)Get(motion, "hasFacing"), Is.False);
+                Assert.That(Quaternion.Angle(body.localRotation, rest), Is.LessThan(.01f),
+                    "The normal disable/enable lifecycle still performs a full pose reset.");
+            }
+        }
+
+        [UnityEngine.TestTools.UnityTest]
+        public IEnumerator NearbyCombatBundle_DownedPlayersPersistRecoverAndCleanUpWithoutDefeatReplay()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                fixture.UsePlayerPrefab(UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/C02/Art/C04/ObservedPlayer.prefab"));
+                var dead = Player(42); dead.hp = 0;
+                fixture.Players(Time.realtimeSinceStartupAsDouble, dead);
+                var actor = fixture.Visual("players", (uint)42);
+                var motion = actor.GetComponent<C19ActorMotion>();
+                Assert.That((bool)Get(motion, "downed"), Is.True, "An initial zero-HP Full establishes the downed pose.");
+                Assert.That((float)Get(motion, "defeatStarted"), Is.LessThan(0), "Player observation never starts monster disposal.");
+                Assert.That((float)Get(actor.GetComponent<C13EntityVitals>(), "damagePulseUntil"), Is.Zero);
+                var body = (Transform)Get(motion, "visual");
+                Assert.That(body, Is.Not.Null);
+                Assert.That(body.name, Is.EqualTo("GuardVisual"), "The real knight prefab uses its authored visual root.");
+                var pose = body.localRotation;
+                motion.PlayAttack(3, true, 2); motion.PlayHit();
+                yield return new WaitForSecondsRealtime(.8f);
+                Assert.That(actor != null && actor.activeSelf, Is.True);
+                Assert.That(Quaternion.Angle(body.localRotation, pose), Is.LessThan(.01f));
+                fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 30 });
+                Assert.That(fixture.Visual("players", (uint)42), Is.SameAs(actor));
+                Assert.That((bool)Get(motion, "downed"), Is.False);
+                Assert.That(Quaternion.Angle(body.localRotation, pose), Is.GreaterThan(60));
+                fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 0 });
+                Assert.That((bool)Get(motion, "downed"), Is.True);
+                fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42));
+                Assert.That((bool)Get(motion, "downed"), Is.False, "Full recovery also restores the same actor.");
+                fixture.Players(Time.realtimeSinceStartupAsDouble, dead);
+                fixture.RemovePlayer(42);
+                Assert.That(actor.activeSelf, Is.False);
+                fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42));
+                var renewed = fixture.Visual("players", (uint)42);
+                Assert.That((bool)Get(renewed.GetComponent<C19ActorMotion>(), "downed"), Is.False);
+                fixture.CloseWorld();
+                Assert.That(renewed.activeSelf, Is.False);
+            }
+        }
+#endif
+
+        [Test]
+        public void NearbyCombatBundle_RemoteSkillAreasUseAcceptedPhaseGeometryAndBoundedObservationLifetime()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                fixture.ConfigureMonsterRange();
+                fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42));
+                var action = new ActionResultField { casterType = 0, casterId = 42, skillSlot = 1, skillId = 1, skillPhase = 0, dir = 0, x = 20, y = 30 };
+                fixture.MonsterActions(action);
+                var area = fixture.PlayerRange(42);
+                Assert.That(area, Is.Not.Null);
+                var mesh = area.GetComponent<MeshFilter>().sharedMesh;
+                Assert.That(mesh.vertices.Length, Is.EqualTo(41));
+                Assert.That(mesh.vertices[0], Is.EqualTo(new Vector3(20, .06f, 30)));
+                Assert.That(mesh.bounds.size.x, Is.EqualTo(16).Within(.001f));
+                double deadline = fixture.PlayerRangeDeadline(42);
+                var invalid = action; invalid.casterId = 7;
+                fixture.MonsterActions(invalid);
+                invalid.casterId = 999; fixture.MonsterActions(invalid);
+                invalid = action; invalid.skillId = 2; fixture.MonsterActions(invalid);
+                invalid = action; invalid.dir = 4; fixture.MonsterActions(invalid);
+                invalid = action; invalid.x = float.NaN; fixture.MonsterActions(invalid);
+                invalid = action; invalid.skillPhase = 99; fixture.MonsterActions(invalid);
+                Assert.That(fixture.PlayerRangeDeadline(42), Is.EqualTo(deadline), "Rejected actions cannot refresh the area.");
+                action.skillSlot = 2; action.skillId = 2;
+                for (byte direction = 0; direction < 4; direction++)
+                {
+                    action.dir = direction;
+                    fixture.MonsterActions(action);
+                    mesh = area.GetComponent<MeshFilter>().sharedMesh;
+                    Assert.That(mesh.vertices.Length, Is.EqualTo(4));
+                    Assert.That(direction < 2 ? mesh.bounds.size.z : mesh.bounds.size.x, Is.EqualTo(12).Within(.001f));
+                    Assert.That(direction < 2 ? mesh.bounds.size.x : mesh.bounds.size.z, Is.EqualTo(3).Within(.001f));
+                    float signedReach = direction == 0 ? mesh.bounds.center.z - 30 : direction == 1 ? 30 - mesh.bounds.center.z :
+                        direction == 2 ? 20 - mesh.bounds.center.x : mesh.bounds.center.x - 20;
+                    Assert.That(signedReach, Is.EqualTo(6).Within(.001f));
+                }
+                action.skillPhase = 1;
+                fixture.MonsterActions(action);
+                Assert.That(mesh.colors[0].r, Is.GreaterThan(mesh.colors[0].b), "Accepted Hit changes charge blue into a short gold release.");
+                fixture.Render(fixture.PlayerRangeDeadline(42) + .01);
+                Assert.That(area.gameObject.activeSelf, Is.False);
+                action.skillPhase = 0; fixture.MonsterActions(action);
+                fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 0 });
+                Assert.That(area.gameObject.activeSelf, Is.False);
+                fixture.MonsterActions(action);
+                Assert.That(area.gameObject.activeSelf, Is.False, "Dead casters cannot start another charge.");
+                fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42)); fixture.MonsterActions(action);
+                fixture.RemovePlayer(42);
+                Assert.That(area.gameObject.activeSelf, Is.False, "AOI removal disposes the remote skill area.");
+                fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42)); fixture.MonsterActions(action);
+                area = fixture.PlayerRange(42);
+                fixture.Clear();
+                Assert.That(area.gameObject.activeSelf, Is.False);
+                fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42)); fixture.MonsterActions(action);
+                area = fixture.PlayerRange(42); fixture.DisableObserver();
+                Assert.That(area.gameObject.activeSelf, Is.False);
+            }
+        }
+
+        [Test]
+        public void NearbyPlayerVitals_FollowAcceptedHealthWithoutMonsterDeathAndResetWithObservation()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                fixture.Players(100, Player(7), Player(42));
+                Assert.That(fixture.Count("players"), Is.EqualTo(1), "The local player's HUD remains separate.");
+                var visual = fixture.Visual("players", (uint)42);
+                var vitals = visual.GetComponent<C13EntityVitals>();
+                var fill = fixture.VitalsImage(visual);
+                var normalColor = fill.color;
+                Assert.That(fixture.VitalsRatio(visual), Is.EqualTo(.7f).Within(.001f));
+                Assert.That((float)Get(vitals, "damagePulseUntil"), Is.Zero, "Initial Full establishes a baseline.");
+
+                var damaged = Player(42); damaged.hp = 60;
+                fixture.Players(101, damaged);
+                Assert.That(fixture.VitalsRatio(visual), Is.EqualTo(.6f).Within(.001f));
+                Assert.That(fill.color, Is.EqualTo(new Color(1f, .78f, .2f, 1f)), "Full damage pulses too.");
+                Set(vitals, "damagePulseUntil", Time.unscaledTime - 1f);
+                Invoke(vitals, "LateUpdate");
+                fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 60 });
+                Assert.That(fill.color, Is.EqualTo(normalColor), "A matching Delta does not replay damage.");
+                fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 101 });
+                Assert.That(fixture.PlayerState(42).hp, Is.EqualTo(60));
+                Assert.That(fixture.VitalsRatio(visual), Is.EqualTo(.6f).Within(.001f));
+                Assert.That(fill.color, Is.EqualTo(normalColor), "Rejected HP cannot pulse.");
+
+                fixture.PlayerDeltas(
+                    new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 40 },
+                    new DeltaUpdateField { zoneInternalID = 42, fieldID = 2, fieldVal = 200 });
+                Assert.That(fixture.VitalsRatio(visual), Is.EqualTo(.2f).Within(.001f));
+                Assert.That(fill.color, Is.EqualTo(new Color(1f, .78f, .2f, 1f)), "Delta damage uses accepted max HP.");
+                fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 0, fieldVal = 0 });
+                Assert.That(fixture.Count("players"), Is.EqualTo(1));
+                Assert.That(visual.activeSelf, Is.True, "Remote HP0 does not apply monster despawn behavior.");
+                Assert.That(fixture.VitalsRatio(visual), Is.Zero);
+                Assert.That((float)Get(visual.GetComponent<C19ActorMotion>(), "defeatStarted"), Is.LessThan(0));
+
+                Set(vitals, "damagePulseUntil", Time.unscaledTime - 1f);
+                Invoke(vitals, "LateUpdate");
+                fixture.Players(102, Player(42));
+                Assert.That(fixture.Visual("players", (uint)42), Is.SameAs(visual));
+                Assert.That(fixture.VitalsRatio(visual), Is.EqualTo(.7f).Within(.001f));
+                Assert.That(fill.color, Is.EqualTo(normalColor), "Recovery is not damage.");
+                fixture.Expire(105);
+                Assert.That(fixture.Count("players"), Is.Zero);
+                Assert.That(visual.activeSelf, Is.False, "AOI expiry removes the bar with its actor.");
+                fixture.Players(106, Player(42));
+                var renewed = fixture.Visual("players", (uint)42);
+                Assert.That(renewed, Is.Not.SameAs(visual));
+                Assert.That((float)Get(renewed.GetComponent<C13EntityVitals>(), "damagePulseUntil"), Is.Zero);
+                fixture.DisableObserver();
+                Assert.That(renewed.activeSelf, Is.False, "Observer cleanup also removes player vitals.");
+            }
+        }
 
         [Test]
         public void MonsterPacketsUse25And8ByteFields_AllowIdZero_AndRejectMalformedCounts()
@@ -732,8 +1093,25 @@ namespace C02.Tests
                 Bind(NewModel());
             }
 
+            public C02WorldScreen World => world;
+            public C04ObservedWorld Observer => observer;
+            public WorldMinimap CreateMinimap(C20WorldMap map)
+            {
+                var panel = Child("minimap panel");
+                var group = panel.AddComponent<CanvasGroup>(); group.alpha = 0;
+                var graphic = Child("minimap graphic"); graphic.SetActive(false);
+                graphic.transform.SetParent(panel.transform, false);
+                ((RectTransform)graphic.transform).sizeDelta = new Vector2(80, 80);
+                var minimap = graphic.AddComponent<WorldMinimap>();
+                Set(minimap, "worldScreen", world); Set(minimap, "observedWorld", observer);
+                Set(minimap, "worldMap", map); Set(minimap, "panelGroup", group);
+                graphic.SetActive(true);
+                return minimap;
+            }
+
             public ViewModel NewModel() { var model = C04ObservationTests.NewModel(dispatcher); models.Add(model); return model; }
             public void UseMonsterPrefabs(GameObject prefab) => Set(observer, "monsterPrefabs", new[] { prefab, prefab, prefab });
+            public void UsePlayerPrefab(GameObject prefab) => Set(observer, "playerPrefab", prefab);
             public IViewModelNet NetworkModel => models[models.Count - 1];
             public void ConfigureMonsterRange()
             {
@@ -765,6 +1143,8 @@ namespace C02.Tests
                 ((IViewModelNet)models[models.Count - 1]).ActionResultReceived(1, 1, (ushort)results.Length, results);
             public void Render(double now) => Invoke(observer, "RenderObservations", now);
             public MeshRenderer MonsterRange(ushort id) => PreviewRenderer(EntryField("monsters", id, "RangePreview"));
+            public MeshRenderer PlayerRange(uint id) => PreviewRenderer(EntryField("players", id, "RangePreview"));
+            public double PlayerRangeDeadline(uint id) => PreviewDeadline(EntryField("players", id, "RangePreview"));
             public double RangeDeadline(ushort id) => PreviewDeadline(EntryField("monsters", id, "RangePreview"));
             public MeshRenderer BossFanPreview(ushort id, bool second) =>
                 PreviewRenderer(EntryField("monsters", id, second ? "BossFanPreviewSecond" : "BossFanPreviewFirst"));

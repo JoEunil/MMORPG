@@ -299,6 +299,89 @@ public static class C27FieldDressingSetup
         Debug.Log("Town road extended visually from x100 to x205 using two existing mesh instances. Navigation, collision, spawn and AI unchanged.");
     }
 
+    [MenuItem("C02/Art/Apply Selected Roadside Dressing")]
+    public static void ApplySelectedRoadsideDressing()
+    {
+        var scene = EditorSceneManager.GetActiveScene();
+        if (EditorApplication.isPlayingOrWillChangePlaymode || scene.path != "Assets/C02/C02.unity" || scene.isDirty)
+            throw new InvalidOperationException("Open the clean, saved C02 scene in Edit Mode.");
+        var authors = Object.FindObjectsByType<C20MapAuthoring>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        if (authors.Length != 1 || authors[0].map == null || !authors[0].map.IsValid ||
+            authors[0].obstacles == null || authors[0].obstacles.Length != 18)
+            throw new InvalidOperationException("The existing baked world map is required.");
+        var author = authors[0];
+        Transform citadel = author.transform.parent == null ? null : author.transform.parent.Find("CitadelEnvironment");
+        Transform approach = citadel == null ? null : citadel.Find("TownRoadApproach");
+        // The login scene deliberately keeps the world parent inactive in Edit Mode.
+        if (approach == null || approach.Find("FieldboundCobbles_1") == null || !citadel.gameObject.activeSelf ||
+            citadel.position != Vector3.zero || citadel.rotation != Quaternion.identity || citadel.lossyScale != Vector3.one)
+            throw new InvalidOperationException("The active, unscaled Citadel and existing fieldbound cobbles are required.");
+        const string folder = "Assets/C02/Art/CitadelEnvironment/";
+        var stone = AssetDatabase.LoadAssetAtPath<Mesh>(folder + "BevelledAshlar.asset");
+        var leaf = AssetDatabase.LoadAssetAtPath<Mesh>(folder + "CuppedOakLeaf.asset");
+        var stoneMaterial = AssetDatabase.LoadAssetAtPath<Material>(folder + "WeatheredLimestone.mat");
+        var foliageMaterial = AssetDatabase.LoadAssetAtPath<Material>(folder + "OakLeaves.mat");
+        if (stone == null || leaf == null || stoneMaterial == null || foliageMaterial == null)
+            throw new InvalidOperationException("Existing Citadel stone and foliage assets are required.");
+        // Fixed outskirts of the approach and first hunting space, not runtime/camera-relative scenery.
+        // Preserve the paved x100..205 / z9..11 corridor and the first encounter's open centre.
+        Vector2[] clusters = {
+            new Vector2(112, 6), new Vector2(112, 14), new Vector2(136, 6), new Vector2(136, 14),
+            new Vector2(160, 6), new Vector2(160, 14), new Vector2(184, 6), new Vector2(184, 14),
+            new Vector2(278, 2), new Vector2(293, 2), new Vector2(308, 2), new Vector2(324, 2),
+            new Vector2(278, 35), new Vector2(294, 35), new Vector2(310, 35), new Vector2(324, 35)
+        };
+        foreach (Vector2 point in clusters)
+            if (!author.map.IsWalkable(point.x, point.y) || NearObstacle(author, new Vector3(point.x, 0, point.y), 2))
+                throw new InvalidOperationException("Selected roadside decoration must remain clear of baked obstacles.");
+        Vector3 landmark = new Vector3(203, 0, 16);
+        if (!author.map.IsWalkable(landmark.x, landmark.z) || NearObstacle(author, landmark, 2))
+            throw new InvalidOperationException("The field-entry landmark must remain outside baked obstacles.");
+        Transform existing = citadel.Find("SelectedRoadsideDressing");
+        if (existing != null && existing.GetComponentsInChildren<Collider>(true).Length != 0)
+            throw new InvalidOperationException("Selected roadside dressing must remain presentation-only.");
+        Undo.IncrementCurrentGroup();
+        int undoGroup = Undo.GetCurrentGroup();
+        Undo.SetCurrentGroupName("Apply selected roadside dressing");
+        try
+        {
+            Transform root = RoadObject(citadel, "SelectedRoadsideDressing");
+            for (int cluster = 0; cluster < clusters.Length; cluster++)
+            {
+                Vector3 centre = new Vector3(clusters[cluster].x, 0, clusters[cluster].y);
+                // Buried, ankle-height pieces do not imply an unexported solid wall.
+                RoadMesh(root, "VergeStone_" + cluster, stone, stoneMaterial,
+                    centre + new Vector3(.25f, .04f, .25f), new Vector3(1.15f, .16f, .7f), cluster * 37);
+                for (int tuft = 0; tuft < 4; tuft++)
+                {
+                    var plant = RoadMesh(root, "VergeLeaf_" + cluster + "_" + tuft, leaf, foliageMaterial,
+                        centre + new Vector3((tuft % 2) * .48f - .5f, .13f, (tuft / 2) * .43f - .4f),
+                        new Vector3(.8f, .52f, .8f), cluster * 53 + tuft * 73);
+                    plant.localRotation *= Quaternion.Euler(58, 0, 0);
+                }
+            }
+            // One low cairn marks the end of town paving. No repeated direction signs or new service/portal.
+            RoadMesh(root, "FieldEntryCairnBase", stone, stoneMaterial,
+                landmark + Vector3.up * .09f, new Vector3(1.6f, .18f, 1.2f), 7);
+            RoadMesh(root, "FieldEntryCairnLower", stone, stoneMaterial,
+                landmark + Vector3.up * .34f, new Vector3(.95f, .38f, .72f), -8);
+            RoadMesh(root, "FieldEntryCairnCap", stone, stoneMaterial,
+                landmark + Vector3.up * .66f, new Vector3(.62f, .26f, .5f), 12);
+            if (root.GetComponentsInChildren<Collider>(true).Length != 0)
+                throw new InvalidOperationException("Roadside dressing must not introduce colliders.");
+            EditorSceneManager.MarkSceneDirty(scene);
+            Undo.FlushUndoRecordObjects();
+            if (!EditorSceneManager.SaveScene(scene)) throw new InvalidOperationException("Saving selected roadside dressing failed.");
+        }
+        catch
+        {
+            Undo.RevertAllDownToGroup(undoGroup);
+            throw;
+        }
+        finally { Undo.CollapseUndoOperations(undoGroup); }
+        Debug.Log("Selected A roadside dressing applied: low town verges, first-hunt outskirts and one field-entry cairn. Existing navigation, collision, spawn and AI unchanged.");
+    }
+
     private static Transform RoadObject(Transform parent, string name)
     {
         Transform child = parent.Find(name);

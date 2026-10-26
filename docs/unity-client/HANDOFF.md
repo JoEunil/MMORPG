@@ -1,26 +1,20 @@
-# 현재 인계 — 2026-10-25
+# 현재 인계 — 2026-10-26
 
-## 현재 목표·분기
-작은 PR을 만들지 않고 사용자 기능 묶음으로 누적한다. PR54 전투 후속은 승인 후 게시했고 다음 플레이어 HUD 묶음을 별도 로컬 브랜치에서 진행했다.
+## 목표·정본
+사용자 승인과 최신 피드백에 따라 PR55의 실제 지형 미니맵을 직사각형으로 바꾸고 제목·범례를 제거해 게시한다. 가방·거래소 흐름은 별도 PR56으로 게시했다. 병합은 사용자 몫이다.
+- Git 정본 C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, 현재 codex/nearby-player-feedback.
+- Editor C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient, 마지막 Unity6000.0.47f1/PID43612/Pipeline7800. ROOT의 PR56제품3파일과 Git의 PR55기준은 다르므로 전체후보동일이라고보지않는다.
+- 사용자 서버/몬스터AI·DB·패킷·DLL·통행/스폰은 변경하지 않는다.
 
-- Git 정본 C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source. 현재 codex/player-vitals-feedback, PR54 후보3806a9f에서 분기했다. codex/client-ui-interaction은 PR54 후보3806a9f 보존. PR55는 아직 생성하지 않았다.
-- Editor C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient,6000.0.47f1/Pipeline7800. 현재 다음HUD 제품파일이 반영돼 있으므로 PR54 후보 실입력 검증 상태와 혼동하지 않는다. 원격 master7289a73에 PR53 병합 확인.
+## 완료·검증
+208x156 직사각 미니맵, 가로±40m/세로±30m 동일축척. 초록중앙/회색타player/빨강monster,북쪽위,20·40m원,실제staticmapatlas유지. Radar제목·아래legend제거. 변경4파일ROOT/CANDhash일치,컴파일0,투영검사1/1최초통과,두해상도격리렌더·독립코드리뷰·Astra영향검수통과. 기존통과검사반복0. 샘플개체/HUD값은실입력/다중접속검증이아니다. 저장된Scene만백업일치guard후저장했다.
 
-## PR54 게시 완료
-패널·채팅 조작, 에이전트 흐름과 실제 캡처를 게시한 PR54 head1eaf6b5는 사이트Actions40178614489 success. 전투 후속 제품5dfccbc/실제근거d09584f/정리206e627/승인기록3806a9f를 기존 PR54에 정상 push하고 제목·설명을 갱신했다.
+## 승인·게시
+RADAR01/r1 지정U0C9QEUHPMK 회신1793013105.315639를실제Slack부모/요청1793010905.268759·미소비상태와대조했다. 최신채팅직사각형피드백은같은범위후속이며재승인요구없음. 검수후PR55에게시완료(제품head07805ef93b0d6ac18943051432367eb7c3f38c5d),병합제외. 이전HUDREF02(1793007985.345979)는기소비로재사용금지.
+ITEMFLOW01/r1 회신1793013099.132149/부모1793012032.698299는1회소비완료. PR56 https://github.com/JoEunil/MMORPG/pull/56, head0263b67cf53df048828221b114ca8a916c2c27ca,CI40313760296 success. PR55부모브랜치대상으로아이템코드3파일/문서만포함;PR55병합후master대상으로조정한다. parent게시후필요한정상merge로충돌정리하며forcepush없음.
 
-전투 후속은 독립리뷰·컴파일·신규자동3사례 통과. 실제 서버·합성방향키/X로 HP1500→500→0, 요청/charging/released·추정쿨다운·쓰러짐 확인. 서버/몬스터AI/DB 수정 없음. 실제캡처2장과 사이트빌드 완료. ownedMain q종료0/LoginCtrlC종료1/포트3000·9999미수신/Edit·clean·backgroundfalse 복원. 통과 테스트 반복하지 않는다.
+## 다음 행동·한계
+PR55게시후양쪽실제원격head/PR56차등diff/CI를확인하고Slack같은앱스레드에각결과를회신한다. 정상게임조작입력허용은유지하지만이번실입력/서버거래테스트는없음. 맵변경시atlas명시재촬영+HUDsetup재연결. 실제거래/다중접속미검증은유지하며시딩하지않는다.
+상세결과는 history/2026-10-24-client-playability/RESULTS.txt,PR56기록은해당branch의ITEM_FLOW_FOLLOWUP.md. 과거인계는같은history폴더보존본을따른다.
 
-HUNTFEEDBACK01: 후보206e627(이후승인기록만3806a9f), 부모1792918959.109849,요청1792920307.807119. 추가13파일을 기존PR54에 정상push·설명갱신하는 범위이며 병합·배포 제외. 지정 사용자 U0C9QEUHPMK 회신1792920766.249229를 원문 대조하고 1회 소비 완료. 승인 범위의 codex/client-ui-interaction 3806a9f만 게시했으며 다음 HUD 510c794는 미게시. 수신기39232/listening/고정Coordinator·등록스레드 확인. 승인 도착 시 현재 다음브랜치를 push하지 말고 codex/client-ui-interaction의 고정 후보만 게시한다. CLIENTUI01 회신1792918532.280879는 기존PR54 게시에 소비 완료이며 새 승인으로 재사용하지 않는다.
-
-## 다음 HUD 묶음
-현재 레벨·EXP가 숨겨진 C05Aim을 재사용해 HP위 우측 표시. 실제HP감소 .45초 게이지 강조와 레벨/EXP변화1.2초 글자 강조. 최초Full·재접속·구역/캐릭터/ID변경에서 비교기준·색 초기화. 서버원값만 쓰고 다음레벨백분율·처치보상은 추정하지 않는다.
-
-독립리뷰 차단없음, 컴파일0오류, 신규PlayerVitalsFeedback2사례 통과. ROOT/CAND제품1·테스트2파일 동기화. 실제 서버·합성 방향키/X로 HP강조·EXP20→30 표시와 1280x720 배치/색 복귀 확인. 실제캡처2장과 공개문서/README 대표이미지 갱신. Scene/Prefab/DLL/서버/AI/DB 변경 없음. 실제입력 허용 유지. 새 미술방향 선택 대기 없음.
-
-## 다음 행동
-PR54 게시·설명 갱신 완료. 게시 head3806a9f의 사이트 Actions40181375540 success 확인(정식 Pages 배포 아님). 승인 처리 앱 회신1792921061.275009·완료채널1792921062.092639 기록. HUD와 잔액 조회 복구를 현재브랜치에 누적 완료. C09 시작예외/UI시간초과도 기존 최대2회 조회복구를 재사용하며 거래 재시도 없음. 독립리뷰·컴파일·신규WalletReadRecovery1사례 통과. 기존HUD2사례는 반복하지 않음. 성공거래 차감은 실제보유데이터 부족으로 미검증; DB를 채우지 않는다. 열린 PR54에 이번 전체 묶음을 추가하는 HUDWALLET01 후보64542e0 승인 대기(제품195e2f3 이후 README 실제촬영 표기/집계 기록만 보완). 요청1792921603.305979, 지정 사람 회신 미수신/미소비. PR54 3806a9f→이번 15파일 추가 정상push·설명갱신만 요청했다. 별도 PR55를 만들지 않으며 승인 전 push 없음. 같은 묶음 부모1792920540.953299 사용.
-
-상세근거 [RESULTS](history/2026-10-24-client-playability/RESULTS.txt), 목표·선택 [BRIEF](BRIEF.md).
-
-후속 로그인/캐릭터 진입 조사: 현재 계약 내 정당한 클라이언트 단독 결함 없음. 빈 목록/조회실패 모호성은 ClientCore API·서버 응답 제약이므로 자동 재시도 기능을 임의 추가하지 않음. 새 선택 필요 없음. 현 승인 후보 게시 외에 근거 있는 추가 범위는 현재 없음.
+RADAR01/r1 회신1793013105.315639는최신직사각형피드백과함께1회소비완료,재사용금지. PR55게시제품4파일은Astra검수후변경0. ROOT Editor C02Edit/clean/backgroundfalse,208x156/titleAbsent/legendAbsent확인. CI확인후PR56에부모를정상merge해차등범위를정리하며새게임검사는반복하지않는다.

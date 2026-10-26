@@ -1,0 +1,18 @@
+{
+  "record_date": "2026-10-25",
+  "source": "사용자 채팅: 기획·아트 일괄 피드백",
+  "art": {
+    "combat": "A",
+    "town": "A",
+    "hunting": "A",
+    "ui": "A"
+  },
+  "planning": {
+    "combat_info": "A",
+    "route_info": "A",
+    "item_info": "B"
+  },
+  "capture_state": "선택 표시는 채팅에서 확정된 조합을 총괄이 기록용 브라우저에서 재현했다. 사용자의 직접 브라우저 조작이나 자동 수신 증거가 아니다.",
+  "implementation_candidate": "c5d3bf4",
+  "publication_approval": "별도 승인 대기, 이 선택은 게시 승인이 아님"
+}

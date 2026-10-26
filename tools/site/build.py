@@ -195,8 +195,11 @@ def render_execution_flow(section):
     steps = ''.join(f'<li>{diagram_node(item)}</li>' for item in groups["작업 흐름"])
     feedback = ''.join(f'<li>{diagram_node(item)}</li>' for item in groups["피드백"])
     intro = next(b for b in section["blocks"] if isinstance(b, str) and b and not b.startswith("- "))
+    example_start = next((i for i, block in enumerate(section["blocks"])
+                          if block == ("heading", "실제 비교·선택 예시")), None)
+    example = render_blocks(section["blocks"][example_start:], HOME_SOURCE) if example_start is not None else ""
     return f'''<section class="execution-flow section-wrap" id="execution-flow"><div class="section-title"><h2>{escape(section['title'])}</h2><p class="diagram-intro">{escape(intro)}</p></div>
-<ol class="workflow-steps" aria-label="기능 구현의 진행 순서">{steps}</ol><ul class="workflow-feedback">{feedback}</ul></section>'''
+<ol class="workflow-steps" aria-label="기능 구현의 진행 순서">{steps}</ol><ul class="workflow-feedback">{feedback}</ul>{example}</section>'''
 
 
 

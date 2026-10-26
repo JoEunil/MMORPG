@@ -78,6 +78,7 @@ public static class CitadelEnvironmentArt
             ConfigureGroundSurface(groundMaterial);
             if(groundMaterial.mainTexture==null)throw new FileNotFoundException("Import the meadow ground material source.");
             groundMaterial.mainTextureScale=new Vector2(ground.size.x/4f,ground.size.z/4f);
+            ConfigureGroundReadability(groundMaterial,ground);
             groundRenderer.sharedMaterial=groundMaterial;
         }
         if(root.GetComponentsInChildren<Collider>(true).Length!=0)
@@ -102,12 +103,71 @@ public static class CitadelEnvironmentArt
         if(renderer==null)throw new InvalidOperationException("The authored world ground renderer is required.");
         renderer.sharedMaterial=material;
         renderer.enabled=true;
+        ConfigureGroundReadability(material,C20MapAuthoring.WorldBounds(author.ground));
         // The old single-zone cosmetic floor sits above the exported world surface and hides its texture.
         var legacy=author.transform.parent.Find("V04MeanderingMeadow/ContinuousWalkableMeadow");
         if(legacy!=null && legacy.TryGetComponent<MeshRenderer>(out var legacyRenderer))legacyRenderer.enabled=false;
         EditorSceneManager.MarkSceneDirty(author.gameObject.scene);
         AssetDatabase.SaveAssets();
-        Debug.Log("Ground surface refreshed; obsolete cosmetic floor hidden. Existing texture scale, collision geometry, lighting and navigation are unchanged.");
+        Debug.Log("Ground surface refreshed with broader texture variation; obsolete cosmetic floor hidden. Collision geometry, lighting and navigation are unchanged.");
+    }
+
+    [MenuItem("Tools/Client Art/Refine Existing Field Materials Only")]
+    public static void RefreshFieldMaterialReadability()
+    {
+        if(EditorApplication.isPlayingOrWillChangePlaymode)
+            throw new InvalidOperationException("Field material authoring requires Edit Mode.");
+        var author=Object.FindFirstObjectByType<C20MapAuthoring>(FindObjectsInactive.Include);
+        if(author==null || author.ground==null)
+            throw new InvalidOperationException("The authored navigation ground is required.");
+        var renderer=author.ground.GetComponent<MeshRenderer>();
+        var meadow=AssetDatabase.LoadAssetAtPath<Material>(Folder+"CitadelMeadow.mat");
+        var road=AssetDatabase.LoadAssetAtPath<Material>(Folder+"WornRoadStone.mat");
+        var verge=AssetDatabase.LoadAssetAtPath<Material>(Folder+"OakLeaves.mat");
+        if(renderer==null || meadow==null || renderer.sharedMaterial!=meadow || road==null || verge==null)
+            throw new InvalidOperationException("The existing Citadel ground, road and verge material bindings are required.");
+        foreach(var material in new[]{meadow,road,verge})
+            if(material.shader==null || material.shader.name!="Universal Render Pipeline/Lit")
+                throw new InvalidOperationException("Field readability must preserve the existing URP Lit materials.");
+        ConfigureGroundReadability(meadow,C20MapAuthoring.WorldBounds(author.ground));
+        ConfigureRoadAndVergeReadability(road,verge);
+        foreach(var material in new[]{meadow,road,verge})AssetDatabase.SaveAssetIfDirty(material);
+        Debug.Log("Existing field materials refined. No scene objects, renderer visibility, collision, navigation, texture imports or lighting changed.");
+    }
+
+    private static void ConfigureGroundReadability(Material material,Bounds bounds)
+    {
+        var albedo=material.GetTexture("_BaseMap");
+        if(albedo==null || material.GetTexture("_BumpMap")==null)
+            throw new InvalidOperationException("The existing meadow albedo and normal must be bound before refinement.");
+        const float basePeriod=7.5f, macroPeriod=29f;
+        var scale=new Vector2(bounds.size.x/basePeriod,bounds.size.z/basePeriod);
+        material.SetTextureScale("_BaseMap",scale);
+        material.SetTextureScale("_MainTex",scale);
+        material.SetColor("_BaseColor",new Color(.82f,.84f,.79f));
+        material.SetFloat("_BumpScale",.16f);
+        material.SetFloat("_Smoothness",.08f);
+        // URP Lit receives the already base-transformed UV here: detail ST is a
+        // relative period, not another world-size multiplier. Reuse, do not edit, the texture.
+        material.SetTexture("_DetailAlbedoMap",albedo);
+        material.SetTextureScale("_DetailAlbedoMap",Vector2.one*(basePeriod/macroPeriod));
+        material.SetTextureOffset("_DetailAlbedoMap",new Vector2(.31f,.67f));
+        material.SetFloat("_DetailAlbedoMapScale",.04f);
+        material.SetFloat("_DetailNormalMapScale",0);
+        material.DisableKeyword("_DETAIL_MULX2");
+        material.EnableKeyword("_DETAIL_SCALED");
+        EditorUtility.SetDirty(material);
+    }
+
+    private static void ConfigureRoadAndVergeReadability(Material road,Material verge)
+    {
+        road.color=new Color(.62f,.60f,.54f);
+        road.SetFloat("_Smoothness",.09f);
+        road.mainTextureScale=new Vector2(.8f,.8f);
+        verge.color=new Color(.27f,.33f,.20f);
+        verge.SetFloat("_Smoothness",.08f);
+        EditorUtility.SetDirty(road);
+        EditorUtility.SetDirty(verge);
     }
 
     private static void ConfigureGroundSurface(Material material)
@@ -133,13 +193,7 @@ public static class CitadelEnvironmentArt
         var verge=AssetDatabase.LoadAssetAtPath<Material>(Folder+"OakLeaves.mat");
         if(road==null || verge==null)
             throw new FileNotFoundException("The existing road and low-verge materials are required.");
-        // The limestone albedo is already shaded. A second dark tint hides its grain.
-        road.color=new Color(.52f,.49f,.40f);
-        road.SetFloat("_Smoothness",.12f);
-        verge.color=new Color(.31f,.39f,.17f);
-        verge.SetFloat("_Smoothness",.12f);
-        EditorUtility.SetDirty(road);
-        EditorUtility.SetDirty(verge);
+        ConfigureRoadAndVergeReadability(road,verge);
         AssetDatabase.SaveAssets();
         Debug.Log("Existing road and low-verge material tints refreshed. Geometry, placement, lighting and navigation are unchanged.");
     }
@@ -384,6 +438,7 @@ public static class CitadelEnvironmentArt
         canopy.SetFloat("_AlphaClip",1);canopy.SetFloat("_Cutoff",.32f);canopy.SetFloat("_Surface",0);canopy.SetFloat("_ZWrite",1);
         canopy.EnableKeyword("_ALPHATEST_ON");canopy.SetOverrideTag("RenderType","TransparentCutout");canopy.renderQueue=(int)RenderQueue.AlphaTest;EditorUtility.SetDirty(canopy);
         earth=MaterialAsset("WornRoadStone",new Color(.52f,.49f,.40f),0,.12f,"limestone-surface.png");
+        ConfigureRoadAndVergeReadability(earth,leaf);
         fire=MaterialAsset("TorchAmber",new Color(1f,.37f,.065f),0,.5f,null);fire.EnableKeyword("_EMISSION");fire.SetColor("_EmissionColor",new Color(3.5f,.65f,.06f));EditorUtility.SetDirty(fire);
         block=BevelBlock();shaft=BranchMesh();leafMesh=LeafMesh();
         canopyCard=StoreMesh("CanopyClusterCard",new List<Vector3>{new Vector3(-.5f,-.5f,0),new Vector3(.5f,-.5f,0),new Vector3(.5f,.5f,0),new Vector3(-.5f,.5f,0)},new List<int>{0,2,1,0,3,2},new List<Vector2>{Vector2.zero,Vector2.right,Vector2.one,Vector2.up});

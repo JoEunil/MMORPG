@@ -41,13 +41,13 @@ public static class C07InventorySetup
         panelRect.anchoredPosition = Vector2.zero;
         panelRect.sizeDelta = new Vector2(920, 560);
         var frame = panel.GetComponent<Image>();
-        frame.color = new Color(.27f, .21f, .16f, .98f);
+        frame.color = new Color(.40f, .47f, .52f, .98f);
         frame.raycastTarget = true;
 
         var inner = FindOrCreate("InventoryParchment", panel.transform, typeof(RectTransform), typeof(Image));
         Stretch(inner.GetComponent<RectTransform>(), 4);
         var paper = inner.GetComponent<Image>();
-        paper.color = new Color(.12f, .14f, .16f, 1f);
+        paper.color = new Color(.055f, .068f, .078f, .98f);
         paper.raycastTarget = true;
 
         var title = Text("InventoryTitle", inner.transform, "INVENTORY", 21, new Color(.88f, .91f, .95f));
@@ -111,23 +111,13 @@ public static class C07InventorySetup
         detailsRect.anchorMax = Vector2.one;
         detailsRect.offsetMin = new Vector2(8, 62);
         detailsRect.offsetMax = new Vector2(-14, -70);
-        details.GetComponent<Image>().color = new Color(.16f, .18f, .20f, .98f);
-        details.GetComponent<Image>().raycastTarget = false;
-
         var badge = Text("InventoryDetailBadge", details.transform, string.Empty, 28, Color.white);
-        badge.alignment = TextAlignmentOptions.Center;
-        badge.rectTransform.anchorMin = badge.rectTransform.anchorMax = badge.rectTransform.pivot = new Vector2(.5f, 1);
-        badge.rectTransform.anchoredPosition = new Vector2(0, -16);
-        badge.rectTransform.sizeDelta = new Vector2(96, 96);
-        var itemName = Text("InventoryDetailName", details.transform, "Select an item", 22, new Color(.88f, .91f, .95f));
-        itemName.alignment = TextAlignmentOptions.Center;
-        SetTop(itemName.rectTransform, 138, 48);
+        var itemName = Text("InventoryDetailName", details.transform, "Select an item", 25, new Color(.94f, .95f, .96f));
         var slot = Text("InventoryDetailSlot", details.transform, string.Empty, 18, new Color(.74f, .79f, .84f));
-        slot.alignment = TextAlignmentOptions.MidlineLeft;
-        SetTop(slot.rectTransform, 202, 28);
         var quantity = Text("InventoryDetailQuantity", details.transform, string.Empty, 18, new Color(.74f, .79f, .84f));
-        quantity.alignment = TextAlignmentOptions.MidlineLeft;
-        SetTop(quantity.rectTransform, 238, 28);
+        ApplyDetailLayout(details.GetComponent<Image>(), badge, itemName, slot, quantity);
+        foreach (string name in new[] { "ForgedFrame", "FrameOrnaments" })
+            panel.transform.Find(name)?.gameObject.SetActive(false);
 
         var status = Text("InventoryStatus", inner.transform, string.Empty, 12, new Color(.82f, .86f, .90f));
         status.alignment = TextAlignmentOptions.MidlineLeft;
@@ -168,10 +158,79 @@ public static class C07InventorySetup
         var combatSerialized = new SerializedObject(combat);
         combatSerialized.FindProperty("inventoryScreen").objectReferenceValue = screen;
         combatSerialized.ApplyModifiedPropertiesWithoutUndo();
+        ApplyRestrainedInventoryDetails();
         panel.SetActive(false);
         bag.gameObject.SetActive(false);
         EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
         EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
+    }
+
+    [MenuItem("C02/C07/Apply Restrained Inventory Details")]
+    public static void ApplyRestrainedInventoryDetails()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+            throw new System.InvalidOperationException("Inventory UI authoring requires Edit Mode.");
+        var scene = EditorSceneManager.GetActiveScene();
+        if (!scene.IsValid() || scene.path != "Assets/C02/C02.unity")
+            throw new System.InvalidOperationException("C07 requires the C02 scene.");
+
+        var screen = Object.FindFirstObjectByType<C07InventoryScreen>(FindObjectsInactive.Include);
+        var panelProperty = screen != null ? new SerializedObject(screen).FindProperty("inventoryPanel") : null;
+        var inventoryPanel = panelProperty != null ? panelProperty.objectReferenceValue as GameObject : null;
+        if (inventoryPanel == null) throw new System.InvalidOperationException("The existing C07 inventory panel is required.");
+        var inner = inventoryPanel.transform.Find("InventoryParchment");
+        var details = inner != null ? inner.Find("InventoryDetails") : null;
+        var badge = details != null ? details.Find("InventoryDetailBadge")?.GetComponent<TMP_Text>() : null;
+        var itemName = details != null ? details.Find("InventoryDetailName")?.GetComponent<TMP_Text>() : null;
+        var slot = details != null ? details.Find("InventoryDetailSlot")?.GetComponent<TMP_Text>() : null;
+        var quantity = details != null ? details.Find("InventoryDetailQuantity")?.GetComponent<TMP_Text>() : null;
+        if (inner == null || details == null || badge == null || itemName == null || slot == null || quantity == null)
+            throw new System.InvalidOperationException("The existing C07 detail hierarchy is incomplete.");
+
+        var panelImage = inventoryPanel.GetComponent<Image>();
+        var paperImage = inner.GetComponent<Image>();
+        var detailsImage = details.GetComponent<Image>();
+        if (panelImage == null || paperImage == null || detailsImage == null)
+            throw new System.InvalidOperationException("The existing C07 panel surfaces are incomplete.");
+        panelImage.sprite = null;
+        panelImage.color = new Color(.40f, .47f, .52f, .98f);
+        paperImage.sprite = null;
+        paperImage.color = new Color(.055f, .068f, .078f, .98f);
+        foreach (string name in new[] { "ForgedFrame", "FrameOrnaments" })
+            inventoryPanel.transform.Find(name)?.gameObject.SetActive(false);
+        foreach (var button in inventoryPanel.GetComponentsInChildren<Button>(true))
+        {
+            var surface = button.GetComponent<Image>();
+            if (surface == null) continue;
+            surface.sprite = null;
+            surface.color = new Color(.12f, .15f, .18f, 1);
+            foreach (string name in new[] { "ForgedFrame", "FrameOrnaments" })
+                button.transform.Find(name)?.gameObject.SetActive(false);
+        }
+        ApplyDetailLayout(detailsImage, badge, itemName, slot, quantity);
+        EditorSceneManager.MarkSceneDirty(scene);
+    }
+
+    private static void ApplyDetailLayout(Image detailsImage, TMP_Text badge, TMP_Text itemName,
+        TMP_Text slot, TMP_Text quantity)
+    {
+        detailsImage.color = new Color(.095f, .115f, .13f, .98f);
+        detailsImage.raycastTarget = false;
+        badge.alignment = TextAlignmentOptions.Center;
+        badge.rectTransform.anchorMin = badge.rectTransform.anchorMax = badge.rectTransform.pivot = new Vector2(.5f, 1);
+        badge.rectTransform.anchoredPosition = new Vector2(0, -18);
+        badge.rectTransform.sizeDelta = new Vector2(132, 132);
+        itemName.fontSize = 25;
+        itemName.color = new Color(.94f, .95f, .96f);
+        itemName.alignment = TextAlignmentOptions.Center;
+        itemName.fontStyle = FontStyles.Bold;
+        itemName.enableWordWrapping = true;
+        itemName.overflowMode = TextOverflowModes.Ellipsis;
+        SetTop(itemName.rectTransform, 160, 58);
+        slot.alignment = TextAlignmentOptions.MidlineLeft;
+        SetTop(slot.rectTransform, 238, 28);
+        quantity.alignment = TextAlignmentOptions.MidlineLeft;
+        SetTop(quantity.rectTransform, 274, 28);
     }
 
     private static GameObject FindOrCreate(string name, Transform parent, params System.Type[] components)

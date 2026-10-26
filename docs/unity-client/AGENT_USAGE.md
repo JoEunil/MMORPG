@@ -1,23 +1,24 @@
 ## 공개 집계
 
-기준일: 2026-10-25
-누적 신규: 117
-누적 재활성화: 221
-상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-25
+기준일: 2026-10-26
+누적 신규: 137
+누적 재활성화: 248
+상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-26
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
-| game_planner | 기획 Agent | 4 | 3 |
+| game_planner | 기획 Agent | 6 | 3 |
 | server_analyst | 서버 분석 Agent | 17 | 43 |
-| client_implementer | 구현 Agent | 39 | 53 |
-| asset_artist | 아트 Agent | 17 | 25 |
-| code_reviewer | 리뷰 Agent | 30 | 89 |
+| client_implementer | 구현 Agent | 46 | 61 |
+| asset_artist | 아트 Agent | 20 | 28 |
+| code_reviewer | 리뷰 Agent | 33 | 97 |
+| quality_reviewer | 종합 검수 Agent | 1 | 8 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
-| decision_curator | 선택지 Agent | 3 | 2 |
+| decision_curator | 의사결정 지원 Agent | 7 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체338회(신규117·재활성화221)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체385회(신규137·재활성화248)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -568,3 +569,60 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 신규3: hud_remaining_scope(리뷰 책임: 미완료 코드 조사), wallet_read_recovery(구현), wallet_recovery_review(독립 리뷰). 역할별 증분은 리뷰2·구현1이며 토큰/비용 N/A. 총괄의 실제 HUD 입력·캡처는 활성화로 세지 않는다.
 
 후속1: hud_remaining_scope가 로그인/캐릭터 진입의 다음 범위를 조사했다. 현재 계약에서 정당한 클라이언트 단독 변경을 찾지 못해 기능을 임의 추가하지 않았다. 리뷰 책임 재활성화1로 기록한다.
+
+## 주변 플레이어 상태 표시 — 2026-10-25
+신규2: next_client_scope(기획), nearby_player_vitals(구현). 후속1: wallet_recovery_review(별도 C04 독립리뷰). 총괄 렌더/검증은 호출수 제외. 토큰/비용 N/A.
+
+## 주변 플레이어 전투 묶음 — 2026-10-25
+신규4: observed_play_bundle_scope(기획), player_down_pose/remote_combat_bundle(구현2), nearby_bundle_review(통합 리뷰). 후속1: remote_combat_bundle 테스트 프리팹 참조 보정. 메시지 교환/총괄 검증은 활성화 제외. 토큰·비용 N/A.
+
+2026-10-25 의사결정 지원 병렬 준비: decision_gameplay_options와 decision_visual_options 신규 각1회. default/gpt-6-luna/low로 기획 텍스트 비교와 기존 화면·비교 축 취합을 각각 배정했다. 산출물은 준비 중이며 구현·사용자 선택·품질 승인은 아니다. 전체348=125+223. 총괄 직접 편집·조회는 제외, 토큰·비용 N/A.
+
+2026-10-25 비교 보드 제작: planning_art_comparison_board 아트 Agent 신규1회(asset_artist 고정 gpt-6.1-sol/high). 기존 화면 근거와 SVG/HTML 배치 시안을 하나의 로컬 비교 보드로 제작하도록 배정했다. 의사결정 지원 두 실행은 기획 선택지3개와 실제/에디터 화면 근거를 반환 완료. 이번 전체349=126+223이며 서로 다른 실행을 기록했다. 게임 구현이나 취향 선택 완료가 아니다.
+
+2026-10-25 planning_art_comparison_board 아트 Agent 후속1회: 전투 A/B의 예시 게이지와 범위 크기를 동일하게 맞춰 장식강도만 비교하도록 교정. 로컬 보드 완성, 총괄 브라우저에서 초기 미선택·추천7개선택·초기화·확대 확인. 사용자 선택은 아직 미수신. 전체350=126+224.
+
+2026-10-25 일괄 선택 구현: selected_environment_dressing 아트 신규1(Sol/high), selected_hud_inventory_ui 구현 신규1·후속1(default/Luna medium), selected_combat_presentation 구현 신규1(Sol/medium), selected_art_bundle_review 리뷰 신규1·후속1(Sol/medium). 담당은 환경·HUD/가방·전투 독립 파일로 나눴고 총괄이 Editor 통합·렌더를 직접 수행했다. 리뷰 P2 기존 가방 프레임 잔존과 저작 도구의 비활성 월드 전제 문제를 수정하고 정적 재검토했다. 전체356=130+226, 총괄·도구호출은 제외, 토큰·비용 N/A.
+
+2026-10-26 resume_client_scope 의사결정 지원 Agent 신규1회(decision_curator/gpt-6-luna/low): 현재 계획·결과 기록을 읽기 전용 대조, 새 구현 묶음 근거 없음과 기존 실입력/실거래 데이터 미검증을 구분했다. 일부 추정 파일명은 실제 경로와 맞지 않아 총괄이 사용하지 않음. 새 구현·테스트는 없음. 전체357=131+226, 총괄 Slack/Git·복구는 활성화 제외, 토큰·비용 N/A.
+
+
+## PR55 후속 정합 보완 — 2026-10-26
+
+실제 신규3: pr55_combat_followup_scan(리뷰), pr55_inventory_followup_scan(구현 분석), pr55_decision_followup_scope(의사결정 지원). 실제 후속3: selected_combat_presentation(구현), pr55_inventory_followup_scan(구현), pr55_combat_followup_scan(통합 리뷰). 구현 증분 신규1/후속2, 리뷰 신규1/후속1, 의사결정 지원 신규1/후속0. 합계363=134+229. 총괄의 Unity 검증·문서·Git 작업은 호출 수에 포함하지 않았다. 실제 토큰·비용 N/A.
+
+
+## 종합 검수 역할 도입 — 2026-10-26
+실제 신규1: quality_gate_setup_review, gpt-6-astra/medium 명시 신규 배정(default 경로, fork_turns=none), 역할은 종합 검수 Agent. 이번 지침/프로필 후보와 정책 시나리오3개를 읽기 전용 검수해 통과·필수 수정 없음 반환. 작업 분류 명확화와 과거 적용 오인 방지 문구를 반영했다. 게임/조작감 검수나 런타임 성공을 뜻하지 않는다. 새 프로필 차기 자동 등록은 미확인이며 현재 호출은 명시 fallback 실행이다. 메시지 교환은 재활성화로 세지 않았다. 누적364=135+229, 실제 토큰·비용 N/A.
+
+
+## MMORPG 참조 HUD 비교 — 2026-10-26
+실제 신규1: reference_mmorpg_ui_direction(아트 Agent, 고정Sol/high 역할), 첨부3이미지 실제 열람 및 동일 조건 A/B배치 제안. 실제 후속1: quality_gate_setup_review(종합 검수 Agent, 기존Astra/medium), 보드HTML/렌더2장을 실제 열람해 사용자 제시 전 선택안 검수 통과·필수 수정 없음. 두 선택 문구를 명확히 반영했다. 총괄의 Editor복제렌더/질문/기록은 호출 수 제외. 현재 사용자 선택 대기, 제품/실입력/에셋품질 성공으로 기록하지 않음. 누적366=136+230, 토큰·비용 N/A.
+
+
+## 선택 B HUD·재질 구현 — 2026-10-26
+실제 신규1: reference_hud_implementation(구현Agent,고정Sol/medium). 실제 후속4: reference_mmorpg_ui_direction(아트Agent 구현), pr55_combat_followup_scan(리뷰Agent), quality_gate_setup_review(종합검수Agent 상황자문), 같은quality_gate_setup_review(최종게시검수). 마지막Astra검수는이번제품14파일/공개추가절에한정해통과,게임전체실행통과아님. 총괄직접검증·통합·기록은제외. 누적371=137+234, 실제토큰·비용N/A.
+
+
+## 미니맵 추가 — 2026-10-26
+실제후속3: reference_hud_implementation(구현Agent), pr55_combat_followup_scan(리뷰Agent), quality_gate_setup_review(종합검수Agent 최종검수). 신규실행0. 신규PlayMode검사2개실행·캡처·Editor통합은총괄직접작업으로활성화에포함하지않았다. 통합18제품파일게시검수통과,실서버/실입력미검증. 누적374=137+237,토큰·비용N/A.
+
+
+## 레이더 표현 방안 검토 — 2026-10-26
+실제후속1: quality_gate_setup_review(종합검수Agent 상황자문),현재코드/화면을실제확인해중앙표식·거리링과정적지형배경조합추천. 제품제작/게시검수통과아님. 총괄의격리staticatlas렌더2회는Agent호출/게임테스트로계산하지않음. 누적375=137+238,토큰·비용N/A.
+
+
+## 원형 레이더·실제 지형 배경 — 2026-10-26
+실제후속4: reference_hud_implementation(구현), reference_mmorpg_ui_direction(아트/Editor atlas), pr55_combat_followup_scan(독립리뷰), quality_gate_setup_review(Astra/medium 종합검수). 신규0. 구현·아트·리뷰 완료, Astra/medium은이번제품후보에한정해통과·필수수정0. 공개원문/승인요청은검수범위밖이며실입력성공을뜻하지않는다. 총괄의베이크·렌더·변경검사1개는활성화에서제외. 누적379=137+242,토큰·비용N/A.
+
+
+## 가방·거래소 아이템 갱신 흐름 — 2026-10-26
+실제후속2: reference_hud_implementation(구현·선별같은실행), pr55_combat_followup_scan(독립리뷰). 실행중추가지시·메시지는추가활성화로세지않았다. 신규0. 리뷰1건은실패한선행조회도최신후속조회를기다리도록교정했고집중자동검사2/2통과. 총괄직접실행은제외. 누적381=137+244, 토큰·비용N/A.
+
+실제후속1추가: quality_gate_setup_review(Astra/medium 종합검수) 실행. 누적382=137+245. 이번아이템흐름3파일과집중2검사·공개설명범위검수통과·필수수정0. 전체게임/실서버거래성공으로소급하지않는다.
+
+
+## 직사각형 미니맵 피드백 — 2026-10-26
+실제후속2: reference_hud_implementation(구현), pr55_combat_followup_scan(독립리뷰). 신규0,누적384=137+247. 변경투영검사1개최초통과·두해상도렌더는총괄직접작업으로제외. 이전통과검사는반복하지않았다. 토큰·비용N/A.
+
+실제후속1추가: quality_gate_setup_review(Astra/medium). 직사각미니맵4파일/두해상도/변경검사1개범위검수통과·필수수정0. 누적385=137+248,토큰·비용N/A. 실제입력성공이나게임전체검수로소급하지않음.

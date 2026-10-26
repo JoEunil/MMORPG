@@ -78,17 +78,19 @@ public static class KnightInterfaceArtSetup
             if (t.name == "StageLabel" || t.name == "Subtitle" || t.name == "EndpointNote") t.gameObject.SetActive(false);
             if (t.name == "Title") { t.text = "ENTER THE REALM"; t.fontSize = 24; t.characterSpacing = 2; }
         }
+        ApplyRestrainedEntry();
         var hud = ((GameObject)refs.FindProperty("worldHud").objectReferenceValue).transform;
-        ApplyRestrainedHud();
         foreach (string name in new[] { "C07InventoryPanel" })
         {
             var panel = hud.parent.Find(name) as RectTransform;
-            SkinPanel(panel, 6);
+            if (panel == null) throw new InvalidOperationException("The existing inventory panel is required.");
+            // The four-pixel inset reveals a restrained edge around the inventory surface.
+            var panelImage = panel.GetComponent<Image>();
+            panelImage.sprite = null;
+            panelImage.color = new Color(.40f, .47f, .52f, .98f);
+            foreach (string part in new[] { "ForgedFrame", "FrameOrnaments" })
+                panel.Find(part)?.gameObject.SetActive(false);
             if (name != "C06ChatPanel") panel.anchoredPosition = new Vector2(-24, 118);
-            foreach (var image in panel.GetComponentsInChildren<Image>(true))
-                if (image.name == "InventoryParchment" || image.name == "BazaarParchment" || image.name == "ChatInset")
-                { image.sprite = leather; image.type = Image.Type.Simple; image.color = new Color(.62f, .54f, .43f); }
-            foreach (var button in panel.GetComponentsInChildren<Button>(true)) SkinButton(button, 20);
         }
         C06ChatSetup.ApplyCleanStyle();
         C09BazaarSetup.ApplyCleanStyle();
@@ -112,10 +114,72 @@ public static class KnightInterfaceArtSetup
             observedRefs.FindProperty("monsterRangeMaterial").objectReferenceValue = material;
             observedRefs.ApplyModifiedPropertiesWithoutUndo();
         }
+        ApplyRestrainedHud();
         EditorUtility.SetDirty(material);
         AssetDatabase.SaveAssets();
         EditorSceneManager.MarkSceneDirty(scene);
         if (!EditorSceneManager.SaveScene(scene)) throw new InvalidOperationException("Could not save interface art.");
+    }
+
+    [MenuItem("Tools/Client Art/Refine Entry Layout")]
+    public static void ApplyRestrainedEntry()
+    {
+        var scene = EditorSceneManager.GetActiveScene();
+        if (EditorApplication.isPlayingOrWillChangePlaymode || scene.path != "Assets/C02/C02.unity")
+            throw new InvalidOperationException("Open the C02 scene outside Play Mode.");
+        var world = UnityEngine.Object.FindFirstObjectByType<C02WorldScreen>(FindObjectsInactive.Include);
+        var refs = new SerializedObject(world);
+        var selection = ((GameObject)refs.FindProperty("selectionPanel").objectReferenceValue).transform;
+        foreach (string name in new[] { "SignIn", "Results", "LoadingPanel" })
+        {
+            var panel = selection.Find(name) as RectTransform;
+            EdgedSurface(panel, new Color(.045f, .05f, .055f, .94f));
+            foreach (var part in panel.GetComponentsInChildren<Transform>(true))
+                if (part.name == "ForgedFrame" || part.name == "FrameOrnaments") part.gameObject.SetActive(false);
+            foreach (var input in panel.GetComponentsInChildren<TMP_InputField>(true))
+            {
+                EdgedSurface(input.transform as RectTransform, new Color(.085f, .095f, .105f));
+                input.textComponent.fontSize = 18;
+                if (input.placeholder is TMP_Text placeholder) placeholder.fontSize = 18;
+            }
+            foreach (var button in panel.GetComponentsInChildren<Button>(true))
+            {
+                bool primary = button.name == "LoginButton" || button.name == "EnterButton";
+                EdgedSurface(button.transform as RectTransform, primary
+                    ? new Color(.27f, .29f, .28f) : new Color(.115f, .13f, .14f));
+                var colors = ColorBlock.defaultColorBlock;
+                colors.highlightedColor = new Color(1.14f, 1.14f, 1.14f);
+                colors.pressedColor = new Color(.8f, .8f, .8f);
+                colors.disabledColor = new Color(.6f, .6f, .6f, .65f);
+                button.colors = colors;
+                foreach (var label in button.GetComponentsInChildren<TMP_Text>(true))
+                { label.characterSpacing = 0; label.fontStyle = FontStyles.Normal; label.color = new Color(.92f, .93f, .92f); }
+            }
+        }
+        var signIn = selection.Find("SignIn") as RectTransform;
+        signIn.sizeDelta = new Vector2(360, 360);
+        var layout = signIn.GetComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(24, 24, 24, 24);
+        layout.spacing = 8;
+        foreach (var label in signIn.GetComponentsInChildren<TMP_Text>(true))
+        {
+            if (label.name == "Title")
+            { label.text = "Sign in"; label.fontSize = 24; label.characterSpacing = 0; label.fontStyle = FontStyles.Normal; }
+            if (label.name == "LoginIdLabel" || label.name == "PasswordLabel")
+            { label.fontSize = 15; label.fontStyle = FontStyles.Normal; label.color = new Color(.72f, .75f, .76f); }
+        }
+        foreach (string name in new[] { "LoginIdInput", "PasswordInput", "LoginButton" })
+            signIn.Find(name).GetComponent<LayoutElement>().preferredHeight = 44;
+        EditorSceneManager.MarkSceneDirty(scene);
+    }
+
+    private static void EdgedSurface(RectTransform rect, Color color)
+    {
+        PlainSurface(rect, color);
+        var edge = rect.GetComponent<UnityEngine.UI.Outline>() ?? rect.gameObject.AddComponent<UnityEngine.UI.Outline>();
+        edge.effectColor = new Color(.32f, .34f, .34f, .8f);
+        edge.effectDistance = new Vector2(1, -1);
+        edge.useGraphicAlpha = false;
     }
 
     [MenuItem("Tools/Client Art/Refine HUD Layout")]
@@ -127,6 +191,8 @@ public static class KnightInterfaceArtSetup
         if (world == null) throw new InvalidOperationException("The existing world screen is required.");
         var worldRefs = new SerializedObject(world);
         var hud = (GameObject)worldRefs.FindProperty("worldHud").objectReferenceValue;
+        // Keep diagnostic information clear of the centered currency display.
+        (hud.transform as RectTransform).sizeDelta = new Vector2(440, 112);
         var combat = hud.transform.parent.Find("C05CombatPanel") as RectTransform;
         if (combat == null) throw new InvalidOperationException("The existing combat HUD is required.");
         combat.anchorMin = new Vector2(0, 0); combat.anchorMax = new Vector2(1, 0);
@@ -137,33 +203,173 @@ public static class KnightInterfaceArtSetup
         foreach (var part in combat.GetComponentsInChildren<Transform>(true))
             if (part.name == "ForgedFrame" || part.name == "FrameOrnaments" || part.name == "GaugeGlint") part.gameObject.SetActive(false);
         var vitals = Child(combat, "VitalsPlate");
-        Place(vitals, new Vector2(1, 0), new Vector2(-24, 0), new Vector2(440, 68));
-        PlainSurface(vitals, new Color(.035f, .045f, .055f, .92f));
+        Place(vitals, new Vector2(1, 0), new Vector2(-24, 16), new Vector2(292, 64));
+        EdgedSurface(vitals, new Color(.055f, .065f, .07f, .55f));
         vitals.SetAsFirstSibling();
-        Gauge(combat, "C12HpTrack", 34.667f, 22.667f, new Color(.64f, .12f, .15f));
-        Gauge(combat, "C12MpTrack", 10.667f, 18, new Color(.12f, .34f, .65f));
+        Gauge(combat, "C12HpTrack", 50, 18, new Color(.64f, .12f, .15f));
+        Gauge(combat, "C12MpTrack", 30, 14, new Color(.12f, .34f, .65f));
         var skills = Child(combat, "SkillPlate");
         Place(skills, new Vector2(.5f, 0), Vector2.zero, new Vector2(222, 78));
-        PlainSurface(skills, new Color(.035f, .045f, .055f, .9f));
+        EdgedSurface(skills, new Color(.055f, .065f, .07f, .35f));
         skills.SetAsFirstSibling();
         for (int i = 0; i < 3; i++)
         {
             var skill = combat.Find("C05Skill" + i) as RectTransform;
             Place(skill, new Vector2(.5f, 0), new Vector2((i - 1) * 66, 8), new Vector2(56, 62));
-            PlainSurface(skill, new Color(.15f, .18f, .21f));
-            var button = skill.GetComponent<Button>();
+            EdgedSurface(skill, new Color(.12f, .14f, .15f, .8f));
             var colors = ColorBlock.defaultColorBlock;
-            colors.highlightedColor = new Color(1.2f, 1.2f, 1.2f);
-            button.colors = colors;
+            colors.highlightedColor = new Color(1.16f, 1.16f, 1.16f);
+            skill.GetComponent<Button>().colors = colors;
             var badge = skill.Find("SkillKeyBadge") as RectTransform;
             if (badge != null) PlainSurface(badge, new Color(.04f, .05f, .065f, .92f));
             var key = badge != null ? badge.Find("SkillKey")?.GetComponent<TMP_Text>() : null;
             if (key != null) { key.fontSize = 22; key.color = Color.white; key.fontStyle = FontStyles.Bold; }
             var name = skill.Find("SkillName"); if (name != null) name.gameObject.SetActive(false);
         }
-        var aim = combat.Find("C05Aim"); if (aim != null) aim.gameObject.SetActive(false);
-        var status = combat.Find("C05Status"); if (status != null) status.gameObject.SetActive(false);
+        // Match the existing runtime placements: short action feedback above skills, growth above vitals.
+        var status = combat.Find("C05Status").GetComponent<TMP_Text>();
+        status.gameObject.SetActive(true);
+        Place(status.rectTransform, new Vector2(.5f, 0), new Vector2(0, 82), new Vector2(460, 40));
+        status.fontSize = 16; status.alignment = TextAlignmentOptions.Center; status.raycastTarget = false;
+        var aim = combat.Find("C05Aim").GetComponent<TMP_Text>();
+        aim.gameObject.SetActive(true);
+        Place(aim.rectTransform, new Vector2(1, 0), new Vector2(-24, 74), new Vector2(440, 24));
+        aim.fontSize = 16; aim.alignment = TextAlignmentOptions.MidlineRight; aim.raycastTarget = false;
+
+        var wallet = hud.transform.parent.Find("WalletHud") as RectTransform;
+        if (wallet != null)
+        {
+            Place(wallet, new Vector2(.5f, 1), new Vector2(0, -18), new Vector2(280, 30));
+            PlainSurface(wallet, new Color(.055f, .065f, .07f, .25f));
+            Place(wallet.Find("Gold") as RectTransform, new Vector2(0, 1), new Vector2(28, 0), new Vector2(108, 30));
+            Place(wallet.Find("Diamonds") as RectTransform, new Vector2(0, 1), new Vector2(164, 0), new Vector2(108, 30));
+            Place(wallet.Find("GoldMark") as RectTransform, new Vector2(0, .5f), new Vector2(8, 0), new Vector2(13, 8));
+            Place(wallet.Find("DiamondMark") as RectTransform, new Vector2(0, .5f), new Vector2(145, 0), new Vector2(10, 10));
+            foreach (var text in wallet.GetComponentsInChildren<TMP_Text>(true)) text.fontSize = 17;
+        }
+        MenuButton(hud.transform.parent.Find("C07BagButton") as RectTransform, false);
+        MenuButton(hud.transform.parent.Find("C09MarketButton") as RectTransform, true);
+        var disconnect = hud.transform.Find("DisconnectButton") as RectTransform;
+        if (disconnect != null)
+        {
+            Place(disconnect, new Vector2(1, 0), new Vector2(0, -42), new Vector2(118, 32));
+            EdgedSurface(disconnect, new Color(.08f, .10f, .12f, .8f));
+            foreach (string name in new[] { "ForgedFrame", "FrameOrnaments" })
+                disconnect.Find(name)?.gameObject.SetActive(false);
+            foreach (var text in disconnect.GetComponentsInChildren<TMP_Text>(true)) text.fontSize = 14;
+        }
+        C06ChatSetup.ApplyCleanStyle();
+        ConfigureMinimap(hud.transform.parent, world);
         EditorSceneManager.MarkSceneDirty(world.gameObject.scene);
+    }
+
+    private static void ConfigureMinimap(Transform canvas, C02WorldScreen world)
+    {
+        var panel = Child(canvas, "WorldMinimapPanel");
+        Place(panel, new Vector2(1, 1), new Vector2(-24, -86), new Vector2(208, 156));
+        PlainSurface(panel, Color.clear);
+        var frame = panel.GetComponent<Outline>();
+        if (frame != null) frame.enabled = false;
+        var group = panel.GetComponent<CanvasGroup>();
+        if (group == null) group = panel.gameObject.AddComponent<CanvasGroup>();
+        group.alpha = 0; group.blocksRaycasts = false; group.interactable = false;
+        foreach (string name in new[] { "MinimapTitle", "SelfDot", "SelfLegend", "PlayerDot", "PlayerLegend", "MonsterDot", "MonsterLegend" })
+        {
+            var old = panel.Find(name);
+            if (old != null) UnityEngine.Object.DestroyImmediate(old.gameObject);
+        }
+        var north = Label(panel, "MinimapNorth", "N", 14);
+        Place(north.rectTransform, new Vector2(0, 1), new Vector2(96, -2), new Vector2(16, 18));
+        north.alignment = TextAlignmentOptions.Center;
+        var map = panel.Find("Map") as RectTransform;
+        if (map == null)
+        {
+            map = new GameObject("Map", typeof(RectTransform), typeof(CanvasRenderer), typeof(WorldMinimap))
+                .GetComponent<RectTransform>();
+            map.SetParent(panel, false);
+        }
+        Place(map, new Vector2(0, 1), Vector2.zero, new Vector2(208, 156));
+        var graphic = map.GetComponent<WorldMinimap>();
+        graphic.raycastTarget = false;
+        const string materialPath = "Assets/C02/Art/CitadelEnvironment/WorldMinimap.mat";
+        var material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+        if (material == null)
+        {
+            var shader = Shader.Find("Client Art/World Minimap");
+            if (shader == null) throw new InvalidOperationException("The radar UI shader is required.");
+            material = new Material(shader);
+            AssetDatabase.CreateAsset(material, materialPath);
+        }
+        graphic.material = material;
+        var refs = new SerializedObject(graphic);
+        refs.FindProperty("worldScreen").objectReferenceValue = world;
+        refs.FindProperty("observedWorld").objectReferenceValue = world.GetComponent<C04ObservedWorld>();
+        refs.FindProperty("worldMap").objectReferenceValue = new SerializedObject(world).FindProperty("worldMap").objectReferenceValue;
+        refs.FindProperty("panelGroup").objectReferenceValue = group;
+        refs.FindProperty("viewRadius").floatValue = 40;
+        WorldMinimapAtlasExport.TryLoad(out var atlas, out var bounds);
+        refs.FindProperty("terrainAtlas").objectReferenceValue = atlas;
+        refs.FindProperty("atlasBounds").rectValue = bounds;
+        refs.ApplyModifiedPropertiesWithoutUndo();
+        north.rectTransform.SetAsLastSibling();
+        var innerRange = Label(panel, "MinimapInnerRange", "20m", 13);
+        Place(innerRange.rectTransform, new Vector2(0, 1), new Vector2(155, -72), new Vector2(31, 18));
+        var outerRange = Label(panel, "MinimapOuterRange", "40m", 13);
+        Place(outerRange.rectTransform, new Vector2(0, 1), new Vector2(177, -82), new Vector2(31, 18));
+        innerRange.color = outerRange.color = new Color(.83f, .86f, .79f);
+
+    }
+
+    private static void MenuButton(RectTransform button, bool market)
+    {
+        if (button == null) throw new InvalidOperationException("Both existing menu buttons are required.");
+        Place(button, new Vector2(1, 1), new Vector2(market ? -106 : -24, -18), new Vector2(74, 56));
+        EdgedSurface(button, new Color(.055f, .065f, .07f, .68f));
+        foreach (string name in new[] { "ForgedFrame", "FrameOrnaments" }) button.Find(name)?.gameObject.SetActive(false);
+        var label = button.Find("Label").GetComponent<TMP_Text>();
+        Place(label.rectTransform, new Vector2(.5f, 0), new Vector2(0, 3), new Vector2(66, 18));
+        label.text = market ? "Market" : "Bag";
+        label.fontSize = 14; label.characterSpacing = 0; label.alignment = TextAlignmentOptions.Center;
+        label.color = new Color(.86f, .87f, .82f); label.raycastTarget = false;
+        var key = Label(button, "MenuKey", market ? "B" : "I", 14);
+        Place(key.rectTransform, new Vector2(1, 1), new Vector2(-5, -3), new Vector2(14, 18));
+        key.alignment = TextAlignmentOptions.Center; key.color = new Color(.93f, .93f, .87f);
+        button.GetComponent<Button>().colors = ColorBlock.defaultColorBlock;
+        // Small authored line icons stay inside the existing clickable control.
+        Color line = new Color(.76f, .74f, .65f);
+        if (market)
+        {
+            IconPart(button, "MarketStem", new Vector2(0, 12), new Vector2(2, 22), line);
+            IconPart(button, "MarketBeam", new Vector2(0, 20), new Vector2(28, 2), line);
+            IconPart(button, "MarketBase", new Vector2(0, 2), new Vector2(16, 2), line);
+            for (int side = -1; side <= 1; side += 2)
+            {
+                IconPart(button, "MarketChain" + side, new Vector2(side * 11, 15), new Vector2(1, 9), line);
+                IconPart(button, "MarketTray" + side, new Vector2(side * 11, 10), new Vector2(10, 3), line);
+            }
+        }
+        else
+        {
+            IconPart(button, "BagBody", new Vector2(0, 11), new Vector2(22, 18), line);
+            IconPart(button, "BagInset", new Vector2(0, 11), new Vector2(18, 14), new Color(.08f, .10f, .11f));
+            IconPart(button, "BagHandle", new Vector2(0, 23), new Vector2(10, 6), line);
+            IconPart(button, "BagHandleInset", new Vector2(0, 22), new Vector2(6, 4), new Color(.08f, .10f, .11f));
+            IconPart(button, "BagFlap", new Vector2(0, 15), new Vector2(18, 2), line);
+            IconPart(button, "BagClasp", new Vector2(0, 11), new Vector2(3, 4), line);
+        }
+    }
+
+    private static void IconPart(Transform parent, string name, Vector2 position, Vector2 size, Color color)
+    {
+        var part = parent.Find(name) as RectTransform;
+        if (part == null)
+        {
+            part = new GameObject(name, typeof(RectTransform), typeof(UnityEngine.UI.Image)).GetComponent<RectTransform>();
+            part.SetParent(parent, false);
+        }
+        Place(part, new Vector2(.5f, .5f), position, size);
+        part.GetComponent<UnityEngine.UI.Image>().color = color;
+        part.GetComponent<UnityEngine.UI.Image>().raycastTarget = false;
     }
 
     private static void PlainSurface(RectTransform rect, Color color)
@@ -175,11 +381,11 @@ public static class KnightInterfaceArtSetup
     private static void Gauge(RectTransform panel, string name, float y, float height, Color color)
     {
         var track = panel.Find(name) as RectTransform;
-        Place(track, new Vector2(1, 0), new Vector2(-42.667f, y), new Vector2(402.667f, height));
-        PlainSurface(track, new Color(.08f, .095f, .11f));
+        Place(track, new Vector2(1, 0), new Vector2(-40, y), new Vector2(260, height));
+        EdgedSurface(track, new Color(.08f, .095f, .11f, .9f));
         track.Find("Fill").GetComponent<Image>().color = color;
         foreach (var text in track.GetComponentsInChildren<TMP_Text>(true))
-        { text.fontSize = height > 20 ? 18 : 15; text.color = new Color(.94f, .96f, .98f); text.transform.SetAsLastSibling(); }
+        { text.fontSize = 15; text.color = new Color(.94f, .96f, .98f); text.transform.SetAsLastSibling(); }
     }
 
     private static void SkinPanel(RectTransform rect, float multiplier)

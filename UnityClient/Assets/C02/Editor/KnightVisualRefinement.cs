@@ -14,6 +14,47 @@ public static class KnightVisualRefinement
     private const string Folder = "Assets/C02/Art/KnightRefinement/";
     private const string PlayerPrefab = "Assets/C02/Art/C04/ObservedPlayer.prefab";
 
+    [MenuItem("Tools/Client Art/Refine Existing Knight Materials Only")]
+    public static void RefreshMaterialReadability()
+    {
+        if(EditorApplication.isPlayingOrWillChangePlaymode)
+            throw new InvalidOperationException("Knight material authoring requires Edit Mode.");
+        foreach(var material in ConfigureMaterialReadability())AssetDatabase.SaveAssetIfDirty(material);
+        Debug.Log("Existing KnightRefinement material tones and roughness refined; meshes, textures, motion pivots, scene objects and lighting unchanged.");
+    }
+
+    private static Material[] ConfigureMaterialReadability()
+    {
+        var surfaces=new[]
+        {
+            (name:"TemperedSteel",color:new Color(.74f,.76f,.77f),metallic:.55f,smoothness:.38f),
+            (name:"PolishedEdge",color:new Color(.72f,.73f,.72f),metallic:.85f,smoothness:.56f),
+            (name:"AntiqueBrass",color:new Color(.36f,.29f,.17f),metallic:.72f,smoothness:.32f),
+            (name:"RecessSteel",color:new Color(.045f,.052f,.058f),metallic:.50f,smoothness:.21f),
+            (name:"OxbloodCloth",color:new Color(.29f,.055f,.06f),metallic:0f,smoothness:.09f),
+            (name:"DarkLeather",color:new Color(.09f,.065f,.045f),metallic:0f,smoothness:.16f)
+        };
+        var materials=new Material[surfaces.Length];
+        for(int i=0;i<surfaces.Length;i++)
+        {
+            var material=AssetDatabase.LoadAssetAtPath<Material>(Folder+surfaces[i].name+".mat");
+            if(material==null || material.shader==null || material.shader.name!="Universal Render Pipeline/Lit")
+                throw new InvalidOperationException("The existing URP Lit knight material is required: "+surfaces[i].name);
+            materials[i]=material;
+        }
+        for(int i=0;i<surfaces.Length;i++)
+        {
+            var material=materials[i];
+            material.color=surfaces[i].color;
+            material.SetFloat("_Metallic",surfaces[i].metallic);
+            material.SetFloat("_Smoothness",surfaces[i].smoothness);
+            EditorUtility.SetDirty(material);
+        }
+        // Reduce glitter from the existing micro-normal; preserve the actual normal/albedo assets.
+        materials[0].SetFloat("_BumpScale",.28f);
+        return materials;
+    }
+
     [MenuItem("Tools/Client Art/Refine Existing Knights")]
     public static void Apply()
     {
@@ -382,6 +423,7 @@ public static class KnightVisualRefinement
             normal.SetPixels(normals);normal.Apply(true,false);AssetDatabase.CreateAsset(normal,normalPath);
         }
         steel.SetTexture("_BumpMap",normal);steel.SetFloat("_BumpScale",.55f);steel.EnableKeyword("_NORMALMAP");
+        ConfigureMaterialReadability();
         EditorUtility.SetDirty(steel);EditorUtility.SetDirty(edge);
     }
 
