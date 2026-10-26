@@ -266,18 +266,20 @@ public static class KnightInterfaceArtSetup
     private static void ConfigureMinimap(Transform canvas, C02WorldScreen world)
     {
         var panel = Child(canvas, "WorldMinimapPanel");
-        Place(panel, new Vector2(1, 1), new Vector2(-24, -86), new Vector2(210, 238));
+        Place(panel, new Vector2(1, 1), new Vector2(-24, -86), new Vector2(208, 156));
         PlainSurface(panel, Color.clear);
         var frame = panel.GetComponent<Outline>();
         if (frame != null) frame.enabled = false;
         var group = panel.GetComponent<CanvasGroup>();
         if (group == null) group = panel.gameObject.AddComponent<CanvasGroup>();
         group.alpha = 0; group.blocksRaycasts = false; group.interactable = false;
-        var title = Label(panel, "MinimapTitle", "Radar", 16);
-        Place(title.rectTransform, new Vector2(0, 1), new Vector2(12, -5), new Vector2(150, 20));
-        title.color = new Color(.86f, .88f, .85f);
+        foreach (string name in new[] { "MinimapTitle", "SelfDot", "SelfLegend", "PlayerDot", "PlayerLegend", "MonsterDot", "MonsterLegend" })
+        {
+            var old = panel.Find(name);
+            if (old != null) UnityEngine.Object.DestroyImmediate(old.gameObject);
+        }
         var north = Label(panel, "MinimapNorth", "N", 14);
-        Place(north.rectTransform, new Vector2(0, 1), new Vector2(97, -29), new Vector2(16, 18));
+        Place(north.rectTransform, new Vector2(0, 1), new Vector2(96, -2), new Vector2(16, 18));
         north.alignment = TextAlignmentOptions.Center;
         var map = panel.Find("Map") as RectTransform;
         if (map == null)
@@ -286,7 +288,7 @@ public static class KnightInterfaceArtSetup
                 .GetComponent<RectTransform>();
             map.SetParent(panel, false);
         }
-        Place(map, new Vector2(0, 1), new Vector2(12, -28), new Vector2(186, 186));
+        Place(map, new Vector2(0, 1), Vector2.zero, new Vector2(208, 156));
         var graphic = map.GetComponent<WorldMinimap>();
         graphic.raycastTarget = false;
         const string materialPath = "Assets/C02/Art/CitadelEnvironment/WorldMinimap.mat";
@@ -311,22 +313,11 @@ public static class KnightInterfaceArtSetup
         refs.ApplyModifiedPropertiesWithoutUndo();
         north.rectTransform.SetAsLastSibling();
         var innerRange = Label(panel, "MinimapInnerRange", "20m", 13);
-        Place(innerRange.rectTransform, new Vector2(0, 1), new Vector2(151, -118), new Vector2(31, 18));
+        Place(innerRange.rectTransform, new Vector2(0, 1), new Vector2(155, -72), new Vector2(31, 18));
         var outerRange = Label(panel, "MinimapOuterRange", "40m", 13);
-        Place(outerRange.rectTransform, new Vector2(0, 1), new Vector2(109, -194), new Vector2(31, 18));
+        Place(outerRange.rectTransform, new Vector2(0, 1), new Vector2(177, -82), new Vector2(31, 18));
         innerRange.color = outerRange.color = new Color(.83f, .86f, .79f);
-        string[] names = { "Self", "Player", "Monster" };
-        string[] labels = { "You", "Players", "Mob" };
-        Color[] colors = { new Color(.2f, .9f, .35f), new Color(.65f, .67f, .68f), new Color(.95f, .2f, .18f) };
-        for (int i = 0; i < names.Length; i++)
-        {
-            var dot = Child(panel, names[i] + "Dot");
-            Place(dot, new Vector2(0, 0), new Vector2(12 + i * 64, 11), new Vector2(6, 6));
-            PlainSurface(dot, colors[i]);
-            var label = Label(panel, names[i] + "Legend", labels[i], 13);
-            Place(label.rectTransform, new Vector2(0, 0), new Vector2(23 + i * 64, 6), new Vector2(48, 18));
-            label.color = new Color(.82f, .85f, .85f);
-        }
+
     }
 
     private static void MenuButton(RectTransform button, bool market)

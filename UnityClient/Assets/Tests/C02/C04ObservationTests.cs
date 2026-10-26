@@ -20,7 +20,7 @@ namespace C02.Tests
     {
         [Test]
         [Category("WorldMinimap")]
-        public void MinimapRadarKeepsSelfCentredClipsCircularMarkersAndUsesNorthUpAtlasWithinBounds()
+        public void MinimapRectangleKeepsUniformScaleIncludesCornersAndClipsMarkersAndAtlas()
         {
             var map = ScriptableObject.CreateInstance<C20WorldMap>();
             var atlas = new Texture2D(4, 4);
@@ -32,13 +32,14 @@ namespace C02.Tests
                 using (var fixture = new ObservationFixture())
                 {
                     var other = Player(42); other.x = 21; other.y = 22;
-                    var corner = Player(43); corner.x = 46; corner.y = 47;
+                    var corner = Player(43); corner.x = 46; corner.y = 37;
                     fixture.Players(100, Player(7), other, corner);
                     var monster = Monster(0, 0); monster.x = 1; monster.y = 2;
                     var rim = Monster(1, 0); rim.x = 50;
                     var distant = Monster(2, 0); distant.x = 51.1f;
                     fixture.Monsters(100, monster, rim, distant);
                     var minimap = fixture.CreateMinimap(map);
+                    minimap.rectTransform.sizeDelta = new Vector2(208, 156);
                     Set(minimap, "terrainAtlas", atlas);
                     var atlasBounds = new Rect(-29, -28, 60, 80);
                     Set(minimap, "atlasBounds", atlasBounds);
@@ -47,28 +48,29 @@ namespace C02.Tests
                     {
                         PopulateMinimap(minimap, vertices);
                         AssertMinimapColorCentre(vertices, new Color32(74, 219, 115, 255), Vector2.zero);
-                        AssertMinimapColorCentre(vertices, new Color32(174, 181, 184, 255), new Vector2(10, 10));
+                        AssertMinimapColorCentre(vertices, new Color32(174, 181, 184, 255), new Vector2(58.5f, 45.5f));
                         var vertex = new UnityEngine.UIVertex();
                         int grey = 0, red = 0, atlasVertices = 0;
                         for (int i = 0; i < vertices.currentVertCount; i++)
                         {
                             vertices.PopulateUIVertex(ref vertex, i);
-                            Assert.That(((Vector2)vertex.position).magnitude, Is.LessThanOrEqualTo(40.001f),
-                                "All terrain, ring and marker geometry remains inside the circular viewport.");
+                            Assert.That(vertex.position.x, Is.InRange(-104.001f, 104.001f));
+                            Assert.That(vertex.position.y, Is.InRange(-78.001f, 78.001f),
+                                "The rectangular map covers 80 by 60 metres without stretching either axis.");
                             if (vertex.color.Equals(new Color32(174, 181, 184, 255))) grey++;
                             if (vertex.color.Equals(new Color32(235, 74, 64, 255))) red++;
                             if (vertex.uv0.x < 0) continue;
                             atlasVertices++;
-                            Vector2 world = fixture.World.ServerPosition + (Vector2)vertex.position;
+                            Vector2 world = fixture.World.ServerPosition + (Vector2)vertex.position / 2.6f;
                             Assert.That(world.x, Is.InRange(atlasBounds.xMin - .001f, atlasBounds.xMax + .001f));
                             Assert.That(world.y, Is.InRange(atlasBounds.yMin - .001f, atlasBounds.yMax + .001f));
                             Assert.That(vertex.uv0.x, Is.EqualTo((world.x - atlasBounds.xMin) / atlasBounds.width).Within(.0001f));
                             Assert.That(vertex.uv0.y, Is.EqualTo((world.y - atlasBounds.yMin) / atlasBounds.height).Within(.0001f),
                                 "Positive world Y maps toward the north/top of the atlas.");
                         }
-                        Assert.That(grey, Is.EqualTo(12), "The diagonal square-corner player is outside the circular range.");
-                        Assert.That(red, Is.GreaterThan(12), "The near-rim monster has a clipped circular dot.");
-                        Assert.That(red, Is.LessThan(30), "The out-of-radius monster does not become an edge marker.");
+                        Assert.That(grey, Is.EqualTo(24), "A player beyond circular radius but inside the rectangular corner is shown.");
+                        Assert.That(red, Is.GreaterThan(12), "The near-edge monster keeps a circular dot clipped at the rectangle.");
+                        Assert.That(red, Is.LessThan(30), "The outside-rectangle monster does not become an edge marker.");
                         Assert.That(atlasVertices, Is.GreaterThan(0));
                     }
                     var own = fixture.World.OwnFull; own.x += 5; own.y += 5; Set(fixture.World, "ownFull", own);
@@ -77,7 +79,7 @@ namespace C02.Tests
                     {
                         PopulateMinimap(minimap, vertices);
                         AssertMinimapColorCentre(vertices, new Color32(74, 219, 115, 255), Vector2.zero);
-                        AssertMinimapColorCentre(vertices, new Color32(174, 181, 184, 255), new Vector2(5, 5));
+                        AssertMinimapColorCentre(vertices, new Color32(174, 181, 184, 255), new Vector2(45.5f, 32.5f));
                     }
                     Set(minimap, "terrainAtlas", null);
                     using (var vertices = new UnityEngine.UI.VertexHelper())
@@ -89,6 +91,8 @@ namespace C02.Tests
                         {
                             vertices.PopulateUIVertex(ref vertex, i);
                             Assert.That(vertex.uv0.x, Is.LessThan(0), "No atlas texture is sampled in navigation fallback.");
+                            Assert.That(vertex.position.x, Is.InRange(-104.001f, 104.001f));
+                            Assert.That(vertex.position.y, Is.InRange(-78.001f, 78.001f));
                             navigationShown |= vertex.color.Equals(new Color32(79, 91, 72, 235));
                         }
                         Assert.That(navigationShown, Is.True, "A missing bake keeps the existing navigation background available.");

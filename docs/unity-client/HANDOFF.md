@@ -1,20 +1,18 @@
 # 현재 인계 — 2026-10-26
 
-## 목표와 정본
-사용자가 다음 미완료 클라이언트 작업의 연속 진행과 필요시 PR 분리를 요청했다. 이미 완료한 작업을 되살리지 않고 실제 코드 결함·미완료 흐름부터 선별한다. 현재 구현 Agent가 읽기 전용 조사 중이며 다음 범위는 결과 확인 후 확정한다.
+## 목표·정본
+사용자 승인과 최신 피드백에 따라 PR55의 실제 지형 미니맵을 직사각형으로 바꾸고 제목·범례를 제거해 게시한다. 가방·거래소 흐름은 별도 PR56으로 게시했다. 병합은 사용자 몫이다.
+- Git 정본 C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, 현재 codex/nearby-player-feedback.
+- Editor C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient, 마지막 Unity6000.0.47f1/PID43612/Pipeline7800. ROOT의 PR56제품3파일과 Git의 PR55기준은 다르므로 전체후보동일이라고보지않는다.
+- 사용자 서버/몬스터AI·DB·패킷·DLL·통행/스폰은 변경하지 않는다.
 
-- Git 정본: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source
-- 현재 브랜치: codex/nearby-player-feedback, 로컬 HEAD 821d02a, 게시 HEAD db1292294f9eebeda2ebdb74c085247289530f10
-- Editor 프로젝트: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient. 이전 확인 Unity6000.0.47f1/Pipeline7800/PID43612; 실행 시 재확인.
-- 사용자 원본 서버: C:/Users/joeun/Desktop/workspace/Game. 몬스터 AI·서버·DB·패킷 변경은 이번 범위 밖이다.
+## 완료·검증
+208x156 직사각 미니맵, 가로±40m/세로±30m 동일축척. 초록중앙/회색타player/빨강monster,북쪽위,20·40m원,실제staticmapatlas유지. Radar제목·아래legend제거. 변경4파일ROOT/CANDhash일치,컴파일0,투영검사1/1최초통과,두해상도격리렌더·독립코드리뷰·Astra영향검수통과. 기존통과검사반복0. 샘플개체/HUD값은실입력/다중접속검증이아니다. 저장된Scene만백업일치guard후저장했다.
 
-## 완료와 검증
-PR55는 현재 open·미병합. 주변 전투 표시, 가방 선택 복원, 절제된 HUD·재질과 기본 미니맵은 게시 완료했다. 추가 원형 레이더는 자기 중앙 고정·20/40m 원/N·실제 정적 지형 atlas·커진 회색/빨강 점을 구현하고 로컬 후보 b1d470bc4befbded64c3824a0995e80f6f989d7a로 고정했다.
-레이더 변경 검사 1/1, 컴파일·shader 오류0, 1280x720/960x540 격리 렌더, 독립 코드 리뷰와 Astra/medium 제품검수 통과. 이전 통과 검사는 반복하지 않았다. 촬영용 개체/HUD 값은 샘플이며 실입력·실서버 다중접속을 검증한 것은 아니다. 마지막 Editor 상태 Edit/clean/backgroundfalse, 입력 허용 유지. 이번 후속 조사 중 실제 입력/서비스 시작 없음.
+## 승인·게시
+RADAR01/r1 지정U0C9QEUHPMK 회신1793013105.315639를실제Slack부모/요청1793010905.268759·미소비상태와대조했다. 최신채팅직사각형피드백은같은범위후속이며재승인요구없음. 검수후PR55추가게시중,병합제외. 이전HUDREF02(1793007985.345979)는기소비로재사용금지.
+ITEMFLOW01/r1 회신1793013099.132149/부모1793012032.698299는1회소비완료. PR56 https://github.com/JoEunil/MMORPG/pull/56, head0263b67cf53df048828221b114ca8a916c2c27ca,CI40313760296 success. PR55부모브랜치대상으로아이템코드3파일/문서만포함;PR55병합후master대상으로조정한다. parent게시후필요한정상merge로충돌정리하며forcepush없음.
 
-## 게시 승인 대기
-RADAR01/r1: PR55에 레이더 후보와 공개 근거만 추가, 병합 제외. Unity Coordinator 앱 요청/새 부모1793010905.268759, 채널C0C9VFZMV43, 지정사용자U0C9QEUHPMK. 이번 실제 Slack 조회에서 답장 없음. 회신 미소비·push 전이며 기존 HUDREF02 승인(1793007985.345979)은 이미 소비해 재사용하지 않는다. 정확한 `승인 RADAR01` 수신 시 현재 후보·요청·회신·중복을 대조한다. 후속 작업은 이 후보를 바꾸지 않고 분리 가능한 범위로 진행한다.
-
-## 남은 제한과 다음 행동
-맵 변경 시 Tools/Client Art/Bake Minimap Atlas로 배경을 다시 촬영하고 HUD setup으로 재연결한다. 지형 희소 구간과 밝은 바닥 위 범례/거리선 대비는 남은 표현 한계다. 실제 다중접속·최신 조작감·성공 거래/재화 차감은 기존 데이터·환경을 확인한 뒤 필요한 부분만 검증하며 시딩하지 않는다.
-후속 후보를 선별해 큰 기능 묶음으로 구현 → 변경만 리뷰·최소 검증 → Astra 검수 → 필요 게시 승인 요청한다. 과거 인계는 [보존본](history/2026-10-24-client-playability/HANDOFF-before-next-client-bundle.md), 상세 결과는 [RESULTS](history/2026-10-24-client-playability/RESULTS.txt)에 보존한다.
+## 다음 행동·한계
+PR55게시후양쪽실제원격head/PR56차등diff/CI를확인하고Slack같은앱스레드에각결과를회신한다. 정상게임조작입력허용은유지하지만이번실입력/서버거래테스트는없음. 맵변경시atlas명시재촬영+HUDsetup재연결. 실제거래/다중접속미검증은유지하며시딩하지않는다.
+상세결과는 history/2026-10-24-client-playability/RESULTS.txt,PR56기록은해당branch의ITEM_FLOW_FOLLOWUP.md. 과거인계는같은history폴더보존본을따른다.

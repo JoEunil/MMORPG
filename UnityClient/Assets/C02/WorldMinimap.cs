@@ -11,7 +11,7 @@ namespace C02
         [SerializeField] private C04ObservedWorld observedWorld;
         [SerializeField] private C20WorldMap worldMap;
         [SerializeField] private CanvasGroup panelGroup;
-        [SerializeField, Min(1)] private float viewRadius = 40;
+        [SerializeField, Min(1), Tooltip("World metres from the centre to either horizontal edge.")] private float viewRadius = 40;
         [SerializeField] private Texture2D terrainAtlas;
         [SerializeField] private Rect atlasBounds;
 
@@ -91,30 +91,31 @@ namespace C02
             vertices.Clear();
             if (!visible || !WorldAvailable) return;
             Rect rect = GetPixelAdjustedRect();
-            float radius = Mathf.Min(rect.width, rect.height) * .5f;
-            if (radius <= 0) return;
+            float radius = rect.width * .5f;
+            if (radius <= 0 || rect.height <= 0) return;
             Vector2 origin = rect.center;
-            Circle(vertices, origin, radius, BlockedColor);
+            Rectangle(rect.xMin, rect.yMin, rect.xMax, rect.yMax);
+            Fill(vertices, 4, BlockedColor, origin, radius, false);
             if (terrainAtlas != null && atlasBounds.width > 0 && atlasBounds.height > 0)
             {
-                for (int i = 0; i < CircleSegments; i++) polygon[i] = CirclePoint(origin, radius, i, CircleSegments);
+                Rectangle(rect.xMin, rect.yMin, rect.xMax, rect.yMax);
                 float scale = radius / viewRadius;
-                int count = Clip(CircleSegments, Vector2.right, origin.x + (atlasBounds.xMax - centre.x) * scale);
+                int count = Clip(4, Vector2.right, origin.x + (atlasBounds.xMax - centre.x) * scale);
                 count = Clip(count, Vector2.left, -origin.x - (atlasBounds.xMin - centre.x) * scale);
                 count = Clip(count, Vector2.up, origin.y + (atlasBounds.yMax - centre.y) * scale);
                 count = Clip(count, Vector2.down, -origin.y - (atlasBounds.yMin - centre.y) * scale);
                 Fill(vertices, count, new Color32(255, 255, 255, 255), origin, radius, true);
             }
-            else DrawNavigation(vertices, origin, radius);
+            else DrawNavigation(vertices, rect);
 
-            Ring(vertices, origin, radius * .5f, .65f, new Color32(165, 173, 162, 90));
-            Ring(vertices, origin, radius - .5f, .8f, new Color32(180, 187, 175, 150));
-            Rectangle(origin.x - radius + 2, origin.y - .3f, origin.x + radius - 2, origin.y + .3f);
+            Ring(vertices, rect, radius * (20 / viewRadius), .65f, new Color32(165, 173, 162, 90));
+            Ring(vertices, rect, radius * (40 / viewRadius) - .5f, .8f, new Color32(180, 187, 175, 150));
+            Rectangle(rect.xMin + 2, origin.y - .3f, rect.xMax - 2, origin.y + .3f);
             Fill(vertices, 4, new Color32(164, 174, 160, 42), origin, radius, false);
-            Rectangle(origin.x - .3f, origin.y - radius + 2, origin.x + .3f, origin.y + radius - 2);
+            Rectangle(origin.x - .3f, rect.yMin + 2, origin.x + .3f, rect.yMax - 2);
             Fill(vertices, 4, new Color32(164, 174, 160, 42), origin, radius, false);
-            foreach (Vector2 position in players) Marker(vertices, origin, radius, position, PlayerColor);
-            foreach (Vector2 position in monsters) Marker(vertices, origin, radius, position, MonsterColor);
+            foreach (Vector2 position in players) Marker(vertices, rect, position, PlayerColor);
+            foreach (Vector2 position in monsters) Marker(vertices, rect, position, MonsterColor);
             Circle(vertices, origin, 7, new Color32(74, 219, 115, 55));
             polygon[0] = origin + Vector2.up * 5;
             polygon[1] = origin + Vector2.right * 5;
@@ -123,34 +124,30 @@ namespace C02
             Fill(vertices, 4, SelfColor, origin, radius, false);
         }
 
-        private void DrawNavigation(VertexHelper vertices, Vector2 origin, float radius)
+        private void DrawNavigation(VertexHelper vertices, Rect rect)
         {
-            float cellSize = radius * 2 / TerrainSamples;
-            float worldStep = viewRadius * 2 / TerrainSamples;
+            float cellWidth = rect.width / TerrainSamples;
+            float cellHeight = rect.height / TerrainSamples;
+            float metresPerPixel = viewRadius * 2 / rect.width;
             for (int y = 0; y < TerrainSamples; y++)
                 for (int x = 0; x < TerrainSamples; x++)
                 {
-                    Vector2 middle = new Vector2((x + .5f) * cellSize - radius, (y + .5f) * cellSize - radius);
-                    if (middle.magnitude > radius + cellSize * .707107f) continue;
-                    if (!worldMap.IsWalkable(centre.x - viewRadius + (x + .5f) * worldStep,
-                        centre.y - viewRadius + (y + .5f) * worldStep)) continue;
-                    Rectangle(origin.x + x * cellSize - radius, origin.y + y * cellSize - radius,
-                        origin.x + (x + 1) * cellSize - radius, origin.y + (y + 1) * cellSize - radius);
-                    int count = middle.magnitude <= radius - cellSize * .707107f ? 4 : ClipToCircle(4, origin, radius);
-                    Fill(vertices, count, WalkableColor, origin, radius, false);
+                    Vector2 offset = new Vector2((x + .5f) * cellWidth - rect.width * .5f,
+                        (y + .5f) * cellHeight - rect.height * .5f);
+                    if (!worldMap.IsWalkable(centre.x + offset.x * metresPerPixel,
+                        centre.y + offset.y * metresPerPixel)) continue;
+                    Rectangle(rect.xMin + x * cellWidth, rect.yMin + y * cellHeight,
+                        rect.xMin + (x + 1) * cellWidth, rect.yMin + (y + 1) * cellHeight);
+                    Fill(vertices, 4, WalkableColor, rect.center, rect.width * .5f, false);
                 }
         }
 
-        private void Marker(VertexHelper vertices, Vector2 origin, float radius, Vector2 position, Color32 tint)
+        private void Marker(VertexHelper vertices, Rect rect, Vector2 position, Color32 tint)
         {
-            Vector2 offset = position - centre;
-            if (offset.sqrMagnitude > viewRadius * viewRadius) return;
-            Vector2 point = origin + offset * (radius / viewRadius);
-            const float markerRadius = 3;
-            for (int i = 0; i < 12; i++) polygon[i] = CirclePoint(point, markerRadius, i, 12);
-            int count = offset.magnitude * (radius / viewRadius) + markerRadius <= radius
-                ? 12 : ClipToCircle(12, origin, radius);
-            Fill(vertices, count, tint, origin, radius, false);
+            Vector2 point = rect.center + (position - centre) * (rect.width / (viewRadius * 2));
+            if (point.x < rect.xMin || point.x > rect.xMax || point.y < rect.yMin || point.y > rect.yMax) return;
+            for (int i = 0; i < 12; i++) polygon[i] = CirclePoint(point, 3, i, 12);
+            Fill(vertices, ClipToRect(12, rect), tint, rect.center, rect.width * .5f, false);
         }
 
         private void Circle(VertexHelper vertices, Vector2 origin, float radius, Color32 tint)
@@ -159,15 +156,16 @@ namespace C02
             Fill(vertices, CircleSegments, tint, origin, radius, false);
         }
 
-        private void Ring(VertexHelper vertices, Vector2 origin, float radius, float thickness, Color32 tint)
+        private void Ring(VertexHelper vertices, Rect rect, float radius, float thickness, Color32 tint)
         {
+            Vector2 origin = rect.center;
             for (int i = 0; i < CircleSegments; i++)
             {
                 polygon[0] = CirclePoint(origin, radius, i, CircleSegments);
                 polygon[1] = CirclePoint(origin, radius, i + 1, CircleSegments);
                 polygon[2] = CirclePoint(origin, radius - thickness, i + 1, CircleSegments);
                 polygon[3] = CirclePoint(origin, radius - thickness, i, CircleSegments);
-                Fill(vertices, 4, tint, origin, radius, false);
+                Fill(vertices, ClipToRect(4, rect), tint, origin, rect.width * .5f, false);
             }
         }
 
@@ -183,17 +181,12 @@ namespace C02
             polygon[2] = new Vector2(right, top); polygon[3] = new Vector2(right, bottom);
         }
 
-        private int ClipToCircle(int count, Vector2 origin, float radius)
+        private int ClipToRect(int count, Rect rect)
         {
-            // An inscribed polygon keeps every marker vertex inside the radar, including at its rim.
-            float limit = radius * Mathf.Cos(Mathf.PI / CircleSegments);
-            for (int i = 0; i < CircleSegments && count > 0; i++)
-            {
-                float angle = (i + .5f) * (Mathf.PI * 2 / CircleSegments);
-                Vector2 normal = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-                count = Clip(count, normal, Vector2.Dot(normal, origin) + limit);
-            }
-            return count;
+            count = Clip(count, Vector2.right, rect.xMax);
+            count = Clip(count, Vector2.left, -rect.xMin);
+            count = Clip(count, Vector2.up, rect.yMax);
+            return Clip(count, Vector2.down, -rect.yMin);
         }
 
         private int Clip(int count, Vector2 normal, float limit)
