@@ -18,6 +18,124 @@ namespace C02.Tests
     // Detached state fixtures. These do not count as real UI input, server observation, or account sessions.
     public sealed class C04ObservationTests
     {
+        [Test]
+        [Category("WorldMinimap")]
+        public void MinimapProjectsAuthoritativeDotsNorthUpAndSamplesExistingTerrain()
+        {
+            var map = ScriptableObject.CreateInstance<C20WorldMap>();
+            try
+            {
+                map.origin = new Vector2(-29, -28); map.tileSize = 2; map.width = 39; map.height = 40;
+                map.walkable = new byte[map.width * map.height];
+                for (int i = 0; i < map.walkable.Length; i++) map.walkable[i] = 1;
+                map.walkable[0] = 0;
+                using (var fixture = new ObservationFixture())
+                {
+                    var other = Player(42); other.x = 21; other.y = 22;
+                    var distant = Player(43); distant.x = 62;
+                    fixture.Players(100, Player(7), other, distant);
+                    var monster = Monster(0, 0); monster.x = 1; monster.y = 2;
+                    var farMonster = Monster(1, 0); farMonster.x = -40;
+                    var dead = Monster(2, 0); dead.hp = 0;
+                    fixture.Monsters(100, monster, farMonster, dead);
+                    var minimap = fixture.CreateMinimap(map);
+                    using (var vertices = new UnityEngine.UI.VertexHelper())
+                    {
+                        PopulateMinimap(minimap, vertices);
+                        Assert.That(vertices.currentVertCount, Is.EqualTo(40 * 40 * 4 + 12),
+                            "Exactly self, one observed player and one live monster are in range.");
+                        var vertex = new UnityEngine.UIVertex();
+                        vertices.PopulateUIVertex(ref vertex, 0);
+                        Assert.That(vertex.color, Is.EqualTo(new Color32(26, 31, 30, 245)), "Blocked southwest tile.");
+                        vertices.PopulateUIVertex(ref vertex, 4);
+                        Assert.That(vertex.color, Is.EqualTo(new Color32(79, 91, 72, 235)), "Next existing map tile is walkable.");
+                        vertices.PopulateUIVertex(ref vertex, 39 * 4);
+                        Assert.That(vertex.color, Is.EqualTo(new Color32(26, 31, 30, 245)), "Outside world bounds is blocked.");
+                        AssertMinimapMarker(vertices, 40 * 40 * 4, new Vector2(10, 10), new Color32(174, 181, 184, 255));
+                        AssertMinimapMarker(vertices, 40 * 40 * 4 + 4, new Vector2(-10, -10), new Color32(235, 74, 64, 255));
+                        AssertMinimapMarker(vertices, 40 * 40 * 4 + 8, Vector2.zero, new Color32(74, 219, 115, 255));
+                    }
+                    Assert.That(minimap.raycastTarget, Is.False);
+                    var group = (CanvasGroup)Get(minimap, "panelGroup");
+                    Assert.That(group.alpha, Is.EqualTo(1), "An initially hidden parent wakes when the world is ready.");
+                    Assert.That(group.blocksRaycasts || group.interactable, Is.False);
+                }
+            }
+            finally { UnityEngine.Object.DestroyImmediate(map); }
+        }
+
+        [Test]
+        [Category("WorldMinimap")]
+        public void MinimapClearsDepartedDefeatedAndStaleWorldObservationsWithoutHidingDeadSelf()
+        {
+            var map = ScriptableObject.CreateInstance<C20WorldMap>();
+            try
+            {
+                map.origin = new Vector2(-50, -50); map.width = map.height = 120;
+                map.walkable = new byte[map.width * map.height];
+                using (var fixture = new ObservationFixture())
+                {
+                    fixture.Players(100, Player(42)); fixture.Monsters(100, Monster(0, 0));
+                    var minimap = fixture.CreateMinimap(map);
+                    var group = (CanvasGroup)Get(minimap, "panelGroup");
+                    var players = new List<Vector2>(); var monsters = new List<Vector2>();
+                    Assert.That(fixture.Observer.CopyMinimapPositions(players, monsters), Is.True);
+                    Assert.That(players.Count, Is.EqualTo(1)); Assert.That(monsters.Count, Is.EqualTo(1));
+                    fixture.PlayerDeltas(new DeltaUpdateField { zoneInternalID = 42, fieldID = 7, fieldVal = Bits(18) });
+                    fixture.MonsterDeltas(new MonsterDeltaField { internalId = 0, fieldId = 2, fieldVal = Bits(19) });
+                    fixture.Observer.CopyMinimapPositions(players, monsters);
+                    Assert.That(players[0], Is.EqualTo(new Vector2(18, 12)));
+                    Assert.That(monsters[0], Is.EqualTo(new Vector2(11, 19)));
+                    fixture.RemovePlayer(42);
+                    fixture.MonsterDeltas(new MonsterDeltaField { internalId = 0, fieldId = 0, fieldVal = 0 });
+                    fixture.Observer.CopyMinimapPositions(players, monsters);
+                    Assert.That(players, Is.Empty); Assert.That(monsters, Is.Empty);
+                    var own = fixture.World.OwnFull; own.hp = 0; Set(fixture.World, "ownFull", own);
+                    Set(minimap, "nextRefresh", 0f); Invoke(minimap, "Update");
+                    Assert.That(group.alpha, Is.EqualTo(1), "HP0 is not a reason to hide the local player's map.");
+                    typeof(C02WorldScreen).GetProperty("Stage").GetSetMethod(true).Invoke(fixture.World,
+                        new object[] { C02Stage.TransitionPending });
+                    ((Action)Get(fixture.World, "WorldStateChanged"))?.Invoke();
+                    Assert.That(group.alpha, Is.Zero, "Transition hides the whole panel immediately.");
+                    players.Add(Vector2.one); monsters.Add(Vector2.one);
+                    Assert.That(fixture.Observer.CopyMinimapPositions(players, monsters), Is.False);
+                    Assert.That(players, Is.Empty); Assert.That(monsters, Is.Empty);
+                    typeof(C02WorldScreen).GetProperty("Stage").GetSetMethod(true).Invoke(fixture.World,
+                        new object[] { C02Stage.InWorld });
+                    typeof(C02WorldScreen).GetProperty("ZoneID").GetSetMethod(true).Invoke(fixture.World, new object[] { (ushort)2 });
+                    Assert.That(fixture.Observer.CopyMinimapPositions(players, monsters), Is.False, "Old ownership cannot leak positions.");
+                    fixture.CloseWorld();
+                    Assert.That(group.alpha, Is.Zero);
+                    using (var vertices = new UnityEngine.UI.VertexHelper())
+                    { PopulateMinimap(minimap, vertices); Assert.That(vertices.currentVertCount, Is.Zero); }
+                    fixture.OpenWorld(); Set(minimap, "nextRefresh", 0f); Invoke(minimap, "Update");
+                    Assert.That(group.alpha, Is.EqualTo(1), "The always-active panel can recover on the next world entry.");
+                    fixture.DisableObserver();
+                    Assert.That(fixture.Observer.CopyMinimapPositions(players, monsters), Is.False);
+                    Assert.That(players, Is.Empty); Assert.That(monsters, Is.Empty);
+                    minimap.enabled = false;
+                    Assert.That(group.alpha, Is.Zero);
+                }
+            }
+            finally { UnityEngine.Object.DestroyImmediate(map); }
+        }
+
+        private static void PopulateMinimap(WorldMinimap minimap, UnityEngine.UI.VertexHelper vertices) =>
+            typeof(WorldMinimap).GetMethod("OnPopulateMesh", BindingFlags.Instance | BindingFlags.NonPublic,
+                null, new[] { typeof(UnityEngine.UI.VertexHelper) }, null).Invoke(minimap, new object[] { vertices });
+
+        private static void AssertMinimapMarker(UnityEngine.UI.VertexHelper vertices, int start, Vector2 expected, Color32 color)
+        {
+            Vector2 centre = Vector2.zero;
+            var vertex = new UnityEngine.UIVertex();
+            for (int i = 0; i < 4; i++)
+            {
+                vertices.PopulateUIVertex(ref vertex, start + i);
+                Assert.That(vertex.color, Is.EqualTo(color)); centre += (Vector2)vertex.position;
+            }
+            Assert.That(Vector2.Distance(centre * .25f, expected), Is.LessThan(.001f));
+        }
+
 #if UNITY_EDITOR
         [UnityEngine.TestTools.UnityTest]
         public IEnumerator FirstHuntFeedback_MonsterDefeatKeepsOnlyBriefVisualAndLiveFullResetsIt()
@@ -931,6 +1049,22 @@ namespace C02.Tests
                 root.SetActive(true);
                 OpenWorld();
                 Bind(NewModel());
+            }
+
+            public C02WorldScreen World => world;
+            public C04ObservedWorld Observer => observer;
+            public WorldMinimap CreateMinimap(C20WorldMap map)
+            {
+                var panel = Child("minimap panel");
+                var group = panel.AddComponent<CanvasGroup>(); group.alpha = 0;
+                var graphic = Child("minimap graphic"); graphic.SetActive(false);
+                graphic.transform.SetParent(panel.transform, false);
+                ((RectTransform)graphic.transform).sizeDelta = new Vector2(80, 80);
+                var minimap = graphic.AddComponent<WorldMinimap>();
+                Set(minimap, "worldScreen", world); Set(minimap, "observedWorld", observer);
+                Set(minimap, "worldMap", map); Set(minimap, "panelGroup", group);
+                graphic.SetActive(true);
+                return minimap;
             }
 
             public ViewModel NewModel() { var model = C04ObservationTests.NewModel(dispatcher); models.Add(model); return model; }

@@ -259,7 +259,53 @@ public static class KnightInterfaceArtSetup
             foreach (var text in disconnect.GetComponentsInChildren<TMP_Text>(true)) text.fontSize = 14;
         }
         C06ChatSetup.ApplyCleanStyle();
+        ConfigureMinimap(hud.transform.parent, world);
         EditorSceneManager.MarkSceneDirty(world.gameObject.scene);
+    }
+
+    private static void ConfigureMinimap(Transform canvas, C02WorldScreen world)
+    {
+        var panel = Child(canvas, "WorldMinimapPanel");
+        Place(panel, new Vector2(1, 1), new Vector2(-24, -86), new Vector2(210, 238));
+        EdgedSurface(panel, new Color(.045f, .055f, .06f, .86f));
+        var group = panel.GetComponent<CanvasGroup>();
+        if (group == null) group = panel.gameObject.AddComponent<CanvasGroup>();
+        group.alpha = 0; group.blocksRaycasts = false; group.interactable = false;
+        var title = Label(panel, "MinimapTitle", "Nearby", 16);
+        Place(title.rectTransform, new Vector2(0, 1), new Vector2(12, -5), new Vector2(150, 20));
+        title.color = new Color(.86f, .88f, .85f);
+        var north = Label(panel, "MinimapNorth", "N", 14);
+        Place(north.rectTransform, new Vector2(1, 1), new Vector2(-12, -7), new Vector2(16, 18));
+        north.alignment = TextAlignmentOptions.Center;
+        var map = panel.Find("Map") as RectTransform;
+        if (map == null)
+        {
+            map = new GameObject("Map", typeof(RectTransform), typeof(CanvasRenderer), typeof(WorldMinimap))
+                .GetComponent<RectTransform>();
+            map.SetParent(panel, false);
+        }
+        Place(map, new Vector2(0, 1), new Vector2(12, -28), new Vector2(186, 186));
+        var graphic = map.GetComponent<WorldMinimap>();
+        graphic.raycastTarget = false;
+        var refs = new SerializedObject(graphic);
+        refs.FindProperty("worldScreen").objectReferenceValue = world;
+        refs.FindProperty("observedWorld").objectReferenceValue = world.GetComponent<C04ObservedWorld>();
+        refs.FindProperty("worldMap").objectReferenceValue = new SerializedObject(world).FindProperty("worldMap").objectReferenceValue;
+        refs.FindProperty("panelGroup").objectReferenceValue = group;
+        refs.FindProperty("viewRadius").floatValue = 40;
+        refs.ApplyModifiedPropertiesWithoutUndo();
+        string[] names = { "Self", "Player", "Monster" };
+        string[] labels = { "You", "Players", "Mob" };
+        Color[] colors = { new Color(.2f, .9f, .35f), new Color(.65f, .67f, .68f), new Color(.95f, .2f, .18f) };
+        for (int i = 0; i < names.Length; i++)
+        {
+            var dot = Child(panel, names[i] + "Dot");
+            Place(dot, new Vector2(0, 0), new Vector2(12 + i * 64, 11), new Vector2(6, 6));
+            PlainSurface(dot, colors[i]);
+            var label = Label(panel, names[i] + "Legend", labels[i], 13);
+            Place(label.rectTransform, new Vector2(0, 0), new Vector2(23 + i * 64, 6), new Vector2(48, 18));
+            label.color = new Color(.82f, .85f, .85f);
+        }
     }
 
     private static void MenuButton(RectTransform button, bool market)

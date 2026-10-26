@@ -208,6 +208,21 @@ namespace C02
             (worldScreen.Stage == C02Stage.InWorld || worldScreen.Stage == C02Stage.TransitionPending) && worldScreen.HasOwnFull && displayRoot != null &&
             displayRoot.gameObject.activeInHierarchy;
 
+        // Copy authoritative positions without exposing mutable observation entries or visual interpolation.
+        public bool CopyMinimapPositions(List<Vector2> playerPositions, List<Vector2> monsterPositions)
+        {
+            playerPositions.Clear();
+            monsterPositions.Clear();
+            if (!isActiveAndEnabled || model == null || !WorldAvailable || worldScreen.Stage != C02Stage.InWorld ||
+                observedZone == 0 || observedZone != worldScreen.ZoneID || ownId == 0 || ownId != worldScreen.InternalID)
+                return false;
+            foreach (var pair in players)
+                if (pair.Key != ownId) playerPositions.Add(new Vector2(pair.Value.State.x, pair.Value.State.y));
+            foreach (var pair in monsters)
+                if (pair.Value.State.hp > 0) monsterPositions.Add(new Vector2(pair.Value.State.x, pair.Value.State.y));
+            return true;
+        }
+
         private void ChangeClient(IViewModelUI next)
         {
             Unsubscribe();
