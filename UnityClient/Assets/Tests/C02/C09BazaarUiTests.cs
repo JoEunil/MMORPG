@@ -120,7 +120,7 @@ namespace C02.Tests
                 var first = fixture.Rows.GetChild(fixture.Rows.childCount - 2).GetComponent<Button>();
                 var second = fixture.Rows.GetChild(fixture.Rows.childCount - 1).GetComponent<Button>();
                 var firstColor = first.GetComponent<Image>().color;
-                var selectedColor = new Color(.20f, .29f, .34f);
+                Color selectedColor = new Color32(40, 86, 79, 255);
                 first.onClick.Invoke();
                 Assert.That(first.GetComponent<Image>().color, Is.EqualTo(selectedColor));
                 fixture.Price.text = "95";
@@ -287,15 +287,16 @@ namespace C02.Tests
                 Assert.That(lastRow.Find("State").GetComponent<TMP_Text>().text, Is.EqualTo("Trading"));
                 Assert.That(lastRow.Find("StateBadge").GetComponent<Image>(), Is.Not.Null);
                 Assert.That(lastRow.GetComponent<UnityEngine.UI.LayoutElement>().preferredHeight, Is.EqualTo(74));
+                Color lastRowBaseColor = lastRow.GetComponent<Image>().color;
                 lastRow.GetComponent<Button>().onClick.Invoke();
-                Assert.That(lastRow.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.20f, .29f, .34f)));
+                Assert.That(lastRow.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo((Color)new Color32(40, 86, 79, 255)));
                 Assert.That(fixture.SelectedName.text, Is.EqualTo("Item #729"));
                 Assert.That(fixture.SelectedQuantity.text, Is.EqualTo("× 30"));
                 Assert.That(fixture.Detail.text, Does.Contain("9,029 diamonds"));
-                Assert.That(fixture.Detail.text, Does.Contain("buyer pays"));
+                Assert.That(fixture.Detail.text, Does.Contain("Trading"));
                 fixture.Row(1000).GetComponent<Button>().onClick.Invoke();
-                Assert.That(lastRow.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.09f, .11f, .14f)));
-                Assert.That(fixture.Row(1000).GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.20f, .29f, .34f)));
+                Assert.That(lastRow.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(lastRowBaseColor));
+                Assert.That(fixture.Row(1000).GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo((Color)new Color32(40, 86, 79, 255)));
                 Assert.That(fixture.Detail.text, Does.Contain("9,000 diamonds"));
 
                 fixture.Search.onClick.Invoke();

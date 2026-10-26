@@ -80,19 +80,8 @@ public static class KnightInterfaceArtSetup
         }
         ApplyRestrainedEntry();
         var hud = ((GameObject)refs.FindProperty("worldHud").objectReferenceValue).transform;
-        foreach (string name in new[] { "C07InventoryPanel" })
-        {
-            var panel = hud.parent.Find(name) as RectTransform;
-            if (panel == null) throw new InvalidOperationException("The existing inventory panel is required.");
-            // The four-pixel inset reveals a restrained edge around the inventory surface.
-            var panelImage = panel.GetComponent<Image>();
-            panelImage.sprite = null;
-            panelImage.color = new Color(.40f, .47f, .52f, .98f);
-            foreach (string part in new[] { "ForgedFrame", "FrameOrnaments" })
-                panel.Find(part)?.gameObject.SetActive(false);
-            if (name != "C06ChatPanel") panel.anchoredPosition = new Vector2(-24, 118);
-        }
         C06ChatSetup.ApplyCleanStyle();
+        C07InventorySetup.ApplyRestrainedInventoryDetails();
         C09BazaarSetup.ApplyCleanStyle();
         foreach (string name in new[] { "C07BagButton", "C09MarketButton" })
             SkinButton(hud.parent.Find(name).GetComponent<Button>(), 16);
@@ -353,7 +342,7 @@ public static class KnightInterfaceArtSetup
     private static void MenuButton(RectTransform button, bool market)
     {
         if (button == null) throw new InvalidOperationException("Both existing menu buttons are required.");
-        var atlas = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/C02/Art/CitadelEnvironment/hud-menu-icons-v7.png");
+        var atlas = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/C02/Art/CitadelEnvironment/hud-menu-icons-v8.png");
         if (atlas == null) throw new InvalidOperationException("The authored menu icon atlas is required.");
         Place(button, new Vector2(1, 1), new Vector2(market ? -86 : -24, -16), new Vector2(54, 54));
         PlainSurface(button, Color.clear);
