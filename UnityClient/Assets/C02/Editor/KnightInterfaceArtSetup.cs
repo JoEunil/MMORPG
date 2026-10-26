@@ -323,53 +323,45 @@ public static class KnightInterfaceArtSetup
     private static void MenuButton(RectTransform button, bool market)
     {
         if (button == null) throw new InvalidOperationException("Both existing menu buttons are required.");
-        Place(button, new Vector2(1, 1), new Vector2(market ? -106 : -24, -18), new Vector2(74, 56));
-        EdgedSurface(button, new Color(.055f, .065f, .07f, .68f));
-        foreach (string name in new[] { "ForgedFrame", "FrameOrnaments" }) button.Find(name)?.gameObject.SetActive(false);
-        var label = button.Find("Label").GetComponent<TMP_Text>();
-        Place(label.rectTransform, new Vector2(.5f, 0), new Vector2(0, 3), new Vector2(66, 18));
-        label.text = market ? "Market" : "Bag";
-        label.fontSize = 14; label.characterSpacing = 0; label.alignment = TextAlignmentOptions.Center;
-        label.color = new Color(.86f, .87f, .82f); label.raycastTarget = false;
+        var atlas = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/C02/Art/CitadelEnvironment/hud-menu-icons-v1.png");
+        if (atlas == null) throw new InvalidOperationException("The authored menu icon atlas is required.");
+        Place(button, new Vector2(1, 1), new Vector2(market ? -86 : -24, -16), new Vector2(54, 54));
+        PlainSurface(button, Color.clear);
+        button.GetComponent<UnityEngine.UI.Image>().raycastTarget = true;
+        var outline = button.GetComponent<Outline>();
+        if (outline != null) outline.enabled = false;
+        foreach (string name in new[] { "ForgedFrame", "FrameOrnaments", "Label" }) button.Find(name)?.gameObject.SetActive(false);
+        foreach (string name in new[] { "MarketStem", "MarketBeam", "MarketBase", "MarketChain-1", "MarketChain1", "MarketTray-1", "MarketTray1",
+            "BagBody", "BagInset", "BagHandle", "BagHandleInset", "BagFlap", "BagClasp" })
+        {
+            var old = button.Find(name);
+            if (old != null) UnityEngine.Object.DestroyImmediate(old.gameObject);
+        }
+        var iconRect = button.Find("MenuIcon") as RectTransform;
+        if (iconRect == null)
+        {
+            iconRect = new GameObject("MenuIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.RawImage))
+                .GetComponent<RectTransform>();
+            iconRect.SetParent(button, false);
+        }
+        float aspect = atlas.width * .5f / atlas.height;
+        Vector2 size = aspect >= 1 ? new Vector2(54, 54 / aspect) : new Vector2(54 * aspect, 54);
+        Place(iconRect, new Vector2(.5f, .5f), new Vector2(-2, -2), size);
+        var icon = iconRect.GetComponent<UnityEngine.UI.RawImage>();
+        icon.texture = atlas;
+        icon.uvRect = new Rect(market ? .5f : 0, 0, .5f, 1);
+        icon.color = Color.white;
+        icon.raycastTarget = false;
+        // Preserve the existing click target and callbacks; hover/disabled tint belongs to the illustration.
+        var control = button.GetComponent<UnityEngine.UI.Button>();
+        control.targetGraphic = icon;
+        control.colors = ColorBlock.defaultColorBlock;
         var key = Label(button, "MenuKey", market ? "B" : "I", 14);
-        Place(key.rectTransform, new Vector2(1, 1), new Vector2(-5, -3), new Vector2(14, 18));
-        key.alignment = TextAlignmentOptions.Center; key.color = new Color(.93f, .93f, .87f);
-        button.GetComponent<Button>().colors = ColorBlock.defaultColorBlock;
-        // Small authored line icons stay inside the existing clickable control.
-        Color line = new Color(.76f, .74f, .65f);
-        if (market)
-        {
-            IconPart(button, "MarketStem", new Vector2(0, 12), new Vector2(2, 22), line);
-            IconPart(button, "MarketBeam", new Vector2(0, 20), new Vector2(28, 2), line);
-            IconPart(button, "MarketBase", new Vector2(0, 2), new Vector2(16, 2), line);
-            for (int side = -1; side <= 1; side += 2)
-            {
-                IconPart(button, "MarketChain" + side, new Vector2(side * 11, 15), new Vector2(1, 9), line);
-                IconPart(button, "MarketTray" + side, new Vector2(side * 11, 10), new Vector2(10, 3), line);
-            }
-        }
-        else
-        {
-            IconPart(button, "BagBody", new Vector2(0, 11), new Vector2(22, 18), line);
-            IconPart(button, "BagInset", new Vector2(0, 11), new Vector2(18, 14), new Color(.08f, .10f, .11f));
-            IconPart(button, "BagHandle", new Vector2(0, 23), new Vector2(10, 6), line);
-            IconPart(button, "BagHandleInset", new Vector2(0, 22), new Vector2(6, 4), new Color(.08f, .10f, .11f));
-            IconPart(button, "BagFlap", new Vector2(0, 15), new Vector2(18, 2), line);
-            IconPart(button, "BagClasp", new Vector2(0, 11), new Vector2(3, 4), line);
-        }
-    }
-
-    private static void IconPart(Transform parent, string name, Vector2 position, Vector2 size, Color color)
-    {
-        var part = parent.Find(name) as RectTransform;
-        if (part == null)
-        {
-            part = new GameObject(name, typeof(RectTransform), typeof(UnityEngine.UI.Image)).GetComponent<RectTransform>();
-            part.SetParent(parent, false);
-        }
-        Place(part, new Vector2(.5f, .5f), position, size);
-        part.GetComponent<UnityEngine.UI.Image>().color = color;
-        part.GetComponent<UnityEngine.UI.Image>().raycastTarget = false;
+        Place(key.rectTransform, new Vector2(1, 1), new Vector2(0, 0), new Vector2(12, 18));
+        key.fontStyle = FontStyles.Bold;
+        key.alignment = TextAlignmentOptions.Center;
+        key.color = new Color(.96f, .96f, .90f);
+        key.rectTransform.SetAsLastSibling();
     }
 
     private static void PlainSurface(RectTransform rect, Color color)

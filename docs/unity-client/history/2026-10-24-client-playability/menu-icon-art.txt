@@ -1,0 +1,27 @@
+# 가방·거래소 그림 아이콘 제작
+
+사용자 PR56 피드백: 딱딱한 아이콘과 큰 배경을 줄이고 아이콘을 강조, 문구 제거 허용. 기존 판타지 방향 안의 보완이며 별도 선택/게시 재승인 요구 없음.
+제품4파일: 기존 KIA 저작 helper/Scene + 새 PNG/meta. 기존 Button·단축키·화면수명·거래요청 변경0. 74x56 유색판→54x54 투명 클릭영역,RawImage 그림54px/상시이름숨김/I·B14 유지. targetGraphic은그림,클릭은기존parent Image,그림raycastfalse. 예전선조각생성helper호출없음확인후제거.
+Unity 2D Sprite Editor package는현재없어slicing하지않았다. 새package설치나기능검사우회없이RawImage의UV두절반으로원본atlas를쓴다. importer Default/alpha/Bilinear/Clamp/noMip/uncompressed/max512,원본1774x887보존. 네트워크/서버/AI/DB/DLL변경없음.
+컴파일0. C02Edit/clean/path/저장Scene백업일치guard후적용. 두해상도1280x720/960x540격리UI렌더 sourceUnchangedtrue. 정적참조검사에서두Button크기54x54/Label비활성/I·B14/parent raycasttrue/배경alpha0/icon raycastfalse/targetGraphic일치/UV좌우반/texture직렬화확인. 새기능테스트0,기존통과검사반복0. 실제입력·실거래성공새검증아님. 시각피드백보완만검증했으며Astra/medium4파일영향검수통과·필수수정0.
+PR55 merged f3e27bda052367cb6114f8a68c1106b417ad835c 확인, PR56 base master 자동조정확인. 실제master tree는기존809c8cb와차이0,정상merge반영/force없음. 이전제품검사다시실행안함.
+
+## 제작 프롬프트(최종 원문)
+Create one production-ready 2D game HUD sprite atlas, exactly two equal square cells arranged horizontally, target aspect ratio 2:1 (1024 by 512). Truly transparent background with clean alpha, no painted checkerboard. Original restrained classic fantasy MMORPG inventory-menu artwork, not copied from any game. LEFT CELL: a softly rounded medium-brown leather adventurer satchel with a folded flap, small muted metal buckle, visible leather thickness and one broad curved handle. RIGHT CELL: a compact merchant balance scale of aged bronze and dark iron with gently curved arms, two clearly separated hanging pans and a few small coins at the foot. Each object centred within its own half, same perceived visual weight, occupying roughly 75 percent of cell height with clear padding from every cell border. Readable as two very different silhouettes at 32-40 pixels. Hand-painted game item illustration with believable rounded forms, broad warm highlights, dark contact shadows internal to the object, subtle pale edge lighting so it separates from green terrain. Clean broad shapes and restrained detail, subdued bronze and leather, no bright gold decoration. No button plate, no rectangular background, no badge, no frame, no border, no words, no letters, no numbers, no labels, no logos, no sparks, no decorative UI. Keep the two cells isolated with fully transparent space between objects.
+
+
+## 출처·검사
+Created: 2026-10-26
+Source: built-in image_gen generation, transparent_background=true; one atlas, one generation call.
+Original output: C:/Users/joeun/.codex/generated_images/01a177f9-632c-7ae0-97cf-ddb127bcc1c9/exec-45e3355c-1c33-4a98-9659-92611db7a285.png
+Project copy: Assets/C02/Art/CitadelEnvironment/hud-menu-icons-v1.png
+Prompt: hud-menu-icons-prompt.txt (complete final generation prompt).
+No external game images or third-party asset files were used as generation references. Generated original artwork; not copied from the named commercial games in the user's broad UI references.
+Usage/rights: generated through the built-in tool in this account; no external asset-store license attached. No legal copyright/exclusivity determination is claimed. Applicable service terms govern use.
+Actual file: 1774 x 887 pixels, RGBA, exact 2:1. The tool did not return the prompted 1024 x 512 resolution; the equal square-cell UV layout remains valid.
+Pixel inspection (Pillow read-only): alpha range 0..255, 872197 fully transparent pixels. At alpha >=16, left object bounds within its 887px cell are (76,75)-(846,821); right bounds relative to its cell are (20,41)-(854,832). The six-pixel central seam contains zero pixels with alpha >=16. Very faint antialiasing pixels below alpha16 extend farther than visible object bounds.
+RawImage mapping: bag UV (0,0,0.5,1); market UV (0.5,0,0.5,1). No slicing package or image pixel edits are required.
+Visually inspected the actual saved PNG with view_image: distinct rounded satchel and curved scales silhouettes, no labels, frames or button background. The dark display backdrop is transparent alpha, not a painted plate.
+Unverified: Unity import, actual 32-40px HUD rendering, interaction and final visual approval remain Coordinator responsibilities.
+
+Coordinator 후속: 위 provenance의 Unverified는아트담당인계시점기록이다. 이후Unity임포트/두해상도렌더/정적click routing확인과Astra검수는완료했다. 실제클릭/키입력과서버거래는이번에검증하지않았다. 사이트빌드·링크통과,제품4파일검수후변경0.
