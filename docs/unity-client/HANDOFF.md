@@ -1,7 +1,7 @@
 # 현재 인계 — 2026-10-26
 
 ## 목표·정본
-사용자 승인과 최신 피드백에 따라 PR55의 실제 지형 미니맵을 직사각형으로 바꾸고 제목·범례를 제거해 게시한다. 가방·거래소 흐름은 별도 PR56으로 게시했다. 병합은 사용자 몫이다.
+사용자 승인과 최신 피드백에 따라 PR55의 실제 지형 미니맵을 직사각형으로 바꾸고 제목·범례를 제거해 게시 완료했다. 가방·거래소 흐름은 별도 PR56으로 게시했다. 병합은 사용자 몫이다.
 - Git 정본 C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, 현재 codex/inventory-market-handoff.
 - Editor C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient, 마지막 Unity6000.0.47f1/PID43612/Pipeline7800. ROOT의 PR56제품3파일과 Git의 PR55기준은 다르므로 전체후보동일이라고보지않는다.
 - 사용자 서버/몬스터AI·DB·패킷·DLL·통행/스폰은 변경하지 않는다.
@@ -20,3 +20,6 @@ PR55게시후양쪽실제원격head/PR56차등diff/CI를확인하고Slack같은�
 RADAR01/r1 회신1793013105.315639는최신직사각형피드백과함께1회소비완료,재사용금지. PR55게시제품4파일은Astra검수후변경0. ROOT Editor C02Edit/clean/backgroundfalse,208x156/titleAbsent/legendAbsent확인. CI확인후PR56에부모를정상merge해차등범위를정리하며새게임검사는반복하지않는다.
 
 부모동기화: PR55제품07805ef Actions40314440577 success확인. PR56에부모809c8cb를정상merge하며충돌2문서만최신누적지표385·승인소비기록이있는부모내용으로조정했다. 자식아이템상세기록은ITEM_FLOW_FOLLOWUP.md로보존. 코드6파일은각검수raw manifest와일치,Scene1파일은Git CRLF변환만있으며LF정규화본문이검수manifest/Editor와일치,게임검사반복없음.
+
+## 최종 상태
+PR55제품07805ef/Actions40314440577 success,최신문서head809c8cb. PR56최신통합제품head3d362031ac5f33246e173642cf990fbcfa228d74/Actions40314812866 success,base809c8cb대비차등7파일(제품2/검사1/문서4),mergeabletrue확인. 양쪽승인1회소비완료/승인대기없음/병합·정식Pages배포없음. 현재PR56브랜치작업트리clean·원격차이0확인. 이문단이후는인계기록만수정하며제품·검사변경없음. 사용자PR검토후PR55가병합되면PR56base를master로정리한다.
