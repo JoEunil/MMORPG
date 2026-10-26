@@ -11,11 +11,12 @@
 | 구현 Agent | client_implementer | implementer.toml | gpt-6.1-sol / medium |
 | 아트 Agent | asset_artist | asset_artist.toml | gpt-6.1-sol / high |
 | 리뷰 Agent | code_reviewer | reviewer.toml | gpt-6.1-sol / medium |
+| 종합 검수 Agent | quality_reviewer | quality_reviewer.toml | gpt-6-astra / medium |
 | 테스트 Agent | unity_tester | unity_tester.toml | gpt-6-luna / medium |
 | 기록 Agent | progress_documenter | documenter.toml | gpt-6-luna / low |
 | 의사결정 지원 Agent | decision_curator | decision_curator.toml | gpt-6-luna / low |
 
-책임은 roles/*.md에서 관리한다. 코드 개선은 기존 담당자의 업무이며 별도 프로필을 추가하지 않는다. 의사결정 지원 담당은 기획·아트 제작을 중복하지 않고 비교 묶음과 사용자 답변 연결만 맡는다.
+책임은 roles/*.md에서 관리한다. 종합 검수는 단계별 복합 상황 자문, 사용자 전달 전 선택안 검수, PR 묶음 마감 검수로 활용한다. 모드를 구분하고 쟁점을 묶어 세부 코드 리뷰·테스트를 대체하거나 반복하지 않는다. 미등록 상태라면 default 신규 인스턴스에 gpt-6-astra/medium, fork_turns=none과 해당 역할 지침·후보 근거만 명시한다. 실제 Astra 실행을 확인할 수 없으면 Sol 결과를 Astra 검수로 표시하지 않는다. 코드 개선은 기존 담당자의 업무이며 별도 프로필을 추가하지 않는다. 의사결정 지원 담당은 기획·아트 제작을 중복하지 않고 비교 묶음과 사용자 답변 연결만 맡는다.
 
 프로젝트 [agents] 기본값은 gpt-6.1-sol/medium이며 반복 테스트·기록은 해당 역할의 Luna 설정을 사용한다. Coordinator 모델은 사용자가 앱에서 선택하며 프로젝트 설정으로 덮어쓰지 않는다. 복잡한 설계·동시성·서버 계약 분석/리뷰는 필요 근거와 파일 범위를 정해 Sol/high, 특히 어려운 통합 판단은 Astra/low~medium 작업으로 별도 배정할 수 있다. 모든 작업을 일괄 high로 올리지 않는다.
 

@@ -1,7 +1,7 @@
 ## 공개 집계
 
 기준일: 2026-10-26
-누적 신규: 134
+누적 신규: 135
 누적 재활성화: 229
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-26
 
@@ -12,12 +12,13 @@
 | client_implementer | 구현 Agent | 45 | 57 |
 | asset_artist | 아트 Agent | 19 | 26 |
 | code_reviewer | 리뷰 Agent | 33 | 92 |
+| quality_reviewer | 종합 검수 Agent | 1 | 0 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
 | decision_curator | 의사결정 지원 Agent | 7 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체363회(신규134·재활성화229)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체364회(신규135·재활성화229)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -589,3 +590,7 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 ## PR55 후속 정합 보완 — 2026-10-26
 
 실제 신규3: pr55_combat_followup_scan(리뷰), pr55_inventory_followup_scan(구현 분석), pr55_decision_followup_scope(의사결정 지원). 실제 후속3: selected_combat_presentation(구현), pr55_inventory_followup_scan(구현), pr55_combat_followup_scan(통합 리뷰). 구현 증분 신규1/후속2, 리뷰 신규1/후속1, 의사결정 지원 신규1/후속0. 합계363=134+229. 총괄의 Unity 검증·문서·Git 작업은 호출 수에 포함하지 않았다. 실제 토큰·비용 N/A.
+
+
+## 종합 검수 역할 도입 — 2026-10-26
+실제 신규1: quality_gate_setup_review, gpt-6-astra/medium 명시 신규 배정(default 경로, fork_turns=none), 역할은 종합 검수 Agent. 이번 지침/프로필 후보와 정책 시나리오3개를 읽기 전용 검수해 통과·필수 수정 없음 반환. 작업 분류 명확화와 과거 적용 오인 방지 문구를 반영했다. 게임/조작감 검수나 런타임 성공을 뜻하지 않는다. 새 프로필 차기 자동 등록은 미확인이며 현재 호출은 명시 fallback 실행이다. 메시지 교환은 재활성화로 세지 않았다. 누적364=135+229, 실제 토큰·비용 N/A.
