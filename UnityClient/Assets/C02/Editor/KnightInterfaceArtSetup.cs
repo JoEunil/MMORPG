@@ -353,7 +353,7 @@ public static class KnightInterfaceArtSetup
     private static void MenuButton(RectTransform button, bool market)
     {
         if (button == null) throw new InvalidOperationException("Both existing menu buttons are required.");
-        var atlas = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/C02/Art/CitadelEnvironment/hud-menu-icons-v5.png");
+        var atlas = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/C02/Art/CitadelEnvironment/hud-menu-icons-v6.png");
         if (atlas == null) throw new InvalidOperationException("The authored menu icon atlas is required.");
         Place(button, new Vector2(1, 1), new Vector2(market ? -86 : -24, -16), new Vector2(54, 54));
         PlainSurface(button, Color.clear);
@@ -386,8 +386,8 @@ public static class KnightInterfaceArtSetup
         var control = button.GetComponent<UnityEngine.UI.Button>();
         control.targetGraphic = icon;
         control.colors = ColorBlock.defaultColorBlock;
-        var key = Label(button, "MenuKey", market ? "B" : "I", 14);
-        Place(key.rectTransform, new Vector2(1, 1), new Vector2(0, 0), new Vector2(12, 18));
+        var key = Label(button, "MenuKey", market ? "B" : "I", 16);
+        Place(key.rectTransform, new Vector2(1, 1), new Vector2(-1, 0), new Vector2(14, 20));
         key.fontStyle = FontStyles.Bold;
         key.alignment = TextAlignmentOptions.Center;
         key.color = new Color(.96f, .96f, .90f);

@@ -407,7 +407,10 @@ namespace C02
                 typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button), typeof(LayoutElement));
             rowObject.transform.SetParent(listingRows, false);
             var image = rowObject.GetComponent<UnityEngine.UI.Image>();
-            image.color = index % 2 == 0 ? new Color(.12f, .14f, .17f) : new Color(.09f, .11f, .14f);
+            image.color = new Color32(21, 42, 48, 255);
+            var edge = rowObject.AddComponent<UnityEngine.UI.Outline>();
+            edge.effectColor = new Color32(107, 146, 144, 90);
+            edge.effectDistance = new Vector2(.7f, -.7f);
             var button = rowObject.GetComponent<UnityEngine.UI.Button>();
             button.targetGraphic = image;
             var layout = rowObject.GetComponent<LayoutElement>();
@@ -442,9 +445,9 @@ namespace C02
                 iconImage.raycastTarget = false;
             }
             AddCell(rowObject.transform, "Item", C11ItemPresentation.Name(itemID), 0.14f, 0.40f,
-                TextAlignmentOptions.MidlineLeft, 16, new Color(.94f, .95f, .97f));
+                TextAlignmentOptions.MidlineLeft, 16, new Color32(237, 242, 231, 255));
             AddCell(rowObject.transform, "Quantity", quantity.ToString(CultureInfo.InvariantCulture), 0.41f, 0.50f,
-                TextAlignmentOptions.Center, 14, new Color(.80f, .85f, .90f));
+                TextAlignmentOptions.Center, 14, new Color32(184, 202, 198, 255));
             return rowObject;
         }
 
@@ -455,7 +458,7 @@ namespace C02
             var button = rowObject.GetComponent<UnityEngine.UI.Button>();
             AddCurrencyMark(rowObject.transform, "DiamondMark", false, .525f, diamondCurrencyIcon);
             AddCell(rowObject.transform, "Price", listing.Price.ToString("N0", CultureInfo.InvariantCulture), .56f, .77f,
-                TextAlignmentOptions.MidlineRight, 14, new Color(.72f, .87f, .93f));
+                TextAlignmentOptions.MidlineRight, 14, new Color32(169, 220, 229, 255));
             var stateBadge = new GameObject("StateBadge", typeof(RectTransform), typeof(UnityEngine.UI.Image));
             stateBadge.transform.SetParent(rowObject.transform, false);
             var stateRect = stateBadge.GetComponent<RectTransform>();
@@ -463,7 +466,7 @@ namespace C02
             stateRect.pivot = new Vector2(.5f, .5f);
             stateRect.sizeDelta = new Vector2(60, 27);
             stateBadge.GetComponent<UnityEngine.UI.Image>().color = listing.Status == 0
-                ? new Color(.20f, .34f, .29f, .9f) : new Color(.25f, .27f, .30f, .9f);
+                ? new Color32(23, 49, 57, 255) : new Color32(21, 42, 48, 255);
             stateBadge.GetComponent<UnityEngine.UI.Image>().raycastTarget = false;
             var state = AddCell(rowObject.transform, "State", ListingStatusName(listing.Status), .78f, .99f,
                 TextAlignmentOptions.Center, 13, new Color(.84f, .88f, .87f));
@@ -477,11 +480,15 @@ namespace C02
             {
                 var previous = selectedRowButton.GetComponent<UnityEngine.UI.Image>();
                 if (previous != null) previous.color = selectedRowBaseColor;
+                var previousEdge = selectedRowButton.GetComponent<UnityEngine.UI.Outline>();
+                if (previousEdge != null) previousEdge.effectColor = new Color32(107, 146, 144, 90);
             }
             selectedRowButton = button;
             var image = button.GetComponent<UnityEngine.UI.Image>();
             selectedRowBaseColor = image.color;
-            image.color = new Color(.20f, .29f, .34f);
+            image.color = new Color32(40, 86, 79, 255);
+            var edge = button.GetComponent<UnityEngine.UI.Outline>();
+            if (edge != null) edge.effectColor = new Color32(229, 211, 163, 255);
         }
 
         private void SelectListing(BazaarListingView listing, UnityEngine.UI.Button button)
@@ -808,12 +815,16 @@ namespace C02
             }
             if (searchListingsButton != null)
             {
+                searchListingsButton.GetComponent<UnityEngine.UI.Image>().color = !myListings && !selling
+                    ? new Color32(40, 86, 79, 255) : new Color32(23, 49, 57, 255);
                 searchListingsButton.interactable = available && bazaarPanel.activeSelf && writeRequest == WriteRequest.None;
                 var label = searchListingsButton.GetComponentInChildren<TMP_Text>(true);
                 if (label != null) label.text = (myListings ? string.Empty : "> ") + "SALES";
             }
             if (myListingsButton != null)
             {
+                myListingsButton.GetComponent<UnityEngine.UI.Image>().color = myListings && !selling
+                    ? new Color32(40, 86, 79, 255) : new Color32(23, 49, 57, 255);
                 myListingsButton.interactable = available && bazaarPanel.activeSelf && writeRequest == WriteRequest.None;
                 var label = myListingsButton.GetComponentInChildren<TMP_Text>(true);
                 if (label != null) label.text = (myListings ? "> " : string.Empty) + "MY LISTINGS";
@@ -833,7 +844,12 @@ namespace C02
             var stateHeader = bazaarPanel != null ? bazaarPanel.transform.Find("BazaarParchment/BazaarStateHeader") : null;
             if (priceHeader != null) priceHeader.GetComponent<TMP_Text>().text = selling ? "BAG SLOT" : "TOTAL D";
             if (stateHeader != null) stateHeader.gameObject.SetActive(!selling);
-            if (sellItemsButton != null) sellItemsButton.interactable = available && IsOpen && !requestPending;
+            if (sellItemsButton != null)
+            {
+                sellItemsButton.GetComponent<UnityEngine.UI.Image>().color = selling
+                    ? new Color32(40, 86, 79, 255) : new Color32(23, 49, 57, 255);
+                sellItemsButton.interactable = available && IsOpen && !requestPending;
+            }
             if (registerButton != null)
             {
                 registerButton.interactable = available && selling && !requestPending && !registrationUncertain && saleItem.ItemID != 0;

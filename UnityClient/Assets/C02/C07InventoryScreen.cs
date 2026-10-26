@@ -15,8 +15,8 @@ namespace C02
     {
         private const float RequestTimeoutSeconds = 8f;
         private const float FailureRetryDelaySeconds = .35f;
-        private static readonly Color CardColor = new Color(.16f, .18f, .20f, 1f);
-        private static readonly Color SelectedCardColor = new Color(.38f, .30f, .20f, 1f);
+        private static readonly Color CardColor = new Color32(21, 42, 48, 255);
+        private static readonly Color SelectedCardColor = new Color32(40, 86, 79, 255);
         [SerializeField] private C01LoginScreen loginScreen;
         [SerializeField] private C02WorldScreen worldScreen;
         [SerializeField] private C09BazaarScreen bazaarScreen;
@@ -292,6 +292,9 @@ namespace C02
             cardObject.transform.SetParent(inventoryGridContent, false);
             var background = cardObject.GetComponent<UnityEngine.UI.Image>();
             background.color = CardColor;
+            var edge = cardObject.AddComponent<UnityEngine.UI.Outline>();
+            edge.effectColor = new Color32(107, 146, 144, 90);
+            edge.effectDistance = new Vector2(.7f, -.7f);
             var button = cardObject.GetComponent<UnityEngine.UI.Button>();
             button.targetGraphic = background;
             button.transition = Selectable.Transition.None;
@@ -316,7 +319,7 @@ namespace C02
                 typeof(UnityEngine.UI.Image));
             quantityBadge.transform.SetParent(cardObject.transform, false);
             var quantityBadgeImage = quantityBadge.GetComponent<UnityEngine.UI.Image>();
-            quantityBadgeImage.color = new Color(.08f, .10f, .12f, .98f);
+            quantityBadgeImage.color = new Color32(16, 37, 42, 255);
             quantityBadgeImage.raycastTarget = false;
             var quantityBadgeRect = quantityBadge.GetComponent<RectTransform>();
             quantityBadgeRect.anchorMin = quantityBadgeRect.anchorMax = quantityBadgeRect.pivot = new Vector2(1, 1);
@@ -324,7 +327,7 @@ namespace C02
             quantityBadgeRect.sizeDelta = new Vector2(44f, 22f);
 
             var name = CreateText("ItemName", cardObject.transform, C11ItemPresentation.Name(item.ItemID), 14,
-                new Color(.88f, .91f, .95f), TextAlignmentOptions.MidlineLeft);
+                new Color32(236, 240, 232, 255), TextAlignmentOptions.MidlineLeft);
             name.rectTransform.anchorMin = new Vector2(0, 0);
             name.rectTransform.anchorMax = new Vector2(1, 0);
             name.rectTransform.pivot = new Vector2(.5f, 0);
@@ -335,7 +338,7 @@ namespace C02
 
             var quantity = CreateText("ItemQuantity", cardObject.transform,
                 item.Quantity.ToString(CultureInfo.InvariantCulture), 14,
-                new Color(.98f, .91f, .76f), TextAlignmentOptions.Center);
+                new Color32(255, 242, 209, 255), TextAlignmentOptions.Center);
             quantity.rectTransform.anchorMin = quantity.rectTransform.anchorMax = quantity.rectTransform.pivot = new Vector2(1, 1);
             quantity.rectTransform.anchoredPosition = quantityBadgeRect.anchoredPosition;
             quantity.rectTransform.sizeDelta = quantityBadgeRect.sizeDelta;
@@ -357,7 +360,13 @@ namespace C02
             foreach (Transform child in inventoryGridContent)
             {
                 var button = child.GetComponent<UnityEngine.UI.Button>();
-                if (button != null) button.GetComponent<UnityEngine.UI.Image>().color = button == card ? SelectedCardColor : CardColor;
+                if (button != null)
+                {
+                    button.GetComponent<UnityEngine.UI.Image>().color = button == card ? SelectedCardColor : CardColor;
+                    var edge = button.GetComponent<UnityEngine.UI.Outline>();
+                    if (edge != null) edge.effectColor = button == card
+                        ? new Color32(229, 211, 163, 255) : new Color32(107, 146, 144, 90);
+                }
             }
             Sprite icon = C11ItemPresentation.Icon(item.ItemID);
             if (icon != null)

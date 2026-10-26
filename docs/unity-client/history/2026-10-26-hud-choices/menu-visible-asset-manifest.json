@@ -1,0 +1,52 @@
+{
+  "output": "C:\\Users\\joeun\\Desktop\\workspace\\Game-UnityClient\\UnityClient\\Assets\\C02\\Art\\CitadelEnvironment\\hud-menu-icons-v6.png",
+  "size": [
+    1024,
+    512
+  ],
+  "format": "RGBA PNG",
+  "mapping": {
+    "bag": [
+      0,
+      0,
+      0.5,
+      1
+    ],
+    "market": [
+      0.5,
+      0,
+      0.5,
+      1
+    ]
+  },
+  "sha256": "bbc78680daa579b7e5b735925545c9bf4b4912bdf890290051a263a9050d1384",
+  "sourceSha256": "dce766cfce70c7d1ca1aa4e5dcf9cd7e99cba64ff2055c0fb512e2e3e7f9b5ea",
+  "preservedV5Sha256": "eb3a644420b090c0b76ea765194c426798eca2e6f61541a96442def3b72250d0",
+  "alphaExtrema": [
+    0,
+    255
+  ],
+  "fullyTransparentPixels": 272811,
+  "seam6pxAlphaMax": 0,
+  "visibleBoundsAlpha16": {
+    "bag": [
+      54,
+      32,
+      458,
+      471
+    ],
+    "market": [
+      29,
+      45,
+      483,
+      467
+    ]
+  },
+  "48pxDarkOutlineWidth": "source 2.6..2.8 units becomes 1.95..2.1 px at 48px; broad silhouette edge, no background plate",
+  "nativeContactSheet": "native-48px-contactsheet.png; v5 40/48px and v6 48px on same grass and dark fields",
+  "notVerified": [
+    "Unity import and Sprite mapping",
+    "actual game 48px rendering and user input",
+    "user satisfaction"
+  ]
+}

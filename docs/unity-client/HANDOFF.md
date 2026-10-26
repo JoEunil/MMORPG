@@ -1,17 +1,17 @@
 # 현재 인계 — 2026-10-26
 
 ## 현재 목표·선택
-사용자가 HUD 추천 B/B/A를 선택했다. 실제 Unity에 미니맵 청록 대비/스킬 색면 메달리온/빈틈없는 HPMP 트랙을 적용했고, 같은 PR56에 게시한다. 가방·거래소는 추가 요청한 각3안 비교를 준비했으며 추천B/B는 아직 사용자 미확정이다.
-- HUD 적용 http://127.0.0.1:8793/mmorpg-reference/result.html (실제 UI 에디터 렌더, 샘플값)
-- 가방/거래소 http://127.0.0.1:8793/bag-market-options/ (HTML/SVG 합성 시안). 제품 교체는 답변 뒤 진행.
+사용자가 HUD B/B/A와 가방·거래소 B/B를 선택했다. 추가로 눈에 띄지 않던 상단 가방/거래소 아이콘을 개선했다. 내부와 메뉴를 같은 PR56에 묶어 게시하며 새 선택 대기는 없다. 큰 배경판/이름 문구 없이 밝은 면+짙은 외곽으로 메뉴를 구분하고 기존 클릭54/단축키I,B는 보존했다.
+- 적용 예시 http://127.0.0.1:8793/mmorpg-reference/result.html (현재 실제UnityUI 렌더, 샘플값)
+- 선택 당시 비교 http://127.0.0.1:8793/bag-market-options/ (합성 시안,당시미확정표시는과거기록)
 
 ## 정본·범위
-Git 정본 C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, codex/inventory-market-handoff, PR56 open/master. Editor ROOT/UnityClient. ROOT의 다른 사용자 변경은 복사하지 않는다. 서버/사용자몬스터AI/DB/Core/DLL/wire/경제/입력 계약 변경0. 실제 입력 허용은 유지하나 이번 표현 작업은 격리 렌더·브라우저 비교만 검증했다.
+Git C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, codex/inventory-market-handoff PR56. Editor ROOT/UnityClient. 다른ROOT사용자변경은복사하지않는다. 서버/사용자AI/DB/Core/DLL/wire/경제/입력계약변경0. 실제입력허용은유지하지만현재는표현변경이라격리렌더로만확인했다.
 
-## 검증·현재 후보
-HUD13파일 manifest ROOT/UnityClient/Builds/HudSelectedBBA/delivery-manifest.json. 컴파일완료오류0/shadererrorfalse. guarded clean C02/byte동일 backup 후 Single/FullRect4PNG import·ApplyRestrainedHud만실행·원본Scene clean저장. 두 해상도 full100%와partial65%+cooldown sample 렌더4장 성공,sourceScene unchanged. track/fill공유sprite/외곽/offset0/FilledHorizontal 및기존radialmask계약확인. 제품은 실제current/max를따르며캡처값은샘플, 실서버/시간경과/playerbuild성공주장없음. 통과검사반복0.
-Astra/medium HUD게시검수통과·필수수정0/13파일hash일치. 가방/거래소선택안도별도판정통과·필수수정0. 실제브라우저에서판매/구매전환·가방A/거래소C독립조합·확대/닫기·추천B/B복원확인,4캡처보존. 수수료10G는현C09의max(10,95/10)표시규칙샘플,실거래증명아님.
+## 검증·후보
+이전HUD13파일9b9d0ee/Actions40338497757 success 확인. 현재후속8파일 ROOT/UnityClient/Builds/PanelMenuB/delivery-manifest.json:패널4코드/KIA/Scene/atlasV6/meta. 원래동적카드·행생성/선택색복원책임에B색/얇은외곽만통합했다. C07새전달wrapper를만들지않고기존저작entry보존.
+컴파일완료오류0. cleanScene/backup검증·nativeatlasimport·단독Editor저장.1280/960메뉴·가방·판매예시렌더성공,sourceScene unchanged. 수수료아이콘저작이14x8로되돌아가는기존설정발견해16x16한줄수정/컴파일/재저장후영향market만두해상도로재확인,통과menu/bag반복0. 메뉴atlas/UV·click54·raycastimage/icon구분assert. 샘플활성메뉴/카드/거래행은시각fixture이며실입력·실서버·경제·time/playerbuild검증아님. 기존통과게임검사반복0. Astra/medium현재8파일영향검수통과·필수수정0/manifest해시일치. 메뉴대비·선택복원·참조보존확인,검수후제품변경0.
 
 ## 다음 행동
-같은PR56에선택HUD와비교기록을묶어정상push,제품head사이트CI확인후UnityCoordinator앱ITEMFLOW01스레드1793012032.698299에짧게회신한다. 새PR/추가게시승인/병합없음. 가방/거래소B/B는사용자선택대기이며추천을확정으로쓰지않는다. 이전승인1793013099.132149기소비·재사용금지.
-자료 ROOT/UnityClient/Builds/HudSelectedBBA, BagMarketOptions. 공개/원본이력 docs/unity-client/history/2026-10-26-hud-choices, 이전HANDOFF history/2026-10-24-client-playability/HANDOFF-before-hud-options.md. 실제Agent407=신규145+후속262,토큰/비용N/A.
+검수후동일PR56에정상push·제품head사이트CI확인하고UnityCoordinator앱ITEMFLOW01스레드1793012032.698299에핵심결과만회신. 새PR/추가승인/병합없음. 이전승인1793013099.132149기소비·재사용금지. 미해결기능을임의추가하지않는다.
+ROOT/UnityClient/Builds/PanelMenuB,MenuIconsVisible에원본·캡처·결과,history/2026-10-26-hud-choices에과거선택/정본출처보존. 실제Agent410=신규145+후속265,토큰/비용N/A.
