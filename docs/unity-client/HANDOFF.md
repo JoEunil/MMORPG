@@ -23,3 +23,8 @@ PR55 https://github.com/JoEunil/MMORPG/pull/55, master 대상 open·미병합 �
 
 ## 종합 검수 역할 도입
 quality_reviewer=Astra/medium을 단계별 복합 상황 자문·사용자 전달 전 선택안 검수·게시 전 종합 검수에 사용한다. 역할 정본 roles/quality-reviewer.md, 실행 순서 WORKFLOW#종합-검수. 실제 Astra 신규1회로 이번 지침/프로필 묶음 검수 통과; PR55 게임 전체나 조작감 통과로 소급하지 않음. 새 역할 자동 등록은 미확인, 현재 도구에는 default+Astra/medium+forknone fallback 실행 확인. 신규 기능 묶음부터 해당 모드 적용, 작은 문구/이력은 반복 호출 없음. 공개 지표364(135신규/229후속), 과거 기록 보존. 이번 요청은 지침/설정 변경이며 게임 개발을 자동 재개하지 않았다.
+
+## 현재 진행 — 선택 B HUD·재질 / HUDREF01/r1
+사용자 async답변 B로 HPMP오른쪽아래 유지확정(BRIEF정본). 제품14파일(C#저작4+Scene+기존재질9)과관련공개원본/화면 준비. 코드리뷰차단0, 최종컴파일/두해상도렌더/반복적용435UI/9controllerrefs/입력라우팅/월드geometry유지 확인. Astra중간자문 반영 후 최종게시검수통과. 기존잔디무늬/어두운갑옷면은개선여지, 이번실입력/Play/실서버미실행. 사용자AI/서버/DB/키/충돌/geometry/새shader·texture변경0.
+ROOT/CAND제품14파일동기화·manifest고정, 기존ROOT차이5재질보존. 이행/검수상세 history/2026-10-24-client-playability/RESULTS.txt. 공개 player-hud/field-travel와선별Editor이미지 갱신. 대표README이미지는기존실제사냥유지. 실제Agent누적371=137+234.
+다음: HUDREF01/r1을 Unity Coordinator 새부모Slack에 게시승인 요청하고 지정사용자·스레드·현재후보/기소비 대조 후 기존PR55에 한묶음으로push한다. B취향선택이나과거NEARBYART승인을새게시승인으로사용하지않는다. 현재새 PR생성/병합/배포없음. 승인대기중제품후보변경금지, 관련없는개발자동확장금지. localhost8793/mmorpg-reference/는선택당시시안, /result.html은실제적용Editor예시다.
