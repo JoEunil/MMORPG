@@ -60,3 +60,5 @@ v2게시완료: PR56제품82bab80319c47ad2382c4484abe28239c61faeb9,Actions403177
 사용자는그림형아이콘대신질감없이가벼운곡선표현을요청. Coordinator가원본Bezier곡선경로를작성해투명512x256PNG로래스터화. 이미지생성/기존raster이미지편집없음. SVG정본menu-icons-curved-source.svg에곡선과작은대비용understroke보존. 외부게임자산참조/다운로드없음. v1/v2보존. 기존배치/54크기/I·B14/UV/클릭/입력불변. helper경로1줄+Scene기존2개texture참조만교체/새PNGmeta,compile0·두해상도격리렌더sourceUnchangedtrue. 기존검사반복0,실입력/거래미검증.
 
 최신v3: 사용자곡선/가벼운표현요청대로질감·입체명암을없애고둥근선만유지. 기존4제품파일manifest동일,배치/크기/키/클릭불변. compile0·두해상도격리렌더·Astra시각영향검수통과. 실제입력/거래미검증·기존기능검사반복0·사용자만족미확인. 기존PR56피드백보완으로게시하며추가승인/병합없음.
+
+v3게시완료: PR56제품c96c201f32ca42fe428e0da76a7a7aedd3d41f3d/Actions40319073617 success. 곡선SVG/PNG원본보존,4제품파일검수후변경0·크기/배치/키/클릭불변·기능검사반복0. 실제입력·거래및사용자만족미확인유지,병합하지않음.
