@@ -76,7 +76,8 @@ namespace C02
         private readonly Dictionary<ulong, byte> buyOutcomes = new Dictionary<ulong, byte>();
         private readonly Dictionary<ulong, byte> claimOutcomes = new Dictionary<ulong, byte>();
         private readonly HashSet<ulong> unresolvedClaims = new HashSet<ulong>();
-        private UnityEngine.UI.Button selectedListingButton;
+        private UnityEngine.UI.Button selectedRowButton;
+        private Color selectedRowBaseColor;
         public bool IsOpen => bazaarPanel != null && bazaarPanel.activeSelf;
 
         private bool WorldAvailable => worldScreen != null && worldScreen.isActiveAndEnabled &&
@@ -469,21 +470,27 @@ namespace C02
             button.onClick.AddListener(() => SelectListing(listing, button));
         }
 
+        private void SelectRow(UnityEngine.UI.Button button)
+        {
+            if (selectedRowButton != null)
+            {
+                var previous = selectedRowButton.GetComponent<UnityEngine.UI.Image>();
+                if (previous != null) previous.color = selectedRowBaseColor;
+            }
+            selectedRowButton = button;
+            var image = button.GetComponent<UnityEngine.UI.Image>();
+            selectedRowBaseColor = image.color;
+            image.color = new Color(.20f, .29f, .34f);
+        }
+
         private void SelectListing(BazaarListingView listing, UnityEngine.UI.Button button)
         {
             if (writeRequest != WriteRequest.None) return;
-            if (selectedListingButton != null)
-            {
-                var previous = selectedListingButton.GetComponent<UnityEngine.UI.Image>();
-                if (previous != null)
-                    previous.color = selectedListingButton.transform.GetSiblingIndex() % 2 == 0
-                        ? new Color(.12f, .14f, .17f) : new Color(.09f, .11f, .14f);
-            }
-            selectedListingButton = button;
+            bool confirmationCleared = buyConfirmation || cancelConfirmation;
+            SelectRow(button);
             selectedListing = listing;
             buyConfirmation = false;
             cancelConfirmation = false;
-            button.GetComponent<UnityEngine.UI.Image>().color = new Color(.20f, .29f, .34f);
             ShowSelectedItem(listing.ItemID, listing.Quantity);
             selectedDetailText.text = listing.Price.ToString("N0", CultureInfo.InvariantCulture) + " diamonds · " + ListingStatusName(listing.Status);
             if (claimOutcomes.TryGetValue(listing.ListingID, out byte outcome)) selectedDetailText.text = outcome == 1 ? "Proceeds collected." : "No proceeds to collect.";
@@ -492,6 +499,7 @@ namespace C02
                 selectedDetailText.text = buyOutcome == 1 ? "Purchased · receive items to your bag." : "Purchase result unknown · reconnect to check.";
             if (cancelOutcomes.TryGetValue(listing.ListingID, out byte cancelOutcome))
                 selectedDetailText.text = cancelOutcome == 1 ? "Sale cancelled · receive returned item." : "Cancellation result unknown · refresh listings.";
+            if (confirmationCleared) statusText.text = "Selected listing: " + selectedDetailText.text;
             UpdateControls();
         }
 
@@ -704,10 +712,12 @@ namespace C02
 
         private void ClearRows()
         {
-            selectedListingButton = null;
+            selectedRowButton = null;
             selectedListing = default;
+            saleItem = default;
             buyConfirmation = false;
             cancelConfirmation = false;
+            registerConfirmation = false;
             if (listingRows == null) return;
             for (int i = listingRows.childCount - 1; i >= 0; i--)
             {
@@ -945,9 +955,11 @@ namespace C02
                 var row = CreateItemRow(item.ItemID, item.Quantity, index++);
                 AddCell(row.transform, "Slot", "Slot " + item.Slot, .62f, .99f, TextAlignmentOptions.MidlineRight, 15, new Color(.8f, .85f, .9f));
                 var selected = item;
-                row.GetComponent<UnityEngine.UI.Button>().onClick.AddListener(() =>
+                var button = row.GetComponent<UnityEngine.UI.Button>();
+                button.onClick.AddListener(() =>
                 {
                     if (requestPending || registrationUncertain) return;
+                    SelectRow(button);
                     saleItem = selected;
                     quantityInput.SetTextWithoutNotify("1");
                     registerConfirmation = false;

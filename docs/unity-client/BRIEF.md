@@ -144,3 +144,7 @@ Astra자문추천:원형테두리+중앙초록표식/얇은halo+20/40m거리링+
 사용자확정4요구를구현:초록중앙고정·주변/배경상대이동,20/40m링과N,실제staticmaptopdownatlas,회색/빨강6px원. 제품12파일만ROOT/CAND동기화. Atlas2048x1418/Rect(-25,-25,650,450),runtimeUI재질직렬화shader참조,PNGimporter.userData에촬영bounds보존. Map변경후Tools/Client Art/Bake Minimap Atlas실행후HUDsetup으로재연결. 서버/AI/DB/wire/DLL/통행/스폰변경0.
 컴파일오류0,변경projection검사1/1통과(.1603586s),기존통과lifecycle반복0. 원형/가장자리/atlasUV/중앙유지/atlas없는통행배경검증. 실제Editor베이크sourceclean보존,1280x720·960x540격리렌더sceneUnchangedtrue. sourceScene백업SHA256 AA28352DA77F3B41846F5A549411127186B6CFAB256297EC98856116C44C8E36과일치guard후해당Scene만저장. Eval도구namespace오타1회는실행전컴파일거절로수정,제품컴파일실패아님.
 독립Sol리뷰차단0. Astra/medium최종제품검수통과·필수수정0(두해상도/atlas/코드/검사실제열람). 새shader컴파일메시지0/supportedtrue. 사이트빌드·링크확인통과. 밝은잔디위범례/거리선대비와지형희소구역은남은표현한계. Editor C02Edit/clean/backgroundfalse/alpha0/비입력패널복원. 개체/HUD값은샘플,실입력/다중접속증거아님. 기존HUDREF02는기소비·재사용금지. 새범위Slack게시승인은확정후한번요청.
+
+
+## PR56 메뉴·아이템 선택 묶음 — 2026-10-26
+계획: (1) 곡선 아이콘에 차분한 색 면만 보완 (2) 구매·취소 확인 후 매물 변경 시 이전 가격/확인 문구 정리 (3) 판매 슬롯 단일 선택 강조와 상세 정합. 기존 UI 책임/동일 PR로 통합하며 서버/경제/패킷/사용자 AI 변경 없음. Sol/high 분석·구현·아트를 독립 소유로 병렬 배정했고, 구현 완료 후 관련 집중 검사 최대2개·두 해상도 렌더·Astra 통합 검수만 수행한다. 이미 통과한 검사는 변경/실패 영향 없이 반복하지 않는다. 사용자 곡선 선호·실사 질감 제외·기존 위치/크기/단축키를 유지하며 추가 취향 질문으로 중단하지 않는다.

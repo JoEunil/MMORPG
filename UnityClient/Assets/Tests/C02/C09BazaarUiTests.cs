@@ -20,6 +20,135 @@ namespace C02.Tests
     public sealed class C09BazaarUiTests
     {
         [Test]
+        [Category("MarketSelectionPolish")]
+        public void SelectingListingsClearsOnlyPendingConfirmationAndKeepsTransactionResults()
+        {
+            foreach (bool cancellation in new[] { false, true })
+                using (var fixture = new Fixture())
+                {
+                    fixture.OpenMarket();
+                    if (cancellation) { fixture.Receive(true); fixture.MyListings.onClick.Invoke(); }
+                    var listings = new[] {
+                        new BazaarListing { listingID = 100, itemID = 1, quantity = 1, price = 100 },
+                        new BazaarListing { listingID = 900, itemID = 1, quantity = 2, price = 900 }
+                    };
+                    var net = (IViewModelNet)fixture.Login.Model;
+                    if (cancellation) net.BazaarMyListReceived(fixture.Network.LastRequestID, 1, listings);
+                    else fixture.Receive(true, listings);
+                    var action = cancellation ? fixture.CancelListing : fixture.Buy;
+                    string confirmationField = cancellation ? "cancelConfirmation" : "buyConfirmation";
+                    fixture.Row(100).GetComponent<Button>().onClick.Invoke();
+                    action.onClick.Invoke();
+                    Assert.That(Get<bool>(fixture.Screen, confirmationField), Is.True);
+                    fixture.Row(900).GetComponent<Button>().onClick.Invoke();
+                    Assert.That(Get<bool>(fixture.Screen, confirmationField), Is.False);
+                    Assert.That(fixture.Status.text, Is.EqualTo("Selected listing: 900 diamonds · Trading"));
+
+                    action.onClick.Invoke();
+                    Assert.That(Get<bool>(fixture.Screen, confirmationField), Is.True);
+                    Assert.That(fixture.Status.text, Does.Contain(cancellation ? "Press again to cancel" : "deduct 900 diamonds"));
+                    Assert.That(fixture.Network.Mutations, Is.Zero);
+                    Assert.That(fixture.Network.CancelListingRequests, Is.Zero);
+                    fixture.Row(900).GetComponent<Button>().onClick.Invoke();
+                    Assert.That(Get<bool>(fixture.Screen, confirmationField), Is.False,
+                        "Reselecting the same row also cancels its pending confirmation.");
+                    Assert.That(fixture.Status.text, Is.EqualTo("Selected listing: 900 diamonds · Trading"));
+
+                    action.onClick.Invoke();
+                    Assert.That(fixture.Network.Mutations, Is.Zero);
+                    Assert.That(fixture.Network.CancelListingRequests, Is.Zero);
+                    action.onClick.Invoke();
+                    if (cancellation) net.BazaarCancelListingReceived(fixture.Network.LastWriteID, 900, 0);
+                    else net.BazaarBuyReceived(fixture.Network.LastWriteID, 900, 4, 0, 0, 0);
+                    string failure = fixture.Status.text;
+                    Assert.That(failure, Does.Contain(cancellation ? "Sale could not be cancelled" : "Not enough diamonds"));
+                    Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.False);
+                    fixture.Row(100).GetComponent<Button>().onClick.Invoke();
+                    Assert.That(fixture.Status.text, Is.EqualTo(failure), "Selecting a row preserves an actual failure result.");
+
+                    action.onClick.Invoke(); action.onClick.Invoke();
+                    if (cancellation) net.BazaarCancelListingReceived(fixture.Network.LastWriteID, 100, 1);
+                    else net.BazaarBuyReceived(fixture.Network.LastWriteID, 100, 1, 1, 1, 100);
+                    string completion = fixture.Status.text;
+                    Assert.That(completion, Does.Contain(cancellation ? "Sale cancelled." : "Purchased 1"));
+                    Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.False);
+                    fixture.Row(900).GetComponent<Button>().onClick.Invoke();
+                    Assert.That(fixture.Status.text, Is.EqualTo(completion), "Selecting a row preserves an actual completed result.");
+                    Assert.That(cancellation ? fixture.Network.CancelListingRequests : fixture.Network.Mutations, Is.EqualTo(2));
+                }
+        }
+
+        [Test]
+        [Category("MarketSelectionPolish")]
+        public void SaleSlotSelectionHighlightsOneRowAndClearsWithItsRows()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.OpenMarket();
+                fixture.Receive(true, new BazaarListing { listingID = 77, itemID = 4, quantity = 1, price = 20 });
+                fixture.SellItems.onClick.Invoke();
+                fixture.ReceiveInventory(
+                    new InventoryItem { itemID = 4, quantity = 3, slot = 2 },
+                    new InventoryItem { itemID = 4, quantity = 8, slot = 7 });
+                var first = fixture.Rows.GetChild(fixture.Rows.childCount - 2).GetComponent<Button>();
+                var second = fixture.Rows.GetChild(fixture.Rows.childCount - 1).GetComponent<Button>();
+                var firstColor = first.GetComponent<Image>().color;
+                var selectedColor = new Color(.20f, .29f, .34f);
+                first.onClick.Invoke();
+                Assert.That(first.GetComponent<Image>().color, Is.EqualTo(selectedColor));
+                fixture.Price.text = "95";
+                fixture.Register.onClick.Invoke();
+                Assert.That(Get<bool>(fixture.Screen, "registerConfirmation"), Is.True);
+                second.onClick.Invoke();
+                Assert.That(first.GetComponent<Image>().color, Is.EqualTo(firstColor));
+                Assert.That(second.GetComponent<Image>().color, Is.EqualTo(selectedColor));
+                int highlighted = 0;
+                foreach (Transform row in fixture.Rows)
+                    if (row.gameObject.activeSelf && row.GetComponent<Image>().color == selectedColor) highlighted++;
+                Assert.That(highlighted, Is.EqualTo(1));
+                Assert.That(Get<Button>(fixture.Screen, "selectedRowButton"), Is.SameAs(second));
+                Assert.That(fixture.Detail.text, Is.EqualTo("Slot 7 selected"));
+                Assert.That(fixture.SelectedQuantity.text, Is.EqualTo("× 8"));
+                Assert.That(Get<bool>(fixture.Screen, "registerConfirmation"), Is.False);
+                fixture.Quantity.text = "2";
+                fixture.Register.onClick.Invoke();
+                Assert.That(fixture.Network.RegisterRequests, Is.Zero);
+                fixture.Register.onClick.Invoke();
+                Assert.That(fixture.Network.LastRegisterSlot, Is.EqualTo((byte)7));
+                Assert.That(fixture.Network.LastRegisterQuantity, Is.EqualTo((ushort)2));
+                Assert.That(fixture.Network.LastRegisterPrice, Is.EqualTo(95UL));
+
+                var net = (IViewModelNet)fixture.Login.Model;
+                net.BazaarRegisterReceived(fixture.Network.LastWriteID, 0);
+                fixture.Search.onClick.Invoke();
+                Assert.That(Get<Button>(fixture.Screen, "selectedRowButton"), Is.Null);
+                Assert.That(Get<InventoryItemView>(fixture.Screen, "saleItem").ItemID, Is.Zero);
+                Assert.That(second.gameObject.activeSelf, Is.False);
+                net.InventoryReceived(0, Array.Empty<InventoryItem>());
+                Assert.That(fixture.ActiveRowCount, Is.Zero);
+                Assert.That(Get<Button>(fixture.Screen, "selectedRowButton"), Is.Null);
+                Assert.That(fixture.Register.interactable, Is.False);
+
+                fixture.Search.onClick.Invoke();
+                fixture.ReceiveInventory(new InventoryItem { itemID = 4, quantity = 5, slot = 9 });
+                var refreshed = fixture.Rows.GetChild(fixture.Rows.childCount - 1).GetComponent<Button>();
+                refreshed.onClick.Invoke();
+                Assert.That(fixture.Detail.text, Is.EqualTo("Slot 9 selected"));
+                Assert.That(refreshed.GetComponent<Image>().color, Is.EqualTo(selectedColor));
+                fixture.MyListings.onClick.Invoke();
+                Assert.That(Get<Button>(fixture.Screen, "selectedRowButton"), Is.Null);
+                Assert.That(Get<InventoryItemView>(fixture.Screen, "saleItem").ItemID, Is.Zero);
+                Assert.That(refreshed.gameObject.activeSelf, Is.False);
+                fixture.Receive(true, new BazaarListing { listingID = 77, itemID = 4, quantity = 1, price = 20 });
+                fixture.Row(77).GetComponent<Button>().onClick.Invoke();
+                fixture.Close.onClick.Invoke();
+                Assert.That(Get<Button>(fixture.Screen, "selectedRowButton"), Is.Null);
+                Assert.That(fixture.ActiveRowCount, Is.Zero);
+                Assert.That(fixture.Network.RegisterRequests, Is.EqualTo(1));
+            }
+        }
+
+        [Test]
         [Category("InventoryMarketHandoff")]
         public void InventoryReadsShareAcrossBothPanelDirectionsAndWaitForFreshDeliveryResult()
         {

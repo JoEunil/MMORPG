@@ -62,3 +62,24 @@ v2게시완료: PR56제품82bab80319c47ad2382c4484abe28239c61faeb9,Actions403177
 최신v3: 사용자곡선/가벼운표현요청대로질감·입체명암을없애고둥근선만유지. 기존4제품파일manifest동일,배치/크기/키/클릭불변. compile0·두해상도격리렌더·Astra시각영향검수통과. 실제입력/거래미검증·기존기능검사반복0·사용자만족미확인. 기존PR56피드백보완으로게시하며추가승인/병합없음.
 
 v3게시완료: PR56제품c96c201f32ca42fe428e0da76a7a7aedd3d41f3d/Actions40319073617 success. 곡선SVG/PNG원본보존,4제품파일검수후변경0·크기/배치/키/클릭불변·기능검사반복0. 실제입력·거래및사용자만족미확인유지,병합하지않음.
+
+
+## PR56 선택·확인 보완과 v4 아이콘
+user가v3곡선은좋지만선뿐인점을보완하고관련미완료작업선별/연속진행·모델상향허용. 계획3항목은BRIEF에기록. C09 stale확인문구/판매행강조누락을실제codeaudit로선별하고제품리뷰차단0. 최종추가색상복원은원래Image.color저장값을복원해같은프레임Destroy대기행의siblingIndex변화를피함(총괄diff검토). 새class/manager/Core/경제/wire/DB/AI변경없음.
+제품6파일(KIA경로/Scene2texture/새PNGmeta/C09/기존test)고정manifest MenuIcons-v4. compile0. v4원본1024x512/투명2셀,512UI임포트/UV/크기/키/클릭불변,SVG원본menu-icons-filled-source.svg보존. nativeSVG→Pillow래스터화,이미지생성API0/새의존성0. 두격리렌더sourceUnchangedtrue.
+MarketSelectionPolish 신규2개첫배치판매행검사PASS .1664576s/확인문구검사FAIL Expected2 actual1. 실패원인은fixture가Buy실패status4에성공용필드(1,2,900)를보내Core가정상거부해pending이유지된것,MyList준비도Search용응답을사용한것. 제품/통과검사는보존,실패응답필드0/전용MyList응답으로정정하고실패·완료안내/요청종료assertion추가,누적송신2유지. 해당확인문구1개만재실행PASS .1670414s. unique2개최종통과/실제실행3회/실패이력1회보존,기존성공판매/과거검사반복0. test-results-first/retry/resolved.json구분. 통과판매검사view전환은즉시선택정리만증명하며새MyList행수락까지주장하지않음. 실입력/실서버거래미검증.
+Created: 2026-10-26
+Task: Add restrained colour faces and weak two-step shading to the user-selected curved v3 icon direction. No photorealistic texture or new image generation.
+Reference SVG: docs/unity-client/history/2026-10-24-client-playability/menu-icons-curved-source.svg
+Reference PNG inspected: Assets/C02/Art/CitadelEnvironment/hud-menu-icons-v3.png
+Editable source: menu-icons-filled-source.svg (original project curves extended with simple closed colour shapes).
+Rasterizer: rasterize-icons.py; reads that exact SVG's M/L/C/Q/Z paths, inherited fill/stroke/opacity and translations, renders with bundled Pillow supersampling, then writes the project PNG. No separate hand-maintained bitmap drawing or external dependency.
+Output: Assets/C02/Art/CitadelEnvironment/hud-menu-icons-v4.png, 1024x512 RGBA, equal 512x512 cells. Bag UV(0,0,.5,1); market UV(.5,0,.5,1).
+Style: muted brown bag body/flap, soft lower shade; desaturated bronze scale beam/stem/pans with restrained dark pan shade. Pale outlines 0.8..1.1 source units instead of v3's 2.15; dark silhouette edge retained for terrain contrast. No background plate/frame/text/material grain/reflection.
+Visual inspection: saved PNG opened with view_image. Both curved object concepts remain recognisable and separate; colour faces lie within their object silhouettes. No cells touch the atlas boundary or centre seam.
+Read-only alpha validation: alpha range0..255; fully transparent pixels358373; alpha>=16 visible left bounds(83,66)-(429,440), right-relative bounds(31,91)-(481,441); central6px seam has0 pixels alpha>=16.
+Source/rights: native project-authored vector geometry and deterministic rasterisation; no external game assets, downloaded art, font, or imagegen input used for v4. No third-party asset licence introduced. No legal exclusivity claim.
+Preserved: v3 SVG/PNG untouched. No .meta, Scene, Prefab, helper, runtime code, Editor or Git actions performed by art Agent.
+Unverified: actual 40px Unity HUD rendering, interaction, final user preference and acceptance remain Coordinator responsibilities.
+
+최종Astra/medium6파일통합검수통과·필수수정0. 최초실패1건과실패검사만재검증한기록을대조,고유2개최종통과/총3실행. 새MyList응답수락·실입력·실거래성공은주장하지않는다. 사용자의v4만족은미확인. 사이트빌드/코드문서공백검사통과,제품검수후변경없음.
