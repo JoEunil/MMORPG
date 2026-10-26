@@ -93,7 +93,7 @@ namespace C02.Tests
                             Assert.That(vertex.uv0.x, Is.LessThan(0), "No atlas texture is sampled in navigation fallback.");
                             Assert.That(vertex.position.x, Is.InRange(-104.001f, 104.001f));
                             Assert.That(vertex.position.y, Is.InRange(-78.001f, 78.001f));
-                            navigationShown |= vertex.color.Equals(new Color32(79, 91, 72, 235));
+                            navigationShown |= vertex.color.Equals(new Color32(59, 91, 93, 235));
                         }
                         Assert.That(navigationShown, Is.True, "A missing bake keeps the existing navigation background available.");
                     }

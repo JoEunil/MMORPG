@@ -1,8 +1,11 @@
-# 현재 인계 — 2026-10-26
+# 현재 인계 — 2026-10-27
 
-현재 목표: PR56메뉴 은빛 면은 유지하고 외곽을 밝고 얇게 완화했다. 추가로 전체KIA재적용이C07선택색/위치를덮는legacy블록을정본호출로대체했고,새팔레트에맞지않던관련검사기대값을정리했다. 더추가할명백한관련표시문제는좁은점검에서없었다.
-Git C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, codex/inventory-market-handoff PR56. Editor ROOT/UnityClient,다른사용자변경보존. 서버/사용자AI/DB/Core/DLL/wire/economy변경0. 입력허용유지하나이번엔격리렌더/실제PlayMode fixture만검증.
-고정5파일 ROOT/UnityClient/Builds/MenuIconsSoft/delivery-manifest.json. compile0,guardedcleanScene/nativeatlasimport/save,2res렌더sourceSceneunchangedtrue. C07정본복구색/위치assert통과,전체KIA Apply는정적호출/legacy제거만확인하고전체실행은안함. Astra/medium통과·필수수정0/5hash일치,검수후제품변경0.
-PR리뷰discussion4378625293:oldselectedcolour기대수정. 같은예전팔레트/상세문구가남은검사2개정리. 실제PlayModeSale1pass(.1613255s)후반복안함;Search첫실패(oldbuyer pays)수정후Search만pass(.1457761s). 최종고유2pass/실제3실행. 앞서runner0건2회·EditMode직접호출실패는성공근거제외하고원본보존. 실입력/서버/playerbuild/사용자만족미확인.
-게시완료: 같은PR56제품ca82abf4ca3c4abb3e6c3ffc27256288e47e6d64,사이트build/preview Actions40346267252 success확인. PR open/mergeabletrue,병합안함. UnityCoordinator앱ITEMFLOW01스레드1793012032.698299에핵심만회신. 새PR/추가승인/병합없음·과거승인회신재사용금지. 이전제품aff9776/Actions40343309360 success와이번CI구분.
-원본MenuIconsSoft/캡처/결과와history/2026-10-26-hud-choices/panel-menu-results.txt. 실제Agent413=신규146+후속267,토큰/비용N/A. 적용 http://127.0.0.1:8793/mmorpg-reference/result.html
+현재 목표: PR56 리뷰의 가방·미니맵 테스트 색상 불일치를 수정하고 같은 PR에 반영한다. 두 리뷰는 현재 제품 팔레트와 대조해 타당함을 확인했다. 제품 코드와 화면은 변경하지 않았다.
+
+Git 정본: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, codex/inventory-market-handoff, PR56. Editor: ROOT/UnityClient. 사용자 변경·서버·몬스터 AI·DB·Core·DLL·wire·경제는 보존했다.
+
+이번 수정: C07InventoryUiTests의 선택/기본색 4곳, C04ObservationTests의 미니맵 대체 배경색 1곳. 동작 assertion은 유지했다. 컴파일 오류0. 관련 PlayMode 테스트3개 모두 첫 실행 통과, 기존 통과 테스트 반복0. Editor ready 복귀. 실입력·실서버·playerbuild 검증은 이번 범위가 아니다.
+
+전달 대상: 기존 PR56 동일 범위 리뷰 수정이며 재승인 대상이 아니다. 실제 게시 여부는 원격 head로 확인한다. 병합하지 않는다. 기존 작업 Slack 부모1793012032.698299를 사용한다. 과거 승인 재사용 없음.
+
+이전 아트/리뷰 결과와 이번 상세 근거: history/2026-10-26-hud-choices/panel-menu-results.txt. 원본 검사 결과: ROOT/UnityClient/Builds/MenuIconsSoft/*palette*-result.json. 실제 Agent 집계413 유지(이번 총괄 직접 작업, 신규 호출0). 미리보기 http://127.0.0.1:8793/mmorpg-reference/result.html
