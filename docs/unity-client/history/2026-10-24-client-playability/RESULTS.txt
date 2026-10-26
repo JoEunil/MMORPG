@@ -154,3 +154,25 @@ Independent code review found no blocker. First scene mutation request was auto-
 New PlayMode category WorldMinimap exactly2 total/passed2/failed0 .17s: MinimapClearsDepartedDefeatedAndStaleWorldObservationsWithoutHidingDeadSelf(.1132327), MinimapProjectsAuthoritativeDotsNorthUpAndSamplesExistingTerrain(.0146346). Existing passing tests repeated0. Results preserved Builds/Minimap/test-results.json.
 Preview tooling twice tried Play-fixture Full in Edit and failed due C13EntityVitals.Awake not running; product runtime tests did not fail. Changed approach to isolated sample entry state fixture for rendering, never called this live server/input validation. Final actualGraphic renders1280/960 with marked samplepositions andHUDvalues. Preview objects disposed, sourceSceneUnchangedtrue; finalC02Edit/dirtyfalse/backgroundfalse andoriginalminimapgroupalpha0 outsideworld.
 Astra read finalimages/code/newpubliccaption:PASS combined18productfiles/required0; smallgray/red dots at960 are optional futureplayfeedback item. PriorB HUD/material acceptance preserved; no implied wholePR55 nativeinput/dynamicserver pass. Product source+metas synchronized by exact18-filemanifest. Actualagentfollow3,new0,total374=137+237. HUDREF01 was superseded without consuming any approval, sameSlackparent1793005532.862209 used for newHUDREF02/r1 request after finalgate.
+
+2026-10-26 radar expression proposal only
+Read WorldMinimap source: centre already authoritative ServerPosition. Astra situation advice read source/currentimage and recommended circular radar/centralmarker/rings plus static actualscene atlas; not a product acceptance. Isolated world clone top-down render2048x1376 bounds(-5,-5)+610x410, ownactor excluded, sourceSceneUnchangedtrue. At250height inheritedfog obscured map;36height showedground but large-scale geometry/road contrast not production-validated. No RenderSettings/lighting/Scene/asset/code persisted. No tests/Play/server/nativeinput. Propose circular distance checks/clipping with real server direction if arrow; atlas with coordinate metadata/rebake and no dynamic actors. New0/follow1quality, total375=137+238.
+
+
+## 원형 레이더 개선 — 2026-10-26
+사용자확정4요구를구현:초록중앙고정·주변/배경상대이동,20/40m링과N,실제staticmaptopdownatlas,회색/빨강6px원. 제품12파일만ROOT/CAND동기화. Atlas2048x1418/Rect(-25,-25,650,450),runtimeUI재질직렬화shader참조,PNGimporter.userData에촬영bounds보존. Map변경후Tools/Client Art/Bake Minimap Atlas실행후HUDsetup으로재연결. 서버/AI/DB/wire/DLL/통행/스폰변경0.
+컴파일오류0,변경projection검사1/1통과(.1603586s),기존통과lifecycle반복0. 원형/가장자리/atlasUV/중앙유지/atlas없는통행배경검증. 실제Editor베이크sourceclean보존,1280x720·960x540격리렌더sceneUnchangedtrue. sourceScene백업SHA256 AA28352DA77F3B41846F5A549411127186B6CFAB256297EC98856116C44C8E36과일치guard후해당Scene만저장. Eval도구namespace오타1회는실행전컴파일거절로수정,제품컴파일실패아님.
+독립Sol리뷰차단0. Astra/medium최종제품검수통과·필수수정0(두해상도/atlas/코드/검사실제열람). 새shader컴파일메시지0/supportedtrue. 사이트빌드·링크확인통과. 밝은잔디위범례/거리선대비와지형희소구역은남은표현한계. Editor C02Edit/clean/backgroundfalse/alpha0/비입력패널복원. 개체/HUD값은샘플,실입력/다중접속증거아님. 기존HUDREF02는기소비·재사용금지. 새범위Slack게시승인은확정후한번요청.
+
+
+## 현재 게시 승인 대기 — RADAR01/r1
+후보b1d470bc4befbded64c3824a0995e80f6f989d7a, PR55추가/병합제외. Unity Coordinator앱발신U0C9ZRTQ6F8·채널C0C9VFZMV43·새부모/요청1793010905.268759 등록완료. 지정사용자U0C9QEUHPMK의 `승인 RADAR01` 대기, 회신없음/미소비. receiver21196/listening·고정Coordinator일치·health30초이내확인. 이전HUDREF02승인은기소비로재사용금지. 제품12파일Astra통과후변경0. 사이트빌드통과;diff whitespace는Unity생성Scene의빈직렬화항목4줄만,나머지diff검사통과. GitHubpush/배포없음. 승인수신시정확요청·현재후보·미소비대조후일반push로기존PR55에추가하고처리회신/인계갱신.
+
+
+## RADAR01 승인과 직사각형 피드백 — 2026-10-26
+지정사용자U0C9QEUHPMK 실제Slack 회신1793013105.315639/부모1793010905.268759/요청RADAR01/r1/미소비대기와대조완료. 원래승인후최신채팅의직사각형·아래legend/Radar제거를동일범위보완으로적용했으며재승인요구없음.
+208x156,가로±40m/세로±30m,양축2.6px/m. 자기중앙/N/20·40원/실제atlas/6px원형점유지,배경·관찰점·링rectclip. 제목/legend자식삭제. 제품4파일 ROOT/CAND동일manifest Builds/MinimapRect/candidate-manifest.json. 다른ROOT의C07/C09후속은복사하지않고PR56에분리했다.
+컴파일0,변경MinimapRectangleKeepsUniformScaleIncludesCornersAndClipsMarkersAndAtlas 1/1최초통과(.1733399s),기존lifecycle/가방검사반복0. 두해상도Editor격리렌더sourceUnchangedtrue,clean/path/backupbyte일치guard후Scene저장. 독립Sol리뷰차단0·Astra/medium4파일영향검수통과. 샘플개체/HUD값이며실입력/실서버다중접속검증아님. 서버/AI/DB/wire/Core/DLL변경0. 사이트빌드통과,README대표기존실제사냥유지.
+ITEMFLOW01은별도회신1793013099.132149를1회소비해PR56게시완료,0263b67cf53df048828221b114ca8a916c2c27ca의Actions40313760296 success확인. PR56제품3파일은검수후변경0. 병합/정식배포없음.
+
+RADAR01/r1 회신1793013105.315639는최신직사각형피드백과함께1회소비완료,재사용금지. PR55게시제품4파일은Astra검수후변경0. ROOT Editor C02Edit/clean/backgroundfalse,208x156/titleAbsent/legendAbsent확인. CI확인후PR56에부모를정상merge해차등범위를정리하며새게임검사는반복하지않는다.

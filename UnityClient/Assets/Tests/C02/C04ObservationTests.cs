@@ -20,48 +20,86 @@ namespace C02.Tests
     {
         [Test]
         [Category("WorldMinimap")]
-        public void MinimapProjectsAuthoritativeDotsNorthUpAndSamplesExistingTerrain()
+        public void MinimapRectangleKeepsUniformScaleIncludesCornersAndClipsMarkersAndAtlas()
         {
             var map = ScriptableObject.CreateInstance<C20WorldMap>();
+            var atlas = new Texture2D(4, 4);
             try
             {
                 map.origin = new Vector2(-29, -28); map.tileSize = 2; map.width = 39; map.height = 40;
                 map.walkable = new byte[map.width * map.height];
                 for (int i = 0; i < map.walkable.Length; i++) map.walkable[i] = 1;
-                map.walkable[0] = 0;
                 using (var fixture = new ObservationFixture())
                 {
                     var other = Player(42); other.x = 21; other.y = 22;
-                    var distant = Player(43); distant.x = 62;
-                    fixture.Players(100, Player(7), other, distant);
+                    var corner = Player(43); corner.x = 46; corner.y = 37;
+                    fixture.Players(100, Player(7), other, corner);
                     var monster = Monster(0, 0); monster.x = 1; monster.y = 2;
-                    var farMonster = Monster(1, 0); farMonster.x = -40;
-                    var dead = Monster(2, 0); dead.hp = 0;
-                    fixture.Monsters(100, monster, farMonster, dead);
+                    var rim = Monster(1, 0); rim.x = 50;
+                    var distant = Monster(2, 0); distant.x = 51.1f;
+                    fixture.Monsters(100, monster, rim, distant);
                     var minimap = fixture.CreateMinimap(map);
+                    minimap.rectTransform.sizeDelta = new Vector2(208, 156);
+                    Set(minimap, "terrainAtlas", atlas);
+                    var atlasBounds = new Rect(-29, -28, 60, 80);
+                    Set(minimap, "atlasBounds", atlasBounds);
+                    Assert.That(minimap.mainTexture, Is.SameAs(atlas));
                     using (var vertices = new UnityEngine.UI.VertexHelper())
                     {
                         PopulateMinimap(minimap, vertices);
-                        Assert.That(vertices.currentVertCount, Is.EqualTo(40 * 40 * 4 + 12),
-                            "Exactly self, one observed player and one live monster are in range.");
+                        AssertMinimapColorCentre(vertices, new Color32(74, 219, 115, 255), Vector2.zero);
+                        AssertMinimapColorCentre(vertices, new Color32(174, 181, 184, 255), new Vector2(58.5f, 45.5f));
                         var vertex = new UnityEngine.UIVertex();
-                        vertices.PopulateUIVertex(ref vertex, 0);
-                        Assert.That(vertex.color, Is.EqualTo(new Color32(26, 31, 30, 245)), "Blocked southwest tile.");
-                        vertices.PopulateUIVertex(ref vertex, 4);
-                        Assert.That(vertex.color, Is.EqualTo(new Color32(79, 91, 72, 235)), "Next existing map tile is walkable.");
-                        vertices.PopulateUIVertex(ref vertex, 39 * 4);
-                        Assert.That(vertex.color, Is.EqualTo(new Color32(26, 31, 30, 245)), "Outside world bounds is blocked.");
-                        AssertMinimapMarker(vertices, 40 * 40 * 4, new Vector2(10, 10), new Color32(174, 181, 184, 255));
-                        AssertMinimapMarker(vertices, 40 * 40 * 4 + 4, new Vector2(-10, -10), new Color32(235, 74, 64, 255));
-                        AssertMinimapMarker(vertices, 40 * 40 * 4 + 8, Vector2.zero, new Color32(74, 219, 115, 255));
+                        int grey = 0, red = 0, atlasVertices = 0;
+                        for (int i = 0; i < vertices.currentVertCount; i++)
+                        {
+                            vertices.PopulateUIVertex(ref vertex, i);
+                            Assert.That(vertex.position.x, Is.InRange(-104.001f, 104.001f));
+                            Assert.That(vertex.position.y, Is.InRange(-78.001f, 78.001f),
+                                "The rectangular map covers 80 by 60 metres without stretching either axis.");
+                            if (vertex.color.Equals(new Color32(174, 181, 184, 255))) grey++;
+                            if (vertex.color.Equals(new Color32(235, 74, 64, 255))) red++;
+                            if (vertex.uv0.x < 0) continue;
+                            atlasVertices++;
+                            Vector2 world = fixture.World.ServerPosition + (Vector2)vertex.position / 2.6f;
+                            Assert.That(world.x, Is.InRange(atlasBounds.xMin - .001f, atlasBounds.xMax + .001f));
+                            Assert.That(world.y, Is.InRange(atlasBounds.yMin - .001f, atlasBounds.yMax + .001f));
+                            Assert.That(vertex.uv0.x, Is.EqualTo((world.x - atlasBounds.xMin) / atlasBounds.width).Within(.0001f));
+                            Assert.That(vertex.uv0.y, Is.EqualTo((world.y - atlasBounds.yMin) / atlasBounds.height).Within(.0001f),
+                                "Positive world Y maps toward the north/top of the atlas.");
+                        }
+                        Assert.That(grey, Is.EqualTo(24), "A player beyond circular radius but inside the rectangular corner is shown.");
+                        Assert.That(red, Is.GreaterThan(12), "The near-edge monster keeps a circular dot clipped at the rectangle.");
+                        Assert.That(red, Is.LessThan(30), "The outside-rectangle monster does not become an edge marker.");
+                        Assert.That(atlasVertices, Is.GreaterThan(0));
                     }
-                    Assert.That(minimap.raycastTarget, Is.False);
-                    var group = (CanvasGroup)Get(minimap, "panelGroup");
-                    Assert.That(group.alpha, Is.EqualTo(1), "An initially hidden parent wakes when the world is ready.");
-                    Assert.That(group.blocksRaycasts || group.interactable, Is.False);
+                    var own = fixture.World.OwnFull; own.x += 5; own.y += 5; Set(fixture.World, "ownFull", own);
+                    Set(minimap, "nextRefresh", 0f); Invoke(minimap, "Update");
+                    using (var vertices = new UnityEngine.UI.VertexHelper())
+                    {
+                        PopulateMinimap(minimap, vertices);
+                        AssertMinimapColorCentre(vertices, new Color32(74, 219, 115, 255), Vector2.zero);
+                        AssertMinimapColorCentre(vertices, new Color32(174, 181, 184, 255), new Vector2(45.5f, 32.5f));
+                    }
+                    Set(minimap, "terrainAtlas", null);
+                    using (var vertices = new UnityEngine.UI.VertexHelper())
+                    {
+                        PopulateMinimap(minimap, vertices);
+                        bool navigationShown = false;
+                        var vertex = new UnityEngine.UIVertex();
+                        for (int i = 0; i < vertices.currentVertCount; i++)
+                        {
+                            vertices.PopulateUIVertex(ref vertex, i);
+                            Assert.That(vertex.uv0.x, Is.LessThan(0), "No atlas texture is sampled in navigation fallback.");
+                            Assert.That(vertex.position.x, Is.InRange(-104.001f, 104.001f));
+                            Assert.That(vertex.position.y, Is.InRange(-78.001f, 78.001f));
+                            navigationShown |= vertex.color.Equals(new Color32(79, 91, 72, 235));
+                        }
+                        Assert.That(navigationShown, Is.True, "A missing bake keeps the existing navigation background available.");
+                    }
                 }
             }
-            finally { UnityEngine.Object.DestroyImmediate(map); }
+            finally { UnityEngine.Object.DestroyImmediate(atlas); UnityEngine.Object.DestroyImmediate(map); }
         }
 
         [Test]
@@ -124,16 +162,20 @@ namespace C02.Tests
             typeof(WorldMinimap).GetMethod("OnPopulateMesh", BindingFlags.Instance | BindingFlags.NonPublic,
                 null, new[] { typeof(UnityEngine.UI.VertexHelper) }, null).Invoke(minimap, new object[] { vertices });
 
-        private static void AssertMinimapMarker(UnityEngine.UI.VertexHelper vertices, int start, Vector2 expected, Color32 color)
+        private static void AssertMinimapColorCentre(UnityEngine.UI.VertexHelper vertices, Color32 color, Vector2 expected)
         {
             Vector2 centre = Vector2.zero;
+            int count = 0;
             var vertex = new UnityEngine.UIVertex();
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < vertices.currentVertCount; i++)
             {
-                vertices.PopulateUIVertex(ref vertex, start + i);
-                Assert.That(vertex.color, Is.EqualTo(color)); centre += (Vector2)vertex.position;
+                vertices.PopulateUIVertex(ref vertex, i);
+                if (!vertex.color.Equals(color)) continue;
+                Assert.That(vertex.uv0.x, Is.LessThan(0), "Overlay colours must not be multiplied by the terrain atlas.");
+                centre += (Vector2)vertex.position; count++;
             }
-            Assert.That(Vector2.Distance(centre * .25f, expected), Is.LessThan(.001f));
+            Assert.That(count, Is.GreaterThan(0));
+            Assert.That(Vector2.Distance(centre / count, expected), Is.LessThan(.001f));
         }
 
 #if UNITY_EDITOR
