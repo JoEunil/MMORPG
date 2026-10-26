@@ -1,14 +1,14 @@
 # 현재 인계 — 2026-10-26
 
 ## 목표·정본
-PR56의 재화·스킬 아이콘 보완을 게시한다. 골드·다이아는 면형 아이콘, Z·X·C는 베기·회전·내려찍기 형태로 정리한다. 직접 피드백에 따른 같은 PR 수정이며 병합은 사용자 몫이다.
-- Git 정본 C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, codex/inventory-market-handoff, PR56 open/master. Editor ROOT/UnityClient. 다른 ROOT 재질/사용자 변경은 복사하지 않는다.
-- 사용자 몬스터 AI·서버·DB·Core/DLL·패킷·경제·통행·스폰 제외. 입력 허용은 유지하나 이번 묶음은 격리 렌더·fixture만 검증했다.
+PR56에 미니맵 가장자리 페이드를 반영한다. 사용자 직접 피드백이며 직사각형·자신 중앙·개체 색·범위는 유지한다. 같은 PR 보완, 새 승인/새 PR/병합 없음.
+- Git 정본 C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, codex/inventory-market-handoff, PR56 open/master. Editor ROOT/UnityClient, Unity6000.0.47f1/Pipeline7800 확인. ROOT의 다른 사용자 변경은 복사하지 않는다.
+- 서버·사용자 몬스터 AI·DB·Core/DLL·패킷·경제·통행·스폰 제외. 입력 허용은 유지하나 이번 표현 변경은 격리 렌더만 확인했다.
 
 ## 완료·검증
-5개 원본 SVG/PNG, 기존 Scene/Editor 연결과 동적 매물 다이아 표시를 17파일 manifest로 동결했다. 키와 겹침을 줄이도록 스킬 그림40x40 위치를 조정하고 키/버튼 크기와 기능은 유지했다. 독립 코드 리뷰 차단0, compile 통과, 신규 집중fixture1/1 최초통과. 통과 검사 반복0.
-1280/960 정상·쿨타임 샘플 렌더 성공, source Scene unchanged. 초기 캡처 도구가 Canvas 밖 controller를 찾지 못한 실패2건은 격리 preview driver로 수정했다. 실제 입력·서버 거래·시전 시간경과 성공을 새로 주장하지 않는다. Astra/medium 종합 검수 통과·필수 수정0. 17파일 manifest 해시 일치·두 화면/5PNG/참조/표시 계약 확인 후 제품 변경0.
+WorldMinimap.cs와 기존 shader2파일 동결. 원래 지도 UV와 음수 overlay 구분을 보존하고 별도 채널이 아닌 uv0.zw에 가장자리 좌표를 전달한다. 지형/고리/점을 동일하게 alpha feather, 가운데는 선명하게 유지. 추가 패스/재질/RT/에셋/Scene 수정 없음.
+컴파일 완료·오류0, shader errorfalse. 두 해상도 렌더 성공/sourceScene unchanged, 기존 통과 검사 반복0. 실제 입력/실서버/player build 성공은 새로 주장하지 않는다. Astra/medium 영향 검수 통과·필수 수정0, 두 화면과 고정2파일 해시 확인. 검수 후 제품 변경0.
 
 ## 다음 행동·Slack
-제품85494bd248ec4c7b09b6798a57677b7d6c868e2b를 같은 PR56에 정상 push했고 Actions40329057651(site build/preview) success를 확인했다. 정식 master Pages 배포·병합은 하지 않았다. Unity Coordinator 앱 ITEMFLOW01 스레드1793012032.698299에 핵심 결과를 회신한다. 새 PR/추가 승인/병합 없음. 기존 승인 회신1793013099.132149는 기소비 상태이며 새 승인으로 재사용하지 않는다.
-상세·이전 인계·manifest·검사·출처는 history/2026-10-24-client-playability/currency-skills-results.txt 및 HANDOFF-before-currency-skill-icons.md로 보존했다. 실제 Agent 누적401=신규142+후속259, 토큰/비용N/A.
+검수 후 같은 PR56에 정상 push·제품 commit 사이트CI를 확인하고 Unity Coordinator 앱 ITEMFLOW01 스레드1793012032.698299에 짧게 회신한다. 기존 승인1793013099.132149는 기소비이며 새 승인으로 사용하지 않는다. 앞 재화·스킬85494bd/Actions40329057651 success는 과거 근거이고 이번 제품CI와 구분한다.
+상세·이전 인계는 history/2026-10-24-client-playability/minimap-feather-results.txt와 HANDOFF-before-minimap-feather.md에 보존. 실제 Agent402=신규142+후속260, 토큰/비용N/A.

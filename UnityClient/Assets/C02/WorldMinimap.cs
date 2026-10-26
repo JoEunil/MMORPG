@@ -32,6 +32,7 @@ namespace C02
         private Vector2 centre;
         private bool visible;
         private float nextRefresh;
+        private Rect meshBounds;
 
         private bool WorldAvailable => worldScreen != null && worldScreen.isActiveAndEnabled &&
             worldScreen.Stage == C02Stage.InWorld && worldScreen.HasOwnFull &&
@@ -91,6 +92,7 @@ namespace C02
             vertices.Clear();
             if (!visible || !WorldAvailable) return;
             Rect rect = GetPixelAdjustedRect();
+            meshBounds = rect;
             float radius = rect.width * .5f;
             if (radius <= 0 || rect.height <= 0) return;
             Vector2 origin = rect.center;
@@ -222,7 +224,14 @@ namespace C02
                     uv = new Vector2(Mathf.Clamp01((world.x - atlasBounds.xMin) / atlasBounds.width),
                         Mathf.Clamp01((world.y - atlasBounds.yMin) / atlasBounds.height));
                 }
-                vertices.AddVert(polygon[i], tint, uv);
+                var vertex = UIVertex.simpleVert;
+                vertex.position = polygon[i];
+                vertex.color = tint;
+                // Atlas UVs and overlay sentinels stay in xy; zw carries the same edge mask for every layer.
+                vertex.uv0 = new Vector4(uv.x, uv.y,
+                    (polygon[i].x - meshBounds.xMin) / meshBounds.width,
+                    (polygon[i].y - meshBounds.yMin) / meshBounds.height);
+                vertices.AddVert(vertex);
             }
             for (int i = 1; i < count - 1; i++) vertices.AddTriangle(start, start + i, start + i + 1);
         }

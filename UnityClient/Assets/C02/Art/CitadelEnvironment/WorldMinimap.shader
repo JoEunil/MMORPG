@@ -39,8 +39,8 @@ Shader "Client Art/World Minimap"
             #pragma multi_compile_local _ UNITY_UI_ALPHACLIP
             #include "UnityCG.cginc"
             #include "UnityUI.cginc"
-            struct Attributes { float4 vertex : POSITION; fixed4 color : COLOR; float2 uv : TEXCOORD0; };
-            struct Varyings { float4 vertex : SV_POSITION; fixed4 color : COLOR; float2 uv : TEXCOORD0; float2 localPosition : TEXCOORD1; };
+            struct Attributes { float4 vertex : POSITION; fixed4 color : COLOR; float4 uv : TEXCOORD0; };
+            struct Varyings { float4 vertex : SV_POSITION; fixed4 color : COLOR; float4 uv : TEXCOORD0; float2 localPosition : TEXCOORD1; };
             sampler2D _MainTex;
             fixed4 _Color;
             float4 _ClipRect;
@@ -57,7 +57,11 @@ Shader "Client Art/World Minimap"
             {
                 // Negative UV belongs to overlay geometry, which must not inherit atlas colours.
                 fixed4 colour = input.color;
-                if (input.uv.x >= 0 && input.uv.y >= 0) colour *= tex2D(_MainTex, input.uv);
+                if (input.uv.x >= 0 && input.uv.y >= 0) colour *= tex2D(_MainTex, input.uv.xy);
+                // Feather the whole map (terrain, range rings and markers) into the scene, without blurring its centre.
+                float2 edge = min(input.uv.zw, 1 - input.uv.zw);
+                float2 feather = smoothstep(0, .085, edge);
+                colour.a *= feather.x * feather.y;
                 #ifdef UNITY_UI_CLIP_RECT
                 colour.a *= UnityGet2DClipping(input.localPosition, _ClipRect);
                 #endif
