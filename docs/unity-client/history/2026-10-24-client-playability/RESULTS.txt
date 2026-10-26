@@ -163,3 +163,7 @@ Read WorldMinimap source: centre already authoritative ServerPosition. Astra sit
 사용자확정4요구를구현:초록중앙고정·주변/배경상대이동,20/40m링과N,실제staticmaptopdownatlas,회색/빨강6px원. 제품12파일만ROOT/CAND동기화. Atlas2048x1418/Rect(-25,-25,650,450),runtimeUI재질직렬화shader참조,PNGimporter.userData에촬영bounds보존. Map변경후Tools/Client Art/Bake Minimap Atlas실행후HUDsetup으로재연결. 서버/AI/DB/wire/DLL/통행/스폰변경0.
 컴파일오류0,변경projection검사1/1통과(.1603586s),기존통과lifecycle반복0. 원형/가장자리/atlasUV/중앙유지/atlas없는통행배경검증. 실제Editor베이크sourceclean보존,1280x720·960x540격리렌더sceneUnchangedtrue. sourceScene백업SHA256 AA28352DA77F3B41846F5A549411127186B6CFAB256297EC98856116C44C8E36과일치guard후해당Scene만저장. Eval도구namespace오타1회는실행전컴파일거절로수정,제품컴파일실패아님.
 독립Sol리뷰차단0. Astra/medium최종제품검수통과·필수수정0(두해상도/atlas/코드/검사실제열람). 새shader컴파일메시지0/supportedtrue. 사이트빌드·링크확인통과. 밝은잔디위범례/거리선대비와지형희소구역은남은표현한계. Editor C02Edit/clean/backgroundfalse/alpha0/비입력패널복원. 개체/HUD값은샘플,실입력/다중접속증거아님. 기존HUDREF02는기소비·재사용금지. 새범위Slack게시승인은확정후한번요청.
+
+
+## 현재 게시 승인 대기 — RADAR01/r1
+후보b1d470bc4befbded64c3824a0995e80f6f989d7a, PR55추가/병합제외. Unity Coordinator앱발신U0C9ZRTQ6F8·채널C0C9VFZMV43·새부모/요청1793010905.268759 등록완료. 지정사용자U0C9QEUHPMK의 `승인 RADAR01` 대기, 회신없음/미소비. receiver21196/listening·고정Coordinator일치·health30초이내확인. 이전HUDREF02승인은기소비로재사용금지. 제품12파일Astra통과후변경0. 사이트빌드통과;diff whitespace는Unity생성Scene의빈직렬화항목4줄만,나머지diff검사통과. GitHubpush/배포없음. 승인수신시정확요청·현재후보·미소비대조후일반push로기존PR55에추가하고처리회신/인계갱신.
