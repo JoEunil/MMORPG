@@ -33,3 +33,12 @@ quality_reviewer=Astra/medium을 단계별 복합 상황 자문·사용자 전�
 승인 처리 완료: HUDREF02/r1, 제품후보b01e553b25ed2bbbf0be3c0a5317be776f13fb7a, 채널C0C9VFZMV43·부모1793005532.862209·새요청1793007041.692679·지정사용자U0C9QEUHPMK. 회신1793007985.345979(지정사용자U0C9QEUHPMK, 승인 HUDREF02)을실제Slack스레드·새요청과대조하고게시용1회소비완료. 이전HUDREF01부모본문은대체로표시했고새범위승인으로소비하지않음. receiver21196/listening·고정대상일치·health7초 확인. 제품18파일은Astra통과후변경0, 원격head8891017에게시완료.
 
 HUDREF02 처리 완료: PR55 https://github.com/JoEunil/MMORPG/pull/55 / 제목 게임 HUD·미니맵과 주변 전투 표시 개선. 게시제품head88910175a8cdaf37b62744e92fb11bc6710ebf31, Actions40302481678 success. 작업트리clean·원격앞뒤0·서버경로0 확인. 승인회신1793007985.345979 1회소비완료/재사용금지, HUDREF01은대체/미소비유지. 현재승인대기없음. 상세처리영수증 ROOT/UnityClient/Builds/Minimap/approval-receipt.json. 이번추가제품18파일은Astra검수후변경없고기존통과검사는반복하지않았다. 이후기록변경만추가,사용자PR검토/실서버다중접속등기존미검증을구분하며무관한개발·병합·정식Pages배포를자동재개하지않는다.
+
+## 최신 요청 — 레이더 표현 방안 검토
+사용자가자신중앙고정·미니맵느낌개선을요청. 코드상이미self/server중앙고정임을확인,원형프레임/강한중앙표식/20·40m거리링/정적실제지형배경을추천(Astra상황자문). BRIEF마지막절이방안정본. 격리Atlas초기렌더는타당성확인만,안개/저대비이슈와좌표정합확인필요;제품제작완료아님. 이번turn제품파일수정0·기존테스트반복0·새승인대기없음. 실제Agent누적375=137+238. 이전HUDREF02는게시완료·기소비유지.
+
+
+## 원형 레이더 개선 — 2026-10-26
+사용자확정4요구를구현:초록중앙고정·주변/배경상대이동,20/40m링과N,실제staticmaptopdownatlas,회색/빨강6px원. 제품12파일만ROOT/CAND동기화. Atlas2048x1418/Rect(-25,-25,650,450),runtimeUI재질직렬화shader참조,PNGimporter.userData에촬영bounds보존. Map변경후Tools/Client Art/Bake Minimap Atlas실행후HUDsetup으로재연결. 서버/AI/DB/wire/DLL/통행/스폰변경0.
+컴파일오류0,변경projection검사1/1통과(.1603586s),기존통과lifecycle반복0. 원형/가장자리/atlasUV/중앙유지/atlas없는통행배경검증. 실제Editor베이크sourceclean보존,1280x720·960x540격리렌더sceneUnchangedtrue. sourceScene백업SHA256 AA28352DA77F3B41846F5A549411127186B6CFAB256297EC98856116C44C8E36과일치guard후해당Scene만저장. Eval도구namespace오타1회는실행전컴파일거절로수정,제품컴파일실패아님.
+독립Sol리뷰차단0. Astra/medium최종제품검수통과·필수수정0(두해상도/atlas/코드/검사실제열람). 새shader컴파일메시지0/supportedtrue. 사이트빌드·링크확인통과. 밝은잔디위범례/거리선대비와지형희소구역은남은표현한계. Editor C02Edit/clean/backgroundfalse/alpha0/비입력패널복원. 개체/HUD값은샘플,실입력/다중접속증거아님. 기존HUDREF02는기소비·재사용금지. 새범위Slack게시승인은확정후한번요청.

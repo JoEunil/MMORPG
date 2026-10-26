@@ -267,15 +267,17 @@ public static class KnightInterfaceArtSetup
     {
         var panel = Child(canvas, "WorldMinimapPanel");
         Place(panel, new Vector2(1, 1), new Vector2(-24, -86), new Vector2(210, 238));
-        EdgedSurface(panel, new Color(.045f, .055f, .06f, .86f));
+        PlainSurface(panel, Color.clear);
+        var frame = panel.GetComponent<Outline>();
+        if (frame != null) frame.enabled = false;
         var group = panel.GetComponent<CanvasGroup>();
         if (group == null) group = panel.gameObject.AddComponent<CanvasGroup>();
         group.alpha = 0; group.blocksRaycasts = false; group.interactable = false;
-        var title = Label(panel, "MinimapTitle", "Nearby", 16);
+        var title = Label(panel, "MinimapTitle", "Radar", 16);
         Place(title.rectTransform, new Vector2(0, 1), new Vector2(12, -5), new Vector2(150, 20));
         title.color = new Color(.86f, .88f, .85f);
         var north = Label(panel, "MinimapNorth", "N", 14);
-        Place(north.rectTransform, new Vector2(1, 1), new Vector2(-12, -7), new Vector2(16, 18));
+        Place(north.rectTransform, new Vector2(0, 1), new Vector2(97, -29), new Vector2(16, 18));
         north.alignment = TextAlignmentOptions.Center;
         var map = panel.Find("Map") as RectTransform;
         if (map == null)
@@ -287,13 +289,32 @@ public static class KnightInterfaceArtSetup
         Place(map, new Vector2(0, 1), new Vector2(12, -28), new Vector2(186, 186));
         var graphic = map.GetComponent<WorldMinimap>();
         graphic.raycastTarget = false;
+        const string materialPath = "Assets/C02/Art/CitadelEnvironment/WorldMinimap.mat";
+        var material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+        if (material == null)
+        {
+            var shader = Shader.Find("Client Art/World Minimap");
+            if (shader == null) throw new InvalidOperationException("The radar UI shader is required.");
+            material = new Material(shader);
+            AssetDatabase.CreateAsset(material, materialPath);
+        }
+        graphic.material = material;
         var refs = new SerializedObject(graphic);
         refs.FindProperty("worldScreen").objectReferenceValue = world;
         refs.FindProperty("observedWorld").objectReferenceValue = world.GetComponent<C04ObservedWorld>();
         refs.FindProperty("worldMap").objectReferenceValue = new SerializedObject(world).FindProperty("worldMap").objectReferenceValue;
         refs.FindProperty("panelGroup").objectReferenceValue = group;
         refs.FindProperty("viewRadius").floatValue = 40;
+        WorldMinimapAtlasExport.TryLoad(out var atlas, out var bounds);
+        refs.FindProperty("terrainAtlas").objectReferenceValue = atlas;
+        refs.FindProperty("atlasBounds").rectValue = bounds;
         refs.ApplyModifiedPropertiesWithoutUndo();
+        north.rectTransform.SetAsLastSibling();
+        var innerRange = Label(panel, "MinimapInnerRange", "20m", 13);
+        Place(innerRange.rectTransform, new Vector2(0, 1), new Vector2(151, -118), new Vector2(31, 18));
+        var outerRange = Label(panel, "MinimapOuterRange", "40m", 13);
+        Place(outerRange.rectTransform, new Vector2(0, 1), new Vector2(109, -194), new Vector2(31, 18));
+        innerRange.color = outerRange.color = new Color(.83f, .86f, .79f);
         string[] names = { "Self", "Player", "Monster" };
         string[] labels = { "You", "Players", "Mob" };
         Color[] colors = { new Color(.2f, .9f, .35f), new Color(.65f, .67f, .68f), new Color(.95f, .2f, .18f) };
