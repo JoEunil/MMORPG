@@ -20,6 +20,93 @@ namespace C02.Tests
     public sealed class C09BazaarUiTests
     {
         [Test]
+        [Category("InventoryMarketHandoff")]
+        public void InventoryReadsShareAcrossBothPanelDirectionsAndWaitForFreshDeliveryResult()
+        {
+            foreach (bool inventoryFirst in new[] { false, true })
+                using (var fixture = new Fixture())
+                {
+                    fixture.ActivateInventory(inventoryFirst);
+                    fixture.Bag.onClick.Invoke();
+                    Assert.That(fixture.Network.InventoryRequests, Is.EqualTo(1));
+                    fixture.OpenMarket(); fixture.Receive(true); fixture.SellItems.onClick.Invoke();
+                    Assert.That(fixture.Network.InventoryRequests, Is.EqualTo(1), "The selling view joins the existing bag read.");
+                    fixture.ReceiveInventory(new InventoryItem { itemID = 1, quantity = 3, slot = 2 });
+                    Invoke(fixture.Screen, "Update");
+                    Assert.That(fixture.ActiveRowCount, Is.EqualTo(1));
+                    Assert.That(fixture.FirstSaleQuantity, Is.EqualTo("3"));
+                    Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.False);
+
+                    fixture.Close.onClick.Invoke();
+                    fixture.OpenMarket(); fixture.Receive(true); fixture.SellItems.onClick.Invoke();
+                    Assert.That(fixture.Network.InventoryRequests, Is.EqualTo(2));
+                    fixture.Bag.onClick.Invoke();
+                    Assert.That(fixture.Network.InventoryRequests, Is.EqualTo(2), "Opening the bag joins the sale view's read too.");
+                    fixture.ReceiveInventory(new InventoryItem { itemID = 1, quantity = 6, slot = 2 });
+                    Assert.That(fixture.InventoryQuantity, Is.EqualTo("6"));
+                    Assert.That(fixture.InventoryScreen.IsOpen, Is.True);
+                    Assert.That(fixture.Panel.activeSelf, Is.False);
+
+                    fixture.InventoryScreen.ClosePanel();
+                    fixture.OpenMarket(); fixture.Receive(true); fixture.SellItems.onClick.Invoke();
+                    Assert.That(fixture.Network.InventoryRequests, Is.EqualTo(3));
+                    fixture.InventoryScreen.RefreshAfterDelivery();
+                    ((IViewModelNet)fixture.Login.Model).InventoryReceived(0, Array.Empty<InventoryItem>());
+                    Invoke(fixture.Screen, "Update");
+                    Assert.That(fixture.Network.InventoryRequests, Is.EqualTo(4), "The delivery follow-up survives the older read's failure.");
+                    Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.True);
+                    Assert.That(fixture.ActiveRowCount, Is.Zero);
+                    fixture.ReceiveInventory(new InventoryItem { itemID = 1, quantity = 9, slot = 2 });
+                    Invoke(fixture.Screen, "Update");
+                    Assert.That(fixture.FirstSaleQuantity, Is.EqualTo("9"));
+                    Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.False);
+                    Assert.That(fixture.Network.InventoryRequests, Is.EqualTo(4));
+                }
+        }
+
+        [Test]
+        [Category("InventoryMarketHandoff")]
+        public void ClosedItemMutationsRefreshAnAlreadyOpenBagWithoutRepeatingTheMutation()
+        {
+            foreach (bool cancellation in new[] { false, true })
+                using (var fixture = new Fixture())
+                {
+                    fixture.ActivateInventory(false);
+                    fixture.OpenMarket(); fixture.Receive(true);
+                    var net = (IViewModelNet)fixture.Login.Model;
+                    if (cancellation)
+                    {
+                        fixture.MyListings.onClick.Invoke();
+                        net.BazaarMyListReceived(fixture.Network.LastRequestID, 1,
+                            new[] { new BazaarListing { listingID = 77, itemID = 1, quantity = 1, price = 20, status = 0 } });
+                        fixture.Row(77).GetComponent<Button>().onClick.Invoke();
+                        fixture.CancelListing.onClick.Invoke(); fixture.CancelListing.onClick.Invoke();
+                    }
+                    else fixture.CheckOutbox.onClick.Invoke();
+                    uint request = cancellation ? fixture.Network.LastWriteID : fixture.Network.LastCheckOutboxRequestID;
+                    Assert.That(cancellation ? fixture.Network.CancelListingRequests : fixture.Network.CheckOutboxRequests, Is.EqualTo(1));
+                    fixture.Close.onClick.Invoke(); fixture.Close.onClick.Invoke();
+                    Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.True);
+                    fixture.Bag.onClick.Invoke();
+                    fixture.ReceiveInventory(new InventoryItem { itemID = 1, quantity = 1, slot = 2 });
+                    Assert.That(fixture.InventoryQuantity, Is.EqualTo("1"));
+                    Assert.That(fixture.Network.InventoryRequests, Is.EqualTo(1));
+                    if (cancellation) net.BazaarCancelListingReceived(request, 77, 1);
+                    else net.BazaarCheckOutboxReceived(request, 1, 1, 0, 0);
+                    Assert.That(fixture.Network.InventoryRequests, Is.EqualTo(2), "The completed write invalidates the bag even after its first read finished.");
+                    fixture.ReceiveInventory(new InventoryItem { itemID = 1, quantity = 2, slot = 2 });
+                    Assert.That(fixture.InventoryQuantity, Is.EqualTo("2"));
+                    Assert.That(fixture.InventoryScreen.IsOpen, Is.True);
+                    Assert.That(fixture.Panel.activeSelf, Is.False);
+                    Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.False);
+                    if (cancellation) net.BazaarCancelListingReceived(request, 77, 1);
+                    else net.BazaarCheckOutboxReceived(request, 1, 1, 0, 0);
+                    Assert.That(fixture.Network.InventoryRequests, Is.EqualTo(2), "A stale duplicate completion is ignored.");
+                    Assert.That(cancellation ? fixture.Network.CancelListingRequests : fixture.Network.CheckOutboxRequests, Is.EqualTo(1));
+                }
+        }
+
+        [Test]
         public void SearchRendersThirtyRealRowsAndEmptySuccessHasNoInventedRows()
         {
             using (var fixture = new Fixture())
@@ -385,9 +472,10 @@ namespace C02.Tests
                     Invoke(fixture.Screen, "Update");
                 }
 
-                Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.False);
-                Assert.That(Get<bool>(fixture.InventoryScreen, "refreshOnOpenAfterUncertainDelivery"), Is.True,
-                    "Outbox delivery can finish after its response is cancelled, so the next bag open must read fresh inventory.");
+                Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.EqualTo(abandonment == "close"));
+                if (abandonment == "timeout")
+                    Assert.That(Get<bool>(fixture.InventoryScreen, "refreshOnOpenAfterUncertainDelivery"), Is.True,
+                        "A timed-out delivery remains uncertain; a closed panel still observes its completion.");
                 ((IViewModelNet)fixture.Login.Model).BazaarCheckOutboxReceived(
                     fixture.Network.LastCheckOutboxRequestID, 1, 1, 0, 0);
                 Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(1), "A stale response must never cause an automatic delivery retry.");
@@ -420,8 +508,8 @@ namespace C02.Tests
                     InputSystem.Update();
                     Invoke(fixture.Screen, "Update");
                     Assert.That(fixture.Panel.activeSelf, Is.False);
-                    Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.False);
-                    Assert.That(Get<bool>(fixture.InventoryScreen, "refreshOnOpenAfterUncertainDelivery"), Is.True);
+                    Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.True,
+                        "Escape closes the panel while item delivery completion remains observed.");
                     ((IViewModelNet)fixture.Login.Model).BazaarCheckOutboxReceived(
                         fixture.Network.LastCheckOutboxRequestID, 1, 1, 0, 0);
                     Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(1));
@@ -447,7 +535,17 @@ namespace C02.Tests
             public readonly GameObject Panel;
             public readonly Button Market, Search, Close, Next;
             public readonly Button SellItems, Register;
-            public readonly Button Buy, Claim, MyListings, CheckOutbox;
+            public readonly Button Buy, Claim, MyListings, CheckOutbox, CancelListing;
+            public Button Bag;
+            public RectTransform InventoryGrid;
+            public string InventoryQuantity => FirstActiveQuantity(InventoryGrid, "ItemQuantity");
+            public string FirstSaleQuantity => FirstActiveQuantity(Rows, "Quantity");
+            private static string FirstActiveQuantity(Transform rows, string name)
+            {
+                foreach (Transform row in rows)
+                    if (row.gameObject.activeSelf) return row.Find(name).GetComponent<TMP_Text>().text;
+                return null;
+            }
             public readonly C07InventoryScreen InventoryScreen;
             public readonly Button[] TypeButtons;
             public readonly Transform Rows;
@@ -515,6 +613,7 @@ namespace C02.Tests
                 Claim = ButtonObject("claim");
                 MyListings = ButtonObject("my listings");
                 CheckOutbox = ButtonObject("receive items");
+                CancelListing = ButtonObject("cancel listing");
                 TypeButtons = new[] { ButtonObject("type1"), ButtonObject("type2"), ButtonObject("type3") };
                 var previous = ButtonObject("previous");
                 Next = ButtonObject("next");
@@ -555,6 +654,7 @@ namespace C02.Tests
                 Set(Screen, "claimButton", Claim);
                 Set(Screen, "myListingsButton", MyListings);
                 Set(Screen, "checkOutboxButton", CheckOutbox);
+                Set(Screen, "cancelListingButton", CancelListing);
                 Set(Screen, "inventoryScreen", InventoryScreen);
                 Set(Screen, "pageText", page);
                 Set(Screen, "listingRows", Rows);
@@ -593,6 +693,38 @@ namespace C02.Tests
                 Set(World, "ownFull", new FullStateField { hp = 100, zoneInternalID = 1 });
                 RaiseWorldChanged(World);
                 Invoke(Screen, "Update");
+            }
+
+            public void ActivateInventory(bool inventoryFirst)
+            {
+                Set(InventoryScreen, "loginScreen", Login); Set(InventoryScreen, "worldScreen", World);
+                Set(InventoryScreen, "bazaarScreen", Screen);
+                Bag = ButtonObject("bag");
+                Set(InventoryScreen, "bagButton", Bag);
+                Set(InventoryScreen, "refreshButton", ButtonObject("bag refresh"));
+                Set(InventoryScreen, "closeButton", ButtonObject("bag close"));
+                var scrollObject = Child("bag scroll");
+                scrollObject.transform.SetParent(Get<GameObject>(InventoryScreen, "inventoryPanel").transform, false);
+                var scroll = scrollObject.AddComponent<ScrollRect>();
+                var viewport = Child("bag viewport"); viewport.transform.SetParent(scrollObject.transform, false);
+                viewport.AddComponent<Image>(); viewport.AddComponent<Mask>();
+                scroll.viewport = (RectTransform)viewport.transform;
+                var grid = Child("bag grid"); grid.transform.SetParent(viewport.transform, false);
+                InventoryGrid = (RectTransform)grid.transform;
+                grid.AddComponent<GridLayoutGroup>().cellSize = new Vector2(120, 110);
+                scroll.content = InventoryGrid;
+                Set(InventoryScreen, "inventoryScroll", scroll); Set(InventoryScreen, "inventoryGridContent", InventoryGrid);
+                Set(InventoryScreen, "detailBadge", Text("bag badge")); Set(InventoryScreen, "detailName", Text("bag name"));
+                Set(InventoryScreen, "detailSlot", Text("bag slot")); Set(InventoryScreen, "detailQuantity", Text("bag quantity"));
+                Set(InventoryScreen, "inventoryStatus", Text("bag status"));
+                inventoryRoot.SetActive(true);
+                if (inventoryFirst)
+                {
+                    var callback = (Action<bool>)Delegate.CreateDelegate(typeof(Action<bool>), Screen,
+                        typeof(C09BazaarScreen).GetMethod("SaleInventoryReceived", BindingFlags.Instance | BindingFlags.NonPublic));
+                    Login.Model.OnInventoryReceived -= callback;
+                    Login.Model.OnInventoryReceived += callback;
+                }
             }
 
             public void OpenMarket() => Market.onClick.Invoke();
@@ -664,15 +796,15 @@ namespace C02.Tests
             }
             public void Dispose()
             {
-                if (root != null) UnityEngine.Object.DestroyImmediate(root);
                 if (inventoryRoot != null) UnityEngine.Object.DestroyImmediate(inventoryRoot);
+                if (root != null) UnityEngine.Object.DestroyImmediate(root);
                 foreach (var client in clients) client.Dispose();
             }
         }
 
         private sealed class FakeNetwork : INetworkService
         {
-            public int RegisterRequests, InventoryRequests, WalletRequests, CheckOutboxRequests;
+            public int RegisterRequests, InventoryRequests, WalletRequests, CheckOutboxRequests, CancelListingRequests;
             public int Mutations;
             public uint LastWriteID, LastCheckOutboxRequestID;
             public uint LastWalletRequestID;
@@ -693,7 +825,7 @@ namespace C02.Tests
             public ushort LastItemType, LastPage;
             public void RequestBazaarBuy(uint requestID, ulong listingID) { Mutations++; LastWriteID = requestID; }
             public void RequestBazaarCheckOutbox(uint requestID) { CheckOutboxRequests++; LastCheckOutboxRequestID = requestID; }
-            public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
+            public void RequestBazaarCancelListing(uint requestID, ulong listingID) { CancelListingRequests++; LastWriteID = requestID; }
             public void RequestBazaarClaim(uint requestID, ulong listingID) { Mutations++; LastWriteID = requestID; }
             public void RequestBazaarMyList(uint requestID) { LastRequestID = requestID; }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page)

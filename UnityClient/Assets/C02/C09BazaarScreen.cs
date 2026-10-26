@@ -51,6 +51,7 @@ namespace C02
         [SerializeField] private TMP_Text walletGoldText;
         [SerializeField] private TMP_Text walletDiamondText;
         private bool selling;
+        private bool saleInventoryReplyReady;
         private bool registerConfirmation;
         private bool registrationUncertain;
         private InventoryItemView saleItem;
@@ -142,6 +143,12 @@ namespace C02
                 goldKnown = diamondKnown = false;
                 ShowWallet();
                 ScheduleWalletRetry();
+            }
+            // Let the inventory owner consume this callback first, including any queued post-delivery read.
+            if (saleInventoryReplyReady && (inventoryScreen == null || !inventoryScreen.InventoryRequestPending))
+            {
+                saleInventoryReplyReady = false;
+                SaleInventoryReceived(inventoryScreen == null || inventoryScreen.HasInventoryResponse);
             }
             if (!requestPending || Time.unscaledTime < requestDeadline) return;
             WriteRequest previousWrite = writeRequest;
@@ -346,8 +353,8 @@ namespace C02
         public void ClosePanel()
         {
             bazaarPanel.SetActive(false);
-            // Retain balance-changing writes while keeping ordinary panel reads cancellable.
-            if (requestPending && (writeRequest == WriteRequest.Register || writeRequest == WriteRequest.Buy || writeRequest == WriteRequest.Claim)) return;
+            // A closed panel must still observe item delivery and balance-changing writes.
+            if (requestPending && writeRequest != WriteRequest.None) return;
             CancelPending();
             myListings = false;
             ClearResults();
@@ -520,7 +527,7 @@ namespace C02
         private void CancelListingReceived(ulong listingID, byte status)
         {
             if (writeRequest != WriteRequest.CancelListing || !requestPending || listingID != selectedListing.ListingID ||
-                model == null || loginScreen.Model != model || !WorldAvailable || !IsOpen) return;
+                model == null || loginScreen.Model != model || !WorldAvailable) return;
             requestPending = false;
             writeRequest = WriteRequest.None;
             if (status == 0) cancelOutcomes.Remove(listingID);
@@ -608,7 +615,7 @@ namespace C02
         private void CheckOutboxReceived(byte status, uint delivered, uint duplicated, uint blocked)
         {
             if (writeRequest != WriteRequest.CheckOutbox || !requestPending || model == null ||
-                loginScreen.Model != model || !WorldAvailable || !IsOpen) return;
+                loginScreen.Model != model || !WorldAvailable) return;
             requestPending = false;
             writeRequest = WriteRequest.None;
             if (inventoryScreen != null) inventoryScreen.RefreshAfterDelivery();
@@ -679,6 +686,7 @@ namespace C02
 
         private void CancelPending()
         {
+            saleInventoryReplyReady = false;
             buyConfirmation = false;
             cancelConfirmation = false;
             if (!requestPending) return;
@@ -904,13 +912,28 @@ namespace C02
             statusText.text = "Loading items from your bag…";
             UpdateSaleSummary();
             UpdateControls();
-            try { model.RequestInventory(); }
+            try
+            {
+                if (inventoryScreen != null && inventoryScreen.isActiveAndEnabled)
+                {
+                    if (!inventoryScreen.RequestSharedInventory(model))
+                        throw new InvalidOperationException("Inventory is unavailable for this session.");
+                }
+                else model.RequestInventory();
+            }
             catch (Exception) { requestPending = false; statusText.text = "Bag lookup failed. Refresh to retry."; UpdateControls(); }
         }
 
         private void SaleInventoryReceived(bool success)
         {
             if (!selling || !IsOpen || !requestPending || writeRequest != WriteRequest.None || model == null || loginScreen.Model != model || !WorldAvailable) return;
+            if (inventoryScreen != null && inventoryScreen.InventoryRequestPending)
+            {
+                saleInventoryReplyReady = true;
+                requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+                return;
+            }
+            saleInventoryReplyReady = false;
             requestPending = false;
             ClearRows();
             var items = success && loginScreen.Data != null ? loginScreen.Data.GetInventory() : null;

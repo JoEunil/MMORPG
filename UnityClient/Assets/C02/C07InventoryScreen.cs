@@ -47,6 +47,16 @@ namespace C02
         private uint selectedItemID;
 
         public bool IsOpen => inventoryPanel != null && inventoryPanel.activeSelf;
+        public bool InventoryRequestPending => requestPending;
+        public bool HasInventoryResponse => hasInventoryResponse;
+
+        // Both panels consume the same uncorrelated inventory reply; keep one existing read owner.
+        public bool RequestSharedInventory(IViewModelUI source)
+        {
+            if (source != model || !WorldAvailable || requestTimedOut) return false;
+            if (!requestPending) RequestInventory();
+            return requestPending;
+        }
 
         private bool WorldAvailable => worldScreen != null && worldScreen.isActiveAndEnabled &&
             worldScreen.Stage == C02Stage.InWorld && worldScreen.HasOwnFull && worldScreen.IsWorldVisible;
@@ -197,6 +207,7 @@ namespace C02
                 return;
 
             requestPending = true;
+            hasInventoryResponse = false;
             requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
             ClearInventoryCards(preserveSelection: true);
             inventoryStatus.text = "Requesting inventory…";
