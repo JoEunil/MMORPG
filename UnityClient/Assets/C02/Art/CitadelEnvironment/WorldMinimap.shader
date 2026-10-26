@@ -57,10 +57,18 @@ Shader "Client Art/World Minimap"
             {
                 // Negative UV belongs to overlay geometry, which must not inherit atlas colours.
                 fixed4 colour = input.color;
-                if (input.uv.x >= 0 && input.uv.y >= 0) colour *= tex2D(_MainTex, input.uv.xy);
+                if (input.uv.x >= 0 && input.uv.y >= 0)
+                {
+                    fixed4 terrain = tex2D(_MainTex, input.uv.xy);
+                    fixed luminance = dot(terrain.rgb, fixed3(.2126, .7152, .0722));
+                    // Match the selected cool map face while preserving terrain detail and overlay colours.
+                    terrain.rgb = lerp(luminance.xxx, terrain.rgb, .22) * fixed3(.62, .9, 1.18);
+                    colour.rgb *= lerp(fixed3(.0745, .1882, .2235), terrain.rgb, .68);
+                    colour.a *= terrain.a;
+                }
                 // Feather the whole map (terrain, range rings and markers) into the scene, without blurring its centre.
                 float2 edge = min(input.uv.zw, 1 - input.uv.zw);
-                float2 feather = smoothstep(0, .085, edge);
+                float2 feather = smoothstep(0, .14, edge);
                 colour.a *= feather.x * feather.y;
                 #ifdef UNITY_UI_CLIP_RECT
                 colour.a *= UnityGet2DClipping(input.localPosition, _ClipRect);

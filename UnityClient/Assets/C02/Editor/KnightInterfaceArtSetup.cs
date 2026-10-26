@@ -189,6 +189,14 @@ public static class KnightInterfaceArtSetup
             throw new InvalidOperationException("HUD authoring requires Edit Mode.");
         var world = UnityEngine.Object.FindFirstObjectByType<C02WorldScreen>(FindObjectsInactive.Include);
         if (world == null) throw new InvalidOperationException("The existing world screen is required.");
+        var gaugeFace = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/CitadelEnvironment/vitals-track-face-v1.png");
+        var skillIcons = new[] {
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-strike-medallion-v3.png"),
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-ring-medallion-v3.png"),
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-line-medallion-v3.png")
+        };
+        if (gaugeFace == null || Array.Exists(skillIcons, icon => icon == null))
+            throw new InvalidOperationException("Import the selected gauge face and three skill medallions as Sprites before applying the HUD.");
         var worldRefs = new SerializedObject(world);
         var hud = (GameObject)worldRefs.FindProperty("worldHud").objectReferenceValue;
         // Keep diagnostic information clear of the centered currency display.
@@ -204,26 +212,44 @@ public static class KnightInterfaceArtSetup
             if (part.name == "ForgedFrame" || part.name == "FrameOrnaments" || part.name == "GaugeGlint") part.gameObject.SetActive(false);
         var vitals = Child(combat, "VitalsPlate");
         Place(vitals, new Vector2(1, 0), new Vector2(-24, 16), new Vector2(292, 64));
-        EdgedSurface(vitals, new Color(.055f, .065f, .07f, .55f));
+        EdgedSurface(vitals, new Color(.086f, .153f, .161f, .9f));
         vitals.SetAsFirstSibling();
-        Gauge(combat, "C12HpTrack", 50, 18, new Color(.64f, .12f, .15f));
-        Gauge(combat, "C12MpTrack", 30, 14, new Color(.12f, .34f, .65f));
+        Gauge(combat, "C12HpTrack", 48, new Color(.88f, .28f, .35f), gaugeFace);
+        Gauge(combat, "C12MpTrack", 20, new Color(.23f, .55f, .86f), gaugeFace);
         var skills = Child(combat, "SkillPlate");
         Place(skills, new Vector2(.5f, 0), Vector2.zero, new Vector2(222, 78));
-        EdgedSurface(skills, new Color(.055f, .065f, .07f, .35f));
+        PlainSurface(skills, Color.clear);
+        var skillPlateEdge = skills.GetComponent<Outline>();
+        if (skillPlateEdge != null) skillPlateEdge.enabled = false;
         skills.SetAsFirstSibling();
         for (int i = 0; i < 3; i++)
         {
             var skill = combat.Find("C05Skill" + i) as RectTransform;
             Place(skill, new Vector2(.5f, 0), new Vector2((i - 1) * 66, 8), new Vector2(56, 62));
-            EdgedSurface(skill, new Color(.12f, .14f, .15f, .8f));
+            PlainSurface(skill, Color.clear);
+            var skillEdge = skill.GetComponent<Outline>();
+            if (skillEdge != null) skillEdge.enabled = false;
             var colors = ColorBlock.defaultColorBlock;
             colors.highlightedColor = new Color(1.16f, 1.16f, 1.16f);
-            skill.GetComponent<Button>().colors = colors;
+            var button = skill.GetComponent<Button>();
+            button.colors = colors;
             var skillIcon = skill.Find("SkillIcon") as RectTransform;
-            if (skillIcon != null) Place(skillIcon, new Vector2(.5f, 1), new Vector2(3, -18), new Vector2(40, 40));
+            if (skillIcon != null)
+            {
+                Place(skillIcon, new Vector2(.5f, 1), Vector2.zero, new Vector2(56, 62));
+                var image = skillIcon.GetComponent<Image>();
+                image.sprite = skillIcons[i]; image.type = Image.Type.Simple;
+                image.color = Color.white; image.preserveAspect = true; image.raycastTarget = false;
+                button.targetGraphic = image;
+            }
             var badge = skill.Find("SkillKeyBadge") as RectTransform;
-            if (badge != null) PlainSurface(badge, new Color(.04f, .05f, .065f, .92f));
+            if (badge != null)
+            {
+                EdgedSurface(badge, new Color(.067f, .141f, .165f));
+                var edge = badge.GetComponent<Outline>();
+                edge.effectColor = new Color(.89f, .8f, .6f); edge.effectDistance = new Vector2(.8f, -.8f);
+                badge.SetAsLastSibling();
+            }
             var key = badge != null ? badge.Find("SkillKey")?.GetComponent<TMP_Text>() : null;
             if (key != null) { key.fontSize = 22; key.color = Color.white; key.fontStyle = FontStyles.Bold; }
             var name = skill.Find("SkillName"); if (name != null) name.gameObject.SetActive(false);
@@ -374,12 +400,20 @@ public static class KnightInterfaceArtSetup
         image.sprite = null; image.type = Image.Type.Simple; image.color = color;
     }
 
-    private static void Gauge(RectTransform panel, string name, float y, float height, Color color)
+    private static void Gauge(RectTransform panel, string name, float y, Color color, Sprite face)
     {
         var track = panel.Find(name) as RectTransform;
-        Place(track, new Vector2(1, 0), new Vector2(-40, y), new Vector2(260, height));
-        EdgedSurface(track, new Color(.08f, .095f, .11f, .9f));
-        track.Find("Fill").GetComponent<Image>().color = color;
+        Place(track, new Vector2(1, 0), new Vector2(-32, y), new Vector2(274, 21));
+        EdgedSurface(track, new Color(.153f, .22f, .231f));
+        var trackImage = track.GetComponent<Image>();
+        trackImage.sprite = face; trackImage.preserveAspect = false;
+        var edge = track.GetComponent<Outline>();
+        edge.effectColor = new Color(.73f, .67f, .52f); edge.effectDistance = new Vector2(.8f, -.8f);
+        var fill = track.Find("Fill").GetComponent<Image>();
+        // The track and fill share their complete silhouette; the runtime still owns fillAmount.
+        fill.sprite = face; fill.color = color; fill.preserveAspect = false;
+        fill.rectTransform.anchorMin = Vector2.zero; fill.rectTransform.anchorMax = Vector2.one;
+        fill.rectTransform.offsetMin = Vector2.zero; fill.rectTransform.offsetMax = Vector2.zero;
         foreach (var text in track.GetComponentsInChildren<TMP_Text>(true))
         { text.fontSize = 15; text.color = new Color(.94f, .96f, .98f); text.transform.SetAsLastSibling(); }
     }

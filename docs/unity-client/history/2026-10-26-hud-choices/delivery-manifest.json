@@ -1,0 +1,54 @@
+[
+  {
+    "Path": "UnityClient/Assets/C02/WorldMinimap.cs",
+    "SHA256": "994065B240FB7A46D5F58455F397CE10191734BE84E897A6B4CEF8D998AA6EA6"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/CitadelEnvironment/WorldMinimap.shader",
+    "SHA256": "2DFC5FE93E4DE7E71CA62A9EAA87235DFC2C6C55411D6EA7A6DCF3FB476CFF24"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Editor/KnightInterfaceArtSetup.cs",
+    "SHA256": "882A92FA350053BDD83DAEB9A50D16B785CEA1BEBEF53D9CF49A4B085D4D0FF3"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Editor/C12HudSetup.cs",
+    "SHA256": "4EA4A4FD2C1EC5DA0E668330D2A94F04166F916637E9DB35FE0B580B7DFA7251"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Skills/skill-line-medallion-v3.png",
+    "SHA256": "2EC81BB899D9991D21CD59ABCC0A7E139281BC4AC3AF8EBE342028CC9C3EE386"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Skills/skill-ring-medallion-v3.png",
+    "SHA256": "38A70079B7D04D9C0FAE04EB455C042D836ADA47488DD4CCFA9C447F9FDD280E"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Skills/skill-strike-medallion-v3.png",
+    "SHA256": "F214E295732D850CA81E1C58AB20BD03C354CA11AEA1A88A25D19411D5ACB212"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/CitadelEnvironment/vitals-track-face-v1.png",
+    "SHA256": "418CA46EB1DAE1302FA5CEEB5EC42C63086AB7A5A74B8ABFF4DB2AAEC434D7F3"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Skills/skill-line-medallion-v3.png.meta",
+    "SHA256": "CD201F5C2A4EE67CDE43CBA3E85E08D78C24E5127CBEA3AEB1878789E8622790"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Skills/skill-ring-medallion-v3.png.meta",
+    "SHA256": "3E4B5744AE271457BDA1677631D1D8927A71BF91D2440432E7754B4CC0BD0598"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Skills/skill-strike-medallion-v3.png.meta",
+    "SHA256": "80D7532B0843ED02C4743C07A971B9253D68424A6883A9E2D61A4356D6369DC2"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/CitadelEnvironment/vitals-track-face-v1.png.meta",
+    "SHA256": "668CDFC041DFF23077A9C12A862F8A4056E9A88F9F134AE1909EE327E584EE21"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/C02.unity",
+    "SHA256": "7AF79A3AF4B42B68D92238385D0122A755A222CDFCE811E8BDFE59295FD88E7F"
+  }
+]

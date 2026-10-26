@@ -1,0 +1,14 @@
+{
+  "decision": "User selected minimap B / skills B / vitals A.",
+  "sources": [
+    "../HudOptions/build-board.py",
+    "../HudOptions/art-options.json",
+    "../HudOptions/options-skills-vitals.png",
+    "../HudOptions/options-combined.png",
+    "../CurrencySkillIcons/skill-*-icon-v2.svg",
+    "../CurrencySkillIcons/rasterize-icons.py"
+  ],
+  "rights": "Original project-authored SVG shapes and approved comparison palette. No external artwork, image generation, purchases or new third-party licence.",
+  "skill": "56x62 native layout rendered at 224x248. Keys remain live uGUI text; opaque centre supports existing radial cooldown mask.",
+  "vitals": "274x21 grayscale face with radius5 corners, top-third light band and 2px lower shade; shared by track/fill, actual fill ratios remain runtime-owned."
+}

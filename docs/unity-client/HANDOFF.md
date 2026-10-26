@@ -1,14 +1,17 @@
 # 현재 인계 — 2026-10-26
 
-## 목표·정본
-PR56에 미니맵 가장자리 페이드를 반영한다. 사용자 직접 피드백이며 직사각형·자신 중앙·개체 색·범위는 유지한다. 같은 PR 보완, 새 승인/새 PR/병합 없음.
-- Git 정본 C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, codex/inventory-market-handoff, PR56 open/master. Editor ROOT/UnityClient, Unity6000.0.47f1/Pipeline7800 확인. ROOT의 다른 사용자 변경은 복사하지 않는다.
-- 서버·사용자 몬스터 AI·DB·Core/DLL·패킷·경제·통행·스폰 제외. 입력 허용은 유지하나 이번 표현 변경은 격리 렌더만 확인했다.
+## 현재 목표·선택
+사용자가 HUD 추천 B/B/A를 선택했다. 실제 Unity에 미니맵 청록 대비/스킬 색면 메달리온/빈틈없는 HPMP 트랙을 적용했고, 같은 PR56에 게시한다. 가방·거래소는 추가 요청한 각3안 비교를 준비했으며 추천B/B는 아직 사용자 미확정이다.
+- HUD 적용 http://127.0.0.1:8793/mmorpg-reference/result.html (실제 UI 에디터 렌더, 샘플값)
+- 가방/거래소 http://127.0.0.1:8793/bag-market-options/ (HTML/SVG 합성 시안). 제품 교체는 답변 뒤 진행.
 
-## 완료·검증
-WorldMinimap.cs와 기존 shader2파일 동결. 원래 지도 UV와 음수 overlay 구분을 보존하고 별도 채널이 아닌 uv0.zw에 가장자리 좌표를 전달한다. 지형/고리/점을 동일하게 alpha feather, 가운데는 선명하게 유지. 추가 패스/재질/RT/에셋/Scene 수정 없음.
-컴파일 완료·오류0, shader errorfalse. 두 해상도 렌더 성공/sourceScene unchanged, 기존 통과 검사 반복0. 실제 입력/실서버/player build 성공은 새로 주장하지 않는다. Astra/medium 영향 검수 통과·필수 수정0, 두 화면과 고정2파일 해시 확인. 검수 후 제품 변경0.
+## 정본·범위
+Git 정본 C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, codex/inventory-market-handoff, PR56 open/master. Editor ROOT/UnityClient. ROOT의 다른 사용자 변경은 복사하지 않는다. 서버/사용자몬스터AI/DB/Core/DLL/wire/경제/입력 계약 변경0. 실제 입력 허용은 유지하나 이번 표현 작업은 격리 렌더·브라우저 비교만 검증했다.
 
-## 다음 행동·Slack
-제품598b61d2a32d3f16fefbeff62ef9b75c5ff8cc39를 PR56에 정상 push했고 사이트 build/preview Actions40329879726 success를 확인했다. 정식 Pages 배포나 병합은 하지 않았다. Unity Coordinator 앱 ITEMFLOW01 스레드1793012032.698299에 핵심 결과 회신. 기존 승인1793013099.132149는 기소비이며 새 승인으로 사용하지 않는다. 앞 재화·스킬85494bd/Actions40329057651 success는 과거 근거이고 이번 제품CI와 구분한다.
-상세·이전 인계는 history/2026-10-24-client-playability/minimap-feather-results.txt와 HANDOFF-before-minimap-feather.md에 보존. 실제 Agent402=신규142+후속260, 토큰/비용N/A.
+## 검증·현재 후보
+HUD13파일 manifest ROOT/UnityClient/Builds/HudSelectedBBA/delivery-manifest.json. 컴파일완료오류0/shadererrorfalse. guarded clean C02/byte동일 backup 후 Single/FullRect4PNG import·ApplyRestrainedHud만실행·원본Scene clean저장. 두 해상도 full100%와partial65%+cooldown sample 렌더4장 성공,sourceScene unchanged. track/fill공유sprite/외곽/offset0/FilledHorizontal 및기존radialmask계약확인. 제품은 실제current/max를따르며캡처값은샘플, 실서버/시간경과/playerbuild성공주장없음. 통과검사반복0.
+Astra/medium HUD게시검수통과·필수수정0/13파일hash일치. 가방/거래소선택안도별도판정통과·필수수정0. 실제브라우저에서판매/구매전환·가방A/거래소C독립조합·확대/닫기·추천B/B복원확인,4캡처보존. 수수료10G는현C09의max(10,95/10)표시규칙샘플,실거래증명아님.
+
+## 다음 행동
+같은PR56에선택HUD와비교기록을묶어정상push,제품head사이트CI확인후UnityCoordinator앱ITEMFLOW01스레드1793012032.698299에짧게회신한다. 새PR/추가게시승인/병합없음. 가방/거래소B/B는사용자선택대기이며추천을확정으로쓰지않는다. 이전승인1793013099.132149기소비·재사용금지.
+자료 ROOT/UnityClient/Builds/HudSelectedBBA, BagMarketOptions. 공개/원본이력 docs/unity-client/history/2026-10-26-hud-choices, 이전HANDOFF history/2026-10-24-client-playability/HANDOFF-before-hud-options.md. 실제Agent407=신규145+후속262,토큰/비용N/A.

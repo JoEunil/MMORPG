@@ -48,6 +48,12 @@
 
 비교용 배치 시안이며 게임 실행 화면이 아닙니다. 선택 표시는 사용자가 채팅에서 확정한 조합을 기록용으로 반영해 촬영했습니다. [비교 페이지 첫 화면](/MMORPG/media/releases/2026-10-25/decision-support-overview.png)과 [선택 요약 화면](/MMORPG/media/releases/2026-10-25/decision-support-selection.png)을 함께 보관했습니다.
 
+### HUD 비교에서 실제 적용까지
+
+![스킬과 HPMP의 세 가지 표현을 같은 장면에서 비교한 화면](../../site/media/releases/2026-10-26/hud-options-comparison.png)
+
+색 대비와 채움 표현이 약하다는 피드백을 받은 뒤 미니맵·스킬·HPMP를 각각 세 안으로 만들었습니다. 사용자가 추천 조합을 선택해 Unity에 함께 적용했습니다. 위 화면은 선택용 합성 시안이며, 적용된 모습은 [전투·스킬·상태 UI](/MMORPG/work/player-hud/)에서 볼 수 있습니다.
+
 ## Agent 활용 지표
 
 새 Agent 실행은 에이전트를 새로 만들어 작업을 맡긴 횟수, 후속 작업 실행은 기존 에이전트에게 다시 작업을 맡겨 실행한 횟수입니다. 전체 실행은 두 횟수를 더한 값입니다.
