@@ -78,6 +78,7 @@ public static class KnightInterfaceArtSetup
             if (t.name == "StageLabel" || t.name == "Subtitle" || t.name == "EndpointNote") t.gameObject.SetActive(false);
             if (t.name == "Title") { t.text = "ENTER THE REALM"; t.fontSize = 24; t.characterSpacing = 2; }
         }
+        ApplyRestrainedEntry();
         var hud = ((GameObject)refs.FindProperty("worldHud").objectReferenceValue).transform;
         foreach (string name in new[] { "C07InventoryPanel" })
         {
@@ -118,6 +119,67 @@ public static class KnightInterfaceArtSetup
         AssetDatabase.SaveAssets();
         EditorSceneManager.MarkSceneDirty(scene);
         if (!EditorSceneManager.SaveScene(scene)) throw new InvalidOperationException("Could not save interface art.");
+    }
+
+    [MenuItem("Tools/Client Art/Refine Entry Layout")]
+    public static void ApplyRestrainedEntry()
+    {
+        var scene = EditorSceneManager.GetActiveScene();
+        if (EditorApplication.isPlayingOrWillChangePlaymode || scene.path != "Assets/C02/C02.unity")
+            throw new InvalidOperationException("Open the C02 scene outside Play Mode.");
+        var world = UnityEngine.Object.FindFirstObjectByType<C02WorldScreen>(FindObjectsInactive.Include);
+        var refs = new SerializedObject(world);
+        var selection = ((GameObject)refs.FindProperty("selectionPanel").objectReferenceValue).transform;
+        foreach (string name in new[] { "SignIn", "Results", "LoadingPanel" })
+        {
+            var panel = selection.Find(name) as RectTransform;
+            EntrySurface(panel, new Color(.045f, .05f, .055f, .94f));
+            foreach (var part in panel.GetComponentsInChildren<Transform>(true))
+                if (part.name == "ForgedFrame" || part.name == "FrameOrnaments") part.gameObject.SetActive(false);
+            foreach (var input in panel.GetComponentsInChildren<TMP_InputField>(true))
+            {
+                EntrySurface(input.transform as RectTransform, new Color(.085f, .095f, .105f));
+                input.textComponent.fontSize = 18;
+                if (input.placeholder is TMP_Text placeholder) placeholder.fontSize = 18;
+            }
+            foreach (var button in panel.GetComponentsInChildren<Button>(true))
+            {
+                bool primary = button.name == "LoginButton" || button.name == "EnterButton";
+                EntrySurface(button.transform as RectTransform, primary
+                    ? new Color(.27f, .29f, .28f) : new Color(.115f, .13f, .14f));
+                var colors = ColorBlock.defaultColorBlock;
+                colors.highlightedColor = new Color(1.14f, 1.14f, 1.14f);
+                colors.pressedColor = new Color(.8f, .8f, .8f);
+                colors.disabledColor = new Color(.6f, .6f, .6f, .65f);
+                button.colors = colors;
+                foreach (var label in button.GetComponentsInChildren<TMP_Text>(true))
+                { label.characterSpacing = 0; label.fontStyle = FontStyles.Normal; label.color = new Color(.92f, .93f, .92f); }
+            }
+        }
+        var signIn = selection.Find("SignIn") as RectTransform;
+        signIn.sizeDelta = new Vector2(360, 360);
+        var layout = signIn.GetComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(24, 24, 24, 24);
+        layout.spacing = 8;
+        foreach (var label in signIn.GetComponentsInChildren<TMP_Text>(true))
+        {
+            if (label.name == "Title")
+            { label.text = "Sign in"; label.fontSize = 24; label.characterSpacing = 0; label.fontStyle = FontStyles.Normal; }
+            if (label.name == "LoginIdLabel" || label.name == "PasswordLabel")
+            { label.fontSize = 15; label.fontStyle = FontStyles.Normal; label.color = new Color(.72f, .75f, .76f); }
+        }
+        foreach (string name in new[] { "LoginIdInput", "PasswordInput", "LoginButton" })
+            signIn.Find(name).GetComponent<LayoutElement>().preferredHeight = 44;
+        EditorSceneManager.MarkSceneDirty(scene);
+    }
+
+    private static void EntrySurface(RectTransform rect, Color color)
+    {
+        PlainSurface(rect, color);
+        var edge = rect.GetComponent<UnityEngine.UI.Outline>() ?? rect.gameObject.AddComponent<UnityEngine.UI.Outline>();
+        edge.effectColor = new Color(.32f, .34f, .34f, .8f);
+        edge.effectDistance = new Vector2(1, -1);
+        edge.useGraphicAlpha = false;
     }
 
     [MenuItem("Tools/Client Art/Refine HUD Layout")]
