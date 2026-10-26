@@ -2,7 +2,7 @@
 
 기준일: 2026-10-26
 누적 신규: 140
-누적 재활성화: 256
+누적 재활성화: 257
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-26
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
@@ -12,13 +12,13 @@
 | client_implementer | 구현 Agent | 47 | 62 |
 | asset_artist | 아트 Agent | 21 | 30 |
 | code_reviewer | 리뷰 Agent | 34 | 98 |
-| quality_reviewer | 종합 검수 Agent | 1 | 12 |
+| quality_reviewer | 종합 검수 Agent | 1 | 13 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
 | decision_curator | 의사결정 지원 Agent | 7 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체396회(신규140·재활성화256)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체397회(신규140·재활성화257)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -648,3 +648,7 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 실제신규2: item_ui_followup_audit(리뷰Agent/Sol high명시), market_selection_polish(구현Agent/Sol high명시). 실제후속3: hud_menu_icon_art(아트Sol high고정), item_ui_followup_audit(독립제품리뷰), market_selection_polish(실패fixture원인진단·수정). 실행중메시지추가/총괄검사실행은활성화에서제외. 신규140/후속255=395. 기존고정role프로필을문서로바꾼것이아니라이번실행override를확인했다. 실제토큰/비용N/A. 이후최종Astra실행은다음증분에기록.
 
 실제후속1추가: quality_gate_setup_review(Astra/medium),6제품파일·두해상도·최초실패/실패검사재실행증거·공개설명을종합검수해통과/필수수정0. 누적396=140+256,토큰·비용N/A. 사용자만족/실제거래성공으로소급하지않음.
+
+
+## 메뉴 내부 빈면·대비 보완 — 2026-10-26
+실제후속1: quality_gate_setup_review(Astra/medium),v5원본·두해상도시각영향검수통과/필수수정0. 신규0,누적397=140+257. 벡터편집·래스터화·Unity교체·렌더는총괄직접작업/이미지gen0/기능검사반복0. 사용자공백지적의대상일치/만족은미확인. 토큰·비용N/A.
