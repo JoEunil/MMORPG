@@ -13,5 +13,5 @@ Git C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Del
 컴파일완료오류0. cleanScene/backup검증·nativeatlasimport·단독Editor저장.1280/960메뉴·가방·판매예시렌더성공,sourceScene unchanged. 수수료아이콘저작이14x8로되돌아가는기존설정발견해16x16한줄수정/컴파일/재저장후영향market만두해상도로재확인,통과menu/bag반복0. 메뉴atlas/UV·click54·raycastimage/icon구분assert. 샘플활성메뉴/카드/거래행은시각fixture이며실입력·실서버·경제·time/playerbuild검증아님. 기존통과게임검사반복0. Astra/medium현재8파일영향검수통과·필수수정0/manifest해시일치. 메뉴대비·선택복원·참조보존확인,검수후제품변경0.
 
 ## 다음 행동
-검수후동일PR56에정상push·제품head사이트CI확인하고UnityCoordinator앱ITEMFLOW01스레드1793012032.698299에핵심결과만회신. 새PR/추가승인/병합없음. 이전승인1793013099.132149기소비·재사용금지. 미해결기능을임의추가하지않는다.
+현재제품3661d4d9340b9d733aeb68a940324c1d2aee5fc1을동일PR56에정상push했고사이트build/preview Actions40342050997 success확인. UnityCoordinator앱ITEMFLOW01스레드1793012032.698299에핵심결과회신. 정식master Pages배포/병합은하지않았다. 새PR/추가승인/병합없음. 이전승인1793013099.132149기소비·재사용금지. 미해결기능을임의추가하지않는다.
 ROOT/UnityClient/Builds/PanelMenuB,MenuIconsVisible에원본·캡처·결과,history/2026-10-26-hud-choices에과거선택/정본출처보존. 실제Agent410=신규145+후속265,토큰/비용N/A.
