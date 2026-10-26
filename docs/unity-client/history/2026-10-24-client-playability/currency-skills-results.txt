@@ -8,3 +8,5 @@ Cooldown image uses actual existing radial mask/text setup with sampled X fill.5
 Authoring: guarded exact clean C02 Edit Mode; backups before Scene changes. Direct Sprite links preserve build inclusion. No package or dependency added. Root scene saved clean; preview no product edits.
 Same existing PR56 direct user feedback, no new approval/PR or merge. Original ITEMFLOW01 approval remains consumed, not reapplied. Final Astra gate result/publication/CI appended after actual observation.
 Final actual Astra/medium gate: passed, required changes0. Opened all5PNGs and normal1280/cooldown960 renders; matched all17 manifest hashes, Scene/Editor position consistency and direct Sprite refs. No product changes after gate. No functional test reruns.
+
+Published product85494bd248ec4c7b09b6798a57677b7d6c868e2b, Actions40329057651 success (site build/preview only). PR56 open, no merge/master Pages deployment. Git clean/upstream0 before this docs-only receipt. Product unchanged after gate; no passed test repeated.
