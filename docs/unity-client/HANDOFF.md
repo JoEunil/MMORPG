@@ -30,4 +30,6 @@ quality_reviewer=Astra/medium을 단계별 복합 상황 자문·사용자 전�
 자동심사저장거절은clean/path확인과원본일치백업으로안전조건입증후해결. 새CanvasGroup생성Unitynull처리수정·실제적용성공. 캡처도구Edit/Play초기화차이는격리샘플방식으로교정했고제품실패로혼동하지않음.
 게시: 기존HUDREF01/r1(7ff93fd·부모1793005532.862209)은대체/미소비,옛승인을새범위에재사용금지. HUDREF02/r1 통합후보를같은UnityCoordinator스레드에요청,지정U0C9QEUHPMK의정확한회신/현재대기/기소비대조후기존PR55에함께push. 현재승인전원격게시·새PR·병합·정식배포없음. 제품후보동결,과거작업재검사/무관확장없음. 미리보기 localhost8793/mmorpg-reference/result.html.
 
-현재 게시 승인 대기: HUDREF02/r1, 제품후보b01e553b25ed2bbbf0be3c0a5317be776f13fb7a, 채널C0C9VFZMV43·부모1793005532.862209·새요청1793007041.692679·지정사용자U0C9QEUHPMK. 회신미수신/미소비. 이전HUDREF01부모본문은대체로표시했고새범위승인으로소비하지않음. receiver21196/listening·고정대상일치·health7초 확인. 제품18파일은Astra통과후변경0, 로컬후보만커밋/원격push없음.
+현재 게시 승인 확인: HUDREF02/r1, 제품후보b01e553b25ed2bbbf0be3c0a5317be776f13fb7a, 채널C0C9VFZMV43·부모1793005532.862209·새요청1793007041.692679·지정사용자U0C9QEUHPMK. 회신1793007985.345979(지정사용자U0C9QEUHPMK, 승인 HUDREF02)을실제Slack스레드·새요청과대조하고1회처리시작. 이전HUDREF01부모본문은대체로표시했고새범위승인으로소비하지않음. receiver21196/listening·고정대상일치·health7초 확인. 제품18파일은Astra통과후변경0, 로컬후보만커밋/원격push없음.
+
+HUDREF02 처리: 승인대기해제. 제품18파일해시일치/작업트리clean/원격기준4커밋앞·0뒤·fast-forward가능/PR55open확인. 승인회신1793007985.345979는게시용으로1회예약·재사용금지. 지침기록수정만추가하고PR55브랜치에일반push·CI확인한다. 상세처리영수증 ROOT/UnityClient/Builds/Minimap/approval-receipt.json. 게임재검증/병합/정식Pages배포는범위아님.
