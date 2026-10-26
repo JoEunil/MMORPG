@@ -2,7 +2,7 @@
 
 기준일: 2026-10-26
 누적 신규: 138
-누적 재활성화: 249
+누적 재활성화: 251
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-26
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
@@ -10,15 +10,15 @@
 | game_planner | 기획 Agent | 6 | 3 |
 | server_analyst | 서버 분석 Agent | 17 | 43 |
 | client_implementer | 구현 Agent | 46 | 61 |
-| asset_artist | 아트 Agent | 21 | 28 |
+| asset_artist | 아트 Agent | 21 | 29 |
 | code_reviewer | 리뷰 Agent | 33 | 97 |
-| quality_reviewer | 종합 검수 Agent | 1 | 9 |
+| quality_reviewer | 종합 검수 Agent | 1 | 10 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
 | decision_curator | 의사결정 지원 Agent | 7 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체387회(신규138·재활성화249)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체389회(신규138·재활성화251)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -632,3 +632,9 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 실제신규1: hud_menu_icon_art(아트 Agent, 고정Sol/high). built-in image_gen 1회로투명2셀atlas제작·alpha/셀경계/원본view검사. 총괄의Unity RawImage저작·두해상도렌더·정적참조검사는호출에서제외. 누적386=138+248,실제토큰·비용N/A.
 
 실제후속1추가: quality_gate_setup_review(Astra/medium),메뉴스타일4파일·두해상도화면·정적참조검사·공개설명에한정해검수통과/필수수정0. 누적387=138+249,토큰·비용N/A. 실제클릭·키입력성공으로소급하지않음.
+
+
+## 메뉴 아이콘 손그림풍 피드백 — 2026-10-26
+실제후속1: hud_menu_icon_art(아트Agent),v1실제열람후built-in image_gen편집1회로v2제작,alpha/셀경계확인. 신규0. 총괄의기존2이미지texture교체·두해상도렌더는활성화에서제외. 누적388=138+250,토큰·비용N/A.
+
+실제후속1추가: quality_gate_setup_review(Astra/medium),v1/v2원본·두해상도적용화면비교후스타일영향검수통과/필수수정0. 누적389=138+251,토큰·비용N/A. 사용자취향만족은별도이며가짜입력성공으로기록하지않음.

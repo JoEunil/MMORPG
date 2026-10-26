@@ -27,3 +27,28 @@ Unverified: Unity import, actual 32-40px HUD rendering, interaction and final vi
 Coordinator 후속: 위 provenance의 Unverified는아트담당인계시점기록이다. 이후Unity임포트/두해상도렌더/정적click routing확인과Astra검수는완료했다. 실제클릭/키입력과서버거래는이번에검증하지않았다. 사이트빌드·링크통과,제품4파일검수후변경0.
 
 게시: 기존PR56동일범위사용자직접보완지시로c49ade6e79ff5e2e648bee259c0210c034a49291 일반push완료. Actions40316624103 success. 별도재승인/새PR/병합/정식배포없음. 최종EditorC02Edit/clean/compilingfalse/backgroundfalse.
+
+
+## v2 손그림풍 보완
+사용자가너무실사적이라고피드백. 기존배치/크기/키/클릭영역불변,미세재질을줄이고큰명암면·그림윤곽으로편집. KIA의atlas경로한줄과Scene두RawImage.texture참조만교체하고새PNG/meta추가(v1보존). 제품4파일manifest Builds/MenuIcons-v2. compile0,clean/path/백업일치guard후기존이미지2개만교체저장. 두해상도격리렌더sourceUnchangedtrue. 코드로직테스트추가/기존반복0,입력·서버거래미검증.
+
+최종편집프롬프트
+Repaint this two-cell HUD atlas from scratch in a clearly HAND-PAINTED 2D FANTASY MMORPG GAME ICON style. The current reference is TOO PHOTOREALISTIC. Use it only for the two object concepts, left/right placement, relative silhouette size and fully transparent background. Preserve a 2:1 horizontal canvas with equal square cells, LEFT a rounded brown adventurer's leather satchel, RIGHT a merchant balance scale with two hanging pans and a few coins. Keep each object centred inside its own square, separated by transparent space, roughly 75% cell height, with no cropped parts. Main style change is essential: simplify each surface to TWO OR THREE LARGE painted value planes; use broad matte brush-painted shadows, gently stylized proportions, a few selective warm highlights and a clean dark contour. REMOVE all leather pores, grain, scratches, tiny stitching, detailed chain links, realistic metal reflections, HDR lighting and photographic texture. Satchel should read as a simple rich brown leather shape with one flap and one small buckle, not a product photograph. Scale should read as an illustrated warm bronze curved beam, strong central stem and two simple hanging bowls, not a rendered real metal object. Chains may be simplified to clean dark hanging lines. Restrained mature classic fantasy mood; no children's cartoon, no chibi, no toy-like plastic, no flat corporate vector style, no excessive ornate gold. Both silhouettes must be readable at only 40 pixels. No background plate, no button, no badge, no border, no frame, no text, no letters, no numbers, no logos. Genuine alpha transparency, no checkerboard painted into pixels. Maintain clear padding and no overlap between the two equal cells.
+
+
+출처·원본검사
+Created: 2026-10-26
+Source: built-in image_gen edit, one call, transparent_background=true.
+Reference/edit target: Assets/C02/Art/CitadelEnvironment/hud-menu-icons-v1.png, inspected using view_image before editing.
+User feedback conveyed by Coordinator: v1 was too realistic. Repaint as simplified hand-painted MMORPG game icons, preserving equal cells and transparent no-frame composition.
+Original output: C:/Users/joeun/.codex/generated_images/01a177f9-632c-7ae0-97cf-ddb127bcc1c9/exec-a416bd80-ccbb-407b-bb8f-d2da77967299.png
+Project copy: Assets/C02/Art/CitadelEnvironment/hud-menu-icons-v2.png
+Final prompt: hud-menu-icons-prompt.txt
+Only generated v1 was referenced; no commercial game files or third-party asset-store images used. Applicable service terms govern use; no copyright/exclusivity determination is claimed.
+Actual PNG: 1774 x 887 RGBA, exact 2:1, equal 887px square cells. Alpha range 0..255; 812834 fully transparent pixels.
+Read-only alpha inspection: at alpha>=16, bag bounds within left cell (49,61)-(875,839), scale bounds relative to right cell (19,38)-(865,842). Central six-pixel seam contains zero pixels at alpha>=16 and alpha>=128. No visible cross-cell overlap.
+RawImage mapping remains bag (0,0,0.5,1), market (0.5,0,0.5,1). No image pixel edits or resizing were performed after generation.
+Preservation: v1 left unchanged. No metadata, Editor, Scene, runtime code or Git actions performed by the art Agent.
+Unverified: actual 40px Unity HUD render, button interaction and user acceptance. Coordinator owns integration and final validation.
+
+Coordinator v2후속: Unity임포트/두해상도렌더sourceUnchangedtrue/compile0,Scene diff2줄textureGUID·helperdiff1줄assetpath만확인. Astra v1/v2실제비교영향검수통과·필수수정0. 배치/버튼/키/UV/크기불변,실제입력·거래는미검증유지. v1과이전캡처보존. 같은PR56보완으로게시,기존기능검사반복0.
