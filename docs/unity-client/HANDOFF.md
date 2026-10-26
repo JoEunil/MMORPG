@@ -29,3 +29,5 @@ quality_reviewer=Astra/medium을 단계별 복합 상황 자문·사용자 전�
 코드리뷰차단0,신규PlayMode2/2통과,두해상도Editor렌더,4직렬화참조/비입력패널/로그인시숨김/종료복원확인. Astra통합18파일최종게시검수통과. EditorC02Edit/clean/backgroundfalse,샘플미니맵위치·HUD값은실서버/실입력증거아님. 이전통과검사반복0. 상세는RESULTS.txt,실제Agent누적374=137+237. 공개원본player-hud/선별이미지갱신,README대표는기존실제사냥유지.
 자동심사저장거절은clean/path확인과원본일치백업으로안전조건입증후해결. 새CanvasGroup생성Unitynull처리수정·실제적용성공. 캡처도구Edit/Play초기화차이는격리샘플방식으로교정했고제품실패로혼동하지않음.
 게시: 기존HUDREF01/r1(7ff93fd·부모1793005532.862209)은대체/미소비,옛승인을새범위에재사용금지. HUDREF02/r1 통합후보를같은UnityCoordinator스레드에요청,지정U0C9QEUHPMK의정확한회신/현재대기/기소비대조후기존PR55에함께push. 현재승인전원격게시·새PR·병합·정식배포없음. 제품후보동결,과거작업재검사/무관확장없음. 미리보기 localhost8793/mmorpg-reference/result.html.
+
+현재 게시 승인 대기: HUDREF02/r1, 제품후보b01e553b25ed2bbbf0be3c0a5317be776f13fb7a, 채널C0C9VFZMV43·부모1793005532.862209·새요청1793007041.692679·지정사용자U0C9QEUHPMK. 회신미수신/미소비. 이전HUDREF01부모본문은대체로표시했고새범위승인으로소비하지않음. receiver21196/listening·고정대상일치·health7초 확인. 제품18파일은Astra통과후변경0, 로컬후보만커밋/원격push없음.
