@@ -91,3 +91,5 @@ Unverified: actual 40px Unity HUD rendering, interaction, final user preference 
 사용자 UI중앙공백가시성피드백을최근메뉴아이콘내부공백맥락으로해석(의도대상일치/만족은미확인). 큰외부배경판은재추가하지않고저울내부양쪽면과중앙을채움,가방색대비소폭증가. SVGnative수정/기존래스터화도구재사용,이미지gen/새의존성0. 원본menu-icons-compact-source.svg. 기존곡선/54크기/배치/I·B/버튼불변. helper경로1줄/Scene기존2RawImage.texture만교체와PNG/meta4파일,compile0/백업일치guard/두해상도격리렌더sourceUnchangedtrue. 기능검사추가·이전통과검사반복0,실입력·거래미검증. v4와이전캡처보존.
 
 최신v5후보: 메뉴내부빈면/대비보완4파일고정,compile0·두렌더sourceUnchangedtrue·Astra시각영향검수통과/필수수정0. UI전체중앙공백이아니라아이콘내부로해석한보완이므로사용자의도일치/만족은미확인으로유지. 기존배경판/크기/배치/키/클릭변경0·기능검사반복0. 실제입력·거래미검증. 같은PR56피드백보완게시이며추가승인/새PR/병합없음.
+
+v5게시완료: PR56제품0cf5a94c80db0628720f89b9a639c3232dace0c4/Actions40326069616 success. 아이콘내부공백감소/대비보완4파일검수후변경0,기능검사반복0. 사용자지적대상일치/만족은미확인유지. 원격동기차이0,병합하지않음.
