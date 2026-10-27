@@ -85,7 +85,7 @@ namespace C02
         {
             if (Application.isFocused && Keyboard.current != null)
             {
-                if (IsOpen && Keyboard.current.escapeKey.wasPressedThisFrame) ClosePanel();
+                if (GameUiInput.EscapeAvailableForPanel() && IsOpen) ClosePanel();
                 else if (Keyboard.current.iKey.wasPressedThisFrame && EventSystem.current != null)
                 {
                     var selected = EventSystem.current.currentSelectedGameObject;

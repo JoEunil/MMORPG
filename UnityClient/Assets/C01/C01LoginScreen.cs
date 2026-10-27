@@ -32,12 +32,15 @@ namespace C01
         private void OnEnable()
         {
             loginButton.onClick.AddListener(Submit);
+            passwordInput.onSubmit.AddListener(SubmitPassword);
             Authenticated = false;
             ListResponseCount = 0;
             SetBusy(false);
             statusText.text = "Ready to sign in.";
             characterListText.text = "Sign in to request your characters.";
         }
+
+        private void SubmitPassword(string _) => Submit();
 
         private async void Submit()
         {
@@ -132,6 +135,7 @@ namespace C01
         private void OnDisable()
         {
             loginButton.onClick.RemoveListener(Submit);
+            passwordInput.onSubmit.RemoveListener(SubmitPassword);
             ReleaseClient();
             passwordInput.text = string.Empty;
             IsBusy = false;

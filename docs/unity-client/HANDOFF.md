@@ -1,11 +1,15 @@
 # 현재 인계 — 2026-10-27
 
-현재 목표: PR56 리뷰의 가방·미니맵 테스트 색상 불일치를 수정하고 같은 PR에 반영한다. 두 리뷰는 현재 제품 팔레트와 대조해 타당함을 확인했다. 제품 코드와 화면은 변경하지 않았다.
+목표: 로그인·채팅·패널 조작 개선을 큰 후보 하나로 마감했다. 차분한 로그인 배경, 비밀번호 제출 연결, 앞선 구역 복귀/귓속말/텍스트 Escape를 같은 codex/client-session-polish에 누적했다.
 
-Git 정본: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, codex/inventory-market-handoff, PR56. Editor: ROOT/UnityClient. 사용자 변경·서버·몬스터 AI·DB·Core·DLL·wire·경제는 보존했다.
+Git 정본: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source. 기준 origin/master115d5f2(PR56 병합), 현재 제품후보04fc9a5(이전 로컬3dc9926 포함). ROOT Editor는 UnityClient/6000.0.47f1/Pipeline7800, 앞선검사후ready 복귀. 새Scene diff는 배경Sprite GUID1줄뿐. 서버·사용자몬스터AI·Core/DLL·wire·경제·DB·확정UI배치/키는 변경하지 않았다.
 
-이번 수정: C07InventoryUiTests의 선택/기본색 4곳, C04ObservationTests의 미니맵 대체 배경색 1곳. 동작 assertion은 유지했다. 컴파일 오류0. 관련 PlayMode 테스트3개 모두 첫 실행 통과, 기존 통과 테스트 반복0. Editor ready 복귀. 실입력·실서버·playerbuild 검증은 이번 범위가 아니다.
+완료 근거: 계획 Astra 보완통과, 독립 코드리뷰2묶음 차단0. 앞선 채팅3검사는 통과근거 재사용/반복0. 로그인 제출 신규fixture1개 첫실행통과(.0489185s), 컴파일오류0. 배경builtinimagegen편집1회·원본보존, 실제Sprite연결/nativeSave,1280x720·960x540에디터미리보기sceneUnchangedtrue. Astra 종합검수는 동결13파일hash/전후이미지/공개설명을 확인해 통과·필수수정0. 생성그림/에디터예시와게임3D를 구분한다.
 
-전달 대상: 기존 PR56 동일 범위 리뷰 수정이며 재승인 대상이 아니다. 실제 게시 여부는 원격 head로 확인한다. 병합하지 않는다. 기존 작업 Slack 부모1793012032.698299를 사용한다. 과거 승인 재사용 없음.
+검증 한계: 물리Enter·실서버로그인·playerbuild미검증. 앱비활성키차단은코드guard검토뿐이다. 입력허용은유지하며 이번 Escape검사는 합성InputSystem/정상PlayerLoop/EventSystem이다. 파일쓰기·검사중첩없음.
 
-이전 아트/리뷰 결과와 이번 상세 근거: history/2026-10-26-hud-choices/panel-menu-results.txt. 원본 검사 결과: ROOT/UnityClient/Builds/MenuIconsSoft/*palette*-result.json. 실제 Agent 집계413 유지(이번 총괄 직접 작업, 신규 호출0). 미리보기 http://127.0.0.1:8793/mmorpg-reference/result.html
+게시 완료: 현재 채팅의 직접 지시로 CLIENTSESSION02/r1 승인을 적용해 codex/client-session-polish를 push하고 PR57(https://github.com/JoEunil/MMORPG/pull/57)을 생성·현재채팅첨부했다. 최초게시head713233d4e4d46d5b282d89e1ff40286977d75eba. 사이트CI build 진행중을확인했으며미리통과라고하지않는다. 병합/master직접게시없음. 같은범위Slack승인이뒤늦게와도기소비/게시완료로회신하고중복PR을만들지않는다.
+
+Slack: 기존수신기중단/health오래됨 확인후 nostopmarker·동일codexqueue·고정대상 검증해 원본script재기동. bot auth/socket ready/listening fresh 확인,권한/토큰/대상변경없음. 승인요청1793074230.937829은 현재 채팅의 직접 게시 승인으로 대체 적용. 결과는 results.txt를 따른다.
+
+근거: history/2026-10-27-client-session/results.txt 및 login-background-{prompt,provenance}.txt, ROOT/UnityClient/Builds/ClientSessionPolish/*-result.json과LoginBackground/candidate-manifest.json. 공개field-travel에신규화면추가,과거보존·사이트build성공(배포아님). Agent423=신규151+후속272,토큰/비용N/A. 기존8793서버는미실행이므로깨진링크대신채팅에로컬캡처를제공한다.
