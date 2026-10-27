@@ -29,7 +29,7 @@ Windows player의 프로세스/창/그래픽 초기화까지 확인했으나 새
 
 Unity ROOT/6000.0.47f1/Pipeline7800은 Edit/clean, 실입력 허용. 빌드의 preload 설정 부수효과는 원래 SHA256으로 정확히 복원했다. 직접 시작한 게임 서버는 q로 정상 종료(exit0), Login은 Ctrl+C로 중단,9999/3000 listen 없음. 기존 MySQL/Redis는 유지한다. 미리보기8791은 유지한다.
 
-Unity Coordinator 앱으로 CLIENTCOMPLETE01/r1 게시 승인 요청을 등록했다. 부모1793084867.526689 / 채널C0C9VFZMV43 / 지정 사람U0C9QEUHPMK / 명령: 승인 CLIENTCOMPLETE01. 수신기PID11312 listening·고정 Coordinator·health3초 이내·threads 등록 확인. 지정 사람 승인 회신1793093569.259489를 실제 Slack 원문과 요청·채널·부모·현재대기·미소비 기록으로 대조해 이번 게시에1회 소비했다. 수신기 상태 queued는 전달 상태이며 별도 승인 적용으로 기록한다. 기존 CLIENTREFACTOR01/r2는 대체 안내1793084885.608529를 남겼으며 재사용하지 않는다. 완료 채널 요약1793084886.276999. 승인 범위의 push·PR 게시를 진행하며 사용자 병합·정식 Pages 배포는 수행하지 않는다.
+Unity Coordinator 앱으로 CLIENTCOMPLETE01/r1 게시 승인 요청을 등록했다. 부모1793084867.526689 / 채널C0C9VFZMV43 / 지정 사람U0C9QEUHPMK / 명령: 승인 CLIENTCOMPLETE01. 수신기PID11312 listening·고정 Coordinator·health3초 이내·threads 등록 확인. 지정 사람 승인 회신1793093569.259489를 실제 Slack 원문과 요청·채널·부모·현재대기·미소비 기록으로 대조해 이번 게시에1회 소비했다. 수신기 상태 queued는 전달 상태이며 별도 승인 적용으로 기록한다. 기존 CLIENTREFACTOR01/r2는 대체 안내1793084885.608529를 남겼으며 재사용하지 않는다. 완료 채널 요약1793084886.276999. Slack 승인 적용 회신1793094210.225339 뒤 승인 범위를 push하고 PR58(https://github.com/JoEunil/MMORPG/pull/58)을 master 대상으로 게시했다. 사용자 병합·정식 Pages 배포는 수행하지 않았다.
 
 ## 근거
 
