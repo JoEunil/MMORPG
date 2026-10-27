@@ -15,6 +15,8 @@ Unity 클라이언트 전반 리팩토링과 미사용 구버전 에셋 정리�
 
 추가 정리로 참조 없는 아트71개와 Unity 기본 템플릿6개를 제거했다. Assets의 과거 캡처7개는 ROOT/Captures/legacy-imported에 원본 그대로 보존했다. 빈 Client 1·템플릿·캡처 폴더와 meta를 제거했다. 기본 빌드 씬은 삭제한 SampleScene 대신 실제 로그인·월드를 포함한 Assets/Client/Scenes/World.unity다. Login.unity, InputSystem configObjects와 실제 사용 중인 SampleSceneProfile·FixedGround·PaleStone, 아이템/TMP Resources, 출처 문서는 유지했다.
 
+공개 소개 AI-AGENT.md에서는 내부 지침·역할·환경·운영 안내 링크를 제거하고 결과 사이트·결과 정리·활용 지표만 남겼다. 재추가 금지 기준은 PORTFOLIO_GUIDE에 두며 지침 원본·과거 기록은 보존한다.
+
 ## 검증과 한계
 
 기존 코드 정리: 두 씬·4Prefab·4SO의19019객체 필드/이벤트/override 차이0, missing0. 내보내기4개 데이터 동일(GeneratedBy 주석명만 변경). 관련 PlayMode3개 각1/1, 재시도0. 물리키·실서버·player build 성공으로 설명하지 않는다.
