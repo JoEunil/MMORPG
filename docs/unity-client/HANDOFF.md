@@ -1,40 +1,27 @@
 # 현재 인계 — 2026-10-27
 
-## 현재 목표와 정본
+## 현재 작업
 
-클라이언트 구조·미사용 에셋 정리, 남은 통합 동작 검증, 결과 사이트 개선을 큰 후보 하나로 준비했다. 사용자 몬스터 AI·서버 소스·ClientCore/DLL·wire·경제 규칙은 수정하지 않았다.
+결과 정리 사이트를 점검해 가독성·기능 탐색·현재/과거 화면 구분을 개선했다. 로컬 구현·사이트 빌드·실제 브라우저 확인·Astra 종합 검수 통과. 기존 PR58의 승인된 결과 사이트 개선 범위에 추가 반영한다. 이번에는 게임·서버·DB·Unity 실행을 변경하지 않았다.
 
 - 편집/실행 ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient
 - Git 정본 CAND: ROOT/Builds/C10-Delivery/source
-- 브랜치: codex/client-feature-structure. 이전 로컬 후보0fc577a와 이번 통합 보완을 포함한다.
-- 기반: PR57 병합을 실제 확인했다. origin/master 9a3d94e를 0e88aa5로 정상 병합해 사용자 LLM.md/README 변경을 보존했다. 새 PR의 base는 master다.
+- 브랜치: codex/client-feature-structure / PR58 https://github.com/JoEunil/MMORPG/pull/58
+- PR58은 게시 직전 open·미병합/원격 head b2f775b와 로컬 일치를 확인했다. master의 사용자 LLM.md·README 변경은 이전 정상 병합으로 보존했다.
+- 미리보기: http://127.0.0.1:8791/MMORPG/#work
 
-## 완료와 검증
+## 이번 완료
 
-기존 자체 C#81개를 기능/책임으로 재배치하고 어셈블리를3개로 통합했다. 직렬화/GUID를 보존하고 참조 없는 아트71개·템플릿6개를 제거했다. 과거 캡처7개는 Assets 밖에 보존했다. AI-AGENT.md의 내부 지침 링크를 제거했다. 기존 리팩토링 검증3개와 참조/직렬화 검증은 재실행하지 않았다.
+홈에 기능별 빠른 이동, 상세/이력 하단에 다른 기능 탐색, 본문 링크 강조와 키보드 본문 바로가기를 추가했다. 워크플로우의 사용자→총괄을 수평 배치하고9개 역할을3열로 정리했다. 반복 설명은 줄이고 같은날 가방의 실제 포션 수령을 최신 기록으로 앞에 배치했다. 기존 사진·과거 빈 가방·실패·에디터 예시는 보존한다. Markdown이 정본이며 생성HTML은 직접 편집하지 않았다.
 
-추가로 현재/최대 HP·MP Delta를 프레임 전체에 반영한 뒤 검증하도록 수정했다. 독립 코드 리뷰, 새 PlayMode2개, Windows64 World 기본 씬 빌드(0오류/5경고), Astra 종합 검수(필수수정0) 통과. 제품 변경은 WorldScreen.cs와 CombatTests.cs 두 파일이다.
+빌더 전체 링크/이미지/앵커 검사 통과. 데스크톱1280·모바일390×844에서 넘침0, 실제 기능 간 이동·날짜 이동·키보드 포커스 확인. Astra 게시 검수 통과, 필수수정0. 지표451=신규166+후속285,토큰/비용N/A. 세부근거와 이전 인계: history/2026-10-27-results-site-review/.
 
-실제 서버 접속에서 HP0 마을 귀환, 여섯 구역1→2→3→6→5→4→1 순회, Z/X/C 응답, I/B 패널, 실제 거래소30매물 조회, 채팅 echo, 일반 몬스터 처치와 EXP0→10, 마을 복귀를 확인했다. 정상 재접속 전후 정확한 float 좌표·구역·HP9850·MP9919·EXP10 일치. 이동은 정상 PlayerLoop의 queued InputSystem 키 상태이며 물리키 전체 조작감으로 확대하지 않는다.
+## 게시 권한과 현재 상태
 
-결과 사이트의 대표 화면/큰 기능별 이미지/날짜 이력을 개선하고 실제 게임 캡처를 반영했다. 아이템 있는 가방 대표는 에디터 디자인 예시로 표시하고 실제 빈 가방 이력을 분리했다. 데스크톱/모바일 확인 후 최신 사진·문구의 데스크톱 브라우저 재확인까지 완료했다. 누적 Agent449=신규164+후속285, 토큰/비용N/A.
+CLIENTCOMPLETE01/r1(부모1793084867.526689/채널C0C9VFZMV43/지정사람U0C9QEUHPMK)은 승인 회신1793093569.259489를1회 소비해 PR58 게시 완료했다. 적용 회신1793094210.225339, PR 링크 회신1793094363.497309. 지연 중복 회신은1793094448.151949로 확인하고 추가 실행하지 않았다. 이번 공개 원본/탐색 보완은 같은 후보의 승인 범위 안이며 새 PR·공개 호스팅·권한 확대가 아니다. 사용자 병합·정식 Pages 배포는 별도다.
 
-## 남은 조건
+## 앞선 게임 결과와 남은 한계
 
-성공 거래 검증까지 완료했다. 사용자 최신 지시(test1 사용 또는 DB 테스트 자산 보충/복구 허용)에 따라 test1은 조회만 하고 전용 unity_ai_01·02의 변경 전 4테이블/행 부재를 백업했다. 포션1·판매자골드100·구매자다이아100으로 실제 UI 등록→구매→배송→대금수령을 확인했다. 판매자골드90/다이아10·구매자다이아90/포션1,DB 정산/배송 CLAIMED 일치. 가방/배송 첫 cold응답은 재조회했으나 등록/구매/수령 쓰기를 반복하지 않았다. 정상 로그아웃·서버 q종료 후 이번매물180만 제거하고 원래 캐릭터/인벤/재화 부재까지 정확히 복원했다. 독립 계약/복구 검토 필수수정0. 통과 검사는 반복하지 않았다.
+구조/에셋 정리, HP/MP Delta 수정, Windows 빌드, 실제6구역 왕복·스킬·채팅·처치/EXP·재접속 상태 보존과 성공 거래/배송/대금수령을 확인했다. 전용 계정 테스트 데이터는 원본4테이블·부재행까지 복원했고 test1·사용자 몬스터 AI는 수정하지 않았다. 상세는 history/2026-10-27-client-completion/와 client-refactor/ 이력이다.
 
-Windows player의 프로세스/창/그래픽 초기화까지 확인했으나 새 앱 제어 동의 시간 초과로 standalone UI 조작은 미검증이다. 제어 경로를 우회하지 않았고 창은 열린 채 유지했다. 레벨업·드롭·사냥 균형·모든 지연 조건은 확인하지 않았다.
-
-## 실행 상태와 다음 행동
-
-Unity ROOT/6000.0.47f1/Pipeline7800은 Edit/clean, 실입력 허용. 빌드의 preload 설정 부수효과는 원래 SHA256으로 정확히 복원했다. 직접 시작한 게임 서버는 q로 정상 종료(exit0), Login은 Ctrl+C로 중단,9999/3000 listen 없음. 기존 MySQL/Redis는 유지한다. 미리보기8791은 유지한다.
-
-Unity Coordinator 앱으로 CLIENTCOMPLETE01/r1 게시 승인 요청을 등록했다. 부모1793084867.526689 / 채널C0C9VFZMV43 / 지정 사람U0C9QEUHPMK / 명령: 승인 CLIENTCOMPLETE01. 수신기PID11312 listening·고정 Coordinator·health3초 이내·threads 등록 확인. 지정 사람 승인 회신1793093569.259489를 실제 Slack 원문과 요청·채널·부모·현재대기·미소비 기록으로 대조해 이번 게시에1회 소비했다. 수신기 상태 queued는 전달 상태이며 별도 승인 적용으로 기록한다. 기존 CLIENTREFACTOR01/r2는 대체 안내1793084885.608529를 남겼으며 재사용하지 않는다. 완료 채널 요약1793084886.276999. Slack 승인 적용 회신1793094210.225339 뒤 승인 범위를 push하고 PR58(https://github.com/JoEunil/MMORPG/pull/58)을 master 대상으로 게시했다. 사용자 병합·정식 Pages 배포는 수행하지 않았다.
-
-## 근거
-
-이번: history/2026-10-27-client-completion/results.txt 및 같은 폴더의 제한된 검증 산출물. 이전 구조/에셋 정리: history/2026-10-27-client-refactor/. 이전 인계는 이번 이력의 previous-handoff.md로 보존한다.
-전체 로컬 근거: ROOT/Builds/ClientCompletion/{Evidence,Player,Server}. 최신 웹 확인: ROOT/Builds/WebResultsReview/latest-results.png. 미리보기: http://127.0.0.1:8791/MMORPG/#work
-거래 복구 근거: 이번 이력의 funded-trade-db-result.json/market-restoration-result.json/live-funded-trade.txt. 로컬 복구 SQL과 원본 스냅샷은 ROOT/Builds/ClientCompletion/Evidence/{restore-market-test.sql,market-before.json}. 재사용 시 새 매물ID로 재생성하며 오래된 SQL은 매물 집합 guard로 무변경 중단한다. DB 반영 완료 WAL3records(CRC/전용ID/LSN대조)는 같은 Evidence/wal-before-reset/redo.1로 원본 보관했고 새 빈 redo.2로 교체했다. 기존 backpressure는 비어 있다. 서버코드/WAL로직 수정은 없다. Unity 설정 원본 해시 유지.
-
-실거래 완료 Slack 작업 회신1793093994.696949 / 완료 채널1793093995.365959. DB 보충·복구 허용은 사용자 현재 채팅 지시이며 PR 게시 승인은 위 지정 사람의 정확한 Slack 회신이다.
+마지막 게임 검증 뒤 Unity는Edit/clean,직접 켠Login/MainServer는정상종료했다. 이번 사이트 작업으로 게임 검사를 반복하지 않았다. standalone UI 전체 조작·모든 지연 조건의 조작감·레벨업/드롭/균형은 미확인이다. 로컬 복구 SQL/원본/WAL보관 근거는 ROOT/Builds/ClientCompletion/Evidence에 유지한다.

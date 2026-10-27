@@ -285,12 +285,21 @@ def document(title, description, content, references, site_title):
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="{escape(description, quote=True)}"><title>{escape(browser_title)}</title>
 <link rel="stylesheet" href="{BASE}style.css"></head><body>
+<a class="skip-link" href="#top">본문으로 바로가기</a>
 <header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}#workflow">AI 워크플로우</a><a href="{BASE}#work">작업 결과</a><a href="{BASE}#legacy">기존 Unity</a><a href="{BASE}#decisions">지침 변경</a><a href="{BASE}#agent-usage">활용 지표</a></nav></header>
 {content}<footer class="site-footer"><a href="{BASE}">{escape(site_title)}</a>{ref_footer}</footer>
 </body></html>'''
 
 
-def build_work(work, references, site_title):
+def work_navigation(works, current_key=None):
+    label = "다른 작업 둘러보기" if current_key else "기능별 둘러보기"
+    heading = f'<p>{label}</p>' if current_key else ''
+    links = ''.join(f'<a href="{BASE}work/{slug(work["source"].stem)}/">{escape(work["title"])}</a>'
+                    for work in works if slug(work["source"].stem) != current_key)
+    return f'<nav class="work-navigation" aria-label="{label}">{heading}<div>{links}</div></nav>'
+
+
+def build_work(work, references, site_title, works):
     key = slug(work["source"].stem)
     detail_url = f"{BASE}work/{key}/index.html"
     history_url = f"{BASE}work/{key}/history.html"
@@ -318,16 +327,17 @@ def build_work(work, references, site_title):
             sections.append(f'<section class="content-section" id="{anchor}"><h2>{escape(section["title"])}</h2>{rendered}</section>')
     preview_section = next(s for s in work["sections"] if s["title"] == "대표 화면")
     preview_html = render_blocks(preview_section["blocks"], work["source"])
-    page_content = f'''<main class="page narrow" id="top"><a class="back-link" href="{BASE}#{key}">← 작업 목록</a>
+    other_work = work_navigation(works, key)
+    page_content = f'''<main class="page narrow" id="top" tabindex="-1"><a class="back-link" href="{BASE}#{key}">← 작업 목록</a>
 <p class="work-status">{escape(work['status'])}</p><h1>{escape(work['title'])}</h1><p class="lead">{escape(work['summary'])}</p>
 <nav class="page-actions" aria-label="작업 상세 탐색"><a href="#features">구현한 기능</a><a href="#scope">현재 확인한 범위</a><a href="{history_url}">화면 이력 →</a></nav>
 <div class="detail-preview">{preview_html}</div>
-{''.join(sections)}</main>'''
-    history_content = f'''<main class="page narrow" id="top"><a class="back-link" href="{detail_url}">← {escape(work['title'])} 상세</a>
+{''.join(sections)}{other_work}</main>'''
+    history_content = f'''<main class="page narrow" id="top" tabindex="-1"><a class="back-link" href="{detail_url}">← {escape(work['title'])} 상세</a>
 <p class="work-status">화면 기록</p><h1>{escape(work['title'])}</h1><p class="lead">촬영일 순으로 보존한 실제 게임 화면·에디터 예시·도구 출력입니다. 현재 구현과 확인한 범위는 작업 상세에서 볼 수 있습니다.</p>
 <nav class="page-actions" aria-label="작업과 화면 이력 탐색"><a href="{detail_url}">현재 구현</a><a href="{detail_url}#scope">확인한 범위</a><a href="{BASE}#work">다른 작업</a></nav>
 <nav class="history-dates" aria-label="촬영 날짜별 화면 기록">{''.join(dates)}</nav>
-<section class="content-section history-images">{''.join(history)}</section><a class="back-link" href="#top">↑ 날짜 목록으로</a></main>'''
+<section class="content-section history-images">{''.join(history)}</section><a class="back-link" href="#top">↑ 날짜 목록으로</a>{other_work}</main>'''
     folder = SITE / "work" / key
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "index.html").write_text(document(work["title"], work["summary"], page_content, references, site_title), encoding="utf-8", newline="\n")
@@ -374,7 +384,7 @@ def main():
     sync_readme_preview(home_sections)
     cards = []
     for work in works:
-        key, detail, history = build_work(work, references, title)
+        key, detail, history = build_work(work, references, title, works)
         card_image = find_image(work)
         preview_section = next(s for s in work["sections"] if s["title"] == "대표 화면")
         preview_notes = [b for b in preview_section["blocks"] if not (isinstance(b, str) and IMAGE.fullmatch(b))]
@@ -389,9 +399,9 @@ def main():
     legacy_section = sections_by_title["기존 Unity 구현"]
     legacy_copy = render_blocks(legacy_section["blocks"], HOME_SOURCE)
     legacy_html = f'<section class="legacy-section section-wrap" id="legacy"><div class="section-title"><h2>{escape(legacy_section["title"])}</h2></div><div class="legacy-body">{legacy_copy}</div></section>'
-    hero = f'''<main id="top"><section class="home-hero"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#work">작업 결과 보기</a><a class="text-link" href="#workflow">AI Agent 워크플로우</a><a class="text-link" href="#legacy">기존 Unity 구현</a></div></div></section>
+    hero = f'''<main id="top" tabindex="-1"><section class="home-hero"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#work">작업 결과 보기</a><a class="text-link" href="#workflow">AI Agent 워크플로우</a><a class="text-link" href="#legacy">기존 Unity 구현</a></div></div></section>
 {process_html}
-<section class="section-wrap work-section" id="work"><div class="section-title work-heading"><h2>작업과 결과</h2><p>{inline(work_intro)}</p></div><div class="work-grid">{''.join(cards)}</div></section>
+<section class="section-wrap work-section" id="work"><div class="section-title work-heading"><h2>작업과 결과</h2><p>{inline(work_intro)}</p></div>{work_navigation(works)}<div class="work-grid">{''.join(cards)}</div></section>
 {legacy_html}
 {execution_html}
 {usage_html}
@@ -402,7 +412,7 @@ def main():
         folder.mkdir(parents=True, exist_ok=True)
         for page in ("index.html", "history.html"):
             target = f"{BASE}work/market/{page}"
-            content = f'<main class="page narrow"><h1>거래소</h1><p>거래소 작업과 이전 화면을 한곳에 모았습니다.</p><a class="button" href="{target}">거래소 보기</a></main>'
+            content = f'<main class="page narrow" id="top" tabindex="-1"><h1>거래소</h1><p>거래소 작업과 이전 화면을 한곳에 모았습니다.</p><a class="button" href="{target}">거래소 보기</a></main>'
             html = document("거래소", "통합된 거래소 작업으로 이동합니다.", content, references, title)
             html = html.replace("</head>", f'<link rel="canonical" href="{target}"><meta http-equiv="refresh" content="0;url={target}"></head>')
             (folder / page).write_text(html, encoding="utf-8", newline="\n")
