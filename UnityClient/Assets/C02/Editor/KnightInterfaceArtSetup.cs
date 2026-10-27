@@ -22,18 +22,11 @@ public static class KnightInterfaceArtSetup
         if (EditorApplication.isPlayingOrWillChangePlaymode || scene.path != "Assets/C02/C02.unity")
             throw new InvalidOperationException("Open the saved C02 scene outside Play Mode.");
         frame = ImportSprite(Art + "forged-gothic-frame.png", new Vector4(250, 250, 250, 250));
-        Sprite backdrop = ImportSprite(Art + "citadel-dawn-login.png", Vector4.zero);
         leather = MakeLeather();
         var world = UnityEngine.Object.FindFirstObjectByType<C02WorldScreen>(FindObjectsInactive.Include);
         var refs = new SerializedObject(world);
         var background = ((GameObject)refs.FindProperty("background").objectReferenceValue).GetComponent<Image>();
-        background.sprite = backdrop;
-        background.color = Color.white;
-        background.type = Image.Type.Simple;
-        background.preserveAspect = false;
-        var aspect = background.GetComponent<AspectRatioFitter>() ?? background.gameObject.AddComponent<AspectRatioFitter>();
-        aspect.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
-        aspect.aspectRatio = (float)backdrop.texture.width / backdrop.texture.height;
+        ApplyEntryBackdrop(background);
         var selection = ((GameObject)refs.FindProperty("selectionPanel").objectReferenceValue).transform;
         selection.GetComponent<Image>().color = Color.clear;
         var branding = selection.parent.Find("V01Branding");
@@ -118,6 +111,7 @@ public static class KnightInterfaceArtSetup
             throw new InvalidOperationException("Open the C02 scene outside Play Mode.");
         var world = UnityEngine.Object.FindFirstObjectByType<C02WorldScreen>(FindObjectsInactive.Include);
         var refs = new SerializedObject(world);
+        ApplyEntryBackdrop(((GameObject)refs.FindProperty("background").objectReferenceValue).GetComponent<Image>());
         var selection = ((GameObject)refs.FindProperty("selectionPanel").objectReferenceValue).transform;
         foreach (string name in new[] { "SignIn", "Results", "LoadingPanel" })
         {
@@ -162,6 +156,17 @@ public static class KnightInterfaceArtSetup
         EditorSceneManager.MarkSceneDirty(scene);
     }
 
+    private static void ApplyEntryBackdrop(Image background)
+    {
+        var backdrop = ImportSprite(Art + "citadel-overcast-login-v2.png", Vector4.zero);
+        background.sprite = backdrop;
+        background.color = Color.white;
+        background.type = Image.Type.Simple;
+        background.preserveAspect = false;
+        var aspect = background.GetComponent<AspectRatioFitter>() ?? background.gameObject.AddComponent<AspectRatioFitter>();
+        aspect.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+        aspect.aspectRatio = (float)backdrop.texture.width / backdrop.texture.height;
+    }
     private static void EdgedSurface(RectTransform rect, Color color)
     {
         PlainSurface(rect, color);

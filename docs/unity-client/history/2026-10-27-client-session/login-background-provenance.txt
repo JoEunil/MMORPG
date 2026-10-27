@@ -1,0 +1,15 @@
+Login background asset provenance
+Date: 2026-10-27
+Asset: citadel-overcast-login-v2.png
+Purpose: replacement login menu illustration. This image is not an actual gameplay screenshot or proof of a 3D model.
+Tool: built-in image_gen.imagegen; existing raster edit; transparent_background=false. One generation, no variants or programmatic image edits.
+Edit target: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Assets/C02/Art/KnightInterface/citadel-dawn-login.png
+Original generated output retained: C:/Users/joeun/.codex/generated_images/01a17b83-65ac-7811-ace1-cd59bb005401/exec-c716a6c3-e718-48fc-a173-9dcf2d699727.png
+Final ROOT asset: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Assets/C02/Art/KnightInterface/citadel-overcast-login-v2.png
+Final CAND asset: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source/UnityClient/Assets/C02/Art/KnightInterface/citadel-overcast-login-v2.png
+Dimensions: 1672 x 941 pixels, RGB opaque PNG; same dimensions as the source illustration.
+Exact prompt: prompt.txt in this directory.
+Source/license: AI-generated edit of the project's existing AI-generated illustration; no third-party images supplied. No separate stock-asset or open-source license was returned by the tool; usage is subject to the applicable OpenAI service terms. No claim of public-domain or CC licensing is made.
+Cost: N/A (tool does not expose billing). No marketplace asset purchase.
+Observed visual inspection: original left knight pose and right stone-wall form region preserved; orange sunset, visible fires, wet-floor highlights removed; diffuse cool daylight, muted plain wine cape, simpler distant keep and low-saturation stone scene. No UI/text/logo/frame generated. Original PNG preserved.
+Validation limits: local image inspection only; Unity importer, sprite assignment and actual login-screen capture belong to Coordinator.

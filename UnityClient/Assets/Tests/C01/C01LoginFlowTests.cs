@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using TMPro;
 #if UNITY_EDITOR
@@ -31,6 +32,68 @@ namespace C01.Tests
         private const string LoginButtonPath = "Canvas/C01Panel/SignIn/LoginButton";
         private const string StatusPath = "Canvas/C01Panel/Results/StatusText";
         private const string CharacterListPath = "Canvas/C01Panel/Results/CharacterListText";
+
+        [Test]
+        public void PasswordSubmitUsesExistingValidationAndBusyGuardWithoutDuplicatingListeners()
+        {
+            var root = new GameObject("C01 password submit fixture");
+            root.SetActive(false);
+            try
+            {
+                var screen = root.AddComponent<C01LoginScreen>();
+                var idInput = Add<TMP_InputField>("login id");
+                var passwordInput = Add<TMP_InputField>("password");
+                var button = Add<UnityEngine.UI.Button>("login button");
+                var status = Add<TextMeshProUGUI>("status");
+                Set("loginIdInput", idInput);
+                Set("passwordInput", passwordInput);
+                Set("loginButton", button);
+                Set("statusText", status);
+                Set("characterListText", Add<TextMeshProUGUI>("characters"));
+                root.SetActive(true);
+
+                Assert.That(SubmitListenerCount(), Is.EqualTo(1));
+                passwordInput.onSubmit.Invoke("event argument is not a password source");
+                Assert.That(status.text, Is.EqualTo("Enter your login ID and password."));
+                Assert.That(screen.Model, Is.Null, "Empty input must not initialize a client.");
+                status.text = "busy status retained";
+                screen.SetBusy(true);
+                passwordInput.onSubmit.Invoke(string.Empty);
+                button.onClick.Invoke();
+                Assert.That(screen.IsBusy, Is.True);
+                Assert.That(status.text, Is.EqualTo("busy status retained"));
+                Assert.That(screen.Model, Is.Null);
+
+                root.SetActive(false);
+                Assert.That(SubmitListenerCount(), Is.Zero);
+                status.text = "disabled status retained";
+                passwordInput.onSubmit.Invoke(string.Empty);
+                Assert.That(status.text, Is.EqualTo("disabled status retained"));
+                root.SetActive(true);
+                Assert.That(SubmitListenerCount(), Is.EqualTo(1), "Re-enabling must restore exactly one submit listener.");
+                passwordInput.onSubmit.Invoke(string.Empty);
+                Assert.That(status.text, Is.EqualTo("Enter your login ID and password."));
+                Assert.That(screen.Model, Is.Null);
+
+                T Add<T>(string name) where T : Component
+                {
+                    var child = new GameObject(name, typeof(RectTransform));
+                    child.transform.SetParent(root.transform, false);
+                    return child.AddComponent<T>();
+                }
+
+                void Set(string name, object value) => typeof(C01LoginScreen)
+                    .GetField(name, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(screen, value);
+
+                int SubmitListenerCount() => ((IList)typeof(UnityEngine.Events.UnityEventBase)
+                    .GetMethod("PrepareInvoke", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .Invoke(passwordInput.onSubmit, null)).Count;
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(root);
+            }
+        }
 
         [UnityTest, Timeout(120000)]
         public IEnumerator RealUiInput_FailedLoginRetry_AndSceneReload_DoesNotDuplicateListEvents()

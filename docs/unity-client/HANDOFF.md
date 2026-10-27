@@ -1,13 +1,15 @@
 # 현재 인계 — 2026-10-27
 
-현재 목표: PR56 병합 이후 채팅·패널 조작과 구역 복귀를 보완했다. 확정 UI와 키는 유지했다. 계획은 Astra 최초 자문에서 늦은 echo/초안/Escape 우선순위를 보완한 뒤 통과했다.
+목표: 로그인·채팅·패널 조작 개선을 큰 후보 하나로 마감했다. 차분한 로그인 배경, 비밀번호 제출 연결, 앞선 구역 복귀/귓속말/텍스트 Escape를 같은 codex/client-session-polish에 누적했다.
 
-Git 정본: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source. 새 codex/client-session-polish는 origin/master115d5f2에서 시작했다. PR56 head4588626의 master 포함과 원격 자동삭제를 확인하고 사용하지 않는 해당 로컬 브랜치만 정리했다. 사용자 변경·서버·몬스터 AI·Core/DLL·wire·경제·DB는 보존했다.
+Git 정본: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source. 기준 origin/master115d5f2(PR56 병합), 이전 로컬3dc9926. ROOT Editor는 UnityClient/6000.0.47f1/Pipeline7800, 앞선검사후ready 복귀. 새Scene diff는 배경Sprite GUID1줄뿐. 서버·사용자몬스터AI·Core/DLL·wire·경제·DB·확정UI배치/키는 변경하지 않았다.
 
-현재 완료: 전환/timeout으로 미확정된 귓속말 초안·안내 보존, 같은 문구의 모호한 echo로 잘못 성공·초안삭제하지 않음. Escape 첫 입력은 텍스트 포커스만 해제하고 다음 입력은 열린 가방/거래소를 닫는다. 동결7파일 독립 코드리뷰 차단0, 컴파일 최신상태, 직접영향 PlayMode3개 첫실행통과. 이전통과검사 반복0. ROOT/CAND hash동일·검사후불변.
+완료 근거: 계획 Astra 보완통과, 독립 코드리뷰2묶음 차단0. 앞선 채팅3검사는 통과근거 재사용/반복0. 로그인 제출 신규fixture1개 첫실행통과(.0489185s), 컴파일오류0. 배경builtinimagegen편집1회·원본보존, 실제Sprite연결/nativeSave,1280x720·960x540에디터미리보기sceneUnchangedtrue. Astra 종합검수는 동결13파일hash/전후이미지/공개설명을 확인해 통과·필수수정0. 생성그림/에디터예시와게임3D를 구분한다.
 
-Editor: ROOT/UnityClient, 6000.0.47f1, Pipeline7800, PID16472 기동 후 ready 복귀. 입력 허용은 유지하되 이번 결과는 fixture/합성InputSystem+EventSystem이며 물리입력·실서버·playerbuild 검증은 아니다. 앱 비활성시 차단은 코드guard만 검토했다.
+검증 한계: 물리Enter·실서버로그인·playerbuild미검증. 앱비활성키차단은코드guard검토뿐이다. 입력허용은유지하며 이번 Escape검사는 합성InputSystem/정상PlayerLoop/EventSystem이다. 파일쓰기·검사중첩없음.
 
-다음 행동: 관련 클라이언트 후속을 같은 브랜치에 누적하고, 실제 미완료가 확인된 범위만 진행한다. 작은 수정만으로 새 PR을 게시하지 않는다. 큰 후보를 게시할 때 최종 종합검수·Slack 게시승인을 수행한다. 현재 새PR/push/merge/승인대기 없음.
+게시 승인: CLIENTSESSION02/r1, 동일작업부모1793073358.258239. 요청 범위는 위 동결클라이언트/새배경/결과자료를 새 작업브랜치로 push하고 PR1개 생성(병합/master직접게시없음). 정확한 명령 '승인 CLIENTSESSION02'만 현재요청과 대조하고회신ID기소비확인 후1회처리한다. 승인전push/PR생성보류. 과거승인재사용금지. 독립로컬작업은가능하다.
 
-근거: history/2026-10-27-client-session/results.txt, ROOT/UnityClient/Builds/ClientSessionPolish/candidate-manifest.json 및 *-result.json. 계획: MMORPG_REVISION_PLAN.md의 2026-10-27 묶음. 실제Agent418=신규150+후속268,토큰/비용N/A. 사이트build성공·배포아님. Slack새묶음부모1793073358.258239,완료1793073358.979519. 과거승인재사용금지.
+Slack: 기존수신기중단/health오래됨 확인후 nostopmarker·동일codexqueue·고정대상 검증해 원본script재기동. bot auth/socket ready/listening fresh 확인,권한/토큰/대상변경없음. 새요청전송결과는 results.txt를 따른다.
+
+근거: history/2026-10-27-client-session/results.txt 및 login-background-{prompt,provenance}.txt, ROOT/UnityClient/Builds/ClientSessionPolish/*-result.json과LoginBackground/candidate-manifest.json. 공개field-travel에신규화면추가,과거보존·사이트build성공(배포아님). Agent423=신규151+후속272,토큰/비용N/A. 기존8793서버는미실행이므로깨진링크대신채팅에로컬캡처를제공한다.

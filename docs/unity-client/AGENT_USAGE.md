@@ -1,24 +1,24 @@
 ## 공개 집계
 
 기준일: 2026-10-27
-누적 신규: 150
-누적 재활성화: 268
+누적 신규: 151
+누적 재활성화: 272
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-27
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 6 | 3 |
 | server_analyst | 서버 분석 Agent | 17 | 43 |
-| client_implementer | 구현 Agent | 50 | 63 |
-| asset_artist | 아트 Agent | 23 | 32 |
-| code_reviewer | 리뷰 Agent | 37 | 99 |
-| quality_reviewer | 종합 검수 Agent | 3 | 20 |
+| client_implementer | 구현 Agent | 50 | 64 |
+| asset_artist | 아트 Agent | 24 | 32 |
+| code_reviewer | 리뷰 Agent | 37 | 101 |
+| quality_reviewer | 종합 검수 Agent | 3 | 21 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
 | decision_curator | 의사결정 지원 Agent | 7 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체418회(신규150·재활성화268)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체423회(신규151·재활성화272)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -687,3 +687,6 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 실제 신규1 추가: chat_panel_recovery_review(리뷰 Agent/Sol medium), 동결7파일 및 설치TMP 경로 검토, 차단문제/필수수정0. 누적418=150+268. 컴파일·실행검증은총괄소유이며리뷰통과와구분.
 
 총괄 실행결과: 동결7파일 직접영향PlayMode3개 모두첫실행통과·기존통과반복0. Editor재기동/compile상태/fixture실행/사이트생성은총괄직접작업이며추가활성화0. 새PR게시/실서버/물리입력성공을뜻하지않음.
+
+## 차분한 로그인 배경과 비밀번호 제출 — 2026-10-27
+실제 신규1: restrained_login_backdrop(아트 Agent/Sol high), built-in imagegen편집1회와원본·생성근거보존. 실제 후속4: next_client_gap_scan(리뷰 Agent,진입누락조사), chat_panel_recovery(구현 Agent/Sol medium,비번Enter연결), chat_panel_recovery_review(리뷰 Agent/Sol medium,관련3파일차단0), client_session_plan_gate(종합 검수 Agent/Astra medium,고정13파일·두해상도전후확인통과/필수0). 누적423=151+272. 총괄의nativeSprite연결·단일테스트실행·렌더·문서·Slack수신기복구는활성화제외. 신규callbackfixture1개첫실행pass,기존3tests반복0. 물리Enter/실서버로그인/playerbuild미검증. 토큰·비용N/A.
