@@ -1,3 +1,9 @@
+# 현재 에셋과 과거 제작 기록
+
+2026-10-27: 현재 씬·프리팹·설정의 참조와 코드의 동적 로드를 확인해 사용하지 않는 구버전 아트 71개를 제거했다. 아래 내용은 최초 제작 당시의 기록이며 현재 구성 전체를 설명하지 않는다. 삭제한 원본과 출처는 Git 이력으로 보존한다. 현재 맵 생성 도구가 요구하는 재질·메시, Resources 아이템, 렌더링 설정은 유지한다.
+
+---
+
 # V02 guard and outpost representative
 
 Traditional fantasy guard direction: adult approximately 7.3-head anatomy (unscaled crown2.05/head0.28/hip1.03/shoulder1.65), layered steel armor, mail, worn brown leather and faded crimson cloth. Natural field with pale masonry gate/walls, irregular roadside rocks, branch-based pines, rolling distant terrain and a textured soil/grass edge. Opaque leather-tone UI with thin aged-bronze framing and light parchment input fields. One representative scene and one static guard; no art-set expansion. SUNWARD is a cosmetic sample wordmark.

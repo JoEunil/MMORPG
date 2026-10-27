@@ -7,6 +7,7 @@
 - Editor: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient
 - Git 정본: 위 프로젝트 Builds/C10-Delivery/source
 - 현재 씬: Assets/Client/Scenes/Login.unity · Assets/Client/Scenes/World.unity
+- 기본 빌드 시작 씬은 로그인·월드 UI가 함께 있는 World.unity다. Unity 기본 SampleScene·환영 안내는 제거했으며 SampleSceneProfile은 이름과 달리 현재 PC 렌더링 설정이 사용하므로 보존한다.
 - 현재 코드: Assets/Client/Runtime · Editor · Tests (Mmorpg.Client.* 어셈블리)
 - 사용자 서버: C:/Users/joeun/Desktop/workspace/Game — 사용자 AI/미완료 변경 보존
 - ClientCore: 정본 ClientCore/ClientCore.csproj → UnityClient/Assets/Plugins/ClientCore/ClientCore.dll
