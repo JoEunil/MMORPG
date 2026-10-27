@@ -1,11 +1,13 @@
 # 현재 인계 — 2026-10-27
 
-현재 목표: PR56 리뷰의 가방·미니맵 테스트 색상 불일치를 수정하고 같은 PR에 반영한다. 두 리뷰는 현재 제품 팔레트와 대조해 타당함을 확인했다. 제품 코드와 화면은 변경하지 않았다.
+현재 목표: PR56 병합 이후 채팅·패널 조작과 구역 복귀를 보완했다. 확정 UI와 키는 유지했다. 계획은 Astra 최초 자문에서 늦은 echo/초안/Escape 우선순위를 보완한 뒤 통과했다.
 
-Git 정본: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source, codex/inventory-market-handoff, PR56. Editor: ROOT/UnityClient. 사용자 변경·서버·몬스터 AI·DB·Core·DLL·wire·경제는 보존했다.
+Git 정본: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source. 새 codex/client-session-polish는 origin/master115d5f2에서 시작했다. PR56 head4588626의 master 포함과 원격 자동삭제를 확인하고 사용하지 않는 해당 로컬 브랜치만 정리했다. 사용자 변경·서버·몬스터 AI·Core/DLL·wire·경제·DB는 보존했다.
 
-이번 수정: C07InventoryUiTests의 선택/기본색 4곳, C04ObservationTests의 미니맵 대체 배경색 1곳. 동작 assertion은 유지했다. 컴파일 오류0. 관련 PlayMode 테스트3개 모두 첫 실행 통과, 기존 통과 테스트 반복0. Editor ready 복귀. 실입력·실서버·playerbuild 검증은 이번 범위가 아니다.
+현재 완료: 전환/timeout으로 미확정된 귓속말 초안·안내 보존, 같은 문구의 모호한 echo로 잘못 성공·초안삭제하지 않음. Escape 첫 입력은 텍스트 포커스만 해제하고 다음 입력은 열린 가방/거래소를 닫는다. 동결7파일 독립 코드리뷰 차단0, 컴파일 최신상태, 직접영향 PlayMode3개 첫실행통과. 이전통과검사 반복0. ROOT/CAND hash동일·검사후불변.
 
-전달 대상: 기존 PR56 동일 범위 리뷰 수정이며 재승인 대상이 아니다. 실제 게시 여부는 원격 head로 확인한다. 병합하지 않는다. 기존 작업 Slack 부모1793012032.698299를 사용한다. 과거 승인 재사용 없음.
+Editor: ROOT/UnityClient, 6000.0.47f1, Pipeline7800, PID16472 기동 후 ready 복귀. 입력 허용은 유지하되 이번 결과는 fixture/합성InputSystem+EventSystem이며 물리입력·실서버·playerbuild 검증은 아니다. 앱 비활성시 차단은 코드guard만 검토했다.
 
-이전 아트/리뷰 결과와 이번 상세 근거: history/2026-10-26-hud-choices/panel-menu-results.txt. 원본 검사 결과: ROOT/UnityClient/Builds/MenuIconsSoft/*palette*-result.json. 실제 Agent 집계413 유지(이번 총괄 직접 작업, 신규 호출0). 미리보기 http://127.0.0.1:8793/mmorpg-reference/result.html
+다음 행동: 관련 클라이언트 후속을 같은 브랜치에 누적하고, 실제 미완료가 확인된 범위만 진행한다. 작은 수정만으로 새 PR을 게시하지 않는다. 큰 후보를 게시할 때 최종 종합검수·Slack 게시승인을 수행한다. 현재 새PR/push/merge/승인대기 없음.
+
+근거: history/2026-10-27-client-session/results.txt, ROOT/UnityClient/Builds/ClientSessionPolish/candidate-manifest.json 및 *-result.json. 계획: MMORPG_REVISION_PLAN.md의 2026-10-27 묶음. 실제Agent418=신규150+후속268,토큰/비용N/A. 사이트build성공·배포아님. Slack새묶음부모1793073358.258239,완료1793073358.979519. 과거승인재사용금지.

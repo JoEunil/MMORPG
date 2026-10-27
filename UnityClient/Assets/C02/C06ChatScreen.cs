@@ -25,6 +25,8 @@ namespace C02
         [SerializeField] private Button sendButton;
         [SerializeField] private Button[] scopeButtons;
         [SerializeField] private Button whisperTargetButton;
+        // Echo has no request or recipient ID: reused unconfirmed text cannot prove a later send succeeded.
+        private readonly HashSet<string> unconfirmedWhispers = new HashSet<string>(StringComparer.Ordinal);
         private readonly Queue<string> lines = new Queue<string>(MaxVisibleLines);
         private readonly List<KeyValuePair<ulong, string>> whisperRecipients = new List<KeyValuePair<ulong, string>>(8);
         private IViewModelUI model;
@@ -72,6 +74,7 @@ namespace C02
             }
             chatLog.richText = false;
             messageInput.lineType = TMP_InputField.LineType.SingleLine;
+            messageInput.restoreOriginalTextOnEscape = false;
             messageInput.navigation = new Navigation { mode = Navigation.Mode.None };
             sendButton.navigation = new Navigation { mode = Navigation.Mode.None };
             if (scopeButtons != null)
@@ -94,12 +97,9 @@ namespace C02
 
         private void Update()
         {
-            if (messageInput.isFocused && Input.GetKeyDown(KeyCode.Escape))
-            {
-                messageInput.DeactivateInputField();
-                EventSystem.current?.SetSelectedGameObject(null);
-            }
+            GameUiInput.EscapeAvailableForPanel();
             if (pendingWhisper == null || Time.unscaledTime < whisperDeadline) return;
+            unconfirmedWhispers.Add(pendingWhisper);
             whisperRecipients.RemoveAll(recipient => recipient.Key == pendingWhisperRecipient);
             if (selectedWhisperID == pendingWhisperRecipient) selectedWhisperID = 0;
             pendingWhisper = null;
@@ -117,6 +117,7 @@ namespace C02
             chatHandler = null;
             zoneHandler = null;
             pendingWhisper = null;
+            unconfirmedWhispers.Clear();
             model = next;
             lines.Clear();
             whisperRecipients.Clear();
@@ -153,10 +154,11 @@ namespace C02
         {
             bool available = WorldAvailable && model != null && loginScreen.Model == model;
             chatPanel.SetActive(available);
-            if (!available)
+            if (!available && pendingWhisper != null)
             {
+                unconfirmedWhispers.Add(pendingWhisper);
                 pendingWhisper = null;
-                sendStatus.text = string.Empty;
+                sendStatus.text = "화면 전환으로 귓속말 전송을 확인하지 못했습니다. 입력은 보존했습니다. 자동으로 다시 보내지 않습니다.";
             }
             RefreshChatControls();
         }
@@ -317,13 +319,13 @@ namespace C02
                 // Incoming traffic follows the tail only while the reader is already there.
                 chatScroll.verticalNormalizedPosition = followLatest ? 0 : historyPosition;
             }
-            if (pendingWhisper != null && scope == 2 && senderChatID == ownChatID && message == pendingWhisper)
+            if (pendingWhisper != null && scope == 2 && senderChatID == ownChatID && message == pendingWhisper &&
+                !unconfirmedWhispers.Contains(message))
             {
                 pendingWhisper = null;
                 messageInput.SetTextWithoutNotify(string.Empty);
                 sendStatus.text = "귓속말 전송 확인됨";
             }
-            else if (pendingWhisper == null) sendStatus.text = string.Empty;
             RefreshChatControls();
         }
 

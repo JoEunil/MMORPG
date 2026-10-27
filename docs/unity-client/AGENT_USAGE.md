@@ -1,24 +1,24 @@
 ## 공개 집계
 
-기준일: 2026-10-26
-누적 신규: 146
-누적 재활성화: 267
-상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-26
+기준일: 2026-10-27
+누적 신규: 150
+누적 재활성화: 268
+상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-27
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 6 | 3 |
 | server_analyst | 서버 분석 Agent | 17 | 43 |
-| client_implementer | 구현 Agent | 49 | 63 |
+| client_implementer | 구현 Agent | 50 | 63 |
 | asset_artist | 아트 Agent | 23 | 32 |
-| code_reviewer | 리뷰 Agent | 35 | 99 |
-| quality_reviewer | 종합 검수 Agent | 2 | 19 |
+| code_reviewer | 리뷰 Agent | 37 | 99 |
+| quality_reviewer | 종합 검수 Agent | 3 | 20 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
 | decision_curator | 의사결정 지원 Agent | 7 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체413회(신규146·재활성화267)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체418회(신규150·재활성화268)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -679,3 +679,11 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 
 ## 메뉴 외곽·재적용·선택 검사 정합 — 2026-10-26
 실제 신규1: pr56_remaining_ui_scan(리뷰 Agent/Sol medium), C07저작중복덮어쓰기실제불일치발견. 실제후속1: currency_skill_quality_gate(Astra medium), 고정5파일검수통과/필수수정0. 누적413=146+267,토큰/비용N/A. 총괄의팔레트/Scene/검사수정실행은활성화제외. 검사성공은실제PlayMode2개만,0건/부적합직접호출은제외.
+
+
+## 채팅·패널 복귀 계획과 구현 — 2026-10-27
+실제 신규3: next_client_gap_scan(리뷰 Agent/explorer, 기존 결정과 클라이언트 누락 조사), client_session_plan_gate(종합 검수 Agent/Astra medium, 상황 자문), chat_panel_recovery(구현 Agent/Sol medium, 클라이언트 및 직접 영향 테스트 구현 중). 실제 후속1: client_session_plan_gate, 미확정 echo와 Escape 우선순위 보완계획 통과. 누적417=149+268. 현재 구현·테스트 통과를 뜻하지 않으며 총괄 문서·통합·도구 조회는 활성화 제외. 토큰·비용N/A.
+
+실제 신규1 추가: chat_panel_recovery_review(리뷰 Agent/Sol medium), 동결7파일 및 설치TMP 경로 검토, 차단문제/필수수정0. 누적418=150+268. 컴파일·실행검증은총괄소유이며리뷰통과와구분.
+
+총괄 실행결과: 동결7파일 직접영향PlayMode3개 모두첫실행통과·기존통과반복0. Editor재기동/compile상태/fixture실행/사이트생성은총괄직접작업이며추가활성화0. 새PR게시/실서버/물리입력성공을뜻하지않음.

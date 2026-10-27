@@ -1,0 +1,13 @@
+채팅·패널 조작과 구역 복귀 — 2026-10-27
+
+기준: PR56 merged=true, merge115d5f207f115fabeb5ac7d326599952b66e2cef / head458862619c21bd2d56061dc1c6ce3a8777255549 확인. fetch --prune 후 head원격삭제 확인. master포함·사용중worktree없음 확인해 끝난 로컬 codex/inventory-market-handoff만 branch -d 정리. 새 codex/client-session-polish는 origin/master115d5f2에서 시작, push/새PR/병합 없음.
+
+조사: next_client_gap_scan은 C06.WorldChanged의 전환시 pending/안내삭제와 늦은echo 미확정 손실을 읽기로 확인했다. 실행 재현 판정은 아님.
+계획검수: client_session_plan_gate(quality_reviewer/Astra medium)는 최초 수정 필요. 미확정/대기 분리, echo에 requestID와 수신대상없음, TMP restoreOriginalTextOnEscape와 Escape 우선순위를 요구. 후속 보완계획 통과. 최소조건: 세션내 Trim문구 미확정 추적, 모호echo 성공/초안삭제없음·자동재전송0, 입력포커스/패널의 프레임소비 공통처리. 사용자 추가선택 불필요. 구현/입력/게시 성공 검수는 아님.
+
+파일소유: chat_panel_recovery는 C06/C07/C09의 관련 입력·상태, 필요한 GameUiInput.cs/meta와 직접영향 테스트만. 총괄은 문서/통합/Editor검증. 코드쓰기 완료 후 동결→리뷰→관련최대3검사. 서버·사용자AI·Core/DLL·wire·DB·경제 변경 금지.
+실제구현 chat_panel_recovery(Sol medium) 동결7파일 ROOT/CAND hash일치. chat_panel_recovery_review(Sol medium) 독립코드검토 차단0/필수수정0. 설치TMP의 취소/선택해제와 비교. manifest ROOT/UnityClient/Builds/ClientSessionPolish/candidate-manifest.json. 컴파일/실행은아직미확인.
+
+실행 결과: 초기 Editor 미실행을 프로세스/CLI로 확인하고 unity projects open으로 기존6000.0.47f1 ROOT프로젝트 기동(PID16472). 시작시import컴파일후 recompile=up_to_date, 오류없이동결소스사용. 최초 status/recompile실패는환경연결실패이며제품실패아님. PlayMode단일필터3개 각각첫실행통과: TransitionPreservesUnconfirmedWhisperAndCannotConfirmAnExplicitSameTextRetry .3990523s; UnconfirmedWhisperPreservesDraftAndInvalidatesOnlyItsRecipient .4074564s; EscapePreservesChatDraftBeforeClosingBagAndPendingOutboxThroughPlayerLoop .3605059s. 정상PlayerLoop/InputSystemUIInputModule/합성QueueStateEvent 경로, 물리입력/실서버검증아님. 기존통과검사반복0. raw ROOT/UnityClient/Builds/ClientSessionPolish/{transition,timeout,escape}-result.json. 검사후7파일hash불변,Editor ready복귀. App비활성입력차단은코드guard검토이며비활성상태실행은미검증. 서버/AI/DB/Core/DLL/wire/경제변경0.
+사이트 build: WindowsApps python별칭실행접근실패후 확인된bundledPython으로 home+5pages생성성공. Agent공개집계418=150+268,토큰/비용N/A. 게시아님.
+Slack UnityCoordinatorbotU0C9ZRTQ6F8 신규부모1793073358.258239/완료1793073358.979519 전송. 현재게시승인대기없음;새PR/push/merge없음.작은PR로나누지않고새브랜치에로컬보존.

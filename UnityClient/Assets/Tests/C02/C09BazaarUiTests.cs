@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -12,7 +13,9 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.TestTools;
 using UnityEngine.UI;
 
 namespace C02.Tests
@@ -639,8 +642,8 @@ namespace C02.Tests
             }
         }
 
-        [Test]
-        public void EscapeClosesBagAndPendingOutboxWithoutRepeatingDelivery()
+        [UnityTest]
+        public IEnumerator EscapePreservesChatDraftBeforeClosingBagAndPendingOutboxThroughPlayerLoop()
         {
             Assert.That(Application.isFocused, Is.True, "Keyboard-path verification requires the Editor to have focus.");
             var keyboard = InputSystem.AddDevice<Keyboard>();
@@ -648,22 +651,52 @@ namespace C02.Tests
             {
                 using (var fixture = new Fixture())
                 {
+                    fixture.ActivateInventory(false);
+                    var input = fixture.CreateChatInput();
+                    var module = EventSystem.current.gameObject.AddComponent<InputSystemUIInputModule>();
+                    module.AssignDefaultActions();
+                    yield return null;
                     var bagPanel = Get<GameObject>(fixture.InventoryScreen, "inventoryPanel");
                     bagPanel.SetActive(true);
+                    input.text = "original draft";
+                    EventSystem.current.SetSelectedGameObject(input.gameObject);
+                    input.ActivateInputField();
+                    yield return null;
+                    Assert.That(input.isFocused, Is.True);
+                    input.text = "edited draft survives Escape";
                     InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
-                    InputSystem.Update();
-                    Invoke(fixture.InventoryScreen, "Update");
+                    yield return null;
+                    Assert.That(input.isFocused, Is.False);
+                    Assert.That(EventSystem.current.currentSelectedGameObject, Is.Null);
+                    Assert.That(input.text, Is.EqualTo("edited draft survives Escape"));
+                    Assert.That(bagPanel.activeSelf, Is.True, "The first Escape only releases text focus.");
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    yield return null;
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
+                    yield return null;
                     Assert.That(bagPanel.activeSelf, Is.False);
                     InputSystem.QueueStateEvent(keyboard, new KeyboardState());
-                    InputSystem.Update();
+                    yield return null;
 
                     fixture.OpenMarket();
                     fixture.Receive(true);
                     fixture.CheckOutbox.onClick.Invoke();
                     Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(1));
+                    EventSystem.current.SetSelectedGameObject(input.gameObject);
+                    input.ActivateInputField();
+                    yield return null;
+                    Assert.That(input.isFocused, Is.True);
+                    input.text = "market draft survives Escape";
                     InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
-                    InputSystem.Update();
-                    Invoke(fixture.Screen, "Update");
+                    yield return null;
+                    Assert.That(input.isFocused, Is.False);
+                    Assert.That(EventSystem.current.currentSelectedGameObject, Is.Null);
+                    Assert.That(input.text, Is.EqualTo("market draft survives Escape"));
+                    Assert.That(fixture.Panel.activeSelf, Is.True);
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    yield return null;
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape));
+                    yield return null;
                     Assert.That(fixture.Panel.activeSelf, Is.False);
                     Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.True,
                         "Escape closes the panel while item delivery completion remains observed.");
@@ -675,7 +708,6 @@ namespace C02.Tests
             finally
             {
                 InputSystem.QueueStateEvent(keyboard, new KeyboardState());
-                InputSystem.Update();
                 InputSystem.RemoveDevice(keyboard);
             }
         }
@@ -850,6 +882,24 @@ namespace C02.Tests
                 Set(World, "ownFull", new FullStateField { hp = 100, zoneInternalID = 1 });
                 RaiseWorldChanged(World);
                 Invoke(Screen, "Update");
+            }
+
+            public TMP_InputField CreateChatInput()
+            {
+                root.AddComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
+                var chatObject = Child("chat fixture");
+                chatObject.SetActive(false);
+                var chat = chatObject.AddComponent<C06ChatScreen>();
+                var input = Input("chat input");
+                Set(chat, "loginScreen", Login);
+                Set(chat, "worldScreen", World);
+                Set(chat, "chatPanel", Child("chat panel"));
+                Set(chat, "chatLog", Text("chat log"));
+                Set(chat, "sendStatus", Text("chat send status"));
+                Set(chat, "messageInput", input);
+                Set(chat, "sendButton", ButtonObject("chat send"));
+                chatObject.SetActive(true);
+                return input;
             }
 
             public void ActivateInventory(bool inventoryFirst)

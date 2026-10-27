@@ -86,6 +86,49 @@ namespace C02.Tests
         }
 
         [Test]
+        public void TransitionPreservesUnconfirmedWhisperAndCannotConfirmAnExplicitSameTextRetry()
+        {
+            using (var fixture = new ChatFixture())
+            {
+                ((Action<ushort, ulong, uint, float, float>)Get(fixture.Chat, "zoneHandler"))(1, 555, 123, 10, 10);
+                fixture.Receive(0, 600, "target");
+                fixture.SendAs(2, "  keep across transition  ");
+                Set(fixture.World, "<Stage>k__BackingField", C02Stage.TransitionPending);
+                Invoke(fixture.Chat, "WorldChanged");
+                Assert.That(Get(fixture.Chat, "pendingWhisper"), Is.Null);
+                Assert.That(fixture.Input.text, Is.EqualTo("  keep across transition  "));
+                string transitionStatus = fixture.SendStatus.text;
+                Assert.That(transitionStatus, Does.Contain("확인하지 못했습니다"));
+
+                Set(fixture.World, "<Stage>k__BackingField", C02Stage.InWorld);
+                Invoke(fixture.Chat, "WorldChanged");
+                Assert.That(fixture.Network.ChatCalls.Count, Is.EqualTo(1), "Returning never resends automatically.");
+                fixture.Receive(0, 601, "ordinary incoming");
+                fixture.Receive(2, 555, "keep across transition");
+                Assert.That(fixture.SendStatus.text, Is.EqualTo(transitionStatus));
+                fixture.Input.SetTextWithoutNotify("edited draft");
+                fixture.Receive(2, 555, "keep across transition");
+                Assert.That(fixture.Input.text, Is.EqualTo("edited draft"));
+                Assert.That(fixture.SendStatus.text, Is.EqualTo(transitionStatus));
+                fixture.SendAs(2, "  keep across transition  ");
+                float deadline = (float)Get(fixture.Chat, "whisperDeadline");
+                fixture.Receive(2, 555, "keep across transition");
+                Assert.That(fixture.Network.ChatCalls.Count, Is.EqualTo(2));
+                Assert.That(Get(fixture.Chat, "pendingWhisper"), Is.EqualTo("keep across transition"));
+                Assert.That(Get(fixture.Chat, "whisperDeadline"), Is.EqualTo(deadline));
+                Assert.That(fixture.Input.text, Is.EqualTo("  keep across transition  "));
+                Assert.That(fixture.SendStatus.text, Does.Contain("확인 중"));
+                Assert.That(fixture.ChatLog.text, Does.Contain("[Whisper]"));
+                Set(fixture.Chat, "whisperDeadline", Time.unscaledTime - 1);
+                Invoke(fixture.Chat, "Update");
+                Assert.That(fixture.SendStatus.text, Does.Contain("초과"));
+                fixture.Login.ReleaseClient();
+                Assert.That((HashSet<string>)Get(fixture.Chat, "unconfirmedWhispers"), Is.Empty);
+                Assert.That(fixture.Input.text, Is.Empty);
+            }
+        }
+
+        [Test]
         public void UnconfirmedWhisperPreservesDraftAndInvalidatesOnlyItsRecipient()
         {
             using (var fixture = new ChatFixture())
@@ -110,9 +153,20 @@ namespace C02.Tests
                     Has.None.Matches<KeyValuePair<ulong, string>>(recipient => recipient.Key == 600));
                 fixture.WhisperTargetButton.onClick.Invoke();
                 fixture.SendButton.onClick.Invoke();
+                float retryDeadline = (float)Get(fixture.Chat, "whisperDeadline");
                 fixture.Receive(2, 555, "keep this draft");
-                Assert.That(fixture.Input.text, Is.Empty);
+                Assert.That(fixture.Input.text, Is.EqualTo("  keep this draft  "));
+                Assert.That(Get(fixture.Chat, "pendingWhisper"), Is.EqualTo("keep this draft"));
+                Assert.That(Get(fixture.Chat, "whisperDeadline"), Is.EqualTo(retryDeadline));
+                Assert.That(fixture.SendStatus.text, Does.Contain("확인 중"));
+                Set(fixture.Chat, "whisperDeadline", Time.unscaledTime - 1);
+                Invoke(fixture.Chat, "Update");
+                Assert.That(fixture.SendStatus.text, Does.Contain("초과"));
+                fixture.Receive(0, 601, "target returns");
+                fixture.SendAs(2, "new distinct text");
+                fixture.Receive(2, 555, "new distinct text");
                 Assert.That(fixture.SendStatus.text, Does.Contain("확인됨"));
+                Assert.That(fixture.Input.text, Is.Empty);
                 fixture.SendAs(2, "logout pending");
                 fixture.Login.ReleaseClient();
                 Assert.That(Get(fixture.Chat, "pendingWhisper"), Is.Null);
