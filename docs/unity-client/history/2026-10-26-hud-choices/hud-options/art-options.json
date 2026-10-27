@@ -1,0 +1,122 @@
+{
+  "kind": "HTML/SVG comparison specification; not a Unity implementation or live state",
+  "created": "2026-10-26",
+  "sourceInspection": [
+    "Builds/MinimapFeather/minimap-feather-preview.png (1280x720 editor art preview)",
+    "Assets/C02/Art/Skills/skill-strike-icon-v2.png",
+    "Assets/C02/Art/Skills/skill-ring-icon-v2.png",
+    "Assets/C02/Art/Skills/skill-line-icon-v2.png",
+    "Builds/CurrencySkillIcons/provenance.txt (existing curved matte currency/menu direction)"
+  ],
+  "sourceRights": "Existing project-authored resources reused as references. This JSON contains original style instructions; no external images, generated bitmaps, purchases or new third-party licences. Existing asset provenance remains authoritative.",
+  "observed": {
+    "minimap": "Olive terrain and olive translucent map merge; thin pale rings have little separation from the grass. Feather must remain visible at the outer edge.",
+    "skills": "Distinct sword, rotation and downward impact glyphs already exist, but small muted faces inside dark circular discs and square slots reduce visual force at actual size.",
+    "vitals": "Inset capsule-like fills leave conspicuous dark lateral spaces. Reference is 8000/10000 and 9000/10000: those are sample partial values and must not be relabelled as full."
+  },
+  "comparisonRules": {
+    "sameBackground": true,
+    "samePositionsAndOuterSizes": true,
+    "label": "비교용 합성 시안 · Unity 구현 결과 아님",
+    "minimap": "Top right rectangle; green self centred, grey player, red monster; N and 20m/40m preserved; identical marker positions in A/B/C.",
+    "skills": "Bottom centre, exactly Z/X/C, same slot sizes. Key labels at least 16px at 1280x720, ivory on dark plaque, outside glyph silhouette. No extra skill or fake readiness claims.",
+    "vitals": "Bottom right, unchanged overall footprint. Show equal 100% HP and MP for the full-gauge comparison, explicitly labelled full-gauge design example. Add small 65% geometry swatch only if useful; never imply it is live state.",
+    "presentation": "Compare categories independently: map row A/B/C, skill row A/B/C, gauge row A/B/C. Each row has a whole-scene view plus a same-scale crop. Do not present A/B/C as forced complete packages."
+  },
+  "decisionAxes": [
+    "배경과 확실히 분리되는 강한 대비 ↔ 장면에 자연스럽게 녹는 부드러운 대비",
+    "큰 실루엣과 색면 ↔ 얇은 판타지 장식"
+  ],
+  "minimap": {
+    "base": {"self":"#70E49A","player":"#C4C8CE","monster":"#F06466","text":"#F3E8CC","markerDark":"#111C1D","width":192,"height":144},
+    "A": {
+      "name":"먹색 지도판",
+      "effect":"짙은 판 위에서 지형·표식이 가장 빠르게 읽힙니다.",
+      "tradeoff":"패널 존재감이 강해 화면을 조금 더 차지해 보임 · 제작 부담 낮음",
+      "palette":{"panel":"#142021","terrain":"#59634D","path":"#B6A680","ring":"#A8B5A0","edge":"#C6B891"},
+      "panelOpacity":0.9,"terrainOpacity":0.68,"radius":10,"frameWidth":1,
+      "markerStrokeWidth":1.5,"selfDiamondSize":9,"otherDotDiameter":6,
+      "feather":"Only outermost 8% alpha feather; terrain centre remains crisp; no opaque rectangle under feather. Corner accents 8px, no heavy ornament."
+    },
+    "B": {
+      "name":"청록 대비 + 밝은 표식",
+      "effect":"차가운 지도색과 밝은 테두리로 풀밭에서도 표식이 또렷합니다.",
+      "tradeoff":"현재 올리브 지도보다 색 인상이 달라짐 · 제작 부담 낮음~중간",
+      "palette":{"panel":"#133039","terrain":"#3B5B5D","path":"#B6C1A4","ring":"#87B7B0","edge":"#89B5AA"},
+      "panelOpacity":0.82,"terrainOpacity":0.68,"radius":12,"frameWidth":0.8,
+      "markerStrokeWidth":1.5,"markerOuterHalo":"#EFF7DE","markerOuterHaloWidth":0.7,"selfDiamondSize":9,"otherDotDiameter":6,
+      "feather":"Outer 14% fades smoothly; rings and markers use same fade. Halo is a crisp narrow rim, not blurred bloom. Centre retains 100% marker opacity."
+    },
+    "C": {
+      "name":"넓게 스며드는 지도",
+      "effect":"중앙은 선명하고 가장자리는 장면으로 넓게 스며듭니다.",
+      "tradeoff":"가장자리 개체와 지형은 A/B보다 덜 선명함 · 제작 부담 중간",
+      "palette":{"panel":"#1B2928","terrain":"#687464","path":"#D3C3A0","ring":"#B0BAA1","edge":"#AEB799"},
+      "panelOpacity":0.78,"terrainOpacity":0.7,"radius":16,"frameWidth":0,
+      "markerStrokeWidth":1.6,"selfDiamondSize":10,"otherDotDiameter":6,
+      "feather":"Wide 24% edge fade on ALL map layers; central 52% untouched. Keep labels in solid central-safe zone or anchored outside mask. No visible border enclosing the fade."
+    }
+  },
+  "skills": {
+    "base":{"slotSize":56,"gap":10,"glyphMeanSize":42,"keySize":16,"keyText":"#FFF3D8","keyPanel":"#142123","cooldown":"Existing radial cooldown remains integration constraint; comparison shows ready art only."},
+    "A": {
+      "name":"크게 읽히는 문장",
+      "effect":"칼·회전·내려찍기 형태를 크게 키워 한눈에 구별합니다.",
+      "tradeoff":"가장 담백한 안이라 장식적인 게임 맛은 B/C보다 약함 · 제작 부담 낮음",
+      "palette":{"disc":"#18302D","glyph":"#F3EBD2","secondary":"#92C5B0","edge":"#A8B69B"},
+      "shape":"Rounded shield-like slot with 10px corners, very slight bottom taper. Enlarge existing glyph to 82% inner height; dark 1.6px silhouette separator. Keep one broad curved slash per icon; no filigree.",
+      "frame":"0.8px pale rim, 2px dark outer separation; little or no glow. Key plaque overlaps upper left by 4px."
+    },
+    "B": {
+      "name":"마력 색면",
+      "effect":"청록·호박·푸른 색면과 밝은 문양으로 스킬의 존재감을 높입니다.",
+      "tradeoff":"셋 중 가장 화려하며 쿨다운 때 색면이 어두워지는 조정 필요 · 제작 부담 중간",
+      "palette":{"strikeDisc":"#266B59","strikeFace":"#68BE8F","ringDisc":"#805A27","ringFace":"#DFB75E","lineDisc":"#265D79","lineFace":"#67B7CE","glyph":"#FFF1CA","rim":"#D3C193","outer":"#10252A"},
+      "shape":"Three rounded faceted medallions, not three plain flat discs. Each has a broad crescent colour-face occupying lower-left 35% and a darker upper-right plane; use no more than 3 flat colours per glyph. Existing recognisable silhouettes enlarged to 76%.",
+      "frame":"1.2px warm ivory rim and 2px dark silhouette. Thin inner coloured crescent highlight, no photoreal metal texture. Key plaque solid deep teal with warm 1px edge."
+    },
+    "C": {
+      "name":"얇은 룬 프레임",
+      "effect":"굽은 얇은 프레임과 작은 모서리 문양으로 판타지 장비감을 더합니다.",
+      "tradeoff":"축소 화면에서 작은 장식은 약해져 A/B만큼 강렬하지 않음 · 제작 부담 중간",
+      "palette":{"disc":"#22343C","glyph":"#EEE3C6","secondary":"#8BBCC7","frame":"#D5B778","shadow":"#102026"},
+      "shape":"Rounded square medallion with bowed sides, clipped 6px corners; 1.2px curved gold frame with four short diamond terminals. Reuse existing glyph at 74% height and increase face lightness. Two broad colour faces remain visible behind it.",
+      "frame":"Keep ornaments at perimeter; never draw over glyph or key. 1px inner dark line and 1px outer pale accent only; no nested stack of full frames."
+    }
+  },
+  "vitals": {
+    "base":{"outerWidth":288,"outerHeight":60,"rowHeight":18,"gap":6,"hpText":"HP 10,000 / 10,000","mpText":"MP 10,000 / 10,000","text":"#FFF5E0","textShadow":"#152027","fullDefinition":"At100%, the coloured fill covers the entire available inner track from left to right, including rounded ends. Clip fill with the same track shape; no decorative unfilled endcap. Actual values always control fill in product."},
+    "A": {
+      "name":"빈틈없는 색면",
+      "effect":"전체 트랙을 채우는 넓은 빨강·파랑 면으로 꽉 찬 상태가 즉시 보입니다.",
+      "tradeoff":"형태는 가장 간결하며 장식성은 B/C보다 낮음 · 제작 부담 낮음",
+      "palette":{"panel":"#162729","track":"#27383B","hp":"#C73F4F","hpLight":"#F07472","mp":"#347CC3","mpLight":"#79BADD","rim":"#BAAA85"},
+      "shape":"Two horizontal rounded rectangles, radius5, 1px rim. Full fill reaches all inner bounds; top third slightly lighter in a broad flat band. One 2px lower dark strip gives depth. Text centred on fill; HP/MP labels aligned left inside fill.",
+      "panel":"One low-opacity dark curved backing, no separate thick black boxes per row. Full width minus 2px rim is usable fill width."
+    },
+    "B": {
+      "name":"보석 끝장식",
+      "effect":"작은 붉은·푸른 보석과 밝은 테두리가 자원 게이지를 눈에 띄게 합니다.",
+      "tradeoff":"왼쪽 보석만큼 수치 영역이 줄어듦 · 제작 부담 중간",
+      "palette":{"panel":"#1B2930","track":"#29333C","hp":"#BC3653","hpLight":"#F88487","mp":"#327AAE","mpLight":"#7FC6E3","rim":"#D1BC86"},
+      "shape":"Small 14px faceted diamond at left, track begins behind its right half. All track fills to right tip at100%; warm thin rim and tiny left curl only. No orb and no large portrait. Label HP/MP beside gemstone, numeric text centred on remaining bar.",
+      "panel":"Shared curved backing within same footprint. Gem is decorative and does not create a false unfilled track segment."
+    },
+    "C": {
+      "name":"굽은 리본 게이지",
+      "effect":"살짝 굽은 끝과 선명한 상단 색면으로 부드럽지만 게임다운 인상을 만듭니다.",
+      "tradeoff":"곡선 끝에서 비율 판단이 A보다 조금 덜 직관적 · 제작 부담 중간",
+      "palette":{"panel":"#1B2C30","track":"#304044","hp":"#C4494D","hpLight":"#E89080","mp":"#397CAC","mpLight":"#8DC6DC","rim":"#C9C2A1"},
+      "shape":"Horizontal ribbon with shallow convex top and tapered 6px right point; fill clipped to exact ribbon shape.100% reaches right point; HP/MP lettering on left and centred numeric value. Upper40% is one lighter face with tiny lower dark bevel.",
+      "panel":"No broad rectangular backing; use narrow 2px dark silhouette directly around each coloured ribbon. Keep entire footprint unchanged."
+    }
+  },
+  "recommendation":{"minimap":"B","skills":"B","vitals":"A","reason":"청록 지도와 밝은 표식으로 대비를 확보하고, 스킬은 큰 색면으로 살리며, HPMP는 빈틈없는 채움으로 가장 직접적으로 개선합니다. 세 부분의 금빛은 얇은 테두리에만 제한합니다.","status":"Recommendation only; no user choice or product approval inferred."},
+  "integrationNotes":[
+    "Do not repaint or replace existing native PNGs merely for this comparison; coordinator may recolour broad SVG faces or compose existing PNGs over distinct frames as clearly labelled options.",
+    "Native SVG/CSS mock-up geometry is appropriate; no new bitmap generation is needed for this scope.",
+    "Skill B should look colourful without blurred bloom, detailed metal texture or a black square tile overpowering the glyph.",
+    "Check full-scene views at1280x720 and cropped views without artificial upscaling as evidence of actual game-size readability.",
+    "User chooses category independently. Full-gauge example is visual only; product must continue showing current/max and real ratios."
+  ]
+}

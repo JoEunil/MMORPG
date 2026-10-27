@@ -1,0 +1,10 @@
+{
+  "Assets/C02/WorldMinimap.cs": "994065b240fb7a46d5f58455f397ce10191734be84e897a6b4cef8d998aa6ea6",
+  "Assets/C02/Art/CitadelEnvironment/WorldMinimap.shader": "2dfc5fe93e4de7e71ca62a9eaa87235dfc2c6c55411d6ea7a6dcf3fb476cff24",
+  "Assets/C02/Editor/KnightInterfaceArtSetup.cs": "882a92fa350053bdd83daeb9a50d16b785cea1bebef53d9cf49a4b085d4d0ff3",
+  "Assets/C02/Editor/C12HudSetup.cs": "4ea4a4fd2c1ec5da0e668330d2a94f04166f916637e9db35fe0b580b7dfa7251",
+  "Assets/C02/Art/Skills/skill-line-medallion-v3.png": "2ec81bb899d9991d21cd59abcc0a7e139281bc4ac3af8ebe342028cc9c3ee386",
+  "Assets/C02/Art/Skills/skill-ring-medallion-v3.png": "38a70079b7d04d9c0fae04eb455c042d836ada47488dd4ccfa9c447f9fdd280e",
+  "Assets/C02/Art/Skills/skill-strike-medallion-v3.png": "f214e295732d850ca81e1c58ab20bd03c354ca11aea1a88a25d19411d5acb212",
+  "Assets/C02/Art/CitadelEnvironment/vitals-track-face-v1.png": "418ca46eb1dae1302fa5ceeb5ec42c63086ab7a5a74b8abff4db2aaec434d7f3"
+}

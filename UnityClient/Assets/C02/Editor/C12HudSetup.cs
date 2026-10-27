@@ -15,12 +15,12 @@ public static class C12HudSetup
             throw new System.InvalidOperationException("Stop Play, wait for compilation, and save the current scene before applying C12 HUD.");
         if (!scene.IsValid() || scene.path != "Assets/C02/C02.unity")
             throw new System.InvalidOperationException("C12 requires the saved C02 scene.");
-        var fillSprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-        if (fillSprite == null) throw new System.InvalidOperationException("The built-in uGUI sprite required by the HP/MP gauges is unavailable.");
+        var fillSprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/CitadelEnvironment/vitals-track-face-v1.png");
+        if (fillSprite == null) throw new System.InvalidOperationException("Import the authored HP/MP track face as a Sprite before applying the HUD.");
         var icons = new[] {
-            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-000-strike-v1.png"),
-            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-001-ring-v1.png"),
-            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-002-line-v1.png")
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-strike-medallion-v3.png"),
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-ring-medallion-v3.png"),
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-line-medallion-v3.png")
         };
         if (System.Array.Exists(icons, icon => icon == null))
             throw new System.InvalidOperationException("Import all three skill icons as Sprites before applying the HUD.");
@@ -86,9 +86,9 @@ public static class C12HudSetup
             var rect = buttons[i].GetComponent<RectTransform>();
             rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1);
             rect.anchoredPosition = new Vector2(20 + i * 68, -68);
-            rect.sizeDelta = new Vector2(56, 60);
+            rect.sizeDelta = new Vector2(56, 62);
             var image = buttons[i].GetComponent<UnityEngine.UI.Image>();
-            image.color = new Color(.27f, .25f, .19f, 1);
+            image.color = Color.clear;
             image.raycastTarget = true;
             var label = rect.Find("SkillName")?.GetComponent<TMP_Text>() ?? buttons[i].GetComponentInChildren<TMP_Text>();
             label.gameObject.name = "SkillName";
@@ -106,13 +106,14 @@ public static class C12HudSetup
             iconRect.SetParent(rect, false);
             iconRect.gameObject.SetActive(true);
             iconRect.anchorMin = iconRect.anchorMax = iconRect.pivot = new Vector2(.5f, 1);
-            iconRect.anchoredPosition = new Vector2(0, -3);
-            iconRect.sizeDelta = new Vector2(38, 38);
+            iconRect.anchoredPosition = Vector2.zero;
+            iconRect.sizeDelta = new Vector2(56, 62);
             var icon = iconRect.GetComponent<UnityEngine.UI.Image>();
             icon.sprite = icons[i];
             icon.color = Color.white;
             icon.preserveAspect = true;
             icon.raycastTarget = false;
+            buttons[i].targetGraphic = icon;
 
             var badge = rect.Find("SkillKeyBadge") as RectTransform;
             if (badge == null)
@@ -128,7 +129,7 @@ public static class C12HudSetup
             badgeImage.raycastTarget = false;
             var keyLabel = GaugeValue(badge, null, "SkillKey");
             keyLabel.text = keys[i];
-            keyLabel.fontSize = 18;
+            keyLabel.fontSize = 22;
             keyLabel.fontStyle = FontStyles.Bold;
             keyLabel.color = new Color(1f, .89f, .59f);
             badge.SetAsLastSibling();
@@ -218,6 +219,8 @@ public static class C12HudSetup
         trackTransform.sizeDelta = size;
         var track = trackTransform.GetComponent<UnityEngine.UI.Image>();
         track.sprite = sprite;
+        track.type = UnityEngine.UI.Image.Type.Simple;
+        track.preserveAspect = false;
         track.color = trackColor;
         track.raycastTarget = false;
 
@@ -236,7 +239,7 @@ public static class C12HudSetup
         fill.type = UnityEngine.UI.Image.Type.Filled;
         fill.fillMethod = UnityEngine.UI.Image.FillMethod.Horizontal;
         fill.fillOrigin = (int)UnityEngine.UI.Image.OriginHorizontal.Left;
-        fill.fillAmount = 0;
+        fill.preserveAspect = false;
         fill.color = fillColor;
         fill.raycastTarget = false;
         return fill;

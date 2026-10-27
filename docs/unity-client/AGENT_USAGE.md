@@ -1,24 +1,24 @@
 ## 공개 집계
 
 기준일: 2026-10-26
-누적 신규: 137
-누적 재활성화: 248
+누적 신규: 146
+누적 재활성화: 267
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-26
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 6 | 3 |
 | server_analyst | 서버 분석 Agent | 17 | 43 |
-| client_implementer | 구현 Agent | 46 | 61 |
-| asset_artist | 아트 Agent | 20 | 28 |
-| code_reviewer | 리뷰 Agent | 33 | 97 |
-| quality_reviewer | 종합 검수 Agent | 1 | 8 |
+| client_implementer | 구현 Agent | 49 | 63 |
+| asset_artist | 아트 Agent | 23 | 32 |
+| code_reviewer | 리뷰 Agent | 35 | 99 |
+| quality_reviewer | 종합 검수 Agent | 2 | 19 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
 | decision_curator | 의사결정 지원 Agent | 7 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체385회(신규137·재활성화248)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체413회(신규146·재활성화267)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -626,3 +626,56 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 실제후속2: reference_hud_implementation(구현), pr55_combat_followup_scan(독립리뷰). 신규0,누적384=137+247. 변경투영검사1개최초통과·두해상도렌더는총괄직접작업으로제외. 이전통과검사는반복하지않았다. 토큰·비용N/A.
 
 실제후속1추가: quality_gate_setup_review(Astra/medium). 직사각미니맵4파일/두해상도/변경검사1개범위검수통과·필수수정0. 누적385=137+248,토큰·비용N/A. 실제입력성공이나게임전체검수로소급하지않음.
+
+
+## 가방·거래소 그림 메뉴 — 2026-10-26
+실제신규1: hud_menu_icon_art(아트 Agent, 고정Sol/high). built-in image_gen 1회로투명2셀atlas제작·alpha/셀경계/원본view검사. 총괄의Unity RawImage저작·두해상도렌더·정적참조검사는호출에서제외. 누적386=138+248,실제토큰·비용N/A.
+
+실제후속1추가: quality_gate_setup_review(Astra/medium),메뉴스타일4파일·두해상도화면·정적참조검사·공개설명에한정해검수통과/필수수정0. 누적387=138+249,토큰·비용N/A. 실제클릭·키입력성공으로소급하지않음.
+
+
+## 메뉴 아이콘 손그림풍 피드백 — 2026-10-26
+실제후속1: hud_menu_icon_art(아트Agent),v1실제열람후built-in image_gen편집1회로v2제작,alpha/셀경계확인. 신규0. 총괄의기존2이미지texture교체·두해상도렌더는활성화에서제외. 누적388=138+250,토큰·비용N/A.
+
+실제후속1추가: quality_gate_setup_review(Astra/medium),v1/v2원본·두해상도적용화면비교후스타일영향검수통과/필수수정0. 누적389=138+251,토큰·비용N/A. 사용자취향만족은별도이며가짜입력성공으로기록하지않음.
+
+
+## 곡선 메뉴 피드백 — 2026-10-26
+실제후속1: quality_gate_setup_review(Astra/medium),v3원본/두해상도영향검수통과/필수수정0. 신규0,누적390=138+252. v3벡터경로작성·래스터화·Editor교체·렌더는Coordinator직접작업이라Agent활성화에서제외. 이미지생성호출0/기능테스트반복0,토큰·비용N/A.
+
+
+## PR56 메뉴·선택 보완 묶음 — 2026-10-26
+실제신규2: item_ui_followup_audit(리뷰Agent/Sol high명시), market_selection_polish(구현Agent/Sol high명시). 실제후속3: hud_menu_icon_art(아트Sol high고정), item_ui_followup_audit(독립제품리뷰), market_selection_polish(실패fixture원인진단·수정). 실행중메시지추가/총괄검사실행은활성화에서제외. 신규140/후속255=395. 기존고정role프로필을문서로바꾼것이아니라이번실행override를확인했다. 실제토큰/비용N/A. 이후최종Astra실행은다음증분에기록.
+
+실제후속1추가: quality_gate_setup_review(Astra/medium),6제품파일·두해상도·최초실패/실패검사재실행증거·공개설명을종합검수해통과/필수수정0. 누적396=140+256,토큰·비용N/A. 사용자만족/실제거래성공으로소급하지않음.
+
+
+## 메뉴 내부 빈면·대비 보완 — 2026-10-26
+실제후속1: quality_gate_setup_review(Astra/medium),v5원본·두해상도시각영향검수통과/필수수정0. 신규0,누적397=140+257. 벡터편집·래스터화·Unity교체·렌더는총괄직접작업/이미지gen0/기능검사반복0. 사용자공백지적의대상일치/만족은미확인. 토큰·비용N/A.
+
+
+## 재화·스킬 아이콘 — 2026-10-26
+실제 신규2: currency_skill_ui_wiring(구현 Agent/Sol high 명시), currency_skill_quality_gate(종합 검수 Agent/Astra medium 명시). 기존 quality_gate_setup_review는 현재 live agent 목록에 없으므로 재활성화로 추정하지 않고 신규 인스턴스를 배정했다. 실제 후속2: hud_menu_icon_art(아트 Sol high 고정), item_ui_followup_audit(리뷰 Sol high). 총괄의 Scene 저작·컴파일·집중 fixture1개 실행·격리 렌더·문서/사이트 작업은 활성화에서 제외한다. 누적401=142+259, 토큰·비용N/A. 종합 검수 결과는 HANDOFF와 상세 기록을 따른다.
+
+## 미니맵 가장자리 보완 — 2026-10-26
+실제 후속1: currency_skill_quality_gate(종합 검수 Agent/Astra medium), 고정2제품파일과 두 해상도에 한정한 게시 검수. 신규0, 누적402=142+260, 토큰/비용N/A. 총괄의 코드·셰이더 수정·컴파일·격리 렌더·기록은 활성화에서 제외한다. 기존 통과 검사 반복0.
+
+
+## HUD 비교안 준비 — 2026-10-26
+실제 신규1: hud_options_art(아트 Agent/Sol high 고정), 미니맵·스킬·HPMP 각3안의 색·형태·장단점 명세. 실제 후속1: currency_skill_quality_gate(종합 검수 Agent/Astra medium), 선택안 검수 통과/필수수정0. 총괄의 HTML/SVG 보드·Unity 격리 배경·실제 브라우저 조작/캡처는 활성화 제외. 누적404=143+261, 토큰/비용N/A. 사용자 선택 대기이며 비교안일 뿐 Unity 적용/게시 성과로 기록하지 않는다.
+
+
+## 선택 HUD 적용과 가방·거래소 비교 — 2026-10-26
+실제 신규2: selected_hud_bba(구현 Agent/Sol high), bag_market_options_art(아트 Agent/Sol high 고정). 실제 후속1: currency_skill_quality_gate(Astra medium), HUD 게시 검수와 가방·거래소 선택안 검수를 구분해 같은 묶음으로 확인. 누적407=145+262, 토큰/비용N/A. 총괄 직접 Scene 저작·렌더·브라우저 캡처·문서는 활성화 제외. 가방/거래소는 추천안 준비일 뿐 실제 선택/제품 적용 성과가 아니다.
+
+
+## 가방·거래소 선택 적용과 메뉴 가시성 — 2026-10-26
+실제 후속3: selected_hud_bba(구현 Agent/Sol high, 내부패널4파일), bag_market_options_art(아트 Agent/Sol high고정, 메뉴v6원본/atlas), currency_skill_quality_gate(Astra medium, 고정8파일게시검수). 신규0,누적410=145+265. 총괄의wrapper제거·수수료아이콘저작크기수정·Scene/native import·격리렌더·문서는활성화제외. 토큰/비용N/A,기존게임통과검사반복0.
+
+
+## 메뉴 회색 대비 — 2026-10-26
+실제 후속1: currency_skill_quality_gate(Astra medium), 팔레트/새참조4파일과두해상도시각영향검수통과·필수수정0. 신규0,누적411=145+266. nativeSVG팔레트/래스터/Scene/렌더는총괄직접작업,토큰/비용N/A. 기존게임검사반복0.
+
+
+## 메뉴 외곽·재적용·선택 검사 정합 — 2026-10-26
+실제 신규1: pr56_remaining_ui_scan(리뷰 Agent/Sol medium), C07저작중복덮어쓰기실제불일치발견. 실제후속1: currency_skill_quality_gate(Astra medium), 고정5파일검수통과/필수수정0. 누적413=146+267,토큰/비용N/A. 총괄의팔레트/Scene/검사수정실행은활성화제외. 검사성공은실제PlayMode2개만,0건/부적합직접호출은제외.

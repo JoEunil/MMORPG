@@ -22,8 +22,8 @@ namespace C02
         private static readonly Vector2 UntexturedUv = new Vector2(-1, -1);
         private readonly Vector2[] polygon = new Vector2[80];
         private readonly Vector2[] clippedPolygon = new Vector2[80];
-        private static readonly Color32 WalkableColor = new Color32(79, 91, 72, 235);
-        private static readonly Color32 BlockedColor = new Color32(26, 31, 30, 245);
+        private static readonly Color32 WalkableColor = new Color32(59, 91, 93, 235);
+        private static readonly Color32 BlockedColor = new Color32(19, 48, 57, 245);
         private static readonly Color32 PlayerColor = new Color32(174, 181, 184, 255);
         private static readonly Color32 MonsterColor = new Color32(235, 74, 64, 255);
         private static readonly Color32 SelfColor = new Color32(74, 219, 115, 255);
@@ -32,6 +32,7 @@ namespace C02
         private Vector2 centre;
         private bool visible;
         private float nextRefresh;
+        private Rect meshBounds;
 
         private bool WorldAvailable => worldScreen != null && worldScreen.isActiveAndEnabled &&
             worldScreen.Stage == C02Stage.InWorld && worldScreen.HasOwnFull &&
@@ -91,6 +92,7 @@ namespace C02
             vertices.Clear();
             if (!visible || !WorldAvailable) return;
             Rect rect = GetPixelAdjustedRect();
+            meshBounds = rect;
             float radius = rect.width * .5f;
             if (radius <= 0 || rect.height <= 0) return;
             Vector2 origin = rect.center;
@@ -108,15 +110,20 @@ namespace C02
             }
             else DrawNavigation(vertices, rect);
 
-            Ring(vertices, rect, radius * (20 / viewRadius), .65f, new Color32(165, 173, 162, 90));
-            Ring(vertices, rect, radius * (40 / viewRadius) - .5f, .8f, new Color32(180, 187, 175, 150));
+            Ring(vertices, rect, radius * (20 / viewRadius), .65f, new Color32(135, 183, 176, 125));
+            Ring(vertices, rect, radius * (40 / viewRadius) - .5f, .8f, new Color32(135, 183, 176, 175));
             Rectangle(rect.xMin + 2, origin.y - .3f, rect.xMax - 2, origin.y + .3f);
             Fill(vertices, 4, new Color32(164, 174, 160, 42), origin, radius, false);
             Rectangle(origin.x - .3f, rect.yMin + 2, origin.x + .3f, rect.yMax - 2);
             Fill(vertices, 4, new Color32(164, 174, 160, 42), origin, radius, false);
             foreach (Vector2 position in players) Marker(vertices, rect, position, PlayerColor);
             foreach (Vector2 position in monsters) Marker(vertices, rect, position, MonsterColor);
-            Circle(vertices, origin, 7, new Color32(74, 219, 115, 55));
+            Circle(vertices, origin, 8.2f, new Color32(112, 228, 154, 51));
+            polygon[0] = origin + Vector2.up * 6.2f;
+            polygon[1] = origin + Vector2.right * 6.2f;
+            polygon[2] = origin + Vector2.down * 6.2f;
+            polygon[3] = origin + Vector2.left * 6.2f;
+            Fill(vertices, 4, new Color32(239, 255, 220, 255), origin, radius, false);
             polygon[0] = origin + Vector2.up * 5;
             polygon[1] = origin + Vector2.right * 5;
             polygon[2] = origin + Vector2.down * 5;
@@ -146,6 +153,10 @@ namespace C02
         {
             Vector2 point = rect.center + (position - centre) * (rect.width / (viewRadius * 2));
             if (point.x < rect.xMin || point.x > rect.xMax || point.y < rect.yMin || point.y > rect.yMax) return;
+            for (int i = 0; i < 12; i++) polygon[i] = CirclePoint(point, 5.3f, i, 12);
+            Fill(vertices, ClipToRect(12, rect), new Color32(239, 247, 222, 180), rect.center, rect.width * .5f, false);
+            for (int i = 0; i < 12; i++) polygon[i] = CirclePoint(point, 4.5f, i, 12);
+            Fill(vertices, ClipToRect(12, rect), new Color32(11, 25, 30, 255), rect.center, rect.width * .5f, false);
             for (int i = 0; i < 12; i++) polygon[i] = CirclePoint(point, 3, i, 12);
             Fill(vertices, ClipToRect(12, rect), tint, rect.center, rect.width * .5f, false);
         }
@@ -222,7 +233,14 @@ namespace C02
                     uv = new Vector2(Mathf.Clamp01((world.x - atlasBounds.xMin) / atlasBounds.width),
                         Mathf.Clamp01((world.y - atlasBounds.yMin) / atlasBounds.height));
                 }
-                vertices.AddVert(polygon[i], tint, uv);
+                var vertex = UIVertex.simpleVert;
+                vertex.position = polygon[i];
+                vertex.color = tint;
+                // Atlas UVs and overlay sentinels stay in xy; zw carries the same edge mask for every layer.
+                vertex.uv0 = new Vector4(uv.x, uv.y,
+                    (polygon[i].x - meshBounds.xMin) / meshBounds.width,
+                    (polygon[i].y - meshBounds.yMin) / meshBounds.height);
+                vertices.AddVert(vertex);
             }
             for (int i = 1; i < count - 1; i++) vertices.AddTriangle(start, start + i, start + i + 1);
         }

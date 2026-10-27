@@ -1,0 +1,15 @@
+Created: 2026-10-26
+Scope: Five native project-authored game HUD icons matching the selected v5 curved-menu colour-face direction. No image generation, copied game asset, external download, font, package installation or paid API.
+Style reference inspected: Assets/C02/Art/CitadelEnvironment/hud-menu-icons-v5.png. Simple muted brown/bronze/ivory/cyan faces, restrained pale edges and dark silhouette separation. No photorealistic leather, metal, rendered sword photography or detailed VFX picture.
+Sources: gold-currency-icon-v1.svg, diamond-currency-icon-v1.svg, skill-strike-icon-v2.svg, skill-ring-icon-v2.svg, skill-line-icon-v2.svg. create-sources.py deterministically authors these native SVGs; rasterize-icons.py reads these exact SVG paths using the existing bundled-Pillow M/L/C/Q/Z renderer from MenuIcons-v4. PNGs are not independently hand-maintained bitmap drawings.
+Outputs, all 256x256 RGBA:
+Assets/C02/Art/Currency/gold-currency-icon-v1.png - two overlapping rounded gold coins with broad matte faces.
+Assets/C02/Art/Currency/diamond-currency-icon-v1.png - cyan diamond, three broad cut faces.
+Assets/C02/Art/Skills/skill-strike-icon-v2.png - ivory diagonal curved sword and short slash glyph.
+Assets/C02/Art/Skills/skill-ring-icon-v2.png - closed muted-gold rotation ring glyph.
+Assets/C02/Art/Skills/skill-line-icon-v2.png - downward sword and short front-impact glyph in blue/ivory.
+Skill clock-mask design: Each skill uses the same fully opaque round matte interior disc, radius28 in a 64-unit viewBox, with transparent outer margin6.25%. Glyphs are completely within the disc. The three final PNG alpha channels are byte-identical. Alpha is255 at the centre and across all pixels inside radius100 in each 256px PNG; this preserves the alpha needed by the existing radial cooldown image. No outer panel, frame, key label or text is baked into any icon.
+Read-only alpha results: currency transparent pixel counts gold35004/diamond37243; skills24924 each. All alpha extrema0..255. Visible alpha>=16 bounds: gold(13,27)-(238,226), diamond(16,36)-(241,233), skills(15,15)-(241,241). No visible object touches the canvas boundary.
+Validation: Actual saved PNGs inspected with view_image. Currency concepts and three skill silhouettes are distinct. Asset SHA256 values are stored in asset-manifest.json. Currency16-20px and skill40px in-game readability, Sprite.Single import, UI aspect ratio, radial cooldown animation and actual interaction are not claimed verified; Coordinator owns integration and actual HUD verification.
+Preservation: Existing PNGs, .meta, Editor, Scene, helper/runtime code, server skill range/animation and Git untouched by this art Agent. Existing game skills and server meaning are represented only by UI glyphs, not changed.
+Rights: Original project-native vector geometry and deterministic rasterisation. No third-party asset licence introduced; no legal exclusivity claim.

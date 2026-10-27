@@ -50,7 +50,9 @@ namespace C02
         [SerializeField] private GameObject walletHud;
         [SerializeField] private TMP_Text walletGoldText;
         [SerializeField] private TMP_Text walletDiamondText;
+        [SerializeField] private Sprite diamondCurrencyIcon;
         private bool selling;
+        private bool saleInventoryReplyReady;
         private bool registerConfirmation;
         private bool registrationUncertain;
         private InventoryItemView saleItem;
@@ -75,7 +77,8 @@ namespace C02
         private readonly Dictionary<ulong, byte> buyOutcomes = new Dictionary<ulong, byte>();
         private readonly Dictionary<ulong, byte> claimOutcomes = new Dictionary<ulong, byte>();
         private readonly HashSet<ulong> unresolvedClaims = new HashSet<ulong>();
-        private UnityEngine.UI.Button selectedListingButton;
+        private UnityEngine.UI.Button selectedRowButton;
+        private Color selectedRowBaseColor;
         public bool IsOpen => bazaarPanel != null && bazaarPanel.activeSelf;
 
         private bool WorldAvailable => worldScreen != null && worldScreen.isActiveAndEnabled &&
@@ -142,6 +145,12 @@ namespace C02
                 goldKnown = diamondKnown = false;
                 ShowWallet();
                 ScheduleWalletRetry();
+            }
+            // Let the inventory owner consume this callback first, including any queued post-delivery read.
+            if (saleInventoryReplyReady && (inventoryScreen == null || !inventoryScreen.InventoryRequestPending))
+            {
+                saleInventoryReplyReady = false;
+                SaleInventoryReceived(inventoryScreen == null || inventoryScreen.HasInventoryResponse);
             }
             if (!requestPending || Time.unscaledTime < requestDeadline) return;
             WriteRequest previousWrite = writeRequest;
@@ -346,8 +355,8 @@ namespace C02
         public void ClosePanel()
         {
             bazaarPanel.SetActive(false);
-            // Retain balance-changing writes while keeping ordinary panel reads cancellable.
-            if (requestPending && (writeRequest == WriteRequest.Register || writeRequest == WriteRequest.Buy || writeRequest == WriteRequest.Claim)) return;
+            // A closed panel must still observe item delivery and balance-changing writes.
+            if (requestPending && writeRequest != WriteRequest.None) return;
             CancelPending();
             myListings = false;
             ClearResults();
@@ -398,7 +407,10 @@ namespace C02
                 typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button), typeof(LayoutElement));
             rowObject.transform.SetParent(listingRows, false);
             var image = rowObject.GetComponent<UnityEngine.UI.Image>();
-            image.color = index % 2 == 0 ? new Color(.12f, .14f, .17f) : new Color(.09f, .11f, .14f);
+            image.color = new Color32(21, 42, 48, 255);
+            var edge = rowObject.AddComponent<UnityEngine.UI.Outline>();
+            edge.effectColor = new Color32(107, 146, 144, 90);
+            edge.effectDistance = new Vector2(.7f, -.7f);
             var button = rowObject.GetComponent<UnityEngine.UI.Button>();
             button.targetGraphic = image;
             var layout = rowObject.GetComponent<LayoutElement>();
@@ -433,9 +445,9 @@ namespace C02
                 iconImage.raycastTarget = false;
             }
             AddCell(rowObject.transform, "Item", C11ItemPresentation.Name(itemID), 0.14f, 0.40f,
-                TextAlignmentOptions.MidlineLeft, 16, new Color(.94f, .95f, .97f));
+                TextAlignmentOptions.MidlineLeft, 16, new Color32(237, 242, 231, 255));
             AddCell(rowObject.transform, "Quantity", quantity.ToString(CultureInfo.InvariantCulture), 0.41f, 0.50f,
-                TextAlignmentOptions.Center, 14, new Color(.80f, .85f, .90f));
+                TextAlignmentOptions.Center, 14, new Color32(184, 202, 198, 255));
             return rowObject;
         }
 
@@ -444,9 +456,9 @@ namespace C02
             var rowObject = CreateItemRow(listing.ItemID, listing.Quantity, index);
             rowObject.name = "Listing-" + listing.ListingID.ToString(CultureInfo.InvariantCulture);
             var button = rowObject.GetComponent<UnityEngine.UI.Button>();
-            AddCurrencyMark(rowObject.transform, "DiamondMark", false, .525f);
+            AddCurrencyMark(rowObject.transform, "DiamondMark", false, .525f, diamondCurrencyIcon);
             AddCell(rowObject.transform, "Price", listing.Price.ToString("N0", CultureInfo.InvariantCulture), .56f, .77f,
-                TextAlignmentOptions.MidlineRight, 14, new Color(.72f, .87f, .93f));
+                TextAlignmentOptions.MidlineRight, 14, new Color32(169, 220, 229, 255));
             var stateBadge = new GameObject("StateBadge", typeof(RectTransform), typeof(UnityEngine.UI.Image));
             stateBadge.transform.SetParent(rowObject.transform, false);
             var stateRect = stateBadge.GetComponent<RectTransform>();
@@ -454,7 +466,7 @@ namespace C02
             stateRect.pivot = new Vector2(.5f, .5f);
             stateRect.sizeDelta = new Vector2(60, 27);
             stateBadge.GetComponent<UnityEngine.UI.Image>().color = listing.Status == 0
-                ? new Color(.20f, .34f, .29f, .9f) : new Color(.25f, .27f, .30f, .9f);
+                ? new Color32(23, 49, 57, 255) : new Color32(21, 42, 48, 255);
             stateBadge.GetComponent<UnityEngine.UI.Image>().raycastTarget = false;
             var state = AddCell(rowObject.transform, "State", ListingStatusName(listing.Status), .78f, .99f,
                 TextAlignmentOptions.Center, 13, new Color(.84f, .88f, .87f));
@@ -462,21 +474,31 @@ namespace C02
             button.onClick.AddListener(() => SelectListing(listing, button));
         }
 
+        private void SelectRow(UnityEngine.UI.Button button)
+        {
+            if (selectedRowButton != null)
+            {
+                var previous = selectedRowButton.GetComponent<UnityEngine.UI.Image>();
+                if (previous != null) previous.color = selectedRowBaseColor;
+                var previousEdge = selectedRowButton.GetComponent<UnityEngine.UI.Outline>();
+                if (previousEdge != null) previousEdge.effectColor = new Color32(107, 146, 144, 90);
+            }
+            selectedRowButton = button;
+            var image = button.GetComponent<UnityEngine.UI.Image>();
+            selectedRowBaseColor = image.color;
+            image.color = new Color32(40, 86, 79, 255);
+            var edge = button.GetComponent<UnityEngine.UI.Outline>();
+            if (edge != null) edge.effectColor = new Color32(229, 211, 163, 255);
+        }
+
         private void SelectListing(BazaarListingView listing, UnityEngine.UI.Button button)
         {
             if (writeRequest != WriteRequest.None) return;
-            if (selectedListingButton != null)
-            {
-                var previous = selectedListingButton.GetComponent<UnityEngine.UI.Image>();
-                if (previous != null)
-                    previous.color = selectedListingButton.transform.GetSiblingIndex() % 2 == 0
-                        ? new Color(.12f, .14f, .17f) : new Color(.09f, .11f, .14f);
-            }
-            selectedListingButton = button;
+            bool confirmationCleared = buyConfirmation || cancelConfirmation;
+            SelectRow(button);
             selectedListing = listing;
             buyConfirmation = false;
             cancelConfirmation = false;
-            button.GetComponent<UnityEngine.UI.Image>().color = new Color(.20f, .29f, .34f);
             ShowSelectedItem(listing.ItemID, listing.Quantity);
             selectedDetailText.text = listing.Price.ToString("N0", CultureInfo.InvariantCulture) + " diamonds · " + ListingStatusName(listing.Status);
             if (claimOutcomes.TryGetValue(listing.ListingID, out byte outcome)) selectedDetailText.text = outcome == 1 ? "Proceeds collected." : "No proceeds to collect.";
@@ -485,6 +507,7 @@ namespace C02
                 selectedDetailText.text = buyOutcome == 1 ? "Purchased · receive items to your bag." : "Purchase result unknown · reconnect to check.";
             if (cancelOutcomes.TryGetValue(listing.ListingID, out byte cancelOutcome))
                 selectedDetailText.text = cancelOutcome == 1 ? "Sale cancelled · receive returned item." : "Cancellation result unknown · refresh listings.";
+            if (confirmationCleared) statusText.text = "Selected listing: " + selectedDetailText.text;
             UpdateControls();
         }
 
@@ -520,7 +543,7 @@ namespace C02
         private void CancelListingReceived(ulong listingID, byte status)
         {
             if (writeRequest != WriteRequest.CancelListing || !requestPending || listingID != selectedListing.ListingID ||
-                model == null || loginScreen.Model != model || !WorldAvailable || !IsOpen) return;
+                model == null || loginScreen.Model != model || !WorldAvailable) return;
             requestPending = false;
             writeRequest = WriteRequest.None;
             if (status == 0) cancelOutcomes.Remove(listingID);
@@ -608,7 +631,7 @@ namespace C02
         private void CheckOutboxReceived(byte status, uint delivered, uint duplicated, uint blocked)
         {
             if (writeRequest != WriteRequest.CheckOutbox || !requestPending || model == null ||
-                loginScreen.Model != model || !WorldAvailable || !IsOpen) return;
+                loginScreen.Model != model || !WorldAvailable) return;
             requestPending = false;
             writeRequest = WriteRequest.None;
             if (inventoryScreen != null) inventoryScreen.RefreshAfterDelivery();
@@ -679,6 +702,7 @@ namespace C02
 
         private void CancelPending()
         {
+            saleInventoryReplyReady = false;
             buyConfirmation = false;
             cancelConfirmation = false;
             if (!requestPending) return;
@@ -696,10 +720,12 @@ namespace C02
 
         private void ClearRows()
         {
-            selectedListingButton = null;
+            selectedRowButton = null;
             selectedListing = default;
+            saleItem = default;
             buyConfirmation = false;
             cancelConfirmation = false;
+            registerConfirmation = false;
             if (listingRows == null) return;
             for (int i = listingRows.childCount - 1; i >= 0; i--)
             {
@@ -789,12 +815,16 @@ namespace C02
             }
             if (searchListingsButton != null)
             {
+                searchListingsButton.GetComponent<UnityEngine.UI.Image>().color = !myListings && !selling
+                    ? new Color32(40, 86, 79, 255) : new Color32(23, 49, 57, 255);
                 searchListingsButton.interactable = available && bazaarPanel.activeSelf && writeRequest == WriteRequest.None;
                 var label = searchListingsButton.GetComponentInChildren<TMP_Text>(true);
                 if (label != null) label.text = (myListings ? string.Empty : "> ") + "SALES";
             }
             if (myListingsButton != null)
             {
+                myListingsButton.GetComponent<UnityEngine.UI.Image>().color = myListings && !selling
+                    ? new Color32(40, 86, 79, 255) : new Color32(23, 49, 57, 255);
                 myListingsButton.interactable = available && bazaarPanel.activeSelf && writeRequest == WriteRequest.None;
                 var label = myListingsButton.GetComponentInChildren<TMP_Text>(true);
                 if (label != null) label.text = (myListings ? "> " : string.Empty) + "MY LISTINGS";
@@ -814,7 +844,12 @@ namespace C02
             var stateHeader = bazaarPanel != null ? bazaarPanel.transform.Find("BazaarParchment/BazaarStateHeader") : null;
             if (priceHeader != null) priceHeader.GetComponent<TMP_Text>().text = selling ? "BAG SLOT" : "TOTAL D";
             if (stateHeader != null) stateHeader.gameObject.SetActive(!selling);
-            if (sellItemsButton != null) sellItemsButton.interactable = available && IsOpen && !requestPending;
+            if (sellItemsButton != null)
+            {
+                sellItemsButton.GetComponent<UnityEngine.UI.Image>().color = selling
+                    ? new Color32(40, 86, 79, 255) : new Color32(23, 49, 57, 255);
+                sellItemsButton.interactable = available && IsOpen && !requestPending;
+            }
             if (registerButton != null)
             {
                 registerButton.interactable = available && selling && !requestPending && !registrationUncertain && saleItem.ItemID != 0;
@@ -904,13 +939,28 @@ namespace C02
             statusText.text = "Loading items from your bag…";
             UpdateSaleSummary();
             UpdateControls();
-            try { model.RequestInventory(); }
+            try
+            {
+                if (inventoryScreen != null && inventoryScreen.isActiveAndEnabled)
+                {
+                    if (!inventoryScreen.RequestSharedInventory(model))
+                        throw new InvalidOperationException("Inventory is unavailable for this session.");
+                }
+                else model.RequestInventory();
+            }
             catch (Exception) { requestPending = false; statusText.text = "Bag lookup failed. Refresh to retry."; UpdateControls(); }
         }
 
         private void SaleInventoryReceived(bool success)
         {
             if (!selling || !IsOpen || !requestPending || writeRequest != WriteRequest.None || model == null || loginScreen.Model != model || !WorldAvailable) return;
+            if (inventoryScreen != null && inventoryScreen.InventoryRequestPending)
+            {
+                saleInventoryReplyReady = true;
+                requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+                return;
+            }
+            saleInventoryReplyReady = false;
             requestPending = false;
             ClearRows();
             var items = success && loginScreen.Data != null ? loginScreen.Data.GetInventory() : null;
@@ -922,9 +972,11 @@ namespace C02
                 var row = CreateItemRow(item.ItemID, item.Quantity, index++);
                 AddCell(row.transform, "Slot", "Slot " + item.Slot, .62f, .99f, TextAlignmentOptions.MidlineRight, 15, new Color(.8f, .85f, .9f));
                 var selected = item;
-                row.GetComponent<UnityEngine.UI.Button>().onClick.AddListener(() =>
+                var button = row.GetComponent<UnityEngine.UI.Button>();
+                button.onClick.AddListener(() =>
                 {
                     if (requestPending || registrationUncertain) return;
+                    SelectRow(button);
                     saleItem = selected;
                     quantityInput.SetTextWithoutNotify("1");
                     registerConfirmation = false;
@@ -983,17 +1035,19 @@ namespace C02
             }
         }
 
-        private static void AddCurrencyMark(Transform parent, string name, bool goldMark, float anchorX)
+        private static void AddCurrencyMark(Transform parent, string name, bool goldMark, float anchorX, Sprite icon)
         {
             var mark = new GameObject(name, typeof(RectTransform), typeof(UnityEngine.UI.Image));
             mark.transform.SetParent(parent, false);
             var rect = mark.GetComponent<RectTransform>();
             rect.anchorMin = rect.anchorMax = new Vector2(anchorX, .5f);
             rect.pivot = new Vector2(.5f, .5f);
-            rect.sizeDelta = goldMark ? new Vector2(14, 8) : new Vector2(10, 10);
-            rect.localRotation = goldMark ? Quaternion.identity : Quaternion.Euler(0, 0, 45);
+            rect.sizeDelta = icon != null ? new Vector2(16, 16) : goldMark ? new Vector2(14, 8) : new Vector2(10, 10);
+            rect.localRotation = icon != null || goldMark ? Quaternion.identity : Quaternion.Euler(0, 0, 45);
             var image = mark.GetComponent<UnityEngine.UI.Image>();
-            image.color = goldMark ? new Color(.91f, .70f, .31f) : new Color(.47f, .79f, .89f);
+            image.sprite = icon;
+            image.preserveAspect = true;
+            image.color = icon != null ? Color.white : goldMark ? new Color(.91f, .70f, .31f) : new Color(.47f, .79f, .89f);
             image.raycastTarget = false;
         }
 

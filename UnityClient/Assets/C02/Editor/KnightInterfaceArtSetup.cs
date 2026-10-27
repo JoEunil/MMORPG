@@ -80,19 +80,8 @@ public static class KnightInterfaceArtSetup
         }
         ApplyRestrainedEntry();
         var hud = ((GameObject)refs.FindProperty("worldHud").objectReferenceValue).transform;
-        foreach (string name in new[] { "C07InventoryPanel" })
-        {
-            var panel = hud.parent.Find(name) as RectTransform;
-            if (panel == null) throw new InvalidOperationException("The existing inventory panel is required.");
-            // The four-pixel inset reveals a restrained edge around the inventory surface.
-            var panelImage = panel.GetComponent<Image>();
-            panelImage.sprite = null;
-            panelImage.color = new Color(.40f, .47f, .52f, .98f);
-            foreach (string part in new[] { "ForgedFrame", "FrameOrnaments" })
-                panel.Find(part)?.gameObject.SetActive(false);
-            if (name != "C06ChatPanel") panel.anchoredPosition = new Vector2(-24, 118);
-        }
         C06ChatSetup.ApplyCleanStyle();
+        C07InventorySetup.ApplyRestrainedInventoryDetails();
         C09BazaarSetup.ApplyCleanStyle();
         foreach (string name in new[] { "C07BagButton", "C09MarketButton" })
             SkinButton(hud.parent.Find(name).GetComponent<Button>(), 16);
@@ -189,6 +178,14 @@ public static class KnightInterfaceArtSetup
             throw new InvalidOperationException("HUD authoring requires Edit Mode.");
         var world = UnityEngine.Object.FindFirstObjectByType<C02WorldScreen>(FindObjectsInactive.Include);
         if (world == null) throw new InvalidOperationException("The existing world screen is required.");
+        var gaugeFace = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/CitadelEnvironment/vitals-track-face-v1.png");
+        var skillIcons = new[] {
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-strike-medallion-v3.png"),
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-ring-medallion-v3.png"),
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Skills/skill-line-medallion-v3.png")
+        };
+        if (gaugeFace == null || Array.Exists(skillIcons, icon => icon == null))
+            throw new InvalidOperationException("Import the selected gauge face and three skill medallions as Sprites before applying the HUD.");
         var worldRefs = new SerializedObject(world);
         var hud = (GameObject)worldRefs.FindProperty("worldHud").objectReferenceValue;
         // Keep diagnostic information clear of the centered currency display.
@@ -204,24 +201,44 @@ public static class KnightInterfaceArtSetup
             if (part.name == "ForgedFrame" || part.name == "FrameOrnaments" || part.name == "GaugeGlint") part.gameObject.SetActive(false);
         var vitals = Child(combat, "VitalsPlate");
         Place(vitals, new Vector2(1, 0), new Vector2(-24, 16), new Vector2(292, 64));
-        EdgedSurface(vitals, new Color(.055f, .065f, .07f, .55f));
+        EdgedSurface(vitals, new Color(.086f, .153f, .161f, .9f));
         vitals.SetAsFirstSibling();
-        Gauge(combat, "C12HpTrack", 50, 18, new Color(.64f, .12f, .15f));
-        Gauge(combat, "C12MpTrack", 30, 14, new Color(.12f, .34f, .65f));
+        Gauge(combat, "C12HpTrack", 48, new Color(.88f, .28f, .35f), gaugeFace);
+        Gauge(combat, "C12MpTrack", 20, new Color(.23f, .55f, .86f), gaugeFace);
         var skills = Child(combat, "SkillPlate");
         Place(skills, new Vector2(.5f, 0), Vector2.zero, new Vector2(222, 78));
-        EdgedSurface(skills, new Color(.055f, .065f, .07f, .35f));
+        PlainSurface(skills, Color.clear);
+        var skillPlateEdge = skills.GetComponent<Outline>();
+        if (skillPlateEdge != null) skillPlateEdge.enabled = false;
         skills.SetAsFirstSibling();
         for (int i = 0; i < 3; i++)
         {
             var skill = combat.Find("C05Skill" + i) as RectTransform;
             Place(skill, new Vector2(.5f, 0), new Vector2((i - 1) * 66, 8), new Vector2(56, 62));
-            EdgedSurface(skill, new Color(.12f, .14f, .15f, .8f));
+            PlainSurface(skill, Color.clear);
+            var skillEdge = skill.GetComponent<Outline>();
+            if (skillEdge != null) skillEdge.enabled = false;
             var colors = ColorBlock.defaultColorBlock;
             colors.highlightedColor = new Color(1.16f, 1.16f, 1.16f);
-            skill.GetComponent<Button>().colors = colors;
+            var button = skill.GetComponent<Button>();
+            button.colors = colors;
+            var skillIcon = skill.Find("SkillIcon") as RectTransform;
+            if (skillIcon != null)
+            {
+                Place(skillIcon, new Vector2(.5f, 1), Vector2.zero, new Vector2(56, 62));
+                var image = skillIcon.GetComponent<Image>();
+                image.sprite = skillIcons[i]; image.type = Image.Type.Simple;
+                image.color = Color.white; image.preserveAspect = true; image.raycastTarget = false;
+                button.targetGraphic = image;
+            }
             var badge = skill.Find("SkillKeyBadge") as RectTransform;
-            if (badge != null) PlainSurface(badge, new Color(.04f, .05f, .065f, .92f));
+            if (badge != null)
+            {
+                EdgedSurface(badge, new Color(.067f, .141f, .165f));
+                var edge = badge.GetComponent<Outline>();
+                edge.effectColor = new Color(.89f, .8f, .6f); edge.effectDistance = new Vector2(.8f, -.8f);
+                badge.SetAsLastSibling();
+            }
             var key = badge != null ? badge.Find("SkillKey")?.GetComponent<TMP_Text>() : null;
             if (key != null) { key.fontSize = 22; key.color = Color.white; key.fontStyle = FontStyles.Bold; }
             var name = skill.Find("SkillName"); if (name != null) name.gameObject.SetActive(false);
@@ -243,8 +260,10 @@ public static class KnightInterfaceArtSetup
             PlainSurface(wallet, new Color(.055f, .065f, .07f, .25f));
             Place(wallet.Find("Gold") as RectTransform, new Vector2(0, 1), new Vector2(28, 0), new Vector2(108, 30));
             Place(wallet.Find("Diamonds") as RectTransform, new Vector2(0, 1), new Vector2(164, 0), new Vector2(108, 30));
-            Place(wallet.Find("GoldMark") as RectTransform, new Vector2(0, .5f), new Vector2(8, 0), new Vector2(13, 8));
-            Place(wallet.Find("DiamondMark") as RectTransform, new Vector2(0, .5f), new Vector2(145, 0), new Vector2(10, 10));
+            Place(wallet.Find("GoldMark") as RectTransform, new Vector2(0, .5f), new Vector2(3, 0), new Vector2(20, 20));
+            Place(wallet.Find("DiamondMark") as RectTransform, new Vector2(0, .5f), new Vector2(140, 0), new Vector2(20, 20));
+            wallet.Find("GoldMark").localRotation = Quaternion.identity;
+            wallet.Find("DiamondMark").localRotation = Quaternion.identity;
             foreach (var text in wallet.GetComponentsInChildren<TMP_Text>(true)) text.fontSize = 17;
         }
         MenuButton(hud.transform.parent.Find("C07BagButton") as RectTransform, false);
@@ -323,53 +342,45 @@ public static class KnightInterfaceArtSetup
     private static void MenuButton(RectTransform button, bool market)
     {
         if (button == null) throw new InvalidOperationException("Both existing menu buttons are required.");
-        Place(button, new Vector2(1, 1), new Vector2(market ? -106 : -24, -18), new Vector2(74, 56));
-        EdgedSurface(button, new Color(.055f, .065f, .07f, .68f));
-        foreach (string name in new[] { "ForgedFrame", "FrameOrnaments" }) button.Find(name)?.gameObject.SetActive(false);
-        var label = button.Find("Label").GetComponent<TMP_Text>();
-        Place(label.rectTransform, new Vector2(.5f, 0), new Vector2(0, 3), new Vector2(66, 18));
-        label.text = market ? "Market" : "Bag";
-        label.fontSize = 14; label.characterSpacing = 0; label.alignment = TextAlignmentOptions.Center;
-        label.color = new Color(.86f, .87f, .82f); label.raycastTarget = false;
-        var key = Label(button, "MenuKey", market ? "B" : "I", 14);
-        Place(key.rectTransform, new Vector2(1, 1), new Vector2(-5, -3), new Vector2(14, 18));
-        key.alignment = TextAlignmentOptions.Center; key.color = new Color(.93f, .93f, .87f);
-        button.GetComponent<Button>().colors = ColorBlock.defaultColorBlock;
-        // Small authored line icons stay inside the existing clickable control.
-        Color line = new Color(.76f, .74f, .65f);
-        if (market)
+        var atlas = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/C02/Art/CitadelEnvironment/hud-menu-icons-v8.png");
+        if (atlas == null) throw new InvalidOperationException("The authored menu icon atlas is required.");
+        Place(button, new Vector2(1, 1), new Vector2(market ? -86 : -24, -16), new Vector2(54, 54));
+        PlainSurface(button, Color.clear);
+        button.GetComponent<UnityEngine.UI.Image>().raycastTarget = true;
+        var outline = button.GetComponent<Outline>();
+        if (outline != null) outline.enabled = false;
+        foreach (string name in new[] { "ForgedFrame", "FrameOrnaments", "Label" }) button.Find(name)?.gameObject.SetActive(false);
+        foreach (string name in new[] { "MarketStem", "MarketBeam", "MarketBase", "MarketChain-1", "MarketChain1", "MarketTray-1", "MarketTray1",
+            "BagBody", "BagInset", "BagHandle", "BagHandleInset", "BagFlap", "BagClasp" })
         {
-            IconPart(button, "MarketStem", new Vector2(0, 12), new Vector2(2, 22), line);
-            IconPart(button, "MarketBeam", new Vector2(0, 20), new Vector2(28, 2), line);
-            IconPart(button, "MarketBase", new Vector2(0, 2), new Vector2(16, 2), line);
-            for (int side = -1; side <= 1; side += 2)
-            {
-                IconPart(button, "MarketChain" + side, new Vector2(side * 11, 15), new Vector2(1, 9), line);
-                IconPart(button, "MarketTray" + side, new Vector2(side * 11, 10), new Vector2(10, 3), line);
-            }
+            var old = button.Find(name);
+            if (old != null) UnityEngine.Object.DestroyImmediate(old.gameObject);
         }
-        else
+        var iconRect = button.Find("MenuIcon") as RectTransform;
+        if (iconRect == null)
         {
-            IconPart(button, "BagBody", new Vector2(0, 11), new Vector2(22, 18), line);
-            IconPart(button, "BagInset", new Vector2(0, 11), new Vector2(18, 14), new Color(.08f, .10f, .11f));
-            IconPart(button, "BagHandle", new Vector2(0, 23), new Vector2(10, 6), line);
-            IconPart(button, "BagHandleInset", new Vector2(0, 22), new Vector2(6, 4), new Color(.08f, .10f, .11f));
-            IconPart(button, "BagFlap", new Vector2(0, 15), new Vector2(18, 2), line);
-            IconPart(button, "BagClasp", new Vector2(0, 11), new Vector2(3, 4), line);
+            iconRect = new GameObject("MenuIcon", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.RawImage))
+                .GetComponent<RectTransform>();
+            iconRect.SetParent(button, false);
         }
-    }
-
-    private static void IconPart(Transform parent, string name, Vector2 position, Vector2 size, Color color)
-    {
-        var part = parent.Find(name) as RectTransform;
-        if (part == null)
-        {
-            part = new GameObject(name, typeof(RectTransform), typeof(UnityEngine.UI.Image)).GetComponent<RectTransform>();
-            part.SetParent(parent, false);
-        }
-        Place(part, new Vector2(.5f, .5f), position, size);
-        part.GetComponent<UnityEngine.UI.Image>().color = color;
-        part.GetComponent<UnityEngine.UI.Image>().raycastTarget = false;
+        float aspect = atlas.width * .5f / atlas.height;
+        Vector2 size = aspect >= 1 ? new Vector2(54, 54 / aspect) : new Vector2(54 * aspect, 54);
+        Place(iconRect, new Vector2(.5f, .5f), new Vector2(-2, -2), size);
+        var icon = iconRect.GetComponent<UnityEngine.UI.RawImage>();
+        icon.texture = atlas;
+        icon.uvRect = new Rect(market ? .5f : 0, 0, .5f, 1);
+        icon.color = Color.white;
+        icon.raycastTarget = false;
+        // Preserve the existing click target and callbacks; hover/disabled tint belongs to the illustration.
+        var control = button.GetComponent<UnityEngine.UI.Button>();
+        control.targetGraphic = icon;
+        control.colors = ColorBlock.defaultColorBlock;
+        var key = Label(button, "MenuKey", market ? "B" : "I", 16);
+        Place(key.rectTransform, new Vector2(1, 1), new Vector2(-1, 0), new Vector2(14, 20));
+        key.fontStyle = FontStyles.Bold;
+        key.alignment = TextAlignmentOptions.Center;
+        key.color = new Color(.96f, .96f, .90f);
+        key.rectTransform.SetAsLastSibling();
     }
 
     private static void PlainSurface(RectTransform rect, Color color)
@@ -378,12 +389,20 @@ public static class KnightInterfaceArtSetup
         image.sprite = null; image.type = Image.Type.Simple; image.color = color;
     }
 
-    private static void Gauge(RectTransform panel, string name, float y, float height, Color color)
+    private static void Gauge(RectTransform panel, string name, float y, Color color, Sprite face)
     {
         var track = panel.Find(name) as RectTransform;
-        Place(track, new Vector2(1, 0), new Vector2(-40, y), new Vector2(260, height));
-        EdgedSurface(track, new Color(.08f, .095f, .11f, .9f));
-        track.Find("Fill").GetComponent<Image>().color = color;
+        Place(track, new Vector2(1, 0), new Vector2(-32, y), new Vector2(274, 21));
+        EdgedSurface(track, new Color(.153f, .22f, .231f));
+        var trackImage = track.GetComponent<Image>();
+        trackImage.sprite = face; trackImage.preserveAspect = false;
+        var edge = track.GetComponent<Outline>();
+        edge.effectColor = new Color(.73f, .67f, .52f); edge.effectDistance = new Vector2(.8f, -.8f);
+        var fill = track.Find("Fill").GetComponent<Image>();
+        // The track and fill share their complete silhouette; the runtime still owns fillAmount.
+        fill.sprite = face; fill.color = color; fill.preserveAspect = false;
+        fill.rectTransform.anchorMin = Vector2.zero; fill.rectTransform.anchorMax = Vector2.one;
+        fill.rectTransform.offsetMin = Vector2.zero; fill.rectTransform.offsetMax = Vector2.zero;
         foreach (var text in track.GetComponentsInChildren<TMP_Text>(true))
         { text.fontSize = 15; text.color = new Color(.94f, .96f, .98f); text.transform.SetAsLastSibling(); }
     }

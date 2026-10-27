@@ -1,0 +1,76 @@
+{
+  "kind": "HTML/SVG comparison mockups, not Unity implementation or live state",
+  "created": "2026-10-26",
+  "recommended": {
+    "bag": "B",
+    "market": "B",
+    "status": "Recommendation only; user choice pending"
+  },
+  "fixed": [
+    "Bag 920x560, four columns and right detail; image/name first; read-only selection and refresh",
+    "Market 780x555, list and right detail/form; existing tabs/actions; final explicit confirmation",
+    "Sale total is diamonds; registration fee is gold; purchase deducts diamonds; no sale diamond deduction or predicted after-balance",
+    "Same icons, items, quantities, sample wallet and price for all variants; no new feature or unsupported stats"
+  ],
+  "sample": {
+    "walletGold": 500,
+    "walletDiamonds": 240,
+    "item": "HP Potion",
+    "quantity": 2,
+    "totalPriceDiamonds": 95,
+    "registrationGoldFee": 10,
+    "feeBasis": "Sample matching current client Math.Max(10UL, price / 10UL), not proof of server execution"
+  },
+  "options": {
+    "A": {
+      "name": "먹색 · 은빛 선",
+      "effect": "중성 배경과 밝은 아이템으로 목록을 담백하게 읽습니다.",
+      "tradeoff": "선택 강조가 절제되어 B보다 시선 유도가 약합니다.",
+      "panel": "#131c21",
+      "surface": "#1b272d",
+      "card": "#192228",
+      "selected": "#33444b",
+      "edge": "#78898b",
+      "accent": "#d3ddd4",
+      "button": "#314b50",
+      "detail": "#1b292e"
+    },
+    "B": {
+      "name": "청록 · 밝은 선택",
+      "effect": "청록 선택 면과 아이보리 선이 선택한 아이템과 실행 버튼을 분명하게 나눕니다.",
+      "tradeoff": "A보다 색의 존재감이 큽니다.",
+      "panel": "#10252a",
+      "surface": "#173139",
+      "card": "#152a30",
+      "selected": "#28564f",
+      "edge": "#6b9290",
+      "accent": "#e5d3a3",
+      "button": "#326b62",
+      "detail": "#19383b"
+    },
+    "C": {
+      "name": "남청 · 따뜻한 테두리",
+      "effect": "남청 배경과 얇은 금빛 강조로 차분한 장비창 분위기를 만듭니다.",
+      "tradeoff": "금빛 선과 아이템의 갈색 재질이 B보다 가깝게 보입니다.",
+      "panel": "#19232e",
+      "surface": "#23303c",
+      "card": "#202b35",
+      "selected": "#454337",
+      "edge": "#928875",
+      "accent": "#e3c48b",
+      "button": "#505846",
+      "detail": "#29343d"
+    }
+  },
+  "evidence": [
+    "Assets/C02/C07InventoryScreen.cs ApplySelection exposes icon/name/slot/quantity only",
+    "Assets/C02/Editor/C07InventorySetup.cs fixed four-column grid",
+    "Assets/C02/Editor/C09BazaarSetup.cs ApplyCleanStyle hides obsolete stack total/after balance fields",
+    "Assets/C02/C09BazaarScreen.cs existing sell/buy confirmation and loading/error/unknown paths",
+    "Client-Resume/bag-grid-right-details.png timestamp 2026-10-25 13:12:10",
+    "Play-Economy/market-controls-preview.png timestamp 2026-10-24 18:24:07 (older pre-simplification example)",
+    "Play-Session/panel-market-live.png timestamp 2026-10-25 17:38:53"
+  ],
+  "provenance": "Original CSS/SVG geometry authored for this comparison. Existing project PNG icons reused unchanged from Assets/Resources/Items and Assets/C02/Art/Currency; game backdrop copied unchanged from Builds/HudOptions/hud-comparison-base.png. Existing project/generated asset provenance applies; no external downloads, purchases or new image generation. See docs/unity-client/history/2026-10-24-work-records/ITEM_ART_DRAFT.md and Builds/CurrencySkillIcons/provenance.txt. Original item source location is historical and is not claimed present. No separate third-party asset licence introduced.",
+  "validation": "Static generated file/resource verification only; browser rendering and Astra review assigned to Coordinator; no Editor, Play, live trade or server validation performed."
+}

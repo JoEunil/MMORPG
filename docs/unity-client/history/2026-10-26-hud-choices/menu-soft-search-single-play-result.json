@@ -1,0 +1,35 @@
+{
+  "success": true,
+  "command": "command test_status",
+  "data": {
+    "command": "test_status",
+    "parameters": {},
+    "result": {
+      "status": "completed",
+      "duration": 0.17,
+      "summary": {
+        "total": 1,
+        "passed": 0,
+        "failed": 1,
+        "skipped": 0,
+        "inconclusive": 0
+      },
+      "results": [
+        {
+          "FullName": "C02.Tests.C09BazaarUiTests.SearchRendersThirtyRealRowsAndEmptySuccessHasNoInventedRows",
+          "Status": "Failed",
+          "Duration": 0.1352713,
+          "Message": "  Expected: String containing \"buyer pays\"\r\n  But was:  \"9,029 diamonds · Trading\"\r\n",
+          "StackTrace": "at C02.Tests.C09BazaarUiTests.SearchRendersThirtyRealRowsAndEmptySuccessHasNoInventedRows () [0x00256] in C:\\Users\\joeun\\Desktop\\workspace\\Game-UnityClient\\UnityClient\\Assets\\Tests\\C02\\C09BazaarUiTests.cs:296\r\n"
+        }
+      ]
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "C:\\Users\\joeun\\Desktop\\workspace\\Game-UnityClient\\UnityClient"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

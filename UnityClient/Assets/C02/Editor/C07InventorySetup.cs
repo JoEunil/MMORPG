@@ -193,9 +193,12 @@ public static class C07InventorySetup
         if (panelImage == null || paperImage == null || detailsImage == null)
             throw new System.InvalidOperationException("The existing C07 panel surfaces are incomplete.");
         panelImage.sprite = null;
-        panelImage.color = new Color(.40f, .47f, .52f, .98f);
+        panelImage.color = new Color32(16, 37, 42, 255);
+        var panelEdge = inventoryPanel.GetComponent<UnityEngine.UI.Outline>() ?? inventoryPanel.AddComponent<UnityEngine.UI.Outline>();
+        panelEdge.effectColor = new Color32(107, 146, 144, 255);
+        panelEdge.effectDistance = new Vector2(.7f, -.7f);
         paperImage.sprite = null;
-        paperImage.color = new Color(.055f, .068f, .078f, .98f);
+        paperImage.color = new Color32(16, 37, 42, 255);
         foreach (string name in new[] { "ForgedFrame", "FrameOrnaments" })
             inventoryPanel.transform.Find(name)?.gameObject.SetActive(false);
         foreach (var button in inventoryPanel.GetComponentsInChildren<Button>(true))
@@ -203,18 +206,29 @@ public static class C07InventorySetup
             var surface = button.GetComponent<Image>();
             if (surface == null) continue;
             surface.sprite = null;
-            surface.color = new Color(.12f, .15f, .18f, 1);
+            surface.color = new Color32(23, 49, 57, 255);
+            var edge = button.GetComponent<UnityEngine.UI.Outline>() ?? button.gameObject.AddComponent<UnityEngine.UI.Outline>();
+            edge.effectColor = new Color32(107, 146, 144, 180);
+            edge.effectDistance = new Vector2(.7f, -.7f);
+            var colors = ColorBlock.defaultColorBlock;
+            colors.highlightedColor = new Color(1.2f, 1.2f, 1.2f);
+            colors.pressedColor = new Color(.8f, .8f, .8f);
+            button.colors = colors;
             foreach (string name in new[] { "ForgedFrame", "FrameOrnaments" })
                 button.transform.Find(name)?.gameObject.SetActive(false);
         }
         ApplyDetailLayout(detailsImage, badge, itemName, slot, quantity);
+        foreach (var text in inventoryPanel.GetComponentsInChildren<TMP_Text>(true))
+            text.color = new Color32(236, 240, 232, 255);
+        inner.Find("InventoryTitle").GetComponent<TMP_Text>().color = new Color32(229, 211, 163, 255);
+        slot.color = quantity.color = new Color32(175, 193, 192, 255);
         EditorSceneManager.MarkSceneDirty(scene);
     }
 
     private static void ApplyDetailLayout(Image detailsImage, TMP_Text badge, TMP_Text itemName,
         TMP_Text slot, TMP_Text quantity)
     {
-        detailsImage.color = new Color(.095f, .115f, .13f, .98f);
+        detailsImage.color = new Color32(25, 56, 59, 255);
         detailsImage.raycastTarget = false;
         badge.alignment = TextAlignmentOptions.Center;
         badge.rectTransform.anchorMin = badge.rectTransform.anchorMax = badge.rectTransform.pivot = new Vector2(.5f, 1);

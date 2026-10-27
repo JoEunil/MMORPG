@@ -1,0 +1,70 @@
+[
+  {
+    "Path": "UnityClient/Assets/C02/C09BazaarScreen.cs",
+    "SHA256": "D4F42C93946B15DD89CC3A1B0295599C6C00059DEFC25DE5629444C4D521F872"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Editor/C09BazaarSetup.cs",
+    "SHA256": "3D83761820AA24E01757CAB1BC994E34E875AD6D729032E90F8A53E233997CC7"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Editor/C12HudSetup.cs",
+    "SHA256": "267F3EF3A9C1993A58606191722C7B622356A9E6788B0394D1807C706305F00C"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Editor/KnightInterfaceArtSetup.cs",
+    "SHA256": "727BF19EDB1583E33457F8AC0C3E8EEB174E63EBE734FFB951FC919647246AF5"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/C02.unity",
+    "SHA256": "F0CC3FF8E067CA014DE4432998D43A50C6D1536E18FB52BE7376EED0A6ECDBEC"
+  },
+  {
+    "Path": "UnityClient/Assets/Tests/C02/C09BazaarUiTests.cs",
+    "SHA256": "585A77751DA2E27BB426E9C72D3622FAE98D80D78F4154BE8D02D17B0B88FFDA"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Currency.meta",
+    "SHA256": "DC875A827104C232F414A8506F16E3ECD7B7B24A7B16959489715C5500145B0C"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Currency/gold-currency-icon-v1.png",
+    "SHA256": "2BF6C4B974D6A28B52FFFFA342D8C699D3CC6C3941F89765AD958AFBDB137859"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Currency/gold-currency-icon-v1.png.meta",
+    "SHA256": "B71CC1D10D4719729510FAEBADC3B61DEC55BB37FCEE6CBAB1006CF6CA8CD567"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Currency/diamond-currency-icon-v1.png",
+    "SHA256": "94A5ABAEBED7ABC7CF4D918E387A97F8C4EA1558BCF41C8D5836002551FD8D13"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Currency/diamond-currency-icon-v1.png.meta",
+    "SHA256": "97A70AA03F9FB4B3A51BCB06FB6B13076112810C6395F9D8006478BC2645BBFD"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Skills/skill-strike-icon-v2.png",
+    "SHA256": "2A0C3B4FF064D54A35E0663D4EA6F8D003F0171F0FFC7FD1243D857EE0904453"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Skills/skill-strike-icon-v2.png.meta",
+    "SHA256": "4DB82B46B95F45B6AB689F8EC99E4E32FA9261B5191E30C35C7E671327DF238B"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Skills/skill-ring-icon-v2.png",
+    "SHA256": "05C98B1D5B0653E4FF6AC352B74581ECA2A7F1F0E274EDCBD6BD69FB4403595C"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Skills/skill-ring-icon-v2.png.meta",
+    "SHA256": "752B0CEE7D2137E03852BD737865F479310E054EE3B4C35AB3939633137547C5"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Skills/skill-line-icon-v2.png",
+    "SHA256": "BFFFBC5691D576802465071AB78F7E72D2B1EF08E9A1E05B37A600ED90CC0F6E"
+  },
+  {
+    "Path": "UnityClient/Assets/C02/Art/Skills/skill-line-icon-v2.png.meta",
+    "SHA256": "7B50156FFA76FC8EEF8067B4D51F079AB70FCEB9F6DD74A7474127AF9CCEF998"
+  }
+]

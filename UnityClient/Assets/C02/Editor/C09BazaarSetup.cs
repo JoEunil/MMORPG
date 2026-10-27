@@ -266,6 +266,8 @@ public static class C09BazaarSetup
         serialized.FindProperty("walletHud").objectReferenceValue=wallet;
         serialized.FindProperty("walletGoldText").objectReferenceValue=gold;
         serialized.FindProperty("walletDiamondText").objectReferenceValue=diamond;
+        serialized.FindProperty("diamondCurrencyIcon").objectReferenceValue =
+            AssetDatabase.LoadAssetAtPath<Sprite>("Assets/C02/Art/Currency/diamond-currency-icon-v1.png");
         serialized.ApplyModifiedPropertiesWithoutUndo();
 
         var worldSerialized = new SerializedObject(world);
@@ -283,8 +285,13 @@ public static class C09BazaarSetup
 
     private static void CreateCurrencyMark(string name, Transform parent, bool gold, float x, float y, bool walletHud)
     {
-        var image = FindOrCreate(name, parent, typeof(RectTransform), typeof(Image)).GetComponent<Image>();
-        image.color = gold ? new Color(.91f, .70f, .31f) : new Color(.47f, .79f, .89f);
+        var image = FindOrCreate(name, parent, typeof(RectTransform), typeof(UnityEngine.UI.Image)).GetComponent<UnityEngine.UI.Image>();
+        var icon = AssetDatabase.LoadAssetAtPath<Sprite>(gold
+            ? "Assets/C02/Art/Currency/gold-currency-icon-v1.png"
+            : "Assets/C02/Art/Currency/diamond-currency-icon-v1.png");
+        image.sprite = icon;
+        image.preserveAspect = true;
+        image.color = icon != null ? Color.white : gold ? new Color(.91f, .70f, .31f) : new Color(.47f, .79f, .89f);
         image.raycastTarget = false;
         var rect = image.rectTransform;
         if (walletHud)
@@ -297,8 +304,8 @@ public static class C09BazaarSetup
             rect.anchorMin = rect.anchorMax = new Vector2(0, 1);
             rect.anchoredPosition = new Vector2(x, -y);
         }
-        rect.sizeDelta = gold ? new Vector2(14, 8) : new Vector2(10, 10);
-        rect.localRotation = gold ? Quaternion.identity : Quaternion.Euler(0, 0, 45);
+        rect.sizeDelta = icon != null ? new Vector2(16, 16) : gold ? new Vector2(14, 8) : new Vector2(10, 10);
+        rect.localRotation = icon != null || gold ? Quaternion.identity : Quaternion.Euler(0, 0, 45);
     }
 
     private static TMP_InputField SaleInput(string name,Transform parent,string initial,float x,float width)
@@ -328,19 +335,33 @@ public static class C09BazaarSetup
         foreach(var image in panel.GetComponentsInChildren<Image>(true))
         {
             if(image.name=="ForgedFrame"||image.name=="FrameOrnaments"){image.gameObject.SetActive(false);continue;}
-            if(image.name.EndsWith("Mark", System.StringComparison.Ordinal) || image.name=="DetailItemIcon")
+            if(image.name.EndsWith("Mark", System.StringComparison.Ordinal) || image.name=="DetailItemIcon"||image.name=="ItemIcon"||image.name=="ItemAccent")
             {image.raycastTarget=false;continue;}
             image.sprite=null;image.type=Image.Type.Simple;
-            image.color=image.GetComponent<TMP_InputField>()!=null?new Color(.24f,.28f,.32f,1):image.GetComponent<Button>()!=null?new Color(.14f,.18f,.22f,1):new Color(.06f,.08f,.10f,.98f);
+            image.color=new Color32(23,49,57,255);
+            if(image.name=="C09BazaarPanel"||image.name=="BazaarParchment"||image.name=="BazaarViewport")
+                image.color=new Color32(16,37,42,255);
+            if(image.name=="BazaarSelectedDetailPanel"||image.name=="SaleForm")
+                image.color=new Color32(25,56,59,255);
         }
         foreach(var button in panel.GetComponentsInChildren<Button>(true))
-        {button.navigation=new Navigation{mode=Navigation.Mode.None};var colors=ColorBlock.defaultColorBlock;colors.highlightedColor=new Color(1.3f,1.3f,1.3f);button.colors=colors;}
+        {
+            button.navigation=new Navigation{mode=Navigation.Mode.None};
+            var colors=ColorBlock.defaultColorBlock;colors.highlightedColor=new Color(1.2f,1.2f,1.2f);button.colors=colors;
+            bool primary=button.name=="RegisterSaleButton"||button.name=="BazaarBuyButton"||button.name=="BazaarClaimButton";
+            button.GetComponent<Image>().color=primary?new Color32(50,107,98,255):new Color32(23,49,57,255);
+            var edge=button.GetComponent<UnityEngine.UI.Outline>()??button.gameObject.AddComponent<UnityEngine.UI.Outline>();
+            edge.effectColor=primary?new Color32(229,211,163,255):new Color32(107,146,144,180);
+            edge.effectDistance=new Vector2(.7f,-.7f);
+        }
         foreach(var text in panel.GetComponentsInChildren<TMP_Text>(true))
-        {text.color=new Color(.88f,.91f,.95f);text.fontSize=Mathf.Max(14,text.fontSize);}
+        {text.color=new Color32(236,240,232,255);text.fontSize=Mathf.Max(14,text.fontSize);}
+        var panelEdge=panel.GetComponent<UnityEngine.UI.Outline>()??panel.gameObject.AddComponent<UnityEngine.UI.Outline>();
+        panelEdge.effectColor=new Color32(107,146,144,255);panelEdge.effectDistance=new Vector2(.7f,-.7f);
         var paper=panel.Find("BazaarParchment");if(paper==null)return;
         foreach(var text in paper.Find("BazaarSelectedDetailPanel").GetComponentsInChildren<TMP_Text>(true))
-            text.color=new Color(.88f,.91f,.95f);
-        var title=paper.Find("BazaarTitle").GetComponent<TMP_Text>();title.text="ITEM EXCHANGE";title.fontSize=21;
+            text.color=new Color32(236,240,232,255);
+        var title=paper.Find("BazaarTitle").GetComponent<TMP_Text>();title.text="ITEM EXCHANGE";title.fontSize=21;title.color=new Color32(229,211,163,255);
         AnchorTopLeft(paper.Find("BazaarSearchListingsButton") as RectTransform,15,58,236,34);
         AnchorTopLeft(paper.Find("BazaarMyListingsButton") as RectTransform,251,58,236,34);
         if(paper.Find("BazaarSellItemsButton")!=null)AnchorTopLeft(paper.Find("BazaarSellItemsButton") as RectTransform,487,58,260,34);
@@ -374,7 +395,7 @@ public static class C09BazaarSetup
             var feeSummary=saleForm.Find("FeeSummary") as RectTransform;
             var registerButton=saleForm.Find("RegisterSaleButton") as RectTransform;
             if(feeLabel!=null)AnchorTopLeft(feeLabel,0,68,118,24);
-            if(feeMark!=null)AnchorTopLeft(feeMark,132,80,14,8);
+            if(feeMark!=null)AnchorTopLeft(feeMark,132,72,16,16);
             if(feeValue!=null)AnchorTopLeft(feeValue,152,68,118,24);
             if(feeSummary!=null)AnchorTopLeft(feeSummary,0,100,270,38);
             if(registerButton!=null)AnchorTopLeft(registerButton,0,154,270,34);

@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "command": "command eval_file",
+  "data": {
+    "command": "eval_file",
+    "parameters": {
+      "file": "C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/MenuIconsSoft/run-fixtures.cs"
+    },
+    "result": {
+      "output": null,
+      "diagnostics": [],
+      "success": false,
+      "error": "Runtime Error",
+      "errorDetails": "Transform child out of bounds"
+    },
+    "target": {
+      "host": "127.0.0.1",
+      "port": 7800,
+      "projectPath": "C:\\Users\\joeun\\Desktop\\workspace\\Game-UnityClient\\UnityClient"
+    }
+  },
+  "errors": [],
+  "warnings": []
+}

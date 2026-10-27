@@ -55,7 +55,7 @@ namespace C02.Tests
                 Assert.That(quantity.text, Is.EqualTo("4"));
                 Assert.That(itemIcon.GetComponent<UnityEngine.UI.Image>().sprite, Is.SameAs(C11ItemPresentation.Icon(1)));
                 knownCard.onClick.Invoke();
-                Assert.That(knownCard.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo(new Color(.38f, .30f, .20f, 1f)));
+                Assert.That(knownCard.GetComponent<UnityEngine.UI.Image>().color, Is.EqualTo((Color)new Color32(40, 86, 79, 255)));
                 Assert.That(knownCard.transition, Is.EqualTo(Selectable.Transition.None));
                 Assert.That(((RectTransform)fixture.DetailBadge.rectTransform.GetChild(0)).rect.size, Is.EqualTo(new Vector2(96, 96)));
 
@@ -84,7 +84,7 @@ namespace C02.Tests
                 Assert.That(fixture.Cards, Is.Empty, "A pending read clears stale cards and details.");
                 Assert.That(fixture.DetailName.text, Is.EqualTo("Select an item"));
                 fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 8, slot = 2 });
-                Assert.That(fixture.Cards[0].GetComponent<Image>().color, Is.EqualTo(new Color(.38f, .30f, .20f, 1f)));
+                Assert.That(fixture.Cards[0].GetComponent<Image>().color, Is.EqualTo((Color)new Color32(40, 86, 79, 255)));
                 Assert.That(fixture.DetailName.text, Is.EqualTo("HP Potion"));
                 Assert.That(fixture.DetailQuantity.text, Is.EqualTo("Quantity 8"));
 
@@ -97,7 +97,7 @@ namespace C02.Tests
 
                 fixture.Refresh.onClick.Invoke();
                 fixture.Receive(true, new InventoryItem { itemID = 2, quantity = 6, slot = 2 });
-                Assert.That(fixture.Cards[0].GetComponent<Image>().color, Is.EqualTo(new Color(.16f, .18f, .20f, 1f)));
+                Assert.That(fixture.Cards[0].GetComponent<Image>().color, Is.EqualTo((Color)new Color32(21, 42, 48, 255)));
                 Assert.That(fixture.DetailName.text, Is.EqualTo("Select an item"), "A slot reused for another item must not inherit selection.");
                 Assert.That(fixture.DetailQuantity.text, Is.Empty);
 
@@ -118,7 +118,7 @@ namespace C02.Tests
                 SetPrivate(fixture.Screen, "failureRetryDeadline", Time.unscaledTime - 1f);
                 fixture.InvokeScreen("Update");
                 fixture.Receive(true, new InventoryItem { itemID = 2, quantity = 5, slot = 2 });
-                Assert.That(fixture.Cards[0].GetComponent<Image>().color, Is.EqualTo(new Color(.16f, .18f, .20f, 1f)),
+                Assert.That(fixture.Cards[0].GetComponent<Image>().color, Is.EqualTo((Color)new Color32(21, 42, 48, 255)),
                     "A later retry does not revive a selection cleared by failure.");
                 Assert.That(fixture.DetailName.text, Is.EqualTo("Select an item"));
             }
