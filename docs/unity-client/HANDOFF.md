@@ -7,7 +7,7 @@
 - 편집/실행 ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient
 - Git 정본 CAND: ROOT/Builds/C10-Delivery/source
 - 브랜치: codex/client-feature-structure. 이전 로컬 후보0fc577a와 이번 통합 보완을 포함한다.
-- 기반: PR57 codex/client-session-polish/9c2aa23. 게시 직전 원격 상태를 다시 확인한다. 미병합이면 해당 브랜치 기반, 병합됐으면 master 포함 확인 후 게시한다.
+- 기반: PR57 병합을 실제 확인했다. origin/master 9a3d94e를 0e88aa5로 정상 병합해 사용자 LLM.md/README 변경을 보존했다. 새 PR의 base는 master다.
 
 ## 완료와 검증
 
@@ -29,10 +29,12 @@ Windows player의 프로세스/창/그래픽 초기화까지 확인했으나 새
 
 Unity ROOT/6000.0.47f1/Pipeline7800은 Edit/clean, 실입력 허용. 빌드의 preload 설정 부수효과는 원래 SHA256으로 정확히 복원했다. 직접 시작한 게임 서버는 q로 정상 종료(exit0), Login은 Ctrl+C로 중단,9999/3000 listen 없음. 기존 MySQL/Redis는 유지한다. 미리보기8791은 유지한다.
 
-Unity Coordinator 앱으로 CLIENTCOMPLETE01/r1 게시 승인 요청을 등록했다. 부모1793084867.526689 / 채널C0C9VFZMV43 / 지정 사람U0C9QEUHPMK / 명령: 승인 CLIENTCOMPLETE01. 수신기PID11312 listening·고정 Coordinator·health3초 이내·threads 등록 확인. 아직 회신 미소비. 기존 CLIENTREFACTOR01/r2는 대체 안내1793084885.608529를 남겼으며 재사용하지 않는다. 완료 채널 요약1793084886.276999. 아직 push·새 PR·병합·Pages 배포하지 않았다.
+Unity Coordinator 앱으로 CLIENTCOMPLETE01/r1 게시 승인 요청을 등록했다. 부모1793084867.526689 / 채널C0C9VFZMV43 / 지정 사람U0C9QEUHPMK / 명령: 승인 CLIENTCOMPLETE01. 수신기PID11312 listening·고정 Coordinator·health3초 이내·threads 등록 확인. 지정 사람 승인 회신1793093569.259489를 실제 Slack 원문과 요청·채널·부모·현재대기·미소비 기록으로 대조해 이번 게시에1회 소비했다. 수신기 상태 queued는 전달 상태이며 별도 승인 적용으로 기록한다. 기존 CLIENTREFACTOR01/r2는 대체 안내1793084885.608529를 남겼으며 재사용하지 않는다. 완료 채널 요약1793084886.276999. 승인 범위의 push·PR 게시를 진행하며 사용자 병합·정식 Pages 배포는 수행하지 않는다.
 
 ## 근거
 
 이번: history/2026-10-27-client-completion/results.txt 및 같은 폴더의 제한된 검증 산출물. 이전 구조/에셋 정리: history/2026-10-27-client-refactor/. 이전 인계는 이번 이력의 previous-handoff.md로 보존한다.
 전체 로컬 근거: ROOT/Builds/ClientCompletion/{Evidence,Player,Server}. 최신 웹 확인: ROOT/Builds/WebResultsReview/latest-results.png. 미리보기: http://127.0.0.1:8791/MMORPG/#work
 거래 복구 근거: 이번 이력의 funded-trade-db-result.json/market-restoration-result.json/live-funded-trade.txt. 로컬 복구 SQL과 원본 스냅샷은 ROOT/Builds/ClientCompletion/Evidence/{restore-market-test.sql,market-before.json}. 재사용 시 새 매물ID로 재생성하며 오래된 SQL은 매물 집합 guard로 무변경 중단한다. DB 반영 완료 WAL3records(CRC/전용ID/LSN대조)는 같은 Evidence/wal-before-reset/redo.1로 원본 보관했고 새 빈 redo.2로 교체했다. 기존 backpressure는 비어 있다. 서버코드/WAL로직 수정은 없다. Unity 설정 원본 해시 유지.
+
+실거래 완료 Slack 작업 회신1793093994.696949 / 완료 채널1793093995.365959. DB 보충·복구 허용은 사용자 현재 채팅 지시이며 PR 게시 승인은 위 지정 사람의 정확한 Slack 회신이다.
