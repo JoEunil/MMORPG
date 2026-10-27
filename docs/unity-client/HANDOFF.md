@@ -17,11 +17,11 @@
 
 실제 서버 접속에서 HP0 마을 귀환, 여섯 구역1→2→3→6→5→4→1 순회, Z/X/C 응답, I/B 패널, 실제 거래소30매물 조회, 채팅 echo, 일반 몬스터 처치와 EXP0→10, 마을 복귀를 확인했다. 정상 재접속 전후 정확한 float 좌표·구역·HP9850·MP9919·EXP10 일치. 이동은 정상 PlayerLoop의 queued InputSystem 키 상태이며 물리키 전체 조작감으로 확대하지 않는다.
 
-결과 사이트의 대표 화면/큰 기능별 이미지/날짜 이력을 개선하고 실제 게임 캡처를 반영했다. 아이템 있는 가방 대표는 에디터 디자인 예시로 표시하고 실제 빈 가방 이력을 분리했다. 데스크톱/모바일 확인 후 최신 사진·문구의 데스크톱 브라우저 재확인까지 완료했다. 누적 Agent445=신규162+후속283, 토큰/비용N/A.
+결과 사이트의 대표 화면/큰 기능별 이미지/날짜 이력을 개선하고 실제 게임 캡처를 반영했다. 아이템 있는 가방 대표는 에디터 디자인 예시로 표시하고 실제 빈 가방 이력을 분리했다. 데스크톱/모바일 확인 후 최신 사진·문구의 데스크톱 브라우저 재확인까지 완료했다. 누적 Agent449=신규164+후속285, 토큰/비용N/A.
 
 ## 남은 조건
 
-성공 판매·구매·대금 수령은 미실행이다. unity_ai_01·02는 재화 행이 없고 가방도 비어 있다. 사용자가 기존 자산 보유 테스트 캐릭터 지정을 선택했으며 **캐릭터 이름/ID와 소속 계정 답변 대기**다. 임의 계정 사용·DB 시딩을 하지 않는다. 답변 후 해당 거래만 이어서 검증하고 통과 검사는 반복하지 않는다.
+성공 거래 검증까지 완료했다. 사용자 최신 지시(test1 사용 또는 DB 테스트 자산 보충/복구 허용)에 따라 test1은 조회만 하고 전용 unity_ai_01·02의 변경 전 4테이블/행 부재를 백업했다. 포션1·판매자골드100·구매자다이아100으로 실제 UI 등록→구매→배송→대금수령을 확인했다. 판매자골드90/다이아10·구매자다이아90/포션1,DB 정산/배송 CLAIMED 일치. 가방/배송 첫 cold응답은 재조회했으나 등록/구매/수령 쓰기를 반복하지 않았다. 정상 로그아웃·서버 q종료 후 이번매물180만 제거하고 원래 캐릭터/인벤/재화 부재까지 정확히 복원했다. 독립 계약/복구 검토 필수수정0. 통과 검사는 반복하지 않았다.
 
 Windows player의 프로세스/창/그래픽 초기화까지 확인했으나 새 앱 제어 동의 시간 초과로 standalone UI 조작은 미검증이다. 제어 경로를 우회하지 않았고 창은 열린 채 유지했다. 레벨업·드롭·사냥 균형·모든 지연 조건은 확인하지 않았다.
 
@@ -35,3 +35,4 @@ Unity Coordinator 앱으로 CLIENTCOMPLETE01/r1 게시 승인 요청을 등록�
 
 이번: history/2026-10-27-client-completion/results.txt 및 같은 폴더의 제한된 검증 산출물. 이전 구조/에셋 정리: history/2026-10-27-client-refactor/. 이전 인계는 이번 이력의 previous-handoff.md로 보존한다.
 전체 로컬 근거: ROOT/Builds/ClientCompletion/{Evidence,Player,Server}. 최신 웹 확인: ROOT/Builds/WebResultsReview/latest-results.png. 미리보기: http://127.0.0.1:8791/MMORPG/#work
+거래 복구 근거: 이번 이력의 funded-trade-db-result.json/market-restoration-result.json/live-funded-trade.txt. 로컬 복구 SQL과 원본 스냅샷은 ROOT/Builds/ClientCompletion/Evidence/{restore-market-test.sql,market-before.json}. 재사용 시 새 매물ID로 재생성하며 오래된 SQL은 매물 집합 guard로 무변경 중단한다. DB 반영 완료 WAL3records(CRC/전용ID/LSN대조)는 같은 Evidence/wal-before-reset/redo.1로 원본 보관했고 새 빈 redo.2로 교체했다. 기존 backpressure는 비어 있다. 서버코드/WAL로직 수정은 없다. Unity 설정 원본 해시 유지.

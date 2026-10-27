@@ -1,24 +1,24 @@
 ## 공개 집계
 
 기준일: 2026-10-27
-누적 신규: 162
-누적 재활성화: 283
+누적 신규: 164
+누적 재활성화: 285
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-27
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 6 | 3 |
-| server_analyst | 서버 분석 Agent | 18 | 43 |
+| server_analyst | 서버 분석 Agent | 19 | 45 |
 | client_implementer | 구현 Agent | 53 | 66 |
 | asset_artist | 아트 Agent | 24 | 32 |
 | code_reviewer | 리뷰 Agent | 40 | 104 |
 | quality_reviewer | 종합 검수 Agent | 4 | 25 |
 | unity_tester | 테스트 Agent | 4 | 4 |
-| progress_documenter | 기록 Agent | 5 | 4 |
+| progress_documenter | 기록 Agent | 6 | 4 |
 | decision_curator | 의사결정 지원 Agent | 7 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체445회(신규162·재활성화283)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체449회(신규164·재활성화285)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -701,3 +701,7 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 ## 클라이언트 통합 확인과 결과 화면 — 2026-10-27
 
 실제 증분: 신규7·후속1. client_completion_engineering(구현1), client_completion_validation_plan(서버 분석1), completion_results_web(기록 신규1·후속1), completion_results_web/web_results_implementation(웹 구현1), completion_vitals_review(리뷰1), completion_verify_build(테스트1), completion_quality_gate(종합 검수1)이다. 기록 담당이 웹 구현을 별도 배정한 실제 실행만 합산했다. 제품·웹 개선, 직접 영향 두 검사/빌드, 실제 접속 결과·공개 화면 확인을 맡았으며 총괄의 직접 서버·입력·인계 작업은 실행 횟수에 넣지 않았다. 누적445=신규162+후속283이며 토큰·비용은 N/A다.
+
+## 실제 거래 검증과 결과 기록 — 2026-10-27
+
+실제 증분: 서버 분석 Agent 신규1·후속2, 기록 Agent 신규1. 전용 테스트 데이터로 실제 등록·구매·아이템 수령·대금 수령을 확인하고 공개 거래·가방 결과를 갱신했다. 총괄의 직접 Unity 입력과 통합은 집계하지 않았다. 누적449=신규164+후속285, 토큰·비용 N/A.

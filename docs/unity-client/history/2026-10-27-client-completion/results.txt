@@ -22,3 +22,9 @@ UI/전투: Z/X/C 모두 실제 서버phase0/1,MP10000→9959. I가방의 첫 col
 
 최종 보완: 최신 사진/문구의 실제 localhost 브라우저 확인과 캡처 완료(latest-results.png). 자체 기동한 MainServer q 정상종료 exit0, Login Ctrl+C 중단,9999/3000 listen 없음. Unity 설정 해시 원본 일치 유지. 미리보기8791 및 제어 동의 미완료 standalone 창은 유지.
 게시 요청: CLIENTCOMPLETE01/r1, 앱 부모1793084867.526689, 지정 사람U0C9QEUHPMK. 기존 요청 대체 안내1793084885.608529/완료 요약1793084886.276999. 수신기와 새 스레드 등록 확인, 아직 승인 미소비·미게시. 제품/검증 후보 b2553ac, 후속 문서 변경만 추가한다.
+
+추가 실거래 검증 — 2026-10-27
+사용자가 test1 사용 또는 DB 테스트 자산 보충과 초기상태 복구를 허용했다. test1은 읽기 확인만 했고, 보호된 전용 unity_ai_01/02에 최소 테스트 포션1/소액재화를 준비했다. 기존4테이블 전체와 행부재/BLOB360bytes를 원본 백업했고 계정 비밀번호/서버스키마/게임규칙은 변경하지 않았다. 첫 준비는 실제 diamond.updated_at 필수열 차이로 rollback했고 원본 스냅샷이 동일함을 확인한 뒤 실제열을 넣어 준비했다.
+실제 Unity 클릭으로 포션1 가격10다이아 등록/구매/대금수령 각1회, 배송은 cold cache 첫status0 후 재요청1회로status1/포션1 도착. 판매자gold100→90, diamond0→10; 구매자diamond100→90, item1/qty1. 정상종료 뒤 실제DB 매물180 SOLD/claim CLAIMED/outbox CLAIMED 일치. 제품상태/응답을 주입하거나 성공을 만들지 않았다.
+종료 뒤 활성WAL은 정리주기를 기다려도 남았으며 이는 현재segment를보존하는 실제구현과일치했다. 삭제/코드변경 대신 CRC·전용char2개만포함·각LSN<=DBlastLSN을확인한3records1164bytes를 Evidence/wal-before-reset/redo.1에 원본이동했다. SHA256 F6067B7CA0A5DE2ED6B88786EA121F1910B7D9B5E676C0C82A6FBC853AC4C525,새빈redo.2 생성. backpressure.1은0bytes. MainServer process/연결0과WAL조건확인 후 guard가포함된복구SQL로이번매물180의자식→부모만제거하고 원래4테이블과정확일치검사후commit. 기존wallet행없음과캐릭터저장위치까지복구했다. backup/restoreSQL은로컬Artifacts에두며복구시매물ID집합과소유계정을검사해staleSQL을무변경차단한다.
+독립 서버분석 Agent가 계약/복구안/최종산출물 검토, 최종필수수정0. 신규서버1/후속2·신규기록1 추가, 누적449=164+285. Unity는Edit/clean,일시계정환경값/관찰자정리,원본ProjectSettings해시유지. Login/Game직접기동분종료. 기존자동/입력통과검사는반복하지않았다. 현재성공거래미확인조건해소. 기존독립player UI제어미검증한계는유지한다.
