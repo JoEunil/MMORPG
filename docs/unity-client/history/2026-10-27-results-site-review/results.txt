@@ -6,3 +6,4 @@
 화면: ROOT/UnityClient/Builds/WebResultsReview/audit-{desktop-workflow,desktop-work,mobile-work,mobile-history}.png. 자동게임테스트/Unity실입력/DB검증은 이번 사이트 작업을 위해 반복하지 않았다. 정식Pages배포는 PR 병합 뒤 별도 확인 대상이다.
 역할: 기록Agent 신규1, Astra종합검수Agent 신규1. 총괄의 빌더/CSS/브라우저직접작업은호출횟수로집계하지않음. 누적451=신규166+후속285,토큰비용N/A.
 종합검수: Astra results_site_quality_gate 통과, 필수수정0. 캡처3장과 실제근거/공개문구/생성흐름 검토, 별도 브라우저/게임검사반복안함. PR58은open·미병합이며 이번 개선은 기존 승인된 결과사이트탐색/문구 개선 후보의 보완이다. 새 제품기능/호스팅/공개범위 확대는 없다. 원본HANDOFF는previous-handoff.md로보존한다.
+전달: PR58에5117b3f로반영. 해당head Actions run40486089424 completed/success 확인. Slack새부모1793095697.714729,완료채널1793095732.252169. 새승인대기없음/정식Pages는사용자병합뒤별도확인. 후속인계기록만추가하며웹소스/검수후보는변경하지않음.

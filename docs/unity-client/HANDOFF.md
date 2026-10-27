@@ -2,7 +2,7 @@
 
 ## 현재 작업
 
-결과 정리 사이트를 점검해 가독성·기능 탐색·현재/과거 화면 구분을 개선했다. 로컬 구현·사이트 빌드·실제 브라우저 확인·Astra 종합 검수 통과. 기존 PR58의 승인된 결과 사이트 개선 범위에 추가 반영한다. 이번에는 게임·서버·DB·Unity 실행을 변경하지 않았다.
+결과 정리 사이트를 점검해 가독성·기능 탐색·현재/과거 화면 구분을 개선했다. 로컬 구현·사이트 빌드·실제 브라우저 확인·Astra 종합 검수 통과. 기존 PR58의 승인된 결과 사이트 개선 범위에 5117b3f로 추가 반영했다. 이번에는 게임·서버·DB·Unity 실행을 변경하지 않았다.
 
 - 편집/실행 ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient
 - Git 정본 CAND: ROOT/Builds/C10-Delivery/source
@@ -25,3 +25,4 @@ CLIENTCOMPLETE01/r1(부모1793084867.526689/채널C0C9VFZMV43/지정사람U0C9QE
 구조/에셋 정리, HP/MP Delta 수정, Windows 빌드, 실제6구역 왕복·스킬·채팅·처치/EXP·재접속 상태 보존과 성공 거래/배송/대금수령을 확인했다. 전용 계정 테스트 데이터는 원본4테이블·부재행까지 복원했고 test1·사용자 몬스터 AI는 수정하지 않았다. 상세는 history/2026-10-27-client-completion/와 client-refactor/ 이력이다.
 
 마지막 게임 검증 뒤 Unity는Edit/clean,직접 켠Login/MainServer는정상종료했다. 이번 사이트 작업으로 게임 검사를 반복하지 않았다. standalone UI 전체 조작·모든 지연 조건의 조작감·레벨업/드롭/균형은 미확인이다. 로컬 복구 SQL/원본/WAL보관 근거는 ROOT/Builds/ClientCompletion/Evidence에 유지한다.
+전달: 사이트 점검의 새 Slack 부모1793095697.714729/완료 요약1793095732.252169. 5117b3f의 GitHub Actions 사이트 빌드40486089424 성공 확인. 정식 Pages 배포 성공으로 확대하지 않는다. 추가 승인 대기 없음,다음은 사용자 PR58 검토/화면 피드백이다.
