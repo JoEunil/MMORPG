@@ -16,3 +16,5 @@
 
 검증실행은직접영향3시나리오만테스트Agent단독Editor로완료했다. 초기default환경에서Pipeline/프로세스없음으로보고했으나부모require_escalated대조에서기존PID16472ready확인해격리된환경의발견제한으로정정했다. 기존도구심사경로로실행재위임(보안설정/권한변경없음). 실제결과는아래최종실행기록. 현재후보새PR게시승인없음.
 최종실행: unity_tester가실사용자도구심사경로에서지정3개PlayMode각1/1pass register.1229145/Escape.345245/Observation1.1186539s. 고유3/실행3/retry0/실서버호출0. 이전무관pass반복0. 최종Editor ready/Edit/Worldscene clean/compilingfalse/domainReloadfalse/합성Keyboard상태해제후장치제거확인. final-code-manifest81양사본해시불변. precheck기본격리NoInstances는이력으로남기고실제Editor있음을정정했으며서버/보안/권한설정변경0. 최종Astra검수통과: 제품필수수정/선택개선없음,기능탐색·낮은계층수·직렬화비교·직접영향검증충분. 마감중문서의진행표현을완료로수정(실제제품재변경없음). 물리키/실서버/playerbuild성공을뜻하지않음. 실제Agent434=154+280,토큰/비용N/A.
+
+게시 인계: 구현 커밋 c81d1eb. Unity Coordinator 앱 새 부모 1793078683.188189에 CLIENTREFACTOR01 게시 승인 요청. 앱 발신·본문·수신 등록을 확인했으며 승인 대기 중이다. push·PR 생성은 실행하지 않았다.
