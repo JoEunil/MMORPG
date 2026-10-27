@@ -291,15 +291,17 @@ namespace Mmorpg.Client
             for (int i = 0; i < count; i++)
             {
                 var update = updates[i];
-                if (update.fieldID != 0 && update.fieldID != 1 && update.fieldID != 4 && update.fieldID != 5 &&
-                    update.fieldID != 6 && update.fieldID != 7 && update.fieldID != 8) continue;
+                if (update.fieldID > 8) continue;
                 if (HasOwnFull && update.zoneInternalID == InternalID)
                 {
-                    if (update.fieldID == 0 || update.fieldID == 1)
+                    if (update.fieldID <= 3)
                     {
-                        if (update.fieldVal > (uint)(update.fieldID == 0 ? next.maxHp : next.maxMp))
+                        if (update.fieldVal > int.MaxValue)
                         { Fail("Invalid server character vitals."); return; }
-                        if (update.fieldID == 0) next.hp = (int)update.fieldVal; else next.mp = (int)update.fieldVal;
+                        if (update.fieldID == 0) next.hp = (int)update.fieldVal;
+                        else if (update.fieldID == 1) next.mp = (int)update.fieldVal;
+                        else if (update.fieldID == 2) next.maxHp = (int)update.fieldVal;
+                        else next.maxMp = (int)update.fieldVal;
                     }
                     else if (update.fieldID == 4) next.exp = update.fieldVal;
                     else if (update.fieldID == 5)
@@ -324,6 +326,8 @@ namespace Mmorpg.Client
                 {
                     if (update.fieldID == 0) state.hp = unchecked((int)update.fieldVal);
                     else if (update.fieldID == 1) state.mp = unchecked((int)update.fieldVal);
+                    else if (update.fieldID == 2) state.maxHp = unchecked((int)update.fieldVal);
+                    else if (update.fieldID == 3) state.maxMp = unchecked((int)update.fieldVal);
                     else if (update.fieldID == 4) state.exp = update.fieldVal;
                     else if (update.fieldID == 5)
                     {
@@ -345,6 +349,10 @@ namespace Mmorpg.Client
             }
             if (changed)
             {
+                // The server writes current values before maxima; validate the complete frame together.
+                if (next.hp < 0 || next.mp < 0 || next.maxHp < 0 || next.maxMp < 0 ||
+                    next.hp > next.maxHp || next.mp > next.maxMp)
+                { Fail("Invalid server character vitals."); return; }
                 if (!InsideZone(ZoneID, new Vector2(next.x, next.y)))
                 { Fail("Invalid server character position."); return; }
                 bool lostHp = next.hp < ownFull.hp;

@@ -1,0 +1,5 @@
+Read-only preflight confirmed designated test accounts only, normal mode:
+game.characters_inventory: 5011=present, 5012=present
+game.characters_currency: 5011=missing, 5012=missing
+bazaar.characters_diamond: 5011=missing, 5012=missing
+No INSERT/UPDATE/seed/reset/schema changes. Existing live inventory read after retry is successful with zero items.

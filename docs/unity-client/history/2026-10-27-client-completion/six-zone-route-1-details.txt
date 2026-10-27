@@ -1,0 +1,6 @@
+Actual local server; native UI login and queued InputSystem direction keys. No model/position/HP injection.
+BEGIN zone=1 position=(10.00, 10.00) frame=43527
+WAYPOINT expectedZone=2 actualZone=2 position=(210.15, 10.00) HP=10000 drift=0 maximumVisualServerDistance=0.9000015
+WAYPOINT expectedZone=3 actualZone=3 position=(410.14, 10.00) HP=10000 drift=0 maximumVisualServerDistance=0.8999939
+WAYPOINT expectedZone=6 actualZone=6 position=(410.14, 210.27) HP=10000 drift=0 maximumVisualServerDistance=0.9000015
+END zone=6 position=(410.14, 210.27) HP=10000

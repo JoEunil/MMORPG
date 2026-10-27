@@ -1,0 +1,3 @@
+Actual native GameView text input and UI send; passive local-server echo observer.
+Native text acknowledged; awaiting normal UI send click
+PASS actual server echo scope=0 sender=1

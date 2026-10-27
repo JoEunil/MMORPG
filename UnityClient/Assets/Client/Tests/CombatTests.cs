@@ -176,6 +176,71 @@ namespace Mmorpg.Client.Tests
         }
 
         [Test]
+        [Category("VitalDeltaRevision")]
+        public void OwnVitalDeltaAppliesCurrentAndMaximumTogetherIncludingBufferedEntryState()
+        {
+            using (var f = new CombatFixture())
+            {
+                // Match the server's current-before-maximum field order.
+                f.Delta(new DeltaUpdateField { zoneInternalID = 73, fieldID = 0, fieldVal = 125 },
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 1, fieldVal = 70 },
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 2, fieldVal = 150 },
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 3, fieldVal = 80 });
+                Assert.That(f.World.Stage, Is.EqualTo(WorldStage.InWorld));
+                Assert.That(f.Vitals.text, Does.Contain("HP 125 / 150").And.Contain("MP 70 / 80"));
+                Assert.That(f.World.CanAct, Is.True);
+
+                // Validation also waits for the current values when maxima arrive first.
+                f.Delta(new DeltaUpdateField { zoneInternalID = 73, fieldID = 2, fieldVal = 90 },
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 3, fieldVal = 40 },
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 0, fieldVal = 80 },
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 1, fieldVal = 30 });
+                Assert.That(f.Vitals.text, Does.Contain("HP 80 / 90").And.Contain("MP 30 / 40"));
+
+                Invoke(f.World, "ResetWorld");
+                typeof(WorldScreen).GetProperty("Stage").GetSetMethod(true)
+                    .Invoke(f.World, new object[] { WorldStage.Entering });
+                Invoke(f.World, "FullReceived", (ushort)1, new[] { new FullStateField
+                {
+                    zoneInternalID = 74, hp = 100, mp = 50, maxHp = 100, maxMp = 50,
+                    x = 10, y = 10, dir = 3
+                }});
+                f.Delta(new DeltaUpdateField { zoneInternalID = 74, fieldID = 0, fieldVal = 135 },
+                    new DeltaUpdateField { zoneInternalID = 74, fieldID = 1, fieldVal = 60 },
+                    new DeltaUpdateField { zoneInternalID = 74, fieldID = 2, fieldVal = 160 },
+                    new DeltaUpdateField { zoneInternalID = 74, fieldID = 3, fieldVal = 75 });
+                Assert.That(f.World.HasOwnFull, Is.False, "A buffered Full is not published before its matching Zone.");
+                Invoke(f.World, "ZoneReceived", (ushort)1, 0UL, 74U, 10f, 10f);
+                Assert.That(f.World.Stage, Is.EqualTo(WorldStage.InWorld));
+                Assert.That(f.Vitals.text, Does.Contain("HP 135 / 160").And.Contain("MP 60 / 75"));
+            }
+        }
+
+        [Test]
+        [Category("VitalDeltaRevision")]
+        public void InvalidOwnVitalDeltaFailsWithoutPublishingAPartiallyAppliedFrame()
+        {
+            using (var f = new CombatFixture())
+            {
+                int published = 0;
+                f.World.WorldStateChanged += () => { if (f.World.HasOwnFull) published++; };
+                f.Delta(new DeltaUpdateField { zoneInternalID = 73, fieldID = 4, fieldVal = 123 },
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 2, fieldVal = 90 });
+                Assert.That(f.World.Stage, Is.EqualTo(WorldStage.Failed));
+                Assert.That(f.World.HasOwnFull, Is.False);
+                Assert.That(published, Is.Zero, "Neither EXP nor the invalid maximum can publish before validation.");
+                Assert.That(f.Vitals.text, Is.Empty);
+            }
+            using (var f = new CombatFixture())
+            {
+                f.Delta(new DeltaUpdateField { zoneInternalID = 73, fieldID = 3, fieldVal = uint.MaxValue });
+                Assert.That(f.World.Stage, Is.EqualTo(WorldStage.Failed), "Negative signed maxima are invalid wire values.");
+                Assert.That(f.World.HasOwnFull, Is.False);
+                Assert.That(f.Vitals.text, Is.Empty);
+            }
+        }
+
+        [Test]
         public void OwnHpMpDeltaStopsPendingActionsAtZero_AndKeepsServerVitals()
         {
             using (var f = new CombatFixture())
