@@ -29,7 +29,7 @@ Windows player의 프로세스/창/그래픽 초기화까지 확인했으나 새
 
 Unity ROOT/6000.0.47f1/Pipeline7800은 Edit/clean, 실입력 허용. 빌드의 preload 설정 부수효과는 원래 SHA256으로 정확히 복원했다. 직접 시작한 게임 서버는 q로 정상 종료(exit0), Login은 Ctrl+C로 중단,9999/3000 listen 없음. 기존 MySQL/Redis는 유지한다. 미리보기8791은 유지한다.
 
-게시 전 Unity Coordinator 앱으로 이번 확대 범위의 새 승인 요청을 준비한다. 기존 CLIENTREFACTOR01/r2(부모1793078683.188189)는 이번 추가 범위 승인으로 재사용하지 않는다. 새 요청 등록 후 기존 부모에 대체 링크를 남긴다. 아직 push·새 PR·병합·Pages 배포하지 않았다.
+Unity Coordinator 앱으로 CLIENTCOMPLETE01/r1 게시 승인 요청을 등록했다. 부모1793084867.526689 / 채널C0C9VFZMV43 / 지정 사람U0C9QEUHPMK / 명령: 승인 CLIENTCOMPLETE01. 수신기PID11312 listening·고정 Coordinator·health3초 이내·threads 등록 확인. 아직 회신 미소비. 기존 CLIENTREFACTOR01/r2는 대체 안내1793084885.608529를 남겼으며 재사용하지 않는다. 완료 채널 요약1793084886.276999. 아직 push·새 PR·병합·Pages 배포하지 않았다.
 
 ## 근거
 
