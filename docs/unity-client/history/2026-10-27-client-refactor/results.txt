@@ -1,0 +1,18 @@
+클라이언트 기능별 구조 리팩토링 — 2026-10-27
+
+범위: 사용자 명시 요청으로 현재 UnityClient/Assets 자체81개 C#·저작/씬·데이터·아트경로·테스트를 기능별로 정리. ClientCore/DLL/서버/몬스터AI/wire/DB/경제/게임수치 제외. PR57 미병합이므로 기준9c2aa23,새 codex/client-feature-structure를 별도 생성. master기준누적diff와이번리팩토링diff를구분한다.
+
+계획 자문: Astra 최초수정필요→asmdef유지GUID·제거대상/타입별MovedFrom/전체직렬화비교/시장mode전이/PR57의존을명시해후속통과. 단일파일마다폴더만들지않고 Runtime/UI(7)·World(3)·Presentation(3)·Content(5)로구성. Editor24/Tests39는한곳. 별도기능별asmdef/Manager/Entity계층/DI프레임워크없음.
+
+구조: Mmorpg.Client / Mmorpg.Client.Editor / Mmorpg.Client.Tests 3asmdef는C02계열GUID계승;C01계열3asmdef와비어있는옛폴더만제거. 919file/meta GUID유지,Source/Tests기능명·namespace/reflection/MenuItem/현재경로갱신. 직렬화UObject15에정확MovedFrom,field/enum순서값/SceneGO이름/ResourcesItems키보존. BuildProvenance원문은Login/World명으로충돌없이보존. 현Tools에서이동경로/타입참조없어수정0. 새Scenes는Login/World이며기존SampleScene빌드설정은임의변경하지않았다.
+
+사전보존: ROOT/CAND의줄바꿈차이1064개와별도YAML공백/6개재질legacy설정차이가있었다. 새리팩토링에아트값차이를섞지않도록각사본원래bytes를보존했다. CAND비코드와meta1754개를원래Gitblob과대조(정상CRLF정규화). NativeAssetDatabase는3개SO의m_Name만새파일표시이름으로변경해Git사본도그세이름만맞춤. 원본backup root-before.zip/125MB는Builds/Evidence에보존,Git추가안함.
+
+도구실패와해결: 첫AssetDatabase batch는C02→Client 상위folder1개이동후캐시의부모GUID갱신지연으로중단(코드쓰기0). 실제상태확인뒤폴더이동/폴더생성을먼저확정하고개별file이동을batch화해93추가move/84source write/명시삭제만완료. CAND개별mirror는빈Tests/C02폴더가남아cleanup단계중단,내용이비었음을확인해rmdir만한뒤완료. 검증유틸의README줄바꿈분류누락을수정해비코드blob대조완료. 제품실패로숨기거나불용데이터를삭제하지않았다.
+
+구조검증: Native두씬preview-load+4Prefab+4SO의19019객체 SerializedObject필드·UnityEvent대상/메서드·Prefaboverride 전후차이0/missing0/unsupported0. 초기사본의Inspector ObjectRef.m_FileID(인스턴스ID),String문자배열을중복비교해차이가나왔으나부모GlobalObjectId/전체String값으로동일참조·값을이미검사하므로내부중복children만제외해정정했다. 의도된타입/어셈블리/표시이름만정규화,실제설정값차이를무시하지않음. 비교유틸의중복prefix검사가느려도구를중단·선형처리로수정했으며제품반복실행아님. 4개Exporter후보출력은내용동일:3개byte동일/WorldMap.inc는GeneratedBy FQN주석1줄만달라짐. 실제서버출력·실행변경0. 실제로드어셈블리3개/컴파일errors0. 코드81개양사본동일.
+
+내용정리: GameUiInput에기존TMP포커스정책공유(EventSystem없음차단/앱포커스·키·패널가드·Escape별도규칙보존). MarketView(Browse/MyListings/Sell)단일enum,최종표시1회계산. Close MyListings→Browse/Sell→Sell,진행중write재열기모드유지/확정등록열림MyListings전환·결과불명/닫힌UI응답수명불변. ObservedWorld내visual설정3helper/즉시파괴7경로helper만통합,생성순서·사망유예·telegraphdispose·Full/Delta별의미유지. 직렬화필드선언변경없음. 독립Sol리뷰차단0/필수수정0.
+
+검증실행은직접영향3시나리오만테스트Agent단독Editor로완료했다. 초기default환경에서Pipeline/프로세스없음으로보고했으나부모require_escalated대조에서기존PID16472ready확인해격리된환경의발견제한으로정정했다. 기존도구심사경로로실행재위임(보안설정/권한변경없음). 실제결과는아래최종실행기록. 현재후보새PR게시승인없음.
+최종실행: unity_tester가실사용자도구심사경로에서지정3개PlayMode각1/1pass register.1229145/Escape.345245/Observation1.1186539s. 고유3/실행3/retry0/실서버호출0. 이전무관pass반복0. 최종Editor ready/Edit/Worldscene clean/compilingfalse/domainReloadfalse/합성Keyboard상태해제후장치제거확인. final-code-manifest81양사본해시불변. precheck기본격리NoInstances는이력으로남기고실제Editor있음을정정했으며서버/보안/권한설정변경0. 최종Astra검수통과: 제품필수수정/선택개선없음,기능탐색·낮은계층수·직렬화비교·직접영향검증충분. 마감중문서의진행표현을완료로수정(실제제품재변경없음). 물리키/실서버/playerbuild성공을뜻하지않음. 실제Agent434=154+280,토큰/비용N/A.

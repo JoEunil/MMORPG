@@ -1,3 +1,5 @@
+현재 클라이언트 파일 경로는 기능명 구조로 갱신했습니다. 아래 계약 분석·운영 기록은 작성 당시 원문이므로 현재 입력/실행 상태는 실제 코드와 HANDOFF를 확인합니다.
+
 # C06 — 월드 채팅 계약과 구현 범위
 
 2026-10-19, 서버 계약 담당. 이 문서는 소스 정적 분석이며 기능 테스트 결과가 아니다. 제품 코드·서비스·DB·Unity Editor는 변경하지 않았다.
@@ -13,7 +15,7 @@
 - HEAD `1d5a3d69074a1de6bafde30f1ec4dfe5cac1a951`, 작업 브랜치 `codex/unity-ai-client`.
 - R01의 미커밋 NonZoneHandler/StateManager/LobbyZone/worker 변경과 기존 ClientCore 미커밋 호환 변경이 있는 상태다. 이를 보존한다. 채팅 선언/ChatThreadPool/ProfileCache/NetPacketFilter에는 현재 해당 파일 diff가 없다. Packet.cs에는 기존 Full 호환 변경이 있다.
 - HANDOFF의 최신 실행 서버는 R01 후보이며, 후보 파일 `UnityClient/Builds/R01-Candidate/bin/MainServer.exe`의 실제 SHA256은 `01C6261AB5C3448E2BA5F336CE70FB20E4DBA4B9ED47AD70002F22C88594D108`로 인계와 같다. 이번 역할은 서버 프로세스 재기동/실패킷 동작을 관찰하지 않았으므로 파일 해시 일치만으로 실행 소스 동일성을 새로 보증하지 않는다.
-- 근거: `CoreLib/PacketTypes.h`, `Config.h`, `NonZoneHandler.cpp`, `ChatThreadPool.cpp/.h`, `PacketWriter.cpp`, `ZoneState_Snapshots.cpp`, `CacheLib/ProfileCache.cpp`, `NetLibrary/ClientContext.cpp`, `NetPacketFilter.cpp`, `ClientCore/PacketHelper/Packet.cs`, `Network/Handler.cs`, `Services/NetworkService.cs`, `ViewModel.cs`, `UnityClient/Assets/C02/C02WorldScreen.cs`, `C05CombatScreen.cs`.
+- 근거: `CoreLib/PacketTypes.h`, `Config.h`, `NonZoneHandler.cpp`, `ChatThreadPool.cpp/.h`, `PacketWriter.cpp`, `ZoneState_Snapshots.cpp`, `CacheLib/ProfileCache.cpp`, `NetLibrary/ClientContext.cpp`, `NetPacketFilter.cpp`, `ClientCore/PacketHelper/Packet.cs`, `Network/Handler.cs`, `Services/NetworkService.cs`, `ViewModel.cs`, `UnityClient/Assets/Client/Runtime/World/WorldScreen.cs`, `CombatScreen.cs`.
 
 ## 실제 wire 계약
 

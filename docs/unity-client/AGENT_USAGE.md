@@ -1,24 +1,24 @@
 ## 공개 집계
 
 기준일: 2026-10-27
-누적 신규: 151
-누적 재활성화: 272
+누적 신규: 154
+누적 재활성화: 280
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-27
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 6 | 3 |
 | server_analyst | 서버 분석 Agent | 17 | 43 |
-| client_implementer | 구현 Agent | 50 | 64 |
+| client_implementer | 구현 Agent | 51 | 66 |
 | asset_artist | 아트 Agent | 24 | 32 |
-| code_reviewer | 리뷰 Agent | 37 | 101 |
-| quality_reviewer | 종합 검수 Agent | 3 | 21 |
-| unity_tester | 테스트 Agent | 2 | 3 |
+| code_reviewer | 리뷰 Agent | 38 | 103 |
+| quality_reviewer | 종합 검수 Agent | 3 | 24 |
+| unity_tester | 테스트 Agent | 3 | 4 |
 | progress_documenter | 기록 Agent | 4 | 3 |
 | decision_curator | 의사결정 지원 Agent | 7 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체423회(신규151·재활성화272)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체434회(신규154·재활성화280)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -690,3 +690,6 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 
 ## 차분한 로그인 배경과 비밀번호 제출 — 2026-10-27
 실제 신규1: restrained_login_backdrop(아트 Agent/Sol high), built-in imagegen편집1회와원본·생성근거보존. 실제 후속4: next_client_gap_scan(리뷰 Agent,진입누락조사), chat_panel_recovery(구현 Agent/Sol medium,비번Enter연결), chat_panel_recovery_review(리뷰 Agent/Sol medium,관련3파일차단0), client_session_plan_gate(종합 검수 Agent/Astra medium,고정13파일·두해상도전후확인통과/필수0). 누적423=151+272. 총괄의nativeSprite연결·단일테스트실행·렌더·문서·Slack수신기복구는활성화제외. 신규callbackfixture1개첫실행pass,기존3tests반복0. 물리Enter/실서버로그인/playerbuild미검증. 토큰·비용N/A.
+
+## 클라이언트 기능별 구조 리팩토링 — 2026-10-27
+실제 신규3: client_refactor_logic_scan(리뷰 Agent/explorer,실제중복분석), observed_visual_cleanup(구현 Agent/Sol medium,관찰표현수명정리), client_refactor_batch_verify(테스트 Agent/Luna medium,직접영향Native검사3개). 실제 후속8: next_client_gap_scan1(리뷰,구조/참조매핑), chat_panel_recovery2(구현/Sol medium,81소스이동준비·입력/시장정리), chat_panel_recovery_review1(리뷰/Sol medium,독립차단0), client_session_plan_gate3(종합/Astra medium,계획보완·후속통과·최종통과), client_refactor_batch_verify1(테스트,격리환경발견제한대조후허용된실사용자CLI경로실행). 누적434=154+280. 역할과실제신규/후속만집계하며총괄의native이동·직렬화/Exporter비교·문서/Git준비는제외. Native검사실행3/고유3/retry0·동결81hash불변,물리키/실서버/playerbuild미검증. 토큰/비용N/A.

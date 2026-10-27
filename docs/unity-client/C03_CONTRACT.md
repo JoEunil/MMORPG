@@ -1,3 +1,5 @@
+현재 클라이언트 파일 경로는 기능명 구조로 갱신했습니다. 아래 계약 분석·운영 기록은 작성 당시 원문이므로 현재 입력/실행 상태는 실제 코드와 HANDOFF를 확인합니다.
+
 # C03 — 한 Zone 내 본인 클릭 이동 계약
 
 조사: 2026-10-18 KST. 목표는 C02의 실제 Zone/일치하는 본인 Full 이후 클릭 지점을 향해 이동 요청하고 서버 확정 위치를 표시하는 것이다. 몬스터·전투·타 플레이어·Zone 전환·새 지형 충돌은 제외한다. 제품 코드/설정/DB/바이너리 수정·빌드·서비스 실행·Editor 조작·Unity 실행/입력 테스트를 하지 않았다. 입력 검증은 사용자 재개 뒤 배치 대상이다.
@@ -66,7 +68,7 @@
 
 최소 후보(구현자는 Coordinator가 별도 배정):
 
-- `UnityClient/Assets/C02/C02WorldScreen.cs` 또는 한 개 배정된 이동 컴포넌트: 목표/지면 클릭/UI 배제/50ms 제한/한 본인 표시 소유자/dir Delta/유한성·종료 정리. 실제 필요 참조만 연결한다.
+- `UnityClient/Assets/Client/Runtime/World/WorldScreen.cs` 또는 한 개 배정된 이동 컴포넌트: 목표/지면 클릭/UI 배제/50ms 제한/한 본인 표시 소유자/dir Delta/유한성·종료 정리. 실제 필요 참조만 연결한다.
 - `ClientCore/ViewData.cs`: 최초 waitSkillSlot=255, UpdateMove의 dir/유한 좌표 경계 검증. 기존 lock·마지막 값 합치기는 유지한다.
 - `ClientCore/ViewModel.cs`: 취소 뒤 SendUpdate 중지와 실제 ACTION 송신 실패의 사용자 연결 실패 전달이 필요할 경우 해당 경계만.
 - `ClientCore/Services/NetworkService.cs`: 현재 Action이 오류를 로그로 삼키므로 C03에서 송신 실패를 기존 실패 경계로 전달하는 최소 변경. 변경 시 ClientTick에서 미처리 예외로 스레드를 죽이지 않도록 ViewModel과 함께 다룬다.
