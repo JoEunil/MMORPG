@@ -1,0 +1,1 @@
+Astra medium integrated gate PASS. Product changes frozen; required product fixes0. Prior stale handoff replaced with current v2/data-only state and prior text preserved as previous-handoff.md. Approval r2 remains separate.

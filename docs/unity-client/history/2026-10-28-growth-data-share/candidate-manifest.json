@@ -1,0 +1,12 @@
+{
+  "CoreLib/GrowthData.h": "6e8c7572c36d0545a6209fbf322ad47c8b67839f08f17900d4846e306f6a449c",
+  "CoreLib/Growth.inc": "aa3340ed91628aeb336018f8c230fe9eeb83b45c844b3f8316e93d8b2dc914ff",
+  "CoreLib/CoreLib.vcxproj": "d61d2710ed705127f0c05560883744d95f86b5df3b3d5d561719c4cfe80b8895",
+  "CoreLib/CoreLib.vcxproj.filters": "5bce9e7dd89832612c6b92dcbde06d59ece35f89b4fa7b8b294c126cb1d69dc3",
+  "tools/Export-ServerContent.cpp": "eefd326d27055ed9b781c42d923d7da2740a60f97293ad70ef1993162a88a9d0",
+  "UnityClient/Exports/ClientData/ServerContent.json": "62dd7ec8180848748c07008a033c3e9abeb95f12fdaf67d8ca3b88809ef25671",
+  "UnityClient/Assets/Client/Runtime/Content/ServerContent.cs": "44066063bf90a663a4b0c1c0c667df1c533edb8a9e35fb891c8376db7530d54e",
+  "UnityClient/Assets/Client/Editor/ServerContentImport.cs": "27131ddd75cb1a00e42a9b20ec5169c6d4d42bb5eaab5737df3db18e25e0dfc0",
+  "UnityClient/Assets/Client/Tests/ContentImportTests.cs": "a9567d20e8f13bd26071f4d62e7e8eeb23280d1ca41ce061ce17681d43cb83e9",
+  "UnityClient/Assets/Client/Content/ServerContent.asset": "a25925710d57f6d9f8822002f574e345c4c269c4c839a16ab0aa7d15b316a4cb"
+}

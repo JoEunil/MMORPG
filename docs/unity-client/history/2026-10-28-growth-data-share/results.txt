@@ -1,0 +1,5 @@
+성장 Data 공유 추가분
+서버 GrowthData.h/Growth.inc의3필드100행을 기존 exporter의 JSON formatVersion2와 Unity importer로 공유. 초기 튜닝안, 실제 승급 미구현.
+구현담당 MSVC exporter빌드/100행/기존catalog 동일/결정성검사 통과. 기존 IO교체구현 불변으로 과거통과 재실행0.
+독립Sol 코드리뷰 PASS. 실제 ROOT Unity6000.0.47f1 변경된 ContentImportDirection2/2 통과. 기존asset 직접import maxLevel100/rows100/dirtyfalse/playfalse, 기존필드불변 및 JSON성장전체일치. meta 원본바이트불변/GUID보존. CAND와ROOT의 기존asset 줄바꿈차이만 정규화후 preimage대조하고 Editor생성asset을 CAND에반영.
+CoreLib 전체빌드·게임실입력·게임서버·DB는 추가미실행(미변경). 기존스킬/몬스터 및 사용자AI 변경0. Balance 미평가.

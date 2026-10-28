@@ -123,6 +123,12 @@
     <ClInclude Include="Skills.inc">
       <Filter>Data</Filter>
     </ClInclude>
+    <ClInclude Include="GrowthData.h">
+      <Filter>Data</Filter>
+    </ClInclude>
+    <ClInclude Include="Growth.inc">
+      <Filter>Data</Filter>
+    </ClInclude>
     <ClInclude Include="Monsters.inc">
       <Filter>Data</Filter>
     </ClInclude>

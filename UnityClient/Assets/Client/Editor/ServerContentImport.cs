@@ -27,8 +27,8 @@ namespace Mmorpg.Client.Editor
                 snapshot = JObject.Load(reader, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
                 if (reader.Read()) throw new InvalidOperationException("Unexpected data after the server content snapshot.");
             }
-            if (Integer(snapshot, "formatVersion", 1) != 1)
-                throw new InvalidOperationException("Only server content format version 1 is supported.");
+            if (Integer(snapshot, "formatVersion", 2) != 2)
+                throw new InvalidOperationException("Only server content format version 2 is supported.");
             var skills = new ServerContent.RingSkill[5];
             var skillRows = Array(snapshot, "skills");
             if (skillRows.Count != skills.Length) throw new InvalidOperationException("Skill IDs 0 to 4 are required exactly once.");
@@ -84,11 +84,37 @@ namespace Mmorpg.Client.Editor
                 monsters[id] = monster;
             }
 
+            var growthRow = Field(snapshot, "growth");
+            int maxLevel = (int)Integer(growthRow, "maxLevel", ushort.MaxValue);
+            var levelRows = Array(growthRow, "levels");
+            if (maxLevel == 0 || levelRows.Count != maxLevel)
+                throw new InvalidOperationException("Growth requires every level from 1 to a positive maximum level.");
+            var growth = new ServerContent.Growth { maxLevel = maxLevel, levels = new ServerContent.GrowthLevel[maxLevel] };
+            foreach (var row in levelRows)
+            {
+                int level = (int)Integer(row, "level", (uint)maxLevel);
+                if (level == 0 || growth.levels[level - 1] != null)
+                    throw new InvalidOperationException("Growth levels must be present exactly once from 1 to the maximum level.");
+                growth.levels[level - 1] = new ServerContent.GrowthLevel
+                {
+                    level = level, requiredTotalExp = Integer(row, "requiredTotalExp"),
+                    maxHpIncrease = Integer(row, "maxHpIncrease", int.MaxValue)
+                };
+            }
+            for (int i = 0; i < growth.levels.Length; i++)
+            {
+                if (i == 0 && (growth.levels[i].requiredTotalExp != 0 || growth.levels[i].maxHpIncrease != 0))
+                    throw new InvalidOperationException("Growth level 1 requires zero total EXP and zero HP increase.");
+                if (i > 0 && growth.levels[i].requiredTotalExp <= growth.levels[i - 1].requiredTotalExp)
+                    throw new InvalidOperationException("Growth total EXP must strictly increase by level.");
+            }
+
             // All parsing and validation finish before replacing any existing asset fields.
             var oldRing = target.ring;
             var oldMonster = target.monster0;
             var oldSkills = target.otherSkills;
             var oldMonsters = target.otherMonsters;
+            var oldGrowth = target.growth;
             bool wasDirty = EditorUtility.IsDirty(target);
             try
             {
@@ -96,6 +122,7 @@ namespace Mmorpg.Client.Editor
                 target.otherSkills = new[] { skills[0], skills[2], skills[3], skills[4] };
                 target.monster0 = monsters[0];
                 target.otherMonsters = new[] { monsters[1], monsters[2] };
+                target.growth = growth;
                 EditorUtility.SetDirty(target);
                 AssetDatabase.SaveAssetIfDirty(target);
             }
@@ -106,6 +133,7 @@ namespace Mmorpg.Client.Editor
                 target.monster0 = oldMonster;
                 target.otherSkills = oldSkills;
                 target.otherMonsters = oldMonsters;
+                target.growth = oldGrowth;
                 if (wasDirty) EditorUtility.SetDirty(target);
                 else EditorUtility.ClearDirty(target);
                 throw;

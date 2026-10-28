@@ -1,24 +1,24 @@
 ## 공개 집계
 
 기준일: 2026-10-28
-누적 신규: 180
-누적 재활성화: 294
+누적 신규: 181
+누적 재활성화: 297
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-28
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 7 | 4 |
 | server_analyst | 서버 분석 Agent | 21 | 46 |
-| client_implementer | 구현 Agent | 55 | 68 |
+| client_implementer | 구현 Agent | 55 | 70 |
 | asset_artist | 아트 Agent | 24 | 32 |
-| code_reviewer | 리뷰 Agent | 45 | 105 |
-| quality_reviewer | 종합 검수 Agent | 7 | 28 |
+| code_reviewer | 리뷰 Agent | 45 | 106 |
+| quality_reviewer | 종합 검수 Agent | 8 | 28 |
 | unity_tester | 테스트 Agent | 4 | 4 |
 | progress_documenter | 기록 Agent | 8 | 4 |
 | decision_curator | 의사결정 지원 Agent | 8 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체474회(신규180·재활성화294)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체478회(신규181·재활성화297)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -739,3 +739,7 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 ## 서버 Data 정본과 Unity 가져오기 — 2026-10-28
 
 실제 신규6: content_pipeline_change_analysis(서버 분석/Sol medium), exporter_consistency_audit(리뷰 책임/explorer·실행모델미확인), server_owned_content_export와unity_server_content_import(구현/Sol medium 각1), content_direction_code_review(리뷰/Sol medium), content_pipeline_quality_gate(종합 검수/Astra medium). 실제 후속4: server_owned_content_export2(고정배열 저작경계·파일교체 실패 수정), content_direction_code_review1(P2 재검토통과), content_pipeline_quality_gate1(현재 인계의 반대방향 문구 수정 재검수통과). 누적474=신규180+후속294, 토큰·비용N/A. Native exporter 검사는 구현담당 실제실행이며 총괄의 CoreLib빌드·Unity2검사·실제assetimport·수신기복구/문서통합은 활성화 제외. 게임런타임·성장구현·맵/AI변경은 뜻하지 않는다.
+
+## 성장 Data 공유 — 2026-10-28
+
+실제 후속3: server_owned_content_export·unity_server_content_import(구현/Sol medium 각1), content_direction_code_review(리뷰/Sol medium 1). 실제 신규1: growth_data_quality_gate(종합 검수/Astra medium). 누적478=신규181+후속297, 토큰·비용N/A. 이전 quality 인스턴스는 현재 실행목록에 없어 새 인스턴스를 배정했다. 총괄의 Unity2검사·기존asset 가져오기·문서통합은 활성화 제외. 성장표 전달만 구현했으며 실제 승급·HP 적용·DB·AI 변경은 아니다.

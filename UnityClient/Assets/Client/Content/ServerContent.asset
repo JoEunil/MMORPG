@@ -12,6 +12,309 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5ce75f557b1f421c8fc8d161c7f09ea9, type: 3}
   m_Name: ServerContent
   m_EditorClassIdentifier: 
+  growth:
+    maxLevel: 100
+    levels:
+    - level: 1
+      requiredTotalExp: 0
+      maxHpIncrease: 0
+    - level: 2
+      requiredTotalExp: 50
+      maxHpIncrease: 500
+    - level: 3
+      requiredTotalExp: 150
+      maxHpIncrease: 500
+    - level: 4
+      requiredTotalExp: 300
+      maxHpIncrease: 500
+    - level: 5
+      requiredTotalExp: 500
+      maxHpIncrease: 500
+    - level: 6
+      requiredTotalExp: 750
+      maxHpIncrease: 500
+    - level: 7
+      requiredTotalExp: 1050
+      maxHpIncrease: 500
+    - level: 8
+      requiredTotalExp: 1400
+      maxHpIncrease: 500
+    - level: 9
+      requiredTotalExp: 1800
+      maxHpIncrease: 500
+    - level: 10
+      requiredTotalExp: 2250
+      maxHpIncrease: 500
+    - level: 11
+      requiredTotalExp: 2750
+      maxHpIncrease: 500
+    - level: 12
+      requiredTotalExp: 3300
+      maxHpIncrease: 500
+    - level: 13
+      requiredTotalExp: 3900
+      maxHpIncrease: 500
+    - level: 14
+      requiredTotalExp: 4550
+      maxHpIncrease: 500
+    - level: 15
+      requiredTotalExp: 5250
+      maxHpIncrease: 500
+    - level: 16
+      requiredTotalExp: 6000
+      maxHpIncrease: 500
+    - level: 17
+      requiredTotalExp: 6800
+      maxHpIncrease: 500
+    - level: 18
+      requiredTotalExp: 7650
+      maxHpIncrease: 500
+    - level: 19
+      requiredTotalExp: 8550
+      maxHpIncrease: 500
+    - level: 20
+      requiredTotalExp: 9500
+      maxHpIncrease: 500
+    - level: 21
+      requiredTotalExp: 10500
+      maxHpIncrease: 500
+    - level: 22
+      requiredTotalExp: 11550
+      maxHpIncrease: 500
+    - level: 23
+      requiredTotalExp: 12650
+      maxHpIncrease: 500
+    - level: 24
+      requiredTotalExp: 13800
+      maxHpIncrease: 500
+    - level: 25
+      requiredTotalExp: 15000
+      maxHpIncrease: 500
+    - level: 26
+      requiredTotalExp: 16250
+      maxHpIncrease: 500
+    - level: 27
+      requiredTotalExp: 17550
+      maxHpIncrease: 500
+    - level: 28
+      requiredTotalExp: 18900
+      maxHpIncrease: 500
+    - level: 29
+      requiredTotalExp: 20300
+      maxHpIncrease: 500
+    - level: 30
+      requiredTotalExp: 21750
+      maxHpIncrease: 500
+    - level: 31
+      requiredTotalExp: 23250
+      maxHpIncrease: 500
+    - level: 32
+      requiredTotalExp: 24800
+      maxHpIncrease: 500
+    - level: 33
+      requiredTotalExp: 26400
+      maxHpIncrease: 500
+    - level: 34
+      requiredTotalExp: 28050
+      maxHpIncrease: 500
+    - level: 35
+      requiredTotalExp: 29750
+      maxHpIncrease: 500
+    - level: 36
+      requiredTotalExp: 31500
+      maxHpIncrease: 500
+    - level: 37
+      requiredTotalExp: 33300
+      maxHpIncrease: 500
+    - level: 38
+      requiredTotalExp: 35150
+      maxHpIncrease: 500
+    - level: 39
+      requiredTotalExp: 37050
+      maxHpIncrease: 500
+    - level: 40
+      requiredTotalExp: 39000
+      maxHpIncrease: 500
+    - level: 41
+      requiredTotalExp: 41000
+      maxHpIncrease: 500
+    - level: 42
+      requiredTotalExp: 43050
+      maxHpIncrease: 500
+    - level: 43
+      requiredTotalExp: 45150
+      maxHpIncrease: 500
+    - level: 44
+      requiredTotalExp: 47300
+      maxHpIncrease: 500
+    - level: 45
+      requiredTotalExp: 49500
+      maxHpIncrease: 500
+    - level: 46
+      requiredTotalExp: 51750
+      maxHpIncrease: 500
+    - level: 47
+      requiredTotalExp: 54050
+      maxHpIncrease: 500
+    - level: 48
+      requiredTotalExp: 56400
+      maxHpIncrease: 500
+    - level: 49
+      requiredTotalExp: 58800
+      maxHpIncrease: 500
+    - level: 50
+      requiredTotalExp: 61250
+      maxHpIncrease: 500
+    - level: 51
+      requiredTotalExp: 63750
+      maxHpIncrease: 500
+    - level: 52
+      requiredTotalExp: 66300
+      maxHpIncrease: 500
+    - level: 53
+      requiredTotalExp: 68900
+      maxHpIncrease: 500
+    - level: 54
+      requiredTotalExp: 71550
+      maxHpIncrease: 500
+    - level: 55
+      requiredTotalExp: 74250
+      maxHpIncrease: 500
+    - level: 56
+      requiredTotalExp: 77000
+      maxHpIncrease: 500
+    - level: 57
+      requiredTotalExp: 79800
+      maxHpIncrease: 500
+    - level: 58
+      requiredTotalExp: 82650
+      maxHpIncrease: 500
+    - level: 59
+      requiredTotalExp: 85550
+      maxHpIncrease: 500
+    - level: 60
+      requiredTotalExp: 88500
+      maxHpIncrease: 500
+    - level: 61
+      requiredTotalExp: 91500
+      maxHpIncrease: 500
+    - level: 62
+      requiredTotalExp: 94550
+      maxHpIncrease: 500
+    - level: 63
+      requiredTotalExp: 97650
+      maxHpIncrease: 500
+    - level: 64
+      requiredTotalExp: 100800
+      maxHpIncrease: 500
+    - level: 65
+      requiredTotalExp: 104000
+      maxHpIncrease: 500
+    - level: 66
+      requiredTotalExp: 107250
+      maxHpIncrease: 500
+    - level: 67
+      requiredTotalExp: 110550
+      maxHpIncrease: 500
+    - level: 68
+      requiredTotalExp: 113900
+      maxHpIncrease: 500
+    - level: 69
+      requiredTotalExp: 117300
+      maxHpIncrease: 500
+    - level: 70
+      requiredTotalExp: 120750
+      maxHpIncrease: 500
+    - level: 71
+      requiredTotalExp: 124250
+      maxHpIncrease: 500
+    - level: 72
+      requiredTotalExp: 127800
+      maxHpIncrease: 500
+    - level: 73
+      requiredTotalExp: 131400
+      maxHpIncrease: 500
+    - level: 74
+      requiredTotalExp: 135050
+      maxHpIncrease: 500
+    - level: 75
+      requiredTotalExp: 138750
+      maxHpIncrease: 500
+    - level: 76
+      requiredTotalExp: 142500
+      maxHpIncrease: 500
+    - level: 77
+      requiredTotalExp: 146300
+      maxHpIncrease: 500
+    - level: 78
+      requiredTotalExp: 150150
+      maxHpIncrease: 500
+    - level: 79
+      requiredTotalExp: 154050
+      maxHpIncrease: 500
+    - level: 80
+      requiredTotalExp: 158000
+      maxHpIncrease: 500
+    - level: 81
+      requiredTotalExp: 162000
+      maxHpIncrease: 500
+    - level: 82
+      requiredTotalExp: 166050
+      maxHpIncrease: 500
+    - level: 83
+      requiredTotalExp: 170150
+      maxHpIncrease: 500
+    - level: 84
+      requiredTotalExp: 174300
+      maxHpIncrease: 500
+    - level: 85
+      requiredTotalExp: 178500
+      maxHpIncrease: 500
+    - level: 86
+      requiredTotalExp: 182750
+      maxHpIncrease: 500
+    - level: 87
+      requiredTotalExp: 187050
+      maxHpIncrease: 500
+    - level: 88
+      requiredTotalExp: 191400
+      maxHpIncrease: 500
+    - level: 89
+      requiredTotalExp: 195800
+      maxHpIncrease: 500
+    - level: 90
+      requiredTotalExp: 200250
+      maxHpIncrease: 500
+    - level: 91
+      requiredTotalExp: 204750
+      maxHpIncrease: 500
+    - level: 92
+      requiredTotalExp: 209300
+      maxHpIncrease: 500
+    - level: 93
+      requiredTotalExp: 213900
+      maxHpIncrease: 500
+    - level: 94
+      requiredTotalExp: 218550
+      maxHpIncrease: 500
+    - level: 95
+      requiredTotalExp: 223250
+      maxHpIncrease: 500
+    - level: 96
+      requiredTotalExp: 228000
+      maxHpIncrease: 500
+    - level: 97
+      requiredTotalExp: 232800
+      maxHpIncrease: 500
+    - level: 98
+      requiredTotalExp: 237650
+      maxHpIncrease: 500
+    - level: 99
+      requiredTotalExp: 242550
+      maxHpIncrease: 500
+    - level: 100
+      requiredTotalExp: 247500
+      maxHpIncrease: 500
   ring:
     skillID: 1
     flags: 2

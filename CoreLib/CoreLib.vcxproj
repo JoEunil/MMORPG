@@ -173,6 +173,8 @@
     <ClInclude Include="SkillData.h" />
     <ClInclude Include="Skills.inc" />
     <ClInclude Include="Monsters.inc" />
+    <ClInclude Include="GrowthData.h" />
+    <ClInclude Include="Growth.inc" />
     <ClInclude Include="StateManager.h" />
     <ClInclude Include="Cell.h" />
     <ClInclude Include="WorldMap.h" />

@@ -29,13 +29,15 @@ namespace Mmorpg.Client.Tests
                 Assert.That(content.otherMonsters.Length, Is.EqualTo(2));
                 var actual = new JObject
                 {
-                    ["formatVersion"] = 1,
+                    ["formatVersion"] = 2,
                     ["skills"] = JArray.FromObject(new[] { content.otherSkills[0], content.ring, content.otherSkills[1], content.otherSkills[2], content.otherSkills[3] }),
-                    ["monsters"] = JArray.FromObject(new[] { content.monster0, content.otherMonsters[0], content.otherMonsters[1] })
+                    ["monsters"] = JArray.FromObject(new[] { content.monster0, content.otherMonsters[0], content.otherMonsters[1] }),
+                    ["growth"] = JObject.FromObject(content.growth)
                 };
                 expected["skills"] = JArray.FromObject(expected["skills"].ToObject<ServerContent.RingSkill[]>());
                 expected["monsters"] = JArray.FromObject(expected["monsters"].ToObject<ServerContent.Monster[]>());
                 Assert.That(JToken.DeepEquals(actual, expected), Is.True, "Every imported server field must match the JSON snapshot at runtime float precision.");
+                Assert.That(content.growth.levels.Length, Is.EqualTo(content.growth.maxLevel));
                 string before = EditorJsonUtility.ToJson(content);
                 byte[] persisted = File.ReadAllBytes(assetPath);
                 Import(content, SnapshotPath);
@@ -64,6 +66,14 @@ namespace Mmorpg.Client.Tests
                 content.name = "Prior asset metadata";
                 content.ring.mana = 987;
                 content.monster0.maxHp = 7654;
+                content.growth = new ServerContent.Growth
+                {
+                    maxLevel = 2, levels = new[]
+                    {
+                        new ServerContent.GrowthLevel { level = 1 },
+                        new ServerContent.GrowthLevel { level = 2, requiredTotalExp = 321, maxHpIncrease = 123 }
+                    }
+                };
                 AssetDatabase.CreateAsset(content, assetPath);
                 AssetDatabase.SaveAssetIfDirty(content);
                 // A rejected import must also preserve pre-existing unsaved edits.
@@ -77,10 +87,22 @@ namespace Mmorpg.Client.Tests
                 var monster = content.monster0;
                 var skills = content.otherSkills;
                 var monsters = content.otherMonsters;
+                var growth = content.growth;
                 var valid = JObject.Parse(File.ReadAllText(SnapshotPath));
                 Action<JObject>[] invalidate =
                 {
-                    json => json["formatVersion"] = 2,
+                    json => json["formatVersion"] = 1,
+                    json => json.Remove("growth"),
+                    json => json["growth"]["maxLevel"] = 0,
+                    json => json["growth"]["maxLevel"] = (int)ushort.MaxValue + 1,
+                    json => json["growth"]["levels"][1]["level"] = 1,
+                    json => ((JArray)json["growth"]["levels"]).RemoveAt(1),
+                    json => ((JObject)json["growth"]["levels"][1]).Remove("maxHpIncrease"),
+                    json => json["growth"]["levels"][0]["requiredTotalExp"] = 1,
+                    json => json["growth"]["levels"][0]["maxHpIncrease"] = 1,
+                    json => json["growth"]["levels"][2]["requiredTotalExp"] = json["growth"]["levels"][1]["requiredTotalExp"].DeepClone(),
+                    json => json["growth"]["levels"][1]["requiredTotalExp"] = (long)uint.MaxValue + 1,
+                    json => json["growth"]["levels"][1]["maxHpIncrease"] = (long)int.MaxValue + 1,
                     json => json.Remove("skills"),
                     json => ((JObject)json["skills"][0]).Remove("mana"),
                     json => json["skills"][1]["skillID"] = 0,
@@ -109,6 +131,7 @@ namespace Mmorpg.Client.Tests
                     Assert.That(content.monster0, Is.SameAs(monster));
                     Assert.That(content.otherSkills, Is.SameAs(skills));
                     Assert.That(content.otherMonsters, Is.SameAs(monsters));
+                    Assert.That(content.growth, Is.SameAs(growth));
                     Assert.That(EditorUtility.IsDirty(content), Is.True);
                     Assert.That(File.ReadAllBytes(assetPath), Is.EqualTo(persisted));
                     Assert.That(File.ReadAllBytes(assetPath + ".meta"), Is.EqualTo(metadata));

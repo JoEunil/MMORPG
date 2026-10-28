@@ -13,6 +13,7 @@
 #include <string>
 #include "SkillData.h"
 #include "MonsterData.h"
+#include "GrowthData.h"
 
 namespace {
     void Require(bool valid, const char* message) {
@@ -75,13 +76,26 @@ namespace {
                     Require(phase.steps[step].skillID < Data::skillList.size(), "Monster references an unknown skill ID.");
             }
         }
+        Require(Data::growthMaxLevel == 100 && std::size(Data::growthLevels) == Data::growthMaxLevel,
+            "Growth requires the complete level 1 through 100 table.");
+        for (size_t i = 0; i < std::size(Data::growthLevels); ++i) {
+            const auto& growth = Data::growthLevels[i];
+            Require(growth.level == i + 1 && growth.maxHpIncrease <= INT32_MAX,
+                "Growth levels must be consecutive and HP increases must fit the signed wire value.");
+            if (i == 0)
+                Require(growth.requiredTotalExp == 0 && growth.maxHpIncrease == 0,
+                    "Level 1 requires zero total EXP and zero HP increase.");
+            else
+                Require(growth.requiredTotalExp > Data::growthLevels[i - 1].requiredTotalExp,
+                    "Growth total EXP thresholds must strictly increase.");
+        }
     }
 
     std::string Serialize() {
         std::ostringstream json;
         json.imbue(std::locale::classic());
         json << std::setprecision(std::numeric_limits<float>::max_digits10);
-        json << "{\n  \"formatVersion\": 1,\n  \"skills\": [\n";
+        json << "{\n  \"formatVersion\": 2,\n  \"skills\": [\n";
         for (size_t id = 0; id < Data::skillList.size(); ++id) {
             const auto& skill = Data::skillList[id];
             if (id) json << ",\n";
@@ -115,7 +129,14 @@ namespace {
             }
             json << "]}";
         }
-        json << "\n  ]\n}\n";
+        json << "\n  ],\n  \"growth\": {\"maxLevel\":" << Data::growthMaxLevel << ",\"levels\":[\n";
+        for (size_t i = 0; i < std::size(Data::growthLevels); ++i) {
+            const auto& growth = Data::growthLevels[i];
+            if (i) json << ",\n";
+            json << "    {\"level\":" << growth.level << ",\"requiredTotalExp\":" << growth.requiredTotalExp
+                << ",\"maxHpIncrease\":" << growth.maxHpIncrease << '}';
+        }
+        json << "\n  ]}\n}\n";
         return json.str();
     }
 
@@ -162,7 +183,7 @@ int wmain(int argc, wchar_t* argv[]) {
         Require(argc == 2 && argv[1][0] != L'\0', "Usage: Export-ServerContent.exe <outputPath>");
         Validate();
         WriteAtomically(std::filesystem::absolute(argv[1]), Serialize());
-        std::cout << "Exported 5 skills and 3 monsters.\n";
+        std::cout << "Exported 5 skills, 3 monsters, and 100 growth levels.\n";
         return 0;
     }
     catch (const std::exception& error) {
