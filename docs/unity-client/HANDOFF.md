@@ -5,7 +5,7 @@
 - ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient
 - 실제 Editor: ROOT/UnityClient, Unity6000.0.47f1/PID40404, Edit/컴파일완료/assetclean 확인.
 - Git 정본 CAND: ROOT/UnityClient/Builds/C10-Delivery/source
-- 브랜치 codex/client-play-completion, 기본 master8622d99. 기존 로컬 HEAD9c9cb65 이후 성장 추가분. push/새PR 없음.
+- 브랜치 codex/client-play-completion, 기본 master8622d99. 제품후보 a8e7516(기존45c30a1+성장추가). push/새PR 없음.
 
 ## 완료·검증
 기존5스킬/3몬스터 경로 전환 근거: history/2026-10-28-content-authority/. 성장 추가분 근거: history/2026-10-28-growth-data-share/. 기술정본 CONTENT_PIPELINE.md.
@@ -16,5 +16,6 @@ ROOT에는3개C#/JSON만preimage확인후동기화했고 Editor생성asset만 CA
 ## 검수·게시 대기
 성장 추가분 종합 검수Astra PASS/필수제품수정0. 옛인계는이력보존후현재상태로갱신. 실제Agent478=신규181+후속297/토큰·비용N/A.
 CONTENT01/r1(기존제품45c30a1/13파일)은 성장 추가 지시로 보류·대체. 부모1793192469.508719/채널C0C9VFZMV43/지정사용자U0C9QEUHPMK. r1보류안내1793193939.517569. 회신소비0/승인적용0/push0/새PR없음. r1승인을새성장범위에적용하지않는다.
-성장검수 완료 후 같은스레드에 CONTENT01/r2의구체적후보와게시요청을등록한다. 승인전push보류. 수신기fixedCoordinator01a14d46-8b23-7590-8ad5-7efc20f8ecd9/Node33160의freshhealth·실제프로세스·부모등록을요청전대조한다. 후속은실제레벨업로직과수치정책확정이며이번게시승인을확대하지않는다.
+성장검수 완료 후 같은스레드에 CONTENT01/r2 게시요청등록완료: 메시지1793194790.338199, 정확한승인명령 `승인 CONTENT01/r2`. 후보a8e7516 및 두history의제품manifest가정본. 회신소비0/승인적용0/push0. 승인전push보류. 요청직전수신기fresh/listening·실제NodePID33160·부모등록대조통과. 수신기fixedCoordinator01a14d46-8b23-7590-8ad5-7efc20f8ecd9/Node33160의freshhealth·실제프로세스·부모등록을요청전대조한다. 후속은실제레벨업로직과수치정책확정이며이번게시승인을확대하지않는다.
+
 
