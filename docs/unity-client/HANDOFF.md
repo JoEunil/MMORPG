@@ -1,28 +1,29 @@
-# 현재 인계 — 2026-10-27
+# 현재 인계 — 2026-10-28
 
-## 현재 작업
+## 현재 목표와 정본
 
-결과 정리 사이트를 점검해 가독성·기능 탐색·현재/과거 화면 구분을 개선했다. 로컬 구현·사이트 빌드·실제 브라우저 확인·Astra 종합 검수 통과. 기존 PR58의 승인된 결과 사이트 개선 범위에 5117b3f로 추가 반영했다. 이번에는 게임·서버·DB·Unity 실행을 변경하지 않았다.
+PR58 병합 확인 뒤 남은 독립 실행 UI 조작을 마감한다. 기존 완료 검증은 반복하지 않는다.
+- ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient
+- Editor 프로젝트: ROOT/UnityClient (현재 실행하지 않음)
+- Git 정본: ROOT/UnityClient/Builds/C10-Delivery/source
+- 새 브랜치: codex/client-play-completion, 기준 master 8622d99
+- PR58 merged 확인, 원격 head 자동 삭제 확인. 기본 브랜치 포함·미사용 확인 뒤 로컬 codex/client-feature-structure만 삭제했다.
 
-- 편집/실행 ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient
-- Git 정본 CAND: ROOT/Builds/C10-Delivery/source
-- 브랜치: codex/client-feature-structure / PR58 https://github.com/JoEunil/MMORPG/pull/58
-- PR58은 게시 직전 open·미병합/원격 head b2f775b와 로컬 일치를 확인했다. master의 사용자 LLM.md·README 변경은 이전 정상 병합으로 보존했다.
-- 미리보기: http://127.0.0.1:8791/MMORPG/#work
+## 완료와 남은 범위
 
-## 이번 완료
+로그인·전투·채팅·패널·실거래·재접속·6구역 왕복의 기존 근거는 history/2026-10-27-client-completion/에 보존한다. 기획/계획에 남은 오래된 미완료·선택 대기를 과거 기록으로 구분했고 원문은 history/2026-10-28-post-pr58-review/에 보존했다.
+검토한 서버 처치 보상 경로는 EXP만 제공한다. 레벨업·드롭을 미구현 클라이언트 기능이나 반복 검증 대상으로 추가하지 않는다. 사용자 몬스터 AI/서버/DB/게임 코드 변경 없음.
 
-홈에 기능별 빠른 이동, 상세/이력 하단에 다른 기능 탐색, 본문 링크 강조와 키보드 본문 바로가기를 추가했다. 워크플로우의 사용자→총괄을 수평 배치하고9개 역할을3열로 정리했다. 반복 설명은 줄이고 같은날 가방의 실제 포션 수령을 최신 기록으로 앞에 배치했다. 기존 사진·과거 빈 가방·실패·에디터 예시는 보존한다. Markdown이 정본이며 생성HTML은 직접 편집하지 않았다.
+## 현재 입력과 실행
 
-빌더 전체 링크/이미지/앵커 검사 통과. 데스크톱1280·모바일390×844에서 넘침0, 실제 기능 간 이동·날짜 이동·키보드 포커스 확인. Astra 게시 검수 통과, 필수수정0. 지표451=신규166+후속285,토큰/비용N/A. 세부근거와 이전 인계: history/2026-10-27-results-site-review/.
+기존 Windows Player 빌드 SHA256 8AB9BD96A7CC54A80AA478005280FB1BD59A0835F0271816B8646FBA1043A8FF를 확인하고 실행했다. PID10780/창395028/UnityClient, 프로세스 Responding·Player.log D3D11/InputSystem/RenderGraph 초기화 확인. 실제 UI 반응은 미확인.
+Computer Use가 정확한 게임 창을 반환했지만 캡처에는 다른 Chrome 작업 화면이 표시돼 입력을 보내지 않았다. request_user_input_async로 게임 창을 앞으로 가져와 조작해도 되는지 질문했고 답변 대기 중이다. 과거 입력 허용이 이번 잘못 잡힌 화면에 대한 입력 승인을 뜻하지 않는다. 다른 게임/브라우저에 입력하거나 캡처 문제를 우회하지 않는다.
+Unity Editor/Login/MainServer는 시작하지 않았다. 기존 MySQL84/Redis 서비스는 Running으로 확인했으며 변경하지 않았다. Windows Player는 열린 상태, 강제 종료 없음.
 
-## 게시 권한과 현재 상태
+## 다음 행동과 게시
 
-CLIENTCOMPLETE01/r1(부모1793084867.526689/채널C0C9VFZMV43/지정사람U0C9QEUHPMK)은 승인 회신1793093569.259489를1회 소비해 PR58 게시 완료했다. 적용 회신1793094210.225339, PR 링크 회신1793094363.497309. 지연 중복 회신은1793094448.151949로 확인하고 추가 실행하지 않았다. 이번 공개 원본/탐색 보완은 같은 후보의 승인 범위 안이며 새 PR·공개 호스팅·권한 확대가 아니다. 사용자 병합·정식 Pages 배포는 별도다.
+사용자의 현재 창 조작 답변 후 대상 화면을 새로 확인한다. 입력 허용 시 같은 Player에서 로그인·I/B·짧은 이동/스킬만 한 배치로 확인하고 실제 결함만 수정한다. 서버 시작 전 현재 포트·소스·산출물·보존 WAL을 다시 확인한다. 새 DB 준비/초기화는 하지 않는다.
+새 PR/push 승인 대기 없음. 로컬 변경을 다음 관련 묶음에 모으며, 후보 준비 후 종합 검수·Slack 게시 승인 1회. PR58 승인은 새 PR에 재사용하지 않는다. 정식 Pages URL 직접 확인은 웹 도구 접근 실패로 미확인.
 
-## 앞선 게임 결과와 남은 한계
+이번 문서 diff 검사·사이트 생성/내부 링크 검사 통과. 제품 테스트 반복0. Unity Coordinator 새 작업 스레드1793183704.130739에 진행과 입력 대기 전달. 게시 없이 로컬 후보로 보존한다.
 
-구조/에셋 정리, HP/MP Delta 수정, Windows 빌드, 실제6구역 왕복·스킬·채팅·처치/EXP·재접속 상태 보존과 성공 거래/배송/대금수령을 확인했다. 전용 계정 테스트 데이터는 원본4테이블·부재행까지 복원했고 test1·사용자 몬스터 AI는 수정하지 않았다. 상세는 history/2026-10-27-client-completion/와 client-refactor/ 이력이다.
-
-마지막 게임 검증 뒤 Unity는Edit/clean,직접 켠Login/MainServer는정상종료했다. 이번 사이트 작업으로 게임 검사를 반복하지 않았다. standalone UI 전체 조작·모든 지연 조건의 조작감·레벨업/드롭/균형은 미확인이다. 로컬 복구 SQL/원본/WAL보관 근거는 ROOT/Builds/ClientCompletion/Evidence에 유지한다.
-전달: 사이트 점검의 새 Slack 부모1793095697.714729/완료 요약1793095732.252169. 5117b3f의 GitHub Actions 사이트 빌드40486089424 성공 확인. 정식 Pages 배포 성공으로 확대하지 않는다. 추가 승인 대기 없음,다음은 사용자 PR58 검토/화면 피드백이다.
