@@ -1,0 +1,14 @@
+Actual local-server responses and existing PlayerLoop queued Z/X/C/I/B/Escape input; no product handler/state injection.
+OWN_CAST slot=0 phase=0 direction=1
+OWN_CAST slot=0 phase=1 direction=1
+OWN_CAST slot=1 phase=0 direction=1
+OWN_CAST slot=1 phase=1 direction=1
+OWN_CAST slot=2 phase=0 direction=1
+OWN_CAST slot=2 phase=1 direction=1
+CAST_SUMMARY distinctSlots=3 MP=10000->9959
+INVENTORY success=False rows=0
+INVENTORY success=True rows=0
+WALLET goldStatus=0 diamondStatus=0
+MARKET success=True rows=30
+PANEL_SUMMARY bagResponse=True marketResponse=True walletResponses=1 goldHUD=-- diamondHUD=--
+END zone=1 HP=10000 bagOpen=False marketOpen=True

@@ -44,6 +44,38 @@ def local_image_path(source, relative):
     return BASE + target.relative_to(SITE).as_posix()
 
 
+def image_size_attributes(url):
+    # Reserve each capture's real aspect ratio so lazy loading cannot move history anchors.
+    path = SITE / unquote(url[len(BASE):])
+    with path.open("rb") as image:
+        header = image.read(24)
+        if header.startswith(b"\x89PNG\r\n\x1a\n"):
+            width, height = int.from_bytes(header[16:20], "big"), int.from_bytes(header[20:24], "big")
+        elif header.startswith((b"GIF87a", b"GIF89a")):
+            width, height = int.from_bytes(header[6:8], "little"), int.from_bytes(header[8:10], "little")
+        elif header.startswith(b"\xff\xd8"):
+            image.seek(2)
+            while True:
+                if image.read(1) != b"\xff":
+                    raise ValueError(f"Invalid JPEG capture: {path}")
+                marker = image.read(1)
+                while marker == b"\xff":
+                    marker = image.read(1)
+                length = int.from_bytes(image.read(2), "big")
+                if marker in (b"\xc0", b"\xc1", b"\xc2", b"\xc3", b"\xc5", b"\xc6", b"\xc7", b"\xc9", b"\xca", b"\xcb", b"\xcd", b"\xce", b"\xcf"):
+                    size = image.read(5)
+                    height, width = int.from_bytes(size[1:3], "big"), int.from_bytes(size[3:5], "big")
+                    break
+                if length < 2 or marker in (b"", b"\xda", b"\xd9"):
+                    raise ValueError(f"Missing JPEG capture dimensions: {path}")
+                image.seek(length - 2, 1)
+        else:
+            raise ValueError(f"Unsupported capture format: {path}")
+    if not width or not height:
+        raise ValueError(f"Invalid capture dimensions: {path}")
+    return f'width="{width}" height="{height}"'
+
+
 def parse_work(path):
     text = path.read_text(encoding="utf-8")
     lines = text.splitlines()
@@ -122,10 +154,11 @@ def parse_showcase():
     return title, " ".join(intro), sections, references
 
 
-def render_blocks(blocks, source):
+def render_blocks(blocks, source, heading_prefix=None):
     out = []
     paragraph = []
     list_items = []
+    heading_index = 0
 
     def flush_paragraph():
         if paragraph:
@@ -143,7 +176,9 @@ def render_blocks(blocks, source):
             continue
         if isinstance(block, tuple):
             flush_paragraph(); flush_list()
-            out.append("<h3>" + escape(block[1]) + "</h3>")
+            heading_index += 1
+            anchor = f' id="{heading_prefix}-{heading_index}"' if heading_prefix else ""
+            out.append(f"<h3{anchor}>" + escape(block[1]) + "</h3>")
             continue
         image = IMAGE.fullmatch(block)
         bullet = re.match(r"^-\s+(.*)$", block)
@@ -151,7 +186,7 @@ def render_blocks(blocks, source):
             flush_paragraph(); flush_list()
             alt, ref = image.groups()
             src = local_image_path(source.relative_to(ROOT), ref)
-            out.append(f'<figure><a href="{src}" target="_blank" rel="noopener"><img src="{src}" alt="{escape(alt, quote=True)}" loading="lazy"></a><figcaption>{escape(alt)}</figcaption></figure>')
+            out.append(f'<figure><a href="{src}" target="_blank" rel="noopener"><img src="{src}" alt="{escape(alt, quote=True)}" {image_size_attributes(src)} loading="lazy"></a><figcaption>{escape(alt)}</figcaption></figure>')
         elif bullet:
             flush_paragraph()
             list_items.append(bullet.group(1))
@@ -250,32 +285,59 @@ def document(title, description, content, references, site_title):
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="{escape(description, quote=True)}"><title>{escape(browser_title)}</title>
 <link rel="stylesheet" href="{BASE}style.css"></head><body>
+<a class="skip-link" href="#top">본문으로 바로가기</a>
 <header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}#workflow">AI 워크플로우</a><a href="{BASE}#work">작업 결과</a><a href="{BASE}#legacy">기존 Unity</a><a href="{BASE}#decisions">지침 변경</a><a href="{BASE}#agent-usage">활용 지표</a></nav></header>
 {content}<footer class="site-footer"><a href="{BASE}">{escape(site_title)}</a>{ref_footer}</footer>
 </body></html>'''
 
 
-def build_work(work, references, site_title):
+def work_navigation(works, current_key=None):
+    label = "다른 작업 둘러보기" if current_key else "기능별 둘러보기"
+    heading = f'<p>{label}</p>' if current_key else ''
+    links = ''.join(f'<a href="{BASE}work/{slug(work["source"].stem)}/">{escape(work["title"])}</a>'
+                    for work in works if slug(work["source"].stem) != current_key)
+    return f'<nav class="work-navigation" aria-label="{label}">{heading}<div>{links}</div></nav>'
+
+
+def build_work(work, references, site_title, works):
     key = slug(work["source"].stem)
     detail_url = f"{BASE}work/{key}/index.html"
     history_url = f"{BASE}work/{key}/history.html"
     sections = []
     history = []
+    dates = []
+    seen_dates = set()
     for section in work["sections"]:
-        rendered = render_blocks(section["blocks"], work["source"])
+        if section["title"] == "대표 화면":
+            continue
         if section["title"] == "화면 기록":
-            history.append(rendered)
+            heading_index = 0
+            for block in section["blocks"]:
+                if isinstance(block, tuple):
+                    heading_index += 1
+                    date = re.match(r"\d{4}-\d{2}-\d{2}", block[1])
+                    label = date[0] if date else "이전 기록"
+                    if label not in seen_dates:
+                        dates.append(f'<a href="#record-{heading_index}">{escape(label)}</a>')
+                        seen_dates.add(label)
+            history.append(render_blocks(section["blocks"], work["source"], "record"))
         else:
-            sections.append(f'<section class="content-section"><h2>{escape(section["title"])}</h2>{rendered}</section>')
-    preview = find_image(work)
-    preview_html = f'<figure class="detail-preview"><a href="{preview[1]}" target="_blank" rel="noopener"><img src="{preview[1]}" alt="{escape(preview[0], quote=True)}"></a><figcaption>{escape(preview[0])}</figcaption></figure>' if preview else ""
-    page_content = f'''<main class="page narrow"><a class="back-link" href="{BASE}#work">← 작업 목록</a>
+            anchor = "features" if section["title"] == "구현한 기능" else "scope" if section["title"] == "현재 확인한 범위" else slug(section["title"])
+            rendered = render_blocks(section["blocks"], work["source"])
+            sections.append(f'<section class="content-section" id="{anchor}"><h2>{escape(section["title"])}</h2>{rendered}</section>')
+    preview_section = next(s for s in work["sections"] if s["title"] == "대표 화면")
+    preview_html = render_blocks(preview_section["blocks"], work["source"])
+    other_work = work_navigation(works, key)
+    page_content = f'''<main class="page narrow" id="top" tabindex="-1"><a class="back-link" href="{BASE}#{key}">← 작업 목록</a>
 <p class="work-status">{escape(work['status'])}</p><h1>{escape(work['title'])}</h1><p class="lead">{escape(work['summary'])}</p>
-<div class="page-actions"><a class="button" href="{history_url}">화면 변화 보기</a></div>
-{preview_html}
-{''.join(sections)}</main>'''
-    history_content = f'''<main class="page narrow"><a class="back-link" href="{detail_url}">← 작업으로 돌아가기</a>
-<p class="work-status">화면 기록</p><h1>{escape(work['title'])}</h1><p class="lead">작업 과정에서 남긴 실제 화면과 중간 결과입니다.</p><section class="content-section history-images">{''.join(history)}</section></main>'''
+<nav class="page-actions" aria-label="작업 상세 탐색"><a href="#features">구현한 기능</a><a href="#scope">현재 확인한 범위</a><a href="{history_url}">화면 이력 →</a></nav>
+<div class="detail-preview">{preview_html}</div>
+{''.join(sections)}{other_work}</main>'''
+    history_content = f'''<main class="page narrow" id="top" tabindex="-1"><a class="back-link" href="{detail_url}">← {escape(work['title'])} 상세</a>
+<p class="work-status">화면 기록</p><h1>{escape(work['title'])}</h1><p class="lead">촬영일 순으로 보존한 실제 게임 화면·에디터 예시·도구 출력입니다. 현재 구현과 확인한 범위는 작업 상세에서 볼 수 있습니다.</p>
+<nav class="page-actions" aria-label="작업과 화면 이력 탐색"><a href="{detail_url}">현재 구현</a><a href="{detail_url}#scope">확인한 범위</a><a href="{BASE}#work">다른 작업</a></nav>
+<nav class="history-dates" aria-label="촬영 날짜별 화면 기록">{''.join(dates)}</nav>
+<section class="content-section history-images">{''.join(history)}</section><a class="back-link" href="#top">↑ 날짜 목록으로</a>{other_work}</main>'''
     folder = SITE / "work" / key
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "index.html").write_text(document(work["title"], work["summary"], page_content, references, site_title), encoding="utf-8", newline="\n")
@@ -284,13 +346,12 @@ def build_work(work, references, site_title):
 
 
 def find_image(work):
-    for section in work["sections"]:
-        for block in section["blocks"]:
-            match = IMAGE.fullmatch(block) if isinstance(block, str) else None
-            if match:
-                alt, ref = match.groups()
-                return alt, local_image_path(work["source"].relative_to(ROOT), ref)
-    return None
+    section = next((s for s in work["sections"] if s["title"] == "대표 화면"), None)
+    images = [IMAGE.fullmatch(b) for b in section["blocks"] if isinstance(b, str) and IMAGE.fullmatch(b)] if section else []
+    if len(images) != 1:
+        raise ValueError(f"Select exactly one representative image in {work['source']}")
+    alt, ref = images[0].groups()
+    return alt, local_image_path(work["source"].relative_to(ROOT), ref)
 
 
 def sync_readme_preview(home_sections):
@@ -323,10 +384,12 @@ def main():
     sync_readme_preview(home_sections)
     cards = []
     for work in works:
-        key, detail, history = build_work(work, references, title)
+        key, detail, history = build_work(work, references, title, works)
         card_image = find_image(work)
-        media = f'<a class="card-image" href="{detail}"><img src="{card_image[1]}" alt="{escape(card_image[0], quote=True)}" loading="lazy"></a>' if card_image else ""
-        cards.append(f'<article class="work-card">{media}<div class="work-copy"><p class="work-status">{escape(work["status"])}</p><h3><a href="{detail}">{escape(work["title"])}</a></h3><p>{escape(work["summary"])}</p><div class="card-links"><a href="{detail}">작업 보기 →</a><a href="{history}">화면 이력</a></div></div></article>')
+        preview_section = next(s for s in work["sections"] if s["title"] == "대표 화면")
+        preview_notes = [b for b in preview_section["blocks"] if not (isinstance(b, str) and IMAGE.fullmatch(b))]
+        media = f'<figure class="work-media"><a class="card-image" href="{detail}"><img src="{card_image[1]}" alt="{escape(card_image[0], quote=True)}" {image_size_attributes(card_image[1])} loading="lazy"></a><figcaption>{escape(card_image[0])}</figcaption></figure>'
+        cards.append(f'<article class="work-card" id="{key}">{media}<div class="work-copy"><p class="work-status">{escape(work["status"])}</p><h3><a href="{detail}">{escape(work["title"])}</a></h3><p>{escape(work["summary"])}</p><div class="preview-note">{render_blocks(preview_notes, work["source"])}</div><div class="card-links"><a href="{detail}">기능 보기 →</a><a href="{detail}#scope">확인한 범위</a><a href="{history}">화면 이력</a></div></div></article>')
     sections_by_title = {section["title"]: section for section in home_sections}
     process_html = render_workflow(sections_by_title["AI Agent 워크플로우"])
     execution_html = render_execution_flow(sections_by_title["하나의 기능이 만들어지는 흐름"])
@@ -336,11 +399,11 @@ def main():
     legacy_section = sections_by_title["기존 Unity 구현"]
     legacy_copy = render_blocks(legacy_section["blocks"], HOME_SOURCE)
     legacy_html = f'<section class="legacy-section section-wrap" id="legacy"><div class="section-title"><h2>{escape(legacy_section["title"])}</h2></div><div class="legacy-body">{legacy_copy}</div></section>'
-    hero = f'''<main id="top"><section class="home-hero"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#work">작업 결과 보기</a><a class="text-link" href="#workflow">AI Agent 워크플로우</a><a class="text-link" href="#legacy">기존 Unity 구현</a></div></div></section>
+    hero = f'''<main id="top" tabindex="-1"><section class="home-hero"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#work">작업 결과 보기</a><a class="text-link" href="#workflow">AI Agent 워크플로우</a><a class="text-link" href="#legacy">기존 Unity 구현</a></div></div></section>
 {process_html}
-{execution_html}
+<section class="section-wrap work-section" id="work"><div class="section-title work-heading"><h2>작업과 결과</h2><p>{inline(work_intro)}</p></div>{work_navigation(works)}<div class="work-grid">{''.join(cards)}</div></section>
 {legacy_html}
-<section class="section-wrap work-section" id="work"><div class="section-title work-heading"><h2>작업과 결과</h2><p>{inline(work_intro)}</p></div><div class="work-grid">{''.join(cards)}</div></section>
+{execution_html}
 {usage_html}
 {decisions_html}</main>'''
     (SITE / "index.html").write_text(document(title, intro, hero, references, title), encoding="utf-8", newline="\n")
@@ -349,7 +412,7 @@ def main():
         folder.mkdir(parents=True, exist_ok=True)
         for page in ("index.html", "history.html"):
             target = f"{BASE}work/market/{page}"
-            content = f'<main class="page narrow"><h1>거래소</h1><p>거래소 작업과 이전 화면을 한곳에 모았습니다.</p><a class="button" href="{target}">거래소 보기</a></main>'
+            content = f'<main class="page narrow" id="top" tabindex="-1"><h1>거래소</h1><p>거래소 작업과 이전 화면을 한곳에 모았습니다.</p><a class="button" href="{target}">거래소 보기</a></main>'
             html = document("거래소", "통합된 거래소 작업으로 이동합니다.", content, references, title)
             html = html.replace("</head>", f'<link rel="canonical" href="{target}"><meta http-equiv="refresh" content="0;url={target}"></head>')
             (folder / page).write_text(html, encoding="utf-8", newline="\n")

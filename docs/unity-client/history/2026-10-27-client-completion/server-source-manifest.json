@@ -1,0 +1,18 @@
+[
+  {
+    "Path": "CoreLib/MonsterState.h",
+    "CandidateSha256": "3FDCBAA3CB7E30383CEF3237383466327BE65415D4A43D845B3A8BDEE53F50DA"
+  },
+  {
+    "Path": "CoreLib/ZoneState_Monsters.cpp",
+    "CandidateSha256": "064B192C21402E525F34CB0C8E409F9B04606AB55F365B5B58850286F996622C"
+  },
+  {
+    "Path": "CoreLib/ZoneState_Skills.cpp",
+    "CandidateSha256": "82F80B50B0208DAD3EC2AEC455BC54EB81E8154B74BED65CCE63150E932EE3F8"
+  },
+  {
+    "Path": "CoreLib/Generated/WorldMap.inc",
+    "CandidateSha256": "71619BD04EF7BB78B8165F6494AA1E7C273E69AAFF4A98981349AD45CB63584D"
+  }
+]

@@ -1,0 +1,322 @@
+{
+  "assemblies": {
+    "C01.Runtime": "Mmorpg.Client",
+    "C02.Runtime": "Mmorpg.Client",
+    "C01.Editor": "Mmorpg.Client.Editor",
+    "C02.Editor": "Mmorpg.Client.Editor",
+    "C01.PlayModeTests": "Mmorpg.Client.Tests",
+    "C02.PlayModeTests": "Mmorpg.Client.Tests"
+  },
+  "structure": "Assets/Client/{Runtime/UI,Runtime/World,Runtime/Presentation,Runtime/Content,Editor,Content,Art,Scenes,Tests}",
+  "namespaces": {
+    "C01.Tests": "Mmorpg.Client.Tests",
+    "C02.Tests": "Mmorpg.Client.Tests",
+    "C01.Editor": "Mmorpg.Client.Editor",
+    "C02.Editor": "Mmorpg.Client.Editor",
+    "C01": "Mmorpg.Client",
+    "C02": "Mmorpg.Client"
+  },
+  "types": {
+    "C01LoginScreen": "LoginScreen",
+    "C01SceneBuilder": "LoginSceneBuilder",
+    "C02WorldScreen": "WorldScreen",
+    "C04ObservedWorld": "ObservedWorld",
+    "C05CombatScreen": "CombatScreen",
+    "C06ChatScreen": "ChatScreen",
+    "C07InventoryScreen": "InventoryScreen",
+    "C09BazaarScreen": "MarketScreen",
+    "C11ItemPresentation": "ItemPresentation",
+    "C13EntityVitals": "EntityVitals",
+    "C17EntryPresentation": "EntryPresentation",
+    "C19ActorMotion": "ActorMotion",
+    "C20MapAuthoring": "MapAuthoring",
+    "C14ServerContent": "ServerContent",
+    "C15MonsterSpawns": "MonsterSpawns",
+    "C20WorldMap": "WorldMap",
+    "C24WorldLayout": "WorldLayout",
+    "C02SceneBuilder": "WorldSceneBuilder",
+    "C04MonsterSurfaceSetup": "MonsterSurfaceSetup",
+    "C06ChatSetup": "ChatSetup",
+    "C07InventorySetup": "InventorySetup",
+    "C09BazaarSetup": "MarketSetup",
+    "C12HudSetup": "HudSetup",
+    "C14ExportPair": "ExportPair",
+    "C14ServerContentExport": "ServerContentExport",
+    "C15MonsterSpawnExport": "MonsterSpawnExport",
+    "C15MonsterSpawnInspector": "MonsterSpawnInspector",
+    "C17EntrySetup": "EntrySetup",
+    "C18EntryTrailSetup": "EntryTrailSetup",
+    "C20WorldMapExport": "WorldMapExport",
+    "C20WorldMapInspector": "WorldMapInspector",
+    "C20WorldMapSetup": "WorldMapSetup",
+    "C21FixedWallVisuals": "FixedWallVisuals",
+    "C24MapAuthoringInspector": "MapAuthoringInspector",
+    "C24WorldLayoutExport": "WorldLayoutExport",
+    "C27FieldDressingSetup": "FieldDressingSetup",
+    "CitadelEnvironmentArt": "CitadelEnvironmentArt",
+    "KnightInterfaceArtSetup": "KnightInterfaceArtSetup",
+    "KnightVisualRefinement": "KnightVisualRefinement",
+    "WorldMinimapAtlasExport": "WorldMinimapAtlasExport",
+    "GameUiInput": "GameUiInput",
+    "WorldMinimap": "WorldMinimap",
+    "C01CharacterListFixtureTests": "CharacterListFixtureTests",
+    "C01LoginFlowTests": "LoginFlowTests",
+    "C01TcpFrameTests": "TcpFrameTests",
+    "C01EditorInputRun": "LoginEditorInputRun",
+    "B05LiveBatchUiTests": "LivePersistenceUiTests",
+    "C02EmptyListUiTests": "EmptyListUiTests",
+    "C02EntryStateFixtureTests": "EntryStateFixtureTests",
+    "C02FullPacketFixtureTests": "FullPacketFixtureTests",
+    "C03MovementTests": "MovementTests",
+    "C04LiveBatchUiTests": "LiveObservationUiTests",
+    "C04ObservationTests": "ObservationTests",
+    "C05CombatTests": "CombatTests",
+    "C05LiveBatchUiTests": "LiveCombatUiTests",
+    "C06ChatPacketTests": "ChatPacketTests",
+    "C06ChatScopeTests": "ChatScopeTests",
+    "C06LiveChatUiTests": "LiveChatUiTests",
+    "C07InventoryTests": "InventoryTests",
+    "C07InventoryUiTests": "InventoryUiTests",
+    "C07LiveInventoryUiTests": "LiveInventoryUiTests",
+    "C08LiveZoneUiTests": "LiveZoneUiTests",
+    "C08TestSession": "WorldTestSession",
+    "C08ZoneTests": "ZoneTests",
+    "C08ZoneTransitionTests": "ZoneTransitionTests",
+    "C09BazaarTests": "MarketTests",
+    "C09BazaarUiTests": "MarketUiTests",
+    "C09LiveBazaarUiTests": "LiveMarketSearchUiTests",
+    "C10BazaarMyListTests": "MarketMyListTests",
+    "C10BazaarMyListUiTests": "MarketMyListUiTests",
+    "C10LiveBazaarUiTests": "LiveMarketSettlementUiTests",
+    "C11LiveItemUiTests": "LiveItemUiTests",
+    "C12HudTests": "HudTests",
+    "C14ContentExportTests": "ContentExportTests",
+    "C14ExportPairTests": "ExportPairTests",
+    "C15MonsterSpawnTests": "MonsterSpawnTests",
+    "C16OwnMotionTests": "OwnMotionTests",
+    "C16RemoteMotionTests": "RemoteMotionTests",
+    "C17EntryPresentationTests": "EntryPresentationTests",
+    "C19ActorMotionTests": "ActorMotionTests",
+    "C20MapExportTests": "MapExportTests",
+    "C02EditorInputRun": "WorldEditorInputRun",
+    "C02Stage": "WorldStage",
+    "C14SkillRange": "SkillRange",
+    "C14SkillAction": "SkillAction"
+  },
+  "movedFrom": [
+    {
+      "old": "C01.C01LoginScreen",
+      "new": "Mmorpg.Client.LoginScreen",
+      "oldAssembly": "C01.Runtime"
+    },
+    {
+      "old": "C02.C02WorldScreen",
+      "new": "Mmorpg.Client.WorldScreen",
+      "oldAssembly": "C02.Runtime"
+    },
+    {
+      "old": "C02.C04ObservedWorld",
+      "new": "Mmorpg.Client.ObservedWorld",
+      "oldAssembly": "C02.Runtime"
+    },
+    {
+      "old": "C02.C05CombatScreen",
+      "new": "Mmorpg.Client.CombatScreen",
+      "oldAssembly": "C02.Runtime"
+    },
+    {
+      "old": "C02.C06ChatScreen",
+      "new": "Mmorpg.Client.ChatScreen",
+      "oldAssembly": "C02.Runtime"
+    },
+    {
+      "old": "C02.C07InventoryScreen",
+      "new": "Mmorpg.Client.InventoryScreen",
+      "oldAssembly": "C02.Runtime"
+    },
+    {
+      "old": "C02.C09BazaarScreen",
+      "new": "Mmorpg.Client.MarketScreen",
+      "oldAssembly": "C02.Runtime"
+    },
+    {
+      "old": "C02.C13EntityVitals",
+      "new": "Mmorpg.Client.EntityVitals",
+      "oldAssembly": "C02.Runtime"
+    },
+    {
+      "old": "C02.C17EntryPresentation",
+      "new": "Mmorpg.Client.EntryPresentation",
+      "oldAssembly": "C02.Runtime"
+    },
+    {
+      "old": "C02.C19ActorMotion",
+      "new": "Mmorpg.Client.ActorMotion",
+      "oldAssembly": "C02.Runtime"
+    },
+    {
+      "old": "C02.C20MapAuthoring",
+      "new": "Mmorpg.Client.MapAuthoring",
+      "oldAssembly": "C02.Runtime"
+    },
+    {
+      "old": "C02.C14ServerContent",
+      "new": "Mmorpg.Client.ServerContent",
+      "oldAssembly": "C02.Runtime"
+    },
+    {
+      "old": "C02.C15MonsterSpawns",
+      "new": "Mmorpg.Client.MonsterSpawns",
+      "oldAssembly": "C02.Runtime"
+    },
+    {
+      "old": "C02.C20WorldMap",
+      "new": "Mmorpg.Client.WorldMap",
+      "oldAssembly": "C02.Runtime"
+    },
+    {
+      "old": "C02.WorldMinimap",
+      "new": "Mmorpg.Client.WorldMinimap",
+      "oldAssembly": "C02.Runtime"
+    }
+  ],
+  "fullyQualifiedTypes": {
+    "C01.C01LoginScreen": "Mmorpg.Client.LoginScreen",
+    "C01SceneBuilder": "Mmorpg.Client.Editor.LoginSceneBuilder",
+    "C02.C02WorldScreen": "Mmorpg.Client.WorldScreen",
+    "C02.C04ObservedWorld": "Mmorpg.Client.ObservedWorld",
+    "C02.C05CombatScreen": "Mmorpg.Client.CombatScreen",
+    "C02.C06ChatScreen": "Mmorpg.Client.ChatScreen",
+    "C02.C07InventoryScreen": "Mmorpg.Client.InventoryScreen",
+    "C02.C09BazaarScreen": "Mmorpg.Client.MarketScreen",
+    "C02.C11ItemPresentation": "Mmorpg.Client.ItemPresentation",
+    "C02.C13EntityVitals": "Mmorpg.Client.EntityVitals",
+    "C02.C17EntryPresentation": "Mmorpg.Client.EntryPresentation",
+    "C02.C19ActorMotion": "Mmorpg.Client.ActorMotion",
+    "C02.C20MapAuthoring": "Mmorpg.Client.MapAuthoring",
+    "C02.C14ServerContent": "Mmorpg.Client.ServerContent",
+    "C02.C15MonsterSpawns": "Mmorpg.Client.MonsterSpawns",
+    "C02.C20WorldMap": "Mmorpg.Client.WorldMap",
+    "C02.C24WorldLayout": "Mmorpg.Client.WorldLayout",
+    "C02SceneBuilder": "Mmorpg.Client.Editor.WorldSceneBuilder",
+    "C04MonsterSurfaceSetup": "Mmorpg.Client.Editor.MonsterSurfaceSetup",
+    "C06ChatSetup": "Mmorpg.Client.Editor.ChatSetup",
+    "C07InventorySetup": "Mmorpg.Client.Editor.InventorySetup",
+    "C09BazaarSetup": "Mmorpg.Client.Editor.MarketSetup",
+    "C12HudSetup": "Mmorpg.Client.Editor.HudSetup",
+    "C02.Editor.C14ExportPair": "Mmorpg.Client.Editor.ExportPair",
+    "C02.Editor.C14ServerContentExport": "Mmorpg.Client.Editor.ServerContentExport",
+    "C02.Editor.C15MonsterSpawnExport": "Mmorpg.Client.Editor.MonsterSpawnExport",
+    "C02.Editor.C15MonsterSpawnInspector": "Mmorpg.Client.Editor.MonsterSpawnInspector",
+    "C17EntrySetup": "Mmorpg.Client.Editor.EntrySetup",
+    "C18EntryTrailSetup": "Mmorpg.Client.Editor.EntryTrailSetup",
+    "C20WorldMapExport": "Mmorpg.Client.Editor.WorldMapExport",
+    "C02.Editor.C20WorldMapInspector": "Mmorpg.Client.Editor.WorldMapInspector",
+    "C20WorldMapSetup": "Mmorpg.Client.Editor.WorldMapSetup",
+    "C21FixedWallVisuals": "Mmorpg.Client.Editor.FixedWallVisuals",
+    "C24MapAuthoringInspector": "Mmorpg.Client.Editor.MapAuthoringInspector",
+    "C24WorldLayoutExport": "Mmorpg.Client.Editor.WorldLayoutExport",
+    "C27FieldDressingSetup": "Mmorpg.Client.Editor.FieldDressingSetup",
+    "CitadelEnvironmentArt": "Mmorpg.Client.Editor.CitadelEnvironmentArt",
+    "KnightInterfaceArtSetup": "Mmorpg.Client.Editor.KnightInterfaceArtSetup",
+    "KnightVisualRefinement": "Mmorpg.Client.Editor.KnightVisualRefinement",
+    "WorldMinimapAtlasExport": "Mmorpg.Client.Editor.WorldMinimapAtlasExport",
+    "C02.GameUiInput": "Mmorpg.Client.GameUiInput",
+    "C02.WorldMinimap": "Mmorpg.Client.WorldMinimap",
+    "C01.Tests.C01CharacterListFixtureTests": "Mmorpg.Client.Tests.CharacterListFixtureTests",
+    "C01.Tests.C01LoginFlowTests": "Mmorpg.Client.Tests.LoginFlowTests",
+    "C01.Tests.C01TcpFrameTests": "Mmorpg.Client.Tests.TcpFrameTests",
+    "C01.Tests.C01EditorInputRun": "Mmorpg.Client.Tests.LoginEditorInputRun",
+    "C02.Tests.B05LiveBatchUiTests": "Mmorpg.Client.Tests.LivePersistenceUiTests",
+    "C02.Tests.C02EmptyListUiTests": "Mmorpg.Client.Tests.EmptyListUiTests",
+    "C02.Tests.C02EntryStateFixtureTests": "Mmorpg.Client.Tests.EntryStateFixtureTests",
+    "C02.Tests.C02FullPacketFixtureTests": "Mmorpg.Client.Tests.FullPacketFixtureTests",
+    "C02.Tests.C03MovementTests": "Mmorpg.Client.Tests.MovementTests",
+    "C02.Tests.C04LiveBatchUiTests": "Mmorpg.Client.Tests.LiveObservationUiTests",
+    "C02.Tests.C04ObservationTests": "Mmorpg.Client.Tests.ObservationTests",
+    "C02.Tests.C05CombatTests": "Mmorpg.Client.Tests.CombatTests",
+    "C02.Tests.C05LiveBatchUiTests": "Mmorpg.Client.Tests.LiveCombatUiTests",
+    "C02.Tests.C06ChatPacketTests": "Mmorpg.Client.Tests.ChatPacketTests",
+    "C02.Tests.C06ChatScopeTests": "Mmorpg.Client.Tests.ChatScopeTests",
+    "C02.Tests.C06LiveChatUiTests": "Mmorpg.Client.Tests.LiveChatUiTests",
+    "C02.Tests.C07InventoryTests": "Mmorpg.Client.Tests.InventoryTests",
+    "C02.Tests.C07InventoryUiTests": "Mmorpg.Client.Tests.InventoryUiTests",
+    "C02.Tests.C07LiveInventoryUiTests": "Mmorpg.Client.Tests.LiveInventoryUiTests",
+    "C02.Tests.C08LiveZoneUiTests": "Mmorpg.Client.Tests.LiveZoneUiTests",
+    "C02.Tests.C08TestSession": "Mmorpg.Client.Tests.WorldTestSession",
+    "C02.Tests.C08ZoneTests": "Mmorpg.Client.Tests.ZoneTests",
+    "C02.Tests.C08ZoneTransitionTests": "Mmorpg.Client.Tests.ZoneTransitionTests",
+    "C02.Tests.C09BazaarTests": "Mmorpg.Client.Tests.MarketTests",
+    "C02.Tests.C09BazaarUiTests": "Mmorpg.Client.Tests.MarketUiTests",
+    "C02.Tests.C09LiveBazaarUiTests": "Mmorpg.Client.Tests.LiveMarketSearchUiTests",
+    "C02.Tests.C10BazaarMyListTests": "Mmorpg.Client.Tests.MarketMyListTests",
+    "C02.Tests.C10BazaarMyListUiTests": "Mmorpg.Client.Tests.MarketMyListUiTests",
+    "C02.Tests.C10LiveBazaarUiTests": "Mmorpg.Client.Tests.LiveMarketSettlementUiTests",
+    "C02.Tests.C11LiveItemUiTests": "Mmorpg.Client.Tests.LiveItemUiTests",
+    "C02.Tests.C12HudTests": "Mmorpg.Client.Tests.HudTests",
+    "C02.Tests.C14ContentExportTests": "Mmorpg.Client.Tests.ContentExportTests",
+    "C02.Tests.C14ExportPairTests": "Mmorpg.Client.Tests.ExportPairTests",
+    "C02.Tests.C15MonsterSpawnTests": "Mmorpg.Client.Tests.MonsterSpawnTests",
+    "C02.Tests.C16OwnMotionTests": "Mmorpg.Client.Tests.OwnMotionTests",
+    "C02.Tests.C16RemoteMotionTests": "Mmorpg.Client.Tests.RemoteMotionTests",
+    "C02.Tests.C17EntryPresentationTests": "Mmorpg.Client.Tests.EntryPresentationTests",
+    "C02.Tests.C19ActorMotionTests": "Mmorpg.Client.Tests.ActorMotionTests",
+    "C02.Tests.C20MapExportTests": "Mmorpg.Client.Tests.MapExportTests",
+    "C02.Tests.C02EditorInputRun": "Mmorpg.Client.Tests.WorldEditorInputRun"
+  },
+  "assemblyDefinitions": {
+    "Runtime": {
+      "name": "Mmorpg.Client",
+      "references": [
+        "Unity.TextMeshPro",
+        "Unity.ugui",
+        "Unity.InputSystem"
+      ],
+      "autoReferenced": true,
+      "rootNamespace": "Mmorpg.Client"
+    },
+    "Editor": {
+      "name": "Mmorpg.Client.Editor",
+      "references": [
+        "Mmorpg.Client",
+        "Unity.TextMeshPro",
+        "Unity.ugui",
+        "Unity.InputSystem",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
+      ],
+      "includePlatforms": [
+        "Editor"
+      ],
+      "rootNamespace": "Mmorpg.Client.Editor"
+    },
+    "Tests": {
+      "name": "Mmorpg.Client.Tests",
+      "rootNamespace": "Mmorpg.Client.Tests",
+      "references": [
+        "Mmorpg.Client",
+        "Unity.InputSystem",
+        "Unity.ugui",
+        "Unity.InputSystem.TestFramework",
+        "Unity.TextMeshPro"
+      ],
+      "includePlatforms": [],
+      "excludePlatforms": [],
+      "allowUnsafeCode": false,
+      "overrideReferences": true,
+      "precompiledReferences": [
+        "ClientCore.dll",
+        "Newtonsoft.Json.dll"
+      ],
+      "autoReferenced": false,
+      "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+      ],
+      "versionDefines": [],
+      "noEngineReferences": false,
+      "optionalUnityReferences": [
+        "TestAssemblies"
+      ]
+    }
+  }
+}

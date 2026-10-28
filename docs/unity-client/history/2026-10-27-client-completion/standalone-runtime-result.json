@@ -1,0 +1,14 @@
+{
+  "BuildSucceeded": true,
+  "ProcessStarted": true,
+  "Pid": 29320,
+  "WindowObserved": {
+    "Title": "UnityClient",
+    "Id": 3017106
+  },
+  "RendererLog": "D3D11 input initialization and RenderGraph enabled",
+  "UiControlVerified": false,
+  "Block": "Computer Use app approval timed out while obtaining the new standalone window; no input was sent",
+  "GameplayProof": "Use separate current Editor/live-server evidence, not standalone proof",
+  "CloseState": "No forced termination; standalone left open pending app control permission or user close"
+}

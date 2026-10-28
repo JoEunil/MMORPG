@@ -1,0 +1,10 @@
+{
+  "name": "Mmorpg.Client",
+  "references": [
+    "Unity.TextMeshPro",
+    "Unity.ugui",
+    "Unity.InputSystem"
+  ],
+  "autoReferenced": true,
+  "rootNamespace": "Mmorpg.Client"
+}

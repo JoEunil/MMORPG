@@ -13,7 +13,7 @@ AI를 실제 서비스 개발에 적극적으로 쓰는 데는 회의적이었�
 ## 만들려는 클라이언트
 
 서버의 2D 좌표를 Unity의 수평면에 연결하고, 캐릭터·몬스터·스킬을 3D로 표현한다.  
-현재는 방향키 이동과 Z/X/C 스킬 조작을 기준으로, 다른 플레이어와 같은 필드에서 사냥하는 쿼터뷰 MMORPG 화면을 만들고 있다. 최신 개편 범위와 구현·검증 상태는 [개편 계획](docs/unity-client/MMORPG_REVISION_PLAN.md)에 정리한다.  
+현재는 방향키 이동과 Z/X/C 스킬 조작을 기준으로, 다른 플레이어와 같은 필드에서 사냥하는 쿼터뷰 MMORPG 화면을 만들고 있다.
 
 | 범위 | 계획 |
 |---|---|
@@ -39,7 +39,6 @@ Coordinator가 작업을 나누고 결과를 취합한다. 필요한 역할만 �
 | 문서 | 확인한 결정과 구현 결과, 테스트·캡처 기록 |
 
 같은 파일과 Unity Editor를 여러 역할이 동시에 수정하지 않도록 작업을 배정한다.  
-모델 설정과 역할별 세부 규칙은 기존 [구축 가이드](docs/unity-client/PIPELINE_GUIDE.md)와 [역할 지침](docs/unity-client/roles/)에서 관리한다.  
 
 GitHub 저장소에 PR이 올라오면 Codex 코드 리뷰가 자동으로 실행되도록 설정했다. 에이전트 워크플로우 내부의 리뷰에 더해, PR 단계에서도 변경 사항을 검토한다.
 
@@ -53,19 +52,9 @@ GitHub 저장소에 PR이 올라오면 Codex 코드 리뷰가 자동으로 실�
 - 두 계정의 거래소 등록·구매·취소·수령이 실제 아이템·재화에 반영되는지
 - 가방·거래소·채팅 입력이 이동·스킬 입력과 겹치지 않는지
 
-## 작업 지침과 결과 공개
+## 작업 결과
 
-기획·역할 지침은 기존 디렉터리에 두고, 개발 결과는 실제 화면과 검증 기록을 중심으로 정리한다. 운영 방식의 공통 기준은 [현재 운영 기준](docs/unity-client/CURRENT_POLICY.md)에서 관리한다.  
-진행 중인 결과와 화면은 [AI 활용 게임 개발 웹 포트폴리오](https://joeunil.github.io/MMORPG/)에 게시했다. 개발하면서 캡처·GIF와 작업 결과를 계속 갱신하고 있다. [공개 설명 원본](docs/unity-client/SHOWCASE.md)을 바탕으로 만들며, 공개 구성은 [웹 포트폴리오 지침](docs/unity-client/PORTFOLIO_GUIDE.md)을 따른다.  
+실제 화면과 구현 결과는 [AI-AGENT Unity 클라이언트 구현 작업](https://joeunil.github.io/MMORPG/)에서 볼 수 있다. 개발하면서 기능별 캡처·GIF와 작업 결과를 갱신한다.
 
-| 문서 | 내용 |
-|---|---|
-| [기획](docs/unity-client/BRIEF.md) | 화면·조작·기존 서버 기능과 구현 범위 |
-| [개편 계획](docs/unity-client/MMORPG_REVISION_PLAN.md) · [에이전트 활용 기록](docs/unity-client/AGENT_USAGE.md) | 현재 개편 범위와 역할별 작업·확인 가능한 사용량 기록 |
-| [현재 운영 기준](docs/unity-client/CURRENT_POLICY.md) · [공통 지침](AGENTS.md) | 최신 진행·승인·검증 기준과 작업 공간 공통 규칙 |
-| [워크플로우](docs/unity-client/WORKFLOW.md) | 작업 배정·구현·리뷰·검증 순서 |
-| [구축 가이드](docs/unity-client/PIPELINE_GUIDE.md) | 역할·모델·연결 준비와 서버 변경 범위 |
-| [로컬 환경](docs/unity-client/LOCAL_PREPARATION.md) · [MCP 범위](docs/unity-client/MCP_CAPABILITIES.md) | Unity·Slack·테스트 환경 연결 |
-| [결과 게시](docs/unity-client/DELIVERY.md) | 공개 결과·캡처·Pages 게시 기준 |
-
-완료된 작업·리뷰·검증 기록은 [작업 이력](docs/unity-client/history/2026-10-24-work-records/README.md)에 보존합니다. 현재 문서는 [문서 안내](docs/unity-client/README.md)에서 구분해 볼 수 있습니다.
+- [결과 정리](docs/unity-client/SHOWCASE.md): 구현한 기능과 화면, AI 활용 과정
+- [에이전트 활용 기록](docs/unity-client/AGENT_USAGE.md): 역할별 실행 횟수와 확인 가능한 사용량

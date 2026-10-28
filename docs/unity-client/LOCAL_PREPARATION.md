@@ -6,11 +6,16 @@
 
 - Editor: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient
 - Git 정본: 위 프로젝트 Builds/C10-Delivery/source
+- 현재 씬: Assets/Client/Scenes/Login.unity · Assets/Client/Scenes/World.unity
+- 기본 빌드 시작 씬은 로그인·월드 UI가 함께 있는 World.unity다. Unity 기본 SampleScene·환영 안내는 제거했으며 SampleSceneProfile은 이름과 달리 현재 PC 렌더링 설정이 사용하므로 보존한다.
+- 현재 코드: Assets/Client/Runtime · Editor · Tests (Mmorpg.Client.* 어셈블리)
 - 사용자 서버: C:/Users/joeun/Desktop/workspace/Game — 사용자 AI/미완료 변경 보존
 - ClientCore: 정본 ClientCore/ClientCore.csproj → UnityClient/Assets/Plugins/ClientCore/ClientCore.dll
 - 기존 비밀: 실제 사용자 LOCALAPPDATA/UnityCoordinator의 Windows 계정 암호화 파일. 내용을 출력하지 않는다.
 
 ## 실행 전
+
+격리된 도구 환경의 STATUS_NO_INSTANCES만으로 Editor 종료를 단정하지 않는다. 실제 사용자 프로세스·프로젝트와 대조하고, 필요한 개별 Unity 명령은 도구 심사를 거친 사용자 컨텍스트에서 확인한다. Editor가 있는데 별도 인스턴스를 다시 띄우거나 권한·보안 설정을 바꾸지 않는다.
 
 실제 프로젝트·컴파일·Play·프레임, 서버 실행 파일·작업 폴더·소스 기준·DLL, 포트·소유 프로세스, TEST_BAZAAR/TEST_CACHE/TEST_CACHE_DURABLE 초기화 모드 미설정을 확인한다. 전용 계정·아이템·재화가 부족하면 미검증으로 남기며 DB seed로 통과시키지 않는다.
 
@@ -24,7 +29,7 @@
 
 2026-10-25 현재 Computer Use `press_key`의 I/Shift+I/Tab은 Unity 원시 추적에서 TEXT로 관찰됐으며 해당 키의 STAT 눌림은 관찰되지 않았다. 이 상태에서 `Keyboard.current.*Key.wasPressedThisFrame`이 반응하지 않는 것을 제품 단축키 결함으로 단정하지 않는다. 포커스·프레임·장치와 원시 이벤트를 구분해 확인하고 실제 물리 키 입력과 비교한다. 사용자 물리 입력은 같은 관찰에서 I/B 각각1회 정상 감지됐다. 이 차이로 게임 단축키를 변경하지 않는다. 도구 내부 구현/다른 버전의 동작은 추정하지 않는다.
 
-자동화된 게임 입력이 필요하면 기존 `C01EditorInputRun`과 정상 PlayerLoop가 소비하는 `InputSystem.QueueStateEvent` 경로를 재사용할 수 있다. 명시적으로 합성 키 입력이라고 기록하고 native/물리 키 검증을 대신했다고 보고하지 않는다. 강제 `InputSystem.Update`나 제품 핸들러 직접 호출로 성공을 만들지 않으며, 키 해제·관찰기 정리를 보장한다. 도구 문제를 숨기기 위해 TEXT 이벤트를 게임 단축키로 연결하지 않는다.
+자동화된 게임 입력이 필요하면 기존 `Mmorpg.Client.Tests.LoginEditorInputRun`과 정상 PlayerLoop가 소비하는 `InputSystem.QueueStateEvent` 경로를 재사용할 수 있다. 명시적으로 합성 키 입력이라고 기록하고 native/물리 키 검증을 대신했다고 보고하지 않는다. 강제 `InputSystem.Update`나 제품 핸들러 직접 호출로 성공을 만들지 않으며, 키 해제·관찰기 정리를 보장한다. 도구 문제를 숨기기 위해 TEXT 이벤트를 게임 단축키로 연결하지 않는다.
 
 ## 정상 종료·복구
 

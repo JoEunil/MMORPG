@@ -1,0 +1,28 @@
+{
+  "name": "Mmorpg.Client.Tests",
+  "rootNamespace": "Mmorpg.Client.Tests",
+  "references": [
+    "Mmorpg.Client",
+    "Unity.InputSystem",
+    "Unity.ugui",
+    "Unity.InputSystem.TestFramework",
+    "Unity.TextMeshPro"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "ClientCore.dll",
+    "Newtonsoft.Json.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
