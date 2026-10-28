@@ -14,16 +14,20 @@
     "Wallet asynchronously resolved to gold100000 diamond850",
     "Native bag icon opens; initial failed read recovered through existing single automatic retry; item33 qty34 and selection detail rendered",
     "Native market icon opens;30 actual potion listings; selected HP Potion qty1 price50diamond shown; closed normally",
-    "Native C skill button requested Line; subsequent MP9700->9680 confirms actual accepted cast"
+    "Native C skill button requested Line; subsequent MP9700->9680 confirms actual accepted cast",
+    "User physical keyboard batch result: 모두 정상 작동 (Right held/released, I/B, Z/X/C); user report, not agent-generated key states",
+    "Post-user observation: server position(13.657,88.179), MP9639; initial position(2.682,77.204), MP9700; native C test MP9680",
+    "Native Disconnect returned to login, password input cleared",
+    "Player normal Alt+F4 exit; MainServer q normal shutdown exit0; Login Ctrl+C stopped; TCP3000/9999 absent; redo.2 and backpressure.1 remain0"
   ],
   "NotVerified": [
-    "Held arrow movement via standalone keyboard",
-    "Physical I/B/Z/X/C shortcuts",
-    "Standalone VFX timing/feel not demonstrated by still screenshots"
+    "All latency/held-motion feel and rubberband conditions",
+    "Standalone VFX timing quantified by video",
+    "Levelup/drop/balance or all monster special attacks"
   ],
   "InputPermission": "User explicitly permitted game window control in this turn",
   "AccountReaderBlock": "powershell.exe -File test-only Read-TestAccount.ps1 rejected by Windows execution policy UnauthorizedAccess; no policy change, inline retry, secret output or credentials persistence",
-  "Pending": "User one-batch physical right-arrow/I/B/Z/X/C confirmation; do not operate UI concurrently while user checks.",
+  "Pending": null,
   "Servers": {
     "MainServerPid": 23396,
     "MainServerSession": 78865,
@@ -31,7 +35,8 @@
     "LoginSession": 45973,
     "StartedThisTask": true,
     "MainNormalQuit": "q/Q through held PTY",
-    "LoginStop": "Ctrl+C through held PTY"
+    "LoginStop": "Ctrl+C through held PTY",
+    "FinalState": "MainServer23396 and Login13240 stopped normally; Player10780 stopped normally; existing MySQL/Redis unchanged"
   },
   "Sources": "AI3 match build manifest and current Game/CAND; generated map matches CAND manifest but current Game map differs. No full current-user-server equivalence claimed.",
   "NoChanges": [
@@ -56,5 +61,12 @@
     "EXP": 70
   },
   "LastObservedMP": 9680,
-  "Trade": "Read-only listing UI only, no register/buy/claim/receive mutation repeated"
+  "Trade": "Read-only listing UI only, no register/buy/claim/receive mutation repeated",
+  "Outcome": "Bounded standalone UI smoke check complete; physical keyboard confirmed by user, UI/coordinate/MP observations by agent",
+  "FinalPosition": [
+    13.657,
+    88.179
+  ],
+  "FinalMP": 9639,
+  "LogNotes": "Existing CancelIoEx1168 on session close; not a new blocker. Login startup DB timeout logged but later actual auth/getSession200; no success claimed for initial dependency attempt."
 }
