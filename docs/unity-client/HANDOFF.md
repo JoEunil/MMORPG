@@ -16,14 +16,20 @@ PR58 병합 확인 뒤 남은 독립 실행 UI 조작을 마감한다. 기존 �
 
 ## 현재 입력과 실행
 
-기존 Windows Player 빌드 SHA256 8AB9BD96A7CC54A80AA478005280FB1BD59A0835F0271816B8646FBA1043A8FF를 확인하고 실행했다. PID10780/창395028/UnityClient, 프로세스 Responding·Player.log D3D11/InputSystem/RenderGraph 초기화 확인. 실제 UI 반응은 미확인.
-Computer Use가 정확한 게임 창을 반환했지만 캡처에는 다른 Chrome 작업 화면이 표시돼 입력을 보내지 않았다. request_user_input_async로 게임 창을 앞으로 가져와 조작해도 되는지 질문했고 답변 대기 중이다. 과거 입력 허용이 이번 잘못 잡힌 화면에 대한 입력 승인을 뜻하지 않는다. 다른 게임/브라우저에 입력하거나 캡처 문제를 우회하지 않는다.
-Unity Editor/Login/MainServer는 시작하지 않았다. 기존 MySQL84/Redis 서비스는 Running으로 확인했으며 변경하지 않았다. Windows Player는 열린 상태, 강제 종료 없음.
+사용자가 현재 게임 창 조작을 명시적으로 허용했다. 기존 Windows Player SHA256 8AB9BD96A7CC54A80AA478005280FB1BD59A0835F0271816B8646FBA1043A8FF, PID10780/창395028/UnityClient를 앞으로 가져와 실제 로그인 화면과 빈 입력 버튼 안내를 native 클릭으로 확인했다. 앞선 잘못된 창 캡처 상태는 해소됐다.
+로그인 서비스 PID13240/exec session45973 (Game/Login), MainServer PID23396/session78865 (ROOT cwd)를 이번에 정상 기동했다. 로그인 HTTP3000=200, 게임서버 준비/9999 listen 확인. MainServer 해시6F871C46E6769941F5DE8AC5F0C3A5F677D9DD986C906684F054C03526D22597, 시작 전 redo.2/backpressure.1 모두0, TEST 초기화 플래그 없음. 종료는 held PTY q/Q와 Login Ctrl+C만 사용한다. 기존 MySQL/Redis는 유지했다.
+저장된 계정을 읽는 임시 .ps1이 Windows 실행 정책 UnauthorizedAccess로 차단돼 우회하지 않았고 이 임시 파일은 삭제했다. 사용자가 직접 기존 test1로 로그인했다. native 클릭으로 캐릭터11 선택/Zone1진입, 골드100000/다이아850, 가방 아이템33 수량34 선택·상세, 거래소30개 실제목록/포션1개50다이아 상세/닫기를 확인했다. 가방 첫 실패는 기존1회 자동재조회로 복구됐다. 등록/구매/수령은 반복하지 않았다.
+C 스킬 버튼 native 클릭 뒤 서버 응답에 따른 MP9700→9680을 확인했다. 스틸샷으로 전체 VFX/체감을 검증했다고 하지 않는다. sky.press_key i/Right는 가방 열림/서버좌표 변화가 없어 키보드 검증 통과로 세지 않았다. 기존 도구 문자/눌림 차이와 구분하며 제품 입력 우회 코드는 추가하지 않는다.
+마지막 물리 키보드 일괄 확인을 사용자에게 요청했다: 바닥 클릭, 오른쪽2초/해제, I/B창열기닫기, Z/X/C 각1회. 현재 답변 대기, 사용자 입력 중에는 UI를 동시에 조작하지 않는다.
+사전 분석에서 AI3 소스는 Game/CAND/기존 빌드manifest 일치, 생성 WorldMap은 CAND/manifest 일치지만 현재 Game은 다르다. 기존 검증 빌드의 client 조작만 보며 최신 사용자 서버 전체와 같다고 주장하지 않는다. 제품/AI/서버/DB 변경 없음.
+내부 상세: ROOT/UnityClient/Builds/StandaloneCompletion/Evidence/standalone-ui-progress.json 및 standalone-login-validation.png.
 
 ## 다음 행동과 게시
 
-사용자의 현재 창 조작 답변 후 대상 화면을 새로 확인한다. 입력 허용 시 같은 Player에서 로그인·I/B·짧은 이동/스킬만 한 배치로 확인하고 실제 결함만 수정한다. 서버 시작 전 현재 포트·소스·산출물·보존 WAL을 다시 확인한다. 새 DB 준비/초기화는 하지 않는다.
+사용자 물리 키보드 묶음 확인 답변 후 현재 화면과 서버좌표/MP를 새로 관찰하고 결과를 구분해 기록한다. 서버를 이번에 켠 채 해당 확인 대기 중이다. 턴을 끝낼 경우 서버 준비 상태와 다음 접속 필요를 명시하고 정상 종료 여부를 기록한다. 새 DB 준비/초기화는 하지 않는다.
 새 PR/push 승인 대기 없음. 로컬 변경을 다음 관련 묶음에 모으며, 후보 준비 후 종합 검수·Slack 게시 승인 1회. PR58 승인은 새 PR에 재사용하지 않는다. 정식 Pages URL 직접 확인은 웹 도구 접근 실패로 미확인.
 
 이번 문서 diff 검사·사이트 생성/내부 링크 검사 통과. 제품 테스트 반복0. Unity Coordinator 새 작업 스레드1793183704.130739에 진행과 입력 대기 전달. 게시 없이 로컬 후보로 보존한다.
 
+
+진행 결과 Slack1793184603.477259(부모1793183704.130739)에 전달. 현재 서버는 사용자 키보드 확인을 위해 유지하며 다음 턴은 동일 PID/포트/창을 재확인한다. 공개 화면/원격 게시 변경 없음.

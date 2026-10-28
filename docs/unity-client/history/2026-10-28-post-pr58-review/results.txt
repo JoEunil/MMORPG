@@ -1,1 +1,3 @@
 PR58 merged 8622d99 확인. 신규 codex/client-play-completion, 로컬 병합 branch 정리. 실제 남은 클라이언트 범위 조사: Windows Player UI 조작 미확인, 성장/drop 지원을 임의 구현하지 않음. 이전 통과 테스트 반복0, 게임/AI/서버/DB 수정0. 기존 Windows Player 시작과 로그 초기화만 확인; 대상 창 캡처 불일치로 입력0, 현재 사용자 답변 대기. 계획 과거 원문 보존. Slack/commit 결과는 이후 인계에 연결.
+
+사용자 창 조작 허용·직접 test1 로그인 후 native UI로 필드/재화/가방선택/거래소조회/닫기/C스킬 MP9700→9680 확인. 가방 초기조회 실패는 기존 자동1회 재조회 복구. 실제 mutation 거래 반복0, 제품수정0. 자동 i/Right 미전달로 물리 키보드묶음 확인 별도요청·답변대기. Player UI 전체 성공 주장 없음. 임시 계정 reader .ps1 정책거절 후 우회없이삭제, 비밀번호노출/영구저장0. 기존 서버만 정상기동해 확인대기 유지, 종료는 held PTY Main q/Login Ctrl+C. Slack 같은스레드 결과1793184603.477259.
