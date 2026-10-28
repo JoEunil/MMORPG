@@ -5,3 +5,5 @@ Decision Support Agent: text choice bundle prepared, no actual HTML board or gam
 Astra medium planning advice + choice gate: plan PASS; initial question revision required because it only described alternatives costs. Coordinator added benefits of each option and recommendation reason. Same Astra bounded question-only follow-up PASS, required fixes0; no product tests demanded or run.
 Question sent via request_user_input_async: choose first levelup -> recovery items (recommended), HPpotion acquisition/use first, first levelup -> equipment growth. Freeform combinations/trade-only possible. Scope is planning preference, no maxHP formula/implementation approval inferred. Await actual response. User selecting growth/items planning earlier is not this choice answer.
 No gameplay/server/DB/AI/input/build mutations. Existing completed tests not rerun. Tokens/costN/A.
+
+After actual direction answer, same planner drafted one concrete Lv1-3 policy and same Astra reviewed policy-only PASS with no required changes. Current selection result is direction-choice.txt. Earlier unanswered-choice text above is historical, not current state. No gameplay tests/source/DB changes.

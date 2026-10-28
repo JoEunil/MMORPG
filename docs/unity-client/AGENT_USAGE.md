@@ -2,23 +2,23 @@
 
 기준일: 2026-10-28
 누적 신규: 174
-누적 재활성화: 287
+누적 재활성화: 290
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-28
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
-| game_planner | 기획 Agent | 7 | 3 |
+| game_planner | 기획 Agent | 7 | 4 |
 | server_analyst | 서버 분석 Agent | 20 | 46 |
 | client_implementer | 구현 Agent | 53 | 66 |
 | asset_artist | 아트 Agent | 24 | 32 |
 | code_reviewer | 리뷰 Agent | 43 | 104 |
-| quality_reviewer | 종합 검수 Agent | 6 | 26 |
+| quality_reviewer | 종합 검수 Agent | 6 | 27 |
 | unity_tester | 테스트 Agent | 4 | 4 |
 | progress_documenter | 기록 Agent | 8 | 4 |
-| decision_curator | 의사결정 지원 Agent | 8 | 2 |
+| decision_curator | 의사결정 지원 Agent | 8 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체461회(신규174·재활성화287)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체464회(신규174·재활성화290)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -729,3 +729,8 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 ## 성장·아이템 기획과 선택안 — 2026-10-28
 
 실제 신규3: growth_items_planning(기획/Sol medium), growth_decision_bundle(의사결정 지원/Luna low), growth_plan_quality_gate(종합 검수/Astra medium). 실제 후속2: standalone_server_preflight(서버 분석/Sol medium, 실제 성장·아이템 경로 조사), growth_plan_quality_gate(질문 비교 공정성 수정 후 선택안 통과). 누적461=신규174+후속287, 토큰·비용N/A. 실제 산출물은 현재 기획안/소스 지원 근거/텍스트 선택안/검수 결과이며 HTML 보드나 게임 구현·테스트 성공을 뜻하지 않는다. 총괄 직접 통합은 활성화 제외.
+
+
+## 첫 레벨업 방향 연결과 정책안 — 2026-10-28
+
+실제 후속3: growth_decision_bundle(의사결정 지원/Luna low, 실제 답변의 범위 연결), growth_items_planning(기획/Sol medium, EXP/HP/기존 데이터/저장 정책 초안), growth_plan_quality_gate(종합 검수/Astra medium, 정책 일관성 자문 통과). 누적464=신규174+후속290, 토큰·비용N/A. 사용자 방향 선택을 수치/서버 구현 승인으로 확대하지 않았으며 게임 구현·실행 검증은 없다.

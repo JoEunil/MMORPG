@@ -1,0 +1,6 @@
+2026-10-28 actual user answer.
+Source: send_user_message_question_reply, request_user_input_async call_62d86c74fcae45d194fe1d1fb2251f3a
+Answer: 레벨업 먼저 → 회복 아이템 (추천)
+Decision Support Agent mapping: first milestone levelup; subsequent direction recovery item acquisition/use; equipment and ground loot excluded. Numerical thresholds/maxHP formula/server implementation not approved by this direction-only choice.
+Planner follow-up: concrete policy draft in current GROWTH_ITEMS_PLAN.md, no product edits/tests.
+Astra follow-up: planning situation review PASS, no required contradictions. Existing-level-based new promotions, no login reapplication, preserve high-level/EXP, actual-max-delta currentHP and dead0, normal-save-only scope coherent. HP+500 feel unverified; this is not numerical or implementation approval.
