@@ -1,0 +1,28 @@
+{
+  "NativeExporter": "worker MSVC compile/export, determinism,readonly,lockedtarget,invalidflags and invalidphase1..8 checks passed; only changed failures rerun",
+  "CoreLibBuild": {
+    "ExitCode": 0,
+    "Source": "C:\\Users\\joeun\\Desktop\\workspace\\Game-UnityClient\\UnityClient\\Builds\\C10-Delivery\\source",
+    "SolutionDirExplicit": true,
+    "InitialInvocationFailure": "Missing SolutionDir, External/BaseLib headers unresolved; invocation corrected, no product fix",
+    "Log": "C:\\Users\\joeun\\Desktop\\workspace\\Game-UnityClient\\UnityClient\\Builds\\ContentTransfer\\Evidence\\corelib-build-fixed-context.log",
+    "Warnings": "Existing C4819/C4244/C4267 retained"
+  },
+  "UnityTests": {
+    "Category": "ContentImportDirection",
+    "Total": 2,
+    "Passed": 2,
+    "Failed": 0,
+    "ExistingTestsRepeated": 0
+  },
+  "ActualImport": {
+    "GuidBefore": "e20a847d2d4fa094088b01f4c513165b",
+    "GuidAfter": "e20a847d2d4fa094088b01f4c513165b",
+    "FullSerializedValuesUnchanged": true,
+    "AssetSha256BeforeAfter": "0C967854170F9627572A45B29392DFC837998A0016F9235B9D511F9B415D3D05",
+    "MetaSha256BeforeAfter": "317D448FAED86BDEA7DA31841078B938275F5C597B2CF3319505DC5CF4B98267"
+  },
+  "SnapshotSha256": "6F6FED0251439EAE3265386BCA052CCD985453FD02534AB8538484E8ED575A97",
+  "Scope": "No runtime balance/AI/wire/DB/map/spawn changes, server runtime not started",
+  "ActualCopies": "Editor/importer/test/JSON synced after exact preimage guard; actual ROOT CoreLib source/project differ from CAND and were preserved. Canonical CAND CoreLib build only."
+}

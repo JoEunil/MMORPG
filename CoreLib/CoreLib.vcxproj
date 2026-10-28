@@ -171,6 +171,8 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="IPingPacketWriter.h" />
     <ClInclude Include="SkillData.h" />
+    <ClInclude Include="Skills.inc" />
+    <ClInclude Include="Monsters.inc" />
     <ClInclude Include="StateManager.h" />
     <ClInclude Include="Cell.h" />
     <ClInclude Include="WorldMap.h" />

@@ -1,9 +1,7 @@
 ﻿#pragma once
 #include <cstdint>
+#include <stdexcept>
 #include "SkillData.h"
-#if __has_include("../UnityClient/Exports/ServerData/C14Export.pending")
-#error C14 server content export is pending; do not compile a mixed generated content snapshot.
-#endif
 
 namespace Data {
     static constexpr int MAX_STEPS_PER_PHASE = 16;
@@ -56,6 +54,8 @@ namespace Data {
             phasesCnt(phaseList.size()),
             reward(reward)
         {
+            if (phaseList.size() < 1 || phaseList.size() > MAX_PHASES)
+                throw std::invalid_argument("Monsters require 1 through 8 phases.");
             aggroTimeOut = 100; // 50ms 틱 기준 5초간 교전이 없으면 어그로 해제.
             int i = 0;
             for (auto& p : phaseList) {
@@ -68,6 +68,6 @@ namespace Data {
 
     // 운영 환경에서는 json/데이터파일로 관리
     inline static const MonsterData monsters[] = {
-#include "../UnityClient/Exports/ServerData/Monsters.inc"
+#include "Monsters.inc"
     };
 }

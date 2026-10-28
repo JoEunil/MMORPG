@@ -11,7 +11,7 @@
 | 도구·로컬 환경 | [PIPELINE](PIPELINE_GUIDE.md) · [로컬 준비](LOCAL_PREPARATION.md) · [MCP 기능](MCP_CAPABILITIES.md) |
 | Slack·Git 전달 | [Slack](SLACK_WORKFLOW.md) · [전달 기준](DELIVERY.md) |
 | 공개 결과·지표 | [SHOWCASE](SHOWCASE.md) · [공개 기준](PORTFOLIO_GUIDE.md) · [Agent 집계](AGENT_USAGE.md) |
-| 서버·맵 계약 | [서버 계약](SERVER_CONTRACT.md) · [맵 내보내기](MAP_EXPORT_GUIDE.md) · [서버 연결](WORLD_MAP_HANDOFF.md) |
+| 서버·맵 계약 | [서버 계약](SERVER_CONTRACT.md) · [데이터 공유](CONTENT_PIPELINE.md) · [맵 내보내기](MAP_EXPORT_GUIDE.md) · [서버 연결](WORLD_MAP_HANDOFF.md) |
 | 과거 기록 | [작업·리뷰·검증](history/2026-10-24-work-records/README.md) · [이전 지침 원문](history/2026-10-24-guideline-audit/README.md) |
 
 ## 계약·저작 참고 문서

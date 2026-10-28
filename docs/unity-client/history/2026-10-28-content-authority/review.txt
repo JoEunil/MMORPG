@@ -1,0 +1,3 @@
+Independent code review required P2: ReplaceFileW withoutbackup can deleteexistingoutputon documentedfailure1176, catchdeletingstage worsens. Switched tosame-volume MoveFileExW REPLACE_EXISTING|WRITE_THROUGH, noCOPY_ALLOWED; errorclaims corrected, lockedtargetcasechecked. Same reviewer bounded recheck PASS, nootherblockingfindings. Initial review and followup read-only; parentownsEditor/build.
+
+Astra integratedquality: product13manifest hashesmatch/evidenceconsistent, required HANDOFF stale-direction fix only. Parent replacedcurrenthandoff; sameAstra document-onlyfollowupPASS/requiredfixes0. No product changes/retests after codefreeze. No visual/gameplaychange so screenshotsnotrequired.

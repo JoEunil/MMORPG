@@ -1,30 +1,23 @@
 # 현재 인계 — 2026-10-28
 
-## 현재 목표
-사용자가 다음 범위로 성장·아이템 기획을 선택했다. 현재 서버 지원과 필요한 확장, 첫 완성 흐름 비교를 정리했다. 기획안/질문 Astra 검수 후 사용자가 레벨업 우선→회복 아이템 후속을 선택했다. 현재 선택 질문은 없다. 구현·밸런스 수치·서버 계약 변경 승인이 아니다.
+## 현재 작업과 권한
+사용자가 서버 C++ Data 정본→Exporter→Unity 공유 방향을 승인했다. 스킬·몬스터 데이터 경로 전환을 구현·검증했다. 맵/스폰은 기존 Unity→서버 경로를 유지하고 AI·밸런스·패킷·DB·성장 로직은 변경하지 않았다. 초기의 Unity 저작 규칙 확대 제안은 철회·대체됐다.
 - ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient
-- Unity 프로젝트: ROOT/UnityClient
+- 실제 Editor: ROOT/UnityClient, Unity6000.0.47f1/Pipeline7800/PID6848
 - Git 정본 CAND: ROOT/UnityClient/Builds/C10-Delivery/source
-- 브랜치: codex/client-play-completion, PR58 merged/master8622d99 이후 로컬 관련 기록·기획. push/새 PR 없음.
+- 브랜치: codex/client-play-completion, 기본 master8622d99/원격새커밋없음 확인. 아직 push/새 PR 없음.
 
-## 현재 산출물과 선택
-현재 기획 정본: GROWTH_ITEMS_PLAN.md. 지원 경로/상세초안/검수/이전 인계: history/2026-10-28-growth-items-planning/.
-실제 답변 call_62d86c74fcae45d194fe1d1fb2251f3a: 레벨업 먼저 → 회복 아이템 (추천). 동일 의사결정 지원 담당이 첫 레벨업/회복 후속으로 연결했다. 상세 정책 초안은 총누적EXP50에Lv2/150에Lv3, 새 승급마다최대HP+500/생존HP실제delta추가·사망0, 사용자후속지정정상성장상한Lv100·이후EXP정책유지, 기존고레벨/EXP/maxHP로그인보정없음·미래보상때만승급이다. 정상disconnect저장만재사용하며 매처치/충돌WAL보장없음. HP+500체감미평가, 수치·서버 구현은 미승인 초안. Astra 정책 자문 통과/필수수정0. 원문/범위: history/2026-10-28-growth-items-planning/direction-choice.txt.
+## 구현과 근거
+서버 정본 CoreLib/Skills.inc·Monsters.inc를 실제 Data 테이블이 include한다. 기존5스킬/3몬스터 값과순서를 유지했다. tools/Export-ServerContent.cpp/.ps1은 Unity/서버/DB 없이 실제테이블에서 JSONformatVersion1을 출력한다. Unity ServerContentImport가 전체검증후 기존ServerContent.asset을 갱신한다. 기존Unity→서버 메뉴/도구와 미사용ExportPair 제거, GUID보존이름이동. MonsterData생성자 phase1~8검사는 고정배열복사 전 저작오류차단이며 AI변경이 아니다.
+현재 기술정본: CONTENT_PIPELINE.md. 후보13제품해시/검증/리뷰/이전인계는 history/2026-10-28-content-authority/.
 
-## 확인 사실과 경계
-실제 처치는 막타 EXP 누적만 지원한다. 자동 레벨업·포션 사용·장착·몬스터 아이템/재화 지급은 없다. 기존 EXP/level/HP/MP wire와 정상 disconnect 저장, 내부 가방10칸/수량WAL을 재사용 검토하되 매 처치 저장·범용 보상 API로 확대하지 않는다. 포션에는 새 외부 소비/효과 계약이 필요하고 거래 outbox는 그대로 사냥 지급에 쓰지 않는다. 바닥 줍기/장비/가방 확장은 첫 추천 범위에서 제외한다.
-현재 MP10000/스킬비용20만으로 회복 수요나 균형을 주장하지 않는다. 이번 작업은 소스 읽기/문서/선택안뿐이며 서버/DB/AI/게임코드/Unity/실행테스트 변경 없음. 실제 DB실물/최신 사용자 서버 실행 일치는 조사하지 않았다. 사용자 몬스터 AI는 계속 제외한다.
+## 실제 검증
+Native exporter 빌드/결정성/readonly·잠금교체실패/잘못된데이터 보존과 phase범위검사 통과(구현담당 근거). 독립리뷰의 ReplaceFileW 실패시원본손실 P2를 동일볼륨 MoveFileExW REPLACE_EXISTING|WRITE_THROUGH로 수정하고 재검토통과했다.
+CAND CoreLib 네이티브빌드 exit0. 최초 직접project호출의 SolutionDir누락은 빌드호출을교정,제품수정아님. 기존C4819/C4244/C4267경고유지. 실제Editor 새PlayMode ContentImportDirection2/2통과, 기존통과반복0. 실제기존asset import전후 전체값·GUID·YAML/meta바이트불변 확인. 최초오프라인비교helper의 EditorJsonUtility wrapper가정오류는보정했고 보존된before/after로대조,제품실패아님.
+실제ROOT에는Importer/test/JSON만 preimage확인후동기화했다. ROOT CoreLib소스/프로젝트는CAND와달라보존했고 사용자Game AI/서버사본도 덮지않았다. 검증서버소스는CAND다. Editor Edit/assetclean,게임서버/Login기동·실입력·DB조작없음. UI/아트값변화없어새공개사진없음.
 
-## 이전 완료와 실행
-Windows Player 기본 UI/실서버 확인 및 사용자 방향키/I/B/Z/X/C 정상 보고를 기록했고 Player/Main/Login 정상 종료, redo.2/backpressure.1=0이었다. 현재 기획 중 다시 시작하지 않았다. 기존 테스트 반복0. 과거 검증은 history/2026-10-28-post-pr58-review/와 2026-10-27-client-completion/를 참조한다.
+## 성장 계획과 다음 작업
+사용자선택은 레벨업우선→회복아이템후속, 레벨상한100. GROWTH_ITEMS_PLAN.md의 EXP50/150·HP+500·Lv4~100곡선은수치검토안이다. 이번에 성장테이블/승급로직/성장JSON필드를구현한것은아니다. 후속성장도서버Data정본을사용한다. 과거검증은2026-10-28-post-pr58-review/와2026-10-27-client-completion/에유지.
+종합검수통과/필수수정0.옛인계의반대방향설명1건을수정한뒤같은Astra가문서만재검수해통과했다. 제품재테스트반복0. 준비된관련묶음의PR게시직전에UnityCoordinator Slack승인1회,승인전push보류. PR58/과거승인재사용금지. 기존Slack수신기는오래된health/프로세스종료로확인돼같은고정Coordinator로정상재시작했으며 새NodePID33160/listening·고정Coordinator일치·health2초이내확인후게시요청을준비한다.
 
-## 다음 행동과 게시
-방향 연결과 검수한 구체 정책안까지 준비 완료. 수치·서버 변경 범위를 확정하는 명시 요청 전에는 제품 코드/DB를 수정하지 않는다. 다음 구현 후보는 막타 EXP 지점의 승급/상태표시/정상저장 연결이며 AI·포션·드롭은 첫 구현에서 제외한다. 새 공개/PR 승인은 후보 준비 시 Slack에서 한 번, PR58 승인 재사용 금지. 작은 기록·기획만으로 새 PR을 만들지 않는다.
-실제 Agent464=신규174+후속290, 토큰/비용N/A. 공개 사이트 본문은 현재 결과를 유지하며 새 기획을 구현 성과로 올리지 않는다.
-
-성장 기획의 새 Slack 부모1793186362.322719에 핵심 결과 전달 완료. 문서 diff·사이트 생성/링크와 지표174+287 합계 검사 통과. 게임 테스트는 실행하지 않았다.
-
-
-사용자 후속 설계 방향: 성장 규칙은 스킬과 같은 Unity 저작→검증→정적 서버 Export, 캐릭터 실제level/EXP/HP는 기존DB상태 저장으로 분리한다. 수치별하드코딩·새DB규칙스키마·핫리로드는 도입하지 않는 제안으로 기획안 반영. 구현/서버재빌드 없음.
-
-사용자 후속: 레벨 상한100 지정. 성장표는 기존 스킬과 같은 Unity 저작→Exporter 정적.inc→C++ Data 테이블→서버 판정 흐름, Unity는 같은 원본/서버확정상태참조. 런타임 .dat 읽기나 서버→클라이언트 역export가 아니다. 계획 상한과 검증경계를100으로 갱신했고 Lv4~100 상세EXP곡선은 아직 제안할 데이터다. 실제 서버코드 상한 구현 완료를 뜻하지 않는다.
+실제Agent474=신규180+후속294/토큰·비용N/A. 현재승인대기는없으며고정커밋으로게시요청할예정이다. 새로운게임화면/밸런스성공주장없음.

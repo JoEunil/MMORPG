@@ -1,6 +1,10 @@
+## 현재 경로 구분 — 2026-10-28
+
+맵·구역·충돌과 스폰 배치는 아래 Unity→서버 경로를 유지한다. 스킬·몬스터 능력치는 서버 C++ Data→공통 JSON→ServerContentImport로 전환했고 옛 ServerContentExport는 제거했다. 두 소유권을 구분하며 [데이터 공유 경로](CONTENT_PIPELINE.md)를 따른다. 아래 과거 상태/검증 기록은 당시 근거다.
+
 ## 현재 Unity 경로 — 2026-10-27
 
-현재 저작 컴포넌트는 Mmorpg.Client.MapAuthoring이며 씬은 Assets/Client/Scenes/World.unity이다. 데이터는 Assets/Client/Content, Exporter는 Assets/Client/Editor/WorldMapExport.cs·WorldLayoutExport.cs·ServerContentExport.cs·MonsterSpawnExport.cs에 있다. 아래 과거 기록의 단계 번호 타입·경로는 당시 이름이며, 현재 구현은 기능명 경로를 사용한다. 좌표·출력 스키마·서버 소비 계약은 이번 코드 구조 정리로 변경하지 않는다.
+현재 저작 컴포넌트는 Mmorpg.Client.MapAuthoring이며 씬은 Assets/Client/Scenes/World.unity이다. 데이터는 Assets/Client/Content, Exporter는 Assets/Client/Editor/WorldMapExport.cs·WorldLayoutExport.cs·MonsterSpawnExport.cs에 있다. 아래 과거 기록의 단계 번호 타입·경로는 당시 이름이며, 현재 구현은 기능명 경로를 사용한다. 좌표·출력 스키마·서버 소비 계약은 이번 코드 구조 정리로 변경하지 않는다.
 
 ## 최신 — 사용자 서버 AI 변경과 내보내기 구분 / 2026-10-23
 
