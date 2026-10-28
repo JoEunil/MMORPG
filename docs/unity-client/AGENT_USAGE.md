@@ -1,24 +1,24 @@
 ## 공개 집계
 
 기준일: 2026-10-28
-누적 신규: 171
-누적 재활성화: 285
+누적 신규: 174
+누적 재활성화: 287
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-28
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
-| game_planner | 기획 Agent | 6 | 3 |
-| server_analyst | 서버 분석 Agent | 20 | 45 |
+| game_planner | 기획 Agent | 7 | 3 |
+| server_analyst | 서버 분석 Agent | 20 | 46 |
 | client_implementer | 구현 Agent | 53 | 66 |
 | asset_artist | 아트 Agent | 24 | 32 |
 | code_reviewer | 리뷰 Agent | 43 | 104 |
-| quality_reviewer | 종합 검수 Agent | 5 | 25 |
+| quality_reviewer | 종합 검수 Agent | 6 | 26 |
 | unity_tester | 테스트 Agent | 4 | 4 |
 | progress_documenter | 기록 Agent | 8 | 4 |
-| decision_curator | 의사결정 지원 Agent | 7 | 2 |
+| decision_curator | 의사결정 지원 Agent | 8 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체456회(신규171·재활성화285)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체461회(신규174·재활성화287)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -724,3 +724,8 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 ## 남은 클라이언트 처리 대조 — 2026-10-28
 
 실제 신규2: client_ui_remaining_audit, world_visual_remaining_audit(모두 리뷰 책임/explorer, 로그인·채팅·포커스 및 월드·표현·전투 상태의 소스/기존 테스트 대조). 확정 결함 없음. 제품 수정·테스트 재실행·Unity 조작0. 누적456=신규171+후속285, 실제 실행 모델/토큰·비용 미확인N/A. 총괄의 시장/가방 읽기는 활성화에 넣지 않았다.
+
+
+## 성장·아이템 기획과 선택안 — 2026-10-28
+
+실제 신규3: growth_items_planning(기획/Sol medium), growth_decision_bundle(의사결정 지원/Luna low), growth_plan_quality_gate(종합 검수/Astra medium). 실제 후속2: standalone_server_preflight(서버 분석/Sol medium, 실제 성장·아이템 경로 조사), growth_plan_quality_gate(질문 비교 공정성 수정 후 선택안 통과). 누적461=신규174+후속287, 토큰·비용N/A. 실제 산출물은 현재 기획안/소스 지원 근거/텍스트 선택안/검수 결과이며 HTML 보드나 게임 구현·테스트 성공을 뜻하지 않는다. 총괄 직접 통합은 활성화 제외.
