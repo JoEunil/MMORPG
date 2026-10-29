@@ -42,6 +42,9 @@ namespace ClientCore.PacketHelper
         PROFILE_BATCH = 24,
         PROFILE_BATCH_RES = 25,
         ZONE_RESYNC = 38,
+        ITEM_USE = 45,
+        ITEM_USE_RES = 46,
+        ITEM_REWARD = 47,
     }
     
     public enum ZONE_CHANGE : byte

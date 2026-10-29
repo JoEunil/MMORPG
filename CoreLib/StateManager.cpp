@@ -3,6 +3,7 @@
 #include "Initializer.h"
 #include "ChatThreadPool.h"
 #include "WorldMap.h"
+#include "ItemData.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -11,6 +12,74 @@ namespace Core {
     static_assert(TOWN_ZONE_ID == 1 && TOWN_SPAWN_X >= 0 && TOWN_SPAWN_X <= ZONE_SIZE
         && TOWN_SPAWN_Y >= 0 && TOWN_SPAWN_Y <= ZONE_SIZE,
         "Town respawn must remain inside Zone 1.");
+
+    ItemUseResponseBody StateManager::UseItem(uint64_t sessionID, const ItemUseRequestBody& request) {
+        ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
+        if (request.requestID == 0 || request.itemID == 0) return result;
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock sessionLock(shard.smutex);
+        const auto session = shard.sessionMap.find(sessionID);
+        if (session == shard.sessionMap.end() || !session->second.authenticated
+            || !session->second.authCompleted || session->second.characterID == 0) return result;
+        auto& saved = session->second.lastItemUse;
+        if (request.requestID == saved.requestID) {
+            if (request.ownershipEpoch == saved.ownershipEpoch && request.itemID == saved.itemID) return saved;
+            return result;
+        }
+        if (request.requestID < saved.requestID || request.ownershipEpoch != session->second.ownershipEpoch) {
+            result.status = 7;
+            return result;
+        }
+        auto zone = GetZone(session->second.zoneID);
+        if (!zone) return result;
+        std::unique_lock zoneLock(zone->m_mutex);
+        const auto found = zone->m_sessionToIndex.find(sessionID);
+        if (found == zone->m_sessionToIndex.end()) return result;
+        auto& character = zone->m_chars[found->second];
+        result.cooldownRemainingTicks = character.potionCooldownTicks;
+        const auto item = Data::itemMap.find(request.itemID);
+        if (item == Data::itemMap.end() || item->second.hpRecovery == 0) result.status = 9;
+        else if (character.hp <= 0) result.status = 2;
+        else if (character.hp >= character.maxHp) result.status = 3;
+        else if (character.potionCooldownTicks != 0) result.status = 4;
+        else if (!inventory) result.status = 8;
+        else {
+            const auto consumed = inventory->ConsumeItem(character.characterID, request.itemID);
+            result.remainingQuantity = consumed.remainingQuantity;
+            switch (consumed.status) {
+            case ItemOperationStatus::Success:
+                character.hp = static_cast<int>((std::min)(static_cast<int64_t>(character.maxHp),
+                    static_cast<int64_t>(character.hp) + item->second.hpRecovery));
+                character.potionCooldownTicks = item->second.cooldownTicks;
+                character.dirtyBit |= 1;
+                zone->m_cells[character.cellY][character.cellX].dirtyChar.push_back(character.zoneInternalID);
+                result.status = 1;
+                result.cooldownRemainingTicks = character.potionCooldownTicks;
+                break;
+            case ItemOperationStatus::Missing: result.status = 5; break;
+            case ItemOperationStatus::Busy: result.status = 6; break;
+            default: result.status = 8; break;
+            }
+        }
+        saved = result;
+        return result;
+    }
+
+    void StateManager::GrantMonsterPotion(const CharacterState& character) {
+        if (!inventory) return;
+        const auto sessionID = character.sessionID;
+        // Cache owns the operation through DB loading/disconnect; no Zone or Character references escape.
+        inventory->GrantItem(character.characterID, Data::monsterPotionItemID, Data::monsterPotionQuantity,
+            [this, sessionID](ItemOperationResult result) {
+                ItemRewardBody body{Data::monsterPotionItemID, 0, result.remainingQuantity, 3};
+                if (result.status == ItemOperationStatus::Success) {
+                    body.status = 1;
+                    body.grantedQuantity = Data::monsterPotionQuantity;
+                } else if (result.status == ItemOperationStatus::Full) body.status = 2;
+                auto packet = ZoneState::writer->WriteItemReward(body);
+                if (packet) iocp->SendDataUnique(sessionID, std::move(packet));
+            });
+    }
 
     bool StateManager::ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result) {
         result = {};

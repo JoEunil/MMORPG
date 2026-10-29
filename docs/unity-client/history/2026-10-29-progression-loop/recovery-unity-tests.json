@@ -1,0 +1,34 @@
+{
+  "status": "completed",
+  "duration": 0.08,
+  "summary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "inconclusive": 0
+  },
+  "results": [
+    {
+      "FullName": "Mmorpg.Client.Tests.InventoryTests.ItemUseAndRewardWirePreservesFieldsAndRejectsMalformedFrames",
+      "Status": "Passed",
+      "Duration": 0.0207875,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "Mmorpg.Client.Tests.InventoryTests.ItemUseCorrelatesSingleRequestAndPreservesServerStatusWithoutInventingInventory",
+      "Status": "Passed",
+      "Duration": 0.0097185,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "Mmorpg.Client.Tests.InventoryTests.ItemUseTransitionDisconnectAndDisposeInvalidateRepliesButInventoryStillCompletes",
+      "Status": "Passed",
+      "Duration": 0.0025903,
+      "Message": null,
+      "StackTrace": null
+    }
+  ]
+}

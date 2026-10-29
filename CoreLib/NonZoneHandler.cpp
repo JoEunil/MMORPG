@@ -83,6 +83,15 @@ namespace Core {
             case OP::RESPAWN_TO_TOWN:
                 RespawnToTown(p);
                 break;
+            case OP::ITEM_USE:
+                if (p->GetLength() == sizeof(PacketStruct<ItemUseRequestBody>) && h->flags == 0
+                    && h->length == p->GetLength() && h->magic == MAGIC) {
+                    const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
+                    const auto result = stateManager->UseItem(p->GetSessionID(), request);
+                    auto response = writer->WriteItemUseResponse(result);
+                    if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+                }
+                break;
             case OP::INVENTORY_REQ:
                 GetInventory(p);
                 break;

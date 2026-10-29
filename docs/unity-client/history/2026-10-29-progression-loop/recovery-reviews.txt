@@ -1,0 +1,2 @@
+Sol ClientCore/Dummy/UI: 필수0. Sol Core/Cache/Net/Main 및 Native: 필수0. 환경포트추가: 빈값WinGetEnv0가default처리되는P2발견→SetLastError와ERROR_ENVVAR_NOT_FOUND구분수정→재리뷰PASS. Astra통합: 로컬자동검증범위제품대부분통과,닫힌가방full/failure상시HUD안내1필수→구현보완/검증중. 최종게시검수아님.
+HUD안내필수보완→WorldHud참조·6초만료·모델/zone정리·단일UI회귀1/1근거로Astra로컬단계PASS/필수0. 실제게임/시각/저장재접속미실행유지.

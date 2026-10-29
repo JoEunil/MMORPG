@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "IOCP.h"
 #include <CoreLib/LoggerGlobal.h>
 #include <CoreLib/IPacket.h>
@@ -7,6 +7,7 @@
 #include "Packet.h"
 #include "SessionManager.h"
 #include "NetPerfCollector.h"
+#include <charconv>
 
 namespace Net {
     void IOCP::Start()
@@ -68,7 +69,25 @@ namespace Net {
         ZeroMemory(&serverAddr, sizeof(serverAddr));
         serverAddr.sin_family = AF_INET;
         inet_pton(AF_INET, LISTEN_ADDRESS, &serverAddr.sin_addr);
-        serverAddr.sin_port = htons((UINT16)LISTEN_PORT);
+        uint16_t listenPort = LISTEN_PORT;
+        char configuredPort[6]{};
+        SetLastError(ERROR_SUCCESS);
+        const DWORD length = GetEnvironmentVariableA("MMORPG_GAME_PORT", configuredPort, sizeof(configuredPort));
+        if (length == 0 && GetLastError() != ERROR_ENVVAR_NOT_FOUND) {
+            Core::errorLogger->LogError("iocp", "MMORPG_GAME_PORT cannot be empty or unreadable.");
+            return false;
+        }
+        if (length != 0) {
+            unsigned parsedPort = 0;
+            const auto parsed = std::from_chars(configuredPort, configuredPort + (std::min)(length, DWORD{5}), parsedPort);
+            if (length >= sizeof(configuredPort) || parsed.ec != std::errc{} ||
+                parsed.ptr != configuredPort + length || parsedPort == 0 || parsedPort > UINT16_MAX) {
+                Core::errorLogger->LogError("iocp", "MMORPG_GAME_PORT must be an integer from 1 to 65535.");
+                return false;
+            }
+            listenPort = static_cast<uint16_t>(parsedPort);
+        }
+        serverAddr.sin_port = htons(listenPort);
 
         if (bind(m_listenSock, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
             Core::errorLogger->LogError("iocp", "Server socket bind failed.");

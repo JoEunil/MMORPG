@@ -62,7 +62,8 @@ namespace Core {
             chat.Initialize(iocp, &writer, &perfCollector, durableLogger);
         }
         
-        void InjectDependencies2(IIOCP* iocp, ISessionAuth* session, IMessageQueue* sendMQ, IPacketPool* packetPool, IProfileCache* profileCache) {
+        void InjectDependencies2(IIOCP* iocp, ISessionAuth* session, IMessageQueue* sendMQ, IPacketPool* packetPool, IProfileCache* profileCache, IInventoryOperations* inventory = nullptr) {
+            stateManager.inventory = inventory;
             stateManager.Initialize(sendMQ, iocp, &lobbyZone, &chat);
             mqHandler.InitializeStateManager(&stateManager);
             packetDispatcher.Initialize(&nonZoneThreadPool, &zoneThreadSet, &stateManager, static_cast<IPingPacketWriter*>(&writer), iocp);

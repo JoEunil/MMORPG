@@ -9,6 +9,9 @@
 #include <mysqlconn/include/mysql/jdbc.h>
 
 #include "CacheStorage.h"
+#include <CoreLib/IInventoryOperations.h>
+#include <array>
+#include <vector>
 
 
 namespace Cache {
@@ -49,12 +52,20 @@ namespace Cache {
 
     using Result5 = CacheItem<InventoryData>;
 
-    class CacheStorageInventory : public CacheStorage<Key5, Result5, KeyHash5> {
+    class CacheStorageInventory : public CacheStorage<Key5, Result5, KeyHash5>, public Core::IInventoryOperations {
         using Key = Key5;
         using KeyHash = KeyHash5;
         using Result = Result5;
         std::function<uint64_t(uint64_t, const InventoryData&)>  m_walFn;
 
+        struct PendingReward {
+            uint32_t itemID;
+            uint16_t quantity;
+            std::function<void(Core::ItemOperationResult)> completed;
+        };
+        std::array<std::unordered_map<uint64_t, std::vector<PendingReward>>, SHARD_SIZE> pendingRewards;
+        Core::ItemOperationResult ChangeItemLocked(uint16_t shardIndex, Key key, uint32_t itemID, int32_t quantity);
+        void CompleteLoad(uint16_t shardIndex, Key key, const Result* loaded);
         CACHE_STATUS LoadFromDB(uint16_t shardIndex, Key& key);
         bool RestoreEntry(uint64_t characterID, InventoryData& rec);
 
@@ -62,7 +73,11 @@ namespace Cache {
             m_walFn = std::move(f);
         }
         friend class WALManager;
+        friend class InventoryPotionFixture;
     public:
+        Core::ItemOperationResult ConsumeItem(uint64_t characterID, uint32_t itemID) override;
+        void GrantItem(uint64_t characterID, uint32_t itemID, uint16_t quantity,
+            std::function<void(Core::ItemOperationResult)> completed) override;
         Result5 Getter(uint64_t characterID);
         std::tuple<CACHE_STATUS, uint32_t, uint16_t, uint16_t> PartialUpdate(uint64_t characterID, uint32_t itemID, uint8_t op, int32_t change);
         static std::unique_ptr<FlushCommand> GetFlushCommand(Key key, Result result);

@@ -164,6 +164,10 @@ namespace ClientCore.Network
                 throw new InvalidOperationException(
                     $"invalid packet length {header.length} (opcode {header.opcode})");
 
+            if (header.opcode == (byte)OP_CODE.ITEM_USE_RES && (header.length != 35 || header.flags != 0) ||
+                header.opcode == (byte)OP_CODE.ITEM_REWARD && (header.length != 17 || header.flags != 0))
+                throw new InvalidOperationException("Invalid item notification frame.");
+
             if (buffer.Length < header.length)
                 return false;
 

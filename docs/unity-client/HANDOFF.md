@@ -1,24 +1,19 @@
 # 현재 인계 — 2026-10-29
 
-## 현재 목표·정본
-PR59 게시 후 다음 성장 기능을 시작하라는 사용자 지시를 적용했다. 현재는 막타 EXP→성장표→승급/HP증가 연결의 로컬 구현·직접검증 단계다. 사용자 몬스터 AI/A*·DB스키마·패킷·포션은 변경하지 않는다.
-- ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient
-- Git 정본 CAND: ROOT/UnityClient/Builds/C10-Delivery/source
-- 현재 브랜치 codex/progression-loop, PR59 head86bbe6d 기반 별도후속. 미게시.
-- 실제Editor 프로젝트 ROOT/UnityClient. 이번 단계 Editor/입력/서버기동/DB조작0. 과거PID를현재실행근거로쓰지않는다.
+## 목표·정본·권한
+PR59병합(bbafe73)을확인하고사용자요청대로레벨업·HP포션획득/사용/통합검증을한후속PR로모은다. 추천포션정책선택답변call_bb67cd5e5b764fccbf6c968236542a0f: 일반ID0/1처치HP포션1·HP3000·2초·사망/가득HP무소비·가방가득미지급안내. 사용자몬스터AI·MP포션·장비·DBschema변경0.
+ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient, 실제Editor=ROOT/UnityClient(PID21232), Git정본CAND=ROOT/UnityClient/Builds/C10-Delivery/source, branch codex/progression-loop(로컬미게시). PR59기반성장후속0c916d5/인계6cd8255, master병합5b920b8. 관련범위만수정하고사용자Game원본은덮지않는다.
+PR59는사용자가병합,원격head자동삭제확인후로컬codex/client-play-completion -d정리완료. 별도새PR아직없음.
 
-## 게시 완료
-https://github.com/JoEunil/MMORPG/pull/59 : 서버스킬/몬스터/성장Data공유+기존검증정리. branch codex/client-play-completion/head86bbe6d. 사용자검토·병합대기, 병합하지않았다.
-사용자의2026-10-29현재채팅 `PR 개시하고 그다음작업 시작`을 게시권한으로적용했다. CONTENT01/r2요청 부모1793192469.508719/요청1793194790.338199는처리완료. 승인용Slack회신소비0(채팅직접지시근거)/게시권한적용1/push완료/PR59게시1. 같은늦은승인으로재게시하지않는다. 앱결과회신1793269912.985489.
-원격master fb428df의C++수정·LLM/README를정상merge보존했다. 충돌은HANDOFF/AGENT_USAGE뿐. 원격옛인계history/2026-10-29-content-publication/remote-handoff.md, 원격신규5+후속1을과거클라이언트기록에추가집계했다.
+## 구현과검증
+성장표→막타승급/HP기존코드는유지. HP포션서버/Cache/ClientCore/Dummy/가방UI구현·독립Sol리뷰통과. 새Native3/3,경계단언확장후변경캐시2/2,새ClientUnity3/3통과. 이전성장검사반복0. ClientCore/Dummy/MainServerReleasebuild통과. 실패/도구/경고세부구분은 history/2026-10-29-progression-loop/recovery-results.txt 및XML/JSON.
+ROOT C#·Tests·DLL hash/preimageguard동기화,World씬기존상세컨트롤추가Unity저장후원본guardCAND반영. Astra필수미지급안내를WorldHud6초toast로보완,새단일UI검사1/1PASS·Editor기존컨트롤Ensure/WorldHud부모·450x30크기검사·Scene저장/양쪽backup/hashguard반영완료. 기존Native/Client재검사0. Astra해당피드백로컬단계재검수PASS/필수0. 실제Play로그인화면복구완료. 실제Agent502=신규198+후속304/토큰·비용N/A.
 
-## 현재 로컬 구현·검증
-CharacterState::AddExperience가서버GrowthData100행을직접조회한다. EXP uint32포화/현재level이후경계다중처리/Lv100한도/실제최대HP증가만생존HP복구/HP0유지/기존100초과레벨하향금지. 기존막타보상과dirtyChar/delta/HUD/정상저장재사용. 새Manager·중복성장정본·게임수치변경없음.
-독립Sol코드리뷰차단0. Native CharacterGrowthTest.* 새2건2/2PASS. CoreLibRelease x64빌드exit0/기존C4819·C4244·C4267경고. runner첫LNK1561은ignored도구에표준gtest main추가해해결(제품수정0). 이전통과테스트반복0.
-근거 history/2026-10-29-progression-loop/. raw빌드/runner는ROOT/UnityClient/Builds/ProgressionLoop/. 실제Agent488=신규190+후속298/토큰·비용N/A. Astra상황검수통과(로컬구현·단위검증범위)/필수수정0. 실서버증거없으므로첫성장흐름완료/게시준비완료는아님.
+## 실제실행상태·입력대기
+기본9999는Windows예약9923~10022라bind실패. OS설정변경없이explicit optional MMORPG_GAME_PORT 설정을TCP와Login에추가(default9999,strictport/empty검증),현재10099로정상ready.
+MainServer ROOT/UnityClient/Builds/ProgressionLoop/Server/MainServer.exe SHA2562DC01A9A2A7DB4C5F6EF71C024D90BFBD408687D945B49AF7DD42D40100E4CA3, PID37180/heldPTY56126(종료q). Login PID32844/PTY43653(종료CtrlC),CANDLogin app를기존Game/Login CWD/node_modules/기존.env로실행. DB/Redis기존PID5584/4376유지,초기화모드0/DB쓰기직접0. 이전LoginPTY36697 CtrlC종료완료,첫9999Main자체정상종료.
+Unity앞mainserver.exe Windows보안허용창발견,자동클릭/보안설정변경/우회없음. 사용자에게창직접처리후test1등로그인요청을비동기질문(현재대화tool기록참조). 아직응답없고실입력0. 모델hasClientfalse/WorldReady/character0확인후HUD보완·Scene저장하고Play재진입했다. 실제사냥성장/포션사용/저장완료후재접속/시각검수는미실행. 비동기DB즉시재로그인순서/비정상종료HP·inventory원자성은보장하지않음.
 
-## 남은 작업과 범위
-실서버후보MainServer빌드·정상전환/실제사냥승급·HUD표시/정상저장완료후재접속은아직미실행. 현재CoreLib성공을배포/실제성장완료로확대하지않는다. 기존DBworker비동기즉시재로그인순서보장과DB실패·강제종료내구성은이번범위에서미확인/기존한계다.
-초기EXP곡선·HP500은기존튜닝안,실제균형미평가. 다음은실서버승급검증과후속회복아이템정책/계약이며포션을임의구현하지않는다. PR59에후속코드를추가push하지않는다. 별도관련묶음이게시가능할때새후보검수·게시권한을대조한다.
-
-후속제품후보0c916d5/로컬전용. 성장작업새Slack부모1793270202.467619(앱발신·자동등록완료), 게시승인요청은아직없음. 후속실행상태는이부모에연결한다.
+## 다음행동
+Toast후속검사·Scene반영·Astra로컬재검수·로그인화면준비완료. 사용자수동처리대기중독립코드/기록정리를마쳤다. 사용자Windows창처리/로그인답변시현재창/모델/프레임을다시확인하고사냥→포션획득/사용→정상저장후재접속을한배치로검증. 비밀을읽거나정책거절된계정도우미를우회하지않는다. 전용5011은기존readonly확인Lv1/EXP10,5012Lv1/EXP30이라초기성장검증가능하나유저직접로그인필요.
+같은작업Slack부모1793270202.467619에짧은결과연결. 구현전부/실제검증/고정후보최종검수준비전새PR·게시요청으로닫지않는다. 다른작업으로분기하지말고이한묶음을완료한다.

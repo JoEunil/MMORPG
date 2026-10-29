@@ -40,6 +40,7 @@ namespace ClientCore.Services
         }
         public void Profiles(uint[] profileIds) => _sock.Send(PacketBuilder.CreateProfileRequest(profileIds));
         public void RequestInventory() => _sock.Send(PacketBuilder.CreateInventoryRequestPacket());
+        public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) => _sock.Send(Packet.SerializeItemUseRequest(requestID, ownershipEpoch, itemID));
         public void RequestBazaar(uint requestID, ushort itemType, ushort page) =>
             _sock.Send(Packet.SerializeBazaarRequest(requestID, itemType, page));
         public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) =>

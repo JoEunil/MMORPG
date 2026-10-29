@@ -34,6 +34,8 @@ namespace Core {
         friend class NonZoneThreadPoolFixture;
         friend class ZoneBenchmarkAccess;
     public:
+        std::unique_ptr<IPacket, PacketDeleter> WriteItemUseResponse(const ItemUseResponseBody& body);
+        std::unique_ptr<IPacket, PacketDeleter> WriteItemReward(const ItemRewardBody& body);
         std::unique_ptr<IPacket, PacketDeleter> WriteAuthResponse(uint8_t resStatus);
         std::unique_ptr<IPacket, PacketDeleter>  WriteCharacterListResponse(const MsgCharacterListResBody* body);
         std::unique_ptr<IPacket, PacketDeleter>  WriteEnterWorldResponse(const MsgCharacterStateResBody* body);

@@ -156,6 +156,9 @@
     <ClInclude Include="ItemData.h">
       <Filter>Data</Filter>
     </ClInclude>
+    <ClInclude Include="IInventoryOperations.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
     <ClInclude Include="IProfileCache.h">
       <Filter>Interface</Filter>
     </ClInclude>

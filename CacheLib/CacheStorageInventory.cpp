@@ -74,7 +74,7 @@ namespace Cache {
             auto res = conn->ExecuteSelect(5, key.characterID);
             if (!res || !res->next()) {
                 Core::gameLogger->LogInfo("cache storage inventory", "inventory not found in DB", "char_id", key.characterID);
-                SetEmpty(shardIndex, key);  // READING → EMPTY
+                CompleteLoad(shardIndex, key, nullptr);
                 return;
             }
 
@@ -96,10 +96,10 @@ namespace Cache {
                 result.data.lastLsn = 0;
             }
             result.rollbackCnt = 0;
-            Insert(shardIndex, key, result);  // READING → AVAILABLE
-        }, nullptr, [this, shardIndex, key] { SetEmpty(shardIndex, key); });
+            CompleteLoad(shardIndex, key, &result);
+        }, nullptr, [this, shardIndex, key] { CompleteLoad(shardIndex, key, nullptr); });
         if (enqueueResult != DBEnqueueResult::Queued) {
-            SetEmpty(shardIndex, key);
+            CompleteLoad(shardIndex, key, nullptr);
             return CACHE_STATUS::EMPTY;
         }
         return CACHE_STATUS::DB_READING;
@@ -151,6 +151,105 @@ namespace Cache {
                 firstEmpty = i;
         }
         return firstEmpty;
+    }
+
+    Core::ItemOperationResult CacheStorageInventory::ChangeItemLocked(uint16_t shardIndex, Key key, uint32_t itemID, int32_t quantity) {
+        auto& shard = m_shards[shardIndex];
+        auto found = shard.cache_data.find(key);
+        if (found == shard.cache_data.end() || found->second.status != CACHE_STATUS::AVAILABLE)
+            return {Core::ItemOperationStatus::Busy};
+        auto& result = found->second;
+        auto image = result.data;
+        const int slot = FindStackOrEmptySlot(image, itemID);
+        if (slot < 0) return {quantity < 0 ? Core::ItemOperationStatus::Missing : Core::ItemOperationStatus::Full};
+        auto& item = image.items[slot];
+        const int current = item.itemID == itemID ? item.quantity : 0;
+        const int next = current + quantity;
+        if (next < 0) return {Core::ItemOperationStatus::Missing, static_cast<uint16_t>(current)};
+        if (next > UINT16_MAX) return {Core::ItemOperationStatus::Full, static_cast<uint16_t>(current)};
+        if (next == 0) {
+            if (item.itemID != 0) { item = EMPTY_SLOT; --image.count; }
+        } else {
+            if (item.itemID == 0) { item.itemID = itemID; item.slot = static_cast<uint8_t>(slot); ++image.count; }
+            item.quantity = static_cast<uint16_t>(next);
+        }
+        // Commit only after a WAL append succeeds; failure leaves quantity and HP unchanged.
+        if (!m_walFn) return {Core::ItemOperationStatus::StorageFailure, static_cast<uint16_t>(current)};
+        uint64_t lsn = 0;
+        try { lsn = m_walFn(key.characterID, image); }
+        catch (...) { return {Core::ItemOperationStatus::StorageFailure, static_cast<uint16_t>(current)}; }
+        if (lsn == 0) return {Core::ItemOperationStatus::StorageFailure, static_cast<uint16_t>(current)};
+        image.lastLsn = lsn;
+        result.data = image;
+        result.lastModified = CacheTimer::GetTimeMS();
+        shard.dirty_list.insert(key);
+        return {Core::ItemOperationStatus::Success, static_cast<uint16_t>(next)};
+    }
+
+    Core::ItemOperationResult CacheStorageInventory::ConsumeItem(uint64_t characterID, uint32_t itemID) {
+        const uint16_t index = characterID & SHARD_SIZE_MASK;
+        std::lock_guard lock(m_shards[index].mutex);
+        return ChangeItemLocked(index, Key{characterID}, itemID, -1);
+    }
+
+    void CacheStorageInventory::GrantItem(uint64_t characterID, uint32_t itemID, uint16_t quantity,
+        std::function<void(Core::ItemOperationResult)> completed) {
+        const uint16_t index = characterID & SHARD_SIZE_MASK;
+        auto& shard = m_shards[index];
+        bool load = false;
+        Core::ItemOperationResult result{Core::ItemOperationStatus::StorageFailure};
+        {
+            std::lock_guard lock(shard.mutex);
+            if (characterID == 0 || itemID == 0 || quantity == 0) { }
+            else {
+                auto found = shard.cache_data.find(Key{characterID});
+                if (found == shard.cache_data.end() || found->second.status == CACHE_STATUS::DB_READING) {
+                    pendingRewards[index][characterID].push_back({itemID, quantity, std::move(completed)});
+                    load = found == shard.cache_data.end();
+                    if (!load) return;
+                } else {
+                    if (found->second.status == CACHE_STATUS::EVICTING) {
+                        // Retain the accepted flush generation; its old snapshot must finish first.
+                        found->second.status = CACHE_STATUS::AVAILABLE;
+                        shard.lru_list.push_front(Key{characterID});
+                        shard.lru_pos[Key{characterID}] = shard.lru_list.begin();
+                    }
+                    result = ChangeItemLocked(index, Key{characterID}, itemID, quantity);
+                }
+            }
+        }
+        if (load) {
+            Key key{characterID};
+            LoadFromDB(index, key);
+            return;
+        }
+        if (completed) completed(result);
+    }
+
+    void CacheStorageInventory::CompleteLoad(uint16_t index, Key key, const Result* loaded) {
+        std::vector<PendingReward> rewards;
+        std::vector<Core::ItemOperationResult> results;
+        auto& shard = m_shards[index];
+        {
+            std::lock_guard lock(shard.mutex);
+            if (loaded) InsertLocked(index, key, *loaded);
+            else {
+                const auto found = shard.cache_data.find(key);
+                if (found != shard.cache_data.end() && found->second.status == CACHE_STATUS::DB_READING)
+                    shard.cache_data.erase(found);
+            }
+            const auto pending = pendingRewards[index].find(key.characterID);
+            if (pending != pendingRewards[index].end()) {
+                rewards = std::move(pending->second);
+                pendingRewards[index].erase(pending);
+                results.reserve(rewards.size());
+                for (const auto& reward : rewards)
+                    results.push_back(loaded ? ChangeItemLocked(index, key, reward.itemID, reward.quantity)
+                        : Core::ItemOperationResult{Core::ItemOperationStatus::StorageFailure});
+            }
+        }
+        for (size_t i = 0; i < rewards.size(); ++i)
+            if (rewards[i].completed) rewards[i].completed(results[i]);
     }
 
     // status, itemID, slot, quantity

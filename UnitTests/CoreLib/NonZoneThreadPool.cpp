@@ -1,4 +1,4 @@
-#include <gtest/gtest.h>
+﻿#include <gtest/gtest.h>
 
 #include <algorithm>
 #include <chrono>
@@ -32,6 +32,17 @@
 namespace Core {
     namespace {
         using namespace std::chrono_literals;
+
+        class PotionInventory final : public IInventoryOperations {
+        public:
+            unsigned consumed = 0;
+            ItemOperationStatus outcome = ItemOperationStatus::Success;
+            ItemOperationResult ConsumeItem(uint64_t, uint32_t) override {
+                if (outcome == ItemOperationStatus::Success) ++consumed;
+                return {outcome, 4};
+            }
+            void GrantItem(uint64_t, uint32_t, uint16_t, std::function<void(ItemOperationResult)>) override { }
+        };
 
         // Owns the copied callback, never calls the real external auth service.
         class ControlledAuth final : public ISessionAuth {
@@ -375,6 +386,7 @@ namespace Core {
             return lobby.m_chars.contains(sessionID);
         }
         void ResetZones() { state->m_states.clear(); }
+        void SetInventory(IInventoryOperations* inventory) { state->inventory = inventory; }
         void PrepareZones() {
             broadcast.Initialize(&iocp, state.get(), &broadcastPerf, &writer);
             broadcast.m_running.store(true, std::memory_order_relaxed);
@@ -2024,6 +2036,47 @@ namespace Core {
         StopWorker();
         EXPECT_EQ(state->GetCharacterID(42), 0);
         EXPECT_FALSE(HasLobbyCharacter(42));
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, ItemUseCommitsOnceAndRejectsWithoutConsumption) {
+        PrepareZones();
+        ASSERT_TRUE(LoadTransitionCharacter());
+        ZoneChangeResult entry;
+        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, entry));
+        UpdateCharacter(1, 42, [](CharacterState& c) { c.hp = 5000; c.maxHp = 10000; });
+        PotionInventory inventory;
+        SetInventory(&inventory);
+        ItemUseRequestBody request{1, entry.ownershipEpoch, 1};
+        auto first = state->UseItem(42, request);
+        EXPECT_EQ(first.status, 1);
+        EXPECT_EQ(first.cooldownRemainingTicks, 40);
+        EXPECT_EQ(CharacterIn(1).hp, 8000);
+        EXPECT_EQ(state->UseItem(42, request).status, 1);
+        EXPECT_EQ(inventory.consumed, 1);
+        request.itemID = 2;
+        EXPECT_EQ(state->UseItem(42, request).status, 0);
+        request = {2, entry.ownershipEpoch, 1};
+        EXPECT_EQ(state->UseItem(42, request).status, 4);
+        for (int i = 0; i < 40; ++i) state->GetZone(1)->SkillCoolDown();
+        request = {3, entry.ownershipEpoch + 1, 1};
+        EXPECT_EQ(state->UseItem(42, request).status, 7);
+        request.ownershipEpoch = entry.ownershipEpoch;
+        inventory.outcome = ItemOperationStatus::StorageFailure;
+        EXPECT_EQ(state->UseItem(42, request).status, 8);
+        EXPECT_EQ(CharacterIn(1).hp, 8000);
+        inventory.outcome = ItemOperationStatus::Success;
+        request.requestID = 4;
+        EXPECT_EQ(state->UseItem(42, request).status, 1);
+        EXPECT_EQ(CharacterIn(1).hp, 10000);
+        request.requestID = 5;
+        EXPECT_EQ(state->UseItem(42, request).status, 3);
+        UpdateCharacter(1, 42, [](CharacterState& c) { c.hp = 0; });
+        request.requestID = 6;
+        EXPECT_EQ(state->UseItem(42, request).status, 2);
+        request.requestID = 1;
+        EXPECT_EQ(state->UseItem(42, request).status, 7);
+        EXPECT_EQ(inventory.consumed, 2);
+        SetInventory(nullptr);
     }
 
 }

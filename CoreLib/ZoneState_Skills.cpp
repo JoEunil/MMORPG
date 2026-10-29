@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include "ZoneState.h"
+#include "StateManager.h"
 #include <optional>
 
 namespace Core {
@@ -7,6 +8,7 @@ namespace Core {
 		std::lock_guard<std::mutex> lock(m_mutex);
 		for (auto& character : m_chars) 
 		{
+			if (character.potionCooldownTicks != 0) --character.potionCooldownTicks;
 			for (int i = 0; i < character.skillSlotCnt; i++) {
 				if (character.skillSlot[i].skillCoolDownTick != 0)
 					character.skillSlot[i].skillCoolDownTick--;
@@ -125,6 +127,7 @@ namespace Core {
 							// 일단 막타 친 사람만 보상.. 
 							// 보스몬스터의 경우 hitter list로 보상 분배하도록 처리해야됨.
 							caster.AddExperience(m_monsters[mon].data->reward.exp);
+                            if (m_monsters[mon].data->id <= 1) stateManager->GrantMonsterPotion(caster);
 							m_cells[caster.cellY][caster.cellX].dirtyChar.push_back(caster.zoneInternalID);
 						}
 						m_monsters[mon].SetAggro(caster.zoneInternalID);

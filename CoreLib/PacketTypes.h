@@ -7,7 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
-    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 44;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 47;
 
     enum OP : uint16_t {
         AUTH = 1,
@@ -59,6 +59,9 @@ namespace Core {
         WALLET_REQUEST = 42,
         WALLET_GOLD_RES = 43,
         WALLET_DIAMOND_RES = 44,
+        ITEM_USE = 45,
+        ITEM_USE_RES = 46,
+        ITEM_REWARD = 47,
     };
 
     enum ZONE_CHANGE: uint8_t {
@@ -90,6 +93,26 @@ namespace Core {
         uint32_t length;
         uint8_t opcode;
         uint8_t flags = 0x00; // 첫번째 비트는 시뮬레이션 로직인지 나타냄, 0x01 ~ 0x80
+    };
+
+    struct ItemUseRequestBody {
+        uint64_t requestID;
+        uint64_t ownershipEpoch;
+        uint32_t itemID;
+    };
+    struct ItemUseResponseBody {
+        uint64_t requestID;
+        uint64_t ownershipEpoch;
+        uint32_t itemID;
+        uint8_t status;
+        uint16_t remainingQuantity;
+        uint32_t cooldownRemainingTicks;
+    };
+    struct ItemRewardBody {
+        uint32_t itemID;
+        uint16_t grantedQuantity;
+        uint16_t remainingQuantity;
+        uint8_t status;
     };
 
     struct BazaarBuyRequestBody {

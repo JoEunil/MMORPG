@@ -160,10 +160,58 @@ namespace Mmorpg.Client.Editor
             combatSerialized.FindProperty("inventoryScreen").objectReferenceValue = screen;
             combatSerialized.ApplyModifiedPropertiesWithoutUndo();
             ApplyRestrainedInventoryDetails();
+            EnsureItemUseControls();
             panel.SetActive(false);
             bag.gameObject.SetActive(false);
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
             EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
+        }
+
+        [MenuItem("Tools/Client/Inventory/Ensure Item Use Controls")]
+        public static void EnsureItemUseControls()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+                throw new System.InvalidOperationException("Inventory UI authoring requires Edit Mode.");
+            var scene = EditorSceneManager.GetActiveScene();
+            if (!scene.IsValid() || scene.path != "Assets/Client/Scenes/World.unity")
+                throw new System.InvalidOperationException("Open the World scene first.");
+            var screen = Object.FindFirstObjectByType<InventoryScreen>(FindObjectsInactive.Include);
+            if (screen == null) throw new System.InvalidOperationException("The existing inventory screen is required.");
+            var hud = screen.transform.Find("WorldHud");
+            if (hud == null) throw new System.InvalidOperationException("The existing WorldHud is required.");
+            var serialized = new SerializedObject(screen);
+            var panel = serialized.FindProperty("inventoryPanel").objectReferenceValue as GameObject;
+            var details = panel != null ? panel.transform.Find("InventoryParchment/InventoryDetails") : null;
+            if (details == null || details.Find("InventoryDetailQuantity") == null)
+                throw new System.InvalidOperationException("The existing inventory detail hierarchy is required.");
+
+            var use = Button("InventoryUseButton", details, "USE HP POTION", new Color32(23, 49, 57, 255));
+            SetTop(use.GetComponent<RectTransform>(), 316, 34);
+            use.interactable = false;
+            use.GetComponent<UnityEngine.UI.Image>().raycastTarget = true;
+            var edge = use.GetComponent<UnityEngine.UI.Outline>() ?? use.gameObject.AddComponent<UnityEngine.UI.Outline>();
+            edge.effectColor = new Color32(107, 146, 144, 180);
+            edge.effectDistance = new Vector2(.7f, -.7f);
+            var label = use.GetComponentInChildren<TMP_Text>(true);
+            label.fontSize = 14;
+            label.color = new Color32(236, 240, 232, 255);
+            var status = Text("InventoryUseStatus", details, string.Empty, 14, new Color32(229, 211, 163, 255));
+            status.alignment = TextAlignmentOptions.TopLeft;
+            status.enableWordWrapping = true;
+            SetTop(status.rectTransform, 358, 58);
+            var lootNotice = Text("ItemRewardToastText", hud, string.Empty, 16, new Color32(229, 211, 163, 255));
+            lootNotice.alignment = TextAlignmentOptions.Center;
+            lootNotice.fontStyle = FontStyles.Bold;
+            lootNotice.enableWordWrapping = false;
+            lootNotice.overflowMode = TextOverflowModes.Ellipsis;
+            lootNotice.rectTransform.anchorMin = lootNotice.rectTransform.anchorMax = lootNotice.rectTransform.pivot = new Vector2(.5f, 0);
+            lootNotice.rectTransform.anchoredPosition = new Vector2(0, 130);
+            lootNotice.rectTransform.sizeDelta = new Vector2(450, 30);
+            serialized.FindProperty("useButton").objectReferenceValue = use;
+            serialized.FindProperty("useStatus").objectReferenceValue = status;
+            serialized.FindProperty("lootNotice").objectReferenceValue = lootNotice;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorSceneManager.MarkSceneDirty(scene);
         }
 
         [MenuItem("Tools/Client/Inventory/Apply Restrained Inventory Details")]

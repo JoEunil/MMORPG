@@ -46,6 +46,12 @@ namespace Cache {
         auto& shard = m_shards[shardIndex];
         std::lock_guard<std::mutex> lock(shard.mutex);
 
+        InsertLocked(shardIndex, key, result);
+    }
+
+    template<typename Key, typename Result, typename KeyHash>
+    void CacheStorage<Key, Result, KeyHash>::InsertLocked(uint16_t shardIndex, const Key& key, const Result& result) {
+        auto& shard = m_shards[shardIndex];
         auto it = shard.cache_data.find(key);
         if (it != shard.cache_data.end() && it->second.status != CACHE_STATUS::DB_READING) {
             return; 

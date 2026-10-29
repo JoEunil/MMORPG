@@ -56,6 +56,9 @@ namespace ClientCore
         private PacketHelper.MonsterFullField[] _bootstrapMonsters;
         private volatile bool _awaitingZoneAck;
         private bool _inventoryPending;
+        private ulong _itemUseRequestID;
+        private ulong _itemUsePending;
+        private uint _itemUsePendingItemID;
         private uint _bazaarRequestID;
         private uint _bazaarPending;
         private long _bazaarPendingDeadline;
@@ -79,6 +82,8 @@ namespace ClientCore
         public event Action<bool> OnCharacterListReceived;
         public event Action<byte, ulong, string, string> OnChatReceived;
         public event Action<bool> OnInventoryReceived;
+        public event Action<ulong, ulong, uint, byte, ushort, uint> OnItemUseReceived;
+        public event Action<uint, ushort, ushort, byte> OnItemRewardReceived;
         public event Action<bool> OnBazaarReceived;
         public event Action<byte> OnBazaarRegisterReceived;
         public event Action<byte, ulong, byte, ulong> OnWalletReceived;
@@ -144,6 +149,7 @@ namespace ClientCore
                 if (_lifetime.IsCancellationRequested) return;
                 _lifetime.Cancel();
                 _inventoryPending = false;
+                _itemUsePending = 0;
                 _worldReady = false;
                 _respawnPending = false;
                 _zonePending = false;
@@ -187,6 +193,7 @@ namespace ClientCore
                 _zoneOperation = op;
                 _zonePending = true;
                 CancelWalletLocked();
+                _itemUsePending = 0;
                 CancelBazaar();
                 _awaitingZoneAck = true;
                 _worldReady = false;
@@ -217,6 +224,7 @@ namespace ClientCore
                     if (!_worldReady || _zonePending || _selfHP != 0)
                         return false;
                     _respawnPending = true;
+                    _itemUsePending = 0;
                     _zonePending = true;
                     _awaitingZoneAck = true;
                     _worldReady = false;
@@ -760,6 +768,59 @@ namespace ClientCore
             });
         }
 
+        public bool RequestItemUse(uint itemID)
+        {
+            ulong requestID, ownershipEpoch;
+            lock (_sessionGate)
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || _zonePending || _awaitingZoneAck ||
+                    _ownershipEpoch == 0 || itemID == 0 || _itemUsePending != 0 || _itemUseRequestID == ulong.MaxValue)
+                    return false;
+                _itemUsePending = ++_itemUseRequestID;
+                _itemUsePendingItemID = itemID;
+                requestID = _itemUsePending;
+                ownershipEpoch = _ownershipEpoch;
+            }
+            // Socket receive dispatch holds its own gate before entering the session gate.
+            // Send outside this lock; the server rejects an epoch superseded while sending.
+            try { _network.RequestItemUse(requestID, ownershipEpoch, itemID); }
+            catch
+            {
+                lock (_sessionGate)
+                    if (_itemUsePending == requestID) _itemUsePending = 0;
+                throw;
+            }
+            return true;
+        }
+
+        public void ItemUseReceived(ulong requestID, ulong ownershipEpoch, uint itemID, byte status,
+            ushort remainingQuantity, uint cooldownRemainingTicks)
+        {
+            if (requestID == 0 || ownershipEpoch == 0 || itemID == 0 || status > 9) return;
+            _threadDispatcher.Post(() =>
+            {
+                lock (_sessionGate)
+                {
+                    if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady ||
+                        requestID != _itemUsePending || ownershipEpoch != _ownershipEpoch || itemID != _itemUsePendingItemID)
+                        return;
+                    _itemUsePending = 0;
+                }
+                OnItemUseReceived?.Invoke(requestID, ownershipEpoch, itemID, status, remainingQuantity, cooldownRemainingTicks);
+            });
+        }
+
+        public void ItemRewardReceived(uint itemID, ushort grantedQuantity, ushort remainingQuantity, byte status)
+        {
+            if (itemID == 0 || status < 1 || status > 3 ||
+                (status == 1 ? grantedQuantity == 0 || remainingQuantity < grantedQuantity : grantedQuantity != 0)) return;
+            _threadDispatcher.Post(() =>
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed) return;
+                OnItemRewardReceived?.Invoke(itemID, grantedQuantity, remainingQuantity, status);
+            });
+        }
+
         public void RequestInventory()
         {
             if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || _inventoryPending)
@@ -793,7 +854,13 @@ namespace ClientCore
                 bool automaticTransition = success && !requestPending && ownershipEpoch > _ownershipEpoch;
                 if (!requestPending && !automaticTransition) return;
                 if (success && ownershipEpoch <= _ownershipEpoch) return;
-                if (success) CancelWalletLocked();
+                if (success)
+                {
+                    CancelWalletLocked();
+                    _itemUsePending = 0;
+                    // Stop new use requests before the dispatcher accepts the new ownership epoch.
+                    _awaitingZoneAck = true;
+                }
                 if (requestPending) _zonePending = false;
                 bool wasInWorld = _zoneID != 0;
                 _threadDispatcher.Post(() =>
@@ -1014,6 +1081,7 @@ namespace ClientCore
                 _respawnRetryDeadline = 0;
                 _awaitingZoneAck = false;
                 _inventoryPending = false;
+                _itemUsePending = 0;
                 CancelWalletLocked();
             }
             CancelBazaar();

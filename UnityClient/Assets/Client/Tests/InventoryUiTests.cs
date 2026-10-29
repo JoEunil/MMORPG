@@ -360,6 +360,32 @@ namespace Mmorpg.Client.Tests
             }
         }
 
+        [Test]
+        public void ClosedBagStillShowsRewardFailureAndClearsItOnDeadlineOrClientChange()
+        {
+            using (var fixture = new Fixture())
+            {
+                var noticeObject = new GameObject("reward notice", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+                noticeObject.transform.SetParent(fixture.Screen.transform, false);
+                var notice = noticeObject.GetComponent<TMP_Text>();
+                SetPrivate(fixture.Screen, "lootNotice", notice);
+                fixture.Close.onClick.Invoke();
+                Assert.That(fixture.Panel.activeSelf, Is.False);
+                var reward = typeof(InventoryScreen).GetMethod("ItemRewardReceived", BindingFlags.Instance | BindingFlags.NonPublic);
+                reward.Invoke(fixture.Screen, new object[] { 1u, (ushort)0, (ushort)0, (byte)2 });
+                Assert.That(noticeObject.activeInHierarchy, Is.True);
+                Assert.That(notice.text, Does.Contain("Bag full"));
+                Assert.That(fixture.Panel.activeSelf, Is.False);
+                SetPrivate(fixture.Screen, "lootNoticeDeadline", Time.unscaledTime - 1f);
+                fixture.InvokeScreen("Update");
+                Assert.That(notice.text, Is.Empty);
+                reward.Invoke(fixture.Screen, new object[] { 1u, (ushort)0, (ushort)0, (byte)3 });
+                Assert.That(notice.text, Does.Contain("failed"));
+                fixture.RaiseClientChanged(null);
+                Assert.That(notice.text, Is.Empty);
+            }
+        }
+
         private sealed class Fixture : IDisposable
         {
             private readonly GameObject root;
@@ -562,6 +588,7 @@ namespace Mmorpg.Client.Tests
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { }
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
             public void RequestWallet(uint requestID) { }
+            public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
             public void RequestInventory() => Requests++;
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void CharacterList() { }
