@@ -1,3 +1,5 @@
+단계별 과거 기록입니다. 아래의 미실행·대기 표시는 당시 상태이며 현재 상태가 아닙니다. 최신 실제 검증은 live-validation-summary.json, 재접속은 live-reconnect-state.json, 실행 흐름은 live-results.txt의 FINAL FOLLOW-UP을 참조합니다.
+
 성장+HP포션 통합 진행 — 2026-10-29
 사용자 초기정책선택: ordinary monsters0/1 kill→HP포션1,HP3000/40ticks,dead/fullHP무소비,fullbag미지급안내. 성장기존코드보존,장비·MP포션·AI·DBschema확장0.
 Core/Cache단일소비(WALfirst)/pendingcoldload/중복request/epoch/정상shutdowndrain,ClientCore+Dummywire45/46/47,기존가방상세버튼/결과/cooldown을구현. 좁은IInventoryOperations만추가,serverData ItemData.h가수치정본.

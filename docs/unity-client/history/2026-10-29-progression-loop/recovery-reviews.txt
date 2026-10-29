@@ -1,2 +1,4 @@
+단계별 과거 기록입니다. 아래의 미실행·대기 표시는 당시 상태이며 현재 상태가 아닙니다. 최신 실제 검증은 live-validation-summary.json, 재접속은 live-reconnect-state.json, 실행 흐름은 live-results.txt의 FINAL FOLLOW-UP을 참조합니다.
+
 Sol ClientCore/Dummy/UI: 필수0. Sol Core/Cache/Net/Main 및 Native: 필수0. 환경포트추가: 빈값WinGetEnv0가default처리되는P2발견→SetLastError와ERROR_ENVVAR_NOT_FOUND구분수정→재리뷰PASS. Astra통합: 로컬자동검증범위제품대부분통과,닫힌가방full/failure상시HUD안내1필수→구현보완/검증중. 최종게시검수아님.
 HUD안내필수보완→WorldHud참조·6초만료·모델/zone정리·단일UI회귀1/1근거로Astra로컬단계PASS/필수0. 실제게임/시각/저장재접속미실행유지.
