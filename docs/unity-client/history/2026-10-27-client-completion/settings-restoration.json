@@ -1,0 +1,5 @@
+{
+  "Restored": true,
+  "Sha256": "0B9C64087E71FD6E3D3520AFAB45EFFA39AFCA8BC5870B1B1E2CB619613783CC",
+  "Method": "Removed only build-temporary serialized preload entry; byte hash matches pre-run; Unity in-memory preload list already empty; Git lock untouched"
+}

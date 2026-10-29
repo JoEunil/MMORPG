@@ -1,0 +1,11 @@
+{
+  "pass": true,
+  "identityGuard": true,
+  "exactFourTableSnapshot": true,
+  "restoredCharacterIds": [
+    5011,
+    5012
+  ],
+  "test1Modified": false,
+  "utc": "2026-10-27T09:32:58.897Z"
+}

@@ -1,0 +1,17 @@
+{
+  "sellerGold": "90",
+  "sellerDiamonds": 10,
+  "buyerDiamonds": 90,
+  "sellerQuantity": 0,
+  "buyerItem": 1,
+  "buyerQuantity": 1,
+  "trades": [
+    {
+      "listing_id": "180",
+      "status": "SOLD",
+      "claim_status": "CLAIMED",
+      "delivery_status": "CLAIMED"
+    }
+  ],
+  "pass": true
+}

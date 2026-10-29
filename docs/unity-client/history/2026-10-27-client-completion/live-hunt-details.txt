@@ -1,0 +1,10 @@
+Actual local-server monster state, normal movement/queued X keys, observed HP0 visual and EXP; no state injection or DB writes.
+BEGIN zone=1 position=(10.15, 10.73) HP=10000 EXP=0
+MONSTER id=10 type=0 HP=1500 position=233.7287,44.91097
+OWN_PHASE slot=1 phase=0
+OWN_PHASE slot=1 phase=1
+MONSTER id=10 type=0 HP=500 position=241.4807,47.46387
+OWN_PHASE slot=1 phase=0
+OWN_PHASE slot=1 phase=1
+PASS HP0 visual observed; EXP=0->10 acceptedPhases=4 ownHP=9850
+END zone=2 position=(240.54, 46.35) HP=9850 MP=9919 EXP=10

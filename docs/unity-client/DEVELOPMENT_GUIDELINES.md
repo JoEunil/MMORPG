@@ -39,3 +39,23 @@
 - 코드 변경은 직접 영향이 있는 통합 흐름과 중요한 경계만 묶음 끝에 확인한다. 모든 정리마다 로그인·구역 왕복·재접속·프로파일링 전체를 반복하지 않는다.
 - 제출 전 변경 diff의 중복·불필요한 계층·잘못된 위치·참조 파손을 확인한다. 실패·차단·미실행을 숨기지 않으며 정리의 실제 효과와 남은 위험을 짧게 보고한다.
 - 코드 개선은 기능 구현에 관련된 범위 또는 별도 배정한 정리 묶음 안에서 진행한다. 다른 기능을 만들거나 무관한 대규모 리팩터링을 끼워 넣지 않는다.
+
+## 현재 Unity 코드 찾기
+
+단계 번호 대신 실제 책임을 기준으로 `UnityClient/Assets/Client`에서 코드를 찾는다. 같은 기능에 새 Manager·서비스·인터페이스를 추가하기 전에 아래 구현을 확인한다.
+
+| 위치 | 담당 코드 |
+| --- | --- |
+| `Runtime/UI` | `LoginScreen`, `EntryPresentation`, `CombatScreen`, `ChatScreen`, `InventoryScreen`, `MarketScreen`, `GameUiInput` |
+| `Runtime/World` | `WorldScreen`의 입력·월드 연결, `ObservedWorld`의 관찰 개체 수명, `WorldMinimap` |
+| `Runtime/Presentation` | `ActorMotion`, `EntityVitals`, `ItemPresentation` |
+| `Runtime/Content` | `MapAuthoring`, `ServerContent`, `MonsterSpawns`, `WorldMap`, `WorldLayout`의 정의·검증 가능한 데이터 |
+| `Editor` | 기능별 Scene/UI 저작과 검증·Exporter. 실행 중 네트워크/게임 상태는 소유하지 않음 |
+| `Content`, `Art`, `Scenes` | 데이터 에셋, 표현 에셋, `Login.unity`·`World.unity` |
+| `Tests` | 기능 이름의 기존 fixture와 명시적인 합성 입력 도구 |
+
+어셈블리는 `Mmorpg.Client`, `Mmorpg.Client.Editor`, `Mmorpg.Client.Tests` 세 개다. 폴더 하나마다 asmdef를 만들지 않는다. 런타임 코드에서 Editor/Test를 참조하지 않고, ClientCore의 기존 DLL·통신 책임을 재사용한다.
+
+시장 화면은 `MarketView` 하나로 검색·내 판매·등록을 구분한다. 요청 진행·결과 불명·지급 완료 상태는 화면 모드와 별개다. 닫힌 창의 응답 처리를 화면 모드 초기화와 함께 지우지 않는다. 입력 포커스 정책은 기존 `GameUiInput`을 사용하며, 텍스트 편집 여부와 Escape의 프레임 소비 규칙을 구분한다.
+
+기존 Scene 계층 이름·직렬화 필드·Resources의 `Items/...` 키는 유지했다. `MovedFrom`에 남은 이전 타입/어셈블리 이름은 실제 직렬화 호환 정보이므로 단순 문자열 정리로 제거하지 않는다. 과거 BuildProvenance와 작업 이력은 당시 원문이며 현재 실행 경로가 아니다. 이동 전후 매핑과 검증 결과는 해당 리팩토링 이력에서 확인한다.

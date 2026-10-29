@@ -1,0 +1,21 @@
+5011 OBSERVER frame=25123
+5011 WALLET goldStatus=1 gold=100 diamondStatus=1 diamonds=0
+5011 INVENTORY success=False rows=0
+5011 INVENTORY success=True rows=1
+5011 WALLET goldStatus=1 gold=100 diamondStatus=1 diamonds=0
+5011 REGISTER status=1
+5011 WALLET goldStatus=1 gold=90 diamondStatus=1 diamonds=0
+5011 WALLET goldStatus=1 gold=90 diamondStatus=1 diamonds=0
+5012 OBSERVER frame=74129
+5012 WALLET goldStatus=1 gold=0 diamondStatus=1 diamonds=100
+5012 BUY listing=180 status=1 item=1 quantity=1 price=10
+5012 WALLET goldStatus=1 gold=0 diamondStatus=1 diamonds=90
+5012 DELIVERY status=0 counts=0,0,0
+5012 INVENTORY success=True rows=0
+5012 DELIVERY status=1 counts=1,0,0
+5012 INVENTORY success=True rows=1
+5011 OBSERVER frame=122300
+5011 WALLET goldStatus=1 gold=90 diamondStatus=1 diamonds=0
+5011 WALLET goldStatus=1 gold=90 diamondStatus=1 diamonds=0
+5011 CLAIM listing=180 status=1 amount=10
+5011 WALLET goldStatus=1 gold=90 diamondStatus=1 diamonds=10

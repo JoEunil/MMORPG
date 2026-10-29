@@ -1,3 +1,7 @@
+## 현재 Unity 경로 — 2026-10-27
+
+현재 저작 컴포넌트는 Mmorpg.Client.MapAuthoring이며 씬은 Assets/Client/Scenes/World.unity이다. 데이터는 Assets/Client/Content, Exporter는 Assets/Client/Editor/WorldMapExport.cs·WorldLayoutExport.cs·ServerContentExport.cs·MonsterSpawnExport.cs에 있다. 아래 과거 기록의 단계 번호 타입·경로는 당시 이름이며, 현재 구현은 기능명 경로를 사용한다. 좌표·출력 스키마·서버 소비 계약은 이번 코드 구조 정리로 변경하지 않는다.
+
 ## 최신 — 사용자 서버 AI 변경과 내보내기 구분 / 2026-10-23
 
 사용자가 A* 없이 상태 머신 추상화·몬스터 Cell 간 이동·목표 도착 후 10~30틱 배회 대기·이동한 위치의 스킬 phase 시전을 변경했다고 알렸다. 배회 대기는 Wandering의 wanderPauseTicks이며 별도 WanderPhase enum은 없다. 아래 Cell 제한과 A* 후속 계획은 이전 Exporter 후보의 기록으로만 읽는다. 통행 데이터·AOI Cell·Zone 소유권은 계속 구분하며 사용자 변경을 덮어쓰지 않는다. 새 서버 소스 통합 및 실행 검증은 이번 지침 수정과 별개다.

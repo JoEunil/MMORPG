@@ -1,0 +1,97 @@
+{
+  "recordedAtLocal": "2026-10-27T15:05:00+09:00",
+  "candidate": "0fc577a (provided by Coordinator)",
+  "unityProject": "C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient",
+  "unityVersion": "6000.0.47f1",
+  "execution": {
+    "editorState": "ready/Edit",
+    "openScene": "Assets/Client/Scenes/World.unity",
+    "sceneDirty": false,
+    "playModeEntered": false,
+    "playerLaunched": false,
+    "realInput": false
+  },
+  "sourceSnapshot": {
+    "Assets/Client/Runtime/World/WorldScreen.cs": {
+      "after": "236250CFD7DE2CDB89615205A22FA6A3701874EF556E02FC1C980F4942895652",
+      "before": "236250CFD7DE2CDB89615205A22FA6A3701874EF556E02FC1C980F4942895652"
+    },
+    "Assets/Client/Tests/CombatTests.cs": {
+      "after": "0570A7120D2D907837087818FBC3B202134678BF9BCCD6E4ACC6208073CF076F",
+      "before": "0570A7120D2D907837087818FBC3B202134678BF9BCCD6E4ACC6208073CF076F"
+    },
+    "Assets/Client/Scenes/World.unity": {
+      "after": "7B0B1BA5350DDC38A3AD93332CF5BC3A79602ACE5699D9C055511CAA1D956FE6",
+      "before": "7B0B1BA5350DDC38A3AD93332CF5BC3A79602ACE5699D9C055511CAA1D956FE6"
+    },
+    "Packages/manifest.json": {
+      "after": "10A60BF97CB0027C7F9DE66D0148803D37C2E008A6A39276AD6618CE81DE134C",
+      "before": "10A60BF97CB0027C7F9DE66D0148803D37C2E008A6A39276AD6618CE81DE134C"
+    },
+    "Assets/Plugins/ClientCore/ClientCore.dll": {
+      "after": "DF871CE1FDA3C676D5A4F34CF414876EFED2E69E483C5F34A5A9DEB7FAF7F49B",
+      "before": "DF871CE1FDA3C676D5A4F34CF414876EFED2E69E483C5F34A5A9DEB7FAF7F49B"
+    },
+    "ProjectSettings/EditorBuildSettings.asset": {
+      "after": "299F2B4E32D296587429457006DA1FF05BC7467770500095CCFC698A2FF3D3E4",
+      "before": "299F2B4E32D296587429457006DA1FF05BC7467770500095CCFC698A2FF3D3E4"
+    }
+  },
+  "tests": {
+    "mode": "PlayMode",
+    "filterType": "category",
+    "category": "VitalDeltaRevision",
+    "summary": {
+      "passed": 2,
+      "skipped": 0,
+      "total": 2,
+      "failed": 0,
+      "inconclusive": 0
+    },
+    "results": [
+      {
+        "status": "Passed",
+        "name": "Mmorpg.Client.Tests.CombatTests.OwnVitalDeltaAppliesCurrentAndMaximumTogetherIncludingBufferedEntryState"
+      },
+      {
+        "status": "Passed",
+        "name": "Mmorpg.Client.Tests.CombatTests.InvalidOwnVitalDeltaFailsWithoutPublishingAPartiallyAppliedFrame"
+      }
+    ],
+    "initialAttempt": "0 tests while loaded test assembly was stale; script recompile completed without errors, target tests then appeared in test discovery and only these two were rerun."
+  },
+  "playerBuild": {
+    "status": "Succeeded",
+    "buildId": "build_a3e666278969",
+    "target": "StandaloneWindows64",
+    "buildSettingsScenes": [
+      "Assets/Client/Scenes/World.unity"
+    ],
+    "output": "Builds/ClientCompletion/Player/MMORPG.exe",
+    "outputSha256": "8AB9BD96A7CC54A80AA478005280FB1BD59A0835F0271816B8646FBA1043A8FF",
+    "outputBytes": 672256,
+    "reportTotalOutputBytes": 184592250,
+    "durationMs": 288620,
+    "errors": 0,
+    "warnings": [
+      "Pipeline RuntimePipelineConfig missing; Pipeline disabled in Player builds.",
+      "Four obsolete TMP_Text.enableWordWrapping warnings in InventoryScreen, MarketScreen, CombatScreen (2)."
+    ]
+  },
+  "runtimeVerification": "Not run: standalone executable was not launched.",
+  "nativeArtifacts": {
+    "editorLog": "C:/Users/joeun/AppData/Local/Unity/Editor/Editor.log",
+    "logEvidence": "Editor.log reports Build Finished, Result: Success.",
+    "nativeTestXml": null,
+    "nativeTestXmlNote": "No native XML test result file was emitted by the connected test runner or found in the project; exact structured test results are recorded above."
+  },
+  "editorSideEffect": {
+    "file": "ProjectSettings/ProjectSettings.asset",
+    "preRunSha256": "0B9C64087E71FD6E3D3520AFAB45EFFA39AFCA8BC5870B1B1E2CB619613783CC",
+    "postBuildSha256": "E136CEBBEABDD60FE1D399B536859996C6F5F1251748AE7FEE674AB96E3A28F1",
+    "diff": "PlayerSettings.preloadedAssets gained the InputSystem_Actions asset reference; EditorBuildSettings already referenced the same asset.",
+    "restoration": "Targeted git restore was blocked by shared index.lock; no manual bypass performed.",
+    "candidateFile": "Builds/C10-Delivery/source/UnityClient/ProjectSettings/ProjectSettings.asset",
+    "candidateSha256": "B706551C2373B000BFF39EB78D46B6A6587F75643447E58C1A6B5158B0D0D6B4"
+  }
+}

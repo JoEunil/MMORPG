@@ -1,0 +1,24 @@
+[
+  {
+    "name": "redo.1",
+    "bytes": 1164,
+    "sha256": "f6067b7ca0a5de2ed6b88786ea121f1910b7d9b5e676c0c82a6fbc853ac4c525",
+    "records": [
+      {
+        "characterId": "5011",
+        "lsn": "4294967296",
+        "dbLsn": "4294967296"
+      },
+      {
+        "characterId": "5012",
+        "lsn": "4294967684",
+        "dbLsn": "4294968072"
+      },
+      {
+        "characterId": "5012",
+        "lsn": "4294968072",
+        "dbLsn": "4294968072"
+      }
+    ]
+  }
+]

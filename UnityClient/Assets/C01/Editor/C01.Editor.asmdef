@@ -1,5 +1,0 @@
-{
-  "name": "C01.Editor",
-  "references": ["C01.Runtime", "Unity.TextMeshPro", "Unity.ugui", "Unity.InputSystem"],
-  "includePlatforms": ["Editor"]
-}
