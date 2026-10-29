@@ -1,8 +1,8 @@
 ## 공개 집계
 
 기준일: 2026-10-29
-누적 신규: 198
-누적 재활성화: 304
+누적 신규: 199
+누적 재활성화: 305
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-29
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
@@ -14,11 +14,11 @@
 | code_reviewer | 리뷰 Agent | 51 | 109 |
 | quality_reviewer | 종합 검수 Agent | 10 | 29 |
 | unity_tester | 테스트 Agent | 4 | 4 |
-| progress_documenter | 기록 Agent | 8 | 4 |
+| progress_documenter | 기록 Agent | 9 | 5 |
 | decision_curator | 의사결정 지원 Agent | 8 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체502회(신규198·재활성화304)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체504회(신규199·재활성화305)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -758,3 +758,7 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 ## 성장·회복 한 묶음 구현 — 2026-10-29
 
 실제 신규8: recovery_contract(서버 분석/Sol medium), recovery_client_path(클라이언트 계약 분석/explorer·실행모델미확인), recovery_server_implementation·recovery_clientcore_implementation·recovery_inventory_ui(구현/Sol medium 각1), recovery_client_review·recovery_server_review(리뷰/Sol medium 각1), recovery_integrated_quality(종합/Astra medium). 실제 후속6: recovery_contract1(coldload·종료수명), recovery_server_implementation1(기존2검사 경계보강), recovery_inventory_ui1(HUD미지급안내), recovery_server_review2(명시port설정·P2빈값재검토), recovery_integrated_quality1(필수안내 수정재검수). 계약explorer는수행한프로토콜·ClientCore분석책임에귀속했다. 누적502=신규198+후속304, 토큰·비용N/A. 총괄의빌드/테스트/Scene연결/환경확인·포트설정수정/Git/Slack기록은활성화제외. 실제입력은Windows보안창·수동로그인대기로미실행이며자동검증성공과구분한다.
+
+## 성장·회복 실제 결과 정리 — 2026-10-29
+
+recovery_result_documentation 기록 역할/Luna low 신규1·후속1을 실제 호출했다. 기록 담당이 잘못된 ROOT 사본을 편집해 부모가 정확한 변경 대조·백업 후 그 변경만 복구하고 CAND 정본에 통합했다. 총괄의 실전 입력·읽기 전용 DB 확인·문서 통합은 활성화에서 제외한다. 현재504=신규199+후속305, 토큰·비용N/A. 재접속 후 검증은 아직 대기다.

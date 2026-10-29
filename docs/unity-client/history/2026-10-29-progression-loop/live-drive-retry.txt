@@ -1,0 +1,4 @@
+Editor-update UI execution: RUNNING
+Not a NUnitRunner result.
+STOPPED: test route tolerance was larger than corner clearance; no product failure asserted.
+Finished UTC: 2026-10-29T12:02:18.0484239Z

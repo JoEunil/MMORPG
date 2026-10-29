@@ -1,0 +1,4 @@
+Editor-update UI execution: RUNNING
+Not a NUnitRunner result.
+PASS: queued synthetic arrow input reached hunting approach through actual world movement.
+Finished UTC: 2026-10-29T12:02:34.4286008Z

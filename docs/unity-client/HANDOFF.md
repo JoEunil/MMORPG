@@ -1,23 +1,18 @@
 # 현재 인계 — 2026-10-29
 
-## 목표·정본·권한
-PR59병합(bbafe73)을확인하고사용자요청대로레벨업·HP포션획득/사용/통합검증을한후속PR로모은다. 추천포션정책선택답변call_bb67cd5e5b764fccbf6c968236542a0f: 일반ID0/1처치HP포션1·HP3000·2초·사망/가득HP무소비·가방가득미지급안내. 사용자몬스터AI·MP포션·장비·DBschema변경0.
-ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient, 실제Editor=ROOT/UnityClient(PID21232), Git정본CAND=ROOT/UnityClient/Builds/C10-Delivery/source, branch codex/progression-loop(로컬미게시). PR59기반성장후속0c916d5/인계6cd8255, master병합5b920b8. 관련범위만수정하고사용자Game원본은덮지않는다.
-PR59는사용자가병합,원격head자동삭제확인후로컬codex/client-play-completion -d정리완료. 별도새PR아직없음.
+## 목표와 정본
+PR59는 master bbafe73으로 병합됐다. 성장·HP 포션 획득/사용·통합 검증을 큰 후속 PR 하나로 모은다. 사용자 몬스터 AI·장비·MP 포션·DB 스키마 변경은 제외한다.
+ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본 CAND=ROOT/UnityClient/Builds/C10-Delivery/source, branch codex/progression-loop, HEAD055394c 이후 로컬 문서 정리 중. 새 PR·push 없음. 실제 Editor는 ROOT/UnityClient(PID21232), CAND와 자동 동기화되지 않는다.
 
-## 구현과검증
-성장표→막타승급/HP기존코드는유지. HP포션서버/Cache/ClientCore/Dummy/가방UI구현·독립Sol리뷰통과. 새Native3/3,경계단언확장후변경캐시2/2,새ClientUnity3/3통과. 이전성장검사반복0. ClientCore/Dummy/MainServerReleasebuild통과. 실패/도구/경고세부구분은 history/2026-10-29-progression-loop/recovery-results.txt 및XML/JSON.
-ROOT C#·Tests·DLL hash/preimageguard동기화,World씬기존상세컨트롤추가Unity저장후원본guardCAND반영. Astra필수미지급안내를WorldHud6초toast로보완,새단일UI검사1/1PASS·Editor기존컨트롤Ensure/WorldHud부모·450x30크기검사·Scene저장/양쪽backup/hashguard반영완료. 기존Native/Client재검사0. Astra해당피드백로컬단계재검수PASS/필수0. 실제Play로그인화면복구완료. 실제Agent502=신규198+후속304/토큰·비용N/A.
+## 완료한 범위
+성장 표와 보상 연결, WAL 우선 포션 소비·비동기 지급, ClientCore/Dummy 패킷45/46/47, 가방 사용·쿨다운·닫힌 가방 미지급 안내를 구현했다. 서버/클라이언트 독립 리뷰 통과. 변경 Native3/3·경계 추가 후 캐시2/2·Client3/3·Toast UI1/1, ClientCore/Dummy/MainServer 빌드 통과. 기존 성장 검사는 반복하지 않았다. 자세한 결과·경고는 history/2026-10-29-progression-loop/recovery-results.txt.
+실제 조작으로 사냥터 이동·일반 몬스터 처치 EXP70→80/Lv1→2/maxHP10000→10500·HP 포션1 지급을 확인했다. 가방 사용으로 HP4050→7050/포션1→0/서버 쿨다운40틱을 확인했다. 정상 UI Disconnect 뒤 읽기 전용 DB 저장 값도 일치한다. 재접속 확인은 아직 대기이며 성공으로 쓰지 않는다. 직접 DB 수정·가짜 게임 상태·사용자 AI 수정 없음.
 
-## 실제실행상태·입력대기
-기본9999는Windows예약9923~10022라bind실패. OS설정변경없이explicit optional MMORPG_GAME_PORT 설정을TCP와Login에추가(default9999,strictport/empty검증),현재10099로정상ready.
-MainServer ROOT/UnityClient/Builds/ProgressionLoop/Server/MainServer.exe SHA2562DC01A9A2A7DB4C5F6EF71C024D90BFBD408687D945B49AF7DD42D40100E4CA3, PID37180/heldPTY56126(종료q). Login PID32844/PTY43653(종료CtrlC),CANDLogin app를기존Game/Login CWD/node_modules/기존.env로실행. DB/Redis기존PID5584/4376유지,초기화모드0/DB쓰기직접0. 이전LoginPTY36697 CtrlC종료완료,첫9999Main자체정상종료.
-사용자가보안창처리·로그인완료를답했다(call_d35fcfd7483f432b8a16ec9878e2ad6c). 현재창재선택·activate후보안창없음확인. 다만실제Unity는빈로그인입력/hasClientfalse/WorldReady/character0이라인증미완료로확인했다. 마지막UI수정Play재시작으로세션초기화된것으로추론하며사용자에게재로그인1회요청했다. 비밀번호읽기/자동인증0,게임요청/조작0. 모델hasClientfalse/WorldReady/character0확인후HUD보완·Scene저장하고Play재진입했다. 실제사냥성장/포션사용/저장완료후재접속/시각검수는미실행. 비동기DB즉시재로그인순서/비정상종료HP·inventory원자성은보장하지않음.
+## 실행 상태와 다음 행동
+Unity Play는 유지한다. 정상 Disconnect 후 test1 로그인 화면에서 같은 계정의 수동 재로그인을 요청했다. 인증 입력은 자동화하지 않는다. 로그인 답변 후 char11 선택→Enter→Lv2 EXP80 HP7050/maxHP10500·가방 포션0/기존 item33 qty34를 확인하고 종료 정리한다. Assets/Packages/ProjectSettings 쓰기·재컴파일·Play 재시작 금지.
+MainServer PID37180, port10099, held PTY56126(q 정상 종료); Login PID32844/3000, held PTY43653(Ctrl+C 정상 종료). MySQL5584/Redis4376은 기존 서비스로 보존한다. 기본9999는 Windows 예약9923~10022라 explicit MMORPG_GAME_PORT=10099를 사용했고 기본값9999/엄격 검증은 보존했다. OS 설정·사용자 Game 원본은 바꾸지 않았다.
+AppDomain ProgressionLiveObserver의 stop Action으로 관찰기 종료·이벤트 정리가 필요하다. 원본 증거 ROOT/UnityClient/Builds/ProgressionLoop/live-recovery-observations.json, raw files/captures. capture_game_view가 Assets/Builds에 만든 첫 PNG는 검증 종료 후 Assets 밖으로 옮긴다. Play 종료 전에 사용자 로그인 상태를 깨지 않는다.
 
-## 다음행동
-Toast후속검사·Scene반영·Astra로컬재검수·로그인화면준비완료. 사용자수동처리대기중독립코드/기록정리를마쳤다. 사용자Windows창처리/로그인답변시현재창/모델/프레임을다시확인하고사냥→포션획득/사용→정상저장후재접속을한배치로검증. 비밀을읽거나정책거절된계정도우미를우회하지않는다. 전용5011은기존readonly확인Lv1/EXP10,5012Lv1/EXP30이라초기성장검증가능하나유저직접로그인필요.
-같은작업Slack부모1793270202.467619에짧은결과연결. 구현전부/실제검증/고정후보최종검수준비전새PR·게시요청으로닫지않는다. 다른작업으로분기하지말고이한묶음을완료한다.
-
-현재제품로컬커밋8e44180(단일후속PR분량),원격push0/새PR0. Unity Play로그인화면·Main10099/로그인3000은사용자수동처리를위해유지한다. 다음턴서버/Unity현재상태대조후인증이끝난정상UI조작만이어간다. 최종실전검수는아직대기.
-
-실제서버응답읽기관찰기 설치: AppDomain ProgressionLiveObserver에stop Action저장,ROOT/UnityClient/Builds/ProgressionLoop/live-recovery-observations.json에world/사용응답/지급/가방행만기록(인증정보0). 종료시stop실행해Editor.update/모델이벤트정리필수. 현재Play재시작금지(사용자로그인보존).
+## 전달 상태
+종합 검수는 안내 보완의 로컬 단계만 통과했다. 재접속·최종 증거 통합 후 Astra 게시 검수, 최소 사이트 빌드/링크 확인, 고정 후보로 Slack 승인 요청을 준비한다. 같은 묶음 Slack 부모1793270202.467619. 과거 승인을 새 PR에 재사용하지 않는다. 완료 기록은 같은 스레드·완료 채널에 핵심만 남긴다.
+실제 Agent504=신규199+후속305. 총괄 직접 작업은 제외하고 토큰·비용은 N/A다. 상세 과거 인계는 history/2026-10-29-progression-loop/HANDOFF-before-live-completion.md에 보존했다.
