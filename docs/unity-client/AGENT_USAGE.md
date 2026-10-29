@@ -1,24 +1,24 @@
 ## 공개 집계
 
-기준일: 2026-10-27
-누적 신규: 151
-누적 재활성화: 272
-상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-27
+기준일: 2026-10-28
+누적 신규: 156
+누적 재활성화: 273
+상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-28
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 6 | 3 |
 | server_analyst | 서버 분석 Agent | 17 | 43 |
-| client_implementer | 구현 Agent | 50 | 64 |
+| client_implementer | 구현 Agent | 52 | 64 |
 | asset_artist | 아트 Agent | 24 | 32 |
-| code_reviewer | 리뷰 Agent | 37 | 101 |
+| code_reviewer | 리뷰 Agent | 40 | 102 |
 | quality_reviewer | 종합 검수 Agent | 3 | 21 |
 | unity_tester | 테스트 Agent | 2 | 3 |
 | progress_documenter | 기록 Agent | 4 | 3 |
 | decision_curator | 의사결정 지원 Agent | 7 | 2 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체423회(신규151·재활성화272)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체429회(신규156·재활성화273)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -690,3 +690,7 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 
 ## 차분한 로그인 배경과 비밀번호 제출 — 2026-10-27
 실제 신규1: restrained_login_backdrop(아트 Agent/Sol high), built-in imagegen편집1회와원본·생성근거보존. 실제 후속4: next_client_gap_scan(리뷰 Agent,진입누락조사), chat_panel_recovery(구현 Agent/Sol medium,비번Enter연결), chat_panel_recovery_review(리뷰 Agent/Sol medium,관련3파일차단0), client_session_plan_gate(종합 검수 Agent/Astra medium,고정13파일·두해상도전후확인통과/필수0). 누적423=151+272. 총괄의nativeSprite연결·단일테스트실행·렌더·문서·Slack수신기복구는활성화제외. 신규callbackfixture1개첫실행pass,기존3tests반복0. 물리Enter/실서버로그인/playerbuild미검증. 토큰·비용N/A.
+
+## C++ 개념 점검·인증 수명 수정 — 2026-10-28
+
+이번 채팅 실제 실행 증분은 신규5·재활성화1이다. network_review/cache_review는 C++ 읽기 전용 리뷰 각 신규1, pool_exception_fix는 풀 예외 정리·회귀 테스트 구현 신규1, auth_fix_review는 인증 수명 독립 리뷰 신규1·수정 재검토1, auth_regression_tests는 인증 회귀 테스트 구현 신규1이다. 역할 책임 기준 구현2·리뷰3 신규, 리뷰1 재활성화로 집계한다. worker라는 도구 유형은 별도 역할로 추가하지 않는다. 고정 code_reviewer 프로필은 Sol/medium이며 worker는 부모 설정 상속으로 별도 모델 변경하지 않았다. 토큰·비용 N/A. 총괄 직접 수정/빌드/실행 및 메시지는 집계하지 않았다.

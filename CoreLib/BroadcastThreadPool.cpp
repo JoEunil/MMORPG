@@ -143,8 +143,12 @@ namespace Core {
             return false;
         }
         auto work = std::make_unique<BroadcastWork>();
-        work->headers = {std::move(playerHeader), std::move(monsterHeader)};
-        work->chunks = {std::move(playerChunk), std::move(monsterChunk)};
+        work->headers.reserve(2);
+        work->headers.push_back(std::move(playerHeader));
+        work->headers.push_back(std::move(monsterHeader));
+        work->chunks.reserve(2);
+        work->chunks.push_back(std::move(playerChunk));
+        work->chunks.push_back(std::move(monsterChunk));
         work->zoneID = zoneID;
         work->targetSessionID = sessionID;
         return Enqueue(std::move(work));

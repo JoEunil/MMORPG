@@ -6,6 +6,11 @@ namespace Base{
 		// lock_guard 처럼 쓸수 있게 RAII 적용
 		std::atomic_flag& lock; // lock 용도만을 위해 존재하는 atomic 타입, 내부적으로 boolean 타입 (false는 unlocked, true는 locked)
 	public:
+		SpinLockGuard(const SpinLockGuard&) = delete;
+		SpinLockGuard& operator=(const SpinLockGuard&) = delete;
+		SpinLockGuard(SpinLockGuard&&) = delete;
+		SpinLockGuard& operator=(SpinLockGuard&&) = delete;
+
 		explicit SpinLockGuard(std::atomic_flag& lo) : lock(lo)
 		{
 			while (lock.test_and_set(std::memory_order_acquire)) {}

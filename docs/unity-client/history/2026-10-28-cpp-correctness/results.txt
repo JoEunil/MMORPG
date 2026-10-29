@@ -1,0 +1,28 @@
+C++ correctness fixes — 2026-10-28
+
+Target: C:/Users/joeun/Desktop/workspace/Game, master at 9a3d94e + working diff.
+This is the user's explicitly requested C++ audit/fix, separate from the Unity candidate in the earlier HANDOFF. No Unity checkout synchronization, push, PR, server execution, Redis/DB mutation, or deployment.
+
+Changes:
+- Previous turn: Message/SpinLockGuard copy and move deleted; Packet object move removed (pool pointers remain movable); Broadcast bootstrap inserts shared_ptrs directly rather than via const initializer_list elements.
+- FixedObjectPool destroys completed objects in reverse order if a subsequent constructor throws, then rethrows.
+- SessionAuth validates the issuer's 36-byte UUID and wire trailing zero before comparing; Login/routes/auth.js is the issuer contract.
+- One owned persistent command event replaces per-request leaked events. Pending callback payloads use unique_ptr. Redis context access stays on the event loop (or after join); connect failure/disconnect clears the context and later requests fail.
+- Stop rejects new work, fails queued/in-flight work once, joins, and frees the event/base. MainServer uses the existing cleanup order through a local guard for normal/exception exit, keeping auth alive until its producers stop.
+- Endpoint overload retains production defaults and permits isolated tests on an ephemeral loopback port.
+
+Review: auth_fix_review found premature auth destruction during exception unwind; lifetime guard applied and re-reviewed with no blocking findings. Reviewer suggested active-connection/pending-reply Stop coverage; added to the existing shutdown test.
+
+Validation:
+- Targeted source-built GoogleTest runner (MSVC C++20 /MD, local installed gtest, real libevent+hiredis), 3 tests passed / 0 failed in regression-results.xml.
+- Token test: exact value passes; empty, prefix, oversized, unequal, nil and missing terminator fail.
+- Lifecycle test: live GET with withheld reply fails once on Stop; disconnect and requests before init/after disconnect/during Stop/after Stop all complete once; repeated Stop is safe.
+- Pool test: third constructor throws; the two completed objects are destroyed.
+- Default UnitTests project could not find gtest/gtest.h due to existing local include setup; targeted runner used UnitTests/vcpkg_installed/x64-windows directly, without modifying global configuration. The complete unit suite was not run.
+- First restricted loopback run failed at event_base creation due to socket permissions; rerun with approved local execution passed. Initial explicit temp path did not point to the isolated temp artifact; runner was rebuilt under ignored x64/CppAuthReview for shared access.
+- Initial parallel MSBuild stalled after BaseLib; canceled normally and retried serially. Initial MainServer link hit MSPDB140.DLL environment error; final build status recorded below.
+- No live Redis integration, gameplay/login input, or deployed-server verification.
+
+Agents: network_review, cache_review, pool_exception_fix, auth_fix_review, auth_regression_tests = 5 new; auth_fix_review = 1 reactivation. Implementation responsibility 2, review 3; tokens/cost N/A. Coordinator work is excluded.
+
+Final build: MainServer Release x64 build and link PASSED using serial MSBuild with approved local execution (exit 0). Existing narrowing/encoding/vendor-header/intermediate-directory warnings remain. Build log: x64/CppAuthReview/main-build.log. No executable launched.

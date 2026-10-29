@@ -2,9 +2,28 @@
 #include <set>
 #include <thread>
 #include <mutex>
+#include <stdexcept>
 #include <BaseLib/FixedObjectPool.h>
 
 struct Dummy { int v = 0; };
+
+TEST(FixedObjectPoolTest, ConstructorFailureDestroysCompletedObjects) {
+    struct ThrowingObject {
+        int* destructions;
+        ThrowingObject(int* attempts, int* destroyed) : destructions(destroyed) {
+            if (++*attempts == 3)
+                throw std::runtime_error("construction failed");
+        }
+        ~ThrowingObject() { ++*destructions; }
+    };
+
+    int attempts = 0;
+    int destructions = 0;
+    using Pool = Base::FixedObjectPool<ThrowingObject, 4>;
+    EXPECT_THROW({ Pool pool(&attempts, &destructions); }, std::runtime_error);
+    EXPECT_EQ(attempts, 3);
+    EXPECT_EQ(destructions, 2);
+}
 
 TEST(FixedObjectPoolTest, AllocateReturnsValid) {
     Base::FixedObjectPool<Dummy, 4> pool;

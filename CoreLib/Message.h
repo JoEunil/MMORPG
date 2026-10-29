@@ -8,7 +8,10 @@ namespace Core {
         uint16_t m_capacity; // buffer length
     public:
         Message() = delete;
-        // m_buffer가 raw pointer라서 복사 생성 금지, 이동 생성자 정의
+        Message(const Message&) = delete;
+        Message& operator=(const Message&) = delete;
+        Message(Message&&) = delete;
+        Message& operator=(Message&&) = delete;
 
         explicit Message(uint16_t size) {
             m_buffer = new uint8_t[size];

@@ -1,4 +1,8 @@
-# 현재 인계 — 2026-10-27
+# 현재 인계 — 2026-10-28
+
+현재 요청: 이 채팅에서 C++ 개념 점검 및 발견 결함 수정을 명시적으로 승인했다. 대상은 C:/Users/joeun/Desktop/workspace/Game의 master 9a3d94e + 미커밋 변경이며 아래 Unity 후보와 별개다. Message/Packet/SpinLockGuard 복사·이동 정책, bootstrap 이동 삽입, 풀 생성 예외 정리, Redis 인증 길이·수명·이벤트/종료 정리를 반영했다. MainServer Release x64 빌드·링크 통과, 독립 리뷰 차단0, 집중 회귀3개 통과(실제 libevent/hiredis + 임시 loopback RESP 서버); 전체 테스트·실서버·배포 미검증. 사용자 .claude/ 변경 보존. 상세 근거: history/2026-10-28-cpp-correctness/results.txt. 커밋/push/PR/Unity 입력/실행서버 교체 없음. 후속은 사용자 요청 기준이며 게임 개발 자동 재개하지 않는다.
+
+## 이전 Unity 인계 — 2026-10-27
 
 목표: 로그인·채팅·패널 조작 개선을 큰 후보 하나로 마감했다. 차분한 로그인 배경, 비밀번호 제출 연결, 앞선 구역 복귀/귓속말/텍스트 Escape를 같은 codex/client-session-polish에 누적했다.
 
