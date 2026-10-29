@@ -81,6 +81,25 @@ int main(int argc, char* argv[]) {
         Core::Initializer core;
         Net::Initializer net;
         Cache::Initializer cache;
+        // Preserve the same shutdown order on normal exit and exception unwinding.
+        struct Shutdown {
+            External::SessionAuth& auth;
+            Core::Initializer& core;
+            Net::Initializer& net;
+            Cache::Initializer& cache;
+            bool stopped = false;
+            void Run() {
+                if (stopped) return;
+                net.CleanUp1();
+                auth.Stop();
+                core.CleanUp1();
+                core.CleanUp2();
+                net.CleanUp2();
+                cache.CleanUp();
+                stopped = true;
+            }
+            ~Shutdown() { Run(); }
+        } shutdown{auth, core, net, cache};
 
         cache.Initialize();
         core.Initialize();
@@ -111,11 +130,7 @@ int main(int argc, char* argv[]) {
         // recvMQ drain → dbWorker drain 경로로 유실 없이 DB에 기록된다.
         // 각 Stop()/CleanUp()은 idempotent(running.exchange) + 로거 null-safe 이며,
         // DB 워커는 큐를 drain한 뒤 종료한다. 상세: GracefulShutdown.md
-        net.CleanUp1();
-        core.CleanUp1();
-        core.CleanUp2();
-        net.CleanUp2();
-        cache.CleanUp();
+        shutdown.Run();
 
         Core::sysLogger.reset();
         Core::gameLogger.reset();

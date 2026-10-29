@@ -20,8 +20,16 @@ namespace Base {
         explicit FixedObjectPool(const Args&... args)
             : m_storage(std::make_unique<Slot[]>(Size)) {
             freeList.reserve(Size);
-            for (size_t i = 0; i < Size; i++)
-                freeList.push_back(::new (&m_storage[i]) T(args...)); // 주소에 생성자 호출 placement new
+            try {
+                for (size_t i = 0; i < Size; i++)
+                    freeList.push_back(::new (&m_storage[i]) T(args...)); // 주소에 생성자 호출 placement new
+            }
+            catch (...) {
+                // 생성에 실패한 풀의 소멸자는 호출되지 않으므로 완료된 객체만 정리한다.
+                for (auto it = freeList.rbegin(); it != freeList.rend(); ++it)
+                    (*it)->~T();
+                throw;
+            }
         }
 
         ~FixedObjectPool() {                  

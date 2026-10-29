@@ -18,30 +18,9 @@ namespace Net {
         Packet(const Packet&) = delete;
         Packet& operator=(const Packet&) = delete;
 
-        Packet(Packet&& other) noexcept
-            : m_buffer(other.m_buffer), m_length(other.m_length), m_capacity(other.m_capacity), owner(other.owner) {
-            other.m_buffer = nullptr;
-            other.m_length = 0;
-            other.m_capacity = 0;
-            other.owner = nullptr;
-            // other 비우기
-        }
-
-        Packet& operator=(Packet&& other) noexcept {
-            if (this != &other) {
-                delete[] m_buffer;
-                m_buffer = other.m_buffer;
-                m_length = other.m_length;
-                m_capacity = other.m_capacity;
-                owner = other.owner;
-                other.m_buffer = nullptr;
-                other.m_length = 0;
-                other.m_capacity = 0;
-                other.owner = nullptr;
-            }
-            return *this;
-        }
-        // m_buffer가 raw pointer라서 복사 생성 금지, 이동 생성자 정의
+        // 풀에 속한 객체의 주소는 유지하고, 소유 포인터만 이동한다.
+        Packet(Packet&&) = delete;
+        Packet& operator=(Packet&&) = delete;
 
         Packet(uint32_t size, Core::IPacketPool* o) {
             m_buffer = new uint8_t[size];

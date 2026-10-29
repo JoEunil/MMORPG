@@ -20,13 +20,14 @@ graceful shutdown은 서버 종료 시 보존 대상으로 정한 작업을 유�
 ## 3. 종료 파이프라인 (`MainServer/main.cpp`)
 
 종료 처리는 **입력 중단 → 남은 입력 처리 → 내부 상태 저장 및 정리 (DB 쓰기 작업 생성) → DB 반영** 순서를 따른다.  
-뒤 단계가 앞 단계의 결과에 의존하므로, 이 순서가 지켜져야 유실이 없다.  
+뒤 단계가 앞 단계의 결과에 의존하므로, 저장 작업을 넘기기 전에 그 작업을 받을 자원을 종료하지 않아야 한다.  
+이 순서는 저장을 위한 전제이며, 큐 등록이나 DB 쓰기 실패의 복구까지 보장하는 것은 아니다.
 
 이 순서의 근거는 파이프라인이 producer-consumer 체인이라는 데 있다 — net(입력 생산) → core(입력 소비·DB write 생산) → cache(DB write 소비).   
 각 P-C 경계에서 **producer(상류)를 먼저 종료**해야, consumer(하류)가 "더 이상 새 입력이 없는" 상태에서 이미 받은 것만 drain하고 안전하게 끝낼 수 있다.  
 순서가 뒤집히면 멈춘 큐로 producer가 계속 밀어넣어 유실되거나, 새 입력이 끊이지 않아 drain이 끝나지 않는다.  
 
-> P-C 역전이 두 곳 있는데, 둘 다 유실 없이 처리했다.
+> P-C 역전이 두 곳 있어 다음과 같이 종료 정책을 나눴다.
 > - core → net (send): net은 core에 대해 recv의 producer이자 send의 consumer라 cleanup을 둘로 쪼갠다. recv는 `net.CleanUp1()`로 먼저 끊고, send를 소비하는 IOCP는 `net.CleanUp2()`로 core 정리 뒤에 내린다 → 분리로 역전을 애초에 피함.
 > - cache → core (응답): consumer(core)가 producer(cache)보다 먼저 정리되지만, core 큐의 `m_running` 체크로 방어. 종료 중 도착하는 응답은 버려도 되므로(나가는 클라이언트 대상) 무해.
 
@@ -57,7 +58,8 @@ spdlog::shutdown();
 ### 캐릭터 상태 저장 프로세스 
 
 캐릭터 상태는 메모리에만 존재하는 휘발성 상태라 종료 시 반드시 DB로 내려야 한다.  
-3단계에서 큐에 넣고 4단계에서 실제로 기록되며, 각 단계의 큐/워커가 drain하므로 유실이 없다.   
+3단계에서 저장 메시지를 만들고, 4단계에서 접수된 작업의 DB 쓰기를 수행한다.  
+각 큐/워커의 drain은 접수된 작업을 처리하고 종료하기 위한 것이며, DB 쓰기 성공을 뜻하지는 않는다.
 
 ```
 [3. 내부 상태 저장]  stateManager.CleanUp()            (core.CleanUp2)
@@ -69,13 +71,23 @@ spdlog::shutdown();
 ```
 
 - 순서 보장: 저장 메시지를 넣는 시점(3단계)엔 cache가 살아있고, 소비(4단계)는 그 뒤에 온다.  
-- 유실 방지: cache recvMQ·dbWorker 모두 Stop 시 큐를 drain하고, `Stop()`의 `join()`이 drain 완료까지 블록한다.
+- 접수된 작업 처리: cache recvMQ·dbWorker 모두 Stop 시 큐를 drain하고, `Stop()`의 `join()`이 drain 완료까지 블록한다.
+
+### 저장 실패와 재시작 복구의 범위
+
+캐릭터 위치·스탯은 로그아웃과 정상 종료 시 `StateManager → Cache InMemoryQueue → Handler::CharacterStateUpdate → DBWorker`로 저장한다.  
+현재 [CharacterStateUpdate](CacheLib/Handler.cpp)는 DB 작업 등록 결과를 처리하지 않고 실패 콜백도 지정하지 않는다. 등록 거절이나 DB 쓰기 실패 시 로그는 남지만 자동 재시도는 없다.  
+인벤토리·골드 캐시의 dirty 복원과 flush 재시도는 별도 경로이므로 캐릭터 상태 저장에 적용되지 않는다.
+
+Cache InMemoryQueue의 중요 메시지는 기본 큐와 defer 큐가 모두 가득 차면 [DurableLogger](CoreLib/DurableLogger.cpp)에 기록한다.  
+이 로거는 append와 fsync를 수행하지만 초기화 시 전달하는 replay 콜백이 비어 있어, 재시작 후 저장 메시지를 자동으로 DB에 다시 적용하지 않는다.  
+따라서 정상 종료 순서, 실행 중 재시도, 재시작 복구는 구분해야 한다. 인벤토리의 재시작 복구는 별도의 [WALManager](CacheLib/WALManager.h)가 담당한다.
 
 ### Queue 종료 정책
 
 - graceful drain: NonZone에서 수락한 Work/Disconnect, cache recvMQ, CacheFlush `flushQ`, DBWorker queue
 - hard stop: Zone packet queue, Core recvMQ, Broadcast queue, Chat queue
-- 유실 방지 범위는 캐릭터 상태 저장에 필요한 disconnect와 persistence 경로로 한정한다. 그 외 queue는 shutdown 시작 시 남아 있는 작업을 처리하지 않는다.
+- drain 대상은 캐릭터 상태 저장에 필요한 disconnect와 persistence 경로로 한정한다. 그 외 queue는 shutdown 시작 시 남아 있는 작업을 처리하지 않는다.
 
 
 ## 4. 종료 시 발견·수정한 문제들

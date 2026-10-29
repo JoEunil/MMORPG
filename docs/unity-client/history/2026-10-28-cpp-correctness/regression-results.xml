@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="3" failures="0" disabled="0" errors="0" time="0.006" timestamp="2026-10-28T23:36:35.219" name="AllTests">
+  <testsuite name="FixedObjectPoolTest" tests="1" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-10-28T23:36:35.219">
+    <testcase name="ConstructorFailureDestroysCompletedObjects" file="C:\Users\joeun\Desktop\workspace\Game\UnitTests\BaseLib\FixedObjectPool.cpp" line="10" status="run" result="completed" time="0." timestamp="2026-10-28T23:36:35.219" classname="FixedObjectPoolTest" />
+  </testsuite>
+  <testsuite name="SessionAuthTest" tests="2" failures="0" disabled="0" skipped="0" errors="0" time="0.006" timestamp="2026-10-28T23:36:35.219">
+    <testcase name="OnlyExactTokenAndTerminatorAuthenticate" file="C:\Users\joeun\Desktop\workspace\Game\UnitTests\ExternalLib\SessionAuth.cpp" line="154" status="run" result="completed" time="0.003" timestamp="2026-10-28T23:36:35.219" classname="SessionAuthTest" />
+    <testcase name="DisconnectAndStopCompleteRequestsOnce" file="C:\Users\joeun\Desktop\workspace\Game\UnitTests\ExternalLib\SessionAuth.cpp" line="170" status="run" result="completed" time="0.002" timestamp="2026-10-28T23:36:35.223" classname="SessionAuthTest" />
+  </testsuite>
+</testsuites>
