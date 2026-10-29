@@ -6,10 +6,11 @@ namespace Mmorpg.Client
     public enum SkillRange : byte { None, Circle, Rectangle, Boss1_1, Boss1_2, Boss2 }
     public enum SkillAction : byte { Charging, Hit }
 
-    // The candidate edits only the existing server skill and monster IDs.
+    // Client data imported from the server-owned static content tables.
     [UnityEngine.Scripting.APIUpdating.MovedFrom(true, sourceNamespace: "C02", sourceAssembly: "C02.Runtime", sourceClassName: "C14ServerContent")]
     public sealed class ServerContent : ScriptableObject
     {
+        public Growth growth = new Growth();
         public RingSkill ring = new RingSkill();
         public Monster monster0 = new Monster();
         public RingSkill[] otherSkills =
@@ -57,6 +58,21 @@ namespace Mmorpg.Client
                     new MonsterPhase { hpThreshold = 0.2f, steps = new[] { new SkillStep { skillID = 4, delayTicks = 25 }, new SkillStep { skillID = 3, delayTicks = 25 }, new SkillStep { skillID = 4, delayTicks = 25 }, new SkillStep { skillID = 3, delayTicks = 25 } } }
                 } }
         };
+
+        [Serializable]
+        public sealed class Growth
+        {
+            public int maxLevel;
+            public GrowthLevel[] levels = Array.Empty<GrowthLevel>();
+        }
+
+        [Serializable]
+        public sealed class GrowthLevel
+        {
+            public int level;
+            public uint requiredTotalExp;
+            public uint maxHpIncrease;
+        }
 
         [Serializable]
         public sealed class RingSkill

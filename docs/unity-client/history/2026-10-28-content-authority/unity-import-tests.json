@@ -1,0 +1,27 @@
+{
+  "status": "completed",
+  "duration": 0.61,
+  "summary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "inconclusive": 0
+  },
+  "results": [
+    {
+      "FullName": "Mmorpg.Client.Tests.ContentImportTests.InvalidSnapshotsPreserveEntirePriorAssetAndMetadata",
+      "Status": "Passed",
+      "Duration": 0.3707586,
+      "Message": null,
+      "StackTrace": null
+    },
+    {
+      "FullName": "Mmorpg.Client.Tests.ContentImportTests.ServerSnapshotImportsEntireCatalogDeterministicallyWithoutChangingAssetGuid",
+      "Status": "Passed",
+      "Duration": 0.1929135,
+      "Message": null,
+      "StackTrace": null
+    }
+  ]
+}

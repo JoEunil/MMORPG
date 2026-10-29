@@ -1,32 +1,23 @@
 # 현재 인계 — 2026-10-28
 
-현재 요청: 이 채팅에서 C++ 개념 점검 및 발견 결함 수정을 명시적으로 승인했다. 대상은 C:/Users/joeun/Desktop/workspace/Game의 master 9a3d94e + 미커밋 변경이며 아래 Unity 후보와 별개다. Message/Packet/SpinLockGuard 복사·이동 정책, bootstrap 이동 삽입, 풀 생성 예외 정리, Redis 인증 길이·수명·이벤트/종료 정리를 반영했다. MainServer Release x64 빌드·링크 통과, 독립 리뷰 차단0, 집중 회귀3개 통과(실제 libevent/hiredis + 임시 loopback RESP 서버); 전체 테스트·실서버·배포 미검증. 사용자 .claude/ 변경 보존. 상세 근거: history/2026-10-28-cpp-correctness/results.txt. 커밋/push/PR/Unity 입력/실행서버 교체 없음. 후속은 사용자 요청 기준이며 게임 개발 자동 재개하지 않는다.
+## 현재 목표·경로
+서버 Data 정본→기존 exporter→JSON→Unity importer로 스킬·몬스터·성장을 공유한다. 성장도 단순한 표로 연결하라는 최신 지시를 반영했다. 맵·스폰 Unity→서버, 사용자 몬스터 AI는 유지한다.
+- ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient
+- 실제 Editor: ROOT/UnityClient, Unity6000.0.47f1/PID40404, Edit/컴파일완료/assetclean 확인.
+- Git 정본 CAND: ROOT/UnityClient/Builds/C10-Delivery/source
+- 브랜치 codex/client-play-completion, 기본 master8622d99. 제품후보 a8e7516(기존45c30a1+성장추가). push/새PR 없음.
 
-## 이전 Unity 인계 — 2026-10-27
+## 완료·검증
+기존5스킬/3몬스터 경로 전환 근거: history/2026-10-28-content-authority/. 성장 추가분 근거: history/2026-10-28-growth-data-share/. 기술정본 CONTENT_PIPELINE.md.
+GrowthData.h/Growth.inc는 레벨·누적필요EXP·최대HP증가량100행. 동일JSON formatVersion2로 전달하고 기존asset/GUID를 보존한다. 초기EXP곡선50×L×(L−1)/2·Lv2부터HP500은 튜닝안이며 실제 승급·HP적용·상한강제·저장처리 미구현. DB/AI/패킷/맵/스폰변경0.
+MSVC exporter빌드·전체100행·기존catalog동일·결정성 통과(구현담당). 독립Sol 코드리뷰PASS. 실제ROOT Unity 변경된2검사2/2 통과, 실제asset import 후 기존필드불변/growth전체일치/maxLevel100/rows100/dirtyfalse/GUID보존. 기존통과IO/CoreLib전체빌드/실입력은 불변경로로 반복하지 않았다. UI변경없어 새캡처없음.
+ROOT에는3개C#/JSON만preimage확인후동기화했고 Editor생성asset만 CAND에반영했다. 실제ROOT CoreLib 및 사용자Game 사본은 덮지않았다. 종료시게임서버/Login기동·DB조작·실입력0, Editor는 Edit/clean 상태로둔다.
 
-## 현재 작업
+## 검수·게시 대기
+성장 추가분 종합 검수Astra PASS/필수제품수정0. 옛인계는이력보존후현재상태로갱신. 실제Agent484=신규186+후속298/토큰·비용N/A.
+CONTENT01/r1(기존제품45c30a1/13파일)은 성장 추가 지시로 보류·대체. 부모1793192469.508719/채널C0C9VFZMV43/지정사용자U0C9QEUHPMK. r1보류안내1793193939.517569. 회신소비0/승인적용0/push0/새PR없음. r1승인을새성장범위에적용하지않는다.
+성장검수 완료 후 같은스레드에 CONTENT01/r2 게시요청등록완료: 메시지1793194790.338199, 정확한승인명령 `승인 CONTENT01/r2`. 후보a8e7516 및 두history의제품manifest가정본. 회신소비0/승인적용0/push0. 승인전push보류. 요청직전수신기fresh/listening·실제NodePID33160·부모등록대조통과. 수신기fixedCoordinator01a14d46-8b23-7590-8ad5-7efc20f8ecd9/Node33160의freshhealth·실제프로세스·부모등록을요청전대조한다. 후속은실제레벨업로직과수치정책확정이며이번게시승인을확대하지않는다.
 
-결과 정리 사이트를 점검해 가독성·기능 탐색·현재/과거 화면 구분을 개선했다. 로컬 구현·사이트 빌드·실제 브라우저 확인·Astra 종합 검수 통과. 기존 PR58의 승인된 결과 사이트 개선 범위에 5117b3f로 추가 반영했다. 이번에는 게임·서버·DB·Unity 실행을 변경하지 않았다.
 
-- 편집/실행 ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient
-- Git 정본 CAND: ROOT/Builds/C10-Delivery/source
-- 브랜치: codex/client-feature-structure / PR58 https://github.com/JoEunil/MMORPG/pull/58
-- PR58은 게시 직전 open·미병합/원격 head b2f775b와 로컬 일치를 확인했다. master의 사용자 LLM.md·README 변경은 이전 정상 병합으로 보존했다.
-- 미리보기: http://127.0.0.1:8791/MMORPG/#work
 
-## 이번 완료
-
-홈에 기능별 빠른 이동, 상세/이력 하단에 다른 기능 탐색, 본문 링크 강조와 키보드 본문 바로가기를 추가했다. 워크플로우의 사용자→총괄을 수평 배치하고9개 역할을3열로 정리했다. 반복 설명은 줄이고 같은날 가방의 실제 포션 수령을 최신 기록으로 앞에 배치했다. 기존 사진·과거 빈 가방·실패·에디터 예시는 보존한다. Markdown이 정본이며 생성HTML은 직접 편집하지 않았다.
-
-빌더 전체 링크/이미지/앵커 검사 통과. 데스크톱1280·모바일390×844에서 넘침0, 실제 기능 간 이동·날짜 이동·키보드 포커스 확인. Astra 게시 검수 통과, 필수수정0. 지표451=신규166+후속285,토큰/비용N/A. 세부근거와 이전 인계: history/2026-10-27-results-site-review/.
-
-## 게시 권한과 현재 상태
-
-CLIENTCOMPLETE01/r1(부모1793084867.526689/채널C0C9VFZMV43/지정사람U0C9QEUHPMK)은 승인 회신1793093569.259489를1회 소비해 PR58 게시 완료했다. 적용 회신1793094210.225339, PR 링크 회신1793094363.497309. 지연 중복 회신은1793094448.151949로 확인하고 추가 실행하지 않았다. 이번 공개 원본/탐색 보완은 같은 후보의 승인 범위 안이며 새 PR·공개 호스팅·권한 확대가 아니다. 사용자 병합·정식 Pages 배포는 별도다.
-
-## 앞선 게임 결과와 남은 한계
-
-구조/에셋 정리, HP/MP Delta 수정, Windows 빌드, 실제6구역 왕복·스킬·채팅·처치/EXP·재접속 상태 보존과 성공 거래/배송/대금수령을 확인했다. 전용 계정 테스트 데이터는 원본4테이블·부재행까지 복원했고 test1·사용자 몬스터 AI는 수정하지 않았다. 상세는 history/2026-10-27-client-completion/와 client-refactor/ 이력이다.
-
-마지막 게임 검증 뒤 Unity는Edit/clean,직접 켠Login/MainServer는정상종료했다. 이번 사이트 작업으로 게임 검사를 반복하지 않았다. standalone UI 전체 조작·모든 지연 조건의 조작감·레벨업/드롭/균형은 미확인이다. 로컬 복구 SQL/원본/WAL보관 근거는 ROOT/Builds/ClientCompletion/Evidence에 유지한다.
-전달: 사이트 점검의 새 Slack 부모1793095697.714729/완료 요약1793095732.252169. 5117b3f의 GitHub Actions 사이트 빌드40486089424 성공 확인. 정식 Pages 배포 성공으로 확대하지 않는다. 추가 승인 대기 없음,다음은 사용자 PR58 검토/화면 피드백이다.
+2026-10-29 사용자가 현재채팅에서 PR게시와 다음성장작업착수를 직접요청했다. CONTENT01/r2게시권한으로적용하며 Slack재승인대기해제. 원격master fb428df의C++소유권/Redis수명수정과LLM/README변경을정상병합·보존했다. 원격옛인계는 history/2026-10-29-content-publication/remote-handoff.md. 새원격실행5+1만집계했고 과거클라이언트기록은보존했다.

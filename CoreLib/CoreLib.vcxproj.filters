@@ -120,6 +120,18 @@
     <ClInclude Include="CharacterState.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Skills.inc">
+      <Filter>Data</Filter>
+    </ClInclude>
+    <ClInclude Include="GrowthData.h">
+      <Filter>Data</Filter>
+    </ClInclude>
+    <ClInclude Include="Growth.inc">
+      <Filter>Data</Filter>
+    </ClInclude>
+    <ClInclude Include="Monsters.inc">
+      <Filter>Data</Filter>
+    </ClInclude>
     <ClInclude Include="SkillData.h">
       <Filter>Data</Filter>
     </ClInclude>

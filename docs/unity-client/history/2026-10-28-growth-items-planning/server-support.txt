@@ -1,0 +1,24 @@
+2026-10-28 현재 소스 읽기 근거. 런타임/DB 실물 미확인.
+Scope: planning only, no implementation/AI/DB/server execution modifications.
+
+Supported:
+- Kill EXP: CoreLib/ZoneState_Skills.cpp121-130, MonsterData.h Reward.exp only, last-hitter accumulation and dirty bit.
+- EXP/level/maxHP/maxMP wire and Unity fields already exist: PacketWriter.cpp262/436, ZoneState_Snapshots.cpp132, WorldScreen.cs306-310, CombatScreen.cs224.
+- Character growth fields persist on normal disconnect/cleanup: StateManager.cpp354/456, CacheLib/Handler.cpp168-173, Config.h QUERY_4. Not per-kill crash durability.
+- Inventory reads: NonZoneHandler.cpp86/204 -> CacheLib/Handler_Inventory.cpp12 -> PacketWriter.cpp270 -> ClientCore/ViewModel.cs763.
+- Inventory internal stack +/- and capacity checks + WAL/blob flush: CacheStorageInventory.cpp135/157/268/278, CacheFlush.cpp35-115.
+- Market delivery/return: Handler_Bazaar.cpp182/253/307 + CacheStorageInventory.cpp290 + CacheFlush.cpp74-115. Market event IDs/delivery policy not a generic monster reward contract.
+
+Missing/limited:
+- No automatic level-up threshold/cap/multi-level promotion/stat policy in actual EXP mutation path; existing level loading/copying is not a level-up feature.
+- ItemData.h7-19 only 5 ID/type/name/weight entries: HP potion, MP potion, iron sword, iron shield, leather armor. Effect and equipment stats absent.
+- Potion use/equipment/monster item or currency drop paths absent in inspected external dispatch and kill flow. INVENTORY_UPDATE18 enum/writer alone is not a connected external feature.
+- Inventory capacity10, itemID uint32, quantity uint16, slot uint8; strict81-byte frame in ClientCore/PacketHelper/Packet.cs623. Other64-capacity constants do not authorize a capacity change.
+
+Extensions:
+- Level-up may reuse existing wire/schema if within existing fields; formula/cap/save semantics must first be defined, no compatibility claim before implementation check.
+- Potion use needs new request/result correlation and authoritative consume+effect failure/reconnect handling; existing blob is reusable storage only.
+- Direct hunting reward needs a new grant policy and fullbag/dedup/failure rules; don't directly repurpose trade outbox semantics.
+- Equipment, ground drops/pickup and inventory-capacity increase need substantially wider protocol/state/persistence scope; not included in first recommendation.
+
+User choice: growth/items planning first. No server/economy/packet implementation approval inferred from this choice.
