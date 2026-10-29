@@ -49,8 +49,8 @@ WAL은 성공 응답 전에 fsync를 기다리지 않는다. 마지막으로 디
 
 | 검증 방식 | 확인한 내용과 기록 |
 |---|---|
-| 단위 테스트 (Google Test) | 큐·버퍼·객체풀의 경계 조건과 동시 접근, 큐 포화·종료 처리, WAL 손상 복구를 확인했다. [테스트 코드](UnitTests)와 [캐시 회귀 테스트](CacheLib_Test.md#db-없이-실행하는-회귀-테스트) |
-| 마이크로 벤치마크 (Google Benchmark) | [작업 큐(WorkerQueue)](Benchmark_WorkerQueue.md)의 대기 방식, [Triple Buffer](Benchmark_TripleBuffer.md)의 spin/yield, [WAL](Benchmark_WAL.md)의 fsync 주기에 따른 처리량·경합을 비교해 정책을 정했다 |
+| 단위 테스트 (Google Test) | 큐·버퍼·객체풀의 경계 조건과 동시 접근, 큐 포화·종료 처리, WAL 손상 복구를 확인했다. [자료구조·캐시·WAL 단위 테스트 코드](UnitTests)와 [캐시 수량·flush 실패·재시도 회귀 테스트](CacheLib_Test.md#db-없이-실행하는-회귀-테스트) |
+| 마이크로 벤치마크 (Google Benchmark) | [작업 큐의 대기 방식·용량별 처리량 비교](Benchmark_WorkerQueue.md), [Triple Buffer의 spin 제한·yield 적용 비교](Benchmark_TripleBuffer.md), [WAL의 fsync 주기·writer 수별 처리량 비교](Benchmark_WAL.md)를 통해 정책을 검토했다 |
 | 크래시 주입 | [DB 저장 전 WAL 복구](CacheDurabilityTest.md), [아이템 배송 반영 후·DB 저장 후 복구](BazaarTest.md#42-crash-상황-테스트-test-6--exactly-once-배송-검증)를 확인했다. 지정한 지점에서 프로세스를 강제 종료하고, 재기동 후 아이템 수량과 중복 지급 여부를 검사했다 |
 | 통합 테스트 | 실제 DB를 연결해 [캐시 조회·변경·flush·LRU 퇴출](CacheLib_Test.md), [거래소 구매·배송·정산과 동시 구매 경합](BazaarTest.md)을 검증했다 |
 
@@ -58,9 +58,9 @@ WAL은 성공 응답 전에 fsync를 기다리지 않는다. 마지막으로 디
 
 | 테스트 | 결과와 조건 |
 |---|---|
-| [5,000명 더미 접속](DummyTest3.md) | i5-14400F, 게임 Zone 4개. 서버·DB·더미·모니터링을 같은 PC에서 실행한 loopback 시험이다. 접속·동작은 확인했지만 더미의 목표 액션 20Hz는 완전히 유지하지 못했다 |
-| [Zone Tick](Benchmark_ZoneTick.md) | 2,000명, 분산/밀집과 이동량을 바꾼 8조건에서 각각 1,200틱 측정. 50ms 초과는 없었다. 입력 대기·실제 네트워크 전송·여러 Zone 동시 실행은 제외했다 |
-| [ASan](ASAN.md) | 당시 2,000명 부하 시험과 단위 테스트에서 메모리 오류가 보고되지 않았다 |
+| [5,000명 접속 부하와 송신 큐·연결 종료 문제 분석](DummyTest3.md) | i5-14400F, 게임 Zone 4개. 서버·DB·더미·모니터링을 같은 PC에서 실행한 loopback 시험이다. 접속·동작은 확인했지만 더미의 목표 액션 20Hz는 완전히 유지하지 못했다 |
+| [2,000명 밀집도·이동량별 Zone 틱 처리 시간 측정](Benchmark_ZoneTick.md) | 2,000명, 분산/밀집과 이동량을 바꾼 8조건에서 각각 1,200틱 측정. 50ms 초과는 없었다. 입력 대기·실제 네트워크 전송·여러 Zone 동시 실행은 제외했다 |
+| [ASan 부하·종료·단위 테스트의 메모리 오류 검사](ASAN.md) | 당시 2,000명 부하 시험과 단위 테스트에서 메모리 오류가 보고되지 않았다 |
 
 ## 트러블슈팅 기록
 
@@ -115,6 +115,7 @@ GameServer는 단일 프로세스로 실행한다. NetLibrary는 네트워크와
 
 ### 시스템 설계
 - [MMORPG 서버 설계 결정](DesignDecisions.md): 선택의 근거, 대안과 현재 한계
+- [서버를 구현하며 정리한 설계 판단 초안](ServerDesignReview.md): 부하와 실패 경로를 보며 수정한 기준
 - [네트워크 Flood 탐지](FloodDetect.md)
 - [Ping 처리](PingLoop.md)
 - [ClientContext](ClientContext.md)
@@ -122,13 +123,13 @@ GameServer는 단일 프로세스로 실행한다. NetLibrary는 네트워크와
 - [서버, 클라이언트 틱 처리](Tick.md)
 - [캐시 설계](CacheLib.md)
 - [캐시 ACID 설계](CacheLib_ACID.md)
-- [캐시 단위 테스트](CacheLib_Test.md)
+- [캐시 조회·변경·DB flush·LRU 및 실패 회귀 테스트](CacheLib_Test.md)
 - [WAL](WAL.md)
-- [Cache Durability Test](CacheDurabilityTest.md)
+- [DB 저장 전 크래시와 WAL 재시작 복구 검증](CacheDurabilityTest.md)
 - [DB 설계](DB.md)
 - [IOCP Send 파이프라인](IOCPSendPipeline.md)
 - [거래소 시스템](Bazaar.md)
-- [거래소 시스템 테스트](BazaarTest.md)
+- [거래소 구매·배송·정산·경합·크래시 복구 테스트](BazaarTest.md)
 - [Graceful Shutdown](GracefulShutdown.md)
 
 ### 리팩토링
@@ -148,14 +149,14 @@ GameServer는 단일 프로세스로 실행한다. NetLibrary는 네트워크와
 
 ### 테스트
 
-- [WAL 성능 벤치마크](Benchmark_WAL.md)
-- [Triple Buffer 성능 벤치마크](Benchmark_TripleBuffer.md)
-- [ZoneTick 성능 벤치마크](Benchmark_ZoneTick.md)
-- [WorkerQueue 성능 벤치마크](Benchmark_WorkerQueue.md)
-- [모니터링](Monitoring.md)
-- [더미 클라이언트 테스트](DummyTest.md)
-- [더미 클라이언트 테스트2](DummyTest2.md)
-- [더미 클라이언트 테스트3](DummyTest3.md)
-- [ASAN 테스트 분석](ASAN.md)
+- [WAL의 fsync 주기·writer 수별 처리량 비교](Benchmark_WAL.md)
+- [Triple Buffer의 spin 제한·yield 적용 비교](Benchmark_TripleBuffer.md)
+- [2,000명 밀집도·이동량별 Zone 틱 처리 시간 측정](Benchmark_ZoneTick.md)
+- [작업 큐의 대기 방식·용량별 처리량 비교](Benchmark_WorkerQueue.md)
+- [TPS·접속자 수·지연 시간 모니터링 구성](Monitoring.md)
+- [100명 부하 결과와 1,000명 접속 실패 분석](DummyTest.md)
+- [더미 클라이언트 I/O 병목 개선과 1,000~5,000명 부하 비교](DummyTest2.md)
+- [5,000명 접속 부하와 송신 큐·연결 종료 문제 분석](DummyTest3.md)
+- [ASan 부하·종료·단위 테스트의 메모리 오류 검사](ASAN.md)
 
 </details>
