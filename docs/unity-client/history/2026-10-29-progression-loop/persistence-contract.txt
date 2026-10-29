@@ -1,0 +1,5 @@
+읽기전용 서버분석: 기존Full/delta wire의 hp/maxHp(int32), exp(uint32), level(uint16)과dirty0x1/0x4/0x10/0x20 전파를재사용가능.
+근거 CoreLib/PacketTypes.h:335, ZoneState_Snapshots.cpp:115, ClientCore/PacketHelper/Packet.cs:320, ViewModel.cs:853, Unity WorldScreen.cs:287 delta원자반영, CombatScreen.cs:209/224.
+저장 StateManager.cpp:355/379/408/458/468/472, CacheLib/Handler.cpp:149/169, CacheLib/Config.h QUERY_4가 level/exp/hp/maxHp를기존필드로읽기/쓰기. dirtybit무관전체상태저장. 로그인성장재적용없음.
+MainServer/main.cpp:93 core→cache정리, CoreLib/Initializer.h:134/CacheLib/Initializer.h:118 drain경로. 실제DB실행증거가아닌소스연결근거.
+기존한계: DBworker2개 비동기UPDATE와즉시재로그인SELECT순서보장미확인. 저장완료후재접속만검증대상. DB실패/강제종료내구성미보장.

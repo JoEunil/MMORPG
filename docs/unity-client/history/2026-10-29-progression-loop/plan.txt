@@ -1,0 +1,5 @@
+목표: 서버 성장표를 실제 막타 EXP 지급에 연결한다. 기존 wire/상태/HUD/정상 저장 재사용, AI/DB스키마/포션 제외.
+완료 기준: EXP경계·다중승급·Lv100·포화계산·HP0/기존고레벨보존, delta필드정합. 저장 완료 후 재접속은 후속실서버검증과 구분한다.
+작업소유권: 구현 CharacterState.h/ZoneState_Skills.cpp/새CharacterGrowth2tests·등록. 서버분석은저장·전파읽기전용. 독립리뷰 후 관련2tests/CoreLib컴파일만검증.
+PR59기반 후속 codex/progression-loop이며 PR59는 사용자검토중. 후속을 기존PR에 섞어 게시하지 않는다.
+기존 저장의 비동기경쟁/DB실패·강제종료내구성은 미해결기존한계이며 성공으로보고하지 않는다.

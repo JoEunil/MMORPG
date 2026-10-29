@@ -1,24 +1,24 @@
 ## 공개 집계
 
-기준일: 2026-10-28
-누적 신규: 186
+기준일: 2026-10-29
+누적 신규: 190
 누적 재활성화: 298
-상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-28
+상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-29
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 7 | 4 |
-| server_analyst | 서버 분석 Agent | 21 | 46 |
-| client_implementer | 구현 Agent | 57 | 70 |
+| server_analyst | 서버 분석 Agent | 22 | 46 |
+| client_implementer | 구현 Agent | 58 | 70 |
 | asset_artist | 아트 Agent | 24 | 32 |
-| code_reviewer | 리뷰 Agent | 48 | 107 |
-| quality_reviewer | 종합 검수 Agent | 8 | 28 |
+| code_reviewer | 리뷰 Agent | 49 | 107 |
+| quality_reviewer | 종합 검수 Agent | 9 | 28 |
 | unity_tester | 테스트 Agent | 4 | 4 |
 | progress_documenter | 기록 Agent | 8 | 4 |
 | decision_curator | 의사결정 지원 Agent | 8 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체484회(신규186·재활성화298)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체488회(신규190·재활성화298)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -749,4 +749,8 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 
 이번 채팅 실제 실행 증분은 신규5·재활성화1이다. network_review/cache_review는 C++ 읽기 전용 리뷰 각 신규1, pool_exception_fix는 풀 예외 정리·회귀 테스트 구현 신규1, auth_fix_review는 인증 수명 독립 리뷰 신규1·수정 재검토1, auth_regression_tests는 인증 회귀 테스트 구현 신규1이다. 역할 책임 기준 구현2·리뷰3 신규, 리뷰1 재활성화로 집계한다. worker라는 도구 유형은 별도 역할로 추가하지 않는다. 고정 code_reviewer 프로필은 Sol/medium이며 worker는 부모 설정 상속으로 별도 모델 변경하지 않았다. 토큰·비용 N/A. 총괄 직접 수정/빌드/실행 및 메시지는 집계하지 않았다.
 
-원격의 오래된 누적표로 기존 기록을 지우지 않고, 위 C++ 작업 신규5·후속1만 현재누적에 합산했다. 현재484=신규186+후속298.
+원격의 오래된 누적표로 기존 기록을 지우지 않고, 위 C++ 작업 신규5·후속1만 현재누적에 합산했다. 원격 병합 시점484=신규186+후속298.
+
+## 성장 보상 연결 — 2026-10-29
+
+실제 신규4: progression_apply(구현/Sol medium), growth_persistence_contract(서버 분석/Sol medium), progression_apply_review(리뷰/Sol medium), progression_loop_quality(종합 검수/Astra medium). 누적488=신규190+후속298. 총괄의Git/Slack/집중2검사/CoreLib빌드/문서통합은 활성화에포함하지 않았다. 토큰·비용N/A. 실제사냥·저장재접속·밸런스성공을뜻하지 않는다.

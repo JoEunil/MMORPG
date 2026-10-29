@@ -1,0 +1,7 @@
+{
+  "CoreLib/CharacterState.h": "1d21f64cea2229764c78c60d301e4c2493fc3c9594e76a7f21b1f4b9fe74e0e9",
+  "CoreLib/ZoneState_Skills.cpp": "bea6a7ed478ec92a01fbb58a5abfbcf2b43d4a4d1d1389b8b931b87c5fd9b0df",
+  "UnitTests/CoreLib/CharacterGrowth.cpp": "f16db691d36717e7725f9dfbc6901b0e6c643365a7373fa28e90f2ab77cae4c1",
+  "UnitTests/UnitTests.vcxproj": "8b9c169143f2fcd020e55f3e9ff776f90305d3375b9e8f216fd2160ad1f2c48b",
+  "UnitTests/UnitTests.vcxproj.filters": "50ae79605358b8db8c67aa2742907e27c1ebb01dfd42258dcaadc72fb2f9b27a"
+}

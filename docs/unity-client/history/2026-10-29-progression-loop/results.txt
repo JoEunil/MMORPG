@@ -1,0 +1,5 @@
+제품변경: CharacterState::AddExperience와막타보상연결. 초기표수치불변. 몬스터AI/DB/패킷/ClientCore/Unity수정0.
+독립Sol정적리뷰: 차단문제없음. 경계·다중승급·100상한·기존고레벨·HP0·dirty전파일치. 실행검증과구분.
+실제집중Native CharacterGrowthTest.* 2/2PASS(새검사고유2/반복0). 최초runner링크LNK1561은기존gtest_main DLLimport 진입점없음: ignored Build폴더의표준gtest main을명시해연결수정,제품수정없음. 실패를테스트PASS로계산하지않음.
+CAND CoreLib Release x64 MSBuild컴파일/링크 exit0. 기존C4819/C4244/C4267경고유지. raw log ROOT/UnityClient/Builds/ProgressionLoop/corelib-build.log. Game AI사본덮기없음.
+실서버배포/실제사냥승급/HUD증가/정상저장후재접속 미실행. 저장완료전즉시재로그인순서/DB실패내구성 기존한계유지. 밸런스미평가. 서버런타임교체/게임입력/DB조작0.

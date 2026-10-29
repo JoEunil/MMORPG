@@ -1,0 +1,1 @@
+Astra medium situation gate PASS for local implementation/unit verification only. Required fixes0. Real hunting/HUD/save/reconnect and balance remain unverified. Plan wording updated to distinguish implemented server logic from provisional tuning.

@@ -1,23 +1,22 @@
-# 현재 인계 — 2026-10-28
+# 현재 인계 — 2026-10-29
 
-## 현재 목표·경로
-서버 Data 정본→기존 exporter→JSON→Unity importer로 스킬·몬스터·성장을 공유한다. 성장도 단순한 표로 연결하라는 최신 지시를 반영했다. 맵·스폰 Unity→서버, 사용자 몬스터 AI는 유지한다.
+## 현재 목표·정본
+PR59 게시 후 다음 성장 기능을 시작하라는 사용자 지시를 적용했다. 현재는 막타 EXP→성장표→승급/HP증가 연결의 로컬 구현·직접검증 단계다. 사용자 몬스터 AI/A*·DB스키마·패킷·포션은 변경하지 않는다.
 - ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient
-- 실제 Editor: ROOT/UnityClient, Unity6000.0.47f1/PID40404, Edit/컴파일완료/assetclean 확인.
 - Git 정본 CAND: ROOT/UnityClient/Builds/C10-Delivery/source
-- 브랜치 codex/client-play-completion, 기본 master8622d99. 제품후보 a8e7516(기존45c30a1+성장추가). push/새PR 없음.
+- 현재 브랜치 codex/progression-loop, PR59 head86bbe6d 기반 별도후속. 미게시.
+- 실제Editor 프로젝트 ROOT/UnityClient. 이번 단계 Editor/입력/서버기동/DB조작0. 과거PID를현재실행근거로쓰지않는다.
 
-## 완료·검증
-기존5스킬/3몬스터 경로 전환 근거: history/2026-10-28-content-authority/. 성장 추가분 근거: history/2026-10-28-growth-data-share/. 기술정본 CONTENT_PIPELINE.md.
-GrowthData.h/Growth.inc는 레벨·누적필요EXP·최대HP증가량100행. 동일JSON formatVersion2로 전달하고 기존asset/GUID를 보존한다. 초기EXP곡선50×L×(L−1)/2·Lv2부터HP500은 튜닝안이며 실제 승급·HP적용·상한강제·저장처리 미구현. DB/AI/패킷/맵/스폰변경0.
-MSVC exporter빌드·전체100행·기존catalog동일·결정성 통과(구현담당). 독립Sol 코드리뷰PASS. 실제ROOT Unity 변경된2검사2/2 통과, 실제asset import 후 기존필드불변/growth전체일치/maxLevel100/rows100/dirtyfalse/GUID보존. 기존통과IO/CoreLib전체빌드/실입력은 불변경로로 반복하지 않았다. UI변경없어 새캡처없음.
-ROOT에는3개C#/JSON만preimage확인후동기화했고 Editor생성asset만 CAND에반영했다. 실제ROOT CoreLib 및 사용자Game 사본은 덮지않았다. 종료시게임서버/Login기동·DB조작·실입력0, Editor는 Edit/clean 상태로둔다.
+## 게시 완료
+https://github.com/JoEunil/MMORPG/pull/59 : 서버스킬/몬스터/성장Data공유+기존검증정리. branch codex/client-play-completion/head86bbe6d. 사용자검토·병합대기, 병합하지않았다.
+사용자의2026-10-29현재채팅 `PR 개시하고 그다음작업 시작`을 게시권한으로적용했다. CONTENT01/r2요청 부모1793192469.508719/요청1793194790.338199는처리완료. 승인용Slack회신소비0(채팅직접지시근거)/게시권한적용1/push완료/PR59게시1. 같은늦은승인으로재게시하지않는다. 앱결과회신1793269912.985489.
+원격master fb428df의C++수정·LLM/README를정상merge보존했다. 충돌은HANDOFF/AGENT_USAGE뿐. 원격옛인계history/2026-10-29-content-publication/remote-handoff.md, 원격신규5+후속1을과거클라이언트기록에추가집계했다.
 
-## 검수·게시 대기
-성장 추가분 종합 검수Astra PASS/필수제품수정0. 옛인계는이력보존후현재상태로갱신. 실제Agent484=신규186+후속298/토큰·비용N/A.
-CONTENT01/r1(기존제품45c30a1/13파일)은 성장 추가 지시로 보류·대체. 부모1793192469.508719/채널C0C9VFZMV43/지정사용자U0C9QEUHPMK. r1보류안내1793193939.517569. 회신소비0/승인적용0/push0/새PR없음. r1승인을새성장범위에적용하지않는다.
-성장검수 완료 후 같은스레드에 CONTENT01/r2 게시요청등록완료: 메시지1793194790.338199, 정확한승인명령 `승인 CONTENT01/r2`. 후보a8e7516 및 두history의제품manifest가정본. 회신소비0/승인적용0/push0. 승인전push보류. 요청직전수신기fresh/listening·실제NodePID33160·부모등록대조통과. 수신기fixedCoordinator01a14d46-8b23-7590-8ad5-7efc20f8ecd9/Node33160의freshhealth·실제프로세스·부모등록을요청전대조한다. 후속은실제레벨업로직과수치정책확정이며이번게시승인을확대하지않는다.
+## 현재 로컬 구현·검증
+CharacterState::AddExperience가서버GrowthData100행을직접조회한다. EXP uint32포화/현재level이후경계다중처리/Lv100한도/실제최대HP증가만생존HP복구/HP0유지/기존100초과레벨하향금지. 기존막타보상과dirtyChar/delta/HUD/정상저장재사용. 새Manager·중복성장정본·게임수치변경없음.
+독립Sol코드리뷰차단0. Native CharacterGrowthTest.* 새2건2/2PASS. CoreLibRelease x64빌드exit0/기존C4819·C4244·C4267경고. runner첫LNK1561은ignored도구에표준gtest main추가해해결(제품수정0). 이전통과테스트반복0.
+근거 history/2026-10-29-progression-loop/. raw빌드/runner는ROOT/UnityClient/Builds/ProgressionLoop/. 실제Agent488=신규190+후속298/토큰·비용N/A. Astra상황검수통과(로컬구현·단위검증범위)/필수수정0. 실서버증거없으므로첫성장흐름완료/게시준비완료는아님.
 
-
-
-2026-10-29 사용자가 현재채팅에서 PR게시와 다음성장작업착수를 직접요청했다. CONTENT01/r2게시권한으로적용하며 Slack재승인대기해제. 원격master fb428df의C++소유권/Redis수명수정과LLM/README변경을정상병합·보존했다. 원격옛인계는 history/2026-10-29-content-publication/remote-handoff.md. 새원격실행5+1만집계했고 과거클라이언트기록은보존했다.
+## 남은 작업과 범위
+실서버후보MainServer빌드·정상전환/실제사냥승급·HUD표시/정상저장완료후재접속은아직미실행. 현재CoreLib성공을배포/실제성장완료로확대하지않는다. 기존DBworker비동기즉시재로그인순서보장과DB실패·강제종료내구성은이번범위에서미확인/기존한계다.
+초기EXP곡선·HP500은기존튜닝안,실제균형미평가. 다음은실서버승급검증과후속회복아이템정책/계약이며포션을임의구현하지않는다. PR59에후속코드를추가push하지않는다. 별도관련묶음이게시가능할때새후보검수·게시권한을대조한다.

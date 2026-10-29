@@ -124,8 +124,7 @@ namespace Core {
 							m_monsters[mon].hp = 0;
 							// 일단 막타 친 사람만 보상.. 
 							// 보스몬스터의 경우 hitter list로 보상 분배하도록 처리해야됨.
-							caster.exp += m_monsters[mon].data->reward.exp;
-							caster.dirtyBit |= 0x10; // exp
+							caster.AddExperience(m_monsters[mon].data->reward.exp);
 							m_cells[caster.cellY][caster.cellX].dirtyChar.push_back(caster.zoneInternalID);
 						}
 						m_monsters[mon].SetAggro(caster.zoneInternalID);
