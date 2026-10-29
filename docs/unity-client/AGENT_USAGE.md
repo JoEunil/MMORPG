@@ -1,24 +1,24 @@
-﻿## 공개 집계
+## 공개 집계
 
 기준일: 2026-10-28
-누적 신규: 156
-누적 재활성화: 273
+누적 신규: 186
+누적 재활성화: 298
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-28
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
-| game_planner | 기획 Agent | 6 | 3 |
-| server_analyst | 서버 분석 Agent | 17 | 43 |
-| client_implementer | 구현 Agent | 52 | 64 |
+| game_planner | 기획 Agent | 7 | 4 |
+| server_analyst | 서버 분석 Agent | 21 | 46 |
+| client_implementer | 구현 Agent | 57 | 70 |
 | asset_artist | 아트 Agent | 24 | 32 |
-| code_reviewer | 리뷰 Agent | 40 | 102 |
-| quality_reviewer | 종합 검수 Agent | 3 | 21 |
-| unity_tester | 테스트 Agent | 2 | 3 |
-| progress_documenter | 기록 Agent | 4 | 3 |
-| decision_curator | 의사결정 지원 Agent | 7 | 2 |
+| code_reviewer | 리뷰 Agent | 48 | 107 |
+| quality_reviewer | 종합 검수 Agent | 8 | 28 |
+| unity_tester | 테스트 Agent | 4 | 4 |
+| progress_documenter | 기록 Agent | 8 | 4 |
+| decision_curator | 의사결정 지원 Agent | 8 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체429회(신규156·재활성화273)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체484회(신규186·재활성화298)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 전체 역할별 귀속 근거 — 2026-10-24
 
@@ -691,6 +691,62 @@ first_hunt_review 리뷰후속1: 다음 플레이어HUD 변화/재접속 비교�
 ## 차분한 로그인 배경과 비밀번호 제출 — 2026-10-27
 실제 신규1: restrained_login_backdrop(아트 Agent/Sol high), built-in imagegen편집1회와원본·생성근거보존. 실제 후속4: next_client_gap_scan(리뷰 Agent,진입누락조사), chat_panel_recovery(구현 Agent/Sol medium,비번Enter연결), chat_panel_recovery_review(리뷰 Agent/Sol medium,관련3파일차단0), client_session_plan_gate(종합 검수 Agent/Astra medium,고정13파일·두해상도전후확인통과/필수0). 누적423=151+272. 총괄의nativeSprite연결·단일테스트실행·렌더·문서·Slack수신기복구는활성화제외. 신규callbackfixture1개첫실행pass,기존3tests반복0. 물리Enter/실서버로그인/playerbuild미검증. 토큰·비용N/A.
 
+## 클라이언트 기능별 구조 리팩토링 — 2026-10-27
+실제 신규3: client_refactor_logic_scan(리뷰 Agent/explorer,실제중복분석), observed_visual_cleanup(구현 Agent/Sol medium,관찰표현수명정리), client_refactor_batch_verify(테스트 Agent/Luna medium,직접영향Native검사3개). 실제 후속8: next_client_gap_scan1(리뷰,구조/참조매핑), chat_panel_recovery2(구현/Sol medium,81소스이동준비·입력/시장정리), chat_panel_recovery_review1(리뷰/Sol medium,독립차단0), client_session_plan_gate3(종합/Astra medium,계획보완·후속통과·최종통과), client_refactor_batch_verify1(테스트,격리환경발견제한대조후허용된실사용자CLI경로실행). 누적434=154+280. 역할과실제신규/후속만집계하며총괄의native이동·직렬화/Exporter비교·문서/Git준비는제외. Native검사실행3/고유3/retry0·동결81hash불변,물리키/실서버/playerbuild미검증. 토큰/비용N/A.
+
+## 미사용 Unity 에셋 정리 — 2026-10-27
+
+실제 증분: unused_asset_reference_audit 신규1·후속1(리뷰: 동적 참조와 삭제 후보 조사), client_session_plan_gate 후속1(종합 검수: 정리 통합 후보 통과). 총 신규1·후속2를 한 번 반영해 누적437회다. Coordinator의 직접 정리·참조 검사·보고는 집계하지 않았으며 토큰/비용은 N/A다.
+
+## 클라이언트 통합 확인과 결과 화면 — 2026-10-27
+
+실제 증분: 신규7·후속1. client_completion_engineering(구현1), client_completion_validation_plan(서버 분석1), completion_results_web(기록 신규1·후속1), completion_results_web/web_results_implementation(웹 구현1), completion_vitals_review(리뷰1), completion_verify_build(테스트1), completion_quality_gate(종합 검수1)이다. 기록 담당이 웹 구현을 별도 배정한 실제 실행만 합산했다. 제품·웹 개선, 직접 영향 두 검사/빌드, 실제 접속 결과·공개 화면 확인을 맡았으며 총괄의 직접 서버·입력·인계 작업은 실행 횟수에 넣지 않았다. 누적445=신규162+후속283이며 토큰·비용은 N/A다.
+
+## 실제 거래 검증과 결과 기록 — 2026-10-27
+
+실제 증분: 서버 분석 Agent 신규1·후속2, 기록 Agent 신규1. 전용 테스트 데이터로 실제 등록·구매·아이템 수령·대금 수령을 확인하고 공개 거래·가방 결과를 갱신했다. 총괄의 직접 Unity 입력과 통합은 집계하지 않았다. 누적449=신규164+후속285, 토큰·비용 N/A.
+
+## 결과 사이트 가독성과 탐색 점검 — 2026-10-27
+
+실제 증분: 기록 Agent(results_content_audit) 신규1, 종합 검수 Agent(results_site_quality_gate) 신규1. 공개 문구 점검·중복 축약과 웹 탐색 개선 후보를 검토했다. 총괄의 직접 빌더/CSS 수정과 브라우저 확인은 집계하지 않았다. 누적451=신규166+후속285, 토큰·비용 N/A.
+
+
+## 병합 후 남은 범위 대조 — 2026-10-28
+
+실제 신규2: remaining_client_scope(리뷰 책임/explorer, 현재 요구·소스·미완료 근거 조사), reconcile_remaining_plan(기록 Agent/Luna low, 기획·계획의 오래된 상태 정리). 누적453=신규168+후속285, 토큰·비용N/A. 총괄의 직접 Git·프로세스·입력 확인과 도구 호출은 집계하지 않았다. 제품 테스트나 독립 실행 UI 통과를 뜻하지 않는다.
+
+
+## 독립 실행 서버 준비 — 2026-10-28
+
+실제 신규1: standalone_server_preflight(서버 분석 Agent/Sol medium), 기존 빌드 해시·AI 소스·WAL·시작/종료 경로를 읽기 전용 대조했다. 누적454=신규169+후속285, 토큰·비용N/A. 총괄의 실제 서버 기동·Windows UI 클릭은 집계하지 않았다. 인증 후 게임 조작은 아직 미확인이다.
+
+
+## 남은 클라이언트 처리 대조 — 2026-10-28
+
+실제 신규2: client_ui_remaining_audit, world_visual_remaining_audit(모두 리뷰 책임/explorer, 로그인·채팅·포커스 및 월드·표현·전투 상태의 소스/기존 테스트 대조). 확정 결함 없음. 제품 수정·테스트 재실행·Unity 조작0. 누적456=신규171+후속285, 실제 실행 모델/토큰·비용 미확인N/A. 총괄의 시장/가방 읽기는 활성화에 넣지 않았다.
+
+
+## 성장·아이템 기획과 선택안 — 2026-10-28
+
+실제 신규3: growth_items_planning(기획/Sol medium), growth_decision_bundle(의사결정 지원/Luna low), growth_plan_quality_gate(종합 검수/Astra medium). 실제 후속2: standalone_server_preflight(서버 분석/Sol medium, 실제 성장·아이템 경로 조사), growth_plan_quality_gate(질문 비교 공정성 수정 후 선택안 통과). 누적461=신규174+후속287, 토큰·비용N/A. 실제 산출물은 현재 기획안/소스 지원 근거/텍스트 선택안/검수 결과이며 HTML 보드나 게임 구현·테스트 성공을 뜻하지 않는다. 총괄 직접 통합은 활성화 제외.
+
+
+## 첫 레벨업 방향 연결과 정책안 — 2026-10-28
+
+실제 후속3: growth_decision_bundle(의사결정 지원/Luna low, 실제 답변의 범위 연결), growth_items_planning(기획/Sol medium, EXP/HP/기존 데이터/저장 정책 초안), growth_plan_quality_gate(종합 검수/Astra medium, 정책 일관성 자문 통과). 누적464=신규174+후속290, 토큰·비용N/A. 사용자 방향 선택을 수치/서버 구현 승인으로 확대하지 않았으며 게임 구현·실행 검증은 없다.
+
+
+## 서버 Data 정본과 Unity 가져오기 — 2026-10-28
+
+실제 신규6: content_pipeline_change_analysis(서버 분석/Sol medium), exporter_consistency_audit(리뷰 책임/explorer·실행모델미확인), server_owned_content_export와unity_server_content_import(구현/Sol medium 각1), content_direction_code_review(리뷰/Sol medium), content_pipeline_quality_gate(종합 검수/Astra medium). 실제 후속4: server_owned_content_export2(고정배열 저작경계·파일교체 실패 수정), content_direction_code_review1(P2 재검토통과), content_pipeline_quality_gate1(현재 인계의 반대방향 문구 수정 재검수통과). 누적474=신규180+후속294, 토큰·비용N/A. Native exporter 검사는 구현담당 실제실행이며 총괄의 CoreLib빌드·Unity2검사·실제assetimport·수신기복구/문서통합은 활성화 제외. 게임런타임·성장구현·맵/AI변경은 뜻하지 않는다.
+
+## 성장 Data 공유 — 2026-10-28
+
+실제 후속3: server_owned_content_export·unity_server_content_import(구현/Sol medium 각1), content_direction_code_review(리뷰/Sol medium 1). 실제 신규1: growth_data_quality_gate(종합 검수/Astra medium). 누적478=신규181+후속297, 토큰·비용N/A. 이전 quality 인스턴스는 현재 실행목록에 없어 새 인스턴스를 배정했다. 총괄의 Unity2검사·기존asset 가져오기·문서통합은 활성화 제외. 성장표 전달만 구현했으며 실제 승급·HP 적용·DB·AI 변경은 아니다.
+
+
 ## C++ 개념 점검·인증 수명 수정 — 2026-10-28
 
 이번 채팅 실제 실행 증분은 신규5·재활성화1이다. network_review/cache_review는 C++ 읽기 전용 리뷰 각 신규1, pool_exception_fix는 풀 예외 정리·회귀 테스트 구현 신규1, auth_fix_review는 인증 수명 독립 리뷰 신규1·수정 재검토1, auth_regression_tests는 인증 회귀 테스트 구현 신규1이다. 역할 책임 기준 구현2·리뷰3 신규, 리뷰1 재활성화로 집계한다. worker라는 도구 유형은 별도 역할로 추가하지 않는다. 고정 code_reviewer 프로필은 Sol/medium이며 worker는 부모 설정 상속으로 별도 모델 변경하지 않았다. 토큰·비용 N/A. 총괄 직접 수정/빌드/실행 및 메시지는 집계하지 않았다.
+
+원격의 오래된 누적표로 기존 기록을 지우지 않고, 위 C++ 작업 신규5·후속1만 현재누적에 합산했다. 현재484=신규186+후속298.

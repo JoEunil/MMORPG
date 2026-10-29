@@ -1,0 +1,7 @@
+{
+  "fullCatalogEqualAtFloat32": true,
+  "skillCount": 5,
+  "monsterCount": 3,
+  "actualAssetSerializedUnchanged": true,
+  "verificationHelperCorrection": "Initial helper assumed unwrapped EditorJsonUtility root and failed. Actual import had already reported identical values and files remained byte-identical. Corrected helper unwraps MonoBehaviour and verifies saved before/after, no test rerun."
+}
