@@ -27,6 +27,8 @@ namespace Core {
     inline constexpr float TOWN_SPAWN_X = 10.0f;
     inline constexpr float TOWN_SPAWN_Y = 10.0f;
 
+    inline constexpr uint16_t AOICellCount = 9;
+
     inline constexpr uint16_t MAX_INVENTORY_ITEMS = 10;
     inline constexpr uint8_t BROADCAST_THREADPOOL_SIZE = 6; // Each Zone stays on one worker; different Zones send in parallel.
     static_assert(BROADCAST_THREADPOOL_SIZE > 0);
