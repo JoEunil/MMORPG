@@ -17,6 +17,7 @@
 #include "ZoneState.h"
 #include "Config.h"
 #include "IPacket.h"
+#include "IInventoryOperations.h"
 #include "IIOCP.h"
 #include "PacketTypes.h"
 
@@ -26,6 +27,7 @@ namespace Core {
         uint64_t ownershipEpoch = 0;
         uint64_t lastRespawnRequestEpoch = 0;
         uint64_t bootstrapSequence = 0;
+        ItemUseResponseBody lastItemUse = {};
         uint64_t chatID = 0;
         uint64_t userID = 0;
         uint64_t characterID = 0;
@@ -57,6 +59,7 @@ namespace Core {
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
         std::atomic<bool> m_running;
 
+        IInventoryOperations* inventory = nullptr;
         IMessageQueue* mq = nullptr;
         IIOCP* iocp = nullptr;
         LobbyZone* lobbyZone = nullptr;
@@ -229,6 +232,8 @@ namespace Core {
             }
             return res;
         }
+        ItemUseResponseBody UseItem(uint64_t sessionID, const ItemUseRequestBody& request);
+        void GrantMonsterPotion(const CharacterState& character);
         void Disconnect(uint64_t sessionID);
         bool ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result);
         bool RespawnToTown(uint64_t sessionID, const RespawnToTownBody& request, ZoneChangeResult& result);

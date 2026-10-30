@@ -132,6 +132,7 @@ namespace Cache {
         Core::IMessageQueue* GetMessageQueue() {
             return static_cast<Core::IMessageQueue*>(&recvMQ);
         }
+        Core::IInventoryOperations* GetInventoryOperations() { return &cache_inventory; }
         Core::IProfileCache* GetProfileCache() {
             return static_cast<Core::IProfileCache*>(&cache_profile);
         }

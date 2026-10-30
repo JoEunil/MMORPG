@@ -66,7 +66,9 @@ namespace ClientCore.Network
                             // Bound frames to avoid zero-progress loops and unbounded buffering.
                             if (header.magic != 0xABCD || header.length < 8 || header.length > 1024 * 1024)
                                 throw new InvalidDataException();
-                            if (header.opcode == 2 && (header.length != 9 || header.flags != 0) ||
+                            if (header.opcode == 46 && (header.length != 35 || header.flags != 0) ||
+                                header.opcode == 47 && (header.length != 17 || header.flags != 0) ||
+                                header.opcode == 2 && (header.length != 9 || header.flags != 0) ||
                                 header.opcode == 14 && (header.length < 22 || header.flags != 0) ||
                                 header.opcode == 15 && (header.length < 173 || header.flags != 0) ||
                                 header.opcode == 25 && (header.length < 10 || header.length > 2010 || header.flags != 0) ||

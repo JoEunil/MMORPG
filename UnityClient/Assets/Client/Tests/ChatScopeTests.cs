@@ -363,6 +363,7 @@ namespace Mmorpg.Client.Tests
             public void ZoneChange(byte operation) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { }
             public void Log(string message) { }
             public void Profiles(uint[] profileIds) { }
+            public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
             public void RequestInventory() { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { }
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }

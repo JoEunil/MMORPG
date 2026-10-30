@@ -67,6 +67,9 @@ namespace ClientCore.Network
         // byte[] 할당 없이 건너뛸 수 있도록, 실제 처리하는 opcode만 true를 반환한다.
         public static bool ShouldHandle(byte opcode, byte flags)
         {
+            // Item notifications have no load-client state; the framed reader skips their bodies.
+            if ((OP_CODE)opcode == OP_CODE.ITEM_USE_RES || (OP_CODE)opcode == OP_CODE.ITEM_REWARD)
+                return false;
             if ((flags & FLAG_SIMULATION) == FLAG_SIMULATION)
                 return (OP_CODE)opcode == OP_CODE.ZONE_CHANGE_RESPONSE ||
                     (OP_CODE)opcode == OP_CODE.ZONE_FULL_STATE_BROADCAST ||

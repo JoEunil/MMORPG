@@ -1,0 +1,623 @@
+{
+  "kind": "Actual server/UI observations, not a test result",
+  "complete": false,
+  "events": [
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T11:57:09.2411078Z",
+      "character": 11,
+      "zone": 1,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 4125,
+        "mp": 9639,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 3,
+        "x": 13.6568317,
+        "y": 88.1789551
+      }
+    },
+    {
+      "kind": "inventory",
+      "utc": "2026-10-29T11:57:25.4061283Z",
+      "success": false,
+      "items": []
+    },
+    {
+      "kind": "inventory",
+      "utc": "2026-10-29T11:57:25.7675311Z",
+      "success": true,
+      "items": [
+        {
+          "ItemID": 33,
+          "Quantity": 34,
+          "Slot": 0
+        }
+      ]
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:02:28.8323914Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 4125,
+        "mp": 9639,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 3,
+        "x": 205.480652,
+        "y": 87.86594
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:05.8613702Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 4100,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:06.8784649Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 4075,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:07.8887592Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 4050,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:08.9024402Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 4025,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:09.9201453Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 4000,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:10.7326857Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3975,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:11.9483692Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3950,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:12.7618268Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3925,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:13.7752268Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3900,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:14.7888388Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3875,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:15.8086464Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3850,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:16.8227761Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3825,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:17.8301881Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3800,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:18.8503645Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3775,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:19.8598324Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3750,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:20.8799958Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3725,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:21.887997Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3700,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:22.8976199Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3675,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:23.9111438Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3650,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:24.7246703Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3625,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:25.9421378Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3600,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:26.7540562Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3575,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:27.7657098Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 3550,
+        "mp": 9619,
+        "maxHp": 10000,
+        "maxMp": 10000,
+        "exp": 70,
+        "level": 1,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "item-reward",
+      "utc": "2026-10-29T12:04:28.6412479Z",
+      "item": 1,
+      "granted": 1,
+      "quantity": 1,
+      "status": 1
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:04:28.7839383Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 4050,
+        "mp": 9599,
+        "maxHp": 10500,
+        "maxMp": 10000,
+        "exp": 80,
+        "level": 2,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "inventory",
+      "utc": "2026-10-29T12:04:37.7514093Z",
+      "success": true,
+      "items": [
+        {
+          "ItemID": 33,
+          "Quantity": 34,
+          "Slot": 0
+        },
+        {
+          "ItemID": 1,
+          "Quantity": 1,
+          "Slot": 1
+        }
+      ]
+    },
+    {
+      "kind": "item-use-response",
+      "utc": "2026-10-29T12:05:12.7334729Z",
+      "id": 1,
+      "epoch": 2,
+      "item": 1,
+      "status": 1,
+      "quantity": 0,
+      "ticks": 40
+    },
+    {
+      "kind": "inventory",
+      "utc": "2026-10-29T12:05:12.7390392Z",
+      "success": true,
+      "items": [
+        {
+          "ItemID": 33,
+          "Quantity": 34,
+          "Slot": 0
+        }
+      ]
+    },
+    {
+      "kind": "world-state",
+      "utc": "2026-10-29T12:05:12.9543462Z",
+      "character": 11,
+      "zone": 2,
+      "state": {
+        "zoneInternalID": 1,
+        "profileId": 1,
+        "profileVersion": 1,
+        "hp": 7050,
+        "mp": 9599,
+        "maxHp": 10500,
+        "maxMp": 10000,
+        "exp": 80,
+        "level": 2,
+        "dir": 1,
+        "x": 255.526108,
+        "y": 83.85664
+      }
+    },
+    {
+      "kind": "inventory",
+      "utc": "2026-10-29T12:36:59.663316Z",
+      "success": true,
+      "items": [
+        {
+          "ItemID": 33,
+          "Quantity": 34,
+          "Slot": 0
+        }
+      ]
+    }
+  ]
+}

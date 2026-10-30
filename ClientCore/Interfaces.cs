@@ -71,6 +71,8 @@ public struct InventoryItemView
         event Action<bool> OnCharacterListReceived;
         event Action<byte, ulong, string, string> OnChatReceived;
         event Action<bool> OnInventoryReceived;
+        event Action<ulong, ulong, uint, byte, ushort, uint> OnItemUseReceived;
+        event Action<uint, ushort, ushort, byte> OnItemRewardReceived;
         event Action<bool> OnBazaarReceived;
         event Action<byte> OnBazaarRegisterReceived;
         event Action<byte, ulong, byte, ulong> OnWalletReceived;
@@ -91,6 +93,7 @@ public struct InventoryItemView
         void Enter(ulong charID);
         void Chat(string message, byte scope, ulong targetID);
         void RequestInventory();
+        bool RequestItemUse(uint itemID);
         void RequestBazaar(ushort itemType, ushort page);
         void RequestBazaarRegister(byte inventorySlot, ushort quantity, ulong totalDiamondPrice);
         void RequestWallet();
@@ -115,6 +118,8 @@ public struct InventoryItemView
         void ChatReceived(Packet.Message message);
         void ProfilesReceived(ProfileEntry[] profiles);
         void InventoryReceived(byte resStatus, PacketHelper.InventoryItem[] items);
+        void ItemUseReceived(ulong requestID, ulong ownershipEpoch, uint itemID, byte status, ushort remainingQuantity, uint cooldownRemainingTicks);
+        void ItemRewardReceived(uint itemID, ushort grantedQuantity, ushort remainingQuantity, byte status);
         void BazaarReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows);
         void BazaarRegisterReceived(uint requestID, byte status);
         void WalletGoldReceived(uint requestID, byte status, ulong gold);
@@ -205,6 +210,7 @@ namespace ClientCore.Services
         void Chat(string message, byte scope, ulong targetID);
         void Profiles(uint[] profileIds);
         void RequestInventory();
+        void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID);
         void RequestBazaar(uint requestID, ushort itemType, ushort page);
         void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice);
         void RequestWallet(uint requestID);

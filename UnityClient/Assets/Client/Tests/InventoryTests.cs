@@ -94,6 +94,100 @@ namespace Mmorpg.Client.Tests
                 Assert.That(f.Data.GetInventory().Count, Is.Zero);
             }
         }
+        [Test] public void ItemUseAndRewardWirePreservesFieldsAndRejectsMalformedFrames()
+        {
+            var serialize = typeof(Packet).GetMethod("SerializeItemUseRequest", BindingFlags.NonPublic | BindingFlags.Static);
+            var request = (byte[])serialize.Invoke(null, new object[] { 0x100000002UL, 0x200000003UL, 42U });
+            Assert.That(request.Length, Is.EqualTo(28)); Assert.That(request[6], Is.EqualTo(45));
+            Assert.That(BitConverter.ToUInt64(request, 8), Is.EqualTo(0x100000002UL));
+            Assert.That(BitConverter.ToUInt64(request, 16), Is.EqualTo(0x200000003UL));
+            Assert.That(BitConverter.ToUInt32(request, 24), Is.EqualTo(42));
+            Assert.Throws<TargetInvocationException>(() => serialize.Invoke(null, new object[] { 0UL, 1UL, 42U }));
+            var response = ItemFrame(46, 35);
+            BitConverter.GetBytes(0x100000002UL).CopyTo(response, 8);
+            BitConverter.GetBytes(0x200000003UL).CopyTo(response, 16);
+            BitConverter.GetBytes(42U).CopyTo(response, 24); response[28] = 4;
+            BitConverter.GetBytes(ushort.MaxValue).CopyTo(response, 29);
+            BitConverter.GetBytes(uint.MaxValue).CopyTo(response, 31);
+            var parsed = ((ulong requestID, ulong epoch, uint itemID, byte status, ushort quantity, uint cooldown))ParseItem("DeserializeItemUse", response);
+            Assert.That(parsed.requestID, Is.EqualTo(0x100000002UL)); Assert.That(parsed.epoch, Is.EqualTo(0x200000003UL));
+            Assert.That(parsed.status, Is.EqualTo(4)); Assert.That(parsed.quantity, Is.EqualTo(ushort.MaxValue));
+            Assert.That(parsed.cooldown, Is.EqualTo(uint.MaxValue));
+            response[28] = 10;
+            Assert.Throws<TargetInvocationException>(() => ParseItem("DeserializeItemUse", response));
+            response[28] = 1; response[7] = 1;
+            Assert.Throws<TargetInvocationException>(() => ParseItem("DeserializeItemUse", response));
+            Assert.Throws<TargetInvocationException>(() => ParseItem("DeserializeItemUse", ItemFrame(46, 36)));
+            var reward = ItemFrame(47, 17); BitConverter.GetBytes(42U).CopyTo(reward, 8);
+            BitConverter.GetBytes((ushort)3).CopyTo(reward, 12); BitConverter.GetBytes((ushort)8).CopyTo(reward, 14); reward[16] = 1;
+            var granted = ((uint itemID, ushort granted, ushort quantity, byte status))ParseItem("DeserializeItemReward", reward);
+            Assert.That(granted.granted, Is.EqualTo(3)); Assert.That(granted.quantity, Is.EqualTo(8));
+            reward[16] = 2;
+            Assert.Throws<TargetInvocationException>(() => ParseItem("DeserializeItemReward", reward));
+            Array.Clear(reward, 12, 2);
+            Assert.That(((uint, ushort, ushort, byte))ParseItem("DeserializeItemReward", reward), Is.EqualTo((42U, (ushort)0, (ushort)8, (byte)2)));
+        }
+
+        [Test] public void ItemUseCorrelatesSingleRequestAndPreservesServerStatusWithoutInventingInventory()
+        {
+            using (var f = new Fixture())
+            {
+                int events = 0; byte receivedStatus = 0;
+                f.Model.OnItemUseReceived += (id, epoch, item, status, quantity, cooldown) =>
+                { events++; receivedStatus = status; Assert.That(quantity, Is.EqualTo(7)); Assert.That(cooldown, Is.EqualTo(12)); };
+                Assert.That(f.Model.RequestItemUse(0), Is.False);
+                Assert.That(f.Model.RequestItemUse(42), Is.True);
+                ulong first = f.Network.ItemUseID;
+                Assert.That(f.Model.RequestItemUse(42), Is.False);
+                f.Model.ItemUseReceived(first + 1, 1, 42, 1, 7, 12);
+                f.Model.ItemUseReceived(first, 2, 42, 1, 7, 12);
+                f.Model.ItemUseReceived(first, 1, 43, 1, 7, 12); f.Drain(); Assert.That(events, Is.Zero);
+                f.Model.ItemUseReceived(first, 1, 42, 4, 7, 12);
+                Assert.That(events, Is.Zero); f.Drain(); Assert.That(events, Is.EqualTo(1)); Assert.That(receivedStatus, Is.EqualTo(4));
+                Assert.That(f.Data.GetInventory(), Is.Empty);
+                f.Model.ItemUseReceived(first, 1, 42, 1, 7, 12); f.Drain(); Assert.That(events, Is.EqualTo(1));
+                Assert.That(f.Model.RequestItemUse(42), Is.True); Assert.That(f.Network.ItemUseID, Is.GreaterThan(first));
+            }
+        }
+
+        [Test] public void ItemUseTransitionDisconnectAndDisposeInvalidateRepliesButInventoryStillCompletes()
+        {
+            using (var f = new Fixture())
+            {
+                int useEvents = 0, rewards = 0, inventoryEvents = 0;
+                f.Model.OnItemUseReceived += (id, epoch, item, status, quantity, cooldown) => useEvents++;
+                f.Model.OnItemRewardReceived += (item, granted, quantity, status) => rewards++;
+                f.Model.OnInventoryReceived += _ => inventoryEvents++;
+                f.Model.RequestInventory(); f.Model.RequestItemUse(42);
+                ulong old = f.Network.ItemUseID;
+                f.Model.ItemUseReceived(old, 1, 42, 1, 1, 0);
+                f.Model.ZoneChageReceived(1, 2, 2, 2, 205, 10, 2, 2);
+                Assert.That(f.Model.RequestItemUse(42), Is.False, "The receive/dispatcher window cannot send the old epoch.");
+                f.Drain();
+                Assert.That(useEvents, Is.Zero); Assert.That(f.Model.RequestItemUse(42), Is.False);
+                f.Model.InventoryReceived(1, new[] { new InventoryItem { itemID = 42, quantity = 2 } });
+                f.Drain(); Assert.That(inventoryEvents, Is.EqualTo(1));
+                WorldTestSession.CompleteAutomaticTransition(f.Model, f.Drain);
+                Assert.That(f.Model.RequestItemUse(42), Is.True);
+                Assert.That(f.Network.ItemUseID, Is.GreaterThan(old)); Assert.That(f.Network.ItemUseEpoch, Is.EqualTo(2));
+                f.Model.ItemUseReceived(old, 1, 42, 1, 1, 0); f.Drain(); Assert.That(useEvents, Is.Zero);
+                f.Model.ItemRewardReceived(42, 1, 3, 1); Assert.That(rewards, Is.Zero); f.Drain(); Assert.That(rewards, Is.EqualTo(1));
+                Assert.That(f.Data.GetInventory()[0].Quantity, Is.EqualTo(2));
+                f.Model.ItemUseReceived(f.Network.ItemUseID, 2, 42, 1, 1, 0);
+                f.Model.ItemRewardReceived(42, 1, 3, 1); f.Model.Error("fixture disconnect"); f.Drain();
+                Assert.That(useEvents, Is.Zero); Assert.That(rewards, Is.EqualTo(1)); Assert.That(f.Model.RequestItemUse(42), Is.False);
+            }
+            var disposed = new Fixture(); int disposedEvents = 0;
+            disposed.Model.OnItemUseReceived += (id, epoch, item, status, quantity, cooldown) => disposedEvents++;
+            disposed.Model.RequestItemUse(42);
+            disposed.Model.ItemUseReceived(disposed.Network.ItemUseID, 1, 42, 1, 0, 0);
+            disposed.Dispose(); disposed.Drain(); Assert.That(disposedEvents, Is.Zero);
+            Assert.That(disposed.Model.RequestItemUse(42), Is.False);
+        }
+
+        private static object ParseItem(string method, byte[] p) => typeof(Packet).GetMethod(method, BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, new object[] { Packet.ExtractHeader(p), p });
+        private static byte[] ItemFrame(byte opcode, uint length)
+        { var p = new byte[length]; BitConverter.GetBytes((ushort)0xabcd).CopyTo(p, 0); BitConverter.GetBytes(length).CopyTo(p, 2); p[6] = opcode; return p; }
         private static InventoryResBody Parse(byte[] p) => (InventoryResBody)typeof(Packet).GetMethod("DeserializeInventory", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, new object[] { Packet.ExtractHeader(p), p });
         private static void Reject(byte[] p) => Assert.Throws<TargetInvocationException>(() => Parse(p));
         private static byte[] Frame(byte status, ushort count)
@@ -121,7 +215,10 @@ namespace Mmorpg.Client.Tests
             public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
-            public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestInventory() => Requests++;
+            public ulong ItemUseID, ItemUseEpoch;
+            public void RequestBazaar(uint requestID, ushort itemType, ushort page) { }
+            public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { ItemUseID = requestID; ItemUseEpoch = ownershipEpoch; }
+            public void RequestInventory() => Requests++;
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
             public void RequestWallet(uint requestID) { }
             public Task Connect(string address, int port) => Task.CompletedTask; public void CharacterList() { } public void Enter(ulong id) { }

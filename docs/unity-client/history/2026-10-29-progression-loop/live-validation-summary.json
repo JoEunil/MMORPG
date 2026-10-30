@@ -1,0 +1,55 @@
+{
+  "status": "PASS",
+  "kind": "Validation of actual observed server/UI evidence; not a repeated game test or NUnit result",
+  "initial": {
+    "level": 1,
+    "exp": 70,
+    "hp": 4125,
+    "maxHp": 10000
+  },
+  "kill": {
+    "beforeHp": 3550,
+    "afterHp": 4050,
+    "level": 2,
+    "exp": 80,
+    "maxHp": 10500,
+    "potionGranted": 1
+  },
+  "potionUse": {
+    "beforeHp": 4050,
+    "afterHp": 7050,
+    "remainingQuantity": 0,
+    "cooldownTicks": 40
+  },
+  "reconnect": {
+    "manualAuthentication": true,
+    "nativeCharacterAndEnterClicks": true,
+    "level": 2,
+    "exp": 80,
+    "hp": 7050,
+    "maxHp": 10500,
+    "inventory": [
+      {
+        "ItemID": 33,
+        "Quantity": 34,
+        "Slot": 0
+      }
+    ],
+    "utc": "2026-10-29T12:37:04.576019Z"
+  },
+  "cleanup": {
+    "observerDetached": true,
+    "inputRunnerIdle": true,
+    "playStopped": true,
+    "mainServerNormalQExitCode": 0,
+    "loginNormalCtrlC": true,
+    "existingMySqlRedisPreserved": true,
+    "redoBytes": 776,
+    "backpressureBytes": 0
+  },
+  "limits": [
+    "The observation stream complete=false is a recorder placeholder, not a test outcome; this summary and explicit reconnect record state the verified scope.",
+    "No crash atomicity, immediate database-failure relogin ordering or balance evaluation is claimed.",
+    "Full-bag notice/dead/full-HP/cooldown/failure paths use existing focused automated evidence, not repeated live mutations."
+  ]
+}

@@ -1,0 +1,1 @@
+PASS: tools/site/build.py built home and 5 project pages with screen histories; local assets, links and anchors checked. No site layout changes. Reconnect still pending manual authentication.

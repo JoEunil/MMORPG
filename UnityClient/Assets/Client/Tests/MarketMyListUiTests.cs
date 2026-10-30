@@ -487,6 +487,7 @@ namespace Mmorpg.Client.Tests
             public void Enter(ulong characterId) { }
             public void Chat(string message, byte scope, ulong targetId) { }
             public void Profiles(uint[] profileIds) { }
+            public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
             public void RequestInventory() { }
             public void Action(byte direction, float x, float y, byte skillSlot, ulong ownershipEpoch) { }
             public void Pong(ulong serverTimeMs) { }

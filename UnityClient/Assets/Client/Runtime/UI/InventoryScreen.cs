@@ -32,7 +32,15 @@ namespace Mmorpg.Client
         [SerializeField] private TMP_Text detailSlot;
         [SerializeField] private TMP_Text detailQuantity;
         [SerializeField] private TMP_Text inventoryStatus;
+        [SerializeField] private UnityEngine.UI.Button useButton;
+        [SerializeField] private TMP_Text useStatus;
+        [SerializeField] private TMP_Text lootNotice;
         private IViewModelUI model;
+        private float lootNoticeDeadline;
+        private bool usePending;
+        private bool useTimedOut;
+        private float useDeadline;
+        private float useCooldownDeadline;
         private bool requestPending;
         private bool requestTimedOut;
         private float requestDeadline;
@@ -76,6 +84,7 @@ namespace Mmorpg.Client
             bagButton.onClick.AddListener(TogglePanel);
             refreshButton.onClick.AddListener(RequestInventory);
             closeButton.onClick.AddListener(ClosePanel);
+            if (useButton != null) useButton.onClick.AddListener(UseSelectedItem);
             loginScreen.ClientChanged += ChangeClient;
             worldScreen.WorldStateChanged += WorldChanged;
             ChangeClient(loginScreen.Model);
@@ -83,6 +92,22 @@ namespace Mmorpg.Client
 
         private void Update()
         {
+            if (lootNoticeDeadline > 0 && (!WorldAvailable || model == null || loginScreen == null ||
+                loginScreen.Model != model || Time.unscaledTime >= lootNoticeDeadline))
+                ClearLootNotice();
+            if (usePending && !useTimedOut && Time.unscaledTime >= useDeadline)
+            {
+                useTimedOut = true;
+                SetUseStatus("Use result unknown. Checking the bag; reconnect before trying again.");
+                RequireFreshInventoryOnOpen();
+                RefreshAfterDelivery();
+                UpdateControls();
+            }
+            if (useCooldownDeadline > 0 && Time.unscaledTime >= useCooldownDeadline)
+            {
+                useCooldownDeadline = 0;
+                UpdateControls();
+            }
             if (Application.isFocused && Keyboard.current != null)
             {
                 if (GameUiInput.EscapeAvailableForPanel() && IsOpen) ClosePanel();
@@ -112,16 +137,17 @@ namespace Mmorpg.Client
 
         private void ChangeClient(IViewModelUI next)
         {
+            SetModelSubscriptions(false);
             if (model == next)
             {
-                if (model != null) model.OnInventoryReceived += InventoryReceived;
+                SetModelSubscriptions(true);
                 if (requestTimedOut) inventoryStatus.text = "Request timed out. Reconnect to try again.";
                 WorldChanged();
                 return;
             }
             CancelFailureRetry();
-            if (model != null) model.OnInventoryReceived -= InventoryReceived;
             model = next;
+            ResetItemUse();
             requestPending = false;
             requestTimedOut = false;
             hasInventoryResponse = false;
@@ -130,8 +156,157 @@ namespace Mmorpg.Client
             ClearInventoryCards();
             inventoryStatus.text = string.Empty;
             inventoryPanel.SetActive(false);
-            if (model != null) model.OnInventoryReceived += InventoryReceived;
+            SetModelSubscriptions(true);
             WorldChanged();
+        }
+
+        private void SetModelSubscriptions(bool subscribe)
+        {
+            if (model == null) return;
+            model.OnInventoryReceived -= InventoryReceived;
+            model.OnItemUseReceived -= ItemUseReceived;
+            model.OnItemRewardReceived -= ItemRewardReceived;
+            model.OnZoneTransitionStarted -= ItemUseZoneTransitionStarted;
+            model.OnConnectionFailed -= ItemUseConnectionFailed;
+            if (!subscribe) return;
+            model.OnInventoryReceived += InventoryReceived;
+            model.OnItemUseReceived += ItemUseReceived;
+            model.OnItemRewardReceived += ItemRewardReceived;
+            model.OnZoneTransitionStarted += ItemUseZoneTransitionStarted;
+            model.OnConnectionFailed += ItemUseConnectionFailed;
+        }
+
+        private void ResetItemUse()
+        {
+            usePending = false;
+            useTimedOut = false;
+            useCooldownDeadline = 0;
+            SetUseStatus(string.Empty);
+            ClearLootNotice();
+        }
+
+        private void ItemUseZoneTransitionStarted(ulong ownershipEpoch, ushort zoneID)
+        {
+            ResetItemUse();
+            hasInventoryResponse = false;
+            RequireFreshInventoryOnOpen();
+            if (requestPending) refreshAfterCurrentRequest = true;
+            UpdateControls();
+        }
+
+        private void ItemUseConnectionFailed(string message)
+        {
+            ResetItemUse();
+            hasInventoryResponse = false;
+            RequireFreshInventoryOnOpen();
+            UpdateControls();
+        }
+
+        private bool CanUseSelectedItem()
+        {
+            if (!IsOpen || !WorldAvailable || model == null || loginScreen == null || loginScreen.Model != model ||
+                !hasInventoryResponse || requestPending || requestTimedOut || usePending ||
+                Time.unscaledTime < useCooldownDeadline || !hasSelectedItem || selectedItemID != 1 || loginScreen.Data == null)
+                return false;
+            foreach (InventoryItemView item in loginScreen.Data.GetInventory())
+                if (item.Slot == selectedSlot && item.ItemID == selectedItemID && item.Quantity > 0) return true;
+            return false;
+        }
+
+        private void UseSelectedItem()
+        {
+            if (!CanUseSelectedItem()) return;
+            usePending = true;
+            useTimedOut = false;
+            useDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+            SetUseStatus("Using HP potion…");
+            UpdateControls();
+            try
+            {
+                if (model.RequestItemUse(selectedItemID)) return;
+                usePending = false;
+                SetUseStatus("Cannot use this item now. Reconnect if another use is unresolved.");
+            }
+            catch (Exception)
+            {
+                // A send failure does not prove whether the server received the mutation.
+                useTimedOut = true;
+                SetUseStatus("Use result unknown. Checking the bag; reconnect before trying again.");
+                RequireFreshInventoryOnOpen();
+                RefreshAfterDelivery();
+            }
+            UpdateControls();
+        }
+
+        private void ItemUseReceived(ulong requestID, ulong ownershipEpoch, uint itemID, byte status,
+            ushort remainingQuantity, uint cooldownRemainingTicks)
+        {
+            // ClientCore matches request ID and ownership before dispatching this event.
+            if (!usePending || model == null || loginScreen.Model != model || itemID != 1) return;
+            usePending = false;
+            useTimedOut = false;
+            useCooldownDeadline = Time.unscaledTime + cooldownRemainingTicks * .05f;
+            string result;
+            switch (status)
+            {
+                case 0: result = "Invalid item use request."; break;
+                case 1: result = "HP potion used."; break;
+                case 2: result = "Cannot use a potion while dead."; break;
+                case 3: result = "HP is already full."; break;
+                case 4: result = "Potion is on cooldown."; break;
+                case 5: result = "No HP potions remain."; break;
+                case 6: result = "Another item operation is in progress."; break;
+                case 7: result = "World changed. Open the bag again."; break;
+                case 8: result = "Item storage failed. Try again later."; break;
+                case 9: result = "This item cannot be used."; break;
+                default: result = "Unknown item use result."; break;
+            }
+            if (cooldownRemainingTicks > 0)
+                result += " Cooldown " + (cooldownRemainingTicks * .05f).ToString("0.0", CultureInfo.InvariantCulture) + "s.";
+            SetUseStatus(result);
+            if (status == 1 || status == 5 || status == 7)
+            {
+                if (!IsOpen) RequireFreshInventoryOnOpen();
+                if (IsOpen || requestPending) RefreshAfterDelivery();
+            }
+            UpdateControls();
+        }
+
+        private void ItemRewardReceived(uint itemID, ushort grantedQuantity, ushort remainingQuantity, byte status)
+        {
+            if (model == null || loginScreen.Model != model) return;
+            switch (status)
+            {
+                case 1: SetUseStatus("Received " + ItemPresentation.Name(itemID) + " ×" + grantedQuantity.ToString(CultureInfo.InvariantCulture) + "."); break;
+                case 2: ShowLootFailure("Bag full. Item reward could not be added."); break;
+                case 3: ShowLootFailure("Item reward failed."); break;
+                default: SetUseStatus("Unknown item reward result."); break;
+            }
+            if (status == 1)
+            {
+                if (!IsOpen) RequireFreshInventoryOnOpen();
+                if (IsOpen || requestPending) RefreshAfterDelivery();
+            }
+            UpdateControls();
+        }
+
+        private void SetUseStatus(string message)
+        {
+            if (useStatus != null) useStatus.text = message;
+        }
+
+        private void ShowLootFailure(string message)
+        {
+            SetUseStatus(message);
+            if (lootNotice == null || !WorldAvailable) return;
+            lootNotice.text = message;
+            lootNoticeDeadline = Time.unscaledTime + 6f;
+        }
+
+        private void ClearLootNotice()
+        {
+            lootNoticeDeadline = 0;
+            if (lootNotice != null) lootNotice.text = string.Empty;
         }
 
         private void WorldChanged()
@@ -141,6 +316,7 @@ namespace Mmorpg.Client
             bagButton.gameObject.SetActive(available);
             if (!available)
             {
+                ClearLootNotice();
                 inventoryPanel.SetActive(false);
                 if (worldScreen == null || worldScreen.Stage != WorldStage.TransitionPending)
                 {
@@ -348,6 +524,7 @@ namespace Mmorpg.Client
             selectedSlot = item.Slot;
             selectedItemID = item.ItemID;
             ApplySelection(item, card);
+            UpdateControls();
         }
 
         private void ApplySelection(InventoryItemView item, Button card)
@@ -422,6 +599,7 @@ namespace Mmorpg.Client
             if (bagButton != null) bagButton.interactable = available;
             if (refreshButton != null) refreshButton.interactable = available && !requestPending && !requestTimedOut;
             if (closeButton != null) closeButton.interactable = true;
+            if (useButton != null) useButton.interactable = CanUseSelectedItem();
         }
 
         private static TMP_Text CreateText(string name, Transform parent, string value, float size, Color color,
@@ -463,7 +641,10 @@ namespace Mmorpg.Client
             if (bagButton != null) bagButton.onClick.RemoveListener(TogglePanel);
             if (refreshButton != null) refreshButton.onClick.RemoveListener(RequestInventory);
             if (closeButton != null) closeButton.onClick.RemoveListener(ClosePanel);
-            if (model != null) model.OnInventoryReceived -= InventoryReceived;
+            if (useButton != null) useButton.onClick.RemoveListener(UseSelectedItem);
+            SetModelSubscriptions(false);
+            if (usePending) RequireFreshInventoryOnOpen();
+            ResetItemUse();
             if (requestPending)
             {
                 requestPending = false;

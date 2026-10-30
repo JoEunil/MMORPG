@@ -94,8 +94,8 @@ int main(int argc, char* argv[]) {
                 auth.Stop();
                 core.CleanUp1();
                 core.CleanUp2();
-                net.CleanUp2();
                 cache.CleanUp();
+                net.CleanUp2();
                 stopped = true;
             }
             ~Shutdown() { Run(); }
@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
 
         core.InjectDependencies1(net.GetIOCP(), net.GetPacketPool(), net.GetBigPacketPool(), net.GetGiantPacketPool(), &durableLogger);
         cache.InjectDependencies(core.GetMessageQueue(), &durableLogger);
-        core.InjectDependencies2(net.GetIOCP(), &auth, cache.GetMessageQueue(), net.GetPacketPool(), cache.GetProfileCache());
+        core.InjectDependencies2(net.GetIOCP(), &auth, cache.GetMessageQueue(), net.GetPacketPool(), cache.GetProfileCache(), cache.GetInventoryOperations());
         net.InjectDependencies(core.GetPacketDispatcher());
 
         if (net.CheckReady() && core.CheckReady() && cache.CheckReady()) {

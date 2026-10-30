@@ -1,0 +1,13 @@
+단계별 과거 기록입니다. 아래의 미실행·대기 표시는 당시 상태이며 현재 상태가 아닙니다. 최신 실제 검증은 live-validation-summary.json, 재접속은 live-reconnect-state.json, 실행 흐름은 live-results.txt의 FINAL FOLLOW-UP을 참조합니다.
+
+성장+HP포션 통합 진행 — 2026-10-29
+사용자 초기정책선택: ordinary monsters0/1 kill→HP포션1,HP3000/40ticks,dead/fullHP무소비,fullbag미지급안내. 성장기존코드보존,장비·MP포션·AI·DBschema확장0.
+Core/Cache단일소비(WALfirst)/pendingcoldload/중복request/epoch/정상shutdowndrain,ClientCore+Dummywire45/46/47,기존가방상세버튼/결과/cooldown을구현. 좁은IInventoryOperations만추가,serverData ItemData.h가수치정본.
+독립Sol서버/클라코드리뷰차단0. Native고유3tests3/3PASS. fullbag/65535/WALgrantfailure단언추가후변경캐시2tests만재실행2/2PASS. ClientUnity새3tests3/3PASS. 기존성장산술2tests재실행0. 최초Unityfilter타입오류및새어셈블리미리로드0건은도구문제로실행성공에포함하지않음;명시recompile후정확3건확인.
+ClientCore/DummyReleasebuild0(NU1900취약성서비스미연결/기존Dummy경고). MainServerReleasebuild0: 기존postbuildxcopy대기로정상CtrlC취소1회→PostBuildEventUseInBuild=false로빌드하고기존DLL명시복사. MSVC기존narrowing/vendor경고및IOCP encoding/PDB LNK4020 디버그정보한계가있다. 기능실행과구분.
+기본9999는Windowsexcludedrange9923-10022로bind실패,Main정상종료0. OS설정변경없이optional MMORPG_GAME_PORT추가(default9999,strict1..65535/emptyreject一致). Login route및TCP서버같은설정사용. 독립P2빈값기본처리불일치수정후재검토PASS. 변경네트워크파일재빌드0;포션검사재실행0. 현재검증override10099서버ready PID37180/MainPTY56126,Login3000PID32844/PTY43653. 사용자Game원본수정0,CANDLogin앱을기존Game/Login의CWD·의존성으로실행,비밀출력/추가복사0.
+실제ROOT동기화preimage/hashguard16파일/DLL,Editor컴파일0/Scene기존World상세에두컨트롤추가저장·원본대조후CAND반영. 현재Astra필수1건(닫힌가방보상미지급안내불가)을HUD6초알림으로보완중. 새Toast검사1건만추가예정이며기존통과반복없음.
+Windows mainserver.exe 보안허용창으로실입력중단. 컴퓨터사용안전지침에따라자동처리/우회0,사용자직접처리·로그인응답대기. 실제사냥/성장/포션/정상저장후재접속/실화면시각검수 미실행. 가짜입력·임의DBseed·비밀재로그인도우미사용0.
+Crash HP/inventory분리저장·주기fsync내구성/DB실패·즉시재로그인순서보장 및밸런스는약속하지않음. 현재최종PR게시준비완료아님.
+
+후속: HUD미지급안내를WorldHud450×30/font16/y130/6초로분리하고모델·zone·disable정리. 새단일UI검사1/1PASS, 기존Native/Client반복0. 실제EditorEnsure에서WorldHud부모/비제로크기·참조검사통과,실화면가독성은로그인후확인대기. Astra해당피드백재검수통과/필수0(로컬단계),최종게시통과아님. Scene복사자동심사거절은양쪽사본동일SHA/양쪽백업/복사직전candidate불변guard후안전승인으로해결,우회없음. Unity생성YAML의빈직렬화필드뒤공백은엔진원본형식으로보존한다.

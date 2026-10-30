@@ -1,0 +1,21 @@
+{
+  "kind": "Actual reconnect full state after manual authentication and native character/Enter clicks",
+  "utc": "2026-10-29T12:37:04.576019Z",
+  "frame": 1436902,
+  "character": 11,
+  "zone": 2,
+  "state": {
+    "zoneInternalID": 2,
+    "profileId": 1,
+    "profileVersion": 1,
+    "hp": 7050,
+    "mp": 9599,
+    "maxHp": 10500,
+    "maxMp": 10000,
+    "exp": 80,
+    "level": 2,
+    "dir": 1,
+    "x": 255.526108,
+    "y": 83.85664
+  }
+}

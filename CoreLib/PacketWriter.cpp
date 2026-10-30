@@ -3,6 +3,30 @@
 #include "IPacket.h"
 #include "Config.h"
 namespace Core {
+    static_assert(sizeof(PacketStruct<ItemUseRequestBody>) == 28);
+    static_assert(sizeof(PacketStruct<ItemUseResponseBody>) == 35);
+    static_assert(sizeof(PacketStruct<ItemRewardBody>) == 17);
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteItemUseResponse(const ItemUseResponseBody& body) {
+        auto p = packetPool->AcquireUnique();
+        if (!p) return nullptr;
+        p->Clear();
+        auto* packet = reinterpret_cast<PacketStruct<ItemUseResponseBody>*>(p->GetBuffer());
+        packet->header = {MAGIC, sizeof(*packet), OP::ITEM_USE_RES, 0};
+        packet->body = body;
+        p->SetLength(sizeof(*packet));
+        return p;
+    }
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteItemReward(const ItemRewardBody& body) {
+        auto p = packetPool->AcquireUnique();
+        if (!p) return nullptr;
+        p->Clear();
+        auto* packet = reinterpret_cast<PacketStruct<ItemRewardBody>*>(p->GetBuffer());
+        packet->header = {MAGIC, sizeof(*packet), OP::ITEM_REWARD, 0};
+        packet->body = body;
+        p->SetLength(sizeof(*packet));
+        return p;
+    }
+
     static_assert(sizeof(PacketStruct<BazaarBuyRequestBody>) == 20);
     static_assert(sizeof(PacketStruct<BazaarBuyResponseBody>) == 37);
     static_assert(sizeof(PacketStruct<BazaarCheckOutboxRequestBody>) == 12);

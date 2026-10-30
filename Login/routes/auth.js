@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const redis = require('../config/redis');
@@ -9,7 +9,15 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const authenticateToken = require('../middleware/authenticateToken'); 
 
-require('dotenv').config(); 
+require('dotenv').config();
+
+const configuredGamePort = process.env.MMORPG_GAME_PORT;
+const gameServerPort = configuredGamePort === undefined ? 9999 : Number(configuredGamePort);
+if ((configuredGamePort !== undefined && !/^\d{1,5}$/.test(configuredGamePort)) ||
+    !Number.isInteger(gameServerPort) || gameServerPort < 1 || gameServerPort > 65535) {
+  throw new Error('MMORPG_GAME_PORT must be an integer from 1 to 65535.');
+}
+
 
 // 로그인 요청 처리
 router.post('/login', (req, res) => {
@@ -93,14 +101,14 @@ router.post('/getSession', authenticateToken, async (req, res) => {
     const sessionToken = uuidv4();
     // Redis에 세션 토큰 저장 (10분 동안 유효)
     await redis.set(req.user.userId.toString(), sessionToken, { EX: 600 });
-    
+
     // 게임 서버 정보와 세션 토큰 반환
     res.json({
       userId: req.user.userId,   // <- 추가
       sessionToken, // 게임 서버용 세션 토큰
       gameServer: {
         ip: "127.0.0.1",
-        port: 9999,
+        port: gameServerPort,
       }
     });
   } catch (err) {

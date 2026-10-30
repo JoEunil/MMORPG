@@ -42,6 +42,14 @@ namespace ClientCore.Network
                     case OP_CODE.PROFILE_BATCH_RES:
                         _viewModel.ProfilesReceived(Packet.DeserializeProfiles(header, buffer));
                         return;
+                    case OP_CODE.ITEM_USE_RES:
+                        var use = Packet.DeserializeItemUse(header, buffer);
+                        _viewModel.ItemUseReceived(use.requestID, use.ownershipEpoch, use.itemID, use.status, use.remainingQuantity, use.cooldownRemainingTicks);
+                        return;
+                    case OP_CODE.ITEM_REWARD:
+                        var reward = Packet.DeserializeItemReward(header, buffer);
+                        _viewModel.ItemRewardReceived(reward.itemID, reward.grantedQuantity, reward.remainingQuantity, reward.status);
+                        return;
                     case OP_CODE.INVENTORY_RES:
                         HandleInventoryRes(Packet.DeserializeInventory(header, buffer));
                         return;
@@ -109,7 +117,7 @@ namespace ClientCore.Network
             catch (Exception e)
             {
                 // A malformed C06 frame must reach the socket's existing disconnect boundary.
-                if (buffer.Length >= 7 && (buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 21 || buffer[6] == 25 || buffer[6] == 27 || buffer[6] == 29 || buffer[6] == 31 || buffer[6] == 33 || buffer[6] == 35 || buffer[6] == 37 || buffer[6] == 41 || buffer[6] == 43 || buffer[6] == 44)) throw;
+                if (buffer.Length >= 7 && (buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 21 || buffer[6] == 25 || buffer[6] == 27 || buffer[6] == 29 || buffer[6] == 31 || buffer[6] == 33 || buffer[6] == 35 || buffer[6] == 37 || buffer[6] == 41 || buffer[6] == 43 || buffer[6] == 44 || buffer[6] == 46 || buffer[6] == 47)) throw;
                 ErrorLog(e.Message);
             }
         }

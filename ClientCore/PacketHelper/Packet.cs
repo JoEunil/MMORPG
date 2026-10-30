@@ -60,6 +60,9 @@ namespace ClientCore.PacketHelper
         WALLET_REQUEST = 42,
         WALLET_GOLD_RES = 43,
         WALLET_DIAMOND_RES = 44,
+        ITEM_USE = 45,
+        ITEM_USE_RES = 46,
+        ITEM_REWARD = 47,
     }
     
     public enum ZONE_CHANGE : byte
@@ -700,6 +703,49 @@ namespace ClientCore.PacketHelper
             byte status = buffer[12];
             if (requestID == 0 || status > 5) throw new ArgumentException("Invalid bazaar registration result.");
             return (requestID, status);
+        }
+
+        internal static byte[] SerializeItemUseRequest(ulong requestID, ulong ownershipEpoch, uint itemID)
+        {
+            if (requestID == 0 || ownershipEpoch == 0 || itemID == 0)
+                throw new ArgumentException("Invalid item use request.");
+            var result = new byte[28];
+            BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
+            BitConverter.GetBytes(28U).CopyTo(result, 2);
+            result[6] = (byte)OP_CODE.ITEM_USE;
+            BitConverter.GetBytes(requestID).CopyTo(result, 8);
+            BitConverter.GetBytes(ownershipEpoch).CopyTo(result, 16);
+            BitConverter.GetBytes(itemID).CopyTo(result, 24);
+            return result;
+        }
+
+        internal static (ulong requestID, ulong ownershipEpoch, uint itemID, byte status, ushort remainingQuantity, uint cooldownRemainingTicks)
+            DeserializeItemUse(PacketHeader header, byte[] buffer)
+        {
+            if (!HasExactResponse(header, buffer, OP_CODE.ITEM_USE_RES, 35))
+                throw new ArgumentException("Invalid item use response.");
+            ulong requestID = BitConverter.ToUInt64(buffer, 8);
+            ulong ownershipEpoch = BitConverter.ToUInt64(buffer, 16);
+            uint itemID = BitConverter.ToUInt32(buffer, 24);
+            byte status = buffer[28];
+            if (requestID == 0 || ownershipEpoch == 0 || itemID == 0 || status > 9)
+                throw new ArgumentException("Invalid item use result.");
+            return (requestID, ownershipEpoch, itemID, status, BitConverter.ToUInt16(buffer, 29), BitConverter.ToUInt32(buffer, 31));
+        }
+
+        internal static (uint itemID, ushort grantedQuantity, ushort remainingQuantity, byte status)
+            DeserializeItemReward(PacketHeader header, byte[] buffer)
+        {
+            if (!HasExactResponse(header, buffer, OP_CODE.ITEM_REWARD, 17))
+                throw new ArgumentException("Invalid item reward response.");
+            uint itemID = BitConverter.ToUInt32(buffer, 8);
+            ushort grantedQuantity = BitConverter.ToUInt16(buffer, 12);
+            ushort remainingQuantity = BitConverter.ToUInt16(buffer, 14);
+            byte status = buffer[16];
+            if (itemID == 0 || status < 1 || status > 3 ||
+                (status == 1 ? grantedQuantity == 0 || remainingQuantity < grantedQuantity : grantedQuantity != 0))
+                throw new ArgumentException("Invalid item reward result.");
+            return (itemID, grantedQuantity, remainingQuantity, status);
         }
 
         internal static byte[] SerializeWalletRequest(uint requestID)

@@ -76,6 +76,7 @@ namespace Cache {
 
         CACHE_STATUS TryGet(uint16_t shardIndex, const Key& key, Result& outResult);
         void Insert(uint16_t shardIndex, const Key& key, const Result& result);
+        void InsertLocked(uint16_t shardIndex, const Key& key, const Result& result);
 
         CACHE_STATUS TrySetReading(uint16_t shardIndex, const Key& key);
         void SetEmpty(uint16_t shardIndex, const Key& key);

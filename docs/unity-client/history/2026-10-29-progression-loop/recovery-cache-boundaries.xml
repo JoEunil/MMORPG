@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="2" failures="0" disabled="0" errors="0" time="0." timestamp="2026-10-29T20:06:03.999" name="AllTests">
+  <testsuite name="InventoryPotionFixture" tests="2" failures="0" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-10-29T20:06:03.999">
+    <testcase name="WalFirstConsumptionAndFailurePreserveQuantity" file="C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source/UnitTests/CacheLib/CacheStorageTest.cpp" line="748" status="run" result="completed" time="0." timestamp="2026-10-29T20:06:03.999" classname="InventoryPotionFixture" />
+    <testcase name="PendingRewardsOutliveCallerAndPreserveAcceptedFlush" file="C:/Users/joeun/Desktop/workspace/Game-UnityClient/UnityClient/Builds/C10-Delivery/source/UnitTests/CacheLib/CacheStorageTest.cpp" line="774" status="run" result="completed" time="0." timestamp="2026-10-29T20:06:03.999" classname="InventoryPotionFixture" />
+  </testsuite>
+</testsuites>

@@ -204,6 +204,7 @@
     </ClInclude>
     <ClCompile Include="InMemoryQueue.cpp" />
     <ClInclude Include="IProfileCache.h" />
+    <ClInclude Include="IInventoryOperations.h" />
     <ClInclude Include="MessagePool.h" />
     <ClCompile Include="MessagePool.cpp" />
     <ClCompile Include="MessageQueueHandler.cpp" />

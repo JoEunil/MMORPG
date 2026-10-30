@@ -1,6 +1,8 @@
 ﻿#pragma once
 #include <cstdint>
+#include <vector>
 #include "Config.h"
+#include "GrowthData.h"
 
 namespace Core {
     struct SkillSlotEntry {
@@ -30,10 +32,46 @@ namespace Core {
         uint8_t skillSlotCnt; 
         std::vector<SkillSlotEntry> skillSlot;
 
+        uint32_t potionCooldownTicks = 0;
         uint16_t lastZone;
         uint32_t dirtyBit = 0x00; // 변경된 필드 표시
 
         uint64_t sessionID;
         uint64_t characterID;
+
+        void AddExperience(uint32_t reward) {
+            const uint64_t totalExp = static_cast<uint64_t>(exp) + reward;
+            const uint32_t newExp = totalExp > UINT32_MAX ? UINT32_MAX : static_cast<uint32_t>(totalExp);
+            if (exp != newExp) {
+                exp = newExp;
+                dirtyBit |= 0x10;
+            }
+
+            // Only newly earned levels grant HP; saved levels and HP are never recalculated.
+            for (const auto& growth : Data::growthLevels) {
+                if (growth.level <= level)
+                    continue;
+                if (growth.level > Data::growthMaxLevel || exp < growth.requiredTotalExp)
+                    break;
+
+                level = growth.level;
+                dirtyBit |= 0x20;
+                const int64_t increasedMaxHp = static_cast<int64_t>(maxHp) + growth.maxHpIncrease;
+                const int newMaxHp = increasedMaxHp > INT32_MAX ? INT32_MAX : static_cast<int>(increasedMaxHp);
+                const int64_t actualIncrease = static_cast<int64_t>(newMaxHp) - maxHp;
+                if (actualIncrease > 0) {
+                    maxHp = newMaxHp;
+                    dirtyBit |= 0x04;
+                    if (hp > 0) {
+                        const int64_t increasedHp = static_cast<int64_t>(hp) + actualIncrease;
+                        const int newHp = increasedHp > INT32_MAX ? INT32_MAX : static_cast<int>(increasedHp);
+                        if (hp != newHp) {
+                            hp = newHp;
+                            dirtyBit |= 0x01;
+                        }
+                    }
+                }
+            }
+        }
     };
 }

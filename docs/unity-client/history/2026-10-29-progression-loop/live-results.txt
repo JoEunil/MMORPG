@@ -1,0 +1,10 @@
+2026-10-29 actual Editor + local server validation
+Product unchanged since 8e44180; current documentation HEAD 055394c.
+Input: camera-relative synthetic arrow state events consumed by normal PlayerLoop; native window clicks for character/Enter/skills/bag/potion/Disconnect. No direct gameplay handler, teleport, DB mutation or user AI change.
+Town1 -> field2 reached. Initial route clearance tolerance skipped a corner; input harness stopped and tighter tolerance passed. Focus-loss stop was a tool/environment stop, not product failure.
+Character11 initial Lv1 EXP70 HP4125/10000. Before final hit HP3550; kill EXP80 Lv2 HP4050/10500. Reward item1 status1 granted1 qty1.
+Native potion click: response status1 qty0 cooldown40 ticks; HP4050 ->7050. Inventory item33 qty34 retained, potion removed.
+Normal UI Disconnect; read-only DB confirms Lv2 EXP80 HP7050 maxHP10500 MP9599 zone2 and inventory snapshot. Reconnect pending manual authentication; no reconnect success claimed.
+GameView BEFORE capture helper unexpectedly saved beneath Assets/Builds; no code/scene changed, file will be relocated after Play validation. AFTER captured outside Assets with ScreenCapture.
+
+FINAL FOLLOW-UP 2026-10-29 12:37 UTC: user manual reauthentication + native character11/Enter clicks returned Lv2 EXP80 HP7050/maxHP10500. Reopened bag retained item33 qty34 and no potion. Explicit live-reconnect-state.json avoids observer unchanged-value deduplication. Normal Disconnect, observer detached/input runner idle, Play stopped. MainServer held PTY q exit0; Login Ctrl+C. Existing MySQL/Redis preserved. DB after shutdown unchanged. WAL redo776/backpressure0 retained, not deleted or claimed crash-atomic. Actual-root accidental capture asset removed only after matching outside backup and Play ended; no production asset changes.

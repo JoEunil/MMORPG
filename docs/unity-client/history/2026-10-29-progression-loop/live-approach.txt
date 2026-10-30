@@ -1,0 +1,4 @@
+Editor-update UI execution: RUNNING
+Not a NUnitRunner result.
+PASS: normal synthetic arrow input approached an observed ordinary monster.
+Finished UTC: 2026-10-29T12:03:54.4021472Z

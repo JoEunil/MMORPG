@@ -1,4 +1,4 @@
-#include <gtest/gtest.h>
+﻿#include <gtest/gtest.h>
 #include <algorithm>
 
 #include <CacheLib/CacheFlush.h>
@@ -703,5 +703,123 @@ namespace Cache {
         RequestBuy(); RequestOutbox(); EXPECT_EQ(responses.received, nullptr); ExpectPoolRestored();
         responses.accept = true;
         RequestBuy(-1); RequestOutbox(1); EXPECT_EQ(responses.received, nullptr); ExpectPoolRestored();
+    }
+}
+
+namespace Cache {
+    class InventoryPotionFixture : public ::testing::Test {
+    protected:
+        std::unique_ptr<CacheStorageInventory> cache = std::make_unique<CacheStorageInventory>();
+        uint64_t lsn = 10;
+        bool failWal = false;
+        void SetUp() override {
+            cache->m_shards.resize(SHARD_SIZE);
+            cache->SetWalFn([this](uint64_t, const InventoryData&) { return failWal ? 0 : ++lsn; });
+        }
+        void Seed(uint64_t id, uint16_t quantity) {
+            Result5 loaded{};
+            loaded.data.items[0] = {1, quantity, 0};
+            loaded.data.count = quantity == 0 ? 0 : 1;
+            cache->Insert(id & SHARD_SIZE_MASK, Key5{id}, loaded);
+        }
+        void SeedFull(uint64_t id) {
+            Result5 loaded{};
+            loaded.data.count = MAX_INVENTORY;
+            for (uint8_t slot = 0; slot < MAX_INVENTORY; ++slot)
+                loaded.data.items[slot] = {static_cast<uint32_t>(slot + 2), 3, slot};
+            cache->Insert(id & SHARD_SIZE_MASK, Key5{id}, loaded);
+        }
+        void Reading(uint64_t id) { cache->m_shards[id & SHARD_SIZE_MASK].cache_data[Key5{id}].status = CACHE_STATUS::DB_READING; }
+        void Loaded(uint64_t id, bool success) {
+            Result5 loaded{};
+            cache->CompleteLoad(id & SHARD_SIZE_MASK, Key5{id}, success ? &loaded : nullptr);
+        }
+        void Evicting(uint64_t id) {
+            auto& shard = cache->m_shards[id & SHARD_SIZE_MASK];
+            auto& entry = shard.cache_data[Key5{id}];
+            entry.status = CACHE_STATUS::EVICTING;
+            entry.flushInFlight = true;
+            entry.flushGeneration = 7;
+            shard.lru_list.erase(shard.lru_pos.at(Key5{id}));
+            shard.lru_pos.erase(Key5{id});
+        }
+    };
+
+    TEST_F(InventoryPotionFixture, WalFirstConsumptionAndFailurePreserveQuantity) {
+        Seed(16, 2);
+        EXPECT_EQ(cache->ConsumeItem(16, 1).status, Core::ItemOperationStatus::Success);
+        EXPECT_EQ(cache->Getter(16).data.items[0].quantity, 1);
+        failWal = true;
+        EXPECT_EQ(cache->ConsumeItem(16, 1).status, Core::ItemOperationStatus::StorageFailure);
+        EXPECT_EQ(cache->Getter(16).data.items[0].quantity, 1);
+        const auto beforeGrant = cache->Getter(16).data;
+        const auto beforeLsn = lsn;
+        int completed = 0;
+        cache->GrantItem(16, 1, 1, [&](Core::ItemOperationResult result) {
+            EXPECT_EQ(result.status, Core::ItemOperationStatus::StorageFailure);
+            EXPECT_EQ(result.remainingQuantity, 1);
+            ++completed;
+        });
+        const auto afterGrant = cache->Getter(16).data;
+        EXPECT_EQ(completed, 1);
+        EXPECT_EQ(std::memcmp(&beforeGrant, &afterGrant, sizeof(InventoryData)), 0);
+        EXPECT_EQ(lsn, beforeLsn);
+        failWal = false;
+        EXPECT_EQ(cache->ConsumeItem(16, 1).status, Core::ItemOperationStatus::Success);
+        EXPECT_EQ(cache->Getter(16).data.count, 0);
+        EXPECT_EQ(cache->ConsumeItem(16, 1).status, Core::ItemOperationStatus::Missing);
+        EXPECT_EQ(cache->ConsumeItem(17, 1).status, Core::ItemOperationStatus::Busy);
+    }
+
+    TEST_F(InventoryPotionFixture, PendingRewardsOutliveCallerAndPreserveAcceptedFlush) {
+        Reading(16);
+        int completed = 0;
+        cache->GrantItem(16, 1, 1, [&](Core::ItemOperationResult result) {
+            EXPECT_EQ(result.status, Core::ItemOperationStatus::Success);
+            EXPECT_EQ(result.remainingQuantity, 1);
+            ++completed;
+        });
+        EXPECT_EQ(completed, 0);
+        Loaded(16, true);
+        EXPECT_EQ(completed, 1);
+        Evicting(16);
+        cache->GrantItem(16, 1, 1, [&](Core::ItemOperationResult result) {
+            EXPECT_EQ(result.status, Core::ItemOperationStatus::Success);
+            ++completed;
+        });
+        EXPECT_TRUE(cache->Getter(16).flushInFlight);
+        cache->WriteDone(16 & SHARD_SIZE_MASK, Key5{16}, 7);
+        EXPECT_EQ(cache->Getter(16).data.items[0].quantity, 2);
+        Reading(17);
+        cache->GrantItem(17, 1, 1, [&](Core::ItemOperationResult result) {
+            EXPECT_EQ(result.status, Core::ItemOperationStatus::StorageFailure);
+            ++completed;
+        });
+        Loaded(17, false);
+        EXPECT_EQ(completed, 3);
+
+        SeedFull(18);
+        const auto fullBag = cache->Getter(18).data;
+        const auto beforeLsn = lsn;
+        cache->GrantItem(18, 1, 1, [&](Core::ItemOperationResult result) {
+            EXPECT_EQ(result.status, Core::ItemOperationStatus::Full);
+            EXPECT_EQ(result.remainingQuantity, 0);
+            ++completed;
+        });
+        const auto afterFullBag = cache->Getter(18).data;
+        EXPECT_EQ(completed, 4);
+        EXPECT_EQ(std::memcmp(&fullBag, &afterFullBag, sizeof(InventoryData)), 0);
+
+        Seed(19, UINT16_MAX);
+        const auto fullStack = cache->Getter(19).data;
+        cache->GrantItem(19, 1, 1, [&](Core::ItemOperationResult result) {
+            EXPECT_EQ(result.status, Core::ItemOperationStatus::Full);
+            EXPECT_EQ(result.remainingQuantity, UINT16_MAX);
+            ++completed;
+        });
+        const auto afterFullStack = cache->Getter(19).data;
+        EXPECT_EQ(completed, 5);
+        EXPECT_EQ(std::memcmp(&fullStack, &afterFullStack, sizeof(InventoryData)), 0);
+        EXPECT_EQ(lsn, beforeLsn);
     }
 }

@@ -70,6 +70,12 @@ namespace Net {
             return false;
         }
 
+        if (opcode == Core::OP::ITEM_USE && (header.flags != 0
+            || packetLen != sizeof(Core::PacketStruct<Core::ItemUseRequestBody>))) {
+            m_gameSession.store(false, std::memory_order_release);
+            return false;
+        }
+
         if (GetLen() < packetLen)
             return false;
 
