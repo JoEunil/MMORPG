@@ -13,7 +13,6 @@ namespace ClientCore
         private ClientTick _clientTick;
         private NetworkService _network;
         private TCPSocket _sock;
-        private ReceiveTick _receiveTick;
         private Handler _handler;
         public void Initialize(ILogger logger, IMainThreadDispatcher dispatcher)
         {
@@ -25,11 +24,8 @@ namespace ClientCore
             _viewModel = new ViewModel(_network, _data, logger, dispatcher);
             _sock.OnDisconnected += _viewModel.Error;
             _clientTick = new ClientTick(_viewModel);
-            _receiveTick = new ReceiveTick(_handler);
-            _receiveTick.OnFailed += _viewModel.Error;
-            _handler.Inject(_viewModel, _receiveTick);
+            _handler.Inject(_viewModel);
             _clientTick.Start();
-            _receiveTick.Start();
         }
 
         public void Dispose()
@@ -38,8 +34,6 @@ namespace ClientCore
             if (_sock != null && _viewModel != null) _sock.OnDisconnected -= _viewModel.Error;
             _sock?.Dispose();
             _clientTick?.Stop();
-            if (_receiveTick != null && _viewModel != null) _receiveTick.OnFailed -= _viewModel.Error;
-            _receiveTick?.Stop();
         }
 
         public IViewModelUI GetViewModel()

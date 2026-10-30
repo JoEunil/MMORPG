@@ -174,10 +174,6 @@ public struct InventoryItemView
 
 namespace ClientCore.Network
 {
-    public interface IReceiveTick
-    {
-        void Enqueue(byte[] buffer);
-    }
     public interface ITCPSocket : IDisposable
     {
         event Action<string> OnDisconnected;
@@ -187,15 +183,6 @@ namespace ClientCore.Network
     public interface IHandlerSock
     {
         void HandleResponse(byte[] buffer);
-    }
-    public interface IHandlerTick
-    {
-        void HandleZoneChangeRes(PacketHelper.STPacket<PacketHelper.ZoneChangeResponseBody> packet);
-        void HandleDeltaUpdate((ushort count, ushort zoneID, ulong generation, DeltaUpdateField[] items) res);
-        void HandleFullState((ushort count, ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, FullStateField[] items) res);
-        void HandleMonsterDelta((ushort count, ushort zoneID, ulong generation, MonsterDeltaField[] items) res);
-        void HandleMonsterFull((ushort count, ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, MonsterFullField[] items) res);
-        void HandleActionReult((ushort count, ushort zoneID, ulong generation, ActionResultField[] items) res);
     }
 }
 

@@ -1,6 +1,10 @@
 # 현재 인계 — 2026-10-30
 
 ## 현재 상태
+수신 틱 제거 요청의 현재 반영 위치는 C:/Users/joeun/Desktop/workspace/Game(master)다. ROOT/ClientReceiveMain은 작업 보존용 사본이며 master를 점유하지 않는다. ReceiveTick·별도 인터페이스를 제거하고 소켓 핸들러로 통합, Tick.md 의도/변경 이유와 관련 테스트를 갱신했다. ClientCore Release 빌드·직접 영향3검사 통과, 독립 리뷰의 테스트 호출 인자 지적 수정. 이 작업 폴더의 Unity 플러그인 DLL도 같은 빌드로 갱신했다. 실제 Editor(ROOT/UnityClient)·독립 실행 게임에는 배포하지 않았고 실입력은 하지 않았다. 커밋/push는 아직 하지 않았다. 다른 기능과 몬스터 AI·보간은 변경하지 않는다.
+
+아래는 성장 묶음의 과거 기록이다. PR60은 병합 완료이며 옛 open/미병합 문구는 현재 상태가 아니다.
+
 성장·HP 포션·클라이언트 연동·실전 결과를 [PR60](https://github.com/JoEunil/MMORPG/pull/60) 하나로 게시했다. open/미병합이며 사용자가 검토한다. 새 개발·추가 게시 승인 대기는 없다. 사용자 몬스터 AI·장비·MP 포션·DB 스키마는 이번 범위에서 변경하지 않았다.
 ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본 CAND=ROOT/UnityClient/Builds/C10-Delivery/source, branch codex/progression-loop → master. 실제 Editor는 ROOT/UnityClient이며 자동 동기화되지 않는다. 원격 master6a38f2d의 사용자 README/큐 분석 문서는 보존 병합했다.
 

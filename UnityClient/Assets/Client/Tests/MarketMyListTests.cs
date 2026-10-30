@@ -65,14 +65,13 @@ namespace Mmorpg.Client.Tests
         }
 
         [Test]
-        public void HandlerRoutesMyListBeforeSimulationAndRejectsMalformedFrames()
+        public void HandlerRoutesMyListAndRejectsMalformedFrames()
         {
             using (var f = new Fixture())
             {
                 var type = typeof(ViewModel).Assembly.GetType("ClientCore.Network.Handler");
                 var handler = (IHandlerSock)Activator.CreateInstance(type, true);
-                var tick = new FakeTick();
-                type.GetMethod("Inject", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(handler, new object[] { f.Model, tick });
+                type.GetMethod("Inject", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(handler, new object[] { f.Model });
                 f.Model.RequestBazaarMyList();
                 handler.HandleResponse(Frame(f.Network.MyListIDs[0], 1, 3));
                 Assert.That(f.Data.GetBazaar(), Is.Empty); f.Drain();
@@ -82,7 +81,6 @@ namespace Mmorpg.Client.Tests
                 Assert.Throws<ArgumentException>(() => handler.HandleResponse(malformed));
                 malformed = Frame(2, 1, 1); malformed[53] = 3;
                 Assert.Throws<ArgumentException>(() => handler.HandleResponse(malformed));
-                Assert.That(tick.Queued, Is.Zero);
             }
         }
 
@@ -223,8 +221,7 @@ namespace Mmorpg.Client.Tests
             {
                 var type = typeof(ViewModel).Assembly.GetType("ClientCore.Network.Handler");
                 var handler = (IHandlerSock)Activator.CreateInstance(type, true);
-                var tick = new FakeTick();
-                type.GetMethod("Inject", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(handler, new object[] { f.Model, tick });
+                type.GetMethod("Inject", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(handler, new object[] { f.Model });
                 var malformed = ClaimFrame(1, 1, 1, 1); malformed[7] = 1;
                 Assert.Throws<ArgumentException>(() => handler.HandleResponse(malformed));
                 malformed = ClaimFrame(1, 1, 4, 1);
@@ -244,7 +241,7 @@ namespace Mmorpg.Client.Tests
                 handler.HandleResponse(ClaimFrame(first, 1, 1, ulong.MaxValue));
                 Assert.That(results, Is.Empty); f.Drain();
                 Assert.That(results, Is.EqualTo(new[] { (1UL, (byte)1, ulong.MaxValue) }));
-                Assert.That(f.Data.GetBazaar().Count, Is.EqualTo(1)); Assert.That(tick.Queued, Is.Zero);
+                Assert.That(f.Data.GetBazaar().Count, Is.EqualTo(1));
                 f.Model.RequestBazaarClaim(1); uint cancelled = f.Network.ClaimIDs[1];
                 handler.HandleResponse(ClaimFrame(cancelled, 1, 1, 5));
                 f.Model.CancelBazaar(); f.Model.RequestBazaarClaim(2);
@@ -308,8 +305,7 @@ namespace Mmorpg.Client.Tests
             {
                 var type = typeof(ViewModel).Assembly.GetType("ClientCore.Network.Handler");
                 var handler = (IHandlerSock)Activator.CreateInstance(type, true);
-                var tick = new FakeTick();
-                type.GetMethod("Inject", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(handler, new object[] { f.Model, tick });
+                type.GetMethod("Inject", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(handler, new object[] { f.Model });
                 var malformedBuy = BuyFrame(1, 1, 1, 1, 1, 1); malformedBuy[7] = 1;
                 Assert.Throws<ArgumentException>(() => handler.HandleResponse(malformedBuy));
                 var malformedOutbox = OutboxFrame(1, 1, 31, 0, 0);
@@ -349,7 +345,7 @@ namespace Mmorpg.Client.Tests
                 f.Model.RequestBazaarCheckOutbox();
                 handler.HandleResponse(OutboxFrame(f.Network.OutboxIDs[2], 1, 1, 0, 0));
                 f.Model.Error("Fixture disconnect"); f.Drain();
-                Assert.That(deliveries.Count, Is.EqualTo(2)); Assert.That(tick.Queued, Is.Zero);
+                Assert.That(deliveries.Count, Is.EqualTo(2));
                 Assert.Throws<InvalidOperationException>(() => f.Model.RequestBazaarBuy(3));
                 Assert.Throws<InvalidOperationException>(() => f.Model.RequestBazaarCheckOutbox());
             }
@@ -394,10 +390,62 @@ namespace Mmorpg.Client.Tests
             }
             return p;
         }
+        [Test]
+        public void HandlerImmediatelyQueuesMonsterDeltasInOrderForTheMainThread()
+        {
+            using (var f = new Fixture())
+            {
+                var type = typeof(ViewModel).Assembly.GetType("ClientCore.Network.Handler");
+                var handler = (IHandlerSock)Activator.CreateInstance(type, true);
+                type.GetMethod("Inject", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(handler, new object[] { f.Model });
+                var received = new List<uint>();
+                f.Model.OnMonsterDeltaReceived += (count, fields) => received.Add(fields[0].fieldVal);
+                for (uint value = 1; value <= 2; value++)
+                {
+                    var frame = new byte[28];
+                    BitConverter.GetBytes((ushort)0xabcd).CopyTo(frame, 0);
+                    BitConverter.GetBytes((uint)frame.Length).CopyTo(frame, 2);
+                    frame[6] = 10; frame[7] = 1;
+                    BitConverter.GetBytes((ushort)1).CopyTo(frame, 8);
+                    BitConverter.GetBytes((ushort)1).CopyTo(frame, 10);
+                    BitConverter.GetBytes(1UL).CopyTo(frame, 12);
+                    BitConverter.GetBytes((ushort)7).CopyTo(frame, 20);
+                    BitConverter.GetBytes((ushort)1).CopyTo(frame, 22);
+                    BitConverter.GetBytes(value).CopyTo(frame, 24);
+                    handler.HandleResponse(frame);
+                }
+                Assert.That(f.PendingJobs, Is.EqualTo(2), "Packets must reach the dispatcher without a receive tick.");
+                Assert.That(received, Is.Empty, "Unity callbacks must remain on the main thread.");
+                f.Drain();
+                Assert.That(received, Is.EqualTo(new uint[] { 1, 2 }));
+            }
+        }
+
+        [Test]
+        public void HandlerRejectsMalformedSimulationFramesAtTheSocketBoundary()
+        {
+            using (var f = new Fixture())
+            {
+                var type = typeof(ViewModel).Assembly.GetType("ClientCore.Network.Handler");
+                var handler = (IHandlerSock)Activator.CreateInstance(type, true);
+                type.GetMethod("Inject", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(handler, new object[] { f.Model });
+                foreach (byte opcode in new byte[] { 7, 8, 9, 10, 12, 17 })
+                {
+                    var frame = new byte[8];
+                    BitConverter.GetBytes((ushort)0xabcd).CopyTo(frame, 0);
+                    BitConverter.GetBytes(8U).CopyTo(frame, 2);
+                    frame[6] = opcode; frame[7] = 1;
+                    Assert.Throws<ArgumentException>(() => handler.HandleResponse(frame), "opcode " + opcode);
+                }
+                Assert.That(f.PendingJobs, Is.Zero);
+            }
+        }
+
         private sealed class Fixture : IMainThreadDispatcher, IDisposable
         {
             public readonly FakeNetwork Network = new FakeNetwork(); public readonly ViewModel Model; public readonly IViewDataUI Data;
             private readonly Queue<Action> jobs = new Queue<Action>();
+            public int PendingJobs => jobs.Count;
             public Fixture()
             {
                 var data = Activator.CreateInstance(typeof(ViewModel).Assembly.GetType("ClientCore.ViewData"), true); Data = (IViewDataUI)data;
@@ -408,7 +456,6 @@ namespace Mmorpg.Client.Tests
             public void Drain() { while (jobs.Count != 0) jobs.Dequeue()(); }
             public void Dispose() => Model.Dispose();
         }
-        private sealed class FakeTick : IReceiveTick { public int Queued; public void Enqueue(byte[] buffer) => Queued++; }
         private sealed class NullLogger : ClientCore.ILogger { public void Log(string text) { } }
         private sealed class FakeNetwork : INetworkService
         {

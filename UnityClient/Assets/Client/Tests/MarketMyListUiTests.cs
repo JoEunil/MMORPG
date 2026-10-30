@@ -240,7 +240,7 @@ namespace Mmorpg.Client.Tests
                 var handlerType = typeof(IViewModelUI).Assembly.GetType("ClientCore.Network.Handler", true);
                 var handler = (ClientCore.Network.IHandlerSock)Activator.CreateInstance(handlerType, true);
                 handlerType.GetMethod("Inject", BindingFlags.Instance | BindingFlags.NonPublic)
-                    .Invoke(handler, new object[] { fixture.Login.Model, null });
+                    .Invoke(handler, new object[] { fixture.Login.Model });
                 byte[] malformed = CancelListingFrame(fixture.Network.LastCancelID, 1101, 1);
                 malformed[7] = 1;
                 Assert.Throws<ArgumentException>(() => handler.HandleResponse(malformed));

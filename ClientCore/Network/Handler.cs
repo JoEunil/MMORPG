@@ -16,21 +16,19 @@ using static ClientCore.PacketHelper.Packet;
 
 namespace ClientCore.Network
 {
-    internal class Handler : IHandlerSock, IHandlerTick
+    internal class Handler : IHandlerSock
     {
         private IViewModelNet _viewModel;
-        private IReceiveTick _recvTick;
-        internal void Inject(IViewModelNet vm, IReceiveTick t)
+        internal void Inject(IViewModelNet vm)
         {
             _viewModel = vm;
-            _recvTick = t;
         }
         public void HandleResponse(byte[] buffer)
         {
             try
             {
                 var header = Packet.ExtractHeader(buffer);
-                // Parse chat/profile frames before simulation routing so invalid flags cannot bypass validation.
+                // Complete frames arrive in TCP order; each parser validates its own flags and layout.
                 switch ((OP_CODE)header.opcode)
                 {
                     case OP_CODE.CHAT_WHISPER:
@@ -89,14 +87,24 @@ namespace ClientCore.Network
                         var diamond = Packet.DeserializeWalletDiamond(header, buffer);
                         _viewModel.WalletDiamondReceived(diamond.requestID, diamond.status, diamond.diamond);
                         return;
-                }
-                if ((header.flags & FLAG_SIMULATION) == FLAG_SIMULATION)
-                {
-                    _recvTick.Enqueue(buffer);
-                    return;
-                }
-                switch ((OP_CODE)header.opcode)
-                {
+                    case OP_CODE.ZONE_CHANGE_RESPONSE:
+                        HandleZoneChangeRes(Packet.DeserializeZoneChange(header, buffer));
+                        return;
+                    case OP_CODE.ZONE_DELTA_UPDATE_BROADCAST:
+                        HandleDeltaUpdate(Packet.DeserializeVariablePacket<DeltaUpdateField>(header, buffer));
+                        return;
+                    case OP_CODE.ZONE_FULL_STATE_BROADCAST:
+                        HandleFullState(Packet.DeserializeFullSnapshot<FullStateField>(header, buffer));
+                        return;
+                    case OP_CODE.MONSTER_DELTA_UPDATE_BROADCAST:
+                        HandleMonsterDelta(Packet.DeserializeVariablePacket<MonsterDeltaField>(header, buffer));
+                        return;
+                    case OP_CODE.MONSTER_FULL_STATE_BROADCAST:
+                        HandleMonsterFull(Packet.DeserializeFullSnapshot<MonsterFullField>(header, buffer));
+                        return;
+                    case OP_CODE.ACTION_RESULT:
+                        HandleActionResult(Packet.DeserializeVariablePacket<ActionResultField>(header, buffer));
+                        return;
                     case OP_CODE.AUTH_RESPONSE:
                         HandleAuthRes(Packet.Deserialize<AuthResponseBody>(header, buffer));
                         break;
@@ -116,8 +124,8 @@ namespace ClientCore.Network
             }
             catch (Exception e)
             {
-                // A malformed C06 frame must reach the socket's existing disconnect boundary.
-                if (buffer.Length >= 7 && (buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 21 || buffer[6] == 25 || buffer[6] == 27 || buffer[6] == 29 || buffer[6] == 31 || buffer[6] == 33 || buffer[6] == 35 || buffer[6] == 37 || buffer[6] == 41 || buffer[6] == 43 || buffer[6] == 44 || buffer[6] == 46 || buffer[6] == 47)) throw;
+                // Malformed simulation frames now reach the same socket disconnect boundary as other responses.
+                if (buffer.Length >= 7 && (buffer[6] == 7 || buffer[6] == 8 || buffer[6] == 9 || buffer[6] == 10 || buffer[6] == 12 || buffer[6] == 17 || buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 21 || buffer[6] == 25 || buffer[6] == 27 || buffer[6] == 29 || buffer[6] == 31 || buffer[6] == 33 || buffer[6] == 35 || buffer[6] == 37 || buffer[6] == 41 || buffer[6] == 43 || buffer[6] == 44 || buffer[6] == 46 || buffer[6] == 47)) throw;
                 ErrorLog(e.Message);
             }
         }
@@ -148,27 +156,27 @@ namespace ClientCore.Network
         {
             _viewModel.InventoryReceived(body.resStatus, body.items);
         }
-        public void HandleZoneChangeRes(STPacket<ZoneChangeResponseBody> packet)
+        private void HandleZoneChangeRes(STPacket<ZoneChangeResponseBody> packet)
         {
             _viewModel.ZoneChageReceived(packet.body.resStatus, packet.body.zoneID, packet.body.chatID, packet.body.zoneInternalID, packet.body.startX, packet.body.startY, packet.body.zoneGeneration, packet.body.ownershipEpoch);
         }
-        public void HandleDeltaUpdate((ushort count, ushort zoneID, ulong generation, DeltaUpdateField[] items) res)
+        private void HandleDeltaUpdate((ushort count, ushort zoneID, ulong generation, DeltaUpdateField[] items) res)
         {
             _viewModel.DeltaReceived(res.zoneID, res.generation, res.count, res.items);
         }
-        public void HandleFullState((ushort count, ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, FullStateField[] items) res)
+        private void HandleFullState((ushort count, ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, FullStateField[] items) res)
         {
             _viewModel.FullReceived(res.zoneID, res.generation, res.ownershipEpoch, res.bootstrapID, res.bootstrapEnd, res.count, res.items);
         } 
-        public void HandleMonsterDelta((ushort count, ushort zoneID, ulong generation, MonsterDeltaField[] items) res)
+        private void HandleMonsterDelta((ushort count, ushort zoneID, ulong generation, MonsterDeltaField[] items) res)
         {
             _viewModel.MonsterDeltaReceived(res.zoneID, res.generation, res.count, res.items);
         }
-        public void HandleMonsterFull((ushort count, ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, MonsterFullField[] items) res)
+        private void HandleMonsterFull((ushort count, ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, MonsterFullField[] items) res)
         {
             _viewModel.MonsterFullReceived(res.zoneID, res.generation, res.ownershipEpoch, res.bootstrapID, res.bootstrapEnd, res.count, res.items);
         }
-        public void HandleActionReult((ushort count, ushort zoneID, ulong generation, ActionResultField[] items) res)
+        private void HandleActionResult((ushort count, ushort zoneID, ulong generation, ActionResultField[] items) res)
         {
             _viewModel.ActionResultReceived(res.zoneID, res.generation, res.count, res.items);
         }
