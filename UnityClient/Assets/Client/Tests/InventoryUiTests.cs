@@ -386,6 +386,96 @@ namespace Mmorpg.Client.Tests
             }
         }
 
+        [Test]
+        public void QuickPotionReflectsConfirmedInventoryAndSharesBagUseSafety()
+        {
+            using (var fixture = new Fixture())
+            {
+                SetPrivate(fixture.World, "ownFull", new FullStateField { hp = 500 });
+                SetPrivate(fixture.Login.Model, "_ownershipEpoch", 1UL);
+                var quickObject = new GameObject("quick potion", typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button));
+                quickObject.transform.SetParent(fixture.Screen.transform, false);
+                var quick = quickObject.GetComponent<UnityEngine.UI.Button>();
+                var quantityObject = new GameObject("quick quantity", typeof(RectTransform), typeof(TextMeshProUGUI));
+                quantityObject.transform.SetParent(quickObject.transform, false);
+                var quantity = quantityObject.GetComponent<TMP_Text>();
+                var useObject = new GameObject("bag use", typeof(RectTransform), typeof(UnityEngine.UI.Button));
+                useObject.transform.SetParent(fixture.Screen.transform, false);
+                SetPrivate(fixture.Screen, "potionQuickSlot", quick);
+                SetPrivate(fixture.Screen, "potionQuantity", quantity);
+                SetPrivate(fixture.Screen, "useButton", useObject.GetComponent<UnityEngine.UI.Button>());
+                fixture.InvokeScreen("UpdateControls");
+                Assert.That(quantity.text, Is.EqualTo("?"));
+                Assert.That(quick.interactable, Is.True, "Unknown count permits a read-only check.");
+                Assert.That(fixture.Network.ItemUses, Is.Zero);
+
+                fixture.OpenBag();
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 3, slot = 0 },
+                    new InventoryItem { itemID = 2, quantity = 5, slot = 1 });
+                fixture.Cards[1].onClick.Invoke();
+                Assert.That(useObject.activeSelf, Is.False, "MP use is not supported.");
+                fixture.Cards[0].onClick.Invoke();
+                Assert.That(useObject.activeSelf, Is.True);
+                Assert.That(quantity.text, Is.EqualTo("3"));
+                fixture.InvokeScreen("UseSelectedItem");
+                fixture.Screen.ClosePanel();
+                Assert.That(fixture.Network.ItemUses, Is.EqualTo(1));
+                Assert.That(quick.interactable, Is.False, "Bag use locks the same quick slot.");
+                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 1, 1, 1, 2, 40);
+                Assert.That(quantity.text, Is.EqualTo("?"), "A result triggers a shared fresh read, not a separate count cache.");
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 2, slot = 0 });
+                Assert.That(quantity.text, Is.EqualTo("2"));
+                Assert.That(quick.interactable, Is.False, "Confirmed quantity cannot bypass the shared cooldown.");
+                SetPrivate(fixture.Screen, "useCooldownDeadline", Time.unscaledTime - 1f);
+                fixture.InvokeScreen("UpdateControls");
+                Assert.That(quick.interactable, Is.True);
+
+                var marketObject = new GameObject("market visibility fixture");
+                marketObject.SetActive(false);
+                marketObject.transform.SetParent(fixture.Screen.transform, false);
+                var market = marketObject.AddComponent<MarketScreen>();
+                market.enabled = false;
+                var marketPanel = new GameObject("market panel");
+                marketPanel.transform.SetParent(marketObject.transform, false);
+                marketPanel.SetActive(false);
+                SetPrivate(market, "bazaarPanel", marketPanel);
+                SetPrivate(market, "inventoryScreen", fixture.Screen);
+                SetPrivate(fixture.Screen, "bazaarScreen", market);
+                SetPrivate(market, "requestPending", true);
+                SetPrivate(market, "writeRequest", Enum.Parse(GetPrivate(market, "writeRequest").GetType(), "Register"));
+                typeof(MarketScreen).GetMethod("CancelPending", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(market, null);
+                Assert.That(quantity.text, Is.EqualTo("?"), "An unknown registration outcome invalidates the shared count immediately.");
+                Assert.That(fixture.Screen.HasInventoryResponse, Is.False);
+                fixture.Screen.RefreshAfterDelivery();
+                fixture.Screen.RequireFreshInventoryOnOpen();
+                int readsBeforeOldReply = fixture.Network.Requests;
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 9, slot = 0 });
+                Assert.That(fixture.Network.Requests, Is.EqualTo(readsBeforeOldReply + 1));
+                Assert.That(quantity.text, Is.EqualTo("?"), "An older pending read cannot restore the invalidated count.");
+                marketPanel.SetActive(true);
+                fixture.Screen.RefreshShortcutControls();
+                Assert.That(quick.interactable, Is.False);
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 2, slot = 0 });
+                Assert.That(quantity.text, Is.EqualTo("2"));
+                Assert.That(quick.interactable, Is.False, "Finishing a read while market is open cannot enable the shortcut.");
+                SetPrivate(market, "requestPending", true);
+                SetPrivate(market, "writeRequest", Enum.Parse(GetPrivate(market, "writeRequest").GetType(), "Register"));
+                market.ClosePanel();
+                Assert.That(quick.interactable, Is.True, "Closing market refreshes eligibility even when its write callback is retained.");
+
+                fixture.OpenBag();
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 2, slot = 0 });
+                fixture.Cards[0].onClick.Invoke();
+                fixture.InvokeScreen("UseSelectedItem");
+                fixture.Screen.ClosePanel();
+                SetPrivate(fixture.Screen, "useDeadline", Time.unscaledTime - 1f);
+                fixture.InvokeScreen("Update");
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 2, slot = 0 });
+                Assert.That(quick.interactable, Is.False, "A fresh bag response must not release an unknown use outcome.");
+                Assert.That(fixture.Network.ItemUses, Is.EqualTo(2));
+            }
+        }
+
         private sealed class Fixture : IDisposable
         {
             private readonly GameObject root;
@@ -581,6 +671,7 @@ namespace Mmorpg.Client.Tests
         private sealed class FakeNetwork : INetworkService
         {
             public int Requests;
+            public int ItemUses;
             public void RequestBazaarBuy(uint requestID, ulong listingID) { }
             public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
@@ -588,7 +679,7 @@ namespace Mmorpg.Client.Tests
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { }
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
             public void RequestWallet(uint requestID) { }
-            public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
+            public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { ItemUses++; }
             public void RequestInventory() => Requests++;
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void CharacterList() { }

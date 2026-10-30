@@ -10,8 +10,9 @@ namespace Mmorpg.Client
     [UnityEngine.Scripting.APIUpdating.MovedFrom(true, sourceNamespace: "C02", sourceAssembly: "C02.Runtime", sourceClassName: "C04ObservedWorld")]
     public sealed class ObservedWorld : MonoBehaviour
     {
-        private const double PresentationDelay = 0.075;
-        private const int MotionSampleCapacity = 4;
+        // Monster updates normally arrive every 100ms; keep headroom for frame/arrival jitter.
+        private const double PresentationDelay = 0.150;
+        private const int MotionSampleCapacity = 8;
 
         private struct MotionSample
         {
@@ -240,10 +241,10 @@ namespace Mmorpg.Client
             if (model == null) return;
             var source = model;
             int version = generation;
-            playerFull = (count, states) => { if (Accept(source, version)) ApplyPlayerFull(count, states, Time.realtimeSinceStartupAsDouble); };
-            playerDelta = (count, updates) => { if (Accept(source, version)) ApplyPlayerDelta(count, updates); };
-            monsterFull = (count, states) => { if (Accept(source, version)) ApplyMonsterFull(count, states, Time.realtimeSinceStartupAsDouble); };
-            monsterDelta = (count, updates) => { if (Accept(source, version)) ApplyMonsterDelta(count, updates); };
+            playerFull = (count, states) => { if (Accept(source, version)) ApplyPlayerFull(count, states, SampleTime(source)); };
+            playerDelta = (count, updates) => { if (Accept(source, version)) ApplyPlayerDelta(count, updates, SampleTime(source)); };
+            monsterFull = (count, states) => { if (Accept(source, version)) ApplyMonsterFull(count, states, SampleTime(source)); };
+            monsterDelta = (count, updates) => { if (Accept(source, version)) ApplyMonsterDelta(count, updates, SampleTime(source)); };
             actionResults = (count, results) => { if (Accept(source, version)) ApplyMonsterActionResults(count, results); };
             model.OnFullReceived += playerFull;
             model.OnDeltaReceived += playerDelta;
@@ -373,7 +374,10 @@ namespace Mmorpg.Client
             }
         }
 
-        private void ApplyPlayerDelta(ushort count, DeltaUpdateField[] updates)
+        private static double SampleTime(IViewModelUI source) =>
+            Time.realtimeSinceStartupAsDouble - source.SimulationSampleAgeSeconds;
+
+        private void ApplyPlayerDelta(ushort count, DeltaUpdateField[] updates, double now)
         {
             if (updates == null || count > updates.Length) return;
             var candidates = new Dictionary<uint, (FullStateField state, bool invalid)>();
@@ -407,13 +411,13 @@ namespace Mmorpg.Client
                     entry.Vitals.PulseDamage();
                     if (pair.Value.state.hp > 0) entry.ActorMotion.PlayHit();
                 }
-                entry.Motion.Add(Time.realtimeSinceStartupAsDouble, pair.Value.state.x, pair.Value.state.y);
+                entry.Motion.Add(now, pair.Value.state.x, pair.Value.state.y);
                 entry.State = pair.Value.state;
                 entry.Vitals.SetHealth(entry.State.hp, entry.State.maxHp);
             }
         }
 
-        private void ApplyMonsterDelta(ushort count, MonsterDeltaField[] updates)
+        private void ApplyMonsterDelta(ushort count, MonsterDeltaField[] updates, double now)
         {
             if (updates == null || count > updates.Length) return;
             var candidates = new Dictionary<ushort, (MonsterFullField state, bool invalid, bool deathSeen)>();
@@ -451,7 +455,7 @@ namespace Mmorpg.Client
                 if (pair.Value.deathSeen) { RemoveMonster(pair.Key, true); continue; }
                 var entry = monsters[pair.Key];
                 bool damaged = pair.Value.state.hp < entry.State.hp;
-                entry.Motion.Add(Time.realtimeSinceStartupAsDouble, pair.Value.state.x, pair.Value.state.y);
+                entry.Motion.Add(now, pair.Value.state.x, pair.Value.state.y);
                 entry.State = pair.Value.state;
                 entry.Vitals.SetHealth(entry.State.hp, entry.State.maxHp);
                 if (damaged) { entry.Vitals.PulseDamage(); entry.ActorMotion.PlayHit(); }

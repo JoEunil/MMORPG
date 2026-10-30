@@ -265,7 +265,7 @@ namespace Mmorpg.Client.Editor
             var oldField = world.Find("V01Outpost"); if (oldField != null) Object.DestroyImmediate(oldField.gameObject);
             Outpost(world, new Vector3(10, 0, 10));
             var camera = Find("QuarterViewCamera").GetComponent<Camera>();
-            camera.orthographicSize = 7.2f; camera.backgroundColor = new Color(.64f,.71f,.73f);
+            camera.orthographicSize = 9.36f; camera.backgroundColor = new Color(.64f,.71f,.73f);
             var light = Find("FieldLight").GetComponent<Light>();
             light.color = new Color(1f, .94f, .82f); light.intensity = 1.4f;
             light.shadows = LightShadows.Soft; light.transform.rotation = Quaternion.Euler(48, -35, 0);

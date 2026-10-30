@@ -7,7 +7,7 @@
 | 공통 실행 지침 | [AGENTS](../../AGENTS.md) · [개발 기준](DEVELOPMENT_GUIDELINES.md) |
 | 현재 상태·미확인·승인 | [HANDOFF](HANDOFF.md) |
 | 작업 절차·기획/아트 선택 | [WORKFLOW](WORKFLOW.md) · [역할 지침](roles/) |
-| 게임 방향·범위 | [BRIEF](BRIEF.md) · [개선 순서](MMORPG_REVISION_PLAN.md) |
+| 게임 방향·범위 | [BRIEF](BRIEF.md) · [개선 순서](MMORPG_REVISION_PLAN.md) · [플레이 피드백 후속안](PLAY_FEEDBACK_PLAN.md) |
 | 도구·로컬 환경 | [PIPELINE](PIPELINE_GUIDE.md) · [로컬 준비](LOCAL_PREPARATION.md) · [MCP 기능](MCP_CAPABILITIES.md) |
 | Slack·Git 전달 | [Slack](SLACK_WORKFLOW.md) · [전달 기준](DELIVERY.md) |
 | 공개 결과·지표 | [SHOWCASE](SHOWCASE.md) · [공개 기준](PORTFOLIO_GUIDE.md) · [Agent 집계](AGENT_USAGE.md) |

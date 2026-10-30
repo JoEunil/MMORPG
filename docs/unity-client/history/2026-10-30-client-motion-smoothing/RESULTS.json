@@ -1,0 +1,50 @@
+{
+  "scope": "client-only motion and HP quick slot",
+  "branch": "codex/client-motion-smoothing",
+  "base": "37e92f4",
+  "source": "UnityClient/Builds/C10-Delivery/source",
+  "editorProject": "ROOT/UnityClient",
+  "serverFilesChanged": 0,
+  "serverRestarted": false,
+  "realInputPerformed": false,
+  "build": "ClientCore Release netstandard2.0 passed",
+  "tests": [
+    {
+      "result": "passed",
+      "name": "MotionHistorySupportsTenHertzWithArrivalJitterWithoutPeriodicHolds",
+      "mode": "Unity PlayMode fixture"
+    },
+    {
+      "result": "passed",
+      "name": "SnapshotDeliveryPreservesReceiptSpacingAcrossDispatcherBatch",
+      "mode": "Unity PlayMode fixture"
+    },
+    {
+      "result": "passed",
+      "name": "QuickPotionReflectsConfirmedInventoryAndSharesBagUseSafety",
+      "mode": "Unity PlayMode fixture"
+    }
+  ],
+  "setup": {
+    "orthographicSize": 9.36,
+    "quickSlotSerializedReferences": "3/3 verified by Editor",
+    "visibleWidthHeightScale": 1.3,
+    "editorSceneSaved": true,
+    "priorOrthographicSize": 7.2
+  },
+  "limitations": [
+    "Actual live monster movement and physical key1 input not verified.",
+    "No server tick timestamp on wire; client dispatcher waiting is corrected, not network batching.",
+    "Bootstrap pair begins from delivery time.",
+    "Wider camera AOI coverage not confirmed in server session."
+  ],
+  "environment": [
+    "First restricted launch failed licensing IPC; authorized Editor run succeeded.",
+    "EditMode filter selected zero tests; not counted as passed. Correct existing PlayMode assembly was used."
+  ],
+  "reports": [
+    "ROOT/UnityClient/Builds/ClientMotion/results-playmode.xml",
+    "ROOT/UnityClient/Builds/ClientMotion/results-potion.xml"
+  ],
+  "rawEditorLogsCommitted": false
+}

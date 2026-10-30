@@ -441,6 +441,26 @@ namespace Mmorpg.Client.Tests
             }
         }
 
+        [Test]
+        [Category("MotionSmoothing")]
+        public void SnapshotDeliveryPreservesReceiptSpacingAcrossDispatcherBatch()
+        {
+            using (var f = new Fixture())
+            {
+                var ages = new List<double>();
+                f.Model.OnMonsterDeltaReceived += (count, fields) => ages.Add(f.Model.SimulationSampleAgeSeconds);
+                Assert.That(f.Model.SimulationSampleAgeSeconds, Is.Zero);
+                f.Model.MonsterDeltaReceived(1, 1, 0, Array.Empty<MonsterDeltaField>());
+                System.Threading.Thread.Sleep(120);
+                f.Model.MonsterDeltaReceived(1, 1, 0, Array.Empty<MonsterDeltaField>());
+                Assert.That(ages, Is.Empty);
+                f.Drain();
+                Assert.That(ages.Count, Is.EqualTo(2));
+                Assert.That(ages[0] - ages[1], Is.GreaterThan(.08), "A batch must retain the spacing from receipt, not stamp both snapshots at delivery.");
+                Assert.That(f.Model.SimulationSampleAgeSeconds, Is.Zero, "Callback timing must not leak into unrelated events.");
+            }
+        }
+
         private sealed class Fixture : IMainThreadDispatcher, IDisposable
         {
             public readonly FakeNetwork Network = new FakeNetwork(); public readonly ViewModel Model; public readonly IViewDataUI Data;

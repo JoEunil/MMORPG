@@ -27,6 +27,9 @@ namespace ClientCore
         private bool _respawnPending;
         private long _respawnRetryDeadline;
         private int _selfHP;
+        private long _simulationSampleTimestamp;
+        public double SimulationSampleAgeSeconds => _simulationSampleTimestamp == 0 ? 0 :
+            (Stopwatch.GetTimestamp() - _simulationSampleTimestamp) / (double)Stopwatch.Frequency;
         private volatile bool _connectionFailed;
         // Profile state belongs to the existing main-thread dispatcher, never the tick thread.
         private readonly Dictionary<uint, ProfileEntry> _profiles = new Dictionary<uint, ProfileEntry>();
@@ -917,9 +920,19 @@ namespace ClientCore
         private bool AcceptSimulation(ushort zoneID, ulong generation) => !_lifetime.IsCancellationRequested &&
             !_connectionFailed && !_awaitingZoneAck && _zoneID != 0 && zoneID == _zoneID && generation >= _zoneGeneration;
 
+        private void DeliverSnapshot<T>(long receivedAt, Action<ushort, T[]> subscribers, ushort count, T[] fields)
+        {
+            // Preserve receipt spacing even when several dispatcher jobs run in one Unity frame.
+            long previous = _simulationSampleTimestamp;
+            _simulationSampleTimestamp = receivedAt;
+            try { subscribers?.Invoke(count, fields); }
+            finally { _simulationSampleTimestamp = previous; }
+        }
+
         public void DeltaReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.DeltaUpdateField[] updates)
         {
             if (_lifetime.IsCancellationRequested) return;
+            long receivedAt = Stopwatch.GetTimestamp();
             var subscribers = OnDeltaReceived;
             _threadDispatcher.Post(() =>
             {
@@ -932,7 +945,7 @@ namespace ClientCore
                         ObserveProfile(id, updates[i].fieldVal);
                 }
                 RequestProfiles();
-                subscribers?.Invoke(count, updates);
+                DeliverSnapshot(receivedAt, subscribers, count, updates);
             });
         }
         public void FullReceived(ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, ushort count, PacketHelper.FullStateField[] states)
@@ -943,6 +956,7 @@ namespace ClientCore
                 BootstrapReceived(false, zoneID, generation, ownershipEpoch, bootstrapID, bootstrapEnd, states, null);
                 return;
             }
+            long receivedAt = Stopwatch.GetTimestamp();
             var subscribers = OnFullReceived;
             _threadDispatcher.Post(() =>
             {
@@ -955,16 +969,17 @@ namespace ClientCore
                     ObserveProfile(states[i].profileId, states[i].profileVersion);
                 }
                 RequestProfiles();
-                subscribers?.Invoke(count, states);
+                DeliverSnapshot(receivedAt, subscribers, count, states);
             });
         }
        public void MonsterDeltaReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.MonsterDeltaField[] updates)
         {
             if (_lifetime.IsCancellationRequested) return;
+            long receivedAt = Stopwatch.GetTimestamp();
             var subscribers = OnMonsterDeltaReceived;
             _threadDispatcher.Post(() =>
             {
-                if (AcceptSimulation(zoneID, generation) && _worldReady) subscribers?.Invoke(count, updates);
+                if (AcceptSimulation(zoneID, generation) && _worldReady) DeliverSnapshot(receivedAt, subscribers, count, updates);
             });
         }
         public void MonsterFullReceived(ushort zoneID, ulong generation, ulong ownershipEpoch, ulong bootstrapID, bool bootstrapEnd, ushort count, PacketHelper.MonsterFullField[] states)
@@ -975,10 +990,11 @@ namespace ClientCore
                 BootstrapReceived(true, zoneID, generation, ownershipEpoch, bootstrapID, bootstrapEnd, null, states);
                 return;
             }
+            long receivedAt = Stopwatch.GetTimestamp();
             var subscribers = OnMonsterFullReceived;
             _threadDispatcher.Post(() =>
             {
-                if (AcceptSimulation(zoneID, generation) && _worldReady) subscribers?.Invoke(count, states);
+                if (AcceptSimulation(zoneID, generation) && _worldReady) DeliverSnapshot(receivedAt, subscribers, count, states);
             });
         }
 

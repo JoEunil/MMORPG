@@ -35,6 +35,10 @@ namespace Mmorpg.Client
         [SerializeField] private UnityEngine.UI.Button useButton;
         [SerializeField] private TMP_Text useStatus;
         [SerializeField] private TMP_Text lootNotice;
+        [SerializeField] private UnityEngine.UI.Button potionQuickSlot;
+        [SerializeField] private TMP_Text potionQuantity;
+        [SerializeField] private TMP_Text potionQuickStatus;
+        private float potionNoticeDeadline;
         private IViewModelUI model;
         private float lootNoticeDeadline;
         private bool usePending;
@@ -85,6 +89,7 @@ namespace Mmorpg.Client
             refreshButton.onClick.AddListener(RequestInventory);
             closeButton.onClick.AddListener(ClosePanel);
             if (useButton != null) useButton.onClick.AddListener(UseSelectedItem);
+            if (potionQuickSlot != null) potionQuickSlot.onClick.AddListener(UseQuickPotion);
             loginScreen.ClientChanged += ChangeClient;
             worldScreen.WorldStateChanged += WorldChanged;
             ChangeClient(loginScreen.Model);
@@ -92,6 +97,11 @@ namespace Mmorpg.Client
 
         private void Update()
         {
+            if (potionNoticeDeadline > 0 && Time.unscaledTime >= potionNoticeDeadline)
+            {
+                potionNoticeDeadline = 0;
+                if (potionQuickStatus != null) potionQuickStatus.text = string.Empty;
+            }
             if (lootNoticeDeadline > 0 && (!WorldAvailable || model == null || loginScreen == null ||
                 loginScreen.Model != model || Time.unscaledTime >= lootNoticeDeadline))
                 ClearLootNotice();
@@ -112,6 +122,7 @@ namespace Mmorpg.Client
             {
                 if (GameUiInput.EscapeAvailableForPanel() && IsOpen) ClosePanel();
                 else if (Keyboard.current.iKey.wasPressedThisFrame && GameUiInput.CanUseWorldShortcuts()) TogglePanel();
+                else if (Keyboard.current.digit1Key.wasPressedThisFrame) UseQuickPotion();
             }
 
             if (failureRetryScheduled)
@@ -204,9 +215,7 @@ namespace Mmorpg.Client
 
         private bool CanUseSelectedItem()
         {
-            if (!IsOpen || !WorldAvailable || model == null || loginScreen == null || loginScreen.Model != model ||
-                !hasInventoryResponse || requestPending || requestTimedOut || usePending ||
-                Time.unscaledTime < useCooldownDeadline || !hasSelectedItem || selectedItemID != 1 || loginScreen.Data == null)
+            if (!IsOpen || !ItemUseAvailable || !hasSelectedItem || selectedItemID != 1)
                 return false;
             foreach (InventoryItemView item in loginScreen.Data.GetInventory())
                 if (item.Slot == selectedSlot && item.ItemID == selectedItemID && item.Quantity > 0) return true;
@@ -216,6 +225,37 @@ namespace Mmorpg.Client
         private void UseSelectedItem()
         {
             if (!CanUseSelectedItem()) return;
+            UseHpPotion();
+        }
+
+        private bool ItemUseAvailable => WorldAvailable && model != null && loginScreen != null &&
+            loginScreen.Model == model && loginScreen.Data != null && hasInventoryResponse &&
+            !requestPending && !requestTimedOut && !usePending && Time.unscaledTime >= useCooldownDeadline;
+
+        private bool QuickPotionAvailable => WorldAvailable && model != null && loginScreen != null &&
+            loginScreen.Model == model && !IsOpen && (bazaarScreen == null || !bazaarScreen.IsOpen) &&
+            worldScreen.CanAct;
+
+        private void UseQuickPotion()
+        {
+            if (!QuickPotionAvailable || !Application.isFocused || !GameUiInput.CanUseWorldShortcuts() ||
+                requestPending || requestTimedOut || usePending || Time.unscaledTime < useCooldownDeadline) return;
+            if (!hasInventoryResponse)
+            {
+                RequestInventory();
+                return;
+            }
+            if (!ItemUseAvailable) return;
+            foreach (InventoryItemView item in loginScreen.Data.GetInventory())
+                if (item.ItemID == 1 && item.Quantity > 0)
+                {
+                    UseHpPotion();
+                    return;
+                }
+        }
+
+        private void UseHpPotion()
+        {
             usePending = true;
             useTimedOut = false;
             useDeadline = Time.unscaledTime + RequestTimeoutSeconds;
@@ -223,7 +263,7 @@ namespace Mmorpg.Client
             UpdateControls();
             try
             {
-                if (model.RequestItemUse(selectedItemID)) return;
+                if (model.RequestItemUse(1)) return;
                 usePending = false;
                 SetUseStatus("Cannot use this item now. Reconnect if another use is unresolved.");
             }
@@ -267,7 +307,7 @@ namespace Mmorpg.Client
             if (status == 1 || status == 5 || status == 7)
             {
                 if (!IsOpen) RequireFreshInventoryOnOpen();
-                if (IsOpen || requestPending) RefreshAfterDelivery();
+                RefreshAfterDelivery();
             }
             UpdateControls();
         }
@@ -285,7 +325,7 @@ namespace Mmorpg.Client
             if (status == 1)
             {
                 if (!IsOpen) RequireFreshInventoryOnOpen();
-                if (IsOpen || requestPending) RefreshAfterDelivery();
+                RefreshAfterDelivery();
             }
             UpdateControls();
         }
@@ -293,6 +333,8 @@ namespace Mmorpg.Client
         private void SetUseStatus(string message)
         {
             if (useStatus != null) useStatus.text = message;
+            if (potionQuickStatus != null) potionQuickStatus.text = message;
+            potionNoticeDeadline = string.IsNullOrEmpty(message) ? 0 : Time.unscaledTime + 6f;
         }
 
         private void ShowLootFailure(string message)
@@ -363,7 +405,12 @@ namespace Mmorpg.Client
         {
             // A lost mutation response can arrive after an earlier bag read; keep manual opens fresh for this model.
             refreshOnOpenAfterUncertainDelivery = true;
+            hasInventoryResponse = false;
+            if (requestPending) refreshAfterCurrentRequest = true;
+            UpdateControls();
         }
+
+        public void RefreshShortcutControls() => UpdateControls();
 
         private void RequestInventory()
         {
@@ -599,7 +646,27 @@ namespace Mmorpg.Client
             if (bagButton != null) bagButton.interactable = available;
             if (refreshButton != null) refreshButton.interactable = available && !requestPending && !requestTimedOut;
             if (closeButton != null) closeButton.interactable = true;
-            if (useButton != null) useButton.interactable = CanUseSelectedItem();
+            if (useButton != null)
+            {
+                useButton.gameObject.SetActive(hasSelectedItem && selectedItemID == 1);
+                useButton.interactable = CanUseSelectedItem();
+            }
+            if (potionQuickSlot != null)
+            {
+                potionQuickSlot.gameObject.SetActive(available);
+                bool known = hasInventoryResponse && !requestPending && !requestTimedOut;
+                uint quantity = 0;
+                if (known && loginScreen.Data != null)
+                    foreach (InventoryItemView item in loginScreen.Data.GetInventory())
+                        if (item.ItemID == 1) quantity += item.Quantity;
+                if (potionQuantity != null) potionQuantity.text = known ? quantity.ToString(CultureInfo.InvariantCulture) : "?";
+                if (potionQuickStatus != null)
+                {
+                    if (requestTimedOut) potionQuickStatus.text = "Bag result unknown. Reconnect before checking potions.";
+                }
+                potionQuickSlot.interactable = QuickPotionAvailable && !requestPending && !requestTimedOut &&
+                    !usePending && Time.unscaledTime >= useCooldownDeadline && (!known || quantity > 0);
+            }
         }
 
         private static TMP_Text CreateText(string name, Transform parent, string value, float size, Color color,
@@ -642,6 +709,7 @@ namespace Mmorpg.Client
             if (refreshButton != null) refreshButton.onClick.RemoveListener(RequestInventory);
             if (closeButton != null) closeButton.onClick.RemoveListener(ClosePanel);
             if (useButton != null) useButton.onClick.RemoveListener(UseSelectedItem);
+            if (potionQuickSlot != null) potionQuickSlot.onClick.RemoveListener(UseQuickPotion);
             SetModelSubscriptions(false);
             if (usePending) RequireFreshInventoryOnOpen();
             ResetItemUse();
