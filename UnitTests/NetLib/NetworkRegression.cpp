@@ -1,4 +1,4 @@
-#include <gtest/gtest.h>
+﻿#include <gtest/gtest.h>
 
 #include <algorithm>
 #include <chrono>
@@ -84,8 +84,8 @@ namespace Net {
             NetPacketFilter::Initialize(&dispatcher, &manager, &collector);
             context.Clear(session);
             auto& shard = manager.m_sessionShard[(socket >> 2) & SESSION_SHARD_MASK];
-            shard.stateMap[socket].SetSession(session);
-            shard.contextMap[socket] = &context;
+            shard.sessions[socket].state.InitializeSession(session);
+            shard.sessions[socket].context = &context;
             manager.m_reverseShard[session & SESSION_SHARD_MASK].socketMap[session] = socket;
         }
         void TearDown() override {
@@ -133,24 +133,45 @@ namespace Net {
             return true;
         }
 
-        std::atomic_flag& ShardFlag() {
-            return manager.m_sessionShard[(socket >> 2) & SESSION_SHARD_MASK].flag;
+        std::mutex& ShardMutex() {
+            return manager.m_sessionShard[(socket >> 2) & SESSION_SHARD_MASK].mutex;
         }
 
         uint64_t CurrentRTT() {
-            return manager.m_sessionShard[(socket >> 2) & SESSION_SHARD_MASK].stateMap.at(socket).GetRtt();
+            return manager.m_sessionShard[(socket >> 2) & SESSION_SHARD_MASK].sessions.at(socket).state.GetRtt();
         }
 
         void ReuseSocketForNewSession() {
-            manager.m_sessionShard[(socket >> 2) & SESSION_SHARD_MASK].stateMap.at(socket).SetSession(session + 1);
+            manager.m_sessionShard[(socket >> 2) & SESSION_SHARD_MASK].sessions.at(socket).state.InitializeSession(session + 1);
         }
 
         void ReachPingLimit() {
-            auto& state = manager.m_sessionShard[(socket >> 2) & SESSION_SHARD_MASK].stateMap.at(socket);
+            auto& state = manager.m_sessionShard[(socket >> 2) & SESSION_SHARD_MASK].sessions.at(socket).state;
             for (uint8_t i = 0; i < PING_COUNT_LIMIT; ++i)
                 state.PingSent();
         }
     };
+
+    TEST_F(NetworkRegressionTest, SessionLookupRejectsStaleAndMissingConnections) {
+        ClientContext* owner = nullptr;
+        uint64_t id = 0;
+        uint8_t* buffer = nullptr;
+        uint16_t length = 0;
+
+        EXPECT_FALSE(manager.BeginRecvIO(socket, session + 1, owner, id, buffer, length));
+        EXPECT_FALSE(manager.BeginRecvIO(socket + 4, session, owner, id, buffer, length));
+        EXPECT_FALSE(manager.Disconnect(socket, session + 1));
+        EXPECT_FALSE(manager.Disconnect(socket + 4, session));
+
+        ASSERT_TRUE(manager.BeginRecvIO(socket, session, owner, id, buffer, length));
+        EXPECT_EQ(owner, &context);
+        EXPECT_EQ(id, session);
+        EXPECT_NE(buffer, nullptr);
+        EXPECT_GT(length, 0);
+        context.CompleteRecvIO(session);
+        EXPECT_TRUE(context.IsSessionAlive(session));
+        EXPECT_EQ(manager.GetSocket(session), socket);
+    }
 
     TEST_F(NetworkRegressionTest, BazaarSearchExactPacketDispatchesAfterFragmentedReceive) {
         auto bytes = MakeClientPacket(Core::OP::BAZAAR_SEARCH, 16, 16);
@@ -258,8 +279,7 @@ namespace Net {
         std::promise<void> parsed;
         auto parsedFuture = parsed.get_future();
         dispatcher.onPong = [&] { parsed.set_value(); };
-        auto& flag = ShardFlag();
-        ASSERT_FALSE(flag.test_and_set());
+        std::unique_lock shardLock(ShardMutex());
         auto received = std::async(std::launch::async, [&] {
             const auto size = sizeof(Core::PacketStruct<Core::Pong>);
             return Receive(MakeClientPacket(Core::OP::PONG, static_cast<uint32_t>(size), size));
@@ -274,7 +294,7 @@ namespace Net {
                 std::this_thread::yield();
         }
         // 실패하더라도 shard를 해제해서 비동기 작업과 fixture가 안전하게 종료된다.
-        flag.clear();
+        shardLock.unlock();
         EXPECT_TRUE(unlocked);
         ASSERT_EQ(received.wait_for(std::chrono::seconds(2)), std::future_status::ready);
         EXPECT_TRUE(received.get());
@@ -361,7 +381,7 @@ namespace Net {
 
     TEST(SessionStateRegressionTest, UnansweredPingsReachDisconnectLimit) {
         SessionState state;
-        state.SetSession(1);
+        state.InitializeSession(1);
         for (uint8_t i = 0; i < PING_COUNT_LIMIT; ++i) {
             ASSERT_TRUE(state.CheckSession());
             state.PingSent();
@@ -377,17 +397,17 @@ namespace Net {
 
     TEST(SessionStateRegressionTest, ReuseResetsReceiveSizeWindow) {
         SessionState state;
-        state.SetSession(1);
+        state.InitializeSession(1);
         for (uint32_t i = 0; i < RECV_WINDOW - 1; ++i)
             state.BufferReceived(RECV_BUFFER_SIZE);
-        state.SetSession(2);
+        state.InitializeSession(2);
         state.BufferReceived(sizeof(Core::PacketHeader));
         EXPECT_TRUE(state.CheckSession());
     }
 
     TEST(SessionStateRegressionTest, ReceiveSizeFailureStaysInvalid) {
         SessionState state;
-        state.SetSession(1);
+        state.InitializeSession(1);
         for (uint32_t i = 0; i < RECV_WINDOW; ++i)
             state.BufferReceived(RECV_BUFFER_SIZE);
         ASSERT_FALSE(state.CheckSession());

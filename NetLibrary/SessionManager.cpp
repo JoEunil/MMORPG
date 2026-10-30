@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "SessionManager.h"
 #include "PingManager.h"
 #include "ClientContextPool.h"
@@ -10,29 +10,22 @@ namespace Net {
             m_connectionCnt.fetch_sub(1, std::memory_order_relaxed);
             return false;
         }
-        uint64_t session = 0;
+        const uint64_t session = m_sessionGenerator.fetch_add(1, std::memory_order_relaxed);
         {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
-            Base::SpinLockGuard lock(shard.flag);
-            auto it = shard.contextMap.find(sock);
-            if (it != shard.contextMap.end()) {
-                // 절대 불가능
-                m_connectionCnt.fetch_sub(1, std::memory_order_relaxed);
-                return false;
-            }
-            session = m_sessionGenerator.fetch_add(1, std::memory_order_relaxed);
+            auto& reverse = m_reverseShard[session & SESSION_SHARD_MASK];
+            std::scoped_lock lock(shard.mutex, reverse.mutex);
+            assert(shard.sessions.find(sock) == shard.sessions.end());
             auto ctx = contextPool->Acquire(session);
             if (ctx == nullptr) {
                 m_connectionCnt.fetch_sub(1, std::memory_order_relaxed);
                 return false;
             }
-            shard.stateMap[sock].InitializeSession(session);
-            shard.contextMap[sock] = ctx;
-        }
-        {
-            auto& shard = m_reverseShard[session & SESSION_SHARD_MASK];
-            Base::SpinLockGuard lock(shard.flag);
-            shard.socketMap[session] = sock;
+            SessionEntry entry{ {}, ctx };
+            entry.state.InitializeSession(session);
+            shard.sessions.emplace(sock, std::move(entry));
+            assert(reverse.socketMap.find(session) == reverse.socketMap.end());
+            reverse.socketMap[session] = sock;
         }
         Core::gameLogger->LogInfo("net session", "Session added", "sessionID", session, "socket", sock);
         return true;
@@ -44,56 +37,36 @@ namespace Net {
     }
 
     bool SessionManager::Disconnect(SOCKET sock, uint64_t expectedSessionID) {
-        uint64_t session = 0;
+        const uint64_t session = expectedSessionID;
         {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
-            Base::SpinLockGuard lock(shard.flag);
-            {
-                auto it = shard.stateMap.find(sock);
-                if (it == shard.stateMap.end()) {
-                    return false;
-                }
-                session = it->second.GetSessionID();
-                if (session != expectedSessionID)
-                    return false;
-                shard.stateMap.erase(it);
-            }
-            {
-                auto it = shard.contextMap.find(sock);
-                if (it == shard.contextMap.end()) {
-                    return true;
-                }
-                it->second->Disconnect();
-                contextPool->Return(it->second);
-                shard.contextMap.erase(it);
-            }
+            auto& reverse = m_reverseShard[session & SESSION_SHARD_MASK];
+            std::scoped_lock lock(shard.mutex, reverse.mutex);
+            auto stateIt = shard.sessions.find(sock);
+            if (stateIt == shard.sessions.end())
+                return false;
+            if (stateIt->second.state.GetSessionID() != expectedSessionID)
+                return false;
+
+            auto reverseIt = reverse.socketMap.find(session);
+            assert(reverseIt != reverse.socketMap.end() && reverseIt->second == sock);
+            stateIt->second.context->Disconnect();
+            contextPool->Return(stateIt->second.context);
+            shard.sessions.erase(stateIt);
+            reverse.socketMap.erase(reverseIt);
+            m_connectionCnt.fetch_sub(1, std::memory_order_relaxed);
         }
-        {
-            auto& shard = m_reverseShard[session & SESSION_SHARD_MASK];
-            Base::SpinLockGuard lock(shard.flag);
-            auto it = shard.socketMap.find(session);
-            if (it == shard.socketMap.end()) {
-                return true;
-            }
-            shard.socketMap.erase(session);
-        }
-        m_connectionCnt.fetch_sub(1, std::memory_order_relaxed);
         Core::gameLogger->LogInfo("net session", "Session disconnected", "sessionID", session, "socket", sock);
         return true;
     }
 
-    // spinlock vs mutex
-    // - 샤드 단위로 클라이언트가 분산되어, 엔티티 수를 조절할 수 있음.
-    // - 샤드로 lock contension 확률이 낮음
-    // - 상태 조회 내부에서도 lock이나 루프가 없어서 빠름
-    // - unordered_map, out은 단일 접근이기 때문에 때문에 캐시 효음 높음.
-    // - 따라서 이 경우 Spin Lock 사용이 효율적임 (mutex보다 context switching 비용 절감)
     void SessionManager::GetSessionSnapshot(int shardID, std::vector<PingStruct>& out) {
         auto& shard = m_sessionShard[shardID & SESSION_SHARD_MASK];
-        Base::SpinLockGuard lock(shard.flag);
+        std::lock_guard lock(shard.mutex);
         out.clear();
-        for (auto&[socket, state]: shard.stateMap)
+        for (auto&[socket, entry]: shard.sessions)
         {
+            auto& state = entry.state;
             const bool alive = state.CheckSession();
             out.emplace_back(socket, state.GetSessionID(), state.GetRtt(), alive);
             if (alive)

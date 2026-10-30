@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <winsock2.h>
 #include <cstdint>
+#include <cassert>
 #include <mutex>
 #include <atomic>
 #include <new>
@@ -11,23 +12,22 @@
 #include "ClientContext.h"
 #include "STOverlappedEx.h"
 
-#include <BaseLib/SpinLockGuard.h>
 
 namespace Net{
-    // 네트워크 레벨의 공유 자료구조를 담기 때문에 shard를 통해 lock contension을 줄이고
-    // spin lock을 적용해 lock으로 인한 context switching을 줄인다.
-    // critical section이 매우 짧아야 한다.
+    // 등록과 해제는 정방향·역방향 샤드를 함께 잠가 일관성을 유지한다.
+
+    struct SessionEntry {
+        SessionState state;
+        ClientContext* context;
+    };
 
     struct alignas(std::hardware_destructive_interference_size) SessionShard {
-        std::atomic_flag flag;
-        char padding[std::hardware_destructive_interference_size - sizeof(std::atomic_flag)];
+        std::mutex mutex;
 
-        std::unordered_map<SOCKET, SessionState> stateMap; // socket -> sessionState
-        std::unordered_map<uint64_t, ClientContext*> contextMap; // session -> context
+        std::unordered_map<SOCKET, SessionEntry> sessions;
     };
     struct alignas(std::hardware_destructive_interference_size) ReverseShard {
-        std::atomic_flag flag;
-        char padding[std::hardware_destructive_interference_size- sizeof(std::atomic_flag)];
+        std::mutex mutex;
 
         std::unordered_map<uint64_t, SOCKET> socketMap; // session -> socket 조회용도
     };
@@ -46,8 +46,7 @@ namespace Net{
             for (int i = 0; i < SESSION_SHARD_SIZE; i++)
             {
                 auto& shard = m_sessionShard[i];
-                shard.stateMap.reserve(MAX_CLIENT_CONNECTION / SESSION_SHARD_SIZE);
-                shard.contextMap.reserve(MAX_CLIENT_CONNECTION / SESSION_SHARD_SIZE);
+                shard.sessions.reserve(MAX_CLIENT_CONNECTION / SESSION_SHARD_SIZE);
             }
             for (int i = 0; i < SESSION_SHARD_SIZE; i++)
             {
@@ -59,10 +58,6 @@ namespace Net{
 
         bool IsReady() {
             if (contextPool == nullptr) {
-                Core::sysLogger->LogError("net session", "contextPool not initialized");
-                return false;
-            }
-            if (m_sessionShard.size() != SESSION_SHARD_SIZE) {
                 Core::sysLogger->LogError("net session", "contextPool not initialized");
                 return false;
             }
@@ -78,20 +73,20 @@ namespace Net{
         bool CheckSession(SOCKET sock) {
             // windows 소켓 핸들은 4의 배수. 
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
-            Base::SpinLockGuard lock(shard.flag);
-            auto it = shard.stateMap.find(sock);
-            if (it == shard.stateMap.end())
+            std::lock_guard lock(shard.mutex);
+            auto it = shard.sessions.find(sock);
+            if (it == shard.sessions.end())
                 return false;
-            return it->second.CheckSession();
+            return it->second.state.CheckSession();
         }
 
         uint64_t GetSession(SOCKET sock) {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
-            Base::SpinLockGuard lock(shard.flag);
-            auto it = shard.stateMap.find(sock);
-            if (it == shard.stateMap.end())
+            std::lock_guard lock(shard.mutex);
+            auto it = shard.sessions.find(sock);
+            if (it == shard.sessions.end())
                 return 0;
-            return it->second.GetSessionID();
+            return it->second.state.GetSessionID();
         }
 
         // Ping loop에서만 호출: 생존 상태를 복사하고 해당 tick의 미응답 수를 증가한다.
@@ -99,43 +94,42 @@ namespace Net{
 
         void SetContextInvalid(SOCKET sock, uint64_t expectedSessionID) {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
-            Base::SpinLockGuard lock(shard.flag);
-            auto it = shard.stateMap.find(sock);
-            if (it != shard.stateMap.end() && it->second.GetSessionID() == expectedSessionID)
-                it->second.SetContextInvalid();
+            std::lock_guard lock(shard.mutex);
+            auto it = shard.sessions.find(sock);
+            if (it != shard.sessions.end() && it->second.state.GetSessionID() == expectedSessionID)
+                it->second.state.SetContextInvalid();
         }
         bool UpdateFlood(SOCKET sock, uint64_t expectedSessionID, uint16_t byte) {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
-            Base::SpinLockGuard lock(shard.flag);
-            auto it = shard.stateMap.find(sock);
-            if (it == shard.stateMap.end() || it->second.GetSessionID() != expectedSessionID)
+            std::lock_guard lock(shard.mutex);
+            auto it = shard.sessions.find(sock);
+            if (it == shard.sessions.end() || it->second.state.GetSessionID() != expectedSessionID)
                 return false;
             // Ping 임계치 판정은 다음 Ping loop가 담당한다. 이번 PONG이
             // 카운트를 초기화할 기회를 수신 경로에서 먼저 차단하지 않는다.
-            return it->second.BufferReceived(byte);
+            return it->second.state.BufferReceived(byte);
         }
         ClientContext* GetContext(SOCKET  sock) {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
-            Base::SpinLockGuard lock(shard.flag);
-            auto it = shard.contextMap.find(sock);
-            return it != shard.contextMap.end() ? it->second : nullptr;
+            std::lock_guard lock(shard.mutex);
+            auto it = shard.sessions.find(sock);
+            return it != shard.sessions.end() ? it->second.context : nullptr;
         }
 
         bool BeginRecvIO(SOCKET sock, uint64_t expectedSessionID, ClientContext*& context,
             uint64_t& sessionID, uint8_t*& buffer, uint16_t& length) {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
-            Base::SpinLockGuard lock(shard.flag);
+            std::lock_guard lock(shard.mutex);
 
-            auto stateIt = shard.stateMap.find(sock);
-            auto contextIt = shard.contextMap.find(sock);
-            if (stateIt == shard.stateMap.end() || contextIt == shard.contextMap.end())
+            auto stateIt = shard.sessions.find(sock);
+            if (stateIt == shard.sessions.end())
                 return false;
 
-            sessionID = stateIt->second.GetSessionID();
+            sessionID = stateIt->second.state.GetSessionID();
             if (sessionID != expectedSessionID)
                 return false;
 
-            context = contextIt->second;
+            context = stateIt->second.context;
             length = context->BeginRecvIO(sessionID, buffer);
             if (length == 0) {
                 context = nullptr;
@@ -147,7 +141,7 @@ namespace Net{
         // reverse
         SOCKET GetSocket(uint64_t s) {
             auto& shard = m_reverseShard[s & SESSION_SHARD_MASK];
-            Base::SpinLockGuard lock(shard.flag);
+            std::lock_guard lock(shard.mutex);
             auto it = shard.socketMap.find(s);
             return it != shard.socketMap.end() ? it->second : INVALID_SOCKET;
         }
@@ -158,11 +152,11 @@ namespace Net{
             if (sock == INVALID_SOCKET)
                 return;
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
-            Base::SpinLockGuard lock(shard.flag);
-            auto it = shard.stateMap.find(sock);
-            if (it == shard.stateMap.end() || it->second.GetSessionID() != session)
+            std::lock_guard lock(shard.mutex);
+            auto it = shard.sessions.find(sock);
+            if (it == shard.sessions.end() || it->second.state.GetSessionID() != session)
                 return;
-            it->second.PongReceived(rtt);
+            it->second.state.PongReceived(rtt);
         }
         bool AddSession(SOCKET sock);
         bool Disconnect(SOCKET sock);
@@ -173,20 +167,20 @@ namespace Net{
 
         EnqueueSendResult EnqueueSend(SOCKET sock, STOverlappedEx* overlappedEx) {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
-            Base::SpinLockGuard lock(shard.flag);
-            auto it = shard.contextMap.find(sock);
-            if (it == shard.contextMap.end())
+            std::lock_guard lock(shard.mutex);
+            auto it = shard.sessions.find(sock);
+            if (it == shard.sessions.end())
                 return EnqueueSendResult::Failed;
-            return it->second->EnqueueSend(overlappedEx);
+            return it->second.context->EnqueueSend(overlappedEx);
         }
 
         STOverlappedEx* DequeueSend(SOCKET sock) {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
-            Base::SpinLockGuard lock(shard.flag);
-            auto it = shard.contextMap.find(sock);
-            if (it == shard.contextMap.end())
+            std::lock_guard lock(shard.mutex);
+            auto it = shard.sessions.find(sock);
+            if (it == shard.sessions.end())
                 return nullptr;
-            return it->second->DequeueSend();
+            return it->second.context->DequeueSend();
         }
     };
 }
