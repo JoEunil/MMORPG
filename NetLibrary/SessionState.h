@@ -18,31 +18,18 @@ namespace Net {
 
         bool m_flood = false;
         bool m_contextStatus = false;
-        TrafficFloodDetector m_floodDetector;
+        TrafficFloodDetector m_floodDetector{};
         // SessionState는 자체 동기화를 두지 않는다.
         // 모든 접근이 SessionManager의 shard SpinLock 아래에서만 일어나므로
         // 멤버를 atomic으로 둘 필요가 없다. (SessionManager::CheckSession/PongReceived/
         // GetSessionSnapshot 등 진입점 전부가 SpinLockGuard를 먼저 잡는다)
 
-        bool NetStatus() const {
-            if (m_contextStatus == false) {
-                Core::gameLogger->LogWarn("net session", "context invalid", "sessionID", m_sessionID);
-                return false;
-            }
-            if (m_sessionPingCount >= PING_COUNT_LIMIT) {
-                Core::gameLogger->LogWarn("net session", "ping count exceed", "sessionID", m_sessionID, "pingCount", m_sessionPingCount);
-                return false;
-            }
-            return true;
-        }
-        bool FloodCheck() const {
-            return m_flood;
-        }
     public:
         uint64_t GetSessionID() const {
             return m_sessionID; 
         }
-        void SetSession( uint64_t sessionID) {
+
+        void InitializeSession(uint64_t sessionID) {
             m_sessionID = sessionID;
             m_sessionPingCount = 0;
             m_rtt = 0;
@@ -52,9 +39,15 @@ namespace Net {
         }
 
         bool CheckSession() const {
-            if (!NetStatus())
+            if (m_contextStatus == false) {
+                Core::gameLogger->LogWarn("net session", "context invalid", "sessionID", m_sessionID);
                 return false;
-            if (FloodCheck()) {
+            }
+            if (m_sessionPingCount >= PING_COUNT_LIMIT) {
+                Core::gameLogger->LogWarn("net session", "ping count exceed", "sessionID", m_sessionID, "pingCount", m_sessionPingCount);
+                return false;
+            }
+            if (m_flood) {
                 Core::gameLogger->LogWarn("net session", "Net Traffic Flood", "sessionID", m_sessionID);
                 return false;
             }

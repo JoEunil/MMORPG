@@ -26,7 +26,7 @@ namespace Net {
                 m_connectionCnt.fetch_sub(1, std::memory_order_relaxed);
                 return false;
             }
-            shard.stateMap[sock].SetSession(session);
+            shard.stateMap[sock].InitializeSession(session);
             shard.contextMap[sock] = ctx;
         }
         {
