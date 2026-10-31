@@ -22,7 +22,7 @@ namespace Net {
         // SessionState는 자체 동기화를 두지 않는다.
         // 모든 접근이 SessionManager의 shard mutex 아래에서만 일어나므로
         // 멤버를 atomic으로 둘 필요가 없다. (SessionManager::CheckSession/PongReceived/
-        // GetSessionSnapshot 등 진입점 전부가 shard mutex를 먼저 잡는다)
+        // PreparePing 등 진입점 전부가 shard mutex를 먼저 잡는다)
 
     public:
         uint64_t GetSessionID() const {

@@ -90,7 +90,7 @@ namespace Net{
         }
 
         // Ping loop에서만 호출: 생존 상태를 복사하고 해당 tick의 미응답 수를 증가한다.
-        void GetSessionSnapshot(int shardID, std::vector<PingStruct>& out);
+        void PreparePing(int shardID, std::vector<PingStruct>& out);
 
         void SetContextInvalid(SOCKET sock, uint64_t expectedSessionID) {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];

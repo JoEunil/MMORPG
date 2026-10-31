@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "SessionManager.h"
 #include "PingManager.h"
 #include "ClientContextPool.h"
@@ -60,11 +60,11 @@ namespace Net {
         return true;
     }
 
-    void SessionManager::GetSessionSnapshot(int shardID, std::vector<PingStruct>& out) {
+    void SessionManager::PreparePing(int shardID, std::vector<PingStruct>& out) {
         auto& shard = m_sessionShard[shardID & SESSION_SHARD_MASK];
         std::lock_guard lock(shard.mutex);
         out.clear();
-        for (auto&[socket, entry]: shard.sessions)
+        for (auto& [socket, entry] : shard.sessions)
         {
             auto& state = entry.state;
             const bool alive = state.CheckSession();
@@ -73,4 +73,5 @@ namespace Net {
                 state.PingSent();
         }
     }
+
 }

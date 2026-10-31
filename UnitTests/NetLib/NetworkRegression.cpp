@@ -319,11 +319,11 @@ namespace Net {
     TEST_F(NetworkRegressionTest, PingSnapshotIncrementsCountAndReportsExpiredSession) {
         std::vector<PingStruct> snapshot;
         for (uint8_t i = 0; i < PING_COUNT_LIMIT; ++i) {
-            manager.GetSessionSnapshot(static_cast<int>((socket >> 2) & SESSION_SHARD_MASK), snapshot);
+            manager.PreparePing(static_cast<int>((socket >> 2) & SESSION_SHARD_MASK), snapshot);
             ASSERT_EQ(snapshot.size(), 1);
             EXPECT_TRUE(snapshot[0].isAlive);
         }
-        manager.GetSessionSnapshot(static_cast<int>((socket >> 2) & SESSION_SHARD_MASK), snapshot);
+        manager.PreparePing(static_cast<int>((socket >> 2) & SESSION_SHARD_MASK), snapshot);
         ASSERT_EQ(snapshot.size(), 1);
         EXPECT_FALSE(snapshot[0].isAlive);
     }
@@ -383,10 +383,27 @@ namespace Net {
         static_assert(BYTES_TOKEN_CAPACITY < UINT32_MAX);
         SessionState state;
         state.InitializeSession(1);
+        ASSERT_TRUE(state.CheckSession());
         ASSERT_FALSE(state.BufferReceived(static_cast<uint32_t>(BYTES_TOKEN_CAPACITY + 1)));
+        EXPECT_FALSE(state.CheckSession());
         EXPECT_FALSE(state.BufferReceived(1));
+        EXPECT_FALSE(state.CheckSession());
         state.InitializeSession(2);
         EXPECT_TRUE(state.BufferReceived(1));
+        EXPECT_TRUE(state.CheckSession());
+    }
+
+    TEST(SessionStateRegressionTest, InvalidContextRemainsInvalidUntilSessionIsReinitialized) {
+        SessionState state;
+        EXPECT_FALSE(state.CheckSession());
+        state.InitializeSession(1);
+        ASSERT_TRUE(state.CheckSession());
+        state.SetContextInvalid();
+        EXPECT_FALSE(state.CheckSession());
+        ASSERT_TRUE(state.BufferReceived(1));
+        EXPECT_FALSE(state.CheckSession());
+        state.InitializeSession(2);
+        EXPECT_TRUE(state.CheckSession());
     }
 
     TEST(SessionStateRegressionTest, UnansweredPingsReachDisconnectLimit) {

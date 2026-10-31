@@ -22,7 +22,7 @@ namespace Net {
             for (int i = 0; i < SESSION_SHARD_SIZE; i++)
             {
                 clientList.clear();
-                sessionManager->GetSessionSnapshot(i, clientList);
+                sessionManager->PreparePing(i, clientList);
                 // shard lock 아래에서 이번 ping의 미응답 카운트도 증가한다.
 
                 auto now = NetTimer::GetTimeMS();
