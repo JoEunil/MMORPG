@@ -10,16 +10,21 @@
 
 
 namespace Net {
-    uint16_t ClientContext::GetLen()
+    uint16_t ClientContext::AdvancePosition(uint16_t origin, uint16_t change) const {
+        origin += change;
+        return origin & RING_BUFFER_SIZE_MASK;
+    }
+
+    uint16_t ClientContext::GetLen() const
     {
-        if (m_last_op == RELEASE && m_front == ((m_rear+1)&RING_BUFFER_SIZE_MASK))
+        if (m_last_op == RELEASE && m_front == AdvancePosition(m_rear, 1))
             return 0;
         if (m_front <= m_rear)
             return m_rear - m_front + 1;
         return RING_BUFFER_SIZE - m_front + m_rear + 1;
     }
 
-    Core::PacketHeader ClientContext::ParseHeader() {
+    Core::PacketHeader ClientContext::ParseHeader() const {
         Core::PacketHeader header;
         const size_t firstPart = (std::min)(sizeof(header), static_cast<size_t>(RING_BUFFER_SIZE - m_front));
         std::memcpy(&header, m_startPtr + m_front, firstPart);
@@ -28,64 +33,39 @@ namespace Net {
         return header; // wire의 uint32_t length를 검증 전에 축소하지 않는다.
     }
 
-    bool ClientContext::DequeueRecvQ(std::optional<uint64_t>& pongRTT) {
-        if (GetLen() < sizeof(Core::PacketHeader))
-            return false;
-        const auto header = ParseHeader();
+    bool ClientContext::CheckPacketValid(const Core::PacketHeader& header) const{
         const auto magic = header.magic;
         const uint32_t packetLen = header.length;
         const auto opcode = header.opcode;
-        // 2차 패킷 검증
 
-        if (magic != Core::MAGIC)
-        {
+        if (magic != Core::MAGIC) {
             Core::gameLogger->LogWarn("context", "packet Magic invalid", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcode", opcode, "m_front", m_front, "m_rear", m_rear, "GetLen()", GetLen());
-            m_gameSession.store(false, std::memory_order_release);
             return false;
         }
 
-        if (opcode == 0 || opcode > Core::MAX_DEFINED_OPCODE)
-        {
+        if (opcode == 0 || opcode > Core::MAX_DEFINED_OPCODE) {
             Core::gameLogger->LogWarn("context", "undefined opcode", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcode", opcode, "m_front", m_front, "GetLen()", GetLen());
-            m_gameSession.store(false, std::memory_order_release);
             return false;
         }
 
         if (packetLen < sizeof(Core::PacketHeader) || packetLen > MAX_PACKET_LEN) {
-            Core::gameLogger->LogWarn("context", "invalid packet length", "session", m_sessionID,"packetLen", packetLen, "opcode", opcode);
-            m_gameSession.store(false, std::memory_order_release);
+            Core::gameLogger->LogWarn("context", "invalid packet length", "session", m_sessionID, "packetLen", packetLen, "opcode", opcode);
             return false;
         }
-
-        // Search must never enter the simulation dispatcher or expose a short body.
+        // 고정 길이 요청이 짧은 본문이나 잘못된 dispatcher로 전달되지 않도록 한다.
         if (opcode == Core::OP::BAZAAR_SEARCH
-            && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::BazaarSearchRequestBody>))) {
-            m_gameSession.store(false, std::memory_order_release);
+            && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::BazaarSearchRequestBody>)))
             return false;
-        }
-
         if (opcode == Core::OP::BAZAAR_MY_LIST
-            && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::BazaarMyListRequestBody>))) {
-            m_gameSession.store(false, std::memory_order_release);
+            && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::BazaarMyListRequestBody>)))
             return false;
-        }
-
-        if (opcode == Core::OP::ITEM_USE && (header.flags != 0
-            || packetLen != sizeof(Core::PacketStruct<Core::ItemUseRequestBody>))) {
-            m_gameSession.store(false, std::memory_order_release);
+        if (opcode == Core::OP::ITEM_USE
+            && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::ItemUseRequestBody>)))
             return false;
-        }
+        return true;
+    }
 
-        if (GetLen() < packetLen)
-            return false;
-
-
-        PacketView* packet = packetViewPool.Allocate();
-        if (!packet) {
-            Core::errorLogger->LogWarn("context", "packetViewPool empty");
-            m_gameSession.store(false, std::memory_order_release);
-            return false;
-        }
+    void ClientContext::BuildPacketView(PacketView* packet, uint32_t packetLen, uint8_t opcode) {
         packet->Clear();
         if (RING_BUFFER_SIZE - m_front < packetLen)
         {
@@ -103,14 +83,38 @@ namespace Net {
         packet->SetRear((m_front + packetLen - 1) & RING_BUFFER_SIZE_MASK);
         packet->SetOpcode(opcode);
         packet->SetOwner(this);
+    }
 
-       std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv(static_cast<Core::IPacketView*>(packet), Core::PacketViewDeleter{});
+    bool ClientContext::DequeueRecvQ(std::optional<uint64_t>& pongRTT) {
+        if (GetLen() < sizeof(Core::PacketHeader))
+            return false;
+        const auto header = ParseHeader();
+        const auto magic = header.magic;
+        const uint32_t packetLen = header.length;
+        const auto opcode = header.opcode;
 
-        m_front = (m_front + packetLen) & RING_BUFFER_SIZE_MASK;
+        if (!CheckPacketValid(header)) {
+            m_gameSession.store(false, std::memory_order_release);
+            return false;
+        }
+        if (GetLen() < packetLen)
+            return false;
+
+        PacketView* packet = packetViewPool.Allocate();
+        if (!packet) {
+            Core::errorLogger->LogWarn("context", "packetViewPool empty");
+            m_gameSession.store(false, std::memory_order_release);
+            return false;
+        }
+
+        BuildPacketView(packet, packetLen, opcode);
+        std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv(static_cast<Core::IPacketView*>(packet), Core::PacketViewDeleter{});
+
+        m_front = AdvancePosition(m_front, packetLen);
         m_last_op = RELEASE;
         m_workingCnt.fetch_add(1, std::memory_order_seq_cst);
 
-        if (!NetPacketFilter::TryDispatch(std::move(pv), m_srtt, m_rttvar, pongRTT)) {
+        if (!NetPacketFilter::TryDispatch(std::move(pv), m_jitter, pongRTT)) {
             m_gameSession.store(false, std::memory_order_release);
             return false;
         }
@@ -151,25 +155,30 @@ namespace Net {
         }
     }
 
+    bool ClientContext::IsValidEnqueue(uint64_t expectedSessionID, uint8_t* ptr, size_t len) {
+        if (!m_connected.load(std::memory_order_seq_cst) or m_sessionID != expectedSessionID)
+            return false;
+        if (!m_gameSession.load(std::memory_order_acquire) or len == 0 or len > RECV_BUFFER_SIZE)
+            return false;
+        uint16_t front = ptr - m_startPtr;
+        if (front != AdvancePosition(m_rear, 1))
+            return false;
+        return true;
+    }
 
     bool ClientContext::EnqueueRecvQ(uint64_t expectedSessionID, uint8_t* ptr, size_t len) {
         std::unique_lock<std::recursive_mutex> lock(m_mutex);
-        if (!m_connected.load(std::memory_order_seq_cst) || m_sessionID != expectedSessionID)
+        if (!IsValidEnqueue(expectedSessionID, ptr, len))
             return false;
-        if (!m_gameSession.load(std::memory_order_acquire) || len == 0 || len > RECV_BUFFER_SIZE)
-            return false;
-        uint16_t front = ptr - m_startPtr;
-        if (front != ((m_rear + 1) & RING_BUFFER_SIZE_MASK))
-            return false;
-        uint16_t rear = m_rear + len;
-        rear &= RING_BUFFER_SIZE_MASK;
+
+        uint16_t rear = AdvancePosition(m_rear, len);
         m_buffer.ReleaseLeftOver(rear + 1, len != 0);
         m_rear = rear;
-
         m_last_op = ACQUIRE;
+
         std::optional<uint64_t> pongRTT;
         while (DequeueRecvQ(pongRTT)) {}
-        const bool valid = m_gameSession.load(std::memory_order_acquire);
+        bool valid = m_gameSession.load(std::memory_order_acquire);
         lock.unlock();
         // Disconnect/BeginRecvIO는 shard -> Context 순서다. 수신 경로는
         // Context lock을 풀고 shard를 얻어 역순 잠금을 만들지 않는다.

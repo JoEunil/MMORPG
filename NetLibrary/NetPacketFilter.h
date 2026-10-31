@@ -4,6 +4,7 @@
 #include <optional>
 
 #include <CoreLib/PacketDispatcher.h>
+#include "Jitter.h"
 
 namespace Core {
     class IPacketView;
@@ -11,6 +12,7 @@ namespace Core {
 namespace Net {
     class SessionManager;
     class NetPerfCollector;
+
     class NetPacketFilter {
         static void Initialize(Core::IPacketDispatcher* p, SessionManager* s, NetPerfCollector* pc) {
             packetDispatcher = p;
@@ -39,7 +41,7 @@ namespace Net {
         friend class NetworkRegressionTest;
 
     public:
-        static bool TryDispatch(std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv, uint64_t& srtt, uint64_t& rttvar, std::optional<uint64_t>& pongRTT);
+        static bool TryDispatch(std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv, Jitter& jitter, std::optional<uint64_t>& pongRTT);
         // Context mutex를 해제한 뒤에만 SessionManager의 shard lock을 얻는다.
         static void NotifyPong(uint64_t sessionID, uint64_t rtt);
         static void Disconnect(uint64_t sessionID) {

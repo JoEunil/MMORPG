@@ -11,6 +11,7 @@
 #include "TrafficFloodDetector.h"
 #include "PacketView.h"
 #include "OverlappedExPool.h"
+#include "Jitter.h"
 #include "Config.h"
 
 #include <CoreLib/PacketTypes.h>
@@ -37,15 +38,14 @@ namespace Net {
         uint32_t m_seq = 0;
 
         RingBuffer m_buffer{ RING_BUFFER_SIZE };
+        // RingBuffer는 사용중이지 않은 버퍼 공간 관리, ClientContext는 수신 후 RingBuffer 반납까지 관리.
         uint8_t* m_startPtr;
         uint16_t m_front = 0;
         uint16_t m_rear = RING_BUFFER_SIZE - 1;
         bool m_last_op = RELEASE;
         uint64_t m_sessionID = 0;
-
-        // Jacobson/Karels 알고리즘, jitter 계산을 위함.
-        uint64_t m_srtt = 0; // EWMA 평균
-		uint64_t m_rttvar = 0; // 표준 편차
+        
+        Jitter m_jitter{};
 
         std::atomic<bool> m_connected = false;
         std::atomic<bool> m_gameSession = false;
@@ -71,11 +71,15 @@ namespace Net {
         inline static OverlappedExPool* overlappedExPool;
         inline static Base::FixedObjectPool<PacketView, PACKETVIEWPOOL_SIZE> packetViewPool;
 
-        uint16_t GetLen();
-        Core::PacketHeader ParseHeader();
+        uint16_t GetLen() const;
+        Core::PacketHeader ParseHeader() const;
+        void BuildPacketView(PacketView* packet, uint32_t packetLen, uint8_t opcode);
         bool DequeueRecvQ(std::optional<uint64_t>& pongRTT);
+        bool IsValidEnqueue(uint64_t expectedSessionID, uint8_t* ptr, size_t len);
         void EnqueueReleaseQ(uint32_t seq, uint16_t front, uint16_t rear);
         void TryNotifyDisconnect();
+        uint16_t AdvancePosition(uint16_t origin, uint16_t change) const;
+        bool CheckPacketValid(const Core::PacketHeader& header) const;
 
         static void Initialize(OverlappedExPool* o) {
             overlappedExPool = o;
@@ -114,9 +118,9 @@ namespace Net {
             if (!lock.owns_lock())
                 return false;
             return !m_connected.load(std::memory_order_acquire)
-                && m_disconnectNotification.load(std::memory_order_acquire) == DisconnectNotification::Done
-                && m_workingCnt.load(std::memory_order_acquire) == 0
-                && m_pendingIOCnt.load(std::memory_order_acquire) == 0;
+                and m_disconnectNotification.load(std::memory_order_acquire) == DisconnectNotification::Done
+                and m_workingCnt.load(std::memory_order_acquire) == 0
+                and m_pendingIOCnt.load(std::memory_order_acquire) == 0;
         }
 
         void Clear(uint64_t session) {
@@ -136,8 +140,7 @@ namespace Net {
                 m_workingCnt.store(0, std::memory_order_seq_cst);
                 m_pendingIOCnt.store(0, std::memory_order_seq_cst);
                 m_gameSession.store(true, std::memory_order_release);
-                m_srtt = 0;
-				m_rttvar = 0;
+                m_jitter = Jitter{};
             }
             {
                 std::lock_guard<std::mutex> lock(m_sendMutex);
@@ -149,7 +152,7 @@ namespace Net {
         }
         void Disconnect() {
             std::lock_guard<std::recursive_mutex> lock(m_mutex);
-            const bool wasConnected = m_connected.exchange(false, std::memory_order_seq_cst);
+            bool wasConnected = m_connected.exchange(false, std::memory_order_seq_cst);
             if (wasConnected)
                 TryNotifyDisconnect();
         }

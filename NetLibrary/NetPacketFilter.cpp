@@ -9,7 +9,7 @@
 #include "NetPerfCollector.h"
 
 namespace Net {
-    bool NetPacketFilter::TryDispatch(std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv, uint64_t& srtt, uint64_t& rttvar, std::optional<uint64_t>& pongRTT) {
+    bool NetPacketFilter::TryDispatch(std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv, Jitter& jitter, std::optional<uint64_t>& pongRTT) {
         // 3차 패킷 검증
         auto session = pv->GetSessionID();
         auto op = pv->GetOpcode();
@@ -17,17 +17,7 @@ namespace Net {
         uint8_t health = packetDispatcher->HealthCheck(session);
         if (op == Core::OP::PONG) {
             uint64_t rtt = packetDispatcher->GetRTT(std::move(pv), NetTimer::GetTimeMS());
-            if (srtt == 0) {
-                // 초기값 설정
-                srtt = rtt;
-                rttvar = rtt >> 1;
-            } else {
-                const uint64_t difference = srtt > rtt ? srtt - rtt : rtt - srtt;
-                rttvar = rttvar - (rttvar >> 2) + (difference >> 2);
-                srtt = srtt - (srtt >> 3) + (rtt >> 3);
-            }
-            uint64_t rto = srtt + (rttvar << 2);
-            if (rtt > rto)
+            if (rtt > jitter.RTO(rtt))
                 perfCollector->AddJitterCnt();
             pongRTT = rtt;
             return true;
