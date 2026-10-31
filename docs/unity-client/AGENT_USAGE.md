@@ -1,24 +1,24 @@
 ## 공개 집계
 
 기준일: 2026-10-31
-누적 신규: 210
-누적 재활성화: 318
+누적 신규: 214
+누적 재활성화: 324
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-31
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 7 | 4 |
 | server_analyst | 서버 분석 Agent | 26 | 47 |
-| client_implementer | 구현 Agent | 63 | 77 |
+| client_implementer | 구현 Agent | 64 | 77 |
 | asset_artist | 아트 Agent | 24 | 32 |
 | code_reviewer | 리뷰 Agent | 55 | 112 |
-| quality_reviewer | 종합 검수 Agent | 12 | 32 |
+| quality_reviewer | 종합 검수 Agent | 13 | 34 |
 | unity_tester | 테스트 Agent | 5 | 6 |
-| progress_documenter | 기록 Agent | 9 | 5 |
+| progress_documenter | 기록 Agent | 11 | 9 |
 | decision_curator | 의사결정 지원 Agent | 8 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체528회(신규210·재활성화318)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체538회(신규214·재활성화324)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
 ## 클라이언트 정지 보정 — 2026-10-31
 
@@ -788,3 +788,7 @@ receive_handler_review 신규1회(리뷰 Agent, 고정 Sol medium 프로필)가 
 ## 서버 독립 클라이언트 개선 — 2026-10-30
 
 이번 실제 실행은 신규3·후속7이다. camera_view_followup은 구현 Agent(Sol medium) 신규1·후속5로 시야 확대, UI 사전 조사, 포션 구현, 알림 정리, 리뷰 수정, 대비 보강을 수행했다. motion_smoothing_review는 리뷰 Agent(Sol medium) 신규1·후속1로 시간축과 UI를 검토했다. client_motion_quality는 종합 검수 Agent(Astra medium) 신규1·후속1로 상황 자문과 고정 후보 게시 준비를 검수했다. 메시지·총괄 작업·3개 테스트는 활성화로 집계하지 않는다. 기존511회에10회를 더한 누적521회이며 실제 토큰·비용은 N/A다.
+
+## 결과 페이지 경험·프로세스 개편 — 2026-10-31
+
+reflection_case_audit(기록 Agent/Luna low) 신규1은 회고 근거를 조사했다. result_page_quality(종합 검수 Agent/Astra medium) 신규1·후속2가 세 개편안을 비교했고, result_page_documenter(기록 Agent/Luna low) 신규1·후속4가 원본 작성과 같은 담당자의 피드백 수정을 수행했다. result_page_web(worker 도구/구현 역할, 실제 모델·추론 미확인) 신규1이 생성기와 CSS를 수정했다. 기존528회에 신규4·후속6을 더한538회다. 총괄의 지침 편집·빌드·브라우저 확인은 집계하지 않으며 토큰·비용은 N/A다.

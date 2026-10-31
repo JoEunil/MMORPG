@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - docs/unity-client/SHOWCASE.md
+      - docs/unity-client/EXPERIENCE.md
       - docs/unity-client/AGENT_USAGE.md
       - docs/unity-client/portfolio/**
       - site/**
@@ -13,6 +14,7 @@ on:
   pull_request:
     paths:
       - docs/unity-client/SHOWCASE.md
+      - docs/unity-client/EXPERIENCE.md
       - docs/unity-client/AGENT_USAGE.md
       - docs/unity-client/portfolio/**
       - site/**

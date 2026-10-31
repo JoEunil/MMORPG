@@ -112,8 +112,8 @@ def parse_work(path):
     return {"title": title, "summary": summary, "status": status, "intro": intro, "sections": sections, "source": path}
 
 
-def parse_showcase():
-    lines = HOME_SOURCE.read_text(encoding="utf-8").splitlines()
+def parse_showcase(source=HOME_SOURCE):
+    lines = source.read_text(encoding="utf-8").splitlines()
     if not lines or not lines[0].startswith("# "):
         raise ValueError("SHOWCASE.md must start with a public portfolio title")
     title = lines[0][2:].strip()
@@ -210,7 +210,7 @@ def diagram_items(section):
 
 def diagram_node(item):
     label, _, detail = item.partition(" — ")
-    return f'<strong>{escape(label)}</strong><span>{escape(detail)}</span>'
+    return f'<strong>{escape(label)}</strong>' + (f'<span>{escape(detail)}</span>' if detail else "")
 
 
 def render_workflow(section):
@@ -228,7 +228,7 @@ def render_workflow(section):
 def render_execution_flow(section):
     groups = diagram_items(section)
     steps = ''.join(f'<li>{diagram_node(item)}</li>' for item in groups["작업 흐름"])
-    feedback = ''.join(f'<li>{diagram_node(item)}</li>' for item in groups["피드백"])
+    feedback = ''.join(f'<li>{diagram_node(item)}</li>' for item in groups["피드백이 돌아오는 방식"])
     intro = next(b for b in section["blocks"] if isinstance(b, str) and b and not b.startswith("- "))
     example_start = next((i for i, block in enumerate(section["blocks"])
                           if block == ("heading", "실제 비교·선택 예시")), None)
@@ -278,6 +278,19 @@ def render_decisions(section):
     return f'<section class="section-wrap decisions" id="decisions"><div class="section-title"><h2>{escape(section["title"])}</h2></div><ol class="decision-track">{"".join(entries)}</ol></section>'
 
 
+def render_comparison_case(section):
+    opening, examples = [], []
+    for block in section["blocks"]:
+        if isinstance(block, str) and IMAGE.fullmatch(block):
+            examples.append([block])
+        elif examples:
+            examples[-1].append(block)
+        else:
+            opening.append(block)
+    gallery = ''.join(f'<article class="case-example">{render_blocks(blocks, HOME_SOURCE)}</article>' for blocks in examples)
+    return render_blocks(opening, HOME_SOURCE) + f'<div class="case-examples">{gallery}</div>'
+
+
 def document(title, description, content, references, site_title):
     ref_footer = "".join(f'<a href="{escape(url, quote=True)}">{escape(label)} ↗</a>' for label, url in references)
     browser_title = title if title == site_title else f"{title} · {site_title}"
@@ -286,7 +299,7 @@ def document(title, description, content, references, site_title):
 <meta name="description" content="{escape(description, quote=True)}"><title>{escape(browser_title)}</title>
 <link rel="stylesheet" href="{BASE}style.css"></head><body>
 <a class="skip-link" href="#top">본문으로 바로가기</a>
-<header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}#workflow">AI 워크플로우</a><a href="{BASE}#work">작업 결과</a><a href="{BASE}#legacy">기존 Unity</a><a href="{BASE}#decisions">지침 변경</a><a href="{BASE}#agent-usage">활용 지표</a></nav></header>
+<header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}#work">작업과 결과</a><a href="{BASE}experience/">경험과 개선</a><a href="{BASE}process/">Agent 작업 방식</a></nav></header>
 {content}<footer class="site-footer"><a href="{BASE}">{escape(site_title)}</a>{ref_footer}</footer>
 </body></html>'''
 
@@ -294,9 +307,14 @@ def document(title, description, content, references, site_title):
 def work_navigation(works, current_key=None):
     label = "다른 작업 둘러보기" if current_key else "기능별 둘러보기"
     heading = f'<p>{label}</p>' if current_key else ''
-    links = ''.join(f'<a href="{BASE}work/{slug(work["source"].stem)}/">{escape(work["title"])}</a>'
-                    for work in works if slug(work["source"].stem) != current_key)
-    return f'<nav class="work-navigation" aria-label="{label}">{heading}<div>{links}</div></nav>'
+    links = []
+    for work in works:
+        key = slug(work["source"].stem)
+        if key == current_key:
+            continue
+        anchor = f' id="{key}"' if current_key is None else ""
+        links.append(f'<a{anchor} href="{BASE}work/{key}/">{escape(work["title"])}</a>')
+    return f'<nav class="work-navigation" aria-label="{label}">{heading}<div>{"".join(links)}</div></nav>'
 
 
 def build_work(work, references, site_title, works):
@@ -382,31 +400,46 @@ def main():
         raise SystemExit("Add at least one reviewed project page under docs/unity-client/portfolio/")
     title, intro, home_sections, references = parse_showcase()
     sync_readme_preview(home_sections)
-    cards = []
+    cards = {}
     for work in works:
         key, detail, history = build_work(work, references, title, works)
         card_image = find_image(work)
-        preview_section = next(s for s in work["sections"] if s["title"] == "대표 화면")
-        preview_notes = [b for b in preview_section["blocks"] if not (isinstance(b, str) and IMAGE.fullmatch(b))]
         media = f'<figure class="work-media"><a class="card-image" href="{detail}"><img src="{card_image[1]}" alt="{escape(card_image[0], quote=True)}" {image_size_attributes(card_image[1])} loading="lazy"></a><figcaption>{escape(card_image[0])}</figcaption></figure>'
-        cards.append(f'<article class="work-card" id="{key}">{media}<div class="work-copy"><p class="work-status">{escape(work["status"])}</p><h3><a href="{detail}">{escape(work["title"])}</a></h3><p>{escape(work["summary"])}</p><div class="preview-note">{render_blocks(preview_notes, work["source"])}</div><div class="card-links"><a href="{detail}">기능 보기 →</a><a href="{detail}#scope">확인한 범위</a><a href="{history}">화면 이력</a></div></div></article>')
+        cards[key] = f'<article class="featured-work" id="featured-{key}">{media}<div class="work-copy"><h3><a href="{detail}">{escape(work["title"])}</a></h3><p>{escape(work["summary"])}</p><a class="text-link" href="{detail}">구현한 기능과 화면 보기 →</a></div></article>'
     sections_by_title = {section["title"]: section for section in home_sections}
     process_html = render_workflow(sections_by_title["AI Agent 워크플로우"])
     execution_html = render_execution_flow(sections_by_title["하나의 기능이 만들어지는 흐름"])
     usage_html = render_agent_usage(sections_by_title["Agent 활용 지표"])
-    work_intro = next(block for block in sections_by_title["작업 둘러보기"]["blocks"] if isinstance(block, str) and block and not block.startswith("- "))
     decisions_html = render_decisions(sections_by_title["지침 변경 이력"])
-    legacy_section = sections_by_title["기존 Unity 구현"]
+    legacy_section = sections_by_title["먼저 만든 기반: 기존 2D Unity"]
     legacy_copy = render_blocks(legacy_section["blocks"], HOME_SOURCE)
-    legacy_html = f'<section class="legacy-section section-wrap" id="legacy"><div class="section-title"><h2>{escape(legacy_section["title"])}</h2></div><div class="legacy-body">{legacy_copy}</div></section>'
-    hero = f'''<main id="top" tabindex="-1"><section class="home-hero"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#work">작업 결과 보기</a><a class="text-link" href="#workflow">AI Agent 워크플로우</a><a class="text-link" href="#legacy">기존 Unity 구현</a></div></div></section>
-{process_html}
-<section class="section-wrap work-section" id="work"><div class="section-title work-heading"><h2>작업과 결과</h2><p>{inline(work_intro)}</p></div>{work_navigation(works)}<div class="work-grid">{''.join(cards)}</div></section>
-{legacy_html}
-{execution_html}
-{usage_html}
-{decisions_html}</main>'''
+    origin = render_blocks(sections_by_title["이번 작업의 결과"]["blocks"], HOME_SOURCE)
+    case = render_comparison_case(sections_by_title["선택한 방향을 결과로"])
+    reflection = render_blocks(sections_by_title["작업 방식을 바꾼 이유"]["blocks"], HOME_SOURCE)
+    representative = next(b for b in sections_by_title["README 대표 이미지"]["blocks"] if isinstance(b, str) and IMAGE.fullmatch(b))
+    representative_alt, representative_ref = IMAGE.fullmatch(representative).groups()
+    representative_url = local_image_path(HOME_SOURCE.relative_to(ROOT), representative_ref)
+    hero_image = f'<figure class="hero-preview"><a href="{BASE}work/player-hud/"><img src="{representative_url}" alt="{escape(representative_alt, quote=True)}" {image_size_attributes(representative_url)} fetchpriority="high"></a><figcaption>{escape(representative_alt)}</figcaption></figure>'
+    featured = ''.join(cards[key] for key in ("market", "inventory", "server-content"))
+    hero = f'''<main id="top" tabindex="-1"><section class="home-hero home-intro"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#work">결과 둘러보기</a><a class="text-link" href="{BASE}experience/">경험과 개선 읽기 →</a></div></div>{hero_image}</section>
+<section class="section-wrap origin-overview" id="legacy"><div class="section-title"><h2>출발점과 이번 작업</h2></div><div class="origin-copy">{origin}</div><details class="legacy-preview"><summary>직접 구현한 기존 2D 클라이언트 보기</summary><div class="legacy-body">{legacy_copy}</div></details></section>
+<section class="section-wrap work-section" id="work"><div class="section-title work-heading"><h2>작업과 결과</h2><p>게임 화면에서 구현 결과를 확인하고, 기능별 상세와 이전 화면을 둘러볼 수 있습니다.</p></div>{work_navigation(works)}<div class="featured-grid">{featured}</div></section>
+<section class="section-wrap home-case" id="execution-flow"><div class="section-title"><h2>선택한 방향을 결과로</h2></div><div class="case-evidence">{case}</div><a class="text-link" href="{BASE}process/#execution-flow">역할과 전체 작업 흐름 보기 →</a></section>
+<section class="section-wrap reflection-summary"><div class="section-title"><h2>작업 방식을 바꾼 이유</h2></div><div class="reflection-copy">{reflection}</div></section>
+<section class="section-wrap process-links" id="workflow"><h2>Agent 작업 방식과 기록</h2><p>목표를 정하고, 필요한 역할을 배정하고, 구현과 검토를 거쳐 결과를 확인합니다. 전체 역할과 기록은 별도 페이지에 모았습니다.</p><div><a href="{BASE}process/#workflow">Agent 구성과 협업</a><a id="agent-usage" href="{BASE}process/#agent-usage">역할별 활용 기록</a><a id="decisions" href="{BASE}process/#decisions">지침 변경 이력</a></div></section></main>'''
     (SITE / "index.html").write_text(document(title, intro, hero, references, title), encoding="utf-8", newline="\n")
+    process_content = f'''<main class="process-page" id="top" tabindex="-1"><header class="page narrow"><a class="back-link" href="{BASE}">← 작업과 결과</a><h1>Agent 작업 방식과 기록</h1><p class="lead">사람의 판단과 Agent의 수행을 어떻게 연결했는지, 실제 비교 사례와 역할별 기록을 함께 모았습니다.</p><nav class="page-actions" aria-label="과정 페이지 탐색"><a href="#workflow">Agent 구성</a><a href="#execution-flow">작업 흐름</a><a href="#agent-usage">활용 기록</a><a href="#decisions">지침 변경</a></nav></header>{process_html}{execution_html}{usage_html}{decisions_html}</main>'''
+    process_folder = SITE / "process"
+    process_folder.mkdir(exist_ok=True)
+    (process_folder / "index.html").write_text(document("Agent 작업 방식과 기록", "사람의 판단, Agent 역할과 작업 과정", process_content, references, title), encoding="utf-8", newline="\n")
+    experience_source = ROOT / "docs/unity-client/EXPERIENCE.md"
+    experience_title, experience_intro, experience_sections, _ = parse_showcase(experience_source)
+    experience_toc = ''.join(f'<a href="#{slug(s["title"])}">{escape(s["title"])}</a>' for s in experience_sections)
+    experience_body = ''.join(f'<section class="content-section" id="{slug(s["title"])}"><h2>{escape(s["title"])}</h2>{render_blocks(s["blocks"], experience_source)}</section>' for s in experience_sections)
+    experience_content = f'''<main class="page narrow experience-page" id="top" tabindex="-1"><a class="back-link" href="{BASE}">← 작업과 결과</a><h1>{escape(experience_title)}</h1><p class="lead">{inline(experience_intro)}</p><nav class="page-actions" aria-label="경험 페이지 탐색">{experience_toc}</nav>{experience_body}<p class="next-page"><a class="text-link" href="{BASE}process/">현재 적용한 Agent 작업 방식 보기 →</a></p></main>'''
+    experience_folder = SITE / "experience"
+    experience_folder.mkdir(exist_ok=True)
+    (experience_folder / "index.html").write_text(document(experience_title, experience_intro, experience_content, references, title), encoding="utf-8", newline="\n")
     for old_key in legacy_market_pages:
         folder = SITE / "work" / old_key
         folder.mkdir(parents=True, exist_ok=True)
