@@ -2,12 +2,10 @@
 
 #include <cstdint>
 #include <vector>
-
+#include "Config.h"
 class RingBufferTest;
 
 namespace Net {
-    constexpr uint8_t RELEASE = 0;
-    constexpr uint8_t ACQUIRE = 1;
 
     struct BufferFragment;
 

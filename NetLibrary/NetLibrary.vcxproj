@@ -225,6 +225,7 @@
     <None Include="NetLibrary.vcxproj.user" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AccumulatedBuffer.h" />
     <ClInclude Include="Jitter.h" />
     <ClInclude Include="NetPerfCollector.h" />
     <ClInclude Include="NetTimer.h" />
@@ -246,6 +247,7 @@
     <ClInclude Include="RingBuffer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AccumulatedBuffer.cpp" />
     <ClCompile Include="ClientContext.cpp" />
     <ClCompile Include="ClientContextPool.cpp" />
     <ClCompile Include="IOCP.cpp" />

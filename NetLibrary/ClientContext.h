@@ -12,6 +12,7 @@
 #include "PacketView.h"
 #include "OverlappedExPool.h"
 #include "Jitter.h"
+#include "AccumulatedBuffer.h"
 #include "Config.h"
 
 #include <CoreLib/PacketTypes.h>
@@ -38,11 +39,11 @@ namespace Net {
         uint32_t m_seq = 0;
 
         RingBuffer m_buffer{ RING_BUFFER_SIZE };
-        // RingBuffer는 사용중이지 않은 버퍼 공간 관리, ClientContext는 수신 후 RingBuffer 반납까지 관리.
-        uint8_t* m_startPtr;
-        uint16_t m_front = 0;
-        uint16_t m_rear = RING_BUFFER_SIZE - 1;
-        bool m_last_op = RELEASE;
+        AccumulatedBuffer m_accBuf; 
+        //uint8_t* m_startPtr;
+        //uint16_t m_front = 0;
+        //uint16_t m_rear = RING_BUFFER_SIZE - 1;
+        //bool m_last_op = RELEASE;
         uint64_t m_sessionID = 0;
         
         Jitter m_jitter{};
@@ -71,7 +72,6 @@ namespace Net {
         inline static OverlappedExPool* overlappedExPool;
         inline static Base::FixedObjectPool<PacketView, PACKETVIEWPOOL_SIZE> packetViewPool;
 
-        uint16_t GetLen() const;
         Core::PacketHeader ParseHeader() const;
         void BuildPacketView(PacketView* packet, uint32_t packetLen, uint8_t opcode);
         bool DequeueRecvQ(std::optional<uint64_t>& pongRTT);
@@ -94,12 +94,8 @@ namespace Net {
         friend class Initializer;
         friend class NetworkRegressionTest;
     public:
-        ClientContext(){
-            m_startPtr = m_buffer.GetStartPtr();
+        ClientContext() : m_accBuf(m_buffer.GetStartPtr()){
             m_releaseQ.resize(RELEASE_Q_SIZE, { EMPTY_SLOT, EMPTY_SLOT });
-            m_front = 0;
-            m_rear = RING_BUFFER_SIZE - 1;
-            m_last_op = RELEASE;
         }
   
 
@@ -128,19 +124,16 @@ namespace Net {
                 std::lock_guard<std::recursive_mutex> lock(m_mutex);
                 m_sessionID = session;
                 m_buffer.Clear();
-                m_startPtr = m_buffer.GetStartPtr();
                 m_seq = 0;
                 m_releaseIdx = 0;
                 std::fill(m_releaseQ.begin(), m_releaseQ.end(), EMPTY_PAIR);
-                m_front = 0;
-                m_rear = RING_BUFFER_SIZE - 1;
-                m_last_op = RELEASE;
                 m_disconnectNotification.store(DisconnectNotification::Waiting, std::memory_order_release);
                 m_connected.store(true, std::memory_order_seq_cst);
                 m_workingCnt.store(0, std::memory_order_seq_cst);
                 m_pendingIOCnt.store(0, std::memory_order_seq_cst);
                 m_gameSession.store(true, std::memory_order_release);
                 m_jitter = Jitter{};
+                m_accBuf.Clear();
             }
             {
                 std::lock_guard<std::mutex> lock(m_sendMutex);

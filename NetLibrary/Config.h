@@ -68,7 +68,8 @@ namespace Net {
 	inline constexpr uint64_t RECV_TOKEN_REFILL_RATE = 1;    // recv/10ms
 	inline constexpr uint64_t RECV_UNIT = 10;    // 10ms
 
-
+	constexpr uint8_t RELEASE = 0;
+	constexpr uint8_t ACQUIRE = 1;
 
 	template <typename T>
 	constexpr bool IsPowerOfTwo(T x) {

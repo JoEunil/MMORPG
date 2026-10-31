@@ -10,26 +10,12 @@
 
 
 namespace Net {
-    uint16_t ClientContext::AdvancePosition(uint16_t origin, uint16_t change) const {
-        origin += change;
-        return origin & RING_BUFFER_SIZE_MASK;
-    }
-
-    uint16_t ClientContext::GetLen() const
-    {
-        if (m_last_op == RELEASE && m_front == AdvancePosition(m_rear, 1))
-            return 0;
-        if (m_front <= m_rear)
-            return m_rear - m_front + 1;
-        return RING_BUFFER_SIZE - m_front + m_rear + 1;
-    }
-
     Core::PacketHeader ClientContext::ParseHeader() const {
         Core::PacketHeader header;
-        const size_t firstPart = (std::min)(sizeof(header), static_cast<size_t>(RING_BUFFER_SIZE - m_front));
-        std::memcpy(&header, m_startPtr + m_front, firstPart);
+        const size_t firstPart = (std::min)(sizeof(header), static_cast<size_t>(RING_BUFFER_SIZE - m_accBuf.GetFront()));
+        std::memcpy(&header, m_accBuf.GetFrontPtr(), firstPart);
         if (firstPart < sizeof(header))
-            std::memcpy(reinterpret_cast<uint8_t*>(&header) + firstPart, m_startPtr, sizeof(header) - firstPart);
+            std::memcpy(reinterpret_cast<uint8_t*>(&header) + firstPart, m_accBuf.GetStartPtr(), sizeof(header) - firstPart);
         return header; // wire의 uint32_t length를 검증 전에 축소하지 않는다.
     }
 
@@ -38,13 +24,16 @@ namespace Net {
         const uint32_t packetLen = header.length;
         const auto opcode = header.opcode;
 
+        uint16_t front = m_accBuf.GetFront();
+        uint16_t rear = m_accBuf.GetRear();
+        uint16_t len = m_accBuf.GetLen();
         if (magic != Core::MAGIC) {
-            Core::gameLogger->LogWarn("context", "packet Magic invalid", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcode", opcode, "m_front", m_front, "m_rear", m_rear, "GetLen()", GetLen());
+            Core::gameLogger->LogWarn("context", "packet Magic invalid", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcode", opcode, "m_front", front, "m_rear", rear, "GetLen()", len);
             return false;
         }
 
         if (opcode == 0 || opcode > Core::MAX_DEFINED_OPCODE) {
-            Core::gameLogger->LogWarn("context", "undefined opcode", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcode", opcode, "m_front", m_front, "GetLen()", GetLen());
+            Core::gameLogger->LogWarn("context", "undefined opcode", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcode", opcode, "m_front", front, "GetLen()", len);
             return false;
         }
 
@@ -67,26 +56,26 @@ namespace Net {
 
     void ClientContext::BuildPacketView(PacketView* packet, uint32_t packetLen, uint8_t opcode) {
         packet->Clear();
-        if (RING_BUFFER_SIZE - m_front < packetLen)
+        if (RING_BUFFER_SIZE - m_accBuf.GetFront() < packetLen)
         {
-            int firstPart = RING_BUFFER_SIZE - m_front;
+            int firstPart = RING_BUFFER_SIZE - m_accBuf.GetFront();
             int secondPart = packetLen - firstPart;
-            packet->JoinBuffer(m_startPtr + m_front, firstPart, m_startPtr, secondPart);
+            packet->JoinBuffer(m_accBuf.GetStartPtr() + m_accBuf.GetFront(), firstPart, m_accBuf.GetStartPtr(), secondPart);
         }
         else {
-            packet->SetStartPtr(m_startPtr);
+            packet->SetStartPtr(m_accBuf.GetStartPtr());
         }
 
         packet->SetSessionId(m_sessionID);
         packet->SetSeq(m_seq++);
-        packet->SetFront(m_front);
-        packet->SetRear((m_front + packetLen - 1) & RING_BUFFER_SIZE_MASK);
+        packet->SetFront(m_accBuf.GetFront());
+        packet->SetRear((m_accBuf.GetFront() + packetLen - 1) & RING_BUFFER_SIZE_MASK);
         packet->SetOpcode(opcode);
         packet->SetOwner(this);
     }
 
     bool ClientContext::DequeueRecvQ(std::optional<uint64_t>& pongRTT) {
-        if (GetLen() < sizeof(Core::PacketHeader))
+        if (m_accBuf.GetLen() < sizeof(Core::PacketHeader))
             return false;
         const auto header = ParseHeader();
         const auto magic = header.magic;
@@ -97,7 +86,7 @@ namespace Net {
             m_gameSession.store(false, std::memory_order_release);
             return false;
         }
-        if (GetLen() < packetLen)
+        if (m_accBuf.GetLen() < packetLen)
             return false;
 
         PacketView* packet = packetViewPool.Allocate();
@@ -110,8 +99,7 @@ namespace Net {
         BuildPacketView(packet, packetLen, opcode);
         std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv(static_cast<Core::IPacketView*>(packet), Core::PacketViewDeleter{});
 
-        m_front = AdvancePosition(m_front, packetLen);
-        m_last_op = RELEASE;
+        m_accBuf.Pop(packetLen);
         m_workingCnt.fetch_add(1, std::memory_order_seq_cst);
 
         if (!NetPacketFilter::TryDispatch(std::move(pv), m_jitter, pongRTT)) {
@@ -131,7 +119,7 @@ namespace Net {
         uint16_t len = m_buffer.TryAcquireBuffer(temp, RECV_BUFFER_SIZE);
         buffer = temp.startPtr;
         if (len == 0) {
-            Core::errorLogger->LogError("context", "can't allocate pending recv buffer", "sessionID", m_sessionID, "front", m_front, "rear", m_rear);
+            Core::errorLogger->LogError("context", "can't allocate pending recv buffer", "sessionID", m_sessionID, "front", m_accBuf.GetFront(), "rear", m_accBuf.GetRear());
             return 0;
         }
 
@@ -160,8 +148,7 @@ namespace Net {
             return false;
         if (!m_gameSession.load(std::memory_order_acquire) or len == 0 or len > RECV_BUFFER_SIZE)
             return false;
-        uint16_t front = ptr - m_startPtr;
-        if (front != AdvancePosition(m_rear, 1))
+        if (!m_accBuf.IsNextPos(ptr))
             return false;
         return true;
     }
@@ -171,10 +158,8 @@ namespace Net {
         if (!IsValidEnqueue(expectedSessionID, ptr, len))
             return false;
 
-        uint16_t rear = AdvancePosition(m_rear, len);
+        uint16_t rear = m_accBuf.Push(len);
         m_buffer.ReleaseLeftOver(rear + 1, len != 0);
-        m_rear = rear;
-        m_last_op = ACQUIRE;
 
         std::optional<uint64_t> pongRTT;
         while (DequeueRecvQ(pongRTT)) {}

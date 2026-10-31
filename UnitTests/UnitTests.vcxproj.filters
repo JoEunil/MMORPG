@@ -54,12 +54,6 @@
     <ClCompile Include="NetLib\NetTimer.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="NetLib\NetworkRegression.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="..\NetLibrary\ClientContext.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="..\CoreLib\LoggerGlobal.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -100,6 +94,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="NetLib\TrafficFloodDetector.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="NetLib\AccumulatedBuffer.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
