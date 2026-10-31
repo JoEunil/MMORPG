@@ -1,24 +1,32 @@
 ## 공개 집계
 
-기준일: 2026-10-30
-누적 신규: 206
-누적 재활성화: 315
-상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-30
+기준일: 2026-10-31
+누적 신규: 210
+누적 재활성화: 318
+상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-31
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 7 | 4 |
 | server_analyst | 서버 분석 Agent | 26 | 47 |
-| client_implementer | 구현 Agent | 62 | 77 |
+| client_implementer | 구현 Agent | 63 | 77 |
 | asset_artist | 아트 Agent | 24 | 32 |
-| code_reviewer | 리뷰 Agent | 54 | 111 |
-| quality_reviewer | 종합 검수 Agent | 11 | 32 |
-| unity_tester | 테스트 Agent | 4 | 4 |
+| code_reviewer | 리뷰 Agent | 55 | 112 |
+| quality_reviewer | 종합 검수 Agent | 12 | 32 |
+| unity_tester | 테스트 Agent | 5 | 6 |
 | progress_documenter | 기록 Agent | 9 | 5 |
 | decision_curator | 의사결정 지원 Agent | 8 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체521회(신규206·재활성화315)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체528회(신규210·재활성화318)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+
+## 클라이언트 정지 보정 — 2026-10-31
+
+client_stop_motion(구현 Agent/Sol medium) 신규1, client_release_review(리뷰 Agent/Sol medium) 신규1·후속1, client_stop_quality(종합 검수 Agent/Astra medium) 신규1을 실제 실행했다. 추가 송신 초안의 역행 위험을 독립 검토로 발견해 제외하고 순수 화면 보정만 남겼다. 최종 코드 리뷰 차단0·Astra 필수0/통과이며 총괄이 관련 PlayMode2개만 실행했다. 기존524회에 신규3·후속1을 더해528회, 토큰·비용 N/A다.
+
+## 실제 이동·입력 관측 — 2026-10-31
+
+live_input_log_observer(테스트 Agent, 고정 Luna medium)를 신규1·후속2 실행해 짧은 서버 로그와 자동/사용자 입력 관측 CSV를 분석했다. 내 캐릭터 좌표의 최종 분석·실제 GUI 조작·서버 준비/정상 종료·문서 통합은 Coordinator가 수행했으며 집계하지 않는다. 기존521회에 실제3회만 더한524회다. 제품 코드 변경·기존 자동 테스트 반복0, 토큰·비용 N/A.
 
 이번 추가2회는 play_feedback_item_contract(서버 분석/Sol medium 고정 프로필), play_feedback_movement_contract(explorer 도구/이동·방향·스폰 계약 분석, 실제 모델·추론 미확인)다. 책임 기준으로 서버 분석 역할에 귀속한다. 두 실행 모두 읽기 조사만 했고 결과는 PLAY_FEEDBACK_PLAN에 반영했다. 후속 실행0·게임 실행/테스트0이며 기존508회에 이번2회만 추가했다.
 

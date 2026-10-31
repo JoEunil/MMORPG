@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using Mmorpg.Client;
+using ClientCore;
 using ClientCore.PacketHelper;
 using NUnit.Framework;
 using TMPro;
@@ -248,6 +249,69 @@ namespace Mmorpg.Client.Tests
             }
         }
 
+        [Test]
+        [Category("MovementStopSmoothingRevision")]
+        public void ReleasedPredictionSettlesGentlyOntoAuthority_WithoutQueuingAnotherMove()
+        {
+            using (var fixture = new WorldFixture())
+            {
+                fixture.EnterWithOwnState();
+                fixture.Predict(Vector2.right, .05f);
+                fixture.Predict(Vector2.right, .05f);
+                fixture.Data.UpdateMove(3, fixture.InputTarget.x, fixture.InputTarget.y);
+                fixture.CancelMovement();
+                Assert.That(fixture.TakeAction().Item1, Is.False,
+                    "Key release must still discard an unsent movement request.");
+
+                for (int frame = 0; frame < 6; frame++) fixture.Predict(Vector2.zero, .05f);
+                Assert.That(fixture.VisualPosition.x, Is.EqualTo(10.9f).Within(.0001f),
+                    "Keep the existing bounded grace for an in-flight final snapshot.");
+                for (int frame = 0; frame < 40; frame++)
+                {
+                    float previous = fixture.VisualPosition.x;
+                    fixture.Predict(Vector2.zero, .05f);
+                    float correction = previous - fixture.VisualPosition.x;
+                    Assert.That(correction, Is.InRange(-.00001f, .09001f),
+                        "Idle correction is monotonic and capped at 1.8 units/s, not normal movement speed.");
+                    Assert.That(fixture.TakeAction().Item1, Is.False,
+                        "Visual settling must not send another target after the key is released.");
+                    Assert.That(fixture.ServerPosition.x, Is.EqualTo(10));
+                }
+                Assert.That(fixture.VisualPosition.x, Is.EqualTo(10).Within(.0001f),
+                    "Gentler correction must still converge onto server authority.");
+            }
+        }
+
+        [Test]
+        [Category("MovementStopSmoothingRevision")]
+        public void LateAuthorityReversingTheCorrectionClearsOldMomentum_AndNewInputRemainsImmediate()
+        {
+            using (var fixture = new WorldFixture())
+            {
+                fixture.EnterWithOwnState();
+                fixture.Predict(Vector2.right, .05f);
+                fixture.Predict(Vector2.right, .05f);
+                fixture.CancelMovement();
+                for (int frame = 0; frame < 9; frame++) fixture.Predict(Vector2.zero, .05f);
+                Assert.That(fixture.CorrectionVelocity.x, Is.LessThan(0));
+
+                float beforeSnapshot = fixture.VisualPosition.x;
+                fixture.Delta(beforeSnapshot + .1f);
+                Assert.That(fixture.CorrectionVelocity, Is.EqualTo(Vector2.zero),
+                    "A late final snapshot ahead of the actor must clear momentum towards the old position.");
+                fixture.Predict(Vector2.zero, .016f);
+                Assert.That(fixture.VisualPosition.x, Is.GreaterThanOrEqualTo(beforeSnapshot),
+                    "The actor must not take another backwards step away from its new authority target.");
+                Assert.That(fixture.VisualPosition.x, Is.LessThanOrEqualTo(fixture.ServerPosition.x));
+
+                float beforeInput = fixture.VisualPosition.x;
+                fixture.Predict(Vector2.left, .016f);
+                Assert.That(fixture.VisualPosition.x - beforeInput, Is.EqualTo(-.144f).Within(.0001f),
+                    "The gentler idle correction must not slow newly held input.");
+                Assert.That(fixture.HasMovementIntent, Is.True);
+            }
+        }
+
         private sealed class WorldFixture : IDisposable
         {
             private readonly GameObject root;
@@ -285,14 +349,21 @@ namespace Mmorpg.Client.Tests
                 Set(screen, "fieldPlane", plane.transform);
                 Set(screen, "quarterViewCamera", camera.transform);
                 Invoke(screen, "ChangeClient", new object[] { null });
+                Data = (IViewDataUI)Activator.CreateInstance(typeof(ViewModel).Assembly.GetType("ClientCore.ViewData", true), true);
+                var initializer = new Initializer();
+                typeof(Initializer).GetField("_data", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(initializer, Data);
+                Set(login, "client", initializer);
             }
 
+            public IViewDataUI Data { get; }
+            public (bool, byte, float, float, byte, ulong) TakeAction() => ((IViewDataModel)Data).GetActionState();
             public Vector2 ServerPosition => screen.ServerPosition;
             public Vector3 OwnPosition => ((Transform)Get(screen, "ownCharacter")).position;
             public bool HasOwnFull => screen.HasOwnFull;
             public bool HasVisualPosition => (bool)Get(screen, "hasVisualPosition");
             public Vector2 InputTarget => (Vector2)Get(screen, "inputTarget");
             public Vector2 VisualPosition => (Vector2)Get(screen, "visualPosition");
+            public Vector2 CorrectionVelocity => (Vector2)Get(screen, "visualCorrectionVelocity");
             public bool HasMovementIntent => (bool)Get(screen, "hasMovementIntent");
             public string Stage => screen.Stage.ToString();
             public ActorMotion ActorMotion => screen.ActorMotion;
