@@ -1,0 +1,53 @@
+{
+  "file": "UnityClient/Builds/ClientMotionLive-2026-10-31/automation-motion.csv",
+  "rows": 2938,
+  "durationSeconds": 39.982,
+  "uniqueMonsterIds": 1,
+  "serverSnapshotCoordinateChanges_sameMonster": 247,
+  "serverCoordinateChangeIntervalsSeconds": {
+    "count": 241,
+    "median": 0.1154,
+    "min": 0.0402,
+    "max": 0.8996
+  },
+  "serverPerChangeStep": {
+    "median": 0.191,
+    "max": 0.3001
+  },
+  "renderedMovingValidEdges": 2023,
+  "renderedHolds": 0,
+  "renderedHoldsWhileServerSnapshotCoordinateUnchanged": 0,
+  "renderedHoldsWhileServerSnapshotCoordinateChanged": 0,
+  "renderedHoldDurationSeconds": 0.0,
+  "maxRenderedStep": {
+    "distance": 0.03927,
+    "dt": 0.01776,
+    "speedPerSecond": 2.2107
+  },
+  "maxRenderedSpeed": {
+    "distance": 0.02617,
+    "dt": 0.01149,
+    "speedPerSecond": 2.2768
+  },
+  "excludedFrameGapOver100ms": 0,
+  "playerPositionUniqueSamples": 1,
+  "playerPositionConstant": true,
+  "inputSampledValues": {
+    "down": [
+      0
+    ],
+    "left": [
+      0
+    ],
+    "keyI": [
+      0
+    ],
+    "up": [
+      0
+    ],
+    "right": [
+      0
+    ]
+  },
+  "interpretation": "Server cadence describes observed monster coordinate changes in sampled snapshots, not packet arrival cadence. Render edges require stable monster/segmentMoving and dt<=100ms; transition-first samples and long gaps are omitted."
+}

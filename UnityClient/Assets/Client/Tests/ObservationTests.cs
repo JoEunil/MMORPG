@@ -18,6 +18,36 @@ namespace Mmorpg.Client.Tests
     public sealed class ObservationTests
     {
         [Test]
+        [Category("MotionSmoothing")]
+        public void MotionHistorySupportsTenHertzWithArrivalJitterWithoutPeriodicHolds()
+        {
+            var type = typeof(ObservedWorld).GetNestedType("MotionHistory", BindingFlags.NonPublic);
+            var history = Activator.CreateInstance(type, true);
+            var add = type.GetMethod("Add");
+            var positionAt = type.GetMethod("PositionAt");
+            type.GetMethod("Reset").Invoke(history, new object[] { 0d, 0f, 0f });
+            double delay = (double)typeof(ObservedWorld).GetField("PresentationDelay", BindingFlags.NonPublic | BindingFlags.Static).GetRawConstantValue();
+            double[] arrivals = { .10, .22, .30, .42, .50 };
+            int next = 0;
+            float previous = -1;
+            for (int frame = 20; frame <= 60; frame++)
+            {
+                double now = frame / 100d;
+                while (next < arrivals.Length && arrivals[next] <= now)
+                {
+                    add.Invoke(history, new object[] { arrivals[next], (next + 1) * .4f, 0f });
+                    next++;
+                }
+                var position = (Vector3)positionAt.Invoke(history, new object[] { now - delay });
+                Assert.That(position.x, Is.GreaterThan(previous), "Unexpected hold at time " + now);
+                previous = position.x;
+            }
+            Assert.That(((Vector3)positionAt.Invoke(history, new object[] { 10d })).x, Is.EqualTo(2f), "Do not extrapolate through a stopped actor or obstacle.");
+            type.GetMethod("Reset").Invoke(history, new object[] { 20d, 50f, 60f });
+            Assert.That((Vector3)positionAt.Invoke(history, new object[] { 20d }), Is.EqualTo(new Vector3(50, 0, 60)), "A new lifetime must not blend with old samples.");
+        }
+
+        [Test]
         [Category("WorldMinimap")]
         public void MinimapRectangleKeepsUniformScaleIncludesCornersAndClipsMarkersAndAtlas()
         {
@@ -1130,8 +1160,8 @@ namespace Mmorpg.Client.Tests
             public Action<ushort, MonsterFullField[]> MonsterCallback => (Action<ushort, MonsterFullField[]>)Get(observer, "monsterFull");
             public void Players(double now, params FullStateField[] states) => Invoke(observer, "ApplyPlayerFull", (ushort)states.Length, states, now);
             public void Monsters(double now, params MonsterFullField[] states) => Invoke(observer, "ApplyMonsterFull", (ushort)states.Length, states, now);
-            public void PlayerDeltas(params DeltaUpdateField[] updates) => Invoke(observer, "ApplyPlayerDelta", (ushort)updates.Length, updates);
-            public void MonsterDeltas(params MonsterDeltaField[] updates) => Invoke(observer, "ApplyMonsterDelta", (ushort)updates.Length, updates);
+            public void PlayerDeltas(params DeltaUpdateField[] updates) => Invoke(observer, "ApplyPlayerDelta", (ushort)updates.Length, updates, Time.realtimeSinceStartupAsDouble);
+            public void MonsterDeltas(params MonsterDeltaField[] updates) => Invoke(observer, "ApplyMonsterDelta", (ushort)updates.Length, updates, Time.realtimeSinceStartupAsDouble);
             public void MonsterDeltaPacket(params MonsterDeltaField[] updates)
             {
                 ((IViewModelNet)models[models.Count - 1]).MonsterDeltaReceived(1, 1, (ushort)updates.Length, updates);

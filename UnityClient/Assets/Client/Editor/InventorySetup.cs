@@ -296,6 +296,62 @@ namespace Mmorpg.Client.Editor
             SetTop(quantity.rectTransform, 274, 28);
         }
 
+        [MenuItem("Tools/Client/Inventory/Apply Potion Quick Slot")]
+        public static void ApplyPotionQuickSlot()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+                throw new System.InvalidOperationException("Potion UI authoring requires Edit Mode.");
+            var scene = EditorSceneManager.GetActiveScene();
+            if (!scene.IsValid() || scene.path != "Assets/Client/Scenes/World.unity")
+                throw new System.InvalidOperationException("Open the existing World scene first.");
+            var screen = Object.FindFirstObjectByType<InventoryScreen>(FindObjectsInactive.Include);
+            var combat = screen != null ? screen.transform.Find("C05CombatPanel") : null;
+            if (combat == null) throw new System.InvalidOperationException("The existing inventory and combat HUD are required.");
+            var slot = FindOrCreate("HpPotionQuickSlot", combat, typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button));
+            var rect = slot.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(.5f, 0);
+            rect.anchoredPosition = new Vector2(132, 8);
+            rect.sizeDelta = new Vector2(56, 62);
+            var image = slot.GetComponent<UnityEngine.UI.Image>();
+            image.sprite = null;
+            image.color = new Color32(43, 51, 58, 245);
+            image.raycastTarget = true;
+            var icon = FindOrCreate("Icon", slot.transform, typeof(RectTransform), typeof(UnityEngine.UI.Image));
+            var iconRect = icon.GetComponent<RectTransform>();
+            iconRect.anchorMin = iconRect.anchorMax = iconRect.pivot = new Vector2(.5f, .5f);
+            iconRect.anchoredPosition = Vector2.zero;
+            iconRect.sizeDelta = new Vector2(52, 52);
+            iconRect.SetAsFirstSibling();
+            var iconImage = icon.GetComponent<UnityEngine.UI.Image>();
+            iconImage.sprite = ItemPresentation.Icon(1);
+            iconImage.preserveAspect = true;
+            iconImage.color = Color.white;
+            iconImage.raycastTarget = false;
+            var button = slot.GetComponent<UnityEngine.UI.Button>();
+            button.targetGraphic = image;
+            button.interactable = false;
+            var key = Text("Key", slot.transform, "1", 18, Color.white);
+            key.alignment = TextAlignmentOptions.TopLeft;
+            key.fontStyle = FontStyles.Bold;
+            Stretch(key.rectTransform, 2);
+            var quantity = Text("Quantity", slot.transform, "?", 16, Color.white);
+            quantity.alignment = TextAlignmentOptions.BottomRight;
+            quantity.fontStyle = FontStyles.Bold;
+            Stretch(quantity.rectTransform, 2);
+            var status = Text("HpPotionQuickStatus", combat, string.Empty, 15, new Color32(229, 211, 163, 255));
+            status.alignment = TextAlignmentOptions.Center;
+            status.enableWordWrapping = true;
+            status.rectTransform.anchorMin = status.rectTransform.anchorMax = status.rectTransform.pivot = new Vector2(.5f, 0);
+            status.rectTransform.anchoredPosition = new Vector2(0, 132);
+            status.rectTransform.sizeDelta = new Vector2(460, 42);
+            var serialized = new SerializedObject(screen);
+            serialized.FindProperty("potionQuickSlot").objectReferenceValue = button;
+            serialized.FindProperty("potionQuantity").objectReferenceValue = quantity;
+            serialized.FindProperty("potionQuickStatus").objectReferenceValue = status;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            EditorSceneManager.MarkSceneDirty(scene);
+        }
+
         private static GameObject FindOrCreate(string name, Transform parent, params System.Type[] components)
         {
             var existing = parent.Find(name);

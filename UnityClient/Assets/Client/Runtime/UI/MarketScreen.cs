@@ -193,6 +193,7 @@ namespace Mmorpg.Client
             page = 0;
             ClearResults();
             bazaarPanel.SetActive(false);
+            if (inventoryScreen != null) inventoryScreen.RefreshShortcutControls();
             if (model != null)
             {
                 model.OnWalletReceived += WalletReceived;
@@ -222,6 +223,7 @@ namespace Mmorpg.Client
                 ShowWallet();
                 CancelPending();
                 bazaarPanel.SetActive(false);
+                if (inventoryScreen != null) inventoryScreen.RefreshShortcutControls();
                 ClearResults();
             }
             UpdateControls();
@@ -236,12 +238,14 @@ namespace Mmorpg.Client
             if (requestPending && writeRequest != WriteRequest.None)
             {
                 bazaarPanel.SetActive(true);
+                if (inventoryScreen != null) inventoryScreen.RefreshShortcutControls();
                 bazaarPanel.transform.SetAsLastSibling();
                 UpdateControls();
                 return;
             }
             view = MarketView.Browse;
             bazaarPanel.SetActive(true);
+            if (inventoryScreen != null) inventoryScreen.RefreshShortcutControls();
             bazaarPanel.transform.SetAsLastSibling();
             RefreshWallet();
             ClearResults();
@@ -348,6 +352,7 @@ namespace Mmorpg.Client
         public void ClosePanel()
         {
             bazaarPanel.SetActive(false);
+            if (inventoryScreen != null) inventoryScreen.RefreshShortcutControls();
             // A closed panel must still observe item delivery and balance-changing writes.
             if (requestPending && writeRequest != WriteRequest.None) return;
             CancelPending();
@@ -1069,6 +1074,7 @@ namespace Mmorpg.Client
             registrationUncertain = status == 5 || status > 5;
             RefreshWallet();
             if (inventoryScreen != null) inventoryScreen.RequireFreshInventoryOnOpen();
+            if (status == 1 && inventoryScreen != null) inventoryScreen.RefreshAfterDelivery();
             statusText.text = status == 1 ? "Sale listed. Gold fee deducted; diamonds are paid when purchased. Refresh My listings."
                 : status == 2 ? "Not enough items in that bag slot. Refresh your bag."
                 : status == 3 ? "Not enough gold for the listing fee."
@@ -1122,6 +1128,7 @@ namespace Mmorpg.Client
             CancelPending();
             if (listingRows != null && statusText != null && pageText != null) ClearResults();
             if (bazaarPanel != null) bazaarPanel.SetActive(false);
+            if (inventoryScreen != null) inventoryScreen.RefreshShortcutControls();
         }
     }
 }

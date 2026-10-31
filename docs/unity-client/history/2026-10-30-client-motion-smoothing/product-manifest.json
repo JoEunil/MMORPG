@@ -1,0 +1,50 @@
+[
+  {
+    "path": "ClientCore/Interfaces.cs",
+    "sha256": "F822F2C0B6F8109117EF7933D3319EB91073DB9AE07FBE7538DD9D67810EA708"
+  },
+  {
+    "path": "ClientCore/ViewModel.cs",
+    "sha256": "4B3234B88D171CEDC68BD4CAF11AF94FFCEF8FEF4706370DC97072E5F3C9DA5A"
+  },
+  {
+    "path": "UnityClient/Assets/Client/Editor/InventorySetup.cs",
+    "sha256": "E75A1DCD0493795853F28D18B3F599C43DA3598A5056A73ACDF9E74EE2F42B46"
+  },
+  {
+    "path": "UnityClient/Assets/Client/Editor/WorldSceneBuilder.cs",
+    "sha256": "E30C30AB4861108F7B64D1F7A897A5468E416B4136DEA74C9311095E80F343EA"
+  },
+  {
+    "path": "UnityClient/Assets/Client/Runtime/UI/InventoryScreen.cs",
+    "sha256": "46B060669E0484C6F7B12540166F1AF459A579EA33F943728B7EA080DCACDCBE"
+  },
+  {
+    "path": "UnityClient/Assets/Client/Runtime/UI/MarketScreen.cs",
+    "sha256": "3B0755A66E49E52B3633D5AC2BEA6FF409E248E642FCC68DE9ADF7CEAC972DCA"
+  },
+  {
+    "path": "UnityClient/Assets/Client/Runtime/World/ObservedWorld.cs",
+    "sha256": "E03D382E8754FA18EEE4624D4E6997142AFAE3BA072DCCED2C98AAC4882B807A"
+  },
+  {
+    "path": "UnityClient/Assets/Client/Scenes/World.unity",
+    "sha256": "712EA487EE13AF36FB90F9FF0029D072FFCCB562B218AE398ED33E7BFE2FFFEE"
+  },
+  {
+    "path": "UnityClient/Assets/Client/Tests/InventoryUiTests.cs",
+    "sha256": "3DD2E61C8669E6E2B122F6739DBF93169A7CC705B69BC315D1F26343E159C146"
+  },
+  {
+    "path": "UnityClient/Assets/Client/Tests/MarketMyListTests.cs",
+    "sha256": "5790EE0B6241DB4FC9C14E2130FDC38500925A5865B20E33A938E0897DA601E7"
+  },
+  {
+    "path": "UnityClient/Assets/Client/Tests/ObservationTests.cs",
+    "sha256": "877E6BF7509545A2FA2D1A7F7E8A0CF3E14D485D5375F510F38864430D17E39A"
+  },
+  {
+    "path": "UnityClient/Assets/Plugins/ClientCore/ClientCore.dll",
+    "sha256": "E3C6BDE540DFDB52C8E72F5304EF23DDB5B95107515CA48A288100AEA92CF30B"
+  }
+]

@@ -64,6 +64,8 @@ public struct InventoryItemView
     // UI → ViewModel 호출
     public interface IViewModelUI
     {
+        // Client-side age of the current snapshot callback; zero outside that callback.
+        double SimulationSampleAgeSeconds { get; }
         event Action<bool> OnAuthReceived;
         event Action<byte, ushort> OnCharacterListResult;
         event Action<string> OnConnectionFailed;

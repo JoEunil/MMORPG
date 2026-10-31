@@ -478,7 +478,7 @@ namespace Mmorpg.Client
                 if (secondsWithoutInput >= StaleMovementSeconds)
                 {
                     Vector2 next = Vector2.SmoothDamp(visualPosition, ServerPosition, ref visualCorrectionVelocity,
-                        .12f, MovementUnitsPerSecond, Mathf.Min(elapsed, (float)MovementIntervalSeconds));
+                        .20f, MovementUnitsPerSecond * .2f, Mathf.Min(elapsed, (float)MovementIntervalSeconds));
                     visualPosition = worldMap == null || worldMap.CanTraverse(visualPosition, next) ? next : ServerPosition;
                 }
             }
@@ -498,6 +498,10 @@ namespace Mmorpg.Client
             }
             else if ((server - previousServer).sqrMagnitude > 0.000001f)
             {
+                // A late final snapshot can move the correction target past the actor. Do not
+                // retain damping momentum that would keep pulling away from the new authority.
+                if (Vector2.Dot(server - visualPosition, visualCorrectionVelocity) < 0)
+                    visualCorrectionVelocity = Vector2.zero;
                 if (!hasMovementIntent || Vector2.Dot(server - previousServer, movementDirection) > .000001f)
                     secondsWithoutProgress = 0;
                 // No sequence/ACK exists: keep only bounded current intent, never replay requests.
