@@ -379,6 +379,16 @@ namespace Net {
         EXPECT_EQ(context.GetWorkingCnt(), 0);
     }
 
+    TEST(SessionStateRegressionTest, FloodRemainsInvalidUntilSessionIsReinitialized) {
+        static_assert(BYTES_TOKEN_CAPACITY < UINT32_MAX);
+        SessionState state;
+        state.InitializeSession(1);
+        ASSERT_FALSE(state.BufferReceived(static_cast<uint32_t>(BYTES_TOKEN_CAPACITY + 1)));
+        EXPECT_FALSE(state.BufferReceived(1));
+        state.InitializeSession(2);
+        EXPECT_TRUE(state.BufferReceived(1));
+    }
+
     TEST(SessionStateRegressionTest, UnansweredPingsReachDisconnectLimit) {
         SessionState state;
         state.InitializeSession(1);
@@ -395,23 +405,4 @@ namespace Net {
         EXPECT_EQ(state.GetRtt(), 7);
     }
 
-    TEST(SessionStateRegressionTest, ReuseResetsReceiveSizeWindow) {
-        SessionState state;
-        state.InitializeSession(1);
-        for (uint32_t i = 0; i < RECV_WINDOW - 1; ++i)
-            state.BufferReceived(RECV_BUFFER_SIZE);
-        state.InitializeSession(2);
-        state.BufferReceived(sizeof(Core::PacketHeader));
-        EXPECT_TRUE(state.CheckSession());
-    }
-
-    TEST(SessionStateRegressionTest, ReceiveSizeFailureStaysInvalid) {
-        SessionState state;
-        state.InitializeSession(1);
-        for (uint32_t i = 0; i < RECV_WINDOW; ++i)
-            state.BufferReceived(RECV_BUFFER_SIZE);
-        ASSERT_FALSE(state.CheckSession());
-        state.BufferReceived(sizeof(Core::PacketHeader));
-        EXPECT_FALSE(state.CheckSession());
-    }
 }

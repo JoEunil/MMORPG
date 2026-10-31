@@ -61,9 +61,13 @@ namespace Net {
 	inline constexpr std::chrono::seconds PING_LOOP_WAIT = std::chrono::seconds(1);
 
 
-	constexpr uint32_t RECV_WINDOW = 20;
-	constexpr uint32_t BYTE_THRESHOLD = RECV_WINDOW* RECV_BUFFER_SIZE * 0.8;
-	constexpr uint32_t MIN_BYTE_PER_WINDOW = sizeof(Core::PacketHeader) * RECV_WINDOW * 0.8;
+	inline constexpr uint64_t BYTES_TOKEN_CAPACITY = 10000;
+	inline constexpr uint64_t BYTES_TOKEN_REFILL_RATE = 10;    // bytes/ms
+	
+	inline constexpr uint64_t RECV_TOKEN_CAPACITY = 500;
+	inline constexpr uint64_t RECV_TOKEN_REFILL_RATE = 1;    // recv/10ms
+	inline constexpr uint64_t RECV_UNIT = 10;    // 10ms
+
 
 
 	template <typename T>

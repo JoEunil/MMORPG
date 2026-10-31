@@ -179,6 +179,7 @@ xcopy /Y "$(SolutionDir)External\libevent\bin\Release\*.dll" "$(OutDir)"</Comman
       <ObjectFileName>$(IntDir)RingBufferTests.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="BaseLib\RingQueue.cpp" />
+    <ClCompile Include="NetLib\TrafficFloodDetector.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BaseLib\BaseLib.vcxproj">
