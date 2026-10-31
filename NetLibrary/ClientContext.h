@@ -36,7 +36,7 @@ namespace Net {
     class ClientContext {
         uint32_t m_seq = 0;
 
-        RingBuffer m_buffer;
+        RingBuffer m_buffer{ RING_BUFFER_SIZE };
         uint8_t* m_startPtr;
         uint16_t m_front = 0;
         uint16_t m_rear = RING_BUFFER_SIZE - 1;
@@ -91,7 +91,6 @@ namespace Net {
         friend class NetworkRegressionTest;
     public:
         ClientContext(){
-            m_buffer.Initialize(RING_BUFFER_SIZE);
             m_startPtr = m_buffer.GetStartPtr();
             m_releaseQ.resize(RELEASE_Q_SIZE, { EMPTY_SLOT, EMPTY_SLOT });
             m_front = 0;

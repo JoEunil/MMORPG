@@ -163,7 +163,7 @@ namespace Net {
             return false;
         uint16_t rear = m_rear + len;
         rear &= RING_BUFFER_SIZE_MASK;
-        m_buffer.ReleaseLeftOver((rear + 1)& RING_BUFFER_SIZE_MASK, len != 0);
+        m_buffer.ReleaseLeftOver(rear + 1, len != 0);
         m_rear = rear;
 
         m_last_op = ACQUIRE;
