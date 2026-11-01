@@ -229,6 +229,7 @@
     <ClInclude Include="Jitter.h" />
     <ClInclude Include="NetPerfCollector.h" />
     <ClInclude Include="NetTimer.h" />
+    <ClInclude Include="SendQueue.h" />
     <ClInclude Include="SessionState.h" />
     <ClInclude Include="TrafficFloodDetector.h" />
     <ClInclude Include="PingManager.h" />

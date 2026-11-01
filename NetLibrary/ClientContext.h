@@ -13,6 +13,7 @@
 #include "OverlappedExPool.h"
 #include "Jitter.h"
 #include "AccumulatedBuffer.h"
+#include "SendQueue.h"
 #include "Config.h"
 
 #include <CoreLib/PacketTypes.h>
@@ -20,17 +21,10 @@
 #include <BaseLib/RingQueue.h>
 
 
+class ClientContextTest;
 namespace Core {
     class IPacketDispatcher;
 }
-
-enum class EnqueueSendResult
-{
-    Ready,      // 큐가 비어있어 즉시 전송 가능
-    Queued,     // pending으로 큐에 적재됨 
-    QueueFull,   // 큐 가득참 
-    Failed     // 실패
-};
 
 namespace Net {
     inline const uint16_t EMPTY_SLOT = RING_BUFFER_SIZE;
@@ -49,8 +43,8 @@ namespace Net {
         enum class DisconnectNotification : uint8_t { Waiting, Sending, Done };
         std::atomic<DisconnectNotification> m_disconnectNotification = DisconnectNotification::Waiting;
         // 서로 다른 실행 경로에서 갱신되는 작업 카운터 간 false sharing 방지.
-        alignas(std::hardware_destructive_interference_size) std::atomic<int16_t> m_workingCnt = int16_t(0); // buffer 조각(패킷)을 점유하고 있는 작업의 수
-        alignas(std::hardware_destructive_interference_size) std::atomic<int16_t> m_pendingIOCnt = int16_t(0); // Context 내부 버퍼를 참조하는 pending RECV 수
+        alignas(std::hardware_destructive_interference_size) std::atomic<int16_t> m_workingCnt = 0; // buffer 조각(패킷)을 점유하고 있는 작업의 수
+        alignas(std::hardware_destructive_interference_size) std::atomic<int16_t> m_pendingIOCnt = 0; // Context 내부 버퍼를 참조하는 pending RECV 수
         char padding[std::hardware_destructive_interference_size - sizeof(std::atomic<int16_t>)];
 
         mutable std::recursive_mutex m_mutex;
@@ -60,10 +54,7 @@ namespace Net {
         std::vector<std::pair<uint16_t, uint16_t>> m_releaseQ;
         // sequence % RELEASE_Q_SIZE를 index로 사용해서 ring Queue로 사용
 
-        Base::RingQueue<STOverlappedEx*, SEND_QUEUE_SIZE> m_sendQueue;
-        std::mutex m_sendMutex;
-        bool m_sendPending = false;
-        // WSA Send 중첩을 방지하기 위함
+		SendQueue m_sendQueue;
 
         inline static OverlappedExPool* overlappedExPool;
         inline static Base::FixedObjectPool<PacketView, PACKETVIEWPOOL_SIZE> packetViewPool;
@@ -86,7 +77,7 @@ namespace Net {
             return true;
         }
         friend class Initializer;
-        friend class NetworkRegressionTest;
+        friend class ::ClientContextTest;
     public:
         ClientContext() : m_accBuf(m_buffer.GetStartPtr()){
             m_releaseQ.resize(RELEASE_Q_SIZE, { EMPTY_SLOT, EMPTY_SLOT });
@@ -129,13 +120,7 @@ namespace Net {
                 m_jitter = Jitter{};
                 m_accBuf.Clear();
             }
-            {
-                std::lock_guard<std::mutex> lock(m_sendMutex);
-                STOverlappedEx* pending = nullptr;
-                while (m_sendQueue.pop(pending))
-                    overlappedExPool->Return(pending);
-                m_sendPending = false;
-            }
+            m_sendQueue.Clear(overlappedExPool);
         }
         void Disconnect() {
             std::lock_guard<std::recursive_mutex> lock(m_mutex);
@@ -146,12 +131,16 @@ namespace Net {
         bool CheckGameSession() const {
             return m_gameSession.load(std::memory_order_acquire);
         }
-
-        // unit test에서 mock 주입 위해 virtual 선언
-        virtual void ReleaseBuffer(PacketView* pv);
+        
+        void ReleaseBuffer(PacketView* pv);
         bool EnqueueRecvQ(uint64_t expectedSessionID, uint8_t* ptr, size_t len);
 
-        EnqueueSendResult EnqueueSend(STOverlappedEx* work);
-        STOverlappedEx* DequeueSend();
+        EnqueueSendResult EnqueueSend(STOverlappedEx* work) {
+			return m_sendQueue.Enqueue(work);
+        }
+
+        STOverlappedEx* DequeueSend() {
+            return m_sendQueue.Dequeue();
+        }
     };
 }

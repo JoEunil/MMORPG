@@ -65,8 +65,6 @@ namespace Net{
         }
         ClientContextPool* contextPool = nullptr;
         friend class Initializer;
-        friend class NetworkRegressionTest;
-
     public:
         
         // session 

@@ -4,6 +4,7 @@
 
 #include <NetLibrary/PacketView.h>
 #include <NetLibrary/ClientContext.h>
+#include <NetLibrary/OverlappedExPool.h>
 
 class PacketViewTest : public ::testing::Test {
 protected:
@@ -31,14 +32,8 @@ protected:
 
 class ClientContextTest : public Net::ClientContext {
 public:
-	Net::PacketView* returned;
-	~ClientContextTest() {
-		if (returned) {
-			delete returned;
-		}
-	}
-	void ReleaseBuffer(Net::PacketView* pv) override {
-		returned = pv;
+	Net::PacketView* Acquire() {
+		return packetViewPool.Allocate();
 	}
 };
 
@@ -73,13 +68,10 @@ TEST_F(PacketViewTest, ReleaseToOwner) {
 	ClientContextTest* owner = new ClientContextTest();
 	pv->SetOwner(owner);
 	pv->Release();
-	Net::PacketBufferInfo retrievedInfo = owner->returned->GetBufferInfo();
-	EXPECT_EQ(retrievedInfo.seq, 3);
-	EXPECT_EQ(retrievedInfo.front, 11);
-	EXPECT_EQ(retrievedInfo.rear, 15);
 
-	EXPECT_EQ(owner->returned->GetLength(), 5);
 	
+	Net::PacketView* returned = owner->Acquire();
+	EXPECT_EQ(returned, pv);
 	delete owner;
 }
 

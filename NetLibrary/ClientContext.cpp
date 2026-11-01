@@ -148,24 +148,4 @@ namespace Net {
         NetPacketFilter::Disconnect(m_sessionID);
         m_disconnectNotification.store(DisconnectNotification::Done, std::memory_order_release);
     }
-    EnqueueSendResult ClientContext::EnqueueSend(STOverlappedEx* work) {
-        std::lock_guard<std::mutex> lock(m_sendMutex);
-        if (m_sendPending == false) {
-            m_sendPending = true;
-            return EnqueueSendResult::Ready;
-        }
-        if (!m_sendQueue.push(work))
-            return EnqueueSendResult::QueueFull;
-        return EnqueueSendResult::Queued;
-    }
-
-    STOverlappedEx* ClientContext::DequeueSend() {
-        std::lock_guard<std::mutex> lock(m_sendMutex);
-        STOverlappedEx* res = nullptr;
-        if (!m_sendQueue.pop(res)) {
-            m_sendPending = false;
-            return nullptr;
-        }
-        return res;
-    }
 }
