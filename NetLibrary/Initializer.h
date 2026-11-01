@@ -49,7 +49,7 @@ namespace Net {
             NetTimer::StartThread();
             overlappedExPool.Initialize();
             clientContextPool.Initialize();
-            ClientContext::Initialize(&overlappedExPool);
+            ClientContext::Initialize(&overlappedExPool, &sessionManager);
             sessionManager.Initialize(&clientContextPool);
             netHandler.Initialize(&sessionManager, &iocp);
             perfCollector.Initialize(&sessionManager, &packetPool, &bigPacketPool, &giantPacketPool, &overlappedExPool,&clientContextPool);
@@ -67,7 +67,7 @@ namespace Net {
         void InjectDependencies(Core::IPacketDispatcher* packetDispatcher) {
             iocp.Initialize(&overlappedExPool, &netHandler, &sessionManager, &fatalError, &cv, &perfCollector);
             pingManager.Initialize(static_cast<IAbortSocket*>(&iocp), &sessionManager, packetDispatcher);
-            NetPacketFilter::Initialize(packetDispatcher, &sessionManager, &perfCollector);
+            NetPacketFilter::Initialize(packetDispatcher, &perfCollector);
             iocp.Start();
             pingManager.PingStart();
             perfCollector.Start();

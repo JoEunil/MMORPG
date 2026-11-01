@@ -27,6 +27,7 @@ namespace Core {
 }
 
 namespace Net {
+    class SessionManager;
     inline const uint16_t EMPTY_SLOT = RING_BUFFER_SIZE;
     inline const std::pair<uint16_t, uint16_t> EMPTY_PAIR{ EMPTY_SLOT, EMPTY_SLOT };
     class ClientContext {
@@ -57,6 +58,7 @@ namespace Net {
 		SendQueue m_sendQueue;
 
         inline static OverlappedExPool* overlappedExPool;
+        inline static SessionManager* sessionManager;
         inline static Base::FixedObjectPool<PacketView, PACKETVIEWPOOL_SIZE> packetViewPool;
 
         void BuildPacketView(PacketView* packet, uint32_t packetLen, uint8_t opcode);
@@ -66,12 +68,17 @@ namespace Net {
         void TryNotifyDisconnect();
         uint16_t AdvancePosition(uint16_t origin, uint16_t change) const;
 
-        static void Initialize(OverlappedExPool* o) {
+        static void Initialize(OverlappedExPool* o, SessionManager* s) {
             overlappedExPool = o;
+            sessionManager = s;
         }
         static bool IsReady() {
             if (overlappedExPool == nullptr) {
                 Core::errorLogger->LogError("context", "overlappedPool not Initialized");
+                return false;
+            }
+            if (sessionManager == nullptr) {
+                Core::errorLogger->LogError("context", "sessionManager not initialized");
                 return false;
             }
             return true;

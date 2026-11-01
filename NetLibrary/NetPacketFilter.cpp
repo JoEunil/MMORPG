@@ -1,6 +1,5 @@
 ﻿#include "pch.h"
 #include "NetPacketFilter.h"
-#include "SessionManager.h"
 #include "NetTimer.h"
 #include "AccumulatedBuffer.h"
 
@@ -117,7 +116,4 @@ namespace Net {
         
     }
 
-    void NetPacketFilter::NotifyPong(uint64_t sessionID, uint64_t rtt) {
-        sessionManager->PongReceived(sessionID, rtt);
-    }
 }
