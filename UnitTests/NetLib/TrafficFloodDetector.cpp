@@ -9,6 +9,9 @@ public:
 	FloodDetectTest() {
 		timer.StartThread();
 	}
+	~FloodDetectTest() {
+		timer.Stop();
+	}
 	Net::TrafficFloodDetector detector;
 	Net::NetTimer timer;
 };
