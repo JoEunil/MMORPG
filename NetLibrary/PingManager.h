@@ -1,9 +1,10 @@
 ﻿#pragma once
 #include <atomic>
 #include <cstdint>
-#include <unordered_map>
+#include <thread>
 
-#include "NetPacketFilter.h"
+#include <CoreLib/IPacketDispatcher.h>
+#include <CoreLib/LoggerGlobal.h>
 #include "IAbortSocket.h"
 namespace Net {
     class SessionManager;
@@ -19,10 +20,12 @@ namespace Net {
 
         SessionManager* sessionManager = nullptr;
         IAbortSocket* abortSocket = nullptr;
+        Core::IPacketDispatcher* packetDispatcher = nullptr;
 
-        void Initialize(IAbortSocket* a, SessionManager* s) {
+        void Initialize(IAbortSocket* a, SessionManager* s, Core::IPacketDispatcher* p) {
             abortSocket = a;
             sessionManager = s;
+            packetDispatcher = p;
         }
 
         bool IsReady() {
@@ -34,10 +37,13 @@ namespace Net {
                 Core::sysLogger->LogError("ping manager", "sessionManager not initialized");
                 return false;
             }
+            if (packetDispatcher == nullptr) {
+                Core::sysLogger->LogError("ping manager", "packetDispatcher not initialized");
+                return false;
+            }
             return true;
         }
         void PingFunc();
-        void SendPing(uint64_t session, uint64_t rtt, uint64_t nowMs);
 
         void PingStart() {
             m_running.store(true, std::memory_order_relaxed);

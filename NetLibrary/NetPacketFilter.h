@@ -60,10 +60,6 @@ namespace Net {
             packetDispatcher->Disconnect(sessionID);
         }
 
-        // called by PingManager
-        static void Ping(uint64_t sessionID, uint64_t rtt, uint64_t nowMs) {
-            packetDispatcher->Ping(sessionID, rtt, nowMs);
-        }
     };
 
 }

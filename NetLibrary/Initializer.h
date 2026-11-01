@@ -66,7 +66,7 @@ namespace Net {
         
         void InjectDependencies(Core::IPacketDispatcher* packetDispatcher) {
             iocp.Initialize(&overlappedExPool, &netHandler, &sessionManager, &fatalError, &cv, &perfCollector);
-            pingManager.Initialize(static_cast<IAbortSocket*>(&iocp), &sessionManager);
+            pingManager.Initialize(static_cast<IAbortSocket*>(&iocp), &sessionManager, packetDispatcher);
             NetPacketFilter::Initialize(packetDispatcher, &sessionManager, &perfCollector);
             iocp.Start();
             pingManager.PingStart();
