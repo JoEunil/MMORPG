@@ -76,7 +76,7 @@ namespace Net {
         void BuildPacketView(PacketView* packet, uint32_t packetLen, uint8_t opcode);
         bool DequeueRecvQ(std::optional<uint64_t>& pongRTT);
         bool IsValidEnqueue(uint64_t expectedSessionID, uint8_t* ptr, size_t len);
-        void EnqueueReleaseQ(uint32_t seq, uint16_t front, uint16_t rear);
+        void EnqueueReleaseQ(PacketBufferInfo info);
         void TryNotifyDisconnect();
         uint16_t AdvancePosition(uint16_t origin, uint16_t change) const;
         bool CheckPacketValid(const Core::PacketHeader& header) const;

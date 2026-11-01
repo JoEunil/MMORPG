@@ -56,20 +56,8 @@ namespace Net {
 
     void ClientContext::BuildPacketView(PacketView* packet, uint32_t packetLen, uint8_t opcode) {
         packet->Clear();
-        if (RING_BUFFER_SIZE - m_accBuf.GetFront() < packetLen)
-        {
-            int firstPart = RING_BUFFER_SIZE - m_accBuf.GetFront();
-            int secondPart = packetLen - firstPart;
-            packet->JoinBuffer(m_accBuf.GetStartPtr() + m_accBuf.GetFront(), firstPart, m_accBuf.GetStartPtr(), secondPart);
-        }
-        else {
-            packet->SetStartPtr(m_accBuf.GetStartPtr());
-        }
-
+        packet->SetBufferInfo({m_seq++, m_accBuf.GetFront(), static_cast<uint16_t>((m_accBuf.GetFront() + packetLen - 1) & RING_BUFFER_SIZE_MASK)}, m_accBuf.GetStartPtr());
         packet->SetSessionId(m_sessionID);
-        packet->SetSeq(m_seq++);
-        packet->SetFront(m_accBuf.GetFront());
-        packet->SetRear((m_accBuf.GetFront() + packetLen - 1) & RING_BUFFER_SIZE_MASK);
         packet->SetOpcode(opcode);
         packet->SetOwner(this);
     }
@@ -173,9 +161,9 @@ namespace Net {
         return valid;
     }
 
-    void ClientContext::EnqueueReleaseQ(uint32_t seq, uint16_t front, uint16_t rear) {
+    void ClientContext::EnqueueReleaseQ(PacketBufferInfo info) {
         std::lock_guard<std::recursive_mutex> lock(m_mutex);
-        m_releaseQ[seq & RELEASE_Q_SIZE_MASK] = std::make_pair(front, rear);
+        m_releaseQ[info.seq & RELEASE_Q_SIZE_MASK] = std::make_pair(info.front, info.rear);
         auto current = m_releaseQ[m_releaseIdx];
         while (current != EMPTY_PAIR and m_buffer.Release(current.first, current.second))
         {
@@ -189,7 +177,7 @@ namespace Net {
     void ClientContext::ReleaseBuffer(PacketView* pv) {
         std::lock_guard<std::recursive_mutex> lock(m_mutex);
         if (m_connected.load(std::memory_order_seq_cst))
-            EnqueueReleaseQ(pv->GetSeq(), pv->GetFront(), pv->GetRear());
+            EnqueueReleaseQ(pv->GetBufferInfo());
         int16_t previous = m_workingCnt.fetch_sub(1, std::memory_order_seq_cst);
         pv->Clear();
         packetViewPool.Deallocate(pv);
