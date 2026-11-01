@@ -6,6 +6,8 @@
 #include <CoreLib/PacketDispatcher.h>
 #include "Jitter.h"
 
+class ClientContextTest;
+
 namespace Core {
     class IPacketView;
 }
@@ -47,6 +49,7 @@ namespace Net {
         inline static SessionManager* sessionManager;
         inline static NetPerfCollector* perfCollector;
         friend class Initializer;
+        friend class ::ClientContextTest;
 
     public:
         static PacketValidation HasCompletePacket(AccumulatedBuffer& accBuf, Core::PacketHeader& header, uint64_t sessionId);

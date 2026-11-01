@@ -3,7 +3,6 @@
 #include <cstdint>
 
 #include <NetLibrary/PacketView.h>
-#include <NetLibrary/ClientContext.h>
 #include <NetLibrary/OverlappedExPool.h>
 
 class PacketViewTest : public ::testing::Test {
@@ -30,13 +29,6 @@ protected:
 	}
 };
 
-class ClientContextTest : public Net::ClientContext {
-public:
-	Net::PacketView* Acquire() {
-		return packetViewPool.Allocate();
-	}
-};
-
 TEST_F(PacketViewTest, InitStatus) {
 	Net::PacketView* pv = Getter();
 	EXPECT_FALSE(pv->IsCopied());
@@ -57,22 +49,6 @@ TEST_F(PacketViewTest, SetterGetter) {
 	pv->SetSessionId(111);
 	EXPECT_EQ(111, pv->GetSessionID());
 	EXPECT_EQ(&buffer[11], pv->GetPtr());
-}
-
-TEST_F(PacketViewTest, ReleaseToOwner) {
-	Net::PacketView* pv = Getter();
-	Net::PacketBufferInfo info{ 3, 11, 15 };
-	std::vector<uint8_t> buffer(30);
-	pv->SetBufferInfo(info, &buffer[0]);
-
-	ClientContextTest* owner = new ClientContextTest();
-	pv->SetOwner(owner);
-	pv->Release();
-
-	
-	Net::PacketView* returned = owner->Acquire();
-	EXPECT_EQ(returned, pv);
-	delete owner;
 }
 
 TEST_F(PacketViewTest, JoinBuffer) {

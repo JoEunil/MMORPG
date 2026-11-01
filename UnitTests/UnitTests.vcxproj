@@ -172,12 +172,14 @@ xcopy /Y "$(SolutionDir)External\libevent\bin\Release\*.dll" "$(OutDir)"</Comman
     <ClCompile Include="CacheLib\CacheStorageTest.cpp" />
     <ClCompile Include="BaseLib\FixedObjectPool.cpp" />
     <ClCompile Include="NetLib\AccumulatedBuffer.cpp" />
+    <ClCompile Include="NetLib\ClientContext.cpp" />
     <ClCompile Include="NetLib\NetTimer.cpp" />
     <ClCompile Include="NetLib\PacketView.cpp" />
     <ClCompile Include="NetLib\RingBuffer.cpp">
       <ObjectFileName>$(IntDir)RingBufferTests.obj</ObjectFileName>
     </ClCompile>
     <ClCompile Include="BaseLib\RingQueue.cpp" />
+    <ClCompile Include="NetLib\SendQueue.cpp" />
     <ClCompile Include="NetLib\TrafficFloodDetector.cpp" />
   </ItemGroup>
   <ItemGroup>

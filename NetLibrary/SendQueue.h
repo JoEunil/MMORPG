@@ -26,7 +26,6 @@ namespace Net
         EnqueueSendResult Enqueue(STOverlappedEx* work) {
             std::lock_guard<std::mutex> lock(m_mutex);
             if (m_sendPending == false) {
-
                 m_sendPending = true;
                 return EnqueueSendResult::Ready;
             }

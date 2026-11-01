@@ -104,7 +104,7 @@ namespace Net {
                 and m_pendingIOCnt.load(std::memory_order_acquire) == 0;
         }
 
-        void Clear(uint64_t session) {
+        void InitSession(uint64_t session) {
             {
                 std::lock_guard<std::recursive_mutex> lock(m_mutex);
                 m_sessionID = session;
