@@ -10,72 +10,23 @@
 
 
 namespace Net {
-    Core::PacketHeader ClientContext::ParseHeader() const {
-        Core::PacketHeader header;
-        const size_t firstPart = (std::min)(sizeof(header), static_cast<size_t>(RING_BUFFER_SIZE - m_accBuf.GetFront()));
-        std::memcpy(&header, m_accBuf.GetFrontPtr(), firstPart);
-        if (firstPart < sizeof(header))
-            std::memcpy(reinterpret_cast<uint8_t*>(&header) + firstPart, m_accBuf.GetStartPtr(), sizeof(header) - firstPart);
-        return header; // wire의 uint32_t length를 검증 전에 축소하지 않는다.
-    }
-
-    bool ClientContext::CheckPacketValid(const Core::PacketHeader& header) const{
-        const auto magic = header.magic;
-        const uint32_t packetLen = header.length;
-        const auto opcode = header.opcode;
-
-        uint16_t front = m_accBuf.GetFront();
-        uint16_t rear = m_accBuf.GetRear();
-        uint16_t len = m_accBuf.GetLen();
-        if (magic != Core::MAGIC) {
-            Core::gameLogger->LogWarn("context", "packet Magic invalid", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcode", opcode, "m_front", front, "m_rear", rear, "GetLen()", len);
-            return false;
-        }
-
-        if (opcode == 0 || opcode > Core::MAX_DEFINED_OPCODE) {
-            Core::gameLogger->LogWarn("context", "undefined opcode", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcode", opcode, "m_front", front, "GetLen()", len);
-            return false;
-        }
-
-        if (packetLen < sizeof(Core::PacketHeader) || packetLen > MAX_PACKET_LEN) {
-            Core::gameLogger->LogWarn("context", "invalid packet length", "session", m_sessionID, "packetLen", packetLen, "opcode", opcode);
-            return false;
-        }
-        // 고정 길이 요청이 짧은 본문이나 잘못된 dispatcher로 전달되지 않도록 한다.
-        if (opcode == Core::OP::BAZAAR_SEARCH
-            && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::BazaarSearchRequestBody>)))
-            return false;
-        if (opcode == Core::OP::BAZAAR_MY_LIST
-            && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::BazaarMyListRequestBody>)))
-            return false;
-        if (opcode == Core::OP::ITEM_USE
-            && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::ItemUseRequestBody>)))
-            return false;
-        return true;
-    }
-
     void ClientContext::BuildPacketView(PacketView* packet, uint32_t packetLen, uint8_t opcode) {
         packet->Clear();
-        packet->SetBufferInfo({m_seq++, m_accBuf.GetFront(), static_cast<uint16_t>((m_accBuf.GetFront() + packetLen - 1) & RING_BUFFER_SIZE_MASK)}, m_accBuf.GetStartPtr());
+        packet->SetBufferInfo({ m_seq++, m_accBuf.GetFront(), static_cast<uint16_t>((m_accBuf.GetFront() + packetLen - 1) & RING_BUFFER_SIZE_MASK) }, m_accBuf.GetStartPtr());
         packet->SetSessionId(m_sessionID);
         packet->SetOpcode(opcode);
         packet->SetOwner(this);
     }
-
     bool ClientContext::DequeueRecvQ(std::optional<uint64_t>& pongRTT) {
-        if (m_accBuf.GetLen() < sizeof(Core::PacketHeader))
-            return false;
-        const auto header = ParseHeader();
-        const auto magic = header.magic;
-        const uint32_t packetLen = header.length;
-        const auto opcode = header.opcode;
-
-        if (!CheckPacketValid(header)) {
-            m_gameSession.store(false, std::memory_order_release);
+        Core::PacketHeader header;
+        PacketValidation valid = NetPacketFilter::HasCompletePacket(m_accBuf, header, m_sessionID);
+        if (valid == PacketValidation::Incomplete) {
             return false;
         }
-        if (m_accBuf.GetLen() < packetLen)
+        if (valid == PacketValidation::Invalid) {
+			m_gameSession.store(false, std::memory_order_release);
             return false;
+        }
 
         PacketView* packet = packetViewPool.Allocate();
         if (!packet) {
@@ -84,10 +35,10 @@ namespace Net {
             return false;
         }
 
-        BuildPacketView(packet, packetLen, opcode);
+        BuildPacketView(packet, header.length, header.opcode);
         std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv(static_cast<Core::IPacketView*>(packet), Core::PacketViewDeleter{});
 
-        m_accBuf.Pop(packetLen);
+        m_accBuf.Pop(header.length);
         m_workingCnt.fetch_add(1, std::memory_order_seq_cst);
 
         if (!NetPacketFilter::TryDispatch(std::move(pv), m_jitter, pongRTT)) {

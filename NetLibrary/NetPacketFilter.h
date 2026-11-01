@@ -12,7 +12,12 @@ namespace Core {
 namespace Net {
     class SessionManager;
     class NetPerfCollector;
-
+    class AccumulatedBuffer;
+    enum class PacketValidation {
+        Invalid, 
+		Incomplete,
+        Complete
+    };
     class NetPacketFilter {
         static void Initialize(Core::IPacketDispatcher* p, SessionManager* s, NetPerfCollector* pc) {
             packetDispatcher = p;
@@ -34,13 +39,17 @@ namespace Net {
             }
             return true;
         }
+
+        static Core::PacketHeader ParseHeader(AccumulatedBuffer& accBuf);
+        static bool CheckPacketValid(AccumulatedBuffer& accBuf, const Core::PacketHeader& header, uint64_t sessionID);
+
         inline static Core::IPacketDispatcher* packetDispatcher;
         inline static SessionManager* sessionManager;
         inline static NetPerfCollector* perfCollector;
         friend class Initializer;
-        friend class NetworkRegressionTest;
 
     public:
+        static PacketValidation HasCompletePacket(AccumulatedBuffer& accBuf, Core::PacketHeader& header, uint64_t sessionId);
         static bool TryDispatch(std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv, Jitter& jitter, std::optional<uint64_t>& pongRTT);
         // Context mutex를 해제한 뒤에만 SessionManager의 shard lock을 얻는다.
         static void NotifyPong(uint64_t sessionID, uint64_t rtt);

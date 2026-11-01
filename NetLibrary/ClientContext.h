@@ -40,10 +40,6 @@ namespace Net {
 
         RingBuffer m_buffer{ RING_BUFFER_SIZE };
         AccumulatedBuffer m_accBuf; 
-        //uint8_t* m_startPtr;
-        //uint16_t m_front = 0;
-        //uint16_t m_rear = RING_BUFFER_SIZE - 1;
-        //bool m_last_op = RELEASE;
         uint64_t m_sessionID = 0;
         
         Jitter m_jitter{};
@@ -72,14 +68,12 @@ namespace Net {
         inline static OverlappedExPool* overlappedExPool;
         inline static Base::FixedObjectPool<PacketView, PACKETVIEWPOOL_SIZE> packetViewPool;
 
-        Core::PacketHeader ParseHeader() const;
         void BuildPacketView(PacketView* packet, uint32_t packetLen, uint8_t opcode);
         bool DequeueRecvQ(std::optional<uint64_t>& pongRTT);
         bool IsValidEnqueue(uint64_t expectedSessionID, uint8_t* ptr, size_t len);
         void EnqueueReleaseQ(PacketBufferInfo info);
         void TryNotifyDisconnect();
         uint16_t AdvancePosition(uint16_t origin, uint16_t change) const;
-        bool CheckPacketValid(const Core::PacketHeader& header) const;
 
         static void Initialize(OverlappedExPool* o) {
             overlappedExPool = o;
