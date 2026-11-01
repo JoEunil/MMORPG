@@ -23,13 +23,7 @@ namespace Net {
 	}
 
 	void OverlappedExPool::Return(STOverlappedEx* r) {
-		r->ownerContext = nullptr;
-		r->sessionID = 0;
-		r->originalBufs.clear();
-		r->sharedPacket.reset();
-		r->uniquePacket.reset();
-		r->packetChunks.clear();
-		r->wsaBuf.resize(1);
+		r->Reset();
 		m_fixedPool.Deallocate(r);
 	}
 }

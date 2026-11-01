@@ -22,14 +22,14 @@ namespace Net {
             for (int i = 0; i < SESSION_SHARD_SIZE; i++)
             {
                 clientList.clear();
-                sessionManager->GetSessionSnapshot(i, clientList);
+                sessionManager->PreparePing(i, clientList);
                 // shard lock 아래에서 이번 ping의 미응답 카운트도 증가한다.
 
                 auto now = NetTimer::GetTimeMS();
                 for (PingStruct& st: clientList)
                 {
                     if (st.isAlive)
-                        SendPing(st.session, st.rtt, now);
+                        packetDispatcher->Ping(st.session, st.rtt, now);
                     else {
                         Core::errorLogger->LogInfo("ping manager", "not alive", "socket", st.socket);
                         abortSocket->AbortSocket(st.socket, st.session);
@@ -40,7 +40,4 @@ namespace Net {
         }
     }
 
-    void PingManager::SendPing(uint64_t session, uint64_t rtt, uint64_t nowMs) {
-        NetPacketFilter::Ping(session, rtt, nowMs);
-    }
 }

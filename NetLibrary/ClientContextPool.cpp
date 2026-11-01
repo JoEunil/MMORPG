@@ -54,7 +54,7 @@ namespace Net {
             return nullptr;
         ClientContext* ctx = m_contexts.back();
         m_contexts.pop_back();
-        ctx->Clear(session);
+        ctx->InitSession(session);
         m_workingCnt.fetch_add(1, std::memory_order_relaxed);
 
         if (m_flushQ.size() > FLUSH_CONTEXTPOOL)

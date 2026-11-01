@@ -4,21 +4,16 @@
 
 class RingBufferTest : public ::testing::Test {
 protected:
-	Net::RingBuffer buf;
-	void Initialize(uint32_t size) {
-		buf.Initialize(size); 
-	}
+	Net::RingBuffer buf{ 4 };
 };
 
 TEST_F(RingBufferTest, InitStatus) {
-	Initialize(4);
 	ASSERT_NE(buf.GetStartPtr(), nullptr);
 	EXPECT_EQ(4, buf.GetCapacity()) ;	
 }
 
 TEST_F(RingBufferTest, AcquireBuffer) {
 	Net::BufferFragment fragment;
-	Initialize(4);
 	uint16_t len;
 	len = buf.TryAcquireBuffer(fragment, 2);
 	EXPECT_EQ(buf.GetStartPtr() + fragment.front, fragment.startPtr);
@@ -36,7 +31,6 @@ TEST_F(RingBufferTest, AcquireBuffer) {
 
 TEST_F(RingBufferTest, AcquireBufferZeroLen) {
 	Net::BufferFragment fragment;
-	Initialize(4);
 	buf.TryAcquireBuffer(fragment, 0);
 	EXPECT_EQ(buf.GetStartPtr() + fragment.front, fragment.startPtr);
 	EXPECT_EQ(0, fragment.length);
@@ -45,7 +39,6 @@ TEST_F(RingBufferTest, AcquireBufferZeroLen) {
 
 TEST_F(RingBufferTest, AcquireBufferExhausted) {
 	Net::BufferFragment fragment;
-	Initialize(4);
 
 	buf.TryAcquireBuffer(fragment, 4);
 	EXPECT_EQ(4, fragment.length);
@@ -57,7 +50,6 @@ TEST_F(RingBufferTest, AcquireBufferExhausted) {
 
 TEST_F(RingBufferTest, AcquireBufferRemaining) {
 	Net::BufferFragment fragment;
-	Initialize(4);
 	
 	buf.TryAcquireBuffer(fragment, 3);
 	EXPECT_EQ(3, fragment.length);
@@ -69,7 +61,6 @@ TEST_F(RingBufferTest, AcquireBufferRemaining) {
 
 TEST_F(RingBufferTest, AcquireAtLastPtr) {
 	Net::BufferFragment fragment;
-	Initialize(4);
 	buf.TryAcquireBuffer(fragment, 4);
 	EXPECT_EQ(4, fragment.length);
 	buf.Release(fragment.front, fragment.rear);
@@ -80,7 +71,6 @@ TEST_F(RingBufferTest, AcquireAtLastPtr) {
 
 TEST_F(RingBufferTest, ReleaseBuffer) {
 	Net::BufferFragment first, next, wrapped, exhausted;
-	Initialize(4);
 	ASSERT_EQ(buf.TryAcquireBuffer(first, 2), 2);
 	ASSERT_TRUE(buf.Release(first.front, first.front)); // byte 1 remains in use
 	// Three bytes are free in total, but only two are contiguous before wrap.
@@ -99,7 +89,6 @@ TEST_F(RingBufferTest, ReleaseBuffer) {
 
 TEST_F(RingBufferTest, ReleaseRejectsInvalidRange) {
 	Net::BufferFragment fragment;
-	Initialize(4);
 
 	buf.TryAcquireBuffer(fragment, 2);
 	EXPECT_EQ(2, fragment.length);
@@ -113,7 +102,6 @@ TEST_F(RingBufferTest, ReleaseRejectsInvalidRange) {
 
 TEST_F(RingBufferTest, ReleaseLeftOver) {
 	Net::BufferFragment fragment;
-	Initialize(4);
 
 	buf.TryAcquireBuffer(fragment, 3);
 	EXPECT_EQ(3, fragment.length);

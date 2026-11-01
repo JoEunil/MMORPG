@@ -81,6 +81,15 @@
     <ClInclude Include="NetPerfCollector.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Jitter.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="AccumulatedBuffer.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="SendQueue.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -114,6 +123,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="Packet.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="AccumulatedBuffer.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

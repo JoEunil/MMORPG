@@ -28,13 +28,16 @@ ClientContext의 목적은 버퍼를 패킷으로 파싱하기 위해 클라이�
 ## 3. 수정사항
 __구조 변경__  
 ```cpp
+    struct SessionEntry {
+        SessionState state;
+        ClientContext* context;
+    };
     struct SessionShard {
-        std::atomic_flag flag;
-        std::unordered_map<SOCKET, SessionState> stateMap; // socket -> sessionState
-        std::unordered_map<uint64_t, ClientContext*> contextMap; // session -> context
+        std::mutex mutex;
+        std::unordered_map<SOCKET, SessionEntry> sessions; // socket -> 상태와 Context
     };
     struct ReverseShard {
-        std::atomic_flag flag;
+        std::mutex mutex;
         std::unordered_map<uint64_t, SOCKET> socketMap; // session -> socket 조회용도
     };
 
@@ -63,14 +66,12 @@ PacketView
 - 패킷에 해당하는 RingBuffer 포인터와 길이 등의 정보 담는 구조체
 
 ## 4. 설계 결정 및 트레이드오프
-- SessionManager가 두 개의 맵을 관리하므로 구조가 복잡해짐
-	- 단, 삽입/삭제를 SessionManager에 집중시켜 race condition과 데드락 가능성 최소화
+- socket별 SessionState와 ClientContext를 한 항목으로 관리해 중복 조회와 두 맵의 일치 조건을 제거
+- session → socket 역방향 맵은 송신과 PONG 처리의 조회에 사용
+	- 등록·해제 시 정방향·역방향 샤드의 mutex를 `std::scoped_lock`으로 함께 잠가 두 맵을 일관되게 갱신
+	- 중복 등록과 역방향 매핑 불일치는 assertion으로 검사하고, 연결 종료·오래된 세션 ID·Context 풀 고갈은 정상 실패로 처리
 - Zero-copy 전략 유지
 	- ClientContext의 책임 분리가 명확해지고, Zero-copy로 인한 로직의 복잡성은 컨트롤 가능한 수준
-- SessionManager에 SpinLock 적용
-	- 조회가 매우 빈번한 hot-path에서 단순 Getter/Setter 접근이 대부분이므로, mutex 대신 SpinLock으로 ContextSwitching 비용 절감
-	- PingLoop에서 호출되는 GetSessionSnapshot 내부 루프는 샤드를 적용해 한 샤드당 수백 단위이고,   
-	map 접근도 캐시되어 SpinLock 비용에 큰 영향 없음
     
 ## 5. 참고
 - 관련 PR: [Context, Session 리팩토링 #13](https://github.com/JoEunil/MMORPG/pull/13)

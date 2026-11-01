@@ -448,6 +448,13 @@ namespace Core {
     };
     
 #pragma pack(pop)
+
+    // 헤더를 포함한 현재 최대 클라이언트 요청 크기.
+    inline constexpr uint32_t MAX_REQ_PACKET_LEN = sizeof(PacketStruct<ProfileBatchReqBody>);
+
+    // 현재 마지막 클라이언트 요청 opcode. 요청 추가 시 크기 제한도 함께 검토한다.
+    static_assert(OP::ITEM_USE == 45, "Review MAX_REQ_PACKET_LEN when changing request opcodes.");
+    static_assert(sizeof(PacketStruct<ItemUseRequestBody>) <= MAX_REQ_PACKET_LEN);
     
     inline PacketHeader* parseHeader(uint8_t* data) {
         return reinterpret_cast<PacketHeader*>(data);

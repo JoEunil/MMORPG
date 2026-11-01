@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include "ClientContext.h"
+#include "SessionManager.h"
 
 #include "Config.h"
 
@@ -10,75 +11,23 @@
 
 
 namespace Net {
-    uint16_t ClientContext::GetLen()
-    {
-        if (m_last_op == RELEASE && m_front == ((m_rear+1)&RING_BUFFER_SIZE_MASK))
-            return 0;
-        if (m_front <= m_rear)
-            return m_rear - m_front + 1;
-        return RING_BUFFER_SIZE - m_front + m_rear + 1;
+    void ClientContext::BuildPacketView(PacketView* packet, uint32_t packetLen, uint8_t opcode) {
+        packet->Clear();
+        packet->SetBufferInfo({ m_seq++, m_accBuf.GetFront(), static_cast<uint16_t>((m_accBuf.GetFront() + packetLen - 1) & RING_BUFFER_SIZE_MASK) }, m_accBuf.GetStartPtr());
+        packet->SetSessionId(m_sessionID);
+        packet->SetOpcode(opcode);
+        packet->SetOwner(this);
     }
-
-    Core::PacketHeader ClientContext::ParseHeader() {
-        Core::PacketHeader header;
-        const size_t firstPart = (std::min)(sizeof(header), static_cast<size_t>(RING_BUFFER_SIZE - m_front));
-        std::memcpy(&header, m_startPtr + m_front, firstPart);
-        if (firstPart < sizeof(header))
-            std::memcpy(reinterpret_cast<uint8_t*>(&header) + firstPart, m_startPtr, sizeof(header) - firstPart);
-        return header; // wire의 uint32_t length를 검증 전에 축소하지 않는다.
-    }
-
     bool ClientContext::DequeueRecvQ(std::optional<uint64_t>& pongRTT) {
-        if (GetLen() < sizeof(Core::PacketHeader))
-            return false;
-        const auto header = ParseHeader();
-        const auto magic = header.magic;
-        const uint32_t packetLen = header.length;
-        const auto opcode = header.opcode;
-        // 2차 패킷 검증
-
-        if (magic != Core::MAGIC)
-        {
-            Core::gameLogger->LogWarn("context", "packet Magic invalid", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcode", opcode, "m_front", m_front, "m_rear", m_rear, "GetLen()", GetLen());
-            m_gameSession.store(false, std::memory_order_release);
+        Core::PacketHeader header;
+        PacketValidation valid = NetPacketFilter::HasCompletePacket(m_accBuf, header, m_sessionID);
+        if (valid == PacketValidation::Incomplete) {
             return false;
         }
-
-        if (opcode == 0 || opcode > Core::MAX_DEFINED_OPCODE)
-        {
-            Core::gameLogger->LogWarn("context", "undefined opcode", "session", m_sessionID, "magic", magic, "packetLen", packetLen, "opcode", opcode, "m_front", m_front, "GetLen()", GetLen());
-            m_gameSession.store(false, std::memory_order_release);
+        if (valid == PacketValidation::Invalid) {
+			m_gameSession.store(false, std::memory_order_release);
             return false;
         }
-
-        if (packetLen < sizeof(Core::PacketHeader) || packetLen > MAX_PACKET_LEN) {
-            Core::gameLogger->LogWarn("context", "invalid packet length", "session", m_sessionID,"packetLen", packetLen, "opcode", opcode);
-            m_gameSession.store(false, std::memory_order_release);
-            return false;
-        }
-
-        // Search must never enter the simulation dispatcher or expose a short body.
-        if (opcode == Core::OP::BAZAAR_SEARCH
-            && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::BazaarSearchRequestBody>))) {
-            m_gameSession.store(false, std::memory_order_release);
-            return false;
-        }
-
-        if (opcode == Core::OP::BAZAAR_MY_LIST
-            && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::BazaarMyListRequestBody>))) {
-            m_gameSession.store(false, std::memory_order_release);
-            return false;
-        }
-
-        if (opcode == Core::OP::ITEM_USE && (header.flags != 0
-            || packetLen != sizeof(Core::PacketStruct<Core::ItemUseRequestBody>))) {
-            m_gameSession.store(false, std::memory_order_release);
-            return false;
-        }
-
-        if (GetLen() < packetLen)
-            return false;
-
 
         PacketView* packet = packetViewPool.Allocate();
         if (!packet) {
@@ -86,31 +35,14 @@ namespace Net {
             m_gameSession.store(false, std::memory_order_release);
             return false;
         }
-        packet->Clear();
-        if (RING_BUFFER_SIZE - m_front < packetLen)
-        {
-            int firstPart = RING_BUFFER_SIZE - m_front;
-            int secondPart = packetLen - firstPart;
-            packet->JoinBuffer(m_startPtr + m_front, firstPart, m_startPtr, secondPart);
-        }
-        else {
-            packet->SetStartPtr(m_startPtr);
-        }
 
-        packet->SetSessionId(m_sessionID);
-        packet->SetSeq(m_seq++);
-        packet->SetFront(m_front);
-        packet->SetRear((m_front + packetLen - 1) & RING_BUFFER_SIZE_MASK);
-        packet->SetOpcode(opcode);
-        packet->SetOwner(this);
+        BuildPacketView(packet, header.length, header.opcode);
+        std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv(static_cast<Core::IPacketView*>(packet), Core::PacketViewDeleter{});
 
-       std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv(static_cast<Core::IPacketView*>(packet), Core::PacketViewDeleter{});
-
-        m_front = (m_front + packetLen) & RING_BUFFER_SIZE_MASK;
-        m_last_op = RELEASE;
+        m_accBuf.Pop(header.length);
         m_workingCnt.fetch_add(1, std::memory_order_seq_cst);
 
-        if (!NetPacketFilter::TryDispatch(std::move(pv), m_srtt, m_rttvar, pongRTT)) {
+        if (!NetPacketFilter::TryDispatch(std::move(pv), m_jitter, pongRTT)) {
             m_gameSession.store(false, std::memory_order_release);
             return false;
         }
@@ -127,7 +59,7 @@ namespace Net {
         uint16_t len = m_buffer.TryAcquireBuffer(temp, RECV_BUFFER_SIZE);
         buffer = temp.startPtr;
         if (len == 0) {
-            Core::errorLogger->LogError("context", "can't allocate pending recv buffer", "sessionID", m_sessionID, "front", m_front, "rear", m_rear);
+            Core::errorLogger->LogError("context", "can't allocate pending recv buffer", "sessionID", m_sessionID, "front", m_accBuf.GetFront(), "rear", m_accBuf.GetRear());
             return 0;
         }
 
@@ -151,37 +83,39 @@ namespace Net {
         }
     }
 
+    bool ClientContext::IsValidEnqueue(uint64_t expectedSessionID, uint8_t* ptr, size_t len) {
+        if (!m_connected.load(std::memory_order_seq_cst) or m_sessionID != expectedSessionID)
+            return false;
+        if (!m_gameSession.load(std::memory_order_acquire) or len == 0 or len > RECV_BUFFER_SIZE)
+            return false;
+        if (!m_accBuf.IsNextPos(ptr))
+            return false;
+        return true;
+    }
 
     bool ClientContext::EnqueueRecvQ(uint64_t expectedSessionID, uint8_t* ptr, size_t len) {
         std::unique_lock<std::recursive_mutex> lock(m_mutex);
-        if (!m_connected.load(std::memory_order_seq_cst) || m_sessionID != expectedSessionID)
+        if (!IsValidEnqueue(expectedSessionID, ptr, len))
             return false;
-        if (!m_gameSession.load(std::memory_order_acquire) || len == 0 || len > RECV_BUFFER_SIZE)
-            return false;
-        uint16_t front = ptr - m_startPtr;
-        if (front != ((m_rear + 1) & RING_BUFFER_SIZE_MASK))
-            return false;
-        uint16_t rear = m_rear + len;
-        rear &= RING_BUFFER_SIZE_MASK;
-        m_buffer.ReleaseLeftOver((rear + 1)& RING_BUFFER_SIZE_MASK, len != 0);
-        m_rear = rear;
 
-        m_last_op = ACQUIRE;
+        uint16_t rear = m_accBuf.Push(len);
+        m_buffer.ReleaseLeftOver(rear + 1, len != 0);
+
         std::optional<uint64_t> pongRTT;
         while (DequeueRecvQ(pongRTT)) {}
-        const bool valid = m_gameSession.load(std::memory_order_acquire);
+        bool valid = m_gameSession.load(std::memory_order_acquire);
         lock.unlock();
         // Disconnect/BeginRecvIO는 shard -> Context 순서다. 수신 경로는
         // Context lock을 풀고 shard를 얻어 역순 잠금을 만들지 않는다.
         // 이 호출의 pending RECV 참조가 반환될 때까지 Context 재사용은 금지된다.
         if (pongRTT)
-            NetPacketFilter::NotifyPong(expectedSessionID, *pongRTT);
+            sessionManager->PongReceived(expectedSessionID, *pongRTT);
         return valid;
     }
 
-    void ClientContext::EnqueueReleaseQ(uint32_t seq, uint16_t front, uint16_t rear) {
+    void ClientContext::EnqueueReleaseQ(PacketBufferInfo info) {
         std::lock_guard<std::recursive_mutex> lock(m_mutex);
-        m_releaseQ[seq & RELEASE_Q_SIZE_MASK] = std::make_pair(front, rear);
+        m_releaseQ[info.seq & RELEASE_Q_SIZE_MASK] = std::make_pair(info.front, info.rear);
         auto current = m_releaseQ[m_releaseIdx];
         while (current != EMPTY_PAIR and m_buffer.Release(current.first, current.second))
         {
@@ -195,7 +129,7 @@ namespace Net {
     void ClientContext::ReleaseBuffer(PacketView* pv) {
         std::lock_guard<std::recursive_mutex> lock(m_mutex);
         if (m_connected.load(std::memory_order_seq_cst))
-            EnqueueReleaseQ(pv->GetSeq(), pv->GetFront(), pv->GetRear());
+            EnqueueReleaseQ(pv->GetBufferInfo());
         int16_t previous = m_workingCnt.fetch_sub(1, std::memory_order_seq_cst);
         pv->Clear();
         packetViewPool.Deallocate(pv);
@@ -214,25 +148,5 @@ namespace Net {
         // pool이 Clear로 새 session ID를 덮어쓰지 못하게 한다. 통지는 정확히 한 번이다.
         NetPacketFilter::Disconnect(m_sessionID);
         m_disconnectNotification.store(DisconnectNotification::Done, std::memory_order_release);
-    }
-    EnqueueSendResult ClientContext::EnqueueSend(STOverlappedEx* work) {
-        std::lock_guard<std::mutex> lock(m_sendMutex);
-        if (m_sendPending == false) {
-            m_sendPending = true;
-            return EnqueueSendResult::Ready;
-        }
-        if (!m_sendQueue.push(work))
-            return EnqueueSendResult::QueueFull;
-        return EnqueueSendResult::Queued;
-    }
-
-    STOverlappedEx* ClientContext::DequeueSend() {
-        std::lock_guard<std::mutex> lock(m_sendMutex);
-        STOverlappedEx* res = nullptr;
-        if (!m_sendQueue.pop(res)) {
-            m_sendPending = false;
-            return nullptr;
-        }
-        return res;
     }
 }
