@@ -2,6 +2,7 @@
 """Build the public portfolio pages from the approved Markdown copy."""
 from html import escape
 from pathlib import Path
+import argparse
 import re
 import shutil
 from urllib.parse import unquote, urlsplit
@@ -10,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SITE = ROOT / "site"
 CONTENT = ROOT / "docs/unity-client/portfolio"
 HOME_SOURCE = ROOT / "docs/unity-client/SHOWCASE.md"
+TOUR_SOURCE = ROOT / "docs/unity-client/CONTENT_TOUR.md"
 BASE = "/MMORPG/"
 IMAGE = re.compile(r"!\[([^\]]*)\]\(([^)]+)\)")
 LINK = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
@@ -214,15 +216,26 @@ def diagram_node(item):
 
 
 def render_workflow(section):
-    groups = diagram_items(section)
-    agents = groups["에이전트 구성"]
-    chain = ''.join(f'<li>{diagram_node(item)}</li>' for item in agents[:2])
-    roles = ''.join(f'<li>{diagram_node(item)}</li>' for item in agents[2:])
+    agents = diagram_items(section)["에이전트 구성"]
+    by_role = {item.partition(" — ")[0]: item for item in agents}
+    def node(role):
+        return diagram_node(by_role[role])
+    producers = ("서버 분석 Agent", "기획 Agent", "의사결정 지원 Agent", "구현 Agent", "아트 Agent")
+    reviewers = ("리뷰 Agent", "테스트 Agent", "종합 검수 Agent")
+    branches = ''.join(f'<li>{node(role)}</li>' for role in producers)
+    review = ''.join(f'<li>{node(role)}</li>' for role in reviewers)
     intro = next(b for b in section["blocks"] if isinstance(b, str) and b and not b.startswith("- "))
     return f'''<section class="workflow" id="workflow"><div class="section-wrap">
 <div class="section-title"><h2>{escape(section['title'])}</h2><p class="diagram-intro">{escape(intro)}</p></div>
-<div class="agent-diagram"><ol class="agent-chain" aria-label="사용자에서 총괄 Agent로 이어지는 역할 연결">{chain}</ol>
-<div class="agent-branches"><p class="branch-label">작업에 필요한 전문 Agent를 선택해 배정</p><ul class="agent-roles" aria-label="총괄 Agent가 배정하는 전문 역할">{roles}</ul></div></div></div></section>'''
+<div class="collaboration-map" aria-label="사용자와 총괄, 전문 Agent의 배정과 피드백 관계">
+<div class="map-leaders"><div class="map-node">{node("사용자")}</div><p class="map-exchange">목표·선택 ↔ 결과·피드백</p><div class="map-node map-coordinator">{node("총괄 Agent")}</div></div>
+<p class="map-connector">↓ 필요한 독립 범위를 병렬 배정</p>
+<ul class="map-producers" aria-label="총괄이 선택해 배정하는 조사·기획·제작 역할">{branches}</ul>
+<p class="map-note">담당 Agent도 독립 범위의 하위 Agent를 추가 배정할 수 있습니다. 모든 역할을 매번 호출하지 않습니다.</p>
+<div class="map-review-loop"><div class="map-review"><p class="map-connector">↓ 제작 결과를 검토</p><ul aria-label="리뷰와 실행 확인">{review}</ul></div><p class="map-return">↶ 같은 제작 Agent에게 피드백<br><span>수정한 부분을 다시 확인</span></p></div>
+<p class="map-connector">↓ 검토를 마친 결과를 총괄이 통합</p>
+<div class="map-delivery"><div class="map-node"><strong>통합 결과</strong></div><p class="map-arrow" aria-hidden="true">→</p><div class="map-node">{node("기록 Agent")}</div><p class="map-arrow" aria-hidden="true">→</p><div class="map-node"><strong>사용자</strong><span>결과 확인·다음 피드백</span></div></div>
+</div></div></section>'''
 
 
 def render_execution_flow(section):
@@ -299,9 +312,57 @@ def document(title, description, content, references, site_title):
 <meta name="description" content="{escape(description, quote=True)}"><title>{escape(browser_title)}</title>
 <link rel="stylesheet" href="{BASE}style.css"></head><body>
 <a class="skip-link" href="#top">본문으로 바로가기</a>
-<header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}#work">작업과 결과</a><a href="{BASE}experience/">경험과 개선</a><a href="{BASE}process/">Agent 작업 방식</a></nav></header>
+<header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}play/">콘텐츠 둘러보기</a><a href="{BASE}#work">작업과 결과</a><a href="{BASE}experience/">경험과 개선</a><a href="{BASE}process/">Agent 작업 방식</a></nav></header>
 {content}<footer class="site-footer"><a href="{BASE}">{escape(site_title)}</a>{ref_footer}</footer>
 </body></html>'''
+
+
+def build_tour(references, site_title, require_media=False):
+    title, intro, sections, _ = parse_showcase(TOUR_SOURCE)
+    if require_media:
+        clips = [IMAGE.fullmatch(b.removeprefix("영상: ")) for s in sections for b in s["blocks"] if isinstance(b, str) and b.startswith("영상: ")]
+        expected = {"skill-strike.gif", "skill-sweep.gif", "skill-cleave.gif", "market-flow.gif", "market-return.gif", "chat-global-zone.gif", "chat-zone.gif", "chat-whisper.gif"}
+        if len(clips) != 8 or any(c is None for c in clips) or {Path(c[2]).name for c in clips} != expected:
+            raise ValueError("The completed tour must reference all eight required recordings")
+        for clip in clips:
+            image_size_attributes(local_image_path(TOUR_SOURCE.relative_to(ROOT), clip[2]))
+            poster_ref = str(Path(clip[2]).with_name(Path(clip[2]).stem + "-poster.png"))
+            image_size_attributes(local_image_path(TOUR_SOURCE.relative_to(ROOT), poster_ref))
+    toc = ''.join(f'<a href="#{slug(s["title"])}">{escape(s["title"])}</a>' for s in sections)
+    rendered = []
+    first_clip = True
+    for section in sections:
+        blocks = []
+        body = []
+        for block in section["blocks"]:
+            # Optional recordings live in Markdown; absent clips leave no fake previews.
+            clip = IMAGE.fullmatch(block.removeprefix("영상: ")) if isinstance(block, str) and block.startswith("영상: ") else None
+            if clip:
+                body.append(render_blocks(blocks, TOUR_SOURCE))
+                blocks.clear()
+                alt, ref = clip.groups()
+                target = (TOUR_SOURCE.parent / ref).resolve()
+                if not target.is_relative_to(SITE.resolve()):
+                    raise ValueError(f"Out-of-site tour clip: {ref}")
+                if target.is_file():
+                    src = local_image_path(TOUR_SOURCE.relative_to(ROOT), ref)
+                    poster = target.with_name(target.stem + "-poster.png")
+                    preview = ""
+                    if poster.is_file():
+                        poster_url = BASE + poster.relative_to(SITE.resolve()).as_posix()
+                        loading = 'fetchpriority="high"' if first_clip else 'loading="lazy"'
+                        preview = f'<img class="tour-poster" src="{poster_url}" alt="{escape(alt, quote=True)} 정지 화면" {image_size_attributes(poster_url)} {loading}>'
+                    clip_class = "tour-clip tour-chat" if target.stem.startswith("chat-") else "tour-clip"
+                    body.append(f'<figure class="{clip_class}"><details><summary><span>{escape(alt)} · GIF 펼쳐 보기</span>{preview}</summary><a href="{src}" target="_blank" rel="noopener" aria-label="{escape(alt, quote=True)} 원본 크게 보기"><img src="{src}" alt="{escape(alt, quote=True)}" {image_size_attributes(src)} loading="lazy"></a></details><figcaption>{escape(alt)}</figcaption></figure>')
+                    first_clip = False
+            else:
+                blocks.append(block)
+        body.append(render_blocks(blocks, TOUR_SOURCE))
+        rendered.append(f'<section class="content-section" id="{slug(section["title"])}"><h2>{escape(section["title"])}</h2>{"".join(body)}</section>')
+    content = f'''<main class="page tour-page" id="top" tabindex="-1"><a class="back-link" href="{BASE}">← 작업과 결과</a><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><nav class="page-actions" aria-label="콘텐츠 둘러보기 탐색">{toc}</nav>{"".join(rendered)}</main>'''
+    folder = SITE / "play"
+    folder.mkdir(exist_ok=True)
+    (folder / "index.html").write_text(document(title, intro, content, references, site_title), encoding="utf-8", newline="\n")
 
 
 def work_navigation(works, current_key=None):
@@ -317,28 +378,35 @@ def work_navigation(works, current_key=None):
     return f'<nav class="work-navigation" aria-label="{label}">{heading}<div>{"".join(links)}</div></nav>'
 
 
+def render_history(section, source):
+    records = []
+    heading, blocks = None, []
+    def flush():
+        if heading is not None or blocks:
+            index = len(records) + 1
+            label = heading or "이전 화면"
+            records.append(f'<details class="history-record" id="record-{index}"><summary>{escape(label)}</summary><div class="history-record-body">{render_blocks(blocks, source)}</div></details>')
+    for block in section["blocks"]:
+        if isinstance(block, tuple):
+            flush()
+            heading, blocks = block[1], []
+        else:
+            blocks.append(block)
+    flush()
+    return ''.join(records)
+
+
 def build_work(work, references, site_title, works):
     key = slug(work["source"].stem)
     detail_url = f"{BASE}work/{key}/index.html"
-    history_url = f"{BASE}work/{key}/history.html"
+    history_url = detail_url + "#history"
     sections = []
-    history = []
-    dates = []
-    seen_dates = set()
+    history = ""
     for section in work["sections"]:
         if section["title"] == "대표 화면":
             continue
         if section["title"] == "화면 기록":
-            heading_index = 0
-            for block in section["blocks"]:
-                if isinstance(block, tuple):
-                    heading_index += 1
-                    date = re.match(r"\d{4}-\d{2}-\d{2}", block[1])
-                    label = date[0] if date else "이전 기록"
-                    if label not in seen_dates:
-                        dates.append(f'<a href="#record-{heading_index}">{escape(label)}</a>')
-                        seen_dates.add(label)
-            history.append(render_blocks(section["blocks"], work["source"], "record"))
+            history = render_history(section, work["source"])
         else:
             anchor = "features" if section["title"] == "구현한 기능" else "scope" if section["title"] == "현재 확인한 범위" else slug(section["title"])
             rendered = render_blocks(section["blocks"], work["source"])
@@ -346,20 +414,18 @@ def build_work(work, references, site_title, works):
     preview_section = next(s for s in work["sections"] if s["title"] == "대표 화면")
     preview_html = render_blocks(preview_section["blocks"], work["source"])
     other_work = work_navigation(works, key)
-    page_content = f'''<main class="page narrow" id="top" tabindex="-1"><a class="back-link" href="{BASE}#{key}">← 작업 목록</a>
+    page_content = f'''<main class="page narrow work-detail" id="top" tabindex="-1"><a class="back-link" href="{BASE}#featured-{key}">← 작업 목록</a>
 <p class="work-status">{escape(work['status'])}</p><h1>{escape(work['title'])}</h1><p class="lead">{escape(work['summary'])}</p>
-<nav class="page-actions" aria-label="작업 상세 탐색"><a href="#features">구현한 기능</a><a href="#scope">현재 확인한 범위</a><a href="{history_url}">화면 이력 →</a></nav>
-<div class="detail-preview">{preview_html}</div>
-{''.join(sections)}{other_work}</main>'''
-    history_content = f'''<main class="page narrow" id="top" tabindex="-1"><a class="back-link" href="{detail_url}">← {escape(work['title'])} 상세</a>
-<p class="work-status">화면 기록</p><h1>{escape(work['title'])}</h1><p class="lead">촬영일 순으로 보존한 실제 게임 화면·에디터 예시·도구 출력입니다. 현재 구현과 확인한 범위는 작업 상세에서 볼 수 있습니다.</p>
-<nav class="page-actions" aria-label="작업과 화면 이력 탐색"><a href="{detail_url}">현재 구현</a><a href="{detail_url}#scope">확인한 범위</a><a href="{BASE}#work">다른 작업</a></nav>
-<nav class="history-dates" aria-label="촬영 날짜별 화면 기록">{''.join(dates)}</nav>
-<section class="content-section history-images">{''.join(history)}</section><a class="back-link" href="#top">↑ 날짜 목록으로</a>{other_work}</main>'''
+<nav class="page-actions" aria-label="작업 상세 탐색"><a href="#preview">대표 화면</a><a href="#features">구현한 기능</a><a href="#scope">확인한 범위</a><a href="#history">화면 이력</a></nav>
+<div class="detail-preview" id="preview">{preview_html}</div>
+{''.join(sections)}<section class="content-section history-images" id="history"><h2>화면 이력</h2>{history}</section>{other_work}</main>'''
     folder = SITE / "work" / key
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "index.html").write_text(document(work["title"], work["summary"], page_content, references, site_title), encoding="utf-8", newline="\n")
-    (folder / "history.html").write_text(document(work["title"] + " 화면 기록", work["summary"], history_content, references, site_title), encoding="utf-8", newline="\n")
+    # Keep old bookmarks as direct entries into the integrated detail page.
+    redirect = document(work["title"] + " 화면 이력", work["summary"], f'<main class="page narrow" id="top"><a href="{history_url}">화면 이력 보기</a></main>', references, site_title)
+    redirect = redirect.replace("</head>", f'<link rel="canonical" href="{history_url}"><meta http-equiv="refresh" content="0;url={history_url}"><script>location.replace("{detail_url}" + (/^#record-\\d+$/.test(location.hash) ? location.hash : "#history"));</script></head>')
+    (folder / "history.html").write_text(redirect, encoding="utf-8", newline="\n")
     return key, detail_url, history_url
 
 
@@ -387,7 +453,7 @@ def sync_readme_preview(home_sections):
     shutil.copyfile(source, target)
 
 
-def main():
+def main(require_tour_media=False):
     if not CONTENT.is_dir():
         raise SystemExit(f"Portfolio content directory not found: {CONTENT.relative_to(ROOT)}")
     # Earlier stages now share the market's detail and screen history.
@@ -405,7 +471,7 @@ def main():
         key, detail, history = build_work(work, references, title, works)
         card_image = find_image(work)
         media = f'<figure class="work-media"><a class="card-image" href="{detail}"><img src="{card_image[1]}" alt="{escape(card_image[0], quote=True)}" {image_size_attributes(card_image[1])} loading="lazy"></a><figcaption>{escape(card_image[0])}</figcaption></figure>'
-        cards[key] = f'<article class="featured-work" id="featured-{key}">{media}<div class="work-copy"><h3><a href="{detail}">{escape(work["title"])}</a></h3><p>{escape(work["summary"])}</p><a class="text-link" href="{detail}">구현한 기능과 화면 보기 →</a></div></article>'
+        cards[key] = f'<article class="featured-work" id="featured-{key}">{media}<div class="work-copy"><h3><a href="{detail}">{escape(work["title"])}</a></h3><p>{escape(work["summary"])}</p><nav class="card-links" aria-label="{escape(work["title"], quote=True)} 바로 보기"><a href="{detail}#preview">대표 화면</a><a href="{detail}#features">기능 상세</a><a href="{history}">화면 이력</a></nav></div></article>'
     sections_by_title = {section["title"]: section for section in home_sections}
     process_html = render_workflow(sections_by_title["AI Agent 워크플로우"])
     execution_html = render_execution_flow(sections_by_title["하나의 기능이 만들어지는 흐름"])
@@ -420,8 +486,8 @@ def main():
     representative_alt, representative_ref = IMAGE.fullmatch(representative).groups()
     representative_url = local_image_path(HOME_SOURCE.relative_to(ROOT), representative_ref)
     hero_image = f'<figure class="hero-preview"><a href="{BASE}work/player-hud/"><img src="{representative_url}" alt="{escape(representative_alt, quote=True)}" {image_size_attributes(representative_url)} fetchpriority="high"></a><figcaption>{escape(representative_alt)}</figcaption></figure>'
-    featured = ''.join(cards[key] for key in ("market", "inventory", "server-content"))
-    hero = f'''<main id="top" tabindex="-1"><section class="home-hero home-intro"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="#work">결과 둘러보기</a><a class="text-link" href="{BASE}experience/">경험과 개선 읽기 →</a></div></div>{hero_image}</section>
+    featured = ''.join(cards[key] for key in ("player-hud", "field-travel", "inventory", "market", "server-content"))
+    hero = f'''<main id="top" tabindex="-1"><section class="home-hero home-intro"><div class="home-copy"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p><div class="hero-actions"><a class="button" href="{BASE}play/">클라이언트 콘텐츠 둘러보기</a><a class="text-link" href="{BASE}experience/">경험과 개선 읽기 →</a></div></div>{hero_image}</section>
 <section class="section-wrap origin-overview" id="legacy"><div class="section-title"><h2>출발점과 이번 작업</h2></div><div class="origin-copy">{origin}</div><details class="legacy-preview"><summary>직접 구현한 기존 2D 클라이언트 보기</summary><div class="legacy-body">{legacy_copy}</div></details></section>
 <section class="section-wrap work-section" id="work"><div class="section-title work-heading"><h2>작업과 결과</h2><p>게임 화면에서 구현 결과를 확인하고, 기능별 상세와 이전 화면을 둘러볼 수 있습니다.</p></div>{work_navigation(works)}<div class="featured-grid">{featured}</div></section>
 <section class="section-wrap home-case" id="execution-flow"><div class="section-title"><h2>선택한 방향을 결과로</h2></div><div class="case-evidence">{case}</div><a class="text-link" href="{BASE}process/#execution-flow">역할과 전체 작업 흐름 보기 →</a></section>
@@ -444,13 +510,29 @@ def main():
         folder = SITE / "work" / old_key
         folder.mkdir(parents=True, exist_ok=True)
         for page in ("index.html", "history.html"):
-            target = f"{BASE}work/market/{page}"
+            target = f"{BASE}work/market/index.html" + ("#history" if page == "history.html" else "")
             content = f'<main class="page narrow" id="top" tabindex="-1"><h1>거래소</h1><p>거래소 작업과 이전 화면을 한곳에 모았습니다.</p><a class="button" href="{target}">거래소 보기</a></main>'
             html = document("거래소", "통합된 거래소 작업으로 이동합니다.", content, references, title)
             html = html.replace("</head>", f'<link rel="canonical" href="{target}"><meta http-equiv="refresh" content="0;url={target}"></head>')
             (folder / page).write_text(html, encoding="utf-8", newline="\n")
+    build_tour(references, title, require_tour_media)
     check_site()
+    check_work_navigation(works)
     print(f"Built home and {len(works)} project pages with screen histories")
+
+
+def check_work_navigation(works):
+    # Every feature and its folded history is one direct step from home.
+    home = (SITE / "index.html").read_text(encoding="utf-8")
+    for work in works:
+        key = slug(work["source"].stem)
+        route = f"{BASE}work/{key}/index.html"
+        detail = (SITE / "work" / key / "index.html").read_text(encoding="utf-8")
+        for anchor in ("preview", "features", "history"):
+            if f'href="{route}#{anchor}"' not in home or f'id="{anchor}"' not in detail:
+                raise ValueError(f"Feature screen/detail/history must be directly reachable from home: {key}#{anchor}")
+        if 'href="history.html"' in detail or f'href="{BASE}work/{key}/history.html"' in detail:
+            raise ValueError(f"Screen history must stay within the feature detail page: {key}")
 
 
 def check_site():
@@ -488,4 +570,6 @@ def check_site():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--require-tour-media", action="store_true", help="Require all eight content tour GIFs before delivery")
+    main(parser.parse_args().require_tour_media)

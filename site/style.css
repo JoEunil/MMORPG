@@ -257,6 +257,28 @@ h1, h2, h3 { word-break: keep-all; letter-spacing: -.035em; }
   .home-intro h1 { max-width: 20em; }
   .home-intro .hero-preview { max-width: 900px; }
 }
+
+/* Keep content recordings wide enough to read the game UI without cropping. */
+.tour-page { max-width: 1240px; }
+.tour-page > .lead { max-width: 48em; }
+.tour-page .content-section { padding: 38px 0; border-top: 1px solid var(--line); }
+.tour-page .content-section > p { max-width: 52em; }
+.tour-page .content-section h2 { font-size: 32px; line-height: 1.4; }
+.tour-page .content-section h3 { margin-top: 30px; font-size: 23px; }
+.tour-clip { margin: 24px 0 36px; }
+.tour-chat { max-width: 800px; }
+.tour-clip details { border: 1px solid var(--line); background: var(--soft); }
+.tour-clip summary { cursor: pointer; padding: 16px 20px; color: var(--accent); font-weight: 650; line-height: 1.6; }
+.tour-clip summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.tour-clip a, .tour-clip img { display: block; }
+.tour-page .tour-clip img { width: auto; height: auto; max-width: 100%; max-height: 65vh; margin: 0 auto; object-fit: contain; }
+.tour-clip .tour-poster { margin: 16px auto 12px; }
+.tour-clip details[open] .tour-poster { display: none; }
+.tour-clip figcaption { margin-top: 10px; color: var(--muted); font-size: 17px; }
+@media (max-width: 760px) {
+  .tour-page .content-section h2 { font-size: 27px; }
+  .tour-clip summary { padding: 14px; font-size: 17px; }
+}
 @media (max-width: 760px) {
   .home-intro { padding: 30px 20px 36px; }
   .home-intro h1 { font-size: 34px; }
@@ -268,4 +290,49 @@ h1, h2, h3 { word-break: keep-all; letter-spacing: -.035em; }
   .hero-preview figcaption, .case-evidence figcaption { font-size: 17px; }
   .process-links h2 { font-size: 27px; }
   .experience-page .content-section h2 { font-size: 27px; }
+}
+
+/* Hierarchy and feedback are explicit connections, rather than a flat role list. */
+.collaboration-map { min-width: 0; }
+.map-node, .map-producers li, .map-review li { min-width: 0; padding: 16px; background: #fff; border: 1px solid #b6c7e1; }
+.map-leaders { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 20px; }
+.map-coordinator { border-top: 3px solid var(--accent); }
+.map-exchange, .map-connector { margin: 16px 0; text-align: center; color: var(--accent); font-size: 18px; font-weight: 650; }
+.map-exchange { max-width: 14em; }
+.map-producers { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin: 0; }
+.map-producers li { position: relative; border-top: 3px solid #91a9cf; }
+.map-producers li::before { content: "↓"; position: absolute; left: calc(50% - 8px); top: -24px; color: var(--accent); }
+.map-note { margin: 14px 0 0; color: var(--muted); font-size: 17px; }
+.map-review-loop { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 22px; align-items: center; }
+.map-review ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 0; }
+.map-return { padding: 16px; border-top: 2px dashed #8da7d0; color: var(--accent); font-weight: 650; font-size: 18px; }
+.map-delivery { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr); gap: 16px; align-items: center; }
+.map-arrow { color: var(--accent); font-size: 26px; margin: 0; }
+.map-node strong, .map-producers strong, .map-review strong { overflow-wrap: anywhere; }
+/* History stays in the feature detail, with each dated entry closed initially. */
+.history-record { border-top: 1px solid var(--line); }
+.history-record summary { cursor: pointer; padding: 16px 0; color: var(--accent); font-size: 19px; font-weight: 650; line-height: 1.6; }
+.history-record summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.history-record-body { padding: 0 0 18px; }
+.history-record-body > p { font-size: 18px; }
+.history-record-body figure:first-child { margin-top: 0; }
+.work-detail .content-section { padding: 24px 0; }
+.work-detail .detail-preview img { width: auto; max-width: 100%; height: auto; max-height: 65vh; margin: auto; object-fit: contain; }
+.featured-work .card-links { margin-top: 16px; gap: 10px 22px; }
+.home-intro { padding-top: 38px; padding-bottom: 38px; }
+@media (max-width: 1000px) {
+  .map-producers { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 14px; }
+  .map-review-loop { grid-template-columns: 1fr; gap: 0; }
+  .map-return { margin: 16px 0 0; }
+}
+@media (max-width: 760px) {
+  .map-leaders, .map-producers, .map-review ul, .map-delivery { grid-template-columns: 1fr; gap: 14px; }
+  .map-exchange { max-width: none; margin: 0; }
+  .collaboration-map .map-producers { gap: 14px; padding-left: 24px; border-left: 2px solid #91a9cf; }
+  .map-producers li::before { content: "→"; top: calc(50% - 16px); left: -26px; }
+  .map-exchange::before { content: "↕"; display: block; color: var(--accent); font-size: 24px; }
+  .map-arrow { text-align: center; transform: rotate(90deg); }
+  .map-node, .map-producers li, .map-review li { padding: 14px 16px; }
+  .history-record summary { padding: 14px 0; font-size: 18px; }
+  .home-intro { padding-top: 28px; padding-bottom: 30px; }
 }

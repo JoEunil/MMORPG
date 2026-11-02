@@ -6,6 +6,7 @@ on:
     paths:
       - docs/unity-client/SHOWCASE.md
       - docs/unity-client/EXPERIENCE.md
+      - docs/unity-client/CONTENT_TOUR.md
       - docs/unity-client/AGENT_USAGE.md
       - docs/unity-client/portfolio/**
       - site/**
@@ -15,6 +16,7 @@ on:
     paths:
       - docs/unity-client/SHOWCASE.md
       - docs/unity-client/EXPERIENCE.md
+      - docs/unity-client/CONTENT_TOUR.md
       - docs/unity-client/AGENT_USAGE.md
       - docs/unity-client/portfolio/**
       - site/**
@@ -38,7 +40,7 @@ jobs:
         with:
           python-version: "3.x"
       - name: Generate and validate the site
-        run: python tools/site/build.py
+        run: python tools/site/build.py --require-tour-media
       - name: Package Pages output
         uses: actions/upload-pages-artifact@v3
         with:

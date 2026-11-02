@@ -1,20 +1,16 @@
-# 현재 인계 — 2026-10-31
+# 현재 인계 — 2026-11-02
 
-## 현재 작업
-결과 페이지와 Agent 의사결정·피드백 절차를 개편했다. ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient, 이번 Git 정본은 ROOT/UnityClient/Builds/ResultPageRevision/source, 브랜치 codex/result-page-experience(origin/master1de806f 기준)다.
-
-클라이언트 PR61은1de806f로 master 병합된 것을 확인했다. 기존 후보는 codex/client-motion-smoothing/9061bc2다. 원래 C10-Delivery/source와 사용자 서버 refactor/AI, Unity, DB를 이번 작업에서 수정·실행하지 않았다. 클라이언트 후속은 이전 CAND HANDOFF를 확인한다.
+## 정본과 목표
+ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. 웹 Git 정본은 ROOT/UnityClient/Builds/ResultPageRevision/source, 브랜치 codex/result-page-experience다. 결과·회고 개편 후보87aa2f2는 PR63(https://github.com/JoEunil/MMORPG/pull/63)으로 게시했다. 이번 콘텐츠 GIF와 탐색·설명 개선도 같은 PR에 합친다. 사용자 서버 refactor·몬스터 AI는 수정하지 않는다.
 
 ## 완료와 검증
-영구 WORKFLOW에 복잡한 판단의2~3안 비교→Astra 평가→선택안 구현과 같은 원담당자의 피드백 재작업을 추가했다. 진행 중이면 같은 Agent에 전달하고 종료했다면 followup_task로 재활성화한다. 역할·공통 지침은 정본 절차를 참조한다. ROOT의 동일 지침도 사용자 변경이 없는 것을 확인해 반영했다. 실행 모델·도구 자동 라우터를 변경한 것은 아니다.
+실제 게임 스킬3종·거래소 등록/취소·채팅3종을 8 GIF·8 포스터로 제작했다. 홈/메뉴에서 콘텐츠 둘러보기로 바로 접근한다. 과거 이력은 날짜—핵심 한 줄과 접힌 이미지로 정리하고 기능 상세에 통합했다. 홈→상세→원본 최대3단계 탐색을 검사하며 기존 history.html도 유지한다. 관계도는 사용자↔총괄, 선택적 병렬 배정, 담당자의 하위 배정, 검수 피드백→동일 담당자, 통합→기록→사용자를 표시한다.
 
-일회용 브리프는 ROOT/UnityClient/Builds/ResultPageReview-2026-10-31/ONE_OFF_BRIEF.md에만 두고 상시 지침에 복제하지 않았다. 세 개편안을 Astra가 검토한 뒤 기록 Agent가 원본을 제작하고 별도 구현 담당이 생성기/CSS를 연결했다. 최종 필수 피드백은 동일 기록 Agent가 반영하고 같은 Astra가 재검수했다. 최종 통과/필수0이다.
+엄격 사이트 빌드·경로/앵커/미디어/직접 탐색 검사 통과. 데스크톱·모바일 브라우저에서 GIF 펼침·이력 이미지·가독성·가로 넘침을 확인했다. 최종 종합 검수 통과/필수0이다. 실제 Agent 지표553회(새218+후속335)로 갱신했다. 상세는 [결과](history/2026-11-02-content-tour/RESULTS.md), [원문 보존](history/2026-11-02-content-tour/archive/README.md)을 따른다. 이전 인계는 같은 이력 폴더 PREVIOUS_HANDOFF.md에 보존했다.
 
-홈은 목적·실제 결과 중심, /experience/는 사용자 회고, /process/는 역할·절차·지표·큰 지침 이력이다. 기존 상세·화면 이력·홈 앵커 안내를 보존했다. AI-REFLECTION.md 사용자 원문은 변경하지 않았다. 정적 빌드·로컬 링크/앵커/미디어 검사, 실제 브라우저1280/390 viewport 가독성·넘침·대표 이미지 상세 연결을 확인했다. 게임 검증은 실행하지 않았다.
+## 실행 상태와 다음 행동
+촬영 후 게임 연결·보조 캐릭터·로그인 서버·MainServer를 정상 종료했다. Unity Play는 껐고 runInBackground=false로 복원했다. 이번 게임·서버 코드 변경은 없다. 자료·운영 정보는 ROOT/UnityClient/Builds/ContentTourCapture-2026-11-02에 있다.
 
-근거: [결과·검수](history/2026-10-31-result-page-experience/RESULTS.md). 실제 Agent 지표는538회(신규214+후속324)이며 총괄 직접 작업을 제외했다.
+미리보기 http://127.0.0.1:8794/MMORPG/ (콘텐츠 /play/, 관계도 /process/#workflow)를 검토용으로 유지한다. 기존8791/8793 서버는 건드리지 않았다.
 
-## 전달과 다음 행동
-아직 이번 웹 브랜치의 push/PR/Pages 게시를 하지 않았다. 준비된 후보의 게시 승인을 별도 새 Slack 작업 스레드에서 한 번 요청한다. PR61에 웹 작업을 섞지 않는다. PR61 병합 기준에 맞추고 AGENT_USAGE의 실제 증분을 보존했다.
-
-미리보기는 http://127.0.0.1:8794/MMORPG/ (경험 /experience/, 과정 /process/)다. 전용 Python 프로세스와 시작 정보는 ROOT/UnityClient/Builds/ResultPageReview-2026-10-31/preview-state.json에 있다. 승인·사용자 확인 대기 동안 미리보기를 인계하며 기존8791/8793 서버는 건드리지 않았다. 임시 viewport override는 해제했다.
+게시 요청 CONTENTTOUR01/r1: 이번 웹 diff·미디어를 기존 PR63에 추가 push한다. 새 Slack 부모에서 Unity Coordinator 앱으로 승인받은 뒤 실행한다. 아직 추가 범위의 push·Pages 배포는 하지 않았다. 수신기 고정 대상01a14d46-8b23-7590-8ad5-7efc20f8ecd9의 실제 listening 재연결을 확인했다. 정확한 스레드·후보·소비 상태는 촬영 폴더 pr-approval-state.json에 기록하며 지정 사용자·채널·스레드·회신 ID를 대조한다. 과거 승인은 재사용하지 않는다.

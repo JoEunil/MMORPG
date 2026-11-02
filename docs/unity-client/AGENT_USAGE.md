@@ -1,25 +1,28 @@
 ## 공개 집계
 
-기준일: 2026-10-31
-누적 신규: 214
-누적 재활성화: 324
-상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-31
+기준일: 2026-11-02
+누적 신규: 218
+누적 재활성화: 335
+상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-11-02
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 7 | 4 |
-| server_analyst | 서버 분석 Agent | 26 | 47 |
-| client_implementer | 구현 Agent | 64 | 77 |
+| server_analyst | 서버 분석 Agent | 27 | 49 |
+| client_implementer | 구현 Agent | 65 | 82 |
 | asset_artist | 아트 Agent | 24 | 32 |
 | code_reviewer | 리뷰 Agent | 55 | 112 |
-| quality_reviewer | 종합 검수 Agent | 13 | 34 |
+| quality_reviewer | 종합 검수 Agent | 14 | 37 |
 | unity_tester | 테스트 Agent | 5 | 6 |
-| progress_documenter | 기록 Agent | 11 | 9 |
+| progress_documenter | 기록 Agent | 12 | 10 |
 | decision_curator | 의사결정 지원 Agent | 8 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체538회(신규214·재활성화324)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체553회(신규218·재활성화335)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
+## NetLib 확인과 콘텐츠 웹 정리 — 2026-11-02
+
+기준 538회 이후 실제 실행은 서버 분석 책임 netlib_refactor_test_scope 신규1·후속2, 구현 책임 content_tour_page 신규1·후속5, 종합 검수 content_tour_quality 신규1·후속3, 기록 content_history_compact 신규1·후속1이다. 신규4·후속11을 더해 전체553회다. 기록 담당은 첫 작업 경로를 잘못 선택해 같은 담당자에게 정확한 정본으로 재작업을 요청했고 실제 후속 실행을 포함했다. 총괄의 게임 조작·사이트 확인·통합은 제외했다. 토큰·비용 N/A.
 ## 클라이언트 정지 보정 — 2026-10-31
 
 client_stop_motion(구현 Agent/Sol medium) 신규1, client_release_review(리뷰 Agent/Sol medium) 신규1·후속1, client_stop_quality(종합 검수 Agent/Astra medium) 신규1을 실제 실행했다. 추가 송신 초안의 역행 위험을 독립 검토로 발견해 제외하고 순수 화면 보정만 남겼다. 최종 코드 리뷰 차단0·Astra 필수0/통과이며 총괄이 관련 PlayMode2개만 실행했다. 기존524회에 신규3·후속1을 더해528회, 토큰·비용 N/A다.
