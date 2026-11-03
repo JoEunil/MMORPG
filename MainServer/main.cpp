@@ -90,12 +90,12 @@ int main(int argc, char* argv[]) {
             bool stopped = false;
             void Run() {
                 if (stopped) return;
-                net.CleanUp1();
+                net.StopProducers();
                 auth.Stop();
-                core.CleanUp1();
-                core.CleanUp2();
-                cache.CleanUp();
-                net.CleanUp2();
+                core.StopProducers();
+                core.FinishShutdown();
+                net.FinishShutdown();
+                cache.Shutdown();
                 stopped = true;
             }
             ~Shutdown() { Run(); }
@@ -118,9 +118,9 @@ int main(int argc, char* argv[]) {
             if (!net.CheckReady())
                 std::cout << "net 체크 실패" << std::endl;
             if (!core.CheckReady())
-            std::cout << "core 체크 실패" << std::endl;
+                std::cout << "core 체크 실패" << std::endl;
             if (!cache.CheckReady())
-            std::cout << "cache 체크 실패" << std::endl;
+                std::cout << "cache 체크 실패" << std::endl;
         }
         std::cout << "서버 종료" << std::endl;
         Core::sysLogger->LogInfo("server stop");

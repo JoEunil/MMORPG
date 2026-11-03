@@ -45,8 +45,8 @@ namespace Core {
         void Initialize() {
         }
         ~Initializer() {
-            CleanUp1();
-            CleanUp2();
+            StopProducers();
+            FinishShutdown();
         }
         
         void InjectDependencies1(IIOCP* iocp, IPacketPoolManager* packetPoolManager, DurableLogger* durableLogger = nullptr) {
@@ -79,40 +79,18 @@ namespace Core {
         }
         
         bool CheckReady() {
-            if (!writer.IsReady()) {
-                return false;
-            }
-            if (!msgPool.IsReady()) {
-                return false;
-            }
-            if (!mqHandler.IsReady()) {
-                return false;
-            }
-            if (!recvMQ.IsReady()) {
-                return false;
-            }
-            if (!zoneHandler.IsReady()) {
-                return false;
-            }
-            if (!ZoneState::IsReady()) {
-                return false;
-            }
-            if (!broadcastPool.IsReady()) {
-                return false;
-            }
-            if (!zoneThreadSet.IsReady()) {
-                return false;
-            }
-            if (!lobbyZone.IsReady()) {
-                return false;
-            }
-            if (!stateManager.IsReady()) {
-                return false;
-            }
-            if (!chat.IsReady()) {
-                return false;
-            }
-            if (!perfCollector.IsReady()) {
+            if (!writer.IsReady()
+                or !msgPool.IsReady()
+                or !mqHandler.IsReady()
+                or !recvMQ.IsReady()
+                or !zoneHandler.IsReady()
+                or !ZoneState::IsReady()
+                or !broadcastPool.IsReady()
+                or !zoneThreadSet.IsReady()
+                or !lobbyZone.IsReady()
+                or !stateManager.IsReady()
+                or !chat.IsReady()
+                or !perfCollector.IsReady()) {
                 return false;
             }
             return true;
@@ -126,13 +104,13 @@ namespace Core {
             return static_cast<IMessageQueue*>(&recvMQ);
         }
 
-        void CleanUp1() {
+        void StopProducers() {
             zoneThreadSet.Stop();
             broadcastPool.Stop();
             chat.Stop();
             perfCollector.Stop();
         }
-        void CleanUp2() {
+        void FinishShutdown() {
             nonZoneThreadPool.Stop();
             recvMQ.Stop();
             stateManager.CleanUp();

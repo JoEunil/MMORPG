@@ -43,6 +43,10 @@ namespace Net {
         SessionManager sessionManager;
         NetPerfCollector perfCollector;
     public:
+        ~Initializer() {
+            StopProducers();
+            FinishShutdown();
+		}
         void Initialize() {
             NetTimer::StartThread();
             clientContextPool.Initialize();
@@ -51,12 +55,12 @@ namespace Net {
             netHandler.Initialize(&sessionManager, &iocp);
             perfCollector.Initialize(&sessionManager, &packetPoolManager, &overlappedExPool,&clientContextPool);
         }
-        void CleanUp1() {
+        void StopProducers() {
             pingManager.StopPing();
             iocp.StopReceive();
             perfCollector.Stop();
         }
-        void CleanUp2() {
+        void FinishShutdown() {
             iocp.CleanUp();
             NetTimer::Stop();
         }
@@ -110,7 +114,6 @@ namespace Net {
                 }
                 cv.wait_for(lock, std::chrono::milliseconds(100));
             }
-            CleanUp1();
         }
     };
 }
