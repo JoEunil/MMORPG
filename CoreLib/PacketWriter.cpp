@@ -7,7 +7,7 @@ namespace Core {
     static_assert(sizeof(PacketStruct<ItemUseResponseBody>) == 35);
     static_assert(sizeof(PacketStruct<ItemRewardBody>) == 17);
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteItemUseResponse(const ItemUseResponseBody& body) {
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (!p) return nullptr;
         p->Clear();
         auto* packet = reinterpret_cast<PacketStruct<ItemUseResponseBody>*>(p->GetBuffer());
@@ -17,7 +17,7 @@ namespace Core {
         return p;
     }
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteItemReward(const ItemRewardBody& body) {
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (!p) return nullptr;
         p->Clear();
         auto* packet = reinterpret_cast<PacketStruct<ItemRewardBody>*>(p->GetBuffer());
@@ -41,7 +41,7 @@ namespace Core {
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarRegisterResponse(const MsgBazaarRegisterResBody* body) {
         if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 5) return nullptr;
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (!p) return nullptr;
         p->Clear();
         auto* st = reinterpret_cast<PacketStruct<BazaarRegisterResponseBody>*>(p->GetBuffer());
@@ -53,7 +53,7 @@ namespace Core {
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteWalletGoldResponse(const MsgCurrencyResBody* body) {
         if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 1) return nullptr;
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (!p) return nullptr;
         p->Clear();
         auto* st = reinterpret_cast<PacketStruct<WalletGoldResponseBody>*>(p->GetBuffer());
@@ -65,7 +65,7 @@ namespace Core {
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteWalletDiamondResponse(const MsgDiamondResBody* body) {
         if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 1) return nullptr;
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (!p) return nullptr;
         p->Clear();
         auto* st = reinterpret_cast<PacketStruct<WalletDiamondResponseBody>*>(p->GetBuffer());
@@ -78,7 +78,7 @@ namespace Core {
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarBuyResponse(const MsgBazaarBuyResBody* body) {
         if (body == nullptr || body->requestID == 0 || body->listingID == 0)
             return nullptr;
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (!p) return nullptr;
         p->Clear();
         auto* st = reinterpret_cast<PacketStruct<BazaarBuyResponseBody>*>(p->GetBuffer());
@@ -104,7 +104,7 @@ namespace Core {
         if (body == nullptr || body->requestID == 0 || body->resStatus > 1
             || static_cast<uint64_t>(body->deliveredCount) + body->duplicatedCount + body->blockedCount > 30)
             return nullptr;
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (!p) return nullptr;
         p->Clear();
         auto* st = reinterpret_cast<PacketStruct<BazaarCheckOutboxResponseBody>*>(p->GetBuffer());
@@ -117,7 +117,7 @@ namespace Core {
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarCancelListingResponse(const MsgBazaarCancelListingResBody* body) {
         if (body == nullptr || body->requestID == 0 || body->listingID == 0 || body->characterID == 0
             || (body->resStatus != 0 && body->resStatus != 1 && body->resStatus != 5)) return nullptr;
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (!p) return nullptr;
         p->Clear();
         auto* st = reinterpret_cast<PacketStruct<BazaarCancelListingResponseBody>*>(p->GetBuffer());
@@ -133,7 +133,7 @@ namespace Core {
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarClaimResponse(const MsgBazaarClaimResBody* body) {
         if (body == nullptr || body->requestID == 0 || body->listingID == 0)
             return nullptr;
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (!p)
             return nullptr;
         p->Clear();
@@ -168,7 +168,7 @@ namespace Core {
         }
         const uint16_t count = valid ? body->count : 0;
         const uint32_t length = sizeof(PacketStruct<BazaarMyListResponseBody>) + count * sizeof(BazaarSearchListing);
-        auto p = bigPacketPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Big);
         if (!p || p->GetCapacity() < length)
             return nullptr;
         p->Clear();
@@ -204,7 +204,7 @@ namespace Core {
         }
         const uint16_t count = valid ? body->count : 0;
         const uint32_t length = sizeof(PacketStruct<BazaarSearchResponseBody>) + count * sizeof(BazaarSearchListing);
-        auto p = bigPacketPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Big);
         if (!p || p->GetCapacity() < length)
             return nullptr;
         p->Clear();
@@ -225,7 +225,7 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter>  PacketWriter::WriteAuthResponse(uint8_t resStatus) {
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (p == nullptr) {
             return nullptr;
         }
@@ -241,7 +241,7 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter>  PacketWriter::WriteCharacterListResponse(const MsgCharacterListResBody* body) {
-        auto p = bigPacketPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Big);
         if (p == nullptr) {
             return nullptr;
         }
@@ -264,7 +264,7 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteEnterWorldResponse(const MsgCharacterStateResBody* body) {
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (p == nullptr) {
             return nullptr;
         }
@@ -292,7 +292,7 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteInventoryResponse(const MsgInventoryResBody* body) {
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (p == nullptr) {
             return nullptr;
         }
@@ -323,7 +323,7 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteInventoryUpdateResponse(const MsgInventoryUpdateResBody* body) {
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (p == nullptr) {
             return nullptr;
         }
@@ -344,7 +344,7 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::GetChatWhisperPacket(uint64_t sender, uint32_t senderProfileId, const std::string& message) {
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (p == nullptr) {
             return nullptr;
         }
@@ -364,7 +364,7 @@ namespace Core {
     }
 
     std::shared_ptr<IPacket> PacketWriter::GetInitialChatBatchPacket(CHAT_SCOPE scope) {
-        auto p = bigPacketPool->Acquire();
+        auto p = packetPoolManager->Acquire(PacketPoolType::Big);
         if (p == nullptr) {
             return nullptr;
         }
@@ -399,7 +399,7 @@ namespace Core {
     }
 
     std::shared_ptr<IPacket> PacketWriter::GetFullHeader(uint16_t zoneID, uint64_t generation) {
-        auto p = packetPool->Acquire();
+        auto p = packetPoolManager->Acquire(PacketPoolType::Normal);
         if (p == nullptr) {
             return nullptr;
         }
@@ -421,7 +421,7 @@ namespace Core {
     }
 
     std::shared_ptr<IPacket> PacketWriter::GetBootstrapFullHeader(bool monsters, uint16_t zoneID, uint64_t generation, uint64_t ownershipEpoch, uint64_t bootstrapID) {
-        auto p = packetPool->Acquire();
+        auto p = packetPoolManager->Acquire(PacketPoolType::Normal);
         if (!p) return nullptr;
         p->Clear();
         const uint32_t opcode = monsters ? OP::MONSTER_FULL_STATE_BROADCAST : OP::ZONE_FULL_STATE_BROADCAST;
@@ -466,7 +466,7 @@ namespace Core {
     }
 
     std::shared_ptr<IPacket> PacketWriter::GetMonsterFullHeader(uint16_t zoneID, uint64_t generation) {
-        auto p = packetPool->Acquire();
+        auto p = packetPoolManager->Acquire(PacketPoolType::Normal);
         if (p == nullptr) {
             return nullptr;
         }
@@ -506,7 +506,7 @@ namespace Core {
     }
 
     std::shared_ptr<IPacket> PacketWriter::GetActionHeader(uint16_t zoneID, uint64_t generation) {
-        auto p = packetPool->Acquire();
+        auto p = packetPoolManager->Acquire(PacketPoolType::Normal);
         if (p == nullptr) {
             return nullptr;
         }
@@ -546,7 +546,7 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeFailed() {
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (p == nullptr) {
             return nullptr;
         }
@@ -563,7 +563,7 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteProfileBatchRes(const ProfileEntry* entries, uint16_t count) {
-        auto p = bigPacketPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Big);
         if (p == nullptr) {
             return nullptr;
         }
@@ -590,7 +590,7 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y, uint64_t generation, uint64_t ownershipEpoch) {
-        auto p = packetPool->AcquireUnique();
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (p == nullptr) {
             return nullptr;
         }

@@ -49,20 +49,20 @@ namespace Core {
             CleanUp2();
         }
         
-        void InjectDependencies1(IIOCP* iocp, IPacketPool* packetPool, IPacketPool* bigPacketPool, IPacketPool* giantPacketPool, DurableLogger* durableLogger = nullptr) {
+        void InjectDependencies1(IIOCP* iocp, IPacketPoolManager* packetPoolManager, DurableLogger* durableLogger = nullptr) {
             perfCollector.Initialize();
             broadcastPool.Initialize(iocp, &stateManager, &perfCollector, &writer);
             lobbyZone.Initialize(& stateManager);
             nonZoneThreadPool.Initialize(&nonZoneHandler);
             zoneThreadSet.Initialize(&zoneHandler, &perfCollector);
-            writer.Initialize(packetPool, bigPacketPool, giantPacketPool);
+            writer.Initialize(packetPoolManager);
             mqHandler.Initialize(iocp, &writer, &lobbyZone, &msgPool);
             recvMQ.Initialize(&mqHandler, &msgPool);
             recvMQ.Start();
             chat.Initialize(iocp, &writer, &perfCollector, durableLogger);
         }
         
-        void InjectDependencies2(IIOCP* iocp, ISessionAuth* session, IMessageQueue* sendMQ, IPacketPool* packetPool, IProfileCache* profileCache, IInventoryOperations* inventory = nullptr) {
+        void InjectDependencies2(IIOCP* iocp, ISessionAuth* session, IMessageQueue* sendMQ, IProfileCache* profileCache, IInventoryOperations* inventory = nullptr) {
             stateManager.inventory = inventory;
             stateManager.Initialize(sendMQ, iocp, &lobbyZone, &chat);
             mqHandler.InitializeStateManager(&stateManager);

@@ -57,6 +57,9 @@
     <ClInclude Include="PacketPool.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="PacketPoolManager.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
     <ClInclude Include="STOverlappedEx.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>

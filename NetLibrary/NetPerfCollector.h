@@ -6,7 +6,7 @@
 #include <new>
 #include <CoreLib/LoggerGlobal.h>
 #include "SessionManager.h"
-#include "PacketPool.h"
+#include "PacketPoolManager.h"
 #include "OverlappedExPool.h"
 #include "ClientContextPool.h"
 #include "Config.h"
@@ -23,17 +23,13 @@ namespace Net {
         std::thread m_thread;
         std::atomic<bool> m_running;
         SessionManager* sessionManager = nullptr;
-        PacketPool<PACKETPOOL_SIZE>* packetPool = nullptr;
-        PacketPool<BPACKETPOOL_SIZE>* bigPacketPool = nullptr;
-        PacketPool<GPACKETPOOL_SIZE>* giantPacketPool = nullptr;
+        PacketPoolManager* packetPoolManager = nullptr;
         OverlappedExPool* overlappedPool = nullptr;
         ClientContextPool* contextPool = nullptr;
 
-        void Initialize(SessionManager* s, PacketPool<PACKETPOOL_SIZE>* p, PacketPool<BPACKETPOOL_SIZE>* bp, PacketPool<GPACKETPOOL_SIZE>* gp, OverlappedExPool* o, ClientContextPool* c) {
+        void Initialize(SessionManager* s, PacketPoolManager* p, OverlappedExPool* o, ClientContextPool* c) {
             sessionManager = s;
-            packetPool = p;
-            bigPacketPool = bp;
-            giantPacketPool = gp;
+            packetPoolManager = p;
             overlappedPool = o;
             contextPool = c;
         }
@@ -42,12 +38,8 @@ namespace Net {
                 Core::sysLogger->LogError("net perf", "sessionManager not initialized");
                 return false;
             }
-            if (packetPool == nullptr) {
+            if (packetPoolManager == nullptr) {
                 Core::sysLogger->LogError("net perf", "packetPool not initialized");
-                return false;
-            }
-            if (bigPacketPool == nullptr || giantPacketPool == nullptr) {
-                Core::sysLogger->LogError("net perf", "big/giant packet pool not initialized");
                 return false;
             }
             if (overlappedPool == nullptr) {
@@ -86,8 +78,9 @@ namespace Net {
         
         void Flush() {
             auto connection = sessionManager->GetConnectionCnt();
-            auto pPool = packetPool->GetPoolSize();
-            auto bPool = bigPacketPool->GetPoolSize();
+            auto pPool = packetPoolManager->GetPoolSize(Core::PacketPoolType::Normal);
+            auto bPool = packetPoolManager->GetPoolSize(Core::PacketPoolType::Big);
+            auto gPool = packetPoolManager->GetPoolSize(Core::PacketPoolType::Giant);
             auto oPool = overlappedPool->GetPoolSize();
             auto cPool = contextPool->GetContextPoolSize();
             auto flush = contextPool->GetFlushQueueSize();
@@ -99,7 +92,7 @@ namespace Net {
                 "connection", connection,
                 "packetPool", pPool,
                 "bigPacketPool", bPool,
-                "giantPacketPool", giantPacketPool->GetPoolSize(),
+                "giantPacketPool", gPool,
                 "overlappedPool", oPool,
                 "contextPool", cPool,
                 "flushQueue", flush,

@@ -60,6 +60,9 @@
     <ClInclude Include="IPacketPool.h">
       <Filter>Interface</Filter>
     </ClInclude>
+    <ClInclude Include="IPacketPoolManager.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
     <ClInclude Include="IPacketView.h">
       <Filter>Interface</Filter>
     </ClInclude>

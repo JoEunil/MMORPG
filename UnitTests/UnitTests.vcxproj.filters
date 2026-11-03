@@ -105,5 +105,8 @@
     <ClCompile Include="NetLib\SendQueue.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="NetLib\PacketPoolManager.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

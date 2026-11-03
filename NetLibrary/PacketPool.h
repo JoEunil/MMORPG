@@ -28,6 +28,7 @@ namespace Net {
         }
 
         friend class Initializer;
+        friend class PacketPoolManager;
     public:
 		explicit PacketPool(uint32_t packetLen) :m_packetLen(packetLen) {
         }
