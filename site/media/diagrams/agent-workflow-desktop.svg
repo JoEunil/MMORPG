@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="950" viewBox="0 0 1400 950" role="img" aria-labelledby="title desc">
+<title id="title">Agent 배정과 검수 관계</title><desc id="desc">사용자와 총괄이 목표와 결과를 주고받습니다. 총괄은 필요한 역할만 병렬 배정하고 결과를 통합합니다. 검수 피드백은 같은 제작 담당자가 반영하고 확인된 결과를 기록합니다.</desc>
+<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#526d87" stroke-width="1.4"/></marker></defs>
+<style>text{font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;fill:#182735;text-anchor:middle}.name{font-size:30px;font-weight:700}.sub{font-size:24px;fill:#4d5c69}.note{font-size:26px;fill:#3e5872}</style>
+<rect x="520" y="15" width="360" height="104" rx="10" fill="#f7f9fb" stroke="#9aabba" stroke-width="2"/>
+<text x="700.0" y="57" class="name">사용자</text>
+<text x="700.0" y="95" class="sub">목표 · 우선순위 · 선택</text>
+<path d="M700 130 V180" fill="none" stroke="#526d87" stroke-width="2.5" marker-end="url(#a)" marker-start="url(#a)"/>
+<text x="925" y="164" class="note">목표·선택 / 결과·피드백</text>
+<rect x="520" y="195" width="360" height="104" rx="10" fill="#f7f9fb" stroke="#9aabba" stroke-width="2"/>
+<text x="700.0" y="237" class="name">총괄 Agent</text>
+<text x="700.0" y="275" class="sub">작업 배정 · 결과 통합</text>
+<path d="M700 299 V354 H275 V385" fill="none" stroke="#526d87" stroke-width="2.5" marker-end="url(#a)"/>
+<path d="M700 354 V385" fill="none" stroke="#526d87" stroke-width="2.5" marker-end="url(#a)"/>
+<path d="M700 354 H1125 V385" fill="none" stroke="#526d87" stroke-width="2.5" marker-end="url(#a)"/>
+<text x="700" y="338" class="note">필요한 역할만 병렬 배정</text>
+<rect x="95" y="400" width="360" height="104" rx="10" fill="#f7f9fb" stroke="#9aabba" stroke-width="2"/>
+<text x="275.0" y="442" class="name">서버 분석 · 기획</text>
+<text x="275.0" y="480" class="sub">기존 구조 · 완료 조건</text>
+<rect x="520" y="400" width="360" height="104" rx="10" fill="#f7f9fb" stroke="#9aabba" stroke-width="2"/>
+<text x="700.0" y="442" class="name">구현 · 아트</text>
+<text x="700.0" y="480" class="sub">기능 · 화면 제작</text>
+<rect x="945" y="400" width="360" height="104" rx="10" fill="#f7f9fb" stroke="#9aabba" stroke-width="2"/>
+<text x="1125.0" y="442" class="name">의사결정 지원</text>
+<text x="1125.0" y="480" class="sub">비교안 · 사용자 선택</text>
+<path d="M275 504 V550 H1125 V504" fill="none" stroke="#526d87" stroke-width="2.5"/>
+<path d="M700 504 V605" fill="none" stroke="#526d87" stroke-width="2.5" marker-end="url(#a)"/>
+<rect x="520" y="620" width="360" height="104" rx="10" fill="#f7f9fb" stroke="#9aabba" stroke-width="2"/>
+<text x="700.0" y="662" class="name">검토 · 검증</text>
+<text x="700.0" y="700" class="sub">리뷰 · 테스트 · 종합 검수</text>
+<path d="M880 672 H920 V452 H891" fill="none" stroke="#526d87" stroke-width="2.5" marker-end="url(#a)" stroke-dasharray="7 6"/>
+<text x="1115" y="598" class="note">같은 제작 담당자가 수정</text>
+<path d="M700 724 V790" fill="none" stroke="#526d87" stroke-width="2.5" marker-end="url(#a)"/>
+<rect x="520" y="805" width="360" height="104" rx="10" fill="#f7f9fb" stroke="#9aabba" stroke-width="2"/>
+<text x="700.0" y="847" class="name">기록 Agent</text>
+<text x="700.0" y="885" class="sub">확인된 결과 · 화면 정리</text>
+<text x="700" y="944" class="note">독립 범위는 하위 Agent에 분담 · 결과는 사용자에게 전달</text>
+</svg>

@@ -1,25 +1,38 @@
 ## 공개 집계
 
-기준일: 2026-10-31
-누적 신규: 210
-누적 재활성화: 318
-상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-10-31
+기준일: 2026-11-03
+누적 신규: 220
+누적 재활성화: 349
+상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-11-03
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 7 | 4 |
-| server_analyst | 서버 분석 Agent | 26 | 47 |
-| client_implementer | 구현 Agent | 63 | 77 |
+| server_analyst | 서버 분석 Agent | 28 | 49 |
+| client_implementer | 구현 Agent | 65 | 87 |
 | asset_artist | 아트 Agent | 24 | 32 |
 | code_reviewer | 리뷰 Agent | 55 | 112 |
-| quality_reviewer | 종합 검수 Agent | 12 | 32 |
+| quality_reviewer | 종합 검수 Agent | 15 | 44 |
 | unity_tester | 테스트 Agent | 5 | 6 |
-| progress_documenter | 기록 Agent | 9 | 5 |
+| progress_documenter | 기록 Agent | 12 | 12 |
 | decision_curator | 의사결정 지원 Agent | 8 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체528회(신규210·재활성화318)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체569회(신규220·재활성화349)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
 
+## 새 교전·포션 촬영 — 2026-11-03
+
+기준564회 이후 입력 경로 분석 capture_input_path 신규1(서버 분석 책임), content_tour_page 후속2, web_structure_quality 후속2를 실제 실행했다. 신규1·후속4를 더해 전체569회다. 총괄의 게임 조작·촬영·인코딩·브라우저 확인은 집계하지 않는다. 토큰·비용 N/A.
+
+## 이미지 배치와 콘텐츠 확대 — 2026-11-03
+
+기준561회 이후 content_tour_page 후속1, web_structure_quality 후속2를 실제 실행해 후속3을 더했다. 전체564회(새219·후속345)다. 웹 보완과 기존 원본 확대는 검수 통과했으며, 새 몬스터 교전·포션 사용 촬영은 입력 시점 답변 대기다. 총괄의 원본 검사·GIF 인코딩·브라우저 조작은 Agent 활성화로 집계하지 않는다. 토큰·비용 N/A.
+## 결과 페이지 섹션·도식 재구성 — 2026-11-02
+
+기준553회 이후 content_tour_page 후속2, content_history_compact 후속2, 새 web_structure_quality 신규1·후속3을 실제 실행했다. 새 검수 담당은 계획, 이미지 후보 선택, 모바일 피드백 수정본, 통합 후보를 구분해 검토했다. 신규1·후속7을 더해 전체561회다. 이미지 생성·총괄 직접 SVG 제작·브라우저 조작은 Agent 활성화에 포함하지 않는다. 토큰·비용 N/A.
+## NetLib 확인과 콘텐츠 웹 정리 — 2026-11-02
+
+기준 538회 이후 실제 실행은 서버 분석 책임 netlib_refactor_test_scope 신규1·후속2, 구현 책임 content_tour_page 신규1·후속5, 종합 검수 content_tour_quality 신규1·후속3, 기록 content_history_compact 신규1·후속1이다. 신규4·후속11을 더해 전체553회다. 기록 담당은 첫 작업 경로를 잘못 선택해 같은 담당자에게 정확한 정본으로 재작업을 요청했고 실제 후속 실행을 포함했다. 총괄의 게임 조작·사이트 확인·통합은 제외했다. 토큰·비용 N/A.
 ## 클라이언트 정지 보정 — 2026-10-31
 
 client_stop_motion(구현 Agent/Sol medium) 신규1, client_release_review(리뷰 Agent/Sol medium) 신규1·후속1, client_stop_quality(종합 검수 Agent/Astra medium) 신규1을 실제 실행했다. 추가 송신 초안의 역행 위험을 독립 검토로 발견해 제외하고 순수 화면 보정만 남겼다. 최종 코드 리뷰 차단0·Astra 필수0/통과이며 총괄이 관련 PlayMode2개만 실행했다. 기존524회에 신규3·후속1을 더해528회, 토큰·비용 N/A다.
@@ -788,3 +801,7 @@ receive_handler_review 신규1회(리뷰 Agent, 고정 Sol medium 프로필)가 
 ## 서버 독립 클라이언트 개선 — 2026-10-30
 
 이번 실제 실행은 신규3·후속7이다. camera_view_followup은 구현 Agent(Sol medium) 신규1·후속5로 시야 확대, UI 사전 조사, 포션 구현, 알림 정리, 리뷰 수정, 대비 보강을 수행했다. motion_smoothing_review는 리뷰 Agent(Sol medium) 신규1·후속1로 시간축과 UI를 검토했다. client_motion_quality는 종합 검수 Agent(Astra medium) 신규1·후속1로 상황 자문과 고정 후보 게시 준비를 검수했다. 메시지·총괄 작업·3개 테스트는 활성화로 집계하지 않는다. 기존511회에10회를 더한 누적521회이며 실제 토큰·비용은 N/A다.
+
+## 결과 페이지 경험·프로세스 개편 — 2026-10-31
+
+reflection_case_audit(기록 Agent/Luna low) 신규1은 회고 근거를 조사했다. result_page_quality(종합 검수 Agent/Astra medium) 신규1·후속2가 세 개편안을 비교했고, result_page_documenter(기록 Agent/Luna low) 신규1·후속4가 원본 작성과 같은 담당자의 피드백 수정을 수행했다. result_page_web(worker 도구/구현 역할, 실제 모델·추론 미확인) 신규1이 생성기와 CSS를 수정했다. 기존528회에 신규4·후속6을 더한538회다. 총괄의 지침 편집·빌드·브라우저 확인은 집계하지 않으며 토큰·비용은 N/A다.

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="1540" viewBox="0 0 520 1540" role="img" aria-labelledby="title desc">
+<title id="title">Agent 배정과 검수 관계</title><desc id="desc">사용자와 총괄이 목표와 결과를 주고받습니다. 총괄은 필요한 역할만 병렬 배정하고 결과를 통합합니다. 검수 피드백은 같은 제작 담당자가 반영하고 확인된 결과를 기록합니다.</desc>
+<defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0 L8 4 L0 8" fill="none" stroke="#526d87" stroke-width="1.4"/></marker></defs>
+<style>text{font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;fill:#182735;text-anchor:middle}.name{font-size:30px;font-weight:700}.sub{font-size:26px;fill:#4d5c69}.note{font-size:26px;fill:#3e5872}</style>
+<rect x="50" y="15" width="420" height="104" rx="10" fill="#f7f9fb" stroke="#9aabba" stroke-width="2"/>
+<text x="260.0" y="57" class="name">사용자</text>
+<text x="260.0" y="95" class="sub">목표 · 우선순위 · 선택</text>
+<path d="M90 135 V220" fill="none" stroke="#526d87" stroke-width="2.5" marker-end="url(#a)" marker-start="url(#a)"/>
+<text x="320" y="164" class="note">목표 · 선택</text>
+<text x="320" y="205" class="note">결과 · 피드백</text>
+<rect x="50" y="235" width="420" height="104" rx="10" fill="#f7f9fb" stroke="#9aabba" stroke-width="2"/>
+<text x="260.0" y="277" class="name">총괄 Agent</text>
+<text x="260.0" y="315" class="sub">작업 배정 · 결과 통합</text>
+<path d="M260 339 V365 H15 V832" fill="none" stroke="#526d87" stroke-width="2.5"/>
+<text x="280" y="407" class="note">필요한 역할만 병렬 배정</text>
+<path d="M15 492 H36" fill="none" stroke="#526d87" stroke-width="2.5" marker-end="url(#a)"/>
+<rect x="50" y="440" width="420" height="104" rx="10" fill="#f7f9fb" stroke="#9aabba" stroke-width="2"/>
+<text x="260.0" y="482" class="name">서버 분석 · 기획</text>
+<text x="260.0" y="520" class="sub">기존 구조 · 완료 조건</text>
+<path d="M470 492 H488 V930" fill="none" stroke="#526d87" stroke-width="2.5"/>
+<path d="M15 662 H36" fill="none" stroke="#526d87" stroke-width="2.5" marker-end="url(#a)"/>
+<rect x="50" y="610" width="420" height="104" rx="10" fill="#f7f9fb" stroke="#9aabba" stroke-width="2"/>
+<text x="260.0" y="652" class="name">구현 · 아트</text>
+<text x="260.0" y="690" class="sub">기능 · 화면 제작</text>
+<path d="M470 662 H488 V930" fill="none" stroke="#526d87" stroke-width="2.5"/>
+<path d="M15 832 H36" fill="none" stroke="#526d87" stroke-width="2.5" marker-end="url(#a)"/>
+<rect x="50" y="780" width="420" height="104" rx="10" fill="#f7f9fb" stroke="#9aabba" stroke-width="2"/>
+<text x="260.0" y="822" class="name">의사결정 지원</text>
+<text x="260.0" y="860" class="sub">비교안 · 사용자 선택</text>
+<path d="M470 832 H488 V930" fill="none" stroke="#526d87" stroke-width="2.5"/>
+<path d="M488 930 H260 V985" fill="none" stroke="#526d87" stroke-width="2.5" marker-end="url(#a)"/>
+<text x="353" y="970" class="note">제작 결과</text>
+<rect x="50" y="1000" width="420" height="104" rx="10" fill="#f7f9fb" stroke="#9aabba" stroke-width="2"/>
+<text x="260.0" y="1042" class="name">검토 · 검증</text>
+<text x="260.0" y="1080" class="sub">리뷰 · 테스트 · 종합 검수</text>
+<path d="M470 1052 H512 V662 H484" fill="none" stroke="#526d87" stroke-width="2.5" marker-end="url(#a)" stroke-dasharray="7 6"/>
+<path d="M260 1104 V1195" fill="none" stroke="#526d87" stroke-width="2.5" marker-end="url(#a)"/>
+<rect x="50" y="1210" width="420" height="104" rx="10" fill="#f7f9fb" stroke="#9aabba" stroke-width="2"/>
+<text x="260.0" y="1252" class="name">기록 Agent</text>
+<text x="260.0" y="1290" class="sub">확인된 결과 · 화면 정리</text>
+<text x="260" y="1380" class="note">점선: 같은 담당자에게 피드백</text>
+<text x="260" y="1440" class="note">독립 범위는 하위 Agent에 분담</text>
+<text x="260" y="1500" class="note">결과는 사용자에게 전달</text>
+</svg>

@@ -1,0 +1,213 @@
+{
+  "recordings": [
+    {
+      "file": "chat-global-zone.gif",
+      "poster": "chat-global-zone-poster.png",
+      "source_size": [
+        1280,
+        720
+      ],
+      "crop": [
+        20,
+        525,
+        410,
+        710
+      ],
+      "size": [
+        780,
+        370
+      ],
+      "source_frames": 353,
+      "source_seconds": 45.077,
+      "encoded_frames": 86,
+      "encoded_seconds": 45.08,
+      "gif_bytes": 418980,
+      "poster_bytes": 443479,
+      "poster_source_frame": 352,
+      "edit": "Spatial crop and scale only; complete take, original order and timing; no inserted frames"
+    },
+    {
+      "file": "chat-whisper.gif",
+      "poster": "chat-whisper-poster.png",
+      "source_size": [
+        1280,
+        720
+      ],
+      "crop": [
+        20,
+        525,
+        410,
+        710
+      ],
+      "size": [
+        780,
+        370
+      ],
+      "source_frames": 63,
+      "source_seconds": 8.02,
+      "encoded_frames": 10,
+      "encoded_seconds": 8.02,
+      "gif_bytes": 434069,
+      "poster_bytes": 448374,
+      "poster_source_frame": 62,
+      "edit": "Spatial crop and scale only; complete take, original order and timing; no inserted frames"
+    },
+    {
+      "file": "chat-zone.gif",
+      "poster": "chat-zone-poster.png",
+      "source_size": [
+        1280,
+        720
+      ],
+      "crop": [
+        20,
+        525,
+        410,
+        710
+      ],
+      "size": [
+        780,
+        370
+      ],
+      "source_frames": 352,
+      "source_seconds": 45.0,
+      "encoded_frames": 80,
+      "encoded_seconds": 45.0,
+      "gif_bytes": 473773,
+      "poster_bytes": 440930,
+      "poster_source_frame": 351,
+      "edit": "Spatial crop and scale only; complete take, original order and timing; no inserted frames"
+    },
+    {
+      "file": "market-flow.gif",
+      "poster": "market-flow-poster.png",
+      "source_size": [
+        1280,
+        720
+      ],
+      "crop": [
+        470,
+        110,
+        1270,
+        680
+      ],
+      "size": [
+        800,
+        570
+      ],
+      "source_frames": 353,
+      "source_seconds": 45.03,
+      "encoded_frames": 138,
+      "encoded_seconds": 45.03,
+      "gif_bytes": 267470,
+      "poster_bytes": 91041,
+      "poster_source_frame": 240,
+      "edit": "Spatial crop and scale only; complete take, original order and timing; no inserted frames"
+    },
+    {
+      "file": "market-return.gif",
+      "poster": "market-return-poster.png",
+      "source_size": [
+        1280,
+        720
+      ],
+      "crop": [
+        470,
+        110,
+        1270,
+        680
+      ],
+      "size": [
+        800,
+        570
+      ],
+      "source_frames": 235,
+      "source_seconds": 30.004,
+      "encoded_frames": 86,
+      "encoded_seconds": 30.0,
+      "gif_bytes": 167505,
+      "poster_bytes": 91592,
+      "poster_source_frame": 234,
+      "edit": "Spatial crop and scale only; complete take, original order and timing; no inserted frames"
+    },
+    {
+      "file": "skill-cleave.gif",
+      "poster": "skill-cleave-poster.png",
+      "source_size": [
+        1280,
+        720
+      ],
+      "crop": [
+        320,
+        180,
+        1280,
+        720
+      ],
+      "size": [
+        960,
+        540
+      ],
+      "source_frames": 63,
+      "source_seconds": 8.022,
+      "encoded_frames": 63,
+      "encoded_seconds": 8.02,
+      "gif_bytes": 919709,
+      "poster_bytes": 1059472,
+      "poster_source_frame": 8,
+      "edit": "Spatial crop and scale only; complete take, original order and timing; no inserted frames"
+    },
+    {
+      "file": "skill-strike.gif",
+      "poster": "skill-strike-poster.png",
+      "source_size": [
+        1280,
+        720
+      ],
+      "crop": [
+        320,
+        180,
+        1280,
+        720
+      ],
+      "size": [
+        960,
+        540
+      ],
+      "source_frames": 63,
+      "source_seconds": 8.034,
+      "encoded_frames": 62,
+      "encoded_seconds": 8.03,
+      "gif_bytes": 975237,
+      "poster_bytes": 1060826,
+      "poster_source_frame": 5,
+      "edit": "Spatial crop and scale only; complete take, original order and timing; no inserted frames"
+    },
+    {
+      "file": "skill-sweep.gif",
+      "poster": "skill-sweep-poster.png",
+      "source_size": [
+        1280,
+        720
+      ],
+      "crop": [
+        320,
+        180,
+        1280,
+        720
+      ],
+      "size": [
+        960,
+        540
+      ],
+      "source_frames": 63,
+      "source_seconds": 8.004,
+      "encoded_frames": 63,
+      "encoded_seconds": 8.0,
+      "gif_bytes": 1909859,
+      "poster_bytes": 1044832,
+      "poster_source_frame": 8,
+      "edit": "Spatial crop and scale only; complete take, original order and timing; no inserted frames"
+    }
+  ],
+  "total_bytes": 10247148
+}

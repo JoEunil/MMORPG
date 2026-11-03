@@ -1,26 +1,19 @@
-# 현재 인계 — 2026-10-31
+# 현재 인계 — 콘텐츠 영상과 결과 페이지
 
-## 목표와 정본
-사용자는 서버를 refactor 중이다. 서버·몬스터 AI·패킷·DB는 수정하지 않고 기존 클라이언트 묶음을 PR 하나로 준비한다. 이번 추가 작업에서 서버를 실행하지 않았다.
+## 정본·현재 후보
+ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. 웹 Git 정본 ROOT/UnityClient/Builds/ResultPageRevision/source, codex/result-page-experience. 기존 PR63에 결과 페이지·콘텐츠 영상을 모은다. 게임·서버·사용자 몬스터 AI 변경 없음.
 
-- ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient
-- Git 정본: ROOT/UnityClient/Builds/C10-Delivery/source, 브랜치 codex/client-motion-smoothing, 기준 master37e92f4
-- 실제 Editor: ROOT/UnityClient. 수정한 Assets만 동기화했다. 원래 서버 Workspace Game과 master는 수정하지 않았다.
-- 별도 ClientReceiveMain은 detached 보존 사본, BAT commit ace9e7e는 codex/local-game-launcher, 계획 stash와 ROOT/UnityClient/Builds/ClientMotion/PlanningBackup은 보존한다.
+## 완료
+기존 2D 비교표·시안 미리보기·글자 위계를 개선했다. 기존 워크플로우 A와 홈1→상세2 탐색은 유지했다. 실제 GIF는 기존8개+기존 원본 확대2개+새 교전/포션 촬영2개, 총12개다. 새 영상은 몬스터 접근·피격·처치/EXP180→190·포션 획득과 슬롯 사용/HP10375→11000·수량9→8이다. 정상 InputSystem 이벤트 자동입력 촬영이며 물리키 검증은 아니다.
 
-## 묶음과 검증
-기존 원격150ms/8표본 보간·메인 스레드 대기 보정, 게임 직교 시야1.3배, HP 포션 바로가기1·재고/사용 상태 공유에 이번 정지 보정을 합쳤다. 최신 추가는 무입력 감쇠0.20초/maxSpeed 인자1.8과 늦은 서버 좌표 반전 시 기존 반대 보정 속도 제거다. 송신/이동 취소는 유지한다. 서버ACK 없는 예측이므로 되보정 제거를 보장하지 않는다.
+엄격 사이트 빌드, 새 GIF 로드·펼침, PC/모바일 넘침0과 종합 검수 PASS/필수0을 확인했다. 실제 Agent 누적569회(신규220·후속349). 상세 근거는 history/2026-11-03-tour-media/RESULTS.md에 있다.
 
-ClientCore Release와 기존 PlayMode3개는 통과했다. 이번에는 Unity 컴파일과 직접 영향 PlayMode2개만 확인해2/2 통과했고 이전 검사를 반복하지 않았다. 독립 코드 리뷰 차단0, Astra 게시 검수 통과/필수0이다.
+## 실행 상태
+사용자의 입력 허용·test1 수동 로그인 후 같은 Play에서 촬영했다. 촬영 폴더 ROOT/UnityClient/Builds/ContentTourCapture-2026-11-03. 게임 연결·소유 서버·로그인 서버 정상 종료, Play off/background=false 복원. 기존 autotick 유지. DB/Redis 유지. 웹 검토 preview http://127.0.0.1:8794/MMORPG/play/ 는 유지한다.
 
-고정 제품·검증·한계: [최신 결과](history/2026-10-31-client-stop-smoothing/RESULTS.md), [manifest](history/2026-10-31-client-stop-smoothing/product-manifest.json), [종합 검수](history/2026-10-31-client-stop-smoothing/quality-review.md).
+## 게시 완료·다음 행동
+사용자의 2026-11-03 채팅 ‘PR 올려줘’ 명시 요청으로 검수 후보 f6cda04를 기존 PR63에 push했다. 새 PR은 만들지 않았다. PR은 open/병합 전이며 원격 head 일치를 확인했다. 제목·설명도 콘텐츠 GIF와 최신 웹 구성을 중심으로 갱신했다. https://github.com/JoEunil/MMORPG/pull/63
 
-## 실제 입력과 제한
-[이전 실제 입력 결과](history/2026-10-31-live-input/RESULTS.md)는 최신 보정 변경 전이다. 당시 이동·가방/거래소 토글·마우스 포션 회복을 확인했고, 직선 역행0·관측 몬스터 이동 중 정지0·정지 뒤 최대0.362단위 보정이었다. 사용자 체감 평가는 미수신이다.
+CONTENTTOUR03은 게시 완료로 더 이상 승인 대기가 아니다. Slack 회신을 소비한 것으로 기록하지 않는다. 같은 앱 스레드1793630447.340599에 결과를 보냈다(메시지1793704362.688029). 정확 상태는 새 촬영 폴더 pr-approval-state.json에 있다. 지정사용자·고정 Coordinator는 그대로다.
 
-최신 보정 후 실서버/실입력, 키1 개별 응답·고지연·확대 시야 AOI는 미확인이다. 독립 Player는 재빌드하지 않았다. 이번 추가는 네트워크 없는 fixture 검증이며 실제 조작감으로 보고하지 않는다. 앞선 사용자 허용 입력 배치는 완료했고 추가 입력은 예정하지 않았다. Editor는 테스트 후 비실행 상태, 기존 DB·Redis는 유지한다.
-
-## 게시와 다음 행동
-아직 push/새 PR은 없다. 기존 CLIENTSMOOTH01/r1은 후속 수정으로 재작성 중이며 그대로 소비하지 않는다. 같은 작업 스레드1793343258.868789에서 고정된 전체 후보의 개정 요청을 한 번 보내고 정확한 승인만 적용한다. 채널C0C9VFZMV43, 지정 사람U0C9QEUHPMK, 앱U0C9ZRTQ6F8. 운영 상태는 ROOT/UnityClient/Builds/ClientMotion/pr-approval-state.json이다. 승인 전에 제품을 더 바꾸지 않는다.
-
-서버 계약이 필요한 방향/스킬·MP·골드·레벨 구역·장비/배송은 PLAY_FEEDBACK_PLAN에 보존하며 자동 재개하지 않는다. 과거 인계·승인·전달 기록은 이 결과 폴더들의 previous-handoff.md에 보존했다.
+다음 행동은 사용자의 PR 검토 또는 새 피드백 대응이다. 기존 승인이나 칭찬을 병합 승인으로 확대하지 않는다. 병합 후 Pages 배포는 별도 확인한다. 이번 게시 후 게임 개발을 자동 재개하지 않는다.
