@@ -72,6 +72,7 @@ int main(int argc, char* argv[]) {
         spdlog::shutdown();
         return result;
     }
+    int result = EXIT_SUCCESS;
     try {
         External::SessionAuth auth;
         auth.Initialize();
@@ -131,23 +132,23 @@ int main(int argc, char* argv[]) {
         // 각 Stop()/CleanUp()은 idempotent(running.exchange) + 로거 null-safe 이며,
         // DB 워커는 큐를 drain한 뒤 종료한다. 상세: GracefulShutdown.md
         shutdown.Run();
-
-        Core::sysLogger.reset();
-        Core::gameLogger.reset();
-        Core::errorLogger.reset();
-        Core::perfLogger.reset();
-        spdlog::shutdown();
     }
     catch (const std::exception& e) {
         std::cerr << "Standard exception: " << e.what() << std::endl;
         Core::errorLogger->LogError(std::format("exception: {}", e.what()));
-        return EXIT_FAILURE;
+        result = EXIT_FAILURE;
     }
     catch (...) {
         std::cerr << "Unknown exception caught in main()" << std::endl;
         Core::errorLogger->LogError(std::format("undefined excetion"));
-        return EXIT_FAILURE;
+        result = EXIT_FAILURE;
     }
-    return 0;
+
+    Core::sysLogger.reset();
+    Core::gameLogger.reset();
+    Core::errorLogger.reset();
+    Core::perfLogger.reset();
+    spdlog::shutdown();
+    return result;
 }
 
