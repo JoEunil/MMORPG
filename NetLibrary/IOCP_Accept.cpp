@@ -60,8 +60,6 @@ namespace Net {
                     (err == ERROR_OPERATION_ABORTED || err == WSAENOTSOCK);
                 if (!expectedShutdown) {
                     Core::errorLogger->LogError("iocp", "Critical: failed to post AcceptEx", "error", err);
-
-                    m_isRunning.store(false, std::memory_order_relaxed);
                     fatalError->store(true, std::memory_order_relaxed);
                     cv->notify_one();
                 }
