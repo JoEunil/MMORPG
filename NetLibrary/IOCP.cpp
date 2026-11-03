@@ -244,7 +244,7 @@ namespace Net {
             case IOOperation::SEND: {
                 pOverlappedEx->sentBytes += bytesTransferred;
                 if (pOverlappedEx->sentBytes < pOverlappedEx->totalBytes) {
-                    ResumeSend(pOverlappedEx); // 커널이 다시 소유 -> 반납 금지
+                    ContinueSend(pOverlappedEx); // 커널이 다시 소유 -> 반납 금지
                     continue; // 하단 공용 Return 을 건너뜀
                     // 소유권 측면에서 smart pointer나 flag 패턴이 여기에는 맞지 않음. 
                     // smart pointer:  RAII는 lifetime == scope일 때 가치가 있는데, 
@@ -253,7 +253,7 @@ namespace Net {
                 } else {
                     auto next = sessionManager->DequeueSend(clientSocket);
                     if (next)
-                        DoWSASend(next);
+                        BeginSend(next);
                 }
                 break;
             }
@@ -440,7 +440,7 @@ namespace Net {
 
     void IOCP::PostSend(EnqueueSendResult status, STOverlappedEx* pOverlappedEx, uint64_t sessionID) {
         if (status == EnqueueSendResult::Ready) {
-            DoWSASend(pOverlappedEx);
+            BeginSend(pOverlappedEx);
         }
         else if (status == EnqueueSendResult::Failed) {
             overlappedExPool->Return(pOverlappedEx);
@@ -523,17 +523,8 @@ namespace Net {
         EnqueueSendResult status = sessionManager->EnqueueSend(clientSocket, pOverlappedEx);
         PostSend(status, pOverlappedEx, sessionID);
     }
-    void IOCP::DoWSASend(STOverlappedEx* pOverlappedEx) {
-        // 최초의 Send에서만 호출
-        if (pOverlappedEx == nullptr)
-            return;
-        ZeroMemory(&pOverlappedEx->wsaOverlapped, sizeof(WSAOVERLAPPED));
-        pOverlappedEx->totalBytes = 0;
-        pOverlappedEx->sentBytes = 0;
-        pOverlappedEx->originalBufs = pOverlappedEx->wsaBuf;
-        for (auto& buf : pOverlappedEx->wsaBuf)
-            pOverlappedEx->totalBytes += buf.len;
-        int result = WSASend(pOverlappedEx->clientSocket, pOverlappedEx->wsaBuf.data(), (DWORD)pOverlappedEx->wsaBuf.size(), 0, 0, &pOverlappedEx->wsaOverlapped, NULL);
+
+    void IOCP::HandleSendResult(STOverlappedEx* pOverlappedEx, int result) {
         if (result == SOCKET_ERROR)
         {
             int err = WSAGetLastError();
@@ -547,7 +538,20 @@ namespace Net {
             }
         }
     }
-    void IOCP::ResumeSend(STOverlappedEx* pOverlappedEx) {
+    void IOCP::BeginSend(STOverlappedEx* pOverlappedEx) {
+        // 최초의 Send에서만 호출
+        if (pOverlappedEx == nullptr)
+            return;
+        ZeroMemory(&pOverlappedEx->wsaOverlapped, sizeof(WSAOVERLAPPED));
+        pOverlappedEx->totalBytes = 0;
+        pOverlappedEx->sentBytes = 0;
+        pOverlappedEx->originalBufs = pOverlappedEx->wsaBuf;
+        for (auto& buf : pOverlappedEx->wsaBuf)
+            pOverlappedEx->totalBytes += buf.len;
+        int result = WSASend(pOverlappedEx->clientSocket, pOverlappedEx->wsaBuf.data(), (DWORD)pOverlappedEx->wsaBuf.size(), 0, 0, &pOverlappedEx->wsaOverlapped, NULL);
+        HandleSendResult(pOverlappedEx, result);
+    }
+    void IOCP::ContinueSend(STOverlappedEx* pOverlappedEx) {
         ZeroMemory(&pOverlappedEx->wsaOverlapped, sizeof(WSAOVERLAPPED));
         int remain = pOverlappedEx->sentBytes;
         pOverlappedEx->wsaBuf.clear();
@@ -568,18 +572,7 @@ namespace Net {
             remain = 0;
         }
         int result = WSASend(pOverlappedEx->clientSocket, pOverlappedEx->wsaBuf.data(), (DWORD)pOverlappedEx->wsaBuf.size(), 0, 0, &pOverlappedEx->wsaOverlapped, NULL);
-        if (result == SOCKET_ERROR)
-        {
-            int err = WSAGetLastError();
-            if (err != WSA_IO_PENDING)
-            {
-                SOCKET sock = pOverlappedEx->clientSocket;
-                uint64_t sessionID = pOverlappedEx->sessionID;
-                overlappedExPool->Return(pOverlappedEx);
-                CleanUpSocket(sock, sessionID);
-                Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", sock, "error message", std::to_string(err));
-            }
-        }
+        HandleSendResult(pOverlappedEx, result);
     }
 
     void IOCP::AbortSocket(SOCKET clientSocket, uint64_t expectedSessionID) {

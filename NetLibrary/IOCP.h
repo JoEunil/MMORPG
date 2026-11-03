@@ -100,6 +100,7 @@ namespace Net {
         }
         void CleanUp();
         void PostSend(EnqueueSendResult status, STOverlappedEx* o, uint64_t sessionID);
+        void HandleSendResult(STOverlappedEx* pOverlappedEx, int result);
 
         friend class Initializer;
     public:
@@ -111,7 +112,7 @@ namespace Net {
         void SendDataUnique(uint64_t sessionID, std::unique_ptr<Core::IPacket, Core::PacketDeleter> packet) override;
 
         void AbortSocket(SOCKET sock, uint64_t expectedSessionID) override;
-        void DoWSASend(STOverlappedEx* o);
-        void ResumeSend(STOverlappedEx* pOverlappedEx);
+        void BeginSend(STOverlappedEx* o);
+        void ContinueSend(STOverlappedEx* pOverlappedEx);
     };
 }
