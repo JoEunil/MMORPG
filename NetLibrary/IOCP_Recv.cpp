@@ -27,7 +27,6 @@ namespace Net {
         if (bufferLength == 0) {
             Core::errorLogger->LogWarn("iocp", "can't allocate buffer", "socket", clientSocket);
             overlappedExPool->Return(pOverlappedEx);
-            ownerContext->CompleteRecvIO(sessionID);
             return false;
         }
         pOverlappedEx->ownerContext = ownerContext;
