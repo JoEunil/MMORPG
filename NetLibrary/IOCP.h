@@ -17,6 +17,7 @@
 #include <CoreLib/IIOCP.h>
 #include <CoreLib/LoggerGlobal.h>
 
+#include "SendQueue.h"
 #include "IAbortSocket.h"
 #include "Config.h"
 
@@ -89,8 +90,6 @@ namespace Net {
         bool CreateListenSocket();
         bool CreateWorkerThread();
         
-        void PostAccept();
-        bool PostRecv(SOCKET clientSocket, uint64_t expectedSessionID);
         void CleanUpSocket(SOCKET clientSocket);
         void CleanUpSocket(SOCKET clientSocket, uint64_t expectedSessionID);
         
@@ -99,6 +98,9 @@ namespace Net {
             m_receiving.store(false);
         }
         void CleanUp();
+
+        void PostAccept();
+        bool PostRecv(SOCKET clientSocket, uint64_t expectedSessionID);
         void PostSend(EnqueueSendResult status, STOverlappedEx* o, uint64_t sessionID);
         void HandleSendResult(STOverlappedEx* pOverlappedEx, int result);
 
@@ -110,9 +112,9 @@ namespace Net {
         void SendData(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet) override;
         void SendDataChunks(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet, std::vector<std::shared_ptr<Core::IPacket>>& chunks) override;
         void SendDataUnique(uint64_t sessionID, std::unique_ptr<Core::IPacket, Core::PacketDeleter> packet) override;
-
-        void AbortSocket(SOCKET sock, uint64_t expectedSessionID) override;
         void BeginSend(STOverlappedEx* o);
         void ContinueSend(STOverlappedEx* pOverlappedEx);
+
+        void AbortSocket(SOCKET sock, uint64_t expectedSessionID) override;
     };
 }

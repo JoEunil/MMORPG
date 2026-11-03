@@ -85,7 +85,7 @@ namespace Net {
         bool CheckReady() const {
             if (!overlappedExPool.IsReady()
                 or !clientContextPool.IsReady()
-                or packetPoolManager.IsReady()
+                or !packetPoolManager.IsReady()
                 or !iocp.IsReady()
                 or !netHandler.IsReady()
                 or !pingManager.IsReady() 
