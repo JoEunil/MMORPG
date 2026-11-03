@@ -1,6 +1,32 @@
 {
   "recordings": [
     {
+      "file": "hp-potion-use.gif",
+      "poster": "hp-potion-use-poster.png",
+      "source_size": [
+        1280,
+        720
+      ],
+      "crop": [
+        470,
+        510,
+        1280,
+        720
+      ],
+      "size": [
+        1000,
+        259
+      ],
+      "source_frames": 55,
+      "source_seconds": 7.036,
+      "encoded_frames": 47,
+      "encoded_seconds": 7.04,
+      "gif_bytes": 452639,
+      "poster_bytes": 482878,
+      "poster_source_frame": 10,
+      "edit": "Spatial crop and scale only; complete take, original order and timing; no inserted frames"
+    },
+    {
       "file": "hunt-rewards.gif",
       "poster": "hunt-rewards-poster.png",
       "source_size": [
@@ -51,7 +77,33 @@
       "poster_bytes": 327748,
       "poster_source_frame": 25,
       "edit": "Spatial crop and scale only; complete take, original order and timing; no inserted frames"
+    },
+    {
+      "file": "monster-encounter.gif",
+      "poster": "monster-encounter-poster.png",
+      "source_size": [
+        1280,
+        720
+      ],
+      "crop": [
+        380,
+        200,
+        1280,
+        720
+      ],
+      "size": [
+        1000,
+        578
+      ],
+      "source_frames": 71,
+      "source_seconds": 9.025,
+      "encoded_frames": 71,
+      "encoded_seconds": 9.02,
+      "gif_bytes": 5030045,
+      "poster_bytes": 1157044,
+      "poster_source_frame": 14,
+      "edit": "Spatial crop and scale only; complete take, original order and timing; no inserted frames"
     }
   ],
-  "total_bytes": 1959204
+  "total_bytes": 9081810
 }
