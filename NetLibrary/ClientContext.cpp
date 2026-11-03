@@ -63,8 +63,6 @@ namespace Net {
             return 0;
         }
 
-        // shard lock 아래에서 alive 확인 후 증가한다. 이후 map에서 제거돼도
-        // completion이 이 참조를 반납할 때까지 Context는 pool에서 재사용되지 않는다.
         m_pendingIOCnt.fetch_add(1, std::memory_order_seq_cst);
         return len;
     }

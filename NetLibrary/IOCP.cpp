@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "IOCP.h"
 #include <CoreLib/LoggerGlobal.h>
 #include <CoreLib/IPacket.h>
@@ -365,7 +365,7 @@ namespace Net {
         }
     }
 
-    bool IOCP::PostRecv(SOCKET clientSocket, uint64_t expectedSessionID)
+    bool IOCP::PostRecv(SOCKET clientSocket, uint64_t sessionID)
     {
         DWORD dwBytesReceived = 0;
         DWORD dwFlags = 0;
@@ -375,25 +375,25 @@ namespace Net {
             return false;
         pOverlappedEx->op = IOOperation::RECV;
         pOverlappedEx->clientSocket = clientSocket;
-        uint8_t* buf = nullptr;
-        ClientContext* ownerContext = nullptr;
-        uint64_t sessionID = 0;
-        uint16_t bufferLength = 0;
         pOverlappedEx->wsaBuf.resize(1);
-        if (!sessionManager->BeginRecvIO(clientSocket, expectedSessionID, ownerContext, sessionID, buf, bufferLength)) {
+        uint8_t* buf = nullptr;
+        ClientContext* ownerContext = sessionManager->GetContext(clientSocket);
+        if (!ownerContext) {
+            Core::errorLogger->LogWarn("iocp", "PostRecv failed: ownerContext is null", "socket", clientSocket);
             overlappedExPool->Return(pOverlappedEx);
+            return false;
+		}
+        uint16_t bufferLength = ownerContext->BeginRecvIO(sessionID, buf);
+        if (bufferLength == 0) {
+            Core::errorLogger->LogWarn("iocp", "can't allocate buffer", "socket", clientSocket);
+            overlappedExPool->Return(pOverlappedEx);
+            ownerContext->CompleteRecvIO(sessionID);
             return false;
         }
         pOverlappedEx->ownerContext = ownerContext;
         pOverlappedEx->sessionID = sessionID;
         pOverlappedEx->wsaBuf[0].len = bufferLength;
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(buf);
-        if (pOverlappedEx->wsaBuf[0].len == 0) {
-            Core::errorLogger->LogWarn("iocp", "can't allocate buffer", "socket", clientSocket);
-            ownerContext->CompleteRecvIO(sessionID);
-            overlappedExPool->Return(pOverlappedEx);
-            return false;
-        }
 
         int result = WSARecv(clientSocket, &pOverlappedEx->wsaBuf[0], 1, &dwBytesReceived, &dwFlags, &pOverlappedEx->wsaOverlapped, NULL);
 

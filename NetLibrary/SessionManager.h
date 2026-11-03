@@ -105,32 +105,12 @@ namespace Net{
             // 카운트를 초기화할 기회를 수신 경로에서 먼저 차단하지 않는다.
             return it->second.state.BufferReceived(byte);
         }
+
         ClientContext* GetContext(SOCKET  sock) const {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             std::lock_guard lock(shard.mutex);
             auto it = shard.sessions.find(sock);
             return it != shard.sessions.end() ? it->second.context : nullptr;
-        }
-
-        bool BeginRecvIO(SOCKET sock, uint64_t expectedSessionID, ClientContext*& context, uint64_t& sessionID, uint8_t*& buffer, uint16_t& length) {
-            auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
-            std::lock_guard lock(shard.mutex);
-
-            auto stateIt = shard.sessions.find(sock);
-            if (stateIt == shard.sessions.end())
-                return false;
-
-            sessionID = stateIt->second.state.GetSessionID();
-            if (sessionID != expectedSessionID)
-                return false;
-
-            context = stateIt->second.context;
-            length = context->BeginRecvIO(sessionID, buffer);
-            if (length == 0) {
-                context = nullptr;
-                return false;
-            }
-            return true;
         }
 
         // reverse
