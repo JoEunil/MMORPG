@@ -34,12 +34,12 @@ namespace Net {
     STOverlappedEx* IOCP::PrepareSend(uint64_t sessionID) {
         SOCKET clientSocket = sessionManager->GetSocket(sessionID);
         if (clientSocket == INVALID_SOCKET) {
-            return;
+            return nullptr;
         }
         DWORD dwBytesSent = 0;
         STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
         if (!pOverlappedEx)
-            return;
+            return nullptr;
         pOverlappedEx->op = IOOperation::SEND;
         pOverlappedEx->clientSocket = clientSocket;
         pOverlappedEx->sessionID = sessionID;
@@ -50,6 +50,8 @@ namespace Net {
     void IOCP::SendData(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet)
     {
 		STOverlappedEx* pOverlappedEx = PrepareSend(sessionID);
+        if (!pOverlappedEx)
+            return;
         pOverlappedEx->wsaBuf[0].len = packet->GetLength();
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
         pOverlappedEx->sharedPacket = packet;
@@ -60,6 +62,8 @@ namespace Net {
     void IOCP::SendDataChunks(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet, std::vector<std::shared_ptr<Core::IPacket>>& packetChunks)
     {
         STOverlappedEx* pOverlappedEx = PrepareSend(sessionID);
+        if (!pOverlappedEx)
+            return;
         pOverlappedEx->wsaBuf[0].len = packet->GetLength();
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
         pOverlappedEx->sharedPacket = packet;
@@ -75,6 +79,8 @@ namespace Net {
     void IOCP::SendDataUnique(uint64_t sessionID, std::unique_ptr<Core::IPacket, Core::PacketDeleter> packet)
     {
         STOverlappedEx* pOverlappedEx = PrepareSend(sessionID);
+        if (!pOverlappedEx)
+            return;
         pOverlappedEx->wsaBuf[0].len = packet->GetLength();
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
         pOverlappedEx->uniquePacket = std::move(packet);
