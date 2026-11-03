@@ -438,7 +438,18 @@ namespace Net {
         }
     }
 
-
+    void IOCP::PostSend(EnqueueSendResult status, STOverlappedEx* pOverlappedEx, uint64_t sessionID) {
+        if (status == EnqueueSendResult::Ready) {
+            DoWSASend(pOverlappedEx);
+        }
+        else if (status == EnqueueSendResult::Failed) {
+            overlappedExPool->Return(pOverlappedEx);
+        }
+        else if (status == EnqueueSendResult::QueueFull) {
+            Core::errorLogger->LogWarn("iocp", "send queue full, packet dropped", "session", sessionID);
+            overlappedExPool->Return(pOverlappedEx);
+        }
+    }
     void IOCP::SendData(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet)
     {
         SOCKET clientSocket = sessionManager->GetSocket(sessionID);
@@ -459,16 +470,7 @@ namespace Net {
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
         pOverlappedEx->sharedPacket = packet;
         EnqueueSendResult status = sessionManager->EnqueueSend(clientSocket, pOverlappedEx);
-        if  (status == EnqueueSendResult::Ready) {
-            DoWSASend(pOverlappedEx);
-        }
-        else if (status == EnqueueSendResult::Failed) {
-            overlappedExPool->Return(pOverlappedEx);
-        }
-        else if (status == EnqueueSendResult::QueueFull) {
-            Core::errorLogger->LogWarn("iocp", "send queue full, packet dropped", "session", sessionID);
-            overlappedExPool->Return(pOverlappedEx);
-        }
+		PostSend(status, pOverlappedEx, sessionID);
     }
 
 
@@ -497,17 +499,7 @@ namespace Net {
             pOverlappedEx->wsaBuf.emplace_back(chunk->GetLength(), reinterpret_cast<char*>(chunk->GetBuffer()));
         }
         EnqueueSendResult status = sessionManager->EnqueueSend(clientSocket, pOverlappedEx);
-        if (status == EnqueueSendResult::Ready) {
-            DoWSASend(pOverlappedEx);
-        }
-         else if (status == EnqueueSendResult::Failed) {
-             overlappedExPool->Return(pOverlappedEx);
-        }
-         else if (status == EnqueueSendResult::QueueFull) {
-             Core::errorLogger->LogWarn("iocp", "send queue full, packet dropped", "session", sessionID);
-             overlappedExPool->Return(pOverlappedEx);
-        }
-
+        PostSend(status, pOverlappedEx, sessionID);
     }
 
     void IOCP::SendDataUnique(uint64_t sessionID, std::unique_ptr<Core::IPacket, Core::PacketDeleter> packet)
@@ -529,16 +521,7 @@ namespace Net {
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
         pOverlappedEx->uniquePacket = std::move(packet);
         EnqueueSendResult status = sessionManager->EnqueueSend(clientSocket, pOverlappedEx);
-        if (status == EnqueueSendResult::Ready) {
-            DoWSASend(pOverlappedEx);
-        }
-         else if (status == EnqueueSendResult::Failed) {
-             overlappedExPool->Return(pOverlappedEx);
-        }
-         else if (status == EnqueueSendResult::QueueFull) {
-            Core::errorLogger->LogWarn("iocp", "send queue full, packet dropped", "session", sessionID);
-            overlappedExPool->Return(pOverlappedEx);
-        }
+        PostSend(status, pOverlappedEx, sessionID);
     }
     void IOCP::DoWSASend(STOverlappedEx* pOverlappedEx) {
         // 최초의 Send에서만 호출

@@ -99,7 +99,8 @@ namespace Net {
             m_receiving.store(false);
         }
         void CleanUp();
-        
+        void PostSend(EnqueueSendResult status, STOverlappedEx* o, uint64_t sessionID);
+
         friend class Initializer;
     public:
         ~IOCP() {
