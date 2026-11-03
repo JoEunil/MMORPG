@@ -140,10 +140,10 @@ namespace Net{
             return m_connectionCnt.load(std::memory_order_relaxed);
         }
 
-        EnqueueSendResult EnqueueSend(SOCKET sock, STOverlappedEx* overlappedEx) {
-            auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
+        EnqueueSendResult EnqueueSend(STOverlappedEx* overlappedEx) {
+            auto& shard = m_sessionShard[(overlappedEx->clientSocket >> 2) & SESSION_SHARD_MASK];
             std::lock_guard lock(shard.mutex);
-            auto it = shard.sessions.find(sock);
+            auto it = shard.sessions.find(overlappedEx->clientSocket);
             if (it == shard.sessions.end())
                 return EnqueueSendResult::Failed;
             return it->second.context->EnqueueSend(overlappedEx);

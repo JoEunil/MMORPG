@@ -101,6 +101,7 @@ namespace Net {
 
         void PostAccept();
         bool PostRecv(SOCKET clientSocket, uint64_t expectedSessionID);
+        STOverlappedEx* PrepareSend(uint64_t sessionID);
         void PostSend(EnqueueSendResult status, STOverlappedEx* o, uint64_t sessionID);
         void HandleSendResult(STOverlappedEx* pOverlappedEx, int result);
 

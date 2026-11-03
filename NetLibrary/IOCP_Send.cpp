@@ -18,12 +18,10 @@ namespace Net {
             overlappedExPool->Return(pOverlappedEx);
         }
     }
-    void IOCP::SendData(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet)
-    {
+
+    STOverlappedEx* IOCP::PrepareSend(uint64_t sessionID) {
         SOCKET clientSocket = sessionManager->GetSocket(sessionID);
         if (clientSocket == INVALID_SOCKET) {
-            //Core::errorLogger->LogWarn("iocp", "try send to INVALID SOCKET", "session" , sessionID); 
-            // 정상 실행 흐름에서 발생 가능하고, 발생 빈도가 매우 높다.
             return;
         }
         DWORD dwBytesSent = 0;
@@ -34,64 +32,41 @@ namespace Net {
         pOverlappedEx->clientSocket = clientSocket;
         pOverlappedEx->sessionID = sessionID;
         pOverlappedEx->wsaBuf.resize(1);
+        return pOverlappedEx;
+    }
+
+    void IOCP::SendData(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet)
+    {
+		STOverlappedEx* pOverlappedEx = PrepareSend(sessionID);
         pOverlappedEx->wsaBuf[0].len = packet->GetLength();
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
-
         pOverlappedEx->sharedPacket = packet;
-        EnqueueSendResult status = sessionManager->EnqueueSend(clientSocket, pOverlappedEx);
+        EnqueueSendResult status = sessionManager->EnqueueSend(pOverlappedEx);
         PostSend(status, pOverlappedEx, sessionID);
     }
 
-
     void IOCP::SendDataChunks(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet, std::vector<std::shared_ptr<Core::IPacket>>& packetChunks)
     {
-        SOCKET clientSocket = sessionManager->GetSocket(sessionID);
-        if (clientSocket == INVALID_SOCKET) {
-            //Core::errorLogger->LogWarn("iocp", "try send to INVALID SOCKET", "session" , sessionID); 
-            // 정상 실행 흐름에서 발생 가능하고, 발생 빈도가 매우 높다.
-            return;
-        }
-        DWORD dwBytesSent = 0;
-        STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
-        if (!pOverlappedEx)
-            return;
-        pOverlappedEx->op = IOOperation::SEND;
-        pOverlappedEx->clientSocket = clientSocket;
-        pOverlappedEx->sessionID = sessionID;
-        pOverlappedEx->wsaBuf.resize(1);
+        STOverlappedEx* pOverlappedEx = PrepareSend(sessionID);
         pOverlappedEx->wsaBuf[0].len = packet->GetLength();
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
-
         pOverlappedEx->sharedPacket = packet;
         pOverlappedEx->packetChunks = packetChunks;
         for (auto& chunk : packetChunks)
         {
             pOverlappedEx->wsaBuf.emplace_back(chunk->GetLength(), reinterpret_cast<char*>(chunk->GetBuffer()));
         }
-        EnqueueSendResult status = sessionManager->EnqueueSend(clientSocket, pOverlappedEx);
+        EnqueueSendResult status = sessionManager->EnqueueSend(pOverlappedEx);
         PostSend(status, pOverlappedEx, sessionID);
     }
 
     void IOCP::SendDataUnique(uint64_t sessionID, std::unique_ptr<Core::IPacket, Core::PacketDeleter> packet)
     {
-        SOCKET clientSocket = sessionManager->GetSocket(sessionID);
-        if (clientSocket == INVALID_SOCKET) {
-            //Core::errorLogger->LogWarn("iocp", "try send to INVALID SOCKET", "session", sessionID);
-            return;
-        }
-        DWORD dwBytesSent = 0;
-        STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
-        if (!pOverlappedEx)
-            return;
-        pOverlappedEx->op = IOOperation::SEND;
-        pOverlappedEx->clientSocket = clientSocket;
-        pOverlappedEx->sessionID = sessionID;
-        pOverlappedEx->wsaBuf.resize(1);
+        STOverlappedEx* pOverlappedEx = PrepareSend(sessionID);
         pOverlappedEx->wsaBuf[0].len = packet->GetLength();
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
-
         pOverlappedEx->uniquePacket = std::move(packet);
-        EnqueueSendResult status = sessionManager->EnqueueSend(clientSocket, pOverlappedEx);
+        EnqueueSendResult status = sessionManager->EnqueueSend(pOverlappedEx);
         PostSend(status, pOverlappedEx, sessionID);
     }
 
