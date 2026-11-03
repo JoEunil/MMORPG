@@ -28,7 +28,7 @@ namespace Net {
             packetDispatcher = p;
         }
 
-        bool IsReady() {
+        bool IsReady() const {
             if (abortSocket == nullptr) {
                 Core::sysLogger->LogError("ping manager", "abortSocket not initialized");
                 return false;

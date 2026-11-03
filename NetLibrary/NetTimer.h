@@ -14,8 +14,6 @@ namespace Net {
 		// trivially copyable이 표준상 보장되지 않고
 		// 크기 및 내부 표현이 구현체 의존적이어서
 		// std::atomic<T>로 사용하기에 부적합하다.
-		// trivially copyable: 복사/이동/소멸 시 사용자 정의 동작이 없는 타입
-		// data tearing 방지하기 위해 atomic 적용.
 		inline static std::thread m_thread;
 		inline static std::atomic<bool> m_running;
 		static void StartThread() {
@@ -30,7 +28,7 @@ namespace Net {
 			while (m_running.load(std::memory_order_relaxed)) {
 				auto now = std::chrono::steady_clock::now();
 				uint64_t ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-				// ms 단위로 캐시한다. nanosecond 정밀도는 아래 갱신 주기 한계상 의미가 없다.
+				// ms 단위로 캐시한다. 
 				m_timeCache.store(ms, std::memory_order_relaxed);
 				std::this_thread::sleep_for(std::chrono::milliseconds(1));
 				// 실제 갱신 주기는 Windows 타이머 해상도(기본 약 15.6ms)에 종속된다.

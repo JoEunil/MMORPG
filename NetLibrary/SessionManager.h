@@ -22,13 +22,11 @@ namespace Net{
     };
 
     struct alignas(std::hardware_destructive_interference_size) SessionShard {
-        std::mutex mutex;
-
+        mutable std::mutex mutex;
         std::unordered_map<SOCKET, SessionEntry> sessions;
     };
     struct alignas(std::hardware_destructive_interference_size) ReverseShard {
-        std::mutex mutex;
-
+        mutable std::mutex mutex;
         std::unordered_map<uint64_t, SOCKET> socketMap; // session -> socket 조회용도
     };
     struct PingStruct;
@@ -56,7 +54,7 @@ namespace Net{
             contextPool = c;
         }
 
-        bool IsReady() {
+        bool IsReady() const {
             if (contextPool == nullptr) {
                 Core::sysLogger->LogError("net session", "contextPool not initialized");
                 return false;
@@ -68,7 +66,7 @@ namespace Net{
     public:
         
         // session 
-        bool CheckSession(SOCKET sock) {
+        bool CheckSession(SOCKET sock) const {
             // windows 소켓 핸들은 4의 배수. 
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             std::lock_guard lock(shard.mutex);
@@ -78,7 +76,7 @@ namespace Net{
             return it->second.state.CheckSession();
         }
 
-        uint64_t GetSession(SOCKET sock) {
+        uint64_t GetSession(SOCKET sock) const {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             std::lock_guard lock(shard.mutex);
             auto it = shard.sessions.find(sock);
@@ -107,15 +105,14 @@ namespace Net{
             // 카운트를 초기화할 기회를 수신 경로에서 먼저 차단하지 않는다.
             return it->second.state.BufferReceived(byte);
         }
-        ClientContext* GetContext(SOCKET  sock) {
+        ClientContext* GetContext(SOCKET  sock) const {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             std::lock_guard lock(shard.mutex);
             auto it = shard.sessions.find(sock);
             return it != shard.sessions.end() ? it->second.context : nullptr;
         }
 
-        bool BeginRecvIO(SOCKET sock, uint64_t expectedSessionID, ClientContext*& context,
-            uint64_t& sessionID, uint8_t*& buffer, uint16_t& length) {
+        bool BeginRecvIO(SOCKET sock, uint64_t expectedSessionID, ClientContext*& context, uint64_t& sessionID, uint8_t*& buffer, uint16_t& length) {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             std::lock_guard lock(shard.mutex);
 
@@ -137,7 +134,7 @@ namespace Net{
         }
 
         // reverse
-        SOCKET GetSocket(uint64_t s) {
+        SOCKET GetSocket(uint64_t s) const {
             auto& shard = m_reverseShard[s & SESSION_SHARD_MASK];
             std::lock_guard lock(shard.mutex);
             auto it = shard.socketMap.find(s);

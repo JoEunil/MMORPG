@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <CoreLib/IPacketPoolManager.h>
 #include "Config.h"
@@ -10,7 +10,7 @@ namespace Net {
         PacketPool<BPACKETPOOL_SIZE> m_bigPool{ BIG_PACKET_LENGTH };
         PacketPool<GPACKETPOOL_SIZE> m_giantPool{ GIANT_PACKET_LENGTH };
 
-        bool IsReady() {
+        bool IsReady() const {
             return m_normalPool.IsReady() && m_bigPool.IsReady() && m_giantPool.IsReady();
         }
         friend class Initializer;
@@ -34,7 +34,7 @@ namespace Net {
             return nullptr;
         }
 
-        size_t GetPoolSize(Core::PacketPoolType type) {
+        size_t GetPoolSize(Core::PacketPoolType type) const {
             switch (type) {
             case Core::PacketPoolType::Normal: return m_normalPool.GetPoolSize();
             case Core::PacketPoolType::Big: return m_bigPool.GetPoolSize();

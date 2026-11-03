@@ -5,17 +5,9 @@
 
 namespace Net {
 	OverlappedExPool::~OverlappedExPool() {
-		std::lock_guard<std::mutex> lock(m_mutex);
 		for (auto* buf : m_acceptBuffers)
 			delete[] buf;
 	}
-
-
-    void OverlappedExPool::Initialize() {
-        std::lock_guard<std::mutex> lock(m_mutex);
-		for (int i = 0; i < PREPOSTED_ACCEPTS * 3; i++)
-			m_acceptBuffers.push_back(new char[ACCEPT_BUFFER_SIZE]);
-    }
 
 	STOverlappedEx* OverlappedExPool::Acquire() {
 		STOverlappedEx* res = m_fixedPool.Allocate();

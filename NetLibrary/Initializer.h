@@ -45,7 +45,6 @@ namespace Net {
     public:
         void Initialize() {
             NetTimer::StartThread();
-            overlappedExPool.Initialize();
             clientContextPool.Initialize();
             ClientContext::Initialize(&overlappedExPool, &sessionManager);
             sessionManager.Initialize(&clientContextPool);
@@ -79,29 +78,15 @@ namespace Net {
             return &packetPoolManager;
         }
 
-        bool CheckReady() {
-            if (!overlappedExPool.IsReady()) {
-                return false;
-            }
-            if (!clientContextPool.IsReady()) {
-                return false;
-            }
-            if (!packetPoolManager.IsReady()) {
-                return false;
-            }
-            if (!iocp.IsReady()) {
-                return false;
-            }
-            if (!netHandler.IsReady()) {
-                return false;
-            }
-            if (!pingManager.IsReady()) {
-                return false;
-            }
-            if (!perfCollector.IsReady()) {
-                return false;
-            }
-            if (!ClientContext::IsReady()) {
+        bool CheckReady() const {
+            if (!overlappedExPool.IsReady()
+                or !clientContextPool.IsReady()
+                or packetPoolManager.IsReady()
+                or !iocp.IsReady()
+                or !netHandler.IsReady()
+                or !pingManager.IsReady() 
+                or !perfCollector.IsReady() 
+                or !ClientContext::IsReady()) {
                 return false;
             }
             return true;

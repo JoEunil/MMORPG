@@ -54,7 +54,7 @@ namespace Net {
             cv = c;
             perfCollector = p;
         }
-        bool IsReady() {
+        bool IsReady() const {
             if (!m_isRunning.load(std::memory_order_relaxed)) {
                 Core::sysLogger->LogError("iocp", "not running");
                 return false;

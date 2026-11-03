@@ -33,7 +33,7 @@ namespace Net {
             overlappedPool = o;
             contextPool = c;
         }
-        bool IsReady() {
+        bool IsReady() const {
             if (sessionManager == nullptr) {
                 Core::sysLogger->LogError("net perf", "sessionManager not initialized");
                 return false;

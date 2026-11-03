@@ -19,7 +19,7 @@ namespace Net {
 
         Base::FixedObjectPool<Packet, PoolSize> m_fixedPool{ m_packetLen, this };
 
-        bool IsReady() {
+        bool IsReady() const {
             if (m_fixedPool.GetPoolSize() < PoolSize / 2) {
                 Core::sysLogger->LogError("packet pool", "m_fixedPool not initialized");
                 return false;
@@ -58,7 +58,7 @@ namespace Net {
 			m_fixedPool.Deallocate(p);
 		}
 
-        size_t GetPoolSize() {
+        size_t GetPoolSize() const {
             return m_fixedPool.GetPoolSize();
         }
     };

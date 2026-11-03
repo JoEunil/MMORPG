@@ -17,7 +17,7 @@ namespace Net {
         std::vector<ClientContext*> m_contexts; // LIFO
         Base::RingQueue<ClientContext*, NextPowerOf2(MAX_CLIENT_CONNECTION * 3)> m_flushQ; // ring queue, FIFO
 
-        std::mutex m_mutex;
+        mutable std::mutex m_mutex;
         bool m_running = false;
         alignas(std::hardware_destructive_interference_size) std::atomic<int> m_workingCnt = 0;
         
@@ -30,18 +30,15 @@ namespace Net {
             return true;
         }
         void Stop();
-        
         void FlushPending();
-        void Increase(uint16_t currentSize);
-        void Decrease(uint16_t currentSize);
         
         friend class Initializer;
 public:
-        uint32_t GetFlushQueueSize() {
+        uint32_t GetFlushQueueSize() const {
             std::lock_guard<std::mutex> lock(m_mutex);
             return m_flushQ.size();
         }
-        uint32_t GetContextPoolSize() {
+        uint32_t GetContextPoolSize() const  {
             std::lock_guard<std::mutex> lock(m_mutex);
             return m_contexts.size();
         }
