@@ -87,6 +87,9 @@ namespace Net {
            return true;
         }
         void WorkerThreadFunc(int index);
+        void HandleRecvCompletion(STOverlappedEx* work, DWORD bytesTransferred, int index);
+        void HandleAcceptCompletion(STOverlappedEx* work);
+        void HandleSendCompletion(STOverlappedEx* work, DWORD bytesTransferred);
         bool CreateListenSocket();
         bool CreateWorkerThread();
         

@@ -6,6 +6,18 @@
 #include <CoreLib/IPacket.h>
 
 namespace Net {
+    void IOCP::HandleSendCompletion(STOverlappedEx* work, DWORD bytesTransferred) {
+        work->sentBytes += bytesTransferred;
+        if (work->sentBytes < work->totalBytes) {
+            ContinueSend(work);
+            return;
+        }
+        auto next = sessionManager->DequeueSend(work->clientSocket);
+        if (next)
+            BeginSend(next);
+        overlappedExPool->Return(work);
+    }
+
     void IOCP::PostSend(EnqueueSendResult status, STOverlappedEx* pOverlappedEx, uint64_t sessionID) {
         if (status == EnqueueSendResult::Ready) {
             BeginSend(pOverlappedEx);

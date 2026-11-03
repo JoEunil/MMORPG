@@ -220,71 +220,15 @@ namespace Net {
 
             switch (pOverlappedEx->op) {
             case IOOperation::RECV:
-                if (!m_receiving.load(std::memory_order_relaxed))
-                    break;
-                if (bytesTransferred == 0) {
-                    Core::sysLogger->LogInfo("iocp", "Client FIN received", "socket", clientSocket);
-                    CleanUpSocket(clientSocket, pOverlappedEx->sessionID);
-                    break;
-                }
-                if (pOverlappedEx->ownerContext != nullptr && pOverlappedEx->ownerContext->IsSessionAlive(pOverlappedEx->sessionID)) {
-                    perfCollector->AddRecvCnt(index);
-                    netHandler->OnRecv(pOverlappedEx->ownerContext, pOverlappedEx->sessionID, clientSocket,
-                        reinterpret_cast<uint8_t*>(pOverlappedEx->wsaBuf[0].buf), bytesTransferred);
-
-                    if (pOverlappedEx->ownerContext->IsSessionAlive(pOverlappedEx->sessionID) && !PostRecv(clientSocket, pOverlappedEx->sessionID)) {
-                        Core::errorLogger->LogWarn("iocp", "Post Receive Failed(recv)", "socket", clientSocket);
-                        CleanUpSocket(clientSocket, pOverlappedEx->sessionID);
-                    }
-                }
+                HandleRecvCompletion(pOverlappedEx, bytesTransferred, index);
                 break;
-            case IOOperation::SEND: {
-                pOverlappedEx->sentBytes += bytesTransferred;
-                if (pOverlappedEx->sentBytes < pOverlappedEx->totalBytes) {
-                    ContinueSend(pOverlappedEx); // 커널이 다시 소유 -> 반납 금지
-                    continue; // 하단 공용 Return 을 건너뜀
-                    // 소유권 측면에서 smart pointer나 flag 패턴이 여기에는 맞지 않음. 
-                    // smart pointer:  RAII는 lifetime == scope일 때 가치가 있는데, 
-                    // OVERLAPPED의 수명은 post~completion scope 밖(pending IO)에 결박됨.
-                    // flag: 소유권을 데이터로 복제하는 것, 전형적인 안티 패턴
-                } else {
-                    auto next = sessionManager->DequeueSend(clientSocket);
-                    if (next)
-                        BeginSend(next);
-                }
+            case IOOperation::SEND:
+                HandleSendCompletion(pOverlappedEx, bytesTransferred);
+                // SEND는 재등록하거나 자체 반납하므로 공통 반납을 건너뛴다.
+                continue;
+            case IOOperation::ACCEPT:
+                HandleAcceptCompletion(pOverlappedEx);
                 break;
-            }
-            case IOOperation::ACCEPT: {
-                // completion key는 listen 소켓
-                overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
-                if (!m_receiving.load(std::memory_order_relaxed) || !m_isRunning.load(std::memory_order_relaxed)) {
-                    closesocket(clientSocket);
-                    break;
-                }
-                setsockopt(clientSocket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&m_listenSock, sizeof(m_listenSock));
-                // NAGLE 알고리즘 OFF
-                BOOL nodelay = TRUE;
-                setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, (char*)&nodelay, sizeof(nodelay));
-
-                if (CreateIoCompletionPort((HANDLE)clientSocket, m_hIOCP, (ULONG_PTR)clientSocket, 0) == nullptr) {
-                    closesocket(clientSocket);
-                    break;
-                };
-
-                if (!netHandler->OnAccept(clientSocket)) {
-                    closesocket(clientSocket);
-                    PostAccept();
-                    break;
-                }
-
-                uint64_t sessionID = sessionManager->GetSession(clientSocket);
-                if (sessionID == 0 || !PostRecv(clientSocket, sessionID)) {
-                    Core::errorLogger->LogWarn("iocp", "Post Receive Failed(accept)", "socket", clientSocket);
-                    CleanUpSocket(clientSocket);
-                }
-                PostAccept();
-                break;
-            }
             default:
                 break;
             }

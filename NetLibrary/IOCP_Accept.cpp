@@ -3,8 +3,39 @@
 
 #include <CoreLib/LoggerGlobal.h>
 #include "OverlappedExPool.h"
+#include "NetHandler.h"
+#include "SessionManager.h"
 
 namespace Net {
+    void IOCP::HandleAcceptCompletion(STOverlappedEx* work) {
+        const SOCKET clientSocket = work->clientSocket;
+        overlappedExPool->ReturnAcceptBuf(work->wsaBuf[0].buf);
+        if (!m_receiving.load(std::memory_order_relaxed) || !m_isRunning.load(std::memory_order_relaxed)) {
+            closesocket(clientSocket);
+            return;
+        }
+        setsockopt(clientSocket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&m_listenSock, sizeof(m_listenSock));
+        BOOL nodelay = TRUE;
+        setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, (char*)&nodelay, sizeof(nodelay));
+
+        if (CreateIoCompletionPort((HANDLE)clientSocket, m_hIOCP, (ULONG_PTR)clientSocket, 0) == nullptr) {
+            closesocket(clientSocket);
+            return;
+        }
+        if (!netHandler->OnAccept(clientSocket)) {
+            closesocket(clientSocket);
+            PostAccept();
+            return;
+        }
+
+        uint64_t sessionID = sessionManager->GetSession(clientSocket);
+        if (sessionID == 0 || !PostRecv(clientSocket, sessionID)) {
+            Core::errorLogger->LogWarn("iocp", "Post Receive Failed(accept)", "socket", clientSocket);
+            CleanUpSocket(clientSocket);
+        }
+        PostAccept();
+    }
+
     void IOCP::PostAccept()
     {
         if (!m_isRunning.load(std::memory_order_relaxed))

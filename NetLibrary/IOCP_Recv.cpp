@@ -3,8 +3,31 @@
 #include <CoreLib/LoggerGlobal.h>
 #include "OverlappedExPool.h"
 #include "SessionManager.h"
+#include "NetHandler.h"
+#include "NetPerfCollector.h"
 
 namespace Net {
+    void IOCP::HandleRecvCompletion(STOverlappedEx* work, DWORD bytesTransferred, int index) {
+        if (!m_receiving.load(std::memory_order_relaxed))
+            return;
+        const SOCKET clientSocket = work->clientSocket;
+        if (bytesTransferred == 0) {
+            Core::sysLogger->LogInfo("iocp", "Client FIN received", "socket", clientSocket);
+            CleanUpSocket(clientSocket, work->sessionID);
+            return;
+        }
+        if (work->ownerContext != nullptr && work->ownerContext->IsSessionAlive(work->sessionID)) {
+            perfCollector->AddRecvCnt(index);
+            netHandler->OnRecv(work->ownerContext, work->sessionID, clientSocket,
+                reinterpret_cast<uint8_t*>(work->wsaBuf[0].buf), bytesTransferred);
+
+            if (work->ownerContext->IsSessionAlive(work->sessionID) && !PostRecv(clientSocket, work->sessionID)) {
+                Core::errorLogger->LogWarn("iocp", "Post Receive Failed(recv)", "socket", clientSocket);
+                CleanUpSocket(clientSocket, work->sessionID);
+            }
+        }
+    }
+
     bool IOCP::PostRecv(SOCKET clientSocket, uint64_t sessionID)
     {
         DWORD dwBytesReceived = 0;
