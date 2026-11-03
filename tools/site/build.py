@@ -300,16 +300,20 @@ def render_decisions(section):
 
 
 def render_comparison_case(section):
-    opening, examples = [], []
+    opening, closing, examples = [], [], []
     for block in section["blocks"]:
-        if isinstance(block, str) and IMAGE.fullmatch(block):
-            examples.append([block])
+        image = IMAGE.fullmatch(block) if isinstance(block, str) else None
+        if image:
+            alt, ref = image.groups()
+            src = local_image_path(HOME_SOURCE.relative_to(ROOT), ref)
+            size = image_size_attributes(src)
+            capture = f'<img src="{src}" alt="{escape(alt, quote=True)}" {size} loading="lazy">'
+            examples.append(f'<article class="case-example"><h3>{escape(alt)}</h3><details class="case-full"><summary><span>시안 전체 보기</span><div class="case-thumb">{capture}</div></summary><div class="case-original">{capture}</div></details></article>')
         elif examples:
-            examples[-1].append(block)
+            closing.append(block)
         else:
             opening.append(block)
-    gallery = ''.join(f'<article class="case-example">{render_blocks(blocks, HOME_SOURCE)}</article>' for blocks in examples)
-    return render_blocks(opening, HOME_SOURCE) + f'<div class="case-examples">{gallery}</div>'
+    return render_blocks(opening, HOME_SOURCE) + f'<div class="case-examples">{"".join(examples)}</div>' + render_blocks(closing, HOME_SOURCE)
 
 
 def document(title, description, content, references, site_title):
@@ -329,8 +333,11 @@ def build_tour(references, site_title, require_media=False):
     if require_media:
         clips = [IMAGE.fullmatch(b.removeprefix("영상: ")) for s in sections for b in s["blocks"] if isinstance(b, str) and b.startswith("영상: ")]
         expected = {"skill-strike.gif", "skill-sweep.gif", "skill-cleave.gif", "market-flow.gif", "market-return.gif", "chat-global-zone.gif", "chat-zone.gif", "chat-whisper.gif"}
-        if len(clips) != 8 or any(c is None for c in clips) or {Path(c[2]).name for c in clips} != expected:
-            raise ValueError("The completed tour must reference all eight required recordings")
+        if any(c is None for c in clips):
+            raise ValueError("Invalid content tour recording reference")
+        names = [Path(c[2]).name for c in clips]
+        if not expected.issubset(names) or len(names) != len(set(names)):
+            raise ValueError("The completed tour must keep the eight required recordings and unique additional recordings")
         for clip in clips:
             image_size_attributes(local_image_path(TOUR_SOURCE.relative_to(ROOT), clip[2]))
             poster_ref = str(Path(clip[2]).with_name(Path(clip[2]).stem + "-poster.png"))
@@ -564,5 +571,5 @@ def check_site():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--require-tour-media", action="store_true", help="Require all eight content tour GIFs before delivery")
+    parser.add_argument("--require-tour-media", action="store_true", help="Require the original eight GIFs and every additional Markdown recording, including posters")
     main(parser.parse_args().require_tour_media)

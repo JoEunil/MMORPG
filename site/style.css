@@ -334,3 +334,26 @@ h1, h2, h3 { word-break: keep-all; letter-spacing: -.035em; }
 }
 
 .feature-entry .work-media figcaption { min-height: 3.3em; line-height: 1.65; }
+
+/* Compact comparison previews; the full sheet opens in the same page. */
+.process-page .case-examples { align-items: start; gap: 28px; }
+.case-example h3 { min-height: 3em; margin: 0 0 12px; font-size: 21px; font-weight: 650; line-height: 1.5; }
+.case-full { min-width: 0; border: 1px solid var(--line); background: var(--soft); }
+.case-full summary { cursor: pointer; padding: 12px; color: var(--accent); font-size: 18px; font-weight: 600; }
+.case-full summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.case-full summary > span { display: inline; }
+.case-thumb { aspect-ratio: 16 / 9; max-height: 300px; margin-top: 12px; }
+.case-thumb img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.case-full[open] .case-thumb { display: none; }
+.case-original img { display: block; width: 100%; height: auto; }
+.case-examples:has(.case-full[open]) { grid-template-columns: 1fr; }
+.case-examples:has(.case-full[open]) .case-example h3 { min-height: 0; }
+.process-page .usage-totals dd { font-size: 36px; font-weight: 700; }
+.process-page .usage-totals dt { font-size: 18px; }
+.section-title h2 { font-weight: 700; }
+.work-copy h3 { font-weight: 650; }
+@media (max-width: 760px) {
+  .case-example h3 { min-height: 0; font-size: 20px; }
+  .case-thumb { max-height: 260px; }
+  .process-page .usage-totals dd { font-size: 30px; }
+}
