@@ -11,7 +11,9 @@ ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. 웹 Git 정본 ROOT/Unit
 ## 실행 상태
 사용자의 입력 허용·test1 수동 로그인 후 같은 Play에서 촬영했다. 촬영 폴더 ROOT/UnityClient/Builds/ContentTourCapture-2026-11-03. 게임 연결·소유 서버·로그인 서버 정상 종료, Play off/background=false 복원. 기존 autotick 유지. DB/Redis 유지. 웹 검토 preview http://127.0.0.1:8794/MMORPG/play/ 는 유지한다.
 
-## 게시 대기·다음 행동
-원격 PR63은 아직 이전 게시본이며 이번 후보는 로컬이다. 이전 CONTENTTOUR02/r1(2d1f98e) 요청은 추가 피드백으로 대체됐고 새 승인으로 쓰지 않는다. 같은 앱 스레드1793630447.340599/채널C0C9VFZMV43에서 현재 후보 CONTENTTOUR03 게시 승인을 요청한다. 승인 수신 전 push/PR 갱신/Pages 배포 보류.
+## 게시 완료·다음 행동
+사용자의 2026-11-03 채팅 ‘PR 올려줘’ 명시 요청으로 검수 후보 f6cda04를 기존 PR63에 push했다. 새 PR은 만들지 않았다. PR은 open/병합 전이며 원격 head 일치를 확인했다. 제목·설명도 콘텐츠 GIF와 최신 웹 구성을 중심으로 갱신했다. https://github.com/JoEunil/MMORPG/pull/63
 
-정확 후보·요청 메시지·소비 회신은 새 촬영 폴더 pr-approval-state.json과 대조한다. 지정사용자U0C9QEUHPMK·Coordinator고정대상01a14d46-8b23-7590-8ad5-7efc20f8ecd9. 다음 행동은 현재 후보 승인 확인 후 기존 PR63에만 push하고 PR상태를 확인하는 것이다. Pages 배포 성공은 별도 확인한다.
+CONTENTTOUR03은 게시 완료로 더 이상 승인 대기가 아니다. Slack 회신을 소비한 것으로 기록하지 않는다. 같은 앱 스레드1793630447.340599에 결과를 보냈다(메시지1793704362.688029). 정확 상태는 새 촬영 폴더 pr-approval-state.json에 있다. 지정사용자·고정 Coordinator는 그대로다.
+
+다음 행동은 사용자의 PR 검토 또는 새 피드백 대응이다. 기존 승인이나 칭찬을 병합 승인으로 확대하지 않는다. 병합 후 Pages 배포는 별도 확인한다. 이번 게시 후 게임 개발을 자동 재개하지 않는다.
