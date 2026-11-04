@@ -109,6 +109,9 @@ namespace Mmorpg.Client
             skillButtons[0].onClick.AddListener(Strike);
             skillButtons[1].onClick.AddListener(Ring);
             skillButtons[2].onClick.AddListener(Line);
+            for (int i = 0; i < skillButtons.Length; i++)
+                foreach (TMP_Text label in skillButtons[i].GetComponentsInChildren<TMP_Text>(true))
+                    if (label.name == "SkillKey") label.text = i == 0 ? "Q" : i == 1 ? "E" : "R";
             combatStatusText.gameObject.SetActive(true);
             combatStatusText.rectTransform.anchorMin = combatStatusText.rectTransform.anchorMax = new Vector2(.5f, 0);
             combatStatusText.rectTransform.pivot = new Vector2(.5f, 0);
@@ -546,10 +549,12 @@ namespace Mmorpg.Client
             UpdateSkillTooltip();
             UpdateCooldownOverlays();
             if (!InputAvailable() || Keyboard.current == null) return;
-            if (Keyboard.current.zKey.wasPressedThisFrame) RequestSkill(0);
-            else if (Keyboard.current.xKey.wasPressedThisFrame) RequestSkill(1);
-            else if (Keyboard.current.cKey.wasPressedThisFrame) RequestSkill(2);
+            int slot = PressedSkillSlot(Keyboard.current);
+            if (slot >= 0) RequestSkill((byte)slot);
         }
+
+        private static int PressedSkillSlot(Keyboard keyboard) => keyboard.qKey.wasPressedThisFrame ? 0
+            : keyboard.eKey.wasPressedThisFrame ? 1 : keyboard.rKey.wasPressedThisFrame ? 2 : -1;
 
         private void ApplyResults(ushort count, ActionResultField[] results)
         {
@@ -1278,7 +1283,7 @@ namespace Mmorpg.Client
                 labelRect.offsetMax = new Vector2(-14, -10);
             }
 
-            string key = slot == 0 ? "Z" : slot == 1 ? "X" : "C";
+            string key = slot == 0 ? "Q" : slot == 1 ? "E" : "R";
             string name = SkillName((byte)slot);
             skillTooltipText.text = string.Format(CultureInfo.InvariantCulture,
                 "<size=20><b>{0} · {1}</b></size>\n{2} · MP {3}\nCooldown {4:0.##}s · ~ estimated", key, name, shape, skill.mana,

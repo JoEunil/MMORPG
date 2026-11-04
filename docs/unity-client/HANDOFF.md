@@ -1,15 +1,17 @@
-# 현재 인계 — 서버 테스트 후속·다음 기능 범위
+# 현재 인계 — 논타게팅 입력 전환·서버 변경 보류
 
-ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, codex/client-clock-compat. origin/master 239a01f 정상 병합(8897463). Editor ROOT/UnityClient. PR64 병합·Pages 확인 완료. 현재 새 PR 게시 승인 대기 없음.
+ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, codex/client-clock-compat. origin/master239a01f 정상 병합(8897463). Editor ROOT/UnityClient. PR64/Pages 확인 완료. 새 PR 게시 승인 대기 없음.
 
-## 완료
-PR66 MainServer 빌드·정상 UI 자동 로그인·월드 연결·접속 중 q 정상 종료 확인. 사용자 테스트 수정 후 UnitTests Release/x64 빌드와 Flood4/4 통과. 전체 테스트 실행은 하지 않았다. bigPacketSleep은 여전히 실제 1ms 대기에 의존하므로 결정적 검증으로 모두 바뀐 것은 아니다. 과거 C2660 차단은 해소됐고 미적용 추천 patch는 재적용하지 않는다.
+## 이번 완료
+사용자는 논타게팅 WASD 이동·마우스 포인터 조준·Shift/Q/E/R/F 스킬 키 영역을 선택했다. BRIEF 최신 조작 방향과 WORKFLOW를 갱신하고 과거 ZXC 검증 기록은 보존했다.
 
-클라 56278f5: 가방을 열지 않아도 HP 포션 수량 최초 조회, 확정 실패에만 한정 재조회1회. 변경 fixture1/1·실제 수량9·종합 검수 통과. 작은 PR로 바로 나누지 않고 관련 묶음에 보존한다.
+서버 계약 그대로 가능한 WASD+방향키 보조, 기존3슬롯 Q/E/R, HUD 배지·툴팁·도움말·화면 생성 코드 일치를 구현했다. Shift/F는 미배정. 기존 입력필드/채팅/패널/포커스 차단 유지. 컴파일 오류0·변경 합성 입력 검사2/2·최종 종합 검수 필수0/통과. 실제 키보드/실서버 입력은 미검증이다. 근거 Builds/ClientGrowthHUD/verification/input-nontarget. 제품/테스트6파일이며 서버·ClientCore·DB·Scene 변경 없음.
+
+기존56278f5 포션 최초 수량 조회/한정 재조회1회도 같은 묶음에 보존. 해당 fixture1/1·실제수량9·검수통과는 반복하지 않았다. 사용자 서버 테스트 수정 이후 UnitTests 빌드/Flood4개 통과했으며 전체 suite 실행은 아님. 상세 history/2026-11-04-clock-client/RESULTS.md.
 
 ## 현재와 다음
-Play off/background false, 서버·로그인 helper 정상 종료. 보호 test1 자동 로그인은 LOCAL_PREPARATION의 검증된 native 정상 UI 경로를 사용한다. 비밀 값·보호파일 Git/로그 금지.
+Play off/background false 복원, 서버/helper 기동 없음. 보호 test1 자동 로그인은 LOCAL_PREPARATION의 검증된 native 정상 UI 경로를 따른다. 비밀 값·보호파일 Git/로그 금지.
 
-다음 읽기 점검에서 가방·거래·채팅·이동의 기존 API만으로 바로 추가할 확정 결함은 찾지 못했다. 전체 무결함 판정은 아니다. 이동 감속·스킬 각도 또는 아이템/MP/골드 묶음은 서버 접점이 필요하므로 사용자 답변에 따라 서버 수정은 계속 보류하고 변경안만 준비 완료. 이동·조준/아이템·보상의 제안과 미결정 항목은 PLAY_FEEDBACK_PLAN 최신 인계안에 정리했다. 구현 재개는 서버 기준 커밋·허용 범위 확인 후 진행한다. 사용자 서버 원본·Monster AI는 수정하지 않는다. PLAY_FEEDBACK_PLAN의 최신 후속 표 참조.
+서버 수정 보류는 유지한다. 마우스360도 조준·시전 고정각/phase 범위·이동속도·아이템/MP/골드·구역 난이도는 PLAY_FEEDBACK_PLAN의 변경안이며 미구현. 원본 서버/사용자 Monster AI는 수정하지 않는다. 새 서버 기준 커밋과 수정 허용 범위 확인 뒤 통합한다. 현재 후보는 작은 PR로 나누지 않고 같은 브랜치에 누적한다.
 
-Slack 같은 작업 스레드1793784229.739169. 상세 history/2026-11-04-clock-client/RESULTS.md. Agent592(신규228/후속364).
+새 입력 묶음 Slack1793793991.033509. 이전 서버/포션 결과 스레드1793784229.739169. Agent598(신규228/후속370).

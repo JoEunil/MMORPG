@@ -7,11 +7,49 @@ using NUnit.Framework;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 
 namespace Mmorpg.Client.Tests
 {
     public sealed class OwnMotionTests
     {
+        [Test]
+        public void WasdAndArrowKeysShareCameraRelativeMovementWithoutExtraDiagonalSpeed()
+        {
+            var keyboard = InputSystem.AddDevice<Keyboard>();
+            var camera = new GameObject("movement input camera");
+            camera.transform.rotation = Quaternion.Euler(45, 45, 0);
+            var direction = typeof(WorldScreen).GetMethod("CameraRelativeDirection", BindingFlags.Static | BindingFlags.NonPublic);
+            try
+            {
+                var primary = new[] { Key.W, Key.A, Key.S, Key.D };
+                var auxiliary = new[] { Key.UpArrow, Key.LeftArrow, Key.DownArrow, Key.RightArrow };
+                for (int i = 0; i < primary.Length; i++)
+                {
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(primary[i]));
+                    InputSystem.Update();
+                    var wasd = (Vector2)direction.Invoke(null, new object[] { keyboard, camera.transform });
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(auxiliary[i]));
+                    InputSystem.Update();
+                    Assert.That((Vector2)direction.Invoke(null, new object[] { keyboard, camera.transform }), Is.EqualTo(wasd));
+                    Assert.That(wasd.magnitude, Is.EqualTo(1).Within(.0001f));
+                }
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.W, Key.D, Key.UpArrow, Key.RightArrow));
+                InputSystem.Update();
+                Assert.That(((Vector2)direction.Invoke(null, new object[] { keyboard, camera.transform })).magnitude,
+                    Is.EqualTo(1).Within(.0001f));
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.W, Key.S, Key.A, Key.D));
+                InputSystem.Update();
+                Assert.That((Vector2)direction.Invoke(null, new object[] { keyboard, camera.transform }), Is.EqualTo(Vector2.zero));
+            }
+            finally
+            {
+                InputSystem.RemoveDevice(keyboard);
+                UnityEngine.Object.DestroyImmediate(camera);
+            }
+        }
+
         [Test]
         [Category("MotionRevision")]
         public void DisableAfterActorDestroyed_ClearsWorldWithoutAccessingNativeMotion()

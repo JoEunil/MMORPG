@@ -342,7 +342,7 @@ namespace Mmorpg.Client.Editor
             var aim = Label("C05Aim", 12, new Vector2(14, -37), new Vector2(208, 22));
             var status = Label("C05Status", 12, new Vector2(14, -115), new Vector2(532, 62));
             var buttons = new UnityEngine.UI.Button[3];
-            var labels = new[] { "Z  STRIKE", "X  RING", "C  LINE" };
+            var labels = new[] { "Q  STRIKE", "E  RING", "R  LINE" };
             for (int slot = 0; slot < 3; slot++)
             {
                 string name = "C05Skill" + slot;

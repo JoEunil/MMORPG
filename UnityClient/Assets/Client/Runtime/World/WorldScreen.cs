@@ -407,8 +407,10 @@ namespace Mmorpg.Client
         {
             Vector3 forward = Vector3.ProjectOnPlane(cameraTransform.forward, Vector3.up).normalized;
             Vector3 right = Vector3.ProjectOnPlane(cameraTransform.right, Vector3.up).normalized;
-            Vector2 input = new Vector2((keyboard.rightArrowKey.isPressed ? 1 : 0) - (keyboard.leftArrowKey.isPressed ? 1 : 0),
-                (keyboard.upArrowKey.isPressed ? 1 : 0) - (keyboard.downArrowKey.isPressed ? 1 : 0));
+            Vector2 input = new Vector2((keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed ? 1 : 0) -
+                (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed ? 1 : 0),
+                (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed ? 1 : 0) -
+                (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed ? 1 : 0));
             if (input.sqrMagnitude > 1) input.Normalize();
             Vector3 world = right * input.x + forward * input.y;
             return world.sqrMagnitude > 0 ? new Vector2(world.x, world.z).normalized : Vector2.zero;
@@ -635,7 +637,7 @@ namespace Mmorpg.Client
             // Root facing is seeded on entry. C19 turns only the visual model during movement/actions.
             RenderVisualPosition();
             worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
-                "C02 / SERVER-CONFIRMED FIELD · {5}\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nArrow keys move. Z / X / C use skills. I opens bag. B opens market.",
+                "C02 / SERVER-CONFIRMED FIELD · {5}\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nWASD / arrow keys move. Q / E / R use skills. I opens bag. B opens market.",
                 SelectedCharacterID, InternalID, ZoneID, ownFull.x, ownFull.y, ZoneID == 1 ? "TOWN / SAFE AREA" : "HUNTING FIELD");
             UpdateZoneTransitionButton();
         }

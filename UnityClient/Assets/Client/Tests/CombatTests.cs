@@ -15,12 +15,46 @@ using NUnit.Framework;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 
 namespace Mmorpg.Client.Tests
 {
     // Detached fixtures: not actual keyboard/button input, a server cast, or a live death.
     public sealed class CombatTests
     {
+        [Test]
+        public void QerKeysMapExistingSlotsAndLeaveOldOrReservedKeysUnassigned()
+        {
+            var keyboard = InputSystem.AddDevice<Keyboard>();
+            var pressedSkillSlot = typeof(CombatScreen).GetMethod("PressedSkillSlot", BindingFlags.Static | BindingFlags.NonPublic);
+            try
+            {
+                using (var fixture = new CombatFixture())
+                {
+                    var keys = new[] { Key.Q, Key.E, Key.R, Key.Z, Key.X, Key.C, Key.LeftShift, Key.RightShift, Key.F };
+                    for (int i = 0; i < keys.Length; i++)
+                    {
+                        InputSystem.QueueStateEvent(keyboard, new KeyboardState(keys[i]));
+                        InputSystem.Update();
+                        Assert.That((int)pressedSkillSlot.Invoke(null, new object[] { keyboard }),
+                            Is.EqualTo(i < 3 ? i : -1), keys[i].ToString());
+                        if (i < 3)
+                        {
+                            Assert.That(fixture.Buttons[i].transform.Find("SkillKey").GetComponent<TMP_Text>().text,
+                                Is.EqualTo(keys[i].ToString()));
+                        }
+                        InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                        InputSystem.Update();
+                    }
+                }
+            }
+            finally
+            {
+                InputSystem.RemoveDevice(keyboard);
+            }
+        }
+
         public static string RunPureChecks()
         {
             var tests = new CombatTests();
@@ -345,7 +379,7 @@ namespace Mmorpg.Client.Tests
                 Assert.That(cooldownOverlay.Find("Time").GetComponent<TMP_Text>().font,
                     Is.SameAs(f.Buttons[2].transform.Find("SkillName").GetComponent<TMP_Text>().font));
                 Assert.That(f.Buttons[2].transform.Find("SkillName").GetComponent<TMP_Text>().text, Is.EqualTo("LINE"));
-                Assert.That(f.Buttons[2].transform.Find("SkillKey").GetComponent<TMP_Text>().text, Is.EqualTo("C"));
+                Assert.That(f.Buttons[2].transform.Find("SkillKey").GetComponent<TMP_Text>().text, Is.EqualTo("R"));
                 Set(f.Combat, "chargeTelegraphDeadline", Time.unscaledTime - 0.001f);
                 Invoke(f.Combat, "Update");
                 Assert.That(telegraph.enabled, Is.False, "The authored charge wait clears the telegraph if no release arrives.");
@@ -407,7 +441,7 @@ namespace Mmorpg.Client.Tests
                 Invoke(f.Combat, "Update");
                 Assert.That(cooldownOverlay.gameObject.activeSelf, Is.False, "The radial overlay hides when its estimate expires.");
                 Assert.That(f.Buttons[2].transform.Find("SkillName").GetComponent<TMP_Text>().text, Is.EqualTo("LINE"));
-                Assert.That(f.Buttons[2].transform.Find("SkillKey").GetComponent<TMP_Text>().text, Is.EqualTo("C"));
+                Assert.That(f.Buttons[2].transform.Find("SkillKey").GetComponent<TMP_Text>().text, Is.EqualTo("R"));
                 string confirmed = f.Status.text;
                 var bad = action; bad.casterType = 1; current(1, new[] { bad });
                 bad = action; bad.casterId = 99; current(1, new[] { bad });
