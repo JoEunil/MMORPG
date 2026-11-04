@@ -7,6 +7,7 @@
 #include <new>
 #include <unordered_map>
 #include <functional>
+#include <CoreLib/ICachedClock.h>
 
 #include "SessionState.h"
 #include "ClientContext.h"
@@ -40,7 +41,7 @@ namespace Net{
         // AddSession과 Disconnect에 의해서만 추가, 제거가 처리됨.
         // 외부에서 절대 참조할 수 없도록 해야함
 
-        void Initialize(ClientContextPool* c) {
+        void Initialize(ClientContextPool* c, Core::ICachedClock* cl) {
             for (int i = 0; i < SESSION_SHARD_SIZE; i++)
             {
                 auto& shard = m_sessionShard[i];
@@ -52,16 +53,18 @@ namespace Net{
                 shard.socketMap.reserve(MAX_CLIENT_CONNECTION / SESSION_SHARD_SIZE);
             }
             contextPool = c;
+            clock = cl;
         }
 
         bool IsReady() const {
-            if (contextPool == nullptr) {
-                Core::sysLogger->LogError("net session", "contextPool not initialized");
+            if (contextPool == nullptr || clock == nullptr) {
+                Core::sysLogger->LogError("net session", "contextPool or clock not initialized");
                 return false;
             }
             return true;
         }
         ClientContextPool* contextPool = nullptr;
+        Core::ICachedClock* clock = nullptr;
         friend class Initializer;
     public:
         
@@ -103,7 +106,7 @@ namespace Net{
                 return false;
             // Ping 임계치 판정은 다음 Ping loop가 담당한다. 이번 PONG이
             // 카운트를 초기화할 기회를 수신 경로에서 먼저 차단하지 않는다.
-            return it->second.state.BufferReceived(byte);
+            return it->second.state.BufferReceived(byte, clock->GetTimeMS());
         }
 
         ClientContext* GetContext(SOCKET  sock) const {

@@ -160,6 +160,7 @@
     <ClInclude Include="IPacketDispatcher.h" />
     <ClInclude Include="IPacketPool.h" />
     <ClInclude Include="IPacketPoolManager.h" />
+    <ClInclude Include="ICachedClock.h" />
     <ClInclude Include="IPacketView.h" />
     <ClInclude Include="ISessionAuth.h" />
     <ClInclude Include="LobbyZone.h" />

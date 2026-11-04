@@ -11,15 +11,23 @@
 #include <vector>
 
 namespace {
+    class TestCachedClock final : public Core::ICachedClock {
+    public:
+        uint64_t now = 0;
+        uint64_t GetTimeMS() const override { return now; }
+    };
+
     constexpr uint64_t Character = 16;
     constexpr uint16_t Shard = Character & Cache::SHARD_SIZE_MASK;
 
     class InventoryHarness : public Cache::CacheStorageInventory {
     public:
+        TestCachedClock testClock;
         std::vector<std::unique_ptr<Cache::FlushCommand>> writes;
         bool acceptWrites = true;
 
         InventoryHarness() {
+            clock = &testClock;
             m_shards.resize(Cache::SHARD_SIZE);
             SetFlushFn([this](const Cache::Key5& key, Cache::Result5& result) {
                 if (!acceptWrites) return Cache::FlushEnqueueResult::Failed;
@@ -49,7 +57,9 @@ namespace {
 
     class CurrencyHarness : public Cache::CacheStorageCurrency {
     public:
+        TestCachedClock testClock;
         CurrencyHarness(uint64_t gold) {
+            clock = &testClock;
             m_shards.resize(Cache::SHARD_SIZE);
             Cache::Result7 result{};
             result.data.gold = gold;
@@ -706,10 +716,12 @@ namespace Cache {
 namespace Cache {
     class InventoryPotionFixture : public ::testing::Test {
     protected:
+        TestCachedClock testClock;
         std::unique_ptr<CacheStorageInventory> cache = std::make_unique<CacheStorageInventory>();
         uint64_t lsn = 10;
         bool failWal = false;
         void SetUp() override {
+            cache->clock = &testClock;
             cache->m_shards.resize(SHARD_SIZE);
             cache->SetWalFn([this](uint64_t, const InventoryData&) { return failWal ? 0 : ++lsn; });
         }

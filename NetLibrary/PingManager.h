@@ -4,6 +4,7 @@
 #include <thread>
 
 #include <CoreLib/IPacketDispatcher.h>
+#include <CoreLib/ICachedClock.h>
 #include <CoreLib/LoggerGlobal.h>
 #include "IAbortSocket.h"
 namespace Net {
@@ -21,11 +22,13 @@ namespace Net {
         SessionManager* sessionManager = nullptr;
         IAbortSocket* abortSocket = nullptr;
         Core::IPacketDispatcher* packetDispatcher = nullptr;
+        Core::ICachedClock* clock = nullptr;
 
-        void Initialize(IAbortSocket* a, SessionManager* s, Core::IPacketDispatcher* p) {
+        void Initialize(IAbortSocket* a, SessionManager* s, Core::IPacketDispatcher* p, Core::ICachedClock* c) {
             abortSocket = a;
             sessionManager = s;
             packetDispatcher = p;
+            clock = c;
         }
 
         bool IsReady() const {
@@ -39,6 +42,10 @@ namespace Net {
             }
             if (packetDispatcher == nullptr) {
                 Core::sysLogger->LogError("ping manager", "packetDispatcher not initialized");
+                return false;
+            }
+            if (clock == nullptr) {
+                Core::sysLogger->LogError("ping manager", "clock not initialized");
                 return false;
             }
             return true;

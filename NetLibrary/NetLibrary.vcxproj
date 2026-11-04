@@ -228,7 +228,6 @@
     <ClInclude Include="AccumulatedBuffer.h" />
     <ClInclude Include="Jitter.h" />
     <ClInclude Include="NetPerfCollector.h" />
-    <ClInclude Include="NetTimer.h" />
     <ClInclude Include="SendQueue.h" />
     <ClInclude Include="SessionState.h" />
     <ClInclude Include="TrafficFloodDetector.h" />

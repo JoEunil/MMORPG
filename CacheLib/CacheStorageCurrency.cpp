@@ -96,7 +96,7 @@ namespace Cache {
         if (deposit > UINT64_MAX - res.data.gold)
             return { CACHE_STATUS::BLOCKED, res.data.gold };
         res.data.gold += deposit;
-        res.lastModified = CacheTimer::GetTimeMS();
+        res.lastModified = clock->GetTimeMS();
         shard.dirty_list.insert(key);
         return { resStatus, res.data.gold};
     }
@@ -138,7 +138,7 @@ namespace Cache {
             return { CACHE_STATUS::BLOCKED, res.data.gold };
         
         res.data.gold -= withdraw;
-        res.lastModified = CacheTimer::GetTimeMS();
+        res.lastModified = clock->GetTimeMS();
         shard.dirty_list.insert(key);
         return { resStatus, res.data.gold };
     }

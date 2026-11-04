@@ -5,9 +5,10 @@ namespace Cache {
 
 
     template<typename Key, typename Result, typename KeyHash>
-    void CacheStorage<Key, Result, KeyHash>::Initialize(DBWorker<DBConnectionGame>* c) {
+    void CacheStorage<Key, Result, KeyHash>::Initialize(DBWorker<DBConnectionGame>* c, Core::ICachedClock* clock) {
         m_shards.resize(SHARD_SIZE);
         dbWorker = c;
+        this->clock = clock;
     }
 
     template<typename Key, typename Result, typename KeyHash>
@@ -61,7 +62,7 @@ namespace Cache {
 
         auto& item = shard.cache_data[key];
         item.data = result.data;
-        item.lastModified = CacheTimer::GetTimeMS();
+        item.lastModified = clock->GetTimeMS();
         item.status = CACHE_STATUS::AVAILABLE;
 
         if (shard.lru_list.size() >= MAX_CACHE_SIZE) {

@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <ExternalLib/CachedClock.h>
 #include <iostream>
 #include <stdexcept>
 #include <queue>
@@ -37,8 +38,9 @@ namespace Cache {
 		std::cout << "=== Cache Durability 1단계: 크래시 유발 ===\n";
 
 		MockMessageQueue mockMQ;
+		External::CachedClock clock;
 		Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-durable/redo" };
-		init.Initialize();
+		init.Initialize(&clock);
 		init.InjectDependencies(&mockMQ);
 		auto* recvMQ = init.GetMessageQueue();
 
@@ -106,8 +108,9 @@ namespace Cache {
 		// 1) WAL 복구 확인 — flush 못 한 변경이 살아 있어야 함
 		{
 			MockMessageQueue mockMQ;
+			External::CachedClock clock;
 			Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-durable/redo" };
-			init.Initialize(); // Restore: WAL last image의 lsn > DB lastLsn -> 캐시 재적용
+			init.Initialize(&clock); // Restore: WAL last image의 lsn > DB lastLsn -> 캐시 재적용
 			init.InjectDependencies(&mockMQ);
 			auto* recvMQ = init.GetMessageQueue();
 
@@ -136,8 +139,9 @@ namespace Cache {
 		//   Restore가 스킵해야 함 (중복 적용이면 qty가 2배가 됨)
 		{
 			MockMessageQueue mockMQ;
+			External::CachedClock clock;
 			Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-durable/redo" };
-			init.Initialize(); // Restore 재실행 — lsn > dbLSN 불충족 -> 스킵
+			init.Initialize(&clock); // Restore 재실행 — lsn > dbLSN 불충족 -> 스킵
 			init.InjectDependencies(&mockMQ);
 			auto* recvMQ = init.GetMessageQueue();
 

@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <ExternalLib/CachedClock.h>
 #include <stdexcept>
 #include <string>
 
@@ -124,8 +125,9 @@ namespace Cache {
 	// ---------------------------------------------------------------
 	inline static int Test_Inventory_DBFetch() {
 		MockMessageQueue mockMQ;
+		External::CachedClock clock;
 		Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
-		init.Initialize();
+		init.Initialize(&clock);
 		init.InjectDependencies(&mockMQ);
 		auto* recvMQ = init.GetMessageQueue();
 
@@ -147,8 +149,9 @@ namespace Cache {
 	// ---------------------------------------------------------------
 	inline static int Test_Inventory_CacheHit() {
 		MockMessageQueue mockMQ;
+		External::CachedClock clock;
 		Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
-		init.Initialize();
+		init.Initialize(&clock);
 		init.InjectDependencies(&mockMQ);
 		auto* recvMQ = init.GetMessageQueue();
 		
@@ -177,8 +180,9 @@ namespace Cache {
 	// ---------------------------------------------------------------
 	inline static int Test_InventoryUpdate_Sequence() {
 		MockMessageQueue mockMQ;
+		External::CachedClock clock;
 		Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
-		init.Initialize();
+		init.Initialize(&clock);
 		init.InjectDependencies(&mockMQ);
 		auto* recvMQ = init.GetMessageQueue();
 		// 캐시 채우기
@@ -256,8 +260,9 @@ namespace Cache {
 	inline static int Test_DB_Flush() {
 		{
 			MockMessageQueue mockMQ;
+			External::CachedClock clock;
 			Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
-			init.Initialize();
+			init.Initialize(&clock);
 			init.InjectDependencies(&mockMQ);
 			auto* recvMQ = init.GetMessageQueue();
 
@@ -281,8 +286,9 @@ namespace Cache {
 		// init 소멸자에서 DB flush 
 		{
 			MockMessageQueue mockMQ;
+			External::CachedClock clock;
 			Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
-			init.Initialize();
+			init.Initialize(&clock);
 			init.InjectDependencies(&mockMQ);
 			auto* recvMQ = init.GetMessageQueue();
 			{
@@ -334,8 +340,9 @@ namespace Cache {
 			return 0;
 		}
 		MockMessageQueue mockMQ;
+		External::CachedClock clock;
 		Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
-		init.Initialize();
+		init.Initialize(&clock);
 		init.InjectDependencies(&mockMQ);
 		auto* recvMQ = init.GetMessageQueue();
 

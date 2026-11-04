@@ -68,8 +68,8 @@ namespace Net {
             return m_rtt;
         }
 
-        bool BufferReceived(uint32_t byte) {
-            m_flood = m_flood || m_floodDetector.ByteReceived(byte);
+        bool BufferReceived(uint32_t byte, uint64_t now) {
+            m_flood = m_flood || m_floodDetector.ByteReceived(byte, now);
             return !m_flood;
         }
 

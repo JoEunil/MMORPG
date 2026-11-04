@@ -51,7 +51,7 @@
     <ClCompile Include="NetLib\PacketView.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="NetLib\NetTimer.cpp">
+    <ClCompile Include="ExternalLib\CachedClock.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="..\CoreLib\LoggerGlobal.cpp">
