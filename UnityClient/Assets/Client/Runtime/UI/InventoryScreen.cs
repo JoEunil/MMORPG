@@ -101,6 +101,7 @@ namespace Mmorpg.Client
             {
                 potionNoticeDeadline = 0;
                 if (potionQuickStatus != null) potionQuickStatus.text = string.Empty;
+                UpdateControls();
             }
             if (lootNoticeDeadline > 0 && (!WorldAvailable || model == null || loginScreen == null ||
                 loginScreen.Model != model || Time.unscaledTime >= lootNoticeDeadline))
@@ -571,6 +572,10 @@ namespace Mmorpg.Client
             selectedSlot = item.Slot;
             selectedItemID = item.ItemID;
             ApplySelection(item, card);
+            if (useStatus != null && !usePending && !useTimedOut)
+                useStatus.text = item.ItemID == 1 && Time.unscaledTime < useCooldownDeadline
+                    ? "Potion is on cooldown."
+                    : ItemPresentation.UseDescription(item.ItemID);
             UpdateControls();
         }
 
@@ -646,6 +651,14 @@ namespace Mmorpg.Client
             if (bagButton != null) bagButton.interactable = available;
             if (refreshButton != null) refreshButton.interactable = available && !requestPending && !requestTimedOut;
             if (closeButton != null) closeButton.interactable = true;
+            if (useStatus != null && hasSelectedItem && selectedItemID == 1 && useTimedOut)
+                useStatus.text = "Use result unknown. Checking the bag; reconnect before trying again.";
+            else if (useStatus != null && !usePending &&
+                (potionNoticeDeadline == 0 || (hasSelectedItem && selectedItemID != 1)))
+                useStatus.text = hasSelectedItem
+                    ? (selectedItemID == 1 && Time.unscaledTime < useCooldownDeadline
+                        ? "Potion is on cooldown." : ItemPresentation.UseDescription(selectedItemID))
+                    : string.Empty;
             if (useButton != null)
             {
                 useButton.gameObject.SetActive(hasSelectedItem && selectedItemID == 1);

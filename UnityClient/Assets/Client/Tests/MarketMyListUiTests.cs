@@ -182,7 +182,7 @@ namespace Mmorpg.Client.Tests
                 ((IViewModelNet)fixture.Login.Model).BazaarBuyReceived(fixture.Network.LastBuyID, 1001, 1, 700, 2, 4294967297UL);
                 Assert.That(fixture.Status.text, Does.Contain("Purchased"));
                 Assert.That(fixture.Status.text, Does.Contain("4294967297"), "Display the server-confirmed u64 amount rather than the quoted price.");
-                Assert.That(fixture.Status.text, Does.Contain("Receive purchases"));
+                Assert.That(fixture.Status.text, Does.Contain("Receive items"));
                 Assert.That(fixture.Network.CheckOutboxRequests, Is.Zero, "Purchase confirmation must not imply delivery or automatically request it.");
                 fixture.Buy.onClick.Invoke();
                 Assert.That(fixture.Network.BuyRequests, Is.EqualTo(1));
@@ -212,6 +212,7 @@ namespace Mmorpg.Client.Tests
         }
 
         [Test, Category("MarketCancel")]
+        [Category("CommerceFeedback")]
         public void CancellationConfirmsOwnedSaleAndSeparatesReturnWhileRejectingLateAndUnknownResults()
         {
             using (var fixture = new Fixture())
@@ -271,7 +272,10 @@ namespace Mmorpg.Client.Tests
                 fixture.Close.onClick.Invoke();
                 handler.HandleResponse(CancelListingFrame(lateID, 1104, 1));
                 Assert.That(fixture.Panel.activeSelf, Is.False);
-                Assert.That(fixture.Status.text, Is.Empty, "A closed presentation must ignore a late cancellation reply.");
+                Assert.That(fixture.Status.text, Does.Contain("Sale cancelled"), "Closing must retain the pending cancellation's final feedback.");
+                string cancellationResult = fixture.Status.text;
+                fixture.OpenMarket();
+                Assert.That(fixture.Status.text, Is.EqualTo(cancellationResult));
                 Assert.That(fixture.Network.CancelListingRequests, Is.EqualTo(3));
             }
         }

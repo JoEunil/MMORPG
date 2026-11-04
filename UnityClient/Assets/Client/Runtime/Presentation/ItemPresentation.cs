@@ -24,6 +24,19 @@ namespace Mmorpg.Client
 
         public static string Badge(uint itemID) => TryGet(itemID, out ItemDefinition item) ? item.Badge : "?";
 
+        public static string UseDescription(uint itemID)
+        {
+            switch (itemID)
+            {
+                case 1: return "Restores HP. Cannot use at full HP or while dead.";
+                case 2: return "MP potion use is not supported.";
+                case 3:
+                case 4:
+                case 5: return "Equipment cannot be equipped or used here.";
+                default: return "Unknown item. Use is not supported.";
+            }
+        }
+
         public static Sprite Icon(uint itemID)
         {
             if (!TryGet(itemID, out ItemDefinition item)) return null;
