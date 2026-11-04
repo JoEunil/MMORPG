@@ -52,6 +52,8 @@ namespace Mmorpg.Client
         private bool failureRetryAttempted;
         private float failureRetryDeadline;
         private bool hasInventoryResponse;
+        private bool inventoryWarmupAttempted;
+        private bool inventoryWarmupPending;
         private bool refreshAfterCurrentRequest;
         private bool refreshOnOpenAfterUncertainDelivery;
         private bool hasSelectedItem;
@@ -97,6 +99,13 @@ namespace Mmorpg.Client
 
         private void Update()
         {
+            // Bootstrap callbacks expose the world before ClientCore marks it ready; read on the next frame.
+            if (!inventoryWarmupAttempted && WorldAvailable && model != null && loginScreen.Model == model &&
+                !hasInventoryResponse && !requestPending && !requestTimedOut && !usePending)
+            {
+                inventoryWarmupPending = true;
+                RequestInventory();
+            }
             if (potionNoticeDeadline > 0 && Time.unscaledTime >= potionNoticeDeadline)
             {
                 potionNoticeDeadline = 0;
@@ -128,7 +137,7 @@ namespace Mmorpg.Client
 
             if (failureRetryScheduled)
             {
-                if (!IsOpen || !WorldAvailable || model == null || loginScreen.Model != model)
+                if ((!IsOpen && !inventoryWarmupPending) || !WorldAvailable || model == null || loginScreen.Model != model)
                 {
                     CancelFailureRetry();
                 }
@@ -142,6 +151,7 @@ namespace Mmorpg.Client
             if (!requestPending || Time.unscaledTime < requestDeadline) return;
             requestPending = false;
             requestTimedOut = true;
+            inventoryWarmupPending = false;
             ClearInventoryCards();
             inventoryStatus.text = "Request timed out. Reconnect to try again.";
             UpdateControls();
@@ -163,6 +173,8 @@ namespace Mmorpg.Client
             requestPending = false;
             requestTimedOut = false;
             hasInventoryResponse = false;
+            inventoryWarmupAttempted = false;
+            inventoryWarmupPending = false;
             refreshAfterCurrentRequest = false;
             refreshOnOpenAfterUncertainDelivery = false;
             ClearInventoryCards();
@@ -199,6 +211,8 @@ namespace Mmorpg.Client
 
         private void ItemUseZoneTransitionStarted(ulong ownershipEpoch, ushort zoneID)
         {
+            inventoryWarmupPending = false;
+            CancelFailureRetry();
             ResetItemUse();
             hasInventoryResponse = false;
             RequireFreshInventoryOnOpen();
@@ -208,6 +222,8 @@ namespace Mmorpg.Client
 
         private void ItemUseConnectionFailed(string message)
         {
+            inventoryWarmupPending = false;
+            CancelFailureRetry();
             ResetItemUse();
             hasInventoryResponse = false;
             RequireFreshInventoryOnOpen();
@@ -355,7 +371,8 @@ namespace Mmorpg.Client
         private void WorldChanged()
         {
             bool available = WorldAvailable && model != null && loginScreen.Model == model;
-            if (!available || !IsOpen) CancelFailureRetry();
+            if (!available) inventoryWarmupPending = false;
+            if (!available || (!IsOpen && !inventoryWarmupPending)) CancelFailureRetry();
             bagButton.gameObject.SetActive(available);
             if (!available)
             {
@@ -379,7 +396,11 @@ namespace Mmorpg.Client
                 if (bazaarScreen != null) bazaarScreen.ClosePanel();
                 worldScreen.StopActions();
             }
-            else CancelFailureRetry();
+            else
+            {
+                inventoryWarmupPending = false;
+                CancelFailureRetry();
+            }
             inventoryPanel.SetActive(open);
             if (open) inventoryPanel.transform.SetAsLastSibling();
             if (open && (!hasInventoryResponse || refreshOnOpenAfterUncertainDelivery) && !requestTimedOut && !requestPending)
@@ -389,6 +410,7 @@ namespace Mmorpg.Client
 
         public void ClosePanel()
         {
+            inventoryWarmupPending = false;
             CancelFailureRetry();
             inventoryPanel.SetActive(false);
             UpdateControls();
@@ -415,6 +437,7 @@ namespace Mmorpg.Client
 
         private void RequestInventory()
         {
+            if (inventoryWarmupAttempted) inventoryWarmupPending = false;
             CancelFailureRetry();
             failureRetryAttempted = false;
             SendInventoryRequest();
@@ -425,6 +448,7 @@ namespace Mmorpg.Client
             if (!WorldAvailable || model == null || loginScreen.Model != model || requestPending || requestTimedOut)
                 return;
 
+            inventoryWarmupAttempted = true;
             requestPending = true;
             hasInventoryResponse = false;
             requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
@@ -438,6 +462,7 @@ namespace Mmorpg.Client
             catch (Exception)
             {
                 requestPending = false;
+                inventoryWarmupPending = false;
                 hasInventoryResponse = false;
                 ClearInventoryCards();
                 inventoryStatus.text = "Request failed. Reconnect to try again.";
@@ -453,6 +478,7 @@ namespace Mmorpg.Client
             requestPending = false;
             if (refreshAfterCurrentRequest)
             {
+                inventoryWarmupPending = false;
                 refreshAfterCurrentRequest = false;
                 RequestInventory();
                 return;
@@ -461,7 +487,7 @@ namespace Mmorpg.Client
             {
                 hasInventoryResponse = false;
                 ClearInventoryCards();
-                if (IsOpen && WorldAvailable && !failureRetryAttempted)
+                if ((IsOpen || inventoryWarmupPending) && WorldAvailable && !failureRetryAttempted)
                 {
                     failureRetryAttempted = true;
                     failureRetryScheduled = true;
@@ -470,6 +496,7 @@ namespace Mmorpg.Client
                 }
                 else
                 {
+                    inventoryWarmupPending = false;
                     inventoryStatus.text = worldScreen.Stage == WorldStage.TransitionPending
                         ? "Inventory request failed during travel. Open the bag and refresh after arrival."
                         : "Inventory request failed. Select Refresh to try again.";
@@ -478,6 +505,7 @@ namespace Mmorpg.Client
                 return;
             }
 
+            inventoryWarmupPending = false;
             List<InventoryItemView> snapshot = loginScreen.Data != null
                 ? new List<InventoryItemView>(loginScreen.Data.GetInventory())
                 : new List<InventoryItemView>();
@@ -715,6 +743,7 @@ namespace Mmorpg.Client
 
         private void OnDisable()
         {
+            inventoryWarmupPending = false;
             CancelFailureRetry();
             if (loginScreen != null) loginScreen.ClientChanged -= ChangeClient;
             if (worldScreen != null) worldScreen.WorldStateChanged -= WorldChanged;

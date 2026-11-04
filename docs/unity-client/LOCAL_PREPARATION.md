@@ -49,4 +49,4 @@ Windows 예약 범위가9999를 포함하면 예약·방화벽 설정을 자동 
 
 2026-11-04 사용자 요청으로 test1은 로컬 보호 정보를 재사용한다. 실제 Windows 사용자의 LocalApplicationData/UnityCoordinator/test1-credential.xml은 DPAPI 보호 파일이다. Git에 복사하거나 내용을 출력하지 않는다. sandbox LOCALAPPDATA로 경로를 추정하지 않는다.
 
-현 도우미: ROOT/UnityClient/Builds/ClientGrowthHUD/verification/netlib65/live/protected-login.cs와 read-protected-login.ps1. 정상 로그인 UI에 입력하며 비밀번호를 명령 인자·파일·로그에 풀어 저장하지 않는다. 도우미 로드는 확인됐지만 자동 인증 성공은 미검증이다. 입력 허용과 대상 창을 확인한 뒤 사용하고 정책 거절을 우회하지 않는다.
+현 도우미: ROOT/UnityClient/Builds/ClientGrowthHUD/verification/netlib65/live/protected-login.cs와 read-protected-login.ps1. 정상 로그인 UI에 입력하며 비밀번호를 명령 인자·파일·로그에 풀어 저장하지 않는다. 2026-11-04 실제 인증·월드 진입은 Computer Use의 정상 입력란 선택·type_text·로그인 클릭으로 확인했다. 보호 reader stdout은 메모리에만 두고 입력한다. 기존 C# 합성 입력 도우미의 완료 반환은 인증 성공 증거가 아니며, 현재 검증한 경로는 native UI 입력이다. 입력 허용과 대상 창을 확인한 뒤 사용하고 정책 거절을 우회하지 않는다.

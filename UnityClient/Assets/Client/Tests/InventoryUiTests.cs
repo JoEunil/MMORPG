@@ -409,9 +409,27 @@ namespace Mmorpg.Client.Tests
                 Assert.That(quick.interactable, Is.True, "Unknown count permits a read-only check.");
                 Assert.That(fixture.Network.ItemUses, Is.Zero);
 
-                fixture.OpenBag();
+                SetPrivateProperty(fixture.World, "HasOwnFull", false);
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.Zero, "Wait for a complete world baseline.");
+                fixture.SetWorldReady();
+                Assert.That(fixture.Network.Requests, Is.Zero, "Bootstrap callbacks must not send the warmup read.");
+                fixture.InvokeScreen("Update");
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(1));
+                Assert.That(fixture.Panel.activeSelf, Is.False);
+                fixture.Receive(false);
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(1), "A definitive warmup failure waits before its one retry.");
+                SetPrivate(fixture.Screen, "failureRetryDeadline", Time.unscaledTime - 1f);
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2));
                 fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 3, slot = 0 },
                     new InventoryItem { itemID = 2, quantity = 5, slot = 1 });
+                Assert.That(quantity.text, Is.EqualTo("3"), "The quick slot learns its count without opening the bag.");
+                fixture.InvokeScreen("Update");
+                fixture.OpenBag();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2), "Opening the bag reuses the confirmed warmup read.");
                 fixture.Cards[1].onClick.Invoke();
                 Assert.That(useObject.activeSelf, Is.False, "MP use is not supported.");
                 fixture.Cards[0].onClick.Invoke();
@@ -473,6 +491,22 @@ namespace Mmorpg.Client.Tests
                 fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 2, slot = 0 });
                 Assert.That(quick.interactable, Is.False, "A fresh bag response must not release an unknown use outcome.");
                 Assert.That(fixture.Network.ItemUses, Is.EqualTo(2));
+            }
+            using (var fixture = new Fixture())
+            {
+                fixture.InvokeScreen("Update");
+                fixture.Receive(false);
+                fixture.InvokeScreen("Update");
+                fixture.SetWorldReady();
+                SetPrivate(fixture.Screen, "failureRetryDeadline", Time.unscaledTime - 1f);
+                fixture.InvokeScreen("Update");
+                fixture.Receive(false);
+                fixture.InvokeScreen("Update");
+                fixture.SetWorldReady();
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2), "A second warmup failure cannot become an automatic retry loop.");
+                Assert.That(fixture.Screen.HasInventoryResponse, Is.False);
+                Assert.That(fixture.Panel.activeSelf, Is.False);
             }
         }
 
