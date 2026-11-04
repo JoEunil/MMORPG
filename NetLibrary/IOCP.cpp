@@ -1,11 +1,8 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "IOCP.h"
 #include <CoreLib/LoggerGlobal.h>
-#include <CoreLib/IPacket.h>
 #include "OverlappedExPool.h"
 #include "NetHandler.h"
-#include "Packet.h"
-#include "SessionManager.h"
 #include "NetPerfCollector.h"
 #include <charconv>
 
@@ -223,71 +220,15 @@ namespace Net {
 
             switch (pOverlappedEx->op) {
             case IOOperation::RECV:
-                if (!m_receiving.load(std::memory_order_relaxed))
-                    break;
-                if (bytesTransferred == 0) {
-                    Core::sysLogger->LogInfo("iocp", "Client FIN received", "socket", clientSocket);
-                    CleanUpSocket(clientSocket, pOverlappedEx->sessionID);
-                    break;
-                }
-                if (pOverlappedEx->ownerContext != nullptr && pOverlappedEx->ownerContext->IsSessionAlive(pOverlappedEx->sessionID)) {
-                    perfCollector->AddRecvCnt(index);
-                    netHandler->OnRecv(pOverlappedEx->ownerContext, pOverlappedEx->sessionID, clientSocket,
-                        reinterpret_cast<uint8_t*>(pOverlappedEx->wsaBuf[0].buf), bytesTransferred);
-
-                    if (pOverlappedEx->ownerContext->IsSessionAlive(pOverlappedEx->sessionID) && !PostRecv(clientSocket, pOverlappedEx->sessionID)) {
-                        Core::errorLogger->LogWarn("iocp", "Post Receive Failed(recv)", "socket", clientSocket);
-                        CleanUpSocket(clientSocket, pOverlappedEx->sessionID);
-                    }
-                }
+                HandleRecvCompletion(pOverlappedEx, bytesTransferred, index);
                 break;
-            case IOOperation::SEND: {
-                pOverlappedEx->sentBytes += bytesTransferred;
-                if (pOverlappedEx->sentBytes < pOverlappedEx->totalBytes) {
-                    ResumeSend(pOverlappedEx); // 커널이 다시 소유 -> 반납 금지
-                    continue; // 하단 공용 Return 을 건너뜀
-                    // 소유권 측면에서 smart pointer나 flag 패턴이 여기에는 맞지 않음. 
-                    // smart pointer:  RAII는 lifetime == scope일 때 가치가 있는데, 
-                    // OVERLAPPED의 수명은 post~completion scope 밖(pending IO)에 결박됨.
-                    // flag: 소유권을 데이터로 복제하는 것, 전형적인 안티 패턴
-                } else {
-                    auto next = sessionManager->DequeueSend(clientSocket);
-                    if (next)
-                        DoWSASend(next);
-                }
+            case IOOperation::SEND:
+                HandleSendCompletion(pOverlappedEx, bytesTransferred);
+                // SEND는 재등록하거나 자체 반납하므로 공통 반납을 건너뛴다.
+                continue;
+            case IOOperation::ACCEPT:
+                HandleAcceptCompletion(pOverlappedEx);
                 break;
-            }
-            case IOOperation::ACCEPT: {
-                // completion key는 listen 소켓
-                overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
-                if (!m_receiving.load(std::memory_order_relaxed) || !m_isRunning.load(std::memory_order_relaxed)) {
-                    closesocket(clientSocket);
-                    break;
-                }
-                setsockopt(clientSocket, SOL_SOCKET, SO_UPDATE_ACCEPT_CONTEXT, (char*)&m_listenSock, sizeof(m_listenSock));
-                // NAGLE 알고리즘 OFF
-                BOOL nodelay = TRUE;
-                setsockopt(clientSocket, IPPROTO_TCP, TCP_NODELAY, (char*)&nodelay, sizeof(nodelay));
-
-                if (CreateIoCompletionPort((HANDLE)clientSocket, m_hIOCP, (ULONG_PTR)clientSocket, 0) == nullptr) {
-                    closesocket(clientSocket);
-                    break;
-                };
-
-                if (!netHandler->OnAccept(clientSocket)) {
-                    closesocket(clientSocket);
-                    PostAccept();
-                    break;
-                }
-
-                uint64_t sessionID = sessionManager->GetSession(clientSocket);
-                if (sessionID == 0 || !PostRecv(clientSocket, sessionID)) {
-                    Core::errorLogger->LogWarn("iocp", "Post Receive Failed(accept)", "socket", clientSocket);
-                    CleanUpSocket(clientSocket);
-                }
-                PostAccept();
-                break;
-            }
             default:
                 break;
             }
@@ -295,118 +236,6 @@ namespace Net {
                 pOverlappedEx->ownerContext->CompleteRecvIO(pOverlappedEx->sessionID);
             overlappedExPool->Return(pOverlappedEx);
         }
-    }
-
-    void IOCP::PostAccept()
-    {
-        if (!m_isRunning.load(std::memory_order_relaxed))
-            return;
-        SOCKET clientSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
-        if (clientSocket == INVALID_SOCKET) {
-            Core::errorLogger->LogWarn("iocp", "failed to create client socket");
-            return;
-        }
-
-        STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
-        if (!pOverlappedEx) {
-            Core::errorLogger->LogWarn("iocp", "failed to acquire overlappedEx");
-            closesocket(clientSocket);
-            return;
-		}
-        // wsaOverlapped만 초기화
-        ZeroMemory(&pOverlappedEx->wsaOverlapped, sizeof(WSAOVERLAPPED));
-        pOverlappedEx->op = IOOperation::ACCEPT;
-        pOverlappedEx->clientSocket = clientSocket;
-        pOverlappedEx->wsaBuf.resize(1);
-        pOverlappedEx->wsaBuf[0].buf = overlappedExPool->AcquireAcceptBuffer();
-        if (pOverlappedEx->wsaBuf[0].buf == nullptr) {
-            // PREPOSTED_ACCEPT 만큼만 PostAccept가 유지되기 때문에 발생할 일이 없음. Accept가 실패될 순 있어도 PostAccept가 실패될 순 없음
-            Core::errorLogger->LogError("iocp", "Failed to acquire Accept Buffer");
-            overlappedExPool->Return(pOverlappedEx);
-            closesocket(clientSocket);
-            return;
-        }
-        if (!m_isRunning.load(std::memory_order_relaxed)) {
-            overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
-            overlappedExPool->Return(pOverlappedEx);
-            closesocket(clientSocket);
-            return;
-        }
-        DWORD bytesReceived = 0;
-        BOOL bRet = m_lpfnAcceptEx(
-            m_listenSock,
-            clientSocket,
-            pOverlappedEx->wsaBuf[0].buf,
-            0,
-            sizeof(SOCKADDR_IN) + 16,
-            sizeof(SOCKADDR_IN) + 16,
-            &bytesReceived,
-            (LPOVERLAPPED)pOverlappedEx
-        );
-
-        if (bRet == FALSE) {
-            int err = WSAGetLastError();
-            if (err != ERROR_IO_PENDING) {
-                const bool expectedShutdown = !m_isRunning.load(std::memory_order_relaxed) &&
-                    !m_receiving.load(std::memory_order_relaxed) &&
-                    (err == ERROR_OPERATION_ABORTED || err == WSAENOTSOCK);
-                if (!expectedShutdown) {
-                    Core::errorLogger->LogError("iocp", "Critical: failed to post AcceptEx", "error", err);
-
-                    m_isRunning.store(false, std::memory_order_relaxed);
-                    fatalError->store(true, std::memory_order_relaxed);
-                    cv->notify_one();
-                }
-
-                overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
-                overlappedExPool->Return(pOverlappedEx);
-                closesocket(clientSocket);
-            }
-        }
-    }
-
-    bool IOCP::PostRecv(SOCKET clientSocket, uint64_t expectedSessionID)
-    {
-        DWORD dwBytesReceived = 0;
-        DWORD dwFlags = 0;
-
-        STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
-        if (!pOverlappedEx)
-            return false;
-        pOverlappedEx->op = IOOperation::RECV;
-        pOverlappedEx->clientSocket = clientSocket;
-        uint8_t* buf = nullptr;
-        ClientContext* ownerContext = nullptr;
-        uint64_t sessionID = 0;
-        uint16_t bufferLength = 0;
-        pOverlappedEx->wsaBuf.resize(1);
-        if (!sessionManager->BeginRecvIO(clientSocket, expectedSessionID, ownerContext, sessionID, buf, bufferLength)) {
-            overlappedExPool->Return(pOverlappedEx);
-            return false;
-        }
-        pOverlappedEx->ownerContext = ownerContext;
-        pOverlappedEx->sessionID = sessionID;
-        pOverlappedEx->wsaBuf[0].len = bufferLength;
-        pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(buf);
-        if (pOverlappedEx->wsaBuf[0].len == 0) {
-            Core::errorLogger->LogWarn("iocp", "can't allocate buffer", "socket", clientSocket);
-            ownerContext->CompleteRecvIO(sessionID);
-            overlappedExPool->Return(pOverlappedEx);
-            return false;
-        }
-
-        int result = WSARecv(clientSocket, &pOverlappedEx->wsaBuf[0], 1, &dwBytesReceived, &dwFlags, &pOverlappedEx->wsaOverlapped, NULL);
-
-        if (result == SOCKET_ERROR) {
-            int err = WSAGetLastError();
-            if (err != WSA_IO_PENDING) {
-                Core::errorLogger->LogError("iocp", "WSAGetLastError ", "socket", clientSocket, "error message", std::to_string(err));
-                ownerContext->CompleteRecvIO(sessionID);
-                overlappedExPool->Return(pOverlappedEx);
-                return false;
-            }
-        }
-        return true;
     }
 
     void IOCP::CleanUpSocket(SOCKET clientSocket)
@@ -435,167 +264,6 @@ namespace Net {
                 Core::errorLogger->LogWarn("iocp", "CancelIoEx failed", "socket", clientSocket, "error", err);
             } // 취소 completion이 회수될 때까지 RECV Context는 pendingIOCnt로 유지
             closesocket(clientSocket);
-        }
-    }
-
-
-    void IOCP::SendData(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet)
-    {
-        SOCKET clientSocket = sessionManager->GetSocket(sessionID);
-        if (clientSocket == INVALID_SOCKET) {
-            //Core::errorLogger->LogWarn("iocp", "try send to INVALID SOCKET", "session" , sessionID); 
-            // 정상 실행 흐름에서 발생 가능하고, 발생 빈도가 매우 높다.
-            return;
-        }
-        DWORD dwBytesSent = 0;
-        STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
-        if (!pOverlappedEx)
-            return ;
-        pOverlappedEx->op = IOOperation::SEND;
-        pOverlappedEx->clientSocket = clientSocket;
-        pOverlappedEx->sessionID = sessionID;
-        pOverlappedEx->wsaBuf.resize(1);
-        pOverlappedEx->wsaBuf[0].len =  packet->GetLength();
-        pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
-        pOverlappedEx->sharedPacket = packet;
-        EnqueueSendResult status = sessionManager->EnqueueSend(clientSocket, pOverlappedEx);
-        if  (status == EnqueueSendResult::Ready) {
-            DoWSASend(pOverlappedEx);
-        }
-        else if (status == EnqueueSendResult::Failed) {
-            overlappedExPool->Return(pOverlappedEx);
-        }
-        else if (status == EnqueueSendResult::QueueFull) {
-            Core::errorLogger->LogWarn("iocp", "send queue full, packet dropped", "session", sessionID);
-            overlappedExPool->Return(pOverlappedEx);
-        }
-    }
-
-
-    void IOCP::SendDataChunks(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet, std::vector<std::shared_ptr<Core::IPacket>>& packetChunks)
-    {
-        SOCKET clientSocket = sessionManager->GetSocket(sessionID);
-        if (clientSocket == INVALID_SOCKET) {
-            //Core::errorLogger->LogWarn("iocp", "try send to INVALID SOCKET", "session" , sessionID); 
-            // 정상 실행 흐름에서 발생 가능하고, 발생 빈도가 매우 높다.
-            return;
-        }
-        DWORD dwBytesSent = 0;
-        STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
-        if (!pOverlappedEx)
-            return;
-        pOverlappedEx->op = IOOperation::SEND;
-        pOverlappedEx->clientSocket = clientSocket;
-        pOverlappedEx->sessionID = sessionID;
-        pOverlappedEx->wsaBuf.resize(1);
-        pOverlappedEx->wsaBuf[0].len = packet->GetLength();
-        pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
-        pOverlappedEx->sharedPacket = packet;
-        pOverlappedEx->packetChunks = packetChunks;
-        for (auto& chunk : packetChunks)
-        {
-            pOverlappedEx->wsaBuf.emplace_back(chunk->GetLength(), reinterpret_cast<char*>(chunk->GetBuffer()));
-        }
-        EnqueueSendResult status = sessionManager->EnqueueSend(clientSocket, pOverlappedEx);
-        if (status == EnqueueSendResult::Ready) {
-            DoWSASend(pOverlappedEx);
-        }
-         else if (status == EnqueueSendResult::Failed) {
-             overlappedExPool->Return(pOverlappedEx);
-        }
-         else if (status == EnqueueSendResult::QueueFull) {
-             Core::errorLogger->LogWarn("iocp", "send queue full, packet dropped", "session", sessionID);
-             overlappedExPool->Return(pOverlappedEx);
-        }
-
-    }
-
-    void IOCP::SendDataUnique(uint64_t sessionID, std::unique_ptr<Core::IPacket, Core::PacketDeleter> packet)
-    {
-        SOCKET clientSocket = sessionManager->GetSocket(sessionID);
-        if (clientSocket == INVALID_SOCKET) {
-            //Core::errorLogger->LogWarn("iocp", "try send to INVALID SOCKET", "session", sessionID);
-            return;
-        }
-        DWORD dwBytesSent = 0;
-        STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
-        if (!pOverlappedEx)
-            return ;
-        pOverlappedEx->op = IOOperation::SEND;
-        pOverlappedEx->clientSocket = clientSocket;
-        pOverlappedEx->sessionID = sessionID;
-        pOverlappedEx->wsaBuf.resize(1);
-        pOverlappedEx->wsaBuf[0].len = packet->GetLength();
-        pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
-        pOverlappedEx->uniquePacket = std::move(packet);
-        EnqueueSendResult status = sessionManager->EnqueueSend(clientSocket, pOverlappedEx);
-        if (status == EnqueueSendResult::Ready) {
-            DoWSASend(pOverlappedEx);
-        }
-         else if (status == EnqueueSendResult::Failed) {
-             overlappedExPool->Return(pOverlappedEx);
-        }
-         else if (status == EnqueueSendResult::QueueFull) {
-            Core::errorLogger->LogWarn("iocp", "send queue full, packet dropped", "session", sessionID);
-            overlappedExPool->Return(pOverlappedEx);
-        }
-    }
-    void IOCP::DoWSASend(STOverlappedEx* pOverlappedEx) {
-        // 최초의 Send에서만 호출
-        if (pOverlappedEx == nullptr)
-            return;
-        ZeroMemory(&pOverlappedEx->wsaOverlapped, sizeof(WSAOVERLAPPED));
-        pOverlappedEx->totalBytes = 0;
-        pOverlappedEx->sentBytes = 0;
-        pOverlappedEx->originalBufs = pOverlappedEx->wsaBuf;
-        for (auto& buf : pOverlappedEx->wsaBuf)
-            pOverlappedEx->totalBytes += buf.len;
-        int result = WSASend(pOverlappedEx->clientSocket, pOverlappedEx->wsaBuf.data(), (DWORD)pOverlappedEx->wsaBuf.size(), 0, 0, &pOverlappedEx->wsaOverlapped, NULL);
-        if (result == SOCKET_ERROR)
-        {
-            int err = WSAGetLastError();
-            if (err != WSA_IO_PENDING)
-            {
-                SOCKET sock = pOverlappedEx->clientSocket;
-                uint64_t sessionID = pOverlappedEx->sessionID;
-                overlappedExPool->Return(pOverlappedEx);
-                CleanUpSocket(sock, sessionID);
-                Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", sock, "error message", std::to_string(err));
-            }
-        }
-    }
-    void IOCP::ResumeSend(STOverlappedEx* pOverlappedEx) {
-        ZeroMemory(&pOverlappedEx->wsaOverlapped, sizeof(WSAOVERLAPPED));
-        int remain = pOverlappedEx->sentBytes;
-        pOverlappedEx->wsaBuf.clear();
-        for (auto& buf : pOverlappedEx->originalBufs)
-        {
-            if (remain >= buf.len)
-            {
-                remain -= buf.len;
-                continue;
-            }
-
-            WSABUF newBuf;
-            newBuf.buf = buf.buf + remain;
-            newBuf.len = buf.len - remain;
-
-            pOverlappedEx->wsaBuf.push_back(newBuf);
-
-            remain = 0;
-        }
-        int result = WSASend(pOverlappedEx->clientSocket, pOverlappedEx->wsaBuf.data(), (DWORD)pOverlappedEx->wsaBuf.size(), 0, 0, &pOverlappedEx->wsaOverlapped, NULL);
-        if (result == SOCKET_ERROR)
-        {
-            int err = WSAGetLastError();
-            if (err != WSA_IO_PENDING)
-            {
-                SOCKET sock = pOverlappedEx->clientSocket;
-                uint64_t sessionID = pOverlappedEx->sessionID;
-                overlappedExPool->Return(pOverlappedEx);
-                CleanUpSocket(sock, sessionID);
-                Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", sock, "error message", std::to_string(err));
-            }
         }
     }
 

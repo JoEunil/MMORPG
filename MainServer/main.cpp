@@ -72,6 +72,7 @@ int main(int argc, char* argv[]) {
         spdlog::shutdown();
         return result;
     }
+    int result = EXIT_SUCCESS;
     try {
         External::SessionAuth auth;
         auth.Initialize();
@@ -90,12 +91,12 @@ int main(int argc, char* argv[]) {
             bool stopped = false;
             void Run() {
                 if (stopped) return;
-                net.CleanUp1();
+                net.StopProducers();
                 auth.Stop();
-                core.CleanUp1();
-                core.CleanUp2();
-                cache.CleanUp();
-                net.CleanUp2();
+                core.StopProducers();
+                core.FinishShutdown();
+                net.FinishShutdown();
+                cache.Shutdown();
                 stopped = true;
             }
             ~Shutdown() { Run(); }
@@ -105,9 +106,9 @@ int main(int argc, char* argv[]) {
         core.Initialize();
         net.Initialize();
 
-        core.InjectDependencies1(net.GetIOCP(), net.GetPacketPool(), net.GetBigPacketPool(), net.GetGiantPacketPool(), &durableLogger);
+        core.InjectDependencies1(net.GetIOCP(), net.GetPacketPoolManager(), &durableLogger);
         cache.InjectDependencies(core.GetMessageQueue(), &durableLogger);
-        core.InjectDependencies2(net.GetIOCP(), &auth, cache.GetMessageQueue(), net.GetPacketPool(), cache.GetProfileCache(), cache.GetInventoryOperations());
+        core.InjectDependencies2(net.GetIOCP(), &auth, cache.GetMessageQueue(), cache.GetProfileCache(), cache.GetInventoryOperations());
         net.InjectDependencies(core.GetPacketDispatcher());
 
         if (net.CheckReady() && core.CheckReady() && cache.CheckReady()) {
@@ -118,9 +119,9 @@ int main(int argc, char* argv[]) {
             if (!net.CheckReady())
                 std::cout << "net 체크 실패" << std::endl;
             if (!core.CheckReady())
-            std::cout << "core 체크 실패" << std::endl;
+                std::cout << "core 체크 실패" << std::endl;
             if (!cache.CheckReady())
-            std::cout << "cache 체크 실패" << std::endl;
+                std::cout << "cache 체크 실패" << std::endl;
         }
         std::cout << "서버 종료" << std::endl;
         Core::sysLogger->LogInfo("server stop");
@@ -131,23 +132,23 @@ int main(int argc, char* argv[]) {
         // 각 Stop()/CleanUp()은 idempotent(running.exchange) + 로거 null-safe 이며,
         // DB 워커는 큐를 drain한 뒤 종료한다. 상세: GracefulShutdown.md
         shutdown.Run();
-
-        Core::sysLogger.reset();
-        Core::gameLogger.reset();
-        Core::errorLogger.reset();
-        Core::perfLogger.reset();
-        spdlog::shutdown();
     }
     catch (const std::exception& e) {
         std::cerr << "Standard exception: " << e.what() << std::endl;
         Core::errorLogger->LogError(std::format("exception: {}", e.what()));
-        return EXIT_FAILURE;
+        result = EXIT_FAILURE;
     }
     catch (...) {
         std::cerr << "Unknown exception caught in main()" << std::endl;
         Core::errorLogger->LogError(std::format("undefined excetion"));
-        return EXIT_FAILURE;
+        result = EXIT_FAILURE;
     }
-    return 0;
+
+    Core::sysLogger.reset();
+    Core::gameLogger.reset();
+    Core::errorLogger.reset();
+    Core::perfLogger.reset();
+    spdlog::shutdown();
+    return result;
 }
 

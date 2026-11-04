@@ -180,6 +180,7 @@ xcopy /Y "$(SolutionDir)External\libevent\bin\Release\*.dll" "$(OutDir)"</Comman
     </ClCompile>
     <ClCompile Include="BaseLib\RingQueue.cpp" />
     <ClCompile Include="NetLib\SendQueue.cpp" />
+    <ClCompile Include="NetLib\PacketPoolManager.cpp" />
     <ClCompile Include="NetLib\TrafficFloodDetector.cpp" />
   </ItemGroup>
   <ItemGroup>

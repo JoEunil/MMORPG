@@ -17,6 +17,7 @@
 #include <CoreLib/ISessionAuth.h>
 #include <CoreLib/IIOCP.h>
 #include <CoreLib/IPacketPool.h>
+#include <CoreLib/IPacketPoolManager.h>
 #include <CoreLib/LobbyZone.h>
 #include <CoreLib/MessagePool.h>
 #include <CoreLib/MessageQueueHandler.h>
@@ -99,7 +100,7 @@ namespace Core {
             void Release() override { delete this; }
         };
 
-        class TestPacketPool final : public IPacketPool {
+        class TestPacketPool final : public IPacketPool, public IPacketPoolManager {
         public:
             std::shared_ptr<IPacket> Acquire() override {
                 return std::shared_ptr<IPacket>(new TestPacket, PacketDeleter{});
@@ -107,6 +108,8 @@ namespace Core {
             std::unique_ptr<IPacket, PacketDeleter> AcquireUnique() override {
                 return std::unique_ptr<IPacket, PacketDeleter>(new TestPacket);
             }
+            std::shared_ptr<IPacket> Acquire(PacketPoolType) override { return Acquire(); }
+            std::unique_ptr<IPacket, PacketDeleter> AcquireUnique(PacketPoolType) override { return AcquireUnique(); }
             void Return(IPacket* packet) override { packet->Release(); }
         };
 
@@ -322,7 +325,7 @@ namespace Core {
             broadcastPerf.Initialize();
             state->lobbyZone = &lobby; // Only the zone0 dependency; no Zone/topology initialization.
             lobby.Initialize(state.get());
-            writer.Initialize(&packetPool, &packetPool, &packetPool);
+            writer.Initialize(&packetPool);
             responses.Initialize(&iocp, &writer, &lobby, &messages);
             responses.InitializeStateManager(state.get());
             handler.Initialize(&iocp, &auth, &writer, &messages, &loads, state.get(), &lobby, nullptr);

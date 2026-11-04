@@ -9,16 +9,14 @@
 #include <BaseLib/FixedObjectPool.h>
 
 namespace Net {
-    static constexpr size_t ACCEPT_BUFFER_SIZE = (sizeof(SOCKADDR_IN) + 16) * 2;
     class OverlappedExPool {
         Base::FixedObjectPool<STOverlappedEx, OVERLAPPEDPOOL_SIZE> m_fixedPool;
 
-        std::vector<char*> m_acceptBuffers; // LIFO로 관리하면 충분
+        std::vector<char*> m_acceptBuffers; 
         std::mutex m_mutex;
         
         ~OverlappedExPool();
-        void Initialize();
-        bool IsReady() {
+        bool IsReady() const {
             if (m_acceptBuffers.empty()) {
                 Core::sysLogger->LogError("ovelapped pool", "m_acceptBuffers not initialized");
                 return false;
@@ -29,11 +27,14 @@ namespace Net {
 			}
             return true;
         }
-        void Adjust();
-        void Increase(uint16_t currentSize);
-        void Decrease(uint16_t currentSize);
         friend class Initializer;
     public:
+
+        OverlappedExPool() {
+            for (int i = 0; i < PREPOSTED_ACCEPTS * 3; i++)
+                m_acceptBuffers.push_back(new char[ACCEPT_BUFFER_SIZE]);
+        }
+
         STOverlappedEx* Acquire();
         void Return(STOverlappedEx*);
         char* AcquireAcceptBuffer() {
@@ -49,7 +50,7 @@ namespace Net {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_acceptBuffers.push_back(buf);
         }
-        size_t GetPoolSize() {
+        size_t GetPoolSize() const {
             return m_fixedPool.GetPoolSize();
 		}
     };

@@ -159,6 +159,7 @@
     <ClInclude Include="IPacket.h" />
     <ClInclude Include="IPacketDispatcher.h" />
     <ClInclude Include="IPacketPool.h" />
+    <ClInclude Include="IPacketPoolManager.h" />
     <ClInclude Include="IPacketView.h" />
     <ClInclude Include="ISessionAuth.h" />
     <ClInclude Include="LobbyZone.h" />

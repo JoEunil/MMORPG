@@ -252,6 +252,9 @@
     <ClCompile Include="ClientContext.cpp" />
     <ClCompile Include="ClientContextPool.cpp" />
     <ClCompile Include="IOCP.cpp" />
+    <ClCompile Include="IOCP_Accept.cpp" />
+    <ClCompile Include="IOCP_Recv.cpp" />
+    <ClCompile Include="IOCP_Send.cpp" />
     <ClCompile Include="Packet.cpp" />
     <ClCompile Include="PacketView.cpp" />
     <ClCompile Include="SessionManager.cpp" />
@@ -261,6 +264,7 @@
     <ClCompile Include="PingManager.cpp" />
     <ClCompile Include="RingBuffer.cpp" />
     <ClInclude Include="PacketPool.h" />
+    <ClInclude Include="PacketPoolManager.h" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">Create</PrecompiledHeader>

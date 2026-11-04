@@ -11,7 +11,7 @@
 #include "IOCP.h"
 #include "ClientContext.h"
 #include "ClientContextPool.h"
-#include "PacketPool.h"
+#include "PacketPoolManager.h"
 #include "NetPacketFilter.h"
 #include "IAbortSocket.h"
 #include "PingManager.h"
@@ -21,20 +21,18 @@
 
 #include <CoreLib/ILogger.h>
 #include <CoreLib/IIocp.h>
-#include <coreLib/IPacketPool.h>
+#include <CoreLib/IPacketPoolManager.h>
 #include <coreLib/IPacketDispatcher.h>
 
 #include "Config.h"
 namespace Net {
     class Initializer {
         IOCP iocp;
-        // 소멸 순서 주의: STOverlappedEx가 packetPool/bigPacketPool/giantPacketPool의 패킷을 물고 있고,
+        // 소멸 순서 주의: STOverlappedEx가 packetPoolManager 소유 풀의 패킷을 물고 있고,
         // ClientContext는 overlappedExPool의 overlapped를 물고 있음.
-        // 선언 역순으로 소멸하므로 packetPool/bigPacketPool/giantPacketPool → overlappedExPool → clientContextPool 순으로 선언해
-        // 소멸 시 clientContextPool → overlappedExPool → packetPool 순으로 파괴되게 함(자원 제공자가 더 늦게 파괴).
-        PacketPool<PACKETPOOL_SIZE> packetPool{ NORMAL_PACKET_LENGTH };
-        PacketPool<BPACKETPOOL_SIZE> bigPacketPool{ BIG_PACKET_LENGTH };
-        PacketPool<GPACKETPOOL_SIZE> giantPacketPool{ GIANT_PACKET_LENGTH };
+        // 선언 역순으로 소멸하므로 packetPoolManager → overlappedExPool → clientContextPool 순으로 선언해
+        // 소멸 시 clientContextPool → overlappedExPool → packetPoolManager 순으로 파괴되게 함(자원 제공자가 더 늦게 파괴).
+        PacketPoolManager packetPoolManager;
         OverlappedExPool overlappedExPool;
         NetHandler netHandler;
         std::atomic<bool> fatalError;
@@ -45,21 +43,24 @@ namespace Net {
         SessionManager sessionManager;
         NetPerfCollector perfCollector;
     public:
+        ~Initializer() {
+            StopProducers();
+            FinishShutdown();
+		}
         void Initialize() {
             NetTimer::StartThread();
-            overlappedExPool.Initialize();
             clientContextPool.Initialize();
             ClientContext::Initialize(&overlappedExPool, &sessionManager);
             sessionManager.Initialize(&clientContextPool);
             netHandler.Initialize(&sessionManager, &iocp);
-            perfCollector.Initialize(&sessionManager, &packetPool, &bigPacketPool, &giantPacketPool, &overlappedExPool,&clientContextPool);
+            perfCollector.Initialize(&sessionManager, &packetPoolManager, &overlappedExPool,&clientContextPool);
         }
-        void CleanUp1() {
+        void StopProducers() {
             pingManager.StopPing();
             iocp.StopReceive();
             perfCollector.Stop();
         }
-        void CleanUp2() {
+        void FinishShutdown() {
             iocp.CleanUp();
             NetTimer::Stop();
         }
@@ -77,41 +78,19 @@ namespace Net {
             return static_cast<Core::IIOCP*>(&iocp);  
         }
 
-        Core::IPacketPool* GetPacketPool() {
-            return static_cast<Core::IPacketPool*>(&packetPool);
+        Core::IPacketPoolManager* GetPacketPoolManager() {
+            return &packetPoolManager;
         }
 
-        Core::IPacketPool* GetBigPacketPool() {
-            return static_cast<Core::IPacketPool*>(&bigPacketPool);
-        }
-
-        Core::IPacketPool* GetGiantPacketPool() {
-            return &giantPacketPool;
-        }
-
-        bool CheckReady() {
-            if (!overlappedExPool.IsReady()) {
-                return false;
-            }
-            if (!clientContextPool.IsReady()) {
-                return false;
-            }
-            if (!packetPool.IsReady()) {
-                return false;
-            }
-            if (!iocp.IsReady()) {
-                return false;
-            }
-            if (!netHandler.IsReady()) {
-                return false;
-            }
-            if (!pingManager.IsReady()) {
-                return false;
-            }
-            if (!perfCollector.IsReady()) {
-                return false;
-            }
-            if (!ClientContext::IsReady()) {
+        bool CheckReady() const {
+            if (!overlappedExPool.IsReady()
+                or !clientContextPool.IsReady()
+                or !packetPoolManager.IsReady()
+                or !iocp.IsReady()
+                or !netHandler.IsReady()
+                or !pingManager.IsReady() 
+                or !perfCollector.IsReady() 
+                or !ClientContext::IsReady()) {
                 return false;
             }
             return true;
@@ -135,7 +114,6 @@ namespace Net {
                 }
                 cv.wait_for(lock, std::chrono::milliseconds(100));
             }
-            CleanUp1();
         }
     };
 }
