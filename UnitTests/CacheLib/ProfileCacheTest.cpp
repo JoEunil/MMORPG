@@ -20,6 +20,12 @@
 // GAME_TEST_DATABASE=1일 때만 실행한다. 전용 테스트 DB와 Resources/DB/createCharacter.sql 시딩 필요.
 
 namespace {
+    class TestCachedClock final : public Core::ICachedClock {
+    public:
+        uint64_t now = 0;
+        uint64_t GetTimeMS() const override { return now; }
+    };
+
     class MockMessageQueue : public Core::IMessageQueue {
         std::mutex m_mutex;
         std::condition_variable m_cv;
@@ -69,6 +75,7 @@ namespace {
 class ProfileCacheTest : public ::testing::Test {
 protected:
     MockMessageQueue mockMQ;
+    TestCachedClock clock;
     Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/profile-cache-test/redo" };
     Core::IMessageQueue* recvMQ = nullptr;
     Cache::ProfileCache* cache = nullptr;
@@ -78,7 +85,7 @@ protected:
         if (Cache::GetEnvVar("GAME_TEST_DATABASE") != "1") {
             GTEST_SKIP() << "Requires a seeded test DB; opt in with GAME_TEST_DATABASE=1";
         }
-        init.Initialize();
+        init.Initialize(&clock);
         init.InjectDependencies(&mockMQ);
         recvMQ = init.GetMessageQueue();
         cache = init.GetProfileCacheImpl();

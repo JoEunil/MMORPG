@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include <CoreLib/LoggerGlobal.h>
+#include <CoreLib/ICachedClock.h>
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"
 #include "CacheFlush.h"
@@ -15,6 +16,7 @@
 #undef max   
 namespace Cache {
     class FlushDispatcher {
+        Core::ICachedClock* clock = nullptr;
         CacheFlush* flush = nullptr;
         CacheStorageInventory* cache_inventory = nullptr;
         CacheStorageCurrency* cache_currency = nullptr;
@@ -25,7 +27,7 @@ namespace Cache {
         uint64_t m_minTime; // ms
 
         bool DirtyFlush5(const Key5& key, Result5& res) {
-            if (m_running.load(std::memory_order_relaxed) && res.lastModified + 30000 > CacheTimer::GetTimeMS()) {
+            if (m_running.load(std::memory_order_relaxed) && res.lastModified + 30000 > clock->GetTimeMS()) {
                 m_minTime = std::min(m_minTime, res.lastModified + 30000);
                 return false;
             }
@@ -33,7 +35,7 @@ namespace Cache {
         }
 
         bool DirtyFlush7(const Key7& key, Result7& res) {
-            if (m_running.load(std::memory_order_relaxed) && res.lastModified + 30000 > CacheTimer::GetTimeMS()) {
+            if (m_running.load(std::memory_order_relaxed) && res.lastModified + 30000 > clock->GetTimeMS()) {
                 m_minTime = std::min(m_minTime, res.lastModified + 30000);
                 return false;
             }
@@ -46,10 +48,10 @@ namespace Cache {
             ss << tid;
             Core::sysLogger->LogInfo("cache flush dispatcher", "dispatcher thread started", "threadID", ss.str());
             while (m_running.load(std::memory_order_relaxed)) {
-                m_minTime = CacheTimer::GetTimeMS() + 30000;
+                m_minTime = clock->GetTimeMS() + 30000;
                 cache_inventory->ForEachDirty([this](const Key5& key, Result5& res) { return DirtyFlush5(key, res); });
                 cache_currency->ForEachDirty([this](const Key7& key, Result7& res) { return DirtyFlush7(key, res); });
-                uint64_t now = CacheTimer::GetTimeMS();
+                uint64_t now = clock->GetTimeMS();
                 uint64_t sleepDuration = (m_minTime > now) ? (m_minTime - now) : 0;
                 std::unique_lock lock(m_waitMutex);
                 m_wake.wait_for(lock, std::chrono::milliseconds(sleepDuration),
@@ -58,7 +60,8 @@ namespace Cache {
             Core::sysLogger->LogInfo("cache flush dispatcher", "dispatcher thread stopped", "threadID", ss.str());
         }
 
-        void Initialize(CacheFlush* f, CacheStorageInventory* s, CacheStorageCurrency* c) {
+        void Initialize(CacheFlush* f, CacheStorageInventory* s, CacheStorageCurrency* c, Core::ICachedClock* cl) {
+            clock = cl;
             flush = f;
             cache_inventory = s;
             cache_inventory->SetFlushFn(
@@ -78,6 +81,10 @@ namespace Cache {
             m_thread = std::thread(&FlushDispatcher::ThreadFunc, this);
         }
         bool IsReady() {
+            if (clock == nullptr) {
+                Core::sysLogger->LogError("cache flush dispatcher", "clock not initialized");
+                return false;
+            }
             if (!m_running.load(std::memory_order_relaxed)) {
                 Core::sysLogger->LogError("cache flush dispatcher", "not running");
                 return false;

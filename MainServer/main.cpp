@@ -14,6 +14,7 @@
 
 #include <ExternalLib/Logger.h>
 #include <ExternalLib/SessionAuth.h>
+#include <ExternalLib/CachedClock.h>
 #include <External/spdlog/spdlog.h>
 
 #include <mysqlconn/include/mysql/jdbc.h>
@@ -74,6 +75,7 @@ int main(int argc, char* argv[]) {
     }
     int result = EXIT_SUCCESS;
     try {
+        External::CachedClock clock;
         External::SessionAuth auth;
         auth.Initialize();
 
@@ -102,9 +104,9 @@ int main(int argc, char* argv[]) {
             ~Shutdown() { Run(); }
         } shutdown{auth, core, net, cache};
 
-        cache.Initialize();
+        cache.Initialize(&clock);
         core.Initialize();
-        net.Initialize();
+        net.Initialize(&clock);
 
         core.InjectDependencies1(net.GetIOCP(), net.GetPacketPoolManager(), &durableLogger);
         cache.InjectDependencies(core.GetMessageQueue(), &durableLogger);

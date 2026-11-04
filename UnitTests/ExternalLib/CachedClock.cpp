@@ -1,24 +1,20 @@
-﻿#include <gtest/gtest.h>
+#include <gtest/gtest.h>
 
 #include <chrono>
-#include <NetLibrary/NetTimer.h>
+#include <ExternalLib/CachedClock.h>
 
-class NetTimerTest : public ::testing::Test {
+class CachedClockTest : public ::testing::Test {
 protected:
-	Net::NetTimer timer;
-	NetTimerTest() {
-		timer.StartThread();
+	External::CachedClock timer;
+	CachedClockTest() {
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
-	}
-	~NetTimerTest() {
-		timer.Stop();
 	}
 	void StopTimer() {
 		timer.Stop();
 	}
 };
 
-TEST_F(NetTimerTest, TimerDelay) {
+TEST_F(CachedClockTest, TimerDelay) {
 	for (int i = 0; i < 20; i++)
 	{
 		auto now = std::chrono::steady_clock::now();
@@ -31,7 +27,7 @@ TEST_F(NetTimerTest, TimerDelay) {
 	}
 };
 
-TEST_F(NetTimerTest, Stop) {
+TEST_F(CachedClockTest, Stop) {
 	StopTimer();
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(50));

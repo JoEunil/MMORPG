@@ -12,11 +12,11 @@
 #include "ProfileCache.h"
 #include "InmemoryQueue.h"
 #include "Handler.h"
-#include "CacheTimer.h"
 #include "DBWorker.h"
 #include "WALManager.h"
 
 #include <CoreLib/IMessageQueue.h>
+#include <CoreLib/ICachedClock.h>
 #include <CoreLib/LoggerGlobal.h>
 
 class ProfileCacheTest;
@@ -36,7 +36,6 @@ namespace Cache {
         DBWorker<DBConnectionGame> dbWorkerGame;
         DBWorker<DBConnectionBazaar> dbWorkerBazaar;
         WALManager walManager;
-        bool m_initialized = false;
 
         // 테스트에서 Load/Unload/Rename까지 직접 두드리기 위한 concrete getter. friend으로만 접근.
         ProfileCache* GetProfileCacheImpl() {
@@ -52,22 +51,20 @@ namespace Cache {
         ~Initializer() {
             Shutdown();
         }
-        void Initialize() {
+        void Initialize(Core::ICachedClock* clock) {
             connectionPoolGame.Initialize();
             connectionPoolBazaar.Initialize();
             dbWorkerGame.Initialize(&connectionPoolGame, GAME_DB_WORKER_THREADPOOL_SIZE);
             dbWorkerBazaar.Initialize(&connectionPoolBazaar, BAZAAR_DB_WORKER_THREADPOOL_SIZE);
-            cache_inventory.Initialize(&dbWorkerGame);
-            cache_currency.Initialize(&dbWorkerGame);
+            cache_inventory.Initialize(&dbWorkerGame, clock);
+            cache_currency.Initialize(&dbWorkerGame, clock);
             cache_profile.Initialize(&dbWorkerGame);
-            CacheTimer::StartThread();
-            m_initialized = true;
             
             flush.Initialize(&connectionPoolGame, &connectionPoolBazaar, &cache_inventory, &cache_currency);
             flush.SetInvFlushedFn([this](uint64_t characterID, uint64_t flushedLsn) {
                 walManager.OnInventoryFlushed(characterID, flushedLsn);
                 });
-            dispatcher.Initialize(&flush, &cache_inventory, &cache_currency);
+            dispatcher.Initialize(&flush, &cache_inventory, &cache_currency, clock);
             walManager.Initialize(&cache_inventory, &connectionPoolGame);//  flush, disptcher 보다 뒤에
 
         }
@@ -104,10 +101,6 @@ namespace Cache {
             dispatcher.Stop();
             flush.Stop();
             walManager.Stop();
-            if (m_initialized) {
-                CacheTimer::Stop();
-                m_initialized = false;
-            }
         }
         Core::IMessageQueue* GetMessageQueue() {
             return static_cast<Core::IMessageQueue*>(&recvMQ);

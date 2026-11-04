@@ -16,12 +16,12 @@
 #include "IAbortSocket.h"
 #include "PingManager.h"
 #include "SessionManager.h"
-#include "NetTimer.h"
 #include "NetPerfCollector.h"
 
 #include <CoreLib/ILogger.h>
 #include <CoreLib/IIocp.h>
 #include <CoreLib/IPacketPoolManager.h>
+#include <CoreLib/ICachedClock.h>
 #include <coreLib/IPacketDispatcher.h>
 
 #include "Config.h"
@@ -42,16 +42,17 @@ namespace Net {
         PingManager pingManager;
         SessionManager sessionManager;
         NetPerfCollector perfCollector;
+        Core::ICachedClock* clock = nullptr;
     public:
         ~Initializer() {
             StopProducers();
             FinishShutdown();
 		}
-        void Initialize() {
-            NetTimer::StartThread();
+        void Initialize(Core::ICachedClock* c) {
+            clock = c;
             clientContextPool.Initialize();
             ClientContext::Initialize(&overlappedExPool, &sessionManager);
-            sessionManager.Initialize(&clientContextPool);
+            sessionManager.Initialize(&clientContextPool, clock);
             netHandler.Initialize(&sessionManager, &iocp);
             perfCollector.Initialize(&sessionManager, &packetPoolManager, &overlappedExPool,&clientContextPool);
         }
@@ -62,13 +63,12 @@ namespace Net {
         }
         void FinishShutdown() {
             iocp.CleanUp();
-            NetTimer::Stop();
         }
         
         void InjectDependencies(Core::IPacketDispatcher* packetDispatcher) {
             iocp.Initialize(&overlappedExPool, &netHandler, &sessionManager, &fatalError, &cv, &perfCollector);
-            pingManager.Initialize(static_cast<IAbortSocket*>(&iocp), &sessionManager, packetDispatcher);
-            NetPacketFilter::Initialize(packetDispatcher, &perfCollector);
+            pingManager.Initialize(static_cast<IAbortSocket*>(&iocp), &sessionManager, packetDispatcher, clock);
+            NetPacketFilter::Initialize(packetDispatcher, &perfCollector, clock);
             iocp.Start();
             pingManager.PingStart();
             perfCollector.Start();
@@ -83,7 +83,8 @@ namespace Net {
         }
 
         bool CheckReady() const {
-            if (!overlappedExPool.IsReady()
+            if (clock == nullptr
+                or !overlappedExPool.IsReady()
                 or !clientContextPool.IsReady()
                 or !packetPoolManager.IsReady()
                 or !iocp.IsReady()

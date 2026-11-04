@@ -2,7 +2,6 @@
 #include "PingManager.h"
 #include "SessionManager.h"
 #include "ClientContext.h"
-#include "NetTimer.h"
 #include "Config.h"
 
 #include <CoreLib//IPacket.h>
@@ -25,7 +24,7 @@ namespace Net {
                 sessionManager->PreparePing(i, clientList);
                 // shard lock 아래에서 이번 ping의 미응답 카운트도 증가한다.
 
-                auto now = NetTimer::GetTimeMS();
+                auto now = clock->GetTimeMS();
                 for (PingStruct& st: clientList)
                 {
                     if (st.isAlive)

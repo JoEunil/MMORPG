@@ -16,7 +16,7 @@
 #include <mysqlconn/include/mysql/jdbc.h>
 #include "DBConnectionGame.h"
 #include "DBWorker.h"
-#include "CacheTimer.h"
+#include <CoreLib/ICachedClock.h>
 #include "Config.h"
 
 namespace Cache {
@@ -56,8 +56,12 @@ namespace Cache {
 
     template<typename Key, typename Result, typename KeyHash>
     class CacheStorage {
-        void Initialize(DBWorker<DBConnectionGame>* d);
+        void Initialize(DBWorker<DBConnectionGame>* d, Core::ICachedClock* clock);
         bool IsReady() {
+            if (clock == nullptr) {
+                Core::sysLogger->LogError("cache storage", "clock not initialized");
+                return false;
+            }
             if (m_flushFn == nullptr) {
                 Core::sysLogger->LogError("cache storage", "m_flushFn not initialized");
                 return false;
@@ -70,6 +74,7 @@ namespace Cache {
         }
         friend class Initializer;
     protected:
+        Core::ICachedClock* clock = nullptr;
         DBWorker<DBConnectionGame>* dbWorker = nullptr;
         std::deque<CacheShard<Key, Result, KeyHash>> m_shards;
         std::function<FlushEnqueueResult(const Key&, Result&)> m_flushFn;

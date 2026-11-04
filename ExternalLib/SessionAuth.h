@@ -25,7 +25,6 @@ namespace External {
     public:
         ~SessionAuth() { Stop(); }
         void Initialize();
-        void Initialize(const char* host, uint16_t port);
         void Stop();
         void CheckSession(Core::SessionCallbackData* privdata) override;
     };

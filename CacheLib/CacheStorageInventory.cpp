@@ -23,7 +23,7 @@ namespace Cache {
 
         auto& item = shard.cache_data[key];
         item.data = rec;
-        item.lastModified = CacheTimer::GetTimeMS();
+        item.lastModified = clock->GetTimeMS();
         item.status = CACHE_STATUS::AVAILABLE;
         shard.dirty_list.insert(key);
 
@@ -181,7 +181,7 @@ namespace Cache {
         if (lsn == 0) return {Core::ItemOperationStatus::StorageFailure, static_cast<uint16_t>(current)};
         image.lastLsn = lsn;
         result.data = image;
-        result.lastModified = CacheTimer::GetTimeMS();
+        result.lastModified = clock->GetTimeMS();
         shard.dirty_list.insert(key);
         return {Core::ItemOperationStatus::Success, static_cast<uint16_t>(next)};
     }
@@ -369,7 +369,7 @@ namespace Cache {
                 res.data.lastLsn = lsn;  // 실패 시 기존 값 유지 
         }
 
-        res.lastModified = CacheTimer::GetTimeMS();
+        res.lastModified = clock->GetTimeMS();
         shard.dirty_list.insert(key);
         return std::make_tuple(resStatus, itemID, slot, quantity);
     }
@@ -426,7 +426,7 @@ namespace Cache {
             if (event_id == res.data.recentEventIds[i]) {
                 Core::gameLogger->LogInfo("cache5", "event duplicated", "char_id", characterID, "event_id", event_id);
                 // 배송은 이미 반영됨. CLAIM은 flush 파이프라인 담당이므로 재flush만 유도
-                res.lastModified = CacheTimer::GetTimeMS();
+                res.lastModified = clock->GetTimeMS();
                 shard.dirty_list.insert(key);
                 return CACHE_STATUS::DUPLICATED;
             }
@@ -470,7 +470,7 @@ namespace Cache {
                 res.data.lastLsn = lsn;  // 실패 시 기존 값 유지 
         }
 
-        res.lastModified = CacheTimer::GetTimeMS();
+        res.lastModified = clock->GetTimeMS();
         shard.dirty_list.insert(key);
         return CACHE_STATUS::AVAILABLE;
     }
@@ -495,7 +495,7 @@ namespace Cache {
                 res.data.lastLsn = lsn;  // 실패 시 기존 값 유지 
         }
 
-        res.lastModified = CacheTimer::GetTimeMS();
+        res.lastModified = clock->GetTimeMS();
         shard.dirty_list.insert(key);
         return true;
     }

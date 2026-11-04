@@ -1,6 +1,5 @@
 ﻿#include "pch.h"
 #include "NetPacketFilter.h"
-#include "NetTimer.h"
 #include "AccumulatedBuffer.h"
 
 #include <CoreLib/IPacketView.h>
@@ -72,7 +71,7 @@ namespace Net {
         // 게임 세션 상태 확인. 
         uint8_t health = packetDispatcher->HealthCheck(session);
         if (op == Core::OP::PONG) {
-            uint64_t rtt = packetDispatcher->GetRTT(std::move(pv), NetTimer::GetTimeMS());
+            uint64_t rtt = packetDispatcher->GetRTT(std::move(pv), clock->GetTimeMS());
             if (rtt > jitter.RTO(rtt))
                 perfCollector->AddJitterCnt();
             pongRTT = rtt;

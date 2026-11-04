@@ -12,6 +12,7 @@
 #include <mysqlconn/include/mysql/jdbc.h>
 
 #include <CacheLib/Initializer.h>
+#include <ExternalLib/CachedClock.h>
 #include <CoreLib/Message.h>
 #include <CoreLib/MessageTypes.h>
 #include <CoreLib/MessagePool.h>
@@ -106,12 +107,13 @@ namespace Test {
 
     // Cache::Initializer + MockMessageQueue 묶음
     struct CacheNode {
+        External::CachedClock clock;
         MockMessageQueue   mq;
         Cache::Initializer cache;
 
         explicit CacheNode(const std::string& nodeName = "single")
             : cache(Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/bazaar-test/" + nodeName + "/redo") {
-            cache.Initialize();
+            cache.Initialize(&clock);
             cache.InjectDependencies(&mq);
         }
         ~CacheNode() {

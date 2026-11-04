@@ -4,6 +4,7 @@
 #include <optional>
 
 #include <CoreLib/PacketDispatcher.h>
+#include <CoreLib/ICachedClock.h>
 #include "Jitter.h"
 
 class ClientContextTest;
@@ -20,9 +21,10 @@ namespace Net {
         Complete
     };
     class NetPacketFilter {
-        static void Initialize(Core::IPacketDispatcher* p, NetPerfCollector* pc) {
+        static void Initialize(Core::IPacketDispatcher* p, NetPerfCollector* pc, Core::ICachedClock* c) {
             packetDispatcher = p;
             perfCollector = pc;
+            clock = c;
         };
         static bool IsReady() {
             if (packetDispatcher == nullptr) {
@@ -33,6 +35,10 @@ namespace Net {
                 Core::sysLogger->LogError("net filter", "perfCollector not initialized");
                 return false;
             }
+            if (clock == nullptr) {
+                Core::sysLogger->LogError("net filter", "clock not initialized");
+                return false;
+            }
             return true;
         }
 
@@ -41,6 +47,7 @@ namespace Net {
 
         inline static Core::IPacketDispatcher* packetDispatcher;
         inline static NetPerfCollector* perfCollector;
+        inline static Core::ICachedClock* clock = nullptr;
         friend class Initializer;
         friend class ::ClientContextTest;
 

@@ -2,7 +2,6 @@
 #include <cstdint>
 #include <algorithm>
 
-#include "NetTimer.h"
 #include "Config.h"
 
 namespace Net {
@@ -12,7 +11,7 @@ namespace Net {
 		uint64_t m_bytesTokens = BYTES_TOKEN_CAPACITY;   // big packet 방지, bytes/s 제한
 		uint64_t m_lastRefill = 0;
 	public:
-		bool ByteReceived(uint32_t receivedBytes, uint64_t now = NetTimer::GetTimeMS()) {
+		bool ByteReceived(uint32_t receivedBytes, uint64_t now) {
 			uint64_t elapsed = now - m_lastRefill;
 
 			// 보충 계산에 사용하는 경과 시간 제한
