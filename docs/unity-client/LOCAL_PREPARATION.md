@@ -60,3 +60,11 @@ Unity CLI beta.16의 Windows 독립 빌드와 MainServer 빌드 성공. 현재 r
 시작 BAT에서 게임32536/MainServer2092/Login24832·포트10099/3000 준비 확인 후 종료 BAT로 세 프로세스 정상 종료했다. state.phase=stopped, 종료 후 두 포트 리스너0. 캡처 도구는 다른 게임 화면을 반환해 독립 Player 로그인 화면을 시각 확인했다고 보고하지 않는다. 실제 로그인·플레이 검사는 반복하지 않았다. 기존 실서버 조준 검증과 이번 BAT 수명 검증을 구분한다.
 
 검증 후 동일 로그인 소스를 고정 실행 묶음으로 복사하고 app.js 해시 일치 및 경로 check를 확인했다. 비밀 파일은 복사하지 않았다. MySQL·Redis는 기존 실행 상태를 유지하며 BAT가 시작/종료하지 않는다. 서버 강제 종료나 정책 변경 없음. 상세 로그 Builds/ClientGrowthHUD/verification/desktop-launch 및 LocalGame/Run.
+
+## 창 모드·포인터 — 2026-11-04
+
+다음 BAT 실행부터1280×720 창 모드로 시작한다. ROOT/tools/local-game/settings.json의 ClientArguments(-screen-fullscreen0/-screen-width1280/-screen-height720)를 기존 실행 도우미의 ArgumentList로 전달한다. 변경한 도우미는bin-windowed에별도빌드해이전실행중인프로세스를교체/종료하지않았다. 현재BAT대상은LocalGame/Aim360/Player-Windowed/MMORPG.exe. 설정경로check와dotnetpublish성공, Player독립빌드성공.
+
+UnityAPI로PlayerSettings.fullScreenMode=Windowed/defaultIsNativeResolution=false/1280×720/resizableWindow=true,48px GameCursor.png/hotspot(5,4)/readable Cursor importer를설정하고정본ProjectSettings와.meta에보존했다. 에디터가닫혀있어CLIheadlessPipeline명령으로설정했으며제품코드의매프레임커서매니저는추가하지않았다. 밝은면/어두운외곽선으로바탕대비를높인직접제작도형이고원본SVG를함께보존한다.
+
+빌드·설정근거 Builds/ClientGrowthHUD/verification/windowed-cursor. 포인터는하드웨어커서라게임화면캡처에포함되지않을수있다. 현재단계에서실제OS커서조작감평가나새로그인검사를반복하지않았다. 최종패링묶음의입력검증과구분한다.

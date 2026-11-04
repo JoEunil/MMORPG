@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
+  <metadata>Original project-authored vector geometry. No external assets or fonts. Repository license applies. Cursor hotspot: (5, 4), top-left origin.</metadata>
+  <path d="M 5 4 L 5 34 L 14 27 L 22 43 L 29 39 L 21 25 L 35 23 Z" fill="#101922" stroke="#101922" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M 7 8 L 7 30 L 14.5 24.5 L 23 40 L 26 38.5 L 18 23 L 29 22 Z" fill="#f3f7f8"/>
+  <path d="M 8.5 11 L 8.5 26 L 12.5 23 L 15.5 23 L 10.2 14 Z" fill="#b8e9ef"/>
+  <path d="M 16.5 25 L 23.6 38 L 25 37.3 L 18.6 25 Z" fill="#c5d3db"/>
+</svg>
