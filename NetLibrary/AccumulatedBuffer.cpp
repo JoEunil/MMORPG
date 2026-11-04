@@ -28,7 +28,7 @@ namespace Net {
         return rear;
     }
 
-    bool AccumulatedBuffer::IsNextPos(uint8_t* pos) {
+    bool AccumulatedBuffer::IsNextPos(uint8_t* pos) const {
         uint16_t front = pos - m_startPtr;
         if (front != AdvancePosition(m_rear, 1))
             return false;

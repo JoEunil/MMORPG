@@ -57,6 +57,9 @@
     <ClInclude Include="PacketPool.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="PacketPoolManager.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
     <ClInclude Include="STOverlappedEx.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -126,6 +129,15 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="AccumulatedBuffer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="IOCP_Send.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="IOCP_Recv.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="IOCP_Accept.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

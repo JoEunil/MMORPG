@@ -26,7 +26,7 @@ namespace Net {
         void Pop(uint32_t len);
         uint16_t Push(uint32_t len);
 
-        bool IsNextPos(uint8_t* pos);
+        bool IsNextPos(uint8_t* pos) const;
 
         uint8_t* GetStartPtr() const { return const_cast<uint8_t*>(m_startPtr);}
         uint16_t GetFront() const { return m_front; }

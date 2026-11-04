@@ -50,7 +50,7 @@ namespace Cache {
 		}
 
         ~Initializer() {
-            CleanUp();
+            Shutdown();
         }
         void Initialize() {
             connectionPoolGame.Initialize();
@@ -80,42 +80,22 @@ namespace Cache {
         }
         
         bool CheckReady() {
-            if (!dispatcher.IsReady()) {
-                return false;
-            }
-            if (!flush.IsReady()) {
-                return false;
-            }
-            if (!msgPool.IsReady()) {
-                return false;
-            }
-            if (!recvMQ.IsReady()) {
-                return false;
-            }
-            if (!cache_inventory.IsReady()) {
-                return false;
-            }
-            if (!cache_currency.IsReady()) {
-                return false;
-            }
-            if (!cache_profile.IsReady()) {
-                return false;
-            }
-            if (!handler.IsReady()) {
-                return false;
-            }
-            if (!dbWorkerGame.IsReady()) {
-                return false;
-            }
-            if (!dbWorkerBazaar.IsReady()) {
-                return false;
-            }
-            if (!walManager.IsReady()) {
+            if (!dispatcher.IsReady()
+                or !flush.IsReady() 
+                or !msgPool.IsReady()
+                or !recvMQ.IsReady()
+                or !cache_inventory.IsReady()
+                or !cache_currency.IsReady()
+                or !cache_profile.IsReady()
+                or !handler.IsReady()
+                or !dbWorkerGame.IsReady()
+                or !dbWorkerBazaar.IsReady()
+                or !walManager.IsReady()) {
                 return false;
             }
             return true;
         }
-        void CleanUp() {
+        void Shutdown() {
             recvMQ.Stop();
             dbWorkerBazaar.Stop();
             dbWorkerGame.Stop();

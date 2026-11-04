@@ -4,7 +4,7 @@
 
 #include "MessageTypes.h"
 #include "ZoneState.h"
-#include "IPacketPool.h"
+#include "IPacketPoolManager.h"
 #include "PacketTypes.h"
 #include "IPacket.h"
 #include "IPingPacketWriter.h"
@@ -14,18 +14,14 @@ namespace Core {
     class IPacket;
     class PacketTypes;
     class PacketWriter : public IPingPacketWriter{
-        IPacketPool* packetPool = nullptr;
-        IPacketPool* bigPacketPool = nullptr;
-        IPacketPool* giantPacketPool = nullptr;
+        IPacketPoolManager* packetPoolManager = nullptr;
 
-        void Initialize(IPacketPool* p, IPacketPool* big, IPacketPool* giant) {
-            packetPool = p;
-            bigPacketPool = big;
-            giantPacketPool = giant;
+        void Initialize(IPacketPoolManager* p) {
+            packetPoolManager = p;
         }
         
         bool IsReady() {
-            if (packetPool == nullptr || bigPacketPool == nullptr || giantPacketPool == nullptr)
+            if (packetPoolManager == nullptr)
                 return false;
             return true;
         }
@@ -46,7 +42,7 @@ namespace Core {
         uint16_t WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, uint32_t senderProfileId, const std::string& message);
         
         std::shared_ptr<IPacket> GetDeltaHeader(uint16_t zoneID, uint64_t generation) {
-            auto p = packetPool->Acquire();
+            auto p = packetPoolManager->Acquire(PacketPoolType::Normal);
             if (!p) {
                 return nullptr;
             }
@@ -86,7 +82,7 @@ namespace Core {
         bool WriteFullField(std::shared_ptr<IPacket> p, const CharacterState& state);
 
         std::shared_ptr<IPacket> GetMonsterDeltaHeader(uint16_t zoneID, uint64_t generation) {
-            auto p = packetPool->Acquire();
+            auto p = packetPoolManager->Acquire(PacketPoolType::Normal);
             if (!p) {
                 return nullptr;
             }
@@ -128,7 +124,7 @@ namespace Core {
         bool WriteActionField(std::shared_ptr<IPacket> p, const ActionResult& state);
 
         std::shared_ptr<IPacket> GetInitialChunk(bool useGiant = false) {
-            auto p = (useGiant ? giantPacketPool : bigPacketPool)->Acquire();
+            auto p = packetPoolManager->Acquire(useGiant ? PacketPoolType::Giant : PacketPoolType::Big);
             if (!p) {
                 return nullptr;
             }
@@ -161,7 +157,7 @@ namespace Core {
         std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y, uint64_t generation, uint64_t ownershipEpoch);
 
         std::unique_ptr<IPacket, PacketDeleter>  GetPingPacket(uint64_t rtt,uint64_t nowMs) override {
-            auto p = packetPool->AcquireUnique();
+            auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
             if (!p) {
                 return nullptr;
             }

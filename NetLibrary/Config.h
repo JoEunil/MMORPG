@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <winsock2.h>
 #include <cstdint>
 #include <chrono>
 #include <CoreLib/PacketTypes.h>
@@ -67,6 +68,8 @@ namespace Net {
 	inline constexpr uint64_t RECV_TOKEN_CAPACITY = 500;
 	inline constexpr uint64_t RECV_TOKEN_REFILL_RATE = 1;    // recv/10ms
 	inline constexpr uint64_t RECV_UNIT = 10;    // 10ms
+
+	inline constexpr size_t ACCEPT_BUFFER_SIZE = (sizeof(SOCKADDR_IN) + 16) * 2;
 
 	constexpr uint8_t RELEASE = 0;
 	constexpr uint8_t ACQUIRE = 1;
