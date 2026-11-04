@@ -324,6 +324,7 @@ namespace Core {
         float x, y;       // 이동 후 최종 좌표(절대). 서버가 경과 시간 대비 이동량을 검증한다.
         uint8_t skillSlot;
         uint64_t ownershipEpoch;
+        float aimAngle; // +Y=0 degrees, clockwise, [0,360).
     };
 
     struct ActionResultField {
@@ -334,6 +335,7 @@ namespace Core {
         float x, y; // 시전 위치
         uint32_t skillId;
         uint16_t skillPhase;
+        float aimAngle;
     };
 
     struct ActionResultBody {

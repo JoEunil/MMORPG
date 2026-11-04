@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Collections.Generic;
 using Mmorpg.Client;
 using ClientCore;
 using ClientCore.PacketHelper;
@@ -7,6 +8,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 namespace Mmorpg.Client
 {
@@ -62,7 +64,7 @@ namespace Mmorpg.Client
         private byte chargeTelegraphSlot;
         private SkillRange chargeTelegraphRange;
         private Vector3 chargeTelegraphOrigin;
-        private byte chargeTelegraphDirection;
+        private float chargeTelegraphAngle;
         private float chargeTelegraphRadius;
         private float chargeTelegraphLength;
         private float chargeTelegraphWidth;
@@ -83,6 +85,10 @@ namespace Mmorpg.Client
         private uint ownId;
         private ulong observedCharacterId;
         private int pendingSkillSlot = -1;
+        private readonly List<RaycastResult> pointerHits = new List<RaycastResult>();
+        private PointerEventData pointerData;
+        private bool hasPointerAim;
+        private float pointerAimAngle;
         private float combatStatusDeadline;
         private int observedHp = -1;
         private Color hpFillColor;
@@ -135,12 +141,13 @@ namespace Mmorpg.Client
             ChangeClient(loginScreen.Model);
         }
 
-        private void Strike() => RequestSkill(0);
-        private void Ring() => RequestSkill(1);
-        private void Line() => RequestSkill(2);
+        private void Strike() => RequestButtonSkill(0);
+        private void Ring() => RequestButtonSkill(1);
+        private void Line() => RequestButtonSkill(2);
 
         private void ChangeClient(IViewModelUI next)
         {
+            hasPointerAim = false;
             ResetVitalsFeedback();
             aimText.text = string.Empty;
             HideChargeTelegraph();
@@ -265,6 +272,7 @@ namespace Mmorpg.Client
 
         private void ResetObservation()
         {
+            hasPointerAim = false;
             ResetVitalsFeedback();
             aimText.text = string.Empty;
             HideChargeTelegraph();
@@ -492,11 +500,58 @@ namespace Mmorpg.Client
 
         private void RequestSkill(byte slot)
         {
+            if (slot > 2 || !InputAvailable() || !TryPointerAim(out float aimAngle)) return;
+            RequestAimedSkill(slot, aimAngle);
+        }
+
+        private void RequestButtonSkill(byte slot)
+        {
             if (slot > 2 || !InputAvailable()) return;
+            if (!hasPointerAim)
+            {
+                combatStatusText.text = "Aim at the field before choosing a skill.";
+                combatStatusDeadline = Time.unscaledTime + 3;
+                return;
+            }
+            RequestAimedSkill(slot, pointerAimAngle);
+        }
+
+        private void RequestAimedSkill(byte slot, float aimAngle)
+        {
             worldScreen.CancelMovement();
             var state = worldScreen.OwnFull;
-            loginScreen.Data.UpdateAction(state.dir, state.x, state.y, slot);
+            loginScreen.Data.UpdateAction(state.dir, state.x, state.y, slot, aimAngle);
             ShowSkillRequest(slot);
+        }
+
+        private bool TryPointerAim(out float angle)
+        {
+            angle = 0;
+            if (Mouse.current == null || worldScreen.ViewCamera == null || worldScreen.ActorMotion == null ||
+                EventSystem.current == null) return false;
+            Vector2 pointer = Mouse.current.position.ReadValue();
+            if (pointerData == null) pointerData = new PointerEventData(EventSystem.current);
+            pointerData.Reset();
+            pointerData.position = pointer;
+            pointerHits.Clear();
+            EventSystem.current.RaycastAll(pointerData, pointerHits);
+            foreach (var hit in pointerHits)
+                if (hit.module is UnityEngine.UI.GraphicRaycaster) return false;
+            return TryAimAngle(worldScreen.ViewCamera.GetComponent<Camera>(), pointer,
+                worldScreen.ActorMotion.transform.position, out angle);
+        }
+
+        private static bool TryAimAngle(Camera camera, Vector2 pointer, Vector3 origin, out float angle)
+        {
+            angle = 0;
+            if (camera == null || !Finite(pointer.x) || !Finite(pointer.y) ||
+                !Finite(origin.x) || !Finite(origin.y) || !Finite(origin.z) || !camera.pixelRect.Contains(pointer)) return false;
+            Ray ray = camera.ScreenPointToRay(pointer);
+            if (!new Plane(Vector3.up, origin).Raycast(ray, out float distance) || !Finite(distance)) return false;
+            Vector3 direction = ray.GetPoint(distance) - origin;
+            if (!Finite(direction.x) || !Finite(direction.z) || direction.sqrMagnitude < .000001f) return false;
+            angle = Mathf.Repeat(Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg, 360f);
+            return Finite(angle) && angle >= 0 && angle < 360;
         }
 
         private void ShowSkillRequest(byte slot)
@@ -548,7 +603,14 @@ namespace Mmorpg.Client
             UpdateReleaseEffect();
             UpdateSkillTooltip();
             UpdateCooldownOverlays();
-            if (!InputAvailable() || Keyboard.current == null) return;
+            if (!WorldAvailable || !worldScreen.CanAct) hasPointerAim = false;
+            if (!InputAvailable()) return;
+            if (TryPointerAim(out float angle))
+            {
+                hasPointerAim = true;
+                pointerAimAngle = angle;
+            }
+            if (Keyboard.current == null) return;
             int slot = PressedSkillSlot(Keyboard.current);
             if (slot >= 0) RequestSkill((byte)slot);
         }
@@ -571,13 +633,13 @@ namespace Mmorpg.Client
                 // Only the current player's supported server phases are displayed. No hit/kill ACK exists.
                 if (result.casterType != 0 || result.casterId != ownId || result.casterId == 0 || result.dir > 3 ||
                     result.skillSlot > 2 || result.skillId != result.skillSlot || result.skillPhase > 1 ||
-                    !Finite(result.x) || !Finite(result.y)) continue;
+                    !Finite(result.x) || !Finite(result.y) || !Finite(result.aimAngle) || result.aimAngle < 0 || result.aimAngle >= 360) continue;
                 float chargeDuration = 0;
                 if (result.skillPhase == 0 && TryGetSkill(result.skillSlot, out var castingSkill) &&
                     castingSkill.phases != null && castingSkill.phases.Length > 1 && castingSkill.phases[1] != null)
                     chargeDuration = Mathf.Min(castingSkill.phases[1].waitTicks * ServerTickSeconds, 2f);
                 if (worldScreen.OwnFull.hp > 0)
-                    worldScreen.ActorMotion?.PlayAttack(result.dir, result.skillPhase != 0, result.skillSlot, chargeDuration);
+                    worldScreen.ActorMotion?.PlayAttack(result.aimAngle, result.skillPhase != 0, result.skillSlot, chargeDuration);
                 if (pendingSkillSlot < 0 || pendingSkillSlot == result.skillSlot)
                 {
                     pendingSkillSlot = -1;
@@ -621,7 +683,7 @@ namespace Mmorpg.Client
             chargeTelegraphSlot = result.skillSlot;
             chargeTelegraphRange = hit.range;
             chargeTelegraphOrigin = new Vector3(result.x, .07f, result.y);
-            chargeTelegraphDirection = result.dir;
+            chargeTelegraphAngle = result.aimAngle;
             chargeTelegraphRadius = hit.range1;
             chargeTelegraphLength = hit.range1;
             chargeTelegraphWidth = hit.range2;
@@ -642,7 +704,7 @@ namespace Mmorpg.Client
             if (!EnsureReleaseEffect()) return;
             releaseEffectOrigin = new Vector3(result.x, 0.07f, result.y);
             releaseEffectSlot = result.skillSlot;
-            Vector3 forward = WorldScreen.ServerFacing(result.dir) * Vector3.back;
+            Vector3 forward = Quaternion.Euler(0, result.aimAngle, 0) * Vector3.forward;
             Vector3 right = Vector3.Cross(Vector3.up, forward);
             releaseVertexCount = releaseIndexCount = 0;
             if (result.skillSlot == 0)
@@ -922,10 +984,8 @@ namespace Mmorpg.Client
             float halfWidth = width * 0.5f;
             float side = point == 0 || point == 3 ? -halfWidth : halfWidth;
             float reach = point < 2 ? 0 : length;
-            if (result.dir == 1 || result.dir == 2) reach = -reach;
-            return result.dir < 2
-                ? new Vector3(result.x + side, height, result.y + reach)
-                : new Vector3(result.x + reach, height, result.y + side);
+            return new Vector3(result.x, height, result.y) + Quaternion.Euler(0, result.aimAngle, 0) *
+                new Vector3(side, 0, reach);
         }
 
         private void UpdateChargeTelegraph()
@@ -951,7 +1011,7 @@ namespace Mmorpg.Client
             {
                 var action = new ActionResultField
                 {
-                    dir = chargeTelegraphDirection,
+                    aimAngle = chargeTelegraphAngle,
                     x = chargeTelegraphOrigin.x,
                     y = chargeTelegraphOrigin.z
                 };
@@ -1306,6 +1366,9 @@ namespace Mmorpg.Client
 
         private void OnDisable()
         {
+            hasPointerAim = false;
+            pointerData = null;
+            pointerHits.Clear();
             ResetVitalsFeedback();
             HideChargeTelegraph();
             HideReleaseEffect();

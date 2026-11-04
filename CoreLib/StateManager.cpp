@@ -304,6 +304,7 @@ namespace Core {
 
     bool StateManager::ProcessAction(uint64_t sessionID, uint16_t routeZoneID, const ActionRequestBody& action, ZoneChangeResult& transition) {
         transition = {};
+        if (!std::isfinite(action.aimAngle) || action.aimAngle < 0 || action.aimAngle >= 360) return false;
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock sessionLock(shard.smutex);
         auto session = shard.sessionMap.find(sessionID);
@@ -394,12 +395,12 @@ namespace Core {
                 chat->EnqueueZoneJoin(sessionID, static_cast<uint16_t>(destinationID));
                 secondLock.unlock();
                 firstLock.unlock();
-                destination->Skill(sessionID, action.skillSlot);
+                destination->Skill(sessionID, action.skillSlot, action.aimAngle);
                 destination->DirtyCheck(sessionID);
                 return true;
             }
         }
-        zone->Skill(sessionID, action.skillSlot);
+        zone->Skill(sessionID, action.skillSlot, action.aimAngle);
         zone->DirtyCheck(sessionID);
         return true;
     }

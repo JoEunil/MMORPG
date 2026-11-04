@@ -138,7 +138,7 @@ namespace Core {
         void ActionSnapshot();
         void ReplenishMoveBudget();
         void Move(uint64_t sessionID, uint8_t dir, float x, float y);
-        void Skill(uint64_t sessionID, uint8_t skillSlot);
+        void Skill(uint64_t sessionID, uint8_t skillSlot, float aimAngle);
         void DirtyCheck(uint64_t sessionID);
         void FlushCheat();
         void UpdateMonster();

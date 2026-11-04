@@ -465,6 +465,7 @@ namespace Mmorpg.Client
         private void PresentActionMotion(ActionResultField result)
         {
             if (serverContent == null || result.dir > 3 || !Finite(result.x) || !Finite(result.y)) return;
+            if (result.casterType == 0 && (!Finite(result.aimAngle) || result.aimAngle < 0 || result.aimAngle >= 360)) return;
             if (result.casterType == 0 && (result.skillSlot > 2 || result.skillId != result.skillSlot) ||
                 result.casterType == 1 && result.skillSlot != 0) return;
             var skill = result.skillId == 1 ? serverContent.ring : serverContent.otherSkills == null ? null :
@@ -490,7 +491,7 @@ namespace Mmorpg.Client
             float chargeDuration = !released && result.skillPhase + 1 < skill.phases.Length && skill.phases[result.skillPhase + 1] != null
                 ? Mathf.Min(skill.phases[result.skillPhase + 1].waitTicks * .05f, 2f) : 0;
             if (result.casterType == 0 && players.TryGetValue(result.casterId, out var player) && player.State.hp > 0)
-                player.ActorMotion.PlayAttack(result.dir, released, motionSlot, chargeDuration);
+                player.ActorMotion.PlayAttack(result.aimAngle, released, motionSlot, chargeDuration);
             else if (result.casterType == 1 && result.casterId <= ushort.MaxValue &&
                 monsters.TryGetValue((ushort)result.casterId, out var monster) && monster.State.hp > 0)
                 monster.ActorMotion.PlayAttack(result.dir, released, motionSlot, chargeDuration);
@@ -621,6 +622,7 @@ namespace Mmorpg.Client
         {
             if (result.casterType != 0 || result.casterId == ownId || result.skillSlot > 2 ||
                 result.skillId != result.skillSlot || result.dir > 3 || !Finite(result.x) || !Finite(result.y) ||
+                !Finite(result.aimAngle) || result.aimAngle < 0 || result.aimAngle >= 360 ||
                 serverContent == null || monsterRangeMaterial == null ||
                 !players.TryGetValue(result.casterId, out var entry) || entry.State.hp == 0) return;
             var skill = result.skillId == 1 ? serverContent.ring : serverContent.otherSkills == null ? null :
@@ -643,9 +645,8 @@ namespace Mmorpg.Client
                 {
                     float side = (point == 0 || point == 3 ? -.5f : .5f) * hit.range2;
                     float reach = point < 2 ? 0 : hit.range1;
-                    if (result.dir == 1 || result.dir == 2) reach = -reach;
-                    vertices[point] = result.dir < 2 ? PreviewPoint(result.x + side, result.y + reach) :
-                        PreviewPoint(result.x + reach, result.y + side);
+                    Vector3 offset = Quaternion.Euler(0, result.aimAngle, 0) * new Vector3(side, 0, reach);
+                    vertices[point] = PreviewPoint(result.x + offset.x, result.y + offset.z);
                 }
                 triangles = new[] { 0, 1, 2, 0, 2, 3 };
             }

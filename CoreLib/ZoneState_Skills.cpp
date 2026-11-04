@@ -89,7 +89,8 @@ namespace Core {
 			skill.x,
 			skill.y,
 			skill.skillId,
-			skill.currentPhase            
+			skill.currentPhase,
+            skill.casterType == 0 ? skill.aimAngle : (skill.dir == 0 ? 0.0f : skill.dir == 1 ? 180.0f : skill.dir == 2 ? 270.0f : 90.0f)
 				);
 			if (++skill.currentPhase >= skillData.phases.size()) {
 				PopSkill(k, cell.activeSkills);
@@ -114,7 +115,7 @@ namespace Core {
 				{
 					if (m_monsters[mon].hp == 0)
 						continue;
-					if (phase.range.InRange(skill.dir, skill.x, skill.y, m_monsters[mon].x, m_monsters[mon].y))
+					if (phase.range.InRangeAngle(skill.aimAngle, skill.x, skill.y, m_monsters[mon].x, m_monsters[mon].y))
 					{
 						auto damage = caster.attack * phase.attack;
 						if (skillData.flags & 0x01) {

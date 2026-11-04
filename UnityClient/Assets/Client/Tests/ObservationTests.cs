@@ -383,6 +383,7 @@ namespace Mmorpg.Client.Tests
                 for (byte direction = 0; direction < 4; direction++)
                 {
                     action.dir = direction;
+                    action.aimAngle = direction == 0 ? 0 : direction == 1 ? 180 : direction == 2 ? 270 : 90;
                     fixture.MonsterActions(action);
                     mesh = area.GetComponent<MeshFilter>().sharedMesh;
                     Assert.That(mesh.vertices.Length, Is.EqualTo(4));
@@ -391,6 +392,17 @@ namespace Mmorpg.Client.Tests
                     float signedReach = direction == 0 ? mesh.bounds.center.z - 30 : direction == 1 ? 30 - mesh.bounds.center.z :
                         direction == 2 ? 20 - mesh.bounds.center.x : mesh.bounds.center.x - 20;
                     Assert.That(signedReach, Is.EqualTo(6).Within(.001f));
+                }
+                action.aimAngle = 37.5f;
+                fixture.MonsterActions(action);
+                Vector3 end = (mesh.vertices[2] + mesh.vertices[3]) * .5f;
+                Vector3 expectedEnd = new Vector3(20, .06f, 30) + Quaternion.Euler(0, 37.5f, 0) * Vector3.forward * 12;
+                Assert.That(Vector3.Distance(end, expectedEnd), Is.LessThan(.001f));
+                deadline = fixture.PlayerRangeDeadline(42);
+                foreach (float angle in new[] { float.NaN, float.PositiveInfinity, -1f, 360f })
+                {
+                    invalid = action; invalid.aimAngle = angle; fixture.MonsterActions(invalid);
+                    Assert.That(fixture.PlayerRangeDeadline(42), Is.EqualTo(deadline));
                 }
                 action.skillPhase = 1;
                 fixture.MonsterActions(action);
@@ -1260,7 +1272,7 @@ namespace Mmorpg.Client.Tests
             public void CharacterList() { }
             public void Enter(ulong character) { }
             public void Chat(string message, byte scope, ulong target) { }
-            public void Action(byte direction, float x, float y, byte skill, ulong ownershipEpoch) { }
+            public void Action(byte direction, float x, float y, byte skill, ulong ownershipEpoch, float aimAngle) { }
             public void Pong(ulong time) { }
             public void ZoneChange(byte operation) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { }
             public void Log(string message) { }

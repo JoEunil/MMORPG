@@ -1,17 +1,17 @@
-# 현재 인계 — 논타게팅 입력 전환·서버 변경 보류
+# 현재 인계 — 자유각도 전투 통합 완료·게시 승인 준비
 
-ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, codex/client-clock-compat. origin/master239a01f 정상 병합(8897463). Editor ROOT/UnityClient. PR64/Pages 확인 완료. 새 PR 게시 승인 대기 없음.
+ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, codex/client-clock-compat, 원격기준239a01f. Editor ROOT/UnityClient. 원본 Game/refactor는 편집하지 않았다. 사용자 '지금 서버 변경해도 돼'에 따라 이번 서버 범위 허용.
 
-## 이번 완료
-사용자는 논타게팅 WASD 이동·마우스 포인터 조준·Shift/Q/E/R/F 스킬 키 영역을 선택했다. BRIEF 최신 조작 방향과 WORKFLOW를 갱신하고 과거 ZXC 검증 기록은 보존했다.
+## 완료
+WASD/방향키·Q/E/R 기존3슬롯, 마우스 자유각도 조준, 시전각도고정·기존phase현재위치 판정, 로컬/원격 모션·예고·VFX 연결. Shift/F 미배정. 유저 속도7.65(0.85배), 몬스터AI/방향판정·DB스키마 불변. 기존 포션 최초 수량 조회 후보56278f5도 함께 보존.
 
-서버 계약 그대로 가능한 WASD+방향키 보조, 기존3슬롯 Q/E/R, HUD 배지·툴팁·도움말·화면 생성 코드 일치를 구현했다. Shift/F는 미배정. 기존 입력필드/채팅/패널/포커스 차단 유지. 컴파일 오류0·변경 합성 입력 검사2/2·최종 종합 검수 필수0/통과. 실제 키보드/실서버 입력은 미검증이다. 근거 Builds/ClientGrowthHUD/verification/input-nontarget. 제품/테스트6파일이며 서버·ClientCore·DB·Scene 변경 없음.
+요청프레임30/행동결과필드25: 서버·ClientCore DLL·Unity·DummyClients 동시 적용 필수. 이전 빌드 혼용 불가. MainServer/UnitTests/ClientCore/Dummy/Unity 빌드 성공. 직접 검사 서버2·Dummy자체검사1·Unity4 통과. 독립리뷰차단0/종합검수최종필수0·범위통과. 과거 통과 검사 반복 안함.
 
-기존56278f5 포션 최초 수량 조회/한정 재조회1회도 같은 묶음에 보존. 해당 fixture1/1·실제수량9·검수통과는 반복하지 않았다. 사용자 서버 테스트 수정 이후 UnitTests 빌드/Flood4개 통과했으며 전체 suite 실행은 아님. 상세 history/2026-11-04-clock-client/RESULTS.md.
+실서버10099+보호test1 native로그인 확인. Native버튼 및 정상PlayerLoop 합성R/포인터로31.7326088° charge/hit고정·포인터변경후유지·UI위추가시전차단 확인. 실제EXP190→200/포션획득 캡처. 물리키 조작감·사용자만족·다중클라실플레이는 미평가.
 
 ## 현재와 다음
-Play off/background false 복원, 서버/helper 기동 없음. 보호 test1 자동 로그인은 LOCAL_PREPARATION의 검증된 native 정상 UI 경로를 따른다. 비밀 값·보호파일 Git/로그 금지.
+관찰기/합성키해제, MainServer q정상exit0, authfalse/Ready frame95266, Playoff/backgroundfalse, Loginhelper31908 LOGIN_STOPPED/종료확인. 비밀/보호파일Git·로그금지. 상세 history/2026-11-04-free-aim/RESULTS.md, 증거 Builds/ClientGrowthHUD/verification/aim360.
 
-서버 수정 보류는 유지한다. 마우스360도 조준·시전 고정각/phase 범위·이동속도·아이템/MP/골드·구역 난이도는 PLAY_FEEDBACK_PLAN의 변경안이며 미구현. 원본 서버/사용자 Monster AI는 수정하지 않는다. 새 서버 기준 커밋과 수정 허용 범위 확인 뒤 통합한다. 현재 후보는 작은 PR로 나누지 않고 같은 브랜치에 누적한다.
+같은브랜치의 포션·입력·자유각도 변경을 큰PR1개로 게시 준비. 승인 요청 AIM36001/r1: 이 검수 후보의 원격push/PR게시만, 병합·DB작업 제외. Slack스레드1793793991.033509, 회신 아직 없음/기소비없음. 게시 전 HEAD/원격/승인범위를 대조한다. MP포션·골드·구역난이도·장비/수령함은 후속 변경안.
 
-새 입력 묶음 Slack1793793991.033509. 이전 서버/포션 결과 스레드1793784229.739169. Agent598(신규228/후속370).
+ROOT Slack 발신 스크립트를 사용한다(후보사본의 옛스크립트와 다름). 위스레드를 ROOT/UnityClient/Tools/SlackReceiver/threads.txt에등록보완, 실제수신프로세스/최근health/listening·고정Coordinator 확인 후 승인요청한다. Agent604(신규230/후속374).

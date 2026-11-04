@@ -769,7 +769,7 @@ namespace Mmorpg.Client.Tests
             public void Enter(ulong characterId) { }
             public void Chat(string message, byte scope, ulong targetId) { }
             public void Profiles(uint[] profileIds) { }
-            public void Action(byte direction, float x, float y, byte skillSlot, ulong ownershipEpoch) { }
+            public void Action(byte direction, float x, float y, byte skillSlot, ulong ownershipEpoch, float aimAngle) { }
             public void Pong(ulong serverTimeMs) { }
             public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { }
             public void Log(string message) { }

@@ -252,7 +252,7 @@ namespace ClientCore
         public void SendUpdate()
         {
             QueueExpiredEconomyRequests();
-            (bool, byte, float, float, byte, ulong) res;
+            (bool, byte, float, float, byte, ulong, float) res;
             ulong resyncEpoch = 0;
             lock (_sessionGate)
             {
@@ -279,7 +279,7 @@ namespace ClientCore
             // Do not hold the session lock across socket I/O: receive callbacks also use it.
             if (!res.Item1 || _lifetime.IsCancellationRequested || _connectionFailed || !_worldReady) return;
             if (res.Item6 == 0) return;
-            try { _network.Action(res.Item2, res.Item3, res.Item4, res.Item5, res.Item6); }
+            try { _network.Action(res.Item2, res.Item3, res.Item4, res.Item5, res.Item6, res.Item7); }
             catch (Exception) { Error("Movement request failed."); }
         }
 

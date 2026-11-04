@@ -977,7 +977,7 @@ namespace Core {
         PrepareZones();
         PrepareSkillPhaseActors();
         auto* zone = state->GetZone(1);
-        zone->Skill(42, 0);
+        zone->Skill(42, 0, 90.0f); // The prepared caster faces +X (dir 3).
         zone->ApplySkill(); // Charging at the input position.
         ASSERT_EQ(PhaseCell(0).activeSkills.size(), 1u);
         PhaseCell(0).actionResults.clear();

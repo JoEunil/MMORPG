@@ -18,6 +18,7 @@ namespace ClientCore
         public float x, y;   // 클라이언트가 로컬로 이동한 뒤의 최종 좌표
         public bool dirty;
         public byte waitSkillSlot;
+        public float aimAngle;
         public ulong ownershipEpoch;
     }
     public struct CharacterInfoView
@@ -151,7 +152,7 @@ public struct InventoryItemView
     {
         long GetServerTimeMs();
         void UpdateServerTime(long serverTime);
-        (bool, byte, float, float, byte, ulong) GetActionState();
+        (bool, byte, float, float, byte, ulong, float) GetActionState();
         void SetOwnershipEpoch(ulong ownershipEpoch);
         void CancelAction();
         void SetPosition(float x, float y);
@@ -165,6 +166,7 @@ public struct InventoryItemView
         long GetServerTimeMs();
         void UpdateMove(byte dir, float x, float y);
         void UpdateAction(byte dir, float x, float y, byte skillSlot);
+        void UpdateAction(byte dir, float x, float y, byte skillSlot, float aimAngle);
         void CancelMove();
         void CancelAction();
         void UpdateSkill(byte skillSlot);
@@ -208,7 +210,7 @@ namespace ClientCore.Services
         void RequestBazaarBuy(uint requestID, ulong listingID);
         void RequestBazaarCheckOutbox(uint requestID);
         void RequestBazaarCancelListing(uint requestID, ulong listingID);
-        void Action(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch);
+        void Action(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch, float aimAngle);
         void Pong(ulong serverTimeMs);
         void ZoneChange(byte op);
         void ZoneResync(ulong ownershipEpoch);

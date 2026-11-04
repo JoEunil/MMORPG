@@ -104,8 +104,8 @@ namespace Core {
     }
 
     static const uint8_t NONE_SKILL = 255;
-    void ZoneState::Skill(uint64_t sessionID, uint8_t skillSlot) {
-        if (skillSlot == NONE_SKILL) {
+    void ZoneState::Skill(uint64_t sessionID, uint8_t skillSlot, float aimAngle) {
+        if (skillSlot == NONE_SKILL || !std::isfinite(aimAngle) || aimAngle < 0 || aimAngle >= 360) {
             return;
         }
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -134,7 +134,7 @@ namespace Core {
         }
         skill.skillCoolDownTick = skillInfo.coolDown;
         m_cells[character.cellY][character.cellX].activeSkills.emplace_back(
-            0, sessionID, character.zoneInternalID, 0, skillSlot, character.dir, character.x, character.y, skill.skillID, 0, 0
+            0, sessionID, character.zoneInternalID, 0, skillSlot, character.dir, character.x, character.y, skill.skillID, 0, 0, aimAngle
         );
     }
 

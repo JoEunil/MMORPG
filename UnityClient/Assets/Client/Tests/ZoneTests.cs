@@ -170,7 +170,7 @@ namespace Mmorpg.Client.Tests
             public void RequestInventory() { }
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
             public void RequestWallet(uint requestID) { }
-            public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch) => LastActionEpoch = ownershipEpoch;
+            public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch, float aimAngle) => LastActionEpoch = ownershipEpoch;
             public void Pong(ulong time) { } public void Log(string text) { }
         }
     }

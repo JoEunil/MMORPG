@@ -23,6 +23,7 @@ namespace Data {
         float range2;
         // skill range 계산에 필요한 필드
         bool InRange(uint8_t dir, float cx, float cy, float mx, float my) const;
+        bool InRangeAngle(float aimAngle, float cx, float cy, float mx, float my) const;
     };
 
     struct SkillPhase {

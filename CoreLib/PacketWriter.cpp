@@ -3,6 +3,8 @@
 #include "IPacket.h"
 #include "Config.h"
 namespace Core {
+    static_assert(sizeof(PacketStruct<ActionRequestBody>) == 30);
+    static_assert(sizeof(ActionResultField) == 25);
     static_assert(sizeof(PacketStruct<ItemUseRequestBody>) == 28);
     static_assert(sizeof(PacketStruct<ItemUseResponseBody>) == 35);
     static_assert(sizeof(PacketStruct<ItemRewardBody>) == 17);
@@ -542,6 +544,7 @@ namespace Core {
         action.skillSlot = state.skillSlot;
         action.skillId = state.skilIId;
         action.skillPhase = state.skillPhase;
+        action.aimAngle = state.aimAngle;
         return true;
     }
 

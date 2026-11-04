@@ -155,7 +155,15 @@ namespace Mmorpg.Client
         // Call only for accepted server action phases; this does not send or confirm damage.
         public void PlayAttack(byte direction, bool released, byte skillSlot = 0, float chargeDuration = 0)
         {
-            if (visual == null || direction > 3 || downed || defeatStarted >= 0) return;
+            if (direction > 3) return;
+            PlayAttack(direction == 0 ? 0f : direction == 1 ? 180f : direction == 2 ? 270f : 90f,
+                released, skillSlot, chargeDuration);
+        }
+
+        public void PlayAttack(float aimAngle, bool released, byte skillSlot = 0, float chargeDuration = 0)
+        {
+            if (visual == null || float.IsNaN(aimAngle) || float.IsInfinity(aimAngle) || aimAngle < 0 || aimAngle >= 360 ||
+                downed || defeatStarted >= 0) return;
             float now = Time.unscaledTime;
             byte nextAttackSlot = skillSlot <= 2 ? skillSlot : (byte)0;
             if (guardMotion && !this.released && released && now < attackUntil && nextAttackSlot == attackSlot)
@@ -178,7 +186,8 @@ namespace Mmorpg.Client
             spinPendingCompletion = guardMotion && released && attackSlot == 1;
             attackStarted = Time.unscaledTime;
             attackUntil = attackStarted + (released ? (attackSlot == 2 ? .58f : .48f) : Mathf.Max(.52f, chargeDuration + .08f));
-            facing = WorldScreen.ServerFacing(direction);
+            // Authored meshes face -Z; the wire angle measures clockwise from world +Z.
+            facing = Quaternion.Euler(0, aimAngle + 180f, 0);
             hasFacing = true;
         }
 

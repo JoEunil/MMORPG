@@ -11,6 +11,33 @@ namespace Mmorpg.Client.Tests
 {
     public sealed class ActorMotionTests
     {
+        [Test]
+        public void AcceptedFreeAimKeepsItsFacingWhileMovementIntentAndCorrectionContinue()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Client/Art/Actors/ObservedPlayer.prefab");
+            Assert.That(prefab, Is.Not.Null);
+            var actor = Object.Instantiate(prefab);
+            try
+            {
+                var motion = actor.AddComponent<ActorMotion>();
+                motion.Configure();
+                motion.PlayAttack(37.5f, false, 2, 1f);
+                motion.SetMovementIntent(Vector2.right);
+                actor.transform.position += Vector3.left * .1f;
+                typeof(ActorMotion).GetMethod("LateUpdate", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(motion, null);
+                var facingField = typeof(ActorMotion).GetField("facing", BindingFlags.Instance | BindingFlags.NonPublic);
+                Quaternion facing = (Quaternion)facingField.GetValue(motion);
+                Assert.That(Quaternion.Angle(facing, Quaternion.Euler(0, 217.5f, 0)), Is.LessThan(.001f),
+                    "Accepted attack facing owns the authored -Z mesh throughout the charge.");
+                foreach (float invalid in new[] { float.NaN, float.PositiveInfinity, -1f, 360f })
+                {
+                    motion.PlayAttack(invalid, true);
+                    Assert.That(Quaternion.Angle((Quaternion)facingField.GetValue(motion), facing), Is.LessThan(.001f));
+                }
+            }
+            finally { Object.DestroyImmediate(actor); }
+        }
+
         [UnityTest]
         [Category("PlayFeedbackRevision")]
         public IEnumerator KnightSkillSlotsHaveDistinctChargeCutAndRecoveryPosesWithoutMovingAuthority()

@@ -32,6 +32,7 @@ namespace Core {
         float x, y;
         uint32_t skilIId;
         uint16_t skillPhase;
+        float aimAngle = 0;
     };
 
     struct ActiveSkill {
@@ -45,6 +46,7 @@ namespace Core {
         uint32_t skillId;
         uint16_t currentPhase;
         uint32_t currentTick;        // 현재 진행중인 틱
+        float aimAngle = 0;
     };
 
     struct CellArea {

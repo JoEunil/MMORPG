@@ -62,7 +62,7 @@ namespace Core {
     inline constexpr auto GAME_TICK = std::chrono::milliseconds(50);
 
     inline constexpr float WORLD_MOVEMENT_SCALE = 0.2f;
-    inline constexpr float MOVE_BUDGET_PER_TICK = 0.45f; // Player: 9 units/second at 50ms; monster scale stays separate.
+    inline constexpr float MOVE_BUDGET_PER_TICK = 0.3825f; // Player: 7.65 units/second at 50ms (0.85x); monster scale stays separate.
     inline constexpr float MOVE_BUDGET_CAP = 3.0f;       // 이월 상한(네트워크 지터 허용). 서버에서 충돌 판정이 없다면, cap을 map의 가장 얇은 벽 두께로 제한해야 한다. 
     inline constexpr float MOVE_BUDGET_EPSILON = 0.001f; // float 오차로 정상 이동이 거부되지 않도록
 

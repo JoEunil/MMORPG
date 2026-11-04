@@ -69,20 +69,21 @@ namespace ClientCore.PacketHelper
             return Packet.Serialize(packet);
         }
 
-        // header(8) + dir(1) + x(4) + y(4) + skillSlot(1) + ownershipEpoch(8)
-        internal const int ACTION_PACKET_SIZE = 26;
+        // header(8) + dir(1) + x(4) + y(4) + skillSlot(1) + ownershipEpoch(8) + aimAngle(4)
+        internal const int ACTION_PACKET_SIZE = 30;
         private const int ACTION_OFFSET_DIR = 8;
         private const int ACTION_OFFSET_X = 9;
         private const int ACTION_OFFSET_Y = 13;
         private const int ACTION_OFFSET_SKILL = 17;
         private const int ACTION_OFFSET_EPOCH = 18;
+        private const int ACTION_OFFSET_AIM = 26;
 
         internal static byte[] CreateActionPacketFast(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch)
         {
             var buf = new byte[ACTION_PACKET_SIZE]; // 0으로 초기화됨
             buf[0] = unchecked((byte)MAGIC);
             buf[1] = (byte)(MAGIC >> 8);
-            buf[2] = ACTION_PACKET_SIZE;           // length(uint32 LE) — 26이라 상위 3바이트는 0
+            buf[2] = ACTION_PACKET_SIZE;           // length(uint32 LE) — 30이라 상위 3바이트는 0
             buf[6] = (byte)OP_CODE.ACTION;
             buf[7] = FLAG_SIMULATION;
             buf[ACTION_OFFSET_DIR] = dir;
@@ -90,6 +91,7 @@ namespace ClientCore.PacketHelper
             BitConverter.TryWriteBytes(buf.AsSpan(ACTION_OFFSET_Y), y);
             buf[ACTION_OFFSET_SKILL] = skillSlot;
             BitConverter.TryWriteBytes(buf.AsSpan(ACTION_OFFSET_EPOCH), ownershipEpoch);
+            BitConverter.TryWriteBytes(buf.AsSpan(ACTION_OFFSET_AIM), dir == 0 ? 0f : dir == 1 ? 180f : dir == 2 ? 270f : 90f);
             return buf;
         }
 
@@ -101,7 +103,8 @@ namespace ClientCore.PacketHelper
                 x = x,
                 y = y,
                 skillSlot = skillSlot,
-                ownershipEpoch = ownershipEpoch
+                ownershipEpoch = ownershipEpoch,
+                aimAngle = dir == 0 ? 0f : dir == 1 ? 180f : dir == 2 ? 270f : 90f
             };
 
             var header = new PacketHeader

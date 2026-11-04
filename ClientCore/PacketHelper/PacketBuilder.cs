@@ -91,15 +91,18 @@ namespace ClientCore.PacketHelper
             return Packet.Serialize(packet);
         }
 
-        internal static byte[] CreateActionPacket(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch)
+        internal static byte[] CreateActionPacket(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch, float aimAngle)
         {
+            if (float.IsNaN(aimAngle) || float.IsInfinity(aimAngle) || aimAngle < 0 || aimAngle >= 360)
+                throw new ArgumentException("Invalid skill aim angle.");
             var body = new ActionRequestBody
             {
                 dir = dir,
                 x = x,
                 y = y,
                 skillSlot = skillSlot,
-                ownershipEpoch = ownershipEpoch
+                ownershipEpoch = ownershipEpoch,
+                aimAngle = aimAngle
             };
 
             var header = new PacketHeader

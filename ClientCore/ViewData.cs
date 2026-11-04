@@ -45,9 +45,12 @@ namespace ClientCore
             }
         }
         // A cast always carries one confirmed position/direction/slot snapshot.
-        public void UpdateAction(byte dir, float x, float y, byte skillSlot)
+        public void UpdateAction(byte dir, float x, float y, byte skillSlot) =>
+            UpdateAction(dir, x, y, skillSlot, dir == 0 ? 0f : dir == 1 ? 180f : dir == 2 ? 270f : 90f);
+
+        public void UpdateAction(byte dir, float x, float y, byte skillSlot, float aimAngle)
         {
-            if (dir > 3 || skillSlot > 2 || float.IsNaN(x) || float.IsInfinity(x) || float.IsNaN(y) || float.IsInfinity(y))
+            if (dir > 3 || skillSlot > 2 || float.IsNaN(aimAngle) || float.IsInfinity(aimAngle) || aimAngle < 0 || aimAngle >= 360 || float.IsNaN(x) || float.IsInfinity(x) || float.IsNaN(y) || float.IsInfinity(y))
                 throw new ArgumentException("Invalid action state.");
             lock (_lockMove)
             {
@@ -55,6 +58,7 @@ namespace ClientCore
                 _actionState.x = x;
                 _actionState.y = y;
                 _actionState.waitSkillSlot = skillSlot;
+                _actionState.aimAngle = aimAngle;
                 _actionState.dirty = true;
             }
         }
@@ -62,6 +66,7 @@ namespace ClientCore
         {
             lock (_lockMove)
             {
+                _actionState.aimAngle = _actionState.dir == 0 ? 0f : _actionState.dir == 1 ? 180f : _actionState.dir == 2 ? 270f : 90f;
                 _actionState.waitSkillSlot = skillSlot;
                 _actionState.dirty = true;
             }
@@ -99,11 +104,11 @@ namespace ClientCore
                 _actionState.ownershipEpoch = ownershipEpoch;
         }
 
-        public (bool, byte, float, float, byte, ulong) GetActionState()
+        public (bool, byte, float, float, byte, ulong, float) GetActionState()
         {
             lock (_lockMove)
             {
-                var res = (_actionState.dirty, _actionState.dir, _actionState.x, _actionState.y, _actionState.waitSkillSlot, _actionState.ownershipEpoch);
+                var res = (_actionState.dirty, _actionState.dir, _actionState.x, _actionState.y, _actionState.waitSkillSlot, _actionState.ownershipEpoch, _actionState.aimAngle);
                 _actionState.waitSkillSlot = NONE_SKILL;
                 _actionState.dirty = false;
                 // 좌표는 이벤트가 아니라 상태이므로 초기화하지 않는다.

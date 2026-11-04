@@ -36,10 +36,10 @@ namespace Mmorpg.Client
         private IViewModelUI model;
         private readonly Dictionary<uint, FullStateField> pendingFull = new Dictionary<uint, FullStateField>();
         private FullStateField ownFull;
-        private const float MovementUnitsPerSecond = 9f;
+        private const float MovementUnitsPerSecond = 7.65f;
         // Request horizon covers the send/server/snapshot/receive cycle; presentation stays tighter.
-        private const float MaximumRequestLead = 1.8f;
-        private const float MaximumVisualLead = 0.9f;
+        private const float MaximumRequestLead = 1.53f;
+        private const float MaximumVisualLead = 0.765f;
         private const float StaleMovementSeconds = 0.35f;
         private Vector2 inputTarget;
         private bool hasMovementIntent;
@@ -637,7 +637,7 @@ namespace Mmorpg.Client
             // Root facing is seeded on entry. C19 turns only the visual model during movement/actions.
             RenderVisualPosition();
             worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
-                "C02 / SERVER-CONFIRMED FIELD · {5}\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nWASD / arrow keys move. Q / E / R use skills. I opens bag. B opens market.",
+                "C02 / SERVER-CONFIRMED FIELD · {5}\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nWASD / arrow keys move. Aim with mouse; Q / E / R use skills. I opens bag. B opens market.",
                 SelectedCharacterID, InternalID, ZoneID, ownFull.x, ownFull.y, ZoneID == 1 ? "TOWN / SAFE AREA" : "HUNTING FIELD");
             UpdateZoneTransitionButton();
         }
