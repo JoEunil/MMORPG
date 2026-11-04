@@ -24,9 +24,6 @@
     <ClCompile Include="BaseLib\NonBlockingBackPressureQueue.cpp">
       <Filter>BaseLib</Filter>
     </ClCompile>
-    <ClCompile Include="ExternalLib\SessionAuth.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -58,9 +55,6 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="BaseLib\WAL.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="CacheLib\ProfileCacheTest.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="CacheLib\CacheStorageTest.cpp">

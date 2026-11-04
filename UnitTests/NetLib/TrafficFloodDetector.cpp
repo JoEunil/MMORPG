@@ -11,10 +11,11 @@ public:
 };
 
 TEST_F(FloodDetectTest, tinyPacketAttack) {
+	auto fixedTime = clock.GetTimeMS();
 	for (int i = 0; i < Net::RECV_TOKEN_CAPACITY; i++) {
-		detector.ByteReceived(10, clock.GetTimeMS());
+		detector.ByteReceived(10, fixedTime);
 	}
-	EXPECT_TRUE(detector.ByteReceived(10, clock.GetTimeMS()));
+	EXPECT_TRUE(detector.ByteReceived(10, fixedTime));
 }
 
 TEST_F(FloodDetectTest, tinyPacketSleep) {
@@ -26,8 +27,9 @@ TEST_F(FloodDetectTest, tinyPacketSleep) {
 }
 
 TEST_F(FloodDetectTest, bigPacketAttack) {
-	detector.ByteReceived(Net::BYTES_TOKEN_CAPACITY, clock.GetTimeMS());
-	EXPECT_TRUE(detector.ByteReceived(1, clock.GetTimeMS()));
+	auto fixedTime = clock.GetTimeMS();
+	detector.ByteReceived(Net::BYTES_TOKEN_CAPACITY, fixedTime);
+	EXPECT_TRUE(detector.ByteReceived(1, fixedTime));
 }
 
 TEST_F(FloodDetectTest, bigPacketSleep) {
