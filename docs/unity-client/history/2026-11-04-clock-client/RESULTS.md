@@ -29,3 +29,13 @@ InventoryScreen.cs와InventoryUiTests.cs만제품diff. 변경fixture1/1통과(.2
 수정된동일fixture1개만재실행1/1통과(.18s). 다른기존통과검사반복0. 새MainServer재기동과동일정상UI자동로그인후가방미열기상태에서hasInventoryResponsetrue/quantity9/retryAttemptedtrue/frame52562확인. ready-state.json과quick-potion-ready.png가실제근거다. 접속중q정상종료exit0→Unityauthfalse/Ready59056·Playoff/bgfalse복원. 로그인fixedhelper도stop마커로정상종료.
 
 최종종합검수는클라이언트변경범위통과/필수0이며서버PR66전체호환성통과가아니다. UnitTestsC2660과Flood1실패는사용자서버작업범위미해결로남긴다. 작은PR게시없이관련클라이언트다음묶음에누적한다. 실제Agent591(신규227/후속364):서버분석후속1,구현후속2,종합검수후속2.
+
+## 사용자 테스트 수정 반영 — 후속 확인
+
+origin/master 239a01f를 현재 작업 브랜치에 정상 병합했다(merge 8897463). 사용자가 SessionAuth 통합 성격 검사를 제거하고 Flood 공격 검사의 시각을 고정했다. ProfileCacheTest의 프로젝트 등록 제거도 원격 변경 그대로 보존했다. 서버 제품·AI 코드는 수정하지 않았다.
+
+UnitTests Release/x64 빌드 성공. 새 산출물로 FloodDetectTest.* 4/4 통과(156ms). 이미 통과한 Clock·Unity·실서버 입력 검사는 반복하지 않았다. 근거: verification/clock66/user-test-fix-build.log, user-test-fix-flood.log, user-test-fix-flood.xml. 전체 테스트 실행 통과를 뜻하지 않는다.
+
+주의: 공격 검사 2개만 fixedTime을 사용하며 bigPacketSleep은 여전히 1ms sleep과 CachedClock에 의존한다. 이번 실행에서는 통과했지만 결정적 시간 검사로 모두 전환됐다고 기록하지 않는다. 과거 recommended-server-fix.patch는 미적용 과거 제안이며 새 사용자 수정 위에 적용하지 않는다. 이전 C2660 빌드 차단은 해소됐다.
+
+후속 client_followup_scan 읽기 점검에서 기존 API로 바로 추가할 확정 클라이언트 결함은 찾지 못했다. 인벤토리 초기 조회, 거래/지갑 전환, 귓속말 실패 보존, 이동 선행 목표 경로를 좁게 확인했으며 전체 무결함 판정은 아니다. 서버 접점별 다음 묶음을 PLAY_FEEDBACK_PLAN에 정리했고 새 서버 수정 범위는 비동기 질문으로 확인 중이다. 실제 신규 Agent1(리뷰 책임) 추가, 누적592회.
