@@ -1,4 +1,4 @@
-#include "SessionAuth.h"
+﻿#include "SessionAuth.h"
 #include <cstring>
 #include <stdexcept>
 #include <utility>
@@ -25,10 +25,6 @@ namespace External {
     }
 
     void SessionAuth::Initialize() {
-        Initialize(REDIS_AUTH_HOST, REDIS_AUTH_PORT);
-    }
-
-    void SessionAuth::Initialize(const char* host, uint16_t port) {
         if (m_eventBase)
             throw std::logic_error("SessionAuth is already initialized");
         static std::once_flag threading;
@@ -47,7 +43,7 @@ namespace External {
             if (!m_commandEvent)
                 throw std::runtime_error("Failed to create authentication command event");
 
-            m_context = redisAsyncConnect(host, port);
+            m_context = redisAsyncConnect(REDIS_AUTH_HOST, REDIS_AUTH_PORT);
             if (!m_context || m_context->err)
                 throw std::runtime_error("Redis authentication connection failed");
             m_context->data = this;

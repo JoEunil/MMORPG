@@ -21,7 +21,6 @@ namespace Extern {
             std::chrono::system_clock::now().time_since_epoch()
         ).count();
         return nlohmann::json{
-            // 로그에서 now()는 부담 안됨.
             {"timestamp", ts},
             {"event", event},
             {"thread_id", thread_id},
