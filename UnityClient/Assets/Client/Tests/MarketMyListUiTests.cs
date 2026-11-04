@@ -247,8 +247,10 @@ namespace Mmorpg.Client.Tests
                 Assert.Throws<ArgumentException>(() => handler.HandleResponse(malformed));
                 handler.HandleResponse(CancelListingFrame(fixture.Network.LastCancelID, 1103, 1));
                 Assert.That(fixture.Status.text, Is.EqualTo("Cancelling sale…"));
+                Assert.That(fixture.Row(1101).Find("State").GetComponent<TMP_Text>().text, Is.EqualTo("Trading"));
                 handler.HandleResponse(CancelListingFrame(fixture.Network.LastCancelID, 1101, 1));
                 Assert.That(fixture.Status.text, Does.Contain("Sale cancelled"));
+                Assert.That(fixture.Row(1101).Find("State").GetComponent<TMP_Text>().text, Is.EqualTo("Cancelled"));
                 Assert.That(fixture.Status.text, Does.Contain("check your bag"));
                 Assert.That(fixture.Network.CheckOutboxRequests, Is.Zero, "A cancellation reply does not prove item return or request another delivery.");
                 Assert.That(fixture.CancelListing.interactable, Is.False);
@@ -261,6 +263,8 @@ namespace Mmorpg.Client.Tests
                 uint unknownID = fixture.Network.LastCancelID;
                 handler.HandleResponse(CancelListingFrame(unknownID, 1103, 5));
                 Assert.That(fixture.Status.text, Does.Contain("unknown"));
+                Assert.That(fixture.Row(1103).Find("State").GetComponent<TMP_Text>().text, Is.EqualTo("Trading"),
+                    "An unknown cancellation must not overwrite the last confirmed listing state.");
                 fixture.CancelListing.onClick.Invoke();
                 fixture.CancelListing.onClick.Invoke();
                 Assert.That(fixture.Network.CancelListingRequests, Is.EqualTo(2));

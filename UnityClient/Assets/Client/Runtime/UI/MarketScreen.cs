@@ -554,6 +554,8 @@ namespace Mmorpg.Client
             writeRequest = WriteRequest.None;
             if (status == 0) cancelOutcomes.Remove(listingID);
             else cancelOutcomes[listingID] = status == 1 ? (byte)1 : (byte)5;
+            if (status == 1 && selectedRowButton != null)
+                selectedRowButton.transform.Find("State").GetComponent<TMP_Text>().text = "Cancelled";
             // The existing server can attempt return delivery before replying, even if the result is unknown.
             if (status != 0 && inventoryScreen != null)
             {
@@ -627,7 +629,7 @@ namespace Mmorpg.Client
             requestPending = true;
             writeRequest = WriteRequest.CheckOutbox;
             requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
-            selectedDetailText.text = "Receiving pending purchases and returned items. Open your bag after receiving to check its contents.";
+            selectedDetailText.text = "Receiving purchases and returns.\nCheck your bag afterward.";
             statusText.text = "Receiving pending items…";
             UpdateControls();
             try { model.RequestBazaarCheckOutbox(); }
