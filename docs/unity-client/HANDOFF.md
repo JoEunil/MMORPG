@@ -1,4 +1,4 @@
-# 현재 인계 — 자유각도 전투 통합 완료·게시 승인 준비
+# 현재 인계 — 자유각도 전투 통합 완료·게시 승인 대기
 
 ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, codex/client-clock-compat, 원격기준239a01f. Editor ROOT/UnityClient. 원본 Game/refactor는 편집하지 않았다. 사용자 '지금 서버 변경해도 돼'에 따라 이번 서버 범위 허용.
 
@@ -12,6 +12,6 @@ WASD/방향키·Q/E/R 기존3슬롯, 마우스 자유각도 조준, 시전각도
 ## 현재와 다음
 관찰기/합성키해제, MainServer q정상exit0, authfalse/Ready frame95266, Playoff/backgroundfalse, Loginhelper31908 LOGIN_STOPPED/종료확인. 비밀/보호파일Git·로그금지. 상세 history/2026-11-04-free-aim/RESULTS.md, 증거 Builds/ClientGrowthHUD/verification/aim360.
 
-같은브랜치의 포션·입력·자유각도 변경을 큰PR1개로 게시 준비. 승인 요청 AIM36001/r1: 이 검수 후보의 원격push/PR게시만, 병합·DB작업 제외. Slack스레드1793793991.033509, 회신 아직 없음/기소비없음. 게시 전 HEAD/원격/승인범위를 대조한다. MP포션·골드·구역난이도·장비/수령함은 후속 변경안.
+같은브랜치의 포션·입력·자유각도 변경을 큰PR1개로 게시 준비. 검수 코드 후보a580caf. 승인 요청 AIM36001/r1(메시지1793796197.557179): 이 후보와 기존포션/키개선의 원격push/PR1개게시만, 병합·DB작업 제외. Slack스레드1793793991.033509, 회신 아직 없음/기소비없음. 실제 게시 전push하지않았다. 게시 전 HEAD/원격/승인범위를 대조한다. MP포션·골드·구역난이도·장비/수령함은 후속 변경안.
 
 ROOT Slack 발신 스크립트를 사용한다(후보사본의 옛스크립트와 다름). 위스레드를 ROOT/UnityClient/Tools/SlackReceiver/threads.txt에등록보완, 실제수신프로세스/최근health/listening·고정Coordinator 확인 후 승인요청한다. Agent604(신규230/후속374).
