@@ -24,3 +24,19 @@ Unity6000.0.47f1/CLI1.0.0-beta.16. ROOT의 대상6파일이 master기준과 동�
 ## 종합 검수
 
 같은 commerce_quality 담당자가 상황자문 이후 고정6파일 diff를 최종 코드·범위 검수했다. 정적 검수 통과/필수수정0이며 실행 품질은 근거 부족이다. 컴파일·정적 검수 완료를 실행/화면/게시검수 통과로 확대하지 않는다. 검증 보류 상태로 로컬 후보만 보존한다.
+
+## 사용자 입력 재개 후 — 2026-11-04
+
+사용자의 명시적 입력 재개에 따라 기존 CommerceFeedback PlayMode fixture를 한 번 실행했다. total7/pass7/fail0/skip0,0.32초. 기존 보류 동안의 자동심사를 우회한 것이 아니다. Temp/pipeline_test_status.json을 verification/state-tests.json에 보존했다. 현재 실제 UI는 test1 수동 로그인 대기이며, 인증 후 같은 Play에서 이어간다. 기존 테스트 서버만 기동했고 소스/DB/AI 변경은 없다.
+
+## 같은 Play 실제 검증 완료
+
+사용자가 test1 수동 로그인을 완료한 뒤 캐릭터11/char_1로 필드 진입했다. Play·Assets 재시작/쓰기 없이 정상 InputSystem 이벤트 큐→PlayerLoop로 I/B·버튼을 조작했다. 새 입력장치 바인딩과 목록 피벗 때문에 최초 도우미 선택이 반영되지 않아, 기존 현재 장치·RectTransform 실제 중앙을 쓰도록 외부 도우미만 수정했다. 강제 InputSystem.Update·제품 핸들러 직접 호출·상태 주입은 없었으며 물리 키 검증과 구분한다.
+
+HP포션 안내와 사용 버튼, unknown33 안내와 버튼없음을 실제 확인했다. MP·장비·실패/timeout은 상태 fixture 범위다. HP포션1개/100다이아 등록 성공, 골드99990→99980/수수료10, 포션9→8을 확인했다. 닫기/재열기 뒤 성공문구 동일=true, 직접Refresh 후 매물182 확인, 선택/취소/수령 뒤 포션9복귀. 수령 응답은 Received0/already present1/pending0으로 자동 회수가 이미 반영됐음을 뜻하며 별도1개 신규지급으로 보고하지 않는다. 수수료는 정상 게임 규칙대로 환불하지 않았다. DB를 직접 고치지 않았다.
+
+근거 live/bag-hp.png,bag-unknown.png,register-reopened.png,items-received.png와register-result.txt. 공개에는 사용 안내/재열기 두 PNG만 화면 이력에 연결했다. 기존 대표 화면이 전체 상태를 더 잘 보여줘 README대표 선택은 유지했다.
+
+같은 commerce_quality 담당자가 실제4화면을 열어 게시검수 통과/필수0. 목록의 기존Trading잔상·수령상세 일부말줄임은 기존표시한계이며 CANCELLED/수령결과는명확하다. 이번후보의실패/timeout모든상황을실서버에서재연했다고주장하지않는다.
+
+정상Disconnect,소유MainServer q+Enter/exit0,helper LOGIN_STOPPED,Playoff/background=false를확인했다. 기존autotick·DB/Redis유지. 사용자명시PR게시요청이있어동일승인을다시요구하지않는다. 게시후서버없는성장HUD작업을이어간다.
