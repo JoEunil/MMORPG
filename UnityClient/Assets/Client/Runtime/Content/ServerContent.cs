@@ -11,6 +11,7 @@ namespace Mmorpg.Client
     public sealed class ServerContent : ScriptableObject
     {
         public Growth growth = new Growth();
+        public Parry parry;
         public RingSkill ring = new RingSkill();
         public Monster monster0 = new Monster();
         public RingSkill[] otherSkills =
@@ -58,6 +59,14 @@ namespace Mmorpg.Client
                     new MonsterPhase { hpThreshold = 0.2f, steps = new[] { new SkillStep { skillID = 4, delayTicks = 25 }, new SkillStep { skillID = 3, delayTicks = 25 }, new SkillStep { skillID = 4, delayTicks = 25 }, new SkillStep { skillID = 3, delayTicks = 25 } } }
                 } }
         };
+
+        [Serializable]
+        public sealed class Parry
+        {
+            public uint windowTicks;
+            public uint cooldownTicks;
+            public uint charges;
+        }
 
         [Serializable]
         public sealed class Growth

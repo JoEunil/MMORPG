@@ -1,18 +1,20 @@
-# 현재 인계 — 자유각도 전투 통합 완료·게시 승인 대기
+# 현재 인계 — 패링·전투 피드백 게시 준비
 
-ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, codex/client-clock-compat, 원격기준239a01f. Editor ROOT/UnityClient. 원본 Game/refactor는 편집하지 않았다. 사용자 '지금 서버 변경해도 돼'에 따라 이번 서버 범위 허용.
+## 정본과 범위
+ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, 브랜치 codex/client-clock-compat. Unity 프로젝트 ROOT/UnityClient. 원본 Game/refactor와 사용자 몬스터 AI는 수정하지 않았다. 이번 서버·프로토콜 변경은 사용자 허용 범위다.
 
-## 완료
-WASD/방향키·Q/E/R 기존3슬롯, 마우스 자유각도 조준, 시전각도고정·기존phase현재위치 판정, 로컬/원격 모션·예고·VFX 연결. Shift/F 미배정. 유저 속도7.65(0.85배), 몬스터AI/방향판정·DB스키마 불변. 기존 포션 최초 수량 조회 후보56278f5도 함께 보존.
+## 완료·검증
+- 기존 포션 초기 조회·WASD/방향키·QER·마우스 자유각도 변경에 창 모드1280×720·선명한 커서·Space 패링을 통합했다.
+- 패링: 방향 제한 없이0.25초 동안 유효 공격1회 방어, 재사용1.5초. MP·재화·몬스터 경직 없음. 서버 판정/응답과 클라이언트 HUD·모션·효과를 연결했다. 피격 반응과 몬스터 특수공격 예고도 보강했다.
+- 이번 직접 검사 서버2/Unity4 모두 통과. MainServer·ClientCore·DummyClients·Unity 콘텐츠 import·독립 Player 빌드 성공. 독립 리뷰 차단0, Astra 코드·자동 검사 범위 통과. 기존 통과 항목은 반복하지 않았다.
+- 바탕화면 시작/종료 BAT는 ROOT/UnityClient/Builds/LocalGame/Parry의 동시 빌드를 사용한다. 실행 경로 check·서버 해시 일치 확인. 이번에는 게임/서버를 새로 실행하거나 사용자 프로세스를 종료하지 않았다.
 
-요청프레임30/행동결과필드25: 서버·ClientCore DLL·Unity·DummyClients 동시 적용 필수. 이전 빌드 혼용 불가. MainServer/UnitTests/ClientCore/Dummy/Unity 빌드 성공. 직접 검사 서버2·Dummy자체검사1·Unity4 통과. 독립리뷰차단0/종합검수최종필수0·범위통과. 과거 통과 검사 반복 안함.
+## 입력·미확인
+**최신 사용자 지시: 입력 보류, 빌드·자동 검사까지만.** 실제 Space 패링·OS 커서·HUD 겹침·모션/예고 조작감은 미확인이다. 게시 승인은 입력 재개 승인이 아니다. 서버·ClientCore DLL·Unity·DummyClients의 변경 패킷은 함께 적용해야 한다. 지연된 Begin 방송의 시각적 만료 식별에는 한계가 있지만 서버 보호창/쿨은 재활성화하지 않는다.
 
-실서버10099+보호test1 native로그인 확인. Native버튼 및 정상PlayerLoop 합성R/포인터로31.7326088° charge/hit고정·포인터변경후유지·UI위추가시전차단 확인. 실제EXP190→200/포션획득 캡처. 물리키 조작감·사용자만족·다중클라실플레이는 미평가.
+## 게시·다음 행동
+현재 큰 PR 한 개로 게시 준비 중이며 push/새 PR은 아직 하지 않았다. 이전 AIM36001/r2(스레드1793793991.033509/요청1793798274.949619)는 확장 범위를 포함하지 않아 새 패링 승인으로 소비하지 않는다. 최신 후보를 로컬 커밋한 뒤 PARRY01/r1을 새 앱 스레드에 요청하고 정확한 후보·스레드·응답을 대조한다. 승인 전 독립 로컬 작업만 가능하다.
 
-## 현재와 다음
-관찰기/합성키해제, MainServer q정상exit0, authfalse/Ready frame95266, Playoff/backgroundfalse, Loginhelper31908 LOGIN_STOPPED/종료확인. 비밀/보호파일Git·로그금지. 상세 history/2026-11-04-free-aim/RESULTS.md, 증거 Builds/ClientGrowthHUD/verification/aim360.
+Slack은 ROOT/UnityClient/Tools/Send-CoordinatorSlack.ps1과 실제 receiver health/프로세스/고정 Coordinator·등록 스레드를 확인한다. Agent 누적614(신규232/후속382), 토큰·비용N/A.
 
-같은브랜치의 포션·입력·자유각도 변경을 큰PR1개로 게시 준비. 최신 코드 후보7b33dea(기존전투+선택형BAT정상종료). 승인 요청 AIM36001/r2(메시지1793798274.949619, r1대체): 이 후보와 기존포션/키개선의 원격push/PR1개게시만, 병합·DB작업 제외. Slack스레드1793793991.033509, 회신 아직 없음/기소비없음. 실제 게시 전push하지않았다. 게시 전 HEAD/원격/승인범위를 대조한다. MP포션·골드·구역난이도·장비/수령함은 후속 변경안.
-
-ROOT Slack 발신 스크립트를 사용한다(후보사본의 옛스크립트와 다름). 위스레드를 ROOT/UnityClient/Tools/SlackReceiver/threads.txt에등록보완, 실제수신프로세스/최근health/listening·고정Coordinator 확인 후 승인요청한다. Agent605(신규230/후속375).
-바탕화면 테스트 시작/종료 BAT2개 제공. 최신 독립Player/Server/Login소스(비밀제외)는 ROOT/UnityClient/Builds/LocalGame/Aim360. 기존도우미와맞추는선택형MMORPG_STOP_FILE 정상종료만NetLibrary/Initializer.h에추가, 원본Game미수정. 빌드·리뷰·실제BAT시작→정상종료통과, 현재세프로세스정지/포트해제. LOCAL_PREPARATION최신구간참조. 같은PR게시후보에포함했고AIM36001/r2로대기범위를갱신했다.
+상세: history/2026-11-04-parry-feedback/RESULTS.md. 과거 자유각도 실행 근거: history/2026-11-04-free-aim/RESULTS.md. 최신 자동 근거: ROOT/UnityClient/Builds/ClientGrowthHUD/verification/parry. MP 포션·골드 드랍·구역 난이도·장비/수령함은 후속 변경안이며 이번에 구현하지 않았다.

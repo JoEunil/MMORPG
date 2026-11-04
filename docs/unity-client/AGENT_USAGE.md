@@ -1,24 +1,28 @@
 ## 공개 집계
 
 기준일: 2026-11-04
-누적 신규: 230
-누적 재활성화: 375
+누적 신규: 232
+누적 재활성화: 382
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-11-04
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
 | game_planner | 기획 Agent | 7 | 4 |
-| server_analyst | 서버 분석 Agent | 30 | 51 |
-| client_implementer | 구현 Agent | 70 | 97 |
-| asset_artist | 아트 Agent | 24 | 32 |
-| code_reviewer | 리뷰 Agent | 57 | 113 |
-| quality_reviewer | 종합 검수 Agent | 16 | 57 |
+| server_analyst | 서버 분석 Agent | 31 | 53 |
+| client_implementer | 구현 Agent | 70 | 99 |
+| asset_artist | 아트 Agent | 25 | 32 |
+| code_reviewer | 리뷰 Agent | 57 | 114 |
+| quality_reviewer | 종합 검수 Agent | 16 | 59 |
 | unity_tester | 테스트 Agent | 5 | 6 |
 | progress_documenter | 기록 Agent | 12 | 12 |
 | decision_curator | 의사결정 지원 Agent | 8 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체605회(신규230·재활성화375)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체614회(신규232·재활성화382)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+
+## 패링·전투 피드백과 창 모드 — 2026-11-04
+
+visible_game_cursor 아트 신규1,parry_contract_plan 서버분석 신규1·후속2,aim_protocol_server/commerce_final_display 구현 후속각1,aim360_contract_review 리뷰후속1,commerce_quality 계획·완료검수후속2를 실제 실행했다. 신규2·후속7을 더한614회이며 계획문서경로교정도같은담당실행으로집계했다. 총괄의빌드·자동검사·설정·기록은제외,토큰·비용N/A.
 
 ## 바탕화면 실행 환경 — 2026-11-04
 

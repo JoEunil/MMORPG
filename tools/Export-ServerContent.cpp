@@ -21,6 +21,8 @@ namespace {
     }
 
     void Validate() {
+        Require(Data::parryWindowTicks > 0 && Data::parryCooldownTicks >= Data::parryWindowTicks && Data::parryCharges == 1,
+            "Parry requires one charge and a positive window within its cooldown.");
         Require(Data::skillList.size() == 5, "Expected skill IDs 0 through 4.");
         for (size_t id = 0; id < Data::skillList.size(); ++id) {
             const auto& skill = Data::skillList[id];
@@ -136,7 +138,7 @@ namespace {
             json << "    {\"level\":" << growth.level << ",\"requiredTotalExp\":" << growth.requiredTotalExp
                 << ",\"maxHpIncrease\":" << growth.maxHpIncrease << '}';
         }
-        json << "\n  ]}\n}\n";
+        json << "\n  ]},\n  \"parry\":{\"windowTicks\":" << Data::parryWindowTicks << ",\"cooldownTicks\":" << Data::parryCooldownTicks << ",\"charges\":" << Data::parryCharges << "}\n}\n";
         return json.str();
     }
 

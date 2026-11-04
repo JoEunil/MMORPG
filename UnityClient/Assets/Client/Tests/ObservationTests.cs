@@ -716,9 +716,12 @@ namespace Mmorpg.Client.Tests
                 Assert.That(circleMesh.vertices[1].y, Is.EqualTo(0.06f).Within(0.001f));
                 Assert.That(circleMesh.vertices[1].z, Is.EqualTo(9).Within(0.001f));
                 float initialCharge = circleMesh.colors[0].a;
+                float initialHeat = circleMesh.colors[0].g;
                 Assert.That(smallRingDeadline - receivedAt, Is.InRange(0.39, 0.42), "The preview uses the authored six-tick Hit delay plus cleanup grace.");
                 fixture.Render(receivedAt + .2);
                 Assert.That(circleMesh.colors[0].a, Is.GreaterThan(initialCharge), "The translucent filled area brightens while its cast charges.");
+                Assert.That(circleMesh.colors[0].g, Is.GreaterThan(initialHeat), "Existing monster warnings warm from red toward gold as impact approaches.");
+                Assert.That(circleMesh.colors[0].a, Is.LessThanOrEqualTo(.66f), "The warning retains visibility through the filled area.");
                 var sameNumericId = fixture.MonsterRange(7);
                 Assert.That(sameNumericId, Is.Not.Null, "Monster and player IDs are separate namespaces even when the number matches.");
                 Assert.That(sameNumericId.GetComponent<MeshFilter>().sharedMesh.vertices[1].x, Is.EqualTo(3).Within(0.001f));
@@ -1265,6 +1268,7 @@ namespace Mmorpg.Client.Tests
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
+            public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
             public void RequestInventory() { } public void Profiles(uint[] profileIds) { }
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
             public void RequestWallet(uint requestID) { }

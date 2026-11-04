@@ -113,5 +113,6 @@
     {"level":98,"requiredTotalExp":237650,"maxHpIncrease":500},
     {"level":99,"requiredTotalExp":242550,"maxHpIncrease":500},
     {"level":100,"requiredTotalExp":247500,"maxHpIncrease":500}
-  ]}
+  ]},
+  "parry":{"windowTicks":5,"cooldownTicks":30,"charges":1}
 }

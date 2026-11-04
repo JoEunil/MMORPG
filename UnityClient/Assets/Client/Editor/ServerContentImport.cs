@@ -109,12 +109,23 @@ namespace Mmorpg.Client.Editor
                     throw new InvalidOperationException("Growth total EXP must strictly increase by level.");
             }
 
+            var parryRow = Field(snapshot, "parry");
+            var parry = new ServerContent.Parry
+            {
+                windowTicks = (uint)Integer(parryRow, "windowTicks", uint.MaxValue),
+                cooldownTicks = (uint)Integer(parryRow, "cooldownTicks", uint.MaxValue),
+                charges = (uint)Integer(parryRow, "charges", 1)
+            };
+            if (parry.windowTicks == 0 || parry.cooldownTicks < parry.windowTicks || parry.charges != 1)
+                throw new InvalidOperationException("Parry requires a positive window, a cooldown covering that window, and one charge.");
+
             // All parsing and validation finish before replacing any existing asset fields.
             var oldRing = target.ring;
             var oldMonster = target.monster0;
             var oldSkills = target.otherSkills;
             var oldMonsters = target.otherMonsters;
             var oldGrowth = target.growth;
+            var oldParry = target.parry;
             bool wasDirty = EditorUtility.IsDirty(target);
             try
             {
@@ -123,6 +134,7 @@ namespace Mmorpg.Client.Editor
                 target.monster0 = monsters[0];
                 target.otherMonsters = new[] { monsters[1], monsters[2] };
                 target.growth = growth;
+                target.parry = parry;
                 EditorUtility.SetDirty(target);
                 AssetDatabase.SaveAssetIfDirty(target);
             }
@@ -134,6 +146,7 @@ namespace Mmorpg.Client.Editor
                 target.otherSkills = oldSkills;
                 target.otherMonsters = oldMonsters;
                 target.growth = oldGrowth;
+                target.parry = oldParry;
                 if (wasDirty) EditorUtility.SetDirty(target);
                 else EditorUtility.ClearDirty(target);
                 throw;

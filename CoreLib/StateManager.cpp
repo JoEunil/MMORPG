@@ -13,6 +13,54 @@ namespace Core {
         && TOWN_SPAWN_Y >= 0 && TOWN_SPAWN_Y <= ZONE_SIZE,
         "Town respawn must remain inside Zone 1.");
 
+    ParryResponseBody StateManager::Parry(uint64_t sessionID, uint16_t routeZoneID, const ParryRequestBody& request) {
+        ParryResponseBody result{request.requestID, request.ownershipEpoch, static_cast<uint8_t>(ParryStatus::Invalid), 0, 0};
+        if (request.requestID == 0 || request.ownershipEpoch == 0) return result;
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock sessionLock(shard.smutex);
+        auto session = shard.sessionMap.find(sessionID);
+        if (session == shard.sessionMap.end() || !session->second.authenticated || !session->second.authCompleted) {
+            result.status = static_cast<uint8_t>(ParryStatus::Unavailable);
+            return result;
+        }
+        if (session->second.zoneID == 0 || session->second.zoneID != routeZoneID || session->second.ownershipEpoch != request.ownershipEpoch) {
+            result.status = static_cast<uint8_t>(ParryStatus::StaleOwnership);
+            return result;
+        }
+        auto* zone = GetZone(routeZoneID);
+        if (!zone) { result.status = static_cast<uint8_t>(ParryStatus::Unavailable); return result; }
+        std::lock_guard zoneLock(zone->m_mutex);
+        auto member = zone->m_sessionToIndex.find(sessionID);
+        if (member == zone->m_sessionToIndex.end()) { result.status = static_cast<uint8_t>(ParryStatus::Unavailable); return result; }
+        auto& character = zone->m_chars[member->second];
+        auto& previous = session->second.lastParry;
+        if (request.requestID < previous.requestID || (request.requestID == previous.requestID && request.ownershipEpoch != previous.ownershipEpoch)) {
+            result.status = static_cast<uint8_t>(ParryStatus::StaleRequest);
+            return result;
+        }
+        if (request.requestID == previous.requestID) {
+            result.status = previous.status;
+        } else {
+            if (character.hp <= 0) result.status = static_cast<uint8_t>(ParryStatus::Dead);
+            else if (character.parryCooldownTicks != 0) result.status = static_cast<uint8_t>(ParryStatus::Cooldown);
+            else {
+                character.parryWindowTicks = Data::parryWindowTicks;
+                character.parryCooldownTicks = Data::parryCooldownTicks;
+                result.status = static_cast<uint8_t>(ParryStatus::Accepted);
+                zone->m_cells[character.cellY][character.cellX].actionResults.push_back({0, character.zoneInternalID, 0,
+                    Data::parrySkillSlot, character.dir, character.x, character.y, Data::parrySkillID, 0,
+                    character.dir == 0 ? 0.0f : character.dir == 1 ? 180.0f : character.dir == 2 ? 270.0f : 90.0f});
+            }
+            previous = result;
+        }
+        // Only successful/cooldown outcomes describe a usable current combat state.
+        if (result.status == static_cast<uint8_t>(ParryStatus::Accepted) || result.status == static_cast<uint8_t>(ParryStatus::Cooldown)) {
+            result.windowRemainingTicks = character.parryWindowTicks;
+            result.cooldownRemainingTicks = character.parryCooldownTicks;
+        }
+        return result;
+    }
+
     ItemUseResponseBody StateManager::UseItem(uint64_t sessionID, const ItemUseRequestBody& request) {
         ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
         if (request.requestID == 0 || request.itemID == 0) return result;
@@ -240,6 +288,7 @@ namespace Core {
             clearPlayerEffects(*town, internalID);
             const bool movedCell = character.cellX != newCellX || character.cellY != newCellY;
             if (movedCell) town->RemoveFromCell(character);
+            character.parryWindowTicks = 0;
             character.hp = character.maxHp;
             character.mp = character.maxMp;
             character.x = TOWN_SPAWN_X;

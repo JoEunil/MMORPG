@@ -28,6 +28,7 @@ namespace Core {
         uint64_t lastRespawnRequestEpoch = 0;
         uint64_t bootstrapSequence = 0;
         ItemUseResponseBody lastItemUse = {};
+        ParryResponseBody lastParry = {};
         uint64_t chatID = 0;
         uint64_t userID = 0;
         uint64_t characterID = 0;
@@ -233,6 +234,7 @@ namespace Core {
             return res;
         }
         ItemUseResponseBody UseItem(uint64_t sessionID, const ItemUseRequestBody& request);
+        ParryResponseBody Parry(uint64_t sessionID, uint16_t routeZoneID, const ParryRequestBody& request);
         void GrantMonsterPotion(const CharacterState& character);
         void Disconnect(uint64_t sessionID);
         bool ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result);

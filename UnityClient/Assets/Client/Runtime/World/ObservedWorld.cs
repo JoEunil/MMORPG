@@ -93,11 +93,13 @@ namespace Mmorpg.Client
             public float Duration;
             private Color[] colors;
             private Color tint;
+            private bool dangerWarning;
 
             public void Show(Transform parent, Material material, string name, Vector3[] vertices, int[] triangles,
                 double now, float duration, Color? tint = null)
             {
                 this.tint = tint ?? new Color(1f, 0.18f, 0.045f, 1f);
+                dangerWarning = !tint.HasValue;
                 if (Renderer == null)
                 {
                     var visual = new GameObject(name);
@@ -134,7 +136,16 @@ namespace Mmorpg.Client
                 }
                 float charge = Duration <= 0 ? 1 : Mathf.Clamp01((float)((now - StartedAt) / Duration));
                 float alpha = Mathf.Lerp(0.14f, 0.58f, charge);
-                for (int i = 0; i < colors.Length; i++) colors[i] = new Color(tint.r, tint.g, tint.b, alpha);
+                Color color = tint;
+                if (dangerWarning)
+                {
+                    float progress = Mathf.SmoothStep(0, 1, charge);
+                    color = Color.Lerp(new Color(1f, .12f, .025f), new Color(1f, .62f, .12f), progress);
+                    alpha = Mathf.Lerp(.22f, .62f, progress);
+                    if (charge > .8f) alpha += .035f * Mathf.Sin((float)(now * 18));
+                }
+                color.a = alpha;
+                for (int i = 0; i < colors.Length; i++) colors[i] = color;
                 Mesh.colors = colors;
             }
 
@@ -466,6 +477,13 @@ namespace Mmorpg.Client
         {
             if (serverContent == null || result.dir > 3 || !Finite(result.x) || !Finite(result.y)) return;
             if (result.casterType == 0 && (!Finite(result.aimAngle) || result.aimAngle < 0 || result.aimAngle >= 360)) return;
+            if (result.casterType == 0 && result.skillSlot == Packet.PARRY_SKILL_SLOT && result.skillId == Packet.PARRY_SKILL_ID && result.skillPhase <= 1)
+            {
+                if (serverContent.parry != null && serverContent.parry.windowTicks > 0 &&
+                    players.TryGetValue(result.casterId, out var defender) && defender.State.hp > 0)
+                    defender.ActorMotion.PlayParry(result.skillPhase == 1, serverContent.parry.windowTicks * .05f);
+                return;
+            }
             if (result.casterType == 0 && (result.skillSlot > 2 || result.skillId != result.skillSlot) ||
                 result.casterType == 1 && result.skillSlot != 0) return;
             var skill = result.skillId == 1 ? serverContent.ring : serverContent.otherSkills == null ? null :

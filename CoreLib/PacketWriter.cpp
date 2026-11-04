@@ -5,6 +5,18 @@
 namespace Core {
     static_assert(sizeof(PacketStruct<ActionRequestBody>) == 30);
     static_assert(sizeof(ActionResultField) == 25);
+    static_assert(sizeof(PacketStruct<ParryRequestBody>) == 24);
+    static_assert(sizeof(PacketStruct<ParryResponseBody>) == 33);
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteParryResponse(const ParryResponseBody& body) {
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
+        if (!p) return nullptr;
+        p->Clear();
+        auto* packet = reinterpret_cast<PacketStruct<ParryResponseBody>*>(p->GetBuffer());
+        packet->header = {MAGIC, sizeof(*packet), OP::PARRY_RES, FLAG_SIMULATION};
+        packet->body = body;
+        p->SetLength(sizeof(*packet));
+        return p;
+    }
     static_assert(sizeof(PacketStruct<ItemUseRequestBody>) == 28);
     static_assert(sizeof(PacketStruct<ItemUseResponseBody>) == 35);
     static_assert(sizeof(PacketStruct<ItemRewardBody>) == 17);

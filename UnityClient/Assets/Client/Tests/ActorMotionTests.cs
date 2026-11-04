@@ -12,6 +12,87 @@ namespace Mmorpg.Client.Tests
     public sealed class ActorMotionTests
     {
         [Test]
+        public void ParryBroadcastOverlayKeepsAttackTimeAndPlaysOneSuccessWithoutInventingDamage()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Client/Art/Actors/ObservedPlayer.prefab");
+            Assert.That(prefab, Is.Not.Null);
+            var actor = Object.Instantiate(prefab);
+            try
+            {
+                var motion = actor.AddComponent<ActorMotion>();
+                motion.Configure();
+                motion.PlayAttack(37.5f, false, 2, 1f);
+                var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+                var attackUntil = typeof(ActorMotion).GetField("attackUntil", flags);
+                float attackDeadline = (float)attackUntil.GetValue(motion);
+                var hitUntil = typeof(ActorMotion).GetField("hitUntil", flags);
+                var successUntil = typeof(ActorMotion).GetField("parrySuccessUntil", flags);
+                var windowUntil = typeof(ActorMotion).GetField("parryUntil", flags);
+                motion.PlayParry(false, .25f);
+                float firstWindow = (float)windowUntil.GetValue(motion) - .05f;
+                windowUntil.SetValue(motion, firstWindow);
+                motion.PlayParry(false, .25f);
+                Assert.That((float)windowUntil.GetValue(motion), Is.EqualTo(firstWindow));
+                Assert.That((float)successUntil.GetValue(motion), Is.Zero, "Beginning a window has no success flash.");
+                motion.PlayParry(true, .25f);
+                float firstFlash = (float)successUntil.GetValue(motion) - .05f;
+                successUntil.SetValue(motion, firstFlash);
+                motion.PlayParry(true, .25f);
+                Assert.That((float)successUntil.GetValue(motion), Is.EqualTo(firstFlash));
+                Assert.That((float)windowUntil.GetValue(motion), Is.Zero);
+                Assert.That((float)hitUntil.GetValue(motion), Is.Zero, "A parry event does not invent an HP hit.");
+                motion.PlayHit();
+                float realHit = (float)hitUntil.GetValue(motion);
+                motion.PlayParry(true, .25f);
+                Assert.That((float)hitUntil.GetValue(motion), Is.EqualTo(realHit), "A real second hit in the same tick remains visible.");
+                Assert.That((float)attackUntil.GetValue(motion), Is.EqualTo(attackDeadline));
+                motion.ClearParry();
+                Assert.That((float)successUntil.GetValue(motion), Is.Zero);
+                Assert.That((float)attackUntil.GetValue(motion), Is.EqualTo(attackDeadline));
+            }
+            finally { Object.DestroyImmediate(actor); }
+        }
+
+        [Test]
+        public void HitReactionUsesCurrentFacingAndRecoversWithoutChangingAuthorityOrAttackTime()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Client/Art/Actors/ObservedPlayer.prefab");
+            Assert.That(prefab, Is.Not.Null);
+            var actor = Object.Instantiate(prefab);
+            try
+            {
+                var motion = actor.AddComponent<ActorMotion>();
+                motion.Configure();
+                motion.PlayAttack(37.5f, false, 2, 1f);
+                var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+                var visual = (Transform)typeof(ActorMotion).GetField("visual", flags).GetValue(motion);
+                var hitUntil = typeof(ActorMotion).GetField("hitUntil", flags);
+                var lateUpdate = typeof(ActorMotion).GetMethod("LateUpdate", flags);
+                float attackUntil = (float)typeof(ActorMotion).GetField("attackUntil", flags).GetValue(motion);
+                Vector3 rest = visual.localPosition;
+                Vector3 authority = actor.transform.position;
+                Quaternion rotation = actor.transform.rotation;
+                motion.PlayHit();
+                hitUntil.SetValue(motion, Time.unscaledTime + .28f * .82f);
+                lateUpdate.Invoke(motion, null);
+                Vector3 recoil = Vector3.ProjectOnPlane(visual.localPosition - rest, Vector3.up);
+                Assert.That(recoil.magnitude, Is.GreaterThan(.04f));
+                Vector3 expectedRecoil = Quaternion.Euler(0, 217.5f, 0) * Vector3.forward;
+                Assert.That(Vector3.Dot(recoil.normalized, expectedRecoil), Is.GreaterThan(.999f));
+                hitUntil.SetValue(motion, Time.unscaledTime + .28f * .35f);
+                lateUpdate.Invoke(motion, null);
+                Assert.That(Vector3.ProjectOnPlane(visual.localPosition - rest, Vector3.up).magnitude, Is.LessThan(recoil.magnitude));
+                hitUntil.SetValue(motion, Time.unscaledTime - .01f);
+                lateUpdate.Invoke(motion, null);
+                Assert.That(visual.localPosition, Is.EqualTo(rest));
+                Assert.That(actor.transform.position, Is.EqualTo(authority));
+                Assert.That(actor.transform.rotation, Is.EqualTo(rotation));
+                Assert.That((float)typeof(ActorMotion).GetField("attackUntil", flags).GetValue(motion), Is.EqualTo(attackUntil));
+            }
+            finally { Object.DestroyImmediate(actor); }
+        }
+
+        [Test]
         public void AcceptedFreeAimKeepsItsFacingWhileMovementIntentAndCorrectionContinue()
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Client/Art/Actors/ObservedPlayer.prefab");

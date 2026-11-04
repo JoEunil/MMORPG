@@ -364,6 +364,7 @@ namespace Mmorpg.Client.Tests
             public void Log(string message) { }
             public void Profiles(uint[] profileIds) { }
             public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
+            public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
             public void RequestInventory() { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { }
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }

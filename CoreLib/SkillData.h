@@ -4,6 +4,11 @@
 #include <vector>
 
 namespace Data {
+    inline constexpr uint32_t parryWindowTicks = 5;
+    inline constexpr uint32_t parryCooldownTicks = 30;
+    inline constexpr uint32_t parryCharges = 1;
+    inline constexpr uint8_t parrySkillSlot = 254;
+    inline constexpr uint32_t parrySkillID = UINT32_MAX;
     enum class SkillRangeType : uint8_t {
         None,       
         Circle,         // 원형

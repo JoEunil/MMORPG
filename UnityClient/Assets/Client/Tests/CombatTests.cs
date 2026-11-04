@@ -24,6 +24,43 @@ namespace Mmorpg.Client.Tests
     public sealed class CombatTests
     {
         [Test]
+        public void ParryRepliesOnlyUpdateHudAndTravelKeepsConfirmedCooldownWhileUnknownNeverRetries()
+        {
+            using (var fixture = new CombatFixture())
+            {
+                var content = (ServerContent)Get(fixture.Combat, "serverContent");
+                content.parry = new ServerContent.Parry { windowTicks = 5, cooldownTicks = 30, charges = 1 };
+                Set(fixture.Combat, "parryPending", true);
+                Invoke(fixture.Combat, "ParryReceived", (byte)1, 0U, 20U);
+                float deadline = (float)Get(fixture.Combat, "parryCooldownDeadline");
+                Assert.That(deadline - Time.unscaledTime, Is.InRange(.99f, 1.01f));
+                Assert.That((bool)Get(fixture.Combat, "parryPending"), Is.False);
+                Assert.That(((UnityEngine.UI.Button)Get(fixture.Combat, "parryButton")).interactable, Is.False);
+                Assert.That(((TMP_Text)Get(fixture.Combat, "parryCooldownText")).text, Is.Not.Empty);
+                Assert.That((float)Get(fixture.World.ActorMotion, "parryUntil"), Is.Zero,
+                    "A late accepted reply never starts a pose or a defensive window.");
+                Invoke(fixture.Combat, "ParryReceived", (byte)1, 5U, 30U);
+                Assert.That((float)Get(fixture.Combat, "parryCooldownDeadline"), Is.EqualTo(deadline), "A duplicate reply has no HUD side effects.");
+                Set(fixture.Combat, "parryPending", true);
+                Invoke(fixture.Combat, "ParryTransitionStarted", 2UL, (ushort)2);
+                Assert.That((bool)Get(fixture.Combat, "parryPending"), Is.False);
+                Assert.That((float)Get(fixture.Combat, "parryCooldownDeadline"), Is.EqualTo(deadline));
+                Set(fixture.Combat, "parryPending", true);
+                Invoke(fixture.Combat, "ParryReceived", Packet.PARRY_TIMEOUT_STATUS, 0U, 0U);
+                Assert.That((bool)Get(fixture.Combat, "parryUnknown"), Is.True);
+                Assert.That((float)Get(fixture.Combat, "parryCooldownDeadline"), Is.EqualTo(deadline));
+                Invoke(fixture.Combat, "UpdateParryHud");
+                Assert.That(((TMP_Text)Get(fixture.Combat, "parryCooldownText")).text, Is.EqualTo("?"));
+                Set(fixture.Combat, "parryPending", true);
+                Invoke(fixture.Combat, "ParryReceived", (byte)6, 0U, 0U);
+                Assert.That((bool)Get(fixture.Combat, "parryUnknown"), Is.False, "Unavailable is a confirmed refusal, not a missing reply.");
+                Invoke(fixture.Combat, "ParryConnectionFailed", "closed");
+                Assert.That((bool)Get(fixture.Combat, "parryUnknown"), Is.False);
+                Assert.That((float)Get(fixture.Combat, "parryCooldownDeadline"), Is.Zero);
+            }
+        }
+
+        [Test]
         public void PointerProjectionUsesCharacterHeightAndFreeAimIsFrozenInTheActionSnapshot()
         {
             var cameraObject = new GameObject("aim projection camera", typeof(Camera));
@@ -808,6 +845,7 @@ namespace Mmorpg.Client.Tests
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
+            public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
             public void RequestInventory() { } public void Profiles(uint[] profileIds) { }
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
             public void RequestWallet(uint requestID) { }

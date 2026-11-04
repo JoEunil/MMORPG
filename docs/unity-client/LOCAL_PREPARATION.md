@@ -68,3 +68,7 @@ Unity CLI beta.16의 Windows 독립 빌드와 MainServer 빌드 성공. 현재 r
 UnityAPI로PlayerSettings.fullScreenMode=Windowed/defaultIsNativeResolution=false/1280×720/resizableWindow=true,48px GameCursor.png/hotspot(5,4)/readable Cursor importer를설정하고정본ProjectSettings와.meta에보존했다. 에디터가닫혀있어CLIheadlessPipeline명령으로설정했으며제품코드의매프레임커서매니저는추가하지않았다. 밝은면/어두운외곽선으로바탕대비를높인직접제작도형이고원본SVG를함께보존한다.
 
 빌드·설정근거 Builds/ClientGrowthHUD/verification/windowed-cursor. 포인터는하드웨어커서라게임화면캡처에포함되지않을수있다. 현재단계에서실제OS커서조작감평가나새로그인검사를반복하지않았다. 최종패링묶음의입력검증과구분한다.
+
+## 패링 묶음 실행 — 최신
+
+바탕화면BAT의현재대상은ROOT/UnityClient/Builds/LocalGame/Parry/Player/MMORPG.exe와동일폴더의Server/Login이다. 창모드인자와커서는유지한다. 새Windows빌드·서버해시·Launcher check를확인했으며사용자입력보류때문에이번묶음을기동/로그인하지않았다. 이전BAT시작/종료검증을패링실전검증으로재사용하지않는다.

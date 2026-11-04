@@ -217,6 +217,7 @@ namespace Mmorpg.Client.Tests
             public void RequestBazaarMyList(uint requestID) { }
             public ulong ItemUseID, ItemUseEpoch;
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { }
+            public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
             public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { ItemUseID = requestID; ItemUseEpoch = ownershipEpoch; }
             public void RequestInventory() => Requests++;
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }

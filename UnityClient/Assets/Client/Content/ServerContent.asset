@@ -315,6 +315,10 @@ MonoBehaviour:
     - level: 100
       requiredTotalExp: 247500
       maxHpIncrease: 500
+  parry:
+    windowTicks: 5
+    cooldownTicks: 30
+    charges: 1
   ring:
     skillID: 1
     flags: 2

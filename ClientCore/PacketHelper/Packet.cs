@@ -63,6 +63,8 @@ namespace ClientCore.PacketHelper
         ITEM_USE = 45,
         ITEM_USE_RES = 46,
         ITEM_REWARD = 47,
+        PARRY = 48,
+        PARRY_RES = 49,
     }
     
     public enum ZONE_CHANGE : byte
@@ -407,6 +409,9 @@ namespace ClientCore.PacketHelper
     }
     public class Packet
     {
+        public const byte PARRY_SKILL_SLOT = 254;
+        public const uint PARRY_SKILL_ID = uint.MaxValue;
+        public const byte PARRY_TIMEOUT_STATUS = byte.MaxValue; // Local callback only; never accepted from the wire.
         private static readonly UTF8Encoding StrictUtf8 = new UTF8Encoding(false, true);
         
         private static T ByteArrayToStructure<T>(byte[] bytes) where T : struct
@@ -705,6 +710,33 @@ namespace ClientCore.PacketHelper
             byte status = buffer[12];
             if (requestID == 0 || status > 5) throw new ArgumentException("Invalid bazaar registration result.");
             return (requestID, status);
+        }
+
+        internal static byte[] SerializeParryRequest(ulong requestID, ulong ownershipEpoch)
+        {
+            if (requestID == 0 || ownershipEpoch == 0) throw new ArgumentException("Invalid parry request.");
+            var result = new byte[24];
+            BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
+            BitConverter.GetBytes(24U).CopyTo(result, 2);
+            result[6] = (byte)OP_CODE.PARRY;
+            result[7] = FLAG_SIMULATION;
+            BitConverter.GetBytes(requestID).CopyTo(result, 8);
+            BitConverter.GetBytes(ownershipEpoch).CopyTo(result, 16);
+            return result;
+        }
+
+        internal static (ulong requestID, ulong ownershipEpoch, byte status, uint windowRemainingTicks, uint cooldownRemainingTicks)
+            DeserializeParry(PacketHeader header, byte[] buffer)
+        {
+            if (buffer == null || buffer.Length != 33 || header.magic != MAGIC || header.length != 33 ||
+                header.opcode != (byte)OP_CODE.PARRY_RES || header.flags != FLAG_SIMULATION)
+                throw new ArgumentException("Invalid parry response.");
+            ulong requestID = BitConverter.ToUInt64(buffer, 8), epoch = BitConverter.ToUInt64(buffer, 16);
+            byte status = buffer[24];
+            uint window = BitConverter.ToUInt32(buffer, 25), cooldown = BitConverter.ToUInt32(buffer, 29);
+            if (requestID == 0 || epoch == 0 || status > 6 || window > cooldown || (status != 1 && status != 2 && (window != 0 || cooldown != 0)))
+                throw new ArgumentException("Invalid parry result.");
+            return (requestID, epoch, status, window, cooldown);
         }
 
         internal static byte[] SerializeItemUseRequest(ulong requestID, ulong ownershipEpoch, uint itemID)

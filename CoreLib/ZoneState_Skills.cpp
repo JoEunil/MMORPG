@@ -8,7 +8,10 @@ namespace Core {
 		std::lock_guard<std::mutex> lock(m_mutex);
 		for (auto& character : m_chars) 
 		{
-			if (character.potionCooldownTicks != 0) --character.potionCooldownTicks;
+			if (character.hp <= 0) character.parryWindowTicks = 0;
+            else if (character.parryWindowTicks != 0) --character.parryWindowTicks;
+            if (character.parryCooldownTicks != 0) --character.parryCooldownTicks;
+            if (character.potionCooldownTicks != 0) --character.potionCooldownTicks;
 			for (int i = 0; i < character.skillSlotCnt; i++) {
 				if (character.skillSlot[i].skillCoolDownTick != 0)
 					character.skillSlot[i].skillCoolDownTick--;
@@ -150,16 +153,26 @@ namespace Core {
 						continue;
 					auto& character = m_chars[it->second];
 
-					if (phase.range.InRange(skill.dir, skill.x, skill.y, character.x, character.y))
+					if (character.hp > 0 && phase.range.InRange(skill.dir, skill.x, skill.y, character.x, character.y))
 					{
 						auto damage = caster.data->attack * phase.attack;
 						if (skillData.flags & 0x01) {
 							// critical 적용..
 							damage *= 2;
 						}
-						character.hp -= damage;
-						if (character.hp <= 0)
-							character.hp = 0;
+						if (damage > 0 && character.parryWindowTicks != 0) {
+                            character.parryWindowTicks = 0;
+                            m_cells[character.cellY][character.cellX].actionResults.push_back({0, character.zoneInternalID, 0,
+                                Data::parrySkillSlot, character.dir, character.x, character.y, Data::parrySkillID, 1,
+                                character.dir == 0 ? 0.0f : character.dir == 1 ? 180.0f : character.dir == 2 ? 270.0f : 90.0f});
+                            if (!AOE) return; // This attack was consumed, including across adjacent AOI cells.
+                            continue;
+                        }
+                        character.hp -= damage;
+						if (character.hp <= 0) {
+                            character.hp = 0;
+                            character.parryWindowTicks = 0;
+                        }
 						else
 							caster.aggroTick = 0; // 공격시에도 어그로 틱 초기화.
 						character.dirtyBit |= 0x01; // hp

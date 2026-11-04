@@ -8,6 +8,7 @@ namespace Mmorpg.Client
     [UnityEngine.Scripting.APIUpdating.MovedFrom(true, sourceNamespace: "C02", sourceAssembly: "C02.Runtime", sourceClassName: "C19ActorMotion")]
     public sealed class ActorMotion : MonoBehaviour
     {
+        private const float HitDurationSeconds = .28f;
         private Transform visual;
         private Vector3 restPosition;
         private Quaternion restRotation;
@@ -35,6 +36,12 @@ namespace Mmorpg.Client
         private float phaseTransitionStarted;
         private float phaseTransitionUntil;
         private float hitUntil;
+        private float parryUntil;
+        private float parrySuccessUntil;
+        private bool parrySucceeded;
+        private readonly List<MeshRenderer> shieldRenderers = new List<MeshRenderer>();
+        private MaterialPropertyBlock shieldTint;
+        private bool shieldTinted;
         private bool downed;
         private float defeatStarted = -1f;
         private Quaternion defeatStartRotation;
@@ -89,6 +96,9 @@ namespace Mmorpg.Client
             }
             if (guardMotion)
             {
+                shieldTint = new MaterialPropertyBlock();
+                foreach (var renderer in visual.GetComponentsInChildren<MeshRenderer>())
+                    if (renderer.name.Contains("Shield")) shieldRenderers.Add(renderer);
                 upperBody = new GameObject("UpperBody").transform;
                 upperBody.SetParent(visual, false);
                 upperBody.localPosition = new Vector3(0f, 1.025f, 0f);
@@ -194,7 +204,38 @@ namespace Mmorpg.Client
         // Call on an observed HP decrease, never on the first health snapshot.
         public void PlayHit()
         {
-            if (visual != null && !downed && defeatStarted < 0) hitUntil = Time.unscaledTime + .2f;
+            if (visual != null && !downed && defeatStarted < 0) hitUntil = Time.unscaledTime + HitDurationSeconds;
+        }
+
+        // Broadcast presentation only. Neither this pose nor a late acknowledgement grants protection.
+        public void PlayParry(bool success, float windowSeconds)
+        {
+            if (visual == null || downed || defeatStarted >= 0 || float.IsNaN(windowSeconds) ||
+                float.IsInfinity(windowSeconds) || windowSeconds <= 0) return;
+            float now = Time.unscaledTime;
+            if (success)
+            {
+                if (parrySucceeded) return;
+                parrySucceeded = true;
+                parryUntil = 0;
+                parrySuccessUntil = now + .22f;
+            }
+            else
+            {
+                if (now < parryUntil || now < parrySuccessUntil) return;
+                parrySucceeded = false;
+                parryUntil = now + windowSeconds;
+            }
+        }
+
+        public void ClearParry()
+        {
+            parryUntil = parrySuccessUntil = 0;
+            parrySucceeded = false;
+            if (!shieldTinted) return;
+            foreach (var renderer in shieldRenderers)
+                if (renderer != null) renderer.SetPropertyBlock(null);
+            shieldTinted = false;
         }
 
         // A player stays observed at zero HP; retain this pose until authoritative recovery.
@@ -219,6 +260,7 @@ namespace Mmorpg.Client
         // Only the removed monster's mesh parts remain for this brief presentation.
         public bool PlayDefeat()
         {
+            ClearParry();
             if (visual == null) return false;
             if (defeatStarted >= 0) return true;
             defeatStarted = Time.unscaledTime;
@@ -407,6 +449,13 @@ namespace Mmorpg.Client
                     }
                 }
             }
+            float hitTime = 1f - (hitUntil - now) / HitDurationSeconds;
+            float hit = hitUntil > now ? hitTime < .18f
+                ? Mathf.SmoothStep(0, 1, hitTime / .18f)
+                : 1f - Mathf.SmoothStep(0, 1, (hitTime - .18f) / .82f) : 0;
+            float parry = Mathf.Clamp01((parryUntil - now) / .08f);
+            float parryFlash = Mathf.Clamp01((parrySuccessUntil - now) / .22f);
+            float shieldPose = Mathf.Max(parry, parryFlash);
             float poseResponse = Mathf.Clamp01(dt * 20f);
             for (int side = 0; side < 2; side++)
             {
@@ -422,14 +471,16 @@ namespace Mmorpg.Client
                     armPose = side == 1 ? swordPose : supportArmPose + new Vector3(-18f, 0f, -10f) * Mathf.Sin(attack * Mathf.PI);
                 else
                     armPose = new Vector3(-swing * sign * 10f, 0f, 0f);
+                armPose += (side == 0 ? new Vector3(-35f, -8f, -14f) : new Vector3(12f, 10f, 5f)) * hit;
+                armPose += (side == 0 ? new Vector3(-70f, -25f, -15f) : new Vector3(-12f, 0, 8f)) * shieldPose;
                 Quaternion targetArm = Quaternion.Euler(armPose);
                 if (phaseTransition) targetArm = Quaternion.Slerp(phaseStartArms[side], targetArm, phaseBlend);
                 if (arms[side] != null) arms[side].localRotation = Quaternion.Slerp(arms[side].localRotation, targetArm, poseResponse);
             }
-            float hit = hitUntil > now ? Mathf.Sin((hitUntil - now) / .2f * Mathf.PI) : 0;
             float bob = (1f - Mathf.Cos(stride * 2f)) * .004f * height * walking;
-            visual.localPosition = restPosition + new Vector3(0, bob, hit * height * .025f);
             Quaternion localFacing = hasFacing ? Quaternion.Inverse(visual.parent.rotation) * facing : restRotation;
+            visual.localPosition = restPosition + Vector3.up * bob +
+                localFacing * new Vector3(0, -hit * height * .02f, hit * height * .065f);
             bool directSpin = false;
             if (guardMotion && released && attackSlot == 1)
             {
@@ -447,7 +498,7 @@ namespace Mmorpg.Client
                 }
             }
             Quaternion targetVisualRotation = guardMotion ? localFacing :
-                localFacing * Quaternion.Euler(hit * -10f + walking * 3f, torsoTurn, swing * .65f) *
+                localFacing * Quaternion.Euler(hit * -18f + walking * 3f, torsoTurn, swing * .65f) *
                 Quaternion.AngleAxis(bodySpin, Vector3.up);
             if (phaseTransition) targetVisualRotation = Quaternion.Slerp(phaseStartVisualRotation, targetVisualRotation, phaseBlend);
             if (directSpin)
@@ -456,14 +507,36 @@ namespace Mmorpg.Client
                 visual.localRotation = Quaternion.Slerp(visual.localRotation, targetVisualRotation, Mathf.Clamp01(dt * 18f));
             if (upperBody != null)
             {
-                Quaternion upperPose = Quaternion.Euler(torsoPitch + hit * -10f + walking * 3f, torsoTurn, swing * .65f);
+                Quaternion upperPose = Quaternion.Euler(torsoPitch - hit * 18f - shieldPose * 8f + walking * 3f,
+                    torsoTurn + hit * 6f + shieldPose * 10f, swing * .65f - hit * 5f - shieldPose * 6f);
                 if (phaseTransition) upperPose = Quaternion.Slerp(phaseStartUpperBodyRotation, upperPose, phaseBlend);
                 upperBody.localRotation = Quaternion.Slerp(upperBody.localRotation, upperPose, poseResponse);
+            }
+            if (parryFlash > 0 && shieldRenderers.Count > 0)
+            {
+                foreach (var renderer in shieldRenderers)
+                {
+                    if (renderer == null || renderer.sharedMaterial == null) continue;
+                    Color original = renderer.sharedMaterial.HasProperty("_BaseColor")
+                        ? renderer.sharedMaterial.GetColor("_BaseColor") : renderer.sharedMaterial.color;
+                    Color flash = Color.Lerp(original, new Color(1.8f, 1.6f, .7f), parryFlash);
+                    shieldTint.SetColor("_BaseColor", flash);
+                    shieldTint.SetColor("_Color", flash);
+                    renderer.SetPropertyBlock(shieldTint);
+                }
+                shieldTinted = true;
+            }
+            else if (shieldTinted)
+            {
+                foreach (var renderer in shieldRenderers)
+                    if (renderer != null) renderer.SetPropertyBlock(null);
+                shieldTinted = false;
             }
         }
 
         public void ResetPose()
         {
+            ClearParry();
             previousPosition = transform.position;
             walking = stride = attackStarted = attackUntil = hitUntil = 0;
             downed = false;

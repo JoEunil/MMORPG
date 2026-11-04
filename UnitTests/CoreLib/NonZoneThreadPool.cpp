@@ -2082,4 +2082,55 @@ namespace Core {
         SetInventory(nullptr);
     }
 
+
+    TEST_F(NonZoneThreadPoolFixture, ParryRequestsAreCorrelatedAndTransfersClearOnlyWindow) {
+        PrepareZones();
+        ASSERT_TRUE(LoadTransitionCharacter());
+        ZoneChangeResult entry;
+        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, entry));
+        const ParryRequestBody first{1, entry.ownershipEpoch};
+        auto accepted = state->Parry(42, 1, first);
+        EXPECT_EQ(accepted.status, static_cast<uint8_t>(ParryStatus::Accepted));
+        EXPECT_EQ(accepted.windowRemainingTicks, 5u);
+        EXPECT_EQ(accepted.cooldownRemainingTicks, 30u);
+        auto response = writer.WriteParryResponse(accepted);
+        ASSERT_NE(response, nullptr);
+        EXPECT_EQ(response->GetLength(), 33u);
+        EXPECT_EQ(parseHeader(response->GetBuffer())->opcode, OP::PARRY_RES);
+        EXPECT_EQ(parseHeader(response->GetBuffer())->flags, FLAG_SIMULATION);
+        state->GetZone(1)->SkillCoolDown();
+        auto duplicate = state->Parry(42, 1, first);
+        EXPECT_EQ(duplicate.status, accepted.status);
+        EXPECT_EQ(duplicate.windowRemainingTicks, 4u);
+        EXPECT_EQ(duplicate.cooldownRemainingTicks, 29u);
+        auto cooldown = state->Parry(42, 1, {2, entry.ownershipEpoch});
+        EXPECT_EQ(cooldown.status, static_cast<uint8_t>(ParryStatus::Cooldown));
+        EXPECT_EQ(state->Parry(42, 1, first).status, static_cast<uint8_t>(ParryStatus::StaleRequest));
+        for (int i = 0; i < 29; ++i) state->GetZone(1)->SkillCoolDown();
+        duplicate = state->Parry(42, 1, {2, entry.ownershipEpoch});
+        EXPECT_EQ(duplicate.status, static_cast<uint8_t>(ParryStatus::Cooldown));
+        EXPECT_EQ(duplicate.cooldownRemainingTicks, 0u);
+        EXPECT_EQ(CharacterIn(1).parryWindowTicks, 0u);
+        ASSERT_EQ(state->Parry(42, 1, {3, entry.ownershipEpoch}).status, static_cast<uint8_t>(ParryStatus::Accepted));
+        SetMoveBudget(1, 10.0f);
+        ZoneChangeResult transfer;
+        ASSERT_TRUE(state->ProcessAction(42, 1, {0, 205.0f, 100.0f, 255, entry.ownershipEpoch, 0}, transfer));
+        ASSERT_EQ(transfer.zoneID, 2u);
+        EXPECT_EQ(CharacterIn(2).parryWindowTicks, 0u);
+        EXPECT_EQ(CharacterIn(2).parryCooldownTicks, 30u);
+        auto stale = state->Parry(42, 1, {4, entry.ownershipEpoch});
+        EXPECT_EQ(stale.status, static_cast<uint8_t>(ParryStatus::StaleOwnership));
+        EXPECT_EQ(stale.windowRemainingTicks, 0u);
+        EXPECT_EQ(stale.cooldownRemainingTicks, 0u);
+        EXPECT_EQ(state->Parry(42, 2, {4, transfer.ownershipEpoch}).status, static_cast<uint8_t>(ParryStatus::Cooldown));
+        UpdateCharacter(2, 42, [](CharacterState& player) { player.hp = 0; player.maxHp = player.maxMp = 100; player.parryWindowTicks = 0; });
+        auto dead = state->Parry(42, 2, {5, transfer.ownershipEpoch});
+        EXPECT_EQ(dead.status, static_cast<uint8_t>(ParryStatus::Dead));
+        EXPECT_EQ(dead.windowRemainingTicks, 0u);
+        EXPECT_EQ(dead.cooldownRemainingTicks, 0u);
+        ZoneChangeResult town;
+        ASSERT_TRUE(state->RespawnToTown(42, {transfer.ownershipEpoch}, town));
+        EXPECT_EQ(CharacterIn(1).parryWindowTicks, 0u);
+        EXPECT_EQ(CharacterIn(1).parryCooldownTicks, 30u);
+    }
 }
