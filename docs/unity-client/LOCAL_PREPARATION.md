@@ -44,3 +44,9 @@
 ## 검증 포트 지정
 
 Windows 예약 범위가9999를 포함하면 예약·방화벽 설정을 자동 변경하지 않는다. TCP서버와 Login 앱 양쪽에 같은 `MMORPG_GAME_PORT`를 명시할 수 있다. 미설정 기본값9999는 유지하고 빈 값·숫자가 아닌 값·1~65535 밖은 거부한다. 로그인 응답이 실제 포트를 전달하므로 Unity 주소를 임의 우회하지 않는다. 2026-10-29에는 예약9923~10022를 확인해10099를 사용했다. 다음 실행에서는 실제 예약·사용 상태를 다시 확인한다.
+
+## test1 자동 로그인
+
+2026-11-04 사용자 요청으로 test1은 로컬 보호 정보를 재사용한다. 실제 Windows 사용자의 LocalApplicationData/UnityCoordinator/test1-credential.xml은 DPAPI 보호 파일이다. Git에 복사하거나 내용을 출력하지 않는다. sandbox LOCALAPPDATA로 경로를 추정하지 않는다.
+
+현 도우미: ROOT/UnityClient/Builds/ClientGrowthHUD/verification/netlib65/live/protected-login.cs와 read-protected-login.ps1. 정상 로그인 UI에 입력하며 비밀번호를 명령 인자·파일·로그에 풀어 저장하지 않는다. 도우미 로드는 확인됐지만 자동 인증 성공은 미검증이다. 입력 허용과 대상 창을 확인한 뒤 사용하고 정책 거절을 우회하지 않는다.
