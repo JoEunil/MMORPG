@@ -5,6 +5,9 @@
 #include <atomic>
 #include <conio.h>
 #include <array>
+#include <cstdlib>
+#include <filesystem>
+#include <memory>
 
 #include "OverlappedExPool.h"
 #include "NetHandler.h"
@@ -98,6 +101,10 @@ namespace Net {
         }
 
         void WaitCloseSignal() {
+            char* stopPath = nullptr;
+            size_t stopLength = 0;
+            _dupenv_s(&stopPath, &stopLength, "MMORPG_STOP_FILE");
+            std::unique_ptr<char, decltype(&std::free)> stopFile(stopPath, &std::free);
             std::unique_lock<std::mutex> lock(mutex);
             while (true) {
                 if (fatalError.load(std::memory_order_relaxed)) {
@@ -110,6 +117,14 @@ namespace Net {
                     char ch = _getch();
                     if (ch == 'q' || ch == 'Q') {
                         Core::sysLogger->LogWarn("signal", "Close signal received");
+                        break;
+                    }
+                }
+                // Optional local launcher signal; normal console q remains available.
+                if (stopFile && *stopFile != '\0') {
+                    std::error_code error;
+                    if (std::filesystem::exists(stopFile.get(), error)) {
+                        Core::sysLogger->LogWarn("signal", "Local launcher close signal received");
                         break;
                     }
                 }
