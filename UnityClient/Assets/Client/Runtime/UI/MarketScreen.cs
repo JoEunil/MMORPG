@@ -68,6 +68,7 @@ namespace Mmorpg.Client
         private ushort page;
         private float requestDeadline;
         private bool requestPending;
+        private bool transactionResultAvailable;
         private enum WriteRequest { None, Claim, Buy, CheckOutbox, CancelListing, Register }
         private WriteRequest writeRequest;
         private BazaarListingView selectedListing;
@@ -150,6 +151,7 @@ namespace Mmorpg.Client
             if (!requestPending || Time.unscaledTime < requestDeadline) return;
             WriteRequest previousWrite = writeRequest;
             CancelPending();
+            transactionResultAvailable = previousWrite != WriteRequest.None;
             if (previousWrite == WriteRequest.Register || previousWrite == WriteRequest.Buy || previousWrite == WriteRequest.Claim) RefreshWallet();
             if (previousWrite == WriteRequest.None) ClearRows();
             statusText.text = previousWrite == WriteRequest.Register ? "Sale result unknown. Check My listings and your bag before trying again; no automatic retry."
@@ -235,11 +237,12 @@ namespace Mmorpg.Client
             if (bazaarPanel.activeSelf) { ClosePanel(); return; }
             worldScreen.StopActions();
             if (inventoryScreen != null) inventoryScreen.ClosePanel();
-            if (requestPending && writeRequest != WriteRequest.None)
+            if (transactionResultAvailable || (requestPending && writeRequest != WriteRequest.None))
             {
                 bazaarPanel.SetActive(true);
                 if (inventoryScreen != null) inventoryScreen.RefreshShortcutControls();
                 bazaarPanel.transform.SetAsLastSibling();
+                if (transactionResultAvailable) RefreshWallet();
                 UpdateControls();
                 return;
             }
@@ -284,6 +287,7 @@ namespace Mmorpg.Client
                 if (!bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model || requestPending)
                     return;
                 worldScreen.StopActions();
+                transactionResultAvailable = false;
                 ClearRows();
                 requestPending = true;
                 requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
@@ -321,6 +325,7 @@ namespace Mmorpg.Client
                 return;
             if (itemType < 1 || itemType > 3) return;
             worldScreen.StopActions();
+            transactionResultAvailable = false;
             ClearRows();
             requestPending = true;
             requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
@@ -353,8 +358,9 @@ namespace Mmorpg.Client
         {
             bazaarPanel.SetActive(false);
             if (inventoryScreen != null) inventoryScreen.RefreshShortcutControls();
+            // Closing is not acknowledgement of final feedback.
             // A closed panel must still observe item delivery and balance-changing writes.
-            if (requestPending && writeRequest != WriteRequest.None) return;
+            if (transactionResultAvailable || (requestPending && writeRequest != WriteRequest.None)) return;
             CancelPending();
             if (view == MarketView.MyListings) view = MarketView.Browse;
             ClearResults();
@@ -514,6 +520,7 @@ namespace Mmorpg.Client
             if (view != MarketView.MyListings || !IsOpen || !WorldAvailable || model == null || loginScreen.Model != model ||
                 requestPending || selectedListing.ListingID == 0 || selectedListing.Status != 0 ||
                 cancelOutcomes.ContainsKey(selectedListing.ListingID)) return;
+            transactionResultAvailable = false;
             if (!cancelConfirmation)
             {
                 cancelConfirmation = true;
@@ -533,6 +540,7 @@ namespace Mmorpg.Client
             catch (Exception)
             {
                 CancelPending();
+                transactionResultAvailable = true;
                 statusText.text = "Cancellation result unknown. Refresh my listings and receive items; no automatic retry.";
                 UpdateControls();
             }
@@ -546,12 +554,15 @@ namespace Mmorpg.Client
             writeRequest = WriteRequest.None;
             if (status == 0) cancelOutcomes.Remove(listingID);
             else cancelOutcomes[listingID] = status == 1 ? (byte)1 : (byte)5;
+            if (status == 1 && selectedRowButton != null)
+                selectedRowButton.transform.Find("State").GetComponent<TMP_Text>().text = "Cancelled";
             // The existing server can attempt return delivery before replying, even if the result is unknown.
             if (status != 0 && inventoryScreen != null)
             {
                 if (status != 1) inventoryScreen.RequireFreshInventoryOnOpen();
                 inventoryScreen.RefreshAfterDelivery();
             }
+            transactionResultAvailable = true;
             statusText.text = status == 1 ? "Sale cancelled. Receive items, then check your bag. The listing fee is not refunded."
                 : status == 0 ? "Sale could not be cancelled. Refresh my listings to check its current state."
                 : "Cancellation result unknown. Refresh my listings and receive items; no automatic retry.";
@@ -564,6 +575,7 @@ namespace Mmorpg.Client
             if (view == MarketView.MyListings || !IsOpen || !WorldAvailable || model == null || loginScreen.Model != model ||
                 requestPending || selectedListing.ListingID == 0 || selectedListing.Status != 0 ||
                 buyOutcomes.ContainsKey(selectedListing.ListingID)) return;
+            transactionResultAvailable = false;
             if (!buyConfirmation)
             {
                 buyConfirmation = true;
@@ -582,6 +594,7 @@ namespace Mmorpg.Client
             catch (Exception)
             {
                 CancelPending();
+                transactionResultAvailable = true;
                 statusText.text = "Purchase result unknown. Reconnect to check; no automatic retry.";
                 UpdateControls();
             }
@@ -596,9 +609,10 @@ namespace Mmorpg.Client
             writeRequest = WriteRequest.None;
             if (status == 1 || status == 5) buyOutcomes[listingID] = status;
             else buyOutcomes.Remove(listingID);
+            transactionResultAvailable = true;
             statusText.text = status == 1 ? "Purchased " + quantity.ToString(CultureInfo.InvariantCulture) + " × " +
                     ItemPresentation.Name(itemID) + " for " + amount.ToString(CultureInfo.InvariantCulture) +
-                    " diamonds. Select Receive purchases, then check your bag."
+                    " diamonds. Select Receive items, then check your bag."
                 : status == 0 ? "This listing is no longer available. No purchase was made."
                 : status == 4 ? "Not enough diamonds. No purchase was made."
                 : status == 3 ? "Purchase failed. No purchase was made; try again later."
@@ -609,18 +623,20 @@ namespace Mmorpg.Client
         private void CheckOutbox()
         {
             if (!IsOpen || !WorldAvailable || model == null || loginScreen.Model != model || requestPending) return;
+            transactionResultAvailable = false;
             buyConfirmation = false;
             cancelConfirmation = false;
             requestPending = true;
             writeRequest = WriteRequest.CheckOutbox;
             requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
-            selectedDetailText.text = "Receiving pending purchases and returned items. Open your bag after receiving to check its contents.";
+            selectedDetailText.text = "Receiving purchases and returns.\nCheck your bag afterward.";
             statusText.text = "Receiving pending items…";
             UpdateControls();
             try { model.RequestBazaarCheckOutbox(); }
             catch (Exception)
             {
                 CancelPending();
+                transactionResultAvailable = true;
                 statusText.text = "Receipt result incomplete; items may have arrived. Check your bag, then retry manually.";
                 UpdateControls();
             }
@@ -633,6 +649,7 @@ namespace Mmorpg.Client
             requestPending = false;
             writeRequest = WriteRequest.None;
             if (inventoryScreen != null) inventoryScreen.RefreshAfterDelivery();
+            transactionResultAvailable = true;
             statusText.text = status == 1 ? "Received " + delivered.ToString(CultureInfo.InvariantCulture) +
                 " · already present " + duplicated.ToString(CultureInfo.InvariantCulture) + " · pending " +
                 blocked.ToString(CultureInfo.InvariantCulture) + ". Check your bag."
@@ -645,6 +662,7 @@ namespace Mmorpg.Client
             if (view != MarketView.MyListings || !IsOpen || !WorldAvailable || model == null || loginScreen.Model != model ||
                 requestPending || selectedListing.ListingID == 0 || selectedListing.Status != 1 ||
                 claimOutcomes.ContainsKey(selectedListing.ListingID) || unresolvedClaims.Contains(selectedListing.ListingID)) return;
+            transactionResultAvailable = false;
             requestPending = true;
             writeRequest = WriteRequest.Claim;
             unresolvedClaims.Add(selectedListing.ListingID);
@@ -655,6 +673,7 @@ namespace Mmorpg.Client
             catch (Exception)
             {
                 CancelPending();
+                transactionResultAvailable = true;
                 statusText.text = "Collection result unknown. Reconnect to check; no automatic retry.";
                 UpdateControls();
             }
@@ -669,6 +688,7 @@ namespace Mmorpg.Client
             writeRequest = WriteRequest.None;
             if (status != 0) unresolvedClaims.Remove(listingID);
             if (status == 1 || status == 4) claimOutcomes[listingID] = status;
+            transactionResultAvailable = true;
             statusText.text = status == 1 ? "Collected " + amount.ToString(CultureInfo.InvariantCulture) + " diamonds."
                 : status == 4 ? "Already collected or no pending proceeds were found."
                 : status == 2 ? "No sold listing owned by you was found."
@@ -744,6 +764,7 @@ namespace Mmorpg.Client
 
         private void ClearResults()
         {
+            transactionResultAvailable = false;
             ClearRows();
             statusText.text = string.Empty;
             pageText.text = "Page " + ((uint)page + 1).ToString(CultureInfo.InvariantCulture);
@@ -927,6 +948,7 @@ namespace Mmorpg.Client
         private void LoadSaleItems()
         {
             if (view != MarketView.Sell || requestPending || !WorldAvailable || model == null || loginScreen.Model != model) return;
+            transactionResultAvailable = false;
             ClearRows();
             saleItem = default;
             requestPending = true;
@@ -1049,6 +1071,7 @@ namespace Mmorpg.Client
         private void RegisterSale()
         {
             if (view != MarketView.Sell || !IsOpen || !WorldAvailable || model == null || loginScreen.Model != model || requestPending || registrationUncertain) return;
+            transactionResultAvailable = false;
             if (!TrySaleValues(out ushort quantity, out ulong price))
             { statusText.text = "Choose a bag item, valid quantity and positive stack total."; return; }
             if (goldKnown && gold < Math.Max(10UL, price / 10UL))
@@ -1062,7 +1085,7 @@ namespace Mmorpg.Client
             statusText.text = "Registering sale…";
             UpdateControls();
             try { model.RequestBazaarRegister(saleItem.Slot, quantity, price); }
-            catch (Exception) { CancelPending(); statusText.text = "Sale outcome unknown. Check My listings and your bag; no automatic retry."; UpdateControls(); }
+            catch (Exception) { CancelPending(); transactionResultAvailable = true; statusText.text = "Sale outcome unknown. Check My listings and your bag; no automatic retry."; UpdateControls(); }
         }
 
         private void RegisterReceived(byte status)
@@ -1075,13 +1098,15 @@ namespace Mmorpg.Client
             RefreshWallet();
             if (inventoryScreen != null) inventoryScreen.RequireFreshInventoryOnOpen();
             if (status == 1 && inventoryScreen != null) inventoryScreen.RefreshAfterDelivery();
+            transactionResultAvailable = true;
             statusText.text = status == 1 ? "Sale listed. Gold fee deducted; diamonds are paid when purchased. Refresh My listings."
                 : status == 2 ? "Not enough items in that bag slot. Refresh your bag."
                 : status == 3 ? "Not enough gold for the listing fee."
                 : status == 4 ? "That item cannot be listed."
                 : status == 0 ? "Sale failed and was rolled back. Refresh your bag before retrying."
                 : "Sale outcome unknown. Check My listings and your bag; no automatic retry.";
-            if (status == 1 && IsOpen) { view = MarketView.MyListings; ClearRows(); RefreshCurrentView(); }
+            // Keep confirmation visible until the player explicitly refreshes My listings.
+            if (status == 1) { view = MarketView.MyListings; ClearRows(); }
             UpdateControls();
         }
 

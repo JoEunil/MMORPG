@@ -339,7 +339,7 @@ namespace Mmorpg.Client.Editor
                 return text;
             }
             var vitals = Label("C05Vitals", 16, new Vector2(14, -10), new Vector2(532, 25));
-            var aim = Label("C05Aim", 12, new Vector2(14, -37), new Vector2(532, 22));
+            var aim = Label("C05Aim", 12, new Vector2(14, -37), new Vector2(208, 22));
             var status = Label("C05Status", 12, new Vector2(14, -115), new Vector2(532, 62));
             var buttons = new UnityEngine.UI.Button[3];
             var labels = new[] { "Z  STRIKE", "X  RING", "C  LINE" };
@@ -374,6 +374,8 @@ namespace Mmorpg.Client.Editor
             refs.FindProperty("aimText").objectReferenceValue = aim;
             refs.FindProperty("combatStatusText").objectReferenceValue = status;
             refs.ApplyModifiedPropertiesWithoutUndo();
+            // Share the growth row: raw Lv/EXP on the left, progress above the existing skill buttons.
+            HudSetup.ConfigureGrowthHud(combat, new Vector2(-24, panel.rect.height - 63));
             combat.enabled = true;
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());

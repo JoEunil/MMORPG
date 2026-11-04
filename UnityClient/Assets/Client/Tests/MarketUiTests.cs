@@ -491,6 +491,7 @@ namespace Mmorpg.Client.Tests
         }
 
         [Test]
+        [Category("CommerceFeedback")]
         public void SellingBagStackShowsFeeAndBlocksRetryAfterUnknownResult()
         {
             using (var fixture = new Fixture())
@@ -528,6 +529,10 @@ namespace Mmorpg.Client.Tests
                 Invoke(fixture.Screen, "Update");
                 Assert.That(fixture.Status.text, Does.Contain("Sale result unknown"));
                 Assert.That(fixture.Register.interactable, Is.False);
+                string unknownResult = fixture.Status.text;
+                fixture.Close.onClick.Invoke();
+                fixture.OpenMarket();
+                Assert.That(fixture.Status.text, Is.EqualTo(unknownResult), "Reopening must not replace an unknown transaction with a bag lookup.");
                 fixture.Register.onClick.Invoke();
                 Assert.That(fixture.Network.RegisterRequests, Is.EqualTo(1), "An unknown result cannot submit the same sale again blindly.");
             }
@@ -536,6 +541,7 @@ namespace Mmorpg.Client.Tests
         [TestCase("register")]
         [TestCase("buy")]
         [TestCase("claim")]
+        [Category("CommerceFeedback")]
         public void ClosedMarketReconcilesBalancesAfterRegisterBuyAndClaim(string operation)
         {
             using (var fixture = new Fixture())
@@ -600,6 +606,58 @@ namespace Mmorpg.Client.Tests
                 Assert.That(fixture.WalletDiamond.text, Is.EqualTo("150"), operation);
                 Assert.That(fixture.Panel.activeSelf, Is.False);
                 Assert.That(fixture.Network.Mutations, Is.EqualTo(1), "Only balance reads may be retried.");
+                string completion = fixture.Status.text;
+                Assert.That(completion, Does.Contain(operation == "register" ? "Sale listed." : operation == "buy" ? "Purchased" : "Collected"));
+                fixture.OpenMarket();
+                Assert.That(fixture.Status.text, Is.EqualTo(completion), "A result received while closed must remain visible when reopened.");
+                fixture.Close.onClick.Invoke();
+                fixture.OpenMarket();
+                Assert.That(fixture.Status.text, Is.EqualTo(completion), "Closing again does not acknowledge a transaction result.");
+                if (operation == "claim")
+                {
+                    fixture.Login.Model.ZoneChange(0);
+                    SetProperty(fixture.World, "Stage", WorldStage.TransitionPending);
+                    RaiseWorldChanged(fixture.World);
+                    Assert.That(fixture.Status.text, Is.Empty, "World departure must clear feedback from the previous ownership context.");
+                    Assert.That(fixture.Panel.activeSelf, Is.False);
+                }
+                else
+                {
+                    fixture.Search.onClick.Invoke();
+                    Assert.That(fixture.Status.text, Is.Not.EqualTo(completion), "An explicit read may replace acknowledged feedback.");
+                }
+                Assert.That(fixture.Network.Mutations, Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        [Category("CommerceFeedback")]
+        public void RegistrationConfirmationWaitsForExplicitListingRefresh()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.ReceiveWallet(fixture.Network.LastWalletRequestID, 1, 100, 1, 200);
+                fixture.OpenMarket();
+                fixture.Receive(true);
+                fixture.SellItems.onClick.Invoke();
+                fixture.ReceiveInventory(new InventoryItem { slot = 7, itemID = 1, quantity = 5 });
+                fixture.Rows.Find("Listing-0").GetComponent<Button>().onClick.Invoke();
+                fixture.Quantity.text = "2";
+                fixture.Price.text = "95";
+                fixture.Register.onClick.Invoke();
+                fixture.Register.onClick.Invoke();
+                uint previousRead = fixture.Network.LastRequestID;
+                ((IViewModelNet)fixture.Login.Model).BazaarRegisterReceived(fixture.Network.LastWriteID, 1);
+                Assert.That(fixture.Status.text, Does.Contain("Sale listed."));
+                Assert.That(fixture.Status.text, Does.Contain("Refresh My listings"));
+                Assert.That(fixture.Network.LastRequestID, Is.EqualTo(previousRead), "Registration must leave its confirmation visible instead of automatically querying listings.");
+                Assert.That(Get<object>(fixture.Screen, "view").ToString(), Is.EqualTo("MyListings"));
+                fixture.Search.onClick.Invoke();
+                Assert.That(fixture.Status.text, Is.EqualTo("Loading my listings…"));
+                Assert.That(fixture.Network.LastRequestID, Is.Not.EqualTo(previousRead));
+                ((IViewModelNet)fixture.Login.Model).BazaarMyListReceived(fixture.Network.LastRequestID, 1, Array.Empty<BazaarListing>());
+                Assert.That(fixture.EmptyState.gameObject.activeSelf, Is.True);
+                Assert.That(fixture.Network.Mutations, Is.EqualTo(1));
             }
         }
 

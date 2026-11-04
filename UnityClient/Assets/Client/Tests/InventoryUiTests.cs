@@ -476,6 +476,55 @@ namespace Mmorpg.Client.Tests
             }
         }
 
+        [Test]
+        [Category("CommerceFeedback")]
+        public void SelectedItemExplainsSupportedUseAndDoesNotKeepAnotherItemsResult()
+        {
+            using (var fixture = new Fixture())
+            {
+                var statusObject = new GameObject("use status", typeof(RectTransform), typeof(TextMeshProUGUI));
+                statusObject.transform.SetParent(fixture.Screen.transform, false);
+                var status = statusObject.GetComponent<TMP_Text>();
+                SetPrivate(fixture.Screen, "useStatus", status);
+                fixture.OpenBag();
+                fixture.Receive(true,
+                    new InventoryItem { itemID = 1, quantity = 3, slot = 0 },
+                    new InventoryItem { itemID = 2, quantity = 1, slot = 1 },
+                    new InventoryItem { itemID = 3, quantity = 1, slot = 2 },
+                    new InventoryItem { itemID = 99, quantity = 1, slot = 3 });
+                fixture.Cards[0].onClick.Invoke();
+                Assert.That(status.text, Does.Contain("Restores HP").And.Contain("full HP").And.Contain("dead"));
+                status.text = "HP potion used.";
+                fixture.Cards[1].onClick.Invoke();
+                Assert.That(status.text, Does.Contain("MP potion use is not supported"));
+                fixture.Cards[2].onClick.Invoke();
+                Assert.That(status.text, Does.Contain("cannot be equipped"));
+                fixture.Cards[3].onClick.Invoke();
+                Assert.That(status.text, Does.Contain("Unknown item").And.Contain("not supported"));
+                SetPrivate(fixture.Screen, "useCooldownDeadline", Time.unscaledTime + 2f);
+                fixture.Cards[0].onClick.Invoke();
+                Assert.That(status.text, Does.Contain("cooldown"));
+                SetPrivate(fixture.Screen, "useCooldownDeadline", 0f);
+                fixture.InvokeScreen("UpdateControls");
+                Assert.That(status.text, Does.Contain("Restores HP"));
+                var useObject = new GameObject("bag use", typeof(RectTransform), typeof(UnityEngine.UI.Button));
+                useObject.transform.SetParent(fixture.Screen.transform, false);
+                var use = useObject.GetComponent<UnityEngine.UI.Button>();
+                SetPrivate(fixture.Screen, "useButton", use);
+                SetPrivate(fixture.Screen, "usePending", true);
+                SetPrivate(fixture.Screen, "useTimedOut", true);
+                SetPrivate(fixture.Screen, "potionNoticeDeadline", Time.unscaledTime + 6f);
+                fixture.Cards[1].onClick.Invoke();
+                fixture.Cards[0].onClick.Invoke();
+                Assert.That(status.text, Does.Contain("result unknown").And.Contain("reconnect"));
+                SetPrivate(fixture.Screen, "potionNoticeDeadline", 0f);
+                fixture.InvokeScreen("UpdateControls");
+                Assert.That(status.text, Does.Contain("result unknown").And.Contain("reconnect"));
+                Assert.That(use.interactable, Is.False, "An expired notice cannot unlock an unresolved use.");
+                Assert.That(fixture.Network.ItemUses, Is.Zero, "Selecting details never sends a use request.");
+            }
+        }
+
         private sealed class Fixture : IDisposable
         {
             private readonly GameObject root;
