@@ -259,6 +259,7 @@ namespace Mmorpg.Client.Editor
             aim.gameObject.SetActive(true);
             Place(aim.rectTransform, new Vector2(1, 0), new Vector2(-24, 74), new Vector2(440, 24));
             aim.fontSize = 16; aim.alignment = TextAlignmentOptions.MidlineRight; aim.raycastTarget = false;
+            HudSetup.ConfigureGrowthHud(world.GetComponent<CombatScreen>());
 
             var wallet = hud.transform.parent.Find("WalletHud") as RectTransform;
             if (wallet != null)

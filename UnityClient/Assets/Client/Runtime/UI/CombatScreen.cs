@@ -28,6 +28,9 @@ namespace Mmorpg.Client
         [SerializeField] private TMP_Text aimText;
         [SerializeField] private UnityEngine.UI.Image hpFill;
         [SerializeField] private UnityEngine.UI.Image mpFill;
+        [SerializeField] private GameObject growthProgress;
+        [SerializeField] private UnityEngine.UI.Image expFill;
+        [SerializeField] private TMP_Text nextLevelText;
         private IViewModelUI model;
         private Action<ushort, ActionResultField[]> actionResults;
         private GameObject releaseEffectRoot;
@@ -228,6 +231,7 @@ namespace Mmorpg.Client
                     aimText.color = new Color(1f, .85f, .38f, growthTextColor.a);
                 }
                 aimText.text = growth;
+                UpdateGrowthProgress(state.level, state.exp);
             }
             else
             {
@@ -273,8 +277,65 @@ namespace Mmorpg.Client
             Subscribe();
         }
 
+        private void UpdateGrowthProgress(ushort level, uint exp)
+        {
+            if (growthProgress == null || expFill == null || nextLevelText == null || serverContent == null)
+            {
+                HideGrowthProgress();
+                return;
+            }
+            var growth = serverContent.growth;
+            if (growth == null || growth.maxLevel < 1 || growth.maxLevel > ushort.MaxValue ||
+                level < 1 || level > growth.maxLevel || growth.levels == null || growth.levels.Length != growth.maxLevel)
+            {
+                HideGrowthProgress();
+                return;
+            }
+            // Require a complete, ordered table; never infer or repair the server's level.
+            for (int i = 0; i < growth.levels.Length; i++)
+            {
+                if (growth.levels[i] == null || growth.levels[i].level != i + 1 ||
+                    (i > 0 && growth.levels[i].requiredTotalExp <= growth.levels[i - 1].requiredTotalExp))
+                {
+                    HideGrowthProgress();
+                    return;
+                }
+            }
+            uint current = growth.levels[level - 1].requiredTotalExp;
+            if (exp < current)
+            {
+                HideGrowthProgress();
+                return;
+            }
+            if (level == growth.maxLevel)
+            {
+                expFill.fillAmount = 1;
+                nextLevelText.text = "MAX";
+            }
+            else
+            {
+                uint next = growth.levels[level].requiredTotalExp;
+                if (exp >= next)
+                {
+                    HideGrowthProgress();
+                    return;
+                }
+                expFill.fillAmount = (float)(exp - current) / (next - current);
+                nextLevelText.text = string.Format(CultureInfo.InvariantCulture, "Next Lv  {0} EXP", next - exp);
+            }
+            growthProgress.SetActive(true);
+        }
+
+        private void HideGrowthProgress()
+        {
+            if (growthProgress != null) growthProgress.SetActive(false);
+            if (nextLevelText != null) nextLevelText.text = string.Empty;
+            if (expFill != null) expFill.fillAmount = 0;
+        }
+
         private void ResetVitalsFeedback()
         {
+            HideGrowthProgress();
             if (observedHp >= 0 && hpFill != null) hpFill.color = hpFillColor;
             if (aimText != null) aimText.color = growthTextColor;
             observedHp = -1;

@@ -152,6 +152,7 @@ namespace Mmorpg.Client.Editor
             combatRefs.FindProperty("hpFill").objectReferenceValue = hpFill;
             combatRefs.FindProperty("mpFill").objectReferenceValue = mpFill;
             combatRefs.ApplyModifiedPropertiesWithoutUndo();
+            ConfigureGrowthHud(combat);
             combat.enabled = true;
             panel.gameObject.SetActive(screen.CanAct);
 
@@ -160,6 +161,65 @@ namespace Mmorpg.Client.Editor
             EditorSceneManager.MarkSceneDirty(scene);
             if (!EditorSceneManager.SaveScene(scene)) throw new System.InvalidOperationException("C12 could not save the C02 scene.");
             AssetDatabase.SaveAssets();
+        }
+
+        [MenuItem("Tools/Client/HUD/Apply Growth HUD Only")]
+        public static void ApplyGrowthHud()
+        {
+            var scene = EditorSceneManager.GetActiveScene();
+            if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isCompiling || scene.isDirty ||
+                !scene.IsValid() || scene.path != "Assets/Client/Scenes/World.unity")
+                throw new System.InvalidOperationException("Growth HUD requires the saved World scene in Edit Mode after compilation.");
+            var combat = Object.FindFirstObjectByType<CombatScreen>(FindObjectsInactive.Include);
+            if (combat == null || combat.gameObject.scene != scene)
+                throw new System.InvalidOperationException("The existing World combat screen is required.");
+            ConfigureGrowthHud(combat);
+            EditorSceneManager.MarkSceneDirty(scene);
+            if (!EditorSceneManager.SaveScene(scene)) throw new System.InvalidOperationException("Could not save the growth HUD.");
+        }
+
+        public static void ConfigureGrowthHud(CombatScreen combat, Vector2? position = null)
+        {
+            var refs = new SerializedObject(combat);
+            var panel = refs.FindProperty("combatPanel").objectReferenceValue as GameObject;
+            var aim = refs.FindProperty("aimText").objectReferenceValue as TMP_Text;
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Client/Art/CitadelEnvironment/vitals-track-face-v1.png");
+            var content = refs.FindProperty("serverContent").objectReferenceValue as ServerContent;
+            if (content == null) content = AssetDatabase.LoadAssetAtPath<ServerContent>("Assets/Client/Content/ServerContent.asset");
+            if (panel == null || aim == null || sprite == null || content == null)
+                throw new System.InvalidOperationException("Existing combat panel, growth label, gauge sprite, and server content are required.");
+            var root = panel.transform.Find("GrowthProgress") as RectTransform;
+            if (root == null)
+            {
+                root = new GameObject("GrowthProgress", typeof(RectTransform)).GetComponent<RectTransform>();
+                root.SetParent(panel.transform, false);
+            }
+            root.anchorMin = root.anchorMax = root.pivot = new Vector2(1, 0);
+            root.anchoredPosition = position ?? new Vector2(-24, 100);
+            root.sizeDelta = new Vector2(292, 28);
+            var fill = Gauge(root, "ExpTrack", new Vector2(0, -24), new Vector2(292, 4),
+                new Color(.10f, .14f, .15f, .95f), new Color(.64f, .64f, .39f, 1), sprite);
+            var label = root.Find("NextLevel")?.GetComponent<TMP_Text>();
+            if (label == null)
+            {
+                var child = new GameObject("NextLevel", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+                child.transform.SetParent(root, false);
+                label = child.GetComponent<TextMeshProUGUI>();
+            }
+            label.font = aim.font;
+            PlaceText(label, 14, Vector2.zero, new Vector2(292, 20));
+            label.color = new Color(.81f, .81f, .65f);
+            label.alignment = TextAlignmentOptions.MidlineRight;
+            label.enableWordWrapping = false;
+            label.text = string.Empty;
+            fill.fillAmount = 0;
+            root.gameObject.SetActive(false);
+            refs.FindProperty("growthProgress").objectReferenceValue = root.gameObject;
+            refs.FindProperty("expFill").objectReferenceValue = fill;
+            refs.FindProperty("nextLevelText").objectReferenceValue = label;
+            refs.FindProperty("serverContent").objectReferenceValue = content;
+            refs.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(combat);
         }
 
         private static TMP_Text ExistingText(RectTransform parent, string name)

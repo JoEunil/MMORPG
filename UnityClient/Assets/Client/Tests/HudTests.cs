@@ -238,6 +238,105 @@ namespace Mmorpg.Client.Tests
             }
         }
 
+        [Test]
+        [Category("GrowthHud")]
+        public void GrowthProgressUsesServerLevelBoundariesAndUnsignedExp()
+        {
+            using (var fixture = new HudFixture())
+            {
+                fixture.Growth(1, 0);
+                Assert.That(fixture.GrowthProgress.activeSelf, Is.True);
+                Assert.That(fixture.Exp.fillAmount, Is.Zero);
+                Assert.That(fixture.NextLevel.text, Is.EqualTo("Next Lv  50 EXP"));
+                fixture.Delta(new DeltaUpdateField { zoneInternalID = 73, fieldID = 4, fieldVal = 25 });
+                Assert.That(fixture.Exp.fillAmount, Is.EqualTo(.5f).Within(.001f));
+                Assert.That(fixture.NextLevel.text, Is.EqualTo("Next Lv  25 EXP"));
+                fixture.Growth(1, 49);
+                Assert.That(fixture.Exp.fillAmount, Is.EqualTo(.98f).Within(.001f));
+                fixture.Growth(2, 50);
+                Assert.That(fixture.Exp.fillAmount, Is.Zero);
+                Assert.That(fixture.NextLevel.text, Is.EqualTo("Next Lv  100 EXP"));
+                fixture.Content.growth.levels[2].requiredTotalExp = uint.MaxValue;
+                fixture.Growth(2, uint.MaxValue - 1);
+                Assert.That(fixture.NextLevel.text, Is.EqualTo("Next Lv  1 EXP"));
+                Assert.That(fixture.Aim.text, Is.EqualTo("Lv 2  EXP 4294967294"));
+                Assert.That(fixture.World.OwnFull.level, Is.EqualTo(2));
+            }
+        }
+
+        [Test]
+        [Category("GrowthHud")]
+        public void GrowthProgressShowsMaxOnlyForMatchingCapAndHidesInvalidContentOrState()
+        {
+            using (var fixture = new HudFixture())
+            {
+                fixture.Growth(3, 150);
+                Assert.That(fixture.NextLevel.text, Is.EqualTo("MAX"));
+                Assert.That(fixture.Exp.fillAmount, Is.EqualTo(1));
+                fixture.Growth(3, uint.MaxValue);
+                Assert.That(fixture.NextLevel.text, Is.EqualTo("MAX"));
+                foreach (var state in new[] {
+                    new FullStateField { level = 0, exp = 0 },
+                    new FullStateField { level = 4, exp = 150 },
+                    new FullStateField { level = 3, exp = 149 },
+                    new FullStateField { level = 2, exp = 49 },
+                    new FullStateField { level = 1, exp = 50 } })
+                {
+                    fixture.Growth(state.level, state.exp);
+                    Assert.That(fixture.GrowthProgress.activeSelf, Is.False);
+                    Assert.That(fixture.NextLevel.text, Is.Empty);
+                    Assert.That(fixture.Aim.text, Is.EqualTo($"Lv {state.level}  EXP {state.exp}"));
+                }
+                var levels = fixture.Content.growth.levels;
+                foreach (var invalid in new[] {
+                    new[] { levels[0], levels[2] },
+                    new[] { levels[0], levels[1], levels[1] },
+                    new[] { levels[0], levels[2], levels[1] },
+                    new[] { levels[0], null, levels[2] },
+                    new[] { levels[0], levels[1], new ServerContent.GrowthLevel { level = 3, requiredTotalExp = 50 } } })
+                {
+                    fixture.Content.growth.levels = invalid;
+                    fixture.Growth(1, 25);
+                    Assert.That(fixture.GrowthProgress.activeSelf, Is.False);
+                    Assert.That(fixture.Aim.text, Is.EqualTo("Lv 1  EXP 25"));
+                }
+                fixture.Content.growth = null;
+                fixture.Growth(1, 25);
+                Assert.That(fixture.GrowthProgress.activeSelf, Is.False);
+            }
+        }
+
+        [Test]
+        [Category("GrowthHud")]
+        public void GrowthProgressFollowsDeathTransitionReentryAndDisableLifetime()
+        {
+            using (var fixture = new HudFixture())
+            {
+                fixture.Growth(2, 75, 0);
+                Assert.That(fixture.GrowthProgress.activeSelf, Is.True, "Defeat keeps confirmed growth visible with vitals.");
+                fixture.ChangeIdentity("Stage", WorldStage.TransitionPending);
+                fixture.Refresh();
+                Assert.That(fixture.GrowthProgress.activeSelf, Is.False);
+                Assert.That(fixture.NextLevel.text, Is.Empty);
+                fixture.Logout();
+                fixture.ReenterPending(new[] { new FullStateField { zoneInternalID = 73, hp = 100, maxHp = 100,
+                    mp = 50, maxMp = 50, level = 2, exp = 50, x = 10, y = 10, dir = 3 } },
+                    new DeltaUpdateField { zoneInternalID = 73, fieldID = 4, fieldVal = 100 });
+                Assert.That(fixture.Exp.fillAmount, Is.EqualTo(.5f).Within(.001f));
+                Assert.That(fixture.NextLevel.text, Is.EqualTo("Next Lv  50 EXP"));
+                fixture.Logout();
+                Assert.That(fixture.GrowthProgress.activeSelf, Is.False);
+                Assert.That(fixture.NextLevel.text, Is.Empty);
+                fixture.Reenter(new FullStateField { zoneInternalID = 73, hp = 100, maxHp = 100,
+                    mp = 50, maxMp = 50, level = 1, exp = 25, x = 10, y = 10, dir = 3 });
+                Assert.That(fixture.GrowthProgress.activeSelf, Is.True);
+                fixture.DisableCombat();
+                Assert.That(fixture.GrowthProgress.activeSelf, Is.False);
+                Assert.That(fixture.NextLevel.text, Is.Empty);
+                Assert.That(fixture.Exp.fillAmount, Is.Zero);
+            }
+        }
+
         private sealed class HudFixture : IDisposable
         {
             private readonly object fixture;
@@ -255,6 +354,10 @@ namespace Mmorpg.Client.Tests
             public readonly TMP_Text Status;
             public readonly TMP_Text Aim;
             public readonly GameObject Panel;
+            public readonly GameObject GrowthProgress;
+            public readonly UnityEngine.UI.Image Exp;
+            public readonly TMP_Text NextLevel;
+            public readonly ServerContent Content;
             public WorldScreen World => (WorldScreen)world;
 
             public HudFixture()
@@ -287,8 +390,34 @@ namespace Mmorpg.Client.Tests
                 HpValue.transform.SetParent(Panel.transform, false);
                 MpValue.transform.SetParent(Panel.transform, false);
                 Set(combat, "combatPanel", Panel);
+                Content = (ServerContent)fixtureType.GetField("serverContent", BindingFlags.Instance | BindingFlags.Public).GetValue(fixture);
+                Content.growth = new ServerContent.Growth { maxLevel = 3, levels = new[] {
+                    new ServerContent.GrowthLevel { level = 1, requiredTotalExp = 0 },
+                    new ServerContent.GrowthLevel { level = 2, requiredTotalExp = 50 },
+                    new ServerContent.GrowthLevel { level = 3, requiredTotalExp = 150 } } };
+                GrowthProgress = new GameObject("Growth progress fixture", typeof(RectTransform));
+                GrowthProgress.transform.SetParent(Panel.transform, false);
+                Exp = new GameObject("Exp fill", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.Image))
+                    .GetComponent<UnityEngine.UI.Image>();
+                Exp.transform.SetParent(GrowthProgress.transform, false);
+                Exp.sprite = gaugeSprite;
+                Exp.type = UnityEngine.UI.Image.Type.Filled;
+                Exp.raycastTarget = false;
+                NextLevel = Text("Next level");
+                NextLevel.transform.SetParent(GrowthProgress.transform, false);
+                NextLevel.raycastTarget = false;
+                Set(combat, "growthProgress", GrowthProgress);
+                Set(combat, "expFill", Exp);
+                Set(combat, "nextLevelText", NextLevel);
                 Invoke(combat, "WorldChanged");
             }
+
+            public void Growth(ushort level, uint exp, ushort hp = 100) => Full(new FullStateField {
+                zoneInternalID = 73, hp = hp, maxHp = 100, mp = 50, maxMp = 50,
+                level = level, exp = exp, x = 10, y = 10, dir = 3 });
+
+            public void Refresh() => Invoke(combat, "WorldChanged");
+            public void DisableCombat() => Invoke(fixture, "DisableCombat");
 
             public void Delta(params DeltaUpdateField[] updates) => Invoke(fixture, "Delta", new object[] { updates });
 
