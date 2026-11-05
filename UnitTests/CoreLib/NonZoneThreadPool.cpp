@@ -2061,11 +2061,7 @@ namespace Core {
             EXPECT_EQ(body->characterID, CharacterIn(1).characterID);
             EXPECT_EQ(body->gold, gold);
         }
-        ASSERT_EQ(inventory.granted.size(), 4u);
-        for (size_t i = 0; i < inventory.granted.size(); ++i) {
-            EXPECT_EQ(inventory.granted[i].first, i % 2 == 0 ? 1u : 2u);
-            EXPECT_EQ(inventory.granted[i].second, 1u);
-        }
+        EXPECT_TRUE(inventory.granted.empty());
         SetInventory(nullptr);
     }
 

@@ -35,3 +35,9 @@
 게시 준비: 구현후보4e66f7e(42파일), HUNTBAL01/r1. Unity Coordinator 앱 U0C9ZRTQ6F8 발신, 부모1793873237.268829/요청1793875453.089969. 실제 receiver pid31992/listening/health9.3초·등록스레드 확인 후 요청. 현재 회신 미수신·미소비, push/PR게시 없음.
 
 사용자가 현재 채팅에서 승인. 승인 대상 HUNTBAL01/r1 구현후보4e66f7e+기록0c505ff를 그대로 push하고 PR68 https://github.com/JoEunil/MMORPG/pull/68 게시. 원격 master incoming0 확인. Slack 회신 수신을 가장하지 않았으며 사용자 병합/Pages 배포는 수행하지 않았다.
+
+후속 사용자 변경: 몬스터 처치 시 HP·MP 포션 자동 지급을 제거했다. 경험치와 몬스터별 골드는 유지, 기존 보유 포션의 조회·소비·HP1500/MP500·6초도 유지한다. 다른 보상 기능이나 후속 기능 계획은 추가하지 않았다. 기존 보상 fixture는 골드 메시지와 포션 지급0건을 함께 확인하도록 바꿨다.
+
+처치 포션 제거 검증: MainServer/UnitTests Release 빌드 통과, MonsterRewardUsesKilledMonsterGoldInsteadOfCharacterZone 1개Passed(골드 유지·포션지급0). 기존 검사/Unity입력 반복없음. stopped상태에서 바탕화면BAT의HuntingBalance 서버exe를 새 산출물로 교체, 새세션미기동. 도중 PR68 병합9f12768을 확인해 동일소스기준 codex/remove-kill-potions 분기. 앞선 포션 지급 기록은 과거 검증이며 현재 동작이 아니다.
+
+처치 포션 제거 최종 게시검수 통과·필수0. 새 실전 처치는 미실행으로 구분하며 승인된 기존 보상·포션소비 보존을 확인했다.

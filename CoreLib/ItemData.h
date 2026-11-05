@@ -4,9 +4,6 @@
 #include <cstdint>
 
 namespace Data {
-    inline constexpr uint32_t monsterPotionItemID = 1;
-    inline constexpr uint16_t monsterPotionQuantity = 1;
-    inline constexpr uint32_t monsterManaPotionItemID = 2;
     struct ItemData {
         uint16_t  itemType;
         const char* name;
