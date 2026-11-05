@@ -21,12 +21,6 @@ public:
 	uint16_t GetRecvBuffer(uint8_t*& buf) {
 		return context.BeginRecvIO(12345, buf);
 	}
-	uint16_t GetAccBufLen() {
-		return context.m_accBuf.GetLen();
-	}
-	uint32_t GetWorkingCnt() {
-		return context.m_workingCnt.load(std::memory_order_seq_cst);
-	}
 	void Disconnect() {
 		context.m_connected.store(false, std::memory_order_seq_cst);
 	}
@@ -38,8 +32,22 @@ TEST_F(ClientContextTest, recvFragment) {
 	GetRecvBuffer(buf);
 	std::memcpy(buf, &p, sizeof(p)-3);
 	EXPECT_TRUE(context.EnqueueRecvQ(12345, buf, sizeof(p) - 3));
-	EXPECT_EQ(GetAccBufLen(), p.header.length - 3);
-	EXPECT_EQ(GetWorkingCnt(), 0);
+	EXPECT_EQ(context.GetWorkingCnt(), 0);
+	context.CompleteRecvIO(12345);
+}
+
+TEST_F(ClientContextTest, protectInvalidEnqueue) {
+	auto p = GetTestPacket();
+	uint8_t* buf;
+	GetRecvBuffer(buf);
+	std::memcpy(buf, &p, sizeof(p) - 3);
+	EXPECT_FALSE(context.EnqueueRecvQ(1, buf, sizeof(p) - 3)); // invalid session
+	EXPECT_EQ(context.GetWorkingCnt(), 0);
+	EXPECT_FALSE(context.EnqueueRecvQ(12345, buf, Net::RECV_BUFFER_SIZE + 1)); // invalid recv length
+	EXPECT_EQ(context.GetWorkingCnt(), 0);
+	EXPECT_FALSE(context.EnqueueRecvQ(12345, buf + 1, sizeof(p) - 3)); // invalid start pointer
+	EXPECT_EQ(context.GetWorkingCnt(), 0);
+	context.CompleteRecvIO(12345);
 }
 
 TEST_F(ClientContextTest, Disconnect) {
@@ -51,4 +59,5 @@ TEST_F(ClientContextTest, Disconnect) {
 	Disconnect();
 	EXPECT_FALSE(context.EnqueueRecvQ(12345, buf, sizeof(p) - 1));
 	EXPECT_EQ(GetRecvBuffer(buf), 0);
+	context.CompleteRecvIO(12345);
 }
