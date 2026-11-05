@@ -72,3 +72,5 @@ UnityAPI로PlayerSettings.fullScreenMode=Windowed/defaultIsNativeResolution=fals
 ## 패링 묶음 실행 — 최신
 
 바탕화면BAT의현재대상은ROOT/UnityClient/Builds/LocalGame/Parry/Player/MMORPG.exe와동일폴더의Server/Login이다. 창모드인자와커서는유지한다. 새Windows빌드·서버해시·Launcher check를확인했으며사용자입력보류때문에이번묶음을기동/로그인하지않았다. 이전BAT시작/종료검증을패링실전검증으로재사용하지않는다.
+
+2026-11-05: 기본 공격 패링 제외 서버는 ROOT/UnityClient/Builds/LocalGame/Parry/Server-SkillOnly/MainServer.exe. Player/Login은 기존Parry묶음유지. 다음BAT시작부터적용하며실행중세션은교체하지않았다. 새서버와필수DLL해시/launcher check확인,실전새정책확인은미실행.

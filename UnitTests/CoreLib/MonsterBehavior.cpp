@@ -44,9 +44,9 @@ namespace Core {
             cell.activeSkills[0].currentTick = Data::skillList[active.skillId].phases[active.currentPhase].tick;
             zone.ProcessCellActiveSkills(cell);
         }
-        void QueueMonsterHit(uint16_t index) {
+        void QueueMonsterHit(uint16_t index, uint16_t skillID = 0) {
             const auto& monster = zone.m_monsters[index];
-            zone.m_cells[2][2].activeSkills.push_back({1, 0, 0, index, 0, 0, monster.x, monster.y, 0, 1, Data::skillList[0].phases[1].tick, 0});
+            zone.m_cells[2][2].activeSkills.push_back({1, 0, 0, index, 0, 0, monster.x, monster.y, skillID, 1, Data::skillList[skillID].phases[1].tick, 0});
         }
         MonsterState& MonsterAt(size_t index) { return zone.m_monsters[index]; }
         CharacterState& CharacterAt(size_t index) { return zone.m_chars[index]; }
@@ -603,11 +603,20 @@ namespace Core {
         monster.Initialize(0, 0, player.x, player.y, 2, 2);
         monster.hp = 10000;
         fixture.AddMonster(monster);
-        fixture.QueueMonsterHit(0);
+        // A basic attack damages normally and leaves the charge for a telegraphed skill.
         fixture.QueueMonsterHit(0);
         fixture.AdvancePhaseAt(2, 2);
-        const int damage = monster.data->attack * Data::skillList[0].phases[1].attack;
-        EXPECT_EQ(fixture.CharacterAt(0).hp, 10000 - damage);
+        const int basicDamage = monster.data->attack * Data::skillList[0].phases[1].attack;
+        EXPECT_EQ(fixture.CharacterAt(0).hp, 10000 - basicDamage);
+        EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 5u);
+        EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 30u);
+        EXPECT_EQ(std::count_if(fixture.CellAt(2, 2).actionResults.begin(), fixture.CellAt(2, 2).actionResults.end(),
+            [](const ActionResult& action) { return action.skilIId == Data::parrySkillID && action.skillPhase == 1; }), 0);
+        fixture.QueueMonsterHit(0, 1);
+        fixture.QueueMonsterHit(0, 1);
+        fixture.AdvancePhaseAt(2, 2);
+        const int damage = monster.data->attack * Data::skillList[1].phases[1].attack;
+        EXPECT_EQ(fixture.CharacterAt(0).hp, 10000 - basicDamage - damage);
         EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 0u);
         EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 30u);
         EXPECT_EQ(std::count_if(fixture.CellAt(2, 2).actionResults.begin(), fixture.CellAt(2, 2).actionResults.end(),
@@ -617,7 +626,7 @@ namespace Core {
         zeroDamage.attack = 0;
         fixture.MonsterAt(0).data = &zeroDamage;
         fixture.CharacterAt(0).parryWindowTicks = 5;
-        fixture.QueueMonsterHit(0);
+        fixture.QueueMonsterHit(0, 1);
         fixture.AdvancePhaseAt(2, 2);
         EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 5u);
         for (int i = 0; i < 4; ++i) fixture.zone.SkillCoolDown();

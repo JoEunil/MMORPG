@@ -35,3 +35,14 @@ Agent추가9회: 아트신규1,서버분석신규1·후속2(계획보완/정본�
 사용자 재개 요청으로 Parry 묶음 Player14512/MainServer13120/Login22912를 시작했다. 지정 test1의 정상 로그인·캐릭터11/Zone5 필드진입, 창1280×720과가시적인커서, Space슬롯/QER/포션/HP·MP의비중첩을실제화면으로확인했다. 패링버튼클릭→서버수락안내 및추정쿨~1.3표시→준비상태복귀를관찰했다. Q버튼시전의공격자세와MP8840→8839도확인했다. Player.log에실행예외는관찰되지않았다.
 
 자동화Space키는같은반응을관찰하지못해물리키통과로판정하지않았다. 사용자에게WASD/Space/QER와몬스터실제공격대응을한배치로요청했다. 해당답변대기중에는자동입력이나게임재시작을하지않는다. 실제피해차단/피격/특수공격예고평가는아직대기다. 이구간에기존자동검사를반복하지않았다.
+## 기본 공격 패링 제외 — 2026-11-05
+
+사용자가 실제 WASD/Space/QER 입력 묶음을 완료하고 패링 표현은 보인다고 회신했다. 기본 공격은 준비 모션이 없어 패링 불가로 바꾸기를 요청했다. 이 회신은 패링 표현 관찰 근거이며 모든 모션 품질이나 실제 피해 차단 수치의 검증 완료로 확대하지 않는다.
+
+ZoneState_Skills의 몬스터 피해 판정에서 skillId0만 패링 대상에서 제외했다. 기본 공격은 정상 피해/기존 사망 처리를 유지하고, 살아 있다면 방어창과 횟수는 소모하지 않는다. 특수 스킬만 기존0.25초창/1회/쿨1.5초로 막는다. 사용자 Monster AI·패킷·Unity 코드 변경 없음. 리뷰 담당 후속1회 차단0.
+
+MainServer/UnitTests Release x64 빌드 및 수정된 기존 ParryCombat.OneChargeBlocksOnePositiveHitAndExpiresAtFiveTicks 1개 통과. 기본 공격 피해/창유지/성공방송없음→특수 스킬2회 중1회방어→무피해미소비/시간만료/쿨유지/사망정리를 확인했다. 기존통과검사는반복하지않았다. 처음 제한된 빌드의 작업자 연결이 지연돼 정상 취소했고 일반 실행 환경의 단일 작업자 빌드로 완료했다. 증거 ROOT/UnityClient/Builds/ClientGrowthHUD/verification/parry-basic-exclusion/build-serial.log,test.log/xml.
+
+배포 후보는 ROOT/UnityClient/Builds/LocalGame/Parry/Server-SkillOnly에 새exe와필수DLL만 배치했다. 실행중서버의잠긴redo/backpressure복사는실패했고후보에포함하지않았으며복제된로그도제거했다. 새exe/의존DLL해시일치·launcher check통과. BAT는다음시작부터새서버사용,현재Player14512/MainServer13120/Login22912세션은자동종료/교체하지않았다. 새정책의실전재입력은미실행이다.
+
+공개 HUD 설명과 현재정책을 특수 스킬만 방어로 갱신했고 사이트빌드통과. Agent615(신규232/후속383),직접구현·검사는활성화제외,토큰/비용N/A.

@@ -160,7 +160,8 @@ namespace Core {
 							// critical 적용..
 							damage *= 2;
 						}
-						if (damage > 0 && character.parryWindowTicks != 0) {
+						// Skill 0 is the untelegraphed basic attack; it neither blocks nor consumes parry.
+                        if (skill.skillId != 0 && damage > 0 && character.parryWindowTicks != 0) {
                             character.parryWindowTicks = 0;
                             m_cells[character.cellY][character.cellX].actionResults.push_back({0, character.zoneInternalID, 0,
                                 Data::parrySkillSlot, character.dir, character.x, character.y, Data::parrySkillID, 1,
