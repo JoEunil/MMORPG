@@ -14,3 +14,5 @@ StateManager의 처치 Item Grant loop만 제거하고 ItemData의 미사용 보
 관련변경 로컬커밋 후 같은작업Slack부모1793873237.268829에 HUNTREWARD01/r1 수정PR게시 승인을 요청한다. PR68은 이미 병합되어 새PR이 필요하다. 이전 HUNTBAL01 승인을 새게시 승인으로 소비하지 않는다. 승인전push/PR게시없음.
 
 근거 ROOT/UnityClient/Builds/ClientGrowthHUD/verification/hunting-balance/no-potion-reward-test.xml/no-potion-build.log. 상세 history/2026-11-05-hunting-balance/RESULTS.md. 서버산출물SHA256 4B85CF8F01D5340C720661991641DDB0D985D65C329B405F2C3F0151B11FB6FA.
+
+구현후보93a2e93 로컬커밋 완료. HUNTREWARD01/r1 요청1793886156.106779를 Unity Coordinator 앱으로 기존 부모1793873237.268829에 발신했다. 수신기health/프로세스/등록스레드 확인, 회신 대기·미소비. push/새PR게시 없음. 최종검수통과·Agent656(신규243/후속413).
