@@ -174,3 +174,34 @@ Git 정본은 `UnityClient/Builds/C10-Delivery/source`다. 코드 읽기로 확�
 - 패링 쿨3초/방어창0.25초. 기본 공격 제외 유지.
 - MP포션3000회복,HP1번/MP2번,공유2초쿨. 일반·강화몬스터처치HP/MP각1+골드10 자동지급,확정후기존지갑조회로갱신. DB스키마·사용자AI불변. 로딩중입금실패를묵인하지않고기존내구큐/캐시콜백·실패알림을연결한다. 프로세스장애까지exactly-once는새영속식별없이는보장할수없으며범위를명시한다.
 - 차징/예고는시전자표시좌표를추종하고조준각고정,확정Hit잔광은서버phase좌표유지. 서버는이미phase마다현재시전자위치를사용하므로클라표현정합성수정이다.
+
+## 사용자 복귀 후 선택할 다음 묶음 — 미승인 초안
+
+Zone1 마을 유지는 기존 결정으로 고정한다. 레벨 상한100은 시스템 상한이며, 모든 레벨 구간의 콘텐츠가 완성됐다는 뜻은 아니다. 아래 제안은 실행 승인·수치 확정이 아니다.
+
+| 선택 | 묶음 범위 | 구분·의존 |
+| --- | --- | --- |
+| A. 구역별 사냥 구성부터 | Zone1 마을 유지, Zone2~6 권장 레벨 Lv1~5 / 6~10 / 11~15 / 16~20 / 21~25 초안. 일반·강화·보스 구성과 보상 차이를 설계한다. | 권장 레벨 안내만 할지, 실제 몬스터 HP/공격/EXP·보상까지 조정할지 결정 필요. 현재 [Monsters.inc](../../CoreLib/Monsters.inc)는 ID0 HP1500/공격5/EXP10, ID1 3000/8/30, ID2 10000/15/300이다. 현 레벨 데이터만으로 구역 적정성을 단정하지 않는다. |
+| B. 성장 연계까지 한 번에 | A에 더해 몬스터 레벨·능력/보상과 장비·캐릭터 성장 연계를 정리한다. | 현재 [Growth.inc](../../CoreLib/Growth.inc)은 Lv2 누적 EXP50, Lv3 150, Lv4 300이며 [CharacterState.h](../../CoreLib/CharacterState.h)의 AddExperience 성장 보너스는 최대 HP+500뿐이고 공격력 자동 성장은 없다. 서버 정본 데이터·능력치·보상·export/client 공유 경계를 함께 정해야 하는 더 큰 범위다. |
+
+### 포션 공급과 자원 밸런스 — 별도 결정
+
+현재 확정 정책은 HP/MP 각각 3000 회복, HP itemID 1·MP itemID 2, 공유 2초 쿨다운, 일반·강화 몬스터 처치당 각 1개 지급이다. 이 정책은 유지하며, 추후 공급·소비 밸런스 변경 여부만 선택 대기다. [Skills.inc](../../CoreLib/Skills.inc) 기준 Q는 MP1, E/R은 각 MP20이며 MP 3000은 E/R 각 150회분이다. 보상 공급 이후 소비 속도도 고려할 필요가 있다. 등급 포션 ID는 예약하지 않는다. 등급 추가를 논의할 경우 실제 DB 카탈로그를 확인한 뒤 ID와 효과를 정한다. 테스트 캐릭터 가방에서 ID33도 관찰되어 새 ID 확정 전 DB 카탈로그 확인이 필요하다.
+
+선택 대기: A 또는 B, 권장 레벨 표시에 그칠지 실 능력치·보상 변경까지 할지, 포션 공급·소비 밸런스 변경 여부. 수령함과 장비 장착은 목록/저장·장착 계약이 필요한 별도 후순위 묶음이다.
+
+근거: [현재 인계](HANDOFF.md), [성장·아이템 계획](GROWTH_ITEMS_PLAN.md), 서버 정본 [Monsters.inc](../../CoreLib/Monsters.inc), [Growth.inc](../../CoreLib/Growth.inc), [Skills.inc](../../CoreLib/Skills.inc), [CharacterState.h](../../CoreLib/CharacterState.h).
+### 거래소 수령함 후속 계약 — 읽기 분석, 구현 미승인
+
+현재는 구매 확정 뒤 ‘Receive items’ 버튼으로 배송 복구를 요청한다. `MarketScreen.BuyReceived`는 구매 성공 후 직접 배송을 호출하지 않으며, 서버 구매 처리는 outbox READY 생성까지다. 취소 반환은 서버에서 즉시 배송을 시도한다. 따라서 아래 선택은 기존 구매 결제·판매자 다이아 정산과 구분한다.
+
+| 준비한 방향 | 재사용과 추가 계약 |
+| --- | --- |
+| 배송 대기 목록 + 일괄 받기 | 기존 outbox·CheckOutbox·DeliverItem·event ring/flush를 유지한다. 조회는 지급 부작용 없는 새 목록 계약이 필요하다. 받기는 현재 최대30건 일괄 배송을 재사용할 수 있다. |
+| 항목 선택 수령함 | 위 목록에 requestID/eventID를 지정하는 개별 수령 계약이 더 필요하다. 서버 세션의 캐릭터 소유권을 검사하고 같은 eventID 재요청은 중복 지급하지 않아야 한다. 새 결제·새 지급 이벤트를 만들지 않는다. |
+
+목록 초안의 최소 표시 값은 eventID/itemID/quantity이며, 다음 페이지·구매품/반환품 구분은 실제 필드·정책을 확인한 뒤 정한다. 기존 CheckOutbox 응답은 requestID/status/delivered/duplicated/blocked(전체25바이트)로 ‘목록’이 아니다. 일부 배송 뒤 막힐 수 있으므로 전부 성공/실패로 단순화하지 않는다. 판매 대금 Claim(listingID)은 다이아 정산이며 구매품 수령에 전용하지 않는다.
+
+주의: READY라도 캐시에 이미 지급되고 DB flush/CLAIMED 전일 수 있다. 새 목록에서 이를 무조건 미수령으로 표시하지 말고 기존 applied-event 상태와 조정해야 한다. 현재 ACK를 영속 저장 완료로 강화해 설명하지 않는다. 실DB 적용·장애 복구는 이번 읽기 분석에서 검증하지 않았다. 새 테이블·일반 메일·만료·장비·자동 지급 정책 변경은 승인하지 않았다.
+
+복귀 후 결정할 점은 일괄/개별 수령, 구매품만/반환품 포함 두 가지다. 반환품도 명시 수령으로 통일한다면 현재 취소의 즉시 배송 동작 변경까지 별도로 확인한다. 근거: [거래소 UI](../../UnityClient/Assets/Client/Runtime/UI/MarketScreen.cs), [서버 거래/배송](../../CacheLib/Handler_Bazaar.cpp), [기존 SQL 트랜잭션](../../Resources/DB/procedure.sql), [배송 중복 방지](../../CacheLib/CacheStorageInventory.cpp), [저장 후 outbox 처리](../../CacheLib/CacheFlush.cpp).

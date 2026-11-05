@@ -21,8 +21,21 @@ namespace Mmorpg.Client.Tests
             {
                 var motion = actor.AddComponent<ActorMotion>();
                 motion.Configure();
-                motion.PlayAttack(37.5f, false, 2, 1f);
                 var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+                var lateUpdate = typeof(ActorMotion).GetMethod("LateUpdate", flags);
+                var parryStarted = typeof(ActorMotion).GetField("parryStarted", flags);
+                var sparkField = typeof(ActorMotion).GetField("parrySparkRenderer", flags);
+                Vector3 authorityPosition = actor.transform.position;
+                Quaternion authorityRotation = actor.transform.rotation;
+                motion.PlayParry(false, .25f);
+                parryStarted.SetValue(motion, Time.unscaledTime - .1f);
+                lateUpdate.Invoke(motion, null);
+                var shieldArm = actor.transform.Find("GuardVisual/UpperBody/Shoulder-1");
+                Assert.That(Quaternion.Angle(shieldArm.localRotation, Quaternion.identity), Is.GreaterThan(.01f),
+                    "An accepted Begin raises the shield without any monster, hit, or attack event.");
+                Assert.That(sparkField.GetValue(motion), Is.Null, "Beginning a parry never creates success sparks.");
+                motion.ClearParry();
+                motion.PlayAttack(37.5f, false, 2, 1f);
                 var attackUntil = typeof(ActorMotion).GetField("attackUntil", flags);
                 float attackDeadline = (float)attackUntil.GetValue(motion);
                 var hitUntil = typeof(ActorMotion).GetField("hitUntil", flags);
@@ -35,6 +48,13 @@ namespace Mmorpg.Client.Tests
                 Assert.That((float)windowUntil.GetValue(motion), Is.EqualTo(firstWindow));
                 Assert.That((float)successUntil.GetValue(motion), Is.Zero, "Beginning a window has no success flash.");
                 motion.PlayParry(true, .25f);
+                lateUpdate.Invoke(motion, null);
+                var sparks = (MeshRenderer)sparkField.GetValue(motion);
+                Assert.That(sparks, Is.Not.Null);
+                Assert.That(sparks.enabled, Is.True, "Only the accepted success shows the shield's metal burst.");
+                var sparkMesh = sparks.GetComponent<MeshFilter>().sharedMesh;
+                Assert.That(sparkMesh.vertexCount, Is.EqualTo(64));
+                Assert.That(sparkMesh.bounds.size.x, Is.LessThan(1.5f), "The success burst stays local to the shield.");
                 float firstFlash = (float)successUntil.GetValue(motion) - .05f;
                 successUntil.SetValue(motion, firstFlash);
                 motion.PlayParry(true, .25f);
@@ -49,6 +69,20 @@ namespace Mmorpg.Client.Tests
                 motion.ClearParry();
                 Assert.That((float)successUntil.GetValue(motion), Is.Zero);
                 Assert.That((float)attackUntil.GetValue(motion), Is.EqualTo(attackDeadline));
+                Assert.That(sparks.enabled, Is.False);
+                motion.PlayParry(false, .25f);
+                lateUpdate.Invoke(motion, null);
+                Assert.That(sparks.enabled, Is.False, "A later Begin cannot reuse a previous success as a fake result.");
+                motion.PlayParry(true, .25f);
+                lateUpdate.Invoke(motion, null);
+                Assert.That(sparks.GetComponent<MeshFilter>().sharedMesh, Is.SameAs(sparkMesh), "Repeated success reuses the cached mesh.");
+                successUntil.SetValue(motion, Time.unscaledTime - .01f);
+                lateUpdate.Invoke(motion, null);
+                Assert.That(sparks.enabled, Is.False, "The short spark afterglow expires independently of the protection window.");
+                Assert.That(actor.transform.position, Is.EqualTo(authorityPosition));
+                Assert.That(actor.transform.rotation, Is.EqualTo(authorityRotation));
+                motion.SetDowned(true);
+                Assert.That(sparks.enabled, Is.False);
             }
             finally { Object.DestroyImmediate(actor); }
         }

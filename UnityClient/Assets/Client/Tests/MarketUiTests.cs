@@ -487,6 +487,51 @@ namespace Mmorpg.Client.Tests
                 fixture.ReceiveWallet(afterTrade, 1, 90, 1, 150);
                 Assert.That(fixture.WalletGold.text, Is.EqualTo("90"));
                 Assert.That(fixture.WalletDiamond.text, Is.EqualTo("150"));
+                fixture.Screen.ClosePanel();
+                Assert.That(Get<bool>(fixture.Screen, "walletPending"), Is.False);
+                int beforeReward = fixture.Network.WalletRequests;
+                Set(fixture.Screen, "walletRetryAt", Time.unscaledTime + 1f);
+                ((IViewModelNet)fixture.Login.Model).GoldRewardReceived(1);
+                Assert.That(fixture.Network.WalletRequests, Is.EqualTo(beforeReward + 1));
+                uint rewardRequest = fixture.Network.LastWalletRequestID;
+                Assert.That(Get<bool>(fixture.Screen, "walletPending"), Is.False, "The reward read belongs to ClientCore.");
+                fixture.ReceiveWallet(rewardRequest, 1, 100, 1, 150);
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("100"));
+                Assert.That(fixture.Panel.activeSelf, Is.False, "A reward refresh never opens the market.");
+                Assert.That(Get<float>(fixture.Screen, "walletRetryAt"), Is.Zero, "A completed reward read cancels an obsolete UI retry.");
+                Set(fixture.Screen, "walletDeadline", Time.unscaledTime - 1f);
+                Invoke(fixture.Screen, "Update");
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("100"));
+                Assert.That(fixture.Network.WalletRequests, Is.EqualTo(beforeReward + 1));
+
+                ((IViewModelNet)fixture.Login.Model).GoldRewardReceived(1);
+                float retryAt = Time.unscaledTime + 1f;
+                Set(fixture.Screen, "walletRetryAt", retryAt);
+                int retries = Get<int>(fixture.Screen, "walletRetries");
+                fixture.ReceiveWallet(fixture.Network.LastWalletRequestID, 0, 0, 1, 150);
+                Assert.That(Get<float>(fixture.Screen, "walletRetryAt"), Is.EqualTo(retryAt));
+                Assert.That(Get<int>(fixture.Screen, "walletRetries"), Is.EqualTo(retries),
+                    "A failure arriving after UI timeout reuses its scheduled read instead of consuming another retry.");
+
+                var previousModel = fixture.Login.Model;
+                var previousNetwork = (IViewModelNet)previousModel;
+                int previousReplies = 0;
+                previousModel.OnWalletReceived += (goldStatus, gold, diamondStatus, diamonds) => previousReplies++;
+                previousNetwork.GoldRewardReceived(1);
+                uint previousRequest = fixture.Network.LastWalletRequestID;
+                fixture.ReplaceClient();
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("--"));
+                previousNetwork.WalletGoldReceived(previousRequest, 1, 999);
+                previousNetwork.WalletDiamondReceived(previousRequest, 1, 999);
+                Assert.That(previousReplies, Is.EqualTo(1), "The old model completed a valid late reply after UI unsubscription.");
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("--"));
+                Assert.That(Get<bool>(fixture.Screen, "walletRequested"), Is.False);
+                ((IViewModelNet)fixture.Login.Model).GoldRewardReceived(1);
+                fixture.ReceiveWallet(fixture.Network.LastWalletRequestID, 1, 200, 1, 150);
+                Assert.That(fixture.WalletGold.text, Is.EqualTo("200"));
+                Assert.That(Get<bool>(fixture.Screen, "walletRequested"), Is.True);
+                Invoke(fixture.Screen, "Update");
+                Assert.That(fixture.Network.WalletRequests, Is.EqualTo(1), "An accepted automatic read also satisfies the new model's initial HUD read.");
             }
         }
 
@@ -721,6 +766,7 @@ namespace Mmorpg.Client.Tests
         {
             Assert.That(Application.isFocused, Is.True, "Keyboard-path verification requires the Editor to have focus.");
             var keyboard = InputSystem.AddDevice<Keyboard>();
+            ServerContent content = null;
             try
             {
                 using (var fixture = new Fixture())
@@ -777,10 +823,63 @@ namespace Mmorpg.Client.Tests
                     ((IViewModelNet)fixture.Login.Model).BazaarCheckOutboxReceived(
                         fixture.Network.LastCheckOutboxRequestID, 1, 1, 0, 0);
                     Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(1));
+
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    InputSystem.Update();
+                    Set(fixture.Login.Model, "_ownershipEpoch", 1UL);
+                    Set(fixture.Login.Model, "_selfHP", 100);
+                    content = ScriptableObject.CreateInstance<ServerContent>();
+                    content.parry = new ServerContent.Parry { windowTicks = 5, cooldownTicks = 60, charges = 1 };
+                    Set(fixture.Combat, "serverContent", content);
+                    fixture.InventoryScreen.RequestSharedInventory(fixture.Login.Model);
+                    fixture.ReceiveInventory(new InventoryItem { itemID = 1, quantity = 2, slot = 0 },
+                        new InventoryItem { itemID = 2, quantity = 2, slot = 1 });
+                    if (fixture.InventoryScreen.InventoryRequestPending)
+                        fixture.ReceiveInventory(new InventoryItem { itemID = 1, quantity = 2, slot = 0 },
+                            new InventoryItem { itemID = 2, quantity = 2, slot = 1 });
+                    Assert.That(fixture.InventoryScreen.HasInventoryResponse, Is.True);
+                    EventSystem.current.SetSelectedGameObject(fixture.Quantity.gameObject);
+                    fixture.Quantity.ActivateInputField();
+                    yield return null;
+                    Assert.That(fixture.Quantity.isFocused, Is.True, "The same protection applies to other TMP input fields.");
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Escape, Key.Digit2, Key.Space));
+                    InputSystem.Update();
+                    fixture.Quantity.DeactivateInputField();
+                    EventSystem.current.SetSelectedGameObject(fixture.Quantity.gameObject);
+                    Assert.That(fixture.Quantity.isFocused, Is.False);
+                    Assert.That(EventSystem.current.currentSelectedGameObject, Is.EqualTo(fixture.Quantity.gameObject));
+                    Invoke(fixture.Combat, "Update");
+                    Assert.That(fixture.Network.ParryRequests, Is.Zero, "Combat running before Escape processing cannot bypass a TMP field that already ended editing.");
+                    Invoke(fixture.InventoryScreen, "Update");
+                    Assert.That(EventSystem.current.currentSelectedGameObject, Is.Null);
+                    Invoke(fixture.Combat, "Update");
+                    Assert.That(fixture.Quantity.isFocused, Is.False);
+                    Assert.That(fixture.Network.ItemUseRequests, Is.Zero, "Escape releasing text focus must not consume MP in the same frame.");
+                    Assert.That(fixture.Network.ParryRequests, Is.Zero, "The following combat Update must respect the same Escape frame.");
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    InputSystem.Update();
+                    yield return null;
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Digit2, Key.Space));
+                    InputSystem.Update();
+                    Invoke(fixture.InventoryScreen, "Update");
+                    Invoke(fixture.Combat, "Update");
+                    Assert.That(fixture.Network.ItemUseRequests, Is.EqualTo(1));
+                    Assert.That(fixture.Network.LastItemUseID, Is.EqualTo(2U));
+                    Assert.That(fixture.Network.ParryRequests, Is.EqualTo(1));
+                    ((IViewModelNet)fixture.Login.Model).ItemUseReceived(fixture.Network.LastItemUseRequestID, 1, 2, 3, 2, 0);
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                    InputSystem.Update();
+                    yield return null;
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.Digit1));
+                    InputSystem.Update();
+                    Invoke(fixture.InventoryScreen, "Update");
+                    Assert.That(fixture.Network.ItemUseRequests, Is.EqualTo(2));
+                    Assert.That(fixture.Network.LastItemUseID, Is.EqualTo(1U));
                 }
             }
             finally
             {
+                if (content != null) UnityEngine.Object.DestroyImmediate(content);
                 InputSystem.QueueStateEvent(keyboard, new KeyboardState());
                 InputSystem.RemoveDevice(keyboard);
             }
@@ -1009,6 +1108,13 @@ namespace Mmorpg.Client.Tests
             }
 
             public void OpenMarket() => Market.onClick.Invoke();
+            public void ReplaceClient()
+            {
+                var client = CreateClient();
+                Set(Login, "client", client.Initializer);
+                typeof(MarketScreen).GetMethod("ChangeClient", BindingFlags.Instance | BindingFlags.NonPublic)
+                    .Invoke(Screen, new object[] { client.Model });
+            }
             public Transform Row(ulong id) => Rows.Find("Listing-" + id);
             public void Receive(bool success, params BazaarListing[] rows) => Receive(Network.LastRequestID, success, rows);
             public void Receive(uint requestID, bool success, params BazaarListing[] rows) =>
@@ -1085,6 +1191,9 @@ namespace Mmorpg.Client.Tests
 
         private sealed class FakeNetwork : INetworkService
         {
+            public int ItemUseRequests, ParryRequests;
+            public ulong LastItemUseRequestID;
+            public uint LastItemUseID;
             public int RegisterRequests, InventoryRequests, WalletRequests, CheckOutboxRequests, CancelListingRequests;
             public int Mutations;
             public uint LastWriteID, LastCheckOutboxRequestID;
@@ -1116,8 +1225,9 @@ namespace Mmorpg.Client.Tests
             public void Enter(ulong characterId) { }
             public void Chat(string message, byte scope, ulong targetId) { }
             public void Profiles(uint[] profileIds) { }
-            public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
-            public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
+            public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID)
+            { ItemUseRequests++; LastItemUseRequestID = requestID; LastItemUseID = itemID; }
+            public void RequestParry(ulong requestID, ulong ownershipEpoch) { ParryRequests++; }
             public void RequestInventory() { InventoryRequests++; }
             public void Action(byte direction, float x, float y, byte skillSlot, ulong ownershipEpoch, float aimAngle) { }
             public void Pong(ulong serverTimeMs) { }

@@ -11,8 +11,9 @@ namespace Mmorpg.Client
 
         public static bool CanUseWorldShortcuts()
         {
-            if (EventSystem.current == null) return false;
+            if (EventSystem.current == null || textEscapeFrame == Time.frameCount) return false;
             var input = SelectedTextInput();
+            if (input != null && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) return false;
             return input == null || !input.isFocused;
         }
 
