@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ZoneState.h"
 #include "WorldMap.h"
+#include "HuntingZoneData.h"
 #include "../UnityClient/Exports/ServerData/MonsterSpawns.inc"
 #include <algorithm>
 #include <cmath>
@@ -82,7 +83,7 @@ namespace Core {
         MonsterBehavior CombatBehavior(const MonsterState& monster, const CharacterState& target) {
             const auto& phase = monster.data->phases[monster.phase];
             const auto& step = phase.steps[monster.skillStep & (phase.stepCnt - 1)];
-            const auto& skill = Data::skillList[step.skillID];
+            const auto& skill = Data::monsterSkillList[step.skillID];
             if (monster.tick >= step.delayTicks &&
                 (monster.data->id == 2 || InMonsterCastRange(monster, target, skill)))
                 return MonsterBehavior::Attacking;
@@ -93,32 +94,30 @@ namespace Core {
     void ZoneState::InitializeMonster() {
         static_assert(CELLS_X == 5 && CELLS_Y == 5, "Revalidate authored monster spawn cell counts.");
         static_assert(ZONE_COUNT == 6, "Revalidate authored Zone density count.");
-        static_assert(sizeof(Data::MONSTER_ZONE_DENSITY_PERCENT) / sizeof(Data::MONSTER_ZONE_DENSITY_PERCENT[0]) == ZONE_COUNT,
-            "Authored density must have one value per field Zone.");
         static_assert([] {
             for (int zone = 0; zone < ZONE_COUNT; ++zone) {
-                const int percent = Data::MONSTER_ZONE_DENSITY_PERCENT[zone];
-                if (zone + 1 == TOWN_ZONE_ID) { if (percent != 0) return false; continue; }
-                if (percent < 50 || percent > 200) return false;
-                int64_t total = 1; // The central boss is never scaled.
+                const int bossCount = Data::MONSTER_BOSS_COUNTS[zone];
+                if (bossCount < 0 || bossCount > 1) return false;
+                int64_t total = bossCount;
                 for (int cell = 0; cell < 25; ++cell) {
-                    if (Data::REGULAR_MONSTERS_BY_CELL[cell] < 0 || Data::STRONG_MONSTERS_BY_CELL[cell] < 0)
+                    const int regular = Data::MONSTER_REGULAR_COUNTS[zone][cell];
+                    const int strong = Data::MONSTER_STRONG_COUNTS[zone][cell];
+                    if (regular < 0 || strong < 0 || (cell == 12 && (regular != 0 || strong != 0)))
                         return false;
-                    total += int64_t{Data::REGULAR_MONSTERS_BY_CELL[cell]} * percent / 100;
-                    total += int64_t{Data::STRONG_MONSTERS_BY_CELL[cell]} * percent / 100;
+                    total += regular + strong;
                 }
-                if (total > MAX_MONSTER_COUNT) return false;
+                if (total > MAX_MONSTER_COUNT || (zone + 1 == TOWN_ZONE_ID && total != 0)) return false;
             }
-            return Data::REGULAR_MONSTERS_BY_CELL[12] == 0 && Data::STRONG_MONSTERS_BY_CELL[12] == 0;
-        }(), "Authored Zone spawn density exceeds the supported range or capacity.");
+            return true;
+        }(), "Authored Zone spawn counts exceed capacity or occupy protected cells.");
         if (m_zoneID < 1 || m_zoneID > ZONE_COUNT)
             throw std::runtime_error("Monster spawning requires a valid field Zone.");
         static_assert(Data::MONSTER_TOWN_ZONE_ID == TOWN_ZONE_ID, "Town spawn authoring must match server ownership.");
         if (m_zoneID == TOWN_ZONE_ID) return;
-        const int densityPercent = Data::MONSTER_ZONE_DENSITY_PERCENT[m_zoneID - 1];
+        const int zoneIndex = m_zoneID - 1;
         int uniqueId = 0;
 
-        // Generated counts preserve per-cell type order; open-map rand() distribution is unchanged.
+        // Consume the Unity-authored per-Zone counts without changing monster behavior.
         for (int i = 0; i < CELLS_Y; i++)
         {
             for (int j = 0; j < CELLS_X; j++)
@@ -131,7 +130,7 @@ namespace Core {
                     continue;
 
                 // 일반 몬스터
-                const int regularCount = static_cast<int>(int64_t{Data::REGULAR_MONSTERS_BY_CELL[cellIndex]} * densityPercent / 100);
+                const int regularCount = Data::MONSTER_REGULAR_COUNTS[zoneIndex][cellIndex];
                 for (int k = 0; k < regularCount; k++)
                 {
                     const auto [spawnX, spawnY] = ChooseSpawn(area);
@@ -139,14 +138,14 @@ namespace Core {
                     uint16_t monsterType = 0;
 
                     m_monsters.emplace_back();
-                    m_monsters.back().Initialize(monsterType, uniqueId, spawnX, spawnY, j, i);
+                    m_monsters.back().Initialize(Data::GetHuntingMonsterData(m_zoneID, monsterType), uniqueId, spawnX, spawnY, j, i);
 
                     cell.monsterIndexes.push_back(uniqueId);
                     uniqueId++;
                 }
 
                 // 조금 센 일반 몬스터
-                const int strongCount = static_cast<int>(int64_t{Data::STRONG_MONSTERS_BY_CELL[cellIndex]} * densityPercent / 100);
+                const int strongCount = Data::MONSTER_STRONG_COUNTS[zoneIndex][cellIndex];
                 for (int k = 0; k < strongCount; k++)
                 {
                     const auto [spawnX, spawnY] = ChooseSpawn(area);
@@ -154,7 +153,7 @@ namespace Core {
                     uint16_t monsterType = 1;
 
                     m_monsters.emplace_back();
-                    m_monsters.back().Initialize(monsterType, uniqueId, spawnX, spawnY, j, i);
+                    m_monsters.back().Initialize(Data::GetHuntingMonsterData(m_zoneID, monsterType), uniqueId, spawnX, spawnY, j, i);
 
                     cell.monsterIndexes.push_back(uniqueId);
                     uniqueId++;
@@ -162,7 +161,8 @@ namespace Core {
             }
         }
 
-        // 2. 보스 몬스터(type = 2)
+        // The authored hunting areas opt in to the existing boss pattern.
+        if (Data::MONSTER_BOSS_COUNTS[zoneIndex] != 0)
         {
             int i = 2;
             int j = 2;
@@ -178,7 +178,7 @@ namespace Core {
             uint16_t monsterType = 2;
 
             m_monsters.emplace_back();
-            m_monsters.back().Initialize(monsterType, uniqueId, spawnX, spawnY, 2, 2);
+            m_monsters.back().Initialize(Data::GetHuntingMonsterData(m_zoneID, monsterType), uniqueId, spawnX, spawnY, 2, 2);
 
             cell.monsterIndexes.push_back(uniqueId);
             uniqueId++;

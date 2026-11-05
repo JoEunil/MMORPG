@@ -27,30 +27,38 @@ namespace Mmorpg.Client.Editor
                 snapshot = JObject.Load(reader, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
                 if (reader.Read()) throw new InvalidOperationException("Unexpected data after the server content snapshot.");
             }
-            if (Integer(snapshot, "formatVersion", 2) != 2)
-                throw new InvalidOperationException("Only server content format version 2 is supported.");
-            var skills = new ServerContent.RingSkill[5];
-            var skillRows = Array(snapshot, "skills");
-            if (skillRows.Count != skills.Length) throw new InvalidOperationException("Skill IDs 0 to 4 are required exactly once.");
-            foreach (var row in skillRows)
+            if (Integer(snapshot, "formatVersion", 3) != 3)
+                throw new InvalidOperationException("Only server content format version 3 is supported.");
+            var skills = ReadSkills(snapshot, "skills");
+            var monsterSkills = ReadSkills(snapshot, "monsterSkills");
+            var zoneRows = Array(snapshot, "huntingZones");
+            if (zoneRows.Count != 6) throw new InvalidOperationException("Hunting zones 1 to 6 are required exactly once.");
+            var huntingZones = new ServerContent.HuntingZone[6];
+            foreach (var row in zoneRows)
             {
-                int id = (int)Integer(row, "skillID", 4);
-                if (skills[id] != null) throw new InvalidOperationException("Duplicate skill ID: " + id);
-                var phases = Array(row, "phases");
-                var skill = new ServerContent.RingSkill
+                int id = (int)Integer(row, "zoneID", 6);
+                if (id == 0 || huntingZones[id - 1] != null) throw new InvalidOperationException("Duplicate or invalid hunting zone ID.");
+                var label = Field(row, "label");
+                if (label.Type != JTokenType.String || string.IsNullOrWhiteSpace(label.Value<string>()))
+                    throw new InvalidOperationException("Hunting zones require a non-empty label.");
+                var zone = new ServerContent.HuntingZone
                 {
-                    skillID = id, flags = (int)Integer(row, "flags", 3), mana = Integer(row, "mana"),
-                    cooldownTicks = Integer(row, "cooldownTicks"), phases = new ServerContent.SkillPhase[phases.Count]
+                    zoneID = id, label = label.Value<string>(), minLevel = (int)Integer(row, "minLevel", ushort.MaxValue),
+                    maxLevel = (int)Integer(row, "maxLevel", ushort.MaxValue),
+                    regularHp = Integer(row, "regularHp", int.MaxValue), strongHp = Integer(row, "strongHp", int.MaxValue), bossHp = Integer(row, "bossHp", int.MaxValue),
+                    regularAttack = Integer(row, "regularAttack"), strongAttack = Integer(row, "strongAttack"), bossAttack = Integer(row, "bossAttack"),
+                    regularExp = Integer(row, "regularExp"), strongExp = Integer(row, "strongExp"), bossExp = Integer(row, "bossExp"),
+                    regularGold = Integer(row, "regularGold"), strongGold = Integer(row, "strongGold")
                 };
-                for (int i = 0; i < phases.Count; i++)
-                    skill.phases[i] = new ServerContent.SkillPhase
-                    {
-                        waitTicks = Integer(phases[i], "waitTicks"), action = (SkillAction)Integer(phases[i], "action", 1),
-                        range = (SkillRange)Integer(phases[i], "range", 5), range1 = Number(phases[i], "range1"),
-                        range2 = Number(phases[i], "range2"), attack = Integer(phases[i], "attack")
-                    };
-                ValidateSkill(skill);
-                skills[id] = skill;
+                if (id == 1 ? zone.minLevel != 0 || zone.maxLevel != 0 || zone.regularHp != 0 || zone.strongHp != 0 || zone.bossHp != 0 ||
+                    zone.regularAttack != 0 || zone.strongAttack != 0 || zone.bossAttack != 0 || zone.regularExp != 0 || zone.strongExp != 0 ||
+                    zone.bossExp != 0 || zone.regularGold != 0 || zone.strongGold != 0 :
+                    zone.minLevel == 0 || zone.maxLevel < zone.minLevel || zone.regularHp == 0 || zone.strongHp == 0 ||
+                    zone.regularAttack == 0 || zone.strongAttack == 0 || zone.regularExp == 0 || zone.strongExp == 0 ||
+                    zone.regularGold == 0 || zone.strongGold == 0 ||
+                    (id == 4 || id == 6 ? zone.bossHp == 0 || zone.bossAttack == 0 || zone.bossExp == 0 : zone.bossHp != 0 || zone.bossAttack != 0 || zone.bossExp != 0))
+                    throw new InvalidOperationException("Hunting zone levels and combat values do not match town, field, or boss availability.");
+                huntingZones[id - 1] = zone;
             }
             var monsters = new ServerContent.Monster[3];
             var monsterRows = Array(snapshot, "monsters");
@@ -138,6 +146,8 @@ namespace Mmorpg.Client.Editor
                 throw new InvalidOperationException("HP and MP potions must share the same cooldown.");
 
             // All parsing and validation finish before replacing any existing asset fields.
+            var oldMonsterSkills = target.monsterSkills;
+            var oldHuntingZones = target.huntingZones;
             var oldRing = target.ring;
             var oldMonster = target.monster0;
             var oldSkills = target.otherSkills;
@@ -148,6 +158,8 @@ namespace Mmorpg.Client.Editor
             bool wasDirty = EditorUtility.IsDirty(target);
             try
             {
+                target.monsterSkills = monsterSkills;
+                target.huntingZones = huntingZones;
                 target.ring = skills[1];
                 target.otherSkills = new[] { skills[0], skills[2], skills[3], skills[4] };
                 target.monster0 = monsters[0];
@@ -161,6 +173,8 @@ namespace Mmorpg.Client.Editor
             catch
             {
                 // Restore the live object if persistence throws. Disk writes are not an atomic transaction.
+                target.monsterSkills = oldMonsterSkills;
+                target.huntingZones = oldHuntingZones;
                 target.ring = oldRing;
                 target.monster0 = oldMonster;
                 target.otherSkills = oldSkills;
@@ -172,6 +186,34 @@ namespace Mmorpg.Client.Editor
                 else EditorUtility.ClearDirty(target);
                 throw;
             }
+        }
+
+        private static ServerContent.RingSkill[] ReadSkills(JToken snapshot, string field)
+        {
+            var skills = new ServerContent.RingSkill[5];
+            var skillRows = Array(snapshot, field);
+            if (skillRows.Count != skills.Length) throw new InvalidOperationException("Skill IDs 0 to 4 are required exactly once.");
+            foreach (var row in skillRows)
+            {
+                int id = (int)Integer(row, "skillID", 4);
+                if (skills[id] != null) throw new InvalidOperationException("Duplicate skill ID: " + id);
+                var phases = Array(row, "phases");
+                var skill = new ServerContent.RingSkill
+                {
+                    skillID = id, flags = (int)Integer(row, "flags", 3), mana = Integer(row, "mana"),
+                    cooldownTicks = Integer(row, "cooldownTicks"), phases = new ServerContent.SkillPhase[phases.Count]
+                };
+                for (int i = 0; i < phases.Count; i++)
+                    skill.phases[i] = new ServerContent.SkillPhase
+                    {
+                        waitTicks = Integer(phases[i], "waitTicks"), action = (SkillAction)Integer(phases[i], "action", 1),
+                        range = (SkillRange)Integer(phases[i], "range", 5), range1 = Number(phases[i], "range1"),
+                        range2 = Number(phases[i], "range2"), attack = Integer(phases[i], "attack")
+                    };
+                ValidateSkill(skill);
+                skills[id] = skill;
+            }
+            return skills;
         }
 
         private static JToken Field(JToken row, string name)

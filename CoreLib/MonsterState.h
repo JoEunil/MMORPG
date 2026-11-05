@@ -38,7 +38,11 @@ namespace Core {
         uint8_t wanderPauseTicks;
         
         void Initialize(uint16_t monsterID , uint16_t id, float posX, float posY, uint8_t CellX, uint8_t CellY) {
-            data = &Data::monsters[monsterID];
+            Initialize(Data::monsters[monsterID], id, posX, posY, CellX, CellY);
+        }
+
+        void Initialize(const Data::MonsterData& monsterData, uint16_t id, float posX, float posY, uint8_t CellX, uint8_t CellY) {
+            data = &monsterData;
             hp = data->maxHp;
             respawnTick = data->respawn;
             internalID = id;

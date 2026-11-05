@@ -16,15 +16,19 @@ namespace Mmorpg.Client.Editor
         public override VisualElement CreateInspectorGUI()
         {
             var root = new VisualElement();
-            AddNote(root, "1구역은 몬스터 없는 마을입니다. 나머지 사냥 구역은 5×5 배치 · 셀 폭 42 · 중앙 보스 1마리입니다.");
+            AddNote(root, "1구역은 몬스터 없는 마을입니다. 사냥 구역은 5×5 배치 · 셀 폭 42 · 중앙은 보스 전용입니다.");
             AddNote(root, "셀별 배열을 비우면 기존 공통 개수를 사용합니다. 배열은 y × 5 + x 순서의 25개이며 중앙 값은 0입니다.");
-            AddNote(root, "표의 셀 개수는 100% 기준이며 표기 순서는 일반 + 강한 몬스터입니다. 아래에서 구역별 적용 합계를 확인합니다.");
+            AddNote(root, "표는 일반 + 강화 배치 가중치입니다. 구역별 총수를 지정하면 가중치 비율로 정확히 배분합니다.");
             root.Add(new PropertyField(serializedObject.FindProperty("regularPerCell"), "일반 몬스터 / 셀"));
             root.Add(new PropertyField(serializedObject.FindProperty("strongPerCell"), "강한 몬스터 / 셀"));
             root.Add(new PropertyField(serializedObject.FindProperty("edgeInset"), "외곽 여백 (1–41)"));
-            root.Add(new PropertyField(serializedObject.FindProperty("regularByCell"), "셀별 일반 개수 (선택)"));
-            root.Add(new PropertyField(serializedObject.FindProperty("strongByCell"), "셀별 강한 개수 (선택)"));
+            root.Add(new PropertyField(serializedObject.FindProperty("regularByCell"), "셀별 일반 가중치 / 기존 개수"));
+            root.Add(new PropertyField(serializedObject.FindProperty("strongByCell"), "셀별 강화 가중치 / 기존 개수"));
             root.Add(new PropertyField(serializedObject.FindProperty("zoneDensityPercent"), "구역별 밀도 (%) · 마을은 0%, 사냥 구역은 50–200%"));
+            root.Add(new PropertyField(serializedObject.FindProperty("regularTotals"), "구역별 일반 총수 (6개)"));
+            root.Add(new PropertyField(serializedObject.FindProperty("strongTotals"), "구역별 강화 총수 (6개)"));
+            root.Add(new PropertyField(serializedObject.FindProperty("bossCounts"), "구역별 보스 수 (6개 · Zone4/6만 0/1)"));
+            AddNote(root, "총수 세 배열을 모두 비우면 기존 밀도를 적용합니다. 총수를 쓰면 세 배열이 모두 필요하며 밀도는 적용하지 않습니다.");
             grid = new VisualElement();
             grid.style.marginTop = 6;
             root.Add(grid);
@@ -79,7 +83,7 @@ namespace Mmorpg.Client.Editor
                 for (int x = 0; x < 5; x++)
                 {
                     bool boss = x == 2 && y == 2;
-                    var cellLabel = new Label(boss ? "Boss\n1" : $"{regularCounts[y * 5 + x]} + {strongCounts[y * 5 + x]}");
+                    var cellLabel = new Label(boss ? "보스\n전용" : $"{regularCounts[y * 5 + x]} + {strongCounts[y * 5 + x]}");
                     cellLabel.style.flexGrow = 1;
                     cellLabel.style.flexBasis = 0;
                     cellLabel.style.height = 36;
@@ -102,14 +106,20 @@ namespace Mmorpg.Client.Editor
                 }
                 grid.Add(row);
             }
-            int[] densities = MonsterSpawnExport.EffectiveZoneDensity(((MonsterSpawns)target).zoneDensityPercent);
+            var spawnContent = (MonsterSpawns)target;
+            int[][] regularByZone = MonsterSpawnExport.EffectiveZoneCounts(spawnContent, false);
+            int[][] strongByZone = MonsterSpawnExport.EffectiveZoneCounts(spawnContent, true);
+            int[] bosses = MonsterSpawnExport.EffectiveBossCounts(spawnContent);
             var zoneTotals = new string[6];
             for (int zone = 0; zone < zoneTotals.Length; zone++)
             {
-                long total = zone + 1 == MonsterSpawnExport.TownZoneId ? 0 : 1;
+                int regularTotal = 0, strongTotal = 0;
                 for (int cell = 0; cell < 25; cell++)
-                    total += (long)regularCounts[cell] * densities[zone] / 100 + (long)strongCounts[cell] * densities[zone] / 100;
-                zoneTotals[zone] = zone + 1 == MonsterSpawnExport.TownZoneId ? "Zone 1: 마을 · 몬스터 0마리" : $"Zone {zone + 1}: {total}마리 ({densities[zone]}%)";
+                {
+                    regularTotal += regularByZone[zone][cell];
+                    strongTotal += strongByZone[zone][cell];
+                }
+                zoneTotals[zone] = $"Zone {zone + 1}: 일반 {regularTotal} / 강화 {strongTotal} / 보스 {bosses[zone]}";
             }
             preview.text = $"{string.Join(" · ", zoneTotals)}\n좌표 오프셋 {inset}–41";
             validation.text = "저작 값이 유효합니다.";

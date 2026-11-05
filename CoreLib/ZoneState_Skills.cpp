@@ -52,7 +52,7 @@ namespace Core {
 		for (int k = 0; k < cell.activeSkills.size(); k++)
 		{
 			auto& skill = cell.activeSkills[k];
-			auto& skillData = Data::skillList[skill.skillId];
+			const auto& skillData = skill.casterType == 0 ? Data::skillList[skill.skillId] : Data::monsterSkillList[skill.skillId];
 			if (skill.currentTick < skillData.phases[skill.currentPhase].tick) {
 				continue;
 			}
@@ -107,7 +107,7 @@ namespace Core {
 
 	void ZoneState::ApplyHit(std::optional<std::reference_wrapper<CharacterState>> c, ActiveSkill& skill, int idx) {
 		perfCollector->AddHitCnt(m_zoneID);
-		auto& skillData = Data::skillList[skill.skillId];
+		const auto& skillData = skill.casterType == 0 ? Data::skillList[skill.skillId] : Data::monsterSkillList[skill.skillId];
 		auto& phase = skillData.phases[skill.currentPhase];
 		bool AOE = skillData.flags & 0x02; // 광역기
 		if (skill.casterType == 0) { // 캐릭터 -> 몬스터
@@ -131,7 +131,7 @@ namespace Core {
 							// 일단 막타 친 사람만 보상.. 
 							// 보스몬스터의 경우 hitter list로 보상 분배하도록 처리해야됨.
 							caster.AddExperience(m_monsters[mon].data->reward.exp);
-                            if (m_monsters[mon].data->id <= 1) stateManager->GrantMonsterReward(caster);
+                            if (m_monsters[mon].data->id <= 1) stateManager->GrantMonsterReward(caster, m_monsters[mon].data->reward.gold);
 							m_cells[caster.cellY][caster.cellX].dirtyChar.push_back(caster.zoneInternalID);
 						}
 						m_monsters[mon].SetAggro(caster.zoneInternalID);

@@ -315,52 +315,7 @@ MonoBehaviour:
     - level: 100
       requiredTotalExp: 247500
       maxHpIncrease: 500
-  parry:
-    windowTicks: 5
-    cooldownTicks: 60
-    charges: 1
-  itemUse:
-  - itemID: 1
-    hpRecovery: 3000
-    mpRecovery: 0
-    cooldownTicks: 40
-  - itemID: 2
-    hpRecovery: 0
-    mpRecovery: 3000
-    cooldownTicks: 40
-  ring:
-    skillID: 1
-    flags: 2
-    mana: 20
-    cooldownTicks: 120
-    phases:
-    - waitTicks: 0
-      action: 0
-      range: 0
-      range1: 0
-      range2: 0
-      attack: 0
-    - waitTicks: 16
-      action: 1
-      range: 1
-      range1: 8
-      range2: 0
-      attack: 100
-  monster0:
-    id: 0
-    maxHp: 1500
-    attack: 5
-    respawnTicks: 300
-    moveSpeed: 1
-    rewardExp: 10
-    phases:
-    - hpThreshold: 1
-      steps:
-      - skillID: 0
-        delayTicks: 20
-      - skillID: 0
-        delayTicks: 20
-  otherSkills:
+  monsterSkills:
   - skillID: 0
     flags: 0
     mana: 1
@@ -378,6 +333,23 @@ MonoBehaviour:
       range1: 2
       range2: 0
       attack: 5
+  - skillID: 1
+    flags: 2
+    mana: 20
+    cooldownTicks: 120
+    phases:
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 16
+      action: 1
+      range: 1
+      range1: 8
+      range2: 0
+      attack: 15
   - skillID: 2
     flags: 2
     mana: 20
@@ -395,6 +367,271 @@ MonoBehaviour:
       range1: 12
       range2: 3
       attack: 100
+  - skillID: 3
+    flags: 2
+    mana: 0
+    cooldownTicks: 0
+    phases:
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 20
+      action: 1
+      range: 3
+      range1: 10
+      range2: 30
+      attack: 100
+    - waitTicks: 10
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 20
+      action: 1
+      range: 4
+      range1: 10
+      range2: 30
+      attack: 100
+  - skillID: 4
+    flags: 2
+    mana: 0
+    cooldownTicks: 0
+    phases:
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 20
+      action: 1
+      range: 5
+      range1: 5
+      range2: 0
+      attack: 100
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 20
+      action: 1
+      range: 5
+      range1: 10
+      range2: 5
+      attack: 100
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 20
+      action: 1
+      range: 5
+      range1: 15
+      range2: 10
+      attack: 100
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 20
+      action: 1
+      range: 5
+      range1: 20
+      range2: 15
+      attack: 100
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 20
+      action: 1
+      range: 5
+      range1: 25
+      range2: 20
+      attack: 100
+  huntingZones:
+  - zoneID: 1
+    label: "\uB9C8\uC744"
+    minLevel: 0
+    maxLevel: 0
+    regularHp: 0
+    strongHp: 0
+    bossHp: 0
+    regularAttack: 0
+    strongAttack: 0
+    bossAttack: 0
+    regularExp: 0
+    strongExp: 0
+    bossExp: 0
+    regularGold: 0
+    strongGold: 0
+  - zoneID: 2
+    label: "\uC131\uBB38 \uBC16"
+    minLevel: 1
+    maxLevel: 5
+    regularHp: 900
+    strongHp: 2000
+    bossHp: 0
+    regularAttack: 50
+    strongAttack: 80
+    bossAttack: 0
+    regularExp: 10
+    strongExp: 30
+    bossExp: 0
+    regularGold: 10
+    strongGold: 30
+  - zoneID: 3
+    label: "\uC678\uACFD \uCD08\uC9C0"
+    minLevel: 6
+    maxLevel: 10
+    regularHp: 1200
+    strongHp: 2800
+    bossHp: 0
+    regularAttack: 70
+    strongAttack: 110
+    bossAttack: 0
+    regularExp: 25
+    strongExp: 75
+    bossExp: 0
+    regularGold: 15
+    strongGold: 45
+  - zoneID: 4
+    label: "\uD3D0\uD5C8 \uAE38\uBAA9"
+    minLevel: 11
+    maxLevel: 15
+    regularHp: 1600
+    strongHp: 3800
+    bossHp: 24000
+    regularAttack: 90
+    strongAttack: 150
+    bossAttack: 18
+    regularExp: 40
+    strongExp: 120
+    bossExp: 1200
+    regularGold: 20
+    strongGold: 60
+  - zoneID: 5
+    label: "\uC131\uACFD \uC678\uACFD"
+    minLevel: 16
+    maxLevel: 20
+    regularHp: 2100
+    strongHp: 5000
+    bossHp: 0
+    regularAttack: 120
+    strongAttack: 190
+    bossAttack: 0
+    regularExp: 55
+    strongExp: 165
+    bossExp: 0
+    regularGold: 30
+    strongGold: 90
+  - zoneID: 6
+    label: "\uAE4A\uC740 \uC0AC\uB0E5\uD130"
+    minLevel: 21
+    maxLevel: 25
+    regularHp: 2700
+    strongHp: 6500
+    bossHp: 36000
+    regularAttack: 150
+    strongAttack: 240
+    bossAttack: 30
+    regularExp: 70
+    strongExp: 210
+    bossExp: 2100
+    regularGold: 40
+    strongGold: 120
+  parry:
+    windowTicks: 5
+    cooldownTicks: 60
+    charges: 1
+  itemUse:
+  - itemID: 1
+    hpRecovery: 1500
+    mpRecovery: 0
+    cooldownTicks: 120
+  - itemID: 2
+    hpRecovery: 0
+    mpRecovery: 500
+    cooldownTicks: 120
+  ring:
+    skillID: 1
+    flags: 2
+    mana: 100
+    cooldownTicks: 120
+    phases:
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 16
+      action: 1
+      range: 1
+      range1: 8
+      range2: 0
+      attack: 120
+  monster0:
+    id: 0
+    maxHp: 1500
+    attack: 5
+    respawnTicks: 300
+    moveSpeed: 1
+    rewardExp: 10
+    phases:
+    - hpThreshold: 1
+      steps:
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 20
+  otherSkills:
+  - skillID: 0
+    flags: 0
+    mana: 0
+    cooldownTicks: 20
+    phases:
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 6
+      action: 1
+      range: 1
+      range1: 2
+      range2: 0
+      attack: 30
+  - skillID: 2
+    flags: 2
+    mana: 160
+    cooldownTicks: 80
+    phases:
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 10
+      action: 1
+      range: 2
+      range1: 12
+      range2: 3
+      attack: 180
   - skillID: 3
     flags: 2
     mana: 0

@@ -140837,6 +140837,8 @@ MonoBehaviour:
   lootNotice: {fileID: 628732876}
   potionQuickSlot: {fileID: 991180711}
   potionQuantity: {fileID: 530814108}
+  mpPotionQuickSlot: {fileID: 0}
+  mpPotionQuantity: {fileID: 0}
   potionQuickStatus: {fileID: 844913963}
 --- !u!114 &734912172
 MonoBehaviour:
@@ -322768,6 +322770,7 @@ MonoBehaviour:
   fieldPlane: {fileID: 1896167296}
   quarterViewCamera: {fileID: 1642263371}
   worldMap: {fileID: 11400000, guid: e9bd3df09fb46b24bbb0b657d9d9dbcd, type: 2}
+  serverContent: {fileID: 11400000, guid: e20a847d2d4fa094088b01f4c513165b, type: 2}
 --- !u!4 &1741877132
 Transform:
   m_ObjectHideFlags: 0

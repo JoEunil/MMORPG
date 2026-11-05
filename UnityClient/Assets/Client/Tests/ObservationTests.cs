@@ -692,8 +692,9 @@ namespace Mmorpg.Client.Tests
             using (var fixture = new ObservationFixture())
             {
                 fixture.ConfigureMonsterRange();
-                fixture.Content.ring.phases[1].waitTicks = 6;
-                fixture.Content.ring.phases[1].range1 = 2;
+                fixture.Content.monsterSkills[1].phases[1].waitTicks = 6;
+                fixture.Content.monsterSkills[1].phases[1].range1 = 2;
+                Assert.That(fixture.Content.ring.phases[1].range1, Is.EqualTo(8), "Monster telegraphs use a separate definition from player skill 1.");
                 fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42));
                 var remoteCharge = new ActionResultField { casterType = 0, casterId = 42, skillSlot = 2,
                     skillId = 2, skillPhase = 0, aimAngle = 37.5f, x = 20, y = 30 };
@@ -1202,6 +1203,10 @@ namespace Mmorpg.Client.Tests
             public void ConfigureMonsterRange()
             {
                 rangeContent = ScriptableObject.CreateInstance<ServerContent>();
+                var skills = new[] { rangeContent.otherSkills[0], rangeContent.ring, rangeContent.otherSkills[1], rangeContent.otherSkills[2], rangeContent.otherSkills[3] };
+                rangeContent.monsterSkills = new ServerContent.RingSkill[skills.Length];
+                for (int i = 0; i < skills.Length; i++)
+                    rangeContent.monsterSkills[i] = JsonUtility.FromJson<ServerContent.RingSkill>(JsonUtility.ToJson(skills[i]));
                 RangeMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
                 Set(observer, "serverContent", rangeContent);
                 Set(observer, "monsterRangeMaterial", RangeMaterial);

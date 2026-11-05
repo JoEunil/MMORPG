@@ -500,8 +500,10 @@ namespace Mmorpg.Client
             }
             if (result.casterType == 0 && (result.skillSlot > 2 || result.skillId != result.skillSlot) ||
                 result.casterType == 1 && result.skillSlot != 0) return;
-            var skill = result.skillId == 1 ? serverContent.ring : serverContent.otherSkills == null ? null :
-                Array.Find(serverContent.otherSkills, value => value != null && value.skillID == result.skillId);
+            var skill = result.casterType == 1
+                ? serverContent.monsterSkills == null ? null : Array.Find(serverContent.monsterSkills, value => value != null && value.skillID == result.skillId)
+                : result.skillId == 1 ? serverContent.ring : serverContent.otherSkills == null ? null :
+                    Array.Find(serverContent.otherSkills, value => value != null && value.skillID == result.skillId);
             if (skill == null || skill.skillID != result.skillId || skill.phases == null || result.skillPhase >= skill.phases.Length) return;
             var phase = skill.phases[result.skillPhase];
             if (phase == null || phase.action != SkillAction.Charging && phase.action != SkillAction.Hit) return;
@@ -547,8 +549,8 @@ namespace Mmorpg.Client
                 {
                     if (result.skillId == 4)
                     {
-                        if (serverContent == null || serverContent.otherSkills == null) continue;
-                        ServerContent.RingSkill bossSquareSkill = Array.Find(serverContent.otherSkills,
+                        if (serverContent == null || serverContent.monsterSkills == null) continue;
+                        ServerContent.RingSkill bossSquareSkill = Array.Find(serverContent.monsterSkills,
                             candidate => candidate != null && candidate.skillID == 4);
                         if (bossSquareSkill == null || bossSquareSkill.skillID != 4 || bossSquareSkill.phases == null || bossSquareSkill.phases.Length != 10)
                             continue;
@@ -595,8 +597,8 @@ namespace Mmorpg.Client
                         continue;
                     }
                     if (result.skillPhase != 0 && result.skillPhase != 2) continue;
-                    if (serverContent == null || monsterRangeMaterial == null || serverContent.otherSkills == null) continue;
-                    ServerContent.RingSkill bossSkill = Array.Find(serverContent.otherSkills,
+                    if (serverContent == null || monsterRangeMaterial == null || serverContent.monsterSkills == null) continue;
+                    ServerContent.RingSkill bossSkill = Array.Find(serverContent.monsterSkills,
                         candidate => candidate != null && candidate.skillID == 3);
                     if (bossSkill == null || bossSkill.skillID != 3 || bossSkill.phases == null || bossSkill.phases.Length != 4 ||
                         bossSkill.phases[0] == null || bossSkill.phases[0].action != SkillAction.Charging ||
@@ -635,8 +637,7 @@ namespace Mmorpg.Client
                 }
                 if (serverContent == null || monsterRangeMaterial == null) continue;
 
-                ServerContent.RingSkill skill = result.skillId == 1 ? serverContent.ring :
-                    serverContent.otherSkills == null ? null : Array.Find(serverContent.otherSkills,
+                ServerContent.RingSkill skill = serverContent.monsterSkills == null ? null : Array.Find(serverContent.monsterSkills,
                         candidate => candidate != null && candidate.skillID == result.skillId);
                 if (skill == null || skill.skillID != result.skillId || skill.phases == null || skill.phases.Length != 2 ||
                     skill.phases[0] == null || skill.phases[0].action != SkillAction.Charging || skill.phases[1] == null)

@@ -2,6 +2,8 @@
 
 #include <CoreLib/ZoneState.h>
 #include <CoreLib/WorldMap.h>
+#include <CoreLib/HuntingZoneData.h>
+#include "../../UnityClient/Exports/ServerData/MonsterSpawns.inc"
 #include <algorithm>
 #include <cmath>
 #include <set>
@@ -41,12 +43,12 @@ namespace Core {
             ZoneState::perfCollector = &perf;
             auto& cell = zone.m_cells[y][x];
             const auto& active = cell.activeSkills[0];
-            cell.activeSkills[0].currentTick = Data::skillList[active.skillId].phases[active.currentPhase].tick;
+            cell.activeSkills[0].currentTick = (active.casterType == 0 ? Data::skillList : Data::monsterSkillList)[active.skillId].phases[active.currentPhase].tick;
             zone.ProcessCellActiveSkills(cell);
         }
         void QueueMonsterHit(uint16_t index, uint16_t skillID = 0) {
             const auto& monster = zone.m_monsters[index];
-            zone.m_cells[2][2].activeSkills.push_back({1, 0, 0, index, 0, 0, monster.x, monster.y, skillID, 1, Data::skillList[skillID].phases[1].tick, 0});
+            zone.m_cells[2][2].activeSkills.push_back({1, 0, 0, index, 0, 0, monster.x, monster.y, skillID, 1, Data::monsterSkillList[skillID].phases[1].tick, 0});
         }
         MonsterState& MonsterAt(size_t index) { return zone.m_monsters[index]; }
         CharacterState& CharacterAt(size_t index) { return zone.m_chars[index]; }
@@ -74,9 +76,14 @@ namespace Core {
                         EXPECT_TRUE(fixture.CellAt(x, y).monsterIndexes.empty());
                 continue;
             }
-            const int regular[25] = {0,0,2,3,4, 0,2,3,4,5, 2,3,0,5,6, 3,4,5,6,7, 4,5,6,7,8};
-            const int strong[25] = {0,0,0,0,1, 0,0,0,1,1, 0,0,0,1,1, 0,1,1,1,2, 1,1,1,2,2};
-            ASSERT_EQ(fixture.Monsters().size(), 112u);
+            const auto& regular = Data::MONSTER_REGULAR_COUNTS[zoneID - 1];
+            const auto& strong = Data::MONSTER_STRONG_COUNTS[zoneID - 1];
+            const int bosses = Data::MONSTER_BOSS_COUNTS[zoneID - 1];
+            const int expectedRegular[] = {0,108,116,123,132,139};
+            const int expectedStrong[] = {0,12,16,20,24,28};
+            const int expectedBoss[] = {0,0,0,1,0,1};
+            const size_t expectedTotal = expectedRegular[zoneID - 1] + expectedStrong[zoneID - 1] + expectedBoss[zoneID - 1];
+            ASSERT_EQ(fixture.Monsters().size(), expectedTotal);
             std::set<uint32_t> seen;
             int regularTotal = 0, strongTotal = 0, bossTotal = 0;
             for (int y = 0; y < 5; ++y) {
@@ -84,13 +91,15 @@ namespace Core {
                     const auto& cell = fixture.CellAt(x, y);
                     const bool boss = x == 2 && y == 2;
                     const int slot = y * 5 + x;
-                    ASSERT_EQ(cell.monsterIndexes.size(), static_cast<size_t>(boss ? 1 : regular[slot] + strong[slot]));
+                    ASSERT_EQ(cell.monsterIndexes.size(), static_cast<size_t>(boss ? bosses : regular[slot] + strong[slot]));
                     for (size_t n = 0; n < cell.monsterIndexes.size(); ++n) {
                         const auto index = cell.monsterIndexes[n];
                         ASSERT_LT(index, fixture.Monsters().size());
                         EXPECT_TRUE(seen.insert(index).second);
                         const auto& monster = fixture.Monsters()[index];
                         EXPECT_EQ(monster.internalID, index);
+                        EXPECT_EQ(monster.data, &Data::GetHuntingMonsterData(zoneID, monster.data->id));
+                        EXPECT_EQ(monster.hp, monster.data->maxHp);
                         EXPECT_EQ(monster.cellX, x); EXPECT_EQ(monster.cellY, y);
                         EXPECT_EQ(monster.data->id, boss ? 2 : (n < static_cast<size_t>(regular[slot]) ? 0 : 1));
                         EXPECT_FLOAT_EQ(monster.x, monster.spawnX); EXPECT_FLOAT_EQ(monster.y, monster.spawnY);
@@ -107,8 +116,10 @@ namespace Core {
                     }
                 }
             }
-            EXPECT_EQ(regularTotal, 94); EXPECT_EQ(strongTotal, 17); EXPECT_EQ(bossTotal, 1);
-            EXPECT_EQ(seen.size(), 112u);
+            EXPECT_EQ(regularTotal, expectedRegular[zoneID - 1]);
+            EXPECT_EQ(strongTotal, expectedStrong[zoneID - 1]);
+            EXPECT_EQ(bossTotal, expectedBoss[zoneID - 1]);
+            EXPECT_EQ(seen.size(), expectedTotal);
         }
     }
 
@@ -606,7 +617,7 @@ namespace Core {
         // A basic attack damages normally and leaves the charge for a telegraphed skill.
         fixture.QueueMonsterHit(0);
         fixture.AdvancePhaseAt(2, 2);
-        const int basicDamage = monster.data->attack * Data::skillList[0].phases[1].attack;
+        const int basicDamage = monster.data->attack * Data::monsterSkillList[0].phases[1].attack;
         EXPECT_EQ(fixture.CharacterAt(0).hp, 10000 - basicDamage);
         EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 5u);
         EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 60u);
@@ -615,7 +626,7 @@ namespace Core {
         fixture.QueueMonsterHit(0, 1);
         fixture.QueueMonsterHit(0, 1);
         fixture.AdvancePhaseAt(2, 2);
-        const int damage = monster.data->attack * Data::skillList[1].phases[1].attack;
+        const int damage = monster.data->attack * Data::monsterSkillList[1].phases[1].attack;
         EXPECT_EQ(fixture.CharacterAt(0).hp, 10000 - basicDamage - damage);
         EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 0u);
         EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 60u);
