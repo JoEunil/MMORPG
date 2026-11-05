@@ -30,3 +30,4 @@ Astra가MP선택시사용버튼의HP라벨잔존을발견했다. 원래UI담당�
 최신BAT는ItemsCaster/Player-Fixed/MMORPG.exe + ItemsCaster/Server/MainServer.exe,기존Parry/Login앱/보호환경을사용한다. launcher check통과. 보안창뒤현재실행중Player24872는수정전첫Player이며임의재시작하지않았다. 사용자보안창처리후정상종료/재시작으로최신Player를사용해야한다. 정책·효과·MP/골드실전확인은아직미완료다.
 
 실제Agent추가10회(신규3/후속7): 서버분석신규1,서버구현신규1·Handler보완후속1,FX구현신규1,UI구현/라벨보완후속2,코드리뷰후속1,종합검수단계/최종/재검수후속3. 누적625(신규235/후속390),총괄직접작업은제외,토큰/비용N/A.
+최신후보baed635의게시승인PLAYITEM01/r1을새부모1793852712.014869에요청하고등록·수신기31992/listening/age8초를확인했다. 이전PARRY01요청은대체했고기소비없음. 보안창실전미완료를요청본문에명시했다. 원격push/새PR게시/병합은아직하지않았다.

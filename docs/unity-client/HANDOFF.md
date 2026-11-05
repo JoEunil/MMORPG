@@ -15,6 +15,6 @@ ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본 ROOT/UnityCli
 BAT다음기동은ItemsCaster/Player-Fixed/MMORPG.exe + ItemsCaster/Server/MainServer.exe,Login은기존Parry/Login앱/보호환경이다. 현재보안창뒤Player는라벨수정전첫빌드라사용자처리후정상종료/재시작해최신Player로검증한다. 허용전보안창을피하려고다른서버로갈아타지않는다. 새패킷서버·ClientCore·Unity·Dummy동시적용필수.
 
 ## 게시·다음 행동
-현재큰통합PR후보준비. 로컬커밋후정확한후보로새UnityCoordinator앱스레드에게시승인을요청한다. 기존PARRY01/r2(1793801063.563599)는이전패링범위만포함하므로새아이템후보승인으로소비하지않는다. 새승인전push/PR금지,병합은별도다. 실제입력대기는게시승인과별개다.
+코드후보baed635로로컬커밋완료. PLAYITEM01/r1을새UnityCoordinator앱부모1793852712.014869(요청도같은ts)에발신했고threads.txt자동등록확인. 이코드후보및기존미게시관련묶음의push/PR1개게시만승인대기,회신·기소비없음. 실제게시전정확한후보·사람·채널·스레드·현재대기/회신ID를대조한다. 기존PARRY01/r2(1793801063.563599)는새PLAYITEM01/r1로대체/소비금지. 새승인전push/PR금지,병합은별도다. 실제입력대기는게시승인과별개다.
 
 발신ROOT/UnityClient/Tools/Send-CoordinatorSlack.ps1,수신기복구nodePID31992. 새요청전프로세스/최근health/listening·고정Coordinator·등록스레드재확인. Agent625(신규235/후속390),토큰/비용N/A. 상세 history/2026-11-05-items-caster-follow/RESULTS.md,증거ROOT/UnityClient/Builds/ClientGrowthHUD/verification/items-caster-follow. 구역난이도·장비·수령함은후속범위다.
