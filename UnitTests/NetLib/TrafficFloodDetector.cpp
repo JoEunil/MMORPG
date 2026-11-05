@@ -34,6 +34,6 @@ TEST_F(FloodDetectTest, bigPacketAttack) {
 
 TEST_F(FloodDetectTest, bigPacketSleep) {
 	detector.ByteReceived(Net::BYTES_TOKEN_CAPACITY, clock.GetTimeMS());
-	std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	std::this_thread::sleep_for(std::chrono::milliseconds(40)); // cached clock 오차
 	EXPECT_FALSE(detector.ByteReceived(2, clock.GetTimeMS()));
 }
