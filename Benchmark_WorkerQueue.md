@@ -20,9 +20,9 @@
 
 | 비교군 | 구현 및 소비자 대기 방식 |
 | --- | --- |
-| Poll | LockFreeQueue, pop 실패 시 yield |
-| PollSleep | 동일한 LockFreeQueue, pop 실패 시 1ms sleep |
-| Semaphore | LockFreeQueue + permit 카운터·작업 알림·대기 |
+| Poll | MPMCQueue, pop 실패 시 yield |
+| PollSleep | 동일한 MPMCQueue, pop 실패 시 1ms sleep |
+| Semaphore | MPMCQueue + permit 카운터·작업 알림·대기 |
 | MutexCV | RingQueue + mutex·조건변수 대기 |
 
 `Time`은 작업의 평균 완료 시간, `items_per_second`는 완료 작업/초다. `push_failures/item`은 작업당 평균 push 실패 횟수로 유실률이 아니다. 생산자는 재시도하여 모든 작업을 전달하고, 소비 개수가 입력과 같은지 검증한다. `CPU` 열은 생산자·소비자 전체 CPU 사용량이 아니므로 CPU 효율 비교에 사용하지 않는다.

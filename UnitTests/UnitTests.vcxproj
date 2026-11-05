@@ -157,7 +157,7 @@ xcopy /Y "$(SolutionDir)External\libevent\bin\Release\*.dll" "$(OutDir)"</Comman
     <ClCompile Include="BaseLib\NonBlockingBackPressureQueue.cpp" />
     <ClCompile Include="BaseLib\BlockingQueue.cpp" />
     <ClCompile Include="BaseLib\DrainableSemaphore.cpp" />
-    <ClCompile Include="BaseLib\LockFreeQueue.cpp" />
+    <ClCompile Include="BaseLib\MPMCQueue.cpp" />
     <ClCompile Include="BaseLib\TripleBuffer.cpp" />
     <ClCompile Include="BaseLib\WAL.cpp" />
     <ClCompile Include="main.cpp" />

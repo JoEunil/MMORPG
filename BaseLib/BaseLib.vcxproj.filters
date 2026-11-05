@@ -24,7 +24,7 @@
     <ClInclude Include="SpinLockGuard.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="LockFreeQueue.h">
+    <ClInclude Include="MPMCQueue.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="Exception.h">

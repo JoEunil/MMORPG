@@ -36,13 +36,13 @@ Producer는 작업을 queue에 publish한 뒤 consumer를 깨운다.
 - Push가 계속 성공하므로 drop, durable 기록, 상태 복구 같은 포화 정책을 적용할 시점이 없다.
 
 Bounded Queue는 시작 시 고정된 공간만 할당하고 full이면 즉시 실패를 반환한다. Queue 크기와 backlog 증가를 제한하고, 호출부에서 작업 특성에 맞는 포화 정책을 적용할 수 있다.  
-`LockFreeQueue`와 `RingQueue`는 모두 bounded queue다. Core hot path처럼 producer의 대기를 피해야 하면 `LockFreeQueue`를 사용한다. CacheFlush와 DBWorker는 Mutex/CV로 동시 접근을 보호하므로 단순한 `RingQueue`를 사용한다.   
+`MPMCQueue`와 `RingQueue`는 모두 bounded queue다. Core hot path처럼 producer의 대기를 피해야 하면 `MPMCQueue`를 사용한다. CacheFlush와 DBWorker는 Mutex/CV로 동시 접근을 보호하므로 단순한 `RingQueue`를 사용한다.
 
 ## 4. Mutex / Lock-free
 
 Queue 동기화 방식과 consumer wake-up 방식은 독립적이다. Mutex queue에 semaphore를 사용할 수 있고, lock-free queue에 Condition Variable을 사용할 수도 있다. 다만 Condition Variable은 대기 조건을 보호할 mutex가 필요하다.  
 
-현재 서버에서 Mutex와 Lock-free를 나누는 핵심 기준은 producer의 enqueue 경로에서 blocking을 허용할지 여부다. Mutex queue는 다른 스레드가 mutex를 보유하고 있으면 producer도 lock 획득까지 대기한다. `LockFreeQueue`는 consumer가 보유한 mutex의 해제를 기다리지 않으며, queue가 full이면 즉시 실패를 반환한다. CAS 경쟁으로 재시도할 수는 있지만 mutex 대기로 producer thread가 block되는 구조는 아니다.  
+현재 서버에서 Mutex와 Lock-free를 나누는 핵심 기준은 producer의 enqueue 경로에서 blocking을 허용할지 여부다. Mutex queue는 다른 스레드가 mutex를 보유하고 있으면 producer도 lock 획득까지 대기한다. `MPMCQueue`는 consumer가 보유한 mutex의 해제를 기다리지 않으며, queue가 full이면 즉시 실패를 반환한다. CAS 경쟁으로 재시도할 수는 있지만 mutex 대기로 producer thread가 block되는 구조는 아니다.
 
 이 구분은 consumer의 대기 방식과는 별개다. Lock-free queue도 semaphore를 결합하면 consumer는 작업이 없을 때 block할 수 있다.
 
@@ -73,7 +73,7 @@ Drain은 `Stop()`과 producer push를 직렬화하지 않는다. 모든 producer
 
 ## 6. BlockingQueue
 
-`BlockingQueue`는 `LockFreeQueue`와 `DrainableSemaphore`를 결합한 래퍼 클래스다.
+`BlockingQueue`는 `MPMCQueue`와 `DrainableSemaphore`를 결합한 래퍼 클래스다.
 
 - Push 성공 후 permit 발행
 - Permit 획득 후 queue pop
@@ -100,7 +100,7 @@ Cache 측 worker는 DB와 외부 I/O 대기가 처리 시간을 지배한다. Ho
 
 | Worker | Queue / Wake-up | 포화 정책 | Stop | 적용 이유 |
 | --- | --- | --- | --- | --- |
-| Zone | `LockFreeQueue` + game tick | Full 시 drop | HardStop | 고정 tick이 consumer 실행 시점을 결정하므로 별도 wake-up이 필요 없다. |
+| Zone | `MPMCQueue` + game tick | Full 시 drop | HardStop | 고정 tick이 consumer 실행 시점을 결정하므로 별도 wake-up이 필요 없다. |
 | Chat | `NonBlockingBackPressureQueue` + 15ms batch loop | Chat·Lifecycle drop, Zone Join·Leave defer | HardStop | Batch window 동안 dequeue가 block되면 안 된다. |
 | Broadcast | 워커별 `BlockingQueue` + Semaphore | 전체 대기 작업 512개 초과 시 drop | HardStop | 같은 Zone은 같은 워커 큐로 보내 송신 순서를 유지한다. 워커 수는 Zone 수와 독립적이다. Producer는 대기하지 않는다. |
 | NonZone | `BlockingBackPressureQueue` + Semaphore | Work drop, Disconnect defer | Drain | Idle worker는 block한다. Disconnect를 보존하기 위해 BackPressure를 적용한다. |

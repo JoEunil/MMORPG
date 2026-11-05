@@ -33,7 +33,7 @@ Primary와 defer는 모두 bounded queue다. Important 작업도 무한히 쌓�
 
 ## 4. Non-Blocking 방식
 
-`NonBlockingBackPressureQueue`는 primary와 defer에 `LockFreeQueue`를 사용한다. Producer와 consumer 모두 대기하지 않으며, queue가 비거나 가득 차면 즉시 결과를 반환한다.
+`NonBlockingBackPressureQueue`는 primary와 defer에 `MPMCQueue`를 사용한다. Producer와 consumer 모두 대기하지 않으며, queue가 비거나 가득 차면 즉시 결과를 반환한다.
 
 ### Normal
 
@@ -51,7 +51,7 @@ Non-Blocking consumer는 두 queue를 계속 확인하므로 비어 있는 시�
 
 ## 5. Blocking 방식
 
-`BlockingBackPressureQueue`는 `LockFreeQueue`와 `DrainableSemaphore`를 결합한 BlockingQueue 구성을 사용한다. Producer의 enqueue는 대기하지 않고, consumer는 처리할 작업이 없으면 semaphore에서 block된다.
+`BlockingBackPressureQueue`는 `MPMCQueue`와 `DrainableSemaphore`를 결합한 BlockingQueue 구성을 사용한다. Producer의 enqueue는 대기하지 않고, consumer는 처리할 작업이 없으면 semaphore에서 block된다.
 
 Primary와 defer가 하나의 semaphore를 공유하며, consumer는 permit을 획득한 뒤 defer queue를 먼저 확인한다. 종료 시에는 설정에 따라 남은 작업을 처리하는 Drain과 즉시 중단하는 HardStop을 선택한다.
 

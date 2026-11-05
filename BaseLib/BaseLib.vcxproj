@@ -143,7 +143,7 @@
     <ClInclude Include="DrainableSemaphore.h" />
     <ClInclude Include="Exception.h" />
     <ClInclude Include="framework.h" />
-    <ClInclude Include="LockFreeQueue.h" />
+    <ClInclude Include="MPMCQueue.h" />
     <ClInclude Include="NonBlockingBackPressureQueue.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="FixedObjectPool.h" />

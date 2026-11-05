@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <thread>
 
-#include "LockFreeQueue.h"
+#include "MPMCQueue.h"
 #include "DrainableSemaphore.h"
 
 // Vyukov bounded MPMC queue와 semaphore를 결합한 blocking queue 래퍼.
@@ -18,7 +18,7 @@
 namespace Base {
 	template <typename T, size_t Size, bool Drain>
 	class BlockingQueue {
-		LockFreeQueue<T, Size> m_queue;
+		MPMCQueue<T, Size> m_queue;
 		DrainableSemaphore<Drain> m_semaphore;
 	public:
 		BlockingQueue() : m_queue(), m_semaphore() {}

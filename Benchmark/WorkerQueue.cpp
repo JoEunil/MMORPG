@@ -8,7 +8,7 @@
 #include <thread>
 #include <vector>
 #include <utility>
-#include <BaseLib/LockFreeQueue.h>
+#include <BaseLib/MPMCQueue.h>
 #include <BaseLib/BlockingQueue.h>
 #include <BaseLib/RingQueue.h>
 
@@ -17,7 +17,7 @@ namespace {
     using Item = uint64_t;
     template<size_t Capacity>
     struct PollQueue {
-        Base::LockFreeQueue<Item, Capacity> queue;
+        Base::MPMCQueue<Item, Capacity> queue;
         bool push(Item& x) { return queue.push(x); }
         bool pop(Item& x) { return queue.pop(x); }
         void Stop() {}
