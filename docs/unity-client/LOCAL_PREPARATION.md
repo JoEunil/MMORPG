@@ -74,3 +74,5 @@ UnityAPI로PlayerSettings.fullScreenMode=Windowed/defaultIsNativeResolution=fals
 바탕화면BAT의현재대상은ROOT/UnityClient/Builds/LocalGame/Parry/Player/MMORPG.exe와동일폴더의Server/Login이다. 창모드인자와커서는유지한다. 새Windows빌드·서버해시·Launcher check를확인했으며사용자입력보류때문에이번묶음을기동/로그인하지않았다. 이전BAT시작/종료검증을패링실전검증으로재사용하지않는다.
 
 2026-11-05: 기본 공격 패링 제외 서버는 ROOT/UnityClient/Builds/LocalGame/Parry/Server-SkillOnly/MainServer.exe. Player/Login은 기존Parry묶음유지. 다음BAT시작부터적용하며실행중세션은교체하지않았다. 새서버와필수DLL해시/launcher check확인,실전새정책확인은미실행.
+
+2026-11-05 최신다음기동: ROOT/UnityClient/Builds/LocalGame/ItemsCaster/Player-Fixed/MMORPG.exe + ItemsCaster/Server/MainServer.exe. Login은기존Parry/Login/app.js와보호Game/Login환경재사용. launcher check/서버준비/빌드확인. Windows보안창수동처리대기로현재게임은첫Player이며종료·재시작하지않았다. 실제MP/골드/추종미확인.

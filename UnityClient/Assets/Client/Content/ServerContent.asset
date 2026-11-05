@@ -317,8 +317,17 @@ MonoBehaviour:
       maxHpIncrease: 500
   parry:
     windowTicks: 5
-    cooldownTicks: 30
+    cooldownTicks: 60
     charges: 1
+  itemUse:
+  - itemID: 1
+    hpRecovery: 3000
+    mpRecovery: 0
+    cooldownTicks: 40
+  - itemID: 2
+    hpRecovery: 0
+    mpRecovery: 3000
+    cooldownTicks: 40
   ring:
     skillID: 1
     flags: 2

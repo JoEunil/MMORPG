@@ -3,6 +3,17 @@
 #include "IPacket.h"
 #include "Config.h"
 namespace Core {
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteGoldReward(uint8_t status) {
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
+        if (!p) return nullptr;
+        p->Clear();
+        auto* packet = reinterpret_cast<PacketStruct<uint8_t>*>(p->GetBuffer());
+        packet->header = {MAGIC, sizeof(*packet), OP::GOLD_REWARD, 0};
+        packet->body = status;
+        p->SetLength(sizeof(*packet));
+        return p;
+    }
+    static_assert(sizeof(PacketStruct<uint8_t>) == 9);
     static_assert(sizeof(PacketStruct<ActionRequestBody>) == 30);
     static_assert(sizeof(ActionResultField) == 25);
     static_assert(sizeof(PacketStruct<ParryRequestBody>) == 24);

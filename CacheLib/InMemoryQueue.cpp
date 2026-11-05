@@ -17,7 +17,6 @@ namespace Cache {
             case Core::MSG_DIAMOND_REQ:
             case Core::MSG_BAZAAR_MY_LIST:
             case Core::MSG_BAZAAR_SEARCH:
-            case Core::MSG_CURRENCY_DEPOSIT:
             case Core::MSG_DIAMOND_DEPOSIT:
             case Core::MSG_BAZAAR_REGISTER:
             case Core::MSG_BAZAAR_CANCEL:
@@ -28,6 +27,7 @@ namespace Cache {
             case Core::MSG_PROFILE_RENAME:
             case Core::MSG_INVENTORY_UPDATE:
                 return Base::Priority::Droppable;
+            case Core::MSG_CURRENCY_DEPOSIT:
             case Core::MSG_CHARACTER_STATE_UPDATE:
                 return Base::Priority::Important;
             default:

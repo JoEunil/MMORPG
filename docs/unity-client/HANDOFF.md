@@ -1,20 +1,20 @@
-# 현재 인계 — 패링·전투 피드백 게시 준비
+# 현재 인계 — 전투·아이템·보상 통합 후보
 
-## 정본과 범위
-ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, 브랜치 codex/client-clock-compat. Unity 프로젝트 ROOT/UnityClient. 원본 Game/refactor와 사용자 몬스터 AI는 수정하지 않았다. 이번 서버·프로토콜 변경은 사용자 허용 범위다.
+## 정본·보호 범위
+ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, codex/client-clock-compat. Unity 프로젝트 ROOT/UnityClient. 원본 Game/refactor·사용자 몬스터 AI·DB스키마는 수정하지 않았다. 서버·프로토콜 기능 변경과 아래 정책은 사용자 승인 범위다.
 
-## 완료·검증
-- 기존 포션 초기 조회·WASD/방향키·QER·마우스 자유각도 변경에 창 모드1280×720·선명한 커서·Space 패링을 통합했다.
-- 패링: 방향 제한 없이0.25초 동안 몬스터 특수 스킬 공격1회 방어(기본 공격 제외), 재사용1.5초. MP·재화·몬스터 경직 없음. 서버 판정/응답과 클라이언트 HUD·모션·효과를 연결했다. 피격 반응과 몬스터 특수공격 예고도 보강했다.
-- 이번 직접 검사 서버2/Unity4 모두 통과. MainServer·ClientCore·DummyClients·Unity 콘텐츠 import·독립 Player 빌드 성공. 독립 리뷰 차단0, Astra 코드·자동 검사 범위 통과. 기존 통과 항목은 반복하지 않았다.
-- 바탕화면 시작/종료 BAT는 ROOT/UnityClient/Builds/LocalGame/Parry의 동시 빌드를 사용한다. 실행 경로 check·서버 해시 일치 확인. 이번에는 게임/서버를 새로 실행하거나 사용자 프로세스를 종료하지 않았다.
+## 구현·검증 완료 범위
+- 패링: 기본 공격 제외/방향 무관/방어창0.25초/특수스킬1회/최신쿨3초(60틱). 서버2검사·공유데이터import확인통과.
+- HP1번/MP2번·각3000회복·공유2초쿨·만충/사망소비차단. 일반/강화처치HP·MP각1+골드10개별지급·확정후상관wallet갱신. Cache로딩·빈행·실패·flush세대보호를연결했다. 캐시확정은DBflush완료/장애시exactly-once보장이아니다.
+- 차징/예고는시전자표시좌표평행이동추종/각도고정,Hit잔광은서버확정phase좌표유지. AI/판정변경없음.
+- MainServer/UnitTests/ClientCore/Dummy/export/import/Standalone빌드통과. 직접서버2/Unity4통과,리뷰Handler골드오류경로보완후wallet1만재검증통과,최종검수MP버튼라벨보완후Inventory1만재검증통과. 최종Player-Fixed재빌드통과. Astra코드·자동검사범위필수0/통과,실전미확인범위는제외. 과거통과검사반복없음.
 
-## 입력·미확인
-**2026-11-05 사용자 실제 입력 완료·패링 표현 확인.** 창모드·커서·HUD배치·버튼응답은 총괄이 관찰했고, WASD/Space/QER 묶음은 사용자가 직접 완료했다. 사용자는 기본 공격의 준비 모션 부재를 지적해 기본 공격은 패링 불가로 변경 요청했다. skillId0 기본 공격은 정상 피해/방어창 미소비, 특수 스킬만 기존 창0.25초 내1회 방어/쿨1.5초로 수정했다. 사용자 몬스터 AI는 수정하지 않았다. 변경한 서버 빌드·수정된 직접 검사1개·리뷰 통과. 다음 BAT 실행은 Parry/Server-SkillOnly/MainServer.exe를 사용한다. 새정책의실전재입력은미실행이다. 현재 열려 있는 게임은 기존 세션이며 임의 재시작하지 않는다. 서버·ClientCore DLL·Unity·DummyClients의 변경 패킷은 함께 적용해야 한다. 지연된 Begin 방송의 시각적 만료 식별에는 한계가 있지만 서버 보호창/쿨은 재활성화하지 않는다.
+## 입력·실행 대기
+사용자가2026-11-05실입력을재개했고이전세션WASD/Space/QER완료·패링표현을확인했다. 최신아이템·골드·추종실전검증을위해새묶음Player24872/MainServer4536/Login35140기동·서버준비확인후Windows보안창에막혔다. 사용자에게mainserver.exe허용창직접판단/처리를요청한상태다. 보안앱클릭·설정변경·우회입력금지. 최신MP실사용·처치골드·이동중표현·조작감은아직미확인이다.
+
+BAT다음기동은ItemsCaster/Player-Fixed/MMORPG.exe + ItemsCaster/Server/MainServer.exe,Login은기존Parry/Login앱/보호환경이다. 현재보안창뒤Player는라벨수정전첫빌드라사용자처리후정상종료/재시작해최신Player로검증한다. 허용전보안창을피하려고다른서버로갈아타지않는다. 새패킷서버·ClientCore·Unity·Dummy동시적용필수.
 
 ## 게시·다음 행동
-최신 코드 후보 0fd81c1를 로컬 커밋했다. 현재 큰 PR 한 개로 게시 준비 중이며 push/새 PR은 아직 하지 않았다. 이전 AIM36001/r2(스레드1793793991.033509/요청1793798274.949619)는 확장 범위를 포함하지 않아 새 패링 승인으로 소비하지 않는다. PARRY01/r2(r1 대체)를 기존 앱 스레드1793801063.563599(요청도 같은ts)에 발신했다. 승인 대기/회신·기소비 없음. 후보0fd81c1와 기존 관련 묶음의push/PR1개만 요청했다. 수신기구PID18256은종료되어있었으며기존실행스크립트/고정대상으로복구했다. 새PID31992/listening/SOCKET_READY·최근health와등록스레드확인. 요청은같은부모1793801063.563599를갱신했고회신·기소비없음. 실제 게시 전 정확한 후보·스레드·응답을 대조한다. 승인 전 독립 로컬 작업만 가능하다.
+현재큰통합PR후보준비. 로컬커밋후정확한후보로새UnityCoordinator앱스레드에게시승인을요청한다. 기존PARRY01/r2(1793801063.563599)는이전패링범위만포함하므로새아이템후보승인으로소비하지않는다. 새승인전push/PR금지,병합은별도다. 실제입력대기는게시승인과별개다.
 
-Slack은 ROOT/UnityClient/Tools/Send-CoordinatorSlack.ps1과 실제 receiver health/프로세스/고정 Coordinator·등록 스레드를 확인한다. Agent 누적615(신규232/후속383), 토큰·비용N/A.
-
-상세: history/2026-11-04-parry-feedback/RESULTS.md. 과거 자유각도 실행 근거: history/2026-11-04-free-aim/RESULTS.md. 최신 자동 근거: ROOT/UnityClient/Builds/ClientGrowthHUD/verification/parry. MP 포션·골드 드랍·구역 난이도·장비/수령함은 후속 변경안이며 이번에 구현하지 않았다.
+발신ROOT/UnityClient/Tools/Send-CoordinatorSlack.ps1,수신기복구nodePID31992. 새요청전프로세스/최근health/listening·고정Coordinator·등록스레드재확인. Agent625(신규235/후속390),토큰/비용N/A. 상세 history/2026-11-05-items-caster-follow/RESULTS.md,증거ROOT/UnityClient/Builds/ClientGrowthHUD/verification/items-caster-follow. 구역난이도·장비·수령함은후속범위다.

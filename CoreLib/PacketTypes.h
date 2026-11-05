@@ -7,7 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
-    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 49;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 50;
 
     enum OP : uint16_t {
         AUTH = 1,
@@ -64,6 +64,7 @@ namespace Core {
         ITEM_REWARD = 47,
         PARRY = 48,
         PARRY_RES = 49,
+        GOLD_REWARD = 50,
     };
 
     enum ZONE_CHANGE: uint8_t {

@@ -60,7 +60,7 @@ namespace Cache {
     inline constexpr const char* QUERY_6 = "UPDATE characters_inventory SET inventory = ? WHERE char_id = ?;";
 
     inline constexpr const char* QUERY_7 = "SELECT gold FROM characters_currency WHERE char_id=?";
-    inline constexpr const char* QUERY_8 = "UPDATE characters_currency SET gold=? WHERE char_id=?";
+    inline constexpr const char* QUERY_8 = "INSERT INTO characters_currency (gold,char_id) VALUES (?,?) ON DUPLICATE KEY UPDATE gold=VALUES(gold)";
 
     inline constexpr const char* QUERY_9 = "SELECT diamond, total_earned, total_spent FROM characters_diamond WHERE char_id = ?";
     inline constexpr const char* QUERY_10 = "UPDATE characters_diamond SET diamond = diamond + ?, total_earned = total_earned + ?, updated_at = NOW() WHERE char_id = ?";

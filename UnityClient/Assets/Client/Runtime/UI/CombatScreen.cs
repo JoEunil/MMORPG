@@ -860,7 +860,6 @@ namespace Mmorpg.Client
             chargeTelegraphActive = true;
             chargeTelegraphSlot = result.skillSlot;
             chargeTelegraphRange = hit.range;
-            chargeTelegraphOrigin = new Vector3(result.x, .07f, result.y);
             chargeTelegraphAngle = result.aimAngle;
             chargeTelegraphRadius = hit.range1;
             chargeTelegraphLength = hit.range1;
@@ -1169,12 +1168,16 @@ namespace Mmorpg.Client
         private void UpdateChargeTelegraph()
         {
             if (!chargeTelegraphActive || chargeTelegraphMesh == null || chargeTelegraphRenderer == null) return;
-            if (!WorldAvailable || worldScreen.OwnFull.hp == 0 || Time.unscaledTime >= chargeTelegraphDeadline)
+            if (!WorldAvailable || worldScreen.OwnFull.hp == 0 || worldScreen.ActorMotion == null ||
+                Time.unscaledTime >= chargeTelegraphDeadline)
             {
                 HideChargeTelegraph();
                 return;
             }
 
+            // Follow the displayed caster while preserving the accepted cast angle and the separate Hit origin.
+            chargeTelegraphOrigin = worldScreen.ActorMotion.transform.position;
+            chargeTelegraphOrigin.y = .07f;
             float progress = Mathf.Clamp01((Time.unscaledTime - chargeTelegraphStarted) / chargeTelegraphDuration);
             chargeVertexCount = chargeIndexCount = 0;
             float pulse = .92f + .08f * Mathf.Sin(Time.unscaledTime * 7f);

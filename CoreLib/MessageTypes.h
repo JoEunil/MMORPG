@@ -166,6 +166,7 @@ namespace Core {
     struct MsgCurrencyDepositResBody {
         uint8_t resStatus;
         uint64_t gold;
+        uint64_t characterID;
     };
 
     struct MsgDiamondReqBody {

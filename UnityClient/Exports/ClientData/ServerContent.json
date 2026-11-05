@@ -114,5 +114,6 @@
     {"level":99,"requiredTotalExp":242550,"maxHpIncrease":500},
     {"level":100,"requiredTotalExp":247500,"maxHpIncrease":500}
   ]},
-  "parry":{"windowTicks":5,"cooldownTicks":30,"charges":1}
+  "itemUse":[{"itemID":1,"hpRecovery":3000,"mpRecovery":0,"cooldownTicks":40},{"itemID":2,"hpRecovery":0,"mpRecovery":3000,"cooldownTicks":40}],
+  "parry":{"windowTicks":5,"cooldownTicks":60,"charges":1}
 }

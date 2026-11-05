@@ -65,6 +65,7 @@ namespace ClientCore.PacketHelper
         ITEM_REWARD = 47,
         PARRY = 48,
         PARRY_RES = 49,
+        GOLD_REWARD = 50,
     }
     
     public enum ZONE_CHANGE : byte
@@ -780,6 +781,13 @@ namespace ClientCore.PacketHelper
                 (status == 1 ? grantedQuantity == 0 || remainingQuantity < grantedQuantity : grantedQuantity != 0))
                 throw new ArgumentException("Invalid item reward result.");
             return (itemID, grantedQuantity, remainingQuantity, status);
+        }
+
+        internal static byte DeserializeGoldReward(PacketHeader header, byte[] buffer)
+        {
+            if (!HasExactResponse(header, buffer, OP_CODE.GOLD_REWARD, 9) || buffer[8] > 1)
+                throw new ArgumentException("Invalid gold reward notification.");
+            return buffer[8];
         }
 
         internal static byte[] SerializeWalletRequest(uint requestID)

@@ -2079,6 +2079,28 @@ namespace Core {
         request.requestID = 1;
         EXPECT_EQ(state->UseItem(42, request).status, 7);
         EXPECT_EQ(inventory.consumed, 2);
+        for (int i = 0; i < 40; ++i) state->GetZone(1)->SkillCoolDown();
+        UpdateCharacter(1, 42, [](CharacterState& c) { c.hp = 5000; c.mp = 5000; c.maxMp = 10000; });
+        request = {7, entry.ownershipEpoch, 2};
+        EXPECT_EQ(state->UseItem(42, request).status, 1);
+        EXPECT_EQ(state->UseItem(42, request).status, 1);
+        EXPECT_EQ(CharacterIn(1).mp, 8000);
+        EXPECT_EQ(CharacterIn(1).hp, 5000);
+        EXPECT_EQ(inventory.consumed, 3);
+        request = {8, entry.ownershipEpoch, 1};
+        EXPECT_EQ(state->UseItem(42, request).status, 4);
+        for (int i = 0; i < 40; ++i) state->GetZone(1)->SkillCoolDown();
+        inventory.outcome = ItemOperationStatus::StorageFailure;
+        request = {9, entry.ownershipEpoch, 2};
+        EXPECT_EQ(state->UseItem(42, request).status, 8);
+        EXPECT_EQ(CharacterIn(1).mp, 8000);
+        inventory.outcome = ItemOperationStatus::Success;
+        request.requestID = 10;
+        EXPECT_EQ(state->UseItem(42, request).status, 1);
+        EXPECT_EQ(CharacterIn(1).mp, 10000);
+        request.requestID = 11;
+        EXPECT_EQ(state->UseItem(42, request).status, 3);
+        EXPECT_EQ(inventory.consumed, 4);
         SetInventory(nullptr);
     }
 
@@ -2092,7 +2114,7 @@ namespace Core {
         auto accepted = state->Parry(42, 1, first);
         EXPECT_EQ(accepted.status, static_cast<uint8_t>(ParryStatus::Accepted));
         EXPECT_EQ(accepted.windowRemainingTicks, 5u);
-        EXPECT_EQ(accepted.cooldownRemainingTicks, 30u);
+        EXPECT_EQ(accepted.cooldownRemainingTicks, 60u);
         auto response = writer.WriteParryResponse(accepted);
         ASSERT_NE(response, nullptr);
         EXPECT_EQ(response->GetLength(), 33u);
@@ -2102,11 +2124,11 @@ namespace Core {
         auto duplicate = state->Parry(42, 1, first);
         EXPECT_EQ(duplicate.status, accepted.status);
         EXPECT_EQ(duplicate.windowRemainingTicks, 4u);
-        EXPECT_EQ(duplicate.cooldownRemainingTicks, 29u);
+        EXPECT_EQ(duplicate.cooldownRemainingTicks, 59u);
         auto cooldown = state->Parry(42, 1, {2, entry.ownershipEpoch});
         EXPECT_EQ(cooldown.status, static_cast<uint8_t>(ParryStatus::Cooldown));
         EXPECT_EQ(state->Parry(42, 1, first).status, static_cast<uint8_t>(ParryStatus::StaleRequest));
-        for (int i = 0; i < 29; ++i) state->GetZone(1)->SkillCoolDown();
+        for (int i = 0; i < 59; ++i) state->GetZone(1)->SkillCoolDown();
         duplicate = state->Parry(42, 1, {2, entry.ownershipEpoch});
         EXPECT_EQ(duplicate.status, static_cast<uint8_t>(ParryStatus::Cooldown));
         EXPECT_EQ(duplicate.cooldownRemainingTicks, 0u);
@@ -2117,7 +2139,7 @@ namespace Core {
         ASSERT_TRUE(state->ProcessAction(42, 1, {0, 205.0f, 100.0f, 255, entry.ownershipEpoch, 0}, transfer));
         ASSERT_EQ(transfer.zoneID, 2u);
         EXPECT_EQ(CharacterIn(2).parryWindowTicks, 0u);
-        EXPECT_EQ(CharacterIn(2).parryCooldownTicks, 30u);
+        EXPECT_EQ(CharacterIn(2).parryCooldownTicks, 60u);
         auto stale = state->Parry(42, 1, {4, entry.ownershipEpoch});
         EXPECT_EQ(stale.status, static_cast<uint8_t>(ParryStatus::StaleOwnership));
         EXPECT_EQ(stale.windowRemainingTicks, 0u);
@@ -2131,6 +2153,6 @@ namespace Core {
         ZoneChangeResult town;
         ASSERT_TRUE(state->RespawnToTown(42, {transfer.ownershipEpoch}, town));
         EXPECT_EQ(CharacterIn(1).parryWindowTicks, 0u);
-        EXPECT_EQ(CharacterIn(1).parryCooldownTicks, 30u);
+        EXPECT_EQ(CharacterIn(1).parryCooldownTicks, 60u);
     }
 }

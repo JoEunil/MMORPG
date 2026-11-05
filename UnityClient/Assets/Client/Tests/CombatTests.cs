@@ -586,6 +586,7 @@ namespace Mmorpg.Client.Tests
             {
                 f.World.transform.position = new Vector3(60f, 0f, 70f);
                 f.World.transform.localScale = new Vector3(2f, 1f, 2f);
+                f.World.ActorMotion.transform.position = new Vector3(20, 0, 30);
                 var received = (Action<ushort, ActionResultField[]>)Get(f.Combat, "actionResults");
                 var expectedForward = new[] { Vector3.forward, Vector3.back, Vector3.left, Vector3.right,
                     Quaternion.Euler(0, 37.5f, 0) * Vector3.forward };
@@ -629,6 +630,14 @@ namespace Mmorpg.Client.Tests
                             new Vector3(20f, 0f, 30f)), Is.EqualTo(6f).Within(.03f),
                             "The brighter rectangle fill advances toward the skill's far edge.");
                     }
+                    Vector3 beforeMove = vertices[2];
+                    f.World.ActorMotion.transform.position += new Vector3(3, 0, -2);
+                    f.World.ActorMotion.transform.rotation = Quaternion.Euler(0, 125, 0);
+                    Invoke(f.Combat, "UpdateChargeTelegraph");
+                    Assert.That(Vector3.Distance(vertices[2] - beforeMove, new Vector3(3, 0, -2)), Is.LessThan(.001f),
+                        "Charging follows displayed movement without rotating with later actor facing.");
+                    Assert.That((float)Get(f.Combat, "chargeTelegraphAngle"), Is.Zero);
+                    f.World.ActorMotion.transform.position = new Vector3(20, 0, 30);
                     Set(f.Combat, "chargeTelegraphDeadline", Time.unscaledTime - .001f);
                     Invoke(f.Combat, "Update");
                     Assert.That(renderer.enabled, Is.False, "Each telegraph clears at its server-authored wait deadline.");
@@ -673,7 +682,11 @@ namespace Mmorpg.Client.Tests
                     Assert.That(Vector3.Distance(animatedEnd, origin), Is.EqualTo(2.16f).Within(.06f),
                         "The mesh animation begins from the server phase origin.");
                     Set(f.Combat, "releaseEffectDeadline", Time.unscaledTime + 0.175f);
+                    f.World.ActorMotion.transform.position = new Vector3(26, 0, 37);
                     Invoke(f.Combat, "Update");
+                    Assert.That((Vector3)Get(f.Combat, "releaseEffectOrigin"), Is.EqualTo(origin),
+                        "Moving after Hit cannot drag the confirmed ground impact.");
+                    f.World.ActorMotion.transform.position = new Vector3(20, 0, 30);
                     animatedEnd = (animated[48] + animated[49]) * .5f;
                     Assert.That(Vector3.Dot(Vector3.ProjectOnPlane(animatedEnd - origin, Vector3.up).normalized,
                         expectedForward[dir]), Is.GreaterThan(.999f));

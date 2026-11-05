@@ -28,8 +28,8 @@ namespace Mmorpg.Client
         {
             switch (itemID)
             {
-                case 1: return "Restores HP. Cannot use at full HP or while dead.";
-                case 2: return "MP potion use is not supported.";
+                case 1: return "Restores HP. Shares potion cooldown. Cannot use at full HP or while dead.";
+                case 2: return "Restores MP. Shares potion cooldown. Cannot use at full MP or while dead.";
                 case 3:
                 case 4:
                 case 5: return "Equipment cannot be equipped or used here.";

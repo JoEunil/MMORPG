@@ -77,6 +77,7 @@ public struct InventoryItemView
         event Action<ulong, ulong, uint, byte, ushort, uint> OnItemUseReceived;
         event Action<ulong, ulong, byte, uint, uint> OnParryReceived;
         event Action<uint, ushort, ushort, byte> OnItemRewardReceived;
+        event Action<byte> OnGoldRewardReceived;
         event Action<bool> OnBazaarReceived;
         event Action<byte> OnBazaarRegisterReceived;
         event Action<byte, ulong, byte, ulong> OnWalletReceived;
@@ -126,6 +127,7 @@ public struct InventoryItemView
         void ItemUseReceived(ulong requestID, ulong ownershipEpoch, uint itemID, byte status, ushort remainingQuantity, uint cooldownRemainingTicks);
         void ParryReceived(ulong requestID, ulong ownershipEpoch, byte status, uint windowRemainingTicks, uint cooldownRemainingTicks);
         void ItemRewardReceived(uint itemID, ushort grantedQuantity, ushort remainingQuantity, byte status);
+        void GoldRewardReceived(byte status);
         void BazaarReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows);
         void BazaarRegisterReceived(uint requestID, byte status);
         void WalletGoldReceived(uint requestID, byte status, ulong gold);

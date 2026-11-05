@@ -609,7 +609,7 @@ namespace Core {
         const int basicDamage = monster.data->attack * Data::skillList[0].phases[1].attack;
         EXPECT_EQ(fixture.CharacterAt(0).hp, 10000 - basicDamage);
         EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 5u);
-        EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 30u);
+        EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 60u);
         EXPECT_EQ(std::count_if(fixture.CellAt(2, 2).actionResults.begin(), fixture.CellAt(2, 2).actionResults.end(),
             [](const ActionResult& action) { return action.skilIId == Data::parrySkillID && action.skillPhase == 1; }), 0);
         fixture.QueueMonsterHit(0, 1);
@@ -618,7 +618,7 @@ namespace Core {
         const int damage = monster.data->attack * Data::skillList[1].phases[1].attack;
         EXPECT_EQ(fixture.CharacterAt(0).hp, 10000 - basicDamage - damage);
         EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 0u);
-        EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 30u);
+        EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 60u);
         EXPECT_EQ(std::count_if(fixture.CellAt(2, 2).actionResults.begin(), fixture.CellAt(2, 2).actionResults.end(),
             [](const ActionResult& action) { return action.skilIId == Data::parrySkillID && action.skillPhase == 1; }), 1);
 
@@ -633,14 +633,14 @@ namespace Core {
         EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 1u);
         fixture.zone.SkillCoolDown();
         EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 0u);
-        EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 25u);
-        for (int i = 0; i < 25; ++i) fixture.zone.SkillCoolDown();
+        EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 55u);
+        for (int i = 0; i < 55; ++i) fixture.zone.SkillCoolDown();
         EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 0u);
         fixture.CharacterAt(0).hp = 0;
         fixture.CharacterAt(0).parryWindowTicks = 5;
-        fixture.CharacterAt(0).parryCooldownTicks = 30;
+        fixture.CharacterAt(0).parryCooldownTicks = 60;
         fixture.zone.SkillCoolDown();
         EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 0u);
-        EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 29u);
+        EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 59u);
     }
 }

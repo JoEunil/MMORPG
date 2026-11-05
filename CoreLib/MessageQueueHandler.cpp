@@ -58,6 +58,16 @@ namespace Core {
             if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarRegisterResBody>))
                 BazaarRegisterResponse(header->sessionID, parseMsgBody<MsgBazaarRegisterResBody>(msg->GetBuffer()));
             break;
+        case MSG_CURRENCY_DEPOSIT_RES:
+            if (msg->GetLength() == sizeof(MsgStruct<MsgCurrencyDepositResBody>)) {
+                const auto* body = parseMsgBody<MsgCurrencyDepositResBody>(msg->GetBuffer());
+                if (stateManager && body->characterID != 0 &&
+                    stateManager->GetFieldCharacterID(header->sessionID) == body->characterID) {
+                    auto packet = writer->WriteGoldReward(body->resStatus);
+                    if (packet) iocp->SendDataUnique(header->sessionID, std::move(packet));
+                }
+            }
+            break;
         case MSG_CURRENCY_RES:
             if (msg->GetLength() == sizeof(MsgStruct<MsgCurrencyResBody>))
                 WalletGoldResponse(header->sessionID, parseMsgBody<MsgCurrencyResBody>(msg->GetBuffer()));

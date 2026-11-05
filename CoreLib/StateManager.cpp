@@ -86,9 +86,9 @@ namespace Core {
         auto& character = zone->m_chars[found->second];
         result.cooldownRemainingTicks = character.potionCooldownTicks;
         const auto item = Data::itemMap.find(request.itemID);
-        if (item == Data::itemMap.end() || item->second.hpRecovery == 0) result.status = 9;
+        if (item == Data::itemMap.end() || (item->second.hpRecovery == 0 && item->second.mpRecovery == 0)) result.status = 9;
         else if (character.hp <= 0) result.status = 2;
-        else if (character.hp >= character.maxHp) result.status = 3;
+        else if (item->second.hpRecovery != 0 ? character.hp >= character.maxHp : character.mp >= character.maxMp) result.status = 3;
         else if (character.potionCooldownTicks != 0) result.status = 4;
         else if (!inventory) result.status = 8;
         else {
@@ -96,10 +96,14 @@ namespace Core {
             result.remainingQuantity = consumed.remainingQuantity;
             switch (consumed.status) {
             case ItemOperationStatus::Success:
-                character.hp = static_cast<int>((std::min)(static_cast<int64_t>(character.maxHp),
-                    static_cast<int64_t>(character.hp) + item->second.hpRecovery));
+                if (item->second.hpRecovery != 0)
+                    character.hp = static_cast<int>((std::min)(static_cast<int64_t>(character.maxHp),
+                        static_cast<int64_t>(character.hp) + item->second.hpRecovery));
+                if (item->second.mpRecovery != 0)
+                    character.mp = static_cast<int>((std::min)(static_cast<int64_t>(character.maxMp),
+                        static_cast<int64_t>(character.mp) + item->second.mpRecovery));
                 character.potionCooldownTicks = item->second.cooldownTicks;
-                character.dirtyBit |= 1;
+                character.dirtyBit |= 3;
                 zone->m_cells[character.cellY][character.cellX].dirtyChar.push_back(character.zoneInternalID);
                 result.status = 1;
                 result.cooldownRemainingTicks = character.potionCooldownTicks;
@@ -113,20 +117,35 @@ namespace Core {
         return result;
     }
 
-    void StateManager::GrantMonsterPotion(const CharacterState& character) {
-        if (!inventory) return;
+    void StateManager::GrantMonsterReward(const CharacterState& character) {
         const auto sessionID = character.sessionID;
-        // Cache owns the operation through DB loading/disconnect; no Zone or Character references escape.
-        inventory->GrantItem(character.characterID, Data::monsterPotionItemID, Data::monsterPotionQuantity,
-            [this, sessionID](ItemOperationResult result) {
-                ItemRewardBody body{Data::monsterPotionItemID, 0, result.remainingQuantity, 3};
-                if (result.status == ItemOperationStatus::Success) {
-                    body.status = 1;
-                    body.grantedQuantity = Data::monsterPotionQuantity;
-                } else if (result.status == ItemOperationStatus::Full) body.status = 2;
-                auto packet = ZoneState::writer->WriteItemReward(body);
-                if (packet) iocp->SendDataUnique(sessionID, std::move(packet));
-            });
+        Message deposit(sizeof(MsgStruct<MsgCurrencyDepositBody>));
+        auto* message = reinterpret_cast<MsgStruct<MsgCurrencyDepositBody>*>(deposit.GetBuffer());
+        message->header = {sessionID, MSG_CURRENCY_DEPOSIT};
+        message->body = {character.characterID, Data::monsterGoldReward};
+        deposit.SetLength(sizeof(*message));
+        if (!mq->EnqueueMessage(&deposit)) {
+            errorLogger->LogError("monster reward", "gold deposit queue rejected", "characterID", character.characterID);
+            auto packet = ZoneState::writer->WriteGoldReward(0);
+            if (packet) iocp->SendDataUnique(sessionID, std::move(packet));
+        }
+        if (!inventory) return;
+        const auto characterID = character.characterID;
+        for (const auto itemID : {Data::monsterPotionItemID, Data::monsterManaPotionItemID}) {
+            // Cache owns the operation through DB loading/disconnect; no Zone or Character references escape.
+            inventory->GrantItem(characterID, itemID, Data::monsterPotionQuantity,
+                [this, sessionID, characterID, itemID](ItemOperationResult result) {
+                    if (result.status != ItemOperationStatus::Success)
+                        errorLogger->LogWarn("monster reward", "item grant failed", "characterID", characterID, "itemID", itemID, "status", result.status);
+                    ItemRewardBody body{itemID, 0, result.remainingQuantity, 3};
+                    if (result.status == ItemOperationStatus::Success) {
+                        body.status = 1;
+                        body.grantedQuantity = Data::monsterPotionQuantity;
+                    } else if (result.status == ItemOperationStatus::Full) body.status = 2;
+                    auto packet = ZoneState::writer->WriteItemReward(body);
+                    if (packet) iocp->SendDataUnique(sessionID, std::move(packet));
+                });
+        }
     }
 
     bool StateManager::ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result) {

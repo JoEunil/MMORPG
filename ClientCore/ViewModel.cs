@@ -71,6 +71,7 @@ namespace ClientCore
         private enum BazaarRequestKind { None, Search, MyList, Register, Claim, Buy, CheckOutbox, CancelListing }
         private BazaarRequestKind _bazaarPendingKind;
         private ulong _bazaarPendingListingID;
+        private bool _walletRefreshAfterReward;
         private uint _walletRequestID;
         private uint _walletPending;
         private ulong _walletGeneration;
@@ -90,6 +91,7 @@ namespace ClientCore
         public event Action<ulong, ulong, uint, byte, ushort, uint> OnItemUseReceived;
         public event Action<ulong, ulong, byte, uint, uint> OnParryReceived;
         public event Action<uint, ushort, ushort, byte> OnItemRewardReceived;
+        public event Action<byte> OnGoldRewardReceived;
         public event Action<bool> OnBazaarReceived;
         public event Action<byte> OnBazaarRegisterReceived;
         public event Action<byte, ulong, byte, ulong> OnWalletReceived;
@@ -154,6 +156,7 @@ namespace ClientCore
             {
                 if (_lifetime.IsCancellationRequested) return;
                 _lifetime.Cancel();
+                _walletRefreshAfterReward = false;
                 _inventoryPending = false;
                 _itemUsePending = 0;
                 _parryPending = 0;
@@ -625,6 +628,7 @@ namespace ClientCore
                 CancelWalletLocked();
             }
             OnWalletReceived?.Invoke(goldStatus, gold, diamondStatus, diamond);
+            RefreshRewardWallet();
         }
 
         public void BazaarReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows)
@@ -704,6 +708,7 @@ namespace ClientCore
                     CancelWalletLocked();
                 }
                 OnWalletReceived?.Invoke(goldStatus, goldAmount, diamondStatus, diamondAmount);
+                RefreshRewardWallet();
             });
         }
 
@@ -873,6 +878,31 @@ namespace ClientCore
                 }
                 OnItemUseReceived?.Invoke(requestID, ownershipEpoch, itemID, status, remainingQuantity, cooldownRemainingTicks);
             });
+        }
+
+        public void GoldRewardReceived(byte status)
+        {
+            if (status > 1) return;
+            _threadDispatcher.Post(() =>
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed) return;
+                OnGoldRewardReceived?.Invoke(status);
+                if (status != 1) return;
+                _walletRefreshAfterReward = true;
+                RefreshRewardWallet();
+            });
+        }
+
+        private void RefreshRewardWallet()
+        {
+            lock (_sessionGate)
+            {
+                if (!_walletRefreshAfterReward || _lifetime.IsCancellationRequested || _connectionFailed ||
+                    !_worldReady || _walletPending != 0) return;
+                _walletRefreshAfterReward = false;
+            }
+            try { RequestWallet(); }
+            catch (Exception ex) { _logger.Log("Reward wallet refresh failed; no automatic retry: " + ex.Message); }
         }
 
         public void ItemRewardReceived(uint itemID, ushort grantedQuantity, ushort remainingQuantity, byte status)
@@ -1129,6 +1159,7 @@ namespace ClientCore
                     _awaitingZoneAck = false;
                     _worldReady = true;
                 }
+                RefreshRewardWallet();
             });
         }
         public void ActionResultReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.ActionResultField[] actions)
@@ -1153,6 +1184,7 @@ namespace ClientCore
         {
             if (_lifetime.IsCancellationRequested) return;
             _connectionFailed = true;
+            _walletRefreshAfterReward = false;
             lock (_sessionGate)
             {
                 _worldReady = false;

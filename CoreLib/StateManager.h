@@ -235,7 +235,7 @@ namespace Core {
         }
         ItemUseResponseBody UseItem(uint64_t sessionID, const ItemUseRequestBody& request);
         ParryResponseBody Parry(uint64_t sessionID, uint16_t routeZoneID, const ParryRequestBody& request);
-        void GrantMonsterPotion(const CharacterState& character);
+        void GrantMonsterReward(const CharacterState& character);
         void Disconnect(uint64_t sessionID);
         bool ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result);
         bool RespawnToTown(uint64_t sessionID, const RespawnToTownBody& request, ZoneChangeResult& result);
