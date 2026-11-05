@@ -46,3 +46,4 @@ MainServer/UnitTests Release x64 빌드 및 수정된 기존 ParryCombat.OneChar
 배포 후보는 ROOT/UnityClient/Builds/LocalGame/Parry/Server-SkillOnly에 새exe와필수DLL만 배치했다. 실행중서버의잠긴redo/backpressure복사는실패했고후보에포함하지않았으며복제된로그도제거했다. 새exe/의존DLL해시일치·launcher check통과. BAT는다음시작부터새서버사용,현재Player14512/MainServer13120/Login22912세션은자동종료/교체하지않았다. 새정책의실전재입력은미실행이다.
 
 공개 HUD 설명과 현재정책을 특수 스킬만 방어로 갱신했고 사이트빌드통과. Agent615(신규232/후속383),직접구현·검사는활성화제외,토큰/비용N/A.
+게시후보0fd81c1/PARRY01/r2로같은부모1793801063.563599를갱신했다. 기존수신기PID18256이종료돼기존스크립트·고정Coordinator·현재codex queue명령을확인후숨김재시작했다. 새nodePID31992/SOCKET_READY/listening확인. 자동시작·권한·비밀설정변경없음,과거승인재생없음. 원격push/PR은여전히승인대기다.
