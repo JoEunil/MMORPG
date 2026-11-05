@@ -5,7 +5,9 @@
 | 대상 | 정본과 방향 | 출력·반영 |
 | --- | --- | --- |
 | 스킬·몬스터 능력/phase | `CoreLib/Skills.inc`, `Monsters.inc` → 실제 C++ Data 테이블 → 독립 exporter → Unity importer | `UnityClient/Exports/ClientData/ServerContent.json`, formatVersion2. 기존 `ServerContent.asset` 갱신. |
-| 성장 규칙 | `CoreLib/GrowthData.h`, `Growth.inc` → 기존 exporter → 기존 Unity importer | 동일 JSON의 `growth`: 상한100, 레벨별 누적 EXP·최대 HP 증가량100행. 실제 승급 처리는 후속. |
+| 성장 규칙 | `CoreLib/GrowthData.h`, `Growth.inc` → 기존 exporter → 기존 Unity importer | 동일 JSON의 `growth`: 상한100, 레벨별 누적 EXP·최대 HP 증가량100행. `CharacterState::AddExperience`가 승급에 사용하며 현재 검증 범위는 HANDOFF를 따른다. |
+| 포션 소비 효과 | `CoreLib/ItemData.h` → 기존 exporter → 기존 Unity importer | 동일 JSON의 `itemUse`: HP/MP 회복량·공유 쿨타임. 현재 IDs1·2이며 전체 아이템 카탈로그나 아이콘을 공유한다는 뜻은 아니다. |
+| 패링 시간 | `CoreLib/SkillData.h` → 기존 exporter → 기존 Unity importer | 동일 JSON의 `parry`: 방어창5틱·쿨60틱·1회. 실제 수락·남은 틱은 서버 응답이 정본이다. |
 | 맵·구역·충돌 | Unity 씬/MapAuthoring → WorldMapExport/WorldLayoutExport → 서버 | `CoreLib/Generated/WorldMap.inc`, FormatVersion/ContentVersion 기존 계약 유지. |
 | 몬스터 스폰 배치 | Unity MonsterSpawns → MonsterSpawnExport → 서버 | 기존 `MonsterSpawns.inc`. 몬스터 능력·AI와 구분하며 이번 변경 없음. |
 
@@ -29,13 +31,17 @@ Unity에서 `Tools → Client → Content → Import Validated Server Content`�
 
 - 데이터마다 정본과 전달 방향 하나를 명시한다. 생성 JSON과 Unity 에셋을 별도 원본으로 편집하지 않는다.
 - 반영 전에 전체 ID·참조·수치·phase·형식 버전을 확인한다. JSON은 UTF-8·ID 순서·float roundtrip으로 결정적으로 출력한다.
-- 스킬·몬스터·성장은 JSON 한 파일로 함께 전달한다. 같은 디렉터리 임시파일을 완성한 뒤 동일 볼륨 rename으로 교체해 부분 JSON을 노출하지 않는다.
+- 스킬·몬스터·성장·포션 소비 효과·패링 시간은 JSON 한 파일로 함께 전달한다. 같은 디렉터리 임시파일을 완성한 뒤 동일 볼륨 rename으로 교체해 부분 JSON을 노출하지 않는다.
 - Unity importer는 모든 값을 검증한 뒤 기존 에셋에 대입한다. 잘못된 입력은 기존 값·파일·GUID·dirty 상태를 보존한다. 에셋 저장 오류 시 live 객체를 복원하지만 Unity의 디스크 저장 전체가 원자적이라는 보장은 하지 않는다.
 - 맵·스폰은 기존 단일 `.inc` 임시파일 교체를 그대로 사용한다. 포맷/버전/교체 구현이 하나의 framework로 완전히 같아진 것은 아니다. 스폰 출력에는 아직 별도 schema version이 없다.
 
-이번 경로 전환은 5개 스킬·3개 몬스터 값을 그대로 보존한다. 몬스터 AI/이동·전투 판정·패킷·DB·맵·스폰은 바꾸지 않는다. MonsterData 생성자의 phase1~8 검사만 추가해 서버 수동 저작 오류가 고정 배열 복사 전에 차단되게 했다. 새 ID/콘텐츠 구조를 추가할 때에는 exporter와 importer의 지원 범위를 함께 갱신한다.
+아래 문단은 최초 경로 전환 때 보존한 범위의 기록이다. 이후 포션·패링 등 현재 소비 데이터는 위 표와 HANDOFF를 따른다.
 
-## 성장 데이터
+최초 경로 전환은 5개 스킬·3개 몬스터 값을 그대로 보존했다. 몬스터 AI/이동·전투 판정·패킷·DB·맵·스폰은 바꾸지 않는다. MonsterData 생성자의 phase1~8 검사만 추가해 서버 수동 저작 오류가 고정 배열 복사 전에 차단되게 했다. 새 ID/콘텐츠 구조를 추가할 때에는 exporter와 importer의 지원 범위를 함께 갱신한다.
+
+## 성장 데이터 도입 당시 기록
+
+아래의 미실행 표기는 도입 시점의 기록이며 현재 승급·실행 상태는 HANDOFF와 관련 완료 이력을 따른다.
 
 성장은 level·requiredTotalExp·maxHpIncrease 세 필드의 정적 표다. 새 Manager·상태 계층·런타임 로더 없이 기존 공유 경로에 추가했다. Unity는 빈 직렬화 구조에 서버 값을 가져오며 자체 성장 곡선을 만들지 않는다.
 

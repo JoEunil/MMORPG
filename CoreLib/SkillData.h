@@ -4,6 +4,11 @@
 #include <vector>
 
 namespace Data {
+    inline constexpr uint32_t parryWindowTicks = 5;
+    inline constexpr uint32_t parryCooldownTicks = 60;
+    inline constexpr uint32_t parryCharges = 1;
+    inline constexpr uint8_t parrySkillSlot = 254;
+    inline constexpr uint32_t parrySkillID = UINT32_MAX;
     enum class SkillRangeType : uint8_t {
         None,       
         Circle,         // 원형
@@ -23,6 +28,7 @@ namespace Data {
         float range2;
         // skill range 계산에 필요한 필드
         bool InRange(uint8_t dir, float cx, float cy, float mx, float my) const;
+        bool InRangeAngle(float aimAngle, float cx, float cy, float mx, float my) const;
     };
 
     struct SkillPhase {

@@ -18,7 +18,7 @@ namespace Mmorpg.Client.Tests
         public static string RunPureChecks()
         {
             var tests = new MovementTests();
-            tests.FirstMovementPacket_Is26BytesAndCarriesOwnershipEpoch();
+            tests.FirstMovementPacket_Is30BytesAndCarriesOwnershipEpoch();
             tests.InvalidMovementCannotReplacePendingValue_AndCancelClearsIt();
             tests.ActionSendFailure_ReachesConnectionFailure_AndStopsFutureTicks();
             tests.DisposeSuppressesPendingAction();
@@ -28,7 +28,7 @@ namespace Mmorpg.Client.Tests
         }
 
         [Test]
-        public void FirstMovementPacket_Is26BytesAndCarriesOwnershipEpoch()
+        public void FirstMovementPacket_Is30BytesAndCarriesOwnershipEpoch()
         {
             var data = NewData();
             ((IViewDataModel)data).SetOwnershipEpoch(17);
@@ -39,10 +39,10 @@ namespace Mmorpg.Client.Tests
             Assert.That(state.Item1, Is.True);
             var packet = (byte[])typeof(ViewModel).Assembly.GetType("ClientCore.PacketHelper.PacketBuilder", true)
                 .GetMethod("CreateActionPacket", BindingFlags.Static | BindingFlags.NonPublic)
-                .Invoke(null, new object[] { state.Item2, state.Item3, state.Item4, state.Item5, state.Item6 });
-            Assert.That(packet.Length, Is.EqualTo(26));
+                .Invoke(null, new object[] { state.Item2, state.Item3, state.Item4, state.Item5, state.Item6, state.Item7 });
+            Assert.That(packet.Length, Is.EqualTo(30));
             Assert.That(BitConverter.ToUInt16(packet, 0), Is.EqualTo(0xABCD));
-            Assert.That(BitConverter.ToUInt32(packet, 2), Is.EqualTo(26U));
+            Assert.That(BitConverter.ToUInt32(packet, 2), Is.EqualTo(30U));
             Assert.That(packet[6], Is.EqualTo(11));
             Assert.That(packet[7], Is.EqualTo(1));
             Assert.That(packet[8], Is.EqualTo(3));
@@ -50,6 +50,7 @@ namespace Mmorpg.Client.Tests
             Assert.That(BitConverter.ToSingle(packet, 13), Is.EqualTo(10));
             Assert.That(packet[17], Is.EqualTo(255));
             Assert.That(BitConverter.ToUInt64(packet, 18), Is.EqualTo(17UL));
+            Assert.That(BitConverter.ToSingle(packet, 26), Is.EqualTo(0f));
             Assert.That(((IViewDataModel)data).GetActionState().Item1, Is.False);
         }
 
@@ -117,7 +118,7 @@ namespace Mmorpg.Client.Tests
             {
                 var args = new object[] { (ushort)1, origin, targets[i], Vector2.zero, (byte)0 };
                 Assert.That(Candidate(args), Is.True);
-                Assert.That(Vector2.Distance(origin, (Vector2)args[3]), Is.EqualTo(1.8f).Within(0.00001));
+                Assert.That(Vector2.Distance(origin, (Vector2)args[3]), Is.EqualTo(1.53f).Within(0.00001));
                 Assert.That((byte)args[4], Is.EqualTo(expected[i]));
                 var repeated = new object[] { (ushort)1, origin, targets[i], Vector2.zero, (byte)0 };
                 Candidate(repeated);

@@ -274,6 +274,7 @@ namespace Mmorpg.Client.Tests
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
+            public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
             public void RequestInventory() { } public void Profiles(uint[] profileIds) { }
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
             public void RequestWallet(uint requestID) { }
@@ -281,7 +282,7 @@ namespace Mmorpg.Client.Tests
             public void CharacterList() { }
             public void Enter(ulong charID) => EnteredCharacterID = charID;
             public void Chat(string message, byte scope, ulong targetID) { }
-            public void Action(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch) { }
+            public void Action(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch, float aimAngle) { }
             public void Pong(ulong serverTimeMs) { }
             public void ZoneChange(byte op) => ZoneChangeCount++;
             public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { }

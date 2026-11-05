@@ -14,6 +14,7 @@
 #include "SkillData.h"
 #include "MonsterData.h"
 #include "GrowthData.h"
+#include "ItemData.h"
 
 namespace {
     void Require(bool valid, const char* message) {
@@ -21,6 +22,11 @@ namespace {
     }
 
     void Validate() {
+        Require(Data::parryWindowTicks > 0 && Data::parryCooldownTicks >= Data::parryWindowTicks && Data::parryCharges == 1,
+            "Parry requires one charge and a positive window within its cooldown.");
+        Require(Data::itemMap.at(1).hpRecovery == 3000 && Data::itemMap.at(2).mpRecovery == 3000 &&
+            Data::itemMap.at(1).cooldownTicks == 40 && Data::itemMap.at(2).cooldownTicks == 40,
+            "HP and MP potions require 3000 recovery and a shared 40-tick cooldown.");
         Require(Data::skillList.size() == 5, "Expected skill IDs 0 through 4.");
         for (size_t id = 0; id < Data::skillList.size(); ++id) {
             const auto& skill = Data::skillList[id];
@@ -136,7 +142,14 @@ namespace {
             json << "    {\"level\":" << growth.level << ",\"requiredTotalExp\":" << growth.requiredTotalExp
                 << ",\"maxHpIncrease\":" << growth.maxHpIncrease << '}';
         }
-        json << "\n  ]}\n}\n";
+        json << "\n  ]},\n  \"itemUse\":[";
+        for (const auto itemID : {Data::monsterPotionItemID, Data::monsterManaPotionItemID}) {
+            const auto& item = Data::itemMap.at(itemID);
+            if (itemID != Data::monsterPotionItemID) json << ',';
+            json << "{\"itemID\":" << itemID << ",\"hpRecovery\":" << item.hpRecovery
+                << ",\"mpRecovery\":" << item.mpRecovery << ",\"cooldownTicks\":" << item.cooldownTicks << '}';
+        }
+        json << "],\n  \"parry\":{\"windowTicks\":" << Data::parryWindowTicks << ",\"cooldownTicks\":" << Data::parryCooldownTicks << ",\"charges\":" << Data::parryCharges << "}\n}\n";
         return json.str();
     }
 

@@ -832,3 +832,67 @@ namespace Cache {
         EXPECT_EQ(lsn, beforeLsn);
     }
 }
+
+namespace Cache {
+    class CurrencyRewardFixture : public ::testing::Test {
+    protected:
+        TestCachedClock clock;
+        std::unique_ptr<CacheStorageCurrency> cache = std::make_unique<CacheStorageCurrency>();
+        void SetUp() override {
+            cache->clock = &clock;
+            cache->m_shards.resize(SHARD_SIZE);
+        }
+        void Reading(uint64_t id) { cache->m_shards[id & SHARD_SIZE_MASK].cache_data[Key7{id}].status = CACHE_STATUS::DB_READING; }
+        void Loaded(uint64_t id, bool success) {
+            Result7 loaded{};
+            cache->CompleteLoad(id & SHARD_SIZE_MASK, Key7{id}, success ? &loaded : nullptr);
+        }
+        void Evicting(uint64_t id) {
+            auto& shard = cache->m_shards[id & SHARD_SIZE_MASK];
+            auto& entry = shard.cache_data.at(Key7{id});
+            entry.status = CACHE_STATUS::EVICTING;
+            entry.flushInFlight = true;
+            entry.flushGeneration = 7;
+            shard.lru_list.erase(shard.lru_pos.at(Key7{id}));
+            shard.lru_pos.erase(Key7{id});
+        }
+        void MaxGold(uint64_t id) { cache->m_shards[id & SHARD_SIZE_MASK].cache_data.at(Key7{id}).data.gold = UINT64_MAX; }
+    };
+
+    TEST_F(CurrencyRewardFixture, PendingDepositsCompleteOnceAndPreserveFlush) {
+        Reading(16);
+        int completed = 0;
+        cache->GrantCurrency(16, 10, [&](CACHE_STATUS status, uint64_t balance) {
+            EXPECT_EQ(status, CACHE_STATUS::AVAILABLE); EXPECT_EQ(balance, 10u); ++completed;
+        });
+        cache->GrantCurrency(16, 10, [&](CACHE_STATUS status, uint64_t balance) {
+            EXPECT_EQ(status, CACHE_STATUS::AVAILABLE); EXPECT_EQ(balance, 20u); ++completed;
+        });
+        EXPECT_EQ(completed, 0);
+        Loaded(16, true); // The cache owns both grants even if the initiating sessions have disconnected.
+        EXPECT_EQ(completed, 2);
+        Loaded(16, true); // A repeated completion cannot replay a deposit or overwrite its balance.
+        EXPECT_EQ(completed, 2);
+        EXPECT_EQ(cache->Getter(16).data.gold, 20u);
+        Evicting(16);
+        cache->GrantCurrency(16, 10, [&](CACHE_STATUS status, uint64_t balance) {
+            EXPECT_EQ(status, CACHE_STATUS::AVAILABLE); EXPECT_EQ(balance, 30u); ++completed;
+        });
+        EXPECT_TRUE(cache->Getter(16).flushInFlight);
+        cache->WriteDone(16 & SHARD_SIZE_MASK, Key7{16}, 7);
+        EXPECT_EQ(cache->Getter(16).data.gold, 30u);
+        Reading(17);
+        cache->GrantCurrency(17, 10, [&](CACHE_STATUS status, uint64_t balance) {
+            EXPECT_EQ(status, CACHE_STATUS::EMPTY); EXPECT_EQ(balance, 0u); ++completed;
+        });
+        Loaded(17, false);
+        Loaded(17, false);
+        EXPECT_EQ(completed, 4);
+        MaxGold(16);
+        cache->GrantCurrency(16, 10, [&](CACHE_STATUS status, uint64_t balance) {
+            EXPECT_EQ(status, CACHE_STATUS::BLOCKED); EXPECT_EQ(balance, UINT64_MAX); ++completed;
+        });
+        EXPECT_EQ(completed, 5);
+        EXPECT_EQ(cache->Getter(16).data.gold, UINT64_MAX);
+    }
+}

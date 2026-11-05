@@ -7,7 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
-    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 47;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 50;
 
     enum OP : uint16_t {
         AUTH = 1,
@@ -62,6 +62,9 @@ namespace Core {
         ITEM_USE = 45,
         ITEM_USE_RES = 46,
         ITEM_REWARD = 47,
+        PARRY = 48,
+        PARRY_RES = 49,
+        GOLD_REWARD = 50,
     };
 
     enum ZONE_CHANGE: uint8_t {
@@ -93,6 +96,19 @@ namespace Core {
         uint32_t length;
         uint8_t opcode;
         uint8_t flags = 0x00; // 첫번째 비트는 시뮬레이션 로직인지 나타냄, 0x01 ~ 0x80
+    };
+
+    enum class ParryStatus : uint8_t { Invalid, Accepted, Cooldown, Dead, StaleOwnership, StaleRequest, Unavailable };
+    struct ParryRequestBody {
+        uint64_t requestID;
+        uint64_t ownershipEpoch;
+    };
+    struct ParryResponseBody {
+        uint64_t requestID;
+        uint64_t ownershipEpoch;
+        uint8_t status;
+        uint32_t windowRemainingTicks;
+        uint32_t cooldownRemainingTicks;
     };
 
     struct ItemUseRequestBody {
@@ -324,6 +340,7 @@ namespace Core {
         float x, y;       // 이동 후 최종 좌표(절대). 서버가 경과 시간 대비 이동량을 검증한다.
         uint8_t skillSlot;
         uint64_t ownershipEpoch;
+        float aimAngle; // +Y=0 degrees, clockwise, [0,360).
     };
 
     struct ActionResultField {
@@ -334,6 +351,7 @@ namespace Core {
         float x, y; // 시전 위치
         uint32_t skillId;
         uint16_t skillPhase;
+        float aimAngle;
     };
 
     struct ActionResultBody {

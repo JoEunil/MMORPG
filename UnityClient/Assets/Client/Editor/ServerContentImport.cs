@@ -109,12 +109,42 @@ namespace Mmorpg.Client.Editor
                     throw new InvalidOperationException("Growth total EXP must strictly increase by level.");
             }
 
+            var parryRow = Field(snapshot, "parry");
+            var parry = new ServerContent.Parry
+            {
+                windowTicks = (uint)Integer(parryRow, "windowTicks", uint.MaxValue),
+                cooldownTicks = (uint)Integer(parryRow, "cooldownTicks", uint.MaxValue),
+                charges = (uint)Integer(parryRow, "charges", 1)
+            };
+            if (parry.windowTicks == 0 || parry.cooldownTicks < parry.windowTicks || parry.charges != 1)
+                throw new InvalidOperationException("Parry requires a positive window, a cooldown covering that window, and one charge.");
+
+            var itemRows = Array(snapshot, "itemUse");
+            if (itemRows.Count != 2) throw new InvalidOperationException("HP and MP potion rows are required.");
+            var itemUse = new ServerContent.ItemUse[2];
+            foreach (var row in itemRows)
+            {
+                uint id = Integer(row, "itemID", 2);
+                if (id == 0 || itemUse[id - 1] != null) throw new InvalidOperationException("Potion IDs 1 and 2 must occur once.");
+                var item = new ServerContent.ItemUse {
+                    itemID = id, hpRecovery = Integer(row, "hpRecovery", int.MaxValue),
+                    mpRecovery = Integer(row, "mpRecovery", int.MaxValue), cooldownTicks = Integer(row, "cooldownTicks")
+                };
+                if (item.cooldownTicks == 0 || (id == 1 ? item.hpRecovery == 0 || item.mpRecovery != 0 : item.mpRecovery == 0 || item.hpRecovery != 0))
+                    throw new InvalidOperationException("Potions require their own recovery resource and a positive shared cooldown.");
+                itemUse[id - 1] = item;
+            }
+            if (itemUse[0].cooldownTicks != itemUse[1].cooldownTicks)
+                throw new InvalidOperationException("HP and MP potions must share the same cooldown.");
+
             // All parsing and validation finish before replacing any existing asset fields.
             var oldRing = target.ring;
             var oldMonster = target.monster0;
             var oldSkills = target.otherSkills;
             var oldMonsters = target.otherMonsters;
             var oldGrowth = target.growth;
+            var oldParry = target.parry;
+            var oldItemUse = target.itemUse;
             bool wasDirty = EditorUtility.IsDirty(target);
             try
             {
@@ -123,6 +153,8 @@ namespace Mmorpg.Client.Editor
                 target.monster0 = monsters[0];
                 target.otherMonsters = new[] { monsters[1], monsters[2] };
                 target.growth = growth;
+                target.parry = parry;
+                target.itemUse = itemUse;
                 EditorUtility.SetDirty(target);
                 AssetDatabase.SaveAssetIfDirty(target);
             }
@@ -134,6 +166,8 @@ namespace Mmorpg.Client.Editor
                 target.otherSkills = oldSkills;
                 target.otherMonsters = oldMonsters;
                 target.growth = oldGrowth;
+                target.parry = oldParry;
+                target.itemUse = oldItemUse;
                 if (wasDirty) EditorUtility.SetDirty(target);
                 else EditorUtility.ClearDirty(target);
                 throw;

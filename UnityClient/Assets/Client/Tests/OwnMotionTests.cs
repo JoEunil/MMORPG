@@ -7,11 +7,49 @@ using NUnit.Framework;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 
 namespace Mmorpg.Client.Tests
 {
     public sealed class OwnMotionTests
     {
+        [Test]
+        public void WasdAndArrowKeysShareCameraRelativeMovementWithoutExtraDiagonalSpeed()
+        {
+            var keyboard = InputSystem.AddDevice<Keyboard>();
+            var camera = new GameObject("movement input camera");
+            camera.transform.rotation = Quaternion.Euler(45, 45, 0);
+            var direction = typeof(WorldScreen).GetMethod("CameraRelativeDirection", BindingFlags.Static | BindingFlags.NonPublic);
+            try
+            {
+                var primary = new[] { Key.W, Key.A, Key.S, Key.D };
+                var auxiliary = new[] { Key.UpArrow, Key.LeftArrow, Key.DownArrow, Key.RightArrow };
+                for (int i = 0; i < primary.Length; i++)
+                {
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(primary[i]));
+                    InputSystem.Update();
+                    var wasd = (Vector2)direction.Invoke(null, new object[] { keyboard, camera.transform });
+                    InputSystem.QueueStateEvent(keyboard, new KeyboardState(auxiliary[i]));
+                    InputSystem.Update();
+                    Assert.That((Vector2)direction.Invoke(null, new object[] { keyboard, camera.transform }), Is.EqualTo(wasd));
+                    Assert.That(wasd.magnitude, Is.EqualTo(1).Within(.0001f));
+                }
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.W, Key.D, Key.UpArrow, Key.RightArrow));
+                InputSystem.Update();
+                Assert.That(((Vector2)direction.Invoke(null, new object[] { keyboard, camera.transform })).magnitude,
+                    Is.EqualTo(1).Within(.0001f));
+                InputSystem.QueueStateEvent(keyboard, new KeyboardState(Key.W, Key.S, Key.A, Key.D));
+                InputSystem.Update();
+                Assert.That((Vector2)direction.Invoke(null, new object[] { keyboard, camera.transform }), Is.EqualTo(Vector2.zero));
+            }
+            finally
+            {
+                InputSystem.RemoveDevice(keyboard);
+                UnityEngine.Object.DestroyImmediate(camera);
+            }
+        }
+
         [Test]
         [Category("MotionRevision")]
         public void DisableAfterActorDestroyed_ClearsWorldWithoutAccessingNativeMotion()
@@ -40,7 +78,7 @@ namespace Mmorpg.Client.Tests
                 fixture.Predict(Vector2.right, 0.05f);
 
                 Assert.That(fixture.ServerPosition.x, Is.EqualTo(204.8f).Within(0.0001f));
-                Assert.That(fixture.InputTarget.x, Is.EqualTo(205.25f).Within(0.0001f),
+                Assert.That(fixture.InputTarget.x, Is.EqualTo(205.1825f).Within(0.0001f),
                     "A local target may lead across the owner boundary without cancelling held input.");
                 Assert.That(fixture.HasMovementIntent, Is.True);
                 Assert.That(InsideZone(1, new Vector2(205.1f, 10)), Is.False,
@@ -52,13 +90,13 @@ namespace Mmorpg.Client.Tests
                 Assert.That((byte)move[4], Is.EqualTo(3));
 
                 for (int i = 0; i < 3; i++) fixture.Predict(Vector2.right, .05f);
-                Assert.That(fixture.InputTarget.x - fixture.ServerPosition.x, Is.EqualTo(1.8f).Within(0.0001f),
+                Assert.That(fixture.InputTarget.x - fixture.ServerPosition.x, Is.EqualTo(1.53f).Within(0.0001f),
                     "Boundary requests retain a four-tick horizon while authority is delayed.");
-                Assert.That(Vector2.Distance(fixture.VisualPosition, fixture.ServerPosition), Is.EqualTo(.9f).Within(.0001f),
+                Assert.That(Vector2.Distance(fixture.VisualPosition, fixture.ServerPosition), Is.EqualTo(.765f).Within(.0001f),
                     "The longer request horizon does not increase rendered prediction.");
                 move = new object[] { (ushort)1, fixture.ServerPosition, fixture.InputTarget, Vector2.zero, (byte)0 };
                 Assert.That(Candidate(move), Is.True);
-                Assert.That(Vector2.Distance(fixture.ServerPosition, (Vector2)move[3]), Is.EqualTo(1.8f).Within(.0001f),
+                Assert.That(Vector2.Distance(fixture.ServerPosition, (Vector2)move[3]), Is.EqualTo(1.53f).Within(.0001f),
                     "The request builder must not silently shorten the horizon to one unit.");
 
                 fixture.AuthoritativeFullAt(205.1f);
@@ -78,38 +116,38 @@ namespace Mmorpg.Client.Tests
                 fixture.EnterWithOwnState();
                 fixture.Predict(Vector2.right, 0.05f);
                 Assert.That(fixture.ServerPosition, Is.EqualTo(new Vector2(10, 10)));
-                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.45f).Within(0.0001),
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.3825f).Within(0.0001),
                     "A local intent moves the rendered character while the server snapshot stays authoritative.");
 
                 fixture.Predict(Vector2.right, 0.05f);
-                Assert.That(fixture.InputTarget.x, Is.EqualTo(10.9f).Within(0.0001),
+                Assert.That(fixture.InputTarget.x, Is.EqualTo(10.765f).Within(0.0001),
                     "Held intent integrates two ticks while confirmations are delayed.");
-                Assert.That(fixture.VisualPosition.x, Is.EqualTo(10.9f).Within(.0001f));
-                fixture.Delta(10.45f);
-                Assert.That(fixture.ServerPosition.x, Is.EqualTo(10.45f).Within(.0001f));
-                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.9f).Within(0.0001),
+                Assert.That(fixture.VisualPosition.x, Is.EqualTo(10.765f).Within(.0001f));
+                fixture.Delta(10.3825f);
+                Assert.That(fixture.ServerPosition.x, Is.EqualTo(10.3825f).Within(.0001f));
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(10.765f).Within(0.0001),
                     "A delayed confirmation does not jump the rendered character backwards.");
                 fixture.Predict(Vector2.right, 0.05f);
-                Assert.That(fixture.InputTarget.x, Is.EqualTo(11.35f).Within(0.0001),
+                Assert.That(fixture.InputTarget.x, Is.EqualTo(11.1475f).Within(0.0001),
                     "A delayed confirmation frees bounded lead without rebuilding every target from that snapshot.");
-                fixture.Delta(10.9f);
+                fixture.Delta(10.765f);
 
                 fixture.CancelMovement();
                 fixture.Predict(Vector2.zero, 0.025f);
                 fixture.Predict(Vector2.zero, 0.025f);
-                Assert.That(fixture.OwnPosition.x, Is.EqualTo(11.35f).Within(0.0001),
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(11.1475f).Within(0.0001),
                     "Key-up stops presentation without immediately rewinding an in-flight movement tick.");
                 Assert.That(fixture.HasMovementIntent, Is.False);
                 Assert.That(fixture.InputTarget, Is.EqualTo(fixture.ServerPosition));
-                fixture.Delta(11.35f);
+                fixture.Delta(11.1475f);
                 fixture.Predict(Vector2.zero, .05f);
-                Assert.That(fixture.OwnPosition.x, Is.EqualTo(11.35f).Within(.0001f),
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(11.1475f).Within(.0001f),
                     "An already sent final target can catch up without a backwards/forwards rubber band.");
-                fixture.AuthoritativeFullAt(11.35f);
-                Assert.That(fixture.OwnPosition.x, Is.EqualTo(11.35f).Within(.0001f));
+                fixture.AuthoritativeFullAt(11.1475f);
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(11.1475f).Within(.0001f));
 
                 fixture.Predict(Vector2.one, 0.05f);
-                Assert.That(Vector2.Distance(fixture.ServerPosition, fixture.VisualPosition), Is.EqualTo(0.45f).Within(0.0001),
+                Assert.That(Vector2.Distance(fixture.ServerPosition, fixture.VisualPosition), Is.EqualTo(0.3825f).Within(0.0001),
                     "Diagonal held input uses the same speed as a cardinal direction.");
                 fixture.CancelMovement();
                 for (int i = 0; i < 30; i++) fixture.Predict(Vector2.zero, .05f);
@@ -117,12 +155,12 @@ namespace Mmorpg.Client.Tests
                     "Unconfirmed presentation still settles onto authority after the key-up grace.");
                 fixture.Predict(Vector2.right, 0.05f);
                 for (int i = 0; i < 30; i++) fixture.Predict(Vector2.right, 0.05f);
-                Assert.That(fixture.OwnPosition.x, Is.EqualTo(11.35f).Within(0.0001),
+                Assert.That(fixture.OwnPosition.x, Is.EqualTo(11.1475f).Within(0.0001),
                     "When authority stops advancing, the rendered actor settles even while a key remains held.");
-                Assert.That(Vector2.Distance(fixture.InputTarget, fixture.ServerPosition), Is.LessThanOrEqualTo(0.4501f),
+                Assert.That(Vector2.Distance(fixture.InputTarget, fixture.ServerPosition), Is.LessThanOrEqualTo(0.3826f),
                     "A stale server receives only a single-tick bounded probe, with no accumulated invisible walk.");
 
-                fixture.Delta(11.8f);
+                fixture.Delta(11.53f);
                 fixture.Predict(Vector2.right, .05f);
                 float beforeReverse = fixture.VisualPosition.x;
                 fixture.Predict(Vector2.left, .05f);
@@ -130,7 +168,7 @@ namespace Mmorpg.Client.Tests
                     "Reversing input immediately discards the old forward request lead.");
                 Assert.That(fixture.VisualPosition.x, Is.LessThan(beforeReverse),
                     "The visual immediately follows the new heading from its rendered position.");
-                fixture.Delta(12.25f);
+                fixture.Delta(11.9125f);
                 Assert.That(fixture.InputTarget.x, Is.LessThanOrEqualTo(fixture.ServerPosition.x),
                     "A delayed rightward confirmation cannot turn the current leftward request back to the right.");
 
@@ -141,9 +179,9 @@ namespace Mmorpg.Client.Tests
                 Assert.That(fixture.HasMovementIntent, Is.False);
                 Assert.That(fixture.InputTarget, Is.EqualTo(fixture.ServerPosition));
                 fixture.Predict(Vector2.one, 10f);
-                Assert.That(Vector2.Distance(fixture.InputTarget, fixture.ServerPosition), Is.LessThanOrEqualTo(0.4501f),
+                Assert.That(Vector2.Distance(fixture.InputTarget, fixture.ServerPosition), Is.LessThanOrEqualTo(0.3826f),
                     "A large frame never integrates a backlog of missed input ticks.");
-                Assert.That(Vector2.Distance(fixture.VisualPosition, fixture.ServerPosition), Is.LessThanOrEqualTo(0.9001f));
+                Assert.That(Vector2.Distance(fixture.VisualPosition, fixture.ServerPosition), Is.LessThanOrEqualTo(0.7651f));
 
                 fixture.ResetWorld();
                 Assert.That(fixture.HasOwnFull, Is.False);
@@ -157,16 +195,16 @@ namespace Mmorpg.Client.Tests
                 fixture.Predict(Vector2.up, .05f);
                 Assert.That(fixture.InputTarget.x, Is.EqualTo(fixture.ServerPosition.x).Within(.0001f),
                     "A perpendicular turn drops all unacknowledged rightward lead.");
-                Assert.That(fixture.InputTarget.y - fixture.ServerPosition.y, Is.EqualTo(.45f).Within(.0001f));
+                Assert.That(fixture.InputTarget.y - fixture.ServerPosition.y, Is.EqualTo(.3825f).Within(.0001f));
                 Assert.That(fixture.VisualPosition.x, Is.EqualTo(beforeTurn.x).Within(.0001f),
                     "A perpendicular turn does not drag the rendered actor sideways towards an old snapshot.");
-                Assert.That(fixture.VisualPosition.y - beforeTurn.y, Is.EqualTo(.45f).Within(.0001f));
+                Assert.That(fixture.VisualPosition.y - beforeTurn.y, Is.EqualTo(.3825f).Within(.0001f));
                 fixture.Predict(Vector2.one, .05f);
                 Vector2 diagonalLead = fixture.InputTarget - fixture.ServerPosition;
-                Assert.That(Vector2.Distance(diagonalLead, Vector2.one.normalized * .45f), Is.LessThan(.0001f),
+                Assert.That(Vector2.Distance(diagonalLead, Vector2.one.normalized * .3825f), Is.LessThan(.0001f),
                     "A 45-degree heading change also starts with only the current input's lead.");
                 fixture.Predict(Vector2.one, .05f);
-                Assert.That(Vector2.Distance(fixture.InputTarget - fixture.ServerPosition, Vector2.one.normalized * .9f),
+                Assert.That(Vector2.Distance(fixture.InputTarget - fixture.ServerPosition, Vector2.one.normalized * .765f),
                     Is.LessThan(.0001f), "Unchanged held direction still accumulates its bounded lead.");
 
                 fixture.ResetWorld();
@@ -175,11 +213,11 @@ namespace Mmorpg.Client.Tests
                 {
                     float previousX = fixture.VisualPosition.x;
                     fixture.Predict(Vector2.right, 1f / 60f);
-                    Assert.That(fixture.VisualPosition.x - previousX, Is.EqualTo(.15f).Within(.0001f),
-                        "Between 50ms authority updates, 60fps presentation advances continuously at 9 units/s.");
+                    Assert.That(fixture.VisualPosition.x - previousX, Is.EqualTo(.1275f).Within(.0001f),
+                        "Between 50ms authority updates, 60fps presentation advances continuously at 7.65 units/s.");
                     if (frame % 3 == 0) fixture.Delta(fixture.InputTarget.x);
                 }
-                Assert.That(fixture.ServerPosition.x, Is.EqualTo(11.8f).Within(.0001f));
+                Assert.That(fixture.ServerPosition.x, Is.EqualTo(11.53f).Within(.0001f));
 
                 fixture.ResetWorld();
                 fixture.EnterWithOwnState();
@@ -191,19 +229,19 @@ namespace Mmorpg.Client.Tests
                     // A 50ms authoritative step is observed 150ms later, independently of rendering.
                     if (frame > 9 && frame % 3 == 0) fixture.Delta(acceptedByFrame[frame - 9]);
                     fixture.Predict(Vector2.right, 1f / 60f);
-                    Assert.That(Vector2.Distance(fixture.VisualPosition, fixture.ServerPosition), Is.LessThanOrEqualTo(.9001f));
+                    Assert.That(Vector2.Distance(fixture.VisualPosition, fixture.ServerPosition), Is.LessThanOrEqualTo(.7651f));
                     if (frame % 3 != 0) continue;
 
                     var request = new object[] { (ushort)1, fixture.ServerPosition, fixture.InputTarget, Vector2.zero, (byte)0 };
                     Assert.That(Candidate(request), Is.True);
-                    budget = Mathf.Min(3, budget + .45f);
+                    budget = Mathf.Min(3, budget + .3825f);
                     float nextX = Mathf.MoveTowards(acceptedX, ((Vector2)request[3]).x, budget);
                     budget -= Mathf.Abs(nextX - acceptedX);
                     acceptedX = nextX;
                     acceptedByFrame[frame] = acceptedX;
                 }
-                Assert.That(acceptedX - 10, Is.EqualTo(18f).Within(.001f),
-                    "A 150ms confirmation delay must not turn the 9-units/s request stream into a feedback-limited 6-units/s stream.");
+                Assert.That(acceptedX - 10, Is.EqualTo(15.3f).Within(.001f),
+                    "A 150ms confirmation delay must preserve the 7.65-units/s request stream.");
             }
         }
 
@@ -264,15 +302,15 @@ namespace Mmorpg.Client.Tests
                     "Key release must still discard an unsent movement request.");
 
                 for (int frame = 0; frame < 6; frame++) fixture.Predict(Vector2.zero, .05f);
-                Assert.That(fixture.VisualPosition.x, Is.EqualTo(10.9f).Within(.0001f),
+                Assert.That(fixture.VisualPosition.x, Is.EqualTo(10.765f).Within(.0001f),
                     "Keep the existing bounded grace for an in-flight final snapshot.");
                 for (int frame = 0; frame < 40; frame++)
                 {
                     float previous = fixture.VisualPosition.x;
                     fixture.Predict(Vector2.zero, .05f);
                     float correction = previous - fixture.VisualPosition.x;
-                    Assert.That(correction, Is.InRange(-.00001f, .09001f),
-                        "Idle correction is monotonic and capped at 1.8 units/s, not normal movement speed.");
+                    Assert.That(correction, Is.InRange(-.00001f, .07651f),
+                        "Idle correction is monotonic and capped at 1.53 units/s, not normal movement speed.");
                     Assert.That(fixture.TakeAction().Item1, Is.False,
                         "Visual settling must not send another target after the key is released.");
                     Assert.That(fixture.ServerPosition.x, Is.EqualTo(10));
@@ -306,7 +344,7 @@ namespace Mmorpg.Client.Tests
 
                 float beforeInput = fixture.VisualPosition.x;
                 fixture.Predict(Vector2.left, .016f);
-                Assert.That(fixture.VisualPosition.x - beforeInput, Is.EqualTo(-.144f).Within(.0001f),
+                Assert.That(fixture.VisualPosition.x - beforeInput, Is.EqualTo(-.1224f).Within(.0001f),
                     "The gentler idle correction must not slow newly held input.");
                 Assert.That(fixture.HasMovementIntent, Is.True);
             }
@@ -356,7 +394,7 @@ namespace Mmorpg.Client.Tests
             }
 
             public IViewDataUI Data { get; }
-            public (bool, byte, float, float, byte, ulong) TakeAction() => ((IViewDataModel)Data).GetActionState();
+            public (bool, byte, float, float, byte, ulong, float) TakeAction() => ((IViewDataModel)Data).GetActionState();
             public Vector2 ServerPosition => screen.ServerPosition;
             public Vector3 OwnPosition => ((Transform)Get(screen, "ownCharacter")).position;
             public bool HasOwnFull => screen.HasOwnFull;

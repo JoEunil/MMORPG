@@ -2,6 +2,20 @@
 #include "SkillData.h"
 
 namespace Data {
+    bool SkillRange::InRangeAngle(float aimAngle, float cx, float cy, float mx, float my) const {
+        if (!std::isfinite(aimAngle) || aimAngle < 0 || aimAngle >= 360) return false;
+        if (type != SkillRangeType::Rectangle) return InRange(0, cx, cy, mx, my);
+        const float radians = aimAngle * (3.14159265358979323846f / 180.0f);
+        float forwardX = std::sin(radians), forwardY = std::cos(radians);
+        // Preserve exact axis-aligned boundaries when trig leaves a small residual.
+        if (std::abs(forwardX) < 0.000001f) forwardX = 0;
+        if (std::abs(forwardY) < 0.000001f) forwardY = 0;
+        const float dx = mx - cx, dy = my - cy;
+        const float along = dx * forwardX + dy * forwardY;
+        const float across = dx * forwardY - dy * forwardX;
+        return along >= 0 && along <= range1 && std::abs(across) <= range2 * 0.5f;
+    }
+
     bool SkillRange::InRange(uint8_t dir, float cx, float cy, float mx, float my) const
     {
         float dx = mx - cx;

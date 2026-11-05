@@ -903,15 +903,18 @@ namespace Mmorpg.Client
 
         private void WalletReceived(byte goldStatus, ulong goldBalance, byte diamondStatus, ulong diamondBalance)
         {
-            if (!walletPending || model == null || loginScreen.Model != model || !WorldAvailable) return;
+            if (model == null || loginScreen.Model != model || !WorldAvailable) return;
+            // ClientCore correlates every wallet reply, including reward-triggered reads with no UI request.
+            walletRequested = true;
             walletPending = false;
             goldKnown = goldStatus == 1;
             diamondKnown = diamondStatus == 1;
+            if (goldKnown && diamondKnown) walletRetryAt = 0;
             gold = goldBalance;
             diamonds = diamondBalance;
             ShowWallet();
             UpdateSaleSummary();
-            if (!goldKnown || !diamondKnown || walletRefreshQueued) ScheduleWalletRetry();
+            if (walletRefreshQueued || ((!goldKnown || !diamondKnown) && walletRetryAt <= 0)) ScheduleWalletRetry();
         }
 
         private void ScheduleWalletRetry()

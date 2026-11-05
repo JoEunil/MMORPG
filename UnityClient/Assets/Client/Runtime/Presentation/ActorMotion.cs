@@ -8,6 +8,8 @@ namespace Mmorpg.Client
     [UnityEngine.Scripting.APIUpdating.MovedFrom(true, sourceNamespace: "C02", sourceAssembly: "C02.Runtime", sourceClassName: "C19ActorMotion")]
     public sealed class ActorMotion : MonoBehaviour
     {
+        private const float HitDurationSeconds = .28f;
+        private const float ParrySuccessDuration = .38f;
         private Transform visual;
         private Vector3 restPosition;
         private Quaternion restRotation;
@@ -35,6 +37,16 @@ namespace Mmorpg.Client
         private float phaseTransitionStarted;
         private float phaseTransitionUntil;
         private float hitUntil;
+        private float parryUntil;
+        private float parryStarted;
+        private float parrySuccessUntil;
+        private bool parrySucceeded;
+        private readonly List<MeshRenderer> shieldRenderers = new List<MeshRenderer>();
+        private MaterialPropertyBlock shieldTint;
+        private bool shieldTinted;
+        private MeshRenderer parrySparkRenderer;
+        private Mesh parrySparkMesh;
+        private Material parrySparkMaterial;
         private bool downed;
         private float defeatStarted = -1f;
         private Quaternion defeatStartRotation;
@@ -89,6 +101,9 @@ namespace Mmorpg.Client
             }
             if (guardMotion)
             {
+                shieldTint = new MaterialPropertyBlock();
+                foreach (var renderer in visual.GetComponentsInChildren<MeshRenderer>())
+                    if (renderer.name.Contains("Shield")) shieldRenderers.Add(renderer);
                 upperBody = new GameObject("UpperBody").transform;
                 upperBody.SetParent(visual, false);
                 upperBody.localPosition = new Vector3(0f, 1.025f, 0f);
@@ -155,7 +170,15 @@ namespace Mmorpg.Client
         // Call only for accepted server action phases; this does not send or confirm damage.
         public void PlayAttack(byte direction, bool released, byte skillSlot = 0, float chargeDuration = 0)
         {
-            if (visual == null || direction > 3 || downed || defeatStarted >= 0) return;
+            if (direction > 3) return;
+            PlayAttack(direction == 0 ? 0f : direction == 1 ? 180f : direction == 2 ? 270f : 90f,
+                released, skillSlot, chargeDuration);
+        }
+
+        public void PlayAttack(float aimAngle, bool released, byte skillSlot = 0, float chargeDuration = 0)
+        {
+            if (visual == null || float.IsNaN(aimAngle) || float.IsInfinity(aimAngle) || aimAngle < 0 || aimAngle >= 360 ||
+                downed || defeatStarted >= 0) return;
             float now = Time.unscaledTime;
             byte nextAttackSlot = skillSlot <= 2 ? skillSlot : (byte)0;
             if (guardMotion && !this.released && released && now < attackUntil && nextAttackSlot == attackSlot)
@@ -178,14 +201,93 @@ namespace Mmorpg.Client
             spinPendingCompletion = guardMotion && released && attackSlot == 1;
             attackStarted = Time.unscaledTime;
             attackUntil = attackStarted + (released ? (attackSlot == 2 ? .58f : .48f) : Mathf.Max(.52f, chargeDuration + .08f));
-            facing = WorldScreen.ServerFacing(direction);
+            // Authored meshes face -Z; the wire angle measures clockwise from world +Z.
+            facing = Quaternion.Euler(0, aimAngle + 180f, 0);
             hasFacing = true;
         }
 
         // Call on an observed HP decrease, never on the first health snapshot.
         public void PlayHit()
         {
-            if (visual != null && !downed && defeatStarted < 0) hitUntil = Time.unscaledTime + .2f;
+            if (visual != null && !downed && defeatStarted < 0) hitUntil = Time.unscaledTime + HitDurationSeconds;
+        }
+
+        // Broadcast presentation only. Neither this pose nor a late acknowledgement grants protection.
+        public void PlayParry(bool success, float windowSeconds)
+        {
+            if (visual == null || downed || defeatStarted >= 0 || float.IsNaN(windowSeconds) ||
+                float.IsInfinity(windowSeconds) || windowSeconds <= 0) return;
+            float now = Time.unscaledTime;
+            if (success)
+            {
+                if (parrySucceeded) return;
+                parrySucceeded = true;
+                parryUntil = 0;
+                parrySuccessUntil = now + ParrySuccessDuration;
+                EnsureParrySparks();
+            }
+            else
+            {
+                if (now < parryUntil || now < parrySuccessUntil) return;
+                parrySucceeded = false;
+                parryStarted = now;
+                parryUntil = now + windowSeconds;
+            }
+        }
+
+        public void ClearParry()
+        {
+            parryUntil = parrySuccessUntil = 0;
+            parrySucceeded = false;
+            if (parrySparkRenderer != null) parrySparkRenderer.enabled = false;
+            if (!shieldTinted) return;
+            foreach (var renderer in shieldRenderers)
+                if (renderer != null) renderer.SetPropertyBlock(null);
+            shieldTinted = false;
+        }
+
+        private void EnsureParrySparks()
+        {
+            if (parrySparkRenderer != null || shieldRenderers.Count == 0 || arms[0] == null ||
+                shieldRenderers[0] == null || shieldRenderers[0].sharedMaterial == null) return;
+            // Reuse the knight's included material shader; no runtime-only shader lookup or new asset dependency.
+            parrySparkMaterial = new Material(shieldRenderers[0].sharedMaterial) { name = "Parry Metal Sparks" };
+            parrySparkMaterial.SetColor("_BaseColor", new Color(2.6f, 2.3f, 1.6f));
+            if (parrySparkMaterial.HasProperty("_Metallic")) parrySparkMaterial.SetFloat("_Metallic", 0);
+            if (parrySparkMaterial.HasProperty("_Cull")) parrySparkMaterial.SetFloat("_Cull", 0);
+            var spark = new GameObject("Parry Shield Sparks");
+            spark.transform.SetParent(arms[0], false);
+            spark.transform.position = shieldRenderers[0].bounds.center;
+            var vertices = new Vector3[64];
+            var triangles = new int[96];
+            for (int ray = 0; ray < 8; ray++)
+            {
+                float angle = ray * Mathf.PI * .25f;
+                Vector3 direction = new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0);
+                for (int plane = 0; plane < 2; plane++)
+                {
+                    Vector3 width = (plane == 0 ? new Vector3(-direction.y, direction.x, 0) : Vector3.forward) * .022f;
+                    int vertex = ray * 8 + plane * 4;
+                    vertices[vertex] = direction * .09f - width;
+                    vertices[vertex + 1] = direction * .09f + width;
+                    vertices[vertex + 2] = direction * (ray % 2 == 0 ? .64f : .46f) + width * .12f;
+                    vertices[vertex + 3] = direction * (ray % 2 == 0 ? .64f : .46f) - width * .12f;
+                    int index = (ray * 2 + plane) * 6;
+                    triangles[index] = triangles[index + 3] = vertex;
+                    triangles[index + 1] = vertex + 1;
+                    triangles[index + 2] = triangles[index + 4] = vertex + 2;
+                    triangles[index + 5] = vertex + 3;
+                }
+            }
+            parrySparkMesh = new Mesh { name = "Parry Shield Sparks Mesh", vertices = vertices, triangles = triangles };
+            parrySparkMesh.RecalculateNormals();
+            parrySparkMesh.RecalculateBounds();
+            spark.AddComponent<MeshFilter>().sharedMesh = parrySparkMesh;
+            parrySparkRenderer = spark.AddComponent<MeshRenderer>();
+            parrySparkRenderer.sharedMaterial = parrySparkMaterial;
+            parrySparkRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            parrySparkRenderer.receiveShadows = false;
+            parrySparkRenderer.enabled = false;
         }
 
         // A player stays observed at zero HP; retain this pose until authoritative recovery.
@@ -210,6 +312,7 @@ namespace Mmorpg.Client
         // Only the removed monster's mesh parts remain for this brief presentation.
         public bool PlayDefeat()
         {
+            ClearParry();
             if (visual == null) return false;
             if (defeatStarted >= 0) return true;
             defeatStarted = Time.unscaledTime;
@@ -398,6 +501,16 @@ namespace Mmorpg.Client
                     }
                 }
             }
+            float hitTime = 1f - (hitUntil - now) / HitDurationSeconds;
+            float hit = hitUntil > now ? hitTime < .18f
+                ? Mathf.SmoothStep(0, 1, hitTime / .18f)
+                : 1f - Mathf.SmoothStep(0, 1, (hitTime - .18f) / .82f) : 0;
+            // The brief recovery is presentation only and does not extend the broadcast protection window.
+            float parry = parryUntil > 0 ? Mathf.SmoothStep(0, 1, Mathf.Clamp01((now - parryStarted) / .06f)) *
+                Mathf.Clamp01((parryUntil + .16f - now) / .16f) : 0;
+            float parryFlash = Mathf.Clamp01((parrySuccessUntil - now) / ParrySuccessDuration);
+            float parryRebound = parryFlash > 0 ? Mathf.Sin((1f - parryFlash) * Mathf.PI) : 0;
+            float shieldPose = Mathf.Max(parry, parryFlash);
             float poseResponse = Mathf.Clamp01(dt * 20f);
             for (int side = 0; side < 2; side++)
             {
@@ -413,14 +526,18 @@ namespace Mmorpg.Client
                     armPose = side == 1 ? swordPose : supportArmPose + new Vector3(-18f, 0f, -10f) * Mathf.Sin(attack * Mathf.PI);
                 else
                     armPose = new Vector3(-swing * sign * 10f, 0f, 0f);
+                armPose += (side == 0 ? new Vector3(-35f, -8f, -14f) : new Vector3(12f, 10f, 5f)) * hit;
+                armPose += ((side == 0 ? new Vector3(-82f, -30f, -20f) : new Vector3(-20f, 0, 12f)) * shieldPose +
+                    (side == 0 ? new Vector3(-28f, 24f, -24f) : new Vector3(12f, -8f, 4f)) * parryRebound) *
+                    (attacking ? .55f : 1f);
                 Quaternion targetArm = Quaternion.Euler(armPose);
                 if (phaseTransition) targetArm = Quaternion.Slerp(phaseStartArms[side], targetArm, phaseBlend);
                 if (arms[side] != null) arms[side].localRotation = Quaternion.Slerp(arms[side].localRotation, targetArm, poseResponse);
             }
-            float hit = hitUntil > now ? Mathf.Sin((hitUntil - now) / .2f * Mathf.PI) : 0;
             float bob = (1f - Mathf.Cos(stride * 2f)) * .004f * height * walking;
-            visual.localPosition = restPosition + new Vector3(0, bob, hit * height * .025f);
             Quaternion localFacing = hasFacing ? Quaternion.Inverse(visual.parent.rotation) * facing : restRotation;
+            visual.localPosition = restPosition + Vector3.up * bob +
+                localFacing * new Vector3(0, -hit * height * .02f, hit * height * .065f);
             bool directSpin = false;
             if (guardMotion && released && attackSlot == 1)
             {
@@ -438,7 +555,7 @@ namespace Mmorpg.Client
                 }
             }
             Quaternion targetVisualRotation = guardMotion ? localFacing :
-                localFacing * Quaternion.Euler(hit * -10f + walking * 3f, torsoTurn, swing * .65f) *
+                localFacing * Quaternion.Euler(hit * -18f + walking * 3f, torsoTurn, swing * .65f) *
                 Quaternion.AngleAxis(bodySpin, Vector3.up);
             if (phaseTransition) targetVisualRotation = Quaternion.Slerp(phaseStartVisualRotation, targetVisualRotation, phaseBlend);
             if (directSpin)
@@ -447,14 +564,48 @@ namespace Mmorpg.Client
                 visual.localRotation = Quaternion.Slerp(visual.localRotation, targetVisualRotation, Mathf.Clamp01(dt * 18f));
             if (upperBody != null)
             {
-                Quaternion upperPose = Quaternion.Euler(torsoPitch + hit * -10f + walking * 3f, torsoTurn, swing * .65f);
+                Quaternion upperPose = Quaternion.Euler(torsoPitch - hit * 18f - shieldPose * 10f + parryRebound * 8f + walking * 3f,
+                    torsoTurn + hit * 6f + shieldPose * 14f - parryRebound * 22f,
+                    swing * .65f - hit * 5f - shieldPose * 8f + parryRebound * 5f);
                 if (phaseTransition) upperPose = Quaternion.Slerp(phaseStartUpperBodyRotation, upperPose, phaseBlend);
                 upperBody.localRotation = Quaternion.Slerp(upperBody.localRotation, upperPose, poseResponse);
+            }
+            if (parryFlash > 0 && shieldRenderers.Count > 0)
+            {
+                foreach (var renderer in shieldRenderers)
+                {
+                    if (renderer == null || renderer.sharedMaterial == null) continue;
+                    Color original = renderer.sharedMaterial.HasProperty("_BaseColor")
+                        ? renderer.sharedMaterial.GetColor("_BaseColor") : renderer.sharedMaterial.color;
+                    Color flash = Color.Lerp(original, new Color(3.4f, 3.1f, 2.2f), Mathf.Sqrt(parryFlash));
+                    shieldTint.SetColor("_BaseColor", flash);
+                    shieldTint.SetColor("_Color", flash);
+                    renderer.SetPropertyBlock(shieldTint);
+                }
+                shieldTinted = true;
+            }
+            else if (shieldTinted)
+            {
+                foreach (var renderer in shieldRenderers)
+                    if (renderer != null) renderer.SetPropertyBlock(null);
+                shieldTinted = false;
+            }
+            if (parrySparkRenderer != null)
+            {
+                parrySparkRenderer.enabled = parryFlash > 0;
+                if (parryFlash > 0)
+                {
+                    float sparkTime = 1f - parryFlash;
+                    float sparkScale = sparkTime < .2f ? Mathf.Lerp(.45f, 1f, sparkTime / .2f) :
+                        Mathf.Lerp(1f, .04f, (sparkTime - .2f) / .8f);
+                    parrySparkRenderer.transform.localScale = Vector3.one * sparkScale;
+                }
             }
         }
 
         public void ResetPose()
         {
+            ClearParry();
             previousPosition = transform.position;
             walking = stride = attackStarted = attackUntil = hitUntil = 0;
             downed = false;
@@ -477,5 +628,23 @@ namespace Mmorpg.Client
 
         private void OnEnable() => ResetPose();
         private void OnDisable() => ResetPose();
+        private void OnDestroy()
+        {
+            if (parrySparkRenderer != null)
+            {
+                if (Application.isPlaying) Destroy(parrySparkRenderer.gameObject);
+                else DestroyImmediate(parrySparkRenderer.gameObject);
+            }
+            if (parrySparkMesh != null)
+            {
+                if (Application.isPlaying) Destroy(parrySparkMesh);
+                else DestroyImmediate(parrySparkMesh);
+            }
+            if (parrySparkMaterial != null)
+            {
+                if (Application.isPlaying) Destroy(parrySparkMaterial);
+                else DestroyImmediate(parrySparkMaterial);
+            }
+        }
     }
 }

@@ -68,7 +68,7 @@ namespace ClientCore.Network
         public static bool ShouldHandle(byte opcode, byte flags)
         {
             // Item notifications have no load-client state; the framed reader skips their bodies.
-            if ((OP_CODE)opcode == OP_CODE.ITEM_USE_RES || (OP_CODE)opcode == OP_CODE.ITEM_REWARD)
+            if ((OP_CODE)opcode == OP_CODE.GOLD_REWARD || (OP_CODE)opcode == OP_CODE.ITEM_USE_RES || (OP_CODE)opcode == OP_CODE.ITEM_REWARD || (OP_CODE)opcode == OP_CODE.PARRY_RES)
                 return false;
             if ((flags & FLAG_SIMULATION) == FLAG_SIMULATION)
                 return (OP_CODE)opcode == OP_CODE.ZONE_CHANGE_RESPONSE ||

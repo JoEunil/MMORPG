@@ -15,12 +15,121 @@ using NUnit.Framework;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 
 namespace Mmorpg.Client.Tests
 {
     // Detached fixtures: not actual keyboard/button input, a server cast, or a live death.
     public sealed class CombatTests
     {
+        [Test]
+        public void ParryRepliesOnlyUpdateHudAndTravelKeepsConfirmedCooldownWhileUnknownNeverRetries()
+        {
+            using (var fixture = new CombatFixture())
+            {
+                var content = (ServerContent)Get(fixture.Combat, "serverContent");
+                content.parry = new ServerContent.Parry { windowTicks = 5, cooldownTicks = 30, charges = 1 };
+                Set(fixture.Combat, "parryPending", true);
+                Invoke(fixture.Combat, "ParryReceived", (byte)1, 0U, 20U);
+                float deadline = (float)Get(fixture.Combat, "parryCooldownDeadline");
+                Assert.That(deadline - Time.unscaledTime, Is.InRange(.99f, 1.01f));
+                Assert.That((bool)Get(fixture.Combat, "parryPending"), Is.False);
+                Assert.That(((UnityEngine.UI.Button)Get(fixture.Combat, "parryButton")).interactable, Is.False);
+                Assert.That(((TMP_Text)Get(fixture.Combat, "parryCooldownText")).text, Is.Not.Empty);
+                Assert.That((float)Get(fixture.World.ActorMotion, "parryUntil"), Is.Zero,
+                    "A late accepted reply never starts a pose or a defensive window.");
+                Invoke(fixture.Combat, "ParryReceived", (byte)1, 5U, 30U);
+                Assert.That((float)Get(fixture.Combat, "parryCooldownDeadline"), Is.EqualTo(deadline), "A duplicate reply has no HUD side effects.");
+                Set(fixture.Combat, "parryPending", true);
+                Invoke(fixture.Combat, "ParryTransitionStarted", 2UL, (ushort)2);
+                Assert.That((bool)Get(fixture.Combat, "parryPending"), Is.False);
+                Assert.That((float)Get(fixture.Combat, "parryCooldownDeadline"), Is.EqualTo(deadline));
+                Set(fixture.Combat, "parryPending", true);
+                Invoke(fixture.Combat, "ParryReceived", Packet.PARRY_TIMEOUT_STATUS, 0U, 0U);
+                Assert.That((bool)Get(fixture.Combat, "parryUnknown"), Is.True);
+                Assert.That((float)Get(fixture.Combat, "parryCooldownDeadline"), Is.EqualTo(deadline));
+                Invoke(fixture.Combat, "UpdateParryHud");
+                Assert.That(((TMP_Text)Get(fixture.Combat, "parryCooldownText")).text, Is.EqualTo("?"));
+                Set(fixture.Combat, "parryPending", true);
+                Invoke(fixture.Combat, "ParryReceived", (byte)6, 0U, 0U);
+                Assert.That((bool)Get(fixture.Combat, "parryUnknown"), Is.False, "Unavailable is a confirmed refusal, not a missing reply.");
+                Invoke(fixture.Combat, "ParryConnectionFailed", "closed");
+                Assert.That((bool)Get(fixture.Combat, "parryUnknown"), Is.False);
+                Assert.That((float)Get(fixture.Combat, "parryCooldownDeadline"), Is.Zero);
+            }
+        }
+
+        [Test]
+        public void PointerProjectionUsesCharacterHeightAndFreeAimIsFrozenInTheActionSnapshot()
+        {
+            var cameraObject = new GameObject("aim projection camera", typeof(Camera));
+            try
+            {
+                var camera = cameraObject.GetComponent<Camera>();
+                camera.pixelRect = new Rect(0, 0, 1280, 720);
+                Vector3 origin = new Vector3(10, 2, 10);
+                camera.transform.position = origin + new Vector3(0, 20, -20);
+                camera.transform.LookAt(origin);
+                var project = typeof(CombatScreen).GetMethod("TryAimAngle", BindingFlags.Static | BindingFlags.NonPublic);
+                var data = NewData();
+                foreach (float angle in new[] { 0f, 37.5f, 90f, 179f, 270f, 359f })
+                {
+                    Vector3 target = origin + Quaternion.Euler(0, angle, 0) * Vector3.forward * 5;
+                    Vector3 screen = camera.WorldToScreenPoint(target);
+                    var args = new object[] { camera, new Vector2(screen.x, screen.y), origin, 0f };
+                    Assert.That((bool)project.Invoke(null, args), Is.True);
+                    Assert.That(Mathf.Abs(Mathf.DeltaAngle((float)args[3], angle)), Is.LessThan(.001f));
+                    data.UpdateAction(0, 10, 10, 2, (float)args[3]);
+                    Vector3 movedPointer = camera.WorldToScreenPoint(origin + Vector3.left * 5);
+                    var movedArgs = new object[] { camera, new Vector2(movedPointer.x, movedPointer.y), origin, 0f };
+                    Assert.That((bool)project.Invoke(null, movedArgs), Is.True);
+                    Assert.That(((IViewDataModel)data).GetActionState().Item7, Is.EqualTo((float)args[3]),
+                        "The queued cast retains its sampled angle after the pointer target changes.");
+                }
+                var invalid = new object[] { camera, new Vector2(float.NaN, 0), origin, 0f };
+                Assert.That((bool)project.Invoke(null, invalid), Is.False);
+                invalid[1] = new Vector2(-1, -1);
+                Assert.That((bool)project.Invoke(null, invalid), Is.False);
+                camera.transform.rotation = Quaternion.identity;
+                invalid[1] = camera.pixelRect.center;
+                Assert.That((bool)project.Invoke(null, invalid), Is.False, "A ray parallel to the character plane cannot aim.");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(cameraObject); }
+        }
+
+        [Test]
+        public void QerKeysMapExistingSlotsAndLeaveOldOrReservedKeysUnassigned()
+        {
+            var keyboard = InputSystem.AddDevice<Keyboard>();
+            var pressedSkillSlot = typeof(CombatScreen).GetMethod("PressedSkillSlot", BindingFlags.Static | BindingFlags.NonPublic);
+            try
+            {
+                using (var fixture = new CombatFixture())
+                {
+                    var keys = new[] { Key.Q, Key.E, Key.R, Key.Z, Key.X, Key.C, Key.LeftShift, Key.RightShift, Key.F };
+                    for (int i = 0; i < keys.Length; i++)
+                    {
+                        InputSystem.QueueStateEvent(keyboard, new KeyboardState(keys[i]));
+                        InputSystem.Update();
+                        Assert.That((int)pressedSkillSlot.Invoke(null, new object[] { keyboard }),
+                            Is.EqualTo(i < 3 ? i : -1), keys[i].ToString());
+                        if (i < 3)
+                        {
+                            Assert.That(fixture.Buttons[i].transform.Find("SkillKey").GetComponent<TMP_Text>().text,
+                                Is.EqualTo(keys[i].ToString()));
+                        }
+                        InputSystem.QueueStateEvent(keyboard, new KeyboardState());
+                        InputSystem.Update();
+                    }
+                }
+            }
+            finally
+            {
+                InputSystem.RemoveDevice(keyboard);
+            }
+        }
+
         public static string RunPureChecks()
         {
             var tests = new CombatTests();
@@ -28,7 +137,7 @@ namespace Mmorpg.Client.Tests
             tests.ConcurrentActionReadersNeverObserveMixedCastCoordinatesOrSlot();
             tests.ConcurrentCancellationCannotTurnPendingCastIntoMovement_AndNewInputStillWorks();
             tests.QueuedActionResultsCaptureSubscribers_AndDisposeSuppressesLateDelivery();
-            tests.ActionResultWireIs21Bytes_AndMalformedCountsAreRejected();
+            tests.ActionResultWireIs25Bytes_AndMalformedCountsAreRejected();
             tests.OwnHpMpDeltaStopsPendingActionsAtZero_AndKeepsServerVitals();
             tests.AimTextUsesMovementDirections_AndPhasesAreOwnPlayerOnly_AndOldSessionOrDisabledCallbacksCannotReappear();
             return "C05 detached fixtures: 7/7 passed; no Play, real input, socket, server cast, or live HP0.";
@@ -47,12 +156,12 @@ namespace Mmorpg.Client.Tests
             Assert.Throws<ArgumentException>(() => data.UpdateAction(0, 1, 2, 3));
             data.UpdateMove(1, 99, 100);
             var state = ((IViewDataModel)data).GetActionState();
-            Assert.That(state, Is.EqualTo((true, (byte)3, 15f, 16f, (byte)2, 0UL)));
+            Assert.That(state, Is.EqualTo((true, (byte)3, 15f, 16f, (byte)2, 0UL, 90f)));
             state = ((IViewDataModel)data).GetActionState();
             Assert.That(state.Item1, Is.False);
             Assert.That(state.Item5, Is.EqualTo(255));
             data.UpdateMove(2, 17, 18);
-            Assert.That(((IViewDataModel)data).GetActionState(), Is.EqualTo((true, (byte)2, 17f, 18f, (byte)255, 0UL)));
+            Assert.That(((IViewDataModel)data).GetActionState(), Is.EqualTo((true, (byte)2, 17f, 18f, (byte)255, 0UL, 90f)));
         }
 
         [Test]
@@ -119,15 +228,15 @@ namespace Mmorpg.Client.Tests
             var cancelled = ((IViewDataModel)data).GetActionState();
             Assert.That(cancelled.Item1, Is.False); Assert.That(cancelled.Item5, Is.EqualTo(255));
             data.UpdateMove(0, 15, 17);
-            Assert.That(((IViewDataModel)data).GetActionState(), Is.EqualTo((true, (byte)0, 15f, 17f, (byte)255, 0UL)));
+            Assert.That(((IViewDataModel)data).GetActionState(), Is.EqualTo((true, (byte)0, 15f, 17f, (byte)255, 0UL, 90f)));
             data.UpdateAction(1, 15, 17, 1);
             data.CancelMove();
-            Assert.That(((IViewDataModel)data).GetActionState(), Is.EqualTo((true, (byte)1, 15f, 17f, (byte)1, 0UL)),
+            Assert.That(((IViewDataModel)data).GetActionState(), Is.EqualTo((true, (byte)1, 15f, 17f, (byte)1, 0UL, 180f)),
                 "Movement-only cancellation still preserves an independently queued cast.");
             data.UpdateAction(2, 15, 17, 0);
             data.CancelAction();
             data.UpdateAction(3, 15, 17, 2);
-            Assert.That(((IViewDataModel)data).GetActionState(), Is.EqualTo((true, (byte)3, 15f, 17f, (byte)2, 0UL)));
+            Assert.That(((IViewDataModel)data).GetActionState(), Is.EqualTo((true, (byte)3, 15f, 17f, (byte)2, 0UL, 90f)));
         }
 
         [Test]
@@ -153,10 +262,10 @@ namespace Mmorpg.Client.Tests
         }
 
         [Test]
-        public void ActionResultWireIs21Bytes_AndMalformedCountsAreRejected()
+        public void ActionResultWireIs25Bytes_AndMalformedCountsAreRejected()
         {
-            Assert.That(Marshal.SizeOf<ActionResultField>(), Is.EqualTo(21));
-            var frame = new byte[41];
+            Assert.That(Marshal.SizeOf<ActionResultField>(), Is.EqualTo(25));
+            var frame = new byte[45];
             BitConverter.GetBytes((ushort)0xABCD).CopyTo(frame, 0);
             BitConverter.GetBytes((uint)frame.Length).CopyTo(frame, 2);
             frame[6] = 12; frame[7] = 1; frame[8] = 1;
@@ -164,10 +273,11 @@ namespace Mmorpg.Client.Tests
             frame[20] = 0; BitConverter.GetBytes(73U).CopyTo(frame, 21);
             frame[25] = 2; frame[26] = 3;
             BitConverter.GetBytes(10f).CopyTo(frame, 27); BitConverter.GetBytes(11f).CopyTo(frame, 31);
-            BitConverter.GetBytes(2U).CopyTo(frame, 35); frame[39] = 1;
+            BitConverter.GetBytes(2U).CopyTo(frame, 35); frame[39] = 1; BitConverter.GetBytes(37.5f).CopyTo(frame, 41);
             var result = Packet.DeserializeVariablePacket<ActionResultField>(Packet.ExtractHeader(frame), frame);
             Assert.That(result.count, Is.EqualTo(1)); Assert.That(result.items[0].casterId, Is.EqualTo(73));
             Assert.That(result.items[0].skillPhase, Is.EqualTo(1)); Assert.That(result.items[0].y, Is.EqualTo(11));
+            Assert.That(result.items[0].aimAngle, Is.EqualTo(37.5f));
             frame[8] = 2;
             Assert.Throws<ArgumentException>(() => Packet.DeserializeVariablePacket<ActionResultField>(Packet.ExtractHeader(frame), frame));
             var truncated = new byte[40]; Array.Copy(frame, truncated, 40); truncated[8] = 1;
@@ -300,7 +410,7 @@ namespace Mmorpg.Client.Tests
             {
                 Invoke(f.Combat, "ShowSkillTooltip", 1);
                 var tooltip = (TMP_Text)Get(f.Combat, "skillTooltipText");
-                Assert.That(tooltip.text, Does.Contain("X · Ring").And.Contain("Circle · Radius 3.25 · MP 17"),
+                Assert.That(tooltip.text, Does.Contain("E · Ring").And.Contain("Circle · Radius 3.25 · MP 17"),
                     "The tooltip reads the serialized C14 skill asset, including edited mana and range values.");
                 Assert.That(((GameObject)Get(f.Combat, "skillTooltip")).activeSelf, Is.True);
                 Invoke(f.Combat, "HideSkillTooltip");
@@ -345,7 +455,7 @@ namespace Mmorpg.Client.Tests
                 Assert.That(cooldownOverlay.Find("Time").GetComponent<TMP_Text>().font,
                     Is.SameAs(f.Buttons[2].transform.Find("SkillName").GetComponent<TMP_Text>().font));
                 Assert.That(f.Buttons[2].transform.Find("SkillName").GetComponent<TMP_Text>().text, Is.EqualTo("LINE"));
-                Assert.That(f.Buttons[2].transform.Find("SkillKey").GetComponent<TMP_Text>().text, Is.EqualTo("C"));
+                Assert.That(f.Buttons[2].transform.Find("SkillKey").GetComponent<TMP_Text>().text, Is.EqualTo("R"));
                 Set(f.Combat, "chargeTelegraphDeadline", Time.unscaledTime - 0.001f);
                 Invoke(f.Combat, "Update");
                 Assert.That(telegraph.enabled, Is.False, "The authored charge wait clears the telegraph if no release arrives.");
@@ -407,7 +517,7 @@ namespace Mmorpg.Client.Tests
                 Invoke(f.Combat, "Update");
                 Assert.That(cooldownOverlay.gameObject.activeSelf, Is.False, "The radial overlay hides when its estimate expires.");
                 Assert.That(f.Buttons[2].transform.Find("SkillName").GetComponent<TMP_Text>().text, Is.EqualTo("LINE"));
-                Assert.That(f.Buttons[2].transform.Find("SkillKey").GetComponent<TMP_Text>().text, Is.EqualTo("C"));
+                Assert.That(f.Buttons[2].transform.Find("SkillKey").GetComponent<TMP_Text>().text, Is.EqualTo("R"));
                 string confirmed = f.Status.text;
                 var bad = action; bad.casterType = 1; current(1, new[] { bad });
                 bad = action; bad.casterId = 99; current(1, new[] { bad });
@@ -476,8 +586,11 @@ namespace Mmorpg.Client.Tests
             {
                 f.World.transform.position = new Vector3(60f, 0f, 70f);
                 f.World.transform.localScale = new Vector3(2f, 1f, 2f);
+                f.World.ActorMotion.transform.position = new Vector3(20, 0, 30);
                 var received = (Action<ushort, ActionResultField[]>)Get(f.Combat, "actionResults");
-                var expectedForward = new[] { Vector3.forward, Vector3.back, Vector3.left, Vector3.right };
+                var expectedForward = new[] { Vector3.forward, Vector3.back, Vector3.left, Vector3.right,
+                    Quaternion.Euler(0, 37.5f, 0) * Vector3.forward };
+                var aimAngles = new[] { 0f, 180f, 270f, 90f, 37.5f };
 
                 for (byte slot = 0; slot < 3; slot++)
                 {
@@ -517,15 +630,23 @@ namespace Mmorpg.Client.Tests
                             new Vector3(20f, 0f, 30f)), Is.EqualTo(6f).Within(.03f),
                             "The brighter rectangle fill advances toward the skill's far edge.");
                     }
+                    Vector3 beforeMove = vertices[2];
+                    f.World.ActorMotion.transform.position += new Vector3(3, 0, -2);
+                    f.World.ActorMotion.transform.rotation = Quaternion.Euler(0, 125, 0);
+                    Invoke(f.Combat, "UpdateChargeTelegraph");
+                    Assert.That(Vector3.Distance(vertices[2] - beforeMove, new Vector3(3, 0, -2)), Is.LessThan(.001f),
+                        "Charging follows displayed movement without rotating with later actor facing.");
+                    Assert.That((float)Get(f.Combat, "chargeTelegraphAngle"), Is.Zero);
+                    f.World.ActorMotion.transform.position = new Vector3(20, 0, 30);
                     Set(f.Combat, "chargeTelegraphDeadline", Time.unscaledTime - .001f);
                     Invoke(f.Combat, "Update");
                     Assert.That(renderer.enabled, Is.False, "Each telegraph clears at its server-authored wait deadline.");
                 }
 
-                for (byte dir = 0; dir < 4; dir++)
+                for (int dir = 0; dir < aimAngles.Length; dir++)
                 {
                     var phase = new ActionResultField { casterType = 0, casterId = 73, skillSlot = 2,
-                        skillId = 2, dir = dir, x = 20, y = 30, skillPhase = 0 };
+                        skillId = 2, dir = (byte)(dir % 4), aimAngle = aimAngles[dir], x = 20, y = 30, skillPhase = 0 };
                     received(1, new[] { phase });
                     var chargeRenderer = (MeshRenderer)Get(f.Combat, "chargeTelegraphRenderer");
                     Assert.That(chargeRenderer.enabled && (bool)Get(f.Combat, "chargeTelegraphActive"), Is.True);
@@ -533,7 +654,7 @@ namespace Mmorpg.Client.Tests
                     Vector3 chargeFarCenter = (chargeVertices[2] + chargeVertices[3]) * .5f;
                     Vector3 chargeForward = Vector3.ProjectOnPlane(chargeFarCenter - new Vector3(20f, .055f, 30f), Vector3.up).normalized;
                     Assert.That(Vector3.Dot(chargeForward, expectedForward[dir]), Is.GreaterThan(.999f),
-                        "The filled rectangle follows all four server directions.");
+                        "The filled rectangle follows the accepted angle, including angles between movement directions.");
                     phase.skillPhase = 1; phase.x = 22; phase.y = 33;
                     received(1, new[] { phase });
                     Assert.That((bool)Get(f.Combat, "chargeTelegraphActive"), Is.False);
@@ -561,7 +682,11 @@ namespace Mmorpg.Client.Tests
                     Assert.That(Vector3.Distance(animatedEnd, origin), Is.EqualTo(2.16f).Within(.06f),
                         "The mesh animation begins from the server phase origin.");
                     Set(f.Combat, "releaseEffectDeadline", Time.unscaledTime + 0.175f);
+                    f.World.ActorMotion.transform.position = new Vector3(26, 0, 37);
                     Invoke(f.Combat, "Update");
+                    Assert.That((Vector3)Get(f.Combat, "releaseEffectOrigin"), Is.EqualTo(origin),
+                        "Moving after Hit cannot drag the confirmed ground impact.");
+                    f.World.ActorMotion.transform.position = new Vector3(20, 0, 30);
                     animatedEnd = (animated[48] + animated[49]) * .5f;
                     Assert.That(Vector3.Dot(Vector3.ProjectOnPlane(animatedEnd - origin, Vector3.up).normalized,
                         expectedForward[dir]), Is.GreaterThan(.999f));
@@ -733,12 +858,13 @@ namespace Mmorpg.Client.Tests
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
+            public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
             public void RequestInventory() { } public void Profiles(uint[] profileIds) { }
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
             public void RequestWallet(uint requestID) { }
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void CharacterList() { } public void Enter(ulong id) { } public void Chat(string msg, byte scope, ulong target) { }
-            public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { } public void Log(string msg) { }
+            public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch, float aimAngle) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { } public void Log(string msg) { }
         }
     }
 }

@@ -93,11 +93,17 @@ namespace Mmorpg.Client
             public float Duration;
             private Color[] colors;
             private Color tint;
+            private bool dangerWarning;
+            private Transform caster;
+            private Vector3 phaseOrigin;
 
             public void Show(Transform parent, Material material, string name, Vector3[] vertices, int[] triangles,
-                double now, float duration, Color? tint = null)
+                double now, float duration, Color? tint = null, Transform caster = null, Vector3 phaseOrigin = default)
             {
+                this.caster = caster;
+                this.phaseOrigin = phaseOrigin;
                 this.tint = tint ?? new Color(1f, 0.18f, 0.045f, 1f);
+                dangerWarning = !tint.HasValue;
                 if (Renderer == null)
                 {
                     var visual = new GameObject(name);
@@ -111,6 +117,7 @@ namespace Mmorpg.Client
                     Mesh.MarkDynamic();
                     filter.sharedMesh = Mesh;
                 }
+                Renderer.transform.localPosition = Vector3.zero;
                 Mesh.Clear();
                 Mesh.vertices = vertices;
                 Mesh.triangles = triangles;
@@ -127,24 +134,42 @@ namespace Mmorpg.Client
             public void Render(double now)
             {
                 if (Renderer == null || !Renderer.gameObject.activeSelf) return;
-                if (now >= Deadline)
+                if (now >= Deadline || !ReferenceEquals(caster, null) && caster == null)
                 {
-                    Renderer.gameObject.SetActive(false);
+                    Clear();
                     return;
+                }
+                if (caster != null)
+                {
+                    // Preserve phase geometry and orientation; follow only the displayed caster's translation.
+                    Vector3 offset = caster.position - phaseOrigin;
+                    offset.y = 0;
+                    Renderer.transform.localPosition = Renderer.transform.parent.InverseTransformVector(offset);
                 }
                 float charge = Duration <= 0 ? 1 : Mathf.Clamp01((float)((now - StartedAt) / Duration));
                 float alpha = Mathf.Lerp(0.14f, 0.58f, charge);
-                for (int i = 0; i < colors.Length; i++) colors[i] = new Color(tint.r, tint.g, tint.b, alpha);
+                Color color = tint;
+                if (dangerWarning)
+                {
+                    float progress = Mathf.SmoothStep(0, 1, charge);
+                    color = Color.Lerp(new Color(1f, .12f, .025f), new Color(1f, .62f, .12f), progress);
+                    alpha = Mathf.Lerp(.22f, .62f, progress);
+                    if (charge > .8f) alpha += .035f * Mathf.Sin((float)(now * 18));
+                }
+                color.a = alpha;
+                for (int i = 0; i < colors.Length; i++) colors[i] = color;
                 Mesh.colors = colors;
             }
 
             public void Clear()
             {
+                caster = null;
                 if (Renderer != null) Renderer.gameObject.SetActive(false);
             }
 
             public void Dispose()
             {
+                caster = null;
                 if (Renderer != null)
                 {
                     DestroyVisual(Renderer.gameObject);
@@ -465,6 +490,14 @@ namespace Mmorpg.Client
         private void PresentActionMotion(ActionResultField result)
         {
             if (serverContent == null || result.dir > 3 || !Finite(result.x) || !Finite(result.y)) return;
+            if (result.casterType == 0 && (!Finite(result.aimAngle) || result.aimAngle < 0 || result.aimAngle >= 360)) return;
+            if (result.casterType == 0 && result.skillSlot == Packet.PARRY_SKILL_SLOT && result.skillId == Packet.PARRY_SKILL_ID && result.skillPhase <= 1)
+            {
+                if (serverContent.parry != null && serverContent.parry.windowTicks > 0 &&
+                    players.TryGetValue(result.casterId, out var defender) && defender.State.hp > 0)
+                    defender.ActorMotion.PlayParry(result.skillPhase == 1, serverContent.parry.windowTicks * .05f);
+                return;
+            }
             if (result.casterType == 0 && (result.skillSlot > 2 || result.skillId != result.skillSlot) ||
                 result.casterType == 1 && result.skillSlot != 0) return;
             var skill = result.skillId == 1 ? serverContent.ring : serverContent.otherSkills == null ? null :
@@ -490,7 +523,7 @@ namespace Mmorpg.Client
             float chargeDuration = !released && result.skillPhase + 1 < skill.phases.Length && skill.phases[result.skillPhase + 1] != null
                 ? Mathf.Min(skill.phases[result.skillPhase + 1].waitTicks * .05f, 2f) : 0;
             if (result.casterType == 0 && players.TryGetValue(result.casterId, out var player) && player.State.hp > 0)
-                player.ActorMotion.PlayAttack(result.dir, released, motionSlot, chargeDuration);
+                player.ActorMotion.PlayAttack(result.aimAngle, released, motionSlot, chargeDuration);
             else if (result.casterType == 1 && result.casterId <= ushort.MaxValue &&
                 monsters.TryGetValue((ushort)result.casterId, out var monster) && monster.State.hp > 0)
                 monster.ActorMotion.PlayAttack(result.dir, released, motionSlot, chargeDuration);
@@ -549,7 +582,8 @@ namespace Mmorpg.Client
                         if (entry.BossSquarePreviews[pairIndex] == null) entry.BossSquarePreviews[pairIndex] = new SkillTelegraph();
                         BuildBossSquare(result.x, result.y, bossSquareHit.range1, bossSquareHit.range2, out var squareVertices, out var squareTriangles);
                         entry.BossSquarePreviews[pairIndex].Show(displayRoot, monsterRangeMaterial, "Boss Square Telegraph " + pairIndex,
-                            squareVertices, squareTriangles, Time.realtimeSinceStartupAsDouble, bossSquareHit.waitTicks * .05f);
+                            squareVertices, squareTriangles, Time.realtimeSinceStartupAsDouble, bossSquareHit.waitTicks * .05f,
+                            caster: entry.Visual.transform, phaseOrigin: new Vector3(result.x, 0, result.y));
                         continue;
                     }
 
@@ -587,7 +621,8 @@ namespace Mmorpg.Client
                     }
                     BuildBossFan(result.x, result.y, bossHit.range1, result.skillPhase == 0, out var fanVertices, out var fanTriangles);
                     preview.Show(displayRoot, monsterRangeMaterial, firstFan ? "Boss Fan Telegraph First" : "Boss Fan Telegraph Second",
-                        fanVertices, fanTriangles, Time.realtimeSinceStartupAsDouble, bossHit.waitTicks * .05f);
+                        fanVertices, fanTriangles, Time.realtimeSinceStartupAsDouble, bossHit.waitTicks * .05f,
+                        caster: entry.Visual.transform, phaseOrigin: new Vector3(result.x, 0, result.y));
                     continue;
                 }
 
@@ -613,7 +648,8 @@ namespace Mmorpg.Client
                 if (entry.RangePreview == null) entry.RangePreview = new SkillTelegraph();
                 BuildCircle(result.x, result.y, hit.range1, out var circleVertices, out var circleTriangles);
                 entry.RangePreview.Show(displayRoot, monsterRangeMaterial, "Monster Circle Telegraph", circleVertices, circleTriangles,
-                    Time.realtimeSinceStartupAsDouble, hit.waitTicks * .05f);
+                    Time.realtimeSinceStartupAsDouble, hit.waitTicks * .05f,
+                    caster: entry.Visual.transform, phaseOrigin: new Vector3(result.x, 0, result.y));
             }
         }
 
@@ -621,6 +657,7 @@ namespace Mmorpg.Client
         {
             if (result.casterType != 0 || result.casterId == ownId || result.skillSlot > 2 ||
                 result.skillId != result.skillSlot || result.dir > 3 || !Finite(result.x) || !Finite(result.y) ||
+                !Finite(result.aimAngle) || result.aimAngle < 0 || result.aimAngle >= 360 ||
                 serverContent == null || monsterRangeMaterial == null ||
                 !players.TryGetValue(result.casterId, out var entry) || entry.State.hp == 0) return;
             var skill = result.skillId == 1 ? serverContent.ring : serverContent.otherSkills == null ? null :
@@ -643,9 +680,8 @@ namespace Mmorpg.Client
                 {
                     float side = (point == 0 || point == 3 ? -.5f : .5f) * hit.range2;
                     float reach = point < 2 ? 0 : hit.range1;
-                    if (result.dir == 1 || result.dir == 2) reach = -reach;
-                    vertices[point] = result.dir < 2 ? PreviewPoint(result.x + side, result.y + reach) :
-                        PreviewPoint(result.x + reach, result.y + side);
+                    Vector3 offset = Quaternion.Euler(0, result.aimAngle, 0) * new Vector3(side, 0, reach);
+                    vertices[point] = PreviewPoint(result.x + offset.x, result.y + offset.z);
                 }
                 triangles = new[] { 0, 1, 2, 0, 2, 3 };
             }
@@ -653,7 +689,8 @@ namespace Mmorpg.Client
             if (entry.RangePreview == null) entry.RangePreview = new SkillTelegraph();
             entry.RangePreview.Show(displayRoot, monsterRangeMaterial, "Player Skill Area " + result.casterId,
                 vertices, triangles, Time.realtimeSinceStartupAsDouble, charging ? hit.waitTicks * .05f : .12f,
-                charging ? new Color(.25f, .72f, 1f) : new Color(1f, .82f, .38f));
+                charging ? new Color(.25f, .72f, 1f) : new Color(1f, .82f, .38f),
+                charging ? entry.Visual.transform : null, new Vector3(result.x, 0, result.y));
         }
 
         private Vector3 PreviewPoint(float x, float z) => displayRoot.InverseTransformPoint(new Vector3(x, 0.06f, z));

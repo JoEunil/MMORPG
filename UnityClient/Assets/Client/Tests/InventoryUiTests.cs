@@ -396,32 +396,83 @@ namespace Mmorpg.Client.Tests
                 var quickObject = new GameObject("quick potion", typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button));
                 quickObject.transform.SetParent(fixture.Screen.transform, false);
                 var quick = quickObject.GetComponent<UnityEngine.UI.Button>();
-                var quantityObject = new GameObject("quick quantity", typeof(RectTransform), typeof(TextMeshProUGUI));
+                var quantityObject = new GameObject("Quantity", typeof(RectTransform), typeof(TextMeshProUGUI));
                 quantityObject.transform.SetParent(quickObject.transform, false);
                 var quantity = quantityObject.GetComponent<TMP_Text>();
                 var useObject = new GameObject("bag use", typeof(RectTransform), typeof(UnityEngine.UI.Button));
                 useObject.transform.SetParent(fixture.Screen.transform, false);
+                var useLabelObject = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+                useLabelObject.transform.SetParent(useObject.transform, false);
+                var useLabel = useLabelObject.GetComponent<TMP_Text>();
+                useLabel.text = "USE HP POTION";
                 SetPrivate(fixture.Screen, "potionQuickSlot", quick);
                 SetPrivate(fixture.Screen, "potionQuantity", quantity);
                 SetPrivate(fixture.Screen, "useButton", useObject.GetComponent<UnityEngine.UI.Button>());
+                fixture.InvokeScreen("EnsurePotionQuickSlots");
+                var mpQuick = (UnityEngine.UI.Button)GetPrivate(fixture.Screen, "mpPotionQuickSlot");
+                var mpQuantity = (TMP_Text)GetPrivate(fixture.Screen, "mpPotionQuantity");
+                Assert.That(((RectTransform)quick.transform).sizeDelta, Is.EqualTo(new Vector2(40, 50)));
+                Assert.That(((RectTransform)mpQuick.transform).anchoredPosition.x - ((RectTransform)quick.transform).anchoredPosition.x,
+                    Is.EqualTo(44), "The two potion slots occupy only 84 pixels in total.");
                 fixture.InvokeScreen("UpdateControls");
                 Assert.That(quantity.text, Is.EqualTo("?"));
                 Assert.That(quick.interactable, Is.True, "Unknown count permits a read-only check.");
                 Assert.That(fixture.Network.ItemUses, Is.Zero);
 
-                fixture.OpenBag();
+                SetPrivateProperty(fixture.World, "HasOwnFull", false);
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.Zero, "Wait for a complete world baseline.");
+                fixture.SetWorldReady();
+                Assert.That(fixture.Network.Requests, Is.Zero, "Bootstrap callbacks must not send the warmup read.");
+                fixture.InvokeScreen("Update");
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(1));
+                Assert.That(fixture.Panel.activeSelf, Is.False);
+                fixture.Receive(false);
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(1), "A definitive warmup failure waits before its one retry.");
+                SetPrivate(fixture.Screen, "failureRetryDeadline", Time.unscaledTime - 1f);
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2));
                 fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 3, slot = 0 },
                     new InventoryItem { itemID = 2, quantity = 5, slot = 1 });
+                Assert.That(quantity.text, Is.EqualTo("3"), "The quick slot learns its count without opening the bag.");
+                fixture.InvokeScreen("Update");
+                fixture.OpenBag();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2), "Opening the bag reuses the confirmed warmup read.");
+                fixture.Cards[0].onClick.Invoke();
+                Assert.That(useLabel.text, Is.EqualTo("USE HP POTION"));
                 fixture.Cards[1].onClick.Invoke();
-                Assert.That(useObject.activeSelf, Is.False, "MP use is not supported.");
+                Assert.That(useObject.activeSelf, Is.True, "The MP potion uses the same bag action.");
+                Assert.That(useLabel.text, Is.EqualTo("USE MP POTION"));
+                Assert.That(mpQuantity.text, Is.EqualTo("5"));
+                fixture.InvokeScreen("UseSelectedItem");
+                Assert.That(fixture.Network.LastUsedItemID, Is.EqualTo(2U));
+                fixture.Cards[0].onClick.Invoke();
+                Assert.That(useLabel.text, Is.EqualTo("USE HP POTION"));
+                fixture.InvokeScreen("UseSelectedItem");
+                Assert.That(fixture.Network.ItemUses, Is.EqualTo(1), "An MP request locks HP use too.");
+                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 1, 1, 1, 2, 40);
+                Assert.That((bool)GetPrivate(fixture.Screen, "usePending"), Is.True, "The other potion's reply cannot finish this request.");
+                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 1, 2, 1, 4, 40);
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 3, slot = 0 },
+                    new InventoryItem { itemID = 2, quantity = 4, slot = 1 });
+                Assert.That(mpQuantity.text, Is.EqualTo("4"));
+                fixture.Screen.ClosePanel();
+                Assert.That(quick.interactable || mpQuick.interactable, Is.False, "The server-confirmed cooldown covers both potions.");
+                SetPrivate(fixture.Screen, "useCooldownDeadline", Time.unscaledTime - 1f);
+                fixture.InvokeScreen("UpdateControls");
+                Assert.That(quick.interactable && mpQuick.interactable, Is.True);
+                fixture.OpenBag();
                 fixture.Cards[0].onClick.Invoke();
                 Assert.That(useObject.activeSelf, Is.True);
                 Assert.That(quantity.text, Is.EqualTo("3"));
                 fixture.InvokeScreen("UseSelectedItem");
                 fixture.Screen.ClosePanel();
-                Assert.That(fixture.Network.ItemUses, Is.EqualTo(1));
+                Assert.That(fixture.Network.ItemUses, Is.EqualTo(2));
                 Assert.That(quick.interactable, Is.False, "Bag use locks the same quick slot.");
-                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 1, 1, 1, 2, 40);
+                Assert.That(mpQuick.interactable, Is.False);
+                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(2, 1, 1, 1, 2, 40);
                 Assert.That(quantity.text, Is.EqualTo("?"), "A result triggers a shared fresh read, not a separate count cache.");
                 fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 2, slot = 0 });
                 Assert.That(quantity.text, Is.EqualTo("2"));
@@ -470,9 +521,44 @@ namespace Mmorpg.Client.Tests
                 fixture.Screen.ClosePanel();
                 SetPrivate(fixture.Screen, "useDeadline", Time.unscaledTime - 1f);
                 fixture.InvokeScreen("Update");
-                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 2, slot = 0 });
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 2, slot = 0 },
+                    new InventoryItem { itemID = 2, quantity = 4, slot = 1 });
                 Assert.That(quick.interactable, Is.False, "A fresh bag response must not release an unknown use outcome.");
-                Assert.That(fixture.Network.ItemUses, Is.EqualTo(2));
+                Assert.That(mpQuick.interactable, Is.False, "Unknown HP use also keeps MP use locked.");
+                Assert.That(fixture.Network.ItemUses, Is.EqualTo(3));
+            }
+            using (var fixture = new Fixture())
+            {
+                fixture.InvokeScreen("Update");
+                fixture.Receive(false);
+                fixture.InvokeScreen("Update");
+                fixture.SetWorldReady();
+                SetPrivate(fixture.Screen, "failureRetryDeadline", Time.unscaledTime - 1f);
+                fixture.InvokeScreen("Update");
+                fixture.Receive(false);
+                fixture.InvokeScreen("Update");
+                fixture.SetWorldReady();
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2), "A second warmup failure cannot become an automatic retry loop.");
+                Assert.That(fixture.Screen.HasInventoryResponse, Is.False);
+                Assert.That(fixture.Panel.activeSelf, Is.False);
+                var noticeObject = new GameObject("gold failure", typeof(RectTransform), typeof(TextMeshProUGUI));
+                noticeObject.transform.SetParent(fixture.Screen.transform, false);
+                var notice = noticeObject.GetComponent<TMP_Text>();
+                SetPrivate(fixture.Screen, "lootNotice", notice);
+                ((IViewModelNet)fixture.Login.Model).GoldRewardReceived(0);
+                Assert.That(notice.text, Is.EqualTo("Gold reward failed."));
+                Assert.That(fixture.Panel.activeSelf, Is.False, "A gold failure does not open the bag.");
+                var oldGoldCallback = (Action<byte>)GetPrivate(fixture.Screen, "goldRewardReceived");
+                notice.text = string.Empty;
+                SetPrivateProperty(fixture.World, "HasOwnFull", false);
+                oldGoldCallback(0);
+                Assert.That(notice.text, Is.Empty, "A notification outside the active world is ignored.");
+                fixture.SetWorldReady();
+                fixture.RaiseClientChanged(null);
+                fixture.RaiseClientChanged(fixture.Login.Model);
+                oldGoldCallback(0);
+                Assert.That(notice.text, Is.Empty, "A detached callback cannot report failure for a rebound client.");
             }
         }
 
@@ -496,7 +582,7 @@ namespace Mmorpg.Client.Tests
                 Assert.That(status.text, Does.Contain("Restores HP").And.Contain("full HP").And.Contain("dead"));
                 status.text = "HP potion used.";
                 fixture.Cards[1].onClick.Invoke();
-                Assert.That(status.text, Does.Contain("MP potion use is not supported"));
+                Assert.That(status.text, Does.Contain("Restores MP").And.Contain("full MP").And.Contain("dead").And.Contain("Shares potion cooldown"));
                 fixture.Cards[2].onClick.Invoke();
                 Assert.That(status.text, Does.Contain("cannot be equipped"));
                 fixture.Cards[3].onClick.Invoke();
@@ -721,6 +807,7 @@ namespace Mmorpg.Client.Tests
         {
             public int Requests;
             public int ItemUses;
+            public uint LastUsedItemID;
             public void RequestBazaarBuy(uint requestID, ulong listingID) { }
             public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
@@ -728,14 +815,15 @@ namespace Mmorpg.Client.Tests
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { }
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
             public void RequestWallet(uint requestID) { }
-            public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { ItemUses++; }
+            public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
+            public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { ItemUses++; LastUsedItemID = itemID; }
             public void RequestInventory() => Requests++;
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void CharacterList() { }
             public void Enter(ulong characterId) { }
             public void Chat(string message, byte scope, ulong targetId) { }
             public void Profiles(uint[] profileIds) { }
-            public void Action(byte direction, float x, float y, byte skillSlot, ulong ownershipEpoch) { }
+            public void Action(byte direction, float x, float y, byte skillSlot, ulong ownershipEpoch, float aimAngle) { }
             public void Pong(ulong serverTimeMs) { }
             public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { }
             public void Log(string message) { }

@@ -81,7 +81,7 @@ namespace Mmorpg.Client.Editor
             var mpValue = GaugeValue(panel, "C12MpTrack", "C12MpValue");
 
             var labels = new[] { "STRIKE", "RING", "LINE" };
-            var keys = new[] { "Z", "X", "C" };
+            var keys = new[] { "Q", "E", "R" };
             for (int i = 0; i < buttons.Length; i++)
             {
                 var rect = buttons[i].GetComponent<RectTransform>();

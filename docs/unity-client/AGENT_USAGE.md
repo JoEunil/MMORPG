@@ -1,24 +1,69 @@
 ## 공개 집계
 
-기준일: 2026-11-04
-누적 신규: 227
-누적 재활성화: 359
-상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-11-04
+기준일: 2026-11-05
+누적 신규: 238
+누적 재활성화: 405
+상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-11-05
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
-| game_planner | 기획 Agent | 7 | 4 |
-| server_analyst | 서버 분석 Agent | 30 | 50 |
-| client_implementer | 구현 Agent | 69 | 89 |
-| asset_artist | 아트 Agent | 24 | 32 |
-| code_reviewer | 리뷰 Agent | 55 | 112 |
-| quality_reviewer | 종합 검수 Agent | 16 | 51 |
+| game_planner | 기획 Agent | 8 | 6 |
+| server_analyst | 서버 분석 Agent | 33 | 53 |
+| client_implementer | 구현 Agent | 72 | 107 |
+| asset_artist | 아트 Agent | 25 | 32 |
+| code_reviewer | 리뷰 Agent | 58 | 120 |
+| quality_reviewer | 종합 검수 Agent | 16 | 66 |
 | unity_tester | 테스트 Agent | 5 | 6 |
 | progress_documenter | 기록 Agent | 12 | 12 |
 | decision_curator | 의사결정 지원 Agent | 8 | 3 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체586회(신규227·재활성화359)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체643회(신규238·재활성화405)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+
+## 최종 실행 결과 게시 검수 — 2026-11-05
+
+commerce_quality 후속1회를 실행해 포커스 확보 후 Escape통과·실제골드/MP소비/패링발동·정상종료 근거를 재검수했다. 누적643회(신규238·후속405). 실제특수공격 패링성공순간은 미재현으로 구분한다. 총괄직접실행은 제외하며 토큰·비용 N/A다.
+
+## 실행 재개 후 게시 준비 검수 — 2026-11-05
+
+commerce_quality 종합 검수 후속1회를 실행했다. 변경 검사2개 통과·Escape 미해결·최신 Player 빌드 성공을 대조해, 포커스 조건에서 Escape만 확인하도록 판정했다. 누적642회(신규238·후속404), 총괄 직접 빌드·입력·조회는 제외하며 토큰·비용 N/A다.
+
+## 입력 가드와 거래 수령함 후속 준비 — 2026-11-05
+
+trade_inbox_scope 서버분석신규1,client_shortcut_followup_scan은explorer도구로클라이언트결함검토책임(리뷰)신규1,commerce_final_display 입력가드구현/순서보완후속2,aim360_contract_review 검토/재검토후속2,commerce_quality 추가마감검수후속1을실행했다. 추가7회(신규2/후속5),누적641회다. 실제사용자입력·총괄직접컴파일·파일/도구조회는활성화에서제외,토큰·비용N/A.
+## 골드 HUD·패링 표현 후속과 다음 계획 — 2026-11-05
+
+caster_skill_anchor 패링구현후속1,item_reward_server 골드원인조사후속1,commerce_final_display HUD구현후속1,aim360_contract_review 두독립범위리뷰후속2,commerce_quality 마감검수후속1을실행했다. next_play_bundle_options는기획자료취합신규1·초안작성/근거보완후속2로실행했으며이단순작업에실제gpt-6-luna/medium을사용했다. 추가9회(신규1/후속8),누적634회다. 총괄직접정적컴파일·문서·도구조회·실입력은제외,토큰·비용N/A.
+## 아이템·보상과 시전자 추종 — 2026-11-05
+
+item_reward_next_scope 서버분석신규1,item_reward_server 구현신규1·리뷰보완후속1,caster_skill_anchor 구현신규1,commerce_final_display 구현후속2(라벨재작업포함),aim360_contract_review 리뷰후속1,commerce_quality 단계/최종/재검수후속3를실제실행했다. 추가10회(신규3/후속7),누적625회다. 메시지·총괄직접수정/빌드/검사·자동화입력은제외,토큰·비용N/A.
+## 기본 공격 패링 제외 — 2026-11-05
+
+aim360_contract_review 리뷰 후속1회로 사용자 피드백에 따른 기본 공격 제외·방어창 미소비·특수 스킬 방어 경로를 확인했다. 누적615회(신규232·후속383), 총괄의 직접 수정·빌드·검사는 제외, 토큰·비용N/A.
+
+## 패링·전투 피드백과 창 모드 — 2026-11-04
+
+visible_game_cursor 아트 신규1,parry_contract_plan 서버분석 신규1·후속2,aim_protocol_server/commerce_final_display 구현 후속각1,aim360_contract_review 리뷰후속1,commerce_quality 계획·완료검수후속2를 실제 실행했다. 신규2·후속7을 더한614회이며 계획문서경로교정도같은담당실행으로집계했다. 총괄의빌드·자동검사·설정·기록은제외,토큰·비용N/A.
+
+## 바탕화면 실행 환경 — 2026-11-04
+
+aim360_contract_review 리뷰 후속1회로 선택형 서버 정상 종료 지원을 확인했다. 누적605회(신규230·후속375), 총괄의 빌드·BAT배치·시작/정상종료 확인은 제외, 토큰·비용N/A.
+
+## 자유각도 조준 서버 통합 — 2026-11-04
+
+aim_protocol_server 구현 신규1·후속1, commerce_final_display 구현 후속1, aim360_contract_review 리뷰 신규1, commerce_quality 종합 검수 후속2를 실제 실행했다. 신규2·후속4를 더해604회다. 총괄의 서버/Unity 실행·검사·캡처·기록은 집계하지 않는다. 토큰·비용 N/A.
+
+## 논타게팅 입력 전환 선행 작업 — 2026-11-04
+
+commerce_final_display 구현 후속4(키입력·생성경로·포커스독립검사·검수지적수정), commerce_quality 종합 검수 후속2를 실제 실행해598회다. 신규0·후속6이며 같은 제작자가 피드백을 반영했다. 총괄의 지침·컴파일·합성입력검사2개·기록은 집계하지 않는다. 토큰·비용 N/A.
+
+## 서버 테스트 후속과 클라이언트 잔여 조사 — 2026-11-04
+
+client_followup_scan(explorer 도구, 클라이언트 결함 검토 책임) 신규1회만 추가해592회다. 생성 실패한 중복 이름 요청은 활성화로 세지 않았다. 총괄의 병합·빌드·Flood4개 검사는 집계하지 않으며 토큰·비용 N/A.
+
+## 서버 시계 변경 확인과 포션 초기 수량 — 2026-11-04
+
+기준586회 이후 서버 분석 netlib65_contract_impact 후속1, 구현 commerce_final_display 후속2, 검수 commerce_quality 후속2를 실제 실행해591회다. 최초 실제 조회 실패는 같은 제작자가 보완하고 같은 검수 담당이 재확인했다. 총괄의 빌드·자동 입력·기록은 집계하지 않는다. 토큰·비용 N/A.
 
 ## NetLib 통합과 최종 표시 보완 — 2026-11-04
 

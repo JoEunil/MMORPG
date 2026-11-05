@@ -40,6 +40,7 @@ namespace ClientCore.Services
         }
         public void Profiles(uint[] profileIds) => _sock.Send(PacketBuilder.CreateProfileRequest(profileIds));
         public void RequestInventory() => _sock.Send(PacketBuilder.CreateInventoryRequestPacket());
+        public void RequestParry(ulong requestID, ulong ownershipEpoch) => _sock.Send(Packet.SerializeParryRequest(requestID, ownershipEpoch));
         public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) => _sock.Send(Packet.SerializeItemUseRequest(requestID, ownershipEpoch, itemID));
         public void RequestBazaar(uint requestID, ushort itemType, ushort page) =>
             _sock.Send(Packet.SerializeBazaarRequest(requestID, itemType, page));
@@ -51,9 +52,9 @@ namespace ClientCore.Services
         public void RequestBazaarBuy(uint requestID, ulong listingID) => _sock.Send(Packet.SerializeBazaarBuyRequest(requestID, listingID));
         public void RequestBazaarCheckOutbox(uint requestID) => _sock.Send(Packet.SerializeBazaarCheckOutboxRequest(requestID));
         public void RequestBazaarCancelListing(uint requestID, ulong listingID) => _sock.Send(Packet.SerializeBazaarCancelListingRequest(requestID, listingID));
-        public void Action(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch)
+        public void Action(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch, float aimAngle)
         {
-            _sock.Send(PacketBuilder.CreateActionPacket(dir, x, y, skillSlot, ownershipEpoch));
+            _sock.Send(PacketBuilder.CreateActionPacket(dir, x, y, skillSlot, ownershipEpoch, aimAngle));
         }
 
         public void ZoneChange(byte op)

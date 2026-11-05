@@ -6,26 +6,26 @@
 #include "CacheFlush.h"
 
 namespace Cache {
-    CACHE_STATUS CacheStorageCurrency::LoadFromDB(uint16_t shardIndex, Key& key) {
-        // status 변경 -> 원자성 보장
-        auto status = TrySetReading(shardIndex, key);
-        if (status != CACHE_STATUS::EMPTY) // READING
-            return status;
+    CACHE_STATUS CacheStorageCurrency::LoadFromDB(uint16_t shardIndex, Key& key, bool claimed) {
+        if (!claimed) {
+            auto status = TrySetReading(shardIndex, key);
+            if (status != CACHE_STATUS::EMPTY) return status;
+        }
 
         const auto enqueueResult = dbWorker->Enqueue([=](DBConnectionGame* conn) {
             Result result;
             auto res = conn->ExecuteSelect(7, key.characterID);
-            if (!res || !res->next()) {
-                Core::gameLogger->LogInfo("cache storage currency", "currency not found in DB", "char_id", key.characterID);
-                SetEmpty(shardIndex, key);  // READING → EMPTY
+            if (!res) {
+                CompleteLoad(shardIndex, key, nullptr);
                 return;
             }
-            result.data.gold = static_cast<uint64_t>(res->getUInt64("gold"));
+            // A successful empty SELECT is a new wallet. The normal UPSERT flush creates its row.
+            result.data.gold = res->next() ? static_cast<uint64_t>(res->getUInt64("gold")) : 0;
             result.rollbackCnt = 0;
-            Insert(shardIndex, key, result);  // READING → AVAILABLE
-            }, nullptr, [this, shardIndex, key] { SetEmpty(shardIndex, key); });
+            CompleteLoad(shardIndex, key, &result);
+            }, nullptr, [this, shardIndex, key] { CompleteLoad(shardIndex, key, nullptr); });
         if (enqueueResult != DBEnqueueResult::Queued) {
-            SetEmpty(shardIndex, key);
+            CompleteLoad(shardIndex, key, nullptr);
             return CACHE_STATUS::EMPTY;
         }
         return CACHE_STATUS::DB_READING;
@@ -59,6 +59,78 @@ namespace Cache {
         return result;
     }
 
+    std::tuple<CACHE_STATUS, uint64_t> CacheStorageCurrency::DepositLocked(uint16_t index, Key key, uint64_t gold) {
+        auto& shard = m_shards[index];
+        auto found = shard.cache_data.find(key);
+        if (found == shard.cache_data.end()) return {CACHE_STATUS::EMPTY, 0};
+        auto& entry = found->second;
+        if (entry.status != CACHE_STATUS::AVAILABLE) return {entry.status, 0};
+        if (gold > UINT64_MAX - entry.data.gold) return {CACHE_STATUS::BLOCKED, entry.data.gold};
+        entry.data.gold += gold;
+        entry.lastModified = clock->GetTimeMS();
+        shard.dirty_list.insert(key);
+        return {CACHE_STATUS::AVAILABLE, entry.data.gold};
+    }
+
+    void CacheStorageCurrency::GrantCurrency(uint64_t characterID, uint64_t gold,
+        std::function<void(CACHE_STATUS, uint64_t)> completed) {
+        const uint16_t index = characterID & SHARD_SIZE_MASK;
+        auto& shard = m_shards[index];
+        bool load = false;
+        std::tuple<CACHE_STATUS, uint64_t> result{CACHE_STATUS::BLOCKED, 0};
+        {
+            std::lock_guard lock(shard.mutex);
+            if (characterID != 0 && gold != 0) {
+                auto found = shard.cache_data.find(Key{characterID});
+                if (found == shard.cache_data.end() || found->second.status == CACHE_STATUS::DB_READING) {
+                    pendingDeposits[index][characterID].push_back({gold, std::move(completed)});
+                    load = found == shard.cache_data.end();
+                    if (!load) return;
+                    // Claim the read under the same lock as the pending deposit; no completion can miss it.
+                    shard.cache_data[Key{characterID}].status = CACHE_STATUS::DB_READING;
+                } else {
+                    if (found->second.status == CACHE_STATUS::EVICTING) {
+                        found->second.status = CACHE_STATUS::AVAILABLE;
+                        shard.lru_list.push_front(Key{characterID});
+                        shard.lru_pos[Key{characterID}] = shard.lru_list.begin();
+                    }
+                    result = DepositLocked(index, Key{characterID}, gold);
+                }
+            }
+        }
+        if (load) {
+            Key key{characterID};
+            LoadFromDB(index, key, true);
+            return;
+        }
+        if (completed) completed(std::get<0>(result), std::get<1>(result));
+    }
+
+    void CacheStorageCurrency::CompleteLoad(uint16_t index, Key key, const Result* loaded) {
+        std::vector<PendingDeposit> deposits;
+        std::vector<std::tuple<CACHE_STATUS, uint64_t>> results;
+        auto& shard = m_shards[index];
+        {
+            std::lock_guard lock(shard.mutex);
+            if (loaded) InsertLocked(index, key, *loaded);
+            else {
+                auto found = shard.cache_data.find(key);
+                if (found != shard.cache_data.end() && found->second.status == CACHE_STATUS::DB_READING)
+                    shard.cache_data.erase(found);
+            }
+            const auto pending = pendingDeposits[index].find(key.characterID);
+            if (pending != pendingDeposits[index].end()) {
+                deposits = std::move(pending->second);
+                pendingDeposits[index].erase(pending);
+                for (const auto& deposit : deposits)
+                    results.push_back(loaded ? DepositLocked(index, key, deposit.gold)
+                        : std::tuple<CACHE_STATUS, uint64_t>{CACHE_STATUS::EMPTY, 0});
+            }
+        }
+        for (size_t i = 0; i < deposits.size(); ++i)
+            if (deposits[i].completed) deposits[i].completed(std::get<0>(results[i]), std::get<1>(results[i]));
+    }
+
     // res, gold
     std::tuple<CACHE_STATUS, uint64_t> CacheStorageCurrency::DepositCurrency(uint64_t characterID, uint64_t deposit) {
 
@@ -84,21 +156,7 @@ namespace Cache {
         }
         auto& shard = m_shards[shardIndex];
         std::unique_lock<std::mutex> lock(shard.mutex);
-        auto it = shard.cache_data.find(key);
-        if (it == shard.cache_data.end())
-            return { CACHE_STATUS::EMPTY, 0 };
-        auto& res = it->second;
-        if (res.status != CACHE_STATUS::AVAILABLE)
-            return { res.status, 0};
-
-        CACHE_STATUS resStatus = CACHE_STATUS::AVAILABLE;
-        
-        if (deposit > UINT64_MAX - res.data.gold)
-            return { CACHE_STATUS::BLOCKED, res.data.gold };
-        res.data.gold += deposit;
-        res.lastModified = clock->GetTimeMS();
-        shard.dirty_list.insert(key);
-        return { resStatus, res.data.gold};
+        return DepositLocked(shardIndex, key, deposit);
     }
 
     // res, gold

@@ -8,7 +8,10 @@ namespace Core {
 		std::lock_guard<std::mutex> lock(m_mutex);
 		for (auto& character : m_chars) 
 		{
-			if (character.potionCooldownTicks != 0) --character.potionCooldownTicks;
+			if (character.hp <= 0) character.parryWindowTicks = 0;
+            else if (character.parryWindowTicks != 0) --character.parryWindowTicks;
+            if (character.parryCooldownTicks != 0) --character.parryCooldownTicks;
+            if (character.potionCooldownTicks != 0) --character.potionCooldownTicks;
 			for (int i = 0; i < character.skillSlotCnt; i++) {
 				if (character.skillSlot[i].skillCoolDownTick != 0)
 					character.skillSlot[i].skillCoolDownTick--;
@@ -89,7 +92,8 @@ namespace Core {
 			skill.x,
 			skill.y,
 			skill.skillId,
-			skill.currentPhase            
+			skill.currentPhase,
+            skill.casterType == 0 ? skill.aimAngle : (skill.dir == 0 ? 0.0f : skill.dir == 1 ? 180.0f : skill.dir == 2 ? 270.0f : 90.0f)
 				);
 			if (++skill.currentPhase >= skillData.phases.size()) {
 				PopSkill(k, cell.activeSkills);
@@ -114,7 +118,7 @@ namespace Core {
 				{
 					if (m_monsters[mon].hp == 0)
 						continue;
-					if (phase.range.InRange(skill.dir, skill.x, skill.y, m_monsters[mon].x, m_monsters[mon].y))
+					if (phase.range.InRangeAngle(skill.aimAngle, skill.x, skill.y, m_monsters[mon].x, m_monsters[mon].y))
 					{
 						auto damage = caster.attack * phase.attack;
 						if (skillData.flags & 0x01) {
@@ -127,7 +131,7 @@ namespace Core {
 							// 일단 막타 친 사람만 보상.. 
 							// 보스몬스터의 경우 hitter list로 보상 분배하도록 처리해야됨.
 							caster.AddExperience(m_monsters[mon].data->reward.exp);
-                            if (m_monsters[mon].data->id <= 1) stateManager->GrantMonsterPotion(caster);
+                            if (m_monsters[mon].data->id <= 1) stateManager->GrantMonsterReward(caster);
 							m_cells[caster.cellY][caster.cellX].dirtyChar.push_back(caster.zoneInternalID);
 						}
 						m_monsters[mon].SetAggro(caster.zoneInternalID);
@@ -149,16 +153,27 @@ namespace Core {
 						continue;
 					auto& character = m_chars[it->second];
 
-					if (phase.range.InRange(skill.dir, skill.x, skill.y, character.x, character.y))
+					if (character.hp > 0 && phase.range.InRange(skill.dir, skill.x, skill.y, character.x, character.y))
 					{
 						auto damage = caster.data->attack * phase.attack;
 						if (skillData.flags & 0x01) {
 							// critical 적용..
 							damage *= 2;
 						}
-						character.hp -= damage;
-						if (character.hp <= 0)
-							character.hp = 0;
+						// Skill 0 is the untelegraphed basic attack; it neither blocks nor consumes parry.
+                        if (skill.skillId != 0 && damage > 0 && character.parryWindowTicks != 0) {
+                            character.parryWindowTicks = 0;
+                            m_cells[character.cellY][character.cellX].actionResults.push_back({0, character.zoneInternalID, 0,
+                                Data::parrySkillSlot, character.dir, character.x, character.y, Data::parrySkillID, 1,
+                                character.dir == 0 ? 0.0f : character.dir == 1 ? 180.0f : character.dir == 2 ? 270.0f : 90.0f});
+                            if (!AOE) return; // This attack was consumed, including across adjacent AOI cells.
+                            continue;
+                        }
+                        character.hp -= damage;
+						if (character.hp <= 0) {
+                            character.hp = 0;
+                            character.parryWindowTicks = 0;
+                        }
 						else
 							caster.aggroTick = 0; // 공격시에도 어그로 틱 초기화.
 						character.dirtyBit |= 0x01; // hp

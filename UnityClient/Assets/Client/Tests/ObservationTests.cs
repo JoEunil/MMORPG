@@ -383,6 +383,7 @@ namespace Mmorpg.Client.Tests
                 for (byte direction = 0; direction < 4; direction++)
                 {
                     action.dir = direction;
+                    action.aimAngle = direction == 0 ? 0 : direction == 1 ? 180 : direction == 2 ? 270 : 90;
                     fixture.MonsterActions(action);
                     mesh = area.GetComponent<MeshFilter>().sharedMesh;
                     Assert.That(mesh.vertices.Length, Is.EqualTo(4));
@@ -391,6 +392,17 @@ namespace Mmorpg.Client.Tests
                     float signedReach = direction == 0 ? mesh.bounds.center.z - 30 : direction == 1 ? 30 - mesh.bounds.center.z :
                         direction == 2 ? 20 - mesh.bounds.center.x : mesh.bounds.center.x - 20;
                     Assert.That(signedReach, Is.EqualTo(6).Within(.001f));
+                }
+                action.aimAngle = 37.5f;
+                fixture.MonsterActions(action);
+                Vector3 end = (mesh.vertices[2] + mesh.vertices[3]) * .5f;
+                Vector3 expectedEnd = new Vector3(20, .06f, 30) + Quaternion.Euler(0, 37.5f, 0) * Vector3.forward * 12;
+                Assert.That(Vector3.Distance(end, expectedEnd), Is.LessThan(.001f));
+                deadline = fixture.PlayerRangeDeadline(42);
+                foreach (float angle in new[] { float.NaN, float.PositiveInfinity, -1f, 360f })
+                {
+                    invalid = action; invalid.aimAngle = angle; fixture.MonsterActions(invalid);
+                    Assert.That(fixture.PlayerRangeDeadline(42), Is.EqualTo(deadline));
                 }
                 action.skillPhase = 1;
                 fixture.MonsterActions(action);
@@ -682,6 +694,34 @@ namespace Mmorpg.Client.Tests
                 fixture.ConfigureMonsterRange();
                 fixture.Content.ring.phases[1].waitTicks = 6;
                 fixture.Content.ring.phases[1].range1 = 2;
+                fixture.Players(Time.realtimeSinceStartupAsDouble, Player(42));
+                var remoteCharge = new ActionResultField { casterType = 0, casterId = 42, skillSlot = 2,
+                    skillId = 2, skillPhase = 0, aimAngle = 37.5f, x = 20, y = 30 };
+                fixture.MonsterActions(remoteCharge);
+                var remoteArea = fixture.PlayerRange(42);
+                var remoteMesh = remoteArea.GetComponent<MeshFilter>().sharedMesh;
+                var remoteActor = fixture.Visual("players", (uint)42);
+                var remoteEntry = ((IDictionary)Get(fixture.Observer, "players"))[42U];
+                var remotePreview = remoteEntry.GetType().GetField("RangePreview").GetValue(remoteEntry);
+                var renderPreview = remotePreview.GetType().GetMethod("Render");
+                Vector3 remoteBefore = remoteArea.transform.TransformPoint(remoteMesh.vertices[2]);
+                remoteActor.transform.position += new Vector3(4, 0, -3);
+                remoteActor.transform.rotation = Quaternion.Euler(0, 145, 0);
+                renderPreview.Invoke(remotePreview, new object[] { Time.realtimeSinceStartupAsDouble });
+                Assert.That(Vector3.Distance(remoteArea.transform.TransformPoint(remoteMesh.vertices[2]) - remoteBefore,
+                    new Vector3(4, 0, -3)), Is.LessThan(.001f), "Remote charging translates without changing its accepted angle.");
+                remoteCharge.skillPhase = 1; remoteCharge.x = 25; remoteCharge.y = 34;
+                fixture.MonsterActions(remoteCharge);
+                Vector3 hitBefore = remoteArea.transform.TransformPoint(remoteMesh.vertices[2]);
+                remoteActor.transform.position += Vector3.one * 3;
+                renderPreview.Invoke(remotePreview, new object[] { Time.realtimeSinceStartupAsDouble });
+                Assert.That(remoteArea.transform.TransformPoint(remoteMesh.vertices[2]), Is.EqualTo(hitBefore),
+                    "Remote Hit residue stays at its authoritative phase coordinates.");
+                remoteCharge.skillPhase = 0;
+                fixture.MonsterActions(remoteCharge);
+                UnityEngine.Object.DestroyImmediate(remoteActor);
+                renderPreview.Invoke(remotePreview, new object[] { Time.realtimeSinceStartupAsDouble });
+                Assert.That(remoteArea.gameObject.activeSelf, Is.False, "A destroyed caster cannot leave an active following area.");
                 fixture.Monsters(100, Monster(0, 0), Monster(1, 1), Monster(2, 2), Monster(7, 1));
                 double receivedAt = Time.realtimeSinceStartupAsDouble;
                 fixture.MonsterActions(
@@ -703,10 +743,17 @@ namespace Mmorpg.Client.Tests
                 Assert.That(circleMesh.vertices[1].x, Is.EqualTo(-2).Within(0.001f));
                 Assert.That(circleMesh.vertices[1].y, Is.EqualTo(0.06f).Within(0.001f));
                 Assert.That(circleMesh.vertices[1].z, Is.EqualTo(9).Within(0.001f));
+                fixture.Render(receivedAt);
+                Assert.That(Vector3.Distance(smallRing.transform.TransformPoint(circleMesh.vertices[0]),
+                    fixture.Visual("monsters", (ushort)1).transform.position + Vector3.up * .06f), Is.LessThan(.001f),
+                    "The circle stays centered on the interpolated monster rather than the old phase position.");
                 float initialCharge = circleMesh.colors[0].a;
+                float initialHeat = circleMesh.colors[0].g;
                 Assert.That(smallRingDeadline - receivedAt, Is.InRange(0.39, 0.42), "The preview uses the authored six-tick Hit delay plus cleanup grace.");
                 fixture.Render(receivedAt + .2);
                 Assert.That(circleMesh.colors[0].a, Is.GreaterThan(initialCharge), "The translucent filled area brightens while its cast charges.");
+                Assert.That(circleMesh.colors[0].g, Is.GreaterThan(initialHeat), "Existing monster warnings warm from red toward gold as impact approaches.");
+                Assert.That(circleMesh.colors[0].a, Is.LessThanOrEqualTo(.66f), "The warning retains visibility through the filled area.");
                 var sameNumericId = fixture.MonsterRange(7);
                 Assert.That(sameNumericId, Is.Not.Null, "Monster and player IDs are separate namespaces even when the number matches.");
                 Assert.That(sameNumericId.GetComponent<MeshFilter>().sharedMesh.vertices[1].x, Is.EqualTo(3).Within(0.001f));
@@ -808,6 +855,12 @@ namespace Mmorpg.Client.Tests
                 Assert.That(squareMesh4.vertices[3], Is.EqualTo(new Vector3(-7, 0.06f, -6)));
                 Assert.That(fixture.BossSquareDeadline(2, 4) - Time.realtimeSinceStartupAsDouble, Is.InRange(1.09, 1.11));
                 Assert.That(squareMesh1.vertices[0].x, Is.EqualTo(3).Within(0.001f), "The square fill remains axis aligned and uses the ActionResult center despite dir changes.");
+                fixture.Render(Time.realtimeSinceStartupAsDouble);
+                Vector3 bossPosition = fixture.Visual("monsters", (ushort)2).transform.position;
+                Assert.That(Vector3.Distance(bossFirst.transform.TransformPoint(fanMesh.vertices[0]),
+                    bossPosition + Vector3.up * .06f), Is.LessThan(.001f), "Boss fan origins follow the displayed boss.");
+                Assert.That(Vector3.Distance(squareOuter1.transform.TransformPoint(squareMesh1.vertices[0]),
+                    bossPosition + new Vector3(-5, .06f, -5)), Is.LessThan(.001f), "Boss square rings follow without rotation.");
 
                 fixture.MonsterActions(MonsterAction(2, 0, 4, 1, -10, 20));
                 Assert.That(squareOuter0.gameObject.activeSelf, Is.False, "Hit phase 1 removes only the first square pair.");
@@ -1253,6 +1306,7 @@ namespace Mmorpg.Client.Tests
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
+            public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
             public void RequestInventory() { } public void Profiles(uint[] profileIds) { }
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
             public void RequestWallet(uint requestID) { }
@@ -1260,7 +1314,7 @@ namespace Mmorpg.Client.Tests
             public void CharacterList() { }
             public void Enter(ulong character) { }
             public void Chat(string message, byte scope, ulong target) { }
-            public void Action(byte direction, float x, float y, byte skill, ulong ownershipEpoch) { }
+            public void Action(byte direction, float x, float y, byte skill, ulong ownershipEpoch, float aimAngle) { }
             public void Pong(ulong time) { }
             public void ZoneChange(byte operation) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { }
             public void Log(string message) { }

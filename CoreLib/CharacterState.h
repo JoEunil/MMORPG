@@ -33,6 +33,8 @@ namespace Core {
         std::vector<SkillSlotEntry> skillSlot;
 
         uint32_t potionCooldownTicks = 0;
+        uint32_t parryWindowTicks = 0;
+        uint32_t parryCooldownTicks = 0;
         uint16_t lastZone;
         uint32_t dirtyBit = 0x00; // 변경된 필드 표시
 

@@ -45,6 +45,9 @@ namespace ClientCore.PacketHelper
         ITEM_USE = 45,
         ITEM_USE_RES = 46,
         ITEM_REWARD = 47,
+        PARRY = 48,
+        PARRY_RES = 49,
+        GOLD_REWARD = 50,
     }
     
     public enum ZONE_CHANGE : byte
@@ -227,6 +230,7 @@ namespace ClientCore.PacketHelper
         public float x, y;    // 이동 후 최종 좌표(절대). 서버가 경과 시간 대비 이동량을 검증한다.
         public byte skillSlot;
         public ulong ownershipEpoch;
+        public float aimAngle;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -239,6 +243,7 @@ namespace ClientCore.PacketHelper
         public float x, y;
         public uint skillId;
         public ushort skillPhase;
+        public float aimAngle;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

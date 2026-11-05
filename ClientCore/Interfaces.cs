@@ -18,6 +18,7 @@ namespace ClientCore
         public float x, y;   // 클라이언트가 로컬로 이동한 뒤의 최종 좌표
         public bool dirty;
         public byte waitSkillSlot;
+        public float aimAngle;
         public ulong ownershipEpoch;
     }
     public struct CharacterInfoView
@@ -74,7 +75,9 @@ public struct InventoryItemView
         event Action<byte, ulong, string, string> OnChatReceived;
         event Action<bool> OnInventoryReceived;
         event Action<ulong, ulong, uint, byte, ushort, uint> OnItemUseReceived;
+        event Action<ulong, ulong, byte, uint, uint> OnParryReceived;
         event Action<uint, ushort, ushort, byte> OnItemRewardReceived;
+        event Action<byte> OnGoldRewardReceived;
         event Action<bool> OnBazaarReceived;
         event Action<byte> OnBazaarRegisterReceived;
         event Action<byte, ulong, byte, ulong> OnWalletReceived;
@@ -96,6 +99,7 @@ public struct InventoryItemView
         void Chat(string message, byte scope, ulong targetID);
         void RequestInventory();
         bool RequestItemUse(uint itemID);
+        bool RequestParry();
         void RequestBazaar(ushort itemType, ushort page);
         void RequestBazaarRegister(byte inventorySlot, ushort quantity, ulong totalDiamondPrice);
         void RequestWallet();
@@ -121,7 +125,9 @@ public struct InventoryItemView
         void ProfilesReceived(ProfileEntry[] profiles);
         void InventoryReceived(byte resStatus, PacketHelper.InventoryItem[] items);
         void ItemUseReceived(ulong requestID, ulong ownershipEpoch, uint itemID, byte status, ushort remainingQuantity, uint cooldownRemainingTicks);
+        void ParryReceived(ulong requestID, ulong ownershipEpoch, byte status, uint windowRemainingTicks, uint cooldownRemainingTicks);
         void ItemRewardReceived(uint itemID, ushort grantedQuantity, ushort remainingQuantity, byte status);
+        void GoldRewardReceived(byte status);
         void BazaarReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows);
         void BazaarRegisterReceived(uint requestID, byte status);
         void WalletGoldReceived(uint requestID, byte status, ulong gold);
@@ -151,7 +157,7 @@ public struct InventoryItemView
     {
         long GetServerTimeMs();
         void UpdateServerTime(long serverTime);
-        (bool, byte, float, float, byte, ulong) GetActionState();
+        (bool, byte, float, float, byte, ulong, float) GetActionState();
         void SetOwnershipEpoch(ulong ownershipEpoch);
         void CancelAction();
         void SetPosition(float x, float y);
@@ -165,6 +171,7 @@ public struct InventoryItemView
         long GetServerTimeMs();
         void UpdateMove(byte dir, float x, float y);
         void UpdateAction(byte dir, float x, float y, byte skillSlot);
+        void UpdateAction(byte dir, float x, float y, byte skillSlot, float aimAngle);
         void CancelMove();
         void CancelAction();
         void UpdateSkill(byte skillSlot);
@@ -200,6 +207,7 @@ namespace ClientCore.Services
         void Profiles(uint[] profileIds);
         void RequestInventory();
         void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID);
+        void RequestParry(ulong requestID, ulong ownershipEpoch);
         void RequestBazaar(uint requestID, ushort itemType, ushort page);
         void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice);
         void RequestWallet(uint requestID);
@@ -208,7 +216,7 @@ namespace ClientCore.Services
         void RequestBazaarBuy(uint requestID, ulong listingID);
         void RequestBazaarCheckOutbox(uint requestID);
         void RequestBazaarCancelListing(uint requestID, ulong listingID);
-        void Action(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch);
+        void Action(byte dir, float x, float y, byte skillSlot, ulong ownershipEpoch, float aimAngle);
         void Pong(ulong serverTimeMs);
         void ZoneChange(byte op);
         void ZoneResync(ulong ownershipEpoch);

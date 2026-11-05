@@ -177,8 +177,9 @@ static class Program
         const ulong epoch = 0x0102030405060708;
         var fast = PacketBuilder.CreateActionPacketFast(3, 12.5f, -4.25f, Config.NONE_SKILL, epoch);
         var marshalled = PacketBuilder.CreateActionPacket(3, 12.5f, -4.25f, Config.NONE_SKILL, epoch);
-        Require(fast.Length == 26 && marshalled.Length == 26 && fast.AsSpan().SequenceEqual(marshalled), "both action builders emit the 26-byte epoch frame");
+        Require(fast.Length == 30 && marshalled.Length == 30 && fast.AsSpan().SequenceEqual(marshalled), "both action builders emit the 30-byte epoch/aim frame");
         Require(BitConverter.ToUInt64(fast, 18) == epoch, "action epoch offset");
+        Require(BitConverter.ToSingle(fast, 26) == 90f, "action aim angle offset");
         Require(Handler.ShouldHandle((byte)OP_CODE.ZONE_FULL_STATE_BROADCAST, Config.FLAG_SIMULATION) &&
             Handler.ShouldHandle((byte)OP_CODE.ZONE_DELTA_UPDATE_BROADCAST, Config.FLAG_SIMULATION), "snapshot frames pass the receive filter");
 

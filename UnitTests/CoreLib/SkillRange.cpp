@@ -4,6 +4,8 @@
 #include <array>
 #include <cstdint>
 #include <utility>
+#include <cmath>
+#include <limits>
 
 TEST(SkillRange, RectangleUsesMovementDirectionsAndInclusiveBounds)
 {
@@ -31,4 +33,22 @@ TEST(SkillRange, RectangleUsesMovementDirectionsAndInclusiveBounds)
             forward.second + (dir >= 2 ? 1.51f : 0.0f)));
         EXPECT_FALSE(line.InRange(dir, 0, 0, forward.first * 12.01f, forward.second * 12.01f));
     }
+}
+
+TEST(SkillRange, FreeAimRectangleRotatesAndRejectsInvalidAngles)
+{
+    const Data::SkillRange line{ Data::SkillRangeType::Rectangle, 12.0f, 3.0f };
+    for (const float angle : { 0.0f, 45.0f, 90.0f, 135.0f, 180.0f, 225.0f, 270.0f, 315.0f }) {
+        const float radians = angle * 3.14159265358979323846f / 180.0f;
+        const float fx = std::sin(radians), fy = std::cos(radians);
+        EXPECT_TRUE(line.InRangeAngle(angle, 100, 100, 100 + fx * 6, 100 + fy * 6));
+        EXPECT_FALSE(line.InRangeAngle(angle, 100, 100, 100 - fx * 2, 100 - fy * 2));
+        EXPECT_FALSE(line.InRangeAngle(angle, 100, 100, 100 + fx * 13, 100 + fy * 13));
+        EXPECT_FALSE(line.InRangeAngle(angle, 100, 100, 100 + fx * 6 + fy * 2, 100 + fy * 6 - fx * 2));
+    }
+    for (const float invalid : { -1.0f, 360.0f, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN() })
+        EXPECT_FALSE(line.InRangeAngle(invalid, 0, 0, 0, 1));
+    // The monster's legacy directional predicate is unchanged.
+    EXPECT_TRUE(line.InRange(0, 0, 0, 0, 12));
+    EXPECT_FALSE(line.InRange(0, 0, 0, 12, 0));
 }

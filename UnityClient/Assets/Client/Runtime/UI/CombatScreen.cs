@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Collections.Generic;
 using Mmorpg.Client;
 using ClientCore;
 using ClientCore.PacketHelper;
@@ -7,6 +8,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 namespace Mmorpg.Client
 {
@@ -62,7 +64,7 @@ namespace Mmorpg.Client
         private byte chargeTelegraphSlot;
         private SkillRange chargeTelegraphRange;
         private Vector3 chargeTelegraphOrigin;
-        private byte chargeTelegraphDirection;
+        private float chargeTelegraphAngle;
         private float chargeTelegraphRadius;
         private float chargeTelegraphLength;
         private float chargeTelegraphWidth;
@@ -83,6 +85,17 @@ namespace Mmorpg.Client
         private uint ownId;
         private ulong observedCharacterId;
         private int pendingSkillSlot = -1;
+        private readonly List<RaycastResult> pointerHits = new List<RaycastResult>();
+        private PointerEventData pointerData;
+        private bool hasPointerAim;
+        private float pointerAimAngle;
+        private UnityEngine.UI.Button parryButton;
+        private TMP_Text parryCooldownText;
+        private UnityEngine.UI.Image parryCooldownMask;
+        private bool parryPending;
+        private bool parryUnknown;
+        private float parryCooldownDeadline;
+        private Action<ulong, ulong, byte, uint, uint> parryReceived;
         private float combatStatusDeadline;
         private int observedHp = -1;
         private Color hpFillColor;
@@ -109,6 +122,9 @@ namespace Mmorpg.Client
             skillButtons[0].onClick.AddListener(Strike);
             skillButtons[1].onClick.AddListener(Ring);
             skillButtons[2].onClick.AddListener(Line);
+            for (int i = 0; i < skillButtons.Length; i++)
+                foreach (TMP_Text label in skillButtons[i].GetComponentsInChildren<TMP_Text>(true))
+                    if (label.name == "SkillKey") label.text = i == 0 ? "Q" : i == 1 ? "E" : "R";
             combatStatusText.gameObject.SetActive(true);
             combatStatusText.rectTransform.anchorMin = combatStatusText.rectTransform.anchorMax = new Vector2(.5f, 0);
             combatStatusText.rectTransform.pivot = new Vector2(.5f, 0);
@@ -126,18 +142,23 @@ namespace Mmorpg.Client
             aimText.alignment = TextAlignmentOptions.MidlineRight;
             aimText.raycastTarget = false;
             growthTextColor = aimText.color;
+            EnsureParryHud();
+            parryButton?.onClick.AddListener(RequestParry);
             EnsureCooldownOverlays();
             loginScreen.ClientChanged += ChangeClient;
             worldScreen.WorldStateChanged += WorldChanged;
             ChangeClient(loginScreen.Model);
         }
 
-        private void Strike() => RequestSkill(0);
-        private void Ring() => RequestSkill(1);
-        private void Line() => RequestSkill(2);
+        private void Strike() => RequestButtonSkill(0);
+        private void Ring() => RequestButtonSkill(1);
+        private void Line() => RequestButtonSkill(2);
 
         private void ChangeClient(IViewModelUI next)
         {
+            parryPending = parryUnknown = false;
+            parryCooldownDeadline = 0;
+            hasPointerAim = false;
             ResetVitalsFeedback();
             aimText.text = string.Empty;
             HideChargeTelegraph();
@@ -169,16 +190,36 @@ namespace Mmorpg.Client
                 if (source == model && version == generation) ApplyResults(count, results);
             };
             model.OnActionResultReceived += actionResults;
+            parryReceived = (requestID, epoch, status, window, cooldown) =>
+            {
+                if (isActiveAndEnabled && source == model && version == generation)
+                    ParryReceived(status, window, cooldown);
+            };
+            model.OnParryReceived += parryReceived;
+            model.OnZoneTransitionStarted += ParryTransitionStarted;
+            model.OnConnectionFailed += ParryConnectionFailed;
         }
 
         private void Unsubscribe()
         {
+            if (model != null)
+            {
+                model.OnParryReceived -= parryReceived;
+                model.OnZoneTransitionStarted -= ParryTransitionStarted;
+                model.OnConnectionFailed -= ParryConnectionFailed;
+            }
+            parryReceived = null;
             if (model != null && actionResults != null) model.OnActionResultReceived -= actionResults;
             actionResults = null;
         }
 
         private void WorldChanged()
         {
+            if (!WorldAvailable || !worldScreen.CanAct)
+            {
+                parryPending = false;
+                worldScreen.ActorMotion?.ClearParry();
+            }
             if (combatPanel != null) combatPanel.SetActive(WorldAvailable);
             if (WorldAvailable)
             {
@@ -192,7 +233,11 @@ namespace Mmorpg.Client
                     observedCharacterId != worldScreen.SelectedCharacterID)
                 {
                     if (observedCharacterId != worldScreen.SelectedCharacterID)
+                    {
                         Array.Clear(cooldownDeadlines, 0, cooldownDeadlines.Length);
+                        parryCooldownDeadline = 0;
+                        parryUnknown = false;
+                    }
                     ResetObservation();
                 }
                 var state = worldScreen.OwnFull;
@@ -258,10 +303,13 @@ namespace Mmorpg.Client
             foreach (var button in skillButtons)
                 if (button != null) button.interactable = model != null && WorldAvailable && worldScreen.CanAct;
             UpdateCooldownOverlays();
+            UpdateParryHud();
         }
 
         private void ResetObservation()
         {
+            parryPending = false;
+            hasPointerAim = false;
             ResetVitalsFeedback();
             aimText.text = string.Empty;
             HideChargeTelegraph();
@@ -487,13 +535,191 @@ namespace Mmorpg.Client
             return GameUiInput.CanUseWorldShortcuts();
         }
 
+        private bool ParryContentAvailable => serverContent != null && serverContent.parry != null &&
+            serverContent.parry.windowTicks > 0 && serverContent.parry.cooldownTicks >= serverContent.parry.windowTicks &&
+            serverContent.parry.charges == 1;
+
+        private void RequestParry()
+        {
+            if (!InputAvailable() || !ParryContentAvailable || parryPending ||
+                Time.unscaledTime < parryCooldownDeadline) return;
+            parryPending = true;
+            parryUnknown = false;
+            combatStatusText.text = "Requesting parry…";
+            combatStatusDeadline = Time.unscaledTime + 4;
+            try
+            {
+                if (!model.RequestParry())
+                {
+                    parryPending = false;
+                    combatStatusText.text = "Parry is unavailable now.";
+                }
+            }
+            catch (Exception)
+            {
+                parryPending = false;
+                parryUnknown = true;
+                combatStatusText.text = "Parry reply unknown. Press Space to try again when ready; no automatic retry.";
+            }
+            UpdateParryHud();
+        }
+
+        private void ParryReceived(byte status, uint window, uint cooldown)
+        {
+            if (!parryPending || !WorldAvailable || model == null || loginScreen.Model != model) return;
+            parryPending = false;
+            if (!ParryContentAvailable || (status > 6 && status != Packet.PARRY_TIMEOUT_STATUS) ||
+                window > serverContent.parry.windowTicks || cooldown > serverContent.parry.cooldownTicks)
+                status = Packet.PARRY_TIMEOUT_STATUS;
+            if (status == 1 || status == 2)
+                parryCooldownDeadline = Mathf.Max(parryCooldownDeadline, Time.unscaledTime + cooldown * ServerTickSeconds);
+            parryUnknown = status == Packet.PARRY_TIMEOUT_STATUS;
+            combatStatusText.text = status == 1 ? "Parry accepted. Cooldown is estimated from the server reply."
+                : status == 2 ? "Parry is on cooldown."
+                : status == 3 ? "Cannot parry while defeated."
+                : status == 4 || status == 5 ? "World changed. Parry was not confirmed."
+                : status == 6 ? "Parry is unavailable now."
+                : status == Packet.PARRY_TIMEOUT_STATUS ? "No parry reply. Press Space to try again when ready; no automatic retry."
+                : "Parry request was rejected.";
+            combatStatusDeadline = Time.unscaledTime + 4;
+            UpdateParryHud();
+        }
+
+        private void ParryTransitionStarted(ulong epoch, ushort zone)
+        {
+            parryPending = false;
+            worldScreen.ActorMotion?.ClearParry();
+            UpdateParryHud();
+        }
+
+        private void ParryConnectionFailed(string message)
+        {
+            parryPending = parryUnknown = false;
+            parryCooldownDeadline = 0;
+            worldScreen.ActorMotion?.ClearParry();
+            UpdateParryHud();
+        }
+
+        private void EnsureParryHud()
+        {
+            if (parryButton != null || combatPanel == null) return;
+            var slot = new GameObject("ParryQuickSlot", typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button));
+            slot.transform.SetParent(combatPanel.transform, false);
+            var rect = slot.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(.5f, 0);
+            rect.anchoredPosition = new Vector2(-132, 8);
+            rect.sizeDelta = new Vector2(56, 62);
+            var image = slot.GetComponent<UnityEngine.UI.Image>();
+            image.color = new Color(.055f, .1f, .13f, .96f);
+            parryButton = slot.GetComponent<UnityEngine.UI.Button>();
+            parryButton.targetGraphic = image;
+            for (int i = 0; i < 2; i++)
+            {
+                var shield = new GameObject("Shield" + i, typeof(RectTransform), typeof(UnityEngine.UI.Image));
+                shield.transform.SetParent(slot.transform, false);
+                var shieldRect = shield.GetComponent<RectTransform>();
+                shieldRect.anchorMin = shieldRect.anchorMax = new Vector2(.5f, .5f);
+                shieldRect.anchoredPosition = new Vector2(0, i == 0 ? 5 : 14);
+                shieldRect.sizeDelta = i == 0 ? new Vector2(22, 22) : new Vector2(30, 18);
+                shieldRect.localRotation = Quaternion.Euler(0, 0, i == 0 ? 45 : 0);
+                var face = shield.GetComponent<UnityEngine.UI.Image>();
+                face.color = new Color(.72f, .83f, .84f);
+                face.raycastTarget = false;
+            }
+            var mask = new GameObject("Cooldown", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+            mask.transform.SetParent(slot.transform, false);
+            var maskRect = mask.GetComponent<RectTransform>();
+            maskRect.anchorMin = Vector2.zero; maskRect.anchorMax = Vector2.one;
+            maskRect.offsetMin = new Vector2(0, 17); maskRect.offsetMax = Vector2.zero;
+            parryCooldownMask = mask.GetComponent<UnityEngine.UI.Image>();
+            parryCooldownMask.color = new Color(0, 0, 0, .65f);
+            parryCooldownMask.raycastTarget = false;
+            TMP_Text Text(string name, float y, float size)
+            {
+                var labelObject = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+                labelObject.transform.SetParent(slot.transform, false);
+                var label = labelObject.GetComponent<TMP_Text>();
+                label.font = aimText.font;
+                label.fontSize = size;
+                label.color = new Color(1, .9f, .62f);
+                label.alignment = TextAlignmentOptions.Center;
+                label.raycastTarget = false;
+                label.rectTransform.anchorMin = label.rectTransform.anchorMax = new Vector2(.5f, 0);
+                label.rectTransform.pivot = new Vector2(.5f, 0);
+                label.rectTransform.anchoredPosition = new Vector2(0, y);
+                label.rectTransform.sizeDelta = new Vector2(56, 24);
+                return label;
+            }
+            Text("Key", 0, 12).text = "SPACE";
+            parryCooldownText = Text("Remaining", 23, 16);
+            UpdateParryHud();
+        }
+
+        private void UpdateParryHud()
+        {
+            if (parryButton == null) return;
+            parryButton.gameObject.SetActive(WorldAvailable);
+            float remaining = Mathf.Max(0, parryCooldownDeadline - Time.unscaledTime);
+            parryButton.interactable = InputAvailable() && ParryContentAvailable && !parryPending && remaining <= 0;
+            parryCooldownMask.enabled = parryPending || parryUnknown || remaining > 0;
+            parryCooldownText.text = parryPending ? "…" : parryUnknown ? "?" : remaining > 0
+                ? "~" + remaining.ToString("0.0", CultureInfo.InvariantCulture) : string.Empty;
+        }
+
         private void RequestSkill(byte slot)
         {
+            if (slot > 2 || !InputAvailable() || !TryPointerAim(out float aimAngle)) return;
+            RequestAimedSkill(slot, aimAngle);
+        }
+
+        private void RequestButtonSkill(byte slot)
+        {
             if (slot > 2 || !InputAvailable()) return;
+            if (!hasPointerAim)
+            {
+                combatStatusText.text = "Aim at the field before choosing a skill.";
+                combatStatusDeadline = Time.unscaledTime + 3;
+                return;
+            }
+            RequestAimedSkill(slot, pointerAimAngle);
+        }
+
+        private void RequestAimedSkill(byte slot, float aimAngle)
+        {
             worldScreen.CancelMovement();
             var state = worldScreen.OwnFull;
-            loginScreen.Data.UpdateAction(state.dir, state.x, state.y, slot);
+            loginScreen.Data.UpdateAction(state.dir, state.x, state.y, slot, aimAngle);
             ShowSkillRequest(slot);
+        }
+
+        private bool TryPointerAim(out float angle)
+        {
+            angle = 0;
+            if (Mouse.current == null || worldScreen.ViewCamera == null || worldScreen.ActorMotion == null ||
+                EventSystem.current == null) return false;
+            Vector2 pointer = Mouse.current.position.ReadValue();
+            if (pointerData == null) pointerData = new PointerEventData(EventSystem.current);
+            pointerData.Reset();
+            pointerData.position = pointer;
+            pointerHits.Clear();
+            EventSystem.current.RaycastAll(pointerData, pointerHits);
+            foreach (var hit in pointerHits)
+                if (hit.module is UnityEngine.UI.GraphicRaycaster) return false;
+            return TryAimAngle(worldScreen.ViewCamera.GetComponent<Camera>(), pointer,
+                worldScreen.ActorMotion.transform.position, out angle);
+        }
+
+        private static bool TryAimAngle(Camera camera, Vector2 pointer, Vector3 origin, out float angle)
+        {
+            angle = 0;
+            if (camera == null || !Finite(pointer.x) || !Finite(pointer.y) ||
+                !Finite(origin.x) || !Finite(origin.y) || !Finite(origin.z) || !camera.pixelRect.Contains(pointer)) return false;
+            Ray ray = camera.ScreenPointToRay(pointer);
+            if (!new Plane(Vector3.up, origin).Raycast(ray, out float distance) || !Finite(distance)) return false;
+            Vector3 direction = ray.GetPoint(distance) - origin;
+            if (!Finite(direction.x) || !Finite(direction.z) || direction.sqrMagnitude < .000001f) return false;
+            angle = Mathf.Repeat(Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg, 360f);
+            return Finite(angle) && angle >= 0 && angle < 360;
         }
 
         private void ShowSkillRequest(byte slot)
@@ -545,11 +771,22 @@ namespace Mmorpg.Client
             UpdateReleaseEffect();
             UpdateSkillTooltip();
             UpdateCooldownOverlays();
-            if (!InputAvailable() || Keyboard.current == null) return;
-            if (Keyboard.current.zKey.wasPressedThisFrame) RequestSkill(0);
-            else if (Keyboard.current.xKey.wasPressedThisFrame) RequestSkill(1);
-            else if (Keyboard.current.cKey.wasPressedThisFrame) RequestSkill(2);
+            UpdateParryHud();
+            if (!WorldAvailable || !worldScreen.CanAct) hasPointerAim = false;
+            if (!InputAvailable()) return;
+            if (TryPointerAim(out float angle))
+            {
+                hasPointerAim = true;
+                pointerAimAngle = angle;
+            }
+            if (Keyboard.current == null) return;
+            if (Keyboard.current.spaceKey.wasPressedThisFrame) RequestParry();
+            int slot = PressedSkillSlot(Keyboard.current);
+            if (slot >= 0) RequestSkill((byte)slot);
         }
+
+        private static int PressedSkillSlot(Keyboard keyboard) => keyboard.qKey.wasPressedThisFrame ? 0
+            : keyboard.eKey.wasPressedThisFrame ? 1 : keyboard.rKey.wasPressedThisFrame ? 2 : -1;
 
         private void ApplyResults(ushort count, ActionResultField[] results)
         {
@@ -563,16 +800,24 @@ namespace Mmorpg.Client
             for (int i = 0; i < count; i++)
             {
                 var result = results[i];
+                if (result.casterType == 0 && result.casterId == ownId && result.skillSlot == Packet.PARRY_SKILL_SLOT &&
+                    result.skillId == Packet.PARRY_SKILL_ID && result.skillPhase <= 1 && result.dir <= 3 &&
+                    Finite(result.x) && Finite(result.y) && Finite(result.aimAngle) && result.aimAngle >= 0 && result.aimAngle < 360)
+                {
+                    if (ParryContentAvailable)
+                        worldScreen.ActorMotion?.PlayParry(result.skillPhase == 1, serverContent.parry.windowTicks * ServerTickSeconds);
+                    continue;
+                }
                 // Only the current player's supported server phases are displayed. No hit/kill ACK exists.
                 if (result.casterType != 0 || result.casterId != ownId || result.casterId == 0 || result.dir > 3 ||
                     result.skillSlot > 2 || result.skillId != result.skillSlot || result.skillPhase > 1 ||
-                    !Finite(result.x) || !Finite(result.y)) continue;
+                    !Finite(result.x) || !Finite(result.y) || !Finite(result.aimAngle) || result.aimAngle < 0 || result.aimAngle >= 360) continue;
                 float chargeDuration = 0;
                 if (result.skillPhase == 0 && TryGetSkill(result.skillSlot, out var castingSkill) &&
                     castingSkill.phases != null && castingSkill.phases.Length > 1 && castingSkill.phases[1] != null)
                     chargeDuration = Mathf.Min(castingSkill.phases[1].waitTicks * ServerTickSeconds, 2f);
                 if (worldScreen.OwnFull.hp > 0)
-                    worldScreen.ActorMotion?.PlayAttack(result.dir, result.skillPhase != 0, result.skillSlot, chargeDuration);
+                    worldScreen.ActorMotion?.PlayAttack(result.aimAngle, result.skillPhase != 0, result.skillSlot, chargeDuration);
                 if (pendingSkillSlot < 0 || pendingSkillSlot == result.skillSlot)
                 {
                     pendingSkillSlot = -1;
@@ -615,8 +860,7 @@ namespace Mmorpg.Client
             chargeTelegraphActive = true;
             chargeTelegraphSlot = result.skillSlot;
             chargeTelegraphRange = hit.range;
-            chargeTelegraphOrigin = new Vector3(result.x, .07f, result.y);
-            chargeTelegraphDirection = result.dir;
+            chargeTelegraphAngle = result.aimAngle;
             chargeTelegraphRadius = hit.range1;
             chargeTelegraphLength = hit.range1;
             chargeTelegraphWidth = hit.range2;
@@ -637,7 +881,7 @@ namespace Mmorpg.Client
             if (!EnsureReleaseEffect()) return;
             releaseEffectOrigin = new Vector3(result.x, 0.07f, result.y);
             releaseEffectSlot = result.skillSlot;
-            Vector3 forward = WorldScreen.ServerFacing(result.dir) * Vector3.back;
+            Vector3 forward = Quaternion.Euler(0, result.aimAngle, 0) * Vector3.forward;
             Vector3 right = Vector3.Cross(Vector3.up, forward);
             releaseVertexCount = releaseIndexCount = 0;
             if (result.skillSlot == 0)
@@ -917,21 +1161,23 @@ namespace Mmorpg.Client
             float halfWidth = width * 0.5f;
             float side = point == 0 || point == 3 ? -halfWidth : halfWidth;
             float reach = point < 2 ? 0 : length;
-            if (result.dir == 1 || result.dir == 2) reach = -reach;
-            return result.dir < 2
-                ? new Vector3(result.x + side, height, result.y + reach)
-                : new Vector3(result.x + reach, height, result.y + side);
+            return new Vector3(result.x, height, result.y) + Quaternion.Euler(0, result.aimAngle, 0) *
+                new Vector3(side, 0, reach);
         }
 
         private void UpdateChargeTelegraph()
         {
             if (!chargeTelegraphActive || chargeTelegraphMesh == null || chargeTelegraphRenderer == null) return;
-            if (!WorldAvailable || worldScreen.OwnFull.hp == 0 || Time.unscaledTime >= chargeTelegraphDeadline)
+            if (!WorldAvailable || worldScreen.OwnFull.hp == 0 || worldScreen.ActorMotion == null ||
+                Time.unscaledTime >= chargeTelegraphDeadline)
             {
                 HideChargeTelegraph();
                 return;
             }
 
+            // Follow the displayed caster while preserving the accepted cast angle and the separate Hit origin.
+            chargeTelegraphOrigin = worldScreen.ActorMotion.transform.position;
+            chargeTelegraphOrigin.y = .07f;
             float progress = Mathf.Clamp01((Time.unscaledTime - chargeTelegraphStarted) / chargeTelegraphDuration);
             chargeVertexCount = chargeIndexCount = 0;
             float pulse = .92f + .08f * Mathf.Sin(Time.unscaledTime * 7f);
@@ -946,7 +1192,7 @@ namespace Mmorpg.Client
             {
                 var action = new ActionResultField
                 {
-                    dir = chargeTelegraphDirection,
+                    aimAngle = chargeTelegraphAngle,
                     x = chargeTelegraphOrigin.x,
                     y = chargeTelegraphOrigin.z
                 };
@@ -1278,7 +1524,7 @@ namespace Mmorpg.Client
                 labelRect.offsetMax = new Vector2(-14, -10);
             }
 
-            string key = slot == 0 ? "Z" : slot == 1 ? "X" : "C";
+            string key = slot == 0 ? "Q" : slot == 1 ? "E" : "R";
             string name = SkillName((byte)slot);
             skillTooltipText.text = string.Format(CultureInfo.InvariantCulture,
                 "<size=20><b>{0} · {1}</b></size>\n{2} · MP {3}\nCooldown {4:0.##}s · ~ estimated", key, name, shape, skill.mana,
@@ -1301,6 +1547,12 @@ namespace Mmorpg.Client
 
         private void OnDisable()
         {
+            parryPending = false;
+            parryButton?.onClick.RemoveListener(RequestParry);
+            worldScreen?.ActorMotion?.ClearParry();
+            hasPointerAim = false;
+            pointerData = null;
+            pointerHits.Clear();
             ResetVitalsFeedback();
             HideChargeTelegraph();
             HideReleaseEffect();

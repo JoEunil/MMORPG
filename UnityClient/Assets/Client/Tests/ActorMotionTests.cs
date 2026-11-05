@@ -11,6 +11,148 @@ namespace Mmorpg.Client.Tests
 {
     public sealed class ActorMotionTests
     {
+        [Test]
+        public void ParryBroadcastOverlayKeepsAttackTimeAndPlaysOneSuccessWithoutInventingDamage()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Client/Art/Actors/ObservedPlayer.prefab");
+            Assert.That(prefab, Is.Not.Null);
+            var actor = Object.Instantiate(prefab);
+            try
+            {
+                var motion = actor.AddComponent<ActorMotion>();
+                motion.Configure();
+                var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+                var lateUpdate = typeof(ActorMotion).GetMethod("LateUpdate", flags);
+                var parryStarted = typeof(ActorMotion).GetField("parryStarted", flags);
+                var sparkField = typeof(ActorMotion).GetField("parrySparkRenderer", flags);
+                Vector3 authorityPosition = actor.transform.position;
+                Quaternion authorityRotation = actor.transform.rotation;
+                motion.PlayParry(false, .25f);
+                parryStarted.SetValue(motion, Time.unscaledTime - .1f);
+                lateUpdate.Invoke(motion, null);
+                var shieldArm = actor.transform.Find("GuardVisual/UpperBody/Shoulder-1");
+                Assert.That(Quaternion.Angle(shieldArm.localRotation, Quaternion.identity), Is.GreaterThan(.01f),
+                    "An accepted Begin raises the shield without any monster, hit, or attack event.");
+                Assert.That(sparkField.GetValue(motion), Is.Null, "Beginning a parry never creates success sparks.");
+                motion.ClearParry();
+                motion.PlayAttack(37.5f, false, 2, 1f);
+                var attackUntil = typeof(ActorMotion).GetField("attackUntil", flags);
+                float attackDeadline = (float)attackUntil.GetValue(motion);
+                var hitUntil = typeof(ActorMotion).GetField("hitUntil", flags);
+                var successUntil = typeof(ActorMotion).GetField("parrySuccessUntil", flags);
+                var windowUntil = typeof(ActorMotion).GetField("parryUntil", flags);
+                motion.PlayParry(false, .25f);
+                float firstWindow = (float)windowUntil.GetValue(motion) - .05f;
+                windowUntil.SetValue(motion, firstWindow);
+                motion.PlayParry(false, .25f);
+                Assert.That((float)windowUntil.GetValue(motion), Is.EqualTo(firstWindow));
+                Assert.That((float)successUntil.GetValue(motion), Is.Zero, "Beginning a window has no success flash.");
+                motion.PlayParry(true, .25f);
+                lateUpdate.Invoke(motion, null);
+                var sparks = (MeshRenderer)sparkField.GetValue(motion);
+                Assert.That(sparks, Is.Not.Null);
+                Assert.That(sparks.enabled, Is.True, "Only the accepted success shows the shield's metal burst.");
+                var sparkMesh = sparks.GetComponent<MeshFilter>().sharedMesh;
+                Assert.That(sparkMesh.vertexCount, Is.EqualTo(64));
+                Assert.That(sparkMesh.bounds.size.x, Is.LessThan(1.5f), "The success burst stays local to the shield.");
+                float firstFlash = (float)successUntil.GetValue(motion) - .05f;
+                successUntil.SetValue(motion, firstFlash);
+                motion.PlayParry(true, .25f);
+                Assert.That((float)successUntil.GetValue(motion), Is.EqualTo(firstFlash));
+                Assert.That((float)windowUntil.GetValue(motion), Is.Zero);
+                Assert.That((float)hitUntil.GetValue(motion), Is.Zero, "A parry event does not invent an HP hit.");
+                motion.PlayHit();
+                float realHit = (float)hitUntil.GetValue(motion);
+                motion.PlayParry(true, .25f);
+                Assert.That((float)hitUntil.GetValue(motion), Is.EqualTo(realHit), "A real second hit in the same tick remains visible.");
+                Assert.That((float)attackUntil.GetValue(motion), Is.EqualTo(attackDeadline));
+                motion.ClearParry();
+                Assert.That((float)successUntil.GetValue(motion), Is.Zero);
+                Assert.That((float)attackUntil.GetValue(motion), Is.EqualTo(attackDeadline));
+                Assert.That(sparks.enabled, Is.False);
+                motion.PlayParry(false, .25f);
+                lateUpdate.Invoke(motion, null);
+                Assert.That(sparks.enabled, Is.False, "A later Begin cannot reuse a previous success as a fake result.");
+                motion.PlayParry(true, .25f);
+                lateUpdate.Invoke(motion, null);
+                Assert.That(sparks.GetComponent<MeshFilter>().sharedMesh, Is.SameAs(sparkMesh), "Repeated success reuses the cached mesh.");
+                successUntil.SetValue(motion, Time.unscaledTime - .01f);
+                lateUpdate.Invoke(motion, null);
+                Assert.That(sparks.enabled, Is.False, "The short spark afterglow expires independently of the protection window.");
+                Assert.That(actor.transform.position, Is.EqualTo(authorityPosition));
+                Assert.That(actor.transform.rotation, Is.EqualTo(authorityRotation));
+                motion.SetDowned(true);
+                Assert.That(sparks.enabled, Is.False);
+            }
+            finally { Object.DestroyImmediate(actor); }
+        }
+
+        [Test]
+        public void HitReactionUsesCurrentFacingAndRecoversWithoutChangingAuthorityOrAttackTime()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Client/Art/Actors/ObservedPlayer.prefab");
+            Assert.That(prefab, Is.Not.Null);
+            var actor = Object.Instantiate(prefab);
+            try
+            {
+                var motion = actor.AddComponent<ActorMotion>();
+                motion.Configure();
+                motion.PlayAttack(37.5f, false, 2, 1f);
+                var flags = BindingFlags.Instance | BindingFlags.NonPublic;
+                var visual = (Transform)typeof(ActorMotion).GetField("visual", flags).GetValue(motion);
+                var hitUntil = typeof(ActorMotion).GetField("hitUntil", flags);
+                var lateUpdate = typeof(ActorMotion).GetMethod("LateUpdate", flags);
+                float attackUntil = (float)typeof(ActorMotion).GetField("attackUntil", flags).GetValue(motion);
+                Vector3 rest = visual.localPosition;
+                Vector3 authority = actor.transform.position;
+                Quaternion rotation = actor.transform.rotation;
+                motion.PlayHit();
+                hitUntil.SetValue(motion, Time.unscaledTime + .28f * .82f);
+                lateUpdate.Invoke(motion, null);
+                Vector3 recoil = Vector3.ProjectOnPlane(visual.localPosition - rest, Vector3.up);
+                Assert.That(recoil.magnitude, Is.GreaterThan(.04f));
+                Vector3 expectedRecoil = Quaternion.Euler(0, 217.5f, 0) * Vector3.forward;
+                Assert.That(Vector3.Dot(recoil.normalized, expectedRecoil), Is.GreaterThan(.999f));
+                hitUntil.SetValue(motion, Time.unscaledTime + .28f * .35f);
+                lateUpdate.Invoke(motion, null);
+                Assert.That(Vector3.ProjectOnPlane(visual.localPosition - rest, Vector3.up).magnitude, Is.LessThan(recoil.magnitude));
+                hitUntil.SetValue(motion, Time.unscaledTime - .01f);
+                lateUpdate.Invoke(motion, null);
+                Assert.That(visual.localPosition, Is.EqualTo(rest));
+                Assert.That(actor.transform.position, Is.EqualTo(authority));
+                Assert.That(actor.transform.rotation, Is.EqualTo(rotation));
+                Assert.That((float)typeof(ActorMotion).GetField("attackUntil", flags).GetValue(motion), Is.EqualTo(attackUntil));
+            }
+            finally { Object.DestroyImmediate(actor); }
+        }
+
+        [Test]
+        public void AcceptedFreeAimKeepsItsFacingWhileMovementIntentAndCorrectionContinue()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Client/Art/Actors/ObservedPlayer.prefab");
+            Assert.That(prefab, Is.Not.Null);
+            var actor = Object.Instantiate(prefab);
+            try
+            {
+                var motion = actor.AddComponent<ActorMotion>();
+                motion.Configure();
+                motion.PlayAttack(37.5f, false, 2, 1f);
+                motion.SetMovementIntent(Vector2.right);
+                actor.transform.position += Vector3.left * .1f;
+                typeof(ActorMotion).GetMethod("LateUpdate", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(motion, null);
+                var facingField = typeof(ActorMotion).GetField("facing", BindingFlags.Instance | BindingFlags.NonPublic);
+                Quaternion facing = (Quaternion)facingField.GetValue(motion);
+                Assert.That(Quaternion.Angle(facing, Quaternion.Euler(0, 217.5f, 0)), Is.LessThan(.001f),
+                    "Accepted attack facing owns the authored -Z mesh throughout the charge.");
+                foreach (float invalid in new[] { float.NaN, float.PositiveInfinity, -1f, 360f })
+                {
+                    motion.PlayAttack(invalid, true);
+                    Assert.That(Quaternion.Angle((Quaternion)facingField.GetValue(motion), facing), Is.LessThan(.001f));
+                }
+            }
+            finally { Object.DestroyImmediate(actor); }
+        }
+
         [UnityTest]
         [Category("PlayFeedbackRevision")]
         public IEnumerator KnightSkillSlotsHaveDistinctChargeCutAndRecoveryPosesWithoutMovingAuthority()

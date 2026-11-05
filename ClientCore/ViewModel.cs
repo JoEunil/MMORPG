@@ -59,6 +59,8 @@ namespace ClientCore
         private PacketHelper.MonsterFullField[] _bootstrapMonsters;
         private volatile bool _awaitingZoneAck;
         private bool _inventoryPending;
+        private ulong _parryRequestID, _parryPending;
+        private long _parryDeadline;
         private ulong _itemUseRequestID;
         private ulong _itemUsePending;
         private uint _itemUsePendingItemID;
@@ -69,6 +71,7 @@ namespace ClientCore
         private enum BazaarRequestKind { None, Search, MyList, Register, Claim, Buy, CheckOutbox, CancelListing }
         private BazaarRequestKind _bazaarPendingKind;
         private ulong _bazaarPendingListingID;
+        private bool _walletRefreshAfterReward;
         private uint _walletRequestID;
         private uint _walletPending;
         private ulong _walletGeneration;
@@ -86,7 +89,9 @@ namespace ClientCore
         public event Action<byte, ulong, string, string> OnChatReceived;
         public event Action<bool> OnInventoryReceived;
         public event Action<ulong, ulong, uint, byte, ushort, uint> OnItemUseReceived;
+        public event Action<ulong, ulong, byte, uint, uint> OnParryReceived;
         public event Action<uint, ushort, ushort, byte> OnItemRewardReceived;
+        public event Action<byte> OnGoldRewardReceived;
         public event Action<bool> OnBazaarReceived;
         public event Action<byte> OnBazaarRegisterReceived;
         public event Action<byte, ulong, byte, ulong> OnWalletReceived;
@@ -151,8 +156,11 @@ namespace ClientCore
             {
                 if (_lifetime.IsCancellationRequested) return;
                 _lifetime.Cancel();
+                _walletRefreshAfterReward = false;
                 _inventoryPending = false;
                 _itemUsePending = 0;
+                _parryPending = 0;
+                _parryDeadline = 0;
                 _worldReady = false;
                 _respawnPending = false;
                 _zonePending = false;
@@ -197,6 +205,8 @@ namespace ClientCore
                 _zonePending = true;
                 CancelWalletLocked();
                 _itemUsePending = 0;
+                _parryPending = 0;
+                _parryDeadline = 0;
                 CancelBazaar();
                 _awaitingZoneAck = true;
                 _worldReady = false;
@@ -228,6 +238,8 @@ namespace ClientCore
                         return false;
                     _respawnPending = true;
                     _itemUsePending = 0;
+                    _parryPending = 0;
+                    _parryDeadline = 0;
                     _zonePending = true;
                     _awaitingZoneAck = true;
                     _worldReady = false;
@@ -252,7 +264,7 @@ namespace ClientCore
         public void SendUpdate()
         {
             QueueExpiredEconomyRequests();
-            (bool, byte, float, float, byte, ulong) res;
+            (bool, byte, float, float, byte, ulong, float) res;
             ulong resyncEpoch = 0;
             lock (_sessionGate)
             {
@@ -279,7 +291,7 @@ namespace ClientCore
             // Do not hold the session lock across socket I/O: receive callbacks also use it.
             if (!res.Item1 || _lifetime.IsCancellationRequested || _connectionFailed || !_worldReady) return;
             if (res.Item6 == 0) return;
-            try { _network.Action(res.Item2, res.Item3, res.Item4, res.Item5, res.Item6); }
+            try { _network.Action(res.Item2, res.Item3, res.Item4, res.Item5, res.Item6, res.Item7); }
             catch (Exception) { Error("Movement request failed."); }
         }
 
@@ -546,11 +558,15 @@ namespace ClientCore
         private void QueueExpiredEconomyRequests()
         {
             uint registerRequestID = 0, walletRequestID = 0;
+            ulong parryRequestID = 0, parryEpoch = 0;
             ulong walletGeneration = 0;
             long now = Stopwatch.GetTimestamp();
             lock (_sessionGate)
             {
                 if (_lifetime.IsCancellationRequested || _connectionFailed) return;
+                if (_parryPending != 0 && _parryDeadline != 0 && now >= _parryDeadline) {
+                    parryRequestID = _parryPending; parryEpoch = _ownershipEpoch; _parryDeadline = 0;
+                }
                 if (_bazaarPendingKind == BazaarRequestKind.Register && _bazaarPendingDeadline != 0 &&
                     now >= _bazaarPendingDeadline && !_bazaarTimeoutPosted)
                 {
@@ -564,10 +580,23 @@ namespace ClientCore
                     walletGeneration = _walletGeneration;
                 }
             }
+            if (parryRequestID != 0) _threadDispatcher.Post(() => ParryTimedOut(parryRequestID, parryEpoch));
             if (registerRequestID != 0)
                 _threadDispatcher.Post(() => BazaarRegisterTimedOut(registerRequestID));
             if (walletRequestID != 0)
                 _threadDispatcher.Post(() => WalletTimedOut(walletRequestID, walletGeneration));
+        }
+
+        private void ParryTimedOut(ulong requestID, ulong epoch)
+        {
+            lock (_sessionGate)
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady ||
+                    requestID != _parryPending || epoch != _ownershipEpoch) return;
+                _parryPending = 0;
+                _parryDeadline = 0;
+            }
+            OnParryReceived?.Invoke(requestID, epoch, Packet.PARRY_TIMEOUT_STATUS, 0, 0);
         }
 
         private void BazaarRegisterTimedOut(uint requestID)
@@ -599,6 +628,7 @@ namespace ClientCore
                 CancelWalletLocked();
             }
             OnWalletReceived?.Invoke(goldStatus, gold, diamondStatus, diamond);
+            RefreshRewardWallet();
         }
 
         public void BazaarReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows)
@@ -678,6 +708,7 @@ namespace ClientCore
                     CancelWalletLocked();
                 }
                 OnWalletReceived?.Invoke(goldStatus, goldAmount, diamondStatus, diamondAmount);
+                RefreshRewardWallet();
             });
         }
 
@@ -771,6 +802,42 @@ namespace ClientCore
             });
         }
 
+        public bool RequestParry()
+        {
+            ulong requestID, epoch;
+            lock (_sessionGate)
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || _zonePending || _awaitingZoneAck ||
+                    _ownershipEpoch == 0 || _selfHP <= 0 || _parryPending != 0 || _parryRequestID == ulong.MaxValue) return false;
+                requestID = _parryPending = ++_parryRequestID;
+                epoch = _ownershipEpoch;
+                _parryDeadline = Stopwatch.GetTimestamp() + 3 * Stopwatch.Frequency;
+            }
+            try { _network.RequestParry(requestID, epoch); }
+            catch {
+                lock (_sessionGate) if (_parryPending == requestID) { _parryPending = 0; _parryDeadline = 0; }
+                throw;
+            }
+            return true;
+        }
+
+        public void ParryReceived(ulong requestID, ulong ownershipEpoch, byte status, uint windowRemainingTicks, uint cooldownRemainingTicks)
+        {
+            if (requestID == 0 || ownershipEpoch == 0 || status > 6 || windowRemainingTicks > cooldownRemainingTicks ||
+                (status != 1 && status != 2 && (windowRemainingTicks != 0 || cooldownRemainingTicks != 0))) return;
+            _threadDispatcher.Post(() =>
+            {
+                lock (_sessionGate)
+                {
+                    if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady ||
+                        requestID != _parryPending || ownershipEpoch != _ownershipEpoch) return;
+                    _parryPending = 0;
+                    _parryDeadline = 0;
+                }
+                OnParryReceived?.Invoke(requestID, ownershipEpoch, status, windowRemainingTicks, cooldownRemainingTicks);
+            });
+        }
+
         public bool RequestItemUse(uint itemID)
         {
             ulong requestID, ownershipEpoch;
@@ -811,6 +878,31 @@ namespace ClientCore
                 }
                 OnItemUseReceived?.Invoke(requestID, ownershipEpoch, itemID, status, remainingQuantity, cooldownRemainingTicks);
             });
+        }
+
+        public void GoldRewardReceived(byte status)
+        {
+            if (status > 1) return;
+            _threadDispatcher.Post(() =>
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed) return;
+                OnGoldRewardReceived?.Invoke(status);
+                if (status != 1) return;
+                _walletRefreshAfterReward = true;
+                RefreshRewardWallet();
+            });
+        }
+
+        private void RefreshRewardWallet()
+        {
+            lock (_sessionGate)
+            {
+                if (!_walletRefreshAfterReward || _lifetime.IsCancellationRequested || _connectionFailed ||
+                    !_worldReady || _walletPending != 0) return;
+                _walletRefreshAfterReward = false;
+            }
+            try { RequestWallet(); }
+            catch (Exception ex) { _logger.Log("Reward wallet refresh failed; no automatic retry: " + ex.Message); }
         }
 
         public void ItemRewardReceived(uint itemID, ushort grantedQuantity, ushort remainingQuantity, byte status)
@@ -861,6 +953,8 @@ namespace ClientCore
                 {
                     CancelWalletLocked();
                     _itemUsePending = 0;
+                    _parryPending = 0;
+                    _parryDeadline = 0;
                     // Stop new use requests before the dispatcher accepts the new ownership epoch.
                     _awaitingZoneAck = true;
                 }
@@ -1065,6 +1159,7 @@ namespace ClientCore
                     _awaitingZoneAck = false;
                     _worldReady = true;
                 }
+                RefreshRewardWallet();
             });
         }
         public void ActionResultReceived(ushort zoneID, ulong generation, ushort count, PacketHelper.ActionResultField[] actions)
@@ -1089,6 +1184,7 @@ namespace ClientCore
         {
             if (_lifetime.IsCancellationRequested) return;
             _connectionFailed = true;
+            _walletRefreshAfterReward = false;
             lock (_sessionGate)
             {
                 _worldReady = false;
@@ -1098,6 +1194,8 @@ namespace ClientCore
                 _awaitingZoneAck = false;
                 _inventoryPending = false;
                 _itemUsePending = 0;
+                _parryPending = 0;
+                _parryDeadline = 0;
                 CancelWalletLocked();
             }
             CancelBazaar();

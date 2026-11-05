@@ -58,6 +58,7 @@ namespace Core {
             incoming.zoneInternalID = id;
             incoming.lastZone = m_zoneID;
             incoming.dirtyBit = 0;
+            incoming.parryWindowTicks = 0;
             if (incoming.skillSlot.empty()) {
                 incoming.skillSlot = {{0, 0}, {1, 0}, {2, 0}};
             }

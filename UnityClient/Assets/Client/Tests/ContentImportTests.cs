@@ -32,7 +32,9 @@ namespace Mmorpg.Client.Tests
                     ["formatVersion"] = 2,
                     ["skills"] = JArray.FromObject(new[] { content.otherSkills[0], content.ring, content.otherSkills[1], content.otherSkills[2], content.otherSkills[3] }),
                     ["monsters"] = JArray.FromObject(new[] { content.monster0, content.otherMonsters[0], content.otherMonsters[1] }),
-                    ["growth"] = JObject.FromObject(content.growth)
+                    ["growth"] = JObject.FromObject(content.growth),
+                    ["parry"] = JObject.FromObject(content.parry),
+                    ["itemUse"] = JArray.FromObject(content.itemUse)
                 };
                 expected["skills"] = JArray.FromObject(expected["skills"].ToObject<ServerContent.RingSkill[]>());
                 expected["monsters"] = JArray.FromObject(expected["monsters"].ToObject<ServerContent.Monster[]>());
@@ -93,6 +95,16 @@ namespace Mmorpg.Client.Tests
                 {
                     json => json["formatVersion"] = 1,
                     json => json.Remove("growth"),
+                    json => json.Remove("parry"),
+                    json => json.Remove("itemUse"),
+                    json => json["itemUse"][1]["itemID"] = 1,
+                    json => json["itemUse"][1]["mpRecovery"] = 0,
+                    json => json["itemUse"][1]["hpRecovery"] = 1,
+                    json => json["itemUse"][1]["cooldownTicks"] = 0,
+                    json => json["itemUse"][1]["cooldownTicks"] = 41,
+                    json => json["parry"]["windowTicks"] = 0,
+                    json => json["parry"]["cooldownTicks"] = 0,
+                    json => json["parry"]["charges"] = 2,
                     json => json["growth"]["maxLevel"] = 0,
                     json => json["growth"]["maxLevel"] = (int)ushort.MaxValue + 1,
                     json => json["growth"]["levels"][1]["level"] = 1,

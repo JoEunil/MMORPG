@@ -130,6 +130,63 @@ namespace Mmorpg.Client.Tests
             }
         }
 
+        [Test]
+        public void GoldRewardsCoalesceWalletRefreshAndRespectTimeoutTransitionAndDisconnect()
+        {
+            using (var f = new Fixture())
+            {
+                int results = 0;
+                f.Model.OnWalletReceived += (_, __, ___, ____) => results++;
+                f.Model.RequestWallet();
+                uint old = f.Network.WalletIDs[0];
+                f.Model.GoldRewardReceived(1); f.Model.GoldRewardReceived(1); f.Drain();
+                Assert.That(f.Network.WalletIDs.Count, Is.EqualTo(1));
+                f.Model.WalletGoldReceived(old, 1, 10); f.Model.WalletDiamondReceived(old, 1, 0); f.Drain();
+                Assert.That(f.Network.WalletIDs.Count, Is.EqualTo(2));
+                uint current = f.Network.WalletIDs[1];
+                f.Model.WalletGoldReceived(old, 1, 0); f.Model.WalletDiamondReceived(old, 1, 0); f.Drain();
+                Assert.That(results, Is.EqualTo(1));
+                f.Model.GoldRewardReceived(1); f.Drain();
+                var generation = typeof(ViewModel).GetField("_walletGeneration", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(f.Model);
+                typeof(ViewModel).GetMethod("WalletTimedOut", BindingFlags.NonPublic | BindingFlags.Instance).Invoke(f.Model, new object[] { current, generation });
+                Assert.That(f.Network.WalletIDs.Count, Is.EqualTo(3));
+                current = f.Network.WalletIDs[2];
+                f.Model.WalletGoldReceived(current, 1, 30); f.Model.WalletDiamondReceived(current, 1, 0); f.Drain();
+                f.Model.GoldRewardReceived(0); f.Drain();
+                Assert.That(f.Network.WalletIDs.Count, Is.EqualTo(3));
+                WorldTestSession.BeginAutomaticTransition(f.Model, f.Drain);
+                f.Model.GoldRewardReceived(1); f.Drain();
+                Assert.That(f.Network.WalletIDs.Count, Is.EqualTo(3));
+                WorldTestSession.CompleteAutomaticTransition(f.Model, f.Drain);
+                Assert.That(f.Network.WalletIDs.Count, Is.EqualTo(4));
+                f.Model.Error("closed"); f.Model.GoldRewardReceived(1); f.Drain();
+                Assert.That(f.Network.WalletIDs.Count, Is.EqualTo(4));
+            }
+            var frame = new byte[9];
+            BitConverter.GetBytes((ushort)0xabcd).CopyTo(frame, 0);
+            BitConverter.GetBytes(9U).CopyTo(frame, 2); frame[6] = 50; frame[8] = 1;
+            var parse = typeof(Packet).GetMethod("DeserializeGoldReward", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.That(parse.Invoke(null, new object[] { Packet.ExtractHeader(frame), frame }), Is.EqualTo((byte)1));
+            frame[8] = 2;
+            Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(frame), frame }));
+            using (var f = new Fixture())
+            {
+                var handlerType = typeof(ViewModel).Assembly.GetType("ClientCore.Network.Handler");
+                var handler = Activator.CreateInstance(handlerType, true);
+                handlerType.GetMethod("Inject", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(handler, new object[] { f.Model });
+                var handle = handlerType.GetMethod("HandleResponse");
+                var badFlags = (byte[])frame.Clone(); badFlags[8] = 1; badFlags[7] = 1;
+                var badLength = (byte[])frame.Clone(); badLength[8] = 1; BitConverter.GetBytes(10U).CopyTo(badLength, 2);
+                foreach (var malformed in new[] { frame, badFlags, badLength })
+                {
+                    var error = Assert.Throws<TargetInvocationException>(() => handle.Invoke(handler, new object[] { malformed }));
+                    Assert.That(error.InnerException, Is.TypeOf<ArgumentException>(), "Malformed gold rewards must reach the socket disconnect boundary.");
+                }
+                f.Drain();
+                Assert.That(f.Network.WalletIDs, Is.Empty);
+            }
+        }
+
         private static BazaarListing[] Rows() => new[] { new BazaarListing { listingID = 1, sellerCharacterID = 5011, itemID = 1, quantity = 2, price = ulong.MaxValue, registeredAt = ulong.MaxValue } };
         private static byte[] Request(uint id, ushort type, ushort page) => (byte[])typeof(Packet).GetMethod("SerializeBazaarRequest", BindingFlags.NonPublic | BindingFlags.Static).Invoke(null, new object[] { id, type, page });
         private static byte[] WalletFrame(byte opcode, byte status, ulong balance)
@@ -163,11 +220,13 @@ namespace Mmorpg.Client.Tests
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint id, ushort type, ushort page) => IDs.Add(id);
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
-            public void RequestWallet(uint requestID) { }
+            public readonly List<uint> WalletIDs = new List<uint>();
+            public void RequestWallet(uint requestID) => WalletIDs.Add(requestID);
             public Task Connect(string address, int port) => Task.CompletedTask; public void CharacterList() { } public void Enter(ulong id) { }
             public void Chat(string message, byte scope, ulong target) { } public void Profiles(uint[] ids) { } public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
+            public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
             public void RequestInventory() { }
-            public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { } public void Log(string text) { }
+            public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch, float aimAngle) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { } public void Log(string text) { }
         }
     }
 }

@@ -49,4 +49,30 @@ Windows 예약 범위가9999를 포함하면 예약·방화벽 설정을 자동 
 
 2026-11-04 사용자 요청으로 test1은 로컬 보호 정보를 재사용한다. 실제 Windows 사용자의 LocalApplicationData/UnityCoordinator/test1-credential.xml은 DPAPI 보호 파일이다. Git에 복사하거나 내용을 출력하지 않는다. sandbox LOCALAPPDATA로 경로를 추정하지 않는다.
 
-현 도우미: ROOT/UnityClient/Builds/ClientGrowthHUD/verification/netlib65/live/protected-login.cs와 read-protected-login.ps1. 정상 로그인 UI에 입력하며 비밀번호를 명령 인자·파일·로그에 풀어 저장하지 않는다. 도우미 로드는 확인됐지만 자동 인증 성공은 미검증이다. 입력 허용과 대상 창을 확인한 뒤 사용하고 정책 거절을 우회하지 않는다.
+현 도우미: ROOT/UnityClient/Builds/ClientGrowthHUD/verification/netlib65/live/protected-login.cs와 read-protected-login.ps1. 정상 로그인 UI에 입력하며 비밀번호를 명령 인자·파일·로그에 풀어 저장하지 않는다. 2026-11-04 실제 인증·월드 진입은 Computer Use의 정상 입력란 선택·type_text·로그인 클릭으로 확인했다. 보호 reader stdout은 메모리에만 두고 입력한다. 기존 C# 합성 입력 도우미의 완료 반환은 인증 성공 증거가 아니며, 현재 검증한 경로는 native UI 입력이다. 입력 허용과 대상 창을 확인한 뒤 사용하고 정책 거절을 우회하지 않는다.
+
+## 바탕화면 테스트 실행 환경 — 2026-11-04
+
+바탕화면 `MMORPG 테스트 시작.bat`와 `MMORPG 테스트 종료.bat`는 ROOT의 기존 StartGame/StopGame 도우미를 호출한다. 최신 Windows Player·MainServer·로그인 앱의 비밀 제외 소스를 ROOT/UnityClient/Builds/LocalGame/Aim360에 배치했다. 실행 경로는 ROOT/tools/local-game/settings.json에서 관리하며 임시 Git 작업 폴더 삭제에 의존하지 않는다. 로그인 `.env`와 설치된 Node 의존성은 기존 Game/Login에서 읽고 복제하지 않는다.
+
+Unity CLI beta.16의 Windows 독립 빌드와 MainServer 빌드 성공. 현재 refactor의 WaitCloseSignal에 없던 선택형 MMORPG_STOP_FILE 종료 지원만 추가해 기존 도우미와 연결했다. _dupenv_s/RAII로 경로를 읽으며 기존 fatal/q 종료를 유지한다. 최초 getenv MSVC C4996은 같은 위치의 보안 API로 수정, 서버 재빌드 성공. 독립 리뷰 차단0.
+
+시작 BAT에서 게임32536/MainServer2092/Login24832·포트10099/3000 준비 확인 후 종료 BAT로 세 프로세스 정상 종료했다. state.phase=stopped, 종료 후 두 포트 리스너0. 캡처 도구는 다른 게임 화면을 반환해 독립 Player 로그인 화면을 시각 확인했다고 보고하지 않는다. 실제 로그인·플레이 검사는 반복하지 않았다. 기존 실서버 조준 검증과 이번 BAT 수명 검증을 구분한다.
+
+검증 후 동일 로그인 소스를 고정 실행 묶음으로 복사하고 app.js 해시 일치 및 경로 check를 확인했다. 비밀 파일은 복사하지 않았다. MySQL·Redis는 기존 실행 상태를 유지하며 BAT가 시작/종료하지 않는다. 서버 강제 종료나 정책 변경 없음. 상세 로그 Builds/ClientGrowthHUD/verification/desktop-launch 및 LocalGame/Run.
+
+## 창 모드·포인터 — 2026-11-04
+
+다음 BAT 실행부터1280×720 창 모드로 시작한다. ROOT/tools/local-game/settings.json의 ClientArguments(-screen-fullscreen0/-screen-width1280/-screen-height720)를 기존 실행 도우미의 ArgumentList로 전달한다. 변경한 도우미는bin-windowed에별도빌드해이전실행중인프로세스를교체/종료하지않았다. 현재BAT대상은LocalGame/Aim360/Player-Windowed/MMORPG.exe. 설정경로check와dotnetpublish성공, Player독립빌드성공.
+
+UnityAPI로PlayerSettings.fullScreenMode=Windowed/defaultIsNativeResolution=false/1280×720/resizableWindow=true,48px GameCursor.png/hotspot(5,4)/readable Cursor importer를설정하고정본ProjectSettings와.meta에보존했다. 에디터가닫혀있어CLIheadlessPipeline명령으로설정했으며제품코드의매프레임커서매니저는추가하지않았다. 밝은면/어두운외곽선으로바탕대비를높인직접제작도형이고원본SVG를함께보존한다.
+
+빌드·설정근거 Builds/ClientGrowthHUD/verification/windowed-cursor. 포인터는하드웨어커서라게임화면캡처에포함되지않을수있다. 현재단계에서실제OS커서조작감평가나새로그인검사를반복하지않았다. 최종패링묶음의입력검증과구분한다.
+
+## 패링 묶음 실행 — 최신
+
+바탕화면BAT의현재대상은ROOT/UnityClient/Builds/LocalGame/Parry/Player/MMORPG.exe와동일폴더의Server/Login이다. 창모드인자와커서는유지한다. 새Windows빌드·서버해시·Launcher check를확인했으며사용자입력보류때문에이번묶음을기동/로그인하지않았다. 이전BAT시작/종료검증을패링실전검증으로재사용하지않는다.
+
+2026-11-05: 기본 공격 패링 제외 서버는 ROOT/UnityClient/Builds/LocalGame/Parry/Server-SkillOnly/MainServer.exe. Player/Login은 기존Parry묶음유지. 다음BAT시작부터적용하며실행중세션은교체하지않았다. 새서버와필수DLL해시/launcher check확인,실전새정책확인은미실행.
+
+2026-11-05 최신다음기동: ROOT/UnityClient/Builds/LocalGame/ItemsCaster/Player-Fixed/MMORPG.exe + ItemsCaster/Server/MainServer.exe. Login은기존Parry/Login/app.js와보호Game/Login환경재사용. launcher check/서버준비/빌드확인. Windows보안창수동처리대기로현재게임은첫Player이며종료·재시작하지않았다. 실제MP/골드/추종미확인.

@@ -13,6 +13,54 @@ namespace Core {
         && TOWN_SPAWN_Y >= 0 && TOWN_SPAWN_Y <= ZONE_SIZE,
         "Town respawn must remain inside Zone 1.");
 
+    ParryResponseBody StateManager::Parry(uint64_t sessionID, uint16_t routeZoneID, const ParryRequestBody& request) {
+        ParryResponseBody result{request.requestID, request.ownershipEpoch, static_cast<uint8_t>(ParryStatus::Invalid), 0, 0};
+        if (request.requestID == 0 || request.ownershipEpoch == 0) return result;
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock sessionLock(shard.smutex);
+        auto session = shard.sessionMap.find(sessionID);
+        if (session == shard.sessionMap.end() || !session->second.authenticated || !session->second.authCompleted) {
+            result.status = static_cast<uint8_t>(ParryStatus::Unavailable);
+            return result;
+        }
+        if (session->second.zoneID == 0 || session->second.zoneID != routeZoneID || session->second.ownershipEpoch != request.ownershipEpoch) {
+            result.status = static_cast<uint8_t>(ParryStatus::StaleOwnership);
+            return result;
+        }
+        auto* zone = GetZone(routeZoneID);
+        if (!zone) { result.status = static_cast<uint8_t>(ParryStatus::Unavailable); return result; }
+        std::lock_guard zoneLock(zone->m_mutex);
+        auto member = zone->m_sessionToIndex.find(sessionID);
+        if (member == zone->m_sessionToIndex.end()) { result.status = static_cast<uint8_t>(ParryStatus::Unavailable); return result; }
+        auto& character = zone->m_chars[member->second];
+        auto& previous = session->second.lastParry;
+        if (request.requestID < previous.requestID || (request.requestID == previous.requestID && request.ownershipEpoch != previous.ownershipEpoch)) {
+            result.status = static_cast<uint8_t>(ParryStatus::StaleRequest);
+            return result;
+        }
+        if (request.requestID == previous.requestID) {
+            result.status = previous.status;
+        } else {
+            if (character.hp <= 0) result.status = static_cast<uint8_t>(ParryStatus::Dead);
+            else if (character.parryCooldownTicks != 0) result.status = static_cast<uint8_t>(ParryStatus::Cooldown);
+            else {
+                character.parryWindowTicks = Data::parryWindowTicks;
+                character.parryCooldownTicks = Data::parryCooldownTicks;
+                result.status = static_cast<uint8_t>(ParryStatus::Accepted);
+                zone->m_cells[character.cellY][character.cellX].actionResults.push_back({0, character.zoneInternalID, 0,
+                    Data::parrySkillSlot, character.dir, character.x, character.y, Data::parrySkillID, 0,
+                    character.dir == 0 ? 0.0f : character.dir == 1 ? 180.0f : character.dir == 2 ? 270.0f : 90.0f});
+            }
+            previous = result;
+        }
+        // Only successful/cooldown outcomes describe a usable current combat state.
+        if (result.status == static_cast<uint8_t>(ParryStatus::Accepted) || result.status == static_cast<uint8_t>(ParryStatus::Cooldown)) {
+            result.windowRemainingTicks = character.parryWindowTicks;
+            result.cooldownRemainingTicks = character.parryCooldownTicks;
+        }
+        return result;
+    }
+
     ItemUseResponseBody StateManager::UseItem(uint64_t sessionID, const ItemUseRequestBody& request) {
         ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
         if (request.requestID == 0 || request.itemID == 0) return result;
@@ -38,9 +86,9 @@ namespace Core {
         auto& character = zone->m_chars[found->second];
         result.cooldownRemainingTicks = character.potionCooldownTicks;
         const auto item = Data::itemMap.find(request.itemID);
-        if (item == Data::itemMap.end() || item->second.hpRecovery == 0) result.status = 9;
+        if (item == Data::itemMap.end() || (item->second.hpRecovery == 0 && item->second.mpRecovery == 0)) result.status = 9;
         else if (character.hp <= 0) result.status = 2;
-        else if (character.hp >= character.maxHp) result.status = 3;
+        else if (item->second.hpRecovery != 0 ? character.hp >= character.maxHp : character.mp >= character.maxMp) result.status = 3;
         else if (character.potionCooldownTicks != 0) result.status = 4;
         else if (!inventory) result.status = 8;
         else {
@@ -48,10 +96,14 @@ namespace Core {
             result.remainingQuantity = consumed.remainingQuantity;
             switch (consumed.status) {
             case ItemOperationStatus::Success:
-                character.hp = static_cast<int>((std::min)(static_cast<int64_t>(character.maxHp),
-                    static_cast<int64_t>(character.hp) + item->second.hpRecovery));
+                if (item->second.hpRecovery != 0)
+                    character.hp = static_cast<int>((std::min)(static_cast<int64_t>(character.maxHp),
+                        static_cast<int64_t>(character.hp) + item->second.hpRecovery));
+                if (item->second.mpRecovery != 0)
+                    character.mp = static_cast<int>((std::min)(static_cast<int64_t>(character.maxMp),
+                        static_cast<int64_t>(character.mp) + item->second.mpRecovery));
                 character.potionCooldownTicks = item->second.cooldownTicks;
-                character.dirtyBit |= 1;
+                character.dirtyBit |= 3;
                 zone->m_cells[character.cellY][character.cellX].dirtyChar.push_back(character.zoneInternalID);
                 result.status = 1;
                 result.cooldownRemainingTicks = character.potionCooldownTicks;
@@ -65,20 +117,35 @@ namespace Core {
         return result;
     }
 
-    void StateManager::GrantMonsterPotion(const CharacterState& character) {
-        if (!inventory) return;
+    void StateManager::GrantMonsterReward(const CharacterState& character) {
         const auto sessionID = character.sessionID;
-        // Cache owns the operation through DB loading/disconnect; no Zone or Character references escape.
-        inventory->GrantItem(character.characterID, Data::monsterPotionItemID, Data::monsterPotionQuantity,
-            [this, sessionID](ItemOperationResult result) {
-                ItemRewardBody body{Data::monsterPotionItemID, 0, result.remainingQuantity, 3};
-                if (result.status == ItemOperationStatus::Success) {
-                    body.status = 1;
-                    body.grantedQuantity = Data::monsterPotionQuantity;
-                } else if (result.status == ItemOperationStatus::Full) body.status = 2;
-                auto packet = ZoneState::writer->WriteItemReward(body);
-                if (packet) iocp->SendDataUnique(sessionID, std::move(packet));
-            });
+        Message deposit(sizeof(MsgStruct<MsgCurrencyDepositBody>));
+        auto* message = reinterpret_cast<MsgStruct<MsgCurrencyDepositBody>*>(deposit.GetBuffer());
+        message->header = {sessionID, MSG_CURRENCY_DEPOSIT};
+        message->body = {character.characterID, Data::monsterGoldReward};
+        deposit.SetLength(sizeof(*message));
+        if (!mq->EnqueueMessage(&deposit)) {
+            errorLogger->LogError("monster reward", "gold deposit queue rejected", "characterID", character.characterID);
+            auto packet = ZoneState::writer->WriteGoldReward(0);
+            if (packet) iocp->SendDataUnique(sessionID, std::move(packet));
+        }
+        if (!inventory) return;
+        const auto characterID = character.characterID;
+        for (const auto itemID : {Data::monsterPotionItemID, Data::monsterManaPotionItemID}) {
+            // Cache owns the operation through DB loading/disconnect; no Zone or Character references escape.
+            inventory->GrantItem(characterID, itemID, Data::monsterPotionQuantity,
+                [this, sessionID, characterID, itemID](ItemOperationResult result) {
+                    if (result.status != ItemOperationStatus::Success)
+                        errorLogger->LogWarn("monster reward", "item grant failed", "characterID", characterID, "itemID", itemID, "status", result.status);
+                    ItemRewardBody body{itemID, 0, result.remainingQuantity, 3};
+                    if (result.status == ItemOperationStatus::Success) {
+                        body.status = 1;
+                        body.grantedQuantity = Data::monsterPotionQuantity;
+                    } else if (result.status == ItemOperationStatus::Full) body.status = 2;
+                    auto packet = ZoneState::writer->WriteItemReward(body);
+                    if (packet) iocp->SendDataUnique(sessionID, std::move(packet));
+                });
+        }
     }
 
     bool StateManager::ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result) {
@@ -240,6 +307,7 @@ namespace Core {
             clearPlayerEffects(*town, internalID);
             const bool movedCell = character.cellX != newCellX || character.cellY != newCellY;
             if (movedCell) town->RemoveFromCell(character);
+            character.parryWindowTicks = 0;
             character.hp = character.maxHp;
             character.mp = character.maxMp;
             character.x = TOWN_SPAWN_X;
@@ -304,6 +372,7 @@ namespace Core {
 
     bool StateManager::ProcessAction(uint64_t sessionID, uint16_t routeZoneID, const ActionRequestBody& action, ZoneChangeResult& transition) {
         transition = {};
+        if (!std::isfinite(action.aimAngle) || action.aimAngle < 0 || action.aimAngle >= 360) return false;
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock sessionLock(shard.smutex);
         auto session = shard.sessionMap.find(sessionID);
@@ -394,12 +463,12 @@ namespace Core {
                 chat->EnqueueZoneJoin(sessionID, static_cast<uint16_t>(destinationID));
                 secondLock.unlock();
                 firstLock.unlock();
-                destination->Skill(sessionID, action.skillSlot);
+                destination->Skill(sessionID, action.skillSlot, action.aimAngle);
                 destination->DirtyCheck(sessionID);
                 return true;
             }
         }
-        zone->Skill(sessionID, action.skillSlot);
+        zone->Skill(sessionID, action.skillSlot, action.aimAngle);
         zone->DirtyCheck(sessionID);
         return true;
     }

@@ -63,6 +63,9 @@ namespace ClientCore.PacketHelper
         ITEM_USE = 45,
         ITEM_USE_RES = 46,
         ITEM_REWARD = 47,
+        PARRY = 48,
+        PARRY_RES = 49,
+        GOLD_REWARD = 50,
     }
     
     public enum ZONE_CHANGE : byte
@@ -280,6 +283,7 @@ namespace ClientCore.PacketHelper
         public float x, y;    // 이동 후 최종 좌표(절대). 서버가 경과 시간 대비 이동량을 검증한다.
         public byte skillSlot;
         public ulong ownershipEpoch;
+        public float aimAngle;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -292,6 +296,7 @@ namespace ClientCore.PacketHelper
         public float x, y;
         public uint skillId;
         public ushort skillPhase;
+        public float aimAngle;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -405,6 +410,9 @@ namespace ClientCore.PacketHelper
     }
     public class Packet
     {
+        public const byte PARRY_SKILL_SLOT = 254;
+        public const uint PARRY_SKILL_ID = uint.MaxValue;
+        public const byte PARRY_TIMEOUT_STATUS = byte.MaxValue; // Local callback only; never accepted from the wire.
         private static readonly UTF8Encoding StrictUtf8 = new UTF8Encoding(false, true);
         
         private static T ByteArrayToStructure<T>(byte[] bytes) where T : struct
@@ -705,6 +713,33 @@ namespace ClientCore.PacketHelper
             return (requestID, status);
         }
 
+        internal static byte[] SerializeParryRequest(ulong requestID, ulong ownershipEpoch)
+        {
+            if (requestID == 0 || ownershipEpoch == 0) throw new ArgumentException("Invalid parry request.");
+            var result = new byte[24];
+            BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
+            BitConverter.GetBytes(24U).CopyTo(result, 2);
+            result[6] = (byte)OP_CODE.PARRY;
+            result[7] = FLAG_SIMULATION;
+            BitConverter.GetBytes(requestID).CopyTo(result, 8);
+            BitConverter.GetBytes(ownershipEpoch).CopyTo(result, 16);
+            return result;
+        }
+
+        internal static (ulong requestID, ulong ownershipEpoch, byte status, uint windowRemainingTicks, uint cooldownRemainingTicks)
+            DeserializeParry(PacketHeader header, byte[] buffer)
+        {
+            if (buffer == null || buffer.Length != 33 || header.magic != MAGIC || header.length != 33 ||
+                header.opcode != (byte)OP_CODE.PARRY_RES || header.flags != FLAG_SIMULATION)
+                throw new ArgumentException("Invalid parry response.");
+            ulong requestID = BitConverter.ToUInt64(buffer, 8), epoch = BitConverter.ToUInt64(buffer, 16);
+            byte status = buffer[24];
+            uint window = BitConverter.ToUInt32(buffer, 25), cooldown = BitConverter.ToUInt32(buffer, 29);
+            if (requestID == 0 || epoch == 0 || status > 6 || window > cooldown || (status != 1 && status != 2 && (window != 0 || cooldown != 0)))
+                throw new ArgumentException("Invalid parry result.");
+            return (requestID, epoch, status, window, cooldown);
+        }
+
         internal static byte[] SerializeItemUseRequest(ulong requestID, ulong ownershipEpoch, uint itemID)
         {
             if (requestID == 0 || ownershipEpoch == 0 || itemID == 0)
@@ -746,6 +781,13 @@ namespace ClientCore.PacketHelper
                 (status == 1 ? grantedQuantity == 0 || remainingQuantity < grantedQuantity : grantedQuantity != 0))
                 throw new ArgumentException("Invalid item reward result.");
             return (itemID, grantedQuantity, remainingQuantity, status);
+        }
+
+        internal static byte DeserializeGoldReward(PacketHeader header, byte[] buffer)
+        {
+            if (!HasExactResponse(header, buffer, OP_CODE.GOLD_REWARD, 9) || buffer[8] > 1)
+                throw new ArgumentException("Invalid gold reward notification.");
+            return buffer[8];
         }
 
         internal static byte[] SerializeWalletRequest(uint requestID)
@@ -1007,6 +1049,10 @@ namespace ClientCore.PacketHelper
                 offset += itemSize;
             }
 
+            if (typeof(T) == typeof(ActionResultField))
+                foreach (var action in (ActionResultField[])(object)items)
+                    if (float.IsNaN(action.aimAngle) || float.IsInfinity(action.aimAngle) || action.aimAngle < 0 || action.aimAngle >= 360)
+                        throw new ArgumentException("Invalid skill aim angle.");
             return (count, zoneID, generation, items);
         }
 

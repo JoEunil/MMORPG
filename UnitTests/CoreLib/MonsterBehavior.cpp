@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <set>
+#include <limits>
 
 namespace Core {
     class MonsterBehaviorFixture {
@@ -25,6 +26,28 @@ namespace Core {
             zone.m_chars.push_back(character);
         }
 
+        void AddCaster(const CharacterState& character) {
+            AddCharacter(character);
+            zone.m_sessionToIndex.emplace(character.sessionID, static_cast<uint16_t>(zone.m_chars.size() - 1));
+            zone.m_cells[character.cellY][character.cellX].charSessions.push_back(character.sessionID);
+        }
+        void AdvancePhaseAt(int x, int y) {
+            CorePerfCollector perf{};
+            struct RestorePerf {
+                CorePerfCollector*& current;
+                CorePerfCollector* previous;
+                ~RestorePerf() { current = previous; }
+            } restore{ZoneState::perfCollector, ZoneState::perfCollector};
+            ZoneState::perfCollector = &perf;
+            auto& cell = zone.m_cells[y][x];
+            const auto& active = cell.activeSkills[0];
+            cell.activeSkills[0].currentTick = Data::skillList[active.skillId].phases[active.currentPhase].tick;
+            zone.ProcessCellActiveSkills(cell);
+        }
+        void QueueMonsterHit(uint16_t index, uint16_t skillID = 0) {
+            const auto& monster = zone.m_monsters[index];
+            zone.m_cells[2][2].activeSkills.push_back({1, 0, 0, index, 0, 0, monster.x, monster.y, skillID, 1, Data::skillList[skillID].phases[1].tick, 0});
+        }
         MonsterState& MonsterAt(size_t index) { return zone.m_monsters[index]; }
         CharacterState& CharacterAt(size_t index) { return zone.m_chars[index]; }
         size_t ActiveSkillCount() const { return zone.m_cells[2][2].activeSkills.size(); }
@@ -509,5 +532,115 @@ namespace Core {
         EXPECT_EQ(skillOne.skillId, 1u);
         EXPECT_FLOAT_EQ(skillOne.x, rangeFixture.MonsterAt(1).x);
         EXPECT_FLOAT_EQ(skillOne.y, rangeFixture.MonsterAt(1).y);
+    }
+
+    TEST(PlayerSkillAim, CapturesAngleAndRejectsInvalidBeforeSpendingMana) {
+        MonsterBehaviorFixture fixture;
+        CharacterState caster{};
+        caster.sessionID = 91;
+        caster.zoneInternalID = 701;
+        caster.hp = caster.mp = 10000;
+        caster.attack = 1;
+        caster.skillSlotCnt = 3;
+        caster.skillSlot = {{0, 0}, {1, 0}, {2, 0}};
+        caster.cellX = caster.cellY = 2;
+        caster.x = fixture.HomeX();
+        caster.y = fixture.HomeY();
+        fixture.AddCaster(caster);
+        const auto before = fixture.CharacterAt(0).mp;
+        for (const float angle : { -1.0f, 360.0f, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN() })
+            fixture.zone.Skill(91, 2, angle);
+        EXPECT_EQ(fixture.CharacterAt(0).mp, before);
+        EXPECT_EQ(fixture.ActiveSkillCount(), 0u);
+        fixture.zone.Skill(91, 2, 37.5f);
+        ASSERT_EQ(fixture.ActiveSkillCount(), 1u);
+        EXPECT_EQ(fixture.CharacterAt(0).mp, before - Data::skillList[2].mana);
+        EXPECT_FLOAT_EQ(fixture.CellAt(2, 2).activeSkills[0].aimAngle, 37.5f);
+        fixture.CharacterAt(0).dir = 2;
+        fixture.CharacterAt(0).x += 0.5f;
+        // Resolve only the charging phase; facing changes cannot redirect an existing cast.
+        ASSERT_EQ(Data::skillList[2].phases[0].actionID, 0u);
+        fixture.AdvancePhaseAt(2, 2);
+        EXPECT_FLOAT_EQ(fixture.CellAt(2, 2).activeSkills[0].aimAngle, 37.5f);
+        ASSERT_EQ(fixture.CellAt(2, 2).actionResults.size(), 1u);
+        EXPECT_FLOAT_EQ(fixture.CellAt(2, 2).actionResults[0].aimAngle, 37.5f);
+        EXPECT_FLOAT_EQ(fixture.CellAt(2, 2).actionResults[0].x, fixture.CharacterAt(0).x);
+        EXPECT_EQ(fixture.CharacterAt(0).dir, 2);
+
+        const float radians = 37.5f * 3.14159265358979323846f / 180.0f;
+        const float fx = std::sin(radians), fy = std::cos(radians);
+        MonsterState inside{};
+        inside.hp = 10000;
+        inside.cellX = inside.cellY = 2;
+        inside.x = fixture.CharacterAt(0).x + fx * 6;
+        inside.y = fixture.CharacterAt(0).y + fy * 6;
+        fixture.AddMonster(inside);
+        MonsterState outside = inside;
+        outside.x += fy * 3;
+        outside.y -= fx * 3;
+        fixture.AddMonster(outside);
+        fixture.AdvancePhaseAt(2, 2);
+        EXPECT_EQ(fixture.MonsterAt(0).hp, 10000 - Data::skillList[2].phases[1].attack);
+        EXPECT_EQ(fixture.MonsterAt(1).hp, 10000);
+        EXPECT_EQ(fixture.ActiveSkillCount(), 0u);
+        ASSERT_EQ(fixture.CellAt(2, 2).actionResults.size(), 2u);
+        EXPECT_FLOAT_EQ(fixture.CellAt(2, 2).actionResults[1].aimAngle, 37.5f);
+        EXPECT_FLOAT_EQ(fixture.CellAt(2, 2).actionResults[1].x, fixture.CharacterAt(0).x);
+    }
+
+    TEST(ParryCombat, OneChargeBlocksOnePositiveHitAndExpiresAtFiveTicks) {
+        MonsterBehaviorFixture fixture;
+        CharacterState player{};
+        player.sessionID = 91;
+        player.zoneInternalID = 701;
+        player.hp = player.maxHp = 10000;
+        player.cellX = player.cellY = 2;
+        player.x = fixture.HomeX(); player.y = fixture.HomeY();
+        player.parryWindowTicks = Data::parryWindowTicks;
+        player.parryCooldownTicks = Data::parryCooldownTicks;
+        fixture.AddCaster(player);
+        MonsterState monster{};
+        monster.Initialize(0, 0, player.x, player.y, 2, 2);
+        monster.hp = 10000;
+        fixture.AddMonster(monster);
+        // A basic attack damages normally and leaves the charge for a telegraphed skill.
+        fixture.QueueMonsterHit(0);
+        fixture.AdvancePhaseAt(2, 2);
+        const int basicDamage = monster.data->attack * Data::skillList[0].phases[1].attack;
+        EXPECT_EQ(fixture.CharacterAt(0).hp, 10000 - basicDamage);
+        EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 5u);
+        EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 60u);
+        EXPECT_EQ(std::count_if(fixture.CellAt(2, 2).actionResults.begin(), fixture.CellAt(2, 2).actionResults.end(),
+            [](const ActionResult& action) { return action.skilIId == Data::parrySkillID && action.skillPhase == 1; }), 0);
+        fixture.QueueMonsterHit(0, 1);
+        fixture.QueueMonsterHit(0, 1);
+        fixture.AdvancePhaseAt(2, 2);
+        const int damage = monster.data->attack * Data::skillList[1].phases[1].attack;
+        EXPECT_EQ(fixture.CharacterAt(0).hp, 10000 - basicDamage - damage);
+        EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 0u);
+        EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 60u);
+        EXPECT_EQ(std::count_if(fixture.CellAt(2, 2).actionResults.begin(), fixture.CellAt(2, 2).actionResults.end(),
+            [](const ActionResult& action) { return action.skilIId == Data::parrySkillID && action.skillPhase == 1; }), 1);
+
+        auto zeroDamage = *monster.data;
+        zeroDamage.attack = 0;
+        fixture.MonsterAt(0).data = &zeroDamage;
+        fixture.CharacterAt(0).parryWindowTicks = 5;
+        fixture.QueueMonsterHit(0, 1);
+        fixture.AdvancePhaseAt(2, 2);
+        EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 5u);
+        for (int i = 0; i < 4; ++i) fixture.zone.SkillCoolDown();
+        EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 1u);
+        fixture.zone.SkillCoolDown();
+        EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 0u);
+        EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 55u);
+        for (int i = 0; i < 55; ++i) fixture.zone.SkillCoolDown();
+        EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 0u);
+        fixture.CharacterAt(0).hp = 0;
+        fixture.CharacterAt(0).parryWindowTicks = 5;
+        fixture.CharacterAt(0).parryCooldownTicks = 60;
+        fixture.zone.SkillCoolDown();
+        EXPECT_EQ(fixture.CharacterAt(0).parryWindowTicks, 0u);
+        EXPECT_EQ(fixture.CharacterAt(0).parryCooldownTicks, 59u);
     }
 }

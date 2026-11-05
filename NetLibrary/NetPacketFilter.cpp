@@ -46,6 +46,9 @@ namespace Net {
         if (opcode == Core::OP::BAZAAR_MY_LIST
             && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::BazaarMyListRequestBody>)))
             return false;
+        if (opcode == Core::OP::PARRY
+            && (header.flags != Core::FLAG_SIMULATION || packetLen != sizeof(Core::PacketStruct<Core::ParryRequestBody>)))
+            return false;
         if (opcode == Core::OP::ITEM_USE
             && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::ItemUseRequestBody>)))
             return false;

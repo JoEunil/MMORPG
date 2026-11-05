@@ -167,10 +167,11 @@ namespace Mmorpg.Client.Tests
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { } public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
+            public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
             public void RequestInventory() { }
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
             public void RequestWallet(uint requestID) { }
-            public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch) => LastActionEpoch = ownershipEpoch;
+            public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch, float aimAngle) => LastActionEpoch = ownershipEpoch;
             public void Pong(ulong time) { } public void Log(string text) { }
         }
     }
