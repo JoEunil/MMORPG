@@ -72,3 +72,5 @@ Agent최종누적641(신규238/후속403),이번마감추가7회내역은AGENT_U
 최신 실행본 session6d92276f592f46c883486b1a8f5ccfd7은 검증 후 게임·MainServer·Login 모두 정상 종료했다. 다음 BAT는 새 Player-Feedback을 사용하고 이전 Player-Fixed는 복구용으로 보존했다. 근거 focused-retry.json 및 live-wallet-before-mp.jpg/live-after-mp.jpg/live-parry-begin-mp3.jpg. 최신 후보 종합 검수 재요청 후 게시한다.
 
 종합 게시 검수 최종 통과·필수0. Escape 포커스 재검증과 실제 잔액/MP소비/패링발동 근거를 대조했으며, 특수공격 방어 Success는 이번 실전미재현이라고 PR에 명시하는 조건이다. 사이트 생성·내부 링크 검사도 통과했다.
+
+게시: c75b823, PR67 https://github.com/JoEunil/MMORPG/pull/67 (98파일 통합), 사용자 직접 게시 요청으로 진행. Unity Coordinator 앱 U0C9ZRTQ6F8가 기존스레드1793852712.014869에 결과1793867860.792759 발신. 병합·Pages배포는 수행하지 않았다.
