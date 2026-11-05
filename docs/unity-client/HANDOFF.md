@@ -14,6 +14,6 @@ HUNT_BALANCE_PLAN의 구역별 수치·일반/강화/보스 총수0/120/132/144/
 ## 실행·게시 상태
 BAT는 ROOT/UnityClient/Builds/LocalGame/HuntingBalance/Player/MMORPG.exe와 HuntingBalance/Server/MainServer.exe 사용. 이전 ItemsCaster 복구본 보존. 최종세션 c56a38d82f2c42c7a445060ba77ef95d 게임/서버/로그인 정상종료. 입력 배치 종료, 별도 PC조작 없음.
 
-로컬 변경을 한 커밋으로 모으고 HUNTBAL01/r1 PR게시 승인 요청을 Unity Coordinator 앱으로 기존 부모1793873237.268829에 남긴다. 요청 전 push/새PR게시 없음. PR67의 승인을 재사용하지 않는다. 실제 수신자·스레드·현재대기·회신ID·미소비를 대조한 뒤 처리한다.
+구현 후보4e66f7e(42파일)를 로컬 커밋했다. HUNTBAL01/r1 PR게시 승인 요청1793875453.089969를 Unity Coordinator 앱으로 기존 부모1793873237.268829에 발신 완료. 수신기 listening/최근health9.3초/등록스레드 확인. 현재 사용자 회신 대기·미소비, push/새PR게시 없음. 후속 메타데이터 커밋은 구현 후보를 바꾸지 않는다. PR67의 승인을 재사용하지 않는다. 실제 수신자·스레드·현재대기·회신ID·미소비를 대조한 뒤 처리한다.
 
 Agent654(신규243/후속411), 토큰·비용N/A. 상세 history/2026-11-05-hunting-balance/RESULTS.md, 근거 ROOT/UnityClient/Builds/ClientGrowthHUD/verification/hunting-balance/korean-label-final.jpg 및 같은 폴더 검사/빌드 결과. Slack도구 ROOT/UnityClient/Tools/Send-CoordinatorSlack.ps1.
