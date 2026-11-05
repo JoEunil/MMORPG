@@ -12,5 +12,8 @@ namespace Mmorpg.Client
         public int[] regularByCell;
         public int[] strongByCell;
         public int[] zoneDensityPercent;
+        public int[] regularTotals;
+        public int[] strongTotals;
+        public int[] bossCounts;
     }
 }

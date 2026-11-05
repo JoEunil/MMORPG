@@ -100,23 +100,99 @@ namespace Mmorpg.Client.Editor
             if (content.edgeInset < 1 || content.edgeInset > 41)
                 throw new InvalidOperationException("The spawn edge inset must be between 1 and 41.");
 
-            int[] regularCounts = EffectiveCounts(content.regularByCell, content.regularPerCell, "regular");
-            int[] strongCounts = EffectiveCounts(content.strongByCell, content.strongPerCell, "strong");
-            int[] densities = EffectiveZoneDensity(content.zoneDensityPercent);
-            long spawnBudget = 1;
-            for (int i = 0; i < regularCounts.Length; i++)
-                spawnBudget = checked(spawnBudget + regularCounts[i] + (long)strongCounts[i]);
-            if (spawnBudget > ZoneSpawnBudget)
-                throw new InvalidOperationException("The authoring budget is 1000 total spawns across the 24 cells and central boss.");
-
+            bool totals = UsesTotals(content);
+            EffectiveZoneDensity(content.zoneDensityPercent);
+            if (!totals)
+            {
+                int[] regularWeights = EffectiveCounts(content.regularByCell, content.regularPerCell, "regular");
+                int[] strongWeights = EffectiveCounts(content.strongByCell, content.strongPerCell, "strong");
+                long budget = 1; // The shared legacy layout includes one boss in Zones 4 and 6.
+                for (int cell = 0; cell < 25; cell++) budget += (long)regularWeights[cell] + strongWeights[cell];
+                if (budget > ZoneSpawnBudget)
+                    throw new InvalidOperationException("The authoring budget is 1000 total spawns across the 24 cells and the Zone 4/6 central boss.");
+            }
+            int[][] regular = EffectiveZoneCounts(content, false);
+            int[][] strong = EffectiveZoneCounts(content, true);
+            int[] bosses = EffectiveBossCounts(content);
             for (int zone = 0; zone < ZoneCount; zone++)
             {
-                long zoneBudget = zone + 1 == TownZoneId ? 0 : 1;
-                for (int cell = 0; cell < regularCounts.Length; cell++)
-                    zoneBudget = checked(zoneBudget + (long)regularCounts[cell] * densities[zone] / 100 + (long)strongCounts[cell] * densities[zone] / 100);
-                if (zoneBudget > ZoneSpawnBudget)
-                    throw new InvalidOperationException($"Zone {zone + 1} exceeds the 1000 total spawn budget after applying density.");
+                long budget = bosses[zone];
+                for (int cell = 0; cell < 25; cell++) budget += (long)regular[zone][cell] + strong[zone][cell];
+                if (budget > ZoneSpawnBudget)
+                    throw new InvalidOperationException($"Zone {zone + 1} exceeds the 1000 total spawn budget.");
             }
+        }
+
+        private static bool UsesTotals(MonsterSpawns content)
+        {
+            bool configured = content.regularTotals != null && content.regularTotals.Length > 0 ||
+                content.strongTotals != null && content.strongTotals.Length > 0 ||
+                content.bossCounts != null && content.bossCounts.Length > 0;
+            if (!configured) return false;
+            if (content.regularTotals == null || content.regularTotals.Length != ZoneCount ||
+                content.strongTotals == null || content.strongTotals.Length != ZoneCount ||
+                content.bossCounts == null || content.bossCounts.Length != ZoneCount)
+                throw new InvalidOperationException("Regular totals, strong totals and boss counts must each contain exactly 6 values.");
+            for (int zone = 0; zone < ZoneCount; zone++)
+            {
+                if (content.regularTotals[zone] < 0 || content.strongTotals[zone] < 0 || content.bossCounts[zone] < 0 || content.bossCounts[zone] > 1)
+                    throw new InvalidOperationException("Zone totals must be nonnegative; boss counts must be 0 or 1.");
+                if (zone != 3 && zone != 5 && content.bossCounts[zone] != 0)
+                    throw new InvalidOperationException("Bosses are supported only in Zones 4 and 6.");
+                if (zone + 1 == TownZoneId && (content.regularTotals[zone] != 0 || content.strongTotals[zone] != 0 || content.bossCounts[zone] != 0))
+                    throw new InvalidOperationException("Town Zone 1 requires zero regular, strong and boss counts.");
+            }
+            return true;
+        }
+
+        public static int[] EffectiveBossCounts(MonsterSpawns content)
+        {
+            return UsesTotals(content) ? (int[])content.bossCounts.Clone() : new[] { 0, 0, 0, 1, 0, 1 };
+        }
+
+        public static int[][] EffectiveZoneCounts(MonsterSpawns content, bool strong)
+        {
+            bool totals = UsesTotals(content);
+            int[] weights = EffectiveCounts(strong ? content.strongByCell : content.regularByCell,
+                strong ? content.strongPerCell : content.regularPerCell, strong ? "strong" : "regular");
+            int[] densities = totals ? null : EffectiveZoneDensity(content.zoneDensityPercent);
+            long weightSum = 0;
+            foreach (int weight in weights) weightSum += weight;
+            var result = new int[ZoneCount][];
+            for (int zone = 0; zone < ZoneCount; zone++)
+            {
+                result[zone] = new int[25];
+                if (!totals)
+                {
+                    for (int cell = 0; cell < 25; cell++)
+                        result[zone][cell] = checked((int)((long)weights[cell] * densities[zone] / 100));
+                    continue;
+                }
+                int total = strong ? content.strongTotals[zone] : content.regularTotals[zone];
+                if (total == 0) continue;
+                if (weightSum == 0)
+                    throw new InvalidOperationException("A positive zone total requires at least one positive cell weight.");
+                var remainders = new long[25];
+                int assigned = 0;
+                for (int cell = 0; cell < 25; cell++)
+                {
+                    long weighted = (long)total * weights[cell];
+                    result[zone][cell] = (int)(weighted / weightSum);
+                    remainders[cell] = weighted % weightSum;
+                    assigned += result[zone][cell];
+                }
+                // Largest remainder, with lower y-major cell index winning ties.
+                while (assigned < total)
+                {
+                    int best = 0;
+                    for (int cell = 1; cell < 25; cell++)
+                        if (remainders[cell] > remainders[best]) best = cell;
+                    result[zone][best]++;
+                    remainders[best] = -1;
+                    assigned++;
+                }
+            }
+            return result;
         }
 
         public static int[] EffectiveZoneDensity(int[] configured)
@@ -155,7 +231,7 @@ namespace Mmorpg.Client.Editor
                 if (counts[i] < 0)
                     throw new InvalidOperationException("Monster counts per cell cannot be negative.");
             if (counts[12] != 0)
-                throw new InvalidOperationException("The central (2,2) cell is reserved for one boss; regular and strong counts there must be zero.");
+                throw new InvalidOperationException("The central (2,2) cell is reserved for bosses; regular and strong counts there must be zero.");
             return counts;
         }
 
@@ -174,9 +250,21 @@ namespace Mmorpg.Client.Editor
                 "inline constexpr int REGULAR_MONSTERS_BY_CELL[25] = {{{3}}};\n" +
                 "inline constexpr int STRONG_MONSTERS_BY_CELL[25] = {{{4}}};\n" +
                 "inline constexpr int MONSTER_ZONE_DENSITY_PERCENT[6] = {{{5}}};\n" +
+                "inline constexpr int MONSTER_REGULAR_COUNTS[6][25] = {{\n{6}\n}};\n" +
+                "inline constexpr int MONSTER_STRONG_COUNTS[6][25] = {{\n{7}\n}};\n" +
+                "inline constexpr int MONSTER_BOSS_COUNTS[6] = {{{8}}};\n" +
                 "}}\n",
                 content.regularPerCell, content.strongPerCell, content.edgeInset,
-                FormatCounts(regularCounts), FormatCounts(strongCounts), FormatCounts(densities));
+                FormatCounts(regularCounts), FormatCounts(strongCounts), FormatCounts(densities),
+                FormatZoneCounts(EffectiveZoneCounts(content, false)), FormatZoneCounts(EffectiveZoneCounts(content, true)),
+                FormatCounts(EffectiveBossCounts(content)));
+        }
+
+        private static string FormatZoneCounts(int[][] counts)
+        {
+            var rows = new string[counts.Length];
+            for (int zone = 0; zone < counts.Length; zone++) rows[zone] = "    {" + FormatCounts(counts[zone]) + "}";
+            return string.Join(",\n", rows);
         }
 
         private static string FormatCounts(int[] counts)

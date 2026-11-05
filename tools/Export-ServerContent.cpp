@@ -13,6 +13,7 @@
 #include <string>
 #include "SkillData.h"
 #include "MonsterData.h"
+#include "HuntingZoneData.h"
 #include "GrowthData.h"
 #include "ItemData.h"
 
@@ -24,34 +25,57 @@ namespace {
     void Validate() {
         Require(Data::parryWindowTicks > 0 && Data::parryCooldownTicks >= Data::parryWindowTicks && Data::parryCharges == 1,
             "Parry requires one charge and a positive window within its cooldown.");
-        Require(Data::itemMap.at(1).hpRecovery == 3000 && Data::itemMap.at(2).mpRecovery == 3000 &&
-            Data::itemMap.at(1).cooldownTicks == 40 && Data::itemMap.at(2).cooldownTicks == 40,
-            "HP and MP potions require 3000 recovery and a shared 40-tick cooldown.");
-        Require(Data::skillList.size() == 5, "Expected skill IDs 0 through 4.");
-        for (size_t id = 0; id < Data::skillList.size(); ++id) {
-            const auto& skill = Data::skillList[id];
-            Require(skill.skillID == id && (skill.flags & ~3) == 0,
-                "Skill IDs must match array indices and flags must use existing bits.");
-            const size_t expectedPhases = id == 3 ? 4 : id == 4 ? 10 : 2;
-            Require(skill.phases.size() == expectedPhases, "Existing skill phase counts must be retained.");
-            for (size_t i = 0; i < skill.phases.size(); ++i) {
-                const auto& phase = skill.phases[i];
-                const auto range = phase.range.type;
-                Require(phase.actionID == (i & 1) && range <= Data::SkillRangeType::Boss2 &&
-                    std::isfinite(phase.range.range1) && std::isfinite(phase.range.range2) &&
-                    phase.range.range1 >= 0 && phase.range.range2 >= 0,
-                    "Skill phases require existing Charging/Hit order and finite nonnegative ranges.");
-                if (range == Data::SkillRangeType::None) {
-                    Require(phase.range.range1 == 0 && phase.range.range2 == 0 && phase.actionID == 0,
-                        "Empty skill ranges must have zero dimensions and cannot hit.");
-                }
-                else {
-                    Require(phase.range.range1 > 0, "Skill ranges require a positive first dimension.");
-                    if (range == Data::SkillRangeType::Rectangle || range == Data::SkillRangeType::Boss1_1 ||
-                        range == Data::SkillRangeType::Boss1_2)
-                        Require(phase.range.range2 > 0, "This skill range requires a positive second dimension.");
+        Require(Data::itemMap.at(1).hpRecovery == 1500 && Data::itemMap.at(2).mpRecovery == 500 &&
+            Data::itemMap.at(1).cooldownTicks == 120 && Data::itemMap.at(2).cooldownTicks == 120,
+            "HP and MP potions require 1500/500 recovery and a shared 120-tick cooldown.");
+        for (const auto* skills : {&Data::skillList, &Data::monsterSkillList}) {
+            Require(skills->size() == 5, "Expected skill IDs 0 through 4 for each caster type.");
+            for (size_t id = 0; id < skills->size(); ++id) {
+                const auto& skill = (*skills)[id];
+                Require(skill.skillID == id && (skill.flags & ~3) == 0,
+                    "Skill IDs must match array indices and flags must use existing bits.");
+                const size_t expectedPhases = id == 3 ? 4 : id == 4 ? 10 : 2;
+                Require(skill.phases.size() == expectedPhases, "Existing skill phase counts must be retained.");
+                for (size_t i = 0; i < skill.phases.size(); ++i) {
+                    const auto& phase = skill.phases[i];
+                    const auto range = phase.range.type;
+                    Require(phase.actionID == (i & 1) && range <= Data::SkillRangeType::Boss2 &&
+                        std::isfinite(phase.range.range1) && std::isfinite(phase.range.range2) &&
+                        phase.range.range1 >= 0 && phase.range.range2 >= 0,
+                        "Skill phases require existing Charging/Hit order and finite nonnegative ranges.");
+                    if (range == Data::SkillRangeType::None) {
+                        Require(phase.range.range1 == 0 && phase.range.range2 == 0 && phase.actionID == 0,
+                            "Empty skill ranges must have zero dimensions and cannot hit.");
+                    }
+                    else {
+                        Require(phase.range.range1 > 0, "Skill ranges require a positive first dimension.");
+                        if (range == Data::SkillRangeType::Rectangle || range == Data::SkillRangeType::Boss1_1 ||
+                            range == Data::SkillRangeType::Boss1_2)
+                            Require(phase.range.range2 > 0, "This skill range requires a positive second dimension.");
+                    }
                 }
             }
+
+        }
+
+        Require(std::size(Data::huntingZones) == 6, "Expected hunting zone IDs 1 through 6.");
+        for (size_t i = 0; i < std::size(Data::huntingZones); ++i) {
+            const auto& zone = Data::huntingZones[i];
+            Require(zone.zoneID == i + 1 && zone.label[0] != '\0', "Hunting zones require consecutive IDs and labels.");
+            if (i == 0) {
+                Require(zone.minLevel == 0 && zone.maxLevel == 0 && zone.regularHp == 0 && zone.strongHp == 0 &&
+                    zone.bossHp == 0 && zone.regularAttack == 0 && zone.strongAttack == 0 && zone.bossAttack == 0 &&
+                    zone.regularExp == 0 && zone.strongExp == 0 && zone.bossExp == 0 && zone.regularGold == 0 && zone.strongGold == 0,
+                    "Town cannot contain hunting stats.");
+                continue;
+            }
+            Require(zone.minLevel > 0 && zone.maxLevel >= zone.minLevel && zone.regularHp > 0 &&
+                zone.strongHp > zone.regularHp && zone.strongHp <= INT32_MAX && zone.bossHp <= INT32_MAX &&
+                zone.regularAttack > 0 && zone.strongAttack > zone.regularAttack && zone.regularExp > 0 &&
+                zone.strongExp == 3 * zone.regularExp && zone.regularGold > 0 && zone.strongGold == 3 * zone.regularGold,
+                "Hunting stats must be positive and stronger monsters require triple rewards.");
+            Require((zone.zoneID == 4 || zone.zoneID == 6) ? zone.bossHp > 0 && zone.bossAttack > 0 && zone.bossExp > 0 :
+                zone.bossHp == 0 && zone.bossAttack == 0 && zone.bossExp == 0, "Only zones 4 and 6 contain bosses.");
         }
 
         Require(std::size(Data::monsters) == 3, "Expected monster IDs 0 through 2.");
@@ -79,7 +103,7 @@ namespace {
                     (phase.stepCnt & (phase.stepCnt - 1)) == 0,
                     "Monster phase step count must be a power of two from 1 through 16.");
                 for (size_t step = 0; step < phase.stepCnt; ++step)
-                    Require(phase.steps[step].skillID < Data::skillList.size(), "Monster references an unknown skill ID.");
+                    Require(phase.steps[step].skillID < Data::monsterSkillList.size(), "Monster references an unknown skill ID.");
             }
         }
         Require(Data::growthMaxLevel == 100 && std::size(Data::growthLevels) == Data::growthMaxLevel,
@@ -101,20 +125,34 @@ namespace {
         std::ostringstream json;
         json.imbue(std::locale::classic());
         json << std::setprecision(std::numeric_limits<float>::max_digits10);
-        json << "{\n  \"formatVersion\": 2,\n  \"skills\": [\n";
-        for (size_t id = 0; id < Data::skillList.size(); ++id) {
-            const auto& skill = Data::skillList[id];
-            if (id) json << ",\n";
-            json << "    {\"skillID\":" << skill.skillID << ",\"flags\":" << unsigned(skill.flags)
-                << ",\"mana\":" << skill.mana << ",\"cooldownTicks\":" << skill.coolDown << ",\"phases\":[";
-            for (size_t i = 0; i < skill.phases.size(); ++i) {
-                const auto& phase = skill.phases[i];
-                if (i) json << ',';
-                json << "{\"waitTicks\":" << phase.tick << ",\"action\":" << unsigned(phase.actionID)
-                    << ",\"range\":" << unsigned(phase.range.type) << ",\"range1\":" << phase.range.range1
-                    << ",\"range2\":" << phase.range.range2 << ",\"attack\":" << phase.attack << '}';
+        json << "{\n  \"formatVersion\": 3,\n  \"skills\": [\n";
+        for (const auto* skills : {&Data::skillList, &Data::monsterSkillList}) {
+            if (skills == &Data::monsterSkillList) json << "\n  ],\n  \"monsterSkills\": [\n";
+            for (size_t id = 0; id < skills->size(); ++id) {
+                const auto& skill = (*skills)[id];
+                if (id) json << ",\n";
+                json << "    {\"skillID\":" << skill.skillID << ",\"flags\":" << unsigned(skill.flags)
+                    << ",\"mana\":" << skill.mana << ",\"cooldownTicks\":" << skill.coolDown << ",\"phases\":[";
+                for (size_t i = 0; i < skill.phases.size(); ++i) {
+                    const auto& phase = skill.phases[i];
+                    if (i) json << ',';
+                    json << "{\"waitTicks\":" << phase.tick << ",\"action\":" << unsigned(phase.actionID)
+                        << ",\"range\":" << unsigned(phase.range.type) << ",\"range1\":" << phase.range.range1
+                        << ",\"range2\":" << phase.range.range2 << ",\"attack\":" << phase.attack << '}';
+                }
+                json << "]}";
             }
-            json << "]}";
+        }
+        json << "\n  ],\n  \"huntingZones\": [\n";
+        for (size_t i = 0; i < std::size(Data::huntingZones); ++i) {
+            const auto& zone = Data::huntingZones[i];
+            if (i) json << ",\n";
+            json << "    {\"zoneID\":" << zone.zoneID << ",\"label\":\"" << zone.label << "\""
+                << ",\"minLevel\":" << zone.minLevel << ",\"maxLevel\":" << zone.maxLevel
+                << ",\"regularHp\":" << zone.regularHp << ",\"strongHp\":" << zone.strongHp << ",\"bossHp\":" << zone.bossHp
+                << ",\"regularAttack\":" << zone.regularAttack << ",\"strongAttack\":" << zone.strongAttack << ",\"bossAttack\":" << zone.bossAttack
+                << ",\"regularExp\":" << zone.regularExp << ",\"strongExp\":" << zone.strongExp << ",\"bossExp\":" << zone.bossExp
+                << ",\"regularGold\":" << zone.regularGold << ",\"strongGold\":" << zone.strongGold << '}';
         }
         json << "\n  ],\n  \"monsters\": [\n";
         for (size_t id = 0; id < std::size(Data::monsters); ++id) {
@@ -196,7 +234,7 @@ int wmain(int argc, wchar_t* argv[]) {
         Require(argc == 2 && argv[1][0] != L'\0', "Usage: Export-ServerContent.exe <outputPath>");
         Validate();
         WriteAtomically(std::filesystem::absolute(argv[1]), Serialize());
-        std::cout << "Exported 5 skills, 3 monsters, and 100 growth levels.\n";
+        std::cout << "Exported player/monster skills, 6 hunting zones, 3 monsters, and 100 growth levels.\n";
         return 0;
     }
     catch (const std::exception& error) {

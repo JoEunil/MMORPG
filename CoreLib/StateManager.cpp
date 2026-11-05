@@ -117,12 +117,12 @@ namespace Core {
         return result;
     }
 
-    void StateManager::GrantMonsterReward(const CharacterState& character) {
+    void StateManager::GrantMonsterReward(const CharacterState& character, uint64_t gold) {
         const auto sessionID = character.sessionID;
         Message deposit(sizeof(MsgStruct<MsgCurrencyDepositBody>));
         auto* message = reinterpret_cast<MsgStruct<MsgCurrencyDepositBody>*>(deposit.GetBuffer());
         message->header = {sessionID, MSG_CURRENCY_DEPOSIT};
-        message->body = {character.characterID, Data::monsterGoldReward};
+        message->body = {character.characterID, gold};
         deposit.SetLength(sizeof(*message));
         if (!mq->EnqueueMessage(&deposit)) {
             errorLogger->LogError("monster reward", "gold deposit queue rejected", "characterID", character.characterID);

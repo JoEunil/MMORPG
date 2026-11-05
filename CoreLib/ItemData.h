@@ -7,7 +7,6 @@ namespace Data {
     inline constexpr uint32_t monsterPotionItemID = 1;
     inline constexpr uint16_t monsterPotionQuantity = 1;
     inline constexpr uint32_t monsterManaPotionItemID = 2;
-    inline constexpr uint64_t monsterGoldReward = 10;
     struct ItemData {
         uint16_t  itemType;
         const char* name;
@@ -18,8 +17,8 @@ namespace Data {
     };
 
     inline const std::unordered_map<uint32_t, ItemData> itemMap = {
-        { 1, { 1, "HP포션",   5, 3000, 40 } },
-        { 2, { 1, "MP포션",   5, 0, 40, 3000 } },
+        { 1, { 1, "HP포션",   5, 1500, 120 } },
+        { 2, { 1, "MP포션",   5, 0, 120, 500 } },
         { 3, { 2, "철검",   150 } },
         { 4, { 2, "철방패",  200 } },
         { 5, { 3, "가죽갑옷", 80  } },

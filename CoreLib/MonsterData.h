@@ -24,6 +24,7 @@ namespace Data {
 
     struct Reward {
         uint32_t exp = 0;
+        uint64_t gold = 0;
     };
 
     struct MonsterData {

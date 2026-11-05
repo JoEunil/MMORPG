@@ -151,6 +151,7 @@ namespace Mmorpg.Client.Editor
             serialized.FindProperty("disconnectButton").objectReferenceValue = disconnect;
             serialized.FindProperty("entryStatusText").objectReferenceValue = entryStatus;
             serialized.FindProperty("worldStatusText").objectReferenceValue = worldText;
+            serialized.FindProperty("serverContent").objectReferenceValue = AssetDatabase.LoadAssetAtPath<ServerContent>("Assets/Client/Content/ServerContent.asset");
             serialized.FindProperty("selectionPanel").objectReferenceValue = panel;
             serialized.FindProperty("background").objectReferenceValue = GameObject.Find("Background");
             serialized.FindProperty("worldRoot").objectReferenceValue = world;

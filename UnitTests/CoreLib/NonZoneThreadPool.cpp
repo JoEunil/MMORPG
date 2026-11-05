@@ -28,6 +28,7 @@
 #include <CoreLib/StateManager.h>
 #include <CoreLib/ChatThreadPool.h>
 #include <CoreLib/WorldMap.h>
+#include <CoreLib/HuntingZoneData.h>
 #include <CacheLib/BazaarCancelResult.h>
 
 namespace Core {
@@ -37,12 +38,15 @@ namespace Core {
         class PotionInventory final : public IInventoryOperations {
         public:
             unsigned consumed = 0;
+            std::vector<std::pair<uint32_t, uint16_t>> granted;
             ItemOperationStatus outcome = ItemOperationStatus::Success;
             ItemOperationResult ConsumeItem(uint64_t, uint32_t) override {
                 if (outcome == ItemOperationStatus::Success) ++consumed;
                 return {outcome, 4};
             }
-            void GrantItem(uint64_t, uint32_t, uint16_t, std::function<void(ItemOperationResult)>) override { }
+            void GrantItem(uint64_t, uint32_t itemID, uint16_t quantity, std::function<void(ItemOperationResult)>) override {
+                granted.emplace_back(itemID, quantity);
+            }
         };
 
         // Owns the copied callback, never calls the real external auth service.
@@ -1019,10 +1023,10 @@ namespace Core {
         PhaseCell(0).actionResults.clear();
         MovePhaseMonster(0, PhasePlayer(1).x, PhasePlayer(1).y);
         PhaseMonster(0).dir = 1;
-        PhaseCell(0).activeSkills[0].currentTick = Data::skillList[0].phases[1].tick;
+        PhaseCell(0).activeSkills[0].currentTick = Data::monsterSkillList[0].phases[1].tick;
         zone->ApplySkill();
         EXPECT_EQ(PhasePlayer(0).hp, 500);
-        EXPECT_EQ(PhasePlayer(1).hp, 500 - caster.data->attack * Data::skillList[0].phases[1].attack);
+        EXPECT_EQ(PhasePlayer(1).hp, 500 - caster.data->attack * Data::monsterSkillList[0].phases[1].attack);
         EXPECT_TRUE(PhaseCell(0).activeSkills.empty());
         EXPECT_TRUE(PhaseCell(0).actionResults.empty());
         ASSERT_EQ(PhaseCell(2).actionResults.size(), 1u);
@@ -2041,6 +2045,30 @@ namespace Core {
         EXPECT_FALSE(HasLobbyCharacter(42));
     }
 
+    TEST_F(NonZoneThreadPoolFixture, MonsterRewardUsesKilledMonsterGoldInsteadOfCharacterZone) {
+        PrepareZones();
+        ASSERT_TRUE(LoadTransitionCharacter());
+        ZoneChangeResult entry;
+        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, entry));
+        PotionInventory inventory;
+        SetInventory(&inventory);
+        // The recipient stays in town; reward values come from the killed monster's data.
+        for (const auto gold : {Data::GetHuntingMonsterData(3, 0).reward.gold, Data::GetHuntingMonsterData(6, 1).reward.gold}) {
+            state->GrantMonsterReward(CharacterIn(1), gold);
+            auto deposit = loads.TakeRequest();
+            ASSERT_NE(deposit, nullptr);
+            const auto* body = parseMsgBody<MsgCurrencyDepositBody>(deposit->GetBuffer());
+            EXPECT_EQ(body->characterID, CharacterIn(1).characterID);
+            EXPECT_EQ(body->gold, gold);
+        }
+        ASSERT_EQ(inventory.granted.size(), 4u);
+        for (size_t i = 0; i < inventory.granted.size(); ++i) {
+            EXPECT_EQ(inventory.granted[i].first, i % 2 == 0 ? 1u : 2u);
+            EXPECT_EQ(inventory.granted[i].second, 1u);
+        }
+        SetInventory(nullptr);
+    }
+
     TEST_F(NonZoneThreadPoolFixture, ItemUseCommitsOnceAndRejectsWithoutConsumption) {
         PrepareZones();
         ASSERT_TRUE(LoadTransitionCharacter());
@@ -2052,22 +2080,23 @@ namespace Core {
         ItemUseRequestBody request{1, entry.ownershipEpoch, 1};
         auto first = state->UseItem(42, request);
         EXPECT_EQ(first.status, 1);
-        EXPECT_EQ(first.cooldownRemainingTicks, 40);
-        EXPECT_EQ(CharacterIn(1).hp, 8000);
+        EXPECT_EQ(first.cooldownRemainingTicks, 120);
+        EXPECT_EQ(CharacterIn(1).hp, 6500);
         EXPECT_EQ(state->UseItem(42, request).status, 1);
         EXPECT_EQ(inventory.consumed, 1);
         request.itemID = 2;
         EXPECT_EQ(state->UseItem(42, request).status, 0);
         request = {2, entry.ownershipEpoch, 1};
         EXPECT_EQ(state->UseItem(42, request).status, 4);
-        for (int i = 0; i < 40; ++i) state->GetZone(1)->SkillCoolDown();
+        for (int i = 0; i < 120; ++i) state->GetZone(1)->SkillCoolDown();
         request = {3, entry.ownershipEpoch + 1, 1};
         EXPECT_EQ(state->UseItem(42, request).status, 7);
         request.ownershipEpoch = entry.ownershipEpoch;
         inventory.outcome = ItemOperationStatus::StorageFailure;
         EXPECT_EQ(state->UseItem(42, request).status, 8);
-        EXPECT_EQ(CharacterIn(1).hp, 8000);
+        EXPECT_EQ(CharacterIn(1).hp, 6500);
         inventory.outcome = ItemOperationStatus::Success;
+        UpdateCharacter(1, 42, [](CharacterState& c) { c.hp = 9500; });
         request.requestID = 4;
         EXPECT_EQ(state->UseItem(42, request).status, 1);
         EXPECT_EQ(CharacterIn(1).hp, 10000);
@@ -2079,22 +2108,23 @@ namespace Core {
         request.requestID = 1;
         EXPECT_EQ(state->UseItem(42, request).status, 7);
         EXPECT_EQ(inventory.consumed, 2);
-        for (int i = 0; i < 40; ++i) state->GetZone(1)->SkillCoolDown();
+        for (int i = 0; i < 120; ++i) state->GetZone(1)->SkillCoolDown();
         UpdateCharacter(1, 42, [](CharacterState& c) { c.hp = 5000; c.mp = 5000; c.maxMp = 10000; });
         request = {7, entry.ownershipEpoch, 2};
         EXPECT_EQ(state->UseItem(42, request).status, 1);
         EXPECT_EQ(state->UseItem(42, request).status, 1);
-        EXPECT_EQ(CharacterIn(1).mp, 8000);
+        EXPECT_EQ(CharacterIn(1).mp, 5500);
         EXPECT_EQ(CharacterIn(1).hp, 5000);
         EXPECT_EQ(inventory.consumed, 3);
         request = {8, entry.ownershipEpoch, 1};
         EXPECT_EQ(state->UseItem(42, request).status, 4);
-        for (int i = 0; i < 40; ++i) state->GetZone(1)->SkillCoolDown();
+        for (int i = 0; i < 120; ++i) state->GetZone(1)->SkillCoolDown();
         inventory.outcome = ItemOperationStatus::StorageFailure;
         request = {9, entry.ownershipEpoch, 2};
         EXPECT_EQ(state->UseItem(42, request).status, 8);
-        EXPECT_EQ(CharacterIn(1).mp, 8000);
+        EXPECT_EQ(CharacterIn(1).mp, 5500);
         inventory.outcome = ItemOperationStatus::Success;
+        UpdateCharacter(1, 42, [](CharacterState& c) { c.mp = 9800; });
         request.requestID = 10;
         EXPECT_EQ(state->UseItem(42, request).status, 1);
         EXPECT_EQ(CharacterIn(1).mp, 10000);

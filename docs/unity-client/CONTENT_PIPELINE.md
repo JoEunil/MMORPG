@@ -4,12 +4,13 @@
 
 | 대상 | 정본과 방향 | 출력·반영 |
 | --- | --- | --- |
-| 스킬·몬스터 능력/phase | `CoreLib/Skills.inc`, `Monsters.inc` → 실제 C++ Data 테이블 → 독립 exporter → Unity importer | `UnityClient/Exports/ClientData/ServerContent.json`, formatVersion2. 기존 `ServerContent.asset` 갱신. |
+| 스킬·몬스터 능력/phase | `CoreLib/Skills.inc`, `MonsterSkills.inc`, `Monsters.inc` → 실제 C++ Data 테이블 → 독립 exporter → Unity importer | `UnityClient/Exports/ClientData/ServerContent.json`, formatVersion3. `skills`와 `monsterSkills`를 분리하고 기존 `ServerContent.asset` 갱신. |
+| 사냥터 능력·보상 | `CoreLib/HuntingZoneData.h` → 같은 exporter/importer | `huntingZones` 6행. 권장 레벨·HP·공격·EXP·골드를 공유한다. 실제 몬스터 체력바는 기존 wire `maxHp`가 정본이다. |
 | 성장 규칙 | `CoreLib/GrowthData.h`, `Growth.inc` → 기존 exporter → 기존 Unity importer | 동일 JSON의 `growth`: 상한100, 레벨별 누적 EXP·최대 HP 증가량100행. `CharacterState::AddExperience`가 승급에 사용하며 현재 검증 범위는 HANDOFF를 따른다. |
 | 포션 소비 효과 | `CoreLib/ItemData.h` → 기존 exporter → 기존 Unity importer | 동일 JSON의 `itemUse`: HP/MP 회복량·공유 쿨타임. 현재 IDs1·2이며 전체 아이템 카탈로그나 아이콘을 공유한다는 뜻은 아니다. |
 | 패링 시간 | `CoreLib/SkillData.h` → 기존 exporter → 기존 Unity importer | 동일 JSON의 `parry`: 방어창5틱·쿨60틱·1회. 실제 수락·남은 틱은 서버 응답이 정본이다. |
 | 맵·구역·충돌 | Unity 씬/MapAuthoring → WorldMapExport/WorldLayoutExport → 서버 | `CoreLib/Generated/WorldMap.inc`, FormatVersion/ContentVersion 기존 계약 유지. |
-| 몬스터 스폰 배치 | Unity MonsterSpawns → MonsterSpawnExport → 서버 | 기존 `MonsterSpawns.inc`. 몬스터 능력·AI와 구분하며 이번 변경 없음. |
+| 몬스터 스폰 배치 | Unity MonsterSpawns → MonsterSpawnExport → 서버 | 기존 `MonsterSpawns.inc`의 구역별 일반/강화 6×25 행렬과 보스 수. 총수 저작을 결정적으로 분배하며 몬스터 AI와 구분한다. |
 
 ## 서버 규칙 수정과 로컬 테스트
 
@@ -21,7 +22,7 @@
 ./tools/Export-ServerContent.ps1 -OutputPath ./UnityClient/Exports/ClientData/ServerContent.json
 ```
 
-기존 MSVC로 exporter만 빌드하고 실제 `Data::skillList`, `Data::monsters`, 정적 `Data::growthLevels`를 읽는다. 서버·DB를 시작하거나 별도 런타임 .dat 로더를 사용하지 않는다. 규칙 변경을 게임에 적용하려면 서버를 재빌드·정상 전환한다.
+기존 MSVC로 exporter만 빌드하고 실제 `Data::skillList`, `Data::monsterSkillList`, `Data::monsters`, `Data::huntingZones`, 정적 `Data::growthLevels`를 읽는다. 서버·DB를 시작하거나 별도 런타임 .dat 로더를 사용하지 않는다. 규칙 변경을 게임에 적용하려면 서버를 재빌드·정상 전환한다.
 
 Unity에서 `Tools → Client → Content → Import Validated Server Content`를 실행한다. 기존 에셋 GUID/Scene 참조는 보존하고 값만 가져온다. Unity에서 서버 원본을 덮어쓰는 메뉴·API는 제거했다. Unity의 직렬화 타입/기본 생성값은 화면/fixture 호환용이며 서버 규칙의 정본이 아니다.
 

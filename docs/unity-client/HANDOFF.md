@@ -1,19 +1,19 @@
-# 현재 인계 — 통합 전투·아이템 PR 게시
+# 현재 인계 — 사냥터·밸런스 PR 승인 대기
 
-## 정본과 권한
-ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, codex/client-clock-compat. 실제 Unity는 ROOT/UnityClient. 최신 요청 ‘Unity 실행검증하고 PR 올리자’와 후속 ‘지금 Unity 검증 진행’으로 실행·게시를 승인받았다. Game/refactor·사용자 몬스터 AI·DB 스키마는 수정하지 않는다.
+## 정본과 승인
+ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, codex/hunting-balance(origin/master fcd12f4, PR67 병합 후 분기). Unity 실제 ROOT/UnityClient. 사용자는 추천안 전체 적용·입력 재개를 승인했다. 새 PR 게시는 아래 요청을 별도 대조한다. 사용자 몬스터 AI·DB 스키마·패킷은 변경하지 않는다.
 
-## 완료 범위
-WASD·마우스 조준 QER, 창모드·포인터, Space 패링(0.25초/3초쿨/기본공격제외), HP·MP 포션(1/2·공용2초), 일반/강화 처치 포션 각1·골드10, 시전자 phase 위치 표현. 후속 패링 자세·성공연출, 자동 골드 HUD 응답 처리, 채팅 Escape 프레임 단축키 누출 차단을 포함한다. 후속파일과 문서를 c75b823으로 커밋·push했다. PR67(https://github.com/JoEunil/MMORPG/pull/67) 게시 완료, 사용자 검토 대기이며 병합하지 않았다. 원격 incoming0 확인했다.
+## 구현·검증 완료
+HUNT_BALANCE_PLAN의 구역별 수치·일반/강화/보스 총수0/120/132/144/156/168, 스킬 정의 분리, Q/E/R 피해300/1200/1800(공격10 기준)·MP0/100/160, HP1500·MP500·공용6초 반영. 성장·AI/state/배회/추적/phase순서·범위/쿨/타격 시점 유지. 서버JSONv3→실제Unityasset import·씬 연결과 Unity스폰→서버 행렬 재export동일해시 확인.
 
-## 검증
-- 기존 서버·ClientCore·Dummy 빌드/관련 검사는 기록을 재사용했다. 반복하지 않았다.
-- 변경 Unity PlayMode3개 통과: 패링·잔액2개와 포커스 확보 후 Escape1개. 앞선 batch포커스전제/열린Editor비활성 상태 실패는 기록에 보존했다. assertion/제품 수정 없이 최종통과.
-- Player-Feedback 최신 빌드 Succeeded/오류0/경고1. 실제 로그인·캐릭터11 Lv4 Zone5 진입 확인.
-- 실제 Gold99980→100020, MP포션4→3·MP8510→10000, 패링accepted·방패들기·3초쿨 표시 확인. 특수공격을 실제 막는 순간의 Success 연출은 이번실전미재현이며 fixture검증으로 한정한다.
-- 최신 session6d92276f592f46c883486b1a8f5ccfd7은 게임·서버·로그인 모두 정상종료. BAT는 Player-Feedback을 가리키며 Player-Fixed 복구본 보존. 현재 Play입력 배치 종료.
+코드 리뷰 보완 후 차단0. 서버4/Unity3 직접 영향 검사와 MSVC 서버/UnitTests·최종Windows Player 빌드 통과. 실전 E/R 비용·MP9480→9980/포션소비·공용6초·사망 후 마을귀환 확인. 최초 한글깨짐은 원담당폰트보완 후 최신 실행본에서 정상 렌더 확인했다. 재접속 MP9980·HP포션22/MP2·Gold100020 유지. 종합 게시검수 통과·필수0. 이미 통과한 검사는 반복하지 않는다.
 
-## 게시와 다음 행동
-사용자 게시 승인을 다시 요구하지 않고 종합검수 통과·필수0 이후 PR67 게시를 완료했다. 기존 PLAYITEM01/r1 Slack 부모1793852712.014869에 같은 묶음 결과를 Unity Coordinator 앱으로 남긴다. 앱 발신 U0C9ZRTQ6F8/회신1793867860.792759로 결과·PR링크를 남겼다. 과거 승인회신을 새로 소비했다고 기록하지 않는다. 다음 성장·거래수령함은 PLAY_FEEDBACK_PLAN의 미승인 초안이며 임의개발하지 않는다.
+## 한계·후속
+전체 구역 실제 처치 시간·보스 체감·난이도 균형은 미평가다. 구역스탯/배치/보상과 HP1500은 자동 검사 근거다. 귀환 직후 포션수량 '?'의 첫 클릭 조회·둘째 클릭 소비는 기존 warmup 수명 문제로 추적하고 자동 소비 재시도는 추가하지 않았다. 다음 별도 기능은 사용자 선택 전 진행하지 않는다.
 
-Agent643(신규238/후속405),토큰·비용N/A. 상세 history/2026-11-05-items-caster-follow/RESULTS.md. 실행 근거 ROOT/UnityClient/Builds/ClientGrowthHUD/verification/parry-wallet-followup. Slack도구 ROOT/UnityClient/Tools/Send-CoordinatorSlack.ps1.
+## 실행·게시 상태
+BAT는 ROOT/UnityClient/Builds/LocalGame/HuntingBalance/Player/MMORPG.exe와 HuntingBalance/Server/MainServer.exe 사용. 이전 ItemsCaster 복구본 보존. 최종세션 c56a38d82f2c42c7a445060ba77ef95d 게임/서버/로그인 정상종료. 입력 배치 종료, 별도 PC조작 없음.
+
+로컬 변경을 한 커밋으로 모으고 HUNTBAL01/r1 PR게시 승인 요청을 Unity Coordinator 앱으로 기존 부모1793873237.268829에 남긴다. 요청 전 push/새PR게시 없음. PR67의 승인을 재사용하지 않는다. 실제 수신자·스레드·현재대기·회신ID·미소비를 대조한 뒤 처리한다.
+
+Agent654(신규243/후속411), 토큰·비용N/A. 상세 history/2026-11-05-hunting-balance/RESULTS.md, 근거 ROOT/UnityClient/Builds/ClientGrowthHUD/verification/hunting-balance/korean-label-final.jpg 및 같은 폴더 검사/빌드 결과. Slack도구 ROOT/UnityClient/Tools/Send-CoordinatorSlack.ps1.

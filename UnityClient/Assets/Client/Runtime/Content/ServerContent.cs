@@ -11,6 +11,11 @@ namespace Mmorpg.Client
     public sealed class ServerContent : ScriptableObject
     {
         public Growth growth = new Growth();
+        public RingSkill[] monsterSkills = Array.Empty<RingSkill>();
+        public HuntingZone[] huntingZones = Array.Empty<HuntingZone>();
+
+        public HuntingZone GetHuntingZone(int zoneID) =>
+            Array.Find(huntingZones, zone => zone != null && zone.zoneID == zoneID);
         public Parry parry;
         public ItemUse[] itemUse = Array.Empty<ItemUse>();
         public RingSkill ring = new RingSkill();
@@ -60,6 +65,19 @@ namespace Mmorpg.Client
                     new MonsterPhase { hpThreshold = 0.2f, steps = new[] { new SkillStep { skillID = 4, delayTicks = 25 }, new SkillStep { skillID = 3, delayTicks = 25 }, new SkillStep { skillID = 4, delayTicks = 25 }, new SkillStep { skillID = 3, delayTicks = 25 } } }
                 } }
         };
+
+        [Serializable]
+        public sealed class HuntingZone
+        {
+            public int zoneID;
+            public string label;
+            public int minLevel;
+            public int maxLevel;
+            public uint regularHp, strongHp, bossHp;
+            public uint regularAttack, strongAttack, bossAttack;
+            public uint regularExp, strongExp, bossExp;
+            public uint regularGold, strongGold;
+        }
 
         [Serializable]
         public sealed class ItemUse

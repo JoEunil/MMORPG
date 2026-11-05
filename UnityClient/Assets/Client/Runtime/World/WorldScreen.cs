@@ -33,6 +33,8 @@ namespace Mmorpg.Client
         [SerializeField] private Transform fieldPlane;
         [SerializeField] private Transform quarterViewCamera;
         [SerializeField] private WorldMap worldMap;
+        [SerializeField] private ServerContent serverContent;
+        private TMP_FontAsset localKoreanFont;
         private IViewModelUI model;
         private readonly Dictionary<uint, FullStateField> pendingFull = new Dictionary<uint, FullStateField>();
         private FullStateField ownFull;
@@ -71,6 +73,19 @@ namespace Mmorpg.Client
 
         private void OnEnable()
         {
+            if (worldStatusText != null && localKoreanFont == null)
+            {
+                try
+                {
+                    localKoreanFont = TMP_FontAsset.CreateFontAsset("Malgun Gothic", "Regular");
+                    if (localKoreanFont != null) worldStatusText.font = localKoreanFont;
+                    else Debug.LogWarning("The local Korean font is unavailable; the area label keeps its existing font.", this);
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogWarning("Could not create the local Korean font for the area label: " + exception.Message, this);
+                }
+            }
             for (int i = 0; i < characterChoices.Length; i++)
             {
                 int row = i;
@@ -636,9 +651,12 @@ namespace Mmorpg.Client
             if (!hasVisualPosition) { visualPosition = ServerPosition; hasVisualPosition = true; }
             // Root facing is seeded on entry. C19 turns only the visual model during movement/actions.
             RenderVisualPosition();
+            var zone = serverContent == null ? null : serverContent.GetHuntingZone(ZoneID);
+            string areaLabel = zone == null ? "Area information unavailable" : zone.zoneID == 1
+                ? zone.label + " · 몬스터 없음" : zone.label + " · 권장 레벨 " + zone.minLevel + "~" + zone.maxLevel;
             worldStatusText.text = string.Format(CultureInfo.InvariantCulture,
                 "C02 / SERVER-CONFIRMED FIELD · {5}\nCharacter ID {0}    Internal ID {1}\nZone {2}    Server (x, y): ({3:F3}, {4:F3})\nWASD / arrow keys move. Aim with mouse; Q / E / R use skills. I opens bag. B opens market.",
-                SelectedCharacterID, InternalID, ZoneID, ownFull.x, ownFull.y, ZoneID == 1 ? "TOWN / SAFE AREA" : "HUNTING FIELD");
+                SelectedCharacterID, InternalID, ZoneID, ownFull.x, ownFull.y, areaLabel);
             UpdateZoneTransitionButton();
         }
 
@@ -679,6 +697,12 @@ namespace Mmorpg.Client
 
         private void Disconnect() => loginScreen.ConnectionFailed("Session closed.");
         private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
+
+        private void OnDestroy()
+        {
+            if (localKoreanFont != null) Destroy(localKoreanFont);
+            localKoreanFont = null;
+        }
 
         private void OnDisable()
         {

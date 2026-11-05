@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <cstdint>
 #include <algorithm>
 #include <vector>
@@ -47,4 +47,5 @@ namespace Data {
     };
 
     extern const std::vector<SkillData> skillList;
-} 
+    extern const std::vector<SkillData> monsterSkillList;
+}
