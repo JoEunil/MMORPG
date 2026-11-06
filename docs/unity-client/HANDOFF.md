@@ -1,16 +1,16 @@
-# 현재 인계 — 아이템 사용·거래 수령 개선
+# 현재 인계 — 거래 수령함 PR 게시 승인 대기
 
-## 목표·범위
-2026-11-06 사용자가 제안한 다음 묶음 재개를 요청했다. 완료된 처치 포션보상 제거를 포함해 귀환/재접속 포션수량 자동조회, 거래 아이템 수령함 목록·명시적 일괄수령·결과갱신을 큰 PR 하나로 준비한다. 몬스터AI·DB스키마·일반우편·확률드랍 계획은 제외한다. 기존 구매와 취소반환이 같은 outbox이므로 모두 표시하며 취소즉시반환/판매대금 수령은 유지한다.
+## 목표·후보
+처치 포션보상 제거 + 포션수량 귀환갱신 + 거래 아이템 수령함을 큰 PR 하나로 준비했다. 사용자몬스터AI·DB스키마·확률드랍계획 변경 없음. 구매·취소반환 목록은 기존 outbox를 재사용하고 실제일괄수령/판매대금경로는 유지한다.
 
-## 정본·현재 변경
-ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient, Git정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, Editor 프로젝트 ROOT/UnityClient. branch codex/trade-item-receipts, origin/master9f12768(PR68병합), 로컬93a2e93/a640a98 보존. ROOT상위 Git의 과거 미커밋 다수는 작업정본이 아니므로 건드리지 않는다. 사용자 원본Game/refactor는 제외.
+## 정본·Git
+ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient, Git정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, 실제Editor ROOT/UnityClient. branch codex/trade-item-receipts, origin/master9f12768(PR68병합). 로컬93a2e93/a640a98/9a68eea/8a7a028과최신화면기록을묶는다. ROOT상위Git의과거변경·사용자Game/refactor는건드리지않는다. ROOT공개market.md는기준과달라자동덮어쓰지않았고canonical이정본이다.
 
-## 실행·검증
-구현후보9a68eea 로컬보존. 서버/ClientCore/Windows Player 빌드·서버2/Unity7 직접검사통과, 코드재리뷰차단0. Astra는 코드·자동검증범위통과/실제화면근거부족. 새탭의 실서버클릭/배치는 미실행. 기존 처치포션제거 단위1개 통과는 반복하지 않는다. 서버 조회51/52는 기존 SQL18/DeliverItem 재사용, 조회는 지급하지 않으며 처리중·실패·준비중을 구분한다. 검토 뒤 관련 검사와 필요한 입력을 한 배치로 수행한다. 입력은 기존 허용범위이나 실제 다른창 사용 감지시 중단·재확인. Unity CLI beta17 업데이트 사용자승인 수신, 진행중. 새 TradeReceipt서버/로그인/Player시작과 로그인화면확인. 사용자입력감지로클릭중단하고 현채팅허용질문대기, 이후모두정상종료(launcher stopped). 최신시작BAT는 TradeReceipt경로.
+## 완료·근거
+서버/ClientCore/Player빌드성공, 직접서버2·Unity7검사통과. 독립리뷰3건수정후차단0. 마지막문구변경은로직불변으로통과검사반복안함. UnityCLI beta17업데이트완료. 사용자현채팅입력허용후 test1마을진입→포션22/2자동표시→수령함4탭/빈목록0/처리중0→명시수령0응답·목록재조회·가방수량유지확인. 실제양수배송·실제귀환이동은새로실행하지않았고자동검사와구분. 같은Astra 실제화면최종검수통과. 상세 history/2026-11-06-receipt-inventory/RESULTS.md, 증거 ROOT/UnityClient/Builds/ClientGrowthHUD/verification/receipt-inventory.
 
-## 배정·다음 행동
-서버분석 receipt_contract(신규+후속), 설계자문 receipt_design_review(Astra 신규), 구현 potion_lifecycle(신규+후속: Inventory/Market), receipt_server(신규: server/cache/tests). Coordinator ClientCore·통합·문서·검증 담당. 공유파일/Editor 소유권 유지. 남은순서: 사용자입력허용→실제탭배치/목록/명시수령1배치→Astra화면근거검수→Slack게시승인. 이미통과검사는반복금지. 최종문구Player갱신빌드성공(오류0·기존경고5). 상세RESULTS.md.
+## 실행·다음 행동
+게임/MainServer/Login 모두정상종료, launcher stopped. 시작BAT는최신TradeReceipt Player/Server. Editor자산쓰기/입력배치종료. PR은서버/ClientCore동시적용필요하며이전HuntingBalance경로로함께복구가능. 승인전push/새PR없음. 게시승인수신시정확요청/사람/스레드/회신ID대조후한번만게시한다. 미승인신규개발자동재개없음.
 
-## Slack·게시
-새 묶음 부모1793935273.767879(Unity Coordinator bot). 게시승인 아직 요청하지 않음. 수신기종료를확인하고기존고정대상으로복구: pid43884/listening/SOCKET_READY. HUNTREWARD01/r1 별도PR요청1793886156.106779는 철회, 늦은승인도 소비금지. push/새PR없음. 과거상세는 history/2026-11-05-hunting-balance/RESULTS.md 및 본묶음 PREVIOUS_HANDOFF.md.
+## Slack
+작업부모1793935273.767879(Unity Coordinator bot). TRADEITEM01/r1 게시요청준비, 아직회신없음. 수신기pid43884/listening/고정Coordinator01a14d46-8b23-7590-8ad5-7efc20f8ecd9와등록스레드재확인후요청한다. HUNTREWARD01/r1 별도PR요청은철회, 늦은승인소비금지. 실제Agent668회(신규248/후속420), 토큰/비용N/A.

@@ -29,3 +29,6 @@ ROOT/UnityClient/Builds/ClientGrowthHUD/verification/receipt-inventory: server-b
 
 ## 마감 상태
 코드후보9a68eea에 Astra 권고문구 추가: 첫BLOCKED에서멈추는 수를 전체잔여수처럼 표시하지 않고 Some items remain unreceived로 안내. assertion문구만 일치시켰으며 게임로직불변이므로 이미통과한검사는반복하지않았다. 추가 Unity컴파일오류0. Astra는 코드·자동검증 범위 통과/실제화면근거부족으로 구분했다. 입력허용답변대기로 새탭배치/실제클릭미실행. 테스트Player/MainServer/Login정상종료, launcher stopped. 최종문구Player갱신빌드성공(오류0·기존경고5), player-build-final.json. 원격fetch 결과master9f12768변동없음, 브랜치 codex/trade-item-receipts로이름정리, push/PR없음.
+
+## 후속 실제 입력·최종 검수 — 2026-11-06
+사용자가 현채팅 질문에 지금게임화면확인진행으로 명시허용했다. 기존TradeReceipt 시작→보호정보를 메모리에서만 읽어 정상게임UI test1로그인→char11/Lv4 마을1(10,10)진입. 가방을열지않고 HP포션22/MP포션2, 골드100020·다이아750자동표시. 거래소클릭→4탭확인→ITEM RECEIPTS조회:0ready/0processing/최대30. RECEIVE ALL명시클릭:Received0/already present0 후 목록재조회. 가방확인HP22/MP2유지. 새양수배송·실제구역이동은 수행하지않았으며 위fixture범위와구분. 경제변경/DB수정없음. 실제화면 trade-receipts-live.jpg와 공개 trade-item-receipts.jpg. 같은Astra가 실제이미지를열어 배치·가독성·빈목록/0응답표현 검수통과/차단0. 예전대기기록은 시간순이력이며 현재대기가아님. 종료도우미로 Player/MainServer/Login 모두정상종료, launcher상태stopped. 최신 Player빌드0오류5기존경고. 게시준비완료, Slack게시승인만대기.
