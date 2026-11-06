@@ -481,6 +481,12 @@ namespace Cache {
             st->header = {42, Core::MSG_BAZAAR_BUY}; st->body = {5011, UINT64_MAX, 123};
             msg->SetLength(sizeof(*st) + delta); handler.Process(msg);
         }
+        void RequestOutboxList(int delta = 0) {
+            auto* msg = messages->Acquire();
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarOutboxListBody>*>(msg->GetBuffer());
+            st->header = {42, Core::MSG_BAZAAR_OUTBOX_LIST}; st->body = {5011, 126};
+            msg->SetLength(sizeof(*st) + delta); handler.Process(msg);
+        }
         void RequestOutbox(int delta = 0) {
             auto* msg = messages->Acquire();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarCheckOutboxBody>*>(msg->GetBuffer());
@@ -654,6 +660,19 @@ namespace {
             return price;
         }
     };
+    struct OutboxListRows {
+        int count = 3, index = -1, throwAt = -1;
+        bool duplicate = false;
+        uint64_t quantity = 2;
+        bool next() { ++index; if (index == throwAt) throw std::runtime_error("fixture list failure"); return index < count; }
+        bool isNull(const char*) { return false; }
+        uint64_t getUInt64(const char* column) {
+            if (std::string_view(column) == "event_id") return duplicate ? 100 : 100 + index;
+            if (std::string_view(column) == "listing_id") return 500 + index;
+            if (std::string_view(column) == "item_id") return 1;
+            return quantity;
+        }
+    };
     struct OutboxRows {
         int count = 3, index = -1, throwAt = -1;
         bool next() { ++index; if (index == throwAt) throw std::runtime_error("fixture partial read failure"); return index < count; }
@@ -666,6 +685,52 @@ namespace {
     };
 }
 namespace Cache {
+    TEST_F(BazaarMyListFixture, BazaarOutboxListSnapshotSeparatesAppliedEventsAndNeverMutatesInventoryOrHidesFailure) {
+        static_assert(sizeof(Core::MsgStruct<Core::MsgBazaarOutboxListResBody>) <= Core::MESSAGE_LEN);
+        static_assert(sizeof(Core::MsgStruct<Core::MsgBazaarOutboxListResBody>) <= Cache::MESSAGE_LEN);
+        InventoryHarness inventory; inventory.Seed();
+        ASSERT_EQ(inventory.DeliverItem(Character, 101, 1, 7), CACHE_STATUS::AVAILABLE);
+        const auto snapshot = inventory.Getter(Character);
+        OutboxListRows rows;
+        Core::MsgBazaarOutboxListResBody body{};
+        ParseBazaarOutboxListResult(&rows, snapshot, body);
+        ASSERT_EQ(body.resStatus, 1);
+        ASSERT_EQ(body.count, 2);
+        EXPECT_EQ(body.processingCount, 1);
+        EXPECT_EQ(body.rows[0].eventID, 100);
+        EXPECT_EQ(body.rows[1].eventID, 102);
+        EXPECT_EQ(body.rows[1].listingID, 502);
+        EXPECT_EQ(body.rows[1].quantity, 2);
+        EXPECT_EQ(inventory.Getter(Character).data.items[0].quantity, 7);
+        for (int scenario = 0; scenario < 6; ++scenario) {
+            SCOPED_TRACE(scenario);
+            OutboxListRows invalid;
+            auto state = snapshot;
+            if (scenario == 0) state.status = CACHE_STATUS::DB_READING;
+            if (scenario == 1) invalid.throwAt = 1;
+            if (scenario == 2) invalid.duplicate = true;
+            if (scenario == 3) invalid.quantity = UINT16_MAX + 1ULL;
+            if (scenario == 4) invalid.count = 31;
+            if (scenario == 5) invalid.quantity = 0;
+            ParseBazaarOutboxListResult(&invalid, state, body);
+            EXPECT_EQ(body.resStatus, scenario == 0 ? 2 : 0);
+            EXPECT_EQ(body.count, 0);
+            EXPECT_EQ(body.processingCount, 0);
+            EXPECT_EQ(body.rows[0].eventID, 0);
+        }
+        ParseBazaarOutboxListResult<OutboxListRows>(nullptr, snapshot, body);
+        EXPECT_EQ(body.resStatus, 0);
+        EXPECT_EQ(inventory.Getter(Character).data.items[0].quantity, 7);
+        RequestOutboxList(); ASSERT_NE(responses.received, nullptr);
+        const auto* failed = Core::parseMsgBody<Core::MsgBazaarOutboxListResBody>(responses.received->GetBuffer());
+        EXPECT_EQ(failed->resStatus, 0); EXPECT_EQ(failed->requestID, 126); EXPECT_EQ(failed->characterID, 5011);
+        EXPECT_EQ(failed->count, 0); EXPECT_EQ(failed->processingCount, 0); ExpectPoolRestored();
+        responses.received.reset(); responses.accept = false;
+        RequestOutboxList(); EXPECT_EQ(responses.received, nullptr); ExpectPoolRestored();
+        responses.accept = true;
+        RequestOutboxList(-1); RequestOutboxList(1); EXPECT_EQ(responses.received, nullptr); ExpectPoolRestored();
+    }
+
     TEST_F(BazaarMyListFixture, BazaarPurchaseSqlAndDeliveryPrefixKeepDedupAndSingleReturn) {
         BuyRows rows;
         Core::MsgBazaarBuyResBody bought{};

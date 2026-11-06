@@ -30,6 +30,7 @@ namespace Core {
         void BazaarMyList(IPacketView* p);
         void BazaarClaim(IPacketView* p);
         void BazaarBuy(IPacketView* p);
+        void BazaarOutboxList(IPacketView* p);
         void BazaarCheckOutbox(IPacketView* p);
         void BazaarCancelListing(IPacketView* p);
         void Chat(IPacketView* p);

@@ -484,6 +484,7 @@ namespace Mmorpg.Client.Tests
             public readonly List<uint> ClaimIDs = new List<uint>();
             public readonly List<uint> BuyIDs = new List<uint>(); public readonly List<uint> OutboxIDs = new List<uint>();
             public void RequestBazaarBuy(uint requestID, ulong listingID) => BuyIDs.Add(requestID);
+            public void RequestBazaarOutboxList(uint requestID) { }
             public void RequestBazaarCheckOutbox(uint requestID) => OutboxIDs.Add(requestID);
             public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
             public void RequestBazaarClaim(uint requestID, ulong listingID) => ClaimIDs.Add(requestID);

@@ -94,6 +94,7 @@ namespace Cache {
         void BazaarCancel(Core::Message*& msg, uint64_t sesionID, Core::MsgBazaarCancelBody* body);
         void BazaarBuy(Core::Message*& msg, uint64_t sesionID, Core::MsgBazaarBuyBody* body);
         void BazaarClaim(Core::Message*& msg, uint64_t sesionID, Core::MsgBazaarClaimBody* body);
+        void BazaarOutboxList(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarOutboxListBody* body);
         void BazaarCheckOutbox(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCheckOutboxBody* body);
         void BazaarCancelListing(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCancelListingBody* body);
         void ProfileRename(Core::Message*& msg, uint64_t sessionID, Core::MsgProfileRenameBody* body);

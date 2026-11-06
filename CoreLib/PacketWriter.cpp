@@ -125,6 +125,35 @@ namespace Core {
         return p;
     }
 
+    static_assert(sizeof(PacketStruct<BazaarOutboxListRequestBody>) == 12);
+    static_assert(sizeof(PacketStruct<BazaarOutboxListResponseBody>) == 17);
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarOutboxListResponse(const MsgBazaarOutboxListResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 2
+            || static_cast<uint32_t>(body->count) + body->processingCount > 30
+            || (body->resStatus != 1 && (body->count != 0 || body->processingCount != 0))) return nullptr;
+        for (uint16_t i = 0; i < body->count; ++i) {
+            const auto& row = body->rows[i];
+            if (row.eventID == 0 || row.listingID == 0 || row.itemID == 0 || row.quantity == 0 || row.quantity > UINT16_MAX)
+                return nullptr;
+            for (uint16_t j = 0; j < i; ++j)
+                if (body->rows[j].eventID == row.eventID) return nullptr;
+        }
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Big);
+        if (!p) return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<BazaarOutboxListResponseBody>*>(p->GetBuffer());
+        const uint32_t length = sizeof(*st) + sizeof(BazaarOutboxItem) * body->count;
+        st->header = { MAGIC, length, OP::BAZAAR_OUTBOX_LIST_RES, 0 };
+        st->body = { body->requestID, body->resStatus, body->processingCount, body->count };
+        auto* rows = reinterpret_cast<BazaarOutboxItem*>(p->GetBuffer() + sizeof(*st));
+        for (uint16_t i = 0; i < body->count; ++i) {
+            const auto& row = body->rows[i];
+            rows[i] = { row.eventID, row.listingID, row.itemID, row.quantity };
+        }
+        p->SetLength(length);
+        return p;
+    }
+
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarCheckOutboxResponse(const MsgBazaarCheckOutboxResBody* body) {
         if (body == nullptr || body->requestID == 0 || body->resStatus > 1
             || static_cast<uint64_t>(body->deliveredCount) + body->duplicatedCount + body->blockedCount > 30)

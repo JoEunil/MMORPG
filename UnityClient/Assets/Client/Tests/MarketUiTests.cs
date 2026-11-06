@@ -22,6 +22,95 @@ namespace Mmorpg.Client.Tests
     public sealed class MarketUiTests
     {
         [Test]
+        [Category("ItemReceipts")]
+        public void ItemReceiptTabOnlyReadsAndShowsReadyItemsSeparatelyFromProcessing()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.OpenMarket();
+                fixture.Receive(true);
+                var tab = Get<Button>(fixture.Screen, "outboxItemsButton");
+                Assert.That(tab, Is.Not.Null, "Existing scenes gain the receipt tab without replacing the panel.");
+                tab.onClick.Invoke();
+                Assert.That(fixture.Network.OutboxListRequests, Is.EqualTo(1));
+                Assert.That(fixture.Network.CheckOutboxRequests, Is.Zero, "Opening receipts must never grant items.");
+                Assert.That(fixture.CheckOutbox.interactable, Is.False, "Reads and delivery cannot overlap.");
+                var net = (IViewModelNet)fixture.Login.Model;
+                net.BazaarOutboxListReceived(fixture.Network.LastOutboxListRequestID, 1, 1,
+                    new[] { new BazaarOutboxItem { eventID = 91, listingID = 70, itemID = 1, quantity = 4 } });
+                Assert.That(fixture.ActiveRowCount, Is.EqualTo(1));
+                var row = fixture.Rows.Find("Receipt-91");
+                Assert.That(row.Find("Item").GetComponent<TMP_Text>().text, Is.EqualTo("HP Potion"));
+                Assert.That(row.Find("Quantity").GetComponent<TMP_Text>().text, Is.EqualTo("4"));
+                Assert.That(row.Find("ItemIcon").GetComponent<Image>().sprite, Is.SameAs(ItemPresentation.Icon(1)));
+                Assert.That(fixture.Status.text, Does.Contain("1 ready · 1 processing"));
+                Assert.That(fixture.Status.text, Does.Contain("up to 30"));
+                Assert.That(fixture.Buy.gameObject.activeSelf || fixture.Claim.gameObject.activeSelf, Is.False);
+                row.GetComponent<Button>().onClick.Invoke();
+                Assert.That(fixture.SelectedName.text, Is.EqualTo("HP Potion"));
+                Assert.That(fixture.SelectedQuantity.text, Is.EqualTo("× 4"));
+                Assert.That(fixture.Network.CheckOutboxRequests, Is.Zero);
+
+                fixture.Search.onClick.Invoke();
+                uint stale = fixture.Network.LastOutboxListRequestID;
+                fixture.Close.onClick.Invoke();
+                net.BazaarOutboxListReceived(stale, 1, 0, Array.Empty<BazaarOutboxItem>());
+                Assert.That(fixture.Panel.activeSelf, Is.False);
+                Assert.That(fixture.ActiveRowCount, Is.Zero, "A closed read cannot repopulate the panel.");
+                fixture.OpenMarket(); fixture.Receive(true);
+                tab.onClick.Invoke();
+                net.BazaarOutboxListReceived(fixture.Network.LastOutboxListRequestID, 2, 0, Array.Empty<BazaarOutboxItem>());
+                Assert.That(fixture.Status.text, Does.Contain("busy"));
+                Assert.That(fixture.Search.interactable, Is.True);
+                fixture.Search.onClick.Invoke();
+                net.BazaarOutboxListReceived(fixture.Network.LastOutboxListRequestID, 1, 0, Array.Empty<BazaarOutboxItem>());
+                Assert.That(fixture.EmptyState.text, Does.Contain("snapshot"));
+                Assert.That(fixture.Status.text, Does.Not.Contain("all received"));
+                Assert.That(fixture.Network.CheckOutboxRequests, Is.Zero);
+            }
+        }
+
+        [Test]
+        [Category("ItemReceipts")]
+        public void ReceiptWriteRefreshesTheBagAndListWithoutRepeatingDeliveryAfterClose()
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.ActivateInventory(false);
+                fixture.OpenMarket(); fixture.Receive(true);
+                var tab = Get<Button>(fixture.Screen, "outboxItemsButton");
+                var net = (IViewModelNet)fixture.Login.Model;
+                tab.onClick.Invoke();
+                net.BazaarOutboxListReceived(fixture.Network.LastOutboxListRequestID, 1, 0,
+                    new[] { new BazaarOutboxItem { eventID = 91, listingID = 70, itemID = 1, quantity = 4 } });
+                fixture.CheckOutbox.onClick.Invoke();
+                uint delivery = fixture.Network.LastCheckOutboxRequestID;
+                Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(1));
+                Assert.That(fixture.Search.interactable || tab.interactable, Is.False);
+                net.BazaarCheckOutboxReceived(delivery, 1, 0, 0, 1);
+                Assert.That(fixture.Network.InventoryRequests, Is.EqualTo(1));
+                Assert.That(fixture.Network.OutboxListRequests, Is.EqualTo(2), "A completed delivery triggers a fresh read, never another mutation.");
+                Assert.That(fixture.Detail.text, Does.Contain("bag space / stack limits"));
+                fixture.Close.onClick.Invoke();
+                uint canceledRead = fixture.Network.LastOutboxListRequestID;
+                Assert.That(Get<bool>(fixture.Screen, "requestPending"), Is.False, "The post-write read is cancellable even when final write feedback is retained.");
+                net.BazaarOutboxListReceived(canceledRead, 1, 0, Array.Empty<BazaarOutboxItem>());
+                fixture.OpenMarket();
+                Assert.That(fixture.Network.OutboxListRequests, Is.EqualTo(3));
+                net.BazaarOutboxListReceived(fixture.Network.LastOutboxListRequestID, 1, 1, Array.Empty<BazaarOutboxItem>());
+                Assert.That(fixture.EmptyState.text, Does.Contain("confirmed"));
+                fixture.CheckOutbox.onClick.Invoke();
+                uint secondDelivery = fixture.Network.LastCheckOutboxRequestID;
+                fixture.Close.onClick.Invoke();
+                net.BazaarCheckOutboxReceived(secondDelivery, 1, 0, 1, 0);
+                Assert.That(fixture.Network.OutboxListRequests, Is.EqualTo(3), "Do not read a closed panel.");
+                Assert.That(fixture.Network.CheckOutboxRequests, Is.EqualTo(2), "Only the two explicit clicks deliver items.");
+                Assert.That(fixture.Panel.activeSelf, Is.False);
+                Assert.That(fixture.Detail.text, Does.Not.Contain("all received"));
+            }
+        }
+
+        [Test]
         [Category("CurrencySkillIcons")]
         public void ListingRowsUseAssignedDiamondSpriteWithoutBlockingSelection()
         {
@@ -1194,9 +1283,9 @@ namespace Mmorpg.Client.Tests
             public int ItemUseRequests, ParryRequests;
             public ulong LastItemUseRequestID;
             public uint LastItemUseID;
-            public int RegisterRequests, InventoryRequests, WalletRequests, CheckOutboxRequests, CancelListingRequests;
+            public int RegisterRequests, InventoryRequests, WalletRequests, CheckOutboxRequests, CancelListingRequests, OutboxListRequests;
             public int Mutations;
-            public uint LastWriteID, LastCheckOutboxRequestID;
+            public uint LastWriteID, LastCheckOutboxRequestID, LastOutboxListRequestID;
             public uint LastWalletRequestID;
             public bool ThrowWalletRequest;
             public byte LastRegisterSlot;
@@ -1214,6 +1303,7 @@ namespace Mmorpg.Client.Tests
             public uint LastRequestID;
             public ushort LastItemType, LastPage;
             public void RequestBazaarBuy(uint requestID, ulong listingID) { Mutations++; LastWriteID = requestID; }
+            public void RequestBazaarOutboxList(uint requestID) { OutboxListRequests++; LastOutboxListRequestID = requestID; }
             public void RequestBazaarCheckOutbox(uint requestID) { CheckOutboxRequests++; LastCheckOutboxRequestID = requestID; }
             public void RequestBazaarCancelListing(uint requestID, ulong listingID) { CancelListingRequests++; LastWriteID = requestID; }
             public void RequestBazaarClaim(uint requestID, ulong listingID) { Mutations++; LastWriteID = requestID; }

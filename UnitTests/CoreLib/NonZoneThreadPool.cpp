@@ -106,6 +106,7 @@ namespace Core {
 
         class TestPacketPool final : public IPacketPool, public IPacketPoolManager {
         public:
+            PacketPoolType lastAcquireType = PacketPoolType::Normal;
             std::shared_ptr<IPacket> Acquire() override {
                 return std::shared_ptr<IPacket>(new TestPacket, PacketDeleter{});
             }
@@ -113,7 +114,10 @@ namespace Core {
                 return std::unique_ptr<IPacket, PacketDeleter>(new TestPacket);
             }
             std::shared_ptr<IPacket> Acquire(PacketPoolType) override { return Acquire(); }
-            std::unique_ptr<IPacket, PacketDeleter> AcquireUnique(PacketPoolType) override { return AcquireUnique(); }
+            std::unique_ptr<IPacket, PacketDeleter> AcquireUnique(PacketPoolType type) override {
+                lastAcquireType = type;
+                return AcquireUnique();
+            }
             void Return(IPacket* packet) override { packet->Release(); }
         };
 
@@ -254,6 +258,15 @@ namespace Core {
                 header->opcode = OP::BAZAAR_BUY;
                 header->flags = flags;
                 if (sizeDelta >= 0) *parseBody<BazaarBuyRequestBody>(packet.data()) = request;
+            }
+            CountedView(uint64_t id, const BazaarOutboxListRequestBody& request, uint8_t flags = 0, int sizeDelta = 0)
+                : packet(sizeof(PacketStruct<BazaarOutboxListRequestBody>) + sizeDelta), session(id) {
+                auto* header = parseHeader(packet.data());
+                header->magic = MAGIC;
+                header->length = static_cast<uint32_t>(packet.size());
+                header->opcode = OP::BAZAAR_OUTBOX_LIST;
+                header->flags = flags;
+                if (sizeDelta >= 0) *parseBody<BazaarOutboxListRequestBody>(packet.data()) = request;
             }
             CountedView(uint64_t id, const BazaarCheckOutboxRequestBody& request, uint8_t flags = 0, int sizeDelta = 0)
                 : packet(sizeof(PacketStruct<BazaarCheckOutboxRequestBody>) + sizeDelta), session(id) {
@@ -651,6 +664,12 @@ namespace Core {
             auto* response = messages.Acquire();
             auto* st = reinterpret_cast<MsgStruct<MsgBazaarBuyResBody>*>(response->GetBuffer());
             st->header = { 42, MSG_BAZAAR_BUY_RES }; st->body = body;
+            response->SetLength(sizeof(*st) + sizeDelta); responses.Process(response);
+        }
+        void FinishOutboxList(const MsgBazaarOutboxListResBody& body, int sizeDelta = 0) {
+            auto* response = messages.Acquire();
+            auto* st = reinterpret_cast<MsgStruct<MsgBazaarOutboxListResBody>*>(response->GetBuffer());
+            st->header = { 42, MSG_BAZAAR_OUTBOX_LIST_RES }; st->body = body;
             response->SetLength(sizeof(*st) + sizeDelta); responses.Process(response);
         }
         void FinishOutbox(const MsgBazaarCheckOutboxResBody& body, int sizeDelta = 0) {
@@ -1618,6 +1637,63 @@ namespace Core {
         ASSERT_NE(empty, nullptr);
         EXPECT_EQ(empty->GetLength(), 15);
         EXPECT_EQ(parseBody<BazaarSearchResponseBody>(empty->GetBuffer())->resStatus, 1);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, BazaarOutboxListChecksWireOwnershipAndReturnsBoundSnapshot) {
+        SessionData ready{};
+        ready.authenticated = ready.authCompleted = true;
+        ready.userID = 6982; ready.characterID = 5011; ready.zoneID = 1;
+        CountedView list(42, BazaarOutboxListRequestBody{126});
+        handler.Process(&list);
+        EXPECT_FALSE(loads.HasRequest());
+        SetSessionImage(ready);
+        handler.Process(&list);
+        auto request = loads.TakeRequest(); ASSERT_NE(request, nullptr);
+        EXPECT_EQ(parseMsgHeader(request->GetBuffer())->messageType, MSG_BAZAAR_OUTBOX_LIST);
+        const auto* query = parseMsgBody<MsgBazaarOutboxListBody>(request->GetBuffer());
+        EXPECT_EQ(query->characterID, 5011); EXPECT_EQ(query->requestID, 126);
+        for (int invalid = 0; invalid < 5; ++invalid) {
+            CountedView bad(42, BazaarOutboxListRequestBody{invalid == 0 ? 0U : 126U}, invalid == 1 ? FLAG_SIMULATION : 0,
+                invalid == 2 ? -1 : invalid == 3 ? 1 : 0);
+            if (invalid == 4) parseHeader(bad.GetPtr())->length++;
+            handler.Process(&bad);
+            EXPECT_FALSE(loads.HasRequest());
+            EXPECT_TRUE(iocp.sentOpcodes.empty());
+        }
+        loads.accept = false;
+        handler.Process(&list);
+        ASSERT_EQ(iocp.lastPacket.size(), 17);
+        EXPECT_EQ(parseBody<BazaarOutboxListResponseBody>(iocp.lastPacket.data())->resStatus, 0);
+        MsgBazaarOutboxListResBody result{};
+        result.requestID = 126; result.characterID = 5011; result.resStatus = 1;
+        result.count = 1; result.processingCount = 2; result.rows[0] = {100, 500, 1, 4};
+        FinishOutboxList(result);
+        ASSERT_EQ(iocp.lastPacket.size(), 41);
+        EXPECT_EQ(parseHeader(iocp.lastPacket.data())->opcode, OP::BAZAAR_OUTBOX_LIST_RES);
+        const auto* prefix = parseBody<BazaarOutboxListResponseBody>(iocp.lastPacket.data());
+        EXPECT_EQ(prefix->requestID, 126); EXPECT_EQ(prefix->count, 1); EXPECT_EQ(prefix->processingCount, 2);
+        const auto* row = reinterpret_cast<const BazaarOutboxItem*>(iocp.lastPacket.data() + 17);
+        EXPECT_EQ(row->eventID, 100); EXPECT_EQ(row->listingID, 500); EXPECT_EQ(row->quantity, 4);
+        const auto sent = iocp.sentOpcodes.size();
+        result.characterID = 5012; FinishOutboxList(result);
+        result.characterID = 5011; FinishOutboxList(result, -1);
+        EXPECT_EQ(iocp.sentOpcodes.size(), sent);
+        result.count = 30; result.processingCount = 0;
+        for (uint16_t i = 0; i < result.count; ++i) result.rows[i] = {100ULL + i, 500ULL + i, 1, 4};
+        auto maximum = writer.WriteBazaarOutboxListResponse(&result);
+        ASSERT_NE(maximum, nullptr);
+        EXPECT_EQ(packetPool.lastAcquireType, PacketPoolType::Big);
+        EXPECT_EQ(maximum->GetLength(), 737);
+        const auto* lastRow = reinterpret_cast<const BazaarOutboxItem*>(maximum->GetBuffer() + 17 + 29 * sizeof(BazaarOutboxItem));
+        EXPECT_EQ(lastRow->eventID, 129); EXPECT_EQ(lastRow->listingID, 529); EXPECT_EQ(lastRow->quantity, 4);
+        result.count = 31;
+        EXPECT_EQ(writer.WriteBazaarOutboxListResponse(&result), nullptr);
+        result.count = 30; result.processingCount = 1;
+        EXPECT_EQ(writer.WriteBazaarOutboxListResponse(&result), nullptr);
+        result.count = 1; result.processingCount = 0; result.resStatus = 2;
+        EXPECT_EQ(writer.WriteBazaarOutboxListResponse(&result), nullptr);
+        result.resStatus = 1; result.rows[0].quantity = UINT16_MAX + 1U;
+        EXPECT_EQ(writer.WriteBazaarOutboxListResponse(&result), nullptr);
     }
 
     TEST_F(NonZoneThreadPoolFixture, BazaarPurchaseWireOwnershipAndQueueFailuresPreserveDeliveryMeaning) {

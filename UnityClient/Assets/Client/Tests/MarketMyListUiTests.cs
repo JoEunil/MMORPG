@@ -193,7 +193,7 @@ namespace Mmorpg.Client.Tests
                 ((IViewModelNet)fixture.Login.Model).BazaarCheckOutboxReceived(fixture.Network.LastCheckOutboxID, 1, 2, 1, 1);
                 Assert.That(fixture.Status.text, Does.Contain("Received 2"));
                 Assert.That(fixture.Status.text, Does.Contain("already present 1"));
-                Assert.That(fixture.Status.text, Does.Contain("pending 1"));
+                Assert.That(fixture.Status.text, Does.Contain("unreceived 1"));
                 Assert.That(fixture.Status.text.ToLowerInvariant(), Does.Contain("bag"), "A delivery pass can be partially reflected and must direct the player to inspect the bag.");
 
                 fixture.Row(1002).GetComponent<Button>().onClick.Invoke();
@@ -484,6 +484,7 @@ namespace Mmorpg.Client.Tests
             { ClaimRequests++; LastClaimID = requestID; LastClaimListingID = listingID; }
             public void RequestBazaarBuy(uint requestID, ulong listingID)
             { BuyRequests++; LastBuyID = requestID; LastBuyListingID = listingID; }
+            public void RequestBazaarOutboxList(uint requestID) { }
             public void RequestBazaarCheckOutbox(uint requestID)
             { CheckOutboxRequests++; LastCheckOutboxID = requestID; }
             public void RequestBazaar(uint requestID, ushort itemType, ushort page)

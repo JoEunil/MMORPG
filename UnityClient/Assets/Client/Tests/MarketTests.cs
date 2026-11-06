@@ -13,6 +13,41 @@ namespace Mmorpg.Client.Tests
     public sealed class MarketTests
     {
         [Test]
+        [Category("ReceiptInventory")]
+        public void ReceiptListKeepsProcessingSeparateRejectsInvalidRowsAndIgnoresCanceledResponses()
+        {
+            var serialize = typeof(Packet).GetMethod("SerializeBazaarOutboxListRequest", BindingFlags.NonPublic | BindingFlags.Static);
+            var request = (byte[])serialize.Invoke(null, new object[] { 7U });
+            Assert.That(request.Length, Is.EqualTo(12)); Assert.That(request[6], Is.EqualTo(51));
+            var parse = typeof(Packet).GetMethod("DeserializeBazaarOutboxList", BindingFlags.NonPublic | BindingFlags.Static);
+            var frame = new byte[41];
+            BitConverter.GetBytes((ushort)0xabcd).CopyTo(frame, 0); BitConverter.GetBytes(41U).CopyTo(frame, 2);
+            frame[6] = 52; BitConverter.GetBytes(7U).CopyTo(frame, 8); frame[12] = 1;
+            BitConverter.GetBytes((ushort)2).CopyTo(frame, 13); BitConverter.GetBytes((ushort)1).CopyTo(frame, 15);
+            BitConverter.GetBytes(0x100000001UL).CopyTo(frame, 17); BitConverter.GetBytes(99UL).CopyTo(frame, 25);
+            BitConverter.GetBytes(1U).CopyTo(frame, 33); BitConverter.GetBytes(4U).CopyTo(frame, 37);
+            var parsed = ((uint requestID, byte status, ushort processingCount, BazaarOutboxItem[] rows))parse.Invoke(null, new object[] { Packet.ExtractHeader(frame), frame });
+            Assert.That(parsed.processingCount, Is.EqualTo(2)); Assert.That(parsed.rows[0].eventID, Is.EqualTo(0x100000001UL));
+            frame[12] = 2;
+            Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(frame), frame }));
+            frame[12] = 1; BitConverter.GetBytes(65536U).CopyTo(frame, 37);
+            Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(frame), frame }));
+            using (var f = new Fixture())
+            {
+                int callbacks = 0; BazaarOutboxItem[] observed = null;
+                f.Model.OnBazaarOutboxListReceived += (status, processing, rows) => { callbacks++; observed = rows; };
+                f.Model.RequestBazaarOutboxList(); uint old = f.Network.IDs[0];
+                f.Model.BazaarOutboxListReceived(old, 1, 2, parsed.rows);
+                f.Model.CancelBazaar(); f.Drain(); Assert.That(callbacks, Is.Zero);
+                f.Model.RequestBazaarOutboxList();
+                f.Model.BazaarOutboxListReceived(old, 1, 2, parsed.rows); f.Drain(); Assert.That(callbacks, Is.Zero);
+                f.Model.BazaarOutboxListReceived(f.Network.IDs[1], 1, 2, parsed.rows);
+                parsed.rows[0].itemID = 99; f.Drain();
+                Assert.That(callbacks, Is.EqualTo(1)); Assert.That(observed[0].itemID, Is.EqualTo(1));
+            }
+        }
+
+        [Test]
         public void RequestWireIsSixteenBytesAndRejectsZeroIdAndUnsupportedType()
         {
             var bytes = Request(17, 3, ushort.MaxValue);
@@ -215,6 +250,7 @@ namespace Mmorpg.Client.Tests
         private sealed class FakeNetwork : INetworkService
         {
             public readonly List<uint> IDs = new List<uint>(); public void RequestBazaarBuy(uint requestID, ulong listingID) { }
+            public void RequestBazaarOutboxList(uint requestID) { IDs.Add(requestID); }
             public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }

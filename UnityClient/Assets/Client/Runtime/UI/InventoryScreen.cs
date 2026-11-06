@@ -229,6 +229,7 @@ namespace Mmorpg.Client
 
         private void ItemUseZoneTransitionStarted(ulong ownershipEpoch, ushort zoneID)
         {
+            inventoryWarmupAttempted = false;
             inventoryWarmupPending = false;
             CancelFailureRetry();
             ResetItemUse();
@@ -495,8 +496,18 @@ namespace Mmorpg.Client
         private void InventoryReceived(bool success)
         {
             if (!requestPending || model == null || loginScreen.Model != model) return;
-            if (!WorldAvailable && worldScreen.Stage != WorldStage.TransitionPending) return;
             requestPending = false;
+            if (!WorldAvailable)
+            {
+                // Drain the old uncorrelated read, then warm up once after the destination bootstrap.
+                inventoryWarmupAttempted = false;
+                inventoryWarmupPending = false;
+                refreshAfterCurrentRequest = false;
+                hasInventoryResponse = false;
+                ClearInventoryCards();
+                UpdateControls();
+                return;
+            }
             if (refreshAfterCurrentRequest)
             {
                 inventoryWarmupPending = false;
@@ -518,9 +529,7 @@ namespace Mmorpg.Client
                 else
                 {
                     inventoryWarmupPending = false;
-                    inventoryStatus.text = worldScreen.Stage == WorldStage.TransitionPending
-                        ? "Inventory request failed during travel. Open the bag and refresh after arrival."
-                        : "Inventory request failed. Select Refresh to try again.";
+                    inventoryStatus.text = "Inventory request failed. Select Refresh to try again.";
                 }
                 UpdateControls();
                 return;
@@ -547,9 +556,7 @@ namespace Mmorpg.Client
             inventoryScroll.StopMovement();
             inventoryScroll.verticalNormalizedPosition = 1f;
             hasInventoryResponse = true;
-            inventoryStatus.text = worldScreen.Stage == WorldStage.TransitionPending
-                ? "Inventory response saved. Open the bag after arrival."
-                : snapshot.Count == 0 ? "No items." : snapshot.Count.ToString(CultureInfo.InvariantCulture) + " items";
+            inventoryStatus.text = snapshot.Count == 0 ? "No items." : snapshot.Count.ToString(CultureInfo.InvariantCulture) + " items";
             UpdateControls();
         }
 

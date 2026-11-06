@@ -34,6 +34,10 @@ namespace Core {
             if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarBuyResBody>))
                 BazaarBuyResponse(header->sessionID, parseMsgBody<MsgBazaarBuyResBody>(msg->GetBuffer()));
             break;
+        case MSG_BAZAAR_OUTBOX_LIST_RES:
+            if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarOutboxListResBody>))
+                BazaarOutboxListResponse(header->sessionID, parseMsgBody<MsgBazaarOutboxListResBody>(msg->GetBuffer()));
+            break;
         case MSG_BAZAAR_CHECK_OUTBOX_RES:
             if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarCheckOutboxResBody>))
                 BazaarCheckOutboxResponse(header->sessionID, parseMsgBody<MsgBazaarCheckOutboxResBody>(msg->GetBuffer()));
@@ -131,6 +135,13 @@ namespace Core {
         if (stateManager == nullptr || body->characterID == 0
             || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
         auto p = writer->WriteBazaarBuyResponse(body);
+        if (p) iocp->SendDataUnique(sessionID, std::move(p));
+    }
+
+    void MessageQueueHandler::BazaarOutboxListResponse(uint64_t sessionID, MsgBazaarOutboxListResBody* body) {
+        if (stateManager == nullptr || body->characterID == 0
+            || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
+        auto p = writer->WriteBazaarOutboxListResponse(body);
         if (p) iocp->SendDataUnique(sessionID, std::move(p));
     }
 

@@ -328,6 +328,7 @@ namespace Mmorpg.Client.Tests
             public void Chat(string message, byte scope, ulong targetID) { }
             public void Profiles(uint[] profileIds) { }
             public void RequestBazaarBuy(uint requestID, ulong listingID) { }
+            public void RequestBazaarOutboxList(uint requestID) { }
             public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }

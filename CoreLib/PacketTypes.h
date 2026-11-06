@@ -7,7 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
-    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 50;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 52;
 
     enum OP : uint16_t {
         AUTH = 1,
@@ -65,6 +65,8 @@ namespace Core {
         PARRY = 48,
         PARRY_RES = 49,
         GOLD_REWARD = 50,
+        BAZAAR_OUTBOX_LIST = 51,
+        BAZAAR_OUTBOX_LIST_RES = 52,
     };
 
     enum ZONE_CHANGE: uint8_t {
@@ -143,6 +145,22 @@ namespace Core {
         uint32_t quantity;
         uint64_t diamondSpent;
     };
+    struct BazaarOutboxListRequestBody { uint32_t requestID; };
+    struct BazaarOutboxListResponseBody {
+        uint32_t requestID;
+        uint8_t resStatus;
+        uint16_t processingCount;
+        uint16_t count;
+    };
+    struct BazaarOutboxItem {
+        uint64_t eventID;
+        uint64_t listingID;
+        uint32_t itemID;
+        uint32_t quantity;
+    };
+    static_assert(sizeof(BazaarOutboxListRequestBody) == 4);
+    static_assert(sizeof(BazaarOutboxListResponseBody) == 9);
+    static_assert(sizeof(BazaarOutboxItem) == 24);
     struct BazaarCheckOutboxRequestBody { uint32_t requestID; };
     struct BazaarCheckOutboxResponseBody {
         uint32_t requestID;

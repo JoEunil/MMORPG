@@ -98,6 +98,9 @@ namespace Core {
             case OP::BAZAAR_BUY:
                 BazaarBuy(p);
                 break;
+            case OP::BAZAAR_OUTBOX_LIST:
+                BazaarOutboxList(p);
+                break;
             case OP::BAZAAR_CHECK_OUTBOX:
                 BazaarCheckOutbox(p);
                 break;
@@ -340,6 +343,32 @@ namespace Core {
             if (response && stateManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
                 iocp->SendDataUnique(p->GetSessionID(), std::move(response));
         }
+    }
+
+    void NonZoneHandler::BazaarOutboxList(IPacketView* p) {
+        if (p->GetLength() != sizeof(PacketStruct<BazaarOutboxListRequestBody>)) return;
+        const auto* header = parseHeader(p->GetPtr());
+        const auto request = *parseBody<BazaarOutboxListRequestBody>(p->GetPtr());
+        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_OUTBOX_LIST
+            || header->length != p->GetLength() || header->flags != 0 || request.requestID == 0) return;
+        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        if (characterID == 0) return;
+        Message* msg = messagePool->Acquire();
+        if (msg != nullptr) {
+            auto* st = reinterpret_cast<MsgStruct<MsgBazaarOutboxListBody>*>(msg->GetBuffer());
+            st->header = { p->GetSessionID(), MSG_BAZAAR_OUTBOX_LIST };
+            st->body = { characterID, request.requestID };
+            msg->SetLength(sizeof(*st));
+            const bool queued = messageQueue->EnqueueMessage(msg);
+            messagePool->Return(msg);
+            if (queued) return;
+        }
+        MsgBazaarOutboxListResBody failed{};
+        failed.requestID = request.requestID;
+        failed.characterID = characterID;
+        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
+        auto response = writer->WriteBazaarOutboxListResponse(&failed);
+        if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
     void NonZoneHandler::BazaarCheckOutbox(IPacketView* p) {
