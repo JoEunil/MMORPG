@@ -221,6 +221,11 @@ namespace Mmorpg.Client
 
         private void WorldChanged()
         {
+            if (worldScreen != null && worldScreen.ItemTextFont != null)
+            {
+                statusText.font = worldScreen.ItemTextFont;
+                if (selectedItemNameText != null) selectedItemNameText.font = worldScreen.ItemTextFont;
+            }
             bool available = WorldAvailable && model != null && loginScreen.Model == model;
             marketButton.gameObject.SetActive(available);
             if (walletHud != null) walletHud.SetActive(available);
@@ -484,7 +489,7 @@ namespace Mmorpg.Client
                 iconImage.preserveAspect = true;
                 iconImage.raycastTarget = false;
             }
-            AddCell(rowObject.transform, "Item", ItemPresentation.Name(itemID), 0.14f, 0.40f,
+            AddCell(rowObject.transform, "Item", ItemPresentation.Name(itemID, worldScreen.Content), 0.14f, 0.40f,
                 TextAlignmentOptions.MidlineLeft, 16, new Color32(237, 242, 231, 255));
             AddCell(rowObject.transform, "Quantity", quantity.ToString(CultureInfo.InvariantCulture), 0.41f, 0.50f,
                 TextAlignmentOptions.Center, 14, new Color32(184, 202, 198, 255));
@@ -647,7 +652,7 @@ namespace Mmorpg.Client
             else buyOutcomes.Remove(listingID);
             transactionResultAvailable = true;
             statusText.text = status == 1 ? "Purchased " + quantity.ToString(CultureInfo.InvariantCulture) + " × " +
-                    ItemPresentation.Name(itemID) + " for " + amount.ToString(CultureInfo.InvariantCulture) +
+                    ItemPresentation.Name(itemID, worldScreen.Content) + " for " + amount.ToString(CultureInfo.InvariantCulture) +
                     " diamonds. Select Receive items, then check your bag."
                 : status == 0 ? "This listing is no longer available. No purchase was made."
                 : status == 4 ? "Not enough diamonds. No purchase was made."
@@ -797,7 +802,7 @@ namespace Mmorpg.Client
             UpdateControls();
         }
 
-        private static TMP_Text AddCell(Transform parent, string name, string value, float left, float right,
+        private TMP_Text AddCell(Transform parent, string name, string value, float left, float right,
             TextAlignmentOptions alignment, int fontSize, Color color)
         {
             var cellObject = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
@@ -807,7 +812,7 @@ namespace Mmorpg.Client
             rect.anchorMax = new Vector2(right, 1);
             rect.offsetMin = rect.offsetMax = Vector2.zero;
             var text = cellObject.GetComponent<TextMeshProUGUI>();
-            text.font = TMP_Settings.defaultFontAsset;
+            text.font = worldScreen != null && worldScreen.ItemTextFont != null ? worldScreen.ItemTextFont : TMP_Settings.defaultFontAsset;
             text.fontSize = fontSize;
             text.color = color;
             text.text = value;
@@ -986,7 +991,8 @@ namespace Mmorpg.Client
             }
             if (registerButton != null)
             {
-                registerButton.interactable = available && isSell && !requestPending && !registrationUncertain && saleItem.ItemID != 0;
+                registerButton.interactable = available && isSell && !requestPending && !registrationUncertain && saleItem.ItemID != 0 &&
+                    (saleItem.ItemID != 3 || (inventoryScreen != null && inventoryScreen.CanSellItem(3)));
                 var label = registerButton.GetComponentInChildren<TMP_Text>(true);
                 if (label != null) label.text = registrationUncertain ? "CHECK MY LISTINGS" : registerConfirmation ? "CONFIRM SALE" : "REVIEW SALE";
             }
@@ -1134,7 +1140,7 @@ namespace Mmorpg.Client
         private bool TrySaleValues(out ushort quantity, out ulong price)
         {
             quantity = 0; price = 0;
-            return saleItem.ItemID != 0 && quantityInput != null && priceInput != null &&
+            return saleItem.ItemID != 0 && (saleItem.ItemID != 3 || (inventoryScreen != null && inventoryScreen.CanSellItem(3))) && quantityInput != null && priceInput != null &&
                 ushort.TryParse(quantityInput.text, NumberStyles.None, CultureInfo.InvariantCulture, out quantity) && quantity > 0 && quantity <= saleItem.Quantity &&
                 ulong.TryParse(priceInput.text, NumberStyles.None, CultureInfo.InvariantCulture, out price) && price > 0;
         }
@@ -1142,6 +1148,13 @@ namespace Mmorpg.Client
         private void UpdateSaleSummary()
         {
             if (saleSummaryText == null) return;
+            if (saleItem.ItemID == 3 && (inventoryScreen == null || !inventoryScreen.CanSellItem(3)))
+            {
+                if (saleFeeValueText != null) saleFeeValueText.text = "--";
+                saleSummaryText.text = inventoryScreen != null && inventoryScreen.IsItemEquipped(3)
+                    ? "Unequip this weapon before selling any of its stack." : "Wait for confirmed equipment before selling this weapon.";
+                return;
+            }
             bool valid = TrySaleValues(out _, out ulong price);
             if (!valid)
             {
@@ -1157,7 +1170,7 @@ namespace Mmorpg.Client
 
         private void ShowSelectedItem(uint itemID, ushort quantity)
         {
-            if (selectedItemNameText != null) selectedItemNameText.text = ItemPresentation.Name(itemID);
+            if (selectedItemNameText != null) selectedItemNameText.text = ItemPresentation.Name(itemID, worldScreen.Content);
             if (selectedItemQuantityText != null) selectedItemQuantityText.text = "× " + quantity.ToString(CultureInfo.InvariantCulture);
             if (selectedItemIcon != null)
             {
@@ -1180,6 +1193,13 @@ namespace Mmorpg.Client
             image.preserveAspect = true;
             image.color = icon != null ? Color.white : goldMark ? new Color(.91f, .70f, .31f) : new Color(.47f, .79f, .89f);
             image.raycastTarget = false;
+        }
+
+        public void RefreshEquipmentControls()
+        {
+            if (saleItem.ItemID == 3 && (inventoryScreen == null || !inventoryScreen.CanSellItem(3))) registerConfirmation = false;
+            UpdateSaleSummary();
+            UpdateControls();
         }
 
         private void RegisterSale()

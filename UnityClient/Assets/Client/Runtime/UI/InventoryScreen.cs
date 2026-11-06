@@ -59,6 +59,17 @@ namespace Mmorpg.Client
         private bool inventoryWarmupPending;
         private bool refreshAfterCurrentRequest;
         private bool refreshOnOpenAfterUncertainDelivery;
+        private UnityEngine.UI.Button equipButton;
+        private bool equipmentReadPending, equipmentSetPending, equipmentUncertain;
+        private int equipmentReadAttempts;
+        private float equipmentDeadline, equipmentNextReadAt;
+        private uint equippedWeaponID;
+        private ushort equipmentBaseAttack, equipmentBonusAttack, equipmentEffectiveAttack;
+        private string equipmentResult;
+        public bool EquipmentKnown { get; private set; }
+        public bool EquipmentMutationPending => equipmentSetPending || equipmentUncertain;
+        public bool IsItemEquipped(uint itemID) => EquipmentKnown && itemID != 0 && equippedWeaponID == itemID;
+        public bool CanSellItem(uint itemID) => itemID != 3 || (EquipmentKnown && !EquipmentMutationPending && !IsItemEquipped(itemID));
         private bool hasSelectedItem;
         private byte selectedSlot;
         private uint selectedItemID;
@@ -92,8 +103,10 @@ namespace Mmorpg.Client
 
             bagButton.onClick.AddListener(TogglePanel);
             refreshButton.onClick.AddListener(RequestInventory);
+            refreshButton.onClick.AddListener(RefreshEquipment);
             closeButton.onClick.AddListener(ClosePanel);
             if (useButton != null) useButton.onClick.AddListener(UseSelectedItem);
+            EnsureEquipmentButton();
             EnsurePotionQuickSlots();
             if (potionQuickSlot != null) potionQuickSlot.onClick.AddListener(UseQuickPotion);
             if (mpPotionQuickSlot != null) mpPotionQuickSlot.onClick.AddListener(UseQuickMpPotion);
@@ -104,6 +117,25 @@ namespace Mmorpg.Client
 
         private void Update()
         {
+            if (equipmentReadPending && Time.unscaledTime >= equipmentDeadline)
+            {
+                equipmentReadPending = false;
+                EquipmentKnown = false;
+                equipmentResult = "Equipment lookup timed out. Refresh to try again.";
+                equipmentNextReadAt = Time.unscaledTime + FailureRetryDelaySeconds;
+                UpdateControls();
+            }
+            if (equipmentSetPending && Time.unscaledTime >= equipmentDeadline)
+            {
+                equipmentSetPending = false;
+                equipmentUncertain = true;
+                EquipmentKnown = false;
+                equipmentResult = "Equipment result unknown. Reconnect before changing it again.";
+                UpdateControls();
+            }
+            if (!EquipmentKnown && !equipmentReadPending && !EquipmentMutationPending && equipmentReadAttempts < 2 &&
+                Time.unscaledTime >= equipmentNextReadAt && WorldAvailable && model != null && loginScreen.Model == model)
+                RequestEquipmentRead();
             // Bootstrap callbacks expose the world before ClientCore marks it ready; read on the next frame.
             if (!inventoryWarmupAttempted && WorldAvailable && model != null && loginScreen.Model == model &&
                 !hasInventoryResponse && !requestPending && !requestTimedOut && !usePending)
@@ -175,6 +207,7 @@ namespace Mmorpg.Client
             }
             CancelFailureRetry();
             model = next;
+            ResetEquipment();
             ResetItemUse();
             requestPending = false;
             requestTimedOut = false;
@@ -193,6 +226,7 @@ namespace Mmorpg.Client
         private void SetModelSubscriptions(bool subscribe)
         {
             if (model == null) return;
+            model.OnEquipmentReceived -= EquipmentReceived;
             model.OnInventoryReceived -= InventoryReceived;
             model.OnItemUseReceived -= ItemUseReceived;
             model.OnItemRewardReceived -= ItemRewardReceived;
@@ -201,6 +235,7 @@ namespace Mmorpg.Client
             model.OnZoneTransitionStarted -= ItemUseZoneTransitionStarted;
             model.OnConnectionFailed -= ItemUseConnectionFailed;
             if (!subscribe) return;
+            model.OnEquipmentReceived += EquipmentReceived;
             model.OnInventoryReceived += InventoryReceived;
             model.OnItemUseReceived += ItemUseReceived;
             model.OnItemRewardReceived += ItemRewardReceived;
@@ -218,6 +253,116 @@ namespace Mmorpg.Client
             model.OnConnectionFailed += ItemUseConnectionFailed;
         }
 
+        private void EnsureEquipmentButton()
+        {
+            if (equipButton != null) return;
+            var go = new GameObject("InventoryEquipButton", typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(UnityEngine.UI.Button));
+            go.transform.SetParent(detailName.transform.parent, false);
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0, 1); rect.anchorMax = Vector2.one; rect.pivot = new Vector2(.5f, 1);
+            rect.offsetMin = new Vector2(18, -350); rect.offsetMax = new Vector2(-18, -316);
+            var image = go.GetComponent<UnityEngine.UI.Image>(); image.color = new Color32(23, 49, 57, 255);
+            equipButton = go.GetComponent<UnityEngine.UI.Button>(); equipButton.targetGraphic = image;
+            var label = CreateText("Label", go.transform, "EQUIP WEAPON", 14, new Color32(236, 240, 232, 255), TextAlignmentOptions.Center);
+            Stretch(label.rectTransform, 0);
+            equipButton.onClick.AddListener(ToggleEquipment);
+        }
+
+        private void ResetEquipment()
+        {
+            EquipmentKnown = false;
+            equipmentReadPending = equipmentSetPending = equipmentUncertain = false;
+            equipmentReadAttempts = 0;
+            equipmentNextReadAt = 0;
+            equippedWeaponID = 0;
+            equipmentResult = null;
+            if (worldScreen != null) worldScreen.SetOwnWeaponVisible(false);
+            if (bazaarScreen != null) bazaarScreen.RefreshEquipmentControls();
+        }
+
+        private void RefreshEquipment()
+        {
+            if (!WorldAvailable || equipmentReadPending || equipmentSetPending) return;
+            equipmentReadAttempts = 0;
+            RequestEquipmentRead();
+        }
+
+        private void RequestEquipmentRead()
+        {
+            if (!WorldAvailable || model == null || loginScreen.Model != model || equipmentReadPending || equipmentSetPending) return;
+            equipmentReadAttempts++;
+            equipmentReadPending = true;
+            equipmentDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+            try { model.RequestEquipment(); }
+            catch (Exception)
+            {
+                equipmentReadPending = false;
+                equipmentResult = "Equipment could not be read. Refresh to try again.";
+                equipmentNextReadAt = Time.unscaledTime + FailureRetryDelaySeconds;
+            }
+            UpdateControls();
+        }
+
+        private void ToggleEquipment()
+        {
+            if (!IsOpen || !WorldAvailable || model == null || loginScreen.Model != model || !hasSelectedItem || selectedItemID != 3 ||
+                !hasInventoryResponse || requestPending || !EquipmentKnown || equipmentReadPending || EquipmentMutationPending || !worldScreen.CanAct) return;
+            uint target = equippedWeaponID == 3 ? 0U : 3U;
+            equipmentSetPending = true;
+            equipmentDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+            equipmentResult = "Changing weapon…";
+            worldScreen.StopActions();
+            try
+            {
+                if (!model.RequestEquipWeapon(target))
+                {
+                    equipmentSetPending = false;
+                    equipmentResult = "Weapon change is unavailable.";
+                }
+            }
+            catch (Exception)
+            {
+                equipmentSetPending = false;
+                equipmentUncertain = true;
+                EquipmentKnown = false;
+                equipmentResult = "Equipment result unknown. Reconnect before changing it again.";
+            }
+            if (bazaarScreen != null) bazaarScreen.RefreshEquipmentControls();
+            UpdateControls();
+        }
+
+        private void EquipmentReceived(byte operation, byte status, uint weaponID, ushort baseAttack, ushort bonusAttack, ushort effectiveAttack)
+        {
+            if (model == null || loginScreen.Model != model || !WorldAvailable ||
+                (operation == 0 ? !equipmentReadPending : !equipmentSetPending && !equipmentUncertain)) return;
+            if (operation == 0) equipmentReadPending = false;
+            else { equipmentSetPending = false; equipmentReadPending = false; equipmentUncertain = false; }
+            if (status == 1)
+            {
+                EquipmentKnown = true;
+                equippedWeaponID = weaponID;
+                equipmentBaseAttack = baseAttack; equipmentBonusAttack = bonusAttack; equipmentEffectiveAttack = effectiveAttack;
+                equipmentResult = equipmentUncertain ? "Equipment change result unknown. Reconnect before changing it." : null;
+                worldScreen.SetOwnWeaponVisible(weaponID == 3);
+                if (operation == 1) RefreshAfterDelivery();
+            }
+            else
+            {
+                EquipmentKnown = false;
+                equipmentResult = status == 2 ? "Equipment is busy. Refresh in a moment."
+                    : status == 3 ? "The weapon is no longer in your bag."
+                    : status == 4 ? "This item cannot be equipped."
+                    : status == 5 ? "Cannot change equipment while dead."
+                    : status == 6 ? "World ownership changed. Refresh after arrival."
+                    : status == 7 ? "Equipment request expired. Refresh before changing it."
+                    : status == 8 ? "Equipment storage failed. Refresh before changing it."
+                    : "Equipment request was rejected.";
+                equipmentNextReadAt = Time.unscaledTime + FailureRetryDelaySeconds;
+            }
+            if (bazaarScreen != null) bazaarScreen.RefreshEquipmentControls();
+            UpdateControls();
+        }
+
         private void ResetItemUse()
         {
             usePending = false;
@@ -229,6 +374,7 @@ namespace Mmorpg.Client
 
         private void ItemUseZoneTransitionStarted(ulong ownershipEpoch, ushort zoneID)
         {
+            ResetEquipment();
             inventoryWarmupAttempted = false;
             inventoryWarmupPending = false;
             CancelFailureRetry();
@@ -241,6 +387,7 @@ namespace Mmorpg.Client
 
         private void ItemUseConnectionFailed(string message)
         {
+            ResetEquipment();
             inventoryWarmupPending = false;
             CancelFailureRetry();
             ResetItemUse();
@@ -356,7 +503,7 @@ namespace Mmorpg.Client
             if (model == null || loginScreen.Model != model) return;
             switch (status)
             {
-                case 1: SetUseStatus("Received " + ItemPresentation.Name(itemID) + " ×" + grantedQuantity.ToString(CultureInfo.InvariantCulture) + "."); break;
+                case 1: SetUseStatus("Received " + ItemPresentation.Name(itemID, worldScreen.Content) + " ×" + grantedQuantity.ToString(CultureInfo.InvariantCulture) + "."); break;
                 case 2: ShowLootFailure("Bag full. Item reward could not be added."); break;
                 case 3: ShowLootFailure("Item reward failed."); break;
                 default: SetUseStatus("Unknown item reward result."); break;
@@ -392,6 +539,12 @@ namespace Mmorpg.Client
 
         private void WorldChanged()
         {
+            if (worldScreen != null && worldScreen.ItemTextFont != null)
+            {
+                detailName.font = worldScreen.ItemTextFont;
+                if (useStatus != null) useStatus.font = worldScreen.ItemTextFont;
+                if (lootNotice != null) lootNotice.font = worldScreen.ItemTextFont;
+            }
             bool available = WorldAvailable && model != null && loginScreen.Model == model;
             if (!available) inventoryWarmupPending = false;
             if (!available || (!IsOpen && !inventoryWarmupPending)) CancelFailureRetry();
@@ -601,7 +754,7 @@ namespace Mmorpg.Client
             quantityBadgeRect.anchoredPosition = new Vector2(-8f, -44f);
             quantityBadgeRect.sizeDelta = new Vector2(44f, 22f);
 
-            var name = CreateText("ItemName", cardObject.transform, ItemPresentation.Name(item.ItemID), 14,
+            var name = CreateText("ItemName", cardObject.transform, ItemPresentation.Name(item.ItemID, worldScreen.Content), 14,
                 new Color32(236, 240, 232, 255), TextAlignmentOptions.MidlineLeft);
             name.rectTransform.anchorMin = new Vector2(0, 0);
             name.rectTransform.anchorMax = new Vector2(1, 0);
@@ -631,7 +784,7 @@ namespace Mmorpg.Client
             if (useStatus != null && !usePending && !useTimedOut)
                 useStatus.text = (item.ItemID == 1 || item.ItemID == 2) && Time.unscaledTime < useCooldownDeadline
                     ? "Potion is on cooldown."
-                    : ItemPresentation.UseDescription(item.ItemID);
+                    : ItemPresentation.UseDescription(item.ItemID, worldScreen.Content);
             UpdateControls();
         }
 
@@ -666,7 +819,7 @@ namespace Mmorpg.Client
             else if (detailIcon != null) detailIcon.enabled = false;
             detailBadge.text = icon != null ? string.Empty : ItemPresentation.Badge(item.ItemID);
             detailBadge.color = ItemPresentation.Accent(item.ItemID);
-            detailName.text = ItemPresentation.Name(item.ItemID);
+            detailName.text = ItemPresentation.Name(item.ItemID, worldScreen.Content);
             detailSlot.text = "Slot " + item.Slot.ToString(CultureInfo.InvariantCulture);
             detailQuantity.text = "Quantity " + item.Quantity.ToString(CultureInfo.InvariantCulture);
         }
@@ -713,8 +866,20 @@ namespace Mmorpg.Client
                 (potionNoticeDeadline == 0 || (hasSelectedItem && selectedItemID != 1 && selectedItemID != 2)))
                 useStatus.text = hasSelectedItem
                     ? ((selectedItemID == 1 || selectedItemID == 2) && Time.unscaledTime < useCooldownDeadline
-                        ? "Potion is on cooldown." : ItemPresentation.UseDescription(selectedItemID))
+                        ? "Potion is on cooldown." : ItemPresentation.UseDescription(selectedItemID, worldScreen.Content))
                     : string.Empty;
+            if (equipButton != null)
+            {
+                equipButton.gameObject.SetActive(hasSelectedItem && selectedItemID == 3);
+                equipButton.interactable = available && IsOpen && hasInventoryResponse && !requestPending && EquipmentKnown &&
+                    !equipmentReadPending && !EquipmentMutationPending && worldScreen.CanAct;
+                var label = equipButton.GetComponentInChildren<TMP_Text>(true);
+                if (label != null) label.text = equipmentSetPending ? "CHANGING…" : IsItemEquipped(3) ? "UNEQUIP WEAPON" : "EQUIP WEAPON";
+            }
+            if (hasSelectedItem && selectedItemID == 3 && useStatus != null)
+                useStatus.text = equipmentResult ?? (!EquipmentKnown ? "Equipment: --" :
+                    "Weapon: " + (equippedWeaponID == 0 ? "None" : ItemPresentation.Name(equippedWeaponID, worldScreen.Content)) +
+                    "\nAttack " + equipmentBaseAttack + " + " + equipmentBonusAttack + " = " + equipmentEffectiveAttack);
             if (useButton != null)
             {
                 var label = useButton.GetComponentInChildren<TMP_Text>(true);
@@ -787,13 +952,13 @@ namespace Mmorpg.Client
                 !usePending && Time.unscaledTime >= useCooldownDeadline && (!known || quantity > 0);
         }
 
-        private static TMP_Text CreateText(string name, Transform parent, string value, float size, Color color,
+        private TMP_Text CreateText(string name, Transform parent, string value, float size, Color color,
             TextAlignmentOptions alignment)
         {
             var gameObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
             gameObject.transform.SetParent(parent, false);
             var text = gameObject.GetComponent<TextMeshProUGUI>();
-            text.font = TMP_Settings.defaultFontAsset;
+            text.font = worldScreen != null && worldScreen.ItemTextFont != null ? worldScreen.ItemTextFont : TMP_Settings.defaultFontAsset;
             text.text = value;
             text.fontSize = size;
             text.color = color;
@@ -826,11 +991,13 @@ namespace Mmorpg.Client
             if (worldScreen != null) worldScreen.WorldStateChanged -= WorldChanged;
             if (bagButton != null) bagButton.onClick.RemoveListener(TogglePanel);
             if (refreshButton != null) refreshButton.onClick.RemoveListener(RequestInventory);
+            if (refreshButton != null) refreshButton.onClick.RemoveListener(RefreshEquipment);
             if (closeButton != null) closeButton.onClick.RemoveListener(ClosePanel);
             if (useButton != null) useButton.onClick.RemoveListener(UseSelectedItem);
             if (potionQuickSlot != null) potionQuickSlot.onClick.RemoveListener(UseQuickPotion);
             if (mpPotionQuickSlot != null) mpPotionQuickSlot.onClick.RemoveListener(UseQuickMpPotion);
             SetModelSubscriptions(false);
+            ResetEquipment();
             if (usePending) RequireFreshInventoryOnOpen();
             ResetItemUse();
             if (requestPending)

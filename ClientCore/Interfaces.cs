@@ -78,6 +78,7 @@ public struct InventoryItemView
         event Action<ulong, ulong, byte, uint, uint> OnParryReceived;
         event Action<uint, ushort, ushort, byte> OnItemRewardReceived;
         event Action<byte> OnGoldRewardReceived;
+        event Action<byte, byte, uint, ushort, ushort, ushort> OnEquipmentReceived;
         event Action<bool> OnBazaarReceived;
         event Action<byte> OnBazaarRegisterReceived;
         event Action<byte, ulong, byte, ulong> OnWalletReceived;
@@ -101,6 +102,8 @@ public struct InventoryItemView
         void RequestInventory();
         bool RequestItemUse(uint itemID);
         bool RequestParry();
+        void RequestEquipment();
+        bool RequestEquipWeapon(uint itemID);
         void RequestBazaar(ushort itemType, ushort page);
         void RequestBazaarRegister(byte inventorySlot, ushort quantity, ulong totalDiamondPrice);
         void RequestWallet();
@@ -130,6 +133,7 @@ public struct InventoryItemView
         void ParryReceived(ulong requestID, ulong ownershipEpoch, byte status, uint windowRemainingTicks, uint cooldownRemainingTicks);
         void ItemRewardReceived(uint itemID, ushort grantedQuantity, ushort remainingQuantity, byte status);
         void GoldRewardReceived(byte status);
+        void EquipmentReceived(ulong requestID, ulong ownershipEpoch, byte operation, byte status, uint weaponID, ushort baseAttack, ushort bonusAttack, ushort effectiveAttack);
         void BazaarReceived(uint requestID, byte status, PacketHelper.BazaarListing[] rows);
         void BazaarRegisterReceived(uint requestID, byte status);
         void WalletGoldReceived(uint requestID, byte status, ulong gold);
@@ -211,6 +215,8 @@ namespace ClientCore.Services
         void RequestInventory();
         void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID);
         void RequestParry(ulong requestID, ulong ownershipEpoch);
+        void RequestEquipment(ulong requestID, ulong ownershipEpoch);
+        void RequestEquipWeapon(ulong requestID, ulong ownershipEpoch, uint itemID);
         void RequestBazaar(uint requestID, ushort itemType, ushort page);
         void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice);
         void RequestWallet(uint requestID);

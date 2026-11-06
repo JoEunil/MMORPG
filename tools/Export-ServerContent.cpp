@@ -11,6 +11,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 #include "SkillData.h"
 #include "MonsterData.h"
 #include "HuntingZoneData.h"
@@ -22,12 +23,32 @@ namespace {
         if (!valid) throw std::runtime_error(message);
     }
 
+    void WriteJsonString(std::ostream& json, const char* text) {
+        json << '"';
+        for (const auto* character = reinterpret_cast<const unsigned char*>(text); *character; ++character) {
+            if (*character == '"' || *character == '\\') json << '\\' << static_cast<char>(*character);
+            else if (*character < 0x20) json << "\\u00" << "0123456789abcdef"[*character >> 4] << "0123456789abcdef"[*character & 15];
+            else json << static_cast<char>(*character);
+        }
+        json << '"';
+    }
+
     void Validate() {
         Require(Data::parryWindowTicks > 0 && Data::parryCooldownTicks >= Data::parryWindowTicks && Data::parryCharges == 1,
             "Parry requires one charge and a positive window within its cooldown.");
-        Require(Data::itemMap.at(1).hpRecovery == 1500 && Data::itemMap.at(2).mpRecovery == 500 &&
-            Data::itemMap.at(1).cooldownTicks == 120 && Data::itemMap.at(2).cooldownTicks == 120,
-            "HP and MP potions require 1500/500 recovery and a shared 120-tick cooldown.");
+        Require(Data::itemMap.at(1).hpRecovery > 0 && Data::itemMap.at(1).mpRecovery == 0 &&
+            Data::itemMap.at(2).mpRecovery > 0 && Data::itemMap.at(2).hpRecovery == 0 &&
+            Data::itemMap.at(1).cooldownTicks == Data::itemMap.at(2).cooldownTicks,
+            "HP and MP potion entries require their own recovery resource and a shared cooldown.");
+        Require(!Data::itemMap.empty(), "Item definitions cannot be empty.");
+        for (const auto& [id, item] : Data::itemMap) {
+            Require(id > 0 && item.name != nullptr && item.name[0] != '\0' && item.weight > 0 &&
+                item.itemType >= 1 && item.itemType <= 3 && (item.itemType == 2 || item.weaponAttackBonus == 0), "Item IDs, names, types, or weights are invalid.");
+            Require(item.hpRecovery <= INT32_MAX && item.mpRecovery <= INT32_MAX &&
+                (item.itemType == 1 ? (item.hpRecovery > 0) != (item.mpRecovery > 0) && item.cooldownTicks > 0 :
+                item.hpRecovery == 0 && item.mpRecovery == 0 && item.cooldownTicks == 0),
+                "Potions require one recovery resource and a cooldown; equipment cannot recover resources.");
+        }
         for (const auto* skills : {&Data::skillList, &Data::monsterSkillList}) {
             Require(skills->size() == 5, "Expected skill IDs 0 through 4 for each caster type.");
             for (size_t id = 0; id < skills->size(); ++id) {
@@ -125,7 +146,7 @@ namespace {
         std::ostringstream json;
         json.imbue(std::locale::classic());
         json << std::setprecision(std::numeric_limits<float>::max_digits10);
-        json << "{\n  \"formatVersion\": 3,\n  \"skills\": [\n";
+        json << "{\n  \"formatVersion\": 4,\n  \"skills\": [\n";
         for (const auto* skills : {&Data::skillList, &Data::monsterSkillList}) {
             if (skills == &Data::monsterSkillList) json << "\n  ],\n  \"monsterSkills\": [\n";
             for (size_t id = 0; id < skills->size(); ++id) {
@@ -180,11 +201,17 @@ namespace {
             json << "    {\"level\":" << growth.level << ",\"requiredTotalExp\":" << growth.requiredTotalExp
                 << ",\"maxHpIncrease\":" << growth.maxHpIncrease << '}';
         }
-        json << "\n  ]},\n  \"itemUse\":[";
-        for (const auto itemID : {Data::monsterPotionItemID, Data::monsterManaPotionItemID}) {
+        json << "\n  ]},\n  \"items\":[";
+        std::vector<uint32_t> itemIDs;
+        for (const auto& entry : Data::itemMap) itemIDs.push_back(entry.first);
+        std::sort(itemIDs.begin(), itemIDs.end());
+        for (size_t index = 0; index < itemIDs.size(); ++index) {
+            const uint32_t itemID = itemIDs[index];
             const auto& item = Data::itemMap.at(itemID);
-            if (itemID != Data::monsterPotionItemID) json << ',';
-            json << "{\"itemID\":" << itemID << ",\"hpRecovery\":" << item.hpRecovery
+            if (index != 0) json << ',';
+            json << "{\"itemID\":" << itemID << ",\"itemType\":" << item.itemType << ",\"name\":";
+            WriteJsonString(json, item.name);
+            json << ",\"weight\":" << item.weight << ",\"weaponAttackBonus\":" << item.weaponAttackBonus << ",\"hpRecovery\":" << item.hpRecovery
                 << ",\"mpRecovery\":" << item.mpRecovery << ",\"cooldownTicks\":" << item.cooldownTicks << '}';
         }
         json << "],\n  \"parry\":{\"windowTicks\":" << Data::parryWindowTicks << ",\"cooldownTicks\":" << Data::parryCooldownTicks << ",\"charges\":" << Data::parryCharges << "}\n}\n";
@@ -234,7 +261,7 @@ int wmain(int argc, wchar_t* argv[]) {
         Require(argc == 2 && argv[1][0] != L'\0', "Usage: Export-ServerContent.exe <outputPath>");
         Validate();
         WriteAtomically(std::filesystem::absolute(argv[1]), Serialize());
-        std::cout << "Exported player/monster skills, 6 hunting zones, 3 monsters, and 100 growth levels.\n";
+        std::cout << "Exported player/monster skills, 6 hunting zones, 3 monsters, 100 growth levels, and " << Data::itemMap.size() << " items.\n";
         return 0;
     }
     catch (const std::exception& error) {

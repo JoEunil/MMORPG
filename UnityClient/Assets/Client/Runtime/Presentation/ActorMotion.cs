@@ -51,6 +51,14 @@ namespace Mmorpg.Client
         private float defeatStarted = -1f;
         private Quaternion defeatStartRotation;
 
+        public void SetWeaponVisible(bool visible)
+        {
+            Configure();
+            if (visual == null) return;
+            foreach (var renderer in visual.GetComponentsInChildren<MeshRenderer>(true))
+                if (renderer.name.StartsWith("Sword", System.StringComparison.Ordinal)) renderer.enabled = visible;
+        }
+
         public void Configure()
         {
             if (visual != null) return;

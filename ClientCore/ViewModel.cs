@@ -64,6 +64,10 @@ namespace ClientCore
         private ulong _itemUseRequestID;
         private ulong _itemUsePending;
         private uint _itemUsePendingItemID;
+        private ulong _equipmentGetID, _equipmentGetPending;
+        private ulong _equipmentSetID, _equipmentSetPending;
+        private uint _equipmentSetItemID;
+        private long _equipmentGetDeadline;
         private uint _bazaarRequestID;
         private uint _bazaarPending;
         private long _bazaarPendingDeadline;
@@ -92,6 +96,7 @@ namespace ClientCore
         public event Action<ulong, ulong, byte, uint, uint> OnParryReceived;
         public event Action<uint, ushort, ushort, byte> OnItemRewardReceived;
         public event Action<byte> OnGoldRewardReceived;
+        public event Action<byte, byte, uint, ushort, ushort, ushort> OnEquipmentReceived;
         public event Action<bool> OnBazaarReceived;
         public event Action<byte> OnBazaarRegisterReceived;
         public event Action<byte, ulong, byte, ulong> OnWalletReceived;
@@ -160,6 +165,7 @@ namespace ClientCore
                 _walletRefreshAfterReward = false;
                 _inventoryPending = false;
                 _itemUsePending = 0;
+                _equipmentGetPending = _equipmentSetPending = 0;
                 _parryPending = 0;
                 _parryDeadline = 0;
                 _worldReady = false;
@@ -206,6 +212,7 @@ namespace ClientCore
                 _zonePending = true;
                 CancelWalletLocked();
                 _itemUsePending = 0;
+                _equipmentGetPending = _equipmentSetPending = 0;
                 _parryPending = 0;
                 _parryDeadline = 0;
                 CancelBazaar();
@@ -239,6 +246,7 @@ namespace ClientCore
                         return false;
                     _respawnPending = true;
                     _itemUsePending = 0;
+                    _equipmentGetPending = _equipmentSetPending = 0;
                     _parryPending = 0;
                     _parryDeadline = 0;
                     _zonePending = true;
@@ -833,6 +841,68 @@ namespace ClientCore
             });
         }
 
+        public void RequestEquipment()
+        {
+            ulong requestID, epoch;
+            lock (_sessionGate)
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || _zonePending || _awaitingZoneAck ||
+                    _ownershipEpoch == 0 || _equipmentGetID == ulong.MaxValue ||
+                    (_equipmentGetPending != 0 && Stopwatch.GetTimestamp() < _equipmentGetDeadline))
+                    throw new InvalidOperationException("Equipment is unavailable or a read is pending.");
+                requestID = _equipmentGetPending = ++_equipmentGetID;
+                epoch = _ownershipEpoch;
+                _equipmentGetDeadline = Stopwatch.GetTimestamp() + 5 * Stopwatch.Frequency;
+            }
+            try { _network.RequestEquipment(requestID, epoch); }
+            catch { lock (_sessionGate) if (_equipmentGetPending == requestID) _equipmentGetPending = 0; throw; }
+        }
+
+        public bool RequestEquipWeapon(uint itemID)
+        {
+            ulong requestID, epoch;
+            lock (_sessionGate)
+            {
+                if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || _zonePending || _awaitingZoneAck ||
+                    _ownershipEpoch == 0 || _selfHP <= 0 || _equipmentSetPending != 0 || _equipmentSetID == ulong.MaxValue ||
+                    (itemID != 0 && itemID != 3)) return false;
+                requestID = _equipmentSetPending = ++_equipmentSetID;
+                _equipmentSetItemID = itemID;
+                _equipmentGetPending = 0; // A read sampled before this change cannot overwrite its outcome.
+                epoch = _ownershipEpoch;
+            }
+            // Retain correlation on send failure: the server may already have received this mutation.
+            _network.RequestEquipWeapon(requestID, epoch, itemID);
+            return true;
+        }
+
+        public void EquipmentReceived(ulong requestID, ulong ownershipEpoch, byte operation, byte status, uint weaponID,
+            ushort baseAttack, ushort bonusAttack, ushort effectiveAttack)
+        {
+            if (requestID == 0 || ownershipEpoch == 0 || operation > 1 || status > 8 ||
+                (status == 1 ? (weaponID != 0 && weaponID != 3) || Math.Min((uint)ushort.MaxValue, (uint)baseAttack + bonusAttack) != effectiveAttack ||
+                    (weaponID == 0 && bonusAttack != 0) : weaponID != 0 || baseAttack != 0 || bonusAttack != 0 || effectiveAttack != 0)) return;
+            _threadDispatcher.Post(() =>
+            {
+                lock (_sessionGate)
+                {
+                    if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || ownershipEpoch != _ownershipEpoch) return;
+                    if (operation == 0)
+                    {
+                        if (requestID != _equipmentGetPending) return;
+                        _equipmentGetPending = 0;
+                    }
+                    else
+                    {
+                        if (requestID != _equipmentSetPending || (status == 1 && weaponID != _equipmentSetItemID)) return;
+                        _equipmentSetPending = 0;
+                        _equipmentGetPending = 0;
+                    }
+                }
+                OnEquipmentReceived?.Invoke(operation, status, weaponID, baseAttack, bonusAttack, effectiveAttack);
+            });
+        }
+
         public bool RequestParry()
         {
             ulong requestID, epoch;
@@ -984,6 +1054,7 @@ namespace ClientCore
                 {
                     CancelWalletLocked();
                     _itemUsePending = 0;
+                    _equipmentGetPending = _equipmentSetPending = 0;
                     _parryPending = 0;
                     _parryDeadline = 0;
                     // Stop new use requests before the dispatcher accepts the new ownership epoch.
@@ -1225,6 +1296,7 @@ namespace ClientCore
                 _awaitingZoneAck = false;
                 _inventoryPending = false;
                 _itemUsePending = 0;
+                _equipmentGetPending = _equipmentSetPending = 0;
                 _parryPending = 0;
                 _parryDeadline = 0;
                 CancelWalletLocked();

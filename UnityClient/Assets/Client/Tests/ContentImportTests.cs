@@ -29,14 +29,14 @@ namespace Mmorpg.Client.Tests
                 Assert.That(content.otherMonsters.Length, Is.EqualTo(2));
                 var actual = new JObject
                 {
-                    ["formatVersion"] = 3,
+                    ["formatVersion"] = 4,
                     ["monsterSkills"] = JArray.FromObject(content.monsterSkills),
                     ["huntingZones"] = JArray.FromObject(content.huntingZones),
                     ["skills"] = JArray.FromObject(new[] { content.otherSkills[0], content.ring, content.otherSkills[1], content.otherSkills[2], content.otherSkills[3] }),
                     ["monsters"] = JArray.FromObject(new[] { content.monster0, content.otherMonsters[0], content.otherMonsters[1] }),
                     ["growth"] = JObject.FromObject(content.growth),
                     ["parry"] = JObject.FromObject(content.parry),
-                    ["itemUse"] = JArray.FromObject(content.itemUse)
+                    ["items"] = JArray.FromObject(content.items)
                 };
                 expected["skills"] = JArray.FromObject(expected["skills"].ToObject<ServerContent.RingSkill[]>());
                 expected["monsterSkills"] = JArray.FromObject(expected["monsterSkills"].ToObject<ServerContent.RingSkill[]>());
@@ -47,6 +47,17 @@ namespace Mmorpg.Client.Tests
                 Assert.That(content.GetHuntingZone(6).bossHp, Is.EqualTo(36000));
                 Assert.That(content.GetHuntingZone(1).minLevel, Is.Zero);
                 Assert.That(content.GetHuntingZone(0), Is.Null);
+                Assert.That(content.items.Length, Is.EqualTo(5));
+                Assert.That(content.GetItem(1).hpRecovery, Is.EqualTo(1500));
+                Assert.That(content.GetItem(2).mpRecovery, Is.EqualTo(500));
+                Assert.That(content.GetItem(3).name, Is.EqualTo(expected["items"][2]["name"].Value<string>()));
+                Assert.That(content.GetItem(3).itemType, Is.EqualTo(2));
+                Assert.That(content.GetItem(3).weaponAttackBonus, Is.EqualTo(2));
+                Assert.That(content.GetItem(33), Is.Null);
+                Assert.That(ItemPresentation.Name(3, content), Is.EqualTo(content.GetItem(3).name));
+                Assert.That(ItemPresentation.Name(33, content), Is.EqualTo("Item #33"));
+                StringAssert.Contains("1500 HP", ItemPresentation.UseDescription(1, content));
+                StringAssert.Contains("500 MP", ItemPresentation.UseDescription(2, content));
                 expected["monsters"] = JArray.FromObject(expected["monsters"].ToObject<ServerContent.Monster[]>());
                 Assert.That(JToken.DeepEquals(actual, expected), Is.True, "Every imported server field must match the JSON snapshot at runtime float precision.");
                 Assert.That(content.growth.levels.Length, Is.EqualTo(content.growth.maxLevel));
@@ -58,6 +69,21 @@ namespace Mmorpg.Client.Tests
                 Assert.That(AssetDatabase.AssetPathToGUID(assetPath), Is.EqualTo(guid));
                 Assert.That(File.ReadAllBytes(assetPath + ".meta"), Is.EqualTo(metadata));
                 Assert.That(content.name, Is.EqualTo("Preserved metadata"));
+                string extendedPath = Path.Combine(Path.GetTempPath(), "ContentImport-" + Guid.NewGuid().ToString("N") + ".json");
+                try
+                {
+                    var extended = JObject.Parse(File.ReadAllText(SnapshotPath));
+                    var extra = (JObject)extended["items"][2].DeepClone();
+                    extra["itemID"] = 100;
+                    extra["name"] = "Server supplied item";
+                    ((JArray)extended["items"]).Insert(0, extra);
+                    File.WriteAllText(extendedPath, extended.ToString());
+                    Import(content, extendedPath);
+                    Assert.That(content.GetItem(100).name, Is.EqualTo("Server supplied item"));
+                    Assert.That(ItemPresentation.Name(100, content), Is.EqualTo("Server supplied item"));
+                    Assert.That(ItemPresentation.Icon(100), Is.Null);
+                }
+                finally { if (File.Exists(extendedPath)) File.Delete(extendedPath); }
             }
             finally
             {
@@ -102,18 +128,29 @@ namespace Mmorpg.Client.Tests
                 var growth = content.growth;
                 var monsterSkills = content.monsterSkills;
                 var huntingZones = content.huntingZones;
+                var items = content.items;
                 var valid = JObject.Parse(File.ReadAllText(SnapshotPath));
                 Action<JObject>[] invalidate =
                 {
                     json => json["formatVersion"] = 1,
                     json => json.Remove("growth"),
                     json => json.Remove("parry"),
-                    json => json.Remove("itemUse"),
-                    json => json["itemUse"][1]["itemID"] = 1,
-                    json => json["itemUse"][1]["mpRecovery"] = 0,
-                    json => json["itemUse"][1]["hpRecovery"] = 1,
-                    json => json["itemUse"][1]["cooldownTicks"] = 0,
-                    json => json["itemUse"][1]["cooldownTicks"] = 41,
+                    json => json["formatVersion"] = 3,
+                    json => json.Remove("items"),
+                    json => ((JArray)json["items"]).Clear(),
+                    json => ((JArray)json["items"]).RemoveAt(0),
+                    json => json["items"][1]["itemID"] = 1,
+                    json => json["items"][1]["name"] = " ",
+                    json => ((JObject)json["items"][0]).Remove("name"),
+                    json => json["items"][1]["itemType"] = 2,
+                    json => json["items"][1]["weight"] = 0,
+                    json => json["items"][1]["mpRecovery"] = 0,
+                    json => json["items"][1]["hpRecovery"] = 1,
+                    json => json["items"][1]["cooldownTicks"] = 0,
+                    json => json["items"][1]["cooldownTicks"] = 41,
+                    json => json["items"][2]["hpRecovery"] = 10,
+                    json => json["items"][2]["weaponAttackBonus"] = 65536,
+                    json => json["items"][0]["weaponAttackBonus"] = 2,
                     json => json["parry"]["windowTicks"] = 0,
                     json => json["parry"]["cooldownTicks"] = 0,
                     json => json["parry"]["charges"] = 2,
@@ -171,6 +208,7 @@ namespace Mmorpg.Client.Tests
                     Assert.That(content.growth, Is.SameAs(growth));
                     Assert.That(content.monsterSkills, Is.SameAs(monsterSkills));
                     Assert.That(content.huntingZones, Is.SameAs(huntingZones));
+                    Assert.That(content.items, Is.SameAs(items));
                     Assert.That(EditorUtility.IsDirty(content), Is.True);
                     Assert.That(File.ReadAllBytes(assetPath), Is.EqualTo(persisted));
                     Assert.That(File.ReadAllBytes(assetPath + ".meta"), Is.EqualTo(metadata));

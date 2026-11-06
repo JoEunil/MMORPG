@@ -556,15 +556,47 @@ MonoBehaviour:
     windowTicks: 5
     cooldownTicks: 60
     charges: 1
-  itemUse:
+  items:
   - itemID: 1
+    itemType: 1
+    name: "HP\uD3EC\uC158"
+    weight: 5
+    weaponAttackBonus: 0
     hpRecovery: 1500
     mpRecovery: 0
     cooldownTicks: 120
   - itemID: 2
+    itemType: 1
+    name: "MP\uD3EC\uC158"
+    weight: 5
+    weaponAttackBonus: 0
     hpRecovery: 0
     mpRecovery: 500
     cooldownTicks: 120
+  - itemID: 3
+    itemType: 2
+    name: "\uCCA0\uAC80"
+    weight: 150
+    weaponAttackBonus: 2
+    hpRecovery: 0
+    mpRecovery: 0
+    cooldownTicks: 0
+  - itemID: 4
+    itemType: 2
+    name: "\uCCA0\uBC29\uD328"
+    weight: 200
+    weaponAttackBonus: 0
+    hpRecovery: 0
+    mpRecovery: 0
+    cooldownTicks: 0
+  - itemID: 5
+    itemType: 3
+    name: "\uAC00\uC8FD\uAC11\uC637"
+    weight: 80
+    weaponAttackBonus: 0
+    hpRecovery: 0
+    mpRecovery: 0
+    cooldownTicks: 0
   ring:
     skillID: 1
     flags: 2

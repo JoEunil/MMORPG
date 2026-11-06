@@ -50,6 +50,9 @@ namespace ClientCore.PacketHelper
         GOLD_REWARD = 50,
         BAZAAR_OUTBOX_LIST = 51,
         BAZAAR_OUTBOX_LIST_RES = 52,
+        EQUIPMENT_GET = 53,
+        EQUIPMENT_SET = 54,
+        EQUIPMENT_RES = 55,
     }
     
     public enum ZONE_CHANGE : byte

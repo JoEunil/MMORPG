@@ -976,6 +976,7 @@ namespace Mmorpg.Client.Tests
 
         private sealed class Fixture : IDisposable
         {
+            private readonly ServerContent itemContent = WorldTestSession.ItemContent();
             private readonly GameObject root;
             private readonly GameObject inventoryRoot;
             private readonly List<Initializer> clients = new List<Initializer>();
@@ -1028,6 +1029,7 @@ namespace Mmorpg.Client.Tests
                 Set(InventoryScreen, "inventoryPanel", inventoryPanel);
                 Login = root.AddComponent<LoginScreen>();
                 World = root.AddComponent<WorldScreen>();
+                Set(World, "serverContent", itemContent);
                 Screen = root.AddComponent<MarketScreen>();
                 Combat = root.AddComponent<CombatScreen>();
                 Set(Login, "loginIdInput", Input("login id"));
@@ -1274,6 +1276,7 @@ namespace Mmorpg.Client.Tests
             {
                 if (inventoryRoot != null) UnityEngine.Object.DestroyImmediate(inventoryRoot);
                 if (root != null) UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(itemContent);
                 foreach (var client in clients) client.Dispose();
             }
         }
@@ -1317,6 +1320,8 @@ namespace Mmorpg.Client.Tests
             public void Profiles(uint[] profileIds) { }
             public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID)
             { ItemUseRequests++; LastItemUseRequestID = requestID; LastItemUseID = itemID; }
+            public void RequestEquipment(ulong requestID, ulong ownershipEpoch) { }
+            public void RequestEquipWeapon(ulong requestID, ulong ownershipEpoch, uint itemID) { }
             public void RequestParry(ulong requestID, ulong ownershipEpoch) { ParryRequests++; }
             public void RequestInventory() { InventoryRequests++; }
             public void Action(byte direction, float x, float y, byte skillSlot, ulong ownershipEpoch, float aimAngle) { }

@@ -68,6 +68,9 @@ namespace ClientCore.PacketHelper
         GOLD_REWARD = 50,
         BAZAAR_OUTBOX_LIST = 51,
         BAZAAR_OUTBOX_LIST_RES = 52,
+        EQUIPMENT_GET = 53,
+        EQUIPMENT_SET = 54,
+        EQUIPMENT_RES = 55,
     }
     
     public enum ZONE_CHANGE : byte
@@ -852,6 +855,45 @@ namespace ClientCore.PacketHelper
             BitConverter.GetBytes(requestID).CopyTo(result, 8);
             BitConverter.GetBytes(listingID).CopyTo(result, 12);
             return result;
+        }
+
+        internal static byte[] SerializeEquipmentRequest(ulong requestID, ulong ownershipEpoch)
+        {
+            if (requestID == 0 || ownershipEpoch == 0) throw new ArgumentException("Invalid equipment read.");
+            var bytes = new byte[24];
+            BitConverter.GetBytes(MAGIC).CopyTo(bytes, 0); BitConverter.GetBytes(24U).CopyTo(bytes, 2);
+            bytes[6] = (byte)OP_CODE.EQUIPMENT_GET;
+            BitConverter.GetBytes(requestID).CopyTo(bytes, 8); BitConverter.GetBytes(ownershipEpoch).CopyTo(bytes, 16);
+            return bytes;
+        }
+
+        internal static byte[] SerializeEquipWeaponRequest(ulong requestID, ulong ownershipEpoch, uint itemID)
+        {
+            if (requestID == 0 || ownershipEpoch == 0 || (itemID != 0 && itemID != 3)) throw new ArgumentException("Invalid weapon change.");
+            var bytes = new byte[28];
+            BitConverter.GetBytes(MAGIC).CopyTo(bytes, 0); BitConverter.GetBytes(28U).CopyTo(bytes, 2);
+            bytes[6] = (byte)OP_CODE.EQUIPMENT_SET;
+            BitConverter.GetBytes(requestID).CopyTo(bytes, 8); BitConverter.GetBytes(ownershipEpoch).CopyTo(bytes, 16);
+            BitConverter.GetBytes(itemID).CopyTo(bytes, 24);
+            return bytes;
+        }
+
+        internal static (ulong requestID, ulong ownershipEpoch, byte operation, byte status, uint weaponID, ushort baseAttack, ushort bonusAttack, ushort effectiveAttack) DeserializeEquipment(PacketHeader header, byte[] buffer)
+        {
+            if (buffer == null || buffer.Length != 36 || header.magic != MAGIC || header.length != 36 ||
+                header.opcode != (byte)OP_CODE.EQUIPMENT_RES || header.flags != 0)
+                throw new ArgumentException("Invalid equipment response envelope.");
+            var actual = ExtractHeader(buffer);
+            if (actual.magic != header.magic || actual.length != header.length || actual.opcode != header.opcode || actual.flags != header.flags)
+                throw new ArgumentException("Mismatched equipment response header.");
+            ulong requestID = BitConverter.ToUInt64(buffer, 8), epoch = BitConverter.ToUInt64(buffer, 16);
+            byte operation = buffer[24], status = buffer[25]; uint weapon = BitConverter.ToUInt32(buffer, 26);
+            ushort basis = BitConverter.ToUInt16(buffer, 30), bonus = BitConverter.ToUInt16(buffer, 32), effective = BitConverter.ToUInt16(buffer, 34);
+            if (requestID == 0 || epoch == 0 || operation > 1 || status > 8 ||
+                (status == 1 ? (weapon != 0 && weapon != 3) || Math.Min((uint)ushort.MaxValue, (uint)basis + bonus) != effective || (weapon == 0 && bonus != 0) :
+                weapon != 0 || basis != 0 || bonus != 0 || effective != 0))
+                throw new ArgumentException("Invalid equipment response values.");
+            return (requestID, epoch, operation, status, weapon, basis, bonus, effective);
         }
 
         internal static byte[] SerializeBazaarOutboxListRequest(uint requestID)

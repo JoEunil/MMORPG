@@ -3,6 +3,7 @@
 #include <vector>
 #include "Config.h"
 #include "GrowthData.h"
+#include "ItemData.h"
 
 namespace Core {
     struct SkillSlotEntry {
@@ -28,7 +29,17 @@ namespace Core {
         uint8_t cellY;
         uint16_t cellIdx;
 
-        uint16_t attack; // 기본 공격력
+        uint16_t attack; // Base attack is persisted without equipment bonuses.
+        uint32_t equippedWeaponItemID = 0;
+
+        uint16_t WeaponAttackBonus() const {
+            const auto item = Data::itemMap.find(equippedWeaponItemID);
+            return item == Data::itemMap.end() ? 0 : item->second.weaponAttackBonus;
+        }
+        uint16_t EffectiveAttack() const {
+            const uint32_t total = static_cast<uint32_t>(attack) + WeaponAttackBonus();
+            return static_cast<uint16_t>(total > UINT16_MAX ? UINT16_MAX : total);
+        }
         uint8_t skillSlotCnt; 
         std::vector<SkillSlotEntry> skillSlot;
 

@@ -40,6 +40,8 @@ namespace ClientCore.Services
         }
         public void Profiles(uint[] profileIds) => _sock.Send(PacketBuilder.CreateProfileRequest(profileIds));
         public void RequestInventory() => _sock.Send(PacketBuilder.CreateInventoryRequestPacket());
+        public void RequestEquipment(ulong requestID, ulong ownershipEpoch) => _sock.Send(Packet.SerializeEquipmentRequest(requestID, ownershipEpoch));
+        public void RequestEquipWeapon(ulong requestID, ulong ownershipEpoch, uint itemID) => _sock.Send(Packet.SerializeEquipWeaponRequest(requestID, ownershipEpoch, itemID));
         public void RequestParry(ulong requestID, ulong ownershipEpoch) => _sock.Send(Packet.SerializeParryRequest(requestID, ownershipEpoch));
         public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) => _sock.Send(Packet.SerializeItemUseRequest(requestID, ownershipEpoch, itemID));
         public void RequestBazaar(uint requestID, ushort itemType, ushort page) =>

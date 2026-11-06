@@ -92,6 +92,24 @@ namespace Core {
                     if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
                 }
                 break;
+            case OP::EQUIPMENT_GET:
+                if (p->GetLength() == sizeof(PacketStruct<EquipmentGetRequestBody>) && h->flags == 0
+                    && h->length == p->GetLength() && h->magic == MAGIC) {
+                    const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
+                    const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, false);
+                    auto response = writer->WriteEquipmentResponse(result);
+                    if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+                }
+                break;
+            case OP::EQUIPMENT_SET:
+                if (p->GetLength() == sizeof(PacketStruct<EquipmentSetRequestBody>) && h->flags == 0
+                    && h->length == p->GetLength() && h->magic == MAGIC) {
+                    const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
+                    const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, true, request.itemID);
+                    auto response = writer->WriteEquipmentResponse(result);
+                    if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+                }
+                break;
             case OP::INVENTORY_REQ:
                 GetInventory(p);
                 break;

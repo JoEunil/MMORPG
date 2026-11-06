@@ -17,6 +17,44 @@ namespace Mmorpg.Client.Tests
     public sealed class InventoryUiTests
     {
         [Test]
+        [Category("Equipment")]
+        public void WeaponButtonKeepsQuantityTracksClosedPanelRepliesAndBlocksSalesAndUnknownRetries()
+        {
+            using (var f = new Fixture())
+            {
+                SetPrivate(f.Login.Model, "_ownershipEpoch", 1UL); SetPrivate(f.Login.Model, "_selfHP", 100);
+                SetPrivate(f.World, "ownFull", new FullStateField { hp = 100, mp = 50, maxHp = 100, maxMp = 50 });
+                var statusObject = new GameObject("equipment feedback", typeof(RectTransform), typeof(TextMeshProUGUI));
+                statusObject.transform.SetParent(f.Screen.transform, false);
+                var feedback = statusObject.GetComponent<TMP_Text>(); SetPrivate(f.Screen, "useStatus", feedback);
+                f.OpenBag(); f.Receive(true, new InventoryItem { itemID = 3, quantity = 5, slot = 0 });
+                f.InvokeScreen("Update");
+                ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentRead, 1, 0, 1, 0, 10, 0, 10);
+                f.Cards[0].onClick.Invoke();
+                var equip = (UnityEngine.UI.Button)GetPrivate(f.Screen, "equipButton");
+                Assert.That(equip.gameObject.activeSelf, Is.True); Assert.That(equip.interactable, Is.True);
+                equip.onClick.Invoke(); equip.onClick.Invoke(); Assert.That(f.Network.EquipmentSets, Is.EqualTo(1));
+                Assert.That(f.Screen.CanSellItem(3), Is.False); f.Screen.ClosePanel();
+                ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentWrite, 1, 1, 1, 3, 10, 2, 12);
+                f.Receive(true, new InventoryItem { itemID = 3, quantity = 5, slot = 0 });
+                Assert.That(f.Screen.IsItemEquipped(3), Is.True); Assert.That(f.Screen.CanSellItem(3), Is.False);
+                f.OpenBag(); f.Cards[0].onClick.Invoke();
+                Assert.That(feedback.text, Does.Contain("10 + 2 = 12"));
+                Assert.That(f.Login.Data.GetInventory()[0].Quantity, Is.EqualTo(5));
+                equip.onClick.Invoke(); Assert.That(f.Network.LastEquipmentItem, Is.Zero);
+                ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentWrite, 1, 1, 1, 0, 10, 0, 10);
+                f.Receive(true, new InventoryItem { itemID = 3, quantity = 5, slot = 0 });
+                Assert.That(f.Screen.CanSellItem(3), Is.True); Assert.That(f.Login.Data.GetInventory()[0].Quantity, Is.EqualTo(5));
+                f.Cards[0].onClick.Invoke(); equip.onClick.Invoke();
+                SetPrivate(f.Screen, "equipmentDeadline", Time.unscaledTime - 1f); f.InvokeScreen("Update");
+                int writes = f.Network.EquipmentSets; equip.onClick.Invoke();
+                Assert.That(f.Screen.EquipmentMutationPending, Is.True); Assert.That(f.Screen.CanSellItem(3), Is.False);
+                Assert.That(f.Network.EquipmentSets, Is.EqualTo(writes));
+                Assert.That(feedback.text, Does.Contain("Reconnect"));
+            }
+        }
+
+        [Test]
         public void ServerItemsBecomeCardsAndALaterFailureClearsPreviousInventory()
         {
             using (var fixture = new Fixture())
@@ -618,12 +656,12 @@ namespace Mmorpg.Client.Tests
                     new InventoryItem { itemID = 3, quantity = 1, slot = 2 },
                     new InventoryItem { itemID = 99, quantity = 1, slot = 3 });
                 fixture.Cards[0].onClick.Invoke();
-                Assert.That(status.text, Does.Contain("Restores HP").And.Contain("full HP").And.Contain("dead"));
+                Assert.That(status.text, Does.Contain("1500 HP").And.Contain("full HP").And.Contain("dead"));
                 status.text = "HP potion used.";
                 fixture.Cards[1].onClick.Invoke();
-                Assert.That(status.text, Does.Contain("Restores MP").And.Contain("full MP").And.Contain("dead").And.Contain("Shares potion cooldown"));
+                Assert.That(status.text, Does.Contain("500 MP").And.Contain("full MP").And.Contain("dead").And.Contain("Shares potion cooldown"));
                 fixture.Cards[2].onClick.Invoke();
-                Assert.That(status.text, Does.Contain("cannot be equipped"));
+                Assert.That(status.text, Does.Contain("cannot be used as a consumable"));
                 fixture.Cards[3].onClick.Invoke();
                 Assert.That(status.text, Does.Contain("Unknown item").And.Contain("not supported"));
                 SetPrivate(fixture.Screen, "useCooldownDeadline", Time.unscaledTime + 2f);
@@ -631,7 +669,7 @@ namespace Mmorpg.Client.Tests
                 Assert.That(status.text, Does.Contain("cooldown"));
                 SetPrivate(fixture.Screen, "useCooldownDeadline", 0f);
                 fixture.InvokeScreen("UpdateControls");
-                Assert.That(status.text, Does.Contain("Restores HP"));
+                Assert.That(status.text, Does.Contain("1500 HP"));
                 var useObject = new GameObject("bag use", typeof(RectTransform), typeof(UnityEngine.UI.Button));
                 useObject.transform.SetParent(fixture.Screen.transform, false);
                 var use = useObject.GetComponent<UnityEngine.UI.Button>();
@@ -652,6 +690,7 @@ namespace Mmorpg.Client.Tests
 
         private sealed class Fixture : IDisposable
         {
+            private readonly ServerContent itemContent = WorldTestSession.ItemContent();
             private readonly GameObject root;
             private readonly List<Initializer> clients = new List<Initializer>();
             public readonly LoginScreen Login;
@@ -676,6 +715,7 @@ namespace Mmorpg.Client.Tests
                 root.SetActive(false);
                 Login = root.AddComponent<LoginScreen>();
                 World = root.AddComponent<WorldScreen>();
+                SetPrivate(World, "serverContent", itemContent);
                 Screen = root.AddComponent<InventoryScreen>();
 
                 SetPrivate(Login, "loginIdInput", Input("login id"));
@@ -795,6 +835,7 @@ namespace Mmorpg.Client.Tests
             public void Dispose()
             {
                 if (root != null) UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(itemContent);
                 foreach (var initializer in clients) initializer.Dispose();
             }
 
@@ -855,6 +896,9 @@ namespace Mmorpg.Client.Tests
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { }
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
             public void RequestWallet(uint requestID) { }
+            public ulong LastEquipmentRead, LastEquipmentWrite; public uint LastEquipmentItem; public int EquipmentSets;
+            public void RequestEquipment(ulong requestID, ulong ownershipEpoch) { LastEquipmentRead = requestID; }
+            public void RequestEquipWeapon(ulong requestID, ulong ownershipEpoch, uint itemID) { LastEquipmentWrite = requestID; LastEquipmentItem = itemID; EquipmentSets++; }
             public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
             public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { ItemUses++; LastUsedItemID = itemID; }
             public void RequestInventory() => Requests++;

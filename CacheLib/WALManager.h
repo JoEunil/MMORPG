@@ -10,6 +10,7 @@
 #include <BaseLib/WAL.h>
 #include <CoreLib/LoggerGlobal.h>
 #include <CacheLib/CacheStorageInventory.h>
+#include <CacheLib/InventoryCodec.h>
 #include <CacheLib/DBConnectionPool.h>
 #include <CacheLib/DBConnectionGame.h>
 
@@ -20,8 +21,9 @@ namespace Cache {
 		uint64_t      characterID;
 		InventoryData data;   // lastLSN 포함
 	};
-	enum WalType : uint8_t {
-		INVENTORY = 1
+	enum WalType : uint16_t {
+		INVENTORY_LEGACY = LEGACY_INVENTORY_WAL_TYPE,
+		INVENTORY = EQUIPMENT_INVENTORY_WAL_TYPE
 	};
 	class WALManager {
 		// cache flush, flush dispatcher 뒤에 초기화.
@@ -46,43 +48,44 @@ namespace Cache {
 		CacheStorageInventory* cache_inventory = nullptr;
 		DBConnectionPool<DBConnectionGame>* connectionPoolGame = nullptr;
 
-		void CollectInventory(const Base::WALHeader& header, const uint8_t* payload) {
-			if (header.length != sizeof(WalInventoryRecord))
-				return;
-			WalInventoryRecord rec;
-			std::memcpy(&rec, payload, sizeof(WalInventoryRecord));
-			m_lastImageInventory[rec.characterID] = { header.lsn, rec };
-		}
-		void Collect(const Base::WALHeader& header, const uint8_t* payload) {
-			switch (header.type) {
-			case WalType::INVENTORY: CollectInventory(header, payload); break;
-			}
-		}
+        void CollectInventory(const Base::WALHeader& header, const uint8_t* payload) {
+            WalInventoryRecord rec{};
+            rec.data = DecodeInventoryWal(header.type, payload, header.length, rec.characterID);
+            m_lastImageInventory[rec.characterID] = {header.lsn, rec};
+        }
+        void Collect(const Base::WALHeader& header, const uint8_t* payload) {
+            switch (header.type) {
+            case WalType::INVENTORY_LEGACY:
+            case WalType::INVENTORY: CollectInventory(header, payload); break;
+            default: throw std::runtime_error("Unsupported WAL record type.");
+            }
+        }
 
 		void RestoreInventory() {
 			if (m_lastImageInventory.empty())
 				return;
 			auto conn = connectionPoolGame->AcquireScoped();   // 부팅 시점 동기 접근 — 블로킹 OK
 			if (conn == nullptr)
-				return;
+				throw std::runtime_error("Cannot read DB inventory during WAL recovery.");
 			for (auto& [key, val] : m_lastImageInventory) {
 				// DB blob 로드 → lastLSN 비교 (기존 QUERY_5 재사용)
 				uint64_t lsn = val.first;
 
 				WalInventoryRecord rec = val.second;
-				auto res = conn->ExecuteSelect(5, key);
-				uint64_t dbLSN = 0;
-				if (res && res->next()) {
-					InventoryData tmp = EMPTY_INVENTORY;             
-					std::istream* blob = res->getBlob("inventory");
-					if (blob) blob->read(reinterpret_cast<char*>(&tmp), sizeof(InventoryData));
-					dbLSN = tmp.lastLsn;
-				}
+                auto res = conn->ExecuteSelect(5, key);
+                if (!res) throw std::runtime_error("Inventory recovery DB query failed.");
+                uint64_t dbLSN = 0;
+                if (res->next()) {
+                    std::unique_ptr<std::istream> blob(res->getBlob("inventory"));
+                    if (!blob) throw std::runtime_error("Inventory recovery DB blob is null.");
+                    dbLSN = ReadInventory(*blob).lastLsn;
+                }
 				// 레코드는 자기 lsn을 품을 수 없어(발급 전 복사) payload의 lastLsn은 한 세대 전 값.
 				// header lsn으로 보정해야 flush 정산과 재부팅 비교가 여기서 수렴한다.
 				rec.data.lastLsn = lsn;
 				if (lsn > dbLSN) {
-					cache_inventory->RestoreEntry(key, rec.data);  // 캐시 Insert + dirty 마킹
+					if (!cache_inventory->RestoreEntry(key, rec.data))
+                        throw std::runtime_error("Cannot restore inventory WAL image into cache.");
 
 					std::lock_guard<std::mutex> lock(m_mutex);
 					m_unflushedInventory[key] = lsn;
@@ -158,7 +161,7 @@ namespace Cache {
 			}
 			return true;
 		}
-		uint64_t Write(const uint8_t* payload, size_t len, uint8_t type, uint64_t minimumLsn) {
+		uint64_t Write(const uint8_t* payload, size_t len, uint16_t type, uint64_t minimumLsn) {
 			if (m_blocked.load(std::memory_order_relaxed))
 				return 0;
 			uint64_t lsn = m_wal->Write(payload, len, type, minimumLsn);
@@ -207,12 +210,8 @@ namespace Cache {
 			// Keep append and reference registration indivisible with respect to truncate.
 			// Otherwise another writer can rotate the just-written segment before it is pinned.
 			std::lock_guard<std::mutex> lock(m_mutex);
-			WalInventoryRecord record;
-			record.characterID = characterID;
-			record.data = data;
-			// WAL::Write()에서 바로 복사해서 쓰기 때문에 수명 문제 없음
-			uint64_t lsn  = Write(reinterpret_cast<const uint8_t*>(&record), sizeof(WalInventoryRecord), WalType::INVENTORY, data.lastLsn);
-
+            const auto record = EncodeInventoryWal(characterID, data);
+            const uint64_t lsn = Write(record.data(), record.size(), WalType::INVENTORY, data.lastLsn);
 
 			if (lsn != 0) {
 				auto it = m_unflushedInventory.find(characterID);

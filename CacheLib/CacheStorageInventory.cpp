@@ -4,6 +4,7 @@
 #include <CoreLib/Message.h>
 #include "DBWorker.h"
 #include "CacheFlush.h"
+#include "InventoryCodec.h"
 
 namespace Cache {
     bool CacheStorageInventory::RestoreEntry(uint64_t characterID, InventoryData& rec) {
@@ -69,31 +70,18 @@ namespace Cache {
 
         const auto enqueueResult = dbWorker->Enqueue([=](DBConnectionGame* conn) {
             Result result;
-            // blob이 구버전(ring 필드 이전)이라 짧게 읽혀도 나머지가 쓰레기로 남지 않도록 선초기화
-            result.data = EMPTY_INVENTORY;
             auto res = conn->ExecuteSelect(5, key.characterID);
-            if (!res || !res->next()) {
-                Core::gameLogger->LogInfo("cache storage inventory", "inventory not found in DB", "char_id", key.characterID);
+            if (!res) {
                 CompleteLoad(shardIndex, key, nullptr);
                 return;
             }
-
-            std::istream* blobStream = res->getBlob("inventory");
-            if (blobStream) {
-                blobStream->read(
-                    reinterpret_cast<char*>(&result.data),
-                    sizeof(InventoryData)
-                );
-            }
-            // blob 손상·구버전 방어: ring 인덱스가 범위를 벗어나면 ring만 초기화
-            // (tail이 RING_SIZE 이상이면 push 시 recentEventIds[tail] 범위 밖 쓰기가 발생)
-            if (result.data.head >= RING_SIZE || result.data.tail >= RING_SIZE) {
-                Core::errorLogger->LogError("cache storage inventory", "invalid ring index in blob, reset ring", "char_id", key.characterID);
-                std::memset(result.data.recentEventIds, 0, sizeof(result.data.recentEventIds));
-                result.data.head = 0;
-                result.data.tail = 0;
-                result.data.lastOp = false;
-                result.data.lastLsn = 0;
+            if (!res->next()) {
+                // A successful query with no row is a confirmed empty bag, not a read failure.
+                result.data = EMPTY_INVENTORY;
+            } else {
+                std::unique_ptr<std::istream> blobStream(res->getBlob("inventory"));
+                if (!blobStream) throw std::runtime_error("Inventory blob is null.");
+                result.data = ReadInventory(*blobStream);
             }
             result.rollbackCnt = 0;
             CompleteLoad(shardIndex, key, &result);
@@ -161,6 +149,8 @@ namespace Cache {
         if (found == shard.cache_data.end() || found->second.status != CACHE_STATUS::AVAILABLE)
             return {Core::ItemOperationStatus::Busy};
         auto& result = found->second;
+        if (quantity < 0 && result.data.equippedWeaponItemID == itemID)
+            return {Core::ItemOperationStatus::Missing};
         auto image = result.data;
         const int slot = FindStackOrEmptySlot(image, itemID);
         if (slot < 0) return {quantity < 0 ? Core::ItemOperationStatus::Missing : Core::ItemOperationStatus::Full};
@@ -186,6 +176,86 @@ namespace Cache {
         result.lastModified = clock->GetTimeMS();
         shard.dirty_list.insert(key);
         return {Core::ItemOperationStatus::Success, static_cast<uint16_t>(next)};
+    }
+
+    Core::WeaponStateResult CacheStorageInventory::GetWeaponState(uint64_t characterID) {
+        if (characterID == 0) return {Core::WeaponOperationStatus::Unsupported};
+        const auto result = Getter(characterID);
+        if (result.status == CACHE_STATUS::AVAILABLE)
+            return {Core::WeaponOperationStatus::Success, result.data.equippedWeaponItemID};
+        return {result.status == CACHE_STATUS::EMPTY ? Core::WeaponOperationStatus::StorageFailure : Core::WeaponOperationStatus::Busy};
+    }
+
+    void CacheStorageInventory::LoadWeaponState(uint64_t characterID, std::function<void(Core::WeaponStateResult)> completed) {
+        if (!completed) return;
+        if (characterID == 0) { completed({Core::WeaponOperationStatus::Unsupported}); return; }
+        const uint16_t index = characterID & SHARD_SIZE_MASK;
+        auto& shard = m_shards[index];
+        bool load = false;
+        Core::WeaponStateResult result{Core::WeaponOperationStatus::Busy};
+        {
+            std::lock_guard lock(shard.mutex);
+            const auto found = shard.cache_data.find(Key{characterID});
+            if (found != shard.cache_data.end() && found->second.status == CACHE_STATUS::AVAILABLE)
+                result = {Core::WeaponOperationStatus::Success, found->second.data.equippedWeaponItemID};
+            else if (found == shard.cache_data.end() || found->second.status == CACHE_STATUS::DB_READING) {
+                pendingWeaponLoads[index][characterID].push_back(std::move(completed));
+                load = found == shard.cache_data.end();
+                if (!load) return;
+            }
+        }
+        if (!load) { completed(result); return; }
+        Key key{characterID};
+        const auto status = LoadFromDB(index, key);
+        if (status == CACHE_STATUS::DB_READING) return;
+        // A concurrent loader normally drained the waiters already. Handle a directly available
+        // insertion or synchronous enqueue rejection without retaining a caller indefinitely.
+        std::vector<std::function<void(Core::WeaponStateResult)>> callbacks;
+        result = {Core::WeaponOperationStatus::StorageFailure};
+        {
+            std::lock_guard lock(shard.mutex);
+            const auto found = shard.cache_data.find(key);
+            if (found != shard.cache_data.end() && found->second.status == CACHE_STATUS::AVAILABLE)
+                result = {Core::WeaponOperationStatus::Success, found->second.data.equippedWeaponItemID};
+            const auto waiting = pendingWeaponLoads[index].find(characterID);
+            if (waiting != pendingWeaponLoads[index].end()) {
+                callbacks = std::move(waiting->second);
+                pendingWeaponLoads[index].erase(waiting);
+            }
+        }
+        for (auto& callback : callbacks) callback(result);
+    }
+
+    Core::WeaponStateResult CacheStorageInventory::EquipWeapon(uint64_t characterID, uint32_t itemID) {
+        if (itemID != 0 && itemID != 3) return {Core::WeaponOperationStatus::Unsupported};
+        const auto ready = GetWeaponState(characterID);
+        if (ready.status != Core::WeaponOperationStatus::Success) return ready;
+        const uint16_t index = characterID & SHARD_SIZE_MASK;
+        auto& shard = m_shards[index];
+        std::lock_guard lock(shard.mutex);
+        const auto found = shard.cache_data.find(Key{characterID});
+        if (found == shard.cache_data.end() || found->second.status != CACHE_STATUS::AVAILABLE)
+            return {Core::WeaponOperationStatus::Busy};
+        auto& result = found->second;
+        if (itemID != 0) {
+            bool owned = false;
+            for (const auto& item : result.data.items)
+                if (item.itemID == itemID && item.quantity > 0) { owned = true; break; }
+            if (!owned) return {Core::WeaponOperationStatus::Missing};
+        }
+        if (result.data.equippedWeaponItemID == itemID) return {Core::WeaponOperationStatus::Success, itemID};
+        auto image = result.data;
+        image.equippedWeaponItemID = itemID;
+        if (!m_walFn) return {Core::WeaponOperationStatus::StorageFailure};
+        uint64_t lsn = 0;
+        try { lsn = m_walFn(characterID, image); }
+        catch (...) { return {Core::WeaponOperationStatus::StorageFailure}; }
+        if (lsn == 0) return {Core::WeaponOperationStatus::StorageFailure};
+        image.lastLsn = lsn;
+        result.data = image;
+        result.lastModified = clock->GetTimeMS();
+        shard.dirty_list.insert(Key{characterID});
+        return {Core::WeaponOperationStatus::Success, itemID};
     }
 
     Core::ItemOperationResult CacheStorageInventory::ConsumeItem(uint64_t characterID, uint32_t itemID) {
@@ -231,6 +301,8 @@ namespace Cache {
     void CacheStorageInventory::CompleteLoad(uint16_t index, Key key, const Result* loaded) {
         std::vector<PendingReward> rewards;
         std::vector<Core::ItemOperationResult> results;
+        std::vector<std::function<void(Core::WeaponStateResult)>> weaponLoads;
+        Core::WeaponStateResult weaponState{Core::WeaponOperationStatus::StorageFailure};
         auto& shard = m_shards[index];
         {
             std::lock_guard lock(shard.mutex);
@@ -239,6 +311,14 @@ namespace Cache {
                 const auto found = shard.cache_data.find(key);
                 if (found != shard.cache_data.end() && found->second.status == CACHE_STATUS::DB_READING)
                     shard.cache_data.erase(found);
+            }
+            const auto current = shard.cache_data.find(key);
+            if (loaded && current != shard.cache_data.end() && current->second.status == CACHE_STATUS::AVAILABLE)
+                weaponState = {Core::WeaponOperationStatus::Success, current->second.data.equippedWeaponItemID};
+            const auto weapon = pendingWeaponLoads[index].find(key.characterID);
+            if (weapon != pendingWeaponLoads[index].end()) {
+                weaponLoads = std::move(weapon->second);
+                pendingWeaponLoads[index].erase(weapon);
             }
             const auto pending = pendingRewards[index].find(key.characterID);
             if (pending != pendingRewards[index].end()) {
@@ -252,6 +332,7 @@ namespace Cache {
         }
         for (size_t i = 0; i < rewards.size(); ++i)
             if (rewards[i].completed) rewards[i].completed(results[i]);
+        for (auto& completed : weaponLoads) completed(weaponState);
     }
 
     // status, itemID, slot, quantity
@@ -290,6 +371,8 @@ namespace Cache {
         if(res.status != CACHE_STATUS::AVAILABLE)
             return std::make_tuple(res.status, 0, 0, 0);
 
+        if (change < 0 && res.data.equippedWeaponItemID == itemID)
+            return { CACHE_STATUS::BLOCKED, 0, 0, 0 };
         CACHE_STATUS resStatus = CACHE_STATUS::AVAILABLE;
         int slot = 0;
         int quantity = 0;
@@ -380,8 +463,7 @@ namespace Cache {
         auto command = std::make_unique<FlushCommand>();
         command->stmtID = 6;
         command->generation = result.flushGeneration;
-        std::vector<uint8_t> blob(sizeof(InventoryData));
-        std::memcpy(blob.data(), &result.data, sizeof(InventoryData));
+        auto blob = EncodeInventory(result.data);
 
         command->params.emplace_back(std::move(blob));
         command->params.emplace_back(key.characterID);

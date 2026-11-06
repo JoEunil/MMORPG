@@ -17,7 +17,14 @@ namespace Mmorpg.Client
         public HuntingZone GetHuntingZone(int zoneID) =>
             Array.Find(huntingZones, zone => zone != null && zone.zoneID == zoneID);
         public Parry parry;
-        public ItemUse[] itemUse = Array.Empty<ItemUse>();
+        public Item[] items = Array.Empty<Item>();
+
+        public Item GetItem(uint itemID)
+        {
+            foreach (var item in items)
+                if (item != null && item.itemID == itemID) return item;
+            return null;
+        }
         public RingSkill ring = new RingSkill();
         public Monster monster0 = new Monster();
         public RingSkill[] otherSkills =
@@ -80,9 +87,13 @@ namespace Mmorpg.Client
         }
 
         [Serializable]
-        public sealed class ItemUse
+        public sealed class Item
         {
             public uint itemID;
+            public ushort itemType;
+            public string name;
+            public uint weight;
+            public ushort weaponAttackBonus;
             public uint hpRecovery;
             public uint mpRecovery;
             public uint cooldownTicks;

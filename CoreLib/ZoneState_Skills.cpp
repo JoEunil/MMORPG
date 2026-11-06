@@ -120,7 +120,7 @@ namespace Core {
 						continue;
 					if (phase.range.InRangeAngle(skill.aimAngle, skill.x, skill.y, m_monsters[mon].x, m_monsters[mon].y))
 					{
-						auto damage = caster.attack * phase.attack;
+						auto damage = caster.EffectiveAttack() * phase.attack;
 						if (skillData.flags & 0x01) {
 							// critical 적용..
 							damage *= 2;
