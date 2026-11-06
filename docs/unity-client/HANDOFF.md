@@ -32,3 +32,7 @@
 ## 게시 승인 적용
 - 2026-11-06 현 채팅의 사용자 명시 승인으로 현재 유일한 대기 DEFGEAR-PR01/r1을 적용했다. Slack 회신으로 수신한 것으로 기록하지 않는다.
 - 승인 범위: 검수 완료한 장비·거래 안내 묶음 push 및 master 대상 PR 1개. 병합 제외. origin/master 추가 변경 없음(HEAD 대비 뒤처짐0) 확인.
+
+## 게시 결과
+- PR71 게시 완료: https://github.com/JoEunil/MMORPG/pull/71 (master 대상, codex/defensive-equipment). 사용자 병합 검토 대기이며 병합하지 않았다.
+- DEFGEAR-PR01/r1 승인 1회 소비 완료. 기능 후보의 기존 통과 검사는 재실행하지 않았다. 정식 Pages 배포는 master 병합 후 별도 확인 대상이다.
