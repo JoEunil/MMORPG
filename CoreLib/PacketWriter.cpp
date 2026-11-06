@@ -2,7 +2,29 @@
 #include "PacketWriter.h"
 #include "IPacket.h"
 #include "Config.h"
+#include "ItemData.h"
 namespace Core {
+    static_assert(sizeof(PacketStruct<EquipmentGetRequestBody>) == 24);
+    static_assert(sizeof(PacketStruct<EquipmentSetRequestBody>) == 28);
+    static_assert(sizeof(PacketStruct<EquipmentResponseBody>) == 36);
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteEquipmentResponse(const EquipmentResponseBody& body) {
+        if (body.requestID == 0 || body.ownershipEpoch == 0 || body.operation > 1 || body.status > static_cast<uint8_t>(EquipmentStatus::StorageFailure)) return nullptr;
+        if (body.status == static_cast<uint8_t>(EquipmentStatus::Success)) {
+            if (body.weaponID != 0 && body.weaponID != 3) return nullptr;
+            const uint16_t bonus = body.weaponID == 0 ? 0 : Data::itemMap.at(3).weaponAttackBonus;
+            const uint32_t total = static_cast<uint32_t>(body.baseAttack) + bonus;
+            if (body.bonusAttack != bonus || body.effectiveAttack != static_cast<uint16_t>(total > UINT16_MAX ? UINT16_MAX : total)) return nullptr;
+        } else if (body.weaponID != 0 || body.baseAttack != 0 || body.bonusAttack != 0 || body.effectiveAttack != 0) return nullptr;
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
+        if (!p) return nullptr;
+        p->Clear();
+        auto* packet = reinterpret_cast<PacketStruct<EquipmentResponseBody>*>(p->GetBuffer());
+        packet->header = { MAGIC, sizeof(*packet), OP::EQUIPMENT_RES, 0 };
+        packet->body = body;
+        p->SetLength(sizeof(*packet));
+        return p;
+    }
+
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteGoldReward(uint8_t status) {
         auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (!p) return nullptr;

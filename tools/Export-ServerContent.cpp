@@ -43,7 +43,7 @@ namespace {
         Require(!Data::itemMap.empty(), "Item definitions cannot be empty.");
         for (const auto& [id, item] : Data::itemMap) {
             Require(id > 0 && item.name != nullptr && item.name[0] != '\0' && item.weight > 0 &&
-                item.itemType >= 1 && item.itemType <= 3, "Item IDs, names, types, or weights are invalid.");
+                item.itemType >= 1 && item.itemType <= 3 && (item.itemType == 2 || item.weaponAttackBonus == 0), "Item IDs, names, types, or weights are invalid.");
             Require(item.hpRecovery <= INT32_MAX && item.mpRecovery <= INT32_MAX &&
                 (item.itemType == 1 ? (item.hpRecovery > 0) != (item.mpRecovery > 0) && item.cooldownTicks > 0 :
                 item.hpRecovery == 0 && item.mpRecovery == 0 && item.cooldownTicks == 0),
@@ -211,7 +211,7 @@ namespace {
             if (index != 0) json << ',';
             json << "{\"itemID\":" << itemID << ",\"itemType\":" << item.itemType << ",\"name\":";
             WriteJsonString(json, item.name);
-            json << ",\"weight\":" << item.weight << ",\"hpRecovery\":" << item.hpRecovery
+            json << ",\"weight\":" << item.weight << ",\"weaponAttackBonus\":" << item.weaponAttackBonus << ",\"hpRecovery\":" << item.hpRecovery
                 << ",\"mpRecovery\":" << item.mpRecovery << ",\"cooldownTicks\":" << item.cooldownTicks << '}';
         }
         json << "],\n  \"parry\":{\"windowTicks\":" << Data::parryWindowTicks << ",\"cooldownTicks\":" << Data::parryCooldownTicks << ",\"charges\":" << Data::parryCharges << "}\n}\n";

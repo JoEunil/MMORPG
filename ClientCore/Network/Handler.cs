@@ -40,6 +40,11 @@ namespace ClientCore.Network
                     case OP_CODE.PROFILE_BATCH_RES:
                         _viewModel.ProfilesReceived(Packet.DeserializeProfiles(header, buffer));
                         return;
+                    case OP_CODE.EQUIPMENT_RES:
+                        var equipment = Packet.DeserializeEquipment(header, buffer);
+                        _viewModel.EquipmentReceived(equipment.requestID, equipment.ownershipEpoch, equipment.operation, equipment.status,
+                            equipment.weaponID, equipment.baseAttack, equipment.bonusAttack, equipment.effectiveAttack);
+                        return;
                     case OP_CODE.PARRY_RES:
                         var parry = Packet.DeserializeParry(header, buffer);
                         _viewModel.ParryReceived(parry.requestID, parry.ownershipEpoch, parry.status, parry.windowRemainingTicks, parry.cooldownRemainingTicks);
@@ -136,7 +141,7 @@ namespace ClientCore.Network
             catch (Exception e)
             {
                 // Malformed simulation frames now reach the same socket disconnect boundary as other responses.
-                if (buffer.Length >= 7 && (buffer[6] == 7 || buffer[6] == 8 || buffer[6] == 9 || buffer[6] == 10 || buffer[6] == 12 || buffer[6] == 17 || buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 21 || buffer[6] == 25 || buffer[6] == 27 || buffer[6] == 29 || buffer[6] == 31 || buffer[6] == 33 || buffer[6] == 35 || buffer[6] == 37 || buffer[6] == 41 || buffer[6] == 43 || buffer[6] == 44 || buffer[6] == 46 || buffer[6] == 47 || buffer[6] == 49 || buffer[6] == 50 || buffer[6] == 52)) throw;
+                if (buffer.Length >= 7 && (buffer[6] == 7 || buffer[6] == 8 || buffer[6] == 9 || buffer[6] == 10 || buffer[6] == 12 || buffer[6] == 17 || buffer[6] == 14 || buffer[6] == 15 || buffer[6] == 21 || buffer[6] == 25 || buffer[6] == 27 || buffer[6] == 29 || buffer[6] == 31 || buffer[6] == 33 || buffer[6] == 35 || buffer[6] == 37 || buffer[6] == 41 || buffer[6] == 43 || buffer[6] == 44 || buffer[6] == 46 || buffer[6] == 47 || buffer[6] == 49 || buffer[6] == 50 || buffer[6] == 52 || buffer[6] == 55)) throw;
                 ErrorLog(e.Message);
             }
         }

@@ -143,6 +143,7 @@ namespace Core {
 
         }
 
+        std::unique_ptr<IPacket, PacketDeleter> WriteEquipmentResponse(const EquipmentResponseBody& body);
         std::unique_ptr<IPacket, PacketDeleter> WriteBazaarBuyResponse(const MsgBazaarBuyResBody* body);
         std::unique_ptr<IPacket, PacketDeleter> WriteBazaarOutboxListResponse(const MsgBazaarOutboxListResBody* body);
         std::unique_ptr<IPacket, PacketDeleter> WriteBazaarCheckOutboxResponse(const MsgBazaarCheckOutboxResBody* body);

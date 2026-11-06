@@ -7,7 +7,7 @@
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
     constexpr inline const uint16_t FIELD_COUNT = 6;
-    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 52;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 55;
 
     enum OP : uint16_t {
         AUTH = 1,
@@ -67,6 +67,9 @@ namespace Core {
         GOLD_REWARD = 50,
         BAZAAR_OUTBOX_LIST = 51,
         BAZAAR_OUTBOX_LIST_RES = 52,
+        EQUIPMENT_GET = 53,
+        EQUIPMENT_SET = 54,
+        EQUIPMENT_RES = 55,
     };
 
     enum ZONE_CHANGE: uint8_t {
@@ -99,6 +102,23 @@ namespace Core {
         uint8_t opcode;
         uint8_t flags = 0x00; // 첫번째 비트는 시뮬레이션 로직인지 나타냄, 0x01 ~ 0x80
     };
+
+    enum class EquipmentStatus : uint8_t { Invalid, Success, Busy, Missing, Unsupported, Dead, StaleOwnership, StaleRequest, StorageFailure };
+    struct EquipmentGetRequestBody { uint64_t requestID; uint64_t ownershipEpoch; };
+    struct EquipmentSetRequestBody { uint64_t requestID; uint64_t ownershipEpoch; uint32_t itemID; };
+    struct EquipmentResponseBody {
+        uint64_t requestID;
+        uint64_t ownershipEpoch;
+        uint8_t operation;
+        uint8_t status;
+        uint32_t weaponID;
+        uint16_t baseAttack;
+        uint16_t bonusAttack;
+        uint16_t effectiveAttack;
+    };
+    static_assert(sizeof(EquipmentGetRequestBody) == 16);
+    static_assert(sizeof(EquipmentSetRequestBody) == 20);
+    static_assert(sizeof(EquipmentResponseBody) == 28);
 
     enum class ParryStatus : uint8_t { Invalid, Accepted, Cooldown, Dead, StaleOwnership, StaleRequest, Unavailable };
     struct ParryRequestBody {

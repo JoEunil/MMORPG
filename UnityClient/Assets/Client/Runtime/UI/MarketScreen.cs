@@ -991,7 +991,8 @@ namespace Mmorpg.Client
             }
             if (registerButton != null)
             {
-                registerButton.interactable = available && isSell && !requestPending && !registrationUncertain && saleItem.ItemID != 0;
+                registerButton.interactable = available && isSell && !requestPending && !registrationUncertain && saleItem.ItemID != 0 &&
+                    (saleItem.ItemID != 3 || (inventoryScreen != null && inventoryScreen.CanSellItem(3)));
                 var label = registerButton.GetComponentInChildren<TMP_Text>(true);
                 if (label != null) label.text = registrationUncertain ? "CHECK MY LISTINGS" : registerConfirmation ? "CONFIRM SALE" : "REVIEW SALE";
             }
@@ -1139,7 +1140,7 @@ namespace Mmorpg.Client
         private bool TrySaleValues(out ushort quantity, out ulong price)
         {
             quantity = 0; price = 0;
-            return saleItem.ItemID != 0 && quantityInput != null && priceInput != null &&
+            return saleItem.ItemID != 0 && (saleItem.ItemID != 3 || (inventoryScreen != null && inventoryScreen.CanSellItem(3))) && quantityInput != null && priceInput != null &&
                 ushort.TryParse(quantityInput.text, NumberStyles.None, CultureInfo.InvariantCulture, out quantity) && quantity > 0 && quantity <= saleItem.Quantity &&
                 ulong.TryParse(priceInput.text, NumberStyles.None, CultureInfo.InvariantCulture, out price) && price > 0;
         }
@@ -1147,6 +1148,13 @@ namespace Mmorpg.Client
         private void UpdateSaleSummary()
         {
             if (saleSummaryText == null) return;
+            if (saleItem.ItemID == 3 && (inventoryScreen == null || !inventoryScreen.CanSellItem(3)))
+            {
+                if (saleFeeValueText != null) saleFeeValueText.text = "--";
+                saleSummaryText.text = inventoryScreen != null && inventoryScreen.IsItemEquipped(3)
+                    ? "Unequip this weapon before selling any of its stack." : "Wait for confirmed equipment before selling this weapon.";
+                return;
+            }
             bool valid = TrySaleValues(out _, out ulong price);
             if (!valid)
             {
@@ -1185,6 +1193,13 @@ namespace Mmorpg.Client
             image.preserveAspect = true;
             image.color = icon != null ? Color.white : goldMark ? new Color(.91f, .70f, .31f) : new Color(.47f, .79f, .89f);
             image.raycastTarget = false;
+        }
+
+        public void RefreshEquipmentControls()
+        {
+            if (saleItem.ItemID == 3 && (inventoryScreen == null || !inventoryScreen.CanSellItem(3))) registerConfirmation = false;
+            UpdateSaleSummary();
+            UpdateControls();
         }
 
         private void RegisterSale()

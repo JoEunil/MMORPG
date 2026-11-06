@@ -117,6 +117,70 @@ namespace Core {
         return result;
     }
 
+    EquipmentResponseBody StateManager::Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint32_t itemID) {
+        EquipmentResponseBody result{ requestID, ownershipEpoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), 0, 0, 0, 0 };
+        if (requestID == 0 || ownershipEpoch == 0) return result;
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock sessionLock(shard.smutex);
+        auto session = shard.sessionMap.find(sessionID);
+        if (session == shard.sessionMap.end() || !session->second.authenticated || !session->second.authCompleted
+            || session->second.characterID == 0) return result;
+        if (session->second.zoneID == 0 || ownershipEpoch != session->second.ownershipEpoch) {
+            result.status = static_cast<uint8_t>(EquipmentStatus::StaleOwnership);
+            return result;
+        }
+        auto& previous = session->second.lastEquipmentSet;
+        if (write && requestID <= previous.requestID) {
+            if (requestID == previous.requestID && ownershipEpoch == previous.ownershipEpoch
+                && itemID == session->second.lastEquipmentItemID) return previous;
+            result.status = static_cast<uint8_t>(EquipmentStatus::StaleRequest);
+            return result;
+        }
+        auto* zone = GetZone(session->second.zoneID);
+        if (zone == nullptr) return result;
+        std::lock_guard zoneLock(zone->m_mutex);
+        auto member = zone->m_sessionToIndex.find(sessionID);
+        if (member == zone->m_sessionToIndex.end()) return result;
+        auto& character = zone->m_chars[member->second];
+        if (write && itemID != 0 && itemID != 3) result.status = static_cast<uint8_t>(EquipmentStatus::Unsupported);
+        else if (write && character.hp <= 0) result.status = static_cast<uint8_t>(EquipmentStatus::Dead);
+        else if (inventory == nullptr) result.status = static_cast<uint8_t>(EquipmentStatus::StorageFailure);
+        else {
+            const auto state = write ? inventory->EquipWeapon(character.characterID, itemID) : inventory->GetWeaponState(character.characterID);
+            switch (state.status) {
+            case WeaponOperationStatus::Success:
+                if ((state.itemID != 0 && state.itemID != 3) || (write && state.itemID != itemID)) {
+                    result.status = static_cast<uint8_t>(EquipmentStatus::StorageFailure);
+                    break;
+                }
+                character.equippedWeaponItemID = state.itemID;
+                result.status = static_cast<uint8_t>(EquipmentStatus::Success);
+                break;
+            case WeaponOperationStatus::Missing:
+                // A confirmed absent inventory cannot contain equipment. Read failures use a separate status.
+                if (!write) {
+                    character.equippedWeaponItemID = 0;
+                    result.status = static_cast<uint8_t>(EquipmentStatus::Success);
+                } else result.status = static_cast<uint8_t>(EquipmentStatus::Missing);
+                break;
+            case WeaponOperationStatus::Busy: result.status = static_cast<uint8_t>(EquipmentStatus::Busy); break;
+            case WeaponOperationStatus::Unsupported: result.status = static_cast<uint8_t>(EquipmentStatus::Unsupported); break;
+            default: result.status = static_cast<uint8_t>(EquipmentStatus::StorageFailure); break;
+            }
+        }
+        if (result.status == static_cast<uint8_t>(EquipmentStatus::Success)) {
+            result.weaponID = character.equippedWeaponItemID;
+            result.baseAttack = character.attack;
+            result.bonusAttack = character.WeaponAttackBonus();
+            result.effectiveAttack = character.EffectiveAttack();
+        }
+        if (write) {
+            previous = result;
+            session->second.lastEquipmentItemID = itemID;
+        }
+        return result;
+    }
+
     void StateManager::GrantMonsterReward(const CharacterState& character, uint64_t gold) {
         const auto sessionID = character.sessionID;
         Message deposit(sizeof(MsgStruct<MsgCurrencyDepositBody>));

@@ -7,6 +7,8 @@
 
 #include "DBWorker.h"
 #include "MessagePool.h"
+#include <atomic>
+#include <memory>
 
 namespace Cache {
     void Handler::Process(Core::Message* msg) {
@@ -121,51 +123,54 @@ namespace Cache {
     }
 
     void Handler::CharacterStateRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterStateReqBody* body) {
-        EnqueueMessageWork(dbWorkerGame, msg, [=](DBConnectionGame* conn) {
-            auto res = conn->ExecuteSelect(3, body->characterID, body->userID, body->channelID);
-
-            Core::MsgStruct<Core::MsgCharacterStateResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgCharacterStateResBody>*>(msg->GetBuffer());
-
-            st->header.sessionID = sessionID;
-            st->header.messageType = Core::MSG_CHARACTER_STATE_RES;
-
-            if (!res || !res->next()) {
-                Core::gameLogger->LogInfo("cache handler", "character state read failed", "sessionID", sessionID, "char_id", body->characterID);
-                st->body.resStatus = 0;
-                msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterStateResBody>));
-                messageQ->EnqueueMessage(msg);
-                messagePool->Return(msg);
-                return;
-            }
-            st->body.charID = res->getUInt64("char_id");
-            st->body.resStatus = 1;
-            std::string name = res->getString("name");
-            st->body.profileId = res->getUInt("profile_id");
-            st->body.profileVersion = res->getUInt("profile_version");
-
-            std::memset(st->body.name, 0, sizeof(st->body.name));
-            std::memcpy(st->body.name, name.c_str(), std::min(name.size(), sizeof(st->body.name) - 1));
-            st->body.name[sizeof(st->body.name) - 1] = '\0';
-
-            // 접속 시 적재. QUERY_3에서 이미 profile을 조인해 읽었으므로 DB 왕복이 늘지 않는다.
-            cache_profile->Load(st->body.profileId, st->body.profileVersion, name);
-
-            st->body.attack = res->getUInt("attack");
-            st->body.level = res->getUInt("level");
-            st->body.exp = res->getInt64("exp");
-            st->body.hp = res->getInt("hp");
-            st->body.mp = res->getInt("mp");
-            st->body.maxHp = res->getInt("max_hp");
-            st->body.maxMp = res->getInt("max_mp");
-            st->body.dir = res->getInt("dir");
-            st->body.currentZone = res->getUInt("zone_id");
-            st->body.startX = res->getDouble("last_pos_x");
-            st->body.startY = res->getDouble("last_pos_y");
-
-            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterStateResBody>));
-            messageQ->EnqueueMessage(msg);
-            messagePool->Return(msg);
-        });
+        const auto request = *body;
+        auto* owned = msg;
+        auto completed = std::make_shared<std::atomic_bool>(false);
+        const auto finish = [this, owned, sessionID, completed](const Core::MsgCharacterStateResBody& response) {
+            // DB failure and an inline/asynchronous inventory completion share one message owner.
+            if (completed->exchange(true)) return;
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgCharacterStateResBody>*>(owned->GetBuffer());
+            st->header = { sessionID, Core::MSG_CHARACTER_STATE_RES };
+            st->body = response;
+            owned->SetLength(sizeof(*st));
+            if (!messageQ->EnqueueMessage(owned))
+                Core::errorLogger->LogError("cache handler", "character state response queue rejected", "sessionID", sessionID);
+            messagePool->Return(owned);
+        };
+        const auto failed = [finish] { finish(Core::MsgCharacterStateResBody{}); };
+        const auto outcome = dbWorkerGame->Enqueue([this, request, finish](DBConnectionGame* conn) {
+            auto res = conn->ExecuteSelect(3, request.characterID, request.userID, request.channelID);
+            if (!res || !res->next()) { finish(Core::MsgCharacterStateResBody{}); return; }
+            Core::MsgCharacterStateResBody response{};
+            response.charID = res->getUInt64("char_id");
+            response.resStatus = 1;
+            const std::string name = res->getString("name");
+            response.profileId = res->getUInt("profile_id");
+            response.profileVersion = res->getUInt("profile_version");
+            std::memcpy(response.name, name.c_str(), std::min(name.size(), sizeof(response.name) - 1));
+            cache_profile->Load(response.profileId, response.profileVersion, name);
+            response.attack = res->getUInt("attack");
+            response.level = res->getUInt("level");
+            response.exp = res->getInt64("exp");
+            response.hp = res->getInt("hp");
+            response.mp = res->getInt("mp");
+            response.maxHp = res->getInt("max_hp");
+            response.maxMp = res->getInt("max_mp");
+            response.dir = res->getInt("dir");
+            response.currentZone = res->getUInt("zone_id");
+            response.startX = res->getDouble("last_pos_x");
+            response.startY = res->getDouble("last_pos_y");
+            cache_inventory->LoadWeaponState(response.charID, [finish, response](Core::WeaponStateResult weapon) mutable {
+                if (weapon.status == Core::WeaponOperationStatus::Success && (weapon.itemID == 0 || weapon.itemID == 3))
+                    response.equippedWeaponItemID = weapon.itemID;
+                else if (weapon.status == Core::WeaponOperationStatus::Missing)
+                    response.equippedWeaponItemID = 0; // A confirmed absent row contains no weapon.
+                else { finish(Core::MsgCharacterStateResBody{}); return; }
+                finish(response); // Never publish a playable character before equipment is hydrated.
+            });
+        }, nullptr, failed);
+        if (outcome != DBEnqueueResult::Queued) failed();
+        msg = nullptr;
     }
 
     // 접속 종료 경로. 캐릭터 상태를 DB에 쓰면서 profile 캐시도 함께 내린다.

@@ -52,6 +52,7 @@ namespace Mmorpg.Client.Tests
                 Assert.That(content.GetItem(2).mpRecovery, Is.EqualTo(500));
                 Assert.That(content.GetItem(3).name, Is.EqualTo(expected["items"][2]["name"].Value<string>()));
                 Assert.That(content.GetItem(3).itemType, Is.EqualTo(2));
+                Assert.That(content.GetItem(3).weaponAttackBonus, Is.EqualTo(2));
                 Assert.That(content.GetItem(33), Is.Null);
                 Assert.That(ItemPresentation.Name(3, content), Is.EqualTo(content.GetItem(3).name));
                 Assert.That(ItemPresentation.Name(33, content), Is.EqualTo("Item #33"));
@@ -148,6 +149,8 @@ namespace Mmorpg.Client.Tests
                     json => json["items"][1]["cooldownTicks"] = 0,
                     json => json["items"][1]["cooldownTicks"] = 41,
                     json => json["items"][2]["hpRecovery"] = 10,
+                    json => json["items"][2]["weaponAttackBonus"] = 65536,
+                    json => json["items"][0]["weaponAttackBonus"] = 2,
                     json => json["parry"]["windowTicks"] = 0,
                     json => json["parry"]["cooldownTicks"] = 0,
                     json => json["parry"]["charges"] = 2,

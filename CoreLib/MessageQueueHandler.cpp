@@ -107,6 +107,7 @@ namespace Core {
             temp.characterID = body->charID;
             temp.dir = body->dir;
             temp.attack = body->attack;
+            temp.equippedWeaponItemID = body->equippedWeaponItemID;
             temp.level = body->level;
             temp.exp = body->exp;
             temp.hp = body ->hp;

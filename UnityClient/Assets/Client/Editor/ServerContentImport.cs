@@ -142,10 +142,10 @@ namespace Mmorpg.Client.Editor
                     throw new InvalidOperationException("Item names must be non-empty strings.");
                 var item = new ServerContent.Item {
                     itemID = id, itemType = (ushort)Integer(row, "itemType", 3), name = name.Value<string>(),
-                    weight = Integer(row, "weight"), hpRecovery = Integer(row, "hpRecovery", int.MaxValue),
+                    weight = Integer(row, "weight"), weaponAttackBonus = (ushort)Integer(row, "weaponAttackBonus", ushort.MaxValue), hpRecovery = Integer(row, "hpRecovery", int.MaxValue),
                     mpRecovery = Integer(row, "mpRecovery", int.MaxValue), cooldownTicks = Integer(row, "cooldownTicks")
                 };
-                if (item.weight == 0 || item.itemType == 0)
+                if (item.weight == 0 || item.itemType == 0 || (item.itemType != 2 && item.weaponAttackBonus != 0))
                     throw new InvalidOperationException("Item weights and types must be positive.");
                 if (item.itemType == 1 ? item.cooldownTicks == 0 || (item.hpRecovery > 0) == (item.mpRecovery > 0) :
                     item.hpRecovery != 0 || item.mpRecovery != 0 || item.cooldownTicks != 0)

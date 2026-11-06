@@ -93,6 +93,7 @@ namespace Mmorpg.Client
             public ushort itemType;
             public string name;
             public uint weight;
+            public ushort weaponAttackBonus;
             public uint hpRecovery;
             public uint mpRecovery;
             public uint cooldownTicks;

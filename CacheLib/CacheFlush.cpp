@@ -4,6 +4,7 @@
 #include "DBConnectionGame.h"
 
 #include "Config.h"
+#include "InventoryCodec.h"
 #include <format>
 #include <chrono>
 
@@ -45,6 +46,7 @@ namespace Cache {
             }
             auto& param0 = std::any_cast<std::vector<uint8_t>&>(command->params[0]);
             auto& param1 = std::any_cast<uint64_t&>(command->params[1]); 
+            const auto inventory = DecodeInventory(param0.data(), param0.size());
             int res = 0;
             try {
                 res = conn->ExecuteUpdate(command->stmtID, param0, param1);
@@ -74,7 +76,7 @@ namespace Cache {
             CrashPoint("CLAIM"); // 인벤토리 blob durable 이후, outbox CLAIM 전
 
             // blob에서 역직렬화 해서 eventRing 추출
-            const InventoryData* inv = reinterpret_cast<const InventoryData*>(param0.data());
+            const InventoryData* inv = &inventory;
 
             uint8_t pendingCnt = (inv->tail - inv->head) & RING_SIZE_MASK;
             if (pendingCnt == 0 && inv->lastOp)

@@ -1320,6 +1320,8 @@ namespace Mmorpg.Client.Tests
             public void Profiles(uint[] profileIds) { }
             public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID)
             { ItemUseRequests++; LastItemUseRequestID = requestID; LastItemUseID = itemID; }
+            public void RequestEquipment(ulong requestID, ulong ownershipEpoch) { }
+            public void RequestEquipWeapon(ulong requestID, ulong ownershipEpoch, uint itemID) { }
             public void RequestParry(ulong requestID, ulong ownershipEpoch) { ParryRequests++; }
             public void RequestInventory() { InventoryRequests++; }
             public void Action(byte direction, float x, float y, byte skillSlot, ulong ownershipEpoch, float aimAngle) { }

@@ -29,6 +29,8 @@ namespace Core {
         uint64_t bootstrapSequence = 0;
         ItemUseResponseBody lastItemUse = {};
         ParryResponseBody lastParry = {};
+        EquipmentResponseBody lastEquipmentSet = {};
+        uint32_t lastEquipmentItemID = 0;
         uint64_t chatID = 0;
         uint64_t userID = 0;
         uint64_t characterID = 0;
@@ -234,6 +236,7 @@ namespace Core {
             return res;
         }
         ItemUseResponseBody UseItem(uint64_t sessionID, const ItemUseRequestBody& request);
+        EquipmentResponseBody Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint32_t itemID = 0);
         ParryResponseBody Parry(uint64_t sessionID, uint16_t routeZoneID, const ParryRequestBody& request);
         void GrantMonsterReward(const CharacterState& character, uint64_t gold);
         void Disconnect(uint64_t sessionID);

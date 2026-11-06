@@ -38,6 +38,17 @@ namespace Core {
         class PotionInventory final : public IInventoryOperations {
         public:
             unsigned consumed = 0;
+            unsigned equipmentWrites = 0;
+            uint32_t weaponID = 0;
+            WeaponOperationStatus weaponOutcome = WeaponOperationStatus::Success;
+            WeaponStateResult GetWeaponState(uint64_t) override { return {weaponOutcome, weaponID}; }
+            WeaponStateResult EquipWeapon(uint64_t, uint32_t itemID) override {
+                if (weaponOutcome == WeaponOperationStatus::Success) { weaponID = itemID; ++equipmentWrites; }
+                return {weaponOutcome, weaponOutcome == WeaponOperationStatus::Success ? weaponID : 0};
+            }
+            void LoadWeaponState(uint64_t characterID, std::function<void(WeaponStateResult)> completed) override {
+                completed(GetWeaponState(characterID));
+            }
             std::vector<std::pair<uint32_t, uint16_t>> granted;
             ItemOperationStatus outcome = ItemOperationStatus::Success;
             ItemOperationResult ConsumeItem(uint64_t, uint32_t) override {
@@ -285,6 +296,18 @@ namespace Core {
                 header->opcode = OP::BAZAAR_CANCEL_LISTING;
                 header->flags = flags;
                 if (sizeDelta >= 0) *parseBody<BazaarCancelListingRequestBody>(packet.data()) = request;
+            }
+            CountedView(uint64_t id, const EquipmentGetRequestBody& request, uint8_t flags = 0, int sizeDelta = 0)
+                : packet(sizeof(PacketStruct<EquipmentGetRequestBody>) + sizeDelta), session(id) {
+                auto* header = parseHeader(packet.data());
+                *header = {MAGIC, static_cast<uint32_t>(packet.size()), OP::EQUIPMENT_GET, flags};
+                if (sizeDelta >= 0) *parseBody<EquipmentGetRequestBody>(packet.data()) = request;
+            }
+            CountedView(uint64_t id, const EquipmentSetRequestBody& request, uint8_t flags = 0, int sizeDelta = 0)
+                : packet(sizeof(PacketStruct<EquipmentSetRequestBody>) + sizeDelta), session(id) {
+                auto* header = parseHeader(packet.data());
+                *header = {MAGIC, static_cast<uint32_t>(packet.size()), OP::EQUIPMENT_SET, flags};
+                if (sizeDelta >= 0) *parseBody<EquipmentSetRequestBody>(packet.data()) = request;
             }
             CountedView(uint64_t id, OP opcode)
                 : packet(sizeof(PacketHeader)), session(id) {
@@ -684,7 +707,7 @@ namespace Core {
             st->header = { 42, MSG_BAZAAR_CANCEL_LISTING_RES }; st->body = body;
             response->SetLength(sizeof(*st) + sizeDelta); responses.Process(response);
         }
-        bool CompleteLoadSuccessfully(Message& request) {
+        bool CompleteLoadSuccessfully(Message& request, uint32_t weaponID = 0, uint16_t baseAttack = 0) {
             auto* response = messages.Acquire();
             if (response == nullptr)
                 return false;
@@ -694,6 +717,8 @@ namespace Core {
             result->header.messageType = MSG_CHARACTER_STATE_RES;
             result->body.resStatus = RES_STATUS::SUCCESS;
             result->body.charID = parseMsgBody<MsgCharacterStateReqBody>(request.GetBuffer())->characterID;
+            result->body.attack = baseAttack;
+            result->body.equippedWeaponItemID = weaponID;
             result->body.hp = result->body.maxHp = 100;
             result->body.mp = result->body.maxMp = 100;
             result->body.currentZone = 1;
@@ -2138,6 +2163,91 @@ namespace Core {
             EXPECT_EQ(body->gold, gold);
         }
         EXPECT_TRUE(inventory.granted.empty());
+        SetInventory(nullptr);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, EquipmentRequestsKeepBaseAttackAndDeduplicateOnlyMutationsAcrossEpochs) {
+        PrepareZones();
+        ASSERT_TRUE(LoadTransitionCharacter());
+        ZoneChangeResult entry;
+        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, entry));
+        UpdateCharacter(1, 42, [](CharacterState& c) { c.attack = 10; c.maxHp = 100; });
+        PotionInventory inventory;
+        SetInventory(&inventory);
+        auto first = state->Equipment(42, 1, entry.ownershipEpoch, true, 3);
+        EXPECT_EQ(first.status, static_cast<uint8_t>(EquipmentStatus::Success));
+        EXPECT_EQ(first.weaponID, 3);
+        EXPECT_EQ(first.baseAttack, 10);
+        EXPECT_EQ(first.bonusAttack, 2);
+        EXPECT_EQ(first.effectiveAttack, 12);
+        EXPECT_EQ(CharacterIn(1).attack, 10);
+        EXPECT_EQ(CharacterIn(1).EffectiveAttack(), 12);
+        EXPECT_EQ(state->Equipment(42, 1, entry.ownershipEpoch, true, 3).effectiveAttack, 12);
+        EXPECT_EQ(inventory.equipmentWrites, 1);
+        EXPECT_EQ(state->Equipment(42, 1, entry.ownershipEpoch, true, 0).status, static_cast<uint8_t>(EquipmentStatus::StaleRequest));
+        EXPECT_EQ(state->Equipment(42, 2, entry.ownershipEpoch + 1, true, 0).status, static_cast<uint8_t>(EquipmentStatus::StaleOwnership));
+        EXPECT_EQ(state->Equipment(42, 100, entry.ownershipEpoch, false).effectiveAttack, 12);
+        EXPECT_EQ(state->Equipment(42, 2, entry.ownershipEpoch, true, 0).effectiveAttack, 10); // Read IDs do not poison write IDs.
+        EXPECT_EQ(inventory.equipmentWrites, 2);
+        inventory.weaponOutcome = WeaponOperationStatus::Missing;
+        auto missing = state->Equipment(42, 3, entry.ownershipEpoch, true, 3);
+        EXPECT_EQ(missing.status, static_cast<uint8_t>(EquipmentStatus::Missing));
+        EXPECT_EQ(missing.weaponID, 0); EXPECT_EQ(missing.baseAttack, 0);
+        inventory.weaponOutcome = WeaponOperationStatus::StorageFailure;
+        EXPECT_EQ(state->Equipment(42, 4, entry.ownershipEpoch, true, 3).status, static_cast<uint8_t>(EquipmentStatus::StorageFailure));
+        EXPECT_EQ(state->Equipment(42, 5, entry.ownershipEpoch, true, 4).status, static_cast<uint8_t>(EquipmentStatus::Unsupported));
+        inventory.weaponOutcome = WeaponOperationStatus::Success;
+        UpdateCharacter(1, 42, [](CharacterState& c) { c.attack = UINT16_MAX; });
+        EXPECT_EQ(state->Equipment(42, 6, entry.ownershipEpoch, true, 3).effectiveAttack, UINT16_MAX);
+        UpdateCharacter(1, 42, [](CharacterState& c) { c.attack = 10; c.hp = 0; });
+        EXPECT_EQ(state->Equipment(42, 7, entry.ownershipEpoch, true, 0).status, static_cast<uint8_t>(EquipmentStatus::Dead));
+        ZoneChangeResult respawn;
+        ASSERT_TRUE(state->RespawnToTown(42, RespawnToTownBody{entry.ownershipEpoch}, respawn));
+        EXPECT_EQ(CharacterIn(1).equippedWeaponItemID, 3);
+        EXPECT_EQ(CharacterIn(1).attack, 10);
+        EXPECT_EQ(CharacterIn(1).EffectiveAttack(), 12);
+        EXPECT_EQ(state->Equipment(42, 8, entry.ownershipEpoch, true, 0).status, static_cast<uint8_t>(EquipmentStatus::StaleOwnership));
+        SetInventory(nullptr);
+    }
+
+    TEST_F(NonZoneThreadPoolFixture, EquipmentWireUsesHydratedLobbyStateAndRejectsMalformedRequests) {
+        PrepareZones();
+        state->BeginAuth(42);
+        ASSERT_TRUE(state->CompleteAuth(42, 6982, true));
+        Message request(sizeof(MsgStruct<MsgCharacterStateReqBody>));
+        auto* load = reinterpret_cast<MsgStruct<MsgCharacterStateReqBody>*>(request.GetBuffer());
+        load->header = {42, MSG_CHARACTER_STATE_REQ}; load->body = {1, 6982, 5011};
+        request.SetLength(sizeof(*load));
+        ASSERT_TRUE(CompleteLoadSuccessfully(request, 3, 10));
+        EXPECT_EQ(CharacterInLobby().EffectiveAttack(), 12); // Equipment is present before any UI query.
+        ZoneChangeResult entry;
+        ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, entry));
+        EXPECT_EQ(CharacterIn(1).EffectiveAttack(), 12);
+        PotionInventory inventory; inventory.weaponID = 3; SetInventory(&inventory);
+        EquipmentGetRequestBody get{9, entry.ownershipEpoch};
+        CountedView read(42, get); handler.Process(&read);
+        ASSERT_EQ(iocp.lastPacket.size(), 36);
+        EXPECT_EQ(parseHeader(iocp.lastPacket.data())->opcode, OP::EQUIPMENT_RES);
+        EXPECT_EQ(parseHeader(iocp.lastPacket.data())->flags, 0);
+        auto result = *parseBody<EquipmentResponseBody>(iocp.lastPacket.data());
+        EXPECT_EQ(result.operation, 0); EXPECT_EQ(result.status, 1); EXPECT_EQ(result.effectiveAttack, 12);
+        const auto sent = iocp.sentOpcodes.size();
+        CountedView wrongFlags(42, get, 1); handler.Process(&wrongFlags);
+        CountedView truncated(42, get, 0, -1); handler.Process(&truncated);
+        get.requestID = 0; CountedView zero(42, get); handler.Process(&zero);
+        EXPECT_EQ(iocp.sentOpcodes.size(), sent);
+        EquipmentSetRequestBody set{1, entry.ownershipEpoch, 0};
+        CountedView mutation(42, set); handler.Process(&mutation);
+        ASSERT_EQ(iocp.lastPacket.size(), 36);
+        result = *parseBody<EquipmentResponseBody>(iocp.lastPacket.data());
+        EXPECT_EQ(result.operation, 1); EXPECT_EQ(result.weaponID, 0); EXPECT_EQ(result.effectiveAttack, 10);
+        result.effectiveAttack = 11; EXPECT_EQ(writer.WriteEquipmentResponse(result), nullptr);
+        result.status = static_cast<uint8_t>(EquipmentStatus::StorageFailure); result.effectiveAttack = 0;
+        EXPECT_EQ(writer.WriteEquipmentResponse(result), nullptr); // Failure must not retain confirmed attack values.
+        state->Disconnect(42);
+        auto saved = loads.TakeRequest(); ASSERT_NE(saved, nullptr);
+        EXPECT_EQ(parseMsgHeader(saved->GetBuffer())->messageType, MSG_CHARACTER_STATE_UPDATE);
+        EXPECT_EQ(parseMsgBody<MsgCharacterStateUpdateBody>(saved->GetBuffer())->attack, 10);
         SetInventory(nullptr);
     }
 
