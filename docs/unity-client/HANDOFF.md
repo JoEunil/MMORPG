@@ -1,18 +1,16 @@
-# 현재 인계 — 처치 포션 지급 제거 PR 준비
+# 현재 인계 — 아이템 사용·거래 수령 개선
 
-## 범위와 정본
-사용자는 몬스터 처치 HP·MP 포션 지급만 제거하고 별도 후속 계획을 추가하지 말라고 요청했다. 기존 EXP·구역별 골드·보유 포션 효과/조회/사용은 유지한다. ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient, Git정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source. PR68은 원격9f12768로 병합돼 codex/remove-kill-potions를 origin/master에서 새 분기했다. 기존 추천안의 포션지급 부분은 현재 결정이 대체한다. 사용자 AI·DB스키마·패킷·새기능계획 변경 없음.
+## 목표·범위
+2026-11-06 사용자가 제안한 다음 묶음 재개를 요청했다. 완료된 처치 포션보상 제거를 포함해 귀환/재접속 포션수량 자동조회, 거래 아이템 수령함 목록·명시적 일괄수령·결과갱신을 큰 PR 하나로 준비한다. 몬스터AI·DB스키마·일반우편·확률드랍 계획은 제외한다. 기존 구매와 취소반환이 같은 outbox이므로 모두 표시하며 취소즉시반환/판매대금 수령은 유지한다.
 
-## 변경과 검증
-StateManager의 처치 Item Grant loop만 제거하고 ItemData의 미사용 보상상수3개를 지웠다. 기존 보상fixture는 골드 메시지 금액/수신자를 유지하며 inventory.granted.empty를 검증한다. 코드리뷰 차단0. MainServer/UnitTests Release 빌드 성공, 해당fixture1개 Passed. 기존 Unity/서버검사는 반복하지 않았다. 실제 새 처치 입력은 실행하지 않았으며 자동검사 범위와 구분한다.
+## 정본·현재 변경
+ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient, Git정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, Editor 프로젝트 ROOT/UnityClient. branch codex/trade-item-receipts, origin/master9f12768(PR68병합), 로컬93a2e93/a640a98 보존. ROOT상위 Git의 과거 미커밋 다수는 작업정본이 아니므로 건드리지 않는다. 사용자 원본Game/refactor는 제외.
 
-현재 GROWTH_ITEMS_PLAN 계약과 공개 영상/가방 캡션에서 자동지급 설명만 최신화했다. 과거 검증기록은 보존하고 HUNT_BALANCE_PLAN/후속 계획은 변경하지 않았다.
+## 실행·검증
+구현후보9a68eea 로컬보존. 서버/ClientCore/Windows Player 빌드·서버2/Unity7 직접검사통과, 코드재리뷰차단0. Astra는 코드·자동검증범위통과/실제화면근거부족. 새탭의 실서버클릭/배치는 미실행. 기존 처치포션제거 단위1개 통과는 반복하지 않는다. 서버 조회51/52는 기존 SQL18/DeliverItem 재사용, 조회는 지급하지 않으며 처리중·실패·준비중을 구분한다. 검토 뒤 관련 검사와 필요한 입력을 한 배치로 수행한다. 입력은 기존 허용범위이나 실제 다른창 사용 감지시 중단·재확인. Unity CLI beta17 업데이트 사용자승인 수신, 진행중. 새 TradeReceipt서버/로그인/Player시작과 로그인화면확인. 사용자입력감지로클릭중단하고 현채팅허용질문대기, 이후모두정상종료(launcher stopped). 최신시작BAT는 TradeReceipt경로.
 
-## 실행과 다음 행동
-게임·서버·로그인은 stopped 상태 확인. ROOT/UnityClient/Builds/LocalGame/HuntingBalance/Server/MainServer.exe를 이번 산출물로 교체해 다음BAT실행부터 적용된다. 기존 Player·포션소비기능은 그대로다.
+## 배정·다음 행동
+서버분석 receipt_contract(신규+후속), 설계자문 receipt_design_review(Astra 신규), 구현 potion_lifecycle(신규+후속: Inventory/Market), receipt_server(신규: server/cache/tests). Coordinator ClientCore·통합·문서·검증 담당. 공유파일/Editor 소유권 유지. 남은순서: 사용자입력허용→실제탭배치/목록/명시수령1배치→Astra화면근거검수→Slack게시승인. 이미통과검사는반복금지. 최종문구Player갱신빌드성공(오류0·기존경고5). 상세RESULTS.md.
 
-관련변경 로컬커밋 후 같은작업Slack부모1793873237.268829에 HUNTREWARD01/r1 수정PR게시 승인을 요청한다. PR68은 이미 병합되어 새PR이 필요하다. 이전 HUNTBAL01 승인을 새게시 승인으로 소비하지 않는다. 승인전push/PR게시없음.
-
-근거 ROOT/UnityClient/Builds/ClientGrowthHUD/verification/hunting-balance/no-potion-reward-test.xml/no-potion-build.log. 상세 history/2026-11-05-hunting-balance/RESULTS.md. 서버산출물SHA256 4B85CF8F01D5340C720661991641DDB0D985D65C329B405F2C3F0151B11FB6FA.
-
-구현후보93a2e93 로컬커밋 완료. HUNTREWARD01/r1 요청1793886156.106779를 Unity Coordinator 앱으로 기존 부모1793873237.268829에 발신했다. 수신기health/프로세스/등록스레드 확인, 회신 대기·미소비. push/새PR게시 없음. 최종검수통과·Agent656(신규243/후속413).
+## Slack·게시
+새 묶음 부모1793935273.767879(Unity Coordinator bot). 게시승인 아직 요청하지 않음. 수신기종료를확인하고기존고정대상으로복구: pid43884/listening/SOCKET_READY. HUNTREWARD01/r1 별도PR요청1793886156.106779는 철회, 늦은승인도 소비금지. push/새PR없음. 과거상세는 history/2026-11-05-hunting-balance/RESULTS.md 및 본묶음 PREVIOUS_HANDOFF.md.

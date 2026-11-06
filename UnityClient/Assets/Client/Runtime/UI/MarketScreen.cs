@@ -689,8 +689,7 @@ namespace Mmorpg.Client
             transactionResultAvailable = true;
             receiptResult = status == 1 ? "Received " + delivered.ToString(CultureInfo.InvariantCulture) +
                 " · already present " + duplicated.ToString(CultureInfo.InvariantCulture) +
-                (blocked > 0 ? " · unreceived " + blocked.ToString(CultureInfo.InvariantCulture) +
-                    ". Check bag space / stack limits, wait a moment, then retry manually." : ". Check your bag.")
+                (blocked > 0 ? ". Some items remain unreceived. Check bag space / stack limits, wait a moment, then retry manually." : ". Check your bag.")
                 : "Receipt result incomplete; items may have arrived. Check your bag, then retry manually.";
             statusText.text = receiptResult;
             if (view == MarketView.Outbox && IsOpen) LoadOutboxItems();
