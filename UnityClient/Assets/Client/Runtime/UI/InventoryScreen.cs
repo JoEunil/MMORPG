@@ -356,7 +356,7 @@ namespace Mmorpg.Client
             if (model == null || loginScreen.Model != model) return;
             switch (status)
             {
-                case 1: SetUseStatus("Received " + ItemPresentation.Name(itemID) + " ×" + grantedQuantity.ToString(CultureInfo.InvariantCulture) + "."); break;
+                case 1: SetUseStatus("Received " + ItemPresentation.Name(itemID, worldScreen.Content) + " ×" + grantedQuantity.ToString(CultureInfo.InvariantCulture) + "."); break;
                 case 2: ShowLootFailure("Bag full. Item reward could not be added."); break;
                 case 3: ShowLootFailure("Item reward failed."); break;
                 default: SetUseStatus("Unknown item reward result."); break;
@@ -392,6 +392,12 @@ namespace Mmorpg.Client
 
         private void WorldChanged()
         {
+            if (worldScreen != null && worldScreen.ItemTextFont != null)
+            {
+                detailName.font = worldScreen.ItemTextFont;
+                if (useStatus != null) useStatus.font = worldScreen.ItemTextFont;
+                if (lootNotice != null) lootNotice.font = worldScreen.ItemTextFont;
+            }
             bool available = WorldAvailable && model != null && loginScreen.Model == model;
             if (!available) inventoryWarmupPending = false;
             if (!available || (!IsOpen && !inventoryWarmupPending)) CancelFailureRetry();
@@ -601,7 +607,7 @@ namespace Mmorpg.Client
             quantityBadgeRect.anchoredPosition = new Vector2(-8f, -44f);
             quantityBadgeRect.sizeDelta = new Vector2(44f, 22f);
 
-            var name = CreateText("ItemName", cardObject.transform, ItemPresentation.Name(item.ItemID), 14,
+            var name = CreateText("ItemName", cardObject.transform, ItemPresentation.Name(item.ItemID, worldScreen.Content), 14,
                 new Color32(236, 240, 232, 255), TextAlignmentOptions.MidlineLeft);
             name.rectTransform.anchorMin = new Vector2(0, 0);
             name.rectTransform.anchorMax = new Vector2(1, 0);
@@ -631,7 +637,7 @@ namespace Mmorpg.Client
             if (useStatus != null && !usePending && !useTimedOut)
                 useStatus.text = (item.ItemID == 1 || item.ItemID == 2) && Time.unscaledTime < useCooldownDeadline
                     ? "Potion is on cooldown."
-                    : ItemPresentation.UseDescription(item.ItemID);
+                    : ItemPresentation.UseDescription(item.ItemID, worldScreen.Content);
             UpdateControls();
         }
 
@@ -666,7 +672,7 @@ namespace Mmorpg.Client
             else if (detailIcon != null) detailIcon.enabled = false;
             detailBadge.text = icon != null ? string.Empty : ItemPresentation.Badge(item.ItemID);
             detailBadge.color = ItemPresentation.Accent(item.ItemID);
-            detailName.text = ItemPresentation.Name(item.ItemID);
+            detailName.text = ItemPresentation.Name(item.ItemID, worldScreen.Content);
             detailSlot.text = "Slot " + item.Slot.ToString(CultureInfo.InvariantCulture);
             detailQuantity.text = "Quantity " + item.Quantity.ToString(CultureInfo.InvariantCulture);
         }
@@ -713,7 +719,7 @@ namespace Mmorpg.Client
                 (potionNoticeDeadline == 0 || (hasSelectedItem && selectedItemID != 1 && selectedItemID != 2)))
                 useStatus.text = hasSelectedItem
                     ? ((selectedItemID == 1 || selectedItemID == 2) && Time.unscaledTime < useCooldownDeadline
-                        ? "Potion is on cooldown." : ItemPresentation.UseDescription(selectedItemID))
+                        ? "Potion is on cooldown." : ItemPresentation.UseDescription(selectedItemID, worldScreen.Content))
                     : string.Empty;
             if (useButton != null)
             {
@@ -787,13 +793,13 @@ namespace Mmorpg.Client
                 !usePending && Time.unscaledTime >= useCooldownDeadline && (!known || quantity > 0);
         }
 
-        private static TMP_Text CreateText(string name, Transform parent, string value, float size, Color color,
+        private TMP_Text CreateText(string name, Transform parent, string value, float size, Color color,
             TextAlignmentOptions alignment)
         {
             var gameObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
             gameObject.transform.SetParent(parent, false);
             var text = gameObject.GetComponent<TextMeshProUGUI>();
-            text.font = TMP_Settings.defaultFontAsset;
+            text.font = worldScreen != null && worldScreen.ItemTextFont != null ? worldScreen.ItemTextFont : TMP_Settings.defaultFontAsset;
             text.text = value;
             text.fontSize = size;
             text.color = color;

@@ -652,6 +652,7 @@ namespace Mmorpg.Client.Tests
 
         private sealed class Fixture : IDisposable
         {
+            private readonly ServerContent itemContent = WorldTestSession.ItemContent();
             private readonly GameObject root;
             private readonly List<Initializer> clients = new List<Initializer>();
             public readonly LoginScreen Login;
@@ -676,6 +677,7 @@ namespace Mmorpg.Client.Tests
                 root.SetActive(false);
                 Login = root.AddComponent<LoginScreen>();
                 World = root.AddComponent<WorldScreen>();
+                SetPrivate(World, "serverContent", itemContent);
                 Screen = root.AddComponent<InventoryScreen>();
 
                 SetPrivate(Login, "loginIdInput", Input("login id"));
@@ -795,6 +797,7 @@ namespace Mmorpg.Client.Tests
             public void Dispose()
             {
                 if (root != null) UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(itemContent);
                 foreach (var initializer in clients) initializer.Dispose();
             }
 

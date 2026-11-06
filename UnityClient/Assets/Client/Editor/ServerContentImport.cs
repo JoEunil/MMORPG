@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEditor;
@@ -27,8 +28,8 @@ namespace Mmorpg.Client.Editor
                 snapshot = JObject.Load(reader, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
                 if (reader.Read()) throw new InvalidOperationException("Unexpected data after the server content snapshot.");
             }
-            if (Integer(snapshot, "formatVersion", 3) != 3)
-                throw new InvalidOperationException("Only server content format version 3 is supported.");
+            if (Integer(snapshot, "formatVersion", 4) != 4)
+                throw new InvalidOperationException("Only server content format version 4 is supported.");
             var skills = ReadSkills(snapshot, "skills");
             var monsterSkills = ReadSkills(snapshot, "monsterSkills");
             var zoneRows = Array(snapshot, "huntingZones");
@@ -127,23 +128,36 @@ namespace Mmorpg.Client.Editor
             if (parry.windowTicks == 0 || parry.cooldownTicks < parry.windowTicks || parry.charges != 1)
                 throw new InvalidOperationException("Parry requires a positive window, a cooldown covering that window, and one charge.");
 
-            var itemRows = Array(snapshot, "itemUse");
-            if (itemRows.Count != 2) throw new InvalidOperationException("HP and MP potion rows are required.");
-            var itemUse = new ServerContent.ItemUse[2];
-            foreach (var row in itemRows)
+            var itemRows = Array(snapshot, "items");
+            if (itemRows.Count == 0) throw new InvalidOperationException("Item definitions cannot be empty.");
+            var items = new ServerContent.Item[itemRows.Count];
+            var itemIDs = new HashSet<uint>();
+            for (int i = 0; i < itemRows.Count; i++)
             {
-                uint id = Integer(row, "itemID", 2);
-                if (id == 0 || itemUse[id - 1] != null) throw new InvalidOperationException("Potion IDs 1 and 2 must occur once.");
-                var item = new ServerContent.ItemUse {
-                    itemID = id, hpRecovery = Integer(row, "hpRecovery", int.MaxValue),
+                var row = itemRows[i];
+                uint id = Integer(row, "itemID");
+                if (id == 0 || !itemIDs.Add(id)) throw new InvalidOperationException("Item IDs must be positive and unique.");
+                var name = Field(row, "name");
+                if (name.Type != JTokenType.String || string.IsNullOrWhiteSpace(name.Value<string>()))
+                    throw new InvalidOperationException("Item names must be non-empty strings.");
+                var item = new ServerContent.Item {
+                    itemID = id, itemType = (ushort)Integer(row, "itemType", 3), name = name.Value<string>(),
+                    weight = Integer(row, "weight"), hpRecovery = Integer(row, "hpRecovery", int.MaxValue),
                     mpRecovery = Integer(row, "mpRecovery", int.MaxValue), cooldownTicks = Integer(row, "cooldownTicks")
                 };
-                if (item.cooldownTicks == 0 || (id == 1 ? item.hpRecovery == 0 || item.mpRecovery != 0 : item.mpRecovery == 0 || item.hpRecovery != 0))
-                    throw new InvalidOperationException("Potions require their own recovery resource and a positive shared cooldown.");
-                itemUse[id - 1] = item;
+                if (item.weight == 0 || item.itemType == 0)
+                    throw new InvalidOperationException("Item weights and types must be positive.");
+                if (item.itemType == 1 ? item.cooldownTicks == 0 || (item.hpRecovery > 0) == (item.mpRecovery > 0) :
+                    item.hpRecovery != 0 || item.mpRecovery != 0 || item.cooldownTicks != 0)
+                    throw new InvalidOperationException("Potions require one recovery resource and a cooldown; equipment cannot recover resources.");
+                items[i] = item;
             }
-            if (itemUse[0].cooldownTicks != itemUse[1].cooldownTicks)
-                throw new InvalidOperationException("HP and MP potions must share the same cooldown.");
+            System.Array.Sort(items, (left, right) => left.itemID.CompareTo(right.itemID));
+            var hpPotion = System.Array.Find(items, item => item.itemID == 1);
+            var mpPotion = System.Array.Find(items, item => item.itemID == 2);
+            if (hpPotion == null || mpPotion == null || hpPotion.hpRecovery == 0 || mpPotion.mpRecovery == 0 ||
+                hpPotion.cooldownTicks != mpPotion.cooldownTicks)
+                throw new InvalidOperationException("HP and MP potions must exist and share the same cooldown.");
 
             // All parsing and validation finish before replacing any existing asset fields.
             var oldMonsterSkills = target.monsterSkills;
@@ -154,7 +168,7 @@ namespace Mmorpg.Client.Editor
             var oldMonsters = target.otherMonsters;
             var oldGrowth = target.growth;
             var oldParry = target.parry;
-            var oldItemUse = target.itemUse;
+            var oldItems = target.items;
             bool wasDirty = EditorUtility.IsDirty(target);
             try
             {
@@ -166,7 +180,7 @@ namespace Mmorpg.Client.Editor
                 target.otherMonsters = new[] { monsters[1], monsters[2] };
                 target.growth = growth;
                 target.parry = parry;
-                target.itemUse = itemUse;
+                target.items = items;
                 EditorUtility.SetDirty(target);
                 AssetDatabase.SaveAssetIfDirty(target);
             }
@@ -181,7 +195,7 @@ namespace Mmorpg.Client.Editor
                 target.otherMonsters = oldMonsters;
                 target.growth = oldGrowth;
                 target.parry = oldParry;
-                target.itemUse = oldItemUse;
+                target.items = oldItems;
                 if (wasDirty) EditorUtility.SetDirty(target);
                 else EditorUtility.ClearDirty(target);
                 throw;

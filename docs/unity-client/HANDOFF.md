@@ -1,16 +1,18 @@
-# 현재 인계 — 거래 수령함 PR69 사용자 검토 대기
+# 현재 인계 — 아이템 정본 공유·기본 무기 장착
 
-## 목표·후보
-처치 포션보상 제거 + 포션수량 귀환갱신 + 거래 아이템 수령함을 큰 PR 하나로 준비했다. 사용자몬스터AI·DB스키마·확률드랍계획 변경 없음. 구매·취소반환 목록은 기존 outbox를 재사용하고 실제일괄수령/판매대금경로는 유지한다.
+## 승인 범위·정본
+2026-11-06 사용자가 다음 아이템정본통합+기본무기장착 작업시작을요청했다. PR69 merged f205bf16 확인, origin/master기반 codex/item-equipment새분기. 이전PR69 head포함확인후원격자동삭제prune/로컬codex/trade-item-receipts정리완료. ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient, Git정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, 실제Editor ROOT/UnityClient. 사용자Game/refactor와몬스터AI변경금지. 포션등급/드랍/일반우편은이번범위제외.
 
-## 정본·Git
-ROOT=C:/Users/joeun/Desktop/workspace/Game-UnityClient, Git정본 ROOT/UnityClient/Builds/ClientGrowthHUD/source, 실제Editor ROOT/UnityClient. branch codex/trade-item-receipts, origin/master9f12768(PR68병합). 로컬93a2e93/a640a98/9a68eea/8a7a028과최신화면기록을묶는다. ROOT상위Git의과거변경·사용자Game/refactor는건드리지않는다. ROOT공개market.md는기준과달라자동덮어쓰지않았고canonical이정본이다.
+## 현재 구현·검증
+서버itemMap→JSONformat4 items→기존Importer/GetItem→Inventory/Market 이름·효과표시연결 후보완료. 기존아이콘/GUID보존, itemUse중복배열제거, 제거된보상상수참조exporter오류도수정. 전체itemMap을정렬해내보내고입력실패시기존asset보존. 미확인ID는Item #표시. 한글은기존WorldScreen의OS폰트수명재사용. 기존UIfixture에는명시적metadata제공. exporter컴파일/실제5행생성, Unity컴파일오류0·경고0, 기존GUID그대로5개import성공. 자동검사/실입력/최종리뷰는이번묶음아직미실행. Editor에서Play/서버기동없음. 이미통과한이전묶음검사는반복금지.
 
-## 완료·근거
-서버/ClientCore/Player빌드성공, 직접서버2·Unity7검사통과. 독립리뷰3건수정후차단0. 마지막문구변경은로직불변으로통과검사반복안함. UnityCLI beta17업데이트완료. 사용자현채팅입력허용후 test1마을진입→포션22/2자동표시→수령함4탭/빈목록0/처리중0→명시수령0응답·목록재조회·가방수량유지확인. 실제양수배송·실제귀환이동은새로실행하지않았고자동검사와구분. 같은Astra 실제화면최종검수통과. 상세 history/2026-11-06-receipt-inventory/RESULTS.md, 증거 ROOT/UnityClient/Builds/ClientGrowthHUD/verification/receipt-inventory.
+## 장착 설계·사용자 선택 대기
+기본철검ID3 1슬롯/공격+2(10→12)/가방수량유지/장착중같은철검판매차단·해제후판매/구역·재접속유지/자동지급없음/타격시점장착기준을한번질문했다. 저장형식확장과구서버직접롤백불가도명시했다. 현채팅비동기질문의실제답변대기,미응답을승인으로읽지않는다. 장착서버/패킷/DB/WAL변경아직없음. 현재독립metadata공유만진행가능.
 
-## 실행·다음 행동
-게임/MainServer/Login 모두정상종료, launcher stopped. 시작BAT는최신TradeReceipt Player/Server. Editor자산쓰기/입력배치종료. PR은서버/ClientCore동시적용필요하며이전HuntingBalance경로로함께복구가능. 2026-11-06 사용자가 직전 TRADEITEM01/r1 요청에 현채팅에서 승인했다. Slack회신ID는없으며만들지않는다. 정확한직전요청·준비후보와일치해게시1회에적용한다. 원격master변경없음확인후일반push·PR69게시완료: https://github.com/JoEunil/MMORPG/pull/69 . 사용자검토대기·미병합. 미승인신규개발자동재개없음.
+추천기술안은inventory360prefix+명시tag/equipID8byte trailer와구/신DB·WALdecoder지원,동일inventory shard잠금으로장착/모든차감배타. DB스키마불변이나실제blob길이분포읽기확인과구버전복구절차필요. baseattack은DB기존값유지,player피해에서만유효공격력계산. 월드진입시서버가저장장착상태를스스로적재해야하며UI조회로보너스가켜지는구현금지. 상세설계는RESULTS.md.
+
+## 배정·다음 행동
+서버분석equipment_contract(신규1,읽기완료), 구현item_catalog_share(신규1,소유5파일완료), Astra equipment_design_review(신규1,기술대안·정책질문검수완료). 총괄WorldScreen/Inventory/Market/기존UIfixture통합·도구·기록. 사용자답변을받으면장착구현담당을명시배정,없으면승인의존범위만대기. 구현모두마친후리뷰·직접최소검사·입력1배치·종합검수·큰PR1개. 현재push/PR게시없음.
 
 ## Slack
-작업부모1793935273.767879(Unity Coordinator bot). TRADEITEM01/r1 게시요청1793936786.718919를같은부모에발신(후보8da7615), 완료채널요약1793936787.372659. 현채팅사용자승인으로게시요청소비처리, Slack중복/늦은승인으로새PR생성금지. 게시범위는검수된8da7615와그이후승인/게시상태인계문서만, 코드범위확대없음. 승인1회소비완료, 새PR중복게시금지. 수신기pid43884/listening/고정Coordinator01a14d46-8b23-7590-8ad5-7efc20f8ecd9와등록스레드재확인후요청한다. HUNTREWARD01/r1 별도PR요청은철회, 늦은승인소비금지. 실제Agent668회(신규248/후속420), 토큰/비용N/A.
+새작업부모1793938992.023029(Unity Coordinator bot),시작안내만발신. 게시승인요청없음. 이전TRADEITEM01/r1은PR69게시로소비완료,새작업권한으로재사용금지. Agent신규3추가누적671(신규251/후속420),토큰/비용N/A.

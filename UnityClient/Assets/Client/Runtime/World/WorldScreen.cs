@@ -62,6 +62,8 @@ namespace Mmorpg.Client
         public FullStateField OwnFull => ownFull;
         public Transform ViewCamera => quarterViewCamera;
         public ActorMotion ActorMotion { get; private set; }
+        public ServerContent Content => serverContent;
+        public TMP_FontAsset ItemTextFont => localKoreanFont;
         public bool CanAct => isActiveAndEnabled && Stage == WorldStage.InWorld && HasOwnFull && ownFull.hp > 0;
         public bool IsWorldVisible => worldRoot.activeSelf;
         public Vector2 ServerPosition => new Vector2(ownFull.x, ownFull.y);

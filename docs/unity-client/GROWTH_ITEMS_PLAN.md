@@ -6,7 +6,7 @@
 
 | 경로 | 현재 계약 |
 | --- | --- |
-| 포션 데이터 | 서버 `ItemData.h` 정본 → `itemUse` JSON → 기존 Unity importer. HP ID1 1500/MP ID2 500회복, 공용120틱(6초). |
+| 포션 데이터 | 서버 `ItemData.h` 정본 → `items` JSON(format4 후보) → 기존 Unity importer. HP ID1 1500/MP ID2 500회복, 공용120틱(6초). |
 | 사용 요청 | opcode45, flags0, 전체28바이트. requestID u64/ownershipEpoch u64/itemID u32. 클라이언트가 회복량·수량·캐릭터ID를 결정하지 않는다. |
 | 사용 응답 | opcode46, flags0, 전체35바이트. 요청 식별자·epoch·itemID + status u8/remainingQuantity u16/cooldownRemainingTicks u32. 동일 요청은 재소비하지 않고, 사망·해당 자원 만충·쿨·수량/저장 실패를 구분한다. |
 | 처치 포션 | 현재 몬스터 처치로 포션을 지급하지 않는다. 기존 보유 HP·MP 포션의 조회·사용은 유지한다. |

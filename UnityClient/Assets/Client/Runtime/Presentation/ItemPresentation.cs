@@ -3,38 +3,41 @@ using UnityEngine;
 
 namespace Mmorpg.Client
 {
-    // English display names for the five entries in CoreLib/ItemData.h.
+    // Item metadata comes from server content; icons and accents belong to presentation.
     // Unknown server IDs remain explicit; they are never assigned invented item data.
     public static class ItemPresentation
     {
         private static readonly Sprite[] itemIcons = new Sprite[5];
         private static readonly ItemDefinition[] items =
         {
-            new ItemDefinition("HP Potion", "HP", "Items/item-001-hp-potion-v1", new Color(.64f, .24f, .21f)),
-            new ItemDefinition("MP Potion", "MP", "Items/item-002-mp-potion-v1", new Color(.23f, .43f, .65f)),
-            new ItemDefinition("Iron Sword", "SW", "Items/item-003-iron-sword-v1", new Color(.42f, .48f, .51f)),
-            new ItemDefinition("Iron Shield", "SH", "Items/item-004-iron-shield-v1", new Color(.43f, .40f, .30f)),
-            new ItemDefinition("Leather Armor", "AR", "Items/item-005-leather-armor-v1", new Color(.52f, .35f, .23f)),
+            new ItemDefinition("HP", "Items/item-001-hp-potion-v1", new Color(.64f, .24f, .21f)),
+            new ItemDefinition("MP", "Items/item-002-mp-potion-v1", new Color(.23f, .43f, .65f)),
+            new ItemDefinition("SW", "Items/item-003-iron-sword-v1", new Color(.42f, .48f, .51f)),
+            new ItemDefinition("SH", "Items/item-004-iron-shield-v1", new Color(.43f, .40f, .30f)),
+            new ItemDefinition("AR", "Items/item-005-leather-armor-v1", new Color(.52f, .35f, .23f)),
         };
         private static readonly Color UnknownAccent = new Color(.40f, .43f, .39f);
 
-        public static string Name(uint itemID) => TryGet(itemID, out ItemDefinition item)
-            ? item.Name
-            : "Item #" + itemID.ToString(CultureInfo.InvariantCulture);
+        public static string Name(uint itemID, ServerContent content)
+        {
+            var item = content == null ? null : content.GetItem(itemID);
+            return item == null ? "Item #" + itemID.ToString(CultureInfo.InvariantCulture) : item.name;
+        }
 
         public static string Badge(uint itemID) => TryGet(itemID, out ItemDefinition item) ? item.Badge : "?";
 
-        public static string UseDescription(uint itemID)
+        public static string UseDescription(uint itemID, ServerContent content)
         {
-            switch (itemID)
+            var item = content == null ? null : content.GetItem(itemID);
+            if (item == null) return "Unknown item. Use is not supported.";
+            if (item.hpRecovery > 0 || item.mpRecovery > 0)
             {
-                case 1: return "Restores HP. Shares potion cooldown. Cannot use at full HP or while dead.";
-                case 2: return "Restores MP. Shares potion cooldown. Cannot use at full MP or while dead.";
-                case 3:
-                case 4:
-                case 5: return "Equipment cannot be equipped or used here.";
-                default: return "Unknown item. Use is not supported.";
+                uint recovery = item.hpRecovery > 0 ? item.hpRecovery : item.mpRecovery;
+                string resource = item.hpRecovery > 0 ? "HP" : "MP";
+                return "Restores " + recovery.ToString(CultureInfo.InvariantCulture) + " " + resource +
+                    ". Shares potion cooldown. Cannot use at full " + resource + " or while dead.";
             }
+            return "Equipment cannot be used as a consumable.";
         }
 
         public static Sprite Icon(uint itemID)
@@ -60,14 +63,12 @@ namespace Mmorpg.Client
 
         private readonly struct ItemDefinition
         {
-            public readonly string Name;
             public readonly string Badge;
             public readonly string IconPath;
             public readonly Color Accent;
 
-            public ItemDefinition(string name, string badge, string iconPath, Color accent)
+            public ItemDefinition(string badge, string iconPath, Color accent)
             {
-                Name = name;
                 Badge = badge;
                 IconPath = iconPath;
                 Accent = accent;

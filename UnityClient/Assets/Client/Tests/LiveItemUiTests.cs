@@ -67,7 +67,7 @@ namespace Mmorpg.Client.Tests
                 foreach (var row in rows)
                 {
                     var visual = shown.Single(t => t.name == "Listing-" + row.ListingID.ToString(CultureInfo.InvariantCulture));
-                    Require(Text(visual, "Item") == ItemPresentation.Name(row.ItemID), "Item name differs from server item ID.");
+                    Require(Text(visual, "Item") == ItemPresentation.Name(row.ItemID, world.Content), "Item name differs from server item ID.");
                     Require(Text(visual, "Quantity") == row.Quantity.ToString(CultureInfo.InvariantCulture), "Quantity differs.");
                     Require(Text(visual, "Price") == row.Price.ToString(CultureInfo.InvariantCulture), "Price differs.");
                     Require(Text(visual, "State") == (row.Status == 0 ? "Trading" : row.Status == 1 ? "Sold" : "Claimed"), "Listing status differs.");
@@ -93,7 +93,7 @@ namespace Mmorpg.Client.Tests
                 if (success)
                     for (int i = 0; i < rows.Length; i++)
                     {
-                        Require(Text(cards[i], "ItemName") == ItemPresentation.Name(rows[i].ItemID), "Inventory item name differs.");
+                        Require(Text(cards[i], "ItemName") == ItemPresentation.Name(rows[i].ItemID, world.Content), "Inventory item name differs.");
                         Require(Text(cards[i], "ItemQuantity") == "Qty " + rows[i].Quantity.ToString(CultureInfo.InvariantCulture), "Inventory quantity differs.");
                     }
                 Require(!string.IsNullOrWhiteSpace(Read<TMP_Text>(bag, "inventoryStatus").text), "Inventory status is missing.");
@@ -116,7 +116,7 @@ namespace Mmorpg.Client.Tests
             Require(failure == null && market.IsOpen && login.Data.GetBazaar().Count > 0, failure ?? "No visible listing to inspect.");
             var row = login.Data.GetBazaar()[0];
             string detail = Read<TMP_Text>(market, "selectedDetailText").text;
-            Require(detail.Contains(ItemPresentation.Name(row.ItemID)) &&
+            Require(detail.Contains(ItemPresentation.Name(row.ItemID, world.Content)) &&
                 detail.Contains("Listing #" + row.ListingID.ToString(CultureInfo.InvariantCulture)) &&
                 detail.Contains("Seller #" + row.SellerCharacterID.ToString(CultureInfo.InvariantCulture)) &&
                 detail.Contains(row.RegisteredAt.ToString(CultureInfo.InvariantCulture)), "Physical first-row selection shows different details.");
