@@ -160,12 +160,16 @@ namespace Cache {
             response.currentZone = res->getUInt("zone_id");
             response.startX = res->getDouble("last_pos_x");
             response.startY = res->getDouble("last_pos_y");
-            cache_inventory->LoadWeaponState(response.charID, [finish, response](Core::WeaponStateResult weapon) mutable {
-                if (weapon.status == Core::WeaponOperationStatus::Success && (weapon.itemID == 0 || weapon.itemID == 3))
-                    response.equippedWeaponItemID = weapon.itemID;
-                else if (weapon.status == Core::WeaponOperationStatus::Missing)
-                    response.equippedWeaponItemID = 0; // A confirmed absent row contains no weapon.
-                else { finish(Core::MsgCharacterStateResBody{}); return; }
+            cache_inventory->LoadEquipmentState(response.charID, [finish, response](Core::EquipmentStateResult equipment) mutable {
+                if (equipment.status != Core::EquipmentOperationStatus::Success
+                    || (equipment.weaponID != 0 && equipment.weaponID != 3)
+                    || (equipment.shieldID != 0 && equipment.shieldID != 4)
+                    || (equipment.bodyID != 0 && equipment.bodyID != 5)) {
+                    finish(Core::MsgCharacterStateResBody{}); return;
+                }
+                response.equippedWeaponItemID = equipment.weaponID;
+                response.equippedShieldItemID = equipment.shieldID;
+                response.equippedBodyItemID = equipment.bodyID;
                 finish(response); // Never publish a playable character before equipment is hydrated.
             });
         }, nullptr, failed);

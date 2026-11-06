@@ -18,7 +18,7 @@ namespace Cache {
     struct FlushCommand;
     constexpr size_t RING_SIZE = 32;
     constexpr size_t RING_SIZE_MASK = 31;
-    inline constexpr uint32_t INVENTORY_EQUIPMENT_TAG = 0x31514549; // IEQ1
+    inline constexpr uint32_t INVENTORY_EQUIPMENT_TAG = 0x32514549; // IEQ2
     struct InventoryData {
         uint16_t count;
         Core::MsgInventoryItem items[MAX_INVENTORY];
@@ -30,6 +30,8 @@ namespace Cache {
         uint64_t lastLsn;
         uint32_t equipmentFormatTag = INVENTORY_EQUIPMENT_TAG;
         uint32_t equippedWeaponItemID = 0;
+        uint32_t equippedShieldItemID = 0;
+        uint32_t equippedBodyItemID = 0;
     };
 
     constexpr Core::MsgInventoryItem EMPTY_SLOT = { 0, 0, 0 };
@@ -67,7 +69,7 @@ namespace Cache {
             std::function<void(Core::ItemOperationResult)> completed;
         };
         std::array<std::unordered_map<uint64_t, std::vector<PendingReward>>, SHARD_SIZE> pendingRewards;
-        std::array<std::unordered_map<uint64_t, std::vector<std::function<void(Core::WeaponStateResult)>>>, SHARD_SIZE> pendingWeaponLoads;
+        std::array<std::unordered_map<uint64_t, std::vector<std::function<void(Core::EquipmentStateResult)>>>, SHARD_SIZE> pendingEquipmentLoads;
         Core::ItemOperationResult ChangeItemLocked(uint16_t shardIndex, Key key, uint32_t itemID, int32_t quantity);
         void CompleteLoad(uint16_t shardIndex, Key key, const Result* loaded);
         CACHE_STATUS LoadFromDB(uint16_t shardIndex, Key& key);
@@ -79,9 +81,9 @@ namespace Cache {
         friend class WALManager;
         friend class InventoryPotionFixture;
     public:
-        Core::WeaponStateResult GetWeaponState(uint64_t characterID) override;
-        Core::WeaponStateResult EquipWeapon(uint64_t characterID, uint32_t itemID) override;
-        void LoadWeaponState(uint64_t characterID, std::function<void(Core::WeaponStateResult)> completed) override;
+        Core::EquipmentStateResult GetEquipmentState(uint64_t characterID) override;
+        Core::EquipmentStateResult EquipItem(uint64_t characterID, uint8_t slot, uint32_t itemID) override;
+        void LoadEquipmentState(uint64_t characterID, std::function<void(Core::EquipmentStateResult)> completed) override;
         Core::ItemOperationResult ConsumeItem(uint64_t characterID, uint32_t itemID) override;
         void GrantItem(uint64_t characterID, uint32_t itemID, uint16_t quantity,
             std::function<void(Core::ItemOperationResult)> completed) override;

@@ -108,6 +108,8 @@ namespace Core {
             temp.dir = body->dir;
             temp.attack = body->attack;
             temp.equippedWeaponItemID = body->equippedWeaponItemID;
+            temp.equippedShieldItemID = body->equippedShieldItemID;
+            temp.equippedBodyItemID = body->equippedBodyItemID;
             temp.level = body->level;
             temp.exp = body->exp;
             temp.hp = body ->hp;

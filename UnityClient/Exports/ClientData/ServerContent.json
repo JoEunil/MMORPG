@@ -1,5 +1,5 @@
 {
-  "formatVersion": 3,
+  "formatVersion": 5,
   "skills": [
     {"skillID":0,"flags":0,"mana":0,"cooldownTicks":20,"phases":[{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":6,"action":1,"range":1,"range1":2,"range2":0,"attack":30}]},
     {"skillID":1,"flags":2,"mana":100,"cooldownTicks":120,"phases":[{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":16,"action":1,"range":1,"range1":8,"range2":0,"attack":120}]},
@@ -129,6 +129,6 @@
     {"level":99,"requiredTotalExp":242550,"maxHpIncrease":500},
     {"level":100,"requiredTotalExp":247500,"maxHpIncrease":500}
   ]},
-  "itemUse":[{"itemID":1,"hpRecovery":1500,"mpRecovery":0,"cooldownTicks":120},{"itemID":2,"hpRecovery":0,"mpRecovery":500,"cooldownTicks":120}],
+  "items":[{"itemID":1,"itemType":1,"name":"HP포션","weight":5,"weaponAttackBonus":0,"defensePercent":0,"hpRecovery":1500,"mpRecovery":0,"cooldownTicks":120},{"itemID":2,"itemType":1,"name":"MP포션","weight":5,"weaponAttackBonus":0,"defensePercent":0,"hpRecovery":0,"mpRecovery":500,"cooldownTicks":120},{"itemID":3,"itemType":2,"name":"철검","weight":150,"weaponAttackBonus":2,"defensePercent":0,"hpRecovery":0,"mpRecovery":0,"cooldownTicks":0},{"itemID":4,"itemType":2,"name":"철방패","weight":200,"weaponAttackBonus":0,"defensePercent":2,"hpRecovery":0,"mpRecovery":0,"cooldownTicks":0},{"itemID":5,"itemType":3,"name":"가죽갑옷","weight":80,"weaponAttackBonus":0,"defensePercent":3,"hpRecovery":0,"mpRecovery":0,"cooldownTicks":0}],
   "parry":{"windowTicks":5,"cooldownTicks":60,"charges":1}
 }

@@ -4,15 +4,15 @@
 
 | 대상 | 정본과 방향 | 출력·반영 |
 | --- | --- | --- |
-| 스킬·몬스터 능력/phase | `CoreLib/Skills.inc`, `MonsterSkills.inc`, `Monsters.inc` → 실제 C++ Data 테이블 → 독립 exporter → Unity importer | `UnityClient/Exports/ClientData/ServerContent.json`, formatVersion4. `skills`와 `monsterSkills`를 분리하고 기존 `ServerContent.asset` 갱신. |
+| 스킬·몬스터 능력/phase | `CoreLib/Skills.inc`, `MonsterSkills.inc`, `Monsters.inc` → 실제 C++ Data 테이블 → 독립 exporter → Unity importer | `UnityClient/Exports/ClientData/ServerContent.json`, formatVersion5. `skills`와 `monsterSkills`를 분리하고 기존 `ServerContent.asset` 갱신. |
 | 사냥터 능력·보상 | `CoreLib/HuntingZoneData.h` → 같은 exporter/importer | `huntingZones` 6행. 권장 레벨·HP·공격·EXP·골드를 공유한다. 실제 몬스터 체력바는 기존 wire `maxHp`가 정본이다. |
 | 성장 규칙 | `CoreLib/GrowthData.h`, `Growth.inc` → 기존 exporter → 기존 Unity importer | 동일 JSON의 `growth`: 상한100, 레벨별 누적 EXP·최대 HP 증가량100행. `CharacterState::AddExperience`가 승급에 사용하며 현재 검증 범위는 HANDOFF를 따른다. |
-| 아이템 정보·소비 효과 | `CoreLib/ItemData.h` → 기존 exporter → 기존 Unity importer | 동일 JSON의 `items`: 서버 itemMap의 ID·분류·이름·무게·HP/MP 회복량·쿨타임·무기 공격 보너스. 아이콘은 기존 Unity 에셋을 사용한다. 미등록 ID는 추측하지 않는다. |
+| 아이템 정보·소비 효과 | `CoreLib/ItemData.h` → 기존 exporter → 기존 Unity importer | 동일 JSON의 `items`: 서버 itemMap의 ID·분류·이름·무게·HP/MP 회복량·쿨타임·무기 공격 보너스·방어율. 아이콘은 기존 Unity 에셋을 사용한다. 미등록 ID는 추측하지 않는다. |
 | 패링 시간 | `CoreLib/SkillData.h` → 기존 exporter → 기존 Unity importer | 동일 JSON의 `parry`: 방어창5틱·쿨60틱·1회. 실제 수락·남은 틱은 서버 응답이 정본이다. |
 | 맵·구역·충돌 | Unity 씬/MapAuthoring → WorldMapExport/WorldLayoutExport → 서버 | `CoreLib/Generated/WorldMap.inc`, FormatVersion/ContentVersion 기존 계약 유지. |
 | 몬스터 스폰 배치 | Unity MonsterSpawns → MonsterSpawnExport → 서버 | 기존 `MonsterSpawns.inc`의 구역별 일반/강화 6×25 행렬과 보스 수. 총수 저작을 결정적으로 분배하며 몬스터 AI와 구분한다. |
 
-이번 미게시 후보는 format4의 items로 통합했으며 weaponAttackBonus도 같은 경로로 공유한다. 이전 format3 JSON은 importer에서 명시 거부하고 마지막 유효 에셋을 보존한다. 새 exporter 결과를 기존 GUID 에셋에 가져와 함께 적용한다.
+이번 미게시 후보는 format5의 items에 defensePercent를 추가한다. format4 이하 JSON은 importer에서 명시 거부하고 마지막 유효 에셋을 보존한다. 각 방어율과 방패·갑옷 합산0~99%를 서버 초기화/exporter/importer에서 검증한다. 새 exporter 결과를 기존 GUID 에셋에 가져와 함께 적용한다.
 
 ## 서버 규칙 수정과 로컬 테스트
 

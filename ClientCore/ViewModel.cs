@@ -67,6 +67,7 @@ namespace ClientCore
         private ulong _equipmentGetID, _equipmentGetPending;
         private ulong _equipmentSetID, _equipmentSetPending;
         private uint _equipmentSetItemID;
+        private byte _equipmentSetSlot;
         private long _equipmentGetDeadline;
         private uint _bazaarRequestID;
         private uint _bazaarPending;
@@ -96,7 +97,7 @@ namespace ClientCore
         public event Action<ulong, ulong, byte, uint, uint> OnParryReceived;
         public event Action<uint, ushort, ushort, byte> OnItemRewardReceived;
         public event Action<byte> OnGoldRewardReceived;
-        public event Action<byte, byte, uint, ushort, ushort, ushort> OnEquipmentReceived;
+        public event Action<byte, byte, byte, EquipmentStateView> OnEquipmentReceived;
         public event Action<bool> OnBazaarReceived;
         public event Action<byte> OnBazaarRegisterReceived;
         public event Action<byte, ulong, byte, ulong> OnWalletReceived;
@@ -858,30 +859,35 @@ namespace ClientCore
             catch { lock (_sessionGate) if (_equipmentGetPending == requestID) _equipmentGetPending = 0; throw; }
         }
 
-        public bool RequestEquipWeapon(uint itemID)
+        public bool RequestEquipItem(byte slot, uint itemID)
         {
             ulong requestID, epoch;
             lock (_sessionGate)
             {
                 if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || _zonePending || _awaitingZoneAck ||
                     _ownershipEpoch == 0 || _selfHP <= 0 || _equipmentSetPending != 0 || _equipmentSetID == ulong.MaxValue ||
-                    (itemID != 0 && itemID != 3)) return false;
+                    slot > 2 || (itemID != 0 && itemID != 3U + slot)) return false;
                 requestID = _equipmentSetPending = ++_equipmentSetID;
                 _equipmentSetItemID = itemID;
+                _equipmentSetSlot = slot;
                 _equipmentGetPending = 0; // A read sampled before this change cannot overwrite its outcome.
                 epoch = _ownershipEpoch;
             }
             // Retain correlation on send failure: the server may already have received this mutation.
-            _network.RequestEquipWeapon(requestID, epoch, itemID);
+            _network.RequestEquipItem(requestID, epoch, slot, itemID);
             return true;
         }
 
-        public void EquipmentReceived(ulong requestID, ulong ownershipEpoch, byte operation, byte status, uint weaponID,
-            ushort baseAttack, ushort bonusAttack, ushort effectiveAttack)
+        public void EquipmentReceived(ulong requestID, ulong ownershipEpoch, byte operation, byte status, byte slot, EquipmentStateView equipment)
         {
-            if (requestID == 0 || ownershipEpoch == 0 || operation > 1 || status > 8 ||
-                (status == 1 ? (weaponID != 0 && weaponID != 3) || Math.Min((uint)ushort.MaxValue, (uint)baseAttack + bonusAttack) != effectiveAttack ||
-                    (weaponID == 0 && bonusAttack != 0) : weaponID != 0 || baseAttack != 0 || bonusAttack != 0 || effectiveAttack != 0)) return;
+            if (requestID == 0 || ownershipEpoch == 0 || operation > 1 || status > 8 || slot > 2 || (operation == 0 && slot != 0) ||
+                (status == 1 ? (equipment.WeaponID != 0 && equipment.WeaponID != 3) || (equipment.ShieldID != 0 && equipment.ShieldID != 4) ||
+                    (equipment.BodyID != 0 && equipment.BodyID != 5) || equipment.DefensePercent > 99 ||
+                    Math.Min((uint)ushort.MaxValue, (uint)equipment.BaseAttack + equipment.BonusAttack) != equipment.EffectiveAttack ||
+                    (equipment.WeaponID == 0 && equipment.BonusAttack != 0) ||
+                    (equipment.ShieldID == 0 && equipment.BodyID == 0 && equipment.DefensePercent != 0) :
+                    equipment.WeaponID != 0 || equipment.ShieldID != 0 || equipment.BodyID != 0 || equipment.BaseAttack != 0 ||
+                    equipment.BonusAttack != 0 || equipment.EffectiveAttack != 0 || equipment.DefensePercent != 0)) return;
             _threadDispatcher.Post(() =>
             {
                 lock (_sessionGate)
@@ -894,12 +900,14 @@ namespace ClientCore
                     }
                     else
                     {
-                        if (requestID != _equipmentSetPending || (status == 1 && weaponID != _equipmentSetItemID)) return;
+                        uint equippedItem = slot == 0 ? equipment.WeaponID : slot == 1 ? equipment.ShieldID : equipment.BodyID;
+                        if (requestID != _equipmentSetPending || slot != _equipmentSetSlot ||
+                            (status == 1 && equippedItem != _equipmentSetItemID)) return;
                         _equipmentSetPending = 0;
                         _equipmentGetPending = 0;
                     }
                 }
-                OnEquipmentReceived?.Invoke(operation, status, weaponID, baseAttack, bonusAttack, effectiveAttack);
+                OnEquipmentReceived?.Invoke(operation, status, slot, equipment);
             });
         }
 

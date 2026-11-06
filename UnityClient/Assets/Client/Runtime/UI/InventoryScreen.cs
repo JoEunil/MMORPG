@@ -63,13 +63,14 @@ namespace Mmorpg.Client
         private bool equipmentReadPending, equipmentSetPending, equipmentUncertain;
         private int equipmentReadAttempts;
         private float equipmentDeadline, equipmentNextReadAt;
-        private uint equippedWeaponID;
-        private ushort equipmentBaseAttack, equipmentBonusAttack, equipmentEffectiveAttack;
+        private EquipmentStateView equipmentState;
         private string equipmentResult;
         public bool EquipmentKnown { get; private set; }
         public bool EquipmentMutationPending => equipmentSetPending || equipmentUncertain;
-        public bool IsItemEquipped(uint itemID) => EquipmentKnown && itemID != 0 && equippedWeaponID == itemID;
-        public bool CanSellItem(uint itemID) => itemID != 3 || (EquipmentKnown && !EquipmentMutationPending && !IsItemEquipped(itemID));
+        public bool IsItemEquipped(uint itemID) => EquipmentKnown && itemID != 0 &&
+            (equipmentState.WeaponID == itemID || equipmentState.ShieldID == itemID || equipmentState.BodyID == itemID);
+        public bool CanSellItem(uint itemID) => itemID < 3 || itemID > 5 ||
+            (EquipmentKnown && !EquipmentMutationPending && !IsItemEquipped(itemID));
         private bool hasSelectedItem;
         private byte selectedSlot;
         private uint selectedItemID;
@@ -263,7 +264,7 @@ namespace Mmorpg.Client
             rect.offsetMin = new Vector2(18, -350); rect.offsetMax = new Vector2(-18, -316);
             var image = go.GetComponent<UnityEngine.UI.Image>(); image.color = new Color32(23, 49, 57, 255);
             equipButton = go.GetComponent<UnityEngine.UI.Button>(); equipButton.targetGraphic = image;
-            var label = CreateText("Label", go.transform, "EQUIP WEAPON", 14, new Color32(236, 240, 232, 255), TextAlignmentOptions.Center);
+            var label = CreateText("Label", go.transform, "EQUIP", 14, new Color32(236, 240, 232, 255), TextAlignmentOptions.Center);
             Stretch(label.rectTransform, 0);
             equipButton.onClick.AddListener(ToggleEquipment);
         }
@@ -274,7 +275,7 @@ namespace Mmorpg.Client
             equipmentReadPending = equipmentSetPending = equipmentUncertain = false;
             equipmentReadAttempts = 0;
             equipmentNextReadAt = 0;
-            equippedWeaponID = 0;
+            equipmentState = default;
             equipmentResult = null;
             if (worldScreen != null) worldScreen.SetOwnWeaponVisible(false);
             if (bazaarScreen != null) bazaarScreen.RefreshEquipmentControls();
@@ -305,19 +306,20 @@ namespace Mmorpg.Client
 
         private void ToggleEquipment()
         {
-            if (!IsOpen || !WorldAvailable || model == null || loginScreen.Model != model || !hasSelectedItem || selectedItemID != 3 ||
+            if (!IsOpen || !WorldAvailable || model == null || loginScreen.Model != model || !hasSelectedItem || selectedItemID < 3 || selectedItemID > 5 ||
                 !hasInventoryResponse || requestPending || !EquipmentKnown || equipmentReadPending || EquipmentMutationPending || !worldScreen.CanAct) return;
-            uint target = equippedWeaponID == 3 ? 0U : 3U;
+            byte slot = (byte)(selectedItemID - 3);
+            uint target = IsItemEquipped(selectedItemID) ? 0U : selectedItemID;
             equipmentSetPending = true;
             equipmentDeadline = Time.unscaledTime + RequestTimeoutSeconds;
-            equipmentResult = "Changing weapon…";
+            equipmentResult = "Changing equipment…";
             worldScreen.StopActions();
             try
             {
-                if (!model.RequestEquipWeapon(target))
+                if (!model.RequestEquipItem(slot, target))
                 {
                     equipmentSetPending = false;
-                    equipmentResult = "Weapon change is unavailable.";
+                    equipmentResult = "Equipment change is unavailable.";
                 }
             }
             catch (Exception)
@@ -331,7 +333,7 @@ namespace Mmorpg.Client
             UpdateControls();
         }
 
-        private void EquipmentReceived(byte operation, byte status, uint weaponID, ushort baseAttack, ushort bonusAttack, ushort effectiveAttack)
+        private void EquipmentReceived(byte operation, byte status, byte slot, EquipmentStateView equipment)
         {
             if (model == null || loginScreen.Model != model || !WorldAvailable ||
                 (operation == 0 ? !equipmentReadPending : !equipmentSetPending && !equipmentUncertain)) return;
@@ -340,17 +342,16 @@ namespace Mmorpg.Client
             if (status == 1)
             {
                 EquipmentKnown = true;
-                equippedWeaponID = weaponID;
-                equipmentBaseAttack = baseAttack; equipmentBonusAttack = bonusAttack; equipmentEffectiveAttack = effectiveAttack;
+                equipmentState = equipment;
                 equipmentResult = equipmentUncertain ? "Equipment change result unknown. Reconnect before changing it." : null;
-                worldScreen.SetOwnWeaponVisible(weaponID == 3);
+                worldScreen.SetOwnWeaponVisible(equipment.WeaponID == 3);
                 if (operation == 1) RefreshAfterDelivery();
             }
             else
             {
                 EquipmentKnown = false;
                 equipmentResult = status == 2 ? "Equipment is busy. Refresh in a moment."
-                    : status == 3 ? "The weapon is no longer in your bag."
+                    : status == 3 ? "The item is no longer in your bag."
                     : status == 4 ? "This item cannot be equipped."
                     : status == 5 ? "Cannot change equipment while dead."
                     : status == 6 ? "World ownership changed. Refresh after arrival."
@@ -870,16 +871,18 @@ namespace Mmorpg.Client
                     : string.Empty;
             if (equipButton != null)
             {
-                equipButton.gameObject.SetActive(hasSelectedItem && selectedItemID == 3);
+                equipButton.gameObject.SetActive(hasSelectedItem && selectedItemID >= 3 && selectedItemID <= 5);
                 equipButton.interactable = available && IsOpen && hasInventoryResponse && !requestPending && EquipmentKnown &&
                     !equipmentReadPending && !EquipmentMutationPending && worldScreen.CanAct;
                 var label = equipButton.GetComponentInChildren<TMP_Text>(true);
-                if (label != null) label.text = equipmentSetPending ? "CHANGING…" : IsItemEquipped(3) ? "UNEQUIP WEAPON" : "EQUIP WEAPON";
+                if (label != null) label.text = equipmentSetPending ? "CHANGING…" : IsItemEquipped(selectedItemID) ? "UNEQUIP" : "EQUIP";
             }
-            if (hasSelectedItem && selectedItemID == 3 && useStatus != null)
+            if (hasSelectedItem && selectedItemID >= 3 && selectedItemID <= 5 && useStatus != null)
                 useStatus.text = equipmentResult ?? (!EquipmentKnown ? "Equipment: --" :
-                    "Weapon: " + (equippedWeaponID == 0 ? "None" : ItemPresentation.Name(equippedWeaponID, worldScreen.Content)) +
-                    "\nAttack " + equipmentBaseAttack + " + " + equipmentBonusAttack + " = " + equipmentEffectiveAttack);
+                    "Weapon · Shield · Armor\n" + (equipmentState.WeaponID != 0 ? "On" : "Off") + " · " +
+                    (equipmentState.ShieldID != 0 ? "On" : "Off") + " · " + (equipmentState.BodyID != 0 ? "On" : "Off") +
+                    "\nATK " + equipmentState.BaseAttack + "+" + equipmentState.BonusAttack + "=" + equipmentState.EffectiveAttack +
+                    " · DEF " + equipmentState.DefensePercent + "%");
             if (useButton != null)
             {
                 var label = useButton.GetComponentInChildren<TMP_Text>(true);

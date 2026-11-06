@@ -562,6 +562,7 @@ MonoBehaviour:
     name: "HP\uD3EC\uC158"
     weight: 5
     weaponAttackBonus: 0
+    defensePercent: 0
     hpRecovery: 1500
     mpRecovery: 0
     cooldownTicks: 120
@@ -570,6 +571,7 @@ MonoBehaviour:
     name: "MP\uD3EC\uC158"
     weight: 5
     weaponAttackBonus: 0
+    defensePercent: 0
     hpRecovery: 0
     mpRecovery: 500
     cooldownTicks: 120
@@ -578,6 +580,7 @@ MonoBehaviour:
     name: "\uCCA0\uAC80"
     weight: 150
     weaponAttackBonus: 2
+    defensePercent: 0
     hpRecovery: 0
     mpRecovery: 0
     cooldownTicks: 0
@@ -586,6 +589,7 @@ MonoBehaviour:
     name: "\uCCA0\uBC29\uD328"
     weight: 200
     weaponAttackBonus: 0
+    defensePercent: 2
     hpRecovery: 0
     mpRecovery: 0
     cooldownTicks: 0
@@ -594,6 +598,7 @@ MonoBehaviour:
     name: "\uAC00\uC8FD\uAC11\uC637"
     weight: 80
     weaponAttackBonus: 0
+    defensePercent: 3
     hpRecovery: 0
     mpRecovery: 0
     cooldownTicks: 0

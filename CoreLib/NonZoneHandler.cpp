@@ -105,7 +105,8 @@ namespace Core {
                 if (p->GetLength() == sizeof(PacketStruct<EquipmentSetRequestBody>) && h->flags == 0
                     && h->length == p->GetLength() && h->magic == MAGIC) {
                     const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
-                    const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, true, request.itemID);
+                    if (request.slot > 2) break;
+                    const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, true, request.slot, request.itemID);
                     auto response = writer->WriteEquipmentResponse(result);
                     if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
                 }

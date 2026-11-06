@@ -1,22 +1,24 @@
-# 현재 인계 — 방패·갑옷 방어 효과 정책 대기
+# 현재 인계 — 방패·갑옷 방어 효과 게시 준비
 
 ## 정본·보호 범위
 - ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본: ROOT/UnityClient/Builds/ClientGrowthHUD/source. 실제 Editor: ROOT/UnityClient.
-- codex/defensive-equipment, origin/master68c63f3(PR70 병합) 기반. 사용자 Game/refactor·몬스터 AI는 수정 금지. 포션 처치 지급·드롭 테이블·새 상점·제작·자동 지급은 추가하지 않는다.
-- PR70은 병합·GitHub 리뷰 지적0·사이트 빌드 성공 확인. 원격 head 자동 삭제 및 로컬 codex/item-equipment 정리 완료. ITEMGEAR01/r1은 소비 완료.
+- codex/defensive-equipment, origin/master68c63f3(PR70 병합) 기반. 기존776fb65 거래 안내 보완과 이번 방어 장비를 한 큰 PR로 묶는다. 새 push/PR 없음.
+- 사용자 Game/refactor·몬스터 AI·기존 외형·패링은 유지한다. 새 드랍·상점·제작·포션 처치 지급·자동 아이템 지급·직접 DB 변경은 제외한다.
 
-## 이번 진행
-- 사용자는 다음 방향 질문에서 ‘방패·갑옷 방어 효과부터(추천)’를 선택했다. 아직 새 방어 수치·저장 계약의 구현 승인은 아니다.
-- 실제 슬롯·저장·피해식 분석과 정책안 작성 완료. [분석](history/2026-11-06-item-equipment/ARMOR_POTION_SCOPE.md), [정책안](history/2026-11-06-defensive-equipment/PLAN.md). 같은 기획 담당자가 필수 피드백을 반영했고 Astra 선택안 검수 통과.
-- 제안 DEFGEAR01/r1: A 방패2%+갑옷3%=5% 감소 / B 고정10+15 감소. 보유품만 각각1칸·가방 수량 유지·동일ID 판매전 해제·재접속 유지. 기존 철검·외형·패링 보존, 자동 지급 없음. 새 저장/WAL 명시 확장과 구 서버 직접 복귀 제한을 함께 고지했다.
-- 최신 질문 본문은 ‘방패·갑옷을 추천 규칙으로 구현할까요?’이며 A/B 구현 정책 답변 대기. 답변 전 서버 계약·방어 수치 구현 금지.
+## 승인·구현
+- 현 채팅 call_5a9849c6fd6f4578b970b993a9e0085b ‘추천안: 합계5% 감소로 구현’을 적용했다. 방패2%·갑옷3%, 보유품 각1칸·수량 유지·장착ID 모든 스택 판매 보호·타격 시점 판정·영속 장착·새 저장 형식과 구 서버 직접 복귀 제한을 승인했다.
+- 3슬롯 저장/선적재/판정/패킷/ClientCore/가방 연결, inventory376 IEQ2·WAL3, JSON5/기존GUID 유지, GET24/SET29/RES46 구현 완료. [계약](history/2026-11-06-defensive-equipment/CONTRACT.md), [결과·복구](history/2026-11-06-defensive-equipment/RESULTS.md).
+- 구현 storage/core/client 후속각1과 독립 리뷰3범위 중요결함0. Astra 최종 게시검수 통과·필수수정0. 갑옷 실전/전투 수치/구역 왕복/구형 변환 미검증을 명시한 후보로 게시 가능 판정이다.
 
-## 독립 후속 보완·검증
-- 구매 성공 안내를 짧은 수량·금액으로 정리하고 수령 행동은 상세로 이동. footer 위치·높이 조정으로 버튼 간격 확보. 소유2파일 ROOT/CAND hash 일치.
-- 직접 바뀐 기존 구매 UI 검사1개 통과, 이전 장착/import/서버8개 반복 없음. Game View 에디터 예시에서 배치 확인·Astra 화면 검수 통과. 실거래·실입력 재검증은 하지 않았고 최신 Player는 아직 재빌드하지 않았다.
-- 최종 Editor는 Playoff/backgroundfalse/World씬clean. MainServer/Login/Player는 이전 검증 후 정상 종료 상태. UI 후속은 다음 큰 장비 묶음과 함께 게시하며 작은 별도 PR은 만들지 않는다.
+## 실제 검증
+- ClientCore·Unity 오류0/경고0, MainServer·UnitTests Release 성공, Windows Player 성공(오류0/기존경고5). 직접 영향 기존8검사 전부 통과. 이전 거래 안내1검사는 반복하지 않았다.
+- 실제 test1: 방패1개200다이아 구매·수령, 다이아650→450/골드100020 유지. 방패DEF2%, 철검 동시ATK11+2=13/DEF2%와 수량각1, 방패 판매 차단 확인.
+- 게임·MainServer·Login 완전 정상 종료→같은 후보 재시작→재인증·월드 진입 후 두 슬롯/수치/수량 복원 확인. 각각 해제해ATK11/DEF0% 복귀 후 최종 정상 종료 완료.
+- 갑옷 보유·매물 없음으로 갑옷 실전·실제 전투 피해 측정·구역 왕복은 미실행. 갑옷/합산5%·ApplyHit는 자동fixture 근거와 구분한다. DB 지급으로 조건을 만들지 않았다.
+- 입력은 call_f29fa15edc794c6687d7011c56209d04 허용, 사용자 입력 감지 후 중단하고 call_e50b3fd2dea14953a7583d3fcc04de66 재개 허용으로 마쳤다. 현재 실입력 배치 종료, Editor Playoff/backgroundfalse/World씬clean.
 
-## 다음 행동·승인
-- 실제 A/B 정책 답변을 이 제안과 대조 → 승인된 범위만 서버·Cache·ClientCore·가방에 구현 → 전체 묶음 리뷰/직접 최소 검증 → 큰 PR 게시 직전 Slack 승인1회. 새 push/PR 없음.
-- 방어 장비 새 Slack 부모1793966851.130489(Unity Coordinator bot)에 시작 안내 완료. PR70 후속 기록은 기존1793938992.023029에 연결한다. 새 정책 답변과 게시 승인을 혼동하지 않는다.
-- 누적 활성화688(신규256/후속432). 총괄 직접 작업·도구 호출 제외, 토큰/비용N/A.
+## 다음 행동·Slack
+- 코드/실행 후보 일치·문서·사이트 빌드 확인 완료. 로컬 커밋 후 큰 PR 게시 직전 새 승인 요청1회. 정책 승인과 PR 게시 승인은 다르다.
+- 새 부모1793966851.130489(Unity Coordinator bot). 게시 승인은 아직 요청하지 않았다. 이전 ITEMGEAR01/r1은 PR70에 소비 완료이며 재사용 금지.
+- 런처는 DefensiveGear Server/Player 쌍을 유지한다. 기존Equipment나더이전서버를직접시작하지말고결과문서의정상flush/백업/승인된변환절차를따른다.
+- 실제 활성화695(신규256/후속439), 총괄 직접 작업·테스트·도구 호출 제외, 토큰/비용N/A.

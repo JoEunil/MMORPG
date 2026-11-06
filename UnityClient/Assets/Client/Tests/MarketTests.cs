@@ -17,53 +17,86 @@ namespace Mmorpg.Client.Tests
         public void EquipmentWireAndLifecycleRejectMalformedLateAndCanceledAuthorityWithoutRetryingWrites()
         {
             var serializeGet = typeof(Packet).GetMethod("SerializeEquipmentRequest", BindingFlags.NonPublic | BindingFlags.Static);
-            var serializeSet = typeof(Packet).GetMethod("SerializeEquipWeaponRequest", BindingFlags.NonPublic | BindingFlags.Static);
+            var serializeSet = typeof(Packet).GetMethod("SerializeEquipItemRequest", BindingFlags.NonPublic | BindingFlags.Static);
             var parse = typeof(Packet).GetMethod("DeserializeEquipment", BindingFlags.NonPublic | BindingFlags.Static);
             var get = (byte[])serializeGet.Invoke(null, new object[] { 5UL, 7UL });
-            var set = (byte[])serializeSet.Invoke(null, new object[] { 8UL, 7UL, 3U });
             Assert.That(get.Length, Is.EqualTo(24)); Assert.That(get[6], Is.EqualTo(53));
-            Assert.That(set.Length, Is.EqualTo(28)); Assert.That(set[6], Is.EqualTo(54));
-            Assert.That(BitConverter.ToUInt64(set, 16), Is.EqualTo(7)); Assert.That(BitConverter.ToUInt32(set, 24), Is.EqualTo(3));
-            Assert.Throws<TargetInvocationException>(() => serializeSet.Invoke(null, new object[] { 1UL, 1UL, 4U }));
-            var reply = new byte[36]; BitConverter.GetBytes((ushort)0xabcd).CopyTo(reply, 0);
-            BitConverter.GetBytes(36U).CopyTo(reply, 2); reply[6] = 55;
+            for (byte slot = 0; slot < 3; slot++)
+            {
+                var set = (byte[])serializeSet.Invoke(null, new object[] { 8UL, 7UL, slot, 3U + slot });
+                Assert.That(set.Length, Is.EqualTo(29)); Assert.That(set[6], Is.EqualTo(54));
+                Assert.That(BitConverter.ToUInt64(set, 16), Is.EqualTo(7)); Assert.That(set[24], Is.EqualTo(slot));
+                Assert.That(BitConverter.ToUInt32(set, 25), Is.EqualTo(3U + slot));
+            }
+            Assert.Throws<TargetInvocationException>(() => serializeSet.Invoke(null, new object[] { 1UL, 1UL, (byte)3, 0U }));
+            Assert.Throws<TargetInvocationException>(() => serializeSet.Invoke(null, new object[] { 1UL, 1UL, (byte)0, 4U }));
+            var reply = new byte[46]; BitConverter.GetBytes((ushort)0xabcd).CopyTo(reply, 0);
+            BitConverter.GetBytes(46U).CopyTo(reply, 2); reply[6] = 55;
             BitConverter.GetBytes(8UL).CopyTo(reply, 8); BitConverter.GetBytes(7UL).CopyTo(reply, 16);
-            reply[24] = 1; reply[25] = 1; BitConverter.GetBytes(3U).CopyTo(reply, 26);
-            BitConverter.GetBytes((ushort)10).CopyTo(reply, 30); BitConverter.GetBytes((ushort)2).CopyTo(reply, 32);
-            BitConverter.GetBytes((ushort)12).CopyTo(reply, 34);
-            var result = ((ulong requestID, ulong epoch, byte operation, byte status, uint weapon, ushort basis, ushort bonus, ushort total))
+            reply[24] = 1; reply[25] = 1; reply[26] = 2;
+            BitConverter.GetBytes(3U).CopyTo(reply, 27); BitConverter.GetBytes(4U).CopyTo(reply, 31); BitConverter.GetBytes(5U).CopyTo(reply, 35);
+            BitConverter.GetBytes((ushort)10).CopyTo(reply, 39); BitConverter.GetBytes((ushort)2).CopyTo(reply, 41);
+            BitConverter.GetBytes((ushort)12).CopyTo(reply, 43); reply[45] = 5;
+            var result = ((ulong requestID, ulong epoch, byte operation, byte status, byte slot, EquipmentStateView state))
                 parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply });
-            Assert.That(result.weapon, Is.EqualTo(3)); Assert.That(result.total, Is.EqualTo(12));
-            BitConverter.GetBytes(ushort.MaxValue).CopyTo(reply, 30); BitConverter.GetBytes(ushort.MaxValue).CopyTo(reply, 34);
-            result = ((ulong, ulong, byte, byte, uint, ushort, ushort, ushort))parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply });
-            Assert.That(result.total, Is.EqualTo(ushort.MaxValue));
+            Assert.That(result.state.WeaponID, Is.EqualTo(3)); Assert.That(result.state.ShieldID, Is.EqualTo(4));
+            Assert.That(result.state.BodyID, Is.EqualTo(5)); Assert.That(result.state.DefensePercent, Is.EqualTo(5));
+            BitConverter.GetBytes(ushort.MaxValue).CopyTo(reply, 39); BitConverter.GetBytes(ushort.MaxValue).CopyTo(reply, 43);
+            result = ((ulong, ulong, byte, byte, byte, EquipmentStateView))parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply });
+            Assert.That(result.state.EffectiveAttack, Is.EqualTo(ushort.MaxValue));
+            reply[7] = 1;
+            Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply })); reply[7] = 0;
+            reply[26] = 3;
+            Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply })); reply[26] = 2;
+            reply[24] = 0;
+            Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply })); reply[24] = 1;
+            reply[31] = 3;
+            Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply })); reply[31] = 4;
+            reply[45] = 100;
+            Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply })); reply[45] = 5;
             reply[25] = 2;
-            Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply }));
-            reply[25] = 1; reply[34] = 13;
+            Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply })); reply[25] = 1;
+            reply[43] = 13;
             Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply }));
             using (var f = new Fixture())
             {
                 typeof(ViewModel).GetField("_selfHP", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(f.Model, 100);
+                var empty = new EquipmentStateView { BaseAttack = 10, EffectiveAttack = 10 };
+                var sword = new EquipmentStateView { WeaponID = 3, BaseAttack = 10, BonusAttack = 2, EffectiveAttack = 12 };
+                var armored = new EquipmentStateView { WeaponID = 3, ShieldID = 4, BodyID = 5, BaseAttack = 10, BonusAttack = 2, EffectiveAttack = 12, DefensePercent = 5 };
                 int callbacks = 0; byte lastOperation = 0;
-                f.Model.OnEquipmentReceived += (op, status, weapon, basis, bonus, total) => { callbacks++; lastOperation = op; };
+                f.Model.OnEquipmentReceived += (op, status, slot, state) => { callbacks++; lastOperation = op; };
                 f.Model.RequestEquipment(); ulong old = f.Network.EquipmentGets[0];
-                f.Model.EquipmentReceived(old, 1, 0, 1, 0, 10, 0, 10);
-                Assert.That(f.Model.RequestEquipWeapon(3), Is.True);
-                Assert.That(f.Model.RequestEquipWeapon(0), Is.False);
+                f.Model.EquipmentReceived(old, 1, 0, 1, 0, empty);
+                Assert.That(f.Model.RequestEquipItem(0, 3), Is.True);
+                Assert.That(f.Model.RequestEquipItem(0, 0), Is.False);
                 f.Drain(); Assert.That(callbacks, Is.Zero, "A read sampled before a write cannot replace its state.");
-                f.Model.EquipmentReceived(f.Network.EquipmentSets[0], 2, 1, 1, 3, 10, 2, 12); f.Drain();
-                Assert.That(callbacks, Is.Zero);
-                f.Model.EquipmentReceived(f.Network.EquipmentSets[0], 1, 1, 1, 3, 10, 2, 12); f.Drain();
+                f.Model.EquipmentReceived(f.Network.EquipmentSets[0], 2, 1, 1, 0, sword); f.Drain();
+                f.Model.EquipmentReceived(f.Network.EquipmentSets[0], 1, 1, 1, 1, armored); f.Drain();
+                Assert.That(callbacks, Is.Zero, "Epoch and pending slot must both match.");
+                f.Model.EquipmentReceived(f.Network.EquipmentSets[0], 1, 1, 1, 0, sword); f.Drain();
                 Assert.That(callbacks, Is.EqualTo(1)); Assert.That(lastOperation, Is.EqualTo(1));
-                f.Model.EquipmentReceived(f.Network.EquipmentSets[0], 1, 1, 1, 3, 10, 2, 12); f.Drain();
-                Assert.That(callbacks, Is.EqualTo(1)); Assert.That(f.Network.EquipmentSets.Count, Is.EqualTo(1));
+                f.Model.EquipmentReceived(f.Network.EquipmentSets[0], 1, 1, 1, 0, sword); f.Drain();
+                Assert.That(callbacks, Is.EqualTo(1));
+                Assert.That(f.Model.RequestEquipItem(1, 4), Is.True);
+                f.Model.EquipmentReceived(f.Network.EquipmentSets[1], 1, 1, 2, 1, armored); f.Drain();
+                Assert.That(callbacks, Is.EqualTo(1), "Failures may not carry equipment authority.");
+                f.Model.EquipmentReceived(f.Network.EquipmentSets[1], 1, 1, 2, 1, default); f.Drain();
+                Assert.That(callbacks, Is.EqualTo(2));
+                Assert.That(f.Model.RequestEquipItem(1, 4), Is.True);
+                var shield = sword; shield.ShieldID = 4; shield.DefensePercent = 2;
+                f.Model.EquipmentReceived(f.Network.EquipmentSets[2], 1, 1, 1, 1, shield); f.Drain();
+                Assert.That(f.Model.RequestEquipItem(2, 5), Is.True);
+                f.Model.EquipmentReceived(f.Network.EquipmentSets[3], 1, 1, 1, 2, armored); f.Drain();
+                Assert.That(callbacks, Is.EqualTo(4)); Assert.That(f.Network.EquipmentSets.Count, Is.EqualTo(4));
+                Assert.That(f.Model.RequestEquipItem(3, 0), Is.False); Assert.That(f.Model.RequestEquipItem(1, 5), Is.False);
                 f.Model.RequestEquipment(); ulong beforeTravel = f.Network.EquipmentGets[1];
-                f.Model.EquipmentReceived(beforeTravel, 1, 0, 1, 3, 10, 2, 12);
-                WorldTestSession.BeginAutomaticTransition(f.Model, f.Drain); Assert.That(callbacks, Is.EqualTo(1));
+                f.Model.EquipmentReceived(beforeTravel, 1, 0, 1, 0, armored);
+                WorldTestSession.BeginAutomaticTransition(f.Model, f.Drain); Assert.That(callbacks, Is.EqualTo(4));
                 WorldTestSession.CompleteAutomaticTransition(f.Model, f.Drain);
-                f.Model.RequestEquipment();
-                f.Model.EquipmentReceived(f.Network.EquipmentGets[2], 2, 0, 1, 3, ushort.MaxValue, 2, ushort.MaxValue); f.Drain();
-                Assert.That(callbacks, Is.EqualTo(2)); Assert.That(lastOperation, Is.Zero);
+                f.Model.RequestEquipment(); armored.BaseAttack = ushort.MaxValue; armored.EffectiveAttack = ushort.MaxValue;
+                f.Model.EquipmentReceived(f.Network.EquipmentGets[2], 2, 0, 1, 0, armored); f.Drain();
+                Assert.That(callbacks, Is.EqualTo(5)); Assert.That(lastOperation, Is.Zero);
             }
         }
 
@@ -317,7 +350,7 @@ namespace Mmorpg.Client.Tests
             public void Chat(string message, byte scope, ulong target) { } public void Profiles(uint[] ids) { } public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
             public readonly List<ulong> EquipmentGets = new List<ulong>(), EquipmentSets = new List<ulong>();
             public void RequestEquipment(ulong requestID, ulong ownershipEpoch) { EquipmentGets.Add(requestID); }
-            public void RequestEquipWeapon(ulong requestID, ulong ownershipEpoch, uint itemID) { EquipmentSets.Add(requestID); }
+            public void RequestEquipItem(ulong requestID, ulong ownershipEpoch, byte slot, uint itemID) { EquipmentSets.Add(requestID); }
             public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
             public void RequestInventory() { }
             public void Action(byte dir, float x, float y, byte slot, ulong ownershipEpoch, float aimAngle) { } public void Pong(ulong time) { } public void ZoneChange(byte op) { } public void ZoneResync(ulong ownershipEpoch) { } public void RespawnToTown(ulong ownershipEpoch) { } public void Log(string text) { }

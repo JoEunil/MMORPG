@@ -155,10 +155,10 @@ namespace Core {
 
 					if (character.hp > 0 && phase.range.InRange(skill.dir, skill.x, skill.y, character.x, character.y))
 					{
-						auto damage = caster.data->attack * phase.attack;
+						uint64_t damage = static_cast<uint64_t>(caster.data->attack) * phase.attack;
 						if (skillData.flags & 0x01) {
 							// critical 적용..
-							damage *= 2;
+							damage = damage > UINT64_MAX / 2 ? UINT64_MAX : damage * 2;
 						}
 						// Skill 0 is the untelegraphed basic attack; it neither blocks nor consumes parry.
                         if (skill.skillId != 0 && damage > 0 && character.parryWindowTicks != 0) {
@@ -169,7 +169,8 @@ namespace Core {
                             if (!AOE) return; // This attack was consumed, including across adjacent AOI cells.
                             continue;
                         }
-                        character.hp -= damage;
+                        damage = character.DamageAfterDefense(damage);
+                        character.hp = damage >= static_cast<uint64_t>(character.hp) ? 0 : character.hp - static_cast<int>(damage);
 						if (character.hp <= 0) {
                             character.hp = 0;
                             character.parryWindowTicks = 0;

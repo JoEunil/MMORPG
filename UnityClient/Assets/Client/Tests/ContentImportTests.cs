@@ -29,7 +29,7 @@ namespace Mmorpg.Client.Tests
                 Assert.That(content.otherMonsters.Length, Is.EqualTo(2));
                 var actual = new JObject
                 {
-                    ["formatVersion"] = 4,
+                    ["formatVersion"] = 5,
                     ["monsterSkills"] = JArray.FromObject(content.monsterSkills),
                     ["huntingZones"] = JArray.FromObject(content.huntingZones),
                     ["skills"] = JArray.FromObject(new[] { content.otherSkills[0], content.ring, content.otherSkills[1], content.otherSkills[2], content.otherSkills[3] }),
@@ -53,6 +53,8 @@ namespace Mmorpg.Client.Tests
                 Assert.That(content.GetItem(3).name, Is.EqualTo(expected["items"][2]["name"].Value<string>()));
                 Assert.That(content.GetItem(3).itemType, Is.EqualTo(2));
                 Assert.That(content.GetItem(3).weaponAttackBonus, Is.EqualTo(2));
+                Assert.That(content.GetItem(4).defensePercent, Is.EqualTo(2));
+                Assert.That(content.GetItem(5).defensePercent, Is.EqualTo(3));
                 Assert.That(content.GetItem(33), Is.Null);
                 Assert.That(ItemPresentation.Name(3, content), Is.EqualTo(content.GetItem(3).name));
                 Assert.That(ItemPresentation.Name(33, content), Is.EqualTo("Item #33"));
@@ -136,6 +138,7 @@ namespace Mmorpg.Client.Tests
                     json => json.Remove("growth"),
                     json => json.Remove("parry"),
                     json => json["formatVersion"] = 3,
+                    json => json["formatVersion"] = 4,
                     json => json.Remove("items"),
                     json => ((JArray)json["items"]).Clear(),
                     json => ((JArray)json["items"]).RemoveAt(0),
@@ -151,6 +154,10 @@ namespace Mmorpg.Client.Tests
                     json => json["items"][2]["hpRecovery"] = 10,
                     json => json["items"][2]["weaponAttackBonus"] = 65536,
                     json => json["items"][0]["weaponAttackBonus"] = 2,
+                    json => ((JObject)json["items"][3]).Remove("defensePercent"),
+                    json => json["items"][3]["defensePercent"] = 100,
+                    json => json["items"][0]["defensePercent"] = 1,
+                    json => { json["items"][3]["defensePercent"] = 98; json["items"][4]["defensePercent"] = 2; },
                     json => json["parry"]["windowTicks"] = 0,
                     json => json["parry"]["cooldownTicks"] = 0,
                     json => json["parry"]["charges"] = 2,

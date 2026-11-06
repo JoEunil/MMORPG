@@ -105,20 +105,24 @@ namespace Core {
 
     enum class EquipmentStatus : uint8_t { Invalid, Success, Busy, Missing, Unsupported, Dead, StaleOwnership, StaleRequest, StorageFailure };
     struct EquipmentGetRequestBody { uint64_t requestID; uint64_t ownershipEpoch; };
-    struct EquipmentSetRequestBody { uint64_t requestID; uint64_t ownershipEpoch; uint32_t itemID; };
+    struct EquipmentSetRequestBody { uint64_t requestID; uint64_t ownershipEpoch; uint8_t slot; uint32_t itemID; };
     struct EquipmentResponseBody {
         uint64_t requestID;
         uint64_t ownershipEpoch;
         uint8_t operation;
         uint8_t status;
+        uint8_t slot;
         uint32_t weaponID;
+        uint32_t shieldID;
+        uint32_t bodyID;
         uint16_t baseAttack;
         uint16_t bonusAttack;
         uint16_t effectiveAttack;
+        uint8_t defensePercent;
     };
     static_assert(sizeof(EquipmentGetRequestBody) == 16);
-    static_assert(sizeof(EquipmentSetRequestBody) == 20);
-    static_assert(sizeof(EquipmentResponseBody) == 28);
+    static_assert(sizeof(EquipmentSetRequestBody) == 21);
+    static_assert(sizeof(EquipmentResponseBody) == 38);
 
     enum class ParryStatus : uint8_t { Invalid, Accepted, Cooldown, Dead, StaleOwnership, StaleRequest, Unavailable };
     struct ParryRequestBody {

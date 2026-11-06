@@ -998,7 +998,7 @@ namespace Mmorpg.Client
             if (registerButton != null)
             {
                 registerButton.interactable = available && isSell && !requestPending && !registrationUncertain && saleItem.ItemID != 0 &&
-                    (saleItem.ItemID != 3 || (inventoryScreen != null && inventoryScreen.CanSellItem(3)));
+                    (saleItem.ItemID < 3 || saleItem.ItemID > 5 || (inventoryScreen != null && inventoryScreen.CanSellItem(saleItem.ItemID)));
                 var label = registerButton.GetComponentInChildren<TMP_Text>(true);
                 if (label != null) label.text = registrationUncertain ? "CHECK MY LISTINGS" : registerConfirmation ? "CONFIRM SALE" : "REVIEW SALE";
             }
@@ -1146,7 +1146,7 @@ namespace Mmorpg.Client
         private bool TrySaleValues(out ushort quantity, out ulong price)
         {
             quantity = 0; price = 0;
-            return saleItem.ItemID != 0 && (saleItem.ItemID != 3 || (inventoryScreen != null && inventoryScreen.CanSellItem(3))) && quantityInput != null && priceInput != null &&
+            return saleItem.ItemID != 0 && (saleItem.ItemID < 3 || saleItem.ItemID > 5 || (inventoryScreen != null && inventoryScreen.CanSellItem(saleItem.ItemID))) && quantityInput != null && priceInput != null &&
                 ushort.TryParse(quantityInput.text, NumberStyles.None, CultureInfo.InvariantCulture, out quantity) && quantity > 0 && quantity <= saleItem.Quantity &&
                 ulong.TryParse(priceInput.text, NumberStyles.None, CultureInfo.InvariantCulture, out price) && price > 0;
         }
@@ -1154,11 +1154,11 @@ namespace Mmorpg.Client
         private void UpdateSaleSummary()
         {
             if (saleSummaryText == null) return;
-            if (saleItem.ItemID == 3 && (inventoryScreen == null || !inventoryScreen.CanSellItem(3)))
+            if (saleItem.ItemID >= 3 && saleItem.ItemID <= 5 && (inventoryScreen == null || !inventoryScreen.CanSellItem(saleItem.ItemID)))
             {
                 if (saleFeeValueText != null) saleFeeValueText.text = "--";
-                saleSummaryText.text = inventoryScreen != null && inventoryScreen.IsItemEquipped(3)
-                    ? "Unequip this weapon before selling any of its stack." : "Wait for confirmed equipment before selling this weapon.";
+                saleSummaryText.text = inventoryScreen != null && inventoryScreen.IsItemEquipped(saleItem.ItemID)
+                    ? "Unequip this item before selling its stack." : "Wait for confirmed equipment before selling this item.";
                 return;
             }
             bool valid = TrySaleValues(out _, out ulong price);
@@ -1203,7 +1203,7 @@ namespace Mmorpg.Client
 
         public void RefreshEquipmentControls()
         {
-            if (saleItem.ItemID == 3 && (inventoryScreen == null || !inventoryScreen.CanSellItem(3))) registerConfirmation = false;
+            if (saleItem.ItemID >= 3 && saleItem.ItemID <= 5 && (inventoryScreen == null || !inventoryScreen.CanSellItem(saleItem.ItemID))) registerConfirmation = false;
             UpdateSaleSummary();
             UpdateControls();
         }

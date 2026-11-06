@@ -89,9 +89,21 @@ TEST(InventoryEquipmentCodec, LegacyImagesAndBothWalTypesPreserveStateAndRejectC
     oldSeed.back() = 1;
     EXPECT_THROW(Cache::DecodeInventory(oldSeed.data(), oldSeed.size()), std::runtime_error);
     image.equippedWeaponItemID = 3;
+    std::vector<uint8_t> weaponImage(Cache::WEAPON_INVENTORY_SIZE);
+    std::memcpy(weaponImage.data(), &image, weaponImage.size());
+    std::memcpy(weaponImage.data() + 360, &Cache::WEAPON_INVENTORY_TAG, sizeof(uint32_t));
+    const auto weaponOnly = Cache::DecodeInventory(weaponImage.data(), weaponImage.size());
+    EXPECT_EQ(weaponOnly.equippedWeaponItemID, 3);
+    EXPECT_EQ(weaponOnly.equippedShieldItemID, 0); EXPECT_EQ(weaponOnly.equippedBodyItemID, 0);
+    auto invalidWeapon = weaponImage; invalidWeapon[360] ^= 1;
+    EXPECT_THROW(Cache::DecodeInventory(invalidWeapon.data(), invalidWeapon.size()), std::runtime_error);
+    image.items[2] = {4, 1, 2}; image.items[3] = {5, 1, 3}; image.count = 4;
+    image.equippedShieldItemID = 4; image.equippedBodyItemID = 5;
     auto bytes = Cache::EncodeInventory(image);
     ASSERT_EQ(bytes.size(), Cache::EQUIPMENT_INVENTORY_SIZE);
-    EXPECT_EQ(Cache::DecodeInventory(bytes.data(), bytes.size()).equippedWeaponItemID, 3);
+    const auto equippedImage = Cache::DecodeInventory(bytes.data(), bytes.size());
+    EXPECT_EQ(equippedImage.equippedWeaponItemID, 3);
+    EXPECT_EQ(equippedImage.equippedShieldItemID, 4); EXPECT_EQ(equippedImage.equippedBodyItemID, 5);
     EXPECT_THROW(Cache::EncodeLegacyInventory(image), std::runtime_error);
     auto invalid = bytes; invalid[360] ^= 1;
     EXPECT_THROW(Cache::DecodeInventory(invalid.data(), invalid.size()), std::runtime_error);
@@ -100,19 +112,36 @@ TEST(InventoryEquipmentCodec, LegacyImagesAndBothWalTypesPreserveStateAndRejectC
     EXPECT_THROW(Cache::DecodeInventory(bytes.data(), bytes.size() - 1), std::runtime_error);
     auto noWeapon = image; noWeapon.equippedWeaponItemID = 4;
     EXPECT_THROW(Cache::EncodeInventory(noWeapon), std::runtime_error);
-    noWeapon = image; noWeapon.items[0] = {}; noWeapon.items[1] = {}; noWeapon.count = 0;
+    noWeapon = image; noWeapon.equippedShieldItemID = 5;
+    EXPECT_THROW(Cache::EncodeInventory(noWeapon), std::runtime_error);
+    noWeapon = image; noWeapon.equippedBodyItemID = 4;
+    EXPECT_THROW(Cache::EncodeInventory(noWeapon), std::runtime_error);
+    noWeapon = image; noWeapon.items[2] = {}; --noWeapon.count;
+    EXPECT_THROW(Cache::EncodeInventory(noWeapon), std::runtime_error);
+    noWeapon = image; noWeapon.items[3] = {}; --noWeapon.count;
+    EXPECT_THROW(Cache::EncodeInventory(noWeapon), std::runtime_error);
+    noWeapon = image; noWeapon.items[0] = {}; noWeapon.items[1] = {}; noWeapon.count = 2;
     EXPECT_THROW(Cache::EncodeInventory(noWeapon), std::runtime_error);
 
     image.equippedWeaponItemID = 0;
+    EXPECT_THROW(Cache::EncodeLegacyInventory(image), std::runtime_error);
+    image.equippedShieldItemID = 0;
+    EXPECT_THROW(Cache::EncodeLegacyInventory(image), std::runtime_error);
+    image.equippedBodyItemID = 0;
     const auto legacy = Cache::EncodeLegacyInventory(image);
     std::vector<uint8_t> oldRecord(sizeof(uint64_t) + legacy.size());
     uint64_t character = 77;
     std::memcpy(oldRecord.data(), &character, sizeof(character));
     std::memcpy(oldRecord.data() + sizeof(character), legacy.data(), legacy.size());
-    image.equippedWeaponItemID = 3;
+    image.equippedWeaponItemID = 3; image.equippedShieldItemID = 4; image.equippedBodyItemID = 5;
+    std::vector<uint8_t> weaponRecord(sizeof(character) + weaponImage.size());
+    std::memcpy(weaponRecord.data(), &character, sizeof(character));
+    std::memcpy(weaponRecord.data() + sizeof(character), weaponImage.data(), weaponImage.size());
     const auto newRecord = Cache::EncodeInventoryWal(character, image);
     uint64_t decodedID = 0;
     EXPECT_THROW(Cache::DecodeInventoryWal(257, oldRecord.data(), oldRecord.size(), decodedID), std::runtime_error);
+    EXPECT_THROW(Cache::DecodeInventoryWal(Cache::WEAPON_INVENTORY_WAL_TYPE, newRecord.data(), newRecord.size(), decodedID), std::runtime_error);
+    EXPECT_THROW(Cache::DecodeInventoryWal(Cache::EQUIPMENT_INVENTORY_WAL_TYPE, weaponRecord.data(), weaponRecord.size(), decodedID), std::runtime_error);
     const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
     const auto dir = std::filesystem::temp_directory_path() / ("game-equipment-codec-" + std::to_string(GetCurrentProcessId()) + "-" + std::to_string(stamp));
     const auto prefix = (dir / "redo").string();
@@ -120,6 +149,7 @@ TEST(InventoryEquipmentCodec, LegacyImagesAndBothWalTypesPreserveStateAndRejectC
     {
         Base::WAL wal(prefix, 4096, [](const Base::WALHeader&, const uint8_t*) {});
         ASSERT_NE(wal.Write(oldRecord.data(), oldRecord.size(), Cache::LEGACY_INVENTORY_WAL_TYPE), 0);
+        ASSERT_NE(wal.Write(weaponRecord.data(), weaponRecord.size(), Cache::WEAPON_INVENTORY_WAL_TYPE), 0);
         lastLsn = wal.Write(newRecord.data(), newRecord.size(), Cache::EQUIPMENT_INVENTORY_WAL_TYPE);
         ASSERT_NE(lastLsn, 0); ASSERT_TRUE(wal.Fsync());
     }
@@ -132,9 +162,10 @@ TEST(InventoryEquipmentCodec, LegacyImagesAndBothWalTypesPreserveStateAndRejectC
             ++restored;
         });
     }
-    EXPECT_EQ(restored, 2); EXPECT_EQ(decodedID, character); EXPECT_EQ(recovered.lastLsn, lastLsn);
+    EXPECT_EQ(restored, 3); EXPECT_EQ(decodedID, character); EXPECT_EQ(recovered.lastLsn, lastLsn);
     EXPECT_EQ(recovered.equippedWeaponItemID, 3); EXPECT_EQ(recovered.items[0].quantity, 2);
-    EXPECT_EQ(recovered.count, 2); EXPECT_EQ(recovered.items[1].itemID, 3); EXPECT_EQ(recovered.items[1].quantity, 5);
+    EXPECT_EQ(recovered.equippedShieldItemID, 4); EXPECT_EQ(recovered.equippedBodyItemID, 5);
+    EXPECT_EQ(recovered.count, 4); EXPECT_EQ(recovered.items[1].itemID, 3); EXPECT_EQ(recovered.items[1].quantity, 5);
     EXPECT_EQ(recovered.recentEventIds[0], 100);
     std::filesystem::remove_all(dir);
 }
@@ -874,6 +905,15 @@ namespace Cache {
             if (secondQuantity != 0) { loaded.data.items[1] = {3, secondQuantity, 1}; ++loaded.data.count; }
             cache->Insert(id & SHARD_SIZE_MASK, Key5{id}, loaded);
         }
+        void SeedEquipment(uint64_t id) {
+            Result5 loaded{};
+            loaded.data.count = 6;
+            for (uint8_t slot = 0; slot < 3; ++slot) {
+                loaded.data.items[slot] = {static_cast<uint32_t>(slot + 3), 2, slot};
+                loaded.data.items[slot + 3] = {static_cast<uint32_t>(slot + 3), 5, static_cast<uint8_t>(slot + 3)};
+            }
+            cache->Insert(id & SHARD_SIZE_MASK, Key5{id}, loaded);
+        }
         void SeedFull(uint64_t id) {
             Result5 loaded{};
             loaded.data.count = MAX_INVENTORY;
@@ -898,63 +938,90 @@ namespace Cache {
     };
 
     TEST_F(InventoryPotionFixture, EquipmentIsWalFirstAndCannotRaceItemRemoval) {
+        SeedEquipment(21);
+        for (uint8_t slot = 0; slot < 3; ++slot) {
+            const uint32_t itemID = slot + 3;
+            EXPECT_EQ(cache->EquipItem(21, slot, itemID).status, Core::EquipmentOperationStatus::Success);
+            EXPECT_EQ(cache->EquipItem(21, slot, slot == 0 ? 4 : 3).status, Core::EquipmentOperationStatus::Unsupported);
+            EXPECT_EQ(std::get<0>(cache->PartialUpdate(21, itemID, 2, -1)), CACHE_STATUS::BLOCKED);
+            EXPECT_EQ(cache->ConsumeItem(21, itemID).status, Core::ItemOperationStatus::Missing);
+        }
+        const auto preservedStacks = cache->Getter(21).data;
+        EXPECT_EQ(preservedStacks.count, 6);
+        for (uint8_t slot = 0; slot < 3; ++slot) {
+            EXPECT_EQ(preservedStacks.items[slot].quantity, 2);
+            EXPECT_EQ(preservedStacks.items[slot + 3].quantity, 5);
+        }
+        const auto allEquipped = cache->GetEquipmentState(21);
+        EXPECT_EQ(allEquipped.weaponID, 3); EXPECT_EQ(allEquipped.shieldID, 4); EXPECT_EQ(allEquipped.bodyID, 5);
+        EXPECT_EQ(cache->EquipItem(21, 3, 0).status, Core::EquipmentOperationStatus::Unsupported);
+        failWal = true;
+        EXPECT_EQ(cache->EquipItem(21, 1, 0).status, Core::EquipmentOperationStatus::StorageFailure);
+        EXPECT_EQ(cache->GetEquipmentState(21).shieldID, 4);
+        failWal = false;
+        for (uint8_t slot = 0; slot < 3; ++slot) {
+            EXPECT_EQ(cache->EquipItem(21, slot, 0).status, Core::EquipmentOperationStatus::Success);
+            EXPECT_EQ(std::get<0>(cache->PartialUpdate(21, slot + 3, 2, -1)), CACHE_STATUS::AVAILABLE);
+        }
         SeedWeapon(16, 2);
-        EXPECT_EQ(cache->EquipWeapon(16, 3).status, Core::WeaponOperationStatus::Success);
-        EXPECT_EQ(cache->GetWeaponState(16).itemID, 3);
+        EXPECT_EQ(cache->EquipItem(16, 0, 3).status, Core::EquipmentOperationStatus::Success);
+        EXPECT_EQ(cache->GetEquipmentState(16).weaponID, 3);
         EXPECT_EQ(cache->Getter(16).data.items[0].quantity, 2);
         EXPECT_EQ(std::get<0>(cache->PartialUpdate(16, 3, 2, -1)), CACHE_STATUS::BLOCKED);
         EXPECT_EQ(cache->ConsumeItem(16, 3).status, Core::ItemOperationStatus::Missing);
         const auto before = cache->Getter(16).data;
         failWal = true;
-        EXPECT_EQ(cache->EquipWeapon(16, 0).status, Core::WeaponOperationStatus::StorageFailure);
+        EXPECT_EQ(cache->EquipItem(16, 0, 0).status, Core::EquipmentOperationStatus::StorageFailure);
         const auto failed = cache->Getter(16).data;
         EXPECT_EQ(std::memcmp(&before, &failed, sizeof(before)), 0);
         failWal = false;
-        EXPECT_EQ(cache->EquipWeapon(16, 0).status, Core::WeaponOperationStatus::Success);
+        EXPECT_EQ(cache->EquipItem(16, 0, 0).status, Core::EquipmentOperationStatus::Success);
         EXPECT_EQ(std::get<0>(cache->PartialUpdate(16, 3, 2, -2)), CACHE_STATUS::AVAILABLE);
-        EXPECT_EQ(cache->EquipWeapon(16, 3).status, Core::WeaponOperationStatus::Missing);
-        EXPECT_EQ(cache->EquipWeapon(16, 4).status, Core::WeaponOperationStatus::Unsupported);
+        EXPECT_EQ(cache->EquipItem(16, 0, 3).status, Core::EquipmentOperationStatus::Missing);
+        EXPECT_EQ(cache->EquipItem(16, 0, 4).status, Core::EquipmentOperationStatus::Unsupported);
+        EXPECT_EQ(cache->EquipItem(16, 1, 4).status, Core::EquipmentOperationStatus::Missing);
+        EXPECT_EQ(cache->EquipItem(16, 2, 5).status, Core::EquipmentOperationStatus::Missing);
 
         // Existing inventory permits the same item ID in distinct slots. Equipment locks the ID,
         // so neither stack can be removed until unequipped; no consolidation or migration occurs.
         SeedWeapon(20, 2, 5);
-        EXPECT_EQ(cache->EquipWeapon(20, 3).status, Core::WeaponOperationStatus::Success);
+        EXPECT_EQ(cache->EquipItem(20, 0, 3).status, Core::EquipmentOperationStatus::Success);
         EXPECT_EQ(std::get<0>(cache->PartialUpdate(20, 3, 2, -1)), CACHE_STATUS::BLOCKED);
         EXPECT_EQ(cache->ConsumeItem(20, 3).status, Core::ItemOperationStatus::Missing);
         auto stacks = cache->Getter(20).data;
         EXPECT_EQ(stacks.count, 2); EXPECT_EQ(stacks.items[0].quantity, 2); EXPECT_EQ(stacks.items[1].quantity, 5);
-        EXPECT_EQ(cache->EquipWeapon(20, 0).status, Core::WeaponOperationStatus::Success);
+        EXPECT_EQ(cache->EquipItem(20, 0, 0).status, Core::EquipmentOperationStatus::Success);
         EXPECT_EQ(std::get<0>(cache->PartialUpdate(20, 3, 2, -2)), CACHE_STATUS::AVAILABLE);
         stacks = cache->Getter(20).data;
         EXPECT_EQ(stacks.count, 1); EXPECT_EQ(stacks.items[1].itemID, 3); EXPECT_EQ(stacks.items[1].quantity, 5);
 
         SeedWeapon(17, 1);
         std::atomic<bool> start{false};
-        Core::WeaponStateResult equipped{Core::WeaponOperationStatus::Busy};
+        Core::EquipmentStateResult equipped{Core::EquipmentOperationStatus::Busy};
         CACHE_STATUS sold = CACHE_STATUS::EMPTY;
-        std::thread equip([&] { while (!start.load()) std::this_thread::yield(); equipped = cache->EquipWeapon(17, 3); });
+        std::thread equip([&] { while (!start.load()) std::this_thread::yield(); equipped = cache->EquipItem(17, 0, 3); });
         std::thread sell([&] { while (!start.load()) std::this_thread::yield(); sold = std::get<0>(cache->PartialUpdate(17, 3, 2, -1)); });
         start.store(true); equip.join(); sell.join();
         const auto raced = cache->Getter(17).data;
-        if (equipped.status == Core::WeaponOperationStatus::Success) {
+        if (equipped.status == Core::EquipmentOperationStatus::Success) {
             EXPECT_EQ(sold, CACHE_STATUS::BLOCKED); EXPECT_EQ(raced.items[0].quantity, 1);
             EXPECT_EQ(raced.equippedWeaponItemID, 3);
         } else {
-            EXPECT_EQ(equipped.status, Core::WeaponOperationStatus::Missing);
+            EXPECT_EQ(equipped.status, Core::EquipmentOperationStatus::Missing);
             EXPECT_EQ(sold, CACHE_STATUS::AVAILABLE); EXPECT_EQ(raced.count, 0);
             EXPECT_EQ(raced.equippedWeaponItemID, 0);
         }
         Reading(18);
         int completed = 0;
-        cache->LoadWeaponState(18, [&](Core::WeaponStateResult result) {
-            EXPECT_EQ(result.status, Core::WeaponOperationStatus::Success);
-            EXPECT_EQ(cache->GetWeaponState(18).itemID, 0); // callback is outside the shard lock
+        cache->LoadEquipmentState(18, [&](Core::EquipmentStateResult result) {
+            EXPECT_EQ(result.status, Core::EquipmentOperationStatus::Success);
+            EXPECT_EQ(cache->GetEquipmentState(18).weaponID, 0); // callback is outside the shard lock
             ++completed;
         });
         EXPECT_EQ(completed, 0); Loaded(18, true); EXPECT_EQ(completed, 1);
         Reading(19);
-        cache->LoadWeaponState(19, [&](Core::WeaponStateResult result) {
-            EXPECT_EQ(result.status, Core::WeaponOperationStatus::StorageFailure); ++completed;
+        cache->LoadEquipmentState(19, [&](Core::EquipmentStateResult result) {
+            EXPECT_EQ(result.status, Core::EquipmentOperationStatus::StorageFailure); ++completed;
         });
         Loaded(19, false); EXPECT_EQ(completed, 2);
     }

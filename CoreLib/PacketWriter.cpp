@@ -5,16 +5,20 @@
 #include "ItemData.h"
 namespace Core {
     static_assert(sizeof(PacketStruct<EquipmentGetRequestBody>) == 24);
-    static_assert(sizeof(PacketStruct<EquipmentSetRequestBody>) == 28);
-    static_assert(sizeof(PacketStruct<EquipmentResponseBody>) == 36);
+    static_assert(sizeof(PacketStruct<EquipmentSetRequestBody>) == 29);
+    static_assert(sizeof(PacketStruct<EquipmentResponseBody>) == 46);
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteEquipmentResponse(const EquipmentResponseBody& body) {
-        if (body.requestID == 0 || body.ownershipEpoch == 0 || body.operation > 1 || body.status > static_cast<uint8_t>(EquipmentStatus::StorageFailure)) return nullptr;
+        if (body.requestID == 0 || body.ownershipEpoch == 0 || body.operation > 1 || body.slot > 2 || (body.operation == 0 && body.slot != 0) || body.status > static_cast<uint8_t>(EquipmentStatus::StorageFailure)) return nullptr;
         if (body.status == static_cast<uint8_t>(EquipmentStatus::Success)) {
-            if (body.weaponID != 0 && body.weaponID != 3) return nullptr;
+            if ((body.weaponID != 0 && body.weaponID != 3) || (body.shieldID != 0 && body.shieldID != 4)
+                || (body.bodyID != 0 && body.bodyID != 5)) return nullptr;
+            const uint16_t defense = (body.shieldID == 0 ? 0 : Data::itemMap.at(4).defensePercent)
+                + (body.bodyID == 0 ? 0 : Data::itemMap.at(5).defensePercent);
+            if (defense > 99 || body.defensePercent != defense) return nullptr;
             const uint16_t bonus = body.weaponID == 0 ? 0 : Data::itemMap.at(3).weaponAttackBonus;
             const uint32_t total = static_cast<uint32_t>(body.baseAttack) + bonus;
             if (body.bonusAttack != bonus || body.effectiveAttack != static_cast<uint16_t>(total > UINT16_MAX ? UINT16_MAX : total)) return nullptr;
-        } else if (body.weaponID != 0 || body.baseAttack != 0 || body.bonusAttack != 0 || body.effectiveAttack != 0) return nullptr;
+        } else if (body.weaponID != 0 || body.shieldID != 0 || body.bodyID != 0 || body.defensePercent != 0 || body.baseAttack != 0 || body.bonusAttack != 0 || body.effectiveAttack != 0) return nullptr;
         auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (!p) return nullptr;
         p->Clear();

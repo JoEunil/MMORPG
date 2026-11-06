@@ -28,8 +28,8 @@ namespace Mmorpg.Client.Editor
                 snapshot = JObject.Load(reader, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
                 if (reader.Read()) throw new InvalidOperationException("Unexpected data after the server content snapshot.");
             }
-            if (Integer(snapshot, "formatVersion", 4) != 4)
-                throw new InvalidOperationException("Only server content format version 4 is supported.");
+            if (Integer(snapshot, "formatVersion", 5) != 5)
+                throw new InvalidOperationException("Only server content format version 5 is supported.");
             var skills = ReadSkills(snapshot, "skills");
             var monsterSkills = ReadSkills(snapshot, "monsterSkills");
             var zoneRows = Array(snapshot, "huntingZones");
@@ -142,10 +142,12 @@ namespace Mmorpg.Client.Editor
                     throw new InvalidOperationException("Item names must be non-empty strings.");
                 var item = new ServerContent.Item {
                     itemID = id, itemType = (ushort)Integer(row, "itemType", 3), name = name.Value<string>(),
-                    weight = Integer(row, "weight"), weaponAttackBonus = (ushort)Integer(row, "weaponAttackBonus", ushort.MaxValue), hpRecovery = Integer(row, "hpRecovery", int.MaxValue),
+                    weight = Integer(row, "weight"), weaponAttackBonus = (ushort)Integer(row, "weaponAttackBonus", ushort.MaxValue),
+                    defensePercent = (byte)Integer(row, "defensePercent", 99), hpRecovery = Integer(row, "hpRecovery", int.MaxValue),
                     mpRecovery = Integer(row, "mpRecovery", int.MaxValue), cooldownTicks = Integer(row, "cooldownTicks")
                 };
-                if (item.weight == 0 || item.itemType == 0 || (item.itemType != 2 && item.weaponAttackBonus != 0))
+                if (item.weight == 0 || item.itemType == 0 || (item.itemType != 2 && item.weaponAttackBonus != 0) ||
+                    (item.itemType == 1 && item.defensePercent != 0))
                     throw new InvalidOperationException("Item weights and types must be positive.");
                 if (item.itemType == 1 ? item.cooldownTicks == 0 || (item.hpRecovery > 0) == (item.mpRecovery > 0) :
                     item.hpRecovery != 0 || item.mpRecovery != 0 || item.cooldownTicks != 0)
@@ -158,6 +160,12 @@ namespace Mmorpg.Client.Editor
             if (hpPotion == null || mpPotion == null || hpPotion.hpRecovery == 0 || mpPotion.mpRecovery == 0 ||
                 hpPotion.cooldownTicks != mpPotion.cooldownTicks)
                 throw new InvalidOperationException("HP and MP potions must exist and share the same cooldown.");
+
+            var shield = System.Array.Find(items, item => item.itemID == 4);
+            var body = System.Array.Find(items, item => item.itemID == 5);
+            if (shield == null || body == null || shield.itemType != 2 || body.itemType != 3 ||
+                (uint)shield.defensePercent + body.defensePercent > 99)
+                throw new InvalidOperationException("Shield and body equipment must exist with a combined defense below 100 percent.");
 
             // All parsing and validation finish before replacing any existing asset fields.
             var oldMonsterSkills = target.monsterSkills;
