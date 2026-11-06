@@ -11,11 +11,8 @@ namespace Base {
 	template <typename T, uint32_t SIZE>
 	class RingQueue {
 		std::array<T, SIZE> queue;
-		uint32_t front, rear;
+		uint32_t front = 0, rear = 0;
 	public:
-		RingQueue() : front(0), rear(0) {
-
-		}
 		static_assert(SIZE >= 2 && (SIZE & (SIZE - 1)) == 0, "Ring Queue Size must be a power of 2 and at least 2");
 
 		bool push(const T& data) {
