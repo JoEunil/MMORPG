@@ -26,6 +26,7 @@ namespace Base {
 
 	template<typename T, size_t QSize>
 	class MPMCQueue {
+		static_assert(QSize >= 2 && (QSize & (QSize - 1)) == 0, "MPMCQueue: QSize must be a power of two and at least 2");
 		static_assert(std::is_nothrow_move_assignable_v<T>, "MPMCQueue<T>: T must be nothrow-move-assignable (lock-free 경로에서 슬롯 이동이 throw하면 안 됨)");
 
 		struct alignas(std::hardware_destructive_interference_size) Cell {
@@ -47,8 +48,6 @@ namespace Base {
 		// Q 사이즈는 2의 거듭제곱이어야 한다.
 		// 모듈러 연산을 & 연산한번으로 하기 위함
 		MPMCQueue() : m_mask(QSize-1) {
-			assert((QSize >= 2) &&((QSize & (QSize - 1)) == 0));
-			// 2 거듭제곱 체크
 			m_head.store(0, std::memory_order_relaxed);
 			m_tail.store(0, std::memory_order_relaxed);
 			m_queue = std::make_unique<Cell[]>(QSize);
