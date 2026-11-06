@@ -867,33 +867,42 @@ namespace ClientCore.PacketHelper
             return bytes;
         }
 
-        internal static byte[] SerializeEquipWeaponRequest(ulong requestID, ulong ownershipEpoch, uint itemID)
+        internal static byte[] SerializeEquipItemRequest(ulong requestID, ulong ownershipEpoch, byte slot, uint itemID)
         {
-            if (requestID == 0 || ownershipEpoch == 0 || (itemID != 0 && itemID != 3)) throw new ArgumentException("Invalid weapon change.");
-            var bytes = new byte[28];
-            BitConverter.GetBytes(MAGIC).CopyTo(bytes, 0); BitConverter.GetBytes(28U).CopyTo(bytes, 2);
+            if (requestID == 0 || ownershipEpoch == 0 || slot > 2 || (itemID != 0 && itemID != 3U + slot))
+                throw new ArgumentException("Invalid equipment change.");
+            var bytes = new byte[29];
+            BitConverter.GetBytes(MAGIC).CopyTo(bytes, 0); BitConverter.GetBytes(29U).CopyTo(bytes, 2);
             bytes[6] = (byte)OP_CODE.EQUIPMENT_SET;
             BitConverter.GetBytes(requestID).CopyTo(bytes, 8); BitConverter.GetBytes(ownershipEpoch).CopyTo(bytes, 16);
-            BitConverter.GetBytes(itemID).CopyTo(bytes, 24);
+            bytes[24] = slot; BitConverter.GetBytes(itemID).CopyTo(bytes, 25);
             return bytes;
         }
 
-        internal static (ulong requestID, ulong ownershipEpoch, byte operation, byte status, uint weaponID, ushort baseAttack, ushort bonusAttack, ushort effectiveAttack) DeserializeEquipment(PacketHeader header, byte[] buffer)
+        internal static (ulong requestID, ulong ownershipEpoch, byte operation, byte status, byte slot, EquipmentStateView state) DeserializeEquipment(PacketHeader header, byte[] buffer)
         {
-            if (buffer == null || buffer.Length != 36 || header.magic != MAGIC || header.length != 36 ||
+            if (buffer == null || buffer.Length != 46 || header.magic != MAGIC || header.length != 46 ||
                 header.opcode != (byte)OP_CODE.EQUIPMENT_RES || header.flags != 0)
                 throw new ArgumentException("Invalid equipment response envelope.");
             var actual = ExtractHeader(buffer);
             if (actual.magic != header.magic || actual.length != header.length || actual.opcode != header.opcode || actual.flags != header.flags)
                 throw new ArgumentException("Mismatched equipment response header.");
             ulong requestID = BitConverter.ToUInt64(buffer, 8), epoch = BitConverter.ToUInt64(buffer, 16);
-            byte operation = buffer[24], status = buffer[25]; uint weapon = BitConverter.ToUInt32(buffer, 26);
-            ushort basis = BitConverter.ToUInt16(buffer, 30), bonus = BitConverter.ToUInt16(buffer, 32), effective = BitConverter.ToUInt16(buffer, 34);
-            if (requestID == 0 || epoch == 0 || operation > 1 || status > 8 ||
-                (status == 1 ? (weapon != 0 && weapon != 3) || Math.Min((uint)ushort.MaxValue, (uint)basis + bonus) != effective || (weapon == 0 && bonus != 0) :
-                weapon != 0 || basis != 0 || bonus != 0 || effective != 0))
+            byte operation = buffer[24], status = buffer[25], slot = buffer[26];
+            var state = new EquipmentStateView {
+                WeaponID = BitConverter.ToUInt32(buffer, 27), ShieldID = BitConverter.ToUInt32(buffer, 31), BodyID = BitConverter.ToUInt32(buffer, 35),
+                BaseAttack = BitConverter.ToUInt16(buffer, 39), BonusAttack = BitConverter.ToUInt16(buffer, 41),
+                EffectiveAttack = BitConverter.ToUInt16(buffer, 43), DefensePercent = buffer[45]
+            };
+            if (requestID == 0 || epoch == 0 || operation > 1 || status > 8 || slot > 2 || (operation == 0 && slot != 0) ||
+                (status == 1 ? (state.WeaponID != 0 && state.WeaponID != 3) || (state.ShieldID != 0 && state.ShieldID != 4) ||
+                    (state.BodyID != 0 && state.BodyID != 5) || state.DefensePercent > 99 ||
+                    Math.Min((uint)ushort.MaxValue, (uint)state.BaseAttack + state.BonusAttack) != state.EffectiveAttack ||
+                    (state.WeaponID == 0 && state.BonusAttack != 0) || (state.ShieldID == 0 && state.BodyID == 0 && state.DefensePercent != 0) :
+                    state.WeaponID != 0 || state.ShieldID != 0 || state.BodyID != 0 || state.BaseAttack != 0 || state.BonusAttack != 0 ||
+                    state.EffectiveAttack != 0 || state.DefensePercent != 0))
                 throw new ArgumentException("Invalid equipment response values.");
-            return (requestID, epoch, operation, status, weapon, basis, bonus, effective);
+            return (requestID, epoch, operation, status, slot, state);
         }
 
         internal static byte[] SerializeBazaarOutboxListRequest(uint requestID)

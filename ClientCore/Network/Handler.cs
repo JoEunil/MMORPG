@@ -43,7 +43,7 @@ namespace ClientCore.Network
                     case OP_CODE.EQUIPMENT_RES:
                         var equipment = Packet.DeserializeEquipment(header, buffer);
                         _viewModel.EquipmentReceived(equipment.requestID, equipment.ownershipEpoch, equipment.operation, equipment.status,
-                            equipment.weaponID, equipment.baseAttack, equipment.bonusAttack, equipment.effectiveAttack);
+                            equipment.slot, equipment.state);
                         return;
                     case OP_CODE.PARRY_RES:
                         var parry = Packet.DeserializeParry(header, buffer);

@@ -149,7 +149,7 @@ namespace Cache {
         if (found == shard.cache_data.end() || found->second.status != CACHE_STATUS::AVAILABLE)
             return {Core::ItemOperationStatus::Busy};
         auto& result = found->second;
-        if (quantity < 0 && result.data.equippedWeaponItemID == itemID)
+        if (quantity < 0 && (result.data.equippedWeaponItemID == itemID || result.data.equippedShieldItemID == itemID || result.data.equippedBodyItemID == itemID))
             return {Core::ItemOperationStatus::Missing};
         auto image = result.data;
         const int slot = FindStackOrEmptySlot(image, itemID);
@@ -178,28 +178,28 @@ namespace Cache {
         return {Core::ItemOperationStatus::Success, static_cast<uint16_t>(next)};
     }
 
-    Core::WeaponStateResult CacheStorageInventory::GetWeaponState(uint64_t characterID) {
-        if (characterID == 0) return {Core::WeaponOperationStatus::Unsupported};
+    Core::EquipmentStateResult CacheStorageInventory::GetEquipmentState(uint64_t characterID) {
+        if (characterID == 0) return {Core::EquipmentOperationStatus::Unsupported};
         const auto result = Getter(characterID);
         if (result.status == CACHE_STATUS::AVAILABLE)
-            return {Core::WeaponOperationStatus::Success, result.data.equippedWeaponItemID};
-        return {result.status == CACHE_STATUS::EMPTY ? Core::WeaponOperationStatus::StorageFailure : Core::WeaponOperationStatus::Busy};
+            return {Core::EquipmentOperationStatus::Success, result.data.equippedWeaponItemID, result.data.equippedShieldItemID, result.data.equippedBodyItemID};
+        return {result.status == CACHE_STATUS::EMPTY ? Core::EquipmentOperationStatus::StorageFailure : Core::EquipmentOperationStatus::Busy};
     }
 
-    void CacheStorageInventory::LoadWeaponState(uint64_t characterID, std::function<void(Core::WeaponStateResult)> completed) {
+    void CacheStorageInventory::LoadEquipmentState(uint64_t characterID, std::function<void(Core::EquipmentStateResult)> completed) {
         if (!completed) return;
-        if (characterID == 0) { completed({Core::WeaponOperationStatus::Unsupported}); return; }
+        if (characterID == 0) { completed({Core::EquipmentOperationStatus::Unsupported}); return; }
         const uint16_t index = characterID & SHARD_SIZE_MASK;
         auto& shard = m_shards[index];
         bool load = false;
-        Core::WeaponStateResult result{Core::WeaponOperationStatus::Busy};
+        Core::EquipmentStateResult result{Core::EquipmentOperationStatus::Busy};
         {
             std::lock_guard lock(shard.mutex);
             const auto found = shard.cache_data.find(Key{characterID});
             if (found != shard.cache_data.end() && found->second.status == CACHE_STATUS::AVAILABLE)
-                result = {Core::WeaponOperationStatus::Success, found->second.data.equippedWeaponItemID};
+                result = {Core::EquipmentOperationStatus::Success, found->second.data.equippedWeaponItemID, found->second.data.equippedShieldItemID, found->second.data.equippedBodyItemID};
             else if (found == shard.cache_data.end() || found->second.status == CACHE_STATUS::DB_READING) {
-                pendingWeaponLoads[index][characterID].push_back(std::move(completed));
+                pendingEquipmentLoads[index][characterID].push_back(std::move(completed));
                 load = found == shard.cache_data.end();
                 if (!load) return;
             }
@@ -210,52 +210,55 @@ namespace Cache {
         if (status == CACHE_STATUS::DB_READING) return;
         // A concurrent loader normally drained the waiters already. Handle a directly available
         // insertion or synchronous enqueue rejection without retaining a caller indefinitely.
-        std::vector<std::function<void(Core::WeaponStateResult)>> callbacks;
-        result = {Core::WeaponOperationStatus::StorageFailure};
+        std::vector<std::function<void(Core::EquipmentStateResult)>> callbacks;
+        result = {Core::EquipmentOperationStatus::StorageFailure};
         {
             std::lock_guard lock(shard.mutex);
             const auto found = shard.cache_data.find(key);
             if (found != shard.cache_data.end() && found->second.status == CACHE_STATUS::AVAILABLE)
-                result = {Core::WeaponOperationStatus::Success, found->second.data.equippedWeaponItemID};
-            const auto waiting = pendingWeaponLoads[index].find(characterID);
-            if (waiting != pendingWeaponLoads[index].end()) {
+                result = {Core::EquipmentOperationStatus::Success, found->second.data.equippedWeaponItemID, found->second.data.equippedShieldItemID, found->second.data.equippedBodyItemID};
+            const auto waiting = pendingEquipmentLoads[index].find(characterID);
+            if (waiting != pendingEquipmentLoads[index].end()) {
                 callbacks = std::move(waiting->second);
-                pendingWeaponLoads[index].erase(waiting);
+                pendingEquipmentLoads[index].erase(waiting);
             }
         }
         for (auto& callback : callbacks) callback(result);
     }
 
-    Core::WeaponStateResult CacheStorageInventory::EquipWeapon(uint64_t characterID, uint32_t itemID) {
-        if (itemID != 0 && itemID != 3) return {Core::WeaponOperationStatus::Unsupported};
-        const auto ready = GetWeaponState(characterID);
-        if (ready.status != Core::WeaponOperationStatus::Success) return ready;
+    Core::EquipmentStateResult CacheStorageInventory::EquipItem(uint64_t characterID, uint8_t slot, uint32_t itemID) {
+        if (slot > 2 || (itemID != 0 && itemID != static_cast<uint32_t>(slot) + 3))
+            return {Core::EquipmentOperationStatus::Unsupported};
+        const auto ready = GetEquipmentState(characterID);
+        if (ready.status != Core::EquipmentOperationStatus::Success) return ready;
         const uint16_t index = characterID & SHARD_SIZE_MASK;
         auto& shard = m_shards[index];
         std::lock_guard lock(shard.mutex);
         const auto found = shard.cache_data.find(Key{characterID});
         if (found == shard.cache_data.end() || found->second.status != CACHE_STATUS::AVAILABLE)
-            return {Core::WeaponOperationStatus::Busy};
+            return {Core::EquipmentOperationStatus::Busy};
         auto& result = found->second;
         if (itemID != 0) {
             bool owned = false;
             for (const auto& item : result.data.items)
                 if (item.itemID == itemID && item.quantity > 0) { owned = true; break; }
-            if (!owned) return {Core::WeaponOperationStatus::Missing};
+            if (!owned) return {Core::EquipmentOperationStatus::Missing};
         }
-        if (result.data.equippedWeaponItemID == itemID) return {Core::WeaponOperationStatus::Success, itemID};
         auto image = result.data;
-        image.equippedWeaponItemID = itemID;
-        if (!m_walFn) return {Core::WeaponOperationStatus::StorageFailure};
+        uint32_t& equipped = slot == 0 ? image.equippedWeaponItemID : slot == 1 ? image.equippedShieldItemID : image.equippedBodyItemID;
+        if (equipped == itemID)
+            return {Core::EquipmentOperationStatus::Success, image.equippedWeaponItemID, image.equippedShieldItemID, image.equippedBodyItemID};
+        equipped = itemID;
+        if (!m_walFn) return {Core::EquipmentOperationStatus::StorageFailure};
         uint64_t lsn = 0;
         try { lsn = m_walFn(characterID, image); }
-        catch (...) { return {Core::WeaponOperationStatus::StorageFailure}; }
-        if (lsn == 0) return {Core::WeaponOperationStatus::StorageFailure};
+        catch (...) { return {Core::EquipmentOperationStatus::StorageFailure}; }
+        if (lsn == 0) return {Core::EquipmentOperationStatus::StorageFailure};
         image.lastLsn = lsn;
         result.data = image;
         result.lastModified = clock->GetTimeMS();
         shard.dirty_list.insert(Key{characterID});
-        return {Core::WeaponOperationStatus::Success, itemID};
+        return {Core::EquipmentOperationStatus::Success, image.equippedWeaponItemID, image.equippedShieldItemID, image.equippedBodyItemID};
     }
 
     Core::ItemOperationResult CacheStorageInventory::ConsumeItem(uint64_t characterID, uint32_t itemID) {
@@ -301,8 +304,8 @@ namespace Cache {
     void CacheStorageInventory::CompleteLoad(uint16_t index, Key key, const Result* loaded) {
         std::vector<PendingReward> rewards;
         std::vector<Core::ItemOperationResult> results;
-        std::vector<std::function<void(Core::WeaponStateResult)>> weaponLoads;
-        Core::WeaponStateResult weaponState{Core::WeaponOperationStatus::StorageFailure};
+        std::vector<std::function<void(Core::EquipmentStateResult)>> equipmentLoads;
+        Core::EquipmentStateResult equipmentState{Core::EquipmentOperationStatus::StorageFailure};
         auto& shard = m_shards[index];
         {
             std::lock_guard lock(shard.mutex);
@@ -314,11 +317,11 @@ namespace Cache {
             }
             const auto current = shard.cache_data.find(key);
             if (loaded && current != shard.cache_data.end() && current->second.status == CACHE_STATUS::AVAILABLE)
-                weaponState = {Core::WeaponOperationStatus::Success, current->second.data.equippedWeaponItemID};
-            const auto weapon = pendingWeaponLoads[index].find(key.characterID);
-            if (weapon != pendingWeaponLoads[index].end()) {
-                weaponLoads = std::move(weapon->second);
-                pendingWeaponLoads[index].erase(weapon);
+                equipmentState = {Core::EquipmentOperationStatus::Success, current->second.data.equippedWeaponItemID, current->second.data.equippedShieldItemID, current->second.data.equippedBodyItemID};
+            const auto equipment = pendingEquipmentLoads[index].find(key.characterID);
+            if (equipment != pendingEquipmentLoads[index].end()) {
+                equipmentLoads = std::move(equipment->second);
+                pendingEquipmentLoads[index].erase(equipment);
             }
             const auto pending = pendingRewards[index].find(key.characterID);
             if (pending != pendingRewards[index].end()) {
@@ -332,7 +335,7 @@ namespace Cache {
         }
         for (size_t i = 0; i < rewards.size(); ++i)
             if (rewards[i].completed) rewards[i].completed(results[i]);
-        for (auto& completed : weaponLoads) completed(weaponState);
+        for (auto& completed : equipmentLoads) completed(equipmentState);
     }
 
     // status, itemID, slot, quantity
@@ -371,7 +374,7 @@ namespace Cache {
         if(res.status != CACHE_STATUS::AVAILABLE)
             return std::make_tuple(res.status, 0, 0, 0);
 
-        if (change < 0 && res.data.equippedWeaponItemID == itemID)
+        if (change < 0 && (res.data.equippedWeaponItemID == itemID || res.data.equippedShieldItemID == itemID || res.data.equippedBodyItemID == itemID))
             return { CACHE_STATUS::BLOCKED, 0, 0, 0 };
         CACHE_STATUS resStatus = CACHE_STATUS::AVAILABLE;
         int slot = 0;

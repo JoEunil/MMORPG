@@ -62,3 +62,10 @@ item_catalog_share소유5파일완료: exporter/ServerContent/importer/ItemPrese
 
 ## 장착정책 선택과 실제자료 조사
 사용자현채팅비동기답변 추천규칙으로장착까지진행 확인. equipment_storage/ equipment_core 신규각1, item_catalog_share후속1 배정. actualREADONLY inventory길이84x20(zero4),352x2,360x5(zero2),2404x4975(전부zero). git6c100f2의ring/lastOp까지만있던352정의와createCharacter.sql55의UNHEX(REPEAT(00,2404))근거확인. 2404는전부zero만명시지원,상위bytes무시/300슬롯추정안함. 지정캐릭터11/5011/5012는모두360철검0. 기존구매가능철검listing13qty1price100조회(사람id/name/비밀출력없음). 정상거래로취득검증가능해실DB초기화/직접지급불필요. DB변경0/서버기동0. 근거 inventory-lengths-before.json/inventory-readonly-preflight.json.
+
+## PR70 병합 후 후속 정리 — 2026-11-06
+PR70은 master68c63f3에 병합됐다. GitHub 자동 리뷰 지적0, 사이트 빌드42167872056 성공. 다음 codex/defensive-equipment로 미커밋 후속 변경을 보존해 분기했다.
+
+구매 성공 안내를 짧은 수량·금액으로 줄이고 수령 행동은 상세로 옮겼다. footer는 bottom52/height40으로 Search(top48)·구매 버튼(bottom94) 사이에 둔다. 직접 영향 기존 구매검사1개 통과, 이전8검사는 반복하지 않았다. 실제 서버 거래를 다시 하지 않았다. 에디터 TMP 측정에서는 성공1줄/상세2줄을 확인했다. 임시 카메라 캡처가 UI를 렌더하지 못해 정상 Game View 경로로 전환했다. frames3→10983 진행 후 market-copy-gameview-preview.png에서 버튼 겹침 없음을 직접 보고 Astra도 화면 품질 통과로 판정했다. EDITOR PREVIEW 명시·가상 문구이며 실거래/서버 응답 검증으로 쓰지 않는다. 캡처 도구가 Assets/Builds 아래에 저장해 생성 이미지와 .meta를 확인한 뒤 Assets 밖 검증 폴더로 옮겨 보존했다. 최종 Playoff/backgroundfalse/World씬clean 복원. 공개 화면 추가/교체 없음. 이 후속 문구의 최신 실행파일은 아직 재빌드하지 않았다.
+
+사용자는 별도 비동기 질문에서 방패·갑옷 방향을 선택했다. 이는 새 효과 수치나 서버 저장 확장 승인으로 간주하지 않는다. 읽기 분석·선택안은 ARMOR_POTION_SCOPE.md/NEXT_ITEM_OPTIONS.md, 후속 정책은 ../2026-11-06-defensive-equipment/PLAN.md에 분리한다.

@@ -18,7 +18,7 @@ namespace Mmorpg.Client.Tests
     {
         [Test]
         [Category("Equipment")]
-        public void WeaponButtonKeepsQuantityTracksClosedPanelRepliesAndBlocksSalesAndUnknownRetries()
+        public void EquipmentButtonsKeepQuantityTrackClosedPanelRepliesAndBlockSalesAndUnknownRetries()
         {
             using (var f = new Fixture())
             {
@@ -27,28 +27,51 @@ namespace Mmorpg.Client.Tests
                 var statusObject = new GameObject("equipment feedback", typeof(RectTransform), typeof(TextMeshProUGUI));
                 statusObject.transform.SetParent(f.Screen.transform, false);
                 var feedback = statusObject.GetComponent<TMP_Text>(); SetPrivate(f.Screen, "useStatus", feedback);
-                f.OpenBag(); f.Receive(true, new InventoryItem { itemID = 3, quantity = 5, slot = 0 });
-                f.InvokeScreen("Update");
-                ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentRead, 1, 0, 1, 0, 10, 0, 10);
+                var items = new[] {
+                    new InventoryItem { itemID = 3, quantity = 5, slot = 0 },
+                    new InventoryItem { itemID = 4, quantity = 5, slot = 1 },
+                    new InventoryItem { itemID = 5, quantity = 5, slot = 2 }
+                };
+                f.OpenBag(); f.Receive(true, items); f.InvokeScreen("Update");
+                ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentRead, 1, 0, 1, 0,
+                    new EquipmentStateView { BaseAttack = 10, EffectiveAttack = 10 });
+                var equipment = new EquipmentStateView { WeaponID = 3, BaseAttack = 10, BonusAttack = 2, EffectiveAttack = 12 };
                 f.Cards[0].onClick.Invoke();
                 var equip = (UnityEngine.UI.Button)GetPrivate(f.Screen, "equipButton");
                 Assert.That(equip.gameObject.activeSelf, Is.True); Assert.That(equip.interactable, Is.True);
                 equip.onClick.Invoke(); equip.onClick.Invoke(); Assert.That(f.Network.EquipmentSets, Is.EqualTo(1));
                 Assert.That(f.Screen.CanSellItem(3), Is.False); f.Screen.ClosePanel();
-                ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentWrite, 1, 1, 1, 3, 10, 2, 12);
-                f.Receive(true, new InventoryItem { itemID = 3, quantity = 5, slot = 0 });
+                ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentWrite, 1, 1, 1, 0, equipment);
+                f.Receive(true, items);
                 Assert.That(f.Screen.IsItemEquipped(3), Is.True); Assert.That(f.Screen.CanSellItem(3), Is.False);
                 f.OpenBag(); f.Cards[0].onClick.Invoke();
-                Assert.That(feedback.text, Does.Contain("10 + 2 = 12"));
-                Assert.That(f.Login.Data.GetInventory()[0].Quantity, Is.EqualTo(5));
-                equip.onClick.Invoke(); Assert.That(f.Network.LastEquipmentItem, Is.Zero);
-                ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentWrite, 1, 1, 1, 0, 10, 0, 10);
-                f.Receive(true, new InventoryItem { itemID = 3, quantity = 5, slot = 0 });
+                Assert.That(feedback.text, Does.Contain("10+2=12"));
+                for (byte slot = 1; slot < 3; slot++)
+                {
+                    f.Cards[slot].onClick.Invoke(); equip.onClick.Invoke();
+                    Assert.That(f.Network.LastEquipmentSlot, Is.EqualTo(slot));
+                    Assert.That(f.Network.LastEquipmentItem, Is.EqualTo(3U + slot));
+                    if (slot == 1) { equipment.ShieldID = 4; equipment.DefensePercent = 2; }
+                    else { equipment.BodyID = 5; equipment.DefensePercent = 5; }
+                    ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentWrite, 1, 1, 1, slot, equipment);
+                    f.Receive(true, items);
+                    Assert.That(f.Screen.IsItemEquipped(3U + slot), Is.True);
+                    Assert.That(f.Screen.CanSellItem(3U + slot), Is.False);
+                    Assert.That(f.Login.Data.GetInventory()[slot].Quantity, Is.EqualTo(5));
+                }
+                f.Cards[2].onClick.Invoke(); Assert.That(feedback.text, Does.Contain("DEF 5%"));
+                f.Cards[0].onClick.Invoke(); equip.onClick.Invoke();
+                Assert.That(f.Network.LastEquipmentItem, Is.Zero); Assert.That(f.Network.LastEquipmentSlot, Is.Zero);
+                equipment.WeaponID = 0; equipment.BonusAttack = 0; equipment.EffectiveAttack = 10;
+                ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentWrite, 1, 1, 1, 0, equipment);
+                f.Receive(true, items);
                 Assert.That(f.Screen.CanSellItem(3), Is.True); Assert.That(f.Login.Data.GetInventory()[0].Quantity, Is.EqualTo(5));
+                Assert.That(f.Screen.CanSellItem(4), Is.False); Assert.That(f.Screen.CanSellItem(5), Is.False);
                 f.Cards[0].onClick.Invoke(); equip.onClick.Invoke();
                 SetPrivate(f.Screen, "equipmentDeadline", Time.unscaledTime - 1f); f.InvokeScreen("Update");
                 int writes = f.Network.EquipmentSets; equip.onClick.Invoke();
                 Assert.That(f.Screen.EquipmentMutationPending, Is.True); Assert.That(f.Screen.CanSellItem(3), Is.False);
+                Assert.That(f.Screen.CanSellItem(4), Is.False); Assert.That(f.Screen.CanSellItem(5), Is.False);
                 Assert.That(f.Network.EquipmentSets, Is.EqualTo(writes));
                 Assert.That(feedback.text, Does.Contain("Reconnect"));
             }
@@ -896,9 +919,9 @@ namespace Mmorpg.Client.Tests
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { }
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
             public void RequestWallet(uint requestID) { }
-            public ulong LastEquipmentRead, LastEquipmentWrite; public uint LastEquipmentItem; public int EquipmentSets;
+            public ulong LastEquipmentRead, LastEquipmentWrite; public uint LastEquipmentItem; public byte LastEquipmentSlot; public int EquipmentSets;
             public void RequestEquipment(ulong requestID, ulong ownershipEpoch) { LastEquipmentRead = requestID; }
-            public void RequestEquipWeapon(ulong requestID, ulong ownershipEpoch, uint itemID) { LastEquipmentWrite = requestID; LastEquipmentItem = itemID; EquipmentSets++; }
+            public void RequestEquipItem(ulong requestID, ulong ownershipEpoch, byte slot, uint itemID) { LastEquipmentWrite = requestID; LastEquipmentSlot = slot; LastEquipmentItem = itemID; EquipmentSets++; }
             public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
             public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { ItemUses++; LastUsedItemID = itemID; }
             public void RequestInventory() => Requests++;

@@ -219,7 +219,7 @@ namespace Mmorpg.Client.Tests
             public ulong ItemUseID, ItemUseEpoch;
             public void RequestBazaar(uint requestID, ushort itemType, ushort page) { }
             public void RequestEquipment(ulong requestID, ulong ownershipEpoch) { }
-            public void RequestEquipWeapon(ulong requestID, ulong ownershipEpoch, uint itemID) { }
+            public void RequestEquipItem(ulong requestID, ulong ownershipEpoch, byte slot, uint itemID) { }
             public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
             public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { ItemUseID = requestID; ItemUseEpoch = ownershipEpoch; }
             public void RequestInventory() => Requests++;

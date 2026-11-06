@@ -23,6 +23,7 @@ namespace Cache {
 	};
 	enum WalType : uint16_t {
 		INVENTORY_LEGACY = LEGACY_INVENTORY_WAL_TYPE,
+        INVENTORY_WEAPON = WEAPON_INVENTORY_WAL_TYPE,
 		INVENTORY = EQUIPMENT_INVENTORY_WAL_TYPE
 	};
 	class WALManager {
@@ -56,6 +57,7 @@ namespace Cache {
         void Collect(const Base::WALHeader& header, const uint8_t* payload) {
             switch (header.type) {
             case WalType::INVENTORY_LEGACY:
+            case WalType::INVENTORY_WEAPON:
             case WalType::INVENTORY: CollectInventory(header, payload); break;
             default: throw std::runtime_error("Unsupported WAL record type.");
             }

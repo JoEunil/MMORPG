@@ -101,6 +101,8 @@ namespace Core {
         float startX, startY;
         uint8_t currentZone;
         uint32_t equippedWeaponItemID = 0;
+        uint32_t equippedShieldItemID = 0;
+        uint32_t equippedBodyItemID = 0;
     };
 
     struct MsgCharacterStateUpdateBody {

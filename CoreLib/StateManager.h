@@ -236,7 +236,7 @@ namespace Core {
             return res;
         }
         ItemUseResponseBody UseItem(uint64_t sessionID, const ItemUseRequestBody& request);
-        EquipmentResponseBody Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint32_t itemID = 0);
+        EquipmentResponseBody Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot = 0, uint32_t itemID = 0);
         ParryResponseBody Parry(uint64_t sessionID, uint16_t routeZoneID, const ParryRequestBody& request);
         void GrantMonsterReward(const CharacterState& character, uint64_t gold);
         void Disconnect(uint64_t sessionID);

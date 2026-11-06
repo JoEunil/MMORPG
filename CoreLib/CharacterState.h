@@ -31,6 +31,8 @@ namespace Core {
 
         uint16_t attack; // Base attack is persisted without equipment bonuses.
         uint32_t equippedWeaponItemID = 0;
+        uint32_t equippedShieldItemID = 0;
+        uint32_t equippedBodyItemID = 0;
 
         uint16_t WeaponAttackBonus() const {
             const auto item = Data::itemMap.find(equippedWeaponItemID);
@@ -39,6 +41,21 @@ namespace Core {
         uint16_t EffectiveAttack() const {
             const uint32_t total = static_cast<uint32_t>(attack) + WeaponAttackBonus();
             return static_cast<uint16_t>(total > UINT16_MAX ? UINT16_MAX : total);
+        }
+        uint8_t DefensePercent() const {
+            uint16_t total = 0;
+            for (const auto itemID : {equippedShieldItemID, equippedBodyItemID}) {
+                const auto item = Data::itemMap.find(itemID);
+                if (item != Data::itemMap.end()) total += item->second.defensePercent;
+            }
+            return static_cast<uint8_t>(total);
+        }
+        uint64_t DamageAfterDefense(uint64_t damage) const {
+            if (damage == 0) return 0;
+            const uint64_t remainingPercent = 100 - DefensePercent();
+            // Split before multiplication so even a wide incoming hit cannot overflow.
+            const uint64_t reduced = damage / 100 * remainingPercent + damage % 100 * remainingPercent / 100;
+            return reduced == 0 ? 1 : reduced;
         }
         uint8_t skillSlotCnt; 
         std::vector<SkillSlotEntry> skillSlot;

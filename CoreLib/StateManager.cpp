@@ -117,8 +117,8 @@ namespace Core {
         return result;
     }
 
-    EquipmentResponseBody StateManager::Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint32_t itemID) {
-        EquipmentResponseBody result{ requestID, ownershipEpoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), 0, 0, 0, 0 };
+    EquipmentResponseBody StateManager::Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot, uint32_t itemID) {
+        EquipmentResponseBody result{ requestID, ownershipEpoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), slot, 0, 0, 0, 0, 0, 0, 0 };
         if (requestID == 0 || ownershipEpoch == 0) return result;
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock sessionLock(shard.smutex);
@@ -132,7 +132,7 @@ namespace Core {
         auto& previous = session->second.lastEquipmentSet;
         if (write && requestID <= previous.requestID) {
             if (requestID == previous.requestID && ownershipEpoch == previous.ownershipEpoch
-                && itemID == session->second.lastEquipmentItemID) return previous;
+                && slot == previous.slot && itemID == session->second.lastEquipmentItemID) return previous;
             result.status = static_cast<uint8_t>(EquipmentStatus::StaleRequest);
             return result;
         }
@@ -142,34 +142,37 @@ namespace Core {
         auto member = zone->m_sessionToIndex.find(sessionID);
         if (member == zone->m_sessionToIndex.end()) return result;
         auto& character = zone->m_chars[member->second];
-        if (write && itemID != 0 && itemID != 3) result.status = static_cast<uint8_t>(EquipmentStatus::Unsupported);
+        if (slot > 2 || (!write && slot != 0) || (write && itemID != 0 && itemID != 3u + slot)) result.status = static_cast<uint8_t>(EquipmentStatus::Unsupported);
         else if (write && character.hp <= 0) result.status = static_cast<uint8_t>(EquipmentStatus::Dead);
         else if (inventory == nullptr) result.status = static_cast<uint8_t>(EquipmentStatus::StorageFailure);
         else {
-            const auto state = write ? inventory->EquipWeapon(character.characterID, itemID) : inventory->GetWeaponState(character.characterID);
+            const auto state = write ? inventory->EquipItem(character.characterID, slot, itemID) : inventory->GetEquipmentState(character.characterID);
             switch (state.status) {
-            case WeaponOperationStatus::Success:
-                if ((state.itemID != 0 && state.itemID != 3) || (write && state.itemID != itemID)) {
+            case EquipmentOperationStatus::Success:
+                if ((state.weaponID != 0 && state.weaponID != 3) || (state.shieldID != 0 && state.shieldID != 4)
+                    || (state.bodyID != 0 && state.bodyID != 5)
+                    || (write && (slot == 0 ? state.weaponID : slot == 1 ? state.shieldID : state.bodyID) != itemID)) {
                     result.status = static_cast<uint8_t>(EquipmentStatus::StorageFailure);
                     break;
                 }
-                character.equippedWeaponItemID = state.itemID;
+                character.equippedWeaponItemID = state.weaponID;
+                character.equippedShieldItemID = state.shieldID;
+                character.equippedBodyItemID = state.bodyID;
                 result.status = static_cast<uint8_t>(EquipmentStatus::Success);
                 break;
-            case WeaponOperationStatus::Missing:
-                // A confirmed absent inventory cannot contain equipment. Read failures use a separate status.
-                if (!write) {
-                    character.equippedWeaponItemID = 0;
-                    result.status = static_cast<uint8_t>(EquipmentStatus::Success);
-                } else result.status = static_cast<uint8_t>(EquipmentStatus::Missing);
+            case EquipmentOperationStatus::Missing:
+                result.status = static_cast<uint8_t>(EquipmentStatus::Missing);
                 break;
-            case WeaponOperationStatus::Busy: result.status = static_cast<uint8_t>(EquipmentStatus::Busy); break;
-            case WeaponOperationStatus::Unsupported: result.status = static_cast<uint8_t>(EquipmentStatus::Unsupported); break;
+            case EquipmentOperationStatus::Busy: result.status = static_cast<uint8_t>(EquipmentStatus::Busy); break;
+            case EquipmentOperationStatus::Unsupported: result.status = static_cast<uint8_t>(EquipmentStatus::Unsupported); break;
             default: result.status = static_cast<uint8_t>(EquipmentStatus::StorageFailure); break;
             }
         }
         if (result.status == static_cast<uint8_t>(EquipmentStatus::Success)) {
             result.weaponID = character.equippedWeaponItemID;
+            result.shieldID = character.equippedShieldItemID;
+            result.bodyID = character.equippedBodyItemID;
+            result.defensePercent = character.DefensePercent();
             result.baseAttack = character.attack;
             result.bonusAttack = character.WeaponAttackBonus();
             result.effectiveAttack = character.EffectiveAttack();

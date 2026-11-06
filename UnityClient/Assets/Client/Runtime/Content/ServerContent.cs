@@ -94,6 +94,7 @@ namespace Mmorpg.Client
             public string name;
             public uint weight;
             public ushort weaponAttackBonus;
+            public byte defensePercent;
             public uint hpRecovery;
             public uint mpRecovery;
             public uint cooldownTicks;
