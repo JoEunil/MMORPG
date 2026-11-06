@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using Mmorpg.Client;
 using ClientCore;
+using ClientCore.PacketHelper;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -51,8 +52,10 @@ namespace Mmorpg.Client
         [SerializeField] private TMP_Text walletGoldText;
         [SerializeField] private TMP_Text walletDiamondText;
         [SerializeField] private Sprite diamondCurrencyIcon;
-        private enum MarketView { Browse, MyListings, Sell }
+        private enum MarketView { Browse, MyListings, Sell, Outbox }
         private MarketView view;
+        private UnityEngine.UI.Button outboxItemsButton;
+        private string receiptResult;
         private bool saleInventoryReplyReady;
         private bool registerConfirmation;
         private bool registrationUncertain;
@@ -103,6 +106,8 @@ namespace Mmorpg.Client
             itemTypeButtons[2].onClick.AddListener(SelectArmor);
             if (searchListingsButton != null) searchListingsButton.onClick.AddListener(SelectSearchListings);
             if (myListingsButton != null) myListingsButton.onClick.AddListener(SelectMyListings);
+            EnsureOutboxTab();
+            if (outboxItemsButton != null) outboxItemsButton.onClick.AddListener(SelectOutboxItems);
             searchButton.onClick.AddListener(RefreshCurrentView);
             previousPageButton.onClick.AddListener(PreviousPage);
             nextPageButton.onClick.AddListener(NextPage);
@@ -161,6 +166,7 @@ namespace Mmorpg.Client
                 : previousWrite == WriteRequest.CheckOutbox ? "Receipt result incomplete; items may have arrived. Check your bag, then retry manually."
                 : view == MarketView.MyListings
                 ? "My listings timed out. Select Refresh to retry."
+                : view == MarketView.Outbox ? "Item receipts timed out. Select Refresh to retry."
                 : "Search timed out. Select Search to retry.";
             UpdateControls();
         }
@@ -177,6 +183,7 @@ namespace Mmorpg.Client
                 model.OnBazaarBuyReceived -= BuyReceived;
                 model.OnBazaarCancelListingReceived -= CancelListingReceived;
                 model.OnBazaarCheckOutboxReceived -= CheckOutboxReceived;
+                model.OnBazaarOutboxListReceived -= OutboxItemsReceived;
             }
             CancelPending();
             claimOutcomes.Clear();
@@ -184,6 +191,7 @@ namespace Mmorpg.Client
             buyOutcomes.Clear();
             cancelOutcomes.Clear();
             model = next;
+            receiptResult = null;
             view = MarketView.Browse;
             registerConfirmation = registrationUncertain = false;
             walletRequested = walletPending = goldKnown = diamondKnown = false;
@@ -206,6 +214,7 @@ namespace Mmorpg.Client
                 model.OnBazaarBuyReceived += BuyReceived;
                 model.OnBazaarCancelListingReceived += CancelListingReceived;
                 model.OnBazaarCheckOutboxReceived += CheckOutboxReceived;
+                model.OnBazaarOutboxListReceived += OutboxItemsReceived;
             }
             WorldChanged();
         }
@@ -243,6 +252,7 @@ namespace Mmorpg.Client
                 if (inventoryScreen != null) inventoryScreen.RefreshShortcutControls();
                 bazaarPanel.transform.SetAsLastSibling();
                 if (transactionResultAvailable) RefreshWallet();
+                if (view == MarketView.Outbox && !requestPending) LoadOutboxItems();
                 UpdateControls();
                 return;
             }
@@ -265,6 +275,30 @@ namespace Mmorpg.Client
             SelectView(MarketView.MyListings);
         }
 
+        private void SelectOutboxItems() => SelectView(MarketView.Outbox);
+
+        private void EnsureOutboxTab()
+        {
+            if (outboxItemsButton == null && myListingsButton != null)
+            {
+                outboxItemsButton = Instantiate(myListingsButton.gameObject, myListingsButton.transform.parent, false)
+                    .GetComponent<UnityEngine.UI.Button>();
+                outboxItemsButton.name = "BazaarOutboxItemsButton";
+                outboxItemsButton.onClick = new UnityEngine.UI.Button.ButtonClickedEvent();
+            }
+            var tabs = new[] { searchListingsButton, myListingsButton, sellItemsButton, outboxItemsButton };
+            for (int i = 0; i < tabs.Length; i++)
+            {
+                if (tabs[i] == null) continue;
+                var rect = tabs[i].GetComponent<RectTransform>();
+                rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0, 1);
+                rect.anchoredPosition = new Vector2(15 + i * 183, -58);
+                rect.sizeDelta = new Vector2(183, 34);
+                var label = tabs[i].GetComponentInChildren<TMP_Text>(true);
+                if (label != null) label.fontSize = 14;
+            }
+        }
+
         private void SelectView(MarketView nextView)
         {
             if (!bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model)
@@ -282,6 +316,7 @@ namespace Mmorpg.Client
         {
             RefreshWallet();
             if (view == MarketView.Sell) { LoadSaleItems(); return; }
+            if (view == MarketView.Outbox) { LoadOutboxItems(); return; }
             if (view == MarketView.MyListings)
             {
                 if (!bazaarPanel.activeSelf || !WorldAvailable || model == null || loginScreen.Model != model || requestPending)
@@ -360,8 +395,9 @@ namespace Mmorpg.Client
             if (inventoryScreen != null) inventoryScreen.RefreshShortcutControls();
             // Closing is not acknowledgement of final feedback.
             // A closed panel must still observe item delivery and balance-changing writes.
-            if (transactionResultAvailable || (requestPending && writeRequest != WriteRequest.None)) return;
+            if (requestPending && writeRequest != WriteRequest.None) return;
             CancelPending();
+            if (transactionResultAvailable) { UpdateControls(); return; }
             if (view == MarketView.MyListings) view = MarketView.Browse;
             ClearResults();
             UpdateControls();
@@ -369,7 +405,7 @@ namespace Mmorpg.Client
 
         private void BazaarReceived(bool success)
         {
-            if (view == MarketView.Sell || !requestPending || writeRequest != WriteRequest.None || model == null || loginScreen.Model != model || !WorldAvailable || !bazaarPanel.activeSelf)
+            if ((view != MarketView.Browse && view != MarketView.MyListings) || !requestPending || writeRequest != WriteRequest.None || model == null || loginScreen.Model != model || !WorldAvailable || !bazaarPanel.activeSelf)
                 return;
             requestPending = false;
             List<BazaarListingView> rows = success && loginScreen.Data != null
@@ -572,7 +608,7 @@ namespace Mmorpg.Client
 
         private void BuySelectedListing()
         {
-            if (view == MarketView.MyListings || !IsOpen || !WorldAvailable || model == null || loginScreen.Model != model ||
+            if (view != MarketView.Browse || !IsOpen || !WorldAvailable || model == null || loginScreen.Model != model ||
                 requestPending || selectedListing.ListingID == 0 || selectedListing.Status != 0 ||
                 buyOutcomes.ContainsKey(selectedListing.ListingID)) return;
             transactionResultAvailable = false;
@@ -624,6 +660,7 @@ namespace Mmorpg.Client
         {
             if (!IsOpen || !WorldAvailable || model == null || loginScreen.Model != model || requestPending) return;
             transactionResultAvailable = false;
+            receiptResult = null;
             buyConfirmation = false;
             cancelConfirmation = false;
             requestPending = true;
@@ -650,10 +687,73 @@ namespace Mmorpg.Client
             writeRequest = WriteRequest.None;
             if (inventoryScreen != null) inventoryScreen.RefreshAfterDelivery();
             transactionResultAvailable = true;
-            statusText.text = status == 1 ? "Received " + delivered.ToString(CultureInfo.InvariantCulture) +
-                " · already present " + duplicated.ToString(CultureInfo.InvariantCulture) + " · pending " +
-                blocked.ToString(CultureInfo.InvariantCulture) + ". Check your bag."
+            receiptResult = status == 1 ? "Received " + delivered.ToString(CultureInfo.InvariantCulture) +
+                " · already present " + duplicated.ToString(CultureInfo.InvariantCulture) +
+                (blocked > 0 ? ". Some items remain unreceived. Check bag space / stack limits, wait a moment, then retry manually." : ". Check your bag.")
                 : "Receipt result incomplete; items may have arrived. Check your bag, then retry manually.";
+            statusText.text = receiptResult;
+            if (view == MarketView.Outbox && IsOpen) LoadOutboxItems();
+            UpdateControls();
+        }
+
+        private void LoadOutboxItems()
+        {
+            if (view != MarketView.Outbox || !IsOpen || !WorldAvailable || model == null ||
+                loginScreen.Model != model || requestPending) return;
+            ClearRows();
+            requestPending = true;
+            requestDeadline = Time.unscaledTime + RequestTimeoutSeconds;
+            if (receiptResult != null) selectedDetailText.text = receiptResult;
+            statusText.text = "Loading item receipts…";
+            UpdateControls();
+            try { model.RequestBazaarOutboxList(); }
+            catch (Exception)
+            {
+                CancelPending();
+                statusText.text = "Item receipts failed. Select Refresh to retry.";
+                UpdateControls();
+            }
+        }
+
+        private void OutboxItemsReceived(byte status, ushort processingCount, BazaarOutboxItem[] rows)
+        {
+            if (view != MarketView.Outbox || !requestPending || writeRequest != WriteRequest.None ||
+                !IsOpen || !WorldAvailable || model == null || loginScreen.Model != model) return;
+            requestPending = false;
+            ClearRows();
+            if (receiptResult != null) selectedDetailText.text = receiptResult;
+            bool valid = status == 1 && rows != null && rows.Length + processingCount <= 30;
+            if (valid)
+                foreach (var item in rows)
+                    if (item.eventID == 0 || item.itemID == 0 || item.quantity == 0 || item.quantity > ushort.MaxValue)
+                    { valid = false; break; }
+            if (!valid)
+            {
+                statusText.text = status == 2 ? "Item delivery is busy. Wait a moment, then Refresh."
+                    : "Item receipts could not be read. Select Refresh to retry.";
+                UpdateControls();
+                return;
+            }
+            for (int i = 0; i < rows.Length; i++)
+            {
+                var item = rows[i];
+                var row = CreateItemRow(item.itemID, (ushort)item.quantity, i);
+                row.name = "Receipt-" + item.eventID.ToString(CultureInfo.InvariantCulture);
+                AddCell(row.transform, "State", "READY", .56f, .99f,
+                    TextAlignmentOptions.Center, 14, new Color32(184, 202, 198, 255));
+                var button = row.GetComponent<UnityEngine.UI.Button>();
+                button.onClick.AddListener(() =>
+                {
+                    if (requestPending || view != MarketView.Outbox) return;
+                    SelectRow(button);
+                    ShowSelectedItem(item.itemID, (ushort)item.quantity);
+                    selectedDetailText.text = "Purchased item / cancelled-sale return. Receive all to add it to your bag.";
+                });
+            }
+            emptyStateText.gameObject.SetActive(rows.Length == 0);
+            emptyStateText.text = processingCount > 0 ? "Delivery is being confirmed." : "No ready items in this snapshot.";
+            statusText.text = rows.Length.ToString(CultureInfo.InvariantCulture) + " ready · " +
+                processingCount.ToString(CultureInfo.InvariantCulture) + " processing · up to 30 checked. Refresh to update.";
             UpdateControls();
         }
 
@@ -756,15 +856,17 @@ namespace Mmorpg.Client
             if (emptyStateText != null) emptyStateText.gameObject.SetActive(false);
             if (selectedDetailText != null) selectedDetailText.text = view == MarketView.MyListings
                 ? "Select a trading listing to cancel its sale, or a sold listing to collect proceeds."
+                : view == MarketView.Outbox ? "Purchases and cancelled-sale returns. Viewing does not deliver items."
                 : "Select a listing to see its details.";
             if (selectedItemIcon != null) { selectedItemIcon.sprite = null; selectedItemIcon.enabled = false; }
-            if (selectedItemNameText != null) selectedItemNameText.text = view == MarketView.Sell ? "Select an item" : "Select a listing";
+            if (selectedItemNameText != null) selectedItemNameText.text = view == MarketView.Sell || view == MarketView.Outbox ? "Select an item" : "Select a listing";
             if (selectedItemQuantityText != null) selectedItemQuantityText.text = string.Empty;
         }
 
         private void ClearResults()
         {
             transactionResultAvailable = false;
+            receiptResult = null;
             ClearRows();
             statusText.text = string.Empty;
             pageText.text = "Page " + ((uint)page + 1).ToString(CultureInfo.InvariantCulture);
@@ -775,6 +877,7 @@ namespace Mmorpg.Client
             bool isSearch = view == MarketView.Browse;
             bool isMine = view == MarketView.MyListings;
             bool isSell = view == MarketView.Sell;
+            bool isOutbox = view == MarketView.Outbox;
             bool available = WorldAvailable && model != null && loginScreen != null && loginScreen.Model == model;
             if (marketButton != null) marketButton.interactable = available;
             if (cancelListingButton != null)
@@ -802,7 +905,7 @@ namespace Mmorpg.Client
                 checkOutboxButton.gameObject.SetActive(!isSell);
                 checkOutboxButton.interactable = available && IsOpen && !requestPending;
                 var label = checkOutboxButton.GetComponentInChildren<TMP_Text>(true);
-                if (label != null) label.text = writeRequest == WriteRequest.CheckOutbox ? "RECEIVING…" : "RECEIVE ITEMS";
+                if (label != null) label.text = writeRequest == WriteRequest.CheckOutbox ? "RECEIVING…" : isOutbox ? "RECEIVE ALL" : "RECEIVE ITEMS";
             }
             if (claimButton != null)
             {
@@ -819,7 +922,7 @@ namespace Mmorpg.Client
             {
                 searchButton.interactable = available && bazaarPanel.activeSelf && !requestPending;
                 var refreshLabel = searchButton.GetComponentInChildren<TMP_Text>(true);
-                if (refreshLabel != null) refreshLabel.text = isSell ? "REFRESH BAG" : isMine ? "REFRESH" : "SEARCH";
+                if (refreshLabel != null) refreshLabel.text = isSell ? "REFRESH BAG" : isMine || isOutbox ? "REFRESH" : "SEARCH";
             }
             if (previousPageButton != null)
             {
@@ -842,7 +945,7 @@ namespace Mmorpg.Client
                     ? new Color32(40, 86, 79, 255) : new Color32(23, 49, 57, 255);
                 searchListingsButton.interactable = available && bazaarPanel.activeSelf && writeRequest == WriteRequest.None;
                 var label = searchListingsButton.GetComponentInChildren<TMP_Text>(true);
-                if (label != null) label.text = (isMine ? string.Empty : "> ") + "SALES";
+                if (label != null) label.text = (isSearch ? "> " : string.Empty) + "SALES";
             }
             if (myListingsButton != null)
             {
@@ -865,8 +968,16 @@ namespace Mmorpg.Client
             if (saleForm != null) saleForm.SetActive(isSell);
             var priceHeader = bazaarPanel != null ? bazaarPanel.transform.Find("BazaarParchment/BazaarPriceHeader") : null;
             var stateHeader = bazaarPanel != null ? bazaarPanel.transform.Find("BazaarParchment/BazaarStateHeader") : null;
-            if (priceHeader != null) priceHeader.GetComponent<TMP_Text>().text = isSell ? "BAG SLOT" : "TOTAL D";
-            if (stateHeader != null) stateHeader.gameObject.SetActive(!isSell);
+            if (priceHeader != null) { priceHeader.gameObject.SetActive(!isOutbox); priceHeader.GetComponent<TMP_Text>().text = isSell ? "BAG SLOT" : "TOTAL D"; }
+            if (stateHeader != null) stateHeader.gameObject.SetActive(!isSell && !isOutbox);
+            if (outboxItemsButton != null)
+            {
+                outboxItemsButton.GetComponent<UnityEngine.UI.Image>().color = isOutbox
+                    ? new Color32(40, 86, 79, 255) : new Color32(23, 49, 57, 255);
+                outboxItemsButton.interactable = available && IsOpen && writeRequest == WriteRequest.None;
+                var label = outboxItemsButton.GetComponentInChildren<TMP_Text>(true);
+                if (label != null) label.text = (isOutbox ? "> " : string.Empty) + "ITEM RECEIPTS";
+            }
             if (sellItemsButton != null)
             {
                 sellItemsButton.GetComponent<UnityEngine.UI.Image>().color = isSell
@@ -1142,6 +1253,7 @@ namespace Mmorpg.Client
             if (buyButton != null) buyButton.onClick.RemoveListener(BuySelectedListing);
             if (cancelListingButton != null) cancelListingButton.onClick.RemoveListener(CancelSelectedListing);
             if (checkOutboxButton != null) checkOutboxButton.onClick.RemoveListener(CheckOutbox);
+            if (outboxItemsButton != null) outboxItemsButton.onClick.RemoveListener(SelectOutboxItems);
             if (model != null)
             {
                 model.OnWalletReceived -= WalletReceived;
@@ -1152,6 +1264,7 @@ namespace Mmorpg.Client
                 model.OnBazaarBuyReceived -= BuyReceived;
                 model.OnBazaarCancelListingReceived -= CancelListingReceived;
                 model.OnBazaarCheckOutboxReceived -= CheckOutboxReceived;
+                model.OnBazaarOutboxListReceived -= OutboxItemsReceived;
             }
             CancelPending();
             if (listingRows != null && statusText != null && pageText != null) ClearResults();

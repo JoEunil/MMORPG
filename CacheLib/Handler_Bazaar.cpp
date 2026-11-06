@@ -285,6 +285,32 @@ namespace Cache {
         msg = nullptr; // Async work or synchronous rejection owns the single Return.
     }
 
+    void Handler::BazaarOutboxList(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarOutboxListBody* body) {
+        const auto request = *body;
+        auto* owned = msg;
+        const auto finish = [this, owned, sessionID, request](const Core::MsgBazaarOutboxListResBody& response) {
+            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarOutboxListResBody>*>(owned->GetBuffer());
+            st->header = { sessionID, Core::MSG_BAZAAR_OUTBOX_LIST_RES };
+            st->body = response;
+            st->body.requestID = request.requestID;
+            st->body.characterID = request.characterID;
+            owned->SetLength(sizeof(*st));
+            if (!messageQ->EnqueueMessage(owned))
+                Core::errorLogger->LogError("cache handler bazaar", "outbox list response queue rejected", "sessionID", sessionID);
+            messagePool->Return(owned);
+        };
+        const auto failed = [finish] { finish(Core::MsgBazaarOutboxListResBody{}); };
+        const auto outcome = dbWorkerBazaar->Enqueue([this, request, finish](DBConnectionBazaar* conn) {
+            auto result = conn->ExecuteSelect(18, request.characterID);
+            const auto inventory = cache_inventory->Getter(request.characterID);
+            Core::MsgBazaarOutboxListResBody response{};
+            ParseBazaarOutboxListResult(result.get(), inventory, response);
+            finish(response);
+        }, nullptr, failed);
+        if (outcome != DBEnqueueResult::Queued) failed();
+        msg = nullptr;
+    }
+
     void Handler::BazaarCheckOutbox(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCheckOutboxBody* body) {
         const auto request = *body;
         auto* owned = msg;

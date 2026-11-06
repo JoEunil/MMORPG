@@ -386,6 +386,45 @@ namespace Mmorpg.Client.Tests
             }
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ArrivalRefreshesPotionInventoryWithoutOpeningTheBagOrRetryingUse(bool readPendingDuringTravel)
+        {
+            using (var fixture = new Fixture())
+            {
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(1));
+                if (!readPendingDuringTravel)
+                    fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 3, slot = 0 });
+
+                SetPrivateProperty(fixture.World, "Stage", WorldStage.WaitingForFull);
+                SetPrivateProperty(fixture.World, "HasOwnFull", false);
+                SetPrivate(fixture.Login.Model, "_worldReady", false);
+                fixture.InvokeScreen("ItemUseZoneTransitionStarted", 2UL, (ushort)1);
+                if (readPendingDuringTravel)
+                    fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 3, slot = 0 });
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(1), "Do not read during the destination bootstrap.");
+                Assert.That(fixture.Screen.InventoryRequestPending, Is.False, "An old read completes even while waiting for the destination full snapshot.");
+                Assert.That(fixture.Screen.HasInventoryResponse, Is.False);
+
+                SetPrivate(fixture.Login.Model, "_worldReady", true);
+                fixture.SetWorldReady();
+                Assert.That(fixture.Network.Requests, Is.EqualTo(1), "Wait until the frame after the world-ready callback.");
+                fixture.InvokeScreen("Update");
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2), "Arrival schedules exactly one fresh read, including after an earlier warmup succeeded.");
+                fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 2, slot = 0 },
+                    new InventoryItem { itemID = 2, quantity = 4, slot = 1 });
+                fixture.InvokeScreen("Update");
+                Assert.That(fixture.Screen.HasInventoryResponse, Is.True);
+                Assert.That(fixture.Login.Data.GetInventory().Count, Is.EqualTo(2));
+                Assert.That(fixture.Network.Requests, Is.EqualTo(2));
+                Assert.That(fixture.Panel.activeSelf, Is.False);
+                Assert.That(fixture.Network.ItemUses, Is.Zero, "Automatic reconciliation only reads; it never consumes or retries a potion.");
+            }
+        }
+
         [Test]
         public void QuickPotionReflectsConfirmedInventoryAndSharesBagUseSafety()
         {
@@ -750,8 +789,8 @@ namespace Mmorpg.Client.Tests
                 return (initializer, model, network);
             }
 
-            public void InvokeScreen(string name) => typeof(InventoryScreen)
-                .GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic).Invoke(Screen, null);
+            public void InvokeScreen(string name, params object[] arguments) => typeof(InventoryScreen)
+                .GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic).Invoke(Screen, arguments);
 
             public void Dispose()
             {
@@ -809,6 +848,7 @@ namespace Mmorpg.Client.Tests
             public int ItemUses;
             public uint LastUsedItemID;
             public void RequestBazaarBuy(uint requestID, ulong listingID) { }
+            public void RequestBazaarOutboxList(uint requestID) { }
             public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }

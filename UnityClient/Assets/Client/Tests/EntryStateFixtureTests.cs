@@ -270,6 +270,7 @@ namespace Mmorpg.Client.Tests
             public ulong EnteredCharacterID { get; private set; }
             public int ZoneChangeCount { get; private set; }
             public void RequestBazaarBuy(uint requestID, ulong listingID) { }
+            public void RequestBazaarOutboxList(uint requestID) { }
             public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public void RequestBazaarMyList(uint requestID) { }

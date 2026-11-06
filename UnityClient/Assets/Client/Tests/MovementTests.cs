@@ -172,6 +172,7 @@ namespace Mmorpg.Client.Tests
             public event Action<string> OnDisconnected { add { } remove { } }
             public int SendCount;
             public void RequestBazaarBuy(uint requestID, ulong listingID) { }
+            public void RequestBazaarOutboxList(uint requestID) { }
             public void RequestBazaarCheckOutbox(uint requestID) { } public void RequestBazaarCancelListing(uint requestID, ulong listingID) { }
             public void RequestBazaarClaim(uint requestID, ulong listingID) { }
             public Task Connect(string address, int port) => Task.CompletedTask;

@@ -125,6 +125,8 @@ namespace Cache {
             if (result.status != CACHE_STATUS::AVAILABLE) {
                 return result;
             }
+            // Another loader may have completed after the first TryGet; copy its actual snapshot.
+            result.status = TryGet(shardIndex, key, result);
             break;
         }
         default: break;

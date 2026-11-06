@@ -41,6 +41,8 @@ namespace Core {
         MSG_BAZAAR_CHECK_OUTBOX_RES = 31,
         MSG_BAZAAR_CANCEL_LISTING = 34,
         MSG_BAZAAR_CANCEL_LISTING_RES = 35,
+        MSG_BAZAAR_OUTBOX_LIST = 36,
+        MSG_BAZAAR_OUTBOX_LIST_RES = 37,
 
         // 쓰기는 큐 한 경로로 모아 profile_id별 순서를 보장한다.
         MSG_PROFILE_RENAME = 32,
@@ -286,6 +288,24 @@ namespace Core {
         uint64_t characterID;
     };
 
+    struct MsgBazaarOutboxListBody {
+        uint64_t characterID;
+        uint32_t requestID;
+    };
+    struct MsgBazaarOutboxItem {
+        uint64_t eventID;
+        uint64_t listingID;
+        uint32_t itemID;
+        uint32_t quantity;
+    };
+    struct MsgBazaarOutboxListResBody {
+        uint8_t resStatus;
+        uint16_t processingCount;
+        uint16_t count;
+        uint32_t requestID;
+        uint64_t characterID;
+        MsgBazaarOutboxItem rows[30];
+    };
     struct MsgBazaarCheckOutboxBody {
         uint64_t characterID;
         uint32_t requestID;

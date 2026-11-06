@@ -66,6 +66,8 @@ namespace ClientCore.PacketHelper
         PARRY = 48,
         PARRY_RES = 49,
         GOLD_REWARD = 50,
+        BAZAAR_OUTBOX_LIST = 51,
+        BAZAAR_OUTBOX_LIST_RES = 52,
     }
     
     public enum ZONE_CHANGE : byte
@@ -181,6 +183,13 @@ namespace ClientCore.PacketHelper
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = MAX_INVENTORY_ITEMS)]
         public InventoryItem[] items;
     }
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct BazaarOutboxItem
+    {
+        public ulong eventID, listingID;
+        public uint itemID, quantity;
+    }
+
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct BazaarListing
     {
@@ -843,6 +852,47 @@ namespace ClientCore.PacketHelper
             BitConverter.GetBytes(requestID).CopyTo(result, 8);
             BitConverter.GetBytes(listingID).CopyTo(result, 12);
             return result;
+        }
+
+        internal static byte[] SerializeBazaarOutboxListRequest(uint requestID)
+        {
+            if (requestID == 0) throw new ArgumentException("Invalid receipt list request.");
+            var result = new byte[12];
+            BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
+            BitConverter.GetBytes(12U).CopyTo(result, 2);
+            result[6] = (byte)OP_CODE.BAZAAR_OUTBOX_LIST;
+            BitConverter.GetBytes(requestID).CopyTo(result, 8);
+            return result;
+        }
+
+        internal static (uint requestID, byte status, ushort processingCount, BazaarOutboxItem[] rows) DeserializeBazaarOutboxList(PacketHeader header, byte[] buffer)
+        {
+            if (buffer == null || buffer.Length < 17 || buffer.Length > 737 || header.magic != MAGIC ||
+                header.length != buffer.Length || header.opcode != (byte)OP_CODE.BAZAAR_OUTBOX_LIST_RES || header.flags != 0)
+                throw new ArgumentException("Invalid receipt list envelope.");
+            var actual = ExtractHeader(buffer);
+            if (actual.magic != header.magic || actual.length != header.length || actual.opcode != header.opcode || actual.flags != header.flags)
+                throw new ArgumentException("Mismatched receipt list header.");
+            uint requestID = BitConverter.ToUInt32(buffer, 8);
+            byte status = buffer[12];
+            ushort processing = BitConverter.ToUInt16(buffer, 13), count = BitConverter.ToUInt16(buffer, 15);
+            if (requestID == 0 || status > 2 || count + processing > 30 || buffer.Length != 17 + count * 24 ||
+                (status != 1 && (count != 0 || processing != 0)))
+                throw new ArgumentException("Invalid receipt list result.");
+            var rows = new BazaarOutboxItem[count];
+            var events = new HashSet<ulong>();
+            for (int i = 0, offset = 17; i < count; i++, offset += 24)
+            {
+                var row = new BazaarOutboxItem {
+                    eventID = BitConverter.ToUInt64(buffer, offset), listingID = BitConverter.ToUInt64(buffer, offset + 8),
+                    itemID = BitConverter.ToUInt32(buffer, offset + 16), quantity = BitConverter.ToUInt32(buffer, offset + 20)
+                };
+                if (row.eventID == 0 || row.listingID == 0 || row.itemID == 0 || row.quantity == 0 ||
+                    row.quantity > ushort.MaxValue || !events.Add(row.eventID))
+                    throw new ArgumentException("Invalid receipt item.");
+                rows[i] = row;
+            }
+            return (requestID, status, processing, rows);
         }
 
         internal static byte[] SerializeBazaarCheckOutboxRequest(uint requestID)

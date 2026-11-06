@@ -48,6 +48,8 @@ namespace ClientCore.PacketHelper
         PARRY = 48,
         PARRY_RES = 49,
         GOLD_REWARD = 50,
+        BAZAAR_OUTBOX_LIST = 51,
+        BAZAAR_OUTBOX_LIST_RES = 52,
     }
     
     public enum ZONE_CHANGE : byte
