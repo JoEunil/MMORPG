@@ -30,7 +30,7 @@
     <ClCompile Include="BaseLib\FixedObjectPool.cpp">
       <Filter>BaseLib</Filter>
     </ClCompile>
-    <ClCompile Include="BaseLib\LockFreeQueue.cpp">
+    <ClCompile Include="BaseLib\MPMCQueue.cpp">
       <Filter>BaseLib</Filter>
     </ClCompile>
     <ClCompile Include="BaseLib\RingQueue.cpp">

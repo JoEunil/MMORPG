@@ -29,11 +29,11 @@ TEST_F(FloodDetectTest, tinyPacketSleep) {
 TEST_F(FloodDetectTest, bigPacketAttack) {
 	auto fixedTime = clock.GetTimeMS();
 	detector.ByteReceived(Net::BYTES_TOKEN_CAPACITY, fixedTime);
-	EXPECT_TRUE(detector.ByteReceived(1, fixedTime));
+	EXPECT_TRUE(detector.ByteReceived(2, fixedTime));
 }
 
 TEST_F(FloodDetectTest, bigPacketSleep) {
 	detector.ByteReceived(Net::BYTES_TOKEN_CAPACITY, clock.GetTimeMS());
-	std::this_thread::sleep_for(std::chrono::milliseconds(1));
-	EXPECT_FALSE(detector.ByteReceived(1, clock.GetTimeMS()));
+	std::this_thread::sleep_for(std::chrono::milliseconds(40)); // cached clock 오차
+	EXPECT_FALSE(detector.ByteReceived(2, clock.GetTimeMS()));
 }

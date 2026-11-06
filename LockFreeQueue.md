@@ -2,7 +2,7 @@
 
 ## 1. 개요
 
-이 문서는 코드에서 `LockFreeQueue`라는 타입명으로 사용 중인 Vyukov bounded MPMC queue의 구조와 구현 과정을 설명한다. 프로젝트에서는 실용적인 의미로 lock-free queue라고 부르며, 고정 용량의 다중 생산자·다중 소비자 큐에서 mutex 대신 atomic position과 slot별 sequence를 사용한다.
+이 문서는 코드에서 `MPMCQueue`라는 타입명으로 사용 중인 Vyukov bounded MPMC queue의 구조와 구현 과정을 설명한다. 프로젝트에서는 실용적인 의미로 lock-free queue라고 부르며, 고정 용량의 다중 생산자·다중 소비자 큐에서 mutex 대신 atomic position과 slot별 sequence를 사용한다.
 
 Worker queue에 적용한 목적은 producer의 enqueue 경로에서 mutex 대기를 제거하는 것이다. Producer는 consumer나 다른 producer가 보유한 mutex의 해제를 기다리지 않고 atomic 연산으로 slot을 예약하며, queue가 full이면 즉시 `false`를 반환한다.   
 
@@ -149,7 +149,7 @@ push / pop 가능 여부를 판단한다.
 
 ## 6. 구현 코드
 
-[BaseLib/LockFreeQueue](BaseLib/LockFreeQueue.h)는 value, `shared_ptr`, `unique_ptr`를 하나의 템플릿으로 처리한다. 타입명은 기존 참조와 테스트를 위해 유지하고 있지만, 구현 특성을 나타내는 정확한 명칭은 Vyukov bounded MPMC queue다.
+[BaseLib/MPMCQueue](BaseLib/MPMCQueue.h)는 value, `shared_ptr`, `unique_ptr`를 하나의 템플릿으로 처리한다. 구현 특성을 드러내도록 타입명을 `MPMCQueue`로 변경했다.
 
 기존에는 원소 타입별로 `LockFreeQueue`(value) / `LockFreeQueueSP`(shared_ptr) / `LockFreeQueueUP`(unique_ptr) 3개로 나뉘어 있었다.
 코어 알고리즘(seq 기반 슬롯 상태 + CAS)은 세 버전이 완전히 동일했고, 갈라진 부분은 원소를 넣고 빼는 API뿐이었다.

@@ -2,17 +2,14 @@
 
 #include <NetLibrary/RingBuffer.h>
 
-class RingBufferTest : public ::testing::Test {
-protected:
+TEST(RingBufferTest, InitStatus) {
 	Net::RingBuffer buf{ 4 };
-};
-
-TEST_F(RingBufferTest, InitStatus) {
 	ASSERT_NE(buf.GetStartPtr(), nullptr);
 	EXPECT_EQ(4, buf.GetCapacity()) ;	
 }
 
-TEST_F(RingBufferTest, AcquireBuffer) {
+TEST(RingBufferTest, AcquireBuffer) {
+	Net::RingBuffer buf{ 4 };
 	Net::BufferFragment fragment;
 	uint16_t len;
 	len = buf.TryAcquireBuffer(fragment, 2);
@@ -29,7 +26,8 @@ TEST_F(RingBufferTest, AcquireBuffer) {
 
 }
 
-TEST_F(RingBufferTest, AcquireBufferZeroLen) {
+TEST(RingBufferTest, AcquireBufferZeroLen) {
+	Net::RingBuffer buf{ 4 };
 	Net::BufferFragment fragment;
 	buf.TryAcquireBuffer(fragment, 0);
 	EXPECT_EQ(buf.GetStartPtr() + fragment.front, fragment.startPtr);
@@ -37,7 +35,8 @@ TEST_F(RingBufferTest, AcquireBufferZeroLen) {
 	EXPECT_EQ(buf.TryAcquireBuffer(fragment, 4), 4);
 }
 
-TEST_F(RingBufferTest, AcquireBufferExhausted) {
+TEST(RingBufferTest, AcquireBufferExhausted) {
+	Net::RingBuffer buf{ 4 };
 	Net::BufferFragment fragment;
 
 	buf.TryAcquireBuffer(fragment, 4);
@@ -48,7 +47,8 @@ TEST_F(RingBufferTest, AcquireBufferExhausted) {
 	EXPECT_EQ(0, fragment.length);
 }
 
-TEST_F(RingBufferTest, AcquireBufferRemaining) {
+TEST(RingBufferTest, AcquireBufferRemaining) {
+	Net::RingBuffer buf{ 4 };
 	Net::BufferFragment fragment;
 	
 	buf.TryAcquireBuffer(fragment, 3);
@@ -59,7 +59,8 @@ TEST_F(RingBufferTest, AcquireBufferRemaining) {
 	EXPECT_EQ(1, fragment.length);
 }
 
-TEST_F(RingBufferTest, AcquireAtLastPtr) {
+TEST(RingBufferTest, AcquireAtLastPtr) {
+	Net::RingBuffer buf{ 4 };
 	Net::BufferFragment fragment;
 	buf.TryAcquireBuffer(fragment, 4);
 	EXPECT_EQ(4, fragment.length);
@@ -69,7 +70,8 @@ TEST_F(RingBufferTest, AcquireAtLastPtr) {
 	EXPECT_EQ(4, fragment.length);
 }
 
-TEST_F(RingBufferTest, ReleaseBuffer) {
+TEST(RingBufferTest, ReleaseBuffer) {
+	Net::RingBuffer buf{ 4 };
 	Net::BufferFragment first, next, wrapped, exhausted;
 	ASSERT_EQ(buf.TryAcquireBuffer(first, 2), 2);
 	ASSERT_TRUE(buf.Release(first.front, first.front)); // byte 1 remains in use
@@ -87,7 +89,8 @@ TEST_F(RingBufferTest, ReleaseBuffer) {
 	EXPECT_EQ(buf.TryAcquireBuffer(wrapped, 4), 1); // all four bytes were returned
 }
 
-TEST_F(RingBufferTest, ReleaseRejectsInvalidRange) {
+TEST(RingBufferTest, ReleaseRejectsInvalidRange) {
+	Net::RingBuffer buf{ 4 };
 	Net::BufferFragment fragment;
 
 	buf.TryAcquireBuffer(fragment, 2);
@@ -100,7 +103,8 @@ TEST_F(RingBufferTest, ReleaseRejectsInvalidRange) {
 	EXPECT_FALSE(success);
 }
 
-TEST_F(RingBufferTest, ReleaseLeftOver) {
+TEST(RingBufferTest, ReleaseLeftOver) {
+	Net::RingBuffer buf{ 4 };
 	Net::BufferFragment fragment;
 
 	buf.TryAcquireBuffer(fragment, 3);

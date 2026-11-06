@@ -6,7 +6,7 @@
 #include <utility>
 
 #include "BackPressurePolicy.h"
-#include "LockFreeQueue.h"
+#include "MPMCQueue.h"
 
 namespace Base {
 	template <typename T, size_t Size, size_t DeferSize>
@@ -16,8 +16,8 @@ namespace Base {
 		static_assert(DeferSize >= 2 && (DeferSize & (DeferSize - 1)) == 0,
 			"NonBlockingBackPressureQueue: DeferSize must be a power of 2 and at least 2");
 
-		LockFreeQueue<T, Size> m_queue;
-		LockFreeQueue<T, DeferSize> m_deferQueue;
+		MPMCQueue<T, Size> m_queue;
+		MPMCQueue<T, DeferSize> m_deferQueue;
 		std::function<bool(const T&)> m_durableLog;
 		std::atomic<bool> m_degraded{ false };
 

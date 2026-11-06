@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <vector>
 #include "Config.h"
-class RingBufferTest;
 
 namespace Net {
 
@@ -21,7 +20,6 @@ namespace Net {
         uint16_t HasSpace() const;
         uint16_t AdvancePosition(uint16_t origin, uint16_t change) const;
 
-        friend class ::RingBufferTest;
     public:
         RingBuffer(uint32_t size) : m_capacity(size), m_mask(size - 1) {
             m_buffer.resize(size);

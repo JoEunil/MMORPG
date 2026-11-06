@@ -123,7 +123,7 @@ namespace {
         std::srand(42);
         fixture.Init(states, handler, *z, writer, pool, bigPool, giantPool, broadcast, perf, players, clustered);
         Core::ZoneBenchmarkAccess::Bind(states, std::move(zone));
-        Base::LockFreeQueue<std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter>, Core::ZONE_QUEUE_SIZE> queue;
+        Base::MPMCQueue<std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter>, Core::ZONE_QUEUE_SIZE> queue;
         std::vector<Action> actions(players * (moves + 3));
         for (size_t i = 0; i < actions.size(); ++i) {
             auto& a = actions[i];

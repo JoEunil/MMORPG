@@ -10,7 +10,7 @@
 #include "Exception.h"
 
 namespace Base {
-	// Dmitry Vyukov의 lock free queue
+	// Dmitry Vyukov의 bounded mpmc queue
 	// MPMC(multi produce multi consumer)에서 race condition 해결한 방법
 	// 각 Slot에 번호(seq)를 매기고 상태 표현 → seq가 유일한 상태 값이 되어 race condition이 발생하지 않음.
 	// back-off 정책은 호출자에서 구현.
@@ -25,8 +25,9 @@ namespace Base {
 	//     (스마트 포인터는 move-out 시 자동으로 비고, 값 타입은 이전 값이 남지만 무해)
 
 	template<typename T, size_t QSize>
-	class LockFreeQueue {
-		static_assert(std::is_nothrow_move_assignable_v<T>, "LockFreeQueue<T>: T must be nothrow-move-assignable (lock-free 경로에서 슬롯 이동이 throw하면 안 됨)");
+	class MPMCQueue {
+		static_assert(QSize >= 2 && (QSize & (QSize - 1)) == 0, "MPMCQueue: QSize must be a power of two and at least 2");
+		static_assert(std::is_nothrow_move_assignable_v<T>, "MPMCQueue<T>: T must be nothrow-move-assignable (lock-free 경로에서 슬롯 이동이 throw하면 안 됨)");
 
 		struct alignas(std::hardware_destructive_interference_size) Cell {
 			std::atomic<uint64_t> seq;
@@ -46,9 +47,7 @@ namespace Base {
 
 		// Q 사이즈는 2의 거듭제곱이어야 한다.
 		// 모듈러 연산을 & 연산한번으로 하기 위함
-		LockFreeQueue() : m_mask(QSize-1) {
-			assert((QSize >= 2) &&((QSize & (QSize - 1)) == 0));
-			// 2 거듭제곱 체크
+		MPMCQueue() : m_mask(QSize-1) {
 			m_head.store(0, std::memory_order_relaxed);
 			m_tail.store(0, std::memory_order_relaxed);
 			m_queue = std::make_unique<Cell[]>(QSize);
