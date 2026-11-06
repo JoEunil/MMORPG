@@ -100,6 +100,10 @@ namespace Mmorpg.Client
                 return;
             }
 
+            // Keep the existing two-line status area above the Search / paging buttons.
+            var statusRect = statusText.rectTransform;
+            statusRect.anchoredPosition = new Vector2(statusRect.anchoredPosition.x, 52f);
+            statusRect.sizeDelta = new Vector2(statusRect.sizeDelta.x, 40f);
             marketButton.onClick.AddListener(TogglePanel);
             itemTypeButtons[0].onClick.AddListener(SelectPotion);
             itemTypeButtons[1].onClick.AddListener(SelectWeaponShield);
@@ -620,7 +624,8 @@ namespace Mmorpg.Client
             if (!buyConfirmation)
             {
                 buyConfirmation = true;
-                statusText.text = "Confirm purchase: deduct " + selectedListing.Price.ToString("N0", CultureInfo.InvariantCulture) + " diamonds. Press again to buy.";
+                statusText.text = "Confirm purchase: deduct " + selectedListing.Price.ToString("N0", CultureInfo.InvariantCulture) + " diamonds.";
+                selectedDetailText.text = "Press CONFIRM PURCHASE again.\nReceive later in Item receipts.";
                 UpdateControls();
                 return;
             }
@@ -651,13 +656,14 @@ namespace Mmorpg.Client
             if (status == 1 || status == 5) buyOutcomes[listingID] = status;
             else buyOutcomes.Remove(listingID);
             transactionResultAvailable = true;
-            statusText.text = status == 1 ? "Purchased " + quantity.ToString(CultureInfo.InvariantCulture) + " × " +
-                    ItemPresentation.Name(itemID, worldScreen.Content) + " for " + amount.ToString(CultureInfo.InvariantCulture) +
-                    " diamonds. Select Receive items, then check your bag."
+            statusText.text = status == 1 ? "Purchased " + quantity.ToString(CultureInfo.InvariantCulture) + " · " +
+                    amount.ToString("N0", CultureInfo.InvariantCulture) + " diamonds."
                 : status == 0 ? "This listing is no longer available. No purchase was made."
                 : status == 4 ? "Not enough diamonds. No purchase was made."
                 : status == 3 ? "Purchase failed. No purchase was made; try again later."
                 : "Purchase result unknown. Reconnect to check; no automatic retry.";
+            if (status == 1)
+                selectedDetailText.text = "Receive in Item receipts.\nThen check your bag.";
             UpdateControls();
         }
 

@@ -1,24 +1,28 @@
 ## 공개 집계
 
 기준일: 2026-11-06
-누적 신규: 254
-누적 재활성화: 423
+누적 신규: 256
+누적 재활성화: 432
 상세 범위: 기록 시작 이후 전체 · 2026-10-20~2026-11-06
 
 | 역할 | 공개 이름 | 신규 | 재활성화 |
 | --- | --- | ---: | ---: |
-| game_planner | 기획 Agent | 9 | 6 |
-| server_analyst | 서버 분석 Agent | 35 | 54 |
-| client_implementer | 구현 Agent | 80 | 115 |
+| game_planner | 기획 Agent | 10 | 7 |
+| server_analyst | 서버 분석 Agent | 35 | 55 |
+| client_implementer | 구현 Agent | 80 | 116 |
 | asset_artist | 아트 Agent | 25 | 32 |
 | code_reviewer | 리뷰 Agent | 61 | 123 |
-| quality_reviewer | 종합 검수 Agent | 18 | 72 |
+| quality_reviewer | 종합 검수 Agent | 18 | 76 |
 | unity_tester | 테스트 Agent | 5 | 6 |
 | progress_documenter | 기록 Agent | 12 | 12 |
-| decision_curator | 의사결정 지원 Agent | 8 | 3 |
+| decision_curator | 의사결정 지원 Agent | 9 | 5 |
 | unassigned | 역할 미확인 | 1 | 0 |
 
-공개 집계는 기록 시작 이후 전체677회(신규254·재활성화423)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+공개 집계는 기록 시작 이후 전체688회(신규256·재활성화432)와 일치한다. 역할 미확인 신규1회는 추정하지 않고 보존했다. 역할은 worker/explorer 같은 도구 유형이 아니라 배정된 책임 기준이다. Coordinator의 직접 구현·입력 검증·문서 작업과 메시지·조회는 활성화 횟수에 포함하지 않는다. 테스트 실행 횟수나 기능 수와 다른 지표이며 실제 토큰·비용은 N/A다. 과거 누적 스냅샷을 중복 합산하지 않는다.
+
+## 다음 장비 정책 준비·거래 안내 보완 — 2026-11-06
+
+구현 item_catalog_share 후속1, 의사결정 지원 next_item_decisions 신규1·후속2, 서버 분석 equipment_contract 후속1, 기획 defensive_gear_plan 신규1·후속1, 종합 검수 equipment_design_review 후속4를 실제 실행했다. 11회(신규2·후속9)를 더해688회다. 의사결정 초안의 잘못된 ROOT 경로와 긴 질문을 같은 담당자가 canonical 근거로 다시 정리했고, 정책안 필수 피드백도 원기획 담당자가 반영했다. 총괄의 코드 통합·직접 검사1개·에디터 예시·Git·Slack·문서는 제외, 토큰/비용N/A.
 
 ## 기본 무기 장착 구현·최종 검수 — 2026-11-06
 
