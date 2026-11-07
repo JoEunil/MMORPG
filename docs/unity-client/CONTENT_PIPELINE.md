@@ -7,7 +7,7 @@
 | 스킬·몬스터 능력/phase | `CoreLib/Skills.inc`, `MonsterSkills.inc`, `Monsters.inc` → 실제 C++ Data 테이블 → 독립 exporter → Unity importer | `UnityClient/Exports/ClientData/ServerContent.json`, formatVersion5. `skills`와 `monsterSkills`를 분리하고 기존 `ServerContent.asset` 갱신. |
 | 사냥터 능력·보상 | `CoreLib/HuntingZoneData.h` → 같은 exporter/importer | `huntingZones` 6행. 권장 레벨·HP·공격·EXP·골드를 공유한다. 실제 몬스터 체력바는 기존 wire `maxHp`가 정본이다. |
 | 성장 규칙 | `CoreLib/GrowthData.h`, `Growth.inc` → 기존 exporter → 기존 Unity importer | 동일 JSON의 `growth`: 상한100, 레벨별 누적 EXP·최대 HP 증가량100행. `CharacterState::AddExperience`가 승급에 사용하며 현재 검증 범위는 HANDOFF를 따른다. |
-| 아이템 정보·소비 효과 | `CoreLib/ItemData.h` → 기존 exporter → 기존 Unity importer | PR73 후보 `items`에는 기본 포션 ID1/2, 장비 ID3~5, 등급 포션 ID6~9의 9개 항목이 있다. HP/MP 회복량·쿨타임·무기 공격 보너스·방어율을 전달하고 기존 Unity 에셋 아이콘을 사용한다. 상점·처치 지급·드롭·DB 시딩은 추가하지 않는다. 소스/fixture 검증 완료; 새 Windows Player 빌드·기본 런처의 최신 쌍 전환·서버 단독 준비/정상 종료 확인을 완료했다. Player 화면·실전 등급 소비는 미확인이다. |
+| 아이템 정보·소비 효과 | `CoreLib/ItemData.h` → 기존 exporter → 기존 Unity importer | PR73 후보 `items`에는 기본 포션 ID1/2, 장비 ID3~5, 등급 포션 ID6~9의 9개 항목이 있다. HP/MP 회복량·쿨타임·무기 공격 보너스·방어율을 전달하고 기존 Unity 에셋 아이콘을 사용한다. 상점·처치 지급·드롭·DB 시딩은 추가하지 않는다. 소스/fixture 검증 완료; 새 Windows Player 빌드·기본 런처의 최신 쌍 전환·서버 단독 준비/정상 종료 확인을 완료했다. 최신 Player의 가방·거래소 효과 표시는 실제 확인했고, 실전 등급 소비는 미확인이다. |
 | 패링 시간 | `CoreLib/SkillData.h` → 기존 exporter → 기존 Unity importer | 동일 JSON의 `parry`: 방어창5틱·쿨60틱·1회. 실제 수락·남은 틱은 서버 응답이 정본이다. |
 | 맵·구역·충돌 | Unity 씬/MapAuthoring → WorldMapExport/WorldLayoutExport → 서버 | `CoreLib/Generated/WorldMap.inc`, FormatVersion/ContentVersion 기존 계약 유지. |
 | 몬스터 스폰 배치 | Unity MonsterSpawns → MonsterSpawnExport → 서버 | 기존 `MonsterSpawns.inc`의 구역별 일반/강화 6×25 행렬과 보스 수. 총수 저작을 결정적으로 분배하며 몬스터 AI와 구분한다. |
