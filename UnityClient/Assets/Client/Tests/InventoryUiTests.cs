@@ -748,6 +748,62 @@ namespace Mmorpg.Client.Tests
                 Assert.That(use.interactable, Is.False, "An expired notice cannot unlock an unresolved use.");
                 Assert.That(fixture.Network.ItemUses, Is.Zero, "Selecting details never sends a use request.");
             }
+            using (var fixture = new Fixture())
+            {
+                var content = fixture.World.Content;
+                Array.Resize(ref content.items, 9);
+                content.items[5] = new ServerContent.Item { itemID = 6, itemType = 1, name = "중급 HP 포션", hpRecovery = 3000, cooldownTicks = 120 };
+                content.items[6] = new ServerContent.Item { itemID = 7, itemType = 1, name = "중급 MP 포션", mpRecovery = 1000, cooldownTicks = 120 };
+                content.items[7] = new ServerContent.Item { itemID = 8, itemType = 1, name = "상급 HP 포션", hpRecovery = 4500, cooldownTicks = 120 };
+                content.items[8] = new ServerContent.Item { itemID = 9, itemType = 1, name = "상급 MP 포션", mpRecovery = 1500, cooldownTicks = 120 };
+                SetPrivate(fixture.Login.Model, "_ownershipEpoch", 1UL);
+                SetPrivate(fixture.Login.Model, "_selfHP", 500);
+                var useObject = new GameObject("tier bag use", typeof(RectTransform), typeof(UnityEngine.UI.Button));
+                useObject.transform.SetParent(fixture.Screen.transform, false);
+                var use = useObject.GetComponent<UnityEngine.UI.Button>();
+                SetPrivate(fixture.Screen, "useButton", use);
+                var statusObject = new GameObject("tier use status", typeof(RectTransform), typeof(TextMeshProUGUI));
+                statusObject.transform.SetParent(fixture.Screen.transform, false);
+                var status = statusObject.GetComponent<TMP_Text>();
+                SetPrivate(fixture.Screen, "useStatus", status);
+                fixture.OpenBag();
+                var items = new[] {
+                    new InventoryItem { itemID = 1, quantity = 3, slot = 0 },
+                    new InventoryItem { itemID = 2, quantity = 5, slot = 1 },
+                    new InventoryItem { itemID = 6, quantity = 3, slot = 2 },
+                    new InventoryItem { itemID = 7, quantity = 3, slot = 3 },
+                    new InventoryItem { itemID = 8, quantity = 3, slot = 4 },
+                    new InventoryItem { itemID = 9, quantity = 3, slot = 5 },
+                    new InventoryItem { itemID = 99, quantity = 1, slot = 6 }
+                };
+                fixture.Receive(true, items);
+                var effects = new[] { "3000 HP", "1000 MP", "4500 HP", "1500 MP" };
+                for (int i = 0; i < effects.Length; i++)
+                {
+                    fixture.Cards[i + 2].onClick.Invoke();
+                    Assert.That(status.text, Does.Contain(effects[i]).And.Contain("Shares potion cooldown"));
+                    Assert.That(fixture.DetailName.text, Is.EqualTo(content.items[i + 5].name));
+                    Assert.That(useObject.activeSelf && use.interactable, Is.True);
+                    Assert.That(ItemPresentation.Icon((uint)(i + 6)), Is.SameAs(ItemPresentation.Icon(i % 2 == 0 ? 1U : 2U)));
+                }
+                fixture.Cards[6].onClick.Invoke();
+                Assert.That(useObject.activeSelf, Is.False);
+                fixture.InvokeScreen("UseSelectedItem");
+                Assert.That(fixture.Network.ItemUses, Is.Zero, "Unknown items do not become usable with potion tiers.");
+                fixture.Cards[5].onClick.Invoke();
+                fixture.InvokeScreen("UseSelectedItem");
+                Assert.That(fixture.Network.LastUsedItemID, Is.EqualTo(9U), "Bag use sends the selected tier, not the base MP ID.");
+                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 1, 2, 1, 2, 120);
+                Assert.That((bool)GetPrivate(fixture.Screen, "usePending"), Is.True, "A base-potion reply cannot complete a tier request.");
+                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 1, 9, 1, 2, 120);
+                Assert.That((bool)GetPrivate(fixture.Screen, "usePending"), Is.False);
+                Assert.That((float)GetPrivate(fixture.Screen, "useCooldownDeadline"), Is.GreaterThan(Time.unscaledTime + 5f));
+                items[5].quantity = 2;
+                fixture.Receive(true, items);
+                fixture.Cards[0].onClick.Invoke();
+                fixture.InvokeScreen("UseSelectedItem");
+                Assert.That(fixture.Network.ItemUses, Is.EqualTo(1), "A tier potion locks base HP use through the same cooldown.");
+            }
         }
 
         private sealed class Fixture : IDisposable

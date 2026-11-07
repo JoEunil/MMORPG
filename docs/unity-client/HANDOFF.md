@@ -1,21 +1,23 @@
-# 현재 인계 — 가방·장비·포션 표시 로컬 완료
+# 현재 인계 — 장비·포션 사용 개선 게시 준비
 
-## 정본과 범위
-- ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본: ROOT/UnityClient/Builds/ClientGrowthHUD/source. 실제 Unity: ROOT/UnityClient.
-- PR71 병합 fe055cf·PR72 서버 리팩토링 병합614c61a 확인. codex/client-item-usability는614c61a 기준. 병합된 이전 로컬 브랜치 정리 완료.
-- 사용자 원본Game·서버·ClientCore·몬스터 AI·DB·경제는 수정하지 않았다. 기존 HP1500/MP500·공유6초·3슬롯 정책 유지.
+## 정본·후보
+- ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본: ROOT/UnityClient/Builds/ClientGrowthHUD/source. 실제 Editor: ROOT/UnityClient.
+- codex/client-item-usability, origin/master614c61a(PR71·PR72 병합) 기준. 앞선가방UI ecb5131·선택기록fccc447과이번등급포션을한PR로묶는다. 아직새push/PR없음.
+- 몬스터AI·사용자Game·기존패킷/ClientCore/DB스키마·저장형식·공급/드롭/상점/자동지급은변경하지않았다.
 
-## 완료·근거
-- 장비 카드 확정 장착 배지, 선택 품목의 데이터 ATK/DEF 효과, 슬롯명과 상태 연결, 두 퀵슬롯 공용 남은 초 표시 구현 완료.
-- 독립 코드리뷰 필수0. 이동/체력 delta마다 배지를 검색하던 추가 비용은 원 담당자가 보완했다.
-- 기존 변경 관련 PlayMode 검사3개 각1회 통과·컴파일 성공. 실제 World 장면의1280×720 UI fixture 종합검수 통과·필수0. 실서버·실입력·조작감·Player 빌드 성공으로 확대하지 않는다.
-- ROOT Editor에 제품3파일은 기준 해시 대조 후 반영. 검증용 백그라운드 Editor40836 정상 종료, Playoff/scene clean 확인, PreviewScene 닫힘·에셋/장면 저장 없음. 서버/게임은 시작하지 않았다.
-- 상세: history/2026-11-07-item-usability/RESULTS.md. 근거: ROOT/UnityClient/Builds/ClientGrowthHUD/verification/item-usability.
+## 확정·완료
+- 사용자A의등급보류는후속명시지시로대체했다. call_aff6463120cd4d1a8d59f70e24fa87ac 승인:기존HP1500/MP500,중급HP3000/MP1000,상급HP4500/MP1500. 전부공용6초. 신규6..9는가방사용만,1/2키기존품목유지. 골드상점제외.
+- 장착확정배지·선택장비효과·슬롯상태연결·공용남은초표시,포션판별/응답/설명콘텐츠기반확장완료. 아이콘기존HP/MP재사용,서버Data→JSON5→기존GUID에9품목반영.
+- 신규ID확인:지정DB인벤5002행·거래/이력/배송함및정지런타임WAL11건참조1,2,3,4,33. 신규6..9미참조. 운영/과거백업전역보장아님. 기존33무변경.
 
-## 현재 대기·다음 행동
-- 작은 PR로 게시하지 않고 다음 관련 기능과 로컬 묶음 유지. 새 push/PR·게시 승인 대기 없음.
-- 선택 확정: call_23437ef8cdf343c8a45dafad1011ff87의 사용자 답변 A 적용. 기존 5종·HP1500/MP500·공용6초·1/2키 유지, 등급 추가와 신규 골드 상점은 보류. 신규 ID·가격·효과·공급 구현 없음.
-- 선택 대기 해소. 현재 가방·장비·포션 표시 묶음은 로컬 완료 상태로 유지하며 새 기능을 임의 추가하지 않는다. 처치 포션 지급·드롭 테이블·DB시딩은 제외한다. PR 게시 승인은 아직 요청하지 않았다.
-- Slack 새 묶음1794022476.887309(Unity Coordinator 앱), 로컬 결과 요약 발신·스레드 등록 완료. 정책 선택은 채팅 질문이며 Slack 게시 승인 요청이 아니다.
-- 활성화705(신규261/후속444), 토큰·비용N/A. 총괄 직접 작업·테스트·도구 조회는 제외한다.
-- 기존 장비 실전검증·IEQ2/WAL3 저장과 구서버 복구 제한은 history/2026-11-06-defensive-equipment/RESULTS.md·HANDOFF-AT-PUBLICATION.md에 보존한다.
+## 검증·한계
+- 앞선UI기존3검사통과. 신규영향서버사용1·UI가방사용1·콘텐츠공유1각통과. 변경없는장착/퀵표시검사는반복하지않았다.
+- MainServer/UnitTests Release빌드성공·Unity컴파일오류없음·9품목import/GUID보존확인. 최초프로젝트직접빌드경로문제는솔루션대상빌드로해결했다.
+- 코드리뷰필수0·Astra게시후보검수통과필수0·사이트생성/링크검사통과. 샘플UI9품목미리보기는실제보유/소비가아니다.
+- 새Player빌드·실서버교체·실전등급소비/획득·입력검증은미실행. 런처DefensiveGear기존산출물유지. 검증용Editor12784정상종료·Playoff/scene clean·서버미기동.
+- 상세정책/결과:history/2026-11-07-item-usability/POTION_POLICY.md·TIER_RESULTS.md. 근거:ROOT/UnityClient/Builds/ClientGrowthHUD/verification/item-usability.
+
+## 다음 행동
+- 同묶음Slack1794022476.887309으로구체후보게시승인요청1회후push/PR. 현재게시승인요청전. 정책승인을게시승인으로사용하지않는다.
+- 활성화710(신규263/후속447),토큰·비용N/A. 실제총괄직접작업/검사/도구호출제외.
+- 기존장비의실전근거·IEQ2/WAL3구서버복구제한은history/2026-11-06-defensive-equipment/RESULTS.md에보존한다.

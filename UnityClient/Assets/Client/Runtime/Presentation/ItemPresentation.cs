@@ -7,7 +7,7 @@ namespace Mmorpg.Client
     // Unknown server IDs remain explicit; they are never assigned invented item data.
     public static class ItemPresentation
     {
-        private static readonly Sprite[] itemIcons = new Sprite[5];
+        private static readonly Sprite[] itemIcons = new Sprite[9];
         private static readonly ItemDefinition[] items =
         {
             new ItemDefinition("HP", "Items/item-001-hp-potion-v1", new Color(.64f, .24f, .21f)),
@@ -15,6 +15,10 @@ namespace Mmorpg.Client
             new ItemDefinition("SW", "Items/item-003-iron-sword-v1", new Color(.42f, .48f, .51f)),
             new ItemDefinition("SH", "Items/item-004-iron-shield-v1", new Color(.43f, .40f, .30f)),
             new ItemDefinition("AR", "Items/item-005-leather-armor-v1", new Color(.52f, .35f, .23f)),
+            new ItemDefinition("HP", "Items/item-001-hp-potion-v1", new Color(.64f, .24f, .21f)),
+            new ItemDefinition("MP", "Items/item-002-mp-potion-v1", new Color(.23f, .43f, .65f)),
+            new ItemDefinition("HP", "Items/item-001-hp-potion-v1", new Color(.64f, .24f, .21f)),
+            new ItemDefinition("MP", "Items/item-002-mp-potion-v1", new Color(.23f, .43f, .65f)),
         };
         private static readonly Color UnknownAccent = new Color(.40f, .43f, .39f);
 
@@ -25,6 +29,12 @@ namespace Mmorpg.Client
         }
 
         public static string Badge(uint itemID) => TryGet(itemID, out ItemDefinition item) ? item.Badge : "?";
+
+        public static bool IsPotion(uint itemID, ServerContent content)
+        {
+            var item = content == null ? null : content.GetItem(itemID);
+            return item != null && item.itemType == 1 && (item.hpRecovery > 0 || item.mpRecovery > 0);
+        }
 
         public static string EquipmentDescription(uint itemID, ServerContent content)
         {
@@ -41,7 +51,7 @@ namespace Mmorpg.Client
         {
             var item = content == null ? null : content.GetItem(itemID);
             if (item == null) return "Unknown item. Use is not supported.";
-            if (item.hpRecovery > 0 || item.mpRecovery > 0)
+            if (IsPotion(itemID, content))
             {
                 uint recovery = item.hpRecovery > 0 ? item.hpRecovery : item.mpRecovery;
                 string resource = item.hpRecovery > 0 ? "HP" : "MP";

@@ -408,7 +408,7 @@ namespace Mmorpg.Client
 
         private bool CanUseSelectedItem()
         {
-            if (!IsOpen || !ItemUseAvailable || !hasSelectedItem || (selectedItemID != 1 && selectedItemID != 2))
+            if (!IsOpen || !ItemUseAvailable || !hasSelectedItem || !ItemPresentation.IsPotion(selectedItemID, worldScreen.Content))
                 return false;
             foreach (InventoryItemView item in loginScreen.Data.GetInventory())
                 if (item.Slot == selectedSlot && item.ItemID == selectedItemID && item.Quantity > 0) return true;
@@ -452,10 +452,11 @@ namespace Mmorpg.Client
 
         private void UsePotion(uint itemID)
         {
+            if (!ItemPresentation.IsPotion(itemID, worldScreen.Content)) return;
             usePending = true;
             useTimedOut = false;
             useDeadline = Time.unscaledTime + RequestTimeoutSeconds;
-            SetUseStatus(itemID == 1 ? "Using HP potion…" : "Using MP potion…");
+            SetUseStatus(worldScreen.Content.GetItem(itemID).hpRecovery > 0 ? "Using HP potion…" : "Using MP potion…");
             UpdateControls();
             try
             {
@@ -478,7 +479,8 @@ namespace Mmorpg.Client
             ushort remainingQuantity, uint cooldownRemainingTicks)
         {
             // ClientCore matches request ID and ownership before dispatching this event.
-            if (!usePending || model == null || loginScreen.Model != model || (itemID != 1 && itemID != 2)) return;
+            if (!usePending || model == null || loginScreen.Model != model || !ItemPresentation.IsPotion(itemID, worldScreen.Content)) return;
+            string resource = worldScreen.Content.GetItem(itemID).hpRecovery > 0 ? "HP" : "MP";
             usePending = false;
             useTimedOut = false;
             useCooldownDeadline = Time.unscaledTime + cooldownRemainingTicks * .05f;
@@ -486,11 +488,11 @@ namespace Mmorpg.Client
             switch (status)
             {
                 case 0: result = "Invalid item use request."; break;
-                case 1: result = itemID == 1 ? "HP potion used." : "MP potion used."; break;
+                case 1: result = resource + " potion used."; break;
                 case 2: result = "Cannot use a potion while dead."; break;
-                case 3: result = itemID == 1 ? "HP is already full." : "MP is already full."; break;
+                case 3: result = resource + " is already full."; break;
                 case 4: result = "Potion is on cooldown."; break;
-                case 5: result = itemID == 1 ? "No HP potions remain." : "No MP potions remain."; break;
+                case 5: result = "No " + resource + " potions remain."; break;
                 case 6: result = "Another item operation is in progress."; break;
                 case 7: result = "World changed. Open the bag again."; break;
                 case 8: result = "Item storage failed. Try again later."; break;
@@ -800,7 +802,7 @@ namespace Mmorpg.Client
             selectedItemID = item.ItemID;
             ApplySelection(item, card);
             if (useStatus != null && !usePending && !useTimedOut)
-                useStatus.text = (item.ItemID == 1 || item.ItemID == 2) && Time.unscaledTime < useCooldownDeadline
+                useStatus.text = ItemPresentation.IsPotion(item.ItemID, worldScreen.Content) && Time.unscaledTime < useCooldownDeadline
                     ? "Potion is on cooldown."
                     : ItemPresentation.UseDescription(item.ItemID, worldScreen.Content);
             UpdateControls();
@@ -878,15 +880,16 @@ namespace Mmorpg.Client
         {
             UpdatePotionCooldown();
             bool available = WorldAvailable && model != null && loginScreen != null && loginScreen.Model == model;
+            bool selectedPotion = hasSelectedItem && ItemPresentation.IsPotion(selectedItemID, worldScreen.Content);
             if (bagButton != null) bagButton.interactable = available;
             if (refreshButton != null) refreshButton.interactable = available && !requestPending && !requestTimedOut;
             if (closeButton != null) closeButton.interactable = true;
-            if (useStatus != null && hasSelectedItem && (selectedItemID == 1 || selectedItemID == 2) && useTimedOut)
+            if (useStatus != null && selectedPotion && useTimedOut)
                 useStatus.text = "Use result unknown. Checking the bag; reconnect before trying again.";
             else if (useStatus != null && !usePending &&
-                (potionNoticeDeadline == 0 || (hasSelectedItem && selectedItemID != 1 && selectedItemID != 2)))
+                (potionNoticeDeadline == 0 || (hasSelectedItem && !selectedPotion)))
                 useStatus.text = hasSelectedItem
-                    ? ((selectedItemID == 1 || selectedItemID == 2) && Time.unscaledTime < useCooldownDeadline
+                    ? (selectedPotion && Time.unscaledTime < useCooldownDeadline
                         ? "Potion is on cooldown." : ItemPresentation.UseDescription(selectedItemID, worldScreen.Content))
                     : string.Empty;
             if (equipButton != null)
@@ -906,8 +909,9 @@ namespace Mmorpg.Client
             if (useButton != null)
             {
                 var label = useButton.GetComponentInChildren<TMP_Text>(true);
-                if (label != null) label.text = selectedItemID == 2 ? "USE MP POTION" : "USE HP POTION";
-                useButton.gameObject.SetActive(hasSelectedItem && (selectedItemID == 1 || selectedItemID == 2));
+                if (label != null) label.text = selectedPotion && worldScreen.Content.GetItem(selectedItemID).mpRecovery > 0
+                    ? "USE MP POTION" : "USE HP POTION";
+                useButton.gameObject.SetActive(selectedPotion);
                 useButton.interactable = CanUseSelectedItem();
             }
             if (potionQuickSlot != null || mpPotionQuickSlot != null)

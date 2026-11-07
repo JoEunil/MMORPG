@@ -2377,6 +2377,56 @@ namespace Core {
         request.requestID = 11;
         EXPECT_EQ(state->UseItem(42, request).status, 3);
         EXPECT_EQ(inventory.consumed, 4);
+        const struct {
+            uint32_t itemID;
+            int hpRecovery;
+            int mpRecovery;
+        } tiers[] = {{6, 3000, 0}, {7, 0, 1000}, {8, 4500, 0}, {9, 0, 1500}};
+        for (const auto& tier : tiers) {
+            SCOPED_TRACE(tier.itemID);
+            for (int i = 0; i < 120; ++i) state->GetZone(1)->SkillCoolDown();
+            UpdateCharacter(1, 42, [](CharacterState& c) { c.hp = c.mp = 1000; });
+            request.itemID = tier.itemID;
+            ++request.requestID;
+            const auto consumedBefore = inventory.consumed;
+            const auto used = state->UseItem(42, request);
+            EXPECT_EQ(used.status, 1);
+            EXPECT_EQ(used.cooldownRemainingTicks, 120);
+            EXPECT_EQ(CharacterIn(1).hp, 1000 + tier.hpRecovery);
+            EXPECT_EQ(CharacterIn(1).mp, 1000 + tier.mpRecovery);
+            EXPECT_EQ(state->UseItem(42, request).status, 1);
+            EXPECT_EQ(inventory.consumed, consumedBefore + 1);
+            EXPECT_EQ(CharacterIn(1).hp, 1000 + tier.hpRecovery);
+            EXPECT_EQ(CharacterIn(1).mp, 1000 + tier.mpRecovery);
+
+            // Another tier and resource still share the same potion cooldown.
+            request.itemID = tier.itemID == 9 ? 6 : tier.itemID + 1;
+            ++request.requestID;
+            const auto blocked = state->UseItem(42, request);
+            EXPECT_EQ(blocked.status, 4);
+            EXPECT_EQ(blocked.cooldownRemainingTicks, 120);
+            EXPECT_EQ(inventory.consumed, consumedBefore + 1);
+            EXPECT_EQ(CharacterIn(1).hp, 1000 + tier.hpRecovery);
+            EXPECT_EQ(CharacterIn(1).mp, 1000 + tier.mpRecovery);
+
+            request.itemID = tier.itemID;
+            UpdateCharacter(1, 42, [](CharacterState& c) { c.hp = c.maxHp; c.mp = c.maxMp; });
+            ++request.requestID;
+            EXPECT_EQ(state->UseItem(42, request).status, 3);
+            EXPECT_EQ(inventory.consumed, consumedBefore + 1);
+            UpdateCharacter(1, 42, [](CharacterState& c) { c.hp = 0; c.mp = 1000; });
+            ++request.requestID;
+            EXPECT_EQ(state->UseItem(42, request).status, 2);
+            EXPECT_EQ(inventory.consumed, consumedBefore + 1);
+
+            for (int i = 0; i < 120; ++i) state->GetZone(1)->SkillCoolDown();
+            UpdateCharacter(1, 42, [](CharacterState& c) { c.hp = c.mp = 9900; });
+            ++request.requestID;
+            EXPECT_EQ(state->UseItem(42, request).status, 1);
+            EXPECT_EQ(CharacterIn(1).hp, tier.hpRecovery != 0 ? 10000 : 9900);
+            EXPECT_EQ(CharacterIn(1).mp, tier.mpRecovery != 0 ? 10000 : 9900);
+            EXPECT_EQ(inventory.consumed, consumedBefore + 2);
+        }
         SetInventory(nullptr);
     }
 
