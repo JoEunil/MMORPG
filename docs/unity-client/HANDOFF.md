@@ -18,6 +18,8 @@
 - 상세정책/결과:history/2026-11-07-item-usability/POTION_POLICY.md·TIER_RESULTS.md. 근거:ROOT/UnityClient/Builds/ClientGrowthHUD/verification/item-usability.
 
 ## 다음 행동
-- 同묶음Slack1794022476.887309으로구체후보게시승인요청1회후push/PR. 현재게시승인요청전. 정책승인을게시승인으로사용하지않는다.
+- 同묶음Slack1794022476.887309으로구체후보게시승인요청1회후push/PR. POTIONTIER01/r1 게시승인대기: 요청1794026275.520149, 명령 승인 POTIONTIER01. 대상db4e51b까지현재묶음push·PR1개,병합제외. 회신미수신/미소비. 정책승인을게시승인으로사용하지않는다.
 - 활성화710(신규263/후속447),토큰·비용N/A. 실제총괄직접작업/검사/도구호출제외.
 - 기존장비의실전근거·IEQ2/WAL3구서버복구제한은history/2026-11-06-defensive-equipment/RESULTS.md에보존한다.
+
+- 게시요청전수신기복구완료:실제node29380·listening·최근health·고정대상/스레드대조. Slack앱발신요청확인. 코드후보db4e51b,후속변경은이승인대기기록뿐이다.
