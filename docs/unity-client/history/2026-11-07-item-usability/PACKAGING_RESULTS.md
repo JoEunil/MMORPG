@@ -1,5 +1,15 @@
 # 최신 실행 후보 패키지 — 2026-11-07
 
+## 후속 적용 — RUNPAIR01 승인 후
+- 현 채팅의 `RUNPAIR01 승인`으로 요청 r1을 한 번 적용했다. 기존 자동심사 거절을 우회하지 않고 정식 권한 심사를 다시 거쳐 기본 런처의 ClientExe·ServerExe 두 경로만 TierPotions 쌍으로 원자 교체했다. 나머지 포트·로그인·창 모드 인자는 유지했다.
+- 배타 잠금 안에서 준비한 180파일 해시와 원본/후보 WAL 집합·해시가 일치함을 확인했다. 원본 settings 백업 보존, 동일 bin-windowed 런처의 `check` exit0. 설정 SHA는 35A2B6B0EB0090757EAD56B8784F16F09D657FDE9B959A30F45C341227BA7D7E → 98E507691138FA3D179D5651616ACB5124DFD4F3B96F1B847555BEBB40049885. 디버그 폴더 이동은 수행하지 않았다.
+- 후속 서버 단독 확인은 RUNPAIR 승인 자체가 아니라 계속 진행 지시와 지정 로컬 테스트 서버 일상 권한에 따른다. 최초 도우미의 로그 공유 읽기 오류 후 고유 stop-file 신호를 보내 프로세스·포트가 정리됐음을 확인했다. 이 첫 실행의 준비/종료 코드는 관측하지 못했으며 성공으로 세지 않는다. 도우미의 공유 읽기·오류 시 정상 종료 대기를 고친 뒤 실패 항목만 재확인했다.
+- 재확인에서 최신 MainServer의 준비 로그, game10099 Listen, DB3306 TCP Established20개·Redis6379 Established1개, mysql/hiredis/OpenSSL 네 DLL의 TierPotions app-local 로딩을 확인했다. 고유 stop-file로 exit0 정상 종료, 남은 game listener0. 기존 DB/Redis 서비스 설정·기동 상태는 변경하지 않았다. TLS/로그인/거래/등급 소비 성공으로 확대하지 않는다.
+- 정상 기동은 기존 WAL을 재생·flush할 수 있다. 최초/재시도 전후 backpressure.1(0bytes)·redo.8(4396bytes)의 해시는 그대로였으며 원본 복구 파일을 덮어쓰지 않았다. DB 무변경을 증명한 것은 아니다. 구버전 복귀 시 최신 DB/WAL/정상 flush를 다시 대조해야 한다.
+- 근거는 비공개 ItemUsabilityPackage의 launcher-transition-result.json, settings-before-transition.json, server-runtime-check.json, server-smoke-20261107-182225 및 server-smoke-20261107-182302에 보존했다. Player·로그인 서버는 기동하지 않았고 실제 게임 입력은 허용 질문 대기다. 상품·AI·DB 스키마·공급 정책 변경 없음.
+
+아래는 최초 패키지 준비와 당시의 미전환 기록이다. 현재 적용 상태는 위 후속 적용 절을 따른다.
+
 ## 범위와 출처
 - PR73 d98141f의 추적 Assets/Packages/ProjectSettings 1859파일을 ROOT/UnityClient/Builds/ItemUsabilityPackage/Project로복사했다. ROOT편집본은덮어쓰지않았다. 최초입력해시manifest보존,Library/Builds/캐시복제없음.
 - 원편집본Assets1832대조시추가파일0·서식외6입력차이를발견했다. 재질legacyalias3·URP생성설정2·동적TMPfallback1은패키지자동처리와대응하지만출처를추정하지않고별도정본복제로빌드하는대안을Astra가선택했다.
