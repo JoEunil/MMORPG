@@ -48,7 +48,7 @@ namespace Mmorpg.Client.Tests
                 Assert.That(fixture.Buy.gameObject.activeSelf || fixture.Claim.gameObject.activeSelf, Is.False);
                 row.GetComponent<Button>().onClick.Invoke();
                 Assert.That(fixture.SelectedName.text, Is.EqualTo("HP Potion"));
-                Assert.That(fixture.SelectedQuantity.text, Is.EqualTo("× 4"));
+                Assert.That(fixture.SelectedQuantity.text, Is.EqualTo("× 4 · HP +1,500"));
                 Assert.That(fixture.Network.CheckOutboxRequests, Is.Zero);
 
                 fixture.Search.onClick.Invoke();
@@ -132,6 +132,27 @@ namespace Mmorpg.Client.Tests
                     Assert.That(mark.raycastTarget, Is.False);
                     row.GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
                     Assert.That(fixture.Detail.text, Is.EqualTo("20 diamonds · Trading"));
+                    Assert.That(fixture.SelectedQuantity.text, Is.EqualTo("× 1 · HP +1,500"));
+                    var content = fixture.World.Content;
+                    var items = new List<ServerContent.Item>(content.items) {
+                        new ServerContent.Item { itemID = 9, itemType = 1, name = "High MP Potion", mpRecovery = 1500, cooldownTicks = 120 }
+                    };
+                    content.items = items.ToArray();
+                    content.GetItem(3).weaponAttackBonus = 2;
+                    content.GetItem(4).defensePercent = 2;
+                    content.GetItem(5).defensePercent = 3;
+                    uint[] ids = { 9, 3, 4, 5, 99 };
+                    string[] expected = { "× 1 · MP +1,500", "× 1 · ATK +2", "× 1 · DEF 2%", "× 1 · DEF 3%", "× 1" };
+                    for (int i = 0; i < ids.Length; i++)
+                    {
+                        fixture.Search.onClick.Invoke();
+                        Assert.That(fixture.SelectedQuantity.text, Is.Empty, "A fresh query clears the previous effect.");
+                        ulong listingID = (ulong)(100 + i);
+                        fixture.Receive(true, new BazaarListing { listingID = listingID, itemID = ids[i], quantity = 1, price = 20 });
+                        fixture.Row(listingID).GetComponent<Button>().onClick.Invoke();
+                        Assert.That(fixture.SelectedQuantity.text, Is.EqualTo(expected[i]));
+                        Assert.That(fixture.Detail.text, Is.EqualTo("20 diamonds · Trading"), "Item effects must not replace transaction details.");
+                    }
                 }
             }
             finally { UnityEngine.Object.DestroyImmediate(icon); }

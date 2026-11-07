@@ -1177,7 +1177,20 @@ namespace Mmorpg.Client
         private void ShowSelectedItem(uint itemID, ushort quantity)
         {
             if (selectedItemNameText != null) selectedItemNameText.text = ItemPresentation.Name(itemID, worldScreen.Content);
-            if (selectedItemQuantityText != null) selectedItemQuantityText.text = "× " + quantity.ToString(CultureInfo.InvariantCulture);
+            if (selectedItemQuantityText != null)
+            {
+                string summary = "× " + quantity.ToString(CultureInfo.InvariantCulture);
+                var item = worldScreen.Content == null ? null : worldScreen.Content.GetItem(itemID);
+                if (ItemPresentation.IsPotion(itemID, worldScreen.Content))
+                    summary += item.hpRecovery > 0
+                        ? " · HP +" + item.hpRecovery.ToString("N0", CultureInfo.InvariantCulture)
+                        : " · MP +" + item.mpRecovery.ToString("N0", CultureInfo.InvariantCulture);
+                else if (item != null && item.weaponAttackBonus > 0)
+                    summary += " · ATK +" + item.weaponAttackBonus.ToString(CultureInfo.InvariantCulture);
+                else if (item != null && item.defensePercent > 0)
+                    summary += " · DEF " + item.defensePercent.ToString(CultureInfo.InvariantCulture) + "%";
+                selectedItemQuantityText.text = summary;
+            }
             if (selectedItemIcon != null)
             {
                 selectedItemIcon.sprite = ItemPresentation.Icon(itemID);
