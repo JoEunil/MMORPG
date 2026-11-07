@@ -1,34 +1,20 @@
-# 현재 인계 — 장비·포션 사용 개선 게시 준비
+# 현재 인계 — PR73 게시·최신 실행 후보 준비 완료
 
 ## 정본·후보
-- ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본: ROOT/UnityClient/Builds/ClientGrowthHUD/source. 실제 Editor: ROOT/UnityClient.
-- codex/client-item-usability, origin/master614c61a(PR71·PR72 병합) 기준. 앞선가방UI ecb5131·선택기록fccc447과이번등급포션을한PR로묶는다. 아직새push/PR없음.
-- 몬스터AI·사용자Game·기존패킷/ClientCore/DB스키마·저장형식·공급/드롭/상점/자동지급은변경하지않았다.
+- ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본: ROOT/UnityClient/Builds/ClientGrowthHUD/source, codex/client-item-usability. PR73 open: https://github.com/JoEunil/MMORPG/pull/73 . 코드 후보d98141f, master614c61a(PR71/72 병합) 기반. 병합하지 않았다.
+- POTIONTIER01/r2는 현 채팅의 PR 개시 명령으로1회소비·게시완료. Slack수신승인으로꾸미거나다시사용하지않는다.
+- 기존편집ROOT/UnityClient는보존. 최신Player는고정정본1859파일을별도로복제한ROOT/UnityClient/Builds/ItemUsabilityPackage/Project에서빌드했다. 현재Editor/Play모두종료,입력배치없음.
 
-## 확정·완료
-- 사용자A의등급보류는후속명시지시로대체했다. call_aff6463120cd4d1a8d59f70e24fa87ac 승인:기존HP1500/MP500,중급HP3000/MP1000,상급HP4500/MP1500. 전부공용6초. 신규6..9는가방사용만,1/2키기존품목유지. 골드상점제외.
-- 장착확정배지·선택장비효과·슬롯상태연결·공용남은초표시,포션판별/응답/설명콘텐츠기반확장완료. 아이콘기존HP/MP재사용,서버Data→JSON5→기존GUID에9품목반영.
-- 신규ID확인:지정DB인벤5002행·거래/이력/배송함및정지런타임WAL11건참조1,2,3,4,33. 신규6..9미참조. 운영/과거백업전역보장아님. 기존33무변경.
+## 완료·한계
+- 가방장착배지·개별효과·슬롯상태·공유쿨초,등급HP1500/3000/4500·MP500/1000/1500·6초공유,새등급가방만/1·2키기본유지,거래소선택효과연결완료. 상점/공급/드롭/DB시딩/AI/새프로토콜변경없음.
+- 기존직접영향검사/독립코드리뷰/화면검수통과. 이번추가수명감사확정결함0,억지수정없음. 이미통과한게임검사는반복하지않았다.
+- 새Windows64Player build_f463960a42d8 성공(오류0·기존경고5),Windowed1280×720설정·아이템9종·ClientCore원본해시일치·테스트어셈블리제외·씬누락스크립트0확인.
+- 최신서버+설치MySQLOpenSSL쌍을비공개후보에보존,정적의존성/심볼756·x64·해시확인. 원본DefensiveGear의현재WAL2개복사/해시확인·원본보존. 실제기동/DB·TLS/실제등급소비/조작감미검증.
+- 후보: ROOT/UnityClient/Builds/LocalGame/TierPotions. 입력/빌드/패키지/복구manifest: ROOT/UnityClient/Builds/ItemUsabilityPackage. 상세PACKAGING_PLAN.md·PACKAGING_RESULTS.md는history/2026-11-07-item-usability.
 
-## 검증·한계
-- 앞선UI기존3검사통과. 신규영향서버사용1·UI가방사용1·콘텐츠공유1각통과. 변경없는장착/퀵표시검사는반복하지않았다.
-- MainServer/UnitTests Release빌드성공·Unity컴파일오류없음·9품목import/GUID보존확인. 최초프로젝트직접빌드경로문제는솔루션대상빌드로해결했다.
-- 코드리뷰필수0·Astra게시후보검수통과필수0·사이트생성/링크검사통과. 샘플UI9품목미리보기는실제보유/소비가아니다.
-- 새Player빌드·실서버교체·실전등급소비/획득·입력검증은미실행. 런처DefensiveGear기존산출물유지. 검증용Editor12784정상종료·Playoff/scene clean·서버미기동.
-- 상세정책/결과:history/2026-11-07-item-usability/POTION_POLICY.md·TIER_RESULTS.md. 근거:ROOT/UnityClient/Builds/ClientGrowthHUD/verification/item-usability.
-
-## 다음 행동
-- 同묶음Slack1794022476.887309으로구체후보게시승인요청1회후push/PR. POTIONTIER01/r2 게시승인대기: 요청1794026275.520149, 명령 승인 POTIONTIER01. 대상a0b3530까지현재묶음push·PR1개,병합제외. 회신미수신/미소비. 정책승인을게시승인으로사용하지않는다.
-- 활성화712(신규263/후속449),토큰·비용N/A. 실제총괄직접작업/검사/도구호출제외.
-- 기존장비의실전근거·IEQ2/WAL3구서버복구제한은history/2026-11-06-defensive-equipment/RESULTS.md에보존한다.
-
-- 게시요청전수신기복구완료:실제node29380·listening·최근health·고정대상/스레드대조. Slack앱발신요청확인. 코드후보a0b3530,거래소효과표시까지포함한다.
-
-## 같은 PR 추가 보완 완료
-- 거래소 선택 수량 옆에 포션 회복량·장비 효과 표시. 가격/거래 결과·서버 로직은 유지했다. 관련 기존2검사·최대수량UI fixture·동일Astra검수통과. 초기fixture지연삭제행선택실패는고유매물ID로고쳐실패항목만재검사했다.
-- 검증용Editor18568정상종료·Playoff/scene clean,실제추가거래/입력없음. MARKET_EFFECT_RESULTS.md에근거보존. 새서버/Player전환없음.
-- 요청1794026275.520149를r2로갱신(2026-11-07T05:33:29.3073327Z),요약회신1794029610.742889. r1은미소비대체됨. r2갱신전회신을r2승인으로사용하지않는다. 아직게시승인미수신·push/PR없음.
-
-## 게시 승인 적용 — 2026-11-07
-- 현재 채팅의 사용자 명시 명령 PR 개시를 POTIONTIER01/r2 현 후보 게시 승인으로1회 적용한다. Slack 회신으로 수신했다고 기록하지 않는다. 범위는 현재묶음push·master대상PR1개이며병합제외. origin/master추가변경없음확인.
-- 후속2시간 작업은 주요결정마다계획/대안·검수후진행. 사용자부재중PC실입력·새정책/경제/DB권한이필요한작업은보류하고독립작업진행. 이임시운영방식은공통지침의영구변경이아니다.
+## 현재 대기·다음 행동
+- 기본런처는기존DefensiveGear경로유지. 새Player/Server경로로원자교체하는명령은자동승인심사에서거절돼실행되지않았다. 설정해시동일·게임/서버미기동·디버그폴더원위치확인. 우회하지않는다.
+- RUNPAIR01/r1 전환승인대기: 채널C0C9VFZMV43,스레드1794022476.887309,요청1794031948.946109. 명령 승인 RUNPAIR01. 두경로만백업/배타잠금/복구불변재확인후교체하고오프라인check만요청. 기동·DB변경제외. 아직회신미수신·미소비. 승인후에도도구심사를다시적용한다.
+- 새후보를향후기동한뒤구버전으로돌아갈때는최신DB/WAL/정상flush를재대조한다. 단순이전경로복원으로안내하지않는다. 기존IEQ2/WAL3구서버복귀제약도유지한다.
+- 사용자부재중PC입력/보안창/새정책작업은보류. 이번2시간세션은주요결정마다계획/검수했고영구공통지침은바꾸지않았다.
+- 실제활성화724(신규264/후속460),총괄직접작업/도구/검사제외,토큰·비용N/A.
