@@ -26,6 +26,17 @@ namespace Mmorpg.Client
 
         public static string Badge(uint itemID) => TryGet(itemID, out ItemDefinition item) ? item.Badge : "?";
 
+        public static string EquipmentDescription(uint itemID, ServerContent content)
+        {
+            var item = content == null ? null : content.GetItem(itemID);
+            if (item == null) return "Equipment effect: --";
+            if (itemID == 3) return "Weapon · ATK +" + item.weaponAttackBonus.ToString(CultureInfo.InvariantCulture);
+            if (itemID == 4 || itemID == 5)
+                return (itemID == 4 ? "Shield" : "Armor") + " · DEF " +
+                    item.defensePercent.ToString(CultureInfo.InvariantCulture) + "%";
+            return "Equipment effect: --";
+        }
+
         public static string UseDescription(uint itemID, ServerContent content)
         {
             var item = content == null ? null : content.GetItem(itemID);

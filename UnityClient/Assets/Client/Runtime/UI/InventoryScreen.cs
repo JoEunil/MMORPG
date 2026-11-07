@@ -40,6 +40,7 @@ namespace Mmorpg.Client
         [SerializeField] private UnityEngine.UI.Button mpPotionQuickSlot;
         [SerializeField] private TMP_Text mpPotionQuantity;
         [SerializeField] private TMP_Text potionQuickStatus;
+        private TMP_Text potionCooldown, mpPotionCooldown;
         private float potionNoticeDeadline;
         private IViewModelUI model;
         private Action<byte> goldRewardReceived;
@@ -122,6 +123,7 @@ namespace Mmorpg.Client
             {
                 equipmentReadPending = false;
                 EquipmentKnown = false;
+                UpdateEquipmentMarkers();
                 equipmentResult = "Equipment lookup timed out. Refresh to try again.";
                 equipmentNextReadAt = Time.unscaledTime + FailureRetryDelaySeconds;
                 UpdateControls();
@@ -131,6 +133,7 @@ namespace Mmorpg.Client
                 equipmentSetPending = false;
                 equipmentUncertain = true;
                 EquipmentKnown = false;
+                UpdateEquipmentMarkers();
                 equipmentResult = "Equipment result unknown. Reconnect before changing it again.";
                 UpdateControls();
             }
@@ -166,6 +169,7 @@ namespace Mmorpg.Client
                 useCooldownDeadline = 0;
                 UpdateControls();
             }
+            if (useCooldownDeadline > 0) UpdatePotionCooldown();
             if (Application.isFocused && Keyboard.current != null)
             {
                 if (GameUiInput.EscapeAvailableForPanel() && IsOpen) ClosePanel();
@@ -277,6 +281,7 @@ namespace Mmorpg.Client
             equipmentNextReadAt = 0;
             equipmentState = default;
             equipmentResult = null;
+            UpdateEquipmentMarkers();
             if (worldScreen != null) worldScreen.SetOwnWeaponVisible(false);
             if (bazaarScreen != null) bazaarScreen.RefreshEquipmentControls();
         }
@@ -300,6 +305,7 @@ namespace Mmorpg.Client
                 equipmentReadPending = false;
                 equipmentResult = "Equipment could not be read. Refresh to try again.";
                 equipmentNextReadAt = Time.unscaledTime + FailureRetryDelaySeconds;
+                UpdateEquipmentMarkers();
             }
             UpdateControls();
         }
@@ -327,6 +333,7 @@ namespace Mmorpg.Client
                 equipmentSetPending = false;
                 equipmentUncertain = true;
                 EquipmentKnown = false;
+                UpdateEquipmentMarkers();
                 equipmentResult = "Equipment result unknown. Reconnect before changing it again.";
             }
             if (bazaarScreen != null) bazaarScreen.RefreshEquipmentControls();
@@ -360,6 +367,7 @@ namespace Mmorpg.Client
                     : "Equipment request was rejected.";
                 equipmentNextReadAt = Time.unscaledTime + FailureRetryDelaySeconds;
             }
+            UpdateEquipmentMarkers();
             if (bazaarScreen != null) bazaarScreen.RefreshEquipmentControls();
             UpdateControls();
         }
@@ -369,6 +377,7 @@ namespace Mmorpg.Client
             usePending = false;
             useTimedOut = false;
             useCooldownDeadline = 0;
+            UpdatePotionCooldown();
             SetUseStatus(string.Empty);
             ClearLootNotice();
         }
@@ -772,6 +781,14 @@ namespace Mmorpg.Client
             quantity.rectTransform.anchoredPosition = quantityBadgeRect.anchoredPosition;
             quantity.rectTransform.sizeDelta = quantityBadgeRect.sizeDelta;
 
+            if (item.ItemID >= 3 && item.ItemID <= 5)
+            {
+                var equipped = CreateText("EquippedItem" + item.ItemID.ToString(CultureInfo.InvariantCulture),
+                    cardObject.transform, "EQUIPPED", 14, new Color32(229, 211, 163, 255), TextAlignmentOptions.MidlineLeft);
+                SetTopLeft(equipped.rectTransform, 6, 66, 108, 17);
+                equipped.gameObject.SetActive(IsItemEquipped(item.ItemID));
+            }
+
             button.onClick.AddListener(() => SelectItem(item, button));
         }
 
@@ -821,7 +838,9 @@ namespace Mmorpg.Client
             detailBadge.text = icon != null ? string.Empty : ItemPresentation.Badge(item.ItemID);
             detailBadge.color = ItemPresentation.Accent(item.ItemID);
             detailName.text = ItemPresentation.Name(item.ItemID, worldScreen.Content);
-            detailSlot.text = "Slot " + item.Slot.ToString(CultureInfo.InvariantCulture);
+            detailSlot.text = item.ItemID >= 3 && item.ItemID <= 5
+                ? ItemPresentation.EquipmentDescription(item.ItemID, worldScreen.Content)
+                : "Slot " + item.Slot.ToString(CultureInfo.InvariantCulture);
             detailQuantity.text = "Quantity " + item.Quantity.ToString(CultureInfo.InvariantCulture);
         }
 
@@ -857,6 +876,7 @@ namespace Mmorpg.Client
 
         private void UpdateControls()
         {
+            UpdatePotionCooldown();
             bool available = WorldAvailable && model != null && loginScreen != null && loginScreen.Model == model;
             if (bagButton != null) bagButton.interactable = available;
             if (refreshButton != null) refreshButton.interactable = available && !requestPending && !requestTimedOut;
@@ -879,8 +899,8 @@ namespace Mmorpg.Client
             }
             if (hasSelectedItem && selectedItemID >= 3 && selectedItemID <= 5 && useStatus != null)
                 useStatus.text = equipmentResult ?? (!EquipmentKnown ? "Equipment: --" :
-                    "Weapon · Shield · Armor\n" + (equipmentState.WeaponID != 0 ? "On" : "Off") + " · " +
-                    (equipmentState.ShieldID != 0 ? "On" : "Off") + " · " + (equipmentState.BodyID != 0 ? "On" : "Off") +
+                    "Weapon: " + (equipmentState.WeaponID != 0 ? "On" : "Off") + " · Shield: " +
+                    (equipmentState.ShieldID != 0 ? "On" : "Off") + "\nArmor: " + (equipmentState.BodyID != 0 ? "On" : "Off") +
                     "\nATK " + equipmentState.BaseAttack + "+" + equipmentState.BonusAttack + "=" + equipmentState.EffectiveAttack +
                     " · DEF " + equipmentState.DefensePercent + "%");
             if (useButton != null)
@@ -922,11 +942,11 @@ namespace Mmorpg.Client
                 var key = slot.transform.Find("Key")?.GetComponent<TMP_Text>();
                 if (key != null) key.text = "2";
             }
-            ConfigurePotionQuickSlot(potionQuickSlot, 126);
-            ConfigurePotionQuickSlot(mpPotionQuickSlot, 170);
+            potionCooldown = ConfigurePotionQuickSlot(potionQuickSlot, 126);
+            mpPotionCooldown = ConfigurePotionQuickSlot(mpPotionQuickSlot, 170);
         }
 
-        private static void ConfigurePotionQuickSlot(UnityEngine.UI.Button button, float x)
+        private TMP_Text ConfigurePotionQuickSlot(UnityEngine.UI.Button button, float x)
         {
             var rect = (RectTransform)button.transform;
             rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(.5f, 0);
@@ -944,6 +964,46 @@ namespace Mmorpg.Client
                 quantity.fontSizeMin = 11;
                 quantity.fontSizeMax = 15;
             }
+            var cooldown = button.transform.Find("Cooldown")?.GetComponent<TMP_Text>();
+            if (cooldown == null)
+            {
+                cooldown = CreateText("Cooldown", button.transform, string.Empty, 14,
+                    new Color32(255, 242, 209, 255), TextAlignmentOptions.Center);
+                cooldown.fontStyle = FontStyles.Bold;
+                cooldown.rectTransform.anchorMin = cooldown.rectTransform.anchorMax = cooldown.rectTransform.pivot = new Vector2(.5f, .5f);
+                cooldown.rectTransform.sizeDelta = new Vector2(36, 20);
+                var outline = cooldown.gameObject.AddComponent<UnityEngine.UI.Outline>();
+                outline.effectColor = new Color32(16, 37, 42, 255);
+                outline.effectDistance = new Vector2(1, -1);
+            }
+            cooldown.gameObject.SetActive(false);
+            return cooldown;
+        }
+
+        private void UpdatePotionCooldown()
+        {
+            int seconds = Mathf.Max(0, Mathf.CeilToInt(useCooldownDeadline - Time.unscaledTime));
+            if (potionCooldown != null)
+            {
+                potionCooldown.gameObject.SetActive(seconds > 0);
+                if (seconds > 0) potionCooldown.SetText("{0}s", seconds);
+            }
+            if (mpPotionCooldown != null)
+            {
+                mpPotionCooldown.gameObject.SetActive(seconds > 0);
+                if (seconds > 0) mpPotionCooldown.SetText("{0}s", seconds);
+            }
+        }
+
+        private void UpdateEquipmentMarkers()
+        {
+            if (inventoryGridContent == null) return;
+            foreach (Transform card in inventoryGridContent)
+                for (uint itemID = 3; itemID <= 5; itemID++)
+                {
+                    var marker = card.Find("EquippedItem" + itemID.ToString(CultureInfo.InvariantCulture));
+                    if (marker != null) marker.gameObject.SetActive(IsItemEquipped(itemID));
+                }
         }
 
         private void UpdatePotionQuickSlot(UnityEngine.UI.Button button, TMP_Text quantityText, uint quantity, bool known)
