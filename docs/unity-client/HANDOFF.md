@@ -18,8 +18,13 @@
 - 상세정책/결과:history/2026-11-07-item-usability/POTION_POLICY.md·TIER_RESULTS.md. 근거:ROOT/UnityClient/Builds/ClientGrowthHUD/verification/item-usability.
 
 ## 다음 행동
-- 同묶음Slack1794022476.887309으로구체후보게시승인요청1회후push/PR. POTIONTIER01/r1 게시승인대기: 요청1794026275.520149, 명령 승인 POTIONTIER01. 대상db4e51b까지현재묶음push·PR1개,병합제외. 회신미수신/미소비. 정책승인을게시승인으로사용하지않는다.
-- 활성화710(신규263/후속447),토큰·비용N/A. 실제총괄직접작업/검사/도구호출제외.
+- 同묶음Slack1794022476.887309으로구체후보게시승인요청1회후push/PR. POTIONTIER01/r2 게시승인대기: 요청1794026275.520149, 명령 승인 POTIONTIER01. 대상a0b3530까지현재묶음push·PR1개,병합제외. 회신미수신/미소비. 정책승인을게시승인으로사용하지않는다.
+- 활성화712(신규263/후속449),토큰·비용N/A. 실제총괄직접작업/검사/도구호출제외.
 - 기존장비의실전근거·IEQ2/WAL3구서버복구제한은history/2026-11-06-defensive-equipment/RESULTS.md에보존한다.
 
-- 게시요청전수신기복구완료:실제node29380·listening·최근health·고정대상/스레드대조. Slack앱발신요청확인. 코드후보db4e51b,후속변경은이승인대기기록뿐이다.
+- 게시요청전수신기복구완료:실제node29380·listening·최근health·고정대상/스레드대조. Slack앱발신요청확인. 코드후보a0b3530,거래소효과표시까지포함한다.
+
+## 같은 PR 추가 보완 완료
+- 거래소 선택 수량 옆에 포션 회복량·장비 효과 표시. 가격/거래 결과·서버 로직은 유지했다. 관련 기존2검사·최대수량UI fixture·동일Astra검수통과. 초기fixture지연삭제행선택실패는고유매물ID로고쳐실패항목만재검사했다.
+- 검증용Editor18568정상종료·Playoff/scene clean,실제추가거래/입력없음. MARKET_EFFECT_RESULTS.md에근거보존. 새서버/Player전환없음.
+- 요청1794026275.520149를r2로갱신(2026-11-07T05:33:29.3073327Z),요약회신1794029610.742889. r1은미소비대체됨. r2갱신전회신을r2승인으로사용하지않는다. 아직게시승인미수신·push/PR없음.
