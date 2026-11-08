@@ -27,8 +27,13 @@ namespace Net {
                 auto now = clock->GetTimeMS();
                 for (PingStruct& st: clientList)
                 {
-                    if (st.isAlive)
-                        packetDispatcher->Ping(st.session, st.rtt, now);
+                    if (st.isAlive) {
+                        auto p = writer->GetPingPacket(st.rtt, now);
+                        if (!p) {
+                            continue;
+                        }
+                        iocp->SendDataUnique(st.session, std::move(p));
+                    }
                     else {
                         Core::errorLogger->LogInfo("ping manager", "not alive", "socket", st.socket);
                         abortSocket->AbortSocket(st.socket, st.session);

@@ -111,7 +111,7 @@ int main(int argc, char* argv[]) {
         core.InjectDependencies1(net.GetIOCP(), net.GetPacketPoolManager(), &durableLogger);
         cache.InjectDependencies(core.GetMessageQueue(), &durableLogger);
         core.InjectDependencies2(net.GetIOCP(), &auth, cache.GetMessageQueue(), cache.GetProfileCache(), cache.GetInventoryOperations());
-        net.InjectDependencies(core.GetPacketDispatcher());
+        net.InjectDependencies(core.GetPacketDispatcher(), core.GetPingPacketWriter());
 
         if (net.CheckReady() && core.CheckReady() && cache.CheckReady()) {
             std::cout << "서버 준비 완료" << std::endl;

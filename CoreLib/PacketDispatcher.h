@@ -5,29 +5,21 @@
 #include "IPacketDispatcher.h"
 #include "StateManager.h"
 #include "PacketTypes.h"
-#include "IPingPacketWriter.h"
-#include "IIOCP.h"
 namespace Core {
     class ILogger;
     class PacketDispatcher : public IPacketDispatcher {
         NonZoneThreadPool* nonZoneThreadPool = nullptr;
         ZoneThreadSet*  zoneThreadSet = nullptr;
         StateManager* stateManager = nullptr;
-        IPingPacketWriter* writer = nullptr;
-        IIOCP* iocp = nullptr;
-        void Initialize(NonZoneThreadPool* a, ZoneThreadSet* z, StateManager* s, IPingPacketWriter* w, IIOCP* i) {
+        void Initialize(NonZoneThreadPool* a, ZoneThreadSet* z, StateManager* s) {
             nonZoneThreadPool = a;
             zoneThreadSet = z;
             stateManager = s;
-            writer = w;
-            iocp = i;
         }
         bool IsReady() {
             if (stateManager == nullptr) return false;
             if (nonZoneThreadPool == nullptr || zoneThreadSet == nullptr)
                 return false;
-            if (writer == nullptr) return false;
-            if (iocp == nullptr) return false;
             return true;
         }
         friend class Initializer;
@@ -36,13 +28,6 @@ namespace Core {
         void Disconnect(uint64_t sessionID) override;
         uint8_t HealthCheck(uint64_t sessionID) override {
            return stateManager->HealthCheck(sessionID);
-        }
-        void Ping(uint64_t sessionID, uint64_t rtt, uint64_t nowMs) override {
-            auto p = writer->GetPingPacket(rtt, nowMs);
-            if (!p) {
-                return;
-            }
-            iocp->SendDataUnique(sessionID, std::move(p));
         }
     };
 }

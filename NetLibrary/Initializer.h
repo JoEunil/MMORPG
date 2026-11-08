@@ -25,6 +25,7 @@
 #include <CoreLib/IIocp.h>
 #include <CoreLib/IPacketPoolManager.h>
 #include <CoreLib/ICachedClock.h>
+#include <CoreLib/IPingPacketWriter.h>
 #include <coreLib/IPacketDispatcher.h>
 
 #include "Config.h"
@@ -68,9 +69,10 @@ namespace Net {
             iocp.CleanUp();
         }
         
-        void InjectDependencies(Core::IPacketDispatcher* packetDispatcher) {
+        void InjectDependencies(Core::IPacketDispatcher* packetDispatcher, Core::IPingPacketWriter* pingPacketWriter) {
             iocp.Initialize(&overlappedExPool, &netHandler, &sessionManager, &fatalError, &cv, &perfCollector);
-            pingManager.Initialize(static_cast<IAbortSocket*>(&iocp), &sessionManager, packetDispatcher, clock);
+            pingManager.Initialize(static_cast<IAbortSocket*>(&iocp), &sessionManager,
+                static_cast<Core::IIOCP*>(&iocp), clock, pingPacketWriter);
             NetPacketFilter::Initialize(packetDispatcher, &perfCollector, clock);
             iocp.Start();
             pingManager.PingStart();

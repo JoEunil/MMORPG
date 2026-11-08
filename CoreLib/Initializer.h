@@ -66,7 +66,7 @@ namespace Core {
             stateManager.inventory = inventory;
             stateManager.Initialize(sendMQ, iocp, &lobbyZone, &chat);
             mqHandler.InitializeStateManager(&stateManager);
-            packetDispatcher.Initialize(&nonZoneThreadPool, &zoneThreadSet, &stateManager, static_cast<IPingPacketWriter*>(&writer), iocp);
+            packetDispatcher.Initialize(&nonZoneThreadPool, &zoneThreadSet, &stateManager);
             nonZoneThreadPool.Start();
             broadcastPool.Start();
             ZoneState::Initialize(&broadcastPool, &writer, &stateManager, &perfCollector);
@@ -98,6 +98,10 @@ namespace Core {
 
         IPacketDispatcher* GetPacketDispatcher() {
             return static_cast<IPacketDispatcher*>(&packetDispatcher);
+        }
+
+        IPingPacketWriter* GetPingPacketWriter() {
+            return &writer;
         }
 
         IMessageQueue* GetMessageQueue() {

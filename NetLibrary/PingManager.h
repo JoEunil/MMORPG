@@ -3,10 +3,12 @@
 #include <cstdint>
 #include <thread>
 
-#include <CoreLib/IPacketDispatcher.h>
 #include <CoreLib/ICachedClock.h>
 #include <CoreLib/LoggerGlobal.h>
+#include <CoreLib/IIOCP.h>
+#include <CoreLib/IPingPacketWriter.h>
 #include "IAbortSocket.h"
+
 namespace Net {
     class SessionManager;
     struct PingStruct {
@@ -21,14 +23,15 @@ namespace Net {
 
         SessionManager* sessionManager = nullptr;
         IAbortSocket* abortSocket = nullptr;
-        Core::IPacketDispatcher* packetDispatcher = nullptr;
+        Core::IIOCP* iocp = nullptr;
         Core::ICachedClock* clock = nullptr;
-
-        void Initialize(IAbortSocket* a, SessionManager* s, Core::IPacketDispatcher* p, Core::ICachedClock* c) {
+        Core::IPingPacketWriter* writer = nullptr;
+        void Initialize(IAbortSocket* a, SessionManager* s, Core::IIOCP* i, Core::ICachedClock* c, Core::IPingPacketWriter* w) {
             abortSocket = a;
             sessionManager = s;
-            packetDispatcher = p;
+            iocp = i;
             clock = c;
+            writer = w;
         }
 
         bool IsReady() const {
@@ -40,12 +43,16 @@ namespace Net {
                 Core::sysLogger->LogError("ping manager", "sessionManager not initialized");
                 return false;
             }
-            if (packetDispatcher == nullptr) {
-                Core::sysLogger->LogError("ping manager", "packetDispatcher not initialized");
+            if (iocp == nullptr) {
+                Core::sysLogger->LogError("ping manager", "iocp not initialized");
                 return false;
             }
             if (clock == nullptr) {
                 Core::sysLogger->LogError("ping manager", "clock not initialized");
+                return false;
+            }
+            if (writer == nullptr) {
+                Core::sysLogger->LogError("ping manager", "writer not initialized");
                 return false;
             }
             return true;
