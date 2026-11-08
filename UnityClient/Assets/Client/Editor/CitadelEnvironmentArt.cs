@@ -19,6 +19,134 @@ namespace Mmorpg.Client.Editor
         private static Material stone,trim,iron,wood,cloth,leaf,canopy,earth,fire;
         private static Mesh block,shaft,leafMesh,canopyCard;
 
+        [MenuItem("Tools/Client/Art/Connect Town Walls And Meadow")]
+        public static void ApplyWallAndMeadowContinuity()
+        {
+            var scene=EditorSceneManager.GetActiveScene();
+            if(EditorApplication.isPlayingOrWillChangePlaymode || scene.path!="Assets/Client/Scenes/World.unity" || scene.isDirty)
+                throw new InvalidOperationException("Open the clean, saved World scene in Edit Mode before connecting its scenery.");
+            var authors=Object.FindObjectsByType<MapAuthoring>(FindObjectsInactive.Include,FindObjectsSortMode.None);
+            if(authors.Length!=1 || authors[0].ground==null || authors[0].obstacles==null || authors[0].obstacles.Length!=18)
+                throw new InvalidOperationException("The existing world ground and 18 authored obstacles are required.");
+            var author=authors[0];var world=author.transform.parent;
+            var root=world==null?null:world.Find(RootName);
+            if(root==null || root.position!=Vector3.zero || root.rotation!=Quaternion.identity || root.lossyScale!=Vector3.one)
+                throw new InvalidOperationException("The existing unscaled Citadel environment at the world origin is required.");
+            var groundRenderer=author.ground.GetComponent<MeshRenderer>();
+            var groundFilter=author.ground.GetComponent<MeshFilter>();
+            var meadow=AssetDatabase.LoadAssetAtPath<Material>(Folder+"CitadelMeadow.mat");
+            leaf=AssetDatabase.LoadAssetAtPath<Material>(Folder+"OakLeaves.mat");
+            leafMesh=AssetDatabase.LoadAssetAtPath<Mesh>(Folder+"CuppedOakLeaf.asset");
+            if(groundRenderer==null || groundFilter==null || groundFilter.sharedMesh==null || meadow==null ||
+                groundRenderer.sharedMaterial!=meadow || leaf==null || leafMesh==null)
+                throw new InvalidOperationException("The existing meadow surface and low foliage assets must already be bound.");
+            foreach(var obstacle in author.obstacles)
+                if(obstacle==null)throw new InvalidOperationException("An authored obstacle is missing.");
+            Bounds ground=MapAuthoring.WorldBounds(author.ground);
+            var modules=new List<Transform>();
+            const float joinedScale=10.04f/9.9f;
+            for(int side=0;side<2;side++)for(int i=0;i<(side==0?6:5);i++)
+            {
+                var module=root.Find((side==0?"WesternCitadel":"SouthernCitadel")+i);
+                Vector3 expected=side==0?new Vector3(ground.min.x-2.3f,0,5+i*10):new Vector3(5+i*10,0,ground.min.z-2.3f);
+                if(module==null || (module.localPosition-expected).sqrMagnitude>.000001f ||
+                    Quaternion.Angle(module.localRotation,Quaternion.Euler(0,side==0?90:0,0))>.001f ||
+                    ((module.localScale-Vector3.one).sqrMagnitude>.000001f &&
+                     (module.localScale-new Vector3(joinedScale,1,1)).sqrMagnitude>.000001f) ||
+                    module.GetComponentsInChildren<Collider>(true).Length!=0)
+                    throw new InvalidOperationException("An exterior wall module was edited; review its fit before connecting it.");
+                modules.Add(module);
+            }
+            // Read the actual source face UV axes, so the rim continues its texture phase.
+            var mesh=groundFilter.sharedMesh;var v=mesh.vertices;var uv=mesh.uv;var indices=mesh.triangles;
+            Vector3 a=default,b=default,c=default;Vector2 ua=default,ub=default,uc=default;
+            float determinant=0;
+            for(int i=0;i<indices.Length;i+=3)
+            {
+                a=groundFilter.transform.TransformPoint(v[indices[i]]);
+                b=groundFilter.transform.TransformPoint(v[indices[i+1]]);
+                c=groundFilter.transform.TransformPoint(v[indices[i+2]]);
+                if(Mathf.Abs(a.y-ground.max.y)>.001f || Mathf.Abs(b.y-ground.max.y)>.001f || Mathf.Abs(c.y-ground.max.y)>.001f)continue;
+                determinant=(b.x-a.x)*(c.z-a.z)-(c.x-a.x)*(b.z-a.z);
+                if(Mathf.Abs(determinant)<.001f)continue;
+                ua=uv[indices[i]];ub=uv[indices[i+1]];uc=uv[indices[i+2]];break;
+            }
+            if(Mathf.Abs(determinant)<.001f)throw new InvalidOperationException("The existing ground needs a planar top face with texture coordinates.");
+
+            // These eleven vista modules sit outside navigation. Internal Masonry and gates stay in place.
+            foreach(var module in modules)module.localScale=new Vector3(joinedScale,1,1);
+            var old=root.Find("TownContinuity");
+            if(old!=null)Object.DestroyImmediate(old.gameObject);
+            var continuity=new GameObject("TownContinuity").transform;continuity.SetParent(root,false);
+            float west=ground.min.x-2.3f,south=ground.min.z-2.3f;
+            ContinueWall(modules[0],continuity,"WesternCorner",new Vector3(west,0,south*.5f),90,-south+.04f);
+            ContinueWall(modules[6],continuity,"SouthernCorner",new Vector3(west*.5f,0,south),0,-west+.04f);
+            var vertices=new List<Vector3>();var triangles=new List<int>();var uvs=new List<Vector2>();
+            void Rim(float minX,float minZ,float maxX,float maxZ)
+            {
+                int start=vertices.Count;
+                foreach(var point in new[]{new Vector3(minX,ground.max.y,minZ),new Vector3(minX,ground.max.y,maxZ),
+                    new Vector3(maxX,ground.max.y,maxZ),new Vector3(maxX,ground.max.y,minZ)})
+                {
+                    float dx=point.x-a.x,dz=point.z-a.z;
+                    float u=(dx*(c.z-a.z)-(c.x-a.x)*dz)/determinant;
+                    float w=((b.x-a.x)*dz-dx*(b.z-a.z))/determinant;
+                    vertices.Add(point);uvs.Add(ua+(ub-ua)*u+(uc-ua)*w);
+                }
+                triangles.AddRange(new[]{start,start+1,start+2,start,start+2,start+3});
+            }
+            // The cosmetic apron exactly fills the minimap's 20 m scenery margin; no new walkable area.
+            const float margin=20;
+            Rim(ground.min.x-margin,ground.min.z-margin,ground.min.x,ground.max.z+margin);
+            Rim(ground.max.x,ground.min.z-margin,ground.max.x+margin,ground.max.z+margin);
+            Rim(ground.min.x,ground.min.z-margin,ground.max.x,ground.min.z);
+            Rim(ground.min.x,ground.max.z,ground.max.x,ground.max.z+margin);
+            var apron=new GameObject("MeadowApron",typeof(MeshFilter),typeof(MeshRenderer));apron.transform.SetParent(continuity,false);
+            var apronMesh=StoreMesh("TownMeadowApron",vertices,triangles,uvs);
+            apronMesh.RecalculateTangents();EditorUtility.SetDirty(apronMesh);
+            apron.GetComponent<MeshFilter>().sharedMesh=apronMesh;
+            apron.GetComponent<MeshRenderer>().sharedMaterial=meadow;
+
+            // Fill the previously omitted entrance/verges with one combined, ankle-high foliage mesh.
+            var batch=new Batch("TownMeadowVerge",continuity,Vector3.zero,0);var random=new System.Random(81429);
+            for(float x=ground.min.x-margin+1;x<56;x+=1.8f)for(float z=ground.min.z-margin+1;z<66;z+=1.8f)
+            {
+                var p=new Vector3(x+(float)random.NextDouble()*.8f,ground.max.y+.10f,z+(float)random.NextDouble()*.8f);
+                if(!(p.x<5 || p.z<5 || (p.x<30 && p.z<25)))continue;
+                if(p.x>-5 && p.x<56 && p.z>8 && p.z<13)continue;
+                if((Mathf.Abs(p.x-west)<1.45f && p.z<61) || (Mathf.Abs(p.z-south)<1.45f && p.x<51))continue;
+                if((p.x<2 && p.z>22 && p.z<28) || (p.z<2 && p.x>12 && p.x<18))continue;
+                bool blocked=false;
+                foreach(var obstacle in author.obstacles)
+                {
+                    Bounds bounds=MapAuthoring.WorldBounds(obstacle);
+                    if(p.x>bounds.min.x-1 && p.x<bounds.max.x+1 && p.z>bounds.min.z-1 && p.z<bounds.max.z+1){blocked=true;break;}
+                }
+                if(blocked)continue;
+                float yaw=(float)random.NextDouble()*360;
+                for(int stem=0;stem<3;stem++)batch.AddMesh(leafMesh,leaf,Matrix4x4.TRS(
+                    p+new Vector3(stem*.12f-.12f,0,Mathf.Sin(stem*2f)*.12f),Quaternion.Euler(52,yaw+stem*120,0),new Vector3(.16f,.30f,.16f)));
+            }
+            batch.Flush();
+            if(continuity.GetComponentsInChildren<Collider>(true).Length!=0)
+                throw new InvalidOperationException("Town continuity must remain presentation-only.");
+            AssetDatabase.SaveAssets();EditorSceneManager.MarkSceneDirty(scene);
+            if(!EditorSceneManager.SaveScene(scene))throw new IOException("Could not save the connected town scenery.");
+            Debug.Log("Exterior town wall seams/corner connected; meadow apron and low verge filled using existing assets. Internal masonry, gates, roads, collision and navigation unchanged.");
+        }
+
+        private static void ContinueWall(Transform source,Transform parent,string name,Vector3 position,float yaw,float length)
+        {
+            var segment=new GameObject(name).transform;segment.SetParent(parent,false);
+            segment.localPosition=position;segment.localRotation=Quaternion.Euler(0,yaw,0);segment.localScale=new Vector3(length/9.9f,1,1);
+            foreach(Transform part in source)
+            {
+                var copy=new GameObject(part.name,typeof(MeshFilter),typeof(MeshRenderer));copy.transform.SetParent(segment,false);
+                copy.GetComponent<MeshFilter>().sharedMesh=part.GetComponent<MeshFilter>().sharedMesh;
+                copy.GetComponent<MeshRenderer>().sharedMaterial=part.GetComponent<MeshRenderer>().sharedMaterial;
+            }
+        }
+
         [MenuItem("Tools/Client/Art/Apply Citadel Environment")]
         public static void Apply()
         {

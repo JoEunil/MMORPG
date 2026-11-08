@@ -1,24 +1,21 @@
-# 현재 인계 — PR73·최신 기본 실행 경로 전환 완료
+# 현재 인계 — 미니맵·성벽·잔디 보완
 
-## 정본·후보
-- ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본: ROOT/UnityClient/Builds/ClientGrowthHUD/source, codex/client-item-usability. PR73 open: https://github.com/JoEunil/MMORPG/pull/73 . 코드 후보d98141f, master614c61a(PR71/72 병합) 기반. 병합하지 않았다.
-- POTIONTIER01/r2는 현 채팅의 PR 개시 명령으로1회소비·게시완료. Slack수신승인으로꾸미거나다시사용하지않는다.
-- 기존편집ROOT/UnityClient는보존. 최신Player는고정정본1859파일을별도로복제한ROOT/UnityClient/Builds/ItemUsabilityPackage/Project에서빌드했다. 현재Editor/Play모두종료,입력배치없음.
+## 정본·환경
+- ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient. Git 정본: ROOT/UnityClient/Builds/ClientGrowthHUD/source, codex/world-map-presentation. origin/master99505a1(PR73 병합)에서 분기했다. 원 ROOT 편집 자산은 보존했다.
+- Editor/검증 사본: ROOT/UnityClient/Builds/ItemUsabilityPackage/Project. 관련 씬·맵·스폰·패키지 해시를 정본과 대조한 뒤 지정4코드 파일·생성 아트·씬만 통합했다. 서버/ClientCore/AI/맵 충돌·스폰 데이터 변경 없음.
 
-## 완료·한계
-- 가방장착배지·개별효과·슬롯상태·공유쿨초,등급HP1500/3000/4500·MP500/1000/1500·6초공유,새등급가방만/1·2키기본유지,거래소선택효과연결완료. 상점/공급/드롭/DB시딩/AI/새프로토콜변경없음.
-- 기존직접영향검사/독립코드리뷰/화면검수통과. 이번추가수명감사확정결함0,억지수정없음. 이미통과한게임검사는반복하지않았다.
-- 새Windows64Player build_f463960a42d8 성공(오류0·기존경고5),Windowed1280×720설정·아이템9종·ClientCore원본해시일치·테스트어셈블리제외·씬누락스크립트0확인.
-- 최신서버+설치MySQLOpenSSL쌍을비공개후보에보존,정적의존성/심볼756·x64·해시확인. 원본DefensiveGear의현재WAL2개복사/해시확인·원본보존. RUNPAIR01 후속 서버 단독 검증에서 준비 완료·DB/Redis TCP 연결·app-local DLL 로딩·정상 종료(exit0)를 확인했다. TLS/실제 등급 소비/조작감은 미검증이며, 후속 Player 로그인·가방/거래소 화면은 확인했다.
-- 후보: ROOT/UnityClient/Builds/LocalGame/TierPotions. 입력/빌드/패키지/복구manifest: ROOT/UnityClient/Builds/ItemUsabilityPackage. 상세PACKAGING_PLAN.md·PACKAGING_RESULTS.md는history/2026-11-07-item-usability.
+## 현재 결과
+- 미니맵은 게임 카메라 수평 방향으로 배경·개체·N을 함께 변환하며 자기 중앙·직사각 틀·등거리 눈금을 유지한다. 외곽 성벽11개와 모서리2곳, 성벽 주변 잔디 지면을 보완했다. 내부18장애물·성문·길·Collider 불변 확인.
+- 컴파일·미니맵 직접 영향3검사 통과. apron tangent 누락 리뷰를 원아트 담당자가 고치고 동일 리뷰 담당자가 재검토해 필수0. actual-scene 편집 미리보기와 개체 샘플을 넣은 minimap preview를 실서버 화면과 구분한다.
+- Windows64 build_df3a8564c596 성공(오류0·기존경고5). ClientCore DLL은 기존과 같다. 기존 Player 전체 백업/169파일 해시 확인 후 로컬 TierPotions/Player만 교체, 시작 경로/서버/WAL 불변·offline check 성공. 게임/서버는 종료 상태이며 새 Player 실서버 로그인·이동 검사는 이번에 하지 않았다.
+- 근거: history/2026-11-08-map-presentation/README.md 및 비공개 ROOT/UnityClient/Builds/WorldMapPresentation. 이전 누적 인계는 같은 비공개 증거 폴더의 handoff-before-map-presentation.md에 보존했다.
 
-## 현재 상태·다음 행동
-- RUNPAIR01/r1은 현 채팅의 명시 승인으로 1회 적용 완료. Slack 요청1794031948.946109/부모1794022476.887309에 대응하며 Slack 답장을 수신했다고 기록하지 않는다. 종전 자동심사 거절 뒤 정식 권한 심사를 다시 거쳐 성공했다.
-- 기본 StartGame.bat의 ClientExe·ServerExe는 TierPotions 쌍이다. 두 경로만 교체하고 나머지 설정 유지, 원본 설정 백업·180파일 해시·WAL 집합/해시 대조·offline check 성공. 디버그 폴더 이동 없음.
-- 계속 진행 지시와 지정 테스트 서버 일상 권한으로 숨김 서버만 검증했다. 첫 도우미 로그 공유 오류는 종료 신호 후 프로세스·포트 정리를 확인하고 도우미를 수정했다. 실패 항목만 재실행해 준비/정상 종료 성공. 제품 코드는 바꾸지 않았다.
-- 사용자 직접 로그인 후 같은 최신 Player 세션에서 ID11/Lv4의 필드 진입·가방/거래소 읽기·선택을 확인했다. 종료 도우미로 게임·MainServer·로그인 모두 정상 종료했고 지정 포트/프로세스 잔존0. Editor는 종료 상태다. 서버의 정상 WAL 재생/flush 가능성을 기록했으며 전후 WAL 해시는 같았다. 이 결과는 DB 무변경/TLS 검증을 보증하지 않는다.
-- 이번 허용 배치 완료. 실제 가방 HP22/MP2·철검1·방패1, HP1500/MP500 설명·철검 ATK+2/전체 장비 Off, 거래소 HP 선택 효과·MP 판매 선택 효과/골드 수수료10을 관찰했다. 거래·소비·장착·지급 요청은 보내지 않았다. 장착 배지 실전/등급 소비/키보드·이동 체감/FPS 측정은 이번 범위에서 확인하지 않았다. 등급 포션은 현재 보유하지 않아 실제 소비 미검증이며 공급/DB 지급/획득 정책을 임의 추가하지 않는다. 통과한 기능 검사는 반복하지 않는다.
-- 구버전으로 복귀할 때는 최신 DB/WAL/정상 flush를 다시 대조한다. 이전 경로/이전 WAL을 그대로 복원하지 않는다. IEQ2/WAL3 구서버 복귀 제약 유지.
-- 근거: ROOT/UnityClient/Builds/ItemUsabilityPackage/launcher-transition-result.json·server-runtime-check.json 및 해당 history/PACKAGING_RESULTS.md. PR73에 같은 묶음으로 기록 반영, 병합하지 않는다.
+## 선행 완료·고정 조건
+- PR73은 병합 완료. 등급 포션은 사용자 허용으로 지정 테스트 캐릭터에 일회 지급했으며 반복하지 않는다. 이후 중·상급HP/MP4종의 실제 소비·회복·최대치 제한과 공유6초 표시, 만충 미소비를 같은 세션에서 확인하고 정상 종료했다. 상세 계정/수량/지급 영수증은 비공개 ItemUsabilityPackage와 tier-use-live에만 둔다.
+- 포션 획득 비교안은 채택하지 않고 보류했다. 드롭은 추후 사용자 작업이며 공급·상점·처치 지급을 이번에 만들지 않는다. 사용자 몬스터 AI 보호.
 
-- 실전 근거: ROOT/UnityClient/Builds/ItemUsabilityPackage/player-ui-verification/results.json·실제 화면3장·이번 Player/런처 로그. Player 예외/오류 패턴0, Main/Login stderr0. 상세 후속은 PACKAGING_RESULTS.md.
+## 다음 행동
+- 최종 종합 검수 통과·필수0. 공개 자료 생성 확인 완료. 로컬 후보를 고정하고 새 Slack 부모에서 MAPVIEW01/r1 PR 게시 승인을 요청한다. 미니맵·성벽·잔디 및 관련 자료를 한 PR로 게시하며 병합하지 않는다. 승인 전 push/새 PR 보류.
+- 검증용 Editor는 clean World씬/Play off 확인 후 정상 종료했다. Slack 수신기는 오래된 health/PID 소멸을 확인하고 기존 고정 대상·권한으로 복구했다. 최근 listening·SOCKET_READY·실제 프로세스를 확인했다. 과거 답장은 재처리하지 않았다.
+- 현재 별도 PC 입력 요청은 없다. Editor 미리보기/자동 fixture/빌드 완료를 새 standalone 실입력 성공으로 표현하지 않는다. 런처 경로는 그대로여서 다음 실행부터 새 Player를 사용한다.
+- 실제 활성화746(신규271/후속475). 공개 AGENT_USAGE는 과거 미반영7회와 이번9회만 더했다. 총괄 작업·도구/검사/입력은 활성화가 아니며 토큰·비용N/A.
