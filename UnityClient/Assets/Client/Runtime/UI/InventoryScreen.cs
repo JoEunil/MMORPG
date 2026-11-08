@@ -40,6 +40,7 @@ namespace Mmorpg.Client
         [SerializeField] private UnityEngine.UI.Button mpPotionQuickSlot;
         [SerializeField] private TMP_Text mpPotionQuantity;
         [SerializeField] private TMP_Text potionQuickStatus;
+        private TMP_Text potionCooldown, mpPotionCooldown;
         private float potionNoticeDeadline;
         private IViewModelUI model;
         private Action<byte> goldRewardReceived;
@@ -122,6 +123,7 @@ namespace Mmorpg.Client
             {
                 equipmentReadPending = false;
                 EquipmentKnown = false;
+                UpdateEquipmentMarkers();
                 equipmentResult = "Equipment lookup timed out. Refresh to try again.";
                 equipmentNextReadAt = Time.unscaledTime + FailureRetryDelaySeconds;
                 UpdateControls();
@@ -131,6 +133,7 @@ namespace Mmorpg.Client
                 equipmentSetPending = false;
                 equipmentUncertain = true;
                 EquipmentKnown = false;
+                UpdateEquipmentMarkers();
                 equipmentResult = "Equipment result unknown. Reconnect before changing it again.";
                 UpdateControls();
             }
@@ -166,6 +169,7 @@ namespace Mmorpg.Client
                 useCooldownDeadline = 0;
                 UpdateControls();
             }
+            if (useCooldownDeadline > 0) UpdatePotionCooldown();
             if (Application.isFocused && Keyboard.current != null)
             {
                 if (GameUiInput.EscapeAvailableForPanel() && IsOpen) ClosePanel();
@@ -277,6 +281,7 @@ namespace Mmorpg.Client
             equipmentNextReadAt = 0;
             equipmentState = default;
             equipmentResult = null;
+            UpdateEquipmentMarkers();
             if (worldScreen != null) worldScreen.SetOwnWeaponVisible(false);
             if (bazaarScreen != null) bazaarScreen.RefreshEquipmentControls();
         }
@@ -300,6 +305,7 @@ namespace Mmorpg.Client
                 equipmentReadPending = false;
                 equipmentResult = "Equipment could not be read. Refresh to try again.";
                 equipmentNextReadAt = Time.unscaledTime + FailureRetryDelaySeconds;
+                UpdateEquipmentMarkers();
             }
             UpdateControls();
         }
@@ -327,6 +333,7 @@ namespace Mmorpg.Client
                 equipmentSetPending = false;
                 equipmentUncertain = true;
                 EquipmentKnown = false;
+                UpdateEquipmentMarkers();
                 equipmentResult = "Equipment result unknown. Reconnect before changing it again.";
             }
             if (bazaarScreen != null) bazaarScreen.RefreshEquipmentControls();
@@ -360,6 +367,7 @@ namespace Mmorpg.Client
                     : "Equipment request was rejected.";
                 equipmentNextReadAt = Time.unscaledTime + FailureRetryDelaySeconds;
             }
+            UpdateEquipmentMarkers();
             if (bazaarScreen != null) bazaarScreen.RefreshEquipmentControls();
             UpdateControls();
         }
@@ -369,6 +377,7 @@ namespace Mmorpg.Client
             usePending = false;
             useTimedOut = false;
             useCooldownDeadline = 0;
+            UpdatePotionCooldown();
             SetUseStatus(string.Empty);
             ClearLootNotice();
         }
@@ -399,7 +408,7 @@ namespace Mmorpg.Client
 
         private bool CanUseSelectedItem()
         {
-            if (!IsOpen || !ItemUseAvailable || !hasSelectedItem || (selectedItemID != 1 && selectedItemID != 2))
+            if (!IsOpen || !ItemUseAvailable || !hasSelectedItem || !ItemPresentation.IsPotion(selectedItemID, worldScreen.Content))
                 return false;
             foreach (InventoryItemView item in loginScreen.Data.GetInventory())
                 if (item.Slot == selectedSlot && item.ItemID == selectedItemID && item.Quantity > 0) return true;
@@ -443,10 +452,11 @@ namespace Mmorpg.Client
 
         private void UsePotion(uint itemID)
         {
+            if (!ItemPresentation.IsPotion(itemID, worldScreen.Content)) return;
             usePending = true;
             useTimedOut = false;
             useDeadline = Time.unscaledTime + RequestTimeoutSeconds;
-            SetUseStatus(itemID == 1 ? "Using HP potion…" : "Using MP potion…");
+            SetUseStatus(worldScreen.Content.GetItem(itemID).hpRecovery > 0 ? "Using HP potion…" : "Using MP potion…");
             UpdateControls();
             try
             {
@@ -469,7 +479,8 @@ namespace Mmorpg.Client
             ushort remainingQuantity, uint cooldownRemainingTicks)
         {
             // ClientCore matches request ID and ownership before dispatching this event.
-            if (!usePending || model == null || loginScreen.Model != model || (itemID != 1 && itemID != 2)) return;
+            if (!usePending || model == null || loginScreen.Model != model || !ItemPresentation.IsPotion(itemID, worldScreen.Content)) return;
+            string resource = worldScreen.Content.GetItem(itemID).hpRecovery > 0 ? "HP" : "MP";
             usePending = false;
             useTimedOut = false;
             useCooldownDeadline = Time.unscaledTime + cooldownRemainingTicks * .05f;
@@ -477,11 +488,11 @@ namespace Mmorpg.Client
             switch (status)
             {
                 case 0: result = "Invalid item use request."; break;
-                case 1: result = itemID == 1 ? "HP potion used." : "MP potion used."; break;
+                case 1: result = resource + " potion used."; break;
                 case 2: result = "Cannot use a potion while dead."; break;
-                case 3: result = itemID == 1 ? "HP is already full." : "MP is already full."; break;
+                case 3: result = resource + " is already full."; break;
                 case 4: result = "Potion is on cooldown."; break;
-                case 5: result = itemID == 1 ? "No HP potions remain." : "No MP potions remain."; break;
+                case 5: result = "No " + resource + " potions remain."; break;
                 case 6: result = "Another item operation is in progress."; break;
                 case 7: result = "World changed. Open the bag again."; break;
                 case 8: result = "Item storage failed. Try again later."; break;
@@ -772,6 +783,14 @@ namespace Mmorpg.Client
             quantity.rectTransform.anchoredPosition = quantityBadgeRect.anchoredPosition;
             quantity.rectTransform.sizeDelta = quantityBadgeRect.sizeDelta;
 
+            if (item.ItemID >= 3 && item.ItemID <= 5)
+            {
+                var equipped = CreateText("EquippedItem" + item.ItemID.ToString(CultureInfo.InvariantCulture),
+                    cardObject.transform, "EQUIPPED", 14, new Color32(229, 211, 163, 255), TextAlignmentOptions.MidlineLeft);
+                SetTopLeft(equipped.rectTransform, 6, 66, 108, 17);
+                equipped.gameObject.SetActive(IsItemEquipped(item.ItemID));
+            }
+
             button.onClick.AddListener(() => SelectItem(item, button));
         }
 
@@ -783,7 +802,7 @@ namespace Mmorpg.Client
             selectedItemID = item.ItemID;
             ApplySelection(item, card);
             if (useStatus != null && !usePending && !useTimedOut)
-                useStatus.text = (item.ItemID == 1 || item.ItemID == 2) && Time.unscaledTime < useCooldownDeadline
+                useStatus.text = ItemPresentation.IsPotion(item.ItemID, worldScreen.Content) && Time.unscaledTime < useCooldownDeadline
                     ? "Potion is on cooldown."
                     : ItemPresentation.UseDescription(item.ItemID, worldScreen.Content);
             UpdateControls();
@@ -821,7 +840,9 @@ namespace Mmorpg.Client
             detailBadge.text = icon != null ? string.Empty : ItemPresentation.Badge(item.ItemID);
             detailBadge.color = ItemPresentation.Accent(item.ItemID);
             detailName.text = ItemPresentation.Name(item.ItemID, worldScreen.Content);
-            detailSlot.text = "Slot " + item.Slot.ToString(CultureInfo.InvariantCulture);
+            detailSlot.text = item.ItemID >= 3 && item.ItemID <= 5
+                ? ItemPresentation.EquipmentDescription(item.ItemID, worldScreen.Content)
+                : "Slot " + item.Slot.ToString(CultureInfo.InvariantCulture);
             detailQuantity.text = "Quantity " + item.Quantity.ToString(CultureInfo.InvariantCulture);
         }
 
@@ -857,16 +878,18 @@ namespace Mmorpg.Client
 
         private void UpdateControls()
         {
+            UpdatePotionCooldown();
             bool available = WorldAvailable && model != null && loginScreen != null && loginScreen.Model == model;
+            bool selectedPotion = hasSelectedItem && ItemPresentation.IsPotion(selectedItemID, worldScreen.Content);
             if (bagButton != null) bagButton.interactable = available;
             if (refreshButton != null) refreshButton.interactable = available && !requestPending && !requestTimedOut;
             if (closeButton != null) closeButton.interactable = true;
-            if (useStatus != null && hasSelectedItem && (selectedItemID == 1 || selectedItemID == 2) && useTimedOut)
+            if (useStatus != null && selectedPotion && useTimedOut)
                 useStatus.text = "Use result unknown. Checking the bag; reconnect before trying again.";
             else if (useStatus != null && !usePending &&
-                (potionNoticeDeadline == 0 || (hasSelectedItem && selectedItemID != 1 && selectedItemID != 2)))
+                (potionNoticeDeadline == 0 || (hasSelectedItem && !selectedPotion)))
                 useStatus.text = hasSelectedItem
-                    ? ((selectedItemID == 1 || selectedItemID == 2) && Time.unscaledTime < useCooldownDeadline
+                    ? (selectedPotion && Time.unscaledTime < useCooldownDeadline
                         ? "Potion is on cooldown." : ItemPresentation.UseDescription(selectedItemID, worldScreen.Content))
                     : string.Empty;
             if (equipButton != null)
@@ -879,15 +902,16 @@ namespace Mmorpg.Client
             }
             if (hasSelectedItem && selectedItemID >= 3 && selectedItemID <= 5 && useStatus != null)
                 useStatus.text = equipmentResult ?? (!EquipmentKnown ? "Equipment: --" :
-                    "Weapon · Shield · Armor\n" + (equipmentState.WeaponID != 0 ? "On" : "Off") + " · " +
-                    (equipmentState.ShieldID != 0 ? "On" : "Off") + " · " + (equipmentState.BodyID != 0 ? "On" : "Off") +
+                    "Weapon: " + (equipmentState.WeaponID != 0 ? "On" : "Off") + " · Shield: " +
+                    (equipmentState.ShieldID != 0 ? "On" : "Off") + "\nArmor: " + (equipmentState.BodyID != 0 ? "On" : "Off") +
                     "\nATK " + equipmentState.BaseAttack + "+" + equipmentState.BonusAttack + "=" + equipmentState.EffectiveAttack +
                     " · DEF " + equipmentState.DefensePercent + "%");
             if (useButton != null)
             {
                 var label = useButton.GetComponentInChildren<TMP_Text>(true);
-                if (label != null) label.text = selectedItemID == 2 ? "USE MP POTION" : "USE HP POTION";
-                useButton.gameObject.SetActive(hasSelectedItem && (selectedItemID == 1 || selectedItemID == 2));
+                if (label != null) label.text = selectedPotion && worldScreen.Content.GetItem(selectedItemID).mpRecovery > 0
+                    ? "USE MP POTION" : "USE HP POTION";
+                useButton.gameObject.SetActive(selectedPotion);
                 useButton.interactable = CanUseSelectedItem();
             }
             if (potionQuickSlot != null || mpPotionQuickSlot != null)
@@ -922,11 +946,11 @@ namespace Mmorpg.Client
                 var key = slot.transform.Find("Key")?.GetComponent<TMP_Text>();
                 if (key != null) key.text = "2";
             }
-            ConfigurePotionQuickSlot(potionQuickSlot, 126);
-            ConfigurePotionQuickSlot(mpPotionQuickSlot, 170);
+            potionCooldown = ConfigurePotionQuickSlot(potionQuickSlot, 126);
+            mpPotionCooldown = ConfigurePotionQuickSlot(mpPotionQuickSlot, 170);
         }
 
-        private static void ConfigurePotionQuickSlot(UnityEngine.UI.Button button, float x)
+        private TMP_Text ConfigurePotionQuickSlot(UnityEngine.UI.Button button, float x)
         {
             var rect = (RectTransform)button.transform;
             rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(.5f, 0);
@@ -944,6 +968,46 @@ namespace Mmorpg.Client
                 quantity.fontSizeMin = 11;
                 quantity.fontSizeMax = 15;
             }
+            var cooldown = button.transform.Find("Cooldown")?.GetComponent<TMP_Text>();
+            if (cooldown == null)
+            {
+                cooldown = CreateText("Cooldown", button.transform, string.Empty, 14,
+                    new Color32(255, 242, 209, 255), TextAlignmentOptions.Center);
+                cooldown.fontStyle = FontStyles.Bold;
+                cooldown.rectTransform.anchorMin = cooldown.rectTransform.anchorMax = cooldown.rectTransform.pivot = new Vector2(.5f, .5f);
+                cooldown.rectTransform.sizeDelta = new Vector2(36, 20);
+                var outline = cooldown.gameObject.AddComponent<UnityEngine.UI.Outline>();
+                outline.effectColor = new Color32(16, 37, 42, 255);
+                outline.effectDistance = new Vector2(1, -1);
+            }
+            cooldown.gameObject.SetActive(false);
+            return cooldown;
+        }
+
+        private void UpdatePotionCooldown()
+        {
+            int seconds = Mathf.Max(0, Mathf.CeilToInt(useCooldownDeadline - Time.unscaledTime));
+            if (potionCooldown != null)
+            {
+                potionCooldown.gameObject.SetActive(seconds > 0);
+                if (seconds > 0) potionCooldown.SetText("{0}s", seconds);
+            }
+            if (mpPotionCooldown != null)
+            {
+                mpPotionCooldown.gameObject.SetActive(seconds > 0);
+                if (seconds > 0) mpPotionCooldown.SetText("{0}s", seconds);
+            }
+        }
+
+        private void UpdateEquipmentMarkers()
+        {
+            if (inventoryGridContent == null) return;
+            foreach (Transform card in inventoryGridContent)
+                for (uint itemID = 3; itemID <= 5; itemID++)
+                {
+                    var marker = card.Find("EquippedItem" + itemID.ToString(CultureInfo.InvariantCulture));
+                    if (marker != null) marker.gameObject.SetActive(IsItemEquipped(itemID));
+                }
         }
 
         private void UpdatePotionQuickSlot(UnityEngine.UI.Button button, TMP_Text quantityText, uint quantity, bool known)

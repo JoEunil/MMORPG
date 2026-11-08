@@ -47,7 +47,7 @@ namespace Mmorpg.Client.Tests
                 Assert.That(content.GetHuntingZone(6).bossHp, Is.EqualTo(36000));
                 Assert.That(content.GetHuntingZone(1).minLevel, Is.Zero);
                 Assert.That(content.GetHuntingZone(0), Is.Null);
-                Assert.That(content.items.Length, Is.EqualTo(5));
+                Assert.That(content.items.Length, Is.EqualTo(9));
                 Assert.That(content.GetItem(1).hpRecovery, Is.EqualTo(1500));
                 Assert.That(content.GetItem(2).mpRecovery, Is.EqualTo(500));
                 Assert.That(content.GetItem(3).name, Is.EqualTo(expected["items"][2]["name"].Value<string>()));
@@ -55,6 +55,12 @@ namespace Mmorpg.Client.Tests
                 Assert.That(content.GetItem(3).weaponAttackBonus, Is.EqualTo(2));
                 Assert.That(content.GetItem(4).defensePercent, Is.EqualTo(2));
                 Assert.That(content.GetItem(5).defensePercent, Is.EqualTo(3));
+                Assert.That(content.GetItem(6).hpRecovery, Is.EqualTo(3000));
+                Assert.That(content.GetItem(7).mpRecovery, Is.EqualTo(1000));
+                Assert.That(content.GetItem(8).hpRecovery, Is.EqualTo(4500));
+                Assert.That(content.GetItem(9).mpRecovery, Is.EqualTo(1500));
+                foreach (uint id in new uint[] { 1, 2, 6, 7, 8, 9 })
+                    Assert.That(content.GetItem(id).cooldownTicks, Is.EqualTo(120));
                 Assert.That(content.GetItem(33), Is.Null);
                 Assert.That(ItemPresentation.Name(3, content), Is.EqualTo(content.GetItem(3).name));
                 Assert.That(ItemPresentation.Name(33, content), Is.EqualTo("Item #33"));

@@ -22,6 +22,9 @@ namespace Mmorpg.Client.Tests
         {
             using (var f = new Fixture())
             {
+                f.World.Content.GetItem(3).weaponAttackBonus = 2;
+                f.World.Content.GetItem(4).defensePercent = 2;
+                f.World.Content.GetItem(5).defensePercent = 3;
                 SetPrivate(f.Login.Model, "_ownershipEpoch", 1UL); SetPrivate(f.Login.Model, "_selfHP", 100);
                 SetPrivate(f.World, "ownFull", new FullStateField { hp = 100, mp = 50, maxHp = 100, maxMp = 50 });
                 var statusObject = new GameObject("equipment feedback", typeof(RectTransform), typeof(TextMeshProUGUI));
@@ -37,18 +40,25 @@ namespace Mmorpg.Client.Tests
                     new EquipmentStateView { BaseAttack = 10, EffectiveAttack = 10 });
                 var equipment = new EquipmentStateView { WeaponID = 3, BaseAttack = 10, BonusAttack = 2, EffectiveAttack = 12 };
                 f.Cards[0].onClick.Invoke();
+                Assert.That(f.DetailSlot.text, Is.EqualTo("Weapon · ATK +2"));
+                Assert.That(f.Cards[0].transform.Find("EquippedItem3").gameObject.activeSelf, Is.False);
                 var equip = (UnityEngine.UI.Button)GetPrivate(f.Screen, "equipButton");
                 Assert.That(equip.gameObject.activeSelf, Is.True); Assert.That(equip.interactable, Is.True);
                 equip.onClick.Invoke(); equip.onClick.Invoke(); Assert.That(f.Network.EquipmentSets, Is.EqualTo(1));
+                Assert.That(f.Cards[0].transform.Find("EquippedItem3").gameObject.activeSelf, Is.False,
+                    "Sending an equip request must not predict the marker.");
                 Assert.That(f.Screen.CanSellItem(3), Is.False); f.Screen.ClosePanel();
                 ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentWrite, 1, 1, 1, 0, equipment);
                 f.Receive(true, items);
                 Assert.That(f.Screen.IsItemEquipped(3), Is.True); Assert.That(f.Screen.CanSellItem(3), Is.False);
                 f.OpenBag(); f.Cards[0].onClick.Invoke();
                 Assert.That(feedback.text, Does.Contain("10+2=12"));
+                Assert.That(feedback.text, Does.Contain("Weapon: On").And.Contain("Shield: Off").And.Contain("Armor: Off"));
+                Assert.That(f.Cards[0].transform.Find("EquippedItem3").gameObject.activeSelf, Is.True);
                 for (byte slot = 1; slot < 3; slot++)
                 {
                     f.Cards[slot].onClick.Invoke(); equip.onClick.Invoke();
+                    Assert.That(f.DetailSlot.text, Is.EqualTo(slot == 1 ? "Shield · DEF 2%" : "Armor · DEF 3%"));
                     Assert.That(f.Network.LastEquipmentSlot, Is.EqualTo(slot));
                     Assert.That(f.Network.LastEquipmentItem, Is.EqualTo(3U + slot));
                     if (slot == 1) { equipment.ShieldID = 4; equipment.DefensePercent = 2; }
@@ -56,16 +66,25 @@ namespace Mmorpg.Client.Tests
                     ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentWrite, 1, 1, 1, slot, equipment);
                     f.Receive(true, items);
                     Assert.That(f.Screen.IsItemEquipped(3U + slot), Is.True);
+                    Assert.That(f.Cards[slot].transform.Find("EquippedItem" + (3U + slot)).gameObject.activeSelf, Is.True);
                     Assert.That(f.Screen.CanSellItem(3U + slot), Is.False);
                     Assert.That(f.Login.Data.GetInventory()[slot].Quantity, Is.EqualTo(5));
                 }
                 f.Cards[2].onClick.Invoke(); Assert.That(feedback.text, Does.Contain("DEF 5%"));
+                var shieldMarker = f.Cards[1].transform.Find("EquippedItem4");
+                f.InvokeScreen("ResetEquipment");
+                Assert.That(shieldMarker.gameObject.activeSelf, Is.False);
+                f.InvokeScreen("RefreshEquipment");
+                ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentRead, 1, 0, 1, 0, equipment);
+                Assert.That(shieldMarker.gameObject.activeSelf, Is.True,
+                    "A confirmed equipment read updates existing cards without an inventory rebuild.");
                 f.Cards[0].onClick.Invoke(); equip.onClick.Invoke();
                 Assert.That(f.Network.LastEquipmentItem, Is.Zero); Assert.That(f.Network.LastEquipmentSlot, Is.Zero);
                 equipment.WeaponID = 0; equipment.BonusAttack = 0; equipment.EffectiveAttack = 10;
                 ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentWrite, 1, 1, 1, 0, equipment);
                 f.Receive(true, items);
                 Assert.That(f.Screen.CanSellItem(3), Is.True); Assert.That(f.Login.Data.GetInventory()[0].Quantity, Is.EqualTo(5));
+                Assert.That(f.Cards[0].transform.Find("EquippedItem3").gameObject.activeSelf, Is.False);
                 Assert.That(f.Screen.CanSellItem(4), Is.False); Assert.That(f.Screen.CanSellItem(5), Is.False);
                 f.Cards[0].onClick.Invoke(); equip.onClick.Invoke();
                 SetPrivate(f.Screen, "equipmentDeadline", Time.unscaledTime - 1f); f.InvokeScreen("Update");
@@ -74,6 +93,8 @@ namespace Mmorpg.Client.Tests
                 Assert.That(f.Screen.CanSellItem(4), Is.False); Assert.That(f.Screen.CanSellItem(5), Is.False);
                 Assert.That(f.Network.EquipmentSets, Is.EqualTo(writes));
                 Assert.That(feedback.text, Does.Contain("Reconnect"));
+                Assert.That(f.Cards[1].transform.Find("EquippedItem4").gameObject.activeSelf, Is.False,
+                    "Previously confirmed markers disappear when equipment becomes unknown.");
             }
         }
 
@@ -499,6 +520,9 @@ namespace Mmorpg.Client.Tests
                 var quantityObject = new GameObject("Quantity", typeof(RectTransform), typeof(TextMeshProUGUI));
                 quantityObject.transform.SetParent(quickObject.transform, false);
                 var quantity = quantityObject.GetComponent<TMP_Text>();
+                var keyObject = new GameObject("Key", typeof(RectTransform), typeof(TextMeshProUGUI));
+                keyObject.transform.SetParent(quickObject.transform, false);
+                keyObject.GetComponent<TMP_Text>().text = "1";
                 var useObject = new GameObject("bag use", typeof(RectTransform), typeof(UnityEngine.UI.Button));
                 useObject.transform.SetParent(fixture.Screen.transform, false);
                 var useLabelObject = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
@@ -560,8 +584,21 @@ namespace Mmorpg.Client.Tests
                 Assert.That(mpQuantity.text, Is.EqualTo("4"));
                 fixture.Screen.ClosePanel();
                 Assert.That(quick.interactable || mpQuick.interactable, Is.False, "The server-confirmed cooldown covers both potions.");
+                var hpCooldown = quick.transform.Find("Cooldown").GetComponent<TMP_Text>();
+                var mpCooldown = mpQuick.transform.Find("Cooldown").GetComponent<TMP_Text>();
+                Assert.That(hpCooldown.gameObject.activeSelf && mpCooldown.gameObject.activeSelf, Is.True);
+                Assert.That(hpCooldown.text, Is.EqualTo(mpCooldown.text).And.EndsWith("s"));
+                SetPrivate(fixture.Screen, "useCooldownDeadline", Time.unscaledTime + 1.5f);
+                fixture.InvokeScreen("Update");
+                Assert.That(hpCooldown.text, Is.EqualTo("2s"));
+                Assert.That(mpCooldown.text, Is.EqualTo("2s"));
+                Assert.That(quantity.text, Is.EqualTo("3"));
+                Assert.That(mpQuantity.text, Is.EqualTo("4"));
+                Assert.That(keyObject.GetComponent<TMP_Text>().text, Is.EqualTo("1"));
+                Assert.That(mpQuick.transform.Find("Key").GetComponent<TMP_Text>().text, Is.EqualTo("2"));
                 SetPrivate(fixture.Screen, "useCooldownDeadline", Time.unscaledTime - 1f);
                 fixture.InvokeScreen("UpdateControls");
+                Assert.That(hpCooldown.gameObject.activeSelf || mpCooldown.gameObject.activeSelf, Is.False);
                 Assert.That(quick.interactable && mpQuick.interactable, Is.True);
                 fixture.OpenBag();
                 fixture.Cards[0].onClick.Invoke();
@@ -625,6 +662,8 @@ namespace Mmorpg.Client.Tests
                     new InventoryItem { itemID = 2, quantity = 4, slot = 1 });
                 Assert.That(quick.interactable, Is.False, "A fresh bag response must not release an unknown use outcome.");
                 Assert.That(mpQuick.interactable, Is.False, "Unknown HP use also keeps MP use locked.");
+                Assert.That(hpCooldown.gameObject.activeSelf || mpCooldown.gameObject.activeSelf, Is.False,
+                    "No countdown is invented for an unknown outcome; the lock remains in force.");
                 Assert.That(fixture.Network.ItemUses, Is.EqualTo(3));
             }
             using (var fixture = new Fixture())
@@ -684,7 +723,7 @@ namespace Mmorpg.Client.Tests
                 fixture.Cards[1].onClick.Invoke();
                 Assert.That(status.text, Does.Contain("500 MP").And.Contain("full MP").And.Contain("dead").And.Contain("Shares potion cooldown"));
                 fixture.Cards[2].onClick.Invoke();
-                Assert.That(status.text, Does.Contain("cannot be used as a consumable"));
+                Assert.That(status.text, Is.EqualTo("Equipment: --"));
                 fixture.Cards[3].onClick.Invoke();
                 Assert.That(status.text, Does.Contain("Unknown item").And.Contain("not supported"));
                 SetPrivate(fixture.Screen, "useCooldownDeadline", Time.unscaledTime + 2f);
@@ -708,6 +747,62 @@ namespace Mmorpg.Client.Tests
                 Assert.That(status.text, Does.Contain("result unknown").And.Contain("reconnect"));
                 Assert.That(use.interactable, Is.False, "An expired notice cannot unlock an unresolved use.");
                 Assert.That(fixture.Network.ItemUses, Is.Zero, "Selecting details never sends a use request.");
+            }
+            using (var fixture = new Fixture())
+            {
+                var content = fixture.World.Content;
+                Array.Resize(ref content.items, 9);
+                content.items[5] = new ServerContent.Item { itemID = 6, itemType = 1, name = "중급 HP 포션", hpRecovery = 3000, cooldownTicks = 120 };
+                content.items[6] = new ServerContent.Item { itemID = 7, itemType = 1, name = "중급 MP 포션", mpRecovery = 1000, cooldownTicks = 120 };
+                content.items[7] = new ServerContent.Item { itemID = 8, itemType = 1, name = "상급 HP 포션", hpRecovery = 4500, cooldownTicks = 120 };
+                content.items[8] = new ServerContent.Item { itemID = 9, itemType = 1, name = "상급 MP 포션", mpRecovery = 1500, cooldownTicks = 120 };
+                SetPrivate(fixture.Login.Model, "_ownershipEpoch", 1UL);
+                SetPrivate(fixture.Login.Model, "_selfHP", 500);
+                var useObject = new GameObject("tier bag use", typeof(RectTransform), typeof(UnityEngine.UI.Button));
+                useObject.transform.SetParent(fixture.Screen.transform, false);
+                var use = useObject.GetComponent<UnityEngine.UI.Button>();
+                SetPrivate(fixture.Screen, "useButton", use);
+                var statusObject = new GameObject("tier use status", typeof(RectTransform), typeof(TextMeshProUGUI));
+                statusObject.transform.SetParent(fixture.Screen.transform, false);
+                var status = statusObject.GetComponent<TMP_Text>();
+                SetPrivate(fixture.Screen, "useStatus", status);
+                fixture.OpenBag();
+                var items = new[] {
+                    new InventoryItem { itemID = 1, quantity = 3, slot = 0 },
+                    new InventoryItem { itemID = 2, quantity = 5, slot = 1 },
+                    new InventoryItem { itemID = 6, quantity = 3, slot = 2 },
+                    new InventoryItem { itemID = 7, quantity = 3, slot = 3 },
+                    new InventoryItem { itemID = 8, quantity = 3, slot = 4 },
+                    new InventoryItem { itemID = 9, quantity = 3, slot = 5 },
+                    new InventoryItem { itemID = 99, quantity = 1, slot = 6 }
+                };
+                fixture.Receive(true, items);
+                var effects = new[] { "3000 HP", "1000 MP", "4500 HP", "1500 MP" };
+                for (int i = 0; i < effects.Length; i++)
+                {
+                    fixture.Cards[i + 2].onClick.Invoke();
+                    Assert.That(status.text, Does.Contain(effects[i]).And.Contain("Shares potion cooldown"));
+                    Assert.That(fixture.DetailName.text, Is.EqualTo(content.items[i + 5].name));
+                    Assert.That(useObject.activeSelf && use.interactable, Is.True);
+                    Assert.That(ItemPresentation.Icon((uint)(i + 6)), Is.SameAs(ItemPresentation.Icon(i % 2 == 0 ? 1U : 2U)));
+                }
+                fixture.Cards[6].onClick.Invoke();
+                Assert.That(useObject.activeSelf, Is.False);
+                fixture.InvokeScreen("UseSelectedItem");
+                Assert.That(fixture.Network.ItemUses, Is.Zero, "Unknown items do not become usable with potion tiers.");
+                fixture.Cards[5].onClick.Invoke();
+                fixture.InvokeScreen("UseSelectedItem");
+                Assert.That(fixture.Network.LastUsedItemID, Is.EqualTo(9U), "Bag use sends the selected tier, not the base MP ID.");
+                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 1, 2, 1, 2, 120);
+                Assert.That((bool)GetPrivate(fixture.Screen, "usePending"), Is.True, "A base-potion reply cannot complete a tier request.");
+                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 1, 9, 1, 2, 120);
+                Assert.That((bool)GetPrivate(fixture.Screen, "usePending"), Is.False);
+                Assert.That((float)GetPrivate(fixture.Screen, "useCooldownDeadline"), Is.GreaterThan(Time.unscaledTime + 5f));
+                items[5].quantity = 2;
+                fixture.Receive(true, items);
+                fixture.Cards[0].onClick.Invoke();
+                fixture.InvokeScreen("UseSelectedItem");
+                Assert.That(fixture.Network.ItemUses, Is.EqualTo(1), "A tier potion locks base HP use through the same cooldown.");
             }
         }
 
