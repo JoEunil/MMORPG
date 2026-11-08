@@ -19,3 +19,6 @@
 - 검증용 Editor는 clean World씬/Play off 확인 후 정상 종료했다. Slack 수신기는 오래된 health/PID 소멸을 확인하고 기존 고정 대상·권한으로 복구했다. 최근 listening·SOCKET_READY·실제 프로세스를 확인했다. 과거 답장은 재처리하지 않았다.
 - 현재 별도 PC 입력 요청은 없다. Editor 미리보기/자동 fixture/빌드 완료를 새 standalone 실입력 성공으로 표현하지 않는다. 런처 경로는 그대로여서 다음 실행부터 새 Player를 사용한다.
 - 실제 활성화746(신규271/후속475). 공개 AGENT_USAGE는 과거 미반영7회와 이번9회만 더했다. 총괄 작업·도구/검사/입력은 활성화가 아니며 토큰·비용N/A.
+
+- MAPVIEW01/r1 게시 승인 대기: 채널C0C9VFZMV43, 부모/요청1794130505.431679, 명령 승인 MAPVIEW01. 제품 후보f1d008a와 product-manifest.json을 고정했다. 승인 회신 미수신·미소비. 새 부모 등록 및 고정 수신기의 최근 listening/실제 PID 확인 완료. 원격 push/PR은 아직 없다.
+
