@@ -83,27 +83,21 @@ namespace Core {
             case OP::RESPAWN_TO_TOWN:
                 RespawnToTown(p);
                 break;
-            case OP::ITEM_USE:
-                if (p->GetLength() == sizeof(PacketStruct<ItemUseRequestBody>) && h->flags == 0
-                    && h->length == p->GetLength() && h->magic == MAGIC) {
+            case OP::ITEM_USE: {
                     const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
                     const auto result = stateManager->UseItem(p->GetSessionID(), request);
                     auto response = writer->WriteItemUseResponse(result);
                     if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
                 }
                 break;
-            case OP::EQUIPMENT_GET:
-                if (p->GetLength() == sizeof(PacketStruct<EquipmentGetRequestBody>) && h->flags == 0
-                    && h->length == p->GetLength() && h->magic == MAGIC) {
+            case OP::EQUIPMENT_GET:  {
                     const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
                     const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, false);
                     auto response = writer->WriteEquipmentResponse(result);
                     if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
                 }
                 break;
-            case OP::EQUIPMENT_SET:
-                if (p->GetLength() == sizeof(PacketStruct<EquipmentSetRequestBody>) && h->flags == 0
-                    && h->length == p->GetLength() && h->magic == MAGIC) {
+            case OP::EQUIPMENT_SET: {
                     const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
                     if (request.slot > 2) break;
                     const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, true, request.slot, request.itemID);
@@ -257,7 +251,7 @@ namespace Core {
         const auto* header = parseHeader(p->GetPtr());
         const auto request = *parseBody<BazaarBuyRequestBody>(p->GetPtr());
         if (header->magic != MAGIC || header->opcode != OP::BAZAAR_BUY
-            || header->length != p->GetLength() || header->flags != 0
+            || header->length != p->GetLength() || IsSimulationFlag(header->flags)
             || request.requestID == 0 || request.listingID == 0)
             return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
@@ -290,7 +284,7 @@ namespace Core {
         const auto* header = parseHeader(p->GetPtr());
         const auto request = *parseBody<BazaarRegisterRequestBody>(p->GetPtr());
         if (header->magic != MAGIC || header->opcode != OP::BAZAAR_REGISTER || header->length != p->GetLength()
-            || header->flags != 0 || request.requestID == 0 || request.inventorySlot >= MAX_INVENTORY_ITEMS
+            || IsSimulationFlag(header->flags) || request.requestID == 0 || request.inventorySlot >= MAX_INVENTORY_ITEMS
             || request.quantity == 0 || request.totalDiamondPrice == 0) return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
@@ -321,7 +315,7 @@ namespace Core {
         const auto* header = parseHeader(p->GetPtr());
         const auto request = *parseBody<WalletRequestBody>(p->GetPtr());
         if (header->magic != MAGIC || header->opcode != OP::WALLET_REQUEST || header->length != p->GetLength()
-            || header->flags != 0 || request.requestID == 0) return;
+            || IsSimulationFlag(header->flags) || request.requestID == 0) return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
 
@@ -369,7 +363,7 @@ namespace Core {
         const auto* header = parseHeader(p->GetPtr());
         const auto request = *parseBody<BazaarOutboxListRequestBody>(p->GetPtr());
         if (header->magic != MAGIC || header->opcode != OP::BAZAAR_OUTBOX_LIST
-            || header->length != p->GetLength() || header->flags != 0 || request.requestID == 0) return;
+            || header->length != p->GetLength() || IsSimulationFlag(header->flags) || request.requestID == 0) return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
         Message* msg = messagePool->Acquire();
@@ -396,7 +390,7 @@ namespace Core {
         const auto* header = parseHeader(p->GetPtr());
         const auto request = *parseBody<BazaarCheckOutboxRequestBody>(p->GetPtr());
         if (header->magic != MAGIC || header->opcode != OP::BAZAAR_CHECK_OUTBOX
-            || header->length != p->GetLength() || header->flags != 0 || request.requestID == 0)
+            || header->length != p->GetLength() || IsSimulationFlag(header->flags) || request.requestID == 0)
             return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
@@ -426,7 +420,7 @@ namespace Core {
         const auto* header = parseHeader(p->GetPtr());
         const auto request = *parseBody<BazaarCancelListingRequestBody>(p->GetPtr());
         if (header->magic != MAGIC || header->opcode != OP::BAZAAR_CANCEL_LISTING
-            || header->length != p->GetLength() || header->flags != 0
+            || header->length != p->GetLength() || IsSimulationFlag(header->flags)
             || request.requestID == 0 || request.listingID == 0) return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
@@ -456,7 +450,7 @@ namespace Core {
         const auto* header = parseHeader(p->GetPtr());
         const auto request = *parseBody<BazaarClaimRequestBody>(p->GetPtr());
         if (header->magic != MAGIC || header->opcode != OP::BAZAAR_CLAIM
-            || header->length != p->GetLength() || header->flags != 0
+            || header->length != p->GetLength() || IsSimulationFlag(header->flags)
             || request.requestID == 0 || request.listingID == 0)
             return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
@@ -488,7 +482,7 @@ namespace Core {
             return;
         const auto* header = parseHeader(p->GetPtr());
         const auto request = *parseBody<BazaarMyListRequestBody>(p->GetPtr());
-        if (header->length != p->GetLength() || header->flags != 0 || request.requestID == 0)
+        if (header->length != p->GetLength() || IsSimulationFlag(header->flags) || request.requestID == 0)
             return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
@@ -519,7 +513,7 @@ namespace Core {
             return;
         const auto* header = parseHeader(p->GetPtr());
         const auto request = *parseBody<BazaarSearchRequestBody>(p->GetPtr());
-        if (header->length != p->GetLength() || header->flags != 0
+        if (header->length != p->GetLength() || IsSimulationFlag(header->flags)
             || request.requestID == 0 || request.itemType < 1 || request.itemType > 3
             || !stateManager->IsFieldSession(p->GetSessionID()))
             return;
@@ -624,7 +618,7 @@ namespace Core {
             && parseHeader(p->GetPtr())->magic == MAGIC
             && parseHeader(p->GetPtr())->opcode == OP::RESPAWN_TO_TOWN
             && parseHeader(p->GetPtr())->length == p->GetLength()
-            && parseHeader(p->GetPtr())->flags == 0;
+            && !IsSimulationFlag(parseHeader(p->GetPtr())->flags);
         const bool success = validHeader
             && stateManager->RespawnToTown(session, *parseBody<RespawnToTownBody>(p->GetPtr()), result);
         auto response = success

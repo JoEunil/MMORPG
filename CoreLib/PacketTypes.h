@@ -509,6 +509,50 @@ namespace Core {
     
 #pragma pack(pop)
 
+    inline constexpr bool IsSimulationOpcode(uint16_t opcode) noexcept {
+        return opcode == OP::ACTION || opcode == OP::PARRY;
+    }
+
+    inline constexpr bool IsSimulationFlag(uint8_t flags) noexcept {
+        return (flags & FLAG_SIMULATION) != 0;
+    }
+
+    inline constexpr bool IsElasticReqPacket(uint16_t opcode) noexcept {
+        return opcode == OP::CHAT || opcode == OP::PROFILE_BATCH;
+    }
+
+    // 헤더 포함 요청 길이. 가변 요청은 고정 부분의 최소 길이, 미지원은 -1이다.
+    inline constexpr int32_t GetReqPacketLen(uint16_t opcode) noexcept {
+        switch (opcode) {
+        case OP::AUTH: return sizeof(PacketStruct<AuthRequestBody>);
+        case OP::CHARACTER_LIST: return sizeof(PacketHeader);
+        case OP::ENTER_WORLD: return sizeof(PacketStruct<EnterWorldRequestBody>);
+        case OP::ACTION: return sizeof(PacketStruct<ActionRequestBody>);
+        case OP::CHAT: return sizeof(PacketStruct<ChatRequestBody>);
+        case OP::ZONE_CHANGE: return sizeof(PacketStruct<ZoneChangeBody>);
+        case OP::INVENTORY_REQ: return sizeof(PacketHeader);
+        case OP::PONG: return sizeof(PacketStruct<Pong>);
+        case OP::PROFILE_BATCH: return sizeof(PacketHeader) + sizeof(uint16_t);
+        case OP::BAZAAR_SEARCH: return sizeof(PacketStruct<BazaarSearchRequestBody>);
+        case OP::BAZAAR_MY_LIST: return sizeof(PacketStruct<BazaarMyListRequestBody>);
+        case OP::BAZAAR_CLAIM: return sizeof(PacketStruct<BazaarClaimRequestBody>);
+        case OP::BAZAAR_BUY: return sizeof(PacketStruct<BazaarBuyRequestBody>);
+        case OP::BAZAAR_CHECK_OUTBOX: return sizeof(PacketStruct<BazaarCheckOutboxRequestBody>);
+        case OP::BAZAAR_CANCEL_LISTING: return sizeof(PacketStruct<BazaarCancelListingRequestBody>);
+        case OP::ZONE_RESYNC: return sizeof(PacketStruct<ZoneResyncBody>);
+        case OP::RESPAWN_TO_TOWN: return sizeof(PacketStruct<RespawnToTownBody>);
+        case OP::BAZAAR_REGISTER: return sizeof(PacketStruct<BazaarRegisterRequestBody>);
+        case OP::WALLET_REQUEST: return sizeof(PacketStruct<WalletRequestBody>);
+        case OP::ITEM_USE: return sizeof(PacketStruct<ItemUseRequestBody>);
+        case OP::PARRY: return sizeof(PacketStruct<ParryRequestBody>);
+        case OP::BAZAAR_OUTBOX_LIST: return sizeof(PacketStruct<BazaarOutboxListRequestBody>);
+        case OP::EQUIPMENT_GET: return sizeof(PacketStruct<EquipmentGetRequestBody>);
+        case OP::EQUIPMENT_SET: return sizeof(PacketStruct<EquipmentSetRequestBody>);
+        default:
+            return -1;
+        }
+    }
+
     // 헤더를 포함한 현재 최대 클라이언트 요청 크기.
     inline constexpr uint32_t MAX_REQ_PACKET_LEN = sizeof(PacketStruct<ProfileBatchReqBody>);
 

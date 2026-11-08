@@ -39,18 +39,14 @@ namespace Net {
             Core::gameLogger->LogWarn("context", "invalid packet length", "session", sessionID, "packetLen", packetLen, "opcode", opcode);
             return false;
         }
-        // 고정 길이 요청이 짧은 본문이나 잘못된 dispatcher로 전달되지 않도록 한다.
-        if (opcode == Core::OP::BAZAAR_SEARCH
-            && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::BazaarSearchRequestBody>)))
+        const int32_t expectedLen = Core::GetReqPacketLen(opcode);
+        if (expectedLen < 0)
             return false;
-        if (opcode == Core::OP::BAZAAR_MY_LIST
-            && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::BazaarMyListRequestBody>)))
+        const auto requiredLen = static_cast<uint32_t>(expectedLen);
+        if (Core::IsElasticReqPacket(opcode) ? packetLen < requiredLen : packetLen != requiredLen)
             return false;
-        if (opcode == Core::OP::PARRY
-            && (header.flags != Core::FLAG_SIMULATION || packetLen != sizeof(Core::PacketStruct<Core::ParryRequestBody>)))
-            return false;
-        if (opcode == Core::OP::ITEM_USE
-            && (header.flags != 0 || packetLen != sizeof(Core::PacketStruct<Core::ItemUseRequestBody>)))
+
+        if (Core::IsSimulationFlag(header.flags) != Core::IsSimulationOpcode(opcode))
             return false;
         return true;
     }

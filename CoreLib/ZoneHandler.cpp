@@ -27,15 +27,13 @@ namespace Core {
         PacketHeader* h = parseHeader(p->GetPtr());
         switch (p->GetOpcode())
         {
-            case OP::PARRY:
-                if (h->flags == FLAG_SIMULATION && p->GetLength() == sizeof(PacketStruct<ParryRequestBody>)) {
-                    auto response = writer->WriteParryResponse(stateManager->Parry(p->GetSessionID(), zoneID, *parseBody<ParryRequestBody>(p->GetPtr())));
-                    if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
-                }
+            case OP::PARRY: {
+                auto response = writer->WriteParryResponse(stateManager->Parry(p->GetSessionID(), zoneID, *parseBody<ParryRequestBody>(p->GetPtr())));
+                if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
                 break;
+            }
             case OP::ACTION:
-                if (p->GetLength() == sizeof(PacketStruct<ActionRequestBody>))
-                    ProcessAction(parseBody<ActionRequestBody>(p->GetPtr()), p->GetSessionID(), zoneID);
+                ProcessAction(parseBody<ActionRequestBody>(p->GetPtr()), p->GetSessionID(), zoneID);
                 break;
             default:
                 errorLogger->LogInfo("zone Handler", "UnDefined OPCODE", "zone", zoneID, "opcode", p->GetOpcode(), "session", p->GetSessionID());

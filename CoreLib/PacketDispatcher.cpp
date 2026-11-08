@@ -11,7 +11,7 @@ namespace Core {
         uint64_t sessionID = pv->GetSessionID();
         
         
-        bool isSimulation = (h->flags & FLAG_SIMULATION) == FLAG_SIMULATION;
+        bool isSimulation = IsSimulationFlag(h->flags);
         if (isSimulation) {
             int16_t zoneID = stateManager->GetZoneID(sessionID);
             if (zoneID <= 0) {
