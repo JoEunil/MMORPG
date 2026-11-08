@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "NetPacketFilter.h"
 #include "AccumulatedBuffer.h"
 
@@ -70,7 +70,9 @@ namespace Net {
         // 게임 세션 상태 확인. 
         uint8_t health = packetDispatcher->HealthCheck(session);
         if (op == Core::OP::PONG) {
-            uint64_t rtt = packetDispatcher->GetRTT(std::move(pv), clock->GetTimeMS());
+            Core::Pong* body = Core::parseBody<Core::Pong>(pv->GetPtr());
+            uint64_t now = clock->GetTimeMS();
+            uint64_t rtt = body->serverTimeMs <= now ? now - body->serverTimeMs : 0;
             if (rtt > jitter.RTO(rtt))
                 perfCollector->AddJitterCnt();
             pongRTT = rtt;
