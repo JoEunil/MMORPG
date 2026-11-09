@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Mmorpg.Client
@@ -63,6 +64,67 @@ namespace Mmorpg.Client
             bool left = x == ix && ix > 0, bottom = y == iy && iy > 0;
             return Cell(ix, iy) && (!left || Cell(ix - 1, iy)) && (!bottom || Cell(ix, iy - 1)) &&
                 (!left || !bottom || Cell(ix - 1, iy - 1));
+        }
+
+        // A map preview only. Every leg stays on the same grid used by local movement.
+        public bool TryFindWalkingRoute(Vector2 start, Vector2 end, List<Vector2> route)
+        {
+            route.Clear();
+            if (!IsWalkable(start.x, start.y) || !IsWalkable(end.x, end.y)) return false;
+            if (CanTraverse(start, end))
+            {
+                route.Add(start);
+                route.Add(end);
+                return true;
+            }
+
+            int Index(Vector2 position) =>
+                (int)Math.Floor(((double)position.y - origin.y) / tileSize) * width +
+                (int)Math.Floor(((double)position.x - origin.x) / tileSize);
+            Vector2 Centre(int index) => origin + new Vector2(index % width + .5f, index / width + .5f) * tileSize;
+            int first = Index(start), last = Index(end);
+            if (!CanTraverse(start, Centre(first)) || !CanTraverse(Centre(last), end)) return false;
+
+            var parent = new int[walkable.Length];
+            var frontier = new Queue<int>();
+            parent[first] = -1;
+            frontier.Enqueue(first);
+            while (frontier.Count > 0 && parent[last] == 0)
+            {
+                int current = frontier.Dequeue();
+                int x = current % width, y = current / width;
+                Visit(x - 1, y, current);
+                Visit(x + 1, y, current);
+                Visit(x, y - 1, current);
+                Visit(x, y + 1, current);
+            }
+            if (parent[last] == 0) return false;
+
+            route.Add(end);
+            route.Add(Centre(last));
+            int next = last;
+            int direction = 0;
+            while (next != first)
+            {
+                int previous = parent[next] - 1;
+                int step = next - previous;
+                if (direction != 0 && direction != step) route.Add(Centre(next));
+                direction = step;
+                next = previous;
+            }
+            route.Add(Centre(first));
+            route.Add(start);
+            route.Reverse();
+            return true;
+
+            void Visit(int x, int y, int current)
+            {
+                if (!Cell(x, y)) return;
+                int index = y * width + x;
+                if (parent[index] != 0) return;
+                parent[index] = current + 1;
+                frontier.Enqueue(index);
+            }
         }
 
         private bool Cell(int x, int y) => x >= 0 && y >= 0 && x < width && y < height && walkable[y * width + x] == 1;

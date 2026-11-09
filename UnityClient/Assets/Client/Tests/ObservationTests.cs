@@ -341,6 +341,99 @@ namespace Mmorpg.Client.Tests
             }
         }
 
+        [Test]
+        [Category("WorldMapRoute")]
+        public void FieldCameraProjectsNorthUpAndEastRightLikeTheOverview()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                var camera = fixture.World.ViewCamera.gameObject.AddComponent<Camera>();
+                camera.orthographic = true;
+                var position = fixture.World.ServerPosition;
+                var origin = new Vector3(position.x, 0, position.y);
+                var centre = camera.WorldToViewportPoint(origin);
+                var north = camera.WorldToViewportPoint(origin + Vector3.forward * 5);
+                var east = camera.WorldToViewportPoint(origin + Vector3.right * 5);
+                Assert.That(north.x, Is.EqualTo(centre.x).Within(.0001f));
+                Assert.That(north.y, Is.GreaterThan(centre.y));
+                Assert.That(east.y, Is.EqualTo(centre.y).Within(.0001f));
+                Assert.That(east.x, Is.GreaterThan(centre.x));
+            }
+        }
+
+        [Test]
+        [Category("WorldMapRoute")]
+        public void FieldRouteMarksStayAnchoredWhenTheCharacterAdvancesOnTheSameLeg()
+        {
+            var map = ScriptableObject.CreateInstance<WorldMap>();
+            var root = new GameObject("Route mark fixture");
+            object guide = null;
+            try
+            {
+                map.origin = Vector2.zero;
+                map.width = 40;
+                map.height = 8;
+                map.walkable = new byte[map.width * map.height];
+                for (int i = 0; i < map.walkable.Length; i++) map.walkable[i] = 1;
+                var guideType = typeof(WorldMinimap).Assembly.GetType("Mmorpg.Client.WorldRouteGuide", true);
+                guide = Activator.CreateInstance(guideType, BindingFlags.Instance | BindingFlags.NonPublic, null,
+                    new object[] { root.transform, 0f, Shader.Find("Universal Render Pipeline/Unlit") }, null);
+                var mesh = (Mesh)Get(guide, "mesh");
+                var destination = new Vector2(32, 4);
+                Invoke(guide, "Show", new List<Vector2> { new Vector2(2, 4), destination }, map);
+                var before = mesh.vertices;
+                Invoke(guide, "Show", new List<Vector2> { new Vector2(2.8f, 4), destination }, map);
+                var after = mesh.vertices;
+                Assert.That(before.Length, Is.GreaterThan(40));
+                int unchanged = 0;
+                for (int i = 0; i < after.Length; i += 8)
+                    for (int j = 0; j < before.Length; j += 8)
+                        if (Vector3.Distance(after[i], before[j]) < .0001f)
+                        { unchanged++; break; }
+                Assert.That(unchanged, Is.GreaterThanOrEqualTo(before.Length / 8 - 1));
+                Assert.That(after[0].x, Is.GreaterThan(before[0].x), "The passed mark should disappear.");
+            }
+            finally
+            {
+                if (guide != null)
+                {
+                    UnityEngine.Object.DestroyImmediate((Mesh)Get(guide, "mesh"));
+                    UnityEngine.Object.DestroyImmediate((Material)Get(guide, "material"));
+                }
+                UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(map);
+            }
+        }
+
+        [Test]
+        [Category("WorldMapRoute")]
+        public void WalkingRouteDetoursAroundBlockedTilesAndClearsWhenNoPathRemains()
+        {
+            var map = ScriptableObject.CreateInstance<WorldMap>();
+            try
+            {
+                map.origin = Vector2.zero;
+                map.width = 7;
+                map.height = 5;
+                map.walkable = new byte[map.width * map.height];
+                for (int i = 0; i < map.walkable.Length; i++) map.walkable[i] = 1;
+                for (int y = 0; y < 4; y++) map.walkable[y * map.width + 3] = 0;
+                var start = new Vector2(1.25f, 2.5f);
+                var end = new Vector2(5.75f, 2.5f);
+                var route = new List<Vector2>();
+                Assert.That(map.CanTraverse(start, end), Is.False);
+                Assert.That(map.TryFindWalkingRoute(start, end, route), Is.True);
+                Assert.That(route[0], Is.EqualTo(start));
+                Assert.That(route[route.Count - 1], Is.EqualTo(end));
+                for (int i = 1; i < route.Count; i++)
+                    Assert.That(map.CanTraverse(route[i - 1], route[i]), Is.True, "Route segment " + i);
+                map.walkable[4 * map.width + 3] = 0;
+                Assert.That(map.TryFindWalkingRoute(start, end, route), Is.False);
+                Assert.That(route, Is.Empty);
+            }
+            finally { UnityEngine.Object.DestroyImmediate(map); }
+        }
+
         private static void PopulateMinimap(WorldMinimap minimap, UnityEngine.UI.VertexHelper vertices) =>
             typeof(WorldMinimap).GetMethod("OnPopulateMesh", BindingFlags.Instance | BindingFlags.NonPublic,
                 null, new[] { typeof(UnityEngine.UI.VertexHelper) }, null).Invoke(minimap, new object[] { vertices });
