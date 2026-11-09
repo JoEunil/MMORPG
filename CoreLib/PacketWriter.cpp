@@ -156,45 +156,56 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::GetChatWhisperPacket(uint64_t sender, uint32_t senderProfileId, const std::string& message) {
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (packetPtr == nullptr) {
+        if (message.size() > UINT16_MAX)
             return nullptr;
+
+        constexpr auto headerLength = sizeof(PacketStruct<ChatWhisperBody>);
+        const auto length = static_cast<uint32_t>(headerLength + message.size());
+        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
+        if (!packetPtr || length > packetPtr->GetCapacity()) {
+            packetPtr.reset();
+            packetPtr = AcquireUniquePacket(PacketPoolType::Big);
         }
-        auto* packet = InitializePacketHeader<ChatWhisperBody>(*packetPtr, OP::CHAT_WHISPER, 0, sizeof(PacketHeader) + sizeof(ChatWhisperBody) + message.length());
+        if (!packetPtr || length > packetPtr->GetCapacity())
+            return nullptr;
+
+        auto* packet = InitializePacketHeader<ChatWhisperBody>(*packetPtr, OP::CHAT_WHISPER, 0, length);
         packet->body.senderProfileId = senderProfileId;
         packet->body.senderChatID = sender;
-        packet->body.messageLen = message.length();
-        uint8_t* msgStart = reinterpret_cast<uint8_t*>(packetPtr->GetBuffer()) + sizeof(PacketStruct<ChatWhisperBody>);
-        memcpy(msgStart, message.data(), message.length());
+        packet->body.messageLen = static_cast<uint16_t>(message.size());
+        std::memcpy(packetPtr->GetBuffer() + headerLength, message.data(), message.size());
         return packetPtr;
     }
 
     std::shared_ptr<IPacket> PacketWriter::GetInitialChatBatchPacket(CHAT_SCOPE scope) {
         auto packetPtr = AcquireSharedPacket(PacketPoolType::Big);
-        if (packetPtr == nullptr) {
+        if (!packetPtr || packetPtr->GetCapacity() < sizeof(PacketStruct<ChatBatchNotifyBody>))
             return nullptr;
-        }
         auto* packet = InitializePacketHeader<ChatBatchNotifyBody>(*packetPtr, OP::CHAT_BROADCAST, 0);
+        packet->body = {};
         packet->body.scope = scope;
-        packet->body.chatCnt = 0;
-        packet->body.totalMessageLength = 0;
         return packetPtr;
     }
 
     uint16_t PacketWriter::WriteChatBatchPacketField(std::shared_ptr<IPacket> packetPtr, uint64_t sender, uint32_t senderProfileId, const std::string& message) {
-        auto packet = reinterpret_cast<PacketStruct<ChatBatchNotifyBody>*>(packetPtr->GetBuffer());
-        packet->header.length += message.length();
-        packetPtr->SetLength(packet->header.length);
+        auto* packet = reinterpret_cast<PacketStruct<ChatBatchNotifyBody>*>(packetPtr->GetBuffer());
+        const auto payloadOffset = sizeof(PacketStruct<ChatBatchNotifyBody>) + packet->body.totalMessageLength;
+        if (packet->body.chatCnt >= MAX_CHAT_PACKET
+            || message.size() > static_cast<size_t>(UINT16_MAX - packet->body.totalMessageLength)
+            || payloadOffset + message.size() > packetPtr->GetCapacity())
+            return 0;
 
-        uint8_t* msgStart = reinterpret_cast<uint8_t*>(packetPtr->GetBuffer()) + sizeof(PacketStruct<ChatBatchNotifyBody>) + packet->body.totalMessageLength;
-        memcpy(msgStart, message.data(), message.length());
+        const auto messageLength = static_cast<uint16_t>(message.size());
+        std::memcpy(packetPtr->GetBuffer() + payloadOffset, message.data(), messageLength);
 
         packet->body.entities[packet->body.chatCnt].senderChatID = sender;
         packet->body.entities[packet->body.chatCnt].offset = packet->body.totalMessageLength;
-        packet->body.entities[packet->body.chatCnt].messageLength = message.length();
+        packet->body.entities[packet->body.chatCnt].messageLength = messageLength;
         packet->body.entities[packet->body.chatCnt].senderProfileId = senderProfileId;
         packet->body.chatCnt++;
-        packet->body.totalMessageLength += message.length();
+        packet->body.totalMessageLength += messageLength;
+        packet->header.length = static_cast<uint32_t>(payloadOffset + messageLength);
+        packetPtr->SetLength(packet->header.length);
         return packet->body.chatCnt;
     }
 

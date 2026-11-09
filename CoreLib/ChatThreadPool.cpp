@@ -124,9 +124,12 @@ namespace Core {
             }
             SendPacketUnique(it->second, std::move(packet));
             auto senderPacket = writer->GetChatWhisperPacket(chatID, profileId, curr.message);
-
-            SendPacketUnique(curr.senderSessionID, std::move(senderPacket));
-            perfCollector->AddChatSend(2);
+            if (senderPacket) {
+                SendPacketUnique(curr.senderSessionID, std::move(senderPacket));
+                perfCollector->AddChatSend(2);
+            } else {
+                perfCollector->AddChatSend(1);
+            }
             return;
         }
         if (curr.key.scope == CHAT_SCOPE::Global) {
@@ -138,21 +141,17 @@ namespace Core {
         auto it = tempPackets.find(curr.key);
         if (it != tempPackets.end()) {
             uint16_t count = writer->WriteChatBatchPacketField(it->second, chatID, profileId, curr.message);
-            if (count == MAX_CHAT_PACKET) {
+            if (count == 0 || count == MAX_CHAT_PACKET) {
                 SendPacketGroup(it->first, it->second);
-				auto p = writer->GetInitialChatBatchPacket(curr.key.scope);
-                if (!p)
-					return;
-				tempPackets[curr.key] = p;
+                tempPackets.erase(it);
             }
-        }
-        else {
-            auto p = writer->GetInitialChatBatchPacket(curr.key.scope);
-            if (!p)
+            if (count != 0)
                 return;
-            tempPackets[curr.key] = p;
-            int count = writer->WriteChatBatchPacketField(tempPackets[curr.key], chatID, profileId, curr.message);
         }
+
+        auto packet = writer->GetInitialChatBatchPacket(curr.key.scope);
+        if (packet && writer->WriteChatBatchPacketField(packet, chatID, profileId, curr.message) != 0)
+            tempPackets.emplace(curr.key, std::move(packet));
     }
 
     // State Manager의 처리결과를 동기화해서 쓰는거라서 예외 발생은 하지 않는다고 가정.
