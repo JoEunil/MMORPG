@@ -153,7 +153,7 @@ namespace Mmorpg.Client.Tests
 
         [Test]
         [Category("SpawnExport")]
-        public void AuthoredZoneTwoKeepsApproachCellsEmptyAndOtherZonesIdentical()
+        public void AuthoredHuntingZonesKeepApproachCellsEmptyAndPreserveSpawnTotals()
         {
             var asset = UnityEditor.AssetDatabase.LoadAssetAtPath<MonsterSpawns>("Assets/Client/Content/MonsterSpawns.asset");
             Assert.That(asset, Is.Not.Null);
@@ -168,26 +168,31 @@ namespace Mmorpg.Client.Tests
                 content.zoneCellWeights = null;
                 Export(content, directory);
                 string baseline = File.ReadAllText(output);
-                foreach (string table in new[] { "MONSTER_REGULAR_COUNTS", "MONSTER_STRONG_COUNTS" })
+                foreach (bool strong in new[] { false, true })
                 {
+                    string table = strong ? "MONSTER_STRONG_COUNTS" : "MONSTER_REGULAR_COUNTS";
                     var rows = TableRows(authored, table);
                     var baselineRows = TableRows(baseline, table);
                     Assert.That(rows.Count, Is.EqualTo(6));
+                    Assert.That(baselineRows.Count, Is.EqualTo(6));
+                    Assert.That(rows[0].Value, Is.EqualTo(baselineRows[0].Value), "Town layout");
+                    int[] expectedTotals = strong ? new[] { 0, 12, 16, 20, 24, 28 } : new[] { 0, 108, 116, 123, 132, 139 };
                     for (int zone = 0; zone < rows.Count; zone++)
-                        if (zone != 1) Assert.That(rows[zone].Value, Is.EqualTo(baselineRows[zone].Value), $"Zone {zone + 1}");
-
-                    var cells = Array.ConvertAll(rows[1].Groups[1].Value.Split(','),
-                        cell => int.Parse(cell, CultureInfo.InvariantCulture));
-                    Assert.That(cells.Length, Is.EqualTo(25));
-                    bool strong = table == "MONSTER_STRONG_COUNTS";
-                    int total = 0;
-                    for (int cell = 0; cell < cells.Length; cell++)
                     {
-                        if (cell < 10 || cell == 12)
-                            Assert.That(cells[cell], Is.Zero, $"{table} cell {cell}");
-                        total += cells[cell];
+                        var cells = Array.ConvertAll(rows[zone].Groups[1].Value.Split(','),
+                            cell => int.Parse(cell, CultureInfo.InvariantCulture));
+                        Assert.That(cells.Length, Is.EqualTo(25));
+                        int total = 0;
+                        for (int cell = 0; cell < cells.Length; cell++)
+                        {
+                            if (zone == 0 || cell < 10 || cell == 12)
+                                Assert.That(cells[cell], Is.Zero, $"{table} Zone {zone + 1} cell {cell}");
+                            total += cells[cell];
+                        }
+                        Assert.That(total, Is.EqualTo(expectedTotals[zone]), $"{table} Zone {zone + 1} total");
                     }
-                    Assert.That(total, Is.EqualTo(strong ? 12 : 108));
+                    Assert.That(baselineRows[5].Groups[1].Value.Split(',')[4].Trim(), Is.Not.EqualTo("0"),
+                        "Without a zone override the shared south-row weight still applies.");
                 }
                 Assert.That(authored, Does.Contain("MONSTER_BOSS_COUNTS[6] = {0, 0, 0, 1, 0, 1}"));
 

@@ -108,6 +108,7 @@ namespace Mmorpg.Client
             }
 
             AddTownRoute(imageRect, author, layout, font);
+            AddHuntingDestinations(imageRect, author, layout, font);
             routeGraphic = CreateRect(imageRect, "SelectedWalkingRoute").gameObject.AddComponent<WorldMapRouteGraphic>();
             Stretch(routeGraphic.rectTransform, Vector2.zero, Vector2.zero);
             routeGraphic.raycastTarget = false;
@@ -193,11 +194,21 @@ namespace Mmorpg.Client
             var field = new Vector2(Mathf.Max(end.x, crossing + layout.TransitionMargin) + author.map.tileSize * .5f, end.y);
             if (author.map.CanTraverse(end, field))
                 AddDestination(terrain, "FieldDestination", "첫 사냥터 진입", 2, field, new Vector2(10, 16), font);
+        }
 
-            Vector2 hunting = author.firstHuntingDestination;
-            var zone = layout.Zones[1];
-            if (zone.ExclusiveBounds.Contains(hunting - zone.ZoneOrigin) && author.map.IsWalkable(hunting.x, hunting.y))
-                AddDestination(terrain, "HuntingDestination", "능선 너머 사냥터", zone.Id, hunting, new Vector2(10, 18), font);
+        private void AddHuntingDestinations(RectTransform terrain, MapAuthoring author, WorldLayout layout, TMP_FontAsset font)
+        {
+            if (author.map == null || author.huntingDestinations == null) return;
+            for (int i = 0; i < author.huntingDestinations.Length && i + 1 < layout.Zones.Length; i++)
+            {
+                Vector2 point = author.huntingDestinations[i];
+                var zone = layout.Zones[i + 1];
+                if (!zone.ExclusiveBounds.Contains(point - zone.ZoneOrigin) || !author.map.IsWalkable(point.x, point.y)) continue;
+                var zoneContent = content?.GetHuntingZone(zone.Id);
+                string label = zone.Id == 2 ? "능선 너머 사냥터" : (zoneContent?.label ?? $"구역 {zone.Id}") + " 입구";
+                float offsetX = zone.Column == layout.Columns - 1 ? -134 : 10;
+                AddDestination(terrain, $"HuntingDestination{zone.Id}", label, zone.Id, point, new Vector2(offsetX, 18), font);
+            }
         }
 
         private void AddWallFootprint(RectTransform terrain, Transform module)
@@ -245,6 +256,9 @@ namespace Mmorpg.Client
             var badge = Surface(terrain, name, new Color32(18, 25, 25, 225));
             Anchor(badge.rectTransform, position, new Vector2(0, .5f), offset, new Vector2(124, 24));
             var text = Label(badge.transform, "Label", value, 15, White, TextAlignmentOptions.Center, font);
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 11;
+            text.fontSizeMax = 15;
             Stretch(text.rectTransform, Vector2.zero, Vector2.zero);
             return badge;
         }
