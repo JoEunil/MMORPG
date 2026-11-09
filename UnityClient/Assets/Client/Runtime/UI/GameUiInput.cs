@@ -8,10 +8,11 @@ namespace Mmorpg.Client
     internal static class GameUiInput
     {
         private static int textEscapeFrame = -1;
+        internal static bool WorldMapOpen { get; set; }
 
         public static bool CanUseWorldShortcuts()
         {
-            if (EventSystem.current == null || textEscapeFrame == Time.frameCount) return false;
+            if (WorldMapOpen || EventSystem.current == null || textEscapeFrame == Time.frameCount) return false;
             var input = SelectedTextInput();
             if (input != null && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) return false;
             return input == null || !input.isFocused;

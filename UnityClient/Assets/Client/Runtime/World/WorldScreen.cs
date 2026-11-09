@@ -63,6 +63,9 @@ namespace Mmorpg.Client
         public Transform ViewCamera => quarterViewCamera;
         public ActorMotion ActorMotion { get; private set; }
         public ServerContent Content => serverContent;
+        internal MapAuthoring MapAuthoring => worldRoot != null ? worldRoot.GetComponentInChildren<MapAuthoring>(true) : null;
+        internal bool HasOpenItemPanel => inventoryScreen != null && inventoryScreen.IsOpen ||
+            bazaarScreen != null && bazaarScreen.IsOpen;
         public TMP_FontAsset ItemTextFont => localKoreanFont;
         public void SetOwnWeaponVisible(bool visible)
         {

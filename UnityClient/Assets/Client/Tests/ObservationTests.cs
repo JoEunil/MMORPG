@@ -289,6 +289,58 @@ namespace Mmorpg.Client.Tests
             finally { UnityEngine.Object.DestroyImmediate(map); }
         }
 
+        [Test]
+        [Category("WorldMapOverview")]
+        public void MinimapClickOpensOverviewWithWorldPositionAndClosesOnLeavingWorld()
+        {
+            var map = ScriptableObject.CreateInstance<WorldMap>();
+            var atlas = new Texture2D(4, 4);
+            try
+            {
+                map.walkable = new byte[map.width * map.height];
+                using (var fixture = new ObservationFixture())
+                {
+                    var worldRoot = (GameObject)Get(fixture.World, "worldRoot");
+                    worldRoot.AddComponent<MapAuthoring>().map = map;
+                    var canvas = new GameObject("Map canvas", typeof(RectTransform), typeof(Canvas)).GetComponent<Canvas>();
+                    canvas.transform.SetParent(fixture.World.transform, false);
+                    canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                    var minimap = fixture.CreateMinimap(map);
+                    minimap.transform.parent.SetParent(canvas.transform, false);
+                    Set(minimap, "terrainAtlas", atlas);
+                    Set(minimap, "atlasBounds", new Rect(-25, -25, 650, 450));
+                    Invoke(minimap, "Update");
+
+                    var click = new UnityEngine.EventSystems.PointerEventData(null)
+                        { button = UnityEngine.EventSystems.PointerEventData.InputButton.Left };
+                    Assert.That(minimap.raycastTarget, Is.True);
+                    UnityEngine.EventSystems.ExecuteEvents.Execute(minimap.gameObject, click,
+                        UnityEngine.EventSystems.ExecuteEvents.pointerClickHandler);
+                    var overview = canvas.transform.Find("WorldMapOverlay");
+                    Assert.That(overview, Is.Not.Null);
+                    Assert.That(overview.gameObject.activeSelf, Is.True);
+                    var terrain = overview.Find("MapArea/Terrain");
+                    Assert.That(terrain.Find("Zone6"), Is.Not.Null);
+                    var marker = (RectTransform)terrain.Find("CurrentPosition");
+                    var position = fixture.World.ServerPosition;
+                    Assert.That(marker.anchorMin.x, Is.EqualTo((position.x + 25) / 650).Within(.0001f));
+                    Assert.That(marker.anchorMin.y, Is.EqualTo((position.y + 25) / 450).Within(.0001f));
+                    overview.Find("Close").GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
+                    Assert.That(overview.gameObject.activeSelf, Is.False);
+
+                    minimap.OnPointerClick(click);
+                    fixture.CloseWorld();
+                    Assert.That(overview.gameObject.activeSelf, Is.False);
+                    Assert.That(minimap.raycastTarget, Is.False);
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(map);
+                UnityEngine.Object.DestroyImmediate(atlas);
+            }
+        }
+
         private static void PopulateMinimap(WorldMinimap minimap, UnityEngine.UI.VertexHelper vertices) =>
             typeof(WorldMinimap).GetMethod("OnPopulateMesh", BindingFlags.Instance | BindingFlags.NonPublic,
                 null, new[] { typeof(UnityEngine.UI.VertexHelper) }, null).Invoke(minimap, new object[] { vertices });
