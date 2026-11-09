@@ -348,6 +348,10 @@ namespace Core {
         uint32_t version; // 실패 시 0
     };
 
+    static_assert(sizeof(MsgStruct<MsgBazaarSearchResBody>) <= MESSAGE_LEN);
+    static_assert(sizeof(MsgStruct<MsgBazaarMyListResBody>) <= MESSAGE_LEN);
+    static_assert(sizeof(MsgStruct<MsgBazaarOutboxListResBody>) <= MESSAGE_LEN);
+
 	inline MsgHeader* parseMsgHeader(uint8_t* data) {
 		return reinterpret_cast<MsgHeader*>(data);
 	}

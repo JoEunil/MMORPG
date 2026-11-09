@@ -3,27 +3,49 @@
 #include "IPacket.h"
 #include "Config.h"
 #include "ItemData.h"
+#include "LoggerGlobal.h"
 namespace Core {
-    static_assert(sizeof(PacketStruct<EquipmentGetRequestBody>) == 24);
-    static_assert(sizeof(PacketStruct<EquipmentSetRequestBody>) == 29);
-    static_assert(sizeof(PacketStruct<EquipmentResponseBody>) == 46);
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteEquipmentResponse(const EquipmentResponseBody& body) {
-        if (body.requestID == 0 || body.ownershipEpoch == 0 || body.operation > 1 || body.slot > 2 || (body.operation == 0 && body.slot != 0) || body.status > static_cast<uint8_t>(EquipmentStatus::StorageFailure)) return nullptr;
-        if (body.status == static_cast<uint8_t>(EquipmentStatus::Success)) {
-            if ((body.weaponID != 0 && body.weaponID != 3) || (body.shieldID != 0 && body.shieldID != 4)
-                || (body.bodyID != 0 && body.bodyID != 5)) return nullptr;
-            const uint16_t defense = (body.shieldID == 0 ? 0 : Data::itemMap.at(4).defensePercent)
-                + (body.bodyID == 0 ? 0 : Data::itemMap.at(5).defensePercent);
-            if (defense > 99 || body.defensePercent != defense) return nullptr;
-            const uint16_t bonus = body.weaponID == 0 ? 0 : Data::itemMap.at(3).weaponAttackBonus;
-            const uint32_t total = static_cast<uint32_t>(body.baseAttack) + bonus;
-            if (body.bonusAttack != bonus || body.effectiveAttack != static_cast<uint16_t>(total > UINT16_MAX ? UINT16_MAX : total)) return nullptr;
-        } else if (body.weaponID != 0 || body.shieldID != 0 || body.bodyID != 0 || body.defensePercent != 0 || body.baseAttack != 0 || body.bonusAttack != 0 || body.effectiveAttack != 0) return nullptr;
+
+    void PacketWriter::Initialize(IPacketPoolManager* p) {
+        packetPoolManager = p;
+    }
+
+    bool PacketWriter::IsReady() {
+        if (packetPoolManager == nullptr) {
+            sysLogger->LogError("packet writer", "packetPoolManager not initialized");
+            return false;
+        }
+        return true;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteItemUseResponse(const ItemUseResponseBody& body) {
         auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (!p) return nullptr;
         p->Clear();
-        auto* packet = reinterpret_cast<PacketStruct<EquipmentResponseBody>*>(p->GetBuffer());
-        packet->header = { MAGIC, sizeof(*packet), OP::EQUIPMENT_RES, 0 };
+        auto* packet = reinterpret_cast<PacketStruct<ItemUseResponseBody>*>(p->GetBuffer());
+        packet->header = {MAGIC, sizeof(*packet), OP::ITEM_USE_RES, 0};
+        packet->body = body;
+        p->SetLength(sizeof(*packet));
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteParryResponse(const ParryResponseBody& body) {
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
+        if (!p) return nullptr;
+        p->Clear();
+        auto* packet = reinterpret_cast<PacketStruct<ParryResponseBody>*>(p->GetBuffer());
+        packet->header = {MAGIC, sizeof(*packet), OP::PARRY_RES, FLAG_SIMULATION};
+        packet->body = body;
+        p->SetLength(sizeof(*packet));
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteItemReward(const ItemRewardBody& body) {
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
+        if (!p) return nullptr;
+        p->Clear();
+        auto* packet = reinterpret_cast<PacketStruct<ItemRewardBody>*>(p->GetBuffer());
+        packet->header = {MAGIC, sizeof(*packet), OP::ITEM_REWARD, 0};
         packet->body = body;
         p->SetLength(sizeof(*packet));
         return p;
@@ -37,270 +59,6 @@ namespace Core {
         packet->header = {MAGIC, sizeof(*packet), OP::GOLD_REWARD, 0};
         packet->body = status;
         p->SetLength(sizeof(*packet));
-        return p;
-    }
-    static_assert(sizeof(PacketStruct<uint8_t>) == 9);
-    static_assert(sizeof(PacketStruct<ActionRequestBody>) == 30);
-    static_assert(sizeof(ActionResultField) == 25);
-    static_assert(sizeof(PacketStruct<ParryRequestBody>) == 24);
-    static_assert(sizeof(PacketStruct<ParryResponseBody>) == 33);
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteParryResponse(const ParryResponseBody& body) {
-        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
-        if (!p) return nullptr;
-        p->Clear();
-        auto* packet = reinterpret_cast<PacketStruct<ParryResponseBody>*>(p->GetBuffer());
-        packet->header = {MAGIC, sizeof(*packet), OP::PARRY_RES, FLAG_SIMULATION};
-        packet->body = body;
-        p->SetLength(sizeof(*packet));
-        return p;
-    }
-    static_assert(sizeof(PacketStruct<ItemUseRequestBody>) == 28);
-    static_assert(sizeof(PacketStruct<ItemUseResponseBody>) == 35);
-    static_assert(sizeof(PacketStruct<ItemRewardBody>) == 17);
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteItemUseResponse(const ItemUseResponseBody& body) {
-        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
-        if (!p) return nullptr;
-        p->Clear();
-        auto* packet = reinterpret_cast<PacketStruct<ItemUseResponseBody>*>(p->GetBuffer());
-        packet->header = {MAGIC, sizeof(*packet), OP::ITEM_USE_RES, 0};
-        packet->body = body;
-        p->SetLength(sizeof(*packet));
-        return p;
-    }
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteItemReward(const ItemRewardBody& body) {
-        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
-        if (!p) return nullptr;
-        p->Clear();
-        auto* packet = reinterpret_cast<PacketStruct<ItemRewardBody>*>(p->GetBuffer());
-        packet->header = {MAGIC, sizeof(*packet), OP::ITEM_REWARD, 0};
-        packet->body = body;
-        p->SetLength(sizeof(*packet));
-        return p;
-    }
-
-    static_assert(sizeof(PacketStruct<BazaarBuyRequestBody>) == 20);
-    static_assert(sizeof(PacketStruct<BazaarBuyResponseBody>) == 37);
-    static_assert(sizeof(PacketStruct<BazaarCheckOutboxRequestBody>) == 12);
-    static_assert(sizeof(PacketStruct<BazaarCheckOutboxResponseBody>) == 25);
-    static_assert(sizeof(PacketStruct<BazaarCancelListingRequestBody>) == 20);
-    static_assert(sizeof(PacketStruct<BazaarCancelListingResponseBody>) == 21);
-    static_assert(sizeof(PacketStruct<BazaarRegisterRequestBody>) == 23);
-    static_assert(sizeof(PacketStruct<BazaarRegisterResponseBody>) == 13);
-    static_assert(sizeof(PacketStruct<WalletRequestBody>) == 12);
-    static_assert(sizeof(PacketStruct<WalletGoldResponseBody>) == 21);
-    static_assert(sizeof(PacketStruct<WalletDiamondResponseBody>) == 21);
-
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarRegisterResponse(const MsgBazaarRegisterResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 5) return nullptr;
-        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
-        if (!p) return nullptr;
-        p->Clear();
-        auto* st = reinterpret_cast<PacketStruct<BazaarRegisterResponseBody>*>(p->GetBuffer());
-        st->header = { MAGIC, sizeof(*st), OP::BAZAAR_REGISTER_RES, 0 };
-        st->body = { body->requestID, body->resStatus };
-        p->SetLength(sizeof(*st));
-        return p;
-    }
-
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteWalletGoldResponse(const MsgCurrencyResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 1) return nullptr;
-        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
-        if (!p) return nullptr;
-        p->Clear();
-        auto* st = reinterpret_cast<PacketStruct<WalletGoldResponseBody>*>(p->GetBuffer());
-        st->header = { MAGIC, sizeof(*st), OP::WALLET_GOLD_RES, 0 };
-        st->body = { body->requestID, body->resStatus, body->resStatus == 1 ? body->gold : 0 };
-        p->SetLength(sizeof(*st));
-        return p;
-    }
-
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteWalletDiamondResponse(const MsgDiamondResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 1) return nullptr;
-        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
-        if (!p) return nullptr;
-        p->Clear();
-        auto* st = reinterpret_cast<PacketStruct<WalletDiamondResponseBody>*>(p->GetBuffer());
-        st->header = { MAGIC, sizeof(*st), OP::WALLET_DIAMOND_RES, 0 };
-        st->body = { body->requestID, body->resStatus, body->resStatus == 1 ? body->diamond : 0 };
-        p->SetLength(sizeof(*st));
-        return p;
-    }
-
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarBuyResponse(const MsgBazaarBuyResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->listingID == 0)
-            return nullptr;
-        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
-        if (!p) return nullptr;
-        p->Clear();
-        auto* st = reinterpret_cast<PacketStruct<BazaarBuyResponseBody>*>(p->GetBuffer());
-        st->header = { MAGIC, sizeof(*st), OP::BAZAAR_BUY_RES, 0 };
-        st->body = {};
-        st->body.requestID = body->requestID;
-        st->body.listingID = body->listingID;
-        const bool valid = body->resStatus == 0 || body->resStatus == 1 || body->resStatus == 3 || body->resStatus == 4 || body->resStatus == 5;
-        st->body.resStatus = valid ? body->resStatus : 5;
-        if (st->body.resStatus == 1) {
-            if (body->itemID == 0 || body->quantity == 0) st->body.resStatus = 5;
-            else {
-                st->body.itemID = body->itemID;
-                st->body.quantity = body->quantity;
-                st->body.diamondSpent = body->diamondSpent;
-            }
-        }
-        p->SetLength(sizeof(*st));
-        return p;
-    }
-
-    static_assert(sizeof(PacketStruct<BazaarOutboxListRequestBody>) == 12);
-    static_assert(sizeof(PacketStruct<BazaarOutboxListResponseBody>) == 17);
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarOutboxListResponse(const MsgBazaarOutboxListResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 2
-            || static_cast<uint32_t>(body->count) + body->processingCount > 30
-            || (body->resStatus != 1 && (body->count != 0 || body->processingCount != 0))) return nullptr;
-        for (uint16_t i = 0; i < body->count; ++i) {
-            const auto& row = body->rows[i];
-            if (row.eventID == 0 || row.listingID == 0 || row.itemID == 0 || row.quantity == 0 || row.quantity > UINT16_MAX)
-                return nullptr;
-            for (uint16_t j = 0; j < i; ++j)
-                if (body->rows[j].eventID == row.eventID) return nullptr;
-        }
-        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Big);
-        if (!p) return nullptr;
-        p->Clear();
-        auto* st = reinterpret_cast<PacketStruct<BazaarOutboxListResponseBody>*>(p->GetBuffer());
-        const uint32_t length = sizeof(*st) + sizeof(BazaarOutboxItem) * body->count;
-        st->header = { MAGIC, length, OP::BAZAAR_OUTBOX_LIST_RES, 0 };
-        st->body = { body->requestID, body->resStatus, body->processingCount, body->count };
-        auto* rows = reinterpret_cast<BazaarOutboxItem*>(p->GetBuffer() + sizeof(*st));
-        for (uint16_t i = 0; i < body->count; ++i) {
-            const auto& row = body->rows[i];
-            rows[i] = { row.eventID, row.listingID, row.itemID, row.quantity };
-        }
-        p->SetLength(length);
-        return p;
-    }
-
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarCheckOutboxResponse(const MsgBazaarCheckOutboxResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->resStatus > 1
-            || static_cast<uint64_t>(body->deliveredCount) + body->duplicatedCount + body->blockedCount > 30)
-            return nullptr;
-        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
-        if (!p) return nullptr;
-        p->Clear();
-        auto* st = reinterpret_cast<PacketStruct<BazaarCheckOutboxResponseBody>*>(p->GetBuffer());
-        st->header = { MAGIC, sizeof(*st), OP::BAZAAR_CHECK_OUTBOX_RES, 0 };
-        st->body = { body->requestID, body->resStatus, body->deliveredCount, body->duplicatedCount, body->blockedCount };
-        p->SetLength(sizeof(*st));
-        return p;
-    }
-
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarCancelListingResponse(const MsgBazaarCancelListingResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->listingID == 0 || body->characterID == 0
-            || (body->resStatus != 0 && body->resStatus != 1 && body->resStatus != 5)) return nullptr;
-        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
-        if (!p) return nullptr;
-        p->Clear();
-        auto* st = reinterpret_cast<PacketStruct<BazaarCancelListingResponseBody>*>(p->GetBuffer());
-        st->header = { MAGIC, sizeof(*st), OP::BAZAAR_CANCEL_LISTING_RES, 0 };
-        st->body = { body->requestID, body->listingID, body->resStatus };
-        p->SetLength(sizeof(*st));
-        return p;
-    }
-
-    static_assert(sizeof(PacketStruct<BazaarClaimRequestBody>) == 20);
-    static_assert(sizeof(PacketStruct<BazaarClaimResponseBody>) == 29);
-
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarClaimResponse(const MsgBazaarClaimResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->listingID == 0)
-            return nullptr;
-        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
-        if (!p)
-            return nullptr;
-        p->Clear();
-        auto* st = reinterpret_cast<PacketStruct<BazaarClaimResponseBody>*>(p->GetBuffer());
-        st->header = { MAGIC, sizeof(*st), OP::BAZAAR_CLAIM_RES, 0 };
-        st->body = {};
-        st->body.requestID = body->requestID;
-        st->body.listingID = body->listingID;
-        st->body.resStatus = body->resStatus <= 4 ? body->resStatus : 0;
-        st->body.diamondClaimed = st->body.resStatus == 1 ? body->diamondClaimed : 0;
-        p->SetLength(sizeof(*st));
-        return p;
-    }
-
-    static_assert(sizeof(MsgStruct<MsgBazaarSearchResBody>) <= MESSAGE_LEN);
-
-    static_assert(sizeof(MsgStruct<MsgBazaarMyListResBody>) <= MESSAGE_LEN);
-
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarMyListResponse(const MsgBazaarMyListResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->characterID == 0)
-            return nullptr;
-        bool valid = body->resStatus == RES_STATUS::SUCCESS && body->count <= MAX_BAZAAR_MY_LIST;
-        if (valid) {
-            for (uint16_t i = 0; i < body->count; ++i) {
-                const auto& row = body->listings[i];
-                if (row.listingID == 0 || row.sellerCharacterID != body->characterID || row.itemID == 0
-                    || row.quantity == 0 || row.status > 2) {
-                    valid = false;
-                    break;
-                }
-            }
-        }
-        const uint16_t count = valid ? body->count : 0;
-        const uint32_t length = sizeof(PacketStruct<BazaarMyListResponseBody>) + count * sizeof(BazaarSearchListing);
-        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Big);
-        if (!p || p->GetCapacity() < length)
-            return nullptr;
-        p->Clear();
-        auto* st = reinterpret_cast<PacketStruct<BazaarMyListResponseBody>*>(p->GetBuffer());
-        st->header.magic = MAGIC;
-        st->header.length = length;
-        st->header.opcode = OP::BAZAAR_MY_LIST_RES;
-        st->header.flags = 0;
-        st->body = { body->requestID, static_cast<uint8_t>(valid ? RES_STATUS::SUCCESS : RES_STATUS::FAILED), count };
-        auto* rows = reinterpret_cast<BazaarSearchListing*>(p->GetBuffer() + sizeof(*st));
-        for (uint16_t i = 0; i < count; ++i) {
-            const auto& row = body->listings[i];
-            rows[i] = { row.listingID, row.sellerCharacterID, row.itemID, row.quantity,
-                row.price, row.registeredAt, row.status };
-        }
-        p->SetLength(length);
-        return p;
-    }
-
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarSearchResponse(const MsgBazaarSearchResBody* body) {
-        if (body == nullptr || body->requestID == 0)
-            return nullptr;
-        bool valid = body->resStatus == RES_STATUS::SUCCESS && body->count <= MAX_BAZAAR_SEARCH_RESULT;
-        if (valid) {
-            for (uint16_t i = 0; i < body->count; ++i) {
-                const auto& row = body->listings[i];
-                if (row.listingID == 0 || row.sellerCharacterID == 0 || row.itemID == 0
-                    || row.quantity == 0 || row.status != 0) {
-                    valid = false;
-                    break;
-                }
-            }
-        }
-        const uint16_t count = valid ? body->count : 0;
-        const uint32_t length = sizeof(PacketStruct<BazaarSearchResponseBody>) + count * sizeof(BazaarSearchListing);
-        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Big);
-        if (!p || p->GetCapacity() < length)
-            return nullptr;
-        p->Clear();
-        auto* st = reinterpret_cast<PacketStruct<BazaarSearchResponseBody>*>(p->GetBuffer());
-        st->header.magic = MAGIC;
-        st->header.length = length;
-        st->header.opcode = OP::BAZAAR_SEARCH_RES;
-        st->header.flags = 0;
-        st->body = { body->requestID, static_cast<uint8_t>(valid ? RES_STATUS::SUCCESS : RES_STATUS::FAILED), count };
-        auto* rows = reinterpret_cast<BazaarSearchListing*>(p->GetBuffer() + sizeof(*st));
-        for (uint16_t i = 0; i < count; ++i) {
-            const auto& row = body->listings[i];
-            rows[i] = { row.listingID, row.sellerCharacterID, row.itemID, row.quantity,
-                row.price, row.registeredAt, row.status };
-        }
-        p->SetLength(length);
         return p;
     }
 
@@ -398,7 +156,7 @@ namespace Core {
             p_st->body.items[i].quantity = body->items[i].quantity;
             p_st->body.items[i].slot = body->items[i].slot;
         }
-        
+
         return p;
     }
 
@@ -419,7 +177,7 @@ namespace Core {
         p_st->body.itemID = body->itemID;
         p_st->body.itemQuantity = body->itemQuantity;
         p_st->body.slot = body->slot;
-        
+
         return p;
     }
 
@@ -465,7 +223,7 @@ namespace Core {
         auto p_st = reinterpret_cast<PacketStruct<ChatBatchNotifyBody>*>(p->GetBuffer());
         p_st->header.length += message.length();
         p->SetLength(p_st->header.length);
-        
+
         uint8_t* msgStart = reinterpret_cast<uint8_t*>(p->GetBuffer()) + sizeof(PacketStruct<ChatBatchNotifyBody>) + p_st->body.totalMessageLength;
         memcpy(msgStart, message.data(), message.length());
 
@@ -476,6 +234,25 @@ namespace Core {
         p_st->body.chatCnt++;
         p_st->body.totalMessageLength += message.length();
         return p_st->body.chatCnt;
+    }
+
+    std::shared_ptr<IPacket> PacketWriter::GetDeltaHeader(uint16_t zoneID, uint64_t generation) {
+        auto p = packetPoolManager->Acquire(PacketPoolType::Normal);
+        if (!p) {
+            return nullptr;
+        }
+        p->Clear();
+        auto p_st = reinterpret_cast<PacketStruct<DeltaSnapshotBody>*>(p->GetBuffer());
+        p_st->header.length = sizeof(PacketHeader) + sizeof(uint16_t) * 2 + sizeof(uint64_t);
+        p->SetLength(p_st->header.length);
+        p_st->header.magic = MAGIC;
+        p_st->header.opcode = OP::ZONE_DELTA_UPDATE_BROADCAST;
+        p_st->header.flags = 0x00;
+        p_st->header.flags |= FLAG_SIMULATION;
+        p_st->body.count = 0;
+        p_st->body.zoneID = zoneID;
+        p_st->body.zoneGeneration = generation;
+        return p;
     }
 
     std::shared_ptr<IPacket> PacketWriter::GetFullHeader(uint16_t zoneID, uint64_t generation) {
@@ -545,6 +322,25 @@ namespace Core {
         return true;
     }
 
+    std::shared_ptr<IPacket> PacketWriter::GetMonsterDeltaHeader(uint16_t zoneID, uint64_t generation) {
+        auto p = packetPoolManager->Acquire(PacketPoolType::Normal);
+        if (!p) {
+            return nullptr;
+        }
+        p->Clear();
+        auto p_st = reinterpret_cast<PacketStruct<MonsterDeltaSnapshotBody>*>(p->GetBuffer());
+        p_st->header.length = sizeof(PacketHeader) + sizeof(uint16_t) * 2 + sizeof(uint64_t);
+        p->SetLength(p_st->header.length);
+        p_st->header.magic = MAGIC;
+        p_st->header.opcode = OP::MONSTER_DELTA_UPDATE_BROADCAST;
+        p_st->header.flags = 0x00;
+        p_st->header.flags |= FLAG_SIMULATION;
+        p_st->body.count = 0;
+        p_st->body.zoneID = zoneID;
+        p_st->body.zoneGeneration = generation;
+        return p;
+    }
+
     std::shared_ptr<IPacket> PacketWriter::GetMonsterFullHeader(uint16_t zoneID, uint64_t generation) {
         auto p = packetPoolManager->Acquire(PacketPoolType::Normal);
         if (p == nullptr) {
@@ -569,7 +365,7 @@ namespace Core {
 
     bool PacketWriter::WriteMonsterFullField(std::shared_ptr<IPacket> p, const MonsterState& state) {
         if (p->GetLength() + sizeof(MonsterFullField) > p->GetCapacity())
-            return false;   
+            return false;
         auto fields = reinterpret_cast<MonsterFullField*>(p->GetBuffer());
         p->SetLength(p->GetLength() + sizeof(MonsterFullField));
         p->Count();
@@ -626,20 +422,248 @@ namespace Core {
         return true;
     }
 
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeFailed() {
-        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
-        if (p == nullptr) {
+    std::shared_ptr<IPacket> PacketWriter::GetInitialChunk(bool useGiant) {
+        auto p = packetPoolManager->Acquire(useGiant ? PacketPoolType::Giant : PacketPoolType::Big);
+        if (!p) {
             return nullptr;
         }
         p->Clear();
-        auto p_st = reinterpret_cast<PacketStruct<ZoneChangeResponseBody>*>(p->GetBuffer());
-        p_st->header.length = sizeof(PacketHeader) + sizeof(ZoneChangeResponseBody);
-        p->SetLength(p_st->header.length);
-        p_st->header.opcode = OP::ZONE_CHANGE_RESPONSE;
-        p_st->header.magic = MAGIC;
-        p_st->header.flags = 0x00;
-        p_st->header.flags |= FLAG_SIMULATION;
-        p_st->body = {};
+        p->SetLength(0);
+        return p;
+    }
+
+    void PacketWriter::AddChunk(std::shared_ptr<IPacket> p, size_t len, uint16_t count) {
+        auto header = reinterpret_cast<PacketHeader*>(p->GetBuffer());
+        header->length += len;
+        uint16_t* countPtr = reinterpret_cast<uint16_t*>(p->GetBuffer() + sizeof(PacketHeader));
+        *countPtr += count;
+
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteEquipmentResponse(const EquipmentResponseBody& body) {
+        if (body.requestID == 0 || body.ownershipEpoch == 0 || body.operation > 1 || body.slot > 2 || (body.operation == 0 && body.slot != 0) || body.status > static_cast<uint8_t>(EquipmentStatus::StorageFailure)) return nullptr;
+        if (body.status == static_cast<uint8_t>(EquipmentStatus::Success)) {
+            if ((body.weaponID != 0 && body.weaponID != 3) || (body.shieldID != 0 && body.shieldID != 4)
+                || (body.bodyID != 0 && body.bodyID != 5)) return nullptr;
+            const uint16_t defense = (body.shieldID == 0 ? 0 : Data::itemMap.at(4).defensePercent)
+                + (body.bodyID == 0 ? 0 : Data::itemMap.at(5).defensePercent);
+            if (defense > 99 || body.defensePercent != defense) return nullptr;
+            const uint16_t bonus = body.weaponID == 0 ? 0 : Data::itemMap.at(3).weaponAttackBonus;
+            const uint32_t total = static_cast<uint32_t>(body.baseAttack) + bonus;
+            if (body.bonusAttack != bonus || body.effectiveAttack != static_cast<uint16_t>(total > UINT16_MAX ? UINT16_MAX : total)) return nullptr;
+        } else if (body.weaponID != 0 || body.shieldID != 0 || body.bodyID != 0 || body.defensePercent != 0 || body.baseAttack != 0 || body.bonusAttack != 0 || body.effectiveAttack != 0) return nullptr;
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
+        if (!p) return nullptr;
+        p->Clear();
+        auto* packet = reinterpret_cast<PacketStruct<EquipmentResponseBody>*>(p->GetBuffer());
+        packet->header = { MAGIC, sizeof(*packet), OP::EQUIPMENT_RES, 0 };
+        packet->body = body;
+        p->SetLength(sizeof(*packet));
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarBuyResponse(const MsgBazaarBuyResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->listingID == 0)
+            return nullptr;
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
+        if (!p) return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<BazaarBuyResponseBody>*>(p->GetBuffer());
+        st->header = { MAGIC, sizeof(*st), OP::BAZAAR_BUY_RES, 0 };
+        st->body = {};
+        st->body.requestID = body->requestID;
+        st->body.listingID = body->listingID;
+        const bool valid = body->resStatus == 0 || body->resStatus == 1 || body->resStatus == 3 || body->resStatus == 4 || body->resStatus == 5;
+        st->body.resStatus = valid ? body->resStatus : 5;
+        if (st->body.resStatus == 1) {
+            if (body->itemID == 0 || body->quantity == 0) st->body.resStatus = 5;
+            else {
+                st->body.itemID = body->itemID;
+                st->body.quantity = body->quantity;
+                st->body.diamondSpent = body->diamondSpent;
+            }
+        }
+        p->SetLength(sizeof(*st));
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarOutboxListResponse(const MsgBazaarOutboxListResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 2
+            || static_cast<uint32_t>(body->count) + body->processingCount > 30
+            || (body->resStatus != 1 && (body->count != 0 || body->processingCount != 0))) return nullptr;
+        for (uint16_t i = 0; i < body->count; ++i) {
+            const auto& row = body->rows[i];
+            if (row.eventID == 0 || row.listingID == 0 || row.itemID == 0 || row.quantity == 0 || row.quantity > UINT16_MAX)
+                return nullptr;
+            for (uint16_t j = 0; j < i; ++j)
+                if (body->rows[j].eventID == row.eventID) return nullptr;
+        }
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Big);
+        if (!p) return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<BazaarOutboxListResponseBody>*>(p->GetBuffer());
+        const uint32_t length = sizeof(*st) + sizeof(BazaarOutboxItem) * body->count;
+        st->header = { MAGIC, length, OP::BAZAAR_OUTBOX_LIST_RES, 0 };
+        st->body = { body->requestID, body->resStatus, body->processingCount, body->count };
+        auto* rows = reinterpret_cast<BazaarOutboxItem*>(p->GetBuffer() + sizeof(*st));
+        for (uint16_t i = 0; i < body->count; ++i) {
+            const auto& row = body->rows[i];
+            rows[i] = { row.eventID, row.listingID, row.itemID, row.quantity };
+        }
+        p->SetLength(length);
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarCheckOutboxResponse(const MsgBazaarCheckOutboxResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->resStatus > 1
+            || static_cast<uint64_t>(body->deliveredCount) + body->duplicatedCount + body->blockedCount > 30)
+            return nullptr;
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
+        if (!p) return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<BazaarCheckOutboxResponseBody>*>(p->GetBuffer());
+        st->header = { MAGIC, sizeof(*st), OP::BAZAAR_CHECK_OUTBOX_RES, 0 };
+        st->body = { body->requestID, body->resStatus, body->deliveredCount, body->duplicatedCount, body->blockedCount };
+        p->SetLength(sizeof(*st));
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarCancelListingResponse(const MsgBazaarCancelListingResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->listingID == 0 || body->characterID == 0
+            || (body->resStatus != 0 && body->resStatus != 1 && body->resStatus != 5)) return nullptr;
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
+        if (!p) return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<BazaarCancelListingResponseBody>*>(p->GetBuffer());
+        st->header = { MAGIC, sizeof(*st), OP::BAZAAR_CANCEL_LISTING_RES, 0 };
+        st->body = { body->requestID, body->listingID, body->resStatus };
+        p->SetLength(sizeof(*st));
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarClaimResponse(const MsgBazaarClaimResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->listingID == 0)
+            return nullptr;
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
+        if (!p)
+            return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<BazaarClaimResponseBody>*>(p->GetBuffer());
+        st->header = { MAGIC, sizeof(*st), OP::BAZAAR_CLAIM_RES, 0 };
+        st->body = {};
+        st->body.requestID = body->requestID;
+        st->body.listingID = body->listingID;
+        st->body.resStatus = body->resStatus <= 4 ? body->resStatus : 0;
+        st->body.diamondClaimed = st->body.resStatus == 1 ? body->diamondClaimed : 0;
+        p->SetLength(sizeof(*st));
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarMyListResponse(const MsgBazaarMyListResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->characterID == 0)
+            return nullptr;
+        bool valid = body->resStatus == RES_STATUS::SUCCESS && body->count <= MAX_BAZAAR_MY_LIST;
+        if (valid) {
+            for (uint16_t i = 0; i < body->count; ++i) {
+                const auto& row = body->listings[i];
+                if (row.listingID == 0 || row.sellerCharacterID != body->characterID || row.itemID == 0
+                    || row.quantity == 0 || row.status > 2) {
+                    valid = false;
+                    break;
+                }
+            }
+        }
+        const uint16_t count = valid ? body->count : 0;
+        const uint32_t length = sizeof(PacketStruct<BazaarMyListResponseBody>) + count * sizeof(BazaarSearchListing);
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Big);
+        if (!p || p->GetCapacity() < length)
+            return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<BazaarMyListResponseBody>*>(p->GetBuffer());
+        st->header.magic = MAGIC;
+        st->header.length = length;
+        st->header.opcode = OP::BAZAAR_MY_LIST_RES;
+        st->header.flags = 0;
+        st->body = { body->requestID, static_cast<uint8_t>(valid ? RES_STATUS::SUCCESS : RES_STATUS::FAILED), count };
+        auto* rows = reinterpret_cast<BazaarSearchListing*>(p->GetBuffer() + sizeof(*st));
+        for (uint16_t i = 0; i < count; ++i) {
+            const auto& row = body->listings[i];
+            rows[i] = { row.listingID, row.sellerCharacterID, row.itemID, row.quantity,
+                row.price, row.registeredAt, row.status };
+        }
+        p->SetLength(length);
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarSearchResponse(const MsgBazaarSearchResBody* body) {
+        if (body == nullptr || body->requestID == 0)
+            return nullptr;
+        bool valid = body->resStatus == RES_STATUS::SUCCESS && body->count <= MAX_BAZAAR_SEARCH_RESULT;
+        if (valid) {
+            for (uint16_t i = 0; i < body->count; ++i) {
+                const auto& row = body->listings[i];
+                if (row.listingID == 0 || row.sellerCharacterID == 0 || row.itemID == 0
+                    || row.quantity == 0 || row.status != 0) {
+                    valid = false;
+                    break;
+                }
+            }
+        }
+        const uint16_t count = valid ? body->count : 0;
+        const uint32_t length = sizeof(PacketStruct<BazaarSearchResponseBody>) + count * sizeof(BazaarSearchListing);
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Big);
+        if (!p || p->GetCapacity() < length)
+            return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<BazaarSearchResponseBody>*>(p->GetBuffer());
+        st->header.magic = MAGIC;
+        st->header.length = length;
+        st->header.opcode = OP::BAZAAR_SEARCH_RES;
+        st->header.flags = 0;
+        st->body = { body->requestID, static_cast<uint8_t>(valid ? RES_STATUS::SUCCESS : RES_STATUS::FAILED), count };
+        auto* rows = reinterpret_cast<BazaarSearchListing*>(p->GetBuffer() + sizeof(*st));
+        for (uint16_t i = 0; i < count; ++i) {
+            const auto& row = body->listings[i];
+            rows[i] = { row.listingID, row.sellerCharacterID, row.itemID, row.quantity,
+                row.price, row.registeredAt, row.status };
+        }
+        p->SetLength(length);
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarRegisterResponse(const MsgBazaarRegisterResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 5) return nullptr;
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
+        if (!p) return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<BazaarRegisterResponseBody>*>(p->GetBuffer());
+        st->header = { MAGIC, sizeof(*st), OP::BAZAAR_REGISTER_RES, 0 };
+        st->body = { body->requestID, body->resStatus };
+        p->SetLength(sizeof(*st));
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteWalletGoldResponse(const MsgCurrencyResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 1) return nullptr;
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
+        if (!p) return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<WalletGoldResponseBody>*>(p->GetBuffer());
+        st->header = { MAGIC, sizeof(*st), OP::WALLET_GOLD_RES, 0 };
+        st->body = { body->requestID, body->resStatus, body->resStatus == 1 ? body->gold : 0 };
+        p->SetLength(sizeof(*st));
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteWalletDiamondResponse(const MsgDiamondResBody* body) {
+        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 1) return nullptr;
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
+        if (!p) return nullptr;
+        p->Clear();
+        auto* st = reinterpret_cast<PacketStruct<WalletDiamondResponseBody>*>(p->GetBuffer());
+        st->header = { MAGIC, sizeof(*st), OP::WALLET_DIAMOND_RES, 0 };
+        st->body = { body->requestID, body->resStatus, body->resStatus == 1 ? body->diamond : 0 };
+        p->SetLength(sizeof(*st));
         return p;
     }
 
@@ -670,6 +694,23 @@ namespace Core {
         return p;
     }
 
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeFailed() {
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
+        if (p == nullptr) {
+            return nullptr;
+        }
+        p->Clear();
+        auto p_st = reinterpret_cast<PacketStruct<ZoneChangeResponseBody>*>(p->GetBuffer());
+        p_st->header.length = sizeof(PacketHeader) + sizeof(ZoneChangeResponseBody);
+        p->SetLength(p_st->header.length);
+        p_st->header.opcode = OP::ZONE_CHANGE_RESPONSE;
+        p_st->header.magic = MAGIC;
+        p_st->header.flags = 0x00;
+        p_st->header.flags |= FLAG_SIMULATION;
+        p_st->body = {};
+        return p;
+    }
+
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y, uint64_t generation, uint64_t ownershipEpoch) {
         auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
         if (p == nullptr) {
@@ -691,6 +732,23 @@ namespace Core {
         p_st->body.zoneInternalID = zoneInternalID;
         p_st->body.zoneGeneration = generation;
         p_st->body.ownershipEpoch = ownershipEpoch;
+        return p;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter>  PacketWriter::GetPingPacket(uint64_t rtt,uint64_t nowMs) {
+        auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
+        if (!p) {
+            return nullptr;
+        }
+        p->Clear();
+        auto p_st = reinterpret_cast<PacketStruct<Ping>*>(p->GetBuffer());
+        p_st->header.length = sizeof(PacketHeader) + sizeof(Ping);
+        p_st->header.magic = MAGIC;
+        p_st->header.opcode = OP::PING;
+        p_st->header.flags = 0x00;
+        p_st->body.serverTimeMs = static_cast<uint64_t>(nowMs);
+        p_st->body.rtt = rtt;
+        p->SetLength(sizeof(PacketHeader) + sizeof(Ping));
         return p;
     }
 }
