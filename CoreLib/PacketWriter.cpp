@@ -2,7 +2,6 @@
 #include "PacketWriter.h"
 #include "IPacket.h"
 #include "Config.h"
-#include "ItemData.h"
 #include "LoggerGlobal.h"
 #include <cstddef>
 namespace Core {
@@ -126,12 +125,10 @@ namespace Core {
 
         auto* packet = InitializePacketHeader<InventoryResBody>(*packetPtr, OP::INVENTORY_RES, 0);
         packet->body = {};
-        if (body->resStatus != RES_STATUS::SUCCESS || body->itemCount > MAX_INVENTORY_ITEMS) {
-            packet->body.resStatus = RES_STATUS::FAILED;
+        packet->body.resStatus = body->itemCount > MAX_INVENTORY_ITEMS ? RES_STATUS::FAILED : body->resStatus;
+        if (packet->body.resStatus != RES_STATUS::SUCCESS)
             return packetPtr;
-        }
 
-        packet->body.resStatus = RES_STATUS::SUCCESS;
         packet->body.itemCount = body->itemCount;
         for (int i = 0; i < body->itemCount; i++)
         {
@@ -371,17 +368,6 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteEquipmentResponse(const EquipmentResponseBody& body) {
-        if (body.requestID == 0 || body.ownershipEpoch == 0 || body.operation > 1 || body.slot > 2 || (body.operation == 0 && body.slot != 0) || body.status > static_cast<uint8_t>(EquipmentStatus::StorageFailure)) return nullptr;
-        if (body.status == static_cast<uint8_t>(EquipmentStatus::Success)) {
-            if ((body.weaponID != 0 && body.weaponID != 3) || (body.shieldID != 0 && body.shieldID != 4)
-                || (body.bodyID != 0 && body.bodyID != 5)) return nullptr;
-            const uint16_t defense = (body.shieldID == 0 ? 0 : Data::itemMap.at(4).defensePercent)
-                + (body.bodyID == 0 ? 0 : Data::itemMap.at(5).defensePercent);
-            if (defense > 99 || body.defensePercent != defense) return nullptr;
-            const uint16_t bonus = body.weaponID == 0 ? 0 : Data::itemMap.at(3).weaponAttackBonus;
-            const uint32_t total = static_cast<uint32_t>(body.baseAttack) + bonus;
-            if (body.bonusAttack != bonus || body.effectiveAttack != static_cast<uint16_t>(total > UINT16_MAX ? UINT16_MAX : total)) return nullptr;
-        } else if (body.weaponID != 0 || body.shieldID != 0 || body.bodyID != 0 || body.defensePercent != 0 || body.baseAttack != 0 || body.bonusAttack != 0 || body.effectiveAttack != 0) return nullptr;
         auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
         if (!packetPtr) return nullptr;
         auto* packet = InitializePacketHeader<EquipmentResponseBody>(*packetPtr, OP::EQUIPMENT_RES, 0);
@@ -390,41 +376,25 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarBuyResponse(const MsgBazaarBuyResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->listingID == 0)
+        if (body == nullptr)
             return nullptr;
         auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
         if (!packetPtr) return nullptr;
         auto* st = InitializePacketHeader<BazaarBuyResponseBody>(*packetPtr, OP::BAZAAR_BUY_RES, 0);
-        st->body = {};
-        st->body.requestID = body->requestID;
-        st->body.listingID = body->listingID;
-        const bool valid = body->resStatus == 0 || body->resStatus == 1 || body->resStatus == 3 || body->resStatus == 4 || body->resStatus == 5;
-        st->body.resStatus = valid ? body->resStatus : 5;
-        if (st->body.resStatus == 1) {
-            if (body->itemID == 0 || body->quantity == 0) st->body.resStatus = 5;
-            else {
-                st->body.itemID = body->itemID;
-                st->body.quantity = body->quantity;
-                st->body.diamondSpent = body->diamondSpent;
-            }
-        }
+        st->body = { body->requestID, body->listingID, body->resStatus,
+            body->resStatus == 1 ? body->itemID : 0,
+            body->resStatus == 1 ? body->quantity : 0,
+            body->resStatus == 1 ? body->diamondSpent : 0 };
         return packetPtr;
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarOutboxListResponse(const MsgBazaarOutboxListResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 2
-            || static_cast<uint32_t>(body->count) + body->processingCount > 30
-            || (body->resStatus != 1 && (body->count != 0 || body->processingCount != 0))) return nullptr;
-        for (uint16_t i = 0; i < body->count; ++i) {
-            const auto& row = body->rows[i];
-            if (row.eventID == 0 || row.listingID == 0 || row.itemID == 0 || row.quantity == 0 || row.quantity > UINT16_MAX)
-                return nullptr;
-            for (uint16_t j = 0; j < i; ++j)
-                if (body->rows[j].eventID == row.eventID) return nullptr;
-        }
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Big);
-        if (!packetPtr) return nullptr;
+        if (body == nullptr || body->count > MAX_BAZAAR_OUTBOX_LIST)
+            return nullptr;
         const uint32_t length = sizeof(PacketStruct<BazaarOutboxListResponseBody>) + sizeof(BazaarOutboxItem) * body->count;
+        auto packetPtr = AcquireUniquePacket(PacketPoolType::Big);
+        if (!packetPtr || packetPtr->GetCapacity() < length)
+            return nullptr;
         auto* st = InitializePacketHeader<BazaarOutboxListResponseBody>(*packetPtr, OP::BAZAAR_OUTBOX_LIST_RES, 0, length);
         st->body = { body->requestID, body->resStatus, body->processingCount, body->count };
         auto* rows = reinterpret_cast<BazaarOutboxItem*>(packetPtr->GetBuffer() + sizeof(*st));
@@ -436,8 +406,7 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarCheckOutboxResponse(const MsgBazaarCheckOutboxResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->resStatus > 1
-            || static_cast<uint64_t>(body->deliveredCount) + body->duplicatedCount + body->blockedCount > 30)
+        if (body == nullptr)
             return nullptr;
         auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
         if (!packetPtr) return nullptr;
@@ -447,8 +416,8 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarCancelListingResponse(const MsgBazaarCancelListingResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->listingID == 0 || body->characterID == 0
-            || (body->resStatus != 0 && body->resStatus != 1 && body->resStatus != 5)) return nullptr;
+        if (body == nullptr)
+            return nullptr;
         auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
         if (!packetPtr) return nullptr;
         auto* st = InitializePacketHeader<BazaarCancelListingResponseBody>(*packetPtr, OP::BAZAAR_CANCEL_LISTING_RES, 0);
@@ -457,7 +426,7 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarClaimResponse(const MsgBazaarClaimResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->listingID == 0)
+        if (body == nullptr)
             return nullptr;
         auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
         if (!packetPtr)
@@ -466,32 +435,23 @@ namespace Core {
         st->body = {};
         st->body.requestID = body->requestID;
         st->body.listingID = body->listingID;
-        st->body.resStatus = body->resStatus <= 4 ? body->resStatus : 0;
+        st->body.resStatus = body->resStatus;
         st->body.diamondClaimed = st->body.resStatus == 1 ? body->diamondClaimed : 0;
         return packetPtr;
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarMyListResponse(const MsgBazaarMyListResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->characterID == 0)
+        if (body == nullptr)
             return nullptr;
-        bool valid = body->resStatus == RES_STATUS::SUCCESS && body->count <= MAX_BAZAAR_MY_LIST;
-        if (valid) {
-            for (uint16_t i = 0; i < body->count; ++i) {
-                const auto& row = body->listings[i];
-                if (row.listingID == 0 || row.sellerCharacterID != body->characterID || row.itemID == 0
-                    || row.quantity == 0 || row.status > 2) {
-                    valid = false;
-                    break;
-                }
-            }
-        }
-        const uint16_t count = valid ? body->count : 0;
+        const uint16_t count = body->resStatus == RES_STATUS::SUCCESS ? body->count : 0;
+        if (count > MAX_BAZAAR_MY_LIST)
+            return nullptr;
         const uint32_t length = sizeof(PacketStruct<BazaarMyListResponseBody>) + count * sizeof(BazaarSearchListing);
         auto packetPtr = AcquireUniquePacket(PacketPoolType::Big);
         if (!packetPtr || packetPtr->GetCapacity() < length)
             return nullptr;
         auto* st = InitializePacketHeader<BazaarMyListResponseBody>(*packetPtr, OP::BAZAAR_MY_LIST_RES, 0, length);
-        st->body = { body->requestID, static_cast<uint8_t>(valid ? RES_STATUS::SUCCESS : RES_STATUS::FAILED), count };
+        st->body = { body->requestID, body->resStatus, count };
         auto* rows = reinterpret_cast<BazaarSearchListing*>(packetPtr->GetBuffer() + sizeof(*st));
         for (uint16_t i = 0; i < count; ++i) {
             const auto& row = body->listings[i];
@@ -502,26 +462,17 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarSearchResponse(const MsgBazaarSearchResBody* body) {
-        if (body == nullptr || body->requestID == 0)
+        if (body == nullptr)
             return nullptr;
-        bool valid = body->resStatus == RES_STATUS::SUCCESS && body->count <= MAX_BAZAAR_SEARCH_RESULT;
-        if (valid) {
-            for (uint16_t i = 0; i < body->count; ++i) {
-                const auto& row = body->listings[i];
-                if (row.listingID == 0 || row.sellerCharacterID == 0 || row.itemID == 0
-                    || row.quantity == 0 || row.status != 0) {
-                    valid = false;
-                    break;
-                }
-            }
-        }
-        const uint16_t count = valid ? body->count : 0;
+        const uint16_t count = body->resStatus == RES_STATUS::SUCCESS ? body->count : 0;
+        if (count > MAX_BAZAAR_SEARCH_RESULT)
+            return nullptr;
         const uint32_t length = sizeof(PacketStruct<BazaarSearchResponseBody>) + count * sizeof(BazaarSearchListing);
         auto packetPtr = AcquireUniquePacket(PacketPoolType::Big);
         if (!packetPtr || packetPtr->GetCapacity() < length)
             return nullptr;
         auto* st = InitializePacketHeader<BazaarSearchResponseBody>(*packetPtr, OP::BAZAAR_SEARCH_RES, 0, length);
-        st->body = { body->requestID, static_cast<uint8_t>(valid ? RES_STATUS::SUCCESS : RES_STATUS::FAILED), count };
+        st->body = { body->requestID, body->resStatus, count };
         auto* rows = reinterpret_cast<BazaarSearchListing*>(packetPtr->GetBuffer() + sizeof(*st));
         for (uint16_t i = 0; i < count; ++i) {
             const auto& row = body->listings[i];
@@ -532,7 +483,8 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarRegisterResponse(const MsgBazaarRegisterResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 5) return nullptr;
+        if (body == nullptr)
+            return nullptr;
         auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
         if (!packetPtr) return nullptr;
         auto* st = InitializePacketHeader<BazaarRegisterResponseBody>(*packetPtr, OP::BAZAAR_REGISTER_RES, 0);
@@ -541,7 +493,8 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteWalletGoldResponse(const MsgCurrencyResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 1) return nullptr;
+        if (body == nullptr)
+            return nullptr;
         auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
         if (!packetPtr) return nullptr;
         auto* st = InitializePacketHeader<WalletGoldResponseBody>(*packetPtr, OP::WALLET_GOLD_RES, 0);
@@ -550,7 +503,8 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteWalletDiamondResponse(const MsgDiamondResBody* body) {
-        if (body == nullptr || body->requestID == 0 || body->characterID == 0 || body->resStatus > 1) return nullptr;
+        if (body == nullptr)
+            return nullptr;
         auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
         if (!packetPtr) return nullptr;
         auto* st = InitializePacketHeader<WalletDiamondResponseBody>(*packetPtr, OP::WALLET_DIAMOND_RES, 0);

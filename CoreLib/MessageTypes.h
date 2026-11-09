@@ -301,13 +301,14 @@ namespace Core {
         uint32_t itemID;
         uint32_t quantity;
     };
+    inline constexpr uint16_t MAX_BAZAAR_OUTBOX_LIST = 30;
     struct MsgBazaarOutboxListResBody {
         uint8_t resStatus;
         uint16_t processingCount;
         uint16_t count;
         uint32_t requestID;
         uint64_t characterID;
-        MsgBazaarOutboxItem rows[30];
+        MsgBazaarOutboxItem rows[MAX_BAZAAR_OUTBOX_LIST];
     };
     struct MsgBazaarCheckOutboxBody {
         uint64_t characterID;
