@@ -73,7 +73,6 @@ namespace Core {
         PacketWriter* writer = nullptr;
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
-        friend class NonZoneThreadPoolFixture;
     public:
         ~BroadcastThreadPool() {
             Stop();

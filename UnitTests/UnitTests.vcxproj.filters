@@ -78,9 +78,6 @@
     <ClCompile Include="BaseLib\BlockingBackPressureQueue.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="CoreLib\NonZoneThreadPool.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="CoreLib\MonsterState.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>

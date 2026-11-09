@@ -95,7 +95,6 @@ namespace Core {
 
         friend class Initializer;
         friend class LobbyZone; // ImmigrateChar takes the session shard before the lobby mutex.
-        friend class NonZoneThreadPoolFixture;
         friend class ZoneBenchmarkAccess;
 
     public:

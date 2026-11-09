@@ -45,8 +45,6 @@ namespace Core {
         ChatThreadPool* chat = nullptr;
         IProfileCache* profileCache = nullptr;
         friend class Initializer;
-        friend class NonZoneThreadPoolFixture;
-        
     public:
         void Process(IPacketView* p);
         void Disconnect(uint64_t sessionID);
