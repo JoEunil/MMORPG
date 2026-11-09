@@ -49,7 +49,7 @@ namespace Core {
             FinishShutdown();
         }
         
-        void InjectDependencies1(IIOCP* iocp, IPacketPoolManager* packetPoolManager, DurableLogger* durableLogger = nullptr) {
+        void InjectDependencies1(IIOCP* iocp, IPacketPoolManager* packetPoolManager) {
             perfCollector.Initialize();
             broadcastPool.Initialize(iocp, &stateManager, &perfCollector, &writer);
             lobbyZone.Initialize(& stateManager);
@@ -59,7 +59,7 @@ namespace Core {
             mqHandler.Initialize(iocp, &writer, &lobbyZone, &msgPool);
             recvMQ.Initialize(&mqHandler, &msgPool);
             recvMQ.Start();
-            chat.Initialize(iocp, &writer, &perfCollector, durableLogger);
+            chat.Initialize(iocp, &writer, &perfCollector);
         }
         
         void InjectDependencies2(IIOCP* iocp, ISessionAuth* session, IMessageQueue* sendMQ, IProfileCache* profileCache, IInventoryOperations* inventory = nullptr) {
