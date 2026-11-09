@@ -68,6 +68,7 @@ namespace Mmorpg.Client
             if (visible && Time.unscaledTime < nextRefresh) return;
             centre = worldScreen.ServerPosition;
             if (overview != null && overview.IsOpen) overview.Refresh(worldScreen.ZoneID, centre);
+            overview?.UpdateField(worldScreen.ZoneID, centre, worldScreen.CanAct);
             players.Clear();
             monsters.Clear();
             if (observedWorld != null) observedWorld.CopyMinimapPositions(players, monsters);
@@ -80,6 +81,7 @@ namespace Mmorpg.Client
         private void Hide()
         {
             CloseOverview();
+            overview?.SuspendNavigation(worldScreen == null || worldScreen.Stage != WorldStage.TransitionPending);
             raycastTarget = false;
             if (panelGroup != null)
             {
@@ -121,6 +123,7 @@ namespace Mmorpg.Client
         {
             if (worldScreen != null) worldScreen.WorldStateChanged -= WorldChanged;
             Hide();
+            overview?.SuspendNavigation(true);
             base.OnDisable();
         }
 

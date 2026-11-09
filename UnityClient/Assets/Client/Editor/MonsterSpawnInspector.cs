@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -10,6 +11,7 @@ namespace Mmorpg.Client.Editor
     public sealed class MonsterSpawnInspector : UnityEditor.Editor
     {
         private VisualElement grid;
+        private DropdownField zonePicker;
         private Label preview;
         private Label validation;
 
@@ -18,7 +20,7 @@ namespace Mmorpg.Client.Editor
             var root = new VisualElement();
             AddNote(root, "1구역은 몬스터 없는 마을입니다. 사냥 구역은 5×5 배치 · 셀 폭 42 · 중앙은 보스 전용입니다.");
             AddNote(root, "셀별 배열을 비우면 기존 공통 개수를 사용합니다. 배열은 y × 5 + x 순서의 25개이며 중앙 값은 0입니다.");
-            AddNote(root, "표는 일반 + 강화 배치 가중치입니다. 구역별 총수를 지정하면 가중치 비율로 정확히 배분합니다.");
+            AddNote(root, "구역별 총수를 지정하면 가중치 비율로 정확히 배분합니다. 표는 북쪽이 위이며 배분된 일반 + 강화 개수를 표시합니다.");
             root.Add(new PropertyField(serializedObject.FindProperty("regularPerCell"), "일반 몬스터 / 셀"));
             root.Add(new PropertyField(serializedObject.FindProperty("strongPerCell"), "강한 몬스터 / 셀"));
             root.Add(new PropertyField(serializedObject.FindProperty("edgeInset"), "외곽 여백 (1–41)"));
@@ -28,7 +30,12 @@ namespace Mmorpg.Client.Editor
             root.Add(new PropertyField(serializedObject.FindProperty("regularTotals"), "구역별 일반 총수 (6개)"));
             root.Add(new PropertyField(serializedObject.FindProperty("strongTotals"), "구역별 강화 총수 (6개)"));
             root.Add(new PropertyField(serializedObject.FindProperty("bossCounts"), "구역별 보스 수 (6개 · Zone4/6만 0/1)"));
+            root.Add(new PropertyField(serializedObject.FindProperty("zoneCellWeights"), "사냥터별 셀 가중치"));
+            AddNote(root, "구역별 일반·강화 배열을 비우면 해당 종류는 공통 배열을 따릅니다. 0을 넣은 셀에서는 생성하지 않습니다.");
             AddNote(root, "총수 세 배열을 모두 비우면 기존 밀도를 적용합니다. 총수를 쓰면 세 배열이 모두 필요하며 밀도는 적용하지 않습니다.");
+            zonePicker = new DropdownField("셀 배치 미리보기", new List<string>
+                { "Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5", "Zone 6" }, 1);
+            root.Add(zonePicker);
             grid = new VisualElement();
             grid.style.marginTop = 6;
             root.Add(grid);
@@ -41,6 +48,7 @@ namespace Mmorpg.Client.Editor
             root.Add(validation);
             AddNote(root, "위치 오프셋은 설정값부터 41까지 무작위입니다. offset + rand() % (42 - offset) 방식이며, 미리보기는 셀별 개수만 표시합니다.");
             AddNote(root, "내보낸 값은 후보 데이터입니다. 서버 배포는 별도 작업입니다.");
+            zonePicker.RegisterValueChangedCallback(_ => RefreshPreview());
             root.TrackSerializedObjectValue(serializedObject, _ => RefreshPreview());
             RefreshPreview();
             return root;
@@ -57,16 +65,16 @@ namespace Mmorpg.Client.Editor
         private void RefreshPreview()
         {
             serializedObject.UpdateIfRequiredOrScript();
-            int regular = serializedObject.FindProperty("regularPerCell").intValue;
-            int strong = serializedObject.FindProperty("strongPerCell").intValue;
             int inset = serializedObject.FindProperty("edgeInset").intValue;
-            int[] regularCounts, strongCounts;
+            int[][] regularByZone, strongByZone;
+            int[] bosses;
             try
             {
                 var content = (MonsterSpawns)target;
                 MonsterSpawnExport.Validate(content);
-                regularCounts = MonsterSpawnExport.EffectiveCounts(content.regularByCell, regular, "regular");
-                strongCounts = MonsterSpawnExport.EffectiveCounts(content.strongByCell, strong, "strong");
+                regularByZone = MonsterSpawnExport.EffectiveZoneCounts(content, false);
+                strongByZone = MonsterSpawnExport.EffectiveZoneCounts(content, true);
+                bosses = MonsterSpawnExport.EffectiveBossCounts(content);
             }
             catch (Exception error)
             {
@@ -76,14 +84,17 @@ namespace Mmorpg.Client.Editor
                 return;
             }
             grid.Clear();
-            for (int y = 0; y < 5; y++)
+            int selectedZone = zonePicker.index;
+            for (int y = 4; y >= 0; y--)
             {
                 var row = new VisualElement();
                 row.style.flexDirection = FlexDirection.Row;
                 for (int x = 0; x < 5; x++)
                 {
                     bool boss = x == 2 && y == 2;
-                    var cellLabel = new Label(boss ? "보스\n전용" : $"{regularCounts[y * 5 + x]} + {strongCounts[y * 5 + x]}");
+                    int cell = y * 5 + x;
+                    var cellLabel = new Label(boss ? $"보스\n{bosses[selectedZone]}" :
+                        $"{regularByZone[selectedZone][cell]} + {strongByZone[selectedZone][cell]}");
                     cellLabel.style.flexGrow = 1;
                     cellLabel.style.flexBasis = 0;
                     cellLabel.style.height = 36;
@@ -106,10 +117,6 @@ namespace Mmorpg.Client.Editor
                 }
                 grid.Add(row);
             }
-            var spawnContent = (MonsterSpawns)target;
-            int[][] regularByZone = MonsterSpawnExport.EffectiveZoneCounts(spawnContent, false);
-            int[][] strongByZone = MonsterSpawnExport.EffectiveZoneCounts(spawnContent, true);
-            int[] bosses = MonsterSpawnExport.EffectiveBossCounts(spawnContent);
             var zoneTotals = new string[6];
             for (int zone = 0; zone < zoneTotals.Length; zone++)
             {

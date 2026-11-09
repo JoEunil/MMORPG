@@ -153,6 +153,70 @@ namespace Mmorpg.Client.Tests
 
         [Test]
         [Category("SpawnExport")]
+        public void AuthoredHuntingZonesKeepApproachCellsEmptyAndPreserveSpawnTotals()
+        {
+            var asset = UnityEditor.AssetDatabase.LoadAssetAtPath<MonsterSpawns>("Assets/Client/Content/MonsterSpawns.asset");
+            Assert.That(asset, Is.Not.Null);
+            var content = UnityEngine.Object.Instantiate(asset);
+            string directory = Path.Combine(Path.GetTempPath(), "ZoneSpawnExport-" + Guid.NewGuid().ToString("N"));
+            string output = Path.Combine(directory, "MonsterSpawns.inc");
+            try
+            {
+                Export(content, directory);
+                string authored = File.ReadAllText(output);
+                var configured = content.zoneCellWeights;
+                content.zoneCellWeights = null;
+                Export(content, directory);
+                string baseline = File.ReadAllText(output);
+                foreach (bool strong in new[] { false, true })
+                {
+                    string table = strong ? "MONSTER_STRONG_COUNTS" : "MONSTER_REGULAR_COUNTS";
+                    var rows = TableRows(authored, table);
+                    var baselineRows = TableRows(baseline, table);
+                    Assert.That(rows.Count, Is.EqualTo(6));
+                    Assert.That(baselineRows.Count, Is.EqualTo(6));
+                    Assert.That(rows[0].Value, Is.EqualTo(baselineRows[0].Value), "Town layout");
+                    int[] expectedTotals = strong ? new[] { 0, 12, 16, 20, 24, 28 } : new[] { 0, 108, 116, 123, 132, 139 };
+                    for (int zone = 0; zone < rows.Count; zone++)
+                    {
+                        var cells = Array.ConvertAll(rows[zone].Groups[1].Value.Split(','),
+                            cell => int.Parse(cell, CultureInfo.InvariantCulture));
+                        Assert.That(cells.Length, Is.EqualTo(25));
+                        int total = 0;
+                        for (int cell = 0; cell < cells.Length; cell++)
+                        {
+                            if (zone == 0 || cell < 10 || cell == 12)
+                                Assert.That(cells[cell], Is.Zero, $"{table} Zone {zone + 1} cell {cell}");
+                            total += cells[cell];
+                        }
+                        Assert.That(total, Is.EqualTo(expectedTotals[zone]), $"{table} Zone {zone + 1} total");
+                    }
+                    Assert.That(baselineRows[5].Groups[1].Value.Split(',')[4].Trim(), Is.Not.EqualTo("0"),
+                        "Without a zone override the shared south-row weight still applies.");
+                }
+                Assert.That(authored, Does.Contain("MONSTER_BOSS_COUNTS[6] = {0, 0, 0, 1, 0, 1}"));
+
+                content.zoneCellWeights = new[] { configured[0], configured[0] };
+                var failure = Assert.Throws<TargetInvocationException>(() => Export(content, directory));
+                Assert.That(failure.InnerException, Is.TypeOf<InvalidOperationException>());
+                Assert.That(File.ReadAllText(output), Is.EqualTo(baseline));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(content);
+                if (Directory.Exists(directory)) Directory.Delete(directory, true);
+            }
+
+            MatchCollection TableRows(string data, string table)
+            {
+                var match = Regex.Match(data, table + @"\[6\]\[25\] = \{\n(.*?)\n\};", RegexOptions.Singleline);
+                Assert.That(match.Success, Is.True, table);
+                return Regex.Matches(match.Groups[1].Value, @"\{([^}]+)\}");
+            }
+        }
+
+        [Test]
+        [Category("SpawnExport")]
         public void InvalidCountOrInsetPreservesExistingOutput()
         {
             var content = ScriptableObject.CreateInstance<MonsterSpawns>();

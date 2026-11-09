@@ -512,7 +512,7 @@ namespace Core {
             }
         }
         bool LoadTransitionCharacter(uint64_t session = 42, uint16_t zone = 1,
-            float x = ZONE_SIZE, float y = ZONE_SIZE * 0.5f, int hp = 75) {
+            float x = ZONE_SIZE, float y = 10.0f, int hp = 75) {
             state->BeginAuth(session);
             if (!state->CompleteAuth(session, 6982, true)) return false;
             CharacterState character{};
@@ -1323,7 +1323,7 @@ namespace Core {
         ZoneChangeResult entry, transfer, stale;
         ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, entry));
         SetMoveBudget(1, 10.0f);
-        ActionRequestBody outward{0, 205.0f, 100.0f, 255, entry.ownershipEpoch};
+        ActionRequestBody outward{0, 205.0f, 10.0f, 255, entry.ownershipEpoch};
         ASSERT_TRUE(state->ProcessAction(42, 1, outward, transfer));
         EXPECT_EQ(transfer.zoneID, 2);
         EXPECT_EQ(transfer.ownershipEpoch, entry.ownershipEpoch + 1);
@@ -1333,7 +1333,7 @@ namespace Core {
         EXPECT_EQ(Generation(2), 1);
         EXPECT_EQ(OwnershipEpoch(), transfer.ownershipEpoch);
 
-        ActionRequestBody reverse{3, 195.0f, 100.0f, 255, transfer.ownershipEpoch};
+        ActionRequestBody reverse{3, 195.0f, 10.0f, 255, transfer.ownershipEpoch};
         SetMoveBudget(2, 10.0f);
         ASSERT_TRUE(state->ProcessAction(42, 2, reverse, stale));
         EXPECT_EQ(stale.zoneID, 1);
@@ -1341,7 +1341,7 @@ namespace Core {
         EXPECT_EQ(state->GetZoneID(42), 1);
         EXPECT_FLOAT_EQ(stale.x, 195.0f); // Reverse handoff uses the new zone's core edge - 5.
 
-        ActionRequestBody oldAction{3, 195.0f, 100.0f, 255, transfer.ownershipEpoch};
+        ActionRequestBody oldAction{3, 195.0f, 10.0f, 255, transfer.ownershipEpoch};
         ZoneChangeResult repair;
         ASSERT_TRUE(state->ProcessAction(42, 2, oldAction, repair));
         EXPECT_EQ(repair.zoneID, 1);
@@ -1437,20 +1437,26 @@ namespace Core {
         EXPECT_EQ(OwnershipEpoch(44), committedEpoch);
     }
 
-    TEST_F(NonZoneThreadPoolFixture, AutomaticCornerHandoffUsesAuthoredCrossingAndOuterEdgeDoesNotWrap) {
+    TEST_F(NonZoneThreadPoolFixture, ClosedRegionalCornerPreventsHandoffAndOuterEdgeDoesNotWrap) {
         PrepareZones();
         ASSERT_NE(state->GetZone(5), nullptr);
         ASSERT_NE(state->GetZone(6), nullptr);
         EXPECT_EQ(state->GetZone(7), nullptr);
-        ASSERT_TRUE(LoadTransitionCharacter(42, 1, ZONE_SIZE, ZONE_SIZE));
+        constexpr float beforeCorner = ZONE_SIZE - 7.0f;
+        constexpr float beyondCorner = ZONE_SIZE + TRANSITION_BUFFER;
+        ASSERT_TRUE(LoadTransitionCharacter(42, 1, beforeCorner, beforeCorner));
         ZoneChangeResult entry, diagonal;
         ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, entry));
-        SetMoveBudget(1, 10.0f);
-        ActionRequestBody corner{0, ZONE_SIZE + TRANSITION_BUFFER, ZONE_SIZE + TRANSITION_BUFFER, 255, entry.ownershipEpoch};
+        ASSERT_FLOAT_EQ(entry.x, beforeCorner);
+        ASSERT_FLOAT_EQ(entry.y, beforeCorner);
+        SetMoveBudget(1, 25.0f);
+        ActionRequestBody corner{0, beyondCorner, beyondCorner, 255, entry.ownershipEpoch};
         ASSERT_TRUE(state->ProcessAction(42, 1, corner, diagonal));
-        EXPECT_EQ(diagonal.zoneID, 5); // Authored direct corner crossing is enabled for 1→5.
-        EXPECT_EQ(diagonal.ownershipEpoch, entry.ownershipEpoch + 1);
-        EXPECT_EQ(state->GetZoneID(42), 5);
+        EXPECT_EQ(diagonal.zoneID, 0);
+        EXPECT_EQ(state->GetZoneID(42), 1);
+        EXPECT_EQ(OwnershipEpoch(), entry.ownershipEpoch);
+        EXPECT_FLOAT_EQ(CharacterIn(1).x, beforeCorner);
+        EXPECT_FLOAT_EQ(CharacterIn(1).y, beforeCorner);
 
         ASSERT_TRUE(LoadTransitionCharacter(43, 3, 600.0f, 100.0f));
         ZoneChangeResult edgeEntry, edgeResult;
@@ -1474,7 +1480,7 @@ namespace Core {
             SetMoveBudget(1, 10.0f);
             const auto original = CharacterIn(1);
             ExhaustDestination(2, kind);
-        ActionRequestBody crossing{0, 205.0f, 100.0f, 255, epoch};
+            ActionRequestBody crossing{0, 205.0f, 10.0f, 255, epoch};
             EXPECT_FALSE(state->ProcessAction(42, 1, crossing, result));
             const auto retained = CharacterIn(1);
             EXPECT_EQ(state->GetZoneID(42), 1);
@@ -1529,7 +1535,7 @@ namespace Core {
             ZoneChangeResult result;
             ASSERT_TRUE(state->ChangeZone(42, ZONE_CHANGE::ENTER, result));
             SetMoveBudget(1, 10.0f);
-            ActionRequestBody crossing{0, 205.0f, 100.0f, 255, result.ownershipEpoch};
+            ActionRequestBody crossing{0, 205.0f, 10.0f, 255, result.ownershipEpoch};
             std::promise<void> start;
             auto gate = start.get_future().share();
             auto transfer = std::async(std::launch::async, [&, gate] {
@@ -2462,7 +2468,7 @@ namespace Core {
         ASSERT_EQ(state->Parry(42, 1, {3, entry.ownershipEpoch}).status, static_cast<uint8_t>(ParryStatus::Accepted));
         SetMoveBudget(1, 10.0f);
         ZoneChangeResult transfer;
-        ASSERT_TRUE(state->ProcessAction(42, 1, {0, 205.0f, 100.0f, 255, entry.ownershipEpoch, 0}, transfer));
+        ASSERT_TRUE(state->ProcessAction(42, 1, {0, 205.0f, 10.0f, 255, entry.ownershipEpoch, 0}, transfer));
         ASSERT_EQ(transfer.zoneID, 2u);
         EXPECT_EQ(CharacterIn(2).parryWindowTicks, 0u);
         EXPECT_EQ(CharacterIn(2).parryCooldownTicks, 60u);
