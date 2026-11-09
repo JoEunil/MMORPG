@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace Mmorpg.Client
 {
-    // North-up, player-centred presentation of the existing navigation map and accepted observations.
+    // Camera-aligned, player-centred presentation of the existing navigation map and accepted observations.
     [UnityEngine.Scripting.APIUpdating.MovedFrom(true, sourceNamespace: "C02", sourceAssembly: "C02.Runtime", sourceClassName: "WorldMinimap")]
     public sealed class WorldMinimap : MaskableGraphic
     {
@@ -15,6 +15,7 @@ namespace Mmorpg.Client
         [SerializeField, Min(1), Tooltip("World metres from the centre to either horizontal edge.")] private float viewRadius = 40;
         [SerializeField] private Texture2D terrainAtlas;
         [SerializeField] private Rect atlasBounds;
+        [SerializeField] private RectTransform northLabel;
 
         public override Texture mainTexture => terrainAtlas != null ? terrainAtlas : Texture2D.whiteTexture;
 
@@ -34,6 +35,8 @@ namespace Mmorpg.Client
         private bool visible;
         private float nextRefresh;
         private Rect meshBounds;
+        private Vector2 mapForward;
+        private Vector2 mapRight;
 
         private bool WorldAvailable => worldScreen != null && worldScreen.isActiveAndEnabled &&
             worldScreen.Stage == WorldStage.InWorld && worldScreen.HasOwnFull &&
@@ -96,17 +99,32 @@ namespace Mmorpg.Client
             meshBounds = rect;
             float radius = rect.width * .5f;
             if (radius <= 0 || rect.height <= 0) return;
+            Transform camera = worldScreen.ViewCamera;
+            Vector3 cameraForward = camera != null ? camera.forward : Vector3.forward;
+            // Remove pitch once per mesh so both axes retain the same metres-per-pixel scale.
+            mapForward = new Vector2(cameraForward.x, cameraForward.z).normalized;
+            if (mapForward.sqrMagnitude < .0001f) mapForward = Vector2.up;
+            mapRight = new Vector2(mapForward.y, -mapForward.x);
             Vector2 origin = rect.center;
+            if (northLabel != null)
+            {
+                Vector2 north = WorldToMapOffset(Vector2.up);
+                Vector2 inset = new Vector2(Mathf.Max(0, radius - northLabel.rect.width * .5f - 4),
+                    Mathf.Max(0, rect.height * .5f - northLabel.rect.height * .5f - 4));
+                float distance = Mathf.Min(inset.x / Mathf.Max(Mathf.Abs(north.x), .0001f),
+                    inset.y / Mathf.Max(Mathf.Abs(north.y), .0001f));
+                northLabel.localRotation = Quaternion.identity;
+                northLabel.position = rectTransform.TransformPoint(origin + north * distance) -
+                    northLabel.TransformVector(northLabel.rect.center);
+            }
             Rectangle(rect.xMin, rect.yMin, rect.xMax, rect.yMax);
             Fill(vertices, 4, BlockedColor, origin, radius, false);
             if (terrainAtlas != null && atlasBounds.width > 0 && atlasBounds.height > 0)
             {
-                Rectangle(rect.xMin, rect.yMin, rect.xMax, rect.yMax);
-                float scale = radius / viewRadius;
-                int count = Clip(4, Vector2.right, origin.x + (atlasBounds.xMax - centre.x) * scale);
-                count = Clip(count, Vector2.left, -origin.x - (atlasBounds.xMin - centre.x) * scale);
-                count = Clip(count, Vector2.up, origin.y + (atlasBounds.yMax - centre.y) * scale);
-                count = Clip(count, Vector2.down, -origin.y - (atlasBounds.yMin - centre.y) * scale);
+                Rectangle(atlasBounds.xMin, atlasBounds.yMin, atlasBounds.xMax, atlasBounds.yMax);
+                for (int i = 0; i < 4; i++)
+                    polygon[i] = origin + WorldToMapOffset(polygon[i] - centre) * (radius / viewRadius);
+                int count = ClipToRect(4, rect);
                 Fill(vertices, count, new Color32(255, 255, 255, 255), origin, radius, true);
             }
             else DrawNavigation(vertices, rect);
@@ -142,17 +160,22 @@ namespace Mmorpg.Client
                 {
                     Vector2 offset = new Vector2((x + .5f) * cellWidth - rect.width * .5f,
                         (y + .5f) * cellHeight - rect.height * .5f);
-                    if (!worldMap.IsWalkable(centre.x + offset.x * metresPerPixel,
-                        centre.y + offset.y * metresPerPixel)) continue;
+                    Vector2 world = centre + MapToWorldOffset(offset * metresPerPixel);
+                    if (!worldMap.IsWalkable(world.x, world.y)) continue;
                     Rectangle(rect.xMin + x * cellWidth, rect.yMin + y * cellHeight,
                         rect.xMin + (x + 1) * cellWidth, rect.yMin + (y + 1) * cellHeight);
                     Fill(vertices, 4, WalkableColor, rect.center, rect.width * .5f, false);
                 }
         }
 
+        private Vector2 WorldToMapOffset(Vector2 offset) =>
+            new Vector2(Vector2.Dot(offset, mapRight), Vector2.Dot(offset, mapForward));
+
+        private Vector2 MapToWorldOffset(Vector2 offset) => mapRight * offset.x + mapForward * offset.y;
+
         private void Marker(VertexHelper vertices, Rect rect, Vector2 position, Color32 tint)
         {
-            Vector2 point = rect.center + (position - centre) * (rect.width / (viewRadius * 2));
+            Vector2 point = rect.center + WorldToMapOffset(position - centre) * (rect.width / (viewRadius * 2));
             if (point.x < rect.xMin || point.x > rect.xMax || point.y < rect.yMin || point.y > rect.yMax) return;
             for (int i = 0; i < 12; i++) polygon[i] = CirclePoint(point, 5.3f, i, 12);
             Fill(vertices, ClipToRect(12, rect), new Color32(239, 247, 222, 180), rect.center, rect.width * .5f, false);
@@ -230,7 +253,7 @@ namespace Mmorpg.Client
                 Vector2 uv = UntexturedUv;
                 if (atlas)
                 {
-                    Vector2 world = centre + (polygon[i] - origin) * (viewRadius / radius);
+                    Vector2 world = centre + MapToWorldOffset((polygon[i] - origin) * (viewRadius / radius));
                     uv = new Vector2(Mathf.Clamp01((world.x - atlasBounds.xMin) / atlasBounds.width),
                         Mathf.Clamp01((world.y - atlasBounds.yMin) / atlasBounds.height));
                 }

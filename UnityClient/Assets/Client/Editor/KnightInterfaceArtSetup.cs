@@ -333,6 +333,7 @@ namespace Mmorpg.Client.Editor
             refs.FindProperty("observedWorld").objectReferenceValue = world.GetComponent<ObservedWorld>();
             refs.FindProperty("worldMap").objectReferenceValue = new SerializedObject(world).FindProperty("worldMap").objectReferenceValue;
             refs.FindProperty("panelGroup").objectReferenceValue = group;
+            refs.FindProperty("northLabel").objectReferenceValue = north.rectTransform;
             refs.FindProperty("viewRadius").floatValue = 40;
             WorldMinimapAtlasExport.TryLoad(out var atlas, out var bounds);
             refs.FindProperty("terrainAtlas").objectReferenceValue = atlas;
