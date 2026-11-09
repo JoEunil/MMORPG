@@ -18,8 +18,17 @@ namespace Core {
         IPacketPoolManager* packetPoolManager = nullptr;
 
         void Initialize(IPacketPoolManager* p);
-        
         bool IsReady();
+        std::unique_ptr<IPacket, PacketDeleter> AcquireUniquePacket(PacketPoolType type);
+        std::shared_ptr<IPacket> AcquireSharedPacket(PacketPoolType type);
+
+        template<typename T>
+        PacketStruct<T>* InitializePacketHeader(IPacket& p, OP opcode, uint8_t flags, uint32_t length = sizeof(PacketStruct<T>)) {
+            auto* packet = reinterpret_cast<PacketStruct<T>*>(p.GetBuffer());
+            packet->header = { MAGIC, length, static_cast<uint8_t>(opcode), flags };
+            p.SetLength(length);
+            return packet;
+        }
         
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
