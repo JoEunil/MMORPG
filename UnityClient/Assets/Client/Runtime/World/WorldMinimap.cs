@@ -1,12 +1,13 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Mmorpg.Client
 {
     // Camera-aligned, player-centred presentation of the existing navigation map and accepted observations.
     [UnityEngine.Scripting.APIUpdating.MovedFrom(true, sourceNamespace: "C02", sourceAssembly: "C02.Runtime", sourceClassName: "WorldMinimap")]
-    public sealed class WorldMinimap : MaskableGraphic
+    public sealed class WorldMinimap : MaskableGraphic, IPointerClickHandler
     {
         [SerializeField] private WorldScreen worldScreen;
         [SerializeField] private ObservedWorld observedWorld;
@@ -37,6 +38,7 @@ namespace Mmorpg.Client
         private Rect meshBounds;
         private Vector2 mapForward;
         private Vector2 mapRight;
+        private WorldMapOverlay overview;
 
         private bool WorldAvailable => worldScreen != null && worldScreen.isActiveAndEnabled &&
             worldScreen.Stage == WorldStage.InWorld && worldScreen.HasOwnFull &&
@@ -60,10 +62,12 @@ namespace Mmorpg.Client
         private void Update()
         {
             if (!WorldAvailable || panelGroup == null) { Hide(); return; }
-            panelGroup.blocksRaycasts = false;
-            panelGroup.interactable = false;
+            if (overview != null && overview.IsOpen && GameUiInput.EscapeAvailableForPanel()) CloseOverview();
+            raycastTarget = terrainAtlas != null && atlasBounds.width > 0 && atlasBounds.height > 0;
+            panelGroup.blocksRaycasts = raycastTarget;
             if (visible && Time.unscaledTime < nextRefresh) return;
             centre = worldScreen.ServerPosition;
+            if (overview != null && overview.IsOpen) overview.Refresh(worldScreen.ZoneID, centre);
             players.Clear();
             monsters.Clear();
             if (observedWorld != null) observedWorld.CopyMinimapPositions(players, monsters);
@@ -75,7 +79,13 @@ namespace Mmorpg.Client
 
         private void Hide()
         {
-            if (panelGroup != null) panelGroup.alpha = 0;
+            CloseOverview();
+            raycastTarget = false;
+            if (panelGroup != null)
+            {
+                panelGroup.alpha = 0;
+                panelGroup.blocksRaycasts = false;
+            }
             players.Clear();
             monsters.Clear();
             nextRefresh = 0;
@@ -84,11 +94,41 @@ namespace Mmorpg.Client
             SetVerticesDirty();
         }
 
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (eventData.button != PointerEventData.InputButton.Left || !visible || !WorldAvailable ||
+                !raycastTarget || worldScreen.HasOpenItemPanel || canvas == null) return;
+            if (overview == null)
+            {
+                var author = worldScreen.MapAuthoring;
+                if (author == null || author.map != worldMap) return;
+                overview = new WorldMapOverlay(canvas.rootCanvas.transform, terrainAtlas, atlasBounds, author,
+                    worldScreen.Content, worldScreen.ItemTextFont, CloseOverview);
+            }
+            EventSystem.current?.SetSelectedGameObject(null);
+            overview.Show(worldScreen.ZoneID, worldScreen.ServerPosition);
+            GameUiInput.WorldMapOpen = true;
+        }
+
+        private void CloseOverview()
+        {
+            if (overview == null || !overview.IsOpen) return;
+            overview.Hide();
+            GameUiInput.WorldMapOpen = false;
+        }
+
         protected override void OnDisable()
         {
             if (worldScreen != null) worldScreen.WorldStateChanged -= WorldChanged;
             Hide();
             base.OnDisable();
+        }
+
+        protected override void OnDestroy()
+        {
+            CloseOverview();
+            overview?.Destroy();
+            base.OnDestroy();
         }
 
         protected override void OnPopulateMesh(VertexHelper vertices)
