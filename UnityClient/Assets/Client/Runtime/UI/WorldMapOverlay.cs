@@ -193,6 +193,11 @@ namespace Mmorpg.Client
             var field = new Vector2(Mathf.Max(end.x, crossing + layout.TransitionMargin) + author.map.tileSize * .5f, end.y);
             if (author.map.CanTraverse(end, field))
                 AddDestination(terrain, "FieldDestination", "첫 사냥터 진입", 2, field, new Vector2(10, 16), font);
+
+            Vector2 hunting = author.firstHuntingDestination;
+            var zone = layout.Zones[1];
+            if (zone.ExclusiveBounds.Contains(hunting - zone.ZoneOrigin) && author.map.IsWalkable(hunting.x, hunting.y))
+                AddDestination(terrain, "HuntingDestination", "능선 너머 사냥터", zone.Id, hunting, new Vector2(10, 18), font);
         }
 
         private void AddWallFootprint(RectTransform terrain, Transform module)

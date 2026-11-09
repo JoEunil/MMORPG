@@ -15,6 +15,8 @@ namespace Mmorpg.Client
         [Min(1)] public float zoneCoreSize = 200;
         [Min(0)] public float transitionMargin = 5;
         public uint contentVersion = 1;
+        [Tooltip("Optional world X/Z destination inside the first hunting area.")]
+        public Vector2 firstHuntingDestination;
         [Min(1)] public int previewZoneId = 1;
         public bool showZoneBounds = true;
         public bool showAoiCells = true;

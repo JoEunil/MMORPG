@@ -153,14 +153,17 @@ namespace Mmorpg.Client.Editor
         public static int[][] EffectiveZoneCounts(MonsterSpawns content, bool strong)
         {
             bool totals = UsesTotals(content);
-            int[] weights = EffectiveCounts(strong ? content.strongByCell : content.regularByCell,
-                strong ? content.strongPerCell : content.regularPerCell, strong ? "strong" : "regular");
+            string kind = strong ? "strong" : "regular";
+            int[] sharedWeights = EffectiveCounts(strong ? content.strongByCell : content.regularByCell,
+                strong ? content.strongPerCell : content.regularPerCell, kind);
+            var overrides = ZoneWeightsByIndex(content.zoneCellWeights);
             int[] densities = totals ? null : EffectiveZoneDensity(content.zoneDensityPercent);
-            long weightSum = 0;
-            foreach (int weight in weights) weightSum += weight;
             var result = new int[ZoneCount][];
             for (int zone = 0; zone < ZoneCount; zone++)
             {
+                var configured = strong ? overrides[zone]?.strong : overrides[zone]?.regular;
+                int[] weights = configured != null && configured.Length > 0
+                    ? EffectiveCounts(configured, 0, $"Zone {zone + 1} {kind}") : sharedWeights;
                 result[zone] = new int[25];
                 if (!totals)
                 {
@@ -170,8 +173,10 @@ namespace Mmorpg.Client.Editor
                 }
                 int total = strong ? content.strongTotals[zone] : content.regularTotals[zone];
                 if (total == 0) continue;
+                long weightSum = 0;
+                foreach (int weight in weights) weightSum += weight;
                 if (weightSum == 0)
-                    throw new InvalidOperationException("A positive zone total requires at least one positive cell weight.");
+                    throw new InvalidOperationException($"Zone {zone + 1} requires a positive {kind} cell weight for its configured total.");
                 var remainders = new long[25];
                 int assigned = 0;
                 for (int cell = 0; cell < 25; cell++)
@@ -191,6 +196,22 @@ namespace Mmorpg.Client.Editor
                     remainders[best] = -1;
                     assigned++;
                 }
+            }
+            return result;
+        }
+
+        private static MonsterSpawns.ZoneCellWeights[] ZoneWeightsByIndex(MonsterSpawns.ZoneCellWeights[] configured)
+        {
+            var result = new MonsterSpawns.ZoneCellWeights[ZoneCount];
+            if (configured == null) return result;
+            foreach (var weights in configured)
+            {
+                if (weights == null || weights.zoneId <= TownZoneId || weights.zoneId > ZoneCount)
+                    throw new InvalidOperationException("Cell weight overrides require a hunting Zone ID (2–6).");
+                int index = weights.zoneId - 1;
+                if (result[index] != null)
+                    throw new InvalidOperationException($"Zone {weights.zoneId} has more than one cell weight override.");
+                result[index] = weights;
             }
             return result;
         }

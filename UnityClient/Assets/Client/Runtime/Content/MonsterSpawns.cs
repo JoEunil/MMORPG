@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Mmorpg.Client
@@ -6,6 +7,14 @@ namespace Mmorpg.Client
     [UnityEngine.Scripting.APIUpdating.MovedFrom(true, sourceNamespace: "C02", sourceAssembly: "C02.Runtime", sourceClassName: "C15MonsterSpawns")]
     public sealed class MonsterSpawns : ScriptableObject
     {
+        [Serializable]
+        public sealed class ZoneCellWeights
+        {
+            public int zoneId;
+            public int[] regular;
+            public int[] strong;
+        }
+
         public int regularPerCell = 8;
         public int strongPerCell = 2;
         public int edgeInset = 1;
@@ -15,5 +24,6 @@ namespace Mmorpg.Client
         public int[] regularTotals;
         public int[] strongTotals;
         public int[] bossCounts;
+        public ZoneCellWeights[] zoneCellWeights;
     }
 }
