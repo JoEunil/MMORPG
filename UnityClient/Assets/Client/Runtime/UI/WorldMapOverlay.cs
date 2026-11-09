@@ -8,6 +8,7 @@ namespace Mmorpg.Client
     // A north-up overview uses the same world coordinates and atlas as the minimap.
     internal sealed class WorldMapOverlay
     {
+        private const float RouteLabelWidth = 124;
         private static readonly Color Gold = new Color32(235, 208, 145, 255);
         private static readonly Color White = new Color32(244, 239, 222, 255);
         private readonly Rect bounds;
@@ -206,8 +207,9 @@ namespace Mmorpg.Client
                 if (!zone.ExclusiveBounds.Contains(point - zone.ZoneOrigin) || !author.map.IsWalkable(point.x, point.y)) continue;
                 var zoneContent = content?.GetHuntingZone(zone.Id);
                 string label = zone.Id == 2 ? "능선 너머 사냥터" : (zoneContent?.label ?? $"구역 {zone.Id}") + " 입구";
-                float offsetX = zone.Column == layout.Columns - 1 ? -134 : 10;
-                AddDestination(terrain, $"HuntingDestination{zone.Id}", label, zone.Id, point, new Vector2(offsetX, 18), font);
+                // The authored pins sit toward the east of their zones, leaving room for labels to the west.
+                AddDestination(terrain, $"HuntingDestination{zone.Id}", label, zone.Id, point,
+                    new Vector2(-RouteLabelWidth - 10, 0), font);
             }
         }
 
@@ -254,7 +256,7 @@ namespace Mmorpg.Client
             Vector2 offset, TMP_FontAsset font)
         {
             var badge = Surface(terrain, name, new Color32(18, 25, 25, 225));
-            Anchor(badge.rectTransform, position, new Vector2(0, .5f), offset, new Vector2(124, 24));
+            Anchor(badge.rectTransform, position, new Vector2(0, .5f), offset, new Vector2(RouteLabelWidth, 24));
             var text = Label(badge.transform, "Label", value, 15, White, TextAlignmentOptions.Center, font);
             text.enableAutoSizing = true;
             text.fontSizeMin = 11;
