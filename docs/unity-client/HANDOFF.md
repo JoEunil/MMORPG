@@ -5,4 +5,4 @@
 - PlayMode 1건, Windows 빌드와 사이트 생성 통과. 로컬 서버의 마을에서 클릭으로 열기, 현재 위치, 닫기, 재열기를 확인했다. Esc와 지도 위 키보드 이동 차단은 실제 키로 미확인이다. 종합 검수 6c75eb6 통과, 필수 수정 없음.
 - 기본 로컬 런처는 Builds/WorldMapOverview/Player를 실행한다. 기존 게임·서버는 정상 종료하고 새 빌드를 시작했으며 검증 마지막 관찰은 마을에 접속해 지도를 열어둔 상태다. 상세 근거는 비공개 Builds/WorldMapOverview/live-verification.json·test-results.xml·windows-build.json이다.
 - PR #74 미니맵 방향과 마을 환경 작업은 병합됐다. 이전 결과는 [지도 작업 이력](history/2026-11-08-map-presentation/README.md)에 있다. 포션 공급·드롭과 사용자 몬스터 AI는 기존 보류·보호 범위를 따른다.
-- MAPOVERVIEW01 게시 승인 대기. 채널 C0C9VFZMV43, 부모 1794207563.949579, 명령 승인 MAPOVERVIEW01. 수신기 listening 확인 후 앱으로 요청했다. 승인 적용 후 후보와 관련 기록을 한 PR로 게시한다.
+- 2026-11-09 사용자 대화에서 MAPOVERVIEW01 게시 승인 확인. 제품 후보 6c75eb6 및 관련 기록을 단일 PR로 게시한다. Slack 요청 부모 1794207563.949579.
