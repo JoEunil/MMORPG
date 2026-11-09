@@ -6,7 +6,7 @@
 Core::PacketStruct<Core::EnterWorldRequestBody> GetTestPacket() {
 	Core::PacketStruct<Core::EnterWorldRequestBody> packet;
 	packet.header.opcode = Core::OP::ENTER_WORLD;
-	packet.header.flags = 1;
+	packet.header.flags = 0;
 	packet.header.magic = Core::MAGIC;
 	packet.header.length = sizeof(Core::PacketStruct<Core::EnterWorldRequestBody>);
 	packet.body.characterID = 12345;
