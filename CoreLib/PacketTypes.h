@@ -568,10 +568,5 @@ namespace Core {
     inline T* parseBody(uint8_t* data) {
         return reinterpret_cast<T*>(data + sizeof(PacketHeader));
     }
-
-    inline std::string_view GetMessageView(uint8_t* data, uint16_t messageLen) {
-        const char* msgPtr = reinterpret_cast<const char*>(data + sizeof(PacketHeader) + sizeof(ChatRequestBody));
-        return std::string_view(msgPtr, messageLen);
-    }
 }
 
