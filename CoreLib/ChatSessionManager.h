@@ -18,8 +18,10 @@ namespace Core {
         std::unordered_map<uint64_t, uint64_t> m_chatIdSessionMap;
         std::vector<std::set<uint64_t>> m_zoneMembers;
 
+        void RemoveFromZone(uint64_t sessionID, uint16_t zoneID);
+
     public:
-        void Initialize();
+        ChatSessionManager();
         void AddSession(uint64_t sessionID, uint64_t chatID, uint32_t profileId);
         void DeleteSession(uint64_t sessionID);
         void JoinZone(uint64_t sessionID, uint16_t zoneID);

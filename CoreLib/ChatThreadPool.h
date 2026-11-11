@@ -78,7 +78,6 @@ namespace Core {
             iocp = i;
             writer = w;
             perfCollector = p;
-            m_sessions.Initialize();
             m_currentZoneSequence.reserve(MAX_USER_CAPACITY);
             m_chatIdGenerater.store(1, std::memory_order_relaxed);
         }

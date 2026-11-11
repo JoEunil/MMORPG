@@ -1,12 +1,18 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "ChatSessionManager.h"
 #include "Config.h"
 #include "LoggerGlobal.h"
 
 namespace Core {
-    void ChatSessionManager::Initialize() {
-        m_sessionChatIdMap.reserve(MAX_USER_CAPACITY);
+    ChatSessionManager::ChatSessionManager() {
         m_zoneMembers.resize(ZONE_COUNT);
+        m_sessionChatIdMap.reserve(MAX_USER_CAPACITY);
+    }
+
+    void ChatSessionManager::RemoveFromZone(uint64_t sessionID, uint16_t zoneID) {
+        if (zoneID > 0 && zoneID <= ZONE_COUNT) {
+            m_zoneMembers[zoneID - 1].erase(sessionID);
+        }
     }
 
     void ChatSessionManager::AddSession(uint64_t sessionID, uint64_t chatID, uint32_t profileId) {
@@ -28,10 +34,7 @@ namespace Core {
             errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
             return;
         }
-        const uint16_t currentZoneID = it->second.zoneID;
-        if (currentZoneID > 0 && currentZoneID <= ZONE_COUNT) {
-            m_zoneMembers[currentZoneID - 1].erase(sessionID);
-        }
+        RemoveFromZone(sessionID, it->second.zoneID);
         m_chatIdSessionMap.erase(it->second.chatID);
         m_sessionChatIdMap.erase(it);
     }
@@ -50,10 +53,7 @@ namespace Core {
         if (currentZoneID == zoneID)
             return;
 
-        if (currentZoneID > 0 && currentZoneID <= ZONE_COUNT) {
-            m_zoneMembers[currentZoneID - 1].erase(sessionID);
-        }
-
+        RemoveFromZone(sessionID, currentZoneID);
         m_zoneMembers[zoneID - 1].insert(sessionID);
         sessionIt->second.zoneID = zoneID;
     }
@@ -65,13 +65,7 @@ namespace Core {
             return;
         }
 
-        const uint16_t currentZoneID = sessionIt->second.zoneID;
-        if (currentZoneID == 0)
-            return;
-
-        if (currentZoneID <= ZONE_COUNT) {
-            m_zoneMembers[currentZoneID - 1].erase(sessionID);
-        }
+        RemoveFromZone(sessionID, sessionIt->second.zoneID);
         sessionIt->second.zoneID = 0;
     }
 
