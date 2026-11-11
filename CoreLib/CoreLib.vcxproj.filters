@@ -218,6 +218,12 @@
     <ClCompile Include="NonZoneHandler.cpp">
       <Filter>NonZone</Filter>
     </ClCompile>
+    <ClCompile Include="NonZoneHandler_Bazaar.cpp">
+      <Filter>NonZone</Filter>
+    </ClCompile>
+    <ClCompile Include="NonZoneHandler_WorldEntry.cpp">
+      <Filter>NonZone</Filter>
+    </ClCompile>
     <ClCompile Include="NonZoneThreadPool.cpp">
       <Filter>NonZone</Filter>
     </ClCompile>
