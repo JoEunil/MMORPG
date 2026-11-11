@@ -32,7 +32,7 @@ namespace Net {
                         if (!p) {
                             continue;
                         }
-                        iocp->SendDataUnique(st.session, std::move(p));
+                        networkSender->SendDataUnique(st.session, std::move(p));
                     }
                     else {
                         Core::errorLogger->LogInfo("ping manager", "not alive", "socket", st.socket);

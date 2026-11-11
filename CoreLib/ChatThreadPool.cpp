@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include "ChatThreadPool.h"
-#include "IIOCP.h"
+#include "INetworkSender.h"
 #include "PacketWriter.h"
 #include "CorePerfCollector.h"
 
@@ -86,7 +86,7 @@ namespace Core {
         }
     }
     void ChatThreadPool::SendPacketUnique(uint64_t session, std::unique_ptr<IPacket, PacketDeleter> p) {
-        iocp->SendDataUnique(session, std::move(p));
+        networkSender->SendDataUnique(session, std::move(p));
     }
     void ChatThreadPool::SendPacketGroup(ChatDestKey key, std::shared_ptr<IPacket> packet) {
         switch (key.scope)
@@ -97,14 +97,14 @@ namespace Core {
                 return;
             for (auto session : *members)
             {
-                iocp->SendData(session, packet);
+                networkSender->SendData(session, packet);
             }
             break;
         }
         case CHAT_SCOPE::Global: {
             for (const auto& [session, user] : m_sessions.GetSessions())
             {
-                iocp->SendData(session, packet);
+                networkSender->SendData(session, packet);
             }
             break;
         }

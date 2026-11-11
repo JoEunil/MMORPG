@@ -7,7 +7,7 @@
 #include "MessageQueueHandler.h"
 #include "ZoneState.h"
 #include "PacketWriter.h"
-#include "IIOCP.h"
+#include "INetworkSender.h"
 #include "IMessageQueue.h"
 #include "StateManager.h"
 #include "BroadcastThreadPool.h"
@@ -49,29 +49,29 @@ namespace Core {
             FinishShutdown();
         }
         
-        void InjectDependencies1(IIOCP* iocp, IPacketPoolManager* packetPoolManager) {
+        void InjectDependencies1(INetworkSender* networkSender, IPacketPoolManager* packetPoolManager) {
             perfCollector.Initialize();
-            broadcastPool.Initialize(iocp, &stateManager, &perfCollector, &writer);
+            broadcastPool.Initialize(networkSender, &stateManager, &perfCollector, &writer);
             lobbyZone.Initialize(& stateManager);
             nonZoneThreadPool.Initialize(&nonZoneHandler);
             zoneThreadSet.Initialize(&zoneHandler, &perfCollector);
             writer.Initialize(packetPoolManager);
-            mqHandler.Initialize(iocp, &writer, &lobbyZone, &msgPool);
+            mqHandler.Initialize(networkSender, &writer, &lobbyZone, &msgPool);
             recvMQ.Initialize(&mqHandler, &msgPool);
             recvMQ.Start();
-            chat.Initialize(iocp, &writer, &perfCollector);
+            chat.Initialize(networkSender, &writer, &perfCollector);
         }
         
-        void InjectDependencies2(IIOCP* iocp, ISessionAuth* session, IMessageQueue* sendMQ, IProfileCache* profileCache, IInventoryOperations* inventory = nullptr) {
+        void InjectDependencies2(INetworkSender* networkSender, ISessionAuth* session, IMessageQueue* sendMQ, IProfileCache* profileCache, IInventoryOperations* inventory = nullptr) {
             stateManager.inventory = inventory;
-            stateManager.Initialize(sendMQ, iocp, &lobbyZone, &chat);
+            stateManager.Initialize(sendMQ, networkSender, &lobbyZone, &chat);
             mqHandler.InitializeStateManager(&stateManager);
             packetDispatcher.Initialize(&nonZoneThreadPool, &zoneThreadSet, &stateManager);
             nonZoneThreadPool.Start();
             broadcastPool.Start();
             ZoneState::Initialize(&broadcastPool, &writer, &stateManager, &perfCollector);
-            zoneHandler.Initialize(&stateManager, iocp, &writer);
-            nonZoneHandler.Initialize(iocp, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone, &chat);
+            zoneHandler.Initialize(&stateManager, networkSender, &writer);
+            nonZoneHandler.Initialize(networkSender, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone, &chat);
             nonZoneHandler.InitializeProfileCache(profileCache);
             zoneThreadSet.Start();
             chat.Start();

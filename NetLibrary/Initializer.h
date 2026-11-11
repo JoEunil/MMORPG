@@ -22,7 +22,7 @@
 #include "NetPerfCollector.h"
 
 #include <CoreLib/ILogger.h>
-#include <CoreLib/IIocp.h>
+#include <CoreLib/INetworkSender.h>
 #include <CoreLib/IPacketPoolManager.h>
 #include <CoreLib/ICachedClock.h>
 #include <CoreLib/IPingPacketWriter.h>
@@ -72,15 +72,15 @@ namespace Net {
         void InjectDependencies(Core::IPacketDispatcher* packetDispatcher, Core::IPingPacketWriter* pingPacketWriter) {
             iocp.Initialize(&overlappedExPool, &netHandler, &sessionManager, &fatalError, &cv, &perfCollector);
             pingManager.Initialize(static_cast<IAbortSocket*>(&iocp), &sessionManager,
-                static_cast<Core::IIOCP*>(&iocp), clock, pingPacketWriter);
+                static_cast<Core::INetworkSender*>(&iocp), clock, pingPacketWriter);
             NetPacketFilter::Initialize(packetDispatcher, &perfCollector, clock);
             iocp.Start();
             pingManager.PingStart();
             perfCollector.Start();
         }
         
-        Core::IIOCP* GetIOCP() {
-            return static_cast<Core::IIOCP*>(&iocp);  
+        Core::INetworkSender* GetNetworkSender() {
+            return &iocp;
         }
 
         Core::IPacketPoolManager* GetPacketPoolManager() {

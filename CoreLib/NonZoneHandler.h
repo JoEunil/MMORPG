@@ -8,7 +8,7 @@ namespace Core {
     class ILogger;
     class ISessionAuth;
     class IPacketView;
-    class IIOCP;
+    class INetworkSender;
     class IDBCache;
     class PacketWriter;
     class IMessageQueue;
@@ -17,7 +17,7 @@ namespace Core {
     class ChatThreadPool;
     class IProfileCache;
     class NonZoneHandler{
-        void Initialize(IIOCP* i, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c);
+        void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c);
         void InitializeProfileCache(IProfileCache* pc);
         bool IsReady();
         void CheckSession(IPacketView* p);

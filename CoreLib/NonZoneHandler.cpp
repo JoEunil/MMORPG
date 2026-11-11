@@ -4,7 +4,7 @@
 #include "PacketTypes.h"
 #include "IPacketView.h"
 #include "ISessionAuth.h"
-#include "IIOCP.h"
+#include "INetworkSender.h"
 #include "PacketWriter.h"
 #include "ZoneState.h"
 #include "Message.h"
@@ -18,13 +18,13 @@
 #include "Config.h"
 
 namespace Core {
-    static IIOCP* iocp;
+    static INetworkSender* networkSender;
     static PacketWriter* writer;\
     static StateManager* stateManager;
     // 콜백에서 쓰기 위함
 
-    void NonZoneHandler::Initialize(IIOCP* i, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c) {
-        iocp = i;
+    void NonZoneHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c) {
+        networkSender = sender;
         auth = s;
         writer = p;
         messagePool = m;
@@ -39,7 +39,7 @@ namespace Core {
     }
 
     bool NonZoneHandler::IsReady() {
-        if (iocp == nullptr) return false;
+        if (networkSender == nullptr) return false;
         if (auth == nullptr) return false;
         if (writer == nullptr) return false;
         if (messagePool == nullptr) return false;
@@ -87,14 +87,14 @@ namespace Core {
                     const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
                     const auto result = stateManager->UseItem(p->GetSessionID(), request);
                     auto response = writer->WriteItemUseResponse(result);
-                    if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+                    if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
                 }
                 break;
             case OP::EQUIPMENT_GET:  {
                     const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
                     const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, false);
                     auto response = writer->WriteEquipmentResponse(result);
-                    if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+                    if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
                 }
                 break;
             case OP::EQUIPMENT_SET: {
@@ -102,7 +102,7 @@ namespace Core {
                     if (request.slot > 2) break;
                     const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, true, request.slot, request.itemID);
                     auto response = writer->WriteEquipmentResponse(result);
-                    if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+                    if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
                 }
                 break;
             case OP::INVENTORY_REQ:
@@ -175,7 +175,7 @@ namespace Core {
         auto res = writer->WriteAuthResponse(resStatus);
         if (res == nullptr)
             return;
-        iocp->SendDataUnique(sessionID, std::move(res));
+        networkSender->SendDataUnique(sessionID, std::move(res));
     }
 
     void NonZoneHandler::CheckSession(IPacketView* p) {
@@ -276,7 +276,7 @@ namespace Core {
             return;
         auto response = writer->WriteBazaarBuyResponse(&failed);
         if (response)
-            iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
     void NonZoneHandler::BazaarRegister(IPacketView* p) {
@@ -307,7 +307,7 @@ namespace Core {
         failed.resStatus = 0;
         if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
         auto response = writer->WriteBazaarRegisterResponse(&failed);
-        if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+        if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
     void NonZoneHandler::WalletRequest(IPacketView* p) {
@@ -335,7 +335,7 @@ namespace Core {
             failed.characterID = characterID;
             auto response = writer->WriteWalletGoldResponse(&failed);
             if (response && stateManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
-                iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+                networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
         }
 
         Message* diamond = messagePool->Acquire();
@@ -354,7 +354,7 @@ namespace Core {
             failed.characterID = characterID;
             auto response = writer->WriteWalletDiamondResponse(&failed);
             if (response && stateManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
-                iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+                networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
         }
     }
 
@@ -381,7 +381,7 @@ namespace Core {
         failed.characterID = characterID;
         if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
         auto response = writer->WriteBazaarOutboxListResponse(&failed);
-        if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+        if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
     void NonZoneHandler::BazaarCheckOutbox(IPacketView* p) {
@@ -412,7 +412,7 @@ namespace Core {
             return;
         auto response = writer->WriteBazaarCheckOutboxResponse(&failed);
         if (response)
-            iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
     void NonZoneHandler::BazaarCancelListing(IPacketView* p) {
@@ -441,7 +441,7 @@ namespace Core {
         failed.resStatus = 5;
         if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
         auto response = writer->WriteBazaarCancelListingResponse(&failed);
-        if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+        if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
     void NonZoneHandler::BazaarClaim(IPacketView* p) {
@@ -474,7 +474,7 @@ namespace Core {
             return;
         auto response = writer->WriteBazaarClaimResponse(&failed);
         if (response)
-            iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
     void NonZoneHandler::BazaarMyList(IPacketView* p) {
@@ -505,7 +505,7 @@ namespace Core {
             return;
         auto response = writer->WriteBazaarMyListResponse(&failed);
         if (response)
-            iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
     void NonZoneHandler::BazaarSearch(IPacketView* p) {
@@ -533,7 +533,7 @@ namespace Core {
         failed.requestID = request.requestID;
         auto response = writer->WriteBazaarSearchResponse(&failed);
         if (response)
-            iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
     void NonZoneHandler::Chat(IPacketView* p) {
@@ -592,7 +592,7 @@ namespace Core {
         auto res = writer->WriteProfileBatchRes(entries, found);
         if (!res)
             return;
-        iocp->SendDataUnique(session, std::move(res));
+        networkSender->SendDataUnique(session, std::move(res));
     }
 
     void NonZoneHandler::ZoneChange(IPacketView* p) {
@@ -606,7 +606,7 @@ namespace Core {
                 result.x, result.y, result.generation, result.ownershipEpoch)
             : writer->WriteZoneChangeFailed();
         if (response)
-            iocp->SendDataUnique(session, std::move(response));
+            networkSender->SendDataUnique(session, std::move(response));
         if (success)
             stateManager->SendBootstrap(session, result.ownershipEpoch);
     }
@@ -626,7 +626,7 @@ namespace Core {
                 result.x, result.y, result.generation, result.ownershipEpoch)
             : writer->WriteZoneChangeFailed();
         if (response)
-            iocp->SendDataUnique(session, std::move(response));
+            networkSender->SendDataUnique(session, std::move(response));
         if (success)
             stateManager->SendBootstrap(session, result.ownershipEpoch);
     }

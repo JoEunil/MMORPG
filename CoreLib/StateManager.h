@@ -18,7 +18,7 @@
 #include "Config.h"
 #include "IPacket.h"
 #include "IInventoryOperations.h"
-#include "IIOCP.h"
+#include "INetworkSender.h"
 #include "PacketTypes.h"
 
 namespace Core {
@@ -64,12 +64,12 @@ namespace Core {
 
         IInventoryOperations* inventory = nullptr;
         IMessageQueue* mq = nullptr;
-        IIOCP* iocp = nullptr;
+        INetworkSender* networkSender = nullptr;
         LobbyZone* lobbyZone = nullptr;
         ChatThreadPool* chat = nullptr;
 
 
-        void Initialize(IMessageQueue* m, IIOCP* io, LobbyZone* lobby, ChatThreadPool* c) {
+        void Initialize(IMessageQueue* m, INetworkSender* sender, LobbyZone* lobby, ChatThreadPool* c) {
             m_states.reserve(ZONE_COUNT);
             for (int zoneID = 1; zoneID <= ZONE_COUNT; zoneID++) {
                 m_states.emplace(zoneID, std::make_unique<ZoneState>(zoneID));
@@ -78,7 +78,7 @@ namespace Core {
                 shard.sessionMap.reserve(MAX_USER_CAPACITY / SHARD_SIZE);
             mq = m;
             lobbyZone = lobby;
-            iocp = io;
+            networkSender = sender;
             chat = c;
             m_running.store(true, std::memory_order_relaxed);
         }

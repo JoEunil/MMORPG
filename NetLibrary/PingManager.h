@@ -5,7 +5,7 @@
 
 #include <CoreLib/ICachedClock.h>
 #include <CoreLib/LoggerGlobal.h>
-#include <CoreLib/IIOCP.h>
+#include <CoreLib/INetworkSender.h>
 #include <CoreLib/IPingPacketWriter.h>
 #include "IAbortSocket.h"
 
@@ -23,13 +23,13 @@ namespace Net {
 
         SessionManager* sessionManager = nullptr;
         IAbortSocket* abortSocket = nullptr;
-        Core::IIOCP* iocp = nullptr;
+        Core::INetworkSender* networkSender = nullptr;
         Core::ICachedClock* clock = nullptr;
         Core::IPingPacketWriter* writer = nullptr;
-        void Initialize(IAbortSocket* a, SessionManager* s, Core::IIOCP* i, Core::ICachedClock* c, Core::IPingPacketWriter* w) {
+        void Initialize(IAbortSocket* a, SessionManager* s, Core::INetworkSender* sender, Core::ICachedClock* c, Core::IPingPacketWriter* w) {
             abortSocket = a;
             sessionManager = s;
-            iocp = i;
+            networkSender = sender;
             clock = c;
             writer = w;
         }
@@ -43,7 +43,7 @@ namespace Net {
                 Core::sysLogger->LogError("ping manager", "sessionManager not initialized");
                 return false;
             }
-            if (iocp == nullptr) {
+            if (networkSender == nullptr) {
                 Core::sysLogger->LogError("ping manager", "iocp not initialized");
                 return false;
             }

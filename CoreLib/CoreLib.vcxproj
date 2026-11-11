@@ -153,7 +153,7 @@
     <ClInclude Include="BroadcastThreadPool.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="DurableLogger.h" />
-    <ClInclude Include="IIOCP.h" />
+    <ClInclude Include="INetworkSender.h" />
     <ClInclude Include="ILogger.h" />
     <ClInclude Include="Initializer.h" />
     <ClInclude Include="InMemoryQueue.h" />

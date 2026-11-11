@@ -194,7 +194,7 @@ namespace Core {
         if (!mq->EnqueueMessage(&deposit)) {
             errorLogger->LogError("monster reward", "gold deposit queue rejected", "characterID", character.characterID);
             auto packet = ZoneState::writer->WriteGoldReward(0);
-            if (packet) iocp->SendDataUnique(sessionID, std::move(packet));
+            if (packet) networkSender->SendDataUnique(sessionID, std::move(packet));
         }
     }
 

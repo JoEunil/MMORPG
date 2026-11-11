@@ -54,7 +54,7 @@
     <ClInclude Include="ZoneState.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="IIOCP.h">
+    <ClInclude Include="INetworkSender.h">
       <Filter>Interface</Filter>
     </ClInclude>
     <ClInclude Include="ILogger.h">

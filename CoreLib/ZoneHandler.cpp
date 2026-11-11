@@ -3,7 +3,7 @@
 
 #include "IPacketView.h"
 #include "ISessionAuth.h"
-#include "IIOCP.h"
+#include "INetworkSender.h"
 #include "IMessageQueue.h"
 #include "PacketWriter.h"
 #include "ZoneState.h"
@@ -19,7 +19,7 @@ namespace Core {
         auto response = writer->WriteZoneChangeSucess(transition.zoneID, transition.chatID, transition.internalID,
             transition.x, transition.y, transition.generation, transition.ownershipEpoch);
         if (response)
-            iocp->SendDataUnique(sessionID, std::move(response));
+            networkSender->SendDataUnique(sessionID, std::move(response));
         stateManager->SendBootstrap(sessionID, transition.ownershipEpoch);
     }
 
@@ -29,7 +29,7 @@ namespace Core {
         {
             case OP::PARRY: {
                 auto response = writer->WriteParryResponse(stateManager->Parry(p->GetSessionID(), zoneID, *parseBody<ParryRequestBody>(p->GetPtr())));
-                if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+                if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
                 break;
             }
             case OP::ACTION:

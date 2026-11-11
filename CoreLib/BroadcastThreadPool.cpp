@@ -2,7 +2,7 @@
 #include "BroadcastThreadPool.h"
 #include "IPacket.h"
 #include "ZoneState.h"
-#include "IIOCP.h"
+#include "INetworkSender.h"
 #include "StateManager.h"
 #include "Cell.h"
 #include <BaseLib/TripleBuffer.h>
@@ -34,7 +34,7 @@ namespace Core {
                         std::vector<std::shared_ptr<IPacket>> oneChunk;
                         if (chunks[i]->GetLength() != 0)
                             oneChunk.push_back(chunks[i]);
-                        iocp->SendDataChunks(packets->targetSessionID, headers[i], oneChunk);
+                        networkSender->SendDataChunks(packets->targetSessionID, headers[i], oneChunk);
                     }
                     perfCollector->AddBroadcastSendCnt(2);
                 }
@@ -67,7 +67,7 @@ namespace Core {
                 sentCount += vec[i].size();
                 for (auto session : vec[i])
                 {
-                    iocp->SendDataChunks(session, headers[i], currChunks[i]);
+                    networkSender->SendDataChunks(session, headers[i], currChunks[i]);
                 }
             }
             perfCollector->AddBroadcastSendCnt(sentCount);

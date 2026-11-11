@@ -43,7 +43,7 @@ namespace Core {
 
     const uint16_t CHAT_WORKER_SIZE = 1;  // 변경하려면 ChatDestKey 활용해 샤딩 적용 필요. 
 
-    class IIOCP;
+    class INetworkSender;
     class PacketWriter;
     class CorePerfCollector;
     class ChatThreadPool {
@@ -74,8 +74,8 @@ namespace Core {
             }   
         };
 
-        void Initialize(IIOCP* i, PacketWriter* w, CorePerfCollector* p) {
-            iocp = i;
+        void Initialize(INetworkSender* sender, PacketWriter* w, CorePerfCollector* p) {
+            networkSender = sender;
             writer = w;
             perfCollector = p;
             m_currentZoneSequence.reserve(MAX_USER_CAPACITY);
@@ -83,7 +83,7 @@ namespace Core {
         }
 
         bool IsReady() {
-            if (iocp == nullptr) {
+            if (networkSender == nullptr) {
                 sysLogger->LogError("chat thread", "iocp not initialized");
                 return false;
             }
@@ -120,7 +120,7 @@ namespace Core {
         void ApplyZoneTransition(const ChatEvent& event);
 
         PacketWriter* writer = nullptr;
-        IIOCP* iocp = nullptr;
+        INetworkSender* networkSender = nullptr;
         CorePerfCollector* perfCollector = nullptr;
         friend class Initializer;
 
