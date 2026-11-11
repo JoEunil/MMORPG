@@ -21,7 +21,7 @@ namespace Core {
         void InitializeProfileCache(IProfileCache* pc);
         bool IsReady();
         void CheckSession(IPacketView* p);
-        static void ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID);
+        void ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID);
         void GetCharacterList(IPacketView* p);
         void GetCharacterState(IPacketView* p);
         void GetInventory(IPacketView* p);
@@ -38,10 +38,9 @@ namespace Core {
         void ZoneChange(IPacketView* p);
         void RespawnToTown(IPacketView* p);
         void GetProfileBatch(IPacketView* p);
-        // Shared with the authentication callback.
-        static INetworkSender* networkSender;
-        static PacketWriter* writer;
-        static StateManager* stateManager;
+        INetworkSender* networkSender = nullptr;
+        PacketWriter* writer = nullptr;
+        StateManager* stateManager = nullptr;
         ISessionAuth* auth = nullptr;
         IDBCache* cache = nullptr;
         MessagePool* messagePool = nullptr;

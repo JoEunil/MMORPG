@@ -18,10 +18,6 @@
 #include "Config.h"
 
 namespace Core {
-    INetworkSender* NonZoneHandler::networkSender = nullptr;
-    PacketWriter* NonZoneHandler::writer = nullptr;
-    StateManager* NonZoneHandler::stateManager = nullptr;
-
     void NonZoneHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c) {
         networkSender = sender;
         auth = s;

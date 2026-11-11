@@ -12,6 +12,7 @@
 #include "ISessionAuth.h"
 
 #include <cstring>
+#include <memory>
 
 namespace Core {
     void NonZoneHandler::ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID) {
@@ -25,13 +26,15 @@ namespace Core {
 
     void NonZoneHandler::CheckSession(IPacketView* p) {
         AuthRequestBody* body = parseBody<AuthRequestBody>(p->GetPtr());
-        SessionCallbackData* privdata = new SessionCallbackData;
+        auto privdata = std::make_unique<SessionCallbackData>();
         privdata->sessionID = p->GetSessionID();
         privdata->userID = body->userID;
         std::memcpy(privdata->sessionToken.data(), body->sessionToken, privdata->sessionToken.size());
-        privdata->callbackFunc = &ResponseSession;
+        privdata->callbackFunc = [this](uint64_t sessionID, uint8_t resStatus, uint64_t userID) {
+            ResponseSession(sessionID, resStatus, userID);
+        };
         stateManager->BeginAuth(privdata->sessionID);
-        auth->CheckSession(privdata);
+        auth->CheckSession(privdata.release());
     }
 
     void NonZoneHandler::GetCharacterList(IPacketView* p) {
