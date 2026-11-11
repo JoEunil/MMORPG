@@ -91,10 +91,28 @@ namespace Core {
         tempPackets.clear();
     }
 
-    void ChatThreadPool::SendPacketUnique(uint64_t session, std::unique_ptr<IPacket, PacketDeleter> p) {
-        networkSender->SendDataUnique(session, std::move(p));
+    void ChatThreadPool::SendWhisper(const ChatEvent& event, uint64_t chatID, uint32_t profileId) {
+        auto packet = writer->GetChatWhisperPacket(chatID, profileId, event.message);
+        if (!packet)
+            return;
+
+        const auto destSession = m_sessions.FindSessionID(event.key.id);
+        if (!destSession) {
+            return;
+        }
+
+        networkSender->SendDataUnique(*destSession, std::move(packet));
+        auto senderPacket = writer->GetChatWhisperPacket(chatID, profileId, event.message);
+        if (senderPacket) {
+            networkSender->SendDataUnique(event.senderSessionID, std::move(senderPacket));
+            perfCollector->AddChatSend(2);
+        } else {
+            perfCollector->AddChatSend(1);
+        }
     }
+
     void ChatThreadPool::SendPacketGroup(ChatDestKey key, std::shared_ptr<IPacket> packet) {
+        size_t recipientCount;
         switch (key.scope)
         {
         case CHAT_SCOPE::Zone: {
@@ -105,47 +123,39 @@ namespace Core {
             {
                 networkSender->SendData(session, packet);
             }
+            recipientCount = members->size();
             break;
         }
         case CHAT_SCOPE::Global: {
-            for (const auto& [session, user] : m_sessions.GetSessions())
+            const auto& sessions = m_sessions.GetSessions();
+            for (const auto& [session, user] : sessions)
             {
                 networkSender->SendData(session, packet);
             }
+            recipientCount = sessions.size();
             break;
         }
-        default: break;
+        default:
+            return;
         }
+
+        const auto* batch = parseBody<ChatBatchNotifyBody>(packet->GetBuffer());
+        perfCollector->AddChatSend(batch->chatCnt * recipientCount);
     }
 
     void ChatThreadPool::ProcesChat(ChatEvent& curr, uint64_t chatID, uint32_t profileId, std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
         if (curr.key.scope == CHAT_SCOPE::Whisper) {
-            auto packet = writer->GetChatWhisperPacket(chatID, profileId, curr.message);
-            if (!packet)
-				return;
-            const auto destSession = m_sessions.FindSessionID(curr.key.id);
-            if (!destSession) {
-                return;
-            }
-            SendPacketUnique(*destSession, std::move(packet));
-            auto senderPacket = writer->GetChatWhisperPacket(chatID, profileId, curr.message);
-            if (senderPacket) {
-                SendPacketUnique(curr.senderSessionID, std::move(senderPacket));
-                perfCollector->AddChatSend(2);
-            } else {
-                perfCollector->AddChatSend(1);
-            }
+            SendWhisper(curr, chatID, profileId);
             return;
         }
-        if (curr.key.scope == CHAT_SCOPE::Global) {
-            perfCollector->AddChatSend(m_sessions.GetSessions().size());
-        }
-        if (curr.key.scope == CHAT_SCOPE::Zone) {
-            const auto* members = m_sessions.FindZoneMembers(curr.key.id);
-            if (!members)
-                return;
-            perfCollector->AddChatSend(members->size());
-        }
+        if (curr.key.scope == CHAT_SCOPE::Zone && !m_sessions.FindZoneMembers(curr.key.id))
+            return;
+
+        AppendToChatBatch(curr, chatID, profileId, tempPackets);
+    }
+
+    void ChatThreadPool::AppendToChatBatch(const ChatEvent& curr, uint64_t chatID, uint32_t profileId,
+        std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
         auto it = tempPackets.find(curr.key);
         if (it != tempPackets.end()) {
             uint16_t count = writer->WriteChatBatchPacketField(it->second, chatID, profileId, curr.message);

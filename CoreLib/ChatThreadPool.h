@@ -114,9 +114,11 @@ namespace Core {
         void ThreadFunc();
         bool ProcessQueuedEvent(std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets);
         void FlushChatBatches(std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets);
-        void SendPacketUnique(uint64_t session, std::unique_ptr<IPacket, PacketDeleter> p);
+        void SendWhisper(const ChatEvent& event, uint64_t chatID, uint32_t profileId);
         void SendPacketGroup(ChatDestKey key, std::shared_ptr<IPacket> packet);
         void ProcesChat(ChatEvent& curr, uint64_t chatID, uint32_t profileId,
+            std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets);
+        void AppendToChatBatch(const ChatEvent& curr, uint64_t chatID, uint32_t profileId,
             std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets);
         void ProcessZoneTransition(ChatEvent&& event);
         void ApplyZoneTransition(const ChatEvent& event);
