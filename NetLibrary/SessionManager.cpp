@@ -15,7 +15,7 @@ namespace Net {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
             auto& reverse = m_reverseShard[session & SESSION_SHARD_MASK];
             std::scoped_lock lock(shard.mutex, reverse.mutex);
-            assert(shard.sessions.find(sock) == shard.sessions.end());
+            assert(!shard.sessions.contains(sock));
             auto ctx = contextPool->Acquire(session);
             if (ctx == nullptr) {
                 m_connectionCnt.fetch_sub(1, std::memory_order_relaxed);
@@ -24,8 +24,8 @@ namespace Net {
             SessionEntry entry{ {}, ctx };
             entry.state.InitializeSession(session);
             shard.sessions.emplace(sock, std::move(entry));
-            assert(reverse.socketMap.find(session) == reverse.socketMap.end());
-            reverse.socketMap[session] = sock;
+            assert(!reverse.socketMap.contains(session));
+            reverse.socketMap.insert_or_assign(session, sock);
         }
         Core::gameLogger->LogInfo("net session", "Session added", "sessionID", session, "socket", sock);
         return true;

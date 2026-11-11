@@ -16,16 +16,12 @@ namespace Core {
     }
 
     void ChatSessionManager::AddSession(uint64_t sessionID, uint64_t chatID, uint32_t profileId) {
-        auto it = m_sessionChatIdMap.find(sessionID);
-        if (it != m_sessionChatIdMap.end()) {
+        const bool inserted = m_sessionChatIdMap.try_emplace(sessionID, ChatUserInfo{chatID, profileId}).second;
+        if (!inserted) {
             errorLogger->LogInfo("chat thread", "chatID already exist", "chatID", chatID, "session", sessionID);
             return;
         }
-        auto& node = m_sessionChatIdMap[sessionID];
-        node.chatID = chatID;
-        node.profileId = profileId;
-        node.zoneID = 0;
-        m_chatIdSessionMap[chatID] = sessionID;
+        m_chatIdSessionMap.insert_or_assign(chatID, sessionID);
     }
 
     void ChatSessionManager::DeleteSession(uint64_t sessionID) {
