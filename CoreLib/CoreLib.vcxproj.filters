@@ -177,6 +177,9 @@
     <ClInclude Include="IProfileCache.h">
       <Filter>Interface</Filter>
     </ClInclude>
+    <ClInclude Include="ChatSessionManager.h">
+      <Filter>NonZone</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -244,6 +247,9 @@
     </ClCompile>
     <ClCompile Include="LoggerGlobal.cpp">
       <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ChatSessionManager.cpp">
+      <Filter>NonZone</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -36,7 +36,7 @@ namespace Core {
                 switch (curr.type)
                 {
                 case ChatEventType::SESSION_ADD:
-                    ProcessAddSession(curr.senderSessionID, curr.senderChatID, static_cast<uint16_t>(curr.key.id), curr.senderProfileId);
+                    m_sessions.AddSession(curr.senderSessionID, curr.senderChatID, curr.senderProfileId);
                     continue;
                 case ChatEventType::ZONE_JOIN:
                 case ChatEventType::ZONE_LEAVE:
@@ -44,12 +44,12 @@ namespace Core {
                     continue;
                 }
 
-                auto it = m_sessionChatIdMap.find(curr.senderSessionID);
-                if (it == m_sessionChatIdMap.end()) {
+                const auto* user = m_sessions.FindSession(curr.senderSessionID);
+                if (!user) {
                     continue;
                 }
-                auto chatID = it->second.chatID;
-                auto profileId = it->second.profileId;
+                auto chatID = user->chatID;
+                auto profileId = user->profileId;
 
                 switch (curr.type)
                 {
@@ -58,7 +58,7 @@ namespace Core {
                     break;
 
                 case ChatEventType::SESSION_DELETE:
-                    ProcessDeleteSession(curr.senderSessionID, static_cast<uint16_t>(curr.key.id));
+                    m_sessions.DeleteSession(curr.senderSessionID);
                     break;
                     //case ChatEventType::GUILD_JOIN: break;
                     //case ChatEventType::GUILD_LEAVE: break;
@@ -92,17 +92,17 @@ namespace Core {
         switch (key.scope)
         {
         case CHAT_SCOPE::Zone: {
-            uint16_t zoneID = key.id;
-            if (zoneID == 0 || zoneID > ZONE_COUNT)
+            const auto* members = m_sessions.FindZoneMembers(key.id);
+            if (!members)
                 return;
-            for (auto& session : m_zoneMembers[zoneID-1])
+            for (auto session : *members)
             {
                 iocp->SendData(session, packet);
             }
             break;
         }
         case CHAT_SCOPE::Global: {
-            for (auto& [session, chatID] : m_sessionChatIdMap)
+            for (const auto& [session, user] : m_sessions.GetSessions())
             {
                 iocp->SendData(session, packet);
             }
@@ -117,12 +117,11 @@ namespace Core {
             auto packet = writer->GetChatWhisperPacket(chatID, profileId, curr.message);
             if (!packet)
 				return;
-            uint64_t& destChatID = curr.key.id;
-            auto it = m_chatIdSessionMap.find(destChatID);
-            if (it == m_chatIdSessionMap.end()) {
+            const auto destSession = m_sessions.FindSessionID(curr.key.id);
+            if (!destSession) {
                 return;
             }
-            SendPacketUnique(it->second, std::move(packet));
+            SendPacketUnique(*destSession, std::move(packet));
             auto senderPacket = writer->GetChatWhisperPacket(chatID, profileId, curr.message);
             if (senderPacket) {
                 SendPacketUnique(curr.senderSessionID, std::move(senderPacket));
@@ -133,10 +132,13 @@ namespace Core {
             return;
         }
         if (curr.key.scope == CHAT_SCOPE::Global) {
-            perfCollector->AddChatSend(m_chatIdSessionMap.size());
+            perfCollector->AddChatSend(m_sessions.GetSessions().size());
         }
         if (curr.key.scope == CHAT_SCOPE::Zone) {
-            perfCollector->AddChatSend(m_zoneMembers[curr.key.id - 1].size());
+            const auto* members = m_sessions.FindZoneMembers(curr.key.id);
+            if (!members)
+                return;
+            perfCollector->AddChatSend(members->size());
         }
         auto it = tempPackets.find(curr.key);
         if (it != tempPackets.end()) {
@@ -152,72 +154,6 @@ namespace Core {
         auto packet = writer->GetInitialChatBatchPacket(curr.key.scope);
         if (packet && writer->WriteChatBatchPacketField(packet, chatID, profileId, curr.message) != 0)
             tempPackets.emplace(curr.key, std::move(packet));
-    }
-
-    // State Manager의 처리결과를 동기화해서 쓰는거라서 예외 발생은 하지 않는다고 가정.
-    // session 추가, 삭제는 샤딩 적용하더라도, mutex 필요.
-    void ChatThreadPool::ProcessAddSession(uint64_t sessionID, uint64_t chatID, uint16_t zoneID, uint32_t profileId) {
-        auto it = m_sessionChatIdMap.find(sessionID);
-        if (it != m_sessionChatIdMap.end()) {
-            errorLogger->LogInfo("chat thread", "chatID already exist", "chatID", chatID, "session", sessionID);
-            return;
-        }
-        auto& node = m_sessionChatIdMap[sessionID];
-        node.chatID = chatID;
-        node.profileId = profileId;
-        node.zoneID = 0;
-        m_chatIdSessionMap[chatID] = sessionID;
-        // 싱글 스레드 접근이라서 안전함
-    }
-    void ChatThreadPool::ProcessDeleteSession(uint64_t sessionID, uint16_t zoneID) {
-        auto it = m_sessionChatIdMap.find(sessionID);
-        if (it == m_sessionChatIdMap.end()) {
-            errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
-            return;
-        }
-        const uint16_t currentZoneID = it->second.zoneID;
-        if (currentZoneID > 0 && currentZoneID <= ZONE_COUNT) {
-            m_zoneMembers[currentZoneID - 1].erase(sessionID);
-        }
-        m_chatIdSessionMap.erase(it->second.chatID);
-        m_sessionChatIdMap.erase(it);
-    }
-    void ChatThreadPool::ProcessZoneJoin(uint64_t sessionID, uint16_t zoneID) {
-        if (zoneID == 0 || zoneID > ZONE_COUNT)
-            return;
-
-        auto sessionIt = m_sessionChatIdMap.find(sessionID);
-        if (sessionIt == m_sessionChatIdMap.end()) {
-            errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
-            return;
-        }
-
-        const uint16_t currentZoneID = sessionIt->second.zoneID;
-        if (currentZoneID == zoneID)
-            return;
-
-        if (currentZoneID > 0 && currentZoneID <= ZONE_COUNT) {
-            m_zoneMembers[currentZoneID - 1].erase(sessionID);
-        }
-
-        m_zoneMembers[zoneID - 1].insert(sessionID);
-        sessionIt->second.zoneID = zoneID;
-    }
-    void ChatThreadPool::ProcessZoneLeave(uint64_t sessionID, uint16_t zoneID) {
-        auto sessionIt = m_sessionChatIdMap.find(sessionID);
-        if (sessionIt == m_sessionChatIdMap.end()) {
-            errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
-            return;
-        }
-
-        const uint16_t currentZoneID = sessionIt->second.zoneID;
-        if (currentZoneID == 0)
-            return;
-
-        if (currentZoneID <= ZONE_COUNT) {
-            m_zoneMembers[currentZoneID - 1].erase(sessionID);
-        }
-        sessionIt->second.zoneID = 0;
     }
 
     void ChatThreadPool::ProcessZoneTransition(ChatEvent&& event) {
@@ -242,12 +178,11 @@ namespace Core {
     }
 
     void ChatThreadPool::ApplyZoneTransition(const ChatEvent& event) {
-        const auto zoneID = static_cast<uint16_t>(event.key.id);
         if (event.type == ChatEventType::ZONE_JOIN) {
-            ProcessZoneJoin(event.senderSessionID, zoneID);
+            m_sessions.JoinZone(event.senderSessionID, static_cast<uint16_t>(event.key.id));
         }
         else if (event.type == ChatEventType::ZONE_LEAVE) {
-            ProcessZoneLeave(event.senderSessionID, zoneID);
+            m_sessions.LeaveZone(event.senderSessionID);
         }
     }
 

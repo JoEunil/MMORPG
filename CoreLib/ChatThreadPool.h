@@ -3,12 +3,13 @@
 #include <thread>
 #include <atomic>
 #include <new>
-#include <set>
 #include <unordered_map>
 #include <memory>
+#include <vector>
 
 #include "PacketTypes.h"
 #include "LoggerGlobal.h"
+#include "ChatSessionManager.h"
 #include "Config.h"
 #include <CoreLib/IPacket.h>
 #include <BaseLib/NonBlockingBackPressureQueue.h>
@@ -20,10 +21,6 @@ namespace Core {
         CHAT,
         ZONE_JOIN,
         ZONE_LEAVE,
-        //PARTY_JOIN,
-        //PARTY_LEAVE,
-        //GUILD_JOIN,
-        //GUILD_LEAVE,
     };
 
     struct ChatDestKey {
@@ -39,15 +36,9 @@ namespace Core {
         uint64_t senderSessionID;
         uint64_t senderChatID;
         uint32_t senderProfileId; // SESSION_ADD에서만 사용
+        uint64_t zoneSequence = 0; // ZONE_JOIN / ZONE_LEAVE에서만 사용
         ChatDestKey key;
         std::string message;
-        uint64_t zoneSequence = 0; // ZONE_JOIN / ZONE_LEAVE에서만 사용
-    };
-
-    struct ChatUserInfo {
-        uint64_t chatID;
-        uint32_t profileId;
-        uint16_t zoneID = 0;
     };
 
     const uint16_t CHAT_WORKER_SIZE = 1;  // 변경하려면 ChatDestKey 활용해 샤딩 적용 필요. 
@@ -56,19 +47,7 @@ namespace Core {
     class PacketWriter;
     class CorePerfCollector;
     class ChatThreadPool {
-		// Chat 패킷 처리. 확장 및 성능을 위해 Zone Thread와 분리.
-        // Chat 확장성을 위해 사용. (전채 채널 채팅, 귓속말, 채팅창을 통한 상호작용 등)
-        
-        std::unordered_map<uint64_t, ChatUserInfo> m_sessionChatIdMap;
-        std::unordered_map<uint64_t, uint64_t> m_chatIdSessionMap;
-        // 역방향 매핑, Whisper 시에 ChatID를 통해 전송하기 위해 필요함. 
-        // Session을 클라이언트에 알려주는 것은 위험.
-
-        std::vector<std::set<uint64_t>> m_zoneMembers; 
-        // set에는 session 담기 -> broadcast에 사용
-        // zone 당 2000명으로 설정해서, 삽입 삭제 비용이 크지 않음.
-        //std::unordered_map<uint64_t, std::vector<uint64_t>> m_guildMembers;
-        //std::unordered_map<uint64_t, std::vector<uint64_t>> m_partyMembers;
+        ChatSessionManager m_sessions;
         alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_chatIdGenerater;
         char padding[std::hardware_destructive_interference_size - sizeof(uint64_t)];
 
@@ -99,9 +78,8 @@ namespace Core {
             iocp = i;
             writer = w;
             perfCollector = p;
-            m_sessionChatIdMap.reserve(MAX_USER_CAPACITY);
+            m_sessions.Initialize();
             m_currentZoneSequence.reserve(MAX_USER_CAPACITY);
-            m_zoneMembers.resize(ZONE_COUNT);
             m_chatIdGenerater.store(1, std::memory_order_relaxed);
         }
 
@@ -139,10 +117,6 @@ namespace Core {
         void SendPacketGroup(ChatDestKey key, std::shared_ptr<IPacket> packet);
         void ProcesChat(ChatEvent& curr, uint64_t chatID, uint32_t profileId,
             std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets);
-        void ProcessAddSession(uint64_t sessionID, uint64_t chatID, uint16_t zoneID, uint32_t profileId);
-        void ProcessDeleteSession(uint64_t sessionID, uint16_t zoneID);
-        void ProcessZoneLeave(uint64_t sessionID, uint16_t zoneID);
-        void ProcessZoneJoin(uint64_t sessionID, uint16_t zoneID);
         void ProcessZoneTransition(ChatEvent&& event);
         void ApplyZoneTransition(const ChatEvent& event);
 
