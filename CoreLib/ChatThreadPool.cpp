@@ -23,60 +23,11 @@ namespace Core {
             int processed = 0;
             for (; processed < CHAT_BATCH_SIZE; ++processed)
             {
-                if (!m_running.load(std::memory_order_relaxed))
+                if (!ProcessQueuedEvent(tempPackets))
                     break;
-
-                ChatEvent curr;
-                if (!m_chatQueue.Dequeue(curr))
-                    break;
-
-                if (!m_running.load(std::memory_order_relaxed))
-                    break;
-
-                switch (curr.type)
-                {
-                case ChatEventType::SESSION_ADD:
-                    m_sessions.AddSession(curr.senderSessionID, curr.senderChatID, curr.senderProfileId);
-                    continue;
-                case ChatEventType::ZONE_JOIN:
-                case ChatEventType::ZONE_LEAVE:
-                    ProcessZoneTransition(std::move(curr));
-                    continue;
-                }
-
-                const auto* user = m_sessions.FindSession(curr.senderSessionID);
-                if (!user) {
-                    continue;
-                }
-                auto chatID = user->chatID;
-                auto profileId = user->profileId;
-
-                switch (curr.type)
-                {
-                case ChatEventType::CHAT:
-                    ProcesChat(curr, chatID, profileId, tempPackets);
-                    break;
-
-                case ChatEventType::SESSION_DELETE:
-                    m_sessions.DeleteSession(curr.senderSessionID);
-                    break;
-                    //case ChatEventType::GUILD_JOIN: break;
-                    //case ChatEventType::GUILD_LEAVE: break;
-                    //case ChatEventType::PARTY_JOIN: break;
-                    //case ChatEventType::PARTY_LEAVE: break;
-                default:
-                    errorLogger->LogInfo("chat thread", "undefined chat event", "chatID", chatID, "chat event type", (int)curr.type);
-                    break;
-                    // "undefined chat event type"
-                }
             }
 
-            for (auto& [key, packet] : tempPackets)
-            {
-                SendPacketGroup(key, packet);
-            }
-
-            tempPackets.clear();
+            FlushChatBatches(tempPackets);
 
             // Batch가 가득 찬 동안은 sleep 없이 다음 batch를 즉시 처리한다.
             if (processed == CHAT_BATCH_SIZE)
@@ -85,6 +36,61 @@ namespace Core {
             std::this_thread::sleep_for(CHAT_BATCH_WINDOW);
         }
     }
+
+    bool ChatThreadPool::ProcessQueuedEvent(std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
+        if (!m_running.load(std::memory_order_relaxed))
+            return false;
+
+        ChatEvent curr;
+        if (!m_chatQueue.Dequeue(curr))
+            return false;
+
+        if (!m_running.load(std::memory_order_relaxed))
+            return false;
+
+        switch (curr.type)
+        {
+        case ChatEventType::SESSION_ADD:
+            m_sessions.AddSession(curr.senderSessionID, curr.senderChatID, curr.senderProfileId);
+            return true;
+        case ChatEventType::ZONE_JOIN:
+        case ChatEventType::ZONE_LEAVE:
+            ProcessZoneTransition(std::move(curr));
+            return true;
+        }
+
+        const auto* user = m_sessions.FindSession(curr.senderSessionID);
+        if (!user) {
+            return true;
+        }
+        auto chatID = user->chatID;
+        auto profileId = user->profileId;
+
+        switch (curr.type)
+        {
+        case ChatEventType::CHAT:
+            ProcesChat(curr, chatID, profileId, tempPackets);
+            break;
+
+        case ChatEventType::SESSION_DELETE:
+            m_sessions.DeleteSession(curr.senderSessionID);
+            break;
+        default:
+            errorLogger->LogInfo("chat thread", "undefined chat event", "chatID", chatID, "chat event type", (int)curr.type);
+            break;
+        }
+        return true;
+    }
+
+    void ChatThreadPool::FlushChatBatches(std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
+        for (auto& [key, packet] : tempPackets)
+        {
+            SendPacketGroup(key, packet);
+        }
+
+        tempPackets.clear();
+    }
+
     void ChatThreadPool::SendPacketUnique(uint64_t session, std::unique_ptr<IPacket, PacketDeleter> p) {
         networkSender->SendDataUnique(session, std::move(p));
     }
@@ -160,13 +166,7 @@ namespace Core {
         std::lock_guard<std::mutex> lock(m_zoneSequenceMutex);
         auto sequenceIt = m_currentZoneSequence.find(event.senderSessionID);
         if (sequenceIt == m_currentZoneSequence.end()) {
-            errorLogger->LogError(
-                "chat thread",
-                "zone transition before session add",
-                "session",
-                event.senderSessionID,
-                "sequence",
-                event.zoneSequence);
+            errorLogger->LogError("chat thread", "zone transition before session add", "session", event.senderSessionID, "sequence", event.zoneSequence);
             return;
         }
 
