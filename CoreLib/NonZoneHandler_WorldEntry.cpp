@@ -38,28 +38,17 @@ namespace Core {
     }
 
     void NonZoneHandler::GetCharacterList(IPacketView* p) {
-        auto msg = messagePool->AcquireScoped();
-        if (msg == nullptr) {
-            return ;
-		}
-        auto* st = InitializeMsg<MsgCharacterListReqBody>(*msg, { p->GetSessionID(), MSG_CHARACTER_LIST_REQ });
-        st->body.channelID = CHANNEL_ID;
-        st->body.userID = stateManager->GetUserID(p->GetSessionID());
-        messageQueue->EnqueueMessage(msg.get());
+        const auto sessionID = p->GetSessionID();
+        TryEnqueueMessage(
+            { sessionID, MSG_CHARACTER_LIST_REQ },
+            MsgCharacterListReqBody{ CHANNEL_ID, stateManager->GetUserID(sessionID) });
     }
 
     void NonZoneHandler::GetCharacterState(IPacketView* p) {
-        auto msg = messagePool->AcquireScoped();
-        if (msg == nullptr) {
-            return;
-        }
-        auto packetBody = parseBody<EnterWorldRequestBody>(p->GetPtr());
-        
-        auto* st = InitializeMsg<MsgCharacterStateReqBody>(*msg, { p->GetSessionID(), MSG_CHARACTER_STATE_REQ });
-        st->body.channelID = CHANNEL_ID;
-        st->body.userID = stateManager->GetUserID(p->GetSessionID());
-        st->body.characterID = packetBody->characterID;
-
-        messageQueue->EnqueueMessage(msg.get());
+        const auto sessionID = p->GetSessionID();
+        const auto* packetBody = parseBody<EnterWorldRequestBody>(p->GetPtr());
+        TryEnqueueMessage(
+            { sessionID, MSG_CHARACTER_STATE_REQ },
+            MsgCharacterStateReqBody{ CHANNEL_ID, stateManager->GetUserID(sessionID), packetBody->characterID });
     }
 }

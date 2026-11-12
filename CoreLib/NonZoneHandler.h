@@ -26,6 +26,17 @@ namespace Core {
             return request;
         }
 
+        template<typename T>
+        bool TryEnqueueMessage(MsgHeader header, const T& body) {
+            auto msg = messagePool->AcquireScoped();
+            if (!msg)
+                return false;
+
+            auto* request = InitializeMsg<T>(*msg, header);
+            request->body = body;
+            return messageQueue->EnqueueMessage(msg.get());
+        }
+
         void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc);
         bool IsReady();
         void CheckSession(IPacketView* p);

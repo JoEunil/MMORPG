@@ -41,12 +41,10 @@ namespace Core {
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (auto msg = messagePool->AcquireScoped()) {
-            auto* st = InitializeMsg<MsgBazaarBuyBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_BUY });
-            st->body = { characterID, request->listingID, request->requestID };
-            if (messageQueue->EnqueueMessage(msg.get()))
-                return;
-        }
+        if (TryEnqueueMessage(
+                { p->GetSessionID(), MSG_BAZAAR_BUY },
+                MsgBazaarBuyBody{ characterID, request->listingID, request->requestID }))
+            return;
         MsgBazaarBuyResBody failed{};
         failed.requestID = request->requestID;
         failed.listingID = request->listingID;
@@ -66,12 +64,11 @@ namespace Core {
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
 
-        if (auto msg = messagePool->AcquireScoped()) {
-            auto* st = InitializeMsg<MsgBazaarRegisterBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_REGISTER });
-            st->body = { characterID, 0, request->quantity, request->totalDiamondPrice,
-                request->requestID, request->inventorySlot };
-            if (messageQueue->EnqueueMessage(msg.get())) return;
-        }
+        if (TryEnqueueMessage(
+                { p->GetSessionID(), MSG_BAZAAR_REGISTER },
+                MsgBazaarRegisterBody{ characterID, 0, request->quantity, request->totalDiamondPrice,
+                request->requestID, request->inventorySlot }))
+            return;
 
         MsgBazaarRegisterResBody failed{};
         failed.requestID = request->requestID;
@@ -88,11 +85,10 @@ namespace Core {
             return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
-        if (auto msg = messagePool->AcquireScoped()) {
-            auto* st = InitializeMsg<MsgBazaarOutboxListBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_OUTBOX_LIST });
-            st->body = { characterID, request->requestID };
-            if (messageQueue->EnqueueMessage(msg.get())) return;
-        }
+        if (TryEnqueueMessage(
+                { p->GetSessionID(), MSG_BAZAAR_OUTBOX_LIST },
+                MsgBazaarOutboxListBody{ characterID, request->requestID }))
+            return;
         MsgBazaarOutboxListResBody failed{};
         failed.requestID = request->requestID;
         failed.characterID = characterID;
@@ -108,12 +104,10 @@ namespace Core {
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (auto msg = messagePool->AcquireScoped()) {
-            auto* st = InitializeMsg<MsgBazaarCheckOutboxBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_CHECK_OUTBOX });
-            st->body = { characterID, request->requestID };
-            if (messageQueue->EnqueueMessage(msg.get()))
-                return;
-        }
+        if (TryEnqueueMessage(
+                { p->GetSessionID(), MSG_BAZAAR_CHECK_OUTBOX },
+                MsgBazaarCheckOutboxBody{ characterID, request->requestID }))
+            return;
         MsgBazaarCheckOutboxResBody failed{};
         failed.requestID = request->requestID;
         if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
@@ -129,11 +123,10 @@ namespace Core {
             return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
-        if (auto msg = messagePool->AcquireScoped()) {
-            auto* st = InitializeMsg<MsgBazaarCancelListingBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_CANCEL_LISTING });
-            st->body = { characterID, request->listingID, request->requestID };
-            if (messageQueue->EnqueueMessage(msg.get())) return;
-        }
+        if (TryEnqueueMessage(
+                { p->GetSessionID(), MSG_BAZAAR_CANCEL_LISTING },
+                MsgBazaarCancelListingBody{ characterID, request->listingID, request->requestID }))
+            return;
         MsgBazaarCancelListingResBody failed{};
         failed.requestID = request->requestID;
         failed.listingID = request->listingID;
@@ -151,12 +144,10 @@ namespace Core {
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (auto msg = messagePool->AcquireScoped()) {
-            auto* st = InitializeMsg<MsgBazaarClaimBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_CLAIM });
-            st->body = { characterID, request->listingID, request->requestID };
-            if (messageQueue->EnqueueMessage(msg.get()))
-                return;
-        }
+        if (TryEnqueueMessage(
+                { p->GetSessionID(), MSG_BAZAAR_CLAIM },
+                MsgBazaarClaimBody{ characterID, request->listingID, request->requestID }))
+            return;
         MsgBazaarClaimResBody failed{};
         failed.requestID = request->requestID;
         failed.listingID = request->listingID;
@@ -174,12 +165,10 @@ namespace Core {
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (auto msg = messagePool->AcquireScoped()) {
-            auto* st = InitializeMsg<MsgBazaarMyListBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_MY_LIST });
-            st->body = { request->requestID, characterID };
-            if (messageQueue->EnqueueMessage(msg.get()))
-                return;
-        }
+        if (TryEnqueueMessage(
+                { p->GetSessionID(), MSG_BAZAAR_MY_LIST },
+                MsgBazaarMyListBody{ request->requestID, characterID }))
+            return;
         MsgBazaarMyListResBody failed{};
         failed.requestID = request->requestID;
         failed.characterID = characterID;
@@ -196,12 +185,10 @@ namespace Core {
             || !stateManager->IsFieldSession(p->GetSessionID()))
             return;
 
-        if (auto msg = messagePool->AcquireScoped()) {
-            auto* st = InitializeMsg<MsgBazaarSearchBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_SEARCH });
-            st->body = { request->requestID, request->itemType, request->page };
-            if (messageQueue->EnqueueMessage(msg.get()))
-                return;
-        }
+        if (TryEnqueueMessage(
+                { p->GetSessionID(), MSG_BAZAAR_SEARCH },
+                MsgBazaarSearchBody{ request->requestID, request->itemType, request->page }))
+            return;
         MsgBazaarSearchResBody failed{};
         failed.requestID = request->requestID;
         auto response = writer->WriteBazaarSearchResponse(&failed);

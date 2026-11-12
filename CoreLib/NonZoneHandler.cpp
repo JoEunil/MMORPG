@@ -146,9 +146,10 @@ namespace Core {
             errorLogger->LogError("non zone handler", "profile rename invalid", "session", sessionID, "profile_id", profileId, "nameLen", nameLen);
             return;
         }
-        auto msg = messagePool->AcquireScoped();
-        if (msg == nullptr) {
-            return;
+        MsgProfileRenameBody body{};
+        body.profileId = profileId;
+        std::memcpy(body.name, name, nameLen);
+        TryEnqueueMessage({ sessionID, MSG_PROFILE_RENAME }, body);
         }
         auto* st = InitializeMsg<MsgProfileRenameBody>(*msg, { sessionID, MSG_PROFILE_RENAME });
         st->body.profileId = profileId;
@@ -180,13 +181,9 @@ namespace Core {
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
 
-        bool goldQueued = false;
-        if (auto gold = messagePool->AcquireScoped()) {
-            auto* st = InitializeMsg<MsgCurrencyReqBody>(*gold, { p->GetSessionID(), MSG_CURRENCY_REQ });
-            st->body = { characterID, request.requestID };
-            goldQueued = messageQueue->EnqueueMessage(gold.get());
-        }
-        if (!goldQueued) {
+        if (!TryEnqueueMessage(
+                { p->GetSessionID(), MSG_CURRENCY_REQ },
+                MsgCurrencyReqBody{ characterID, request.requestID })) {
             MsgCurrencyResBody failed{};
             failed.requestID = request.requestID;
             failed.characterID = characterID;
@@ -195,13 +192,9 @@ namespace Core {
                 networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
         }
 
-        bool diamondQueued = false;
-        if (auto diamond = messagePool->AcquireScoped()) {
-            auto* st = InitializeMsg<MsgDiamondReqBody>(*diamond, { p->GetSessionID(), MSG_DIAMOND_REQ });
-            st->body = { characterID, request.requestID };
-            diamondQueued = messageQueue->EnqueueMessage(diamond.get());
-        }
-        if (!diamondQueued) {
+        if (!TryEnqueueMessage(
+                { p->GetSessionID(), MSG_DIAMOND_REQ },
+                MsgDiamondReqBody{ characterID, request.requestID })) {
             MsgDiamondResBody failed{};
             failed.requestID = request.requestID;
             failed.characterID = characterID;
