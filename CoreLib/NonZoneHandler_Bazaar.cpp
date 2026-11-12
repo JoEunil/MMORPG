@@ -10,28 +10,46 @@
 #include "PacketWriter.h"
 #include "StateManager.h"
 
+#include <optional>
+
 namespace Core {
+    namespace {
+        template<typename T>
+        std::optional<T> ParseBazaarRequest(const IPacketView& packet, std::optional<OP> expectedOpcode = std::nullopt) {
+            const auto length = packet.GetLength();
+            if (length != sizeof(PacketStruct<T>))
+                return std::nullopt;
+
+            auto* buffer = packet.GetPtr();
+            const auto* header = parseHeader(buffer);
+            if (header->length != length || IsSimulationFlag(header->flags))
+                return std::nullopt;
+            if (expectedOpcode && (header->magic != MAGIC || header->opcode != *expectedOpcode))
+                return std::nullopt;
+
+            const auto request = *parseBody<T>(buffer);
+            if (request.requestID == 0)
+                return std::nullopt;
+            return request;
+        }
+    }
+
     void NonZoneHandler::BazaarBuy(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarBuyRequestBody>))
-            return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarBuyRequestBody>(p->GetPtr());
-        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_BUY
-            || header->length != p->GetLength() || IsSimulationFlag(header->flags)
-            || request.requestID == 0 || request.listingID == 0)
+        const auto request = ParseBazaarRequest<BazaarBuyRequestBody>(*p, OP::BAZAAR_BUY);
+        if (!request || request->listingID == 0)
             return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
         if (auto msg = messagePool->AcquireScoped()) {
             auto* st = InitializeMsg<MsgBazaarBuyBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_BUY });
-            st->body = { characterID, request.listingID, request.requestID };
+            st->body = { characterID, request->listingID, request->requestID };
             if (messageQueue->EnqueueMessage(msg.get()))
                 return;
         }
         MsgBazaarBuyResBody failed{};
-        failed.requestID = request.requestID;
-        failed.listingID = request.listingID;
+        failed.requestID = request->requestID;
+        failed.listingID = request->listingID;
         failed.resStatus = 5;
         if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
             return;
@@ -41,24 +59,22 @@ namespace Core {
     }
 
     void NonZoneHandler::BazaarRegister(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarRegisterRequestBody>)) return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarRegisterRequestBody>(p->GetPtr());
-        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_REGISTER || header->length != p->GetLength()
-            || IsSimulationFlag(header->flags) || request.requestID == 0 || request.inventorySlot >= MAX_INVENTORY_ITEMS
-            || request.quantity == 0 || request.totalDiamondPrice == 0) return;
+        const auto request = ParseBazaarRequest<BazaarRegisterRequestBody>(*p, OP::BAZAAR_REGISTER);
+        if (!request || request->inventorySlot >= MAX_INVENTORY_ITEMS
+            || request->quantity == 0 || request->totalDiamondPrice == 0)
+            return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
 
         if (auto msg = messagePool->AcquireScoped()) {
             auto* st = InitializeMsg<MsgBazaarRegisterBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_REGISTER });
-            st->body = { characterID, 0, request.quantity, request.totalDiamondPrice,
-                request.requestID, request.inventorySlot };
+            st->body = { characterID, 0, request->quantity, request->totalDiamondPrice,
+                request->requestID, request->inventorySlot };
             if (messageQueue->EnqueueMessage(msg.get())) return;
         }
 
         MsgBazaarRegisterResBody failed{};
-        failed.requestID = request.requestID;
+        failed.requestID = request->requestID;
         failed.characterID = characterID;
         failed.resStatus = 0;
         if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
@@ -67,20 +83,18 @@ namespace Core {
     }
 
     void NonZoneHandler::BazaarOutboxList(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarOutboxListRequestBody>)) return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarOutboxListRequestBody>(p->GetPtr());
-        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_OUTBOX_LIST
-            || header->length != p->GetLength() || IsSimulationFlag(header->flags) || request.requestID == 0) return;
+        const auto request = ParseBazaarRequest<BazaarOutboxListRequestBody>(*p, OP::BAZAAR_OUTBOX_LIST);
+        if (!request)
+            return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
         if (auto msg = messagePool->AcquireScoped()) {
             auto* st = InitializeMsg<MsgBazaarOutboxListBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_OUTBOX_LIST });
-            st->body = { characterID, request.requestID };
+            st->body = { characterID, request->requestID };
             if (messageQueue->EnqueueMessage(msg.get())) return;
         }
         MsgBazaarOutboxListResBody failed{};
-        failed.requestID = request.requestID;
+        failed.requestID = request->requestID;
         failed.characterID = characterID;
         if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
         auto response = writer->WriteBazaarOutboxListResponse(&failed);
@@ -88,24 +102,20 @@ namespace Core {
     }
 
     void NonZoneHandler::BazaarCheckOutbox(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarCheckOutboxRequestBody>))
-            return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarCheckOutboxRequestBody>(p->GetPtr());
-        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_CHECK_OUTBOX
-            || header->length != p->GetLength() || IsSimulationFlag(header->flags) || request.requestID == 0)
+        const auto request = ParseBazaarRequest<BazaarCheckOutboxRequestBody>(*p, OP::BAZAAR_CHECK_OUTBOX);
+        if (!request)
             return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
         if (auto msg = messagePool->AcquireScoped()) {
             auto* st = InitializeMsg<MsgBazaarCheckOutboxBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_CHECK_OUTBOX });
-            st->body = { characterID, request.requestID };
+            st->body = { characterID, request->requestID };
             if (messageQueue->EnqueueMessage(msg.get()))
                 return;
         }
         MsgBazaarCheckOutboxResBody failed{};
-        failed.requestID = request.requestID;
+        failed.requestID = request->requestID;
         if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
             return;
         auto response = writer->WriteBazaarCheckOutboxResponse(&failed);
@@ -114,22 +124,19 @@ namespace Core {
     }
 
     void NonZoneHandler::BazaarCancelListing(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarCancelListingRequestBody>)) return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarCancelListingRequestBody>(p->GetPtr());
-        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_CANCEL_LISTING
-            || header->length != p->GetLength() || IsSimulationFlag(header->flags)
-            || request.requestID == 0 || request.listingID == 0) return;
+        const auto request = ParseBazaarRequest<BazaarCancelListingRequestBody>(*p, OP::BAZAAR_CANCEL_LISTING);
+        if (!request || request->listingID == 0)
+            return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
         if (auto msg = messagePool->AcquireScoped()) {
             auto* st = InitializeMsg<MsgBazaarCancelListingBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_CANCEL_LISTING });
-            st->body = { characterID, request.listingID, request.requestID };
+            st->body = { characterID, request->listingID, request->requestID };
             if (messageQueue->EnqueueMessage(msg.get())) return;
         }
         MsgBazaarCancelListingResBody failed{};
-        failed.requestID = request.requestID;
-        failed.listingID = request.listingID;
+        failed.requestID = request->requestID;
+        failed.listingID = request->listingID;
         failed.characterID = characterID;
         failed.resStatus = 5;
         if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
@@ -138,26 +145,21 @@ namespace Core {
     }
 
     void NonZoneHandler::BazaarClaim(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarClaimRequestBody>))
-            return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarClaimRequestBody>(p->GetPtr());
-        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_CLAIM
-            || header->length != p->GetLength() || IsSimulationFlag(header->flags)
-            || request.requestID == 0 || request.listingID == 0)
+        const auto request = ParseBazaarRequest<BazaarClaimRequestBody>(*p, OP::BAZAAR_CLAIM);
+        if (!request || request->listingID == 0)
             return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
         if (auto msg = messagePool->AcquireScoped()) {
             auto* st = InitializeMsg<MsgBazaarClaimBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_CLAIM });
-            st->body = { characterID, request.listingID, request.requestID };
+            st->body = { characterID, request->listingID, request->requestID };
             if (messageQueue->EnqueueMessage(msg.get()))
                 return;
         }
         MsgBazaarClaimResBody failed{};
-        failed.requestID = request.requestID;
-        failed.listingID = request.listingID;
+        failed.requestID = request->requestID;
+        failed.listingID = request->listingID;
         if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
             return;
         auto response = writer->WriteBazaarClaimResponse(&failed);
@@ -166,23 +168,20 @@ namespace Core {
     }
 
     void NonZoneHandler::BazaarMyList(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarMyListRequestBody>))
-            return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarMyListRequestBody>(p->GetPtr());
-        if (header->length != p->GetLength() || IsSimulationFlag(header->flags) || request.requestID == 0)
+        const auto request = ParseBazaarRequest<BazaarMyListRequestBody>(*p);
+        if (!request)
             return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
         if (auto msg = messagePool->AcquireScoped()) {
             auto* st = InitializeMsg<MsgBazaarMyListBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_MY_LIST });
-            st->body = { request.requestID, characterID };
+            st->body = { request->requestID, characterID };
             if (messageQueue->EnqueueMessage(msg.get()))
                 return;
         }
         MsgBazaarMyListResBody failed{};
-        failed.requestID = request.requestID;
+        failed.requestID = request->requestID;
         failed.characterID = characterID;
         if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
             return;
@@ -192,23 +191,19 @@ namespace Core {
     }
 
     void NonZoneHandler::BazaarSearch(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarSearchRequestBody>))
-            return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarSearchRequestBody>(p->GetPtr());
-        if (header->length != p->GetLength() || IsSimulationFlag(header->flags)
-            || request.requestID == 0 || request.itemType < 1 || request.itemType > 3
+        const auto request = ParseBazaarRequest<BazaarSearchRequestBody>(*p);
+        if (!request || request->itemType < 1 || request->itemType > 3
             || !stateManager->IsFieldSession(p->GetSessionID()))
             return;
 
         if (auto msg = messagePool->AcquireScoped()) {
             auto* st = InitializeMsg<MsgBazaarSearchBody>(*msg, { p->GetSessionID(), MSG_BAZAAR_SEARCH });
-            st->body = { request.requestID, request.itemType, request.page };
+            st->body = { request->requestID, request->itemType, request->page };
             if (messageQueue->EnqueueMessage(msg.get()))
                 return;
         }
         MsgBazaarSearchResBody failed{};
-        failed.requestID = request.requestID;
+        failed.requestID = request->requestID;
         auto response = writer->WriteBazaarSearchResponse(&failed);
         if (response)
             networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
