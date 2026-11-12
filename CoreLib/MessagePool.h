@@ -29,11 +29,8 @@ namespace Core {
     public:
         using ScopedMessage = std::unique_ptr<Message, MessageDeleter>;
 
-        Message* Acquire(); // MessageQueue에 복사하고 바로 반납해서 수명관리가 단순함
-        ScopedMessage AcquireScoped(); // The pool must outlive the returned handle.
+        Message* Acquire(); 
+        ScopedMessage AcquireScoped();
         void Return(Message* msg);
-
-        void InitializeForTest() {
-        }
     };
 }

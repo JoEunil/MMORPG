@@ -30,8 +30,14 @@ namespace Core {
             stateManager = s;
         }
         bool IsReady() {
-            if (networkSender == nullptr || writer == nullptr)
+            if (networkSender == nullptr) {
+                sysLogger->LogError("mq handler", "networkSender not initialized");
                 return false;
+            }
+            if (writer == nullptr) {
+                sysLogger->LogError("mq handler", "writer not initialized");
+                return false;
+            }
             return true;
         }
 
