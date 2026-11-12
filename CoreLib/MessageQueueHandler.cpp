@@ -11,77 +11,107 @@
 #include "Config.h"
 
 namespace Core {
+    namespace {
+        template<typename T>
+        const T* ReadResponse(Message& msg) {
+            if (msg.GetLength() != sizeof(MsgStruct<T>))
+                return nullptr;
+            return parseMsgBody<T>(msg.GetBuffer());
+        }
+    }
+
+    bool MessageQueueHandler::IsCurrentFieldCharacter(uint64_t sessionID, uint64_t characterID) {
+        return stateManager && characterID != 0 && stateManager->GetFieldCharacterID(sessionID) == characterID;
+    }
+
+    template<typename T>
+    void MessageQueueHandler::SendResponse(uint64_t sessionID, const T* body, ResponseWriter<T> write) {
+        auto packet = (writer->*write)(body);
+        if (packet)
+            networkSender->SendDataUnique(sessionID, std::move(packet));
+    }
+
+    template<MessageQueueHandler::ResponseScope Scope, typename T>
+    void MessageQueueHandler::DispatchResponse(Message& msg, uint64_t sessionID, ResponseWriter<T> write) {
+        const auto* body = ReadResponse<T>(msg);
+        if (!body)
+            return;
+
+        if constexpr (Scope == ResponseScope::FieldCharacter) {
+            if (!IsCurrentFieldCharacter(sessionID, body->characterID))
+                return;
+        } else if constexpr (Scope == ResponseScope::FieldSession) {
+            if (!stateManager || !stateManager->IsFieldSession(sessionID))
+                return;
+        }
+
+        SendResponse(sessionID, body, write);
+    }
+
     void MessageQueueHandler::Process(Message* msg) {
         if (msg == nullptr) {
             errorLogger->LogError("mq handler", "Invlid Message");
             return;
         }
-        MsgHeader* header = parseMsgHeader(msg->GetBuffer());
+        if (msg->GetLength() < sizeof(MsgHeader)) {
+            errorLogger->LogError("mq handler", "invalid message length");
+            messagePool->Return(msg);
+            return;
+        }
+
+        const auto* header = parseMsgHeader(msg->GetBuffer());
+        const auto sessionID = header->sessionID;
         switch (header->messageType) {
-        case MSG_CHARACTER_LIST_RES: 
-            CharacterListResponse(header->sessionID, parseMsgBody<MsgCharacterListResBody>(msg->GetBuffer()));
+        case MSG_CHARACTER_LIST_RES:
+            DispatchResponse(*msg, sessionID, &PacketWriter::WriteCharacterListResponse);
             break;
         case MSG_CHARACTER_STATE_RES:
-            CharacterStateResponse(header->sessionID, parseMsgBody<MsgCharacterStateResBody>(msg->GetBuffer()));
+            if (const auto* body = ReadResponse<MsgCharacterStateResBody>(*msg))
+                CharacterStateResponse(sessionID, body);
             break;
         case MSG_INVENTORY_RES:
-            InventoryResponse(header->sessionID, parseMsgBody<MsgInventoryResBody>(msg->GetBuffer()));
+            DispatchResponse(*msg, sessionID, &PacketWriter::WriteInventoryResponse);
             break;
         case MSG_INVENTORY_UPDATE_RES:
-            InventoryUpdateResponse(header->sessionID, parseMsgBody<MsgInventoryUpdateResBody>(msg->GetBuffer()));
+            DispatchResponse(*msg, sessionID, &PacketWriter::WriteInventoryUpdateResponse);
             break;
         case MSG_BAZAAR_BUY_RES:
-            if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarBuyResBody>))
-                BazaarBuyResponse(header->sessionID, parseMsgBody<MsgBazaarBuyResBody>(msg->GetBuffer()));
+            DispatchResponse<ResponseScope::FieldCharacter>(*msg, sessionID, &PacketWriter::WriteBazaarBuyResponse);
             break;
         case MSG_BAZAAR_OUTBOX_LIST_RES:
-            if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarOutboxListResBody>))
-                BazaarOutboxListResponse(header->sessionID, parseMsgBody<MsgBazaarOutboxListResBody>(msg->GetBuffer()));
+            DispatchResponse<ResponseScope::FieldCharacter>(*msg, sessionID, &PacketWriter::WriteBazaarOutboxListResponse);
             break;
         case MSG_BAZAAR_CHECK_OUTBOX_RES:
-            if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarCheckOutboxResBody>))
-                BazaarCheckOutboxResponse(header->sessionID, parseMsgBody<MsgBazaarCheckOutboxResBody>(msg->GetBuffer()));
+            DispatchResponse<ResponseScope::FieldCharacter>(*msg, sessionID, &PacketWriter::WriteBazaarCheckOutboxResponse);
             break;
         case MSG_BAZAAR_CANCEL_LISTING_RES:
-            if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarCancelListingResBody>))
-                BazaarCancelListingResponse(header->sessionID, parseMsgBody<MsgBazaarCancelListingResBody>(msg->GetBuffer()));
+            DispatchResponse<ResponseScope::FieldCharacter>(*msg, sessionID, &PacketWriter::WriteBazaarCancelListingResponse);
             break;
         case MSG_BAZAAR_CLAIM_RES:
-            if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarClaimResBody>))
-                BazaarClaimResponse(header->sessionID, parseMsgBody<MsgBazaarClaimResBody>(msg->GetBuffer()));
+            DispatchResponse<ResponseScope::FieldCharacter>(*msg, sessionID, &PacketWriter::WriteBazaarClaimResponse);
             break;
         case MSG_BAZAAR_MY_LIST_RES:
-            if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarMyListResBody>))
-                BazaarMyListResponse(header->sessionID, parseMsgBody<MsgBazaarMyListResBody>(msg->GetBuffer()));
+            DispatchResponse<ResponseScope::FieldCharacter>(*msg, sessionID, &PacketWriter::WriteBazaarMyListResponse);
             break;
         case MSG_BAZAAR_SEARCH_RES:
-            if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarSearchResBody>))
-                BazaarSearchResponse(header->sessionID, parseMsgBody<MsgBazaarSearchResBody>(msg->GetBuffer()));
+            DispatchResponse<ResponseScope::FieldSession>(*msg, sessionID, &PacketWriter::WriteBazaarSearchResponse);
             break;
         case MSG_BAZAAR_REGISTER_RES:
-            if (msg->GetLength() == sizeof(MsgStruct<MsgBazaarRegisterResBody>))
-                BazaarRegisterResponse(header->sessionID, parseMsgBody<MsgBazaarRegisterResBody>(msg->GetBuffer()));
+            DispatchResponse<ResponseScope::FieldCharacter>(*msg, sessionID, &PacketWriter::WriteBazaarRegisterResponse);
             break;
         case MSG_CURRENCY_DEPOSIT_RES:
-            if (msg->GetLength() == sizeof(MsgStruct<MsgCurrencyDepositResBody>)) {
-                const auto* body = parseMsgBody<MsgCurrencyDepositResBody>(msg->GetBuffer());
-                if (stateManager && body->characterID != 0 &&
-                    stateManager->GetFieldCharacterID(header->sessionID) == body->characterID) {
-                    auto packet = writer->WriteGoldReward(body->resStatus);
-                    if (packet) networkSender->SendDataUnique(header->sessionID, std::move(packet));
-                }
-            }
+            if (const auto* body = ReadResponse<MsgCurrencyDepositResBody>(*msg))
+                GoldDepositResponse(sessionID, body);
             break;
         case MSG_CURRENCY_RES:
-            if (msg->GetLength() == sizeof(MsgStruct<MsgCurrencyResBody>))
-                WalletGoldResponse(header->sessionID, parseMsgBody<MsgCurrencyResBody>(msg->GetBuffer()));
+            DispatchResponse<ResponseScope::FieldCharacter>(*msg, sessionID, &PacketWriter::WriteWalletGoldResponse);
             break;
         case MSG_DIAMOND_RES:
-            if (msg->GetLength() == sizeof(MsgStruct<MsgDiamondResBody>))
-                WalletDiamondResponse(header->sessionID, parseMsgBody<MsgDiamondResBody>(msg->GetBuffer()));
+            DispatchResponse<ResponseScope::FieldCharacter>(*msg, sessionID, &PacketWriter::WriteWalletDiamondResponse);
             break;
         case MSG_PROFILE_RENAME_RES:
-            ProfileRenameResponse(header->sessionID, parseMsgBody<MsgProfileRenameResBody>(msg->GetBuffer()));
+            if (const auto* body = ReadResponse<MsgProfileRenameResBody>(*msg))
+                ProfileRenameResponse(sessionID, body);
             break;
         default:
             errorLogger->LogError("mq handler", "invalid message type");
@@ -89,15 +119,7 @@ namespace Core {
         messagePool->Return(msg);
     }
 
-    void MessageQueueHandler::CharacterListResponse(uint64_t sessionID, MsgCharacterListResBody* body) {
-        auto p = writer->WriteCharacterListResponse(body);
-        if (!p) {
-            return;
-        }
-        networkSender->SendDataUnique(sessionID, std::move(p));
-    }
-
-    void MessageQueueHandler::CharacterStateResponse(uint64_t sessionID, MsgCharacterStateResBody* body) {
+    void MessageQueueHandler::CharacterStateResponse(uint64_t sessionID, const MsgCharacterStateResBody* body) {
         //client에서는 full snapshot 받을 때 까지 로딩 화면
         CharacterState temp;
         if (body->resStatus != 0) {
@@ -126,108 +148,21 @@ namespace Core {
             }
         }
 
+        SendResponse(sessionID, body, &PacketWriter::WriteEnterWorldResponse);
+    }
 
-        auto p = writer->WriteEnterWorldResponse(body);
-        if (!p) {
+    void MessageQueueHandler::GoldDepositResponse(uint64_t sessionID, const MsgCurrencyDepositResBody* body) {
+        if (!IsCurrentFieldCharacter(sessionID, body->characterID))
             return;
-        }
-        networkSender->SendDataUnique(sessionID, std::move(p));
-    }
 
-    void MessageQueueHandler::BazaarBuyResponse(uint64_t sessionID, MsgBazaarBuyResBody* body) {
-        if (stateManager == nullptr || body->characterID == 0
-            || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
-        auto p = writer->WriteBazaarBuyResponse(body);
-        if (p) networkSender->SendDataUnique(sessionID, std::move(p));
-    }
-
-    void MessageQueueHandler::BazaarOutboxListResponse(uint64_t sessionID, MsgBazaarOutboxListResBody* body) {
-        if (stateManager == nullptr || body->characterID == 0
-            || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
-        auto p = writer->WriteBazaarOutboxListResponse(body);
-        if (p) networkSender->SendDataUnique(sessionID, std::move(p));
-    }
-
-    void MessageQueueHandler::BazaarCheckOutboxResponse(uint64_t sessionID, MsgBazaarCheckOutboxResBody* body) {
-        if (stateManager == nullptr || body->characterID == 0
-            || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
-        auto p = writer->WriteBazaarCheckOutboxResponse(body);
-        if (p) networkSender->SendDataUnique(sessionID, std::move(p));
-    }
-
-    void MessageQueueHandler::BazaarCancelListingResponse(uint64_t sessionID, MsgBazaarCancelListingResBody* body) {
-        if (stateManager == nullptr || body->characterID == 0
-            || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
-        auto p = writer->WriteBazaarCancelListingResponse(body);
-        if (p) networkSender->SendDataUnique(sessionID, std::move(p));
-    }
-
-    void MessageQueueHandler::BazaarClaimResponse(uint64_t sessionID, MsgBazaarClaimResBody* body) {
-        if (stateManager == nullptr || body->characterID == 0
-            || stateManager->GetFieldCharacterID(sessionID) != body->characterID)
-            return;
-        auto p = writer->WriteBazaarClaimResponse(body);
-        if (p)
-            networkSender->SendDataUnique(sessionID, std::move(p));
-    }
-
-    void MessageQueueHandler::BazaarMyListResponse(uint64_t sessionID, MsgBazaarMyListResBody* body) {
-        if (stateManager == nullptr || body->characterID == 0
-            || stateManager->GetFieldCharacterID(sessionID) != body->characterID)
-            return;
-        auto p = writer->WriteBazaarMyListResponse(body);
-        if (p)
-            networkSender->SendDataUnique(sessionID, std::move(p));
-    }
-
-    void MessageQueueHandler::BazaarSearchResponse(uint64_t sessionID, MsgBazaarSearchResBody* body) {
-        if (stateManager == nullptr || !stateManager->IsFieldSession(sessionID))
-            return;
-        auto p = writer->WriteBazaarSearchResponse(body);
-        if (p)
-            networkSender->SendDataUnique(sessionID, std::move(p));
-    }
-
-    void MessageQueueHandler::BazaarRegisterResponse(uint64_t sessionID, MsgBazaarRegisterResBody* body) {
-        if (stateManager == nullptr || body->characterID == 0
-            || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
-        auto p = writer->WriteBazaarRegisterResponse(body);
-        if (p) networkSender->SendDataUnique(sessionID, std::move(p));
-    }
-
-    void MessageQueueHandler::WalletGoldResponse(uint64_t sessionID, MsgCurrencyResBody* body) {
-        if (stateManager == nullptr || body->characterID == 0
-            || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
-        auto p = writer->WriteWalletGoldResponse(body);
-        if (p) networkSender->SendDataUnique(sessionID, std::move(p));
-    }
-
-    void MessageQueueHandler::WalletDiamondResponse(uint64_t sessionID, MsgDiamondResBody* body) {
-        if (stateManager == nullptr || body->characterID == 0
-            || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
-        auto p = writer->WriteWalletDiamondResponse(body);
-        if (p) networkSender->SendDataUnique(sessionID, std::move(p));
-    }
-
-    void MessageQueueHandler::InventoryResponse(uint64_t sessionID, MsgInventoryResBody* body) {
-        auto p = writer->WriteInventoryResponse(body);
-        if (!p) {
-            return;
-        }
-        networkSender->SendDataUnique(sessionID, std::move(p));
-    }
-
-    void MessageQueueHandler::InventoryUpdateResponse(uint64_t sessionID, MsgInventoryUpdateResBody* body) {
-        auto p = writer->WriteInventoryUpdateResponse(body);
-        if (!p) {
-            return;
-        }
-        networkSender->SendDataUnique(sessionID, std::move(p));
+        auto packet = writer->WriteGoldReward(body->resStatus);
+        if (packet)
+            networkSender->SendDataUnique(sessionID, std::move(packet));
     }
 
     // rename이 DB에 확정된 뒤 도는 경로. zone이 들고 있는 profileVersion 사본을
     // 여기서 갱신해야 delta로 전파된다.
-    void MessageQueueHandler::ProfileRenameResponse(uint64_t sessionID, MsgProfileRenameResBody* body) {
+    void MessageQueueHandler::ProfileRenameResponse(uint64_t sessionID, const MsgProfileRenameResBody* body) {
         if (body->resStatus == 0) {
             gameLogger->LogInfo("mq handler", "profile rename failed", "sessionID", sessionID, "profile_id", body->profileId);
             return;

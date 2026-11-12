@@ -56,7 +56,7 @@ namespace Core {
             nonZoneThreadPool.Initialize(&nonZoneHandler);
             zoneThreadSet.Initialize(&zoneHandler, &perfCollector);
             writer.Initialize(packetPoolManager);
-            mqHandler.Initialize(networkSender, &writer, &lobbyZone, &msgPool);
+            mqHandler.Initialize(networkSender, &writer, &lobbyZone, &msgPool, &stateManager);
             recvMQ.Initialize(&mqHandler, &msgPool);
             recvMQ.Start();
             chat.Initialize(networkSender, &writer, &perfCollector);
@@ -65,7 +65,6 @@ namespace Core {
         void InjectDependencies2(INetworkSender* networkSender, ISessionAuth* session, IMessageQueue* sendMQ, IProfileCache* profileCache, IInventoryOperations* inventory = nullptr) {
             stateManager.inventory = inventory;
             stateManager.Initialize(sendMQ, networkSender, &lobbyZone, &chat);
-            mqHandler.InitializeStateManager(&stateManager);
             packetDispatcher.Initialize(&nonZoneThreadPool, &zoneThreadSet, &stateManager);
             nonZoneThreadPool.Start();
             broadcastPool.Start();
