@@ -33,49 +33,34 @@ namespace Core {
         return packet;
     }
 
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteItemUseResponse(const ItemUseResponseBody& body) {
-		auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if(packetPtr == nullptr)
+    template<typename T>
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteFixedPacket(OP opcode, uint8_t flags, const T& body) {
+        auto packet = AcquireUniquePacket(PacketPoolType::Normal);
+        if (!packet)
             return nullptr;
-		auto* packet = InitializePacketHeader<ItemUseResponseBody>(*packetPtr, OP::ITEM_USE_RES, 0);
-		packet->body = body;
-        return packetPtr;
+
+        InitializePacketHeader<T>(*packet, opcode, flags)->body = body;
+        return packet;
+    }
+
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteItemUseResponse(const ItemUseResponseBody& body) {
+        return WriteFixedPacket(OP::ITEM_USE_RES, 0, body);
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteParryResponse(const ParryResponseBody& body) {
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (packetPtr == nullptr)
-            return nullptr;
-        auto* packet = InitializePacketHeader<ParryResponseBody>(*packetPtr, OP::PARRY_RES, FLAG_SIMULATION);
-        packet->body = body;
-        return packetPtr;
+        return WriteFixedPacket(OP::PARRY_RES, FLAG_SIMULATION, body);
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteItemReward(const ItemRewardBody& body) {
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (packetPtr == nullptr)
-            return nullptr;
-        auto* packet = InitializePacketHeader<ItemRewardBody>(*packetPtr, OP::ITEM_REWARD, 0);
-        packet->body = body;
-        return packetPtr;
+        return WriteFixedPacket(OP::ITEM_REWARD, 0, body);
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteGoldReward(uint8_t status) {
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (!packetPtr) return nullptr;
-        auto* packet = InitializePacketHeader<uint8_t>(*packetPtr, OP::GOLD_REWARD, 0);
-        packet->body = status;
-        return packetPtr;
+        return WriteFixedPacket(OP::GOLD_REWARD, 0, status);
     }
 
     std::unique_ptr<IPacket, PacketDeleter>  PacketWriter::WriteAuthResponse(uint8_t resStatus) {
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (packetPtr == nullptr) {
-            return nullptr;
-        }
-        auto* packet = InitializePacketHeader<AuthResponseBody>(*packetPtr, OP::AUTH_RESPONSE, 0);
-        packet->body.resStatus = resStatus;
-        return packetPtr;
+        return WriteFixedPacket(OP::AUTH_RESPONSE, 0, AuthResponseBody{ resStatus });
     }
 
     std::unique_ptr<IPacket, PacketDeleter>  PacketWriter::WriteCharacterListResponse(const MsgCharacterListResBody* body) {
@@ -141,18 +126,8 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteInventoryUpdateResponse(const MsgInventoryUpdateResBody* body) {
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (packetPtr == nullptr) {
-            return nullptr;
-        }
-
-        auto* packet = InitializePacketHeader<InventoryUpdateResBody>(*packetPtr, OP::INVENTORY_UPDATE_RES, 0);
-        packet->body.resStatus = body->resStatus;
-        packet->body.itemID = body->itemID;
-        packet->body.itemQuantity = body->itemQuantity;
-        packet->body.slot = body->slot;
-
-        return packetPtr;
+        return WriteFixedPacket(OP::INVENTORY_UPDATE_RES, 0,
+            InventoryUpdateResBody{ body->resStatus, body->itemID, body->itemQuantity, body->slot });
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::GetChatWhisperPacket(uint64_t sender, uint32_t senderProfileId, const std::string& message) {
@@ -379,24 +354,18 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteEquipmentResponse(const EquipmentResponseBody& body) {
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (!packetPtr) return nullptr;
-        auto* packet = InitializePacketHeader<EquipmentResponseBody>(*packetPtr, OP::EQUIPMENT_RES, 0);
-        packet->body = body;
-        return packetPtr;
+        return WriteFixedPacket(OP::EQUIPMENT_RES, 0, body);
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarBuyResponse(const MsgBazaarBuyResBody* body) {
         if (body == nullptr)
             return nullptr;
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (!packetPtr) return nullptr;
-        auto* st = InitializePacketHeader<BazaarBuyResponseBody>(*packetPtr, OP::BAZAAR_BUY_RES, 0);
-        st->body = { body->requestID, body->listingID, body->resStatus,
+
+        return WriteFixedPacket(OP::BAZAAR_BUY_RES, 0, BazaarBuyResponseBody{
+            body->requestID, body->listingID, body->resStatus,
             body->resStatus == 1 ? body->itemID : 0,
             body->resStatus == 1 ? body->quantity : 0,
-            body->resStatus == 1 ? body->diamondSpent : 0 };
-        return packetPtr;
+            body->resStatus == 1 ? body->diamondSpent : 0 });
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarOutboxListResponse(const MsgBazaarOutboxListResBody* body) {
@@ -419,36 +388,25 @@ namespace Core {
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarCheckOutboxResponse(const MsgBazaarCheckOutboxResBody* body) {
         if (body == nullptr)
             return nullptr;
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (!packetPtr) return nullptr;
-        auto* st = InitializePacketHeader<BazaarCheckOutboxResponseBody>(*packetPtr, OP::BAZAAR_CHECK_OUTBOX_RES, 0);
-        st->body = { body->requestID, body->resStatus, body->deliveredCount, body->duplicatedCount, body->blockedCount };
-        return packetPtr;
+
+        return WriteFixedPacket(OP::BAZAAR_CHECK_OUTBOX_RES, 0, BazaarCheckOutboxResponseBody{
+            body->requestID, body->resStatus, body->deliveredCount, body->duplicatedCount, body->blockedCount });
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarCancelListingResponse(const MsgBazaarCancelListingResBody* body) {
         if (body == nullptr)
             return nullptr;
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (!packetPtr) return nullptr;
-        auto* st = InitializePacketHeader<BazaarCancelListingResponseBody>(*packetPtr, OP::BAZAAR_CANCEL_LISTING_RES, 0);
-        st->body = { body->requestID, body->listingID, body->resStatus };
-        return packetPtr;
+
+        return WriteFixedPacket(OP::BAZAAR_CANCEL_LISTING_RES, 0,
+            BazaarCancelListingResponseBody{ body->requestID, body->listingID, body->resStatus });
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarClaimResponse(const MsgBazaarClaimResBody* body) {
         if (body == nullptr)
             return nullptr;
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (!packetPtr)
-            return nullptr;
-        auto* st = InitializePacketHeader<BazaarClaimResponseBody>(*packetPtr, OP::BAZAAR_CLAIM_RES, 0);
-        st->body = {};
-        st->body.requestID = body->requestID;
-        st->body.listingID = body->listingID;
-        st->body.resStatus = body->resStatus;
-        st->body.diamondClaimed = st->body.resStatus == 1 ? body->diamondClaimed : 0;
-        return packetPtr;
+
+        return WriteFixedPacket(OP::BAZAAR_CLAIM_RES, 0, BazaarClaimResponseBody{
+            body->requestID, body->listingID, body->resStatus, body->resStatus == 1 ? body->diamondClaimed : 0 });
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarMyListResponse(const MsgBazaarMyListResBody* body) {
@@ -496,31 +454,25 @@ namespace Core {
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteBazaarRegisterResponse(const MsgBazaarRegisterResBody* body) {
         if (body == nullptr)
             return nullptr;
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (!packetPtr) return nullptr;
-        auto* st = InitializePacketHeader<BazaarRegisterResponseBody>(*packetPtr, OP::BAZAAR_REGISTER_RES, 0);
-        st->body = { body->requestID, body->resStatus };
-        return packetPtr;
+
+        return WriteFixedPacket(OP::BAZAAR_REGISTER_RES, 0,
+            BazaarRegisterResponseBody{ body->requestID, body->resStatus });
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteWalletGoldResponse(const MsgCurrencyResBody* body) {
         if (body == nullptr)
             return nullptr;
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (!packetPtr) return nullptr;
-        auto* st = InitializePacketHeader<WalletGoldResponseBody>(*packetPtr, OP::WALLET_GOLD_RES, 0);
-        st->body = { body->requestID, body->resStatus, body->resStatus == 1 ? body->gold : 0 };
-        return packetPtr;
+
+        return WriteFixedPacket(OP::WALLET_GOLD_RES, 0,
+            WalletGoldResponseBody{ body->requestID, body->resStatus, body->resStatus == 1 ? body->gold : 0 });
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteWalletDiamondResponse(const MsgDiamondResBody* body) {
         if (body == nullptr)
             return nullptr;
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (!packetPtr) return nullptr;
-        auto* st = InitializePacketHeader<WalletDiamondResponseBody>(*packetPtr, OP::WALLET_DIAMOND_RES, 0);
-        st->body = { body->requestID, body->resStatus, body->resStatus == 1 ? body->diamond : 0 };
-        return packetPtr;
+
+        return WriteFixedPacket(OP::WALLET_DIAMOND_RES, 0,
+            WalletDiamondResponseBody{ body->requestID, body->resStatus, body->resStatus == 1 ? body->diamond : 0 });
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteProfileBatchRes(const ProfileEntry* entries, uint16_t count) {
@@ -545,30 +497,12 @@ namespace Core {
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeFailed() {
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (packetPtr == nullptr) {
-            return nullptr;
-        }
-        auto* packet = InitializePacketHeader<ZoneChangeResponseBody>(*packetPtr, OP::ZONE_CHANGE_RESPONSE, FLAG_SIMULATION);
-        packet->body = {};
-        return packetPtr;
+        return WriteFixedPacket(OP::ZONE_CHANGE_RESPONSE, FLAG_SIMULATION, ZoneChangeResponseBody{});
     }
 
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y, uint64_t generation, uint64_t ownershipEpoch) {
-        auto packetPtr = AcquireUniquePacket(PacketPoolType::Normal);
-        if (packetPtr == nullptr) {
-            return nullptr;
-        }
-        auto* packet = InitializePacketHeader<ZoneChangeResponseBody>(*packetPtr, OP::ZONE_CHANGE_RESPONSE, FLAG_SIMULATION);
-        packet->body.resStatus = 1;
-        packet->body.zoneID = zoneID;
-        packet->body.chatID = chatID;
-        packet->body.startX = x;
-        packet->body.startY = y;
-        packet->body.zoneInternalID = zoneInternalID;
-        packet->body.zoneGeneration = generation;
-        packet->body.ownershipEpoch = ownershipEpoch;
-        return packetPtr;
+        return WriteFixedPacket(OP::ZONE_CHANGE_RESPONSE, FLAG_SIMULATION,
+            ZoneChangeResponseBody{ 1, zoneID, chatID, zoneInternalID, x, y, generation, ownershipEpoch });
     }
 
     std::unique_ptr<IPacket, PacketDeleter>  PacketWriter::GetPingPacket(uint64_t rtt,uint64_t nowMs) {

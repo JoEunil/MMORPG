@@ -23,6 +23,9 @@ namespace Core {
         std::shared_ptr<IPacket> AcquireSharedPacket(PacketPoolType type);
 
         template<typename T>
+        std::unique_ptr<IPacket, PacketDeleter> WriteFixedPacket(OP opcode, uint8_t flags, const T& body);
+
+        template<typename T>
         PacketStruct<T>* InitializePacketHeader(IPacket& packetBuffer, OP opcode, uint8_t flags, uint32_t length = sizeof(PacketStruct<T>)) {
             auto* packet = reinterpret_cast<PacketStruct<T>*>(packetBuffer.GetBuffer());
             packet->header = { MAGIC, length, static_cast<uint8_t>(opcode), flags };
