@@ -3,6 +3,7 @@
 
 #include "MessageTypes.h"
 #include "MessagePool.h"
+#include "IMessageQueue.h"
 
 namespace Core {
     class ILogger;
@@ -11,7 +12,6 @@ namespace Core {
     class INetworkSender;
     class IDBCache;
     class PacketWriter;
-    class IMessageQueue;
     class StateManager;
     class LobbyZone;
     class ChatThreadPool;
@@ -43,6 +43,9 @@ namespace Core {
         void ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID);
         void GetCharacterList(IPacketView* p);
         void GetCharacterState(IPacketView* p);
+        void UseItem(IPacketView* p);
+        void GetEquipment(IPacketView* p);
+        void SetEquipment(IPacketView* p);
         void GetInventory(IPacketView* p);
         void BazaarSearch(IPacketView* p);
         void BazaarRegister(IPacketView* p);

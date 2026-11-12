@@ -75,27 +75,14 @@ namespace Core {
             case OP::RESPAWN_TO_TOWN:
                 RespawnToTown(p);
                 break;
-            case OP::ITEM_USE: {
-                    const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
-                    const auto result = stateManager->UseItem(p->GetSessionID(), request);
-                    auto response = writer->WriteItemUseResponse(result);
-                    if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
-                }
+            case OP::ITEM_USE:
+                UseItem(p);
                 break;
-            case OP::EQUIPMENT_GET:  {
-                    const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
-                    const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, false);
-                    auto response = writer->WriteEquipmentResponse(result);
-                    if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
-                }
+            case OP::EQUIPMENT_GET:
+                GetEquipment(p);
                 break;
-            case OP::EQUIPMENT_SET: {
-                    const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
-                    if (request.slot > 2) break;
-                    const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, true, request.slot, request.itemID);
-                    auto response = writer->WriteEquipmentResponse(result);
-                    if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
-                }
+            case OP::EQUIPMENT_SET:
+                SetEquipment(p);
                 break;
             case OP::INVENTORY_REQ:
                 GetInventory(p);
@@ -150,26 +137,42 @@ namespace Core {
         body.profileId = profileId;
         std::memcpy(body.name, name, nameLen);
         TryEnqueueMessage({ sessionID, MSG_PROFILE_RENAME }, body);
-        }
-        auto* st = InitializeMsg<MsgProfileRenameBody>(*msg, { sessionID, MSG_PROFILE_RENAME });
-        st->body.profileId = profileId;
-        std::memset(st->body.name, 0, sizeof(st->body.name));
-        std::memcpy(st->body.name, name, nameLen);
-        messageQueue->EnqueueMessage(msg.get());
+    }
+
+    void NonZoneHandler::UseItem(IPacketView* p) {
+        const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
+        const auto result = stateManager->UseItem(p->GetSessionID(), request);
+        auto response = writer->WriteItemUseResponse(result);
+        if (response)
+            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+    }
+
+    void NonZoneHandler::GetEquipment(IPacketView* p) {
+        const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
+        const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, false);
+        auto response = writer->WriteEquipmentResponse(result);
+        if (response)
+            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+    }
+
+    void NonZoneHandler::SetEquipment(IPacketView* p) {
+        const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
+        if (request.slot > 2)
+            return;
+
+        const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, true, request.slot, request.itemID);
+        auto response = writer->WriteEquipmentResponse(result);
+        if (response)
+            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
     void NonZoneHandler::GetInventory(IPacketView* p) {
-        auto charID = stateManager->GetCharacterID(p->GetSessionID());
-        if (charID <= 0)
-            return ;
-        
-        auto msg = messagePool->AcquireScoped();
-        if (msg == nullptr) {
+        const auto sessionID = p->GetSessionID();
+        const auto characterID = stateManager->GetCharacterID(sessionID);
+        if (characterID == 0)
             return;
-        }
-        auto* st = InitializeMsg<MsgInventoryReqBody>(*msg, { p->GetSessionID(), MSG_INVENTORY_REQ });
-        st->body.characterID = charID;
-        messageQueue->EnqueueMessage(msg.get());
+
+        TryEnqueueMessage({ sessionID, MSG_INVENTORY_REQ }, MsgInventoryReqBody{ characterID });
     }
 
     void NonZoneHandler::WalletRequest(IPacketView* p) {
