@@ -60,6 +60,7 @@ namespace Mmorpg.Client.Tests
                 for (int i = 0; i < map.walkable.Length; i++) map.walkable[i] = 1;
                 using (var fixture = new ObservationFixture())
                 {
+                    Set(fixture.World, "quarterViewCamera", null);
                     var other = Player(42); other.x = 21; other.y = 22;
                     var corner = Player(43); corner.x = 46; corner.y = 37;
                     fixture.Players(100, Player(7), other, corner);
@@ -133,6 +134,107 @@ namespace Mmorpg.Client.Tests
 
         [Test]
         [Category("WorldMinimap")]
+        public void MinimapCameraHeadingAlignsMarkersAtlasNavigationAndNorthWhileSelfStaysCentred()
+        {
+            var map = ScriptableObject.CreateInstance<WorldMap>();
+            var atlas = new Texture2D(4, 4);
+            try
+            {
+                map.origin = new Vector2(-50, -50); map.tileSize = 1; map.width = map.height = 120;
+                map.walkable = new byte[map.width * map.height];
+                for (int y = 0; y < map.height; y++)
+                    for (int x = 66; x < map.width; x++) map.walkable[y * map.width + x] = 1;
+                using (var fixture = new ObservationFixture())
+                {
+                    fixture.World.ViewCamera.rotation = Quaternion.Euler(50, -45, 0);
+                    var other = Player(42); other.x += 10;
+                    var monster = Monster(0, 0); monster.y += 10;
+                    fixture.Players(100, other); fixture.Monsters(100, monster);
+                    var minimap = fixture.CreateMinimap(map);
+                    minimap.rectTransform.sizeDelta = new Vector2(208, 156);
+                    var north = new GameObject("existing north label", typeof(RectTransform)).GetComponent<RectTransform>();
+                    north.SetParent(minimap.transform.parent, false); north.sizeDelta = new Vector2(16, 18);
+                    north.pivot = new Vector2(0, 1);
+                    Set(minimap, "northLabel", north);
+                    Set(minimap, "terrainAtlas", atlas);
+                    var bounds = new Rect(-9, -8, 40, 40); Set(minimap, "atlasBounds", bounds);
+                    float diagonal = Mathf.Sqrt(.5f);
+                    Vector2 right = new Vector2(diagonal, diagonal), forward = new Vector2(-diagonal, diagonal);
+                    for (int move = 0; move < 2; move++)
+                    {
+                        if (move == 1)
+                        {
+                            var own = fixture.World.OwnFull; own.x += 5; own.y += 5; Set(fixture.World, "ownFull", own);
+                            Set(minimap, "nextRefresh", 0f); Invoke(minimap, "Update");
+                        }
+                        using (var vertices = new UnityEngine.UI.VertexHelper())
+                        {
+                            PopulateMinimap(minimap, vertices);
+                            AssertMinimapColorCentre(vertices, new Color32(74, 219, 115, 255), Vector2.zero);
+                            Vector2 playerOffset = new Vector2(other.x, other.y) - fixture.World.ServerPosition;
+                            Vector2 monsterOffset = new Vector2(monster.x, monster.y) - fixture.World.ServerPosition;
+                            AssertMinimapColorCentre(vertices, new Color32(174, 181, 184, 255),
+                                new Vector2(Vector2.Dot(playerOffset, right), Vector2.Dot(playerOffset, forward)) * 2.6f);
+                            AssertMinimapColorCentre(vertices, new Color32(235, 74, 64, 255),
+                                new Vector2(Vector2.Dot(monsterOffset, right), Vector2.Dot(monsterOffset, forward)) * 2.6f);
+                            var vertex = new UnityEngine.UIVertex(); int atlasVertices = 0;
+                            for (int i = 0; i < vertices.currentVertCount; i++)
+                            {
+                                vertices.PopulateUIVertex(ref vertex, i);
+                                Assert.That(vertex.position.x, Is.InRange(-104.001f, 104.001f));
+                                Assert.That(vertex.position.y, Is.InRange(-78.001f, 78.001f));
+                                if (vertex.uv0.x < 0) continue;
+                                atlasVertices++;
+                                Vector2 world = fixture.World.ServerPosition + (right * vertex.position.x + forward * vertex.position.y) / 2.6f;
+                                Assert.That(world.x, Is.InRange(bounds.xMin - .001f, bounds.xMax + .001f));
+                                Assert.That(world.y, Is.InRange(bounds.yMin - .001f, bounds.yMax + .001f));
+                                Assert.That(vertex.uv0.x, Is.EqualTo((world.x - bounds.xMin) / bounds.width).Within(.0001f));
+                                Assert.That(vertex.uv0.y, Is.EqualTo((world.y - bounds.yMin) / bounds.height).Within(.0001f));
+                            }
+                            Assert.That(atlasVertices, Is.GreaterThan(0));
+                            Vector2 northPosition = minimap.rectTransform.InverseTransformPoint(north.TransformPoint(north.rect.center));
+                            Assert.That(northPosition.x, Is.EqualTo(65).Within(.001f));
+                            Assert.That(northPosition.y, Is.EqualTo(65).Within(.001f));
+                            Assert.That(north.localRotation, Is.EqualTo(Quaternion.identity));
+                            Assert.That(minimap.rectTransform.localRotation, Is.EqualTo(Quaternion.identity));
+                        }
+                    }
+                    Set(minimap, "terrainAtlas", null);
+                    using (var vertices = new UnityEngine.UI.VertexHelper())
+                    {
+                        PopulateMinimap(minimap, vertices);
+                        var vertex = new UnityEngine.UIVertex(); int walkableVertices = 0, expectedCells = 0;
+                        for (int y = 0; y < 40; y++)
+                            for (int x = 0; x < 40; x++)
+                            {
+                                Vector2 sample = fixture.World.ServerPosition +
+                                    right * (((x + .5f) * 5.2f - 104) / 2.6f) +
+                                    forward * (((y + .5f) * 3.9f - 78) / 2.6f);
+                                if (map.IsWalkable(sample.x, sample.y)) expectedCells++;
+                            }
+                        for (int i = 0; i < vertices.currentVertCount; i++)
+                        {
+                            vertices.PopulateUIVertex(ref vertex, i);
+                            Assert.That(vertex.uv0.x, Is.LessThan(0));
+                            if (!vertex.color.Equals(new Color32(59, 91, 93, 235))) continue;
+                            if (walkableVertices % 4 == 0)
+                            {
+                                Vector2 sample = (Vector2)vertex.position + new Vector2(2.6f, 1.95f);
+                                Vector2 world = fixture.World.ServerPosition + (right * sample.x + forward * sample.y) / 2.6f;
+                                Assert.That(map.IsWalkable(world.x, world.y), Is.True);
+                            }
+                            walkableVertices++;
+                        }
+                        Assert.That(expectedCells, Is.InRange(1, 1599));
+                        Assert.That(walkableVertices, Is.EqualTo(expectedCells * 4));
+                    }
+                }
+            }
+            finally { UnityEngine.Object.DestroyImmediate(atlas); UnityEngine.Object.DestroyImmediate(map); }
+        }
+
+        [Test]
+        [Category("WorldMinimap")]
         public void MinimapClearsDepartedDefeatedAndStaleWorldObservationsWithoutHidingDeadSelf()
         {
             var map = ScriptableObject.CreateInstance<WorldMap>();
@@ -183,6 +285,151 @@ namespace Mmorpg.Client.Tests
                     minimap.enabled = false;
                     Assert.That(group.alpha, Is.Zero);
                 }
+            }
+            finally { UnityEngine.Object.DestroyImmediate(map); }
+        }
+
+        [Test]
+        [Category("WorldMapOverview")]
+        public void MinimapClickOpensOverviewWithWorldPositionAndClosesOnLeavingWorld()
+        {
+            var map = ScriptableObject.CreateInstance<WorldMap>();
+            var atlas = new Texture2D(4, 4);
+            try
+            {
+                map.walkable = new byte[map.width * map.height];
+                using (var fixture = new ObservationFixture())
+                {
+                    var worldRoot = (GameObject)Get(fixture.World, "worldRoot");
+                    worldRoot.AddComponent<MapAuthoring>().map = map;
+                    var canvas = new GameObject("Map canvas", typeof(RectTransform), typeof(Canvas)).GetComponent<Canvas>();
+                    canvas.transform.SetParent(fixture.World.transform, false);
+                    canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                    var minimap = fixture.CreateMinimap(map);
+                    minimap.transform.parent.SetParent(canvas.transform, false);
+                    Set(minimap, "terrainAtlas", atlas);
+                    Set(minimap, "atlasBounds", new Rect(-25, -25, 650, 450));
+                    Invoke(minimap, "Update");
+
+                    var click = new UnityEngine.EventSystems.PointerEventData(null)
+                        { button = UnityEngine.EventSystems.PointerEventData.InputButton.Left };
+                    Assert.That(minimap.raycastTarget, Is.True);
+                    UnityEngine.EventSystems.ExecuteEvents.Execute(minimap.gameObject, click,
+                        UnityEngine.EventSystems.ExecuteEvents.pointerClickHandler);
+                    var overview = canvas.transform.Find("WorldMapOverlay");
+                    Assert.That(overview, Is.Not.Null);
+                    Assert.That(overview.gameObject.activeSelf, Is.True);
+                    var terrain = overview.Find("MapArea/Terrain");
+                    Assert.That(terrain.Find("Zone6"), Is.Not.Null);
+                    var marker = (RectTransform)terrain.Find("CurrentPosition");
+                    var position = fixture.World.ServerPosition;
+                    Assert.That(marker.anchorMin.x, Is.EqualTo((position.x + 25) / 650).Within(.0001f));
+                    Assert.That(marker.anchorMin.y, Is.EqualTo((position.y + 25) / 450).Within(.0001f));
+                    overview.Find("Close").GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
+                    Assert.That(overview.gameObject.activeSelf, Is.False);
+
+                    minimap.OnPointerClick(click);
+                    fixture.CloseWorld();
+                    Assert.That(overview.gameObject.activeSelf, Is.False);
+                    Assert.That(minimap.raycastTarget, Is.False);
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(map);
+                UnityEngine.Object.DestroyImmediate(atlas);
+            }
+        }
+
+        [Test]
+        [Category("WorldMapRoute")]
+        public void FieldCameraProjectsNorthUpAndEastRightLikeTheOverview()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                var camera = fixture.World.ViewCamera.gameObject.AddComponent<Camera>();
+                camera.orthographic = true;
+                var position = fixture.World.ServerPosition;
+                var origin = new Vector3(position.x, 0, position.y);
+                var centre = camera.WorldToViewportPoint(origin);
+                var north = camera.WorldToViewportPoint(origin + Vector3.forward * 5);
+                var east = camera.WorldToViewportPoint(origin + Vector3.right * 5);
+                Assert.That(north.x, Is.EqualTo(centre.x).Within(.0001f));
+                Assert.That(north.y, Is.GreaterThan(centre.y));
+                Assert.That(east.y, Is.EqualTo(centre.y).Within(.0001f));
+                Assert.That(east.x, Is.GreaterThan(centre.x));
+            }
+        }
+
+        [Test]
+        [Category("WorldMapRoute")]
+        public void FieldRouteMarksStayAnchoredWhenTheCharacterAdvancesOnTheSameLeg()
+        {
+            var map = ScriptableObject.CreateInstance<WorldMap>();
+            var root = new GameObject("Route mark fixture");
+            object guide = null;
+            try
+            {
+                map.origin = Vector2.zero;
+                map.width = 40;
+                map.height = 8;
+                map.walkable = new byte[map.width * map.height];
+                for (int i = 0; i < map.walkable.Length; i++) map.walkable[i] = 1;
+                var guideType = typeof(WorldMinimap).Assembly.GetType("Mmorpg.Client.WorldRouteGuide", true);
+                guide = Activator.CreateInstance(guideType, BindingFlags.Instance | BindingFlags.NonPublic, null,
+                    new object[] { root.transform, 0f, Shader.Find("Universal Render Pipeline/Unlit") }, null);
+                var mesh = (Mesh)Get(guide, "mesh");
+                var destination = new Vector2(32, 4);
+                Invoke(guide, "Show", new List<Vector2> { new Vector2(2, 4), destination }, map);
+                var before = mesh.vertices;
+                Invoke(guide, "Show", new List<Vector2> { new Vector2(2.8f, 4), destination }, map);
+                var after = mesh.vertices;
+                Assert.That(before.Length, Is.GreaterThan(40));
+                int unchanged = 0;
+                for (int i = 0; i < after.Length; i += 8)
+                    for (int j = 0; j < before.Length; j += 8)
+                        if (Vector3.Distance(after[i], before[j]) < .0001f)
+                        { unchanged++; break; }
+                Assert.That(unchanged, Is.GreaterThanOrEqualTo(before.Length / 8 - 1));
+                Assert.That(after[0].x, Is.GreaterThan(before[0].x), "The passed mark should disappear.");
+            }
+            finally
+            {
+                if (guide != null)
+                {
+                    UnityEngine.Object.DestroyImmediate((Mesh)Get(guide, "mesh"));
+                    UnityEngine.Object.DestroyImmediate((Material)Get(guide, "material"));
+                }
+                UnityEngine.Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(map);
+            }
+        }
+
+        [Test]
+        [Category("WorldMapRoute")]
+        public void WalkingRouteDetoursAroundBlockedTilesAndClearsWhenNoPathRemains()
+        {
+            var map = ScriptableObject.CreateInstance<WorldMap>();
+            try
+            {
+                map.origin = Vector2.zero;
+                map.width = 7;
+                map.height = 5;
+                map.walkable = new byte[map.width * map.height];
+                for (int i = 0; i < map.walkable.Length; i++) map.walkable[i] = 1;
+                for (int y = 0; y < 4; y++) map.walkable[y * map.width + 3] = 0;
+                var start = new Vector2(1.25f, 2.5f);
+                var end = new Vector2(5.75f, 2.5f);
+                var route = new List<Vector2>();
+                Assert.That(map.CanTraverse(start, end), Is.False);
+                Assert.That(map.TryFindWalkingRoute(start, end, route), Is.True);
+                Assert.That(route[0], Is.EqualTo(start));
+                Assert.That(route[route.Count - 1], Is.EqualTo(end));
+                for (int i = 1; i < route.Count; i++)
+                    Assert.That(map.CanTraverse(route[i - 1], route[i]), Is.True, "Route segment " + i);
+                map.walkable[4 * map.width + 3] = 0;
+                Assert.That(map.TryFindWalkingRoute(start, end, route), Is.False);
+                Assert.That(route, Is.Empty);
             }
             finally { UnityEngine.Object.DestroyImmediate(map); }
         }

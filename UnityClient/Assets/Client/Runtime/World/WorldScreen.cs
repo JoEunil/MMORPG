@@ -39,6 +39,8 @@ namespace Mmorpg.Client
         private readonly Dictionary<uint, FullStateField> pendingFull = new Dictionary<uint, FullStateField>();
         private FullStateField ownFull;
         private const float MovementUnitsPerSecond = 7.65f;
+        // Keep the same distance and tilt, looking north (+Z) like the world map.
+        private static readonly Vector3 FieldCameraOffset = new Vector3(0, 16, -16.970562f);
         // Request horizon covers the send/server/snapshot/receive cycle; presentation stays tighter.
         private const float MaximumRequestLead = 1.53f;
         private const float MaximumVisualLead = 0.765f;
@@ -63,6 +65,9 @@ namespace Mmorpg.Client
         public Transform ViewCamera => quarterViewCamera;
         public ActorMotion ActorMotion { get; private set; }
         public ServerContent Content => serverContent;
+        internal MapAuthoring MapAuthoring => worldRoot != null ? worldRoot.GetComponentInChildren<MapAuthoring>(true) : null;
+        internal bool HasOpenItemPanel => inventoryScreen != null && inventoryScreen.IsOpen ||
+            bazaarScreen != null && bazaarScreen.IsOpen;
         public TMP_FontAsset ItemTextFont => localKoreanFont;
         public void SetOwnWeaponVisible(bool visible)
         {
@@ -546,7 +551,7 @@ namespace Mmorpg.Client
             var position = new Vector3(position2.x, 0, position2.y);
             ownCharacter.position = position;
             fieldPlane.position = new Vector3(ownFull.x, 0, ownFull.y);
-            quarterViewCamera.position = position + new Vector3(12, 16, -12);
+            quarterViewCamera.position = position + FieldCameraOffset;
             quarterViewCamera.LookAt(position + Vector3.up);
         }
 

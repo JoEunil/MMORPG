@@ -15,6 +15,8 @@ namespace Mmorpg.Client
         [Min(1)] public float zoneCoreSize = 200;
         [Min(0)] public float transitionMargin = 5;
         public uint contentVersion = 1;
+        [Tooltip("World X/Z hunting destinations in zone order, starting at Zone 2.")]
+        public Vector2[] huntingDestinations = System.Array.Empty<Vector2>();
         [Min(1)] public int previewZoneId = 1;
         public bool showZoneBounds = true;
         public bool showAoiCells = true;
