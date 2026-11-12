@@ -2,7 +2,8 @@
 
 #include "FlushDispatcher.h"
 #include "CacheFlush.h"
-#include "MessagePool.h"
+#include "Config.h"
+#include <CoreLib/MessagePool.h>
 #include "DBConnectionGame.h"
 #include "DBConnectionBazaar.h"
 #include "DBConnectionPool.h"
@@ -29,7 +30,7 @@ namespace Cache {
         CacheStorageCurrency cache_currency;
         ProfileCache cache_profile;
         Handler handler;
-        MessagePool msgPool;
+        CacheMessagePool msgPool;
         InMemoryQueue recvMQ;
         DBConnectionPool<DBConnectionGame> connectionPoolGame;
         DBConnectionPool<DBConnectionBazaar> connectionPoolBazaar;
@@ -79,7 +80,6 @@ namespace Cache {
         bool CheckReady() {
             if (!dispatcher.IsReady()
                 or !flush.IsReady() 
-                or !msgPool.IsReady()
                 or !recvMQ.IsReady()
                 or !cache_inventory.IsReady()
                 or !cache_currency.IsReady()

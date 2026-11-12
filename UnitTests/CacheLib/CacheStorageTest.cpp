@@ -420,7 +420,7 @@ TEST(BazaarSearchParser, NarrowingOverflowNegativeQuantityAndPartialReadFailureE
 namespace Cache {
     class BazaarSearchFixture : public ::testing::Test {
     protected:
-        std::unique_ptr<MessagePool> messages = std::make_unique<MessagePool>();
+        std::unique_ptr<CacheMessagePool> messages = std::make_unique<CacheMessagePool>();
         std::unique_ptr<DBWorker<DBConnectionBazaar>> stoppedWorker = std::make_unique<DBWorker<DBConnectionBazaar>>();
         SearchResponseQueue responses;
         Handler handler;
@@ -568,7 +568,7 @@ TEST(BazaarMyListParser, InvalidOrPartialDatabaseResultsNeverExposeAPrefix) {
 namespace Cache {
     class BazaarMyListFixture : public ::testing::Test {
     protected:
-        std::unique_ptr<MessagePool> messages = std::make_unique<MessagePool>();
+        std::unique_ptr<CacheMessagePool> messages = std::make_unique<CacheMessagePool>();
         std::unique_ptr<DBWorker<DBConnectionBazaar>> stoppedWorker = std::make_unique<DBWorker<DBConnectionBazaar>>();
         SearchResponseQueue responses;
         Handler handler;

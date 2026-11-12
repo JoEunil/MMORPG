@@ -3,13 +3,14 @@
 #include <cstdint>
 
 #include <mysqlconn/include/mysql/jdbc.h>
+#include "Config.h"
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"
 #include "ProfileCache.h"
 #include "DBWorker.h"
 #include "DBConnectionGame.h"
 #include "DBConnectionBazaar.h"
-#include "MessagePool.h"
+#include <CoreLib/MessagePool.h>
 
 #include <CoreLib/LoggerGlobal.h>
 namespace Core {
@@ -19,11 +20,9 @@ namespace Core {
 }
 
 namespace Cache {
-    class MessagePool;
-
     class Handler {
         Core::IMessageQueue* messageQ;  // response
-        MessagePool* messagePool = nullptr;
+        CacheMessagePool* messagePool = nullptr;
         CacheStorageInventory* cache_inventory = nullptr;
         CacheStorageCurrency* cache_currency = nullptr;
         ProfileCache* cache_profile = nullptr;
@@ -39,7 +38,7 @@ namespace Cache {
             msg = nullptr;
             return true;
         }
-        void Initialize(Core::IMessageQueue* mq,  MessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp) {
+        void Initialize(Core::IMessageQueue* mq,  CacheMessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp) {
             messageQ = mq;
             messagePool = mp;
             dbWorkerGame = dg;

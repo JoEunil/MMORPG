@@ -6,7 +6,6 @@
 #include <CoreLib/LoggerGlobal.h>
 
 #include "DBWorker.h"
-#include "MessagePool.h"
 #include <atomic>
 #include <memory>
 
@@ -205,7 +204,7 @@ namespace Cache {
                 Core::gameLogger->LogInfo("cache handler", "profile rename failed",
                     "sessionID", sessionID, "profile_id", profileId);
             }
-            Core::Message* res = messagePool->Acquire();
+            auto res = messagePool->AcquireScoped();
             if (res == nullptr) {
                 Core::errorLogger->LogError("cache handler", "failed to acquire message for rename response",
                     "sessionID", sessionID, "profile_id", profileId, "success", success);
@@ -218,8 +217,7 @@ namespace Cache {
             st->body.profileId = profileId;
             st->body.version = version; // 실패 시 0
             res->SetLength(sizeof(Core::MsgStruct<Core::MsgProfileRenameResBody>));
-            messageQ->EnqueueMessage(res);
-            messagePool->Return(res);
+            messageQ->EnqueueMessage(res.get());
             });
     }
 }

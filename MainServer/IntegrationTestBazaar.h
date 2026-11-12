@@ -31,8 +31,8 @@
 // ================================================================
 
 namespace Test {
-    inline Core::MessagePool& g_msgPool() {
-        static Core::MessagePool pool;
+    inline Core::CoreMessagePool& g_msgPool() {
+        static Core::CoreMessagePool pool;
         return pool;
     }
     struct CacheNode;

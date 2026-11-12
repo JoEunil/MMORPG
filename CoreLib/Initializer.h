@@ -28,7 +28,7 @@ namespace Core {
     class Initializer {
         InMemoryQueue recvMQ;
         MessageQueueHandler mqHandler;
-        MessagePool msgPool;
+        CoreMessagePool msgPool;
         PacketWriter writer;
         StateManager stateManager;
         BroadcastThreadPool broadcastPool;

@@ -1,6 +1,5 @@
 ﻿#include "InMemoryQueue.h"
 #include "Handler.h"
-#include "MessagePool.h"
 
 namespace Cache {
     namespace {
@@ -50,8 +49,7 @@ namespace Cache {
             std::vector<std::byte> binary(message->GetLength());
             std::memcpy(binary.data(), message->GetBuffer(), message->GetLength());
             Core::errorLogger->LogError("cache mq", "disconnect durable write failed", "sessionID", header->sessionID, "character state", binary);
-        }
-        else {
+        } else {
             Core::errorLogger->LogError("cache mq", "durable write failed", "sessionID", header->sessionID, "messageType", header->messageType);
         }
         return false;

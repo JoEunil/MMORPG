@@ -6,7 +6,6 @@
 #include <CoreLib/LoggerGlobal.h>
 
 #include "DBWorker.h"
-#include "MessagePool.h"
 
 namespace Cache {
     void Handler::CurrencyRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgCurrencyReqBody* body) {

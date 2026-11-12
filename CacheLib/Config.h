@@ -1,8 +1,14 @@
 ﻿#pragma once
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstdio>
 #include <string>
+
+namespace Core {
+    template<std::size_t PoolSize, uint16_t MessageLength>
+    class MessagePool;
+}
 
 namespace Cache {
     inline std::string GetEnvVar(const char* name) {
@@ -108,8 +114,9 @@ namespace Cache {
     inline constexpr const char* QUERY_22 = "UPDATE profile SET name = ?, version = version + 1 WHERE profile_id = ?";
 
     inline constexpr uint16_t MSGPOOL_SIZE = 10000;
-
     inline constexpr uint16_t MESSAGE_LEN = 2048;
+    using CacheMessagePool = Core::MessagePool<MSGPOOL_SIZE, MESSAGE_LEN>;
+
     inline constexpr uint16_t THREADPOOL_SIZE = 100; 
 
     inline constexpr uint16_t MAX_CHARACTER_CNT = 10;

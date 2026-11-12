@@ -10,7 +10,6 @@
 #include <CoreLib/ItemData.h>
 
 #include "DBWorker.h"
-#include "MessagePool.h"
 #include "BazaarSearchResult.h"
 #include "BazaarMyListResult.h"
 #include "BazaarClaimResult.h"
@@ -75,9 +74,9 @@ namespace Cache {
         auto request = *body; // The response overwrites this buffer and the worker outlives this call.
         struct PendingResponse {
             Core::Message* message;
-            MessagePool* pool;
+            CacheMessagePool* pool;
             bool finished = false;
-            PendingResponse(Core::Message* message, MessagePool* pool) : message(message), pool(pool) {}
+            PendingResponse(Core::Message* message, CacheMessagePool* pool) : message(message), pool(pool) {}
             ~PendingResponse() { pool->Return(message); }
         };
         const auto pending = std::make_shared<PendingResponse>(msg, messagePool);

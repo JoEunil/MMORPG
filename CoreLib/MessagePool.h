@@ -1,17 +1,16 @@
 ﻿#pragma once
 
-#include <deque>
-#include <cstdint>
+#include <cstddef>
 #include <memory>
 
 #include <BaseLib/FixedObjectPool.h>
 #include "Config.h"
-#include "LoggerGlobal.h"
 #include "Message.h"
 
 namespace Core {
-    class MessagePool{
-        Base::FixedObjectPool<Message, MSGPOOL_SIZE> m_fixedPool{ MESSAGE_LEN };
+    template<std::size_t PoolSize, uint16_t MessageLength>
+    class MessagePool {
+        Base::FixedObjectPool<Message, PoolSize> m_fixedPool{ MessageLength };
 
         struct MessageDeleter {
             MessagePool* pool;
@@ -29,8 +28,18 @@ namespace Core {
     public:
         using ScopedMessage = std::unique_ptr<Message, MessageDeleter>;
 
-        Message* Acquire(); 
-        ScopedMessage AcquireScoped();
-        void Return(Message* msg);
+        Message* Acquire() {
+            return m_fixedPool.Allocate();
+        }
+
+        ScopedMessage AcquireScoped() {
+            return ScopedMessage{ Acquire(), MessageDeleter{ this } };
+        }
+
+        void Return(Message* msg) {
+            m_fixedPool.Deallocate(msg);
+        }
     };
+
+    using CoreMessagePool = MessagePool<MSGPOOL_SIZE, MESSAGE_LEN>;
 }

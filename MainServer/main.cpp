@@ -46,7 +46,6 @@ int main(int argc, char* argv[]) {
         int result = EXIT_FAILURE;
         try {
             if (testBazaar) {
-                Test::g_msgPool().InitializeForTest();
                 Test::RunAll();
                 result = EXIT_SUCCESS;
             }

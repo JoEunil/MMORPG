@@ -155,7 +155,6 @@
     <ClInclude Include="Handler.h" />
     <ClInclude Include="Initializer.h" />
     <ClInclude Include="InMemoryQueue.h" />
-    <ClInclude Include="MessagePool.h" />
     <ClInclude Include="WALManager.h" />
   </ItemGroup>
   <ItemGroup>
@@ -170,7 +169,6 @@
     <ClCompile Include="Handler_Diamond.cpp" />
     <ClCompile Include="Handler_Inventory.cpp" />
     <ClCompile Include="InMemoryQueue.cpp" />
-    <ClCompile Include="MessagePool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BaseLib\BaseLib.vcxproj">
