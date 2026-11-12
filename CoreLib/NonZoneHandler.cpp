@@ -150,13 +150,10 @@ namespace Core {
         if (msg == nullptr) {
             return;
         }
-        auto st = reinterpret_cast<MsgStruct<MsgProfileRenameBody>*>(msg->GetBuffer());
-        st->header.sessionID = sessionID;
-        st->header.messageType = MSG_PROFILE_RENAME;
+        auto* st = InitializeMsg<MsgProfileRenameBody>(*msg, { sessionID, MSG_PROFILE_RENAME });
         st->body.profileId = profileId;
         std::memset(st->body.name, 0, sizeof(st->body.name));
         std::memcpy(st->body.name, name, nameLen);
-        msg->SetLength(sizeof(MsgStruct<MsgProfileRenameBody>));
         messageQueue->EnqueueMessage(msg.get());
     }
 
@@ -169,12 +166,8 @@ namespace Core {
         if (msg == nullptr) {
             return;
         }
-        MsgStruct<MsgInventoryReqBody>* st = reinterpret_cast<MsgStruct<MsgInventoryReqBody>*>(msg->GetBuffer());
-        
-        st->header.sessionID = p->GetSessionID();
-        st->header.messageType = MSG_INVENTORY_REQ;
+        auto* st = InitializeMsg<MsgInventoryReqBody>(*msg, { p->GetSessionID(), MSG_INVENTORY_REQ });
         st->body.characterID = charID;
-        msg->SetLength(sizeof(MsgStruct<MsgInventoryReqBody>));
         messageQueue->EnqueueMessage(msg.get());
     }
 
@@ -189,10 +182,8 @@ namespace Core {
 
         bool goldQueued = false;
         if (auto gold = messagePool->AcquireScoped()) {
-            auto* st = reinterpret_cast<MsgStruct<MsgCurrencyReqBody>*>(gold->GetBuffer());
-            st->header = { p->GetSessionID(), MSG_CURRENCY_REQ };
+            auto* st = InitializeMsg<MsgCurrencyReqBody>(*gold, { p->GetSessionID(), MSG_CURRENCY_REQ });
             st->body = { characterID, request.requestID };
-            gold->SetLength(sizeof(*st));
             goldQueued = messageQueue->EnqueueMessage(gold.get());
         }
         if (!goldQueued) {
@@ -206,10 +197,8 @@ namespace Core {
 
         bool diamondQueued = false;
         if (auto diamond = messagePool->AcquireScoped()) {
-            auto* st = reinterpret_cast<MsgStruct<MsgDiamondReqBody>*>(diamond->GetBuffer());
-            st->header = { p->GetSessionID(), MSG_DIAMOND_REQ };
+            auto* st = InitializeMsg<MsgDiamondReqBody>(*diamond, { p->GetSessionID(), MSG_DIAMOND_REQ });
             st->body = { characterID, request.requestID };
-            diamond->SetLength(sizeof(*st));
             diamondQueued = messageQueue->EnqueueMessage(diamond.get());
         }
         if (!diamondQueued) {

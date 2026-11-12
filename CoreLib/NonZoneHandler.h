@@ -17,6 +17,15 @@ namespace Core {
     class ChatThreadPool;
     class IProfileCache;
     class NonZoneHandler{
+        template<typename T>
+        static MsgStruct<T>* InitializeMsg(Message& msg, MsgHeader header) {
+            static_assert(sizeof(MsgStruct<T>) <= MESSAGE_LEN);
+            auto* request = reinterpret_cast<MsgStruct<T>*>(msg.GetBuffer());
+            request->header = header;
+            msg.SetLength(sizeof(*request));
+            return request;
+        }
+
         void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc);
         bool IsReady();
         void CheckSession(IPacketView* p);

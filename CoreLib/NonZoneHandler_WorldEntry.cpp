@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "NonZoneHandler.h"
 
 #include "Config.h"
@@ -40,16 +40,11 @@ namespace Core {
     void NonZoneHandler::GetCharacterList(IPacketView* p) {
         auto msg = messagePool->AcquireScoped();
         if (msg == nullptr) {
-            p = nullptr;
             return ;
 		}
-        MsgStruct<MsgCharacterListReqBody>* st = reinterpret_cast<MsgStruct<MsgCharacterListReqBody>*>(msg->GetBuffer());
-        
-        st->header.sessionID = p->GetSessionID();
-        st->header.messageType = MSG_CHARACTER_LIST_REQ;
+        auto* st = InitializeMsg<MsgCharacterListReqBody>(*msg, { p->GetSessionID(), MSG_CHARACTER_LIST_REQ });
         st->body.channelID = CHANNEL_ID;
         st->body.userID = stateManager->GetUserID(p->GetSessionID());
-        msg->SetLength(sizeof(MsgStruct<MsgCharacterListReqBody>));
         messageQueue->EnqueueMessage(msg.get());
     }
 
@@ -58,17 +53,13 @@ namespace Core {
         if (msg == nullptr) {
             return;
         }
-        MsgStruct<MsgCharacterStateReqBody>* st = reinterpret_cast<MsgStruct<MsgCharacterStateReqBody>*>(msg->GetBuffer());
-        
         auto packetBody = parseBody<EnterWorldRequestBody>(p->GetPtr());
         
-        st->header.sessionID = p->GetSessionID();
-        st->header.messageType = MSG_CHARACTER_STATE_REQ;
+        auto* st = InitializeMsg<MsgCharacterStateReqBody>(*msg, { p->GetSessionID(), MSG_CHARACTER_STATE_REQ });
         st->body.channelID = CHANNEL_ID;
         st->body.userID = stateManager->GetUserID(p->GetSessionID());
         st->body.characterID = packetBody->characterID;
 
-        msg->SetLength(sizeof(MsgStruct<MsgCharacterStateReqBody>));
         messageQueue->EnqueueMessage(msg.get());
     }
 }
