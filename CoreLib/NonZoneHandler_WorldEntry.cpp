@@ -38,7 +38,7 @@ namespace Core {
     }
 
     void NonZoneHandler::GetCharacterList(IPacketView* p) {
-        Message* msg = messagePool->Acquire();
+        auto msg = messagePool->AcquireScoped();
         if (msg == nullptr) {
             p = nullptr;
             return ;
@@ -50,12 +50,11 @@ namespace Core {
         st->body.channelID = CHANNEL_ID;
         st->body.userID = stateManager->GetUserID(p->GetSessionID());
         msg->SetLength(sizeof(MsgStruct<MsgCharacterListReqBody>));
-        messageQueue->EnqueueMessage(msg);
-        messagePool->Return(msg);
+        messageQueue->EnqueueMessage(msg.get());
     }
 
     void NonZoneHandler::GetCharacterState(IPacketView* p) {
-        Message* msg = messagePool->Acquire();
+        auto msg = messagePool->AcquireScoped();
         if (msg == nullptr) {
             return;
         }
@@ -70,7 +69,6 @@ namespace Core {
         st->body.characterID = packetBody->characterID;
 
         msg->SetLength(sizeof(MsgStruct<MsgCharacterStateReqBody>));
-        messageQueue->EnqueueMessage(msg);
-        messagePool->Return(msg);
+        messageQueue->EnqueueMessage(msg.get());
     }
 }

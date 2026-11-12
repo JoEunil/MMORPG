@@ -17,8 +17,7 @@ namespace Core {
     class ChatThreadPool;
     class IProfileCache;
     class NonZoneHandler{
-        void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c);
-        void InitializeProfileCache(IProfileCache* pc);
+        void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc);
         bool IsReady();
         void CheckSession(IPacketView* p);
         void ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID);

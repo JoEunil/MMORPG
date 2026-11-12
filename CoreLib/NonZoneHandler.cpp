@@ -18,7 +18,7 @@
 #include "Config.h"
 
 namespace Core {
-    void NonZoneHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c) {
+    void NonZoneHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc) {
         networkSender = sender;
         auth = s;
         writer = p;
@@ -27,9 +27,6 @@ namespace Core {
         stateManager = manager;
         lobbyZone = lobby;
         chat = c;
-    }
-
-    void NonZoneHandler::InitializeProfileCache(IProfileCache* pc) {
         profileCache = pc;
     }
 
@@ -149,7 +146,7 @@ namespace Core {
             errorLogger->LogError("non zone handler", "profile rename invalid", "session", sessionID, "profile_id", profileId, "nameLen", nameLen);
             return;
         }
-        Message* msg = messagePool->Acquire();
+        auto msg = messagePool->AcquireScoped();
         if (msg == nullptr) {
             return;
         }
@@ -160,8 +157,7 @@ namespace Core {
         std::memset(st->body.name, 0, sizeof(st->body.name));
         std::memcpy(st->body.name, name, nameLen);
         msg->SetLength(sizeof(MsgStruct<MsgProfileRenameBody>));
-        messageQueue->EnqueueMessage(msg);
-        messagePool->Return(msg);
+        messageQueue->EnqueueMessage(msg.get());
     }
 
     void NonZoneHandler::GetInventory(IPacketView* p) {
@@ -169,7 +165,7 @@ namespace Core {
         if (charID <= 0)
             return ;
         
-        Message* msg = messagePool->Acquire();
+        auto msg = messagePool->AcquireScoped();
         if (msg == nullptr) {
             return;
         }
@@ -179,8 +175,7 @@ namespace Core {
         st->header.messageType = MSG_INVENTORY_REQ;
         st->body.characterID = charID;
         msg->SetLength(sizeof(MsgStruct<MsgInventoryReqBody>));
-        messageQueue->EnqueueMessage(msg);
-        messagePool->Return(msg);
+        messageQueue->EnqueueMessage(msg.get());
     }
 
     void NonZoneHandler::WalletRequest(IPacketView* p) {
@@ -192,17 +187,15 @@ namespace Core {
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
 
-        Message* gold = messagePool->Acquire();
-        if (gold != nullptr) {
+        bool goldQueued = false;
+        if (auto gold = messagePool->AcquireScoped()) {
             auto* st = reinterpret_cast<MsgStruct<MsgCurrencyReqBody>*>(gold->GetBuffer());
             st->header = { p->GetSessionID(), MSG_CURRENCY_REQ };
             st->body = { characterID, request.requestID };
             gold->SetLength(sizeof(*st));
-            const bool queued = messageQueue->EnqueueMessage(gold);
-            messagePool->Return(gold);
-            if (!queued) gold = nullptr;
+            goldQueued = messageQueue->EnqueueMessage(gold.get());
         }
-        if (gold == nullptr) {
+        if (!goldQueued) {
             MsgCurrencyResBody failed{};
             failed.requestID = request.requestID;
             failed.characterID = characterID;
@@ -211,17 +204,15 @@ namespace Core {
                 networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
         }
 
-        Message* diamond = messagePool->Acquire();
-        if (diamond != nullptr) {
+        bool diamondQueued = false;
+        if (auto diamond = messagePool->AcquireScoped()) {
             auto* st = reinterpret_cast<MsgStruct<MsgDiamondReqBody>*>(diamond->GetBuffer());
             st->header = { p->GetSessionID(), MSG_DIAMOND_REQ };
             st->body = { characterID, request.requestID };
             diamond->SetLength(sizeof(*st));
-            const bool queued = messageQueue->EnqueueMessage(diamond);
-            messagePool->Return(diamond);
-            if (!queued) diamond = nullptr;
+            diamondQueued = messageQueue->EnqueueMessage(diamond.get());
         }
-        if (diamond == nullptr) {
+        if (!diamondQueued) {
             MsgDiamondResBody failed{};
             failed.requestID = request.requestID;
             failed.characterID = characterID;
