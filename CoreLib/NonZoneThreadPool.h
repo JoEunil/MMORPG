@@ -46,7 +46,6 @@ namespace Core {
         }
         void WorkFunc();
         friend class Initializer;
-        friend class NonZoneThreadPoolFixture;
     public:
         ~NonZoneThreadPool() {
             Stop();

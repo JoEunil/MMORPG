@@ -18,6 +18,15 @@
     <Filter Include="Data">
       <UniqueIdentifier>{412850a0-70ca-4b69-9a40-dbf019f24972}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Packet">
+      <UniqueIdentifier>{3482cfad-732d-4bcc-99bc-bfae9b9e2cf2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NonZone">
+      <UniqueIdentifier>{c4f28abd-51f8-405c-8f48-a343d6b9ddb1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="World">
+      <UniqueIdentifier>{f85ba790-243e-404f-ba40-64486aeb1b42}</UniqueIdentifier>
+    </Filter>
     <Filter Include="소스 파일">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
@@ -28,24 +37,24 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="PacketWriter.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>Packet</Filter>
     </ClInclude>
     <ClInclude Include="PacketTypes.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>Packet</Filter>
     </ClInclude>
     <ClInclude Include="Config.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="DurableLogger.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>Cache</Filter>
     </ClInclude>
     <ClInclude Include="Initializer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="ZoneState.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="IIOCP.h">
+    <ClInclude Include="INetworkSender.h">
       <Filter>Interface</Filter>
     </ClInclude>
     <ClInclude Include="ILogger.h">
@@ -88,28 +97,28 @@
       <Filter>Interface</Filter>
     </ClInclude>
     <ClInclude Include="StateManager.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="BroadcastThreadPool.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="ZoneThreadSet.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="ZoneHandler.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="LobbyZone.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="PacketDispatcher.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>Packet</Filter>
     </ClInclude>
     <ClInclude Include="NonZoneHandler.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>NonZone</Filter>
     </ClInclude>
     <ClInclude Include="NonZoneThreadPool.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>NonZone</Filter>
     </ClInclude>
     <ClInclude Include="IPacketDispatcher.h">
       <Filter>Interface</Filter>
@@ -118,13 +127,13 @@
       <Filter>Interface</Filter>
     </ClInclude>
     <ClInclude Include="ChatThreadPool.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>NonZone</Filter>
     </ClInclude>
     <ClInclude Include="MonsterState.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="CharacterState.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="Skills.inc">
       <Filter>Data</Filter>
@@ -145,10 +154,10 @@
       <Filter>Data</Filter>
     </ClInclude>
     <ClInclude Include="Cell.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="WorldMap.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="Generated\WorldMap.inc">
       <Filter>Data</Filter>
@@ -168,19 +177,22 @@
     <ClInclude Include="IProfileCache.h">
       <Filter>Interface</Filter>
     </ClInclude>
+    <ClInclude Include="ChatSessionManager.h">
+      <Filter>NonZone</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="PacketWriter.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>Packet</Filter>
     </ClCompile>
     <ClCompile Include="DurableLogger.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>Cache</Filter>
     </ClCompile>
     <ClCompile Include="ZoneState.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="MessagePool.cpp">
       <Filter>Cache</Filter>
@@ -192,40 +204,46 @@
       <Filter>Cache</Filter>
     </ClCompile>
     <ClCompile Include="StateManager.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="ZoneThreadSet.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="ZoneHandler.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="PacketDispatcher.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>Packet</Filter>
     </ClCompile>
     <ClCompile Include="NonZoneHandler.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>NonZone</Filter>
+    </ClCompile>
+    <ClCompile Include="NonZoneHandler_Bazaar.cpp">
+      <Filter>NonZone</Filter>
+    </ClCompile>
+    <ClCompile Include="NonZoneHandler_WorldEntry.cpp">
+      <Filter>NonZone</Filter>
     </ClCompile>
     <ClCompile Include="NonZoneThreadPool.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>NonZone</Filter>
     </ClCompile>
     <ClCompile Include="BroadcastThreadPool.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="ChatThreadPool.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>NonZone</Filter>
     </ClCompile>
     <ClCompile Include="ZoneState_Skills.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="ZoneState_Actions.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="ZoneState_Monsters.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="ZoneState_Snapshots.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="SkillData.cpp">
       <Filter>Data</Filter>
@@ -235,6 +253,9 @@
     </ClCompile>
     <ClCompile Include="LoggerGlobal.cpp">
       <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ChatSessionManager.cpp">
+      <Filter>NonZone</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

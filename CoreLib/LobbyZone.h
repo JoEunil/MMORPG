@@ -23,7 +23,6 @@ namespace Core {
             return true;
         }
         friend class Initializer;
-        friend class NonZoneThreadPoolFixture;
         friend class StateManager;
     public:
         void Disconnect(uint64_t sessionID) {

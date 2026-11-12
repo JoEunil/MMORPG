@@ -91,7 +91,6 @@ namespace Core {
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
         friend class StateManager;
-        friend class NonZoneThreadPoolFixture;
         friend class MonsterBehaviorFixture;
     public:
         explicit ZoneState(uint16_t zone) {

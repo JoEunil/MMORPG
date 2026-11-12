@@ -3,26 +3,49 @@
 
 #include "MessageTypes.h"
 #include "MessagePool.h"
+#include "IMessageQueue.h"
 
 namespace Core {
     class ILogger;
     class ISessionAuth;
     class IPacketView;
-    class IIOCP;
+    class INetworkSender;
     class IDBCache;
     class PacketWriter;
-    class IMessageQueue;
     class StateManager;
     class LobbyZone;
     class ChatThreadPool;
     class IProfileCache;
     class NonZoneHandler{
-        void Initialize(IIOCP* i, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c);
-        void InitializeProfileCache(IProfileCache* pc);
+        template<typename T>
+        static MsgStruct<T>* InitializeMsg(Message& msg, MsgHeader header) {
+            static_assert(sizeof(MsgStruct<T>) <= MESSAGE_LEN);
+            auto* request = reinterpret_cast<MsgStruct<T>*>(msg.GetBuffer());
+            request->header = header;
+            msg.SetLength(sizeof(*request));
+            return request;
+        }
+
+        template<typename T>
+        bool TryEnqueueMessage(MsgHeader header, const T& body) {
+            auto msg = messagePool->AcquireScoped();
+            if (!msg)
+                return false;
+
+            auto* request = InitializeMsg<T>(*msg, header);
+            request->body = body;
+            return messageQueue->EnqueueMessage(msg.get());
+        }
+
+        void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc);
         bool IsReady();
         void CheckSession(IPacketView* p);
+        void ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID);
         void GetCharacterList(IPacketView* p);
         void GetCharacterState(IPacketView* p);
+        void UseItem(IPacketView* p);
+        void GetEquipment(IPacketView* p);
+        void SetEquipment(IPacketView* p);
         void GetInventory(IPacketView* p);
         void BazaarSearch(IPacketView* p);
         void BazaarRegister(IPacketView* p);
@@ -37,6 +60,9 @@ namespace Core {
         void ZoneChange(IPacketView* p);
         void RespawnToTown(IPacketView* p);
         void GetProfileBatch(IPacketView* p);
+        INetworkSender* networkSender = nullptr;
+        PacketWriter* writer = nullptr;
+        StateManager* stateManager = nullptr;
         ISessionAuth* auth = nullptr;
         IDBCache* cache = nullptr;
         MessagePool* messagePool = nullptr;
@@ -45,8 +71,6 @@ namespace Core {
         ChatThreadPool* chat = nullptr;
         IProfileCache* profileCache = nullptr;
         friend class Initializer;
-        friend class NonZoneThreadPoolFixture;
-        
     public:
         void Process(IPacketView* p);
         void Disconnect(uint64_t sessionID);

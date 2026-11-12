@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include "ChatThreadPool.h"
-#include "IIOCP.h"
+#include "INetworkSender.h"
 #include "PacketWriter.h"
 #include "CorePerfCollector.h"
 
@@ -23,60 +23,11 @@ namespace Core {
             int processed = 0;
             for (; processed < CHAT_BATCH_SIZE; ++processed)
             {
-                if (!m_running.load(std::memory_order_relaxed))
+                if (!ProcessQueuedEvent(tempPackets))
                     break;
-
-                ChatEvent curr;
-                if (!m_chatQueue.Dequeue(curr))
-                    break;
-
-                if (!m_running.load(std::memory_order_relaxed))
-                    break;
-
-                switch (curr.type)
-                {
-                case ChatEventType::SESSION_ADD:
-                    ProcessAddSession(curr.senderSessionID, curr.senderChatID, static_cast<uint16_t>(curr.key.id), curr.senderProfileId);
-                    continue;
-                case ChatEventType::ZONE_JOIN:
-                case ChatEventType::ZONE_LEAVE:
-                    ProcessZoneTransition(std::move(curr));
-                    continue;
-                }
-
-                auto it = m_sessionChatIdMap.find(curr.senderSessionID);
-                if (it == m_sessionChatIdMap.end()) {
-                    continue;
-                }
-                auto chatID = it->second.chatID;
-                auto profileId = it->second.profileId;
-
-                switch (curr.type)
-                {
-                case ChatEventType::CHAT:
-                    ProcesChat(curr, chatID, profileId, tempPackets);
-                    break;
-
-                case ChatEventType::SESSION_DELETE:
-                    ProcessDeleteSession(curr.senderSessionID, static_cast<uint16_t>(curr.key.id));
-                    break;
-                    //case ChatEventType::GUILD_JOIN: break;
-                    //case ChatEventType::GUILD_LEAVE: break;
-                    //case ChatEventType::PARTY_JOIN: break;
-                    //case ChatEventType::PARTY_LEAVE: break;
-                default:
-                    errorLogger->LogInfo("chat thread", "undefined chat event", "chatID", chatID, "chat event type", (int)curr.type);
-                    break;
-                    // "undefined chat event type"
-                }
             }
 
-            for (auto& [key, packet] : tempPackets)
-            {
-                SendPacketGroup(key, packet);
-            }
-
-            tempPackets.clear();
+            FlushChatBatches(tempPackets);
 
             // Batch가 가득 찬 동안은 sleep 없이 다음 batch를 즉시 처리한다.
             if (processed == CHAT_BATCH_SIZE)
@@ -85,153 +36,147 @@ namespace Core {
             std::this_thread::sleep_for(CHAT_BATCH_WINDOW);
         }
     }
-    void ChatThreadPool::SendPacketUnique(uint64_t session, std::unique_ptr<IPacket, PacketDeleter> p) {
-        iocp->SendDataUnique(session, std::move(p));
+
+    bool ChatThreadPool::ProcessQueuedEvent(std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
+        if (!m_running.load(std::memory_order_relaxed))
+            return false;
+
+        ChatEvent curr;
+        if (!m_chatQueue.Dequeue(curr))
+            return false;
+
+        if (!m_running.load(std::memory_order_relaxed))
+            return false;
+
+        switch (curr.type)
+        {
+        case ChatEventType::SESSION_ADD:
+            m_sessions.AddSession(curr.senderSessionID, curr.senderChatID, curr.senderProfileId);
+            return true;
+        case ChatEventType::ZONE_JOIN:
+        case ChatEventType::ZONE_LEAVE:
+            ProcessZoneTransition(std::move(curr));
+            return true;
+        }
+
+        const auto* user = m_sessions.FindSession(curr.senderSessionID);
+        if (!user) {
+            return true;
+        }
+        auto chatID = user->chatID;
+        auto profileId = user->profileId;
+
+        switch (curr.type)
+        {
+        case ChatEventType::CHAT:
+            ProcesChat(curr, chatID, profileId, tempPackets);
+            break;
+
+        case ChatEventType::SESSION_DELETE:
+            m_sessions.DeleteSession(curr.senderSessionID);
+            break;
+        default:
+            errorLogger->LogInfo("chat thread", "undefined chat event", "chatID", chatID, "chat event type", (int)curr.type);
+            break;
+        }
+        return true;
     }
+
+    void ChatThreadPool::FlushChatBatches(std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
+        for (auto& [key, packet] : tempPackets)
+        {
+            SendPacketGroup(key, packet);
+        }
+
+        tempPackets.clear();
+    }
+
+    void ChatThreadPool::SendWhisper(const ChatEvent& event, uint64_t chatID, uint32_t profileId) {
+        auto packet = writer->GetChatWhisperPacket(chatID, profileId, event.message);
+        if (!packet)
+            return;
+
+        const auto destSession = m_sessions.FindSessionID(event.key.id);
+        if (!destSession) {
+            return;
+        }
+
+        networkSender->SendDataUnique(*destSession, std::move(packet));
+        auto senderPacket = writer->GetChatWhisperPacket(chatID, profileId, event.message);
+        if (senderPacket) {
+            networkSender->SendDataUnique(event.senderSessionID, std::move(senderPacket));
+            perfCollector->AddChatSend(2);
+        } else {
+            perfCollector->AddChatSend(1);
+        }
+    }
+
     void ChatThreadPool::SendPacketGroup(ChatDestKey key, std::shared_ptr<IPacket> packet) {
+        size_t recipientCount;
         switch (key.scope)
         {
         case CHAT_SCOPE::Zone: {
-            uint16_t zoneID = key.id;
-            if (zoneID == 0 || zoneID > ZONE_COUNT)
+            const auto* members = m_sessions.FindZoneMembers(key.id);
+            if (!members)
                 return;
-            for (auto& session : m_zoneMembers[zoneID-1])
+            for (auto session : *members)
             {
-                iocp->SendData(session, packet);
+                networkSender->SendData(session, packet);
             }
+            recipientCount = members->size();
             break;
         }
         case CHAT_SCOPE::Global: {
-            for (auto& [session, chatID] : m_sessionChatIdMap)
+            const auto& sessions = m_sessions.GetSessions();
+            for (const auto& [session, user] : sessions)
             {
-                iocp->SendData(session, packet);
+                networkSender->SendData(session, packet);
             }
+            recipientCount = sessions.size();
             break;
         }
-        default: break;
+        default:
+            return;
         }
+
+        const auto* batch = parseBody<ChatBatchNotifyBody>(packet->GetBuffer());
+        perfCollector->AddChatSend(batch->chatCnt * recipientCount);
     }
 
     void ChatThreadPool::ProcesChat(ChatEvent& curr, uint64_t chatID, uint32_t profileId, std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
         if (curr.key.scope == CHAT_SCOPE::Whisper) {
-            auto packet = writer->GetChatWhisperPacket(chatID, profileId, curr.message);
-            if (!packet)
-				return;
-            uint64_t& destChatID = curr.key.id;
-            auto it = m_chatIdSessionMap.find(destChatID);
-            if (it == m_chatIdSessionMap.end()) {
-                return;
-            }
-            SendPacketUnique(it->second, std::move(packet));
-            auto senderPacket = writer->GetChatWhisperPacket(chatID, profileId, curr.message);
-
-            SendPacketUnique(curr.senderSessionID, std::move(senderPacket));
-            perfCollector->AddChatSend(2);
+            SendWhisper(curr, chatID, profileId);
             return;
         }
-        if (curr.key.scope == CHAT_SCOPE::Global) {
-            perfCollector->AddChatSend(m_chatIdSessionMap.size());
-        }
-        if (curr.key.scope == CHAT_SCOPE::Zone) {
-            perfCollector->AddChatSend(m_zoneMembers[curr.key.id - 1].size());
-        }
+        if (curr.key.scope == CHAT_SCOPE::Zone && !m_sessions.FindZoneMembers(curr.key.id))
+            return;
+
+        AppendToChatBatch(curr, chatID, profileId, tempPackets);
+    }
+
+    void ChatThreadPool::AppendToChatBatch(const ChatEvent& curr, uint64_t chatID, uint32_t profileId,
+        std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
         auto it = tempPackets.find(curr.key);
         if (it != tempPackets.end()) {
             uint16_t count = writer->WriteChatBatchPacketField(it->second, chatID, profileId, curr.message);
-            if (count == MAX_CHAT_PACKET) {
+            if (count == 0 || count == MAX_CHAT_PACKET) {
                 SendPacketGroup(it->first, it->second);
-				auto p = writer->GetInitialChatBatchPacket(curr.key.scope);
-                if (!p)
-					return;
-				tempPackets[curr.key] = p;
+                tempPackets.erase(it);
             }
-        }
-        else {
-            auto p = writer->GetInitialChatBatchPacket(curr.key.scope);
-            if (!p)
+            if (count != 0)
                 return;
-            tempPackets[curr.key] = p;
-            int count = writer->WriteChatBatchPacketField(tempPackets[curr.key], chatID, profileId, curr.message);
-        }
-    }
-
-    // State Manager의 처리결과를 동기화해서 쓰는거라서 예외 발생은 하지 않는다고 가정.
-    // session 추가, 삭제는 샤딩 적용하더라도, mutex 필요.
-    void ChatThreadPool::ProcessAddSession(uint64_t sessionID, uint64_t chatID, uint16_t zoneID, uint32_t profileId) {
-        auto it = m_sessionChatIdMap.find(sessionID);
-        if (it != m_sessionChatIdMap.end()) {
-            errorLogger->LogInfo("chat thread", "chatID already exist", "chatID", chatID, "session", sessionID);
-            return;
-        }
-        auto& node = m_sessionChatIdMap[sessionID];
-        node.chatID = chatID;
-        node.profileId = profileId;
-        node.zoneID = 0;
-        m_chatIdSessionMap[chatID] = sessionID;
-        // 싱글 스레드 접근이라서 안전함
-    }
-    void ChatThreadPool::ProcessDeleteSession(uint64_t sessionID, uint16_t zoneID) {
-        auto it = m_sessionChatIdMap.find(sessionID);
-        if (it == m_sessionChatIdMap.end()) {
-            errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
-            return;
-        }
-        const uint16_t currentZoneID = it->second.zoneID;
-        if (currentZoneID > 0 && currentZoneID <= ZONE_COUNT) {
-            m_zoneMembers[currentZoneID - 1].erase(sessionID);
-        }
-        m_chatIdSessionMap.erase(it->second.chatID);
-        m_sessionChatIdMap.erase(it);
-    }
-    void ChatThreadPool::ProcessZoneJoin(uint64_t sessionID, uint16_t zoneID) {
-        if (zoneID == 0 || zoneID > ZONE_COUNT)
-            return;
-
-        auto sessionIt = m_sessionChatIdMap.find(sessionID);
-        if (sessionIt == m_sessionChatIdMap.end()) {
-            errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
-            return;
         }
 
-        const uint16_t currentZoneID = sessionIt->second.zoneID;
-        if (currentZoneID == zoneID)
-            return;
-
-        if (currentZoneID > 0 && currentZoneID <= ZONE_COUNT) {
-            m_zoneMembers[currentZoneID - 1].erase(sessionID);
-        }
-
-        m_zoneMembers[zoneID - 1].insert(sessionID);
-        sessionIt->second.zoneID = zoneID;
-    }
-    void ChatThreadPool::ProcessZoneLeave(uint64_t sessionID, uint16_t zoneID) {
-        auto sessionIt = m_sessionChatIdMap.find(sessionID);
-        if (sessionIt == m_sessionChatIdMap.end()) {
-            errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
-            return;
-        }
-
-        const uint16_t currentZoneID = sessionIt->second.zoneID;
-        if (currentZoneID == 0)
-            return;
-
-        if (currentZoneID <= ZONE_COUNT) {
-            m_zoneMembers[currentZoneID - 1].erase(sessionID);
-        }
-        sessionIt->second.zoneID = 0;
+        auto packet = writer->GetInitialChatBatchPacket(curr.key.scope);
+        if (packet && writer->WriteChatBatchPacketField(packet, chatID, profileId, curr.message) != 0)
+            tempPackets.emplace(curr.key, std::move(packet));
     }
 
     void ChatThreadPool::ProcessZoneTransition(ChatEvent&& event) {
         std::lock_guard<std::mutex> lock(m_zoneSequenceMutex);
         auto sequenceIt = m_currentZoneSequence.find(event.senderSessionID);
         if (sequenceIt == m_currentZoneSequence.end()) {
-            errorLogger->LogError(
-                "chat thread",
-                "zone transition before session add",
-                "session",
-                event.senderSessionID,
-                "sequence",
-                event.zoneSequence);
+            errorLogger->LogError("chat thread", "zone transition before session add", "session", event.senderSessionID, "sequence", event.zoneSequence);
             return;
         }
 
@@ -243,12 +188,11 @@ namespace Core {
     }
 
     void ChatThreadPool::ApplyZoneTransition(const ChatEvent& event) {
-        const auto zoneID = static_cast<uint16_t>(event.key.id);
         if (event.type == ChatEventType::ZONE_JOIN) {
-            ProcessZoneJoin(event.senderSessionID, zoneID);
+            m_sessions.JoinZone(event.senderSessionID, static_cast<uint16_t>(event.key.id));
         }
         else if (event.type == ChatEventType::ZONE_LEAVE) {
-            ProcessZoneLeave(event.senderSessionID, zoneID);
+            m_sessions.LeaveZone(event.senderSessionID);
         }
     }
 

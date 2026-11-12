@@ -1,0 +1,85 @@
+﻿#include "pch.h"
+#include "ChatSessionManager.h"
+#include "Config.h"
+#include "LoggerGlobal.h"
+
+namespace Core {
+    ChatSessionManager::ChatSessionManager() {
+        m_zoneMembers.resize(ZONE_COUNT);
+        m_sessionChatIdMap.reserve(MAX_USER_CAPACITY);
+    }
+
+    void ChatSessionManager::RemoveFromZone(uint64_t sessionID, uint16_t zoneID) {
+        if (zoneID > 0 && zoneID <= ZONE_COUNT) {
+            m_zoneMembers[zoneID - 1].erase(sessionID);
+        }
+    }
+
+    void ChatSessionManager::AddSession(uint64_t sessionID, uint64_t chatID, uint32_t profileId) {
+        const bool inserted = m_sessionChatIdMap.try_emplace(sessionID, ChatUserInfo{chatID, profileId}).second;
+        if (!inserted) {
+            errorLogger->LogInfo("chat thread", "chatID already exist", "chatID", chatID, "session", sessionID);
+            return;
+        }
+        m_chatIdSessionMap.insert_or_assign(chatID, sessionID);
+    }
+
+    void ChatSessionManager::DeleteSession(uint64_t sessionID) {
+        auto it = m_sessionChatIdMap.find(sessionID);
+        if (it == m_sessionChatIdMap.end()) {
+            errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
+            return;
+        }
+        RemoveFromZone(sessionID, it->second.zoneID);
+        m_chatIdSessionMap.erase(it->second.chatID);
+        m_sessionChatIdMap.erase(it);
+    }
+
+    void ChatSessionManager::JoinZone(uint64_t sessionID, uint16_t zoneID) {
+        if (zoneID == 0 || zoneID > ZONE_COUNT)
+            return;
+
+        auto sessionIt = m_sessionChatIdMap.find(sessionID);
+        if (sessionIt == m_sessionChatIdMap.end()) {
+            errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
+            return;
+        }
+
+        const uint16_t currentZoneID = sessionIt->second.zoneID;
+        if (currentZoneID == zoneID)
+            return;
+
+        RemoveFromZone(sessionID, currentZoneID);
+        m_zoneMembers[zoneID - 1].insert(sessionID);
+        sessionIt->second.zoneID = zoneID;
+    }
+
+    void ChatSessionManager::LeaveZone(uint64_t sessionID) {
+        auto sessionIt = m_sessionChatIdMap.find(sessionID);
+        if (sessionIt == m_sessionChatIdMap.end()) {
+            errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
+            return;
+        }
+
+        RemoveFromZone(sessionID, sessionIt->second.zoneID);
+        sessionIt->second.zoneID = 0;
+    }
+
+    const ChatUserInfo* ChatSessionManager::FindSession(uint64_t sessionID) const {
+        auto it = m_sessionChatIdMap.find(sessionID);
+        return it == m_sessionChatIdMap.end() ? nullptr : &it->second;
+    }
+
+    std::optional<uint64_t> ChatSessionManager::FindSessionID(uint64_t chatID) const {
+        auto it = m_chatIdSessionMap.find(chatID);
+        if (it == m_chatIdSessionMap.end())
+            return std::nullopt;
+        return it->second;
+    }
+
+    const std::set<uint64_t>* ChatSessionManager::FindZoneMembers(uint64_t zoneID) const {
+        if (zoneID == 0 || zoneID > m_zoneMembers.size())
+            return nullptr;
+        return &m_zoneMembers[zoneID - 1];
+    }
+}
