@@ -323,7 +323,7 @@ def document(title, description, content, references, site_title):
 <meta name="description" content="{escape(description, quote=True)}"><title>{escape(browser_title)}</title>
 <link rel="stylesheet" href="{BASE}style.css"></head><body>
 <a class="skip-link" href="#top">본문으로 바로가기</a>
-<header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}play/">콘텐츠 둘러보기</a><a href="{BASE}">작업과 결과</a><a href="{BASE}experience/">경험과 개선</a><a href="{BASE}process/">Agent 작업 방식</a></nav></header>
+<header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}play/">콘텐츠 둘러보기</a><a href="{BASE}#work">작업과 결과</a><a href="{BASE}process/">Agent 작업 방식</a></nav></header>
 {content}<footer class="site-footer">{escape(site_title)}</footer>
 </body></html>'''
 
@@ -480,22 +480,22 @@ def main(require_tour_media=False):
     case = render_comparison_case(sections_by_title["선택한 방향을 결과로"])
     usage_html = render_agent_usage(sections_by_title["Agent 활용 지표"], case)
     featured = ''.join(cards[key] for key in ("player-hud", "field-travel", "inventory", "market", "server-content"))
+    tour_preview = BASE + "media/releases/2026-11-04/free-aim-line-release.png"
+    process_preview = BASE + "media/diagrams/agent-workflow-desktop.svg"
     hero = f'''<main id="top" tabindex="-1"><section class="home-hero"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p></section>
-<section class="section-wrap home-actions"><h2><a href="{BASE}process/">Agent 작업 방식과 기록 →</a></h2><a class="button" href="{BASE}play/">클라이언트 콘텐츠 둘러보기</a></section>
+<div class="section-wrap home-actions">
+<section><a class="home-entry" href="{BASE}play/"><img src="{tour_preview}" alt="마우스로 조준한 방향에 내려찍기 스킬을 쓰는 실제 게임 화면" {image_size_attributes(tour_preview)}><h2>콘텐츠 둘러보기 <span aria-hidden="true">→</span></h2><p>스킬, 사냥, 거래소, 채팅이 실제로 동작하는 장면</p></a></section>
+<section><a class="home-entry" href="{BASE}process/"><img src="{process_preview}" alt="작업 배정과 검수 피드백을 잇는 Agent 워크플로우" {image_size_attributes(process_preview)}><h2>Agent 작업 방식 <span aria-hidden="true">→</span></h2><p>역할 분담, 검수와 수정, 시안 선택 기록</p></a></section>
+</div>
 <section class="section-wrap origin-overview" id="legacy"><div class="section-title"><h2>기존 2D 클라이언트</h2></div><div class="legacy-visible">{legacy_copy}</div></section>
-<section class="section-wrap work-section" id="work"><div class="section-title"><h2>기능별 결과</h2></div><div class="featured-grid">{featured}</div></section></main>'''
+<section class="section-wrap work-section" id="work"><div class="section-title"><h2>작업과 결과</h2></div><div class="featured-grid">{featured}</div></section></main>'''
     (SITE / "index.html").write_text(document(title, intro, hero, references, title), encoding="utf-8", newline="\n")
     process_content = f'''<main class="process-page" id="top" tabindex="-1"><header class="page narrow"><h1>Agent 작업 방식과 기록</h1></header>{process_html}{usage_html}{decisions_html}</main>'''
     process_folder = SITE / "process"
     process_folder.mkdir(exist_ok=True)
     (process_folder / "index.html").write_text(document("Agent 작업 방식과 기록", "사람의 판단, Agent 역할과 작업 과정", process_content, references, title), encoding="utf-8", newline="\n")
-    experience_source = ROOT / "docs/unity-client/EXPERIENCE.md"
-    experience_title, experience_intro, experience_sections, _ = parse_showcase(experience_source)
-    experience_body = ''.join(f'<section class="content-section" id="{slug(s["title"])}"><h2>{escape(s["title"])}</h2>{render_blocks(s["blocks"], experience_source)}</section>' for s in experience_sections)
-    experience_content = f'''<main class="page narrow experience-page" id="top" tabindex="-1"><h1>{escape(experience_title)}</h1><p class="lead">{inline(experience_intro)}</p>{experience_body}</main>'''
-    experience_folder = SITE / "experience"
-    experience_folder.mkdir(exist_ok=True)
-    (experience_folder / "index.html").write_text(document(experience_title, experience_intro, experience_content, references, title), encoding="utf-8", newline="\n")
+    # Remove the previously generated page when rebuilding an existing site folder.
+    (SITE / "experience" / "index.html").unlink(missing_ok=True)
     for old_key in legacy_market_pages:
         folder = SITE / "work" / old_key
         folder.mkdir(parents=True, exist_ok=True)
@@ -522,7 +522,7 @@ def check_work_navigation(works):
         detail = (SITE / "work" / key / "index.html").read_text(encoding="utf-8")
         if 'id="history"' not in detail:
             raise ValueError(f"History must stay in the feature page: {key}")
-    canonical = [SITE / "index.html", *(SITE / "work" / slug(w["source"].stem) / "index.html" for w in works), *(SITE / name / "index.html" for name in ("play", "process", "experience"))]
+    canonical = [SITE / "index.html", *(SITE / "work" / slug(w["source"].stem) / "index.html" for w in works), *(SITE / name / "index.html" for name in ("play", "process"))]
     for page in canonical:
         html = page.read_text(encoding="utf-8")
         body = html.split("<main", 1)[1].split("</main>", 1)[0]
