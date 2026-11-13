@@ -161,7 +161,6 @@ xcopy /Y "$(SolutionDir)External\libevent\bin\Release\*.dll" "$(OutDir)"</Comman
     <ClCompile Include="BaseLib\TripleBuffer.cpp" />
     <ClCompile Include="BaseLib\WAL.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="CoreLib\NonZoneThreadPool.cpp" />
     <ClCompile Include="CoreLib\MonsterState.cpp" />
     <ClCompile Include="CoreLib\CharacterGrowth.cpp" />
     <ClCompile Include="CoreLib\MonsterBehavior.cpp" />

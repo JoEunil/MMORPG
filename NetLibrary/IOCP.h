@@ -14,7 +14,7 @@
 #include <atomic>
 #include <cstdint>
 
-#include <CoreLib/IIOCP.h>
+#include <CoreLib/INetworkSender.h>
 #include <CoreLib/LoggerGlobal.h>
 
 #include "SendQueue.h"
@@ -31,7 +31,7 @@ namespace Net {
     struct STOverlappedEx;
     class SessionManager;
     class NetPerfCollector;
-    class IOCP : public Core::IIOCP, public IAbortSocket {
+    class IOCP : public Core::INetworkSender, public IAbortSocket {
         HANDLE m_hIOCP;
         std::vector<std::thread> m_threads;
         SOCKET m_listenSock;

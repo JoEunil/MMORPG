@@ -3,7 +3,7 @@
 #include "Message.h"
 #include "MessageTypes.h"
 #include "MessagePool.h"
-#include "IIOCP.h"
+#include "INetworkSender.h"
 #include "PacketWriter.h"
 #include "LobbyZone.h"
 #include "StateManager.h"
@@ -68,7 +68,7 @@ namespace Core {
                 if (stateManager && body->characterID != 0 &&
                     stateManager->GetFieldCharacterID(header->sessionID) == body->characterID) {
                     auto packet = writer->WriteGoldReward(body->resStatus);
-                    if (packet) iocp->SendDataUnique(header->sessionID, std::move(packet));
+                    if (packet) networkSender->SendDataUnique(header->sessionID, std::move(packet));
                 }
             }
             break;
@@ -94,7 +94,7 @@ namespace Core {
         if (!p) {
             return;
         }
-        iocp->SendDataUnique(sessionID, std::move(p));
+        networkSender->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::CharacterStateResponse(uint64_t sessionID, MsgCharacterStateResBody* body) {
@@ -131,35 +131,35 @@ namespace Core {
         if (!p) {
             return;
         }
-        iocp->SendDataUnique(sessionID, std::move(p));
+        networkSender->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::BazaarBuyResponse(uint64_t sessionID, MsgBazaarBuyResBody* body) {
         if (stateManager == nullptr || body->characterID == 0
             || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
         auto p = writer->WriteBazaarBuyResponse(body);
-        if (p) iocp->SendDataUnique(sessionID, std::move(p));
+        if (p) networkSender->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::BazaarOutboxListResponse(uint64_t sessionID, MsgBazaarOutboxListResBody* body) {
         if (stateManager == nullptr || body->characterID == 0
             || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
         auto p = writer->WriteBazaarOutboxListResponse(body);
-        if (p) iocp->SendDataUnique(sessionID, std::move(p));
+        if (p) networkSender->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::BazaarCheckOutboxResponse(uint64_t sessionID, MsgBazaarCheckOutboxResBody* body) {
         if (stateManager == nullptr || body->characterID == 0
             || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
         auto p = writer->WriteBazaarCheckOutboxResponse(body);
-        if (p) iocp->SendDataUnique(sessionID, std::move(p));
+        if (p) networkSender->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::BazaarCancelListingResponse(uint64_t sessionID, MsgBazaarCancelListingResBody* body) {
         if (stateManager == nullptr || body->characterID == 0
             || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
         auto p = writer->WriteBazaarCancelListingResponse(body);
-        if (p) iocp->SendDataUnique(sessionID, std::move(p));
+        if (p) networkSender->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::BazaarClaimResponse(uint64_t sessionID, MsgBazaarClaimResBody* body) {
@@ -168,7 +168,7 @@ namespace Core {
             return;
         auto p = writer->WriteBazaarClaimResponse(body);
         if (p)
-            iocp->SendDataUnique(sessionID, std::move(p));
+            networkSender->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::BazaarMyListResponse(uint64_t sessionID, MsgBazaarMyListResBody* body) {
@@ -177,7 +177,7 @@ namespace Core {
             return;
         auto p = writer->WriteBazaarMyListResponse(body);
         if (p)
-            iocp->SendDataUnique(sessionID, std::move(p));
+            networkSender->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::BazaarSearchResponse(uint64_t sessionID, MsgBazaarSearchResBody* body) {
@@ -185,28 +185,28 @@ namespace Core {
             return;
         auto p = writer->WriteBazaarSearchResponse(body);
         if (p)
-            iocp->SendDataUnique(sessionID, std::move(p));
+            networkSender->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::BazaarRegisterResponse(uint64_t sessionID, MsgBazaarRegisterResBody* body) {
         if (stateManager == nullptr || body->characterID == 0
             || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
         auto p = writer->WriteBazaarRegisterResponse(body);
-        if (p) iocp->SendDataUnique(sessionID, std::move(p));
+        if (p) networkSender->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::WalletGoldResponse(uint64_t sessionID, MsgCurrencyResBody* body) {
         if (stateManager == nullptr || body->characterID == 0
             || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
         auto p = writer->WriteWalletGoldResponse(body);
-        if (p) iocp->SendDataUnique(sessionID, std::move(p));
+        if (p) networkSender->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::WalletDiamondResponse(uint64_t sessionID, MsgDiamondResBody* body) {
         if (stateManager == nullptr || body->characterID == 0
             || stateManager->GetFieldCharacterID(sessionID) != body->characterID) return;
         auto p = writer->WriteWalletDiamondResponse(body);
-        if (p) iocp->SendDataUnique(sessionID, std::move(p));
+        if (p) networkSender->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::InventoryResponse(uint64_t sessionID, MsgInventoryResBody* body) {
@@ -214,7 +214,7 @@ namespace Core {
         if (!p) {
             return;
         }
-        iocp->SendDataUnique(sessionID, std::move(p));
+        networkSender->SendDataUnique(sessionID, std::move(p));
     }
 
     void MessageQueueHandler::InventoryUpdateResponse(uint64_t sessionID, MsgInventoryUpdateResBody* body) {
@@ -222,7 +222,7 @@ namespace Core {
         if (!p) {
             return;
         }
-        iocp->SendDataUnique(sessionID, std::move(p));
+        networkSender->SendDataUnique(sessionID, std::move(p));
     }
 
     // rename이 DB에 확정된 뒤 도는 경로. zone이 들고 있는 profileVersion 사본을

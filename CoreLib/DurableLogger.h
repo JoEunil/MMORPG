@@ -11,8 +11,7 @@ namespace Base {
 
 namespace Core {
     enum class DurableLogType : uint16_t {
-        CacheMessage = 1,
-        ChatZoneTransition = 3,
+        CacheMessage = 1
     };
 
     class DurableLogger {

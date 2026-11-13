@@ -4,7 +4,7 @@
 #include "PacketTypes.h"
 #include "IPacketView.h"
 #include "ISessionAuth.h"
-#include "IIOCP.h"
+#include "INetworkSender.h"
 #include "PacketWriter.h"
 #include "ZoneState.h"
 #include "Message.h"
@@ -18,13 +18,8 @@
 #include "Config.h"
 
 namespace Core {
-    static IIOCP* iocp;
-    static PacketWriter* writer;\
-    static StateManager* stateManager;
-    // 콜백에서 쓰기 위함
-
-    void NonZoneHandler::Initialize(IIOCP* i, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c) {
-        iocp = i;
+    void NonZoneHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc) {
+        networkSender = sender;
         auth = s;
         writer = p;
         messagePool = m;
@@ -32,14 +27,11 @@ namespace Core {
         stateManager = manager;
         lobbyZone = lobby;
         chat = c;
-    }
-
-    void NonZoneHandler::InitializeProfileCache(IProfileCache* pc) {
         profileCache = pc;
     }
 
     bool NonZoneHandler::IsReady() {
-        if (iocp == nullptr) return false;
+        if (networkSender == nullptr) return false;
         if (auth == nullptr) return false;
         if (writer == nullptr) return false;
         if (messagePool == nullptr) return false;
@@ -84,32 +76,13 @@ namespace Core {
                 RespawnToTown(p);
                 break;
             case OP::ITEM_USE:
-                if (p->GetLength() == sizeof(PacketStruct<ItemUseRequestBody>) && h->flags == 0
-                    && h->length == p->GetLength() && h->magic == MAGIC) {
-                    const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
-                    const auto result = stateManager->UseItem(p->GetSessionID(), request);
-                    auto response = writer->WriteItemUseResponse(result);
-                    if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
-                }
+                UseItem(p);
                 break;
             case OP::EQUIPMENT_GET:
-                if (p->GetLength() == sizeof(PacketStruct<EquipmentGetRequestBody>) && h->flags == 0
-                    && h->length == p->GetLength() && h->magic == MAGIC) {
-                    const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
-                    const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, false);
-                    auto response = writer->WriteEquipmentResponse(result);
-                    if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
-                }
+                GetEquipment(p);
                 break;
             case OP::EQUIPMENT_SET:
-                if (p->GetLength() == sizeof(PacketStruct<EquipmentSetRequestBody>) && h->flags == 0
-                    && h->length == p->GetLength() && h->magic == MAGIC) {
-                    const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
-                    if (request.slot > 2) break;
-                    const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, true, request.slot, request.itemID);
-                    auto response = writer->WriteEquipmentResponse(result);
-                    if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
-                }
+                SetEquipment(p);
                 break;
             case OP::INVENTORY_REQ:
                 GetInventory(p);
@@ -160,160 +133,46 @@ namespace Core {
             errorLogger->LogError("non zone handler", "profile rename invalid", "session", sessionID, "profile_id", profileId, "nameLen", nameLen);
             return;
         }
-        Message* msg = messagePool->Acquire();
-        if (msg == nullptr) {
-            return;
-        }
-        auto st = reinterpret_cast<MsgStruct<MsgProfileRenameBody>*>(msg->GetBuffer());
-        st->header.sessionID = sessionID;
-        st->header.messageType = MSG_PROFILE_RENAME;
-        st->body.profileId = profileId;
-        std::memset(st->body.name, 0, sizeof(st->body.name));
-        std::memcpy(st->body.name, name, nameLen);
-        msg->SetLength(sizeof(MsgStruct<MsgProfileRenameBody>));
-        messageQueue->EnqueueMessage(msg);
-        messagePool->Return(msg);
+        MsgProfileRenameBody body{};
+        body.profileId = profileId;
+        std::memcpy(body.name, name, nameLen);
+        TryEnqueueMessage({ sessionID, MSG_PROFILE_RENAME }, body);
     }
 
-    static void ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID) {
-        if (!stateManager->CompleteAuth(sessionID, userID, resStatus == RES_STATUS::SUCCESS))
-            return;
-        auto res = writer->WriteAuthResponse(resStatus);
-        if (res == nullptr)
-            return;
-        iocp->SendDataUnique(sessionID, std::move(res));
+    void NonZoneHandler::UseItem(IPacketView* p) {
+        const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
+        const auto result = stateManager->UseItem(p->GetSessionID(), request);
+        auto response = writer->WriteItemUseResponse(result);
+        if (response)
+            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
-    void NonZoneHandler::CheckSession(IPacketView* p) {
-        AuthRequestBody* body = parseBody<AuthRequestBody>(p->GetPtr());
-        SessionCallbackData* privdata = new SessionCallbackData;
-        privdata->sessionID = p->GetSessionID();
-        privdata->userID = body->userID;
-        std::memcpy(privdata->sessionToken.data(), body->sessionToken, privdata->sessionToken.size());
-        privdata->callbackFunc = &ResponseSession;
-        stateManager->BeginAuth(privdata->sessionID);
-        auth->CheckSession(privdata);
+    void NonZoneHandler::GetEquipment(IPacketView* p) {
+        const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
+        const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, false);
+        auto response = writer->WriteEquipmentResponse(result);
+        if (response)
+            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
-    void NonZoneHandler::GetCharacterList(IPacketView* p) {
-        Message* msg = messagePool->Acquire();
-        if (msg == nullptr) {
-            p = nullptr;
-            return ;
-		}
-        MsgStruct<MsgCharacterListReqBody>* st = reinterpret_cast<MsgStruct<MsgCharacterListReqBody>*>(msg->GetBuffer());
-        
-        st->header.sessionID = p->GetSessionID();
-        st->header.messageType = MSG_CHARACTER_LIST_REQ;
-        st->body.channelID = CHANNEL_ID;
-        st->body.userID = stateManager->GetUserID(p->GetSessionID());
-        msg->SetLength(sizeof(MsgStruct<MsgCharacterListReqBody>));
-        messageQueue->EnqueueMessage(msg);
-        messagePool->Return(msg);
-    }
-
-    void NonZoneHandler::GetCharacterState(IPacketView* p) {
-        Message* msg = messagePool->Acquire();
-        if (msg == nullptr) {
+    void NonZoneHandler::SetEquipment(IPacketView* p) {
+        const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
+        if (request.slot > 2)
             return;
-        }
-        MsgStruct<MsgCharacterStateReqBody>* st = reinterpret_cast<MsgStruct<MsgCharacterStateReqBody>*>(msg->GetBuffer());
-        
-        auto packetBody = parseBody<EnterWorldRequestBody>(p->GetPtr());
-        
-        st->header.sessionID = p->GetSessionID();
-        st->header.messageType = MSG_CHARACTER_STATE_REQ;
-        st->body.channelID = CHANNEL_ID;
-        st->body.userID = stateManager->GetUserID(p->GetSessionID());
-        st->body.characterID = packetBody->characterID;
 
-        msg->SetLength(sizeof(MsgStruct<MsgCharacterStateReqBody>));
-        messageQueue->EnqueueMessage(msg);
-        messagePool->Return(msg);
+        const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, true, request.slot, request.itemID);
+        auto response = writer->WriteEquipmentResponse(result);
+        if (response)
+            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
     void NonZoneHandler::GetInventory(IPacketView* p) {
-        auto charID = stateManager->GetCharacterID(p->GetSessionID());
-        if (charID <= 0)
-            return ;
-        
-        Message* msg = messagePool->Acquire();
-        if (msg == nullptr) {
-            return;
-        }
-        MsgStruct<MsgInventoryReqBody>* st = reinterpret_cast<MsgStruct<MsgInventoryReqBody>*>(msg->GetBuffer());
-        
-        st->header.sessionID = p->GetSessionID();
-        st->header.messageType = MSG_INVENTORY_REQ;
-        st->body.characterID = charID;
-        msg->SetLength(sizeof(MsgStruct<MsgInventoryReqBody>));
-        messageQueue->EnqueueMessage(msg);
-        messagePool->Return(msg);
-    }
-
-    void NonZoneHandler::BazaarBuy(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarBuyRequestBody>))
-            return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarBuyRequestBody>(p->GetPtr());
-        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_BUY
-            || header->length != p->GetLength() || header->flags != 0
-            || request.requestID == 0 || request.listingID == 0)
-            return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        const auto sessionID = p->GetSessionID();
+        const auto characterID = stateManager->GetCharacterID(sessionID);
         if (characterID == 0)
             return;
-        Message* msg = messagePool->Acquire();
-        if (msg != nullptr) {
-            auto* st = reinterpret_cast<MsgStruct<MsgBazaarBuyBody>*>(msg->GetBuffer());
-            st->header = { p->GetSessionID(), MSG_BAZAAR_BUY };
-            st->body = { characterID, request.listingID, request.requestID };
-            msg->SetLength(sizeof(*st));
-            const bool queued = messageQueue->EnqueueMessage(msg);
-            messagePool->Return(msg);
-            if (queued)
-                return;
-        }
-        MsgBazaarBuyResBody failed{};
-        failed.requestID = request.requestID;
-        failed.listingID = request.listingID;
-        failed.resStatus = 5;
-        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
-            return;
-        auto response = writer->WriteBazaarBuyResponse(&failed);
-        if (response)
-            iocp->SendDataUnique(p->GetSessionID(), std::move(response));
-    }
 
-    void NonZoneHandler::BazaarRegister(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarRegisterRequestBody>)) return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarRegisterRequestBody>(p->GetPtr());
-        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_REGISTER || header->length != p->GetLength()
-            || header->flags != 0 || request.requestID == 0 || request.inventorySlot >= MAX_INVENTORY_ITEMS
-            || request.quantity == 0 || request.totalDiamondPrice == 0) return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
-        if (characterID == 0) return;
-
-        Message* msg = messagePool->Acquire();
-        if (msg != nullptr) {
-            auto* st = reinterpret_cast<MsgStruct<MsgBazaarRegisterBody>*>(msg->GetBuffer());
-            st->header = { p->GetSessionID(), MSG_BAZAAR_REGISTER };
-            st->body = { characterID, 0, request.quantity, request.totalDiamondPrice,
-                request.requestID, request.inventorySlot };
-            msg->SetLength(sizeof(*st));
-            const bool queued = messageQueue->EnqueueMessage(msg);
-            messagePool->Return(msg);
-            if (queued) return;
-        }
-
-        MsgBazaarRegisterResBody failed{};
-        failed.requestID = request.requestID;
-        failed.characterID = characterID;
-        failed.resStatus = 0;
-        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
-        auto response = writer->WriteBazaarRegisterResponse(&failed);
-        if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+        TryEnqueueMessage({ sessionID, MSG_INVENTORY_REQ }, MsgInventoryReqBody{ characterID });
     }
 
     void NonZoneHandler::WalletRequest(IPacketView* p) {
@@ -321,225 +180,31 @@ namespace Core {
         const auto* header = parseHeader(p->GetPtr());
         const auto request = *parseBody<WalletRequestBody>(p->GetPtr());
         if (header->magic != MAGIC || header->opcode != OP::WALLET_REQUEST || header->length != p->GetLength()
-            || header->flags != 0 || request.requestID == 0) return;
+            || IsSimulationFlag(header->flags) || request.requestID == 0) return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
 
-        Message* gold = messagePool->Acquire();
-        if (gold != nullptr) {
-            auto* st = reinterpret_cast<MsgStruct<MsgCurrencyReqBody>*>(gold->GetBuffer());
-            st->header = { p->GetSessionID(), MSG_CURRENCY_REQ };
-            st->body = { characterID, request.requestID };
-            gold->SetLength(sizeof(*st));
-            const bool queued = messageQueue->EnqueueMessage(gold);
-            messagePool->Return(gold);
-            if (!queued) gold = nullptr;
-        }
-        if (gold == nullptr) {
+        if (!TryEnqueueMessage(
+                { p->GetSessionID(), MSG_CURRENCY_REQ },
+                MsgCurrencyReqBody{ characterID, request.requestID })) {
             MsgCurrencyResBody failed{};
             failed.requestID = request.requestID;
             failed.characterID = characterID;
             auto response = writer->WriteWalletGoldResponse(&failed);
             if (response && stateManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
-                iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+                networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
         }
 
-        Message* diamond = messagePool->Acquire();
-        if (diamond != nullptr) {
-            auto* st = reinterpret_cast<MsgStruct<MsgDiamondReqBody>*>(diamond->GetBuffer());
-            st->header = { p->GetSessionID(), MSG_DIAMOND_REQ };
-            st->body = { characterID, request.requestID };
-            diamond->SetLength(sizeof(*st));
-            const bool queued = messageQueue->EnqueueMessage(diamond);
-            messagePool->Return(diamond);
-            if (!queued) diamond = nullptr;
-        }
-        if (diamond == nullptr) {
+        if (!TryEnqueueMessage(
+                { p->GetSessionID(), MSG_DIAMOND_REQ },
+                MsgDiamondReqBody{ characterID, request.requestID })) {
             MsgDiamondResBody failed{};
             failed.requestID = request.requestID;
             failed.characterID = characterID;
             auto response = writer->WriteWalletDiamondResponse(&failed);
             if (response && stateManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
-                iocp->SendDataUnique(p->GetSessionID(), std::move(response));
+                networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
         }
-    }
-
-    void NonZoneHandler::BazaarOutboxList(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarOutboxListRequestBody>)) return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarOutboxListRequestBody>(p->GetPtr());
-        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_OUTBOX_LIST
-            || header->length != p->GetLength() || header->flags != 0 || request.requestID == 0) return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
-        if (characterID == 0) return;
-        Message* msg = messagePool->Acquire();
-        if (msg != nullptr) {
-            auto* st = reinterpret_cast<MsgStruct<MsgBazaarOutboxListBody>*>(msg->GetBuffer());
-            st->header = { p->GetSessionID(), MSG_BAZAAR_OUTBOX_LIST };
-            st->body = { characterID, request.requestID };
-            msg->SetLength(sizeof(*st));
-            const bool queued = messageQueue->EnqueueMessage(msg);
-            messagePool->Return(msg);
-            if (queued) return;
-        }
-        MsgBazaarOutboxListResBody failed{};
-        failed.requestID = request.requestID;
-        failed.characterID = characterID;
-        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
-        auto response = writer->WriteBazaarOutboxListResponse(&failed);
-        if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
-    }
-
-    void NonZoneHandler::BazaarCheckOutbox(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarCheckOutboxRequestBody>))
-            return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarCheckOutboxRequestBody>(p->GetPtr());
-        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_CHECK_OUTBOX
-            || header->length != p->GetLength() || header->flags != 0 || request.requestID == 0)
-            return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
-        if (characterID == 0)
-            return;
-        Message* msg = messagePool->Acquire();
-        if (msg != nullptr) {
-            auto* st = reinterpret_cast<MsgStruct<MsgBazaarCheckOutboxBody>*>(msg->GetBuffer());
-            st->header = { p->GetSessionID(), MSG_BAZAAR_CHECK_OUTBOX };
-            st->body = { characterID, request.requestID };
-            msg->SetLength(sizeof(*st));
-            const bool queued = messageQueue->EnqueueMessage(msg);
-            messagePool->Return(msg);
-            if (queued)
-                return;
-        }
-        MsgBazaarCheckOutboxResBody failed{};
-        failed.requestID = request.requestID;
-        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
-            return;
-        auto response = writer->WriteBazaarCheckOutboxResponse(&failed);
-        if (response)
-            iocp->SendDataUnique(p->GetSessionID(), std::move(response));
-    }
-
-    void NonZoneHandler::BazaarCancelListing(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarCancelListingRequestBody>)) return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarCancelListingRequestBody>(p->GetPtr());
-        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_CANCEL_LISTING
-            || header->length != p->GetLength() || header->flags != 0
-            || request.requestID == 0 || request.listingID == 0) return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
-        if (characterID == 0) return;
-        Message* msg = messagePool->Acquire();
-        if (msg != nullptr) {
-            auto* st = reinterpret_cast<MsgStruct<MsgBazaarCancelListingBody>*>(msg->GetBuffer());
-            st->header = { p->GetSessionID(), MSG_BAZAAR_CANCEL_LISTING };
-            st->body = { characterID, request.listingID, request.requestID };
-            msg->SetLength(sizeof(*st));
-            const bool queued = messageQueue->EnqueueMessage(msg);
-            messagePool->Return(msg);
-            if (queued) return;
-        }
-        MsgBazaarCancelListingResBody failed{};
-        failed.requestID = request.requestID;
-        failed.listingID = request.listingID;
-        failed.characterID = characterID;
-        failed.resStatus = 5;
-        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
-        auto response = writer->WriteBazaarCancelListingResponse(&failed);
-        if (response) iocp->SendDataUnique(p->GetSessionID(), std::move(response));
-    }
-
-    void NonZoneHandler::BazaarClaim(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarClaimRequestBody>))
-            return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarClaimRequestBody>(p->GetPtr());
-        if (header->magic != MAGIC || header->opcode != OP::BAZAAR_CLAIM
-            || header->length != p->GetLength() || header->flags != 0
-            || request.requestID == 0 || request.listingID == 0)
-            return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
-        if (characterID == 0)
-            return;
-        Message* msg = messagePool->Acquire();
-        if (msg != nullptr) {
-            auto* st = reinterpret_cast<MsgStruct<MsgBazaarClaimBody>*>(msg->GetBuffer());
-            st->header = { p->GetSessionID(), MSG_BAZAAR_CLAIM };
-            st->body = { characterID, request.listingID, request.requestID };
-            msg->SetLength(sizeof(*st));
-            const bool queued = messageQueue->EnqueueMessage(msg);
-            messagePool->Return(msg);
-            if (queued)
-                return;
-        }
-        MsgBazaarClaimResBody failed{};
-        failed.requestID = request.requestID;
-        failed.listingID = request.listingID;
-        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
-            return;
-        auto response = writer->WriteBazaarClaimResponse(&failed);
-        if (response)
-            iocp->SendDataUnique(p->GetSessionID(), std::move(response));
-    }
-
-    void NonZoneHandler::BazaarMyList(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarMyListRequestBody>))
-            return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarMyListRequestBody>(p->GetPtr());
-        if (header->length != p->GetLength() || header->flags != 0 || request.requestID == 0)
-            return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
-        if (characterID == 0)
-            return;
-        Message* msg = messagePool->Acquire();
-        if (msg != nullptr) {
-            auto* st = reinterpret_cast<MsgStruct<MsgBazaarMyListBody>*>(msg->GetBuffer());
-            st->header = { p->GetSessionID(), MSG_BAZAAR_MY_LIST };
-            st->body = { request.requestID, characterID };
-            msg->SetLength(sizeof(*st));
-            const bool queued = messageQueue->EnqueueMessage(msg);
-            messagePool->Return(msg);
-            if (queued)
-                return;
-        }
-        MsgBazaarMyListResBody failed{};
-        failed.requestID = request.requestID;
-        failed.characterID = characterID;
-        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
-            return;
-        auto response = writer->WriteBazaarMyListResponse(&failed);
-        if (response)
-            iocp->SendDataUnique(p->GetSessionID(), std::move(response));
-    }
-
-    void NonZoneHandler::BazaarSearch(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<BazaarSearchRequestBody>))
-            return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<BazaarSearchRequestBody>(p->GetPtr());
-        if (header->length != p->GetLength() || header->flags != 0
-            || request.requestID == 0 || request.itemType < 1 || request.itemType > 3
-            || !stateManager->IsFieldSession(p->GetSessionID()))
-            return;
-
-        Message* msg = messagePool->Acquire();
-        if (msg != nullptr) {
-            auto* st = reinterpret_cast<MsgStruct<MsgBazaarSearchBody>*>(msg->GetBuffer());
-            st->header = { p->GetSessionID(), MSG_BAZAAR_SEARCH };
-            st->body = { request.requestID, request.itemType, request.page };
-            msg->SetLength(sizeof(*st));
-            const bool queued = messageQueue->EnqueueMessage(msg);
-            messagePool->Return(msg);
-            if (queued)
-                return;
-        }
-        MsgBazaarSearchResBody failed{};
-        failed.requestID = request.requestID;
-        auto response = writer->WriteBazaarSearchResponse(&failed);
-        if (response)
-            iocp->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
     void NonZoneHandler::Chat(IPacketView* p) {
@@ -598,7 +263,7 @@ namespace Core {
         auto res = writer->WriteProfileBatchRes(entries, found);
         if (!res)
             return;
-        iocp->SendDataUnique(session, std::move(res));
+        networkSender->SendDataUnique(session, std::move(res));
     }
 
     void NonZoneHandler::ZoneChange(IPacketView* p) {
@@ -612,7 +277,7 @@ namespace Core {
                 result.x, result.y, result.generation, result.ownershipEpoch)
             : writer->WriteZoneChangeFailed();
         if (response)
-            iocp->SendDataUnique(session, std::move(response));
+            networkSender->SendDataUnique(session, std::move(response));
         if (success)
             stateManager->SendBootstrap(session, result.ownershipEpoch);
     }
@@ -624,7 +289,7 @@ namespace Core {
             && parseHeader(p->GetPtr())->magic == MAGIC
             && parseHeader(p->GetPtr())->opcode == OP::RESPAWN_TO_TOWN
             && parseHeader(p->GetPtr())->length == p->GetLength()
-            && parseHeader(p->GetPtr())->flags == 0;
+            && !IsSimulationFlag(parseHeader(p->GetPtr())->flags);
         const bool success = validHeader
             && stateManager->RespawnToTown(session, *parseBody<RespawnToTownBody>(p->GetPtr()), result);
         auto response = success
@@ -632,7 +297,7 @@ namespace Core {
                 result.x, result.y, result.generation, result.ownershipEpoch)
             : writer->WriteZoneChangeFailed();
         if (response)
-            iocp->SendDataUnique(session, std::move(response));
+            networkSender->SendDataUnique(session, std::move(response));
         if (success)
             stateManager->SendBootstrap(session, result.ownershipEpoch);
     }

@@ -7,25 +7,25 @@
 #include "MessagePool.h"
 #include "StateManager.h"
 #include "PacketTypes.h"
-#include "IIOCP.h"
+#include "INetworkSender.h"
 #include "PacketWriter.h"
 
 namespace Core {
     class ISessionAuth;
     class IPacketView;
-    class IIOCP;
+    class INetworkSender;
     class IDBCache;
     class PacketWriter;
     class IMessageQueue;
 
     class ZoneHandler {
         StateManager* stateManager = nullptr;
-        IIOCP* iocp = nullptr;
+        INetworkSender* networkSender = nullptr;
         PacketWriter* writer = nullptr;
         
-        void Initialize(StateManager* m, IIOCP* io, PacketWriter* packetWriter) {
+        void Initialize(StateManager* m, INetworkSender* sender, PacketWriter* packetWriter) {
             stateManager = m;
-            iocp = io;
+            networkSender = sender;
             writer = packetWriter;
         }
 
@@ -34,7 +34,7 @@ namespace Core {
                 sysLogger->LogError("zone handler", "stateManager not initialized");
                 return false;
             }
-            if (iocp == nullptr || writer == nullptr) return false;
+            if (networkSender == nullptr || writer == nullptr) return false;
             return true;
         }
         

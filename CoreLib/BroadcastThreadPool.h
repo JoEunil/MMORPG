@@ -12,7 +12,7 @@
 #include "Config.h"
 
 namespace Core {
-    class IIOCP;
+    class INetworkSender;
     class IPacket;
     class StateManager;
     class CorePerfCollector;
@@ -32,8 +32,8 @@ namespace Core {
         std::atomic<size_t> m_queuedWorkCount = 0; // Shared queue budget, not a per-worker multiplier.
 
         std::atomic<bool> m_running = false;
-        void Initialize(IIOCP* i, StateManager* s, CorePerfCollector* p, PacketWriter* pw) {
-            iocp = i;
+        void Initialize(INetworkSender* sender, StateManager* s, CorePerfCollector* p, PacketWriter* pw) {
+            networkSender = sender;
             stateManager = s;
             perfCollector = p;
             writer = pw;
@@ -47,7 +47,7 @@ namespace Core {
                 sysLogger->LogError("broadcast thread", "not running");
                 return false;
             }
-            if (iocp == nullptr) {
+            if (networkSender == nullptr) {
                 sysLogger->LogError("broadcast thread", "iocp not initialized");
                 return false;
             }
@@ -67,13 +67,12 @@ namespace Core {
         void Start();
         void Stop();
 
-        IIOCP* iocp = nullptr;
+        INetworkSender* networkSender = nullptr;
         StateManager* stateManager = nullptr;
         CorePerfCollector* perfCollector = nullptr;
         PacketWriter* writer = nullptr;
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
-        friend class NonZoneThreadPoolFixture;
     public:
         ~BroadcastThreadPool() {
             Stop();

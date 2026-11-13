@@ -141,6 +141,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="CharacterState.h" />
+    <ClInclude Include="ChatSessionManager.h" />
     <ClInclude Include="ChatThreadPool.h" />
     <ClInclude Include="CorePerfCollector.h" />
     <ClInclude Include="ItemData.h" />
@@ -152,7 +153,7 @@
     <ClInclude Include="BroadcastThreadPool.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="DurableLogger.h" />
-    <ClInclude Include="IIOCP.h" />
+    <ClInclude Include="INetworkSender.h" />
     <ClInclude Include="ILogger.h" />
     <ClInclude Include="Initializer.h" />
     <ClInclude Include="InMemoryQueue.h" />
@@ -186,10 +187,13 @@
     <ClInclude Include="ZoneThreadSet.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ChatSessionManager.cpp" />
     <ClCompile Include="ChatThreadPool.cpp" />
     <ClCompile Include="DurableLogger.cpp" />
     <ClCompile Include="LoggerGlobal.cpp" />
     <ClCompile Include="NonZoneHandler.cpp" />
+    <ClCompile Include="NonZoneHandler_Bazaar.cpp" />
+    <ClCompile Include="NonZoneHandler_WorldEntry.cpp" />
     <ClCompile Include="NonZoneThreadPool.cpp" />
     <ClCompile Include="BroadcastThreadPool.cpp" />
     <ClCompile Include="PacketDispatcher.cpp" />
@@ -228,4 +232,4 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-</Project>
+</Project>

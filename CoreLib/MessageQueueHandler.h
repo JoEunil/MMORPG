@@ -10,19 +10,19 @@ namespace Core {
     class PacketWriter;
     class Message;
     class MessagePool;
-    class IIOCP;
+    class INetworkSender;
     class LobbyZone;
     class StateManager;
 
     class MessageQueueHandler {
         // 캐시 or db 요청 결과 처리
         PacketWriter* writer = nullptr;
-        IIOCP* iocp = nullptr;
+        INetworkSender* networkSender = nullptr;
         LobbyZone* lobbyZone = nullptr;
         MessagePool* messagePool = nullptr;
         StateManager* stateManager = nullptr;
-        void Initialize(IIOCP* i, PacketWriter* w, LobbyZone* lo, MessagePool* msgPool) noexcept {
-            iocp = i;
+        void Initialize(INetworkSender* sender, PacketWriter* w, LobbyZone* lo, MessagePool* msgPool) noexcept {
+            networkSender = sender;
             writer = w;
             lobbyZone = lo;
             messagePool = msgPool;
@@ -31,7 +31,7 @@ namespace Core {
             stateManager = s;
         }
         bool IsReady() {
-            if (iocp == nullptr || writer == nullptr)
+            if (networkSender == nullptr || writer == nullptr)
                 return false;
             return true;
         }
@@ -54,7 +54,6 @@ namespace Core {
 
 
         friend class Initializer;
-        friend class NonZoneThreadPoolFixture;
     public:
         void Process(Message* m);
     };

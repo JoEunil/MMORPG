@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <memory>
 #include <chrono>
+#include <cstring>
 
 #include "MessageTypes.h"
 #include "ZoneState.h"
@@ -16,18 +17,23 @@ namespace Core {
     class PacketWriter : public IPingPacketWriter{
         IPacketPoolManager* packetPoolManager = nullptr;
 
-        void Initialize(IPacketPoolManager* p) {
-            packetPoolManager = p;
-        }
-        
-        bool IsReady() {
-            if (packetPoolManager == nullptr)
-                return false;
-            return true;
+        void Initialize(IPacketPoolManager* poolManager);
+        bool IsReady();
+        std::unique_ptr<IPacket, PacketDeleter> AcquireUniquePacket(PacketPoolType type);
+        std::shared_ptr<IPacket> AcquireSharedPacket(PacketPoolType type);
+
+        template<typename T>
+        std::unique_ptr<IPacket, PacketDeleter> WriteFixedPacket(OP opcode, uint8_t flags, const T& body);
+
+        template<typename T>
+        PacketStruct<T>* InitializePacketHeader(IPacket& packetBuffer, OP opcode, uint8_t flags, uint32_t length = sizeof(PacketStruct<T>)) {
+            auto* packet = reinterpret_cast<PacketStruct<T>*>(packetBuffer.GetBuffer());
+            packet->header = { MAGIC, length, static_cast<uint8_t>(opcode), flags };
+            packetBuffer.SetLength(length);
+            return packet;
         }
         
         friend class Initializer;
-        friend class NonZoneThreadPoolFixture;
         friend class ZoneBenchmarkAccess;
     public:
         std::unique_ptr<IPacket, PacketDeleter> WriteItemUseResponse(const ItemUseResponseBody& body);
@@ -41,107 +47,50 @@ namespace Core {
         std::unique_ptr<IPacket, PacketDeleter>  WriteInventoryUpdateResponse(const MsgInventoryUpdateResBody* body);
         std::unique_ptr<IPacket, PacketDeleter>  GetChatWhisperPacket(uint64_t sender, uint32_t senderProfileId, const std::string& message);
         std::shared_ptr<IPacket> GetInitialChatBatchPacket(CHAT_SCOPE scope);
-        uint16_t WriteChatBatchPacketField(std::shared_ptr<IPacket> p, uint64_t sender, uint32_t senderProfileId, const std::string& message);
+        uint16_t WriteChatBatchPacketField(std::shared_ptr<IPacket> packetPtr, uint64_t sender, uint32_t senderProfileId, const std::string& message);
         
-        std::shared_ptr<IPacket> GetDeltaHeader(uint16_t zoneID, uint64_t generation) {
-            auto p = packetPoolManager->Acquire(PacketPoolType::Normal);
-            if (!p) {
-                return nullptr;
-            }
-            p->Clear();
-            auto p_st = reinterpret_cast<PacketStruct<DeltaSnapshotBody>*>(p->GetBuffer());
-            p_st->header.length = sizeof(PacketHeader) + sizeof(uint16_t) * 2 + sizeof(uint64_t);
-            p->SetLength(p_st->header.length);
-            p_st->header.magic = MAGIC;
-            p_st->header.opcode = OP::ZONE_DELTA_UPDATE_BROADCAST;
-            p_st->header.flags = 0x00;
-            p_st->header.flags |= FLAG_SIMULATION;
-            p_st->body.count = 0;
-            p_st->body.zoneID = zoneID;
-            p_st->body.zoneGeneration = generation;
-            return p;
-        }
+        std::shared_ptr<IPacket> GetDeltaHeader(uint16_t zoneID, uint64_t generation);
         template<typename T>
-        bool WriteDeltaField(std::shared_ptr<IPacket> p, uint32_t zoneInternalID,uint16_t fieldID, T val) {
+        bool WriteDeltaField(std::shared_ptr<IPacket> packetPtr, uint32_t zoneInternalID,uint16_t fieldID, T val) {
             static_assert(sizeof(T) <= sizeof(uint32_t), "Delta field too large"); // 컴파일 타임
-
-            if (p->GetLength() + sizeof(DeltaUpdateField) > p->GetCapacity())
+            if (packetPtr->GetLength() + sizeof(DeltaUpdateField) > packetPtr->GetCapacity())
                 return false;
-
-            auto fields = reinterpret_cast<DeltaUpdateField*>(p->GetBuffer());
-            p->SetLength(p->GetLength() + sizeof(DeltaUpdateField));
-            p->Count();
-            auto& slot = fields[p->GetCount() - 1];
+            auto fields = reinterpret_cast<DeltaUpdateField*>(packetPtr->GetBuffer());
+            packetPtr->SetLength(packetPtr->GetLength() + sizeof(DeltaUpdateField));
+            packetPtr->Count();
+            auto& slot = fields[packetPtr->GetCount() - 1];
             slot.zoneInternalID = zoneInternalID;
             slot.fieldID = fieldID;
-            
             std::memset(&slot.fieldVal, 0, sizeof(slot.fieldVal)); // 나머지 바이트 초기화
             std::memcpy(&slot.fieldVal, &val, sizeof(T));
             return true;
         }
         std::shared_ptr<IPacket> GetFullHeader(uint16_t zoneID, uint64_t generation);
         std::shared_ptr<IPacket> GetBootstrapFullHeader(bool monsters, uint16_t zoneID, uint64_t generation, uint64_t ownershipEpoch, uint64_t bootstrapID);
-        bool WriteFullField(std::shared_ptr<IPacket> p, const CharacterState& state);
-
-        std::shared_ptr<IPacket> GetMonsterDeltaHeader(uint16_t zoneID, uint64_t generation) {
-            auto p = packetPoolManager->Acquire(PacketPoolType::Normal);
-            if (!p) {
-                return nullptr;
-            }
-            p->Clear();
-            auto p_st = reinterpret_cast<PacketStruct<MonsterDeltaSnapshotBody>*>(p->GetBuffer());
-            p_st->header.length = sizeof(PacketHeader) + sizeof(uint16_t) * 2 + sizeof(uint64_t);
-            p->SetLength(p_st->header.length);
-            p_st->header.magic = MAGIC;
-            p_st->header.opcode = OP::MONSTER_DELTA_UPDATE_BROADCAST;
-            p_st->header.flags = 0x00;
-            p_st->header.flags |= FLAG_SIMULATION;
-            p_st->body.count = 0;
-            p_st->body.zoneID = zoneID;
-            p_st->body.zoneGeneration = generation;
-            return p;
-        }
+        bool WriteFullField(std::shared_ptr<IPacket> packetPtr, const CharacterState& state);
+        std::shared_ptr<IPacket> GetMonsterDeltaHeader(uint16_t zoneID, uint64_t generation);
         template<typename T>
-        bool WriteMonsterDeltaField(std::shared_ptr<IPacket> p, uint16_t internalID, uint16_t fieldID, T val) {
+        bool WriteMonsterDeltaField(std::shared_ptr<IPacket> packetPtr, uint16_t internalID, uint16_t fieldID, T val) {
             static_assert(sizeof(T) <= sizeof(uint32_t), "Delta field too large"); // 컴파일 타임
-
-            if (p->GetLength() + sizeof(MonsterDeltaField) > p->GetCapacity())
+            if (packetPtr->GetLength() + sizeof(MonsterDeltaField) > packetPtr->GetCapacity())
                 return false;
-
-            auto fields = reinterpret_cast<MonsterDeltaField*>(p->GetBuffer());
-            p->SetLength(p->GetLength() + sizeof(MonsterDeltaField));
-            p->Count();
-            auto& slot = fields[p->GetCount() - 1];
+            auto fields = reinterpret_cast<MonsterDeltaField*>(packetPtr->GetBuffer());
+            packetPtr->SetLength(packetPtr->GetLength() + sizeof(MonsterDeltaField));
+            packetPtr->Count();
+            auto& slot = fields[packetPtr->GetCount() - 1];
             slot.internalId = internalID;
             slot.fieldId = fieldID;
-
             std::memset(&slot.fieldVal, 0, sizeof(slot.fieldVal)); // 나머지 바이트 초기화
             std::memcpy(&slot.fieldVal, &val, sizeof(T));
             return true;
         }
         std::shared_ptr<IPacket> GetMonsterFullHeader(uint16_t zoneID, uint64_t generation);
-        bool WriteMonsterFullField(std::shared_ptr<IPacket> p, const MonsterState& state);
-
+        bool WriteMonsterFullField(std::shared_ptr<IPacket> packetPtr, const MonsterState& state);
         std::shared_ptr<IPacket> GetActionHeader(uint16_t zoneID, uint64_t generation);
-        bool WriteActionField(std::shared_ptr<IPacket> p, const ActionResult& state);
+        bool WriteActionField(std::shared_ptr<IPacket> packetPtr, const ActionResult& state);
 
-        std::shared_ptr<IPacket> GetInitialChunk(bool useGiant = false) {
-            auto p = packetPoolManager->Acquire(useGiant ? PacketPoolType::Giant : PacketPoolType::Big);
-            if (!p) {
-                return nullptr;
-            }
-            p->Clear();
-            p->SetLength(0);
-            return p;
-        }
-
-        void AddChunk(std::shared_ptr<IPacket> p, size_t len, uint16_t count) {
-            auto header = reinterpret_cast<PacketHeader*>(p->GetBuffer());
-            header->length += len;
-            uint16_t* countPtr = reinterpret_cast<uint16_t*>(p->GetBuffer() + sizeof(PacketHeader));
-            *countPtr += count;
-
-        }
+        std::shared_ptr<IPacket> GetInitialChunk(bool useGiant = false);
+        void AddChunk(std::shared_ptr<IPacket> packetPtr, size_t len, uint16_t count);
 
         std::unique_ptr<IPacket, PacketDeleter> WriteEquipmentResponse(const EquipmentResponseBody& body);
         std::unique_ptr<IPacket, PacketDeleter> WriteBazaarBuyResponse(const MsgBazaarBuyResBody* body);
@@ -154,27 +103,9 @@ namespace Core {
         std::unique_ptr<IPacket, PacketDeleter> WriteBazaarRegisterResponse(const MsgBazaarRegisterResBody* body);
         std::unique_ptr<IPacket, PacketDeleter> WriteWalletGoldResponse(const MsgCurrencyResBody* body);
         std::unique_ptr<IPacket, PacketDeleter> WriteWalletDiamondResponse(const MsgDiamondResBody* body);
-
         std::unique_ptr<IPacket, PacketDeleter> WriteProfileBatchRes(const ProfileEntry* entries, uint16_t count);
-
         std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeFailed();
         std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y, uint64_t generation, uint64_t ownershipEpoch);
-
-        std::unique_ptr<IPacket, PacketDeleter>  GetPingPacket(uint64_t rtt,uint64_t nowMs) override {
-            auto p = packetPoolManager->AcquireUnique(PacketPoolType::Normal);
-            if (!p) {
-                return nullptr;
-            }
-            p->Clear();
-            auto p_st = reinterpret_cast<PacketStruct<Ping>*>(p->GetBuffer());
-            p_st->header.length = sizeof(PacketHeader) + sizeof(Ping);
-            p_st->header.magic = MAGIC;
-            p_st->header.opcode = OP::PING;
-            p_st->header.flags = 0x00;
-            p_st->body.serverTimeMs = static_cast<uint64_t>(nowMs);
-            p_st->body.rtt = rtt;
-            p->SetLength(sizeof(PacketHeader) + sizeof(Ping));
-            return p;
-        }
+        std::unique_ptr<IPacket, PacketDeleter>  GetPingPacket(uint64_t rtt,uint64_t nowMs) override;
     };
 }

@@ -10,9 +10,7 @@ namespace Core {
         
         uint64_t sessionID = pv->GetSessionID();
         
-        
-        bool isSimulation = (h->flags & FLAG_SIMULATION) == FLAG_SIMULATION;
-        if (isSimulation) {
+        if (IsSimulationFlag(h->flags)) {
             int16_t zoneID = stateManager->GetZoneID(sessionID);
             if (zoneID <= 0) {
                 errorLogger->LogWarn("packet dispatcher", "Invalid ZoneID", "zoneID", zoneID, "sessionID", pv->GetSessionID());
