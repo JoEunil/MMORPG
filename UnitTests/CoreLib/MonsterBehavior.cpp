@@ -633,13 +633,37 @@ namespace Core {
         EXPECT_FLOAT_EQ(fixture.CellAt(2, 2).actionResults[1].x, fixture.CharacterAt(0).x);
     }
 
+    TEST(MonsterBehaviorTest, RegionalElitesUseDistinctNonOverlappingAttackPatterns) {
+        const uint16_t expected[5][4] = {
+            {0, 0, 1, 0}, {0, 0, 2, 0}, {0, 0, 5, 0}, {0, 0, 6, 0}, {0, 2, 7, 0},
+        };
+        for (uint16_t zone = 2; zone <= 6; ++zone) {
+            SCOPED_TRACE(zone);
+            const auto& phase = Data::GetHuntingMonsterData(zone, 1).phases[0];
+            ASSERT_EQ(phase.stepCnt, 4);
+            for (size_t step = 0; step < phase.stepCnt; ++step) {
+                const auto skill = phase.steps[step].skillID;
+                ASSERT_EQ(skill, expected[zone - 2][step]);
+                if (skill == 0) continue;
+                const auto& hit = Data::monsterSkillList[skill].phases[1];
+                EXPECT_GT(phase.steps[(step + 1) % phase.stepCnt].delayTicks, hit.tick);
+                EXPECT_GT(hit.attack, 0u);
+                EXPECT_TRUE(hit.range.InRange(0, 0, 0, 0, 1));
+                EXPECT_FALSE(hit.range.InRange(0, 0, 0, 0, hit.range.range1 + .1f));
+            }
+        }
+        EXPECT_EQ(Data::monsterSkillList[5].phases[1].range.type, Data::SkillRangeType::Circle);
+        EXPECT_EQ(Data::monsterSkillList[6].phases[1].range.type, Data::SkillRangeType::Rectangle);
+        EXPECT_EQ(Data::monsterSkillList[7].phases[1].range.type, Data::SkillRangeType::Circle);
+    }
+
     TEST(MonsterBehaviorTest, QuarrySlamDamagesOnlyTargetsInFrontAtImpact) {
         MonsterBehaviorFixture fixture(3);
         const float x = fixture.HomeX(), y = fixture.HomeY();
         const auto& data = Data::GetHuntingMonsterData(3, 1);
         ASSERT_EQ(data.phases[0].steps[2].skillID, 2);
         EXPECT_EQ(Data::GetHuntingMonsterData(2, 1).phases[0].steps[2].skillID, 1);
-        EXPECT_EQ(Data::GetHuntingMonsterData(4, 1).phases[0].steps[2].skillID, 1);
+        EXPECT_EQ(Data::GetHuntingMonsterData(4, 1).phases[0].steps[2].skillID, 5);
 
         auto addTarget = [&](uint16_t id, float dx, float dy) {
             CharacterState player{};

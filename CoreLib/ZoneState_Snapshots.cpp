@@ -40,7 +40,7 @@ namespace Core {
             const int cy = cellIndex / CELLS_X;
             const int cx = cellIndex % CELLS_X;
             for (uint16_t index : m_cells[cy][cx].monsterIndexes) {
-                if (index >= m_monsters.size() || !writer->WriteMonsterFullField(monsterChunk, m_monsters[index])) return false;
+                if (index >= m_monsters.size() || !writer->WriteMonsterFullField(monsterChunk, m_monsters[index], m_zoneID)) return false;
                 monsterBytes += sizeof(MonsterFullField);
                 ++monsterCount;
             }
@@ -332,7 +332,7 @@ namespace Core {
                     auto& monster = m_monsters[monsterIdx];
                     if (monster.hp == 0 && !(monster.dirtyBit & 0x01))
                         continue;
-                    if (!writer->WriteMonsterFullField(chunks[idx], monster)) {
+                    if (!writer->WriteMonsterFullField(chunks[idx], monster, m_zoneID)) {
                         complete = false;
                         continue;
                     }

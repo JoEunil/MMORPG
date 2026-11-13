@@ -461,6 +461,250 @@ MonoBehaviour:
       range1: 25
       range2: 20
       attack: 100
+  - skillID: 5
+    flags: 2
+    mana: 0
+    cooldownTicks: 0
+    phases:
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 14
+      action: 1
+      range: 1
+      range1: 3.5
+      range2: 0
+      attack: 10
+  - skillID: 6
+    flags: 2
+    mana: 0
+    cooldownTicks: 0
+    phases:
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 20
+      action: 1
+      range: 2
+      range1: 4.5
+      range2: 5
+      attack: 11
+  - skillID: 7
+    flags: 2
+    mana: 0
+    cooldownTicks: 0
+    phases:
+    - waitTicks: 0
+      action: 0
+      range: 0
+      range1: 0
+      range2: 0
+      attack: 0
+    - waitTicks: 24
+      action: 1
+      range: 1
+      range1: 6
+      range2: 0
+      attack: 12
+  monsterSpecies:
+  - id: 3
+    zoneID: 2
+    name: "\uC131\uBB38 \uC21C\uCC30\uBCD1"
+    attack: 50
+    phases:
+    - hpThreshold: 1
+      steps:
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 20
+  - id: 4
+    zoneID: 2
+    name: "\uD3D0\uD5C8 \uACBD\uBE44\uBCD1"
+    attack: 80
+    phases:
+    - hpThreshold: 1
+      steps:
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 1
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 20
+  - id: 5
+    zoneID: 3
+    name: "\uCC44\uC11D\uC7A5 \uC57D\uD0C8\uC790"
+    attack: 70
+    phases:
+    - hpThreshold: 1
+      steps:
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 20
+  - id: 6
+    zoneID: 3
+    name: "\uCC44\uC11D\uC7A5 \uBD84\uC1C4\uC790"
+    attack: 110
+    phases:
+    - hpThreshold: 1
+      steps:
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 2
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 20
+  - id: 7
+    zoneID: 4
+    name: "\uCC38\uB098\uBB34 \uC232 \uC0AC\uB0E5\uAFBC"
+    attack: 90
+    phases:
+    - hpThreshold: 1
+      steps:
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 20
+  - id: 8
+    zoneID: 4
+    name: "\uCC38\uB098\uBB34 \uC232 \uC218\uD638\uC790"
+    attack: 150
+    phases:
+    - hpThreshold: 1
+      steps:
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 5
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 20
+  - id: 9
+    zoneID: 5
+    name: "\uC804\uCD08\uAE30\uC9C0 \uCC99\uD6C4\uBCD1"
+    attack: 120
+    phases:
+    - hpThreshold: 1
+      steps:
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 20
+  - id: 10
+    zoneID: 5
+    name: "\uC804\uCD08\uAE30\uC9C0 \uD30C\uC218\uAFBC"
+    attack: 190
+    phases:
+    - hpThreshold: 1
+      steps:
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 6
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 26
+  - id: 11
+    zoneID: 6
+    name: "\uC11D\uD658 \uC21C\uB840\uC790"
+    attack: 150
+    phases:
+    - hpThreshold: 1
+      steps:
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 0
+        delayTicks: 20
+  - id: 12
+    zoneID: 6
+    name: "\uC11D\uD658 \uC81C\uB2E8 \uC218\uD638\uC790"
+    attack: 240
+    phases:
+    - hpThreshold: 1
+      steps:
+      - skillID: 0
+        delayTicks: 20
+      - skillID: 2
+        delayTicks: 20
+      - skillID: 7
+        delayTicks: 26
+      - skillID: 0
+        delayTicks: 30
+  - id: 2
+    zoneID: 4
+    name: "\uD3D0\uD5C8 \uAE38\uBAA9 \uBCF4\uC2A4"
+    attack: 18
+    phases:
+    - hpThreshold: 1
+      steps:
+      - skillID: 3
+        delayTicks: 100
+      - skillID: 4
+        delayTicks: 100
+    - hpThreshold: 0.5
+      steps:
+      - skillID: 3
+        delayTicks: 50
+      - skillID: 4
+        delayTicks: 50
+      - skillID: 3
+        delayTicks: 50
+      - skillID: 4
+        delayTicks: 50
+    - hpThreshold: 0.2
+      steps:
+      - skillID: 4
+        delayTicks: 25
+      - skillID: 3
+        delayTicks: 25
+      - skillID: 4
+        delayTicks: 25
+      - skillID: 3
+        delayTicks: 25
+  - id: 2
+    zoneID: 6
+    name: "\uC11D\uD658 \uC81C\uB2E8 \uBCF4\uC2A4"
+    attack: 30
+    phases:
+    - hpThreshold: 1
+      steps:
+      - skillID: 3
+        delayTicks: 100
+      - skillID: 4
+        delayTicks: 100
+    - hpThreshold: 0.5
+      steps:
+      - skillID: 3
+        delayTicks: 50
+      - skillID: 4
+        delayTicks: 50
+      - skillID: 3
+        delayTicks: 50
+      - skillID: 4
+        delayTicks: 50
+    - hpThreshold: 0.2
+      steps:
+      - skillID: 4
+        delayTicks: 25
+      - skillID: 3
+        delayTicks: 25
+      - skillID: 4
+        delayTicks: 25
+      - skillID: 3
+        delayTicks: 25
   huntingZones:
   - zoneID: 1
     label: "\uB9C8\uC744"

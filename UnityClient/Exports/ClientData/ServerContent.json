@@ -1,5 +1,5 @@
 {
-  "formatVersion": 5,
+  "formatVersion": 6,
   "skills": [
     {"skillID":0,"flags":0,"mana":0,"cooldownTicks":20,"phases":[{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":6,"action":1,"range":1,"range1":2,"range2":0,"attack":30}]},
     {"skillID":1,"flags":2,"mana":100,"cooldownTicks":120,"phases":[{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":16,"action":1,"range":1,"range1":8,"range2":0,"attack":120}]},
@@ -12,7 +12,10 @@
     {"skillID":1,"flags":2,"mana":20,"cooldownTicks":120,"phases":[{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":16,"action":1,"range":1,"range1":8,"range2":0,"attack":15}]},
     {"skillID":2,"flags":2,"mana":20,"cooldownTicks":80,"phases":[{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":16,"action":1,"range":2,"range1":5,"range2":2.5,"attack":12}]},
     {"skillID":3,"flags":2,"mana":0,"cooldownTicks":0,"phases":[{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":20,"action":1,"range":3,"range1":10,"range2":30,"attack":100},{"waitTicks":10,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":20,"action":1,"range":4,"range1":10,"range2":30,"attack":100}]},
-    {"skillID":4,"flags":2,"mana":0,"cooldownTicks":0,"phases":[{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":20,"action":1,"range":5,"range1":5,"range2":0,"attack":100},{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":20,"action":1,"range":5,"range1":10,"range2":5,"attack":100},{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":20,"action":1,"range":5,"range1":15,"range2":10,"attack":100},{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":20,"action":1,"range":5,"range1":20,"range2":15,"attack":100},{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":20,"action":1,"range":5,"range1":25,"range2":20,"attack":100}]}
+    {"skillID":4,"flags":2,"mana":0,"cooldownTicks":0,"phases":[{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":20,"action":1,"range":5,"range1":5,"range2":0,"attack":100},{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":20,"action":1,"range":5,"range1":10,"range2":5,"attack":100},{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":20,"action":1,"range":5,"range1":15,"range2":10,"attack":100},{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":20,"action":1,"range":5,"range1":20,"range2":15,"attack":100},{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":20,"action":1,"range":5,"range1":25,"range2":20,"attack":100}]},
+    {"skillID":5,"flags":2,"mana":0,"cooldownTicks":0,"phases":[{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":14,"action":1,"range":1,"range1":3.5,"range2":0,"attack":10}]},
+    {"skillID":6,"flags":2,"mana":0,"cooldownTicks":0,"phases":[{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":20,"action":1,"range":2,"range1":4.5,"range2":5,"attack":11}]},
+    {"skillID":7,"flags":2,"mana":0,"cooldownTicks":0,"phases":[{"waitTicks":0,"action":0,"range":0,"range1":0,"range2":0,"attack":0},{"waitTicks":24,"action":1,"range":1,"range1":6,"range2":0,"attack":12}]}
   ],
   "huntingZones": [
     {"zoneID":1,"label":"마을","minLevel":0,"maxLevel":0,"regularHp":0,"strongHp":0,"bossHp":0,"regularAttack":0,"strongAttack":0,"bossAttack":0,"regularExp":0,"strongExp":0,"bossExp":0,"regularGold":0,"strongGold":0},
@@ -26,6 +29,20 @@
     {"id":0,"maxHp":1500,"attack":5,"respawnTicks":300,"moveSpeed":1,"rewardExp":10,"phases":[{"hpThreshold":1,"steps":[{"skillID":0,"delayTicks":20},{"skillID":0,"delayTicks":20}]}]},
     {"id":1,"maxHp":3000,"attack":8,"respawnTicks":500,"moveSpeed":1.20000005,"rewardExp":30,"phases":[{"hpThreshold":1,"steps":[{"skillID":0,"delayTicks":20},{"skillID":0,"delayTicks":20},{"skillID":1,"delayTicks":20},{"skillID":0,"delayTicks":20}]}]},
     {"id":2,"maxHp":10000,"attack":15,"respawnTicks":6000,"moveSpeed":0.600000024,"rewardExp":300,"phases":[{"hpThreshold":1,"steps":[{"skillID":3,"delayTicks":100},{"skillID":4,"delayTicks":100}]},{"hpThreshold":0.5,"steps":[{"skillID":3,"delayTicks":50},{"skillID":4,"delayTicks":50},{"skillID":3,"delayTicks":50},{"skillID":4,"delayTicks":50}]},{"hpThreshold":0.200000003,"steps":[{"skillID":4,"delayTicks":25},{"skillID":3,"delayTicks":25},{"skillID":4,"delayTicks":25},{"skillID":3,"delayTicks":25}]}]}
+  ],
+  "monsterSpecies": [
+    {"id":3,"zoneID":2,"name":"성문 순찰병","attack":50,"phases":[{"hpThreshold":1,"steps":[{"skillID":0,"delayTicks":20},{"skillID":0,"delayTicks":20}]}]},
+    {"id":4,"zoneID":2,"name":"폐허 경비병","attack":80,"phases":[{"hpThreshold":1,"steps":[{"skillID":0,"delayTicks":20},{"skillID":0,"delayTicks":20},{"skillID":1,"delayTicks":20},{"skillID":0,"delayTicks":20}]}]},
+    {"id":5,"zoneID":3,"name":"채석장 약탈자","attack":70,"phases":[{"hpThreshold":1,"steps":[{"skillID":0,"delayTicks":20},{"skillID":0,"delayTicks":20}]}]},
+    {"id":6,"zoneID":3,"name":"채석장 분쇄자","attack":110,"phases":[{"hpThreshold":1,"steps":[{"skillID":0,"delayTicks":20},{"skillID":0,"delayTicks":20},{"skillID":2,"delayTicks":20},{"skillID":0,"delayTicks":20}]}]},
+    {"id":7,"zoneID":4,"name":"참나무 숲 사냥꾼","attack":90,"phases":[{"hpThreshold":1,"steps":[{"skillID":0,"delayTicks":20},{"skillID":0,"delayTicks":20}]}]},
+    {"id":8,"zoneID":4,"name":"참나무 숲 수호자","attack":150,"phases":[{"hpThreshold":1,"steps":[{"skillID":0,"delayTicks":20},{"skillID":0,"delayTicks":20},{"skillID":5,"delayTicks":20},{"skillID":0,"delayTicks":20}]}]},
+    {"id":9,"zoneID":5,"name":"전초기지 척후병","attack":120,"phases":[{"hpThreshold":1,"steps":[{"skillID":0,"delayTicks":20},{"skillID":0,"delayTicks":20}]}]},
+    {"id":10,"zoneID":5,"name":"전초기지 파수꾼","attack":190,"phases":[{"hpThreshold":1,"steps":[{"skillID":0,"delayTicks":20},{"skillID":0,"delayTicks":20},{"skillID":6,"delayTicks":20},{"skillID":0,"delayTicks":26}]}]},
+    {"id":11,"zoneID":6,"name":"석환 순례자","attack":150,"phases":[{"hpThreshold":1,"steps":[{"skillID":0,"delayTicks":20},{"skillID":0,"delayTicks":20}]}]},
+    {"id":12,"zoneID":6,"name":"석환 제단 수호자","attack":240,"phases":[{"hpThreshold":1,"steps":[{"skillID":0,"delayTicks":20},{"skillID":2,"delayTicks":20},{"skillID":7,"delayTicks":26},{"skillID":0,"delayTicks":30}]}]},
+    {"id":2,"zoneID":4,"name":"폐허 길목 보스","attack":18,"phases":[{"hpThreshold":1,"steps":[{"skillID":3,"delayTicks":100},{"skillID":4,"delayTicks":100}]},{"hpThreshold":0.5,"steps":[{"skillID":3,"delayTicks":50},{"skillID":4,"delayTicks":50},{"skillID":3,"delayTicks":50},{"skillID":4,"delayTicks":50}]},{"hpThreshold":0.200000003,"steps":[{"skillID":4,"delayTicks":25},{"skillID":3,"delayTicks":25},{"skillID":4,"delayTicks":25},{"skillID":3,"delayTicks":25}]}]},
+    {"id":2,"zoneID":6,"name":"석환 제단 보스","attack":30,"phases":[{"hpThreshold":1,"steps":[{"skillID":3,"delayTicks":100},{"skillID":4,"delayTicks":100}]},{"hpThreshold":0.5,"steps":[{"skillID":3,"delayTicks":50},{"skillID":4,"delayTicks":50},{"skillID":3,"delayTicks":50},{"skillID":4,"delayTicks":50}]},{"hpThreshold":0.200000003,"steps":[{"skillID":4,"delayTicks":25},{"skillID":3,"delayTicks":25},{"skillID":4,"delayTicks":25},{"skillID":3,"delayTicks":25}]}]}
   ],
   "growth": {"maxLevel":100,"levels":[
     {"level":1,"requiredTotalExp":0,"maxHpIncrease":0},

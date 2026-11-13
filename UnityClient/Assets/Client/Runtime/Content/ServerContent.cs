@@ -12,6 +12,20 @@ namespace Mmorpg.Client
     {
         public Growth growth = new Growth();
         public RingSkill[] monsterSkills = Array.Empty<RingSkill>();
+        public MonsterSpecies[] monsterSpecies = Array.Empty<MonsterSpecies>();
+
+        public MonsterSpecies GetMonsterSpecies(int id, int zoneID) =>
+            Array.Find(monsterSpecies, species => species != null && species.id == id && species.zoneID == zoneID);
+
+        [Serializable]
+        public sealed class MonsterSpecies
+        {
+            public int id, zoneID;
+            public string name;
+            public uint attack;
+            public MonsterPhase[] phases;
+        }
+
         public HuntingZone[] huntingZones = Array.Empty<HuntingZone>();
 
         public HuntingZone GetHuntingZone(int zoneID) =>

@@ -28,10 +28,10 @@ namespace Mmorpg.Client.Editor
                 snapshot = JObject.Load(reader, new JsonLoadSettings { DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Error });
                 if (reader.Read()) throw new InvalidOperationException("Unexpected data after the server content snapshot.");
             }
-            if (Integer(snapshot, "formatVersion", 5) != 5)
-                throw new InvalidOperationException("Only server content format version 5 is supported.");
+            if (Integer(snapshot, "formatVersion", 6) != 6)
+                throw new InvalidOperationException("Only server content format version 6 is supported.");
             var skills = ReadSkills(snapshot, "skills");
-            var monsterSkills = ReadSkills(snapshot, "monsterSkills");
+            var monsterSkills = ReadSkills(snapshot, "monsterSkills", 8);
             var zoneRows = Array(snapshot, "huntingZones");
             if (zoneRows.Count != 6) throw new InvalidOperationException("Hunting zones 1 to 6 are required exactly once.");
             var huntingZones = new ServerContent.HuntingZone[6];
@@ -73,24 +73,32 @@ namespace Mmorpg.Client.Editor
                 {
                     id = id, maxHp = Integer(row, "maxHp", int.MaxValue), attack = Integer(row, "attack"),
                     respawnTicks = Integer(row, "respawnTicks"), moveSpeed = Number(row, "moveSpeed"),
-                    rewardExp = Integer(row, "rewardExp"), phases = new ServerContent.MonsterPhase[phases.Count]
+                    rewardExp = Integer(row, "rewardExp"), phases = ReadMonsterPhases(phases, monsterSkills.Length)
                 };
-                for (int i = 0; i < phases.Count; i++)
-                {
-                    var steps = Array(phases[i], "steps");
-                    var phase = new ServerContent.MonsterPhase
-                    {
-                        hpThreshold = Number(phases[i], "hpThreshold"), steps = new ServerContent.SkillStep[steps.Count]
-                    };
-                    for (int j = 0; j < steps.Count; j++)
-                        phase.steps[j] = new ServerContent.SkillStep
-                        {
-                            skillID = (int)Integer(steps[j], "skillID", 4), delayTicks = Integer(steps[j], "delayTicks")
-                        };
-                    monster.phases[i] = phase;
-                }
-                ValidateMonster(monster);
+                ValidateMonster(monster, monsterSkills.Length);
                 monsters[id] = monster;
+            }
+
+            var speciesRows = Array(snapshot, "monsterSpecies");
+            if (speciesRows.Count != 12) throw new InvalidOperationException("Expected ten field species and two boss entries.");
+            var species = new ServerContent.MonsterSpecies[speciesRows.Count];
+            foreach (var row in speciesRows)
+            {
+                int id = (int)Integer(row, "id", 12);
+                int zone = (int)Integer(row, "zoneID", 6);
+                if (id == 2 ? zone != 4 && zone != 6 : zone < 2 || id < 3 || (id - 3) / 2 + 2 != zone)
+                    throw new InvalidOperationException("Species ID does not belong to its hunting zone.");
+                int slot = id == 2 ? (zone == 4 ? 10 : 11) : id - 3;
+                var name = Field(row, "name");
+                uint attack = Integer(row, "attack");
+                if (species[slot] != null || name.Type != JTokenType.String || string.IsNullOrWhiteSpace(name.Value<string>()) || attack == 0)
+                    throw new InvalidOperationException("Species must have a unique identity, name and attack.");
+                var phases = ReadMonsterPhases(Array(row, "phases"), monsterSkills.Length);
+                if (phases.Length == 0) throw new InvalidOperationException("Species requires an attack pattern.");
+                foreach (var phase in phases)
+                    if (phase.steps.Length == 0) throw new InvalidOperationException("Species requires attack steps.");
+                species[slot] = new ServerContent.MonsterSpecies
+                    { id = id, zoneID = zone, name = name.Value<string>(), attack = attack, phases = phases };
             }
 
             var growthRow = Field(snapshot, "growth");
@@ -168,6 +176,7 @@ namespace Mmorpg.Client.Editor
                 throw new InvalidOperationException("Shield and body equipment must exist with a combined defense below 100 percent.");
 
             // All parsing and validation finish before replacing any existing asset fields.
+            var oldSpecies = target.monsterSpecies;
             var oldMonsterSkills = target.monsterSkills;
             var oldHuntingZones = target.huntingZones;
             var oldRing = target.ring;
@@ -180,6 +189,7 @@ namespace Mmorpg.Client.Editor
             bool wasDirty = EditorUtility.IsDirty(target);
             try
             {
+                target.monsterSpecies = species;
                 target.monsterSkills = monsterSkills;
                 target.huntingZones = huntingZones;
                 target.ring = skills[1];
@@ -195,6 +205,7 @@ namespace Mmorpg.Client.Editor
             catch
             {
                 // Restore the live object if persistence throws. Disk writes are not an atomic transaction.
+                target.monsterSpecies = oldSpecies;
                 target.monsterSkills = oldMonsterSkills;
                 target.huntingZones = oldHuntingZones;
                 target.ring = oldRing;
@@ -210,14 +221,34 @@ namespace Mmorpg.Client.Editor
             }
         }
 
-        private static ServerContent.RingSkill[] ReadSkills(JToken snapshot, string field)
+        private static ServerContent.MonsterPhase[] ReadMonsterPhases(JArray phases, int skillCount)
         {
-            var skills = new ServerContent.RingSkill[5];
+            var result = new ServerContent.MonsterPhase[phases.Count];
+            for (int i = 0; i < phases.Count; i++)
+            {
+                var steps = Array(phases[i], "steps");
+                var phase = new ServerContent.MonsterPhase
+                {
+                    hpThreshold = Number(phases[i], "hpThreshold"), steps = new ServerContent.SkillStep[steps.Count]
+                };
+                for (int j = 0; j < steps.Count; j++)
+                    phase.steps[j] = new ServerContent.SkillStep
+                    {
+                        skillID = (int)Integer(steps[j], "skillID", (uint)(skillCount - 1)), delayTicks = Integer(steps[j], "delayTicks")
+                    };
+                result[i] = phase;
+            }
+            return result;
+        }
+
+        private static ServerContent.RingSkill[] ReadSkills(JToken snapshot, string field, int count = 5)
+        {
+            var skills = new ServerContent.RingSkill[count];
             var skillRows = Array(snapshot, field);
-            if (skillRows.Count != skills.Length) throw new InvalidOperationException("Skill IDs 0 to 4 are required exactly once.");
+            if (skillRows.Count != skills.Length) throw new InvalidOperationException(field + " requires all skill IDs exactly once.");
             foreach (var row in skillRows)
             {
-                int id = (int)Integer(row, "skillID", 4);
+                int id = (int)Integer(row, "skillID", (uint)(count - 1));
                 if (skills[id] != null) throw new InvalidOperationException("Duplicate skill ID: " + id);
                 var phases = Array(row, "phases");
                 var skill = new ServerContent.RingSkill
@@ -292,7 +323,7 @@ namespace Mmorpg.Client.Editor
             }
         }
 
-        private static void ValidateMonster(ServerContent.Monster monster)
+        private static void ValidateMonster(ServerContent.Monster monster, int skillCount)
         {
             if (monster.maxHp == 0 || monster.maxHp > int.MaxValue || monster.respawnTicks == 0 || !Finite(monster.moveSpeed) || monster.moveSpeed <= 0)
                 throw new InvalidOperationException("Monster HP must fit the signed wire value, respawn ticks must be nonzero, and speed must be finite and positive.");
@@ -317,8 +348,8 @@ namespace Mmorpg.Client.Editor
                 if (phase.steps == null || phase.steps.Length < 1 || phase.steps.Length > 16 || (phase.steps.Length & (phase.steps.Length - 1)) != 0)
                     throw new InvalidOperationException("Each monster phase requires a power-of-two step count from 1 to 16.");
                 foreach (var step in phase.steps)
-                    if (step == null || step.skillID < 0 || step.skillID > 4)
-                        throw new InvalidOperationException("Monster skill references must use an existing skill ID from 0 to 4.");
+                    if (step == null || step.skillID < 0 || step.skillID >= skillCount)
+                        throw new InvalidOperationException("Monster skill references must use an existing monster skill ID.");
             }
         }
 
