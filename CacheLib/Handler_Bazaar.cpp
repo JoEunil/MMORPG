@@ -1,4 +1,4 @@
-#include "Handler.h"
+﻿#include "Handler.h"
 
 #include <algorithm>
 #include <memory>
@@ -18,33 +18,43 @@
 #include "BazaarRegisterResult.h"
 
 namespace Cache {
+    template <typename Response, typename Work>
+    void Handler::EnqueueBazaarQuery(ScopedMessage& msg, Core::MsgHeader header, const Response& failureBody, const char* queueError, Work work) {
+        auto pending = std::make_shared<ScopedMessage>(std::move(msg)); // shared_ptr에 unique_ptr을 담을 수 있다.
+        const auto finish = [this, pending, header, queueError](const Response& response) {
+            auto owned = std::move(*pending);
+            if (!owned) return;
+            auto* st = reinterpret_cast<Core::MsgStruct<Response>*>(owned->GetBuffer());
+            st->header = header;
+            st->body = response;
+            owned->SetLength(sizeof(*st));
+            if (!messageQ->EnqueueMessage(owned.get()))
+                Core::errorLogger->LogError("cache handler bazaar", queueError, "sessionID", header.sessionID);
+        };
+        const auto failed = [finish, failureBody] { finish(failureBody); };
+        const auto outcome = dbWorkerBazaar->Enqueue([finish, work = std::move(work)](DBConnectionBazaar* conn) {
+            finish(work(*conn));
+        }, nullptr, failed);
+        if (outcome != DBEnqueueResult::Queued)
+            failed();
+    }
+
     void Handler::BazaarMyList(ScopedMessage& msg, uint64_t sessionID, Core::MsgBazaarMyListBody* body) {
         if (!CheckMessageLength<Core::MsgBazaarMyListBody>(msg.get()))
             return;
 
         const auto request = *body;
-        auto pending = std::make_shared<ScopedMessage>(std::move(msg));
-        const auto finish = [this, pending, sessionID, request](const Core::MsgBazaarMyListResBody& response) {
-            auto owned = std::move(*pending);
-            if (!owned) return;
-            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarMyListResBody>*>(owned->GetBuffer());
-            st->header = { sessionID, Core::MSG_BAZAAR_MY_LIST_RES };
-            st->body = response;
-            st->body.requestID = request.requestID;
-            st->body.characterID = request.characterID;
-            owned->SetLength(sizeof(*st));
-            if (!messageQ->EnqueueMessage(owned.get()))
-                Core::errorLogger->LogError("cache handler bazaar", "my list response queue rejected", "sessionID", sessionID);
-        };
-        const auto failed = [finish] { finish(Core::MsgBazaarMyListResBody{}); };
-        const auto outcome = dbWorkerBazaar->Enqueue([request, finish](DBConnectionBazaar* conn) {
-            auto result = conn->ExecuteSelect(11, request.characterID, Core::MAX_BAZAAR_MY_LIST);
-            Core::MsgBazaarMyListResBody response{};
-            ParseBazaarMyListResult(result.get(), request.requestID, request.characterID, response);
-            finish(response);
-        }, nullptr, failed);
-        if (outcome != DBEnqueueResult::Queued)
-            failed();
+        Core::MsgBazaarMyListResBody failureBody{};
+        failureBody.requestID = request.requestID;
+        failureBody.characterID = request.characterID;
+
+        EnqueueBazaarQuery(msg, { sessionID, Core::MSG_BAZAAR_MY_LIST_RES }, failureBody,
+            "my list response queue rejected", [request](DBConnectionBazaar& conn) {
+                auto result = conn.ExecuteSelect(11, request.characterID, Core::MAX_BAZAAR_MY_LIST);
+                Core::MsgBazaarMyListResBody response{};
+                ParseBazaarMyListResult(result.get(), request.requestID, request.characterID, response);
+                return response;
+            });
     }
 
     void Handler::BazaarSearch(ScopedMessage& msg, uint64_t sessionID, Core::MsgBazaarSearchBody* body) {
@@ -52,28 +62,17 @@ namespace Cache {
             return;
 
         const auto request = *body;
-        auto pending = std::make_shared<ScopedMessage>(std::move(msg));
-        const auto finish = [this, pending, sessionID, requestID = request.requestID](const Core::MsgBazaarSearchResBody& response) {
-            auto owned = std::move(*pending);
-            if (!owned) return;
-            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarSearchResBody>*>(owned->GetBuffer());
-            st->header = { sessionID, Core::MSG_BAZAAR_SEARCH_RES };
-            st->body = response;
-            st->body.requestID = requestID;
-            owned->SetLength(sizeof(*st));
-            if (!messageQ->EnqueueMessage(owned.get()))
-                Core::errorLogger->LogError("cache handler bazaar", "search response queue rejected", "sessionID", sessionID);
-        };
-        const auto failed = [finish] { finish(Core::MsgBazaarSearchResBody{}); };
-        const auto outcome = dbWorkerBazaar->Enqueue([request, finish](DBConnectionBazaar* conn) {
-            const uint32_t offset = static_cast<uint32_t>(request.page) * Core::MAX_BAZAAR_SEARCH_RESULT;
-            auto result = conn->ExecuteSelect(12, request.item_type, Core::MAX_BAZAAR_SEARCH_RESULT, offset);
-            Core::MsgBazaarSearchResBody response{};
-            ParseBazaarSearchResult(result.get(), request.requestID, response);
-            finish(response);
-        }, nullptr, failed);
-        if (outcome != DBEnqueueResult::Queued)
-            failed();
+        Core::MsgBazaarSearchResBody failureBody{};
+        failureBody.requestID = request.requestID;
+
+        EnqueueBazaarQuery(msg, { sessionID, Core::MSG_BAZAAR_SEARCH_RES }, failureBody,
+            "search response queue rejected", [request](DBConnectionBazaar& conn) {
+                const uint32_t offset = static_cast<uint32_t>(request.page) * Core::MAX_BAZAAR_SEARCH_RESULT;
+                auto result = conn.ExecuteSelect(12, request.item_type, Core::MAX_BAZAAR_SEARCH_RESULT, offset);
+                Core::MsgBazaarSearchResBody response{};
+                ParseBazaarSearchResult(result.get(), request.requestID, response);
+                return response;
+            });
     }
 
     void Handler::BazaarRegister(ScopedMessage& msg, uint64_t sessionID, Core::MsgBazaarRegisterBody* body) {
