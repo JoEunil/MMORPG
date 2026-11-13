@@ -14,17 +14,15 @@ namespace Cache {
 
         const uint64_t characterID = body->characterID;
         const uint32_t requestID = body->requestID;
-        Result7 res = cache_currency->Getter(characterID);
-        auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgCurrencyResBody>*>(msg->GetBuffer());
-        st->header.messageType = Core::MSG_CURRENCY_RES;
-        st->header.sessionID = sessionID;
-        st->body = {};
-        st->body.resStatus = (res.status == CACHE_STATUS::AVAILABLE ? 1 : 0);
-        st->body.gold = st->body.resStatus == 1 ? res.data.gold : 0;
-        st->body.requestID = requestID;
-        st->body.characterID = characterID;
-        msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCurrencyResBody>));
-        messageQ->EnqueueMessage(msg.get());
+        const Result7 res = cache_currency->Getter(characterID);
+        const bool available = res.status == CACHE_STATUS::AVAILABLE;
+        const Core::MsgCurrencyResBody response{
+            .resStatus = static_cast<uint8_t>(available),
+            .gold = available ? res.data.gold : 0,
+            .requestID = requestID,
+            .characterID = characterID
+        };
+        TryEnqueueResponse(*msg, { sessionID, Core::MSG_CURRENCY_RES }, response);
     }
 
     void Handler::CurrencyDeposit(ScopedMessage& msg, uint64_t sessionID, Core::MsgCurrencyDepositBody* body) {

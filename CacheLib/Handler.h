@@ -12,11 +12,11 @@
 #include "DBWorker.h"
 #include "DBConnectionGame.h"
 #include "DBConnectionBazaar.h"
+#include <CoreLib/IMessageQueue.h>
 #include <CoreLib/MessagePool.h>
 
 #include <CoreLib/LoggerGlobal.h>
 namespace Core {
-    class IMessageQueue;
     class ILogger;
     class Message;
 }
@@ -49,6 +49,17 @@ namespace Cache {
         bool CheckMessageLength(const Core::Message* msg) {
             return msg->GetLength() == sizeof(Core::MsgStruct<T>);
         }
+
+        template <typename T>
+        bool TryEnqueueResponse(Core::Message& msg, Core::MsgHeader header, const T& body) {
+            static_assert(sizeof(Core::MsgStruct<T>) <= MESSAGE_LEN);
+            auto* response = reinterpret_cast<Core::MsgStruct<T>*>(msg.GetBuffer());
+            response->header = header;
+            response->body = body;
+            msg.SetLength(sizeof(*response));
+            return messageQ->EnqueueMessage(&msg);
+        }
+
         void Initialize(Core::IMessageQueue* mq,  CacheMessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp) {
             messageQ = mq;
             messagePool = mp;

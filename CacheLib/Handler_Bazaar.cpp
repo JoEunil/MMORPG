@@ -24,11 +24,7 @@ namespace Cache {
         const auto finish = [this, pending, header, queueError](const Response& response) {
             auto owned = std::move(*pending);
             if (!owned) return;
-            auto* st = reinterpret_cast<Core::MsgStruct<Response>*>(owned->GetBuffer());
-            st->header = header;
-            st->body = response;
-            owned->SetLength(sizeof(*st));
-            if (!messageQ->EnqueueMessage(owned.get()))
+            if (!TryEnqueueResponse(*owned, header, response))
                 Core::errorLogger->LogError("cache handler bazaar", queueError, "sessionID", header.sessionID);
         };
         const auto failed = [finish, failureBody] { finish(failureBody); };

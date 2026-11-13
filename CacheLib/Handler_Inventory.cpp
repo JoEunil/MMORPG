@@ -42,19 +42,15 @@ namespace Cache {
         if (!CheckMessageLength<Core::MsgInventoryUpdateBody>(msg.get()))
             return;
 
-        auto charID = body->characterID;
-        auto [status, itemID, slot, quantity] = cache_inventory->PartialUpdate(body->characterID, body->itemID, body->op, body->change);
-
-        auto st = reinterpret_cast<Core::MsgStruct<Core::MsgInventoryUpdateResBody>*>(msg->GetBuffer());
-        st->header.messageType = Core::MSG_INVENTORY_UPDATE_RES;
-        st->header.sessionID = sessionID;
-        st->body.characterID = charID;
-        st->body.resStatus = (status == CACHE_STATUS::AVAILABLE ? 1 : 0);
-        st->body.itemID = itemID;
-        st->body.slot = slot;
-        st->body.itemQuantity = quantity;
-
-        msg->SetLength(sizeof(Core::MsgStruct<Core::MsgInventoryUpdateResBody>));
-        messageQ->EnqueueMessage(msg.get());
+        const auto characterID = body->characterID;
+        const auto [status, itemID, slot, quantity] = cache_inventory->PartialUpdate(characterID, body->itemID, body->op, body->change);
+        const Core::MsgInventoryUpdateResBody response{
+            .resStatus = static_cast<uint8_t>(status == CACHE_STATUS::AVAILABLE),
+            .characterID = characterID,
+            .itemID = itemID,
+            .itemQuantity = quantity,
+            .slot = slot
+        };
+        TryEnqueueResponse(*msg, { sessionID, Core::MSG_INVENTORY_UPDATE_RES }, response);
     }
 }
