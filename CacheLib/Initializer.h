@@ -24,13 +24,13 @@ class ProfileCacheTest;
 
 namespace Cache {
 	class Initializer {
+        CacheMessagePool msgPool;
         CacheFlush flush;
         FlushDispatcher dispatcher;
         CacheStorageInventory cache_inventory;
         CacheStorageCurrency cache_currency;
         ProfileCache cache_profile;
         Handler handler;
-        CacheMessagePool msgPool;
         InMemoryQueue recvMQ;
         DBConnectionPool<DBConnectionGame> connectionPoolGame;
         DBConnectionPool<DBConnectionBazaar> connectionPoolBazaar;

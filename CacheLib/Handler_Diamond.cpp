@@ -8,13 +8,13 @@
 #include "DBWorker.h"
 
 namespace Cache {
-    void Handler::DiamondRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgDiamondReqBody* body) {
-        if (!CheckMessageLength<Core::MsgDiamondReqBody>(msg))
+    void Handler::DiamondRequest(ScopedMessage& msg, uint64_t sessionID, Core::MsgDiamondReqBody* body) {
+        if (!CheckMessageLength<Core::MsgDiamondReqBody>(msg.get()))
             return;
 
         const uint64_t characterID = body->characterID;
         const uint32_t requestID = body->requestID;
-        EnqueueMessageWork(dbWorkerBazaar, msg, [msg, sessionID, characterID, requestID, this](DBConnectionBazaar* conn) {
+        EnqueueMessageWork(dbWorkerBazaar, msg, [this, sessionID, characterID, requestID](DBConnectionBazaar* conn, Core::Message* msg) {
             auto res = conn->ExecuteSelect(9, characterID);
             Core::MsgStruct<Core::MsgDiamondResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgDiamondResBody>*>(msg->GetBuffer());
 
@@ -28,7 +28,6 @@ namespace Cache {
                 st->body.resStatus = 0;
                 msg->SetLength(sizeof(Core::MsgStruct<Core::MsgDiamondResBody>));
                 messageQ->EnqueueMessage(msg);
-                messagePool->Return(msg);
                 Core::gameLogger->LogInfo("cache handler diamond", "diamond read failed", "sessionID", sessionID, "char_id", characterID);
                 return;
             }
@@ -40,16 +39,16 @@ namespace Cache {
             st->body.totalSpent = res->getUInt64("total_spent");
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgDiamondResBody>));
             messageQ->EnqueueMessage(msg);
-            messagePool->Return(msg);
             });
     }
 
-    void Handler::DiamondDeposit(Core::Message*& msg, uint64_t sessionID, Core::MsgDiamondDepositBody* body) {
-        if (!CheckMessageLength<Core::MsgDiamondDepositBody>(msg))
+    void Handler::DiamondDeposit(ScopedMessage& msg, uint64_t sessionID, Core::MsgDiamondDepositBody* body) {
+        if (!CheckMessageLength<Core::MsgDiamondDepositBody>(msg.get()))
             return;
 
-        EnqueueMessageWork(dbWorkerBazaar, msg, [msg, sessionID, body ,this](DBConnectionBazaar* conn) {
-            int affected = conn->ExecuteUpdate(10, body->diamond, body->diamond, body->characterID);
+        const auto request = *body;
+        EnqueueMessageWork(dbWorkerBazaar, msg, [this, sessionID, request](DBConnectionBazaar* conn, Core::Message* msg) {
+            int affected = conn->ExecuteUpdate(10, request.diamond, request.diamond, request.characterID);
             Core::MsgStruct<Core::MsgDiamondDepositResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgDiamondDepositResBody>*>(msg->GetBuffer());
 
             st->header.sessionID = sessionID;
@@ -59,17 +58,15 @@ namespace Cache {
                 st->body.resStatus = 0;
                 msg->SetLength(sizeof(Core::MsgStruct<Core::MsgDiamondDepositResBody>));
                 messageQ->EnqueueMessage(msg);
-                messagePool->Return(msg);
-                Core::gameLogger->LogInfo("cache handler diamond", "diamond deposit failed", "sessionID", sessionID, "char_id", body->characterID);
+                Core::gameLogger->LogInfo("cache handler diamond", "diamond deposit failed", "sessionID", sessionID, "char_id", request.characterID);
                 return;
             }
 
-            auto res = conn->ExecuteSelect(9, body->characterID);
+            auto res = conn->ExecuteSelect(9, request.characterID);
             if (!res || !res->next()) {
                 st->body.resStatus = 2;
                 msg->SetLength(sizeof(Core::MsgStruct<Core::MsgDiamondDepositResBody>));
                 messageQ->EnqueueMessage(msg);
-                messagePool->Return(msg);
                 return;
             }
 
@@ -79,7 +76,6 @@ namespace Cache {
 
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgDiamondDepositResBody>));
             messageQ->EnqueueMessage(msg);
-            messagePool->Return(msg);
             });
     }
 }

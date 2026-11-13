@@ -430,12 +430,12 @@ namespace Cache {
             handler.dbWorkerBazaar = stoppedWorker.get();
         }
         void RequestSearch() {
-            auto* msg = messages->Acquire();
+            auto msg = messages->AcquireScoped();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarSearchBody>*>(msg->GetBuffer());
             st->header = {42, Core::MSG_BAZAAR_SEARCH};
             st->body = {0x12345678, 3, 65535};
             msg->SetLength(sizeof(*st));
-            handler.Process(msg); // Stopped queue rejects without connecting to any DB.
+            handler.Process(std::move(msg)); // Stopped queue rejects without connecting to any DB.
         }
     };
     TEST_F(BazaarSearchFixture, StoppedDbWorkerReturnsExplicitCorrelatedFailure) {
@@ -578,41 +578,41 @@ namespace Cache {
             handler.dbWorkerBazaar = stoppedWorker.get();
         }
         void RequestBuy(int delta = 0) {
-            auto* msg = messages->Acquire();
+            auto msg = messages->AcquireScoped();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarBuyBody>*>(msg->GetBuffer());
             st->header = {42, Core::MSG_BAZAAR_BUY}; st->body = {5011, UINT64_MAX, 123};
-            msg->SetLength(sizeof(*st) + delta); handler.Process(msg);
+            msg->SetLength(sizeof(*st) + delta); handler.Process(std::move(msg));
         }
         void RequestOutboxList(int delta = 0) {
-            auto* msg = messages->Acquire();
+            auto msg = messages->AcquireScoped();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarOutboxListBody>*>(msg->GetBuffer());
             st->header = {42, Core::MSG_BAZAAR_OUTBOX_LIST}; st->body = {5011, 126};
-            msg->SetLength(sizeof(*st) + delta); handler.Process(msg);
+            msg->SetLength(sizeof(*st) + delta); handler.Process(std::move(msg));
         }
         void RequestOutbox(int delta = 0) {
-            auto* msg = messages->Acquire();
+            auto msg = messages->AcquireScoped();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarCheckOutboxBody>*>(msg->GetBuffer());
             st->header = {42, Core::MSG_BAZAAR_CHECK_OUTBOX}; st->body = {5011, 124};
-            msg->SetLength(sizeof(*st) + delta); handler.Process(msg);
+            msg->SetLength(sizeof(*st) + delta); handler.Process(std::move(msg));
         }
         void RequestClaim(int delta = 0) {
-            auto* msg = messages->Acquire();
+            auto msg = messages->AcquireScoped();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarClaimBody>*>(msg->GetBuffer());
             st->header = {42, Core::MSG_BAZAAR_CLAIM};
             st->body = {5011, UINT64_MAX, 0x12345678};
             msg->SetLength(sizeof(*st) + delta);
-            handler.Process(msg);
+            handler.Process(std::move(msg));
         }
         void RequestRegister(InventoryHarness& inventory, CurrencyHarness& currency, RegisterResponseQueue& queue, uint16_t quantity = 3, int lengthDelta = 0) {
             handler.cache_inventory = &inventory;
             handler.cache_currency = &currency;
             handler.messageQ = &queue;
-            auto* msg = messages->Acquire();
+            auto msg = messages->AcquireScoped();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterBody>*>(msg->GetBuffer());
             st->header = {42, Core::MSG_BAZAAR_REGISTER};
             st->body = {Character, 1, quantity, 100, 0x12345678, 0};
             msg->SetLength(sizeof(*st) + lengthDelta);
-            if (lengthDelta != 0) handler.Process(msg);
+            if (lengthDelta != 0) handler.Process(std::move(msg));
             else {
                 handler.BazaarRegister(msg, 42, &st->body);
                 EXPECT_EQ(msg, nullptr);
@@ -620,23 +620,24 @@ namespace Cache {
             handler.messageQ = &responses;
         }
         void ExpectPoolRestored() {
-            std::vector<Core::Message*> held;
+            std::vector<CacheMessagePool::ScopedMessage> held;
             for (size_t i = 0; i < MSGPOOL_SIZE; ++i) {
-                auto* msg = messages->Acquire();
+                auto msg = messages->AcquireScoped();
                 ASSERT_NE(msg, nullptr);
-                EXPECT_EQ(std::find(held.begin(), held.end(), msg), held.end());
-                held.push_back(msg);
+                EXPECT_EQ(std::find_if(held.begin(), held.end(), [&](const auto& item) {
+                    return item.get() == msg.get();
+                }), held.end());
+                held.push_back(std::move(msg));
             }
-            EXPECT_EQ(messages->Acquire(), nullptr);
-            for (auto* msg : held) messages->Return(msg);
+            EXPECT_EQ(messages->AcquireScoped(), nullptr);
         }
         void RequestMyList() {
-            auto* msg = messages->Acquire();
+            auto msg = messages->AcquireScoped();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarMyListBody>*>(msg->GetBuffer());
             st->header = {42, Core::MSG_BAZAAR_MY_LIST};
             st->body = {0x12345678, 5011};
             msg->SetLength(sizeof(*st));
-            handler.Process(msg); // Rejected without any DB connection.
+            handler.Process(std::move(msg)); // Rejected without any DB connection.
         }
     };
     TEST_F(BazaarMyListFixture, StoppedWorkerReturnsZeroedFailureWithRequestAndOwner) {

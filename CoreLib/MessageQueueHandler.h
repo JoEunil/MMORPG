@@ -4,7 +4,6 @@
 #include <cstdint>
 
 #include "IPacket.h"
-#include "MessagePool.h"
 #include "MessageTypes.h"
 #include "LoggerGlobal.h"
 
@@ -20,13 +19,11 @@ namespace Core {
         PacketWriter* writer = nullptr;
         INetworkSender* networkSender = nullptr;
         LobbyZone* lobbyZone = nullptr;
-        CoreMessagePool* messagePool = nullptr;
         StateManager* stateManager = nullptr;
-        void Initialize(INetworkSender* sender, PacketWriter* w, LobbyZone* lo, CoreMessagePool* msgPool, StateManager* s) noexcept {
+        void Initialize(INetworkSender* sender, PacketWriter* w, LobbyZone* lo, StateManager* s) noexcept {
             networkSender = sender;
             writer = w;
             lobbyZone = lo;
-            messagePool = msgPool;
             stateManager = s;
         }
         bool IsReady() {

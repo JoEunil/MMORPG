@@ -18,7 +18,7 @@ namespace Core {
 	// 수신 큐
 	class InMemoryQueue :public IMessageQueue{
 		std::vector<std::thread> m_threads;
-		Base::RingQueue<Message*, MQ_SIZE> m_sharedQueue;
+		Base::RingQueue<CoreMessagePool::ScopedMessage, MQ_SIZE> m_sharedQueue;
 		std::mutex m_queueMutex;
 		std::condition_variable m_workAvailable;
 

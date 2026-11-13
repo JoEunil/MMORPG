@@ -8,8 +8,8 @@
 #include "DBWorker.h"
 
 namespace Cache {
-    void Handler::InventoryRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgInventoryReqBody* body) {
-        if (!CheckMessageLength<Core::MsgInventoryReqBody>(msg))
+    void Handler::InventoryRequest(ScopedMessage& msg, uint64_t sessionID, Core::MsgInventoryReqBody* body) {
+        if (!CheckMessageLength<Core::MsgInventoryReqBody>(msg.get()))
             return;
 
         const auto characterID = body->characterID;
@@ -30,16 +30,16 @@ namespace Cache {
             }
             st->body.itemCount = n;
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgInventoryResBody>));
-            messageQ->EnqueueMessage(msg);
+            messageQ->EnqueueMessage(msg.get());
         } else {
             st->body.resStatus = Core::RES_STATUS::FAILED;
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgInventoryResBody>));
-			messageQ->EnqueueMessage(msg);
+			messageQ->EnqueueMessage(msg.get());
         }
     }
 
-    void Handler::InventoryUpdate(Core::Message*& msg, uint64_t sessionID, Core::MsgInventoryUpdateBody* body) {
-        if (!CheckMessageLength<Core::MsgInventoryUpdateBody>(msg))
+    void Handler::InventoryUpdate(ScopedMessage& msg, uint64_t sessionID, Core::MsgInventoryUpdateBody* body) {
+        if (!CheckMessageLength<Core::MsgInventoryUpdateBody>(msg.get()))
             return;
 
         auto charID = body->characterID;
@@ -55,6 +55,6 @@ namespace Cache {
         st->body.itemQuantity = quantity;
 
         msg->SetLength(sizeof(Core::MsgStruct<Core::MsgInventoryUpdateResBody>));
-        messageQ->EnqueueMessage(msg);
+        messageQ->EnqueueMessage(msg.get());
     }
 }

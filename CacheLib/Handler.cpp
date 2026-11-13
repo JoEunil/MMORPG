@@ -10,9 +10,8 @@
 #include <memory>
 
 namespace Cache {
-    void Handler::Process(Core::Message* msg) {
-        if (msg->GetLength() < sizeof(Core::MsgHeader)) {
-            messagePool->Return(msg);
+    void Handler::Process(ScopedMessage msg) {
+        if (!msg || msg->GetLength() < sizeof(Core::MsgHeader)) {
             return;
         }
 
@@ -76,27 +75,25 @@ namespace Cache {
             ProfileRename(msg, header->sessionID, Core::parseMsgBody<Core::MsgProfileRenameBody>(msg->GetBuffer()));
             break;
         }
-        if (msg != nullptr)
-            messagePool->Return(msg);
     }
-    void Handler::CharacterListRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterListReqBody* body) {
-        if (!CheckMessageLength<Core::MsgCharacterListReqBody>(msg))
+    void Handler::CharacterListRequest(ScopedMessage& msg, uint64_t sessionID, Core::MsgCharacterListReqBody* body) {
+        if (!CheckMessageLength<Core::MsgCharacterListReqBody>(msg.get()))
             return;
 
-        EnqueueMessageWork(dbWorkerGame, msg, [=](DBConnectionGame* conn) {
-            auto res = conn->ExecuteSelect(1, body->userID, body->channelID);
+        const auto request = *body;
+        EnqueueMessageWork(dbWorkerGame, msg, [this, sessionID, request](DBConnectionGame* conn, Core::Message* msg) {
+            auto res = conn->ExecuteSelect(1, request.userID, request.channelID);
             Core::MsgStruct<Core::MsgCharacterListResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgCharacterListResBody>*>(msg->GetBuffer());
 
             st->header.sessionID = sessionID;
             st->header.messageType = Core::MSG_CHARACTER_LIST_RES;
 
             if (!res || !res->next()) {
-                Core::gameLogger->LogInfo("cache handler", "character list read failed", "sessionID", sessionID, "user_id", body->userID, "channel_id", body->channelID);
+                Core::gameLogger->LogInfo("cache handler", "character list read failed", "sessionID", sessionID, "user_id", request.userID, "channel_id", request.channelID);
                 st->body.resStatus = 0;
                 st->body.count = 0;
                 msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterListResBody>));
                 messageQ->EnqueueMessage(msg);
-                messagePool->Return(msg);
                 return;
             }
 
@@ -118,27 +115,26 @@ namespace Cache {
 
             msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterListResBody>));
             messageQ->EnqueueMessage(msg);
-            messagePool->Return(msg);
             });
     }
 
-    void Handler::CharacterStateRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterStateReqBody* body) {
-        if (!CheckMessageLength<Core::MsgCharacterStateReqBody>(msg))
+    void Handler::CharacterStateRequest(ScopedMessage& msg, uint64_t sessionID, Core::MsgCharacterStateReqBody* body) {
+        if (!CheckMessageLength<Core::MsgCharacterStateReqBody>(msg.get()))
             return;
 
         const auto request = *body;
-        auto* owned = msg;
+        auto pending = std::make_shared<ScopedMessage>(std::move(msg));
         auto completed = std::make_shared<std::atomic_bool>(false);
-        const auto finish = [this, owned, sessionID, completed](const Core::MsgCharacterStateResBody& response) {
+        const auto finish = [this, pending, sessionID, completed](const Core::MsgCharacterStateResBody& response) {
             // DB failure and an inline/asynchronous inventory completion share one message owner.
             if (completed->exchange(true)) return;
+            auto owned = std::move(*pending);
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgCharacterStateResBody>*>(owned->GetBuffer());
             st->header = { sessionID, Core::MSG_CHARACTER_STATE_RES };
             st->body = response;
             owned->SetLength(sizeof(*st));
-            if (!messageQ->EnqueueMessage(owned))
+            if (!messageQ->EnqueueMessage(owned.get()))
                 Core::errorLogger->LogError("cache handler", "character state response queue rejected", "sessionID", sessionID);
-            messagePool->Return(owned);
         };
         const auto failed = [finish] { finish(Core::MsgCharacterStateResBody{}); };
         const auto outcome = dbWorkerGame->Enqueue([this, request, finish](DBConnectionGame* conn) {
@@ -177,13 +173,12 @@ namespace Cache {
             });
         }, nullptr, failed);
         if (outcome != DBEnqueueResult::Queued) failed();
-        msg = nullptr;
     }
 
     // 접속 종료 경로. 캐릭터 상태를 DB에 쓰면서 profile 캐시도 함께 내린다.
     // write-through라 flush를 기다릴 필요 없이 바로 지워도 유실이 없다.
-    void Handler::CharacterStateUpdate(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterStateUpdateBody* body) {
-        if (!CheckMessageLength<Core::MsgCharacterStateUpdateBody>(msg))
+    void Handler::CharacterStateUpdate(ScopedMessage& msg, uint64_t sessionID, Core::MsgCharacterStateUpdateBody* body) {
+        if (!CheckMessageLength<Core::MsgCharacterStateUpdateBody>(msg.get()))
             return;
 
         cache_profile->Unload(body->profileId);
@@ -195,14 +190,14 @@ namespace Cache {
                 Core::gameLogger->LogInfo("cache handler", "character state update failed", "sessionID", sessionID, "char_id", state.charID, "level", state.level,
                     "exp", state.exp, "hp", state.hp, "mp", state.mp, "max_hp", state.maxHp, "max_mp", state.maxMp, "dir", state.dir, "x", state.x, "y", state.y, "last_zone", state.lastZone);
             }
-        }, msg);
+        }, msg.get());
     }
 
     // 쓰기는 이 한 경로로만 들어온다. Rename 내부에서 profile_id당 in-flight를 1개로 제한하므로(ProfileCache.h 참고) 
     // DBWorker가 스레드풀이라도 캐시 갱신 순서가 뒤집히지 않는다.
   
-    void Handler::ProfileRename(Core::Message*& msg, uint64_t sessionID, Core::MsgProfileRenameBody* body) {
-        if (!CheckMessageLength<Core::MsgProfileRenameBody>(msg))
+    void Handler::ProfileRename(ScopedMessage& msg, uint64_t sessionID, Core::MsgProfileRenameBody* body) {
+        if (!CheckMessageLength<Core::MsgProfileRenameBody>(msg.get()))
             return;
 
         uint32_t profileId = body->profileId;

@@ -16,7 +16,7 @@ namespace Core {
             MessagePool* pool;
 
             void operator()(Message* msg) const noexcept {
-                pool->Return(msg);
+                pool->m_fixedPool.Deallocate(msg);
             }
         };
 
@@ -28,17 +28,10 @@ namespace Core {
     public:
         using ScopedMessage = std::unique_ptr<Message, MessageDeleter>;
 
-        Message* Acquire() {
-            return m_fixedPool.Allocate();
-        }
-
         ScopedMessage AcquireScoped() {
-            return ScopedMessage{ Acquire(), MessageDeleter{ this } };
+            return ScopedMessage{ m_fixedPool.Allocate(), MessageDeleter{ this } };
         }
 
-        void Return(Message* msg) {
-            m_fixedPool.Deallocate(msg);
-        }
     };
 
     using CoreMessagePool = MessagePool<MSGPOOL_SIZE, MESSAGE_LEN>;

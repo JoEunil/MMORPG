@@ -2,7 +2,6 @@
 #include "MessageQueueHandler.h"
 #include "Message.h"
 #include "MessageTypes.h"
-#include "MessagePool.h"
 #include "INetworkSender.h"
 #include "PacketWriter.h"
 #include "LobbyZone.h"
@@ -55,7 +54,6 @@ namespace Core {
         }
         if (msg->GetLength() < sizeof(MsgHeader)) {
             errorLogger->LogError("mq handler", "invalid message length");
-            messagePool->Return(msg);
             return;
         }
 
@@ -116,7 +114,6 @@ namespace Core {
         default:
             errorLogger->LogError("mq handler", "invalid message type");
         }
-        messagePool->Return(msg);
     }
 
     void MessageQueueHandler::CharacterStateResponse(uint64_t sessionID, const MsgCharacterStateResBody* body) {

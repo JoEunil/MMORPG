@@ -26,9 +26,9 @@
 
 namespace Core {
     class Initializer {
+        CoreMessagePool msgPool;
         InMemoryQueue recvMQ;
         MessageQueueHandler mqHandler;
-        CoreMessagePool msgPool;
         PacketWriter writer;
         StateManager stateManager;
         BroadcastThreadPool broadcastPool;
@@ -56,7 +56,7 @@ namespace Core {
             nonZoneThreadPool.Initialize(&nonZoneHandler);
             zoneThreadSet.Initialize(&zoneHandler, &perfCollector);
             writer.Initialize(packetPoolManager);
-            mqHandler.Initialize(networkSender, &writer, &lobbyZone, &msgPool, &stateManager);
+            mqHandler.Initialize(networkSender, &writer, &lobbyZone, &stateManager);
             recvMQ.Initialize(&mqHandler, &msgPool);
             recvMQ.Start();
             chat.Initialize(networkSender, &writer, &perfCollector);

@@ -37,31 +37,31 @@ namespace Test {
     }
     struct CacheNode;
     static void WarmUp(CacheNode& node, uint64_t charID, uint64_t sessionID);
-    static void SafeReturn(Core::Message* msg);
+    using ScopedMessage = Core::CoreMessagePool::ScopedMessage;
     // ----------------------------------------------------------------
     // MockMessageQueue
     // ----------------------------------------------------------------
     class MockMessageQueue : public Core::IMessageQueue {
         std::mutex                 m_mutex;
         std::condition_variable    m_cv;
-        std::queue<Core::Message*> m_received;
+        std::queue<ScopedMessage> m_received;
     public:
         bool EnqueueMessage(Core::Message* msg) override {
-            auto* copy = g_msgPool().Acquire();
+            auto copy = g_msgPool().AcquireScoped();
             if (copy == nullptr)
                 return false;
             std::memcpy(copy->GetBuffer(), msg->GetBuffer(), msg->GetLength());
             copy->SetLength(msg->GetLength());
             std::lock_guard lock(m_mutex);
-            m_received.push(copy);
+            m_received.push(std::move(copy));
             m_cv.notify_one();
             return true;
         }
-        Core::Message* WaitFor(int ms = 5000) {
+        ScopedMessage WaitFor(int ms = 5000) {
             std::unique_lock lock(m_mutex);
             if (m_cv.wait_for(lock, std::chrono::milliseconds(ms),
                 [this] { return !m_received.empty(); })) {
-                auto* msg = m_received.front();
+                auto msg = std::move(m_received.front());
                 m_received.pop();
                 return msg;
             }
@@ -86,8 +86,10 @@ namespace Test {
     // 헬퍼
     // ----------------------------------------------------------------
     template<typename BodyType>
-    static Core::Message* MakeMsg(uint16_t msgType, uint64_t sessionID, const BodyType& body) {
-		auto* msg = g_msgPool().Acquire();
+    static ScopedMessage MakeMsg(uint16_t msgType, uint64_t sessionID, const BodyType& body) {
+		auto msg = g_msgPool().AcquireScoped();
+        if (!msg)
+            throw std::runtime_error("Bazaar test message pool exhausted");
         auto* st = reinterpret_cast<Core::MsgStruct<BodyType>*>(msg->GetBuffer());
         st->header.messageType = msgType;
         st->header.sessionID = sessionID;
@@ -97,7 +99,7 @@ namespace Test {
     }
 
     template<typename ResBody>
-    static const ResBody* GetBody(Core::Message* msg) {
+    static const ResBody* GetBody(const ScopedMessage& msg) {
         if (!(msg != nullptr))
             throw std::runtime_error("Missing bazaar response");
         if (!(msg->GetLength() >= sizeof(Core::MsgStruct<ResBody>)))
@@ -118,26 +120,26 @@ namespace Test {
         }
         ~CacheNode() {
         }
-        void Send(Core::Message* msg) {
-            cache.GetMessageQueue()->EnqueueMessage(msg);
+        void Send(const ScopedMessage& msg) {
+            cache.GetMessageQueue()->EnqueueMessage(msg.get());
         }
-        Core::Message* Wait(int ms = 5000) {
+        ScopedMessage Wait(int ms = 5000) {
             return mq.WaitFor(ms);
         }
     };
 
     static uint8_t WaitForAddedInventorySlot(CacheNode& node) {
-        auto* response = node.Wait();
+        auto response = node.Wait();
         if (response == nullptr)
             throw std::runtime_error("Inventory add response timed out before bazaar registration");
         if (response->GetLength() < sizeof(Core::MsgStruct<Core::MsgInventoryUpdateResBody>)) {
-            SafeReturn(response);
+            response.reset();
             throw std::runtime_error("Inventory add response was too short for bazaar registration");
         }
         auto* body = GetBody<Core::MsgInventoryUpdateResBody>(response);
         const bool added = body->resStatus == 1 && body->slot < Core::MAX_INVENTORY_ITEMS;
         const auto slot = static_cast<uint8_t>(body->slot);
-        SafeReturn(response);
+        response.reset();
         if (!added)
             throw std::runtime_error("Inventory add did not return a valid slot for bazaar registration");
         return slot;
@@ -149,12 +151,12 @@ namespace Test {
         body.characterID = charID;
         auto msg = MakeMsg(Core::MSG_BAZAAR_CHECK_OUTBOX, sessionID, body);
         node.Send(msg);
-        SafeReturn(msg);
+        msg.reset();
         Core::MsgBazaarCheckOutboxResBody out{};
-        auto* res = node.Wait();
+        auto res = node.Wait();
         if (res) {
             out = *GetBody<Core::MsgBazaarCheckOutboxResBody>(res);
-            SafeReturn(res);
+            res.reset();
         }
         return out;
     }
@@ -165,8 +167,8 @@ namespace Test {
         reqBody.characterID = charID;
         auto msg = MakeMsg(Core::MSG_INVENTORY_REQ, sessionID, reqBody);
         node.Send(msg);
-        SafeReturn(msg);
-        auto* res = node.Wait();
+        msg.reset();
+        auto res = node.Wait();
         if (!res) {
             std::cout << "  인벤토리 조회 타임아웃\n";
             return 0;
@@ -177,7 +179,7 @@ namespace Test {
             std::cout << std::format("    slot={} itemID={} qty={}\n",
                 invRes->items[i].slot, invRes->items[i].itemID, invRes->items[i].quantity);
         uint16_t count = invRes->itemCount;
-        SafeReturn(res);
+        res.reset();
         return count;
     }
 
@@ -323,12 +325,12 @@ namespace Test {
         addBody.change = 5;
         auto msg = MakeMsg(Core::MSG_INVENTORY_UPDATE, SESSION_A, addBody);
         node.Send(msg);
-		SafeReturn(msg);
-        auto* res = node.Wait();
+		msg.reset();
+        auto res = node.Wait();
         auto* addRes = GetBody<Core::MsgInventoryUpdateResBody>(res);
         std::cout << std::format("  추가: status={} itemID={} qty={} slot={}\n",
             addRes->resStatus, addRes->itemID, addRes->itemQuantity, addRes->slot);
-        SafeReturn(res);
+        res.reset();
 
         // 제거 (HP포션 2개)
         Core::MsgInventoryUpdateBody removeBody{};
@@ -338,26 +340,26 @@ namespace Test {
         removeBody.change = -2;
         auto msg2 = MakeMsg(Core::MSG_INVENTORY_UPDATE, SESSION_A, removeBody);
         node.Send(msg2);
-        SafeReturn(msg2);
+        msg2.reset();
         res = node.Wait();
         auto* removeRes = GetBody<Core::MsgInventoryUpdateResBody>(res);
         std::cout << std::format("  제거: status={} itemID={} qty={}\n",
             removeRes->resStatus, removeRes->itemID, removeRes->itemQuantity);
-        SafeReturn(res);
+        res.reset();
 
         // 조회 (3개 남아있어야 함)
         Core::MsgInventoryReqBody reqBody{};
         reqBody.characterID = CHAR_A;
         auto msg3 = MakeMsg(Core::MSG_INVENTORY_REQ, SESSION_A, reqBody);
         node.Send(msg3);
-        SafeReturn(msg3);
+        msg3.reset();
         res = node.Wait();
         auto* invRes = GetBody<Core::MsgInventoryResBody>(res);
         std::cout << std::format("  조회: status={} count={}\n", invRes->resStatus, invRes->itemCount);
         for (int i = 0; i < invRes->itemCount; ++i)
             std::cout << std::format("    slot={} itemID={} qty={}\n",
                 invRes->items[i].slot, invRes->items[i].itemID, invRes->items[i].quantity);
-        SafeReturn(res);
+        res.reset();
     }
 
     // ----------------------------------------------------------------
@@ -373,22 +375,22 @@ namespace Test {
         reqBody.requestID = 2001;
         auto msg1 = MakeMsg(Core::MSG_CURRENCY_REQ, SESSION_A, reqBody);
         node.Send(msg1);
-        SafeReturn(msg1);
-        auto* res1 = node.Wait();
+        msg1.reset();
+        auto res1 = node.Wait();
         auto* reqRes = GetBody<Core::MsgCurrencyResBody>(res1);
         std::cout << std::format("  조회: status={} gold={}\n", reqRes->resStatus, reqRes->gold);
-        SafeReturn(res1);
+        res1.reset();
 
         Core::MsgCurrencyDepositBody depositBody{};
         depositBody.characterID = CHAR_A;
         depositBody.gold = 10000;
         auto msg2 = MakeMsg(Core::MSG_CURRENCY_DEPOSIT, SESSION_A, depositBody);
         node.Send(msg2);
-        SafeReturn(msg2);
-        auto* res2 = node.Wait();
+        msg2.reset();
+        auto res2 = node.Wait();
         auto* depositRes = GetBody<Core::MsgCurrencyDepositResBody>(res2);
         std::cout << std::format("  입금: status={} gold={}\n", depositRes->resStatus, depositRes->gold);
-        SafeReturn(res2);
+        res2.reset();
 
     }
 
@@ -405,22 +407,22 @@ namespace Test {
         reqBody.requestID = 3001;
         auto msg2 = MakeMsg(Core::MSG_DIAMOND_REQ, SESSION_A, reqBody);
         node.Send(msg2);
-        SafeReturn(msg2);
-        auto* res1 = node.Wait();
+        msg2.reset();
+        auto res1 = node.Wait();
         auto* reqRes = GetBody<Core::MsgDiamondResBody>(res1);
         std::cout << std::format("  조회: status={} diamond={} earned={} spent={}\n",reqRes->resStatus, reqRes->diamond, reqRes->totalEarned, reqRes->totalSpent);
-        SafeReturn(res1);
+        res1.reset();
 
         Core::MsgDiamondDepositBody depositBody{};
         depositBody.characterID = CHAR_A;
         depositBody.diamond = 500;
         auto msg = MakeMsg(Core::MSG_DIAMOND_DEPOSIT, SESSION_A, depositBody);
         node.Send(msg);
-        SafeReturn(msg);
-        auto* res2 = node.Wait();
+        msg.reset();
+        auto res2 = node.Wait();
         auto* depositRes = GetBody<Core::MsgDiamondDepositResBody>(res2);
         std::cout << std::format("  입금: status={} diamond={}\n", depositRes->resStatus, depositRes->diamond);
-        SafeReturn(res2);
+        res2.reset();
 
     }
 
@@ -448,7 +450,7 @@ namespace Test {
             addItem.change = 1;
             auto msg = MakeMsg(Core::MSG_INVENTORY_UPDATE, SESSION_A, addItem);
             seller.Send(msg);
-            SafeReturn(msg);
+            msg.reset();
             const auto inventorySlot = WaitForAddedInventorySlot(seller);
 
             // buyer: 다이아 충전
@@ -457,8 +459,8 @@ namespace Test {
             diamondDeposit.diamond = 1000;
             auto msg2 = MakeMsg(Core::MSG_DIAMOND_DEPOSIT, SESSION_B, diamondDeposit);
             buyer.Send(msg2);
-            SafeReturn(msg2);
-            SafeReturn(buyer.Wait());
+            msg2.reset();
+            buyer.Wait();
 
             std::cout << "  [등록 전]\n";
             db.PrintDiamond(CHAR_A);
@@ -474,12 +476,12 @@ namespace Test {
             regBody.inventorySlot = inventorySlot;
             auto msg3 = MakeMsg(Core::MSG_BAZAAR_REGISTER, SESSION_A, regBody);
             seller.Send(msg3);
-            SafeReturn(msg3);
-            auto* regRes_raw = seller.Wait();
+            msg3.reset();
+            auto regRes_raw = seller.Wait();
             uint64_t listingID = db.FetchLatestListingID(CHAR_A);
             std::cout << std::format("  REGISTER: status={} listingID={}\n",
                 GetBody<Core::MsgBazaarRegisterResBody>(regRes_raw)->resStatus, listingID);
-            SafeReturn(regRes_raw);
+            regRes_raw.reset();
             db.PrintListing(listingID);
 
             // BUY — outbox에 READY 기록까지만, 아이템 지급은 CHECK_OUTBOX가 수행
@@ -488,12 +490,12 @@ namespace Test {
             buyBody.listingID = listingID;
             auto msg4 = MakeMsg(Core::MSG_BAZAAR_BUY, SESSION_B, buyBody);
             buyer.Send(msg4);
-            SafeReturn(msg4);
-            auto* buyRes_raw = buyer.Wait();
+            msg4.reset();
+            auto buyRes_raw = buyer.Wait();
             auto* buyRes = GetBody<Core::MsgBazaarBuyResBody>(buyRes_raw);
             std::cout << std::format("  BUY: status={} itemID={} qty={} spent={}\n",
                 buyRes->resStatus, buyRes->itemID, buyRes->quantity, buyRes->diamondSpent);
-            SafeReturn(buyRes_raw);
+            buyRes_raw.reset();
             db.PrintListing(listingID);
             db.PrintBazaarLog(listingID);
             db.PrintOutbox(CHAR_B); // READY여야 함
@@ -518,12 +520,12 @@ namespace Test {
             claimBody.listingID = listingID;
             auto msg5 = MakeMsg(Core::MSG_BAZAAR_CLAIM, SESSION_A, claimBody);
             seller.Send(msg5);
-            SafeReturn(msg5);
-            auto* claimRes_raw = seller.Wait();
+            msg5.reset();
+            auto claimRes_raw = seller.Wait();
             auto* claimRes = GetBody<Core::MsgBazaarClaimResBody>(claimRes_raw);
             std::cout << std::format("  CLAIM: status={} diamond={}\n",
                 claimRes->resStatus, claimRes->diamondClaimed);
-            SafeReturn(claimRes_raw);
+            claimRes_raw.reset();
             // 스코프 종료 → CleanUp이 dirty flush → outbox CLAIMED 전환
         }
 
@@ -555,7 +557,7 @@ namespace Test {
             addItem.change = 1;
             auto msg1 = MakeMsg(Core::MSG_INVENTORY_UPDATE, SESSION_A, addItem);
             seller.Send(msg1);
-            SafeReturn(msg1);
+            msg1.reset();
 
             const auto inventorySlot = WaitForAddedInventorySlot(seller);
 
@@ -568,12 +570,12 @@ namespace Test {
             regBody.inventorySlot = inventorySlot;
             auto msg2 = MakeMsg(Core::MSG_BAZAAR_REGISTER, SESSION_A, regBody);
             seller.Send(msg2);
-            SafeReturn(msg2);
+            msg2.reset();
 
-            auto* regRes_raw = seller.Wait();
+            auto regRes_raw = seller.Wait();
             listingID = db.FetchLatestListingID(CHAR_A);
             std::cout << std::format("  REGISTER: listingID={}\n", listingID);
-            SafeReturn(regRes_raw);
+            regRes_raw.reset();
             // CacheNode 소멸 → CleanUp
         }
         std::cout << "  Seller 종료\n";
@@ -588,19 +590,19 @@ namespace Test {
             diamondDeposit.diamond = 1000;
             auto msg1 = MakeMsg(Core::MSG_DIAMOND_DEPOSIT, SESSION_B, diamondDeposit);
             buyer.Send(msg1);
-            SafeReturn(msg1);
-            SafeReturn(buyer.Wait());
+            msg1.reset();
+            buyer.Wait();
 
             Core::MsgBazaarBuyBody buyBody{};
             buyBody.characterID = CHAR_B;
             buyBody.listingID = listingID;
             auto msg2 = MakeMsg(Core::MSG_BAZAAR_BUY, SESSION_B, buyBody);
             buyer.Send(msg2);
-            SafeReturn(msg2);
-            auto* buyRes_raw = buyer.Wait();
+            msg2.reset();
+            auto buyRes_raw = buyer.Wait();
             std::cout << std::format("  BUY (seller 오프라인): status={}\n",
                 GetBody<Core::MsgBazaarBuyResBody>(buyRes_raw)->resStatus);
-            SafeReturn(buyRes_raw);
+            buyRes_raw.reset();
         }
         db.PrintListing(listingID);
 
@@ -613,12 +615,12 @@ namespace Test {
             claimBody.listingID = listingID;
             auto msg = MakeMsg(Core::MSG_BAZAAR_CLAIM, SESSION_A, claimBody);
             seller.Send(msg);
-            SafeReturn(msg);
-            auto* claimRes_raw = seller.Wait();
+            msg.reset();
+            auto claimRes_raw = seller.Wait();
             auto* claimRes = GetBody<Core::MsgBazaarClaimResBody>(claimRes_raw);
             std::cout << std::format("  CLAIM (재접속): status={} diamond={}\n",
                 claimRes->resStatus, claimRes->diamondClaimed);
-            SafeReturn(claimRes_raw);
+            claimRes_raw.reset();
         }
 
         // buyer: 재접속 후 아이템 수령 — outbox 패턴의 대표 시나리오
@@ -667,7 +669,7 @@ namespace Test {
                 addItem.change = 1;
                 auto msg1 = MakeMsg(Core::MSG_INVENTORY_UPDATE, SESSION_A, addItem);
                 seller.Send(msg1);
-                SafeReturn(msg1);
+                msg1.reset();
                 const auto inventorySlot = WaitForAddedInventorySlot(seller);
 
                 Core::MsgBazaarRegisterBody regBody{};
@@ -679,8 +681,8 @@ namespace Test {
                 regBody.inventorySlot = inventorySlot;
                 auto msg2 = MakeMsg(Core::MSG_BAZAAR_REGISTER, SESSION_A, regBody);
                 seller.Send(msg2);
-                SafeReturn(msg2);
-                SafeReturn(seller.Wait());
+                msg2.reset();
+                seller.Wait();
                 std::cout << "  REGISTER 완료\n";
             }
             uint64_t listingID = db.FetchLatestListingID(CHAR_A);
@@ -694,16 +696,16 @@ namespace Test {
                 dd.diamond = 1000;
                 auto msg1 = MakeMsg(Core::MSG_DIAMOND_DEPOSIT, SESSION_B, dd);
                 buyer.Send(msg1);
-                SafeReturn(msg1);
-                SafeReturn(buyer.Wait());
+                msg1.reset();
+                buyer.Wait();
 
                 Core::MsgBazaarBuyBody buyBody{};
                 buyBody.characterID = CHAR_B;
                 buyBody.listingID = listingID;
                 auto msg2 = MakeMsg(Core::MSG_BAZAAR_BUY, SESSION_B, buyBody);
                 buyer.Send(msg2);
-                SafeReturn(msg2);
-                SafeReturn(buyer.Wait());
+                msg2.reset();
+                buyer.Wait();
                 std::cout << "  BUY 완료 — outbox READY:\n";
                 db.PrintOutbox(CHAR_B);
 
@@ -765,7 +767,7 @@ namespace Test {
                 addItem.change = 1;
                 auto msg1 = MakeMsg(Core::MSG_INVENTORY_UPDATE, SESSION_A, addItem);
                 seller.Send(msg1);
-                SafeReturn(msg1);
+                msg1.reset();
                 const auto inventorySlot = WaitForAddedInventorySlot(seller);
 
                 Core::MsgBazaarRegisterBody regBody{};
@@ -777,12 +779,12 @@ namespace Test {
                 regBody.inventorySlot = inventorySlot;
                 auto msg2 = MakeMsg(Core::MSG_BAZAAR_REGISTER, SESSION_A, regBody);
                 seller.Send(msg2);
-                SafeReturn(msg2);
-                auto* regRes_raw = seller.Wait();
+                msg2.reset();
+                auto regRes_raw = seller.Wait();
                 auto listingID = db.FetchLatestListingID(CHAR_A);
                 std::cout << "listingID: " << listingID << "\n";  // 확인
                 listingIDs.push_back(listingID);
-                SafeReturn(regRes_raw);
+                regRes_raw.reset();
             }
             std::cout << std::format("  {}개 listing 등록 완료\n", listingIDs.size());
         }
@@ -810,8 +812,8 @@ namespace Test {
                 diamondDeposit.diamond = 10000;
                 auto msg1 = MakeMsg(Core::MSG_DIAMOND_DEPOSIT, sessionID, diamondDeposit);
                 buyer.Send(msg1);
-                SafeReturn(msg1);
-                SafeReturn(buyer.Wait());
+                msg1.reset();
+                buyer.Wait();
 
                 for (uint64_t lid : listingIDs) {
                     Core::MsgBazaarBuyBody buyBody{};
@@ -819,15 +821,15 @@ namespace Test {
                     buyBody.listingID = lid;
                     auto msg2 = MakeMsg(Core::MSG_BAZAAR_BUY, sessionID, buyBody);
                     buyer.Send(msg2);
-                    SafeReturn(msg2);
+                    msg2.reset();
 
-                    auto* res = buyer.Wait();
+                    auto res = buyer.Wait();
                     if (!res) continue;
                     if (GetBody<Core::MsgBazaarBuyResBody>(res)->resStatus == 1)
                         ++successCount;
                     else
                         ++failCount;
-                    SafeReturn(res);
+                    res.reset();
                 }
                 });
         }
@@ -848,8 +850,8 @@ namespace Test {
         invReq.characterID = charID;
         auto msg1 = MakeMsg(Core::MSG_INVENTORY_REQ, sessionID, invReq);
         node.Send(msg1);
-        SafeReturn(msg1);
-        SafeReturn(node.Wait());
+        msg1.reset();
+        node.Wait();
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
         // currency
@@ -857,8 +859,8 @@ namespace Test {
         curReq.characterID = charID;
         auto msg2 = MakeMsg(Core::MSG_CURRENCY_REQ, sessionID, curReq);
         node.Send(msg2);
-        SafeReturn(msg2);
-        SafeReturn(node.Wait());
+        msg2.reset();
+        node.Wait();
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
@@ -891,7 +893,7 @@ namespace Test {
             addItem.change = 1;
             auto msg1 = MakeMsg(Core::MSG_INVENTORY_UPDATE, SESSION_A, addItem);
             seller.Send(msg1);
-            SafeReturn(msg1);
+            msg1.reset();
             const auto inventorySlot = WaitForAddedInventorySlot(seller);
 
             Core::MsgBazaarRegisterBody regBody{};
@@ -903,10 +905,10 @@ namespace Test {
             regBody.inventorySlot = inventorySlot;
             auto msg2 = MakeMsg(Core::MSG_BAZAAR_REGISTER, SESSION_A, regBody);
             seller.Send(msg2);
-            SafeReturn(msg2);
-            auto* regRes_raw = seller.Wait();
+            msg2.reset();
+            auto regRes_raw = seller.Wait();
             std::cout << "Registerd\n";
-            SafeReturn(regRes_raw);
+            regRes_raw.reset();
         }
 		listingID = db.FetchLatestListingID(CHAR_A);
         // DB 스냅샷 + lock time 기록
@@ -935,23 +937,23 @@ namespace Test {
                     diamondDeposit.diamond = 10000;
                     auto msg1 = MakeMsg(Core::MSG_DIAMOND_DEPOSIT, sessionID, diamondDeposit);
                     buyer.Send(msg1);
-                    SafeReturn(msg1);
-                    SafeReturn(buyer.Wait());
+                    msg1.reset();
+                    buyer.Wait();
 
                     Core::MsgBazaarBuyBody buyBody{};
                     buyBody.characterID = charID;
                     buyBody.listingID = listingID;
                     auto msg2 = MakeMsg(Core::MSG_BAZAAR_BUY, sessionID, buyBody);
                     buyer.Send(msg2);
-                    SafeReturn(msg2);
+                    msg2.reset();
 
-                    auto* res = buyer.Wait();
+                    auto res = buyer.Wait();
                     if (!res) return;
                     if (GetBody<Core::MsgBazaarBuyResBody>(res)->resStatus == 1)
                         ++successCount;
                     else
                         ++failCount;
-                    SafeReturn(res);
+                    res.reset();
                     });
             }
         }
@@ -967,11 +969,6 @@ namespace Test {
         db.PrintDiff(snapshot_before, snapshot_after);
         std::cout << std::format("  lock_time+={} ms  lock_time_avg={} ms\n",
             lockTimeAfter - lockTimeBefore, lockWaitAvg);
-    }
-
-    static void SafeReturn(Core::Message* msg) {
-        if (msg) 
-            g_msgPool().Return(msg);
     }
 
     inline void Test9_CancelOutbox() {

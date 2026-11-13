@@ -18,7 +18,7 @@ namespace Cache {
     class Handler;
     class InMemoryQueue :public Core::IMessageQueue {
         std::vector<std::thread> m_threads;
-        Base::BlockingBackPressureQueue<Core::Message*, MQ_SIZE, MQ_DEFER_SIZE, true> m_workQueue;
+        Base::BlockingBackPressureQueue<CacheMessagePool::ScopedMessage, MQ_SIZE, MQ_DEFER_SIZE, true> m_workQueue;
 
         std::atomic<bool> m_running = false;
         Handler* handler = nullptr;
@@ -31,11 +31,8 @@ namespace Cache {
             handler = h;
             messagePool = m;
             durableLogger = d;
-            m_workQueue.SetDurableLog([this](Core::Message* const& message) {
-                if (!WriteDurable(message)) 
-                    return false;
-                messagePool->Return(message);
-                return true;
+            m_workQueue.SetDurableLog([this](const CacheMessagePool::ScopedMessage& message) {
+                return WriteDurable(message.get());
             });
         }
         
