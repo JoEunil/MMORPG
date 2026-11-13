@@ -19,6 +19,9 @@
 
 namespace Cache {
     void Handler::BazaarMyList(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarMyListBody* body) {
+        if (!CheckMessageLength<Core::MsgBazaarMyListBody>(msg))
+            return;
+
         const auto request = *body;
         auto* owned = msg;
         const auto finish = [this, owned, sessionID, request](const Core::MsgBazaarMyListResBody& response) {
@@ -45,6 +48,9 @@ namespace Cache {
     }
 
     void Handler::BazaarSearch(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarSearchBody* body) {
+        if (!CheckMessageLength<Core::MsgBazaarSearchBody>(msg))
+            return;
+
         const auto request = *body;
         auto* owned = msg;
         const auto finish = [this, owned, sessionID, requestID = request.requestID](const Core::MsgBazaarSearchResBody& response) {
@@ -71,6 +77,9 @@ namespace Cache {
     }
 
     void Handler::BazaarRegister(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarRegisterBody* body) {
+        if (!CheckMessageLength<Core::MsgBazaarRegisterBody>(msg))
+            return;
+
         auto request = *body; // The response overwrites this buffer and the worker outlives this call.
         struct PendingResponse {
             Core::Message* message;
@@ -169,6 +178,9 @@ namespace Cache {
     }
 
     void Handler::BazaarCancel(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCancelBody* body) {
+        if (!CheckMessageLength<Core::MsgBazaarCancelBody>(msg))
+            return;
+
         // Cancellation and its return event commit together in the Bazaar DB.
         // Inventory capacity/cache availability can delay delivery, but cannot lose the item.
         EnqueueMessageWork(dbWorkerBazaar, msg, [msg, sessionID, body, this](DBConnectionBazaar* conn) {
@@ -195,6 +207,9 @@ namespace Cache {
     }
 
     void Handler::BazaarBuy(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarBuyBody* body) {
+        if (!CheckMessageLength<Core::MsgBazaarBuyBody>(msg))
+            return;
+
         const auto request = *body;
         auto* owned = msg;
         const auto finish = [this, owned, sessionID, request](const Core::MsgBazaarBuyResBody& response) {
@@ -225,6 +240,9 @@ namespace Cache {
     }
 
     void Handler::BazaarCancelListing(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCancelListingBody* body) {
+        if (!CheckMessageLength<Core::MsgBazaarCancelListingBody>(msg))
+            return;
+
         const auto request = *body;
         auto* owned = msg;
         const auto finish = [this, owned, sessionID, request](const Core::MsgBazaarCancelListingResBody& response) {
@@ -258,6 +276,9 @@ namespace Cache {
     }
 
     void Handler::BazaarClaim(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarClaimBody* body) {
+        if (!CheckMessageLength<Core::MsgBazaarClaimBody>(msg))
+            return;
+
         const auto request = *body;
         auto* owned = msg;
         const auto finish = [this, owned, sessionID, request](const Core::MsgBazaarClaimResBody& response) {
@@ -285,6 +306,9 @@ namespace Cache {
     }
 
     void Handler::BazaarOutboxList(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarOutboxListBody* body) {
+        if (!CheckMessageLength<Core::MsgBazaarOutboxListBody>(msg))
+            return;
+
         const auto request = *body;
         auto* owned = msg;
         const auto finish = [this, owned, sessionID, request](const Core::MsgBazaarOutboxListResBody& response) {
@@ -311,6 +335,9 @@ namespace Cache {
     }
 
     void Handler::BazaarCheckOutbox(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCheckOutboxBody* body) {
+        if (!CheckMessageLength<Core::MsgBazaarCheckOutboxBody>(msg))
+            return;
+
         const auto request = *body;
         auto* owned = msg;
         const auto finish = [this, owned, sessionID, request](const Core::MsgBazaarCheckOutboxResBody& response) {

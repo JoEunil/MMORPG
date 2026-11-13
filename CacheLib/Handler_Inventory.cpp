@@ -9,6 +9,9 @@
 
 namespace Cache {
     void Handler::InventoryRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgInventoryReqBody* body) {
+        if (!CheckMessageLength<Core::MsgInventoryReqBody>(msg))
+            return;
+
         const auto characterID = body->characterID;
         Result5 res = cache_inventory->Getter(characterID);
         Core::MsgStruct<Core::MsgInventoryResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgInventoryResBody>*>(msg->GetBuffer());
@@ -36,6 +39,9 @@ namespace Cache {
     }
 
     void Handler::InventoryUpdate(Core::Message*& msg, uint64_t sessionID, Core::MsgInventoryUpdateBody* body) {
+        if (!CheckMessageLength<Core::MsgInventoryUpdateBody>(msg))
+            return;
+
         auto charID = body->characterID;
         auto [status, itemID, slot, quantity] = cache_inventory->PartialUpdate(body->characterID, body->itemID, body->op, body->change);
 

@@ -38,6 +38,11 @@ namespace Cache {
             msg = nullptr;
             return true;
         }
+
+        template <typename T>
+        bool CheckMessageLength(const Core::Message* msg) {
+            return msg->GetLength() == sizeof(Core::MsgStruct<T>);
+        }
         void Initialize(Core::IMessageQueue* mq,  CacheMessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp) {
             messageQ = mq;
             messagePool = mp;

@@ -9,6 +9,9 @@
 
 namespace Cache {
     void Handler::CurrencyRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgCurrencyReqBody* body) {
+        if (!CheckMessageLength<Core::MsgCurrencyReqBody>(msg))
+            return;
+
         const uint64_t characterID = body->characterID;
         const uint32_t requestID = body->requestID;
         Result7 res = cache_currency->Getter(characterID);
@@ -25,6 +28,9 @@ namespace Cache {
     }
 
     void Handler::CurrencyDeposit(Core::Message*& msg, uint64_t sessionID, Core::MsgCurrencyDepositBody* body) {
+        if (!CheckMessageLength<Core::MsgCurrencyDepositBody>(msg))
+            return;
+
         const auto request = *body;
         auto* owned = msg;
         msg = nullptr; // Cache loading owns this message until its one completion callback.

@@ -11,10 +11,15 @@
 
 namespace Cache {
     void Handler::Process(Core::Message* msg) {
+        if (msg->GetLength() < sizeof(Core::MsgHeader)) {
+            messagePool->Return(msg);
+            return;
+        }
+
         Core::MsgHeader* header = Core::parseMsgHeader(msg->GetBuffer());
         switch (header->messageType) {
         case Core::MSG_CHARACTER_LIST_REQ :
-                CharacterListRequest(msg, header->sessionID, Core::parseMsgBody<Core::MsgCharacterListReqBody>(msg->GetBuffer()));
+            CharacterListRequest(msg, header->sessionID, Core::parseMsgBody<Core::MsgCharacterListReqBody>(msg->GetBuffer()));
             break;
         case Core::MSG_CHARACTER_STATE_REQ:
             CharacterStateRequest(msg, header->sessionID, Core::parseMsgBody<Core::MsgCharacterStateReqBody>(msg->GetBuffer()));
@@ -47,31 +52,24 @@ namespace Cache {
             BazaarSearch(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarSearchBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_REGISTER:
-            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarRegisterBody>)) break;
             BazaarRegister(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarRegisterBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_CANCEL:
             BazaarCancel(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCancelBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_BUY:
-            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarBuyBody>)) break;
             BazaarBuy(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarBuyBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_CLAIM:
-            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarClaimBody>))
-                break;
             BazaarClaim(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarClaimBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_OUTBOX_LIST:
-            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarOutboxListBody>)) break;
             BazaarOutboxList(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarOutboxListBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_CHECK_OUTBOX:
-            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarCheckOutboxBody>)) break;
             BazaarCheckOutbox(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCheckOutboxBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_CANCEL_LISTING:
-            if (msg->GetLength() != sizeof(Core::MsgStruct<Core::MsgBazaarCancelListingBody>)) break;
             BazaarCancelListing(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCancelListingBody>(msg->GetBuffer()));
             break;
         case Core::MSG_PROFILE_RENAME:
@@ -82,6 +80,9 @@ namespace Cache {
             messagePool->Return(msg);
     }
     void Handler::CharacterListRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterListReqBody* body) {
+        if (!CheckMessageLength<Core::MsgCharacterListReqBody>(msg))
+            return;
+
         EnqueueMessageWork(dbWorkerGame, msg, [=](DBConnectionGame* conn) {
             auto res = conn->ExecuteSelect(1, body->userID, body->channelID);
             Core::MsgStruct<Core::MsgCharacterListResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgCharacterListResBody>*>(msg->GetBuffer());
@@ -122,6 +123,9 @@ namespace Cache {
     }
 
     void Handler::CharacterStateRequest(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterStateReqBody* body) {
+        if (!CheckMessageLength<Core::MsgCharacterStateReqBody>(msg))
+            return;
+
         const auto request = *body;
         auto* owned = msg;
         auto completed = std::make_shared<std::atomic_bool>(false);
@@ -179,6 +183,9 @@ namespace Cache {
     // 접속 종료 경로. 캐릭터 상태를 DB에 쓰면서 profile 캐시도 함께 내린다.
     // write-through라 flush를 기다릴 필요 없이 바로 지워도 유실이 없다.
     void Handler::CharacterStateUpdate(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterStateUpdateBody* body) {
+        if (!CheckMessageLength<Core::MsgCharacterStateUpdateBody>(msg))
+            return;
+
         cache_profile->Unload(body->profileId);
         const auto state = *body;
         dbWorkerGame->Enqueue([state, sessionID](DBConnectionGame* conn) {
@@ -195,6 +202,9 @@ namespace Cache {
     // DBWorker가 스레드풀이라도 캐시 갱신 순서가 뒤집히지 않는다.
   
     void Handler::ProfileRename(Core::Message*& msg, uint64_t sessionID, Core::MsgProfileRenameBody* body) {
+        if (!CheckMessageLength<Core::MsgProfileRenameBody>(msg))
+            return;
+
         uint32_t profileId = body->profileId;
         std::string name(reinterpret_cast<const char*>(body->name),
             strnlen(reinterpret_cast<const char*>(body->name), Core::MAX_CHARNAME_LEN));
