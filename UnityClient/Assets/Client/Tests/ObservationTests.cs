@@ -977,7 +977,8 @@ namespace Mmorpg.Client.Tests
                 Assert.That(species, Is.Not.Null);
                 Set(fixture.Observer, "serverContent", content);
                 Set(fixture.Observer, "observedZone", (ushort)4);
-                var canvas = new GameObject("Inspection Canvas", typeof(RectTransform), typeof(Canvas));
+                var canvas = new GameObject("Inspection Canvas", typeof(RectTransform), typeof(Canvas),
+                    typeof(UnityEngine.UI.GraphicRaycaster));
                 canvas.transform.SetParent(fixture.Observer.transform, false);
                 var prefab = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 prefab.transform.SetParent(fixture.Observer.transform, false);
@@ -987,7 +988,10 @@ namespace Mmorpg.Client.Tests
                 var farther = Monster(2, 7);
                 farther.y += 4;
                 fixture.Monsters(100, nearer, farther);
-                Invoke(fixture.Observer, "InspectMonster", new Ray(new Vector3(nearer.x, 0, nearer.y - 5), Vector3.forward));
+                var ray = new Ray(new Vector3(nearer.x, 0, nearer.y - 5), Vector3.forward);
+                var model = fixture.Visual("monsters", (ushort)1).GetComponent<MeshRenderer>();
+                Assert.That(model.bounds.IntersectRay(ray), Is.True);
+                Invoke(fixture.Observer, "InspectMonster", ray);
                 var card = canvas.transform.Find("Monster Inspection");
                 Assert.That(card, Is.Not.Null);
                 Assert.That(card.Find("Name").GetComponent<TMP_Text>().text, Is.EqualTo(species.name));

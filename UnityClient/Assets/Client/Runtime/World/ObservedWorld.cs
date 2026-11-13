@@ -391,7 +391,8 @@ namespace Mmorpg.Client
             }
             if (inspectionPanel == null)
             {
-                var canvas = loginScreen.GetComponentInChildren<Canvas>();
+                // Entity HP bars also create child canvases, but only the screen UI handles pointer events.
+                var canvas = loginScreen.GetComponentInChildren<GraphicRaycaster>()?.GetComponent<Canvas>();
                 if (canvas == null) return;
                 inspectionPanel = new MonsterInspectionPanel(canvas.rootCanvas.transform, worldScreen.ItemTextFont, CloseInspection);
             }
