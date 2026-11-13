@@ -9,6 +9,7 @@ namespace Mmorpg.Client
     internal sealed class WorldMapOverlay
     {
         private const float RouteLabelWidth = 124;
+        private const int LandmarkCount = 6;
         private static readonly Color Gold = new Color32(235, 208, 145, 255);
         private static readonly Color White = new Color32(244, 239, 222, 255);
         private readonly Rect bounds;
@@ -48,7 +49,7 @@ namespace Mmorpg.Client
             Stretch(root, Vector2.zero, Vector2.zero);
             shade.raycastTarget = true;
 
-            var title = Label(root, "Title", "월드 지도", 32, Gold, TextAlignmentOptions.MidlineLeft, font);
+            var title = Label(root, "Title", "월드 지도", 21, Gold, TextAlignmentOptions.MidlineLeft, font);
             Anchor(title.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(34, -33), new Vector2(280, 44));
             title.fontStyle = FontStyles.Bold;
             var closeFace = Surface(root, "Close", new Color32(50, 58, 56, 255));
@@ -57,7 +58,7 @@ namespace Mmorpg.Client
             var closeButton = closeFace.gameObject.AddComponent<UnityEngine.UI.Button>();
             closeButton.targetGraphic = closeFace;
             closeButton.onClick.AddListener(() => close());
-            Stretch(Label(closeFace.transform, "Label", "닫기", 18, White, TextAlignmentOptions.Center, font).rectTransform,
+            Stretch(Label(closeFace.transform, "Label", "닫기", 13, White, TextAlignmentOptions.Center, font).rectTransform,
                 Vector2.zero, Vector2.zero);
 
             var area = CreateRect(root, "MapArea");
@@ -80,32 +81,29 @@ namespace Mmorpg.Client
                 zoneRect.anchorMax = MapPoint(zone.ZoneOrigin + core.max);
                 zoneRect.offsetMin = zoneRect.offsetMax = Vector2.zero;
                 zones.Add(zone.Id, fill);
-                var edgeColor = new Color32(242, 220, 159, 152);
-                foreach (bool max in new[] { false, true })
-                {
-                    float edge = max ? 1 : 0;
-                    var line = Surface(zoneRect, "HorizontalBoundary", edgeColor).rectTransform;
-                    line.anchorMin = new Vector2(0, edge); line.anchorMax = new Vector2(1, edge);
-                    line.sizeDelta = new Vector2(0, 1); line.anchoredPosition = Vector2.zero;
-                    line = Surface(zoneRect, "VerticalBoundary", edgeColor).rectTransform;
-                    line.anchorMin = new Vector2(edge, 0); line.anchorMax = new Vector2(edge, 1);
-                    line.sizeDelta = new Vector2(1, 0); line.anchoredPosition = Vector2.zero;
-                }
 
                 var data = content == null ? null : content.GetHuntingZone(zone.Id);
                 string areaName = data == null ? "구역 " + zone.Id : data.label;
                 string level = data == null ? "" : zone.Id == 1 ? "안전 구역" : "권장 Lv. " + data.minLevel + "–" + data.maxLevel;
-                var badge = Surface(zoneRect, "AreaLabel", new Color32(18, 25, 25, 225));
-                badge.rectTransform.anchorMin = new Vector2(.1f, .5f);
-                badge.rectTransform.anchorMax = new Vector2(.9f, .5f);
-                badge.rectTransform.sizeDelta = new Vector2(0, 52);
-                badge.rectTransform.anchoredPosition = Vector2.zero;
-                var label = Label(badge.transform, "NameAndLevel", areaName + "\n" + level, 20, White,
-                    TextAlignmentOptions.Center, font);
-                label.enableAutoSizing = true;
-                label.fontSizeMin = 11;
-                label.fontSizeMax = 20;
-                Stretch(label.rectTransform, new Vector2(4, 2), new Vector2(-4, -2));
+                if (author.overviewLandmarkAtlas != null && zone.Id <= LandmarkCount)
+                {
+                    var illustration = CreateRect(zoneRect, "LandmarkIllustration").gameObject.AddComponent<UnityEngine.UI.RawImage>();
+                    illustration.texture = author.overviewLandmarkAtlas;
+                    float cellWidth = 1f / LandmarkCount;
+                    illustration.uvRect = new Rect((zone.Id - 1) * cellWidth, 0, cellWidth, 1);
+                    illustration.raycastTarget = false;
+                    Anchor(illustration.rectTransform, new Vector2(.5f, .5f), new Vector2(.5f, .5f),
+                        new Vector2(0, 37), new Vector2(52, 52));
+                }
+
+                var badge = Surface(zoneRect, "AreaLabel", new Color32(18, 25, 25, 155));
+                Anchor(badge.rectTransform, new Vector2(.5f, .5f), new Vector2(.5f, .5f),
+                    new Vector2(0, -8), new Vector2(120, 32));
+                var name = Label(badge.transform, "AreaName", areaName, 14, White, TextAlignmentOptions.Center, font);
+                name.fontStyle = FontStyles.Bold;
+                Stretch(name.rectTransform, new Vector2(4, 14), new Vector2(-4, -1));
+                var levelText = Label(badge.transform, "AreaLevel", level, 11, White, TextAlignmentOptions.Center, font);
+                Stretch(levelText.rectTransform, new Vector2(4, 1), new Vector2(-4, -16));
             }
 
             AddTownRoute(imageRect, author, layout, font);
@@ -113,16 +111,16 @@ namespace Mmorpg.Client
             routeGraphic = CreateRect(imageRect, "SelectedWalkingRoute").gameObject.AddComponent<WorldMapRouteGraphic>();
             Stretch(routeGraphic.rectTransform, Vector2.zero, Vector2.zero);
             routeGraphic.raycastTarget = false;
-            var north = Label(imageRect, "North", "N ↑", 19, Gold, TextAlignmentOptions.Center, font);
+            var north = Label(imageRect, "North", "N ↑", 16, Gold, TextAlignmentOptions.Center, font);
             Anchor(north.rectTransform, Vector2.one, Vector2.one, new Vector2(-8, -6), new Vector2(50, 26));
             marker = Surface(imageRect, "CurrentPosition", White).rectTransform;
             marker.sizeDelta = new Vector2(14, 14);
             marker.localRotation = Quaternion.Euler(0, 0, 45);
             Stretch(Surface(marker, "Pin", new Color32(48, 227, 108, 255)).rectTransform,
                 new Vector2(2, 2), new Vector2(-2, -2));
-            location = Label(root, "Location", "", 19, White, TextAlignmentOptions.MidlineLeft, font);
+            location = Label(root, "Location", "", 15, White, TextAlignmentOptions.MidlineLeft, font);
             Anchor(location.rectTransform, Vector2.zero, Vector2.zero, new Vector2(34, 16), new Vector2(410, 32));
-            routeStatus = Label(root, "RouteStatus", "목표 지점을 클릭해 길 보기", 17, White, TextAlignmentOptions.MidlineRight, font);
+            routeStatus = Label(root, "RouteStatus", "목표 지점을 클릭해 길 보기", 14, White, TextAlignmentOptions.MidlineRight, font);
             Anchor(routeStatus.rectTransform, Vector2.right, Vector2.right, new Vector2(-34, 16), new Vector2(340, 32));
             var field = Surface(canvas, "FieldRouteStatus", new Color32(15, 37, 45, 235));
             Anchor(field.rectTransform, new Vector2(.5f, 1), new Vector2(.5f, 1), new Vector2(0, -68), new Vector2(350, 32));
@@ -183,14 +181,6 @@ namespace Mmorpg.Client
             var end = new Vector2(road.bounds.max.x, start.y);
             float crossing = layout.Zones[1].ZoneOrigin.x + layout.Zones[1].OwnershipCore.xMin;
             if (end.x < crossing || !author.map.CanTraverse(start, end)) return;
-            Vector2 from = MapPoint(start), to = MapPoint(end);
-            var outline = Surface(terrain, "FieldPassageOutline", new Color32(25, 26, 21, 255)).rectTransform;
-            outline.anchorMin = from;
-            outline.anchorMax = to;
-            outline.anchoredPosition = Vector2.zero;
-            outline.sizeDelta = new Vector2(0, 8);
-            var strip = Surface(outline, "FieldPassage", Gold).rectTransform;
-            Stretch(strip, new Vector2(0, 2), new Vector2(0, -2));
             AddDestination(terrain, "TownDestination", "마을 시작점", 1, start, new Vector2(0, 22), font);
             var field = new Vector2(Mathf.Max(end.x, crossing + layout.TransitionMargin) + author.map.tileSize * .5f, end.y);
             if (author.map.CanTraverse(end, field))
@@ -200,13 +190,18 @@ namespace Mmorpg.Client
         private void AddHuntingDestinations(RectTransform terrain, MapAuthoring author, WorldLayout layout, TMP_FontAsset font)
         {
             if (author.map == null || author.huntingDestinations == null) return;
+            var names = author.huntingDestinationLabels;
             for (int i = 0; i < author.huntingDestinations.Length && i + 1 < layout.Zones.Length; i++)
             {
                 Vector2 point = author.huntingDestinations[i];
                 var zone = layout.Zones[i + 1];
                 if (!zone.ExclusiveBounds.Contains(point - zone.ZoneOrigin) || !author.map.IsWalkable(point.x, point.y)) continue;
-                var zoneContent = content?.GetHuntingZone(zone.Id);
-                string label = zone.Id == 2 ? "능선 너머 사냥터" : (zoneContent?.label ?? $"구역 {zone.Id}") + " 입구";
+                string label = names != null && i < names.Length ? names[i] : null;
+                if (string.IsNullOrWhiteSpace(label))
+                {
+                    var zoneContent = content?.GetHuntingZone(zone.Id);
+                    label = zone.Id == 2 ? "능선 너머 사냥터" : (zoneContent?.label ?? $"구역 {zone.Id}") + " 입구";
+                }
                 // The authored pins sit toward the east of their zones, leaving room for labels to the west.
                 AddDestination(terrain, $"HuntingDestination{zone.Id}", label, zone.Id, point,
                     new Vector2(-RouteLabelWidth - 10, 0), font);
@@ -220,7 +215,7 @@ namespace Mmorpg.Client
             if (renderers.Length == 0) return;
             Bounds footprint = renderers[0].bounds;
             for (int i = 1; i < renderers.Length; i++) footprint.Encapsulate(renderers[i].bounds);
-            var wall = Surface(terrain, "WallFootprint", new Color32(200, 205, 207, 255)).rectTransform;
+            var wall = Surface(terrain, "WallFootprint", new Color32(127, 133, 114, 185)).rectTransform;
             wall.anchorMin = MapPoint(new Vector2(footprint.min.x, footprint.min.z));
             wall.anchorMax = MapPoint(new Vector2(footprint.max.x, footprint.max.z));
             wall.offsetMin = wall.offsetMax = Vector2.zero;
@@ -231,7 +226,7 @@ namespace Mmorpg.Client
         {
             Vector2 point = MapPoint(position);
             var badge = RouteLabel(terrain, name, label, point, offset, font);
-            badge.color = new Color32(23, 55, 63, 255);
+            badge.color = new Color32(23, 55, 63, 193);
             var pin = Surface(terrain, name + "Pin", new Color32(139, 229, 255, 255));
             Anchor(pin.rectTransform, point, new Vector2(.5f, .5f), Vector2.zero, new Vector2(13, 13));
             WireButton(badge);
@@ -257,10 +252,10 @@ namespace Mmorpg.Client
         {
             var badge = Surface(terrain, name, new Color32(18, 25, 25, 225));
             Anchor(badge.rectTransform, position, new Vector2(0, .5f), offset, new Vector2(RouteLabelWidth, 24));
-            var text = Label(badge.transform, "Label", value, 15, White, TextAlignmentOptions.Center, font);
+            var text = Label(badge.transform, "Label", value, 12, White, TextAlignmentOptions.Center, font);
             text.enableAutoSizing = true;
-            text.fontSizeMin = 11;
-            text.fontSizeMax = 15;
+            text.fontSizeMin = 10;
+            text.fontSizeMax = 12;
             Stretch(text.rectTransform, Vector2.zero, Vector2.zero);
             return badge;
         }
@@ -293,7 +288,7 @@ namespace Mmorpg.Client
             marker.anchoredPosition = Vector2.zero;
             if (displayedZone == zoneId) return;
             if (zones.TryGetValue(displayedZone, out var previous)) previous.color = Color.clear;
-            if (zones.TryGetValue(zoneId, out var current)) current.color = new Color32(98, 234, 164, 47);
+            if (zones.TryGetValue(zoneId, out var current)) current.color = new Color32(123, 169, 135, 31);
             displayedZone = zoneId;
             var data = content == null ? null : content.GetHuntingZone(zoneId);
             location.text = "현재 위치 · " + (data == null ? "구역 " + zoneId : data.label);

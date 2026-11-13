@@ -361,12 +361,12 @@ MonoBehaviour:
       range1: 0
       range2: 0
       attack: 0
-    - waitTicks: 10
+    - waitTicks: 16
       action: 1
       range: 2
-      range1: 12
-      range2: 3
-      attack: 100
+      range1: 5
+      range2: 2.5
+      attack: 12
   - skillID: 3
     flags: 2
     mana: 0

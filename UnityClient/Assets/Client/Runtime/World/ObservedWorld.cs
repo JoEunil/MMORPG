@@ -628,7 +628,7 @@ namespace Mmorpg.Client
                     continue;
                 }
 
-                if (entry.State.monsterId != 1 || result.skillId != 1 || result.skillPhase > 1)
+                if (entry.State.monsterId != 1 || (result.skillId != 1 && result.skillId != 2) || result.skillPhase > 1)
                     continue;
                 if (result.skillPhase == 1)
                 {
@@ -643,12 +643,12 @@ namespace Mmorpg.Client
                     skill.phases[0] == null || skill.phases[0].action != SkillAction.Charging || skill.phases[1] == null)
                     continue;
                 var hit = skill.phases[1];
-                if (hit.action != SkillAction.Hit || hit.range != SkillRange.Circle || float.IsNaN(hit.range1) || float.IsInfinity(hit.range1) ||
-                    hit.range1 <= 0 || hit.waitTicks == 0) continue;
+                if (hit.action != SkillAction.Hit || hit.waitTicks == 0 ||
+                    !TryBuildSkillArea(result, hit, out var vertices, out var triangles)) continue;
 
                 if (entry.RangePreview == null) entry.RangePreview = new SkillTelegraph();
-                BuildCircle(result.x, result.y, hit.range1, out var circleVertices, out var circleTriangles);
-                entry.RangePreview.Show(displayRoot, monsterRangeMaterial, "Monster Circle Telegraph", circleVertices, circleTriangles,
+                string previewName = hit.range == SkillRange.Rectangle ? "Monster Slam Telegraph" : "Monster Circle Telegraph";
+                entry.RangePreview.Show(displayRoot, monsterRangeMaterial, previewName, vertices, triangles,
                     Time.realtimeSinceStartupAsDouble, hit.waitTicks * .05f,
                     caster: entry.Visual.transform, phaseOrigin: new Vector3(result.x, 0, result.y));
             }
@@ -670,28 +670,40 @@ namespace Mmorpg.Client
             var hit = charging && result.skillPhase + 1 < skill.phases.Length ? skill.phases[result.skillPhase + 1] : phase;
             if (hit == null || hit.action != SkillAction.Hit || !Finite(hit.range1) || hit.range1 <= 0 ||
                 charging && hit.waitTicks == 0) return;
-            Vector3[] vertices;
-            int[] triangles;
-            if (hit.range == SkillRange.Circle && hit.range2 == 0)
-                BuildCircle(result.x, result.y, hit.range1, out vertices, out triangles);
-            else if (hit.range == SkillRange.Rectangle && Finite(hit.range2) && hit.range2 > 0)
-            {
-                vertices = new Vector3[4];
-                for (int point = 0; point < 4; point++)
-                {
-                    float side = (point == 0 || point == 3 ? -.5f : .5f) * hit.range2;
-                    float reach = point < 2 ? 0 : hit.range1;
-                    Vector3 offset = Quaternion.Euler(0, result.aimAngle, 0) * new Vector3(side, 0, reach);
-                    vertices[point] = PreviewPoint(result.x + offset.x, result.y + offset.z);
-                }
-                triangles = new[] { 0, 1, 2, 0, 2, 3 };
-            }
-            else return;
+            if (!TryBuildSkillArea(result, hit, out var vertices, out var triangles)) return;
             if (entry.RangePreview == null) entry.RangePreview = new SkillTelegraph();
             entry.RangePreview.Show(displayRoot, monsterRangeMaterial, "Player Skill Area " + result.casterId,
                 vertices, triangles, Time.realtimeSinceStartupAsDouble, charging ? hit.waitTicks * .05f : .12f,
                 charging ? new Color(.25f, .72f, 1f) : new Color(1f, .82f, .38f),
                 charging ? entry.Visual.transform : null, new Vector3(result.x, 0, result.y));
+        }
+
+        private bool TryBuildSkillArea(ActionResultField result, ServerContent.SkillPhase hit,
+            out Vector3[] vertices, out int[] triangles)
+        {
+            vertices = null;
+            triangles = null;
+            if (!Finite(hit.range1) || hit.range1 <= 0) return false;
+            if (hit.range == SkillRange.Circle && hit.range2 == 0)
+            {
+                BuildCircle(result.x, result.y, hit.range1, out vertices, out triangles);
+                return true;
+            }
+
+            if (hit.range != SkillRange.Rectangle || !Finite(hit.range2) || hit.range2 <= 0 ||
+                !Finite(result.aimAngle) || result.aimAngle < 0 || result.aimAngle >= 360) return false;
+
+            vertices = new Vector3[4];
+            var rotation = Quaternion.Euler(0, result.aimAngle, 0);
+            for (int point = 0; point < vertices.Length; point++)
+            {
+                float side = (point == 0 || point == 3 ? -.5f : .5f) * hit.range2;
+                float reach = point < 2 ? 0 : hit.range1;
+                Vector3 offset = rotation * new Vector3(side, 0, reach);
+                vertices[point] = PreviewPoint(result.x + offset.x, result.y + offset.z);
+            }
+            triangles = new[] { 0, 1, 2, 0, 2, 3 };
+            return true;
         }
 
         private Vector3 PreviewPoint(float x, float z) => displayRoot.InverseTransformPoint(new Vector3(x, 0.06f, z));

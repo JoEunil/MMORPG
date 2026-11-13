@@ -66,26 +66,30 @@ namespace Core {
             PauseWandering(monster);
         }
 
-        bool InMonsterCastRange(const MonsterState& monster, const CharacterState& target,
-            const Data::SkillData& skill) {
-            if ((monster.data->id == 0 || monster.data->id == 1) && skill.skillID == 0) {
-                const auto hitPhase = std::find_if(skill.phases.begin(), skill.phases.end(), [](const Data::SkillPhase& phase) {
+        const Data::SkillData& NextMonsterSkill(const MonsterState& monster) {
+            const auto& phase = monster.data->phases[monster.phase];
+            return Data::monsterSkillList[phase.steps[monster.skillStep & (phase.stepCnt - 1)].skillID];
+        }
+
+        float MonsterApproachRangeSquared(const MonsterState& monster, const Data::SkillData& skill) {
+            if (monster.data->id <= 1 && skill.skillID == 0) {
+                const auto hit = std::find_if(skill.phases.begin(), skill.phases.end(), [](const Data::SkillPhase& phase) {
                     return phase.actionID == static_cast<uint8_t>(Data::SkillActionType::Hit);
                 });
-                if (hitPhase != skill.phases.end())
-                    return hitPhase->range.InRange(monster.dir, monster.x, monster.y, target.x, target.y);
+                if (hit != skill.phases.end() && hit->range.type == Data::SkillRangeType::Circle)
+                    return hit->range.range1 * hit->range.range1;
             }
-            const float dx = target.x - monster.x;
-            const float dy = target.y - monster.y;
-            return dx * dx + dy * dy <= 2.0f;
+            // The non-basic cast trigger is still sqrt(2) metres, independently of the hit area.
+            return 2.0f;
         }
 
         MonsterBehavior CombatBehavior(const MonsterState& monster, const CharacterState& target) {
             const auto& phase = monster.data->phases[monster.phase];
             const auto& step = phase.steps[monster.skillStep & (phase.stepCnt - 1)];
             const auto& skill = Data::monsterSkillList[step.skillID];
+            const float dx = target.x - monster.x, dy = target.y - monster.y;
             if (monster.tick >= step.delayTicks &&
-                (monster.data->id == 2 || InMonsterCastRange(monster, target, skill)))
+                (monster.data->id == 2 || dx * dx + dy * dy <= MonsterApproachRangeSquared(monster, skill)))
                 return MonsterBehavior::Attacking;
             return MonsterBehavior::Chasing;
         }
@@ -235,9 +239,13 @@ namespace Core {
             case MonsterBehavior::Chasing:
                 MoveToward(monster, *target);
                 break;
-            case MonsterBehavior::Attacking:
+            case MonsterBehavior::Attacking: {
+                const float dx = target->x - monster.x, dy = target->y - monster.y;
+                if (monster.data->id != 2 && (dx != 0.0f || dy != 0.0f))
+                    SetDirection(monster, std::abs(dx) > std::abs(dy) ? (dx > 0 ? 3 : 2) : (dy > 0 ? 0 : 1));
                 UseMonsterSkill(monster);
                 break;
+            }
             case MonsterBehavior::Dead:
                 if (--monster.respawnTick == 0) {
                     SetMonsterPosition(monster, monster.spawnX, monster.spawnY);
@@ -294,12 +302,19 @@ namespace Core {
     void ZoneState::MoveToward(MonsterState& monster, CharacterState& character) {
         const float dx = character.x - monster.x;
         const float dy = character.y - monster.y;
+        const float rangeSquared = MonsterApproachRangeSquared(monster, NextMonsterSkill(monster));
+        if (dx * dx + dy * dy <= rangeSquared) return;
+
         const float speed = monster.data->moveSpeed * MONSTER_CHASE_SPEED_SCALE * WORLD_MOVEMENT_SCALE;
-        float x = monster.x, y = monster.y;
-        if (std::abs(dx) > std::abs(dy))
-            x += std::copysign((std::min)(std::abs(dx), speed), dx);
-        else if (dy != 0.0f)
-            y += std::copysign((std::min)(std::abs(dy), speed), dy);
+        const bool moveX = std::abs(dx) > std::abs(dy);
+        const float along = moveX ? dx : dy;
+        const float across = moveX ? dy : dx;
+        const float remaining = std::sqrt((std::max)(0.0f, rangeSquared - across * across));
+        // Leave a small margin so rounding at the boundary cannot prevent the next cast.
+        const float step = (std::min)(speed, std::abs(along) - (std::max)(0.0f, remaining - .001f));
+        const float offset = std::copysign(step, along);
+        const float x = monster.x + (moveX ? offset : 0.0f);
+        const float y = monster.y + (moveX ? 0.0f : offset);
 
         const float aggroDx = x - monster.aggroX;
         const float aggroDy = y - monster.aggroY;

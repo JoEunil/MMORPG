@@ -46,6 +46,8 @@ namespace Data {
                     monster.phases[phase].ComputeThreshold(monster.maxHp);
             }
         }
+        // Zone 3 strong monsters trade the circular special for the quarry slam.
+        result[1][1].phases[0].steps[2].skillID = 2;
         return result;
     }();
 

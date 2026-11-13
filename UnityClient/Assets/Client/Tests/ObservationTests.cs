@@ -934,6 +934,36 @@ namespace Mmorpg.Client.Tests
         }
 
         [Test]
+        public void QuarrySlamUsesExportedRectangleAndClearsOnImpact()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                fixture.ConfigureMonsterRange();
+                var content = UnityEditor.AssetDatabase.LoadAssetAtPath<ServerContent>("Assets/Client/Content/ServerContent.asset");
+                Assert.That(content, Is.Not.Null);
+                Set(fixture.Observer, "serverContent", content);
+                fixture.Monsters(100, Monster(1, 1));
+                var charge = MonsterAction(1, 0, 2, 0, 20, 30);
+                charge.dir = 3;
+                charge.aimAngle = 90;
+                double started = Time.realtimeSinceStartupAsDouble;
+                fixture.MonsterActions(charge);
+                var preview = fixture.MonsterRange(1);
+                Assert.That(preview, Is.Not.Null);
+                var mesh = preview.GetComponent<MeshFilter>().sharedMesh;
+                Assert.That(mesh.vertexCount, Is.EqualTo(4));
+                Assert.That(mesh.bounds.min.x, Is.EqualTo(20).Within(.001f));
+                Assert.That(mesh.bounds.max.x, Is.EqualTo(25).Within(.001f));
+                Assert.That(mesh.bounds.min.z, Is.EqualTo(28.75f).Within(.001f));
+                Assert.That(mesh.bounds.max.z, Is.EqualTo(31.25f).Within(.001f));
+                Assert.That(fixture.RangeDeadline(1) - started, Is.InRange(.799, 1.0));
+                charge.skillPhase = 1;
+                fixture.MonsterActions(charge);
+                Assert.That(preview.gameObject.activeSelf, Is.False);
+            }
+        }
+
+        [Test]
         public void MonsterActions_FillChargingSkillAreasKeepPhasePositionsAndSkipBasicTelegraphs()
         {
             using (var fixture = new ObservationFixture())

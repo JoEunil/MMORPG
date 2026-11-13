@@ -234,10 +234,44 @@ namespace Core {
         fixture.Update();
         EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Chasing);
         EXPECT_EQ(fixture.ActiveSkillCount(), 1u);
-        EXPECT_NEAR(fixture.MonsterAt(0).x, x + 0.30f, 0.0001f);
+        EXPECT_NEAR(fixture.MonsterAt(0).x, x + 0.15f, 0.0001f);
         fixture.Update();
         EXPECT_EQ(fixture.MonsterAt(0).behavior, MonsterBehavior::Attacking);
         EXPECT_EQ(fixture.ActiveSkillCount(), 2u);
+    }
+
+    TEST(MonsterBehaviorTest, ChaseStopsAtCastRangeAndResumesWhenTargetLeaves) {
+        MonsterBehaviorFixture fixture(3);
+        const float x = fixture.HomeX(), y = fixture.HomeY();
+        MonsterState monster{};
+        monster.Initialize(Data::GetHuntingMonsterData(3, 1), 0, x, y, 2, 2);
+        monster.aggro = 700;
+        fixture.AddMonster(monster);
+        CharacterState target{};
+        target.hp = 10000;
+        target.zoneInternalID = 700;
+        target.x = x + 2.05f;
+        target.y = y;
+        fixture.AddCharacter(target);
+        fixture.Update();
+        EXPECT_NEAR(fixture.MonsterAt(0).x, x + .051f, .0001f);
+        const auto basicDelay = monster.data->phases[0].steps[0].delayTicks;
+        for (unsigned tick = 1; tick < basicDelay; ++tick) {
+            fixture.Update();
+            EXPECT_NEAR(fixture.MonsterAt(0).x, x + .051f, .0001f);
+            EXPECT_EQ(fixture.ActiveSkillCount(), tick + 1 == basicDelay ? 1u : 0u);
+        }
+
+        fixture.CharacterAt(0).x = x + 3;
+        fixture.Update();
+        EXPECT_NEAR(fixture.MonsterAt(0).x, x + .231f, .0001f);
+        fixture.MonsterAt(0).skillStep = 2;
+        fixture.CharacterAt(0).x = fixture.MonsterAt(0).x + 1.45f;
+        fixture.Update();
+        const float distance = fixture.CharacterAt(0).x - fixture.MonsterAt(0).x;
+        EXPECT_NEAR(distance, std::sqrt(2.0f) - .001f, .0001f);
+        fixture.Update();
+        EXPECT_NEAR(fixture.CharacterAt(0).x - fixture.MonsterAt(0).x, distance, .0001f);
     }
 
     TEST(MonsterBehaviorTest, LostTargetReturnsToWanderRadiusAndCanBeProvokedAgain) {
@@ -264,7 +298,7 @@ namespace Core {
         CharacterState target{};
         target.hp = 100;
         target.zoneInternalID = 700;
-        target.x = x + 10.0f;
+        target.x = x + 11.0f;
         target.y = y;
         fixture.AddCharacter(target);
         fixture.MonsterAt(0).x = x + 8.0f;
@@ -597,6 +631,52 @@ namespace Core {
         ASSERT_EQ(fixture.CellAt(2, 2).actionResults.size(), 2u);
         EXPECT_FLOAT_EQ(fixture.CellAt(2, 2).actionResults[1].aimAngle, 37.5f);
         EXPECT_FLOAT_EQ(fixture.CellAt(2, 2).actionResults[1].x, fixture.CharacterAt(0).x);
+    }
+
+    TEST(MonsterBehaviorTest, QuarrySlamDamagesOnlyTargetsInFrontAtImpact) {
+        MonsterBehaviorFixture fixture(3);
+        const float x = fixture.HomeX(), y = fixture.HomeY();
+        const auto& data = Data::GetHuntingMonsterData(3, 1);
+        ASSERT_EQ(data.phases[0].steps[2].skillID, 2);
+        EXPECT_EQ(Data::GetHuntingMonsterData(2, 1).phases[0].steps[2].skillID, 1);
+        EXPECT_EQ(Data::GetHuntingMonsterData(4, 1).phases[0].steps[2].skillID, 1);
+
+        auto addTarget = [&](uint16_t id, float dx, float dy) {
+            CharacterState player{};
+            player.sessionID = id;
+            player.zoneInternalID = id;
+            player.hp = player.maxHp = 10000;
+            player.x = x + dx;
+            player.y = y + dy;
+            player.cellX = player.cellY = 2;
+            fixture.AddCaster(player);
+        };
+        addTarget(1, 0, 1);
+        addTarget(2, 1.5f, 3);
+        addTarget(3, 0, -1);
+        addTarget(4, 0, 5.5f);
+
+        MonsterState monster{};
+        monster.Initialize(data, 0, x, y, 2, 2);
+        monster.dir = 0;
+        monster.aggro = 1;
+        monster.skillStep = 2;
+        monster.tick = data.phases[0].steps[2].delayTicks;
+        fixture.AddMonster(monster);
+        fixture.Update();
+        ASSERT_EQ(fixture.ActiveSkillCount(), 1u);
+        fixture.AdvancePhaseAt(2, 2);
+        EXPECT_EQ(fixture.CharacterAt(0).hp, 10000);
+        fixture.AdvancePhaseAt(2, 2);
+        EXPECT_EQ(fixture.CharacterAt(0).hp, 8680);
+        for (size_t i = 1; i < 4; ++i)
+            EXPECT_EQ(fixture.CharacterAt(i).hp, 10000);
+        const auto& actions = fixture.CellAt(2, 2).actionResults;
+        ASSERT_EQ(actions.size(), 2u);
+        EXPECT_EQ(actions[0].skilIId, 2u);
+        EXPECT_EQ(actions[0].skillPhase, 0u);
+        EXPECT_EQ(actions[1].skillPhase, 1u);
+        EXPECT_FLOAT_EQ(actions[0].aimAngle, 0);
     }
 
     TEST(ParryCombat, OneChargeBlocksOnePositiveHitAndExpiresAtFiveTicks) {

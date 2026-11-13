@@ -20,7 +20,7 @@ SkillData{
     20, 80,
     {
         SkillPhase{ 0, 0, {SkillRangeType::None, 0.0f, 0.0f}, 0 },
-        SkillPhase{ 10, 1, {SkillRangeType::Rectangle, 12.0f, 3.0f}, 100 },
+        SkillPhase{ 16, 1, {SkillRangeType::Rectangle, 5.0f, 2.5f}, 12 },
     }
 },
 SkillData{
