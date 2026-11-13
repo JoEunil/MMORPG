@@ -439,6 +439,14 @@ namespace Cache {
         }
     };
     TEST_F(BazaarSearchFixture, StoppedDbWorkerReturnsExplicitCorrelatedFailure) {
+        std::vector<CacheMessagePool::ScopedMessage> held;
+        held.reserve(MSGPOOL_SIZE - 1);
+        for (size_t i = 1; i < MSGPOOL_SIZE; ++i) {
+            auto message = messages->AcquireScoped();
+            ASSERT_NE(message, nullptr);
+            held.push_back(std::move(message));
+        }
+        // Only the request slot can be reused for the synchronous rejection response.
         RequestSearch();
         ASSERT_NE(responses.received, nullptr);
         EXPECT_EQ(responses.received->GetLength(), sizeof(Core::MsgStruct<Core::MsgBazaarSearchResBody>));

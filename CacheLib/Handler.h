@@ -33,7 +33,7 @@ namespace Cache {
         DBWorker<DBConnectionGame>* dbWorkerGame = nullptr;
         DBWorker<DBConnectionBazaar>* dbWorkerBazaar = nullptr;
         template <typename Response, typename Work>
-        void EnqueueBazaarQuery(ScopedMessage& msg, Core::MsgHeader header, const Response& failureBody,const char* queueError, Work work);
+        void EnqueueBazaarQuery(Core::MsgHeader header, const Response& failureBody, const char* queueError, Work work);
 
         template <typename Connection, typename Work>
         void EnqueueMessageWork(DBWorker<Connection>* worker, ScopedMessage& msg, Work&& work) {

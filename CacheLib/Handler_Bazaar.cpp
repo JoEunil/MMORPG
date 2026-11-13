@@ -1,6 +1,7 @@
 ﻿#include "Handler.h"
 
 #include <algorithm>
+#include <exception>
 #include <memory>
 
 #include <CoreLib/Message.h>
@@ -19,12 +20,31 @@
 
 namespace Cache {
     template <typename Response, typename Work>
-    void Handler::EnqueueBazaarQuery(ScopedMessage& msg, Core::MsgHeader header, const Response& failureBody, const char* queueError, Work work) {
-        auto pending = std::make_shared<ScopedMessage>(std::move(msg)); // shared_ptr에 unique_ptr을 담을 수 있다.
-        const auto finish = [this, pending, header, queueError](const Response& response) {
-            auto owned = std::move(*pending);
-            if (!owned) return;
-            if (!TryEnqueueResponse(*owned, header, response))
+    void Handler::EnqueueBazaarQuery(Core::MsgHeader header, const Response& failureBody, const char* queueError, Work work) {
+        const auto finish = [this, header, queueError](const Response& response) {
+            auto message = messagePool->AcquireScoped();
+            if (!message) {
+                Core::errorLogger->LogError("cache handler bazaar", "response message pool exhausted",
+                    "sessionID", header.sessionID, "messageType", header.messageType, "requestID", response.requestID);
+                return;
+            }
+
+            bool queued = false;
+            try {
+                queued = TryEnqueueResponse(*message, header, response);
+            }
+            catch (const std::exception& e) {
+                // The queue may already have accepted the response before throwing.
+                Core::errorLogger->LogError("cache handler bazaar", "response enqueue threw",
+                    "sessionID", header.sessionID, "requestID", response.requestID, "msg", e.what());
+                return;
+            }
+            catch (...) {
+                Core::errorLogger->LogError("cache handler bazaar", "response enqueue threw",
+                    "sessionID", header.sessionID, "requestID", response.requestID);
+                return;
+            }
+            if (!queued)
                 Core::errorLogger->LogError("cache handler bazaar", queueError, "sessionID", header.sessionID);
         };
         const auto failed = [finish, failureBody] { finish(failureBody); };
@@ -40,11 +60,12 @@ namespace Cache {
             return;
 
         const auto request = *body;
+        msg.reset();
         Core::MsgBazaarMyListResBody failureBody{};
         failureBody.requestID = request.requestID;
         failureBody.characterID = request.characterID;
 
-        EnqueueBazaarQuery(msg, { sessionID, Core::MSG_BAZAAR_MY_LIST_RES }, failureBody,
+        EnqueueBazaarQuery({ sessionID, Core::MSG_BAZAAR_MY_LIST_RES }, failureBody,
             "my list response queue rejected", [request](DBConnectionBazaar& conn) {
                 auto result = conn.ExecuteSelect(11, request.characterID, Core::MAX_BAZAAR_MY_LIST);
                 Core::MsgBazaarMyListResBody response{};
@@ -58,10 +79,11 @@ namespace Cache {
             return;
 
         const auto request = *body;
+        msg.reset();
         Core::MsgBazaarSearchResBody failureBody{};
         failureBody.requestID = request.requestID;
 
-        EnqueueBazaarQuery(msg, { sessionID, Core::MSG_BAZAAR_SEARCH_RES }, failureBody,
+        EnqueueBazaarQuery({ sessionID, Core::MSG_BAZAAR_SEARCH_RES }, failureBody,
             "search response queue rejected", [request](DBConnectionBazaar& conn) {
                 const uint32_t offset = static_cast<uint32_t>(request.page) * Core::MAX_BAZAAR_SEARCH_RESULT;
                 auto result = conn.ExecuteSelect(12, request.item_type, Core::MAX_BAZAAR_SEARCH_RESULT, offset);
