@@ -34,134 +34,140 @@ namespace Cache {
 
     void CacheFlush::DBWrite(FlushCommand* command) {
         switch (command->stmtID) {
-        case 6: {
-            auto conn = connectionPoolGame->AcquireScoped();
-            if (conn == nullptr) {
-                Key5 key;
-                key.characterID = std::any_cast<uint64_t&>(command->params[1]);
-                auto shardIndex = key.characterID & SHARD_SIZE_MASK;
-                cache_inventory->Rollback(shardIndex, key, command->generation);
-                Core::errorLogger->LogError("cache flush", "connection acquire failed case 6", "char_id", key.characterID);
-                return;
-            }
-            auto& param0 = std::any_cast<std::vector<uint8_t>&>(command->params[0]);
-            auto& param1 = std::any_cast<uint64_t&>(command->params[1]); 
-            const auto inventory = DecodeInventory(param0.data(), param0.size());
-            int res = 0;
-            try {
-                res = conn->ExecuteUpdate(command->stmtID, param0, param1);
-            }
-            catch (sql::SQLException& e) {
-                Core::errorLogger->LogError("cache flush", "DB write exception case 6",
-                    "code", e.getErrorCode(),
-                    "msg", e.what());
-                Key5 key;
-                key.characterID = std::any_cast<uint64_t&>(command->params[1]);
-                auto shardIndex = key.characterID & SHARD_SIZE_MASK;
-                cache_inventory->Rollback(shardIndex, key, command->generation);
-                return;
-            }
-
-            conn.reset();
-            Key5 key;
-            key.characterID = param1;
-            auto shardIndex = param1 & SHARD_SIZE_MASK;
-            
-            if (res <= 0) { // 0: 대상 행 없음, 음수: 내부 실행 실패
-               cache_inventory->Rollback(shardIndex, key, command->generation);
-               Core::errorLogger->LogInfo("cache flush", "DB write failed case 6", "char_id", key.characterID);
-               return;
-            }
-
-            CrashPoint("CLAIM"); // 인벤토리 blob durable 이후, outbox CLAIM 전
-
-            // blob에서 역직렬화 해서 eventRing 추출
-            const InventoryData* inv = &inventory;
-
-            uint8_t pendingCnt = (inv->tail - inv->head) & RING_SIZE_MASK;
-            if (pendingCnt == 0 && inv->lastOp)
-                pendingCnt = RING_SIZE; // full
-
-            bool retryClaim = false;
-            if (pendingCnt > 0) {
-                auto bazaarConn = connectionPoolBazaar->AcquireScoped();
-                if (bazaarConn == nullptr) {
-                    // claim은 멱등 — rollback 없이 스킵, 다음 flush/재접속이 수렴시킴
-                    retryClaim = true;
-                    Core::errorLogger->LogError("cache flush", "bazaar connection acquire failed case 6", "char_id", key.characterID);
-                }
-                else {
-                    uint8_t claimedCnt = 0;
-                    try {
-                        uint8_t idx = inv->head;
-                        for (uint8_t k = 0; k < pendingCnt; ++k, idx = (idx + 1) & RING_SIZE_MASK) {
-                            bazaarConn->ExecuteUpdate(19, inv->recentEventIds[idx], key.characterID);
-                            claimedCnt++; // 0 rows(이미 CLAIMED)도 성공으로 진행
-                        }
-                    }
-                    catch (sql::SQLException& e) {
-                        Core::errorLogger->LogError("cache flush", "outbox claim exception case 6", "code", e.getErrorCode(), "msg", e.what(), "char_id", key.characterID);
-                        // 여기서 중단 — 성공한 prefix만큼만 head 전진
-                    }
-                    bazaarConn.reset();
-                    retryClaim = claimedCnt < pendingCnt;
-
-                    // head 전진(dirty 재마킹) 후에 WriteDone을 호출해야 entry가 erase되지 않고
-                    // 전진된 head가 다음 flush로 영속된다
-                    if (claimedCnt > 0) {
-                        if(!cache_inventory->AdvanceInboxHead(shardIndex, key, inv->head, claimedCnt))
-                            Core::gameLogger->LogInfo("cache flush", "inbox advance failed", "char_id", key.characterID);
-                    }
-                }
-            }
-            cache_inventory->WriteDone(shardIndex, key, command->generation, retryClaim);
-            if (m_invFlushedFn)
-                m_invFlushedFn(key.characterID, inv->lastLsn);
+        case 6:
+            FlushInventory(command);
             break;
-        }
-        case 8: {
-            auto conn = connectionPoolGame->AcquireScoped();
-            if (conn == nullptr) {
-                Key7 key;
-                key.characterID = std::any_cast<uint64_t&>(command->params[1]);
-                auto shardIndex = key.characterID & SHARD_SIZE_MASK;
-                cache_currency->Rollback(shardIndex, key, command->generation);
-                Core::errorLogger->LogError("cache flush", "connection acquire failed case 8", "char_id", key.characterID);
-                return;
-            }
-            auto& param0 = std::any_cast<uint64_t&>(command->params[0]);
-            auto& param1 = std::any_cast<uint64_t&>(command->params[1]);
-            int res = 0;
-            try {
-                res = conn->ExecuteUpdate(command->stmtID, param0, param1);
-            }
-            catch (sql::SQLException& e) {
-                Core::errorLogger->LogError("cache flush", "DB write exception case 8",
-                    "code", e.getErrorCode(),
-                    "msg", e.what());
-                Key7 key;
-                key.characterID = std::any_cast<uint64_t&>(command->params[1]);
-                auto shardIndex = key.characterID & SHARD_SIZE_MASK;
-                cache_currency->Rollback(shardIndex, key, command->generation);
-                return;
-            }
-
-            conn.reset();
-            Key7 key;
-            key.characterID = param1;
-            auto shardIndex = param1 & SHARD_SIZE_MASK;
-
-            if (res <= 0) { // 0: 대상 행 없음, 음수: 내부 실행 실패
-                cache_currency->Rollback(shardIndex, key, command->generation);
-                Core::errorLogger->LogInfo("cache flush", "DB write failed case 8", "char_id", key.characterID);
-                return;
-            }
-            cache_currency->WriteDone(shardIndex, key, command->generation);
+        case 8:
+            FlushCurrency(command);
             break;
-        }
         default:
             break;
         }
+    }
+
+    void CacheFlush::FlushInventory(FlushCommand* command) {
+        auto conn = connectionPoolGame->AcquireScoped();
+        if (conn == nullptr) {
+            Key5 key;
+            key.characterID = std::any_cast<uint64_t&>(command->params[1]);
+            auto shardIndex = key.characterID & SHARD_SIZE_MASK;
+            cache_inventory->Rollback(shardIndex, key, command->generation);
+            Core::errorLogger->LogError("cache flush", "connection acquire failed case 6", "char_id", key.characterID);
+            return;
+        }
+        auto& param0 = std::any_cast<std::vector<uint8_t>&>(command->params[0]);
+        auto& param1 = std::any_cast<uint64_t&>(command->params[1]);
+        const auto inventory = DecodeInventory(param0.data(), param0.size());
+        int res = 0;
+        try {
+            res = conn->ExecuteUpdate(command->stmtID, param0, param1);
+        }
+        catch (sql::SQLException& e) {
+            Core::errorLogger->LogError("cache flush", "DB write exception case 6",
+                "code", e.getErrorCode(),
+                "msg", e.what());
+            Key5 key;
+            key.characterID = std::any_cast<uint64_t&>(command->params[1]);
+            auto shardIndex = key.characterID & SHARD_SIZE_MASK;
+            cache_inventory->Rollback(shardIndex, key, command->generation);
+            return;
+        }
+
+        conn.reset();
+        Key5 key;
+        key.characterID = param1;
+        auto shardIndex = param1 & SHARD_SIZE_MASK;
+
+        if (res <= 0) { // 0: 대상 행 없음, 음수: 내부 실행 실패
+           cache_inventory->Rollback(shardIndex, key, command->generation);
+           Core::errorLogger->LogInfo("cache flush", "DB write failed case 6", "char_id", key.characterID);
+           return;
+        }
+
+        CrashPoint("CLAIM"); // 인벤토리 blob durable 이후, outbox CLAIM 전
+
+        // blob에서 역직렬화 해서 eventRing 추출
+        const InventoryData* inv = &inventory;
+
+        uint8_t pendingCnt = (inv->tail - inv->head) & RING_SIZE_MASK;
+        if (pendingCnt == 0 && inv->lastOp)
+            pendingCnt = RING_SIZE; // full
+
+        bool retryClaim = false;
+        if (pendingCnt > 0) {
+            auto bazaarConn = connectionPoolBazaar->AcquireScoped();
+            if (bazaarConn == nullptr) {
+                // claim은 멱등 — rollback 없이 스킵, 다음 flush/재접속이 수렴시킴
+                retryClaim = true;
+                Core::errorLogger->LogError("cache flush", "bazaar connection acquire failed case 6", "char_id", key.characterID);
+            }
+            else {
+                uint8_t claimedCnt = 0;
+                try {
+                    uint8_t idx = inv->head;
+                    for (uint8_t k = 0; k < pendingCnt; ++k, idx = (idx + 1) & RING_SIZE_MASK) {
+                        bazaarConn->ExecuteUpdate(19, inv->recentEventIds[idx], key.characterID);
+                        claimedCnt++; // 0 rows(이미 CLAIMED)도 성공으로 진행
+                    }
+                }
+                catch (sql::SQLException& e) {
+                    Core::errorLogger->LogError("cache flush", "outbox claim exception case 6", "code", e.getErrorCode(), "msg", e.what(), "char_id", key.characterID);
+                    // 여기서 중단 — 성공한 prefix만큼만 head 전진
+                }
+                bazaarConn.reset();
+                retryClaim = claimedCnt < pendingCnt;
+
+                // head 전진(dirty 재마킹) 후에 WriteDone을 호출해야 entry가 erase되지 않고
+                // 전진된 head가 다음 flush로 영속된다
+                if (claimedCnt > 0) {
+                    if(!cache_inventory->AdvanceInboxHead(shardIndex, key, inv->head, claimedCnt))
+                        Core::gameLogger->LogInfo("cache flush", "inbox advance failed", "char_id", key.characterID);
+                }
+            }
+        }
+        cache_inventory->WriteDone(shardIndex, key, command->generation, retryClaim);
+        if (m_invFlushedFn)
+            m_invFlushedFn(key.characterID, inv->lastLsn);
+    }
+
+    void CacheFlush::FlushCurrency(FlushCommand* command) {
+        auto conn = connectionPoolGame->AcquireScoped();
+        if (conn == nullptr) {
+            Key7 key;
+            key.characterID = std::any_cast<uint64_t&>(command->params[1]);
+            auto shardIndex = key.characterID & SHARD_SIZE_MASK;
+            cache_currency->Rollback(shardIndex, key, command->generation);
+            Core::errorLogger->LogError("cache flush", "connection acquire failed case 8", "char_id", key.characterID);
+            return;
+        }
+        auto& param0 = std::any_cast<uint64_t&>(command->params[0]);
+        auto& param1 = std::any_cast<uint64_t&>(command->params[1]);
+        int res = 0;
+        try {
+            res = conn->ExecuteUpdate(command->stmtID, param0, param1);
+        }
+        catch (sql::SQLException& e) {
+            Core::errorLogger->LogError("cache flush", "DB write exception case 8",
+                "code", e.getErrorCode(),
+                "msg", e.what());
+            Key7 key;
+            key.characterID = std::any_cast<uint64_t&>(command->params[1]);
+            auto shardIndex = key.characterID & SHARD_SIZE_MASK;
+            cache_currency->Rollback(shardIndex, key, command->generation);
+            return;
+        }
+
+        conn.reset();
+        Key7 key;
+        key.characterID = param1;
+        auto shardIndex = param1 & SHARD_SIZE_MASK;
+
+        if (res <= 0) { // 0: 대상 행 없음, 음수: 내부 실행 실패
+            cache_currency->Rollback(shardIndex, key, command->generation);
+            Core::errorLogger->LogInfo("cache flush", "DB write failed case 8", "char_id", key.characterID);
+            return;
+        }
+        cache_currency->WriteDone(shardIndex, key, command->generation);
     }
 
     void CacheFlush::ThreadFunc() {

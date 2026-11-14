@@ -74,6 +74,8 @@ namespace Cache {
         void Stop();
 
         void DBWrite(FlushCommand* command);
+        void FlushInventory(FlushCommand* command);
+        void FlushCurrency(FlushCommand* command);
         void ExecuteWrite(FlushCommand* command);
         void ThreadFunc();
         friend class Initializer;
