@@ -83,38 +83,31 @@ namespace Cache {
         const auto request = *body;
         EnqueueMessageWork(dbWorkerGame, msg, [this, sessionID, request](DBConnectionGame* conn, Core::Message* msg) {
             auto res = conn->ExecuteSelect(1, request.userID, request.channelID);
-            Core::MsgStruct<Core::MsgCharacterListResBody>* st = reinterpret_cast<Core::MsgStruct<Core::MsgCharacterListResBody>*>(msg->GetBuffer());
-
-            st->header.sessionID = sessionID;
-            st->header.messageType = Core::MSG_CHARACTER_LIST_RES;
+            const Core::MsgHeader header{ sessionID, Core::MSG_CHARACTER_LIST_RES };
+            Core::MsgCharacterListResBody response{};
 
             if (!res || !res->next()) {
                 Core::gameLogger->LogInfo("cache handler", "character list read failed", "sessionID", sessionID, "user_id", request.userID, "channel_id", request.channelID);
-                st->body.resStatus = 0;
-                st->body.count = 0;
-                msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterListResBody>));
-                messageQ->EnqueueMessage(msg);
+                TryEnqueueResponse(*msg, header, response);
                 return;
             }
 
-            st->body.resStatus = 1;
-            st->body.count = 0;
+            response.resStatus = 1;
 
             do {
-                if (st->body.count >= MAX_CHARACTER_CNT) break;
+                if (response.count >= MAX_CHARACTER_CNT) break;
 
-                auto& info = st->body.characters[st->body.count];
+                auto& info = response.characters[response.count];
                 info.characterID = res->getUInt64("char_id");
                 std::string name = res->getString("name");
                 std::memset(info.name, 0, sizeof(info.name));
                 std::memcpy(info.name, name.c_str(), std::min(name.size(), sizeof(info.name) - 1));
                 info.level = res->getUInt("level");
 
-                st->body.count++;
+                response.count++;
             } while (res->next());
 
-            msg->SetLength(sizeof(Core::MsgStruct<Core::MsgCharacterListResBody>));
-            messageQ->EnqueueMessage(msg);
+            TryEnqueueResponse(*msg, header, response);
             });
     }
 
@@ -129,11 +122,7 @@ namespace Cache {
             // DB failure and an inline/asynchronous inventory completion share one message owner.
             if (completed->exchange(true)) return;
             auto owned = std::move(*pending);
-            auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgCharacterStateResBody>*>(owned->GetBuffer());
-            st->header = { sessionID, Core::MSG_CHARACTER_STATE_RES };
-            st->body = response;
-            owned->SetLength(sizeof(*st));
-            if (!messageQ->EnqueueMessage(owned.get()))
+            if (!TryEnqueueResponse(*owned, { sessionID, Core::MSG_CHARACTER_STATE_RES }, response))
                 Core::errorLogger->LogError("cache handler", "character state response queue rejected", "sessionID", sessionID);
         };
         const auto failed = [finish] { finish(Core::MsgCharacterStateResBody{}); };
@@ -215,14 +204,8 @@ namespace Cache {
                     "sessionID", sessionID, "profile_id", profileId, "success", success);
                 return;
             }
-            auto st = reinterpret_cast<Core::MsgStruct<Core::MsgProfileRenameResBody>*>(res->GetBuffer());
-            st->header.sessionID = sessionID;
-            st->header.messageType = Core::MSG_PROFILE_RENAME_RES;
-            st->body.resStatus = success ? 1 : 0;
-            st->body.profileId = profileId;
-            st->body.version = version; // 실패 시 0
-            res->SetLength(sizeof(Core::MsgStruct<Core::MsgProfileRenameResBody>));
-            messageQ->EnqueueMessage(res.get());
+            const Core::MsgProfileRenameResBody response{ static_cast<uint8_t>(success), profileId, version };
+            TryEnqueueResponse(*res, { sessionID, Core::MSG_PROFILE_RENAME_RES }, response);
             });
     }
 }

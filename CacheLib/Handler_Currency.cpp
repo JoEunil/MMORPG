@@ -34,13 +34,12 @@ namespace Cache {
         cache_currency->GrantCurrency(request.characterID, request.gold,
             [this, pending, request, sessionID](CACHE_STATUS status, uint64_t gold) {
                 auto owned = std::move(*pending);
-                auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgCurrencyDepositResBody>*>(owned->GetBuffer());
-                st->header = {sessionID, Core::MSG_CURRENCY_DEPOSIT_RES};
-                st->body = {static_cast<uint8_t>(status == CACHE_STATUS::AVAILABLE ? 1 : 0), gold, request.characterID};
+                const Core::MsgCurrencyDepositResBody response{
+                    static_cast<uint8_t>(status == CACHE_STATUS::AVAILABLE), gold, request.characterID
+                };
                 if (status != CACHE_STATUS::AVAILABLE)
                     Core::errorLogger->LogWarn("cache handler", "currency deposit failed", "characterID", request.characterID, "status", status);
-                owned->SetLength(sizeof(*st));
-                if (!messageQ->EnqueueMessage(owned.get()))
+                if (!TryEnqueueResponse(*owned, { sessionID, Core::MSG_CURRENCY_DEPOSIT_RES }, response))
                     Core::errorLogger->LogError("cache handler", "currency deposit response rejected", "characterID", request.characterID, "status", status);
             });
     }
