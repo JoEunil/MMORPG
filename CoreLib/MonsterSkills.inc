@@ -49,3 +49,16 @@ SkillData{
         SkillPhase{ 20, 1, {SkillRangeType::Boss2, 25.0f, 20.0f}, 100 },
     }
 },
+// Forest sweep, outpost cleave and altar burst reuse the ordinary two-phase attack flow.
+SkillData{5, 2, 0, 0, {
+    SkillPhase{0, 0, {SkillRangeType::None, 0.0f, 0.0f}, 0},
+    SkillPhase{14, 1, {SkillRangeType::Circle, 3.5f, 0.0f}, 10},
+}},
+SkillData{6, 2, 0, 0, {
+    SkillPhase{0, 0, {SkillRangeType::None, 0.0f, 0.0f}, 0},
+    SkillPhase{20, 1, {SkillRangeType::Rectangle, 4.5f, 5.0f}, 11},
+}},
+SkillData{7, 2, 0, 0, {
+    SkillPhase{0, 0, {SkillRangeType::None, 0.0f, 0.0f}, 0},
+    SkillPhase{24, 1, {SkillRangeType::Circle, 6.0f, 0.0f}, 12},
+}},

@@ -54,7 +54,8 @@ namespace {
             static_cast<uint32_t>(Data::itemMap.at(4).defensePercent) + Data::itemMap.at(5).defensePercent <= 99,
             "Shield and body equipment require a combined defense below 100 percent.");
         for (const auto* skills : {&Data::skillList, &Data::monsterSkillList}) {
-            Require(skills->size() == 5, "Expected skill IDs 0 through 4 for each caster type.");
+            const size_t expectedCount = skills == &Data::monsterSkillList ? 8 : 5;
+            Require(skills->size() == expectedCount, "Unexpected skill catalog size.");
             for (size_t id = 0; id < skills->size(); ++id) {
                 const auto& skill = (*skills)[id];
                 Require(skill.skillID == id && (skill.flags & ~3) == 0,
@@ -103,6 +104,13 @@ namespace {
                 zone.bossHp == 0 && zone.bossAttack == 0 && zone.bossExp == 0, "Only zones 4 and 6 contain bosses.");
         }
 
+        for (const auto& zone : Data::huntingMonsters)
+            for (const auto& monster : zone)
+                for (size_t phase = 0; phase < monster.phasesCnt; ++phase)
+                    for (size_t step = 0; step < monster.phases[phase].stepCnt; ++step)
+                        Require(monster.phases[phase].steps[step].skillID < Data::monsterSkillList.size(),
+                            "A hunting zone monster references an unknown skill ID.");
+
         Require(std::size(Data::monsters) == 3, "Expected monster IDs 0 through 2.");
         for (size_t id = 0; id < std::size(Data::monsters); ++id) {
             const auto& monster = Data::monsters[id];
@@ -146,11 +154,24 @@ namespace {
         }
     }
 
+    void WriteMonsterPhases(std::ostringstream& json, const Data::MonsterData& monster) {
+        for (size_t i = 0; i < monster.phasesCnt; ++i) {
+            const auto& phase = monster.phases[i];
+            if (i) json << ',';
+            json << "{\"hpThreshold\":" << phase.hpThreshold << ",\"steps\":[";
+            for (size_t step = 0; step < phase.stepCnt; ++step) {
+                if (step) json << ',';
+                json << "{\"skillID\":" << phase.steps[step].skillID << ",\"delayTicks\":" << phase.steps[step].delayTicks << '}';
+            }
+            json << "]}";
+        }
+    }
+
     std::string Serialize() {
         std::ostringstream json;
         json.imbue(std::locale::classic());
         json << std::setprecision(std::numeric_limits<float>::max_digits10);
-        json << "{\n  \"formatVersion\": 5,\n  \"skills\": [\n";
+        json << "{\n  \"formatVersion\": 6,\n  \"skills\": [\n";
         for (const auto* skills : {&Data::skillList, &Data::monsterSkillList}) {
             if (skills == &Data::monsterSkillList) json << "\n  ],\n  \"monsterSkills\": [\n";
             for (size_t id = 0; id < skills->size(); ++id) {
@@ -186,16 +207,19 @@ namespace {
             json << "    {\"id\":" << monster.id << ",\"maxHp\":" << monster.maxHp << ",\"attack\":" << monster.attack
                 << ",\"respawnTicks\":" << monster.respawn << ",\"moveSpeed\":" << monster.moveSpeed
                 << ",\"rewardExp\":" << monster.reward.exp << ",\"phases\":[";
-            for (size_t i = 0; i < monster.phasesCnt; ++i) {
-                const auto& phase = monster.phases[i];
-                if (i) json << ',';
-                json << "{\"hpThreshold\":" << phase.hpThreshold << ",\"steps\":[";
-                for (size_t step = 0; step < phase.stepCnt; ++step) {
-                    if (step) json << ',';
-                    json << "{\"skillID\":" << phase.steps[step].skillID << ",\"delayTicks\":" << phase.steps[step].delayTicks << '}';
-                }
-                json << "]}";
-            }
+            WriteMonsterPhases(json, monster);
+            json << "]}";
+        }
+        json << "\n  ],\n  \"monsterSpecies\": [\n";
+        for (size_t i = 0; i < std::size(Data::huntingSpecies); ++i) {
+            const auto& species = Data::huntingSpecies[i];
+            const uint16_t archetype = species.id == 2 ? 2 : (species.id - 3) % 2;
+            const auto& monster = Data::GetHuntingMonsterData(species.zone, archetype);
+            if (i) json << ",\n";
+            json << "    {\"id\":" << species.id << ",\"zoneID\":" << species.zone << ",\"name\":";
+            WriteJsonString(json, species.name);
+            json << ",\"attack\":" << monster.attack << ",\"phases\":[";
+            WriteMonsterPhases(json, monster);
             json << "]}";
         }
         json << "\n  ],\n  \"growth\": {\"maxLevel\":" << Data::growthMaxLevel << ",\"levels\":[\n";

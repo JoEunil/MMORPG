@@ -934,6 +934,79 @@ namespace Mmorpg.Client.Tests
         }
 
         [Test]
+        public void RegionalEliteSkillsShowTheExportedAreasAndClearOnImpact()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                fixture.ConfigureMonsterRange();
+                var content = UnityEditor.AssetDatabase.LoadAssetAtPath<ServerContent>("Assets/Client/Content/ServerContent.asset");
+                Assert.That(content, Is.Not.Null);
+                Set(fixture.Observer, "serverContent", content);
+                fixture.Monsters(100, Monster(1, 8), Monster(2, 10), Monster(3, 12));
+
+                foreach (var (monster, id, minX, maxX, halfWidth) in new[] {
+                    ((ushort)1, 5u, 16.5f, 23.5f, 3.5f), ((ushort)2, 6u, 20f, 24.5f, 2.5f), ((ushort)3, 7u, 14f, 26f, 6f)
+                })
+                {
+                    var charge = MonsterAction(monster, 0, id, 0, 20, 30);
+                    charge.dir = 3;
+                    charge.aimAngle = 90;
+                    fixture.MonsterActions(charge);
+                    var preview = fixture.MonsterRange(monster);
+                    Assert.That(preview.gameObject.activeSelf, Is.True);
+                    var mesh = preview.GetComponent<MeshFilter>().sharedMesh;
+                    Assert.That(mesh.bounds.min.x, Is.EqualTo(minX).Within(.001f));
+                    Assert.That(mesh.bounds.max.x, Is.EqualTo(maxX).Within(.001f));
+                    Assert.That(mesh.bounds.min.z, Is.EqualTo(30 - halfWidth).Within(.001f));
+                    Assert.That(mesh.bounds.max.z, Is.EqualTo(30 + halfWidth).Within(.001f));
+                    charge.skillPhase = 1;
+                    fixture.MonsterActions(charge);
+                    Assert.That(preview.gameObject.activeSelf, Is.False);
+                }
+            }
+        }
+
+        [Test]
+        public void MonsterInspectionPicksVisibleActorShowsPatternAndClosesWhenRemoved()
+        {
+            using (var fixture = new ObservationFixture())
+            {
+                var content = UnityEditor.AssetDatabase.LoadAssetAtPath<ServerContent>("Assets/Client/Content/ServerContent.asset");
+                Assert.That(content, Is.Not.Null);
+                var species = content.GetMonsterSpecies(8, 4);
+                Assert.That(species, Is.Not.Null);
+                Set(fixture.Observer, "serverContent", content);
+                Set(fixture.Observer, "observedZone", (ushort)4);
+                var canvas = new GameObject("Inspection Canvas", typeof(RectTransform), typeof(Canvas),
+                    typeof(UnityEngine.UI.GraphicRaycaster));
+                canvas.transform.SetParent(fixture.Observer.transform, false);
+                var prefab = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                prefab.transform.SetParent(fixture.Observer.transform, false);
+                fixture.UseMonsterPrefabs(prefab);
+
+                var nearer = Monster(1, 8);
+                var farther = Monster(2, 7);
+                farther.y += 4;
+                fixture.Monsters(100, nearer, farther);
+                var ray = new Ray(new Vector3(nearer.x, 0, nearer.y - 5), Vector3.forward);
+                var model = fixture.Visual("monsters", (ushort)1).GetComponent<MeshRenderer>();
+                Assert.That(model.bounds.IntersectRay(ray), Is.True);
+                Invoke(fixture.Observer, "InspectMonster", ray);
+                var card = canvas.transform.Find("Monster Inspection");
+                Assert.That(card, Is.Not.Null);
+                Assert.That(card.Find("Name").GetComponent<TMP_Text>().text, Is.EqualTo(species.name));
+                Assert.That(card.Find("Attack").GetComponent<TMP_Text>().text, Is.EqualTo($"공격력 {species.attack:N0}"));
+                Assert.That(card.Find("Pattern").GetComponent<TMP_Text>().text, Does.Contain("숲의 휩쓸기").And.Contain("예고"));
+                Assert.That(card.Find("Health").GetComponent<TMP_Text>().text, Is.EqualTo("HP 70 / 100"));
+
+                fixture.MonsterDeltas(new MonsterDeltaField { internalId = 1, fieldId = 0, fieldVal = 42 });
+                Assert.That(card.Find("Health").GetComponent<TMP_Text>().text, Is.EqualTo("HP 42 / 100"));
+                fixture.RemoveMonster(1);
+                Assert.That(card.gameObject.activeSelf, Is.False);
+            }
+        }
+
+        [Test]
         public void QuarrySlamUsesExportedRectangleAndClearsOnImpact()
         {
             using (var fixture = new ObservationFixture())

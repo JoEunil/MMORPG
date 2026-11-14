@@ -85,7 +85,7 @@ namespace Core {
             return true;
         }
         std::shared_ptr<IPacket> GetMonsterFullHeader(uint16_t zoneID, uint64_t generation);
-        bool WriteMonsterFullField(std::shared_ptr<IPacket> packetPtr, const MonsterState& state);
+        bool WriteMonsterFullField(std::shared_ptr<IPacket> packetPtr, const MonsterState& state, uint16_t zoneID);
         std::shared_ptr<IPacket> GetActionHeader(uint16_t zoneID, uint64_t generation);
         bool WriteActionField(std::shared_ptr<IPacket> packetPtr, const ActionResult& state);
 

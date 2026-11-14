@@ -29,8 +29,9 @@ namespace Mmorpg.Client.Tests
                 Assert.That(content.otherMonsters.Length, Is.EqualTo(2));
                 var actual = new JObject
                 {
-                    ["formatVersion"] = 5,
+                    ["formatVersion"] = 6,
                     ["monsterSkills"] = JArray.FromObject(content.monsterSkills),
+                    ["monsterSpecies"] = JArray.FromObject(content.monsterSpecies),
                     ["huntingZones"] = JArray.FromObject(content.huntingZones),
                     ["skills"] = JArray.FromObject(new[] { content.otherSkills[0], content.ring, content.otherSkills[1], content.otherSkills[2], content.otherSkills[3] }),
                     ["monsters"] = JArray.FromObject(new[] { content.monster0, content.otherMonsters[0], content.otherMonsters[1] }),
@@ -39,6 +40,7 @@ namespace Mmorpg.Client.Tests
                     ["items"] = JArray.FromObject(content.items)
                 };
                 expected["skills"] = JArray.FromObject(expected["skills"].ToObject<ServerContent.RingSkill[]>());
+                expected["monsterSpecies"] = JArray.FromObject(expected["monsterSpecies"].ToObject<ServerContent.MonsterSpecies[]>());
                 expected["monsterSkills"] = JArray.FromObject(expected["monsterSkills"].ToObject<ServerContent.RingSkill[]>());
                 expected["huntingZones"] = JArray.FromObject(expected["huntingZones"].ToObject<ServerContent.HuntingZone[]>());
                 Assert.That(content.monsterSkills[1].phases[1].attack, Is.EqualTo(15));

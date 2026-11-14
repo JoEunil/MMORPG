@@ -1,4 +1,5 @@
 ﻿#include "pch.h"
+#include "HuntingZoneData.h"
 #include "PacketWriter.h"
 #include "IPacket.h"
 #include "Config.h"
@@ -283,7 +284,7 @@ namespace Core {
         return packetPtr;
     }
 
-    bool PacketWriter::WriteMonsterFullField(std::shared_ptr<IPacket> packetPtr, const MonsterState& state) {
+    bool PacketWriter::WriteMonsterFullField(std::shared_ptr<IPacket> packetPtr, const MonsterState& state, uint16_t zoneID) {
         if (packetPtr->GetLength() + sizeof(MonsterFullField) > packetPtr->GetCapacity())
             return false;
         auto fields = reinterpret_cast<MonsterFullField*>(packetPtr->GetBuffer());
@@ -297,7 +298,7 @@ namespace Core {
         slot.x = state.x;
         slot.y = state.y;
         slot.attacked = state.attacked;
-        slot.monsterId = state.data->id;
+        slot.monsterId = Data::HuntingSpeciesID(zoneID, state.data->id);
         return true;
     }
 

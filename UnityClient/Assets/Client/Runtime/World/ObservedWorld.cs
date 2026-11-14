@@ -4,6 +4,9 @@ using Mmorpg.Client;
 using ClientCore;
 using ClientCore.PacketHelper;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 namespace Mmorpg.Client
 {
@@ -13,6 +16,13 @@ namespace Mmorpg.Client
         // Monster updates normally arrive every 100ms; keep headroom for frame/arrival jitter.
         private const double PresentationDelay = 0.150;
         private const int MotionSampleCapacity = 8;
+        private const int FirstRegionalMonster = 3;
+        private const int LastRegionalMonster = 12;
+        private static readonly Color32[] RegionalCloth =
+        {
+            new Color32(91, 98, 61, 255), new Color32(103, 69, 56, 255), new Color32(66, 87, 100, 255),
+            new Color32(91, 71, 101, 255), new Color32(108, 85, 52, 255)
+        };
 
         private struct MotionSample
         {
@@ -185,6 +195,7 @@ namespace Mmorpg.Client
         {
             public MonsterFullField State;
             public GameObject Visual;
+            public MeshRenderer[] ModelParts;
             public EntityVitals Vitals;
             public ActorMotion ActorMotion;
             public SkillTelegraph RangePreview;
@@ -206,6 +217,9 @@ namespace Mmorpg.Client
         private readonly Dictionary<uint, PlayerObservation> players = new Dictionary<uint, PlayerObservation>();
         private readonly Dictionary<ushort, MonsterObservation> monsters = new Dictionary<ushort, MonsterObservation>();
         private readonly List<(ushort Id, GameObject Visual)> defeatedVisuals = new List<(ushort, GameObject)>();
+        private readonly List<RaycastResult> inspectionPointerHits = new List<RaycastResult>();
+        private MonsterObservation inspectedMonster;
+        private MonsterInspectionPanel inspectionPanel;
         private IViewModelUI model;
         private int generation;
         private ushort observedZone;
@@ -329,6 +343,69 @@ namespace Mmorpg.Client
             // A delayed bootstrap must not age out the field being shown during transition.
             if (worldScreen.Stage != WorldStage.TransitionPending) Expire(Time.realtimeSinceStartupAsDouble);
             RenderObservations(Time.realtimeSinceStartupAsDouble);
+            UpdateInspection();
+        }
+
+        private void UpdateInspection()
+        {
+            if (!worldScreen.CanAct || GameUiInput.WorldMapOpen || worldScreen.HasOpenItemPanel)
+            {
+                CloseInspection();
+                return;
+            }
+            if (Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame || !Application.isFocused ||
+                EventSystem.current == null || worldScreen.ViewCamera == null) return;
+            var camera = worldScreen.ViewCamera.GetComponent<Camera>();
+            if (camera == null) return;
+
+            Vector2 pointer = Mouse.current.position.ReadValue();
+            if (!camera.pixelRect.Contains(pointer)) return;
+            var pointerEvent = new PointerEventData(EventSystem.current) { position = pointer };
+            inspectionPointerHits.Clear();
+            EventSystem.current.RaycastAll(pointerEvent, inspectionPointerHits);
+            foreach (var hit in inspectionPointerHits)
+                if (hit.module is GraphicRaycaster) return;
+
+            InspectMonster(camera.ScreenPointToRay(pointer));
+        }
+
+        private void InspectMonster(Ray ray)
+        {
+            MonsterObservation nearest = null;
+            float nearestDistance = float.PositiveInfinity;
+            foreach (var monster in monsters.Values)
+            {
+                foreach (var part in monster.ModelParts)
+                {
+                    if (part == null || !part.enabled || !part.gameObject.activeInHierarchy ||
+                        !part.bounds.IntersectRay(ray, out float distance) || distance >= nearestDistance) continue;
+                    nearest = monster;
+                    nearestDistance = distance;
+                }
+            }
+
+            if (nearest == null)
+            {
+                CloseInspection();
+                return;
+            }
+            if (inspectionPanel == null)
+            {
+                // Entity HP bars also create child canvases, but only the screen UI handles pointer events.
+                var canvas = loginScreen.GetComponentInChildren<GraphicRaycaster>()?.GetComponent<Canvas>();
+                if (canvas == null) return;
+                inspectionPanel = new MonsterInspectionPanel(canvas.rootCanvas.transform, worldScreen.ItemTextFont, CloseInspection);
+            }
+            inspectedMonster = nearest;
+            var species = serverContent == null ? null : serverContent.GetMonsterSpecies(nearest.State.monsterId, observedZone);
+            inspectionPanel.Show(species, serverContent?.monsterSkills, nearest.State.hp, nearest.State.maxHp);
+        }
+
+        private void CloseInspection()
+        {
+            if (inspectedMonster == null) return;
+            inspectedMonster = null;
+            inspectionPanel.Hide();
         }
 
         private void ApplyPlayerFull(ushort count, FullStateField[] states, double now)
@@ -377,8 +454,20 @@ namespace Mmorpg.Client
                 { RemoveMonster(state.internalId); entry = null; }
                 if (entry == null)
                 {
-                    entry = new MonsterObservation { Visual = Instantiate(monsterPrefabs[state.monsterId], displayRoot) };
+                    int visualType = MonsterVisualType(state.monsterId);
+                    entry = new MonsterObservation { Visual = Instantiate(monsterPrefabs[visualType], displayRoot) };
                     entry.Visual.name = "ObservedMonster " + state.internalId + " type " + state.monsterId;
+                    entry.ModelParts = entry.Visual.GetComponentsInChildren<MeshRenderer>();
+                    if (visualType == 1)
+                    {
+                        var scale = entry.Visual.transform.localScale;
+                        // Distinguish regional elites using the existing rig and materials.
+                        if (observedZone == 4) scale = Vector3.Scale(scale, new Vector3(1.08f, 1.14f, 1.08f));
+                        if (observedZone == 5) scale = Vector3.Scale(scale, new Vector3(1.22f, 1.04f, 1.22f));
+                        if (observedZone == 6) scale *= 1.18f;
+                        entry.Visual.transform.localScale = scale;
+                    }
+                    if (state.monsterId >= FirstRegionalMonster) TintMonster(entry.ModelParts, state.monsterId);
                     entry.ActorMotion = CreateActorMotion(entry.Visual);
                     entry.Vitals = CreateVitals(entry.Visual);
                     InitializeVisual(entry.Visual, entry.Motion, now, state.x, state.y, state.dir);
@@ -396,6 +485,7 @@ namespace Mmorpg.Client
                 entry.State = state;
                 entry.LastFullSeen = now;
                 entry.Vitals.SetHealth(state.hp, state.maxHp);
+                if (entry == inspectedMonster) inspectionPanel.SetHealth(state.hp, state.maxHp);
             }
         }
 
@@ -483,6 +573,7 @@ namespace Mmorpg.Client
                 entry.Motion.Add(now, pair.Value.state.x, pair.Value.state.y);
                 entry.State = pair.Value.state;
                 entry.Vitals.SetHealth(entry.State.hp, entry.State.maxHp);
+                if (entry == inspectedMonster) inspectionPanel.SetHealth(entry.State.hp, entry.State.maxHp);
                 if (damaged) { entry.Vitals.PulseDamage(); entry.ActorMotion.PlayHit(); }
             }
         }
@@ -628,7 +719,7 @@ namespace Mmorpg.Client
                     continue;
                 }
 
-                if (entry.State.monsterId != 1 || (result.skillId != 1 && result.skillId != 2) || result.skillPhase > 1)
+                if (MonsterVisualType(entry.State.monsterId) != 1 || result.skillId == 0 || result.skillPhase > 1)
                     continue;
                 if (result.skillPhase == 1)
                 {
@@ -803,7 +894,24 @@ namespace Mmorpg.Client
         }
 
         private static bool ValidPlayer(FullStateField state) => ValidState(state.x, state.y, state.dir, state.hp, state.maxHp);
-        private static bool ValidMonster(MonsterFullField state) => state.monsterId <= 2 && ValidState(state.x, state.y, state.dir, state.hp, state.maxHp);
+        private static bool ValidMonster(MonsterFullField state) =>
+            state.monsterId <= LastRegionalMonster && ValidState(state.x, state.y, state.dir, state.hp, state.maxHp);
+        private static int MonsterVisualType(int speciesId) =>
+            speciesId < FirstRegionalMonster ? speciesId : (speciesId - FirstRegionalMonster) % 2;
+
+        private static void TintMonster(MeshRenderer[] parts, int speciesId)
+        {
+            var tint = new MaterialPropertyBlock();
+            Color cloth = RegionalCloth[(speciesId - FirstRegionalMonster) / 2];
+            tint.SetColor("_BaseColor", cloth);
+            tint.SetColor("_Color", cloth);
+            foreach (var part in parts)
+            {
+                if (part.name == "GoblinRagSkirt" || part.name == "GoblinChestStrap" ||
+                    part.name == "OrcRagSkirt" || part.name == "OrcBaldric")
+                    part.SetPropertyBlock(tint);
+            }
+        }
         private static bool ValidState(float x, float y, byte direction, int hp, int maxHp) =>
             !float.IsNaN(x) && !float.IsInfinity(x) && !float.IsNaN(y) && !float.IsInfinity(y) && direction <= 3 && maxHp > 0 && hp >= 0 && hp <= maxHp;
         private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
@@ -840,6 +948,7 @@ namespace Mmorpg.Client
         private void RemoveMonster(ushort id, bool defeated = false)
         {
             if (!monsters.TryGetValue(id, out var entry)) return;
+            if (entry == inspectedMonster) CloseInspection();
             entry.DisposeTelegraphs();
             monsters.Remove(id);
             if (entry.Visual == null) return;
@@ -866,6 +975,7 @@ namespace Mmorpg.Client
 
         private void ClearObservations()
         {
+            CloseInspection();
             foreach (var entry in players.Values)
             {
                 entry.RangePreview?.Dispose();
@@ -901,5 +1011,7 @@ namespace Mmorpg.Client
             ownId = 0;
             ClearObservations();
         }
+
+        private void OnDestroy() => inspectionPanel?.Destroy();
     }
 }
