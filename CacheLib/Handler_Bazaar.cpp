@@ -19,6 +19,33 @@
 #include "BazaarRegisterResult.h"
 
 namespace Cache {
+    namespace {
+        // A valid selection carries the server-owned item ID, which is always nonzero.
+        struct BazaarRegistrationSelection {
+            uint8_t failureStatus;
+            uint32_t itemID = 0;
+        };
+
+        BazaarRegistrationSelection ValidateBazaarRegistration(
+            const Core::MsgBazaarRegisterBody& request, const Result5& inventory) {
+            if (request.inventorySlot >= MAX_INVENTORY || inventory.status != CACHE_STATUS::AVAILABLE)
+                return { 0 };
+
+            const auto& selected = inventory.data.items[request.inventorySlot];
+            if (selected.itemID == 0 || selected.slot != request.inventorySlot || request.quantity == 0 || request.price == 0)
+                return { 4 };
+            if (selected.quantity < request.quantity)
+                return { 2 };
+
+            // Inventory stacks by item ID, so duplicate IDs make slot-based removal ambiguous.
+            for (uint16_t slot = 0; slot < MAX_INVENTORY; ++slot) {
+                if (slot != request.inventorySlot && inventory.data.items[slot].itemID == selected.itemID)
+                    return { 4 };
+            }
+            return { 0, selected.itemID };
+        }
+    }
+
     template <typename Response, typename Work>
     void Handler::EnqueueBazaarQuery(Core::MsgHeader header, const Response& failureBody, const char* queueError, Work work) {
         const auto finish = [this, header, queueError](const Response& response) {
@@ -107,28 +134,12 @@ namespace Cache {
                 Core::errorLogger->LogError("cache handler bazaar", "register response queue rejected", "sessionID", sessionID);
         };
 
-        const auto inventory = cache_inventory->Getter(request.characterID);
-        if (request.inventorySlot >= MAX_INVENTORY || inventory.status != CACHE_STATUS::AVAILABLE) {
-            finish(0);
+        const auto selection = ValidateBazaarRegistration(request, cache_inventory->Getter(request.characterID));
+        if (selection.itemID == 0) {
+            finish(selection.failureStatus);
             return;
         }
-        const auto& selected = inventory.data.items[request.inventorySlot];
-        if (selected.itemID == 0 || selected.slot != request.inventorySlot || request.quantity == 0 || request.price == 0) {
-            finish(4);
-            return;
-        }
-        request.itemID = selected.itemID;
-        if (selected.quantity < request.quantity) {
-            finish(2);
-            return;
-        }
-        // Inventory insertion stacks by item ID, so duplicate IDs would make slot-based removal ambiguous.
-        for (uint16_t slot = 0; slot < MAX_INVENTORY; ++slot) {
-            if (slot != request.inventorySlot && inventory.data.items[slot].itemID == request.itemID) {
-                finish(4);
-                return;
-            }
-        }
+        request.itemID = selection.itemID;
         const auto item = Data::itemMap.find(request.itemID);
         constexpr uint64_t BAZAAR_FEE_MIN = 10;
         constexpr uint64_t BAZAAR_FEE_RATE = 10;
@@ -143,21 +154,11 @@ namespace Cache {
             return inventoryStatus == CACHE_STATUS::AVAILABLE && feeStatus == CACHE_STATUS::AVAILABLE;
         };
         try {
-            if (item == Data::itemMap.end() || request.quantity == 0) {
-                finish(4);
-                return;
-            }
-            const auto inventoryStatus = std::get<0>(cache_inventory->PartialUpdate(request.characterID, request.itemID, 2, -static_cast<int32_t>(request.quantity)));
-            if (inventoryStatus != CACHE_STATUS::AVAILABLE) {
-                finish(2);
-                return;
-            }
-            const auto feeStatus = std::get<0>(cache_currency->TryWithdrawCurrency(request.characterID, fee));
-            if (feeStatus != CACHE_STATUS::AVAILABLE) {
-                // Gold was not withdrawn, so only restore the item. A failed/throwing restore is uncertain.
-                const auto restored = std::get<0>(cache_inventory->PartialUpdate(request.characterID, request.itemID, 2, request.quantity));
-                if (restored != CACHE_STATUS::AVAILABLE) reportUnknown();
-                finish(restored == CACHE_STATUS::AVAILABLE ? 3 : 5);
+            const auto failure = item == Data::itemMap.end() ? std::optional<uint8_t>{ 4 } : DeductBazaarRegistrationCosts(request, fee);
+            if (failure) {
+                if (*failure == 5)
+                    reportUnknown();
+                finish(*failure);
                 return;
             }
             const auto failed = [finish, reportUnknown] {
@@ -181,6 +182,22 @@ namespace Cache {
             reportUnknown();
             finish(5);
         }
+    }
+
+    std::optional<uint8_t> Handler::DeductBazaarRegistrationCosts(const Core::MsgBazaarRegisterBody& request, uint64_t fee) {
+        const auto inventoryStatus = std::get<0>(cache_inventory->PartialUpdate(
+            request.characterID, request.itemID, 2, -static_cast<int32_t>(request.quantity)));
+        if (inventoryStatus != CACHE_STATUS::AVAILABLE)
+            return 2;
+
+        const auto feeStatus = std::get<0>(cache_currency->TryWithdrawCurrency(request.characterID, fee));
+        if (feeStatus == CACHE_STATUS::AVAILABLE)
+            return std::nullopt;
+
+        // The fee was never withdrawn, so restore only the item.
+        const auto restored = std::get<0>(cache_inventory->PartialUpdate(
+            request.characterID, request.itemID, 2, request.quantity));
+        return restored == CACHE_STATUS::AVAILABLE ? 3 : 5;
     }
 
     void Handler::BazaarCancel(ScopedMessage& msg, uint64_t sessionID, Core::MsgBazaarCancelBody* body) {
