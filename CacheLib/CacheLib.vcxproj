@@ -149,8 +149,9 @@
     <ClInclude Include="Config.h" />
     <ClInclude Include="Queries.h" />
     <ClInclude Include="DBConnection.h" />
+    <ClInclude Include="DBConfig.h" />
+    <ClInclude Include="StatementId.h" />
     <ClInclude Include="DBConnectionPool.h" />
-    <ClInclude Include="DBConnectionGame.h" />
     <ClInclude Include="DBWorker.h" />
     <ClInclude Include="FlushDispatcher.h" />
     <ClInclude Include="Handler.h" />
@@ -163,7 +164,6 @@
     <ClCompile Include="CacheStorageCurrency.cpp" />
     <ClCompile Include="ProfileCache.cpp" />
     <ClCompile Include="CacheStorageInventory.cpp" />
-    <ClInclude Include="DBConnectionBazaar.h" />
     <ClCompile Include="Handler.cpp" />
     <ClCompile Include="Handler_Bazaar.cpp" />
     <ClCompile Include="Handler_Currency.cpp" />

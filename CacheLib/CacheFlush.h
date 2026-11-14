@@ -15,8 +15,7 @@
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"
 #include "DBConnectionPool.h"
-#include "DBConnectionGame.h"
-#include "DBConnectionBazaar.h"
+#include "DBConfig.h"
 #include "Config.h"
 
 namespace Cache {

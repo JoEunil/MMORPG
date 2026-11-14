@@ -1,6 +1,8 @@
 ﻿#pragma once
 
 #include <cstdint>
+#include <exception>
+#include <iostream>
 #include <string_view>
 #include <map>
 #include <memory>
@@ -8,16 +10,27 @@
 
 #include <mysqlconn/include/mysql/jdbc.h>
 #include <CoreLib/LoggerGlobal.h>
-#include "Config.h"
+#include "StatementId.h"
 
 
 namespace Cache {
+    template<typename T>
+    class DBConnectionPool;
+
+    template<typename Config>
     class DBConnection {
-    protected:
-        virtual void Initialize() = 0;
+        friend class DBConnectionPool<DBConnection<Config>>;
+
         std::map<StatementId, std::unique_ptr<sql::PreparedStatement>> m_stmts;
         std::unique_ptr<sql::Connection> m_conn;
         std::unique_ptr<std::istringstream> m_blobStream; // blob 처리용도, dangling pointer 방지
+
+        void Initialize() {
+            Connect(Config::host, Config::user, Config::password, Config::database);
+            for (const auto& [id, sql] : Config::queries) {
+                m_stmts[id] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(sql));
+            }
+        }
 
         void Connect(const sql::SQLString& host, const sql::SQLString& user,
             const sql::SQLString& password, const sql::SQLString& database) {
@@ -60,16 +73,55 @@ namespace Cache {
         }
 
     public:
+        template<typename... Args>
+        std::unique_ptr<sql::ResultSet> ExecuteSelect(StatementId stmt_id, Args&&... args) {
+            auto it = m_stmts.find(stmt_id);
+            if (it == m_stmts.end())
+                return nullptr;
+
+            auto& stmt = it->second;
+            BindParams(*stmt, 1, std::forward<Args>(args)...);
+
+            if (GetStatementType(stmt_id) != Config::queryType)
+                return nullptr;
+
+            try {
+                return std::unique_ptr<sql::ResultSet>(stmt->executeQuery());
+            }
+            catch (const sql::SQLException& e) {
+                std::cerr << "SQL Exception: " << e.what() << "\n";
+                std::cerr << "Error code: " << e.getErrorCode() << "\n";
+                std::cerr << "SQL state: " << e.getSQLState() << "\n";
+            }
+            catch (const std::exception& e) {
+                std::cerr << "Exception: " << e.what() << "\n";
+            }
+            return nullptr;
+        }
+
+        // UPDATE는 일치 행 수, INSERT는 삽입 행 수를 반환한다.
+        // 미등록 ID는 -1, 등록됐지만 실행 유형이 다르면 0을 반환한다.
+        template<typename... Args>
+        int ExecuteUpdate(StatementId stmt_id, Args&&... args) {
+            auto it = m_stmts.find(stmt_id);
+            if (it == m_stmts.end())
+                return -1;
+
+            auto& stmt = it->second;
+            BindParams(*stmt, 1, std::forward<Args>(args)...);
+
+            if (GetStatementType(stmt_id) != Config::updateType)
+                return 0;
+
+            return stmt->executeUpdate();
+        }
+
         void ClearResults() {
             for (auto& [id, stmt] : m_stmts) {
                 while (stmt->getMoreResults()) {
                     std::unique_ptr<sql::ResultSet> extra(stmt->getResultSet());
                 }
             }
-        }
-
-        virtual ~DBConnection() {
-
         }
 
     };

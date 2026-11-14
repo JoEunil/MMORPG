@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Config.h"
+#include "StatementId.h"
 
 namespace Cache {
     inline constexpr const char* GAME_QUERY_1 = "SELECT  * FROM v_user_characters WHERE user_id = ? and channel_id = ?";

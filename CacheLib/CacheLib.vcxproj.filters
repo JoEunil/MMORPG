@@ -1,6 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="DB">
+      <UniqueIdentifier>{B2E9A1D4-6C38-4FE5-A207-9D4C71B83F62}</UniqueIdentifier>
+    </Filter>
     <Filter Include="소스 파일">
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
@@ -19,7 +22,13 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="DBConnection.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>DB</Filter>
+    </ClInclude>
+    <ClInclude Include="DBConfig.h">
+      <Filter>DB</Filter>
+    </ClInclude>
+    <ClInclude Include="StatementId.h">
+      <Filter>DB</Filter>
     </ClInclude>
     <ClInclude Include="CacheStorage.h">
       <Filter>헤더 파일</Filter>
@@ -28,10 +37,10 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="Queries.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>DB</Filter>
     </ClInclude>
     <ClInclude Include="DBConnectionPool.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>DB</Filter>
     </ClInclude>
     <ClInclude Include="Handler.h">
       <Filter>헤더 파일</Filter>
@@ -46,15 +55,9 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="DBWorker.h">
-      <Filter>헤더 파일</Filter>
+      <Filter>DB</Filter>
     </ClInclude>
     <ClInclude Include="CacheStorageCurrency.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="DBConnectionGame.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="DBConnectionBazaar.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="WALManager.h">

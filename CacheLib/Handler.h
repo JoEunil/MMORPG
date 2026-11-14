@@ -11,8 +11,7 @@
 #include "CacheStorageCurrency.h"
 #include "ProfileCache.h"
 #include "DBWorker.h"
-#include "DBConnectionGame.h"
-#include "DBConnectionBazaar.h"
+#include "DBConfig.h"
 #include <CoreLib/IMessageQueue.h>
 #include <CoreLib/MessagePool.h>
 

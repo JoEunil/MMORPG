@@ -14,7 +14,7 @@
 #include <new>
 
 #include <mysqlconn/include/mysql/jdbc.h>
-#include "DBConnectionGame.h"
+#include "DBConfig.h"
 #include "DBWorker.h"
 #include <CoreLib/ICachedClock.h>
 #include "Config.h"

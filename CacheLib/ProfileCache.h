@@ -9,7 +9,7 @@
 #include <CoreLib/PacketTypes.h>
 
 #include "DBWorker.h"
-#include "DBConnectionGame.h"
+#include "DBConfig.h"
 
 namespace Cache {
     // 이름 조회용 write-through 캐시.

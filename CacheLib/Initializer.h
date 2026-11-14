@@ -4,8 +4,7 @@
 #include "CacheFlush.h"
 #include "Config.h"
 #include <CoreLib/MessagePool.h>
-#include "DBConnectionGame.h"
-#include "DBConnectionBazaar.h"
+#include "DBConfig.h"
 #include "DBConnectionPool.h"
 #include "CacheStorage.h"
 #include "CacheStorageInventory.h"

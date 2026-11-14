@@ -18,6 +18,7 @@
 #include <CoreLib/MessagePool.h>
 #include <CoreLib/ItemData.h>
 #include <CacheLib/Config.h>
+#include <CacheLib/DBConfig.h>
 #include <stdexcept>
 
 // ================================================================

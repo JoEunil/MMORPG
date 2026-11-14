@@ -1,7 +1,6 @@
 ﻿#include "CacheFlush.h"
 
 #include "DBConnectionPool.h"
-#include "DBConnectionGame.h"
 
 #include "Config.h"
 #include "InventoryCodec.h"

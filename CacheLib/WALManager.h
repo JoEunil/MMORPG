@@ -12,7 +12,7 @@
 #include <CacheLib/CacheStorageInventory.h>
 #include <CacheLib/InventoryCodec.h>
 #include <CacheLib/DBConnectionPool.h>
-#include <CacheLib/DBConnectionGame.h>
+#include <CacheLib/DBConfig.h>
 
 namespace Cache {
 	inline constexpr std::chrono::milliseconds DEFAULT_WAL_FSYNC_INTERVAL{ 20 };

@@ -12,9 +12,8 @@
 #include <cstring>
 #include <stdexcept>
 
-#include "DBConnection.h"
 #include "DBConnectionPool.h"
-#include "Config.h"
+#include "DBConfig.h"
 #include <BaseLib/RingQueue.h>
 #include <CoreLib/Message.h>
 #include <CoreLib/MessageTypes.h>
