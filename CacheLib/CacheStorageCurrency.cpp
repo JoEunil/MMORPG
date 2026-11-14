@@ -67,8 +67,7 @@ namespace Cache {
         if (entry.status != CACHE_STATUS::AVAILABLE) return {entry.status, 0};
         if (gold > UINT64_MAX - entry.data.gold) return {CACHE_STATUS::BLOCKED, entry.data.gold};
         entry.data.gold += gold;
-        entry.lastModified = clock->GetTimeMS();
-        shard.dirty_list.insert(key);
+        MarkDirtyLocked(shard, key, entry);
         return {CACHE_STATUS::AVAILABLE, entry.data.gold};
     }
 
@@ -89,11 +88,7 @@ namespace Cache {
                     // Claim the read under the same lock as the pending deposit; no completion can miss it.
                     shard.cache_data[Key{characterID}].status = CACHE_STATUS::DB_READING;
                 } else {
-                    if (found->second.status == CACHE_STATUS::EVICTING) {
-                        found->second.status = CACHE_STATUS::AVAILABLE;
-                        shard.lru_list.push_front(Key{characterID});
-                        shard.lru_pos[Key{characterID}] = shard.lru_list.begin();
-                    }
+                    RestoreEvictingEntryLocked(shard, found->first, found->second);
                     result = DepositLocked(index, Key{characterID}, gold);
                 }
             }
@@ -112,12 +107,7 @@ namespace Cache {
         auto& shard = m_shards[index];
         {
             std::lock_guard lock(shard.mutex);
-            if (loaded) InsertLocked(shard, key, *loaded);
-            else {
-                auto found = shard.cache_data.find(key);
-                if (found != shard.cache_data.end() && found->second.status == CACHE_STATUS::DB_READING)
-                    shard.cache_data.erase(found);
-            }
+            ApplyLoadResultLocked(shard, key, loaded);
             if (auto pending = pendingDeposits[index].extract(key.characterID); pending) {
                 deposits = std::move(pending.mapped());
                 results.reserve(deposits.size());
@@ -195,8 +185,7 @@ namespace Cache {
             return { CACHE_STATUS::BLOCKED, res.data.gold };
         
         res.data.gold -= withdraw;
-        res.lastModified = clock->GetTimeMS();
-        shard.dirty_list.insert(key);
+        MarkDirtyLocked(shard, key, res);
         return { resStatus, res.data.gold };
     }
 

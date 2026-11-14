@@ -121,12 +121,21 @@ namespace Cache {
     }
 
     template<typename Key, typename Result, typename KeyHash>
-    void CacheStorage<Key, Result, KeyHash>::SetEmpty(uint16_t shardIndex, const Key& key) {
-        auto& shard = m_shards[shardIndex];
-        std::lock_guard<std::mutex> lock(shard.mutex);
+    void CacheStorage<Key, Result, KeyHash>::ApplyLoadResultLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, const Result* loaded) {
+        if (loaded) {
+            InsertLocked(shard, key, *loaded);
+            return;
+        }
+
         auto it = shard.cache_data.find(key);
         if (it != shard.cache_data.end() && it->second.status == CACHE_STATUS::DB_READING)
             shard.cache_data.erase(it);
+    }
+
+    template<typename Key, typename Result, typename KeyHash>
+    void CacheStorage<Key, Result, KeyHash>::MarkDirtyLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& result) {
+        result.lastModified = clock->GetTimeMS();
+        shard.dirty_list.insert(key);
     }
 
     template<typename Key, typename Result, typename KeyHash>

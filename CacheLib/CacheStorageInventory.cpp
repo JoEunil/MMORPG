@@ -26,9 +26,8 @@ namespace Cache {
 
         auto& item = shard.cache_data[key];
         item.data = rec;
-        item.lastModified = clock->GetTimeMS();
         item.status = CACHE_STATUS::AVAILABLE;
-        shard.dirty_list.insert(key);
+        MarkDirtyLocked(shard, key, item);
 
         return TryEvictAfterInsertLocked(shard, key);
     }
@@ -142,8 +141,7 @@ namespace Cache {
         if (lsn == 0) return {Core::ItemOperationStatus::StorageFailure, static_cast<uint16_t>(current)};
         image.lastLsn = lsn;
         result.data = image;
-        result.lastModified = clock->GetTimeMS();
-        shard.dirty_list.insert(key);
+        MarkDirtyLocked(shard, key, result);
         return {Core::ItemOperationStatus::Success, static_cast<uint16_t>(next)};
     }
 
@@ -223,8 +221,7 @@ namespace Cache {
         if (lsn == 0) return {Core::EquipmentOperationStatus::StorageFailure};
         image.lastLsn = lsn;
         result.data = image;
-        result.lastModified = clock->GetTimeMS();
-        shard.dirty_list.insert(Key{characterID});
+        MarkDirtyLocked(shard, found->first, result);
         return {Core::EquipmentOperationStatus::Success, image.equippedWeaponItemID, image.equippedShieldItemID, image.equippedBodyItemID};
     }
 
@@ -250,12 +247,8 @@ namespace Cache {
                     load = found == shard.cache_data.end();
                     if (!load) return;
                 } else {
-                    if (found->second.status == CACHE_STATUS::EVICTING) {
-                        // Retain the accepted flush generation; its old snapshot must finish first.
-                        found->second.status = CACHE_STATUS::AVAILABLE;
-                        shard.lru_list.push_front(Key{characterID});
-                        shard.lru_pos[Key{characterID}] = shard.lru_list.begin();
-                    }
+                    // Retain the accepted flush generation until its snapshot completes.
+                    RestoreEvictingEntryLocked(shard, found->first, found->second);
                     result = ChangeItemLocked(index, Key{characterID}, itemID, quantity);
                 }
             }
@@ -276,12 +269,7 @@ namespace Cache {
         auto& shard = m_shards[index];
         {
             std::lock_guard lock(shard.mutex);
-            if (loaded) InsertLocked(shard, key, *loaded);
-            else {
-                const auto found = shard.cache_data.find(key);
-                if (found != shard.cache_data.end() && found->second.status == CACHE_STATUS::DB_READING)
-                    shard.cache_data.erase(found);
-            }
+            ApplyLoadResultLocked(shard, key, loaded);
             const auto current = shard.cache_data.find(key);
             if (loaded && current != shard.cache_data.end() && current->second.status == CACHE_STATUS::AVAILABLE)
                 equipmentState = {Core::EquipmentOperationStatus::Success, current->second.data.equippedWeaponItemID, current->second.data.equippedShieldItemID, current->second.data.equippedBodyItemID};
@@ -420,8 +408,7 @@ namespace Cache {
                 res.data.lastLsn = lsn;  // 실패 시 기존 값 유지 
         }
 
-        res.lastModified = clock->GetTimeMS();
-        shard.dirty_list.insert(key);
+        MarkDirtyLocked(shard, key, res);
         return std::make_tuple(resStatus, itemID, slot, quantity);
     }
 
@@ -475,8 +462,7 @@ namespace Cache {
         if (std::ranges::find(res.data.recentEventIds, event_id) != std::end(res.data.recentEventIds)) {
             Core::gameLogger->LogInfo("cache5", "event duplicated", "char_id", characterID, "event_id", event_id);
             // 배송은 이미 반영됨. CLAIM은 flush 파이프라인 담당이므로 재flush만 유도
-            res.lastModified = clock->GetTimeMS();
-            shard.dirty_list.insert(key);
+            MarkDirtyLocked(shard, key, res);
             return CACHE_STATUS::DUPLICATED;
         }
 
@@ -518,8 +504,7 @@ namespace Cache {
                 res.data.lastLsn = lsn;  // 실패 시 기존 값 유지 
         }
 
-        res.lastModified = clock->GetTimeMS();
-        shard.dirty_list.insert(key);
+        MarkDirtyLocked(shard, key, res);
         return CACHE_STATUS::AVAILABLE;
     }
 
@@ -543,8 +528,7 @@ namespace Cache {
                 res.data.lastLsn = lsn;  // 실패 시 기존 값 유지 
         }
 
-        res.lastModified = clock->GetTimeMS();
-        shard.dirty_list.insert(key);
+        MarkDirtyLocked(shard, key, res);
         return true;
     }
 }

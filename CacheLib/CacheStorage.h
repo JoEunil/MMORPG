@@ -85,7 +85,8 @@ namespace Cache {
         bool TryEvictAfterInsertLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& insertedKey);
 
         CACHE_STATUS TrySetReading(uint16_t shardIndex, const Key& key);
-        void SetEmpty(uint16_t shardIndex, const Key& key);
+        void ApplyLoadResultLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, const Result* loaded);
+        void MarkDirtyLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& result);
         FlushEnqueueResult QueueFlushLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& result);
         void RestoreEvictingEntryLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& result);
 
