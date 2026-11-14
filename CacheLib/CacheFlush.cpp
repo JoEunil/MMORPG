@@ -24,9 +24,9 @@ namespace Cache {
         if (command->params.size() > 1) {
             if (const auto* id = std::any_cast<uint64_t>(&command->params[1])) {
                 if (command->stmtID == StatementId::UpdateInventory)
-                    cache_inventory->Rollback(*id & SHARD_SIZE_MASK, Key5{ *id }, command->generation);
+                    cache_inventory->Rollback(*id & SHARD_SIZE_MASK, InventoryKey{ *id }, command->generation);
                 else if (command->stmtID == StatementId::UpsertCurrency)
-                    cache_currency->Rollback(*id & SHARD_SIZE_MASK, Key7{ *id }, command->generation);
+                    cache_currency->Rollback(*id & SHARD_SIZE_MASK, CurrencyKey{ *id }, command->generation);
             }
         }
     }
@@ -47,7 +47,7 @@ namespace Cache {
     void CacheFlush::FlushInventory(FlushCommand* command) {
         auto conn = connectionPoolGame->AcquireScoped();
         if (conn == nullptr) {
-            Key5 key;
+            InventoryKey key;
             key.characterID = std::any_cast<uint64_t&>(command->params[1]);
             auto shardIndex = key.characterID & SHARD_SIZE_MASK;
             cache_inventory->Rollback(shardIndex, key, command->generation);
@@ -65,7 +65,7 @@ namespace Cache {
             Core::errorLogger->LogError("cache flush", "DB write exception case 6",
                 "code", e.getErrorCode(),
                 "msg", e.what());
-            Key5 key;
+            InventoryKey key;
             key.characterID = std::any_cast<uint64_t&>(command->params[1]);
             auto shardIndex = key.characterID & SHARD_SIZE_MASK;
             cache_inventory->Rollback(shardIndex, key, command->generation);
@@ -73,7 +73,7 @@ namespace Cache {
         }
 
         conn.reset();
-        Key5 key;
+        InventoryKey key;
         key.characterID = param1;
         auto shardIndex = param1 & SHARD_SIZE_MASK;
 
@@ -132,7 +132,7 @@ namespace Cache {
     void CacheFlush::FlushCurrency(FlushCommand* command) {
         auto conn = connectionPoolGame->AcquireScoped();
         if (conn == nullptr) {
-            Key7 key;
+            CurrencyKey key;
             key.characterID = std::any_cast<uint64_t&>(command->params[1]);
             auto shardIndex = key.characterID & SHARD_SIZE_MASK;
             cache_currency->Rollback(shardIndex, key, command->generation);
@@ -149,7 +149,7 @@ namespace Cache {
             Core::errorLogger->LogError("cache flush", "DB write exception case 8",
                 "code", e.getErrorCode(),
                 "msg", e.what());
-            Key7 key;
+            CurrencyKey key;
             key.characterID = std::any_cast<uint64_t&>(command->params[1]);
             auto shardIndex = key.characterID & SHARD_SIZE_MASK;
             cache_currency->Rollback(shardIndex, key, command->generation);
@@ -157,7 +157,7 @@ namespace Cache {
         }
 
         conn.reset();
-        Key7 key;
+        CurrencyKey key;
         key.characterID = param1;
         auto shardIndex = param1 & SHARD_SIZE_MASK;
 

@@ -40,27 +40,27 @@ namespace Cache {
         {} // 모든 원소 0으로 초기화
     };
 
-    struct Key5 {
+    struct InventoryKey {
         uint64_t characterID;
-        bool operator==(const Key5& other) const noexcept {
+        bool operator==(const InventoryKey& other) const noexcept {
             return characterID == other.characterID;
         }
-        bool operator<(const Key5& other) const noexcept {
+        bool operator<(const InventoryKey& other) const noexcept {
             return characterID < other.characterID;
         }
     };
-    struct KeyHash5 {
-        std::size_t operator()(const Key5& key) const noexcept {
+    struct InventoryKeyHash {
+        std::size_t operator()(const InventoryKey& key) const noexcept {
             return std::hash<uint64_t>()(key.characterID);
         }
     };
 
-    using Result5 = CacheItem<InventoryData>;
+    using InventoryCacheItem = CacheItem<InventoryData>;
 
-    class CacheStorageInventory : public CacheStorage<Key5, Result5, KeyHash5>, public Core::IInventoryOperations {
-        using Key = Key5;
-        using KeyHash = KeyHash5;
-        using Result = Result5;
+    class CacheStorageInventory : public CacheStorage<InventoryKey, InventoryCacheItem, InventoryKeyHash>, public Core::IInventoryOperations {
+        using Key = InventoryKey;
+        using KeyHash = InventoryKeyHash;
+        using Result = InventoryCacheItem;
         std::function<uint64_t(uint64_t, const InventoryData&)>  m_walFn;
 
         struct PendingReward {
@@ -87,13 +87,13 @@ namespace Cache {
         Core::ItemOperationResult ConsumeItem(uint64_t characterID, uint32_t itemID) override;
         void GrantItem(uint64_t characterID, uint32_t itemID, uint16_t quantity,
             std::function<void(Core::ItemOperationResult)> completed) override;
-        Result5 Getter(uint64_t characterID);
+        InventoryCacheItem Getter(uint64_t characterID);
         std::tuple<CACHE_STATUS, uint32_t, uint16_t, uint16_t> PartialUpdate(uint64_t characterID, uint32_t itemID, uint8_t op, int32_t change);
         static std::unique_ptr<FlushCommand> GetFlushCommand(Key key, Result result);
         // outbox → inbox 배송. AVAILABLE: 지급됨 / DUPLICATED: 이미 지급(스킵) / BLOCKED: 인벤·링 가득
         CACHE_STATUS DeliverItem(uint64_t characterID, uint64_t event_id, uint32_t itemID, uint32_t quantity);
         bool AdvanceInboxHead(uint16_t shardIndex, Key key, uint8_t snapshotHead, uint8_t claimedCnt);
-        std::string ResultToString(const Key5& key, const Result5& result) override {
+        std::string ResultToString(const InventoryKey& key, const InventoryCacheItem& result) override {
             std::ostringstream oss;
             oss << "char_id: " << key.characterID << ", inventory_hex: ";
             const uint8_t* raw = reinterpret_cast<const uint8_t*>(&result.data);

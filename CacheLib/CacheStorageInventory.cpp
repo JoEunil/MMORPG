@@ -93,7 +93,7 @@ namespace Cache {
         return CACHE_STATUS::DB_READING;
     }
 
-    Result5 CacheStorageInventory::Getter(uint64_t characterID) {
+    InventoryCacheItem CacheStorageInventory::Getter(uint64_t characterID) {
         Key key;
         Result result;
         key.characterID = characterID;

@@ -33,7 +33,7 @@ namespace Cache {
 
     // Read-only snapshot: READY may already be applied to the inventory but not flushed to CLAIMED.
     template<typename ResultSet>
-    void ParseBazaarOutboxListResult(ResultSet* result, const Result5& inventory, Core::MsgBazaarOutboxListResBody& body) {
+    void ParseBazaarOutboxListResult(ResultSet* result, const InventoryCacheItem& inventory, Core::MsgBazaarOutboxListResBody& body) {
         body = {};
         if (result == nullptr) return;
         if (inventory.status != CACHE_STATUS::AVAILABLE) {

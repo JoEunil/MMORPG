@@ -31,7 +31,7 @@ namespace Cache {
         return CACHE_STATUS::DB_READING;
     }
 
-    Result7 CacheStorageCurrency::Getter(uint64_t characterID) {
+    CurrencyCacheItem CacheStorageCurrency::Getter(uint64_t characterID) {
         Key key;
         Result result;
         key.characterID = characterID;

@@ -26,7 +26,7 @@ namespace Cache {
         std::atomic<bool> m_running = false;
         uint64_t m_minTime; // ms
 
-        bool DirtyFlush5(const Key5& key, Result5& res) {
+        bool DirtyFlush5(const InventoryKey& key, InventoryCacheItem& res) {
             if (m_running.load(std::memory_order_relaxed) && res.lastModified + 30000 > clock->GetTimeMS()) {
                 m_minTime = std::min(m_minTime, res.lastModified + 30000);
                 return false;
@@ -34,7 +34,7 @@ namespace Cache {
             return flush->EnqueueFlushQ(std::move(CacheStorageInventory::GetFlushCommand(key, res))) != FlushEnqueueResult::Failed;
         }
 
-        bool DirtyFlush7(const Key7& key, Result7& res) {
+        bool DirtyFlush7(const CurrencyKey& key, CurrencyCacheItem& res) {
             if (m_running.load(std::memory_order_relaxed) && res.lastModified + 30000 > clock->GetTimeMS()) {
                 m_minTime = std::min(m_minTime, res.lastModified + 30000);
                 return false;
@@ -49,8 +49,8 @@ namespace Cache {
             Core::sysLogger->LogInfo("cache flush dispatcher", "dispatcher thread started", "threadID", ss.str());
             while (m_running.load(std::memory_order_relaxed)) {
                 m_minTime = clock->GetTimeMS() + 30000;
-                cache_inventory->ForEachDirty([this](const Key5& key, Result5& res) { return DirtyFlush5(key, res); });
-                cache_currency->ForEachDirty([this](const Key7& key, Result7& res) { return DirtyFlush7(key, res); });
+                cache_inventory->ForEachDirty([this](const InventoryKey& key, InventoryCacheItem& res) { return DirtyFlush5(key, res); });
+                cache_currency->ForEachDirty([this](const CurrencyKey& key, CurrencyCacheItem& res) { return DirtyFlush7(key, res); });
                 uint64_t now = clock->GetTimeMS();
                 uint64_t sleepDuration = (m_minTime > now) ? (m_minTime - now) : 0;
                 std::unique_lock lock(m_waitMutex);
@@ -65,14 +65,14 @@ namespace Cache {
             flush = f;
             cache_inventory = s;
             cache_inventory->SetFlushFn(
-                [this](const Key5& key, Result5& res) 
+                [this](const InventoryKey& key, InventoryCacheItem& res)
                 { 
                     return flush->EnqueueFlushQ(std::move(CacheStorageInventory::GetFlushCommand(key, res)));
                 }
             );
             cache_currency = c;
             cache_currency->SetFlushFn(
-                [this](const Key7& key, Result7& res)
+                [this](const CurrencyKey& key, CurrencyCacheItem& res)
                 {
                     return flush->EnqueueFlushQ(std::move(CacheStorageCurrency::GetFlushCommand(key, res)));
                 }

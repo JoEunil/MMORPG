@@ -27,7 +27,7 @@ namespace Cache {
         };
 
         BazaarRegistrationSelection ValidateBazaarRegistration(
-            const Core::MsgBazaarRegisterBody& request, const Result5& inventory) {
+            const Core::MsgBazaarRegisterBody& request, const InventoryCacheItem& inventory) {
             if (request.inventorySlot >= MAX_INVENTORY || inventory.status != CACHE_STATUS::AVAILABLE)
                 return { 0 };
 

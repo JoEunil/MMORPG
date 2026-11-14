@@ -18,27 +18,27 @@ namespace Cache {
         uint64_t gold;
     };
 
-    struct Key7 {
+    struct CurrencyKey {
         uint64_t characterID;
-        bool operator==(const Key7& other) const noexcept {
+        bool operator==(const CurrencyKey& other) const noexcept {
             return characterID == other.characterID;
         }
-        bool operator<(const Key7& other) const noexcept {
+        bool operator<(const CurrencyKey& other) const noexcept {
             return characterID < other.characterID;
         }
     };
-    struct KeyHash7 {
-        std::size_t operator()(const Key7& key) const noexcept {
+    struct CurrencyKeyHash {
+        std::size_t operator()(const CurrencyKey& key) const noexcept {
             return std::hash<uint64_t>()(key.characterID);
         }
     };
 
-    using Result7 = CacheItem<CurrencyData>;
+    using CurrencyCacheItem = CacheItem<CurrencyData>;
 
-    class CacheStorageCurrency : public CacheStorage<Key7, Result7, KeyHash7> {
-        using Key = Key7;
-        using KeyHash = KeyHash7;
-        using Result = Result7;
+    class CacheStorageCurrency : public CacheStorage<CurrencyKey, CurrencyCacheItem, CurrencyKeyHash> {
+        using Key = CurrencyKey;
+        using KeyHash = CurrencyKeyHash;
+        using Result = CurrencyCacheItem;
         CACHE_STATUS LoadFromDB(uint16_t shardIndex, Key& key, bool claimed = false);
         struct PendingDeposit {
             uint64_t gold;
@@ -49,7 +49,7 @@ namespace Cache {
         void CompleteLoad(uint16_t index, Key key, const Result* loaded);
         friend class CurrencyRewardFixture;
     public:
-        Result7 Getter(uint64_t characterID);
+        CurrencyCacheItem Getter(uint64_t characterID);
         void GrantCurrency(uint64_t characterID, uint64_t gold, std::function<void(CACHE_STATUS, uint64_t)> completed);
         std::tuple<CACHE_STATUS, uint64_t> DepositCurrency(uint64_t characterID, uint64_t deposit);
         std::tuple<CACHE_STATUS, uint64_t> TryWithdrawCurrency(uint64_t characterID, uint64_t withdraw);

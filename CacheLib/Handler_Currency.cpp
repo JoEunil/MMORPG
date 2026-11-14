@@ -14,7 +14,7 @@ namespace Cache {
 
         const uint64_t characterID = body->characterID;
         const uint32_t requestID = body->requestID;
-        const Result7 res = cache_currency->Getter(characterID);
+        const CurrencyCacheItem res = cache_currency->Getter(characterID);
         const bool available = res.status == CACHE_STATUS::AVAILABLE;
         const Core::MsgCurrencyResBody response{
             .resStatus = static_cast<uint8_t>(available),

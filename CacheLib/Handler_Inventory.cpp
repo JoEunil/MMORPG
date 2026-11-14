@@ -13,7 +13,7 @@ namespace Cache {
             return;
 
         const auto characterID = body->characterID;
-        Result5 res = cache_inventory->Getter(characterID);
+        InventoryCacheItem res = cache_inventory->Getter(characterID);
         Core::MsgInventoryResBody response{};
         response.resStatus = Core::RES_STATUS::FAILED;
         if (res.status == CACHE_STATUS::AVAILABLE) {
