@@ -28,40 +28,7 @@ namespace Cache {
         item.status = CACHE_STATUS::AVAILABLE;
         shard.dirty_list.insert(key);
 
-        if (shard.lru_list.size() >= MAX_CACHE_SIZE) {
-            const auto oldKey = shard.lru_list.back();
-            if (shard.cache_data[oldKey].flushInFlight)
-                return true;
-            shard.lru_pos.erase(oldKey);
-            shard.lru_list.pop_back();
-
-            auto it = shard.dirty_list.find(oldKey);
-            if (it != shard.dirty_list.end()) {
-                shard.cache_data[oldKey].status = CACHE_STATUS::EVICTING;
-                const auto flushResult = QueueFlushLocked(shard, oldKey, shard.cache_data[oldKey]);
-                if (flushResult == FlushEnqueueResult::Queued) {
-                    shard.dirty_list.erase(oldKey);
-                }
-                else {
-                    shard.cache_data[oldKey].status = CACHE_STATUS::AVAILABLE;
-                    shard.lru_list.push_back(oldKey);
-                    shard.lru_pos[oldKey] = std::prev(shard.lru_list.end());
-                    if (!(oldKey == key)) {
-                        auto newPos = shard.lru_pos.find(key);
-                        if (newPos != shard.lru_pos.end()) shard.lru_list.erase(newPos->second);
-                        shard.lru_pos.erase(key);
-                        shard.dirty_list.erase(key);
-                        shard.cache_data.erase(key);
-                    }
-                    return false;
-                }
-            }
-            else {
-                shard.cache_data.erase(oldKey);
-            }
-        }
-        return true;
-
+        return TryEvictAfterInsertLocked(shard, key);
     }
     CACHE_STATUS CacheStorageInventory::LoadFromDB(uint16_t shardIndex, Key& key) {
         auto status = TrySetReading(shardIndex, key);

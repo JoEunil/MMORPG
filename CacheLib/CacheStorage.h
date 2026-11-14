@@ -82,10 +82,12 @@ namespace Cache {
         CACHE_STATUS TryGet(uint16_t shardIndex, const Key& key, Result& outResult);
         void Insert(uint16_t shardIndex, const Key& key, const Result& result);
         void InsertLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, const Result& result);
+        bool TryEvictAfterInsertLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& insertedKey);
 
         CACHE_STATUS TrySetReading(uint16_t shardIndex, const Key& key);
         void SetEmpty(uint16_t shardIndex, const Key& key);
         FlushEnqueueResult QueueFlushLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& result);
+        void RestoreEvictingEntryLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& result);
 
     public:
         void SetFlushFn(std::function<FlushEnqueueResult(const Key&, Result&)> f) {

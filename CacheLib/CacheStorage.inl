@@ -17,24 +17,17 @@ namespace Cache {
         std::lock_guard<std::mutex> lock(shard.mutex);
         auto it = shard.cache_data.find(key);
         if (it == shard.cache_data.end()) {
-            //std::cout << "cache miss\n";
             return CACHE_STATUS::EMPTY;
         }
         if (it->second.status != CACHE_STATUS::AVAILABLE) {
-            //std::cout << "data not ready, status: " << (int)it->second.status <<  " \n";
             return it->second.status;
         }
-        //std::cout << "cache hit\n";
         outResult = it->second;
-        // splice: list 전용 메서드, O(1), 연결리스트 포인터 교체
-        // splice(삽입할 위치, 원본 리스트, 가져올 iterator)
         auto posIt = shard.lru_pos.find(key);
         if (posIt != shard.lru_pos.end()) {
             shard.lru_list.splice(shard.lru_list.begin(), shard.lru_list, posIt->second);
-            posIt->second = shard.lru_list.begin();
         }
         else {
-            // AVAILABLE인데 LRU 추적에서 이탈한 상태 — operator[]로 접근하면
             Core::errorLogger->LogError("cache storage", "AVAILABLE entry missing from lru_pos, re-registering");
             shard.lru_list.push_front(key);
             shard.lru_pos[key] = shard.lru_list.begin();
@@ -64,46 +57,55 @@ namespace Cache {
         item.lastModified = clock->GetTimeMS();
         item.status = CACHE_STATUS::AVAILABLE;
 
-        if (shard.lru_list.size() >= MAX_CACHE_SIZE) {
-            const auto oldKey = shard.lru_list.back();
-            const auto oldIt = shard.cache_data.find(oldKey);
-            if (oldIt == shard.cache_data.end()) {
-                Core::errorLogger->LogError("cache storage", "LRU eviction target missing from cache_data");
-                shard.lru_pos.erase(oldKey);
-                shard.lru_list.pop_back();
-                return;
-            }
-            auto& oldItem = oldIt->second;
-            // An accepted snapshot owns this entry until its completion callback.
-            // It must not be erased/reloaded or receive a second concurrent write.
-            if (oldItem.flushInFlight)
-                return;
+        TryEvictAfterInsertLocked(shard, key);
+    }
+
+    template<typename Key, typename Result, typename KeyHash>
+    bool CacheStorage<Key, Result, KeyHash>::TryEvictAfterInsertLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& insertedKey) {
+        if (shard.lru_list.size() < MAX_CACHE_SIZE)
+            return true;
+
+        const auto oldKey = shard.lru_list.back();
+        const auto oldIt = shard.cache_data.find(oldKey);
+        if (oldIt == shard.cache_data.end()) {
+            Core::errorLogger->LogError("cache storage", "LRU eviction target missing from cache_data");
             shard.lru_pos.erase(oldKey);
             shard.lru_list.pop_back();
-
-            if (shard.dirty_list.contains(oldKey)) {
-                oldItem.status = CACHE_STATUS::EVICTING;
-                const auto flushResult = QueueFlushLocked(shard, oldKey, oldItem);
-                if (flushResult == FlushEnqueueResult::Queued) {
-                    // EVICTING이라 flush 중 재수정 불가 — 여기서 dirty를 지워야 WriteDone이 erase함
-                    shard.dirty_list.erase(oldKey);
-                }
-                else {
-                    oldItem.status = CACHE_STATUS::AVAILABLE;
-                    shard.lru_list.push_back(oldKey);
-                    shard.lru_pos[oldKey] = std::prev(shard.lru_list.end());
-                    if (!(oldKey == key)) {
-                        auto newPos = shard.lru_pos.find(key);
-                        if (newPos != shard.lru_pos.end()) shard.lru_list.erase(newPos->second);
-                        shard.lru_pos.erase(key);
-                        shard.cache_data.erase(key);
-                    }
-                }
-            } else {
-                shard.cache_data.erase(oldIt);
-                // dirty list에 없으면 db와 동일한 상태임으로 바로 지워도 됨.
-            }
+            return true;
         }
+
+        auto& oldItem = oldIt->second;
+        // An accepted snapshot owns the entry until its completion callback.
+        if (oldItem.flushInFlight)
+            return true;
+
+        shard.lru_pos.erase(oldKey);
+        shard.lru_list.pop_back();
+        if (!shard.dirty_list.contains(oldKey)) {
+            shard.cache_data.erase(oldIt);
+            return true;
+        }
+
+        oldItem.status = CACHE_STATUS::EVICTING;
+        if (QueueFlushLocked(shard, oldKey, oldItem) == FlushEnqueueResult::Queued) {
+            // WriteDone can erase the evicting entry once its snapshot is written.
+            shard.dirty_list.erase(oldKey);
+            return true;
+        }
+
+        oldItem.status = CACHE_STATUS::AVAILABLE;
+        shard.lru_list.push_back(oldKey);
+        shard.lru_pos[oldKey] = std::prev(shard.lru_list.end());
+        if (!(oldKey == insertedKey)) {
+            const auto newPos = shard.lru_pos.find(insertedKey);
+            if (newPos != shard.lru_pos.end()) {
+                shard.lru_list.erase(newPos->second);
+                shard.lru_pos.erase(newPos);
+            }
+            shard.dirty_list.erase(insertedKey);
+            shard.cache_data.erase(insertedKey);
+        }
+        return false;
     }
 
     template<typename Key, typename Result, typename KeyHash>
@@ -147,24 +149,34 @@ namespace Cache {
                 auto cacheIt = shard.cache_data.find(*it);
                 if (cacheIt == shard.cache_data.end()) {
                     it = shard.dirty_list.erase(it);
+                    continue;
                 }
-                else {
-                    auto& result = cacheIt->second;
-                    if (result.flushInFlight) {
-                        ++it;
-                        continue;
-                    }
-                    result.flushGeneration = ++shard.nextFlushGeneration;
-                    result.flushInFlight = true;
-                    if (fn(cacheIt->first, result)) {
-                        it = shard.dirty_list.erase(it);
-                    } else {
-                        result.flushInFlight = false;
-                        it++;
-                    }
+
+                auto& result = cacheIt->second;
+                if (result.flushInFlight) {
+                    ++it;
+                    continue;
+                }
+                result.flushGeneration = ++shard.nextFlushGeneration;
+                result.flushInFlight = true;
+                if (fn(cacheIt->first, result)) {
+                    it = shard.dirty_list.erase(it);
+                } else {
+                    result.flushInFlight = false;
+                    it++;
                 }
             }
         }
+    }
+
+    template<typename Key, typename Result, typename KeyHash>
+    void CacheStorage<Key, Result, KeyHash>::RestoreEvictingEntryLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& result) {
+        if (result.status != CACHE_STATUS::EVICTING)
+            return;
+
+        result.status = CACHE_STATUS::AVAILABLE;
+        shard.lru_list.push_front(key);
+        shard.lru_pos[key] = shard.lru_list.begin();
     }
 
     template<typename Key, typename Result, typename KeyHash>
@@ -181,12 +193,7 @@ namespace Cache {
         it->second.flushInFlight = false;
         it->second.rollbackCnt = static_cast<uint8_t>(std::min<int>(it->second.rollbackCnt + 1, 255));
 
-        if (it->second.status == CACHE_STATUS::EVICTING) {
-            // DB가 죽은 상황이면 cache에 무한히 증식되는 상황이 아니라서 rollback 자체가 문제되지는 않음.
-            it->second.status = CACHE_STATUS::AVAILABLE;
-            shard.lru_list.push_front(key);
-            shard.lru_pos[key] = shard.lru_list.begin();
-        }
+        RestoreEvictingEntryLocked(shard, key, it->second);
 
         if (it->second.rollbackCnt >= 3) {
             Core::errorLogger->LogError("cache storage", "rollback limit exceeded", "detail", ResultToString(it->first, it->second));
@@ -215,11 +222,7 @@ namespace Cache {
         it->second.rollbackCnt = retryClaim ? static_cast<uint8_t>(std::min<int>(it->second.rollbackCnt + 1, 255)) : 0;
         if (retryClaim) {
             shard.dirty_list.insert(key);
-            if (it->second.status == CACHE_STATUS::EVICTING) {
-                it->second.status = CACHE_STATUS::AVAILABLE;
-                shard.lru_list.push_front(key);
-                shard.lru_pos[key] = shard.lru_list.begin();
-            }
+            RestoreEvictingEntryLocked(shard, key, it->second);
         }
 
         // evicting 중인 것만 삭제
