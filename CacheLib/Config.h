@@ -79,64 +79,46 @@ namespace Cache {
         RenameProfile = 22,
     };
 
-    inline constexpr const char* QUERY_1 = "SELECT  * FROM v_user_characters WHERE user_id = ? and channel_id = ?";
-    inline constexpr const char* QUERY_2 = "INSERT INTO characters (user_id, channel_id, profile_id, zone_id, deleted_at) VALUES (?, ?, ?, ?, NULL);";
-    inline constexpr const char* QUERY_3 =
-        "SELECT c.char_id, c.profile_id, p.version AS profile_version, p.name, "
-        "c.attack, c.level, c.exp, c.hp, c.mp, c.max_hp, c.max_mp, c.dir, c.zone_id, c.last_pos_x, c.last_pos_y "
-        "FROM characters c JOIN profile p ON p.profile_id = c.profile_id "
-        "WHERE c.char_id = ? AND c.user_id = ? AND c.channel_id = ? AND c.deleted_at IS NULL";
-    inline constexpr const char* QUERY_4 = "UPDATE characters SET attack = ?, level = ?, exp = ?, hp = ?, mp = ?, max_hp = ?, max_mp = ?, dir =?, last_pos_x = ?, last_pos_y = ?, zone_id = ? WHERE char_id = ?;";
-    inline constexpr const char* QUERY_5 = "SELECT char_id, inventory FROM characters_inventory WHERE char_id = ?";
-    inline constexpr const char* QUERY_6 = "UPDATE characters_inventory SET inventory = ? WHERE char_id = ?;";
+    enum class StatementType : uint8_t {
+        Unknown,
+        GameQuery,
+        GameUpdate,
+        BazaarQuery,
+        BazaarUpdate,
+    };
 
-    inline constexpr const char* QUERY_7 = "SELECT gold FROM characters_currency WHERE char_id=?";
-    inline constexpr const char* QUERY_8 = "INSERT INTO characters_currency (gold,char_id) VALUES (?,?) ON DUPLICATE KEY UPDATE gold=VALUES(gold)";
-
-    inline constexpr const char* QUERY_9 = "SELECT diamond, total_earned, total_spent FROM characters_diamond WHERE char_id = ?";
-    inline constexpr const char* QUERY_10 = "UPDATE characters_diamond SET diamond = diamond + ?, total_earned = total_earned + ?, updated_at = NOW() WHERE char_id = ?";
-    inline constexpr const char* QUERY_11 =
-        "SELECT listing_id, item_id, seller_id, quantity, price, "
-        "UNIX_TIMESTAMP(listed_at) AS listed_at, "
-        "CASE status "
-        "WHEN 'TRADING' THEN 0 "
-        "WHEN 'SOLD'    THEN 1 "
-        "WHEN 'CLAIMED' THEN 2 "
-        "ELSE 255 "
-        "END AS status "
-        "FROM bazaar " 
-        "WHERE seller_id = ? AND status != 'CANCELLED'" 
-        "LIMIT ?";
-    inline constexpr const char* QUERY_12 =
-        "SELECT listing_id, item_id, seller_id, quantity, price, " 
-        "UNIX_TIMESTAMP(listed_at) AS listed_at " 
-        "FROM bazaar " 
-        "WHERE item_type = ? AND status = 'TRADING' " 
-        "ORDER BY listed_at DESC " 
-        "LIMIT ? OFFSET ?";
-
-    inline constexpr const char* QUERY_13 = 
-        "INSERT INTO bazaar (item_id, seller_id, item_type, quantity, price, status, listed_at) " 
-        "VALUES(?, ?, ?, ?, ?, 'TRADING', NOW())";
-    inline constexpr const char* QUERY_14 = "CALL sp_bazaar_cancel(?, ?)";
-    inline constexpr const char* QUERY_15 = "SELECT item_id, quantity FROM bazaar WHERE listing_id = ?";
-    inline constexpr const char* QUERY_16 = "CALL sp_bazaar_buy(?, ?)";
-    inline constexpr const char* QUERY_17 = "CALL sp_bazaar_claim(?, ?)";
-    inline constexpr const char* QUERY_18 = 
-        "SELECT event_id, listing_id, item_id, item_type, quantity, price, "
-        "UNIX_TIMESTAMP(purchased_at) AS purchased_at "
-        "FROM buyer_outbox "
-        "WHERE char_id = ? AND delivery_status = 'READY' "
-        "ORDER BY purchased_at ASC, event_id ASC "
-        "LIMIT 30";
-    inline constexpr const char* QUERY_19 =
-        "UPDATE buyer_outbox "
-        "SET delivery_status = 'CLAIMED', delivery_claimed_at = NOW() "
-        "WHERE event_id = ? AND char_id = ? AND delivery_status = 'READY'";
-
-    inline constexpr const char* QUERY_20 = "INSERT INTO profile (name) VALUES (?)";
-    inline constexpr const char* QUERY_21 = "SELECT profile_id, version, name FROM profile WHERE profile_id = ?";
-    inline constexpr const char* QUERY_22 = "UPDATE profile SET name = ?, version = version + 1 WHERE profile_id = ?";
+    constexpr StatementType GetStatementType(StatementId id) noexcept {
+        switch (id) {
+        case StatementId::SelectCharacterList:
+        case StatementId::SelectCharacterState:
+        case StatementId::SelectInventory:
+        case StatementId::SelectCurrency:
+        case StatementId::SelectProfile:
+            return StatementType::GameQuery;
+        case StatementId::InsertCharacter:
+        case StatementId::UpdateCharacterState:
+        case StatementId::UpdateInventory:
+        case StatementId::UpsertCurrency:
+        case StatementId::InsertProfile:
+        case StatementId::RenameProfile:
+            return StatementType::GameUpdate;
+        case StatementId::SelectDiamond:
+        case StatementId::SelectBazaarMyList:
+        case StatementId::SearchBazaar:
+        case StatementId::CancelBazaarListing:
+        case StatementId::SelectBazaarListingItem:
+        case StatementId::BuyBazaarListing:
+        case StatementId::ClaimBazaarProceeds:
+        case StatementId::SelectBuyerOutbox:
+            return StatementType::BazaarQuery;
+        case StatementId::DepositDiamond:
+        case StatementId::InsertBazaarListing:
+        case StatementId::ClaimBuyerOutboxEvent:
+            return StatementType::BazaarUpdate;
+        default:
+            return StatementType::Unknown;
+        }
+    }
 
     inline constexpr uint16_t MSGPOOL_SIZE = 10000;
     inline constexpr uint16_t MESSAGE_LEN = 2048;

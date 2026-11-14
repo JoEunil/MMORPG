@@ -147,6 +147,7 @@
     <ClInclude Include="CacheStorageCurrency.h" />
     <ClInclude Include="ProfileCache.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="Queries.h" />
     <ClInclude Include="DBConnection.h" />
     <ClInclude Include="DBConnectionPool.h" />
     <ClInclude Include="DBConnectionGame.h" />

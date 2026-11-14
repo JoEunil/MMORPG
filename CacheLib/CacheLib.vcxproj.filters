@@ -27,6 +27,9 @@
     <ClInclude Include="Config.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Queries.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
     <ClInclude Include="DBConnectionPool.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>

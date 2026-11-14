@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "DBConnection.h"
+#include "Queries.h"
 namespace Cache
 {
     template<typename T>
@@ -8,17 +9,17 @@ namespace Cache
     class DBConnectionBazaar : public DBConnection {
         void Initialize() override {
             Connect(DB_HOST_BAZAAR, DB_USER_BAZAAR, DB_PASS_BAZAAR, DB_DB_BAZAAR);
-            m_stmts[StatementId::SelectDiamond] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_9));
-            m_stmts[StatementId::DepositDiamond] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_10));
-            m_stmts[StatementId::SelectBazaarMyList] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_11));
-            m_stmts[StatementId::SearchBazaar] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_12));
-            m_stmts[StatementId::InsertBazaarListing] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_13));
-            m_stmts[StatementId::CancelBazaarListing] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_14));
-            m_stmts[StatementId::SelectBazaarListingItem] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_15));
-            m_stmts[StatementId::BuyBazaarListing] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_16));
-            m_stmts[StatementId::ClaimBazaarProceeds] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_17));
-            m_stmts[StatementId::SelectBuyerOutbox] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_18));
-            m_stmts[StatementId::ClaimBuyerOutboxEvent] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_19));
+            m_stmts[StatementId::SelectDiamond] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_1));
+            m_stmts[StatementId::DepositDiamond] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_2));
+            m_stmts[StatementId::SelectBazaarMyList] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_3));
+            m_stmts[StatementId::SearchBazaar] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_4));
+            m_stmts[StatementId::InsertBazaarListing] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_5));
+            m_stmts[StatementId::CancelBazaarListing] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_6));
+            m_stmts[StatementId::SelectBazaarListingItem] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_7));
+            m_stmts[StatementId::BuyBazaarListing] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_8));
+            m_stmts[StatementId::ClaimBazaarProceeds] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_9));
+            m_stmts[StatementId::SelectBuyerOutbox] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_10));
+            m_stmts[StatementId::ClaimBuyerOutboxEvent] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_11));
         }
 		friend class DBConnectionPool<DBConnectionBazaar>;
     public:
@@ -32,20 +33,13 @@ namespace Cache
 
             auto& stmt = it->second;
             BindParams(*stmt, 1, std::forward<Args>(args)...);
+
+            if (GetStatementType(stmt_id) != StatementType::BazaarQuery)
+                return nullptr;
+
             try {
-            switch (stmt_id)
-            {
-            case StatementId::SelectDiamond: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case StatementId::SelectBazaarMyList: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case StatementId::SearchBazaar: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case StatementId::CancelBazaarListing: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); // cancel transaction
-            case StatementId::SelectBazaarListingItem: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case StatementId::BuyBazaarListing: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case StatementId::ClaimBazaarProceeds: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case StatementId::SelectBuyerOutbox: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            default: return nullptr;
+                return std::unique_ptr<sql::ResultSet>(stmt->executeQuery());
             }
-              }
             catch (const sql::SQLException& e) {
                 std::cerr << "SQL Exception: " << e.what() << "\n";
                 std::cerr << "Error code: " << e.getErrorCode() << "\n";
@@ -70,13 +64,10 @@ namespace Cache
             auto& stmt = it->second;
             BindParams(*stmt, 1, std::forward<Args>(args)...);
 
-            switch (stmt_id)
-            {
-            case StatementId::DepositDiamond: return stmt->executeUpdate(); // UPDATE
-            case StatementId::InsertBazaarListing: return stmt->executeUpdate(); // INSERT
-            case StatementId::ClaimBuyerOutboxEvent: return stmt->executeUpdate(); // UPDATE
-            default: return 0;
-            }
+            if (GetStatementType(stmt_id) != StatementType::BazaarUpdate)
+                return 0;
+
+            return stmt->executeUpdate();
         }
     };
 }

@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "DBConnection.h"
+#include "Queries.h"
 namespace Cache
 {
     template<typename T>
@@ -8,17 +9,17 @@ namespace Cache
     class DBConnectionGame : public DBConnection {
         void Initialize() override {
             Connect(DB_HOST_GAME, DB_USER_GAME, DB_PASS_GAME, DB_DB_GAME);
-            m_stmts[StatementId::SelectCharacterList] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_1));
-            m_stmts[StatementId::InsertCharacter] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_2));
-            m_stmts[StatementId::SelectCharacterState] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_3));
-            m_stmts[StatementId::UpdateCharacterState] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_4));
-            m_stmts[StatementId::SelectInventory] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_5));
-            m_stmts[StatementId::UpdateInventory] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_6));
-            m_stmts[StatementId::SelectCurrency] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_7));
-            m_stmts[StatementId::UpsertCurrency] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_8));
-            m_stmts[StatementId::InsertProfile] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_20));
-            m_stmts[StatementId::SelectProfile] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_21));
-            m_stmts[StatementId::RenameProfile] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_22));
+            m_stmts[StatementId::SelectCharacterList] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_1));
+            m_stmts[StatementId::InsertCharacter] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_2));
+            m_stmts[StatementId::SelectCharacterState] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_3));
+            m_stmts[StatementId::UpdateCharacterState] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_4));
+            m_stmts[StatementId::SelectInventory] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_5));
+            m_stmts[StatementId::UpdateInventory] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_6));
+            m_stmts[StatementId::SelectCurrency] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_7));
+            m_stmts[StatementId::UpsertCurrency] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_8));
+            m_stmts[StatementId::InsertProfile] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_9));
+            m_stmts[StatementId::SelectProfile] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_10));
+            m_stmts[StatementId::RenameProfile] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_11));
         }
         friend class DBConnectionPool<DBConnectionGame>;
     public:
@@ -33,15 +34,10 @@ namespace Cache
             auto& stmt = it->second;
             BindParams(*stmt, 1, std::forward<Args>(args)...);
 
-            switch (stmt_id)
-            {
-            case StatementId::SelectCharacterList: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); // select
-            case StatementId::SelectCharacterState: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); // select
-            case StatementId::SelectInventory: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case StatementId::SelectCurrency: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case StatementId::SelectProfile: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            default: return nullptr;
-            }
+            if (GetStatementType(stmt_id) != StatementType::GameQuery)
+                return nullptr;
+
+            return std::unique_ptr<sql::ResultSet>(stmt->executeQuery());
         }
 
         // 지원하는 UPDATE: >0은 대상 행 있음(동일 값 포함), 0은 WHERE 일치 행 없음.
@@ -57,16 +53,10 @@ namespace Cache
             auto& stmt = it->second;
             BindParams(*stmt, 1, std::forward<Args>(args)...);
 
-            switch (stmt_id)
-            {
-            case StatementId::InsertCharacter: return stmt->executeUpdate(); // insert
-            case StatementId::UpdateCharacterState: return stmt->executeUpdate(); // update
-            case StatementId::UpdateInventory: return stmt->executeUpdate(); // update
-            case StatementId::UpsertCurrency: return stmt->executeUpdate(); // update
-            case StatementId::InsertProfile: return stmt->executeUpdate(); // insert
-            case StatementId::RenameProfile: return stmt->executeUpdate(); // update
-            default: return 0;
-            }
+            if (GetStatementType(stmt_id) != StatementType::GameUpdate)
+                return 0;
+
+            return stmt->executeUpdate();
         }
     };
 }
