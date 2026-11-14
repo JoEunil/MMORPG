@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Config.h"
+
 namespace Cache {
     inline constexpr const char* GAME_QUERY_1 = "SELECT  * FROM v_user_characters WHERE user_id = ? and channel_id = ?";
     inline constexpr const char* GAME_QUERY_2 = "INSERT INTO characters (user_id, channel_id, profile_id, zone_id, deleted_at) VALUES (?, ?, ?, ?, NULL);";
@@ -59,4 +61,37 @@ namespace Cache {
         "UPDATE buyer_outbox "
         "SET delivery_status = 'CLAIMED', delivery_claimed_at = NOW() "
         "WHERE event_id = ? AND char_id = ? AND delivery_status = 'READY'";
+
+    struct StatementDefinition {
+        StatementId id;
+        const char* sql;
+    };
+
+    inline constexpr StatementDefinition GAME_QUERIES[] = {
+        { StatementId::SelectCharacterList, GAME_QUERY_1 },
+        { StatementId::InsertCharacter, GAME_QUERY_2 },
+        { StatementId::SelectCharacterState, GAME_QUERY_3 },
+        { StatementId::UpdateCharacterState, GAME_QUERY_4 },
+        { StatementId::SelectInventory, GAME_QUERY_5 },
+        { StatementId::UpdateInventory, GAME_QUERY_6 },
+        { StatementId::SelectCurrency, GAME_QUERY_7 },
+        { StatementId::UpsertCurrency, GAME_QUERY_8 },
+        { StatementId::InsertProfile, GAME_QUERY_9 },
+        { StatementId::SelectProfile, GAME_QUERY_10 },
+        { StatementId::RenameProfile, GAME_QUERY_11 },
+    };
+
+    inline constexpr StatementDefinition BAZAAR_QUERIES[] = {
+        { StatementId::SelectDiamond, BAZAAR_QUERY_1 },
+        { StatementId::DepositDiamond, BAZAAR_QUERY_2 },
+        { StatementId::SelectBazaarMyList, BAZAAR_QUERY_3 },
+        { StatementId::SearchBazaar, BAZAAR_QUERY_4 },
+        { StatementId::InsertBazaarListing, BAZAAR_QUERY_5 },
+        { StatementId::CancelBazaarListing, BAZAAR_QUERY_6 },
+        { StatementId::SelectBazaarListingItem, BAZAAR_QUERY_7 },
+        { StatementId::BuyBazaarListing, BAZAAR_QUERY_8 },
+        { StatementId::ClaimBazaarProceeds, BAZAAR_QUERY_9 },
+        { StatementId::SelectBuyerOutbox, BAZAAR_QUERY_10 },
+        { StatementId::ClaimBuyerOutboxEvent, BAZAAR_QUERY_11 },
+    };
 }

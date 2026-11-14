@@ -9,17 +9,9 @@ namespace Cache
     class DBConnectionBazaar : public DBConnection {
         void Initialize() override {
             Connect(DB_HOST_BAZAAR, DB_USER_BAZAAR, DB_PASS_BAZAAR, DB_DB_BAZAAR);
-            m_stmts[StatementId::SelectDiamond] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_1));
-            m_stmts[StatementId::DepositDiamond] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_2));
-            m_stmts[StatementId::SelectBazaarMyList] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_3));
-            m_stmts[StatementId::SearchBazaar] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_4));
-            m_stmts[StatementId::InsertBazaarListing] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_5));
-            m_stmts[StatementId::CancelBazaarListing] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_6));
-            m_stmts[StatementId::SelectBazaarListingItem] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_7));
-            m_stmts[StatementId::BuyBazaarListing] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_8));
-            m_stmts[StatementId::ClaimBazaarProceeds] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_9));
-            m_stmts[StatementId::SelectBuyerOutbox] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_10));
-            m_stmts[StatementId::ClaimBuyerOutboxEvent] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(BAZAAR_QUERY_11));
+            for (const auto& [id, sql] : BAZAAR_QUERIES) {
+                m_stmts[id] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(sql));
+            }
         }
 		friend class DBConnectionPool<DBConnectionBazaar>;
     public:

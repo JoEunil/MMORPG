@@ -9,17 +9,9 @@ namespace Cache
     class DBConnectionGame : public DBConnection {
         void Initialize() override {
             Connect(DB_HOST_GAME, DB_USER_GAME, DB_PASS_GAME, DB_DB_GAME);
-            m_stmts[StatementId::SelectCharacterList] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_1));
-            m_stmts[StatementId::InsertCharacter] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_2));
-            m_stmts[StatementId::SelectCharacterState] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_3));
-            m_stmts[StatementId::UpdateCharacterState] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_4));
-            m_stmts[StatementId::SelectInventory] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_5));
-            m_stmts[StatementId::UpdateInventory] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_6));
-            m_stmts[StatementId::SelectCurrency] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_7));
-            m_stmts[StatementId::UpsertCurrency] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_8));
-            m_stmts[StatementId::InsertProfile] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_9));
-            m_stmts[StatementId::SelectProfile] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_10));
-            m_stmts[StatementId::RenameProfile] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(GAME_QUERY_11));
+            for (const auto& [id, sql] : GAME_QUERIES) {
+                m_stmts[id] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(sql));
+            }
         }
         friend class DBConnectionPool<DBConnectionGame>;
     public:
