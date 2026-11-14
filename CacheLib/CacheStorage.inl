@@ -47,43 +47,49 @@ namespace Cache {
         auto& shard = m_shards[shardIndex];
         std::lock_guard<std::mutex> lock(shard.mutex);
 
-        InsertLocked(shardIndex, key, result);
+        InsertLocked(shard, key, result);
     }
 
     template<typename Key, typename Result, typename KeyHash>
-    void CacheStorage<Key, Result, KeyHash>::InsertLocked(uint16_t shardIndex, const Key& key, const Result& result) {
-        auto& shard = m_shards[shardIndex];
-        auto it = shard.cache_data.find(key);
-        if (it != shard.cache_data.end() && it->second.status != CACHE_STATUS::DB_READING) {
-            return; 
+    void CacheStorage<Key, Result, KeyHash>::InsertLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, const Result& result) {
+        auto [it, inserted] = shard.cache_data.try_emplace(key);
+        if (!inserted && it->second.status != CACHE_STATUS::DB_READING) {
+            return;
         }
         shard.lru_list.push_front(key);
         shard.lru_pos[key] = shard.lru_list.begin();
 
-        auto& item = shard.cache_data[key];
+        auto& item = it->second;
         item.data = result.data;
         item.lastModified = clock->GetTimeMS();
         item.status = CACHE_STATUS::AVAILABLE;
 
         if (shard.lru_list.size() >= MAX_CACHE_SIZE) {
             const auto oldKey = shard.lru_list.back();
+            const auto oldIt = shard.cache_data.find(oldKey);
+            if (oldIt == shard.cache_data.end()) {
+                Core::errorLogger->LogError("cache storage", "LRU eviction target missing from cache_data");
+                shard.lru_pos.erase(oldKey);
+                shard.lru_list.pop_back();
+                return;
+            }
+            auto& oldItem = oldIt->second;
             // An accepted snapshot owns this entry until its completion callback.
             // It must not be erased/reloaded or receive a second concurrent write.
-            if (shard.cache_data[oldKey].flushInFlight)
+            if (oldItem.flushInFlight)
                 return;
             shard.lru_pos.erase(oldKey);
             shard.lru_list.pop_back();
 
-            auto it = shard.dirty_list.find(oldKey);
-            if (it != shard.dirty_list.end()) {
-                shard.cache_data[oldKey].status = CACHE_STATUS::EVICTING;
-                const auto flushResult = QueueFlushLocked(shard, oldKey, shard.cache_data[oldKey]);
+            if (shard.dirty_list.contains(oldKey)) {
+                oldItem.status = CACHE_STATUS::EVICTING;
+                const auto flushResult = QueueFlushLocked(shard, oldKey, oldItem);
                 if (flushResult == FlushEnqueueResult::Queued) {
                     // EVICTING이라 flush 중 재수정 불가 — 여기서 dirty를 지워야 WriteDone이 erase함
                     shard.dirty_list.erase(oldKey);
                 }
                 else {
-                    shard.cache_data[oldKey].status = CACHE_STATUS::AVAILABLE;
+                    oldItem.status = CACHE_STATUS::AVAILABLE;
                     shard.lru_list.push_back(oldKey);
                     shard.lru_pos[oldKey] = std::prev(shard.lru_list.end());
                     if (!(oldKey == key)) {
@@ -94,7 +100,7 @@ namespace Cache {
                     }
                 }
             } else {
-                shard.cache_data.erase(oldKey);
+                shard.cache_data.erase(oldIt);
                 // dirty list에 없으면 db와 동일한 상태임으로 바로 지워도 됨.
             }
         }
@@ -104,11 +110,11 @@ namespace Cache {
     CACHE_STATUS CacheStorage<Key, Result, KeyHash>::TrySetReading(uint16_t shardIndex, const Key& key) {
         auto& shard = m_shards[shardIndex];
         std::lock_guard<std::mutex> lock(shard.mutex);
-        auto it = shard.cache_data.find(key);
-        if (it != shard.cache_data.end()) {
+        auto [it, inserted] = shard.cache_data.try_emplace(key);
+        if (!inserted) {
             return it->second.status;
         }
-        shard.cache_data[key].status = CACHE_STATUS::DB_READING;
+        it->second.status = CACHE_STATUS::DB_READING;
         return CACHE_STATUS::EMPTY; // 기존 READING 상태가 있어, EMPTY를 성공 상태로. 
     }
 
@@ -217,9 +223,8 @@ namespace Cache {
         }
 
         // evicting 중인 것만 삭제
-        auto itLru = shard.lru_pos.find(key);
-        if (it->second.status == CACHE_STATUS::EVICTING && itLru == shard.lru_pos.end() && !shard.dirty_list.contains(key)) {
-            shard.cache_data.erase(key);
+        if (it->second.status == CACHE_STATUS::EVICTING && !shard.lru_pos.contains(key) && !shard.dirty_list.contains(key)) {
+            shard.cache_data.erase(it);
         }
     }
 }

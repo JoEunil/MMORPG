@@ -309,7 +309,7 @@ namespace Cache {
         auto& shard = m_shards[index];
         {
             std::lock_guard lock(shard.mutex);
-            if (loaded) InsertLocked(index, key, *loaded);
+            if (loaded) InsertLocked(shard, key, *loaded);
             else {
                 const auto found = shard.cache_data.find(key);
                 if (found != shard.cache_data.end() && found->second.status == CACHE_STATUS::DB_READING)
