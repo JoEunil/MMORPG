@@ -6,24 +6,8 @@ namespace Cache
     template<typename T>
     class DBConnectionPool;
     class DBConnectionBazaar : public DBConnection {
-        void Connect() {
-            sql::SQLString host = DB_HOST_BAZAAR;
-            sql::SQLString user = DB_USER_BAZAAR;
-            sql::SQLString password = DB_PASS_BAZAAR;
-            sql::SQLString database = DB_DB_BAZAAR;
-            sql::ConnectOptionsMap options;
-            options["hostName"] = host;
-            options["userName"] = user;
-            options["password"] = password;
-            // UPDATE 반환값을 실제 변경 행 수에서 WHERE에 일치한 행 수로 바꾼다.
-            // 이미 같은 값인 행도 양수를 반환하므로, 대상 행 없음(0)과 구분된다.
-            options["CLIENT_FOUND_ROWS"] = true;
-            sql::Driver* driver = sql::mysql::get_driver_instance();
-            m_conn = std::unique_ptr<sql::Connection>(driver->connect(options));
-            m_conn->setSchema(database);
-        }
         void Initialize() override {
-            Connect();
+            Connect(DB_HOST_BAZAAR, DB_USER_BAZAAR, DB_PASS_BAZAAR, DB_DB_BAZAAR);
             m_stmts[StatementId::SelectDiamond] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_9));
             m_stmts[StatementId::DepositDiamond] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_10));
             m_stmts[StatementId::SelectBazaarMyList] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_11));
@@ -92,15 +76,6 @@ namespace Cache
             case StatementId::InsertBazaarListing: return stmt->executeUpdate(); // INSERT
             case StatementId::ClaimBuyerOutboxEvent: return stmt->executeUpdate(); // UPDATE
             default: return 0;
-            }
-        }
-
-
-        void ClearResults() {
-            for (auto& [id, stmt] : m_stmts) {
-                while (stmt->getMoreResults()) {
-                    std::unique_ptr<sql::ResultSet> extra(stmt->getResultSet());
-                }
             }
         }
     };

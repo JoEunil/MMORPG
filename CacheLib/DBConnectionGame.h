@@ -6,24 +6,8 @@ namespace Cache
     template<typename T>
     class DBConnectionPool;
     class DBConnectionGame : public DBConnection {
-        void Connect() {
-            sql::SQLString host = DB_HOST_GAME;
-            sql::SQLString user = DB_USER_GAME;
-            sql::SQLString password = DB_PASS_GAME;
-            sql::SQLString database = DB_DB_GAME;
-            sql::ConnectOptionsMap options;
-            options["hostName"] = host;
-            options["userName"] = user;
-            options["password"] = password;
-            // UPDATE 반환값을 실제 변경 행 수에서 WHERE에 일치한 행 수로 바꾼다.
-            // 이미 같은 값인 행도 양수를 반환하므로, 대상 행 없음(0)과 구분된다.
-            options["CLIENT_FOUND_ROWS"] = true;
-            sql::Driver* driver = sql::mysql::get_driver_instance();
-            m_conn = std::unique_ptr<sql::Connection>(driver->connect(options));
-            m_conn->setSchema(database);
-        }
         void Initialize() override {
-            Connect();
+            Connect(DB_HOST_GAME, DB_USER_GAME, DB_PASS_GAME, DB_DB_GAME);
             m_stmts[StatementId::SelectCharacterList] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_1));
             m_stmts[StatementId::InsertCharacter] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_2));
             m_stmts[StatementId::SelectCharacterState] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_3));
@@ -82,14 +66,6 @@ namespace Cache
             case StatementId::InsertProfile: return stmt->executeUpdate(); // insert
             case StatementId::RenameProfile: return stmt->executeUpdate(); // update
             default: return 0;
-            }
-        }
-
-        void ClearResults() {
-            for (auto& [id, stmt] : m_stmts) {
-                while (stmt->getMoreResults()) {
-                    std::unique_ptr<sql::ResultSet> extra(stmt->getResultSet());
-                }
             }
         }
     };
