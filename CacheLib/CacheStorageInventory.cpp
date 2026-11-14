@@ -1,5 +1,7 @@
 ﻿#include "CacheStorageInventory.h"
 
+#include <algorithm>
+#include <iterator>
 #include <mysqlconn/include/mysql/jdbc.h>
 #include <CoreLib/Message.h>
 #include "DBWorker.h"
@@ -184,10 +186,8 @@ namespace Cache {
             const auto found = shard.cache_data.find(key);
             if (found != shard.cache_data.end() && found->second.status == CACHE_STATUS::AVAILABLE)
                 result = {Core::EquipmentOperationStatus::Success, found->second.data.equippedWeaponItemID, found->second.data.equippedShieldItemID, found->second.data.equippedBodyItemID};
-            const auto waiting = pendingEquipmentLoads[index].find(characterID);
-            if (waiting != pendingEquipmentLoads[index].end()) {
-                callbacks = std::move(waiting->second);
-                pendingEquipmentLoads[index].erase(waiting);
+            if (auto waiting = pendingEquipmentLoads[index].extract(characterID); waiting) {
+                callbacks = std::move(waiting.mapped());
             }
         }
         for (auto& callback : callbacks) callback(result);
@@ -285,15 +285,11 @@ namespace Cache {
             const auto current = shard.cache_data.find(key);
             if (loaded && current != shard.cache_data.end() && current->second.status == CACHE_STATUS::AVAILABLE)
                 equipmentState = {Core::EquipmentOperationStatus::Success, current->second.data.equippedWeaponItemID, current->second.data.equippedShieldItemID, current->second.data.equippedBodyItemID};
-            const auto equipment = pendingEquipmentLoads[index].find(key.characterID);
-            if (equipment != pendingEquipmentLoads[index].end()) {
-                equipmentLoads = std::move(equipment->second);
-                pendingEquipmentLoads[index].erase(equipment);
+            if (auto equipment = pendingEquipmentLoads[index].extract(key.characterID); equipment) {
+                equipmentLoads = std::move(equipment.mapped());
             }
-            const auto pending = pendingRewards[index].find(key.characterID);
-            if (pending != pendingRewards[index].end()) {
-                rewards = std::move(pending->second);
-                pendingRewards[index].erase(pending);
+            if (auto pending = pendingRewards[index].extract(key.characterID); pending) {
+                rewards = std::move(pending.mapped());
                 results.reserve(rewards.size());
                 for (const auto& reward : rewards)
                     results.push_back(loaded ? ChangeItemLocked(index, key, reward.itemID, reward.quantity)
@@ -476,14 +472,12 @@ namespace Cache {
 
         // 중복 방어. (head - tail) 구간만 탐색하기에는 outbox read -> deliver 처리를 원자적으로 수행할 수 없음.
         //(CLAIMED 후 head 전진으로 truncate된 event_id도 재배송될 수 있어 ring 전체를 검사)
-        for (uint8_t i = 0; i < RING_SIZE; i++) {
-            if (event_id == res.data.recentEventIds[i]) {
-                Core::gameLogger->LogInfo("cache5", "event duplicated", "char_id", characterID, "event_id", event_id);
-                // 배송은 이미 반영됨. CLAIM은 flush 파이프라인 담당이므로 재flush만 유도
-                res.lastModified = clock->GetTimeMS();
-                shard.dirty_list.insert(key);
-                return CACHE_STATUS::DUPLICATED;
-            }
+        if (std::ranges::find(res.data.recentEventIds, event_id) != std::end(res.data.recentEventIds)) {
+            Core::gameLogger->LogInfo("cache5", "event duplicated", "char_id", characterID, "event_id", event_id);
+            // 배송은 이미 반영됨. CLAIM은 flush 파이프라인 담당이므로 재flush만 유도
+            res.lastModified = clock->GetTimeMS();
+            shard.dirty_list.insert(key);
+            return CACHE_STATUS::DUPLICATED;
         }
 
         if (res.data.head == res.data.tail && res.data.lastOp) {

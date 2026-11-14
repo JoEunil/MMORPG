@@ -118,10 +118,9 @@ namespace Cache {
                 if (found != shard.cache_data.end() && found->second.status == CACHE_STATUS::DB_READING)
                     shard.cache_data.erase(found);
             }
-            const auto pending = pendingDeposits[index].find(key.characterID);
-            if (pending != pendingDeposits[index].end()) {
-                deposits = std::move(pending->second);
-                pendingDeposits[index].erase(pending);
+            if (auto pending = pendingDeposits[index].extract(key.characterID); pending) {
+                deposits = std::move(pending.mapped());
+                results.reserve(deposits.size());
                 for (const auto& deposit : deposits)
                     results.push_back(loaded ? DepositLocked(index, key, deposit.gold)
                         : std::tuple<CACHE_STATUS, uint64_t>{CACHE_STATUS::EMPTY, 0});
