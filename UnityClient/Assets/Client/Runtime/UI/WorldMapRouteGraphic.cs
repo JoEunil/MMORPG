@@ -20,8 +20,8 @@ namespace Mmorpg.Client
         {
             vertices.Clear();
             var rect = GetPixelAdjustedRect();
-            DrawStroke(vertices, rect, 7, new Color32(12, 32, 38, 255));
-            DrawStroke(vertices, rect, 3, new Color32(139, 229, 255, 255));
+            DrawStroke(vertices, rect, 6.5f, new Color32(23, 38, 37, 225));
+            DrawStroke(vertices, rect, 3.5f, new Color32(144, 207, 202, 255));
         }
 
         private void DrawStroke(VertexHelper vertices, Rect rect, float width, Color32 tint)

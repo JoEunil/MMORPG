@@ -17,6 +17,10 @@ namespace Mmorpg.Client
         public uint contentVersion = 1;
         [Tooltip("World X/Z hunting destinations in zone order, starting at Zone 2.")]
         public Vector2[] huntingDestinations = System.Array.Empty<Vector2>();
+        [Tooltip("Optional map labels in the same order as the hunting destinations.")]
+        public string[] huntingDestinationLabels = System.Array.Empty<string>();
+        [Tooltip("World overview illustrations in six columns, ordered by Zone ID.")]
+        public Texture2D overviewLandmarkAtlas;
         [Min(1)] public int previewZoneId = 1;
         public bool showZoneBounds = true;
         public bool showAoiCells = true;

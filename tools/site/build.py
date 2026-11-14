@@ -316,14 +316,15 @@ def render_comparison_case(section):
     return render_blocks(opening, HOME_SOURCE) + f'<div class="case-examples">{"".join(examples)}</div>' + render_blocks(closing, HOME_SOURCE)
 
 
-def document(title, description, content, references, site_title):
+def document(title, description, content, references, site_title, *, show_navigation=True):
     browser_title = title if title == site_title else f"{title} · {site_title}"
+    navigation = f'''<header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}play/">콘텐츠 둘러보기</a><a href="{BASE}#work">작업과 결과</a><a href="{BASE}process/">Agent 작업 방식</a></nav></header>''' if show_navigation else ""
     return f'''<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="{escape(description, quote=True)}"><title>{escape(browser_title)}</title>
 <link rel="stylesheet" href="{BASE}style.css"></head><body>
 <a class="skip-link" href="#top">본문으로 바로가기</a>
-<header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}play/">콘텐츠 둘러보기</a><a href="{BASE}#work">작업과 결과</a><a href="{BASE}process/">Agent 작업 방식</a></nav></header>
+{navigation}
 {content}<footer class="site-footer">{escape(site_title)}</footer>
 </body></html>'''
 
@@ -484,12 +485,20 @@ def main(require_tour_media=False):
     process_preview = BASE + "media/diagrams/agent-workflow-desktop.svg"
     hero = f'''<main id="top" tabindex="-1"><section class="home-hero"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p></section>
 <div class="section-wrap home-actions">
-<section><a class="home-entry" href="{BASE}play/"><img src="{tour_preview}" alt="마우스로 조준한 방향에 내려찍기 스킬을 쓰는 실제 게임 화면" {image_size_attributes(tour_preview)}><h2>콘텐츠 둘러보기 <span aria-hidden="true">→</span></h2><p>스킬, 사냥, 거래소, 채팅이 실제로 동작하는 장면</p></a></section>
-<section><a class="home-entry" href="{BASE}process/"><img src="{process_preview}" alt="작업 배정과 검수 피드백을 잇는 Agent 워크플로우" {image_size_attributes(process_preview)}><h2>Agent 작업 방식 <span aria-hidden="true">→</span></h2><p>역할 분담, 검수와 수정, 시안 선택 기록</p></a></section>
+<section><a class="home-entry" href="{BASE}play/">
+<img src="{tour_preview}" alt="마우스로 조준한 방향에 내려찍기 스킬을 쓰는 실제 게임 화면" {image_size_attributes(tour_preview)}>
+<div><h2>콘텐츠 둘러보기 <span aria-hidden="true">→</span></h2><p>스킬, 사냥, 거래소, 채팅의 실제 동작</p></div>
+</a></section>
+<section><a class="home-entry" href="{BASE}process/">
+<img src="{process_preview}" alt="작업 배정과 검수 피드백을 잇는 Agent 워크플로우" {image_size_attributes(process_preview)}>
+<div><h2>Agent 작업 방식 <span aria-hidden="true">→</span></h2><p>역할 분담, 검수, 시안 선택 기록</p></div>
+</a></section>
 </div>
-<section class="section-wrap origin-overview" id="legacy"><div class="section-title"><h2>기존 2D 클라이언트</h2></div><div class="legacy-visible">{legacy_copy}</div></section>
+<section class="section-wrap origin-overview" id="legacy"><div class="section-title"><h2>기존 2D 구현과 달라진 점</h2></div><div class="legacy-visible">{legacy_copy}</div></section>
 <section class="section-wrap work-section" id="work"><div class="section-title"><h2>작업과 결과</h2></div><div class="featured-grid">{featured}</div></section></main>'''
-    (SITE / "index.html").write_text(document(title, intro, hero, references, title), encoding="utf-8", newline="\n")
+    (SITE / "index.html").write_text(
+        document(title, intro, hero, references, title, show_navigation=False), encoding="utf-8", newline="\n"
+    )
     process_content = f'''<main class="process-page" id="top" tabindex="-1"><header class="page narrow"><h1>Agent 작업 방식과 기록</h1></header>{process_html}{usage_html}{decisions_html}</main>'''
     process_folder = SITE / "process"
     process_folder.mkdir(exist_ok=True)
