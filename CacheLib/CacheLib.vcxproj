@@ -145,6 +145,7 @@
     <ClInclude Include="CacheStorage.h" />
     <ClInclude Include="CacheStorageInventory.h" />
     <ClInclude Include="CacheStorageCurrency.h" />
+    <ClInclude Include="InventoryCodec.h" />
     <ClInclude Include="ProfileCache.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="Queries.h" />
@@ -161,6 +162,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CacheFlush.cpp" />
+    <ClCompile Include="CacheFlush_Currency.cpp" />
+    <ClCompile Include="CacheFlush_Inventory.cpp" />
     <ClCompile Include="CacheStorageCurrency.cpp" />
     <ClCompile Include="ProfileCache.cpp" />
     <ClCompile Include="CacheStorageInventory.cpp" />

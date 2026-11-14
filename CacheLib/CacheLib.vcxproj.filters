@@ -69,6 +69,9 @@
     <ClInclude Include="InMemoryQueue.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="InventoryCodec.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="InMemoryQueue.cpp">
@@ -78,6 +81,12 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="CacheFlush.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="CacheFlush_Currency.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="CacheFlush_Inventory.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="CacheStorageInventory.cpp">
