@@ -70,7 +70,7 @@ namespace Cache {
 
         const auto enqueueResult = dbWorker->Enqueue([=](DBConnectionGame* conn) {
             Result result;
-            auto res = conn->ExecuteSelect(5, key.characterID);
+            auto res = conn->ExecuteSelect(StatementId::SelectInventory, key.characterID);
             if (!res) {
                 CompleteLoad(shardIndex, key, nullptr);
                 return;
@@ -464,7 +464,7 @@ namespace Cache {
 
     std::unique_ptr<FlushCommand> CacheStorageInventory::GetFlushCommand(Key key, Result result) {
         auto command = std::make_unique<FlushCommand>();
-        command->stmtID = 6;
+        command->stmtID = StatementId::UpdateInventory;
         command->generation = result.flushGeneration;
         auto blob = EncodeInventory(result.data);
 

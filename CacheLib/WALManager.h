@@ -74,7 +74,7 @@ namespace Cache {
 				uint64_t lsn = val.first;
 
 				WalInventoryRecord rec = val.second;
-                auto res = conn->ExecuteSelect(5, key);
+                auto res = conn->ExecuteSelect(StatementId::SelectInventory, key);
                 if (!res) throw std::runtime_error("Inventory recovery DB query failed.");
                 uint64_t dbLSN = 0;
                 if (res->next()) {

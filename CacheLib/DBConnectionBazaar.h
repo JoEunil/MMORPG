@@ -24,22 +24,22 @@ namespace Cache
         }
         void Initialize() override {
             Connect();
-            m_stmts[9] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_9));
-            m_stmts[10] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_10));
-            m_stmts[11] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_11));
-            m_stmts[12] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_12));
-            m_stmts[13] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_13));
-            m_stmts[14] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_14));
-            m_stmts[15] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_15));
-            m_stmts[16] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_16));
-            m_stmts[17] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_17));
-            m_stmts[18] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_18));
-            m_stmts[19] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_19));
+            m_stmts[StatementId::SelectDiamond] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_9));
+            m_stmts[StatementId::DepositDiamond] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_10));
+            m_stmts[StatementId::SelectBazaarMyList] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_11));
+            m_stmts[StatementId::SearchBazaar] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_12));
+            m_stmts[StatementId::InsertBazaarListing] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_13));
+            m_stmts[StatementId::CancelBazaarListing] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_14));
+            m_stmts[StatementId::SelectBazaarListingItem] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_15));
+            m_stmts[StatementId::BuyBazaarListing] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_16));
+            m_stmts[StatementId::ClaimBazaarProceeds] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_17));
+            m_stmts[StatementId::SelectBuyerOutbox] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_18));
+            m_stmts[StatementId::ClaimBuyerOutboxEvent] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_19));
         }
 		friend class DBConnectionPool<DBConnectionBazaar>;
     public:
         template<typename... Args>
-        std::unique_ptr<sql::ResultSet> ExecuteSelect(uint16_t stmt_id, Args&&... args) {
+        std::unique_ptr<sql::ResultSet> ExecuteSelect(StatementId stmt_id, Args&&... args) {
 			// 템플릿 인자를 && 로 쓰면 forwarding reference
             auto it = m_stmts.find(stmt_id);
             if (it == m_stmts.end()) {
@@ -51,14 +51,14 @@ namespace Cache
             try {
             switch (stmt_id)
             {
-            case 9: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case 11: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case 12: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case 14: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); // cancel transaction
-            case 15: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case 16: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case 17: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case 18: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
+            case StatementId::SelectDiamond: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
+            case StatementId::SelectBazaarMyList: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
+            case StatementId::SearchBazaar: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
+            case StatementId::CancelBazaarListing: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); // cancel transaction
+            case StatementId::SelectBazaarListingItem: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
+            case StatementId::BuyBazaarListing: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
+            case StatementId::ClaimBazaarProceeds: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
+            case StatementId::SelectBuyerOutbox: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
             default: return nullptr;
             }
               }
@@ -77,7 +77,7 @@ namespace Cache
         // INSERT: 삽입된 행 수. -1은 stmt_id 미등록, 등록됐지만 미지원이면 0.
         // SQL 실행 오류는 sql::SQLException으로 호출자에게 전파한다.
         template<typename... Args>
-        int ExecuteUpdate(uint16_t stmt_id, Args&&... args) {
+        int ExecuteUpdate(StatementId stmt_id, Args&&... args) {
             auto it = m_stmts.find(stmt_id);
             if (it == m_stmts.end()) {
                 return -1;
@@ -88,9 +88,9 @@ namespace Cache
 
             switch (stmt_id)
             {
-            case 10: return stmt->executeUpdate(); // UPDATE
-            case 13: return stmt->executeUpdate(); // INSERT
-            case 19: return stmt->executeUpdate(); // UPDATE
+            case StatementId::DepositDiamond: return stmt->executeUpdate(); // UPDATE
+            case StatementId::InsertBazaarListing: return stmt->executeUpdate(); // INSERT
+            case StatementId::ClaimBuyerOutboxEvent: return stmt->executeUpdate(); // UPDATE
             default: return 0;
             }
         }

@@ -15,7 +15,7 @@ namespace Cache {
         const uint64_t characterID = body->characterID;
         const uint32_t requestID = body->requestID;
         EnqueueMessageWork(dbWorkerBazaar, msg, [this, sessionID, characterID, requestID](DBConnectionBazaar* conn, Core::Message* msg) {
-            auto res = conn->ExecuteSelect(9, characterID);
+            auto res = conn->ExecuteSelect(StatementId::SelectDiamond, characterID);
             const Core::MsgHeader header{ sessionID, Core::MSG_DIAMOND_RES };
             Core::MsgDiamondResBody response{};
             response.requestID = requestID;
@@ -41,7 +41,7 @@ namespace Cache {
 
         const auto request = *body;
         EnqueueMessageWork(dbWorkerBazaar, msg, [this, sessionID, request](DBConnectionBazaar* conn, Core::Message* msg) {
-            int affected = conn->ExecuteUpdate(10, request.diamond, request.diamond, request.characterID);
+            int affected = conn->ExecuteUpdate(StatementId::DepositDiamond, request.diamond, request.diamond, request.characterID);
             const Core::MsgHeader header{ sessionID, Core::MSG_DIAMOND_DEPOSIT_RES };
             Core::MsgDiamondDepositResBody response{};
 
@@ -51,7 +51,7 @@ namespace Cache {
                 return;
             }
 
-            auto res = conn->ExecuteSelect(9, request.characterID);
+            auto res = conn->ExecuteSelect(StatementId::SelectDiamond, request.characterID);
             if (!res || !res->next()) {
                 response.resStatus = 2;
             } else {

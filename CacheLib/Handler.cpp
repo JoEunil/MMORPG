@@ -82,7 +82,7 @@ namespace Cache {
 
         const auto request = *body;
         EnqueueMessageWork(dbWorkerGame, msg, [this, sessionID, request](DBConnectionGame* conn, Core::Message* msg) {
-            auto res = conn->ExecuteSelect(1, request.userID, request.channelID);
+            auto res = conn->ExecuteSelect(StatementId::SelectCharacterList, request.userID, request.channelID);
             const Core::MsgHeader header{ sessionID, Core::MSG_CHARACTER_LIST_RES };
             Core::MsgCharacterListResBody response{};
 
@@ -127,7 +127,7 @@ namespace Cache {
         };
         const auto failed = [finish] { finish(Core::MsgCharacterStateResBody{}); };
         const auto outcome = dbWorkerGame->Enqueue([this, request, finish](DBConnectionGame* conn) {
-            auto res = conn->ExecuteSelect(3, request.characterID, request.userID, request.channelID);
+            auto res = conn->ExecuteSelect(StatementId::SelectCharacterState, request.characterID, request.userID, request.channelID);
             if (!res || !res->next()) { finish(Core::MsgCharacterStateResBody{}); return; }
             Core::MsgCharacterStateResBody response{};
             response.charID = res->getUInt64("char_id");
@@ -173,7 +173,7 @@ namespace Cache {
         cache_profile->Unload(body->profileId);
         const auto state = *body;
         dbWorkerGame->Enqueue([state, sessionID](DBConnectionGame* conn) {
-            auto res = conn->ExecuteUpdate(4, state.attack, state.level, state.exp, state.hp, state.mp, state.maxHp, state.maxMp, state.dir, state.x, state.y, state.lastZone, state.charID);
+            auto res = conn->ExecuteUpdate(StatementId::UpdateCharacterState, state.attack, state.level, state.exp, state.hp, state.mp, state.maxHp, state.maxMp, state.dir, state.x, state.y, state.lastZone, state.charID);
 
             if (!res) {
                 Core::gameLogger->LogInfo("cache handler", "character state update failed", "sessionID", sessionID, "char_id", state.charID, "level", state.level,

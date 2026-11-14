@@ -15,7 +15,7 @@ namespace Cache {
     class DBConnection {
     protected:
         virtual void Initialize() = 0;
-        std::map<uint16_t, std::unique_ptr<sql::PreparedStatement>> m_stmts;
+        std::map<StatementId, std::unique_ptr<sql::PreparedStatement>> m_stmts;
         std::unique_ptr<sql::Connection> m_conn;
         std::unique_ptr<std::istringstream> m_blobStream; // blob 처리용도, dangling pointer 방지
         

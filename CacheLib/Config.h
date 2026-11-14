@@ -54,6 +54,31 @@ namespace Cache {
     inline constexpr uint16_t SHARD_SIZE = 16;
     inline constexpr uint16_t SHARD_SIZE_MASK = SHARD_SIZE - 1;
 
+    enum class StatementId : uint16_t {
+        SelectCharacterList = 1,
+        InsertCharacter = 2,
+        SelectCharacterState = 3,
+        UpdateCharacterState = 4,
+        SelectInventory = 5,
+        UpdateInventory = 6,
+        SelectCurrency = 7,
+        UpsertCurrency = 8,
+        SelectDiamond = 9,
+        DepositDiamond = 10,
+        SelectBazaarMyList = 11,
+        SearchBazaar = 12,
+        InsertBazaarListing = 13,
+        CancelBazaarListing = 14,
+        SelectBazaarListingItem = 15,
+        BuyBazaarListing = 16,
+        ClaimBazaarProceeds = 17,
+        SelectBuyerOutbox = 18,
+        ClaimBuyerOutboxEvent = 19,
+        InsertProfile = 20,
+        SelectProfile = 21,
+        RenameProfile = 22,
+    };
+
     inline constexpr const char* QUERY_1 = "SELECT  * FROM v_user_characters WHERE user_id = ? and channel_id = ?";
     inline constexpr const char* QUERY_2 = "INSERT INTO characters (user_id, channel_id, profile_id, zone_id, deleted_at) VALUES (?, ?, ?, ?, NULL);";
     inline constexpr const char* QUERY_3 =

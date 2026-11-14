@@ -94,7 +94,7 @@ namespace Cache {
 
         EnqueueBazaarQuery({ sessionID, Core::MSG_BAZAAR_MY_LIST_RES }, failureBody,
             "my list response queue rejected", [request](DBConnectionBazaar& conn) {
-                auto result = conn.ExecuteSelect(11, request.characterID, Core::MAX_BAZAAR_MY_LIST);
+                auto result = conn.ExecuteSelect(StatementId::SelectBazaarMyList, request.characterID, Core::MAX_BAZAAR_MY_LIST);
                 Core::MsgBazaarMyListResBody response{};
                 ParseBazaarMyListResult(result.get(), request.requestID, request.characterID, response);
                 return response;
@@ -113,7 +113,7 @@ namespace Cache {
         EnqueueBazaarQuery({ sessionID, Core::MSG_BAZAAR_SEARCH_RES }, failureBody,
             "search response queue rejected", [request](DBConnectionBazaar& conn) {
                 const uint32_t offset = static_cast<uint32_t>(request.page) * Core::MAX_BAZAAR_SEARCH_RESULT;
-                auto result = conn.ExecuteSelect(12, request.item_type, Core::MAX_BAZAAR_SEARCH_RESULT, offset);
+                auto result = conn.ExecuteSelect(StatementId::SearchBazaar, request.item_type, Core::MAX_BAZAAR_SEARCH_RESULT, offset);
                 Core::MsgBazaarSearchResBody response{};
                 ParseBazaarSearchResult(result.get(), request.requestID, response);
                 return response;
@@ -168,7 +168,7 @@ namespace Cache {
             };
             const auto outcome = dbWorkerBazaar->Enqueue([request, itemType = item->second.itemType, finish, restore, reportUnknown](DBConnectionBazaar* conn) {
                 const auto status = ResolveBazaarRegister([conn, request, itemType] {
-                    return conn->ExecuteUpdate(13, request.itemID, request.characterID, itemType, request.quantity, request.price);
+                    return conn->ExecuteUpdate(StatementId::InsertBazaarListing, request.itemID, request.characterID, itemType, request.quantity, request.price);
                 }, restore, reportUnknown);
                 finish(status);
             }, nullptr, failed);
@@ -209,7 +209,7 @@ namespace Cache {
         const auto request = *body;
         EnqueueMessageWork(dbWorkerBazaar, msg, [this, sessionID, request](DBConnectionBazaar* conn, Core::Message* msg) {
             uint64_t characterID = request.characterID;
-            auto res = conn->ExecuteSelect(14, request.listingID, characterID);
+            auto res = conn->ExecuteSelect(StatementId::CancelBazaarListing, request.listingID, characterID);
             uint8_t result = 0;
             if (res && res->next()) {
                 result = static_cast<uint8_t>(res->getUInt("result"));
@@ -246,7 +246,7 @@ namespace Cache {
             finish(response);
         };
         const auto outcome = dbWorkerBazaar->Enqueue([request, finish](DBConnectionBazaar* conn) {
-            auto result = conn->ExecuteSelect(16, request.listingID, request.characterID);
+            auto result = conn->ExecuteSelect(StatementId::BuyBazaarListing, request.listingID, request.characterID);
             Core::MsgBazaarBuyResBody response{};
             ParseBazaarBuyResult(result.get(), response);
             finish(response);
@@ -275,7 +275,7 @@ namespace Cache {
             finish(response);
         };
         const auto outcome = dbWorkerBazaar->Enqueue([this, request, finish](DBConnectionBazaar* conn) {
-            auto result = conn->ExecuteSelect(14, request.listingID, request.characterID);
+            auto result = conn->ExecuteSelect(StatementId::CancelBazaarListing, request.listingID, request.characterID);
             Core::MsgBazaarCancelListingResBody response{};
             response.resStatus = 5;
             Cache::ParseBazaarCancelResult(result.get(), [this, characterID = request.characterID](uint64_t eventID, uint32_t itemID, uint32_t quantity) {
@@ -303,7 +303,7 @@ namespace Cache {
         };
         const auto failed = [finish] { finish(Core::MsgBazaarClaimResBody{}); };
         const auto outcome = dbWorkerBazaar->Enqueue([request, finish](DBConnectionBazaar* conn) {
-            auto result = conn->ExecuteSelect(17, request.listingID, request.characterID);
+            auto result = conn->ExecuteSelect(StatementId::ClaimBazaarProceeds, request.listingID, request.characterID);
             Core::MsgBazaarClaimResBody response{};
             ParseBazaarClaimResult(result.get(), response);
             finish(response);
@@ -328,7 +328,7 @@ namespace Cache {
         };
         const auto failed = [finish] { finish(Core::MsgBazaarOutboxListResBody{}); };
         const auto outcome = dbWorkerBazaar->Enqueue([this, request, finish](DBConnectionBazaar* conn) {
-            auto result = conn->ExecuteSelect(18, request.characterID);
+            auto result = conn->ExecuteSelect(StatementId::SelectBuyerOutbox, request.characterID);
             const auto inventory = cache_inventory->Getter(request.characterID);
             Core::MsgBazaarOutboxListResBody response{};
             ParseBazaarOutboxListResult(result.get(), inventory, response);
@@ -353,7 +353,7 @@ namespace Cache {
         };
         const auto failed = [finish] { finish(Core::MsgBazaarCheckOutboxResBody{}); };
         const auto outcome = dbWorkerBazaar->Enqueue([this, request, finish](DBConnectionBazaar* conn) {
-            auto result = conn->ExecuteSelect(18, request.characterID);
+            auto result = conn->ExecuteSelect(StatementId::SelectBuyerOutbox, request.characterID);
             Core::MsgBazaarCheckOutboxResBody response{};
             DeliverBazaarOutboxResult(result.get(), [this, characterID = request.characterID](uint64_t eventID, uint32_t itemID, uint32_t quantity) {
                 const auto status = cache_inventory->DeliverItem(characterID, eventID, itemID, quantity);

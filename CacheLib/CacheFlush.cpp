@@ -24,9 +24,9 @@ namespace Cache {
         // in-flight generation and retain the latest cache state for retry.
         if (command->params.size() > 1) {
             if (const auto* id = std::any_cast<uint64_t>(&command->params[1])) {
-                if (command->stmtID == 6)
+                if (command->stmtID == StatementId::UpdateInventory)
                     cache_inventory->Rollback(*id & SHARD_SIZE_MASK, Key5{ *id }, command->generation);
-                else if (command->stmtID == 8)
+                else if (command->stmtID == StatementId::UpsertCurrency)
                     cache_currency->Rollback(*id & SHARD_SIZE_MASK, Key7{ *id }, command->generation);
             }
         }
@@ -34,10 +34,10 @@ namespace Cache {
 
     void CacheFlush::DBWrite(FlushCommand* command) {
         switch (command->stmtID) {
-        case 6:
+        case StatementId::UpdateInventory:
             FlushInventory(command);
             break;
-        case 8:
+        case StatementId::UpsertCurrency:
             FlushCurrency(command);
             break;
         default:
@@ -106,7 +106,7 @@ namespace Cache {
                 try {
                     uint8_t idx = inv->head;
                     for (uint8_t k = 0; k < pendingCnt; ++k, idx = (idx + 1) & RING_SIZE_MASK) {
-                        bazaarConn->ExecuteUpdate(19, inv->recentEventIds[idx], key.characterID);
+                        bazaarConn->ExecuteUpdate(StatementId::ClaimBuyerOutboxEvent, inv->recentEventIds[idx], key.characterID);
                         claimedCnt++; // 0 rows(이미 CLAIMED)도 성공으로 진행
                     }
                 }
@@ -244,7 +244,7 @@ namespace Cache {
                 return FlushEnqueueResult::Queued;
             }
         }
-        if (command != nullptr) Core::errorLogger->LogError("cache flush", "queue full", "stmtID", command->stmtID);
+        if (command != nullptr) Core::errorLogger->LogError("cache flush", "queue full", "stmtID", static_cast<uint16_t>(command->stmtID));
         return FlushEnqueueResult::Failed;
     }
 }

@@ -24,22 +24,22 @@ namespace Cache
         }
         void Initialize() override {
             Connect();
-            m_stmts[1] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_1));
-            m_stmts[2] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_2));
-            m_stmts[3] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_3));
-            m_stmts[4] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_4));
-            m_stmts[5] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_5));
-            m_stmts[6] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_6));
-            m_stmts[7] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_7));
-            m_stmts[8] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_8));
-            m_stmts[20] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_20));
-            m_stmts[21] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_21));
-            m_stmts[22] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_22));
+            m_stmts[StatementId::SelectCharacterList] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_1));
+            m_stmts[StatementId::InsertCharacter] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_2));
+            m_stmts[StatementId::SelectCharacterState] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_3));
+            m_stmts[StatementId::UpdateCharacterState] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_4));
+            m_stmts[StatementId::SelectInventory] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_5));
+            m_stmts[StatementId::UpdateInventory] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_6));
+            m_stmts[StatementId::SelectCurrency] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_7));
+            m_stmts[StatementId::UpsertCurrency] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_8));
+            m_stmts[StatementId::InsertProfile] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_20));
+            m_stmts[StatementId::SelectProfile] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_21));
+            m_stmts[StatementId::RenameProfile] = std::unique_ptr<sql::PreparedStatement>(m_conn->prepareStatement(QUERY_22));
         }
         friend class DBConnectionPool<DBConnectionGame>;
     public:
         template<typename... Args>
-        std::unique_ptr<sql::ResultSet> ExecuteSelect(uint16_t stmt_id, Args&&... args) {
+        std::unique_ptr<sql::ResultSet> ExecuteSelect(StatementId stmt_id, Args&&... args) {
             // 템플릿 인자를 && 로 쓰면 forwarding reference
             auto it = m_stmts.find(stmt_id);
             if (it == m_stmts.end()) {
@@ -51,11 +51,11 @@ namespace Cache
 
             switch (stmt_id)
             {
-            case 1: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); // select
-            case 3: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); // select
-            case 5: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case 7: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
-            case 21: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
+            case StatementId::SelectCharacterList: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); // select
+            case StatementId::SelectCharacterState: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); // select
+            case StatementId::SelectInventory: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
+            case StatementId::SelectCurrency: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
+            case StatementId::SelectProfile: return std::unique_ptr<sql::ResultSet>(stmt->executeQuery()); //select
             default: return nullptr;
             }
         }
@@ -64,7 +64,7 @@ namespace Cache
         // INSERT: 삽입된 행 수. -1은 stmt_id 미등록, 등록됐지만 미지원이면 0.
         // SQL 실행 오류는 sql::SQLException으로 호출자에게 전파한다.
         template<typename... Args>
-        int ExecuteUpdate(uint16_t stmt_id, Args&&... args) {
+        int ExecuteUpdate(StatementId stmt_id, Args&&... args) {
             auto it = m_stmts.find(stmt_id);
             if (it == m_stmts.end()) {
                 return -1;
@@ -75,12 +75,12 @@ namespace Cache
 
             switch (stmt_id)
             {
-            case 2: return stmt->executeUpdate(); // insert
-            case 4: return stmt->executeUpdate(); // update
-            case 6: return stmt->executeUpdate(); // update
-            case 8: return stmt->executeUpdate(); // update
-            case 20: return stmt->executeUpdate(); // insert
-            case 22: return stmt->executeUpdate(); // update
+            case StatementId::InsertCharacter: return stmt->executeUpdate(); // insert
+            case StatementId::UpdateCharacterState: return stmt->executeUpdate(); // update
+            case StatementId::UpdateInventory: return stmt->executeUpdate(); // update
+            case StatementId::UpsertCurrency: return stmt->executeUpdate(); // update
+            case StatementId::InsertProfile: return stmt->executeUpdate(); // insert
+            case StatementId::RenameProfile: return stmt->executeUpdate(); // update
             default: return 0;
             }
         }

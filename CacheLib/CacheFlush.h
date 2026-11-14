@@ -21,7 +21,7 @@
 
 namespace Cache {
     struct FlushCommand {
-        uint16_t stmtID;
+        StatementId stmtID{};
         uint64_t generation = 0;
         std::vector<std::any> params;
     };

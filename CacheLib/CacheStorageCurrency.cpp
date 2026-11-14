@@ -14,7 +14,7 @@ namespace Cache {
 
         const auto enqueueResult = dbWorker->Enqueue([=](DBConnectionGame* conn) {
             Result result;
-            auto res = conn->ExecuteSelect(7, key.characterID);
+            auto res = conn->ExecuteSelect(StatementId::SelectCurrency, key.characterID);
             if (!res) {
                 CompleteLoad(shardIndex, key, nullptr);
                 return;
@@ -203,7 +203,7 @@ namespace Cache {
 
     std::unique_ptr<FlushCommand> CacheStorageCurrency::GetFlushCommand(Key key, Result result) {
         auto command = std::make_unique<FlushCommand>();
-        command->stmtID = 8;
+        command->stmtID = StatementId::UpsertCurrency;
         command->generation = result.flushGeneration;
 
         command->params.emplace_back(result.data.gold);
