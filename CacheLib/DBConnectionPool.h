@@ -3,9 +3,8 @@
 #include <mutex>
 #include <vector>
 #include <memory>
-#include "DBConnection.h"
 #include <CoreLib/LoggerGlobal.h>
-#include "Config.h"
+#include "DBConfig.h"
 
 namespace Cache {
 

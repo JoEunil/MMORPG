@@ -1,45 +1,66 @@
 ﻿#pragma once
 
 #include <cstdint>
+#include <memory>
+#include <optional>
+#include <utility>
 
 #include <mysqlconn/include/mysql/jdbc.h>
+#include "Config.h"
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"
 #include "ProfileCache.h"
 #include "DBWorker.h"
-#include "DBConnectionGame.h"
-#include "DBConnectionBazaar.h"
-#include "MessagePool.h"
+#include "DBConfig.h"
+#include <CoreLib/IMessageQueue.h>
+#include <CoreLib/MessagePool.h>
 
 #include <CoreLib/LoggerGlobal.h>
 namespace Core {
-    class IMessageQueue;
     class ILogger;
     class Message;
 }
 
 namespace Cache {
-    class MessagePool;
-
     class Handler {
+        using ScopedMessage = CacheMessagePool::ScopedMessage;
         Core::IMessageQueue* messageQ;  // response
-        MessagePool* messagePool = nullptr;
+        CacheMessagePool* messagePool = nullptr;
         CacheStorageInventory* cache_inventory = nullptr;
         CacheStorageCurrency* cache_currency = nullptr;
         ProfileCache* cache_profile = nullptr;
         Core::ILogger* logger = nullptr;
         DBWorker<DBConnectionGame>* dbWorkerGame = nullptr;
         DBWorker<DBConnectionBazaar>* dbWorkerBazaar = nullptr;
+        template <typename Response, typename Work>
+        void EnqueueBazaarQuery(Core::MsgHeader header, const Response& failureBody, const char* queueError, Work work);
+
         template <typename Connection, typename Work>
-        bool EnqueueMessageWork(DBWorker<Connection>* worker, Core::Message*& msg, Work&& work) {
-            auto* owned = msg;
-            if (worker->Enqueue(std::function<void(Connection*)>(std::forward<Work>(work)), nullptr,
-                [this, owned] { messagePool->Return(owned); }) != DBEnqueueResult::Queued)
-                return false;
-            msg = nullptr;
-            return true;
+        void EnqueueMessageWork(DBWorker<Connection>* worker, ScopedMessage& msg, Work&& work) {
+            // DBWorker stores copyable callbacks, so their copies share one scoped handle.
+            auto owned = std::make_shared<ScopedMessage>(std::move(msg));
+            worker->Enqueue([owned, work = std::forward<Work>(work)](Connection* conn) {
+                auto message = std::move(*owned);
+                work(conn, message.get());
+            });
         }
-        void Initialize(Core::IMessageQueue* mq,  MessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp) {
+
+        template <typename T>
+        bool CheckMessageLength(const Core::Message* msg) {
+            return msg->GetLength() == sizeof(Core::MsgStruct<T>);
+        }
+
+        template <typename T>
+        bool TryEnqueueResponse(Core::Message& msg, Core::MsgHeader header, const T& body) {
+            static_assert(sizeof(Core::MsgStruct<T>) <= MESSAGE_LEN);
+            auto* response = reinterpret_cast<Core::MsgStruct<T>*>(msg.GetBuffer());
+            response->header = header;
+            response->body = body;
+            msg.SetLength(sizeof(*response));
+            return messageQ->EnqueueMessage(&msg);
+        }
+
+        void Initialize(Core::IMessageQueue* mq,  CacheMessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp) {
             messageQ = mq;
             messagePool = mp;
             dbWorkerGame = dg;
@@ -79,30 +100,31 @@ namespace Cache {
             }
             return true;
         }
-        void CharacterListRequest(Core::Message*& msg, uint64_t sesionID, Core::MsgCharacterListReqBody* body);
-        void CharacterStateRequest(Core::Message*& msg, uint64_t sesionID, Core::MsgCharacterStateReqBody* body);
-        void CharacterStateUpdate(Core::Message*& msg, uint64_t sessionID, Core::MsgCharacterStateUpdateBody* body);
-        void InventoryRequest(Core::Message*& msg, uint64_t sesionID, Core::MsgInventoryReqBody* body);
-        void InventoryUpdate(Core::Message*& msg, uint64_t sesionID, Core::MsgInventoryUpdateBody* body);
-        void CurrencyRequest(Core::Message*& msg, uint64_t sesionID, Core::MsgCurrencyReqBody* body);
-        void CurrencyDeposit(Core::Message*& msg, uint64_t sesionID, Core::MsgCurrencyDepositBody* body);
-        void DiamondRequest(Core::Message*& msg, uint64_t sesionID, Core::MsgDiamondReqBody* body);
-        void DiamondDeposit(Core::Message*& msg, uint64_t sesionID, Core::MsgDiamondDepositBody* body);
-        void BazaarMyList(Core::Message*& msg, uint64_t sesionID, Core::MsgBazaarMyListBody* body);
-        void BazaarSearch(Core::Message*& msg, uint64_t sesionID, Core::MsgBazaarSearchBody* body);
-        void BazaarRegister(Core::Message*& msg, uint64_t sesionID, Core::MsgBazaarRegisterBody* body);
-        void BazaarCancel(Core::Message*& msg, uint64_t sesionID, Core::MsgBazaarCancelBody* body);
-        void BazaarBuy(Core::Message*& msg, uint64_t sesionID, Core::MsgBazaarBuyBody* body);
-        void BazaarClaim(Core::Message*& msg, uint64_t sesionID, Core::MsgBazaarClaimBody* body);
-        void BazaarOutboxList(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarOutboxListBody* body);
-        void BazaarCheckOutbox(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCheckOutboxBody* body);
-        void BazaarCancelListing(Core::Message*& msg, uint64_t sessionID, Core::MsgBazaarCancelListingBody* body);
-        void ProfileRename(Core::Message*& msg, uint64_t sessionID, Core::MsgProfileRenameBody* body);
+        void CharacterListRequest(ScopedMessage& msg, uint64_t sesionID, Core::MsgCharacterListReqBody* body);
+        void CharacterStateRequest(ScopedMessage& msg, uint64_t sesionID, Core::MsgCharacterStateReqBody* body);
+        void CharacterStateUpdate(ScopedMessage& msg, uint64_t sessionID, Core::MsgCharacterStateUpdateBody* body);
+        void InventoryRequest(ScopedMessage& msg, uint64_t sesionID, Core::MsgInventoryReqBody* body);
+        void InventoryUpdate(ScopedMessage& msg, uint64_t sesionID, Core::MsgInventoryUpdateBody* body);
+        void CurrencyRequest(ScopedMessage& msg, uint64_t sesionID, Core::MsgCurrencyReqBody* body);
+        void CurrencyDeposit(ScopedMessage& msg, uint64_t sesionID, Core::MsgCurrencyDepositBody* body);
+        void DiamondRequest(ScopedMessage& msg, uint64_t sesionID, Core::MsgDiamondReqBody* body);
+        void DiamondDeposit(ScopedMessage& msg, uint64_t sesionID, Core::MsgDiamondDepositBody* body);
+        void BazaarMyList(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarMyListBody* body);
+        void BazaarSearch(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarSearchBody* body);
+        void BazaarRegister(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarRegisterBody* body);
+        std::optional<uint8_t> DeductBazaarRegistrationCosts(const Core::MsgBazaarRegisterBody& request, uint64_t fee);
+        void BazaarCancel(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarCancelBody* body);
+        void BazaarBuy(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarBuyBody* body);
+        void BazaarClaim(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarClaimBody* body);
+        void BazaarOutboxList(ScopedMessage& msg, uint64_t sessionID, Core::MsgBazaarOutboxListBody* body);
+        void BazaarCheckOutbox(ScopedMessage& msg, uint64_t sessionID, Core::MsgBazaarCheckOutboxBody* body);
+        void BazaarCancelListing(ScopedMessage& msg, uint64_t sessionID, Core::MsgBazaarCancelListingBody* body);
+        void ProfileRename(ScopedMessage& msg, uint64_t sessionID, Core::MsgProfileRenameBody* body);
 
         friend class Initializer;
         friend class BazaarSearchFixture;
         friend class BazaarMyListFixture;
     public:
-        void Process(Core::Message* msg);
+        void Process(ScopedMessage msg);
     };
 }

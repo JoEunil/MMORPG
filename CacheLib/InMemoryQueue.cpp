@@ -1,6 +1,5 @@
 ﻿#include "InMemoryQueue.h"
 #include "Handler.h"
-#include "MessagePool.h"
 
 namespace Cache {
     namespace {
@@ -50,8 +49,7 @@ namespace Cache {
             std::vector<std::byte> binary(message->GetLength());
             std::memcpy(binary.data(), message->GetBuffer(), message->GetLength());
             Core::errorLogger->LogError("cache mq", "disconnect durable write failed", "sessionID", header->sessionID, "character state", binary);
-        }
-        else {
+        } else {
             Core::errorLogger->LogError("cache mq", "durable write failed", "sessionID", header->sessionID, "messageType", header->messageType);
         }
         return false;
@@ -62,10 +60,10 @@ namespace Cache {
         std::stringstream ss;
         ss << tid;
         Core::sysLogger->LogInfo("cache mq", "mq thread started", "threadID", ss.str());
-        Core::Message* work = nullptr;
+        CacheMessagePool::ScopedMessage work;
         while (m_workQueue.Dequeue(work))
         {
-            handler->Process(work);
+            handler->Process(std::move(work));
         }
         Core::sysLogger->LogInfo("cache mq", "mq thread stopped", "threadID", ss.str());
     }
@@ -99,7 +97,7 @@ namespace Cache {
             return false;
         }
         const Base::Priority priority = GetMessagePriority(msg);
-        auto cacheMsg = messagePool->Acquire();
+        auto cacheMsg = messagePool->AcquireScoped();
         if (!cacheMsg) {
             if (priority == Base::Priority::Important && WriteDurable(msg)) return true;
             Core::errorLogger->LogError("cache mq", "message pool exhausted");
@@ -114,7 +112,6 @@ namespace Cache {
                 Core::errorLogger->LogError("cache mq", "queue rejected important message", "messageType", messageType);
             else
                 Core::errorLogger->LogWarn("cache mq", "queue rejected message", "messageType", messageType);
-            messagePool->Return(cacheMsg);
             return false;
         }
 

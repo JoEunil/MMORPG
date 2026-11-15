@@ -194,9 +194,6 @@
     <ClCompile Include="ZoneState.cpp">
       <Filter>World</Filter>
     </ClCompile>
-    <ClCompile Include="MessagePool.cpp">
-      <Filter>Cache</Filter>
-    </ClCompile>
     <ClCompile Include="InMemoryQueue.cpp">
       <Filter>Cache</Filter>
     </ClCompile>

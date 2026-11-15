@@ -145,32 +145,34 @@
     <ClInclude Include="CacheStorage.h" />
     <ClInclude Include="CacheStorageInventory.h" />
     <ClInclude Include="CacheStorageCurrency.h" />
+    <ClInclude Include="InventoryCodec.h" />
     <ClInclude Include="ProfileCache.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="Queries.h" />
     <ClInclude Include="DBConnection.h" />
+    <ClInclude Include="DBConfig.h" />
+    <ClInclude Include="StatementId.h" />
     <ClInclude Include="DBConnectionPool.h" />
-    <ClInclude Include="DBConnectionGame.h" />
     <ClInclude Include="DBWorker.h" />
     <ClInclude Include="FlushDispatcher.h" />
     <ClInclude Include="Handler.h" />
     <ClInclude Include="Initializer.h" />
     <ClInclude Include="InMemoryQueue.h" />
-    <ClInclude Include="MessagePool.h" />
     <ClInclude Include="WALManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CacheFlush.cpp" />
+    <ClCompile Include="CacheFlush_Currency.cpp" />
+    <ClCompile Include="CacheFlush_Inventory.cpp" />
     <ClCompile Include="CacheStorageCurrency.cpp" />
     <ClCompile Include="ProfileCache.cpp" />
     <ClCompile Include="CacheStorageInventory.cpp" />
-    <ClInclude Include="DBConnectionBazaar.h" />
     <ClCompile Include="Handler.cpp" />
     <ClCompile Include="Handler_Bazaar.cpp" />
     <ClCompile Include="Handler_Currency.cpp" />
     <ClCompile Include="Handler_Diamond.cpp" />
     <ClCompile Include="Handler_Inventory.cpp" />
     <ClCompile Include="InMemoryQueue.cpp" />
-    <ClCompile Include="MessagePool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BaseLib\BaseLib.vcxproj">

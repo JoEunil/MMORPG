@@ -37,7 +37,7 @@ namespace Core {
             return messageQueue->EnqueueMessage(msg.get());
         }
 
-        void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, MessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc);
+        void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, CoreMessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc);
         bool IsReady();
         void CheckSession(IPacketView* p);
         void ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID);
@@ -65,7 +65,7 @@ namespace Core {
         StateManager* stateManager = nullptr;
         ISessionAuth* auth = nullptr;
         IDBCache* cache = nullptr;
-        MessagePool* messagePool = nullptr;
+        CoreMessagePool* messagePool = nullptr;
         IMessageQueue* messageQueue = nullptr;
         LobbyZone* lobbyZone = nullptr;
         ChatThreadPool* chat = nullptr;

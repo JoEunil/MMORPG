@@ -11,7 +11,7 @@ namespace Core {
         sysLogger->LogInfo("core mq", "mq thread started", "threadID", ss.str());
         while (true)
         {
-            Message* work = nullptr;
+            CoreMessagePool::ScopedMessage work;
             {
                 std::unique_lock<std::mutex> lock(m_queueMutex);
                 m_workAvailable.wait(lock, [this] {
@@ -25,7 +25,7 @@ namespace Core {
                     continue;
             }
 
-            handler->Process(work);
+            handler->Process(work.get());
         }
         sysLogger->LogInfo("core mq", "mq thread stopped", "threadID", ss.str());
     }
@@ -52,17 +52,17 @@ namespace Core {
                 t.join();
         }
 
-        Message* dropped = nullptr;
+        CoreMessagePool::ScopedMessage dropped;
         std::lock_guard<std::mutex> lock(m_queueMutex);
         while (m_sharedQueue.pop(dropped)) {
-            messagePool->Return(dropped);
+            dropped.reset();
         }
     }
 
     bool InMemoryQueue::EnqueueMessage(Core::Message* msg) {
         if (!m_running.load(std::memory_order_relaxed))
             return false;
-        auto coreMsg = messagePool->Acquire();
+        auto coreMsg = messagePool->AcquireScoped();
         if (coreMsg == nullptr) {
             errorLogger->LogWarn("core mq", "message pool empty");
             return false;
@@ -75,7 +75,7 @@ namespace Core {
         {
             std::lock_guard<std::mutex> lock(m_queueMutex);
             if (m_running.load(std::memory_order_relaxed)) {
-                if (m_sharedQueue.push(coreMsg)) {
+                if (m_sharedQueue.push(std::move(coreMsg))) {
                     enqueued = true;
                 }
                 else {
@@ -87,7 +87,6 @@ namespace Core {
         if (!enqueued) {
             if (queueFull)
                 errorLogger->LogWarn("core mq", "queue full");
-            messagePool->Return(coreMsg);
             return false;
         }
 

@@ -2,9 +2,9 @@
 
 #include "FlushDispatcher.h"
 #include "CacheFlush.h"
-#include "MessagePool.h"
-#include "DBConnectionGame.h"
-#include "DBConnectionBazaar.h"
+#include "Config.h"
+#include <CoreLib/MessagePool.h>
+#include "DBConfig.h"
 #include "DBConnectionPool.h"
 #include "CacheStorage.h"
 #include "CacheStorageInventory.h"
@@ -23,13 +23,13 @@ class ProfileCacheTest;
 
 namespace Cache {
 	class Initializer {
+        CacheMessagePool msgPool;
         CacheFlush flush;
         FlushDispatcher dispatcher;
         CacheStorageInventory cache_inventory;
         CacheStorageCurrency cache_currency;
         ProfileCache cache_profile;
         Handler handler;
-        MessagePool msgPool;
         InMemoryQueue recvMQ;
         DBConnectionPool<DBConnectionGame> connectionPoolGame;
         DBConnectionPool<DBConnectionBazaar> connectionPoolBazaar;
@@ -79,7 +79,6 @@ namespace Cache {
         bool CheckReady() {
             if (!dispatcher.IsReady()
                 or !flush.IsReady() 
-                or !msgPool.IsReady()
                 or !recvMQ.IsReady()
                 or !cache_inventory.IsReady()
                 or !cache_currency.IsReady()
