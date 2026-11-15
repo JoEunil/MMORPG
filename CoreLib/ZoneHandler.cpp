@@ -16,8 +16,7 @@ namespace Core {
         ZoneChangeResult transition;
         if (!stateManager->ProcessAction(sessionID, zoneID, *body, transition) || transition.zoneID == 0)
             return;
-        auto response = writer->WriteZoneChangeSucess(transition.zoneID, transition.chatID, transition.internalID,
-            transition.x, transition.y, transition.generation, transition.ownershipEpoch);
+        auto response = writer->WriteZoneChangeSucess(transition);
         if (response)
             networkSender->SendDataUnique(sessionID, std::move(response));
         stateManager->SendBootstrap(sessionID, transition.ownershipEpoch);

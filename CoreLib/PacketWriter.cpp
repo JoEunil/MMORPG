@@ -4,6 +4,7 @@
 #include "IPacket.h"
 #include "Config.h"
 #include "LoggerGlobal.h"
+#include "StateManager.h"
 #include <cstddef>
 namespace Core {
     void PacketWriter::Initialize(IPacketPoolManager* poolManager) {
@@ -501,9 +502,17 @@ namespace Core {
         return WriteFixedPacket(OP::ZONE_CHANGE_RESPONSE, FLAG_SIMULATION, ZoneChangeResponseBody{});
     }
 
-    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeSucess(uint16_t zoneID, uint64_t chatID, uint32_t zoneInternalID, float x, float y, uint64_t generation, uint64_t ownershipEpoch) {
-        return WriteFixedPacket(OP::ZONE_CHANGE_RESPONSE, FLAG_SIMULATION,
-            ZoneChangeResponseBody{ 1, zoneID, chatID, zoneInternalID, x, y, generation, ownershipEpoch });
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeSucess(const ZoneChangeResult& result) {
+        return WriteFixedPacket(OP::ZONE_CHANGE_RESPONSE, FLAG_SIMULATION, ZoneChangeResponseBody{
+            .resStatus = 1,
+            .zoneID = result.zoneID,
+            .chatID = result.chatID,
+            .zoneInternalID = result.internalID,
+            .startX = result.x,
+            .startY = result.y,
+            .zoneGeneration = result.generation,
+            .ownershipEpoch = result.ownershipEpoch
+        });
     }
 
     std::unique_ptr<IPacket, PacketDeleter>  PacketWriter::GetPingPacket(uint64_t rtt,uint64_t nowMs) {

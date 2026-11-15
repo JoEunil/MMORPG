@@ -273,8 +273,7 @@ namespace Core {
             && stateManager->ChangeZone(session, parseBody<ZoneChangeBody>(p->GetPtr())->op, result);
         // ChangeZone releases the shard and all Zone locks before network transmission.
         auto response = success
-            ? writer->WriteZoneChangeSucess(result.zoneID, result.chatID, result.internalID,
-                result.x, result.y, result.generation, result.ownershipEpoch)
+            ? writer->WriteZoneChangeSucess(result)
             : writer->WriteZoneChangeFailed();
         if (response)
             networkSender->SendDataUnique(session, std::move(response));
@@ -293,8 +292,7 @@ namespace Core {
         const bool success = validHeader
             && stateManager->RespawnToTown(session, *parseBody<RespawnToTownBody>(p->GetPtr()), result);
         auto response = success
-            ? writer->WriteZoneChangeSucess(result.zoneID, result.chatID, result.internalID,
-                result.x, result.y, result.generation, result.ownershipEpoch)
+            ? writer->WriteZoneChangeSucess(result)
             : writer->WriteZoneChangeFailed();
         if (response)
             networkSender->SendDataUnique(session, std::move(response));

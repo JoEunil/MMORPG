@@ -49,14 +49,7 @@ namespace Core {
     };
     class LobbyZone;
     class ChatThreadPool;
-    struct ZoneChangeResult {
-        uint16_t zoneID = 0;
-        uint64_t chatID = 0;
-        uint32_t internalID = 0;
-        float x = 0, y = 0;
-        uint64_t generation = 0;
-        uint64_t ownershipEpoch = 0;
-    };
+    struct ZoneChangeResult;
     class StateManager {
         std::unordered_map<uint16_t, std::unique_ptr<Core::ZoneState>> m_states;
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
@@ -260,5 +253,14 @@ namespace Core {
                 it->second.cheatCount += cheat;
             }
         }
+    };
+
+    struct ZoneChangeResult {
+        uint16_t zoneID = 0;
+        uint64_t chatID = 0;
+        uint32_t internalID = 0;
+        float x = 0, y = 0;
+        uint64_t generation = 0;
+        uint64_t ownershipEpoch = 0;
     };
 }
