@@ -85,6 +85,8 @@ WAL은 성공 응답 전에 fsync를 기다리지 않는다. 마지막으로 디
 
 GameServer는 단일 프로세스로 실행한다. NetLibrary는 네트워크와 세션, CoreLib는 게임 로직, CacheLib는 캐시와 DB I/O, ExternalLib는 로그와 세션 인증을 담당한다. 로그인 서버는 Node.js, DB는 MySQL, 세션 저장소는 Redis를 사용한다.
 
+AI Agent를 활용해 Clang 기반 C++ 의존성 분석기를 만들었다. [서버 의존성 지도 활용법](Resources/CppDependencyAnalyzer/README.md)에 소스와 예제 HTML 보고서, 실제 화면을 정리했다. 특정 클래스를 검색해 의존 대상과 호출부의 코드 위치를 확인할 수 있다.
+
 서버 분리 구상은 [설계 결정](DesignDecisions.md#6-분산-확장-구상--미구현)에 적었다. 아직 구현하지 않았다. 위 Unity 시연과 동봉 실행 파일은 과거 버전이며, 최신 서버의 캐릭터 이름 정보(Profile) 패킷에 맞춰 클라이언트 갱신이 필요하다.
 
 ## 앞으로 할 일

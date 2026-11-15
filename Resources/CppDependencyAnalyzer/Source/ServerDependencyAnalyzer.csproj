@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <PlatformTarget>x64</PlatformTarget>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Report.html;RelationshipLayout.js;Report.js" />
+    <Content Include="obj/clang/libclang.dll;obj/clang/LLVM-LICENSE.txt;obj/clang/resources/**/*"
+             Condition="Exists('obj/clang/libclang.dll')" Exclude="obj/clang/resources/include/Headers/**/*">
+      <Link>clang/$([MSBuild]::MakeRelative('$(MSBuildProjectDirectory)/obj/clang', '%(FullPath)'))</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+</Project>
