@@ -39,7 +39,8 @@ namespace Cache {
         using Key = CurrencyKey;
         using KeyHash = CurrencyKeyHash;
         using Result = CurrencyCacheItem;
-        CACHE_STATUS LoadFromDB(uint16_t shardIndex, Key& key, bool claimed = false);
+        CACHE_STATUS GetOrLoad(uint16_t shardIndex, const Key& key, Result& outResult);
+        CACHE_STATUS LoadFromDB(uint16_t shardIndex, const Key& key, bool claimed = false);
         struct PendingDeposit {
             uint64_t gold;
             std::function<void(CACHE_STATUS, uint64_t)> completed;

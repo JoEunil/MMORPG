@@ -72,7 +72,8 @@ namespace Cache {
         std::array<std::unordered_map<uint64_t, std::vector<std::function<void(Core::EquipmentStateResult)>>>, SHARD_SIZE> pendingEquipmentLoads;
         Core::ItemOperationResult ChangeItemLocked(uint16_t shardIndex, Key key, uint32_t itemID, int32_t quantity);
         void CompleteLoad(uint16_t shardIndex, Key key, const Result* loaded);
-        CACHE_STATUS LoadFromDB(uint16_t shardIndex, Key& key);
+        CACHE_STATUS GetOrLoad(uint16_t shardIndex, const Key& key, Result& outResult);
+        CACHE_STATUS LoadFromDB(uint16_t shardIndex, const Key& key);
         bool RestoreEntry(uint64_t characterID, InventoryData& rec);
 
         void SetWalFn(std::function<uint64_t(uint64_t, const InventoryData&)> f) {

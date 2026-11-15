@@ -31,7 +31,7 @@ namespace Cache {
 
         return TryEvictAfterInsertLocked(shard, key);
     }
-    CACHE_STATUS CacheStorageInventory::LoadFromDB(uint16_t shardIndex, Key& key) {
+    CACHE_STATUS CacheStorageInventory::LoadFromDB(uint16_t shardIndex, const Key& key) {
         auto status = TrySetReading(shardIndex, key);
         if (status != CACHE_STATUS::EMPTY) // READING
             return status;
@@ -61,32 +61,23 @@ namespace Cache {
         return CACHE_STATUS::DB_READING;
     }
 
+    CACHE_STATUS CacheStorageInventory::GetOrLoad(uint16_t shardIndex, const Key& key, Result& outResult) {
+        const auto status = TryGet(shardIndex, key, outResult);
+        if (status != CACHE_STATUS::EMPTY)
+            return status;
+
+        return LoadFromDB(shardIndex, key);
+    }
+
     InventoryCacheItem CacheStorageInventory::Getter(uint64_t characterID) {
-        Key key;
         Result result;
-        key.characterID = characterID;
-        auto shardIndex = characterID & SHARD_SIZE_MASK;
-        switch (TryGet(key.characterID & SHARD_SIZE_MASK, key, result))
-        {
-        case CACHE_STATUS::AVAILABLE:
-            break;
-        case CACHE_STATUS::DB_READING:
-            result.status = CACHE_STATUS::DB_READING;
-            return result;
-        case CACHE_STATUS::EVICTING:
-            result.status = CACHE_STATUS::EVICTING;
-            return result;
-        case CACHE_STATUS::EMPTY: {
-            result.status = LoadFromDB(shardIndex, key);
-            if (result.status != CACHE_STATUS::AVAILABLE) {
-                return result;
-            }
-            // Another loader may have completed after the first TryGet; copy its actual snapshot.
-            result.status = TryGet(shardIndex, key, result);
-            break;
-        }
-        default: break;
-        }
+        const Key key{characterID};
+        const uint16_t shardIndex = characterID & SHARD_SIZE_MASK;
+        auto status = GetOrLoad(shardIndex, key, result);
+        // A concurrent load can return AVAILABLE before we have copied its snapshot.
+        if (status == CACHE_STATUS::AVAILABLE && result.status == CACHE_STATUS::EMPTY)
+            status = TryGet(shardIndex, key, result);
+        result.status = status;
         return result;
     }
 
@@ -293,27 +284,13 @@ namespace Cache {
     std::tuple<CACHE_STATUS, uint32_t, uint16_t, uint16_t> CacheStorageInventory::PartialUpdate(uint64_t characterID, uint32_t itemID, uint8_t op, int32_t change) {
         if (itemID == 0 || change == 0 || change < -static_cast<int32_t>(UINT16_MAX) || change > UINT16_MAX || (op == 1 && change < 0))
             return { CACHE_STATUS::BLOCKED, 0, 0, 0 };
-        Key key;
+        const Key key{characterID};
+        const uint16_t shardIndex = characterID & SHARD_SIZE_MASK;
         Result result;
-        key.characterID = characterID;
-        uint16_t shardIndex = key.characterID & SHARD_SIZE_MASK;
+        const auto status = GetOrLoad(shardIndex, key, result);
+        if (status != CACHE_STATUS::AVAILABLE)
+            return {status, 0, 0, 0};
 
-
-        switch (TryGet(key.characterID & SHARD_SIZE_MASK, key, result))
-        {
-        case CACHE_STATUS::AVAILABLE:
-            break;
-        case CACHE_STATUS::DB_READING:
-            return std::make_tuple(CACHE_STATUS::DB_READING, 0, 0, 0);
-        case CACHE_STATUS::EVICTING:
-            return std::make_tuple(CACHE_STATUS::EVICTING, 0, 0, 0);
-        case CACHE_STATUS::EMPTY: {
-            CACHE_STATUS status = LoadFromDB(shardIndex, key);
-            if (status != CACHE_STATUS::AVAILABLE)
-                return std::make_tuple(status, 0, 0, 0);
-            break;
-        }
-        }
         auto& shard = m_shards[shardIndex];
         std::unique_lock<std::mutex> lock(shard.mutex);
 
@@ -426,27 +403,13 @@ namespace Cache {
     CACHE_STATUS CacheStorageInventory::DeliverItem(uint64_t characterID, uint64_t event_id, uint32_t itemID, uint32_t quantity) {
         if (event_id == 0 || itemID == 0 || quantity == 0 || quantity > UINT16_MAX)
             return CACHE_STATUS::BLOCKED;
-        Key key;
+        const Key key{characterID};
+        const uint16_t shardIndex = characterID & SHARD_SIZE_MASK;
         Result result;
-        key.characterID = characterID;
-        uint16_t shardIndex = key.characterID & SHARD_SIZE_MASK;
-        switch (TryGet(key.characterID & SHARD_SIZE_MASK, key, result))
-        {
-        case CACHE_STATUS::AVAILABLE:
-            break;
-        case CACHE_STATUS::DB_READING:
-            return CACHE_STATUS::DB_READING;
-        case CACHE_STATUS::EVICTING:
-            return CACHE_STATUS::EVICTING;
-        case CACHE_STATUS::EMPTY: {
-            CACHE_STATUS status = LoadFromDB(shardIndex, key);
-            if (status != CACHE_STATUS::AVAILABLE) {
-                return status;
-            }
-            break;
-        }
-        default: break;
-        }
+        const auto status = GetOrLoad(shardIndex, key, result);
+        if (status != CACHE_STATUS::AVAILABLE)
+            return status;
+
         auto& shard = m_shards[shardIndex];
         std::unique_lock<std::mutex> lock(shard.mutex);
 

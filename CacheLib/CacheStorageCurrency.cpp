@@ -6,7 +6,7 @@
 #include "CacheFlush.h"
 
 namespace Cache {
-    CACHE_STATUS CacheStorageCurrency::LoadFromDB(uint16_t shardIndex, Key& key, bool claimed) {
+    CACHE_STATUS CacheStorageCurrency::LoadFromDB(uint16_t shardIndex, const Key& key, bool claimed) {
         if (!claimed) {
             auto status = TrySetReading(shardIndex, key);
             if (status != CACHE_STATUS::EMPTY) return status;
@@ -31,31 +31,20 @@ namespace Cache {
         return CACHE_STATUS::DB_READING;
     }
 
-    CurrencyCacheItem CacheStorageCurrency::Getter(uint64_t characterID) {
-        Key key;
-        Result result;
-        key.characterID = characterID;
-        auto shardIndex = characterID & SHARD_SIZE_MASK;
+    CACHE_STATUS CacheStorageCurrency::GetOrLoad(uint16_t shardIndex, const Key& key, Result& outResult) {
+        const auto status = TryGet(shardIndex, key, outResult);
+        if (status != CACHE_STATUS::EMPTY)
+            return status;
 
-        switch (TryGet(key.characterID & SHARD_SIZE_MASK, key, result))
-        {
-        case CACHE_STATUS::AVAILABLE:
-            break;
-        case CACHE_STATUS::DB_READING:
-            result.status = CACHE_STATUS::DB_READING;
-            return result;
-        case CACHE_STATUS::EVICTING:
-            result.status = CACHE_STATUS::EVICTING;
-            return result;
-        case CACHE_STATUS::EMPTY: {
-            if (LoadFromDB(shardIndex, key) != CACHE_STATUS::AVAILABLE) {
-                result.status = CACHE_STATUS::EMPTY;
-                return result;
-            }
-            break;
-        }
-        default: break;
-        }
+        return LoadFromDB(shardIndex, key) == CACHE_STATUS::AVAILABLE
+            ? CACHE_STATUS::AVAILABLE : CACHE_STATUS::EMPTY;
+    }
+
+    CurrencyCacheItem CacheStorageCurrency::Getter(uint64_t characterID) {
+        Result result;
+        const auto status = GetOrLoad(characterID & SHARD_SIZE_MASK, Key{characterID}, result);
+        if (status == CACHE_STATUS::DB_READING || status == CACHE_STATUS::EVICTING)
+            result.status = status;
         return result;
     }
 
@@ -123,26 +112,13 @@ namespace Cache {
     // res, gold
     std::tuple<CACHE_STATUS, uint64_t> CacheStorageCurrency::DepositCurrency(uint64_t characterID, uint64_t deposit) {
 
-        Key key;
+        const Key key{characterID};
+        const uint16_t shardIndex = characterID & SHARD_SIZE_MASK;
         Result result;
-        key.characterID = characterID;
-        uint16_t shardIndex = key.characterID & SHARD_SIZE_MASK;
+        const auto status = GetOrLoad(shardIndex, key, result);
+        if (status != CACHE_STATUS::AVAILABLE)
+            return {status, 0};
 
-
-        switch (TryGet(key.characterID & SHARD_SIZE_MASK, key, result))
-        {
-        case CACHE_STATUS::AVAILABLE:
-            break;
-        case CACHE_STATUS::DB_READING:
-            return { CACHE_STATUS::DB_READING, 0 };
-        case CACHE_STATUS::EVICTING:
-            return { CACHE_STATUS::EVICTING, 0};
-        case CACHE_STATUS::EMPTY: {
-            if (LoadFromDB(shardIndex, key) != CACHE_STATUS::AVAILABLE)
-                return { CACHE_STATUS::EMPTY, 0 };
-            break;
-            }
-        }
         auto& shard = m_shards[shardIndex];
         std::unique_lock<std::mutex> lock(shard.mutex);
         return DepositLocked(shardIndex, key, deposit);
@@ -150,26 +126,13 @@ namespace Cache {
 
     // res, gold
     std::tuple<CACHE_STATUS, uint64_t> CacheStorageCurrency::TryWithdrawCurrency(uint64_t characterID, uint64_t withdraw) {
-        Key key;
+        const Key key{characterID};
+        const uint16_t shardIndex = characterID & SHARD_SIZE_MASK;
         Result result;
-        key.characterID = characterID;
-        uint16_t shardIndex = key.characterID & SHARD_SIZE_MASK;
+        const auto status = GetOrLoad(shardIndex, key, result);
+        if (status != CACHE_STATUS::AVAILABLE)
+            return {status, 0};
 
-
-        switch (TryGet(key.characterID & SHARD_SIZE_MASK, key, result))
-        {
-        case CACHE_STATUS::AVAILABLE:
-            break;
-        case CACHE_STATUS::DB_READING:
-            return { CACHE_STATUS::DB_READING, 0 };
-        case CACHE_STATUS::EVICTING:
-            return { CACHE_STATUS::EVICTING, 0 };
-        case CACHE_STATUS::EMPTY: {
-            if (LoadFromDB(shardIndex, key) != CACHE_STATUS::AVAILABLE)
-                return { CACHE_STATUS::EMPTY, 0 };
-            break;
-        }
-        }
         auto& shard = m_shards[shardIndex];
         std::unique_lock<std::mutex> lock(shard.mutex);
         auto it = shard.cache_data.find(key);
