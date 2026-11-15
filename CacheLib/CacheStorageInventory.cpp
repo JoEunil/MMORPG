@@ -304,79 +304,40 @@ namespace Cache {
 
         if (change < 0 && (res.data.equippedWeaponItemID == itemID || res.data.equippedShieldItemID == itemID || res.data.equippedBodyItemID == itemID))
             return { CACHE_STATUS::BLOCKED, 0, 0, 0 };
-        CACHE_STATUS resStatus = CACHE_STATUS::AVAILABLE;
-        int slot = 0;
-        int quantity = 0;
+        if (op != 1 && op != 2)
+            return {CACHE_STATUS::BLOCKED, 0, 0, 0};
 
-        switch (op)
-        {
-        case 1: { // ADD
-            slot = FindStackOrEmptySlot(res.data, itemID);
-            //std::cout << "slot " << slot << "quantity " << change << '\n';
+        const int slot = FindStackOrEmptySlot(res.data, itemID);
+        if (slot == -1) {
+            Core::gameLogger->LogInfo("cache5", "inventory full", "char_id", characterID);
+            return {CACHE_STATUS::BLOCKED, 0, 0, 0};
+        }
 
-            if (slot == -1) {
-                Core::gameLogger->LogInfo("cache5", "inventory full", "char_id", characterID);
-                return std::make_tuple(CACHE_STATUS::BLOCKED, 0, 0, 0);
+        auto& itemSlot = res.data.items[slot];
+        const bool exists = itemSlot.itemID == itemID;
+        const int32_t currentQuantity = exists ? itemSlot.quantity : 0;
+        const int32_t newQuantity = currentQuantity + change;
+        if (newQuantity < 0) {
+            Core::gameLogger->LogInfo("cache storage inventory", "not enough item", "char_id", characterID, "item_id", itemID);
+            return {CACHE_STATUS::BLOCKED, 0, 0, 0};
+        }
+        if (newQuantity > UINT16_MAX) {
+            Core::gameLogger->LogInfo("cache5", "quantity overflow", "char_id", characterID, "item_id", itemID);
+            return {CACHE_STATUS::BLOCKED, 0, 0, 0};
+        }
+
+        if (newQuantity == 0) {
+            if (exists) {
+                itemSlot = EMPTY_SLOT;
+                res.data.count--;
             }
-            auto& itemSlot = res.data.items[slot];
-            int32_t cur = (itemSlot.itemID == itemID) ? itemSlot.quantity : 0;
-            int32_t newQuantity = cur + change;
-            if (newQuantity > UINT16_MAX) {
-                Core::gameLogger->LogInfo("cache5", "quantity overflow", "char_id", characterID, "item_id", itemID);
-                return std::make_tuple(CACHE_STATUS::BLOCKED, 0, 0, 0);
-            }
-
-            if (itemSlot.itemID != itemID) {      // 새 슬롯일 때만
+        } else {
+            if (!exists) {
                 itemSlot.itemID = itemID;
                 itemSlot.slot = static_cast<uint8_t>(slot);
                 res.data.count++;
             }
             itemSlot.quantity = static_cast<uint16_t>(newQuantity);
-            quantity = itemSlot.quantity;
-            break;
-        }
-        case 2: { // UPDATE
-
-            slot = FindStackOrEmptySlot(res.data, itemID);
-            if (slot == -1) {
-                Core::gameLogger->LogInfo("cache5", "inventory full", "char_id", characterID);
-                return std::make_tuple(CACHE_STATUS::BLOCKED, 0, 0, 0);
-            }
-
-            auto& itemSlot = res.data.items[slot];
-            bool exists = (itemSlot.itemID == itemID);
-            int32_t cur = exists ? itemSlot.quantity : 0;
-            int32_t newQuantity = cur + change;
-
-            if (newQuantity < 0) {
-                Core::gameLogger->LogInfo("cache storage inventory", "not enough item", "char_id", characterID, "item_id", itemID);
-                return std::make_tuple(CACHE_STATUS::BLOCKED, 0, 0, 0);
-            }
-            if (newQuantity > UINT16_MAX) {
-                Core::gameLogger->LogInfo("cache5", "quantity overflow", "char_id", characterID, "item_id", itemID);
-                return std::make_tuple(CACHE_STATUS::BLOCKED, 0, 0, 0);
-            }
-
-            if (newQuantity == 0) {
-                if (exists) {                     // 실제로 있던 것만 제거 (count 언더플로우 방지)
-                    itemSlot = EMPTY_SLOT;
-                    res.data.count--;
-                }
-                quantity = 0;
-            }
-            else {
-                if (!exists) {                    // 빈 슬롯에 복원
-                    itemSlot.itemID = itemID;
-                    itemSlot.slot = static_cast<uint8_t>(slot);
-                    res.data.count++;
-                }
-                itemSlot.quantity = static_cast<uint16_t>(newQuantity);
-                quantity = itemSlot.quantity;
-            }
-            break;
-        }
-        default:
-            return std::make_tuple(CACHE_STATUS::BLOCKED, 0, 0, 0);
         }
 
         if (m_walFn) {
@@ -386,7 +347,7 @@ namespace Cache {
         }
 
         MarkDirtyLocked(shard, key, res);
-        return std::make_tuple(resStatus, itemID, slot, quantity);
+        return {CACHE_STATUS::AVAILABLE, itemID, static_cast<uint16_t>(slot), static_cast<uint16_t>(newQuantity)};
     }
 
     std::unique_ptr<FlushCommand> CacheStorageInventory::GetFlushCommand(Key key, Result result) {
