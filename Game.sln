@@ -135,6 +135,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Refactor", "Refactor", "{FB
 		ObjectPool.md = ObjectPool.md
 		PingRefactor.md = PingRefactor.md
 		Profile.md = Profile.md
+		ServerRefactoring.md = ServerRefactoring.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SystemDesign", "SystemDesign", "{6C9964E0-7303-46E2-ABEB-A2CD3EBE4D43}"
