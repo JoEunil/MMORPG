@@ -102,13 +102,44 @@ namespace Cache {
         return firstEmpty;
     }
 
+    static bool IsEquipped(const InventoryData& inventory, uint32_t itemID) {
+        return inventory.equippedWeaponItemID == itemID ||
+            inventory.equippedShieldItemID == itemID ||
+            inventory.equippedBodyItemID == itemID;
+    }
+
+    bool CacheStorageInventory::AppendInventoryWal(uint64_t characterID, InventoryData& image) {
+        if (!m_walFn)
+            return false;
+
+        const auto lsn = m_walFn(characterID, image);
+        if (lsn == 0)
+            return false;
+
+        image.lastLsn = lsn;
+        return true;
+    }
+
+    bool CacheStorageInventory::TryCommitInventoryLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& entry, InventoryData& image) {
+        try {
+            if (!AppendInventoryWal(key.characterID, image))
+                return false;
+        } catch (...) {
+            return false;
+        }
+
+        entry.data = image;
+        MarkDirtyLocked(shard, key, entry);
+        return true;
+    }
+
     Core::ItemOperationResult CacheStorageInventory::ChangeItemLocked(uint16_t shardIndex, Key key, uint32_t itemID, int32_t quantity) {
         auto& shard = m_shards[shardIndex];
         auto found = shard.cache_data.find(key);
         if (found == shard.cache_data.end() || found->second.status != CACHE_STATUS::AVAILABLE)
             return {Core::ItemOperationStatus::Busy};
         auto& result = found->second;
-        if (quantity < 0 && (result.data.equippedWeaponItemID == itemID || result.data.equippedShieldItemID == itemID || result.data.equippedBodyItemID == itemID))
+        if (quantity < 0 && IsEquipped(result.data, itemID))
             return {Core::ItemOperationStatus::Missing};
         auto image = result.data;
         const int slot = FindStackOrEmptySlot(image, itemID);
@@ -124,15 +155,8 @@ namespace Cache {
             if (item.itemID == 0) { item.itemID = itemID; item.slot = static_cast<uint8_t>(slot); ++image.count; }
             item.quantity = static_cast<uint16_t>(next);
         }
-        // Commit only after a WAL append succeeds; failure leaves quantity and HP unchanged.
-        if (!m_walFn) return {Core::ItemOperationStatus::StorageFailure, static_cast<uint16_t>(current)};
-        uint64_t lsn = 0;
-        try { lsn = m_walFn(key.characterID, image); }
-        catch (...) { return {Core::ItemOperationStatus::StorageFailure, static_cast<uint16_t>(current)}; }
-        if (lsn == 0) return {Core::ItemOperationStatus::StorageFailure, static_cast<uint16_t>(current)};
-        image.lastLsn = lsn;
-        result.data = image;
-        MarkDirtyLocked(shard, key, result);
+        if (!TryCommitInventoryLocked(shard, key, result, image))
+            return {Core::ItemOperationStatus::StorageFailure, static_cast<uint16_t>(current)};
         return {Core::ItemOperationStatus::Success, static_cast<uint16_t>(next)};
     }
 
@@ -205,14 +229,8 @@ namespace Cache {
         if (equipped == itemID)
             return {Core::EquipmentOperationStatus::Success, image.equippedWeaponItemID, image.equippedShieldItemID, image.equippedBodyItemID};
         equipped = itemID;
-        if (!m_walFn) return {Core::EquipmentOperationStatus::StorageFailure};
-        uint64_t lsn = 0;
-        try { lsn = m_walFn(characterID, image); }
-        catch (...) { return {Core::EquipmentOperationStatus::StorageFailure}; }
-        if (lsn == 0) return {Core::EquipmentOperationStatus::StorageFailure};
-        image.lastLsn = lsn;
-        result.data = image;
-        MarkDirtyLocked(shard, found->first, result);
+        if (!TryCommitInventoryLocked(shard, found->first, result, image))
+            return {Core::EquipmentOperationStatus::StorageFailure};
         return {Core::EquipmentOperationStatus::Success, image.equippedWeaponItemID, image.equippedShieldItemID, image.equippedBodyItemID};
     }
 
@@ -280,6 +298,18 @@ namespace Cache {
         for (auto& completed : equipmentLoads) completed(equipmentState);
     }
 
+    static CACHE_STATUS ValidatePartialUpdate(const InventoryCacheItem& entry, uint32_t itemID, uint8_t op, int32_t change) {
+        if (entry.status != CACHE_STATUS::AVAILABLE)
+            return entry.status;
+
+        if (change < 0 && IsEquipped(entry.data, itemID))
+            return CACHE_STATUS::BLOCKED;
+        if (op != 1 && op != 2)
+            return CACHE_STATUS::BLOCKED;
+
+        return CACHE_STATUS::AVAILABLE;
+    }
+
     // status, itemID, slot, quantity
     std::tuple<CACHE_STATUS, uint32_t, uint16_t, uint16_t> CacheStorageInventory::PartialUpdate(uint64_t characterID, uint32_t itemID, uint8_t op, int32_t change) {
         if (itemID == 0 || change == 0 || change < -static_cast<int32_t>(UINT16_MAX) || change > UINT16_MAX || (op == 1 && change < 0))
@@ -298,14 +328,8 @@ namespace Cache {
         if (it == shard.cache_data.end())
             return { CACHE_STATUS::EMPTY, 0, 0, 0 };
         auto& res = it->second;
-        
-        if(res.status != CACHE_STATUS::AVAILABLE)
-            return std::make_tuple(res.status, 0, 0, 0);
-
-        if (change < 0 && (res.data.equippedWeaponItemID == itemID || res.data.equippedShieldItemID == itemID || res.data.equippedBodyItemID == itemID))
-            return { CACHE_STATUS::BLOCKED, 0, 0, 0 };
-        if (op != 1 && op != 2)
-            return {CACHE_STATUS::BLOCKED, 0, 0, 0};
+        if (const auto validation = ValidatePartialUpdate(res, itemID, op, change); validation != CACHE_STATUS::AVAILABLE)
+            return {validation, 0, 0, 0};
 
         const int slot = FindStackOrEmptySlot(res.data, itemID);
         if (slot == -1) {
@@ -340,12 +364,7 @@ namespace Cache {
             itemSlot.quantity = static_cast<uint16_t>(newQuantity);
         }
 
-        if (m_walFn) {
-            uint64_t lsn = m_walFn(key.characterID, res.data);
-            if (lsn != 0)
-                res.data.lastLsn = lsn;  // 실패 시 기존 값 유지 
-        }
-
+        AppendInventoryWal(key.characterID, res.data);
         MarkDirtyLocked(shard, key, res);
         return {CACHE_STATUS::AVAILABLE, itemID, static_cast<uint16_t>(slot), static_cast<uint16_t>(newQuantity)};
     }
@@ -422,12 +441,7 @@ namespace Cache {
         res.data.tail = (res.data.tail + 1) & RING_SIZE_MASK;
         res.data.lastOp = true; // push
 
-        if (m_walFn) {
-            uint64_t lsn = m_walFn(key.characterID, res.data);
-            if (lsn != 0)
-                res.data.lastLsn = lsn;  // 실패 시 기존 값 유지 
-        }
-
+        AppendInventoryWal(key.characterID, res.data);
         MarkDirtyLocked(shard, key, res);
         return CACHE_STATUS::AVAILABLE;
     }
@@ -446,12 +460,7 @@ namespace Cache {
         res.data.head = (snapshotHead + claimedCnt) & RING_SIZE_MASK;
         res.data.lastOp = false;
 
-        if (m_walFn) {
-            uint64_t lsn = m_walFn(key.characterID, res.data);
-            if (lsn != 0)
-                res.data.lastLsn = lsn;  // 실패 시 기존 값 유지 
-        }
-
+        AppendInventoryWal(key.characterID, res.data);
         MarkDirtyLocked(shard, key, res);
         return true;
     }
