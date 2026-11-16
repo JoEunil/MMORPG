@@ -128,7 +128,7 @@ WinForms 분석기의 첫 실행 화면이다. 기본 빌드 설정은 `Debug` /
 
 **의존성 검사 → 순환 의존 → 순환 경로 찾기**를 누르면 화살표를 따라 출발 타입으로 돌아올 수 있는 그룹을 찾는다. 각 그룹의 예시 경로를 펼치면 화살표마다 관계 종류와 파일·줄 번호를 볼 수 있다.
 
-기본값은 Visual Studio의 `Interface` 필터에 속한 타입으로 **들어가는 연결**을 검사에서 제외한다. 체크를 풀면 해당 연결까지 포함한다. 캡처에 사용한 보고서에서는 두 설정 모두 순환 그룹이 2개였으며, `ClientContext`와 `PacketView`의 왕복 경로를 펼쳐 확인했다.
+**Interface를 향한 연결 제외**는 기본으로 켜져 있다. Visual Studio의 `Interface` 필터에 속한 타입으로 들어가는 연결을 검사에서 제외한다. 현재 서버에서는 순환 의존 그룹 2개가 검출됐다.
 
 ![순환 의존 검사에서 ClientContext와 PacketView의 왕복 경로와 소스 근거를 펼친 화면](Screenshots/dependency-cycles.png)
 
