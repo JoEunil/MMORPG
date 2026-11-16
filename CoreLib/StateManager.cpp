@@ -564,30 +564,7 @@ namespace Core {
                         continue;
                     }
                 }
-                Message msg(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
-                auto st = reinterpret_cast<MsgStruct<MsgCharacterStateUpdateBody>*>(msg.GetBuffer());
-
-                st->header.sessionID = session;
-                st->header.messageType = MSG_CHARACTER_STATE_UPDATE;
-                st->body.charID = temp.characterID;
-                st->body.profileId = temp.profileId;
-                st->body.attack = temp.attack;
-                st->body.level = temp.level;
-                st->body.exp = temp.exp;
-                st->body.hp = temp.hp;
-                st->body.mp = temp.mp;
-                st->body.maxHp = temp.maxHp;
-                st->body.maxMp = temp.maxMp;
-                st->body.dir = temp.dir;
-                st->body.x = temp.x;
-                st->body.y = temp.y;
-                st->body.lastZone = static_cast<uint8_t>(temp.lastZone);
-				msg.SetLength(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
-                if (!mq->EnqueueMessage(&msg)) {
-                    std::vector<std::byte> binary(sizeof(CharacterState));
-                    std::memcpy(binary.data(), &temp, sizeof(CharacterState));
-                    Core::errorLogger->LogError("state manager", "failed to enqueue message for disconnect", "sessionID", session, "character state", binary);
-                }
+                EnqueueCharacterStateUpdate(session, temp);
             }
             shard.sessionMap.clear();
         }
@@ -618,7 +595,8 @@ namespace Core {
             chat->EnqueueZoneLeave(sessionID, zoneID);
             chat->DeleteChatSession(sessionID, zoneID);
             lock.unlock();
-            EnqueueDisconnectMsg(temp, sessionID);
+            gameLogger->LogInfo("state manager", "Enqueue Disconnect", "sessionID", sessionID);
+            EnqueueCharacterStateUpdate(sessionID, temp);
         }
     }
 
@@ -643,32 +621,30 @@ namespace Core {
         it_state->second->UpdateProfileVersion(sessionID, version);
     }
 
-    void StateManager::EnqueueDisconnectMsg(CharacterState& temp, uint64_t sessionID)
-    {
-        gameLogger->LogInfo("state manager", "Enqueue Disconnect", "sessionID", sessionID);
+    void StateManager::EnqueueCharacterStateUpdate(uint64_t sessionID, const CharacterState& character) {
         Message msg(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
         auto st = reinterpret_cast<MsgStruct<MsgCharacterStateUpdateBody>*>(msg.GetBuffer());
         st->header.sessionID = sessionID;
         st->header.messageType = MSG_CHARACTER_STATE_UPDATE;
-        st->body.charID = temp.characterID;
-        st->body.profileId = temp.profileId;
-        st->body.attack = temp.attack;
-        st->body.level = temp.level;
-        st->body.exp = temp.exp;
-        st->body.hp = temp.hp;
-        st->body.mp = temp.mp;
-        st->body.maxHp = temp.maxHp;
-        st->body.maxMp = temp.maxMp;
-        st->body.dir = temp.dir;
-        st->body.x = temp.x;
-        st->body.y = temp.y;
-        st->body.lastZone = static_cast<uint8_t>(temp.lastZone);
+        st->body.charID = character.characterID;
+        st->body.profileId = character.profileId;
+        st->body.attack = character.attack;
+        st->body.level = character.level;
+        st->body.exp = character.exp;
+        st->body.hp = character.hp;
+        st->body.mp = character.mp;
+        st->body.maxHp = character.maxHp;
+        st->body.maxMp = character.maxMp;
+        st->body.dir = character.dir;
+        st->body.x = character.x;
+        st->body.y = character.y;
+        st->body.lastZone = static_cast<uint8_t>(character.lastZone);
         msg.SetLength(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
 
         if (!mq->EnqueueMessage(&msg)) {
             std::vector<std::byte> binary(sizeof(CharacterState));
-            std::memcpy(binary.data(), &temp, sizeof(CharacterState));
-            errorLogger->LogError("state manager", "Failed to enqueue disconnect message", "sessionID", sessionID, "character state", binary);
+            std::memcpy(binary.data(), &character, sizeof(CharacterState));
+            errorLogger->LogError("state manager", "Failed to enqueue character state update", "sessionID", sessionID, "character state", binary);
         }
     }
 }

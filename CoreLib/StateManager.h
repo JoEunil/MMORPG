@@ -95,6 +95,7 @@ namespace Core {
 
 
         void CleanUp();
+        void EnqueueCharacterStateUpdate(uint64_t sessionID, const CharacterState& character);
 
         friend class Initializer;
         friend class LobbyZone; // ImmigrateChar takes the session shard before the lobby mutex.
@@ -240,7 +241,6 @@ namespace Core {
         bool RespawnToTown(uint64_t sessionID, const RespawnToTownBody& request, ZoneChangeResult& result);
         bool ProcessAction(uint64_t sessionID, uint16_t routeZoneID, const ActionRequestBody& action, ZoneChangeResult& transition);
         bool SendBootstrap(uint64_t sessionID, uint64_t ownershipEpoch);
-        void EnqueueDisconnectMsg(CharacterState& temp, uint64_t sessionID);
         void UpdateProfileVersion(uint64_t sessionID, uint32_t version);
 
         void Cheat(uint64_t sessionID, uint16_t cheat, std::chrono::steady_clock::time_point time) {
