@@ -106,7 +106,16 @@ internal static class ClangNative
     internal static extern Cursor clang_getCursorDefinition(Cursor cursor);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern uint clang_CXXRecord_isAbstract(Cursor cursor);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern uint clang_CXXMethod_isPureVirtual(Cursor cursor);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
     internal static extern Cursor clang_getSpecializedCursorTemplate(Cursor cursor);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern Kind clang_getTemplateCursorKind(Cursor cursor);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
     internal static extern CXType clang_getCursorType(Cursor cursor);

@@ -108,6 +108,7 @@
   #graph .node.radial .box { fill: var(--node-color); stroke: #102136; stroke-width: 1.6px; }
   #graph .node.radial.connected .box { stroke: #e1f3ff; stroke-width: 2px; }
   #graph .node.radial.active .box, #graph .node.radial.matched .box { stroke: #fff; stroke-width: 3px; }
+  #graph .node.high-level-candidate:not(.active) .box { stroke: #f4cb76; stroke-width: 2.5px; }
   #graph .node.filter-node:not(.radial) .box { stroke: var(--node-color); }
   #graph .node.radial.external-library .box { fill: #f4bd7a; stroke: #503725; }
   #graph .node.radial.external-library.active .box { stroke: #fff; }
@@ -130,7 +131,34 @@
   .where { margin: 3px 0 6px; font-size: 12px; }
   #direction { margin-top: 7px; }
   #details { flex: 1; min-height: 50px; padding: 9px 13px; overflow: auto; }
-  #diagnostics { padding: 12px 14px; }
+  #diagnostics, #dependency-paths { padding: 12px 14px; }
+  #dependency-paths .path-form { margin-block: 12px; }
+  #dependency-paths .path-form .field { max-width: 430px; }
+  .dependency-trees { display: flex; flex-wrap: wrap; gap: 18px; }
+  .dependency-trees > section { flex: 1 1 340px; min-width: 0; padding: 12px; border: 1px solid var(--line);
+    border-radius: 8px; background: var(--wash); overflow-x: auto; }
+  .dependency-root, .dependency-branch > summary { padding: 7px 9px; border: 1px solid #b8c9d8;
+    border-radius: 6px; background: var(--paper); overflow-wrap: anywhere; }
+  .dependency-root { margin-top: 7px; color: var(--blue); background: #e6f2fc; font-weight: 700; }
+  .dependency-children { --branch-indent: 21px; list-style: none; margin: 0 0 0 8px;
+    padding: 0 0 0 var(--branch-indent); }
+  .dependency-children > li { position: relative; padding-top: 8px; min-width: 145px; }
+  .dependency-children > li::before { content: ""; position: absolute; inset: 0 auto 0 calc(-1 * var(--branch-indent));
+    width: 1px; background: #6e879d; }
+  .dependency-children > li:last-child::before { height: 25px; }
+  .dependency-children > li::after { content: ""; position: absolute; inset: 24px auto auto calc(-1 * var(--branch-indent));
+    width: var(--branch-indent); height: 1px; background: #6e879d; }
+  .dependency-branch > summary { position: relative; cursor: pointer; }
+  .dependency-branch > summary::before { content: ""; position: absolute; z-index: 1; top: 12px; left: -7px;
+    border-block: 3px solid transparent; border-left: 6px solid #42617d; }
+  [data-direction="incoming"] .dependency-branch > summary::before { left: calc(-1 * var(--branch-indent));
+    border-left: 0; border-right: 6px solid #42617d; }
+  .dependency-branch[open] > summary { border-color: #87afcb; }
+  .dependency-branch .dependency-meta { display: block; margin-top: 2px; font-size: 12px; }
+  .dependency-branch > ul:not(.dependency-children) { font-size: 12px; margin: 5px 0; padding-left: 23px; }
+  #tree-context-menu { position: fixed; z-index: 5; padding: 4px; border: 1px solid #b8c9d8;
+    border-radius: 7px; background: var(--paper); box-shadow: 0 3px 12px #14223233; }
+  #path-results { margin-top: 8px; }
   .direction-title { margin: 13px 0 5px; color: #334e65; font-size: 12px; font-weight: 700; }
   .direction-title:first-child { margin-top: 3px; }
   .entry { padding: 7px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
@@ -177,9 +205,11 @@
   <div class="shell navigation">
     <nav aria-label="분석 보기">
       <button type="button" data-tab="class" aria-pressed="true">전체 클래스</button>
+      <button type="button" data-tab="high-level" aria-pressed="false" hidden>고수준 후보</button>
       <button type="button" data-tab="group" aria-pressed="false" hidden>필터 지도</button>
       <button type="button" data-tab="namespace" aria-pressed="false">namespace별</button>
       <button type="button" data-tab="project" aria-pressed="false">프로젝트</button>
+      <button type="button" data-tab="paths" aria-pressed="false" hidden>의존성 검사</button>
       <button type="button" data-tab="diagnostics" aria-pressed="false">진단</button>
     </nav>
     <div id="panels" class="buttons" aria-label="지도 패널">
@@ -203,11 +233,18 @@
         <label for="kind">관계</label>
         <select id="kind"></select>
       </div>
+      <div id="struct-control" class="field" hidden>
+        <label class="check"><input id="show-structs" type="checkbox" checked>struct 표시</label>
+      </div>
+      <div id="high-level-filter" class="field" hidden>
+        <label class="check"><input id="exclude-abstract-candidates" type="checkbox" checked>Interface·추상 타입 제외</label>
+      </div>
       <div class="field">
         <label for="search">이름 검색</label>
         <input id="search" type="search" autocomplete="off">
         <p id="results" class="muted" aria-live="polite"></p>
         <select id="nodes" size="7" aria-label="검색 결과"></select>
+        <p id="high-level-guide" class="muted" hidden>직접·간접으로 사용하는 타입이 많은 후보부터 정렬합니다.</p>
       </div>
       <details id="groups" open>
         <summary id="group-heading">표시할 namespace</summary>
@@ -231,6 +268,7 @@
               <option value="project">프로젝트 묶음</option>
             </select></label>
             <button type="button" id="focus" aria-pressed="false" disabled>선택 연결만</button>
+            <button type="button" id="open-dependency-tree" hidden>의존성 트리</button>
             <button type="button" id="zoom-in" aria-label="확대">+</button>
             <span id="zoom-level" aria-hidden="true"></span>
             <button type="button" id="zoom-out" aria-label="축소">−</button>
@@ -258,11 +296,38 @@
         <div id="details"></div>
       </section>
   </div>
+  <section class="panel" id="dependency-paths" aria-labelledby="paths-title" hidden>
+    <h2 id="paths-title" tabindex="-1">의존성 검사</h2>
+    <p class="muted" id="path-help"></p>
+    <form id="path-form" class="path-form">
+      <div class="field">
+        <label for="path-mode">검사 방법</label>
+        <select id="path-mode">
+          <option value="cycles">순환 의존</option>
+          <option value="tree">의존성 트리</option>
+        </select>
+      </div>
+      <div class="field" id="tree-root-control" hidden>
+        <label for="tree-root">기준 타입</label>
+        <select id="tree-root" required disabled></select>
+      </div>
+      <div class="field" id="path-interface-control">
+        <label class="check"><input id="path-interfaces" type="checkbox" checked>Interface를 향하는 연결 제외</label>
+      </div>
+      <div class="buttons"><button id="run-path-check" type="submit">순환 경로 찾기</button></div>
+    </form>
+    <p class="muted">검사와 트리에는 지도에서 숨긴 타입도 포함합니다.</p>
+    <p id="path-status" aria-live="polite"></p>
+    <div id="path-results"></div>
+  </section>
   <section class="panel" id="diagnostics" hidden>
     <h2>분석 진단</h2>
     <div id="issues"></div>
   </section>
 </main>
+<div id="tree-context-menu" class="buttons" hidden>
+  <button id="context-open-tree" type="button">의존성 트리 펼치기</button>
+</div>
 <script id="data" type="application/json"><!--GRAPH_DATA--></script>
 <script><!--GRAPH_SCRIPT--></script>
 </body>

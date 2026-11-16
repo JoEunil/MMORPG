@@ -81,6 +81,10 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
         else if (IsFunction(kind))
         {
             currentClass = ClassNode(clang_getCursorSemanticParent(cursor));
+            if (currentClass is not null && (kind is Kind.CxxMethod or Kind.Destructor or Kind.ConversionFunction)
+                && result.Nodes[currentClass] is { IsAbstract: false } node
+                && clang_CXXMethod_isPureVirtual(cursor) != 0)
+                result.Nodes[currentClass] = node with { IsAbstract = true };
             currentFunction = QualifiedName(cursor);
         }
         else if (currentClass is not null && kind is Kind.FieldDecl or Kind.CxxBaseSpecifier)
@@ -157,13 +161,20 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
         if (location is not null && usr.Length > 0)
         {
             id = "class:" + usr;
-            if (!result.Nodes.ContainsKey(id))
+            var isAbstract = IsClass(definition.Kind) && clang_CXXRecord_isAbstract(definition) != 0;
+            if (!result.Nodes.TryGetValue(id, out var node))
             {
                 var project = ProjectFor(location.File);
                 var filters = result.StudioFilters.GetValueOrDefault(location.File);
                 var filter = filters?.FirstOrDefault(entry => entry.Project == project) ?? filters?.FirstOrDefault();
-                result.Nodes.Add(id, new(id, QualifiedName(cursor), "class", project, location, NamespaceName(cursor), filter));
+                var declarationKind = cursor.Kind is Kind.ClassTemplate or Kind.ClassTemplatePartialSpecialization
+                    ? clang_getTemplateCursorKind(cursor)
+                    : cursor.Kind;
+                result.Nodes.Add(id, new(id, QualifiedName(cursor), "class", project, location, NamespaceName(cursor),
+                    filter, IsStruct: declarationKind == Kind.StructDecl, IsAbstract: isAbstract));
             }
+            else if (isAbstract && !node.IsAbstract)
+                result.Nodes[id] = node with { IsAbstract = true };
         }
         classIds[original] = id;
         return id;

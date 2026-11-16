@@ -4,7 +4,7 @@ internal record SourceLocation(string File, uint Line, uint Column = 0);
 internal record Evidence(SourceLocation Location, string Description);
 internal record StudioFilter(string Project, string Name);
 internal record Node(string Id, string Name, string Kind, string? Project, SourceLocation? Location,
-    string? Namespace = null, StudioFilter? VisualStudioFilter = null);
+    string? Namespace = null, StudioFilter? VisualStudioFilter = null, bool IsStruct = false, bool IsAbstract = false);
 internal record AnalysisIssue(string File, string Message);
 
 internal sealed class Edge(string from, string to, string kind)

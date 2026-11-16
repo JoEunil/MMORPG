@@ -4,6 +4,7 @@ const get = id => document.getElementById(id);
 const data = JSON.parse(get("data").textContent);
 const byId = new Map(data.nodes.map(node => [node.id, node]));
 const classes = data.nodes.filter(node => node.kind === "class");
+const structIds = new Set(classes.filter(node => node.isStruct).map(node => node.id));
 const projects = data.nodes.filter(node => node.kind === "project");
 const libraries = data.nodes.filter(node => node.kind === "library");
 const projectEdges = data.edges.filter(edge => edge.kind === "reference" || edge.kind === "external");
@@ -37,7 +38,7 @@ const state = {
   view: classes.length || !projects.length ? "class" : "project",
   namespace: [...groups].sort((a, b) => b[1].length - a[1].length)[0]?.[0] ?? "",
   external: false, hidden: new Set(), kind: "", selected: "", query: "", direction: "", focused: false, arrangement: "namespace", cardViews: new Set(["project"]),
-  hiddenProjects: new Set(), hiddenFilters: new Set(), interfaceOnly: false, filterInterfaceOnly: false
+  hiddenProjects: new Set(), hiddenFilters: new Set(), interfaceOnly: false, filterInterfaceOnly: false, showStructs: true
 };
 const card = { width: 219, height: 37, stepX: 255, stepY: 62 };
 const fullLayout = classLayout(classes);
@@ -63,6 +64,8 @@ let viewport = { width: 0, height: 0 };
 let edgesAtReadableZoom = false;
 let drag = null;
 let suppressClick = false;
+let treeMenuNode = "";
+let highLevelCandidates;
 
 init();
 
@@ -82,6 +85,11 @@ function init() {
   setOptions(get("namespace-select"), namespaceChoices);
   get("namespace-select").value = state.namespace;
   document.querySelector('[data-tab="group"]').hidden = !hasStudioFilters;
+  document.querySelector('[data-tab="paths"]').hidden = !classes.length;
+  document.querySelector('[data-tab="high-level"]').hidden = !classes.length;
+  const treeTypes = classes.map(node => [node.id, node.name]).sort((a, b) => a[1].localeCompare(b[1]));
+  setOptions(get("tree-root"), [["", "선택"], ...treeTypes]);
+  updatePathMode();
   get("layout-mode").querySelector('[value="project"]').disabled = !projects.length;
   showIssues();
   bindControls();
@@ -101,6 +109,28 @@ function bindControls() {
   get("kind").addEventListener("change", event => {
     state.kind = event.target.value;
     renderFilteredMap();
+  });
+  get("show-structs").addEventListener("change", event => {
+    state.showStructs = event.target.checked;
+    overviewCamera = null;
+    refreshGroupChecks();
+    renderMap(true);
+  });
+  get("exclude-abstract-candidates").addEventListener("change", () => renderMap(true));
+  get("path-mode").addEventListener("change", () => {
+    updatePathMode();
+    clearPathResults();
+  });
+  get("tree-root").addEventListener("change", clearPathResults);
+  get("path-interfaces").addEventListener("change", () => {
+    if (get("path-status").textContent) get("path-form").requestSubmit();
+  });
+  get("path-form").addEventListener("submit", event => {
+    event.preventDefault();
+    clearPathResults();
+    if (get("path-mode").value === "tree") showDependencyTree(get("tree-root").value);
+    else inspectDependencyCycles(get("path-interfaces").checked
+      ? classEdges.filter(edge => !targetsInterface(edge)) : classEdges);
   });
   for (const button of document.querySelectorAll("[data-presentation]")) {
     button.addEventListener("click", () => {
@@ -143,6 +173,22 @@ function bindControls() {
   get("toggle-filters").addEventListener("click", () => togglePanel("filters"));
   get("toggle-inspector").addEventListener("click", () => togglePanel("inspector"));
   get("focus").addEventListener("click", toggleFocus);
+  get("open-dependency-tree").addEventListener("click", () => openDependencyTree(state.selected));
+  get("context-open-tree").addEventListener("click", () => openDependencyTree(treeMenuNode));
+  graph.addEventListener("contextmenu", event => {
+    const id = event.target.closest("[data-node-id]")?.dataset.nodeId;
+    if (showTreeMenu(id, event.clientX, event.clientY)) event.preventDefault();
+  });
+  document.addEventListener("pointerdown", event => {
+    if (!get("tree-context-menu").contains(event.target)) closeTreeMenu();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || !treeMenuNode) return;
+    event.preventDefault();
+    nodeElements.get(treeMenuNode)?.focus();
+    closeTreeMenu();
+  });
+  window.addEventListener("resize", closeTreeMenu);
   get("direction").addEventListener("change", event => {
     state.direction = event.target.value;
     pickedEdge = null;
@@ -210,6 +256,7 @@ function clearFocus() {
 }
 
 function changeView(view) {
+  closeTreeMenu();
   const previous = byId.get(state.selected);
   if (view === "namespace" && previous?.kind === "class")
     state.namespace = namespaceOf(previous);
@@ -221,18 +268,24 @@ function changeView(view) {
   get("search").value = "";
   for (const tab of document.querySelectorAll("nav button"))
     tab.setAttribute("aria-pressed", tab.dataset.tab === view);
-  get("explorer").hidden = view === "diagnostics";
-  get("panels").hidden = view === "diagnostics";
+  const isMap = view !== "diagnostics" && view !== "paths";
+  get("explorer").hidden = !isMap;
+  get("panels").hidden = !isMap;
+  get("dependency-paths").hidden = view !== "paths";
   get("diagnostics").hidden = view !== "diagnostics";
-  if (view === "diagnostics") return;
+  if (!isMap) return;
 
   get("namespace-controls").hidden = view !== "namespace";
   get("namespace-select").value = state.namespace;
   get("namespace-select").disabled = groups.size === 0;
   get("relation-control").hidden = view === "project";
+  get("struct-control").hidden = view === "project" || !structIds.size;
+  get("high-level-filter").hidden = view !== "high-level";
+  get("high-level-guide").hidden = view !== "high-level";
   setOptions(get("kind"), [["", "모든 관계"], ...classKinds.map(kind => [kind, types[kind].name])]);
   get("diagram-title").textContent = {
-    class: "전체 클래스 맵", namespace: "namespace별 클래스 맵", project: "프로젝트 의존성", group: "Visual Studio 필터 지도"
+    class: "전체 클래스 맵", "high-level": "고수준 타입 후보 맵", namespace: "namespace별 클래스 맵",
+    project: "프로젝트 의존성", group: "Visual Studio 필터 지도"
   }[view];
   refreshGroupChecks();
   renderMap(true);
@@ -251,8 +304,11 @@ function renderLegend() {
       : grouped ? "Interface 참조 포함" : "프로젝트 간 Interface 상속";
     item.append(line, label);
     return item;
-  }), document.createTextNode(grouped ? "숫자는 연결된 클래스 쌍 수 · 선을 눌러 근거 보기"
-    : "화살표는 의존 대상 방향 · 노드를 끌어 이동 · 선을 눌러 근거 보기"));
+  }), document.createTextNode(state.view === "high-level"
+    ? "금색 테두리: 서로 다른 타입 2개 이상에서 직접 참조하고 나가는 연결이 없는 후보 · 화살표는 의존 대상 방향"
+    : grouped ? "숫자는 연결된 클래스 쌍 수 · 선을 눌러 근거 보기"
+    : "화살표는 의존 대상 방향 · 선을 눌러 근거 보기"
+      + (state.view === "class" ? " · 노드를 우클릭해 트리 펼치기" : "")));
 }
 
 function relationshipView() { return !state.cardViews.has(state.view); }
@@ -268,13 +324,14 @@ function refreshGroupChecks() {
 
   get("group-heading").textContent = state.view === "group" ? "표시할 필터"
     : projectClassView() ? "표시할 프로젝트" : "표시할 namespace";
-  const choices = state.view === "group" ? filterGraph.nodes.map(node => [node.id, node.name, node.count, node.color])
-    : projectClassView() ? [...projectGroups].map(([id, members]) => [id, projectName(id), members.length, projectColors.get(id)])
-    : [...groups].map(([name, members]) => [name, namespaceTitle(name), members.length, namespaceColors.get(name)]);
+  const choices = state.view === "group" ? filterGraph.nodes.map(node => [node.id, node.name, filterGroupCount(node), node.color])
+    : projectClassView() ? [...projectGroups].map(([id, members]) => [id, projectName(id), members.filter(showsType).length, projectColors.get(id)])
+    : [...groups].map(([name, members]) => [name, namespaceTitle(name), members.filter(showsType).length, namespaceColors.get(name)]);
   choices.sort((a, b) => a[1].localeCompare(b[1]));
   const list = get("group-list");
   list.replaceChildren();
   for (const [name, title, count, color] of choices) {
+    if (count === 0) continue;
     const label = document.createElement("label");
     const checkbox = document.createElement("input");
     const text = document.createElement("span");
@@ -323,6 +380,217 @@ function isInterface(node) {
   return node?.visualStudioFilter?.name.split(/[\\/]/).some(part => part.toLowerCase() === "interface") ?? false;
 }
 
+function showsType(node) { return state.showStructs || !node.isStruct; }
+function filterGroupCount(node) { return state.showStructs ? node.count : node.count - node.structCount; }
+
+function updatePathMode() {
+  const tree = get("path-mode").value === "tree";
+  get("tree-root-control").hidden = !tree;
+  get("tree-root").disabled = !tree;
+  get("path-interface-control").hidden = tree || !hasStudioFilters;
+  get("path-help").textContent = tree
+    ? "기준 타입에서 들어오는 연결과 나가는 연결을 따라갑니다."
+    : "화살표를 따라 출발 타입으로 돌아올 수 있는 그룹을 찾습니다.";
+  get("run-path-check").textContent = tree ? "트리 펼치기" : "순환 경로 찾기";
+}
+
+function clearPathResults() {
+  get("path-status").textContent = "";
+  get("path-results").replaceChildren();
+}
+
+function targetsInterface(edge) { return isInterface(byId.get(edge.to)); }
+
+function inspectDependencyCycles(edges) {
+  const cycles = findDependencyCycles(edges);
+  get("path-status").textContent = cycles.length
+    ? "순환 그룹 " + cycles.length + "개 · 그룹마다 예시 경로 1개"
+    : "분석된 관계에서 순환 경로를 찾지 못했습니다.";
+  if (hasStudioFilters) get("path-status").append(get("path-interfaces").checked ? " · Interface 연결 제외" : " · Interface 연결 포함");
+  const results = get("path-results");
+  for (const { members, path } of cycles) {
+    const heading = document.createElement("h3");
+    heading.className = "direction-title";
+    heading.textContent = "순환 그룹 · 타입 " + members.length + "개";
+    const names = document.createElement("p");
+    names.className = "muted path";
+    names.textContent = members.map(id => byId.get(id).name).sort().join(", ");
+    results.append(heading, names, dependencyPathRow(path));
+  }
+}
+
+function openDependencyTree(id) {
+  if (byId.get(id)?.kind !== "class") return;
+  changeView("paths");
+  get("path-mode").value = "tree";
+  updatePathMode();
+  get("tree-root").value = id;
+  get("path-form").requestSubmit();
+  get("paths-title").focus();
+}
+
+function showTreeMenu(id, x, y) {
+  if (state.view !== "class" || byId.get(id)?.kind !== "class") return false;
+  treeMenuNode = id;
+  const menu = get("tree-context-menu");
+  menu.hidden = false;
+  menu.style.left = Math.max(4, Math.min(x, window.innerWidth - menu.offsetWidth - 4)) + "px";
+  menu.style.top = Math.max(4, Math.min(y, window.innerHeight - menu.offsetHeight - 4)) + "px";
+  get("context-open-tree").focus({ preventScroll: true });
+  return true;
+}
+
+function closeTreeMenu() {
+  treeMenuNode = "";
+  get("tree-context-menu").hidden = true;
+}
+
+function showDependencyTree(rootId) {
+  get("path-status").textContent = byId.get(rootId).name;
+  const trees = document.createElement("div");
+  trees.className = "dependency-trees";
+  for (const [direction, title, start, end] of [
+    ["incoming", "들어오는 의존성 · 기준 타입을 사용", "to", "from"],
+    ["outgoing", "나가는 의존성 · 기준 타입이 사용", "from", "to"]
+  ]) {
+    const section = document.createElement("section");
+    section.dataset.direction = direction;
+    const heading = document.createElement("h3");
+    heading.className = "direction-title";
+    heading.textContent = title;
+    const root = document.createElement("div");
+    root.className = "dependency-root";
+    root.textContent = byId.get(rootId).name;
+    section.append(heading, root);
+    const adjacency = groupByNamespace(classEdges, edge => edge[start]);
+    const branches = buildDependencyBranches(rootId, adjacency, end, new Set([rootId]));
+    if (branches.childElementCount) section.append(branches);
+    else {
+      const empty = document.createElement("p");
+      empty.className = "muted";
+      empty.textContent = "직접 연결이 없습니다.";
+      section.append(empty);
+    }
+    trees.append(section);
+  }
+  get("path-results").append(trees);
+}
+
+function buildDependencyBranches(id, adjacency, end, ancestors) {
+  const container = document.createElement("ul");
+  container.className = "dependency-children";
+  const neighbors = groupByNamespace(adjacency.get(id) ?? [], edge => edge[end]);
+  for (const [neighborId, edges] of neighbors) {
+    const neighbor = byId.get(neighborId);
+    const repeats = ancestors.has(neighborId);
+    const branch = document.createElement("details");
+    branch.className = "dependency-branch";
+    branch.dataset.typeId = neighborId;
+    const summary = document.createElement("summary");
+    const name = document.createElement("strong");
+    name.textContent = neighbor.name;
+    const meta = document.createElement("span");
+    meta.className = "muted dependency-meta";
+    meta.textContent = edges.map(edge => types[edge.kind].name).join(" · ")
+      + (isInterface(neighbor) ? " · Interface" : "") + (repeats ? " · 순환" : "");
+    summary.append(name, meta);
+    branch.append(summary);
+    branch.addEventListener("toggle", function reveal() {
+      if (!branch.open) return;
+      branch.removeEventListener("toggle", reveal);
+      for (const edge of edges) branch.append(evidenceLocations(edge.evidence));
+      if (!repeats) {
+        const nextAncestors = new Set(ancestors).add(neighborId);
+        const children = buildDependencyBranches(neighborId, adjacency, end, nextAncestors);
+        if (children.childElementCount) branch.append(children);
+      }
+    });
+    const item = document.createElement("li");
+    item.append(branch);
+    container.append(item);
+  }
+  return container;
+}
+
+function dependencyPathRow(path) {
+  const row = document.createElement("details");
+  const summary = document.createElement("summary");
+  const label = document.createElement("span");
+  label.className = "relation-type";
+  label.textContent = path.some(targetsInterface) ? "Interface 포함" : "수정 후보";
+  const ids = [path[0].from, ...path.map(edge => edge.to)];
+  summary.append(label, ids.map(id => byId.get(id).name).join(" → "));
+  row.className = "entry";
+  row.append(summary);
+  for (const edge of path) {
+    const step = document.createElement("strong");
+    step.textContent = byId.get(edge.from).name + " → " + byId.get(edge.to).name + " · " + types[edge.kind].name;
+    row.append(step, evidenceLocations(edge.evidence));
+  }
+  return row;
+}
+
+function exampleCycle(start, outgoing, members) {
+  const queue = [start];
+  const previous = new Map([[start, null]]);
+  for (let index = 0; index < queue.length; index++) {
+    for (const edge of outgoing.get(queue[index]) ?? []) {
+      if (!members.has(edge.to)) continue;
+      if (edge.to === start) {
+        const path = [edge];
+        for (let step = previous.get(edge.from); step; step = previous.get(step.from)) path.push(step);
+        return path.reverse();
+      }
+      if (previous.has(edge.to)) continue;
+      previous.set(edge.to, edge);
+      queue.push(edge.to);
+    }
+  }
+}
+
+function findDependencyCycles(edges) {
+  const outgoing = groupByNamespace(edges, edge => edge.from);
+  const incoming = groupByNamespace(edges, edge => edge.to);
+  const nodes = new Set([...outgoing.keys(), ...incoming.keys()]);
+  const visited = new Set();
+  const finished = [];
+  // Reverse finishing order lets the second traversal isolate each strongly connected component.
+  for (const start of nodes) {
+    const stack = [[start, false]];
+    while (stack.length) {
+      const [id, expanded] = stack.pop();
+      if (expanded) {
+        finished.push(id);
+        continue;
+      }
+      if (visited.has(id)) continue;
+      visited.add(id);
+      stack.push([id, true]);
+      for (const edge of outgoing.get(id) ?? []) {
+        if (!visited.has(edge.to)) stack.push([edge.to, false]);
+      }
+    }
+  }
+
+  visited.clear();
+  const cycles = [];
+  for (const start of finished.reverse()) {
+    if (visited.has(start)) continue;
+    visited.add(start);
+    const members = [start];
+    for (let index = 0; index < members.length; index++) {
+      for (const edge of incoming.get(members[index]) ?? []) {
+        if (visited.has(edge.from)) continue;
+        visited.add(edge.from);
+        members.push(edge.from);
+      }
+    }
+    if (members.length < 2) continue; // The analyzer omits self-edges.
+    cycles.push({ members, path: exampleCycle(start, outgoing, new Set(members)) });
+  }
+  return cycles.sort((a, b) => b.members.length - a.members.length);
+}
+
 function createFilterGroups() {
   const memberToGroup = new Map();
   const groups = new Map();
@@ -331,9 +599,11 @@ function createFilterGroups() {
     const filter = node.visualStudioFilter?.name ?? "(필터 미지정)";
     const id = "filter:" + JSON.stringify([project, filter]);
     if (!groups.has(id)) groups.set(id, {
-      id, name: projectName(project) + " / " + filter, project, projectLabel: projectName(project), filterName: filter, kind: "group", count: 0
+      id, name: projectName(project) + " / " + filter, project, projectLabel: projectName(project), filterName: filter,
+      kind: "group", count: 0, structCount: 0
     });
     groups.get(id).count++;
+    if (node.isStruct) groups.get(id).structCount++;
     memberToGroup.set(node.id, id);
   }
   const colors = distinctColors(groups.keys());
@@ -342,8 +612,8 @@ function createFilterGroups() {
   return { nodes, memberToGroup };
 }
 
-function aggregateFilters(edges) {
-  const groups = filterGraph.nodes.filter(node => !state.hiddenFilters.has(node.id));
+function aggregateFilters(groups, edges) {
+  groups = groups.filter(node => !state.hiddenFilters.has(node.id));
   const visible = new Set(groups.map(node => node.id));
   const links = new Map();
   for (const edge of edges) {
@@ -365,6 +635,25 @@ function aggregateFilters(edges) {
   return { nodes: state.filterInterfaceOnly ? groups.filter(node => connected.has(node.id)) : groups, edges: groupEdges };
 }
 
+function findHighLevelCandidates(edges) {
+  const sources = new Set(edges.map(edge => edge.from));
+  const incoming = groupByNamespace(edges, edge => edge.to);
+  const candidates = new Map();
+  for (const [id, links] of incoming) {
+    if (sources.has(id)) continue;
+
+    const direct = new Set(links.map(edge => edge.from));
+    if (direct.size < 2) continue;
+    const dependents = new Set(direct);
+    // Set iteration also visits vertices added during the walk.
+    for (const dependent of dependents) {
+      for (const edge of incoming.get(dependent) ?? []) dependents.add(edge.from);
+    }
+    candidates.set(id, { direct: direct.size, indirect: dependents.size - direct.size, total: dependents.size });
+  }
+  return candidates;
+}
+
 function renderMap(resetCamera) {
   for (const button of document.querySelectorAll("[data-presentation]"))
     button.setAttribute("aria-pressed", (button.dataset.presentation === "relationships") === relationshipView());
@@ -377,27 +666,42 @@ function renderMap(resetCamera) {
   get("interfaces").checked = state.view === "group" ? state.filterInterfaceOnly : state.interfaceOnly;
   get("kind").disabled = inProjects && state.interfaceOnly;
   renderLegend();
+  const eligibleEdges = state.view === "project" ? [] : classEdges.filter(edge =>
+    (state.showStructs || (!structIds.has(edge.from) && !structIds.has(edge.to))) &&
+    (inProjects && state.interfaceOnly ? interfaceInheritance.has(edge) : !state.kind || edge.kind === state.kind));
+  const eligibleGroups = state.view === "group" ? filterGraph.nodes.filter(node => filterGroupCount(node) > 0) : [];
+  let internalCount = 0;
+  let candidateCount = 0;
   if (state.view === "project") {
     scopeNodes = [...projects, ...libraries];
     scopeEdges = projectEdges;
   } else if (state.view === "group") {
-    const result = aggregateFilters(state.kind ? classEdges.filter(edge => edge.kind === state.kind) : classEdges);
+    const result = aggregateFilters(eligibleGroups, eligibleEdges);
     scopeNodes = result.nodes;
     scopeEdges = result.edges;
+  } else if (state.view === "high-level") {
+    highLevelCandidates ??= findHighLevelCandidates(classEdges);
+    const excludeAbstract = get("exclude-abstract-candidates").checked;
+    const candidates = classes.filter(node => highLevelCandidates.has(node.id) && showsType(node)
+      && (!excludeAbstract || !(isInterface(node) || node.isAbstract)));
+    const candidateIds = new Set(candidates.map(node => node.id));
+    scopeEdges = eligibleEdges.filter(edge => candidateIds.has(edge.to));
+    const users = new Set(scopeEdges.map(edge => edge.from));
+    scopeNodes = [...candidates, ...[...users].map(id => byId.get(id))];
+    candidateCount = candidates.length;
   } else {
-    const matchingEdges = inProjects && state.interfaceOnly ? classEdges.filter(edge => interfaceInheritance.has(edge))
-      : state.kind ? classEdges.filter(edge => edge.kind === state.kind) : classEdges;
-    const internal = state.view === "class"
+    const internal = (state.view === "class"
       ? classes.filter(node => inProjects ? !state.hiddenProjects.has(projectOf(node)) : !state.hidden.has(namespaceOf(node)))
-      : groups.get(state.namespace) ?? [];
+      : groups.get(state.namespace) ?? []).filter(showsType);
+    internalCount = internal.length;
     const ids = new Set(internal.map(node => node.id));
     if (state.view === "namespace" && state.external) {
       // Take one hop from the selected namespace, without following external-to-external edges.
-      scopeEdges = matchingEdges.filter(edge => ids.has(edge.from) || ids.has(edge.to));
+      scopeEdges = eligibleEdges.filter(edge => ids.has(edge.from) || ids.has(edge.to));
       const external = new Set(scopeEdges.flatMap(edge => [edge.from, edge.to]).filter(id => !ids.has(id)));
       scopeNodes = [...internal, ...[...external].map(id => byId.get(id))];
     } else {
-      scopeEdges = matchingEdges.filter(edge => ids.has(edge.from) && ids.has(edge.to));
+      scopeEdges = eligibleEdges.filter(edge => ids.has(edge.from) && ids.has(edge.to));
       scopeNodes = internal;
       if (inProjects && state.interfaceOnly) {
         const connected = new Set(scopeEdges.flatMap(edge => [edge.from, edge.to]));
@@ -416,6 +720,7 @@ function renderMap(resetCamera) {
   let autoLayout;
   const mapKey = state.view === "namespace" ? ["namespace", state.namespace] : [state.view];
   mapKey.push(relationshipView() ? "relationships" : "cards");
+  if (state.view !== "project") mapKey.push(state.showStructs);
   if (state.view === "group") mapKey.push(state.filterInterfaceOnly);
   if (inProjects) mapKey.push("project", state.interfaceOnly);
   if (state.focused) {
@@ -434,7 +739,8 @@ function renderMap(resetCamera) {
   } else if (state.view === "group") {
     autoLayout = classLayout(scopeNodes, null, projectOf);
   } else {
-    autoLayout = state.view === "class" ? fullLayout : classLayout(scopeNodes, state.namespace);
+    autoLayout = state.view === "class" && state.showStructs ? fullLayout
+      : classLayout(scopeNodes, state.view === "namespace" ? state.namespace : null);
   }
 
   get("layout-mode").disabled = state.focused;
@@ -449,14 +755,15 @@ function renderMap(resetCamera) {
   drawnPanels = layout.panels.filter(panel => panel.nodes.some(node => ids.has(node.id)));
   updateBounds();
   if (pickedEdge && !visibleEdges.includes(pickedEdge)) pickedEdge = null;
-  const total = state.view === "group" ? filterGraph.nodes.length : classes.length;
+  const total = state.view === "group" ? eligibleGroups.length : classes.length - (state.showStructs ? 0 : structIds.size);
   get("map-count").textContent = state.focused
     ? "선택 주변 " + visibleNodes.length + "개 · 연결 " + visibleEdges.length
     : state.view === "namespace"
-    ? namespaceTitle(state.namespace) + " · 내부 " + (groups.get(state.namespace)?.length ?? 0)
-      + "개 · 외부 " + (visibleNodes.length - (groups.get(state.namespace)?.length ?? 0)) + "개 · 연결 " + visibleEdges.length
+    ? namespaceTitle(state.namespace) + " · 내부 " + internalCount
+      + "개 · 외부 " + (visibleNodes.length - internalCount) + "개 · 연결 " + visibleEdges.length
     : state.view === "group" ? "필터 " + visibleNodes.length + "/" + total + "개 · 방향 연결 " + visibleEdges.length
     : state.view === "project" ? "프로젝트 " + projects.length + "개 · 외부 라이브러리 " + libraries.length + "개 · 연결 " + visibleEdges.length
+    : state.view === "high-level" ? "후보 " + candidateCount + "개 · 직접 연결 " + visibleEdges.length + "개"
     : "표시 " + visibleNodes.length + "/" + total + "개 · 연결 " + visibleEdges.length
       + (inProjects && hasStudioFilters ? " · Interface 상속 " + visibleEdges.filter(edge => interfaceInheritance.has(edge)).length : "");
   get("empty").hidden = visibleNodes.length > 0;
@@ -703,6 +1010,7 @@ function drawGraph(panels) {
   for (const node of visibleNodes) {
     const pos = layout.positions.get(node.id);
     const appearance = "node" + (pos.external ? " external" : "") + (pos.radial ? " radial" : "")
+      + (state.view === "high-level" && highLevelCandidates.has(node.id) ? " high-level-candidate" : "")
       + (pos.hub ? " hub" : "") + (projectClassView() ? " project-member" : "")
       + (node.kind === "group" ? " filter-node" : "") + (node.kind === "library" ? " external-library" : "")
       + (node.kind === "project" ? " project-node" : "");
@@ -734,6 +1042,11 @@ function drawGraph(panels) {
       if (!state.focused && state.selected === node.id) toggleFocus();
     });
     group.addEventListener("keydown", event => {
+      if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
+        const rect = group.getBoundingClientRect();
+        if (showTreeMenu(node.id, rect.left, rect.bottom)) event.preventDefault();
+        return;
+      }
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
       choose(node.id, true);
@@ -807,8 +1120,12 @@ function matches(node) {
 }
 
 function updateSearch() {
-  const found = scopeNodes.filter(matches);
-  setOptions(get("nodes"), found.map(node => [node.id, node.name]));
+  const isHighLevel = state.view === "high-level";
+  const found = scopeNodes.filter(node => matches(node) && (!isHighLevel || highLevelCandidates.has(node.id)));
+  if (isHighLevel)
+    found.sort((a, b) => highLevelCandidates.get(b.id).total - highLevelCandidates.get(a.id).total || a.name.localeCompare(b.name));
+  setOptions(get("nodes"), found.map(node => [node.id, isHighLevel
+    ? node.name + " (" + highLevelCandidates.get(node.id).total + ")" : node.name]));
   get("nodes").selectedIndex = -1;
   if (found.some(node => node.id === state.selected)) get("nodes").value = state.selected;
   get("results").textContent = (state.query ? "검색 결과 " : "목록 ") + found.length + "개";
@@ -869,6 +1186,7 @@ function updateHighlights() {
   get("direction").disabled = !state.selected;
   get("focus").disabled = !state.selected;
   get("focus").setAttribute("aria-pressed", state.focused);
+  get("open-dependency-tree").hidden = byId.get(state.selected)?.kind !== "class";
 }
 
 function updateEdgeTargets() {
@@ -988,9 +1306,12 @@ function locate() {
 function showEvidence() {
   const node = state.selected ? byId.get(state.selected) : null;
   get("details-title").textContent = node?.name ?? "연결 근거";
-  get("location").textContent = node?.kind === "group" ? "클래스 " + node.count + "개"
+  get("location").textContent = node?.kind === "group" ? "클래스 " + filterGroupCount(node) + "개"
     : node?.kind === "library" ? "외부 라이브러리 · " + node.location.file
     : node?.location ? formatLocation(node.location) : "";
+  const candidate = state.view === "high-level" ? highLevelCandidates.get(state.selected) : null;
+  if (candidate)
+    get("location").append(document.createElement("br"), "직접 " + candidate.direct + "개 · 간접만 " + candidate.indirect + "개");
   const edges = node ? selectedEdges() : state.view === "project" ? scopeEdges : [];
   const container = get("details");
   const scrollTop = container.scrollTop;
@@ -1044,6 +1365,7 @@ function evidenceRow(edge, selected) {
   navigate.textContent = "이 항목으로 이동";
   navigate.addEventListener("click", () => { choose(neighbor, true); get("details-title").focus(); });
   row.append(summary, entries, navigate);
+  if (edge.kind === "field") row.append(dependencyTreeButton(edge.to));
   evidenceRows.set(edge, row);
   return row;
 }
@@ -1072,12 +1394,22 @@ function groupEvidence(edge, row) {
         get("details-title").focus();
       });
       detail.append(summary, evidenceLocations(relation.evidence), navigate);
+      if (relation.kind === "field") detail.append(dependencyTreeButton(relation.to));
       container.append(detail);
     }
   };
   row.addEventListener("toggle", materialize);
   materialize();
   return container;
+}
+
+function dependencyTreeButton(id) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "inspect-node";
+  button.textContent = "대상 타입의 의존성 트리";
+  button.addEventListener("click", () => openDependencyTree(id));
+  return button;
 }
 
 function evidenceLocations(evidenceList) {
