@@ -1,6 +1,6 @@
 # 서버 의존성 지도 활용법
 
-[예제 HTML 보고서](Reports/server-project-map.html) · [분석기 소스](Source/) · [빌드 및 실행](BUILD.md) · [서버 설계 결정](../../DesignDecisions.md)
+[MMORPG 서버 의존성 분석 보고서](https://joeunil.github.io/MMORPG/reports/server-project-map.html) · [분석기 소스](Source/) · [빌드 및 실행](BUILD.md) · [서버 설계 결정](../../DesignDecisions.md)
 
 ## 1. 도구의 목적
 
@@ -10,9 +10,9 @@
 
 ## 2. 보고서 열기
 
-**예제 보고서는 분석기를 실행하지 않아도 볼 수 있다.** 위 HTML 파일을 내려받아 브라우저에서 연다. GitHub에서는 실행 화면 대신 HTML 소스가 표시된다.
+**직접 개발한 MMORPG 서버를 분석한 보고서다.** 위 링크를 열면 분석기를 실행하거나 파일을 내려받지 않아도 브라우저에서 클래스 관계와 코드 근거를 확인할 수 있다. [보고서 원본 HTML](Reports/server-project-map.html)도 저장소에 보관한다.
 
-| 항목 | 동봉 보고서의 분석 범위 |
+| 항목 | 게시된 서버 보고서의 분석 범위 |
 | --- | --- |
 | 대상 | `Game` 서버, `Release\|x64`, 테스트 제외 |
 | 소스 분석 | 54개 중 54개 파싱, Clang 오류가 포함된 파일 0개 |
