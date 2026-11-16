@@ -23,8 +23,8 @@ namespace Core {
             if (!queue.pop(packets))
                 break;
             m_queuedWorkCount.fetch_sub(1, std::memory_order_relaxed);
-            auto& headers = packets->headers;
-            auto& chunks = packets->chunks;
+            const auto& headers = packets->headers;
+            const auto& chunks = packets->chunks;
             perfCollector->AddBroadcastPopCnt();
 
             if (packets->targetSessionID != 0) {
@@ -44,7 +44,7 @@ namespace Core {
             const uint16_t zoneID = packets->zoneID;
             ZoneState* zone = stateManager->GetZone(zoneID);
             Base::BufferReader<std::vector<std::vector<uint64_t>>> reader = zone->GetSessionSnaphot();
-            auto& vec = *reader.data; 
+            const auto& recipientsByCell = *reader.data;
             size_t sentCount = 0;
             for (int i =0 ;i < CELLS_X*CELLS_Y; i++)
             {
@@ -64,8 +64,8 @@ namespace Core {
                 if (count == 0)
                     continue;
                 writer->AddChunk(headers[i], len, count);
-                sentCount += vec[i].size();
-                for (auto session : vec[i])
+                sentCount += recipientsByCell[i].size();
+                for (auto session : recipientsByCell[i])
                 {
                     networkSender->SendDataChunks(session, headers[i], currChunks[i]);
                 }
@@ -108,18 +108,14 @@ namespace Core {
             return false;
         }
         const auto queued = m_queuedWorkCount.fetch_add(1, std::memory_order_relaxed);
-        if (queued >= BROADCAST_QUEUE_SIZE) {
-            m_queuedWorkCount.fetch_sub(1, std::memory_order_relaxed);
-            perfCollector->AddBroadcastDropCnt();
-            return false;
+        if (queued < BROADCAST_QUEUE_SIZE) {
+            auto& queue = m_workQueues[(work->zoneID - 1) % BROADCAST_THREADPOOL_SIZE];
+            if (queue.push(std::move(work)))
+                return true;
         }
-        auto& queue = m_workQueues[(work->zoneID - 1) % BROADCAST_THREADPOOL_SIZE];
-        if (!queue.push(std::move(work))) {
-            m_queuedWorkCount.fetch_sub(1, std::memory_order_relaxed);
-            perfCollector->AddBroadcastDropCnt();
-            return false;
-        }
-        return true;
+        m_queuedWorkCount.fetch_sub(1, std::memory_order_relaxed);
+        perfCollector->AddBroadcastDropCnt();
+        return false;
     }
 
     void BroadcastThreadPool::EnqueueWork(std::vector<std::shared_ptr<IPacket>> headers, std::vector<std::shared_ptr<IPacket>> chunks, uint16_t zoneID) {
