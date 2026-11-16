@@ -153,6 +153,7 @@
     <ClInclude Include="BroadcastThreadPool.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="CacheConfig.h" />
+    <ClInclude Include="CacheCommandSender.h" />
     <ClInclude Include="NonZoneConfig.h" />
     <ClInclude Include="PacketConfig.h" />
     <ClInclude Include="WorldConfig.h" />
@@ -193,6 +194,7 @@
   <ItemGroup>
     <ClCompile Include="ChatSessionManager.cpp" />
     <ClCompile Include="ChatThreadPool.cpp" />
+    <ClCompile Include="CacheCommandSender.cpp" />
     <ClCompile Include="DurableLogger.cpp" />
     <ClCompile Include="LoggerGlobal.cpp" />
     <ClCompile Include="NonZoneHandler.cpp" />

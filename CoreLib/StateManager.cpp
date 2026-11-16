@@ -1,11 +1,14 @@
 ﻿#include "pch.h"
 #include "StateManager.h"
-#include "Initializer.h"
+#include "CacheCommandSender.h"
 #include "ChatThreadPool.h"
+#include "LobbyZone.h"
+#include "PacketWriter.h"
 #include "WorldMap.h"
 #include "ItemData.h"
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <limits>
 
 namespace Core {
@@ -186,12 +189,7 @@ namespace Core {
 
     void StateManager::GrantMonsterReward(const CharacterState& character, uint64_t gold) {
         const auto sessionID = character.sessionID;
-        Message deposit(sizeof(MsgStruct<MsgCurrencyDepositBody>));
-        auto* message = reinterpret_cast<MsgStruct<MsgCurrencyDepositBody>*>(deposit.GetBuffer());
-        message->header = {sessionID, MSG_CURRENCY_DEPOSIT};
-        message->body = {character.characterID, gold};
-        deposit.SetLength(sizeof(*message));
-        if (!mq->EnqueueMessage(&deposit)) {
+        if (!cacheCommands->EnqueueGoldDeposit(sessionID, character.characterID, gold)) {
             errorLogger->LogError("monster reward", "gold deposit queue rejected", "characterID", character.characterID);
             auto packet = ZoneState::writer->WriteGoldReward(0);
             if (packet) networkSender->SendDataUnique(sessionID, std::move(packet));
@@ -622,26 +620,7 @@ namespace Core {
     }
 
     void StateManager::EnqueueCharacterStateUpdate(uint64_t sessionID, const CharacterState& character) {
-        Message msg(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
-        auto st = reinterpret_cast<MsgStruct<MsgCharacterStateUpdateBody>*>(msg.GetBuffer());
-        st->header.sessionID = sessionID;
-        st->header.messageType = MSG_CHARACTER_STATE_UPDATE;
-        st->body.charID = character.characterID;
-        st->body.profileId = character.profileId;
-        st->body.attack = character.attack;
-        st->body.level = character.level;
-        st->body.exp = character.exp;
-        st->body.hp = character.hp;
-        st->body.mp = character.mp;
-        st->body.maxHp = character.maxHp;
-        st->body.maxMp = character.maxMp;
-        st->body.dir = character.dir;
-        st->body.x = character.x;
-        st->body.y = character.y;
-        st->body.lastZone = static_cast<uint8_t>(character.lastZone);
-        msg.SetLength(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
-
-        if (!mq->EnqueueMessage(&msg)) {
+        if (!cacheCommands->EnqueueCharacterStateUpdate(sessionID, character)) {
             std::vector<std::byte> binary(sizeof(CharacterState));
             std::memcpy(binary.data(), &character, sizeof(CharacterState));
             errorLogger->LogError("state manager", "Failed to enqueue character state update", "sessionID", sessionID, "character state", binary);

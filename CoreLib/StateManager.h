@@ -10,10 +10,6 @@
 #include <memory>
 #include <new>
 
-#include "IMessageQueue.h"
-#include "MessageTypes.h"
-#include "Message.h"
-
 #include "ZoneState.h"
 #include "WorldConfig.h"
 #include "PacketConfig.h"
@@ -48,6 +44,7 @@ namespace Core {
         mutable std::shared_mutex smutex;
         std::unordered_map<uint64_t, SessionData> sessionMap;
     };
+    class CacheCommandSender;
     class LobbyZone;
     class ChatThreadPool;
     struct ZoneChangeResult;
@@ -57,29 +54,29 @@ namespace Core {
         std::atomic<bool> m_running;
 
         IInventoryOperations* inventory = nullptr;
-        IMessageQueue* mq = nullptr;
+        const CacheCommandSender* cacheCommands = nullptr;
         INetworkSender* networkSender = nullptr;
         LobbyZone* lobbyZone = nullptr;
         ChatThreadPool* chat = nullptr;
 
 
-        void Initialize(IMessageQueue* m, INetworkSender* sender, LobbyZone* lobby, ChatThreadPool* c) {
+        void Initialize(const CacheCommandSender* commands, INetworkSender* sender, LobbyZone* lobby, ChatThreadPool* c) {
             m_states.reserve(ZONE_COUNT);
             for (int zoneID = 1; zoneID <= ZONE_COUNT; zoneID++) {
                 m_states.emplace(zoneID, std::make_unique<ZoneState>(zoneID));
             }
             for (auto& shard : m_shards)
                 shard.sessionMap.reserve(MAX_USER_CAPACITY / SHARD_SIZE);
-            mq = m;
+            cacheCommands = commands;
             lobbyZone = lobby;
             networkSender = sender;
             chat = c;
             m_running.store(true, std::memory_order_relaxed);
         }
 
-        bool IsReady() {
-            if (mq == nullptr) {
-                sysLogger->LogError("state manager", "message queue not initialized");
+        bool IsReady() const {
+            if (cacheCommands == nullptr) {
+                sysLogger->LogError("state manager", "cache command sender not initialized");
                 return false;
             }
             if (lobbyZone == nullptr) {
