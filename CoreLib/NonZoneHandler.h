@@ -1,12 +1,8 @@
 ﻿#pragma once
-#include "CacheConfig.h"
 #include <cstdint>
 
-#include "MessageTypes.h"
-#include "MessagePool.h"
-#include "IMessageQueue.h"
-
 namespace Core {
+    class CacheCommandSender;
     class ILogger;
     class ISessionAuth;
     class IPacketView;
@@ -18,27 +14,7 @@ namespace Core {
     class ChatThreadPool;
     class IProfileCache;
     class NonZoneHandler{
-        template<typename T>
-        static MsgStruct<T>* InitializeMsg(Message& msg, MsgHeader header) {
-            static_assert(sizeof(MsgStruct<T>) <= MESSAGE_LEN);
-            auto* request = reinterpret_cast<MsgStruct<T>*>(msg.GetBuffer());
-            request->header = header;
-            msg.SetLength(sizeof(*request));
-            return request;
-        }
-
-        template<typename T>
-        bool TryEnqueueMessage(MsgHeader header, const T& body) {
-            auto msg = messagePool->AcquireScoped();
-            if (!msg)
-                return false;
-
-            auto* request = InitializeMsg<T>(*msg, header);
-            request->body = body;
-            return messageQueue->EnqueueMessage(msg.get());
-        }
-
-        void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, CoreMessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc);
+        void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc);
         bool IsReady();
         void CheckSession(IPacketView* p);
         void ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID);
@@ -66,8 +42,7 @@ namespace Core {
         StateManager* stateManager = nullptr;
         ISessionAuth* auth = nullptr;
         IDBCache* cache = nullptr;
-        CoreMessagePool* messagePool = nullptr;
-        IMessageQueue* messageQueue = nullptr;
+        const CacheCommandSender* cacheCommands = nullptr;
         LobbyZone* lobbyZone = nullptr;
         ChatThreadPool* chat = nullptr;
         IProfileCache* profileCache = nullptr;

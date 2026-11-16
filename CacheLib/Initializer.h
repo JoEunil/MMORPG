@@ -4,6 +4,7 @@
 #include "CacheFlush.h"
 #include "Config.h"
 #include <CoreLib/MessagePool.h>
+#include <CoreLib/MessageWriter.h>
 #include "DBConfig.h"
 #include "DBConnectionPool.h"
 #include "CacheStorage.h"
@@ -29,6 +30,7 @@ namespace Cache {
         CacheStorageInventory cache_inventory;
         CacheStorageCurrency cache_currency;
         ProfileCache cache_profile;
+        Core::MessageWriter messageWriter;
         Handler handler;
         InMemoryQueue recvMQ;
         DBConnectionPool<DBConnectionGame> connectionPoolGame;
@@ -71,7 +73,7 @@ namespace Cache {
         
         void InjectDependencies(Core::IMessageQueue* sendMQ, Core::DurableLogger* durableLogger = nullptr)
         {
-            handler.Initialize(sendMQ, &msgPool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile);
+            handler.Initialize(sendMQ, &messageWriter, &msgPool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile);
             recvMQ.Initialize(&handler, &msgPool, durableLogger);
             recvMQ.Start();
         }

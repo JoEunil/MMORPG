@@ -99,6 +99,9 @@
     <ClInclude Include="MessageTypes.h">
       <Filter>Cache</Filter>
     </ClInclude>
+    <ClInclude Include="MessageWriter.h">
+      <Filter>Cache</Filter>
+    </ClInclude>
     <ClInclude Include="InMemoryQueue.h">
       <Filter>Cache</Filter>
     </ClInclude>

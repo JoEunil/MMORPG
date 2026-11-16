@@ -6,6 +6,7 @@
 #include "InMemoryQueue.h"
 #include "MessagePool.h"
 #include "MessageQueueHandler.h"
+#include "MessageWriter.h"
 #include "ZoneState.h"
 #include "PacketWriter.h"
 #include "INetworkSender.h"
@@ -31,6 +32,7 @@ namespace Core {
         InMemoryQueue recvMQ;
         MessageQueueHandler mqHandler;
         PacketWriter writer;
+        MessageWriter messageWriter;
         CacheCommandSender cacheCommandSender;
         StateManager stateManager;
         BroadcastThreadPool broadcastPool;
@@ -66,14 +68,14 @@ namespace Core {
         
         void InjectDependencies2(INetworkSender* networkSender, ISessionAuth* session, IMessageQueue* sendMQ, IProfileCache* profileCache, IInventoryOperations* inventory = nullptr) {
             stateManager.inventory = inventory;
-            cacheCommandSender.Initialize(sendMQ);
+            cacheCommandSender.Initialize(sendMQ, &messageWriter, &msgPool);
             stateManager.Initialize(&cacheCommandSender, networkSender, &lobbyZone, &chat);
             packetDispatcher.Initialize(&nonZoneThreadPool, &zoneThreadSet, &stateManager);
             nonZoneThreadPool.Start();
             broadcastPool.Start();
             ZoneState::Initialize(&broadcastPool, &writer, &stateManager, &perfCollector);
             zoneHandler.Initialize(&stateManager, networkSender, &writer);
-            nonZoneHandler.Initialize(networkSender, session, &writer, &msgPool, sendMQ, &stateManager, &lobbyZone, &chat, profileCache);
+            nonZoneHandler.Initialize(networkSender, session, &writer, &cacheCommandSender, &stateManager, &lobbyZone, &chat, profileCache);
             zoneThreadSet.Start();
             chat.Start();
             perfCollector.Start();

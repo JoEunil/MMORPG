@@ -1,15 +1,14 @@
 ﻿#include "pch.h"
 #include "NonZoneHandler.h"
 
+#include "CacheCommandSender.h"
 #include "PacketTypes.h"
 #include "IPacketView.h"
 #include "ISessionAuth.h"
 #include "INetworkSender.h"
 #include "PacketWriter.h"
 #include "ZoneState.h"
-#include "Message.h"
-#include "MessagePool.h"
-#include "IMessageQueue.h"
+#include "MessageTypes.h"
 #include "StateManager.h"
 #include "LobbyZone.h"
 #include "ChatThreadPool.h"
@@ -18,12 +17,11 @@
 #include "PacketConfig.h"
 
 namespace Core {
-    void NonZoneHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, CoreMessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc) {
+    void NonZoneHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc) {
         networkSender = sender;
         auth = s;
         writer = p;
-        messagePool = m;
-        messageQueue = mq;
+        cacheCommands = commands;
         stateManager = manager;
         lobbyZone = lobby;
         chat = c;
@@ -34,8 +32,7 @@ namespace Core {
         if (networkSender == nullptr) return false;
         if (auth == nullptr) return false;
         if (writer == nullptr) return false;
-        if (messagePool == nullptr) return false;
-        if (messageQueue == nullptr) return false;
+        if (cacheCommands == nullptr) return false;
         if (stateManager == nullptr) return false;
         if (lobbyZone == nullptr) return false;
         
@@ -133,10 +130,7 @@ namespace Core {
             errorLogger->LogError("non zone handler", "profile rename invalid", "session", sessionID, "profile_id", profileId, "nameLen", nameLen);
             return;
         }
-        MsgProfileRenameBody body{};
-        body.profileId = profileId;
-        std::memcpy(body.name, name, nameLen);
-        TryEnqueueMessage({ sessionID, MSG_PROFILE_RENAME }, body);
+        cacheCommands->EnqueueProfileRename(sessionID, profileId, {name, nameLen});
     }
 
     void NonZoneHandler::UseItem(IPacketView* p) {
@@ -172,7 +166,7 @@ namespace Core {
         if (characterID == 0)
             return;
 
-        TryEnqueueMessage({ sessionID, MSG_INVENTORY_REQ }, MsgInventoryReqBody{ characterID });
+        cacheCommands->EnqueueInventory(sessionID, characterID);
     }
 
     void NonZoneHandler::WalletRequest(IPacketView* p) {
@@ -184,9 +178,7 @@ namespace Core {
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
 
-        if (!TryEnqueueMessage(
-                { p->GetSessionID(), MSG_CURRENCY_REQ },
-                MsgCurrencyReqBody{ characterID, request.requestID })) {
+        if (!cacheCommands->EnqueueGoldBalance(p->GetSessionID(), characterID, request.requestID)) {
             MsgCurrencyResBody failed{};
             failed.requestID = request.requestID;
             failed.characterID = characterID;
@@ -195,9 +187,7 @@ namespace Core {
                 networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
         }
 
-        if (!TryEnqueueMessage(
-                { p->GetSessionID(), MSG_DIAMOND_REQ },
-                MsgDiamondReqBody{ characterID, request.requestID })) {
+        if (!cacheCommands->EnqueueDiamondBalance(p->GetSessionID(), characterID, request.requestID)) {
             MsgDiamondResBody failed{};
             failed.requestID = request.requestID;
             failed.characterID = characterID;

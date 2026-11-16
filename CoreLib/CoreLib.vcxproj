@@ -173,6 +173,7 @@
     <ClInclude Include="Message.h" />
     <ClInclude Include="MessageQueueHandler.h" />
     <ClInclude Include="MessageTypes.h" />
+    <ClInclude Include="MessageWriter.h" />
     <ClInclude Include="PacketDispatcher.h" />
     <ClInclude Include="PacketTypes.h" />
     <ClInclude Include="PacketWriter.h" />

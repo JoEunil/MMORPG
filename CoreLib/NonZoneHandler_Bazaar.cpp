@@ -1,11 +1,11 @@
 #include "pch.h"
 #include "NonZoneHandler.h"
 
+#include "CacheCommandSender.h"
 #include "PacketConfig.h"
-#include "IMessageQueue.h"
 #include "INetworkSender.h"
 #include "IPacketView.h"
-#include "Message.h"
+#include "MessageTypes.h"
 #include "PacketTypes.h"
 #include "PacketWriter.h"
 #include "StateManager.h"
@@ -41,9 +41,7 @@ namespace Core {
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (TryEnqueueMessage(
-                { p->GetSessionID(), MSG_BAZAAR_BUY },
-                MsgBazaarBuyBody{ characterID, request->listingID, request->requestID }))
+        if (cacheCommands->EnqueueBazaarBuy(p->GetSessionID(), characterID, request->listingID, request->requestID))
             return;
         MsgBazaarBuyResBody failed{};
         failed.requestID = request->requestID;
@@ -64,10 +62,8 @@ namespace Core {
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
 
-        if (TryEnqueueMessage(
-                { p->GetSessionID(), MSG_BAZAAR_REGISTER },
-                MsgBazaarRegisterBody{ characterID, 0, request->quantity, request->totalDiamondPrice,
-                request->requestID, request->inventorySlot }))
+        if (cacheCommands->EnqueueBazaarRegister(p->GetSessionID(), characterID, request->quantity,
+                request->totalDiamondPrice, request->requestID, request->inventorySlot))
             return;
 
         MsgBazaarRegisterResBody failed{};
@@ -85,9 +81,7 @@ namespace Core {
             return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
-        if (TryEnqueueMessage(
-                { p->GetSessionID(), MSG_BAZAAR_OUTBOX_LIST },
-                MsgBazaarOutboxListBody{ characterID, request->requestID }))
+        if (cacheCommands->EnqueueBazaarOutboxList(p->GetSessionID(), characterID, request->requestID))
             return;
         MsgBazaarOutboxListResBody failed{};
         failed.requestID = request->requestID;
@@ -104,9 +98,7 @@ namespace Core {
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (TryEnqueueMessage(
-                { p->GetSessionID(), MSG_BAZAAR_CHECK_OUTBOX },
-                MsgBazaarCheckOutboxBody{ characterID, request->requestID }))
+        if (cacheCommands->EnqueueBazaarCheckOutbox(p->GetSessionID(), characterID, request->requestID))
             return;
         MsgBazaarCheckOutboxResBody failed{};
         failed.requestID = request->requestID;
@@ -123,9 +115,7 @@ namespace Core {
             return;
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
-        if (TryEnqueueMessage(
-                { p->GetSessionID(), MSG_BAZAAR_CANCEL_LISTING },
-                MsgBazaarCancelListingBody{ characterID, request->listingID, request->requestID }))
+        if (cacheCommands->EnqueueBazaarCancelListing(p->GetSessionID(), characterID, request->listingID, request->requestID))
             return;
         MsgBazaarCancelListingResBody failed{};
         failed.requestID = request->requestID;
@@ -144,9 +134,7 @@ namespace Core {
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (TryEnqueueMessage(
-                { p->GetSessionID(), MSG_BAZAAR_CLAIM },
-                MsgBazaarClaimBody{ characterID, request->listingID, request->requestID }))
+        if (cacheCommands->EnqueueBazaarClaim(p->GetSessionID(), characterID, request->listingID, request->requestID))
             return;
         MsgBazaarClaimResBody failed{};
         failed.requestID = request->requestID;
@@ -165,9 +153,7 @@ namespace Core {
         const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (TryEnqueueMessage(
-                { p->GetSessionID(), MSG_BAZAAR_MY_LIST },
-                MsgBazaarMyListBody{ request->requestID, characterID }))
+        if (cacheCommands->EnqueueBazaarMyList(p->GetSessionID(), characterID, request->requestID))
             return;
         MsgBazaarMyListResBody failed{};
         failed.requestID = request->requestID;
@@ -185,9 +171,7 @@ namespace Core {
             || !stateManager->IsFieldSession(p->GetSessionID()))
             return;
 
-        if (TryEnqueueMessage(
-                { p->GetSessionID(), MSG_BAZAAR_SEARCH },
-                MsgBazaarSearchBody{ request->requestID, request->itemType, request->page }))
+        if (cacheCommands->EnqueueBazaarSearch(p->GetSessionID(), request->requestID, request->itemType, request->page))
             return;
         MsgBazaarSearchResBody failed{};
         failed.requestID = request->requestID;

@@ -1,11 +1,10 @@
 ﻿#include "pch.h"
 #include "NonZoneHandler.h"
 
+#include "CacheCommandSender.h"
 #include "NonZoneConfig.h"
-#include "IMessageQueue.h"
 #include "INetworkSender.h"
 #include "IPacketView.h"
-#include "Message.h"
 #include "PacketTypes.h"
 #include "PacketWriter.h"
 #include "StateManager.h"
@@ -39,16 +38,12 @@ namespace Core {
 
     void NonZoneHandler::GetCharacterList(IPacketView* p) {
         const auto sessionID = p->GetSessionID();
-        TryEnqueueMessage(
-            { sessionID, MSG_CHARACTER_LIST_REQ },
-            MsgCharacterListReqBody{ CHANNEL_ID, stateManager->GetUserID(sessionID) });
+        cacheCommands->EnqueueCharacterList(sessionID, CHANNEL_ID, stateManager->GetUserID(sessionID));
     }
 
     void NonZoneHandler::GetCharacterState(IPacketView* p) {
         const auto sessionID = p->GetSessionID();
         const auto* packetBody = parseBody<EnterWorldRequestBody>(p->GetPtr());
-        TryEnqueueMessage(
-            { sessionID, MSG_CHARACTER_STATE_REQ },
-            MsgCharacterStateReqBody{ CHANNEL_ID, stateManager->GetUserID(sessionID), packetBody->characterID });
+        cacheCommands->EnqueueCharacterState(sessionID, CHANNEL_ID, stateManager->GetUserID(sessionID), packetBody->characterID);
     }
 }
