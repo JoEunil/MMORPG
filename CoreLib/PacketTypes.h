@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <string_view>
-#include "Config.h"
+#include "PacketConfig.h"
 
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;

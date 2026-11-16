@@ -1,4 +1,6 @@
 ﻿#pragma once
+#include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <atomic>
 #include <array>
@@ -6,7 +8,7 @@
 #include <new>
 
 #include "LoggerGlobal.h"
-#include "Config.h"
+#include "WorldConfig.h"
 namespace Core {
     struct alignas(std::hardware_destructive_interference_size) ZonePerfData {// per sec
         // single thread access

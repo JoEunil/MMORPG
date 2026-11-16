@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "WorldConfig.h"
 #include <cstdint>
 #include "IPacketView.h"
 #include "CorePerfCollector.h"

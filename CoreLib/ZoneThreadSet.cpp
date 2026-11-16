@@ -11,7 +11,7 @@
 #include "PacketTypes.h"
 #include "LoggerGlobal.h"
 #include "CorePerfCollector.h"
-#include "Config.h"
+#include "WorldConfig.h"
 
 namespace Core {
     void ZoneThreadSet::WorkerFunc(Thread* t, int zoneID) {

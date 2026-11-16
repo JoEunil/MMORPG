@@ -11,7 +11,7 @@
 #include "MessagePool.h"
 #include "Message.h"
 #include "LoggerGlobal.h"
-#include "Config.h"
+#include "CacheConfig.h"
 
 namespace Core {
 	class MessageQueueHandler;

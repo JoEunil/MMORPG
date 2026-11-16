@@ -42,6 +42,18 @@
     <ClInclude Include="PacketTypes.h">
       <Filter>Packet</Filter>
     </ClInclude>
+    <ClInclude Include="CacheConfig.h">
+      <Filter>Cache</Filter>
+    </ClInclude>
+    <ClInclude Include="NonZoneConfig.h">
+      <Filter>NonZone</Filter>
+    </ClInclude>
+    <ClInclude Include="PacketConfig.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
+    <ClInclude Include="WorldConfig.h">
+      <Filter>World</Filter>
+    </ClInclude>
     <ClInclude Include="Config.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>

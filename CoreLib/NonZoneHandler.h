@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "CacheConfig.h"
 #include <cstdint>
 
 #include "MessageTypes.h"

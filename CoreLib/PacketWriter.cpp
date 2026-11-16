@@ -2,7 +2,7 @@
 #include "HuntingZoneData.h"
 #include "PacketWriter.h"
 #include "IPacket.h"
-#include "Config.h"
+#include "PacketConfig.h"
 #include "LoggerGlobal.h"
 #include "StateManager.h"
 #include <cstddef>

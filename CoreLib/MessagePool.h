@@ -4,7 +4,7 @@
 #include <memory>
 
 #include <BaseLib/FixedObjectPool.h>
-#include "Config.h"
+#include "CacheConfig.h"
 #include "Message.h"
 
 namespace Core {

@@ -15,7 +15,7 @@
 #include "ChatThreadPool.h"
 #include "IProfileCache.h"
 #include "LoggerGlobal.h"
-#include "Config.h"
+#include "PacketConfig.h"
 
 namespace Core {
     void NonZoneHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, CoreMessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc) {

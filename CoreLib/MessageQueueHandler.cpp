@@ -7,7 +7,6 @@
 #include "LobbyZone.h"
 #include "StateManager.h"
 #include "LoggerGlobal.h"
-#include "Config.h"
 
 namespace Core {
     namespace {

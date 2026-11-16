@@ -4,7 +4,7 @@
 
 #include <CoreLib/IPacketView.h>
 #include <CoreLib/IPacketDispatcher.h>
-#include <CoreLib/Config.h>
+#include <CoreLib/PacketConfig.h>
 #include "NetPerfCollector.h"
 
 namespace Net {

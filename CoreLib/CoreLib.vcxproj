@@ -152,6 +152,10 @@
     <ClInclude Include="NonZoneThreadPool.h" />
     <ClInclude Include="BroadcastThreadPool.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="CacheConfig.h" />
+    <ClInclude Include="NonZoneConfig.h" />
+    <ClInclude Include="PacketConfig.h" />
+    <ClInclude Include="WorldConfig.h" />
     <ClInclude Include="DurableLogger.h" />
     <ClInclude Include="INetworkSender.h" />
     <ClInclude Include="ILogger.h" />

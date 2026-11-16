@@ -7,7 +7,8 @@
 #include <cmath>
 #include <thread>
 #include <benchmark/benchmark.h>
-#include <CoreLib/Config.h>
+#include <CoreLib/PacketConfig.h>
+#include <CoreLib/WorldConfig.h>
 #include <CoreLib/IPacketView.h>
 #include <CoreLib/ZoneHandler.h>
 #include <CoreLib/BroadcastThreadPool.h>

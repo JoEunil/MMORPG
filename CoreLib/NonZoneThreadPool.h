@@ -7,7 +7,7 @@
 
 #include "NonZoneHandler.h"
 #include "IPacketView.h"
-#include "Config.h"
+#include "NonZoneConfig.h"
 #include <BaseLib/BlockingBackPressureQueue.h>
 #include "LoggerGlobal.h"
 namespace Core {

@@ -15,7 +15,8 @@
 #include "Message.h"
 
 #include "ZoneState.h"
-#include "Config.h"
+#include "WorldConfig.h"
+#include "PacketConfig.h"
 #include "IPacket.h"
 #include "IInventoryOperations.h"
 #include "INetworkSender.h"

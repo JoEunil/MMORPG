@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include "Config.h"
+#include "WorldConfig.h"
 #include "ZoneState.h"
 #include "StateManager.h"
 #include "LoggerGlobal.h"

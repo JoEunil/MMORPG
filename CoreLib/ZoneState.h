@@ -14,7 +14,8 @@
 #include "CharacterState.h"
 #include "Cell.h"
 #include "MonsterState.h"
-#include "Config.h"
+#include "WorldConfig.h"
+#include "PacketConfig.h"
 #include "SkillData.h"
 #include "CorePerfCollector.h"
 #include <BaseLib/TripleBuffer.h>

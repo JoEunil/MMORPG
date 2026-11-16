@@ -1,7 +1,6 @@
 ﻿#pragma once
 #include <cstdint>
 #include <vector>
-#include "Config.h"
 #include "GrowthData.h"
 #include "ItemData.h"
 

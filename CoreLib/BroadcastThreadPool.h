@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <cstddef>
 
 #include <atomic>
 #include <array>
@@ -9,7 +10,7 @@
 #include <BaseLib/BlockingQueue.h>
 #include "LoggerGlobal.h"
 #include "PacketWriter.h"
-#include "Config.h"
+#include "WorldConfig.h"
 
 namespace Core {
     class INetworkSender;

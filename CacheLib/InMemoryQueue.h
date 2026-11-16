@@ -9,7 +9,6 @@
 #include <CoreLib/Message.h>
 #include <CoreLib/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
-#include <CoreLib/Config.h>
 #include <CoreLib/DurableLogger.h>
 #include "Config.h"
 #include <CoreLib/MessagePool.h>

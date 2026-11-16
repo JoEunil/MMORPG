@@ -10,7 +10,7 @@
 
 #include "ZoneHandler.h"
 #include "IPacketView.h"
-#include "Config.h"
+#include "WorldConfig.h"
 
 #include <BaseLib/MPMCQueue.h>
 

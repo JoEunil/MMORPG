@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "NonZoneHandler.h"
 
-#include "Config.h"
+#include "NonZoneConfig.h"
 #include "IMessageQueue.h"
 #include "INetworkSender.h"
 #include "IPacketView.h"

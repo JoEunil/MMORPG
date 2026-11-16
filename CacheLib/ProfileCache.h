@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <shared_mutex>
 
+#include <CoreLib/Config.h>
 #include <CoreLib/IProfileCache.h>
 #include <CoreLib/PacketTypes.h>
 
