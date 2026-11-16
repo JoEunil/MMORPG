@@ -19,6 +19,7 @@ namespace Core {
     inline constexpr uint32_t ZONE_QUEUE_SIZE = 16384;
     inline constexpr uint16_t SHARD_SIZE = 8; // stateManager의 session - zone 매핑 샤드, 접근하는 스레드풀 크기의 2~4배 정도
     inline constexpr uint16_t SHARD_SIZE_MASK = SHARD_SIZE - 1;
+    inline constexpr uint64_t INVALID_CHARACTER_ID = 0;
     inline constexpr uint32_t INVALID_ZONE_INTERNAL_ID = 0; // 발급 실패 sentinel
     // zoneInternalID는 zone별로 단조 증가하며 재사용하지 않는다.
     // 초당 1000회 발급해도 약 50일치라 정상 운영 중 고갈되지 않지만,

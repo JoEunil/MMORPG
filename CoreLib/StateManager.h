@@ -45,7 +45,7 @@ namespace Core {
     };
 
     struct alignas(std::hardware_destructive_interference_size) SessionShard {
-        std::shared_mutex smutex;
+        mutable std::shared_mutex smutex;
         std::unordered_map<uint64_t, SessionData> sessionMap;
     };
     class LobbyZone;
@@ -78,9 +78,18 @@ namespace Core {
         }
 
         bool IsReady() {
-            if (mq == nullptr) return false;
-            if (lobbyZone == nullptr) return false;
-            if (chat == nullptr) return false;
+            if (mq == nullptr) {
+                sysLogger->LogError("state manager", "message queue not initialized");
+                return false;
+            }
+            if (lobbyZone == nullptr) {
+                sysLogger->LogError("state manager", "lobby zone not initialized");
+                return false;
+            }
+            if (chat == nullptr) {
+                sysLogger->LogError("state manager", "chat thread pool not initialized");
+                return false;
+            }
             return true;
         }
 
@@ -128,7 +137,7 @@ namespace Core {
             return true;
         }
 
-        uint64_t GetUserID(uint64_t sessionID) {
+        uint64_t GetUserID(uint64_t sessionID) const {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);
             
@@ -149,7 +158,7 @@ namespace Core {
             Core::gameLogger->LogInfo("state manager", "SetCharacterID", "session", sessionID, "characterID", characterID);
         }
         
-        uint64_t GetCharacterID(uint64_t sessionID) {
+        uint64_t GetCharacterID(uint64_t sessionID) const {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);
             
@@ -169,7 +178,7 @@ namespace Core {
             it->second.zoneID = dest;
         }
         
-        int16_t GetZoneID(uint64_t sessionID) {
+        int16_t GetZoneID(uint64_t sessionID) const {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);
             auto it = shard.sessionMap.find(sessionID);
@@ -180,29 +189,23 @@ namespace Core {
             return it->second.zoneID;
         }
 
-        uint64_t GetFieldCharacterID(uint64_t sessionID) {
+        uint64_t GetFieldCharacterID(uint64_t sessionID) const {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);
             const auto it = shard.sessionMap.find(sessionID);
             if (it == shard.sessionMap.end() || !it->second.authCompleted
                 || !it->second.authenticated || it->second.userID == 0
-                || it->second.characterID == 0 || it->second.zoneID == 0
+                || it->second.characterID == INVALID_CHARACTER_ID || it->second.zoneID == 0
                 || it->second.zoneID > ZONE_COUNT)
-                return 0;
+                return INVALID_CHARACTER_ID;
             return it->second.characterID;
         }
 
-        bool IsFieldSession(uint64_t sessionID) {
-            auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-            std::shared_lock<std::shared_mutex> lock(shard.smutex);
-            const auto it = shard.sessionMap.find(sessionID);
-            return it != shard.sessionMap.end() && it->second.authCompleted
-                && it->second.authenticated && it->second.userID != 0
-                && it->second.characterID != 0 && it->second.zoneID > 0
-                && it->second.zoneID <= ZONE_COUNT;
+        bool IsFieldSession(uint64_t sessionID) const {
+            return GetFieldCharacterID(sessionID) != INVALID_CHARACTER_ID;
         }
 
-        uint8_t HealthCheck(uint64_t sessionID) {
+        uint8_t HealthCheck(uint64_t sessionID) const {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);
             auto it = shard.sessionMap.find(sessionID);
