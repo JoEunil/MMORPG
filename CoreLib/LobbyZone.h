@@ -29,50 +29,46 @@ namespace Core {
         void Disconnect(uint64_t sessionID) {
             // db에서 load 후 변경되지 않은 상태
             std::lock_guard lock(m_mutex);
-            auto it = m_chars.find(sessionID);
-            if (it == m_chars.end()) {
+            if (m_chars.erase(sessionID) == 0)
                 gameLogger->LogWarn("lobby zone", "Character State not exist", "sessionID", sessionID);
-                return;
-            }
-            m_chars.erase(it);
         }
-        
-        bool ImmigrateChar(uint64_t sessionID, CharacterState& c) {
-            if (c.characterID == 0)
+
+        bool ImmigrateChar(uint64_t sessionID, const CharacterState& character) {
+            if (character.characterID == INVALID_CHARACTER_ID)
                 return false;
             // Same order as StateManager::Disconnect/CleanUp: shard -> lobby.
             auto& shard = stateManager->m_shards[sessionID & SHARD_SIZE_MASK];
             std::unique_lock<std::shared_mutex> sessionLock(shard.smutex);
-            auto session = shard.sessionMap.find(sessionID);
-            if (session == shard.sessionMap.end()
-                || !session->second.authenticated || session->second.zoneID != 0
-                || (session->second.characterID != 0 && session->second.characterID != c.characterID))
+            const auto session = shard.sessionMap.find(sessionID);
+            if (session == shard.sessionMap.end())
                 return false;
+            auto& data = session->second;
+            if (!data.authenticated || data.zoneID != 0
+                || (data.characterID != INVALID_CHARACTER_ID && data.characterID != character.characterID))
+                return false;
+
             std::lock_guard lock(m_mutex);
-            auto it = m_chars.find(sessionID);
-            if (it != m_chars.end()) {
+            if (!m_chars.try_emplace(sessionID, character).second) {
                 gameLogger->LogError("lobby zone", "ImmigrageChar Failed sessionID already exists", "sessionID", sessionID);
                 return false;
             }
-            if (!m_chars.emplace(sessionID, c).second)
-                return false;
-            if (session->second.characterID == 0)
-                session->second.characterID = c.characterID;
+            if (data.characterID == INVALID_CHARACTER_ID)
+                data.characterID = character.characterID;
             return true;
         }
-        
-        bool EmigrateChar(uint64_t sessionID, CharacterState& o){
+
+        bool EmigrateChar(uint64_t sessionID, CharacterState& out) {
             std::lock_guard lock(m_mutex);
-            auto it = m_chars.find(sessionID);
+            const auto it = m_chars.find(sessionID);
             if (it == m_chars.end()) {
                 gameLogger->LogError("lobby zone", "EmigrageChar Failed sessionID not exists", "sessionID", sessionID);
                 return false;
             }
-            o = m_chars[sessionID];
+            out = it->second;
             m_chars.erase(it);
             return true;
         }
-        
+
     };
 
 }
