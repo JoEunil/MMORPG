@@ -27,6 +27,8 @@ namespace Core {
     class BroadcastThreadPool;
     class PacketWriter;
     class SessionManager;
+    struct ParryRequestBody;
+    struct ParryResponseBody;
 
     struct SkillRequest {
         uint64_t sessionID;
@@ -97,6 +99,7 @@ namespace Core {
         bool RegisterCharacterLocked(CharacterState&& incoming);
         bool AdmitFieldTransferLocked(const FieldZoneTransfer& transfer);
         bool RestoreFieldTransferLocked(const CharacterState& original);
+        ParryResponseBody Parry(uint64_t sessionID, const ParryRequestBody& request);
         void UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version);
         void RemoveCharacterLocked(uint64_t sessionID);
         void RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint32_t dirtyBit);

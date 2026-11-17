@@ -62,6 +62,7 @@ namespace Core {
         }
         
         void ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID);
+        ParryResponseBody ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request);
         void ProcessFieldTransfer(ZoneState& zone, const std::shared_ptr<FieldZoneTransfer>& transfer);
         void ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update);
         void SendZoneChange(uint64_t sessionID, const ZoneChangeResult& transition);

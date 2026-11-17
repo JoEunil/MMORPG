@@ -155,12 +155,34 @@ namespace Core {
         sessionManager->SendBootstrap(sessionID, transition.ownershipEpoch);
     }
 
+    ParryResponseBody ZoneHandler::ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID,
+        const ParryRequestBody& request) {
+        ParryResponseBody result{request.requestID, request.ownershipEpoch, static_cast<uint8_t>(ParryStatus::Invalid), 0, 0};
+        if (request.requestID == 0 || request.ownershipEpoch == 0)
+            return result;
+
+        auto& shard = sessionManager->m_shards[sessionID & SHARD_SIZE_MASK];
+        std::shared_lock sessionLock(shard.smutex);
+        const auto session = shard.sessionMap.find(sessionID);
+        if (session == shard.sessionMap.end() || !session->second.authenticated || !session->second.authCompleted) {
+            result.status = static_cast<uint8_t>(ParryStatus::Unavailable);
+            return result;
+        }
+        const auto& data = session->second;
+        if (data.zoneID == 0 || data.zoneID != zoneID || data.ownershipEpoch != request.ownershipEpoch) {
+            result.status = static_cast<uint8_t>(ParryStatus::StaleOwnership);
+            return result;
+        }
+        return zone.Parry(sessionID, request);
+    }
+
     void ZoneHandler::Process(ZoneState& zone, IPacketView* p, uint16_t zoneID) {
         PacketHeader* h = parseHeader(p->GetPtr());
         switch (p->GetOpcode())
         {
             case OP::PARRY: {
-                auto response = writer->WriteParryResponse(sessionManager->Parry(p->GetSessionID(), zoneID, *parseBody<ParryRequestBody>(p->GetPtr())));
+                const auto result = ProcessParry(zone, p->GetSessionID(), zoneID, *parseBody<ParryRequestBody>(p->GetPtr()));
+                auto response = writer->WriteParryResponse(result);
                 if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
                 break;
             }

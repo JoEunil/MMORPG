@@ -3,6 +3,7 @@
 #include "ZoneState.h"
 #include "IPacket.h"
 #include "ILogger.h"
+#include "PacketTypes.h"
 #include "PacketWriter.h"
 #include "SessionManager.h"
 #include "WorldMap.h"
@@ -136,6 +137,42 @@ namespace Core {
         m_cells[character.cellY][character.cellX].activeSkills.emplace_back(
             0, sessionID, character.zoneInternalID, 0, skillSlot, character.dir, character.x, character.y, skill.skillID, 0, 0, aimAngle
         );
+    }
+
+    ParryResponseBody ZoneState::Parry(uint64_t sessionID, const ParryRequestBody& request) {
+        ParryResponseBody result{request.requestID, request.ownershipEpoch, static_cast<uint8_t>(ParryStatus::Unavailable), 0, 0};
+        std::lock_guard zoneLock(m_mutex);
+        const auto member = m_sessionToIndex.find(sessionID);
+        if (member == m_sessionToIndex.end())
+            return result;
+
+        auto& character = m_chars[member->second];
+        auto& previous = character.lastParry;
+        if (request.requestID < previous.requestID
+            || (request.requestID == previous.requestID && request.ownershipEpoch != previous.ownershipEpoch)) {
+            result.status = static_cast<uint8_t>(ParryStatus::StaleRequest);
+            return result;
+        }
+        if (request.requestID == previous.requestID) {
+            result.status = previous.status;
+        } else {
+            if (character.hp <= 0) result.status = static_cast<uint8_t>(ParryStatus::Dead);
+            else if (character.parryCooldownTicks != 0) result.status = static_cast<uint8_t>(ParryStatus::Cooldown);
+            else {
+                character.parryWindowTicks = Data::parryWindowTicks;
+                character.parryCooldownTicks = Data::parryCooldownTicks;
+                result.status = static_cast<uint8_t>(ParryStatus::Accepted);
+                m_cells[character.cellY][character.cellX].actionResults.push_back({0, character.zoneInternalID, 0,
+                    Data::parrySkillSlot, character.dir, character.x, character.y, Data::parrySkillID, 0,
+                    character.dir == 0 ? 0.0f : character.dir == 1 ? 180.0f : character.dir == 2 ? 270.0f : 90.0f});
+            }
+            previous = {result.requestID, result.ownershipEpoch, result.status};
+        }
+        if (result.status == static_cast<uint8_t>(ParryStatus::Accepted) || result.status == static_cast<uint8_t>(ParryStatus::Cooldown)) {
+            result.windowRemainingTicks = character.parryWindowTicks;
+            result.cooldownRemainingTicks = character.parryCooldownTicks;
+        }
+        return result;
     }
 
     void ZoneState::DirtyCheck(uint64_t sessionID) {
