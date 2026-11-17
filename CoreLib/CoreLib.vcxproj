@@ -164,6 +164,7 @@
     <ClInclude Include="InMemoryQueue.h" />
     <ClInclude Include="IPacket.h" />
     <ClInclude Include="IPacketDispatcher.h" />
+    <ClInclude Include="ISessionSnapshotReader.h" />
     <ClInclude Include="IZoneEventQueue.h" />
     <ClInclude Include="IZoneTransfer.h" />
     <ClInclude Include="IPacketPool.h" />

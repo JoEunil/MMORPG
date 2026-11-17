@@ -9,14 +9,14 @@
 
 #include <BaseLib/BlockingQueue.h>
 #include "LoggerGlobal.h"
-#include "PacketWriter.h"
 #include "WorldConfig.h"
 
 namespace Core {
     class INetworkSender;
     class IPacket;
-    class ZoneEventRouter;
+    class ISessionSnapshotReader;
     class CorePerfCollector;
+    class PacketWriter;
     class BroadcastThreadPool {
         struct BroadcastWork {
             std::vector<std::shared_ptr<IPacket>> headers;
@@ -33,9 +33,9 @@ namespace Core {
         std::atomic<size_t> m_queuedWorkCount = 0; // Shared queue budget, not a per-worker multiplier.
 
         std::atomic<bool> m_running = false;
-        void Initialize(INetworkSender* sender, ZoneEventRouter& router, CorePerfCollector* p, PacketWriter* pw) {
+        void Initialize(INetworkSender* sender, const ISessionSnapshotReader& snapshots, CorePerfCollector* p, PacketWriter* pw) {
             networkSender = sender;
-            zoneRouter = &router;
+            sessionSnapshots = &snapshots;
             perfCollector = p;
             writer = pw;
         }
@@ -52,8 +52,8 @@ namespace Core {
                 sysLogger->LogError("broadcast thread", "iocp not initialized");
                 return false;
             }
-            if (zoneRouter == nullptr) {
-                sysLogger->LogError("broadcast thread", "zone router not initialized");
+            if (sessionSnapshots == nullptr) {
+                sysLogger->LogError("broadcast thread", "session snapshot reader not initialized");
                 return false;
             }
             if (perfCollector == nullptr) {
@@ -73,7 +73,7 @@ namespace Core {
         void Stop();
 
         INetworkSender* networkSender = nullptr;
-        ZoneEventRouter* zoneRouter = nullptr;
+        const ISessionSnapshotReader* sessionSnapshots = nullptr;
         CorePerfCollector* perfCollector = nullptr;
         PacketWriter* writer = nullptr;
         friend class Initializer;

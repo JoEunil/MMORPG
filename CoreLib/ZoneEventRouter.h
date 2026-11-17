@@ -3,13 +3,14 @@
 #include <array>
 #include <atomic>
 
+#include "ISessionSnapshotReader.h"
 #include "IZoneEventQueue.h"
 #include "ZoneThread.h"
 
 namespace Core {
     class NonZoneThreadPool;
 
-    class ZoneEventRouter final : public IZoneEventQueue, public IZoneTransfer {
+    class ZoneEventRouter final : public IZoneEventQueue, public IZoneTransfer, public ISessionSnapshotReader {
         struct ZoneEntry {
             std::unique_ptr<ZoneState> state;
             ZoneThread worker;
@@ -29,6 +30,7 @@ namespace Core {
         ZoneEventRouter();
         ~ZoneEventRouter() override;
         ZoneState* GetZone(uint16_t zoneID);
+        std::optional<SessionSnapshotView> ReadSessionSnapshot(uint16_t zoneID) const override;
         bool TryEnqueue(uint16_t zoneID, ZoneEvent& event) override;
         uint16_t FindDestination(uint16_t sourceZoneID, float x, float y) const override;
         bool TryEnqueueTransfer(uint16_t destinationID, const std::shared_ptr<FieldZoneTransfer>& transfer) override;

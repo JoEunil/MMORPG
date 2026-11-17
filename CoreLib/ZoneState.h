@@ -19,7 +19,7 @@
 #include "PacketConfig.h"
 #include "SkillData.h"
 #include "CorePerfCollector.h"
-#include <BaseLib/TripleBuffer.h>
+#include "ISessionSnapshotReader.h"
 #include <CoreLib/LoggerGlobal.h>
 
 namespace Core {
@@ -66,8 +66,8 @@ namespace Core {
         alignas(std::hardware_destructive_interference_size) std::atomic<uint32_t>m_userCnt;
         char padding[std::hardware_destructive_interference_size - sizeof(uint32_t)];
 
-        Base::TripleBuffer<std::vector<std::vector<uint64_t>>> tripleBuffer;
-        std::vector<std::vector<uint64_t>>* sessionSnapshotWriter;
+        Base::TripleBuffer<SessionSnapshot> tripleBuffer;
+        SessionSnapshot* sessionSnapshotWriter;
 
         inline static BroadcastThreadPool* broadcast;
         inline static PacketWriter* writer;
@@ -121,30 +121,28 @@ namespace Core {
 
             ZoneInit(m_area, m_zoneID);
             CellInit(m_cells, m_area);
-            auto back1 = new std::vector<std::vector<uint64_t>>(CELLS_X * CELLS_Y);
-            auto back2 = new std::vector<std::vector<uint64_t>>(CELLS_X * CELLS_Y);
-            sessionSnapshotWriter = new std::vector<std::vector<uint64_t>>(CELLS_X * CELLS_Y);
-            for (auto& c : *back1) {
-                c.reserve(CELL_CAPACITY);
-            }
-            for (auto& c : *back2) {
-                c.reserve(CELL_CAPACITY);
-            }
-            for (auto& c : *sessionSnapshotWriter) {
-                c.reserve(CELL_CAPACITY);
-            }
-            // Init 호출 시 소유권이 TripleBuffer로 이전됨
-            // 이후 back1, back2는 TripleBuffer가 해제 책임
-            tripleBuffer.Init(back1, back2);
-
             m_monsters.reserve(MAX_MONSTER_COUNT);
             m_userCnt.store(0, std::memory_order_relaxed);
             InitAOI();
+
+            const auto allocateSnapshot = [] {
+                auto snapshot = std::make_unique<SessionSnapshot>(CELLS_X * CELLS_Y);
+                for (auto& cell : *snapshot)
+                    cell.reserve(CELL_CAPACITY);
+                return snapshot;
+            };
+            auto back1 = allocateSnapshot();
+            auto back2 = allocateSnapshot();
+            sessionSnapshotWriter = allocateSnapshot().release();
+            tripleBuffer.Init(back1.release(), back2.release());
+        }
+        ~ZoneState() {
+            delete sessionSnapshotWriter;
         }
         void InitializeMonster();
         bool EmigrateChar(uint64_t sessionID, CharacterState& o);
         void UpdateProfileVersion(uint64_t sessionID, uint32_t version);
-        Base::BufferReader<std::vector<std::vector<uint64_t>>> GetSessionSnaphot() {
+        SessionSnapshotView ReadSessionSnapshot() {
             return tripleBuffer.Read();
         }
         void DeltaSnapshot();

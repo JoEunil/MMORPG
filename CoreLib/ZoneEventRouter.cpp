@@ -50,6 +50,15 @@ namespace Core {
         return zoneID != 0 && zoneID <= zones.size() ? zones[zoneID - 1].state.get() : nullptr;
     }
 
+    std::optional<SessionSnapshotView> ZoneEventRouter::ReadSessionSnapshot(uint16_t zoneID) const {
+        if (zoneID == 0 || zoneID > zones.size())
+            return std::nullopt;
+        const auto& zone = zones[zoneID - 1].state;
+        if (!zone)
+            return std::nullopt;
+        return zone->ReadSessionSnapshot();
+    }
+
     bool ZoneEventRouter::TryEnqueue(uint16_t zoneID, ZoneEvent& event) {
         if (event.type == ZoneEventType::Transfer || zoneID == 0 || zoneID > zones.size())
             return false;

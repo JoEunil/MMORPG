@@ -129,6 +129,9 @@
     <ClInclude Include="IZoneEventQueue.h">
       <Filter>InternalInterface</Filter>
     </ClInclude>
+    <ClInclude Include="ISessionSnapshotReader.h">
+      <Filter>InternalInterface</Filter>
+    </ClInclude>
     <ClInclude Include="IZoneTransfer.h">
       <Filter>InternalInterface</Filter>
     </ClInclude>

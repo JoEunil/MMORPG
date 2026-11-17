@@ -368,7 +368,6 @@ namespace Core {
             if (movedCell)
                 town->AddToCell(character, static_cast<uint8_t>(newCellX), static_cast<uint8_t>(newCellY));
             destinationCell.dirtyChar.push_back(internalID);
-            if (movedCell) town->UpdateSessionSnapshot();
             session->second.lastRespawnRequestEpoch = request.ownershipEpoch;
             ++session->second.ownershipEpoch;
             result = {TOWN_ZONE_ID, session->second.chatID, internalID, character.x, character.y,
@@ -411,8 +410,6 @@ namespace Core {
         session->second.zoneID = TOWN_ZONE_ID;
         session->second.lastRespawnRequestEpoch = request.ownershipEpoch;
         ++session->second.ownershipEpoch;
-        source->UpdateSessionSnapshot();
-        town->UpdateSessionSnapshot();
         result = {TOWN_ZONE_ID, session->second.chatID, entered.zoneInternalID, entered.x, entered.y,
             town->m_generation, session->second.ownershipEpoch};
         // Joining removes the old membership; one event cannot leave a half-applied leave/join pair.

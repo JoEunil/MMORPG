@@ -1,11 +1,11 @@
 ﻿#include "pch.h"
 #include "BroadcastThreadPool.h"
+#include "CorePerfCollector.h"
 #include "IPacket.h"
-#include "ZoneState.h"
+#include "ISessionSnapshotReader.h"
 #include "INetworkSender.h"
-#include "ZoneEventRouter.h"
+#include "PacketWriter.h"
 #include "Cell.h"
-#include <BaseLib/TripleBuffer.h>
 namespace Core {
     void BroadcastThreadPool::ThreadFunc(size_t workerIndex) {
         auto tid = std::this_thread::get_id();
@@ -41,12 +41,10 @@ namespace Core {
                 continue;
             }
 
-            const uint16_t zoneID = packets->zoneID;
-            auto* zone = zoneRouter->GetZone(zoneID);
-            if (zone == nullptr)
+            const auto snapshot = sessionSnapshots->ReadSessionSnapshot(packets->zoneID);
+            if (!snapshot)
                 continue;
-            Base::BufferReader<std::vector<std::vector<uint64_t>>> reader = zone->GetSessionSnaphot();
-            const auto& recipientsByCell = *reader.data;
+            const auto& recipientsByCell = *snapshot->data;
             size_t sentCount = 0;
             for (int i =0 ;i < CELLS_X*CELLS_Y; i++)
             {

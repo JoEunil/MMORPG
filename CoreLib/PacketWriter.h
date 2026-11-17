@@ -4,7 +4,6 @@
 #include <cstring>
 
 #include "MessageTypes.h"
-#include "ZoneState.h"
 #include "IPacketPoolManager.h"
 #include "PacketTypes.h"
 #include "IPacket.h"
@@ -14,6 +13,9 @@
 namespace Core {
     class IPacket;
     class PacketTypes;
+    struct ActionResult;
+    struct CharacterState;
+    struct MonsterState;
     struct ZoneChangeResult;
     class PacketWriter : public IPingPacketWriter{
         IPacketPoolManager* packetPoolManager = nullptr;

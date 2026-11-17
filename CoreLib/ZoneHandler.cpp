@@ -79,7 +79,6 @@ namespace Core {
                     return;
                 data.pendingFieldTransfer = std::move(transfer);
                 zone.RemoveCharacterLocked(sessionID);
-                zone.UpdateSessionSnapshot();
                 return;
             }
         }
@@ -118,13 +117,10 @@ namespace Core {
 
         auto& data = session->second;
         data.pendingFieldTransfer.reset();
-        if (returning) {
-            zone.UpdateSessionSnapshot();
+        if (returning)
             return;
-        }
 
         SessionManager::UpdateZoneOwnershipLocked(data, zone.m_zoneID);
-        zone.UpdateSessionSnapshot();
         const auto& entered = zone.m_chars.back();
         const ZoneChangeResult result{zone.m_zoneID, data.chatID, entered.zoneInternalID, entered.x, entered.y,
             zone.m_generation, data.ownershipEpoch};
