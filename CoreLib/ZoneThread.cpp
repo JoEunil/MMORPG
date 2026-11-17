@@ -13,6 +13,7 @@
 namespace Core {
     ZoneThread::~ZoneThread() {
         Stop();
+        ProcessDeferredProfileUpdates(nullptr);
     }
 
     void ZoneThread::Initialize(uint16_t id, ZoneHandler& zoneHandler, CorePerfCollector& perf) {
@@ -48,6 +49,7 @@ namespace Core {
 
         zone.InitializeMonster();
         while (running) {
+            ProcessDeferredProfileUpdates(&zone);
             handler->RunTick(zone, zoneID, workQueue, 2000, *perfCollector, [&] {
                 const auto now = std::chrono::steady_clock::now();
                 if (now - lastFullSnapshot >= FULL_SNAPSHOT_TICK) {
@@ -106,9 +108,34 @@ namespace Core {
     bool ZoneThread::Enqueue(ZoneEvent& event) {
         if (perfCollector == nullptr)
             return false;
+        if (event.type == ZoneEventType::ProfileVersion && !running.load(std::memory_order_acquire))
+            return false;
         if (workQueue.push(event))
             return true;
+        if (event.type == ZoneEventType::ProfileVersion) {
+            // Cache has already committed the version. Keep it for the next tick if the queue is full.
+            auto* head = deferredProfileUpdates.load(std::memory_order_relaxed);
+            auto* entry = new (std::nothrow) DeferredProfileUpdate{event.profileVersion, head};
+            if (entry == nullptr)
+                return false;
+            do {
+                entry->next = head;
+            } while (!deferredProfileUpdates.compare_exchange_weak(head, entry, std::memory_order_release,
+                std::memory_order_relaxed));
+            return true;
+        }
         perfCollector->AddZoneDropCnt(zoneID);
         return false;
+    }
+
+    void ZoneThread::ProcessDeferredProfileUpdates(ZoneState* zone) {
+        // Versions are monotonic, so processing this batch before older queued updates is safe.
+        auto* entry = deferredProfileUpdates.exchange(nullptr, std::memory_order_acquire);
+        while (entry != nullptr) {
+            const std::unique_ptr<DeferredProfileUpdate> update(entry);
+            entry = entry->next;
+            if (zone != nullptr)
+                handler->ApplyProfileVersion(*zone, update->update);
+        }
     }
 }

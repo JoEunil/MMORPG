@@ -50,6 +50,7 @@ namespace Core {
     class ChatThreadPool;
     class ZoneEventRouter;
     struct FieldZoneTransfer;
+    struct ProfileVersionUpdate;
     struct ZoneChangeResult;
     class SessionManager {
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
@@ -100,6 +101,7 @@ namespace Core {
         void EnqueueCharacterStateUpdate(uint64_t sessionID, const CharacterState& character);
         static void UpdateZoneOwnershipLocked(SessionData& session, uint16_t destinationID);
         bool DescribeZoneChangeLocked(uint64_t sessionID, const SessionData& session, ZoneChangeResult& result);
+        void RouteProfileVersionLocked(const SessionData& session, const ProfileVersionUpdate& update);
 
         friend class Initializer;
         friend class LobbyZone; // ImmigrateChar takes the session shard before the lobby mutex.
@@ -240,7 +242,7 @@ namespace Core {
         bool ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result);
         bool RespawnToTown(uint64_t sessionID, const RespawnToTownBody& request, ZoneChangeResult& result);
         bool SendBootstrap(uint64_t sessionID, uint64_t ownershipEpoch);
-        void UpdateProfileVersion(uint64_t sessionID, uint32_t version);
+        void QueueProfileVersionUpdate(const ProfileVersionUpdate& update);
 
         void Cheat(uint64_t sessionID, uint16_t cheat, std::chrono::steady_clock::time_point time) {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];

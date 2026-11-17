@@ -97,6 +97,7 @@ namespace Core {
         bool RegisterCharacterLocked(CharacterState&& incoming);
         bool AdmitFieldTransferLocked(const FieldZoneTransfer& transfer);
         bool RestoreFieldTransferLocked(const CharacterState& original);
+        void UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version);
         void RemoveCharacterLocked(uint64_t sessionID);
         void RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint32_t dirtyBit);
         void UpdateSessionSnapshot();
@@ -141,7 +142,6 @@ namespace Core {
         }
         void InitializeMonster();
         bool EmigrateChar(uint64_t sessionID, CharacterState& o);
-        void UpdateProfileVersion(uint64_t sessionID, uint32_t version);
         SessionSnapshotView ReadSessionSnapshot() {
             return tripleBuffer.Read();
         }

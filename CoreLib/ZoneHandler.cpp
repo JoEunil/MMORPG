@@ -132,6 +132,22 @@ namespace Core {
         SendZoneChange(sessionID, result);
     }
 
+    void ZoneHandler::ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update) {
+        auto& shard = sessionManager->m_shards[update.sessionID & SHARD_SIZE_MASK];
+        std::unique_lock sessionLock(shard.smutex);
+        const auto session = shard.sessionMap.find(update.sessionID);
+        if (session == shard.sessionMap.end())
+            return;
+
+        const auto& data = session->second;
+        if (data.zoneID != zone.m_zoneID || data.pendingFieldTransfer) {
+            sessionManager->RouteProfileVersionLocked(data, update);
+            return;
+        }
+
+        zone.UpdateProfileVersion(update.sessionID, update.profileID, update.version);
+    }
+
     void ZoneHandler::SendZoneChange(uint64_t sessionID, const ZoneChangeResult& transition) {
         auto response = writer->WriteZoneChangeSucess(transition);
         if (response)

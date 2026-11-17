@@ -20,17 +20,30 @@ namespace Core {
     enum class ZoneEventType : uint8_t {
         Packet,
         Transfer,
+        ProfileVersion,
+    };
+
+    struct ProfileVersionUpdate {
+        uint64_t sessionID = 0;
+        uint32_t profileID = 0;
+        uint32_t version = 0;
     };
 
     struct ZoneEvent {
         ZoneEventType type = ZoneEventType::Packet;
         std::unique_ptr<IPacketView, PacketViewDeleter> packet;
         std::shared_ptr<FieldZoneTransfer> transfer;
+        ProfileVersionUpdate profileVersion;
     };
 
     class alignas(std::hardware_destructive_interference_size) ZoneThread {
         std::thread thread;
         Base::MPMCQueue<ZoneEvent, ZONE_QUEUE_SIZE> workQueue;
+        struct DeferredProfileUpdate {
+            ProfileVersionUpdate update;
+            DeferredProfileUpdate* next;
+        };
+        std::atomic<DeferredProfileUpdate*> deferredProfileUpdates = nullptr;
         std::atomic<bool> running = false;
         uint16_t zoneID = 0;
         ZoneHandler* handler = nullptr;
@@ -41,6 +54,7 @@ namespace Core {
         void Start(ZoneState& zone);
         void Stop();
         bool Enqueue(ZoneEvent& event);
+        void ProcessDeferredProfileUpdates(ZoneState* zone);
         void WorkerFunc(ZoneState& zone);
 
         friend class ZoneEventRouter;

@@ -63,8 +63,10 @@ namespace Core {
         
         void ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID);
         void ProcessFieldTransfer(ZoneState& zone, const std::shared_ptr<FieldZoneTransfer>& transfer);
+        void ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update);
         void SendZoneChange(uint64_t sessionID, const ZoneChangeResult& transition);
         friend class Initializer;
+        friend class ZoneThread;
         friend class ZoneBenchmarkAccess;
     public:
         enum class TickSnapshot { None, Delta, Full };
@@ -87,6 +89,9 @@ namespace Core {
                         break;
                     case ZoneEventType::Transfer:
                         ProcessFieldTransfer(zone, event.transfer);
+                        break;
+                    case ZoneEventType::ProfileVersion:
+                        ApplyProfileVersion(zone, event.profileVersion);
                         break;
                     }
                 }

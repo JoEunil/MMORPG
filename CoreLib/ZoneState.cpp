@@ -176,14 +176,13 @@ namespace Core {
         return true;
     }
 
-    // rename 반영. 
-    void ZoneState::UpdateProfileVersion(uint64_t sessionID, uint32_t version) {
+    void ZoneState::UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version) {
         std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_sessionToIndex.find(sessionID);
         if (it == m_sessionToIndex.end())
             return;
         auto& character = m_chars[it->second];
-        if (character.profileVersion == version)
+        if (character.profileId != profileID || character.profileVersion >= version)
             return;
         character.profileVersion = version;
         character.dirtyBit |= 0x200;

@@ -526,33 +526,34 @@ namespace Core {
         EnqueueCharacterStateUpdate(sessionID, pending ? pending->character : temp);
     }
 
-    // rename이 DB에 확정된 뒤, 세션이 속한 zone의 CharacterState에 새 version을 반영한다.
-    // zone에 이벤트 큐를 붙여 처리하는 편이 깔끔하지만, zone 간 참조 방식을 아직 정하지 못해 여기서는 ZoneState의 기존 m_mutex를 그대로 쓴다.
-    void SessionManager::UpdateProfileVersion(uint64_t sessionID, uint32_t version) {
-        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+    void SessionManager::QueueProfileVersionUpdate(const ProfileVersionUpdate& update) {
+        auto& shard = m_shards[update.sessionID & SHARD_SIZE_MASK];
         std::unique_lock lock(shard.smutex);
-        auto it = shard.sessionMap.find(sessionID);
-        if (it == shard.sessionMap.end())
-            return;
-        uint16_t zoneID = it->second.zoneID;
-        if (const auto& pending = it->second.pendingFieldTransfer) {
-            pending->character.profileVersion = version;
+        const auto session = shard.sessionMap.find(update.sessionID);
+        if (session != shard.sessionMap.end())
+            RouteProfileVersionLocked(session->second, update);
+    }
+
+    void SessionManager::RouteProfileVersionLocked(const SessionData& session, const ProfileVersionUpdate& update) {
+        if (const auto& pending = session.pendingFieldTransfer) {
+            auto& character = pending->character;
+            if (character.profileId == update.profileID && character.profileVersion < update.version)
+                character.profileVersion = update.version;
             return;
         }
 
-        if (zoneID == 0) {
-            std::lock_guard lobbyLock(lobbyZone->m_mutex);
-            const auto character = lobbyZone->m_chars.find(sessionID);
-            if (character != lobbyZone->m_chars.end())
-                character->second.profileVersion = version;
+        if (session.zoneID == 0) {
+            lobbyZone->UpdateProfileVersion(update.sessionID, update.profileID, update.version);
             return;
         }
-        auto* zone = zoneRouter->GetZone(zoneID);
-        if (zone == nullptr) {
-            gameLogger->LogInfo("core session manager", "state not found", "sessionID", sessionID, "zoneID", zoneID);
-            return;
+
+        ZoneEvent event;
+        event.type = ZoneEventType::ProfileVersion;
+        event.profileVersion = update;
+        if (!zoneRouter->TryEnqueue(session.zoneID, event)) {
+            errorLogger->LogWarn("core session manager", "could not queue profile version update",
+                "sessionID", update.sessionID, "zoneID", session.zoneID, "version", update.version);
         }
-        zone->UpdateProfileVersion(sessionID, version);
     }
 
     void SessionManager::EnqueueCharacterStateUpdate(uint64_t sessionID, const CharacterState& character) {

@@ -7,6 +7,7 @@
 #include "LobbyZone.h"
 #include "SessionManager.h"
 #include "LoggerGlobal.h"
+#include "ZoneThread.h"
 
 namespace Core {
     namespace {
@@ -156,10 +157,8 @@ namespace Core {
             networkSender->SendDataUnique(sessionID, std::move(packet));
     }
 
-    // rename이 DB에 확정된 뒤 도는 경로. zone이 들고 있는 profileVersion 사본을
-    // 여기서 갱신해야 delta로 전파된다.
     void MessageQueueHandler::ProfileRenameResponse(uint64_t sessionID, const MsgProfileRenameResBody* body) {
-        if (body->resStatus == 0) {
+        if (body->resStatus != 1) {
             gameLogger->LogInfo("mq handler", "profile rename failed", "sessionID", sessionID, "profile_id", body->profileId);
             return;
         }
@@ -167,6 +166,6 @@ namespace Core {
             errorLogger->LogError("mq handler", "sessionManager not initialized", "sessionID", sessionID);
             return;
         }
-        sessionManager->UpdateProfileVersion(sessionID, body->version);
+        sessionManager->QueueProfileVersionUpdate({sessionID, body->profileId, body->version});
     }
 }
