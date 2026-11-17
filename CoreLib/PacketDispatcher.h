@@ -1,25 +1,35 @@
 ﻿#pragma once
 #include "NonZoneThreadPool.h"
-#include "ZoneThreadSet.h"
 #include "IPacketView.h"
 #include "IPacketDispatcher.h"
+#include "IZoneEventQueue.h"
+#include "LoggerGlobal.h"
 #include "StateManager.h"
 #include "PacketTypes.h"
 namespace Core {
     class ILogger;
     class PacketDispatcher : public IPacketDispatcher {
         NonZoneThreadPool* nonZoneThreadPool = nullptr;
-        ZoneThreadSet*  zoneThreadSet = nullptr;
+        IZoneEventQueue* zoneEvents = nullptr;
         StateManager* stateManager = nullptr;
-        void Initialize(NonZoneThreadPool* a, ZoneThreadSet* z, StateManager* s) {
+        void Initialize(NonZoneThreadPool* a, IZoneEventQueue* z, StateManager* s) {
             nonZoneThreadPool = a;
-            zoneThreadSet = z;
+            zoneEvents = z;
             stateManager = s;
         }
-        bool IsReady() {
-            if (stateManager == nullptr) return false;
-            if (nonZoneThreadPool == nullptr || zoneThreadSet == nullptr)
+        bool IsReady() const {
+            if (stateManager == nullptr) {
+                sysLogger->LogError("packet dispatcher", "stateManager not initialized");
                 return false;
+            }
+            if (nonZoneThreadPool == nullptr) {
+                sysLogger->LogError("packet dispatcher", "nonZoneThreadPool not initialized");
+                return false;
+            }
+            if (zoneEvents == nullptr) {
+                sysLogger->LogError("packet dispatcher", "zone event queue not initialized");
+                return false;
+            }
             return true;
         }
         friend class Initializer;

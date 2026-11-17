@@ -164,6 +164,7 @@
     <ClInclude Include="InMemoryQueue.h" />
     <ClInclude Include="IPacket.h" />
     <ClInclude Include="IPacketDispatcher.h" />
+    <ClInclude Include="IZoneEventQueue.h" />
     <ClInclude Include="IPacketPool.h" />
     <ClInclude Include="IPacketPoolManager.h" />
     <ClInclude Include="ICachedClock.h" />
@@ -188,9 +189,10 @@
     <ClInclude Include="Cell.h" />
     <ClInclude Include="WorldMap.h" />
     <ClInclude Include="Generated\WorldMap.inc" />
+    <ClInclude Include="ZoneEventRouter.h" />
     <ClInclude Include="ZoneHandler.h" />
     <ClInclude Include="ZoneState.h" />
-    <ClInclude Include="ZoneThreadSet.h" />
+    <ClInclude Include="ZoneThread.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChatSessionManager.cpp" />
@@ -211,7 +213,8 @@
     <ClCompile Include="ZoneState_Monsters.cpp" />
     <ClCompile Include="ZoneState_Skills.cpp" />
     <ClCompile Include="ZoneState_Snapshots.cpp" />
-    <ClCompile Include="ZoneThreadSet.cpp" />
+    <ClCompile Include="ZoneEventRouter.cpp" />
+    <ClCompile Include="ZoneThread.cpp" />
     <ClInclude Include="IMessageQueue.h">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClInclude>

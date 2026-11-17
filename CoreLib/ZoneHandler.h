@@ -3,7 +3,7 @@
 #include <cstdint>
 #include "IPacketView.h"
 #include "CorePerfCollector.h"
-#include "ZoneThreadSet.h"
+#include "ZoneThread.h"
 
 #include "MessageTypes.h"
 #include "MessagePool.h"
@@ -31,12 +31,19 @@ namespace Core {
             writer = packetWriter;
         }
 
-        bool IsReady() {
+        bool IsReady() const {
             if (stateManager == nullptr) {
                 sysLogger->LogError("zone handler", "stateManager not initialized");
                 return false;
             }
-            if (networkSender == nullptr || writer == nullptr) return false;
+            if (networkSender == nullptr) {
+                sysLogger->LogError("zone handler", "networkSender not initialized");
+                return false;
+            }
+            if (writer == nullptr) {
+                sysLogger->LogError("zone handler", "writer not initialized");
+                return false;
+            }
             return true;
         }
         
@@ -47,10 +54,10 @@ namespace Core {
         enum class TickSnapshot { None, Delta, Full };
 
         template<class Queue, class SelectSnapshot>
-        size_t RunTick(uint16_t zoneID, Queue& queue, size_t maxPackets,
+        size_t RunTick(ZoneState& zone, uint16_t zoneID, Queue& queue, size_t maxPackets,
             CorePerfCollector& perf, SelectSnapshot selectSnapshot) {
-            SkillCoolDown(zoneID);
-            ReplenishMoveBudget(zoneID);
+            zone.SkillCoolDown();
+            zone.ReplenishMoveBudget();
             size_t processed = 0;
             {
                 ZoneEvent event;
@@ -64,53 +71,28 @@ namespace Core {
                 }
             }
             perf.AddPacketProcessCnt(zoneID, processed);
-            ApplySkill(zoneID);
-            UpdateMonster(zoneID);
-            FlushCheat(zoneID);
+            zone.ApplySkill();
+            zone.UpdateMonster();
+            zone.FlushCheat();
             switch (selectSnapshot()) {
-            case TickSnapshot::Full: BroadcastFullState(zoneID); break;
-            case TickSnapshot::Delta: BroadcastDeltaState(zoneID); break;
+            case TickSnapshot::Full: BroadcastFullState(zone); break;
+            case TickSnapshot::Delta: BroadcastDeltaState(zone); break;
             case TickSnapshot::None: break;
             }
             return processed;
         }
 
         void Process(IPacketView* p, uint16_t zoneID);
-        void BroadcastDeltaState(uint16_t zoneID) {
-            auto zoneState = stateManager->GetZone(zoneID);
-            zoneState->DeltaSnapshot();
-            zoneState->DeltaSnapshotMonster();
-            zoneState->ActionSnapshot();
+    private:
+        static void BroadcastDeltaState(ZoneState& zone) {
+            zone.DeltaSnapshot();
+            zone.DeltaSnapshotMonster();
+            zone.ActionSnapshot();
         }
-        void BroadcastFullState(uint16_t zoneID) {
-            auto zoneState = stateManager->GetZone(zoneID);
-            zoneState->FullSnapshot();
-            zoneState->FullSnapshotMonster();
-            zoneState->ActionSnapshot();
-        }
-        void FlushCheat(uint16_t zoneID) {
-            auto zoneState = stateManager->GetZone(zoneID);
-            zoneState->FlushCheat();
-        }
-        void UpdateMonster(uint16_t zoneID) {
-            auto zoneState = stateManager->GetZone(zoneID);
-            zoneState->UpdateMonster();
-        }
-        void SkillCoolDown(uint16_t zoneID) {
-            auto zoneState = stateManager->GetZone(zoneID);
-            zoneState->SkillCoolDown();
-        }
-        void ReplenishMoveBudget(uint16_t zoneID) {
-            auto zoneState = stateManager->GetZone(zoneID);
-            zoneState->ReplenishMoveBudget();
-        }
-        void ApplySkill(uint16_t zoneID) {
-            auto zoneState = stateManager->GetZone(zoneID);
-            zoneState->ApplySkill();
-        }
-        void SpawnMonster(uint16_t zoneID) {
-            auto zoneState = stateManager->GetZone(zoneID);
-            zoneState->InitializeMonster();
+        static void BroadcastFullState(ZoneState& zone) {
+            zone.FullSnapshot();
+            zone.FullSnapshotMonster();
+            zone.ActionSnapshot();
         }
     };
 }

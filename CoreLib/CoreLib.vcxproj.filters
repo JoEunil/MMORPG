@@ -15,6 +15,9 @@
     <Filter Include="Interface">
       <UniqueIdentifier>{78a706b3-8ee5-412f-9ccd-6af5f0d8ca90}</UniqueIdentifier>
     </Filter>
+    <Filter Include="InternalInterface">
+      <UniqueIdentifier>{82E29BFE-26FD-400B-9CE8-CA56CFB9500A}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Data">
       <UniqueIdentifier>{412850a0-70ca-4b69-9a40-dbf019f24972}</UniqueIdentifier>
     </Filter>
@@ -120,7 +123,13 @@
     <ClInclude Include="BroadcastThreadPool.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="ZoneThreadSet.h">
+    <ClInclude Include="ZoneEventRouter.h">
+      <Filter>World</Filter>
+    </ClInclude>
+    <ClInclude Include="IZoneEventQueue.h">
+      <Filter>InternalInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="ZoneThread.h">
       <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="ZoneHandler.h">
@@ -224,7 +233,10 @@
     <ClCompile Include="StateManager.cpp">
       <Filter>World</Filter>
     </ClCompile>
-    <ClCompile Include="ZoneThreadSet.cpp">
+    <ClCompile Include="ZoneEventRouter.cpp">
+      <Filter>World</Filter>
+    </ClCompile>
+    <ClCompile Include="ZoneThread.cpp">
       <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="ZoneHandler.cpp">

@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include <array>
 #include <memory>
 
 #include "CacheCommandSender.h"
@@ -13,8 +14,8 @@
 #include "IMessageQueue.h"
 #include "StateManager.h"
 #include "BroadcastThreadPool.h"
+#include "ZoneEventRouter.h"
 #include "ZoneHandler.h"
-#include "ZoneThreadSet.h"
 #include "NonZoneHandler.h"
 #include "NonZoneThreadPool.h"
 #include "PacketDispatcher.h"
@@ -37,7 +38,7 @@ namespace Core {
         StateManager stateManager;
         BroadcastThreadPool broadcastPool;
         ZoneHandler zoneHandler;
-        ZoneThreadSet zoneThreadSet;
+        ZoneEventRouter zoneEventRouter;
         NonZoneHandler nonZoneHandler;
         NonZoneThreadPool nonZoneThreadPool;
         PacketDispatcher packetDispatcher;
@@ -58,7 +59,7 @@ namespace Core {
             broadcastPool.Initialize(networkSender, &stateManager, &perfCollector, &writer);
             lobbyZone.Initialize(& stateManager);
             nonZoneThreadPool.Initialize(&nonZoneHandler);
-            zoneThreadSet.Initialize(&zoneHandler, &perfCollector);
+            zoneEventRouter.Initialize(zoneHandler, perfCollector);
             writer.Initialize(packetPoolManager);
             mqHandler.Initialize(networkSender, &writer, &lobbyZone, &stateManager);
             recvMQ.Initialize(&mqHandler, &msgPool);
@@ -70,13 +71,16 @@ namespace Core {
             stateManager.inventory = inventory;
             cacheCommandSender.Initialize(sendMQ, &messageWriter, &msgPool);
             stateManager.Initialize(&cacheCommandSender, networkSender, &lobbyZone, &chat);
-            packetDispatcher.Initialize(&nonZoneThreadPool, &zoneThreadSet, &stateManager);
+            packetDispatcher.Initialize(&nonZoneThreadPool, &zoneEventRouter, &stateManager);
             nonZoneThreadPool.Start();
             broadcastPool.Start();
             ZoneState::Initialize(&broadcastPool, &writer, &stateManager, &perfCollector);
             zoneHandler.Initialize(&stateManager, networkSender, &writer);
             nonZoneHandler.Initialize(networkSender, session, &writer, &cacheCommandSender, &stateManager, &lobbyZone, &chat, profileCache);
-            zoneThreadSet.Start();
+            std::array<ZoneState*, ZONE_COUNT> zones{};
+            for (size_t i = 0; i < zones.size(); ++i)
+                zones[i] = stateManager.GetZone(static_cast<uint16_t>(i + 1));
+            zoneEventRouter.Start(zones);
             chat.Start();
             perfCollector.Start();
         }
@@ -89,7 +93,8 @@ namespace Core {
                 or !zoneHandler.IsReady()
                 or !ZoneState::IsReady()
                 or !broadcastPool.IsReady()
-                or !zoneThreadSet.IsReady()
+                or !zoneEventRouter.IsReady()
+                or !packetDispatcher.IsReady()
                 or !lobbyZone.IsReady()
                 or !cacheCommandSender.IsReady()
                 or !stateManager.IsReady()
@@ -113,7 +118,7 @@ namespace Core {
         }
 
         void StopProducers() {
-            zoneThreadSet.Stop();
+            zoneEventRouter.Stop();
             broadcastPool.Stop();
             chat.Stop();
             perfCollector.Stop();

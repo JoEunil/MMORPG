@@ -3,6 +3,7 @@
 #include "PacketTypes.h"
 #include "StateManager.h"
 #include "LoggerGlobal.h"
+#include "ZoneThread.h"
 
 namespace Core {
     void PacketDispatcher::Process(std::unique_ptr<IPacketView, PacketViewDeleter> pv) {
@@ -16,7 +17,8 @@ namespace Core {
                 errorLogger->LogWarn("packet dispatcher", "Invalid ZoneID", "zoneID", zoneID, "sessionID", pv->GetSessionID());
                 return;
             }
-            zoneThreadSet->EnqueueWork(std::move(pv), zoneID);
+            ZoneEvent event{ZoneEventType::Packet, std::move(pv)};
+            zoneEvents->TryEnqueue(zoneID, event);
         } else {
             nonZoneThreadPool->EnqueueWork(std::move(pv));
         }
