@@ -22,6 +22,7 @@ namespace Core {
     struct SessionData {
         uint16_t zoneID = 0;
         uint64_t ownershipEpoch = 0;
+        std::shared_ptr<FieldZoneTransfer> pendingFieldTransfer;
         uint64_t lastRespawnRequestEpoch = 0;
         uint64_t bootstrapSequence = 0;
         ItemUseResponseBody lastItemUse = {};
@@ -47,9 +48,10 @@ namespace Core {
     class CacheCommandSender;
     class LobbyZone;
     class ChatThreadPool;
+    class ZoneEventRouter;
+    struct FieldZoneTransfer;
     struct ZoneChangeResult;
     class StateManager {
-        std::unordered_map<uint16_t, std::unique_ptr<Core::ZoneState>> m_states;
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
         std::atomic<bool> m_running;
 
@@ -58,23 +60,26 @@ namespace Core {
         INetworkSender* networkSender = nullptr;
         LobbyZone* lobbyZone = nullptr;
         ChatThreadPool* chat = nullptr;
+        ZoneEventRouter* zoneRouter = nullptr;
 
 
-        void Initialize(const CacheCommandSender* commands, INetworkSender* sender, LobbyZone* lobby, ChatThreadPool* c) {
-            m_states.reserve(ZONE_COUNT);
-            for (int zoneID = 1; zoneID <= ZONE_COUNT; zoneID++) {
-                m_states.emplace(zoneID, std::make_unique<ZoneState>(zoneID));
-            }
+        void Initialize(const CacheCommandSender* commands, INetworkSender* sender, LobbyZone* lobby, ChatThreadPool* c,
+            ZoneEventRouter& router) {
             for (auto& shard : m_shards)
                 shard.sessionMap.reserve(MAX_USER_CAPACITY / SHARD_SIZE);
             cacheCommands = commands;
             lobbyZone = lobby;
             networkSender = sender;
             chat = c;
+            zoneRouter = &router;
             m_running.store(true, std::memory_order_relaxed);
         }
 
         bool IsReady() const {
+            if (zoneRouter == nullptr) {
+                sysLogger->LogError("state manager", "zone router not initialized");
+                return false;
+            }
             if (cacheCommands == nullptr) {
                 sysLogger->LogError("state manager", "cache command sender not initialized");
                 return false;
@@ -93,19 +98,17 @@ namespace Core {
 
         void CleanUp();
         void EnqueueCharacterStateUpdate(uint64_t sessionID, const CharacterState& character);
+        bool RestoreRejectedFieldTransfer(ZoneState& source, const std::shared_ptr<FieldZoneTransfer>& transfer);
+        bool DescribeZoneChangeLocked(uint64_t sessionID, const SessionData& session, ZoneChangeResult& result);
 
         friend class Initializer;
         friend class LobbyZone; // ImmigrateChar takes the session shard before the lobby mutex.
         friend class ZoneBenchmarkAccess;
+        friend class ZoneHandler;
 
     public:
         ~StateManager() {
             CleanUp();
-        }
-
-        ZoneState* GetZone(uint16_t zoneID) {
-            auto it = m_states.find(zoneID);
-            return it != m_states.end() ? it->second.get() : nullptr;
         }
 
         void BeginAuth(uint64_t sessionID) {
@@ -236,7 +239,8 @@ namespace Core {
         void Disconnect(uint64_t sessionID);
         bool ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result);
         bool RespawnToTown(uint64_t sessionID, const RespawnToTownBody& request, ZoneChangeResult& result);
-        bool ProcessAction(uint64_t sessionID, uint16_t routeZoneID, const ActionRequestBody& action, ZoneChangeResult& transition);
+        bool CompleteFieldTransfer(ZoneState& destination, const std::shared_ptr<FieldZoneTransfer>& transfer, ZoneChangeResult& result);
+        void ResolvePendingFieldTransfers(ZoneState& source);
         bool SendBootstrap(uint64_t sessionID, uint64_t ownershipEpoch);
         void UpdateProfileVersion(uint64_t sessionID, uint32_t version);
 

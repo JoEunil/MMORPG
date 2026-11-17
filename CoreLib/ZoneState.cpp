@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <type_traits>
 
 namespace Core {
     void ZoneState::RemoveFromCell(CharacterState& character) {
@@ -36,7 +37,7 @@ namespace Core {
 
     // The caller owns m_mutex (and the session shard for production transfers).
     uint32_t ZoneState::ImmigrateCharLocked(uint64_t sessionID, const CharacterState& state) {
-        if (m_chars.size() >= MAX_ZONE_CAPACITY || m_sessionToIndex.contains(sessionID)
+        if (m_chars.size() + m_pendingFieldTransfers.size() >= MAX_ZONE_CAPACITY || m_sessionToIndex.contains(sessionID)
             || m_generation == (std::numeric_limits<uint64_t>::max)()
             || !std::isfinite(state.x) || !std::isfinite(state.y)
             || state.x < m_area.x_min || state.x > m_area.x_max
@@ -47,12 +48,7 @@ namespace Core {
         if (id == INVALID_ZONE_INTERNAL_ID || id >= MAX_ZONE_INTERNAL_ID
             || m_InternalIDToIndex.contains(id))
             return INVALID_ZONE_INTERNAL_ID;
-        const auto index = static_cast<uint16_t>(m_chars.size());
-        const auto [x, y] = GetCell(state.x, state.y, m_area);
-        bool sessionInserted = false;
-        bool internalInserted = false;
         try {
-            // Complete every allocating operation before changing source membership or ID/generation.
             CharacterState incoming = state;
             incoming.sessionID = sessionID;
             incoming.zoneInternalID = id;
@@ -68,28 +64,59 @@ namespace Core {
                 incoming.skillSlot.resize(3);
             }
             incoming.skillSlotCnt = 3;
-            auto& sessions = m_cells[y][x].charSessions;
-            sessions.reserve(sessions.size() + 1);
-            sessionInserted = m_sessionToIndex.emplace(sessionID, index).second;
-            if (!sessionInserted)
+            if (!RegisterCharacterLocked(std::move(incoming)))
                 return INVALID_ZONE_INTERNAL_ID;
-            internalInserted = m_InternalIDToIndex.emplace(id, index).second;
-            if (!internalInserted) {
-                m_sessionToIndex.erase(sessionID);
-                return INVALID_ZONE_INTERNAL_ID;
-            }
-            // m_chars capacity is reserved at construction; moving CharacterState does not allocate.
-            m_chars.push_back(std::move(incoming));
-            AddToCell(m_chars.back(), x, y);
         }
         catch (const std::bad_alloc&) {
-            if (internalInserted) m_InternalIDToIndex.erase(id);
-            if (sessionInserted) m_sessionToIndex.erase(sessionID);
             return INVALID_ZONE_INTERNAL_ID;
         }
         m_internalIdGenerator.store(id + 1, std::memory_order_relaxed);
         ++m_generation;
         return id;
+    }
+
+    bool ZoneState::RestoreFieldTransferLocked(const CharacterState& original) {
+        try {
+            CharacterState incoming = original;
+            return RegisterCharacterLocked(std::move(incoming));
+        }
+        catch (const std::bad_alloc&) {
+            return false;
+        }
+    }
+
+    bool ZoneState::RegisterCharacterLocked(CharacterState&& incoming) {
+        static_assert(std::is_nothrow_move_constructible_v<CharacterState>);
+        if (m_chars.size() == m_chars.capacity())
+            return false;
+
+        const auto sessionID = incoming.sessionID;
+        const auto id = incoming.zoneInternalID;
+        const auto index = static_cast<uint16_t>(m_chars.size());
+        const auto [x, y] = GetCell(incoming.x, incoming.y, m_area);
+        auto& cellSessions = m_cells[y][x].charSessions;
+        cellSessions.reserve(cellSessions.size() + 1);
+        const auto [sessionEntry, inserted] = m_sessionToIndex.emplace(sessionID, index);
+        if (!inserted)
+            return false;
+
+        struct SessionIndexRollback {
+            decltype(m_sessionToIndex)& sessionIndex;
+            decltype(m_sessionToIndex)::iterator entry;
+            bool committed = false;
+
+            ~SessionIndexRollback() {
+                if (!committed)
+                    sessionIndex.erase(entry);
+            }
+        } rollback{m_sessionToIndex, sessionEntry};
+
+        if (!m_InternalIDToIndex.emplace(id, index).second)
+            return false;
+        m_chars.push_back(std::move(incoming));
+        AddToCell(m_chars.back(), x, y);
+        rollback.committed = true;
+        return true;
     }
 
     void ZoneState::RemoveCharacterLocked(uint64_t sessionID) {
@@ -120,7 +147,7 @@ namespace Core {
         m_InternalIDToIndex.erase(id);
     }
 
-    void ZoneState::RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint16_t dirtyBit) {
+    void ZoneState::RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint32_t dirtyBit) {
         auto it = m_sessionToIndex.find(sessionID);
         if (it == m_sessionToIndex.end()) return;
         auto& character = m_chars[it->second];

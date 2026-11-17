@@ -1,42 +1,63 @@
 #include "pch.h"
 #include "ZoneEventRouter.h"
 
-#include "LoggerGlobal.h"
-
-#include <algorithm>
+#include "WorldMap.h"
+#include "ZoneState.h"
 
 namespace Core {
+    ZoneEventRouter::ZoneEventRouter() = default;
+
+    ZoneEventRouter::~ZoneEventRouter() {
+        Stop();
+    }
+
     void ZoneEventRouter::Initialize(ZoneHandler& handler, CorePerfCollector& perf) {
-        for (std::size_t i = 0; i < zoneThreads.size(); ++i)
-            zoneThreads[i].Initialize(static_cast<uint16_t>(i + 1), handler, perf);
+        for (std::size_t i = 0; i < zones.size(); ++i) {
+            const auto zoneID = static_cast<uint16_t>(i + 1);
+            zones[i].state = std::make_unique<ZoneState>(zoneID);
+            zones[i].worker.Initialize(zoneID, handler, perf);
+        }
     }
 
     bool ZoneEventRouter::IsReady() const {
-        for (const auto& worker : zoneThreads) {
-            if (!worker.IsReady())
+        for (const auto& zone : zones) {
+            if (!zone.worker.IsReady())
                 return false;
         }
         return true;
     }
 
-    void ZoneEventRouter::Start(const std::array<ZoneState*, ZONE_COUNT>& zones) {
-        const auto missing = std::find(zones.begin(), zones.end(), nullptr);
-        if (missing != zones.end()) {
-            sysLogger->LogError("zone event router", "zone state not initialized", "zoneID", missing - zones.begin() + 1);
-            return;
-        }
-        for (std::size_t i = 0; i < zoneThreads.size(); ++i)
-            zoneThreads[i].Start(*zones[i]);
+    void ZoneEventRouter::Start() {
+        for (auto& zone : zones)
+            zone.worker.Start(*zone.state);
+        acceptingTransfers.store(true, std::memory_order_release);
     }
 
     void ZoneEventRouter::Stop() {
-        for (auto& worker : zoneThreads)
-            worker.Stop();
+        acceptingTransfers.store(false, std::memory_order_release);
+        for (auto& zone : zones)
+            zone.worker.Stop();
+    }
+
+    ZoneState* ZoneEventRouter::GetZone(uint16_t zoneID) {
+        return zoneID != 0 && zoneID <= zones.size() ? zones[zoneID - 1].state.get() : nullptr;
     }
 
     bool ZoneEventRouter::TryEnqueue(uint16_t zoneID, ZoneEvent& event) {
-        if (zoneID == 0 || zoneID > zoneThreads.size())
+        if (event.type == ZoneEventType::Transfer || zoneID == 0 || zoneID > zones.size())
             return false;
-        return zoneThreads[zoneID - 1].Enqueue(event);
+        return zones[zoneID - 1].worker.Enqueue(event);
+    }
+
+    uint16_t ZoneEventRouter::FindDestination(uint16_t sourceZoneID, float x, float y) const {
+        return WorldMap::FindTransitionZone(sourceZoneID, x, y);
+    }
+
+    bool ZoneEventRouter::TryBeginTransfer(uint16_t destinationID, const std::shared_ptr<FieldZoneTransfer>& transfer) {
+        if (!transfer || destinationID == 0 || destinationID > zones.size()
+            || !acceptingTransfers.load(std::memory_order_acquire))
+            return false;
+        ZoneEvent event{ZoneEventType::Transfer, nullptr, transfer};
+        return zones[destinationID - 1].worker.Enqueue(event);
     }
 }

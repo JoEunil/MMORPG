@@ -9,6 +9,7 @@
 #include <BaseLib/MPMCQueue.h>
 
 #include "IPacketView.h"
+#include "IZoneTransfer.h"
 #include "WorldConfig.h"
 
 namespace Core {
@@ -18,11 +19,13 @@ namespace Core {
 
     enum class ZoneEventType : uint8_t {
         Packet,
+        Transfer,
     };
 
     struct ZoneEvent {
         ZoneEventType type = ZoneEventType::Packet;
         std::unique_ptr<IPacketView, PacketViewDeleter> packet;
+        std::shared_ptr<FieldZoneTransfer> transfer;
     };
 
     class alignas(std::hardware_destructive_interference_size) ZoneThread {

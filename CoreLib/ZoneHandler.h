@@ -24,11 +24,13 @@ namespace Core {
         StateManager* stateManager = nullptr;
         INetworkSender* networkSender = nullptr;
         PacketWriter* writer = nullptr;
+        IZoneTransfer* zoneTransfer = nullptr;
         
-        void Initialize(StateManager* m, INetworkSender* sender, PacketWriter* packetWriter) {
+        void Initialize(StateManager* m, INetworkSender* sender, PacketWriter* packetWriter, IZoneTransfer& transfer) {
             stateManager = m;
             networkSender = sender;
             writer = packetWriter;
+            zoneTransfer = &transfer;
         }
 
         bool IsReady() const {
@@ -44,33 +46,45 @@ namespace Core {
                 sysLogger->LogError("zone handler", "writer not initialized");
                 return false;
             }
+            if (zoneTransfer == nullptr) {
+                sysLogger->LogError("zone handler", "zone transfer not initialized");
+                return false;
+            }
             return true;
         }
         
-        void ProcessAction(const ActionRequestBody* body, uint64_t sessionID, uint16_t zoneID);
+        void ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID);
+        void ProcessFieldTransfer(ZoneState& zone, const std::shared_ptr<FieldZoneTransfer>& transfer);
+        void SendZoneChange(uint64_t sessionID, const ZoneChangeResult& transition);
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
     public:
         enum class TickSnapshot { None, Delta, Full };
 
         template<class Queue, class SelectSnapshot>
-        size_t RunTick(ZoneState& zone, uint16_t zoneID, Queue& queue, size_t maxPackets,
+        size_t RunTick(ZoneState& zone, uint16_t zoneID, Queue& queue, size_t maxEvents,
             CorePerfCollector& perf, SelectSnapshot selectSnapshot) {
+            stateManager->ResolvePendingFieldTransfers(zone);
             zone.SkillCoolDown();
             zone.ReplenishMoveBudget();
             size_t processed = 0;
+            size_t packets = 0;
             {
                 ZoneEvent event;
-                while (processed < maxPackets && queue.pop(event)) {
+                while (processed < maxEvents && queue.pop(event)) {
+                    ++processed;
                     switch (event.type) {
                     case ZoneEventType::Packet:
-                        Process(event.packet.get(), zoneID);
-                        ++processed;
+                        Process(zone, event.packet.get(), zoneID);
+                        ++packets;
+                        break;
+                    case ZoneEventType::Transfer:
+                        ProcessFieldTransfer(zone, event.transfer);
                         break;
                     }
                 }
             }
-            perf.AddPacketProcessCnt(zoneID, processed);
+            perf.AddPacketProcessCnt(zoneID, packets);
             zone.ApplySkill();
             zone.UpdateMonster();
             zone.FlushCheat();
@@ -82,7 +96,7 @@ namespace Core {
             return processed;
         }
 
-        void Process(IPacketView* p, uint16_t zoneID);
+        void Process(ZoneState& zone, IPacketView* p, uint16_t zoneID);
     private:
         static void BroadcastDeltaState(ZoneState& zone) {
             zone.DeltaSnapshot();

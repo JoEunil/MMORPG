@@ -15,7 +15,7 @@
 namespace Core {
     class INetworkSender;
     class IPacket;
-    class StateManager;
+    class ZoneEventRouter;
     class CorePerfCollector;
     class BroadcastThreadPool {
         struct BroadcastWork {
@@ -33,9 +33,9 @@ namespace Core {
         std::atomic<size_t> m_queuedWorkCount = 0; // Shared queue budget, not a per-worker multiplier.
 
         std::atomic<bool> m_running = false;
-        void Initialize(INetworkSender* sender, StateManager* s, CorePerfCollector* p, PacketWriter* pw) {
+        void Initialize(INetworkSender* sender, ZoneEventRouter& router, CorePerfCollector* p, PacketWriter* pw) {
             networkSender = sender;
-            stateManager = s;
+            zoneRouter = &router;
             perfCollector = p;
             writer = pw;
         }
@@ -50,6 +50,10 @@ namespace Core {
             }
             if (networkSender == nullptr) {
                 sysLogger->LogError("broadcast thread", "iocp not initialized");
+                return false;
+            }
+            if (zoneRouter == nullptr) {
+                sysLogger->LogError("broadcast thread", "zone router not initialized");
                 return false;
             }
             if (perfCollector == nullptr) {
@@ -69,7 +73,7 @@ namespace Core {
         void Stop();
 
         INetworkSender* networkSender = nullptr;
-        StateManager* stateManager = nullptr;
+        ZoneEventRouter* zoneRouter = nullptr;
         CorePerfCollector* perfCollector = nullptr;
         PacketWriter* writer = nullptr;
         friend class Initializer;

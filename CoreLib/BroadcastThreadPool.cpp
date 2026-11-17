@@ -3,7 +3,7 @@
 #include "IPacket.h"
 #include "ZoneState.h"
 #include "INetworkSender.h"
-#include "StateManager.h"
+#include "ZoneEventRouter.h"
 #include "Cell.h"
 #include <BaseLib/TripleBuffer.h>
 namespace Core {
@@ -42,7 +42,9 @@ namespace Core {
             }
 
             const uint16_t zoneID = packets->zoneID;
-            ZoneState* zone = stateManager->GetZone(zoneID);
+            auto* zone = zoneRouter->GetZone(zoneID);
+            if (zone == nullptr)
+                continue;
             Base::BufferReader<std::vector<std::vector<uint64_t>>> reader = zone->GetSessionSnaphot();
             const auto& recipientsByCell = *reader.data;
             size_t sentCount = 0;

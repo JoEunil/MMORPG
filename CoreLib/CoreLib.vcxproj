@@ -165,6 +165,7 @@
     <ClInclude Include="IPacket.h" />
     <ClInclude Include="IPacketDispatcher.h" />
     <ClInclude Include="IZoneEventQueue.h" />
+    <ClInclude Include="IZoneTransfer.h" />
     <ClInclude Include="IPacketPool.h" />
     <ClInclude Include="IPacketPoolManager.h" />
     <ClInclude Include="ICachedClock.h" />

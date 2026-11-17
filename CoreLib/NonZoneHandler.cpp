@@ -202,7 +202,6 @@ namespace Core {
         uint8_t* startPtr = p->GetPtr() + sizeof(PacketStruct<ChatRequestBody>);
         auto session = p->GetSessionID();
         auto zoneID = stateManager->GetZoneID(session);
-        auto zone = stateManager->GetZone(zoneID);
         ChatEvent event;
         event.type = ChatEventType::CHAT;
         event.senderSessionID = session;

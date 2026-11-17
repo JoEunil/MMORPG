@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include <array>
 #include <memory>
 
 #include "CacheCommandSender.h"
@@ -35,10 +34,10 @@ namespace Core {
         PacketWriter writer;
         MessageWriter messageWriter;
         CacheCommandSender cacheCommandSender;
-        StateManager stateManager;
-        BroadcastThreadPool broadcastPool;
         ZoneHandler zoneHandler;
         ZoneEventRouter zoneEventRouter;
+        StateManager stateManager;
+        BroadcastThreadPool broadcastPool;
         NonZoneHandler nonZoneHandler;
         NonZoneThreadPool nonZoneThreadPool;
         PacketDispatcher packetDispatcher;
@@ -56,10 +55,9 @@ namespace Core {
         
         void InjectDependencies1(INetworkSender* networkSender, IPacketPoolManager* packetPoolManager) {
             perfCollector.Initialize();
-            broadcastPool.Initialize(networkSender, &stateManager, &perfCollector, &writer);
+            broadcastPool.Initialize(networkSender, zoneEventRouter, &perfCollector, &writer);
             lobbyZone.Initialize(& stateManager);
             nonZoneThreadPool.Initialize(&nonZoneHandler);
-            zoneEventRouter.Initialize(zoneHandler, perfCollector);
             writer.Initialize(packetPoolManager);
             mqHandler.Initialize(networkSender, &writer, &lobbyZone, &stateManager);
             recvMQ.Initialize(&mqHandler, &msgPool);
@@ -70,17 +68,15 @@ namespace Core {
         void InjectDependencies2(INetworkSender* networkSender, ISessionAuth* session, IMessageQueue* sendMQ, IProfileCache* profileCache, IInventoryOperations* inventory = nullptr) {
             stateManager.inventory = inventory;
             cacheCommandSender.Initialize(sendMQ, &messageWriter, &msgPool);
-            stateManager.Initialize(&cacheCommandSender, networkSender, &lobbyZone, &chat);
+            zoneEventRouter.Initialize(zoneHandler, perfCollector);
+            stateManager.Initialize(&cacheCommandSender, networkSender, &lobbyZone, &chat, zoneEventRouter);
             packetDispatcher.Initialize(&nonZoneThreadPool, &zoneEventRouter, &stateManager);
             nonZoneThreadPool.Start();
             broadcastPool.Start();
             ZoneState::Initialize(&broadcastPool, &writer, &stateManager, &perfCollector);
-            zoneHandler.Initialize(&stateManager, networkSender, &writer);
+            zoneHandler.Initialize(&stateManager, networkSender, &writer, zoneEventRouter);
             nonZoneHandler.Initialize(networkSender, session, &writer, &cacheCommandSender, &stateManager, &lobbyZone, &chat, profileCache);
-            std::array<ZoneState*, ZONE_COUNT> zones{};
-            for (size_t i = 0; i < zones.size(); ++i)
-                zones[i] = stateManager.GetZone(static_cast<uint16_t>(i + 1));
-            zoneEventRouter.Start(zones);
+            zoneEventRouter.Start();
             chat.Start();
             perfCollector.Start();
         }

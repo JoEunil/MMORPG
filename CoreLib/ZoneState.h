@@ -7,6 +7,7 @@
 #include <queue>
 #include <unordered_map>
 #include <array>
+#include <atomic>
 #include <optional>
 
 #include <new>
@@ -33,8 +34,21 @@ namespace Core {
         const Data::SkillData& skillInfo;
     }; 
 
+    struct FieldZoneTransfer {
+        enum class Status { Pending, Rejected, Complete };
+
+        CharacterState character{};
+        uint64_t ownershipEpoch = 0;
+        uint16_t sourceZoneID = 0;
+        uint8_t dir = 0;
+        uint8_t skillSlot = 0;
+        float x = 0, y = 0, moveBudget = 0, aimAngle = 0;
+        std::atomic<Status> status = Status::Pending;
+    };
+
     class ZoneState {
         std::vector<CharacterState> m_chars;
+        std::vector<std::shared_ptr<FieldZoneTransfer>> m_pendingFieldTransfers;
         std::unordered_map<uint64_t, uint16_t> m_sessionToIndex; // 자신의 캐릭터를 컨트롤 할 때
         std::unordered_map<uint32_t, uint16_t> m_InternalIDToIndex; // 다른 캐릭터와 상호작용할 때
         std::vector<MonsterState> m_monsters; // id = index, 죽은 몬스터는 제거하지 않고 틱 단위로 처리.
@@ -81,8 +95,10 @@ namespace Core {
         void RemoveFromCell(CharacterState& character);
         void AddToCell(CharacterState& character,  uint8_t x, uint8_t y);
         uint32_t ImmigrateCharLocked(uint64_t sessionID, const CharacterState& user);
+        bool RegisterCharacterLocked(CharacterState&& incoming);
+        bool RestoreFieldTransferLocked(const CharacterState& original);
         void RemoveCharacterLocked(uint64_t sessionID);
-        void RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint16_t dirtyBit);
+        void RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint32_t dirtyBit);
         void UpdateSessionSnapshot();
         void MoveMonsterHome(MonsterState& monster);
         void UseMonsterSkill(MonsterState& monster);
@@ -92,6 +108,7 @@ namespace Core {
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
         friend class StateManager;
+        friend class ZoneHandler;
         friend class MonsterBehaviorFixture;
     public:
         explicit ZoneState(uint16_t zone) {
