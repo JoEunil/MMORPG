@@ -488,9 +488,7 @@ namespace Core {
 
     void SessionManager::RouteProfileVersionLocked(const SessionData& session, const ProfileVersionUpdate& update) {
         if (const auto& pending = session.pendingFieldTransfer) {
-            auto& character = pending->character;
-            if (character.profileId == update.profileID && character.profileVersion < update.version)
-                character.profileVersion = update.version;
+            pending->character.UpdateProfileVersion(update.profileID, update.version);
             return;
         }
 

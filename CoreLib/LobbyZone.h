@@ -84,8 +84,8 @@ namespace Core {
         void UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version) {
             std::lock_guard lock(m_mutex);
             const auto it = m_chars.find(sessionID);
-            if (it != m_chars.end() && it->second.profileId == profileID && it->second.profileVersion < version)
-                it->second.profileVersion = version;
+            if (it != m_chars.end())
+                it->second.UpdateProfileVersion(profileID, version);
         }
 
         bool EmigrateChar(uint64_t sessionID, CharacterState& out) {

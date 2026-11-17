@@ -76,6 +76,13 @@ namespace Core {
         uint64_t sessionID;
         uint64_t characterID;
 
+        bool UpdateProfileVersion(uint32_t profileID, uint32_t version) noexcept {
+            if (profileId != profileID || profileVersion >= version)
+                return false;
+            profileVersion = version;
+            return true;
+        }
+
         void AddExperience(uint32_t reward) {
             const uint64_t totalExp = static_cast<uint64_t>(exp) + reward;
             const uint32_t newExp = totalExp > UINT32_MAX ? UINT32_MAX : static_cast<uint32_t>(totalExp);

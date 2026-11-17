@@ -182,9 +182,8 @@ namespace Core {
         if (it == m_sessionToIndex.end())
             return;
         auto& character = m_chars[it->second];
-        if (character.profileId != profileID || character.profileVersion >= version)
+        if (!character.UpdateProfileVersion(profileID, version))
             return;
-        character.profileVersion = version;
         character.dirtyBit |= 0x200;
         m_cells[character.cellY][character.cellX].dirtyChar.push_back(character.zoneInternalID);
     }
