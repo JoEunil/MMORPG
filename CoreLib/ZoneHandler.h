@@ -3,6 +3,7 @@
 #include <cstdint>
 #include "IPacketView.h"
 #include "CorePerfCollector.h"
+#include "ZoneThreadSet.h"
 
 #include "MessageTypes.h"
 #include "MessagePool.h"
@@ -52,10 +53,14 @@ namespace Core {
             ReplenishMoveBudget(zoneID);
             size_t processed = 0;
             {
-                std::unique_ptr<IPacketView, PacketViewDeleter> packet;
-                while (processed < maxPackets && queue.pop(packet)) {
-                    Process(packet.get(), zoneID);
-                    ++processed;
+                ZoneEvent event;
+                while (processed < maxPackets && queue.pop(event)) {
+                    switch (event.type) {
+                    case ZoneEventType::Packet:
+                        Process(event.packet.get(), zoneID);
+                        ++processed;
+                        break;
+                    }
                 }
             }
             perf.AddPacketProcessCnt(zoneID, processed);

@@ -1,12 +1,12 @@
 #include "pch.h"
 #include "ZoneThreadSet.h"
+#include "ZoneHandler.h"
 
 #include <windows.h>
 #include <algorithm>
 #undef min                  // Windows 매크로 제거
 #undef max                  // Windows 매크로 제거
 
-#include "ZoneHandler.h"
 #include "IPacketView.h"
 #include "PacketTypes.h"
 #include "LoggerGlobal.h"
@@ -15,7 +15,6 @@
 
 namespace Core {
     void ZoneThreadSet::WorkerFunc(Thread* t, int zoneID) {
-        std::queue<std::unique_ptr<IPacketView, PacketViewDeleter>> localQueue;
         auto lastTick = std::chrono::steady_clock::now();
         auto lastDeltaSnapshot = lastTick;
         auto lastFullSnapshot = lastTick;
@@ -103,7 +102,8 @@ namespace Core {
 
     void ZoneThreadSet::EnqueueWork(std::unique_ptr<Core::IPacketView, PacketViewDeleter> pv, uint16_t zoneID) {
         Thread& t = m_threads[zoneID-1];
-        if (!t.workQueue.push(std::move(pv))) {
+        ZoneEvent event{ZoneEventType::Packet, std::move(pv)};
+        if (!t.workQueue.push(event)) {
             // 실패(full) 시 false 반환
             perfCollector->AddZoneDropCnt(zoneID);
         }

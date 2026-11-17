@@ -7,8 +7,9 @@
 #include <new>
 #include <condition_variable>
 #include <atomic>
+#include <cstdint>
 
-#include "ZoneHandler.h"
+#include "LoggerGlobal.h"
 #include "IPacketView.h"
 #include "WorldConfig.h"
 
@@ -17,15 +18,25 @@
 namespace Core {
     class IPacketView;
     class CorePerfCollector;
+    class ZoneHandler;
+
+    enum class ZoneEventType : uint8_t {
+        Packet,
+    };
+
+    struct ZoneEvent {
+        ZoneEventType type = ZoneEventType::Packet;
+        std::unique_ptr<IPacketView, PacketViewDeleter> packet;
+    };
 
     struct alignas(std::hardware_destructive_interference_size) Thread {
         std::thread thread;
-        Base::MPMCQueue<std::unique_ptr<IPacketView, PacketViewDeleter>, ZONE_QUEUE_SIZE> workQueue; // 개별 작업 큐
+        Base::MPMCQueue<ZoneEvent, ZONE_QUEUE_SIZE> workQueue;
         std::atomic<bool> running = false;
     };
 
-    class ZoneThreadSet{
-        std::array<Thread, ZONE_COUNT> m_threads; // Thread 구조체 내부의 mutex, cv 때문에 이동생성자를쓸 수 없음 (vector 같은 컨테이너 사용불가)
+    class ZoneThreadSet {
+        std::array<Thread, ZONE_COUNT> m_threads;
 
         inline static ZoneHandler* handler;
         inline static CorePerfCollector* perfCollector;
