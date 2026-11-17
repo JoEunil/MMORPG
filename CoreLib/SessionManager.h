@@ -99,7 +99,8 @@ namespace Core {
         void CleanUp();
         void EnqueueCharacterStateUpdate(uint64_t sessionID, const CharacterState& character);
         static void UpdateZoneOwnershipLocked(SessionData& session, uint16_t destinationID);
-        bool DescribeZoneChangeLocked(uint64_t sessionID, const SessionData& session, ZoneChangeResult& result);
+        bool QueueBootstrapLocked(uint64_t sessionID, const SessionData& session, bool resendZoneChange);
+        static uint64_t NextBootstrapIDLocked(SessionData& session);
         void RouteProfileVersionLocked(const SessionData& session, const ProfileVersionUpdate& update);
 
         friend class Initializer;
@@ -239,7 +240,7 @@ namespace Core {
         void Disconnect(uint64_t sessionID);
         bool ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result);
         bool RespawnToTown(uint64_t sessionID, const RespawnToTownBody& request, ZoneChangeResult& result);
-        bool SendBootstrap(uint64_t sessionID, uint64_t ownershipEpoch);
+        bool QueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch);
         void QueueProfileVersionUpdate(const ProfileVersionUpdate& update);
 
         void Cheat(uint64_t sessionID, uint16_t cheat, std::chrono::steady_clock::time_point time) {

@@ -65,7 +65,8 @@ namespace Core {
         ParryResponseBody ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request);
         void ProcessFieldTransfer(ZoneState& zone, const std::shared_ptr<FieldZoneTransfer>& transfer);
         void ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update);
-        void SendZoneChange(uint64_t sessionID, const ZoneChangeResult& transition);
+        void ProcessBootstrap(ZoneState& zone, const BootstrapRequest& request);
+        void SendZoneChange(ZoneState& zone, uint64_t sessionID, const ZoneChangeResult& transition);
         friend class Initializer;
         friend class ZoneThread;
         friend class ZoneBenchmarkAccess;
@@ -93,6 +94,9 @@ namespace Core {
                         break;
                     case ZoneEventType::ProfileVersion:
                         ApplyProfileVersion(zone, event.profileVersion);
+                        break;
+                    case ZoneEventType::Bootstrap:
+                        ProcessBootstrap(zone, event.bootstrap);
                         break;
                     }
                 }

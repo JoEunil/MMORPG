@@ -21,6 +21,7 @@ namespace Core {
         Packet,
         Transfer,
         ProfileVersion,
+        Bootstrap,
     };
 
     struct ProfileVersionUpdate {
@@ -29,11 +30,18 @@ namespace Core {
         uint32_t version = 0;
     };
 
+    struct BootstrapRequest {
+        uint64_t sessionID = 0;
+        uint64_t ownershipEpoch = 0;
+        bool resendZoneChange = false;
+    };
+
     struct ZoneEvent {
         ZoneEventType type = ZoneEventType::Packet;
         std::unique_ptr<IPacketView, PacketViewDeleter> packet;
         std::shared_ptr<FieldZoneTransfer> transfer;
         ProfileVersionUpdate profileVersion;
+        BootstrapRequest bootstrap;
     };
 
     class alignas(std::hardware_destructive_interference_size) ZoneThread {

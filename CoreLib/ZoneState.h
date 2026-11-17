@@ -29,6 +29,7 @@ namespace Core {
     class SessionManager;
     struct ParryRequestBody;
     struct ParryResponseBody;
+    struct ZoneChangeResult;
 
     struct SkillRequest {
         uint64_t sessionID;
@@ -104,6 +105,8 @@ namespace Core {
         void RemoveCharacterLocked(uint64_t sessionID);
         void RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint32_t dirtyBit);
         void UpdateSessionSnapshot();
+        bool DescribeZoneChange(uint64_t sessionID, uint64_t chatID, uint64_t ownershipEpoch, ZoneChangeResult& result);
+        bool EnqueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch, uint64_t bootstrapID);
         void MoveMonsterHome(MonsterState& monster);
         void UseMonsterSkill(MonsterState& monster);
         void SetMonsterPosition(MonsterState& monster, float x, float y);
@@ -152,7 +155,6 @@ namespace Core {
         void DeltaSnapshotMonster();
         void FullSnapshot();
         void FullSnapshotMonster();
-        bool EnqueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch, uint64_t bootstrapID);
         void ActionSnapshot();
         void ReplenishMoveBudget();
         void Move(uint64_t sessionID, uint8_t dir, float x, float y);

@@ -108,7 +108,8 @@ namespace Core {
     bool ZoneThread::Enqueue(ZoneEvent& event) {
         if (perfCollector == nullptr)
             return false;
-        if (event.type == ZoneEventType::ProfileVersion && !running.load(std::memory_order_acquire))
+        if ((event.type == ZoneEventType::ProfileVersion || event.type == ZoneEventType::Bootstrap)
+            && !running.load(std::memory_order_acquire))
             return false;
         if (workQueue.push(event))
             return true;

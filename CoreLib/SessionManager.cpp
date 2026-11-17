@@ -369,40 +369,32 @@ namespace Core {
         return true;
     }
 
-    bool SessionManager::DescribeZoneChangeLocked(uint64_t sessionID, const SessionData& session, ZoneChangeResult& result) {
-        auto* zone = zoneRouter->GetZone(session.zoneID);
-        if (zone == nullptr)
-            return false;
-        std::lock_guard zoneLock(zone->m_mutex);
-        const auto member = zone->m_sessionToIndex.find(sessionID);
-        if (member == zone->m_sessionToIndex.end())
-            return false;
-        const auto& character = zone->m_chars[member->second];
-        result = {session.zoneID, session.chatID, character.zoneInternalID, character.x, character.y,
-            zone->m_generation, session.ownershipEpoch};
-        return true;
-    }
-
     void SessionManager::UpdateZoneOwnershipLocked(SessionData& session, uint16_t destinationID) {
         session.zoneID = destinationID;
         ++session.ownershipEpoch;
     }
 
-    bool SessionManager::SendBootstrap(uint64_t sessionID, uint64_t ownershipEpoch) {
+    bool SessionManager::QueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch) {
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-        std::unique_lock sessionLock(shard.smutex);
-        auto session = shard.sessionMap.find(sessionID);
-        if (session == shard.sessionMap.end() || session->second.zoneID == 0
-            || session->second.ownershipEpoch != ownershipEpoch)
+        std::shared_lock sessionLock(shard.smutex);
+        const auto session = shard.sessionMap.find(sessionID);
+        return session != shard.sessionMap.end() && session->second.ownershipEpoch == ownershipEpoch
+            && QueueBootstrapLocked(sessionID, session->second, false);
+    }
+
+    bool SessionManager::QueueBootstrapLocked(uint64_t sessionID, const SessionData& session, bool resendZoneChange) {
+        if (session.zoneID == 0 || session.ownershipEpoch == 0 || session.pendingFieldTransfer)
             return false;
-        if (session->second.bootstrapSequence == (std::numeric_limits<uint64_t>::max)())
-            return false;
-        const uint64_t bootstrapID = ++session->second.bootstrapSequence;
-        auto zone = zoneRouter->GetZone(session->second.zoneID);
-        if (zone == nullptr) return false;
-        // Lock order remains shard → Zone. Capture and enqueue on the Zone's worker queue
-        // happen under the Zone lock, preserving later delta/full order.
-        return zone->EnqueueBootstrap(sessionID, ownershipEpoch, bootstrapID);
+        ZoneEvent event;
+        event.type = ZoneEventType::Bootstrap;
+        event.bootstrap = {sessionID, session.ownershipEpoch, resendZoneChange};
+        return zoneRouter->TryEnqueue(session.zoneID, event);
+    }
+
+    uint64_t SessionManager::NextBootstrapIDLocked(SessionData& session) {
+        if (session.bootstrapSequence == (std::numeric_limits<uint64_t>::max)())
+            return 0;
+        return ++session.bootstrapSequence;
     }
 
     void SessionManager::CleanUp() {

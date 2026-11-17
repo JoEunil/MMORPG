@@ -26,11 +26,7 @@ namespace Core {
             return;
         auto& data = session->second;
         if (data.zoneID != zoneID || data.ownershipEpoch != action.ownershipEpoch) {
-            ZoneChangeResult transition;
-            const bool current = sessionManager->DescribeZoneChangeLocked(sessionID, data, transition);
-            sessionLock.unlock();
-            if (current)
-                SendZoneChange(sessionID, transition);
+            sessionManager->QueueBootstrapLocked(sessionID, data, true);
             return;
         }
         data.lastRespawnRequestEpoch = 0;
@@ -129,7 +125,7 @@ namespace Core {
         zone.Skill(sessionID, transfer->skillSlot, transfer->aimAngle);
         zone.DirtyCheck(sessionID);
         sessionLock.unlock();
-        SendZoneChange(sessionID, result);
+        SendZoneChange(zone, sessionID, result);
     }
 
     void ZoneHandler::ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update) {
@@ -148,11 +144,34 @@ namespace Core {
         zone.UpdateProfileVersion(update.sessionID, update.profileID, update.version);
     }
 
-    void ZoneHandler::SendZoneChange(uint64_t sessionID, const ZoneChangeResult& transition) {
+    void ZoneHandler::ProcessBootstrap(ZoneState& zone, const BootstrapRequest& request) {
+        auto& shard = sessionManager->m_shards[request.sessionID & SHARD_SIZE_MASK];
+        std::unique_lock sessionLock(shard.smutex);
+        const auto found = shard.sessionMap.find(request.sessionID);
+        if (found == shard.sessionMap.end() || found->second.zoneID != zone.m_zoneID
+            || found->second.ownershipEpoch != request.ownershipEpoch || found->second.pendingFieldTransfer)
+            return;
+
+        auto& session = found->second;
+        if (request.resendZoneChange) {
+            ZoneChangeResult transition;
+            if (!zone.DescribeZoneChange(request.sessionID, session.chatID, request.ownershipEpoch, transition))
+                return;
+            sessionLock.unlock();
+            SendZoneChange(zone, request.sessionID, transition);
+            return;
+        }
+
+        const auto bootstrapID = SessionManager::NextBootstrapIDLocked(session);
+        if (bootstrapID != 0)
+            zone.EnqueueBootstrap(request.sessionID, request.ownershipEpoch, bootstrapID);
+    }
+
+    void ZoneHandler::SendZoneChange(ZoneState& zone, uint64_t sessionID, const ZoneChangeResult& transition) {
         auto response = writer->WriteZoneChangeSucess(transition);
         if (response)
             networkSender->SendDataUnique(sessionID, std::move(response));
-        sessionManager->SendBootstrap(sessionID, transition.ownershipEpoch);
+        ProcessBootstrap(zone, {sessionID, transition.ownershipEpoch});
     }
 
     ParryResponseBody ZoneHandler::ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID,

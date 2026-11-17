@@ -32,7 +32,7 @@ namespace Core {
         if (response)
             networkSender->SendDataUnique(session, std::move(response));
         if (success)
-            sessionManager->SendBootstrap(session, result.ownershipEpoch);
+            sessionManager->QueueBootstrap(session, result.ownershipEpoch);
     }
 
     void NonZoneHandler::RespawnToTown(IPacketView* p) {
@@ -51,6 +51,6 @@ namespace Core {
         if (response)
             networkSender->SendDataUnique(session, std::move(response));
         if (success)
-            sessionManager->SendBootstrap(session, result.ownershipEpoch);
+            sessionManager->QueueBootstrap(session, result.ownershipEpoch);
     }
 }

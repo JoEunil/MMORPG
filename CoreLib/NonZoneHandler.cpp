@@ -66,7 +66,7 @@ namespace Core {
             case OP::ZONE_RESYNC:
                 if (p->GetLength() == sizeof(PacketStruct<ZoneResyncBody>)) {
                     const auto* body = parseBody<ZoneResyncBody>(p->GetPtr());
-                    sessionManager->SendBootstrap(p->GetSessionID(), body->ownershipEpoch);
+                    sessionManager->QueueBootstrap(p->GetSessionID(), body->ownershipEpoch);
                 }
                 break;
             case OP::RESPAWN_TO_TOWN:
