@@ -2,7 +2,7 @@
 #include "Config.h"
 #include "WorldConfig.h"
 #include "ZoneState.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 #include "LoggerGlobal.h"
 
 namespace Core {
@@ -11,20 +11,20 @@ namespace Core {
         std::unordered_map<uint64_t, CharacterState> m_chars;
         std::mutex m_mutex;
         
-        StateManager* stateManager = nullptr;
-        void Initialize(StateManager* s) {
+        SessionManager* sessionManager = nullptr;
+        void Initialize(SessionManager* s) {
             m_chars.reserve(MAX_USER_CAPACITY);
-            stateManager = s;
+            sessionManager = s;
         }
         bool IsReady() {
-            if (stateManager == nullptr) {
-                sysLogger->LogError("lobby zone", "stateManager not initialized");
+            if (sessionManager == nullptr) {
+                sysLogger->LogError("lobby zone", "sessionManager not initialized");
                 return false;
             }
             return true;
         }
         friend class Initializer;
-        friend class StateManager;
+        friend class SessionManager;
     public:
         void Disconnect(uint64_t sessionID) {
             // db에서 load 후 변경되지 않은 상태
@@ -36,8 +36,8 @@ namespace Core {
         bool ImmigrateChar(uint64_t sessionID, const CharacterState& character) {
             if (character.characterID == INVALID_CHARACTER_ID)
                 return false;
-            // Same order as StateManager::Disconnect/CleanUp: shard -> lobby.
-            auto& shard = stateManager->m_shards[sessionID & SHARD_SIZE_MASK];
+            // Same order as SessionManager::Disconnect/CleanUp: shard -> lobby.
+            auto& shard = sessionManager->m_shards[sessionID & SHARD_SIZE_MASK];
             std::unique_lock<std::shared_mutex> sessionLock(shard.smutex);
             const auto session = shard.sessionMap.find(sessionID);
             if (session == shard.sessionMap.end())

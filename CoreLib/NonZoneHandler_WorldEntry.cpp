@@ -7,7 +7,7 @@
 #include "IPacketView.h"
 #include "PacketTypes.h"
 #include "PacketWriter.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 #include "ISessionAuth.h"
 
 #include <cstring>
@@ -15,7 +15,7 @@
 
 namespace Core {
     void NonZoneHandler::ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID) {
-        if (!stateManager->CompleteAuth(sessionID, userID, resStatus == RES_STATUS::SUCCESS))
+        if (!sessionManager->CompleteAuth(sessionID, userID, resStatus == RES_STATUS::SUCCESS))
             return;
         auto res = writer->WriteAuthResponse(resStatus);
         if (res == nullptr)
@@ -32,18 +32,18 @@ namespace Core {
         privdata->callbackFunc = [this](uint64_t sessionID, uint8_t resStatus, uint64_t userID) {
             ResponseSession(sessionID, resStatus, userID);
         };
-        stateManager->BeginAuth(privdata->sessionID);
+        sessionManager->BeginAuth(privdata->sessionID);
         auth->CheckSession(privdata.release());
     }
 
     void NonZoneHandler::GetCharacterList(IPacketView* p) {
         const auto sessionID = p->GetSessionID();
-        cacheCommands->EnqueueCharacterList(sessionID, CHANNEL_ID, stateManager->GetUserID(sessionID));
+        cacheCommands->EnqueueCharacterList(sessionID, CHANNEL_ID, sessionManager->GetUserID(sessionID));
     }
 
     void NonZoneHandler::GetCharacterState(IPacketView* p) {
         const auto sessionID = p->GetSessionID();
         const auto* packetBody = parseBody<EnterWorldRequestBody>(p->GetPtr());
-        cacheCommands->EnqueueCharacterState(sessionID, CHANNEL_ID, stateManager->GetUserID(sessionID), packetBody->characterID);
+        cacheCommands->EnqueueCharacterState(sessionID, CHANNEL_ID, sessionManager->GetUserID(sessionID), packetBody->characterID);
     }
 }

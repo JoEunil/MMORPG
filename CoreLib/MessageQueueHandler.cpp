@@ -5,7 +5,7 @@
 #include "INetworkSender.h"
 #include "PacketWriter.h"
 #include "LobbyZone.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 #include "LoggerGlobal.h"
 
 namespace Core {
@@ -19,7 +19,7 @@ namespace Core {
     }
 
     bool MessageQueueHandler::IsCurrentFieldCharacter(uint64_t sessionID, uint64_t characterID) {
-        return stateManager && characterID != 0 && stateManager->GetFieldCharacterID(sessionID) == characterID;
+        return sessionManager && characterID != 0 && sessionManager->GetFieldCharacterID(sessionID) == characterID;
     }
 
     template<typename T>
@@ -39,7 +39,7 @@ namespace Core {
             if (!IsCurrentFieldCharacter(sessionID, body->characterID))
                 return;
         } else if constexpr (Scope == ResponseScope::FieldSession) {
-            if (!stateManager || !stateManager->IsFieldSession(sessionID))
+            if (!sessionManager || !sessionManager->IsFieldSession(sessionID))
                 return;
         }
 
@@ -163,10 +163,10 @@ namespace Core {
             gameLogger->LogInfo("mq handler", "profile rename failed", "sessionID", sessionID, "profile_id", body->profileId);
             return;
         }
-        if (stateManager == nullptr) {
-            errorLogger->LogError("mq handler", "stateManager not initialized", "sessionID", sessionID);
+        if (sessionManager == nullptr) {
+            errorLogger->LogError("mq handler", "sessionManager not initialized", "sessionID", sessionID);
             return;
         }
-        stateManager->UpdateProfileVersion(sessionID, body->version);
+        sessionManager->UpdateProfileVersion(sessionID, body->version);
     }
 }

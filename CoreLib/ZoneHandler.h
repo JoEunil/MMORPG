@@ -7,7 +7,7 @@
 
 #include "MessageTypes.h"
 #include "MessagePool.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 #include "PacketTypes.h"
 #include "INetworkSender.h"
 #include "PacketWriter.h"
@@ -19,23 +19,27 @@ namespace Core {
     class IDBCache;
     class PacketWriter;
     class IMessageQueue;
+    class ChatThreadPool;
 
     class ZoneHandler {
-        StateManager* stateManager = nullptr;
+        SessionManager* sessionManager = nullptr;
         INetworkSender* networkSender = nullptr;
         PacketWriter* writer = nullptr;
         IZoneTransfer* zoneTransfer = nullptr;
+        ChatThreadPool* chat = nullptr;
         
-        void Initialize(StateManager* m, INetworkSender* sender, PacketWriter* packetWriter, IZoneTransfer& transfer) {
-            stateManager = m;
+        void Initialize(SessionManager* m, INetworkSender* sender, PacketWriter* packetWriter,
+            IZoneTransfer& transfer, ChatThreadPool& chatPool) {
+            sessionManager = m;
             networkSender = sender;
             writer = packetWriter;
             zoneTransfer = &transfer;
+            chat = &chatPool;
         }
 
         bool IsReady() const {
-            if (stateManager == nullptr) {
-                sysLogger->LogError("zone handler", "stateManager not initialized");
+            if (sessionManager == nullptr) {
+                sysLogger->LogError("zone handler", "sessionManager not initialized");
                 return false;
             }
             if (networkSender == nullptr) {
@@ -50,11 +54,18 @@ namespace Core {
                 sysLogger->LogError("zone handler", "zone transfer not initialized");
                 return false;
             }
+            if (chat == nullptr) {
+                sysLogger->LogError("zone handler", "chat not initialized");
+                return false;
+            }
             return true;
         }
         
         void ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID);
         void ProcessFieldTransfer(ZoneState& zone, const std::shared_ptr<FieldZoneTransfer>& transfer);
+        bool CompleteFieldTransfer(ZoneState& destination, const std::shared_ptr<FieldZoneTransfer>& transfer, ZoneChangeResult& result);
+        bool RestoreRejectedFieldTransfer(ZoneState& source, const std::shared_ptr<FieldZoneTransfer>& transfer);
+        void ResolvePendingFieldTransfers(ZoneState& source);
         void SendZoneChange(uint64_t sessionID, const ZoneChangeResult& transition);
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
@@ -64,7 +75,7 @@ namespace Core {
         template<class Queue, class SelectSnapshot>
         size_t RunTick(ZoneState& zone, uint16_t zoneID, Queue& queue, size_t maxEvents,
             CorePerfCollector& perf, SelectSnapshot selectSnapshot) {
-            stateManager->ResolvePendingFieldTransfers(zone);
+            ResolvePendingFieldTransfers(zone);
             zone.SkillCoolDown();
             zone.ReplenishMoveBudget();
             size_t processed = 0;

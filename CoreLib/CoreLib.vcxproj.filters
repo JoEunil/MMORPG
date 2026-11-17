@@ -117,7 +117,7 @@
     <ClInclude Include="IMessageQueue.h">
       <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="StateManager.h">
+    <ClInclude Include="SessionManager.h">
       <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="BroadcastThreadPool.h">
@@ -233,7 +233,7 @@
     <ClCompile Include="MessageQueueHandler.cpp">
       <Filter>Cache</Filter>
     </ClCompile>
-    <ClCompile Include="StateManager.cpp">
+    <ClCompile Include="SessionManager.cpp">
       <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="ZoneEventRouter.cpp">

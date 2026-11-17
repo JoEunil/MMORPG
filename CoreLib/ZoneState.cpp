@@ -3,7 +3,7 @@
 #include "WorldMap.h"
 #include "IPacket.h"
 #include "ILogger.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 #include "LoggerGlobal.h"
 #include <algorithm>
 #include <cmath>
@@ -35,7 +35,6 @@ namespace Core {
         // 임시로 스킬 고정
     }
 
-    // The caller owns m_mutex (and the session shard for production transfers).
     uint32_t ZoneState::ImmigrateCharLocked(uint64_t sessionID, const CharacterState& state) {
         if (m_chars.size() + m_pendingFieldTransfers.size() >= MAX_ZONE_CAPACITY || m_sessionToIndex.contains(sessionID)
             || m_generation == (std::numeric_limits<uint64_t>::max)()
@@ -75,14 +74,18 @@ namespace Core {
         return id;
     }
 
+    bool ZoneState::AdmitFieldTransferLocked(const FieldZoneTransfer& transfer) {
+        CharacterState incoming = transfer.character;
+        incoming.x = transfer.x;
+        incoming.y = transfer.y;
+        incoming.dir = transfer.dir;
+        incoming.moveBudget = transfer.moveBudget;
+        return ImmigrateCharLocked(incoming.sessionID, incoming) != INVALID_ZONE_INTERNAL_ID;
+    }
+
     bool ZoneState::RestoreFieldTransferLocked(const CharacterState& original) {
-        try {
-            CharacterState incoming = original;
-            return RegisterCharacterLocked(std::move(incoming));
-        }
-        catch (const std::bad_alloc&) {
-            return false;
-        }
+        CharacterState incoming = original;
+        return RegisterCharacterLocked(std::move(incoming));
     }
 
     bool ZoneState::RegisterCharacterLocked(CharacterState&& incoming) {
@@ -195,6 +198,6 @@ namespace Core {
         }
         const auto timePoint = std::chrono::steady_clock::now();
         for (auto [session, cheat] : cheats)
-            stateManager->Cheat(session, cheat, timePoint);
+            sessionManager->Cheat(session, cheat, timePoint);
     }
 }

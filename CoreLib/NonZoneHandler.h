@@ -9,12 +9,12 @@ namespace Core {
     class INetworkSender;
     class IDBCache;
     class PacketWriter;
-    class StateManager;
+    class SessionManager;
     class LobbyZone;
     class ChatThreadPool;
     class IProfileCache;
     class NonZoneHandler{
-        void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc);
+        void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, SessionManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc);
         bool IsReady();
         void CheckSession(IPacketView* p);
         void ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID);
@@ -39,7 +39,7 @@ namespace Core {
         void GetProfileBatch(IPacketView* p);
         INetworkSender* networkSender = nullptr;
         PacketWriter* writer = nullptr;
-        StateManager* stateManager = nullptr;
+        SessionManager* sessionManager = nullptr;
         ISessionAuth* auth = nullptr;
         IDBCache* cache = nullptr;
         const CacheCommandSender* cacheCommands = nullptr;

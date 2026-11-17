@@ -4,22 +4,22 @@
 #include "IPacketDispatcher.h"
 #include "IZoneEventQueue.h"
 #include "LoggerGlobal.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 #include "PacketTypes.h"
 namespace Core {
     class ILogger;
     class PacketDispatcher : public IPacketDispatcher {
         NonZoneThreadPool* nonZoneThreadPool = nullptr;
         IZoneEventQueue* zoneEvents = nullptr;
-        StateManager* stateManager = nullptr;
-        void Initialize(NonZoneThreadPool* a, IZoneEventQueue* z, StateManager* s) {
+        SessionManager* sessionManager = nullptr;
+        void Initialize(NonZoneThreadPool* a, IZoneEventQueue* z, SessionManager* s) {
             nonZoneThreadPool = a;
             zoneEvents = z;
-            stateManager = s;
+            sessionManager = s;
         }
         bool IsReady() const {
-            if (stateManager == nullptr) {
-                sysLogger->LogError("packet dispatcher", "stateManager not initialized");
+            if (sessionManager == nullptr) {
+                sysLogger->LogError("packet dispatcher", "sessionManager not initialized");
                 return false;
             }
             if (nonZoneThreadPool == nullptr) {
@@ -37,7 +37,7 @@ namespace Core {
         void Process(std::unique_ptr<IPacketView, PacketViewDeleter> pv) override;
         void Disconnect(uint64_t sessionID) override;
         uint8_t HealthCheck(uint64_t sessionID) override {
-           return stateManager->HealthCheck(sessionID);
+           return sessionManager->HealthCheck(sessionID);
         }
     };
 }

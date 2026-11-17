@@ -51,7 +51,7 @@ namespace Core {
     class ZoneEventRouter;
     struct FieldZoneTransfer;
     struct ZoneChangeResult;
-    class StateManager {
+    class SessionManager {
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
         std::atomic<bool> m_running;
 
@@ -77,19 +77,19 @@ namespace Core {
 
         bool IsReady() const {
             if (zoneRouter == nullptr) {
-                sysLogger->LogError("state manager", "zone router not initialized");
+                sysLogger->LogError("core session manager", "zone router not initialized");
                 return false;
             }
             if (cacheCommands == nullptr) {
-                sysLogger->LogError("state manager", "cache command sender not initialized");
+                sysLogger->LogError("core session manager", "cache command sender not initialized");
                 return false;
             }
             if (lobbyZone == nullptr) {
-                sysLogger->LogError("state manager", "lobby zone not initialized");
+                sysLogger->LogError("core session manager", "lobby zone not initialized");
                 return false;
             }
             if (chat == nullptr) {
-                sysLogger->LogError("state manager", "chat thread pool not initialized");
+                sysLogger->LogError("core session manager", "chat thread pool not initialized");
                 return false;
             }
             return true;
@@ -98,7 +98,7 @@ namespace Core {
 
         void CleanUp();
         void EnqueueCharacterStateUpdate(uint64_t sessionID, const CharacterState& character);
-        bool RestoreRejectedFieldTransfer(ZoneState& source, const std::shared_ptr<FieldZoneTransfer>& transfer);
+        static void UpdateZoneOwnershipLocked(SessionData& session, uint16_t destinationID);
         bool DescribeZoneChangeLocked(uint64_t sessionID, const SessionData& session, ZoneChangeResult& result);
 
         friend class Initializer;
@@ -107,7 +107,7 @@ namespace Core {
         friend class ZoneHandler;
 
     public:
-        ~StateManager() {
+        ~SessionManager() {
             CleanUp();
         }
 
@@ -134,7 +134,7 @@ namespace Core {
             it->second.lastCheatTime = std::chrono::steady_clock::now();
             it->second.authenticated = authenticated;
             it->second.authCompleted = true;
-            Core::gameLogger->LogInfo("state manager", "AddSession", "session", sessionID, "userID", userID);
+            Core::gameLogger->LogInfo("core session manager", "AddSession", "session", sessionID, "userID", userID);
             return true;
         }
 
@@ -156,7 +156,7 @@ namespace Core {
             if (it == shard.sessionMap.end())
                 return ;
             it->second.characterID = characterID;
-            Core::gameLogger->LogInfo("state manager", "SetCharacterID", "session", sessionID, "characterID", characterID);
+            Core::gameLogger->LogInfo("core session manager", "SetCharacterID", "session", sessionID, "characterID", characterID);
         }
         
         uint64_t GetCharacterID(uint64_t sessionID) const {
@@ -223,12 +223,12 @@ namespace Core {
             if (status.authenticated) {
                 res |= MASK_AUTHENTICATED;
             } else {
-                errorLogger->LogError("state manager", "not authenticated", "sessionID", sessionID);
+                errorLogger->LogError("core session manager", "not authenticated", "sessionID", sessionID);
             }
             if (status.cheatCount <= MAX_CHEAT_COUNT) {
                 res |= MASK_NOT_CHEAT;
             } else {
-                errorLogger->LogError("state manager", "cheat detected", "sessionID", sessionID, "cheatCount", status.cheatCount);
+                errorLogger->LogError("core session manager", "cheat detected", "sessionID", sessionID, "cheatCount", status.cheatCount);
             }
             return res;
         }
@@ -239,8 +239,6 @@ namespace Core {
         void Disconnect(uint64_t sessionID);
         bool ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result);
         bool RespawnToTown(uint64_t sessionID, const RespawnToTownBody& request, ZoneChangeResult& result);
-        bool CompleteFieldTransfer(ZoneState& destination, const std::shared_ptr<FieldZoneTransfer>& transfer, ZoneChangeResult& result);
-        void ResolvePendingFieldTransfers(ZoneState& source);
         bool SendBootstrap(uint64_t sessionID, uint64_t ownershipEpoch);
         void UpdateProfileVersion(uint64_t sessionID, uint32_t version);
 

@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 #include "CacheCommandSender.h"
 #include "ChatThreadPool.h"
 #include "LobbyZone.h"
@@ -17,7 +17,7 @@ namespace Core {
         && TOWN_SPAWN_Y >= 0 && TOWN_SPAWN_Y <= ZONE_SIZE,
         "Town respawn must remain inside Zone 1.");
 
-    ParryResponseBody StateManager::Parry(uint64_t sessionID, uint16_t routeZoneID, const ParryRequestBody& request) {
+    ParryResponseBody SessionManager::Parry(uint64_t sessionID, uint16_t routeZoneID, const ParryRequestBody& request) {
         ParryResponseBody result{request.requestID, request.ownershipEpoch, static_cast<uint8_t>(ParryStatus::Invalid), 0, 0};
         if (request.requestID == 0 || request.ownershipEpoch == 0) return result;
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
@@ -65,7 +65,7 @@ namespace Core {
         return result;
     }
 
-    ItemUseResponseBody StateManager::UseItem(uint64_t sessionID, const ItemUseRequestBody& request) {
+    ItemUseResponseBody SessionManager::UseItem(uint64_t sessionID, const ItemUseRequestBody& request) {
         ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
         if (request.requestID == 0 || request.itemID == 0) return result;
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
@@ -121,7 +121,7 @@ namespace Core {
         return result;
     }
 
-    EquipmentResponseBody StateManager::Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot, uint32_t itemID) {
+    EquipmentResponseBody SessionManager::Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot, uint32_t itemID) {
         EquipmentResponseBody result{ requestID, ownershipEpoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), slot, 0, 0, 0, 0, 0, 0, 0 };
         if (requestID == 0 || ownershipEpoch == 0) return result;
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
@@ -188,7 +188,7 @@ namespace Core {
         return result;
     }
 
-    void StateManager::GrantMonsterReward(const CharacterState& character, uint64_t gold) {
+    void SessionManager::GrantMonsterReward(const CharacterState& character, uint64_t gold) {
         const auto sessionID = character.sessionID;
         if (!cacheCommands->EnqueueGoldDeposit(sessionID, character.characterID, gold)) {
             errorLogger->LogError("monster reward", "gold deposit queue rejected", "characterID", character.characterID);
@@ -197,7 +197,7 @@ namespace Core {
         }
     }
 
-    bool StateManager::ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result) {
+    bool SessionManager::ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result) {
         result = {};
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock sessionLock(shard.smutex);
@@ -274,7 +274,7 @@ namespace Core {
         return false;
     }
 
-    bool StateManager::RespawnToTown(uint64_t sessionID, const RespawnToTownBody& request, ZoneChangeResult& result) {
+    bool SessionManager::RespawnToTown(uint64_t sessionID, const RespawnToTownBody& request, ZoneChangeResult& result) {
         result = {};
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock sessionLock(shard.smutex);
@@ -419,7 +419,7 @@ namespace Core {
         return true;
     }
 
-    bool StateManager::DescribeZoneChangeLocked(uint64_t sessionID, const SessionData& session, ZoneChangeResult& result) {
+    bool SessionManager::DescribeZoneChangeLocked(uint64_t sessionID, const SessionData& session, ZoneChangeResult& result) {
         auto* zone = zoneRouter->GetZone(session.zoneID);
         if (zone == nullptr)
             return false;
@@ -433,85 +433,12 @@ namespace Core {
         return true;
     }
 
-    bool StateManager::CompleteFieldTransfer(ZoneState& destination, const std::shared_ptr<FieldZoneTransfer>& transfer,
-        ZoneChangeResult& result) {
-        const auto sessionID = transfer->character.sessionID;
-        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-        std::unique_lock sessionLock(shard.smutex);
-        auto session = shard.sessionMap.find(sessionID);
-        if (session == shard.sessionMap.end() || session->second.pendingFieldTransfer != transfer
-            || session->second.zoneID != transfer->sourceZoneID || session->second.ownershipEpoch != transfer->ownershipEpoch)
-            return false;
-
-        const auto destinationID = destination.m_zoneID;
-        {
-            std::lock_guard zoneLock(destination.m_mutex);
-            try {
-                CharacterState incoming = transfer->character;
-                incoming.x = transfer->x;
-                incoming.y = transfer->y;
-                incoming.dir = transfer->dir;
-                incoming.moveBudget = transfer->moveBudget;
-                if (destination.ImmigrateCharLocked(sessionID, incoming) == INVALID_ZONE_INTERNAL_ID) {
-                    transfer->status.store(FieldZoneTransfer::Status::Rejected, std::memory_order_release);
-                    return false;
-                }
-            }
-            catch (const std::bad_alloc&) {
-                transfer->status.store(FieldZoneTransfer::Status::Rejected, std::memory_order_release);
-                return false;
-            }
-
-            session->second.zoneID = destinationID;
-            ++session->second.ownershipEpoch;
-            session->second.pendingFieldTransfer.reset();
-            transfer->status.store(FieldZoneTransfer::Status::Complete, std::memory_order_release);
-            destination.UpdateSessionSnapshot();
-            const auto& entered = destination.m_chars.back();
-            result = {destinationID, session->second.chatID, entered.zoneInternalID, entered.x, entered.y,
-                destination.m_generation, session->second.ownershipEpoch};
-            chat->EnqueueZoneJoin(sessionID, destinationID);
-        }
-        destination.Skill(sessionID, transfer->skillSlot, transfer->aimAngle);
-        destination.DirtyCheck(sessionID);
-        return true;
+    void SessionManager::UpdateZoneOwnershipLocked(SessionData& session, uint16_t destinationID) {
+        session.zoneID = destinationID;
+        ++session.ownershipEpoch;
     }
 
-    bool StateManager::RestoreRejectedFieldTransfer(ZoneState& source, const std::shared_ptr<FieldZoneTransfer>& transfer) {
-        const auto sessionID = transfer->character.sessionID;
-        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-        std::unique_lock sessionLock(shard.smutex);
-        const auto session = shard.sessionMap.find(sessionID);
-        if (session == shard.sessionMap.end() || session->second.pendingFieldTransfer != transfer)
-            return true;
-
-        std::lock_guard zoneLock(source.m_mutex);
-        if (!source.RestoreFieldTransferLocked(transfer->character))
-            return false;
-        session->second.pendingFieldTransfer.reset();
-        source.UpdateSessionSnapshot();
-        return true;
-    }
-
-    void StateManager::ResolvePendingFieldTransfers(ZoneState& source) {
-        auto& pending = source.m_pendingFieldTransfers;
-        // Only the source worker changes the list. Admission on other threads reads its size under m_mutex.
-        for (std::size_t i = 0; i < pending.size();) {
-            const auto status = pending[i]->status.load(std::memory_order_acquire);
-            if (status == FieldZoneTransfer::Status::Pending
-                || (status == FieldZoneTransfer::Status::Rejected && !RestoreRejectedFieldTransfer(source, pending[i]))) {
-                ++i;
-                continue;
-            }
-
-            std::lock_guard zoneLock(source.m_mutex);
-            if (i + 1 != pending.size())
-                pending[i] = std::move(pending.back());
-            pending.pop_back();
-        }
-    }
-
-    bool StateManager::SendBootstrap(uint64_t sessionID, uint64_t ownershipEpoch) {
+    bool SessionManager::SendBootstrap(uint64_t sessionID, uint64_t ownershipEpoch) {
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock sessionLock(shard.smutex);
         auto session = shard.sessionMap.find(sessionID);
@@ -528,7 +455,7 @@ namespace Core {
         return zone->EnqueueBootstrap(sessionID, ownershipEpoch, bootstrapID);
     }
 
-    void StateManager::CleanUp() {
+    void SessionManager::CleanUp() {
         if (!m_running.exchange(false, std::memory_order_relaxed))
             return;
         for (auto& shard : m_shards)
@@ -549,7 +476,7 @@ namespace Core {
                 else {
                     auto* zone = zoneRouter->GetZone(data.zoneID);
                     if (zone == nullptr) {
-                        gameLogger->LogInfo("state manager", "state not found", "sessionID", session, "zoneID", data.zoneID);
+                        gameLogger->LogInfo("core session manager", "state not found", "sessionID", session, "zoneID", data.zoneID);
                         continue;
                     }
                     if (!zone->EmigrateChar(session, temp)) {
@@ -562,7 +489,7 @@ namespace Core {
         }
     }
 
-    void StateManager::Disconnect(uint64_t sessionID) {
+    void SessionManager::Disconnect(uint64_t sessionID) {
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock<std::shared_mutex> lock(shard.smutex);
         auto it = shard.sessionMap.find(sessionID);
@@ -584,7 +511,7 @@ namespace Core {
         else {
             auto* zone = zoneRouter->GetZone(zoneID);
             if (zone == nullptr) {
-                gameLogger->LogInfo("state manager", "state not found", "sessionID", sessionID, "zoneID", zoneID);
+                gameLogger->LogInfo("core session manager", "state not found", "sessionID", sessionID, "zoneID", zoneID);
                 return;
             }
             if (!zone->EmigrateChar(sessionID, temp))
@@ -594,13 +521,13 @@ namespace Core {
         chat->EnqueueZoneLeave(sessionID, zoneID);
         chat->DeleteChatSession(sessionID, zoneID);
         lock.unlock();
-        gameLogger->LogInfo("state manager", "Enqueue Disconnect", "sessionID", sessionID);
+        gameLogger->LogInfo("core session manager", "Enqueue Disconnect", "sessionID", sessionID);
         EnqueueCharacterStateUpdate(sessionID, pending ? pending->character : temp);
     }
 
     // rename이 DB에 확정된 뒤, 세션이 속한 zone의 CharacterState에 새 version을 반영한다.
     // zone에 이벤트 큐를 붙여 처리하는 편이 깔끔하지만, zone 간 참조 방식을 아직 정하지 못해 여기서는 ZoneState의 기존 m_mutex를 그대로 쓴다.
-    void StateManager::UpdateProfileVersion(uint64_t sessionID, uint32_t version) {
+    void SessionManager::UpdateProfileVersion(uint64_t sessionID, uint32_t version) {
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock lock(shard.smutex);
         auto it = shard.sessionMap.find(sessionID);
@@ -616,17 +543,17 @@ namespace Core {
             return;
         auto* zone = zoneRouter->GetZone(zoneID);
         if (zone == nullptr) {
-            gameLogger->LogInfo("state manager", "state not found", "sessionID", sessionID, "zoneID", zoneID);
+            gameLogger->LogInfo("core session manager", "state not found", "sessionID", sessionID, "zoneID", zoneID);
             return;
         }
         zone->UpdateProfileVersion(sessionID, version);
     }
 
-    void StateManager::EnqueueCharacterStateUpdate(uint64_t sessionID, const CharacterState& character) {
+    void SessionManager::EnqueueCharacterStateUpdate(uint64_t sessionID, const CharacterState& character) {
         if (!cacheCommands->EnqueueCharacterStateUpdate(sessionID, character)) {
             std::vector<std::byte> binary(sizeof(CharacterState));
             std::memcpy(binary.data(), &character, sizeof(CharacterState));
-            errorLogger->LogError("state manager", "Failed to enqueue character state update", "sessionID", sessionID, "character state", binary);
+            errorLogger->LogError("core session manager", "Failed to enqueue character state update", "sessionID", sessionID, "character state", binary);
         }
     }
 }

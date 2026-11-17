@@ -9,7 +9,7 @@
 #include "PacketWriter.h"
 #include "ZoneState.h"
 #include "MessageTypes.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 #include "LobbyZone.h"
 #include "ChatThreadPool.h"
 #include "IProfileCache.h"
@@ -17,12 +17,12 @@
 #include "PacketConfig.h"
 
 namespace Core {
-    void NonZoneHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc) {
+    void NonZoneHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, SessionManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc) {
         networkSender = sender;
         auth = s;
         writer = p;
         cacheCommands = commands;
-        stateManager = manager;
+        sessionManager = manager;
         lobbyZone = lobby;
         chat = c;
         profileCache = pc;
@@ -33,7 +33,7 @@ namespace Core {
         if (auth == nullptr) return false;
         if (writer == nullptr) return false;
         if (cacheCommands == nullptr) return false;
-        if (stateManager == nullptr) return false;
+        if (sessionManager == nullptr) return false;
         if (lobbyZone == nullptr) return false;
         
         return true;
@@ -43,7 +43,7 @@ namespace Core {
         PacketHeader* h = parseHeader(p->GetPtr());
         uint16_t zoneID = 0;
         if (p->GetOpcode() != OP::AUTH ) {
-            zoneID = stateManager->GetZoneID(p->GetSessionID());
+            zoneID = sessionManager->GetZoneID(p->GetSessionID());
         }
         
         switch (p->GetOpcode())
@@ -66,7 +66,7 @@ namespace Core {
             case OP::ZONE_RESYNC:
                 if (p->GetLength() == sizeof(PacketStruct<ZoneResyncBody>)) {
                     const auto* body = parseBody<ZoneResyncBody>(p->GetPtr());
-                    stateManager->SendBootstrap(p->GetSessionID(), body->ownershipEpoch);
+                    sessionManager->SendBootstrap(p->GetSessionID(), body->ownershipEpoch);
                 }
                 break;
             case OP::RESPAWN_TO_TOWN:
@@ -122,7 +122,7 @@ namespace Core {
     }
 
     void NonZoneHandler::Disconnect(uint64_t sessionID) {
-        stateManager->Disconnect(sessionID);
+        sessionManager->Disconnect(sessionID);
     }
 
     void NonZoneHandler::RequestProfileRename(uint64_t sessionID, uint32_t profileId, const char* name, uint16_t nameLen) {
@@ -135,7 +135,7 @@ namespace Core {
 
     void NonZoneHandler::UseItem(IPacketView* p) {
         const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
-        const auto result = stateManager->UseItem(p->GetSessionID(), request);
+        const auto result = sessionManager->UseItem(p->GetSessionID(), request);
         auto response = writer->WriteItemUseResponse(result);
         if (response)
             networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
@@ -143,7 +143,7 @@ namespace Core {
 
     void NonZoneHandler::GetEquipment(IPacketView* p) {
         const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
-        const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, false);
+        const auto result = sessionManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, false);
         auto response = writer->WriteEquipmentResponse(result);
         if (response)
             networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
@@ -154,7 +154,7 @@ namespace Core {
         if (request.slot > 2)
             return;
 
-        const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, true, request.slot, request.itemID);
+        const auto result = sessionManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, true, request.slot, request.itemID);
         auto response = writer->WriteEquipmentResponse(result);
         if (response)
             networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
@@ -162,7 +162,7 @@ namespace Core {
 
     void NonZoneHandler::GetInventory(IPacketView* p) {
         const auto sessionID = p->GetSessionID();
-        const auto characterID = stateManager->GetCharacterID(sessionID);
+        const auto characterID = sessionManager->GetCharacterID(sessionID);
         if (characterID == 0)
             return;
 
@@ -175,7 +175,7 @@ namespace Core {
         const auto request = *parseBody<WalletRequestBody>(p->GetPtr());
         if (header->magic != MAGIC || header->opcode != OP::WALLET_REQUEST || header->length != p->GetLength()
             || IsSimulationFlag(header->flags) || request.requestID == 0) return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
 
         if (!cacheCommands->EnqueueGoldBalance(p->GetSessionID(), characterID, request.requestID)) {
@@ -183,7 +183,7 @@ namespace Core {
             failed.requestID = request.requestID;
             failed.characterID = characterID;
             auto response = writer->WriteWalletGoldResponse(&failed);
-            if (response && stateManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
+            if (response && sessionManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
                 networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
         }
 
@@ -192,7 +192,7 @@ namespace Core {
             failed.requestID = request.requestID;
             failed.characterID = characterID;
             auto response = writer->WriteWalletDiamondResponse(&failed);
-            if (response && stateManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
+            if (response && sessionManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
                 networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
         }
     }
@@ -201,7 +201,7 @@ namespace Core {
         auto body = parseBody<ChatRequestBody>(p->GetPtr());
         uint8_t* startPtr = p->GetPtr() + sizeof(PacketStruct<ChatRequestBody>);
         auto session = p->GetSessionID();
-        auto zoneID = stateManager->GetZoneID(session);
+        auto zoneID = sessionManager->GetZoneID(session);
         ChatEvent event;
         event.type = ChatEventType::CHAT;
         event.senderSessionID = session;
@@ -259,7 +259,7 @@ namespace Core {
         ZoneChangeResult result;
         const auto session = p->GetSessionID();
         const bool success = p->GetLength() == sizeof(PacketStruct<ZoneChangeBody>)
-            && stateManager->ChangeZone(session, parseBody<ZoneChangeBody>(p->GetPtr())->op, result);
+            && sessionManager->ChangeZone(session, parseBody<ZoneChangeBody>(p->GetPtr())->op, result);
         // ChangeZone releases the shard and all Zone locks before network transmission.
         auto response = success
             ? writer->WriteZoneChangeSucess(result)
@@ -267,7 +267,7 @@ namespace Core {
         if (response)
             networkSender->SendDataUnique(session, std::move(response));
         if (success)
-            stateManager->SendBootstrap(session, result.ownershipEpoch);
+            sessionManager->SendBootstrap(session, result.ownershipEpoch);
     }
 
     void NonZoneHandler::RespawnToTown(IPacketView* p) {
@@ -279,13 +279,13 @@ namespace Core {
             && parseHeader(p->GetPtr())->length == p->GetLength()
             && !IsSimulationFlag(parseHeader(p->GetPtr())->flags);
         const bool success = validHeader
-            && stateManager->RespawnToTown(session, *parseBody<RespawnToTownBody>(p->GetPtr()), result);
+            && sessionManager->RespawnToTown(session, *parseBody<RespawnToTownBody>(p->GetPtr()), result);
         auto response = success
             ? writer->WriteZoneChangeSucess(result)
             : writer->WriteZoneChangeFailed();
         if (response)
             networkSender->SendDataUnique(session, std::move(response));
         if (success)
-            stateManager->SendBootstrap(session, result.ownershipEpoch);
+            sessionManager->SendBootstrap(session, result.ownershipEpoch);
     }
 }

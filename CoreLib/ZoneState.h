@@ -26,7 +26,7 @@ namespace Core {
     class IPacket;
     class BroadcastThreadPool;
     class PacketWriter;
-    class StateManager; 
+    class SessionManager;
 
     struct SkillRequest {
         uint64_t sessionID;
@@ -35,7 +35,7 @@ namespace Core {
     }; 
 
     struct FieldZoneTransfer {
-        enum class Status { Pending, Rejected, Complete };
+        enum class Status { Transferring, Rejected, Complete };
 
         CharacterState character{};
         uint64_t ownershipEpoch = 0;
@@ -43,7 +43,7 @@ namespace Core {
         uint8_t dir = 0;
         uint8_t skillSlot = 0;
         float x = 0, y = 0, moveBudget = 0, aimAngle = 0;
-        std::atomic<Status> status = Status::Pending;
+        std::atomic<Status> status = Status::Transferring;
     };
 
     class ZoneState {
@@ -72,12 +72,12 @@ namespace Core {
 
         inline static BroadcastThreadPool* broadcast;
         inline static PacketWriter* writer;
-        inline static StateManager* stateManager;
+        inline static SessionManager* sessionManager;
         inline static CorePerfCollector* perfCollector;
-        static void Initialize(BroadcastThreadPool* b, PacketWriter* p, StateManager* s, CorePerfCollector* pc) {
+        static void Initialize(BroadcastThreadPool* b, PacketWriter* p, SessionManager* s, CorePerfCollector* pc) {
             broadcast = b;
             writer = p;
-            stateManager = s;
+            sessionManager = s;
             perfCollector = pc;
         }
         static bool IsReady() {
@@ -96,6 +96,7 @@ namespace Core {
         void AddToCell(CharacterState& character,  uint8_t x, uint8_t y);
         uint32_t ImmigrateCharLocked(uint64_t sessionID, const CharacterState& user);
         bool RegisterCharacterLocked(CharacterState&& incoming);
+        bool AdmitFieldTransferLocked(const FieldZoneTransfer& transfer);
         bool RestoreFieldTransferLocked(const CharacterState& original);
         void RemoveCharacterLocked(uint64_t sessionID);
         void RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint32_t dirtyBit);
@@ -107,7 +108,7 @@ namespace Core {
         void FullSnapshotMonsterLocked();
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
-        friend class StateManager;
+        friend class SessionManager;
         friend class ZoneHandler;
         friend class MonsterBehaviorFixture;
     public:

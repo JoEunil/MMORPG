@@ -4,7 +4,7 @@
 #include "IPacket.h"
 #include "PacketConfig.h"
 #include "LoggerGlobal.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 #include <cstddef>
 namespace Core {
     void PacketWriter::Initialize(IPacketPoolManager* poolManager) {

@@ -4,7 +4,7 @@
 #include "Initializer.h"
 #include "ILogger.h"
 #include "PacketWriter.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 #include "WorldMap.h"
 
 

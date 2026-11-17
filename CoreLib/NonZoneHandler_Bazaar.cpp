@@ -8,7 +8,7 @@
 #include "MessageTypes.h"
 #include "PacketTypes.h"
 #include "PacketWriter.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 
 #include <optional>
 
@@ -38,7 +38,7 @@ namespace Core {
         const auto request = ParseBazaarRequest<BazaarBuyRequestBody>(*p, OP::BAZAAR_BUY);
         if (!request || request->listingID == 0)
             return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
         if (cacheCommands->EnqueueBazaarBuy(p->GetSessionID(), characterID, request->listingID, request->requestID))
@@ -47,7 +47,7 @@ namespace Core {
         failed.requestID = request->requestID;
         failed.listingID = request->listingID;
         failed.resStatus = 5;
-        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
+        if (sessionManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
             return;
         auto response = writer->WriteBazaarBuyResponse(&failed);
         if (response)
@@ -59,7 +59,7 @@ namespace Core {
         if (!request || request->inventorySlot >= MAX_INVENTORY_ITEMS
             || request->quantity == 0 || request->totalDiamondPrice == 0)
             return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
 
         if (cacheCommands->EnqueueBazaarRegister(p->GetSessionID(), characterID, request->quantity,
@@ -70,7 +70,7 @@ namespace Core {
         failed.requestID = request->requestID;
         failed.characterID = characterID;
         failed.resStatus = 0;
-        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
+        if (sessionManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
         auto response = writer->WriteBazaarRegisterResponse(&failed);
         if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
@@ -79,14 +79,14 @@ namespace Core {
         const auto request = ParseBazaarRequest<BazaarOutboxListRequestBody>(*p, OP::BAZAAR_OUTBOX_LIST);
         if (!request)
             return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
         if (cacheCommands->EnqueueBazaarOutboxList(p->GetSessionID(), characterID, request->requestID))
             return;
         MsgBazaarOutboxListResBody failed{};
         failed.requestID = request->requestID;
         failed.characterID = characterID;
-        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
+        if (sessionManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
         auto response = writer->WriteBazaarOutboxListResponse(&failed);
         if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
@@ -95,14 +95,14 @@ namespace Core {
         const auto request = ParseBazaarRequest<BazaarCheckOutboxRequestBody>(*p, OP::BAZAAR_CHECK_OUTBOX);
         if (!request)
             return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
         if (cacheCommands->EnqueueBazaarCheckOutbox(p->GetSessionID(), characterID, request->requestID))
             return;
         MsgBazaarCheckOutboxResBody failed{};
         failed.requestID = request->requestID;
-        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
+        if (sessionManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
             return;
         auto response = writer->WriteBazaarCheckOutboxResponse(&failed);
         if (response)
@@ -113,7 +113,7 @@ namespace Core {
         const auto request = ParseBazaarRequest<BazaarCancelListingRequestBody>(*p, OP::BAZAAR_CANCEL_LISTING);
         if (!request || request->listingID == 0)
             return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
         if (cacheCommands->EnqueueBazaarCancelListing(p->GetSessionID(), characterID, request->listingID, request->requestID))
             return;
@@ -122,7 +122,7 @@ namespace Core {
         failed.listingID = request->listingID;
         failed.characterID = characterID;
         failed.resStatus = 5;
-        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
+        if (sessionManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
         auto response = writer->WriteBazaarCancelListingResponse(&failed);
         if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
@@ -131,7 +131,7 @@ namespace Core {
         const auto request = ParseBazaarRequest<BazaarClaimRequestBody>(*p, OP::BAZAAR_CLAIM);
         if (!request || request->listingID == 0)
             return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
         if (cacheCommands->EnqueueBazaarClaim(p->GetSessionID(), characterID, request->listingID, request->requestID))
@@ -139,7 +139,7 @@ namespace Core {
         MsgBazaarClaimResBody failed{};
         failed.requestID = request->requestID;
         failed.listingID = request->listingID;
-        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
+        if (sessionManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
             return;
         auto response = writer->WriteBazaarClaimResponse(&failed);
         if (response)
@@ -150,7 +150,7 @@ namespace Core {
         const auto request = ParseBazaarRequest<BazaarMyListRequestBody>(*p);
         if (!request)
             return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
         if (cacheCommands->EnqueueBazaarMyList(p->GetSessionID(), characterID, request->requestID))
@@ -158,7 +158,7 @@ namespace Core {
         MsgBazaarMyListResBody failed{};
         failed.requestID = request->requestID;
         failed.characterID = characterID;
-        if (stateManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
+        if (sessionManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
             return;
         auto response = writer->WriteBazaarMyListResponse(&failed);
         if (response)
@@ -168,7 +168,7 @@ namespace Core {
     void NonZoneHandler::BazaarSearch(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarSearchRequestBody>(*p);
         if (!request || request->itemType < 1 || request->itemType > 3
-            || !stateManager->IsFieldSession(p->GetSessionID()))
+            || !sessionManager->IsFieldSession(p->GetSessionID()))
             return;
 
         if (cacheCommands->EnqueueBazaarSearch(p->GetSessionID(), request->requestID, request->itemType, request->page))
