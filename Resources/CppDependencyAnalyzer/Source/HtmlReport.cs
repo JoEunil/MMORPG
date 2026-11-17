@@ -18,6 +18,7 @@ internal static class HtmlReport
         var data = JsonSerializer.Serialize(new
         {
             result.Directory, result.Configuration, result.Sources, result.Parsed, result.ParsedWithErrors,
+            result.Inspections, result.ElapsedMilliseconds,
             Nodes = result.Nodes.Values.OrderBy(node => node.Kind).ThenBy(node => node.Name).ToArray(),
             Edges = result.Edges.ToArray(), result.Notes, result.Failures, result.ExcludedTests
         }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });

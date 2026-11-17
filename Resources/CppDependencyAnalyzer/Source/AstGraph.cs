@@ -17,8 +17,9 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
     private string? currentFunction;
     private string? unitProject;
     private string? unitFile;
+    private CodeInspections? inspections;
 
-    public void ReadUnit(nint unit, CompileInput input)
+    public void ReadUnit(nint unit, CompileInput input, CodeInspections? collector)
     {
         unitProject = input.Project;
         unitFile = Path.GetRelativePath(root, input.File);
@@ -27,13 +28,19 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
         currentClass = null;
         currentFunction = null;
         visitorFailure = null;
+        inspections = collector;
         try
         {
             clang_visitChildren(clang_getTranslationUnitCursor(unit), VisitCursor, 0);
             visitorFailure?.Throw();
             cancellation.ThrowIfCancellationRequested();
         }
-        finally { classIds.Clear(); }
+        finally
+        {
+            classIds.Clear();
+            inspections?.EndUnit();
+            inspections = null;
+        }
     }
 
     private Visit VisitCursor(Cursor cursor, Cursor parent, nint data)
@@ -43,7 +50,7 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
 
         try
         {
-            ReadCursor(cursor);
+            ReadCursor(cursor, parent);
             return cancellation.IsCancellationRequested || visitorFailure is not null ? Visit.Break : Visit.Continue;
         }
         catch (Exception exception)
@@ -53,7 +60,7 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
         }
     }
 
-    private void ReadCursor(Cursor cursor)
+    private void ReadCursor(Cursor cursor, Cursor parent)
     {
         var kind = cursor.Kind;
         if (kind is Kind.MacroDefinition or Kind.MacroExpansion)
@@ -61,7 +68,10 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
 
         var source = Site(clang_getCursorLocation(cursor));
         if (source is null)
+        {
+            inspections?.SkipChild(parent);
             return;
+        }
 
         if (kind == Kind.InclusionDirective)
         {
@@ -108,7 +118,14 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
             }
         }
 
-        clang_visitChildren(cursor, VisitCursor, 0);
+        if (inspections is null)
+            clang_visitChildren(cursor, VisitCursor, 0);
+        else
+        {
+            var scope = inspections.Enter(cursor, parent, source);
+            try { clang_visitChildren(cursor, VisitCursor, 0); }
+            finally { inspections.Exit(cursor, scope); }
+        }
         currentClass = previousClass;
         currentFunction = previousFunction;
     }
@@ -253,9 +270,9 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
         return projectDirectories.FirstOrDefault(item => ProjectFiles.Inside(item.Directory, absolute)).Project;
     }
 
-    private static string Name(Cursor cursor) => Read(clang_getCursorSpelling(cursor));
+    internal static string Name(Cursor cursor) => Read(clang_getCursorSpelling(cursor));
 
-    private static string QualifiedName(Cursor cursor)
+    internal static string QualifiedName(Cursor cursor)
     {
         var names = new Stack<string>();
         while (clang_Cursor_isNull(cursor) == 0 && cursor.Kind != Kind.TranslationUnit)
@@ -268,8 +285,8 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
         return string.Join("::", names);
     }
 
-    private static bool IsClass(Kind kind) => kind is Kind.ClassDecl or Kind.StructDecl or Kind.UnionDecl
+    internal static bool IsClass(Kind kind) => kind is Kind.ClassDecl or Kind.StructDecl or Kind.UnionDecl
         or Kind.ClassTemplate or Kind.ClassTemplatePartialSpecialization;
-    private static bool IsFunction(Kind kind) => kind is Kind.FunctionDecl or Kind.FunctionTemplate or Kind.CxxMethod
+    internal static bool IsFunction(Kind kind) => kind is Kind.FunctionDecl or Kind.FunctionTemplate or Kind.CxxMethod
         or Kind.Constructor or Kind.Destructor or Kind.ConversionFunction;
 }

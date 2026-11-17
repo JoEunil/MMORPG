@@ -27,14 +27,20 @@ internal static class ClangNative
     internal readonly record struct CXString(nint Data, uint PrivateFlags);
     [StructLayout(LayoutKind.Sequential)]
     internal readonly record struct Location(nint Data1, nint Data2, uint Index);
+    [StructLayout(LayoutKind.Sequential)]
+    internal readonly record struct Range(nint Data1, nint Data2, uint Begin, uint End);
+    [StructLayout(LayoutKind.Sequential)]
+    internal readonly record struct Token(uint Data1, uint Data2, uint Data3, uint Data4, nint Data5);
     // Values from clang-c/Index.h, the stable libclang C interface.
     internal enum Kind : uint
     {
-        StructDecl = 2, UnionDecl = 3, ClassDecl = 4, FieldDecl = 6, FunctionDecl = 8,
-        CxxMethod = 21, Namespace = 22, Constructor = 24,
+        StructDecl = 2, UnionDecl = 3, ClassDecl = 4, FieldDecl = 6, FunctionDecl = 8, VarDecl = 9, ParmDecl = 10,
+        CxxMethod = 21, Namespace = 22, LinkageSpec = 23, Constructor = 24,
         Destructor = 25, ConversionFunction = 26, FunctionTemplate = 30, ClassTemplate = 31,
         ClassTemplatePartialSpecialization = 32, CxxBaseSpecifier = 44,
-        CallExpr = 103, TranslationUnit = 350, MacroDefinition = 501, MacroExpansion = 502, InclusionDirective = 503
+        DeclRefExpr = 101, MemberRefExpr = 102, CallExpr = 103, CxxNewExpr = 134, LambdaExpr = 144,
+        CompoundStmt = 202, WhileStmt = 207, DoStmt = 208, ForStmt = 209, CxxTryStmt = 224, CxxForRangeStmt = 225,
+        TranslationUnit = 350, MacroDefinition = 501, MacroExpansion = 502, InclusionDirective = 503
     }
 
     internal enum Visit : uint { Break, Continue, Recurse }
@@ -94,6 +100,9 @@ internal static class ClangNative
     internal static extern CXString clang_getCursorSpelling(Cursor cursor);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern CXString clang_getCursorDisplayName(Cursor cursor);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
     internal static extern CXString clang_getCursorUSR(Cursor cursor);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
@@ -110,6 +119,15 @@ internal static class ClangNative
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
     internal static extern uint clang_CXXMethod_isPureVirtual(Cursor cursor);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern uint clang_CXXConstructor_isCopyConstructor(Cursor cursor);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern uint clang_getCXXAccessSpecifier(Cursor cursor);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern uint clang_Cursor_isInlineNamespace(Cursor cursor);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
     internal static extern Cursor clang_getSpecializedCursorTemplate(Cursor cursor);
@@ -143,6 +161,24 @@ internal static class ClangNative
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
     internal static extern Location clang_getCursorLocation(Cursor cursor);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern nint clang_Cursor_getTranslationUnit(Cursor cursor);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern Range clang_getCursorExtent(Cursor cursor);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void clang_tokenize(nint unit, Range range, out nint tokens, out uint count);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern CXString clang_getTokenSpelling(nint unit, Token token);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern uint clang_getTokenKind(Token token);
+
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void clang_disposeTokens(nint unit, nint tokens, uint count);
 
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
     internal static extern void clang_getExpansionLocation(Location location, out nint file, out uint line, out uint column, out uint offset);

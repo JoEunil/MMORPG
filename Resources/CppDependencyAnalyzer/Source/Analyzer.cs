@@ -1,14 +1,24 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using static ServerDependencyAnalyzer.ClangNative;
 
 namespace ServerDependencyAnalyzer;
 
 internal record AnalysisOptions(string Root, string? Entry, string Configuration, string Platform,
-    string? SingleFile = null, bool IncludeTests = false, bool ShowExternalLibraries = true, bool DiscoverDatabase = true);
+    string? SingleFile = null, bool IncludeTests = false, bool ShowExternalLibraries = true, bool DiscoverDatabase = true,
+    InspectionOptions? Inspections = null);
 
 internal static class Analyzer
 {
     public static AnalysisResult Run(AnalysisOptions options, IProgress<string>? progress, CancellationToken cancellation)
+    {
+        var started = Stopwatch.GetTimestamp();
+        var result = RunCore(options, progress, cancellation);
+        result.ElapsedMilliseconds = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        return result;
+    }
+
+    private static AnalysisResult RunCore(AnalysisOptions options, IProgress<string>? progress, CancellationToken cancellation)
     {
         var root = Path.GetFullPath(options.Root);
         if (!Directory.Exists(root))
@@ -22,6 +32,9 @@ internal static class Analyzer
         var result = new AnalysisResult(root, database
             ? (ProjectFiles.Inside(root, entry!) ? Path.GetRelativePath(root, entry!) : entry!)
             : $"{options.Configuration}|{options.Platform}");
+        var inspections = options.Inspections is { Enabled: true } enabled ? new CodeInspections(enabled, cancellation) : null;
+        if (inspections is not null)
+            result.Inspections = InspectionReport.Create(options.Inspections);
         progress?.Report("프로젝트와 C++ 소스 파일을 찾는 중…");
         var allInputs = database ? CompilationDatabase.Read(root, entry!, options.IncludeTests, result, cancellation)
             : ProjectFiles.Read(root, entry, options.Configuration, options.Platform, options.IncludeTests, result, cancellation);
@@ -92,7 +105,7 @@ internal static class Analyzer
                         result.Failures.Add(new(relative, string.Join(Environment.NewLine, errors)));
                     }
 
-                    graph.ReadUnit(unit, file);
+                    graph.ReadUnit(unit, file, errors.Count == 0 ? inspections : null);
                 }
                 finally
                 {
@@ -104,6 +117,8 @@ internal static class Analyzer
             }
         }
         finally { clang_disposeIndex(index); }
+        if (inspections is not null)
+            result.Inspections = inspections.Finish();
         return result;
     }
 

@@ -6,6 +6,31 @@ internal record StudioFilter(string Project, string Name);
 internal record Node(string Id, string Name, string Kind, string? Project, SourceLocation? Location,
     string? Namespace = null, StudioFilter? VisualStudioFilter = null, bool IsStruct = false, bool IsAbstract = false);
 internal record AnalysisIssue(string File, string Message);
+internal record InspectionOptions(bool MemberUsage = false, bool ParameterGroups = false,
+    bool ClassCohesion = false, bool LoopCopy = false, bool LoopSearch = false, bool LoopAllocation = false)
+{
+    public bool Enabled => MemberUsage || ParameterGroups || ClassCohesion || LoopCopy || LoopSearch || LoopAllocation;
+}
+internal record InspectionCandidate(string Title, string Description, SourceLocation Location, IReadOnlyList<Evidence> Related);
+internal record InspectionCheck(string Id, bool Enabled, IReadOnlyList<InspectionCandidate> Candidates);
+internal record InspectionReport(IReadOnlyList<InspectionCheck> Checks, double CollectionMilliseconds)
+{
+    public static InspectionReport Create(InspectionOptions? options,
+        Func<string, IReadOnlyList<InspectionCandidate>>? candidates = null, double elapsed = 0)
+    {
+        InspectionCheck Check(string id, bool enabled) => new(id, enabled, enabled ? candidates?.Invoke(id) ?? [] : []);
+        var checks = new[]
+        {
+            Check("member-usage", options?.MemberUsage == true),
+            Check("parameter-groups", options?.ParameterGroups == true),
+            Check("class-cohesion", options?.ClassCohesion == true),
+            Check("loop-copy", options?.LoopCopy == true),
+            Check("loop-search", options?.LoopSearch == true),
+            Check("loop-allocation", options?.LoopAllocation == true)
+        };
+        return new(checks, elapsed);
+    }
+}
 
 internal sealed class Edge(string from, string to, string kind)
 {
@@ -31,6 +56,8 @@ internal sealed class AnalysisResult(string directory, string configuration)
     public int Sources { get; set; }
     public int Parsed { get; set; }
     public int ParsedWithErrors { get; set; }
+    public InspectionReport Inspections { get; set; } = InspectionReport.Create(null);
+    public double ElapsedMilliseconds { get; set; }
 
     public void Connect(string from, string to, string kind, Evidence evidence)
     {

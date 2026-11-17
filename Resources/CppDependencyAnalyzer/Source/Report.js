@@ -2,6 +2,20 @@
 
 const get = id => document.getElementById(id);
 const data = JSON.parse(get("data").textContent);
+const localSourceRoot = sourceRootUrl();
+const inspectionGroups = {
+  refactoring: [
+    ["member-usage", "사용 멤버"],
+    ["parameter-groups", "반복 파라미터"],
+    ["class-cohesion", "내부 기능 묶음"]
+  ],
+  performance: [
+    ["loop-copy", "반복 객체 복사"],
+    ["loop-search", "반복문 내 선형 검색"],
+    ["loop-allocation", "반복 동적 할당"]
+  ]
+};
+const inspectionChecks = new Map((data.inspections?.checks ?? []).map(check => [check.id, check]));
 const byId = new Map(data.nodes.map(node => [node.id, node]));
 const classes = data.nodes.filter(node => node.kind === "class");
 const structIds = new Set(classes.filter(node => node.isStruct).map(node => node.id));
@@ -77,7 +91,8 @@ function init() {
   const missed = data.sources - data.parsed - data.parsedWithErrors;
   get("coverage").textContent = "분석 성공 " + data.parsed + "/" + data.sources + " · 오류 포함 "
     + data.parsedWithErrors + " · 구문 분석 결과 없음 " + missed
-    + (data.excludedTests.length ? " · 감지한 테스트 제외 " + data.excludedTests.length : "");
+    + (data.excludedTests.length ? " · 감지한 테스트 제외 " + data.excludedTests.length : "")
+    + (Number.isFinite(data.elapsedMilliseconds) ? " · 전체 분석 " + duration(data.elapsedMilliseconds) : "");
   get("coverage").classList.toggle("issue", data.failures.length > 0 || data.sources === 0);
   graph.append(markers(), world);
   const namespaceChoices = [...groups.keys()].sort((a, b) => a.localeCompare(b))
@@ -100,6 +115,7 @@ function init() {
 function bindControls() {
   for (const tab of document.querySelectorAll("nav button"))
     tab.addEventListener("click", () => changeView(tab.dataset.tab));
+  get("inspection-case").addEventListener("change", showInspectionCandidates);
   get("search").addEventListener("input", event => {
     state.query = event.target.value.trim().toLowerCase();
     updateSearch();
@@ -268,11 +284,14 @@ function changeView(view) {
   get("search").value = "";
   for (const tab of document.querySelectorAll("nav button"))
     tab.setAttribute("aria-pressed", tab.dataset.tab === view);
-  const isMap = view !== "diagnostics" && view !== "paths";
+  const inspectionGroup = inspectionGroups[view];
+  const isMap = view !== "diagnostics" && view !== "paths" && !inspectionGroup;
   get("explorer").hidden = !isMap;
   get("panels").hidden = !isMap;
   get("dependency-paths").hidden = view !== "paths";
   get("diagnostics").hidden = view !== "diagnostics";
+  get("inspections").hidden = !inspectionGroup;
+  if (inspectionGroup) showInspectionGroup(inspectionGroup);
   if (!isMap) return;
 
   get("namespace-controls").hidden = view !== "namespace";
@@ -289,6 +308,59 @@ function changeView(view) {
   }[view];
   refreshGroupChecks();
   renderMap(true);
+}
+
+function duration(milliseconds) {
+  return milliseconds < 1000 ? Math.round(milliseconds) + " ms" : (milliseconds / 1000).toFixed(1) + "초";
+}
+
+function showInspectionGroup(cases) {
+  const selector = get("inspection-case");
+  get("inspections-title").textContent = state.view === "refactoring" ? "리팩터링 후보" : "성능 개선 후보";
+  const enabled = cases.find(([id]) => inspectionChecks.get(id)?.enabled);
+  const collectionTime = data.inspections?.collectionMilliseconds;
+  get("inspection-time").hidden = !enabled || !Number.isFinite(collectionTime);
+  if (!get("inspection-time").hidden)
+    get("inspection-time").textContent = "후보 정보 수집·분류 " + duration(collectionTime);
+  setOptions(selector, cases);
+  if (enabled) selector.value = enabled[0];
+  showInspectionCandidates();
+}
+
+function showInspectionCandidates() {
+  const check = inspectionChecks.get(get("inspection-case").value);
+  const candidates = check?.enabled ? check.candidates ?? [] : [];
+  get("inspection-partial").hidden = !check?.enabled || !(data.parsedWithErrors > 0 || data.failures.length > 0);
+  get("inspection-status").textContent = !check?.enabled ? "미분석 · 분석을 실행할 때 이 검사 항목을 선택하세요."
+    : data.parsed === 0 ? "검사 결과 없음 · 오류 없이 분석한 소스가 없습니다. 진단을 확인하세요."
+    : candidates.length ? "후보 발견 " + candidates.length + "건" : "후보 없음";
+  const list = get("inspection-candidates");
+  list.replaceChildren();
+  list.hidden = !candidates.length;
+  for (const candidate of candidates) {
+    const item = document.createElement("li");
+    const details = document.createElement("details");
+    const title = document.createElement("summary");
+    const reason = document.createElement("p");
+    details.className = "entry";
+    title.textContent = candidate.title;
+    reason.textContent = candidate.description;
+    details.append(title, reason);
+    if (candidate.location) {
+      const location = document.createElement("p");
+      location.className = "muted path";
+      location.append(sourceLocation(candidate.location));
+      details.append(location);
+    }
+    if (candidate.related?.length) {
+      const heading = document.createElement("h3");
+      heading.className = "direction-title";
+      heading.textContent = "관련 코드 근거";
+      details.append(heading, evidenceLocations(candidate.related));
+    }
+    item.append(details);
+    list.append(item);
+  }
 }
 
 function renderLegend() {
@@ -1306,9 +1378,9 @@ function locate() {
 function showEvidence() {
   const node = state.selected ? byId.get(state.selected) : null;
   get("details-title").textContent = node?.name ?? "연결 근거";
-  get("location").textContent = node?.kind === "group" ? "클래스 " + filterGroupCount(node) + "개"
+  get("location").replaceChildren(node?.kind === "group" ? "클래스 " + filterGroupCount(node) + "개"
     : node?.kind === "library" ? "외부 라이브러리 · " + node.location.file
-    : node?.location ? formatLocation(node.location) : "";
+    : node?.location ? sourceLocation(node.location) : "");
   const candidate = state.view === "high-level" ? highLevelCandidates.get(state.selected) : null;
   if (candidate)
     get("location").append(document.createElement("br"), "직접 " + candidate.direct + "개 · 간접만 " + candidate.indirect + "개");
@@ -1416,16 +1488,50 @@ function evidenceLocations(evidenceList) {
   const entries = document.createElement("ul");
   for (const evidence of evidenceList) {
     const item = document.createElement("li");
-    const location = document.createElement("code");
-    location.textContent = formatLocation(evidence.location);
-    item.append(location, " · " + evidence.description);
+    item.append(sourceLocation(evidence.location), " · " + evidence.description);
     entries.append(item);
   }
   return entries;
 }
 
-function formatLocation(location) {
-  return location.file + ":" + location.line + (location.column ? ":" + location.column : "");
+function sourceLocation(location) {
+  const source = document.createElement("code");
+  source.textContent = location.file + ":" + location.line + (location.column ? ":" + location.column : "");
+  const segments = localSourceRoot && encodeWindowsSegments(location.file);
+  if (!segments) return source;
+
+  const link = document.createElement("a");
+  link.href = localSourceRoot + segments;
+  link.className = "source-open";
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = "파일 열기";
+  const content = document.createDocumentFragment();
+  content.append(source, link);
+  return content;
+}
+
+function sourceRootUrl() {
+  if (window.location.protocol !== "file:" || typeof data.directory !== "string") return "";
+  const root = /^([a-z]):[\\/](.*)$/i.exec(data.directory);
+  if (!root) return "";
+  const path = root[2].replace(/[\\/]$/, "");
+  const segments = path ? encodeWindowsSegments(path) : "";
+  return segments === null ? "" : "file:///" + root[1] + ":/" + (segments ? segments + "/" : "");
+}
+
+function encodeWindowsSegments(path) {
+  if (typeof path !== "string") return null;
+  const segments = path.split(/[\\/]/);
+  // Encode only ordinary path segments to keep links under the recorded source root.
+  if (segments.some(segment => !segment || /[<>:"|?*\u0000-\u001f]/.test(segment) || /[. ]$/.test(segment)
+      || /^(?:con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³]) *(?:\.|$)/i.test(segment)))
+    return null;
+  try { return segments.map(encodeURIComponent).join("/"); }
+  catch (error) {
+    if (error instanceof URIError) return null;
+    throw error;
+  }
 }
 
 function showIssues() {

@@ -10,6 +10,16 @@ internal sealed class AnalyzerForm : Form
     private readonly Button browseDatabase = new() { Text = "빌드 DB 선택…", AutoSize = true, Enabled = false };
     private readonly CheckBox tests = new() { Text = "테스트 포함", AutoSize = true };
     private readonly CheckBox vendor = new() { Text = "외부 라이브러리 표시", AutoSize = true, Checked = true };
+    private readonly CheckBox memberUsage = new() { Text = "사용 멤버", AutoSize = true };
+    private readonly CheckBox parameterGroups = new() { Text = "반복 파라미터", AutoSize = true };
+    private readonly CheckBox classCohesion = new() { Text = "내부 기능 묶음", AutoSize = true };
+    private readonly CheckBox loopCopy = new() { Text = "반복 객체 복사", AutoSize = true };
+    private readonly CheckBox loopSearch = new() { Text = "반복문 내 선형 검색", AutoSize = true };
+    private readonly CheckBox loopAllocation = new() { Text = "반복 동적 할당", AutoSize = true };
+    private readonly TableLayoutPanel inspectionOptions = new()
+    {
+        AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 4
+    };
     private readonly Button analyze = new() { Text = "분석", AutoSize = true, Enabled = false };
     private readonly Button cancel = new() { Text = "취소", AutoSize = true, Enabled = false };
     private readonly Button open = new() { Text = "결과 열기", AutoSize = true, Enabled = false };
@@ -21,12 +31,15 @@ internal sealed class AnalyzerForm : Form
 
     public AnalyzerForm()
     {
+        SuspendLayout();
         Text = "C/C++ 의존성 분석기";
         Font = new Font("Malgun Gothic", 10F);
-        ClientSize = new Size(760, 370);
-        MinimumSize = new Size(650, 395);
+        ClientSize = new Size(760, 430);
+        MinimumSize = new Size(650, 400);
         StartPosition = FormStartPosition.CenterScreen;
+        AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
+        AutoScroll = true;
 
         configuration.Items.AddRange(["Debug", "Release"]);
         configuration.SelectedIndex = 0;
@@ -38,14 +51,14 @@ internal sealed class AnalyzerForm : Form
 
         var layout = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 8, Padding = new Padding(20)
+            AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Top,
+            ColumnCount = 3, RowCount = 9, Padding = new Padding(20)
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 128));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        for (var row = 0; row < 7; row++)
+        for (var row = 0; row < layout.RowCount; row++)
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         Controls.Add(layout);
 
         var description = MakeLabel("C/C++ 소스를 Clang으로 읽어 클래스와 프로젝트의 의존성을 브라우저 지도에 표시합니다.");
@@ -67,17 +80,36 @@ internal sealed class AnalyzerForm : Form
         layout.Controls.Add(MakeLabel("포함 범위"), 0, 4);
         layout.Controls.Add(scopeOptions, 1, 4);
         layout.SetColumnSpan(scopeOptions, 2);
+
+        inspectionOptions.Margin = new Padding(0, 8, 0, 8);
+        inspectionOptions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        inspectionOptions.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        for (var row = 0; row < inspectionOptions.RowCount; row++)
+            inspectionOptions.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        inspectionOptions.Controls.Add(MakeLabel("리팩터링 후보"), 0, 0);
+        inspectionOptions.Controls.Add(MakeLabel("성능 개선 후보"), 1, 0);
+        inspectionOptions.Controls.Add(memberUsage, 0, 1);
+        inspectionOptions.Controls.Add(parameterGroups, 0, 2);
+        inspectionOptions.Controls.Add(classCohesion, 0, 3);
+        inspectionOptions.Controls.Add(loopCopy, 1, 1);
+        inspectionOptions.Controls.Add(loopSearch, 1, 2);
+        inspectionOptions.Controls.Add(loopAllocation, 1, 3);
+        layout.Controls.Add(inspectionOptions, 0, 5);
+        layout.SetColumnSpan(inspectionOptions, 3);
+
         var actions = MakeRow(analyze, cancel, open, openReports);
-        layout.Controls.Add(actions, 1, 5);
+        layout.Controls.Add(actions, 1, 6);
         layout.SetColumnSpan(actions, 2);
         progressBar.Margin = new Padding(3, 10, 3, 4);
-        layout.Controls.Add(progressBar, 0, 6);
+        layout.Controls.Add(progressBar, 0, 7);
         layout.SetColumnSpan(progressBar, 3);
-        layout.Controls.Add(status, 0, 7);
+        layout.Controls.Add(status, 0, 8);
         layout.SetColumnSpan(status, 3);
         status.Margin = new Padding(3, 10, 3, 3);
-        layout.SizeChanged += (_, _) => description.MaximumSize = status.MaximumSize =
-            new Size(Math.Max(300, layout.ClientSize.Width - layout.Padding.Horizontal - 6), 0);
+        void WrapLabels() => description.MaximumSize = status.MaximumSize =
+            new Size(Math.Max(1, layout.ClientSize.Width - layout.Padding.Horizontal - 6), 0);
+        layout.SizeChanged += (_, _) => WrapLabels();
+        WrapLabels();
 
         browse.Click += (_, _) => SelectFolder();
         browseDatabase.Click += (_, _) => SelectDatabase();
@@ -98,6 +130,7 @@ internal sealed class AnalyzerForm : Form
             args.Cancel = true;
             CancelAnalysis();
         };
+        ResumeLayout(performLayout: true);
     }
 
     private void SelectFolder()
@@ -164,7 +197,9 @@ internal sealed class AnalyzerForm : Form
         lastReport = null;
         var options = new AnalysisOptions(folder.Text, (project.SelectedItem as ProjectChoice)?.Path,
             configuration.Text, platform.Text, IncludeTests: tests.Checked, ShowExternalLibraries: vendor.Checked,
-            DiscoverDatabase: false);
+            DiscoverDatabase: false, Inspections: new InspectionOptions(
+                MemberUsage: memberUsage.Checked, ParameterGroups: parameterGroups.Checked, ClassCohesion: classCohesion.Checked,
+                LoopCopy: loopCopy.Checked, LoopSearch: loopSearch.Checked, LoopAllocation: loopAllocation.Checked));
         SetBusy(true);
         var progress = new Progress<string>(message => { if (activeRun == run && !run.IsCancellationRequested) status.Text = message; });
         try
@@ -211,7 +246,7 @@ internal sealed class AnalyzerForm : Form
 
     private void SetBusy(bool busy)
     {
-        browse.Enabled = tests.Enabled = vendor.Enabled = !busy;
+        browse.Enabled = tests.Enabled = vendor.Enabled = inspectionOptions.Enabled = !busy;
         browseDatabase.Enabled = project.Enabled = analyze.Enabled = !busy && folder.Text.Length > 0;
         UpdateBuildInputs();
         cancel.Enabled = busy;

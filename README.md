@@ -32,7 +32,7 @@ IOCP가 받은 데이터를 세션별 `ClientContext`에서 누적하고, `NetPa
 
 ![CacheLib 핵심 컴포넌트와 저장·복구 흐름](images/Architecture_CacheLib.png)
 
-AI Agent로 만든 Clang 기반 C++ 의존성 분석기로 클래스의 의존 대상과 호출부를 찾을 수 있다. [서버 의존성 분석 보고서](https://joeunil.github.io/MMORPG/reports/server-project-map.html) · [활용법과 소스](Resources/CppDependencyAnalyzer/README.md)
+AI Agent를 활용해 Clang 기반 C++ 의존성 분석기를 만들었다. [서버 의존성 지도 활용법](Resources/CppDependencyAnalyzer/README.md)에 소스와 예제 HTML 보고서, 실제 화면을 정리했다. 특정 클래스를 검색해 의존 대상과 호출부의 코드 위치를 확인할 수 있다.
 
 ## AI 활용과 클라이언트 개발
 

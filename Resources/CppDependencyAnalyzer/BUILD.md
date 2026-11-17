@@ -36,6 +36,23 @@ dotnet .\bin\Release\net8.0-windows\ServerDependencyAnalyzer.dll --analyze "C:\G
 dotnet .\bin\Release\net8.0-windows\ServerDependencyAnalyzer.dll --analyze "C:\Project" --entry "C:\Build\compile_commands.json" --output .\report.html
 ```
 
+## 선택 검사
+
+WinForms의 **리팩터링 후보**와 **성능 개선 후보**에서 필요한 검사만 켜고 분석합니다. 추가 검사는 기본으로 꺼져 있으며, 기본 의존성 지도는 항상 생성합니다.
+
+| 분류 | 검사 | 명령줄 옵션 |
+| --- | --- | --- |
+| 리팩터링 후보 | 사용 멤버 | `--member-usage true` |
+| 리팩터링 후보 | 반복 파라미터 | `--parameter-groups true` |
+| 리팩터링 후보 | 내부 기능 묶음 | `--class-cohesion true` |
+| 성능 개선 후보 | 반복 객체 복사 | `--loop-copy true` |
+| 성능 개선 후보 | 반복문 내 선형 검색 | `--loop-search true` |
+| 성능 개선 후보 | 반복 동적 할당 | `--loop-allocation true` |
+
+위 옵션을 기존 `--analyze` 명령 뒤에 붙입니다. 보고서는 **미분석**, **후보 없음**, **후보 발견**을 구분하고 검출 근거와 코드 위치를 표시합니다. 후보는 설계 결함이나 실제 성능 병목을 확정한 결과가 아닙니다.
+
+로컬 HTML에서는 분석 폴더 안의 코드 파일에 열기 링크를 제공합니다. 브라우저 정책과 연결 프로그램에 따라 열리는 방식이 달라지며, Visual Studio 실행이나 줄 이동을 보장하지 않습니다. 웹에 게시하거나 로컬 경로를 제거한 보고서는 코드 위치만 표시합니다.
+
 ## 관계 범위
 
 - **고수준 후보**는 서로 다른 타입 2개 이상이 직접 참조하며 나가는 연결이 없는 타입을 모읍니다. Interface·추상 타입은 기본으로 제외하며, 설계상 고수준인지는 코드의 역할로 판단합니다.
