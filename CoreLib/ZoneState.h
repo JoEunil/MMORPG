@@ -30,6 +30,7 @@ namespace Core {
     struct ParryRequestBody;
     struct ParryResponseBody;
     struct ZoneChangeResult;
+    struct DeferredZoneEvent;
 
     struct SkillRequest {
         uint64_t sessionID;
@@ -38,7 +39,7 @@ namespace Core {
     }; 
 
     struct FieldZoneTransfer {
-        enum class Status { Transferring, Rejected };
+        enum class Kind { Movement, Respawn };
 
         CharacterState character{};
         uint64_t ownershipEpoch = 0;
@@ -46,7 +47,15 @@ namespace Core {
         uint8_t dir = 0;
         uint8_t skillSlot = 0;
         float x = 0, y = 0, moveBudget = 0, aimAngle = 0;
-        Status status = Status::Transferring; // guarded by the session shard
+        Kind kind = Kind::Movement;
+        // Keep one source slot available while a dead character is in transit.
+        std::shared_ptr<std::atomic<uint32_t>> respawnReturnSlots;
+        std::unique_ptr<DeferredZoneEvent> respawnReturnEvent;
+
+        FieldZoneTransfer();
+        ~FieldZoneTransfer();
+        void ReleaseRespawnSlot();
+        bool IsRespawn() const { return kind == Kind::Respawn; }
     };
 
     class ZoneState {
@@ -58,6 +67,7 @@ namespace Core {
         std::vector<std::pair<uint64_t, uint16_t>> m_cheatList;  // Cheat 탐지해서 배치처리하는 용도, stack
         std::mutex m_mutex;
 
+        std::shared_ptr<std::atomic<uint32_t>> m_respawnReturnSlots = std::make_shared<std::atomic<uint32_t>>(0);
         uint64_t m_deltaTickCounter;
         bool m_monsterCellsChanged = false;
         uint16_t m_zoneID;
@@ -97,9 +107,12 @@ namespace Core {
         void RemoveFromCell(CharacterState& character);
         void AddToCell(CharacterState& character,  uint8_t x, uint8_t y);
         uint32_t ImmigrateCharLocked(uint64_t sessionID, const CharacterState& user);
-        bool RegisterCharacterLocked(CharacterState&& incoming);
+        bool RegisterCharacterLocked(CharacterState&& incoming, bool returningRespawn = false);
+        bool AdmitLobbyCharacter(uint64_t sessionID, CharacterState incoming, ZoneChangeResult& result);
+        bool DescribeOrRespawnInTown(uint64_t sessionID, uint64_t characterID, bool replay, ZoneChangeResult& result);
+        void ClearCharacterEffects(uint64_t sessionID, uint32_t internalID);
         bool AdmitFieldTransferLocked(const FieldZoneTransfer& transfer);
-        bool RestoreFieldTransferLocked(const CharacterState& original);
+        bool RestoreFieldTransferLocked(const CharacterState& original, bool returningRespawn = false);
         ParryResponseBody Parry(uint64_t sessionID, const ParryRequestBody& request);
         void UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version);
         void RemoveCharacterLocked(uint64_t sessionID);

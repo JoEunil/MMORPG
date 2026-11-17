@@ -4,19 +4,13 @@
 #include "ChatThreadPool.h"
 #include "LobbyZone.h"
 #include "PacketWriter.h"
-#include "WorldMap.h"
 #include "ItemData.h"
 #include "ZoneEventRouter.h"
 #include <algorithm>
-#include <cmath>
 #include <cstring>
 #include <limits>
 
 namespace Core {
-    static_assert(TOWN_ZONE_ID == 1 && TOWN_SPAWN_X >= 0 && TOWN_SPAWN_X <= ZONE_SIZE
-        && TOWN_SPAWN_Y >= 0 && TOWN_SPAWN_Y <= ZONE_SIZE,
-        "Town respawn must remain inside Zone 1.");
-
     ItemUseResponseBody SessionManager::UseItem(uint64_t sessionID, const ItemUseRequestBody& request) {
         ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
         if (request.requestID == 0 || request.itemID == 0) return result;
@@ -149,224 +143,47 @@ namespace Core {
         }
     }
 
-    bool SessionManager::ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result) {
-        result = {};
+    bool SessionManager::QueueLobbyEntry(uint64_t sessionID, uint8_t op) {
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-        std::unique_lock sessionLock(shard.smutex);
-        auto session = shard.sessionMap.find(sessionID);
-        if (session == shard.sessionMap.end() || !session->second.authenticated
-            || !session->second.authCompleted || session->second.characterID == 0)
+        std::shared_lock sessionLock(shard.smutex);
+        const auto session = shard.sessionMap.find(sessionID);
+        if (op != ZONE_CHANGE::ENTER || session == shard.sessionMap.end())
             return false;
-        const uint16_t sourceID = session->second.zoneID;
-        if (op != ZONE_CHANGE::ENTER || sourceID != 0
-            || session->second.ownershipEpoch == (std::numeric_limits<uint64_t>::max)())
+        const auto& data = session->second;
+        if (!data.authenticated || !data.authCompleted || data.characterID == INVALID_CHARACTER_ID
+            || data.zoneID != 0 || data.ownershipEpoch == (std::numeric_limits<uint64_t>::max)())
             return false;
 
-        if (sourceID == 0) {
-            std::unique_lock lobbyLock(lobbyZone->m_mutex);
-            auto loaded = lobbyZone->m_chars.find(sessionID);
-            if (loaded == lobbyZone->m_chars.end()
-                || loaded->second.characterID != session->second.characterID)
-                return false;
-            const uint16_t destinationID = loaded->second.lastZone == 0 ? TOWN_ZONE_ID : loaded->second.lastZone;
-            auto destination = zoneRouter->GetZone(destinationID);
-            if (destination == nullptr)
-                return false;
-            std::unique_lock destinationLock(destination->m_mutex);
-            CharacterState incoming = loaded->second;
-            if (!std::isfinite(incoming.x) || !std::isfinite(incoming.y))
-                return false; // Corrupt coordinates are not a map-version relocation.
-            if (incoming.x < destination->m_area.x_min || incoming.x > destination->m_area.x_max
-                || incoming.y < destination->m_area.y_min || incoming.y > destination->m_area.y_max
-                || !WorldMap::CanTraverse(incoming.x, incoming.y, incoming.x, incoming.y)) {
-                // Saved coordinates can become invalid after a fixed-map revision. Relocate only
-                // on lobby entry; live Zone transfers must still prove their existing position.
-                incoming.x = destination->m_area.x_min + TRANSITION_BUFFER + 10.0f;
-                incoming.y = destination->m_area.y_min + TRANSITION_BUFFER + 10.0f;
-                if (!WorldMap::CanTraverse(incoming.x, incoming.y, incoming.x, incoming.y)) {
-                    const auto& safeArea = destination->m_cells[0][0].area;
-                    const int firstX = (std::max)(0, static_cast<int>(std::floor((safeArea.x_min - WorldMap::OriginX) / WorldMap::TileSize)));
-                    const int firstY = (std::max)(0, static_cast<int>(std::floor((safeArea.y_min - WorldMap::OriginY) / WorldMap::TileSize)));
-                    const int lastX = (std::min)(WorldMap::Width - 1, static_cast<int>(std::floor((safeArea.x_max - WorldMap::OriginX) / WorldMap::TileSize)));
-                    const int lastY = (std::min)(WorldMap::Height - 1, static_cast<int>(std::floor((safeArea.y_max - WorldMap::OriginY) / WorldMap::TileSize)));
-                    bool found = false;
-                    for (int y = firstY; y <= lastY && !found; ++y) {
-                        for (int x = firstX; x <= lastX; ++x) {
-                            const float safeX = WorldMap::OriginX + (x + 0.5f) * WorldMap::TileSize;
-                            const float safeY = WorldMap::OriginY + (y + 0.5f) * WorldMap::TileSize;
-                            if (safeX < safeArea.x_min || safeX > safeArea.x_max
-                                || safeY < safeArea.y_min || safeY > safeArea.y_max
-                                || !WorldMap::CanTraverse(safeX, safeY, safeX, safeY))
-                                continue;
-                            incoming.x = safeX;
-                            incoming.y = safeY;
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found)
-                        return false; // The original lobby row and session are still intact.
-                }
-            }
-            // Immigration copies and prepares the destination before removing the lobby row.
-            if (destination->ImmigrateCharLocked(sessionID, incoming) == INVALID_ZONE_INTERNAL_ID)
-                return false;
-            const auto& entered = destination->m_chars.back();
-            ++session->second.ownershipEpoch;
-            result = {destinationID, 0, entered.zoneInternalID, entered.x, entered.y, destination->m_generation};
-            result.ownershipEpoch = session->second.ownershipEpoch;
-            lobbyZone->m_chars.erase(loaded);
-            session->second.zoneID = destinationID;
-            if (session->second.chatID == 0)
-                session->second.chatID = chat->AddChatSession(sessionID, destinationID, entered.profileId);
-            result.chatID = session->second.chatID;
-            chat->EnqueueZoneJoin(sessionID, destinationID);
-            return true;
-        }
-
-        return false;
+        const uint16_t destination = lobbyZone->FindEntryZone(sessionID, data.characterID);
+        ZoneEvent event;
+        event.type = ZoneEventType::LobbyEntry;
+        event.request = {sessionID, data.ownershipEpoch};
+        return destination != 0 && zoneRouter->TryEnqueue(destination, event);
     }
 
-    bool SessionManager::RespawnToTown(uint64_t sessionID, const RespawnToTownBody& request, ZoneChangeResult& result) {
-        result = {};
+    bool SessionManager::QueueRespawnToTown(uint64_t sessionID, uint64_t ownershipEpoch) {
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-        std::unique_lock sessionLock(shard.smutex);
-        auto session = shard.sessionMap.find(sessionID);
-        if (session == shard.sessionMap.end() || !session->second.authenticated || !session->second.authCompleted
-            || session->second.userID == 0 || session->second.characterID == 0
-            || session->second.zoneID == 0 || session->second.zoneID > ZONE_COUNT
-            || !WorldMap::CanTraverse(TOWN_SPAWN_X, TOWN_SPAWN_Y, TOWN_SPAWN_X, TOWN_SPAWN_Y))
+        std::shared_lock sessionLock(shard.smutex);
+        const auto session = shard.sessionMap.find(sessionID);
+        if (session == shard.sessionMap.end())
+            return false;
+        const auto& data = session->second;
+        if (!data.authenticated || !data.authCompleted || data.userID == 0
+            || data.characterID == INVALID_CHARACTER_ID || data.zoneID == 0 || data.zoneID > ZONE_COUNT
+            || ownershipEpoch == (std::numeric_limits<uint64_t>::max)())
+            return false;
+        if (data.pendingFieldTransfer)
+            return data.pendingFieldTransfer->IsRespawn() && ownershipEpoch == data.ownershipEpoch;
+
+        const bool replay = data.zoneID == TOWN_ZONE_ID && data.lastRespawnRequestEpoch == ownershipEpoch
+            && data.ownershipEpoch == ownershipEpoch + 1;
+        if (data.ownershipEpoch != ownershipEpoch && !replay)
             return false;
 
-        const uint16_t sourceID = session->second.zoneID;
-        auto source = zoneRouter->GetZone(sourceID);
-        auto town = zoneRouter->GetZone(TOWN_ZONE_ID);
-        if (source == nullptr || town == nullptr)
-            return false;
-
-        // If the commit succeeded but its ACK was not observed, replay only that same
-        // request while the session still owns the untouched town respawn state.
-        if (session->second.ownershipEpoch != request.ownershipEpoch) {
-            if (request.ownershipEpoch == (std::numeric_limits<uint64_t>::max)()
-                || request.ownershipEpoch + 1 != session->second.ownershipEpoch
-                || session->second.lastRespawnRequestEpoch != request.ownershipEpoch
-                || sourceID != TOWN_ZONE_ID)
-                return false;
-            std::lock_guard zoneLock(town->m_mutex);
-            auto member = town->m_sessionToIndex.find(sessionID);
-            if (member == town->m_sessionToIndex.end()) return false;
-            const auto& character = town->m_chars[member->second];
-            if (character.characterID != session->second.characterID || character.hp <= 0
-                || character.hp != character.maxHp || character.mp != character.maxMp
-                || character.x != TOWN_SPAWN_X || character.y != TOWN_SPAWN_Y)
-                return false;
-            result = {TOWN_ZONE_ID, session->second.chatID, character.zoneInternalID,
-                character.x, character.y, town->m_generation, session->second.ownershipEpoch};
-            return true;
-        }
-        if (session->second.ownershipEpoch == (std::numeric_limits<uint64_t>::max)())
-            return false;
-
-        auto clearPlayerEffects = [sessionID](ZoneState& zone, uint32_t internalID) {
-            for (auto& row : zone.m_cells) {
-                for (auto& cell : row) {
-                    std::erase_if(cell.activeSkills, [sessionID](const ActiveSkill& skill) {
-                        return skill.casterType == 0 && skill.sessionId == sessionID;
-                    });
-                    std::erase_if(cell.actionResults, [internalID](const ActionResult& action) {
-                        return action.casterType == 0 && action.zoneInternalId == internalID;
-                    });
-                    std::erase(cell.dirtyChar, internalID);
-                }
-            }
-        };
-
-        if (sourceID == TOWN_ZONE_ID) {
-            std::lock_guard zoneLock(town->m_mutex);
-            auto member = town->m_sessionToIndex.find(sessionID);
-            if (member == town->m_sessionToIndex.end()) return false;
-            auto& character = town->m_chars[member->second];
-            if (character.characterID != session->second.characterID || character.hp != 0
-                || character.maxHp <= 0 || character.maxMp < 0)
-                return false;
-            const auto [newCellX, newCellY] = GetCell(TOWN_SPAWN_X, TOWN_SPAWN_Y, town->m_area);
-            auto& destinationCell = town->m_cells[newCellY][newCellX];
-            if (character.cellX != newCellX || character.cellY != newCellY) {
-                try {
-                    destinationCell.charSessions.reserve(destinationCell.charSessions.size() + 1);
-                }
-                catch (const std::bad_alloc&) {
-                    return false;
-                }
-            }
-            try {
-                destinationCell.dirtyChar.reserve(destinationCell.dirtyChar.size() + 1);
-            }
-            catch (const std::bad_alloc&) {
-                return false;
-            }
-            const uint32_t internalID = character.zoneInternalID;
-            clearPlayerEffects(*town, internalID);
-            const bool movedCell = character.cellX != newCellX || character.cellY != newCellY;
-            if (movedCell) town->RemoveFromCell(character);
-            character.parryWindowTicks = 0;
-            character.hp = character.maxHp;
-            character.mp = character.maxMp;
-            character.x = TOWN_SPAWN_X;
-            character.y = TOWN_SPAWN_Y;
-            character.dir = 0;
-            character.moveBudget = 0.0f;
-            character.dirtyBit |= 0x1C3; // hp, mp, direction, x and y
-            if (movedCell)
-                town->AddToCell(character, static_cast<uint8_t>(newCellX), static_cast<uint8_t>(newCellY));
-            destinationCell.dirtyChar.push_back(internalID);
-            session->second.lastRespawnRequestEpoch = request.ownershipEpoch;
-            ++session->second.ownershipEpoch;
-            result = {TOWN_ZONE_ID, session->second.chatID, internalID, character.x, character.y,
-                town->m_generation, session->second.ownershipEpoch};
-            return true;
-        }
-
-        ZoneState* first = sourceID < TOWN_ZONE_ID ? source : town;
-        ZoneState* second = sourceID < TOWN_ZONE_ID ? town : source;
-        std::unique_lock firstLock(first->m_mutex);
-        std::unique_lock secondLock(second->m_mutex);
-        auto member = source->m_sessionToIndex.find(sessionID);
-        if (member == source->m_sessionToIndex.end()) return false;
-        const CharacterState current = source->m_chars[member->second];
-        if (current.characterID != session->second.characterID || current.hp != 0
-            || current.maxHp <= 0 || current.maxMp < 0)
-            return false;
-
-        CharacterState incoming = current;
-        incoming.hp = incoming.maxHp;
-        incoming.mp = incoming.maxMp;
-        incoming.x = TOWN_SPAWN_X;
-        incoming.y = TOWN_SPAWN_Y;
-        incoming.dir = 0;
-        incoming.moveBudget = 0.0f;
-        const auto [townCellX, townCellY] = GetCell(TOWN_SPAWN_X, TOWN_SPAWN_Y, town->m_area);
-        try {
-            town->m_cells[townCellY][townCellX].dirtyChar.reserve(
-                town->m_cells[townCellY][townCellX].dirtyChar.size() + 1);
-        }
-        catch (const std::bad_alloc&) {
-            return false;
-        }
-        if (town->ImmigrateCharLocked(sessionID, incoming) == INVALID_ZONE_INTERNAL_ID)
-            return false; // The source character and session ownership are still unchanged.
-        auto& entered = town->m_chars.back();
-        entered.dirtyBit = 0x1C3;
-        town->m_cells[entered.cellY][entered.cellX].dirtyChar.push_back(entered.zoneInternalID);
-        source->RemoveCharacterLocked(sessionID);
-        session->second.zoneID = TOWN_ZONE_ID;
-        session->second.lastRespawnRequestEpoch = request.ownershipEpoch;
-        ++session->second.ownershipEpoch;
-        result = {TOWN_ZONE_ID, session->second.chatID, entered.zoneInternalID, entered.x, entered.y,
-            town->m_generation, session->second.ownershipEpoch};
-        // Joining removes the old membership; one event cannot leave a half-applied leave/join pair.
-        chat->EnqueueZoneJoin(sessionID, TOWN_ZONE_ID);
-        return true;
+        ZoneEvent event;
+        event.type = ZoneEventType::Respawn;
+        event.request = {sessionID, ownershipEpoch};
+        return zoneRouter->TryEnqueue(data.zoneID, event);
     }
 
     void SessionManager::UpdateZoneOwnershipLocked(SessionData& session, uint16_t destinationID) {
@@ -387,7 +204,7 @@ namespace Core {
             return false;
         ZoneEvent event;
         event.type = ZoneEventType::Bootstrap;
-        event.bootstrap = {sessionID, session.ownershipEpoch, resendZoneChange};
+        event.request = {sessionID, session.ownershipEpoch, resendZoneChange};
         return zoneRouter->TryEnqueue(session.zoneID, event);
     }
 

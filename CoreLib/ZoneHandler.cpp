@@ -7,6 +7,8 @@
 #include "IMessageQueue.h"
 #include "PacketWriter.h"
 #include "ZoneState.h"
+#include "LobbyZone.h"
+#include "WorldMap.h"
 #include "ChatThreadPool.h"
 #include "Message.h"
 #include "MessagePool.h"
@@ -83,7 +85,121 @@ namespace Core {
         zone.DirtyCheck(sessionID);
     }
 
-    void ZoneHandler::ProcessFieldTransfer(ZoneState& zone, const std::shared_ptr<FieldZoneTransfer>& transfer) {
+    void ZoneHandler::ProcessLobbyEntry(ZoneState& zone, const ZoneRequest& request) {
+        const auto sessionID = request.sessionID;
+        auto& shard = sessionManager->m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock sessionLock(shard.smutex);
+        const auto session = shard.sessionMap.find(sessionID);
+        if (session == shard.sessionMap.end())
+            return;
+
+        auto& data = session->second;
+        if (!data.authenticated || !data.authCompleted || data.zoneID != 0
+            || data.ownershipEpoch != request.ownershipEpoch)
+            return;
+
+        ZoneChangeResult result;
+        uint32_t profileID = 0;
+        const bool admitted = lobbyZone->TryEnterField(sessionID, data.characterID, zone.m_zoneID,
+            [&](const CharacterState& loaded) {
+                profileID = loaded.profileId;
+                return zone.AdmitLobbyCharacter(sessionID, loaded, result);
+            });
+        if (!admitted) {
+            sessionLock.unlock();
+            SendZoneChangeFailed(sessionID);
+            return;
+        }
+
+        SessionManager::UpdateZoneOwnershipLocked(data, zone.m_zoneID);
+        if (data.chatID == 0)
+            data.chatID = chat->AddChatSession(sessionID, zone.m_zoneID, profileID);
+        result.chatID = data.chatID;
+        result.ownershipEpoch = data.ownershipEpoch;
+        chat->EnqueueZoneJoin(sessionID, zone.m_zoneID);
+        sessionLock.unlock();
+        SendZoneChange(zone, sessionID, result);
+    }
+
+    void ZoneHandler::ProcessRespawn(ZoneState& zone, const ZoneRequest& request) {
+        const auto sessionID = request.sessionID;
+        auto& shard = sessionManager->m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock sessionLock(shard.smutex);
+        const auto session = shard.sessionMap.find(sessionID);
+        if (session == shard.sessionMap.end())
+            return;
+        auto& data = session->second;
+        if (!data.authenticated || !data.authCompleted || data.zoneID != zone.m_zoneID)
+            return;
+        if (data.pendingFieldTransfer && data.pendingFieldTransfer->IsRespawn()
+            && data.ownershipEpoch == request.ownershipEpoch)
+            return;
+
+        const bool inTown = zone.m_zoneID == TOWN_ZONE_ID;
+        const bool replay = data.ownershipEpoch != request.ownershipEpoch;
+        const bool canReplay = inTown && data.lastRespawnRequestEpoch == request.ownershipEpoch
+            && data.ownershipEpoch == request.ownershipEpoch + 1;
+        if (data.pendingFieldTransfer || (replay && !canReplay)
+            || !WorldMap::CanTraverse(TOWN_SPAWN_X, TOWN_SPAWN_Y, TOWN_SPAWN_X, TOWN_SPAWN_Y)) {
+            sessionLock.unlock();
+            SendZoneChangeFailed(sessionID);
+            return;
+        }
+
+        if (!inTown) {
+            const bool queued = StartRespawnTransfer(zone, sessionID, data);
+            sessionLock.unlock();
+            if (!queued)
+                SendZoneChangeFailed(sessionID);
+            return;
+        }
+
+        ZoneChangeResult result;
+        if (!zone.DescribeOrRespawnInTown(sessionID, data.characterID, replay, result)) {
+            sessionLock.unlock();
+            SendZoneChangeFailed(sessionID);
+            return;
+        }
+        if (!replay) {
+            data.lastRespawnRequestEpoch = request.ownershipEpoch;
+            SessionManager::UpdateZoneOwnershipLocked(data, TOWN_ZONE_ID);
+        }
+        result.chatID = data.chatID;
+        result.ownershipEpoch = data.ownershipEpoch;
+        sessionLock.unlock();
+        SendZoneChange(zone, sessionID, result);
+    }
+
+    bool ZoneHandler::StartRespawnTransfer(ZoneState& source, uint64_t sessionID, SessionData& session) {
+        std::lock_guard zoneLock(source.m_mutex);
+        const auto member = source.m_sessionToIndex.find(sessionID);
+        if (member == source.m_sessionToIndex.end())
+            return false;
+        const auto& character = source.m_chars[member->second];
+        if (character.characterID != session.characterID || character.hp != 0
+            || character.maxHp <= 0 || character.maxMp < 0)
+            return false;
+
+        auto transfer = std::make_shared<FieldZoneTransfer>();
+        transfer->character = character;
+        transfer->ownershipEpoch = session.ownershipEpoch;
+        transfer->sourceZoneID = source.m_zoneID;
+        transfer->kind = FieldZoneTransfer::Kind::Respawn;
+        transfer->x = TOWN_SPAWN_X;
+        transfer->y = TOWN_SPAWN_Y;
+        transfer->respawnReturnEvent = std::make_unique<DeferredZoneEvent>();
+        if (!zoneTransfer->TryEnqueueTransfer(TOWN_ZONE_ID, transfer))
+            return false;
+
+        source.m_respawnReturnSlots->fetch_add(1, std::memory_order_relaxed);
+        transfer->respawnReturnSlots = source.m_respawnReturnSlots;
+        session.pendingFieldTransfer = std::move(transfer);
+        source.RemoveCharacterLocked(sessionID);
+        return true;
+    }
+
+    void ZoneHandler::ProcessFieldTransfer(ZoneState& zone, const ZoneEvent& event) {
+        const auto& transfer = event.transfer;
         if (!transfer)
             return;
 
@@ -95,35 +211,56 @@ namespace Core {
             || session->second.zoneID != transfer->sourceZoneID || session->second.ownershipEpoch != transfer->ownershipEpoch)
             return;
 
-        const bool returning = transfer->status == FieldZoneTransfer::Status::Rejected;
+        const bool returning = event.type == ZoneEventType::TransferRejected;
         if (returning != (zone.m_zoneID == transfer->sourceZoneID))
             return;
 
+        const bool respawn = transfer->IsRespawn();
         std::unique_lock zoneLock(zone.m_mutex);
-        const bool admitted = returning ? zone.RestoreFieldTransferLocked(transfer->character)
-                                        : zone.AdmitFieldTransferLocked(*transfer);
+        bool admitted = false;
+        try {
+            admitted = returning ? zone.RestoreFieldTransferLocked(transfer->character, respawn)
+                                 : zone.AdmitFieldTransferLocked(*transfer);
+        }
+        catch (const std::bad_alloc&) {
+            admitted = false;
+        }
         if (!admitted) {
-            transfer->status = FieldZoneTransfer::Status::Rejected;
             zoneLock.unlock();
             sessionLock.unlock();
-            if (returning || !zoneTransfer->TryEnqueueTransfer(transfer->sourceZoneID, transfer))
+            if ((!returning || respawn) && zoneTransfer->TryEnqueueTransferRejected(transfer))
+                return;
+            if (respawn)
+                errorLogger->LogError("respawn", "source could not queue rollback", "sessionID", sessionID);
+            else
                 zoneTransfer->EnqueueLobbyReturn(transfer);
             return;
         }
 
         auto& data = session->second;
         data.pendingFieldTransfer.reset();
-        if (returning)
+        transfer->ReleaseRespawnSlot();
+        if (returning) {
+            if (respawn) {
+                zoneLock.unlock();
+                sessionLock.unlock();
+                SendZoneChangeFailed(sessionID);
+            }
             return;
+        }
 
+        if (respawn)
+            data.lastRespawnRequestEpoch = transfer->ownershipEpoch;
         SessionManager::UpdateZoneOwnershipLocked(data, zone.m_zoneID);
         const auto& entered = zone.m_chars.back();
         const ZoneChangeResult result{zone.m_zoneID, data.chatID, entered.zoneInternalID, entered.x, entered.y,
             zone.m_generation, data.ownershipEpoch};
         chat->EnqueueZoneJoin(sessionID, zone.m_zoneID);
         zoneLock.unlock();
-        zone.Skill(sessionID, transfer->skillSlot, transfer->aimAngle);
-        zone.DirtyCheck(sessionID);
+        if (!respawn) {
+            zone.Skill(sessionID, transfer->skillSlot, transfer->aimAngle);
+            zone.DirtyCheck(sessionID);
+        }
         sessionLock.unlock();
         SendZoneChange(zone, sessionID, result);
     }
@@ -144,7 +281,7 @@ namespace Core {
         zone.UpdateProfileVersion(update.sessionID, update.profileID, update.version);
     }
 
-    void ZoneHandler::ProcessBootstrap(ZoneState& zone, const BootstrapRequest& request) {
+    void ZoneHandler::ProcessBootstrap(ZoneState& zone, const ZoneRequest& request) {
         auto& shard = sessionManager->m_shards[request.sessionID & SHARD_SIZE_MASK];
         std::unique_lock sessionLock(shard.smutex);
         const auto found = shard.sessionMap.find(request.sessionID);
@@ -165,6 +302,12 @@ namespace Core {
         const auto bootstrapID = SessionManager::NextBootstrapIDLocked(session);
         if (bootstrapID != 0)
             zone.EnqueueBootstrap(request.sessionID, request.ownershipEpoch, bootstrapID);
+    }
+
+    void ZoneHandler::SendZoneChangeFailed(uint64_t sessionID) {
+        auto response = writer->WriteZoneChangeFailed();
+        if (response)
+            networkSender->SendDataUnique(sessionID, std::move(response));
     }
 
     void ZoneHandler::SendZoneChange(ZoneState& zone, uint64_t sessionID, const ZoneChangeResult& transition) {

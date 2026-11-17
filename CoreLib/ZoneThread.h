@@ -20,8 +20,11 @@ namespace Core {
     enum class ZoneEventType : uint8_t {
         Packet,
         Transfer,
+        TransferRejected,
         ProfileVersion,
         Bootstrap,
+        LobbyEntry,
+        Respawn,
     };
 
     struct ProfileVersionUpdate {
@@ -30,7 +33,7 @@ namespace Core {
         uint32_t version = 0;
     };
 
-    struct BootstrapRequest {
+    struct ZoneRequest {
         uint64_t sessionID = 0;
         uint64_t ownershipEpoch = 0;
         bool resendZoneChange = false;
@@ -41,17 +44,18 @@ namespace Core {
         std::unique_ptr<IPacketView, PacketViewDeleter> packet;
         std::shared_ptr<FieldZoneTransfer> transfer;
         ProfileVersionUpdate profileVersion;
-        BootstrapRequest bootstrap;
+        ZoneRequest request;
+    };
+
+    struct DeferredZoneEvent {
+        ZoneEvent event;
+        DeferredZoneEvent* next = nullptr;
     };
 
     class alignas(std::hardware_destructive_interference_size) ZoneThread {
         std::thread thread;
         Base::MPMCQueue<ZoneEvent, ZONE_QUEUE_SIZE> workQueue;
-        struct DeferredProfileUpdate {
-            ProfileVersionUpdate update;
-            DeferredProfileUpdate* next;
-        };
-        std::atomic<DeferredProfileUpdate*> deferredProfileUpdates = nullptr;
+        std::atomic<DeferredZoneEvent*> deferredEvents = nullptr;
         std::atomic<bool> running = false;
         uint16_t zoneID = 0;
         ZoneHandler* handler = nullptr;
@@ -62,7 +66,7 @@ namespace Core {
         void Start(ZoneState& zone);
         void Stop();
         bool Enqueue(ZoneEvent& event);
-        void ProcessDeferredProfileUpdates(ZoneState* zone);
+        void ProcessDeferredEvents(ZoneState* zone);
         void WorkerFunc(ZoneState& zone);
 
         friend class ZoneEventRouter;

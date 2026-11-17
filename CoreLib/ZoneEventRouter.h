@@ -34,6 +34,7 @@ namespace Core {
         bool TryEnqueue(uint16_t zoneID, ZoneEvent& event) override;
         uint16_t FindDestination(uint16_t sourceZoneID, float x, float y) const override;
         bool TryEnqueueTransfer(uint16_t destinationID, const std::shared_ptr<FieldZoneTransfer>& transfer) override;
+        bool TryEnqueueTransferRejected(const std::shared_ptr<FieldZoneTransfer>& transfer) override;
         void EnqueueLobbyReturn(const std::shared_ptr<FieldZoneTransfer>& transfer) override;
     };
 }

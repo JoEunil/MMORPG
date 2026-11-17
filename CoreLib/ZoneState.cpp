@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "ZoneState.h"
+#include "ZoneThread.h"
+#include "PacketTypes.h"
 #include "WorldMap.h"
 #include "IPacket.h"
 #include "ILogger.h"
@@ -11,6 +13,27 @@
 #include <type_traits>
 
 namespace Core {
+    namespace {
+        static_assert(TOWN_ZONE_ID == 1 && TOWN_SPAWN_X >= 0 && TOWN_SPAWN_X <= ZONE_SIZE
+            && TOWN_SPAWN_Y >= 0 && TOWN_SPAWN_Y <= ZONE_SIZE,
+            "Town respawn must remain inside Zone 1.");
+
+        constexpr uint32_t RESPAWN_DIRTY_FIELDS = 0x1C3; // hp, mp, direction, x and y
+    }
+
+    FieldZoneTransfer::FieldZoneTransfer() = default;
+
+    FieldZoneTransfer::~FieldZoneTransfer() {
+        ReleaseRespawnSlot();
+    }
+
+    void FieldZoneTransfer::ReleaseRespawnSlot() {
+        if (respawnReturnSlots) {
+            respawnReturnSlots->fetch_sub(1, std::memory_order_relaxed);
+            respawnReturnSlots.reset();
+        }
+    }
+
     void ZoneState::RemoveFromCell(CharacterState& character) {
         auto& vec = m_cells[character.cellY][character.cellX].charSessions;
         uint16_t deleteIdx = character.cellIdx;
@@ -74,23 +97,128 @@ namespace Core {
         return id;
     }
 
+    bool ZoneState::AdmitLobbyCharacter(uint64_t sessionID, CharacterState incoming, ZoneChangeResult& result) {
+        std::lock_guard lock(m_mutex);
+        if (!std::isfinite(incoming.x) || !std::isfinite(incoming.y))
+            return false; // Corrupt coordinates are not a map-version relocation.
+        if (incoming.x < m_area.x_min || incoming.x > m_area.x_max
+            || incoming.y < m_area.y_min || incoming.y > m_area.y_max
+            || !WorldMap::CanTraverse(incoming.x, incoming.y, incoming.x, incoming.y)) {
+            // Saved coordinates can become invalid after a fixed-map revision. Relocate only
+            // on lobby entry; live Zone transfers must still prove their existing position.
+            incoming.x = m_area.x_min + TRANSITION_BUFFER + 10.0f;
+            incoming.y = m_area.y_min + TRANSITION_BUFFER + 10.0f;
+            if (!WorldMap::CanTraverse(incoming.x, incoming.y, incoming.x, incoming.y)) {
+                const auto& safeArea = m_cells[0][0].area;
+                const int firstX = (std::max)(0, static_cast<int>(std::floor((safeArea.x_min - WorldMap::OriginX) / WorldMap::TileSize)));
+                const int firstY = (std::max)(0, static_cast<int>(std::floor((safeArea.y_min - WorldMap::OriginY) / WorldMap::TileSize)));
+                const int lastX = (std::min)(WorldMap::Width - 1, static_cast<int>(std::floor((safeArea.x_max - WorldMap::OriginX) / WorldMap::TileSize)));
+                const int lastY = (std::min)(WorldMap::Height - 1, static_cast<int>(std::floor((safeArea.y_max - WorldMap::OriginY) / WorldMap::TileSize)));
+                bool found = false;
+                for (int y = firstY; y <= lastY && !found; ++y) {
+                    for (int x = firstX; x <= lastX; ++x) {
+                        const float safeX = WorldMap::OriginX + (x + 0.5f) * WorldMap::TileSize;
+                        const float safeY = WorldMap::OriginY + (y + 0.5f) * WorldMap::TileSize;
+                        if (safeX < safeArea.x_min || safeX > safeArea.x_max
+                            || safeY < safeArea.y_min || safeY > safeArea.y_max
+                            || !WorldMap::CanTraverse(safeX, safeY, safeX, safeY))
+                            continue;
+                        incoming.x = safeX;
+                        incoming.y = safeY;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                    return false; // The original lobby row and session are still intact.
+            }
+        }
+        if (ImmigrateCharLocked(sessionID, incoming) == INVALID_ZONE_INTERNAL_ID)
+            return false;
+        const auto& entered = m_chars.back();
+        result = {m_zoneID, 0, entered.zoneInternalID, entered.x, entered.y, m_generation};
+        return true;
+    }
+
+    bool ZoneState::DescribeOrRespawnInTown(uint64_t sessionID, uint64_t characterID, bool replay,
+        ZoneChangeResult& result) {
+        std::lock_guard lock(m_mutex);
+        const auto member = m_sessionToIndex.find(sessionID);
+        if (member == m_sessionToIndex.end())
+            return false;
+
+        auto& character = m_chars[member->second];
+        if (character.characterID != characterID)
+            return false;
+        if (replay) {
+            if (character.hp <= 0 || character.hp != character.maxHp || character.mp != character.maxMp
+                || character.x != TOWN_SPAWN_X || character.y != TOWN_SPAWN_Y)
+                return false;
+        } else {
+            if (character.hp != 0 || character.maxHp <= 0 || character.maxMp < 0)
+                return false;
+
+            const auto [x, y] = GetCell(TOWN_SPAWN_X, TOWN_SPAWN_Y, m_area);
+            auto& destination = m_cells[y][x];
+            const bool movedCell = character.cellX != x || character.cellY != y;
+            try {
+                if (movedCell)
+                    destination.charSessions.reserve(destination.charSessions.size() + 1);
+                destination.dirtyChar.reserve(destination.dirtyChar.size() + 1);
+            }
+            catch (const std::bad_alloc&) {
+                return false;
+            }
+            ClearCharacterEffects(sessionID, character.zoneInternalID);
+            if (movedCell)
+                RemoveFromCell(character);
+            character.parryWindowTicks = 0;
+            character.hp = character.maxHp;
+            character.mp = character.maxMp;
+            character.x = TOWN_SPAWN_X;
+            character.y = TOWN_SPAWN_Y;
+            character.dir = 0;
+            character.moveBudget = 0.0f;
+            character.dirtyBit |= RESPAWN_DIRTY_FIELDS;
+            if (movedCell)
+                AddToCell(character, x, y);
+            destination.dirtyChar.push_back(character.zoneInternalID);
+        }
+        result = {m_zoneID, 0, character.zoneInternalID, character.x, character.y, m_generation};
+        return true;
+    }
+
     bool ZoneState::AdmitFieldTransferLocked(const FieldZoneTransfer& transfer) {
         CharacterState incoming = transfer.character;
         incoming.x = transfer.x;
         incoming.y = transfer.y;
         incoming.dir = transfer.dir;
         incoming.moveBudget = transfer.moveBudget;
-        return ImmigrateCharLocked(incoming.sessionID, incoming) != INVALID_ZONE_INTERNAL_ID;
+        if (!transfer.IsRespawn())
+            return ImmigrateCharLocked(incoming.sessionID, incoming) != INVALID_ZONE_INTERNAL_ID;
+
+        incoming.hp = incoming.maxHp;
+        incoming.mp = incoming.maxMp;
+        const auto [x, y] = GetCell(incoming.x, incoming.y, m_area);
+        auto& dirty = m_cells[y][x].dirtyChar;
+        dirty.reserve(dirty.size() + 1);
+        if (ImmigrateCharLocked(incoming.sessionID, incoming) == INVALID_ZONE_INTERNAL_ID)
+            return false;
+        auto& entered = m_chars.back();
+        entered.dirtyBit = RESPAWN_DIRTY_FIELDS;
+        dirty.push_back(entered.zoneInternalID);
+        return true;
     }
 
-    bool ZoneState::RestoreFieldTransferLocked(const CharacterState& original) {
+    bool ZoneState::RestoreFieldTransferLocked(const CharacterState& original, bool returningRespawn) {
         CharacterState incoming = original;
-        return RegisterCharacterLocked(std::move(incoming));
+        return RegisterCharacterLocked(std::move(incoming), returningRespawn);
     }
 
-    bool ZoneState::RegisterCharacterLocked(CharacterState&& incoming) {
+    bool ZoneState::RegisterCharacterLocked(CharacterState&& incoming, bool returningRespawn) {
         static_assert(std::is_nothrow_move_constructible_v<CharacterState>);
-        if (m_chars.size() >= MAX_ZONE_CAPACITY)
+        const auto reserved = m_respawnReturnSlots->load(std::memory_order_relaxed);
+        if (m_chars.size() + reserved >= MAX_ZONE_CAPACITY + static_cast<size_t>(returningRespawn))
             return false;
 
         const auto sessionID = incoming.sessionID;
@@ -122,11 +250,7 @@ namespace Core {
         return true;
     }
 
-    void ZoneState::RemoveCharacterLocked(uint64_t sessionID) {
-        auto it = m_sessionToIndex.find(sessionID);
-        auto& character = m_chars[it->second];
-        const uint32_t id = character.zoneInternalID;
-        RemoveFromCell(character);
+    void ZoneState::ClearCharacterEffects(uint64_t sessionID, uint32_t id) {
         // Old casts must not find the same session again after a quick return.
         for (auto& row : m_cells) {
             for (auto& cell : row) {
@@ -139,6 +263,14 @@ namespace Core {
                 std::erase(cell.dirtyChar, id);
             }
         }
+    }
+
+    void ZoneState::RemoveCharacterLocked(uint64_t sessionID) {
+        auto it = m_sessionToIndex.find(sessionID);
+        auto& character = m_chars[it->second];
+        const uint32_t id = character.zoneInternalID;
+        RemoveFromCell(character);
+        ClearCharacterEffects(sessionID, id);
         const auto index = it->second;
         if (index != m_chars.size() - 1) {
             m_chars[index] = std::move(m_chars.back());

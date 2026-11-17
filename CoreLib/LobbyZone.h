@@ -24,9 +24,32 @@ namespace Core {
             }
             return true;
         }
+        static uint16_t EntryZone(const CharacterState& character) {
+            return character.lastZone == 0 ? TOWN_ZONE_ID : character.lastZone;
+        }
+
         friend class Initializer;
         friend class SessionManager;
     public:
+        uint16_t FindEntryZone(uint64_t sessionID, uint64_t characterID) {
+            std::lock_guard lock(m_mutex);
+            const auto loaded = m_chars.find(sessionID);
+            if (loaded == m_chars.end() || loaded->second.characterID != characterID)
+                return 0;
+            return EntryZone(loaded->second);
+        }
+
+        template<class Admit>
+        bool TryEnterField(uint64_t sessionID, uint64_t characterID, uint16_t zoneID, Admit admit) {
+            std::lock_guard lock(m_mutex);
+            const auto loaded = m_chars.find(sessionID);
+            if (loaded == m_chars.end() || loaded->second.characterID != characterID
+                || EntryZone(loaded->second) != zoneID || !admit(loaded->second))
+                return false;
+            m_chars.erase(loaded);
+            return true;
+        }
+
         void Disconnect(uint64_t sessionID) {
             // db에서 load 후 변경되지 않은 상태
             std::lock_guard lock(m_mutex);
@@ -66,7 +89,7 @@ namespace Core {
             if (session == shard.sessionMap.end() || session->second.pendingFieldTransfer != transfer
                 || session->second.ownershipEpoch != transfer->ownershipEpoch
                 || session->second.zoneID != transfer->sourceZoneID
-                || transfer->status != FieldZoneTransfer::Status::Rejected)
+                || transfer->IsRespawn())
                 return 0;
 
             auto& data = session->second;

@@ -238,8 +238,8 @@ namespace Core {
         EquipmentResponseBody Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot = 0, uint32_t itemID = 0);
         void GrantMonsterReward(const CharacterState& character, uint64_t gold);
         void Disconnect(uint64_t sessionID);
-        bool ChangeZone(uint64_t sessionID, uint8_t op, ZoneChangeResult& result);
-        bool RespawnToTown(uint64_t sessionID, const RespawnToTownBody& request, ZoneChangeResult& result);
+        bool QueueLobbyEntry(uint64_t sessionID, uint8_t op);
+        bool QueueRespawnToTown(uint64_t sessionID, uint64_t ownershipEpoch);
         bool QueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch);
         void QueueProfileVersionUpdate(const ProfileVersionUpdate& update);
 

@@ -60,7 +60,8 @@ namespace Core {
     }
 
     bool ZoneEventRouter::TryEnqueue(uint16_t zoneID, ZoneEvent& event) {
-        if (event.type == ZoneEventType::Transfer || zoneID == 0 || zoneID > zones.size())
+        if (event.type == ZoneEventType::Transfer || event.type == ZoneEventType::TransferRejected
+            || zoneID == 0 || zoneID > zones.size())
             return false;
         return zones[zoneID - 1].worker.Enqueue(event);
     }
@@ -79,5 +80,13 @@ namespace Core {
 
     void ZoneEventRouter::EnqueueLobbyReturn(const std::shared_ptr<FieldZoneTransfer>& transfer) {
         nonZoneWorkers->EnqueueLobbyReturn(transfer);
+    }
+
+    bool ZoneEventRouter::TryEnqueueTransferRejected(const std::shared_ptr<FieldZoneTransfer>& transfer) {
+        if (!transfer || transfer->sourceZoneID == 0 || transfer->sourceZoneID > zones.size()
+            || !acceptingTransfers.load(std::memory_order_acquire))
+            return false;
+        ZoneEvent event{ZoneEventType::TransferRejected, nullptr, transfer};
+        return zones[transfer->sourceZoneID - 1].worker.Enqueue(event);
     }
 }
