@@ -340,6 +340,8 @@ namespace Core {
     struct RespawnToTownBody { uint64_t ownershipEpoch; };
     static_assert(sizeof(RespawnToTownBody) == sizeof(uint64_t));
 
+    enum class ZoneChangeStatus : uint8_t { Failed, Field, Lobby };
+
     struct ZoneChangeResponseBody {
         uint8_t resStatus;
         uint16_t zoneID;

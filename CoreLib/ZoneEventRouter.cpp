@@ -2,6 +2,8 @@
 #include "ZoneEventRouter.h"
 
 #include "WorldMap.h"
+#include "NonZoneThreadPool.h"
+#include "LoggerGlobal.h"
 #include "ZoneState.h"
 
 namespace Core {
@@ -11,7 +13,8 @@ namespace Core {
         Stop();
     }
 
-    void ZoneEventRouter::Initialize(ZoneHandler& handler, CorePerfCollector& perf) {
+    void ZoneEventRouter::Initialize(ZoneHandler& handler, CorePerfCollector& perf, NonZoneThreadPool& nonZone) {
+        nonZoneWorkers = &nonZone;
         for (std::size_t i = 0; i < zones.size(); ++i) {
             const auto zoneID = static_cast<uint16_t>(i + 1);
             zones[i].state = std::make_unique<ZoneState>(zoneID);
@@ -20,6 +23,10 @@ namespace Core {
     }
 
     bool ZoneEventRouter::IsReady() const {
+        if (nonZoneWorkers == nullptr) {
+            sysLogger->LogError("zone router", "non-zone workers not initialized");
+            return false;
+        }
         for (const auto& zone : zones) {
             if (!zone.worker.IsReady())
                 return false;
@@ -53,11 +60,15 @@ namespace Core {
         return WorldMap::FindTransitionZone(sourceZoneID, x, y);
     }
 
-    bool ZoneEventRouter::TryBeginTransfer(uint16_t destinationID, const std::shared_ptr<FieldZoneTransfer>& transfer) {
+    bool ZoneEventRouter::TryEnqueueTransfer(uint16_t destinationID, const std::shared_ptr<FieldZoneTransfer>& transfer) {
         if (!transfer || destinationID == 0 || destinationID > zones.size()
             || !acceptingTransfers.load(std::memory_order_acquire))
             return false;
         ZoneEvent event{ZoneEventType::Transfer, nullptr, transfer};
         return zones[destinationID - 1].worker.Enqueue(event);
+    }
+
+    void ZoneEventRouter::EnqueueLobbyReturn(const std::shared_ptr<FieldZoneTransfer>& transfer) {
+        nonZoneWorkers->EnqueueLobbyReturn(transfer);
     }
 }

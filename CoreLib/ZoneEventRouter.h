@@ -7,6 +7,8 @@
 #include "ZoneThread.h"
 
 namespace Core {
+    class NonZoneThreadPool;
+
     class ZoneEventRouter final : public IZoneEventQueue, public IZoneTransfer {
         struct ZoneEntry {
             std::unique_ptr<ZoneState> state;
@@ -15,7 +17,9 @@ namespace Core {
         std::array<ZoneEntry, ZONE_COUNT> zones;
         std::atomic<bool> acceptingTransfers = false;
 
-        void Initialize(ZoneHandler& handler, CorePerfCollector& perf);
+        NonZoneThreadPool* nonZoneWorkers = nullptr;
+
+        void Initialize(ZoneHandler& handler, CorePerfCollector& perf, NonZoneThreadPool& nonZone);
         bool IsReady() const;
         void Start();
         void Stop();
@@ -27,6 +31,7 @@ namespace Core {
         ZoneState* GetZone(uint16_t zoneID);
         bool TryEnqueue(uint16_t zoneID, ZoneEvent& event) override;
         uint16_t FindDestination(uint16_t sourceZoneID, float x, float y) const override;
-        bool TryBeginTransfer(uint16_t destinationID, const std::shared_ptr<FieldZoneTransfer>& transfer) override;
+        bool TryEnqueueTransfer(uint16_t destinationID, const std::shared_ptr<FieldZoneTransfer>& transfer) override;
+        void EnqueueLobbyReturn(const std::shared_ptr<FieldZoneTransfer>& transfer) override;
     };
 }

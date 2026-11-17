@@ -35,7 +35,7 @@ namespace Core {
     }; 
 
     struct FieldZoneTransfer {
-        enum class Status { Transferring, Rejected, Complete };
+        enum class Status { Transferring, Rejected };
 
         CharacterState character{};
         uint64_t ownershipEpoch = 0;
@@ -43,12 +43,11 @@ namespace Core {
         uint8_t dir = 0;
         uint8_t skillSlot = 0;
         float x = 0, y = 0, moveBudget = 0, aimAngle = 0;
-        std::atomic<Status> status = Status::Transferring;
+        Status status = Status::Transferring; // guarded by the session shard
     };
 
     class ZoneState {
         std::vector<CharacterState> m_chars;
-        std::vector<std::shared_ptr<FieldZoneTransfer>> m_pendingFieldTransfers;
         std::unordered_map<uint64_t, uint16_t> m_sessionToIndex; // 자신의 캐릭터를 컨트롤 할 때
         std::unordered_map<uint32_t, uint16_t> m_InternalIDToIndex; // 다른 캐릭터와 상호작용할 때
         std::vector<MonsterState> m_monsters; // id = index, 죽은 몬스터는 제거하지 않고 틱 단위로 처리.

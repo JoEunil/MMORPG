@@ -68,7 +68,7 @@ namespace Core {
         void InjectDependencies2(INetworkSender* networkSender, ISessionAuth* session, IMessageQueue* sendMQ, IProfileCache* profileCache, IInventoryOperations* inventory = nullptr) {
             sessionManager.inventory = inventory;
             cacheCommandSender.Initialize(sendMQ, &messageWriter, &msgPool);
-            zoneEventRouter.Initialize(zoneHandler, perfCollector);
+            zoneEventRouter.Initialize(zoneHandler, perfCollector, nonZoneThreadPool);
             sessionManager.Initialize(&cacheCommandSender, networkSender, &lobbyZone, &chat, zoneEventRouter);
             packetDispatcher.Initialize(&nonZoneThreadPool, &zoneEventRouter, &sessionManager);
             nonZoneThreadPool.Start();

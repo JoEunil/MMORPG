@@ -265,8 +265,9 @@ namespace Core {
             result.ownershipEpoch = session->second.ownershipEpoch;
             lobbyZone->m_chars.erase(loaded);
             session->second.zoneID = destinationID;
-            result.chatID = chat->AddChatSession(sessionID, destinationID, entered.profileId);
-            session->second.chatID = result.chatID;
+            if (session->second.chatID == 0)
+                session->second.chatID = chat->AddChatSession(sessionID, destinationID, entered.profileId);
+            result.chatID = session->second.chatID;
             chat->EnqueueZoneJoin(sessionID, destinationID);
             return true;
         }
@@ -497,18 +498,20 @@ namespace Core {
         {
             return;
         }
-        if (it->second.zoneID == 0) {
+        const auto zoneID = it->second.zoneID;
+        if (zoneID == 0 && it->second.chatID == 0) {
             lobbyZone->Disconnect(sessionID);
             shard.sessionMap.erase(it);
             return;
         }
+
         CharacterState temp;
-        const auto zoneID = it->second.zoneID;
         const auto pending = it->second.pendingFieldTransfer;
-        if (pending) {
-            pending->status.store(FieldZoneTransfer::Status::Complete, std::memory_order_release);
+        if (zoneID == 0) {
+            if (!lobbyZone->EmigrateChar(sessionID, temp))
+                return;
         }
-        else {
+        else if (!pending) {
             auto* zone = zoneRouter->GetZone(zoneID);
             if (zone == nullptr) {
                 gameLogger->LogInfo("core session manager", "state not found", "sessionID", sessionID, "zoneID", zoneID);
@@ -518,7 +521,8 @@ namespace Core {
                 return;
         }
         shard.sessionMap.erase(it);
-        chat->EnqueueZoneLeave(sessionID, zoneID);
+        if (zoneID != 0)
+            chat->EnqueueZoneLeave(sessionID, zoneID);
         chat->DeleteChatSession(sessionID, zoneID);
         lock.unlock();
         gameLogger->LogInfo("core session manager", "Enqueue Disconnect", "sessionID", sessionID);
@@ -539,8 +543,13 @@ namespace Core {
             return;
         }
 
-        if (zoneID == 0) // 로비에는 전파할 대상이 없다. 진입 시 full snapshot으로 최신값이 나간다.
+        if (zoneID == 0) {
+            std::lock_guard lobbyLock(lobbyZone->m_mutex);
+            const auto character = lobbyZone->m_chars.find(sessionID);
+            if (character != lobbyZone->m_chars.end())
+                character->second.profileVersion = version;
             return;
+        }
         auto* zone = zoneRouter->GetZone(zoneID);
         if (zone == nullptr) {
             gameLogger->LogInfo("core session manager", "state not found", "sessionID", sessionID, "zoneID", zoneID);

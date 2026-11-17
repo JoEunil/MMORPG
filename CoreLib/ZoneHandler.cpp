@@ -67,7 +67,6 @@ namespace Core {
 
                 auto transfer = std::make_shared<FieldZoneTransfer>();
                 transfer->character = character;
-                zone.m_pendingFieldTransfers.push_back(transfer);
                 transfer->sourceZoneID = zoneID;
                 transfer->ownershipEpoch = action.ownershipEpoch;
                 transfer->x = x;
@@ -76,10 +75,8 @@ namespace Core {
                 transfer->dir = dir;
                 transfer->skillSlot = action.skillSlot;
                 transfer->aimAngle = action.aimAngle;
-                if (!zoneTransfer->TryBeginTransfer(destination, transfer)) {
-                    zone.m_pendingFieldTransfers.pop_back();
+                if (!zoneTransfer->TryEnqueueTransfer(destination, transfer))
                     return;
-                }
                 data.pendingFieldTransfer = std::move(transfer);
                 zone.RemoveCharacterLocked(sessionID);
                 zone.UpdateSessionSnapshot();
@@ -92,75 +89,51 @@ namespace Core {
     }
 
     void ZoneHandler::ProcessFieldTransfer(ZoneState& zone, const std::shared_ptr<FieldZoneTransfer>& transfer) {
-        ZoneChangeResult transition;
-        if (transfer && CompleteFieldTransfer(zone, transfer, transition))
-            SendZoneChange(transfer->character.sessionID, transition);
-    }
+        if (!transfer)
+            return;
 
-    bool ZoneHandler::CompleteFieldTransfer(ZoneState& destination, const std::shared_ptr<FieldZoneTransfer>& transfer,
-        ZoneChangeResult& result) {
-        const auto sessionID = transfer->character.sessionID;
-        auto& shard = sessionManager->m_shards[sessionID & SHARD_SIZE_MASK];
-        std::unique_lock sessionLock(shard.smutex);
-        auto session = shard.sessionMap.find(sessionID);
-        if (session == shard.sessionMap.end() || session->second.pendingFieldTransfer != transfer
-            || session->second.zoneID != transfer->sourceZoneID || session->second.ownershipEpoch != transfer->ownershipEpoch)
-            return false;
-
-        const auto destinationID = destination.m_zoneID;
-        {
-            std::lock_guard zoneLock(destination.m_mutex);
-            if (!destination.AdmitFieldTransferLocked(*transfer)) {
-                transfer->status.store(FieldZoneTransfer::Status::Rejected, std::memory_order_release);
-                return false;
-            }
-
-            SessionManager::UpdateZoneOwnershipLocked(session->second, destinationID);
-            session->second.pendingFieldTransfer.reset();
-            transfer->status.store(FieldZoneTransfer::Status::Complete, std::memory_order_release);
-            destination.UpdateSessionSnapshot();
-            const auto& entered = destination.m_chars.back();
-            result = {destinationID, session->second.chatID, entered.zoneInternalID, entered.x, entered.y,
-                destination.m_generation, session->second.ownershipEpoch};
-            chat->EnqueueZoneJoin(sessionID, destinationID);
-        }
-        destination.Skill(sessionID, transfer->skillSlot, transfer->aimAngle);
-        destination.DirtyCheck(sessionID);
-        return true;
-    }
-
-    bool ZoneHandler::RestoreRejectedFieldTransfer(ZoneState& source, const std::shared_ptr<FieldZoneTransfer>& transfer) {
         const auto sessionID = transfer->character.sessionID;
         auto& shard = sessionManager->m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock sessionLock(shard.smutex);
         const auto session = shard.sessionMap.find(sessionID);
-        if (session == shard.sessionMap.end() || session->second.pendingFieldTransfer != transfer)
-            return true;
+        if (session == shard.sessionMap.end() || session->second.pendingFieldTransfer != transfer
+            || session->second.zoneID != transfer->sourceZoneID || session->second.ownershipEpoch != transfer->ownershipEpoch)
+            return;
 
-        std::lock_guard zoneLock(source.m_mutex);
-        if (!source.RestoreFieldTransferLocked(transfer->character))
-            return false;
-        session->second.pendingFieldTransfer.reset();
-        source.UpdateSessionSnapshot();
-        return true;
-    }
+        const bool returning = transfer->status == FieldZoneTransfer::Status::Rejected;
+        if (returning != (zone.m_zoneID == transfer->sourceZoneID))
+            return;
 
-    void ZoneHandler::ResolvePendingFieldTransfers(ZoneState& source) {
-        auto& pending = source.m_pendingFieldTransfers;
-        // Only the source worker changes the list. Admission on other threads reads its size under m_mutex.
-        for (std::size_t i = 0; i < pending.size();) {
-            const auto status = pending[i]->status.load(std::memory_order_acquire);
-            if (status == FieldZoneTransfer::Status::Transferring
-                || (status == FieldZoneTransfer::Status::Rejected && !RestoreRejectedFieldTransfer(source, pending[i]))) {
-                ++i;
-                continue;
-            }
-
-            std::lock_guard zoneLock(source.m_mutex);
-            if (i + 1 != pending.size())
-                pending[i] = std::move(pending.back());
-            pending.pop_back();
+        std::unique_lock zoneLock(zone.m_mutex);
+        const bool admitted = returning ? zone.RestoreFieldTransferLocked(transfer->character)
+                                        : zone.AdmitFieldTransferLocked(*transfer);
+        if (!admitted) {
+            transfer->status = FieldZoneTransfer::Status::Rejected;
+            zoneLock.unlock();
+            sessionLock.unlock();
+            if (returning || !zoneTransfer->TryEnqueueTransfer(transfer->sourceZoneID, transfer))
+                zoneTransfer->EnqueueLobbyReturn(transfer);
+            return;
         }
+
+        auto& data = session->second;
+        data.pendingFieldTransfer.reset();
+        if (returning) {
+            zone.UpdateSessionSnapshot();
+            return;
+        }
+
+        SessionManager::UpdateZoneOwnershipLocked(data, zone.m_zoneID);
+        zone.UpdateSessionSnapshot();
+        const auto& entered = zone.m_chars.back();
+        const ZoneChangeResult result{zone.m_zoneID, data.chatID, entered.zoneInternalID, entered.x, entered.y,
+            zone.m_generation, data.ownershipEpoch};
+        chat->EnqueueZoneJoin(sessionID, zone.m_zoneID);
+        zoneLock.unlock();
+        zone.Skill(sessionID, transfer->skillSlot, transfer->aimAngle);
+        zone.DirtyCheck(sessionID);
+        sessionLock.unlock();
+        SendZoneChange(sessionID, result);
     }
 
     void ZoneHandler::SendZoneChange(uint64_t sessionID, const ZoneChangeResult& transition) {

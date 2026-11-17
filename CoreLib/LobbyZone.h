@@ -4,6 +4,7 @@
 #include "ZoneState.h"
 #include "SessionManager.h"
 #include "LoggerGlobal.h"
+#include "ChatThreadPool.h"
 
 namespace Core {
     class LobbyZone {
@@ -55,6 +56,29 @@ namespace Core {
             if (data.characterID == INVALID_CHARACTER_ID)
                 data.characterID = character.characterID;
             return true;
+        }
+
+        uint64_t ReturnFieldTransfer(const std::shared_ptr<FieldZoneTransfer>& transfer, ChatThreadPool& chat) {
+            const auto sessionID = transfer->character.sessionID;
+            auto& shard = sessionManager->m_shards[sessionID & SHARD_SIZE_MASK];
+            std::unique_lock sessionLock(shard.smutex);
+            const auto session = shard.sessionMap.find(sessionID);
+            if (session == shard.sessionMap.end() || session->second.pendingFieldTransfer != transfer
+                || session->second.ownershipEpoch != transfer->ownershipEpoch
+                || session->second.zoneID != transfer->sourceZoneID
+                || transfer->status != FieldZoneTransfer::Status::Rejected)
+                return 0;
+
+            auto& data = session->second;
+            {
+                std::lock_guard lobbyLock(m_mutex);
+                if (!m_chars.try_emplace(sessionID, std::move(transfer->character)).second)
+                    return 0;
+            }
+            SessionManager::UpdateZoneOwnershipLocked(data, 0);
+            data.pendingFieldTransfer.reset();
+            chat.EnqueueZoneLeave(sessionID, transfer->sourceZoneID);
+            return data.ownershipEpoch;
         }
 
         bool EmigrateChar(uint64_t sessionID, CharacterState& out) {

@@ -36,7 +36,7 @@ namespace Core {
     }
 
     uint32_t ZoneState::ImmigrateCharLocked(uint64_t sessionID, const CharacterState& state) {
-        if (m_chars.size() + m_pendingFieldTransfers.size() >= MAX_ZONE_CAPACITY || m_sessionToIndex.contains(sessionID)
+        if (m_chars.size() >= MAX_ZONE_CAPACITY || m_sessionToIndex.contains(sessionID)
             || m_generation == (std::numeric_limits<uint64_t>::max)()
             || !std::isfinite(state.x) || !std::isfinite(state.y)
             || state.x < m_area.x_min || state.x > m_area.x_max
@@ -90,7 +90,7 @@ namespace Core {
 
     bool ZoneState::RegisterCharacterLocked(CharacterState&& incoming) {
         static_assert(std::is_nothrow_move_constructible_v<CharacterState>);
-        if (m_chars.size() == m_chars.capacity())
+        if (m_chars.size() >= MAX_ZONE_CAPACITY)
             return false;
 
         const auto sessionID = incoming.sessionID;

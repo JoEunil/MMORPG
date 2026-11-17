@@ -204,6 +204,7 @@
     <ClCompile Include="NonZoneHandler.cpp" />
     <ClCompile Include="NonZoneHandler_Bazaar.cpp" />
     <ClCompile Include="NonZoneHandler_WorldEntry.cpp" />
+    <ClCompile Include="NonZoneHandler_Zone.cpp" />
     <ClCompile Include="NonZoneThreadPool.cpp" />
     <ClCompile Include="BroadcastThreadPool.cpp" />
     <ClCompile Include="PacketDispatcher.cpp" />

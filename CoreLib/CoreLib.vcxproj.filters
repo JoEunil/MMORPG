@@ -257,6 +257,9 @@
     <ClCompile Include="NonZoneHandler_WorldEntry.cpp">
       <Filter>NonZone</Filter>
     </ClCompile>
+    <ClCompile Include="NonZoneHandler_Zone.cpp">
+      <Filter>NonZone</Filter>
+    </ClCompile>
     <ClCompile Include="NonZoneThreadPool.cpp">
       <Filter>NonZone</Filter>
     </ClCompile>

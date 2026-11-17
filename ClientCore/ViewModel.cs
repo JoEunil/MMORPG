@@ -114,6 +114,7 @@ namespace ClientCore
         public event Action<ushort, MonsterFullField[]> OnMonsterFullReceived;
         public event Action<ushort, ActionResultField[]> OnActionResultReceived;
         public event Action OnZoneChageFailed;
+        public event Action OnLobbyReturnReceived;
         public event Action<ulong> OnPingReceived;
 
         internal ViewModel(INetworkService network, IViewDataModel viewData, ILogger logger, IMainThreadDispatcher threadDispatcher)
@@ -1053,7 +1054,8 @@ namespace ClientCore
             lock (_sessionGate)
             {
                 if (_lifetime.IsCancellationRequested) return;
-                bool success = resStatus == 1;
+                bool lobby = resStatus == (byte)ZoneChangeStatus.Lobby;
+                bool success = lobby || resStatus == (byte)ZoneChangeStatus.Field;
                 bool requestPending = _zonePending;
                 bool automaticTransition = success && !requestPending && ownershipEpoch > _ownershipEpoch;
                 if (!requestPending && !automaticTransition) return;
@@ -1078,6 +1080,12 @@ namespace ClientCore
                     if (success && ownershipEpoch <= _ownershipEpoch) return;
                     if (success && ownershipEpoch > _ownershipEpoch)
                     {
+                        if (lobby)
+                        {
+                            ApplyLobbyReturn(ownershipEpoch);
+                            return;
+                        }
+
                         lock (_sessionGate)
                         {
                             _awaitingZoneAck = true;
@@ -1119,6 +1127,31 @@ namespace ClientCore
                     }
                 });
             }
+        }
+
+        private void ApplyLobbyReturn(ulong ownershipEpoch)
+        {
+            lock (_sessionGate)
+            {
+                _zoneID = 0;
+                _zoneGeneration = 0;
+                _zoneInternalID = 0;
+                _ownershipEpoch = ownershipEpoch;
+                _worldReady = false;
+                _zonePending = false;
+                _awaitingZoneAck = false;
+                _pendingOwnershipEpoch = 0;
+                _pendingBootstrapID = 0;
+                _respawnPending = false;
+                _respawnRetryDeadline = 0;
+            }
+            _bootstrapPlayers = null;
+            _bootstrapMonsters = null;
+            _entityProfiles.Clear();
+            _viewData.CancelAction();
+            _viewData.SetOwnershipEpoch(ownershipEpoch);
+            CancelBazaar();
+            OnLobbyReturnReceived?.Invoke();
         }
 
         private bool AcceptSimulation(ushort zoneID, ulong generation) => !_lifetime.IsCancellationRequested &&

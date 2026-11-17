@@ -35,11 +35,19 @@ namespace Core {
         Event event;
         while (m_eventQueue.Dequeue(event))
         {
-            if (event.type == EventType::Disconnect)
-                handler->Disconnect(event.sessionID);
-            else
+            switch (event.type) {
+            case EventType::Work:
                 handler->Process(event.work.get()); // handler에서 비동기 요청은 복사해서 처리.
-            event.work.reset();
+                event.work.reset();
+                break;
+            case EventType::Disconnect:
+                handler->Disconnect(event.sessionID);
+                break;
+            case EventType::LobbyReturn:
+                handler->ReturnToLobby(event.transfer);
+                event.transfer.reset();
+                break;
+            }
         }
         sysLogger->LogInfo("non zone thread", "non zone worker stopped", "threadID", ss.str());
     }
@@ -53,6 +61,19 @@ namespace Core {
         event.work = std::move(pv);
         if (!m_eventQueue.Enqueue(event, Base::Priority::Droppable))
             errorLogger->LogWarn("non zone thread", "work queue full");
+    }
+
+    void NonZoneThreadPool::EnqueueLobbyReturn(const std::shared_ptr<FieldZoneTransfer>& transfer) {
+        if (!m_running.load(std::memory_order_relaxed))
+            return; // SessionManager saves pending characters during shutdown.
+
+        Event event;
+        event.type = EventType::LobbyReturn;
+        event.transfer = transfer;
+        if (!m_eventQueue.Enqueue(event, Base::Priority::Important)) {
+            errorLogger->LogWarn("non zone thread", "lobby return queue overflow");
+            handler->ReturnToLobby(transfer);
+        }
     }
 
     void NonZoneThreadPool::EnqueueDisconnect(uint64_t sessionID) {

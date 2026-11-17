@@ -63,9 +63,6 @@ namespace Core {
         
         void ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID);
         void ProcessFieldTransfer(ZoneState& zone, const std::shared_ptr<FieldZoneTransfer>& transfer);
-        bool CompleteFieldTransfer(ZoneState& destination, const std::shared_ptr<FieldZoneTransfer>& transfer, ZoneChangeResult& result);
-        bool RestoreRejectedFieldTransfer(ZoneState& source, const std::shared_ptr<FieldZoneTransfer>& transfer);
-        void ResolvePendingFieldTransfers(ZoneState& source);
         void SendZoneChange(uint64_t sessionID, const ZoneChangeResult& transition);
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
@@ -75,7 +72,6 @@ namespace Core {
         template<class Queue, class SelectSnapshot>
         size_t RunTick(ZoneState& zone, uint16_t zoneID, Queue& queue, size_t maxEvents,
             CorePerfCollector& perf, SelectSnapshot selectSnapshot) {
-            ResolvePendingFieldTransfers(zone);
             zone.SkillCoolDown();
             zone.ReplenishMoveBudget();
             size_t processed = 0;

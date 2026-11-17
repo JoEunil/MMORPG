@@ -16,12 +16,14 @@ namespace Core {
         enum class EventType : uint8_t {
             Work,
             Disconnect,
+            LobbyReturn,
         };
 
         struct Event {
             EventType type = EventType::Work;
             std::unique_ptr<IPacketView, PacketViewDeleter> work;
             uint64_t sessionID = 0;
+            std::shared_ptr<FieldZoneTransfer> transfer;
         };
 
         std::vector<std::thread> m_threads;
@@ -52,5 +54,6 @@ namespace Core {
         }
         void EnqueueWork(std::unique_ptr<IPacketView, PacketViewDeleter> pv);
         void EnqueueDisconnect(uint64_t sessionID);
+        void EnqueueLobbyReturn(const std::shared_ptr<FieldZoneTransfer>& transfer);
     };
 }
