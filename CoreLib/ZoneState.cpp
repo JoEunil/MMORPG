@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ZoneState.h"
 #include "PacketTypes.h"
+#include "IZoneTransfer.h"
 #include "WorldMap.h"
 #include "IPacket.h"
 #include "ILogger.h"
@@ -171,6 +172,48 @@ namespace Core {
             destination.dirtyChar.push_back(character.zoneInternalID);
         }
         result = {m_zoneID, 0, character.zoneInternalID, character.x, character.y, m_generation};
+        return true;
+    }
+
+    std::shared_ptr<ZoneTransfer> ZoneState::StartRespawnTransfer(uint64_t sessionID,
+        uint64_t characterID, uint64_t ownershipEpoch, IZoneTransfer& zoneTransfer) {
+        std::lock_guard zoneLock(m_mutex);
+        const auto member = m_sessionToIndex.find(sessionID);
+        if (member == m_sessionToIndex.end())
+            return nullptr;
+        const auto& character = m_chars[member->second];
+        if (character.characterID != characterID || character.hp != 0
+            || character.maxHp <= 0 || character.maxMp < 0)
+            return nullptr;
+
+        auto transfer = std::make_shared<ZoneTransfer>();
+        transfer->character = character;
+        transfer->ownershipEpoch = ownershipEpoch;
+        transfer->sourceZoneID = m_zoneID;
+        transfer->kind = ZoneTransfer::Kind::Respawn;
+        transfer->x = TOWN_SPAWN_X;
+        transfer->y = TOWN_SPAWN_Y;
+        if (!zoneTransfer.TryEnqueueTransfer(TOWN_ZONE_ID, transfer))
+            return nullptr;
+
+        RemoveCharacterLocked(sessionID);
+        return transfer;
+    }
+
+    bool ZoneState::TryResolveZoneTransfer(const ZoneTransfer& transfer, bool returning, ZoneChangeResult& result) {
+        std::lock_guard lock(m_mutex);
+        try {
+            if (returning)
+                return RestoreZoneTransferLocked(transfer.character);
+            if (!AdmitZoneTransferLocked(transfer))
+                return false;
+        }
+        catch (const std::bad_alloc&) {
+            return false;
+        }
+
+        const auto& entered = m_chars.back();
+        result = {m_zoneID, 0, entered.zoneInternalID, entered.x, entered.y, m_generation};
         return true;
     }
 

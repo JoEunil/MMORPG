@@ -27,6 +27,8 @@ namespace Core {
     class BroadcastThreadPool;
     class PacketWriter;
     class SessionManager;
+    class IZoneTransfer;
+    struct ActionRequestBody;
     struct ParryRequestBody;
     struct ParryResponseBody;
     struct ZoneChangeResult;
@@ -102,6 +104,10 @@ namespace Core {
         bool AdmitLobbyCharacter(uint64_t sessionID, CharacterState incoming, ZoneChangeResult& result);
         bool DescribeOrRespawnInTown(uint64_t sessionID, uint64_t characterID, bool replay, ZoneChangeResult& result);
         void ClearCharacterEffects(uint64_t sessionID, uint32_t internalID);
+        std::shared_ptr<ZoneTransfer> ApplyAction(uint64_t sessionID, const ActionRequestBody& action, IZoneTransfer& zoneTransfer);
+        std::shared_ptr<ZoneTransfer> StartRespawnTransfer(uint64_t sessionID, uint64_t characterID,
+            uint64_t ownershipEpoch, IZoneTransfer& zoneTransfer);
+        bool TryResolveZoneTransfer(const ZoneTransfer& transfer, bool returning, ZoneChangeResult& result);
         bool AdmitZoneTransferLocked(const ZoneTransfer& transfer);
         bool RestoreZoneTransferLocked(const CharacterState& original);
         ParryResponseBody Parry(uint64_t sessionID, const ParryRequestBody& request);

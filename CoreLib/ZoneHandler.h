@@ -67,7 +67,6 @@ namespace Core {
         void ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update);
         void ProcessLobbyEntry(ZoneState& zone, const ZoneRequest& request);
         void ProcessRespawn(ZoneState& zone, const ZoneRequest& request);
-        std::shared_ptr<ZoneTransfer> StartRespawnTransfer(ZoneState& source, uint64_t sessionID, uint64_t characterID, uint64_t ownershipEpoch);
         void ProcessBootstrap(ZoneState& zone, const ZoneRequest& request);
         void SendZoneChangeFailed(uint64_t sessionID);
         void SendZoneChange(ZoneState& zone, uint64_t sessionID, const ZoneChangeResult& transition);

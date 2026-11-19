@@ -13,63 +13,13 @@
 #include "MessagePool.h"
 #include "LoggerGlobal.h"
 #include <cmath>
-#include <limits>
 
 namespace Core {
     void ZoneHandler::ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID) {
         if (!std::isfinite(action.aimAngle) || action.aimAngle < 0 || action.aimAngle >= 360)
             return;
-        sessionManager->ApplyZoneAction(sessionID, zoneID, action.ownershipEpoch, [&]() -> std::shared_ptr<ZoneTransfer> {
-            float previousX, previousY, previousBudget;
-            uint8_t previousDir;
-            uint32_t previousDirty;
-            {
-                std::lock_guard zoneLock(zone.m_mutex);
-                const auto member = zone.m_sessionToIndex.find(sessionID);
-                if (member == zone.m_sessionToIndex.end())
-                    return {};
-                const auto& character = zone.m_chars[member->second];
-                previousX = character.x;
-                previousY = character.y;
-                previousBudget = character.moveBudget;
-                previousDir = character.dir;
-                previousDirty = character.dirtyBit;
-            }
-
-            zone.Move(sessionID, action.dir, action.x, action.y);
-            {
-                std::lock_guard zoneLock(zone.m_mutex);
-                const auto member = zone.m_sessionToIndex.find(sessionID);
-                if (member == zone.m_sessionToIndex.end())
-                    return {};
-                const auto& character = zone.m_chars[member->second];
-                const auto destination = action.ownershipEpoch == (std::numeric_limits<uint64_t>::max)()
-                    ? 0 : zoneTransfer->FindDestination(zoneID, character.x, character.y);
-                if (destination != 0) {
-                    const float x = character.x, y = character.y, moveBudget = character.moveBudget;
-                    const uint8_t dir = character.dir;
-                    zone.RestoreMovementLocked(sessionID, previousX, previousY, previousDir, previousBudget, previousDirty);
-
-                    auto transfer = std::make_shared<ZoneTransfer>();
-                    transfer->character = character;
-                    transfer->sourceZoneID = zoneID;
-                    transfer->ownershipEpoch = action.ownershipEpoch;
-                    transfer->x = x;
-                    transfer->y = y;
-                    transfer->moveBudget = moveBudget;
-                    transfer->dir = dir;
-                    transfer->skillSlot = action.skillSlot;
-                    transfer->aimAngle = action.aimAngle;
-                    if (!zoneTransfer->TryEnqueueTransfer(destination, transfer))
-                        return {};
-                    zone.RemoveCharacterLocked(sessionID);
-                    return transfer;
-                }
-            }
-
-            zone.Skill(sessionID, action.skillSlot, action.aimAngle);
-            zone.DirtyCheck(sessionID);
-            return {};
+        sessionManager->ApplyZoneAction(sessionID, zoneID, action.ownershipEpoch, [&] {
+            return zone.ApplyAction(sessionID, action, *zoneTransfer);
         });
     }
 
@@ -99,7 +49,7 @@ namespace Core {
         const auto outcome = sessionManager->RespawnInZone(sessionID, zone.m_zoneID, request.ownershipEpoch,
             townSpawnWalkable, result,
             [&](uint64_t characterID, uint64_t ownershipEpoch) {
-                return StartRespawnTransfer(zone, sessionID, characterID, ownershipEpoch);
+                return zone.StartRespawnTransfer(sessionID, characterID, ownershipEpoch, *zoneTransfer);
             },
             [&](uint64_t characterID, bool replay) {
                 return zone.DescribeOrRespawnInTown(sessionID, characterID, replay, result);
@@ -108,31 +58,6 @@ namespace Core {
             SendZoneChange(zone, sessionID, result);
         else if (outcome == ZoneOperationResult::Rejected)
             SendZoneChangeFailed(sessionID);
-    }
-
-    std::shared_ptr<ZoneTransfer> ZoneHandler::StartRespawnTransfer(ZoneState& source, uint64_t sessionID,
-        uint64_t characterID, uint64_t ownershipEpoch) {
-        std::lock_guard zoneLock(source.m_mutex);
-        const auto member = source.m_sessionToIndex.find(sessionID);
-        if (member == source.m_sessionToIndex.end())
-            return {};
-        const auto& character = source.m_chars[member->second];
-        if (character.characterID != characterID || character.hp != 0
-            || character.maxHp <= 0 || character.maxMp < 0)
-            return {};
-
-        auto transfer = std::make_shared<ZoneTransfer>();
-        transfer->character = character;
-        transfer->ownershipEpoch = ownershipEpoch;
-        transfer->sourceZoneID = source.m_zoneID;
-        transfer->kind = ZoneTransfer::Kind::Respawn;
-        transfer->x = TOWN_SPAWN_X;
-        transfer->y = TOWN_SPAWN_Y;
-        if (!zoneTransfer->TryEnqueueTransfer(TOWN_ZONE_ID, transfer))
-            return {};
-
-        source.RemoveCharacterLocked(sessionID);
-        return transfer;
     }
 
     void ZoneHandler::ProcessZoneTransfer(ZoneState& zone, const ZoneEvent& event) {
@@ -145,22 +70,7 @@ namespace Core {
         const bool respawn = transfer->IsRespawn();
         ZoneChangeResult result;
         const auto outcome = sessionManager->ResolveZoneTransfer(transfer, zone.m_zoneID, returning, result,
-            [&] {
-                std::lock_guard zoneLock(zone.m_mutex);
-                try {
-                    if (returning)
-                        return zone.RestoreZoneTransferLocked(transfer->character);
-                    if (!zone.AdmitZoneTransferLocked(*transfer))
-                        return false;
-                }
-                catch (const std::bad_alloc&) {
-                    return false;
-                }
-
-                const auto& entered = zone.m_chars.back();
-                result = {zone.m_zoneID, 0, entered.zoneInternalID, entered.x, entered.y, zone.m_generation};
-                return true;
-            },
+            [&] { return zone.TryResolveZoneTransfer(*transfer, returning, result); },
             [&] {
                 if (!respawn) {
                     zone.Skill(sessionID, transfer->skillSlot, transfer->aimAngle);
