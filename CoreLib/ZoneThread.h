@@ -9,6 +9,7 @@
 #include <BaseLib/MPMCQueue.h>
 
 #include "IPacketView.h"
+#include "IZoneRequestQueue.h"
 #include "IZoneTransfer.h"
 #include "WorldConfig.h"
 
@@ -25,12 +26,6 @@ namespace Core {
         Bootstrap,
         LobbyEntry,
         Respawn,
-    };
-
-    struct ProfileVersionUpdate {
-        uint64_t sessionID = 0;
-        uint32_t profileID = 0;
-        uint32_t version = 0;
     };
 
     struct ZoneRequest {

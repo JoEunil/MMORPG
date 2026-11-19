@@ -2,7 +2,7 @@
 #include "NonZoneThreadPool.h"
 #include "IPacketView.h"
 #include "IPacketDispatcher.h"
-#include "IZoneEventQueue.h"
+#include "IZonePacketQueue.h"
 #include "LoggerGlobal.h"
 #include "SessionManager.h"
 #include "PacketTypes.h"
@@ -10,11 +10,11 @@ namespace Core {
     class ILogger;
     class PacketDispatcher : public IPacketDispatcher {
         NonZoneThreadPool* nonZoneThreadPool = nullptr;
-        IZoneEventQueue* zoneEvents = nullptr;
+        IZonePacketQueue* zonePackets = nullptr;
         SessionManager* sessionManager = nullptr;
-        void Initialize(NonZoneThreadPool* a, IZoneEventQueue* z, SessionManager* s) {
+        void Initialize(NonZoneThreadPool* a, IZonePacketQueue* packets, SessionManager* s) {
             nonZoneThreadPool = a;
-            zoneEvents = z;
+            zonePackets = packets;
             sessionManager = s;
         }
         bool IsReady() const {
@@ -26,8 +26,8 @@ namespace Core {
                 sysLogger->LogError("packet dispatcher", "nonZoneThreadPool not initialized");
                 return false;
             }
-            if (zoneEvents == nullptr) {
-                sysLogger->LogError("packet dispatcher", "zone event queue not initialized");
+            if (zonePackets == nullptr) {
+                sysLogger->LogError("packet dispatcher", "zone packet queue not initialized");
                 return false;
             }
             return true;

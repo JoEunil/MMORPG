@@ -48,6 +48,7 @@ namespace Core {
     class LobbyZone;
     class ChatThreadPool;
     class ZoneEventRouter;
+    class IZoneRequestQueue;
     struct FieldZoneTransfer;
     struct ProfileVersionUpdate;
     struct ZoneChangeResult;
@@ -61,10 +62,11 @@ namespace Core {
         LobbyZone* lobbyZone = nullptr;
         ChatThreadPool* chat = nullptr;
         ZoneEventRouter* zoneRouter = nullptr;
+        IZoneRequestQueue* zoneRequests = nullptr;
 
 
         void Initialize(const CacheCommandSender* commands, INetworkSender* sender, LobbyZone* lobby, ChatThreadPool* c,
-            ZoneEventRouter& router) {
+            ZoneEventRouter& router, IZoneRequestQueue& requests) {
             for (auto& shard : m_shards)
                 shard.sessionMap.reserve(MAX_USER_CAPACITY / SHARD_SIZE);
             cacheCommands = commands;
@@ -72,10 +74,15 @@ namespace Core {
             networkSender = sender;
             chat = c;
             zoneRouter = &router;
+            zoneRequests = &requests;
             m_running.store(true, std::memory_order_relaxed);
         }
 
         bool IsReady() const {
+            if (zoneRequests == nullptr) {
+                sysLogger->LogError("core session manager", "zone request queue not initialized");
+                return false;
+            }
             if (zoneRouter == nullptr) {
                 sysLogger->LogError("core session manager", "zone router not initialized");
                 return false;

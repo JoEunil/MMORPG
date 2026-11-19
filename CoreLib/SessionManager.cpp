@@ -5,6 +5,7 @@
 #include "LobbyZone.h"
 #include "PacketWriter.h"
 #include "ItemData.h"
+#include "IZoneRequestQueue.h"
 #include "ZoneEventRouter.h"
 #include <algorithm>
 #include <cstring>
@@ -155,10 +156,7 @@ namespace Core {
             return false;
 
         const uint16_t destination = lobbyZone->FindEntryZone(sessionID, data.characterID);
-        ZoneEvent event;
-        event.type = ZoneEventType::LobbyEntry;
-        event.request = {sessionID, data.ownershipEpoch};
-        return destination != 0 && zoneRouter->TryEnqueue(destination, event);
+        return destination != 0 && zoneRequests->TryEnqueueLobbyEntry(destination, sessionID, data.ownershipEpoch);
     }
 
     bool SessionManager::QueueRespawnToTown(uint64_t sessionID, uint64_t ownershipEpoch) {
@@ -180,10 +178,7 @@ namespace Core {
         if (data.ownershipEpoch != ownershipEpoch && !replay)
             return false;
 
-        ZoneEvent event;
-        event.type = ZoneEventType::Respawn;
-        event.request = {sessionID, ownershipEpoch};
-        return zoneRouter->TryEnqueue(data.zoneID, event);
+        return zoneRequests->TryEnqueueRespawn(data.zoneID, sessionID, ownershipEpoch);
     }
 
     void SessionManager::UpdateZoneOwnershipLocked(SessionData& session, uint16_t destinationID) {
@@ -202,10 +197,7 @@ namespace Core {
     bool SessionManager::QueueBootstrapLocked(uint64_t sessionID, const SessionData& session, bool resendZoneChange) {
         if (session.zoneID == 0 || session.ownershipEpoch == 0 || session.pendingFieldTransfer)
             return false;
-        ZoneEvent event;
-        event.type = ZoneEventType::Bootstrap;
-        event.request = {sessionID, session.ownershipEpoch, resendZoneChange};
-        return zoneRouter->TryEnqueue(session.zoneID, event);
+        return zoneRequests->TryEnqueueBootstrap(session.zoneID, sessionID, session.ownershipEpoch, resendZoneChange);
     }
 
     uint64_t SessionManager::NextBootstrapIDLocked(SessionData& session) {
@@ -306,10 +298,7 @@ namespace Core {
             return;
         }
 
-        ZoneEvent event;
-        event.type = ZoneEventType::ProfileVersion;
-        event.profileVersion = update;
-        if (!zoneRouter->TryEnqueue(session.zoneID, event)) {
+        if (!zoneRequests->TryEnqueueProfileVersion(session.zoneID, update)) {
             errorLogger->LogWarn("core session manager", "could not queue profile version update",
                 "sessionID", update.sessionID, "zoneID", session.zoneID, "version", update.version);
         }

@@ -6,13 +6,14 @@
 #include <vector>
 
 #include "NonZoneHandler.h"
+#include "ILobbyReturnQueue.h"
 #include "IPacketView.h"
 #include "NonZoneConfig.h"
 #include <BaseLib/BlockingBackPressureQueue.h>
 #include "LoggerGlobal.h"
 namespace Core {
     // 게임틱 단위로 처리되지 않는 (zone 상태와 관련 없는) 요청 처리
-    class NonZoneThreadPool {
+    class NonZoneThreadPool final : public ILobbyReturnQueue {
         enum class EventType : uint8_t {
             Work,
             Disconnect,
@@ -49,11 +50,11 @@ namespace Core {
         void WorkFunc();
         friend class Initializer;
     public:
-        ~NonZoneThreadPool() {
+        ~NonZoneThreadPool() override {
             Stop();
         }
         void EnqueueWork(std::unique_ptr<IPacketView, PacketViewDeleter> pv);
         void EnqueueDisconnect(uint64_t sessionID);
-        void EnqueueLobbyReturn(const std::shared_ptr<FieldZoneTransfer>& transfer);
+        void EnqueueLobbyReturn(const std::shared_ptr<FieldZoneTransfer>& transfer) override;
     };
 }

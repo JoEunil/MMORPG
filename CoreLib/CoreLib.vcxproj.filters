@@ -126,7 +126,13 @@
     <ClInclude Include="ZoneEventRouter.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="IZoneEventQueue.h">
+    <ClInclude Include="IZonePacketQueue.h">
+      <Filter>InternalInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="IZoneRequestQueue.h">
+      <Filter>InternalInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="ILobbyReturnQueue.h">
       <Filter>InternalInterface</Filter>
     </ClInclude>
     <ClInclude Include="ISessionSnapshotReader.h">

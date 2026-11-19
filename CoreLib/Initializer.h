@@ -69,7 +69,7 @@ namespace Core {
             sessionManager.inventory = inventory;
             cacheCommandSender.Initialize(sendMQ, &messageWriter, &msgPool);
             zoneEventRouter.Initialize(zoneHandler, perfCollector, nonZoneThreadPool);
-            sessionManager.Initialize(&cacheCommandSender, networkSender, &lobbyZone, &chat, zoneEventRouter);
+            sessionManager.Initialize(&cacheCommandSender, networkSender, &lobbyZone, &chat, zoneEventRouter, zoneEventRouter);
             packetDispatcher.Initialize(&nonZoneThreadPool, &zoneEventRouter, &sessionManager);
             nonZoneThreadPool.Start();
             broadcastPool.Start();

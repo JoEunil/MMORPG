@@ -2,7 +2,7 @@
 #include "ZoneEventRouter.h"
 
 #include "WorldMap.h"
-#include "NonZoneThreadPool.h"
+#include "ILobbyReturnQueue.h"
 #include "LoggerGlobal.h"
 #include "ZoneState.h"
 
@@ -13,8 +13,8 @@ namespace Core {
         Stop();
     }
 
-    void ZoneEventRouter::Initialize(ZoneHandler& handler, CorePerfCollector& perf, NonZoneThreadPool& nonZone) {
-        nonZoneWorkers = &nonZone;
+    void ZoneEventRouter::Initialize(ZoneHandler& handler, CorePerfCollector& perf, ILobbyReturnQueue& lobbyQueue) {
+        lobbyReturns = &lobbyQueue;
         for (std::size_t i = 0; i < zones.size(); ++i) {
             const auto zoneID = static_cast<uint16_t>(i + 1);
             zones[i].state = std::make_unique<ZoneState>(zoneID);
@@ -23,8 +23,8 @@ namespace Core {
     }
 
     bool ZoneEventRouter::IsReady() const {
-        if (nonZoneWorkers == nullptr) {
-            sysLogger->LogError("zone router", "non-zone workers not initialized");
+        if (lobbyReturns == nullptr) {
+            sysLogger->LogError("zone router", "lobby return queue not initialized");
             return false;
         }
         for (const auto& zone : zones) {
@@ -60,10 +60,40 @@ namespace Core {
     }
 
     bool ZoneEventRouter::TryEnqueue(uint16_t zoneID, ZoneEvent& event) {
-        if (event.type == ZoneEventType::Transfer || event.type == ZoneEventType::TransferRejected
-            || zoneID == 0 || zoneID > zones.size())
+        if (zoneID == 0 || zoneID > zones.size())
             return false;
         return zones[zoneID - 1].worker.Enqueue(event);
+    }
+
+    bool ZoneEventRouter::TryEnqueuePacket(uint16_t zoneID, std::unique_ptr<IPacketView, PacketViewDeleter> packet) {
+        if (!packet)
+            return false;
+        ZoneEvent event{ZoneEventType::Packet, std::move(packet)};
+        return TryEnqueue(zoneID, event);
+    }
+
+    bool ZoneEventRouter::TryEnqueueLobbyEntry(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch) {
+        ZoneEvent event{ZoneEventType::LobbyEntry};
+        event.request = {sessionID, ownershipEpoch};
+        return TryEnqueue(zoneID, event);
+    }
+
+    bool ZoneEventRouter::TryEnqueueRespawn(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch) {
+        ZoneEvent event{ZoneEventType::Respawn};
+        event.request = {sessionID, ownershipEpoch};
+        return TryEnqueue(zoneID, event);
+    }
+
+    bool ZoneEventRouter::TryEnqueueBootstrap(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch, bool resendZoneChange) {
+        ZoneEvent event{ZoneEventType::Bootstrap};
+        event.request = {sessionID, ownershipEpoch, resendZoneChange};
+        return TryEnqueue(zoneID, event);
+    }
+
+    bool ZoneEventRouter::TryEnqueueProfileVersion(uint16_t zoneID, const ProfileVersionUpdate& update) {
+        ZoneEvent event{ZoneEventType::ProfileVersion};
+        event.profileVersion = update;
+        return TryEnqueue(zoneID, event);
     }
 
     uint16_t ZoneEventRouter::FindDestination(uint16_t sourceZoneID, float x, float y) const {
@@ -71,22 +101,20 @@ namespace Core {
     }
 
     bool ZoneEventRouter::TryEnqueueTransfer(uint16_t destinationID, const std::shared_ptr<FieldZoneTransfer>& transfer) {
-        if (!transfer || destinationID == 0 || destinationID > zones.size()
-            || !acceptingTransfers.load(std::memory_order_acquire))
+        if (!transfer || !acceptingTransfers.load(std::memory_order_acquire))
             return false;
         ZoneEvent event{ZoneEventType::Transfer, nullptr, transfer};
-        return zones[destinationID - 1].worker.Enqueue(event);
+        return TryEnqueue(destinationID, event);
     }
 
     void ZoneEventRouter::EnqueueLobbyReturn(const std::shared_ptr<FieldZoneTransfer>& transfer) {
-        nonZoneWorkers->EnqueueLobbyReturn(transfer);
+        lobbyReturns->EnqueueLobbyReturn(transfer);
     }
 
     bool ZoneEventRouter::TryEnqueueTransferRejected(const std::shared_ptr<FieldZoneTransfer>& transfer) {
-        if (!transfer || transfer->sourceZoneID == 0 || transfer->sourceZoneID > zones.size()
-            || !acceptingTransfers.load(std::memory_order_acquire))
+        if (!transfer || !acceptingTransfers.load(std::memory_order_acquire))
             return false;
         ZoneEvent event{ZoneEventType::TransferRejected, nullptr, transfer};
-        return zones[transfer->sourceZoneID - 1].worker.Enqueue(event);
+        return TryEnqueue(transfer->sourceZoneID, event);
     }
 }

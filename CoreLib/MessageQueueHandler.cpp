@@ -7,7 +7,7 @@
 #include "LobbyZone.h"
 #include "SessionManager.h"
 #include "LoggerGlobal.h"
-#include "ZoneThread.h"
+#include "IZoneRequestQueue.h"
 
 namespace Core {
     namespace {
