@@ -69,7 +69,7 @@ const interfaceInheritance = new Set(classEdges.filter(edge => {
 const state = {
   view: classes.length || !projects.length ? "class" : "project",
   namespace: [...groups].sort((a, b) => b[1].length - a[1].length)[0]?.[0] ?? "",
-  external: false, hidden: new Set(), kind: "", selected: "", query: "", direction: "", focused: false,
+  external: false, hidden: new Set(), hiddenKinds: new Set(), selected: "", query: "", direction: "", focused: false,
   focusRoot: "", expandedNodes: new Set(), arrangement: "namespace", cardViews: new Set(["project"]),
   hiddenProjects: new Set(), hiddenFilters: new Set(), interfaceOnly: false, filterInterfaceOnly: false, showStructs: true,
   selectedClasses: new Set(), onlyClasses: false
@@ -126,6 +126,20 @@ function init() {
   const treeTypes = classes.map(node => [node.id, node.name]).sort((a, b) => a[1].localeCompare(b[1]));
   setOptions(get("tree-root"), [["", "선택"], ...treeTypes]);
   updatePathMode();
+  for (const kind of classKinds) {
+    const label = document.createElement("label");
+    label.className = "check";
+    const input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = true;
+    input.dataset.relation = kind;
+    const line = document.createElement("i");
+    line.className = "relation-line " + kind;
+    line.style.borderColor = types[kind].color;
+    line.setAttribute("aria-hidden", "true");
+    label.append(input, line, document.createTextNode(types[kind].name));
+    get("relation-options").append(label);
+  }
   get("layout-mode").querySelector('[value="project"]').disabled = !projects.length;
   showIssues();
   bindControls();
@@ -159,10 +173,14 @@ function bindControls() {
     clearFocus();
     renderMap(true);
   });
-  get("kind").addEventListener("change", event => {
-    state.kind = event.target.value;
-    renderFilteredMap();
-  });
+  for (const input of get("relation-options").querySelectorAll("input"))
+    input.addEventListener("change", () => {
+      if (input.checked) state.hiddenKinds.delete(input.dataset.relation);
+      else state.hiddenKinds.add(input.dataset.relation);
+      renderFilteredMap();
+    });
+  get("show-all-relations").addEventListener("click", () => toggleRelations(true));
+  get("hide-all-relations").addEventListener("click", () => toggleRelations(false));
   get("show-structs").addEventListener("change", event => {
     state.showStructs = event.target.checked;
     overviewCamera = null;
@@ -205,7 +223,6 @@ function bindControls() {
     if (state.view === "group") state.filterInterfaceOnly = event.target.checked;
     else {
       state.interfaceOnly = event.target.checked;
-      if (state.interfaceOnly) state.kind = get("kind").value = "";
     }
     renderMap(true);
   });
@@ -318,7 +335,7 @@ function changeView(view) {
   if (view === "namespace" && previous?.kind === "class")
     state.namespace = namespaceOf(previous);
   state.view = view;
-  state.selected = state.query = state.kind = state.direction = "";
+  state.selected = state.query = state.direction = "";
   pickedEdge = null;
   clearFocus();
   get("direction").value = "";
@@ -344,7 +361,6 @@ function changeView(view) {
   get("high-level-filter").hidden = view !== "high-level";
   get("high-level-guide").hidden = view !== "high-level";
   get("class-selection").hidden = view !== "class";
-  setOptions(get("kind"), [["", "모든 관계"], ...classKinds.map(kind => [kind, types[kind].name])]);
   get("diagram-title").textContent = {
     class: "전체 클래스 맵", "high-level": "고수준 타입 후보 맵", namespace: "namespace별 클래스 맵",
     project: "프로젝트 의존성", group: "Visual Studio 필터 지도"
@@ -512,6 +528,12 @@ function renderFilteredMap() {
   const changesPlacement = state.view === "group" || relationshipView() || projectClassView();
   if (changesPlacement) overviewCamera = null;
   renderMap(changesPlacement || bounds === null);
+}
+
+function toggleRelations(visible) {
+  state.hiddenKinds = visible ? new Set() : new Set(classKinds);
+  for (const input of get("relation-options").querySelectorAll("input")) input.checked = visible;
+  renderFilteredMap();
 }
 
 function projectName(id) { return byId.get(id)?.name ?? "(프로젝트 미지정)"; }
@@ -810,11 +832,10 @@ function renderMap(resetCamera) {
   get("interface-label").textContent = state.view === "group" ? "Interface 연결만"
     : "프로젝트 간 Interface 상속만";
   get("interfaces").checked = state.view === "group" ? state.filterInterfaceOnly : state.interfaceOnly;
-  get("kind").disabled = inProjects && state.interfaceOnly;
   renderLegend();
   const eligibleEdges = state.view === "project" ? [] : classEdges.filter(edge =>
     (state.showStructs || (!structIds.has(edge.from) && !structIds.has(edge.to))) &&
-    (inProjects && state.interfaceOnly ? interfaceInheritance.has(edge) : !state.kind || edge.kind === state.kind));
+    !state.hiddenKinds.has(edge.kind) && (!inProjects || !state.interfaceOnly || interfaceInheritance.has(edge)));
   const eligibleGroups = state.view === "group" ? filterGraph.nodes.filter(node => filterGroupCount(node) > 0) : [];
   let internalCount = 0;
   let candidateCount = 0;
@@ -874,7 +895,7 @@ function renderMap(resetCamera) {
   let autoLayout;
   const mapKey = state.view === "namespace" ? ["namespace", state.namespace] : [state.view];
   mapKey.push(relationshipView() ? "relationships" : "cards");
-  if (state.view !== "project") mapKey.push(state.showStructs);
+  if (state.view !== "project") mapKey.push(state.showStructs, [...state.hiddenKinds].sort());
   if (state.view === "group") mapKey.push(state.filterInterfaceOnly);
   if (inProjects) mapKey.push("project", state.interfaceOnly);
   if (onlyClassesActive()) mapKey.push("selected-classes", [...state.selectedClasses].sort());
