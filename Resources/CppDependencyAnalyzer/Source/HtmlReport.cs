@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace ServerDependencyAnalyzer;
 
@@ -11,6 +12,7 @@ internal static class HtmlReport
 
     public static string Write(AnalysisResult result, string? output)
     {
+        if (result.Parsed > 0) VisualStudioLink.AllowRoot(result.Directory);
         var path = output is null
             ? Path.Combine(OutputDirectory, $"{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.html")
             : Path.GetFullPath(output);
@@ -22,10 +24,7 @@ internal static class HtmlReport
             Nodes = result.Nodes.Values.OrderBy(node => node.Kind).ThenBy(node => node.Name).ToArray(),
             Edges = result.Edges.ToArray(), result.Notes, result.Failures, result.ExcludedTests
         }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-        var html = ReadResource("Report.html")
-            .Replace("<!--GRAPH_SCRIPT-->", ReadResource("RelationshipLayout.js") + Environment.NewLine + ReadResource("Report.js"),
-                StringComparison.Ordinal)
-            .Replace("<!--GRAPH_DATA-->", data, StringComparison.Ordinal);
+        var html = Render(data);
         File.WriteAllText(path, html, Encoding.UTF8);
         if (output is null)
         {
@@ -34,6 +33,20 @@ internal static class HtmlReport
         }
         return path;
     }
+
+    public static void Refresh(string path)
+    {
+        var previous = File.ReadAllText(path);
+        var match = Regex.Match(previous, "<script id=\"data\" type=\"application/json\">([\\s\\S]*?)</script>");
+        if (!match.Success) throw new ArgumentException("분석기에서 생성한 보고서가 아닙니다.");
+        using var data = JsonDocument.Parse(match.Groups[1].Value);
+        File.WriteAllText(path, Render(match.Groups[1].Value), Encoding.UTF8);
+    }
+
+    private static string Render(string data) => ReadResource("Report.html")
+            .Replace("<!--GRAPH_SCRIPT-->", ReadResource("RelationshipLayout.js") + Environment.NewLine + ReadResource("Report.js"),
+                StringComparison.Ordinal)
+            .Replace("<!--GRAPH_DATA-->", data, StringComparison.Ordinal);
 
     private static string ReadResource(string file)
     {

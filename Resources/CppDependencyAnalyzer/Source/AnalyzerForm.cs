@@ -26,6 +26,7 @@ internal sealed class AnalyzerForm : Form
     private readonly Button cancel = new() { Text = "취소", AutoSize = true, Enabled = false };
     private readonly Button open = new() { Text = "결과 열기", AutoSize = true, Enabled = false };
     private readonly Button openReports = new() { Text = "결과 폴더", AutoSize = true };
+    private readonly Button registerVs = new() { Text = "VS 연결 등록", AutoSize = true };
     private readonly Label status = new() { AutoSize = true, Text = "분석할 C++ 프로젝트 폴더를 선택하세요." };
     private readonly ProgressBar progressBar = new() { Dock = DockStyle.Fill, Height = 7, Visible = false };
     private CancellationTokenSource? activeRun;
@@ -100,7 +101,7 @@ internal sealed class AnalyzerForm : Form
         layout.Controls.Add(inspectionOptions, 0, 5);
         layout.SetColumnSpan(inspectionOptions, 3);
 
-        var actions = MakeRow(analyze, cancel, open, openReports);
+        var actions = MakeRow(analyze, cancel, open, openReports, registerVs);
         layout.Controls.Add(actions, 1, 6);
         layout.SetColumnSpan(actions, 2);
         progressBar.Margin = new Padding(3, 10, 3, 4);
@@ -126,6 +127,15 @@ internal sealed class AnalyzerForm : Form
         cancel.Click += (_, _) => CancelAnalysis();
         open.Click += (_, _) => OpenLastReport();
         openReports.Click += (_, _) => OpenReportsFolder();
+        registerVs.Click += (_, _) =>
+        {
+            try
+            {
+                VisualStudioLink.Register(folder.Text.Length > 0 ? folder.Text : null);
+                status.Text = "VS 연결을 현재 사용자에게 등록했습니다. 보고서의 VS에서 열기를 사용할 수 있습니다.";
+            }
+            catch (Exception exception) { status.Text = "VS 연결 등록 실패: " + exception.Message; }
+        };
         FormClosing += (_, args) =>
         {
             if (activeRun is null)
@@ -250,7 +260,7 @@ internal sealed class AnalyzerForm : Form
 
     private void SetBusy(bool busy)
     {
-        browse.Enabled = tests.Enabled = vendor.Enabled = inspectionOptions.Enabled = !busy;
+        browse.Enabled = tests.Enabled = vendor.Enabled = inspectionOptions.Enabled = registerVs.Enabled = !busy;
         browseDatabase.Enabled = project.Enabled = analyze.Enabled = !busy && folder.Text.Length > 0;
         UpdateBuildInputs();
         cancel.Enabled = busy;

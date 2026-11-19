@@ -407,6 +407,7 @@ wal/
 /Resources/CppDependencyAnalyzer/ServerDependencyAnalyzer.runtimeconfig.json
 /Resources/CppDependencyAnalyzer/clang/
 /Resources/CppDependencyAnalyzer/report.html
+/Resources/CppDependencyAnalyzer/SourceRoots.json
 /Resources/CppDependencyAnalyzer/Reports/*.html
 !/Resources/CppDependencyAnalyzer/Reports/server-project-map.html
 

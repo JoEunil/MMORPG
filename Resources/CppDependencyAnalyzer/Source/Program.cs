@@ -7,6 +7,24 @@ internal static class Program
     [STAThread]
     private static int Main(string[] arguments)
     {
+        if (arguments.Length > 0 && arguments[0] is "--register-vs" or "--open-source" or "--refresh-report")
+        {
+            try
+            {
+                if (arguments[0] == "--register-vs" && arguments.Length is 1 or 2)
+                    VisualStudioLink.Register(arguments.Length == 2 ? arguments[1] : null);
+                else if (arguments.Length == 2 && arguments[0] == "--open-source") VisualStudioLink.Open(arguments[1]);
+                else if (arguments.Length == 2 && arguments[0] == "--refresh-report") HtmlReport.Refresh(arguments[1]);
+                else throw new ArgumentException("명령줄 인자를 확인하세요.");
+                return 0;
+            }
+            catch (Exception exception)
+            {
+                Console.Error.WriteLine(exception.Message);
+                if (arguments[0] == "--open-source") MessageBox.Show(exception.Message, "Visual Studio 소스 열기");
+                return 1;
+            }
+        }
         if (arguments.Length > 0)
             return AnalyzeFromCommandLine(arguments);
 

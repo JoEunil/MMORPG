@@ -1626,11 +1626,13 @@ function sourceLocation(location) {
   if (!segments) return source;
 
   const link = document.createElement("a");
-  link.href = localSourceRoot + segments;
+  const rootPath = decodeURIComponent(new URL(localSourceRoot).pathname.slice(1)).replace(/\//g, "\\");
+  link.href = "cppdeps://open/?root=" + encodeURIComponent(rootPath)
+    + "&file=" + encodeURIComponent(location.file) + "&line=" + location.line;
   link.className = "source-open";
-  link.target = "_blank";
   link.rel = "noopener noreferrer";
-  link.textContent = "파일 열기";
+  link.textContent = "VS에서 열기";
+  link.title = "VS 연결 등록 후 사용합니다. 찾을 수 있는 솔루션 또는 프로젝트와 함께 파일을 엽니다.";
   const content = document.createDocumentFragment();
   content.append(source, link);
   return content;
@@ -1638,7 +1640,16 @@ function sourceLocation(location) {
 
 function sourceRootUrl() {
   if (window.location.protocol !== "file:" || typeof data.directory !== "string") return "";
-  const root = /^([a-z]):[\\/](.*)$/i.exec(data.directory);
+  let directory = data.directory;
+  if (!/^[a-z]:[\\/]/i.test(directory)) {
+    // A bundled report records only the folder name, without publishing the local absolute path.
+    if (!directory || /[\\/]/.test(directory)) return "";
+    const parts = decodeURIComponent(window.location.pathname).split("/");
+    const index = parts.lastIndexOf(directory);
+    if (index < 2) return "";
+    directory = parts.slice(1, index + 1).join("\\");
+  }
+  const root = /^([a-z]):[\\/](.*)$/i.exec(directory);
   if (!root) return "";
   const path = root[2].replace(/[\\/]$/, "");
   const segments = path ? encodeWindowsSegments(path) : "";
