@@ -6,8 +6,8 @@ namespace ServerDependencyAnalyzer;
 
 internal static class HtmlReport
 {
-    public static string OutputDirectory => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ServerDependencyAnalyzer", "Reports");
+    public static string OutputDirectory => Path.Combine(AppContext.BaseDirectory, "Reports");
+    public static string LatestReport => Path.Combine(AppContext.BaseDirectory, "report.html");
 
     public static string Write(AnalysisResult result, string? output)
     {
@@ -27,6 +27,11 @@ internal static class HtmlReport
                 StringComparison.Ordinal)
             .Replace("<!--GRAPH_DATA-->", data, StringComparison.Ordinal);
         File.WriteAllText(path, html, Encoding.UTF8);
+        if (output is null)
+        {
+            File.WriteAllText(LatestReport, html, Encoding.UTF8);
+            return LatestReport;
+        }
         return path;
     }
 

@@ -6,7 +6,7 @@ namespace ServerDependencyAnalyzer;
 
 internal record AnalysisOptions(string Root, string? Entry, string Configuration, string Platform,
     string? SingleFile = null, bool IncludeTests = false, bool ShowExternalLibraries = true, bool DiscoverDatabase = true,
-    InspectionOptions? Inspections = null);
+    InspectionOptions? Inspections = null, bool IncludeProjectReferences = true);
 
 internal static class Analyzer
 {
@@ -37,7 +37,8 @@ internal static class Analyzer
             result.Inspections = InspectionReport.Create(options.Inspections);
         progress?.Report("프로젝트와 C++ 소스 파일을 찾는 중…");
         var allInputs = database ? CompilationDatabase.Read(root, entry!, options.IncludeTests, result, cancellation)
-            : ProjectFiles.Read(root, entry, options.Configuration, options.Platform, options.IncludeTests, result, cancellation);
+            : ProjectFiles.Read(root, entry, options.Configuration, options.Platform, options.IncludeTests, result, cancellation,
+                options.IncludeProjectReferences);
         var input = options.SingleFile is null ? allInputs : allInputs.Where(file =>
             file.File.Equals(Path.GetFullPath(options.SingleFile, root), StringComparison.OrdinalIgnoreCase)).ToList();
         result.Sources = input.Count;
@@ -118,7 +119,7 @@ internal static class Analyzer
         }
         finally { clang_disposeIndex(index); }
         if (inspections is not null)
-            result.Inspections = inspections.Finish();
+            result.Inspections = inspections.Finish(result.Nodes);
         return result;
     }
 

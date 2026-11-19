@@ -12,6 +12,9 @@ internal sealed class CodeInspections(InspectionOptions options, CancellationTok
     private readonly Dictionary<(string Source, string Target), Dictionary<string, Evidence>> memberUses = [];
     private readonly Dictionary<string, FunctionSignature> signatures = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Dictionary<SourceLocation, LoopFindings>> loopCandidates = [];
+    private readonly Dictionary<string, HashSet<string?>> directBases = [];
+    private readonly Dictionary<string, Dictionary<string, Dictionary<Evidence, Evidence>>> dependencies = [];
+    internal bool TracksResponsibility => options.ResponsibilityConcentration;
     private FunctionScope? function;
     private LoopScope? loop;
     private RangeVariable? range;
@@ -378,10 +381,30 @@ internal sealed class CodeInspections(InspectionOptions options, CancellationTok
         signatures[scope.Usr] = new(parameters.ToArray(), new(scope.Location, QualifiedName(scope.Cursor)), named, scope.Definition);
     }
 
-    public InspectionReport Finish()
+    internal void RecordBase(string derived, string? baseType)
+    {
+        if (!directBases.TryGetValue(derived, out var bases))
+            directBases.Add(derived, bases = []);
+        bases.Add(baseType);
+    }
+
+    internal void RecordDependency(string source, string target, Evidence evidence)
+    {
+        if (source == target)
+            return;
+        if (!dependencies.TryGetValue(source, out var targets))
+            dependencies.Add(source, targets = []);
+        if (!targets.TryGetValue(target, out var sites))
+            targets.Add(target, sites = []);
+        sites.TryAdd(evidence with { Location = LocationKey(evidence.Location) }, evidence);
+    }
+
+    public InspectionReport Finish(IReadOnlyDictionary<string, Node> nodes)
     {
         var started = Stopwatch.GetTimestamp();
-        var report = InspectionReport.Create(options, rule => Ordered(rule switch
+        var report = InspectionReport.Create(options, rule => rule == "responsibility-concentration"
+            ? ResponsibilityCandidates(nodes)
+            : Ordered(rule switch
         {
             "member-usage" => MemberCandidates(),
             "parameter-groups" => ParameterCandidates(),
@@ -392,6 +415,32 @@ internal sealed class CodeInspections(InspectionOptions options, CancellationTok
         {
             CollectionMilliseconds = (collectionTicks + Stopwatch.GetTimestamp() - started) * 1000.0 / Stopwatch.Frequency
         };
+    }
+
+    private InspectionCandidate[] ResponsibilityCandidates(IReadOnlyDictionary<string, Node> nodes)
+    {
+        string? SingleBase(string id) =>
+            directBases.TryGetValue(id, out var bases) && bases.Count == 1 ? bases.Single() : null;
+
+        var candidates = new List<InspectionCandidate>();
+        foreach (var (source, targets) in dependencies)
+        {
+            cancellation.ThrowIfCancellationRequested();
+            if (nodes[source].Location is not { } location)
+                continue;
+            var groups = targets.GroupBy(pair => SingleBase(pair.Key) ?? pair.Key)
+                .Select(group => new DependencyGroup(nodes[group.Key].Name, group
+                    .Select(pair => new DependencyTarget(nodes[pair.Key].Name, pair.Value.Values
+                        .OrderBy(site => site.Description, StringComparer.Ordinal)
+                        .ThenBy(site => site.Location.File, StringComparer.OrdinalIgnoreCase)
+                        .ThenBy(site => site.Location.Line).ThenBy(site => site.Location.Column).ToArray()))
+                    .OrderBy(target => target.Name, StringComparer.Ordinal).ToArray()))
+                .OrderBy(group => group.Name, StringComparer.Ordinal).ToArray();
+            candidates.Add(new(nodes[source].Name, $"나가는 의존성 {groups.Length}개 · 실제 타입 {targets.Count}개",
+                location, [], groups));
+        }
+        return candidates.OrderByDescending(candidate => candidate.DependencyGroups!.Count)
+            .ThenBy(candidate => candidate.Title, StringComparer.Ordinal).ToArray();
     }
 
     private IEnumerable<InspectionCandidate> LoopCandidates(string rule)

@@ -103,8 +103,16 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
             var relation = kind == Kind.FieldDecl ? "field" : "inherits";
             var label = kind == Kind.FieldDecl ? $"{Name(cursor)} · {Read(clang_getTypeSpelling(type))}"
                 : Read(clang_getTypeSpelling(type));
+            if (kind == Kind.CxxBaseSpecifier && inspections is { TracksResponsibility: true })
+                inspections.RecordBase(currentClass, ClassNode(clang_getTypeDeclaration(type)) ??
+                    ClassNode(clang_getTypeDeclaration(clang_getCanonicalType(type))));
             foreach (var target in ClassesInType(type, 0))
-                result.Connect(currentClass, target, relation, new(source, label));
+            {
+                var evidence = new Evidence(source, label);
+                result.Connect(currentClass, target, relation, evidence);
+                if (kind == Kind.FieldDecl && inspections is { TracksResponsibility: true })
+                    inspections.RecordDependency(currentClass, target, evidence);
+            }
         }
         else if (kind == Kind.CallExpr)
         {
@@ -113,8 +121,12 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
             {
                 var target = ClassNode(clang_getCursorSemanticParent(declaration));
                 if (currentClass is not null && target is not null && IsFunction(declaration.Kind))
-                    result.Connect(currentClass, target, "call", new(source,
-                        $"{currentFunction} → {QualifiedName(declaration)}"));
+                {
+                    var evidence = new Evidence(source, $"{currentFunction} → {QualifiedName(declaration)}");
+                    result.Connect(currentClass, target, "call", evidence);
+                    if (inspections is { TracksResponsibility: true })
+                        inspections.RecordDependency(currentClass, target, evidence);
+                }
             }
         }
 

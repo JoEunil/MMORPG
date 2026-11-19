@@ -7,11 +7,16 @@ internal record Node(string Id, string Name, string Kind, string? Project, Sourc
     string? Namespace = null, StudioFilter? VisualStudioFilter = null, bool IsStruct = false, bool IsAbstract = false);
 internal record AnalysisIssue(string File, string Message);
 internal record InspectionOptions(bool MemberUsage = false, bool ParameterGroups = false,
-    bool ClassCohesion = false, bool LoopCopy = false, bool LoopSearch = false, bool LoopAllocation = false)
+    bool ClassCohesion = false, bool LoopCopy = false, bool LoopSearch = false, bool LoopAllocation = false,
+    bool ResponsibilityConcentration = false)
 {
-    public bool Enabled => MemberUsage || ParameterGroups || ClassCohesion || LoopCopy || LoopSearch || LoopAllocation;
+    public bool Enabled => MemberUsage || ParameterGroups || ClassCohesion || LoopCopy || LoopSearch || LoopAllocation ||
+        ResponsibilityConcentration;
 }
-internal record InspectionCandidate(string Title, string Description, SourceLocation Location, IReadOnlyList<Evidence> Related);
+internal record DependencyTarget(string Name, IReadOnlyList<Evidence> Sites);
+internal record DependencyGroup(string Name, IReadOnlyList<DependencyTarget> Targets);
+internal record InspectionCandidate(string Title, string Description, SourceLocation Location, IReadOnlyList<Evidence> Related,
+    IReadOnlyList<DependencyGroup>? DependencyGroups = null);
 internal record InspectionCheck(string Id, bool Enabled, IReadOnlyList<InspectionCandidate> Candidates);
 internal record InspectionReport(IReadOnlyList<InspectionCheck> Checks, double CollectionMilliseconds)
 {
@@ -24,6 +29,7 @@ internal record InspectionReport(IReadOnlyList<InspectionCheck> Checks, double C
             Check("member-usage", options?.MemberUsage == true),
             Check("parameter-groups", options?.ParameterGroups == true),
             Check("class-cohesion", options?.ClassCohesion == true),
+            Check("responsibility-concentration", options?.ResponsibilityConcentration == true),
             Check("loop-copy", options?.LoopCopy == true),
             Check("loop-search", options?.LoopSearch == true),
             Check("loop-allocation", options?.LoopAllocation == true)

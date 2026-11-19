@@ -44,7 +44,7 @@ internal static class ProjectFiles
     }
 
     public static List<CompileInput> Read(string root, string? entry, string configuration, string platform,
-        bool includeTests, AnalysisResult result, CancellationToken cancellation)
+        bool includeTests, AnalysisResult result, CancellationToken cancellation, bool includeProjectReferences = true)
     {
         var files = new List<CompileInput>();
         if (BenchmarkDirectories.Contains(Path.GetFileName(Path.TrimEndingDirectorySeparator(root))))
@@ -150,6 +150,8 @@ internal static class ProjectFiles
                 foreach (var item in definition.Elements().Where(element => element.Name.LocalName == "ItemGroup" && Active(element))
                     .SelectMany(group => group.Elements()).Where(element => element.Name.LocalName is "ClCompile" or "ProjectReference" && Active(element)))
                 {
+                    if (item.Name.LocalName == "ProjectReference" && !includeProjectReferences)
+                        continue;
                     var include = Expand(((string?)item.Attribute("Include")) ?? "");
                     if (include.Length == 0)
                         continue;

@@ -9,16 +9,18 @@ internal sealed class AnalyzerForm : Form
     private readonly Button browse = new() { Text = "폴더 선택…", AutoSize = true };
     private readonly Button browseDatabase = new() { Text = "빌드 DB 선택…", AutoSize = true, Enabled = false };
     private readonly CheckBox tests = new() { Text = "테스트 포함", AutoSize = true };
+    private readonly CheckBox references = new() { Text = "참조 프로젝트 포함", AutoSize = true, Checked = true, Enabled = false };
     private readonly CheckBox vendor = new() { Text = "외부 라이브러리 표시", AutoSize = true, Checked = true };
     private readonly CheckBox memberUsage = new() { Text = "사용 멤버", AutoSize = true };
     private readonly CheckBox parameterGroups = new() { Text = "반복 파라미터", AutoSize = true };
     private readonly CheckBox classCohesion = new() { Text = "내부 기능 묶음", AutoSize = true };
+    private readonly CheckBox responsibility = new() { Text = "책임 집중 후보", AutoSize = true };
     private readonly CheckBox loopCopy = new() { Text = "반복 객체 복사", AutoSize = true };
     private readonly CheckBox loopSearch = new() { Text = "반복문 내 선형 검색", AutoSize = true };
     private readonly CheckBox loopAllocation = new() { Text = "반복 동적 할당", AutoSize = true };
     private readonly TableLayoutPanel inspectionOptions = new()
     {
-        AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 4
+        AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 5
     };
     private readonly Button analyze = new() { Text = "분석", AutoSize = true, Enabled = false };
     private readonly Button cancel = new() { Text = "취소", AutoSize = true, Enabled = false };
@@ -34,7 +36,7 @@ internal sealed class AnalyzerForm : Form
         SuspendLayout();
         Text = "C/C++ 의존성 분석기";
         Font = new Font("Malgun Gothic", 10F);
-        ClientSize = new Size(760, 430);
+        ClientSize = new Size(760, 460);
         MinimumSize = new Size(650, 400);
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleDimensions = new SizeF(96F, 96F);
@@ -76,7 +78,7 @@ internal sealed class AnalyzerForm : Form
         var buildOptions = MakeRow(configuration, platform);
         layout.Controls.Add(buildOptions, 1, 3);
         layout.SetColumnSpan(buildOptions, 2);
-        var scopeOptions = MakeRow(tests, vendor);
+        var scopeOptions = MakeRow(tests, vendor, references);
         layout.Controls.Add(MakeLabel("포함 범위"), 0, 4);
         layout.Controls.Add(scopeOptions, 1, 4);
         layout.SetColumnSpan(scopeOptions, 2);
@@ -91,6 +93,7 @@ internal sealed class AnalyzerForm : Form
         inspectionOptions.Controls.Add(memberUsage, 0, 1);
         inspectionOptions.Controls.Add(parameterGroups, 0, 2);
         inspectionOptions.Controls.Add(classCohesion, 0, 3);
+        inspectionOptions.Controls.Add(responsibility, 0, 4);
         inspectionOptions.Controls.Add(loopCopy, 1, 1);
         inspectionOptions.Controls.Add(loopSearch, 1, 2);
         inspectionOptions.Controls.Add(loopAllocation, 1, 3);
@@ -199,7 +202,8 @@ internal sealed class AnalyzerForm : Form
             configuration.Text, platform.Text, IncludeTests: tests.Checked, ShowExternalLibraries: vendor.Checked,
             DiscoverDatabase: false, Inspections: new InspectionOptions(
                 MemberUsage: memberUsage.Checked, ParameterGroups: parameterGroups.Checked, ClassCohesion: classCohesion.Checked,
-                LoopCopy: loopCopy.Checked, LoopSearch: loopSearch.Checked, LoopAllocation: loopAllocation.Checked));
+                LoopCopy: loopCopy.Checked, LoopSearch: loopSearch.Checked, LoopAllocation: loopAllocation.Checked,
+                ResponsibilityConcentration: responsibility.Checked), IncludeProjectReferences: references.Checked);
         SetBusy(true);
         var progress = new Progress<string>(message => { if (activeRun == run && !run.IsCancellationRequested) status.Text = message; });
         try
@@ -255,8 +259,13 @@ internal sealed class AnalyzerForm : Form
         progressBar.Style = busy ? ProgressBarStyle.Marquee : ProgressBarStyle.Blocks;
     }
 
-    private void UpdateBuildInputs() => configuration.Enabled = platform.Enabled = activeRun is null
-        && !CompilationDatabase.IsDatabase((project.SelectedItem as ProjectChoice)?.Path);
+    private void UpdateBuildInputs()
+    {
+        var path = (project.SelectedItem as ProjectChoice)?.Path;
+        configuration.Enabled = platform.Enabled = activeRun is null && !CompilationDatabase.IsDatabase(path);
+        references.Enabled = activeRun is null && path is not null
+            && Path.GetExtension(path).Equals(".vcxproj", StringComparison.OrdinalIgnoreCase);
+    }
 
     private static ComboBox MakeCombo(string name) => new() { DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = name };
     private static Label MakeLabel(string text) => new() { Text = text, Anchor = AnchorStyles.Left, AutoSize = true };

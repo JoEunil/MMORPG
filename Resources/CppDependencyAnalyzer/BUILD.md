@@ -6,9 +6,11 @@ Windows에서 폴더를 선택하면 Clang으로 C/C++ 소스를 분석하고 �
 
 ## 실행
 
-`ServerDependencyAnalyzer.exe`는 Windows x64와 .NET 8 Desktop Runtime을 사용합니다. **폴더 선택**으로 분석할 소스 루트를 선택하고 **분석 설정**에서 입력을 고릅니다. 보고서는 `%LOCALAPPDATA%\ServerDependencyAnalyzer\Reports`에 저장됩니다. **결과 열기**는 이번 실행의 보고서를 열고, **결과 폴더**는 저장된 보고서를 파일 탐색기에서 보여줍니다.
+`ServerDependencyAnalyzer.exe`는 Windows x64와 .NET 8 Desktop Runtime을 사용합니다. Release 빌드하면 실행파일과 필요한 DLL·설정·Clang 런타임을 이 폴더 최상위로 복사합니다. 최상위 실행파일로 실행하고 **폴더 선택**으로 소스 루트를, **분석 설정**에서 입력을 고릅니다.
 
-- **Visual Studio**는 `.vcxproj`와 구성·플랫폼을 선택합니다. 이 저장소의 서버만 보려면 `MainServer/MainServer.vcxproj`를 선택합니다.
+기본 분석은 실행파일 옆 `report.html`을 최신 결과로 갱신하고, `Reports`에 날짜별 사본을 보관합니다. **결과 열기**는 최신 결과를 열고 **결과 폴더**는 날짜별 보고서를 보여줍니다. 이미 열린 페이지는 새로고침해야 새 결과가 보입니다. `--output`을 지정하면 해당 파일만 저장하며, 동봉·게시용 `Reports/server-project-map.html`과 Pages는 자동 갱신하지 않습니다.
+
+- **Visual Studio**는 `.vcxproj`와 구성·플랫폼을 선택합니다. 서버 전체는 `MainServer/MainServer.vcxproj`와 **참조 프로젝트 포함**을 사용합니다. 특정 라이브러리만 분석하려면 해당 `.vcxproj`를 선택하고 **참조 프로젝트 포함**을 끕니다. 이 옵션은 개별 프로젝트 선택 시에만 활성화되며 기본값은 켜짐입니다.
 - **CMake 및 다른 빌드 도구**는 `compile_commands.json`을 사용합니다. 소스 루트와 일반 빌드 폴더에서 파일을 찾습니다. 별도 빌드 경로라면 **빌드 DB 선택**으로 지정합니다.
 - **소스 폴더**는 빌드 설정이 없을 때 C17/C++20 기본 설정을 적용합니다. 소스 파일이 없으면 헤더를 각각 분석합니다.
 
@@ -26,17 +28,20 @@ cmake -S . -B build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 Set-Location .\Resources\CppDependencyAnalyzer\Source
 .\Get-ClangRuntime.ps1
 dotnet build -c Release
-.\bin\Release\net8.0-windows\ServerDependencyAnalyzer.exe
+..\ServerDependencyAnalyzer.exe
 ```
 
 빌드 후 같은 `Source` 폴더에서 명령줄 분석도 실행할 수 있습니다. 종료 코드 `2`는 오류가 있거나 분석할 파일이 없는 보고서, `1`은 입력 또는 실행 실패, `130`은 취소입니다.
 
 ```powershell
 dotnet .\bin\Release\net8.0-windows\ServerDependencyAnalyzer.dll --analyze "C:\Game" --entry MainServer\MainServer.vcxproj --configuration Debug --platform x64 --output .\report.html
+dotnet .\bin\Release\net8.0-windows\ServerDependencyAnalyzer.dll --analyze "C:\Game" --entry NetLibrary\NetLibrary.vcxproj --configuration Release --platform x64 --include-project-references false --output .\netlibrary.html
 dotnet .\bin\Release\net8.0-windows\ServerDependencyAnalyzer.dll --analyze "C:\Project" --entry "C:\Build\compile_commands.json" --output .\report.html
 ```
 
 ## 선택 검사
+
+`--include-project-references false`는 선택한 Visual Studio 프로젝트의 `ClCompile` 소스만 분석합니다. 기본값 `true`는 참조 프로젝트까지 방문합니다. 전체 프로젝트 선택과 컴파일 DB 입력에는 적용되지 않습니다. 포함 헤더의 타입은 여전히 수집되므로 라이브러리 타입만 남기는 화면 필터와는 다릅니다.
 
 WinForms의 **리팩터링 후보**와 **성능 개선 후보**에서 필요한 검사만 켜고 분석합니다. 추가 검사는 기본으로 꺼져 있으며, 기본 의존성 지도는 항상 생성합니다.
 
@@ -45,20 +50,25 @@ WinForms의 **리팩터링 후보**와 **성능 개선 후보**에서 필요한 
 | 리팩터링 후보 | 사용 멤버 | `--member-usage true` |
 | 리팩터링 후보 | 반복 파라미터 | `--parameter-groups true` |
 | 리팩터링 후보 | 내부 기능 묶음 | `--class-cohesion true` |
+| 리팩터링 후보 | 책임 집중 후보 | `--responsibility-concentration true` |
 | 성능 개선 후보 | 반복 객체 복사 | `--loop-copy true` |
 | 성능 개선 후보 | 반복문 내 선형 검색 | `--loop-search true` |
 | 성능 개선 후보 | 반복 동적 할당 | `--loop-allocation true` |
 
 위 옵션을 기존 `--analyze` 명령 뒤에 붙입니다. 보고서는 **미분석**, **후보 없음**, **후보 발견**을 구분하고 검출 근거와 코드 위치를 표시합니다. 후보는 설계 결함이나 실제 성능 병목을 확정한 결과가 아닙니다.
 
+**책임 집중 후보**는 멤버 타입과 정적으로 해석한 호출 대상이 많은 클래스부터 보여줍니다. 같은 단일 직접 기반 클래스를 공유하는 파생 타입은 한 묶음으로 셉니다. 기반 클래스를 하나로 정할 수 없는 경우는 실제 타입 그대로 셉니다. 후보를 펼치면 묶음별 실제 타입과 멤버 선언·메서드 호출 위치가 나옵니다. 이 검사 결과를 보려면 분석기에서 선택해 보고서를 다시 생성하세요.
+
 로컬 HTML에서는 분석 폴더 안의 코드 파일에 열기 링크를 제공합니다. 브라우저 정책과 연결 프로그램에 따라 열리는 방식이 달라지며, Visual Studio 실행이나 줄 이동을 보장하지 않습니다. 웹에 게시하거나 로컬 경로를 제거한 보고서는 코드 위치만 표시합니다.
 
 ## 관계 범위
 
+Visual Studio 필터 경로에 `Interface`가 들어 있으면 인터페이스 필터로 처리합니다. 대소문자를 구분하지 않으므로 `InternalInterface`와 그 하위 필터에도 같은 기준을 적용합니다.
+
 - **고수준 후보**는 서로 다른 타입 2개 이상이 직접 참조하며 나가는 연결이 없는 타입을 모읍니다. Interface·추상 타입은 기본으로 제외하며, 설계상 고수준인지는 코드의 역할로 판단합니다.
 - **의존성 검사 → 순환 의존**은 같은 타입으로 돌아오는 경로를 찾습니다. Interface 필터의 타입으로 들어가는 연결은 기본으로 제외하며 포함 여부를 선택할 수 있습니다.
 - **전체 클래스**에서 타입을 우클릭해 **의존성 트리 펼치기**를 선택하면 사용처와 의존 대상을 양방향으로 따라갈 수 있습니다.
-- **struct 표시**는 지도에서 구조체를 숨깁니다. 순환 검사와 의존성 트리에는 숨긴 타입도 포함됩니다. [화면별 활용법](README.md#37-고수준-후보-찾기)을 참고하세요.
+- **struct 표시**는 지도에서 구조체를 숨깁니다. 순환 검사와 의존성 트리에는 숨긴 타입도 포함됩니다. [화면별 사용 안내](README.md#2-보고서-보기)를 참고하세요.
 - 프로젝트 참조 지도는 `.vcxproj`의 `ProjectReference`에서 생성합니다. Visual Studio 분석은 프로젝트별 `ClCompile` 항목, 구성·플랫폼 조건, include·define·강제 include를 반영하고, 외부 `.props` 및 복합 조건은 진단에 표시합니다.
 - 컴파일 데이터베이스는 파일별 작업 디렉터리, 헤더 경로, 매크로, 타깃과 언어 표준을 사용해 클래스 지도를 생성합니다. 지원하지 않는 플래그 및 응답 파일은 진단에 표시합니다. 분석은 Clang을 로컬 라이브러리로 호출합니다.
 - **전체 클래스 맵**에는 분석에서 수집한 클래스와 관계를 모두 표시합니다. **관계 지도**에서 노드의 색은 namespace, 크기는 연결된 클래스 수를 나타냅니다. 연결이 없는 클래스는 따로 모읍니다.

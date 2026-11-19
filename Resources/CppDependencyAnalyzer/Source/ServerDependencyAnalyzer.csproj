@@ -16,4 +16,15 @@
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
+  <Target Name="CopyAnalyzerToToolDirectory" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <AnalyzerRuntimeFiles Include="$(TargetDir)**/*" Exclude="$(TargetDir)**/*.pdb;$(TargetDir)Reports/**/*;$(TargetDir)report.html" />
+    </ItemGroup>
+    <Copy SourceFiles="@(AnalyzerRuntimeFiles)"
+          DestinationFiles="@(AnalyzerRuntimeFiles->'$(MSBuildProjectDirectory)/../%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/../Reports/server-project-map.html"
+          DestinationFiles="$(MSBuildProjectDirectory)/../report.html"
+          Condition="!Exists('$(MSBuildProjectDirectory)/../report.html')" />
+  </Target>
 </Project>

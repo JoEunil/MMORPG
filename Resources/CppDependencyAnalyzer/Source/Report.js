@@ -7,13 +7,31 @@ const inspectionGroups = {
   refactoring: [
     ["member-usage", "사용 멤버"],
     ["parameter-groups", "반복 파라미터"],
-    ["class-cohesion", "내부 기능 묶음"]
+    ["class-cohesion", "내부 기능 묶음"],
+    ["responsibility-concentration", "책임 집중 후보"]
   ],
   performance: [
     ["loop-copy", "반복 객체 복사"],
     ["loop-search", "반복문 내 선형 검색"],
     ["loop-allocation", "반복 동적 할당"]
   ]
+};
+const viewGuides = {
+  class: "클래스를 검색하거나 지도에서 선택하면 연결된 타입과 코드 위치를 볼 수 있습니다. 화살표는 사용하는 클래스에서 사용되는 타입으로 향합니다. 선택 연결만 상태에서 이웃을 선택하면 기존 연결을 유지하며 그 타입의 연결을 추가로 펼칩니다. 해제 후 다시 켜면 현재 선택한 타입부터 새로 탐색합니다.",
+  group: "Visual Studio 필터별로 클래스를 묶어 기능 영역 사이의 연결을 보여줍니다. 선의 숫자는 연결된 클래스 쌍의 수입니다. 선을 선택하면 개별 클래스와 코드 위치가 나오며, Interface 연결만 켜면 인터페이스를 향한 연결만 남습니다.",
+  namespace: "선택한 namespace 안의 클래스 관계를 보여줍니다. 외부 연결 표시를 켜면 다른 namespace의 타입과 직접 연결된 부분도 볼 수 있습니다.",
+  project: "프로젝트 참조와 외부 라이브러리 헤더 사용 관계를 보여줍니다. 선을 선택하면 참조 항목이나 include 위치를 확인할 수 있습니다. 설치된 라이브러리 전체나 모든 링크 의존성을 표시하는 목록은 아닙니다.",
+  "high-level": "여러 타입이 의존하는 대상을 모아 설계상 고수준 역할인지 검토하는 기능입니다. 변경이 잦은 타입이라면 이를 사용하는 코드에 미치는 영향을 확인하고 리팩터링을 검토하세요. 의존성 형태만으로 고수준 정책임을 확정하지는 않습니다.",
+  diagnostics: "Clang 분석 오류와 적용하지 못한 빌드 설정을 확인합니다. 오류가 있는 파일의 지도에는 일부 관계만 나타날 수 있고, 해당 파일은 리팩터링·성능 후보 수집에서 제외됩니다."
+};
+const inspectionGuides = {
+  "member-usage": "공개 메서드가 5개 이상인 대상에서 1~2개 멤버만 사용하는 클래스 관계를 찾습니다. 사용하는 기능만 담은 작은 인터페이스로 의존성을 줄일 수 있는지 검토하세요.",
+  "parameter-groups": "이름·타입·순서가 같은 인자 3개 이상이 서로 다른 함수 3개 이상에서 반복되는 곳을 찾습니다. 함께 전달되는 값들이 한 개념이라면 구조체로 묶을 수 있는지 검토하세요.",
+  "class-cohesion": "한 클래스 안에서 같은 필드를 쓰거나 서로 호출하는 메서드들을 묶어 봅니다. 메서드가 2개 이상인 묶음이 여러 개라면 서로 다른 책임인지 확인하고 클래스 분리를 검토하세요.",
+  "responsibility-concentration": "실제 타입은 이 클래스가 멤버로 두거나 메서드를 호출한 서로 다른 타입 수입니다. 같은 부모 하나를 직접 상속한 타입들은 한 묶음으로 세고, 그 묶음 수를 나가는 의존성으로 표시합니다. 예를 들어 같은 부모를 상속한 A와 B를 사용하면 나가는 의존성 1개 · 실제 타입 2개입니다.",
+  "loop-copy": "범위 기반 반복문에서 std::string 계열이나 std::vector를 복사하는 곳을 찾습니다. 원본을 읽기만 한다면 const 참조로 받을 수 있는지 확인하세요. 독립된 복사본이 필요한 경우도 있습니다.",
+  "loop-search": "반복문 안에서 std::find 계열의 선형 검색을 호출하는 곳을 찾습니다. 데이터 크기와 반복 횟수를 확인하고, 검색을 반복문 밖으로 옮기거나 다른 자료구조를 쓸 필요가 있는지 검토하세요.",
+  "loop-allocation": "반복문 안에서 new나 지원하는 표준 할당 함수를 호출하는 곳을 찾습니다. 실행 빈도와 측정 결과를 보고 미리 공간을 확보하거나 객체를 재사용할 필요가 있는지 검토하세요. 호출한 함수의 내부까지 추적하지는 않습니다."
 };
 const inspectionChecks = new Map((data.inspections?.checks ?? []).map(check => [check.id, check]));
 const byId = new Map(data.nodes.map(node => [node.id, node]));
@@ -51,8 +69,10 @@ const interfaceInheritance = new Set(classEdges.filter(edge => {
 const state = {
   view: classes.length || !projects.length ? "class" : "project",
   namespace: [...groups].sort((a, b) => b[1].length - a[1].length)[0]?.[0] ?? "",
-  external: false, hidden: new Set(), kind: "", selected: "", query: "", direction: "", focused: false, arrangement: "namespace", cardViews: new Set(["project"]),
-  hiddenProjects: new Set(), hiddenFilters: new Set(), interfaceOnly: false, filterInterfaceOnly: false, showStructs: true
+  external: false, hidden: new Set(), kind: "", selected: "", query: "", direction: "", focused: false,
+  focusRoot: "", expandedNodes: new Set(), arrangement: "namespace", cardViews: new Set(["project"]),
+  hiddenProjects: new Set(), hiddenFilters: new Set(), interfaceOnly: false, filterInterfaceOnly: false, showStructs: true,
+  selectedClasses: new Set(), onlyClasses: false
 };
 const card = { width: 219, height: 37, stepX: 255, stepY: 62 };
 const fullLayout = classLayout(classes);
@@ -62,6 +82,7 @@ let visibleNodes = [];
 let visibleEdges = [];
 let scopeNodes = [];
 let scopeEdges = [];
+let classSearchNodes = [];
 let layout = fullLayout;
 let layoutKey = "";
 const movedNodes = new Map();
@@ -122,6 +143,22 @@ function bindControls() {
     updateHighlights();
   });
   get("nodes").addEventListener("change", event => choose(event.target.value, true));
+  get("add-class").addEventListener("click", () => {
+    if (state.view !== "class" || byId.get(state.selected)?.kind !== "class") return;
+    state.selectedClasses.add(state.selected);
+    if (onlyClassesActive()) renderMap(true);
+    else updateClassSelection();
+  });
+  get("clear-classes").addEventListener("click", () => {
+    state.selectedClasses.clear();
+    state.onlyClasses = false;
+    renderMap(true);
+  });
+  get("only-classes").addEventListener("change", event => {
+    state.onlyClasses = event.target.checked && state.selectedClasses.size > 0;
+    clearFocus();
+    renderMap(true);
+  });
   get("kind").addEventListener("change", event => {
     state.kind = event.target.value;
     renderFilteredMap();
@@ -247,7 +284,7 @@ function togglePanel(id) {
 }
 
 function toggleFocus() {
-  if (!state.selected) return;
+  if (!state.selected || onlyClassesActive()) return;
   if (state.focused) {
     const previousCamera = overviewCamera;
     clearFocus();
@@ -262,12 +299,16 @@ function toggleFocus() {
   } else {
     overviewCamera = { camera: { ...camera }, width: graph.clientWidth, height: graph.clientHeight };
     state.focused = true;
+    state.focusRoot = state.selected;
+    state.expandedNodes.add(state.selected);
     renderMap(true);
   }
 }
 
 function clearFocus() {
   state.focused = false;
+  state.focusRoot = "";
+  state.expandedNodes.clear();
   overviewCamera = null;
 }
 
@@ -291,6 +332,7 @@ function changeView(view) {
   get("dependency-paths").hidden = view !== "paths";
   get("diagnostics").hidden = view !== "diagnostics";
   get("inspections").hidden = !inspectionGroup;
+  updateCandidateGuide();
   if (inspectionGroup) showInspectionGroup(inspectionGroup);
   if (!isMap) return;
 
@@ -301,6 +343,7 @@ function changeView(view) {
   get("struct-control").hidden = view === "project" || !structIds.size;
   get("high-level-filter").hidden = view !== "high-level";
   get("high-level-guide").hidden = view !== "high-level";
+  get("class-selection").hidden = view !== "class";
   setOptions(get("kind"), [["", "모든 관계"], ...classKinds.map(kind => [kind, types[kind].name])]);
   get("diagram-title").textContent = {
     class: "전체 클래스 맵", "high-level": "고수준 타입 후보 맵", namespace: "namespace별 클래스 맵",
@@ -312,6 +355,16 @@ function changeView(view) {
 
 function duration(milliseconds) {
   return milliseconds < 1000 ? Math.round(milliseconds) + " ms" : (milliseconds / 1000).toFixed(1) + "초";
+}
+
+function updateCandidateGuide() {
+  const text = inspectionGroups[state.view] ? inspectionGuides[get("inspection-case").value] ?? ""
+    : state.view === "paths" ? get("path-mode").value === "tree"
+      ? "기준 타입의 사용처와 의존 대상을 양쪽 트리로 보여줍니다. 왼쪽은 이 타입을 사용하는 쪽, 오른쪽은 이 타입이 사용하는 쪽입니다. 가지를 펼치면 코드 위치와 다음 단계의 연결을 확인할 수 있습니다."
+      : "화살표를 따라 출발 타입으로 돌아오는 순환 관계를 찾습니다. 그룹마다 대표 경로 하나를 표시하며, 경로를 펼치면 각 연결의 코드 위치를 볼 수 있습니다. Interface를 향하는 연결을 제외할지도 선택할 수 있습니다."
+    : viewGuides[state.view] ?? "";
+  get("candidate-guide").textContent = text;
+  get("candidate-guide").hidden = !text;
 }
 
 function showInspectionGroup(cases) {
@@ -328,6 +381,7 @@ function showInspectionGroup(cases) {
 }
 
 function showInspectionCandidates() {
+  updateCandidateGuide();
   const check = inspectionChecks.get(get("inspection-case").value);
   const candidates = check?.enabled ? check.candidates ?? [] : [];
   get("inspection-partial").hidden = !check?.enabled || !(data.parsedWithErrors > 0 || data.failures.length > 0);
@@ -343,9 +397,10 @@ function showInspectionCandidates() {
     const title = document.createElement("summary");
     const reason = document.createElement("p");
     details.className = "entry";
-    title.textContent = candidate.title;
+    title.textContent = candidate.dependencyGroups ? candidate.title + " · " + candidate.description : candidate.title;
     reason.textContent = candidate.description;
-    details.append(title, reason);
+    details.append(title);
+    if (!candidate.dependencyGroups) details.append(reason);
     if (candidate.location) {
       const location = document.createElement("p");
       location.className = "muted path";
@@ -357,6 +412,24 @@ function showInspectionCandidates() {
       heading.className = "direction-title";
       heading.textContent = "관련 코드 근거";
       details.append(heading, evidenceLocations(candidate.related));
+    }
+    if (candidate.dependencyGroups) {
+      const renderGroups = () => {
+        if (!details.open) return;
+        details.removeEventListener("toggle", renderGroups);
+        for (const group of candidate.dependencyGroups) {
+          const heading = document.createElement("h3");
+          heading.className = "direction-title";
+          heading.textContent = "의존성 묶음 · " + group.name;
+          details.append(heading);
+          for (const target of group.targets) {
+            const name = document.createElement("p");
+            name.textContent = "실제 타입 · " + target.name;
+            details.append(name, evidenceLocations(target.sites));
+          }
+        }
+      };
+      details.addEventListener("toggle", renderGroups);
     }
     item.append(details);
     list.append(item);
@@ -449,13 +522,14 @@ function distinctColors(ids) {
 }
 
 function isInterface(node) {
-  return node?.visualStudioFilter?.name.split(/[\\/]/).some(part => part.toLowerCase() === "interface") ?? false;
+  return node?.visualStudioFilter?.name?.toLowerCase().includes("interface") ?? false;
 }
 
 function showsType(node) { return state.showStructs || !node.isStruct; }
 function filterGroupCount(node) { return state.showStructs ? node.count : node.count - node.structCount; }
 
 function updatePathMode() {
+  updateCandidateGuide();
   const tree = get("path-mode").value === "tree";
   get("tree-root-control").hidden = !tree;
   get("tree-root").disabled = !tree;
@@ -786,7 +860,15 @@ function renderMap(resetCamera) {
     get("direction").value = "";
     clearFocus();
   }
+  if (state.focused && !scopeNodes.some(node => node.id === state.focusRoot))
+    clearFocus();
 
+  classSearchNodes = state.view === "class" ? scopeNodes : [];
+  if (onlyClassesActive()) {
+    scopeNodes = scopeNodes.filter(node => state.selectedClasses.has(node.id));
+    const ids = new Set(scopeNodes.map(node => node.id));
+    scopeEdges = scopeEdges.filter(edge => ids.has(edge.from) && ids.has(edge.to));
+  }
   visibleNodes = scopeNodes;
   visibleEdges = scopeEdges;
   let autoLayout;
@@ -795,12 +877,15 @@ function renderMap(resetCamera) {
   if (state.view !== "project") mapKey.push(state.showStructs);
   if (state.view === "group") mapKey.push(state.filterInterfaceOnly);
   if (inProjects) mapKey.push("project", state.interfaceOnly);
+  if (onlyClassesActive()) mapKey.push("selected-classes", [...state.selectedClasses].sort());
   if (state.focused) {
-    visibleEdges = selectedEdges();
-    const nearby = new Set([state.selected, ...visibleEdges.flatMap(edge => [edge.from, edge.to])]);
+    visibleEdges = scopeEdges.filter(edge =>
+      (state.direction !== "incoming" && state.expandedNodes.has(edge.from))
+      || (state.direction !== "outgoing" && state.expandedNodes.has(edge.to)));
+    const nearby = new Set([...state.expandedNodes, ...visibleEdges.flatMap(edge => [edge.from, edge.to])]);
     visibleNodes = scopeNodes.filter(node => nearby.has(node.id));
     autoLayout = focusLayout();
-    mapKey.push(state.selected, state.direction);
+    mapKey.push(state.focusRoot, [...state.expandedNodes].sort(), state.direction);
   } else if (relationshipView()) {
     const spacing = state.view === "group" ? 1.65 : state.view === "project" ? 1.35 : 1;
     autoLayout = createRelationshipLayout(scopeNodes, scopeEdges, state.view === "namespace" ? state.namespace : null, spacing);
@@ -811,7 +896,7 @@ function renderMap(resetCamera) {
   } else if (state.view === "group") {
     autoLayout = classLayout(scopeNodes, null, projectOf);
   } else {
-    autoLayout = state.view === "class" && state.showStructs ? fullLayout
+    autoLayout = state.view === "class" && state.showStructs && !onlyClassesActive() ? fullLayout
       : classLayout(scopeNodes, state.view === "namespace" ? state.namespace : null);
   }
 
@@ -828,8 +913,10 @@ function renderMap(resetCamera) {
   updateBounds();
   if (pickedEdge && !visibleEdges.includes(pickedEdge)) pickedEdge = null;
   const total = state.view === "group" ? eligibleGroups.length : classes.length - (state.showStructs ? 0 : structIds.size);
-  get("map-count").textContent = state.focused
-    ? "선택 주변 " + visibleNodes.length + "개 · 연결 " + visibleEdges.length
+  get("map-count").textContent = onlyClassesActive()
+    ? "선택한 클래스 " + visibleNodes.length + "/" + state.selectedClasses.size + "개 · 연결 " + visibleEdges.length
+    : state.focused
+    ? "탐색한 타입 " + state.expandedNodes.size + "개 · 표시 " + visibleNodes.length + "개 · 연결 " + visibleEdges.length
     : state.view === "namespace"
     ? namespaceTitle(state.namespace) + " · 내부 " + internalCount
       + "개 · 외부 " + (visibleNodes.length - internalCount) + "개 · 연결 " + visibleEdges.length
@@ -846,7 +933,38 @@ function renderMap(resetCamera) {
   updateSearch();
   updateHighlights();
   showEvidence();
-  if (resetCamera) fit(!relationshipView() && state.view === "class" && !state.focused ? .75 : 0);
+  if (resetCamera) fit(!relationshipView() && state.view === "class" && !state.focused && !onlyClassesActive() ? .75 : 0);
+}
+
+function onlyClassesActive() {
+  return state.view === "class" && state.onlyClasses;
+}
+
+function updateClassSelection() {
+  const list = get("class-selection-list");
+  list.replaceChildren();
+  for (const id of state.selectedClasses) {
+    const node = byId.get(id);
+    const item = document.createElement("li");
+    const name = document.createElement("span");
+    name.textContent = node.name;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "제거";
+    remove.setAttribute("aria-label", node.name + " 제거");
+    remove.addEventListener("click", () => {
+      state.selectedClasses.delete(id);
+      if (!state.selectedClasses.size) state.onlyClasses = false;
+      renderMap(true);
+    });
+    item.append(name, remove);
+    list.append(item);
+  }
+  get("class-selection-count").textContent = "선택한 클래스 " + state.selectedClasses.size + "개";
+  get("add-class").disabled = byId.get(state.selected)?.kind !== "class" || state.selectedClasses.has(state.selected);
+  get("clear-classes").disabled = !state.selectedClasses.size;
+  get("only-classes").disabled = !state.selectedClasses.size;
+  get("only-classes").checked = state.onlyClasses;
 }
 
 function selectedEdges() {
@@ -861,13 +979,16 @@ function updateBounds() {
 }
 
 function focusLayout() {
-  const outgoing = new Set(visibleEdges.filter(edge => edge.from === state.selected).map(edge => edge.to));
-  const incoming = new Set(visibleEdges.filter(edge => edge.to === state.selected && !outgoing.has(edge.from)).map(edge => edge.from));
+  const root = state.focusRoot;
+  const outgoing = new Set(visibleEdges.filter(edge => edge.from === root).map(edge => edge.to));
+  const incoming = new Set(visibleEdges.filter(edge => edge.to === root && !outgoing.has(edge.from)).map(edge => edge.from));
+  const direct = new Set([root, ...incoming, ...outgoing]);
   const ordered = ids => visibleNodes.filter(node => ids.has(node.id));
   const lanes = [
     { title: "들어오는 연결", nodes: ordered(incoming) },
-    { title: "선택 항목", nodes: [byId.get(state.selected)], center: true },
-    { title: "나가는 연결", nodes: ordered(outgoing) }
+    { title: "탐색 시작", nodes: [byId.get(root)], center: true },
+    { title: "나가는 연결", nodes: ordered(outgoing) },
+    { title: "확장한 연결", nodes: visibleNodes.filter(node => !direct.has(node.id)) }
   ].filter(lane => lane.nodes.length > 0);
   const width = 232, height = 52, stepX = 250, stepY = 68;
   const panels = lanes.map(lane => {
@@ -1193,7 +1314,8 @@ function matches(node) {
 
 function updateSearch() {
   const isHighLevel = state.view === "high-level";
-  const found = scopeNodes.filter(node => matches(node) && (!isHighLevel || highLevelCandidates.has(node.id)));
+  const found = (state.view === "class" ? classSearchNodes : scopeNodes)
+    .filter(node => matches(node) && (!isHighLevel || highLevelCandidates.has(node.id)));
   if (isHighLevel)
     found.sort((a, b) => highLevelCandidates.get(b.id).total - highLevelCandidates.get(a.id).total || a.name.localeCompare(b.name));
   setOptions(get("nodes"), found.map(node => [node.id, isHighLevel
@@ -1204,11 +1326,12 @@ function updateSearch() {
 }
 
 function choose(id, move) {
-  if (!id || !scopeNodes.some(node => node.id === id)) return;
-  const refocus = state.focused && state.selected !== id;
+  if (!id || !(state.view === "class" ? classSearchNodes : scopeNodes).some(node => node.id === id)) return;
+  const expand = state.focused && !state.expandedNodes.has(id);
   state.selected = id;
   pickedEdge = null;
-  if (refocus) {
+  if (expand) {
+    state.expandedNodes.add(id);
     renderMap(true);
     return;
   }
@@ -1232,6 +1355,7 @@ function inspectEdge(edge) {
 }
 
 function updateHighlights() {
+  const dimUnselected = !!state.selected && !onlyClassesActive() && !state.focused;
   graph.classList.toggle("has-selection", !!state.selected);
   const selected = new Set(selectedEdges());
   const connected = new Set();
@@ -1241,29 +1365,30 @@ function updateHighlights() {
       connected.add(edge.from);
       connected.add(edge.to);
     }
-    path.classList.toggle("connected", incident);
-    path.classList.toggle("unfocused", !!state.selected && (!incident || !!pickedEdge && pickedEdge !== edge));
+    path.classList.toggle("connected", incident || onlyClassesActive());
+    path.classList.toggle("unfocused", dimUnselected && (!incident || !!pickedEdge && pickedEdge !== edge));
     path.classList.toggle("picked", pickedEdge === edge);
-    label?.classList.toggle("unfocused", !!state.selected && (!incident || !!pickedEdge && pickedEdge !== edge));
+    label?.classList.toggle("unfocused", dimUnselected && (!incident || !!pickedEdge && pickedEdge !== edge));
   }
   for (const [id, node] of nodeElements) {
     node.classList.toggle("active", id === state.selected);
     node.classList.toggle("connected", connected.has(id));
-    node.classList.toggle("dimmed", !!state.selected && id !== state.selected && !connected.has(id) && !state.focused);
+    node.classList.toggle("dimmed", dimUnselected && id !== state.selected && !connected.has(id) && !state.focused);
     node.classList.toggle("matched", !!state.query && matches(byId.get(id)));
     node.setAttribute("aria-pressed", id === state.selected);
   }
   updateEdgeTargets();
   get("locate").disabled = !state.selected;
   get("direction").disabled = !state.selected;
-  get("focus").disabled = !state.selected;
+  get("focus").disabled = !state.selected || onlyClassesActive();
   get("focus").setAttribute("aria-pressed", state.focused);
   get("open-dependency-tree").hidden = byId.get(state.selected)?.kind !== "class";
+  updateClassSelection();
 }
 
 function updateEdgeTargets() {
   for (const { path, hit } of edgeElements)
-    hit.classList.toggle("available", state.focused || path.classList.contains("connected") || (!state.selected && edgesAtReadableZoom));
+    hit.classList.toggle("available", onlyClassesActive() || state.focused || path.classList.contains("connected") || (!state.selected && edgesAtReadableZoom));
 }
 
 function startDrag(event) {
