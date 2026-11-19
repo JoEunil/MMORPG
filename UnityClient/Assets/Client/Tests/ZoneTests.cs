@@ -69,6 +69,45 @@ namespace Mmorpg.Client.Tests
         }
 
         [Test]
+        public void LobbyReturnFencesOldSnapshotsAndAllowsZoneEntryAgain()
+        {
+            using (var f = new Fixture())
+            {
+                WorldTestSession.Ready(f.Model, f.Drain);
+                WorldTestSession.BeginAutomaticTransition(f.Model, f.Drain);
+                int lobbyReturns = 0, snapshots = 0;
+                f.Model.OnLobbyReturnReceived += () => lobbyReturns++;
+                f.Model.OnFullReceived += (_, __) => snapshots++;
+
+                var frame = new byte[47];
+                BitConverter.GetBytes((ushort)0xabcd).CopyTo(frame, 0);
+                BitConverter.GetBytes((uint)frame.Length).CopyTo(frame, 2);
+                frame[6] = 17;
+                frame[7] = 1;
+                frame[8] = (byte)ZoneChangeStatus.Lobby;
+                BitConverter.GetBytes(3UL).CopyTo(frame, 39);
+                var parse = typeof(Packet).GetMethod("DeserializeZoneChange", BindingFlags.Static | BindingFlags.NonPublic);
+                var ack = (STPacket<ZoneChangeResponseBody>)parse.Invoke(null, new object[] { Packet.ExtractHeader(frame), frame });
+                f.Model.ZoneChageReceived(ack.body.resStatus, ack.body.zoneID, ack.body.chatID, ack.body.zoneInternalID,
+                    ack.body.startX, ack.body.startY, ack.body.zoneGeneration, ack.body.ownershipEpoch);
+                f.Model.ZoneChageReceived((byte)ZoneChangeStatus.Lobby, 0, 0, 0, 0, 0, 0, 3);
+                WorldTestSession.CompleteAutomaticTransition(f.Model, f.Drain);
+                Assert.That(lobbyReturns, Is.EqualTo(1));
+                Assert.That(snapshots, Is.Zero);
+                Assert.Throws<InvalidOperationException>(() => f.Model.Chat("wait", 0, 0));
+                ((IViewModelTick)f.Model).SendUpdate();
+                Assert.That(f.Network.LastResyncEpoch, Is.Zero);
+
+                f.Model.ZoneChange((byte)ZONE_CHANGE.ENTER);
+                Assert.That(f.Network.Zones, Is.EqualTo(2));
+                WorldTestSession.BeginAutomaticTransition(f.Model, f.Drain, ownershipEpoch: 4);
+                WorldTestSession.CompleteAutomaticTransition(f.Model, f.Drain, ownershipEpoch: 4);
+                Assert.That(snapshots, Is.EqualTo(1));
+                Assert.DoesNotThrow(() => f.Model.Chat("ready", 0, 0));
+            }
+        }
+
+        [Test]
         public void DuplicateOldTransitionAndInFlightInventoryCannotUnlockOrReplaceNewWorld()
         {
             using (var f = new Fixture())

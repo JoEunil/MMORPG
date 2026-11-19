@@ -2,9 +2,9 @@
 #include "HuntingZoneData.h"
 #include "PacketWriter.h"
 #include "IPacket.h"
-#include "Config.h"
+#include "PacketConfig.h"
 #include "LoggerGlobal.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 #include <cstddef>
 namespace Core {
     void PacketWriter::Initialize(IPacketPoolManager* poolManager) {
@@ -502,9 +502,16 @@ namespace Core {
         return WriteFixedPacket(OP::ZONE_CHANGE_RESPONSE, FLAG_SIMULATION, ZoneChangeResponseBody{});
     }
 
+    std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeLobby(uint64_t ownershipEpoch) {
+        return WriteFixedPacket(OP::ZONE_CHANGE_RESPONSE, FLAG_SIMULATION, ZoneChangeResponseBody{
+            .resStatus = static_cast<uint8_t>(ZoneChangeStatus::Lobby),
+            .ownershipEpoch = ownershipEpoch
+        });
+    }
+
     std::unique_ptr<IPacket, PacketDeleter> PacketWriter::WriteZoneChangeSucess(const ZoneChangeResult& result) {
         return WriteFixedPacket(OP::ZONE_CHANGE_RESPONSE, FLAG_SIMULATION, ZoneChangeResponseBody{
-            .resStatus = 1,
+            .resStatus = static_cast<uint8_t>(ZoneChangeStatus::Field),
             .zoneID = result.zoneID,
             .chatID = result.chatID,
             .zoneInternalID = result.internalID,

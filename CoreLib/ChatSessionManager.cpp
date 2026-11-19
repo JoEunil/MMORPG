@@ -1,6 +1,7 @@
 ﻿#include "pch.h"
 #include "ChatSessionManager.h"
 #include "Config.h"
+#include "WorldConfig.h"
 #include "LoggerGlobal.h"
 
 namespace Core {

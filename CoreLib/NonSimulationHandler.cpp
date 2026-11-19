@@ -1,52 +1,49 @@
 ﻿#include "pch.h"
-#include "NonZoneHandler.h"
+#include "NonSimulationHandler.h"
 
+#include "CacheCommandSender.h"
 #include "PacketTypes.h"
 #include "IPacketView.h"
 #include "ISessionAuth.h"
 #include "INetworkSender.h"
 #include "PacketWriter.h"
 #include "ZoneState.h"
-#include "Message.h"
-#include "MessagePool.h"
-#include "IMessageQueue.h"
-#include "StateManager.h"
+#include "MessageTypes.h"
+#include "SessionManager.h"
 #include "LobbyZone.h"
 #include "ChatThreadPool.h"
 #include "IProfileCache.h"
 #include "LoggerGlobal.h"
-#include "Config.h"
+#include "PacketConfig.h"
 
 namespace Core {
-    void NonZoneHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, CoreMessagePool* m, IMessageQueue* mq, StateManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc) {
+    void NonSimulationHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, SessionManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc) {
         networkSender = sender;
         auth = s;
         writer = p;
-        messagePool = m;
-        messageQueue = mq;
-        stateManager = manager;
+        cacheCommands = commands;
+        sessionManager = manager;
         lobbyZone = lobby;
         chat = c;
         profileCache = pc;
     }
 
-    bool NonZoneHandler::IsReady() {
+    bool NonSimulationHandler::IsReady() {
         if (networkSender == nullptr) return false;
         if (auth == nullptr) return false;
         if (writer == nullptr) return false;
-        if (messagePool == nullptr) return false;
-        if (messageQueue == nullptr) return false;
-        if (stateManager == nullptr) return false;
+        if (cacheCommands == nullptr) return false;
+        if (sessionManager == nullptr) return false;
         if (lobbyZone == nullptr) return false;
         
         return true;
     }
 
-    void NonZoneHandler::Process(IPacketView* p) {
+    void NonSimulationHandler::Process(IPacketView* p) {
         PacketHeader* h = parseHeader(p->GetPtr());
         uint16_t zoneID = 0;
         if (p->GetOpcode() != OP::AUTH ) {
-            zoneID = stateManager->GetZoneID(p->GetSessionID());
+            zoneID = sessionManager->GetZoneID(p->GetSessionID());
         }
         
         switch (p->GetOpcode())
@@ -69,7 +66,7 @@ namespace Core {
             case OP::ZONE_RESYNC:
                 if (p->GetLength() == sizeof(PacketStruct<ZoneResyncBody>)) {
                     const auto* body = parseBody<ZoneResyncBody>(p->GetPtr());
-                    stateManager->SendBootstrap(p->GetSessionID(), body->ownershipEpoch);
+                    sessionManager->QueueBootstrap(p->GetSessionID(), body->ownershipEpoch);
                 }
                 break;
             case OP::RESPAWN_TO_TOWN:
@@ -124,95 +121,87 @@ namespace Core {
         
     }
 
-    void NonZoneHandler::Disconnect(uint64_t sessionID) {
-        stateManager->Disconnect(sessionID);
+    void NonSimulationHandler::Disconnect(uint64_t sessionID) {
+        sessionManager->RequestDisconnect(sessionID);
     }
 
-    void NonZoneHandler::RequestProfileRename(uint64_t sessionID, uint32_t profileId, const char* name, uint16_t nameLen) {
+    void NonSimulationHandler::RequestProfileRename(uint64_t sessionID, uint32_t profileId, const char* name, uint16_t nameLen) {
         if (profileId == INVALID_PROFILE_ID || name == nullptr || nameLen == 0 || nameLen >= MAX_CHARNAME_LEN) {
             errorLogger->LogError("non zone handler", "profile rename invalid", "session", sessionID, "profile_id", profileId, "nameLen", nameLen);
             return;
         }
-        MsgProfileRenameBody body{};
-        body.profileId = profileId;
-        std::memcpy(body.name, name, nameLen);
-        TryEnqueueMessage({ sessionID, MSG_PROFILE_RENAME }, body);
+        cacheCommands->EnqueueProfileRename(sessionID, profileId, {name, nameLen});
     }
 
-    void NonZoneHandler::UseItem(IPacketView* p) {
+    void NonSimulationHandler::UseItem(IPacketView* p) {
         const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
-        const auto result = stateManager->UseItem(p->GetSessionID(), request);
+        const auto result = sessionManager->UseItem(p->GetSessionID(), request);
         auto response = writer->WriteItemUseResponse(result);
         if (response)
             networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
-    void NonZoneHandler::GetEquipment(IPacketView* p) {
+    void NonSimulationHandler::GetEquipment(IPacketView* p) {
         const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
-        const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, false);
+        const auto result = sessionManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, false);
         auto response = writer->WriteEquipmentResponse(result);
         if (response)
             networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
-    void NonZoneHandler::SetEquipment(IPacketView* p) {
+    void NonSimulationHandler::SetEquipment(IPacketView* p) {
         const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
         if (request.slot > 2)
             return;
 
-        const auto result = stateManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, true, request.slot, request.itemID);
+        const auto result = sessionManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, true, request.slot, request.itemID);
         auto response = writer->WriteEquipmentResponse(result);
         if (response)
             networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
-    void NonZoneHandler::GetInventory(IPacketView* p) {
+    void NonSimulationHandler::GetInventory(IPacketView* p) {
         const auto sessionID = p->GetSessionID();
-        const auto characterID = stateManager->GetCharacterID(sessionID);
+        const auto characterID = sessionManager->GetCharacterID(sessionID);
         if (characterID == 0)
             return;
 
-        TryEnqueueMessage({ sessionID, MSG_INVENTORY_REQ }, MsgInventoryReqBody{ characterID });
+        cacheCommands->EnqueueInventory(sessionID, characterID);
     }
 
-    void NonZoneHandler::WalletRequest(IPacketView* p) {
+    void NonSimulationHandler::WalletRequest(IPacketView* p) {
         if (p->GetLength() != sizeof(PacketStruct<WalletRequestBody>)) return;
         const auto* header = parseHeader(p->GetPtr());
         const auto request = *parseBody<WalletRequestBody>(p->GetPtr());
         if (header->magic != MAGIC || header->opcode != OP::WALLET_REQUEST || header->length != p->GetLength()
             || IsSimulationFlag(header->flags) || request.requestID == 0) return;
-        const uint64_t characterID = stateManager->GetFieldCharacterID(p->GetSessionID());
+        const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
 
-        if (!TryEnqueueMessage(
-                { p->GetSessionID(), MSG_CURRENCY_REQ },
-                MsgCurrencyReqBody{ characterID, request.requestID })) {
+        if (!cacheCommands->EnqueueGoldBalance(p->GetSessionID(), characterID, request.requestID)) {
             MsgCurrencyResBody failed{};
             failed.requestID = request.requestID;
             failed.characterID = characterID;
             auto response = writer->WriteWalletGoldResponse(&failed);
-            if (response && stateManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
+            if (response && sessionManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
                 networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
         }
 
-        if (!TryEnqueueMessage(
-                { p->GetSessionID(), MSG_DIAMOND_REQ },
-                MsgDiamondReqBody{ characterID, request.requestID })) {
+        if (!cacheCommands->EnqueueDiamondBalance(p->GetSessionID(), characterID, request.requestID)) {
             MsgDiamondResBody failed{};
             failed.requestID = request.requestID;
             failed.characterID = characterID;
             auto response = writer->WriteWalletDiamondResponse(&failed);
-            if (response && stateManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
+            if (response && sessionManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
                 networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
         }
     }
 
-    void NonZoneHandler::Chat(IPacketView* p) {
+    void NonSimulationHandler::Chat(IPacketView* p) {
         auto body = parseBody<ChatRequestBody>(p->GetPtr());
         uint8_t* startPtr = p->GetPtr() + sizeof(PacketStruct<ChatRequestBody>);
         auto session = p->GetSessionID();
-        auto zoneID = stateManager->GetZoneID(session);
-        auto zone = stateManager->GetZone(zoneID);
+        auto zoneID = sessionManager->GetZoneID(session);
         ChatEvent event;
         event.type = ChatEventType::CHAT;
         event.senderSessionID = session;
@@ -234,9 +223,9 @@ namespace Core {
     }
 
     // 클라이언트가 모르는 profile_id 목록을 보내면 캐시에 있는 것만 돌려준다.
-    // NonZone 스레드에서 처리하므로 zone 틱과 무관하고, write-through 캐시라
+    // NonSimulation 스레드에서 처리하므로 zone 틱과 무관하고, write-through 캐시라
     // DB를 기다릴 일이 없어 동기 조회로 충분하다.
-    void NonZoneHandler::GetProfileBatch(IPacketView* p) {
+    void NonSimulationHandler::GetProfileBatch(IPacketView* p) {
         auto session = p->GetSessionID();
         if (profileCache == nullptr) {
             errorLogger->LogError("non zone handler", "profileCache not initialized", "session", session);
@@ -264,39 +253,5 @@ namespace Core {
         if (!res)
             return;
         networkSender->SendDataUnique(session, std::move(res));
-    }
-
-    void NonZoneHandler::ZoneChange(IPacketView* p) {
-        ZoneChangeResult result;
-        const auto session = p->GetSessionID();
-        const bool success = p->GetLength() == sizeof(PacketStruct<ZoneChangeBody>)
-            && stateManager->ChangeZone(session, parseBody<ZoneChangeBody>(p->GetPtr())->op, result);
-        // ChangeZone releases the shard and all Zone locks before network transmission.
-        auto response = success
-            ? writer->WriteZoneChangeSucess(result)
-            : writer->WriteZoneChangeFailed();
-        if (response)
-            networkSender->SendDataUnique(session, std::move(response));
-        if (success)
-            stateManager->SendBootstrap(session, result.ownershipEpoch);
-    }
-
-    void NonZoneHandler::RespawnToTown(IPacketView* p) {
-        ZoneChangeResult result;
-        const auto session = p->GetSessionID();
-        const bool validHeader = p->GetLength() == sizeof(PacketStruct<RespawnToTownBody>)
-            && parseHeader(p->GetPtr())->magic == MAGIC
-            && parseHeader(p->GetPtr())->opcode == OP::RESPAWN_TO_TOWN
-            && parseHeader(p->GetPtr())->length == p->GetLength()
-            && !IsSimulationFlag(parseHeader(p->GetPtr())->flags);
-        const bool success = validHeader
-            && stateManager->RespawnToTown(session, *parseBody<RespawnToTownBody>(p->GetPtr()), result);
-        auto response = success
-            ? writer->WriteZoneChangeSucess(result)
-            : writer->WriteZoneChangeFailed();
-        if (response)
-            networkSender->SendDataUnique(session, std::move(response));
-        if (success)
-            stateManager->SendBootstrap(session, result.ownershipEpoch);
     }
 }

@@ -22,7 +22,7 @@ IOCP가 받은 데이터를 세션별 `ClientContext`에서 누적하고, `NetPa
 
 ### CoreLib — 게임 상태와 요청 처리
 
-`PacketDispatcher`가 요청을 Zone과 NonZone 처리 경로로 나눈다. `StateManager`·`ZoneState`가 게임 상태를 관리하고, 채팅과 스냅샷 전송은 별도 워커가 맡는다. `PacketWriter`는 핸들러·워커·ZoneState가 공유하는 패킷 구성 기능이다.
+`PacketDispatcher`가 요청을 Zone과 NonZone 처리 경로로 나눈다. `Core::SessionManager`·`ZoneState`가 게임 상태를 관리하고, 채팅과 스냅샷 전송은 별도 워커가 맡는다. `PacketWriter`는 핸들러·워커·ZoneState가 공유하는 패킷 구성 기능이다.
 
 ![CoreLib 핵심 컴포넌트와 게임 처리 흐름](images/Architecture_CoreLib.png)
 

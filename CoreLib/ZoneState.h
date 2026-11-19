@@ -7,6 +7,7 @@
 #include <queue>
 #include <unordered_map>
 #include <array>
+#include <atomic>
 #include <optional>
 
 #include <new>
@@ -14,23 +15,42 @@
 #include "CharacterState.h"
 #include "Cell.h"
 #include "MonsterState.h"
-#include "Config.h"
+#include "WorldConfig.h"
+#include "PacketConfig.h"
 #include "SkillData.h"
 #include "CorePerfCollector.h"
-#include <BaseLib/TripleBuffer.h>
+#include "ISessionSnapshotReader.h"
 #include <CoreLib/LoggerGlobal.h>
 
 namespace Core {
     class IPacket;
     class BroadcastThreadPool;
     class PacketWriter;
-    class StateManager; 
+    class SessionManager;
+    class IZoneTransfer;
+    struct ActionRequestBody;
+    struct ParryRequestBody;
+    struct ParryResponseBody;
+    struct ZoneChangeResult;
 
     struct SkillRequest {
         uint64_t sessionID;
         uint8_t skillSlot;
         const Data::SkillData& skillInfo;
     }; 
+
+    struct ZoneTransfer {
+        enum class Kind { Movement, Respawn };
+
+        CharacterState character{};
+        uint64_t ownershipEpoch = 0;
+        uint16_t sourceZoneID = 0;
+        uint8_t dir = 0;
+        uint8_t skillSlot = 0;
+        float x = 0, y = 0, moveBudget = 0, aimAngle = 0;
+        Kind kind = Kind::Movement;
+        bool IsRespawn() const { return kind == Kind::Respawn; }
+    };
 
     class ZoneState {
         std::vector<CharacterState> m_chars;
@@ -52,17 +72,17 @@ namespace Core {
         alignas(std::hardware_destructive_interference_size) std::atomic<uint32_t>m_userCnt;
         char padding[std::hardware_destructive_interference_size - sizeof(uint32_t)];
 
-        Base::TripleBuffer<std::vector<std::vector<uint64_t>>> tripleBuffer;
-        std::vector<std::vector<uint64_t>>* sessionSnapshotWriter;
+        Base::TripleBuffer<SessionSnapshot> tripleBuffer;
+        SessionSnapshot* sessionSnapshotWriter;
 
         inline static BroadcastThreadPool* broadcast;
         inline static PacketWriter* writer;
-        inline static StateManager* stateManager;
+        inline static SessionManager* sessionManager;
         inline static CorePerfCollector* perfCollector;
-        static void Initialize(BroadcastThreadPool* b, PacketWriter* p, StateManager* s, CorePerfCollector* pc) {
+        static void Initialize(BroadcastThreadPool* b, PacketWriter* p, SessionManager* s, CorePerfCollector* pc) {
             broadcast = b;
             writer = p;
-            stateManager = s;
+            sessionManager = s;
             perfCollector = pc;
         }
         static bool IsReady() {
@@ -80,9 +100,23 @@ namespace Core {
         void RemoveFromCell(CharacterState& character);
         void AddToCell(CharacterState& character,  uint8_t x, uint8_t y);
         uint32_t ImmigrateCharLocked(uint64_t sessionID, const CharacterState& user);
+        bool RegisterCharacterLocked(CharacterState&& incoming);
+        bool AdmitLobbyCharacter(uint64_t sessionID, CharacterState incoming, ZoneChangeResult& result);
+        bool DescribeOrRespawnInTown(uint64_t sessionID, uint64_t characterID, bool replay, ZoneChangeResult& result);
+        void ClearCharacterEffects(uint64_t sessionID, uint32_t internalID);
+        std::shared_ptr<ZoneTransfer> ApplyAction(uint64_t sessionID, const ActionRequestBody& action, IZoneTransfer& zoneTransfer);
+        std::shared_ptr<ZoneTransfer> StartRespawnTransfer(uint64_t sessionID, uint64_t characterID,
+            uint64_t ownershipEpoch, IZoneTransfer& zoneTransfer);
+        bool TryResolveZoneTransfer(const ZoneTransfer& transfer, bool returning, ZoneChangeResult& result);
+        bool AdmitZoneTransferLocked(const ZoneTransfer& transfer);
+        bool RestoreZoneTransferLocked(const CharacterState& original);
+        ParryResponseBody Parry(uint64_t sessionID, const ParryRequestBody& request);
+        void UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version);
         void RemoveCharacterLocked(uint64_t sessionID);
-        void RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint16_t dirtyBit);
+        void RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint32_t dirtyBit);
         void UpdateSessionSnapshot();
+        bool DescribeZoneChange(uint64_t sessionID, uint64_t chatID, uint64_t ownershipEpoch, ZoneChangeResult& result);
+        bool EnqueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch, uint64_t bootstrapID);
         void MoveMonsterHome(MonsterState& monster);
         void UseMonsterSkill(MonsterState& monster);
         void SetMonsterPosition(MonsterState& monster, float x, float y);
@@ -90,7 +124,8 @@ namespace Core {
         void FullSnapshotMonsterLocked();
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
-        friend class StateManager;
+        friend class SessionManager;
+        friend class ZoneHandler;
         friend class MonsterBehaviorFixture;
     public:
         explicit ZoneState(uint16_t zone) {
@@ -103,37 +138,33 @@ namespace Core {
 
             ZoneInit(m_area, m_zoneID);
             CellInit(m_cells, m_area);
-            auto back1 = new std::vector<std::vector<uint64_t>>(CELLS_X * CELLS_Y);
-            auto back2 = new std::vector<std::vector<uint64_t>>(CELLS_X * CELLS_Y);
-            sessionSnapshotWriter = new std::vector<std::vector<uint64_t>>(CELLS_X * CELLS_Y);
-            for (auto& c : *back1) {
-                c.reserve(CELL_CAPACITY);
-            }
-            for (auto& c : *back2) {
-                c.reserve(CELL_CAPACITY);
-            }
-            for (auto& c : *sessionSnapshotWriter) {
-                c.reserve(CELL_CAPACITY);
-            }
-            // Init 호출 시 소유권이 TripleBuffer로 이전됨
-            // 이후 back1, back2는 TripleBuffer가 해제 책임
-            tripleBuffer.Init(back1, back2);
-
             m_monsters.reserve(MAX_MONSTER_COUNT);
             m_userCnt.store(0, std::memory_order_relaxed);
             InitAOI();
+
+            const auto allocateSnapshot = [] {
+                auto snapshot = std::make_unique<SessionSnapshot>(CELLS_X * CELLS_Y);
+                for (auto& cell : *snapshot)
+                    cell.reserve(CELL_CAPACITY);
+                return snapshot;
+            };
+            auto back1 = allocateSnapshot();
+            auto back2 = allocateSnapshot();
+            sessionSnapshotWriter = allocateSnapshot().release();
+            tripleBuffer.Init(back1.release(), back2.release());
+        }
+        ~ZoneState() {
+            delete sessionSnapshotWriter;
         }
         void InitializeMonster();
         bool EmigrateChar(uint64_t sessionID, CharacterState& o);
-        void UpdateProfileVersion(uint64_t sessionID, uint32_t version);
-        Base::BufferReader<std::vector<std::vector<uint64_t>>> GetSessionSnaphot() {
+        SessionSnapshotView ReadSessionSnapshot() {
             return tripleBuffer.Read();
         }
         void DeltaSnapshot();
         void DeltaSnapshotMonster();
         void FullSnapshot();
         void FullSnapshotMonster();
-        bool EnqueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch, uint64_t bootstrapID);
         void ActionSnapshot();
         void ReplenishMoveBudget();
         void Move(uint64_t sessionID, uint8_t dir, float x, float y);

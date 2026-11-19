@@ -4,7 +4,6 @@
 #include <cstring>
 
 #include "MessageTypes.h"
-#include "ZoneState.h"
 #include "IPacketPoolManager.h"
 #include "PacketTypes.h"
 #include "IPacket.h"
@@ -14,6 +13,9 @@
 namespace Core {
     class IPacket;
     class PacketTypes;
+    struct ActionResult;
+    struct CharacterState;
+    struct MonsterState;
     struct ZoneChangeResult;
     class PacketWriter : public IPingPacketWriter{
         IPacketPoolManager* packetPoolManager = nullptr;
@@ -107,6 +109,7 @@ namespace Core {
         std::unique_ptr<IPacket, PacketDeleter> WriteProfileBatchRes(const ProfileEntry* entries, uint16_t count);
         std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeFailed();
         std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeSucess(const ZoneChangeResult& result);
+        std::unique_ptr<IPacket, PacketDeleter> WriteZoneChangeLobby(uint64_t ownershipEpoch);
         std::unique_ptr<IPacket, PacketDeleter>  GetPingPacket(uint64_t rtt,uint64_t nowMs) override;
     };
 }

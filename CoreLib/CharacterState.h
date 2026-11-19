@@ -1,7 +1,6 @@
 ﻿#pragma once
 #include <cstdint>
 #include <vector>
-#include "Config.h"
 #include "GrowthData.h"
 #include "ItemData.h"
 
@@ -10,6 +9,13 @@ namespace Core {
         uint16_t skillID;
         uint32_t skillCoolDownTick;
     };
+
+    struct ParryRequestHistory {
+        uint64_t requestID = 0;
+        uint64_t ownershipEpoch = 0;
+        uint8_t status = 0;
+    };
+
     struct CharacterState {
         uint32_t zoneInternalID; // zone 내부에서 사용하는 id
         uint32_t profileId;      // 공개 프로필 키. 이름은 여기 담지 않는다.
@@ -63,11 +69,19 @@ namespace Core {
         uint32_t potionCooldownTicks = 0;
         uint32_t parryWindowTicks = 0;
         uint32_t parryCooldownTicks = 0;
+        ParryRequestHistory lastParry;
         uint16_t lastZone;
         uint32_t dirtyBit = 0x00; // 변경된 필드 표시
 
         uint64_t sessionID;
         uint64_t characterID;
+
+        bool UpdateProfileVersion(uint32_t profileID, uint32_t version) noexcept {
+            if (profileId != profileID || profileVersion >= version)
+                return false;
+            profileVersion = version;
+            return true;
+        }
 
         void AddExperience(uint32_t reward) {
             const uint64_t totalExp = static_cast<uint64_t>(exp) + reward;

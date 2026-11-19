@@ -4,6 +4,7 @@
 #include <CoreLib/MessageTypes.h>
 #include <CoreLib/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
+#include <CoreLib/PacketConfig.h>
 
 #include "DBWorker.h"
 #include <atomic>

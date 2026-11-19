@@ -126,6 +126,22 @@ namespace ClientCore
             }
         }
 
+        public void ReturnToLobby(ulong ownershipEpoch)
+        {
+            lock (_lock)
+            {
+                if (ownershipEpoch <= _ownershipEpoch) return;
+                _zoneID = 0;
+                _zoneGeneration = 0;
+                _ownershipEpoch = ownershipEpoch;
+                _zoneInternalID = 0;
+                _worldReady = false;
+                _hasPosition = false;
+                _hasAuthoritativePosition = false;
+                _nextBootstrapResyncAt = 0;
+            }
+        }
+
         public void ObservePlayerFull(ushort zoneID, ulong generation, ulong epoch, ulong bootstrapID,
             bool bootstrapEnd, bool ownFound, float x, float y)
         {

@@ -148,10 +148,15 @@
     <ClInclude Include="LoggerGlobal.h" />
     <ClInclude Include="MonsterData.h" />
     <ClInclude Include="MonsterState.h" />
-    <ClInclude Include="NonZoneHandler.h" />
-    <ClInclude Include="NonZoneThreadPool.h" />
+    <ClInclude Include="NonSimulationHandler.h" />
+    <ClInclude Include="NonSimulationThreadPool.h" />
     <ClInclude Include="BroadcastThreadPool.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="CacheConfig.h" />
+    <ClInclude Include="CacheCommandSender.h" />
+    <ClInclude Include="NonSimulationConfig.h" />
+    <ClInclude Include="PacketConfig.h" />
+    <ClInclude Include="WorldConfig.h" />
     <ClInclude Include="DurableLogger.h" />
     <ClInclude Include="INetworkSender.h" />
     <ClInclude Include="ILogger.h" />
@@ -159,6 +164,13 @@
     <ClInclude Include="InMemoryQueue.h" />
     <ClInclude Include="IPacket.h" />
     <ClInclude Include="IPacketDispatcher.h" />
+    <ClInclude Include="ISessionSnapshotReader.h" />
+    <ClInclude Include="IZonePacketQueue.h" />
+    <ClInclude Include="IZoneRequestQueue.h" />
+    <ClInclude Include="ILobbyReturnQueue.h" />
+    <ClInclude Include="INonSimulationQueue.h" />
+    <ClInclude Include="ISessionStatusReader.h" />
+    <ClInclude Include="IZoneTransfer.h" />
     <ClInclude Include="IPacketPool.h" />
     <ClInclude Include="IPacketPoolManager.h" />
     <ClInclude Include="ICachedClock.h" />
@@ -168,6 +180,7 @@
     <ClInclude Include="Message.h" />
     <ClInclude Include="MessageQueueHandler.h" />
     <ClInclude Include="MessageTypes.h" />
+    <ClInclude Include="MessageWriter.h" />
     <ClInclude Include="PacketDispatcher.h" />
     <ClInclude Include="PacketTypes.h" />
     <ClInclude Include="PacketWriter.h" />
@@ -178,23 +191,26 @@
     <ClInclude Include="Monsters.inc" />
     <ClInclude Include="GrowthData.h" />
     <ClInclude Include="Growth.inc" />
-    <ClInclude Include="StateManager.h" />
+    <ClInclude Include="SessionManager.h" />
     <ClInclude Include="Cell.h" />
     <ClInclude Include="WorldMap.h" />
     <ClInclude Include="Generated\WorldMap.inc" />
+    <ClInclude Include="ZoneEventRouter.h" />
     <ClInclude Include="ZoneHandler.h" />
     <ClInclude Include="ZoneState.h" />
-    <ClInclude Include="ZoneThreadSet.h" />
+    <ClInclude Include="ZoneThread.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ChatSessionManager.cpp" />
     <ClCompile Include="ChatThreadPool.cpp" />
+    <ClCompile Include="CacheCommandSender.cpp" />
     <ClCompile Include="DurableLogger.cpp" />
     <ClCompile Include="LoggerGlobal.cpp" />
-    <ClCompile Include="NonZoneHandler.cpp" />
-    <ClCompile Include="NonZoneHandler_Bazaar.cpp" />
-    <ClCompile Include="NonZoneHandler_WorldEntry.cpp" />
-    <ClCompile Include="NonZoneThreadPool.cpp" />
+    <ClCompile Include="NonSimulationHandler.cpp" />
+    <ClCompile Include="NonSimulationHandler_Bazaar.cpp" />
+    <ClCompile Include="NonSimulationHandler_WorldEntry.cpp" />
+    <ClCompile Include="NonSimulationHandler_Zone.cpp" />
+    <ClCompile Include="NonSimulationThreadPool.cpp" />
     <ClCompile Include="BroadcastThreadPool.cpp" />
     <ClCompile Include="PacketDispatcher.cpp" />
     <ClCompile Include="SkillData.cpp" />
@@ -204,7 +220,8 @@
     <ClCompile Include="ZoneState_Monsters.cpp" />
     <ClCompile Include="ZoneState_Skills.cpp" />
     <ClCompile Include="ZoneState_Snapshots.cpp" />
-    <ClCompile Include="ZoneThreadSet.cpp" />
+    <ClCompile Include="ZoneEventRouter.cpp" />
+    <ClCompile Include="ZoneThread.cpp" />
     <ClInclude Include="IMessageQueue.h">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClInclude>
@@ -220,7 +237,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="StateManager.cpp" />
+    <ClCompile Include="SessionManager.cpp" />
     <ClCompile Include="ZoneState.cpp" />
   </ItemGroup>
   <ItemGroup>

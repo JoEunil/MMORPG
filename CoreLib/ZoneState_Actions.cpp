@@ -1,13 +1,70 @@
 ﻿#include "pch.h"
 #include <cmath>
+#include <limits>
 #include "ZoneState.h"
 #include "IPacket.h"
 #include "ILogger.h"
+#include "PacketTypes.h"
 #include "PacketWriter.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 #include "WorldMap.h"
+#include "IZoneTransfer.h"
 
 namespace Core {
+    std::shared_ptr<ZoneTransfer> ZoneState::ApplyAction(uint64_t sessionID, const ActionRequestBody& action,
+        IZoneTransfer& zoneTransfer) {
+        float previousX, previousY, previousBudget;
+        uint8_t previousDir;
+        uint32_t previousDirty;
+        {
+            std::lock_guard zoneLock(m_mutex);
+            const auto member = m_sessionToIndex.find(sessionID);
+            if (member == m_sessionToIndex.end())
+                return nullptr;
+            const auto& character = m_chars[member->second];
+            previousX = character.x;
+            previousY = character.y;
+            previousBudget = character.moveBudget;
+            previousDir = character.dir;
+            previousDirty = character.dirtyBit;
+        }
+
+        Move(sessionID, action.dir, action.x, action.y);
+        {
+            std::lock_guard zoneLock(m_mutex);
+            const auto member = m_sessionToIndex.find(sessionID);
+            if (member == m_sessionToIndex.end())
+                return nullptr;
+            const auto& character = m_chars[member->second];
+            const auto destination = action.ownershipEpoch == (std::numeric_limits<uint64_t>::max)()
+                ? 0 : zoneTransfer.FindDestination(m_zoneID, character.x, character.y);
+            if (destination != 0) {
+                const float x = character.x, y = character.y, moveBudget = character.moveBudget;
+                const uint8_t dir = character.dir;
+                RestoreMovementLocked(sessionID, previousX, previousY, previousDir, previousBudget, previousDirty);
+
+                auto transfer = std::make_shared<ZoneTransfer>();
+                transfer->character = character;
+                transfer->sourceZoneID = m_zoneID;
+                transfer->ownershipEpoch = action.ownershipEpoch;
+                transfer->x = x;
+                transfer->y = y;
+                transfer->moveBudget = moveBudget;
+                transfer->dir = dir;
+                transfer->skillSlot = action.skillSlot;
+                transfer->aimAngle = action.aimAngle;
+                if (!zoneTransfer.TryEnqueueTransfer(destination, transfer))
+                    return nullptr;
+                RemoveCharacterLocked(sessionID);
+                return transfer;
+            }
+        }
+
+        Skill(sessionID, action.skillSlot, action.aimAngle);
+        DirtyCheck(sessionID);
+        return nullptr;
+    }
+
     // 틱마다 이동 예산을 보충한다. Move()가 이 예산에서 이동 거리를 차감하므로,
     // 한 틱에 입력이 몇 개 들어오든 총 이동량이 경과 시간을 넘지 못한다.
     // CAP으로 이월을 제한해 오래 정지했다가 한 번에 순간이동하는 것을 막는다.
@@ -136,6 +193,42 @@ namespace Core {
         m_cells[character.cellY][character.cellX].activeSkills.emplace_back(
             0, sessionID, character.zoneInternalID, 0, skillSlot, character.dir, character.x, character.y, skill.skillID, 0, 0, aimAngle
         );
+    }
+
+    ParryResponseBody ZoneState::Parry(uint64_t sessionID, const ParryRequestBody& request) {
+        ParryResponseBody result{request.requestID, request.ownershipEpoch, static_cast<uint8_t>(ParryStatus::Unavailable), 0, 0};
+        std::lock_guard zoneLock(m_mutex);
+        const auto member = m_sessionToIndex.find(sessionID);
+        if (member == m_sessionToIndex.end())
+            return result;
+
+        auto& character = m_chars[member->second];
+        auto& previous = character.lastParry;
+        if (request.requestID < previous.requestID
+            || (request.requestID == previous.requestID && request.ownershipEpoch != previous.ownershipEpoch)) {
+            result.status = static_cast<uint8_t>(ParryStatus::StaleRequest);
+            return result;
+        }
+        if (request.requestID == previous.requestID) {
+            result.status = previous.status;
+        } else {
+            if (character.hp <= 0) result.status = static_cast<uint8_t>(ParryStatus::Dead);
+            else if (character.parryCooldownTicks != 0) result.status = static_cast<uint8_t>(ParryStatus::Cooldown);
+            else {
+                character.parryWindowTicks = Data::parryWindowTicks;
+                character.parryCooldownTicks = Data::parryCooldownTicks;
+                result.status = static_cast<uint8_t>(ParryStatus::Accepted);
+                m_cells[character.cellY][character.cellX].actionResults.push_back({0, character.zoneInternalID, 0,
+                    Data::parrySkillSlot, character.dir, character.x, character.y, Data::parrySkillID, 0,
+                    character.dir == 0 ? 0.0f : character.dir == 1 ? 180.0f : character.dir == 2 ? 270.0f : 90.0f});
+            }
+            previous = {result.requestID, result.ownershipEpoch, result.status};
+        }
+        if (result.status == static_cast<uint8_t>(ParryStatus::Accepted) || result.status == static_cast<uint8_t>(ParryStatus::Cooldown)) {
+            result.windowRemainingTicks = character.parryWindowTicks;
+            result.cooldownRemainingTicks = character.parryCooldownTicks;
+        }
+        return result;
     }
 
     void ZoneState::DirtyCheck(uint64_t sessionID) {

@@ -5,9 +5,9 @@
 #include "INetworkSender.h"
 #include "PacketWriter.h"
 #include "LobbyZone.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 #include "LoggerGlobal.h"
-#include "Config.h"
+#include "IZoneRequestQueue.h"
 
 namespace Core {
     namespace {
@@ -20,7 +20,7 @@ namespace Core {
     }
 
     bool MessageQueueHandler::IsCurrentFieldCharacter(uint64_t sessionID, uint64_t characterID) {
-        return stateManager && characterID != 0 && stateManager->GetFieldCharacterID(sessionID) == characterID;
+        return sessionManager && characterID != 0 && sessionManager->GetFieldCharacterID(sessionID) == characterID;
     }
 
     template<typename T>
@@ -40,7 +40,7 @@ namespace Core {
             if (!IsCurrentFieldCharacter(sessionID, body->characterID))
                 return;
         } else if constexpr (Scope == ResponseScope::FieldSession) {
-            if (!stateManager || !stateManager->IsFieldSession(sessionID))
+            if (!sessionManager || !sessionManager->IsFieldSession(sessionID))
                 return;
         }
 
@@ -157,17 +157,15 @@ namespace Core {
             networkSender->SendDataUnique(sessionID, std::move(packet));
     }
 
-    // rename이 DB에 확정된 뒤 도는 경로. zone이 들고 있는 profileVersion 사본을
-    // 여기서 갱신해야 delta로 전파된다.
     void MessageQueueHandler::ProfileRenameResponse(uint64_t sessionID, const MsgProfileRenameResBody* body) {
-        if (body->resStatus == 0) {
+        if (body->resStatus != 1) {
             gameLogger->LogInfo("mq handler", "profile rename failed", "sessionID", sessionID, "profile_id", body->profileId);
             return;
         }
-        if (stateManager == nullptr) {
-            errorLogger->LogError("mq handler", "stateManager not initialized", "sessionID", sessionID);
+        if (sessionManager == nullptr) {
+            errorLogger->LogError("mq handler", "sessionManager not initialized", "sessionID", sessionID);
             return;
         }
-        stateManager->UpdateProfileVersion(sessionID, body->version);
+        sessionManager->QueueProfileVersionUpdate({sessionID, body->profileId, body->version});
     }
 }

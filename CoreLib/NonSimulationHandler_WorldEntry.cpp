@@ -1,22 +1,21 @@
 ﻿#include "pch.h"
-#include "NonZoneHandler.h"
+#include "NonSimulationHandler.h"
 
-#include "Config.h"
-#include "IMessageQueue.h"
+#include "CacheCommandSender.h"
+#include "NonSimulationConfig.h"
 #include "INetworkSender.h"
 #include "IPacketView.h"
-#include "Message.h"
 #include "PacketTypes.h"
 #include "PacketWriter.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 #include "ISessionAuth.h"
 
 #include <cstring>
 #include <memory>
 
 namespace Core {
-    void NonZoneHandler::ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID) {
-        if (!stateManager->CompleteAuth(sessionID, userID, resStatus == RES_STATUS::SUCCESS))
+    void NonSimulationHandler::ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID) {
+        if (!sessionManager->CompleteAuth(sessionID, userID, resStatus == RES_STATUS::SUCCESS))
             return;
         auto res = writer->WriteAuthResponse(resStatus);
         if (res == nullptr)
@@ -24,7 +23,7 @@ namespace Core {
         networkSender->SendDataUnique(sessionID, std::move(res));
     }
 
-    void NonZoneHandler::CheckSession(IPacketView* p) {
+    void NonSimulationHandler::CheckSession(IPacketView* p) {
         AuthRequestBody* body = parseBody<AuthRequestBody>(p->GetPtr());
         auto privdata = std::make_unique<SessionCallbackData>();
         privdata->sessionID = p->GetSessionID();
@@ -33,22 +32,18 @@ namespace Core {
         privdata->callbackFunc = [this](uint64_t sessionID, uint8_t resStatus, uint64_t userID) {
             ResponseSession(sessionID, resStatus, userID);
         };
-        stateManager->BeginAuth(privdata->sessionID);
+        sessionManager->BeginAuth(privdata->sessionID);
         auth->CheckSession(privdata.release());
     }
 
-    void NonZoneHandler::GetCharacterList(IPacketView* p) {
+    void NonSimulationHandler::GetCharacterList(IPacketView* p) {
         const auto sessionID = p->GetSessionID();
-        TryEnqueueMessage(
-            { sessionID, MSG_CHARACTER_LIST_REQ },
-            MsgCharacterListReqBody{ CHANNEL_ID, stateManager->GetUserID(sessionID) });
+        cacheCommands->EnqueueCharacterList(sessionID, CHANNEL_ID, sessionManager->GetUserID(sessionID));
     }
 
-    void NonZoneHandler::GetCharacterState(IPacketView* p) {
+    void NonSimulationHandler::GetCharacterState(IPacketView* p) {
         const auto sessionID = p->GetSessionID();
         const auto* packetBody = parseBody<EnterWorldRequestBody>(p->GetPtr());
-        TryEnqueueMessage(
-            { sessionID, MSG_CHARACTER_STATE_REQ },
-            MsgCharacterStateReqBody{ CHANNEL_ID, stateManager->GetUserID(sessionID), packetBody->characterID });
+        cacheCommands->EnqueueCharacterState(sessionID, CHANNEL_ID, sessionManager->GetUserID(sessionID), packetBody->characterID);
     }
 }

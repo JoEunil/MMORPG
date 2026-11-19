@@ -3,6 +3,7 @@
 #include <winsock2.h>
 #include <cstdint>
 #include <chrono>
+#include <CoreLib/PacketConfig.h>
 #include <CoreLib/PacketTypes.h>
 
 namespace Net {

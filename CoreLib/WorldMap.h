@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -102,5 +103,32 @@ namespace Core::WorldMap {
 
     inline bool CanTraverse(float fromX, float fromY, float toX, float toY) {
         return Detail::CanTraverse(fromX, fromY, toX, toY, WalkableBits);
+    }
+
+    // Overlapping bounds keep the current owner until its outer edge is reached.
+    inline uint16_t FindTransitionZone(uint16_t sourceZoneID, float x, float y) {
+        if (sourceZoneID == 0 || sourceZoneID > Zones.size() || !Detail::InBounds(x, y))
+            return 0;
+        const auto& source = Zones[sourceZoneID - 1];
+        const float minX = source.originX + source.localBounds.x;
+        const float minY = source.originY + source.localBounds.y;
+        const int dx = (x >= minX + source.localBounds.width) - (x <= minX);
+        const int dy = (y >= minY + source.localBounds.height) - (y <= minY);
+        const int column = std::clamp(source.column + dx, 0, ZoneColumns - 1);
+        const int row = std::clamp(source.row + dy, 0, ZoneRows - 1);
+        if (column == source.column && row == source.row)
+            return 0;
+        for (std::size_t i = 0; i < source.neighborIds.size(); ++i) {
+            const auto id = source.neighborIds[i];
+            if (id <= 0 || static_cast<std::size_t>(id) > Zones.size())
+                continue;
+            const auto& neighbor = Zones[id - 1];
+            if (neighbor.column == column && neighbor.row == row) {
+                if (column != source.column && row != source.row && !source.directCrossings[i])
+                    return 0;
+                return static_cast<uint16_t>(id);
+            }
+        }
+        return 0;
     }
 }

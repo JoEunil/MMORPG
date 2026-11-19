@@ -12,19 +12,19 @@ namespace Core {
     class Message;
     class INetworkSender;
     class LobbyZone;
-    class StateManager;
+    class SessionManager;
 
     class MessageQueueHandler {
         // 캐시 or db 요청 결과 처리
         PacketWriter* writer = nullptr;
         INetworkSender* networkSender = nullptr;
         LobbyZone* lobbyZone = nullptr;
-        StateManager* stateManager = nullptr;
-        void Initialize(INetworkSender* sender, PacketWriter* w, LobbyZone* lo, StateManager* s) noexcept {
+        SessionManager* sessionManager = nullptr;
+        void Initialize(INetworkSender* sender, PacketWriter* w, LobbyZone* lo, SessionManager* s) noexcept {
             networkSender = sender;
             writer = w;
             lobbyZone = lo;
-            stateManager = s;
+            sessionManager = s;
         }
         bool IsReady() {
             if (networkSender == nullptr) {

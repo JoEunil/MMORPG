@@ -3,7 +3,8 @@
 #include <cstdint>
 #include <algorithm>
 
-#include "Config.h"
+#include "PacketConfig.h"
+#include "WorldMap.h"
 
 namespace Core {
     inline constexpr float ZONE_SIZE = WorldMap::ZoneCoreSize;

@@ -105,9 +105,11 @@ namespace ClientCore.Network
             try { packet = Packet.DeserializeZoneChange(header, buffer); }
             catch (ArgumentException) { return; }
             var body = packet.body;
-            if (body.resStatus == 1)
+            if (body.resStatus == (byte)ZoneChangeStatus.Field)
                 session.SetZoneOwnership(body.zoneID, body.zoneGeneration, body.ownershipEpoch,
                     body.zoneInternalID, body.startX, body.startY);
+            else if (body.resStatus == (byte)ZoneChangeStatus.Lobby)
+                session.ReturnToLobby(body.ownershipEpoch);
         }
 
         private static void HandleFull(int index, ClientSession session, PacketHeader header, byte[] buffer, bool monsters)

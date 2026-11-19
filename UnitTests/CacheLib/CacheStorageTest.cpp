@@ -423,9 +423,11 @@ namespace Cache {
         std::unique_ptr<CacheMessagePool> messages = std::make_unique<CacheMessagePool>();
         std::unique_ptr<DBWorker<DBConnectionBazaar>> stoppedWorker = std::make_unique<DBWorker<DBConnectionBazaar>>();
         SearchResponseQueue responses;
+        Core::MessageWriter messageWriter;
         Handler handler;
         void SetUp() override {
             handler.messageQ = &responses;
+            handler.messageWriter = &messageWriter;
             handler.messagePool = messages.get();
             handler.dbWorkerBazaar = stoppedWorker.get();
         }
@@ -579,9 +581,11 @@ namespace Cache {
         std::unique_ptr<CacheMessagePool> messages = std::make_unique<CacheMessagePool>();
         std::unique_ptr<DBWorker<DBConnectionBazaar>> stoppedWorker = std::make_unique<DBWorker<DBConnectionBazaar>>();
         SearchResponseQueue responses;
+        Core::MessageWriter messageWriter;
         Handler handler;
         void SetUp() override {
             handler.messageQ = &responses;
+            handler.messageWriter = &messageWriter;
             handler.messagePool = messages.get();
             handler.dbWorkerBazaar = stoppedWorker.get();
         }

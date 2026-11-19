@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <string_view>
-#include "Config.h"
+#include "PacketConfig.h"
 
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
@@ -339,6 +339,8 @@ namespace Core {
     struct ZoneResyncBody { uint64_t ownershipEpoch; };
     struct RespawnToTownBody { uint64_t ownershipEpoch; };
     static_assert(sizeof(RespawnToTownBody) == sizeof(uint64_t));
+
+    enum class ZoneChangeStatus : uint8_t { Failed, Field, Lobby };
 
     struct ZoneChangeResponseBody {
         uint8_t resStatus;

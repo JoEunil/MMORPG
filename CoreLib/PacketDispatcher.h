@@ -1,25 +1,34 @@
 ﻿#pragma once
-#include "NonZoneThreadPool.h"
-#include "ZoneThreadSet.h"
+#include "INonSimulationQueue.h"
+#include "ISessionStatusReader.h"
 #include "IPacketView.h"
 #include "IPacketDispatcher.h"
-#include "StateManager.h"
-#include "PacketTypes.h"
+#include "IZonePacketQueue.h"
+#include "LoggerGlobal.h"
 namespace Core {
     class ILogger;
     class PacketDispatcher : public IPacketDispatcher {
-        NonZoneThreadPool* nonZoneThreadPool = nullptr;
-        ZoneThreadSet*  zoneThreadSet = nullptr;
-        StateManager* stateManager = nullptr;
-        void Initialize(NonZoneThreadPool* a, ZoneThreadSet* z, StateManager* s) {
-            nonZoneThreadPool = a;
-            zoneThreadSet = z;
-            stateManager = s;
+        INonSimulationQueue* nonSimulationQueue = nullptr;
+        IZonePacketQueue* zonePackets = nullptr;
+        const ISessionStatusReader* sessions = nullptr;
+        void Initialize(INonSimulationQueue& nonSimulation, IZonePacketQueue& packets, const ISessionStatusReader& reader) {
+            nonSimulationQueue = &nonSimulation;
+            zonePackets = &packets;
+            sessions = &reader;
         }
-        bool IsReady() {
-            if (stateManager == nullptr) return false;
-            if (nonZoneThreadPool == nullptr || zoneThreadSet == nullptr)
+        bool IsReady() const {
+            if (sessions == nullptr) {
+                sysLogger->LogError("packet dispatcher", "session reader not initialized");
                 return false;
+            }
+            if (nonSimulationQueue == nullptr) {
+                sysLogger->LogError("packet dispatcher", "non-simulation queue not initialized");
+                return false;
+            }
+            if (zonePackets == nullptr) {
+                sysLogger->LogError("packet dispatcher", "zone packet queue not initialized");
+                return false;
+            }
             return true;
         }
         friend class Initializer;
@@ -27,7 +36,7 @@ namespace Core {
         void Process(std::unique_ptr<IPacketView, PacketViewDeleter> pv) override;
         void Disconnect(uint64_t sessionID) override;
         uint8_t HealthCheck(uint64_t sessionID) override {
-           return stateManager->HealthCheck(sessionID);
+            return sessions->HealthCheck(sessionID);
         }
     };
 }

@@ -4,11 +4,21 @@
 #include "Initializer.h"
 #include "ILogger.h"
 #include "PacketWriter.h"
-#include "StateManager.h"
+#include "SessionManager.h"
 #include "WorldMap.h"
 
 
 namespace Core {
+    bool ZoneState::DescribeZoneChange(uint64_t sessionID, uint64_t chatID, uint64_t ownershipEpoch, ZoneChangeResult& result) {
+        std::lock_guard zoneLock(m_mutex);
+        const auto member = m_sessionToIndex.find(sessionID);
+        if (member == m_sessionToIndex.end())
+            return false;
+        const auto& character = m_chars[member->second];
+        result = {m_zoneID, chatID, character.zoneInternalID, character.x, character.y, m_generation, ownershipEpoch};
+        return true;
+    }
+
     bool ZoneState::EnqueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch, uint64_t bootstrapID) {
         if (broadcast == nullptr || writer == nullptr) return false;
         std::lock_guard<std::mutex> lock(m_mutex);

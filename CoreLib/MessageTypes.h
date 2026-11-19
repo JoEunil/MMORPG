@@ -1,7 +1,8 @@
 ﻿#pragma once
 #include <cstdint>
 
-#include "Config.h"
+#include "CacheConfig.h"
+#include "PacketConfig.h"
 
 namespace Core {
     enum : uint16_t {

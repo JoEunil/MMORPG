@@ -14,6 +14,7 @@
 #include "DBConfig.h"
 #include <CoreLib/IMessageQueue.h>
 #include <CoreLib/MessagePool.h>
+#include <CoreLib/MessageWriter.h>
 
 #include <CoreLib/LoggerGlobal.h>
 namespace Core {
@@ -25,6 +26,7 @@ namespace Cache {
     class Handler {
         using ScopedMessage = CacheMessagePool::ScopedMessage;
         Core::IMessageQueue* messageQ;  // response
+        const Core::MessageWriter* messageWriter = nullptr;
         CacheMessagePool* messagePool = nullptr;
         CacheStorageInventory* cache_inventory = nullptr;
         CacheStorageCurrency* cache_currency = nullptr;
@@ -53,15 +55,12 @@ namespace Cache {
         template <typename T>
         bool TryEnqueueResponse(Core::Message& msg, Core::MsgHeader header, const T& body) {
             static_assert(sizeof(Core::MsgStruct<T>) <= MESSAGE_LEN);
-            auto* response = reinterpret_cast<Core::MsgStruct<T>*>(msg.GetBuffer());
-            response->header = header;
-            response->body = body;
-            msg.SetLength(sizeof(*response));
-            return messageQ->EnqueueMessage(&msg);
+            return messageWriter->Write(msg, header, body) && messageQ->EnqueueMessage(&msg);
         }
 
-        void Initialize(Core::IMessageQueue* mq,  CacheMessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp) {
+        void Initialize(Core::IMessageQueue* mq, const Core::MessageWriter* writer, CacheMessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp) {
             messageQ = mq;
+            messageWriter = writer;
             messagePool = mp;
             dbWorkerGame = dg;
             dbWorkerBazaar = db;
@@ -72,6 +71,10 @@ namespace Cache {
         bool IsReady() {
             if (messageQ == nullptr) {
                 Core::sysLogger->LogError("cache handler", "messageQ not initialized");
+                return false;
+            }
+            if (messageWriter == nullptr) {
+                Core::sysLogger->LogError("cache handler", "message writer not initialized");
                 return false;
             }
             if (messagePool == nullptr) {
