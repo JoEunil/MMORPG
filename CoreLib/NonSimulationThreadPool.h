@@ -25,7 +25,7 @@ namespace Core {
             EventType type = EventType::Work;
             std::unique_ptr<IPacketView, PacketViewDeleter> work;
             uint64_t sessionID = 0;
-            std::shared_ptr<FieldZoneTransfer> transfer;
+            std::shared_ptr<ZoneTransfer> transfer;
         };
 
         std::vector<std::thread> m_threads;
@@ -56,6 +56,6 @@ namespace Core {
         }
         void EnqueuePacket(std::unique_ptr<IPacketView, PacketViewDeleter> packet) override;
         void EnqueueDisconnect(uint64_t sessionID) override;
-        void EnqueueLobbyReturn(const std::shared_ptr<FieldZoneTransfer>& transfer) override;
+        void EnqueueLobbyReturn(const std::shared_ptr<ZoneTransfer>& transfer) override;
     };
 }

@@ -37,7 +37,7 @@ namespace Core {
         const Data::SkillData& skillInfo;
     }; 
 
-    struct FieldZoneTransfer {
+    struct ZoneTransfer {
         enum class Kind { Movement, Respawn };
 
         CharacterState character{};
@@ -102,8 +102,8 @@ namespace Core {
         bool AdmitLobbyCharacter(uint64_t sessionID, CharacterState incoming, ZoneChangeResult& result);
         bool DescribeOrRespawnInTown(uint64_t sessionID, uint64_t characterID, bool replay, ZoneChangeResult& result);
         void ClearCharacterEffects(uint64_t sessionID, uint32_t internalID);
-        bool AdmitFieldTransferLocked(const FieldZoneTransfer& transfer);
-        bool RestoreFieldTransferLocked(const CharacterState& original);
+        bool AdmitZoneTransferLocked(const ZoneTransfer& transfer);
+        bool RestoreZoneTransferLocked(const CharacterState& original);
         ParryResponseBody Parry(uint64_t sessionID, const ParryRequestBody& request);
         void UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version);
         void RemoveCharacterLocked(uint64_t sessionID);

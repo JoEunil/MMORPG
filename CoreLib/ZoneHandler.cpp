@@ -24,7 +24,7 @@ namespace Core {
         std::unique_lock sessionLock(shard.smutex);
         const auto session = shard.sessionMap.find(sessionID);
         if (session == shard.sessionMap.end() || !session->second.authenticated || !session->second.authCompleted
-            || session->second.zoneID == 0 || session->second.ownershipEpoch == 0 || session->second.pendingFieldTransfer)
+            || session->second.zoneID == 0 || session->second.ownershipEpoch == 0 || session->second.pendingZoneTransfer)
             return;
         auto& data = session->second;
         if (data.zoneID != zoneID || data.ownershipEpoch != action.ownershipEpoch) {
@@ -63,7 +63,7 @@ namespace Core {
                 const uint8_t dir = character.dir;
                 zone.RestoreMovementLocked(sessionID, previousX, previousY, previousDir, previousBudget, previousDirty);
 
-                auto transfer = std::make_shared<FieldZoneTransfer>();
+                auto transfer = std::make_shared<ZoneTransfer>();
                 transfer->character = character;
                 transfer->sourceZoneID = zoneID;
                 transfer->ownershipEpoch = action.ownershipEpoch;
@@ -75,7 +75,7 @@ namespace Core {
                 transfer->aimAngle = action.aimAngle;
                 if (!zoneTransfer->TryEnqueueTransfer(destination, transfer))
                     return;
-                data.pendingFieldTransfer = std::move(transfer);
+                data.pendingZoneTransfer = std::move(transfer);
                 zone.RemoveCharacterLocked(sessionID);
                 return;
             }
@@ -131,7 +131,7 @@ namespace Core {
         auto& data = session->second;
         if (!data.authenticated || !data.authCompleted || data.zoneID != zone.m_zoneID)
             return;
-        if (data.pendingFieldTransfer && data.pendingFieldTransfer->IsRespawn()
+        if (data.pendingZoneTransfer && data.pendingZoneTransfer->IsRespawn()
             && data.ownershipEpoch == request.ownershipEpoch)
             return;
 
@@ -139,7 +139,7 @@ namespace Core {
         const bool replay = data.ownershipEpoch != request.ownershipEpoch;
         const bool canReplay = inTown && data.lastRespawnRequestEpoch == request.ownershipEpoch
             && data.ownershipEpoch == request.ownershipEpoch + 1;
-        if (data.pendingFieldTransfer || (replay && !canReplay)
+        if (data.pendingZoneTransfer || (replay && !canReplay)
             || !WorldMap::CanTraverse(TOWN_SPAWN_X, TOWN_SPAWN_Y, TOWN_SPAWN_X, TOWN_SPAWN_Y)) {
             sessionLock.unlock();
             SendZoneChangeFailed(sessionID);
@@ -180,22 +180,22 @@ namespace Core {
             || character.maxHp <= 0 || character.maxMp < 0)
             return false;
 
-        auto transfer = std::make_shared<FieldZoneTransfer>();
+        auto transfer = std::make_shared<ZoneTransfer>();
         transfer->character = character;
         transfer->ownershipEpoch = session.ownershipEpoch;
         transfer->sourceZoneID = source.m_zoneID;
-        transfer->kind = FieldZoneTransfer::Kind::Respawn;
+        transfer->kind = ZoneTransfer::Kind::Respawn;
         transfer->x = TOWN_SPAWN_X;
         transfer->y = TOWN_SPAWN_Y;
         if (!zoneTransfer->TryEnqueueTransfer(TOWN_ZONE_ID, transfer))
             return false;
 
-        session.pendingFieldTransfer = std::move(transfer);
+        session.pendingZoneTransfer = std::move(transfer);
         source.RemoveCharacterLocked(sessionID);
         return true;
     }
 
-    void ZoneHandler::ProcessFieldTransfer(ZoneState& zone, const ZoneEvent& event) {
+    void ZoneHandler::ProcessZoneTransfer(ZoneState& zone, const ZoneEvent& event) {
         const auto& transfer = event.transfer;
         if (!transfer)
             return;
@@ -204,7 +204,7 @@ namespace Core {
         auto& shard = sessionManager->m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock sessionLock(shard.smutex);
         const auto session = shard.sessionMap.find(sessionID);
-        if (session == shard.sessionMap.end() || session->second.pendingFieldTransfer != transfer
+        if (session == shard.sessionMap.end() || session->second.pendingZoneTransfer != transfer
             || session->second.zoneID != transfer->sourceZoneID || session->second.ownershipEpoch != transfer->ownershipEpoch)
             return;
 
@@ -216,8 +216,8 @@ namespace Core {
         std::unique_lock zoneLock(zone.m_mutex);
         bool admitted = false;
         try {
-            admitted = returning ? zone.RestoreFieldTransferLocked(transfer->character)
-                                 : zone.AdmitFieldTransferLocked(*transfer);
+            admitted = returning ? zone.RestoreZoneTransferLocked(transfer->character)
+                                 : zone.AdmitZoneTransferLocked(*transfer);
         }
         catch (const std::bad_alloc&) {
             admitted = false;
@@ -231,7 +231,7 @@ namespace Core {
         }
 
         auto& data = session->second;
-        data.pendingFieldTransfer.reset();
+        data.pendingZoneTransfer.reset();
         if (returning) {
             if (respawn) {
                 zoneLock.unlock();
@@ -265,7 +265,7 @@ namespace Core {
             return;
 
         const auto& data = session->second;
-        if (data.zoneID != zone.m_zoneID || data.pendingFieldTransfer) {
+        if (data.zoneID != zone.m_zoneID || data.pendingZoneTransfer) {
             sessionManager->RouteProfileVersionLocked(data, update);
             return;
         }
@@ -278,7 +278,7 @@ namespace Core {
         std::unique_lock sessionLock(shard.smutex);
         const auto found = shard.sessionMap.find(request.sessionID);
         if (found == shard.sessionMap.end() || found->second.zoneID != zone.m_zoneID
-            || found->second.ownershipEpoch != request.ownershipEpoch || found->second.pendingFieldTransfer)
+            || found->second.ownershipEpoch != request.ownershipEpoch || found->second.pendingZoneTransfer)
             return;
 
         auto& session = found->second;

@@ -23,7 +23,7 @@ namespace Core {
     struct SessionData {
         uint16_t zoneID = 0;
         uint64_t ownershipEpoch = 0;
-        std::shared_ptr<FieldZoneTransfer> pendingFieldTransfer;
+        std::shared_ptr<ZoneTransfer> pendingZoneTransfer;
         uint64_t lastRespawnRequestEpoch = 0;
         uint64_t bootstrapSequence = 0;
         ItemUseResponseBody lastItemUse = {};
@@ -50,7 +50,7 @@ namespace Core {
     class ChatThreadPool;
     class ZoneEventRouter;
     class IZoneRequestQueue;
-    struct FieldZoneTransfer;
+    struct ZoneTransfer;
     struct ProfileVersionUpdate;
     struct ZoneChangeResult;
     class SessionManager : public ISessionStatusReader {

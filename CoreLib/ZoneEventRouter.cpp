@@ -100,18 +100,18 @@ namespace Core {
         return WorldMap::FindTransitionZone(sourceZoneID, x, y);
     }
 
-    bool ZoneEventRouter::TryEnqueueTransfer(uint16_t destinationID, const std::shared_ptr<FieldZoneTransfer>& transfer) {
+    bool ZoneEventRouter::TryEnqueueTransfer(uint16_t destinationID, const std::shared_ptr<ZoneTransfer>& transfer) {
         if (!transfer || !acceptingTransfers.load(std::memory_order_acquire))
             return false;
         ZoneEvent event{ZoneEventType::Transfer, nullptr, transfer};
         return TryEnqueue(destinationID, event);
     }
 
-    void ZoneEventRouter::EnqueueLobbyReturn(const std::shared_ptr<FieldZoneTransfer>& transfer) {
+    void ZoneEventRouter::EnqueueLobbyReturn(const std::shared_ptr<ZoneTransfer>& transfer) {
         lobbyReturns->EnqueueLobbyReturn(transfer);
     }
 
-    bool ZoneEventRouter::TryEnqueueTransferRejected(const std::shared_ptr<FieldZoneTransfer>& transfer) {
+    bool ZoneEventRouter::TryEnqueueTransferRejected(const std::shared_ptr<ZoneTransfer>& transfer) {
         if (!transfer || !acceptingTransfers.load(std::memory_order_acquire))
             return false;
         ZoneEvent event{ZoneEventType::TransferRejected, nullptr, transfer};

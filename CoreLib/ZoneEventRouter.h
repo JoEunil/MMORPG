@@ -39,8 +39,8 @@ namespace Core {
         bool TryEnqueueBootstrap(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch, bool resendZoneChange) override;
         bool TryEnqueueProfileVersion(uint16_t zoneID, const ProfileVersionUpdate& update) override;
         uint16_t FindDestination(uint16_t sourceZoneID, float x, float y) const override;
-        bool TryEnqueueTransfer(uint16_t destinationID, const std::shared_ptr<FieldZoneTransfer>& transfer) override;
-        bool TryEnqueueTransferRejected(const std::shared_ptr<FieldZoneTransfer>& transfer) override;
-        void EnqueueLobbyReturn(const std::shared_ptr<FieldZoneTransfer>& transfer) override;
+        bool TryEnqueueTransfer(uint16_t destinationID, const std::shared_ptr<ZoneTransfer>& transfer) override;
+        bool TryEnqueueTransferRejected(const std::shared_ptr<ZoneTransfer>& transfer) override;
+        void EnqueueLobbyReturn(const std::shared_ptr<ZoneTransfer>& transfer) override;
     };
 }

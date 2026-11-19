@@ -63,7 +63,7 @@ namespace Core {
             errorLogger->LogWarn("non zone thread", "work queue full");
     }
 
-    void NonSimulationThreadPool::EnqueueLobbyReturn(const std::shared_ptr<FieldZoneTransfer>& transfer) {
+    void NonSimulationThreadPool::EnqueueLobbyReturn(const std::shared_ptr<ZoneTransfer>& transfer) {
         if (!m_running.load(std::memory_order_relaxed))
             return; // SessionManager saves pending characters during shutdown.
 

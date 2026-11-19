@@ -70,7 +70,7 @@ namespace Core {
         
         void ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID);
         ParryResponseBody ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request);
-        void ProcessFieldTransfer(ZoneState& zone, const ZoneEvent& event);
+        void ProcessZoneTransfer(ZoneState& zone, const ZoneEvent& event);
         void ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update);
         void ProcessLobbyEntry(ZoneState& zone, const ZoneRequest& request);
         void ProcessRespawn(ZoneState& zone, const ZoneRequest& request);
@@ -102,7 +102,7 @@ namespace Core {
                         break;
                     case ZoneEventType::Transfer:
                     case ZoneEventType::TransferRejected:
-                        ProcessFieldTransfer(zone, event);
+                        ProcessZoneTransfer(zone, event);
                         break;
                     case ZoneEventType::ProfileVersion:
                         ApplyProfileVersion(zone, event.profileVersion);

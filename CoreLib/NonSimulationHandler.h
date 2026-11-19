@@ -14,7 +14,7 @@ namespace Core {
     class LobbyZone;
     class ChatThreadPool;
     class IProfileCache;
-    struct FieldZoneTransfer;
+    struct ZoneTransfer;
     class NonSimulationHandler{
         void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, SessionManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc);
         bool IsReady();
@@ -52,7 +52,7 @@ namespace Core {
     public:
         void Process(IPacketView* p);
         void Disconnect(uint64_t sessionID);
-        void ReturnToLobby(const std::shared_ptr<FieldZoneTransfer>& transfer);
+        void ReturnToLobby(const std::shared_ptr<ZoneTransfer>& transfer);
 
         void RequestProfileRename(uint64_t sessionID, uint32_t profileId, const char* name, uint16_t nameLen);
     };

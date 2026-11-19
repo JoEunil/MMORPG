@@ -9,9 +9,9 @@
 #include "SessionManager.h"
 
 namespace Core {
-    void NonSimulationHandler::ReturnToLobby(const std::shared_ptr<FieldZoneTransfer>& transfer) {
+    void NonSimulationHandler::ReturnToLobby(const std::shared_ptr<ZoneTransfer>& transfer) {
         const auto sessionID = transfer->character.sessionID;
-        const auto epoch = lobbyZone->ReturnFieldTransfer(transfer, *chat);
+        const auto epoch = lobbyZone->ReturnZoneTransfer(transfer, *chat);
         if (epoch == 0)
             return;
 

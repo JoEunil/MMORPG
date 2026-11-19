@@ -81,12 +81,12 @@ namespace Core {
             return true;
         }
 
-        uint64_t ReturnFieldTransfer(const std::shared_ptr<FieldZoneTransfer>& transfer, ChatThreadPool& chat) {
+        uint64_t ReturnZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer, ChatThreadPool& chat) {
             const auto sessionID = transfer->character.sessionID;
             auto& shard = sessionManager->m_shards[sessionID & SHARD_SIZE_MASK];
             std::unique_lock sessionLock(shard.smutex);
             const auto session = shard.sessionMap.find(sessionID);
-            if (session == shard.sessionMap.end() || session->second.pendingFieldTransfer != transfer
+            if (session == shard.sessionMap.end() || session->second.pendingZoneTransfer != transfer
                 || session->second.ownershipEpoch != transfer->ownershipEpoch
                 || session->second.zoneID != transfer->sourceZoneID)
                 return 0;
@@ -98,7 +98,7 @@ namespace Core {
                     return 0;
             }
             SessionManager::UpdateZoneOwnershipLocked(data, 0);
-            data.pendingFieldTransfer.reset();
+            data.pendingZoneTransfer.reset();
             chat.EnqueueZoneLeave(sessionID, transfer->sourceZoneID);
             return data.ownershipEpoch;
         }

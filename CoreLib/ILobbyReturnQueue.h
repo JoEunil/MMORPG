@@ -3,11 +3,11 @@
 #include <memory>
 
 namespace Core {
-    struct FieldZoneTransfer;
+    struct ZoneTransfer;
 
     class ILobbyReturnQueue {
     public:
         virtual ~ILobbyReturnQueue() = default;
-        virtual void EnqueueLobbyReturn(const std::shared_ptr<FieldZoneTransfer>& transfer) = 0;
+        virtual void EnqueueLobbyReturn(const std::shared_ptr<ZoneTransfer>& transfer) = 0;
     };
 }

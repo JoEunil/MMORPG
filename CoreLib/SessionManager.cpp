@@ -170,8 +170,8 @@ namespace Core {
             || data.characterID == INVALID_CHARACTER_ID || data.zoneID == 0 || data.zoneID > ZONE_COUNT
             || ownershipEpoch == (std::numeric_limits<uint64_t>::max)())
             return false;
-        if (data.pendingFieldTransfer)
-            return data.pendingFieldTransfer->IsRespawn() && ownershipEpoch == data.ownershipEpoch;
+        if (data.pendingZoneTransfer)
+            return data.pendingZoneTransfer->IsRespawn() && ownershipEpoch == data.ownershipEpoch;
 
         const bool replay = data.zoneID == TOWN_ZONE_ID && data.lastRespawnRequestEpoch == ownershipEpoch
             && data.ownershipEpoch == ownershipEpoch + 1;
@@ -195,7 +195,7 @@ namespace Core {
     }
 
     bool SessionManager::QueueBootstrapLocked(uint64_t sessionID, const SessionData& session, bool resendZoneChange) {
-        if (session.zoneID == 0 || session.ownershipEpoch == 0 || session.pendingFieldTransfer)
+        if (session.zoneID == 0 || session.ownershipEpoch == 0 || session.pendingZoneTransfer)
             return false;
         return zoneRequests->TryEnqueueBootstrap(session.zoneID, sessionID, session.ownershipEpoch, resendZoneChange);
     }
@@ -214,7 +214,7 @@ namespace Core {
             std::unique_lock<std::shared_mutex> lock(shard.smutex);
             for (auto& [session, data] : shard.sessionMap)
             {
-                if (const auto& pending = data.pendingFieldTransfer) {
+                if (const auto& pending = data.pendingZoneTransfer) {
                     EnqueueCharacterStateUpdate(session, pending->character);
                     continue;
                 }
@@ -256,7 +256,7 @@ namespace Core {
         }
 
         CharacterState temp;
-        const auto pending = it->second.pendingFieldTransfer;
+        const auto pending = it->second.pendingZoneTransfer;
         if (zoneID == 0) {
             if (!lobbyZone->EmigrateChar(sessionID, temp))
                 return;
@@ -288,7 +288,7 @@ namespace Core {
     }
 
     void SessionManager::RouteProfileVersionLocked(const SessionData& session, const ProfileVersionUpdate& update) {
-        if (const auto& pending = session.pendingFieldTransfer) {
+        if (const auto& pending = session.pendingZoneTransfer) {
             pending->character.UpdateProfileVersion(update.profileID, update.version);
             return;
         }

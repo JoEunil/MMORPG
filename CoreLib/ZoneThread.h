@@ -37,7 +37,7 @@ namespace Core {
     struct ZoneEvent {
         ZoneEventType type = ZoneEventType::Packet;
         std::unique_ptr<IPacketView, PacketViewDeleter> packet;
-        std::shared_ptr<FieldZoneTransfer> transfer;
+        std::shared_ptr<ZoneTransfer> transfer;
         ProfileVersionUpdate profileVersion;
         ZoneRequest request;
     };

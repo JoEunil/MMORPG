@@ -174,7 +174,7 @@ namespace Core {
         return true;
     }
 
-    bool ZoneState::AdmitFieldTransferLocked(const FieldZoneTransfer& transfer) {
+    bool ZoneState::AdmitZoneTransferLocked(const ZoneTransfer& transfer) {
         CharacterState incoming = transfer.character;
         incoming.x = transfer.x;
         incoming.y = transfer.y;
@@ -196,7 +196,7 @@ namespace Core {
         return true;
     }
 
-    bool ZoneState::RestoreFieldTransferLocked(const CharacterState& original) {
+    bool ZoneState::RestoreZoneTransferLocked(const CharacterState& original) {
         CharacterState incoming = original;
         return RegisterCharacterLocked(std::move(incoming));
     }
