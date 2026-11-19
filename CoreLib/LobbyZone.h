@@ -4,7 +4,6 @@
 #include "ZoneState.h"
 #include "SessionManager.h"
 #include "LoggerGlobal.h"
-#include "ChatThreadPool.h"
 
 namespace Core {
     class LobbyZone {
@@ -29,7 +28,6 @@ namespace Core {
         }
 
         friend class Initializer;
-        friend class SessionManager;
     public:
         uint16_t FindEntryZone(uint64_t sessionID, uint64_t characterID) {
             std::lock_guard lock(m_mutex);
@@ -58,49 +56,21 @@ namespace Core {
         }
 
         bool ImmigrateChar(uint64_t sessionID, const CharacterState& character) {
-            if (character.characterID == INVALID_CHARACTER_ID)
-                return false;
-            // Same order as SessionManager::Disconnect/CleanUp: shard -> lobby.
-            auto& shard = sessionManager->m_shards[sessionID & SHARD_SIZE_MASK];
-            std::unique_lock<std::shared_mutex> sessionLock(shard.smutex);
-            const auto session = shard.sessionMap.find(sessionID);
-            if (session == shard.sessionMap.end())
-                return false;
-            auto& data = session->second;
-            if (!data.authenticated || data.zoneID != 0
-                || (data.characterID != INVALID_CHARACTER_ID && data.characterID != character.characterID))
-                return false;
-
-            std::lock_guard lock(m_mutex);
-            if (!m_chars.try_emplace(sessionID, character).second) {
+            return sessionManager->LoadLobbyCharacter(sessionID, character.characterID, [&] {
+                std::lock_guard lock(m_mutex);
+                if (m_chars.try_emplace(sessionID, character).second)
+                    return true;
                 gameLogger->LogError("lobby zone", "ImmigrageChar Failed sessionID already exists", "sessionID", sessionID);
                 return false;
-            }
-            if (data.characterID == INVALID_CHARACTER_ID)
-                data.characterID = character.characterID;
-            return true;
+            });
         }
 
-        uint64_t ReturnZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer, ChatThreadPool& chat) {
+        uint64_t ReturnZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer) {
             const auto sessionID = transfer->character.sessionID;
-            auto& shard = sessionManager->m_shards[sessionID & SHARD_SIZE_MASK];
-            std::unique_lock sessionLock(shard.smutex);
-            const auto session = shard.sessionMap.find(sessionID);
-            if (session == shard.sessionMap.end() || session->second.pendingZoneTransfer != transfer
-                || session->second.ownershipEpoch != transfer->ownershipEpoch
-                || session->second.zoneID != transfer->sourceZoneID)
-                return 0;
-
-            auto& data = session->second;
-            {
-                std::lock_guard lobbyLock(m_mutex);
-                if (!m_chars.try_emplace(sessionID, std::move(transfer->character)).second)
-                    return 0;
-            }
-            SessionManager::UpdateZoneOwnershipLocked(data, 0);
-            data.pendingZoneTransfer.reset();
-            chat.EnqueueZoneLeave(sessionID, transfer->sourceZoneID);
-            return data.ownershipEpoch;
+            return sessionManager->ReturnTransferToLobby(transfer, [&] {
+                std::lock_guard lock(m_mutex);
+                return m_chars.try_emplace(sessionID, std::move(transfer->character)).second;
+            });
         }
 
         void UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version) {

@@ -186,6 +186,22 @@ namespace Core {
         ++session.ownershipEpoch;
     }
 
+    bool SessionManager::MatchesZoneTransfer(const SessionData* session, const std::shared_ptr<ZoneTransfer>& transfer) {
+        return session && session->pendingZoneTransfer == transfer
+            && session->zoneID == transfer->sourceZoneID && session->ownershipEpoch == transfer->ownershipEpoch;
+    }
+
+    void SessionManager::JoinZoneChatLocked(uint64_t sessionID, uint16_t zoneID, SessionData& session,
+        std::optional<uint32_t> lobbyProfile) {
+        if (lobbyProfile && session.chatID == 0)
+            session.chatID = chat->AddChatSession(sessionID, zoneID, *lobbyProfile);
+        chat->EnqueueZoneJoin(sessionID, zoneID);
+    }
+
+    void SessionManager::LeaveZoneChatLocked(uint64_t sessionID, uint16_t zoneID) {
+        chat->EnqueueZoneLeave(sessionID, zoneID);
+    }
+
     bool SessionManager::QueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch) {
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::shared_lock sessionLock(shard.smutex);

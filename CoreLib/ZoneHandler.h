@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "WorldConfig.h"
 #include <cstdint>
 #include "IPacketView.h"
@@ -19,7 +19,6 @@ namespace Core {
     class IDBCache;
     class PacketWriter;
     class IMessageQueue;
-    class ChatThreadPool;
     class LobbyZone;
 
     class ZoneHandler {
@@ -27,16 +26,14 @@ namespace Core {
         INetworkSender* networkSender = nullptr;
         PacketWriter* writer = nullptr;
         IZoneTransfer* zoneTransfer = nullptr;
-        ChatThreadPool* chat = nullptr;
         LobbyZone* lobbyZone = nullptr;
         
         void Initialize(SessionManager* m, INetworkSender* sender, PacketWriter* packetWriter,
-            IZoneTransfer& transfer, ChatThreadPool& chatPool, LobbyZone& lobby) {
+            IZoneTransfer& transfer, LobbyZone& lobby) {
             sessionManager = m;
             networkSender = sender;
             writer = packetWriter;
             zoneTransfer = &transfer;
-            chat = &chatPool;
             lobbyZone = &lobby;
         }
 
@@ -57,10 +54,6 @@ namespace Core {
                 sysLogger->LogError("zone handler", "zone transfer not initialized");
                 return false;
             }
-            if (chat == nullptr) {
-                sysLogger->LogError("zone handler", "chat not initialized");
-                return false;
-            }
             if (lobbyZone == nullptr) {
                 sysLogger->LogError("zone handler", "lobby zone not initialized");
                 return false;
@@ -74,7 +67,7 @@ namespace Core {
         void ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update);
         void ProcessLobbyEntry(ZoneState& zone, const ZoneRequest& request);
         void ProcessRespawn(ZoneState& zone, const ZoneRequest& request);
-        bool StartRespawnTransfer(ZoneState& source, uint64_t sessionID, SessionData& session);
+        std::shared_ptr<ZoneTransfer> StartRespawnTransfer(ZoneState& source, uint64_t sessionID, uint64_t characterID, uint64_t ownershipEpoch);
         void ProcessBootstrap(ZoneState& zone, const ZoneRequest& request);
         void SendZoneChangeFailed(uint64_t sessionID);
         void SendZoneChange(ZoneState& zone, uint64_t sessionID, const ZoneChangeResult& transition);
@@ -145,4 +138,3 @@ namespace Core {
         }
     };
 }
-
