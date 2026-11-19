@@ -22,7 +22,7 @@ IOCP가 받은 데이터를 세션별 `ClientContext`에서 누적하고, `NetPa
 
 ### CoreLib — 게임 상태와 요청 처리
 
-`PacketDispatcher`가 요청을 Zone과 NonZone 처리 경로로 나눈다. `Core::SessionManager`·`ZoneState`가 게임 상태를 관리하고, 채팅과 스냅샷 전송은 별도 워커가 맡는다. `PacketWriter`는 핸들러·워커·ZoneState가 공유하는 패킷 구성 기능이다.
+`PacketDispatcher`가 요청을 Zone과 NonSimulation 처리 경로로 나눈다. `Core::SessionManager`는 세션과 Zone 소속을, `ZoneState`는 Zone의 게임 상태를 관리한다. 채팅과 스냅샷 전송은 별도 워커가 맡으며, `PacketWriter`는 패킷 구성을 담당한다.
 
 ![CoreLib 핵심 컴포넌트와 게임 처리 흐름](images/Architecture_CoreLib.png)
 
@@ -43,7 +43,7 @@ AI Agent를 활용해 Clang 기반 C++ 의존성 분석기를 만들었다. [화
 </a>
 
 - 서버의 설계 검토·코드 리뷰·일부 테스트 작성·리팩터링에 AI를 활용한다. [AI 활용](AI-REFLECTION.md)
-- 인벤토리·거래소 UI를 포함한 Unity 개발에 에이전트를 활용한다. [AI 에이전트 클라이언트 개발](AI-AGENT.md)
+- 인벤토리·거래소 UI를 포함한 Unity 개발에 멀티 에이전트를 활용한다. [멀티 에이전트 클라이언트 개발](AI-AGENT.md)
 - 『핸즈온 LLM』을 읽고 모델의 구조와 활용법을 정리했다. [생성형 LLM 학습 정리](LLM.md)
 
 ## 주요 설계
@@ -57,9 +57,9 @@ AI Agent를 활용해 Clang 기반 C++ 의존성 분석기를 만들었다. [화
 
 ### 2. Zone 스레드와 작업 전달
 
-IOCP 워커가 받은 시뮬레이션 작업은 bounded MPMC Queue에 넣고, Zone 스레드가 틱마다 꺼내 처리한다. 같은 공간에서 이동·스킬·몬스터 갱신이 계속 일어나므로 Zone을 실행 단위로 잡았다.  
-브로드캐스트(리플리케이션 전송)는 별도 워커에서 처리한다. 패킷 Chunk는 작업 큐로 넘기고, Cell별 전송 대상 목록은 Triple Buffer로 공유한다. 이 목록은 기존 읽기 참조가 모두 반환돼야 새 목록으로 바뀐다.  
-Zone 안의 락은 아직 없애지 못했다. 진입·이탈·프로필 갱신이 외부 스레드에서도 실행돼, 이들과 상태를 공유하는 틱 로직에 mutex가 남아 있다. Zone과 브로드캐스트 큐가 가득 차면 작업을 버리고 drop을 집계한다.  
+시뮬레이션 패킷과 Zone 이동·진입·리스폰·프로필 갱신·접속 종료 요청을 Zone 이벤트 큐로 전달하고, 담당 워커가 처리한다. 같은 공간에서 이동·스킬·몬스터 갱신이 계속 일어나므로 Zone을 실행 단위로 잡았다.
+브로드캐스트 전송은 별도 워커에서 처리한다. 패킷 Chunk는 작업 큐로 넘기고, Cell별 전송 대상 목록은 `ISessionSnapshotReader`를 통해 Triple Buffer에서 읽는다.
+아이템 사용·장비 처리와 종료 정리에는 외부 스레드의 Zone 접근이 남아 있어 mutex를 유지하고 있다. 큐 포화 처리는 요청 종류에 따라 거절·drop·지연 큐로 나뉜다.
 
 [설계 결정](DesignDecisions.md#2-시뮬레이션과-스레드-경계) · [작업 큐](WorkQueue.md) · [Triple Buffer](TripleBuffer.md)
 
@@ -101,7 +101,6 @@ WAL은 성공 응답 전에 fsync를 기다리지 않는다. 마지막으로 디
 
 ## 앞으로 할 일
 
-- Zone 진입·이탈과 외부 상태 변경을 이벤트 큐로 옮겨 mutex를 줄인다.
 - DB 장애가 길어질 때 dirty 데이터가 계속 쌓이지 않도록 제한한다.
 - 더미 클라이언트를 다른 PC로 분리해 action/s, 지연 분포, drop, 연결 종료를 함께 측정한다.
 

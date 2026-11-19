@@ -100,10 +100,10 @@ Cache 측 worker는 DB와 외부 I/O 대기가 처리 시간을 지배한다. Ho
 
 | Worker | Queue / Wake-up | 포화 정책 | Stop | 적용 이유 |
 | --- | --- | --- | --- | --- |
-| Zone | `MPMCQueue` + game tick | Full 시 drop | HardStop | 고정 tick이 consumer 실행 시점을 결정하므로 별도 wake-up이 필요 없다. |
+| Zone | `MPMCQueue<ZoneEvent>` + game tick | 일반 이벤트 거절, ProfileVersion·Disconnect 지연 큐 | 틱 정지 후 Disconnect 처리 | 패킷과 내부 요청을 같은 Zone 워커에서 처리한다. 고정 tick이 실행 시점을 결정한다. |
 | Chat | `NonBlockingBackPressureQueue` + 15ms batch loop | Chat·Lifecycle drop, Zone Join·Leave defer | HardStop | Batch window 동안 dequeue가 block되면 안 된다. |
 | Broadcast | 워커별 `BlockingQueue` + Semaphore | 전체 대기 작업 512개 초과 시 drop | HardStop | 같은 Zone은 같은 워커 큐로 보내 송신 순서를 유지한다. 워커 수는 Zone 수와 독립적이다. Producer는 대기하지 않는다. |
-| NonZone | `BlockingBackPressureQueue` + Semaphore | Work drop, Disconnect defer | Drain | Idle worker는 block한다. Disconnect를 보존하기 위해 BackPressure를 적용한다. |
+| NonSimulation | `BlockingBackPressureQueue` + Semaphore | Packet drop, Disconnect·LobbyReturn defer | Drain | Idle worker는 block한다. 접속 종료와 로비 복귀 요청을 지연 큐에 보관한다. |
 | Core InMemory | `RingQueue` + Mutex/CV | Full 시 거부 | HardStop | Cache 응답 전달 경로는 producer의 non-blocking을 요구하지 않아 Mutex/CV로 queue와 종료 상태를 함께 관리한다. |
 | Cache InMemory | `BlockingBackPressureQueue` + Semaphore | Disconnect State Important, 나머지 Droppable | Drain | Core hot path에서 enqueue하므로 producer는 대기하지 않는다. Disconnect 시 생성한 최종 상태를 보존하기 위해 BackPressure를 적용한다. |
 | CacheFlush | `RingQueue` + Mutex/CV | Full 시 실패 반환, dirty 유지 | Drain | Cache 내부 I/O worker이므로 Mutex/CV를 사용한다. Queue와 in-flight 상태를 함께 관리한다. |
@@ -111,6 +111,8 @@ Cache 측 worker는 DB와 외부 I/O 대기가 처리 시간을 지배한다. Ho
 
 CacheFlush와 DBWorker는 외부 DB가 막혔을 때 작업이 무한히 쌓이지 않도록 bounded `RingQueue`를 사용한다.
 
+- Zone의 프로필 갱신·Disconnect는 기본 큐가 가득 차면 별도 지연 목록에 등록한다. 지연 항목 할당이 실패하면 등록 실패를 반환한다. Zone 종료 시 남은 Disconnect를 처리하고 다른 이벤트는 해제한다.
+- NonSimulation의 Disconnect·LobbyReturn은 기본 큐와 지연 큐가 모두 가득 차면 호출 스레드에서 핸들러를 실행한다.
 - CacheFlush가 full이면 오류를 남기고 `Failed`를 반환한다. 호출부는 `flushInFlight`를 풀고 dirty를 유지한다. evict 중인 항목은 `AVAILABLE`로 돌리고 LRU 위치도 복구한다. DB 쓰기에 실패하면 rollback 후 재시도하고, 즉시 재시도 한도를 넘으면 다음 dirty flush에서 다시 처리한다.
 - DBWorker는 큐가 가득 찼거나 종료된 상태면 오류를 남기고 `Rejected`를 반환한다. 내부 cache load 호출부는 `DB_READING` 예약을 풀어 다음 조회에서 재시도할 수 있게 한다. 이미 수락한 작업이 실행 중 실패하면 실패 콜백으로 예약 상태나 소유 자원을 정리한다.
 - 여기서 남기는 오류 로그에는 자동 재처리가 붙어 있지 않다. WAL·Outbox/Inbox와 Cache InMemory queue의 durable fallback은 별도 경로다. CacheFlush·DBWorker가 거부한 작업이 이쪽으로 자동으로 넘어가지는 않는다.
