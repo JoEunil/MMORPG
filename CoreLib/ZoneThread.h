@@ -26,6 +26,7 @@ namespace Core {
         Bootstrap,
         LobbyEntry,
         Respawn,
+        Disconnect,
     };
 
     struct ZoneRequest {
@@ -45,11 +46,11 @@ namespace Core {
     class alignas(std::hardware_destructive_interference_size) ZoneThread {
         std::thread thread;
         Base::MPMCQueue<ZoneEvent, ZONE_QUEUE_SIZE> workQueue;
-        struct DeferredProfileUpdate {
-            ProfileVersionUpdate update;
-            DeferredProfileUpdate* next;
+        struct DeferredEvent {
+            ZoneEvent event;
+            DeferredEvent* next;
         };
-        std::atomic<DeferredProfileUpdate*> deferredProfileUpdates = nullptr;
+        std::atomic<DeferredEvent*> deferredEvents = nullptr;
         std::atomic<bool> running = false;
         uint16_t zoneID = 0;
         ZoneHandler* handler = nullptr;
@@ -60,7 +61,7 @@ namespace Core {
         void Start(ZoneState& zone);
         void Stop();
         bool Enqueue(ZoneEvent& event);
-        void ProcessDeferredProfileUpdates(ZoneState* zone);
+        void ProcessDeferredEvents(ZoneState* zone, bool disconnectOnly = false);
         void WorkerFunc(ZoneState& zone);
 
         friend class ZoneEventRouter;

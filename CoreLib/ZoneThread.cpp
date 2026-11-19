@@ -13,7 +13,7 @@
 namespace Core {
     ZoneThread::~ZoneThread() {
         Stop();
-        ProcessDeferredProfileUpdates(nullptr);
+        ProcessDeferredEvents(nullptr);
     }
 
     void ZoneThread::Initialize(uint16_t id, ZoneHandler& zoneHandler, CorePerfCollector& perf) {
@@ -49,7 +49,7 @@ namespace Core {
 
         zone.InitializeMonster();
         while (running) {
-            ProcessDeferredProfileUpdates(&zone);
+            ProcessDeferredEvents(&zone);
             handler->RunTick(zone, zoneID, workQueue, 2000, *perfCollector, [&] {
                 const auto now = std::chrono::steady_clock::now();
                 if (now - lastFullSnapshot >= FULL_SNAPSHOT_TICK) {
@@ -76,6 +76,12 @@ namespace Core {
                 std::this_thread::sleep_for(sleepDur);
 
             lastTick += GAME_TICK; // 틱 지연 보정
+        }
+        ProcessDeferredEvents(&zone, true);
+        ZoneEvent event;
+        while (workQueue.pop(event)) {
+            if (event.type == ZoneEventType::Disconnect)
+                handler->ProcessDisconnect(zone, zoneID, event.request);
         }
     }
 
@@ -112,15 +118,16 @@ namespace Core {
             return false;
         if (workQueue.push(event))
             return true;
-        if (event.type == ZoneEventType::ProfileVersion) {
-            // The cache has already committed this version. Retain it for the next tick.
-            auto* head = deferredProfileUpdates.load(std::memory_order_relaxed);
-            auto* entry = new (std::nothrow) DeferredProfileUpdate{event.profileVersion, head};
+        if (event.type == ZoneEventType::ProfileVersion || event.type == ZoneEventType::Disconnect) {
+            // Keep committed profile updates and disconnects when the regular queue is full.
+            auto* entry = new (std::nothrow) DeferredEvent;
             if (entry == nullptr)
                 return false;
+            entry->event = std::move(event);
+            auto* head = deferredEvents.load(std::memory_order_relaxed);
             do {
                 entry->next = head;
-            } while (!deferredProfileUpdates.compare_exchange_weak(head, entry, std::memory_order_release,
+            } while (!deferredEvents.compare_exchange_weak(head, entry, std::memory_order_release,
                 std::memory_order_relaxed));
             return true;
         }
@@ -128,13 +135,17 @@ namespace Core {
         return false;
     }
 
-    void ZoneThread::ProcessDeferredProfileUpdates(ZoneState* zone) {
-        auto* entry = deferredProfileUpdates.exchange(nullptr, std::memory_order_acquire);
+    void ZoneThread::ProcessDeferredEvents(ZoneState* zone, bool disconnectOnly) {
+        auto* entry = deferredEvents.exchange(nullptr, std::memory_order_acquire);
         while (entry != nullptr) {
-            const std::unique_ptr<DeferredProfileUpdate> work(entry);
+            const std::unique_ptr<DeferredEvent> work(entry);
             entry = entry->next;
-            if (zone != nullptr)
-                handler->ApplyProfileVersion(*zone, work->update);
+            if (zone == nullptr)
+                continue;
+            if (work->event.type == ZoneEventType::Disconnect)
+                handler->ProcessDisconnect(*zone, zoneID, work->event.request);
+            else if (!disconnectOnly)
+                handler->ApplyProfileVersion(*zone, work->event.profileVersion);
         }
     }
 }

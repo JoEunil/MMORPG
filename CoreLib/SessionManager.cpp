@@ -8,7 +8,6 @@
 #include "IZoneRequestQueue.h"
 #include "ZoneEventRouter.h"
 #include <algorithm>
-#include <cstring>
 #include <limits>
 
 namespace Core {
@@ -18,7 +17,7 @@ namespace Core {
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock sessionLock(shard.smutex);
         const auto session = shard.sessionMap.find(sessionID);
-        if (session == shard.sessionMap.end() || !session->second.authenticated
+        if (session == shard.sessionMap.end() || session->second.disconnectQueued || !session->second.authenticated
             || !session->second.authCompleted || session->second.characterID == 0) return result;
         auto& saved = session->second.lastItemUse;
         if (request.requestID == saved.requestID) {
@@ -74,7 +73,7 @@ namespace Core {
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock sessionLock(shard.smutex);
         auto session = shard.sessionMap.find(sessionID);
-        if (session == shard.sessionMap.end() || !session->second.authenticated || !session->second.authCompleted
+        if (session == shard.sessionMap.end() || session->second.disconnectQueued || !session->second.authenticated || !session->second.authCompleted
             || session->second.characterID == 0) return result;
         if (session->second.zoneID == 0 || ownershipEpoch != session->second.ownershipEpoch) {
             result.status = static_cast<uint8_t>(EquipmentStatus::StaleOwnership);
@@ -166,7 +165,7 @@ namespace Core {
         if (session == shard.sessionMap.end())
             return false;
         const auto& data = session->second;
-        if (!data.authenticated || !data.authCompleted || data.userID == 0
+        if (data.disconnectQueued || !data.authenticated || !data.authCompleted || data.userID == 0
             || data.characterID == INVALID_CHARACTER_ID || data.zoneID == 0 || data.zoneID > ZONE_COUNT
             || ownershipEpoch == (std::numeric_limits<uint64_t>::max)())
             return false;
@@ -187,7 +186,7 @@ namespace Core {
     }
 
     bool SessionManager::MatchesZoneTransfer(const SessionData* session, const std::shared_ptr<ZoneTransfer>& transfer) {
-        return session && session->pendingZoneTransfer == transfer
+        return session && !session->disconnectQueued && session->pendingZoneTransfer == transfer
             && session->zoneID == transfer->sourceZoneID && session->ownershipEpoch == transfer->ownershipEpoch;
     }
 
@@ -211,7 +210,7 @@ namespace Core {
     }
 
     bool SessionManager::QueueBootstrapLocked(uint64_t sessionID, const SessionData& session, bool resendZoneChange) {
-        if (session.zoneID == 0 || session.ownershipEpoch == 0 || session.pendingZoneTransfer)
+        if (session.disconnectQueued || session.zoneID == 0 || session.ownershipEpoch == 0 || session.pendingZoneTransfer)
             return false;
         return zoneRequests->TryEnqueueBootstrap(session.zoneID, sessionID, session.ownershipEpoch, resendZoneChange);
     }
@@ -231,7 +230,7 @@ namespace Core {
             for (auto& [session, data] : shard.sessionMap)
             {
                 if (const auto& pending = data.pendingZoneTransfer) {
-                    EnqueueCharacterStateUpdate(session, pending->character);
+                    cacheCommands->EnqueueCharacterStateUpdate(session, pending->character);
                     continue;
                 }
                 CharacterState temp;
@@ -250,49 +249,56 @@ namespace Core {
                         continue;
                     }
                 }
-                EnqueueCharacterStateUpdate(session, temp);
+                cacheCommands->EnqueueCharacterStateUpdate(session, temp);
             }
             shard.sessionMap.clear();
         }
     }
 
-    void SessionManager::Disconnect(uint64_t sessionID) {
+    void SessionManager::RequestDisconnect(uint64_t sessionID) {
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock<std::shared_mutex> lock(shard.smutex);
         auto it = shard.sessionMap.find(sessionID);
-        if (it == shard.sessionMap.end())
-        {
+        if (it == shard.sessionMap.end() || it->second.disconnectQueued)
+            return;
+        const auto zoneID = it->second.zoneID;
+        if (zoneID != 0) {
+            if (zoneRequests->TryEnqueueDisconnect(zoneID, sessionID, it->second.ownershipEpoch))
+                it->second.disconnectQueued = true;
+            else
+                errorLogger->LogError("core session manager", "could not queue zone disconnect",
+                    "sessionID", sessionID, "zoneID", zoneID);
             return;
         }
-        const auto zoneID = it->second.zoneID;
-        if (zoneID == 0 && it->second.chatID == 0) {
+        if (it->second.chatID == 0) {
             lobbyZone->Disconnect(sessionID);
             shard.sessionMap.erase(it);
             return;
         }
 
         CharacterState temp;
-        const auto pending = it->second.pendingZoneTransfer;
-        if (zoneID == 0) {
-            if (!lobbyZone->EmigrateChar(sessionID, temp))
-                return;
-        }
-        else if (!pending) {
-            auto* zone = zoneRouter->GetZone(zoneID);
-            if (zone == nullptr) {
-                gameLogger->LogInfo("core session manager", "state not found", "sessionID", sessionID, "zoneID", zoneID);
-                return;
-            }
-            if (!zone->EmigrateChar(sessionID, temp))
-                return;
-        }
+        if (!lobbyZone->EmigrateChar(sessionID, temp))
+            return;
         shard.sessionMap.erase(it);
-        if (zoneID != 0)
-            chat->EnqueueZoneLeave(sessionID, zoneID);
         chat->DeleteChatSession(sessionID, zoneID);
         lock.unlock();
-        gameLogger->LogInfo("core session manager", "Enqueue Disconnect", "sessionID", sessionID);
-        EnqueueCharacterStateUpdate(sessionID, pending ? pending->character : temp);
+        cacheCommands->EnqueueCharacterStateUpdate(sessionID, temp);
+    }
+
+    bool SessionManager::CompleteZoneDisconnect(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
+        std::shared_ptr<ZoneTransfer>& pending) {
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock lock(shard.smutex);
+        const auto it = shard.sessionMap.find(sessionID);
+        if (it == shard.sessionMap.end() || !it->second.disconnectQueued
+            || it->second.zoneID != zoneID || it->second.ownershipEpoch != ownershipEpoch)
+            return false;
+
+        pending = std::move(it->second.pendingZoneTransfer);
+        shard.sessionMap.erase(it);
+        chat->EnqueueZoneLeave(sessionID, zoneID);
+        chat->DeleteChatSession(sessionID, zoneID);
+        return true;
     }
 
     void SessionManager::QueueProfileVersionUpdate(const ProfileVersionUpdate& update) {
@@ -317,14 +323,6 @@ namespace Core {
         if (!zoneRequests->TryEnqueueProfileVersion(session.zoneID, update)) {
             errorLogger->LogWarn("core session manager", "could not queue profile version update",
                 "sessionID", update.sessionID, "zoneID", session.zoneID, "version", update.version);
-        }
-    }
-
-    void SessionManager::EnqueueCharacterStateUpdate(uint64_t sessionID, const CharacterState& character) {
-        if (!cacheCommands->EnqueueCharacterStateUpdate(sessionID, character)) {
-            std::vector<std::byte> binary(sizeof(CharacterState));
-            std::memcpy(binary.data(), &character, sizeof(CharacterState));
-            errorLogger->LogError("core session manager", "Failed to enqueue character state update", "sessionID", sessionID, "character state", binary);
         }
     }
 }

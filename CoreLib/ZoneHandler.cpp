@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include "ZoneHandler.h"
+#include "CacheCommandSender.h"
 
 #include "IPacketView.h"
 #include "ISessionAuth.h"
@@ -93,6 +94,23 @@ namespace Core {
         sessionManager->ApplyZoneProfileVersion(zone.m_zoneID, update, [&] {
             zone.UpdateProfileVersion(update.sessionID, update.profileID, update.version);
         });
+    }
+
+    void ZoneHandler::ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneRequest& request) {
+        std::shared_ptr<ZoneTransfer> pending;
+        if (!sessionManager->CompleteZoneDisconnect(request.sessionID, zoneID, request.ownershipEpoch, pending))
+            return;
+
+        if (pending) {
+            cacheCommands->EnqueueCharacterStateUpdate(request.sessionID, pending->character);
+            return;
+        }
+        CharacterState character;
+        if (zone.EmigrateChar(request.sessionID, character))
+            cacheCommands->EnqueueCharacterStateUpdate(request.sessionID, character);
+        else
+            gameLogger->LogWarn("zone handler", "disconnect character not found",
+                "sessionID", request.sessionID, "zoneID", zoneID);
     }
 
     void ZoneHandler::ProcessBootstrap(ZoneState& zone, const ZoneRequest& request) {

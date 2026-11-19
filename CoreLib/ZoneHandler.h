@@ -13,6 +13,7 @@
 #include "PacketWriter.h"
 
 namespace Core {
+    class CacheCommandSender;
     class ISessionAuth;
     class IPacketView;
     class INetworkSender;
@@ -26,14 +27,16 @@ namespace Core {
         INetworkSender* networkSender = nullptr;
         PacketWriter* writer = nullptr;
         IZoneTransfer* zoneTransfer = nullptr;
+        const CacheCommandSender* cacheCommands = nullptr;
         LobbyZone* lobbyZone = nullptr;
         
         void Initialize(SessionManager* m, INetworkSender* sender, PacketWriter* packetWriter,
-            IZoneTransfer& transfer, LobbyZone& lobby) {
+            IZoneTransfer& transfer, LobbyZone& lobby, const CacheCommandSender& commands) {
             sessionManager = m;
             networkSender = sender;
             writer = packetWriter;
             zoneTransfer = &transfer;
+            cacheCommands = &commands;
             lobbyZone = &lobby;
         }
 
@@ -56,6 +59,10 @@ namespace Core {
             }
             if (lobbyZone == nullptr) {
                 sysLogger->LogError("zone handler", "lobby zone not initialized");
+                return false;
+            }
+            if (cacheCommands == nullptr) {
+                sysLogger->LogError("zone handler", "cache command sender not initialized");
                 return false;
             }
             return true;
@@ -108,6 +115,9 @@ namespace Core {
                     case ZoneEventType::Respawn:
                         ProcessRespawn(zone, event.request);
                         break;
+                    case ZoneEventType::Disconnect:
+                        ProcessDisconnect(zone, zoneID, event.request);
+                        break;
                     }
                 }
             }
@@ -124,6 +134,7 @@ namespace Core {
         }
 
         void Process(ZoneState& zone, IPacketView* p, uint16_t zoneID);
+        void ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneRequest& request);
     private:
         static void BroadcastDeltaState(ZoneState& zone) {
             zone.DeltaSnapshot();

@@ -122,7 +122,7 @@ namespace Core {
     }
 
     void NonSimulationHandler::Disconnect(uint64_t sessionID) {
-        sessionManager->Disconnect(sessionID);
+        sessionManager->RequestDisconnect(sessionID);
     }
 
     void NonSimulationHandler::RequestProfileRename(uint64_t sessionID, uint32_t profileId, const char* name, uint16_t nameLen) {

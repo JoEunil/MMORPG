@@ -74,7 +74,7 @@ namespace Core {
             nonSimulationThreadPool.Start();
             broadcastPool.Start();
             ZoneState::Initialize(&broadcastPool, &writer, &sessionManager, &perfCollector);
-            zoneHandler.Initialize(&sessionManager, networkSender, &writer, zoneEventRouter, lobbyZone);
+            zoneHandler.Initialize(&sessionManager, networkSender, &writer, zoneEventRouter, lobbyZone, cacheCommandSender);
             nonSimulationHandler.Initialize(networkSender, session, &writer, &cacheCommandSender, &sessionManager, &lobbyZone, &chat, profileCache);
             zoneEventRouter.Start();
             chat.Start();
@@ -114,13 +114,13 @@ namespace Core {
         }
 
         void StopProducers() {
+            nonSimulationThreadPool.Stop();
             zoneEventRouter.Stop();
             broadcastPool.Stop();
             chat.Stop();
             perfCollector.Stop();
         }
         void FinishShutdown() {
-            nonSimulationThreadPool.Stop();
             recvMQ.Stop();
             sessionManager.CleanUp();
         }

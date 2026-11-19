@@ -100,6 +100,12 @@ namespace Core {
         return WorldMap::FindTransitionZone(sourceZoneID, x, y);
     }
 
+    bool ZoneEventRouter::TryEnqueueDisconnect(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch) {
+        ZoneEvent event{ZoneEventType::Disconnect};
+        event.request = {sessionID, ownershipEpoch};
+        return TryEnqueue(zoneID, event);
+    }
+
     bool ZoneEventRouter::TryEnqueueTransfer(uint16_t destinationID, const std::shared_ptr<ZoneTransfer>& transfer) {
         if (!transfer || !acceptingTransfers.load(std::memory_order_acquire))
             return false;
