@@ -13,7 +13,7 @@
 namespace Core {
     ZoneThread::~ZoneThread() {
         Stop();
-        ProcessDeferredEvents(nullptr);
+        ProcessDeferredProfileUpdates(nullptr);
     }
 
     void ZoneThread::Initialize(uint16_t id, ZoneHandler& zoneHandler, CorePerfCollector& perf) {
@@ -49,7 +49,7 @@ namespace Core {
 
         zone.InitializeMonster();
         while (running) {
-            ProcessDeferredEvents(&zone);
+            ProcessDeferredProfileUpdates(&zone);
             handler->RunTick(zone, zoneID, workQueue, 2000, *perfCollector, [&] {
                 const auto now = std::chrono::steady_clock::now();
                 if (now - lastFullSnapshot >= FULL_SNAPSHOT_TICK) {
@@ -112,20 +112,15 @@ namespace Core {
             return false;
         if (workQueue.push(event))
             return true;
-        const bool rejectedRespawn = event.type == ZoneEventType::TransferRejected
-            && event.transfer && event.transfer->IsRespawn();
-        if (event.type == ZoneEventType::ProfileVersion || rejectedRespawn) {
-            // Retain committed profile updates and respawn rollbacks when the regular queue is full.
-            auto* entry = rejectedRespawn ? event.transfer->respawnReturnEvent.release() : nullptr;
-            if (entry == nullptr)
-                entry = new (std::nothrow) DeferredZoneEvent;
+        if (event.type == ZoneEventType::ProfileVersion) {
+            // The cache has already committed this version. Retain it for the next tick.
+            auto* head = deferredProfileUpdates.load(std::memory_order_relaxed);
+            auto* entry = new (std::nothrow) DeferredProfileUpdate{event.profileVersion, head};
             if (entry == nullptr)
                 return false;
-            entry->event = std::move(event);
-            auto* head = deferredEvents.load(std::memory_order_relaxed);
             do {
                 entry->next = head;
-            } while (!deferredEvents.compare_exchange_weak(head, entry, std::memory_order_release,
+            } while (!deferredProfileUpdates.compare_exchange_weak(head, entry, std::memory_order_release,
                 std::memory_order_relaxed));
             return true;
         }
@@ -133,18 +128,13 @@ namespace Core {
         return false;
     }
 
-    void ZoneThread::ProcessDeferredEvents(ZoneState* zone) {
-        // Profile versions and transfer identities are validated by the owner.
-        auto* entry = deferredEvents.exchange(nullptr, std::memory_order_acquire);
+    void ZoneThread::ProcessDeferredProfileUpdates(ZoneState* zone) {
+        auto* entry = deferredProfileUpdates.exchange(nullptr, std::memory_order_acquire);
         while (entry != nullptr) {
-            const std::unique_ptr<DeferredZoneEvent> work(entry);
+            const std::unique_ptr<DeferredProfileUpdate> work(entry);
             entry = entry->next;
-            if (zone == nullptr)
-                continue;
-            if (work->event.type == ZoneEventType::TransferRejected)
-                handler->ProcessFieldTransfer(*zone, work->event);
-            else
-                handler->ApplyProfileVersion(*zone, work->event.profileVersion);
+            if (zone != nullptr)
+                handler->ApplyProfileVersion(*zone, work->update);
         }
     }
 }

@@ -42,15 +42,14 @@ namespace Core {
         ZoneRequest request;
     };
 
-    struct DeferredZoneEvent {
-        ZoneEvent event;
-        DeferredZoneEvent* next = nullptr;
-    };
-
     class alignas(std::hardware_destructive_interference_size) ZoneThread {
         std::thread thread;
         Base::MPMCQueue<ZoneEvent, ZONE_QUEUE_SIZE> workQueue;
-        std::atomic<DeferredZoneEvent*> deferredEvents = nullptr;
+        struct DeferredProfileUpdate {
+            ProfileVersionUpdate update;
+            DeferredProfileUpdate* next;
+        };
+        std::atomic<DeferredProfileUpdate*> deferredProfileUpdates = nullptr;
         std::atomic<bool> running = false;
         uint16_t zoneID = 0;
         ZoneHandler* handler = nullptr;
@@ -61,7 +60,7 @@ namespace Core {
         void Start(ZoneState& zone);
         void Stop();
         bool Enqueue(ZoneEvent& event);
-        void ProcessDeferredEvents(ZoneState* zone);
+        void ProcessDeferredProfileUpdates(ZoneState* zone);
         void WorkerFunc(ZoneState& zone);
 
         friend class ZoneEventRouter;

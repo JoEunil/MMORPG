@@ -88,8 +88,7 @@ namespace Core {
             const auto session = shard.sessionMap.find(sessionID);
             if (session == shard.sessionMap.end() || session->second.pendingFieldTransfer != transfer
                 || session->second.ownershipEpoch != transfer->ownershipEpoch
-                || session->second.zoneID != transfer->sourceZoneID
-                || transfer->IsRespawn())
+                || session->second.zoneID != transfer->sourceZoneID)
                 return 0;
 
             auto& data = session->second;

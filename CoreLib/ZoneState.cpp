@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "ZoneState.h"
-#include "ZoneThread.h"
 #include "PacketTypes.h"
 #include "WorldMap.h"
 #include "IPacket.h"
@@ -19,19 +18,6 @@ namespace Core {
             "Town respawn must remain inside Zone 1.");
 
         constexpr uint32_t RESPAWN_DIRTY_FIELDS = 0x1C3; // hp, mp, direction, x and y
-    }
-
-    FieldZoneTransfer::FieldZoneTransfer() = default;
-
-    FieldZoneTransfer::~FieldZoneTransfer() {
-        ReleaseRespawnSlot();
-    }
-
-    void FieldZoneTransfer::ReleaseRespawnSlot() {
-        if (respawnReturnSlots) {
-            respawnReturnSlots->fetch_sub(1, std::memory_order_relaxed);
-            respawnReturnSlots.reset();
-        }
     }
 
     void ZoneState::RemoveFromCell(CharacterState& character) {
@@ -210,15 +196,14 @@ namespace Core {
         return true;
     }
 
-    bool ZoneState::RestoreFieldTransferLocked(const CharacterState& original, bool returningRespawn) {
+    bool ZoneState::RestoreFieldTransferLocked(const CharacterState& original) {
         CharacterState incoming = original;
-        return RegisterCharacterLocked(std::move(incoming), returningRespawn);
+        return RegisterCharacterLocked(std::move(incoming));
     }
 
-    bool ZoneState::RegisterCharacterLocked(CharacterState&& incoming, bool returningRespawn) {
+    bool ZoneState::RegisterCharacterLocked(CharacterState&& incoming) {
         static_assert(std::is_nothrow_move_constructible_v<CharacterState>);
-        const auto reserved = m_respawnReturnSlots->load(std::memory_order_relaxed);
-        if (m_chars.size() + reserved >= MAX_ZONE_CAPACITY + static_cast<size_t>(returningRespawn))
+        if (m_chars.size() >= MAX_ZONE_CAPACITY)
             return false;
 
         const auto sessionID = incoming.sessionID;

@@ -187,12 +187,9 @@ namespace Core {
         transfer->kind = FieldZoneTransfer::Kind::Respawn;
         transfer->x = TOWN_SPAWN_X;
         transfer->y = TOWN_SPAWN_Y;
-        transfer->respawnReturnEvent = std::make_unique<DeferredZoneEvent>();
         if (!zoneTransfer->TryEnqueueTransfer(TOWN_ZONE_ID, transfer))
             return false;
 
-        source.m_respawnReturnSlots->fetch_add(1, std::memory_order_relaxed);
-        transfer->respawnReturnSlots = source.m_respawnReturnSlots;
         session.pendingFieldTransfer = std::move(transfer);
         source.RemoveCharacterLocked(sessionID);
         return true;
@@ -219,7 +216,7 @@ namespace Core {
         std::unique_lock zoneLock(zone.m_mutex);
         bool admitted = false;
         try {
-            admitted = returning ? zone.RestoreFieldTransferLocked(transfer->character, respawn)
+            admitted = returning ? zone.RestoreFieldTransferLocked(transfer->character)
                                  : zone.AdmitFieldTransferLocked(*transfer);
         }
         catch (const std::bad_alloc&) {
@@ -228,18 +225,13 @@ namespace Core {
         if (!admitted) {
             zoneLock.unlock();
             sessionLock.unlock();
-            if ((!returning || respawn) && zoneTransfer->TryEnqueueTransferRejected(transfer))
-                return;
-            if (respawn)
-                errorLogger->LogError("respawn", "source could not queue rollback", "sessionID", sessionID);
-            else
+            if (returning || !zoneTransfer->TryEnqueueTransferRejected(transfer))
                 zoneTransfer->EnqueueLobbyReturn(transfer);
             return;
         }
 
         auto& data = session->second;
         data.pendingFieldTransfer.reset();
-        transfer->ReleaseRespawnSlot();
         if (returning) {
             if (respawn) {
                 zoneLock.unlock();
