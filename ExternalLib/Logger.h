@@ -9,7 +9,7 @@
 #include <atomic>
 #include <thread>
 
-#include <CoreLib/ILogger.h>
+#include <CoreLib/Interface/ILogger.h>
 #include "JsonUtility.h"
 #include "Config.h"
 

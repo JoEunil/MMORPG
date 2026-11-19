@@ -79,7 +79,7 @@ AOI Cell(0,0)은 구역 로컬 좌하단이다. 25개 사각형은 중첩을 포
 4. Scene Gizmo: 파랑은 구역 전체, 초록은 전용 영역, 주황은 중첩, 흰색은 선택 구역의 AOI25, 빨강은 로컬 원점이다. 저장된 NavigationGrid 보기 버튼은 통행 배열 미리보기로 이동한다. 씬을 바꾼 뒤에는 이전 bake와 다를 수 있다.
 5. Scene을 저장하고 전체 맵 검증 및 내보내기 버튼 또는 C02 > World > Bake and Export Navigation 메뉴를 실행한다.
 
-출력은 `CoreLib/Generated/WorldMap.inc` 한 파일이다. nav와 layout을 따로 덮어쓰지 않는다. 전 데이터를 준비한 뒤 임시 파일을 교체하며 실패하면 이전 통행 배열/dirty 및 기존 출력이 유지된다. 프로세스 중단과 Unity 자산 저장까지 하나의 트랜잭션으로 보장하는 것은 아니다.
+출력은 `CoreLib/Data/Generated/WorldMap.inc` 한 파일이다. nav와 layout을 따로 덮어쓰지 않는다. 전 데이터를 준비한 뒤 임시 파일을 교체하며 실패하면 이전 통행 배열/dirty 및 기존 출력이 유지된다. 프로세스 중단과 Unity 자산 저장까지 하나의 트랜잭션으로 보장하는 것은 아니다.
 
 3×3 예시를 만들려면 Columns=3, Rows=3으로 지정하고 바닥/NavigationGrid도 610×610으로 맞춘다. 현재 서버는 여전히 6구역이므로 예시 출력만으로 9구역 서버가 활성화되지는 않는다.
 

@@ -10,11 +10,11 @@
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"
 #include "ProfileCache.h"
-#include "DBWorker.h"
-#include "DBConfig.h"
-#include <CoreLib/IMessageQueue.h>
-#include <CoreLib/MessagePool.h>
-#include <CoreLib/MessageWriter.h>
+#include "DB/DBWorker.h"
+#include "DB/DBConfig.h"
+#include <CoreLib/Interface/IMessageQueue.h>
+#include <CoreLib/Cache/MessagePool.h>
+#include <CoreLib/Cache/MessageWriter.h>
 
 #include <CoreLib/LoggerGlobal.h>
 namespace Core {

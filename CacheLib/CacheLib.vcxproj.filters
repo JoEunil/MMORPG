@@ -21,13 +21,13 @@
     <ClInclude Include="Initializer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="DBConnection.h">
+    <ClInclude Include="DB\DBConnection.h">
       <Filter>DB</Filter>
     </ClInclude>
-    <ClInclude Include="DBConfig.h">
+    <ClInclude Include="DB\DBConfig.h">
       <Filter>DB</Filter>
     </ClInclude>
-    <ClInclude Include="StatementId.h">
+    <ClInclude Include="DB\StatementId.h">
       <Filter>DB</Filter>
     </ClInclude>
     <ClInclude Include="CacheStorage.h">
@@ -36,10 +36,10 @@
     <ClInclude Include="Config.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Queries.h">
+    <ClInclude Include="DB\Queries.h">
       <Filter>DB</Filter>
     </ClInclude>
-    <ClInclude Include="DBConnectionPool.h">
+    <ClInclude Include="DB\DBConnectionPool.h">
       <Filter>DB</Filter>
     </ClInclude>
     <ClInclude Include="Handler.h">
@@ -54,7 +54,7 @@
     <ClInclude Include="CacheStorageInventory.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="DBWorker.h">
+    <ClInclude Include="DB\DBWorker.h">
       <Filter>DB</Filter>
     </ClInclude>
     <ClInclude Include="CacheStorageCurrency.h">

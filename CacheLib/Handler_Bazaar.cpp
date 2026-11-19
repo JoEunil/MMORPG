@@ -4,13 +4,13 @@
 #include <exception>
 #include <memory>
 
-#include <CoreLib/Message.h>
-#include <CoreLib/MessageTypes.h>
-#include <CoreLib/IMessageQueue.h>
+#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Cache/MessageTypes.h>
+#include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
-#include <CoreLib/ItemData.h>
+#include <CoreLib/Data/ItemData.h>
 
-#include "DBWorker.h"
+#include "DB/DBWorker.h"
 #include "BazaarSearchResult.h"
 #include "BazaarMyListResult.h"
 #include "BazaarClaimResult.h"

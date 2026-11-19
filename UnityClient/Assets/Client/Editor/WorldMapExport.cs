@@ -16,7 +16,7 @@ namespace Mmorpg.Client.Editor
             if (EditorApplication.isPlaying) throw new InvalidOperationException("Bake the map in Edit Mode.");
             var authors = UnityEngine.Object.FindObjectsByType<MapAuthoring>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             if (authors.Length != 1) throw new InvalidOperationException("Exactly one fixed world map authoring root is required.");
-            string directory = Path.GetFullPath(Path.Combine(Application.dataPath, "../../CoreLib/Generated"));
+            string directory = Path.GetFullPath(Path.Combine(Application.dataPath, "../../CoreLib/Data/Generated"));
             BakeAndExport(authors[0], directory);
             Debug.Log("World navigation baked from explicit ground and solid objects; C++ snapshot exported. No A* or live server restart.");
         }

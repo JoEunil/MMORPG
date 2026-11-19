@@ -1,7 +1,7 @@
 ﻿#include <gtest/gtest.h>
 
 #include <NetLibrary/ClientContext.h>
-#include <CoreLib/PacketTypes.h>
+#include <CoreLib/Packet/PacketTypes.h>
 
 Core::PacketStruct<Core::EnterWorldRequestBody> GetTestPacket() {
 	Core::PacketStruct<Core::EnterWorldRequestBody> packet;

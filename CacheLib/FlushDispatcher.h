@@ -7,7 +7,7 @@
 #include <algorithm>
 
 #include <CoreLib/LoggerGlobal.h>
-#include <CoreLib/ICachedClock.h>
+#include <CoreLib/Interface/ICachedClock.h>
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"
 #include "CacheFlush.h"

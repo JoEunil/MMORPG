@@ -79,7 +79,7 @@ spdlog::shutdown();
 현재 [CharacterStateUpdate](CacheLib/Handler.cpp)는 DB 작업 등록 결과를 처리하지 않고 실패 콜백도 지정하지 않는다. 등록 거절이나 DB 쓰기 실패 시 로그는 남지만 자동 재시도는 없다.  
 인벤토리·골드 캐시의 dirty 복원과 flush 재시도는 별도 경로이므로 캐릭터 상태 저장에 적용되지 않는다.
 
-Cache InMemoryQueue의 중요 메시지는 기본 큐와 defer 큐가 모두 가득 차면 [DurableLogger](CoreLib/DurableLogger.cpp)에 기록한다.  
+Cache InMemoryQueue의 중요 메시지는 기본 큐와 defer 큐가 모두 가득 차면 [DurableLogger](CoreLib/Cache/DurableLogger.cpp)에 기록한다.  
 이 로거는 append와 fsync를 수행하지만 초기화 시 전달하는 replay 콜백이 비어 있어, 재시작 후 저장 메시지를 자동으로 DB에 다시 적용하지 않는다.  
 따라서 정상 종료 순서, 실행 중 재시도, 재시작 복구는 구분해야 한다. 인벤토리의 재시작 복구는 별도의 [WALManager](CacheLib/WALManager.h)가 담당한다.
 

@@ -4,8 +4,8 @@
 #include <array>
 #include <vector>
 
-#include <CoreLib/MessageTypes.h>
-#include <CoreLib/Message.h>
+#include <CoreLib/Cache/MessageTypes.h>
+#include <CoreLib/Cache/Message.h>
 #include <CoreLib/LoggerGlobal.h>
 #include <mysqlconn/include/mysql/jdbc.h>
 

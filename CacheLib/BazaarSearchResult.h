@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <limits>
-#include <CoreLib/MessageTypes.h>
+#include <CoreLib/Cache/MessageTypes.h>
 #include "Config.h"
 
 namespace Cache {

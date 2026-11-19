@@ -3,9 +3,9 @@
 #include <string>
 #include <cstdint>
 
-#include <CoreLib/PacketTypes.h>
-#include <CoreLib/IPacket.h>
-#include <CoreLib/IPacketPool.h>
+#include <CoreLib/Packet/PacketTypes.h>
+#include <CoreLib/Interface/IPacket.h>
+#include <CoreLib/Interface/IPacketPool.h>
 
 namespace Net {
     class Packet : public Core::IPacket {

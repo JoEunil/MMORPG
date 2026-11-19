@@ -14,9 +14,9 @@
 #include <new>
 
 #include <mysqlconn/include/mysql/jdbc.h>
-#include "DBConfig.h"
-#include "DBWorker.h"
-#include <CoreLib/ICachedClock.h>
+#include "DB/DBConfig.h"
+#include "DB/DBWorker.h"
+#include <CoreLib/Interface/ICachedClock.h>
 #include "Config.h"
 
 namespace Cache {

@@ -38,4 +38,4 @@ UI 복잡도를 줄이기 위해 Whisper 창을 하나로 통합하였다.
 
 ## 6. 참고
 - 관련 PR: [채팅 기능 리팩토링 #11](https://github.com/JoEunil/MMORPG/pull/11)
-- [ChatThreadPool](CoreLib/ChatThreadPool.cpp)
+- [ChatThreadPool](CoreLib/NonSimulation/ChatThreadPool.cpp)

@@ -3,7 +3,7 @@
 #include <initializer_list>
 #include <limits>
 #include <stdexcept>
-#include <CoreLib/MessageTypes.h>
+#include <CoreLib/Cache/MessageTypes.h>
 
 namespace Cache {
     // The procedure commits cancellation and an outbox event together. Delivery is a separate cache pass.

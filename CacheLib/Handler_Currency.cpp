@@ -1,11 +1,11 @@
 ﻿#include "Handler.h"
 
-#include <CoreLib/Message.h>
-#include <CoreLib/MessageTypes.h>
-#include <CoreLib/IMessageQueue.h>
+#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Cache/MessageTypes.h>
+#include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
 
-#include "DBWorker.h"
+#include "DB/DBWorker.h"
 
 namespace Cache {
     void Handler::CurrencyRequest(ScopedMessage& msg, uint64_t sessionID, Core::MsgCurrencyReqBody* body) {

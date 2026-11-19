@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <CoreLib/MonsterState.h>
+#include <CoreLib/World/MonsterState.h>
 #include <CoreLib/HuntingZoneData.h>
 
 namespace Core {

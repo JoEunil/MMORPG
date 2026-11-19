@@ -8,7 +8,7 @@
 #include <new>
 
 #include "LoggerGlobal.h"
-#include "WorldConfig.h"
+#include "World/WorldConfig.h"
 namespace Core {
     struct alignas(std::hardware_destructive_interference_size) ZonePerfData {// per sec
         // single thread access

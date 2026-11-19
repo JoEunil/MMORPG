@@ -68,8 +68,8 @@ Monster AI 로직에 대한 추가 내용은 [Monster 구현 설명](Monster.md)
 
 ## 4. 참고 
 
-[SkillData.h](CoreLib/SkillData.h)  
-[SkillData.cpp](CoreLib/SkillData.cpp)  
-[SkillData_Range.cpp](CoreLib/SkillData_Range.cpp)  
-[ZoneState_Skills.cpp](CoreLib/ZoneState_Skills.cpp)  
-[ZoneState_Actions.cpp](CoreLib/ZoneState_Actions.cpp)  
+[SkillData.h](CoreLib/Data/SkillData.h)  
+[SkillData.cpp](CoreLib/Data/SkillData.cpp)  
+[SkillData_Range.cpp](CoreLib/Data/SkillData_Range.cpp)  
+[ZoneState_Skills.cpp](CoreLib/World/ZoneState_Skills.cpp)  
+[ZoneState_Actions.cpp](CoreLib/World/ZoneState_Actions.cpp)  

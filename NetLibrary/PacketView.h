@@ -2,8 +2,8 @@
 
 #include <vector>
 #include <cstdint>
-#include <CoreLib/IPacketView.h>
-#include <CoreLib/PacketTypes.h>
+#include <CoreLib/Interface/IPacketView.h>
+#include <CoreLib/Packet/PacketTypes.h>
 #include "Config.h"
 
 namespace Net {

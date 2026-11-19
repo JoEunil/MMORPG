@@ -4,7 +4,7 @@
 #include "ClientContext.h"
 #include "Config.h"
 
-#include <CoreLib//IPacket.h>
+#include <CoreLib/Interface/IPacket.h>
 
 namespace Net {
     void PingManager::PingFunc() {

@@ -1,6 +1,6 @@
 #pragma once
 #include <stdexcept>
-#include <CoreLib/MessageTypes.h>
+#include <CoreLib/Cache/MessageTypes.h>
 
 namespace Cache {
     // Shared SQL/fixture read boundary; DBWorker converts read exceptions to a correlated failure.

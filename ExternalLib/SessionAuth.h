@@ -9,7 +9,7 @@
 #include <memory>
 #include <mutex>
 #include <vector>
-#include <CoreLib/ISessionAuth.h>
+#include <CoreLib/Interface/ISessionAuth.h>
 
 namespace External {
     class Logger;

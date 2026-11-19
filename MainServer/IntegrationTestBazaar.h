@@ -13,12 +13,12 @@
 
 #include <CacheLib/Initializer.h>
 #include <ExternalLib/CachedClock.h>
-#include <CoreLib/Message.h>
-#include <CoreLib/MessageTypes.h>
-#include <CoreLib/MessagePool.h>
-#include <CoreLib/ItemData.h>
+#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Cache/MessageTypes.h>
+#include <CoreLib/Cache/MessagePool.h>
+#include <CoreLib/Data/ItemData.h>
 #include <CacheLib/Config.h>
-#include <CacheLib/DBConfig.h>
+#include <CacheLib/DB/DBConfig.h>
 #include <stdexcept>
 
 // ================================================================

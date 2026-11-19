@@ -302,8 +302,8 @@ TEST(CacheWALRegression, NewNodeLsnExceedsTheLoadedDatabaseLsn) {
 #include <CacheLib/BazaarSearchResult.h>
 #include <CacheLib/BazaarRegisterResult.h>
 #include <CacheLib/Handler.h>
-#include <CacheLib/DBWorker.h>
-#include <CoreLib/IMessageQueue.h>
+#include <CacheLib/DB/DBWorker.h>
+#include <CoreLib/Interface/IMessageQueue.h>
 #include <stdexcept>
 #include <limits>
 #include <string_view>

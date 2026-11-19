@@ -54,7 +54,7 @@ WinForms 분석기의 첫 실행 화면이다. 기본 빌드 설정은 `Debug` /
 
 ![PacketDispatcher에서 ZoneThreadSet과 NonZoneThreadPool로 향하는 정적 호출을 카드로 확인하는 화면](Screenshots/class-cards.png)
 
-[PacketDispatcher.cpp](../../CoreLib/PacketDispatcher.cpp#L8)
+[PacketDispatcher.cpp](../../CoreLib/Packet/PacketDispatcher.cpp#L8)
 
 ### 3.2. 관계 지도: 연결이 모이는 클래스 찾기
 
@@ -78,7 +78,7 @@ WinForms 분석기의 첫 실행 화면이다. 기본 빌드 설정은 `Debug` /
 
 ![CoreLib과 NetLibrary 사이의 Interface 상속과 IOCP 선언 위치를 확인하는 화면](Screenshots/interface-boundaries.png)
 
-[INetworkSender.h](../../CoreLib/INetworkSender.h#L10) · [IOCP.h](../../NetLibrary/IOCP.h#L34) · [BroadcastThreadPool.cpp](../../CoreLib/BroadcastThreadPool.cpp#L37)
+[INetworkSender.h](../../CoreLib/Interface/INetworkSender.h#L10) · [IOCP.h](../../NetLibrary/IOCP.h#L34) · [BroadcastThreadPool.cpp](../../CoreLib/World/BroadcastThreadPool.cpp#L37)
 
 ### 3.4. 필터 지도: 영역 간 연결 살펴보기
 
@@ -115,7 +115,7 @@ WinForms 분석기의 첫 실행 화면이다. 기본 빌드 설정은 `Debug` /
 
 </details>
 
-[ILogger.h](../../CoreLib/ILogger.h#L4) · [JsonUtility.h](../../ExternalLib/JsonUtility.h#L2)
+[ILogger.h](../../CoreLib/Interface/ILogger.h#L4) · [JsonUtility.h](../../ExternalLib/JsonUtility.h#L2)
 
 아래 세 화면은 기능 추가 당시 캡처로, 소스 54개 중 53개가 정상 분석됐고 `PacketWriter.cpp` 1개는 부분 분석됐다. 동봉 HTML은 54개 모두 오류 없이 분석한 결과이며 고수준 후보·순환 의존 검사·의존성 트리를 포함한다.
 

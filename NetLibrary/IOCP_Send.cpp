@@ -3,7 +3,7 @@
 #include <CoreLib/LoggerGlobal.h>
 #include "OverlappedExPool.h"
 #include "SessionManager.h"
-#include <CoreLib/IPacket.h>
+#include <CoreLib/Interface/IPacket.h>
 
 namespace Net {
     void IOCP::HandleSendCompletion(STOverlappedEx* work, DWORD bytesTransferred) {

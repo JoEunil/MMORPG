@@ -205,16 +205,16 @@ Zone1 마을 유지는 기존 결정으로 고정한다. 레벨 상한100은 시
 
 | 선택 | 묶음 범위 | 구분·의존 |
 | --- | --- | --- |
-| A. 구역별 사냥 구성부터 | Zone1 마을 유지, Zone2~6 권장 레벨 Lv1~5 / 6~10 / 11~15 / 16~20 / 21~25 초안. 일반·강화·보스 구성과 보상 차이를 설계한다. | 권장 레벨 안내만 할지, 실제 몬스터 HP/공격/EXP·보상까지 조정할지 결정 필요. 현재 [Monsters.inc](../../CoreLib/Monsters.inc)는 ID0 HP1500/공격5/EXP10, ID1 3000/8/30, ID2 10000/15/300이다. 현 레벨 데이터만으로 구역 적정성을 단정하지 않는다. |
-| B. 성장 연계까지 한 번에 | A에 더해 몬스터 레벨·능력/보상과 장비·캐릭터 성장 연계를 정리한다. | 현재 [Growth.inc](../../CoreLib/Growth.inc)은 Lv2 누적 EXP50, Lv3 150, Lv4 300이며 [CharacterState.h](../../CoreLib/CharacterState.h)의 AddExperience 성장 보너스는 최대 HP+500뿐이고 공격력 자동 성장은 없다. 서버 정본 데이터·능력치·보상·export/client 공유 경계를 함께 정해야 하는 더 큰 범위다. |
+| A. 구역별 사냥 구성부터 | Zone1 마을 유지, Zone2~6 권장 레벨 Lv1~5 / 6~10 / 11~15 / 16~20 / 21~25 초안. 일반·강화·보스 구성과 보상 차이를 설계한다. | 권장 레벨 안내만 할지, 실제 몬스터 HP/공격/EXP·보상까지 조정할지 결정 필요. 현재 [Monsters.inc](../../CoreLib/Data/Monsters.inc)는 ID0 HP1500/공격5/EXP10, ID1 3000/8/30, ID2 10000/15/300이다. 현 레벨 데이터만으로 구역 적정성을 단정하지 않는다. |
+| B. 성장 연계까지 한 번에 | A에 더해 몬스터 레벨·능력/보상과 장비·캐릭터 성장 연계를 정리한다. | 현재 [Growth.inc](../../CoreLib/Data/Growth.inc)은 Lv2 누적 EXP50, Lv3 150, Lv4 300이며 [CharacterState.h](../../CoreLib/World/CharacterState.h)의 AddExperience 성장 보너스는 최대 HP+500뿐이고 공격력 자동 성장은 없다. 서버 정본 데이터·능력치·보상·export/client 공유 경계를 함께 정해야 하는 더 큰 범위다. |
 
 ### 포션 공급과 자원 밸런스 — 별도 결정
 
-현재 확정 정책은 HP/MP 각각 3000 회복, HP itemID 1·MP itemID 2, 공유 2초 쿨다운, 일반·강화 몬스터 처치당 각 1개 지급이다. 이 정책은 유지하며, 추후 공급·소비 밸런스 변경 여부만 선택 대기다. [Skills.inc](../../CoreLib/Skills.inc) 기준 Q는 MP1, E/R은 각 MP20이며 MP 3000은 E/R 각 150회분이다. 보상 공급 이후 소비 속도도 고려할 필요가 있다. 등급 포션 ID는 예약하지 않는다. 등급 추가를 논의할 경우 실제 DB 카탈로그를 확인한 뒤 ID와 효과를 정한다. 테스트 캐릭터 가방에서 ID33도 관찰되어 새 ID 확정 전 DB 카탈로그 확인이 필요하다.
+현재 확정 정책은 HP/MP 각각 3000 회복, HP itemID 1·MP itemID 2, 공유 2초 쿨다운, 일반·강화 몬스터 처치당 각 1개 지급이다. 이 정책은 유지하며, 추후 공급·소비 밸런스 변경 여부만 선택 대기다. [Skills.inc](../../CoreLib/Data/Skills.inc) 기준 Q는 MP1, E/R은 각 MP20이며 MP 3000은 E/R 각 150회분이다. 보상 공급 이후 소비 속도도 고려할 필요가 있다. 등급 포션 ID는 예약하지 않는다. 등급 추가를 논의할 경우 실제 DB 카탈로그를 확인한 뒤 ID와 효과를 정한다. 테스트 캐릭터 가방에서 ID33도 관찰되어 새 ID 확정 전 DB 카탈로그 확인이 필요하다.
 
 선택 대기: A 또는 B, 권장 레벨 표시에 그칠지 실 능력치·보상 변경까지 할지, 포션 공급·소비 밸런스 변경 여부. 수령함과 장비 장착은 목록/저장·장착 계약이 필요한 별도 후순위 묶음이다.
 
-근거: [현재 인계](HANDOFF.md), [성장·아이템 계획](GROWTH_ITEMS_PLAN.md), 서버 정본 [Monsters.inc](../../CoreLib/Monsters.inc), [Growth.inc](../../CoreLib/Growth.inc), [Skills.inc](../../CoreLib/Skills.inc), [CharacterState.h](../../CoreLib/CharacterState.h).
+근거: [현재 인계](HANDOFF.md), [성장·아이템 계획](GROWTH_ITEMS_PLAN.md), 서버 정본 [Monsters.inc](../../CoreLib/Data/Monsters.inc), [Growth.inc](../../CoreLib/Data/Growth.inc), [Skills.inc](../../CoreLib/Data/Skills.inc), [CharacterState.h](../../CoreLib/World/CharacterState.h).
 ### 거래소 수령함 후속 계약 — 읽기 분석, 구현 미승인
 
 현재는 구매 확정 뒤 ‘Receive items’ 버튼으로 배송 복구를 요청한다. `MarketScreen.BuyReceived`는 구매 성공 후 직접 배송을 호출하지 않으며, 서버 구매 처리는 outbox READY 생성까지다. 취소 반환은 서버에서 즉시 배송을 시도한다. 따라서 아래 선택은 기존 구매 결제·판매자 다이아 정산과 구분한다.

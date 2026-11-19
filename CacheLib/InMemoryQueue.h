@@ -5,13 +5,13 @@
 #include <vector>
 
 #include <BaseLib/BlockingBackPressureQueue.h>
-#include <CoreLib/IMessageQueue.h>
-#include <CoreLib/Message.h>
-#include <CoreLib/MessageTypes.h>
+#include <CoreLib/Interface/IMessageQueue.h>
+#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
-#include <CoreLib/DurableLogger.h>
+#include <CoreLib/Cache/DurableLogger.h>
 #include "Config.h"
-#include <CoreLib/MessagePool.h>
+#include <CoreLib/Cache/MessagePool.h>
 
 namespace Cache {
     class Handler;

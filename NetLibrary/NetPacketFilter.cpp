@@ -2,9 +2,9 @@
 #include "NetPacketFilter.h"
 #include "AccumulatedBuffer.h"
 
-#include <CoreLib/IPacketView.h>
-#include <CoreLib/IPacketDispatcher.h>
-#include <CoreLib/PacketConfig.h>
+#include <CoreLib/Interface/IPacketView.h>
+#include <CoreLib/Interface/IPacketDispatcher.h>
+#include <CoreLib/Packet/PacketConfig.h>
 #include "NetPerfCollector.h"
 
 namespace Net {

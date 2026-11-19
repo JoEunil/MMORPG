@@ -1,12 +1,12 @@
 ﻿#include "Handler.h"
 
-#include <CoreLib/Message.h>
-#include <CoreLib/MessageTypes.h>
-#include <CoreLib/IMessageQueue.h>
+#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Cache/MessageTypes.h>
+#include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
-#include <CoreLib/PacketConfig.h>
+#include <CoreLib/Packet/PacketConfig.h>
 
-#include "DBWorker.h"
+#include "DB/DBWorker.h"
 #include <atomic>
 #include <memory>
 

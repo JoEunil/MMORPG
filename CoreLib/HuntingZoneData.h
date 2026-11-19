@@ -1,6 +1,6 @@
 #pragma once
 #include <array>
-#include "MonsterData.h"
+#include "Data/MonsterData.h"
 
 namespace Data {
     struct HuntingZoneData {

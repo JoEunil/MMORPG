@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <iterator>
 #include <mysqlconn/include/mysql/jdbc.h>
-#include <CoreLib/Message.h>
-#include "DBWorker.h"
+#include <CoreLib/Cache/Message.h>
+#include "DB/DBWorker.h"
 #include "CacheFlush.h"
 #include "InventoryCodec.h"
 

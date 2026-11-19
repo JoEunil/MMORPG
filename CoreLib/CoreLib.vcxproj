@@ -73,6 +73,7 @@
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -88,6 +89,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -111,7 +113,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)External;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir);$(SolutionDir)External;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -130,7 +132,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)External;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir);$(SolutionDir)External;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -140,105 +142,106 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="CharacterState.h" />
-    <ClInclude Include="ChatSessionManager.h" />
-    <ClInclude Include="ChatThreadPool.h" />
+    <ClInclude Include="World\CharacterState.h" />
+    <ClInclude Include="NonSimulation\ChatSessionManager.h" />
+    <ClInclude Include="NonSimulation\ChatThreadPool.h" />
     <ClInclude Include="CorePerfCollector.h" />
-    <ClInclude Include="ItemData.h" />
+    <ClInclude Include="Data\ItemData.h" />
     <ClInclude Include="LoggerGlobal.h" />
-    <ClInclude Include="MonsterData.h" />
-    <ClInclude Include="MonsterState.h" />
-    <ClInclude Include="NonSimulationHandler.h" />
-    <ClInclude Include="NonSimulationThreadPool.h" />
-    <ClInclude Include="BroadcastThreadPool.h" />
+    <ClInclude Include="Data\MonsterData.h" />
+    <ClInclude Include="World\MonsterState.h" />
+    <ClInclude Include="NonSimulation\NonSimulationHandler.h" />
+    <ClInclude Include="NonSimulation\NonSimulationThreadPool.h" />
+    <ClInclude Include="World\BroadcastThreadPool.h" />
     <ClInclude Include="Config.h" />
-    <ClInclude Include="CacheConfig.h" />
-    <ClInclude Include="CacheCommandSender.h" />
-    <ClInclude Include="NonSimulationConfig.h" />
-    <ClInclude Include="PacketConfig.h" />
-    <ClInclude Include="WorldConfig.h" />
-    <ClInclude Include="DurableLogger.h" />
-    <ClInclude Include="INetworkSender.h" />
-    <ClInclude Include="ILogger.h" />
+    <ClInclude Include="Cache\CacheConfig.h" />
+    <ClInclude Include="Cache\CacheCommandSender.h" />
+    <ClInclude Include="NonSimulation\NonSimulationConfig.h" />
+    <ClInclude Include="Packet\PacketConfig.h" />
+    <ClInclude Include="World\WorldConfig.h" />
+    <ClInclude Include="Cache\DurableLogger.h" />
+    <ClInclude Include="Interface\INetworkSender.h" />
+    <ClInclude Include="Interface\ILogger.h" />
     <ClInclude Include="Initializer.h" />
-    <ClInclude Include="InMemoryQueue.h" />
-    <ClInclude Include="IPacket.h" />
-    <ClInclude Include="IPacketDispatcher.h" />
-    <ClInclude Include="ISessionSnapshotReader.h" />
-    <ClInclude Include="IZonePacketQueue.h" />
-    <ClInclude Include="IZoneRequestQueue.h" />
-    <ClInclude Include="ILobbyReturnQueue.h" />
-    <ClInclude Include="INonSimulationQueue.h" />
-    <ClInclude Include="ISessionStatusReader.h" />
-    <ClInclude Include="IZoneTransfer.h" />
-    <ClInclude Include="IPacketPool.h" />
-    <ClInclude Include="IPacketPoolManager.h" />
-    <ClInclude Include="ICachedClock.h" />
-    <ClInclude Include="IPacketView.h" />
-    <ClInclude Include="ISessionAuth.h" />
-    <ClInclude Include="LobbyZone.h" />
-    <ClInclude Include="Message.h" />
-    <ClInclude Include="MessageQueueHandler.h" />
-    <ClInclude Include="MessageTypes.h" />
-    <ClInclude Include="MessageWriter.h" />
-    <ClInclude Include="PacketDispatcher.h" />
-    <ClInclude Include="PacketTypes.h" />
-    <ClInclude Include="PacketWriter.h" />
+    <ClInclude Include="Cache\InMemoryQueue.h" />
+    <ClInclude Include="Interface\IPacket.h" />
+    <ClInclude Include="Interface\IPacketDispatcher.h" />
+    <ClInclude Include="World\Interface\ISessionSnapshotReader.h" />
+    <ClInclude Include="World\Interface\IZonePacketQueue.h" />
+    <ClInclude Include="World\Interface\IZoneRequestQueue.h" />
+    <ClInclude Include="World\Interface\ILobbyReturnQueue.h" />
+    <ClInclude Include="NonSimulation\Interface\INonSimulationQueue.h" />
+    <ClInclude Include="World\Interface\ISessionStatusReader.h" />
+    <ClInclude Include="World\Interface\IZoneTransfer.h" />
+    <ClInclude Include="Interface\IPacketPool.h" />
+    <ClInclude Include="Interface\IPacketPoolManager.h" />
+    <ClInclude Include="Interface\ICachedClock.h" />
+    <ClInclude Include="Interface\IPacketView.h" />
+    <ClInclude Include="Interface\ISessionAuth.h" />
+    <ClInclude Include="World\LobbyZone.h" />
+    <ClInclude Include="Cache\Message.h" />
+    <ClInclude Include="Cache\MessageQueueHandler.h" />
+    <ClInclude Include="Cache\MessageTypes.h" />
+    <ClInclude Include="Cache\MessageWriter.h" />
+    <ClInclude Include="Packet\PacketDispatcher.h" />
+    <ClInclude Include="Packet\PacketTypes.h" />
+    <ClInclude Include="Packet\PacketWriter.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="IPingPacketWriter.h" />
-    <ClInclude Include="SkillData.h" />
-    <ClInclude Include="Skills.inc" />
-    <ClInclude Include="Monsters.inc" />
-    <ClInclude Include="GrowthData.h" />
-    <ClInclude Include="Growth.inc" />
-    <ClInclude Include="SessionManager.h" />
-    <ClInclude Include="Cell.h" />
-    <ClInclude Include="WorldMap.h" />
-    <ClInclude Include="Generated\WorldMap.inc" />
-    <ClInclude Include="ZoneEventRouter.h" />
-    <ClInclude Include="ZoneHandler.h" />
-    <ClInclude Include="ZoneState.h" />
-    <ClInclude Include="ZoneThread.h" />
+    <ClInclude Include="Interface\IPingPacketWriter.h" />
+    <ClInclude Include="Data\SkillData.h" />
+    <ClInclude Include="Data\MonsterSkills.inc" />
+    <ClInclude Include="Data\Skills.inc" />
+    <ClInclude Include="Data\Monsters.inc" />
+    <ClInclude Include="Data\GrowthData.h" />
+    <ClInclude Include="Data\Growth.inc" />
+    <ClInclude Include="World\SessionManager.h" />
+    <ClInclude Include="World\Cell.h" />
+    <ClInclude Include="World\WorldMap.h" />
+    <ClInclude Include="Data\Generated\WorldMap.inc" />
+    <ClInclude Include="World\ZoneEventRouter.h" />
+    <ClInclude Include="World\ZoneHandler.h" />
+    <ClInclude Include="World\ZoneState.h" />
+    <ClInclude Include="World\ZoneThread.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ChatSessionManager.cpp" />
-    <ClCompile Include="ChatThreadPool.cpp" />
-    <ClCompile Include="CacheCommandSender.cpp" />
-    <ClCompile Include="DurableLogger.cpp" />
+    <ClCompile Include="NonSimulation\ChatSessionManager.cpp" />
+    <ClCompile Include="NonSimulation\ChatThreadPool.cpp" />
+    <ClCompile Include="Cache\CacheCommandSender.cpp" />
+    <ClCompile Include="Cache\DurableLogger.cpp" />
     <ClCompile Include="LoggerGlobal.cpp" />
-    <ClCompile Include="NonSimulationHandler.cpp" />
-    <ClCompile Include="NonSimulationHandler_Bazaar.cpp" />
-    <ClCompile Include="NonSimulationHandler_WorldEntry.cpp" />
-    <ClCompile Include="NonSimulationHandler_Zone.cpp" />
-    <ClCompile Include="NonSimulationThreadPool.cpp" />
-    <ClCompile Include="BroadcastThreadPool.cpp" />
-    <ClCompile Include="PacketDispatcher.cpp" />
-    <ClCompile Include="SkillData.cpp" />
-    <ClCompile Include="SkillData_Range.cpp" />
-    <ClCompile Include="ZoneHandler.cpp" />
-    <ClCompile Include="ZoneState_Actions.cpp" />
-    <ClCompile Include="ZoneState_Monsters.cpp" />
-    <ClCompile Include="ZoneState_Skills.cpp" />
-    <ClCompile Include="ZoneState_Snapshots.cpp" />
-    <ClCompile Include="ZoneEventRouter.cpp" />
-    <ClCompile Include="ZoneThread.cpp" />
-    <ClInclude Include="IMessageQueue.h">
+    <ClCompile Include="NonSimulation\NonSimulationHandler.cpp" />
+    <ClCompile Include="NonSimulation\NonSimulationHandler_Bazaar.cpp" />
+    <ClCompile Include="NonSimulation\NonSimulationHandler_WorldEntry.cpp" />
+    <ClCompile Include="NonSimulation\NonSimulationHandler_Zone.cpp" />
+    <ClCompile Include="NonSimulation\NonSimulationThreadPool.cpp" />
+    <ClCompile Include="World\BroadcastThreadPool.cpp" />
+    <ClCompile Include="Packet\PacketDispatcher.cpp" />
+    <ClCompile Include="Data\SkillData.cpp" />
+    <ClCompile Include="Data\SkillData_Range.cpp" />
+    <ClCompile Include="World\ZoneHandler.cpp" />
+    <ClCompile Include="World\ZoneState_Actions.cpp" />
+    <ClCompile Include="World\ZoneState_Monsters.cpp" />
+    <ClCompile Include="World\ZoneState_Skills.cpp" />
+    <ClCompile Include="World\ZoneState_Snapshots.cpp" />
+    <ClCompile Include="World\ZoneEventRouter.cpp" />
+    <ClCompile Include="World\ZoneThread.cpp" />
+    <ClInclude Include="Interface\IMessageQueue.h">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClInclude>
-    <ClCompile Include="InMemoryQueue.cpp" />
-    <ClInclude Include="IProfileCache.h" />
-    <ClInclude Include="IInventoryOperations.h" />
-    <ClInclude Include="MessagePool.h" />
-    <ClCompile Include="MessageQueueHandler.cpp" />
-    <ClCompile Include="PacketWriter.cpp" />
+    <ClCompile Include="Cache\InMemoryQueue.cpp" />
+    <ClInclude Include="Interface\IProfileCache.h" />
+    <ClInclude Include="Interface\IInventoryOperations.h" />
+    <ClInclude Include="Cache\MessagePool.h" />
+    <ClCompile Include="Cache\MessageQueueHandler.cpp" />
+    <ClCompile Include="Packet\PacketWriter.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="SessionManager.cpp" />
-    <ClCompile Include="ZoneState.cpp" />
+    <ClCompile Include="World\SessionManager.cpp" />
+    <ClCompile Include="World\ZoneState.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BaseLib\BaseLib.vcxproj">

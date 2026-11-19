@@ -3,8 +3,8 @@
 #include <winsock2.h>
 #include <cstdint>
 #include <chrono>
-#include <CoreLib/PacketConfig.h>
-#include <CoreLib/PacketTypes.h>
+#include <CoreLib/Packet/PacketConfig.h>
+#include <CoreLib/Packet/PacketTypes.h>
 
 namespace Net {
 	inline constexpr uint8_t IOCP_THREADPOOL_SIZE = 8; // IOCP 워커

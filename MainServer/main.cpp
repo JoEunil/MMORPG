@@ -7,7 +7,7 @@
 
 #include <Netlibrary/Initializer.h>
 #include <CoreLib/Initializer.h>
-#include <CoreLib/DurableLogger.h>
+#include <CoreLib/Cache/DurableLogger.h>
 #include <CacheLib/Initializer.h>
 
 #include <CoreLib/LoggerGlobal.h>

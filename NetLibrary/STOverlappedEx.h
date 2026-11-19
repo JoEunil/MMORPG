@@ -7,7 +7,7 @@
 #include "Packet.h"
 #include "PacketPool.h"
 
-#include <CoreLib/IPacket.h>
+#include <CoreLib/Interface/IPacket.h>
 #include <CoreLib/Config.h>
 
 namespace Net {

@@ -3,21 +3,21 @@
 #include "FlushDispatcher.h"
 #include "CacheFlush.h"
 #include "Config.h"
-#include <CoreLib/MessagePool.h>
-#include <CoreLib/MessageWriter.h>
-#include "DBConfig.h"
-#include "DBConnectionPool.h"
+#include <CoreLib/Cache/MessagePool.h>
+#include <CoreLib/Cache/MessageWriter.h>
+#include "DB/DBConfig.h"
+#include "DB/DBConnectionPool.h"
 #include "CacheStorage.h"
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"
 #include "ProfileCache.h"
 #include "InmemoryQueue.h"
 #include "Handler.h"
-#include "DBWorker.h"
+#include "DB/DBWorker.h"
 #include "WALManager.h"
 
-#include <CoreLib/IMessageQueue.h>
-#include <CoreLib/ICachedClock.h>
+#include <CoreLib/Interface/IMessageQueue.h>
+#include <CoreLib/Interface/ICachedClock.h>
 #include <CoreLib/LoggerGlobal.h>
 
 class ProfileCacheTest;

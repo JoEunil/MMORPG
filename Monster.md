@@ -68,6 +68,6 @@ HP에 따른 전투 Phase와 행동 상태는 별개다. Phase는 사용할 스�
 
 ## 5. 참고 
 
-- [MonsterData.h](CoreLib/MonsterData.h)  
-- [MonsterState.h](CoreLib/MonsterState.h)  
-- [ZoneState_Monsters.cpp](CoreLib/ZoneState_Monsters.cpp)  
+- [MonsterData.h](CoreLib/Data/MonsterData.h)  
+- [MonsterState.h](CoreLib/World/MonsterState.h)  
+- [ZoneState_Monsters.cpp](CoreLib/World/ZoneState_Monsters.cpp)  

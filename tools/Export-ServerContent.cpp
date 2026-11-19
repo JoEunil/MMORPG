@@ -12,11 +12,11 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
-#include "SkillData.h"
-#include "MonsterData.h"
+#include "../CoreLib/Data/SkillData.h"
+#include "../CoreLib/Data/MonsterData.h"
 #include "HuntingZoneData.h"
-#include "GrowthData.h"
-#include "ItemData.h"
+#include "../CoreLib/Data/GrowthData.h"
+#include "../CoreLib/Data/ItemData.h"
 
 namespace {
     void Require(bool valid, const char* message) {

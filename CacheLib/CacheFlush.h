@@ -14,8 +14,8 @@
 #include <CoreLib/LoggerGlobal.h>
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"
-#include "DBConnectionPool.h"
-#include "DBConfig.h"
+#include "DB/DBConnectionPool.h"
+#include "DB/DBConfig.h"
 #include "Config.h"
 
 namespace Cache {

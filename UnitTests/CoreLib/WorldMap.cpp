@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include <CoreLib/ZoneState.h>
-#include <CoreLib/WorldMap.h>
+#include <CoreLib/World/ZoneState.h>
+#include <CoreLib/World/WorldMap.h>
 #include <limits>
 
 namespace Core {

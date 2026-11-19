@@ -15,7 +15,7 @@
     <Filter Include="Interface">
       <UniqueIdentifier>{78a706b3-8ee5-412f-9ccd-6af5f0d8ca90}</UniqueIdentifier>
     </Filter>
-    <Filter Include="InternalInterface">
+    <Filter Include="World\Interface">
       <UniqueIdentifier>{82E29BFE-26FD-400B-9CE8-CA56CFB9500A}</UniqueIdentifier>
     </Filter>
     <Filter Include="Data">
@@ -34,177 +34,183 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
+    <Filter Include="NonSimulation\Interface">
+      <UniqueIdentifier>{D6EA34D2-1889-52AB-89E5-4450D67803E4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="PacketWriter.h">
+    <ClInclude Include="Packet\PacketWriter.h">
       <Filter>Packet</Filter>
     </ClInclude>
-    <ClInclude Include="PacketTypes.h">
+    <ClInclude Include="Packet\PacketTypes.h">
       <Filter>Packet</Filter>
     </ClInclude>
-    <ClInclude Include="CacheConfig.h">
+    <ClInclude Include="Cache\CacheConfig.h">
       <Filter>Cache</Filter>
     </ClInclude>
-    <ClInclude Include="CacheCommandSender.h">
+    <ClInclude Include="Cache\CacheCommandSender.h">
       <Filter>Cache</Filter>
     </ClInclude>
-    <ClInclude Include="NonSimulationConfig.h">
+    <ClInclude Include="NonSimulation\NonSimulationConfig.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
-    <ClInclude Include="PacketConfig.h">
+    <ClInclude Include="Packet\PacketConfig.h">
       <Filter>Packet</Filter>
     </ClInclude>
-    <ClInclude Include="WorldConfig.h">
+    <ClInclude Include="World\WorldConfig.h">
       <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="Config.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="DurableLogger.h">
+    <ClInclude Include="Cache\DurableLogger.h">
       <Filter>Cache</Filter>
     </ClInclude>
     <ClInclude Include="Initializer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="ZoneState.h">
+    <ClInclude Include="World\ZoneState.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="INetworkSender.h">
+    <ClInclude Include="Interface\INetworkSender.h">
       <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="ILogger.h">
+    <ClInclude Include="Interface\ILogger.h">
       <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="ISessionAuth.h">
+    <ClInclude Include="Interface\ISessionAuth.h">
       <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="IPacket.h">
+    <ClInclude Include="Interface\IPacket.h">
       <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="IPacketPool.h">
+    <ClInclude Include="Interface\IPacketPool.h">
       <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="IPacketPoolManager.h">
+    <ClInclude Include="Interface\IPacketPoolManager.h">
       <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="ICachedClock.h">
+    <ClInclude Include="Interface\ICachedClock.h">
       <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="IPacketView.h">
+    <ClInclude Include="Interface\IPacketView.h">
       <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="Message.h">
+    <ClInclude Include="Cache\Message.h">
       <Filter>Cache</Filter>
     </ClInclude>
-    <ClInclude Include="MessageTypes.h">
+    <ClInclude Include="Cache\MessageTypes.h">
       <Filter>Cache</Filter>
     </ClInclude>
-    <ClInclude Include="MessageWriter.h">
+    <ClInclude Include="Cache\MessageWriter.h">
       <Filter>Cache</Filter>
     </ClInclude>
-    <ClInclude Include="InMemoryQueue.h">
+    <ClInclude Include="Cache\InMemoryQueue.h">
       <Filter>Cache</Filter>
     </ClInclude>
-    <ClInclude Include="MessageQueueHandler.h">
+    <ClInclude Include="Cache\MessageQueueHandler.h">
       <Filter>Cache</Filter>
     </ClInclude>
-    <ClInclude Include="MessagePool.h">
+    <ClInclude Include="Cache\MessagePool.h">
       <Filter>Cache</Filter>
     </ClInclude>
-    <ClInclude Include="IMessageQueue.h">
+    <ClInclude Include="Interface\IMessageQueue.h">
       <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="SessionManager.h">
+    <ClInclude Include="World\SessionManager.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="BroadcastThreadPool.h">
+    <ClInclude Include="World\BroadcastThreadPool.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="ZoneEventRouter.h">
+    <ClInclude Include="World\ZoneEventRouter.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="IZonePacketQueue.h">
-      <Filter>InternalInterface</Filter>
+    <ClInclude Include="World\Interface\IZonePacketQueue.h">
+      <Filter>World\Interface</Filter>
     </ClInclude>
-    <ClInclude Include="IZoneRequestQueue.h">
-      <Filter>InternalInterface</Filter>
+    <ClInclude Include="World\Interface\IZoneRequestQueue.h">
+      <Filter>World\Interface</Filter>
     </ClInclude>
-    <ClInclude Include="ILobbyReturnQueue.h">
-      <Filter>InternalInterface</Filter>
+    <ClInclude Include="World\Interface\ILobbyReturnQueue.h">
+      <Filter>World\Interface</Filter>
     </ClInclude>
-    <ClInclude Include="INonSimulationQueue.h">
-      <Filter>InternalInterface</Filter>
+    <ClInclude Include="NonSimulation\Interface\INonSimulationQueue.h">
+      <Filter>NonSimulation\Interface</Filter>
     </ClInclude>
-    <ClInclude Include="ISessionStatusReader.h">
-      <Filter>InternalInterface</Filter>
+    <ClInclude Include="World\Interface\ISessionStatusReader.h">
+      <Filter>World\Interface</Filter>
     </ClInclude>
-    <ClInclude Include="ISessionSnapshotReader.h">
-      <Filter>InternalInterface</Filter>
+    <ClInclude Include="World\Interface\ISessionSnapshotReader.h">
+      <Filter>World\Interface</Filter>
     </ClInclude>
-    <ClInclude Include="IZoneTransfer.h">
-      <Filter>InternalInterface</Filter>
+    <ClInclude Include="World\Interface\IZoneTransfer.h">
+      <Filter>World\Interface</Filter>
     </ClInclude>
-    <ClInclude Include="ZoneThread.h">
+    <ClInclude Include="World\ZoneThread.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="ZoneHandler.h">
+    <ClInclude Include="World\ZoneHandler.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="LobbyZone.h">
+    <ClInclude Include="World\LobbyZone.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="PacketDispatcher.h">
+    <ClInclude Include="Packet\PacketDispatcher.h">
       <Filter>Packet</Filter>
     </ClInclude>
-    <ClInclude Include="NonSimulationHandler.h">
+    <ClInclude Include="NonSimulation\NonSimulationHandler.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
-    <ClInclude Include="NonSimulationThreadPool.h">
+    <ClInclude Include="NonSimulation\NonSimulationThreadPool.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
-    <ClInclude Include="IPacketDispatcher.h">
+    <ClInclude Include="Interface\IPacketDispatcher.h">
       <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="IPingPacketWriter.h">
+    <ClInclude Include="Interface\IPingPacketWriter.h">
       <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="ChatThreadPool.h">
+    <ClInclude Include="NonSimulation\ChatThreadPool.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
-    <ClInclude Include="MonsterState.h">
+    <ClInclude Include="World\MonsterState.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="CharacterState.h">
+    <ClInclude Include="World\CharacterState.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="Skills.inc">
+    <ClInclude Include="Data\MonsterSkills.inc">
       <Filter>Data</Filter>
     </ClInclude>
-    <ClInclude Include="GrowthData.h">
+    <ClInclude Include="Data\Skills.inc">
       <Filter>Data</Filter>
     </ClInclude>
-    <ClInclude Include="Growth.inc">
+    <ClInclude Include="Data\GrowthData.h">
       <Filter>Data</Filter>
     </ClInclude>
-    <ClInclude Include="Monsters.inc">
+    <ClInclude Include="Data\Growth.inc">
       <Filter>Data</Filter>
     </ClInclude>
-    <ClInclude Include="SkillData.h">
+    <ClInclude Include="Data\Monsters.inc">
       <Filter>Data</Filter>
     </ClInclude>
-    <ClInclude Include="MonsterData.h">
+    <ClInclude Include="Data\SkillData.h">
       <Filter>Data</Filter>
     </ClInclude>
-    <ClInclude Include="Cell.h">
+    <ClInclude Include="Data\MonsterData.h">
+      <Filter>Data</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Cell.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="WorldMap.h">
+    <ClInclude Include="World\WorldMap.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="Generated\WorldMap.inc">
+    <ClInclude Include="Data\Generated\WorldMap.inc">
       <Filter>Data</Filter>
     </ClInclude>
     <ClInclude Include="LoggerGlobal.h">
@@ -213,16 +219,16 @@
     <ClInclude Include="CorePerfCollector.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="ItemData.h">
+    <ClInclude Include="Data\ItemData.h">
       <Filter>Data</Filter>
     </ClInclude>
-    <ClInclude Include="IInventoryOperations.h">
+    <ClInclude Include="Interface\IInventoryOperations.h">
       <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="IProfileCache.h">
+    <ClInclude Include="Interface\IProfileCache.h">
       <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="ChatSessionManager.h">
+    <ClInclude Include="NonSimulation\ChatSessionManager.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
   </ItemGroup>
@@ -230,82 +236,82 @@
     <ClCompile Include="pch.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="PacketWriter.cpp">
+    <ClCompile Include="Packet\PacketWriter.cpp">
       <Filter>Packet</Filter>
     </ClCompile>
-    <ClCompile Include="DurableLogger.cpp">
+    <ClCompile Include="Cache\DurableLogger.cpp">
       <Filter>Cache</Filter>
     </ClCompile>
-    <ClCompile Include="CacheCommandSender.cpp">
+    <ClCompile Include="Cache\CacheCommandSender.cpp">
       <Filter>Cache</Filter>
     </ClCompile>
-    <ClCompile Include="ZoneState.cpp">
+    <ClCompile Include="World\ZoneState.cpp">
       <Filter>World</Filter>
     </ClCompile>
-    <ClCompile Include="InMemoryQueue.cpp">
+    <ClCompile Include="Cache\InMemoryQueue.cpp">
       <Filter>Cache</Filter>
     </ClCompile>
-    <ClCompile Include="MessageQueueHandler.cpp">
+    <ClCompile Include="Cache\MessageQueueHandler.cpp">
       <Filter>Cache</Filter>
     </ClCompile>
-    <ClCompile Include="SessionManager.cpp">
+    <ClCompile Include="World\SessionManager.cpp">
       <Filter>World</Filter>
     </ClCompile>
-    <ClCompile Include="ZoneEventRouter.cpp">
+    <ClCompile Include="World\ZoneEventRouter.cpp">
       <Filter>World</Filter>
     </ClCompile>
-    <ClCompile Include="ZoneThread.cpp">
+    <ClCompile Include="World\ZoneThread.cpp">
       <Filter>World</Filter>
     </ClCompile>
-    <ClCompile Include="ZoneHandler.cpp">
+    <ClCompile Include="World\ZoneHandler.cpp">
       <Filter>World</Filter>
     </ClCompile>
-    <ClCompile Include="PacketDispatcher.cpp">
+    <ClCompile Include="Packet\PacketDispatcher.cpp">
       <Filter>Packet</Filter>
     </ClCompile>
-    <ClCompile Include="NonSimulationHandler.cpp">
+    <ClCompile Include="NonSimulation\NonSimulationHandler.cpp">
       <Filter>NonSimulation</Filter>
     </ClCompile>
-    <ClCompile Include="NonSimulationHandler_Bazaar.cpp">
+    <ClCompile Include="NonSimulation\NonSimulationHandler_Bazaar.cpp">
       <Filter>NonSimulation</Filter>
     </ClCompile>
-    <ClCompile Include="NonSimulationHandler_WorldEntry.cpp">
+    <ClCompile Include="NonSimulation\NonSimulationHandler_WorldEntry.cpp">
       <Filter>NonSimulation</Filter>
     </ClCompile>
-    <ClCompile Include="NonSimulationHandler_Zone.cpp">
+    <ClCompile Include="NonSimulation\NonSimulationHandler_Zone.cpp">
       <Filter>NonSimulation</Filter>
     </ClCompile>
-    <ClCompile Include="NonSimulationThreadPool.cpp">
+    <ClCompile Include="NonSimulation\NonSimulationThreadPool.cpp">
       <Filter>NonSimulation</Filter>
     </ClCompile>
-    <ClCompile Include="BroadcastThreadPool.cpp">
+    <ClCompile Include="World\BroadcastThreadPool.cpp">
       <Filter>World</Filter>
     </ClCompile>
-    <ClCompile Include="ChatThreadPool.cpp">
+    <ClCompile Include="NonSimulation\ChatThreadPool.cpp">
       <Filter>NonSimulation</Filter>
     </ClCompile>
-    <ClCompile Include="ZoneState_Skills.cpp">
+    <ClCompile Include="World\ZoneState_Skills.cpp">
       <Filter>World</Filter>
     </ClCompile>
-    <ClCompile Include="ZoneState_Actions.cpp">
+    <ClCompile Include="World\ZoneState_Actions.cpp">
       <Filter>World</Filter>
     </ClCompile>
-    <ClCompile Include="ZoneState_Monsters.cpp">
+    <ClCompile Include="World\ZoneState_Monsters.cpp">
       <Filter>World</Filter>
     </ClCompile>
-    <ClCompile Include="ZoneState_Snapshots.cpp">
+    <ClCompile Include="World\ZoneState_Snapshots.cpp">
       <Filter>World</Filter>
     </ClCompile>
-    <ClCompile Include="SkillData.cpp">
+    <ClCompile Include="Data\SkillData.cpp">
       <Filter>Data</Filter>
     </ClCompile>
-    <ClCompile Include="SkillData_Range.cpp">
+    <ClCompile Include="Data\SkillData_Range.cpp">
       <Filter>Data</Filter>
     </ClCompile>
     <ClCompile Include="LoggerGlobal.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="ChatSessionManager.cpp">
+    <ClCompile Include="NonSimulation\ChatSessionManager.cpp">
       <Filter>NonSimulation</Filter>
     </ClCompile>
   </ItemGroup>

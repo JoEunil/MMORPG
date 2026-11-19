@@ -131,7 +131,7 @@ AOI는 게임 시야를 기준으로 주변 3×3 Cell에 맞췄다. 내부 Cell 
 *분홍색 선은 Cell 경계를 나타낸 것이다.
 ## 7. 참고
 - 관련 PR: [grid 기반 AOI 적용 #20](https://github.com/JoEunil/MMORPG/pull/20)
-- [Cell.h](CoreLib/Cell.h)
-- [BroadcastThreadPool.cpp](CoreLib/BroadcastThreadPool.cpp)
-- [ZoneState_Skills.cpp](CoreLib/ZoneState_Skills.cpp)
-- [ZoneState_Snapshots.cpp](CoreLib/ZoneState_Snapshots.cpp)
+- [Cell.h](CoreLib/World/Cell.h)
+- [BroadcastThreadPool.cpp](CoreLib/World/BroadcastThreadPool.cpp)
+- [ZoneState_Skills.cpp](CoreLib/World/ZoneState_Skills.cpp)
+- [ZoneState_Snapshots.cpp](CoreLib/World/ZoneState_Snapshots.cpp)

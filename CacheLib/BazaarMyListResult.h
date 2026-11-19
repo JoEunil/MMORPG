@@ -3,7 +3,7 @@
 #include <limits>
 #include <initializer_list>
 #include <stdexcept>
-#include <CoreLib/MessageTypes.h>
+#include <CoreLib/Cache/MessageTypes.h>
 #include "Config.h"
 
 namespace Cache {

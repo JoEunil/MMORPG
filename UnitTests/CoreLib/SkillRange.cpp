@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <CoreLib/SkillData.h>
+#include <CoreLib/Data/SkillData.h>
 #include <array>
 #include <cstdint>
 #include <utility>

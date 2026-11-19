@@ -11,8 +11,8 @@
 #include <CoreLib/LoggerGlobal.h>
 #include <CacheLib/CacheStorageInventory.h>
 #include <CacheLib/InventoryCodec.h>
-#include <CacheLib/DBConnectionPool.h>
-#include <CacheLib/DBConfig.h>
+#include <CacheLib/DB/DBConnectionPool.h>
+#include <CacheLib/DB/DBConfig.h>
 
 namespace Cache {
 	inline constexpr std::chrono::milliseconds DEFAULT_WAL_FSYNC_INTERVAL{ 20 };
