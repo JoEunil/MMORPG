@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "NonZoneHandler.h"
+#include "NonSimulationHandler.h"
 
 #include "INetworkSender.h"
 #include "IPacketView.h"
@@ -9,7 +9,7 @@
 #include "SessionManager.h"
 
 namespace Core {
-    void NonZoneHandler::ReturnToLobby(const std::shared_ptr<FieldZoneTransfer>& transfer) {
+    void NonSimulationHandler::ReturnToLobby(const std::shared_ptr<FieldZoneTransfer>& transfer) {
         const auto sessionID = transfer->character.sessionID;
         const auto epoch = lobbyZone->ReturnFieldTransfer(transfer, *chat);
         if (epoch == 0)
@@ -20,7 +20,7 @@ namespace Core {
             networkSender->SendDataUnique(sessionID, std::move(response));
     }
 
-    void NonZoneHandler::ZoneChange(IPacketView* p) {
+    void NonSimulationHandler::ZoneChange(IPacketView* p) {
         const auto session = p->GetSessionID();
         if (p->GetLength() == sizeof(PacketStruct<ZoneChangeBody>)
             && sessionManager->QueueLobbyEntry(session, parseBody<ZoneChangeBody>(p->GetPtr())->op))
@@ -30,7 +30,7 @@ namespace Core {
             networkSender->SendDataUnique(session, std::move(response));
     }
 
-    void NonZoneHandler::RespawnToTown(IPacketView* p) {
+    void NonSimulationHandler::RespawnToTown(IPacketView* p) {
         const auto session = p->GetSessionID();
         const bool validHeader = p->GetLength() == sizeof(PacketStruct<RespawnToTownBody>)
             && parseHeader(p->GetPtr())->magic == MAGIC

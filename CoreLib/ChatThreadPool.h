@@ -12,7 +12,7 @@
 #include "LoggerGlobal.h"
 #include "ChatSessionManager.h"
 #include "Config.h"
-#include "NonZoneConfig.h"
+#include "NonSimulationConfig.h"
 #include <CoreLib/IPacket.h>
 #include <BaseLib/NonBlockingBackPressureQueue.h>
 

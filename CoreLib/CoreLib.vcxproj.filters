@@ -24,7 +24,7 @@
     <Filter Include="Packet">
       <UniqueIdentifier>{3482cfad-732d-4bcc-99bc-bfae9b9e2cf2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="NonZone">
+    <Filter Include="NonSimulation">
       <UniqueIdentifier>{c4f28abd-51f8-405c-8f48-a343d6b9ddb1}</UniqueIdentifier>
     </Filter>
     <Filter Include="World">
@@ -51,8 +51,8 @@
     <ClInclude Include="CacheCommandSender.h">
       <Filter>Cache</Filter>
     </ClInclude>
-    <ClInclude Include="NonZoneConfig.h">
-      <Filter>NonZone</Filter>
+    <ClInclude Include="NonSimulationConfig.h">
+      <Filter>NonSimulation</Filter>
     </ClInclude>
     <ClInclude Include="PacketConfig.h">
       <Filter>Packet</Filter>
@@ -135,6 +135,12 @@
     <ClInclude Include="ILobbyReturnQueue.h">
       <Filter>InternalInterface</Filter>
     </ClInclude>
+    <ClInclude Include="INonSimulationQueue.h">
+      <Filter>InternalInterface</Filter>
+    </ClInclude>
+    <ClInclude Include="ISessionStatusReader.h">
+      <Filter>InternalInterface</Filter>
+    </ClInclude>
     <ClInclude Include="ISessionSnapshotReader.h">
       <Filter>InternalInterface</Filter>
     </ClInclude>
@@ -153,11 +159,11 @@
     <ClInclude Include="PacketDispatcher.h">
       <Filter>Packet</Filter>
     </ClInclude>
-    <ClInclude Include="NonZoneHandler.h">
-      <Filter>NonZone</Filter>
+    <ClInclude Include="NonSimulationHandler.h">
+      <Filter>NonSimulation</Filter>
     </ClInclude>
-    <ClInclude Include="NonZoneThreadPool.h">
-      <Filter>NonZone</Filter>
+    <ClInclude Include="NonSimulationThreadPool.h">
+      <Filter>NonSimulation</Filter>
     </ClInclude>
     <ClInclude Include="IPacketDispatcher.h">
       <Filter>Interface</Filter>
@@ -166,7 +172,7 @@
       <Filter>Interface</Filter>
     </ClInclude>
     <ClInclude Include="ChatThreadPool.h">
-      <Filter>NonZone</Filter>
+      <Filter>NonSimulation</Filter>
     </ClInclude>
     <ClInclude Include="MonsterState.h">
       <Filter>World</Filter>
@@ -217,7 +223,7 @@
       <Filter>Interface</Filter>
     </ClInclude>
     <ClInclude Include="ChatSessionManager.h">
-      <Filter>NonZone</Filter>
+      <Filter>NonSimulation</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -257,26 +263,26 @@
     <ClCompile Include="PacketDispatcher.cpp">
       <Filter>Packet</Filter>
     </ClCompile>
-    <ClCompile Include="NonZoneHandler.cpp">
-      <Filter>NonZone</Filter>
+    <ClCompile Include="NonSimulationHandler.cpp">
+      <Filter>NonSimulation</Filter>
     </ClCompile>
-    <ClCompile Include="NonZoneHandler_Bazaar.cpp">
-      <Filter>NonZone</Filter>
+    <ClCompile Include="NonSimulationHandler_Bazaar.cpp">
+      <Filter>NonSimulation</Filter>
     </ClCompile>
-    <ClCompile Include="NonZoneHandler_WorldEntry.cpp">
-      <Filter>NonZone</Filter>
+    <ClCompile Include="NonSimulationHandler_WorldEntry.cpp">
+      <Filter>NonSimulation</Filter>
     </ClCompile>
-    <ClCompile Include="NonZoneHandler_Zone.cpp">
-      <Filter>NonZone</Filter>
+    <ClCompile Include="NonSimulationHandler_Zone.cpp">
+      <Filter>NonSimulation</Filter>
     </ClCompile>
-    <ClCompile Include="NonZoneThreadPool.cpp">
-      <Filter>NonZone</Filter>
+    <ClCompile Include="NonSimulationThreadPool.cpp">
+      <Filter>NonSimulation</Filter>
     </ClCompile>
     <ClCompile Include="BroadcastThreadPool.cpp">
       <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="ChatThreadPool.cpp">
-      <Filter>NonZone</Filter>
+      <Filter>NonSimulation</Filter>
     </ClCompile>
     <ClCompile Include="ZoneState_Skills.cpp">
       <Filter>World</Filter>
@@ -300,7 +306,7 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="ChatSessionManager.cpp">
-      <Filter>NonZone</Filter>
+      <Filter>NonSimulation</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

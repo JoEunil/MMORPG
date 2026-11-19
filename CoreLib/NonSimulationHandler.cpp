@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "NonZoneHandler.h"
+#include "NonSimulationHandler.h"
 
 #include "CacheCommandSender.h"
 #include "PacketTypes.h"
@@ -17,7 +17,7 @@
 #include "PacketConfig.h"
 
 namespace Core {
-    void NonZoneHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, SessionManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc) {
+    void NonSimulationHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, SessionManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc) {
         networkSender = sender;
         auth = s;
         writer = p;
@@ -28,7 +28,7 @@ namespace Core {
         profileCache = pc;
     }
 
-    bool NonZoneHandler::IsReady() {
+    bool NonSimulationHandler::IsReady() {
         if (networkSender == nullptr) return false;
         if (auth == nullptr) return false;
         if (writer == nullptr) return false;
@@ -39,7 +39,7 @@ namespace Core {
         return true;
     }
 
-    void NonZoneHandler::Process(IPacketView* p) {
+    void NonSimulationHandler::Process(IPacketView* p) {
         PacketHeader* h = parseHeader(p->GetPtr());
         uint16_t zoneID = 0;
         if (p->GetOpcode() != OP::AUTH ) {
@@ -121,11 +121,11 @@ namespace Core {
         
     }
 
-    void NonZoneHandler::Disconnect(uint64_t sessionID) {
+    void NonSimulationHandler::Disconnect(uint64_t sessionID) {
         sessionManager->Disconnect(sessionID);
     }
 
-    void NonZoneHandler::RequestProfileRename(uint64_t sessionID, uint32_t profileId, const char* name, uint16_t nameLen) {
+    void NonSimulationHandler::RequestProfileRename(uint64_t sessionID, uint32_t profileId, const char* name, uint16_t nameLen) {
         if (profileId == INVALID_PROFILE_ID || name == nullptr || nameLen == 0 || nameLen >= MAX_CHARNAME_LEN) {
             errorLogger->LogError("non zone handler", "profile rename invalid", "session", sessionID, "profile_id", profileId, "nameLen", nameLen);
             return;
@@ -133,7 +133,7 @@ namespace Core {
         cacheCommands->EnqueueProfileRename(sessionID, profileId, {name, nameLen});
     }
 
-    void NonZoneHandler::UseItem(IPacketView* p) {
+    void NonSimulationHandler::UseItem(IPacketView* p) {
         const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
         const auto result = sessionManager->UseItem(p->GetSessionID(), request);
         auto response = writer->WriteItemUseResponse(result);
@@ -141,7 +141,7 @@ namespace Core {
             networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
-    void NonZoneHandler::GetEquipment(IPacketView* p) {
+    void NonSimulationHandler::GetEquipment(IPacketView* p) {
         const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
         const auto result = sessionManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, false);
         auto response = writer->WriteEquipmentResponse(result);
@@ -149,7 +149,7 @@ namespace Core {
             networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
-    void NonZoneHandler::SetEquipment(IPacketView* p) {
+    void NonSimulationHandler::SetEquipment(IPacketView* p) {
         const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
         if (request.slot > 2)
             return;
@@ -160,7 +160,7 @@ namespace Core {
             networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
-    void NonZoneHandler::GetInventory(IPacketView* p) {
+    void NonSimulationHandler::GetInventory(IPacketView* p) {
         const auto sessionID = p->GetSessionID();
         const auto characterID = sessionManager->GetCharacterID(sessionID);
         if (characterID == 0)
@@ -169,7 +169,7 @@ namespace Core {
         cacheCommands->EnqueueInventory(sessionID, characterID);
     }
 
-    void NonZoneHandler::WalletRequest(IPacketView* p) {
+    void NonSimulationHandler::WalletRequest(IPacketView* p) {
         if (p->GetLength() != sizeof(PacketStruct<WalletRequestBody>)) return;
         const auto* header = parseHeader(p->GetPtr());
         const auto request = *parseBody<WalletRequestBody>(p->GetPtr());
@@ -197,7 +197,7 @@ namespace Core {
         }
     }
 
-    void NonZoneHandler::Chat(IPacketView* p) {
+    void NonSimulationHandler::Chat(IPacketView* p) {
         auto body = parseBody<ChatRequestBody>(p->GetPtr());
         uint8_t* startPtr = p->GetPtr() + sizeof(PacketStruct<ChatRequestBody>);
         auto session = p->GetSessionID();
@@ -223,9 +223,9 @@ namespace Core {
     }
 
     // 클라이언트가 모르는 profile_id 목록을 보내면 캐시에 있는 것만 돌려준다.
-    // NonZone 스레드에서 처리하므로 zone 틱과 무관하고, write-through 캐시라
+    // NonSimulation 스레드에서 처리하므로 zone 틱과 무관하고, write-through 캐시라
     // DB를 기다릴 일이 없어 동기 조회로 충분하다.
-    void NonZoneHandler::GetProfileBatch(IPacketView* p) {
+    void NonSimulationHandler::GetProfileBatch(IPacketView* p) {
         auto session = p->GetSessionID();
         if (profileCache == nullptr) {
             errorLogger->LogError("non zone handler", "profileCache not initialized", "session", session);

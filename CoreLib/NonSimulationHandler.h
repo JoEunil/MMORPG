@@ -15,7 +15,7 @@ namespace Core {
     class ChatThreadPool;
     class IProfileCache;
     struct FieldZoneTransfer;
-    class NonZoneHandler{
+    class NonSimulationHandler{
         void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, SessionManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc);
         bool IsReady();
         void CheckSession(IPacketView* p);

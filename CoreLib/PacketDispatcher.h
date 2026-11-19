@@ -1,29 +1,28 @@
 ﻿#pragma once
-#include "NonZoneThreadPool.h"
+#include "INonSimulationQueue.h"
+#include "ISessionStatusReader.h"
 #include "IPacketView.h"
 #include "IPacketDispatcher.h"
 #include "IZonePacketQueue.h"
 #include "LoggerGlobal.h"
-#include "SessionManager.h"
-#include "PacketTypes.h"
 namespace Core {
     class ILogger;
     class PacketDispatcher : public IPacketDispatcher {
-        NonZoneThreadPool* nonZoneThreadPool = nullptr;
+        INonSimulationQueue* nonSimulationQueue = nullptr;
         IZonePacketQueue* zonePackets = nullptr;
-        SessionManager* sessionManager = nullptr;
-        void Initialize(NonZoneThreadPool* a, IZonePacketQueue* packets, SessionManager* s) {
-            nonZoneThreadPool = a;
-            zonePackets = packets;
-            sessionManager = s;
+        const ISessionStatusReader* sessions = nullptr;
+        void Initialize(INonSimulationQueue& nonSimulation, IZonePacketQueue& packets, const ISessionStatusReader& reader) {
+            nonSimulationQueue = &nonSimulation;
+            zonePackets = &packets;
+            sessions = &reader;
         }
         bool IsReady() const {
-            if (sessionManager == nullptr) {
-                sysLogger->LogError("packet dispatcher", "sessionManager not initialized");
+            if (sessions == nullptr) {
+                sysLogger->LogError("packet dispatcher", "session reader not initialized");
                 return false;
             }
-            if (nonZoneThreadPool == nullptr) {
-                sysLogger->LogError("packet dispatcher", "nonZoneThreadPool not initialized");
+            if (nonSimulationQueue == nullptr) {
+                sysLogger->LogError("packet dispatcher", "non-simulation queue not initialized");
                 return false;
             }
             if (zonePackets == nullptr) {
@@ -37,7 +36,7 @@ namespace Core {
         void Process(std::unique_ptr<IPacketView, PacketViewDeleter> pv) override;
         void Disconnect(uint64_t sessionID) override;
         uint8_t HealthCheck(uint64_t sessionID) override {
-           return sessionManager->HealthCheck(sessionID);
+            return sessions->HealthCheck(sessionID);
         }
     };
 }

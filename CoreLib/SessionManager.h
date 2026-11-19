@@ -15,6 +15,7 @@
 #include "PacketConfig.h"
 #include "IPacket.h"
 #include "IInventoryOperations.h"
+#include "ISessionStatusReader.h"
 #include "INetworkSender.h"
 #include "PacketTypes.h"
 
@@ -52,7 +53,7 @@ namespace Core {
     struct FieldZoneTransfer;
     struct ProfileVersionUpdate;
     struct ZoneChangeResult;
-    class SessionManager {
+    class SessionManager : public ISessionStatusReader {
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
         std::atomic<bool> m_running;
 
@@ -116,7 +117,7 @@ namespace Core {
         friend class ZoneHandler;
 
     public:
-        ~SessionManager() {
+        ~SessionManager() override {
             CleanUp();
         }
 
@@ -188,7 +189,7 @@ namespace Core {
             it->second.zoneID = dest;
         }
         
-        int16_t GetZoneID(uint64_t sessionID) const {
+        int16_t GetZoneID(uint64_t sessionID) const override {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);
             auto it = shard.sessionMap.find(sessionID);
@@ -215,7 +216,7 @@ namespace Core {
             return GetFieldCharacterID(sessionID) != INVALID_CHARACTER_ID;
         }
 
-        uint8_t HealthCheck(uint64_t sessionID) const {
+        uint8_t HealthCheck(uint64_t sessionID) const override {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);
             auto it = shard.sessionMap.find(sessionID);

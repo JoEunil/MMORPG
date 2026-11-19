@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "NonZoneHandler.h"
+#include "NonSimulationHandler.h"
 
 #include "CacheCommandSender.h"
 #include "PacketConfig.h"
@@ -34,7 +34,7 @@ namespace Core {
         }
     }
 
-    void NonZoneHandler::BazaarBuy(IPacketView* p) {
+    void NonSimulationHandler::BazaarBuy(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarBuyRequestBody>(*p, OP::BAZAAR_BUY);
         if (!request || request->listingID == 0)
             return;
@@ -54,7 +54,7 @@ namespace Core {
             networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
-    void NonZoneHandler::BazaarRegister(IPacketView* p) {
+    void NonSimulationHandler::BazaarRegister(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarRegisterRequestBody>(*p, OP::BAZAAR_REGISTER);
         if (!request || request->inventorySlot >= MAX_INVENTORY_ITEMS
             || request->quantity == 0 || request->totalDiamondPrice == 0)
@@ -75,7 +75,7 @@ namespace Core {
         if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
-    void NonZoneHandler::BazaarOutboxList(IPacketView* p) {
+    void NonSimulationHandler::BazaarOutboxList(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarOutboxListRequestBody>(*p, OP::BAZAAR_OUTBOX_LIST);
         if (!request)
             return;
@@ -91,7 +91,7 @@ namespace Core {
         if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
-    void NonZoneHandler::BazaarCheckOutbox(IPacketView* p) {
+    void NonSimulationHandler::BazaarCheckOutbox(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarCheckOutboxRequestBody>(*p, OP::BAZAAR_CHECK_OUTBOX);
         if (!request)
             return;
@@ -109,7 +109,7 @@ namespace Core {
             networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
-    void NonZoneHandler::BazaarCancelListing(IPacketView* p) {
+    void NonSimulationHandler::BazaarCancelListing(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarCancelListingRequestBody>(*p, OP::BAZAAR_CANCEL_LISTING);
         if (!request || request->listingID == 0)
             return;
@@ -127,7 +127,7 @@ namespace Core {
         if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
-    void NonZoneHandler::BazaarClaim(IPacketView* p) {
+    void NonSimulationHandler::BazaarClaim(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarClaimRequestBody>(*p, OP::BAZAAR_CLAIM);
         if (!request || request->listingID == 0)
             return;
@@ -146,7 +146,7 @@ namespace Core {
             networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
-    void NonZoneHandler::BazaarMyList(IPacketView* p) {
+    void NonSimulationHandler::BazaarMyList(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarMyListRequestBody>(*p);
         if (!request)
             return;
@@ -165,7 +165,7 @@ namespace Core {
             networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
     }
 
-    void NonZoneHandler::BazaarSearch(IPacketView* p) {
+    void NonSimulationHandler::BazaarSearch(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarSearchRequestBody>(*p);
         if (!request || request->itemType < 1 || request->itemType > 3
             || !sessionManager->IsFieldSession(p->GetSessionID()))

@@ -15,8 +15,8 @@
 #include "BroadcastThreadPool.h"
 #include "ZoneEventRouter.h"
 #include "ZoneHandler.h"
-#include "NonZoneHandler.h"
-#include "NonZoneThreadPool.h"
+#include "NonSimulationHandler.h"
+#include "NonSimulationThreadPool.h"
 #include "PacketDispatcher.h"
 #include "LobbyZone.h"
 #include "IPingPacketWriter.h"
@@ -38,8 +38,8 @@ namespace Core {
         ZoneEventRouter zoneEventRouter;
         SessionManager sessionManager;
         BroadcastThreadPool broadcastPool;
-        NonZoneHandler nonZoneHandler;
-        NonZoneThreadPool nonZoneThreadPool;
+        NonSimulationHandler nonSimulationHandler;
+        NonSimulationThreadPool nonSimulationThreadPool;
         PacketDispatcher packetDispatcher;
         LobbyZone lobbyZone;
         ChatThreadPool chat;
@@ -57,7 +57,7 @@ namespace Core {
             perfCollector.Initialize();
             broadcastPool.Initialize(networkSender, zoneEventRouter, &perfCollector, &writer);
             lobbyZone.Initialize(& sessionManager);
-            nonZoneThreadPool.Initialize(&nonZoneHandler);
+            nonSimulationThreadPool.Initialize(&nonSimulationHandler);
             writer.Initialize(packetPoolManager);
             mqHandler.Initialize(networkSender, &writer, &lobbyZone, &sessionManager);
             recvMQ.Initialize(&mqHandler, &msgPool);
@@ -68,14 +68,14 @@ namespace Core {
         void InjectDependencies2(INetworkSender* networkSender, ISessionAuth* session, IMessageQueue* sendMQ, IProfileCache* profileCache, IInventoryOperations* inventory = nullptr) {
             sessionManager.inventory = inventory;
             cacheCommandSender.Initialize(sendMQ, &messageWriter, &msgPool);
-            zoneEventRouter.Initialize(zoneHandler, perfCollector, nonZoneThreadPool);
+            zoneEventRouter.Initialize(zoneHandler, perfCollector, nonSimulationThreadPool);
             sessionManager.Initialize(&cacheCommandSender, networkSender, &lobbyZone, &chat, zoneEventRouter, zoneEventRouter);
-            packetDispatcher.Initialize(&nonZoneThreadPool, &zoneEventRouter, &sessionManager);
-            nonZoneThreadPool.Start();
+            packetDispatcher.Initialize(nonSimulationThreadPool, zoneEventRouter, sessionManager);
+            nonSimulationThreadPool.Start();
             broadcastPool.Start();
             ZoneState::Initialize(&broadcastPool, &writer, &sessionManager, &perfCollector);
             zoneHandler.Initialize(&sessionManager, networkSender, &writer, zoneEventRouter, chat, lobbyZone);
-            nonZoneHandler.Initialize(networkSender, session, &writer, &cacheCommandSender, &sessionManager, &lobbyZone, &chat, profileCache);
+            nonSimulationHandler.Initialize(networkSender, session, &writer, &cacheCommandSender, &sessionManager, &lobbyZone, &chat, profileCache);
             zoneEventRouter.Start();
             chat.Start();
             perfCollector.Start();
@@ -120,7 +120,7 @@ namespace Core {
             perfCollector.Stop();
         }
         void FinishShutdown() {
-            nonZoneThreadPool.Stop();
+            nonSimulationThreadPool.Stop();
             recvMQ.Stop();
             sessionManager.CleanUp();
         }

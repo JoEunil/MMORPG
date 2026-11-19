@@ -1,8 +1,8 @@
 ﻿#include "pch.h"
-#include "NonZoneHandler.h"
+#include "NonSimulationHandler.h"
 
 #include "CacheCommandSender.h"
-#include "NonZoneConfig.h"
+#include "NonSimulationConfig.h"
 #include "INetworkSender.h"
 #include "IPacketView.h"
 #include "PacketTypes.h"
@@ -14,7 +14,7 @@
 #include <memory>
 
 namespace Core {
-    void NonZoneHandler::ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID) {
+    void NonSimulationHandler::ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID) {
         if (!sessionManager->CompleteAuth(sessionID, userID, resStatus == RES_STATUS::SUCCESS))
             return;
         auto res = writer->WriteAuthResponse(resStatus);
@@ -23,7 +23,7 @@ namespace Core {
         networkSender->SendDataUnique(sessionID, std::move(res));
     }
 
-    void NonZoneHandler::CheckSession(IPacketView* p) {
+    void NonSimulationHandler::CheckSession(IPacketView* p) {
         AuthRequestBody* body = parseBody<AuthRequestBody>(p->GetPtr());
         auto privdata = std::make_unique<SessionCallbackData>();
         privdata->sessionID = p->GetSessionID();
@@ -36,12 +36,12 @@ namespace Core {
         auth->CheckSession(privdata.release());
     }
 
-    void NonZoneHandler::GetCharacterList(IPacketView* p) {
+    void NonSimulationHandler::GetCharacterList(IPacketView* p) {
         const auto sessionID = p->GetSessionID();
         cacheCommands->EnqueueCharacterList(sessionID, CHANNEL_ID, sessionManager->GetUserID(sessionID));
     }
 
-    void NonZoneHandler::GetCharacterState(IPacketView* p) {
+    void NonSimulationHandler::GetCharacterState(IPacketView* p) {
         const auto sessionID = p->GetSessionID();
         const auto* packetBody = parseBody<EnterWorldRequestBody>(p->GetPtr());
         cacheCommands->EnqueueCharacterState(sessionID, CHANNEL_ID, sessionManager->GetUserID(sessionID), packetBody->characterID);
