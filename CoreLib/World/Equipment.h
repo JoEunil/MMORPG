@@ -1,9 +1,12 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 
 namespace Core {
     class Equipment {
+        uint32_t m_weaponID = 0;
+        uint32_t m_shieldID = 0;
+        uint32_t m_bodyID = 0;
     public:
         Equipment() = default;
         Equipment(uint32_t weaponID, uint32_t shieldID, uint32_t bodyID)
@@ -18,9 +21,5 @@ namespace Core {
         uint8_t DefensePercent() const;
         uint64_t DamageAfterDefense(uint64_t damage) const;
 
-    private:
-        uint32_t m_weaponID = 0;
-        uint32_t m_shieldID = 0;
-        uint32_t m_bodyID = 0;
     };
 }
