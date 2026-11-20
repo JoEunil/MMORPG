@@ -1,11 +1,10 @@
 ﻿#include "pch.h"
 #include "ZoneState.h"
+#include "BroadcastThreadPool.h"
+#include "SessionManager.h"
 #include "../Interface/IPacket.h"
-#include "../Initializer.h"
 #include "../Interface/ILogger.h"
 #include "../Packet/PacketWriter.h"
-#include "SessionManager.h"
-#include "WorldMap.h"
 
 namespace Core {
     bool ZoneState::DescribeZoneChange(uint64_t sessionID, uint64_t chatID, uint64_t ownershipEpoch, ZoneChangeResult& result) {
