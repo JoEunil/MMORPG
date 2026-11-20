@@ -21,7 +21,7 @@ namespace Core {
         IPacketPoolManager* packetPoolManager = nullptr;
 
         void Initialize(IPacketPoolManager* poolManager);
-        bool IsReady();
+        bool IsReady() const;
         std::unique_ptr<IPacket, PacketDeleter> AcquireUniquePacket(PacketPoolType type);
         std::shared_ptr<IPacket> AcquireSharedPacket(PacketPoolType type);
 
@@ -53,6 +53,7 @@ namespace Core {
         uint16_t WriteChatBatchPacketField(std::shared_ptr<IPacket> packetPtr, uint64_t sender, uint32_t senderProfileId, const std::string& message);
         
         std::shared_ptr<IPacket> GetDeltaHeader(uint16_t zoneID, uint64_t generation);
+        int WriteCharacterDeltaFields(const std::shared_ptr<IPacket>& packet, const CharacterState& state);
         template<typename T>
         bool WriteDeltaField(std::shared_ptr<IPacket> packetPtr, uint32_t zoneInternalID,uint16_t fieldID, T val) {
             static_assert(sizeof(T) <= sizeof(uint32_t), "Delta field too large"); // 컴파일 타임
@@ -72,6 +73,7 @@ namespace Core {
         std::shared_ptr<IPacket> GetBootstrapFullHeader(bool monsters, uint16_t zoneID, uint64_t generation, uint64_t ownershipEpoch, uint64_t bootstrapID);
         bool WriteFullField(std::shared_ptr<IPacket> packetPtr, const CharacterState& state);
         std::shared_ptr<IPacket> GetMonsterDeltaHeader(uint16_t zoneID, uint64_t generation);
+        int WriteMonsterDeltaFields(const std::shared_ptr<IPacket>& packet, const MonsterState& state);
         template<typename T>
         bool WriteMonsterDeltaField(std::shared_ptr<IPacket> packetPtr, uint16_t internalID, uint16_t fieldID, T val) {
             static_assert(sizeof(T) <= sizeof(uint32_t), "Delta field too large"); // 컴파일 타임

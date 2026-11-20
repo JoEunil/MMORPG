@@ -113,48 +113,7 @@ namespace Core {
                             cell.dirtyChar.pop_back();
                             continue;
                         }
-                        auto& bit = character.dirtyBit;
-                        if (bit & 0x01) {
-                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 0, character.hp);
-                            iterCnt++;
-                        }
-                        if (bit & 0x02) {
-                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 1, character.mp);
-                            iterCnt++;
-                        }
-                        if (bit & 0x04) {
-                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 2, character.maxHp);
-                            iterCnt++;
-                        }
-                        if (bit & 0x08) {
-                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 3, character.maxMp);
-                            iterCnt++;
-                        }
-                        if (bit & 0x10) {
-                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 4, character.exp);
-                            iterCnt++;
-                        }
-                        if (bit & 0x20) {
-                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 5, character.level);
-                            iterCnt++;
-                        }
-                        if (bit & 0x40) {
-                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 6, character.dir);
-                            iterCnt++;
-                        }
-                        if (bit & 0x80) {
-                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 7, character.x);
-                            iterCnt++;
-                        }
-                        if (bit & 0x100) {
-                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 8, character.y);
-                            iterCnt++;
-                        }
-                        if (bit & 0x200) {
-                            // rename 전파. 클라이언트는 version이 바뀌면 캐시한 이름을 버리고 재요청한다.
-                            writer->WriteDeltaField(chunks[idx], character.zoneInternalID, 9, character.profileVersion);
-                            iterCnt++;
-                        }
+                        iterCnt += writer->WriteCharacterDeltaFields(chunks[idx], character);
                         character.dirtyBit = 0x00;
                     }
                     cell.dirtyChar.pop_back();
@@ -248,25 +207,9 @@ namespace Core {
                     continue;
                 for (int k = 0; k < cell.monsterIndexes.size() && loop--; k++) {
                     auto& monster = m_monsters[cell.monsterIndexes[k]];
-                    auto& bit = monster.dirtyBit;
-                    if (bit == 0x00)
+                    if (monster.dirtyBit == 0x00)
                         continue;
-                    if (bit & 0x01) {
-                        writer->WriteMonsterDeltaField(chunks[idx], monster.internalID, 0, monster.hp);
-                        iterCnt++;
-                    }
-                    if (bit & 0x02) {
-                        writer->WriteMonsterDeltaField(chunks[idx], monster.internalID, 1, monster.x);
-                        iterCnt++;
-                    }
-                    if (bit & 0x04) {
-                        writer->WriteMonsterDeltaField(chunks[idx], monster.internalID, 2, monster.y);
-                        iterCnt++;
-                    }
-                    if (bit & 0x08) {
-                        writer->WriteMonsterDeltaField(chunks[idx], monster.internalID, 3, monster.dir);
-                        iterCnt++;
-                    }
+                    iterCnt += writer->WriteMonsterDeltaFields(chunks[idx], monster);
                     monster.dirtyBit = 0x00;
                     monster.attacked = 0;
                 }
