@@ -1,4 +1,5 @@
-﻿#include "ProfileCache.h"
+﻿#include "pch.h"
+#include "ProfileCache.h"
 
 #include <CoreLib/LoggerGlobal.h>
 

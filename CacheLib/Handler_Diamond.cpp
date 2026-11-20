@@ -1,4 +1,5 @@
-﻿#include "Handler.h"
+﻿#include "pch.h"
+#include "Handler.h"
 
 #include <CoreLib/Cache/Message.h>
 #include <CoreLib/Cache/MessageTypes.h>
