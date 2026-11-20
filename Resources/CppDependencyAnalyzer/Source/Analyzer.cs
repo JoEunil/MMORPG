@@ -6,7 +6,7 @@ namespace ServerDependencyAnalyzer;
 
 internal record AnalysisOptions(string Root, string? Entry, string Configuration, string Platform,
     string? SingleFile = null, bool IncludeTests = false, bool ShowExternalLibraries = true, bool DiscoverDatabase = true,
-    InspectionOptions? Inspections = null, bool IncludeProjectReferences = true);
+    InspectionOptions? Inspections = null, bool IncludeProjectReferences = true, bool MethodMap = false);
 
 internal static class Analyzer
 {
@@ -32,6 +32,8 @@ internal static class Analyzer
         var result = new AnalysisResult(root, database
             ? (ProjectFiles.Inside(root, entry!) ? Path.GetRelativePath(root, entry!) : entry!)
             : $"{options.Configuration}|{options.Platform}");
+        result.MethodMapEnabled = options.MethodMap;
+        result.Options = options with { Root = root, Entry = entry, DiscoverDatabase = false };
         var inspections = options.Inspections is { Enabled: true } enabled ? new CodeInspections(enabled, cancellation) : null;
         if (inspections is not null)
             result.Inspections = InspectionReport.Create(options.Inspections);
@@ -106,7 +108,8 @@ internal static class Analyzer
                         result.Failures.Add(new(relative, string.Join(Environment.NewLine, errors)));
                     }
 
-                    graph.ReadUnit(unit, file, errors.Count == 0 ? inspections : null);
+                    graph.ReadUnit(unit, file, errors.Count == 0 ? inspections : null,
+                        options.MethodMap && errors.Count == 0);
                 }
                 finally
                 {

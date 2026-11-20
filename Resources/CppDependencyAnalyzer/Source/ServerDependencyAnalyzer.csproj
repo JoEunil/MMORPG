@@ -8,6 +8,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <EmbeddedResource Include="Report.html;RelationshipLayout.js;Report.js" />
     <Content Include="obj/clang/libclang.dll;obj/clang/LLVM-LICENSE.txt;obj/clang/resources/**/*"
              Condition="Exists('obj/clang/libclang.dll')" Exclude="obj/clang/resources/include/Headers/**/*">
@@ -18,7 +19,7 @@
   </ItemGroup>
   <Target Name="CopyAnalyzerToToolDirectory" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
     <ItemGroup>
-      <AnalyzerRuntimeFiles Include="$(TargetDir)**/*" Exclude="$(TargetDir)**/*.pdb;$(TargetDir)Reports/**/*;$(TargetDir)report.html;$(TargetDir)SourceRoots.json" />
+      <AnalyzerRuntimeFiles Include="$(TargetDir)**/*" Exclude="$(TargetDir)**/*.pdb;$(TargetDir)Reports/**/*;$(TargetDir)Reanalysis/**/*;$(TargetDir)LocalService.json;$(TargetDir)report.html;$(TargetDir)SourceRoots.json" />
     </ItemGroup>
     <Copy SourceFiles="@(AnalyzerRuntimeFiles)"
           DestinationFiles="@(AnalyzerRuntimeFiles->'$(MSBuildProjectDirectory)/../%(RecursiveDir)%(Filename)%(Extension)')"

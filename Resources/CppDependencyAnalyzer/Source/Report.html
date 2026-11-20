@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'">
 <title>C/C++ 의존성</title>
 <style>
   :root { color-scheme: light; --ink: #15283a; --muted: #516477; --line: #d6e0ea;
@@ -210,6 +210,7 @@
     <h1>C/C++ 의존성</h1>
     <p class="muted path" id="origin"></p>
     <p id="coverage"></p>
+    <p id="reanalysis-controls" class="buttons" hidden><button type="button" id="reanalyze">같은 설정으로 재분석</button> <span id="reanalysis-status" class="muted" role="status" aria-live="polite">로컬 분석 서버에 요청합니다.</span></p>
     <details id="analysis-method">
       <summary>분석 방법과 분류 기준</summary>
       <div class="method-body">
@@ -224,6 +225,7 @@
   <div class="shell navigation">
     <nav aria-label="분석 보기">
       <button type="button" data-tab="class" aria-pressed="true">전체 클래스</button>
+      <button type="button" data-tab="method" aria-pressed="false">메서드 지도</button>
       <button type="button" data-tab="group" aria-pressed="false" hidden>필터 지도</button>
       <button type="button" data-tab="namespace" aria-pressed="false">namespace별</button>
       <button type="button" data-tab="project" aria-pressed="false">프로젝트</button>
@@ -279,7 +281,7 @@
         </div>
         <p id="class-selection-count" class="muted" aria-live="polite">선택한 클래스 0개</p>
         <ul id="class-selection-list" aria-label="선택한 클래스"></ul>
-        <label class="check"><input id="only-classes" type="checkbox" disabled>선택한 클래스만</label>
+        <label class="check"><input id="only-classes" type="checkbox" disabled><span id="selection-label">선택한 클래스만</span></label>
       </div>
       <details id="groups" open>
         <summary id="group-heading">표시할 namespace</summary>
@@ -309,7 +311,7 @@
             <button type="button" id="zoom-out" aria-label="축소">−</button>
             <button type="button" id="fit">화면 맞춤</button>
             <button type="button" id="locate" disabled>선택 위치</button>
-            <button type="button" id="reset-layout" disabled>배치 초기화</button>
+            <button type="button" id="reset-layout" disabled>다시 정렬</button>
           </div>
         </div>
         <div class="diagram">
@@ -373,6 +375,7 @@
 </main>
 <div id="tree-context-menu" class="buttons" hidden>
   <button id="context-open-tree" type="button">의존성 트리 펼치기</button>
+  <button id="context-hide-node" type="button">이 클래스 숨기기</button>
 </div>
 <script id="data" type="application/json"><!--GRAPH_DATA--></script>
 <script><!--GRAPH_SCRIPT--></script>

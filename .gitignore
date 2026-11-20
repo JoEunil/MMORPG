@@ -408,6 +408,8 @@ wal/
 /Resources/CppDependencyAnalyzer/clang/
 /Resources/CppDependencyAnalyzer/report.html
 /Resources/CppDependencyAnalyzer/SourceRoots.json
+/Resources/CppDependencyAnalyzer/Reanalysis/
+/Resources/CppDependencyAnalyzer/LocalService.json
 /Resources/CppDependencyAnalyzer/Reports/*.html
 !/Resources/CppDependencyAnalyzer/Reports/server-project-map.html
 

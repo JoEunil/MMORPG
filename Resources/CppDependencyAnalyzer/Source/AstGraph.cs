@@ -15,11 +15,14 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
     private ExceptionDispatchInfo? visitorFailure;
     private string? currentClass;
     private string? currentFunction;
+    private string? currentMethod;
+    private bool collectMethods;
+    private readonly HashSet<string> definedMethods = new(StringComparer.Ordinal);
     private string? unitProject;
     private string? unitFile;
     private CodeInspections? inspections;
 
-    public void ReadUnit(nint unit, CompileInput input, CodeInspections? collector)
+    public void ReadUnit(nint unit, CompileInput input, CodeInspections? collector, bool methodMap = false)
     {
         unitProject = input.Project;
         unitFile = Path.GetRelativePath(root, input.File);
@@ -27,6 +30,8 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
         classIds.Clear();
         currentClass = null;
         currentFunction = null;
+        currentMethod = null;
+        collectMethods = methodMap;
         visitorFailure = null;
         inspections = collector;
         try
@@ -82,11 +87,13 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
 
         var previousClass = currentClass;
         var previousFunction = currentFunction;
+        var previousMethod = currentMethod;
         if (IsClass(kind))
         {
             if (clang_isCursorDefinition(cursor) == 0)
                 return;
             currentClass = ClassNode(cursor);
+            currentMethod = null;
         }
         else if (IsFunction(kind))
         {
@@ -96,6 +103,7 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
                 && clang_CXXMethod_isPureVirtual(cursor) != 0)
                 result.Nodes[currentClass] = node with { IsAbstract = true };
             currentFunction = QualifiedName(cursor);
+            currentMethod = collectMethods ? MethodNode(cursor) : null;
         }
         else if (currentClass is not null && kind is Kind.FieldDecl or Kind.CxxBaseSpecifier)
         {
@@ -124,6 +132,9 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
                 {
                     var evidence = new Evidence(source, $"{currentFunction} → {QualifiedName(declaration)}");
                     result.Connect(currentClass, target, "call", evidence);
+                    if (collectMethods && currentMethod is not null && MethodNode(declaration) is { } targetMethod)
+                        result.ConnectMethods(currentMethod, targetMethod, new(source,
+                            $"{result.Methods[currentMethod].Name} → {result.Methods[targetMethod].Name}"));
                     if (inspections is { TracksResponsibility: true })
                         inspections.RecordDependency(currentClass, target, evidence);
                 }
@@ -140,6 +151,44 @@ internal sealed class AstGraph(string root, AnalysisResult result, bool includeT
         }
         currentClass = previousClass;
         currentFunction = previousFunction;
+        currentMethod = previousMethod;
+    }
+
+    private string? MethodNode(Cursor original)
+    {
+        if (!IsFunction(original.Kind))
+            return null;
+        var cursor = original;
+        var template = clang_getSpecializedCursorTemplate(cursor);
+        if (IsFunction(template.Kind))
+            cursor = template;
+        var definition = clang_getCursorDefinition(cursor);
+        if (IsFunction(definition.Kind) && Site(clang_getCursorLocation(definition)) is not null)
+            cursor = definition;
+        var owner = ClassNode(clang_getCursorSemanticParent(cursor));
+        var location = Site(clang_getCursorLocation(cursor));
+        if (owner is null || location is null)
+            return null;
+        var usr = Read(clang_getCursorUSR(cursor));
+        if (usr.Length == 0)
+            return null;
+        var id = "method:" + usr;
+        var isDefinition = clang_isCursorDefinition(cursor) != 0;
+        if (!result.Methods.ContainsKey(id) || (isDefinition && !definedMethods.Contains(id)))
+        {
+            var ownerNode = result.Nodes[owner];
+            var signature = Read(clang_getCursorDisplayName(cursor));
+            var type = Read(clang_getTypeSpelling(clang_getCursorType(cursor)));
+            // Display names omit member cv/ref qualifiers, which can distinguish overloads.
+            var closing = type.LastIndexOf(')');
+            if (closing >= 0 && closing + 1 < type.Length)
+                signature += type[(closing + 1)..];
+            result.Methods[id] = new(id, ownerNode.Name + "::" + signature, "method", ownerNode.Project,
+                location, ownerNode.Name, ownerNode.VisualStudioFilter, ClassId: owner);
+            if (isDefinition)
+                definedMethods.Add(id);
+        }
+        return id;
     }
 
     private IEnumerable<string> ClassesInType(CXType type, int depth)

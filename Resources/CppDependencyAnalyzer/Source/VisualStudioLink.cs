@@ -39,17 +39,17 @@ internal static class VisualStudioLink
     private sealed record SourceTarget(string File, int Line, string? Workspace);
     private enum OpenResult { NotFound, Busy, Opened }
 
-    public static void Open(string link)
+    public static bool Open(string link)
     {
         var target = Resolve(link);
-        if (target.Workspace is null) { Process.Start(BuildStartInfo(target)); return; }
+        if (target.Workspace is null) { Process.Start(BuildStartInfo(target)); return false; }
         // /Edit may open the solution as a document in another instance. Match the loaded solution instead.
         var until = Environment.TickCount64 + 30_000;
         var started = false;
         do
         {
             var result = TryOpenRunning(target);
-            if (result == OpenResult.Opened) return;
+            if (result == OpenResult.Opened) return true;
             if (result == OpenResult.NotFound && !started)
             {
                 Process.Start(BuildStartInfo(target));
@@ -59,6 +59,7 @@ internal static class VisualStudioLink
         } while (Environment.TickCount64 < until);
         if (!started) throw new InvalidOperationException("Visual Studio가 사용 중입니다. 잠시 후 링크를 다시 선택하세요.");
         // The startup File.OpenFile command still opens the file if automation isn't available.
+        return false;
     }
 
     public static ProcessStartInfo CreateStartInfo(string link) => BuildStartInfo(Resolve(link));

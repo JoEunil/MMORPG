@@ -18,15 +18,18 @@ internal sealed class AnalyzerForm : Form
     private readonly CheckBox loopCopy = new() { Text = "반복 객체 복사", AutoSize = true };
     private readonly CheckBox loopSearch = new() { Text = "반복문 내 선형 검색", AutoSize = true };
     private readonly CheckBox loopAllocation = new() { Text = "반복 동적 할당", AutoSize = true };
+    private readonly CheckBox methodMap = new() { Text = "메서드 지도", AutoSize = true };
     private readonly TableLayoutPanel inspectionOptions = new()
     {
-        AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 5
+        AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 6
     };
     private readonly Button analyze = new() { Text = "분석", AutoSize = true, Enabled = false };
     private readonly Button cancel = new() { Text = "취소", AutoSize = true, Enabled = false };
     private readonly Button open = new() { Text = "결과 열기", AutoSize = true, Enabled = false };
     private readonly Button openReports = new() { Text = "결과 폴더", AutoSize = true };
     private readonly Button registerVs = new() { Text = "VS 연결 등록", AutoSize = true };
+    private readonly Button startService = new() { Text = "로컬 서버 시작", AutoSize = true };
+    private readonly Button stopService = new() { Text = "로컬 서버 종료", AutoSize = true };
     private readonly Label status = new() { AutoSize = true, Text = "분석할 C++ 프로젝트 폴더를 선택하세요." };
     private readonly ProgressBar progressBar = new() { Dock = DockStyle.Fill, Height = 7, Visible = false };
     private CancellationTokenSource? activeRun;
@@ -37,7 +40,7 @@ internal sealed class AnalyzerForm : Form
         SuspendLayout();
         Text = "C/C++ 의존성 분석기";
         Font = new Font("Malgun Gothic", 10F);
-        ClientSize = new Size(760, 460);
+        ClientSize = new Size(760, 530);
         MinimumSize = new Size(650, 400);
         StartPosition = FormStartPosition.CenterScreen;
         AutoScaleDimensions = new SizeF(96F, 96F);
@@ -55,7 +58,7 @@ internal sealed class AnalyzerForm : Form
         var layout = new TableLayoutPanel
         {
             AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Top,
-            ColumnCount = 3, RowCount = 9, Padding = new Padding(20)
+            ColumnCount = 3, RowCount = 10, Padding = new Padding(20)
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 128));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -98,16 +101,21 @@ internal sealed class AnalyzerForm : Form
         inspectionOptions.Controls.Add(loopCopy, 1, 1);
         inspectionOptions.Controls.Add(loopSearch, 1, 2);
         inspectionOptions.Controls.Add(loopAllocation, 1, 3);
+        inspectionOptions.Controls.Add(MakeLabel("추가 지도"), 0, 5);
+        inspectionOptions.Controls.Add(methodMap, 1, 5);
         layout.Controls.Add(inspectionOptions, 0, 5);
         layout.SetColumnSpan(inspectionOptions, 3);
 
         var actions = MakeRow(analyze, cancel, open, openReports, registerVs);
         layout.Controls.Add(actions, 1, 6);
         layout.SetColumnSpan(actions, 2);
+        var serviceActions = MakeRow(startService, stopService);
+        layout.Controls.Add(serviceActions, 1, 7);
+        layout.SetColumnSpan(serviceActions, 2);
         progressBar.Margin = new Padding(3, 10, 3, 4);
-        layout.Controls.Add(progressBar, 0, 7);
+        layout.Controls.Add(progressBar, 0, 8);
         layout.SetColumnSpan(progressBar, 3);
-        layout.Controls.Add(status, 0, 8);
+        layout.Controls.Add(status, 0, 9);
         layout.SetColumnSpan(status, 3);
         status.Margin = new Padding(3, 10, 3, 3);
         void WrapLabels() => description.MaximumSize = status.MaximumSize =
@@ -127,12 +135,14 @@ internal sealed class AnalyzerForm : Form
         cancel.Click += (_, _) => CancelAnalysis();
         open.Click += (_, _) => OpenLastReport();
         openReports.Click += (_, _) => OpenReportsFolder();
+        startService.Click += async (_, _) => await ManageService(start: true);
+        stopService.Click += async (_, _) => await ManageService(start: false);
         registerVs.Click += (_, _) =>
         {
             try
             {
                 VisualStudioLink.Register(folder.Text.Length > 0 ? folder.Text : null);
-                status.Text = "VS 연결을 현재 사용자에게 등록했습니다. 보고서의 VS에서 열기를 사용할 수 있습니다.";
+                status.Text = "VS 연결을 현재 사용자에게 등록했습니다. 로컬 재분석 서버가 있으면 연결 등록 없이도 소스를 엽니다.";
             }
             catch (Exception exception) { status.Text = "VS 연결 등록 실패: " + exception.Message; }
         };
@@ -158,6 +168,19 @@ internal sealed class AnalyzerForm : Form
             return;
 
         LoadInputs(dialog.SelectedPath, null);
+    }
+
+    private async Task ManageService(bool start)
+    {
+        startService.Enabled = stopService.Enabled = false;
+        try
+        {
+            await Task.Run(() => { if (start) ReanalysisService.EnsureRunning(); else ReanalysisService.Stop(); });
+            status.Text = start ? "로컬 재분석 서버를 시작했습니다. 보고서에서 재분석과 소스 열기를 사용할 수 있습니다."
+                : "로컬 재분석 서버를 종료했습니다.";
+        }
+        catch (Exception exception) { status.Text = exception.Message; }
+        finally { startService.Enabled = stopService.Enabled = activeRun is null; }
     }
 
     private void LoadInputs(string directory, ProjectChoice? selection)
@@ -213,7 +236,8 @@ internal sealed class AnalyzerForm : Form
             DiscoverDatabase: false, Inspections: new InspectionOptions(
                 MemberUsage: memberUsage.Checked, ParameterGroups: parameterGroups.Checked, ClassCohesion: classCohesion.Checked,
                 LoopCopy: loopCopy.Checked, LoopSearch: loopSearch.Checked, LoopAllocation: loopAllocation.Checked,
-                ResponsibilityConcentration: responsibility.Checked), IncludeProjectReferences: references.Checked);
+                ResponsibilityConcentration: responsibility.Checked), IncludeProjectReferences: references.Checked,
+            MethodMap: methodMap.Checked);
         SetBusy(true);
         var progress = new Progress<string>(message => { if (activeRun == run && !run.IsCancellationRequested) status.Text = message; });
         try
@@ -241,7 +265,7 @@ internal sealed class AnalyzerForm : Form
     {
         if (lastReport is null)
             return;
-        try { Program.OpenPath(lastReport); }
+        try { Program.OpenPath(HtmlReport.BrowserUrl(lastReport)); }
         catch (Exception exception) { status.Text = $"브라우저를 열지 못했습니다. {lastReport}\n{exception.Message}"; }
     }
 
@@ -261,6 +285,7 @@ internal sealed class AnalyzerForm : Form
     private void SetBusy(bool busy)
     {
         browse.Enabled = tests.Enabled = vendor.Enabled = inspectionOptions.Enabled = registerVs.Enabled = !busy;
+        startService.Enabled = stopService.Enabled = !busy;
         browseDatabase.Enabled = project.Enabled = analyze.Enabled = !busy && folder.Text.Length > 0;
         UpdateBuildInputs();
         cancel.Enabled = busy;

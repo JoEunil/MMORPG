@@ -4,7 +4,8 @@ internal record SourceLocation(string File, uint Line, uint Column = 0);
 internal record Evidence(SourceLocation Location, string Description);
 internal record StudioFilter(string Project, string Name);
 internal record Node(string Id, string Name, string Kind, string? Project, SourceLocation? Location,
-    string? Namespace = null, StudioFilter? VisualStudioFilter = null, bool IsStruct = false, bool IsAbstract = false);
+    string? Namespace = null, StudioFilter? VisualStudioFilter = null, bool IsStruct = false, bool IsAbstract = false,
+    string? ClassId = null);
 internal record AnalysisIssue(string File, string Message);
 internal record InspectionOptions(bool MemberUsage = false, bool ParameterGroups = false,
     bool ClassCohesion = false, bool LoopCopy = false, bool LoopSearch = false, bool LoopAllocation = false,
@@ -49,10 +50,16 @@ internal sealed class Edge(string from, string to, string kind)
 internal sealed class AnalysisResult(string directory, string configuration)
 {
     private readonly Dictionary<(string From, string To, string Kind), Edge> edges = [];
+    private readonly Dictionary<(string From, string To), Edge> methodCalls = [];
+    private readonly HashSet<(string From, string To, string File, uint Line, uint Column)> methodCallSites = [];
 
     public string Directory { get; } = directory;
     public string Configuration { get; } = configuration;
     public Dictionary<string, Node> Nodes { get; } = new(StringComparer.Ordinal);
+    public bool MethodMapEnabled { get; set; }
+    public AnalysisOptions? Options { get; set; }
+    public Dictionary<string, Node> Methods { get; } = new(StringComparer.Ordinal);
+    public IEnumerable<Edge> MethodCalls => methodCalls.Values.OrderBy(edge => edge.From).ThenBy(edge => edge.To);
     public Dictionary<string, List<StudioFilter>> StudioFilters { get; } = new(StringComparer.OrdinalIgnoreCase);
     public IEnumerable<Edge> Edges => edges.Values.OrderBy(edge => edge.Kind)
         .ThenBy(edge => edge.From).ThenBy(edge => edge.To);
@@ -64,6 +71,19 @@ internal sealed class AnalysisResult(string directory, string configuration)
     public int ParsedWithErrors { get; set; }
     public InspectionReport Inspections { get; set; } = InspectionReport.Create(null);
     public double ElapsedMilliseconds { get; set; }
+
+    public void ConnectMethods(string from, string to, Evidence evidence)
+    {
+        var site = evidence.Location;
+        if (!methodCallSites.Add((from, to, site.File.ToUpperInvariant(), site.Line, site.Column)))
+            return;
+        if (!methodCalls.TryGetValue((from, to), out var edge))
+        {
+            edge = new Edge(from, to, "call");
+            methodCalls.Add((from, to), edge);
+        }
+        edge.Evidence.Add(evidence);
+    }
 
     public void Connect(string from, string to, string kind, Evidence evidence)
     {

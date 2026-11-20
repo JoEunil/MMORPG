@@ -17,6 +17,7 @@ const inspectionGroups = {
   ]
 };
 const viewGuides = {
+  method: "메서드를 검색·선택하면 호출 관계를 클래스별 카드 묶음으로 펼칩니다. 이웃 메서드를 선택하면 연결을 이어서 확장합니다. 여러 메서드를 목록에 추가해 선택한 메서드 사이의 호출만 볼 수도 있습니다. 화살표는 호출자 → 호출 대상이며, 가상 호출은 정적으로 확인된 선언까지만 표시합니다. 함수 포인터·런타임 콜백의 실제 대상은 추적하지 않습니다.",
   class: "클래스를 검색하거나 지도에서 선택하면 연결된 타입과 코드 위치를 볼 수 있습니다. 화살표는 사용하는 클래스에서 사용되는 타입으로 향합니다. 선택 연결만 상태에서 이웃을 선택하면 기존 연결을 유지하며 그 타입의 연결을 추가로 펼칩니다. 해제 후 다시 켜면 현재 선택한 타입부터 새로 탐색합니다.",
   group: "Visual Studio 필터별로 클래스를 묶어 기능 영역 사이의 연결을 보여줍니다. 선의 숫자는 연결된 클래스 쌍의 수입니다. 선을 선택하면 개별 클래스와 코드 위치가 나오며, Interface 연결만 켜면 인터페이스를 향한 연결만 남습니다.",
   namespace: "선택한 namespace 안의 클래스 관계를 보여줍니다. 외부 연결 표시를 켜면 다른 namespace의 타입과 직접 연결된 부분도 볼 수 있습니다.",
@@ -34,7 +35,9 @@ const inspectionGuides = {
   "loop-allocation": "반복문 안에서 new나 지원하는 표준 할당 함수를 호출하는 곳을 찾습니다. 실행 빈도와 측정 결과를 보고 미리 공간을 확보하거나 객체를 재사용할 필요가 있는지 검토하세요. 호출한 함수의 내부까지 추적하지는 않습니다."
 };
 const inspectionChecks = new Map((data.inspections?.checks ?? []).map(check => [check.id, check]));
-const byId = new Map(data.nodes.map(node => [node.id, node]));
+const methods = data.methods ?? [];
+const methodCalls = data.methodCalls ?? [];
+const byId = new Map([...data.nodes, ...methods].map(node => [node.id, node]));
 const classes = data.nodes.filter(node => node.kind === "class");
 const structIds = new Set(classes.filter(node => node.isStruct).map(node => node.id));
 const projects = data.nodes.filter(node => node.kind === "project");
@@ -72,7 +75,7 @@ const state = {
   external: false, hidden: new Set(), hiddenKinds: new Set(), selected: "", query: "", direction: "", focused: false,
   focusRoot: "", expandedNodes: new Set(), arrangement: "namespace", cardViews: new Set(["project"]),
   hiddenProjects: new Set(), hiddenFilters: new Set(), interfaceOnly: false, filterInterfaceOnly: false, showStructs: true,
-  selectedClasses: new Set(), onlyClasses: false
+  selectedClasses: new Set(), onlyClasses: false, selectedMethods: new Set(), onlyMethods: false
 };
 const card = { width: 219, height: 37, stepX: 255, stepY: 62 };
 const fullLayout = classLayout(classes);
@@ -86,6 +89,7 @@ let classSearchNodes = [];
 let layout = fullLayout;
 let layoutKey = "";
 const movedNodes = new Map();
+const hiddenNodes = new Map();
 let drawnPanels = [];
 let bounds = null;
 let nodeElements = new Map();
@@ -104,7 +108,73 @@ let highLevelCandidates;
 
 init();
 
+function localServiceAvailable() {
+  const endpoint = data.localService?.endpoint ?? "";
+  return /^http:\/\/127\.0\.0\.1:\d+\/?$/.test(endpoint) && /^[a-f0-9]{32}$/.test(data.localService?.id ?? "")
+    && (window.location.protocol === "file:" || window.location.origin === endpoint.replace(/\/$/, ""));
+}
+
+function localReportUrl() { return data.localService.endpoint.replace(/\/$/, "") + "/reports/" + data.localService.id; }
+
+async function serviceRequest(action, options = {}) {
+  const endpoint = data.localService.endpoint.replace(/\/$/, "");
+  let response;
+  try {
+    response = await fetch(endpoint + "/api/" + action + "/" + data.localService.id,
+      { cache: "no-store", referrerPolicy: "no-referrer", signal: AbortSignal.timeout(45000), ...options });
+  } catch (error) {
+    throw new Error("로컬 분석 서버에 연결하지 못했습니다. 분석기의 ‘로컬 서버 시작’을 누르세요.");
+  }
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({}));
+    throw new Error(detail.error ?? "로컬 요청 실패 (" + response.status + ")");
+  }
+  return response.status === 202 || response.headers.get("content-length") === "0" ? null : response.json();
+}
+
+async function reanalyze() {
+  if (window.location.protocol === "file:") {
+    window.location.assign(localReportUrl() + "#reanalyze");
+    return;
+  }
+  const button = get("reanalyze"), status = get("reanalysis-status");
+  button.disabled = true;
+  status.textContent = "재분석 요청 중…";
+  try {
+    await serviceRequest("reanalyze", { method: "POST" });
+    while (true) {
+      const job = await serviceRequest("jobs");
+      status.textContent = job.progress;
+      if (job.state === "failed") throw new Error(job.error ?? "재분석에 실패했습니다.");
+      if (job.state === "completed") {
+        const report = new URL(job.report);
+        if (report.protocol !== "file:") throw new Error("보고서 경로를 확인하세요.");
+        window.location.reload();
+        return;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  } catch (error) { status.textContent = error.message; }
+  finally { button.disabled = false; }
+}
+
 function init() {
+  if (localServiceAvailable()) {
+    get("reanalysis-controls").hidden = false;
+    get("reanalyze").addEventListener("click", reanalyze);
+    if (window.location.protocol === "http:" && window.location.hash === "#reanalyze") {
+      history.replaceState(null, "", window.location.pathname);
+      setTimeout(reanalyze, 0);
+    }
+    if (window.location.protocol === "http:" && window.location.hash.startsWith("#source=")) {
+      const source = new URLSearchParams(window.location.hash.slice(1));
+      history.replaceState(null, "", window.location.pathname);
+      serviceRequest("source", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file: source.get("source"), line: Number(source.get("line")) }) })
+        .then(result => { get("reanalysis-status").textContent = result?.opened ? "VS에서 파일과 행을 열었습니다." : "VS에 열기를 요청했습니다."; })
+        .catch(error => { get("reanalysis-status").textContent = error.message; });
+    }
+  }
   get("origin").textContent = data.directory + " · " + data.configuration;
   get("method-projects").hidden = !projects.length;
   get("method-filters").hidden = !hasStudioFilters;
@@ -158,18 +228,18 @@ function bindControls() {
   });
   get("nodes").addEventListener("change", event => choose(event.target.value, true));
   get("add-class").addEventListener("click", () => {
-    if (state.view !== "class" || byId.get(state.selected)?.kind !== "class") return;
-    state.selectedClasses.add(state.selected);
-    if (onlyClassesActive()) renderMap(true);
+    if (!["class", "method"].includes(state.view) || byId.get(state.selected)?.kind !== state.view) return;
+    selectedItems().add(state.selected);
+    if (onlyClassesActive()) renderMap(false);
     else updateClassSelection();
   });
   get("clear-classes").addEventListener("click", () => {
-    state.selectedClasses.clear();
-    state.onlyClasses = false;
+    selectedItems().clear();
+    setOnlySelection(false);
     renderMap(true);
   });
   get("only-classes").addEventListener("change", event => {
-    state.onlyClasses = event.target.checked && state.selectedClasses.size > 0;
+    setOnlySelection(event.target.checked && selectedItems().size > 0);
     clearFocus();
     renderMap(true);
   });
@@ -245,6 +315,14 @@ function bindControls() {
   get("focus").addEventListener("click", toggleFocus);
   get("open-dependency-tree").addEventListener("click", () => openDependencyTree(state.selected));
   get("context-open-tree").addEventListener("click", () => openDependencyTree(treeMenuNode));
+  get("context-hide-node").addEventListener("click", () => {
+    if (!treeMenuNode) return;
+    if (!hiddenNodes.has(layoutKey)) hiddenNodes.set(layoutKey, new Set());
+    hiddenNodes.get(layoutKey).add(treeMenuNode);
+    if (state.selected === treeMenuNode) state.selected = "";
+    closeTreeMenu();
+    renderMap(false);
+  });
   graph.addEventListener("contextmenu", event => {
     const id = event.target.closest("[data-node-id]")?.dataset.nodeId;
     if (showTreeMenu(id, event.clientX, event.clientY)) event.preventDefault();
@@ -270,6 +348,7 @@ function bindControls() {
   });
   get("reset-layout").addEventListener("click", () => {
     movedNodes.delete(layoutKey);
+    hiddenNodes.delete(layoutKey);
     renderMap(true);
   });
   get("zoom-in").addEventListener("click", () => zoom(1.32, graph.clientWidth / 2, graph.clientHeight / 2));
@@ -356,13 +435,14 @@ function changeView(view) {
   get("namespace-controls").hidden = view !== "namespace";
   get("namespace-select").value = state.namespace;
   get("namespace-select").disabled = groups.size === 0;
-  get("relation-control").hidden = view === "project";
-  get("struct-control").hidden = view === "project" || !structIds.size;
+  get("relation-control").hidden = view === "project" || view === "method";
+  get("struct-control").hidden = view === "project" || view === "method" || !structIds.size;
   get("high-level-filter").hidden = view !== "high-level";
   get("high-level-guide").hidden = view !== "high-level";
-  get("class-selection").hidden = view !== "class";
+  get("class-selection").hidden = view !== "class" && view !== "method";
+  document.querySelector(".presentation-controls").hidden = view === "method";
   get("diagram-title").textContent = {
-    class: "전체 클래스 맵", "high-level": "고수준 타입 후보 맵", namespace: "namespace별 클래스 맵",
+    class: "전체 클래스 맵", method: "메서드 호출 지도", "high-level": "고수준 타입 후보 맵", namespace: "namespace별 클래스 맵",
     project: "프로젝트 의존성", group: "Visual Studio 필터 지도"
   }[view];
   refreshGroupChecks();
@@ -454,7 +534,7 @@ function showInspectionCandidates() {
 
 function renderLegend() {
   const grouped = state.view === "group";
-  const legend = state.view === "project" ? (libraries.length ? ["reference", "external"] : ["reference"]) : grouped ? ["aggregate", "boundary"]
+  const legend = state.view === "method" ? ["call"] : state.view === "project" ? (libraries.length ? ["reference", "external"] : ["reference"]) : grouped ? ["aggregate", "boundary"]
     : projectClassView() && hasStudioFilters ? [...classKinds, "boundary"] : classKinds;
   get("legend").replaceChildren(...legend.map(kind => {
     const item = document.createElement("span");
@@ -467,12 +547,13 @@ function renderLegend() {
     return item;
   }), document.createTextNode(state.view === "high-level"
     ? "금색 테두리: 서로 다른 타입 2개 이상에서 직접 참조하고 나가는 연결이 없는 후보 · 화살표는 의존 대상 방향"
+    : state.view === "method" ? "호출자 → 호출 대상 · 선을 눌러 호출 위치 보기"
     : grouped ? "숫자는 연결된 클래스 쌍 수 · 선을 눌러 근거 보기"
     : "화살표는 의존 대상 방향 · 선을 눌러 근거 보기"
       + (state.view === "class" ? " · 노드를 우클릭해 트리 펼치기" : "")));
 }
 
-function relationshipView() { return !state.cardViews.has(state.view); }
+function relationshipView() { return state.view !== "method" && !state.cardViews.has(state.view); }
 function projectClassView() { return state.view === "class" && !relationshipView() && state.arrangement === "project"; }
 
 function hiddenGroups() {
@@ -598,13 +679,15 @@ function openDependencyTree(id) {
 }
 
 function showTreeMenu(id, x, y) {
-  if (state.view !== "class" || byId.get(id)?.kind !== "class") return false;
+  if (!["class", "method"].includes(byId.get(id)?.kind) || !nodeElements.has(id)) return false;
   treeMenuNode = id;
+  get("context-open-tree").hidden = byId.get(id).kind === "method";
+  get("context-hide-node").textContent = byId.get(id).kind === "method" ? "이 메서드 숨기기" : "이 클래스 숨기기";
   const menu = get("tree-context-menu");
   menu.hidden = false;
   menu.style.left = Math.max(4, Math.min(x, window.innerWidth - menu.offsetWidth - 4)) + "px";
   menu.style.top = Math.max(4, Math.min(y, window.innerHeight - menu.offsetHeight - 4)) + "px";
-  get("context-open-tree").focus({ preventScroll: true });
+  get(byId.get(id).kind === "method" ? "context-hide-node" : "context-open-tree").focus({ preventScroll: true });
   return true;
 }
 
@@ -839,7 +922,10 @@ function renderMap(resetCamera) {
   const eligibleGroups = state.view === "group" ? filterGraph.nodes.filter(node => filterGroupCount(node) > 0) : [];
   let internalCount = 0;
   let candidateCount = 0;
-  if (state.view === "project") {
+  if (state.view === "method") {
+    scopeNodes = methods;
+    scopeEdges = methodCalls;
+  } else if (state.view === "project") {
     scopeNodes = [...projects, ...libraries];
     scopeEdges = projectEdges;
   } else if (state.view === "group") {
@@ -884,9 +970,9 @@ function renderMap(resetCamera) {
   if (state.focused && !scopeNodes.some(node => node.id === state.focusRoot))
     clearFocus();
 
-  classSearchNodes = state.view === "class" ? scopeNodes : [];
+  classSearchNodes = ["class", "method"].includes(state.view) ? scopeNodes : [];
   if (onlyClassesActive()) {
-    scopeNodes = scopeNodes.filter(node => state.selectedClasses.has(node.id));
+    scopeNodes = scopeNodes.filter(node => selectedItems().has(node.id));
     const ids = new Set(scopeNodes.map(node => node.id));
     scopeEdges = scopeEdges.filter(edge => ids.has(edge.from) && ids.has(edge.to));
   }
@@ -898,15 +984,18 @@ function renderMap(resetCamera) {
   if (state.view !== "project") mapKey.push(state.showStructs, [...state.hiddenKinds].sort());
   if (state.view === "group") mapKey.push(state.filterInterfaceOnly);
   if (inProjects) mapKey.push("project", state.interfaceOnly);
-  if (onlyClassesActive()) mapKey.push("selected-classes", [...state.selectedClasses].sort());
+  if (onlyClassesActive()) mapKey.push("selected-classes");
   if (state.focused) {
     visibleEdges = scopeEdges.filter(edge =>
       (state.direction !== "incoming" && state.expandedNodes.has(edge.from))
       || (state.direction !== "outgoing" && state.expandedNodes.has(edge.to)));
     const nearby = new Set([...state.expandedNodes, ...visibleEdges.flatMap(edge => [edge.from, edge.to])]);
     visibleNodes = scopeNodes.filter(node => nearby.has(node.id));
-    autoLayout = focusLayout();
-    mapKey.push(state.focusRoot, [...state.expandedNodes].sort(), state.direction);
+    autoLayout = state.view === "method" ? methodLayout(visibleNodes) : focusLayout();
+    mapKey.push(state.focusRoot, state.direction);
+  } else if (state.view === "method") {
+    if (!onlyClassesActive()) visibleNodes = visibleEdges = [];
+    autoLayout = methodLayout(visibleNodes);
   } else if (relationshipView()) {
     const spacing = state.view === "group" ? 1.65 : state.view === "project" ? 1.35 : 1;
     autoLayout = createRelationshipLayout(scopeNodes, scopeEdges, state.view === "namespace" ? state.namespace : null, spacing);
@@ -924,20 +1013,25 @@ function renderMap(resetCamera) {
   get("layout-mode").disabled = state.focused;
   layoutKey = JSON.stringify(mapKey);
   layout = { panels: autoLayout.panels, positions: new Map(autoLayout.positions) };
-  for (const [id, offset] of movedNodes.get(layoutKey) ?? []) {
+  for (const [id, saved] of movedNodes.get(layoutKey) ?? []) {
     const position = layout.positions.get(id);
     if (position)
-      layout.positions.set(id, { ...position, x: position.x + offset.x, y: position.y + offset.y });
+      layout.positions.set(id, { ...position, x: saved.x, y: saved.y });
   }
+  const hidden = hiddenNodes.get(layoutKey) ?? new Set();
+  visibleNodes = visibleNodes.filter(node => !hidden.has(node.id));
+  scopeEdges = scopeEdges.filter(edge => !hidden.has(edge.from) && !hidden.has(edge.to));
+  visibleEdges = visibleEdges.filter(edge => !hidden.has(edge.from) && !hidden.has(edge.to));
   const ids = new Set(visibleNodes.map(node => node.id));
   drawnPanels = layout.panels.filter(panel => panel.nodes.some(node => ids.has(node.id)));
   updateBounds();
   if (pickedEdge && !visibleEdges.includes(pickedEdge)) pickedEdge = null;
   const total = state.view === "group" ? eligibleGroups.length : classes.length - (state.showStructs ? 0 : structIds.size);
   get("map-count").textContent = onlyClassesActive()
-    ? "선택한 클래스 " + visibleNodes.length + "/" + state.selectedClasses.size + "개 · 연결 " + visibleEdges.length
+    ? "선택한 " + (state.view === "method" ? "메서드 " : "클래스 ") + visibleNodes.length + "/" + selectedItems().size + "개 · 연결 " + visibleEdges.length
     : state.focused
-    ? "탐색한 타입 " + state.expandedNodes.size + "개 · 표시 " + visibleNodes.length + "개 · 연결 " + visibleEdges.length
+    ? "탐색한 " + (state.view === "method" ? "메서드 " : "타입 ") + state.expandedNodes.size + "개 · 표시 " + visibleNodes.length + "개 · 연결 " + visibleEdges.length
+    : state.view === "method" ? "수집한 메서드 " + methods.length + "개 · 호출 관계 " + methodCalls.length + "개"
     : state.view === "namespace"
     ? namespaceTitle(state.namespace) + " · 내부 " + internalCount
       + "개 · 외부 " + (visibleNodes.length - internalCount) + "개 · 연결 " + visibleEdges.length
@@ -947,7 +1041,11 @@ function renderMap(resetCamera) {
     : "표시 " + visibleNodes.length + "/" + total + "개 · 연결 " + visibleEdges.length
       + (inProjects && hasStudioFilters ? " · Interface 상속 " + visibleEdges.filter(edge => interfaceInheritance.has(edge)).length : "");
   get("empty").hidden = visibleNodes.length > 0;
-  get("empty").textContent = state.view === "project" && projects.length === 0
+  get("empty").textContent = state.view === "method"
+    ? !data.methodMapEnabled ? "미분석 · 분석기에서 메서드 지도를 선택하고 다시 분석하세요."
+      : !methods.length ? "수집한 메서드가 없습니다. 분석 범위와 진단을 확인하세요."
+      : "왼쪽에서 메서드를 검색·선택하거나 선택 목록을 구성하세요."
+    : state.view === "project" && projects.length === 0
     ? "프로젝트 참조 지도는 Visual Studio 프로젝트 파일에서 생성합니다."
     : "현재 표시할 항목이 없습니다.";
   drawGraph(drawnPanels);
@@ -958,13 +1056,25 @@ function renderMap(resetCamera) {
 }
 
 function onlyClassesActive() {
-  return state.view === "class" && state.onlyClasses;
+  return state.view === "method" ? state.onlyMethods : state.view === "class" && state.onlyClasses;
+}
+
+function selectedItems() { return state.view === "method" ? state.selectedMethods : state.selectedClasses; }
+function setOnlySelection(value) {
+  if (state.view === "method") state.onlyMethods = value;
+  else state.onlyClasses = value;
+}
+
+function methodLayout(nodes) {
+  const result = classLayout(nodes, null, node => node.classId);
+  for (const panel of result.panels) panel.title = byId.get(panel.name)?.name ?? panel.nodes[0]?.namespace ?? panel.name;
+  return result;
 }
 
 function updateClassSelection() {
   const list = get("class-selection-list");
   list.replaceChildren();
-  for (const id of state.selectedClasses) {
+  for (const id of selectedItems()) {
     const node = byId.get(id);
     const item = document.createElement("li");
     const name = document.createElement("span");
@@ -974,18 +1084,21 @@ function updateClassSelection() {
     remove.textContent = "제거";
     remove.setAttribute("aria-label", node.name + " 제거");
     remove.addEventListener("click", () => {
-      state.selectedClasses.delete(id);
-      if (!state.selectedClasses.size) state.onlyClasses = false;
+      selectedItems().delete(id);
+      if (!selectedItems().size) setOnlySelection(false);
       renderMap(true);
     });
     item.append(name, remove);
     list.append(item);
   }
-  get("class-selection-count").textContent = "선택한 클래스 " + state.selectedClasses.size + "개";
-  get("add-class").disabled = byId.get(state.selected)?.kind !== "class" || state.selectedClasses.has(state.selected);
-  get("clear-classes").disabled = !state.selectedClasses.size;
-  get("only-classes").disabled = !state.selectedClasses.size;
-  get("only-classes").checked = state.onlyClasses;
+  const title = state.view === "method" ? "메서드" : "클래스";
+  get("class-selection-count").textContent = "선택한 " + title + " " + selectedItems().size + "개";
+  get("class-selection-list").setAttribute("aria-label", "선택한 " + title);
+  get("selection-label").textContent = "선택한 " + title + "만";
+  get("add-class").disabled = byId.get(state.selected)?.kind !== state.view || selectedItems().has(state.selected);
+  get("clear-classes").disabled = !selectedItems().size;
+  get("only-classes").disabled = !selectedItems().size;
+  get("only-classes").checked = onlyClassesActive();
 }
 
 function selectedEdges() {
@@ -996,7 +1109,7 @@ function selectedEdges() {
 
 function updateBounds() {
   bounds = measure([...drawnPanels, ...visibleNodes.map(node => layout.positions.get(node.id))]);
-  get("reset-layout").disabled = !movedNodes.get(layoutKey)?.size;
+  get("reset-layout").disabled = !movedNodes.get(layoutKey)?.size && !hiddenNodes.get(layoutKey)?.size;
 }
 
 function focusLayout() {
@@ -1335,8 +1448,9 @@ function matches(node) {
 
 function updateSearch() {
   const isHighLevel = state.view === "high-level";
-  const found = (state.view === "class" ? classSearchNodes : scopeNodes)
-    .filter(node => matches(node) && (!isHighLevel || highLevelCandidates.has(node.id)));
+  const found = (["class", "method"].includes(state.view) ? classSearchNodes : scopeNodes)
+    .filter(node => !hiddenNodes.get(layoutKey)?.has(node.id) && matches(node)
+      && (!isHighLevel || highLevelCandidates.has(node.id)));
   if (isHighLevel)
     found.sort((a, b) => highLevelCandidates.get(b.id).total - highLevelCandidates.get(a.id).total || a.name.localeCompare(b.name));
   setOptions(get("nodes"), found.map(node => [node.id, isHighLevel
@@ -1347,13 +1461,21 @@ function updateSearch() {
 }
 
 function choose(id, move) {
-  if (!id || !(state.view === "class" ? classSearchNodes : scopeNodes).some(node => node.id === id)) return;
+  if (!id || !(["class", "method"].includes(state.view) ? classSearchNodes : scopeNodes).some(node => node.id === id)) return;
+  if (state.view === "method" && !state.focused && !onlyClassesActive()) {
+    state.selected = state.focusRoot = id;
+    state.focused = true;
+    state.expandedNodes = new Set([id]);
+    pickedEdge = null;
+    renderMap(true);
+    return;
+  }
   const expand = state.focused && !state.expandedNodes.has(id);
   state.selected = id;
   pickedEdge = null;
   if (expand) {
     state.expandedNodes.add(id);
-    renderMap(true);
+    renderMap(false);
     return;
   }
   updateSearch();
@@ -1419,8 +1541,7 @@ function startDrag(event) {
   suppressClick = false;
   drag = {
     pointer: event.pointerId, x: event.clientX, y: event.clientY, moved: false, id,
-    origin: id ? layout.positions.get(id) : { x: camera.x, y: camera.y },
-    offset: movedNodes.get(layoutKey)?.get(id) ?? { x: 0, y: 0 }
+    origin: id ? layout.positions.get(id) : { x: camera.x, y: camera.y }
   };
 }
 
@@ -1446,10 +1567,7 @@ function moveDrag(event) {
   nodeElements.get(drag.id).setAttribute("transform", nodeTransform(position));
   for (const route of routes.get(drag.id) ?? []) drawRoute(route);
   if (!movedNodes.has(layoutKey)) movedNodes.set(layoutKey, new Map());
-  const offsets = movedNodes.get(layoutKey);
-  const offset = { x: drag.offset.x + x, y: drag.offset.y + y };
-  if (Math.hypot(offset.x, offset.y) < 1) offsets.delete(drag.id);
-  else offsets.set(drag.id, offset);
+  movedNodes.get(layoutKey).set(drag.id, { x: position.x, y: position.y });
 }
 
 function endDrag(event) {
@@ -1654,13 +1772,36 @@ function sourceLocation(location) {
   link.rel = "noopener noreferrer";
   link.textContent = "VS에서 열기";
   link.title = "VS 연결 등록 후 사용합니다. 찾을 수 있는 솔루션 또는 프로젝트와 함께 파일을 엽니다.";
+  if (localServiceAvailable()) {
+    link.title = "로컬 분석 서버를 통해 Visual Studio에 파일 열기를 요청합니다.";
+    const status = document.createElement("span");
+    status.className = "muted";
+    status.setAttribute("role", "status");
+    link.addEventListener("click", async event => {
+      event.preventDefault();
+      if (window.location.protocol === "file:") {
+        window.location.assign(localReportUrl() + "#source=" + encodeURIComponent(location.file) + "&line=" + location.line);
+        return;
+      }
+      if (link.dataset.opening) return;
+      link.dataset.opening = "true";
+      link.after(status);
+      status.textContent = " · VS 열기 요청 중…";
+      try {
+        const result = await serviceRequest("source", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ file: location.file, line: location.line }) });
+        status.textContent = result?.opened ? " · VS에서 파일과 행을 열었습니다." : " · VS에 열기를 요청했습니다.";
+      } catch (error) { status.textContent = " · " + error.message; }
+      finally { delete link.dataset.opening; }
+    });
+  }
   const content = document.createDocumentFragment();
   content.append(source, link);
   return content;
 }
 
 function sourceRootUrl() {
-  if (window.location.protocol !== "file:" || typeof data.directory !== "string") return "";
+  if ((window.location.protocol !== "file:" && !localServiceAvailable()) || typeof data.directory !== "string") return "";
   let directory = data.directory;
   if (!/^[a-z]:[\\/]/i.test(directory)) {
     // A bundled report records only the folder name, without publishing the local absolute path.
