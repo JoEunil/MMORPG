@@ -3,9 +3,9 @@
 
 #include "../Cache/CacheCommandSender.h"
 #include "NonSimulationConfig.h"
-#include "../Interface/INetworkSender.h"
 #include "../Interface/IPacketView.h"
 #include "../Packet/PacketTypes.h"
+#include "../Response/Interface/IServerResponseQueue.h"
 #include "../Packet/PacketWriter.h"
 #include "../World/SessionManager.h"
 #include "../Interface/ISessionAuth.h"
@@ -17,10 +17,7 @@ namespace Core {
     void NonSimulationHandler::ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID) {
         if (!sessionManager->CompleteAuth(sessionID, userID, resStatus == RES_STATUS::SUCCESS))
             return;
-        auto res = writer->WriteAuthResponse(resStatus);
-        if (res == nullptr)
-            return;
-        networkSender->SendDataUnique(sessionID, std::move(res));
+        responses->Enqueue(sessionID, writer->WriteAuthResponse(resStatus));
     }
 
     void NonSimulationHandler::CheckSession(IPacketView* p) {

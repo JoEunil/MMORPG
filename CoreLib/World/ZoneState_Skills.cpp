@@ -1,8 +1,8 @@
 ﻿#include "pch.h"
 #include "../Cache/CacheCommandSender.h"
-#include "../Interface/INetworkSender.h"
-#include "../Packet/PacketWriter.h"
 #include "ZoneState.h"
+#include "../Response/Interface/IServerResponseQueue.h"
+#include "../Packet/PacketWriter.h"
 #include "SessionManager.h"
 #include <optional>
 
@@ -195,8 +195,7 @@ namespace Core {
         const auto sessionID = character.sessionID;
         if (!cacheCommands->EnqueueGoldDeposit(sessionID, character.characterID, gold)) {
             errorLogger->LogError("monster reward", "gold deposit queue rejected", "characterID", character.characterID);
-            auto packet = ZoneState::writer->WriteGoldReward(0);
-            if (packet) networkSender->SendDataUnique(sessionID, std::move(packet));
+            responses->Enqueue(sessionID, writer->WriteGoldReward(0));
         }
     }
 }

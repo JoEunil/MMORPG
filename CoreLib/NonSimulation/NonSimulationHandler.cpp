@@ -5,7 +5,7 @@
 #include "../Packet/PacketTypes.h"
 #include "../Interface/IPacketView.h"
 #include "../Interface/ISessionAuth.h"
-#include "../Interface/INetworkSender.h"
+#include "../Response/Interface/IServerResponseQueue.h"
 #include "../Packet/PacketWriter.h"
 #include "../World/ZoneState.h"
 #include "../World/Interface/IZonePacketQueue.h"
@@ -19,13 +19,13 @@
 #include "../Packet/PacketConfig.h"
 
 namespace Core {
-    void NonSimulationHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, SessionManager* manager,
+    void NonSimulationHandler::Initialize(IServerResponseQueue& responseQueue, PacketWriter& packetWriter, ISessionAuth* s, const CacheCommandSender* commands, SessionManager* manager,
         LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc, IZonePacketQueue& packets, IZoneRequestQueue& requests) {
         zonePackets = &packets;
         zoneRequests = &requests;
-        networkSender = sender;
+        responses = &responseQueue;
+        writer = &packetWriter;
         auth = s;
-        writer = p;
         cacheCommands = commands;
         sessionManager = manager;
         lobbyZone = lobby;
@@ -34,16 +34,16 @@ namespace Core {
     }
 
     bool NonSimulationHandler::IsReady() const {
-        if (networkSender == nullptr) {
-            sysLogger->LogError("non simulation handler", "network sender not initialized");
+        if (writer == nullptr) {
+            sysLogger->LogError("non simulation handler", "packet writer not initialized");
+            return false;
+        }
+        if (responses == nullptr) {
+            sysLogger->LogError("non simulation handler", "response queue not initialized");
             return false;
         }
         if (auth == nullptr) {
             sysLogger->LogError("non simulation handler", "session auth not initialized");
-            return false;
-        }
-        if (writer == nullptr) {
-            sysLogger->LogError("non simulation handler", "packet writer not initialized");
             return false;
         }
         if (cacheCommands == nullptr) {
@@ -202,18 +202,16 @@ namespace Core {
             MsgCurrencyResBody failed{};
             failed.requestID = request.requestID;
             failed.characterID = characterID;
-            auto response = writer->WriteWalletGoldResponse(&failed);
-            if (response && sessionManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
-                networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+            if (sessionManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
+                responses->Enqueue(p->GetSessionID(), writer->WriteWalletGoldResponse(&failed));
         }
 
         if (!cacheCommands->EnqueueDiamondBalance(p->GetSessionID(), characterID, request.requestID)) {
             MsgDiamondResBody failed{};
             failed.requestID = request.requestID;
             failed.characterID = characterID;
-            auto response = writer->WriteWalletDiamondResponse(&failed);
-            if (response && sessionManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
-                networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+            if (sessionManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
+                responses->Enqueue(p->GetSessionID(), writer->WriteWalletDiamondResponse(&failed));
         }
     }
 
@@ -269,10 +267,7 @@ namespace Core {
         ProfileEntry entries[MAX_PROFILE_BATCH];
         uint16_t found = profileCache->GetBatch(body->profileIds, body->count, entries);
 
-        auto res = writer->WriteProfileBatchRes(entries, found);
-        if (!res)
-            return;
-        networkSender->SendDataUnique(session, std::move(res));
+        responses->Enqueue(session, writer->WriteProfileBatchRes(entries, found));
     }
 
     void NonSimulationHandler::ForwardZoneRequest(std::unique_ptr<IPacketView, PacketViewDeleter> packet) {
@@ -290,9 +285,7 @@ namespace Core {
                 errorLogger->LogWarn("non simulation handler", "item request queue full", "sessionID", sessionID, "zoneID", zoneID);
             } else if (check == SessionRequestStatus::StaleOwnership || check == SessionRequestStatus::StaleRequest)
                 result.status = 7;
-            auto response = writer->WriteItemUseResponse(result);
-            if (response)
-                networkSender->SendDataUnique(sessionID, std::move(response));
+            responses->Enqueue(sessionID, writer->WriteItemUseResponse(result));
             return;
         }
         uint64_t requestID, epoch;
@@ -323,8 +316,6 @@ namespace Core {
             result.status = static_cast<uint8_t>(EquipmentStatus::StaleOwnership);
         else if (check == SessionRequestStatus::StaleRequest)
             result.status = static_cast<uint8_t>(EquipmentStatus::StaleRequest);
-        auto response = writer->WriteEquipmentResponse(result);
-        if (response)
-            networkSender->SendDataUnique(sessionID, std::move(response));
+        responses->Enqueue(sessionID, writer->WriteEquipmentResponse(result));
     }
 }

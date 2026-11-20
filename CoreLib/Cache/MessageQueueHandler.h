@@ -8,38 +8,46 @@
 #include "../LoggerGlobal.h"
 
 namespace Core {
-    class PacketWriter;
     class Message;
-    class INetworkSender;
+    class IServerResponseQueue;
+    class PacketWriter;
     class LobbyZone;
     class SessionManager;
     class IZoneRequestQueue;
 
     class MessageQueueHandler {
         // 캐시 or db 요청 결과 처리
-        PacketWriter* writer = nullptr;
-        INetworkSender* networkSender = nullptr;
         LobbyZone* lobbyZone = nullptr;
+        IServerResponseQueue* responses = nullptr;
+        PacketWriter* writer = nullptr;
         SessionManager* sessionManager = nullptr;
         IZoneRequestQueue* zoneRequests = nullptr;
-        void Initialize(INetworkSender* sender, PacketWriter* w, LobbyZone* lo, SessionManager* s, IZoneRequestQueue& requests) noexcept {
-            networkSender = sender;
-            writer = w;
+        void Initialize(IServerResponseQueue& responseQueue, PacketWriter& packetWriter, LobbyZone* lo, SessionManager* s, IZoneRequestQueue& requests) noexcept {
+            responses = &responseQueue;
+            writer = &packetWriter;
             lobbyZone = lo;
             sessionManager = s;
             zoneRequests = &requests;
         }
         bool IsReady() const {
-            if (networkSender == nullptr) {
-                sysLogger->LogError("mq handler", "networkSender not initialized");
-                return false;
-            }
-            if (!zoneRequests || !sessionManager || !lobbyZone) {
-                sysLogger->LogError("mq handler", "state routing not initialized");
-                return false;
-            }
             if (writer == nullptr) {
-                sysLogger->LogError("mq handler", "writer not initialized");
+                sysLogger->LogError("mq handler", "packet writer not initialized");
+                return false;
+            }
+            if (responses == nullptr) {
+                sysLogger->LogError("mq handler", "response queue not initialized");
+                return false;
+            }
+            if (zoneRequests == nullptr) {
+                sysLogger->LogError("mq handler", "zone request queue not initialized");
+                return false;
+            }
+            if (sessionManager == nullptr) {
+                sysLogger->LogError("mq handler", "session manager not initialized");
+                return false;
+            }
+            if (lobbyZone == nullptr) {
+                sysLogger->LogError("mq handler", "lobby zone not initialized");
                 return false;
             }
             return true;
@@ -49,9 +57,6 @@ namespace Core {
 
         template<typename T>
         using ResponseWriter = std::unique_ptr<IPacket, PacketDeleter>(PacketWriter::*)(const T*);
-
-        template<typename T>
-        void SendResponse(uint64_t sessionID, const T* body, ResponseWriter<T> write);
 
         template<ResponseScope Scope = ResponseScope::Session, typename T>
         void DispatchResponse(Message& msg, uint64_t sessionID, ResponseWriter<T> write);

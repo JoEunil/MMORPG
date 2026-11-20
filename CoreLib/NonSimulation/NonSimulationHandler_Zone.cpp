@@ -1,10 +1,10 @@
 #include "pch.h"
 #include "NonSimulationHandler.h"
 
-#include "../Interface/INetworkSender.h"
 #include "../Interface/IPacketView.h"
 #include "../World/LobbyZone.h"
 #include "../Packet/PacketTypes.h"
+#include "../Response/Interface/IServerResponseQueue.h"
 #include "../Packet/PacketWriter.h"
 #include "../World/SessionManager.h"
 #include "../World/Interface/IZoneRequestQueue.h"
@@ -16,9 +16,7 @@ namespace Core {
         if (!epoch)
             return;
 
-        auto response = writer->WriteZoneChangeLobby(*epoch);
-        if (response)
-            networkSender->SendDataUnique(sessionID, std::move(response));
+        responses->Enqueue(sessionID, writer->WriteZoneChangeLobby(*epoch));
     }
 
     void NonSimulationHandler::ZoneChange(IPacketView* p) {
@@ -31,9 +29,7 @@ namespace Core {
                     return;
             }
         }
-        auto response = writer->WriteZoneChangeFailed();
-        if (response)
-            networkSender->SendDataUnique(session, std::move(response));
+        responses->Enqueue(session, writer->WriteZoneChangeFailed());
     }
 
     void NonSimulationHandler::RespawnToTown(IPacketView* p) {
@@ -46,8 +42,6 @@ namespace Core {
             if (route && (route->alreadyPending || zoneRequests->TryEnqueueRespawn(route->zoneID, session, route->ownershipEpoch)))
                 return;
         }
-        auto response = writer->WriteZoneChangeFailed();
-        if (response)
-            networkSender->SendDataUnique(session, std::move(response));
+        responses->Enqueue(session, writer->WriteZoneChangeFailed());
     }
 }

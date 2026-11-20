@@ -29,7 +29,7 @@ namespace Core {
     class SessionManager;
     class IZoneTransfer;
     class CacheCommandSender;
-    class INetworkSender;
+    class IServerResponseQueue;
     class IInventoryOperations;
     struct ItemUseRequestBody;
     struct ItemUseResponseBody;
@@ -88,15 +88,15 @@ namespace Core {
         inline static PacketWriter* writer;
         inline static SessionManager* sessionManager;
         inline static const CacheCommandSender* cacheCommands = nullptr;
-        inline static INetworkSender* networkSender = nullptr;
+        inline static IServerResponseQueue* responses = nullptr;
         inline static CorePerfCollector* perfCollector;
         static void Initialize(BroadcastThreadPool* b, PacketWriter* p, SessionManager* s, CorePerfCollector* pc, const CacheCommandSender& commands,
-            INetworkSender& sender) {
+            IServerResponseQueue& responseQueue) {
             broadcast = b;
             writer = p;
             sessionManager = s;
             cacheCommands = &commands;
-            networkSender = &sender;
+            responses = &responseQueue;
             perfCollector = pc;
         }
         static bool IsReady() {
@@ -108,8 +108,12 @@ namespace Core {
                 sysLogger->LogError("zone state", "writer not initialized");
                 return false;
             }
-            if (cacheCommands == nullptr || networkSender == nullptr) {
-                sysLogger->LogError("zone state", "reward dependencies not initialized");
+            if (cacheCommands == nullptr) {
+                sysLogger->LogError("zone state", "cache command sender not initialized");
+                return false;
+            }
+            if (responses == nullptr) {
+                sysLogger->LogError("zone state", "response queue not initialized");
                 return false;
             }
             return true;

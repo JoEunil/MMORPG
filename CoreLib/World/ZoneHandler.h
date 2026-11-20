@@ -9,35 +9,33 @@
 #include "../Cache/MessagePool.h"
 #include "SessionManager.h"
 #include "../Packet/PacketTypes.h"
-#include "../Interface/INetworkSender.h"
-#include "../Packet/PacketWriter.h"
 
 namespace Core {
     class CacheCommandSender;
     class ISessionAuth;
     class IPacketView;
-    class INetworkSender;
-    class IDBCache;
+    class IServerResponseQueue;
     class PacketWriter;
+    class IDBCache;
     class IMessageQueue;
     class LobbyZone;
     class IInventoryOperations;
 
     class ZoneHandler {
-        SessionManager* sessionManager = nullptr;
-        INetworkSender* networkSender = nullptr;
+        IServerResponseQueue* responses = nullptr;
         PacketWriter* writer = nullptr;
+        SessionManager* sessionManager = nullptr;
         IZoneTransfer* zoneTransfer = nullptr;
         IZoneRequestQueue* zoneRequests = nullptr;
         IInventoryOperations* inventory = nullptr;
         const CacheCommandSender* cacheCommands = nullptr;
         LobbyZone* lobbyZone = nullptr;
 
-        void Initialize(SessionManager* m, INetworkSender* sender, PacketWriter* packetWriter, IZoneTransfer& transfer, LobbyZone& lobby,
+        void Initialize(SessionManager* m, IServerResponseQueue& responseQueue, PacketWriter& packetWriter, IZoneTransfer& transfer, LobbyZone& lobby,
             const CacheCommandSender& commands, IZoneRequestQueue& requests, IInventoryOperations* items) {
             sessionManager = m;
-            networkSender = sender;
-            writer = packetWriter;
+            responses = &responseQueue;
+            writer = &packetWriter;
             zoneTransfer = &transfer;
             zoneRequests = &requests;
             inventory = items;
@@ -50,12 +48,12 @@ namespace Core {
                 sysLogger->LogError("zone handler", "sessionManager not initialized");
                 return false;
             }
-            if (networkSender == nullptr) {
-                sysLogger->LogError("zone handler", "networkSender not initialized");
+            if (writer == nullptr) {
+                sysLogger->LogError("zone handler", "packet writer not initialized");
                 return false;
             }
-            if (writer == nullptr) {
-                sysLogger->LogError("zone handler", "writer not initialized");
+            if (responses == nullptr) {
+                sysLogger->LogError("zone handler", "response queue not initialized");
                 return false;
             }
             if (zoneRequests == nullptr) {
@@ -84,7 +82,7 @@ namespace Core {
         void ProcessRespawn(ZoneState& zone, const ZoneRequest& request);
         void ProcessBootstrap(ZoneState& zone, const ZoneRequest& request);
         void SendZoneChangeFailed(uint64_t sessionID);
-        void SendZoneChange(ZoneState& zone, uint64_t sessionID, const ZoneChangeResult& transition);
+        void SendZoneChange(uint64_t sessionID, const ZoneChangeResult& transition);
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
 

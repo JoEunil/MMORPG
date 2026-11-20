@@ -4,8 +4,8 @@
 
 #include "../Interface/IPacketView.h"
 #include "../Interface/ISessionAuth.h"
-#include "../Interface/INetworkSender.h"
 #include "../Interface/IMessageQueue.h"
+#include "../Response/Interface/IServerResponseQueue.h"
 #include "../Packet/PacketWriter.h"
 #include "ZoneState.h"
 #include "LobbyZone.h"
@@ -32,7 +32,7 @@ namespace Core {
         ZoneChangeResult result;
         const auto outcome = lobbyZone->EnterField(sessionID, request.ownershipEpoch, zone, result);
         if (outcome == ZoneOperationResult::Completed)
-            SendZoneChange(zone, sessionID, result);
+            SendZoneChange(sessionID, result);
         else if (outcome == ZoneOperationResult::Rejected)
             SendZoneChangeFailed(sessionID);
     }
@@ -58,7 +58,7 @@ namespace Core {
             return;
         }
         if (sessionManager->CompleteTownRespawn(sessionID, request.ownershipEpoch, result))
-            SendZoneChange(zone, sessionID, result);
+            SendZoneChange(sessionID, result);
     }
 
     void ZoneHandler::ProcessZoneTransfer(ZoneState& zone, const ZoneEvent& event) {
@@ -99,7 +99,7 @@ namespace Core {
             zone.Skill(sessionID, snapshot->skillSlot, snapshot->aimAngle);
             zone.DirtyCheck(sessionID);
         }
-        SendZoneChange(zone, sessionID, result);
+        SendZoneChange(sessionID, result);
     }
 
     void ZoneHandler::ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update) {
@@ -137,23 +137,18 @@ namespace Core {
         if (request.resendZoneChange) {
             ZoneChangeResult transition;
             if (zone.DescribeZoneChange(request.sessionID, info->chatID, request.ownershipEpoch, transition))
-                SendZoneChange(zone, request.sessionID, transition);
+                SendZoneChange(request.sessionID, transition);
             return;
         }
         zone.EnqueueBootstrap(request.sessionID, request.ownershipEpoch, info->bootstrapID);
     }
 
     void ZoneHandler::SendZoneChangeFailed(uint64_t sessionID) {
-        auto response = writer->WriteZoneChangeFailed();
-        if (response)
-            networkSender->SendDataUnique(sessionID, std::move(response));
+        responses->Enqueue(sessionID, writer->WriteZoneChangeFailed());
     }
 
-    void ZoneHandler::SendZoneChange(ZoneState& zone, uint64_t sessionID, const ZoneChangeResult& transition) {
-        auto response = writer->WriteZoneChangeSucess(transition);
-        if (response)
-            networkSender->SendDataUnique(sessionID, std::move(response));
-        ProcessBootstrap(zone, {sessionID, transition.ownershipEpoch});
+    void ZoneHandler::SendZoneChange(uint64_t sessionID, const ZoneChangeResult& transition) {
+        responses->EnqueueZoneChange(sessionID, writer->WriteZoneChangeSucess(transition), transition.zoneID, transition.ownershipEpoch);
     }
 
     ParryResponseBody ZoneHandler::ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request) {
@@ -176,9 +171,7 @@ namespace Core {
                 }
             } else if (check == SessionRequestStatus::StaleOwnership || check == SessionRequestStatus::StaleRequest)
                 result.status = 7;
-            auto response = writer->WriteItemUseResponse(result);
-            if (response)
-                networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+            responses->Enqueue(p->GetSessionID(), writer->WriteItemUseResponse(result));
             break;
         }
         case OP::EQUIPMENT_GET:
@@ -210,16 +203,12 @@ namespace Core {
                 result.status = static_cast<uint8_t>(EquipmentStatus::StaleOwnership);
             else if (check == SessionRequestStatus::StaleRequest)
                 result.status = static_cast<uint8_t>(EquipmentStatus::StaleRequest);
-            auto response = writer->WriteEquipmentResponse(result);
-            if (response)
-                networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+            responses->Enqueue(p->GetSessionID(), writer->WriteEquipmentResponse(result));
             break;
         }
         case OP::PARRY: {
             const auto result = ProcessParry(zone, p->GetSessionID(), zoneID, *parseBody<ParryRequestBody>(p->GetPtr()));
-            auto response = writer->WriteParryResponse(result);
-            if (response)
-                networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+            responses->Enqueue(p->GetSessionID(), writer->WriteParryResponse(result));
             break;
         }
         case OP::ACTION:

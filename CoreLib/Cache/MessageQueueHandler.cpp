@@ -2,7 +2,7 @@
 #include "MessageQueueHandler.h"
 #include "Message.h"
 #include "MessageTypes.h"
-#include "../Interface/INetworkSender.h"
+#include "../Response/Interface/IServerResponseQueue.h"
 #include "../Packet/PacketWriter.h"
 #include "../World/LobbyZone.h"
 #include "../World/SessionManager.h"
@@ -23,13 +23,6 @@ namespace Core {
         return sessionManager && characterID != 0 && sessionManager->GetFieldCharacterID(sessionID) == characterID;
     }
 
-    template<typename T>
-    void MessageQueueHandler::SendResponse(uint64_t sessionID, const T* body, ResponseWriter<T> write) {
-        auto packet = (writer->*write)(body);
-        if (packet)
-            networkSender->SendDataUnique(sessionID, std::move(packet));
-    }
-
     template<MessageQueueHandler::ResponseScope Scope, typename T>
     void MessageQueueHandler::DispatchResponse(Message& msg, uint64_t sessionID, ResponseWriter<T> write) {
         const auto* body = ReadResponse<T>(msg);
@@ -44,7 +37,7 @@ namespace Core {
                 return;
         }
 
-        SendResponse(sessionID, body, write);
+        responses->Enqueue(sessionID, (writer->*write)(body));
     }
 
     void MessageQueueHandler::Process(Message* msg) {
@@ -143,16 +136,14 @@ namespace Core {
             }
         }
 
-        SendResponse(sessionID, body, &PacketWriter::WriteEnterWorldResponse);
+        responses->Enqueue(sessionID, writer->WriteEnterWorldResponse(body));
     }
 
     void MessageQueueHandler::GoldDepositResponse(uint64_t sessionID, const MsgCurrencyDepositResBody* body) {
         if (!IsCurrentFieldCharacter(sessionID, body->characterID))
             return;
 
-        auto packet = writer->WriteGoldReward(body->resStatus);
-        if (packet)
-            networkSender->SendDataUnique(sessionID, std::move(packet));
+        responses->Enqueue(sessionID, writer->WriteGoldReward(body->resStatus));
     }
 
     void MessageQueueHandler::ProfileRenameResponse(uint64_t sessionID, const MsgProfileRenameResBody* body) {
