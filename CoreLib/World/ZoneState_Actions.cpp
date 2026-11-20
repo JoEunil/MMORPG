@@ -60,20 +60,7 @@ namespace Core {
         }
 
         if (transfer) {
-            // Publish the pending record before the destination can consume its event.
-            // Never acquire the session lock while holding the Zone lock.
-            if (!sessionManager->BeginZoneTransfer(transfer))
-                return;
-            {
-                std::lock_guard zoneLock(m_mutex);
-                if (zoneTransfer.TryEnqueueTransfer(destination, transfer)) {
-                    RemoveCharacterLocked(sessionID);
-                    return;
-                }
-            }
-            sessionManager->CancelZoneTransfer(transfer);
-            // A rename may have updated the pending record before enqueue failed.
-            UpdateProfileVersion(sessionID, transfer->character.profileId, transfer->character.profileVersion);
+            TryStartZoneTransfer(destination, transfer, zoneTransfer);
             return;
         }
 

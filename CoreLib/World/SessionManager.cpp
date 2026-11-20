@@ -6,6 +6,47 @@
 #include <limits>
 
 namespace Core {
+    RespawnRequest SessionManager::CheckRespawnRequest(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch) const {
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::shared_lock lock(shard.smutex);
+        const auto found = shard.sessionMap.find(sessionID);
+        if (found == shard.sessionMap.end()) return {};
+        const auto& session = found->second;
+        if (session.disconnectQueued || !session.authenticated || !session.authCompleted || session.zoneID != zoneID)
+            return {};
+        if (session.pendingZoneTransfer && session.pendingZoneTransfer->IsRespawn()
+            && session.ownershipEpoch == ownershipEpoch)
+            return {};
+        if (session.pendingZoneTransfer || ownershipEpoch == (std::numeric_limits<uint64_t>::max)())
+            return {RespawnRequest::Status::Rejected};
+        if (session.ownershipEpoch == ownershipEpoch)
+            return {RespawnRequest::Status::Ready, session.characterID};
+        if (zoneID == TOWN_ZONE_ID && session.lastRespawnRequestEpoch == ownershipEpoch
+            && session.ownershipEpoch == ownershipEpoch + 1)
+            return {RespawnRequest::Status::Replay, session.characterID};
+        return {RespawnRequest::Status::Rejected};
+    }
+
+    bool SessionManager::CompleteTownRespawn(uint64_t sessionID, uint64_t ownershipEpoch, ZoneChangeResult& result) {
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock lock(shard.smutex);
+        auto* session = FindSessionLocked(shard, sessionID);
+        // Disconnect may have started while the Zone worker restored the character.
+        // Keep its queued epoch valid and let that worker save the final state.
+        if (!session || session->disconnectQueued || session->zoneID != TOWN_ZONE_ID || session->pendingZoneTransfer
+            || ownershipEpoch == (std::numeric_limits<uint64_t>::max)())
+            return false;
+        if (session->ownershipEpoch == ownershipEpoch) {
+            session->lastRespawnRequestEpoch = ownershipEpoch;
+            UpdateZoneOwnershipLocked(*session, TOWN_ZONE_ID);
+        } else if (session->lastRespawnRequestEpoch != ownershipEpoch || session->ownershipEpoch != ownershipEpoch + 1) {
+            return false;
+        }
+        result.chatID = session->chatID;
+        result.ownershipEpoch = session->ownershipEpoch;
+        return true;
+    }
+
     bool SessionManager::CheckZoneAction(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
         std::optional<ZoneRequestRoute>& resync) {
         resync.reset();

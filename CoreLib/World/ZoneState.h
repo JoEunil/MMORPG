@@ -119,6 +119,7 @@ namespace Core {
         void ClearCharacterEffects(uint64_t sessionID, uint32_t internalID);
         bool AdmitZoneTransferLocked(const ZoneTransfer& transfer);
         bool RestoreZoneTransferLocked(const CharacterState& original);
+        bool TryStartZoneTransfer(uint16_t destination, const std::shared_ptr<ZoneTransfer>& transfer, IZoneTransfer& zoneTransfer);
         void RemoveCharacterLocked(uint64_t sessionID);
         void RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint32_t dirtyBit);
         void UpdateSessionSnapshot();
@@ -166,7 +167,7 @@ namespace Core {
         ParryResponseBody Parry(uint64_t sessionID, const ParryRequestBody& request);
         bool AdmitLobbyCharacter(uint64_t sessionID, CharacterState incoming, ZoneChangeResult& result);
         bool DescribeOrRespawnInTown(uint64_t sessionID, uint64_t characterID, bool replay, ZoneChangeResult& result);
-        std::shared_ptr<ZoneTransfer> StartRespawnTransfer(uint64_t sessionID, uint64_t characterID,
+        bool StartRespawnTransfer(uint64_t sessionID, uint64_t characterID,
             uint64_t ownershipEpoch, IZoneTransfer& zoneTransfer);
         bool TryResolveZoneTransfer(const ZoneTransfer& transfer, bool returning, ZoneChangeResult& result);
         void UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version);

@@ -66,6 +66,12 @@ namespace Core {
         uint64_t ownershipEpoch = 0;
         uint64_t chatID = 0;
     };
+    struct RespawnRequest {
+        enum class Status { Ignored, Rejected, Ready, Replay };
+
+        Status status = Status::Ignored;
+        uint64_t characterID = 0;
+    };
     class SessionManager : public ISessionStatusReader {
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
         std::atomic<bool> m_running;
@@ -253,6 +259,8 @@ namespace Core {
             std::optional<ZoneRequestRoute>& resync);
         bool BeginZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer);
         void CancelZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer);
+        RespawnRequest CheckRespawnRequest(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch) const;
+        bool CompleteTownRespawn(uint64_t sessionID, uint64_t ownershipEpoch, ZoneChangeResult& result);
 
         // Callbacks run under the session shard lock. They may acquire the
         // destination state lock, but must not reenter SessionManager.
@@ -261,9 +269,6 @@ namespace Core {
         template<class Admit>
         ZoneOperationResult EnterZoneFromLobby(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
             ZoneChangeResult& result, Admit admit);
-        template<class StartTransfer, class RespawnInTown>
-        ZoneOperationResult RespawnInZone(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
-            bool townSpawnWalkable, ZoneChangeResult& result, StartTransfer startTransfer, RespawnInTown respawnInTown);
         template<class Admit, class AfterArrival>
         ZoneOperationResult ResolveZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer, uint16_t zoneID, bool returning,
             ZoneChangeResult& result, Admit admit, AfterArrival afterArrival);
@@ -332,41 +337,6 @@ namespace Core {
 
         UpdateZoneOwnershipLocked(*session, zoneID);
         JoinZoneChatLocked(sessionID, zoneID, *session, profile);
-        result.chatID = session->chatID;
-        result.ownershipEpoch = session->ownershipEpoch;
-        return ZoneOperationResult::Completed;
-    }
-
-    template<class StartTransfer, class RespawnInTown>
-    ZoneOperationResult SessionManager::RespawnInZone(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
-        bool townSpawnWalkable, ZoneChangeResult& result, StartTransfer startTransfer, RespawnInTown respawnInTown) {
-        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-        std::unique_lock lock(shard.smutex);
-        auto* session = FindSessionLocked(shard, sessionID);
-        if (!session || session->disconnectQueued || !session->authenticated || !session->authCompleted || session->zoneID != zoneID)
-            return ZoneOperationResult::NoResponse;
-        if (session->pendingZoneTransfer && session->pendingZoneTransfer->IsRespawn()
-            && session->ownershipEpoch == ownershipEpoch)
-            return ZoneOperationResult::NoResponse;
-
-        const bool inTown = zoneID == TOWN_ZONE_ID;
-        const bool replay = session->ownershipEpoch != ownershipEpoch;
-        const bool canReplay = inTown && session->lastRespawnRequestEpoch == ownershipEpoch
-            && session->ownershipEpoch == ownershipEpoch + 1;
-        if (session->pendingZoneTransfer || (replay && !canReplay) || !townSpawnWalkable)
-            return ZoneOperationResult::Rejected;
-
-        if (!inTown) {
-            session->pendingZoneTransfer = startTransfer(session->characterID, session->ownershipEpoch);
-            return session->pendingZoneTransfer ? ZoneOperationResult::NoResponse : ZoneOperationResult::Rejected;
-        }
-
-        if (!respawnInTown(session->characterID, replay))
-            return ZoneOperationResult::Rejected;
-        if (!replay) {
-            session->lastRespawnRequestEpoch = ownershipEpoch;
-            UpdateZoneOwnershipLocked(*session, TOWN_ZONE_ID);
-        }
         result.chatID = session->chatID;
         result.ownershipEpoch = session->ownershipEpoch;
         return ZoneOperationResult::Completed;

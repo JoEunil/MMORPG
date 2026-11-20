@@ -9,7 +9,6 @@
 #include "../Packet/PacketWriter.h"
 #include "ZoneState.h"
 #include "LobbyZone.h"
-#include "WorldMap.h"
 #include "../Cache/Message.h"
 #include "../Cache/MessagePool.h"
 #include "../LoggerGlobal.h"
@@ -49,20 +48,26 @@ namespace Core {
 
     void ZoneHandler::ProcessRespawn(ZoneState& zone, const ZoneRequest& request) {
         const auto sessionID = request.sessionID;
-        const bool townSpawnWalkable = WorldMap::CanTraverse(TOWN_SPAWN_X, TOWN_SPAWN_Y, TOWN_SPAWN_X, TOWN_SPAWN_Y);
-        ZoneChangeResult result;
-        const auto outcome = sessionManager->RespawnInZone(sessionID, zone.GetZoneID(), request.ownershipEpoch,
-            townSpawnWalkable, result,
-            [&](uint64_t characterID, uint64_t ownershipEpoch) {
-                return zone.StartRespawnTransfer(sessionID, characterID, ownershipEpoch, *zoneTransfer);
-            },
-            [&](uint64_t characterID, bool replay) {
-                return zone.DescribeOrRespawnInTown(sessionID, characterID, replay, result);
-            });
-        if (outcome == ZoneOperationResult::Completed)
-            SendZoneChange(zone, sessionID, result);
-        else if (outcome == ZoneOperationResult::Rejected)
+        const auto respawn = sessionManager->CheckRespawnRequest(sessionID, zone.GetZoneID(), request.ownershipEpoch);
+        if (respawn.status == RespawnRequest::Status::Ignored)
+            return;
+        if (respawn.status == RespawnRequest::Status::Rejected) {
             SendZoneChangeFailed(sessionID);
+            return;
+        }
+        if (zone.GetZoneID() != TOWN_ZONE_ID) {
+            if (!zone.StartRespawnTransfer(sessionID, respawn.characterID, request.ownershipEpoch, *zoneTransfer))
+                SendZoneChangeFailed(sessionID);
+            return;
+        }
+
+        ZoneChangeResult result;
+        if (!zone.DescribeOrRespawnInTown(sessionID, respawn.characterID, respawn.status == RespawnRequest::Status::Replay, result)) {
+            SendZoneChangeFailed(sessionID);
+            return;
+        }
+        if (sessionManager->CompleteTownRespawn(sessionID, request.ownershipEpoch, result))
+            SendZoneChange(zone, sessionID, result);
     }
 
     void ZoneHandler::ProcessZoneTransfer(ZoneState& zone, const ZoneEvent& event) {

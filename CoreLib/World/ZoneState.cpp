@@ -129,6 +129,8 @@ namespace Core {
 
     bool ZoneState::DescribeOrRespawnInTown(uint64_t sessionID, uint64_t characterID, bool replay,
         ZoneChangeResult& result) {
+        if (!WorldMap::CanTraverse(TOWN_SPAWN_X, TOWN_SPAWN_Y, TOWN_SPAWN_X, TOWN_SPAWN_Y))
+            return false;
         std::lock_guard lock(m_mutex);
         const auto member = m_sessionToIndex.find(sessionID);
         if (member == m_sessionToIndex.end())
@@ -175,29 +177,49 @@ namespace Core {
         return true;
     }
 
-    std::shared_ptr<ZoneTransfer> ZoneState::StartRespawnTransfer(uint64_t sessionID,
+    bool ZoneState::StartRespawnTransfer(uint64_t sessionID,
         uint64_t characterID, uint64_t ownershipEpoch, IZoneTransfer& zoneTransfer) {
-        std::lock_guard zoneLock(m_mutex);
-        const auto member = m_sessionToIndex.find(sessionID);
-        if (member == m_sessionToIndex.end())
-            return nullptr;
-        const auto& character = m_chars[member->second];
-        if (character.characterID != characterID || character.hp != 0
-            || character.maxHp <= 0 || character.maxMp < 0)
-            return nullptr;
+        if (!WorldMap::CanTraverse(TOWN_SPAWN_X, TOWN_SPAWN_Y, TOWN_SPAWN_X, TOWN_SPAWN_Y))
+            return false;
+        std::shared_ptr<ZoneTransfer> transfer;
+        {
+            std::lock_guard zoneLock(m_mutex);
+            const auto member = m_sessionToIndex.find(sessionID);
+            if (member == m_sessionToIndex.end())
+                return false;
+            const auto& character = m_chars[member->second];
+            if (character.characterID != characterID || character.hp != 0
+                || character.maxHp <= 0 || character.maxMp < 0)
+                return false;
 
-        auto transfer = std::make_shared<ZoneTransfer>();
-        transfer->character = character;
-        transfer->ownershipEpoch = ownershipEpoch;
-        transfer->sourceZoneID = m_zoneID;
-        transfer->kind = ZoneTransfer::Kind::Respawn;
-        transfer->x = TOWN_SPAWN_X;
-        transfer->y = TOWN_SPAWN_Y;
-        if (!zoneTransfer.TryEnqueueTransfer(TOWN_ZONE_ID, transfer))
-            return nullptr;
+            transfer = std::make_shared<ZoneTransfer>();
+            transfer->character = character;
+            transfer->ownershipEpoch = ownershipEpoch;
+            transfer->sourceZoneID = m_zoneID;
+            transfer->kind = ZoneTransfer::Kind::Respawn;
+            transfer->x = TOWN_SPAWN_X;
+            transfer->y = TOWN_SPAWN_Y;
+        }
+        return TryStartZoneTransfer(TOWN_ZONE_ID, transfer, zoneTransfer);
+    }
 
-        RemoveCharacterLocked(sessionID);
-        return transfer;
+    bool ZoneState::TryStartZoneTransfer(uint16_t destination, const std::shared_ptr<ZoneTransfer>& transfer,
+        IZoneTransfer& zoneTransfer) {
+        // Register before publishing; never take the session lock under the Zone lock.
+        if (!sessionManager->BeginZoneTransfer(transfer))
+            return false;
+        const auto sessionID = transfer->character.sessionID;
+        {
+            std::lock_guard zoneLock(m_mutex);
+            if (zoneTransfer.TryEnqueueTransfer(destination, transfer)) {
+                RemoveCharacterLocked(sessionID);
+                return true;
+            }
+        }
+        sessionManager->CancelZoneTransfer(transfer);
+        // Preserve a rename that reached the pending record before enqueue failed.
+        UpdateProfileVersion(sessionID, transfer->character.profileId, transfer->character.profileVersion);
+        return false;
     }
 
     bool ZoneState::TryResolveZoneTransfer(const ZoneTransfer& transfer, bool returning, ZoneChangeResult& result) {
