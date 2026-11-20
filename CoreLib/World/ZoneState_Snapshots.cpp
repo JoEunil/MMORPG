@@ -10,7 +10,6 @@
 
 namespace Core {
     bool ZoneState::DescribeZoneChange(uint64_t sessionID, uint64_t chatID, uint64_t ownershipEpoch, ZoneChangeResult& result) {
-        std::lock_guard zoneLock(m_mutex);
         const auto member = m_sessionToIndex.find(sessionID);
         if (member == m_sessionToIndex.end())
             return false;
@@ -21,7 +20,6 @@ namespace Core {
 
     bool ZoneState::EnqueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch, uint64_t bootstrapID) {
         if (broadcast == nullptr || writer == nullptr) return false;
-        std::lock_guard<std::mutex> lock(m_mutex);
         auto own = m_sessionToIndex.find(sessionID);
         if (own == m_sessionToIndex.end() || ownershipEpoch == 0 || bootstrapID == 0) return false;
         const auto& character = m_chars[own->second];
@@ -57,7 +55,7 @@ namespace Core {
         }
         writer->AddChunk(players, playerBytes, playerCount);
         writer->AddChunk(monsters, monsterBytes, monsterCount);
-        // Keep capture and registration under the same Zone lock so later deltas enqueue behind it.
+        // The Zone worker captures and enqueues bootstrap before producing later deltas.
         return broadcast->EnqueueBootstrap(sessionID, m_zoneID, std::move(players), std::move(playerChunk),
             std::move(monsters), std::move(monsterChunk));
     }
@@ -77,7 +75,6 @@ namespace Core {
     }
 
     void ZoneState::DeltaSnapshot() {
-        std::lock_guard<std::mutex> lock(m_mutex);
         UpdateSessionSnapshot();
         m_userCnt.store(m_chars.size(), std::memory_order_relaxed);
         std::vector<std::shared_ptr<IPacket>> chunks;
@@ -180,7 +177,6 @@ namespace Core {
     }
 
     void ZoneState::FullSnapshot() {
-        std::lock_guard<std::mutex> lock(m_mutex);
         UpdateSessionSnapshot();
         perfCollector->UpdateClientCnt(m_zoneID, m_chars.size());
         if (m_chars.empty())
@@ -226,9 +222,8 @@ namespace Core {
     }
 
     void ZoneState::DeltaSnapshotMonster() {
-        std::lock_guard<std::mutex> lock(m_mutex);
         if (m_monsterCellsChanged) {
-            FullSnapshotMonsterLocked();
+            FullSnapshotMonster();
             return;
         }
         m_deltaTickCounter++;
@@ -299,11 +294,6 @@ namespace Core {
     }
 
     void ZoneState::FullSnapshotMonster() {
-        std::lock_guard<std::mutex> lock(m_mutex);
-        FullSnapshotMonsterLocked();
-    }
-
-    void ZoneState::FullSnapshotMonsterLocked() {
         bool complete = true;
         std::vector<std::shared_ptr<IPacket>> chunks;
         std::vector<std::shared_ptr<IPacket>> headers;
@@ -356,7 +346,6 @@ namespace Core {
     }
 
     void ZoneState::ActionSnapshot() {
-        std::lock_guard<std::mutex> lock(m_mutex);
         std::vector<std::shared_ptr<IPacket>> chunks;
         std::vector<std::shared_ptr<IPacket>> headers;
         chunks.resize(CELLS_X * CELLS_Y);

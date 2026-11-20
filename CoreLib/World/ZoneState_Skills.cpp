@@ -8,7 +8,6 @@
 
 namespace Core {
 	void ZoneState::SkillCoolDown() {
-		std::lock_guard<std::mutex> lock(m_mutex);
 		for (auto& character : m_chars) 
 		{
 			if (character.hp <= 0) character.parryWindowTicks = 0;
@@ -34,7 +33,6 @@ namespace Core {
 	}
 
 	void ZoneState::ApplySkill() {
-		std::lock_guard<std::mutex> lock(m_mutex);
 
 		for (int i = 0; i < CELLS_Y; i++)
 		{

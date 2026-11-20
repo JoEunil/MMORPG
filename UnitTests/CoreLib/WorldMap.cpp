@@ -8,7 +8,7 @@ namespace Core {
     class ZoneBenchmarkAccess {
     public:
         static uint32_t Admit(ZoneState& zone, uint64_t session, const CharacterState& character) {
-            return zone.ImmigrateCharLocked(session, character);
+            return zone.ImmigrateChar(session, character);
         }
         static CharacterState& Character(ZoneState& zone) { return zone.m_chars.front(); }
         static size_t CheatCount(const ZoneState& zone) { return zone.m_cheatList.size(); }

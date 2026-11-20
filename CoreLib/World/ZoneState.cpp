@@ -45,7 +45,7 @@ namespace Core {
         // 임시로 스킬 고정
     }
 
-    uint32_t ZoneState::ImmigrateCharLocked(uint64_t sessionID, const CharacterState& state) {
+    uint32_t ZoneState::ImmigrateChar(uint64_t sessionID, const CharacterState& state) {
         if (m_chars.size() >= MAX_ZONE_CAPACITY || m_sessionToIndex.contains(sessionID)
             || m_generation == (std::numeric_limits<uint64_t>::max)()
             || !std::isfinite(state.x) || !std::isfinite(state.y)
@@ -73,7 +73,7 @@ namespace Core {
                 incoming.skillSlot.resize(3);
             }
             incoming.skillSlotCnt = 3;
-            if (!RegisterCharacterLocked(std::move(incoming)))
+            if (!RegisterCharacter(std::move(incoming)))
                 return INVALID_ZONE_INTERNAL_ID;
         }
         catch (const std::bad_alloc&) {
@@ -85,7 +85,6 @@ namespace Core {
     }
 
     bool ZoneState::AdmitLobbyCharacter(uint64_t sessionID, CharacterState incoming, ZoneChangeResult& result) {
-        std::lock_guard lock(m_mutex);
         if (!std::isfinite(incoming.x) || !std::isfinite(incoming.y))
             return false; // Corrupt coordinates are not a map-version relocation.
         if (incoming.x < m_area.x_min || incoming.x > m_area.x_max
@@ -120,7 +119,7 @@ namespace Core {
                     return false; // The original lobby row and session are still intact.
             }
         }
-        if (ImmigrateCharLocked(sessionID, incoming) == INVALID_ZONE_INTERNAL_ID)
+        if (ImmigrateChar(sessionID, incoming) == INVALID_ZONE_INTERNAL_ID)
             return false;
         const auto& entered = m_chars.back();
         result = {m_zoneID, 0, entered.zoneInternalID, entered.x, entered.y, m_generation};
@@ -131,7 +130,6 @@ namespace Core {
         ZoneChangeResult& result) {
         if (!WorldMap::CanTraverse(TOWN_SPAWN_X, TOWN_SPAWN_Y, TOWN_SPAWN_X, TOWN_SPAWN_Y))
             return false;
-        std::lock_guard lock(m_mutex);
         const auto member = m_sessionToIndex.find(sessionID);
         if (member == m_sessionToIndex.end())
             return false;
@@ -181,40 +179,33 @@ namespace Core {
         uint64_t characterID, uint64_t ownershipEpoch, IZoneTransfer& zoneTransfer) {
         if (!WorldMap::CanTraverse(TOWN_SPAWN_X, TOWN_SPAWN_Y, TOWN_SPAWN_X, TOWN_SPAWN_Y))
             return false;
-        std::shared_ptr<ZoneTransfer> transfer;
-        {
-            std::lock_guard zoneLock(m_mutex);
-            const auto member = m_sessionToIndex.find(sessionID);
-            if (member == m_sessionToIndex.end())
-                return false;
-            const auto& character = m_chars[member->second];
-            if (character.characterID != characterID || character.hp != 0
-                || character.maxHp <= 0 || character.maxMp < 0)
-                return false;
+        const auto member = m_sessionToIndex.find(sessionID);
+        if (member == m_sessionToIndex.end())
+            return false;
+        const auto& character = m_chars[member->second];
+        if (character.characterID != characterID || character.hp != 0
+            || character.maxHp <= 0 || character.maxMp < 0)
+            return false;
 
-            transfer = std::make_shared<ZoneTransfer>();
-            transfer->character = character;
-            transfer->ownershipEpoch = ownershipEpoch;
-            transfer->sourceZoneID = m_zoneID;
-            transfer->kind = ZoneTransfer::Kind::Respawn;
-            transfer->x = TOWN_SPAWN_X;
-            transfer->y = TOWN_SPAWN_Y;
-        }
+        auto transfer = std::make_shared<ZoneTransfer>();
+        transfer->character = character;
+        transfer->ownershipEpoch = ownershipEpoch;
+        transfer->sourceZoneID = m_zoneID;
+        transfer->kind = ZoneTransfer::Kind::Respawn;
+        transfer->x = TOWN_SPAWN_X;
+        transfer->y = TOWN_SPAWN_Y;
         return TryStartZoneTransfer(TOWN_ZONE_ID, transfer, zoneTransfer);
     }
 
     bool ZoneState::TryStartZoneTransfer(uint16_t destination, const std::shared_ptr<ZoneTransfer>& transfer,
         IZoneTransfer& zoneTransfer) {
-        // Register before publishing; never take the session lock under the Zone lock.
+        // Register the pending state before the destination worker can consume the event.
         if (!sessionManager->BeginZoneTransfer(transfer))
             return false;
         const auto sessionID = transfer->character.sessionID;
-        {
-            std::lock_guard zoneLock(m_mutex);
-            if (zoneTransfer.TryEnqueueTransfer(destination, transfer)) {
-                RemoveCharacterLocked(sessionID);
-                return true;
-            }
+        if (zoneTransfer.TryEnqueueTransfer(destination, transfer)) {
+            RemoveCharacter(sessionID);
+            return true;
         }
         sessionManager->CancelZoneTransfer(transfer);
         // Preserve a rename that reached the pending record before enqueue failed.
@@ -223,11 +214,10 @@ namespace Core {
     }
 
     bool ZoneState::TryResolveZoneTransfer(const ZoneTransfer& transfer, bool returning, ZoneChangeResult& result) {
-        std::lock_guard lock(m_mutex);
         try {
             if (returning)
-                return RestoreZoneTransferLocked(transfer.character);
-            if (!AdmitZoneTransferLocked(transfer))
+                return RestoreZoneTransfer(transfer.character);
+            if (!AdmitZoneTransfer(transfer))
                 return false;
         }
         catch (const std::bad_alloc&) {
@@ -239,21 +229,21 @@ namespace Core {
         return true;
     }
 
-    bool ZoneState::AdmitZoneTransferLocked(const ZoneTransfer& transfer) {
+    bool ZoneState::AdmitZoneTransfer(const ZoneTransfer& transfer) {
         CharacterState incoming = transfer.character;
         incoming.x = transfer.x;
         incoming.y = transfer.y;
         incoming.dir = transfer.dir;
         incoming.moveBudget = transfer.moveBudget;
         if (!transfer.IsRespawn())
-            return ImmigrateCharLocked(incoming.sessionID, incoming) != INVALID_ZONE_INTERNAL_ID;
+            return ImmigrateChar(incoming.sessionID, incoming) != INVALID_ZONE_INTERNAL_ID;
 
         incoming.hp = incoming.maxHp;
         incoming.mp = incoming.maxMp;
         const auto [x, y] = GetCell(incoming.x, incoming.y, m_area);
         auto& dirty = m_cells[y][x].dirtyChar;
         dirty.reserve(dirty.size() + 1);
-        if (ImmigrateCharLocked(incoming.sessionID, incoming) == INVALID_ZONE_INTERNAL_ID)
+        if (ImmigrateChar(incoming.sessionID, incoming) == INVALID_ZONE_INTERNAL_ID)
             return false;
         auto& entered = m_chars.back();
         entered.dirtyBit = RESPAWN_DIRTY_FIELDS;
@@ -261,12 +251,12 @@ namespace Core {
         return true;
     }
 
-    bool ZoneState::RestoreZoneTransferLocked(const CharacterState& original) {
+    bool ZoneState::RestoreZoneTransfer(const CharacterState& original) {
         CharacterState incoming = original;
-        return RegisterCharacterLocked(std::move(incoming));
+        return RegisterCharacter(std::move(incoming));
     }
 
-    bool ZoneState::RegisterCharacterLocked(CharacterState&& incoming) {
+    bool ZoneState::RegisterCharacter(CharacterState&& incoming) {
         static_assert(std::is_nothrow_move_constructible_v<CharacterState>);
         if (m_chars.size() >= MAX_ZONE_CAPACITY)
             return false;
@@ -315,7 +305,7 @@ namespace Core {
         }
     }
 
-    void ZoneState::RemoveCharacterLocked(uint64_t sessionID) {
+    void ZoneState::RemoveCharacter(uint64_t sessionID) {
         auto it = m_sessionToIndex.find(sessionID);
         auto& character = m_chars[it->second];
         const uint32_t id = character.zoneInternalID;
@@ -332,7 +322,7 @@ namespace Core {
         m_InternalIDToIndex.erase(id);
     }
 
-    void ZoneState::RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint32_t dirtyBit) {
+    void ZoneState::RestoreMovement(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint32_t dirtyBit) {
         auto it = m_sessionToIndex.find(sessionID);
         if (it == m_sessionToIndex.end()) return;
         auto& character = m_chars[it->second];
@@ -349,17 +339,15 @@ namespace Core {
     }
 
     bool ZoneState::EmigrateChar(uint64_t sessionID, CharacterState& out) {
-        std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_sessionToIndex.find(sessionID);
         if (it == m_sessionToIndex.end())
             return false;
         out = m_chars[it->second];
-        RemoveCharacterLocked(sessionID);
+        RemoveCharacter(sessionID);
         return true;
     }
 
     void ZoneState::UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version) {
-        std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_sessionToIndex.find(sessionID);
         if (it == m_sessionToIndex.end())
             return;
@@ -371,21 +359,16 @@ namespace Core {
     }
 
     void ZoneState::FlushCheat() {
-        std::vector<std::pair<uint64_t, uint16_t>> cheats;
-        {
-            std::lock_guard<std::mutex> lock(m_mutex);
-            cheats.swap(m_cheatList);
-        }
         const auto timePoint = std::chrono::steady_clock::now();
-        for (auto [session, cheat] : cheats)
+        for (auto [session, cheat] : m_cheatList)
             sessionManager->Cheat(session, cheat, timePoint);
+        m_cheatList.clear();
     }
 
     bool ZoneState::TakeCharacter(CharacterState& out) {
-        std::lock_guard lock(m_mutex);
         if (m_chars.empty()) return false;
         out = m_chars.back();
-        RemoveCharacterLocked(out.sessionID);
+        RemoveCharacter(out.sessionID);
         return true;
     }
 }

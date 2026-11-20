@@ -189,7 +189,6 @@ namespace Core {
         }
     }
     void ZoneState::UpdateMonster() {
-        std::lock_guard lock(m_mutex);
         for (auto& monster : m_monsters) {
             monster.tick++;
             CharacterState* target = nullptr;

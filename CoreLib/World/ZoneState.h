@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include <shared_mutex>
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -59,18 +58,19 @@ namespace Core {
         bool IsRespawn() const { return kind == Kind::Respawn; }
     };
 
+    // Mutable state belongs to the Zone worker; cross-thread readers use published snapshots.
+    // Construction and destruction occur outside the worker lifetime.
     class ZoneState {
         std::vector<CharacterState> m_chars;
         std::unordered_map<uint64_t, uint16_t> m_sessionToIndex; // 자신의 캐릭터를 컨트롤 할 때
         std::unordered_map<uint32_t, uint16_t> m_InternalIDToIndex; // 다른 캐릭터와 상호작용할 때
         std::vector<MonsterState> m_monsters; // id = index, 죽은 몬스터는 제거하지 않고 틱 단위로 처리.
         std::vector<std::pair<uint64_t, uint16_t>> m_cheatList;  // Cheat 탐지해서 배치처리하는 용도, stack
-        std::mutex m_mutex;
 
         uint64_t m_deltaTickCounter;
         bool m_monsterCellsChanged = false;
         uint16_t m_zoneID;
-        uint64_t m_generation = 0; // Incremented only by a committed admission, under m_mutex.
+        uint64_t m_generation = 0; // Advanced by successful registrations on the Zone worker.
         ZoneArea m_area;
         std::array<std::array<Cell, CELLS_X>, CELLS_Y> m_cells;
 
@@ -114,21 +114,20 @@ namespace Core {
 
         void RemoveFromCell(CharacterState& character);
         void AddToCell(CharacterState& character,  uint8_t x, uint8_t y);
-        uint32_t ImmigrateCharLocked(uint64_t sessionID, const CharacterState& user);
-        bool RegisterCharacterLocked(CharacterState&& incoming);
+        uint32_t ImmigrateChar(uint64_t sessionID, const CharacterState& user);
+        bool RegisterCharacter(CharacterState&& incoming);
         void ClearCharacterEffects(uint64_t sessionID, uint32_t internalID);
-        bool AdmitZoneTransferLocked(const ZoneTransfer& transfer);
-        bool RestoreZoneTransferLocked(const CharacterState& original);
+        bool AdmitZoneTransfer(const ZoneTransfer& transfer);
+        bool RestoreZoneTransfer(const CharacterState& original);
         bool TryStartZoneTransfer(uint16_t destination, const std::shared_ptr<ZoneTransfer>& transfer, IZoneTransfer& zoneTransfer);
-        void RemoveCharacterLocked(uint64_t sessionID);
-        void RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint32_t dirtyBit);
+        void RemoveCharacter(uint64_t sessionID);
+        void RestoreMovement(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint32_t dirtyBit);
         void UpdateSessionSnapshot();
         void MoveMonsterHome(MonsterState& monster);
         void GrantMonsterReward(const CharacterState& character, uint64_t gold);
         void UseMonsterSkill(MonsterState& monster);
         void SetMonsterPosition(MonsterState& monster, float x, float y);
         bool MoveMonster(MonsterState& monster, float x, float y);
-        void FullSnapshotMonsterLocked();
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
         friend class MonsterBehaviorFixture;

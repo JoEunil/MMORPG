@@ -14,52 +14,32 @@
 namespace Core {
     void ZoneState::ApplyAction(uint64_t sessionID, const ActionRequestBody& action,
         IZoneTransfer& zoneTransfer) {
-        float previousX, previousY, previousBudget;
-        uint8_t previousDir;
-        uint32_t previousDirty;
-        {
-            std::lock_guard zoneLock(m_mutex);
-            const auto member = m_sessionToIndex.find(sessionID);
-            if (member == m_sessionToIndex.end())
-                return;
-            const auto& character = m_chars[member->second];
-            previousX = character.x;
-            previousY = character.y;
-            previousBudget = character.moveBudget;
-            previousDir = character.dir;
-            previousDirty = character.dirtyBit;
-        }
+        const auto member = m_sessionToIndex.find(sessionID);
+        if (member == m_sessionToIndex.end())
+            return;
+        const auto& character = m_chars[member->second];
+        const float previousX = character.x, previousY = character.y, previousBudget = character.moveBudget;
+        const uint8_t previousDir = character.dir;
+        const uint32_t previousDirty = character.dirtyBit;
 
         Move(sessionID, action.dir, action.x, action.y);
-        uint16_t destination = 0;
-        std::shared_ptr<ZoneTransfer> transfer;
-        {
-            std::lock_guard zoneLock(m_mutex);
-            const auto member = m_sessionToIndex.find(sessionID);
-            if (member == m_sessionToIndex.end())
-                return;
-            const auto& character = m_chars[member->second];
-            destination = action.ownershipEpoch == (std::numeric_limits<uint64_t>::max)()
-                ? 0 : zoneTransfer.FindDestination(m_zoneID, character.x, character.y);
-            if (destination != 0) {
-                const float x = character.x, y = character.y, moveBudget = character.moveBudget;
-                const uint8_t dir = character.dir;
-                RestoreMovementLocked(sessionID, previousX, previousY, previousDir, previousBudget, previousDirty);
+        const auto destination = action.ownershipEpoch == (std::numeric_limits<uint64_t>::max)()
+            ? 0 : zoneTransfer.FindDestination(m_zoneID, character.x, character.y);
+        if (destination != 0) {
+            const float x = character.x, y = character.y, moveBudget = character.moveBudget;
+            const uint8_t dir = character.dir;
+            RestoreMovement(sessionID, previousX, previousY, previousDir, previousBudget, previousDirty);
 
-                transfer = std::make_shared<ZoneTransfer>();
-                transfer->character = character;
-                transfer->sourceZoneID = m_zoneID;
-                transfer->ownershipEpoch = action.ownershipEpoch;
-                transfer->x = x;
-                transfer->y = y;
-                transfer->moveBudget = moveBudget;
-                transfer->dir = dir;
-                transfer->skillSlot = action.skillSlot;
-                transfer->aimAngle = action.aimAngle;
-            }
-        }
-
-        if (transfer) {
+            auto transfer = std::make_shared<ZoneTransfer>();
+            transfer->character = character;
+            transfer->sourceZoneID = m_zoneID;
+            transfer->ownershipEpoch = action.ownershipEpoch;
+            transfer->x = x;
+            transfer->y = y;
+            transfer->moveBudget = moveBudget;
+            transfer->dir = dir;
+            transfer->skillSlot = action.skillSlot;
+            transfer->aimAngle = action.aimAngle;
             TryStartZoneTransfer(destination, transfer, zoneTransfer);
             return;
         }
@@ -72,7 +52,6 @@ namespace Core {
     // 한 틱에 입력이 몇 개 들어오든 총 이동량이 경과 시간을 넘지 못한다.
     // CAP으로 이월을 제한해 오래 정지했다가 한 번에 순간이동하는 것을 막는다.
     void ZoneState::ReplenishMoveBudget() {
-        std::lock_guard<std::mutex> lock(m_mutex);
         for (auto& character : m_chars) {
             character.moveBudget += MOVE_BUDGET_PER_TICK;
             if (character.moveBudget > MOVE_BUDGET_CAP)
@@ -81,7 +60,6 @@ namespace Core {
     }
 
     void ZoneState::Move(uint64_t sessionID, uint8_t dir, float x, float y) {
-        std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_sessionToIndex.find(sessionID);
         if (it == m_sessionToIndex.end()) {
             return;
@@ -168,7 +146,6 @@ namespace Core {
         if (skillSlot == NONE_SKILL || !std::isfinite(aimAngle) || aimAngle < 0 || aimAngle >= 360) {
             return;
         }
-        std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_sessionToIndex.find(sessionID);
         if (it == m_sessionToIndex.end()) {
             return;
@@ -200,7 +177,6 @@ namespace Core {
 
     ParryResponseBody ZoneState::Parry(uint64_t sessionID, const ParryRequestBody& request) {
         ParryResponseBody result{request.requestID, request.ownershipEpoch, static_cast<uint8_t>(ParryStatus::Unavailable), 0, 0};
-        std::lock_guard zoneLock(m_mutex);
         const auto member = m_sessionToIndex.find(sessionID);
         if (member == m_sessionToIndex.end())
             return result;
@@ -235,7 +211,6 @@ namespace Core {
     }
 
     void ZoneState::DirtyCheck(uint64_t sessionID) {
-        std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_sessionToIndex.find(sessionID);
         if (it == m_sessionToIndex.end()) {
             return;
@@ -247,7 +222,6 @@ namespace Core {
     std::optional<ItemUseResponseBody> ZoneState::UseItem(uint64_t sessionID, const ItemUseRequestBody& request,
         IInventoryOperations* inventory) {
         ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
-        std::lock_guard zoneLock(m_mutex);
         const auto found = m_sessionToIndex.find(sessionID);
         if (found == m_sessionToIndex.end()) return std::nullopt;
         auto& character = m_chars[found->second];
@@ -286,7 +260,6 @@ namespace Core {
     std::optional<EquipmentResponseBody> ZoneState::Equipment(uint64_t sessionID, uint64_t requestID,
         uint64_t ownershipEpoch, bool write, uint8_t slot, uint32_t itemID, IInventoryOperations* inventory) {
         EquipmentResponseBody result{ requestID, ownershipEpoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), slot, 0, 0, 0, 0, 0, 0, 0 };
-        std::lock_guard zoneLock(m_mutex);
         auto member = m_sessionToIndex.find(sessionID);
         if (member == m_sessionToIndex.end()) return std::nullopt;
         auto& character = m_chars[member->second];

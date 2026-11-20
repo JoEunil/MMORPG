@@ -31,7 +31,6 @@ namespace Core {
     public:
         ZoneEventRouter();
         ~ZoneEventRouter() override;
-        ZoneState* GetZone(uint16_t zoneID);
         std::optional<SessionSnapshotView> ReadSessionSnapshot(uint16_t zoneID) const override;
         bool TryEnqueuePacket(uint16_t zoneID, std::unique_ptr<IPacketView, PacketViewDeleter> packet) override;
         bool TryEnqueueLobbyEntry(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch) override;
