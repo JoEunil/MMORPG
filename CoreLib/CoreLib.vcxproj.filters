@@ -233,6 +233,9 @@
     <ClInclude Include="CorePerfCollector.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Data\PotionType.h">
+      <Filter>Data</Filter>
+    </ClInclude>
     <ClInclude Include="Data\ItemData.h">
       <Filter>Data</Filter>
     </ClInclude>

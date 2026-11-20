@@ -1,6 +1,8 @@
 ﻿#pragma once
 #include <cstdint>
 #include <vector>
+#include <array>
+#include "../Data/PotionType.h"
 #include "../Data/GrowthData.h"
 #include "Equipment.h"
 
@@ -42,7 +44,7 @@ namespace Core {
         uint8_t skillSlotCnt; 
         std::vector<SkillSlotEntry> skillSlot;
 
-        uint32_t potionCooldownTicks = 0;
+        std::array<uint32_t, static_cast<size_t>(Data::PotionType::Count)> potionCooldownTicks{};
         uint32_t parryWindowTicks = 0;
         uint32_t parryCooldownTicks = 0;
         ParryRequestHistory lastParry;

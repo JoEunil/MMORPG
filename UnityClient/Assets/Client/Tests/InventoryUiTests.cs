@@ -583,20 +583,22 @@ namespace Mmorpg.Client.Tests
                     new InventoryItem { itemID = 2, quantity = 4, slot = 1 });
                 Assert.That(mpQuantity.text, Is.EqualTo("4"));
                 fixture.Screen.ClosePanel();
-                Assert.That(quick.interactable || mpQuick.interactable, Is.False, "The server-confirmed cooldown covers both potions.");
+                Assert.That(quick.interactable, Is.True, "An MP cooldown does not block HP potions.");
+                Assert.That(mpQuick.interactable, Is.False);
                 var hpCooldown = quick.transform.Find("Cooldown").GetComponent<TMP_Text>();
                 var mpCooldown = mpQuick.transform.Find("Cooldown").GetComponent<TMP_Text>();
-                Assert.That(hpCooldown.gameObject.activeSelf && mpCooldown.gameObject.activeSelf, Is.True);
-                Assert.That(hpCooldown.text, Is.EqualTo(mpCooldown.text).And.EndsWith("s"));
-                SetPrivate(fixture.Screen, "useCooldownDeadline", Time.unscaledTime + 1.5f);
+                Assert.That(hpCooldown.gameObject.activeSelf, Is.False);
+                Assert.That(mpCooldown.gameObject.activeSelf, Is.True);
+                Assert.That(mpCooldown.text, Does.EndWith("s"));
+                SetPrivate(fixture.Screen, "mpPotionCooldownDeadline", Time.unscaledTime + 1.5f);
                 fixture.InvokeScreen("Update");
-                Assert.That(hpCooldown.text, Is.EqualTo("2s"));
+                Assert.That(hpCooldown.gameObject.activeSelf, Is.False);
                 Assert.That(mpCooldown.text, Is.EqualTo("2s"));
                 Assert.That(quantity.text, Is.EqualTo("3"));
                 Assert.That(mpQuantity.text, Is.EqualTo("4"));
                 Assert.That(keyObject.GetComponent<TMP_Text>().text, Is.EqualTo("1"));
                 Assert.That(mpQuick.transform.Find("Key").GetComponent<TMP_Text>().text, Is.EqualTo("2"));
-                SetPrivate(fixture.Screen, "useCooldownDeadline", Time.unscaledTime - 1f);
+                SetPrivate(fixture.Screen, "mpPotionCooldownDeadline", Time.unscaledTime - 1f);
                 fixture.InvokeScreen("UpdateControls");
                 Assert.That(hpCooldown.gameObject.activeSelf || mpCooldown.gameObject.activeSelf, Is.False);
                 Assert.That(quick.interactable && mpQuick.interactable, Is.True);
@@ -614,7 +616,7 @@ namespace Mmorpg.Client.Tests
                 fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 2, slot = 0 });
                 Assert.That(quantity.text, Is.EqualTo("2"));
                 Assert.That(quick.interactable, Is.False, "Confirmed quantity cannot bypass the shared cooldown.");
-                SetPrivate(fixture.Screen, "useCooldownDeadline", Time.unscaledTime - 1f);
+                SetPrivate(fixture.Screen, "hpPotionCooldownDeadline", Time.unscaledTime - 1f);
                 fixture.InvokeScreen("UpdateControls");
                 Assert.That(quick.interactable, Is.True);
 
@@ -726,10 +728,10 @@ namespace Mmorpg.Client.Tests
                 Assert.That(status.text, Is.EqualTo("Equipment: --"));
                 fixture.Cards[3].onClick.Invoke();
                 Assert.That(status.text, Does.Contain("Unknown item").And.Contain("not supported"));
-                SetPrivate(fixture.Screen, "useCooldownDeadline", Time.unscaledTime + 2f);
+                SetPrivate(fixture.Screen, "hpPotionCooldownDeadline", Time.unscaledTime + 2f);
                 fixture.Cards[0].onClick.Invoke();
                 Assert.That(status.text, Does.Contain("cooldown"));
-                SetPrivate(fixture.Screen, "useCooldownDeadline", 0f);
+                SetPrivate(fixture.Screen, "hpPotionCooldownDeadline", 0f);
                 fixture.InvokeScreen("UpdateControls");
                 Assert.That(status.text, Does.Contain("1500 HP"));
                 var useObject = new GameObject("bag use", typeof(RectTransform), typeof(UnityEngine.UI.Button));
@@ -797,12 +799,15 @@ namespace Mmorpg.Client.Tests
                 Assert.That((bool)GetPrivate(fixture.Screen, "usePending"), Is.True, "A base-potion reply cannot complete a tier request.");
                 ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 1, 9, 1, 2, 120);
                 Assert.That((bool)GetPrivate(fixture.Screen, "usePending"), Is.False);
-                Assert.That((float)GetPrivate(fixture.Screen, "useCooldownDeadline"), Is.GreaterThan(Time.unscaledTime + 5f));
+                Assert.That((float)GetPrivate(fixture.Screen, "mpPotionCooldownDeadline"), Is.GreaterThan(Time.unscaledTime + 5f));
                 items[5].quantity = 2;
                 fixture.Receive(true, items);
+                fixture.Cards[1].onClick.Invoke();
+                fixture.InvokeScreen("UseSelectedItem");
+                Assert.That(fixture.Network.ItemUses, Is.EqualTo(1), "A tier MP potion locks base MP use through the same cooldown.");
                 fixture.Cards[0].onClick.Invoke();
                 fixture.InvokeScreen("UseSelectedItem");
-                Assert.That(fixture.Network.ItemUses, Is.EqualTo(1), "A tier potion locks base HP use through the same cooldown.");
+                Assert.That(fixture.Network.ItemUses, Is.EqualTo(2), "A tier MP cooldown does not block HP use.");
             }
         }
 

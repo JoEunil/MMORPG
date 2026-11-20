@@ -150,6 +150,7 @@
     <ClInclude Include="NonSimulation\ChatThreadPool.h" />
     <ClInclude Include="CorePerfCollector.h" />
     <ClInclude Include="Data\ItemData.h" />
+    <ClInclude Include="Data\PotionType.h" />
     <ClInclude Include="LoggerGlobal.h" />
     <ClInclude Include="Data\MonsterData.h" />
     <ClInclude Include="World\MonsterState.h" />

@@ -5,8 +5,9 @@
 
 namespace Core {
     uint16_t Equipment::AttackBonus() const {
-        const auto item = Data::itemMap.find(m_weaponID);
-        return item == Data::itemMap.end() ? 0 : item->second.weaponAttackBonus;
+        const auto* item = Data::FindItem(m_weaponID);
+        const auto* weapon = item == nullptr ? nullptr : std::get_if<Data::ItemDataWeapon>(&item->details);
+        return weapon == nullptr ? 0 : weapon->attackBonus;
     }
 
     uint16_t Equipment::EffectiveAttack(uint16_t baseAttack) const {
@@ -16,10 +17,13 @@ namespace Core {
 
     uint8_t Equipment::DefensePercent() const {
         uint16_t total = 0;
-        for (const auto itemID : {m_shieldID, m_bodyID}) {
-            const auto item = Data::itemMap.find(itemID);
-            if (item != Data::itemMap.end())
-                total += item->second.defensePercent;
+        if (const auto* item = Data::FindItem(m_shieldID)) {
+            if (const auto* shield = std::get_if<Data::ItemDataShield>(&item->details))
+                total += shield->defensePercent;
+        }
+        if (const auto* item = Data::FindItem(m_bodyID)) {
+            if (const auto* armor = std::get_if<Data::ItemDataArmor>(&item->details))
+                total += armor->defensePercent;
         }
         return static_cast<uint8_t>(total);
     }

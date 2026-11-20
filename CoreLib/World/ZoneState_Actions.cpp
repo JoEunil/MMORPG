@@ -229,15 +229,19 @@ namespace Core {
         if (!found)
             return std::nullopt;
         auto& character = *found;
-        result.cooldownRemainingTicks = character.potionCooldownTicks;
-        const auto item = Data::itemMap.find(request.itemID);
-        if (item == Data::itemMap.end() || (item->second.hpRecovery == 0 && item->second.mpRecovery == 0))
+        const auto* item = Data::FindItem(request.itemID);
+        const auto* potion = item == nullptr ? nullptr : std::get_if<Data::ItemDataPotion>(&item->details);
+        if (potion == nullptr) {
             result.status = 9;
-        else if (character.hp <= 0)
+            return result;
+        }
+        auto& cooldown = character.potionCooldownTicks[static_cast<size_t>(potion->type)];
+        result.cooldownRemainingTicks = cooldown;
+        if (character.hp <= 0)
             result.status = 2;
-        else if (item->second.hpRecovery != 0 ? character.hp >= character.maxHp : character.mp >= character.maxMp)
+        else if (potion->type == Data::PotionType::HP ? character.hp >= character.maxHp : character.mp >= character.maxMp)
             result.status = 3;
-        else if (character.potionCooldownTicks != 0)
+        else if (cooldown != 0)
             result.status = 4;
         else if (!inventory)
             result.status = 8;
@@ -246,17 +250,17 @@ namespace Core {
             result.remainingQuantity = consumed.remainingQuantity;
             switch (consumed.status) {
             case ItemOperationStatus::Success:
-                if (item->second.hpRecovery != 0)
+                if (potion->type == Data::PotionType::HP)
                     character.hp =
-                        static_cast<int>((std::min)(static_cast<int64_t>(character.maxHp), static_cast<int64_t>(character.hp) + item->second.hpRecovery));
-                if (item->second.mpRecovery != 0)
+                        static_cast<int>((std::min)(static_cast<int64_t>(character.maxHp), static_cast<int64_t>(character.hp) + potion->recovery));
+                if (potion->type == Data::PotionType::MP)
                     character.mp =
-                        static_cast<int>((std::min)(static_cast<int64_t>(character.maxMp), static_cast<int64_t>(character.mp) + item->second.mpRecovery));
-                character.potionCooldownTicks = item->second.cooldownTicks;
+                        static_cast<int>((std::min)(static_cast<int64_t>(character.maxMp), static_cast<int64_t>(character.mp) + potion->recovery));
+                cooldown = potion->cooldownTicks;
                 character.dirtyBit |= 3;
                 m_cells[character.cellY][character.cellX].dirtyChar.push_back(character.zoneInternalID);
                 result.status = 1;
-                result.cooldownRemainingTicks = character.potionCooldownTicks;
+                result.cooldownRemainingTicks = cooldown;
                 break;
             case ItemOperationStatus::Missing:
                 result.status = 5;
@@ -280,7 +284,8 @@ namespace Core {
         if (!member)
             return std::nullopt;
         auto& character = *member;
-        if (slot > 2 || (!write && slot != 0) || (write && itemID != 0 && itemID != 3u + slot))
+        if (!Data::IsValidEquipmentSlot(static_cast<Data::EquipmentSlot>(slot)) || (!write && slot != 0) ||
+            (write && !Data::CanEquip(static_cast<Data::EquipmentSlot>(slot), itemID)))
             result.status = static_cast<uint8_t>(EquipmentStatus::Unsupported);
         else if (write && character.hp <= 0)
             result.status = static_cast<uint8_t>(EquipmentStatus::Dead);
@@ -290,7 +295,8 @@ namespace Core {
             const auto state = write ? inventory->EquipItem(character.characterID, slot, itemID) : inventory->GetEquipmentState(character.characterID);
             switch (state.status) {
             case EquipmentOperationStatus::Success:
-                if ((state.weaponID != 0 && state.weaponID != 3) || (state.shieldID != 0 && state.shieldID != 4) || (state.bodyID != 0 && state.bodyID != 5) ||
+                if (!Data::CanEquip(Data::EquipmentSlot::Weapon, state.weaponID) || !Data::CanEquip(Data::EquipmentSlot::Shield, state.shieldID) ||
+                    !Data::CanEquip(Data::EquipmentSlot::Body, state.bodyID) ||
                     (write && (slot == 0      ? state.weaponID
                                   : slot == 1 ? state.shieldID
                                               : state.bodyID) != itemID)) {
