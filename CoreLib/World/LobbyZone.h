@@ -97,11 +97,13 @@ namespace Core {
 
         std::optional<uint16_t> ApplyProfileVersion(const ProfileVersionUpdate& update) {
             std::lock_guard lock(m_mutex);
-            return sessionManager->ApplyZoneProfileVersion(0, update, [&] {
-                const auto found = m_chars.find(update.sessionID);
-                if (found != m_chars.end())
-                    found->second.UpdateProfileVersion(update.profileID, update.version);
-            });
+            const auto route = sessionManager->RouteProfileVersion(update);
+            if (!route || *route != 0)
+                return route;
+            const auto found = m_chars.find(update.sessionID);
+            if (found != m_chars.end())
+                found->second.UpdateProfileVersion(update.profileID, update.version);
+            return std::nullopt;
         }
 
         bool TakeCharacter(CharacterState& out) {

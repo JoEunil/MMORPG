@@ -103,10 +103,13 @@ namespace Core {
     }
 
     void ZoneHandler::ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update) {
-        auto route = sessionManager->ApplyZoneProfileVersion(zone.GetZoneID(), update, [&] {
+        auto route = sessionManager->RouteProfileVersion(update);
+        if (route && *route == zone.GetZoneID()) {
             zone.UpdateProfileVersion(update.sessionID, update.profileID, update.version);
-        });
-        if (route && *route == 0) route = lobbyZone->ApplyProfileVersion(update);
+            return;
+        }
+        if (route && *route == 0)
+            route = lobbyZone->ApplyProfileVersion(update);
         if (route && !zoneRequests->TryEnqueueProfileVersion(*route, update))
             errorLogger->LogWarn("zone handler", "could not route profile version", "sessionID", update.sessionID, "zoneID", *route);
     }
@@ -129,17 +132,17 @@ namespace Core {
     }
 
     void ZoneHandler::ProcessBootstrap(ZoneState& zone, const ZoneRequest& request) {
-        ZoneChangeResult transition;
-        bool described = false;
-        sessionManager->ProcessZoneBootstrap(request.sessionID, zone.GetZoneID(), request.ownershipEpoch, request.resendZoneChange,
-            [&](uint64_t chatID) {
-                described = zone.DescribeZoneChange(request.sessionID, chatID, request.ownershipEpoch, transition);
-            },
-            [&](uint64_t bootstrapID) {
-                zone.EnqueueBootstrap(request.sessionID, request.ownershipEpoch, bootstrapID);
-            });
-        if (described)
-            SendZoneChange(zone, request.sessionID, transition);
+        const auto info = sessionManager->PrepareZoneBootstrap(request.sessionID, zone.GetZoneID(),
+            request.ownershipEpoch, request.resendZoneChange);
+        if (!info)
+            return;
+        if (request.resendZoneChange) {
+            ZoneChangeResult transition;
+            if (zone.DescribeZoneChange(request.sessionID, info->chatID, request.ownershipEpoch, transition))
+                SendZoneChange(zone, request.sessionID, transition);
+            return;
+        }
+        zone.EnqueueBootstrap(request.sessionID, request.ownershipEpoch, info->bootstrapID);
     }
 
     void ZoneHandler::SendZoneChangeFailed(uint64_t sessionID) {
@@ -157,7 +160,9 @@ namespace Core {
 
     ParryResponseBody ZoneHandler::ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID,
         const ParryRequestBody& request) {
-        return sessionManager->ApplyZoneParry(sessionID, zoneID, request, [&] { return zone.Parry(sessionID, request); });
+        if (const auto rejection = sessionManager->GetParryRejection(sessionID, zoneID, request))
+            return {request.requestID, request.ownershipEpoch, static_cast<uint8_t>(*rejection), 0, 0};
+        return zone.Parry(sessionID, request);
     }
 
     void ZoneHandler::Process(ZoneState& zone, IPacketView* p, uint16_t zoneID) {

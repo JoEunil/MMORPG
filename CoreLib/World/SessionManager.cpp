@@ -6,6 +6,51 @@
 #include <limits>
 
 namespace Core {
+    std::optional<uint16_t> SessionManager::RouteProfileVersion(const ProfileVersionUpdate& update) {
+        auto& shard = m_shards[update.sessionID & SHARD_SIZE_MASK];
+        std::unique_lock lock(shard.smutex);
+        auto* session = FindSessionLocked(shard, update.sessionID);
+        if (!session) return std::nullopt;
+        if (session->pendingZoneTransfer) {
+            session->pendingZoneTransfer->character.UpdateProfileVersion(update.profileID, update.version);
+            return std::nullopt;
+        }
+        return session->zoneID;
+    }
+
+    std::optional<ZoneBootstrapInfo> SessionManager::PrepareZoneBootstrap(uint64_t sessionID, uint16_t zoneID,
+        uint64_t ownershipEpoch, bool resendZoneChange) {
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock lock(shard.smutex);
+        auto* session = FindSessionLocked(shard, sessionID);
+        if (!session || session->disconnectQueued || session->zoneID != zoneID || session->ownershipEpoch != ownershipEpoch
+            || session->pendingZoneTransfer)
+            return std::nullopt;
+        ZoneBootstrapInfo info{session->chatID};
+        if (!resendZoneChange) {
+            info.bootstrapID = NextBootstrapIDLocked(*session);
+            if (info.bootstrapID == 0)
+                return std::nullopt;
+        }
+        return info;
+    }
+
+    std::optional<ParryStatus> SessionManager::GetParryRejection(uint64_t sessionID, uint16_t zoneID,
+        const ParryRequestBody& request) const {
+        if (request.requestID == 0 || request.ownershipEpoch == 0)
+            return ParryStatus::Invalid;
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::shared_lock lock(shard.smutex);
+        const auto found = shard.sessionMap.find(sessionID);
+        if (found == shard.sessionMap.end() || found->second.disconnectQueued
+            || !found->second.authenticated || !found->second.authCompleted)
+            return ParryStatus::Unavailable;
+        const auto& session = found->second;
+        if (session.zoneID == 0 || session.zoneID != zoneID || session.ownershipEpoch != request.ownershipEpoch)
+            return ParryStatus::StaleOwnership;
+        return std::nullopt;
+    }
+
     std::optional<ZoneTransfer> SessionManager::ReadZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer,
         uint16_t zoneID, bool returning) const {
         if (!transfer) return std::nullopt;

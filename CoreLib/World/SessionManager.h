@@ -78,6 +78,10 @@ namespace Core {
         uint32_t profileID = 0;
         uint32_t profileVersion = 0;
     };
+    struct ZoneBootstrapInfo {
+        uint64_t chatID = 0;
+        uint64_t bootstrapID = 0;
+    };
     class SessionManager : public ISessionStatusReader {
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
         std::atomic<bool> m_running;
@@ -275,15 +279,11 @@ namespace Core {
         bool CompleteLobbyEntry(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
             uint32_t profileID, ZoneChangeResult& result);
 
-        // Callbacks run under the session shard lock. They may acquire the
-        // destination state lock, but must not reenter SessionManager.
-        template<class Apply>
-        std::optional<uint16_t> ApplyZoneProfileVersion(uint16_t zoneID, const ProfileVersionUpdate& update, Apply apply);
-        template<class Describe, class Enqueue>
-        void ProcessZoneBootstrap(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, bool resendZoneChange,
-            Describe describe, Enqueue enqueue);
-        template<class Parry>
-        ParryResponseBody ApplyZoneParry(uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request, Parry parry);
+        std::optional<uint16_t> RouteProfileVersion(const ProfileVersionUpdate& update);
+        std::optional<ZoneBootstrapInfo> PrepareZoneBootstrap(uint64_t sessionID, uint16_t zoneID,
+            uint64_t ownershipEpoch, bool resendZoneChange);
+        std::optional<ParryStatus> GetParryRejection(uint64_t sessionID, uint16_t zoneID,
+            const ParryRequestBody& request) const;
 
         void Cheat(uint64_t sessionID, uint16_t cheat, std::chrono::steady_clock::time_point time) {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
@@ -310,56 +310,4 @@ namespace Core {
         uint64_t ownershipEpoch = 0;
     };
 
-    template<class Apply>
-    std::optional<uint16_t> SessionManager::ApplyZoneProfileVersion(uint16_t zoneID, const ProfileVersionUpdate& update, Apply apply) {
-        auto& shard = m_shards[update.sessionID & SHARD_SIZE_MASK];
-        std::unique_lock lock(shard.smutex);
-        auto* session = FindSessionLocked(shard, update.sessionID);
-        if (!session) return std::nullopt;
-        if (session->pendingZoneTransfer) {
-            session->pendingZoneTransfer->character.UpdateProfileVersion(update.profileID, update.version);
-            return std::nullopt;
-        }
-        if (session->zoneID != zoneID) return session->zoneID;
-        apply();
-        return std::nullopt;
-    }
-
-    template<class Describe, class Enqueue>
-    void SessionManager::ProcessZoneBootstrap(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
-        bool resendZoneChange, Describe describe, Enqueue enqueue) {
-        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-        std::unique_lock lock(shard.smutex);
-        auto* session = FindSessionLocked(shard, sessionID);
-        if (!session || session->disconnectQueued || session->zoneID != zoneID || session->ownershipEpoch != ownershipEpoch
-            || session->pendingZoneTransfer)
-            return;
-        if (resendZoneChange) {
-            describe(session->chatID);
-            return;
-        }
-        const auto bootstrapID = NextBootstrapIDLocked(*session);
-        if (bootstrapID != 0)
-            enqueue(bootstrapID);
-    }
-
-    template<class Parry>
-    ParryResponseBody SessionManager::ApplyZoneParry(uint64_t sessionID, uint16_t zoneID,
-        const ParryRequestBody& request, Parry parry) {
-        ParryResponseBody result{request.requestID, request.ownershipEpoch, static_cast<uint8_t>(ParryStatus::Invalid), 0, 0};
-        if (request.requestID == 0 || request.ownershipEpoch == 0)
-            return result;
-        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-        std::shared_lock lock(shard.smutex);
-        const auto* session = FindSessionLocked(shard, sessionID);
-        if (!session || session->disconnectQueued || !session->authenticated || !session->authCompleted) {
-            result.status = static_cast<uint8_t>(ParryStatus::Unavailable);
-            return result;
-        }
-        if (session->zoneID == 0 || session->zoneID != zoneID || session->ownershipEpoch != request.ownershipEpoch) {
-            result.status = static_cast<uint8_t>(ParryStatus::StaleOwnership);
-            return result;
-        }
-        return parry();
-    }
 }
