@@ -6,6 +6,71 @@
 #include <limits>
 
 namespace Core {
+    std::optional<ZoneTransfer> SessionManager::ReadZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer,
+        uint16_t zoneID, bool returning) const {
+        if (!transfer) return std::nullopt;
+        const auto sessionID = transfer->character.sessionID;
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::shared_lock lock(shard.smutex);
+        const auto found = shard.sessionMap.find(sessionID);
+        const auto* session = found != shard.sessionMap.end() ? &found->second : nullptr;
+        if (!MatchesZoneTransfer(session, transfer) || returning != (zoneID == transfer->sourceZoneID))
+            return std::nullopt;
+        // Profile updates can change the pending record; admission uses a private copy.
+        return *transfer;
+    }
+
+    std::optional<ZoneTransferCommit> SessionManager::CompleteZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer,
+        uint16_t zoneID, bool returning) {
+        if (!transfer) return std::nullopt;
+        const auto sessionID = transfer->character.sessionID;
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock lock(shard.smutex);
+        auto* session = FindSessionLocked(shard, sessionID);
+        if (!MatchesZoneTransfer(session, transfer) || returning != (zoneID == transfer->sourceZoneID))
+            return std::nullopt;
+
+        session->pendingZoneTransfer.reset();
+        if (!returning) {
+            if (zoneID != 0 && transfer->IsRespawn())
+                session->lastRespawnRequestEpoch = transfer->ownershipEpoch;
+            UpdateZoneOwnershipLocked(*session, zoneID);
+            if (zoneID == 0)
+                LeaveZoneChatLocked(sessionID, transfer->sourceZoneID);
+            else
+                JoinZoneChatLocked(sessionID, zoneID, *session);
+        }
+        return ZoneTransferCommit{session->chatID, session->ownershipEpoch,
+            transfer->character.profileId, transfer->character.profileVersion};
+    }
+
+    bool SessionManager::CompleteLobbyLoad(uint64_t sessionID, uint64_t characterID) {
+        if (characterID == INVALID_CHARACTER_ID) return false;
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock lock(shard.smutex);
+        auto* session = FindSessionLocked(shard, sessionID);
+        if (!session || session->disconnectQueued || !session->authenticated || session->zoneID != 0
+            || (session->characterID != INVALID_CHARACTER_ID && session->characterID != characterID))
+            return false;
+        session->characterID = characterID;
+        return true;
+    }
+
+    bool SessionManager::CompleteLobbyEntry(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
+        uint32_t profileID, ZoneChangeResult& result) {
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock lock(shard.smutex);
+        auto* session = FindSessionLocked(shard, sessionID);
+        if (!session || session->disconnectQueued || !session->authenticated || !session->authCompleted
+            || session->zoneID != 0 || session->ownershipEpoch != ownershipEpoch)
+            return false;
+        UpdateZoneOwnershipLocked(*session, zoneID);
+        JoinZoneChatLocked(sessionID, zoneID, *session, profileID);
+        result.chatID = session->chatID;
+        result.ownershipEpoch = session->ownershipEpoch;
+        return true;
+    }
+
     RespawnRequest SessionManager::CheckRespawnRequest(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch) const {
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::shared_lock lock(shard.smutex);

@@ -30,16 +30,7 @@ namespace Core {
     void ZoneHandler::ProcessLobbyEntry(ZoneState& zone, const ZoneRequest& request) {
         const auto sessionID = request.sessionID;
         ZoneChangeResult result;
-        const auto outcome = sessionManager->EnterZoneFromLobby(sessionID, zone.GetZoneID(), request.ownershipEpoch, result,
-            [&](uint64_t characterID) -> std::optional<uint32_t> {
-                uint32_t profileID = 0;
-                if (!lobbyZone->TryEnterField(sessionID, characterID, zone.GetZoneID(), [&](const CharacterState& loaded) {
-                    profileID = loaded.profileId;
-                    return zone.AdmitLobbyCharacter(sessionID, loaded, result);
-                }))
-                    return std::nullopt;
-                return profileID;
-            });
+        const auto outcome = lobbyZone->EnterField(sessionID, request.ownershipEpoch, zone, result);
         if (outcome == ZoneOperationResult::Completed)
             SendZoneChange(zone, sessionID, result);
         else if (outcome == ZoneOperationResult::Rejected)
@@ -77,26 +68,38 @@ namespace Core {
 
         const auto sessionID = transfer->character.sessionID;
         const bool returning = event.type == ZoneEventType::TransferRejected;
-        const bool respawn = transfer->IsRespawn();
-        ZoneChangeResult result;
-        const auto outcome = sessionManager->ResolveZoneTransfer(transfer, zone.GetZoneID(), returning, result,
-            [&] { return zone.TryResolveZoneTransfer(*transfer, returning, result); },
-            [&] {
-                if (!respawn) {
-                    zone.Skill(sessionID, transfer->skillSlot, transfer->aimAngle);
-                    zone.DirtyCheck(sessionID);
-                }
-            });
+        const auto snapshot = sessionManager->ReadZoneTransfer(transfer, zone.GetZoneID(), returning);
+        if (!snapshot)
+            return;
 
-        if (outcome == ZoneOperationResult::Rejected) {
+        ZoneChangeResult result;
+        if (!zone.TryResolveZoneTransfer(*snapshot, returning, result)) {
             if (returning || !zoneTransfer->TryEnqueueTransferRejected(transfer))
                 zoneTransfer->EnqueueLobbyReturn(transfer);
-        } else if (outcome == ZoneOperationResult::Completed) {
-            if (!returning)
-                SendZoneChange(zone, sessionID, result);
-            else if (respawn)
-                SendZoneChangeFailed(sessionID);
+            return;
         }
+
+        const auto committed = sessionManager->CompleteZoneTransfer(transfer, zone.GetZoneID(), returning);
+        if (!committed) {
+            // Disconnect may have taken the pending record while admission was in progress.
+            CharacterState discarded;
+            if (!zone.EmigrateChar(sessionID, discarded))
+                errorLogger->LogError("zone handler", "could not roll back transfer admission", "sessionID", sessionID);
+            return;
+        }
+        zone.UpdateProfileVersion(sessionID, committed->profileID, committed->profileVersion);
+        if (returning) {
+            if (snapshot->IsRespawn())
+                SendZoneChangeFailed(sessionID);
+            return;
+        }
+        result.chatID = committed->chatID;
+        result.ownershipEpoch = committed->ownershipEpoch;
+        if (!snapshot->IsRespawn()) {
+            zone.Skill(sessionID, snapshot->skillSlot, snapshot->aimAngle);
+            zone.DirtyCheck(sessionID);
+        }
+        SendZoneChange(zone, sessionID, result);
     }
 
     void ZoneHandler::ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update) {

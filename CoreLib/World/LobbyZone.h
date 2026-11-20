@@ -37,15 +37,25 @@ namespace Core {
             return EntryZone(loaded->second);
         }
 
-        template<class Admit>
-        bool TryEnterField(uint64_t sessionID, uint64_t characterID, uint16_t zoneID, Admit admit) {
+        ZoneOperationResult EnterField(uint64_t sessionID, uint64_t ownershipEpoch, ZoneState& zone, ZoneChangeResult& result) {
+            // Lobby operations acquire Lobby before Session; SessionManager never locks Lobby.
             std::lock_guard lock(m_mutex);
+            const auto entry = sessionManager->GetLobbyEntry(sessionID, ZONE_CHANGE::ENTER);
+            if (!entry || entry->ownershipEpoch != ownershipEpoch)
+                return ZoneOperationResult::NoResponse;
             const auto loaded = m_chars.find(sessionID);
-            if (loaded == m_chars.end() || loaded->second.characterID != characterID
-                || EntryZone(loaded->second) != zoneID || !admit(loaded->second))
-                return false;
+            if (loaded == m_chars.end() || loaded->second.characterID != entry->characterID
+                || EntryZone(loaded->second) != zone.GetZoneID()
+                || !zone.AdmitLobbyCharacter(sessionID, loaded->second, result))
+                return ZoneOperationResult::Rejected;
+            if (!sessionManager->CompleteLobbyEntry(sessionID, zone.GetZoneID(), ownershipEpoch, loaded->second.profileId, result)) {
+                CharacterState discarded;
+                if (!zone.EmigrateChar(sessionID, discarded))
+                    errorLogger->LogError("lobby zone", "could not roll back field entry", "sessionID", sessionID);
+                return ZoneOperationResult::NoResponse;
+            }
             m_chars.erase(loaded);
-            return true;
+            return ZoneOperationResult::Completed;
         }
 
         void Disconnect(uint64_t sessionID) {
@@ -56,26 +66,41 @@ namespace Core {
         }
 
         bool ImmigrateChar(uint64_t sessionID, const CharacterState& character) {
-            return sessionManager->LoadLobbyCharacter(sessionID, character.characterID, [&] {
-                std::lock_guard lock(m_mutex);
-                if (m_chars.try_emplace(sessionID, character).second)
-                    return true;
+            std::lock_guard lock(m_mutex);
+            const auto [entry, inserted] = m_chars.try_emplace(sessionID, character);
+            if (!inserted) {
                 gameLogger->LogError("lobby zone", "ImmigrageChar Failed sessionID already exists", "sessionID", sessionID);
                 return false;
-            });
+            }
+            if (!sessionManager->CompleteLobbyLoad(sessionID, character.characterID)) {
+                m_chars.erase(entry);
+                return false;
+            }
+            return true;
         }
 
-        uint64_t ReturnZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer) {
-            const auto sessionID = transfer->character.sessionID;
-            return sessionManager->ReturnTransferToLobby(transfer, [&] {
-                std::lock_guard lock(m_mutex);
-                return m_chars.try_emplace(sessionID, std::move(transfer->character)).second;
-            });
+        std::optional<uint64_t> ReturnZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer) {
+            std::lock_guard lock(m_mutex);
+            const auto snapshot = sessionManager->ReadZoneTransfer(transfer, 0, false);
+            if (!snapshot) return std::nullopt;
+            const auto sessionID = snapshot->character.sessionID;
+            const auto [entry, inserted] = m_chars.try_emplace(sessionID, snapshot->character);
+            if (!inserted) return std::nullopt;
+            const auto committed = sessionManager->CompleteZoneTransfer(transfer, 0, false);
+            if (!committed) {
+                m_chars.erase(entry);
+                return std::nullopt;
+            }
+            entry->second.UpdateProfileVersion(committed->profileID, committed->profileVersion);
+            return committed->ownershipEpoch;
         }
 
         std::optional<uint16_t> ApplyProfileVersion(const ProfileVersionUpdate& update) {
+            std::lock_guard lock(m_mutex);
             return sessionManager->ApplyZoneProfileVersion(0, update, [&] {
-                UpdateProfileVersion(update.sessionID, update.profileID, update.version);
+                const auto found = m_chars.find(update.sessionID);
+                if (found != m_chars.end())
+                    found->second.UpdateProfileVersion(update.profileID, update.version);
             });
         }
 
@@ -86,13 +111,6 @@ namespace Core {
             out = std::move(entry->second);
             m_chars.erase(entry);
             return true;
-        }
-
-        void UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version) {
-            std::lock_guard lock(m_mutex);
-            const auto it = m_chars.find(sessionID);
-            if (it != m_chars.end())
-                it->second.UpdateProfileVersion(profileID, version);
         }
 
         bool EmigrateChar(uint64_t sessionID, CharacterState& out) {

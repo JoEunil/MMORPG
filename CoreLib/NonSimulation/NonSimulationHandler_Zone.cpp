@@ -13,10 +13,10 @@ namespace Core {
     void NonSimulationHandler::ReturnToLobby(const std::shared_ptr<ZoneTransfer>& transfer) {
         const auto sessionID = transfer->character.sessionID;
         const auto epoch = lobbyZone->ReturnZoneTransfer(transfer);
-        if (epoch == 0)
+        if (!epoch)
             return;
 
-        auto response = writer->WriteZoneChangeLobby(epoch);
+        auto response = writer->WriteZoneChangeLobby(*epoch);
         if (response)
             networkSender->SendDataUnique(sessionID, std::move(response));
     }

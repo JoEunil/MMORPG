@@ -72,6 +72,12 @@ namespace Core {
         Status status = Status::Ignored;
         uint64_t characterID = 0;
     };
+    struct ZoneTransferCommit {
+        uint64_t chatID = 0;
+        uint64_t ownershipEpoch = 0;
+        uint32_t profileID = 0;
+        uint32_t profileVersion = 0;
+    };
     class SessionManager : public ISessionStatusReader {
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
         std::atomic<bool> m_running;
@@ -261,19 +267,16 @@ namespace Core {
         void CancelZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer);
         RespawnRequest CheckRespawnRequest(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch) const;
         bool CompleteTownRespawn(uint64_t sessionID, uint64_t ownershipEpoch, ZoneChangeResult& result);
+        std::optional<ZoneTransfer> ReadZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer,
+            uint16_t zoneID, bool returning) const;
+        std::optional<ZoneTransferCommit> CompleteZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer,
+            uint16_t zoneID, bool returning);
+        bool CompleteLobbyLoad(uint64_t sessionID, uint64_t characterID);
+        bool CompleteLobbyEntry(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
+            uint32_t profileID, ZoneChangeResult& result);
 
         // Callbacks run under the session shard lock. They may acquire the
         // destination state lock, but must not reenter SessionManager.
-        template<class Store>
-        bool LoadLobbyCharacter(uint64_t sessionID, uint64_t characterID, Store store);
-        template<class Admit>
-        ZoneOperationResult EnterZoneFromLobby(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
-            ZoneChangeResult& result, Admit admit);
-        template<class Admit, class AfterArrival>
-        ZoneOperationResult ResolveZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer, uint16_t zoneID, bool returning,
-            ZoneChangeResult& result, Admit admit, AfterArrival afterArrival);
-        template<class Store>
-        uint64_t ReturnTransferToLobby(const std::shared_ptr<ZoneTransfer>& transfer, Store store);
         template<class Apply>
         std::optional<uint16_t> ApplyZoneProfileVersion(uint16_t zoneID, const ProfileVersionUpdate& update, Apply apply);
         template<class Describe, class Enqueue>
@@ -306,81 +309,6 @@ namespace Core {
         uint64_t generation = 0;
         uint64_t ownershipEpoch = 0;
     };
-
-    template<class Store>
-    bool SessionManager::LoadLobbyCharacter(uint64_t sessionID, uint64_t characterID, Store store) {
-        if (characterID == INVALID_CHARACTER_ID)
-            return false;
-        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-        std::unique_lock lock(shard.smutex);
-        auto* session = FindSessionLocked(shard, sessionID);
-        if (!session || session->disconnectQueued || !session->authenticated || session->zoneID != 0
-            || (session->characterID != INVALID_CHARACTER_ID && session->characterID != characterID)
-            || !store())
-            return false;
-        session->characterID = characterID;
-        return true;
-    }
-
-    template<class Admit>
-    ZoneOperationResult SessionManager::EnterZoneFromLobby(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
-        ZoneChangeResult& result, Admit admit) {
-        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-        std::unique_lock lock(shard.smutex);
-        auto* session = FindSessionLocked(shard, sessionID);
-        if (!session || session->disconnectQueued || !session->authenticated || !session->authCompleted
-            || session->zoneID != 0 || session->ownershipEpoch != ownershipEpoch)
-            return ZoneOperationResult::NoResponse;
-        const auto profile = admit(session->characterID);
-        if (!profile)
-            return ZoneOperationResult::Rejected;
-
-        UpdateZoneOwnershipLocked(*session, zoneID);
-        JoinZoneChatLocked(sessionID, zoneID, *session, profile);
-        result.chatID = session->chatID;
-        result.ownershipEpoch = session->ownershipEpoch;
-        return ZoneOperationResult::Completed;
-    }
-
-    template<class Admit, class AfterArrival>
-    ZoneOperationResult SessionManager::ResolveZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer, uint16_t zoneID,
-        bool returning, ZoneChangeResult& result, Admit admit, AfterArrival afterArrival) {
-        const auto sessionID = transfer->character.sessionID;
-        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-        std::unique_lock lock(shard.smutex);
-        auto* session = FindSessionLocked(shard, sessionID);
-        if (!MatchesZoneTransfer(session, transfer) || returning != (zoneID == transfer->sourceZoneID))
-            return ZoneOperationResult::NoResponse;
-        if (!admit())
-            return ZoneOperationResult::Rejected;
-
-        session->pendingZoneTransfer.reset();
-        if (!returning) {
-            if (transfer->IsRespawn())
-                session->lastRespawnRequestEpoch = transfer->ownershipEpoch;
-            UpdateZoneOwnershipLocked(*session, zoneID);
-            result.chatID = session->chatID;
-            result.ownershipEpoch = session->ownershipEpoch;
-            JoinZoneChatLocked(sessionID, zoneID, *session);
-            afterArrival();
-        }
-        return ZoneOperationResult::Completed;
-    }
-
-    template<class Store>
-    uint64_t SessionManager::ReturnTransferToLobby(const std::shared_ptr<ZoneTransfer>& transfer, Store store) {
-        const auto sessionID = transfer->character.sessionID;
-        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-        std::unique_lock lock(shard.smutex);
-        auto* session = FindSessionLocked(shard, sessionID);
-        if (!MatchesZoneTransfer(session, transfer) || !store())
-            return 0;
-
-        UpdateZoneOwnershipLocked(*session, 0);
-        session->pendingZoneTransfer.reset();
-        LeaveZoneChatLocked(sessionID, transfer->sourceZoneID);
-        return session->ownershipEpoch;
-    }
 
     template<class Apply>
     std::optional<uint16_t> SessionManager::ApplyZoneProfileVersion(uint16_t zoneID, const ProfileVersionUpdate& update, Apply apply) {
