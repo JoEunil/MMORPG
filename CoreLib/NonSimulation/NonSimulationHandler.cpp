@@ -281,13 +281,15 @@ namespace Core {
         const auto opcode = packet->GetOpcode();
         if (opcode == OP::ITEM_USE) {
             const auto request = *parseBody<ItemUseRequestBody>(packet->GetPtr());
-            ItemUseResponseBody result{};
-            if (sessionManager->CheckItemUse(sessionID, zoneID, request, result)) {
+            ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
+            const auto check = sessionManager->CheckItemUse(sessionID, zoneID, request, result);
+            if (check == SessionRequestStatus::Ready) {
                 if (zonePackets->TryEnqueuePacket(zoneID, std::move(packet)))
                     return;
                 result.status = 6; // Existing Busy response; no item was consumed.
                 errorLogger->LogWarn("non simulation handler", "item request queue full", "sessionID", sessionID, "zoneID", zoneID);
-            }
+            } else if (check == SessionRequestStatus::StaleOwnership || check == SessionRequestStatus::StaleRequest)
+                result.status = 7;
             auto response = writer->WriteItemUseResponse(result);
             if (response)
                 networkSender->SendDataUnique(sessionID, std::move(response));
@@ -310,13 +312,17 @@ namespace Core {
             requestID = request.requestID;
             epoch = request.ownershipEpoch;
         }
-        EquipmentResponseBody result{};
-        if (sessionManager->CheckEquipment(sessionID, zoneID, requestID, epoch, write, slot, itemID, result)) {
+        EquipmentResponseBody result{requestID, epoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), slot};
+        const auto check = sessionManager->CheckEquipment(sessionID, zoneID, requestID, epoch, write, slot, itemID, result);
+        if (check == SessionRequestStatus::Ready) {
             if (zonePackets->TryEnqueuePacket(zoneID, std::move(packet)))
                 return;
             result.status = static_cast<uint8_t>(EquipmentStatus::Busy);
             errorLogger->LogWarn("non simulation handler", "equipment request queue full", "sessionID", sessionID, "zoneID", zoneID);
-        }
+        } else if (check == SessionRequestStatus::StaleOwnership)
+            result.status = static_cast<uint8_t>(EquipmentStatus::StaleOwnership);
+        else if (check == SessionRequestStatus::StaleRequest)
+            result.status = static_cast<uint8_t>(EquipmentStatus::StaleRequest);
         auto response = writer->WriteEquipmentResponse(result);
         if (response)
             networkSender->SendDataUnique(sessionID, std::move(response));

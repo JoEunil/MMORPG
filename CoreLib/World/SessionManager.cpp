@@ -192,60 +192,55 @@ namespace Core {
             session->pendingZoneTransfer.reset();
     }
 
-    bool SessionManager::CheckItemUse(uint64_t sessionID, uint16_t zoneID, const ItemUseRequestBody& request, ItemUseResponseBody& result) const {
-        result = ItemUseResponseBody{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
+    SessionRequestStatus SessionManager::CheckItemUse(uint64_t sessionID, uint16_t zoneID, const ItemUseRequestBody& request,
+        ItemUseResponseBody& cachedResponse) const {
         if (request.requestID == 0 || request.itemID == 0)
-            return false;
+            return SessionRequestStatus::Invalid;
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::shared_lock sessionLock(shard.smutex);
         const auto session = shard.sessionMap.find(sessionID);
         if (session == shard.sessionMap.end() || session->second.disconnectQueued || !session->second.authenticated || !session->second.authCompleted ||
             session->second.characterID == 0)
-            return false;
+            return SessionRequestStatus::Invalid;
         auto& saved = session->second.lastItemUse;
         if (request.requestID == saved.requestID) {
             if (request.ownershipEpoch == saved.ownershipEpoch && request.itemID == saved.itemID) {
-                result = saved;
-                return false;
+                cachedResponse = saved;
+                return SessionRequestStatus::Replay;
             }
-            return false;
+            return SessionRequestStatus::Invalid;
         }
-        if (request.requestID < saved.requestID || request.ownershipEpoch != session->second.ownershipEpoch) {
-            result.status = 7;
-            return false;
-        }
+        if (request.requestID < saved.requestID)
+            return SessionRequestStatus::StaleRequest;
+        if (request.ownershipEpoch != session->second.ownershipEpoch)
+            return SessionRequestStatus::StaleOwnership;
         if (zoneID == 0 || session->second.zoneID != zoneID)
-            return false;
-        return true;
+            return SessionRequestStatus::Invalid;
+        return SessionRequestStatus::Ready;
     }
 
-    bool SessionManager::CheckEquipment(uint64_t sessionID, uint16_t zoneID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot,
-        uint32_t itemID, EquipmentResponseBody& result) const {
-        result = EquipmentResponseBody{requestID, ownershipEpoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), slot, 0,
-            0, 0, 0, 0, 0, 0};
+    SessionRequestStatus SessionManager::CheckEquipment(uint64_t sessionID, uint16_t zoneID, uint64_t requestID, uint64_t ownershipEpoch, bool write,
+        uint8_t slot, uint32_t itemID, EquipmentResponseBody& cachedResponse) const {
         if (requestID == 0 || ownershipEpoch == 0)
-            return false;
+            return SessionRequestStatus::Invalid;
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::shared_lock sessionLock(shard.smutex);
         auto session = shard.sessionMap.find(sessionID);
         if (session == shard.sessionMap.end() || session->second.disconnectQueued || !session->second.authenticated || !session->second.authCompleted ||
             session->second.characterID == 0)
-            return false;
-        if (zoneID == 0 || session->second.zoneID != zoneID || ownershipEpoch != session->second.ownershipEpoch) {
-            result.status = static_cast<uint8_t>(EquipmentStatus::StaleOwnership);
-            return false;
-        }
+            return SessionRequestStatus::Invalid;
+        if (zoneID == 0 || session->second.zoneID != zoneID || ownershipEpoch != session->second.ownershipEpoch)
+            return SessionRequestStatus::StaleOwnership;
         auto& previous = session->second.lastEquipmentSet;
         if (write && requestID <= previous.requestID) {
             if (requestID == previous.requestID && ownershipEpoch == previous.ownershipEpoch && slot == previous.slot &&
                 itemID == session->second.lastEquipmentItemID) {
-                result = previous;
-                return false;
+                cachedResponse = previous;
+                return SessionRequestStatus::Replay;
             }
-            result.status = static_cast<uint8_t>(EquipmentStatus::StaleRequest);
-            return false;
+            return SessionRequestStatus::StaleRequest;
         }
-        return true;
+        return SessionRequestStatus::Ready;
     }
 
     void SessionManager::UpdateZoneOwnershipLocked(SessionData& session, uint16_t destinationID) {

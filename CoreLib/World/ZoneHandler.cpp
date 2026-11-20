@@ -167,13 +167,15 @@ namespace Core {
         switch (p->GetOpcode()) {
         case OP::ITEM_USE: {
             const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
-            ItemUseResponseBody result{};
-            if (sessionManager->CheckItemUse(p->GetSessionID(), zoneID, request, result)) {
+            ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
+            const auto check = sessionManager->CheckItemUse(p->GetSessionID(), zoneID, request, result);
+            if (check == SessionRequestStatus::Ready) {
                 if (const auto applied = zone.UseItem(p->GetSessionID(), request, inventory)) {
                     result = *applied;
                     sessionManager->RememberItemUse(p->GetSessionID(), zoneID, result);
                 }
-            }
+            } else if (check == SessionRequestStatus::StaleOwnership || check == SessionRequestStatus::StaleRequest)
+                result.status = 7;
             auto response = writer->WriteItemUseResponse(result);
             if (response)
                 networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
@@ -196,14 +198,18 @@ namespace Core {
                 requestID = request.requestID;
                 epoch = request.ownershipEpoch;
             }
-            EquipmentResponseBody result{};
-            if (sessionManager->CheckEquipment(p->GetSessionID(), zoneID, requestID, epoch, write, slot, itemID, result)) {
+            EquipmentResponseBody result{requestID, epoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), slot};
+            const auto check = sessionManager->CheckEquipment(p->GetSessionID(), zoneID, requestID, epoch, write, slot, itemID, result);
+            if (check == SessionRequestStatus::Ready) {
                 if (const auto applied = zone.Equipment(p->GetSessionID(), requestID, epoch, write, slot, itemID, inventory)) {
                     result = *applied;
                     if (write)
                         sessionManager->RememberEquipment(p->GetSessionID(), zoneID, itemID, result);
                 }
-            }
+            } else if (check == SessionRequestStatus::StaleOwnership)
+                result.status = static_cast<uint8_t>(EquipmentStatus::StaleOwnership);
+            else if (check == SessionRequestStatus::StaleRequest)
+                result.status = static_cast<uint8_t>(EquipmentStatus::StaleRequest);
             auto response = writer->WriteEquipmentResponse(result);
             if (response)
                 networkSender->SendDataUnique(p->GetSessionID(), std::move(response));

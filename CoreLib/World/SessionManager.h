@@ -50,6 +50,13 @@ namespace Core {
     struct ZoneTransfer;
     struct ProfileVersionUpdate;
     struct ZoneChangeResult;
+    enum class SessionRequestStatus {
+        Ready,
+        Invalid,
+        StaleOwnership,
+        StaleRequest,
+        Replay
+    };
     enum class ZoneOperationResult {
         NoResponse,
         Rejected,
@@ -242,10 +249,11 @@ namespace Core {
             }
             return res;
         }
-        bool CheckItemUse(uint64_t sessionID, uint16_t zoneID, const ItemUseRequestBody& request, ItemUseResponseBody& result) const;
+        // cachedResponse is written only for Replay; handlers construct other responses.
+        SessionRequestStatus CheckItemUse(uint64_t sessionID, uint16_t zoneID, const ItemUseRequestBody& request, ItemUseResponseBody& cachedResponse) const;
         void RememberItemUse(uint64_t sessionID, uint16_t zoneID, const ItemUseResponseBody& result);
-        bool CheckEquipment(uint64_t sessionID, uint16_t zoneID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot, uint32_t itemID,
-            EquipmentResponseBody& result) const;
+        SessionRequestStatus CheckEquipment(uint64_t sessionID, uint16_t zoneID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot,
+            uint32_t itemID, EquipmentResponseBody& cachedResponse) const;
         void RememberEquipment(uint64_t sessionID, uint16_t zoneID, uint32_t itemID, const EquipmentResponseBody& result);
         std::optional<DisconnectRequest> BeginDisconnect(uint64_t sessionID);
         bool CompleteLobbyDisconnect(uint64_t sessionID, uint64_t ownershipEpoch);
