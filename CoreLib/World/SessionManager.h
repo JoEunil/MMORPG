@@ -46,7 +46,6 @@ namespace Core {
         mutable std::shared_mutex smutex;
         std::unordered_map<uint64_t, SessionData> sessionMap;
     };
-    class CacheCommandSender;
     class ISessionLifecycleListener;
     struct ZoneTransfer;
     struct ProfileVersionUpdate;
@@ -95,23 +94,16 @@ namespace Core {
         std::array<SessionShard, SHARD_SIZE> m_shards; // mutex있어서 vector 사용 불가
         std::atomic<bool> m_running;
 
-        const CacheCommandSender* cacheCommands = nullptr;
         ISessionLifecycleListener* lifecycleListener = nullptr;
 
-        void Initialize(const CacheCommandSender* commands, ISessionLifecycleListener& listener) {
+        void Initialize(ISessionLifecycleListener& listener) {
             for (auto& shard : m_shards)
                 shard.sessionMap.reserve(MAX_USER_CAPACITY / SHARD_SIZE);
-            cacheCommands = commands;
             lifecycleListener = &listener;
             m_running.store(true, std::memory_order_relaxed);
         }
 
         bool IsReady() const {
-
-            if (cacheCommands == nullptr) {
-                sysLogger->LogError("core session manager", "cache command sender not initialized");
-                return false;
-            }
 
             if (lifecycleListener == nullptr) {
                 sysLogger->LogError("core session manager", "session lifecycle listener not initialized");
@@ -120,7 +112,7 @@ namespace Core {
             return true;
         }
 
-        void CleanUp();
+        std::vector<std::shared_ptr<ZoneTransfer>> Shutdown();
         static void UpdateZoneOwnershipLocked(SessionData& session, uint16_t destinationID);
         static uint64_t NextBootstrapIDLocked(SessionData& session);
         static SessionData* FindSessionLocked(SessionShard& shard, uint64_t sessionID) {
@@ -133,7 +125,7 @@ namespace Core {
         friend class ZoneBenchmarkAccess;
 
       public:
-        ~SessionManager() override { CleanUp(); }
+        ~SessionManager() override { Shutdown(); }
 
         void BeginAuth(uint64_t sessionID) {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];

@@ -1,6 +1,5 @@
 ﻿#include "pch.h"
 #include "SessionManager.h"
-#include "../Cache/CacheCommandSender.h"
 #include "Interface/ISessionLifecycleListener.h"
 #include <algorithm>
 #include <limits>
@@ -265,16 +264,18 @@ namespace Core {
         return ++session.bootstrapSequence;
     }
 
-    void SessionManager::CleanUp() {
+    std::vector<std::shared_ptr<ZoneTransfer>> SessionManager::Shutdown() {
+        std::vector<std::shared_ptr<ZoneTransfer>> pending;
         if (!m_running.exchange(false, std::memory_order_relaxed))
-            return;
+            return pending;
         for (auto& shard : m_shards) {
             std::unique_lock lock(shard.smutex);
-            for (const auto& [sessionID, data] : shard.sessionMap)
+            for (auto& [sessionID, data] : shard.sessionMap)
                 if (data.pendingZoneTransfer)
-                    cacheCommands->EnqueueCharacterStateUpdate(sessionID, data.pendingZoneTransfer->character);
+                    pending.push_back(std::move(data.pendingZoneTransfer));
             shard.sessionMap.clear();
         }
+        return pending;
     }
 
     bool SessionManager::CompleteZoneDisconnect(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, std::shared_ptr<ZoneTransfer>& pending) {

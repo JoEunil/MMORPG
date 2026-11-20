@@ -69,7 +69,7 @@ namespace Core {
         void InjectDependencies2(INetworkSender* networkSender, ISessionAuth* session, IMessageQueue* sendMQ, IProfileCache* profileCache, IInventoryOperations* inventory = nullptr) {
             cacheCommandSender.Initialize(sendMQ, &messageWriter, &msgPool);
             zoneEventRouter.Initialize(zoneHandler, perfCollector, nonSimulationThreadPool);
-            sessionManager.Initialize(&cacheCommandSender, chat);
+            sessionManager.Initialize(chat);
             packetDispatcher.Initialize(nonSimulationThreadPool, zoneEventRouter, sessionManager);
             nonSimulationThreadPool.Start();
             broadcastPool.Start();
@@ -126,7 +126,8 @@ namespace Core {
             CharacterState character;
             while (lobbyZone.TakeCharacter(character))
                 cacheCommandSender.EnqueueCharacterStateUpdate(character.sessionID, character);
-            sessionManager.CleanUp();
+            for (const auto& transfer : sessionManager.Shutdown())
+                cacheCommandSender.EnqueueCharacterStateUpdate(transfer->character.sessionID, transfer->character);
         }
     };
 }
