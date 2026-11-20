@@ -162,7 +162,6 @@ namespace Core {
         if (request->chatID == 0) lobbyZone->Disconnect(sessionID);
         if (!sessionManager->CompleteLobbyDisconnect(sessionID, request->ownershipEpoch))
             errorLogger->LogError("non simulation handler", "lobby disconnect metadata changed", "sessionID", sessionID);
-        if (request->chatID != 0) chat->DeleteChatSession(sessionID, 0);
         if (save) cacheCommands->EnqueueCharacterStateUpdate(sessionID, character);
     }
 

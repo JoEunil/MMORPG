@@ -172,6 +172,7 @@
     <ClInclude Include="World\Interface\ILobbyReturnQueue.h" />
     <ClInclude Include="NonSimulation\Interface\INonSimulationQueue.h" />
     <ClInclude Include="World\Interface\ISessionStatusReader.h" />
+    <ClInclude Include="World\Interface\ISessionLifecycleListener.h" />
     <ClInclude Include="World\Interface\IZoneTransfer.h" />
     <ClInclude Include="Interface\IPacketPool.h" />
     <ClInclude Include="Interface\IPacketPoolManager.h" />

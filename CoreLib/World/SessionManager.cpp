@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "SessionManager.h"
 #include "../Cache/CacheCommandSender.h"
-#include "../NonSimulation/ChatThreadPool.h"
+#include "Interface/ISessionLifecycleListener.h"
 #include <algorithm>
 #include <limits>
 
@@ -80,10 +80,7 @@ namespace Core {
             if (zoneID != 0 && transfer->IsRespawn())
                 session->lastRespawnRequestEpoch = transfer->ownershipEpoch;
             UpdateZoneOwnershipLocked(*session, zoneID);
-            if (zoneID == 0)
-                LeaveZoneChatLocked(sessionID, transfer->sourceZoneID);
-            else
-                JoinZoneChatLocked(sessionID, zoneID, *session);
+            lifecycleListener->OnSessionZoneChanged(sessionID, transfer->sourceZoneID, zoneID);
         }
         return ZoneTransferCommit{session->chatID, session->ownershipEpoch,
             transfer->character.profileId, transfer->character.profileVersion};
@@ -110,7 +107,10 @@ namespace Core {
             || session->zoneID != 0 || session->ownershipEpoch != ownershipEpoch)
             return false;
         UpdateZoneOwnershipLocked(*session, zoneID);
-        JoinZoneChatLocked(sessionID, zoneID, *session, profileID);
+        if (session->chatID == 0)
+            session->chatID = lifecycleListener->OnSessionEnteredWorld(sessionID, zoneID, profileID);
+        else
+            lifecycleListener->OnSessionZoneChanged(sessionID, 0, zoneID);
         result.chatID = session->chatID;
         result.ownershipEpoch = session->ownershipEpoch;
         return true;
@@ -251,17 +251,6 @@ namespace Core {
             && session->zoneID == transfer->sourceZoneID && session->ownershipEpoch == transfer->ownershipEpoch;
     }
 
-    void SessionManager::JoinZoneChatLocked(uint64_t sessionID, uint16_t zoneID, SessionData& session,
-        std::optional<uint32_t> lobbyProfile) {
-        if (lobbyProfile && session.chatID == 0)
-            session.chatID = chat->AddChatSession(sessionID, zoneID, *lobbyProfile);
-        chat->EnqueueZoneJoin(sessionID, zoneID);
-    }
-
-    void SessionManager::LeaveZoneChatLocked(uint64_t sessionID, uint16_t zoneID) {
-        chat->EnqueueZoneLeave(sessionID, zoneID);
-    }
-
     uint64_t SessionManager::NextBootstrapIDLocked(SessionData& session) {
         if (session.bootstrapSequence == (std::numeric_limits<uint64_t>::max)())
             return 0;
@@ -290,8 +279,7 @@ namespace Core {
 
         pending = std::move(it->second.pendingZoneTransfer);
         shard.sessionMap.erase(it);
-        chat->EnqueueZoneLeave(sessionID, zoneID);
-        chat->DeleteChatSession(sessionID, zoneID);
+        lifecycleListener->OnSessionClosed(sessionID, zoneID);
         return true;
     }
 
@@ -369,7 +357,10 @@ namespace Core {
         std::unique_lock lock(shard.smutex);
         auto* session = FindSessionLocked(shard, sessionID);
         if (!session || !session->disconnectQueued || session->zoneID != 0 || session->ownershipEpoch != ownershipEpoch) return false;
+        const bool enteredWorld = session->chatID != 0;
         shard.sessionMap.erase(sessionID);
+        if (enteredWorld)
+            lifecycleListener->OnSessionClosed(sessionID, 0);
         return true;
     }
 }

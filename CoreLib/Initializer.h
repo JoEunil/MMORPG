@@ -37,13 +37,13 @@ namespace Core {
         CacheCommandSender cacheCommandSender;
         ZoneHandler zoneHandler;
         ZoneEventRouter zoneEventRouter;
+        ChatThreadPool chat;
         SessionManager sessionManager;
         BroadcastThreadPool broadcastPool;
         NonSimulationHandler nonSimulationHandler;
         NonSimulationThreadPool nonSimulationThreadPool;
         PacketDispatcher packetDispatcher;
         LobbyZone lobbyZone;
-        ChatThreadPool chat;
         CorePerfCollector perfCollector;
 
     public:
@@ -69,7 +69,7 @@ namespace Core {
         void InjectDependencies2(INetworkSender* networkSender, ISessionAuth* session, IMessageQueue* sendMQ, IProfileCache* profileCache, IInventoryOperations* inventory = nullptr) {
             cacheCommandSender.Initialize(sendMQ, &messageWriter, &msgPool);
             zoneEventRouter.Initialize(zoneHandler, perfCollector, nonSimulationThreadPool);
-            sessionManager.Initialize(&cacheCommandSender, &chat);
+            sessionManager.Initialize(&cacheCommandSender, chat);
             packetDispatcher.Initialize(nonSimulationThreadPool, zoneEventRouter, sessionManager);
             nonSimulationThreadPool.Start();
             broadcastPool.Start();

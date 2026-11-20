@@ -144,6 +144,9 @@
     <ClInclude Include="World\Interface\ISessionStatusReader.h">
       <Filter>World\Interface</Filter>
     </ClInclude>
+    <ClInclude Include="World\Interface\ISessionLifecycleListener.h">
+      <Filter>World\Interface</Filter>
+    </ClInclude>
     <ClInclude Include="World\Interface\ISessionSnapshotReader.h">
       <Filter>World\Interface</Filter>
     </ClInclude>

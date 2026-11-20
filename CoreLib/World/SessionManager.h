@@ -47,7 +47,7 @@ namespace Core {
         std::unordered_map<uint64_t, SessionData> sessionMap;
     };
     class CacheCommandSender;
-    class ChatThreadPool;
+    class ISessionLifecycleListener;
     struct ZoneTransfer;
     struct ProfileVersionUpdate;
     struct ZoneChangeResult;
@@ -87,13 +87,13 @@ namespace Core {
         std::atomic<bool> m_running;
 
         const CacheCommandSender* cacheCommands = nullptr;
-        ChatThreadPool* chat = nullptr;
+        ISessionLifecycleListener* lifecycleListener = nullptr;
 
-        void Initialize(const CacheCommandSender* commands, ChatThreadPool* c) {
+        void Initialize(const CacheCommandSender* commands, ISessionLifecycleListener& listener) {
             for (auto& shard : m_shards)
                 shard.sessionMap.reserve(MAX_USER_CAPACITY / SHARD_SIZE);
             cacheCommands = commands;
-            chat = c;
+            lifecycleListener = &listener;
             m_running.store(true, std::memory_order_relaxed);
         }
 
@@ -104,8 +104,8 @@ namespace Core {
                 return false;
             }
 
-            if (chat == nullptr) {
-                sysLogger->LogError("core session manager", "chat thread pool not initialized");
+            if (lifecycleListener == nullptr) {
+                sysLogger->LogError("core session manager", "session lifecycle listener not initialized");
                 return false;
             }
             return true;
@@ -119,9 +119,6 @@ namespace Core {
             return found != shard.sessionMap.end() ? &found->second : nullptr;
         }
         static bool MatchesZoneTransfer(const SessionData* session, const std::shared_ptr<ZoneTransfer>& transfer);
-        void JoinZoneChatLocked(uint64_t sessionID, uint16_t zoneID, SessionData& session,
-            std::optional<uint32_t> lobbyProfile = std::nullopt);
-        void LeaveZoneChatLocked(uint64_t sessionID, uint16_t zoneID);
 
         friend class Initializer;
         friend class ZoneBenchmarkAccess;

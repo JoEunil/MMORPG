@@ -5,6 +5,25 @@
 #include "../CorePerfCollector.h"
 
 namespace Core {
+    uint64_t ChatThreadPool::OnSessionEnteredWorld(uint64_t sessionID, uint16_t zoneID, uint32_t profileID) {
+        const auto chatID = AddChatSession(sessionID, zoneID, profileID);
+        EnqueueZoneJoin(sessionID, zoneID);
+        return chatID;
+    }
+
+    void ChatThreadPool::OnSessionZoneChanged(uint64_t sessionID, uint16_t previousZoneID, uint16_t currentZoneID) {
+        if (currentZoneID != 0)
+            EnqueueZoneJoin(sessionID, currentZoneID);
+        else if (previousZoneID != 0)
+            EnqueueZoneLeave(sessionID, previousZoneID);
+    }
+
+    void ChatThreadPool::OnSessionClosed(uint64_t sessionID, uint16_t zoneID) {
+        if (zoneID != 0)
+            EnqueueZoneLeave(sessionID, zoneID);
+        DeleteChatSession(sessionID, zoneID);
+    }
+
     namespace {
         constexpr auto CHAT_BATCH_WINDOW = std::chrono::milliseconds(15);
         constexpr int CHAT_BATCH_SIZE = 100;

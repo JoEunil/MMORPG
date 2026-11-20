@@ -13,6 +13,7 @@
 #include "ChatSessionManager.h"
 #include "../Config.h"
 #include "NonSimulationConfig.h"
+#include "../World/Interface/ISessionLifecycleListener.h"
 #include <CoreLib/Interface/IPacket.h>
 #include <BaseLib/NonBlockingBackPressureQueue.h>
 
@@ -48,7 +49,7 @@ namespace Core {
     class INetworkSender;
     class PacketWriter;
     class CorePerfCollector;
-    class ChatThreadPool {
+    class ChatThreadPool : public ISessionLifecycleListener {
         ChatSessionManager m_sessions;
         alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_chatIdGenerater;
         char padding[std::hardware_destructive_interference_size - sizeof(uint64_t)];
@@ -84,7 +85,7 @@ namespace Core {
             m_chatIdGenerater.store(1, std::memory_order_relaxed);
         }
 
-        bool IsReady() {
+        bool IsReady() const {
             if (networkSender == nullptr) {
                 sysLogger->LogError("chat thread", "iocp not initialized");
                 return false;
@@ -131,6 +132,11 @@ namespace Core {
         friend class Initializer;
 
     public:
+        uint64_t OnSessionEnteredWorld(uint64_t sessionID, uint16_t zoneID, uint32_t profileID) override;
+        void OnSessionZoneChanged(uint64_t sessionID, uint16_t previousZoneID, uint16_t currentZoneID) override;
+        void OnSessionClosed(uint64_t sessionID, uint16_t zoneID) override;
+
+    private:
         uint64_t AddChatSession(uint64_t session, uint16_t zone, uint32_t profileId) {
             uint64_t chatID = m_chatIdGenerater.fetch_add(1, std::memory_order_relaxed);
 
@@ -158,6 +164,7 @@ namespace Core {
             EnqueueChat(e);
         }
 
+    public:
         bool EnqueueChat(ChatEvent& event, Base::Priority priority = Base::Priority::Droppable) {
             if (!m_running.load(std::memory_order_relaxed))
                 return false;
@@ -165,6 +172,7 @@ namespace Core {
             return m_chatQueue.Enqueue(event, priority);
         }
 
+    private:
         void EnqueueZoneTransition(ChatEvent& event) {
             const uint64_t session = event.senderSessionID;
             const uint64_t zoneID = event.key.id;
