@@ -13,10 +13,10 @@
 
 namespace Core {
     void ZoneState::ApplyAction(uint64_t sessionID, const ActionRequestBody& action, IZoneTransfer& zoneTransfer) {
-        const auto member = m_sessionToIndex.find(sessionID);
-        if (member == m_sessionToIndex.end())
+        auto* member = FindCharacter(sessionID);
+        if (!member)
             return;
-        const auto& character = m_chars[member->second];
+        const auto& character = *member;
         const float previousX = character.x;
         const float previousY = character.y;
         const float previousBudget = character.moveBudget;
@@ -61,11 +61,11 @@ namespace Core {
     }
 
     void ZoneState::Move(uint64_t sessionID, uint8_t dir, float x, float y) {
-        auto it = m_sessionToIndex.find(sessionID);
-        if (it == m_sessionToIndex.end()) {
+        auto* found = FindCharacter(sessionID);
+        if (!found) {
             return;
         }
-        auto& character = m_chars[it->second];
+        auto& character = *found;
 
         //clamp
         if (dir > 3 || !std::isfinite(x) || !std::isfinite(y)) {
@@ -134,11 +134,8 @@ namespace Core {
 
         auto [newX, newY] = GetCell(character.x, character.y, m_area);
 
-        uint16_t oldX = character.cellX;
-        uint16_t oldY = character.cellY;
-        uint16_t oldIdx = character.cellIdx;
         // cell 변경 발생할 경우만
-        if (newX != oldX || newY != oldY) {
+        if (newX != character.cellX || newY != character.cellY) {
             RemoveFromCell(character);
             AddToCell(character, newX, newY);
         }
@@ -149,11 +146,11 @@ namespace Core {
         if (skillSlot == NONE_SKILL || !std::isfinite(aimAngle) || aimAngle < 0 || aimAngle >= 360) {
             return;
         }
-        auto it = m_sessionToIndex.find(sessionID);
-        if (it == m_sessionToIndex.end()) {
+        auto* found = FindCharacter(sessionID);
+        if (!found) {
             return;
         }
-        auto& character = m_chars[it->second];
+        auto& character = *found;
         if (skillSlot >= character.skillSlotCnt || skillSlot >= character.skillSlot.size()) {
             gameLogger->LogInfo("zone state", "invalid skill slot", "sessionID", sessionID, "skillSlot", skillSlot);
             m_cheatList.emplace_back(sessionID, 1);
@@ -179,11 +176,11 @@ namespace Core {
 
     ParryResponseBody ZoneState::Parry(uint64_t sessionID, const ParryRequestBody& request) {
         ParryResponseBody result{request.requestID, request.ownershipEpoch, static_cast<uint8_t>(ParryStatus::Unavailable), 0, 0};
-        const auto member = m_sessionToIndex.find(sessionID);
-        if (member == m_sessionToIndex.end())
+        auto* member = FindCharacter(sessionID);
+        if (!member)
             return result;
 
-        auto& character = m_chars[member->second];
+        auto& character = *member;
         auto& previous = character.lastParry;
         if (request.requestID < previous.requestID || (request.requestID == previous.requestID && request.ownershipEpoch != previous.ownershipEpoch)) {
             result.status = static_cast<uint8_t>(ParryStatus::StaleRequest);
@@ -217,20 +214,20 @@ namespace Core {
     }
 
     void ZoneState::DirtyCheck(uint64_t sessionID) {
-        auto it = m_sessionToIndex.find(sessionID);
-        if (it == m_sessionToIndex.end()) {
+        auto* found = FindCharacter(sessionID);
+        if (!found) {
             return;
         }
-        auto& character = m_chars[it->second];
+        auto& character = *found;
         m_cells[character.cellY][character.cellX].dirtyChar.push_back(character.zoneInternalID);
     }
 
     std::optional<ItemUseResponseBody> ZoneState::UseItem(uint64_t sessionID, const ItemUseRequestBody& request, IInventoryOperations* inventory) {
         ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
-        const auto found = m_sessionToIndex.find(sessionID);
-        if (found == m_sessionToIndex.end())
+        auto* found = FindCharacter(sessionID);
+        if (!found)
             return std::nullopt;
-        auto& character = m_chars[found->second];
+        auto& character = *found;
         result.cooldownRemainingTicks = character.potionCooldownTicks;
         const auto item = Data::itemMap.find(request.itemID);
         if (item == Data::itemMap.end() || (item->second.hpRecovery == 0 && item->second.mpRecovery == 0))
@@ -278,10 +275,10 @@ namespace Core {
         uint32_t itemID, IInventoryOperations* inventory) {
         EquipmentResponseBody result{requestID, ownershipEpoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), slot, 0, 0,
             0, 0, 0, 0, 0};
-        auto member = m_sessionToIndex.find(sessionID);
-        if (member == m_sessionToIndex.end())
+        auto* member = FindCharacter(sessionID);
+        if (!member)
             return std::nullopt;
-        auto& character = m_chars[member->second];
+        auto& character = *member;
         if (slot > 2 || (!write && slot != 0) || (write && itemID != 0 && itemID != 3u + slot))
             result.status = static_cast<uint8_t>(EquipmentStatus::Unsupported);
         else if (write && character.hp <= 0)

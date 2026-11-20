@@ -2,6 +2,8 @@
 #include <array>
 #include <cstdint>
 #include <algorithm>
+#include <optional>
+#include <vector>
 
 #include "../Packet/PacketConfig.h"
 #include "WorldMap.h"
@@ -62,6 +64,27 @@ namespace Core {
         std::vector< ActionResult> actionResults; // 스킬 이펙트 처리
         std::vector<ActiveSkill> activeSkills; // 시전 중인 스킬 리스트, timeline에 의해 이펙트 처리 요청 및 데미지 적용.
         CellArea area;
+
+        uint16_t AddCharacter(uint64_t sessionID) {
+            charSessions.push_back(sessionID);
+            return static_cast<uint16_t>(charSessions.size() - 1);
+        }
+
+        std::optional<uint64_t> RemoveCharacter(uint16_t index) {
+            const auto movedSession = charSessions.back();
+            const bool moved = index != charSessions.size() - 1;
+            charSessions[index] = movedSession;
+            charSessions.pop_back();
+            if (moved)
+                return movedSession;
+            return std::nullopt;
+        }
+
+        void ClearCharacterEffects(uint64_t sessionID, uint32_t internalID) {
+            std::erase_if(activeSkills, [sessionID](const ActiveSkill& skill) { return skill.casterType == 0 && skill.sessionId == sessionID; });
+            std::erase_if(actionResults, [internalID](const ActionResult& result) { return result.casterType == 0 && result.zoneInternalId == internalID; });
+            std::erase(dirtyChar, internalID);
+        }
     };
 
     struct ZoneArea {

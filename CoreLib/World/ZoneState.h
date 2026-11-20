@@ -115,6 +115,10 @@ namespace Core {
             return true;
         }
 
+        CharacterState* FindCharacter(uint64_t sessionID) {
+            const auto found = m_sessionToIndex.find(sessionID);
+            return found == m_sessionToIndex.end() ? nullptr : &m_chars[found->second];
+        }
         void RemoveFromCell(CharacterState& character);
         void AddToCell(CharacterState& character, uint8_t x, uint8_t y);
         uint32_t ImmigrateChar(uint64_t sessionID, const CharacterState& user);

@@ -9,10 +9,10 @@
 
 namespace Core {
     bool ZoneState::DescribeZoneChange(uint64_t sessionID, uint64_t chatID, uint64_t ownershipEpoch, ZoneChangeResult& result) {
-        const auto member = m_sessionToIndex.find(sessionID);
-        if (member == m_sessionToIndex.end())
+        auto* member = FindCharacter(sessionID);
+        if (!member)
             return false;
-        const auto& character = m_chars[member->second];
+        const auto& character = *member;
         result = {m_zoneID, chatID, character.zoneInternalID, character.x, character.y, m_generation, ownershipEpoch};
         return true;
     }
@@ -20,10 +20,10 @@ namespace Core {
     bool ZoneState::EnqueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch, uint64_t bootstrapID) {
         if (broadcast == nullptr || writer == nullptr)
             return false;
-        auto own = m_sessionToIndex.find(sessionID);
-        if (own == m_sessionToIndex.end() || ownershipEpoch == 0 || bootstrapID == 0)
+        auto* own = FindCharacter(sessionID);
+        if (!own || ownershipEpoch == 0 || bootstrapID == 0)
             return false;
-        const auto& character = m_chars[own->second];
+        const auto& character = *own;
         const int ownCell = character.cellY * CELLS_X + character.cellX;
         auto players = writer->GetBootstrapFullHeader(false, m_zoneID, m_generation, ownershipEpoch, bootstrapID);
         auto playerChunk = writer->GetInitialChunk(true);
@@ -37,8 +37,8 @@ namespace Core {
             const int cy = cellIndex / CELLS_X;
             const int cx = cellIndex % CELLS_X;
             for (uint64_t member : m_cells[cy][cx].charSessions) {
-                auto it = m_sessionToIndex.find(member);
-                if (it == m_sessionToIndex.end() || !writer->WriteFullField(playerChunk, m_chars[it->second]))
+                const auto* memberCharacter = FindCharacter(member);
+                if (!memberCharacter || !writer->WriteFullField(playerChunk, *memberCharacter))
                     return false;
                 playerBytes += sizeof(FullStateField);
                 ++playerCount;
@@ -201,7 +201,7 @@ namespace Core {
                 if (chunks[idx] == nullptr || headers[idx] == nullptr)
                     continue;
                 for (auto& session : cell.charSessions) {
-                    auto& character = m_chars[m_sessionToIndex[session]];
+                    auto& character = m_chars[m_sessionToIndex.at(session)];
                     writer->WriteFullField(chunks[idx], character);
                 }
             }

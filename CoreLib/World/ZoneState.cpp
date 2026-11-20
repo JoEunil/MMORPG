@@ -21,27 +21,15 @@ namespace Core {
     }
 
     void ZoneState::RemoveFromCell(CharacterState& character) {
-        auto& vec = m_cells[character.cellY][character.cellX].charSessions;
-        uint16_t deleteIdx = character.cellIdx;
-
-        uint64_t swapSession = vec.back();
-        vec[deleteIdx] = swapSession;
-
-        if (deleteIdx != vec.size() - 1) {
-            auto& swappedChar = m_chars[m_sessionToIndex[swapSession]];
-            swappedChar.cellIdx = deleteIdx;
-        }
-
-        vec.pop_back();
+        const auto movedSession = m_cells[character.cellY][character.cellX].RemoveCharacter(character.cellIdx);
+        if (movedSession)
+            m_chars[m_sessionToIndex.at(*movedSession)].cellIdx = character.cellIdx;
     }
 
     void ZoneState::AddToCell(CharacterState& character, uint8_t x, uint8_t y) {
-        auto& vec = m_cells[y][x].charSessions;
-        vec.push_back(character.sessionID);
-        character.cellIdx = vec.size() - 1;
+        character.cellIdx = m_cells[y][x].AddCharacter(character.sessionID);
         character.cellX = x;
         character.cellY = y;
-        // 임시로 스킬 고정
     }
 
     uint32_t ZoneState::ImmigrateChar(uint64_t sessionID, const CharacterState& state) {
@@ -130,11 +118,11 @@ namespace Core {
     bool ZoneState::DescribeOrRespawnInTown(uint64_t sessionID, uint64_t characterID, bool replay, ZoneChangeResult& result) {
         if (!WorldMap::CanTraverse(TOWN_SPAWN_X, TOWN_SPAWN_Y, TOWN_SPAWN_X, TOWN_SPAWN_Y))
             return false;
-        const auto member = m_sessionToIndex.find(sessionID);
-        if (member == m_sessionToIndex.end())
+        auto* member = FindCharacter(sessionID);
+        if (!member)
             return false;
 
-        auto& character = m_chars[member->second];
+        auto& character = *member;
         if (character.characterID != characterID)
             return false;
         if (replay) {
@@ -177,10 +165,10 @@ namespace Core {
     bool ZoneState::StartRespawnTransfer(uint64_t sessionID, uint64_t characterID, uint64_t ownershipEpoch, IZoneTransfer& zoneTransfer) {
         if (!WorldMap::CanTraverse(TOWN_SPAWN_X, TOWN_SPAWN_Y, TOWN_SPAWN_X, TOWN_SPAWN_Y))
             return false;
-        const auto member = m_sessionToIndex.find(sessionID);
-        if (member == m_sessionToIndex.end())
+        auto* member = FindCharacter(sessionID);
+        if (!member)
             return false;
-        const auto& character = m_chars[member->second];
+        const auto& character = *member;
         if (character.characterID != characterID || character.hp != 0 || character.maxHp <= 0 || character.maxMp < 0)
             return false;
 
@@ -289,9 +277,7 @@ namespace Core {
         // Old casts must not find the same session again after a quick return.
         for (auto& row : m_cells) {
             for (auto& cell : row) {
-                std::erase_if(cell.activeSkills, [sessionID](const ActiveSkill& skill) { return skill.casterType == 0 && skill.sessionId == sessionID; });
-                std::erase_if(cell.actionResults, [id](const ActionResult& result) { return result.casterType == 0 && result.zoneInternalId == id; });
-                std::erase(cell.dirtyChar, id);
+                cell.ClearCharacterEffects(sessionID, id);
             }
         }
     }
@@ -314,10 +300,10 @@ namespace Core {
     }
 
     void ZoneState::RestoreMovement(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint32_t dirtyBit) {
-        auto it = m_sessionToIndex.find(sessionID);
-        if (it == m_sessionToIndex.end())
+        auto* found = FindCharacter(sessionID);
+        if (!found)
             return;
-        auto& character = m_chars[it->second];
+        auto& character = *found;
         if (character.x != x || character.y != y) {
             RemoveFromCell(character);
             character.x = x;
@@ -331,19 +317,19 @@ namespace Core {
     }
 
     bool ZoneState::EmigrateChar(uint64_t sessionID, CharacterState& out) {
-        auto it = m_sessionToIndex.find(sessionID);
-        if (it == m_sessionToIndex.end())
+        const auto* character = FindCharacter(sessionID);
+        if (!character)
             return false;
-        out = m_chars[it->second];
+        out = *character;
         RemoveCharacter(sessionID);
         return true;
     }
 
     void ZoneState::UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version) {
-        auto it = m_sessionToIndex.find(sessionID);
-        if (it == m_sessionToIndex.end())
+        auto* found = FindCharacter(sessionID);
+        if (!found)
             return;
-        auto& character = m_chars[it->second];
+        auto& character = *found;
         if (!character.UpdateProfileVersion(profileID, version))
             return;
         character.dirtyBit |= 0x200;
