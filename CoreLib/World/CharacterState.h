@@ -39,7 +39,6 @@ namespace Core {
         uint32_t equippedWeaponItemID = 0;
         uint32_t equippedShieldItemID = 0;
         uint32_t equippedBodyItemID = 0;
-
         uint16_t WeaponAttackBonus() const {
             const auto item = Data::itemMap.find(equippedWeaponItemID);
             return item == Data::itemMap.end() ? 0 : item->second.weaponAttackBonus;

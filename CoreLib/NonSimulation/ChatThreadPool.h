@@ -28,23 +28,21 @@ namespace Core {
 
     struct ChatDestKey {
         CHAT_SCOPE scope;
-        uint64_t id; // zone, party, guild, targetChatID 
-        bool operator==(const ChatDestKey& other) const noexcept {
-            return scope == other.scope && id == other.id;
-        }
+        uint64_t id; // zone, party, guild, targetChatID
+        bool operator==(const ChatDestKey& other) const noexcept { return scope == other.scope && id == other.id; }
     };
 
     struct ChatEvent {
         ChatEventType type;
         uint64_t senderSessionID;
         uint64_t senderChatID;
-        uint32_t senderProfileId; // SESSION_ADD에서만 사용
+        uint32_t senderProfileId;  // SESSION_ADD에서만 사용
         uint64_t zoneSequence = 0; // ZONE_JOIN / ZONE_LEAVE에서만 사용
         ChatDestKey key;
         std::string message;
     };
 
-    const uint16_t CHAT_WORKER_SIZE = 1;  // 변경하려면 ChatDestKey 활용해 샤딩 적용 필요. 
+    const uint16_t CHAT_WORKER_SIZE = 1; // 변경하려면 ChatDestKey 활용해 샤딩 적용 필요.
 
     class INetworkSender;
     class PacketWriter;
@@ -72,9 +70,9 @@ namespace Core {
             std::size_t operator()(const ChatDestKey& key) const noexcept {
                 std::size_t h1 = std::hash<int>()(static_cast<int>(key.scope));
                 std::size_t h2 = std::hash<uint64_t>()(key.id);
-                return (h1<< 56) ^ h2 ;
+                return (h1 << 56) ^ h2;
                 // scope가 값이 너무 작은 범위라서 해시 충돌 피하기 위해 최상위 8비트로 shift 후 xor
-            }   
+            }
         };
 
         void Initialize(INetworkSender* sender, PacketWriter* w, CorePerfCollector* p) {
@@ -98,8 +96,7 @@ namespace Core {
         }
         void Start() {
             m_running.store(true, std::memory_order_relaxed);
-            for (int i = 0; i < CHAT_WORKER_SIZE; i++)
-            {
+            for (int i = 0; i < CHAT_WORKER_SIZE; i++) {
                 m_workerThreadPool.emplace_back(&ChatThreadPool::ThreadFunc, this);
             }
         }
@@ -107,8 +104,7 @@ namespace Core {
         void Stop() {
             if (!m_running.exchange(false, std::memory_order_relaxed))
                 return;
-            for (auto& t : m_workerThreadPool)
-            {
+            for (auto& t : m_workerThreadPool) {
                 if (t.joinable())
                     t.join();
             }
@@ -131,12 +127,12 @@ namespace Core {
         CorePerfCollector* perfCollector = nullptr;
         friend class Initializer;
 
-    public:
+      public:
         uint64_t OnSessionEnteredWorld(uint64_t sessionID, uint16_t zoneID, uint32_t profileID) override;
         void OnSessionZoneChanged(uint64_t sessionID, uint16_t previousZoneID, uint16_t currentZoneID) override;
         void OnSessionClosed(uint64_t sessionID, uint16_t zoneID) override;
 
-    private:
+      private:
         uint64_t AddChatSession(uint64_t session, uint16_t zone, uint32_t profileId) {
             uint64_t chatID = m_chatIdGenerater.fetch_add(1, std::memory_order_relaxed);
 
@@ -164,7 +160,7 @@ namespace Core {
             EnqueueChat(e);
         }
 
-    public:
+      public:
         bool EnqueueChat(ChatEvent& event, Base::Priority priority = Base::Priority::Droppable) {
             if (!m_running.load(std::memory_order_relaxed))
                 return false;
@@ -172,7 +168,7 @@ namespace Core {
             return m_chatQueue.Enqueue(event, priority);
         }
 
-    private:
+      private:
         void EnqueueZoneTransition(ChatEvent& event) {
             const uint64_t session = event.senderSessionID;
             const uint64_t zoneID = event.key.id;
@@ -191,7 +187,7 @@ namespace Core {
                 return;
             }
 
-            errorLogger->LogError("chat thread", "zone transition queue overflow","session", session, "zoneID", zoneID);
+            errorLogger->LogError("chat thread", "zone transition queue overflow", "session", session, "zoneID", zoneID);
         }
 
         // EnqueueChat으로 같이 처리하면 코드가 복잡해짐
@@ -210,5 +206,5 @@ namespace Core {
             e.key.id = zoneID;
             EnqueueZoneTransition(e);
         }
-	};
+    };
 }

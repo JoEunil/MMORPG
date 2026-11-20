@@ -46,7 +46,10 @@ namespace Core {
     };
 
     struct ZoneTransfer {
-        enum class Kind { Movement, Respawn };
+        enum class Kind {
+            Movement,
+            Respawn
+        };
 
         CharacterState character{};
         uint64_t ownershipEpoch = 0;
@@ -62,10 +65,10 @@ namespace Core {
     // Construction and destruction occur outside the worker lifetime.
     class ZoneState {
         std::vector<CharacterState> m_chars;
-        std::unordered_map<uint64_t, uint16_t> m_sessionToIndex; // 자신의 캐릭터를 컨트롤 할 때
+        std::unordered_map<uint64_t, uint16_t> m_sessionToIndex;    // 자신의 캐릭터를 컨트롤 할 때
         std::unordered_map<uint32_t, uint16_t> m_InternalIDToIndex; // 다른 캐릭터와 상호작용할 때
-        std::vector<MonsterState> m_monsters; // id = index, 죽은 몬스터는 제거하지 않고 틱 단위로 처리.
-        std::vector<std::pair<uint64_t, uint16_t>> m_cheatList;  // Cheat 탐지해서 배치처리하는 용도, stack
+        std::vector<MonsterState> m_monsters;                       // id = index, 죽은 몬스터는 제거하지 않고 틱 단위로 처리.
+        std::vector<std::pair<uint64_t, uint16_t>> m_cheatList;     // Cheat 탐지해서 배치처리하는 용도, stack
 
         uint64_t m_deltaTickCounter;
         bool m_monsterCellsChanged = false;
@@ -75,7 +78,7 @@ namespace Core {
         std::array<std::array<Cell, CELLS_X>, CELLS_Y> m_cells;
 
         alignas(std::hardware_destructive_interference_size) std::atomic<uint32_t> m_internalIdGenerator = 1; // 각각 character에 ID 부여
-        alignas(std::hardware_destructive_interference_size) std::atomic<uint32_t>m_userCnt;
+        alignas(std::hardware_destructive_interference_size) std::atomic<uint32_t> m_userCnt;
         char padding[std::hardware_destructive_interference_size - sizeof(uint32_t)];
 
         Base::TripleBuffer<SessionSnapshot> tripleBuffer;
@@ -87,8 +90,8 @@ namespace Core {
         inline static const CacheCommandSender* cacheCommands = nullptr;
         inline static INetworkSender* networkSender = nullptr;
         inline static CorePerfCollector* perfCollector;
-        static void Initialize(BroadcastThreadPool* b, PacketWriter* p, SessionManager* s, CorePerfCollector* pc,
-            const CacheCommandSender& commands, INetworkSender& sender) {
+        static void Initialize(BroadcastThreadPool* b, PacketWriter* p, SessionManager* s, CorePerfCollector* pc, const CacheCommandSender& commands,
+            INetworkSender& sender) {
             broadcast = b;
             writer = p;
             sessionManager = s;
@@ -113,7 +116,7 @@ namespace Core {
         }
 
         void RemoveFromCell(CharacterState& character);
-        void AddToCell(CharacterState& character,  uint8_t x, uint8_t y);
+        void AddToCell(CharacterState& character, uint8_t x, uint8_t y);
         uint32_t ImmigrateChar(uint64_t sessionID, const CharacterState& user);
         bool RegisterCharacter(CharacterState&& incoming);
         void ClearCharacterEffects(uint64_t sessionID, uint32_t internalID);
@@ -131,7 +134,8 @@ namespace Core {
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
         friend class MonsterBehaviorFixture;
-    public:
+
+      public:
         explicit ZoneState(uint16_t zone) {
             m_zoneID = zone;
             m_chars.reserve(MAX_ZONE_CAPACITY);
@@ -157,31 +161,26 @@ namespace Core {
             sessionSnapshotWriter = allocateSnapshot().release();
             tripleBuffer.Init(back1.release(), back2.release());
         }
-        ~ZoneState() {
-            delete sessionSnapshotWriter;
-        }
+        ~ZoneState() { delete sessionSnapshotWriter; }
         uint16_t GetZoneID() const { return m_zoneID; }
 
         void ApplyAction(uint64_t sessionID, const ActionRequestBody& action, IZoneTransfer& zoneTransfer);
         ParryResponseBody Parry(uint64_t sessionID, const ParryRequestBody& request);
         bool AdmitLobbyCharacter(uint64_t sessionID, CharacterState incoming, ZoneChangeResult& result);
         bool DescribeOrRespawnInTown(uint64_t sessionID, uint64_t characterID, bool replay, ZoneChangeResult& result);
-        bool StartRespawnTransfer(uint64_t sessionID, uint64_t characterID,
-            uint64_t ownershipEpoch, IZoneTransfer& zoneTransfer);
+        bool StartRespawnTransfer(uint64_t sessionID, uint64_t characterID, uint64_t ownershipEpoch, IZoneTransfer& zoneTransfer);
         bool TryResolveZoneTransfer(const ZoneTransfer& transfer, bool returning, ZoneChangeResult& result);
         void UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version);
         bool DescribeZoneChange(uint64_t sessionID, uint64_t chatID, uint64_t ownershipEpoch, ZoneChangeResult& result);
         bool EnqueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch, uint64_t bootstrapID);
 
         std::optional<ItemUseResponseBody> UseItem(uint64_t sessionID, const ItemUseRequestBody& request, IInventoryOperations* inventory);
-        std::optional<EquipmentResponseBody> Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch,
-            bool write, uint8_t slot, uint32_t itemID, IInventoryOperations* inventory);
+        std::optional<EquipmentResponseBody> Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot,
+            uint32_t itemID, IInventoryOperations* inventory);
         bool TakeCharacter(CharacterState& out);
         void InitializeMonster();
         bool EmigrateChar(uint64_t sessionID, CharacterState& o);
-        SessionSnapshotView ReadSessionSnapshot() {
-            return tripleBuffer.Read();
-        }
+        SessionSnapshotView ReadSessionSnapshot() { return tripleBuffer.Read(); }
         void DeltaSnapshot();
         void DeltaSnapshotMonster();
         void FullSnapshot();
@@ -200,8 +199,6 @@ namespace Core {
         void ApplyHit(std::optional<std::reference_wrapper<CharacterState>> caster, ActiveSkill& skill, int idx);
         void MoveToward(MonsterState& monster, CharacterState& character);
         void MoveAround(MonsterState& monster);
-        uint32_t GetUserCnt() const {
-            return m_userCnt.load(std::memory_order_relaxed);
-        }
+        uint32_t GetUserCnt() const { return m_userCnt.load(std::memory_order_relaxed); }
     };
 }

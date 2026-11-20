@@ -19,7 +19,8 @@
 #include "../Packet/PacketConfig.h"
 
 namespace Core {
-    void NonSimulationHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, SessionManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc, IZonePacketQueue& packets, IZoneRequestQueue& requests) {
+    void NonSimulationHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, SessionManager* manager,
+        LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc, IZonePacketQueue& packets, IZoneRequestQueue& requests) {
         zonePackets = &packets;
         zoneRequests = &requests;
         networkSender = sender;
@@ -69,7 +70,8 @@ namespace Core {
     }
 
     void NonSimulationHandler::Process(std::unique_ptr<IPacketView, PacketViewDeleter> packet) {
-        if (!packet) return;
+        if (!packet)
+            return;
         const auto opcode = packet->GetOpcode();
         if (opcode == OP::ITEM_USE || opcode == OP::EQUIPMENT_GET || opcode == OP::EQUIPMENT_SET) {
             ForwardZoneRequest(std::move(packet));
@@ -78,80 +80,80 @@ namespace Core {
         auto* p = packet.get();
         PacketHeader* h = parseHeader(p->GetPtr());
         uint16_t zoneID = 0;
-        if (p->GetOpcode() != OP::AUTH ) {
+        if (p->GetOpcode() != OP::AUTH) {
             zoneID = sessionManager->GetZoneID(p->GetSessionID());
         }
-        
-        switch (p->GetOpcode())
-        {
-            case OP::AUTH:
-                CheckSession(p);
-                break;
-            case OP::CHARACTER_LIST:
-                GetCharacterList(p);
-                break;
-            case OP::ENTER_WORLD:
-                GetCharacterState(p);
-                break;
-            case OP::CHAT:
-                Chat(p);
-                break;
-            case OP::ZONE_CHANGE:
-                ZoneChange(p);
-                break;
-            case OP::ZONE_RESYNC:
-                if (p->GetLength() == sizeof(PacketStruct<ZoneResyncBody>)) {
-                    const auto* body = parseBody<ZoneResyncBody>(p->GetPtr());
-                    const auto route = sessionManager->GetBootstrapRoute(p->GetSessionID(), body->ownershipEpoch);
-                    if (route) zoneRequests->TryEnqueueBootstrap(route->zoneID, p->GetSessionID(), route->ownershipEpoch, false);
-                }
-                break;
-            case OP::RESPAWN_TO_TOWN:
-                RespawnToTown(p);
-                break;
-            case OP::INVENTORY_REQ:
-                GetInventory(p);
-                break;
-            case OP::BAZAAR_BUY:
-                BazaarBuy(p);
-                break;
-            case OP::BAZAAR_OUTBOX_LIST:
-                BazaarOutboxList(p);
-                break;
-            case OP::BAZAAR_CHECK_OUTBOX:
-                BazaarCheckOutbox(p);
-                break;
-            case OP::BAZAAR_CANCEL_LISTING:
-                BazaarCancelListing(p);
-                break;
-            case OP::BAZAAR_CLAIM:
-                BazaarClaim(p);
-                break;
-            case OP::BAZAAR_MY_LIST:
-                BazaarMyList(p);
-                break;
-            case OP::BAZAAR_SEARCH:
-                BazaarSearch(p);
-                break;
-            case OP::BAZAAR_REGISTER:
-                BazaarRegister(p);
-                break;
-            case OP::WALLET_REQUEST:
-                WalletRequest(p);
-                break;
-            case OP::PROFILE_BATCH:
-                GetProfileBatch(p);
-                break;
-            default:
-                errorLogger->LogInfo("non zone handler",  "UnDefined OPCODE", "opcode", p->GetOpcode(),"header opcode", h->opcode,"sessionId", p->GetSessionID());
-                break;
+
+        switch (p->GetOpcode()) {
+        case OP::AUTH:
+            CheckSession(p);
+            break;
+        case OP::CHARACTER_LIST:
+            GetCharacterList(p);
+            break;
+        case OP::ENTER_WORLD:
+            GetCharacterState(p);
+            break;
+        case OP::CHAT:
+            Chat(p);
+            break;
+        case OP::ZONE_CHANGE:
+            ZoneChange(p);
+            break;
+        case OP::ZONE_RESYNC:
+            if (p->GetLength() == sizeof(PacketStruct<ZoneResyncBody>)) {
+                const auto* body = parseBody<ZoneResyncBody>(p->GetPtr());
+                const auto route = sessionManager->GetBootstrapRoute(p->GetSessionID(), body->ownershipEpoch);
+                if (route)
+                    zoneRequests->TryEnqueueBootstrap(route->zoneID, p->GetSessionID(), route->ownershipEpoch, false);
+            }
+            break;
+        case OP::RESPAWN_TO_TOWN:
+            RespawnToTown(p);
+            break;
+        case OP::INVENTORY_REQ:
+            GetInventory(p);
+            break;
+        case OP::BAZAAR_BUY:
+            BazaarBuy(p);
+            break;
+        case OP::BAZAAR_OUTBOX_LIST:
+            BazaarOutboxList(p);
+            break;
+        case OP::BAZAAR_CHECK_OUTBOX:
+            BazaarCheckOutbox(p);
+            break;
+        case OP::BAZAAR_CANCEL_LISTING:
+            BazaarCancelListing(p);
+            break;
+        case OP::BAZAAR_CLAIM:
+            BazaarClaim(p);
+            break;
+        case OP::BAZAAR_MY_LIST:
+            BazaarMyList(p);
+            break;
+        case OP::BAZAAR_SEARCH:
+            BazaarSearch(p);
+            break;
+        case OP::BAZAAR_REGISTER:
+            BazaarRegister(p);
+            break;
+        case OP::WALLET_REQUEST:
+            WalletRequest(p);
+            break;
+        case OP::PROFILE_BATCH:
+            GetProfileBatch(p);
+            break;
+        default:
+            errorLogger->LogInfo("non zone handler", "UnDefined OPCODE", "opcode", p->GetOpcode(), "header opcode", h->opcode, "sessionId", p->GetSessionID());
+            break;
         }
-        
     }
 
     void NonSimulationHandler::Disconnect(uint64_t sessionID) {
         const auto request = sessionManager->BeginDisconnect(sessionID);
-        if (!request) return;
+        if (!request)
+            return;
         if (request->zoneID != 0) {
             if (!zoneRequests->TryEnqueueDisconnect(request->zoneID, sessionID, request->ownershipEpoch))
                 errorLogger->LogError("non simulation handler", "could not queue zone disconnect", "sessionID", sessionID, "zoneID", request->zoneID);
@@ -159,10 +161,12 @@ namespace Core {
         }
         CharacterState character;
         const bool save = request->chatID != 0 && lobbyZone->EmigrateChar(sessionID, character);
-        if (request->chatID == 0) lobbyZone->Disconnect(sessionID);
+        if (request->chatID == 0)
+            lobbyZone->Disconnect(sessionID);
         if (!sessionManager->CompleteLobbyDisconnect(sessionID, request->ownershipEpoch))
             errorLogger->LogError("non simulation handler", "lobby disconnect metadata changed", "sessionID", sessionID);
-        if (save) cacheCommands->EnqueueCharacterStateUpdate(sessionID, character);
+        if (save)
+            cacheCommands->EnqueueCharacterStateUpdate(sessionID, character);
     }
 
     void NonSimulationHandler::RequestProfileRename(uint64_t sessionID, uint32_t profileId, const char* name, uint16_t nameLen) {
@@ -172,12 +176,6 @@ namespace Core {
         }
         cacheCommands->EnqueueProfileRename(sessionID, profileId, {name, nameLen});
     }
-
-
-
-
-
-
 
     void NonSimulationHandler::GetInventory(IPacketView* p) {
         const auto sessionID = p->GetSessionID();
@@ -189,13 +187,16 @@ namespace Core {
     }
 
     void NonSimulationHandler::WalletRequest(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<WalletRequestBody>)) return;
+        if (p->GetLength() != sizeof(PacketStruct<WalletRequestBody>))
+            return;
         const auto* header = parseHeader(p->GetPtr());
         const auto request = *parseBody<WalletRequestBody>(p->GetPtr());
-        if (header->magic != MAGIC || header->opcode != OP::WALLET_REQUEST || header->length != p->GetLength()
-            || IsSimulationFlag(header->flags) || request.requestID == 0) return;
+        if (header->magic != MAGIC || header->opcode != OP::WALLET_REQUEST || header->length != p->GetLength() || IsSimulationFlag(header->flags) ||
+            request.requestID == 0)
+            return;
         const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
-        if (characterID == 0) return;
+        if (characterID == 0)
+            return;
 
         if (!cacheCommands->EnqueueGoldBalance(p->GetSessionID(), characterID, request.requestID)) {
             MsgCurrencyResBody failed{};
@@ -282,12 +283,14 @@ namespace Core {
             const auto request = *parseBody<ItemUseRequestBody>(packet->GetPtr());
             ItemUseResponseBody result{};
             if (sessionManager->CheckItemUse(sessionID, zoneID, request, result)) {
-                if (zonePackets->TryEnqueuePacket(zoneID, std::move(packet))) return;
+                if (zonePackets->TryEnqueuePacket(zoneID, std::move(packet)))
+                    return;
                 result.status = 6; // Existing Busy response; no item was consumed.
                 errorLogger->LogWarn("non simulation handler", "item request queue full", "sessionID", sessionID, "zoneID", zoneID);
             }
             auto response = writer->WriteItemUseResponse(result);
-            if (response) networkSender->SendDataUnique(sessionID, std::move(response));
+            if (response)
+                networkSender->SendDataUnique(sessionID, std::move(response));
             return;
         }
         uint64_t requestID, epoch;
@@ -296,19 +299,26 @@ namespace Core {
         const bool write = opcode == OP::EQUIPMENT_SET;
         if (write) {
             const auto request = *parseBody<EquipmentSetRequestBody>(packet->GetPtr());
-            if (request.slot > 2) return;
-            requestID = request.requestID; epoch = request.ownershipEpoch; slot = request.slot; itemID = request.itemID;
+            if (request.slot > 2)
+                return;
+            requestID = request.requestID;
+            epoch = request.ownershipEpoch;
+            slot = request.slot;
+            itemID = request.itemID;
         } else {
             const auto request = *parseBody<EquipmentGetRequestBody>(packet->GetPtr());
-            requestID = request.requestID; epoch = request.ownershipEpoch;
+            requestID = request.requestID;
+            epoch = request.ownershipEpoch;
         }
         EquipmentResponseBody result{};
         if (sessionManager->CheckEquipment(sessionID, zoneID, requestID, epoch, write, slot, itemID, result)) {
-            if (zonePackets->TryEnqueuePacket(zoneID, std::move(packet))) return;
+            if (zonePackets->TryEnqueuePacket(zoneID, std::move(packet)))
+                return;
             result.status = static_cast<uint8_t>(EquipmentStatus::Busy);
             errorLogger->LogWarn("non simulation handler", "equipment request queue full", "sessionID", sessionID, "zoneID", zoneID);
         }
         auto response = writer->WriteEquipmentResponse(result);
-        if (response) networkSender->SendDataUnique(sessionID, std::move(response));
+        if (response)
+            networkSender->SendDataUnique(sessionID, std::move(response));
     }
 }

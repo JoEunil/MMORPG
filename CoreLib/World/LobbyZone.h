@@ -10,7 +10,7 @@ namespace Core {
         // 월드 진입 전 db 비동기 결과 보관.
         std::unordered_map<uint64_t, CharacterState> m_chars;
         std::mutex m_mutex;
-        
+
         SessionManager* sessionManager = nullptr;
         void Initialize(SessionManager* s) {
             m_chars.reserve(MAX_USER_CAPACITY);
@@ -23,12 +23,11 @@ namespace Core {
             }
             return true;
         }
-        static uint16_t EntryZone(const CharacterState& character) {
-            return character.lastZone == 0 ? TOWN_ZONE_ID : character.lastZone;
-        }
+        static uint16_t EntryZone(const CharacterState& character) { return character.lastZone == 0 ? TOWN_ZONE_ID : character.lastZone; }
 
         friend class Initializer;
-    public:
+
+      public:
         uint16_t FindEntryZone(uint64_t sessionID, uint64_t characterID) {
             std::lock_guard lock(m_mutex);
             const auto loaded = m_chars.find(sessionID);
@@ -44,9 +43,8 @@ namespace Core {
             if (!entry || entry->ownershipEpoch != ownershipEpoch)
                 return ZoneOperationResult::NoResponse;
             const auto loaded = m_chars.find(sessionID);
-            if (loaded == m_chars.end() || loaded->second.characterID != entry->characterID
-                || EntryZone(loaded->second) != zone.GetZoneID()
-                || !zone.AdmitLobbyCharacter(sessionID, loaded->second, result))
+            if (loaded == m_chars.end() || loaded->second.characterID != entry->characterID || EntryZone(loaded->second) != zone.GetZoneID() ||
+                !zone.AdmitLobbyCharacter(sessionID, loaded->second, result))
                 return ZoneOperationResult::Rejected;
             if (!sessionManager->CompleteLobbyEntry(sessionID, zone.GetZoneID(), ownershipEpoch, loaded->second.profileId, result)) {
                 CharacterState discarded;
@@ -82,10 +80,12 @@ namespace Core {
         std::optional<uint64_t> ReturnZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer) {
             std::lock_guard lock(m_mutex);
             const auto snapshot = sessionManager->ReadZoneTransfer(transfer, 0, false);
-            if (!snapshot) return std::nullopt;
+            if (!snapshot)
+                return std::nullopt;
             const auto sessionID = snapshot->character.sessionID;
             const auto [entry, inserted] = m_chars.try_emplace(sessionID, snapshot->character);
-            if (!inserted) return std::nullopt;
+            if (!inserted)
+                return std::nullopt;
             const auto committed = sessionManager->CompleteZoneTransfer(transfer, 0, false);
             if (!committed) {
                 m_chars.erase(entry);
@@ -108,7 +108,8 @@ namespace Core {
 
         bool TakeCharacter(CharacterState& out) {
             std::lock_guard lock(m_mutex);
-            if (m_chars.empty()) return false;
+            if (m_chars.empty())
+                return false;
             auto entry = m_chars.begin();
             out = std::move(entry->second);
             m_chars.erase(entry);
@@ -126,7 +127,6 @@ namespace Core {
             m_chars.erase(it);
             return true;
         }
-
     };
 
 }

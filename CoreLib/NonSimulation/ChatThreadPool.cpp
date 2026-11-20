@@ -37,11 +37,9 @@ namespace Core {
         std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash> tempPackets;
         tempPackets.reserve(100);
 
-        while (m_running.load(std::memory_order_relaxed))
-        {
+        while (m_running.load(std::memory_order_relaxed)) {
             int processed = 0;
-            for (; processed < CHAT_BATCH_SIZE; ++processed)
-            {
+            for (; processed < CHAT_BATCH_SIZE; ++processed) {
                 if (!ProcessQueuedEvent(tempPackets))
                     break;
             }
@@ -67,8 +65,7 @@ namespace Core {
         if (!m_running.load(std::memory_order_relaxed))
             return false;
 
-        switch (curr.type)
-        {
+        switch (curr.type) {
         case ChatEventType::SESSION_ADD:
             m_sessions.AddSession(curr.senderSessionID, curr.senderChatID, curr.senderProfileId);
             return true;
@@ -85,8 +82,7 @@ namespace Core {
         auto chatID = user->chatID;
         auto profileId = user->profileId;
 
-        switch (curr.type)
-        {
+        switch (curr.type) {
         case ChatEventType::CHAT:
             ProcesChat(curr, chatID, profileId, tempPackets);
             break;
@@ -102,8 +98,7 @@ namespace Core {
     }
 
     void ChatThreadPool::FlushChatBatches(std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
-        for (auto& [key, packet] : tempPackets)
-        {
+        for (auto& [key, packet] : tempPackets) {
             SendPacketGroup(key, packet);
         }
 
@@ -132,14 +127,12 @@ namespace Core {
 
     void ChatThreadPool::SendPacketGroup(ChatDestKey key, std::shared_ptr<IPacket> packet) {
         size_t recipientCount;
-        switch (key.scope)
-        {
+        switch (key.scope) {
         case CHAT_SCOPE::Zone: {
             const auto* members = m_sessions.FindZoneMembers(key.id);
             if (!members)
                 return;
-            for (auto session : *members)
-            {
+            for (auto session : *members) {
                 networkSender->SendData(session, packet);
             }
             recipientCount = members->size();
@@ -147,8 +140,7 @@ namespace Core {
         }
         case CHAT_SCOPE::Global: {
             const auto& sessions = m_sessions.GetSessions();
-            for (const auto& [session, user] : sessions)
-            {
+            for (const auto& [session, user] : sessions) {
                 networkSender->SendData(session, packet);
             }
             recipientCount = sessions.size();
@@ -162,7 +154,8 @@ namespace Core {
         perfCollector->AddChatSend(batch->chatCnt * recipientCount);
     }
 
-    void ChatThreadPool::ProcesChat(ChatEvent& curr, uint64_t chatID, uint32_t profileId, std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
+    void ChatThreadPool::ProcesChat(ChatEvent& curr, uint64_t chatID, uint32_t profileId,
+        std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
         if (curr.key.scope == CHAT_SCOPE::Whisper) {
             SendWhisper(curr, chatID, profileId);
             return;
@@ -209,8 +202,7 @@ namespace Core {
     void ChatThreadPool::ApplyZoneTransition(const ChatEvent& event) {
         if (event.type == ChatEventType::ZONE_JOIN) {
             m_sessions.JoinZone(event.senderSessionID, static_cast<uint16_t>(event.key.id));
-        }
-        else if (event.type == ChatEventType::ZONE_LEAVE) {
+        } else if (event.type == ChatEventType::ZONE_LEAVE) {
             m_sessions.LeaveZone(event.senderSessionID);
         }
     }

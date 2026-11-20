@@ -27,7 +27,8 @@ namespace Core {
             const auto request = sessionManager->GetLobbyEntry(session, parseBody<ZoneChangeBody>(p->GetPtr())->op);
             if (request) {
                 const auto destination = lobbyZone->FindEntryZone(session, request->characterID);
-                if (destination != 0 && zoneRequests->TryEnqueueLobbyEntry(destination, session, request->ownershipEpoch)) return;
+                if (destination != 0 && zoneRequests->TryEnqueueLobbyEntry(destination, session, request->ownershipEpoch))
+                    return;
             }
         }
         auto response = writer->WriteZoneChangeFailed();
@@ -37,14 +38,13 @@ namespace Core {
 
     void NonSimulationHandler::RespawnToTown(IPacketView* p) {
         const auto session = p->GetSessionID();
-        const bool validHeader = p->GetLength() == sizeof(PacketStruct<RespawnToTownBody>)
-            && parseHeader(p->GetPtr())->magic == MAGIC
-            && parseHeader(p->GetPtr())->opcode == OP::RESPAWN_TO_TOWN
-            && parseHeader(p->GetPtr())->length == p->GetLength()
-            && !IsSimulationFlag(parseHeader(p->GetPtr())->flags);
+        const bool validHeader = p->GetLength() == sizeof(PacketStruct<RespawnToTownBody>) && parseHeader(p->GetPtr())->magic == MAGIC &&
+                                 parseHeader(p->GetPtr())->opcode == OP::RESPAWN_TO_TOWN && parseHeader(p->GetPtr())->length == p->GetLength() &&
+                                 !IsSimulationFlag(parseHeader(p->GetPtr())->flags);
         if (validHeader) {
             const auto route = sessionManager->GetRespawnRoute(session, parseBody<RespawnToTownBody>(p->GetPtr())->ownershipEpoch);
-            if (route && (route->alreadyPending || zoneRequests->TryEnqueueRespawn(route->zoneID, session, route->ownershipEpoch))) return;
+            if (route && (route->alreadyPending || zoneRequests->TryEnqueueRespawn(route->zoneID, session, route->ownershipEpoch)))
+                return;
         }
         auto response = writer->WriteZoneChangeFailed();
         if (response)

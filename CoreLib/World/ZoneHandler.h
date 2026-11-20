@@ -32,9 +32,9 @@ namespace Core {
         IInventoryOperations* inventory = nullptr;
         const CacheCommandSender* cacheCommands = nullptr;
         LobbyZone* lobbyZone = nullptr;
-        
-        void Initialize(SessionManager* m, INetworkSender* sender, PacketWriter* packetWriter,
-            IZoneTransfer& transfer, LobbyZone& lobby, const CacheCommandSender& commands, IZoneRequestQueue& requests, IInventoryOperations* items) {
+
+        void Initialize(SessionManager* m, INetworkSender* sender, PacketWriter* packetWriter, IZoneTransfer& transfer, LobbyZone& lobby,
+            const CacheCommandSender& commands, IZoneRequestQueue& requests, IInventoryOperations* items) {
             sessionManager = m;
             networkSender = sender;
             writer = packetWriter;
@@ -76,7 +76,7 @@ namespace Core {
             }
             return true;
         }
-        
+
         void ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID);
         ParryResponseBody ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request);
         void ProcessZoneTransfer(ZoneState& zone, const ZoneEvent& event);
@@ -87,12 +87,16 @@ namespace Core {
         void SendZoneChange(ZoneState& zone, uint64_t sessionID, const ZoneChangeResult& transition);
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
-    public:
-        enum class TickSnapshot { None, Delta, Full };
 
-        template<class Queue, class SelectSnapshot>
-        size_t RunTick(ZoneState& zone, uint16_t zoneID, Queue& queue, size_t maxEvents,
-            CorePerfCollector& perf, SelectSnapshot selectSnapshot) {
+      public:
+        enum class TickSnapshot {
+            None,
+            Delta,
+            Full
+        };
+
+        template <class Queue, class SelectSnapshot>
+        size_t RunTick(ZoneState& zone, uint16_t zoneID, Queue& queue, size_t maxEvents, CorePerfCollector& perf, SelectSnapshot selectSnapshot) {
             zone.SkillCoolDown();
             zone.ReplenishMoveBudget();
             size_t processed = 0;
@@ -133,9 +137,14 @@ namespace Core {
             zone.UpdateMonster();
             zone.FlushCheat();
             switch (selectSnapshot()) {
-            case TickSnapshot::Full: BroadcastFullState(zone); break;
-            case TickSnapshot::Delta: BroadcastDeltaState(zone); break;
-            case TickSnapshot::None: break;
+            case TickSnapshot::Full:
+                BroadcastFullState(zone);
+                break;
+            case TickSnapshot::Delta:
+                BroadcastDeltaState(zone);
+                break;
+            case TickSnapshot::None:
+                break;
             }
             return processed;
         }
@@ -144,7 +153,8 @@ namespace Core {
         void Process(ZoneState& zone, IPacketView* p, uint16_t zoneID);
         void ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneRequest& request);
         void ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update);
-    private:
+
+      private:
         static void BroadcastDeltaState(ZoneState& zone) {
             zone.DeltaSnapshot();
             zone.DeltaSnapshotMonster();

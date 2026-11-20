@@ -7,7 +7,6 @@
 #include "SessionManager.h"
 #include "WorldMap.h"
 
-
 namespace Core {
     bool ZoneState::DescribeZoneChange(uint64_t sessionID, uint64_t chatID, uint64_t ownershipEpoch, ZoneChangeResult& result) {
         const auto member = m_sessionToIndex.find(sessionID);
@@ -19,9 +18,11 @@ namespace Core {
     }
 
     bool ZoneState::EnqueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch, uint64_t bootstrapID) {
-        if (broadcast == nullptr || writer == nullptr) return false;
+        if (broadcast == nullptr || writer == nullptr)
+            return false;
         auto own = m_sessionToIndex.find(sessionID);
-        if (own == m_sessionToIndex.end() || ownershipEpoch == 0 || bootstrapID == 0) return false;
+        if (own == m_sessionToIndex.end() || ownershipEpoch == 0 || bootstrapID == 0)
+            return false;
         const auto& character = m_chars[own->second];
         const int ownCell = character.cellY * CELLS_X + character.cellX;
         auto players = writer->GetBootstrapFullHeader(false, m_zoneID, m_generation, ownershipEpoch, bootstrapID);
@@ -37,7 +38,8 @@ namespace Core {
             const int cx = cellIndex % CELLS_X;
             for (uint64_t member : m_cells[cy][cx].charSessions) {
                 auto it = m_sessionToIndex.find(member);
-                if (it == m_sessionToIndex.end() || !writer->WriteFullField(playerChunk, m_chars[it->second])) return false;
+                if (it == m_sessionToIndex.end() || !writer->WriteFullField(playerChunk, m_chars[it->second]))
+                    return false;
                 playerBytes += sizeof(FullStateField);
                 ++playerCount;
             }
@@ -48,7 +50,8 @@ namespace Core {
             const int cy = cellIndex / CELLS_X;
             const int cx = cellIndex % CELLS_X;
             for (uint16_t index : m_cells[cy][cx].monsterIndexes) {
-                if (index >= m_monsters.size() || !writer->WriteMonsterFullField(monsterChunk, m_monsters[index], m_zoneID)) return false;
+                if (index >= m_monsters.size() || !writer->WriteMonsterFullField(monsterChunk, m_monsters[index], m_zoneID))
+                    return false;
                 monsterBytes += sizeof(MonsterFullField);
                 ++monsterCount;
             }
@@ -56,15 +59,12 @@ namespace Core {
         writer->AddChunk(players, playerBytes, playerCount);
         writer->AddChunk(monsters, monsterBytes, monsterCount);
         // The Zone worker captures and enqueues bootstrap before producing later deltas.
-        return broadcast->EnqueueBootstrap(sessionID, m_zoneID, std::move(players), std::move(playerChunk),
-            std::move(monsters), std::move(monsterChunk));
+        return broadcast->EnqueueBootstrap(sessionID, m_zoneID, std::move(players), std::move(playerChunk), std::move(monsters), std::move(monsterChunk));
     }
 
     void ZoneState::UpdateSessionSnapshot() {
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
                 int idx = i * CELLS_X + j;
                 (*sessionSnapshotWriter)[idx].clear();
                 for (auto& session : m_cells[i][j].charSessions)
@@ -82,34 +82,29 @@ namespace Core {
         chunks.resize(CELLS_X * CELLS_Y);
         headers.resize(CELLS_X * CELLS_Y);
 
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
                 int idx = i * CELLS_X + j;
-				auto chunk = writer->GetInitialChunk(true);
-				auto header = writer->GetDeltaHeader(m_zoneID, m_generation);
+                auto chunk = writer->GetInitialChunk(true);
+                auto header = writer->GetDeltaHeader(m_zoneID, m_generation);
                 if (chunk == nullptr || header == nullptr) {
                     sysLogger->LogError("zone state", "failed to acquire packet", "zoneID", m_zoneID, "cellX", j, "cellY", i);
                     continue;
-				}
+                }
                 chunks[idx] = chunk;
                 headers[idx] = header;
             }
         }
 
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
                 auto& cell = m_cells[i][j];
                 int idx = i * CELLS_X + j;
                 int loop = DELTA_UPDATE_COUNT;
                 int iterCnt = 0;
                 if (chunks[idx] == nullptr || headers[idx] == nullptr)
                     continue;
-                while (!cell.dirtyChar.empty() && loop--)
-                {
+                while (!cell.dirtyChar.empty() && loop--) {
                     auto& internalID = cell.dirtyChar.back();
                     auto it = m_InternalIDToIndex.find(internalID);
                     if (it != m_InternalIDToIndex.end()) {
@@ -169,8 +164,6 @@ namespace Core {
                     chunks[idx].reset();
                 }
             }
-
-
         }
 
         broadcast->EnqueueWork(headers, chunks, m_zoneID);
@@ -186,10 +179,8 @@ namespace Core {
         chunks.resize(CELLS_X * CELLS_Y);
         headers.resize(CELLS_X * CELLS_Y);
 
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
                 int idx = i * CELLS_X + j;
                 auto chunk = writer->GetInitialChunk(true);
                 auto header = writer->GetFullHeader(m_zoneID, m_generation);
@@ -202,17 +193,14 @@ namespace Core {
             }
         }
 
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
                 auto& cell = m_cells[i][j];
                 cell.dirtyChar.clear();
                 int idx = i * CELLS_X + j;
                 if (chunks[idx] == nullptr || headers[idx] == nullptr)
                     continue;
-                for (auto& session : cell.charSessions)
-                {
+                for (auto& session : cell.charSessions) {
                     auto& character = m_chars[m_sessionToIndex[session]];
                     writer->WriteFullField(chunks[idx], character);
                 }
@@ -236,10 +224,8 @@ namespace Core {
         chunks.resize(CELLS_X * CELLS_Y);
         headers.resize(CELLS_X * CELLS_Y);
 
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
                 int idx = i * CELLS_X + j;
                 auto chunk = writer->GetInitialChunk();
                 auto header = writer->GetMonsterDeltaHeader(m_zoneID, m_generation);
@@ -252,18 +238,15 @@ namespace Core {
             }
         }
 
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
                 auto& cell = m_cells[i][j];
                 int idx = i * CELLS_X + j;
-                int loop = DELTA_UPDATE_COUNT*2;
+                int loop = DELTA_UPDATE_COUNT * 2;
                 int iterCnt = 0;
                 if (chunks[idx] == nullptr || headers[idx] == nullptr)
                     continue;
-                for (int k =0 ; k < cell.monsterIndexes.size() && loop--; k++)
-                {
+                for (int k = 0; k < cell.monsterIndexes.size() && loop--; k++) {
                     auto& monster = m_monsters[cell.monsterIndexes[k]];
                     auto& bit = monster.dirtyBit;
                     if (bit == 0x00)
@@ -301,10 +284,8 @@ namespace Core {
         headers.resize(CELLS_X * CELLS_Y);
         perfCollector->UpdateMonsterCnt(m_zoneID, m_monsters.size());
 
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
                 int idx = i * CELLS_X + j;
                 auto chunk = writer->GetInitialChunk();
                 auto header = writer->GetMonsterFullHeader(m_zoneID, m_generation);
@@ -318,17 +299,14 @@ namespace Core {
             }
         }
 
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
                 auto& cell = m_cells[i][j];
                 int idx = i * CELLS_X + j;
 
                 if (chunks[idx] == nullptr || headers[idx] == nullptr)
                     continue;
-                for (auto& monsterIdx : cell.monsterIndexes)
-                {
+                for (auto& monsterIdx : cell.monsterIndexes) {
                     auto& monster = m_monsters[monsterIdx];
                     if (monster.hp == 0 && !(monster.dirtyBit & 0x01))
                         continue;
@@ -351,10 +329,8 @@ namespace Core {
         chunks.resize(CELLS_X * CELLS_Y);
         headers.resize(CELLS_X * CELLS_Y);
 
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
                 int idx = i * CELLS_X + j;
                 auto chunk = writer->GetInitialChunk();
                 auto header = writer->GetActionHeader(m_zoneID, m_generation);
@@ -367,18 +343,15 @@ namespace Core {
             }
         }
 
-        for (int i = 0; i < CELLS_Y; i++)
-        {
-            for (int j = 0; j < CELLS_X; j++)
-            {
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
                 bool wroteField = false;
                 auto& cell = m_cells[i][j];
                 int idx = i * CELLS_X + j;
                 if (chunks[idx] == nullptr || headers[idx] == nullptr)
                     continue;
                 perfCollector->AddActionFieldCnt(m_zoneID, cell.actionResults.size());
-                for (auto& actionRes: cell.actionResults)
-                {
+                for (auto& actionRes : cell.actionResults) {
                     writer->WriteActionField(chunks[idx], actionRes);
                     wroteField = true;
                 }

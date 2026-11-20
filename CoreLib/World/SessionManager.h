@@ -51,7 +51,11 @@ namespace Core {
     struct ZoneTransfer;
     struct ProfileVersionUpdate;
     struct ZoneChangeResult;
-    enum class ZoneOperationResult { NoResponse, Rejected, Completed };
+    enum class ZoneOperationResult {
+        NoResponse,
+        Rejected,
+        Completed
+    };
     struct LobbyEntryRequest {
         uint64_t characterID = 0;
         uint64_t ownershipEpoch = 0;
@@ -67,7 +71,12 @@ namespace Core {
         uint64_t chatID = 0;
     };
     struct RespawnRequest {
-        enum class Status { Ignored, Rejected, Ready, Replay };
+        enum class Status {
+            Ignored,
+            Rejected,
+            Ready,
+            Replay
+        };
 
         Status status = Status::Ignored;
         uint64_t characterID = 0;
@@ -123,10 +132,8 @@ namespace Core {
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
 
-    public:
-        ~SessionManager() override {
-            CleanUp();
-        }
+      public:
+        ~SessionManager() override { CleanUp(); }
 
         void BeginAuth(uint64_t sessionID) {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
@@ -171,7 +178,7 @@ namespace Core {
 
             auto it = shard.sessionMap.find(sessionID);
             if (it == shard.sessionMap.end())
-                return ;
+                return;
             it->second.characterID = characterID;
             Core::gameLogger->LogInfo("core session manager", "SetCharacterID", "session", sessionID, "characterID", characterID);
         }
@@ -192,7 +199,7 @@ namespace Core {
 
             auto it = shard.sessionMap.find(sessionID);
             if (it == shard.sessionMap.end())
-                return ;
+                return;
             it->second.zoneID = dest;
         }
 
@@ -200,8 +207,7 @@ namespace Core {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);
             auto it = shard.sessionMap.find(sessionID);
-            if (it == shard.sessionMap.end())
-            {
+            if (it == shard.sessionMap.end()) {
                 return -1;
             }
             return it->second.zoneID;
@@ -211,25 +217,20 @@ namespace Core {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);
             const auto it = shard.sessionMap.find(sessionID);
-            if (it == shard.sessionMap.end() || !it->second.authCompleted
-                || !it->second.authenticated || it->second.userID == 0
-                || it->second.characterID == INVALID_CHARACTER_ID || it->second.zoneID == 0
-                || it->second.zoneID > ZONE_COUNT)
+            if (it == shard.sessionMap.end() || !it->second.authCompleted || !it->second.authenticated || it->second.userID == 0 ||
+                it->second.characterID == INVALID_CHARACTER_ID || it->second.zoneID == 0 || it->second.zoneID > ZONE_COUNT)
                 return INVALID_CHARACTER_ID;
             return it->second.characterID;
         }
 
-        bool IsFieldSession(uint64_t sessionID) const {
-            return GetFieldCharacterID(sessionID) != INVALID_CHARACTER_ID;
-        }
+        bool IsFieldSession(uint64_t sessionID) const { return GetFieldCharacterID(sessionID) != INVALID_CHARACTER_ID; }
 
         uint8_t HealthCheck(uint64_t sessionID) const override {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::shared_lock<std::shared_mutex> lock(shard.smutex);
             auto it = shard.sessionMap.find(sessionID);
             uint8_t res = 0;
-            if (it == shard.sessionMap.end())
-            {
+            if (it == shard.sessionMap.end()) {
                 return res;
             }
 
@@ -251,43 +252,35 @@ namespace Core {
         }
         bool CheckItemUse(uint64_t sessionID, uint16_t zoneID, const ItemUseRequestBody& request, ItemUseResponseBody& result) const;
         void RememberItemUse(uint64_t sessionID, uint16_t zoneID, const ItemUseResponseBody& result);
-        bool CheckEquipment(uint64_t sessionID, uint16_t zoneID, uint64_t requestID, uint64_t ownershipEpoch,
-            bool write, uint8_t slot, uint32_t itemID, EquipmentResponseBody& result) const;
+        bool CheckEquipment(uint64_t sessionID, uint16_t zoneID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot, uint32_t itemID,
+            EquipmentResponseBody& result) const;
         void RememberEquipment(uint64_t sessionID, uint16_t zoneID, uint32_t itemID, const EquipmentResponseBody& result);
         std::optional<DisconnectRequest> BeginDisconnect(uint64_t sessionID);
         bool CompleteLobbyDisconnect(uint64_t sessionID, uint64_t ownershipEpoch);
-        bool CompleteZoneDisconnect(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
-            std::shared_ptr<ZoneTransfer>& pending);
+        bool CompleteZoneDisconnect(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, std::shared_ptr<ZoneTransfer>& pending);
         std::optional<LobbyEntryRequest> GetLobbyEntry(uint64_t sessionID, uint8_t op) const;
         std::optional<ZoneRequestRoute> GetRespawnRoute(uint64_t sessionID, uint64_t ownershipEpoch) const;
         std::optional<ZoneRequestRoute> GetBootstrapRoute(uint64_t sessionID, uint64_t ownershipEpoch) const;
 
-        bool CheckZoneAction(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
-            std::optional<ZoneRequestRoute>& resync);
+        bool CheckZoneAction(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, std::optional<ZoneRequestRoute>& resync);
         bool BeginZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer);
         void CancelZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer);
         RespawnRequest CheckRespawnRequest(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch) const;
         bool CompleteTownRespawn(uint64_t sessionID, uint64_t ownershipEpoch, ZoneChangeResult& result);
-        std::optional<ZoneTransfer> ReadZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer,
-            uint16_t zoneID, bool returning) const;
-        std::optional<ZoneTransferCommit> CompleteZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer,
-            uint16_t zoneID, bool returning);
+        std::optional<ZoneTransfer> ReadZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer, uint16_t zoneID, bool returning) const;
+        std::optional<ZoneTransferCommit> CompleteZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer, uint16_t zoneID, bool returning);
         bool CompleteLobbyLoad(uint64_t sessionID, uint64_t characterID);
-        bool CompleteLobbyEntry(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
-            uint32_t profileID, ZoneChangeResult& result);
+        bool CompleteLobbyEntry(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, uint32_t profileID, ZoneChangeResult& result);
 
         std::optional<uint16_t> RouteProfileVersion(const ProfileVersionUpdate& update);
-        std::optional<ZoneBootstrapInfo> PrepareZoneBootstrap(uint64_t sessionID, uint16_t zoneID,
-            uint64_t ownershipEpoch, bool resendZoneChange);
-        std::optional<ParryStatus> GetParryRejection(uint64_t sessionID, uint16_t zoneID,
-            const ParryRequestBody& request) const;
+        std::optional<ZoneBootstrapInfo> PrepareZoneBootstrap(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, bool resendZoneChange);
+        std::optional<ParryStatus> GetParryRejection(uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request) const;
 
         void Cheat(uint64_t sessionID, uint16_t cheat, std::chrono::steady_clock::time_point time) {
             auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
             std::unique_lock<std::shared_mutex> lock(shard.smutex);
             auto it = shard.sessionMap.find(sessionID);
-            if (it != shard.sessionMap.end())
-            {
+            if (it != shard.sessionMap.end()) {
                 auto before = it->second.lastCheatTime;
                 it->second.lastCheatTime = time;
                 if (it->second.lastCheatTime - before > CHEAT_FLUSH_TIME) {

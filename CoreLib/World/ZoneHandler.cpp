@@ -127,13 +127,11 @@ namespace Core {
         if (zone.EmigrateChar(request.sessionID, character))
             cacheCommands->EnqueueCharacterStateUpdate(request.sessionID, character);
         else
-            gameLogger->LogWarn("zone handler", "disconnect character not found",
-                "sessionID", request.sessionID, "zoneID", zoneID);
+            gameLogger->LogWarn("zone handler", "disconnect character not found", "sessionID", request.sessionID, "zoneID", zoneID);
     }
 
     void ZoneHandler::ProcessBootstrap(ZoneState& zone, const ZoneRequest& request) {
-        const auto info = sessionManager->PrepareZoneBootstrap(request.sessionID, zone.GetZoneID(),
-            request.ownershipEpoch, request.resendZoneChange);
+        const auto info = sessionManager->PrepareZoneBootstrap(request.sessionID, zone.GetZoneID(), request.ownershipEpoch, request.resendZoneChange);
         if (!info)
             return;
         if (request.resendZoneChange) {
@@ -158,8 +156,7 @@ namespace Core {
         ProcessBootstrap(zone, {sessionID, transition.ownershipEpoch});
     }
 
-    ParryResponseBody ZoneHandler::ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID,
-        const ParryRequestBody& request) {
+    ParryResponseBody ZoneHandler::ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request) {
         if (const auto rejection = sessionManager->GetParryRejection(sessionID, zoneID, request))
             return {request.requestID, request.ownershipEpoch, static_cast<uint8_t>(*rejection), 0, 0};
         return zone.Parry(sessionID, request);
@@ -167,57 +164,64 @@ namespace Core {
 
     void ZoneHandler::Process(ZoneState& zone, IPacketView* p, uint16_t zoneID) {
         PacketHeader* h = parseHeader(p->GetPtr());
-        switch (p->GetOpcode())
-        {
-            case OP::ITEM_USE: {
-                const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
-                ItemUseResponseBody result{};
-                if (sessionManager->CheckItemUse(p->GetSessionID(), zoneID, request, result)) {
-                    if (const auto applied = zone.UseItem(p->GetSessionID(), request, inventory)) {
-                        result = *applied;
-                        sessionManager->RememberItemUse(p->GetSessionID(), zoneID, result);
-                    }
+        switch (p->GetOpcode()) {
+        case OP::ITEM_USE: {
+            const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
+            ItemUseResponseBody result{};
+            if (sessionManager->CheckItemUse(p->GetSessionID(), zoneID, request, result)) {
+                if (const auto applied = zone.UseItem(p->GetSessionID(), request, inventory)) {
+                    result = *applied;
+                    sessionManager->RememberItemUse(p->GetSessionID(), zoneID, result);
                 }
-                auto response = writer->WriteItemUseResponse(result);
-                if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
-                break;
             }
-            case OP::EQUIPMENT_GET:
-            case OP::EQUIPMENT_SET: {
-                const bool write = p->GetOpcode() == OP::EQUIPMENT_SET;
-                uint64_t requestID, epoch;
-                uint8_t slot = 0;
-                uint32_t itemID = 0;
-                if (write) {
-                    const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
-                    requestID = request.requestID; epoch = request.ownershipEpoch; slot = request.slot; itemID = request.itemID;
-                } else {
-                    const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
-                    requestID = request.requestID; epoch = request.ownershipEpoch;
+            auto response = writer->WriteItemUseResponse(result);
+            if (response)
+                networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+            break;
+        }
+        case OP::EQUIPMENT_GET:
+        case OP::EQUIPMENT_SET: {
+            const bool write = p->GetOpcode() == OP::EQUIPMENT_SET;
+            uint64_t requestID, epoch;
+            uint8_t slot = 0;
+            uint32_t itemID = 0;
+            if (write) {
+                const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
+                requestID = request.requestID;
+                epoch = request.ownershipEpoch;
+                slot = request.slot;
+                itemID = request.itemID;
+            } else {
+                const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
+                requestID = request.requestID;
+                epoch = request.ownershipEpoch;
+            }
+            EquipmentResponseBody result{};
+            if (sessionManager->CheckEquipment(p->GetSessionID(), zoneID, requestID, epoch, write, slot, itemID, result)) {
+                if (const auto applied = zone.Equipment(p->GetSessionID(), requestID, epoch, write, slot, itemID, inventory)) {
+                    result = *applied;
+                    if (write)
+                        sessionManager->RememberEquipment(p->GetSessionID(), zoneID, itemID, result);
                 }
-                EquipmentResponseBody result{};
-                if (sessionManager->CheckEquipment(p->GetSessionID(), zoneID, requestID, epoch, write, slot, itemID, result)) {
-                    if (const auto applied = zone.Equipment(p->GetSessionID(), requestID, epoch, write, slot, itemID, inventory)) {
-                        result = *applied;
-                        if (write) sessionManager->RememberEquipment(p->GetSessionID(), zoneID, itemID, result);
-                    }
-                }
-                auto response = writer->WriteEquipmentResponse(result);
-                if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
-                break;
             }
-            case OP::PARRY: {
-                const auto result = ProcessParry(zone, p->GetSessionID(), zoneID, *parseBody<ParryRequestBody>(p->GetPtr()));
-                auto response = writer->WriteParryResponse(result);
-                if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
-                break;
-            }
-            case OP::ACTION:
-                ProcessAction(zone, *parseBody<ActionRequestBody>(p->GetPtr()), p->GetSessionID(), zoneID);
-                break;
-            default:
-                errorLogger->LogInfo("zone Handler", "UnDefined OPCODE", "zone", zoneID, "opcode", p->GetOpcode(), "session", p->GetSessionID());
-                break;
+            auto response = writer->WriteEquipmentResponse(result);
+            if (response)
+                networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+            break;
+        }
+        case OP::PARRY: {
+            const auto result = ProcessParry(zone, p->GetSessionID(), zoneID, *parseBody<ParryRequestBody>(p->GetPtr()));
+            auto response = writer->WriteParryResponse(result);
+            if (response)
+                networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+            break;
+        }
+        case OP::ACTION:
+            ProcessAction(zone, *parseBody<ActionRequestBody>(p->GetPtr()), p->GetSessionID(), zoneID);
+            break;
+        default:
+            errorLogger->LogInfo("zone Handler", "UnDefined OPCODE", "zone", zoneID, "opcode", p->GetOpcode(), "session", p->GetSessionID());
+            break;
         }
     }
 
