@@ -16,7 +16,7 @@ namespace Core {
             m_chars.reserve(MAX_USER_CAPACITY);
             sessionManager = s;
         }
-        bool IsReady() {
+        bool IsReady() const {
             if (sessionManager == nullptr) {
                 sysLogger->LogError("lobby zone", "sessionManager not initialized");
                 return false;
@@ -71,6 +71,21 @@ namespace Core {
                 std::lock_guard lock(m_mutex);
                 return m_chars.try_emplace(sessionID, std::move(transfer->character)).second;
             });
+        }
+
+        std::optional<uint16_t> ApplyProfileVersion(const ProfileVersionUpdate& update) {
+            return sessionManager->ApplyZoneProfileVersion(0, update, [&] {
+                UpdateProfileVersion(update.sessionID, update.profileID, update.version);
+            });
+        }
+
+        bool TakeCharacter(CharacterState& out) {
+            std::lock_guard lock(m_mutex);
+            if (m_chars.empty()) return false;
+            auto entry = m_chars.begin();
+            out = std::move(entry->second);
+            m_chars.erase(entry);
+            return true;
         }
 
         void UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version) {

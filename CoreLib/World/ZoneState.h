@@ -17,6 +17,7 @@
 #include "MonsterState.h"
 #include "WorldConfig.h"
 #include "../Packet/PacketConfig.h"
+#include "../Packet/PacketTypes.h"
 #include "../Data/SkillData.h"
 #include "../CorePerfCollector.h"
 #include "Interface/ISessionSnapshotReader.h"
@@ -28,6 +29,12 @@ namespace Core {
     class PacketWriter;
     class SessionManager;
     class IZoneTransfer;
+    class CacheCommandSender;
+    class INetworkSender;
+    class IInventoryOperations;
+    struct ItemUseRequestBody;
+    struct ItemUseResponseBody;
+    struct EquipmentResponseBody;
     struct ActionRequestBody;
     struct ParryRequestBody;
     struct ParryResponseBody;
@@ -37,7 +44,7 @@ namespace Core {
         uint64_t sessionID;
         uint8_t skillSlot;
         const Data::SkillData& skillInfo;
-    }; 
+    };
 
     struct ZoneTransfer {
         enum class Kind { Movement, Respawn };
@@ -57,7 +64,6 @@ namespace Core {
         std::unordered_map<uint64_t, uint16_t> m_sessionToIndex; // 자신의 캐릭터를 컨트롤 할 때
         std::unordered_map<uint32_t, uint16_t> m_InternalIDToIndex; // 다른 캐릭터와 상호작용할 때
         std::vector<MonsterState> m_monsters; // id = index, 죽은 몬스터는 제거하지 않고 틱 단위로 처리.
-
         std::vector<std::pair<uint64_t, uint16_t>> m_cheatList;  // Cheat 탐지해서 배치처리하는 용도, stack
         std::mutex m_mutex;
 
@@ -78,11 +84,16 @@ namespace Core {
         inline static BroadcastThreadPool* broadcast;
         inline static PacketWriter* writer;
         inline static SessionManager* sessionManager;
+        inline static const CacheCommandSender* cacheCommands = nullptr;
+        inline static INetworkSender* networkSender = nullptr;
         inline static CorePerfCollector* perfCollector;
-        static void Initialize(BroadcastThreadPool* b, PacketWriter* p, SessionManager* s, CorePerfCollector* pc) {
+        static void Initialize(BroadcastThreadPool* b, PacketWriter* p, SessionManager* s, CorePerfCollector* pc,
+            const CacheCommandSender& commands, INetworkSender& sender) {
             broadcast = b;
             writer = p;
             sessionManager = s;
+            cacheCommands = &commands;
+            networkSender = &sender;
             perfCollector = pc;
         }
         static bool IsReady() {
@@ -94,6 +105,10 @@ namespace Core {
                 sysLogger->LogError("zone state", "writer not initialized");
                 return false;
             }
+            if (cacheCommands == nullptr || networkSender == nullptr) {
+                sysLogger->LogError("zone state", "reward dependencies not initialized");
+                return false;
+            }
             return true;
         }
 
@@ -101,31 +116,20 @@ namespace Core {
         void AddToCell(CharacterState& character,  uint8_t x, uint8_t y);
         uint32_t ImmigrateCharLocked(uint64_t sessionID, const CharacterState& user);
         bool RegisterCharacterLocked(CharacterState&& incoming);
-        bool AdmitLobbyCharacter(uint64_t sessionID, CharacterState incoming, ZoneChangeResult& result);
-        bool DescribeOrRespawnInTown(uint64_t sessionID, uint64_t characterID, bool replay, ZoneChangeResult& result);
         void ClearCharacterEffects(uint64_t sessionID, uint32_t internalID);
-        std::shared_ptr<ZoneTransfer> ApplyAction(uint64_t sessionID, const ActionRequestBody& action, IZoneTransfer& zoneTransfer);
-        std::shared_ptr<ZoneTransfer> StartRespawnTransfer(uint64_t sessionID, uint64_t characterID,
-            uint64_t ownershipEpoch, IZoneTransfer& zoneTransfer);
-        bool TryResolveZoneTransfer(const ZoneTransfer& transfer, bool returning, ZoneChangeResult& result);
         bool AdmitZoneTransferLocked(const ZoneTransfer& transfer);
         bool RestoreZoneTransferLocked(const CharacterState& original);
-        ParryResponseBody Parry(uint64_t sessionID, const ParryRequestBody& request);
-        void UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version);
         void RemoveCharacterLocked(uint64_t sessionID);
         void RestoreMovementLocked(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint32_t dirtyBit);
         void UpdateSessionSnapshot();
-        bool DescribeZoneChange(uint64_t sessionID, uint64_t chatID, uint64_t ownershipEpoch, ZoneChangeResult& result);
-        bool EnqueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch, uint64_t bootstrapID);
         void MoveMonsterHome(MonsterState& monster);
+        void GrantMonsterReward(const CharacterState& character, uint64_t gold);
         void UseMonsterSkill(MonsterState& monster);
         void SetMonsterPosition(MonsterState& monster, float x, float y);
         bool MoveMonster(MonsterState& monster, float x, float y);
         void FullSnapshotMonsterLocked();
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
-        friend class SessionManager;
-        friend class ZoneHandler;
         friend class MonsterBehaviorFixture;
     public:
         explicit ZoneState(uint16_t zone) {
@@ -156,6 +160,23 @@ namespace Core {
         ~ZoneState() {
             delete sessionSnapshotWriter;
         }
+        uint16_t GetZoneID() const { return m_zoneID; }
+
+        std::shared_ptr<ZoneTransfer> ApplyAction(uint64_t sessionID, const ActionRequestBody& action, IZoneTransfer& zoneTransfer);
+        ParryResponseBody Parry(uint64_t sessionID, const ParryRequestBody& request);
+        bool AdmitLobbyCharacter(uint64_t sessionID, CharacterState incoming, ZoneChangeResult& result);
+        bool DescribeOrRespawnInTown(uint64_t sessionID, uint64_t characterID, bool replay, ZoneChangeResult& result);
+        std::shared_ptr<ZoneTransfer> StartRespawnTransfer(uint64_t sessionID, uint64_t characterID,
+            uint64_t ownershipEpoch, IZoneTransfer& zoneTransfer);
+        bool TryResolveZoneTransfer(const ZoneTransfer& transfer, bool returning, ZoneChangeResult& result);
+        void UpdateProfileVersion(uint64_t sessionID, uint32_t profileID, uint32_t version);
+        bool DescribeZoneChange(uint64_t sessionID, uint64_t chatID, uint64_t ownershipEpoch, ZoneChangeResult& result);
+        bool EnqueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch, uint64_t bootstrapID);
+
+        std::optional<ItemUseResponseBody> UseItem(uint64_t sessionID, const ItemUseRequestBody& request, IInventoryOperations* inventory);
+        std::optional<EquipmentResponseBody> Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch,
+            bool write, uint8_t slot, uint32_t itemID, IInventoryOperations* inventory);
+        bool TakeCharacter(CharacterState& out);
         void InitializeMonster();
         bool EmigrateChar(uint64_t sessionID, CharacterState& o);
         SessionSnapshotView ReadSessionSnapshot() {

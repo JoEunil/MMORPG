@@ -358,4 +358,12 @@ namespace Core {
         for (auto [session, cheat] : cheats)
             sessionManager->Cheat(session, cheat, timePoint);
     }
+
+    bool ZoneState::TakeCharacter(CharacterState& out) {
+        std::lock_guard lock(m_mutex);
+        if (m_chars.empty()) return false;
+        out = m_chars.back();
+        RemoveCharacterLocked(out.sessionID);
+        return true;
+    }
 }

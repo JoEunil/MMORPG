@@ -13,6 +13,7 @@ namespace Core {
     class INetworkSender;
     class LobbyZone;
     class SessionManager;
+    class IZoneRequestQueue;
 
     class MessageQueueHandler {
         // 캐시 or db 요청 결과 처리
@@ -20,15 +21,21 @@ namespace Core {
         INetworkSender* networkSender = nullptr;
         LobbyZone* lobbyZone = nullptr;
         SessionManager* sessionManager = nullptr;
-        void Initialize(INetworkSender* sender, PacketWriter* w, LobbyZone* lo, SessionManager* s) noexcept {
+        IZoneRequestQueue* zoneRequests = nullptr;
+        void Initialize(INetworkSender* sender, PacketWriter* w, LobbyZone* lo, SessionManager* s, IZoneRequestQueue& requests) noexcept {
             networkSender = sender;
             writer = w;
             lobbyZone = lo;
             sessionManager = s;
+            zoneRequests = &requests;
         }
-        bool IsReady() {
+        bool IsReady() const {
             if (networkSender == nullptr) {
                 sysLogger->LogError("mq handler", "networkSender not initialized");
+                return false;
+            }
+            if (!zoneRequests || !sessionManager || !lobbyZone) {
+                sysLogger->LogError("mq handler", "state routing not initialized");
                 return false;
             }
             if (writer == nullptr) {

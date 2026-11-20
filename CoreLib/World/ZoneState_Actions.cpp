@@ -9,6 +9,7 @@
 #include "SessionManager.h"
 #include "WorldMap.h"
 #include "Interface/IZoneTransfer.h"
+#include "../Interface/IInventoryOperations.h"
 
 namespace Core {
     std::shared_ptr<ZoneTransfer> ZoneState::ApplyAction(uint64_t sessionID, const ActionRequestBody& action,
@@ -239,5 +240,89 @@ namespace Core {
         }
         auto& character = m_chars[it->second];
         m_cells[character.cellY][character.cellX].dirtyChar.push_back(character.zoneInternalID);
+    }
+
+    std::optional<ItemUseResponseBody> ZoneState::UseItem(uint64_t sessionID, const ItemUseRequestBody& request,
+        IInventoryOperations* inventory) {
+        ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
+        std::lock_guard zoneLock(m_mutex);
+        const auto found = m_sessionToIndex.find(sessionID);
+        if (found == m_sessionToIndex.end()) return std::nullopt;
+        auto& character = m_chars[found->second];
+        result.cooldownRemainingTicks = character.potionCooldownTicks;
+        const auto item = Data::itemMap.find(request.itemID);
+        if (item == Data::itemMap.end() || (item->second.hpRecovery == 0 && item->second.mpRecovery == 0)) result.status = 9;
+        else if (character.hp <= 0) result.status = 2;
+        else if (item->second.hpRecovery != 0 ? character.hp >= character.maxHp : character.mp >= character.maxMp) result.status = 3;
+        else if (character.potionCooldownTicks != 0) result.status = 4;
+        else if (!inventory) result.status = 8;
+        else {
+            const auto consumed = inventory->ConsumeItem(character.characterID, request.itemID);
+            result.remainingQuantity = consumed.remainingQuantity;
+            switch (consumed.status) {
+            case ItemOperationStatus::Success:
+                if (item->second.hpRecovery != 0)
+                    character.hp = static_cast<int>((std::min)(static_cast<int64_t>(character.maxHp),
+                        static_cast<int64_t>(character.hp) + item->second.hpRecovery));
+                if (item->second.mpRecovery != 0)
+                    character.mp = static_cast<int>((std::min)(static_cast<int64_t>(character.maxMp),
+                        static_cast<int64_t>(character.mp) + item->second.mpRecovery));
+                character.potionCooldownTicks = item->second.cooldownTicks;
+                character.dirtyBit |= 3;
+                m_cells[character.cellY][character.cellX].dirtyChar.push_back(character.zoneInternalID);
+                result.status = 1;
+                result.cooldownRemainingTicks = character.potionCooldownTicks;
+                break;
+            case ItemOperationStatus::Missing: result.status = 5; break;
+            case ItemOperationStatus::Busy: result.status = 6; break;
+            default: result.status = 8; break;
+            }
+        }
+        return result;
+    }
+
+    std::optional<EquipmentResponseBody> ZoneState::Equipment(uint64_t sessionID, uint64_t requestID,
+        uint64_t ownershipEpoch, bool write, uint8_t slot, uint32_t itemID, IInventoryOperations* inventory) {
+        EquipmentResponseBody result{ requestID, ownershipEpoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), slot, 0, 0, 0, 0, 0, 0, 0 };
+        std::lock_guard zoneLock(m_mutex);
+        auto member = m_sessionToIndex.find(sessionID);
+        if (member == m_sessionToIndex.end()) return std::nullopt;
+        auto& character = m_chars[member->second];
+        if (slot > 2 || (!write && slot != 0) || (write && itemID != 0 && itemID != 3u + slot)) result.status = static_cast<uint8_t>(EquipmentStatus::Unsupported);
+        else if (write && character.hp <= 0) result.status = static_cast<uint8_t>(EquipmentStatus::Dead);
+        else if (inventory == nullptr) result.status = static_cast<uint8_t>(EquipmentStatus::StorageFailure);
+        else {
+            const auto state = write ? inventory->EquipItem(character.characterID, slot, itemID) : inventory->GetEquipmentState(character.characterID);
+            switch (state.status) {
+            case EquipmentOperationStatus::Success:
+                if ((state.weaponID != 0 && state.weaponID != 3) || (state.shieldID != 0 && state.shieldID != 4)
+                    || (state.bodyID != 0 && state.bodyID != 5)
+                    || (write && (slot == 0 ? state.weaponID : slot == 1 ? state.shieldID : state.bodyID) != itemID)) {
+                    result.status = static_cast<uint8_t>(EquipmentStatus::StorageFailure);
+                    break;
+                }
+                character.equippedWeaponItemID = state.weaponID;
+                character.equippedShieldItemID = state.shieldID;
+                character.equippedBodyItemID = state.bodyID;
+                result.status = static_cast<uint8_t>(EquipmentStatus::Success);
+                break;
+            case EquipmentOperationStatus::Missing:
+                result.status = static_cast<uint8_t>(EquipmentStatus::Missing);
+                break;
+            case EquipmentOperationStatus::Busy: result.status = static_cast<uint8_t>(EquipmentStatus::Busy); break;
+            case EquipmentOperationStatus::Unsupported: result.status = static_cast<uint8_t>(EquipmentStatus::Unsupported); break;
+            default: result.status = static_cast<uint8_t>(EquipmentStatus::StorageFailure); break;
+            }
+        }
+        if (result.status == static_cast<uint8_t>(EquipmentStatus::Success)) {
+            result.weaponID = character.equippedWeaponItemID;
+            result.shieldID = character.equippedShieldItemID;
+            result.bodyID = character.equippedBodyItemID;
+            result.defensePercent = character.DefensePercent();
+            result.baseAttack = character.attack;
+            result.bonusAttack = character.WeaponAttackBonus();
+            result.effectiveAttack = character.EffectiveAttack();
+        }
+        return result;
     }
 }

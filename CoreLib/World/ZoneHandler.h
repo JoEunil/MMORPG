@@ -21,21 +21,26 @@ namespace Core {
     class PacketWriter;
     class IMessageQueue;
     class LobbyZone;
+    class IInventoryOperations;
 
     class ZoneHandler {
         SessionManager* sessionManager = nullptr;
         INetworkSender* networkSender = nullptr;
         PacketWriter* writer = nullptr;
         IZoneTransfer* zoneTransfer = nullptr;
+        IZoneRequestQueue* zoneRequests = nullptr;
+        IInventoryOperations* inventory = nullptr;
         const CacheCommandSender* cacheCommands = nullptr;
         LobbyZone* lobbyZone = nullptr;
         
         void Initialize(SessionManager* m, INetworkSender* sender, PacketWriter* packetWriter,
-            IZoneTransfer& transfer, LobbyZone& lobby, const CacheCommandSender& commands) {
+            IZoneTransfer& transfer, LobbyZone& lobby, const CacheCommandSender& commands, IZoneRequestQueue& requests, IInventoryOperations* items) {
             sessionManager = m;
             networkSender = sender;
             writer = packetWriter;
             zoneTransfer = &transfer;
+            zoneRequests = &requests;
+            inventory = items;
             cacheCommands = &commands;
             lobbyZone = &lobby;
         }
@@ -51,6 +56,10 @@ namespace Core {
             }
             if (writer == nullptr) {
                 sysLogger->LogError("zone handler", "writer not initialized");
+                return false;
+            }
+            if (zoneRequests == nullptr) {
+                sysLogger->LogError("zone handler", "zone request queue not initialized");
                 return false;
             }
             if (zoneTransfer == nullptr) {
@@ -71,14 +80,12 @@ namespace Core {
         void ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID);
         ParryResponseBody ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request);
         void ProcessZoneTransfer(ZoneState& zone, const ZoneEvent& event);
-        void ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update);
         void ProcessLobbyEntry(ZoneState& zone, const ZoneRequest& request);
         void ProcessRespawn(ZoneState& zone, const ZoneRequest& request);
         void ProcessBootstrap(ZoneState& zone, const ZoneRequest& request);
         void SendZoneChangeFailed(uint64_t sessionID);
         void SendZoneChange(ZoneState& zone, uint64_t sessionID, const ZoneChangeResult& transition);
         friend class Initializer;
-        friend class ZoneThread;
         friend class ZoneBenchmarkAccess;
     public:
         enum class TickSnapshot { None, Delta, Full };
@@ -133,8 +140,10 @@ namespace Core {
             return processed;
         }
 
+        void SaveRemainingCharacters(ZoneState& zone);
         void Process(ZoneState& zone, IPacketView* p, uint16_t zoneID);
         void ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneRequest& request);
+        void ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update);
     private:
         static void BroadcastDeltaState(ZoneState& zone) {
             zone.DeltaSnapshot();

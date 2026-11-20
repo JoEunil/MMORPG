@@ -8,6 +8,8 @@
 #include "../Interface/INetworkSender.h"
 #include "../Packet/PacketWriter.h"
 #include "../World/ZoneState.h"
+#include "../World/Interface/IZonePacketQueue.h"
+#include "../World/Interface/IZoneRequestQueue.h"
 #include "../Cache/MessageTypes.h"
 #include "../World/SessionManager.h"
 #include "../World/LobbyZone.h"
@@ -17,7 +19,9 @@
 #include "../Packet/PacketConfig.h"
 
 namespace Core {
-    void NonSimulationHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, SessionManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc) {
+    void NonSimulationHandler::Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, SessionManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc, IZonePacketQueue& packets, IZoneRequestQueue& requests) {
+        zonePackets = &packets;
+        zoneRequests = &requests;
         networkSender = sender;
         auth = s;
         writer = p;
@@ -28,18 +32,50 @@ namespace Core {
         profileCache = pc;
     }
 
-    bool NonSimulationHandler::IsReady() {
-        if (networkSender == nullptr) return false;
-        if (auth == nullptr) return false;
-        if (writer == nullptr) return false;
-        if (cacheCommands == nullptr) return false;
-        if (sessionManager == nullptr) return false;
-        if (lobbyZone == nullptr) return false;
-        
+    bool NonSimulationHandler::IsReady() const {
+        if (networkSender == nullptr) {
+            sysLogger->LogError("non simulation handler", "network sender not initialized");
+            return false;
+        }
+        if (auth == nullptr) {
+            sysLogger->LogError("non simulation handler", "session auth not initialized");
+            return false;
+        }
+        if (writer == nullptr) {
+            sysLogger->LogError("non simulation handler", "packet writer not initialized");
+            return false;
+        }
+        if (cacheCommands == nullptr) {
+            sysLogger->LogError("non simulation handler", "cache command sender not initialized");
+            return false;
+        }
+        if (sessionManager == nullptr) {
+            sysLogger->LogError("non simulation handler", "session manager not initialized");
+            return false;
+        }
+        if (lobbyZone == nullptr) {
+            sysLogger->LogError("non simulation handler", "lobby zone not initialized");
+            return false;
+        }
+        if (zonePackets == nullptr) {
+            sysLogger->LogError("non simulation handler", "zone packet queue not initialized");
+            return false;
+        }
+        if (zoneRequests == nullptr) {
+            sysLogger->LogError("non simulation handler", "zone request queue not initialized");
+            return false;
+        }
         return true;
     }
 
-    void NonSimulationHandler::Process(IPacketView* p) {
+    void NonSimulationHandler::Process(std::unique_ptr<IPacketView, PacketViewDeleter> packet) {
+        if (!packet) return;
+        const auto opcode = packet->GetOpcode();
+        if (opcode == OP::ITEM_USE || opcode == OP::EQUIPMENT_GET || opcode == OP::EQUIPMENT_SET) {
+            ForwardZoneRequest(std::move(packet));
+            return;
+        }
+        auto* p = packet.get();
         PacketHeader* h = parseHeader(p->GetPtr());
         uint16_t zoneID = 0;
         if (p->GetOpcode() != OP::AUTH ) {
@@ -66,20 +102,12 @@ namespace Core {
             case OP::ZONE_RESYNC:
                 if (p->GetLength() == sizeof(PacketStruct<ZoneResyncBody>)) {
                     const auto* body = parseBody<ZoneResyncBody>(p->GetPtr());
-                    sessionManager->QueueBootstrap(p->GetSessionID(), body->ownershipEpoch);
+                    const auto route = sessionManager->GetBootstrapRoute(p->GetSessionID(), body->ownershipEpoch);
+                    if (route) zoneRequests->TryEnqueueBootstrap(route->zoneID, p->GetSessionID(), route->ownershipEpoch, false);
                 }
                 break;
             case OP::RESPAWN_TO_TOWN:
                 RespawnToTown(p);
-                break;
-            case OP::ITEM_USE:
-                UseItem(p);
-                break;
-            case OP::EQUIPMENT_GET:
-                GetEquipment(p);
-                break;
-            case OP::EQUIPMENT_SET:
-                SetEquipment(p);
                 break;
             case OP::INVENTORY_REQ:
                 GetInventory(p);
@@ -122,7 +150,20 @@ namespace Core {
     }
 
     void NonSimulationHandler::Disconnect(uint64_t sessionID) {
-        sessionManager->RequestDisconnect(sessionID);
+        const auto request = sessionManager->BeginDisconnect(sessionID);
+        if (!request) return;
+        if (request->zoneID != 0) {
+            if (!zoneRequests->TryEnqueueDisconnect(request->zoneID, sessionID, request->ownershipEpoch))
+                errorLogger->LogError("non simulation handler", "could not queue zone disconnect", "sessionID", sessionID, "zoneID", request->zoneID);
+            return;
+        }
+        CharacterState character;
+        const bool save = request->chatID != 0 && lobbyZone->EmigrateChar(sessionID, character);
+        if (request->chatID == 0) lobbyZone->Disconnect(sessionID);
+        if (!sessionManager->CompleteLobbyDisconnect(sessionID, request->ownershipEpoch))
+            errorLogger->LogError("non simulation handler", "lobby disconnect metadata changed", "sessionID", sessionID);
+        if (request->chatID != 0) chat->DeleteChatSession(sessionID, 0);
+        if (save) cacheCommands->EnqueueCharacterStateUpdate(sessionID, character);
     }
 
     void NonSimulationHandler::RequestProfileRename(uint64_t sessionID, uint32_t profileId, const char* name, uint16_t nameLen) {
@@ -133,32 +174,11 @@ namespace Core {
         cacheCommands->EnqueueProfileRename(sessionID, profileId, {name, nameLen});
     }
 
-    void NonSimulationHandler::UseItem(IPacketView* p) {
-        const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
-        const auto result = sessionManager->UseItem(p->GetSessionID(), request);
-        auto response = writer->WriteItemUseResponse(result);
-        if (response)
-            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
-    }
 
-    void NonSimulationHandler::GetEquipment(IPacketView* p) {
-        const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
-        const auto result = sessionManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, false);
-        auto response = writer->WriteEquipmentResponse(result);
-        if (response)
-            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
-    }
 
-    void NonSimulationHandler::SetEquipment(IPacketView* p) {
-        const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
-        if (request.slot > 2)
-            return;
 
-        const auto result = sessionManager->Equipment(p->GetSessionID(), request.requestID, request.ownershipEpoch, true, request.slot, request.itemID);
-        auto response = writer->WriteEquipmentResponse(result);
-        if (response)
-            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
-    }
+
+
 
     void NonSimulationHandler::GetInventory(IPacketView* p) {
         const auto sessionID = p->GetSessionID();
@@ -253,5 +273,43 @@ namespace Core {
         if (!res)
             return;
         networkSender->SendDataUnique(session, std::move(res));
+    }
+
+    void NonSimulationHandler::ForwardZoneRequest(std::unique_ptr<IPacketView, PacketViewDeleter> packet) {
+        const auto sessionID = packet->GetSessionID();
+        const auto zoneID = sessionManager->GetZoneID(sessionID);
+        const auto opcode = packet->GetOpcode();
+        if (opcode == OP::ITEM_USE) {
+            const auto request = *parseBody<ItemUseRequestBody>(packet->GetPtr());
+            ItemUseResponseBody result{};
+            if (sessionManager->CheckItemUse(sessionID, zoneID, request, result)) {
+                if (zonePackets->TryEnqueuePacket(zoneID, std::move(packet))) return;
+                result.status = 6; // Existing Busy response; no item was consumed.
+                errorLogger->LogWarn("non simulation handler", "item request queue full", "sessionID", sessionID, "zoneID", zoneID);
+            }
+            auto response = writer->WriteItemUseResponse(result);
+            if (response) networkSender->SendDataUnique(sessionID, std::move(response));
+            return;
+        }
+        uint64_t requestID, epoch;
+        uint32_t itemID = 0;
+        uint8_t slot = 0;
+        const bool write = opcode == OP::EQUIPMENT_SET;
+        if (write) {
+            const auto request = *parseBody<EquipmentSetRequestBody>(packet->GetPtr());
+            if (request.slot > 2) return;
+            requestID = request.requestID; epoch = request.ownershipEpoch; slot = request.slot; itemID = request.itemID;
+        } else {
+            const auto request = *parseBody<EquipmentGetRequestBody>(packet->GetPtr());
+            requestID = request.requestID; epoch = request.ownershipEpoch;
+        }
+        EquipmentResponseBody result{};
+        if (sessionManager->CheckEquipment(sessionID, zoneID, requestID, epoch, write, slot, itemID, result)) {
+            if (zonePackets->TryEnqueuePacket(zoneID, std::move(packet))) return;
+            result.status = static_cast<uint8_t>(EquipmentStatus::Busy);
+            errorLogger->LogWarn("non simulation handler", "equipment request queue full", "sessionID", sessionID, "zoneID", zoneID);
+        }
+        auto response = writer->WriteEquipmentResponse(result);
+        if (response) networkSender->SendDataUnique(sessionID, std::move(response));
     }
 }

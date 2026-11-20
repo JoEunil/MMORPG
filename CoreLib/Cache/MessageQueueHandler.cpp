@@ -166,6 +166,9 @@ namespace Core {
             errorLogger->LogError("mq handler", "sessionManager not initialized", "sessionID", sessionID);
             return;
         }
-        sessionManager->QueueProfileVersionUpdate({sessionID, body->profileId, body->version});
+        const ProfileVersionUpdate update{sessionID, body->profileId, body->version};
+        const auto route = lobbyZone->ApplyProfileVersion(update);
+        if (route && !zoneRequests->TryEnqueueProfileVersion(*route, update))
+            errorLogger->LogWarn("mq handler", "could not route profile version", "sessionID", sessionID, "zoneID", *route);
     }
 }

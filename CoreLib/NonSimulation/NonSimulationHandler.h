@@ -1,9 +1,12 @@
 ﻿#pragma once
 #include <cstdint>
 #include <memory>
+#include "../Interface/IPacketView.h"
 
 namespace Core {
     class CacheCommandSender;
+    class IZonePacketQueue;
+    class IZoneRequestQueue;
     class ILogger;
     class ISessionAuth;
     class IPacketView;
@@ -16,16 +19,14 @@ namespace Core {
     class IProfileCache;
     struct ZoneTransfer;
     class NonSimulationHandler{
-        void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, SessionManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc);
-        bool IsReady();
+        void Initialize(INetworkSender* sender, ISessionAuth* s, PacketWriter* p, const CacheCommandSender* commands, SessionManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc, IZonePacketQueue& packets, IZoneRequestQueue& requests);
+        bool IsReady() const;
         void CheckSession(IPacketView* p);
         void ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID);
         void GetCharacterList(IPacketView* p);
         void GetCharacterState(IPacketView* p);
-        void UseItem(IPacketView* p);
-        void GetEquipment(IPacketView* p);
-        void SetEquipment(IPacketView* p);
         void GetInventory(IPacketView* p);
+        void ForwardZoneRequest(std::unique_ptr<IPacketView, PacketViewDeleter> packet);
         void BazaarSearch(IPacketView* p);
         void BazaarRegister(IPacketView* p);
         void WalletRequest(IPacketView* p);
@@ -39,6 +40,8 @@ namespace Core {
         void ZoneChange(IPacketView* p);
         void RespawnToTown(IPacketView* p);
         void GetProfileBatch(IPacketView* p);
+        IZonePacketQueue* zonePackets = nullptr;
+        IZoneRequestQueue* zoneRequests = nullptr;
         INetworkSender* networkSender = nullptr;
         PacketWriter* writer = nullptr;
         SessionManager* sessionManager = nullptr;
@@ -50,7 +53,7 @@ namespace Core {
         IProfileCache* profileCache = nullptr;
         friend class Initializer;
     public:
-        void Process(IPacketView* p);
+        void Process(std::unique_ptr<IPacketView, PacketViewDeleter> packet);
         void Disconnect(uint64_t sessionID);
         void ReturnToLobby(const std::shared_ptr<ZoneTransfer>& transfer);
 

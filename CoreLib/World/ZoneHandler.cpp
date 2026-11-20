@@ -19,18 +19,19 @@ namespace Core {
     void ZoneHandler::ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID) {
         if (!std::isfinite(action.aimAngle) || action.aimAngle < 0 || action.aimAngle >= 360)
             return;
-        sessionManager->ApplyZoneAction(sessionID, zoneID, action.ownershipEpoch, [&] {
+        const auto resync = sessionManager->ApplyZoneAction(sessionID, zoneID, action.ownershipEpoch, [&] {
             return zone.ApplyAction(sessionID, action, *zoneTransfer);
         });
+        if (resync) zoneRequests->TryEnqueueBootstrap(resync->zoneID, sessionID, resync->ownershipEpoch, true);
     }
 
     void ZoneHandler::ProcessLobbyEntry(ZoneState& zone, const ZoneRequest& request) {
         const auto sessionID = request.sessionID;
         ZoneChangeResult result;
-        const auto outcome = sessionManager->EnterZoneFromLobby(sessionID, zone.m_zoneID, request.ownershipEpoch, result,
+        const auto outcome = sessionManager->EnterZoneFromLobby(sessionID, zone.GetZoneID(), request.ownershipEpoch, result,
             [&](uint64_t characterID) -> std::optional<uint32_t> {
                 uint32_t profileID = 0;
-                if (!lobbyZone->TryEnterField(sessionID, characterID, zone.m_zoneID, [&](const CharacterState& loaded) {
+                if (!lobbyZone->TryEnterField(sessionID, characterID, zone.GetZoneID(), [&](const CharacterState& loaded) {
                     profileID = loaded.profileId;
                     return zone.AdmitLobbyCharacter(sessionID, loaded, result);
                 }))
@@ -47,7 +48,7 @@ namespace Core {
         const auto sessionID = request.sessionID;
         const bool townSpawnWalkable = WorldMap::CanTraverse(TOWN_SPAWN_X, TOWN_SPAWN_Y, TOWN_SPAWN_X, TOWN_SPAWN_Y);
         ZoneChangeResult result;
-        const auto outcome = sessionManager->RespawnInZone(sessionID, zone.m_zoneID, request.ownershipEpoch,
+        const auto outcome = sessionManager->RespawnInZone(sessionID, zone.GetZoneID(), request.ownershipEpoch,
             townSpawnWalkable, result,
             [&](uint64_t characterID, uint64_t ownershipEpoch) {
                 return zone.StartRespawnTransfer(sessionID, characterID, ownershipEpoch, *zoneTransfer);
@@ -70,7 +71,7 @@ namespace Core {
         const bool returning = event.type == ZoneEventType::TransferRejected;
         const bool respawn = transfer->IsRespawn();
         ZoneChangeResult result;
-        const auto outcome = sessionManager->ResolveZoneTransfer(transfer, zone.m_zoneID, returning, result,
+        const auto outcome = sessionManager->ResolveZoneTransfer(transfer, zone.GetZoneID(), returning, result,
             [&] { return zone.TryResolveZoneTransfer(*transfer, returning, result); },
             [&] {
                 if (!respawn) {
@@ -91,9 +92,12 @@ namespace Core {
     }
 
     void ZoneHandler::ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update) {
-        sessionManager->ApplyZoneProfileVersion(zone.m_zoneID, update, [&] {
+        auto route = sessionManager->ApplyZoneProfileVersion(zone.GetZoneID(), update, [&] {
             zone.UpdateProfileVersion(update.sessionID, update.profileID, update.version);
         });
+        if (route && *route == 0) route = lobbyZone->ApplyProfileVersion(update);
+        if (route && !zoneRequests->TryEnqueueProfileVersion(*route, update))
+            errorLogger->LogWarn("zone handler", "could not route profile version", "sessionID", update.sessionID, "zoneID", *route);
     }
 
     void ZoneHandler::ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneRequest& request) {
@@ -116,7 +120,7 @@ namespace Core {
     void ZoneHandler::ProcessBootstrap(ZoneState& zone, const ZoneRequest& request) {
         ZoneChangeResult transition;
         bool described = false;
-        sessionManager->ProcessZoneBootstrap(request.sessionID, zone.m_zoneID, request.ownershipEpoch, request.resendZoneChange,
+        sessionManager->ProcessZoneBootstrap(request.sessionID, zone.GetZoneID(), request.ownershipEpoch, request.resendZoneChange,
             [&](uint64_t chatID) {
                 described = zone.DescribeZoneChange(request.sessionID, chatID, request.ownershipEpoch, transition);
             },
@@ -149,6 +153,43 @@ namespace Core {
         PacketHeader* h = parseHeader(p->GetPtr());
         switch (p->GetOpcode())
         {
+            case OP::ITEM_USE: {
+                const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
+                ItemUseResponseBody result{};
+                if (sessionManager->CheckItemUse(p->GetSessionID(), zoneID, request, result)) {
+                    if (const auto applied = zone.UseItem(p->GetSessionID(), request, inventory)) {
+                        result = *applied;
+                        sessionManager->RememberItemUse(p->GetSessionID(), zoneID, result);
+                    }
+                }
+                auto response = writer->WriteItemUseResponse(result);
+                if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+                break;
+            }
+            case OP::EQUIPMENT_GET:
+            case OP::EQUIPMENT_SET: {
+                const bool write = p->GetOpcode() == OP::EQUIPMENT_SET;
+                uint64_t requestID, epoch;
+                uint8_t slot = 0;
+                uint32_t itemID = 0;
+                if (write) {
+                    const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
+                    requestID = request.requestID; epoch = request.ownershipEpoch; slot = request.slot; itemID = request.itemID;
+                } else {
+                    const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
+                    requestID = request.requestID; epoch = request.ownershipEpoch;
+                }
+                EquipmentResponseBody result{};
+                if (sessionManager->CheckEquipment(p->GetSessionID(), zoneID, requestID, epoch, write, slot, itemID, result)) {
+                    if (const auto applied = zone.Equipment(p->GetSessionID(), requestID, epoch, write, slot, itemID, inventory)) {
+                        result = *applied;
+                        if (write) sessionManager->RememberEquipment(p->GetSessionID(), zoneID, itemID, result);
+                    }
+                }
+                auto response = writer->WriteEquipmentResponse(result);
+                if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+                break;
+            }
             case OP::PARRY: {
                 const auto result = ProcessParry(zone, p->GetSessionID(), zoneID, *parseBody<ParryRequestBody>(p->GetPtr()));
                 auto response = writer->WriteParryResponse(result);
@@ -162,5 +203,11 @@ namespace Core {
                 errorLogger->LogInfo("zone Handler", "UnDefined OPCODE", "zone", zoneID, "opcode", p->GetOpcode(), "session", p->GetSessionID());
                 break;
         }
+    }
+
+    void ZoneHandler::SaveRemainingCharacters(ZoneState& zone) {
+        CharacterState character;
+        while (zone.TakeCharacter(character))
+            cacheCommands->EnqueueCharacterStateUpdate(character.sessionID, character);
     }
 }
