@@ -1,11 +1,13 @@
 ﻿#include "pch.h"
+#include "../Cache/CacheCommandSender.h"
 #include "ZoneState.h"
+#include "../Response/Interface/IServerResponseQueue.h"
+#include "../Packet/PacketWriter.h"
 #include "SessionManager.h"
 #include <optional>
 
 namespace Core {
 	void ZoneState::SkillCoolDown() {
-		std::lock_guard<std::mutex> lock(m_mutex);
 		for (auto& character : m_chars) 
 		{
 			if (character.hp <= 0) character.parryWindowTicks = 0;
@@ -31,7 +33,6 @@ namespace Core {
 	}
 
 	void ZoneState::ApplySkill() {
-		std::lock_guard<std::mutex> lock(m_mutex);
 
 		for (int i = 0; i < CELLS_Y; i++)
 		{
@@ -131,7 +132,7 @@ namespace Core {
 							// 일단 막타 친 사람만 보상.. 
 							// 보스몬스터의 경우 hitter list로 보상 분배하도록 처리해야됨.
 							caster.AddExperience(m_monsters[mon].data->reward.exp);
-                            if (m_monsters[mon].data->id <= 1) sessionManager->GrantMonsterReward(caster, m_monsters[mon].data->reward.gold);
+                            if (m_monsters[mon].data->id <= 1) GrantMonsterReward(caster, m_monsters[mon].data->reward.gold);
 							m_cells[caster.cellY][caster.cellX].dirtyChar.push_back(caster.zoneInternalID);
 						}
 						m_monsters[mon].SetAggro(caster.zoneInternalID);
@@ -189,4 +190,12 @@ namespace Core {
 		
 	}
 
+
+    void ZoneState::GrantMonsterReward(const CharacterState& character, uint64_t gold) {
+        const auto sessionID = character.sessionID;
+        if (!cacheCommands->EnqueueGoldDeposit(sessionID, character.characterID, gold)) {
+            errorLogger->LogError("monster reward", "gold deposit queue rejected", "characterID", character.characterID);
+            responses->Enqueue(sessionID, writer->WriteGoldReward(0));
+        }
+    }
 }

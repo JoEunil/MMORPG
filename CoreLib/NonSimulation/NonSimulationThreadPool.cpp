@@ -37,7 +37,7 @@ namespace Core {
         {
             switch (event.type) {
             case EventType::Work:
-                handler->Process(event.work.get()); // handler에서 비동기 요청은 복사해서 처리.
+                handler->Process(std::move(event.work));
                 event.work.reset();
                 break;
             case EventType::Disconnect:

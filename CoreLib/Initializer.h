@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "Cache/CacheCommandSender.h"
+#include "Response/ServerResponseWorker.h"
 #include "Cache/InMemoryQueue.h"
 #include "Cache/MessagePool.h"
 #include "Cache/MessageQueueHandler.h"
@@ -22,6 +23,7 @@
 #include "Interface/IPingPacketWriter.h"
 #include "NonSimulation/ChatThreadPool.h"
 #include "Interface/IProfileCache.h"
+#include "Interface/IInventoryOperations.h"
 #include "Cache/DurableLogger.h"
 
 #include "LoggerGlobal.h"
@@ -36,13 +38,14 @@ namespace Core {
         CacheCommandSender cacheCommandSender;
         ZoneHandler zoneHandler;
         ZoneEventRouter zoneEventRouter;
+        ChatThreadPool chat;
         SessionManager sessionManager;
         BroadcastThreadPool broadcastPool;
+        ServerResponseWorker responses;
         NonSimulationHandler nonSimulationHandler;
         NonSimulationThreadPool nonSimulationThreadPool;
         PacketDispatcher packetDispatcher;
         LobbyZone lobbyZone;
-        ChatThreadPool chat;
         CorePerfCollector perfCollector;
 
     public:
@@ -59,23 +62,24 @@ namespace Core {
             lobbyZone.Initialize(& sessionManager);
             nonSimulationThreadPool.Initialize(&nonSimulationHandler);
             writer.Initialize(packetPoolManager);
-            mqHandler.Initialize(networkSender, &writer, &lobbyZone, &sessionManager);
+            responses.Initialize(*networkSender, zoneEventRouter);
+            responses.Start();
+            mqHandler.Initialize(responses, writer, &lobbyZone, &sessionManager, zoneEventRouter);
             recvMQ.Initialize(&mqHandler, &msgPool);
             recvMQ.Start();
             chat.Initialize(networkSender, &writer, &perfCollector);
         }
         
         void InjectDependencies2(INetworkSender* networkSender, ISessionAuth* session, IMessageQueue* sendMQ, IProfileCache* profileCache, IInventoryOperations* inventory = nullptr) {
-            sessionManager.inventory = inventory;
             cacheCommandSender.Initialize(sendMQ, &messageWriter, &msgPool);
             zoneEventRouter.Initialize(zoneHandler, perfCollector, nonSimulationThreadPool);
-            sessionManager.Initialize(&cacheCommandSender, networkSender, &lobbyZone, &chat, zoneEventRouter, zoneEventRouter);
+            sessionManager.Initialize(chat);
             packetDispatcher.Initialize(nonSimulationThreadPool, zoneEventRouter, sessionManager);
             nonSimulationThreadPool.Start();
             broadcastPool.Start();
-            ZoneState::Initialize(&broadcastPool, &writer, &sessionManager, &perfCollector);
-            zoneHandler.Initialize(&sessionManager, networkSender, &writer, zoneEventRouter, lobbyZone, cacheCommandSender);
-            nonSimulationHandler.Initialize(networkSender, session, &writer, &cacheCommandSender, &sessionManager, &lobbyZone, &chat, profileCache);
+            ZoneState::Initialize(&broadcastPool, &writer, &sessionManager, &perfCollector, cacheCommandSender, responses);
+            zoneHandler.Initialize(&sessionManager, responses, writer, zoneEventRouter, lobbyZone, cacheCommandSender, zoneEventRouter, inventory);
+            nonSimulationHandler.Initialize(responses, writer, session, &cacheCommandSender, &sessionManager, &lobbyZone, &chat, profileCache, zoneEventRouter, zoneEventRouter);
             zoneEventRouter.Start();
             chat.Start();
             perfCollector.Start();
@@ -84,9 +88,11 @@ namespace Core {
         bool CheckReady() {
             if (!writer.IsReady()
                 or !msgPool.IsReady()
+                or !responses.IsReady()
                 or !mqHandler.IsReady()
                 or !recvMQ.IsReady()
                 or !zoneHandler.IsReady()
+                or !nonSimulationHandler.IsReady()
                 or !ZoneState::IsReady()
                 or !broadcastPool.IsReady()
                 or !zoneEventRouter.IsReady()
@@ -122,7 +128,12 @@ namespace Core {
         }
         void FinishShutdown() {
             recvMQ.Stop();
-            sessionManager.CleanUp();
+            responses.Stop();
+            CharacterState character;
+            while (lobbyZone.TakeCharacter(character))
+                cacheCommandSender.EnqueueCharacterStateUpdate(character.sessionID, character);
+            for (const auto& transfer : sessionManager.Shutdown())
+                cacheCommandSender.EnqueueCharacterStateUpdate(transfer->character.sessionID, transfer->character);
         }
     };
 }

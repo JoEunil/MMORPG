@@ -68,6 +68,9 @@ namespace Core {
         }
 
         void ThreadFunc(size_t workerIndex);
+        void SendBootstrap(const BroadcastWork& work) const;
+        bool PrepareCellPacket(const BroadcastWork& work, int cellIndex, std::vector<std::shared_ptr<IPacket>>& chunks) const;
+        void BroadcastSnapshot(const BroadcastWork& work, std::vector<std::vector<std::shared_ptr<IPacket>>>& cellChunks) const;
         bool Enqueue(BroadcastWorkPtr work);
         void Start();
         void Stop();

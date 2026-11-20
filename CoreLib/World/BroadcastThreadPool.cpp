@@ -13,70 +13,76 @@ namespace Core {
         ss << tid;
         sysLogger->LogInfo("broadcast thread", "broadcast thread started", "threadID", ss.str());
 
-        // work마다 재할당하지 않도록 스레드 로컬로 재사용 (내부 vector의 capacity도 유지된다)
-        std::vector<std::vector<std::shared_ptr<IPacket>>> currChunks(CELLS_X * CELLS_Y);
-
+        // Reuse each cell's chunk capacity across work items.
+        std::vector<std::vector<std::shared_ptr<IPacket>>> cellChunks(CELLS_X * CELLS_Y);
         auto& queue = m_workQueues[workerIndex];
-        while (true)
-        {
-            BroadcastWorkPtr packets;
-            if (!queue.pop(packets))
+        while (true) {
+            BroadcastWorkPtr work;
+            if (!queue.pop(work))
                 break;
             m_queuedWorkCount.fetch_sub(1, std::memory_order_relaxed);
-            const auto& headers = packets->headers;
-            const auto& chunks = packets->chunks;
             perfCollector->AddBroadcastPopCnt();
 
-            if (packets->targetSessionID != 0) {
-                if (headers.size() == 2 && chunks.size() == 2) {
-                    for (size_t i = 0; i < headers.size(); ++i) {
-                        if (!headers[i] || !chunks[i]) continue;
-                        std::vector<std::shared_ptr<IPacket>> oneChunk;
-                        if (chunks[i]->GetLength() != 0)
-                            oneChunk.push_back(chunks[i]);
-                        networkSender->SendDataChunks(packets->targetSessionID, headers[i], oneChunk);
-                    }
-                    perfCollector->AddBroadcastSendCnt(2);
-                }
-                continue;
-            }
-
-            const auto snapshot = sessionSnapshots->ReadSessionSnapshot(packets->zoneID);
-            if (!snapshot)
-                continue;
-            const auto& recipientsByCell = *snapshot->data;
-            size_t sentCount = 0;
-            for (int i =0 ;i < CELLS_X*CELLS_Y; i++)
-            {
-                if (!headers[i])
-                    continue;
-                size_t len = 0;
-                uint16_t count = 0;
-                currChunks[i].clear();
-                for (int j : AOI[i])
-                {
-                    if (chunks[j] == nullptr)
-                        continue;
-                    len += chunks[j]->GetLength();
-                    count += chunks[j]->GetCount();
-                    currChunks[i].push_back(chunks[j]);
-                }
-                if (count == 0)
-                    continue;
-                writer->AddChunk(headers[i], len, count);
-                sentCount += recipientsByCell[i].size();
-                for (auto session : recipientsByCell[i])
-                {
-                    networkSender->SendDataChunks(session, headers[i], currChunks[i]);
-                }
-            }
-            perfCollector->AddBroadcastSendCnt(sentCount);
-
-            // 다음 work가 올 때까지 packet 참조를 붙들지 않도록 즉시 해제.
-            // (버퍼 자체는 재사용하고 shared_ptr만 놓는다)
-            for (auto& c : currChunks)
-                c.clear();
+            if (work->targetSessionID != 0)
+                SendBootstrap(*work);
+            else
+                BroadcastSnapshot(*work, cellChunks);
         }
+    }
+
+    void BroadcastThreadPool::SendBootstrap(const BroadcastWork& work) const {
+        if (work.headers.size() != 2 || work.chunks.size() != 2)
+            return;
+        for (size_t i = 0; i < work.headers.size(); ++i) {
+            if (!work.headers[i] || !work.chunks[i])
+                continue;
+            std::vector<std::shared_ptr<IPacket>> chunks;
+            if (work.chunks[i]->GetLength() != 0)
+                chunks.push_back(work.chunks[i]);
+            networkSender->SendDataChunks(work.targetSessionID, work.headers[i], chunks);
+        }
+        perfCollector->AddBroadcastSendCnt(2);
+    }
+
+    bool BroadcastThreadPool::PrepareCellPacket(const BroadcastWork& work, int cellIndex, std::vector<std::shared_ptr<IPacket>>& chunks) const {
+        size_t length = 0;
+        uint16_t count = 0;
+        chunks.clear();
+        for (int neighbor : AOI[cellIndex]) {
+            const auto& chunk = work.chunks[neighbor];
+            if (!chunk)
+                continue;
+            length += chunk->GetLength();
+            count += chunk->GetCount();
+            chunks.push_back(chunk);
+        }
+        if (count == 0)
+            return false;
+        writer->AddChunk(work.headers[cellIndex], length, count);
+        return true;
+    }
+
+    void BroadcastThreadPool::BroadcastSnapshot(const BroadcastWork& work, std::vector<std::vector<std::shared_ptr<IPacket>>>& cellChunks) const {
+        const auto snapshot = sessionSnapshots->ReadSessionSnapshot(work.zoneID);
+        if (!snapshot)
+            return;
+        const auto& recipientsByCell = *snapshot->data;
+        size_t sentCount = 0;
+        for (int cellIndex = 0; cellIndex < CELLS_X * CELLS_Y; ++cellIndex) {
+            if (!work.headers[cellIndex])
+                continue;
+            auto& chunks = cellChunks[cellIndex];
+            if (!PrepareCellPacket(work, cellIndex, chunks))
+                continue;
+            sentCount += recipientsByCell[cellIndex].size();
+            for (auto session : recipientsByCell[cellIndex])
+                networkSender->SendDataChunks(session, work.headers[cellIndex], chunks);
+        }
+        perfCollector->AddBroadcastSendCnt(sentCount);
+
+        // Release packet references before waiting for the next work item.
+        for (auto& chunks : cellChunks)
+            chunks.clear();
     }
 
     void BroadcastThreadPool::Start() {

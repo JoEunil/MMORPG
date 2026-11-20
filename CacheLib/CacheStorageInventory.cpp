@@ -1,4 +1,5 @@
-﻿#include "CacheStorageInventory.h"
+﻿#include "pch.h"
+#include "CacheStorageInventory.h"
 
 #include <algorithm>
 #include <iterator>

@@ -37,37 +37,44 @@ namespace Core {
         float wanderTargetX, wanderTargetY;
         uint8_t wanderPauseTicks;
         
-        void Initialize(uint16_t monsterID , uint16_t id, float posX, float posY, uint8_t CellX, uint8_t CellY) {
-            Initialize(Data::monsters[monsterID], id, posX, posY, CellX, CellY);
-        }
-
-        void Initialize(const Data::MonsterData& monsterData, uint16_t id, float posX, float posY, uint8_t CellX, uint8_t CellY) {
-            data = &monsterData;
+    private:
+        void ResetForSpawn() {
             hp = data->maxHp;
-            respawnTick = data->respawn;
-            internalID = id;
-            x = posX;
-            y = posY;
-            spawnX = x;
-            spawnY = y;
-            dir = 2;
+            x = spawnX;
+            y = spawnY;
             aggro = 0;
             aggroTick = 0;
             aggroX = x;
             aggroY = y;
             behavior = MonsterBehavior::Wandering;
+            respawnTick = data->respawn;
             attacked = 0;
             tick = 0;
             skillStep = 0;
             phase = 0;
-            cellX = CellX;
-            cellY = CellY;
-            wanderSeed = 0x9E3779B9u ^ (static_cast<uint32_t>(id) + 1u) * 0x85EBCA6Bu ^
-                (static_cast<uint32_t>(CellX) << 16) ^ CellY;
-            if (wanderSeed == 0) wanderSeed = 0xA341316Cu;
+            wanderSeed = 0x9E3779B9u ^ (static_cast<uint32_t>(internalID) + 1u) * 0x85EBCA6Bu ^
+                (static_cast<uint32_t>(cellX) << 16) ^ cellY;
+            if (wanderSeed == 0)
+                wanderSeed = 0xA341316Cu;
             wanderTargetX = x;
             wanderTargetY = y;
             wanderPauseTicks = 0;
+        }
+
+    public:
+        void Initialize(uint16_t monsterID, uint16_t id, float posX, float posY, uint8_t spawnCellX, uint8_t spawnCellY) {
+            Initialize(Data::monsters[monsterID], id, posX, posY, spawnCellX, spawnCellY);
+        }
+
+        void Initialize(const Data::MonsterData& monsterData, uint16_t id, float posX, float posY, uint8_t spawnCellX, uint8_t spawnCellY) {
+            data = &monsterData;
+            internalID = id;
+            spawnX = posX;
+            spawnY = posY;
+            cellX = spawnCellX;
+            cellY = spawnCellY;
+            ResetForSpawn();
+            dir = 2;
             dirtyBit = 0;
         }
 
@@ -81,27 +88,8 @@ namespace Core {
         }
 
         void Respawn() {
-            hp = data->maxHp;
-
-            x = spawnX;
-            y = spawnY;
+            ResetForSpawn();
             dir = 1;
-            aggro = 0;
-            aggroTick = 0;
-            aggroX = x;
-            aggroY = y;
-            behavior = MonsterBehavior::Wandering;
-            respawnTick = data->respawn;
-            tick = 0;
-            skillStep = 0;
-            phase = 0;
-            wanderSeed = 0x9E3779B9u ^ (static_cast<uint32_t>(internalID) + 1u) * 0x85EBCA6Bu ^
-                (static_cast<uint32_t>(cellX) << 16) ^ cellY;
-            if (wanderSeed == 0) wanderSeed = 0xA341316Cu;
-            wanderTargetX = x;
-            wanderTargetY = y;
-            wanderPauseTicks = 0;
-            attacked = 0;
             dirtyBit = 0x0F;
         }
     };

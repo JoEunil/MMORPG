@@ -3,10 +3,10 @@
 
 #include "../Cache/CacheCommandSender.h"
 #include "../Packet/PacketConfig.h"
-#include "../Interface/INetworkSender.h"
 #include "../Interface/IPacketView.h"
 #include "../Cache/MessageTypes.h"
 #include "../Packet/PacketTypes.h"
+#include "../Response/Interface/IServerResponseQueue.h"
 #include "../Packet/PacketWriter.h"
 #include "../World/SessionManager.h"
 
@@ -49,9 +49,7 @@ namespace Core {
         failed.resStatus = 5;
         if (sessionManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
             return;
-        auto response = writer->WriteBazaarBuyResponse(&failed);
-        if (response)
-            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+        responses->Enqueue(p->GetSessionID(), writer->WriteBazaarBuyResponse(&failed));
     }
 
     void NonSimulationHandler::BazaarRegister(IPacketView* p) {
@@ -71,8 +69,7 @@ namespace Core {
         failed.characterID = characterID;
         failed.resStatus = 0;
         if (sessionManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
-        auto response = writer->WriteBazaarRegisterResponse(&failed);
-        if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+        responses->Enqueue(p->GetSessionID(), writer->WriteBazaarRegisterResponse(&failed));
     }
 
     void NonSimulationHandler::BazaarOutboxList(IPacketView* p) {
@@ -87,8 +84,7 @@ namespace Core {
         failed.requestID = request->requestID;
         failed.characterID = characterID;
         if (sessionManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
-        auto response = writer->WriteBazaarOutboxListResponse(&failed);
-        if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+        responses->Enqueue(p->GetSessionID(), writer->WriteBazaarOutboxListResponse(&failed));
     }
 
     void NonSimulationHandler::BazaarCheckOutbox(IPacketView* p) {
@@ -104,9 +100,7 @@ namespace Core {
         failed.requestID = request->requestID;
         if (sessionManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
             return;
-        auto response = writer->WriteBazaarCheckOutboxResponse(&failed);
-        if (response)
-            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+        responses->Enqueue(p->GetSessionID(), writer->WriteBazaarCheckOutboxResponse(&failed));
     }
 
     void NonSimulationHandler::BazaarCancelListing(IPacketView* p) {
@@ -123,8 +117,7 @@ namespace Core {
         failed.characterID = characterID;
         failed.resStatus = 5;
         if (sessionManager->GetFieldCharacterID(p->GetSessionID()) != characterID) return;
-        auto response = writer->WriteBazaarCancelListingResponse(&failed);
-        if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+        responses->Enqueue(p->GetSessionID(), writer->WriteBazaarCancelListingResponse(&failed));
     }
 
     void NonSimulationHandler::BazaarClaim(IPacketView* p) {
@@ -141,9 +134,7 @@ namespace Core {
         failed.listingID = request->listingID;
         if (sessionManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
             return;
-        auto response = writer->WriteBazaarClaimResponse(&failed);
-        if (response)
-            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+        responses->Enqueue(p->GetSessionID(), writer->WriteBazaarClaimResponse(&failed));
     }
 
     void NonSimulationHandler::BazaarMyList(IPacketView* p) {
@@ -160,9 +151,7 @@ namespace Core {
         failed.characterID = characterID;
         if (sessionManager->GetFieldCharacterID(p->GetSessionID()) != characterID)
             return;
-        auto response = writer->WriteBazaarMyListResponse(&failed);
-        if (response)
-            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+        responses->Enqueue(p->GetSessionID(), writer->WriteBazaarMyListResponse(&failed));
     }
 
     void NonSimulationHandler::BazaarSearch(IPacketView* p) {
@@ -175,8 +164,6 @@ namespace Core {
             return;
         MsgBazaarSearchResBody failed{};
         failed.requestID = request->requestID;
-        auto response = writer->WriteBazaarSearchResponse(&failed);
-        if (response)
-            networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
+        responses->Enqueue(p->GetSessionID(), writer->WriteBazaarSearchResponse(&failed));
     }
 }

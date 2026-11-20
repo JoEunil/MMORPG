@@ -83,6 +83,7 @@ namespace Core {
             if (event.type == ZoneEventType::Disconnect)
                 handler->ProcessDisconnect(zone, zoneID, event.request);
         }
+        handler->SaveRemainingCharacters(zone);
     }
 
     void ZoneThread::Start(ZoneState& zone) {

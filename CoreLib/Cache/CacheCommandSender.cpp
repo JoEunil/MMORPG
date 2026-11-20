@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "CacheCommandSender.h"
 #include "../World/CharacterState.h"
 #include "../Interface/IMessageQueue.h"
@@ -27,13 +27,12 @@ namespace Core {
 
     bool CacheCommandSender::EnqueueCharacterStateUpdate(uint64_t sessionID, const CharacterState& character) const {
         if (queue == nullptr || writer == nullptr) {
-            errorLogger->LogError("cache command sender", "character state sender not initialized",
-                "sessionID", sessionID, "characterID", character.characterID);
+            errorLogger->LogError("cache command sender", "character state sender not initialized", "sessionID", sessionID, "characterID",
+                character.characterID);
             return false;
         }
         Message msg(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
-        const MsgCharacterStateUpdateBody body{
-            .charID = character.characterID,
+        const MsgCharacterStateUpdateBody body{.charID = character.characterID,
             .profileId = character.profileId,
             .attack = character.attack,
             .level = character.level,
@@ -45,11 +44,9 @@ namespace Core {
             .dir = character.dir,
             .x = character.x,
             .y = character.y,
-            .lastZone = static_cast<uint8_t>(character.lastZone)
-        };
+            .lastZone = static_cast<uint8_t>(character.lastZone)};
         if (!writer->Write(msg, {sessionID, MSG_CHARACTER_STATE_UPDATE}, body)) {
-            errorLogger->LogError("cache command sender", "could not encode character state",
-                "sessionID", sessionID, "characterID", character.characterID);
+            errorLogger->LogError("cache command sender", "could not encode character state", "sessionID", sessionID, "characterID", character.characterID);
             return false;
         }
         if (queue->EnqueueMessage(&msg))
@@ -57,8 +54,7 @@ namespace Core {
 
         std::vector<std::byte> bytes(msg.GetLength());
         std::memcpy(bytes.data(), msg.GetBuffer(), bytes.size());
-        errorLogger->LogError("cache command sender", "character state queue rejected",
-            "sessionID", sessionID, "character state update message", bytes);
+        errorLogger->LogError("cache command sender", "character state queue rejected", "sessionID", sessionID, "character state update message", bytes);
         return false;
     }
 
@@ -67,17 +63,14 @@ namespace Core {
             return false;
         Message msg(sizeof(MsgStruct<MsgCurrencyDepositBody>));
         const MsgCurrencyDepositBody body{characterID, gold};
-        return writer->Write(msg, {sessionID, MSG_CURRENCY_DEPOSIT}, body)
-            && queue->EnqueueMessage(&msg);
+        return writer->Write(msg, {sessionID, MSG_CURRENCY_DEPOSIT}, body) && queue->EnqueueMessage(&msg);
     }
 
-    template<typename Body>
-    bool CacheCommandSender::EnqueuePooled(uint64_t sessionID, uint16_t messageType, const Body& body) const {
+    template <typename Body> bool CacheCommandSender::EnqueuePooled(uint64_t sessionID, uint16_t messageType, const Body& body) const {
         if (queue == nullptr || writer == nullptr || messagePool == nullptr)
             return false;
         auto message = messagePool->AcquireScoped();
-        return message && writer->Write(*message, {sessionID, messageType}, body)
-            && queue->EnqueueMessage(message.get());
+        return message && writer->Write(*message, {sessionID, messageType}, body) && queue->EnqueueMessage(message.get());
     }
 
     bool CacheCommandSender::EnqueueCharacterList(uint64_t sessionID, uint8_t channelID, uint64_t userID) const {
@@ -113,10 +106,9 @@ namespace Core {
         return EnqueuePooled(sessionID, MSG_BAZAAR_BUY, MsgBazaarBuyBody{characterID, listingID, requestID});
     }
 
-    bool CacheCommandSender::EnqueueBazaarRegister(uint64_t sessionID, uint64_t characterID, uint16_t quantity,
-        uint64_t totalDiamondPrice, uint32_t requestID, uint8_t inventorySlot) const {
-        return EnqueuePooled(sessionID, MSG_BAZAAR_REGISTER,
-            MsgBazaarRegisterBody{characterID, 0, quantity, totalDiamondPrice, requestID, inventorySlot});
+    bool CacheCommandSender::EnqueueBazaarRegister(uint64_t sessionID, uint64_t characterID, uint16_t quantity, uint64_t totalDiamondPrice, uint32_t requestID,
+        uint8_t inventorySlot) const {
+        return EnqueuePooled(sessionID, MSG_BAZAAR_REGISTER, MsgBazaarRegisterBody{characterID, 0, quantity, totalDiamondPrice, requestID, inventorySlot});
     }
 
     bool CacheCommandSender::EnqueueBazaarOutboxList(uint64_t sessionID, uint64_t characterID, uint32_t requestID) const {

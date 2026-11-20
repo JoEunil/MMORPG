@@ -9,6 +9,8 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Response" />
+    <Filter Include="Response\Interface" />
     <Filter Include="Cache">
       <UniqueIdentifier>{0444013b-42f7-456f-b6a1-a94f682ec414}</UniqueIdentifier>
     </Filter>
@@ -144,6 +146,9 @@
     <ClInclude Include="World\Interface\ISessionStatusReader.h">
       <Filter>World\Interface</Filter>
     </ClInclude>
+    <ClInclude Include="World\Interface\ISessionLifecycleListener.h">
+      <Filter>World\Interface</Filter>
+    </ClInclude>
     <ClInclude Include="World\Interface\ISessionSnapshotReader.h">
       <Filter>World\Interface</Filter>
     </ClInclude>
@@ -178,6 +183,15 @@
       <Filter>NonSimulation</Filter>
     </ClInclude>
     <ClInclude Include="World\MonsterState.h">
+      <Filter>World</Filter>
+    </ClInclude>
+    <ClInclude Include="Response\ServerResponseWorker.h">
+      <Filter>Response</Filter>
+    </ClInclude>
+    <ClInclude Include="Response\Interface\IServerResponseQueue.h">
+      <Filter>Response\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="World\Equipment.h">
       <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="World\CharacterState.h">
@@ -291,6 +305,12 @@
       <Filter>NonSimulation</Filter>
     </ClCompile>
     <ClCompile Include="World\ZoneState_Skills.cpp">
+      <Filter>World</Filter>
+    </ClCompile>
+    <ClCompile Include="Response\ServerResponseWorker.cpp">
+      <Filter>Response</Filter>
+    </ClCompile>
+    <ClCompile Include="World\Equipment.cpp">
       <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="World\ZoneState_Actions.cpp">

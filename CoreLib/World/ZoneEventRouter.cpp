@@ -46,10 +46,6 @@ namespace Core {
             zone.worker.Stop();
     }
 
-    ZoneState* ZoneEventRouter::GetZone(uint16_t zoneID) {
-        return zoneID != 0 && zoneID <= zones.size() ? zones[zoneID - 1].state.get() : nullptr;
-    }
-
     std::optional<SessionSnapshotView> ZoneEventRouter::ReadSessionSnapshot(uint16_t zoneID) const {
         if (zoneID == 0 || zoneID > zones.size())
             return std::nullopt;

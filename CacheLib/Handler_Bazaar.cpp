@@ -1,4 +1,5 @@
-﻿#include "Handler.h"
+﻿#include "pch.h"
+#include "Handler.h"
 
 #include <algorithm>
 #include <exception>

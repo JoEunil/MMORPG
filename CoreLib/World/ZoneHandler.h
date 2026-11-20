@@ -9,33 +9,36 @@
 #include "../Cache/MessagePool.h"
 #include "SessionManager.h"
 #include "../Packet/PacketTypes.h"
-#include "../Interface/INetworkSender.h"
-#include "../Packet/PacketWriter.h"
 
 namespace Core {
     class CacheCommandSender;
     class ISessionAuth;
     class IPacketView;
-    class INetworkSender;
-    class IDBCache;
+    class IServerResponseQueue;
     class PacketWriter;
+    class IDBCache;
     class IMessageQueue;
     class LobbyZone;
+    class IInventoryOperations;
 
     class ZoneHandler {
-        SessionManager* sessionManager = nullptr;
-        INetworkSender* networkSender = nullptr;
+        IServerResponseQueue* responses = nullptr;
         PacketWriter* writer = nullptr;
+        SessionManager* sessionManager = nullptr;
         IZoneTransfer* zoneTransfer = nullptr;
+        IZoneRequestQueue* zoneRequests = nullptr;
+        IInventoryOperations* inventory = nullptr;
         const CacheCommandSender* cacheCommands = nullptr;
         LobbyZone* lobbyZone = nullptr;
-        
-        void Initialize(SessionManager* m, INetworkSender* sender, PacketWriter* packetWriter,
-            IZoneTransfer& transfer, LobbyZone& lobby, const CacheCommandSender& commands) {
+
+        void Initialize(SessionManager* m, IServerResponseQueue& responseQueue, PacketWriter& packetWriter, IZoneTransfer& transfer, LobbyZone& lobby,
+            const CacheCommandSender& commands, IZoneRequestQueue& requests, IInventoryOperations* items) {
             sessionManager = m;
-            networkSender = sender;
-            writer = packetWriter;
+            responses = &responseQueue;
+            writer = &packetWriter;
             zoneTransfer = &transfer;
+            zoneRequests = &requests;
+            inventory = items;
             cacheCommands = &commands;
             lobbyZone = &lobby;
         }
@@ -45,12 +48,16 @@ namespace Core {
                 sysLogger->LogError("zone handler", "sessionManager not initialized");
                 return false;
             }
-            if (networkSender == nullptr) {
-                sysLogger->LogError("zone handler", "networkSender not initialized");
+            if (writer == nullptr) {
+                sysLogger->LogError("zone handler", "packet writer not initialized");
                 return false;
             }
-            if (writer == nullptr) {
-                sysLogger->LogError("zone handler", "writer not initialized");
+            if (responses == nullptr) {
+                sysLogger->LogError("zone handler", "response queue not initialized");
+                return false;
+            }
+            if (zoneRequests == nullptr) {
+                sysLogger->LogError("zone handler", "zone request queue not initialized");
                 return false;
             }
             if (zoneTransfer == nullptr) {
@@ -67,25 +74,27 @@ namespace Core {
             }
             return true;
         }
-        
+
         void ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID);
         ParryResponseBody ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request);
         void ProcessZoneTransfer(ZoneState& zone, const ZoneEvent& event);
-        void ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update);
         void ProcessLobbyEntry(ZoneState& zone, const ZoneRequest& request);
         void ProcessRespawn(ZoneState& zone, const ZoneRequest& request);
         void ProcessBootstrap(ZoneState& zone, const ZoneRequest& request);
         void SendZoneChangeFailed(uint64_t sessionID);
-        void SendZoneChange(ZoneState& zone, uint64_t sessionID, const ZoneChangeResult& transition);
+        void SendZoneChange(uint64_t sessionID, const ZoneChangeResult& transition);
         friend class Initializer;
-        friend class ZoneThread;
         friend class ZoneBenchmarkAccess;
-    public:
-        enum class TickSnapshot { None, Delta, Full };
 
-        template<class Queue, class SelectSnapshot>
-        size_t RunTick(ZoneState& zone, uint16_t zoneID, Queue& queue, size_t maxEvents,
-            CorePerfCollector& perf, SelectSnapshot selectSnapshot) {
+      public:
+        enum class TickSnapshot {
+            None,
+            Delta,
+            Full
+        };
+
+        template <class Queue, class SelectSnapshot>
+        size_t RunTick(ZoneState& zone, uint16_t zoneID, Queue& queue, size_t maxEvents, CorePerfCollector& perf, SelectSnapshot selectSnapshot) {
             zone.SkillCoolDown();
             zone.ReplenishMoveBudget();
             size_t processed = 0;
@@ -126,16 +135,24 @@ namespace Core {
             zone.UpdateMonster();
             zone.FlushCheat();
             switch (selectSnapshot()) {
-            case TickSnapshot::Full: BroadcastFullState(zone); break;
-            case TickSnapshot::Delta: BroadcastDeltaState(zone); break;
-            case TickSnapshot::None: break;
+            case TickSnapshot::Full:
+                BroadcastFullState(zone);
+                break;
+            case TickSnapshot::Delta:
+                BroadcastDeltaState(zone);
+                break;
+            case TickSnapshot::None:
+                break;
             }
             return processed;
         }
 
+        void SaveRemainingCharacters(ZoneState& zone);
         void Process(ZoneState& zone, IPacketView* p, uint16_t zoneID);
         void ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneRequest& request);
-    private:
+        void ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update);
+
+      private:
         static void BroadcastDeltaState(ZoneState& zone) {
             zone.DeltaSnapshot();
             zone.DeltaSnapshotMonster();

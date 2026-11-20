@@ -4,12 +4,11 @@
 
 #include "../Interface/IPacketView.h"
 #include "../Interface/ISessionAuth.h"
-#include "../Interface/INetworkSender.h"
 #include "../Interface/IMessageQueue.h"
+#include "../Response/Interface/IServerResponseQueue.h"
 #include "../Packet/PacketWriter.h"
 #include "ZoneState.h"
 #include "LobbyZone.h"
-#include "WorldMap.h"
 #include "../Cache/Message.h"
 #include "../Cache/MessagePool.h"
 #include "../LoggerGlobal.h"
@@ -19,46 +18,47 @@ namespace Core {
     void ZoneHandler::ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID) {
         if (!std::isfinite(action.aimAngle) || action.aimAngle < 0 || action.aimAngle >= 360)
             return;
-        sessionManager->ApplyZoneAction(sessionID, zoneID, action.ownershipEpoch, [&] {
-            return zone.ApplyAction(sessionID, action, *zoneTransfer);
-        });
+        std::optional<ZoneRequestRoute> resync;
+        if (!sessionManager->CheckZoneAction(sessionID, zoneID, action.ownershipEpoch, resync)) {
+            if (resync)
+                zoneRequests->TryEnqueueBootstrap(resync->zoneID, sessionID, resync->ownershipEpoch, true);
+            return;
+        }
+        zone.ApplyAction(sessionID, action, *zoneTransfer);
     }
 
     void ZoneHandler::ProcessLobbyEntry(ZoneState& zone, const ZoneRequest& request) {
         const auto sessionID = request.sessionID;
         ZoneChangeResult result;
-        const auto outcome = sessionManager->EnterZoneFromLobby(sessionID, zone.m_zoneID, request.ownershipEpoch, result,
-            [&](uint64_t characterID) -> std::optional<uint32_t> {
-                uint32_t profileID = 0;
-                if (!lobbyZone->TryEnterField(sessionID, characterID, zone.m_zoneID, [&](const CharacterState& loaded) {
-                    profileID = loaded.profileId;
-                    return zone.AdmitLobbyCharacter(sessionID, loaded, result);
-                }))
-                    return std::nullopt;
-                return profileID;
-            });
+        const auto outcome = lobbyZone->EnterField(sessionID, request.ownershipEpoch, zone, result);
         if (outcome == ZoneOperationResult::Completed)
-            SendZoneChange(zone, sessionID, result);
+            SendZoneChange(sessionID, result);
         else if (outcome == ZoneOperationResult::Rejected)
             SendZoneChangeFailed(sessionID);
     }
 
     void ZoneHandler::ProcessRespawn(ZoneState& zone, const ZoneRequest& request) {
         const auto sessionID = request.sessionID;
-        const bool townSpawnWalkable = WorldMap::CanTraverse(TOWN_SPAWN_X, TOWN_SPAWN_Y, TOWN_SPAWN_X, TOWN_SPAWN_Y);
-        ZoneChangeResult result;
-        const auto outcome = sessionManager->RespawnInZone(sessionID, zone.m_zoneID, request.ownershipEpoch,
-            townSpawnWalkable, result,
-            [&](uint64_t characterID, uint64_t ownershipEpoch) {
-                return zone.StartRespawnTransfer(sessionID, characterID, ownershipEpoch, *zoneTransfer);
-            },
-            [&](uint64_t characterID, bool replay) {
-                return zone.DescribeOrRespawnInTown(sessionID, characterID, replay, result);
-            });
-        if (outcome == ZoneOperationResult::Completed)
-            SendZoneChange(zone, sessionID, result);
-        else if (outcome == ZoneOperationResult::Rejected)
+        const auto respawn = sessionManager->CheckRespawnRequest(sessionID, zone.GetZoneID(), request.ownershipEpoch);
+        if (respawn.status == RespawnRequest::Status::Ignored)
+            return;
+        if (respawn.status == RespawnRequest::Status::Rejected) {
             SendZoneChangeFailed(sessionID);
+            return;
+        }
+        if (zone.GetZoneID() != TOWN_ZONE_ID) {
+            if (!zone.StartRespawnTransfer(sessionID, respawn.characterID, request.ownershipEpoch, *zoneTransfer))
+                SendZoneChangeFailed(sessionID);
+            return;
+        }
+
+        ZoneChangeResult result;
+        if (!zone.DescribeOrRespawnInTown(sessionID, respawn.characterID, respawn.status == RespawnRequest::Status::Replay, result)) {
+            SendZoneChangeFailed(sessionID);
+            return;
+        }
+        if (sessionManager->CompleteTownRespawn(sessionID, request.ownershipEpoch, result))
+            SendZoneChange(sessionID, result);
     }
 
     void ZoneHandler::ProcessZoneTransfer(ZoneState& zone, const ZoneEvent& event) {
@@ -68,32 +68,50 @@ namespace Core {
 
         const auto sessionID = transfer->character.sessionID;
         const bool returning = event.type == ZoneEventType::TransferRejected;
-        const bool respawn = transfer->IsRespawn();
-        ZoneChangeResult result;
-        const auto outcome = sessionManager->ResolveZoneTransfer(transfer, zone.m_zoneID, returning, result,
-            [&] { return zone.TryResolveZoneTransfer(*transfer, returning, result); },
-            [&] {
-                if (!respawn) {
-                    zone.Skill(sessionID, transfer->skillSlot, transfer->aimAngle);
-                    zone.DirtyCheck(sessionID);
-                }
-            });
+        const auto snapshot = sessionManager->ReadZoneTransfer(transfer, zone.GetZoneID(), returning);
+        if (!snapshot)
+            return;
 
-        if (outcome == ZoneOperationResult::Rejected) {
+        ZoneChangeResult result;
+        if (!zone.TryResolveZoneTransfer(*snapshot, returning, result)) {
             if (returning || !zoneTransfer->TryEnqueueTransferRejected(transfer))
                 zoneTransfer->EnqueueLobbyReturn(transfer);
-        } else if (outcome == ZoneOperationResult::Completed) {
-            if (!returning)
-                SendZoneChange(zone, sessionID, result);
-            else if (respawn)
-                SendZoneChangeFailed(sessionID);
+            return;
         }
+
+        const auto committed = sessionManager->CompleteZoneTransfer(transfer, zone.GetZoneID(), returning);
+        if (!committed) {
+            // Disconnect may have taken the pending record while admission was in progress.
+            CharacterState discarded;
+            if (!zone.EmigrateChar(sessionID, discarded))
+                errorLogger->LogError("zone handler", "could not roll back transfer admission", "sessionID", sessionID);
+            return;
+        }
+        zone.UpdateProfileVersion(sessionID, committed->profileID, committed->profileVersion);
+        if (returning) {
+            if (snapshot->IsRespawn())
+                SendZoneChangeFailed(sessionID);
+            return;
+        }
+        result.chatID = committed->chatID;
+        result.ownershipEpoch = committed->ownershipEpoch;
+        if (!snapshot->IsRespawn()) {
+            zone.Skill(sessionID, snapshot->skillSlot, snapshot->aimAngle);
+            zone.DirtyCheck(sessionID);
+        }
+        SendZoneChange(sessionID, result);
     }
 
     void ZoneHandler::ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update) {
-        sessionManager->ApplyZoneProfileVersion(zone.m_zoneID, update, [&] {
+        auto route = sessionManager->RouteProfileVersion(update);
+        if (route && *route == zone.GetZoneID()) {
             zone.UpdateProfileVersion(update.sessionID, update.profileID, update.version);
-        });
+            return;
+        }
+        if (route && *route == 0)
+            route = lobbyZone->ApplyProfileVersion(update);
+        if (route && !zoneRequests->TryEnqueueProfileVersion(*route, update))
+            errorLogger->LogWarn("zone handler", "could not route profile version", "sessionID", update.sessionID, "zoneID", *route);
     }
 
     void ZoneHandler::ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneRequest& request) {
@@ -109,58 +127,102 @@ namespace Core {
         if (zone.EmigrateChar(request.sessionID, character))
             cacheCommands->EnqueueCharacterStateUpdate(request.sessionID, character);
         else
-            gameLogger->LogWarn("zone handler", "disconnect character not found",
-                "sessionID", request.sessionID, "zoneID", zoneID);
+            gameLogger->LogWarn("zone handler", "disconnect character not found", "sessionID", request.sessionID, "zoneID", zoneID);
     }
 
     void ZoneHandler::ProcessBootstrap(ZoneState& zone, const ZoneRequest& request) {
-        ZoneChangeResult transition;
-        bool described = false;
-        sessionManager->ProcessZoneBootstrap(request.sessionID, zone.m_zoneID, request.ownershipEpoch, request.resendZoneChange,
-            [&](uint64_t chatID) {
-                described = zone.DescribeZoneChange(request.sessionID, chatID, request.ownershipEpoch, transition);
-            },
-            [&](uint64_t bootstrapID) {
-                zone.EnqueueBootstrap(request.sessionID, request.ownershipEpoch, bootstrapID);
-            });
-        if (described)
-            SendZoneChange(zone, request.sessionID, transition);
+        const auto info = sessionManager->PrepareZoneBootstrap(request.sessionID, zone.GetZoneID(), request.ownershipEpoch, request.resendZoneChange);
+        if (!info)
+            return;
+        if (request.resendZoneChange) {
+            ZoneChangeResult transition;
+            if (zone.DescribeZoneChange(request.sessionID, info->chatID, request.ownershipEpoch, transition))
+                SendZoneChange(request.sessionID, transition);
+            return;
+        }
+        zone.EnqueueBootstrap(request.sessionID, request.ownershipEpoch, info->bootstrapID);
     }
 
     void ZoneHandler::SendZoneChangeFailed(uint64_t sessionID) {
-        auto response = writer->WriteZoneChangeFailed();
-        if (response)
-            networkSender->SendDataUnique(sessionID, std::move(response));
+        responses->Enqueue(sessionID, writer->WriteZoneChangeFailed());
     }
 
-    void ZoneHandler::SendZoneChange(ZoneState& zone, uint64_t sessionID, const ZoneChangeResult& transition) {
-        auto response = writer->WriteZoneChangeSucess(transition);
-        if (response)
-            networkSender->SendDataUnique(sessionID, std::move(response));
-        ProcessBootstrap(zone, {sessionID, transition.ownershipEpoch});
+    void ZoneHandler::SendZoneChange(uint64_t sessionID, const ZoneChangeResult& transition) {
+        responses->EnqueueZoneChange(sessionID, writer->WriteZoneChangeSucess(transition), transition.zoneID, transition.ownershipEpoch);
     }
 
-    ParryResponseBody ZoneHandler::ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID,
-        const ParryRequestBody& request) {
-        return sessionManager->ApplyZoneParry(sessionID, zoneID, request, [&] { return zone.Parry(sessionID, request); });
+    ParryResponseBody ZoneHandler::ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request) {
+        if (const auto rejection = sessionManager->GetParryRejection(sessionID, zoneID, request))
+            return {request.requestID, request.ownershipEpoch, static_cast<uint8_t>(*rejection), 0, 0};
+        return zone.Parry(sessionID, request);
     }
 
     void ZoneHandler::Process(ZoneState& zone, IPacketView* p, uint16_t zoneID) {
         PacketHeader* h = parseHeader(p->GetPtr());
-        switch (p->GetOpcode())
-        {
-            case OP::PARRY: {
-                const auto result = ProcessParry(zone, p->GetSessionID(), zoneID, *parseBody<ParryRequestBody>(p->GetPtr()));
-                auto response = writer->WriteParryResponse(result);
-                if (response) networkSender->SendDataUnique(p->GetSessionID(), std::move(response));
-                break;
-            }
-            case OP::ACTION:
-                ProcessAction(zone, *parseBody<ActionRequestBody>(p->GetPtr()), p->GetSessionID(), zoneID);
-                break;
-            default:
-                errorLogger->LogInfo("zone Handler", "UnDefined OPCODE", "zone", zoneID, "opcode", p->GetOpcode(), "session", p->GetSessionID());
-                break;
+        switch (p->GetOpcode()) {
+        case OP::ITEM_USE: {
+            const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
+            ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
+            const auto check = sessionManager->CheckItemUse(p->GetSessionID(), zoneID, request, result);
+            if (check == SessionRequestStatus::Ready) {
+                if (const auto applied = zone.UseItem(p->GetSessionID(), request, inventory)) {
+                    result = *applied;
+                    sessionManager->RememberItemUse(p->GetSessionID(), zoneID, result);
+                }
+            } else if (check == SessionRequestStatus::StaleOwnership || check == SessionRequestStatus::StaleRequest)
+                result.status = 7;
+            responses->Enqueue(p->GetSessionID(), writer->WriteItemUseResponse(result));
+            break;
         }
+        case OP::EQUIPMENT_GET:
+        case OP::EQUIPMENT_SET: {
+            const bool write = p->GetOpcode() == OP::EQUIPMENT_SET;
+            uint64_t requestID, epoch;
+            uint8_t slot = 0;
+            uint32_t itemID = 0;
+            if (write) {
+                const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
+                requestID = request.requestID;
+                epoch = request.ownershipEpoch;
+                slot = request.slot;
+                itemID = request.itemID;
+            } else {
+                const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
+                requestID = request.requestID;
+                epoch = request.ownershipEpoch;
+            }
+            EquipmentResponseBody result{requestID, epoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), slot};
+            const auto check = sessionManager->CheckEquipment(p->GetSessionID(), zoneID, requestID, epoch, write, slot, itemID, result);
+            if (check == SessionRequestStatus::Ready) {
+                if (const auto applied = zone.Equipment(p->GetSessionID(), requestID, epoch, write, slot, itemID, inventory)) {
+                    result = *applied;
+                    if (write)
+                        sessionManager->RememberEquipment(p->GetSessionID(), zoneID, itemID, result);
+                }
+            } else if (check == SessionRequestStatus::StaleOwnership)
+                result.status = static_cast<uint8_t>(EquipmentStatus::StaleOwnership);
+            else if (check == SessionRequestStatus::StaleRequest)
+                result.status = static_cast<uint8_t>(EquipmentStatus::StaleRequest);
+            responses->Enqueue(p->GetSessionID(), writer->WriteEquipmentResponse(result));
+            break;
+        }
+        case OP::PARRY: {
+            const auto result = ProcessParry(zone, p->GetSessionID(), zoneID, *parseBody<ParryRequestBody>(p->GetPtr()));
+            responses->Enqueue(p->GetSessionID(), writer->WriteParryResponse(result));
+            break;
+        }
+        case OP::ACTION:
+            ProcessAction(zone, *parseBody<ActionRequestBody>(p->GetPtr()), p->GetSessionID(), zoneID);
+            break;
+        default:
+            errorLogger->LogInfo("zone Handler", "UnDefined OPCODE", "zone", zoneID, "opcode", p->GetOpcode(), "session", p->GetSessionID());
+            break;
+        }
+    }
+
+    void ZoneHandler::SaveRemainingCharacters(ZoneState& zone) {
+        CharacterState character;
+        while (zone.TakeCharacter(character))
+            cacheCommands->EnqueueCharacterStateUpdate(character.sessionID, character);
     }
 }

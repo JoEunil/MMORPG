@@ -143,6 +143,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="World\CharacterState.h" />
+    <ClInclude Include="World\Equipment.h" />
+    <ClInclude Include="Response\ServerResponseWorker.h" />
+    <ClInclude Include="Response\Interface\IServerResponseQueue.h" />
     <ClInclude Include="NonSimulation\ChatSessionManager.h" />
     <ClInclude Include="NonSimulation\ChatThreadPool.h" />
     <ClInclude Include="CorePerfCollector.h" />
@@ -172,6 +175,7 @@
     <ClInclude Include="World\Interface\ILobbyReturnQueue.h" />
     <ClInclude Include="NonSimulation\Interface\INonSimulationQueue.h" />
     <ClInclude Include="World\Interface\ISessionStatusReader.h" />
+    <ClInclude Include="World\Interface\ISessionLifecycleListener.h" />
     <ClInclude Include="World\Interface\IZoneTransfer.h" />
     <ClInclude Include="Interface\IPacketPool.h" />
     <ClInclude Include="Interface\IPacketPoolManager.h" />
@@ -220,6 +224,8 @@
     <ClCompile Include="Data\SkillData_Range.cpp" />
     <ClCompile Include="World\ZoneHandler.cpp" />
     <ClCompile Include="World\ZoneState_Actions.cpp" />
+    <ClCompile Include="World\Equipment.cpp" />
+    <ClCompile Include="Response\ServerResponseWorker.cpp" />
     <ClCompile Include="World\ZoneState_Monsters.cpp" />
     <ClCompile Include="World\ZoneState_Skills.cpp" />
     <ClCompile Include="World\ZoneState_Snapshots.cpp" />

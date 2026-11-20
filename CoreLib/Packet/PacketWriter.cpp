@@ -11,7 +11,7 @@ namespace Core {
         packetPoolManager = poolManager;
     }
 
-    bool PacketWriter::IsReady() {
+    bool PacketWriter::IsReady() const {
         if (packetPoolManager == nullptr) {
             sysLogger->LogError("packet writer", "packetPoolManager not initialized");
             return false;
@@ -184,6 +184,75 @@ namespace Core {
         packet->header.length = static_cast<uint32_t>(payloadOffset + messageLength);
         packetPtr->SetLength(packet->header.length);
         return packet->body.chatCnt;
+    }
+
+    int PacketWriter::WriteCharacterDeltaFields(const std::shared_ptr<IPacket>& packet, const CharacterState& state) {
+        const auto bit = state.dirtyBit;
+        int fieldCount = 0;
+        if (bit & 0x01) {
+            WriteDeltaField(packet, state.zoneInternalID, 0, state.hp);
+            ++fieldCount;
+        }
+        if (bit & 0x02) {
+            WriteDeltaField(packet, state.zoneInternalID, 1, state.mp);
+            ++fieldCount;
+        }
+        if (bit & 0x04) {
+            WriteDeltaField(packet, state.zoneInternalID, 2, state.maxHp);
+            ++fieldCount;
+        }
+        if (bit & 0x08) {
+            WriteDeltaField(packet, state.zoneInternalID, 3, state.maxMp);
+            ++fieldCount;
+        }
+        if (bit & 0x10) {
+            WriteDeltaField(packet, state.zoneInternalID, 4, state.exp);
+            ++fieldCount;
+        }
+        if (bit & 0x20) {
+            WriteDeltaField(packet, state.zoneInternalID, 5, state.level);
+            ++fieldCount;
+        }
+        if (bit & 0x40) {
+            WriteDeltaField(packet, state.zoneInternalID, 6, state.dir);
+            ++fieldCount;
+        }
+        if (bit & 0x80) {
+            WriteDeltaField(packet, state.zoneInternalID, 7, state.x);
+            ++fieldCount;
+        }
+        if (bit & 0x100) {
+            WriteDeltaField(packet, state.zoneInternalID, 8, state.y);
+            ++fieldCount;
+        }
+        if (bit & 0x200) {
+            // rename 전파. 클라이언트는 version이 바뀌면 캐시한 이름을 버리고 재요청한다.
+            WriteDeltaField(packet, state.zoneInternalID, 9, state.profileVersion);
+            ++fieldCount;
+        }
+        return fieldCount;
+    }
+
+    int PacketWriter::WriteMonsterDeltaFields(const std::shared_ptr<IPacket>& packet, const MonsterState& state) {
+        const auto bit = state.dirtyBit;
+        int fieldCount = 0;
+        if (bit & 0x01) {
+            WriteMonsterDeltaField(packet, state.internalID, 0, state.hp);
+            ++fieldCount;
+        }
+        if (bit & 0x02) {
+            WriteMonsterDeltaField(packet, state.internalID, 1, state.x);
+            ++fieldCount;
+        }
+        if (bit & 0x04) {
+            WriteMonsterDeltaField(packet, state.internalID, 2, state.y);
+            ++fieldCount;
+        }
+        if (bit & 0x08) {
+            WriteMonsterDeltaField(packet, state.internalID, 3, state.dir);
+            ++fieldCount;
+        }
+        return fieldCount;
     }
 
     std::shared_ptr<IPacket> PacketWriter::GetDeltaHeader(uint16_t zoneID, uint64_t generation) {
