@@ -162,7 +162,7 @@ namespace Core {
         }
         uint16_t GetZoneID() const { return m_zoneID; }
 
-        std::shared_ptr<ZoneTransfer> ApplyAction(uint64_t sessionID, const ActionRequestBody& action, IZoneTransfer& zoneTransfer);
+        void ApplyAction(uint64_t sessionID, const ActionRequestBody& action, IZoneTransfer& zoneTransfer);
         ParryResponseBody Parry(uint64_t sessionID, const ParryRequestBody& request);
         bool AdmitLobbyCharacter(uint64_t sessionID, CharacterState incoming, ZoneChangeResult& result);
         bool DescribeOrRespawnInTown(uint64_t sessionID, uint64_t characterID, bool replay, ZoneChangeResult& result);

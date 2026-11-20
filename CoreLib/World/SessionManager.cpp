@@ -6,6 +6,47 @@
 #include <limits>
 
 namespace Core {
+    bool SessionManager::CheckZoneAction(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
+        std::optional<ZoneRequestRoute>& resync) {
+        resync.reset();
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock lock(shard.smutex);
+        auto* session = FindSessionLocked(shard, sessionID);
+        if (!session || session->disconnectQueued || !session->authenticated || !session->authCompleted
+            || session->zoneID == 0 || session->ownershipEpoch == 0 || session->pendingZoneTransfer)
+            return false;
+        if (session->zoneID != zoneID || session->ownershipEpoch != ownershipEpoch) {
+            resync = ZoneRequestRoute{session->zoneID, session->ownershipEpoch};
+            return false;
+        }
+        session->lastRespawnRequestEpoch = 0;
+        return true;
+    }
+
+    bool SessionManager::BeginZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer) {
+        if (!transfer) return false;
+        const auto sessionID = transfer->character.sessionID;
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock lock(shard.smutex);
+        auto* session = FindSessionLocked(shard, sessionID);
+        if (!session || session->disconnectQueued || !session->authenticated || !session->authCompleted
+            || session->zoneID == 0 || session->zoneID != transfer->sourceZoneID
+            || session->ownershipEpoch != transfer->ownershipEpoch || session->pendingZoneTransfer)
+            return false;
+        session->pendingZoneTransfer = transfer;
+        return true;
+    }
+
+    void SessionManager::CancelZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer) {
+        if (!transfer) return;
+        const auto sessionID = transfer->character.sessionID;
+        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
+        std::unique_lock lock(shard.smutex);
+        auto* session = FindSessionLocked(shard, sessionID);
+        if (session && session->pendingZoneTransfer == transfer)
+            session->pendingZoneTransfer.reset();
+    }
+
     bool SessionManager::CheckItemUse(uint64_t sessionID, uint16_t zoneID, const ItemUseRequestBody& request, ItemUseResponseBody& result) const {
         result = ItemUseResponseBody{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
         if (request.requestID == 0 || request.itemID == 0) return false;

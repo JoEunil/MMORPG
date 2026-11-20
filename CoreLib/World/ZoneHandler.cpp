@@ -19,10 +19,13 @@ namespace Core {
     void ZoneHandler::ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID) {
         if (!std::isfinite(action.aimAngle) || action.aimAngle < 0 || action.aimAngle >= 360)
             return;
-        const auto resync = sessionManager->ApplyZoneAction(sessionID, zoneID, action.ownershipEpoch, [&] {
-            return zone.ApplyAction(sessionID, action, *zoneTransfer);
-        });
-        if (resync) zoneRequests->TryEnqueueBootstrap(resync->zoneID, sessionID, resync->ownershipEpoch, true);
+        std::optional<ZoneRequestRoute> resync;
+        if (!sessionManager->CheckZoneAction(sessionID, zoneID, action.ownershipEpoch, resync)) {
+            if (resync)
+                zoneRequests->TryEnqueueBootstrap(resync->zoneID, sessionID, resync->ownershipEpoch, true);
+            return;
+        }
+        zone.ApplyAction(sessionID, action, *zoneTransfer);
     }
 
     void ZoneHandler::ProcessLobbyEntry(ZoneState& zone, const ZoneRequest& request) {

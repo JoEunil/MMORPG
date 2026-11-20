@@ -12,7 +12,7 @@
 #include "../Interface/IInventoryOperations.h"
 
 namespace Core {
-    std::shared_ptr<ZoneTransfer> ZoneState::ApplyAction(uint64_t sessionID, const ActionRequestBody& action,
+    void ZoneState::ApplyAction(uint64_t sessionID, const ActionRequestBody& action,
         IZoneTransfer& zoneTransfer) {
         float previousX, previousY, previousBudget;
         uint8_t previousDir;
@@ -21,7 +21,7 @@ namespace Core {
             std::lock_guard zoneLock(m_mutex);
             const auto member = m_sessionToIndex.find(sessionID);
             if (member == m_sessionToIndex.end())
-                return nullptr;
+                return;
             const auto& character = m_chars[member->second];
             previousX = character.x;
             previousY = character.y;
@@ -31,20 +31,22 @@ namespace Core {
         }
 
         Move(sessionID, action.dir, action.x, action.y);
+        uint16_t destination = 0;
+        std::shared_ptr<ZoneTransfer> transfer;
         {
             std::lock_guard zoneLock(m_mutex);
             const auto member = m_sessionToIndex.find(sessionID);
             if (member == m_sessionToIndex.end())
-                return nullptr;
+                return;
             const auto& character = m_chars[member->second];
-            const auto destination = action.ownershipEpoch == (std::numeric_limits<uint64_t>::max)()
+            destination = action.ownershipEpoch == (std::numeric_limits<uint64_t>::max)()
                 ? 0 : zoneTransfer.FindDestination(m_zoneID, character.x, character.y);
             if (destination != 0) {
                 const float x = character.x, y = character.y, moveBudget = character.moveBudget;
                 const uint8_t dir = character.dir;
                 RestoreMovementLocked(sessionID, previousX, previousY, previousDir, previousBudget, previousDirty);
 
-                auto transfer = std::make_shared<ZoneTransfer>();
+                transfer = std::make_shared<ZoneTransfer>();
                 transfer->character = character;
                 transfer->sourceZoneID = m_zoneID;
                 transfer->ownershipEpoch = action.ownershipEpoch;
@@ -54,16 +56,29 @@ namespace Core {
                 transfer->dir = dir;
                 transfer->skillSlot = action.skillSlot;
                 transfer->aimAngle = action.aimAngle;
-                if (!zoneTransfer.TryEnqueueTransfer(destination, transfer))
-                    return nullptr;
-                RemoveCharacterLocked(sessionID);
-                return transfer;
             }
+        }
+
+        if (transfer) {
+            // Publish the pending record before the destination can consume its event.
+            // Never acquire the session lock while holding the Zone lock.
+            if (!sessionManager->BeginZoneTransfer(transfer))
+                return;
+            {
+                std::lock_guard zoneLock(m_mutex);
+                if (zoneTransfer.TryEnqueueTransfer(destination, transfer)) {
+                    RemoveCharacterLocked(sessionID);
+                    return;
+                }
+            }
+            sessionManager->CancelZoneTransfer(transfer);
+            // A rename may have updated the pending record before enqueue failed.
+            UpdateProfileVersion(sessionID, transfer->character.profileId, transfer->character.profileVersion);
+            return;
         }
 
         Skill(sessionID, action.skillSlot, action.aimAngle);
         DirtyCheck(sessionID);
-        return nullptr;
     }
 
     // 틱마다 이동 예산을 보충한다. Move()가 이 예산에서 이동 거리를 차감하므로,

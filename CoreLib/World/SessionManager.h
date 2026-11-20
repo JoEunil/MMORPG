@@ -249,10 +249,13 @@ namespace Core {
         std::optional<ZoneRequestRoute> GetRespawnRoute(uint64_t sessionID, uint64_t ownershipEpoch) const;
         std::optional<ZoneRequestRoute> GetBootstrapRoute(uint64_t sessionID, uint64_t ownershipEpoch) const;
 
+        bool CheckZoneAction(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch,
+            std::optional<ZoneRequestRoute>& resync);
+        bool BeginZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer);
+        void CancelZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer);
+
         // Callbacks run under the session shard lock. They may acquire the
         // destination state lock, but must not reenter SessionManager.
-        template<class Apply>
-        std::optional<ZoneRequestRoute> ApplyZoneAction(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, Apply apply);
         template<class Store>
         bool LoadLobbyCharacter(uint64_t sessionID, uint64_t characterID, Store store);
         template<class Admit>
@@ -298,22 +301,6 @@ namespace Core {
         uint64_t generation = 0;
         uint64_t ownershipEpoch = 0;
     };
-
-    template<class Apply>
-    std::optional<ZoneRequestRoute> SessionManager::ApplyZoneAction(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, Apply apply) {
-        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-        std::unique_lock lock(shard.smutex);
-        auto* session = FindSessionLocked(shard, sessionID);
-        if (!session || session->disconnectQueued || !session->authenticated || !session->authCompleted
-            || session->zoneID == 0 || session->ownershipEpoch == 0 || session->pendingZoneTransfer)
-            return std::nullopt;
-        if (session->zoneID != zoneID || session->ownershipEpoch != ownershipEpoch) {
-            return ZoneRequestRoute{session->zoneID, session->ownershipEpoch};
-        }
-        session->lastRespawnRequestEpoch = 0;
-        session->pendingZoneTransfer = apply();
-        return std::nullopt;
-    }
 
     template<class Store>
     bool SessionManager::LoadLobbyCharacter(uint64_t sessionID, uint64_t characterID, Store store) {
