@@ -118,6 +118,8 @@ namespace Core {
         void RemoveFromCell(CharacterState& character);
         void AddToCell(CharacterState& character, uint8_t x, uint8_t y);
         uint32_t ImmigrateChar(uint64_t sessionID, const CharacterState& user);
+        std::optional<uint32_t> ValidateCharacterEntry(uint64_t sessionID, const CharacterState& state) const;
+        CharacterState PrepareCharacterForEntry(uint64_t sessionID, uint32_t internalID, const CharacterState& state) const;
         bool RegisterCharacter(CharacterState&& incoming);
         void ClearCharacterEffects(uint64_t sessionID, uint32_t internalID);
         bool AdmitZoneTransfer(const ZoneTransfer& transfer);

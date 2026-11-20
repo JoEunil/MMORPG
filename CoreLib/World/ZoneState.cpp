@@ -45,36 +45,46 @@ namespace Core {
     }
 
     uint32_t ZoneState::ImmigrateChar(uint64_t sessionID, const CharacterState& state) {
-        if (m_chars.size() >= MAX_ZONE_CAPACITY || m_sessionToIndex.contains(sessionID) || m_generation == (std::numeric_limits<uint64_t>::max)() ||
-            !std::isfinite(state.x) || !std::isfinite(state.y) || state.x < m_area.x_min || state.x > m_area.x_max || state.y < m_area.y_min ||
-            state.y > m_area.y_max || !WorldMap::CanTraverse(state.x, state.y, state.x, state.y))
-            return INVALID_ZONE_INTERNAL_ID;
-        const uint32_t id = m_internalIdGenerator.load(std::memory_order_relaxed);
-        if (id == INVALID_ZONE_INTERNAL_ID || id >= MAX_ZONE_INTERNAL_ID || m_InternalIDToIndex.contains(id))
+        const auto id = ValidateCharacterEntry(sessionID, state);
+        if (!id)
             return INVALID_ZONE_INTERNAL_ID;
         try {
-            CharacterState incoming = state;
-            incoming.sessionID = sessionID;
-            incoming.zoneInternalID = id;
-            incoming.lastZone = m_zoneID;
-            incoming.dirtyBit = 0;
-            incoming.parryWindowTicks = 0;
-            if (incoming.skillSlot.empty()) {
-                incoming.skillSlot = {{0, 0}, {1, 0}, {2, 0}};
-            } else if (incoming.skillSlot.size() != 3) {
-                if (incoming.skillSlot.size() < 3)
-                    return INVALID_ZONE_INTERNAL_ID;
-                incoming.skillSlot.resize(3);
-            }
-            incoming.skillSlotCnt = 3;
-            if (!RegisterCharacter(std::move(incoming)))
+            if (!RegisterCharacter(PrepareCharacterForEntry(sessionID, *id, state)))
                 return INVALID_ZONE_INTERNAL_ID;
         } catch (const std::bad_alloc&) {
             return INVALID_ZONE_INTERNAL_ID;
         }
-        m_internalIdGenerator.store(id + 1, std::memory_order_relaxed);
+        m_internalIdGenerator.store(*id + 1, std::memory_order_relaxed);
         ++m_generation;
+        return *id;
+    }
+
+    std::optional<uint32_t> ZoneState::ValidateCharacterEntry(uint64_t sessionID, const CharacterState& state) const {
+        if (m_chars.size() >= MAX_ZONE_CAPACITY || m_sessionToIndex.contains(sessionID) || m_generation == (std::numeric_limits<uint64_t>::max)() ||
+            !std::isfinite(state.x) || !std::isfinite(state.y) || state.x < m_area.x_min || state.x > m_area.x_max || state.y < m_area.y_min ||
+            state.y > m_area.y_max || !WorldMap::CanTraverse(state.x, state.y, state.x, state.y))
+            return std::nullopt;
+        if (!state.skillSlot.empty() && state.skillSlot.size() < 3)
+            return std::nullopt;
+        const uint32_t id = m_internalIdGenerator.load(std::memory_order_relaxed);
+        if (id == INVALID_ZONE_INTERNAL_ID || id >= MAX_ZONE_INTERNAL_ID || m_InternalIDToIndex.contains(id))
+            return std::nullopt;
         return id;
+    }
+
+    CharacterState ZoneState::PrepareCharacterForEntry(uint64_t sessionID, uint32_t internalID, const CharacterState& state) const {
+        CharacterState incoming = state;
+        incoming.sessionID = sessionID;
+        incoming.zoneInternalID = internalID;
+        incoming.lastZone = m_zoneID;
+        incoming.dirtyBit = 0;
+        incoming.parryWindowTicks = 0;
+        if (incoming.skillSlot.empty())
+            incoming.skillSlot = {{0, 0}, {1, 0}, {2, 0}};
+        else if (incoming.skillSlot.size() > 3)
+            incoming.skillSlot.resize(3);
+        incoming.skillSlotCnt = 3;
+        return incoming;
     }
 
     bool ZoneState::AdmitLobbyCharacter(uint64_t sessionID, CharacterState incoming, ZoneChangeResult& result) {
