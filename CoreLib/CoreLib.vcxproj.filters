@@ -183,6 +183,9 @@
     <ClInclude Include="World\MonsterState.h">
       <Filter>World</Filter>
     </ClInclude>
+    <ClInclude Include="World\Equipment.h">
+      <Filter>World</Filter>
+    </ClInclude>
     <ClInclude Include="World\CharacterState.h">
       <Filter>World</Filter>
     </ClInclude>
@@ -294,6 +297,9 @@
       <Filter>NonSimulation</Filter>
     </ClCompile>
     <ClCompile Include="World\ZoneState_Skills.cpp">
+      <Filter>World</Filter>
+    </ClCompile>
+    <ClCompile Include="World\Equipment.cpp">
       <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="World\ZoneState_Actions.cpp">

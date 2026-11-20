@@ -143,6 +143,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="World\CharacterState.h" />
+    <ClInclude Include="World\Equipment.h" />
     <ClInclude Include="NonSimulation\ChatSessionManager.h" />
     <ClInclude Include="NonSimulation\ChatThreadPool.h" />
     <ClInclude Include="CorePerfCollector.h" />
@@ -221,6 +222,7 @@
     <ClCompile Include="Data\SkillData_Range.cpp" />
     <ClCompile Include="World\ZoneHandler.cpp" />
     <ClCompile Include="World\ZoneState_Actions.cpp" />
+    <ClCompile Include="World\Equipment.cpp" />
     <ClCompile Include="World\ZoneState_Monsters.cpp" />
     <ClCompile Include="World\ZoneState_Skills.cpp" />
     <ClCompile Include="World\ZoneState_Snapshots.cpp" />

@@ -10,6 +10,7 @@
 #include "WorldMap.h"
 #include "Interface/IZoneTransfer.h"
 #include "../Interface/IInventoryOperations.h"
+#include "../Data/ItemData.h"
 
 namespace Core {
     void ZoneState::ApplyAction(uint64_t sessionID, const ActionRequestBody& action, IZoneTransfer& zoneTransfer) {
@@ -296,9 +297,7 @@ namespace Core {
                     result.status = static_cast<uint8_t>(EquipmentStatus::StorageFailure);
                     break;
                 }
-                character.equippedWeaponItemID = state.weaponID;
-                character.equippedShieldItemID = state.shieldID;
-                character.equippedBodyItemID = state.bodyID;
+                character.equipment = Core::Equipment(state.weaponID, state.shieldID, state.bodyID);
                 result.status = static_cast<uint8_t>(EquipmentStatus::Success);
                 break;
             case EquipmentOperationStatus::Missing:
@@ -316,12 +315,12 @@ namespace Core {
             }
         }
         if (result.status == static_cast<uint8_t>(EquipmentStatus::Success)) {
-            result.weaponID = character.equippedWeaponItemID;
-            result.shieldID = character.equippedShieldItemID;
-            result.bodyID = character.equippedBodyItemID;
-            result.defensePercent = character.DefensePercent();
+            result.weaponID = character.equipment.WeaponID();
+            result.shieldID = character.equipment.ShieldID();
+            result.bodyID = character.equipment.BodyID();
+            result.defensePercent = character.equipment.DefensePercent();
             result.baseAttack = character.attack;
-            result.bonusAttack = character.WeaponAttackBonus();
+            result.bonusAttack = character.equipment.AttackBonus();
             result.effectiveAttack = character.EffectiveAttack();
         }
         return result;
