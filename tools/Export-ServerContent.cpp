@@ -289,6 +289,7 @@ int wmain(int argc, wchar_t* argv[]) {
         const std::filesystem::path dataDirectory(argv[2]);
         Data::InitializeItemData(dataDirectory / "Items");
         Data::InitializeGrowthData(dataDirectory / "Growth/Growth.csv");
+        Data::InitializeSkillData(dataDirectory / "Skills");
         Validate();
         WriteAtomically(std::filesystem::absolute(argv[1]), Serialize());
         std::cout << "Exported player/monster skills, 6 hunting zones, 3 monsters, 100 growth levels, and " << Data::itemMap.size() << " items.\n";

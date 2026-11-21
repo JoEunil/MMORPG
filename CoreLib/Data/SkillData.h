@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <filesystem>
 #include <algorithm>
 #include <vector>
 
@@ -10,12 +11,12 @@ namespace Data {
     inline constexpr uint8_t parrySkillSlot = 254;
     inline constexpr uint32_t parrySkillID = UINT32_MAX;
     enum class SkillRangeType : uint8_t {
-        None,       
-        Circle,         // 원형
-        Rectangle,      // 직사각형 (전방)
-        Boss1_1,          // 보스 방사형 
-        Boss1_2,        
-        Boss2,           // 보스 직선 파동형 
+        None = 0,
+        Circle = 1,     // 원형
+        Rectangle = 2,  // 직사각형 (전방)
+        Boss1_1 = 3,    // 보스 방사형
+        Boss1_2 = 4,
+        Boss2 = 5,      // 보스 직선 파동형
     };
     enum class SkillActionType : uint8_t {
         Charging = 0,
@@ -52,6 +53,9 @@ namespace Data {
         std::vector<SkillPhase> phases;
     };
 
-    extern const std::vector<SkillData> skillList;
-    extern const std::vector<SkillData> monsterSkillList;
+    extern const std::vector<SkillData>& skillList;
+    extern const std::vector<SkillData>& monsterSkillList;
+
+    std::vector<SkillData> LoadSkillData(const std::filesystem::path& skillsPath, const std::filesystem::path& phasesPath);
+    void InitializeSkillData(const std::filesystem::path& directory);
 }

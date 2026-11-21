@@ -197,12 +197,6 @@
     <ClInclude Include="World\CharacterState.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="Data\MonsterSkills.inc">
-      <Filter>Data</Filter>
-    </ClInclude>
-    <ClInclude Include="Data\Skills.inc">
-      <Filter>Data</Filter>
-    </ClInclude>
     <ClInclude Include="Data\GrowthData.h">
       <Filter>Data</Filter>
     </ClInclude>

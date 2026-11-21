@@ -29,6 +29,7 @@ namespace Data {
         CsvReader(const std::filesystem::path& path, std::initializer_list<std::string_view> columns);
         bool ReadRow();
         std::string_view Get(std::string_view column) const;
+        float GetFloat(std::string_view column) const;
         [[noreturn]] void Fail(std::string_view column, std::string_view message) const;
 
         template<typename T>

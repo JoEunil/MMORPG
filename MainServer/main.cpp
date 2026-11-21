@@ -10,6 +10,7 @@
 #include <CoreLib/Cache/DurableLogger.h>
 #include <CoreLib/Data/ItemData.h>
 #include <CoreLib/Data/GrowthData.h>
+#include <CoreLib/Data/SkillData.h>
 #include <CacheLib/Initializer.h>
 
 #include <CoreLib/LoggerGlobal.h>
@@ -30,6 +31,7 @@ int main(int argc, char* argv[]) {
         const auto dataDirectory = std::filesystem::absolute(argv[0]).parent_path() / "Data";
         Data::InitializeItemData(dataDirectory / "Items");
         Data::InitializeGrowthData(dataDirectory / "Growth/Growth.csv");
+        Data::InitializeSkillData(dataDirectory / "Skills");
     }
     catch (const std::exception& error) {
         std::cerr << "Game data load failed: " << error.what() << '\n';

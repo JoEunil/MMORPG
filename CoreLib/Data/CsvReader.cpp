@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "CsvReader.h"
+#include <cmath>
 
 namespace Data {
     CsvReader::CsvReader(const std::filesystem::path& path, std::initializer_list<std::string_view> columns)
@@ -108,6 +109,15 @@ namespace Data {
         if (found == m_columns.end())
             Fail(column, "unknown column");
         return m_row.at(found->second);
+    }
+
+    float CsvReader::GetFloat(std::string_view column) const {
+        const auto text = Get(column);
+        float value = 0;
+        const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
+        if (error != std::errc{} || end != text.data() + text.size() || !std::isfinite(value))
+            Fail(column, "expected a finite floating-point value within the field's range");
+        return value;
     }
 
     void CsvReader::Fail(std::string_view column, std::string_view message) const {

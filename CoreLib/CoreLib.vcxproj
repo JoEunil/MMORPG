@@ -196,8 +196,6 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="Interface\IPingPacketWriter.h" />
     <ClInclude Include="Data\SkillData.h" />
-    <ClInclude Include="Data\MonsterSkills.inc" />
-    <ClInclude Include="Data\Skills.inc" />
     <ClInclude Include="Data\Monsters.inc" />
     <ClInclude Include="Data\GrowthData.h" />
     <ClInclude Include="World\SessionManager.h" />
