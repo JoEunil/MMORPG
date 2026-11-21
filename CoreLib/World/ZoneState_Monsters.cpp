@@ -74,7 +74,7 @@ namespace Core {
         float MonsterApproachRangeSquared(const MonsterState& monster, const Data::SkillData& skill) {
             if (monster.data->id <= 1 && skill.skillID == 0) {
                 const auto hit = std::find_if(skill.phases.begin(), skill.phases.end(), [](const Data::SkillPhase& phase) {
-                    return phase.actionID == static_cast<uint8_t>(Data::SkillActionType::Hit);
+                    return phase.actionID == Data::SkillActionType::Hit;
                 });
                 if (hit != skill.phases.end() && hit->range.type == Data::SkillRangeType::Circle)
                     return hit->range.range1 * hit->range.range1;

@@ -604,7 +604,7 @@ namespace Core {
         fixture.CharacterAt(0).dir = 2;
         fixture.CharacterAt(0).x += 0.5f;
         // Resolve only the charging phase; facing changes cannot redirect an existing cast.
-        ASSERT_EQ(Data::skillList[2].phases[0].actionID, 0u);
+        ASSERT_EQ(Data::skillList[2].phases[0].actionID, Data::SkillActionType::Charging);
         fixture.AdvancePhaseAt(2, 2);
         EXPECT_FLOAT_EQ(fixture.CellAt(2, 2).activeSkills[0].aimAngle, 37.5f);
         ASSERT_EQ(fixture.CellAt(2, 2).actionResults.size(), 1u);

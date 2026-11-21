@@ -22,6 +22,12 @@ namespace Data {
         Hit = 1,
     };
 
+    namespace SkillFlags {
+        inline constexpr uint8_t None = 0;
+        inline constexpr uint8_t Critical = 1 << 0;
+        inline constexpr uint8_t AreaOfEffect = 1 << 1;
+    }
+
     struct SkillRange {
         SkillRangeType type;
         float range1; 
@@ -33,14 +39,14 @@ namespace Data {
 
     struct SkillPhase {
         uint32_t tick; // 해당 phase 처리까지 wait tick, 처리후 다음 phase 전환
-        uint8_t actionID; // 0: charging, 1:hit
+        SkillActionType actionID;
         SkillRange range;
         uint32_t attack;
     };
 
     struct SkillData {
         uint16_t skillID;
-        uint8_t flags;      // bit0: crit, bit2: crowd
+        uint8_t flags; // SkillFlags bitmask
         uint32_t mana;
         uint32_t coolDown;
         std::vector<SkillPhase> phases;

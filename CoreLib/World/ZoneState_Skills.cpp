@@ -88,7 +88,7 @@ namespace Core {
 			const auto [cellX, cellY] = GetCell(skill.x, skill.y, m_area);
 			const int effectCellIndex = cellY * CELLS_X + cellX;
 			auto actionID = skillData.phases[skill.currentPhase].actionID;
-			if (actionID == 1)
+			if (actionID == Data::SkillActionType::Hit)
 				ApplyHit(caster, skill, effectCellIndex);
 			m_cells[cellY][cellX].actionResults.emplace_back(
 			skill.casterType,
@@ -123,7 +123,7 @@ namespace Core {
 
     void ZoneState::ApplyPlayerHit(CharacterState& caster, const ActiveSkill& skill, const Data::SkillData& skillData, int idx) {
         auto& phase = skillData.phases[skill.currentPhase];
-        bool AOE = skillData.flags & 0x02; // 광역기
+        bool AOE = skillData.flags & Data::SkillFlags::AreaOfEffect;
         for (auto& cellIdx : AOI[idx]) {
             auto& cell = m_cells[cellIdx / CELLS_X][cellIdx % CELLS_X];
             for (uint16_t mon : cell.monsterIndexes)
@@ -133,7 +133,7 @@ namespace Core {
                 if (phase.range.InRangeAngle(skill.aimAngle, skill.x, skill.y, m_monsters[mon].x, m_monsters[mon].y))
                 {
                     auto damage = caster.EffectiveAttack() * phase.attack;
-                    if (skillData.flags & 0x01) {
+                    if (skillData.flags & Data::SkillFlags::Critical) {
                         // critical 적용..
                         damage *= 2;
                     }
@@ -157,7 +157,7 @@ namespace Core {
 
     void ZoneState::ApplyMonsterHit(const ActiveSkill& skill, const Data::SkillData& skillData, int idx) {
         auto& phase = skillData.phases[skill.currentPhase];
-        bool AOE = skillData.flags & 0x02; // 광역기
+        bool AOE = skillData.flags & Data::SkillFlags::AreaOfEffect;
         auto& caster = m_monsters[skill.monsterId];
         for (auto& cellIdx : AOI[idx]) {
             auto& cell = m_cells[cellIdx / CELLS_X][cellIdx % CELLS_X];
@@ -170,7 +170,7 @@ namespace Core {
                 if (character.hp > 0 && phase.range.InRange(skill.dir, skill.x, skill.y, character.x, character.y))
                 {
                     uint64_t damage = static_cast<uint64_t>(caster.data->attack) * phase.attack;
-                    if (skillData.flags & 0x01) {
+                    if (skillData.flags & Data::SkillFlags::Critical) {
                         // critical 적용..
                         damage = damage > UINT64_MAX / 2 ? UINT64_MAX : damage * 2;
                     }

@@ -48,19 +48,20 @@ namespace {
             Require(skills->size() == expectedCount, "Unexpected skill catalog size.");
             for (size_t id = 0; id < skills->size(); ++id) {
                 const auto& skill = (*skills)[id];
-                Require(skill.skillID == id && (skill.flags & ~3) == 0,
+                Require(skill.skillID == id && (skill.flags & ~(Data::SkillFlags::Critical | Data::SkillFlags::AreaOfEffect)) == 0,
                     "Skill IDs must match array indices and flags must use existing bits.");
                 const size_t expectedPhases = id == 3 ? 4 : id == 4 ? 10 : 2;
                 Require(skill.phases.size() == expectedPhases, "Existing skill phase counts must be retained.");
                 for (size_t i = 0; i < skill.phases.size(); ++i) {
                     const auto& phase = skill.phases[i];
                     const auto range = phase.range.type;
-                    Require(phase.actionID == (i & 1) && range <= Data::SkillRangeType::Boss2 &&
+                    const auto expectedAction = (i & 1) == 0 ? Data::SkillActionType::Charging : Data::SkillActionType::Hit;
+                    Require(phase.actionID == expectedAction && range <= Data::SkillRangeType::Boss2 &&
                         std::isfinite(phase.range.range1) && std::isfinite(phase.range.range2) &&
                         phase.range.range1 >= 0 && phase.range.range2 >= 0,
                         "Skill phases require existing Charging/Hit order and finite nonnegative ranges.");
                     if (range == Data::SkillRangeType::None) {
-                        Require(phase.range.range1 == 0 && phase.range.range2 == 0 && phase.actionID == 0,
+                        Require(phase.range.range1 == 0 && phase.range.range2 == 0 && phase.actionID == Data::SkillActionType::Charging,
                             "Empty skill ranges must have zero dimensions and cannot hit.");
                     }
                     else {
