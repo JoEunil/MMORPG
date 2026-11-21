@@ -196,7 +196,6 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="Interface\IPingPacketWriter.h" />
     <ClInclude Include="Data\SkillData.h" />
-    <ClInclude Include="Data\Monsters.inc" />
     <ClInclude Include="Data\GrowthData.h" />
     <ClInclude Include="World\SessionManager.h" />
     <ClInclude Include="World\Cell.h" />
@@ -225,6 +224,7 @@
     <ClCompile Include="Data\CsvReader.cpp" />
     <ClCompile Include="Data\GrowthData.cpp" />
     <ClCompile Include="Data\MonsterData.cpp" />
+    <ClCompile Include="Data\HuntingZoneData.cpp" />
     <ClCompile Include="Data\SkillData_Range.cpp" />
     <ClCompile Include="World\ZoneHandler.cpp" />
     <ClCompile Include="World\ZoneState_Actions.cpp" />

@@ -184,8 +184,9 @@ namespace {
         for (size_t i = 0; i < std::size(Data::huntingZones); ++i) {
             const auto& zone = Data::huntingZones[i];
             if (i) json << ",\n";
-            json << "    {\"zoneID\":" << zone.zoneID << ",\"label\":\"" << zone.label << "\""
-                << ",\"minLevel\":" << zone.minLevel << ",\"maxLevel\":" << zone.maxLevel
+            json << "    {\"zoneID\":" << zone.zoneID << ",\"label\":";
+            WriteJsonString(json, zone.label.c_str());
+            json << ",\"minLevel\":" << zone.minLevel << ",\"maxLevel\":" << zone.maxLevel
                 << ",\"regularHp\":" << zone.regularHp << ",\"strongHp\":" << zone.strongHp << ",\"bossHp\":" << zone.bossHp
                 << ",\"regularAttack\":" << zone.regularAttack << ",\"strongAttack\":" << zone.strongAttack << ",\"bossAttack\":" << zone.bossAttack
                 << ",\"regularExp\":" << zone.regularExp << ",\"strongExp\":" << zone.strongExp << ",\"bossExp\":" << zone.bossExp
@@ -204,11 +205,11 @@ namespace {
         json << "\n  ],\n  \"monsterSpecies\": [\n";
         for (size_t i = 0; i < std::size(Data::huntingSpecies); ++i) {
             const auto& species = Data::huntingSpecies[i];
-            const uint16_t archetype = species.id == 2 ? 2 : (species.id - 3) % 2;
+            const uint16_t archetype = species.monsterType;
             const auto& monster = Data::GetHuntingMonsterData(species.zone, archetype);
             if (i) json << ",\n";
             json << "    {\"id\":" << species.id << ",\"zoneID\":" << species.zone << ",\"name\":";
-            WriteJsonString(json, species.name);
+            WriteJsonString(json, species.name.c_str());
             json << ",\"attack\":" << monster.attack << ",\"phases\":[";
             WriteMonsterPhases(json, monster);
             json << "]}";
@@ -290,6 +291,8 @@ int wmain(int argc, wchar_t* argv[]) {
         Data::InitializeItemData(dataDirectory / "Items");
         Data::InitializeGrowthData(dataDirectory / "Growth/Growth.csv");
         Data::InitializeSkillData(dataDirectory / "Skills");
+        Data::InitializeMonsterData(dataDirectory / "Monsters");
+        Data::InitializeHuntingData(dataDirectory / "Monsters");
         Validate();
         WriteAtomically(std::filesystem::absolute(argv[1]), Serialize());
         std::cout << "Exported player/monster skills, 6 hunting zones, 3 monsters, 100 growth levels, and " << Data::itemMap.size() << " items.\n";

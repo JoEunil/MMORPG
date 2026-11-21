@@ -2,6 +2,7 @@
 #include <CoreLib/Data/ItemData.h>
 #include <CoreLib/Data/GrowthData.h>
 #include <CoreLib/Data/SkillData.h>
+#include <CoreLib/HuntingZoneData.h>
 #include <iostream>
 
 int main(int argc, char** argv) {
@@ -10,6 +11,8 @@ int main(int argc, char** argv) {
         Data::InitializeItemData(dataDirectory / "Items");
         Data::InitializeGrowthData(dataDirectory / "Growth/Growth.csv");
         Data::InitializeSkillData(dataDirectory / "Skills");
+        Data::InitializeMonsterData(dataDirectory / "Monsters");
+        Data::InitializeHuntingData(dataDirectory / "Monsters");
     }
     catch (const std::exception& error) {
         std::cerr << "Game data load failed: " << error.what() << '\n';

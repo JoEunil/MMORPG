@@ -1,7 +1,8 @@
 ﻿#pragma once
 #include <cstdint>
-#include <initializer_list>
+#include <filesystem>
 #include <stdexcept>
+#include <vector>
 
 namespace Data {
     static constexpr int MAX_STEPS_PER_PHASE = 16;
@@ -37,7 +38,7 @@ namespace Data {
         float chaseDistance = 20.0f; // Distance from the monster's position when combat starts.
 
         uint8_t phasesCnt;        
-        Phase phases[MAX_PHASES];          // phase 1개면 일반 몬스터
+        Phase phases[MAX_PHASES]{};          // phase 1개면 일반 몬스터
 
         Reward reward;
 
@@ -47,12 +48,12 @@ namespace Data {
             uint32_t attack,
             uint32_t respawn,
             float moveSpeed,
-            std::initializer_list<Phase> phaseList,
+            const std::vector<Phase>& phaseList,
             Reward reward)
             :
             id(id), maxHp(maxHp), attack(attack),
             respawn(respawn), moveSpeed(moveSpeed),
-            phasesCnt(phaseList.size()),
+            phasesCnt(static_cast<uint8_t>(phaseList.size())),
             reward(reward)
         {
             if (phaseList.size() < 1 || phaseList.size() > MAX_PHASES)
@@ -67,6 +68,9 @@ namespace Data {
         }
     };
 
-    // 운영 환경에서는 json/데이터파일로 관리
-    extern const MonsterData monsters[3];
+    extern const std::vector<MonsterData>& monsters;
+
+    void ValidateMonsterData(const MonsterData& monster, const std::filesystem::path& source);
+    std::vector<MonsterData> LoadMonsterData(const std::filesystem::path& directory);
+    void InitializeMonsterData(const std::filesystem::path& directory);
 }

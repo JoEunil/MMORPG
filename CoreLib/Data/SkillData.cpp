@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "SkillData.h"
 #include "CsvReader.h"
-#include "../HuntingZoneData.h"
 
 namespace Data {
     namespace {
@@ -77,13 +76,6 @@ namespace Data {
             throw std::logic_error("Skill data is already initialized.");
         auto players = LoadSkillData(directory / "PlayerSkills.csv", directory / "PlayerSkillPhases.csv");
         auto monsters = LoadSkillData(directory / "MonsterSkills.csv", directory / "MonsterSkillPhases.csv");
-        for (const auto& zone : huntingMonsters)
-            for (const auto& monster : zone)
-                for (std::size_t phase = 0; phase < monster.phasesCnt; ++phase)
-                    for (std::size_t step = 0; step < monster.phases[phase].stepCnt; ++step)
-                        if (monster.phases[phase].steps[step].skillID >= monsters.size())
-                            throw std::runtime_error((directory / "MonsterSkills.csv").string() +
-                                ": a monster pattern references unknown skill " + std::to_string(monster.phases[phase].steps[step].skillID));
         playerSkills.swap(players);
         monsterSkills.swap(monsters);
         skillsInitialized = true;

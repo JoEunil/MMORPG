@@ -200,9 +200,6 @@
     <ClInclude Include="Data\GrowthData.h">
       <Filter>Data</Filter>
     </ClInclude>
-    <ClInclude Include="Data\Monsters.inc">
-      <Filter>Data</Filter>
-    </ClInclude>
     <ClInclude Include="Data\SkillData.h">
       <Filter>Data</Filter>
     </ClInclude>
@@ -335,6 +332,9 @@
       <Filter>Data</Filter>
     </ClCompile>
     <ClCompile Include="Data\MonsterData.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="Data\HuntingZoneData.cpp">
       <Filter>Data</Filter>
     </ClCompile>
     <ClCompile Include="Data\SkillData_Range.cpp">
