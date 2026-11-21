@@ -7,7 +7,11 @@
 
 #include <Netlibrary/Initializer.h>
 #include <CoreLib/Initializer.h>
-#include <CoreLib/DurableLogger.h>
+#include <CoreLib/Cache/DurableLogger.h>
+#include <CoreLib/Data/ItemData.h>
+#include <CoreLib/Data/GrowthData.h>
+#include <CoreLib/Data/SkillData.h>
+#include <CoreLib/HuntingZoneData.h>
 #include <CacheLib/Initializer.h>
 
 #include <CoreLib/LoggerGlobal.h>
@@ -24,6 +28,18 @@
 #include "IntegrationTestCache.h"
 
 int main(int argc, char* argv[]) {
+    try {
+        const auto dataDirectory = std::filesystem::absolute(argv[0]).parent_path() / "Data";
+        Data::InitializeItemData(dataDirectory / "Items");
+        Data::InitializeGrowthData(dataDirectory / "Growth/Growth.csv");
+        Data::InitializeSkillData(dataDirectory / "Skills");
+        Data::InitializeMonsterData(dataDirectory / "Monsters");
+        Data::InitializeHuntingData(dataDirectory / "Monsters");
+    }
+    catch (const std::exception& error) {
+        std::cerr << "Game data load failed: " << error.what() << '\n';
+        return EXIT_FAILURE;
+    }
     ST_WSA_INITIALIZER wsa; // winsock 초기화
 
     SetConsoleOutputCP(CP_UTF8);
@@ -46,7 +62,6 @@ int main(int argc, char* argv[]) {
         int result = EXIT_FAILURE;
         try {
             if (testBazaar) {
-                Test::g_msgPool().InitializeForTest();
                 Test::RunAll();
                 result = EXIT_SUCCESS;
             }
@@ -129,7 +144,7 @@ int main(int argc, char* argv[]) {
         Core::sysLogger->LogInfo("server stop");
         // === Graceful shutdown ===
         // 자원 소유/의존 순서에 맞춰 정리한다. 특히 종료 시점의 캐릭터 상태는
-        // stateManager.CleanUp()(core.CleanUp2) 에서 cache 큐로 enqueue → cache.CleanUp()의
+        // sessionManager.CleanUp()(core.CleanUp2) 에서 cache 큐로 enqueue → cache.CleanUp()의
         // recvMQ drain → dbWorker drain 경로로 유실 없이 DB에 기록된다.
         // 각 Stop()/CleanUp()은 idempotent(running.exchange) + 로거 null-safe 이며,
         // DB 워커는 큐를 drain한 뒤 종료한다. 상세: GracefulShutdown.md

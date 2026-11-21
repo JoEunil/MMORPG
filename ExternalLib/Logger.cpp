@@ -1,4 +1,5 @@
-﻿#include "Logger.h"
+﻿#include "pch.h"
+#include "Logger.h"
 #include <fstream>
 
 namespace External {

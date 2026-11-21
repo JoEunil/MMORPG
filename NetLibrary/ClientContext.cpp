@@ -4,9 +4,8 @@
 
 #include "Config.h"
 
-#include <CoreLib/PacketTypes.h>
-#include <CoreLib/IPacketView.h>
-#include <CoreLib/Config.h>
+#include <CoreLib/Packet/PacketTypes.h>
+#include <CoreLib/Interface/IPacketView.h>
 #include <CoreLib/LoggerGlobal.h>
 
 

@@ -14,7 +14,7 @@
 #include <atomic>
 #include <cstdint>
 
-#include <CoreLib/INetworkSender.h>
+#include <CoreLib/Interface/INetworkSender.h>
 #include <CoreLib/LoggerGlobal.h>
 
 #include "SendQueue.h"

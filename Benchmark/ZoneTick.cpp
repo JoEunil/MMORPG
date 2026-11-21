@@ -7,10 +7,11 @@
 #include <cmath>
 #include <thread>
 #include <benchmark/benchmark.h>
-#include <CoreLib/Config.h>
-#include <CoreLib/IPacketView.h>
-#include <CoreLib/ZoneHandler.h>
-#include <CoreLib/BroadcastThreadPool.h>
+#include <CoreLib/Packet/PacketConfig.h>
+#include <CoreLib/World/WorldConfig.h>
+#include <CoreLib/Interface/IPacketView.h>
+#include <CoreLib/World/ZoneHandler.h>
+#include <CoreLib/World/BroadcastThreadPool.h>
 #include <NetLibrary/Config.h>
 #include <NetLibrary/PacketPool.h>
 #include <windows.h>

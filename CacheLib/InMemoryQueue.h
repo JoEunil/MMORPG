@@ -5,38 +5,33 @@
 #include <vector>
 
 #include <BaseLib/BlockingBackPressureQueue.h>
-#include <CoreLib/IMessageQueue.h>
-#include <CoreLib/Message.h>
-#include <CoreLib/MessageTypes.h>
+#include <CoreLib/Interface/IMessageQueue.h>
+#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
-#include <CoreLib/Config.h>
-#include <CoreLib/DurableLogger.h>
+#include <CoreLib/Cache/DurableLogger.h>
 #include "Config.h"
-#include "MessagePool.h"
+#include <CoreLib/Cache/MessagePool.h>
 
 namespace Cache {
     class Handler;
-    class MessagePool;
     class InMemoryQueue :public Core::IMessageQueue {
         std::vector<std::thread> m_threads;
-        Base::BlockingBackPressureQueue<Core::Message*, MQ_SIZE, MQ_DEFER_SIZE, true> m_workQueue;
+        Base::BlockingBackPressureQueue<CacheMessagePool::ScopedMessage, MQ_SIZE, MQ_DEFER_SIZE, true> m_workQueue;
 
         std::atomic<bool> m_running = false;
         Handler* handler = nullptr;
-        MessagePool* messagePool = nullptr;
+        CacheMessagePool* messagePool = nullptr;
         Core::DurableLogger* durableLogger = nullptr;
 
         bool WriteDurable(Core::Message* message);
         
-        void Initialize(Handler* h, MessagePool* m, Core::DurableLogger* durableLogger) {
+        void Initialize(Handler* h, CacheMessagePool* m, Core::DurableLogger* d) {
             handler = h;
             messagePool = m;
-            this->durableLogger = durableLogger;
-            m_workQueue.SetDurableLog([this](Core::Message* const& message) {
-                if (!WriteDurable(message)) 
-                    return false;
-                messagePool->Return(message);
-                return true;
+            durableLogger = d;
+            m_workQueue.SetDurableLog([this](const CacheMessagePool::ScopedMessage& message) {
+                return WriteDurable(message.get());
             });
         }
         

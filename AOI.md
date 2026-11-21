@@ -111,11 +111,11 @@ __AOI, Cell 적용 후__
 
 __맵 크기와 절감률의 관계__
 
-이 프로젝트는 포트폴리오 시연을 위해 Zone을 100×100 크기로 작게 구성했다. 전환 영역을 포함하면 110×110이며, Cell 크기 22의 5×5 Grid로 나뉜다.  
+시연 당시 계산 조건은 Zone 100×100, 전환 영역 포함 110×110, Cell 크기 22인 5×5 Grid였다.
 AOI는 게임 시야를 기준으로 주변 3×3 Cell에 맞췄다. 내부 Cell 기준 전송 영역은 66×66으로, 작은 Zone에서 차지하는 비중이 크다.  
 
 위 계산은 모든 Cell이 9칸을 본다고 단순화했으므로, 유저 한 명에게 전체 25개 Cell 중 9개 Cell(36%)의 상태를 전송한다.  
-따라서 같은 인원을 더 넓은 맵에 분산한 경우에 비해 관측 대상이 많고, 전체 Zone 전파 대비 절감률도 제한된다. **약 64%는 현재의 작은 맵과 시야 비율에서 나온 계산값이며, AOI 방식 자체의 고정된 효율 한계는 아니다.**  
+따라서 같은 인원을 더 넓은 맵에 분산한 경우에 비해 관측 대상이 많고, 전체 Zone 전파 대비 절감률도 제한된다. **약 64%는 시연 당시 맵과 시야 비율에서 나온 계산값이며, AOI 방식 자체의 고정된 효율 한계는 아니다.**
 
 동일한 시야와 총인원을 유지하면서 맵을 넓혀 유저를 분산하면, 시야 내 인원이 줄어 전송량을 더 낮출 수 있다.  
 실제 서비스에서는 전체 접속자 수뿐 아니라 시야 내 평균·최대 엔티티 수와 상태 변경 빈도를 기준으로 용량을 산정해야 한다. 도시·보스전처럼 유저가 밀집하는 상황은 별도로 검증할 필요가 있다.  
@@ -131,7 +131,7 @@ AOI는 게임 시야를 기준으로 주변 3×3 Cell에 맞췄다. 내부 Cell 
 *분홍색 선은 Cell 경계를 나타낸 것이다.
 ## 7. 참고
 - 관련 PR: [grid 기반 AOI 적용 #20](https://github.com/JoEunil/MMORPG/pull/20)
-- [Cell.h](CoreLib/Cell.h)
-- [BroadcastThreadPool.cpp](CoreLib/BroadcastThreadPool.cpp)
-- [ZoneState_Skills.cpp](CoreLib/ZoneState_Skills.cpp)
-- [ZoneState_Snapshots.cpp](CoreLib/ZoneState_Snapshots.cpp)
+- [Cell.h](CoreLib/World/Cell.h)
+- [BroadcastThreadPool.cpp](CoreLib/World/BroadcastThreadPool.cpp)
+- [ZoneState_Skills.cpp](CoreLib/World/ZoneState_Skills.cpp)
+- [ZoneState_Snapshots.cpp](CoreLib/World/ZoneState_Snapshots.cpp)

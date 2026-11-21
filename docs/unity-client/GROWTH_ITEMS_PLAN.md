@@ -16,7 +16,7 @@
 
 HP·MP·골드 보상은 하나의 원자적 묶음이 아니라 개별 성공/실패다. 골드 캐시 확정은 DB flush 완료나 프로세스 장애 시 exactly-once 보장이 아니다. 최초 통화 행은 정상 보상 flush의 기존 PK 기반 UPSERT로 만들고, DB 조회 실패를 잔액0 성공으로 바꾸지 않는다. 사용·입금 변경을 응답 유실 때문에 자동 재실행하지 않는다.
 
-근거: [패킷](../../CoreLib/PacketTypes.h), [소비·보상 처리](../../CoreLib/StateManager.cpp), [서버 데이터](../../CoreLib/ItemData.h), [데이터 공유](CONTENT_PIPELINE.md). 숫자 키1/2·가방 사용·공유 쿨 상태는 기존 InventoryScreen이 표시한다. 서버 실제 지급·MP 사용의 최종 실전 확인은 HANDOFF의 미확인 범위를 유지한다.
+근거: [패킷](../../CoreLib/Packet/PacketTypes.h), [소비·보상 처리](../../CoreLib/StateManager.cpp), [서버 데이터](../../CoreLib/Data/ItemData.h), [데이터 공유](CONTENT_PIPELINE.md). 숫자 키1/2·가방 사용·공유 쿨 상태는 기존 InventoryScreen이 표시한다. 서버 실제 지급·MP 사용의 최종 실전 확인은 HANDOFF의 미확인 범위를 유지한다.
 
 위 현재 표는 PR73 후보의 아이템 목록·소스 및 fixture 검증 범위다. 새 Windows Player의 오프라인 빌드는 완료했다. 기본 런처를 최신 쌍으로 전환하고 서버 단독 준비·연결·정상 종료를 확인했다. 최신 Player의 가방·거래소 효과 표시는 실제 확인했고, 등급 포션 소비는 미확인이다. 아래 최초 기획 및 날짜가 붙은 내용은 당시 기록으로 보존한다.
 

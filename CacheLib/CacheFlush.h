@@ -14,14 +14,13 @@
 #include <CoreLib/LoggerGlobal.h>
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"
-#include "DBConnectionPool.h"
-#include "DBConnectionGame.h"
-#include "DBConnectionBazaar.h"
+#include "DB/DBConnectionPool.h"
+#include "DB/DBConfig.h"
 #include "Config.h"
 
 namespace Cache {
     struct FlushCommand {
-        uint16_t stmtID;
+        StatementId stmtID{};
         uint64_t generation = 0;
         std::vector<std::any> params;
     };
@@ -74,6 +73,43 @@ namespace Cache {
         void Stop();
 
         void DBWrite(FlushCommand* command);
+        void FlushInventory(FlushCommand* command);
+        bool ClaimPendingOutboxEvents(const InventoryKey& key, uint16_t shardIndex, const InventoryData& inventory);
+        void FlushCurrency(FlushCommand* command);
+
+        template<typename Storage, typename Key, typename Value>
+        bool TryWriteStorage(const FlushCommand& command, Storage& storage, const Key& key,
+            uint16_t shardIndex, Value& value) {
+            const auto stmtID = static_cast<uint16_t>(command.stmtID);
+            auto conn = connectionPoolGame->AcquireScoped();
+            if (!conn) {
+                storage.Rollback(shardIndex, key, command.generation);
+                Core::errorLogger->LogError("cache flush", "connection acquire failed",
+                    "stmtID", stmtID, "char_id", key.characterID);
+                return false;
+            }
+
+            int affectedRows;
+            try {
+                affectedRows = conn->ExecuteUpdate(command.stmtID, value, key.characterID);
+            }
+            catch (const sql::SQLException& e) {
+                Core::errorLogger->LogError("cache flush", "DB write exception",
+                    "stmtID", stmtID, "code", e.getErrorCode(), "msg", e.what());
+                storage.Rollback(shardIndex, key, command.generation);
+                return false;
+            }
+
+            conn.reset();
+            if (affectedRows <= 0) {
+                storage.Rollback(shardIndex, key, command.generation);
+                Core::errorLogger->LogInfo("cache flush", "DB write failed",
+                    "stmtID", stmtID, "char_id", key.characterID);
+                return false;
+            }
+            return true;
+        }
+
         void ExecuteWrite(FlushCommand* command);
         void ThreadFunc();
         friend class Initializer;

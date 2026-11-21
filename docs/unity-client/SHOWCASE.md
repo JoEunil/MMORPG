@@ -97,6 +97,7 @@
 ## 참고 링크
 
 - [게임 서버와 소스 저장소](https://github.com/JoEunil/MMORPG)
+- [MMORPG 서버 의존성 분석 보고서](https://joeunil.github.io/MMORPG/reports/server-project-map.html)
 - [서버 설계 자료](https://docs.google.com/presentation/d/1Sz7WlzlE4qYqyXO43ad0i0CYAFvzJMR2/edit)
 
 ## README 대표 이미지

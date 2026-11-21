@@ -108,9 +108,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile>
-      </PrecompiledHeaderFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)External;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
@@ -128,9 +127,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile>
-      </PrecompiledHeaderFile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)External;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
@@ -141,36 +139,42 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="pch.h" />
     <ClInclude Include="CacheFlush.h" />
     <ClInclude Include="CacheStorage.h" />
     <ClInclude Include="CacheStorageInventory.h" />
     <ClInclude Include="CacheStorageCurrency.h" />
+    <ClInclude Include="InventoryCodec.h" />
     <ClInclude Include="ProfileCache.h" />
     <ClInclude Include="Config.h" />
-    <ClInclude Include="DBConnection.h" />
-    <ClInclude Include="DBConnectionPool.h" />
-    <ClInclude Include="DBConnectionGame.h" />
-    <ClInclude Include="DBWorker.h" />
+    <ClInclude Include="DB\Queries.h" />
+    <ClInclude Include="DB\DBConnection.h" />
+    <ClInclude Include="DB\DBConfig.h" />
+    <ClInclude Include="DB\StatementId.h" />
+    <ClInclude Include="DB\DBConnectionPool.h" />
+    <ClInclude Include="DB\DBWorker.h" />
     <ClInclude Include="FlushDispatcher.h" />
     <ClInclude Include="Handler.h" />
     <ClInclude Include="Initializer.h" />
     <ClInclude Include="InMemoryQueue.h" />
-    <ClInclude Include="MessagePool.h" />
     <ClInclude Include="WALManager.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="pch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="CacheFlush.cpp" />
+    <ClCompile Include="CacheFlush_Currency.cpp" />
+    <ClCompile Include="CacheFlush_Inventory.cpp" />
     <ClCompile Include="CacheStorageCurrency.cpp" />
     <ClCompile Include="ProfileCache.cpp" />
     <ClCompile Include="CacheStorageInventory.cpp" />
-    <ClInclude Include="DBConnectionBazaar.h" />
     <ClCompile Include="Handler.cpp" />
     <ClCompile Include="Handler_Bazaar.cpp" />
     <ClCompile Include="Handler_Currency.cpp" />
     <ClCompile Include="Handler_Diamond.cpp" />
     <ClCompile Include="Handler_Inventory.cpp" />
     <ClCompile Include="InMemoryQueue.cpp" />
-    <ClCompile Include="MessagePool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BaseLib\BaseLib.vcxproj">

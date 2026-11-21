@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <CoreLib/IPacketPoolManager.h>
+#include <CoreLib/Interface/IPacketPoolManager.h>
 #include "Config.h"
 #include "PacketPool.h"
 

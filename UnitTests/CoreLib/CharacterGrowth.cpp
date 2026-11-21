@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <CoreLib/CharacterState.h>
+#include <CoreLib/World/CharacterState.h>
 
 namespace Core {
     TEST(CharacterGrowthTest, RewardCrossesOnlyNewBoundariesAndPreservesMissingHp) {

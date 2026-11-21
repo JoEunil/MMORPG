@@ -5,11 +5,12 @@
 #include <unordered_map>
 #include <shared_mutex>
 
-#include <CoreLib/IProfileCache.h>
-#include <CoreLib/PacketTypes.h>
+#include <CoreLib/Config.h>
+#include <CoreLib/Interface/IProfileCache.h>
+#include <CoreLib/Packet/PacketTypes.h>
 
-#include "DBWorker.h"
-#include "DBConnectionGame.h"
+#include "DB/DBWorker.h"
+#include "DB/DBConfig.h"
 
 namespace Cache {
     // 이름 조회용 write-through 캐시.

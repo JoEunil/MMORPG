@@ -4,8 +4,8 @@
 #include <mutex>
 #include <cstdint>
 
-#include <CoreLib/IPacket.h>
-#include <CoreLib/IPacketPool.h>
+#include <CoreLib/Interface/IPacket.h>
+#include <CoreLib/Interface/IPacketPool.h>
 #include <CoreLib/LoggerGlobal.h>
 #include <BaseLib/FixedObjectPool.h>
 #include "Config.h"

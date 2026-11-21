@@ -12,7 +12,7 @@ WorldMap.inc의 Zones/ZoneCoreSize/TransitionMargin/ZoneColumns/ZoneRows를 서�
 
 | 대상 | 현재 계약 |
 | --- | --- |
-| 정적 맵 원본 | Unity C20MapAuthoring의 명시한 지면/벽 → CoreLib/Generated/WorldMap.inc |
+| 정적 맵 원본 | Unity C20MapAuthoring의 명시한 지면/벽 → CoreLib/Data/Generated/WorldMap.inc |
 | 서버 소비 API | CoreLib/WorldMap.h의 IsWalkable / CanTraverse, Unity 런타임 의존 없음 |
 | 경로 노드 | 독립 1단위 navigation 격자. AOI Cell25를 길찾기 노드로 사용하지 않음 |
 | 좌표 | 전역 Unity X/Z = 서버 X/Y. Zone 로컬 경로는 해당 ZoneOrigin을 더해 조회 |
@@ -39,7 +39,7 @@ AOI용 Zone/Cell을 유지하고, 충돌·길찾기용 1단위 격자를 별도�
 
 1. 고정 원점의 `C20MapAuthoring`에서 지면 BoxCollider와 충돌시킬 벽 BoxCollider를 명시한다. 장식 전체를 자동 수집하지 않는다.
 2. `C02/World/Bake and Export Navigation`을 실행한다. 지면은 축 정렬 직사각형만 허용하고 회전·전단·누락·비정상 수치는 거부한다. 장애물은 보수적인 월드 AABB에 타일 반폭과 actorClearance를 적용한다.
-3. `Content/C20WorldMap.asset`과 `CoreLib/Generated/WorldMap.inc`가 같은 통행 스냅샷을 담는다. 서버 출력은 임시 파일을 완전히 쓴 뒤 단일 atomic replace로 교체한다.
+3. `Content/C20WorldMap.asset`과 `CoreLib/Data/Generated/WorldMap.inc`가 같은 통행 스냅샷을 담는다. 서버 출력은 임시 파일을 완전히 쓴 뒤 단일 atomic replace로 교체한다.
 내보내기 도중 예외가 발생하면 직전 통행 배열과 기존 수정 상태를 복구한다. 성공 시에는 해당 맵 자산만 저장한다. 사용자 지면·장애물 편집을 취소하는 동작은 아니며, C++ 출력 후 자산 저장 실패나 프로세스 중단까지 두 파일의 원자성을 보장하지는 않는다.
 
 4. 서버를 다시 빌드해야 적용된다. Scene 편집이나 export만으로 현재 서버가 바뀌지 않는다.

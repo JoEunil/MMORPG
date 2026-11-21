@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include <memory>
-#include "ILogger.h"
+#include "Interface/ILogger.h"
 
 namespace Core {
     extern std::unique_ptr<ILogger> sysLogger;

@@ -7,9 +7,9 @@
 #include <condition_variable>
 #include <chrono>
 
-#include <CoreLib/IMessageQueue.h>
-#include <CoreLib/Message.h>
-#include <CoreLib/MessageTypes.h>
+#include <CoreLib/Interface/IMessageQueue.h>
+#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Cache/MessageTypes.h>
 #include <CacheLib/Initializer.h>
 #include <CacheLib/Config.h>
 

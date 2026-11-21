@@ -109,7 +109,7 @@ Full을 3초 주기로 변경하는 가정이라면 Full 자체는 약 31.01Mbps
 
 __작은 테스트 맵과 고밀도 조건__
 
-이 프로젝트의 Zone은 포트폴리오 시연을 위한 100×100 크기이며, 전환 영역을 포함한 110×110을 5×5 Cell로 나눴다.  
+시연 당시 계산 조건은 Zone 100×100, 전환 영역 포함 110×110, 5×5 Cell이었다.
 AOI는 게임 시야에 맞춰 주변 3×3 Cell로 설정했다. 작은 맵에서 시야가 차지하는 비중이 크므로, 같은 Zone에 다수의 더미 유저를 배치하면 시야 내 관측 대상도 많아진다.  
 위 대역폭은 이러한 작은 맵의 고밀도 조건을 유지한 계산이며, 일반적인 MMORPG의 전체 접속자 수에 그대로 적용할 수 있는 값은 아니다.  
 
@@ -125,5 +125,5 @@ __Zone 처리 관련 주의점__
 
 
 ## 5. 참고 
-- [ZoneState_Snapshots.cpp](CoreLib/ZoneState_Snapshots.cpp)  
-- [PacketTypes.h](CoreLib/PacketTypes.h)
+- [ZoneState_Snapshots.cpp](CoreLib/World/ZoneState_Snapshots.cpp)  
+- [PacketTypes.h](CoreLib/Packet/PacketTypes.h)

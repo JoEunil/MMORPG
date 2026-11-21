@@ -3,10 +3,10 @@
 #include <cstdint>
 #include <thread>
 
-#include <CoreLib/ICachedClock.h>
+#include <CoreLib/Interface/ICachedClock.h>
 #include <CoreLib/LoggerGlobal.h>
-#include <CoreLib/INetworkSender.h>
-#include <CoreLib/IPingPacketWriter.h>
+#include <CoreLib/Interface/INetworkSender.h>
+#include <CoreLib/Interface/IPingPacketWriter.h>
 #include "IAbortSocket.h"
 
 namespace Net {

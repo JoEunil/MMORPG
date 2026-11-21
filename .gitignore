@@ -400,8 +400,24 @@ wal/
 # Local Unity agent and Slack receiver scripts.
 /scripts/unity-client/
 
+# Local dependency analyzer runtime and latest analysis. Keep the bundled server report tracked.
+/Resources/CppDependencyAnalyzer/ServerDependencyAnalyzer.exe
+/Resources/CppDependencyAnalyzer/ServerDependencyAnalyzer.dll
+/Resources/CppDependencyAnalyzer/ServerDependencyAnalyzer.deps.json
+/Resources/CppDependencyAnalyzer/ServerDependencyAnalyzer.runtimeconfig.json
+/Resources/CppDependencyAnalyzer/clang/
+/Resources/CppDependencyAnalyzer/report.html
+/Resources/CppDependencyAnalyzer/SourceRoots.json
+/Resources/CppDependencyAnalyzer/Reanalysis/
+/Resources/CppDependencyAnalyzer/LocalService.json
+/Resources/CppDependencyAnalyzer/Reports/*.html
+!/Resources/CppDependencyAnalyzer/Reports/server-project-map.html
+
 # Generated GitHub Pages preview output.
 /site/**/*.html
 /site-preview.zip
 !/site/media/releases/
 !/site/media/releases/**
+
+# macOS directory metadata.
+.DS_Store

@@ -9,9 +9,9 @@
 #include <vector>
 #include <cstring>
 
-#include <CoreLib/IMessageQueue.h>
-#include <CoreLib/Message.h>
-#include <CoreLib/MessageTypes.h>
+#include <CoreLib/Interface/IMessageQueue.h>
+#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Cache/MessageTypes.h>
 #include <CacheLib/Initializer.h>
 #include <CacheLib/ProfileCache.h>
 #include <CacheLib/Config.h>

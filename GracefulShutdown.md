@@ -28,15 +28,16 @@ graceful shutdown은 서버 종료 시 보존 대상으로 정한 작업을 유�
 순서가 뒤집히면 멈춘 큐로 producer가 계속 밀어넣어 유실되거나, 새 입력이 끊이지 않아 drain이 끝나지 않는다.  
 
 > P-C 역전이 두 곳 있어 다음과 같이 종료 정책을 나눴다.
-> - core → net (send): net은 core에 대해 recv의 producer이자 send의 consumer라 cleanup을 둘로 쪼갠다. recv는 `net.CleanUp1()`로 먼저 끊고, send를 소비하는 IOCP는 `net.CleanUp2()`로 core 정리 뒤에 내린다 → 분리로 역전을 애초에 피함.
+> - core → net (send): `net.StopProducers()`로 수신·Ping 생산을 먼저 멈추고, IOCP의 정리는 Core 종료 뒤 `net.FinishShutdown()`에서 처리한다.
 > - cache → core (응답): consumer(core)가 producer(cache)보다 먼저 정리되지만, core 큐의 `m_running` 체크로 방어. 종료 중 도착하는 응답은 버려도 되므로(나가는 클라이언트 대상) 무해.
 
 ```cpp
-net.CleanUp1();   // 1) 입력 중단     : iocp 수신 중단, ping 정지
-core.CleanUp1();  // 2) 시뮬레이션 정지: zoneThreadSet(틱), broadcast, chat 정지
-core.CleanUp2();  // 2)+3) NonZone drain, Core recvMQ HardStop/join → 내부 상태 저장(stateManager.CleanUp)
-net.CleanUp2();   //    네트워크 인프라 종료: iocp, NetTimer 정지 
-cache.CleanUp();  // 4) DB 반영       : cache recvMQ drain → dispatcher/flush → dbWorker drain → WAL
+net.StopProducers();   // 수신·Ping·네트워크 성능 집계 정지
+auth.Stop();          // 인증 이벤트 루프 정지
+core.StopProducers(); // NonSimulation drain → Zone 정지 → Broadcast·Chat·성능 집계 정지
+core.FinishShutdown(); // Core 응답 큐 정지 → SessionManager의 남은 캐릭터 저장 요청
+net.FinishShutdown();  // IOCP 정리
+cache.Shutdown();     // 요청 큐 → DB 워커 → 최종 dirty flush → WAL 정리
 
 // 로거는 스레드풀이 살아있을 때 먼저 파괴하고, 그 다음 spdlog 정지
 Core::sysLogger.reset();
@@ -50,10 +51,10 @@ spdlog::shutdown();
 
 | 단계 | 호출 | 목적 |
 |---|---|---|
-| 1. 입력 중단 | `net.CleanUp1()` | `iocp.StopReceive()`로 수신 재게시를 멈춰 클라이언트 패킷 유입 차단, ping 정지. 이후 처리 대상이 고정된다 |
-| 2. 남은 입력 처리 | `core.CleanUp1()` → `core.CleanUp2()` 앞부분 | Zone producer를 먼저 정지하고 broadcast·chat을 HardStop한 뒤, NonZone에 수락된 Work/Disconnect를 drain한다. Core recvMQ는 HardStop하고 worker를 join해 StateManager 접근을 끝낸다 |
-| 3. 내부 상태 저장 | `core.CleanUp2()`의 `stateManager.CleanUp()` | 메모리에 올라가 있는 캐릭터 상태를 순회해 영속 경로(cache 큐)로 넘긴다. |
-| 4. DB 반영 | `cache.CleanUp()` | cache 큐 drain → dirty 캐시 flush → `dbWorker` drain(실제 DB write) |
+| 1. 입력 중단 | `net.StopProducers()` → `auth.Stop()` | 수신·Ping과 인증 이벤트 루프의 생산을 멈춘다 |
+| 2. 남은 입력 처리 | `core.StopProducers()` | NonSimulation 큐를 drain한 뒤 Zone 워커를 정지한다. Zone은 남은 Disconnect를 처리하고, 이어 Broadcast·Chat·성능 집계를 정지한다 |
+| 3. 내부 상태 저장 | `core.FinishShutdown()` | Core 응답 큐를 정지하고 `sessionManager.CleanUp()`에서 남은 캐릭터와 이동 중 상태의 저장을 요청한다 |
+| 4. DB 반영 | `cache.Shutdown()` | 요청 큐와 DB 워커를 drain한 뒤, DB 콜백이 바꾼 상태까지 최종 dirty flush에 반영하고 WAL을 정리한다 |
 
 ### 캐릭터 상태 저장 프로세스 
 
@@ -62,9 +63,9 @@ spdlog::shutdown();
 각 큐/워커의 drain은 접수된 작업을 처리하고 종료하기 위한 것이며, DB 쓰기 성공을 뜻하지는 않는다.
 
 ```
-[3. 내부 상태 저장]  stateManager.CleanUp()            (core.CleanUp2)
+[3. 내부 상태 저장]  sessionManager.CleanUp()          (core.FinishShutdown)
                        → cache recvMQ.EnqueueMessage()  (이 시점 cache 살아있음)
-[4. DB 반영]         cache recvMQ.Stop() → drain        (cache.CleanUp)
+[4. DB 반영]         cache recvMQ.Stop() → drain        (cache.Shutdown)
                        → handler->Process()
                          → dbWorkerGame.Enqueue()       (DB write 작업)
                      dbWorkerGame.Stop() → drain         → 실제 DB write 후 종료
@@ -75,24 +76,26 @@ spdlog::shutdown();
 
 ### 저장 실패와 재시작 복구의 범위
 
-캐릭터 위치·스탯은 로그아웃과 정상 종료 시 `StateManager → Cache InMemoryQueue → Handler::CharacterStateUpdate → DBWorker`로 저장한다.  
+필드의 Disconnect는 `SessionManager`가 소유 Zone의 이벤트 큐에 등록한다. Zone 워커는 세션과 `ownershipEpoch`를 확인하고 캐릭터를 이탈시킨 뒤 `CacheCommandSender`로 저장을 요청한다. 이동 중인 세션은 `ZoneTransfer`에 보관한 캐릭터 상태를 저장한다.
+
+로비 접속 종료와 서버 종료 시 남은 캐릭터도 `SessionManager → CacheCommandSender → Cache InMemoryQueue → Handler::CharacterStateUpdate → DBWorker` 경로로 저장을 요청한다.
 현재 [CharacterStateUpdate](CacheLib/Handler.cpp)는 DB 작업 등록 결과를 처리하지 않고 실패 콜백도 지정하지 않는다. 등록 거절이나 DB 쓰기 실패 시 로그는 남지만 자동 재시도는 없다.  
 인벤토리·골드 캐시의 dirty 복원과 flush 재시도는 별도 경로이므로 캐릭터 상태 저장에 적용되지 않는다.
 
-Cache InMemoryQueue의 중요 메시지는 기본 큐와 defer 큐가 모두 가득 차면 [DurableLogger](CoreLib/DurableLogger.cpp)에 기록한다.  
+Cache InMemoryQueue의 중요 메시지는 기본 큐와 defer 큐가 모두 가득 차면 [DurableLogger](CoreLib/Cache/DurableLogger.cpp)에 기록한다.  
 이 로거는 append와 fsync를 수행하지만 초기화 시 전달하는 replay 콜백이 비어 있어, 재시작 후 저장 메시지를 자동으로 DB에 다시 적용하지 않는다.  
 따라서 정상 종료 순서, 실행 중 재시도, 재시작 복구는 구분해야 한다. 인벤토리의 재시작 복구는 별도의 [WALManager](CacheLib/WALManager.h)가 담당한다.
 
 ### Queue 종료 정책
 
-- graceful drain: NonZone에서 수락한 Work/Disconnect, cache recvMQ, CacheFlush `flushQ`, DBWorker queue
-- hard stop: Zone packet queue, Core recvMQ, Broadcast queue, Chat queue
-- drain 대상은 캐릭터 상태 저장에 필요한 disconnect와 persistence 경로로 한정한다. 그 외 queue는 shutdown 시작 시 남아 있는 작업을 처리하지 않는다.
+- **전체 drain**은 NonSimulation에서 수락한 Work·Disconnect·LobbyReturn, Cache recvMQ, CacheFlush `flushQ`, DBWorker 큐에 적용한다.
+- **Zone 종료**는 틱 루프를 멈춘 뒤 기본 큐와 지연 큐의 Disconnect를 처리한다. 다른 이벤트는 해제한다.
+- **HardStop**은 Core recvMQ, Broadcast, Chat 큐에 적용한다.
 
 
 ## 4. 종료 시 발견·수정한 문제들
 
-ASan 부하 테스트를 돌리며 발견한 종료 관련 문제들. 검출 수단은 ASan(메모리 오류)과 종료 로그 관찰이 섞여 있어 각 항목에 표시했다.
+ASan 부하 테스트를 돌리며 발견한 종료 관련 문제들. 아래 사례의 `CleanUp1`·`CleanUp2`, `StateManager` 등은 당시 코드의 이름이다. 검출 수단은 ASan(메모리 오류)과 종료 로그 관찰이 섞여 있어 각 항목에 표시했다.
 
 ### 1. `Stop()` 이중 호출 + 로거 파괴 후 접근  — *ASan: access-violation*
 

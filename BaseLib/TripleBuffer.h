@@ -14,7 +14,7 @@
 
 namespace Base {
 	template <typename T>
-	struct BufferReader;
+	class BufferReader;
 
 	template <typename T>
 	class TripleBuffer {
@@ -101,14 +101,13 @@ namespace Base {
 
 
 	template <typename T>
-	struct BufferReader {
-		// RAII로 ReadDone 메서드 호출을 강제하기 위함.
+	class BufferReader {
+		friend class TripleBuffer<T>;
 		TripleBuffer<T>* owner;
-		T* data;
-		BufferReader(T* ptr, TripleBuffer<T>* o) {
-			data = ptr;
-			owner = o;
-		}
+		BufferReader(const T* ptr, TripleBuffer<T>* o) : owner(o), data(ptr) {}
+
+	public:
+		const T* data;
 		~BufferReader() {
 			if (owner != nullptr)
 				owner->ReadDone();

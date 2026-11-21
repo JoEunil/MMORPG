@@ -6,18 +6,45 @@ C++20과 Windows IOCP로 만든 개인 프로젝트다. 이동, 스킬, 몬스�
 
 [포트폴리오 PPT](https://docs.google.com/presentation/d/1Sz7WlzlE4qYqyXO43ad0i0CYAFvzJMR2/edit?usp=sharing&ouid=104250523129405797740&rtpof=true&sd=true) · [2,000명 접속 시연 영상](https://youtu.be/2q2kZwI3uSQ) · [빌드 및 실행](BUILD.md)
 
+## 구조
+
+![전체 서버 라이브러리 구성과 의존 관계](images/Architecture_Server.png)
+
+GameServer는 단일 프로세스로 실행한다. NetLibrary는 네트워크와 세션, CoreLib는 게임 로직, CacheLib는 캐시와 DB I/O를 담당한다. 공통 자료구조와 풀은 BaseLib, 로그와 세션 인증은 ExternalLib에 둔다. 로그인 서버는 Node.js, DB는 MySQL, 세션 저장소는 Redis를 사용한다.
+
+컴포넌트 생성과 의존성 주입은 서버 시작 지점과 각 라이브러리의 `Initializer`에 모았다.
+
+### NetLibrary — 네트워크와 세션
+
+IOCP가 받은 데이터를 세션별 `ClientContext`에서 누적하고, `NetPacketFilter`를 거쳐 Core로 전달한다. Core의 송신 요청은 `INetworkSender`로 받고, 세션별 송신 순서와 버퍼 수명을 관리한다.
+
+![NetLibrary 핵심 컴포넌트와 송수신 흐름](images/Architecture_NetLib.png)
+
+### CoreLib — 게임 상태와 요청 처리
+
+`PacketDispatcher`가 요청을 Zone과 NonSimulation 처리 경로로 나눈다. `Core::SessionManager`는 세션과 Zone 소속을, `ZoneState`는 Zone의 게임 상태를 관리한다. 채팅과 스냅샷 전송은 별도 워커가 맡으며, `PacketWriter`는 패킷 구성을 담당한다.
+
+![CoreLib 핵심 컴포넌트와 게임 처리 흐름](images/Architecture_CoreLib.png)
+
+### CacheLib — 캐시와 DB 저장
+
+`Handler`와 저장소가 조회·변경을 처리하고, DB 작업은 `DBWorker`에 넘긴다. 인벤토리·골드의 변경 항목은 `CacheFlush`가 별도 워커에서 모아 저장한다. 인벤토리는 WAL로 DB 저장 전 장애에 대비한다.
+
+![CacheLib 핵심 컴포넌트와 저장·복구 흐름](images/Architecture_CacheLib.png)
+
+AI Agent를 활용해 Clang 기반 C++ 의존성 분석기를 만들었다. [화면별 사용 안내](Resources/CppDependencyAnalyzer/README.md)에 WinForms 설정과 서버 분석 보고서의 실제 화면을 정리했다. 라이브러리 단위로 분석하고, 클래스 선택 목록·순환 의존·리팩터링 및 성능 후보에서 관계와 코드 위치를 확인할 수 있다.
+
 ## AI 활용과 클라이언트 개발
 
-**[AI AGENT 클라이언트 개발 작업](https://joeunil.github.io/MMORPG/)**  
-실제 게임 화면과 개발 과정, 에이전트 활용 경험을 정리한 별도 웹사이트다. 개발하면서 계속 갱신하고 있다.
+실제 게임 화면과 개발 과정은 [AI AGENT 클라이언트 개발 작업](https://joeunil.github.io/MMORPG/)에 정리했다.
 
 <a href="https://joeunil.github.io/MMORPG/">
   <img src="site/media/ai-agent-preview.png" alt="AI Agent Unity 클라이언트 실제 사냥 화면 — 클릭하면 작업 사이트로 이동" width="640">
 </a>
 
-서버 개발에서는 AI를 설계 검토·코드 리뷰·일부 테스트 코드 작성에만 제한적으로 활용했다.  
-새 Unity 클라이언트에서는 인벤토리·거래소 UI까지 포함해, AI 에이전트 워크플로우로 개발 전반을 맡기는 방식을 시도하고 있다.  
-→ [AI 에이전트 클라이언트 개발](AI-AGENT.md) · [게임 서버 개발에서 AI 활용에 대한 고찰](AI-REFLECTION.md) · [생성형 LLM 학습 정리](LLM.md)
+- 서버의 설계 검토·코드 리뷰·일부 테스트 작성·리팩터링에 AI를 활용한다. [AI 활용](AI-REFLECTION.md)
+- 인벤토리·거래소 UI를 포함한 Unity 개발에 멀티 에이전트를 활용한다. [멀티 에이전트 클라이언트 개발](AI-AGENT.md)
+- 『핸즈온 LLM』을 읽고 모델의 구조와 활용법을 정리했다. [생성형 LLM 학습 정리](LLM.md)
 
 ## 주요 설계
 
@@ -30,16 +57,16 @@ C++20과 Windows IOCP로 만든 개인 프로젝트다. 이동, 스킬, 몬스�
 
 ### 2. Zone 스레드와 작업 전달
 
-IOCP 워커가 받은 시뮬레이션 작업은 bounded MPMC Queue에 넣고, Zone 스레드가 틱마다 꺼내 처리한다. 같은 공간에서 이동·스킬·몬스터 갱신이 계속 일어나므로 Zone을 실행 단위로 잡았다.  
-브로드캐스트(리플리케이션 전송)는 별도 워커에서 처리한다. 패킷 Chunk는 작업 큐로 넘기고, Cell별 전송 대상 목록은 Triple Buffer로 공유한다. 이 목록은 기존 읽기 참조가 모두 반환돼야 새 목록으로 바뀐다.  
-Zone 안의 락은 아직 없애지 못했다. 진입·이탈·프로필 갱신이 외부 스레드에서도 실행돼, 이들과 상태를 공유하는 틱 로직에 mutex가 남아 있다. Zone과 브로드캐스트 큐가 가득 차면 작업을 버리고 drop을 집계한다.  
+시뮬레이션 패킷과 Zone 이동·진입·리스폰·프로필 갱신·접속 종료 요청을 Zone 이벤트 큐로 전달하고, 담당 워커가 처리한다. 같은 공간에서 이동·스킬·몬스터 갱신이 계속 일어나므로 Zone을 실행 단위로 잡았다.
+브로드캐스트 전송은 별도 워커에서 처리한다. 패킷 Chunk는 작업 큐로 넘기고, Cell별 전송 대상 목록은 `ISessionSnapshotReader`를 통해 Triple Buffer에서 읽는다.
+아이템 사용·장비 처리와 종료 정리에는 외부 스레드의 Zone 접근이 남아 있어 mutex를 유지하고 있다. 큐 포화 처리는 요청 종류에 따라 거절·drop·지연 큐로 나뉜다.
 
 [설계 결정](DesignDecisions.md#2-시뮬레이션과-스레드-경계) · [작업 큐](WorkQueue.md) · [Triple Buffer](TripleBuffer.md)
 
 ### 3. Write-Back 캐시와 복구
 
 인벤토리와 골드는 메모리에서 변경한 뒤 모아서 DB에 쓴다. 인벤토리는 WAL을 남겨 DB 저장 전 장애에 대비했다. 거래소 구매·취소 아이템은 Outbox로 재배송하고, 인벤토리에 함께 저장한 Inbox로 중복 적용을 막는다. 아이템과 Inbox의 DB 저장이 끝나야 Outbox도 완료 처리한다.  
-WAL은 성공 응답 전에 fsync를 기다리지 않는다. 마지막으로 디스크에 동기화된 이후의 변경은 유실될 수 있다. 골드는 아직 WAL을 적용하지 않았고, 거래소 등록도 아이템 차감 후 매물을 만들기 전에 죽으면 아이템이 유실될 수 있다.  
+WAL은 성공 응답 전에 fsync를 기다리지 않는다. 마지막으로 디스크에 동기화된 이후의 변경은 유실될 수 있다. 골드는 일부 유실을 허용하는 설계로 WAL을 적용하지 않는다. 거래소 등록은 아이템 차감 후 매물을 만들기 전에 죽으면 아이템이 유실될 수 있다.
 
 [설계 결정](DesignDecisions.md#5-영속-데이터와-장애-복구) · [캐시](CacheLib.md) · [WAL](WAL.md) · [거래소](Bazaar.md)
 
@@ -64,33 +91,17 @@ WAL은 성공 응답 전에 fsync를 기다리지 않는다. 마지막으로 디
 
 ## 트러블슈팅 기록
 
-문제가 발생하면 다음 흐름을 기준으로 원인을 찾고 수정했다.
-
-1. **현상 확인:** 기대한 동작과 실제 동작의 차이, 발생 조건과 재현 여부를 확인한다.
-2. **원인 가설:** 증상이 나타난 지점과 앞뒤의 데이터 흐름을 살펴보고 가능한 원인을 좁힌다.
-3. **정보 보강:** 현상만으로 원인을 추측하기 어렵거나 가설을 확인할 근거가 부족하면, 관련 상태·입력값·처리 순서를 알 수 있도록 로그를 추가한다. 필요에 따라 호출 스택·스레드 상태·메모리 검사도 활용한다.
-4. **원인 확인:** 수집한 정보와 코드의 동작을 대조해 가설을 확인하거나 수정한다. 증상이 발생한 지점에서 원인이 드러나지 않으면 앞선 처리 경로까지 추적한다.
-5. **수정과 재검증:** 원인을 수정한 뒤 같은 조건에서 문제가 사라졌는지 확인하고, 관련 경계 조건도 점검한다.
-
-아키텍처를 설계할 때 컴포넌트의 연결과 데이터 흐름을 그림으로 정리한 것이 이 과정에 도움이 됐다.  
-어떤 스레드가 데이터를 만들고, 어느 버퍼와 큐를 거쳐 전달하며, 어디서 처리하고 반납하는지 이해하고 있어 가설을 세우고 조사 범위를 좁히기 수월했다.
+1. 기대 동작과 실제 동작을 비교해 재현 조건을 찾는다.
+2. 생산 스레드 → 큐·버퍼 → 소비·반납 경로를 따라 원인을 좁힌다. 근거가 부족하면 로그, 호출 스택, 스레드 상태를 확인한다.
+3. 수정 후 같은 조건에서 재현 여부와 관련 경계 조건을 확인한다.
 
 - [SessionManager 데드락](SessionManagerDeadLock.md): SpinLock을 잡은 상태에서 같은 락을 다시 잡는 호출이 있었다. Context를 조회한 뒤 내부 작업은 NetHandler에서 처리하도록 옮겼다.
 - [MPMC Queue 무한 대기](LockFreeQueueDebug.md): 스레드 상태와 호출 스택을 따라가며 pop 이후 슬롯 sequence를 잘못 갱신한 부분을 찾았다.
 - [메모리 가시성 오류](MemoryOrderDebug.md): 두 atomic을 교차 확인하는 코드에서 acquire/release만으로는 필요한 순서를 보장하지 못했다. seq_cst로 수정했다.
 
-## 구조
-
-![서버 아키텍처](images/Architecture_current.png)
-
-GameServer는 단일 프로세스로 실행한다. NetLibrary는 네트워크와 세션, CoreLib는 게임 로직, CacheLib는 캐시와 DB I/O, ExternalLib는 로그와 세션 인증을 담당한다. 로그인 서버는 Node.js, DB는 MySQL, 세션 저장소는 Redis를 사용한다.
-
-서버 분리 구상은 [설계 결정](DesignDecisions.md#6-분산-확장-구상--미구현)에 적었다. 아직 구현하지 않았다. 위 Unity 시연과 동봉 실행 파일은 과거 버전이며, 최신 서버의 캐릭터 이름 정보(Profile) 패킷에 맞춰 클라이언트 갱신이 필요하다.
-
 ## 앞으로 할 일
 
-- Zone 진입·이탈과 외부 상태 변경을 이벤트 큐로 옮겨 mutex를 줄인다.
-- 골드 등 다른 캐시에도 WAL을 적용하고, DB 장애가 길어질 때 dirty 데이터가 계속 쌓이지 않도록 제한한다.
+- DB 장애가 길어질 때 dirty 데이터가 계속 쌓이지 않도록 제한한다.
 - 더미 클라이언트를 다른 PC로 분리해 action/s, 지연 분포, drop, 연결 종료를 함께 측정한다.
 
 ## 실행 및 문서
@@ -115,7 +126,6 @@ GameServer는 단일 프로세스로 실행한다. NetLibrary는 네트워크와
 
 ### 시스템 설계
 - [MMORPG 서버 설계 결정](DesignDecisions.md): 선택의 근거, 대안과 현재 한계
-- [서버를 구현하며 정리한 설계 판단 초안](ServerDesignReview.md): 부하와 실패 경로를 보며 수정한 기준
 - [네트워크 Flood 탐지](FloodDetect.md)
 - [Ping 처리](PingLoop.md)
 - [ClientContext](ClientContext.md)
@@ -132,12 +142,13 @@ GameServer는 단일 프로세스로 실행한다. NetLibrary는 네트워크와
 - [거래소 구매·배송·정산·경합·크래시 복구 테스트](BazaarTest.md)
 - [Graceful Shutdown](GracefulShutdown.md)
 
-### 리팩토링
-- [채팅 기능 리팩토링](ChatRefactor.md)
-- [ClientContext 리팩토링: God Object](ClientContextRefactor.md)
-- [Ping 리팩토링](PingRefactor.md)
+### 리팩터링
+- [서버 리팩토링](ServerRefactoring.md)
+- [Zone 스레드에서 채팅 분리](ChatRefactor.md)
+- [ClientContext와 세션 관리 분리](ClientContextRefactor.md)
+- [Ping 기반 연결 종료를 네트워크 계층으로 이관](PingRefactor.md)
 - [AOI 적용](AOI.md)
-- [DB 전용 worker 스레드 분리](DBWorkerRefactor.md)
+- [DB 작업 전용 워커 분리](DBWorkerRefactor.md)
 - [ObjectPool 리팩토링](ObjectPool.md)
 - [Profile 분리](Profile.md)
 

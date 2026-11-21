@@ -33,7 +33,7 @@ namespace Mmorpg.Client.Editor
                 var author = (MapAuthoring)target;
                 try
                 {
-                    string path = Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, "../../CoreLib/Generated"));
+                    string path = Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, "../../CoreLib/Data/Generated"));
                     WorldMapExport.BakeAndExport(author, path);
                     summary.text = "전체 맵 내보내기 완료: " + Path.Combine(path, "WorldMap.inc");
                 }

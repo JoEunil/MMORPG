@@ -2,34 +2,36 @@
 
 #include "FlushDispatcher.h"
 #include "CacheFlush.h"
-#include "MessagePool.h"
-#include "DBConnectionGame.h"
-#include "DBConnectionBazaar.h"
-#include "DBConnectionPool.h"
+#include "Config.h"
+#include <CoreLib/Cache/MessagePool.h>
+#include <CoreLib/Cache/MessageWriter.h>
+#include "DB/DBConfig.h"
+#include "DB/DBConnectionPool.h"
 #include "CacheStorage.h"
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"
 #include "ProfileCache.h"
 #include "InmemoryQueue.h"
 #include "Handler.h"
-#include "DBWorker.h"
+#include "DB/DBWorker.h"
 #include "WALManager.h"
 
-#include <CoreLib/IMessageQueue.h>
-#include <CoreLib/ICachedClock.h>
+#include <CoreLib/Interface/IMessageQueue.h>
+#include <CoreLib/Interface/ICachedClock.h>
 #include <CoreLib/LoggerGlobal.h>
 
 class ProfileCacheTest;
 
 namespace Cache {
 	class Initializer {
+        CacheMessagePool msgPool;
         CacheFlush flush;
         FlushDispatcher dispatcher;
         CacheStorageInventory cache_inventory;
         CacheStorageCurrency cache_currency;
         ProfileCache cache_profile;
+        Core::MessageWriter messageWriter;
         Handler handler;
-        MessagePool msgPool;
         InMemoryQueue recvMQ;
         DBConnectionPool<DBConnectionGame> connectionPoolGame;
         DBConnectionPool<DBConnectionBazaar> connectionPoolBazaar;
@@ -71,7 +73,7 @@ namespace Cache {
         
         void InjectDependencies(Core::IMessageQueue* sendMQ, Core::DurableLogger* durableLogger = nullptr)
         {
-            handler.Initialize(sendMQ, &msgPool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile);
+            handler.Initialize(sendMQ, &messageWriter, &msgPool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile);
             recvMQ.Initialize(&handler, &msgPool, durableLogger);
             recvMQ.Start();
         }
@@ -79,7 +81,6 @@ namespace Cache {
         bool CheckReady() {
             if (!dispatcher.IsReady()
                 or !flush.IsReady() 
-                or !msgPool.IsReady()
                 or !recvMQ.IsReady()
                 or !cache_inventory.IsReady()
                 or !cache_currency.IsReady()

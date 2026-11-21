@@ -11,8 +11,8 @@
 #include <CoreLib/LoggerGlobal.h>
 #include <CacheLib/CacheStorageInventory.h>
 #include <CacheLib/InventoryCodec.h>
-#include <CacheLib/DBConnectionPool.h>
-#include <CacheLib/DBConnectionGame.h>
+#include <CacheLib/DB/DBConnectionPool.h>
+#include <CacheLib/DB/DBConfig.h>
 
 namespace Cache {
 	inline constexpr std::chrono::milliseconds DEFAULT_WAL_FSYNC_INTERVAL{ 20 };
@@ -70,11 +70,11 @@ namespace Cache {
 			if (conn == nullptr)
 				throw std::runtime_error("Cannot read DB inventory during WAL recovery.");
 			for (auto& [key, val] : m_lastImageInventory) {
-				// DB blob 로드 → lastLSN 비교 (기존 QUERY_5 재사용)
+				// DB blob 로드 → lastLSN 비교 
 				uint64_t lsn = val.first;
 
 				WalInventoryRecord rec = val.second;
-                auto res = conn->ExecuteSelect(5, key);
+                auto res = conn->ExecuteSelect(StatementId::SelectInventory, key);
                 if (!res) throw std::runtime_error("Inventory recovery DB query failed.");
                 uint64_t dbLSN = 0;
                 if (res->next()) {

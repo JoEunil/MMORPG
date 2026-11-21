@@ -1,0 +1,574 @@
+﻿#pragma once
+
+#include <cstdint>
+#include <string_view>
+#include "PacketConfig.h"
+
+namespace Core {
+    constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
+    constexpr inline const uint16_t FIELD_COUNT = 6;
+    constexpr inline const uint16_t MAX_DEFINED_OPCODE = 55;
+
+    enum OP : uint16_t {
+        AUTH = 1,
+        AUTH_RESPONSE = 2,
+        CHARACTER_LIST = 3,
+        CHARACTER_LIST_RESPONSE = 4,
+        ENTER_WORLD = 5,
+        ENTER_WORLD_RESPONSE = 6,
+
+        ZONE_FULL_STATE_BROADCAST = 7,
+        ZONE_DELTA_UPDATE_BROADCAST = 8,
+        MONSTER_FULL_STATE_BROADCAST = 9,
+        MONSTER_DELTA_UPDATE_BROADCAST = 10,
+
+        ACTION = 11,                 // 이동 + 공격 + 스킬 사용 등 행동 패킷
+        ACTION_RESULT = 12,              
+        CHAT = 13,
+        CHAT_WHISPER = 14,
+        CHAT_BROADCAST = 15,
+
+        ZONE_CHANGE = 16,
+        ZONE_CHANGE_RESPONSE = 17,
+
+        INVENTORY_UPDATE = 18,
+        INVENTORY_UPDATE_RES = 19,
+        INVENTORY_REQ = 20,
+        INVENTORY_RES = 21,
+        PING = 22, // 서버 송신
+        PONG = 23, // 클라이언트 송신
+
+        PROFILE_BATCH = 24,     // 클라이언트 송신, 모르는 profile_id 목록 조회
+        PROFILE_BATCH_RES = 25,
+        BAZAAR_SEARCH = 26,
+        BAZAAR_SEARCH_RES = 27,
+        BAZAAR_MY_LIST = 28,
+        BAZAAR_MY_LIST_RES = 29,
+        BAZAAR_CLAIM = 30,
+        BAZAAR_CLAIM_RES = 31,
+        BAZAAR_BUY = 32,
+        BAZAAR_BUY_RES = 33,
+        BAZAAR_CHECK_OUTBOX = 34,
+        BAZAAR_CHECK_OUTBOX_RES = 35,
+        BAZAAR_CANCEL_LISTING = 36,
+        BAZAAR_CANCEL_LISTING_RES = 37,
+        ZONE_RESYNC = 38,
+        RESPAWN_TO_TOWN = 39,
+        BAZAAR_REGISTER = 40,
+        BAZAAR_REGISTER_RES = 41,
+        WALLET_REQUEST = 42,
+        WALLET_GOLD_RES = 43,
+        WALLET_DIAMOND_RES = 44,
+        ITEM_USE = 45,
+        ITEM_USE_RES = 46,
+        ITEM_REWARD = 47,
+        PARRY = 48,
+        PARRY_RES = 49,
+        GOLD_REWARD = 50,
+        BAZAAR_OUTBOX_LIST = 51,
+        BAZAAR_OUTBOX_LIST_RES = 52,
+        EQUIPMENT_GET = 53,
+        EQUIPMENT_SET = 54,
+        EQUIPMENT_RES = 55,
+    };
+
+    enum ZONE_CHANGE: uint8_t {
+        ENTER = 0, // Client requests lobby entry only; live transitions are server-owned.
+        UP = 1,
+        DOWN = 2,
+        LEFT = 3,
+        RIGHT = 4,
+    };
+
+    enum RES_STATUS : uint8_t {
+        FAILED = 0,
+        SUCCESS = 1,
+    };
+
+    enum class CHAT_SCOPE : uint8_t {
+        Global,
+        Zone,
+        Whisper,
+        //Party,
+        //Guild
+    };
+
+#pragma pack(push, 1)
+
+    //  네트워크 계층에서 패킷을 열어봐야한다면 htonl, htons로 변환해서 써야됨.
+    struct PacketHeader {
+        uint16_t magic = MAGIC;
+        uint32_t length;
+        uint8_t opcode;
+        uint8_t flags = 0x00; // 첫번째 비트는 시뮬레이션 로직인지 나타냄, 0x01 ~ 0x80
+    };
+
+    enum class EquipmentStatus : uint8_t { Invalid, Success, Busy, Missing, Unsupported, Dead, StaleOwnership, StaleRequest, StorageFailure };
+    struct EquipmentGetRequestBody { uint64_t requestID; uint64_t ownershipEpoch; };
+    struct EquipmentSetRequestBody { uint64_t requestID; uint64_t ownershipEpoch; uint8_t slot; uint32_t itemID; };
+    struct EquipmentResponseBody {
+        uint64_t requestID;
+        uint64_t ownershipEpoch;
+        uint8_t operation;
+        uint8_t status;
+        uint8_t slot;
+        uint32_t weaponID;
+        uint32_t shieldID;
+        uint32_t bodyID;
+        uint16_t baseAttack;
+        uint16_t bonusAttack;
+        uint16_t effectiveAttack;
+        uint8_t defensePercent;
+    };
+    static_assert(sizeof(EquipmentGetRequestBody) == 16);
+    static_assert(sizeof(EquipmentSetRequestBody) == 21);
+    static_assert(sizeof(EquipmentResponseBody) == 38);
+
+    enum class ParryStatus : uint8_t { Invalid, Accepted, Cooldown, Dead, StaleOwnership, StaleRequest, Unavailable };
+    struct ParryRequestBody {
+        uint64_t requestID;
+        uint64_t ownershipEpoch;
+    };
+    struct ParryResponseBody {
+        uint64_t requestID;
+        uint64_t ownershipEpoch;
+        uint8_t status;
+        uint32_t windowRemainingTicks;
+        uint32_t cooldownRemainingTicks;
+    };
+
+    struct ItemUseRequestBody {
+        uint64_t requestID;
+        uint64_t ownershipEpoch;
+        uint32_t itemID;
+    };
+    struct ItemUseResponseBody {
+        uint64_t requestID;
+        uint64_t ownershipEpoch;
+        uint32_t itemID;
+        uint8_t status;
+        uint16_t remainingQuantity;
+        uint32_t cooldownRemainingTicks;
+    };
+    struct ItemRewardBody {
+        uint32_t itemID;
+        uint16_t grantedQuantity;
+        uint16_t remainingQuantity;
+        uint8_t status;
+    };
+
+    struct BazaarBuyRequestBody {
+        uint32_t requestID;
+        uint64_t listingID;
+    };
+    struct BazaarBuyResponseBody {
+        uint32_t requestID;
+        uint64_t listingID;
+        uint8_t resStatus;
+        uint32_t itemID;
+        uint32_t quantity;
+        uint64_t diamondSpent;
+    };
+    struct BazaarOutboxListRequestBody { uint32_t requestID; };
+    struct BazaarOutboxListResponseBody {
+        uint32_t requestID;
+        uint8_t resStatus;
+        uint16_t processingCount;
+        uint16_t count;
+    };
+    struct BazaarOutboxItem {
+        uint64_t eventID;
+        uint64_t listingID;
+        uint32_t itemID;
+        uint32_t quantity;
+    };
+    static_assert(sizeof(BazaarOutboxListRequestBody) == 4);
+    static_assert(sizeof(BazaarOutboxListResponseBody) == 9);
+    static_assert(sizeof(BazaarOutboxItem) == 24);
+    struct BazaarCheckOutboxRequestBody { uint32_t requestID; };
+    struct BazaarCheckOutboxResponseBody {
+        uint32_t requestID;
+        uint8_t resStatus;
+        uint32_t deliveredCount;
+        uint32_t duplicatedCount;
+        uint32_t blockedCount;
+    };
+    struct BazaarCancelListingRequestBody { uint32_t requestID; uint64_t listingID; };
+    struct BazaarCancelListingResponseBody { uint32_t requestID; uint64_t listingID; uint8_t resStatus; };
+    static_assert(sizeof(BazaarBuyRequestBody) == 12);
+    static_assert(sizeof(BazaarBuyResponseBody) == 29);
+    static_assert(sizeof(BazaarCheckOutboxRequestBody) == 4);
+    static_assert(sizeof(BazaarCheckOutboxResponseBody) == 17);
+    static_assert(sizeof(BazaarCancelListingRequestBody) == 12);
+    static_assert(sizeof(BazaarCancelListingResponseBody) == 13);
+
+    struct BazaarClaimRequestBody {
+        uint32_t requestID;
+        uint64_t listingID;
+    };
+
+    struct BazaarClaimResponseBody {
+        uint32_t requestID;
+        uint64_t listingID;
+        uint8_t resStatus;
+        uint64_t diamondClaimed;
+    };
+
+    static_assert(sizeof(BazaarClaimRequestBody) == 12);
+    static_assert(sizeof(BazaarClaimResponseBody) == 21);
+
+    struct BazaarMyListRequestBody {
+        uint32_t requestID;
+    };
+
+    struct BazaarMyListResponseBody {
+        uint32_t requestID;
+        uint8_t resStatus;
+        uint16_t count;
+        // Followed by count packed BazaarSearchListing records.
+    };
+
+    static_assert(sizeof(BazaarMyListRequestBody) == 4);
+    static_assert(sizeof(BazaarMyListResponseBody) == 7);
+
+    struct BazaarSearchRequestBody {
+        uint32_t requestID;
+        uint16_t itemType;
+        uint16_t page;
+    };
+
+    struct BazaarSearchListing {
+        uint64_t listingID;
+        uint64_t sellerCharacterID;
+        uint32_t itemID;
+        uint16_t quantity;
+        uint64_t price;
+        uint64_t registeredAt;
+        uint8_t status;
+    };
+
+    struct BazaarSearchResponseBody {
+        uint32_t requestID;
+        uint8_t resStatus;
+        uint16_t count;
+        // Followed by count packed BazaarSearchListing records.
+    };
+
+    static_assert(sizeof(BazaarSearchRequestBody) == 8);
+    static_assert(sizeof(BazaarSearchResponseBody) == 7);
+    static_assert(sizeof(BazaarSearchListing) == 39);
+
+    struct BazaarRegisterRequestBody {
+        uint32_t requestID;
+        uint8_t inventorySlot;
+        uint16_t quantity;
+        uint64_t totalDiamondPrice;
+    };
+    struct BazaarRegisterResponseBody { uint32_t requestID; uint8_t resStatus; };
+    struct WalletRequestBody { uint32_t requestID; };
+    struct WalletGoldResponseBody { uint32_t requestID; uint8_t resStatus; uint64_t gold; };
+    struct WalletDiamondResponseBody { uint32_t requestID; uint8_t resStatus; uint64_t diamond; };
+    static_assert(sizeof(BazaarRegisterRequestBody) == 15);
+    static_assert(sizeof(BazaarRegisterResponseBody) == 5);
+    static_assert(sizeof(WalletRequestBody) == 4);
+    static_assert(sizeof(WalletGoldResponseBody) == 13);
+    static_assert(sizeof(WalletDiamondResponseBody) == 13);
+
+    struct AuthRequestBody {
+        uint64_t userID;
+        uint8_t sessionToken[37];
+    };
+
+    struct AuthResponseBody {
+        uint8_t resStatus;
+    };
+
+    struct CharacterInfo {
+        uint64_t characterID;
+        uint8_t name[MAX_CHARNAME_LEN];
+        uint16_t level;
+    };
+
+    struct CharacterListResponseBody {
+        uint8_t resStatus;
+        uint8_t count;
+        CharacterInfo characters[MAX_CHARACTER];
+    };
+
+    struct EnterWorldRequestBody {
+        uint64_t characterID;
+    };
+
+    struct EnterWorldResponseBody {
+        uint8_t resStatus;
+        uint8_t name[MAX_CHARNAME_LEN];
+        uint16_t attack; // 기본 공격력
+        uint16_t level;
+        uint32_t exp;
+        int hp;
+        int mp;
+        int maxHp;
+        int maxMp;
+        uint8_t dir;
+        float startX, startY;
+        uint16_t currentZone;
+    };
+
+    struct InventoryUpdateResBody {
+        uint8_t resStatus;
+		uint32_t itemID;
+        uint16_t itemQuantity;
+        uint16_t slot;
+    };
+
+    struct InventoryItem {
+        uint32_t itemID;
+        uint16_t quantity;
+        uint8_t  slot;
+    };
+
+    struct InventoryResBody {
+        uint8_t resStatus;
+        uint16_t itemCount;
+        InventoryItem items[MAX_INVENTORY_ITEMS];
+    };
+
+    struct ZoneChangeBody {
+        uint8_t op; // 0: 로비 zone에서 진입, 1 ~ 4: 상하좌우 인접 zone으로 이동
+    };
+    struct ZoneResyncBody { uint64_t ownershipEpoch; };
+    struct RespawnToTownBody { uint64_t ownershipEpoch; };
+    static_assert(sizeof(RespawnToTownBody) == sizeof(uint64_t));
+
+    enum class ZoneChangeStatus : uint8_t { Failed, Field, Lobby };
+
+    struct ZoneChangeResponseBody {
+        uint8_t resStatus;
+        uint16_t zoneID;
+        uint64_t chatID;
+        uint32_t zoneInternalID;
+        float startX, startY;
+        uint64_t zoneGeneration;
+        uint64_t ownershipEpoch;
+    };
+
+    struct ChatRequestBody {
+        CHAT_SCOPE scope;
+        uint16_t messageLength;
+        uint64_t targetChatID; // whisper, group은 서버 authoratative
+    }; // + raw char*
+
+    struct ChatWhisperBody {
+        uint16_t messageLen;
+        uint64_t senderChatID;
+        uint32_t senderProfileId; // 이름 대신 profile_id. 표시 이름은 클라이언트가 캐시에서 찾는다.
+    };// + raw char*
+
+    struct ChatEntity {
+        uint64_t senderChatID; // sender
+        uint16_t offset;
+        uint16_t messageLength;
+        uint32_t senderProfileId;
+    };
+
+    struct ChatBatchNotifyBody {
+        uint16_t chatCnt;
+        uint16_t totalMessageLength;
+        CHAT_SCOPE scope;
+        ChatEntity entities[MAX_CHAT_PACKET];
+    }; // message 이어붙여서 쓰기
+
+
+    struct ActionRequestBody {
+        uint8_t dir;      // 상, 하, 좌, 우 — 애니메이션/스킬 시전 방향
+        float x, y;       // 이동 후 최종 좌표(절대). 서버가 경과 시간 대비 이동량을 검증한다.
+        uint8_t skillSlot;
+        uint64_t ownershipEpoch;
+        float aimAngle; // +Y=0 degrees, clockwise, [0,360).
+    };
+
+    struct ActionResultField {
+        uint8_t casterType;//  0 캐릭터, 1 몬스터
+        uint32_t casterId; // casterType 0이면 zoneInternalID, 1이면 monsterId
+        uint8_t skillSlot;
+        uint8_t dir;
+        float x, y; // 시전 위치
+        uint32_t skillId;
+        uint16_t skillPhase;
+        float aimAngle;
+    };
+
+    struct ActionResultBody {
+        uint16_t count;
+        uint16_t zoneID;
+        uint64_t zoneGeneration;
+        ActionResultField actions[ACTION_RESULT_COUNT];
+    };
+
+    struct DeltaUpdateField {
+        uint32_t zoneInternalID;   
+        uint16_t fieldID;
+        uint32_t fieldVal; // field에 맞는 타입으로 변환 해서 사용
+    };
+
+    struct DeltaSnapshotBody {
+        uint16_t count;
+        uint16_t zoneID;
+        uint64_t zoneGeneration;
+        DeltaUpdateField updates[DELTA_UPDATE_COUNT];
+    };
+
+    struct FullStateField {
+        uint32_t zoneInternalID;
+        uint32_t profileId;      // 이름은 PROFILE_BATCH로 따로 조회한다.
+        uint32_t profileVersion; // 올라가면 클라이언트가 재요청한다.
+        int hp; // 0
+        int mp; // 1
+        int maxHp; // 2
+        int maxMp; // 3
+        uint32_t exp; // 4
+        uint16_t level; // 5
+        uint8_t dir;  // 6
+        float x, y; // 7, 8
+    };
+
+    struct FullSnapshotBody {
+        uint16_t count;
+        uint16_t zoneID;
+        uint64_t zoneGeneration;
+        uint64_t ownershipEpoch;
+        uint64_t bootstrapID;
+        uint8_t bootstrapEnd;
+        FullStateField states[MAX_ZONE_CAPACITY];
+    };
+
+    struct MonsterDeltaField {
+        uint16_t internalId;
+        uint16_t fieldId;   // HP, PosX, PosY 등
+        uint32_t fieldVal;
+    };
+
+    struct MonsterDeltaSnapshotBody {
+        uint16_t count;
+        uint16_t zoneID;
+        uint64_t zoneGeneration;
+        MonsterDeltaField updates[MAX_MONSTER_DELTA];
+    };
+
+    struct MonsterFullField {
+        uint16_t internalId;
+        int hp;
+        int maxHp;
+        uint32_t attacked; // 피격 데미지(UI 용)
+        float x, y;
+        uint8_t dir;
+        uint16_t monsterId;
+    };
+
+    struct MonsterFullSnapshotBody {
+        uint16_t count;
+        uint16_t zoneID;
+        uint64_t zoneGeneration;
+        uint64_t ownershipEpoch;
+        uint64_t bootstrapID;
+        uint8_t bootstrapEnd;
+        MonsterFullField states[MAX_MONSTER_COUNT];
+    };
+
+    // 클라이언트가 스냅샷/채팅에서 처음 본 profile_id들을 모아 한 번에 조회한다.
+    struct ProfileBatchReqBody {
+        uint16_t count;
+        uint32_t profileIds[MAX_PROFILE_BATCH];
+    };
+
+    struct ProfileEntry {
+        uint32_t profileId;
+        uint32_t version;
+        uint8_t  name[MAX_CHARNAME_LEN];
+    };
+
+    // 캐시에 있는 값만 담는다. 요청했는데 응답에 없는 profile_id는 미접속 상태라
+    // 서버 메모리에 없다는 뜻이므로, 클라이언트는 반복 재요청하지 말아야 한다.
+    struct ProfileBatchResBody {
+        uint16_t count;
+        ProfileEntry entries[MAX_PROFILE_BATCH];
+    };
+
+    template<typename T>
+    struct PacketStruct {
+        PacketHeader header;
+        T body;
+    };
+
+    struct Ping {
+        uint64_t serverTimeMs; 
+        uint64_t rtt;
+    };
+
+    struct Pong {
+        uint64_t serverTimeMs; // 클라이언트는 그대로 return
+    };
+    
+#pragma pack(pop)
+
+    inline constexpr bool IsSimulationOpcode(uint16_t opcode) noexcept {
+        return opcode == OP::ACTION || opcode == OP::PARRY;
+    }
+
+    inline constexpr bool IsSimulationFlag(uint8_t flags) noexcept {
+        return (flags & FLAG_SIMULATION) != 0;
+    }
+
+    inline constexpr bool IsElasticReqPacket(uint16_t opcode) noexcept {
+        return opcode == OP::CHAT || opcode == OP::PROFILE_BATCH;
+    }
+
+    // 헤더 포함 요청 길이. 가변 요청은 고정 부분의 최소 길이, 미지원은 -1이다.
+    inline constexpr int32_t GetReqPacketLen(uint16_t opcode) noexcept {
+        switch (opcode) {
+        case OP::AUTH: return sizeof(PacketStruct<AuthRequestBody>);
+        case OP::CHARACTER_LIST: return sizeof(PacketHeader);
+        case OP::ENTER_WORLD: return sizeof(PacketStruct<EnterWorldRequestBody>);
+        case OP::ACTION: return sizeof(PacketStruct<ActionRequestBody>);
+        case OP::CHAT: return sizeof(PacketStruct<ChatRequestBody>);
+        case OP::ZONE_CHANGE: return sizeof(PacketStruct<ZoneChangeBody>);
+        case OP::INVENTORY_REQ: return sizeof(PacketHeader);
+        case OP::PONG: return sizeof(PacketStruct<Pong>);
+        case OP::PROFILE_BATCH: return sizeof(PacketHeader) + sizeof(uint16_t);
+        case OP::BAZAAR_SEARCH: return sizeof(PacketStruct<BazaarSearchRequestBody>);
+        case OP::BAZAAR_MY_LIST: return sizeof(PacketStruct<BazaarMyListRequestBody>);
+        case OP::BAZAAR_CLAIM: return sizeof(PacketStruct<BazaarClaimRequestBody>);
+        case OP::BAZAAR_BUY: return sizeof(PacketStruct<BazaarBuyRequestBody>);
+        case OP::BAZAAR_CHECK_OUTBOX: return sizeof(PacketStruct<BazaarCheckOutboxRequestBody>);
+        case OP::BAZAAR_CANCEL_LISTING: return sizeof(PacketStruct<BazaarCancelListingRequestBody>);
+        case OP::ZONE_RESYNC: return sizeof(PacketStruct<ZoneResyncBody>);
+        case OP::RESPAWN_TO_TOWN: return sizeof(PacketStruct<RespawnToTownBody>);
+        case OP::BAZAAR_REGISTER: return sizeof(PacketStruct<BazaarRegisterRequestBody>);
+        case OP::WALLET_REQUEST: return sizeof(PacketStruct<WalletRequestBody>);
+        case OP::ITEM_USE: return sizeof(PacketStruct<ItemUseRequestBody>);
+        case OP::PARRY: return sizeof(PacketStruct<ParryRequestBody>);
+        case OP::BAZAAR_OUTBOX_LIST: return sizeof(PacketStruct<BazaarOutboxListRequestBody>);
+        case OP::EQUIPMENT_GET: return sizeof(PacketStruct<EquipmentGetRequestBody>);
+        case OP::EQUIPMENT_SET: return sizeof(PacketStruct<EquipmentSetRequestBody>);
+        default:
+            return -1;
+        }
+    }
+
+    // 헤더를 포함한 현재 최대 클라이언트 요청 크기.
+    inline constexpr uint32_t MAX_REQ_PACKET_LEN = sizeof(PacketStruct<ProfileBatchReqBody>);
+
+    // 현재 마지막 클라이언트 요청 opcode. 요청 추가 시 크기 제한도 함께 검토한다.
+    static_assert(OP::ITEM_USE == 45, "Review MAX_REQ_PACKET_LEN when changing request opcodes.");
+    static_assert(sizeof(PacketStruct<ItemUseRequestBody>) <= MAX_REQ_PACKET_LEN);
+    
+    inline PacketHeader* parseHeader(uint8_t* data) {
+        return reinterpret_cast<PacketHeader*>(data);
+    }
+
+    template<typename T>
+    inline T* parseBody(uint8_t* data) {
+        return reinterpret_cast<T*>(data + sizeof(PacketHeader));
+    }
+}
+

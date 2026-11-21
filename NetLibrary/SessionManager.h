@@ -7,7 +7,7 @@
 #include <new>
 #include <unordered_map>
 #include <functional>
-#include <CoreLib/ICachedClock.h>
+#include <CoreLib/Interface/ICachedClock.h>
 
 #include "SessionState.h"
 #include "ClientContext.h"

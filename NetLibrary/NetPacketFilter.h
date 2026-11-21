@@ -3,8 +3,9 @@
 #include <tuple>
 #include <optional>
 
-#include <CoreLib/PacketDispatcher.h>
-#include <CoreLib/ICachedClock.h>
+#include <CoreLib/Packet/PacketDispatcher.h>
+#include <CoreLib/Packet/PacketTypes.h>
+#include <CoreLib/Interface/ICachedClock.h>
 #include "Jitter.h"
 
 class ClientContextTest;

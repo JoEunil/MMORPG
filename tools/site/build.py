@@ -564,9 +564,12 @@ def main(require_tour_media=False):
             html = html.replace("</head>", f'<link rel="canonical" href="{target}"><meta http-equiv="refresh" content="0;url={target}"></head>')
             (folder / page).write_text(html, encoding="utf-8", newline="\n")
     build_tour(references, title, require_tour_media)
+    report = SITE / "reports/server-project-map.html"
+    report.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(ROOT / "Resources/CppDependencyAnalyzer/Reports/server-project-map.html", report)
     check_site()
     check_work_navigation(works)
-    print(f"Built home and {len(works)} project pages with screen histories")
+    print(f"Built home and {len(works)} project pages with screen histories and the server dependency report")
 
 
 def check_work_navigation(works):

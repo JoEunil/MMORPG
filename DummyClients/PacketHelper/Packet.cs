@@ -55,6 +55,8 @@ namespace ClientCore.PacketHelper
         EQUIPMENT_RES = 55,
     }
     
+    public enum ZoneChangeStatus : byte { Failed, Field, Lobby }
+
     public enum ZONE_CHANGE : byte
     {
         ENTER = 0,
@@ -615,7 +617,10 @@ namespace ClientCore.PacketHelper
                 throw new ArgumentException("Invalid zone response frame.");
             var packet = Deserialize<ZoneChangeResponseBody>(header, buffer);
             var body = packet.body;
-            if (body.resStatus > 1 || body.resStatus == 1 && (body.zoneID < 1 || body.zoneID > 6 ||
+            if (body.resStatus > (byte)ZoneChangeStatus.Lobby ||
+                body.resStatus == (byte)ZoneChangeStatus.Lobby && (body.zoneID != 0 || body.zoneGeneration != 0 ||
+                    body.zoneInternalID != 0 || body.ownershipEpoch == 0) ||
+                body.resStatus == (byte)ZoneChangeStatus.Field && (body.zoneID < 1 || body.zoneID > 6 ||
                 body.zoneInternalID == 0 || body.zoneInternalID == uint.MaxValue || body.zoneGeneration == 0 ||
                 body.ownershipEpoch == 0 || float.IsNaN(body.startX) || float.IsInfinity(body.startX) ||
                 float.IsNaN(body.startY) || float.IsInfinity(body.startY)))

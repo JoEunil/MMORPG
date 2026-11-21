@@ -1,4 +1,5 @@
-﻿#include "ProfileCache.h"
+﻿#include "pch.h"
+#include "ProfileCache.h"
 
 #include <CoreLib/LoggerGlobal.h>
 
@@ -55,7 +56,7 @@ namespace Cache {
             onDone(false, 0);
         };
         const auto enqueueResult = dbWorker->Enqueue([this, profileId, name, nextVersion, onDone](DBConnectionGame* conn) {
-            bool success = conn->ExecuteUpdate(22, name, profileId) > 0;
+            bool success = conn->ExecuteUpdate(StatementId::RenameProfile, name, profileId) > 0;
 
             std::unique_lock lock(m_mutex);
             auto it = m_profiles.find(profileId);

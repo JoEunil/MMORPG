@@ -20,6 +20,17 @@
 #include <mswsock.h>         // AcceptEx 등
 #include <Ws2tcpip.h>        // inet_pton, getaddrinfo 등
 
+#include <algorithm>
+#include <array>
+#include <atomic>
+#include <chrono>
+#include <cstddef>
+#include <cstring>
+#include <limits>
+#include <new>
+#include <optional>
+#include <string_view>
+#include <utility>
 #include <cstdint>
 #include <vector>
 #include <deque>

@@ -101,6 +101,7 @@ public struct InventoryItemView
         event Action<ushort, MonsterFullField[]> OnMonsterFullReceived;
         event Action<ushort, ActionResultField[]> OnActionResultReceived;
         event Action OnZoneChageFailed;
+        event Action OnLobbyReturnReceived;
         event Action<ulong> OnPingReceived;
         Task Login(string id, string pwd);
         void Enter(ulong charID);

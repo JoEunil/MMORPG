@@ -32,19 +32,19 @@ namespace {
         InventoryHarness() {
             clock = &testClock;
             m_shards.resize(Cache::SHARD_SIZE);
-            SetFlushFn([this](const Cache::Key5& key, Cache::Result5& result) {
+            SetFlushFn([this](const Cache::InventoryKey& key, Cache::InventoryCacheItem& result) {
                 if (!acceptWrites) return Cache::FlushEnqueueResult::Failed;
                 writes.push_back(GetFlushCommand(key, result));
                 return Cache::FlushEnqueueResult::Queued;
             });
         }
         void Seed(uint64_t id = Character) {
-            Cache::Result5 result{};
+            Cache::InventoryCacheItem result{};
             result.data = Cache::EMPTY_INVENTORY;
-            Insert(id & Cache::SHARD_SIZE_MASK, Cache::Key5{ id }, result);
+            Insert(id & Cache::SHARD_SIZE_MASK, Cache::InventoryKey{ id }, result);
         }
         void Dispatch() {
-            ForEachDirty([this](const Cache::Key5& key, Cache::Result5& result) {
+            ForEachDirty([this](const Cache::InventoryKey& key, Cache::InventoryCacheItem& result) {
                 if (!acceptWrites) return false;
                 writes.push_back(GetFlushCommand(key, result));
                 return true;
@@ -64,9 +64,9 @@ namespace {
         CurrencyHarness(uint64_t gold) {
             clock = &testClock;
             m_shards.resize(Cache::SHARD_SIZE);
-            Cache::Result7 result{};
+            Cache::CurrencyCacheItem result{};
             result.data.gold = gold;
-            Insert(Shard, Cache::Key7{ Character }, result);
+            Insert(Shard, Cache::CurrencyKey{ Character }, result);
         }
     };
 }
@@ -207,18 +207,18 @@ TEST(CacheStorageRegression, SameKeySnapshotsCannotOverlapAndStaleCallbacksDoNot
     cache.Dispatch();
     EXPECT_EQ(cache.writes.size(), 1); // no second write while first is in flight
 
-    cache.WriteDone(Shard, Cache::Key5{ Character }, oldGeneration);
+    cache.WriteDone(Shard, Cache::InventoryKey{ Character }, oldGeneration);
     cache.Dispatch();
     ASSERT_EQ(cache.writes.size(), 2);
     EXPECT_EQ(cache.Image(0).items[0].quantity, 10);
     EXPECT_EQ(cache.Image(1).items[0].quantity, 17);
     EXPECT_NE(cache.writes[1]->generation, oldGeneration);
 
-    cache.WriteDone(Shard, Cache::Key5{ Character }, oldGeneration);
-    cache.Rollback(Shard, Cache::Key5{ Character }, oldGeneration);
+    cache.WriteDone(Shard, Cache::InventoryKey{ Character }, oldGeneration);
+    cache.Rollback(Shard, Cache::InventoryKey{ Character }, oldGeneration);
     EXPECT_TRUE(cache.Getter(Character).flushInFlight);
     EXPECT_EQ(cache.writes.size(), 2);
-    cache.WriteDone(Shard, Cache::Key5{ Character }, cache.writes[1]->generation);
+    cache.WriteDone(Shard, Cache::InventoryKey{ Character }, cache.writes[1]->generation);
     EXPECT_FALSE(cache.Getter(Character).flushInFlight);
 }
 
@@ -229,12 +229,12 @@ TEST(CacheStorageRegression, RetryUsesLatestImageAndRejectsEarlierCompletion) {
     cache.Dispatch();
     auto original = cache.writes[0]->generation;
     cache.PartialUpdate(Character, 1, 2, 5);
-    cache.Rollback(Shard, Cache::Key5{ Character }, original);
+    cache.Rollback(Shard, Cache::InventoryKey{ Character }, original);
     ASSERT_EQ(cache.writes.size(), 2);
     EXPECT_EQ(cache.Image(1).items[0].quantity, 15);
-    cache.WriteDone(Shard, Cache::Key5{ Character }, original);
+    cache.WriteDone(Shard, Cache::InventoryKey{ Character }, original);
     EXPECT_TRUE(cache.Getter(Character).flushInFlight);
-    cache.WriteDone(Shard, Cache::Key5{ Character }, cache.writes[1]->generation);
+    cache.WriteDone(Shard, Cache::InventoryKey{ Character }, cache.writes[1]->generation);
     EXPECT_FALSE(cache.Getter(Character).flushInFlight);
 }
 
@@ -262,7 +262,7 @@ TEST(CacheStorageRegression, InFlightEntryCannotBeEvictedOrReloaded) {
     EXPECT_EQ(result.status, Cache::CACHE_STATUS::AVAILABLE);
     EXPECT_EQ(result.data.items[0].quantity, 10);
     EXPECT_TRUE(result.flushInFlight);
-    cache.WriteDone(Shard, Cache::Key5{ Character }, generation);
+    cache.WriteDone(Shard, Cache::InventoryKey{ Character }, generation);
     EXPECT_EQ(cache.Getter(Character).status, Cache::CACHE_STATUS::AVAILABLE);
 }
 
@@ -302,8 +302,8 @@ TEST(CacheWALRegression, NewNodeLsnExceedsTheLoadedDatabaseLsn) {
 #include <CacheLib/BazaarSearchResult.h>
 #include <CacheLib/BazaarRegisterResult.h>
 #include <CacheLib/Handler.h>
-#include <CacheLib/DBWorker.h>
-#include <CoreLib/IMessageQueue.h>
+#include <CacheLib/DB/DBWorker.h>
+#include <CoreLib/Interface/IMessageQueue.h>
 #include <stdexcept>
 #include <limits>
 #include <string_view>
@@ -420,25 +420,35 @@ TEST(BazaarSearchParser, NarrowingOverflowNegativeQuantityAndPartialReadFailureE
 namespace Cache {
     class BazaarSearchFixture : public ::testing::Test {
     protected:
-        std::unique_ptr<MessagePool> messages = std::make_unique<MessagePool>();
+        std::unique_ptr<CacheMessagePool> messages = std::make_unique<CacheMessagePool>();
         std::unique_ptr<DBWorker<DBConnectionBazaar>> stoppedWorker = std::make_unique<DBWorker<DBConnectionBazaar>>();
         SearchResponseQueue responses;
+        Core::MessageWriter messageWriter;
         Handler handler;
         void SetUp() override {
             handler.messageQ = &responses;
+            handler.messageWriter = &messageWriter;
             handler.messagePool = messages.get();
             handler.dbWorkerBazaar = stoppedWorker.get();
         }
         void RequestSearch() {
-            auto* msg = messages->Acquire();
+            auto msg = messages->AcquireScoped();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarSearchBody>*>(msg->GetBuffer());
             st->header = {42, Core::MSG_BAZAAR_SEARCH};
             st->body = {0x12345678, 3, 65535};
             msg->SetLength(sizeof(*st));
-            handler.Process(msg); // Stopped queue rejects without connecting to any DB.
+            handler.Process(std::move(msg)); // Stopped queue rejects without connecting to any DB.
         }
     };
     TEST_F(BazaarSearchFixture, StoppedDbWorkerReturnsExplicitCorrelatedFailure) {
+        std::vector<CacheMessagePool::ScopedMessage> held;
+        held.reserve(MSGPOOL_SIZE - 1);
+        for (size_t i = 1; i < MSGPOOL_SIZE; ++i) {
+            auto message = messages->AcquireScoped();
+            ASSERT_NE(message, nullptr);
+            held.push_back(std::move(message));
+        }
+        // Only the request slot can be reused for the synchronous rejection response.
         RequestSearch();
         ASSERT_NE(responses.received, nullptr);
         EXPECT_EQ(responses.received->GetLength(), sizeof(Core::MsgStruct<Core::MsgBazaarSearchResBody>));
@@ -568,51 +578,53 @@ TEST(BazaarMyListParser, InvalidOrPartialDatabaseResultsNeverExposeAPrefix) {
 namespace Cache {
     class BazaarMyListFixture : public ::testing::Test {
     protected:
-        std::unique_ptr<MessagePool> messages = std::make_unique<MessagePool>();
+        std::unique_ptr<CacheMessagePool> messages = std::make_unique<CacheMessagePool>();
         std::unique_ptr<DBWorker<DBConnectionBazaar>> stoppedWorker = std::make_unique<DBWorker<DBConnectionBazaar>>();
         SearchResponseQueue responses;
+        Core::MessageWriter messageWriter;
         Handler handler;
         void SetUp() override {
             handler.messageQ = &responses;
+            handler.messageWriter = &messageWriter;
             handler.messagePool = messages.get();
             handler.dbWorkerBazaar = stoppedWorker.get();
         }
         void RequestBuy(int delta = 0) {
-            auto* msg = messages->Acquire();
+            auto msg = messages->AcquireScoped();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarBuyBody>*>(msg->GetBuffer());
             st->header = {42, Core::MSG_BAZAAR_BUY}; st->body = {5011, UINT64_MAX, 123};
-            msg->SetLength(sizeof(*st) + delta); handler.Process(msg);
+            msg->SetLength(sizeof(*st) + delta); handler.Process(std::move(msg));
         }
         void RequestOutboxList(int delta = 0) {
-            auto* msg = messages->Acquire();
+            auto msg = messages->AcquireScoped();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarOutboxListBody>*>(msg->GetBuffer());
             st->header = {42, Core::MSG_BAZAAR_OUTBOX_LIST}; st->body = {5011, 126};
-            msg->SetLength(sizeof(*st) + delta); handler.Process(msg);
+            msg->SetLength(sizeof(*st) + delta); handler.Process(std::move(msg));
         }
         void RequestOutbox(int delta = 0) {
-            auto* msg = messages->Acquire();
+            auto msg = messages->AcquireScoped();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarCheckOutboxBody>*>(msg->GetBuffer());
             st->header = {42, Core::MSG_BAZAAR_CHECK_OUTBOX}; st->body = {5011, 124};
-            msg->SetLength(sizeof(*st) + delta); handler.Process(msg);
+            msg->SetLength(sizeof(*st) + delta); handler.Process(std::move(msg));
         }
         void RequestClaim(int delta = 0) {
-            auto* msg = messages->Acquire();
+            auto msg = messages->AcquireScoped();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarClaimBody>*>(msg->GetBuffer());
             st->header = {42, Core::MSG_BAZAAR_CLAIM};
             st->body = {5011, UINT64_MAX, 0x12345678};
             msg->SetLength(sizeof(*st) + delta);
-            handler.Process(msg);
+            handler.Process(std::move(msg));
         }
         void RequestRegister(InventoryHarness& inventory, CurrencyHarness& currency, RegisterResponseQueue& queue, uint16_t quantity = 3, int lengthDelta = 0) {
             handler.cache_inventory = &inventory;
             handler.cache_currency = &currency;
             handler.messageQ = &queue;
-            auto* msg = messages->Acquire();
+            auto msg = messages->AcquireScoped();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarRegisterBody>*>(msg->GetBuffer());
             st->header = {42, Core::MSG_BAZAAR_REGISTER};
             st->body = {Character, 1, quantity, 100, 0x12345678, 0};
             msg->SetLength(sizeof(*st) + lengthDelta);
-            if (lengthDelta != 0) handler.Process(msg);
+            if (lengthDelta != 0) handler.Process(std::move(msg));
             else {
                 handler.BazaarRegister(msg, 42, &st->body);
                 EXPECT_EQ(msg, nullptr);
@@ -620,23 +632,24 @@ namespace Cache {
             handler.messageQ = &responses;
         }
         void ExpectPoolRestored() {
-            std::vector<Core::Message*> held;
+            std::vector<CacheMessagePool::ScopedMessage> held;
             for (size_t i = 0; i < MSGPOOL_SIZE; ++i) {
-                auto* msg = messages->Acquire();
+                auto msg = messages->AcquireScoped();
                 ASSERT_NE(msg, nullptr);
-                EXPECT_EQ(std::find(held.begin(), held.end(), msg), held.end());
-                held.push_back(msg);
+                EXPECT_EQ(std::find_if(held.begin(), held.end(), [&](const auto& item) {
+                    return item.get() == msg.get();
+                }), held.end());
+                held.push_back(std::move(msg));
             }
-            EXPECT_EQ(messages->Acquire(), nullptr);
-            for (auto* msg : held) messages->Return(msg);
+            EXPECT_EQ(messages->AcquireScoped(), nullptr);
         }
         void RequestMyList() {
-            auto* msg = messages->Acquire();
+            auto msg = messages->AcquireScoped();
             auto* st = reinterpret_cast<Core::MsgStruct<Core::MsgBazaarMyListBody>*>(msg->GetBuffer());
             st->header = {42, Core::MSG_BAZAAR_MY_LIST};
             st->body = {0x12345678, 5011};
             msg->SetLength(sizeof(*st));
-            handler.Process(msg); // Rejected without any DB connection.
+            handler.Process(std::move(msg)); // Rejected without any DB connection.
         }
     };
     TEST_F(BazaarMyListFixture, StoppedWorkerReturnsZeroedFailureWithRequestAndOwner) {
@@ -893,47 +906,47 @@ namespace Cache {
             cache->SetWalFn([this](uint64_t, const InventoryData&) { return failWal ? 0 : ++lsn; });
         }
         void Seed(uint64_t id, uint16_t quantity) {
-            Result5 loaded{};
+            InventoryCacheItem loaded{};
             loaded.data.items[0] = {1, quantity, 0};
             loaded.data.count = quantity == 0 ? 0 : 1;
-            cache->Insert(id & SHARD_SIZE_MASK, Key5{id}, loaded);
+            cache->Insert(id & SHARD_SIZE_MASK, InventoryKey{id}, loaded);
         }
         void SeedWeapon(uint64_t id, uint16_t quantity, uint16_t secondQuantity = 0) {
-            Result5 loaded{};
+            InventoryCacheItem loaded{};
             loaded.data.items[0] = {3, quantity, 0};
             loaded.data.count = quantity == 0 ? 0 : 1;
             if (secondQuantity != 0) { loaded.data.items[1] = {3, secondQuantity, 1}; ++loaded.data.count; }
-            cache->Insert(id & SHARD_SIZE_MASK, Key5{id}, loaded);
+            cache->Insert(id & SHARD_SIZE_MASK, InventoryKey{id}, loaded);
         }
         void SeedEquipment(uint64_t id) {
-            Result5 loaded{};
+            InventoryCacheItem loaded{};
             loaded.data.count = 6;
             for (uint8_t slot = 0; slot < 3; ++slot) {
                 loaded.data.items[slot] = {static_cast<uint32_t>(slot + 3), 2, slot};
                 loaded.data.items[slot + 3] = {static_cast<uint32_t>(slot + 3), 5, static_cast<uint8_t>(slot + 3)};
             }
-            cache->Insert(id & SHARD_SIZE_MASK, Key5{id}, loaded);
+            cache->Insert(id & SHARD_SIZE_MASK, InventoryKey{id}, loaded);
         }
         void SeedFull(uint64_t id) {
-            Result5 loaded{};
+            InventoryCacheItem loaded{};
             loaded.data.count = MAX_INVENTORY;
             for (uint8_t slot = 0; slot < MAX_INVENTORY; ++slot)
                 loaded.data.items[slot] = {static_cast<uint32_t>(slot + 2), 3, slot};
-            cache->Insert(id & SHARD_SIZE_MASK, Key5{id}, loaded);
+            cache->Insert(id & SHARD_SIZE_MASK, InventoryKey{id}, loaded);
         }
-        void Reading(uint64_t id) { cache->m_shards[id & SHARD_SIZE_MASK].cache_data[Key5{id}].status = CACHE_STATUS::DB_READING; }
+        void Reading(uint64_t id) { cache->m_shards[id & SHARD_SIZE_MASK].cache_data[InventoryKey{id}].status = CACHE_STATUS::DB_READING; }
         void Loaded(uint64_t id, bool success) {
-            Result5 loaded{};
-            cache->CompleteLoad(id & SHARD_SIZE_MASK, Key5{id}, success ? &loaded : nullptr);
+            InventoryCacheItem loaded{};
+            cache->CompleteLoad(id & SHARD_SIZE_MASK, InventoryKey{id}, success ? &loaded : nullptr);
         }
         void Evicting(uint64_t id) {
             auto& shard = cache->m_shards[id & SHARD_SIZE_MASK];
-            auto& entry = shard.cache_data[Key5{id}];
+            auto& entry = shard.cache_data[InventoryKey{id}];
             entry.status = CACHE_STATUS::EVICTING;
             entry.flushInFlight = true;
             entry.flushGeneration = 7;
-            shard.lru_list.erase(shard.lru_pos.at(Key5{id}));
-            shard.lru_pos.erase(Key5{id});
+            shard.lru_list.erase(shard.lru_pos.at(InventoryKey{id}));
+            shard.lru_pos.erase(InventoryKey{id});
         }
     };
 
@@ -1069,7 +1082,7 @@ namespace Cache {
             ++completed;
         });
         EXPECT_TRUE(cache->Getter(16).flushInFlight);
-        cache->WriteDone(16 & SHARD_SIZE_MASK, Key5{16}, 7);
+        cache->WriteDone(16 & SHARD_SIZE_MASK, InventoryKey{16}, 7);
         EXPECT_EQ(cache->Getter(16).data.items[0].quantity, 2);
         Reading(17);
         cache->GrantItem(17, 1, 1, [&](Core::ItemOperationResult result) {
@@ -1114,21 +1127,21 @@ namespace Cache {
             cache->clock = &clock;
             cache->m_shards.resize(SHARD_SIZE);
         }
-        void Reading(uint64_t id) { cache->m_shards[id & SHARD_SIZE_MASK].cache_data[Key7{id}].status = CACHE_STATUS::DB_READING; }
+        void Reading(uint64_t id) { cache->m_shards[id & SHARD_SIZE_MASK].cache_data[CurrencyKey{id}].status = CACHE_STATUS::DB_READING; }
         void Loaded(uint64_t id, bool success) {
-            Result7 loaded{};
-            cache->CompleteLoad(id & SHARD_SIZE_MASK, Key7{id}, success ? &loaded : nullptr);
+            CurrencyCacheItem loaded{};
+            cache->CompleteLoad(id & SHARD_SIZE_MASK, CurrencyKey{id}, success ? &loaded : nullptr);
         }
         void Evicting(uint64_t id) {
             auto& shard = cache->m_shards[id & SHARD_SIZE_MASK];
-            auto& entry = shard.cache_data.at(Key7{id});
+            auto& entry = shard.cache_data.at(CurrencyKey{id});
             entry.status = CACHE_STATUS::EVICTING;
             entry.flushInFlight = true;
             entry.flushGeneration = 7;
-            shard.lru_list.erase(shard.lru_pos.at(Key7{id}));
-            shard.lru_pos.erase(Key7{id});
+            shard.lru_list.erase(shard.lru_pos.at(CurrencyKey{id}));
+            shard.lru_pos.erase(CurrencyKey{id});
         }
-        void MaxGold(uint64_t id) { cache->m_shards[id & SHARD_SIZE_MASK].cache_data.at(Key7{id}).data.gold = UINT64_MAX; }
+        void MaxGold(uint64_t id) { cache->m_shards[id & SHARD_SIZE_MASK].cache_data.at(CurrencyKey{id}).data.gold = UINT64_MAX; }
     };
 
     TEST_F(CurrencyRewardFixture, PendingDepositsCompleteOnceAndPreserveFlush) {
@@ -1151,7 +1164,7 @@ namespace Cache {
             EXPECT_EQ(status, CACHE_STATUS::AVAILABLE); EXPECT_EQ(balance, 30u); ++completed;
         });
         EXPECT_TRUE(cache->Getter(16).flushInFlight);
-        cache->WriteDone(16 & SHARD_SIZE_MASK, Key7{16}, 7);
+        cache->WriteDone(16 & SHARD_SIZE_MASK, CurrencyKey{16}, 7);
         EXPECT_EQ(cache->Getter(16).data.gold, 30u);
         Reading(17);
         cache->GrantCurrency(17, 10, [&](CACHE_STATUS status, uint64_t balance) {

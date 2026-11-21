@@ -80,6 +80,7 @@ namespace Mmorpg.Client
         public int EnterRequestCount { get; private set; }
         public event Action WorldStateChanged;
         private bool EntryPending => Stage == WorldStage.Entering || Stage == WorldStage.WaitingForZone || Stage == WorldStage.WaitingForFull;
+        private bool returnedToLobby;
         private const double ZoneTransitionTimeoutSeconds = 12;
 
         private void OnEnable()
@@ -129,6 +130,7 @@ namespace Mmorpg.Client
             model.OnZoneChageReceived += ZoneReceived;
             model.OnZoneTransitionStarted += ZoneTransitionStarted;
             model.OnZoneChageFailed += ZoneFailed;
+            model.OnLobbyReturnReceived += LobbyReturned;
             model.OnFullReceived += FullReceived;
             model.OnDeltaReceived += DeltaReceived;
         }
@@ -141,6 +143,7 @@ namespace Mmorpg.Client
                 model.OnZoneChageReceived -= ZoneReceived;
                 model.OnZoneTransitionStarted -= ZoneTransitionStarted;
                 model.OnZoneChageFailed -= ZoneFailed;
+                model.OnLobbyReturnReceived -= LobbyReturned;
                 model.OnFullReceived -= FullReceived;
                 model.OnDeltaReceived -= DeltaReceived;
             }
@@ -178,6 +181,15 @@ namespace Mmorpg.Client
 
         private void EnterSelected()
         {
+            if (Stage == WorldStage.WaitingForZone && returnedToLobby && model != null && !loginScreen.IsBusy)
+            {
+                enterButton.interactable = false;
+                loginScreen.SetBusy(true);
+                entryStatusText.text = "Requesting Zone entry...";
+                model.ZoneChange((byte)ZONE_CHANGE.ENTER);
+                return;
+            }
+
             if (Stage != WorldStage.Choosing || model == null || loginScreen.IsBusy || SelectedCharacterID == 0) return;
             // Recheck the live server-list snapshot; no numeric/free-form ID entry exists.
             if (!loginScreen.Characters.Item2.Exists(c => c.CharacterID == SelectedCharacterID)) return;
@@ -239,6 +251,17 @@ namespace Mmorpg.Client
             pendingFull.Clear();
         }
 
+        private void LobbyReturned()
+        {
+            ResetWorld();
+            returnedToLobby = true;
+            Stage = WorldStage.WaitingForZone;
+            loginScreen.SetBusy(false);
+            enterButton.interactable = true;
+            entryStatusText.text = "Could not enter the area. Enter the world again when ready.";
+            WorldStateChanged?.Invoke();
+        }
+
         private void ZoneFailed()
         {
             if (Stage == WorldStage.TransitionPending)
@@ -254,6 +277,13 @@ namespace Mmorpg.Client
                 return;
             }
             CancelMovement();
+            if (Stage == WorldStage.WaitingForZone && returnedToLobby)
+            {
+                loginScreen.SetBusy(false);
+                enterButton.interactable = true;
+                entryStatusText.text = "Zone entry was rejected. Try again.";
+                return;
+            }
             if (EntryPending) Fail("Zone entry was rejected.");
         }
 
@@ -288,6 +318,7 @@ namespace Mmorpg.Client
                 hasVisualPosition = true;
             }
             HasOwnFull = true;
+            returnedToLobby = false;
             Stage = WorldStage.InWorld;
             transitionDeadline = 0;
             transitionTargetZone = 0;
@@ -673,6 +704,7 @@ namespace Mmorpg.Client
 
         private void ResetWorld()
         {
+            returnedToLobby = false;
             CancelMovement();
             if (ActorMotion != null) ActorMotion.ResetPose();
             hasVisualPosition = false;

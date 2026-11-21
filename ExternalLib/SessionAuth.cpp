@@ -1,4 +1,5 @@
-﻿#include "SessionAuth.h"
+﻿#include "pch.h"
+#include "SessionAuth.h"
 #include <cstring>
 #include <stdexcept>
 #include <utility>

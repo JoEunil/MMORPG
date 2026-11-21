@@ -1,0 +1,307 @@
+﻿#include "pch.h"
+#include "ZoneState.h"
+#include "BroadcastThreadPool.h"
+#include "SessionManager.h"
+#include "../Interface/IPacket.h"
+#include "../Interface/ILogger.h"
+#include "../Packet/PacketWriter.h"
+
+namespace Core {
+    bool ZoneState::DescribeZoneChange(uint64_t sessionID, uint64_t chatID, uint64_t ownershipEpoch, ZoneChangeResult& result) {
+        auto* member = FindCharacter(sessionID);
+        if (!member)
+            return false;
+        const auto& character = *member;
+        result = {m_zoneID, chatID, character.zoneInternalID, character.x, character.y, m_generation, ownershipEpoch};
+        return true;
+    }
+
+    bool ZoneState::EnqueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch, uint64_t bootstrapID) {
+        if (broadcast == nullptr || writer == nullptr)
+            return false;
+        auto* own = FindCharacter(sessionID);
+        if (!own || ownershipEpoch == 0 || bootstrapID == 0)
+            return false;
+        const auto& character = *own;
+        const int ownCell = character.cellY * CELLS_X + character.cellX;
+        auto players = writer->GetBootstrapFullHeader(false, m_zoneID, m_generation, ownershipEpoch, bootstrapID);
+        auto playerChunk = writer->GetInitialChunk(true);
+        auto monsters = writer->GetBootstrapFullHeader(true, m_zoneID, m_generation, ownershipEpoch, bootstrapID);
+        auto monsterChunk = writer->GetInitialChunk(true);
+        if (!players || !playerChunk || !monsters || !monsterChunk)
+            return false;
+        size_t playerBytes = 0;
+        uint16_t playerCount = 0;
+        for (int cellIndex : AOI[ownCell]) {
+            const int cy = cellIndex / CELLS_X;
+            const int cx = cellIndex % CELLS_X;
+            for (uint64_t member : m_cells[cy][cx].charSessions) {
+                const auto* memberCharacter = FindCharacter(member);
+                if (!memberCharacter || !writer->WriteFullField(playerChunk, *memberCharacter))
+                    return false;
+                playerBytes += sizeof(FullStateField);
+                ++playerCount;
+            }
+        }
+        size_t monsterBytes = 0;
+        uint16_t monsterCount = 0;
+        for (int cellIndex : AOI[ownCell]) {
+            const int cy = cellIndex / CELLS_X;
+            const int cx = cellIndex % CELLS_X;
+            for (uint16_t index : m_cells[cy][cx].monsterIndexes) {
+                if (index >= m_monsters.size() || !writer->WriteMonsterFullField(monsterChunk, m_monsters[index], m_zoneID))
+                    return false;
+                monsterBytes += sizeof(MonsterFullField);
+                ++monsterCount;
+            }
+        }
+        writer->AddChunk(players, playerBytes, playerCount);
+        writer->AddChunk(monsters, monsterBytes, monsterCount);
+        // The Zone worker captures and enqueues bootstrap before producing later deltas.
+        return broadcast->EnqueueBootstrap(sessionID, m_zoneID, std::move(players), std::move(playerChunk), std::move(monsters), std::move(monsterChunk));
+    }
+
+    void ZoneState::UpdateSessionSnapshot() {
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
+                int idx = i * CELLS_X + j;
+                (*sessionSnapshotWriter)[idx].clear();
+                for (auto& session : m_cells[i][j].charSessions)
+                    (*sessionSnapshotWriter)[idx].push_back(session);
+            }
+        }
+        tripleBuffer.Write(sessionSnapshotWriter);
+    }
+
+    void ZoneState::DeltaSnapshot() {
+        UpdateSessionSnapshot();
+        m_userCnt.store(m_chars.size(), std::memory_order_relaxed);
+        std::vector<std::shared_ptr<IPacket>> chunks;
+        std::vector<std::shared_ptr<IPacket>> headers;
+        chunks.resize(CELLS_X * CELLS_Y);
+        headers.resize(CELLS_X * CELLS_Y);
+
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
+                int idx = i * CELLS_X + j;
+                auto chunk = writer->GetInitialChunk(true);
+                auto header = writer->GetDeltaHeader(m_zoneID, m_generation);
+                if (chunk == nullptr || header == nullptr) {
+                    sysLogger->LogError("zone state", "failed to acquire packet", "zoneID", m_zoneID, "cellX", j, "cellY", i);
+                    continue;
+                }
+                chunks[idx] = chunk;
+                headers[idx] = header;
+            }
+        }
+
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
+                auto& cell = m_cells[i][j];
+                int idx = i * CELLS_X + j;
+                int loop = DELTA_UPDATE_COUNT;
+                int iterCnt = 0;
+                if (chunks[idx] == nullptr || headers[idx] == nullptr)
+                    continue;
+                while (!cell.dirtyChar.empty() && loop--) {
+                    auto& internalID = cell.dirtyChar.back();
+                    auto it = m_InternalIDToIndex.find(internalID);
+                    if (it != m_InternalIDToIndex.end()) {
+                        auto& character = m_chars[it->second];
+                        if (character.dirtyBit == 0x00) {
+                            cell.dirtyChar.pop_back();
+                            continue;
+                        }
+                        iterCnt += writer->WriteCharacterDeltaFields(chunks[idx], character);
+                        character.dirtyBit = 0x00;
+                    }
+                    cell.dirtyChar.pop_back();
+                }
+                perfCollector->AddDeltaFieldCnt(m_zoneID, iterCnt);
+                if (iterCnt == 0) {
+                    chunks[idx].reset();
+                }
+            }
+        }
+
+        broadcast->EnqueueWork(headers, chunks, m_zoneID);
+    }
+
+    void ZoneState::FullSnapshot() {
+        UpdateSessionSnapshot();
+        perfCollector->UpdateClientCnt(m_zoneID, m_chars.size());
+        if (m_chars.empty())
+            return;
+        std::vector<std::shared_ptr<IPacket>> chunks;
+        std::vector<std::shared_ptr<IPacket>> headers;
+        chunks.resize(CELLS_X * CELLS_Y);
+        headers.resize(CELLS_X * CELLS_Y);
+
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
+                int idx = i * CELLS_X + j;
+                auto chunk = writer->GetInitialChunk(true);
+                auto header = writer->GetFullHeader(m_zoneID, m_generation);
+                if (chunk == nullptr || header == nullptr) {
+                    sysLogger->LogError("zone state", "failed to acquire packet", "zoneID", m_zoneID, "cellX", j, "cellY", i);
+                    continue;
+                }
+                chunks[idx] = chunk;
+                headers[idx] = header;
+            }
+        }
+
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
+                auto& cell = m_cells[i][j];
+                cell.dirtyChar.clear();
+                int idx = i * CELLS_X + j;
+                if (chunks[idx] == nullptr || headers[idx] == nullptr)
+                    continue;
+                for (auto& session : cell.charSessions) {
+                    auto& character = m_chars[m_sessionToIndex.at(session)];
+                    writer->WriteFullField(chunks[idx], character);
+                }
+            }
+        }
+        broadcast->EnqueueWork(headers, chunks, m_zoneID);
+    }
+
+    void ZoneState::DeltaSnapshotMonster() {
+        if (m_monsterCellsChanged) {
+            FullSnapshotMonster();
+            return;
+        }
+        m_deltaTickCounter++;
+        if (m_deltaTickCounter & 1) {
+            // 2틱 당 한번만 처리
+            return;
+        }
+        std::vector<std::shared_ptr<IPacket>> chunks;
+        std::vector<std::shared_ptr<IPacket>> headers;
+        chunks.resize(CELLS_X * CELLS_Y);
+        headers.resize(CELLS_X * CELLS_Y);
+
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
+                int idx = i * CELLS_X + j;
+                auto chunk = writer->GetInitialChunk();
+                auto header = writer->GetMonsterDeltaHeader(m_zoneID, m_generation);
+                if (chunk == nullptr || header == nullptr) {
+                    sysLogger->LogError("zone state", "failed to acquire packet", "zoneID", m_zoneID, "cellX", j, "cellY", i);
+                    continue;
+                }
+                chunks[idx] = chunk;
+                headers[idx] = header;
+            }
+        }
+
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
+                auto& cell = m_cells[i][j];
+                int idx = i * CELLS_X + j;
+                int loop = DELTA_UPDATE_COUNT * 2;
+                int iterCnt = 0;
+                if (chunks[idx] == nullptr || headers[idx] == nullptr)
+                    continue;
+                for (int k = 0; k < cell.monsterIndexes.size() && loop--; k++) {
+                    auto& monster = m_monsters[cell.monsterIndexes[k]];
+                    if (monster.dirtyBit == 0x00)
+                        continue;
+                    iterCnt += writer->WriteMonsterDeltaFields(chunks[idx], monster);
+                    monster.dirtyBit = 0x00;
+                    monster.attacked = 0;
+                }
+                perfCollector->AddMonsterDeltaFieldCnt(m_zoneID, iterCnt);
+            }
+        }
+        broadcast->EnqueueWork(headers, chunks, m_zoneID);
+    }
+
+    void ZoneState::FullSnapshotMonster() {
+        bool complete = true;
+        std::vector<std::shared_ptr<IPacket>> chunks;
+        std::vector<std::shared_ptr<IPacket>> headers;
+        chunks.resize(CELLS_X * CELLS_Y);
+        headers.resize(CELLS_X * CELLS_Y);
+        perfCollector->UpdateMonsterCnt(m_zoneID, m_monsters.size());
+
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
+                int idx = i * CELLS_X + j;
+                auto chunk = writer->GetInitialChunk();
+                auto header = writer->GetMonsterFullHeader(m_zoneID, m_generation);
+                if (chunk == nullptr || header == nullptr) {
+                    complete = false;
+                    sysLogger->LogError("zone state", "failed to acquire packet", "zoneID", m_zoneID, "cellX", j, "cellY", i);
+                    continue;
+                }
+                chunks[idx] = chunk;
+                headers[idx] = header;
+            }
+        }
+
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
+                auto& cell = m_cells[i][j];
+                int idx = i * CELLS_X + j;
+
+                if (chunks[idx] == nullptr || headers[idx] == nullptr)
+                    continue;
+                for (auto& monsterIdx : cell.monsterIndexes) {
+                    auto& monster = m_monsters[monsterIdx];
+                    if (monster.hp == 0 && !(monster.dirtyBit & 0x01))
+                        continue;
+                    if (!writer->WriteMonsterFullField(chunks[idx], monster, m_zoneID)) {
+                        complete = false;
+                        continue;
+                    }
+                    monster.attacked = 0;
+                    monster.dirtyBit = 0x0;
+                }
+            }
+        }
+        broadcast->EnqueueWork(headers, chunks, m_zoneID);
+        m_monsterCellsChanged = !complete;
+    }
+
+    void ZoneState::ActionSnapshot() {
+        std::vector<std::shared_ptr<IPacket>> chunks;
+        std::vector<std::shared_ptr<IPacket>> headers;
+        chunks.resize(CELLS_X * CELLS_Y);
+        headers.resize(CELLS_X * CELLS_Y);
+
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
+                int idx = i * CELLS_X + j;
+                auto chunk = writer->GetInitialChunk();
+                auto header = writer->GetActionHeader(m_zoneID, m_generation);
+                if (chunk == nullptr || header == nullptr) {
+                    sysLogger->LogError("zone state", "failed to acquire packet", "zoneID", m_zoneID, "cellX", j, "cellY", i);
+                    continue;
+                }
+                chunks[idx] = chunk;
+                headers[idx] = header;
+            }
+        }
+
+        for (int i = 0; i < CELLS_Y; i++) {
+            for (int j = 0; j < CELLS_X; j++) {
+                bool wroteField = false;
+                auto& cell = m_cells[i][j];
+                int idx = i * CELLS_X + j;
+                if (chunks[idx] == nullptr || headers[idx] == nullptr)
+                    continue;
+                perfCollector->AddActionFieldCnt(m_zoneID, cell.actionResults.size());
+                for (auto& actionRes : cell.actionResults) {
+                    writer->WriteActionField(chunks[idx], actionRes);
+                    wroteField = true;
+                }
+                cell.actionResults.clear();
+                if (!wroteField)
+                    chunks[idx].reset();
+            }
+        }
+        broadcast->EnqueueWork(headers, chunks, m_zoneID);
+    }
+}
