@@ -16,12 +16,19 @@ namespace Mmorpg.Client
         // Monster updates normally arrive every 100ms; keep headroom for frame/arrival jitter.
         private const double PresentationDelay = 0.150;
         private const int MotionSampleCapacity = 8;
-        private const int FirstRegionalMonster = 3;
-        private const int LastRegionalMonster = 12;
-        private static readonly Color32[] RegionalCloth =
+        private static readonly (Color32 Cloth, Color32 Metal, Vector2 Dagger, Vector2 Axe, Vector3 Shoulder)[] RegionalEquipment =
         {
-            new Color32(91, 98, 61, 255), new Color32(103, 69, 56, 255), new Color32(66, 87, 100, 255),
-            new Color32(91, 71, 101, 255), new Color32(108, 85, 52, 255)
+            // Gate, quarry, oak forest, outpost, altar.
+            (new Color32(123, 91, 63, 255), new Color32(158, 149, 122, 255),
+                new Vector2(1.05f, 1.18f), new Vector2(1.10f, 1.08f), new Vector3(1.20f, 1.14f, 1.11f)),
+            (new Color32(129, 72, 56, 255), new Color32(164, 133, 109, 255),
+                new Vector2(1.90f, 1.08f), new Vector2(1.38f, 1.34f), new Vector3(1.22f, 1.18f, 1.30f)),
+            (new Color32(62, 100, 94, 255), new Color32(119, 148, 127, 255),
+                new Vector2(1.10f, 1.72f), new Vector2(1.42f, 0.92f), new Vector3(1.42f, 1.04f, 1.28f)),
+            (new Color32(87, 96, 133, 255), new Color32(154, 173, 191, 255),
+                new Vector2(1.55f, 1.47f), new Vector2(1.12f, 1.55f), new Vector3(1.16f, 1.75f, 1.17f)),
+            (new Color32(115, 73, 102, 255), new Color32(193, 158, 97, 255),
+                new Vector2(1.42f, 1.82f), new Vector2(1.50f, 1.26f), new Vector3(1.47f, 1.37f, 1.40f))
         };
 
         private struct MotionSample
@@ -467,7 +474,7 @@ namespace Mmorpg.Client
                         if (observedZone == 6) scale *= 1.18f;
                         entry.Visual.transform.localScale = scale;
                     }
-                    if (state.monsterId >= FirstRegionalMonster) TintMonster(entry.ModelParts, state.monsterId);
+                    if (visualType < 2 && observedZone >= 2 && observedZone <= 6) ApplyRegionalEquipment(entry.ModelParts, observedZone);
                     entry.ActorMotion = CreateActorMotion(entry.Visual);
                     entry.Vitals = CreateVitals(entry.Visual);
                     InitializeVisual(entry.Visual, entry.Motion, now, state.x, state.y, state.dir);
@@ -636,7 +643,7 @@ namespace Mmorpg.Client
                     !monsters.TryGetValue((ushort)result.casterId, out var entry) || entry.State.hp == 0)
                     continue;
 
-                if (entry.State.monsterId == 2)
+                if (MonsterVisualType(entry.State.monsterId) == 2)
                 {
                     if (result.skillId == 4)
                     {
@@ -894,24 +901,74 @@ namespace Mmorpg.Client
         }
 
         private static bool ValidPlayer(FullStateField state) => ValidState(state.x, state.y, state.dir, state.hp, state.maxHp);
-        private static bool ValidMonster(MonsterFullField state) =>
-            state.monsterId <= LastRegionalMonster && ValidState(state.x, state.y, state.dir, state.hp, state.maxHp);
-        private static int MonsterVisualType(int speciesId) =>
-            speciesId < FirstRegionalMonster ? speciesId : (speciesId - FirstRegionalMonster) % 2;
+        private bool ValidMonster(MonsterFullField state) =>
+            MonsterVisualType(state.monsterId) >= 0 && ValidState(state.x, state.y, state.dir, state.hp, state.maxHp);
 
-        private static void TintMonster(MeshRenderer[] parts, int speciesId)
+        private int MonsterVisualType(int speciesId)
         {
-            var tint = new MaterialPropertyBlock();
-            Color cloth = RegionalCloth[(speciesId - FirstRegionalMonster) / 2];
-            tint.SetColor("_BaseColor", cloth);
-            tint.SetColor("_Color", cloth);
+            var species = serverContent?.GetMonsterSpecies(speciesId, observedZone);
+            if (species != null)
+                return species.monsterType >= 0 && species.monsterType < monsterPrefabs.Length ? species.monsterType : -1;
+            if (serverContent != null && serverContent.monsterSpecies.Length > 0) return -1;
+            // Detached fixtures without a catalog use the three base archetype IDs.
+            return speciesId <= 2 && speciesId < monsterPrefabs.Length ? speciesId : -1;
+        }
+
+        private static void ApplyRegionalEquipment(MeshRenderer[] parts, int zoneID)
+        {
+            var equipment = RegionalEquipment[zoneID - 2];
+            var cloth = new MaterialPropertyBlock();
+            cloth.SetColor("_BaseColor", equipment.Cloth);
+            cloth.SetColor("_Color", equipment.Cloth);
+            var metal = new MaterialPropertyBlock();
+            metal.SetColor("_BaseColor", equipment.Metal);
+            metal.SetColor("_Color", equipment.Metal);
+
             foreach (var part in parts)
             {
-                if (part.name == "GoblinRagSkirt" || part.name == "GoblinChestStrap" ||
-                    part.name == "OrcRagSkirt" || part.name == "OrcBaldric")
-                    part.SetPropertyBlock(tint);
+                switch (part.name)
+                {
+                    case "GoblinRagSkirt":
+                    case "OrcRagSkirt":
+                    case "OrcBaldric":
+                        part.SetPropertyBlock(cloth);
+                        break;
+                    case "GoblinChestStrap":
+                        var strap = part.transform;
+                        strap.localScale = Vector3.Scale(strap.localScale,
+                            new Vector3(equipment.Shoulder.z, 1f, equipment.Shoulder.z));
+                        part.SetPropertyBlock(cloth);
+                        break;
+                    case "GoblinDagger":
+                        // The blade mesh includes body coordinates. Keep its junction with the grip fixed.
+                        ScaleAround(part.transform, new Vector3(equipment.Dagger.x, equipment.Dagger.y, 1f),
+                            new Vector3(.29f, .61f, -.145f));
+                        part.SetPropertyBlock(metal);
+                        break;
+                    case "OrcAxeHead":
+                        ScaleAround(part.transform, new Vector3(equipment.Axe.x, equipment.Axe.y, 1f),
+                            new Vector3(.53f, 1.25f, -.10f));
+                        part.SetPropertyBlock(metal);
+                        break;
+                    case "OrcPauldron":
+                        ScaleAround(part.transform, equipment.Shoulder, new Vector3(-.36f, 1.68f, 0f));
+                        part.SetPropertyBlock(metal);
+                        break;
+                    case "OrcBracer-1":
+                    case "OrcBracer1":
+                        part.SetPropertyBlock(metal);
+                        break;
+                }
             }
         }
+
+        private static void ScaleAround(Transform part, Vector3 scale, Vector3 pivot)
+        {
+            Vector3 before = part.localScale;
+            part.localScale = Vector3.Scale(before, scale);
+            part.localPosition += part.localRotation * Vector3.Scale(pivot, before - part.localScale);
+        }
+
         private static bool ValidState(float x, float y, byte direction, int hp, int maxHp) =>
             !float.IsNaN(x) && !float.IsInfinity(x) && !float.IsNaN(y) && !float.IsInfinity(y) && direction <= 3 && maxHp > 0 && hp >= 0 && hp <= maxHp;
         private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);

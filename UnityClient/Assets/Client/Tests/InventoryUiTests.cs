@@ -99,6 +99,53 @@ namespace Mmorpg.Client.Tests
         }
 
         [Test]
+        [Category("Equipment")]
+        public void CatalogEquipmentSlotsSupportArbitraryIdsWithZeroBonuses()
+        {
+            using (var f = new Fixture())
+            {
+                f.World.Content.items = new[]
+                {
+                    new ServerContent.Item { itemID = 103, itemType = 2, name = "Plain weapon", equipmentSlot = 0 },
+                    new ServerContent.Item { itemID = 204, itemType = 2, name = "Plain shield", equipmentSlot = 1 },
+                    new ServerContent.Item { itemID = 305, itemType = 3, name = "Plain armor", equipmentSlot = 2 }
+                };
+                var items = new[]
+                {
+                    new InventoryItem { itemID = 103, quantity = 1, slot = 0 },
+                    new InventoryItem { itemID = 204, quantity = 1, slot = 1 },
+                    new InventoryItem { itemID = 305, quantity = 1, slot = 2 }
+                };
+                SetPrivate(f.Login.Model, "_ownershipEpoch", 1UL);
+                SetPrivate(f.Login.Model, "_selfHP", 100);
+                SetPrivate(f.World, "ownFull", new FullStateField { hp = 100, maxHp = 100 });
+                f.OpenBag(); f.Receive(true, items); f.InvokeScreen("Update");
+                ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentRead, 1, 0, 1, 0,
+                    new EquipmentStateView { BaseAttack = 10, EffectiveAttack = 10 });
+                var equip = (UnityEngine.UI.Button)GetPrivate(f.Screen, "equipButton");
+                var equipment = new EquipmentStateView { BaseAttack = 10, EffectiveAttack = 10 };
+                for (byte slot = 0; slot < 3; slot++)
+                {
+                    uint id = items[slot].itemID;
+                    f.Cards[slot].onClick.Invoke();
+                    Assert.That(equip.gameObject.activeSelf && equip.interactable, Is.True);
+                    Assert.That(f.DetailSlot.text, Is.EqualTo(slot == 0 ? "Weapon · ATK +0" :
+                        slot == 1 ? "Shield · DEF 0%" : "Armor · DEF 0%"));
+                    equip.onClick.Invoke();
+                    Assert.That(f.Network.LastEquipmentSlot, Is.EqualTo(slot));
+                    Assert.That(f.Network.LastEquipmentItem, Is.EqualTo(id));
+                    if (slot == 0) equipment.WeaponID = id;
+                    else if (slot == 1) equipment.ShieldID = id;
+                    else equipment.BodyID = id;
+                    ((IViewModelNet)f.Login.Model).EquipmentReceived(f.Network.LastEquipmentWrite, 1, 1, 1, slot, equipment);
+                    f.Receive(true, items);
+                    Assert.That(f.Screen.CanSellItem(id), Is.False);
+                    Assert.That(f.Cards[slot].transform.Find("EquippedItem" + id).gameObject.activeSelf, Is.True);
+                }
+                Assert.That(f.Network.EquipmentSets, Is.EqualTo(3));
+            }
+        }
+        [Test]
         public void ServerItemsBecomeCardsAndALaterFailureClearsPreviousInventory()
         {
             using (var fixture = new Fixture())
@@ -834,6 +881,9 @@ namespace Mmorpg.Client.Tests
 
             public Fixture()
             {
+                itemContent.GetItem(3).equipmentSlot = 0;
+                itemContent.GetItem(4).equipmentSlot = 1;
+                itemContent.GetItem(5).equipmentSlot = 2;
                 root = new GameObject("C07 inventory lifecycle fixture");
                 root.SetActive(false);
                 Login = root.AddComponent<LoginScreen>();

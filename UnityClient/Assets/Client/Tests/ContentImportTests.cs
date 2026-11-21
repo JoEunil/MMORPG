@@ -1,8 +1,8 @@
 #if UNITY_EDITOR
 using System;
+using System.Globalization;
 using System.IO;
-using System.Reflection;
-using Newtonsoft.Json.Linq;
+using System.Text;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -12,88 +12,60 @@ namespace Mmorpg.Client.Tests
     public sealed class ContentImportTests
     {
         [Test]
-        [Category("ContentImportDirection")]
-        public void ServerSnapshotImportsEntireCatalogDeterministicallyWithoutChangingAssetGuid()
+        public void SharedCsvLoadsCatalogsAndHuntingOverridesWithoutChangingAssetIdentity()
         {
-            string assetPath = "Assets/Client/Content/ContentImportTest-" + Guid.NewGuid().ToString("N") + ".asset";
+            string assetPath = "Assets/Client/Content/CsvContentTest-" + Guid.NewGuid().ToString("N") + ".asset";
             var content = ScriptableObject.CreateInstance<ServerContent>();
             try
             {
                 AssetDatabase.CreateAsset(content, assetPath);
-                content.name = "Preserved metadata";
+                content.name = "Existing content reference";
                 string guid = AssetDatabase.AssetPathToGUID(assetPath);
                 byte[] metadata = File.ReadAllBytes(assetPath + ".meta");
-                var expected = JObject.Parse(File.ReadAllText(SnapshotPath));
-                Import(content, SnapshotPath);
-                Assert.That(content.otherSkills.Length, Is.EqualTo(4));
-                Assert.That(content.otherMonsters.Length, Is.EqualTo(2));
-                var actual = new JObject
-                {
-                    ["formatVersion"] = 6,
-                    ["monsterSkills"] = JArray.FromObject(content.monsterSkills),
-                    ["monsterSpecies"] = JArray.FromObject(content.monsterSpecies),
-                    ["huntingZones"] = JArray.FromObject(content.huntingZones),
-                    ["skills"] = JArray.FromObject(new[] { content.otherSkills[0], content.ring, content.otherSkills[1], content.otherSkills[2], content.otherSkills[3] }),
-                    ["monsters"] = JArray.FromObject(new[] { content.monster0, content.otherMonsters[0], content.otherMonsters[1] }),
-                    ["growth"] = JObject.FromObject(content.growth),
-                    ["parry"] = JObject.FromObject(content.parry),
-                    ["items"] = JArray.FromObject(content.items)
-                };
-                expected["skills"] = JArray.FromObject(expected["skills"].ToObject<ServerContent.RingSkill[]>());
-                expected["monsterSpecies"] = JArray.FromObject(expected["monsterSpecies"].ToObject<ServerContent.MonsterSpecies[]>());
-                expected["monsterSkills"] = JArray.FromObject(expected["monsterSkills"].ToObject<ServerContent.RingSkill[]>());
-                expected["huntingZones"] = JArray.FromObject(expected["huntingZones"].ToObject<ServerContent.HuntingZone[]>());
-                Assert.That(content.monsterSkills[1].phases[1].attack, Is.EqualTo(15));
-                Assert.That(content.ring.phases[1].attack, Is.EqualTo(120));
-                Assert.That(content.GetHuntingZone(2).regularHp, Is.EqualTo(900));
-                Assert.That(content.GetHuntingZone(6).bossHp, Is.EqualTo(36000));
-                Assert.That(content.GetHuntingZone(1).minLevel, Is.Zero);
-                Assert.That(content.GetHuntingZone(0), Is.Null);
-                Assert.That(content.items.Length, Is.EqualTo(9));
-                Assert.That(content.GetItem(1).hpRecovery, Is.EqualTo(1500));
-                Assert.That(content.GetItem(2).mpRecovery, Is.EqualTo(500));
-                Assert.That(content.GetItem(3).name, Is.EqualTo(expected["items"][2]["name"].Value<string>()));
-                Assert.That(content.GetItem(3).itemType, Is.EqualTo(2));
-                Assert.That(content.GetItem(3).weaponAttackBonus, Is.EqualTo(2));
-                Assert.That(content.GetItem(4).defensePercent, Is.EqualTo(2));
-                Assert.That(content.GetItem(5).defensePercent, Is.EqualTo(3));
-                Assert.That(content.GetItem(6).hpRecovery, Is.EqualTo(3000));
-                Assert.That(content.GetItem(7).mpRecovery, Is.EqualTo(1000));
-                Assert.That(content.GetItem(8).hpRecovery, Is.EqualTo(4500));
-                Assert.That(content.GetItem(9).mpRecovery, Is.EqualTo(1500));
-                foreach (uint id in new uint[] { 1, 2, 6, 7, 8, 9 })
-                    Assert.That(content.GetItem(id).cooldownTicks, Is.EqualTo(120));
+                content.LoadCsv(SharedGameData.DirectoryPath);
+
+                Assert.That(content.otherSkills.Length + 1, Is.EqualTo(RecordCount("Skills/PlayerSkills.csv")));
+                Assert.That(content.monsterSkills.Length, Is.EqualTo(RecordCount("Skills/MonsterSkills.csv")));
+                Assert.That(content.otherMonsters.Length + 1, Is.EqualTo(RecordCount("Monsters/Monsters.csv")));
+                Assert.That(content.monsterSpecies.Length, Is.EqualTo(RecordCount("Monsters/HuntingSpecies.csv")));
+                Assert.That(content.huntingZones.Length, Is.EqualTo(RecordCount("Monsters/HuntingZones.csv")));
+                Assert.That(content.growth.levels.Length, Is.EqualTo(RecordCount("Growth/Growth.csv")));
+                Assert.That(content.growth.maxLevel, Is.EqualTo(100));
+                int itemCount = RecordCount("Items/Potions.csv") + RecordCount("Items/Weapons.csv") +
+                    RecordCount("Items/Shields.csv") + RecordCount("Items/Armors.csv");
+                Assert.That(content.items.Length, Is.EqualTo(itemCount));
+
+                Assert.That(content.ring.cooldownTicks, Is.EqualTo(Number("Skills/PlayerSkills.csv", "skillID", "1", "coolDown")));
+                Assert.That(content.ring.phases[1].waitTicks, Is.EqualTo(16));
+                Assert.That(content.ring.phases[1].range, Is.EqualTo(SkillRange.Circle));
+                Assert.That(content.GetItem(1).hpRecovery, Is.EqualTo(Number("Items/Potions.csv", "itemID", "1", "recovery")));
+                Assert.That(content.GetItem(1).mpRecovery, Is.Zero);
+                Assert.That(content.GetItem(2).mpRecovery, Is.EqualTo(Number("Items/Potions.csv", "itemID", "2", "recovery")));
+                Assert.That(content.GetItem(3).weaponAttackBonus, Is.EqualTo(Number("Items/Weapons.csv", "itemID", "3", "attackBonus")));
+                Assert.That(content.GetItem(4).defensePercent, Is.EqualTo(Number("Items/Shields.csv", "itemID", "4", "defensePercent")));
+                Assert.That(content.GetItem(5).defensePercent, Is.EqualTo(Number("Items/Armors.csv", "itemID", "5", "defensePercent")));
                 Assert.That(content.GetItem(33), Is.Null);
                 Assert.That(ItemPresentation.Name(3, content), Is.EqualTo(content.GetItem(3).name));
-                Assert.That(ItemPresentation.Name(33, content), Is.EqualTo("Item #33"));
-                StringAssert.Contains("1500 HP", ItemPresentation.UseDescription(1, content));
-                StringAssert.Contains("500 MP", ItemPresentation.UseDescription(2, content));
-                expected["monsters"] = JArray.FromObject(expected["monsters"].ToObject<ServerContent.Monster[]>());
-                Assert.That(JToken.DeepEquals(actual, expected), Is.True, "Every imported server field must match the JSON snapshot at runtime float precision.");
-                Assert.That(content.growth.levels.Length, Is.EqualTo(content.growth.maxLevel));
-                string before = EditorJsonUtility.ToJson(content);
-                byte[] persisted = File.ReadAllBytes(assetPath);
-                Import(content, SnapshotPath);
-                Assert.That(EditorJsonUtility.ToJson(content), Is.EqualTo(before));
-                Assert.That(File.ReadAllBytes(assetPath), Is.EqualTo(persisted));
+                Assert.That(content.GetHuntingZone(1).minLevel, Is.Zero);
+
+                var altarElite = content.GetMonsterSpecies(12, 6);
+                Assert.That(altarElite, Is.Not.Null);
+                Assert.That(altarElite.monsterType, Is.EqualTo(1));
+                Assert.That(altarElite.attack, Is.EqualTo(Number("Monsters/HuntingZones.csv", "zoneID", "6", "strongAttack")));
+                Assert.That(altarElite.phases[0].steps[1].skillID, Is.EqualTo(2));
+                Assert.That(altarElite.phases[0].steps[2].skillID, Is.EqualTo(7));
+                Assert.That(altarElite.phases[0].steps[2].delayTicks, Is.EqualTo(26));
+                Assert.That(content.otherMonsters[0].phases[0].steps[2].skillID, Is.EqualTo(1),
+                    "A hunting override must not overwrite the shared base archetype.");
+                Assert.That(content.GetMonsterSpecies(2, 4).attack, Is.Not.EqualTo(content.GetMonsterSpecies(2, 6).attack),
+                    "A boss species ID is resolved together with its zone.");
+
+                string firstLoad = EditorJsonUtility.ToJson(content);
+                content.LoadCsv(SharedGameData.DirectoryPath);
+                Assert.That(EditorJsonUtility.ToJson(content), Is.EqualTo(firstLoad));
+                Assert.That(content.name, Is.EqualTo("Existing content reference"));
                 Assert.That(AssetDatabase.AssetPathToGUID(assetPath), Is.EqualTo(guid));
                 Assert.That(File.ReadAllBytes(assetPath + ".meta"), Is.EqualTo(metadata));
-                Assert.That(content.name, Is.EqualTo("Preserved metadata"));
-                string extendedPath = Path.Combine(Path.GetTempPath(), "ContentImport-" + Guid.NewGuid().ToString("N") + ".json");
-                try
-                {
-                    var extended = JObject.Parse(File.ReadAllText(SnapshotPath));
-                    var extra = (JObject)extended["items"][2].DeepClone();
-                    extra["itemID"] = 100;
-                    extra["name"] = "Server supplied item";
-                    ((JArray)extended["items"]).Insert(0, extra);
-                    File.WriteAllText(extendedPath, extended.ToString());
-                    Import(content, extendedPath);
-                    Assert.That(content.GetItem(100).name, Is.EqualTo("Server supplied item"));
-                    Assert.That(ItemPresentation.Name(100, content), Is.EqualTo("Server supplied item"));
-                    Assert.That(ItemPresentation.Icon(100), Is.Null);
-                }
-                finally { if (File.Exists(extendedPath)) File.Delete(extendedPath); }
             }
             finally
             {
@@ -103,28 +75,50 @@ namespace Mmorpg.Client.Tests
         }
 
         [Test]
-        [Category("ContentImportDirection")]
-        public void InvalidSnapshotsPreserveEntirePriorAssetAndMetadata()
+        public void CsvAcceptsBomQuotedMultilineNamesAndExplicitSpeciesTypes()
         {
-            string assetPath = "Assets/Client/Content/ContentImportTest-" + Guid.NewGuid().ToString("N") + ".asset";
-            string invalidPath = Path.Combine(Path.GetTempPath(), "ContentImport-" + Guid.NewGuid().ToString("N") + ".json");
+            string directory = NewFixtureDirectory();
             var content = ScriptableObject.CreateInstance<ServerContent>();
             try
             {
-                content.name = "Prior asset metadata";
-                content.ring.mana = 987;
-                content.monster0.maxHp = 7654;
-                content.growth = new ServerContent.Growth
-                {
-                    maxLevel = 2, levels = new[]
-                    {
-                        new ServerContent.GrowthLevel { level = 1 },
-                        new ServerContent.GrowthLevel { level = 2, requiredTotalExp = 321, maxHpIncrease = 123 }
-                    }
-                };
+                CopySharedData(directory);
+                string path = Path.Combine(directory, "Monsters/HuntingSpecies.csv");
+                string original = File.ReadAllText(path);
+                string name = "성문, 순찰 \"대장\"\n둘째 줄";
+                string replacement = "501,2,0,\"성문, 순찰 \"\"대장\"\"\n둘째 줄\"";
+                Assert.That(original, Does.Contain("3,2,0,성문 순찰병"));
+                File.WriteAllText(path, original.Replace("3,2,0,성문 순찰병", replacement), new UTF8Encoding(true));
+                ReplaceCell(directory, "Monsters/HuntingZones.csv", "zoneID", "2", "regularGold", "4294967418");
+
+                content.LoadCsv(directory);
+
+                var species = content.GetMonsterSpecies(501, 2);
+                Assert.That(species, Is.Not.Null);
+                Assert.That(species.name, Is.EqualTo(name));
+                Assert.That(species.monsterType, Is.Zero, "Visual archetypes come from monsterType, not species ID parity.");
+                Assert.That(content.GetMonsterSpecies(3, 2), Is.Null);
+                Assert.That(content.GetHuntingZone(2).regularGold, Is.EqualTo(4294967418UL));
+                Assert.That(content.GetMonsterSpecies(2, 4), Is.Not.Null);
+                Assert.That(content.GetMonsterSpecies(2, 6), Is.Not.Null);
+            }
+            finally
+            {
+                Directory.Delete(directory, true);
+                UnityEngine.Object.DestroyImmediate(content);
+            }
+        }
+
+        [Test]
+        public void InvalidCsvKeepsAllPriorCatalogReferencesAndAssetMetadata()
+        {
+            string directory = NewFixtureDirectory();
+            string assetPath = "Assets/Client/Content/CsvContentTest-" + Guid.NewGuid().ToString("N") + ".asset";
+            var content = ScriptableObject.CreateInstance<ServerContent>();
+            try
+            {
+                content.LoadCsv(SharedGameData.DirectoryPath);
                 AssetDatabase.CreateAsset(content, assetPath);
                 AssetDatabase.SaveAssetIfDirty(content);
-                // A rejected import must also preserve pre-existing unsaved edits.
                 content.ring.cooldownTicks = 543;
                 EditorUtility.SetDirty(content);
                 string before = EditorJsonUtility.ToJson(content);
@@ -137,84 +131,25 @@ namespace Mmorpg.Client.Tests
                 var monsters = content.otherMonsters;
                 var growth = content.growth;
                 var monsterSkills = content.monsterSkills;
+                var species = content.monsterSpecies;
                 var huntingZones = content.huntingZones;
                 var items = content.items;
-                var valid = JObject.Parse(File.ReadAllText(SnapshotPath));
-                Action<JObject>[] invalidate =
+                var parry = content.parry;
+                Action<string>[] invalidate =
                 {
-                    json => json["formatVersion"] = 1,
-                    json => json.Remove("growth"),
-                    json => json.Remove("parry"),
-                    json => json["formatVersion"] = 3,
-                    json => json["formatVersion"] = 4,
-                    json => json.Remove("items"),
-                    json => ((JArray)json["items"]).Clear(),
-                    json => ((JArray)json["items"]).RemoveAt(0),
-                    json => json["items"][1]["itemID"] = 1,
-                    json => json["items"][1]["name"] = " ",
-                    json => ((JObject)json["items"][0]).Remove("name"),
-                    json => json["items"][1]["itemType"] = 2,
-                    json => json["items"][1]["weight"] = 0,
-                    json => json["items"][1]["mpRecovery"] = 0,
-                    json => json["items"][1]["hpRecovery"] = 1,
-                    json => json["items"][1]["cooldownTicks"] = 0,
-                    json => json["items"][1]["cooldownTicks"] = 41,
-                    json => json["items"][2]["hpRecovery"] = 10,
-                    json => json["items"][2]["weaponAttackBonus"] = 65536,
-                    json => json["items"][0]["weaponAttackBonus"] = 2,
-                    json => ((JObject)json["items"][3]).Remove("defensePercent"),
-                    json => json["items"][3]["defensePercent"] = 100,
-                    json => json["items"][0]["defensePercent"] = 1,
-                    json => { json["items"][3]["defensePercent"] = 98; json["items"][4]["defensePercent"] = 2; },
-                    json => json["parry"]["windowTicks"] = 0,
-                    json => json["parry"]["cooldownTicks"] = 0,
-                    json => json["parry"]["charges"] = 2,
-                    json => json["growth"]["maxLevel"] = 0,
-                    json => json["growth"]["maxLevel"] = (int)ushort.MaxValue + 1,
-                    json => json["growth"]["levels"][1]["level"] = 1,
-                    json => ((JArray)json["growth"]["levels"]).RemoveAt(1),
-                    json => ((JObject)json["growth"]["levels"][1]).Remove("maxHpIncrease"),
-                    json => json["growth"]["levels"][0]["requiredTotalExp"] = 1,
-                    json => json["growth"]["levels"][0]["maxHpIncrease"] = 1,
-                    json => json["growth"]["levels"][2]["requiredTotalExp"] = json["growth"]["levels"][1]["requiredTotalExp"].DeepClone(),
-                    json => json["growth"]["levels"][1]["requiredTotalExp"] = (long)uint.MaxValue + 1,
-                    json => json["growth"]["levels"][1]["maxHpIncrease"] = (long)int.MaxValue + 1,
-                    json => json.Remove("monsterSkills"),
-                    json => json["monsterSkills"][1]["skillID"] = 0,
-                    json => json["monsterSkills"][1]["phases"][1]["range1"] = -1,
-                    json => json.Remove("huntingZones"),
-                    json => json["huntingZones"][1]["zoneID"] = 1,
-                    json => json["huntingZones"][1]["label"] = " ",
-                    json => json["huntingZones"][1]["minLevel"] = 0,
-                    json => json["huntingZones"][1]["maxLevel"] = 0,
-                    json => json["huntingZones"][1]["regularHp"] = (long)int.MaxValue + 1,
-                    json => json["huntingZones"][1]["strongHp"] = 0,
-                    json => json["huntingZones"][1]["bossHp"] = 1,
-                    json => json["huntingZones"][3]["bossAttack"] = 0,
-                    json => json["huntingZones"][0]["regularExp"] = 1,
-                    json => json.Remove("skills"),
-                    json => ((JObject)json["skills"][0]).Remove("mana"),
-                    json => json["skills"][1]["skillID"] = 0,
-                    json => json["monsters"][1]["id"] = 0,
-                    json => json["skills"][1]["phases"][1]["range1"] = -1,
-                    json => json["skills"][1]["phases"][1]["range1"] = double.NaN,
-                    json => json["skills"][1]["phases"][1]["action"] = 0,
-                    json => json["monsters"][0]["respawnTicks"] = 0,
-                    json => json["monsters"][0]["maxHp"] = (long)int.MaxValue + 1,
-                    json => json["monsters"][0]["phases"][0]["steps"][0]["skillID"] = 5,
-                    json => json["monsters"][0]["phases"][0]["steps"] = new JArray(),
-                    json => { json["monsters"][0]["maxHp"] = 1500; json["monsters"][0]["phases"] = new JArray(
-                        new JObject { ["hpThreshold"] = 0.5005f, ["steps"] = valid["monsters"][0]["phases"][0]["steps"].DeepClone() },
-                        new JObject { ["hpThreshold"] = 0.5004f, ["steps"] = valid["monsters"][0]["phases"][0]["steps"].DeepClone() },
-                        new JObject { ["hpThreshold"] = 0.1f, ["steps"] = valid["monsters"][0]["phases"][0]["steps"].DeepClone() }); }
+                    dir => File.AppendAllText(Path.Combine(dir, "Items/Weapons.csv"), "\n1,Duplicate item,1,2\n"),
+                    dir => ReplaceCell(dir, "Items/Potions.csv", "itemID", "1", "recovery", "1.5"),
+                    dir => File.WriteAllText(Path.Combine(dir, "Growth/Growth.csv"), "level,requiredTotalExp,maxHpIncrease\n1,0,0\n"),
+                    dir => ReplaceCell(dir, "Skills/MonsterSkillPhases.csv", "skillID", "0", "range1", "NaN"),
+                    dir => File.AppendAllText(Path.Combine(dir, "Monsters/HuntingSkillOverrides.csv"), "\n6,1,0,0,65535,20\n"),
+                    dir => File.AppendAllText(Path.Combine(dir, "Monsters/HuntingSpecies.csv"), "\n501,2,0,Duplicate type\n"),
+                    dir => File.WriteAllText(Path.Combine(dir, "Monsters/HuntingSpecies.csv"), "speciesID,zoneID,monsterType,name\n501,2,0,\"unterminated\n")
                 };
                 foreach (var mutation in invalidate)
                 {
-                    var json = (JObject)valid.DeepClone();
-                    mutation(json);
-                    File.WriteAllText(invalidPath, json.ToString());
-                    var failure = Assert.Throws<TargetInvocationException>(() => Import(content, invalidPath));
-                    Assert.That(failure.InnerException, Is.TypeOf<InvalidOperationException>());
+                    CopySharedData(directory);
+                    mutation(directory);
+                    Assert.Throws<InvalidDataException>(() => content.LoadCsv(directory));
                     Assert.That(EditorJsonUtility.ToJson(content), Is.EqualTo(before));
                     Assert.That(content.ring, Is.SameAs(ring));
                     Assert.That(content.monster0, Is.SameAs(monster));
@@ -222,8 +157,10 @@ namespace Mmorpg.Client.Tests
                     Assert.That(content.otherMonsters, Is.SameAs(monsters));
                     Assert.That(content.growth, Is.SameAs(growth));
                     Assert.That(content.monsterSkills, Is.SameAs(monsterSkills));
+                    Assert.That(content.monsterSpecies, Is.SameAs(species));
                     Assert.That(content.huntingZones, Is.SameAs(huntingZones));
                     Assert.That(content.items, Is.SameAs(items));
+                    Assert.That(content.parry, Is.SameAs(parry));
                     Assert.That(EditorUtility.IsDirty(content), Is.True);
                     Assert.That(File.ReadAllBytes(assetPath), Is.EqualTo(persisted));
                     Assert.That(File.ReadAllBytes(assetPath + ".meta"), Is.EqualTo(metadata));
@@ -232,18 +169,65 @@ namespace Mmorpg.Client.Tests
             }
             finally
             {
-                if (File.Exists(invalidPath)) File.Delete(invalidPath);
+                Directory.Delete(directory, true);
                 AssetDatabase.DeleteAsset(assetPath);
                 if (content != null) UnityEngine.Object.DestroyImmediate(content);
             }
         }
 
-        private static string SnapshotPath => Path.Combine(Application.dataPath, "..", "Exports", "ClientData", "ServerContent.json");
+        // These helpers inspect the repository's plain numeric rows; the runtime loader itself
+        // is exercised above with quoted multiline records and a BOM.
+        private static int RecordCount(string relativePath) => File.ReadAllLines(Path.Combine(SharedGameData.DirectoryPath, relativePath)).Length - 1;
 
-        private static void Import(ServerContent content, string path)
+        private static ulong Number(string relativePath, string key, string value, string column)
         {
-            var importer = Type.GetType("Mmorpg.Client.Editor.ServerContentImport, Mmorpg.Client.Editor", true);
-            importer.GetMethod("Import", new[] { typeof(ServerContent), typeof(string) }).Invoke(null, new object[] { content, path });
+            string[] lines = File.ReadAllLines(Path.Combine(SharedGameData.DirectoryPath, relativePath));
+            string[] columns = lines[0].Split(',');
+            int keyIndex = Array.IndexOf(columns, key);
+            int columnIndex = Array.IndexOf(columns, column);
+            foreach (string line in lines)
+            {
+                string[] fields = line.Split(',');
+                if (fields[keyIndex] == value) return ulong.Parse(fields[columnIndex], CultureInfo.InvariantCulture);
+            }
+            throw new InvalidOperationException("Expected shared CSV fixture row was not found.");
+        }
+
+        private static void ReplaceCell(string directory, string relativePath, string key, string value, string column, string replacement)
+        {
+            string path = Path.Combine(directory, relativePath);
+            string[] lines = File.ReadAllLines(path);
+            string[] columns = lines[0].Split(',');
+            int keyIndex = Array.IndexOf(columns, key);
+            int columnIndex = Array.IndexOf(columns, column);
+            for (int i = 1; i < lines.Length; i++)
+            {
+                string[] fields = lines[i].Split(',');
+                if (fields[keyIndex] != value) continue;
+                fields[columnIndex] = replacement;
+                lines[i] = string.Join(",", fields);
+                File.WriteAllLines(path, lines, new UTF8Encoding(false));
+                return;
+            }
+            throw new InvalidOperationException("Expected CSV mutation row was not found.");
+        }
+
+        private static string NewFixtureDirectory()
+        {
+            string directory = Path.Combine(Application.temporaryCachePath, "SharedCsvTest-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            return directory;
+        }
+
+        private static void CopySharedData(string destination)
+        {
+            string source = SharedGameData.DirectoryPath;
+            foreach (string path in Directory.GetFiles(source, "*.csv", SearchOption.AllDirectories))
+            {
+                string copy = Path.Combine(destination, path.Substring(source.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Length + 1));
+                Directory.CreateDirectory(Path.GetDirectoryName(copy));
+                File.Copy(path, copy, true);
+            }
         }
     }
 }

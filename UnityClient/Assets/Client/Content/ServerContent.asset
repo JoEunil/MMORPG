@@ -515,6 +515,7 @@ MonoBehaviour:
   monsterSpecies:
   - id: 3
     zoneID: 2
+    monsterType: 0
     name: "\uC131\uBB38 \uC21C\uCC30\uBCD1"
     attack: 50
     phases:
@@ -526,6 +527,7 @@ MonoBehaviour:
         delayTicks: 20
   - id: 4
     zoneID: 2
+    monsterType: 1
     name: "\uD3D0\uD5C8 \uACBD\uBE44\uBCD1"
     attack: 80
     phases:
@@ -541,6 +543,7 @@ MonoBehaviour:
         delayTicks: 20
   - id: 5
     zoneID: 3
+    monsterType: 0
     name: "\uCC44\uC11D\uC7A5 \uC57D\uD0C8\uC790"
     attack: 70
     phases:
@@ -552,6 +555,7 @@ MonoBehaviour:
         delayTicks: 20
   - id: 6
     zoneID: 3
+    monsterType: 1
     name: "\uCC44\uC11D\uC7A5 \uBD84\uC1C4\uC790"
     attack: 110
     phases:
@@ -567,6 +571,7 @@ MonoBehaviour:
         delayTicks: 20
   - id: 7
     zoneID: 4
+    monsterType: 0
     name: "\uCC38\uB098\uBB34 \uC232 \uC0AC\uB0E5\uAFBC"
     attack: 90
     phases:
@@ -578,6 +583,7 @@ MonoBehaviour:
         delayTicks: 20
   - id: 8
     zoneID: 4
+    monsterType: 1
     name: "\uCC38\uB098\uBB34 \uC232 \uC218\uD638\uC790"
     attack: 150
     phases:
@@ -593,6 +599,7 @@ MonoBehaviour:
         delayTicks: 20
   - id: 9
     zoneID: 5
+    monsterType: 0
     name: "\uC804\uCD08\uAE30\uC9C0 \uCC99\uD6C4\uBCD1"
     attack: 120
     phases:
@@ -604,6 +611,7 @@ MonoBehaviour:
         delayTicks: 20
   - id: 10
     zoneID: 5
+    monsterType: 1
     name: "\uC804\uCD08\uAE30\uC9C0 \uD30C\uC218\uAFBC"
     attack: 190
     phases:
@@ -619,6 +627,7 @@ MonoBehaviour:
         delayTicks: 26
   - id: 11
     zoneID: 6
+    monsterType: 0
     name: "\uC11D\uD658 \uC21C\uB840\uC790"
     attack: 150
     phases:
@@ -630,6 +639,7 @@ MonoBehaviour:
         delayTicks: 20
   - id: 12
     zoneID: 6
+    monsterType: 1
     name: "\uC11D\uD658 \uC81C\uB2E8 \uC218\uD638\uC790"
     attack: 240
     phases:
@@ -645,6 +655,7 @@ MonoBehaviour:
         delayTicks: 30
   - id: 2
     zoneID: 4
+    monsterType: 2
     name: "\uD3D0\uD5C8 \uAE38\uBAA9 \uBCF4\uC2A4"
     attack: 18
     phases:
@@ -676,6 +687,7 @@ MonoBehaviour:
         delayTicks: 25
   - id: 2
     zoneID: 6
+    monsterType: 2
     name: "\uC11D\uD658 \uC81C\uB2E8 \uBCF4\uC2A4"
     attack: 30
     phases:
@@ -803,6 +815,7 @@ MonoBehaviour:
   items:
   - itemID: 1
     itemType: 1
+    equipmentSlot: -1
     name: "HP\uD3EC\uC158"
     weight: 5
     weaponAttackBonus: 0
@@ -812,6 +825,7 @@ MonoBehaviour:
     cooldownTicks: 120
   - itemID: 2
     itemType: 1
+    equipmentSlot: -1
     name: "MP\uD3EC\uC158"
     weight: 5
     weaponAttackBonus: 0
@@ -821,6 +835,7 @@ MonoBehaviour:
     cooldownTicks: 120
   - itemID: 3
     itemType: 2
+    equipmentSlot: 0
     name: "\uCCA0\uAC80"
     weight: 150
     weaponAttackBonus: 2
@@ -830,6 +845,7 @@ MonoBehaviour:
     cooldownTicks: 0
   - itemID: 4
     itemType: 2
+    equipmentSlot: 1
     name: "\uCCA0\uBC29\uD328"
     weight: 200
     weaponAttackBonus: 0
@@ -839,6 +855,7 @@ MonoBehaviour:
     cooldownTicks: 0
   - itemID: 5
     itemType: 3
+    equipmentSlot: 2
     name: "\uAC00\uC8FD\uAC11\uC637"
     weight: 80
     weaponAttackBonus: 0
@@ -848,6 +865,7 @@ MonoBehaviour:
     cooldownTicks: 0
   - itemID: 6
     itemType: 1
+    equipmentSlot: -1
     name: "\uC911\uAE09HP\uD3EC\uC158"
     weight: 5
     weaponAttackBonus: 0
@@ -857,6 +875,7 @@ MonoBehaviour:
     cooldownTicks: 120
   - itemID: 7
     itemType: 1
+    equipmentSlot: -1
     name: "\uC911\uAE09MP\uD3EC\uC158"
     weight: 5
     weaponAttackBonus: 0
@@ -866,6 +885,7 @@ MonoBehaviour:
     cooldownTicks: 120
   - itemID: 8
     itemType: 1
+    equipmentSlot: -1
     name: "\uC0C1\uAE09HP\uD3EC\uC158"
     weight: 5
     weaponAttackBonus: 0
@@ -875,6 +895,7 @@ MonoBehaviour:
     cooldownTicks: 120
   - itemID: 9
     itemType: 1
+    equipmentSlot: -1
     name: "\uC0C1\uAE09MP\uD3EC\uC158"
     weight: 5
     weaponAttackBonus: 0

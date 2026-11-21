@@ -298,10 +298,16 @@ namespace Mmorpg.Client.Tests
             try
             {
                 map.walkable = new byte[map.width * map.height];
+                for (int i = 0; i < map.walkable.Length; i++) map.walkable[i] = 1;
                 using (var fixture = new ObservationFixture())
                 {
                     var worldRoot = (GameObject)Get(fixture.World, "worldRoot");
-                    worldRoot.AddComponent<MapAuthoring>().map = map;
+                    var author = worldRoot.AddComponent<MapAuthoring>();
+                    author.map = map;
+                    author.huntingDestinations = new[] { new Vector2(240.5f, 40.5f) };
+                    var content = UnityEditor.AssetDatabase.LoadAssetAtPath<ServerContent>("Assets/Client/Content/ServerContent.asset");
+                    Assert.That(content, Is.Not.Null);
+                    Set(fixture.World, "serverContent", content);
                     var canvas = new GameObject("Map canvas", typeof(RectTransform), typeof(Canvas)).GetComponent<Canvas>();
                     canvas.transform.SetParent(fixture.World.transform, false);
                     canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -325,6 +331,12 @@ namespace Mmorpg.Client.Tests
                     var position = fixture.World.ServerPosition;
                     Assert.That(marker.anchorMin.x, Is.EqualTo((position.x + 25) / 650).Within(.0001f));
                     Assert.That(marker.anchorMin.y, Is.EqualTo((position.y + 25) / 450).Within(.0001f));
+                    var pin = terrain.Find("HuntingDestination2Pin").GetComponent<UnityEngine.UI.Button>();
+                    var details = overview.Find("DestinationDetails").GetComponent<TMP_Text>();
+                    pin.onClick.Invoke();
+                    Assert.That(details.text, Does.Contain("1–5").And.Contain(content.GetMonsterSpecies(3, 2).name));
+                    pin.onClick.Invoke();
+                    Assert.That(details.text, Is.Empty, "Clearing the route also clears its destination details.");
                     overview.Find("Close").GetComponent<UnityEngine.UI.Button>().onClick.Invoke();
                     Assert.That(overview.gameObject.activeSelf, Is.False);
 
@@ -942,27 +954,39 @@ namespace Mmorpg.Client.Tests
                 var content = UnityEditor.AssetDatabase.LoadAssetAtPath<ServerContent>("Assets/Client/Content/ServerContent.asset");
                 Assert.That(content, Is.Not.Null);
                 Set(fixture.Observer, "serverContent", content);
-                fixture.Monsters(100, Monster(1, 8), Monster(2, 10), Monster(3, 12));
-
-                foreach (var (monster, id, minX, maxX, halfWidth) in new[] {
-                    ((ushort)1, 5u, 16.5f, 23.5f, 3.5f), ((ushort)2, 6u, 20f, 24.5f, 2.5f), ((ushort)3, 7u, 14f, 26f, 6f)
-                })
+                typeof(WorldScreen).GetProperty("ZoneID").GetSetMethod(true).Invoke(fixture.World, new object[] { (ushort)4 });
+                Set(fixture.Observer, "observedZone", (ushort)4);
+                var original = content.monsterSpecies;
+                try
                 {
-                    var charge = MonsterAction(monster, 0, id, 0, 20, 30);
-                    charge.dir = 3;
-                    charge.aimAngle = 90;
-                    fixture.MonsterActions(charge);
-                    var preview = fixture.MonsterRange(monster);
-                    Assert.That(preview.gameObject.activeSelf, Is.True);
-                    var mesh = preview.GetComponent<MeshFilter>().sharedMesh;
-                    Assert.That(mesh.bounds.min.x, Is.EqualTo(minX).Within(.001f));
-                    Assert.That(mesh.bounds.max.x, Is.EqualTo(maxX).Within(.001f));
-                    Assert.That(mesh.bounds.min.z, Is.EqualTo(30 - halfWidth).Within(.001f));
-                    Assert.That(mesh.bounds.max.z, Is.EqualTo(30 + halfWidth).Within(.001f));
-                    charge.skillPhase = 1;
-                    fixture.MonsterActions(charge);
-                    Assert.That(preview.gameObject.activeSelf, Is.False);
+                    content.monsterSpecies = new[]
+                    {
+                        new ServerContent.MonsterSpecies { id = 401, zoneID = 4, monsterType = 1, name = "Catalog elite" }
+                    };
+                    fixture.Monsters(100, Monster(1, 401), Monster(2, 400));
+                    Assert.That(fixture.Count("monsters"), Is.EqualTo(1), "Only catalog-defined species are rendered.");
+
+                    foreach (var (id, minX, maxX, halfWidth) in new[] {
+                        (5u, 16.5f, 23.5f, 3.5f), (6u, 20f, 24.5f, 2.5f), (7u, 14f, 26f, 6f)
+                    })
+                    {
+                        var charge = MonsterAction(1, 0, id, 0, 20, 30);
+                        charge.dir = 3;
+                        charge.aimAngle = 90;
+                        fixture.MonsterActions(charge);
+                        var preview = fixture.MonsterRange(1);
+                        Assert.That(preview.gameObject.activeSelf, Is.True);
+                        var mesh = preview.GetComponent<MeshFilter>().sharedMesh;
+                        Assert.That(mesh.bounds.min.x, Is.EqualTo(minX).Within(.001f));
+                        Assert.That(mesh.bounds.max.x, Is.EqualTo(maxX).Within(.001f));
+                        Assert.That(mesh.bounds.min.z, Is.EqualTo(30 - halfWidth).Within(.001f));
+                        Assert.That(mesh.bounds.max.z, Is.EqualTo(30 + halfWidth).Within(.001f));
+                        charge.skillPhase = 1;
+                        fixture.MonsterActions(charge);
+                        Assert.That(preview.gameObject.activeSelf, Is.False);
+                    }
                 }
+                finally { content.monsterSpecies = original; }
             }
         }
 
@@ -996,13 +1020,27 @@ namespace Mmorpg.Client.Tests
                 Assert.That(card, Is.Not.Null);
                 Assert.That(card.Find("Name").GetComponent<TMP_Text>().text, Is.EqualTo(species.name));
                 Assert.That(card.Find("Attack").GetComponent<TMP_Text>().text, Is.EqualTo($"공격력 {species.attack:N0}"));
-                Assert.That(card.Find("Pattern").GetComponent<TMP_Text>().text, Does.Contain("숲의 휩쓸기").And.Contain("예고"));
+                Assert.That(card.Find("Pattern Viewport/Pattern").GetComponent<TMP_Text>().text,
+                    Does.Contain("숲의 휩쓸기").And.Contain("예고"));
                 Assert.That(card.Find("Health").GetComponent<TMP_Text>().text, Is.EqualTo("HP 70 / 100"));
 
                 fixture.MonsterDeltas(new MonsterDeltaField { internalId = 1, fieldId = 0, fieldVal = 42 });
                 Assert.That(card.Find("Health").GetComponent<TMP_Text>().text, Is.EqualTo("HP 42 / 100"));
                 fixture.RemoveMonster(1);
                 Assert.That(card.gameObject.activeSelf, Is.False);
+
+                canvas.GetComponent<Canvas>().renderMode = RenderMode.WorldSpace;
+                ((RectTransform)canvas.transform).sizeDelta = new Vector2(380, 540);
+                var panel = Get(fixture.Observer, "inspectionPanel");
+                var multiPhase = content.GetMonsterSpecies(2, 4);
+                Invoke(panel, "Show", multiPhase, content.monsterSkills, 100, 100);
+                var scroll = card.GetComponent<UnityEngine.UI.ScrollRect>();
+                Assert.That(scroll.enabled, Is.True, "Long patterns scroll above the lower HUD.");
+                Assert.That(scroll.content.rect.height, Is.GreaterThan(scroll.viewport.rect.height));
+                var height = ((RectTransform)card).rect.height;
+                Assert.That(540 - 252 - height, Is.GreaterThanOrEqualTo(142 - .01f));
+                Assert.That(card.Find("Pattern Viewport/Pattern").GetComponent<TMP_Text>().text, Does.Contain("3단계"));
+                Invoke(panel, "Hide");
             }
         }
 

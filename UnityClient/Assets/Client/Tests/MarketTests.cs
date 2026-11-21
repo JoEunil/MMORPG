@@ -23,24 +23,24 @@ namespace Mmorpg.Client.Tests
             Assert.That(get.Length, Is.EqualTo(24)); Assert.That(get[6], Is.EqualTo(53));
             for (byte slot = 0; slot < 3; slot++)
             {
-                var set = (byte[])serializeSet.Invoke(null, new object[] { 8UL, 7UL, slot, 3U + slot });
+                var set = (byte[])serializeSet.Invoke(null, new object[] { 8UL, 7UL, slot, 103U + slot });
                 Assert.That(set.Length, Is.EqualTo(29)); Assert.That(set[6], Is.EqualTo(54));
                 Assert.That(BitConverter.ToUInt64(set, 16), Is.EqualTo(7)); Assert.That(set[24], Is.EqualTo(slot));
-                Assert.That(BitConverter.ToUInt32(set, 25), Is.EqualTo(3U + slot));
+                Assert.That(BitConverter.ToUInt32(set, 25), Is.EqualTo(103U + slot));
             }
             Assert.Throws<TargetInvocationException>(() => serializeSet.Invoke(null, new object[] { 1UL, 1UL, (byte)3, 0U }));
-            Assert.Throws<TargetInvocationException>(() => serializeSet.Invoke(null, new object[] { 1UL, 1UL, (byte)0, 4U }));
+            Assert.Throws<TargetInvocationException>(() => serializeSet.Invoke(null, new object[] { 0UL, 1UL, (byte)0, 204U }));
             var reply = new byte[46]; BitConverter.GetBytes((ushort)0xabcd).CopyTo(reply, 0);
             BitConverter.GetBytes(46U).CopyTo(reply, 2); reply[6] = 55;
             BitConverter.GetBytes(8UL).CopyTo(reply, 8); BitConverter.GetBytes(7UL).CopyTo(reply, 16);
             reply[24] = 1; reply[25] = 1; reply[26] = 2;
-            BitConverter.GetBytes(3U).CopyTo(reply, 27); BitConverter.GetBytes(4U).CopyTo(reply, 31); BitConverter.GetBytes(5U).CopyTo(reply, 35);
+            BitConverter.GetBytes(103U).CopyTo(reply, 27); BitConverter.GetBytes(204U).CopyTo(reply, 31); BitConverter.GetBytes(305U).CopyTo(reply, 35);
             BitConverter.GetBytes((ushort)10).CopyTo(reply, 39); BitConverter.GetBytes((ushort)2).CopyTo(reply, 41);
             BitConverter.GetBytes((ushort)12).CopyTo(reply, 43); reply[45] = 5;
             var result = ((ulong requestID, ulong epoch, byte operation, byte status, byte slot, EquipmentStateView state))
                 parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply });
-            Assert.That(result.state.WeaponID, Is.EqualTo(3)); Assert.That(result.state.ShieldID, Is.EqualTo(4));
-            Assert.That(result.state.BodyID, Is.EqualTo(5)); Assert.That(result.state.DefensePercent, Is.EqualTo(5));
+            Assert.That(result.state.WeaponID, Is.EqualTo(103)); Assert.That(result.state.ShieldID, Is.EqualTo(204));
+            Assert.That(result.state.BodyID, Is.EqualTo(305)); Assert.That(result.state.DefensePercent, Is.EqualTo(5));
             BitConverter.GetBytes(ushort.MaxValue).CopyTo(reply, 39); BitConverter.GetBytes(ushort.MaxValue).CopyTo(reply, 43);
             result = ((ulong, ulong, byte, byte, byte, EquipmentStateView))parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply });
             Assert.That(result.state.EffectiveAttack, Is.EqualTo(ushort.MaxValue));
@@ -50,8 +50,8 @@ namespace Mmorpg.Client.Tests
             Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply })); reply[26] = 2;
             reply[24] = 0;
             Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply })); reply[24] = 1;
-            reply[31] = 3;
-            Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply })); reply[31] = 4;
+            BitConverter.GetBytes(103U).CopyTo(reply, 31);
+            Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply })); BitConverter.GetBytes(204U).CopyTo(reply, 31);
             reply[45] = 100;
             Assert.Throws<TargetInvocationException>(() => parse.Invoke(null, new object[] { Packet.ExtractHeader(reply), reply })); reply[45] = 5;
             reply[25] = 2;
@@ -74,6 +74,9 @@ namespace Mmorpg.Client.Tests
                 f.Model.EquipmentReceived(f.Network.EquipmentSets[0], 2, 1, 1, 0, sword); f.Drain();
                 f.Model.EquipmentReceived(f.Network.EquipmentSets[0], 1, 1, 1, 1, armored); f.Drain();
                 Assert.That(callbacks, Is.Zero, "Epoch and pending slot must both match.");
+                var mismatchedItem = sword; mismatchedItem.WeaponID = 103;
+                f.Model.EquipmentReceived(f.Network.EquipmentSets[0], 1, 1, 1, 0, mismatchedItem); f.Drain();
+                Assert.That(callbacks, Is.Zero, "The confirmed item must match the pending write.");
                 f.Model.EquipmentReceived(f.Network.EquipmentSets[0], 1, 1, 1, 0, sword); f.Drain();
                 Assert.That(callbacks, Is.EqualTo(1)); Assert.That(lastOperation, Is.EqualTo(1));
                 f.Model.EquipmentReceived(f.Network.EquipmentSets[0], 1, 1, 1, 0, sword); f.Drain();
@@ -89,7 +92,7 @@ namespace Mmorpg.Client.Tests
                 Assert.That(f.Model.RequestEquipItem(2, 5), Is.True);
                 f.Model.EquipmentReceived(f.Network.EquipmentSets[3], 1, 1, 1, 2, armored); f.Drain();
                 Assert.That(callbacks, Is.EqualTo(4)); Assert.That(f.Network.EquipmentSets.Count, Is.EqualTo(4));
-                Assert.That(f.Model.RequestEquipItem(3, 0), Is.False); Assert.That(f.Model.RequestEquipItem(1, 5), Is.False);
+                Assert.That(f.Model.RequestEquipItem(3, 0), Is.False); Assert.That(f.Model.RequestEquipItem(3, 5), Is.False);
                 f.Model.RequestEquipment(); ulong beforeTravel = f.Network.EquipmentGets[1];
                 f.Model.EquipmentReceived(beforeTravel, 1, 0, 1, 0, armored);
                 WorldTestSession.BeginAutomaticTransition(f.Model, f.Drain); Assert.That(callbacks, Is.EqualTo(4));

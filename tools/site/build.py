@@ -316,6 +316,43 @@ def render_comparison_case(section):
     return render_blocks(opening, HOME_SOURCE) + f'<div class="case-examples">{"".join(examples)}</div>' + render_blocks(closing, HOME_SOURCE)
 
 
+def render_home_comparison(section):
+    columns = []
+    for block in section["blocks"]:
+        if isinstance(block, tuple):
+            columns.append((block, []))
+        elif columns:
+            columns[-1][1].append(block)
+    if len(columns) != 2:
+        raise ValueError("SHOWCASE comparison requires two columns")
+    rendered = []
+    for heading, blocks in columns:
+        capture = next((block for block in blocks if IMAGE.fullmatch(block)), None)
+        if capture is None:
+            raise ValueError("Each SHOWCASE comparison column requires a capture")
+        body = render_blocks([capture, heading, *(block for block in blocks if block != capture)], HOME_SOURCE)
+        rendered.append(f'<div class="comparison-column">{body}</div>')
+    return "".join(rendered)
+
+
+def render_home_work_groups(section, cards):
+    groups = []
+    for block in section["blocks"]:
+        if not isinstance(block, tuple):
+            continue
+        keys = {
+            "전투와 필드": ("player-hud", "field-travel"),
+            "가방과 거래": ("inventory", "market"),
+            "월드와 콘텐츠": ("server-content",),
+        }.get(block[1])
+        if not keys:
+            continue
+        groups.append(f'''<section class="work-group"><h3>{escape(block[1])}</h3><div class="featured-grid">{"".join(cards[key] for key in keys)}</div></section>''')
+    if len(groups) != 3:
+        raise ValueError("SHOWCASE must group work into field, inventory/market, and world/content")
+    return "".join(groups)
+
+
 def document(title, description, content, references, site_title, *, show_navigation=True):
     browser_title = title if title == site_title else f"{title} · {site_title}"
     navigation = f'''<header class="site-header"><a class="brand" href="{BASE}">{escape(site_title)}</a><nav aria-label="주 메뉴"><a href="{BASE}play/">콘텐츠 둘러보기</a><a href="{BASE}#work">작업과 결과</a><a href="{BASE}process/">Agent 작업 방식</a></nav></header>''' if show_navigation else ""
@@ -346,33 +383,52 @@ def build_tour(references, site_title, require_media=False):
     rendered = []
     first_clip = True
     for section in sections:
-        blocks = []
-        body = []
+        intro_blocks = []
+        cards = []
+        current = None
+
+        def finish_card():
+            if current is None:
+                return
+            title = current["title"]
+            copy = render_blocks(current["copy"], TOUR_SOURCE)
+            if current["clips"]:
+                cards.append(f'<article class="tour-item"><h3>{escape(title)}</h3>{copy}<div class="tour-media">{"".join(current["clips"])}</div></article>')
+            else:
+                intro_blocks.append(("heading", title))
+                intro_blocks.extend(current["copy"])
+
         for block in section["blocks"]:
+            if isinstance(block, tuple):
+                finish_card()
+                current = {"title": block[1], "copy": [], "clips": []}
+                continue
             # Optional recordings live in Markdown; absent clips leave no fake previews.
             clip = IMAGE.fullmatch(block.removeprefix("영상: ")) if isinstance(block, str) and block.startswith("영상: ") else None
             if clip:
-                body.append(render_blocks(blocks, TOUR_SOURCE))
-                blocks.clear()
                 alt, ref = clip.groups()
                 target = (TOUR_SOURCE.parent / ref).resolve()
                 if not target.is_relative_to(SITE.resolve()):
                     raise ValueError(f"Out-of-site tour clip: {ref}")
                 if target.is_file():
+                    if current is None:
+                        current = {"title": alt, "copy": [], "clips": []}
                     src = local_image_path(TOUR_SOURCE.relative_to(ROOT), ref)
                     poster = target.with_name(target.stem + "-poster.png")
-                    preview = ""
+                    reduced_motion = ""
                     if poster.is_file():
                         poster_url = BASE + poster.relative_to(SITE.resolve()).as_posix()
-                        loading = 'fetchpriority="high"' if first_clip else 'loading="lazy"'
-                        preview = f'<img class="tour-poster" src="{poster_url}" alt="{escape(alt, quote=True)} 정지 화면" {image_size_attributes(poster_url)} {loading}>'
-                    clip_class = "tour-clip tour-chat" if target.stem.startswith("chat-") else "tour-clip"
-                    body.append(f'<figure class="{clip_class}"><details><summary><span>{escape(alt)} · GIF 펼쳐 보기</span>{preview}</summary><img src="{src}" alt="{escape(alt, quote=True)}" {image_size_attributes(src)} loading="lazy"></details><figcaption>{escape(alt)}</figcaption></figure>')
+                        reduced_motion = f'<source media="(prefers-reduced-motion: reduce)" srcset="{poster_url}">'
+                    loading = 'fetchpriority="high"' if first_clip else 'loading="lazy"'
+                    current["clips"].append(f'<picture class="tour-clip">{reduced_motion}<img src="{src}" alt="{escape(alt, quote=True)}" {image_size_attributes(src)} {loading}></picture>')
                     first_clip = False
             else:
-                blocks.append(block)
-        body.append(render_blocks(blocks, TOUR_SOURCE))
-        rendered.append(f'<section class="content-section" id="{slug(section["title"])}"><h2>{escape(section["title"])}</h2>{"".join(body)}</section>')
+                (current["copy"] if current is not None else intro_blocks).append(block)
+        finish_card()
+        body = render_blocks(intro_blocks, TOUR_SOURCE)
+        if cards:
+            body += f'<div class="tour-gallery">{"".join(cards)}</div>'
+        rendered.append(f'<section class="content-section" id="{slug(section["title"])}"><h2>{escape(section["title"])}</h2>{body}</section>')
     content = f'''<main class="page tour-page" id="top" tabindex="-1"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p>{"".join(rendered)}</main>'''
     folder = SITE / "play"
     folder.mkdir(exist_ok=True)
@@ -470,32 +526,25 @@ def main(require_tour_media=False):
     for work in works:
         key, detail, history = build_work(work, references, title, works)
         card_image = find_image(work)
-        media = f'<figure class="work-media"><div class="card-image"><img src="{card_image[1]}" alt="{escape(card_image[0], quote=True)}" {image_size_attributes(card_image[1])} loading="lazy"></div><figcaption>{escape(card_image[0])}</figcaption></figure>'
-        cards[key] = f'<article class="featured-work" id="featured-{key}"><a class="feature-entry" href="{detail}">{media}<div class="work-copy"><h3>{escape(work["title"])}</h3><p>{escape(work["summary"])}</p></div></a></article>'
+        media = f'<div class="card-image"><img src="{card_image[1]}" alt="{escape(card_image[0], quote=True)}" {image_size_attributes(card_image[1])} loading="lazy"></div>'
+        cards[key] = f'<article class="featured-work" id="featured-{key}"><a class="feature-entry" href="{detail}">{media}<div class="work-copy"><h3>{escape(work["title"])}</h3><p>{escape(work["summary"])}</p><span class="feature-cta">결과 보기 <span aria-hidden="true">→</span></span></div></a></article>'
 
     sections_by_title = {section["title"]: section for section in home_sections}
     process_html = render_workflow(sections_by_title["AI Agent 워크플로우"])
     decisions_html = render_decisions(sections_by_title["지침 변경 이력"])
-    legacy_section = sections_by_title["먼저 만든 기반: 기존 2D Unity"]
-    legacy_copy = render_blocks(legacy_section["blocks"], HOME_SOURCE)
+    comparison = render_home_comparison(sections_by_title["기존 구현과 달라진 점"])
     case = render_comparison_case(sections_by_title["선택한 방향을 결과로"])
     usage_html = render_agent_usage(sections_by_title["Agent 활용 지표"], case)
-    featured = ''.join(cards[key] for key in ("player-hud", "field-travel", "inventory", "market", "server-content"))
-    tour_preview = BASE + "media/releases/2026-11-04/free-aim-line-release.png"
+    work_groups = render_home_work_groups(sections_by_title["작업과 결과"], cards)
+    tour_preview = BASE + "media/releases/2026-10-27/live-hunt-defeat-exp.png"
     process_preview = BASE + "media/diagrams/agent-workflow-desktop.svg"
     hero = f'''<main id="top" tabindex="-1"><section class="home-hero"><h1>{escape(title)}</h1><p class="lead">{inline(intro)}</p></section>
-<div class="section-wrap home-actions">
-<section><a class="home-entry" href="{BASE}play/">
-<img src="{tour_preview}" alt="마우스로 조준한 방향에 내려찍기 스킬을 쓰는 실제 게임 화면" {image_size_attributes(tour_preview)}>
-<div><h2>콘텐츠 둘러보기 <span aria-hidden="true">→</span></h2><p>스킬, 사냥, 거래소, 채팅의 실제 동작</p></div>
-</a></section>
-<section><a class="home-entry" href="{BASE}process/">
-<img src="{process_preview}" alt="작업 배정과 검수 피드백을 잇는 Agent 워크플로우" {image_size_attributes(process_preview)}>
-<div><h2>Agent 작업 방식 <span aria-hidden="true">→</span></h2><p>역할 분담, 검수, 시안 선택 기록</p></div>
-</a></section>
-</div>
-<section class="section-wrap origin-overview" id="legacy"><div class="section-title"><h2>기존 2D 구현과 달라진 점</h2></div><div class="legacy-visible">{legacy_copy}</div></section>
-<section class="section-wrap work-section" id="work"><div class="section-title"><h2>작업과 결과</h2></div><div class="featured-grid">{featured}</div></section></main>'''
+<section class="section-wrap home-actions" aria-label="자세히 보기">
+<a class="home-entry" href="{BASE}play/"><span class="entry-copy"><strong>콘텐츠 둘러보기</strong><span>실제 플레이 장면</span><span class="entry-arrow" aria-hidden="true">→</span></span><span class="entry-image"><img src="{tour_preview}" alt="전방 스킬로 몬스터를 처치한 실제 사냥 화면" {image_size_attributes(tour_preview)}></span></a>
+<a class="home-entry" href="{BASE}process/"><span class="entry-copy"><strong>Agent 작업 방식</strong><span>역할 · 검수 흐름</span><span class="entry-arrow" aria-hidden="true">→</span></span><span class="entry-image"><img src="{process_preview}" alt="사용자와 전문 Agent의 배정·검토·피드백 흐름도" {image_size_attributes(process_preview)}></span></a>
+</section>
+<section class="section-wrap origin-overview" id="legacy"><div class="section-title"><h2>기존 구현과 달라진 점</h2></div><div class="implementation-comparison">{comparison}</div></section>
+<section class="section-wrap work-section" id="work"><div class="section-title"><h2>작업과 결과</h2></div>{work_groups}</section></main>'''
     (SITE / "index.html").write_text(
         document(title, intro, hero, references, title, show_navigation=False), encoding="utf-8", newline="\n"
     )
