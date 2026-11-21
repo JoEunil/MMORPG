@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <cstdint>
+#include <initializer_list>
 #include <stdexcept>
-#include "SkillData.h"
 
 namespace Data {
     static constexpr int MAX_STEPS_PER_PHASE = 16;
@@ -68,7 +68,5 @@ namespace Data {
     };
 
     // 운영 환경에서는 json/데이터파일로 관리
-    inline static const MonsterData monsters[] = {
-#include "Monsters.inc"
-    };
+    extern const MonsterData monsters[3];
 }

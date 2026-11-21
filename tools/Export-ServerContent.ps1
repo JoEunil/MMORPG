@@ -32,7 +32,8 @@ $arguments = @('/nologo', '/Y-', '/std:c++20', '/EHsc', '/W4', '/utf-8',
     ('/Fo' + $buildDirectory + '\'), ('/Fe' + $executable),
     (Join-Path $PSScriptRoot 'Export-ServerContent.cpp'),
     (Join-Path $repository 'CoreLib/Data/SkillData.cpp'),
-    (Join-Path $repository 'CoreLib/Data/ItemData.cpp'))
+    (Join-Path $repository 'CoreLib/Data/ItemData.cpp'),
+    (Join-Path $repository 'CoreLib/Data/MonsterData.cpp'))
 & $compiler @arguments
 if ($LASTEXITCODE -ne 0) { throw 'Server content exporter compilation failed.' }
 $resolvedOutput = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputPath)

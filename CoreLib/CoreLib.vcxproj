@@ -153,6 +153,7 @@
     <ClInclude Include="Data\PotionType.h" />
     <ClInclude Include="LoggerGlobal.h" />
     <ClInclude Include="Data\MonsterData.h" />
+    <ClInclude Include="HuntingZoneData.h" />
     <ClInclude Include="World\MonsterState.h" />
     <ClInclude Include="NonSimulation\NonSimulationHandler.h" />
     <ClInclude Include="NonSimulation\NonSimulationThreadPool.h" />
@@ -223,6 +224,7 @@
     <ClCompile Include="Packet\PacketDispatcher.cpp" />
     <ClCompile Include="Data\SkillData.cpp" />
     <ClCompile Include="Data\ItemData.cpp" />
+    <ClCompile Include="Data\MonsterData.cpp" />
     <ClCompile Include="Data\SkillData_Range.cpp" />
     <ClCompile Include="World\ZoneHandler.cpp" />
     <ClCompile Include="World\ZoneState_Actions.cpp" />
