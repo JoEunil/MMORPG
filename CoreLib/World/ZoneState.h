@@ -137,6 +137,7 @@ namespace Core {
         void RestoreMovement(uint64_t sessionID, float x, float y, uint8_t dir, float moveBudget, uint32_t dirtyBit);
         void UpdateSessionSnapshot();
         void MoveMonsterHome(MonsterState& monster);
+        bool TryResolveSkillCaster(ActiveSkill& skill, std::optional<std::reference_wrapper<CharacterState>>& caster);
         void ApplyPlayerHit(CharacterState& caster, const ActiveSkill& skill, const Data::SkillData& skillData, int idx);
         void ApplyMonsterHit(const ActiveSkill& skill, const Data::SkillData& skillData, int idx);
         void GrantMonsterReward(const CharacterState& character, uint64_t gold);

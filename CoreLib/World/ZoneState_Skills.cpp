@@ -51,6 +51,25 @@ namespace Core {
 		list.pop_back();
 	}
 
+    bool ZoneState::TryResolveSkillCaster(ActiveSkill& skill, std::optional<std::reference_wrapper<CharacterState>>& caster) {
+        if (skill.casterType == 0) {
+            auto* character = FindCharacter(skill.sessionId);
+            if (character == nullptr)
+                return false;
+            caster = *character;
+            skill.x = character->x;
+            skill.y = character->y;
+        }
+        else {
+            const auto& monster = m_monsters[skill.monsterId];
+            if (monster.hp == 0)
+                return false;
+            skill.x = monster.x;
+            skill.y = monster.y;
+        }
+        return true;
+    }
+
 	void ZoneState::ProcessCellActiveSkills(Cell& cell) {
 		for (int k = 0; k < cell.activeSkills.size(); k++)
 		{
@@ -60,25 +79,10 @@ namespace Core {
 				continue;
 			}
 			std::optional<std::reference_wrapper<CharacterState>> caster;
-			if (skill.casterType == 0) {
-				auto it = m_sessionToIndex.find(skill.sessionId);
-				if (it == m_sessionToIndex.end()) {
-					PopSkill(k, cell.activeSkills);
-					k--;
-					continue;
-				}
-				caster = m_chars[it->second];
-				skill.x = caster->get().x;
-				skill.y = caster->get().y;
-			}
-			else {
-				if (m_monsters[skill.monsterId].hp == 0) {
-					PopSkill(k, cell.activeSkills);
-					k--;
-					continue;
-				}
-				skill.x = m_monsters[skill.monsterId].x;
-				skill.y = m_monsters[skill.monsterId].y;
+			if (!TryResolveSkillCaster(skill, caster)) {
+				PopSkill(k, cell.activeSkills);
+				k--;
+				continue;
 			}
 			// Keep the timer list stable; resolve each phase around the caster's current position.
 			const auto [cellX, cellY] = GetCell(skill.x, skill.y, m_area);
