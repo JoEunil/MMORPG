@@ -9,6 +9,7 @@
 #include <CoreLib/Initializer.h>
 #include <CoreLib/Cache/DurableLogger.h>
 #include <CoreLib/Data/ItemData.h>
+#include <CoreLib/Data/GrowthData.h>
 #include <CacheLib/Initializer.h>
 
 #include <CoreLib/LoggerGlobal.h>
@@ -26,10 +27,12 @@
 
 int main(int argc, char* argv[]) {
     try {
-        Data::InitializeItemData(std::filesystem::absolute(argv[0]).parent_path() / "Data/Items");
+        const auto dataDirectory = std::filesystem::absolute(argv[0]).parent_path() / "Data";
+        Data::InitializeItemData(dataDirectory / "Items");
+        Data::InitializeGrowthData(dataDirectory / "Growth/Growth.csv");
     }
     catch (const std::exception& error) {
-        std::cerr << "Item data load failed: " << error.what() << '\n';
+        std::cerr << "Game data load failed: " << error.what() << '\n';
         return EXIT_FAILURE;
     }
     ST_WSA_INITIALIZER wsa; // winsock 초기화

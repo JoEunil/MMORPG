@@ -285,8 +285,10 @@ namespace {
 int wmain(int argc, wchar_t* argv[]) {
     try {
         Require(argc == 3 && argv[1][0] != L'\0' && argv[2][0] != L'\0',
-            "Usage: Export-ServerContent.exe <outputPath> <itemDataDirectory>");
-        Data::InitializeItemData(argv[2]);
+            "Usage: Export-ServerContent.exe <outputPath> <dataDirectory>");
+        const std::filesystem::path dataDirectory(argv[2]);
+        Data::InitializeItemData(dataDirectory / "Items");
+        Data::InitializeGrowthData(dataDirectory / "Growth/Growth.csv");
         Validate();
         WriteAtomically(std::filesystem::absolute(argv[1]), Serialize());
         std::cout << "Exported player/monster skills, 6 hunting zones, 3 monsters, 100 growth levels, and " << Data::itemMap.size() << " items.\n";

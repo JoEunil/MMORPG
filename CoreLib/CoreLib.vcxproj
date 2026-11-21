@@ -200,7 +200,6 @@
     <ClInclude Include="Data\Skills.inc" />
     <ClInclude Include="Data\Monsters.inc" />
     <ClInclude Include="Data\GrowthData.h" />
-    <ClInclude Include="Data\Growth.inc" />
     <ClInclude Include="World\SessionManager.h" />
     <ClInclude Include="World\Cell.h" />
     <ClInclude Include="World\WorldMap.h" />
@@ -226,6 +225,7 @@
     <ClCompile Include="Data\SkillData.cpp" />
     <ClCompile Include="Data\ItemData.cpp" />
     <ClCompile Include="Data\CsvReader.cpp" />
+    <ClCompile Include="Data\GrowthData.cpp" />
     <ClCompile Include="Data\MonsterData.cpp" />
     <ClCompile Include="Data\SkillData_Range.cpp" />
     <ClCompile Include="World\ZoneHandler.cpp" />

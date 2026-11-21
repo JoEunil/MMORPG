@@ -1,5 +1,7 @@
 #pragma once
 #include <cstdint>
+#include <filesystem>
+#include <vector>
 
 namespace Data {
     struct GrowthLevelData {
@@ -9,7 +11,8 @@ namespace Data {
     };
 
     inline constexpr uint16_t growthMaxLevel = 100;
-    inline constexpr GrowthLevelData growthLevels[] = {
-#include "Growth.inc"
-    };
+    extern const std::vector<GrowthLevelData>& growthLevels;
+
+    std::vector<GrowthLevelData> LoadGrowthData(const std::filesystem::path& path);
+    void InitializeGrowthData(const std::filesystem::path& path);
 }

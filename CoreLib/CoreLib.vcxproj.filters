@@ -206,9 +206,6 @@
     <ClInclude Include="Data\GrowthData.h">
       <Filter>Data</Filter>
     </ClInclude>
-    <ClInclude Include="Data\Growth.inc">
-      <Filter>Data</Filter>
-    </ClInclude>
     <ClInclude Include="Data\Monsters.inc">
       <Filter>Data</Filter>
     </ClInclude>
@@ -338,6 +335,9 @@
       <Filter>Data</Filter>
     </ClCompile>
     <ClCompile Include="Data\CsvReader.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="Data\GrowthData.cpp">
       <Filter>Data</Filter>
     </ClCompile>
     <ClCompile Include="Data\MonsterData.cpp">
