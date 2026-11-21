@@ -222,6 +222,7 @@
     <ClCompile Include="World\BroadcastThreadPool.cpp" />
     <ClCompile Include="Packet\PacketDispatcher.cpp" />
     <ClCompile Include="Data\SkillData.cpp" />
+    <ClCompile Include="Data\ItemData.cpp" />
     <ClCompile Include="Data\SkillData_Range.cpp" />
     <ClCompile Include="World\ZoneHandler.cpp" />
     <ClCompile Include="World\ZoneState_Actions.cpp" />

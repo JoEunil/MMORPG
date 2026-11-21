@@ -328,6 +328,9 @@
     <ClCompile Include="Data\SkillData.cpp">
       <Filter>Data</Filter>
     </ClCompile>
+    <ClCompile Include="Data\ItemData.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
     <ClCompile Include="Data\SkillData_Range.cpp">
       <Filter>Data</Filter>
     </ClCompile>
