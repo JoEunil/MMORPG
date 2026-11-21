@@ -1,9 +1,9 @@
-# 현재 인계 — 공용 CSV 연결, 로컬 완료·게시 준비
+# 현재 인계 — 공용 CSV 연결, PR #87 게시 완료
 
 ## 현재 위치
 - ROOT: C:/Users/joeun/Desktop/workspace/Game-UnityClient
 - Git 정본: ROOT/UnityClient/Builds/ClientGrowthHUD/source, 브랜치 codex/shared-csv-content.
-- origin/master ff446b3을 병합한 2093bec 위에서 작업했다. 이전 클라이언트·웹 후보 86a056c도 보존한다. push·PR·배포는 아직 하지 않았다.
+- origin/master ff446b3을 병합한 2093bec 위에서 작업했다. 이전 클라이언트·웹 후보 86a056c도 보존한다. 작업 브랜치 push·PR #87 게시를 완료했다. 배포·병합은 하지 않았다.
 - 과거 인계: history/2026-11-21-shared-csv/HANDOFF-before-csv.md. 과거 승인을 이번 CSV 범위에 재사용하지 않는다.
 
 ## 완료 범위
@@ -24,7 +24,7 @@
 - 관리 런처가 게임·MainServer·LoginServer를 모두 정상 종료했음을 status Phase=stopped로 확인했다. 임시 라이브 검사 파일은 프로젝트에서 제거해 근거 폴더로 보존했다.
 
 ## 다음 행동·게시 경계
-- 관련 변경을 하나로 커밋하고 Slack CSVSHARE01 게시 승인을 요청한다. 승인 전 push·새 PR은 보류한다.
+- 사용자의 현재 채팅 승인을 적용해 PR #87로 게시했다. 병합은 사용자 검토에 맡긴다.
 - 미등록 기존 아이템 33은 DB 정리나 지급 정책을 임의 변경하지 않는다.
 - unrelated site/media/releases/2026-11-13/ 미추적 자료는 보존하고 이번 커밋에서 제외한다.
 
@@ -33,7 +33,7 @@
 - 요청 링크: https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1795275182579429
 - 사용자가 현재 채팅에서 공용 CSV와 맵 exporter 유지 범위를 확인한 뒤 “확인 PR 올려줘”로 게시를 명시 승인했다. 이 승인으로 현재 묶음의 push·PR 게시를 진행하며 병합은 사용자 검토에 맡긴다.
 - 수신 health는 2026-11-14 값으로 오래됐다. 기존 Start-SlackReceiver.ps1 재시작이 Windows 실행 정책 UnauthorizedAccess로 차단됐다. 정책 변경·우회는 하지 않았다. 발신은 정상 성공했다.
-- 자동 수신을 정상 복구하거나 사용자가 이 채팅에서 이번 게시를 승인한 뒤에만 게시한다. 복구 시 정확한 지정 사용자·요청·스레드·회신 ID를 대조하고 기소비 여부를 기록한다.
+- Slack 자동 수신은 여전히 미복구 상태다. 이번 게시 승인은 현재 채팅에서 직접 확인했으며 중복 적용하지 않는다.
 
 - 게시 직전 origin/master의 f600d70(서버 리팩터링 설명 문서만 변경)을 병합했다. 검증 대상 런타임 코드는 바뀌지 않아 통과 검사는 반복하지 않는다.
-
+- 게시 결과: https://github.com/JoEunil/MMORPG/pull/87 (open, master 대상). 다음 행동은 사용자 PR 검토와 해당 리뷰 대응이다.
