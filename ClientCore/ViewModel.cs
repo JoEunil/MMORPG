@@ -867,7 +867,7 @@ namespace ClientCore
             {
                 if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || _zonePending || _awaitingZoneAck ||
                     _ownershipEpoch == 0 || _selfHP <= 0 || _equipmentSetPending != 0 || _equipmentSetID == ulong.MaxValue ||
-                    slot > 2 || (itemID != 0 && itemID != 3U + slot)) return false;
+                    slot > 2) return false;
                 requestID = _equipmentSetPending = ++_equipmentSetID;
                 _equipmentSetItemID = itemID;
                 _equipmentSetSlot = slot;
@@ -882,8 +882,9 @@ namespace ClientCore
         public void EquipmentReceived(ulong requestID, ulong ownershipEpoch, byte operation, byte status, byte slot, EquipmentStateView equipment)
         {
             if (requestID == 0 || ownershipEpoch == 0 || operation > 1 || status > 8 || slot > 2 || (operation == 0 && slot != 0) ||
-                (status == 1 ? (equipment.WeaponID != 0 && equipment.WeaponID != 3) || (equipment.ShieldID != 0 && equipment.ShieldID != 4) ||
-                    (equipment.BodyID != 0 && equipment.BodyID != 5) || equipment.DefensePercent > 99 ||
+                (status == 1 ? equipment.DefensePercent > 99 ||
+                    (equipment.WeaponID != 0 && (equipment.WeaponID == equipment.ShieldID || equipment.WeaponID == equipment.BodyID)) ||
+                    (equipment.ShieldID != 0 && equipment.ShieldID == equipment.BodyID) ||
                     Math.Min((uint)ushort.MaxValue, (uint)equipment.BaseAttack + equipment.BonusAttack) != equipment.EffectiveAttack ||
                     (equipment.WeaponID == 0 && equipment.BonusAttack != 0) ||
                     (equipment.ShieldID == 0 && equipment.BodyID == 0 && equipment.DefensePercent != 0) :

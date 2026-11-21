@@ -954,27 +954,39 @@ namespace Mmorpg.Client.Tests
                 var content = UnityEditor.AssetDatabase.LoadAssetAtPath<ServerContent>("Assets/Client/Content/ServerContent.asset");
                 Assert.That(content, Is.Not.Null);
                 Set(fixture.Observer, "serverContent", content);
-                fixture.Monsters(100, Monster(1, 8), Monster(2, 10), Monster(3, 12));
-
-                foreach (var (monster, id, minX, maxX, halfWidth) in new[] {
-                    ((ushort)1, 5u, 16.5f, 23.5f, 3.5f), ((ushort)2, 6u, 20f, 24.5f, 2.5f), ((ushort)3, 7u, 14f, 26f, 6f)
-                })
+                typeof(WorldScreen).GetProperty("ZoneID").GetSetMethod(true).Invoke(fixture.World, new object[] { (ushort)4 });
+                Set(fixture.Observer, "observedZone", (ushort)4);
+                var original = content.monsterSpecies;
+                try
                 {
-                    var charge = MonsterAction(monster, 0, id, 0, 20, 30);
-                    charge.dir = 3;
-                    charge.aimAngle = 90;
-                    fixture.MonsterActions(charge);
-                    var preview = fixture.MonsterRange(monster);
-                    Assert.That(preview.gameObject.activeSelf, Is.True);
-                    var mesh = preview.GetComponent<MeshFilter>().sharedMesh;
-                    Assert.That(mesh.bounds.min.x, Is.EqualTo(minX).Within(.001f));
-                    Assert.That(mesh.bounds.max.x, Is.EqualTo(maxX).Within(.001f));
-                    Assert.That(mesh.bounds.min.z, Is.EqualTo(30 - halfWidth).Within(.001f));
-                    Assert.That(mesh.bounds.max.z, Is.EqualTo(30 + halfWidth).Within(.001f));
-                    charge.skillPhase = 1;
-                    fixture.MonsterActions(charge);
-                    Assert.That(preview.gameObject.activeSelf, Is.False);
+                    content.monsterSpecies = new[]
+                    {
+                        new ServerContent.MonsterSpecies { id = 401, zoneID = 4, monsterType = 1, name = "Catalog elite" }
+                    };
+                    fixture.Monsters(100, Monster(1, 401), Monster(2, 400));
+                    Assert.That(fixture.Count("monsters"), Is.EqualTo(1), "Only catalog-defined species are rendered.");
+
+                    foreach (var (id, minX, maxX, halfWidth) in new[] {
+                        (5u, 16.5f, 23.5f, 3.5f), (6u, 20f, 24.5f, 2.5f), (7u, 14f, 26f, 6f)
+                    })
+                    {
+                        var charge = MonsterAction(1, 0, id, 0, 20, 30);
+                        charge.dir = 3;
+                        charge.aimAngle = 90;
+                        fixture.MonsterActions(charge);
+                        var preview = fixture.MonsterRange(1);
+                        Assert.That(preview.gameObject.activeSelf, Is.True);
+                        var mesh = preview.GetComponent<MeshFilter>().sharedMesh;
+                        Assert.That(mesh.bounds.min.x, Is.EqualTo(minX).Within(.001f));
+                        Assert.That(mesh.bounds.max.x, Is.EqualTo(maxX).Within(.001f));
+                        Assert.That(mesh.bounds.min.z, Is.EqualTo(30 - halfWidth).Within(.001f));
+                        Assert.That(mesh.bounds.max.z, Is.EqualTo(30 + halfWidth).Within(.001f));
+                        charge.skillPhase = 1;
+                        fixture.MonsterActions(charge);
+                        Assert.That(preview.gameObject.activeSelf, Is.False);
+                    }
                 }
+                finally { content.monsterSpecies = original; }
             }
         }
 

@@ -1,4 +1,4 @@
-﻿using ClientCore.PacketHelper;
+using ClientCore.PacketHelper;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -871,7 +871,7 @@ namespace ClientCore.PacketHelper
 
         internal static byte[] SerializeEquipItemRequest(ulong requestID, ulong ownershipEpoch, byte slot, uint itemID)
         {
-            if (requestID == 0 || ownershipEpoch == 0 || slot > 2 || (itemID != 0 && itemID != 3U + slot))
+            if (requestID == 0 || ownershipEpoch == 0 || slot > 2)
                 throw new ArgumentException("Invalid equipment change.");
             var bytes = new byte[29];
             BitConverter.GetBytes(MAGIC).CopyTo(bytes, 0); BitConverter.GetBytes(29U).CopyTo(bytes, 2);
@@ -897,8 +897,9 @@ namespace ClientCore.PacketHelper
                 EffectiveAttack = BitConverter.ToUInt16(buffer, 43), DefensePercent = buffer[45]
             };
             if (requestID == 0 || epoch == 0 || operation > 1 || status > 8 || slot > 2 || (operation == 0 && slot != 0) ||
-                (status == 1 ? (state.WeaponID != 0 && state.WeaponID != 3) || (state.ShieldID != 0 && state.ShieldID != 4) ||
-                    (state.BodyID != 0 && state.BodyID != 5) || state.DefensePercent > 99 ||
+                (status == 1 ? state.DefensePercent > 99 ||
+                    (state.WeaponID != 0 && (state.WeaponID == state.ShieldID || state.WeaponID == state.BodyID)) ||
+                    (state.ShieldID != 0 && state.ShieldID == state.BodyID) ||
                     Math.Min((uint)ushort.MaxValue, (uint)state.BaseAttack + state.BonusAttack) != state.EffectiveAttack ||
                     (state.WeaponID == 0 && state.BonusAttack != 0) || (state.ShieldID == 0 && state.BodyID == 0 && state.DefensePercent != 0) :
                     state.WeaponID != 0 || state.ShieldID != 0 || state.BodyID != 0 || state.BaseAttack != 0 || state.BonusAttack != 0 ||

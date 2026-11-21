@@ -295,9 +295,9 @@ namespace Mmorpg.Client
             }
 
             ServerContent.MonsterSpecies representative = null;
-            // The exported catalog starts each hunting zone with its regular species, ahead of elites.
+            // The CSV defines the combat archetype independently of the species ID.
             foreach (var species in content.monsterSpecies)
-                if (species != null && species.zoneID == destinationZone && species.id > 2 &&
+                if (species != null && species.zoneID == destinationZone && species.monsterType == 0 &&
                     (representative == null || species.id < representative.id))
                     representative = species;
             string levels = $"권장 Lv. {zone.minLevel}–{zone.maxLevel}";

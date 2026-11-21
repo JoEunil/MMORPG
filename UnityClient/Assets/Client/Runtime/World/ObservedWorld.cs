@@ -16,8 +16,6 @@ namespace Mmorpg.Client
         // Monster updates normally arrive every 100ms; keep headroom for frame/arrival jitter.
         private const double PresentationDelay = 0.150;
         private const int MotionSampleCapacity = 8;
-        private const int FirstRegionalMonster = 3;
-        private const int LastRegionalMonster = 12;
         private static readonly (Color32 Cloth, Color32 Metal, Vector2 Dagger, Vector2 Axe, Vector3 Shoulder)[] RegionalEquipment =
         {
             // Gate, quarry, oak forest, outpost, altar.
@@ -476,7 +474,7 @@ namespace Mmorpg.Client
                         if (observedZone == 6) scale *= 1.18f;
                         entry.Visual.transform.localScale = scale;
                     }
-                    if (state.monsterId >= FirstRegionalMonster) ApplyRegionalEquipment(entry.ModelParts, state.monsterId);
+                    if (visualType < 2 && observedZone >= 2 && observedZone <= 6) ApplyRegionalEquipment(entry.ModelParts, observedZone);
                     entry.ActorMotion = CreateActorMotion(entry.Visual);
                     entry.Vitals = CreateVitals(entry.Visual);
                     InitializeVisual(entry.Visual, entry.Motion, now, state.x, state.y, state.dir);
@@ -645,7 +643,7 @@ namespace Mmorpg.Client
                     !monsters.TryGetValue((ushort)result.casterId, out var entry) || entry.State.hp == 0)
                     continue;
 
-                if (entry.State.monsterId == 2)
+                if (MonsterVisualType(entry.State.monsterId) == 2)
                 {
                     if (result.skillId == 4)
                     {
@@ -903,14 +901,22 @@ namespace Mmorpg.Client
         }
 
         private static bool ValidPlayer(FullStateField state) => ValidState(state.x, state.y, state.dir, state.hp, state.maxHp);
-        private static bool ValidMonster(MonsterFullField state) =>
-            state.monsterId <= LastRegionalMonster && ValidState(state.x, state.y, state.dir, state.hp, state.maxHp);
-        private static int MonsterVisualType(int speciesId) =>
-            speciesId < FirstRegionalMonster ? speciesId : (speciesId - FirstRegionalMonster) % 2;
+        private bool ValidMonster(MonsterFullField state) =>
+            MonsterVisualType(state.monsterId) >= 0 && ValidState(state.x, state.y, state.dir, state.hp, state.maxHp);
 
-        private static void ApplyRegionalEquipment(MeshRenderer[] parts, int speciesId)
+        private int MonsterVisualType(int speciesId)
         {
-            var equipment = RegionalEquipment[(speciesId - FirstRegionalMonster) / 2];
+            var species = serverContent?.GetMonsterSpecies(speciesId, observedZone);
+            if (species != null)
+                return species.monsterType >= 0 && species.monsterType < monsterPrefabs.Length ? species.monsterType : -1;
+            if (serverContent != null && serverContent.monsterSpecies.Length > 0) return -1;
+            // Detached fixtures without a catalog use the three base archetype IDs.
+            return speciesId <= 2 && speciesId < monsterPrefabs.Length ? speciesId : -1;
+        }
+
+        private static void ApplyRegionalEquipment(MeshRenderer[] parts, int zoneID)
+        {
+            var equipment = RegionalEquipment[zoneID - 2];
             var cloth = new MaterialPropertyBlock();
             cloth.SetColor("_BaseColor", equipment.Cloth);
             cloth.SetColor("_Color", equipment.Cloth);

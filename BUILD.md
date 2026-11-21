@@ -91,3 +91,7 @@ DB → Redis → 로그인 서버 → 게임 서버
 **기본 테스트 계정**
 - ID: test1 ~ test5000 (`create_users.js` 기준)
 - PW: 12345
+
+## Unity 공용 CSV
+
+Unity는 최상위 Data/의 동일 CSV를 읽는다. 콘텐츠 export/import 명령 없이 Play에서 반영되며, Windows 빌드 시 실행 파일 옆 Data/로 원본이 복사된다. 서버와 클라이언트 배포본의 CSV가 동일해야 한다. 상세는 docs/unity-client/CONTENT_PIPELINE.md를 따른다.

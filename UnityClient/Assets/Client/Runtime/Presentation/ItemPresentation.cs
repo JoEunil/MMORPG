@@ -36,15 +36,27 @@ namespace Mmorpg.Client
             return item != null && item.itemType == 1 && (item.hpRecovery > 0 || item.mpRecovery > 0);
         }
 
+        public static bool IsEquipment(uint itemID, ServerContent content)
+        {
+            var item = content == null ? null : content.GetItem(itemID);
+            return item != null && item.equipmentSlot >= 0 && item.equipmentSlot <= 2;
+        }
+
         public static string EquipmentDescription(uint itemID, ServerContent content)
         {
             var item = content == null ? null : content.GetItem(itemID);
             if (item == null) return "Equipment effect: --";
-            if (itemID == 3) return "Weapon · ATK +" + item.weaponAttackBonus.ToString(CultureInfo.InvariantCulture);
-            if (itemID == 4 || itemID == 5)
-                return (itemID == 4 ? "Shield" : "Armor") + " · DEF " +
-                    item.defensePercent.ToString(CultureInfo.InvariantCulture) + "%";
-            return "Equipment effect: --";
+            switch (item.equipmentSlot)
+            {
+                case 0:
+                    return "Weapon · ATK +" + item.weaponAttackBonus.ToString(CultureInfo.InvariantCulture);
+                case 1:
+                case 2:
+                    return (item.equipmentSlot == 1 ? "Shield" : "Armor") + " · DEF " +
+                        item.defensePercent.ToString(CultureInfo.InvariantCulture) + "%";
+                default:
+                    return "Equipment effect: --";
+            }
         }
 
         public static string UseDescription(uint itemID, ServerContent content)
