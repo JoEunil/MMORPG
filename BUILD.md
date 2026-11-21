@@ -50,6 +50,8 @@ npm start
 - localhost, 포트 3000
 
 **게임 서버**
+게임 데이터는 프로젝트 최상위 `Data/` 디렉터리에 있다.
+
 1. MainServer 빌드 후 실행
 2. 또는 `Resources/Release/MainServer.exe` 실행
    - 실행 파일 직접 사용 시 로그 경로가 변경됨

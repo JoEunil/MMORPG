@@ -1,5 +1,15 @@
 ﻿#include <gtest/gtest.h>
+#include <CoreLib/Data/ItemData.h>
+#include <iostream>
+
 int main(int argc, char** argv) {
+    try {
+        Data::InitializeItemData(std::filesystem::absolute(argv[0]).parent_path() / "Data/Items");
+    }
+    catch (const std::exception& error) {
+        std::cerr << "Item data load failed: " << error.what() << '\n';
+        return 1;
+    }
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

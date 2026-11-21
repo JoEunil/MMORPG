@@ -242,6 +242,9 @@
     <ClInclude Include="Data\ItemData.h">
       <Filter>Data</Filter>
     </ClInclude>
+    <ClInclude Include="Data\CsvReader.h">
+      <Filter>Data</Filter>
+    </ClInclude>
     <ClInclude Include="Interface\IInventoryOperations.h">
       <Filter>Interface</Filter>
     </ClInclude>
@@ -332,6 +335,9 @@
       <Filter>Data</Filter>
     </ClCompile>
     <ClCompile Include="Data\ItemData.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="Data\CsvReader.cpp">
       <Filter>Data</Filter>
     </ClCompile>
     <ClCompile Include="Data\MonsterData.cpp">

@@ -4,8 +4,8 @@
 
 namespace Data {
     enum class PotionType : uint8_t {
-        HP,
-        MP,
-        Count
+        HP = 0,
+        MP = 1,
+        Count = 2
     };
 }

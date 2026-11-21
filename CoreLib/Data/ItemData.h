@@ -1,7 +1,9 @@
 ﻿#pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <variant>
 #include "PotionType.h"
@@ -43,7 +45,7 @@ namespace Data {
     };
 
     struct ItemData {
-        const char* name;
+        std::string name;
         uint32_t weight;
         std::variant<ItemDataPotion, ItemDataWeapon, ItemDataShield, ItemDataArmor> details;
 
@@ -54,7 +56,10 @@ namespace Data {
 
     bool IsValidItemData(const ItemData& item);
 
-    extern const std::unordered_map<uint32_t, ItemData> itemMap;
+    extern const std::unordered_map<uint32_t, ItemData>& itemMap;
+
+    std::unordered_map<uint32_t, ItemData> LoadItemData(const std::filesystem::path& directory);
+    void InitializeItemData(const std::filesystem::path& directory);
 
     const ItemData* FindItem(uint32_t itemID);
 
