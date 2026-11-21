@@ -48,19 +48,6 @@ namespace Data {
             return false;
         }
         case SkillRangeType::Boss1_1:
-        {
-            // range 1: 범위, range2: skill
-            float r2 = range1 * range1;
-            if ((dx * dx + dy * dy) > r2)
-                return false;
-
-            float angle = std::atan2(dy, dx) * 180.0f / 3.141592f;
-            // atan (arctangent): vector의 각도 계산, 파이 값
-            // 비싼 함수.. 
-            if (angle < 0) angle += 360.0f;
-            // UP, Down
-            return (angle >= 210 && angle <= 330) || (angle >= 30 && angle <= 150);
-        }
         case SkillRangeType::Boss1_2:
         {
             // range 1: 범위, range2: skill
@@ -73,7 +60,10 @@ namespace Data {
             // 비싼 함수.. 
             if (angle < 0) angle += 360.0f;
 
-           // RIGHT, Left
+            // UP, Down
+            if (type == SkillRangeType::Boss1_1)
+                return (angle >= 210 && angle <= 330) || (angle >= 30 && angle <= 150);
+            // RIGHT, Left
             return (angle >= 330 || angle <= 30) || (angle >= 150 && angle <= 210);
         }
 
