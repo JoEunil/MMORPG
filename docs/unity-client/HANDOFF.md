@@ -27,3 +27,10 @@
 - 관련 변경을 하나로 커밋하고 Slack CSVSHARE01 게시 승인을 요청한다. 승인 전 push·새 PR은 보류한다.
 - 미등록 기존 아이템 33은 DB 정리나 지급 정책을 임의 변경하지 않는다.
 - unrelated site/media/releases/2026-11-13/ 미추적 자료는 보존하고 이번 커밋에서 제외한다.
+
+## 게시 승인 대기 — CSVSHARE01
+- 로컬 구현 커밋 12e885c. Unity Coordinator 앱으로 채널 C0C9VFZMV43의 새 부모 1795275182.579429에 게시 승인 요청을 보냈고 threads.txt 등록을 확인했다.
+- 요청 링크: https://aiagent-vqu1541.slack.com/archives/C0C9VFZMV43/p1795275182579429
+- 승인 회신은 아직 수신·적용하지 않았다. push·PR은 보류한다.
+- 수신 health는 2026-11-14 값으로 오래됐다. 기존 Start-SlackReceiver.ps1 재시작이 Windows 실행 정책 UnauthorizedAccess로 차단됐다. 정책 변경·우회는 하지 않았다. 발신은 정상 성공했다.
+- 자동 수신을 정상 복구하거나 사용자가 이 채팅에서 이번 게시를 승인한 뒤에만 게시한다. 복구 시 정확한 지정 사용자·요청·스레드·회신 ID를 대조하고 기소비 여부를 기록한다.
