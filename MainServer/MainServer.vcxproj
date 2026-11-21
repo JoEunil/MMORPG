@@ -239,5 +239,11 @@ xcopy /Y "$(SolutionDir)External\libevent\bin\Release\*.dll" "$(OutDir)"</Comman
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ItemGroup>
+    <ItemCsv Include="$(ProjectDir)..\Data\**\*.csv" />
+  </ItemGroup>
+  <Target Name="CopyItemData" AfterTargets="Build">
+    <Copy SourceFiles="@(ItemCsv)" DestinationFiles="@(ItemCsv->'$(OutDir)Data\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
   <ImportGroup Label="ExtensionTargets" />
 </Project>

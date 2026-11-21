@@ -1,0 +1,7 @@
+itemID,name,weight,potionType,recovery,cooldownTicks
+1,HP포션,5,0,1500,120
+2,MP포션,5,1,500,120
+6,중급HP포션,5,0,3000,120
+7,중급MP포션,5,1,1000,120
+8,상급HP포션,5,0,4500,120
+9,상급MP포션,5,1,1500,120

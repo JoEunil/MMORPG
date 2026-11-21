@@ -141,7 +141,7 @@ namespace Cache {
             return;
         }
         request.itemID = selection.itemID;
-        const auto item = Data::itemMap.find(request.itemID);
+        const auto* item = Data::FindItem(request.itemID);
         constexpr uint64_t BAZAAR_FEE_MIN = 10;
         constexpr uint64_t BAZAAR_FEE_RATE = 10;
         const uint64_t fee = std::max(BAZAAR_FEE_MIN, request.price / BAZAAR_FEE_RATE);
@@ -155,7 +155,7 @@ namespace Cache {
             return inventoryStatus == CACHE_STATUS::AVAILABLE && feeStatus == CACHE_STATUS::AVAILABLE;
         };
         try {
-            const auto failure = item == Data::itemMap.end() ? std::optional<uint8_t>{ 4 } : DeductBazaarRegistrationCosts(request, fee);
+            const auto failure = item == nullptr ? std::optional<uint8_t>{ 4 } : DeductBazaarRegistrationCosts(request, fee);
             if (failure) {
                 if (*failure == 5)
                     reportUnknown();
@@ -167,7 +167,7 @@ namespace Cache {
                 reportUnknown();
                 finish(5);
             };
-            const auto outcome = dbWorkerBazaar->Enqueue([request, itemType = item->second.itemType, finish, restore, reportUnknown](DBConnectionBazaar* conn) {
+            const auto outcome = dbWorkerBazaar->Enqueue([request, itemType = static_cast<uint16_t>(item->GetType()), finish, restore, reportUnknown](DBConnectionBazaar* conn) {
                 const auto status = ResolveBazaarRegister([conn, request, itemType] {
                     return conn->ExecuteUpdate(StatementId::InsertBazaarListing, request.itemID, request.characterID, itemType, request.quantity, request.price);
                 }, restore, reportUnknown);

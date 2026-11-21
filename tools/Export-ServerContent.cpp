@@ -36,41 +36,32 @@ namespace {
     void Validate() {
         Require(Data::parryWindowTicks > 0 && Data::parryCooldownTicks >= Data::parryWindowTicks && Data::parryCharges == 1,
             "Parry requires one charge and a positive window within its cooldown.");
-        Require(Data::itemMap.at(1).hpRecovery > 0 && Data::itemMap.at(1).mpRecovery == 0 &&
-            Data::itemMap.at(2).mpRecovery > 0 && Data::itemMap.at(2).hpRecovery == 0 &&
-            Data::itemMap.at(1).cooldownTicks == Data::itemMap.at(2).cooldownTicks,
-            "HP and MP potion entries require their own recovery resource and a shared cooldown.");
+        const auto* hpPotion = std::get_if<Data::ItemDataPotion>(&Data::itemMap.at(1).details);
+        const auto* mpPotion = std::get_if<Data::ItemDataPotion>(&Data::itemMap.at(2).details);
+        Require(hpPotion && mpPotion && hpPotion->type == Data::PotionType::HP && mpPotion->type == Data::PotionType::MP,
+            "HP and MP potion entries require their own recovery type.");
         Require(!Data::itemMap.empty(), "Item definitions cannot be empty.");
-        for (const auto& [id, item] : Data::itemMap) {
-            Require(id > 0 && item.name != nullptr && item.name[0] != '\0' && item.weight > 0 &&
-                item.itemType >= 1 && item.itemType <= 3 && (item.itemType == 2 || item.weaponAttackBonus == 0) &&
-                item.defensePercent <= 99 && (item.itemType != 1 || item.defensePercent == 0), "Item IDs, names, types, or weights are invalid.");
-            Require(item.hpRecovery <= INT32_MAX && item.mpRecovery <= INT32_MAX &&
-                (item.itemType == 1 ? (item.hpRecovery > 0) != (item.mpRecovery > 0) && item.cooldownTicks > 0 :
-                item.hpRecovery == 0 && item.mpRecovery == 0 && item.cooldownTicks == 0),
-                "Potions require one recovery resource and a cooldown; equipment cannot recover resources.");
-        }
-        Require(Data::itemMap.at(4).itemType == 2 && Data::itemMap.at(5).itemType == 3 &&
-            static_cast<uint32_t>(Data::itemMap.at(4).defensePercent) + Data::itemMap.at(5).defensePercent <= 99,
-            "Shield and body equipment require a combined defense below 100 percent.");
+        for (const auto& [id, item] : Data::itemMap)
+            Require(id > 0 && Data::IsValidItemData(item), "Invalid item definition.");
         for (const auto* skills : {&Data::skillList, &Data::monsterSkillList}) {
             const size_t expectedCount = skills == &Data::monsterSkillList ? 8 : 5;
             Require(skills->size() == expectedCount, "Unexpected skill catalog size.");
             for (size_t id = 0; id < skills->size(); ++id) {
                 const auto& skill = (*skills)[id];
-                Require(skill.skillID == id && (skill.flags & ~3) == 0,
+                Require(skill.skillID == id && (skill.flags & ~(Data::SkillFlags::Critical | Data::SkillFlags::AreaOfEffect)) == 0,
                     "Skill IDs must match array indices and flags must use existing bits.");
                 const size_t expectedPhases = id == 3 ? 4 : id == 4 ? 10 : 2;
                 Require(skill.phases.size() == expectedPhases, "Existing skill phase counts must be retained.");
                 for (size_t i = 0; i < skill.phases.size(); ++i) {
                     const auto& phase = skill.phases[i];
                     const auto range = phase.range.type;
-                    Require(phase.actionID == (i & 1) && range <= Data::SkillRangeType::Boss2 &&
+                    const auto expectedAction = (i & 1) == 0 ? Data::SkillActionType::Charging : Data::SkillActionType::Hit;
+                    Require(phase.actionID == expectedAction && range <= Data::SkillRangeType::Boss2 &&
                         std::isfinite(phase.range.range1) && std::isfinite(phase.range.range2) &&
                         phase.range.range1 >= 0 && phase.range.range2 >= 0,
                         "Skill phases require existing Charging/Hit order and finite nonnegative ranges.");
                     if (range == Data::SkillRangeType::None) {
-                        Require(phase.range.range1 == 0 && phase.range.range2 == 0 && phase.actionID == 0,
+                        Require(phase.range.range1 == 0 && phase.range.range2 == 0 && phase.actionID == Data::SkillActionType::Charging,
                             "Empty skill ranges must have zero dimensions and cannot hit.");
                     }
                     else {
@@ -193,8 +184,9 @@ namespace {
         for (size_t i = 0; i < std::size(Data::huntingZones); ++i) {
             const auto& zone = Data::huntingZones[i];
             if (i) json << ",\n";
-            json << "    {\"zoneID\":" << zone.zoneID << ",\"label\":\"" << zone.label << "\""
-                << ",\"minLevel\":" << zone.minLevel << ",\"maxLevel\":" << zone.maxLevel
+            json << "    {\"zoneID\":" << zone.zoneID << ",\"label\":";
+            WriteJsonString(json, zone.label.c_str());
+            json << ",\"minLevel\":" << zone.minLevel << ",\"maxLevel\":" << zone.maxLevel
                 << ",\"regularHp\":" << zone.regularHp << ",\"strongHp\":" << zone.strongHp << ",\"bossHp\":" << zone.bossHp
                 << ",\"regularAttack\":" << zone.regularAttack << ",\"strongAttack\":" << zone.strongAttack << ",\"bossAttack\":" << zone.bossAttack
                 << ",\"regularExp\":" << zone.regularExp << ",\"strongExp\":" << zone.strongExp << ",\"bossExp\":" << zone.bossExp
@@ -213,11 +205,11 @@ namespace {
         json << "\n  ],\n  \"monsterSpecies\": [\n";
         for (size_t i = 0; i < std::size(Data::huntingSpecies); ++i) {
             const auto& species = Data::huntingSpecies[i];
-            const uint16_t archetype = species.id == 2 ? 2 : (species.id - 3) % 2;
+            const uint16_t archetype = species.monsterType;
             const auto& monster = Data::GetHuntingMonsterData(species.zone, archetype);
             if (i) json << ",\n";
             json << "    {\"id\":" << species.id << ",\"zoneID\":" << species.zone << ",\"name\":";
-            WriteJsonString(json, species.name);
+            WriteJsonString(json, species.name.c_str());
             json << ",\"attack\":" << monster.attack << ",\"phases\":[";
             WriteMonsterPhases(json, monster);
             json << "]}";
@@ -237,10 +229,17 @@ namespace {
             const uint32_t itemID = itemIDs[index];
             const auto& item = Data::itemMap.at(itemID);
             if (index != 0) json << ',';
-            json << "{\"itemID\":" << itemID << ",\"itemType\":" << item.itemType << ",\"name\":";
-            WriteJsonString(json, item.name);
-            json << ",\"weight\":" << item.weight << ",\"weaponAttackBonus\":" << item.weaponAttackBonus << ",\"defensePercent\":" << static_cast<uint32_t>(item.defensePercent) << ",\"hpRecovery\":" << item.hpRecovery
-                << ",\"mpRecovery\":" << item.mpRecovery << ",\"cooldownTicks\":" << item.cooldownTicks << '}';
+            json << "{\"itemID\":" << itemID << ",\"itemType\":" << static_cast<uint16_t>(item.GetType()) << ",\"name\":";
+            WriteJsonString(json, item.name.c_str());
+            const auto* potion = std::get_if<Data::ItemDataPotion>(&item.details);
+            const auto* weapon = std::get_if<Data::ItemDataWeapon>(&item.details);
+            const auto* shield = std::get_if<Data::ItemDataShield>(&item.details);
+            const auto* armor = std::get_if<Data::ItemDataArmor>(&item.details);
+            // Preserve the existing flat client snapshot while server definitions are type-specific.
+            json << ",\"weight\":" << item.weight << ",\"weaponAttackBonus\":" << (weapon ? weapon->attackBonus : 0)
+                << ",\"defensePercent\":" << (shield ? shield->defensePercent : armor ? armor->defensePercent : 0)
+                << ",\"hpRecovery\":" << (potion && potion->type == Data::PotionType::HP ? potion->recovery : 0) << ",\"mpRecovery\":" << (potion && potion->type == Data::PotionType::MP ? potion->recovery : 0)
+                << ",\"cooldownTicks\":" << (potion ? potion->cooldownTicks : 0) << '}';
         }
         json << "],\n  \"parry\":{\"windowTicks\":" << Data::parryWindowTicks << ",\"cooldownTicks\":" << Data::parryCooldownTicks << ",\"charges\":" << Data::parryCharges << "}\n}\n";
         return json.str();
@@ -286,7 +285,14 @@ namespace {
 
 int wmain(int argc, wchar_t* argv[]) {
     try {
-        Require(argc == 2 && argv[1][0] != L'\0', "Usage: Export-ServerContent.exe <outputPath>");
+        Require(argc == 3 && argv[1][0] != L'\0' && argv[2][0] != L'\0',
+            "Usage: Export-ServerContent.exe <outputPath> <dataDirectory>");
+        const std::filesystem::path dataDirectory(argv[2]);
+        Data::InitializeItemData(dataDirectory / "Items");
+        Data::InitializeGrowthData(dataDirectory / "Growth/Growth.csv");
+        Data::InitializeSkillData(dataDirectory / "Skills");
+        Data::InitializeMonsterData(dataDirectory / "Monsters");
+        Data::InitializeHuntingData(dataDirectory / "Monsters");
         Validate();
         WriteAtomically(std::filesystem::absolute(argv[1]), Serialize());
         std::cout << "Exported player/monster skills, 6 hunting zones, 3 monsters, 100 growth levels, and " << Data::itemMap.size() << " items.\n";

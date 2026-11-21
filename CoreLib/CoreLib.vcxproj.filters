@@ -197,25 +197,16 @@
     <ClInclude Include="World\CharacterState.h">
       <Filter>World</Filter>
     </ClInclude>
-    <ClInclude Include="Data\MonsterSkills.inc">
-      <Filter>Data</Filter>
-    </ClInclude>
-    <ClInclude Include="Data\Skills.inc">
-      <Filter>Data</Filter>
-    </ClInclude>
     <ClInclude Include="Data\GrowthData.h">
-      <Filter>Data</Filter>
-    </ClInclude>
-    <ClInclude Include="Data\Growth.inc">
-      <Filter>Data</Filter>
-    </ClInclude>
-    <ClInclude Include="Data\Monsters.inc">
       <Filter>Data</Filter>
     </ClInclude>
     <ClInclude Include="Data\SkillData.h">
       <Filter>Data</Filter>
     </ClInclude>
     <ClInclude Include="Data\MonsterData.h">
+      <Filter>Data</Filter>
+    </ClInclude>
+    <ClInclude Include="HuntingZoneData.h">
       <Filter>Data</Filter>
     </ClInclude>
     <ClInclude Include="World\Cell.h">
@@ -233,7 +224,13 @@
     <ClInclude Include="CorePerfCollector.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="Data\PotionType.h">
+      <Filter>Data</Filter>
+    </ClInclude>
     <ClInclude Include="Data\ItemData.h">
+      <Filter>Data</Filter>
+    </ClInclude>
+    <ClInclude Include="Data\CsvReader.h">
       <Filter>Data</Filter>
     </ClInclude>
     <ClInclude Include="Interface\IInventoryOperations.h">
@@ -323,6 +320,21 @@
       <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="Data\SkillData.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="Data\ItemData.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="Data\CsvReader.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="Data\GrowthData.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="Data\MonsterData.cpp">
+      <Filter>Data</Filter>
+    </ClCompile>
+    <ClCompile Include="Data\HuntingZoneData.cpp">
       <Filter>Data</Filter>
     </ClCompile>
     <ClCompile Include="Data\SkillData_Range.cpp">

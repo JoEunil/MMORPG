@@ -48,7 +48,7 @@ namespace Mmorpg.Client
         private bool usePending;
         private bool useTimedOut;
         private float useDeadline;
-        private float useCooldownDeadline;
+        private float hpPotionCooldownDeadline, mpPotionCooldownDeadline;
         private bool requestPending;
         private bool requestTimedOut;
         private float requestDeadline;
@@ -164,12 +164,19 @@ namespace Mmorpg.Client
                 RefreshAfterDelivery();
                 UpdateControls();
             }
-            if (useCooldownDeadline > 0 && Time.unscaledTime >= useCooldownDeadline)
+            bool cooldownExpired = false;
+            if (hpPotionCooldownDeadline > 0 && Time.unscaledTime >= hpPotionCooldownDeadline)
             {
-                useCooldownDeadline = 0;
-                UpdateControls();
+                hpPotionCooldownDeadline = 0;
+                cooldownExpired = true;
             }
-            if (useCooldownDeadline > 0) UpdatePotionCooldown();
+            if (mpPotionCooldownDeadline > 0 && Time.unscaledTime >= mpPotionCooldownDeadline)
+            {
+                mpPotionCooldownDeadline = 0;
+                cooldownExpired = true;
+            }
+            if (cooldownExpired) UpdateControls();
+            if (hpPotionCooldownDeadline > 0 || mpPotionCooldownDeadline > 0) UpdatePotionCooldown();
             if (Application.isFocused && Keyboard.current != null)
             {
                 if (GameUiInput.EscapeAvailableForPanel() && IsOpen) ClosePanel();
@@ -376,7 +383,7 @@ namespace Mmorpg.Client
         {
             usePending = false;
             useTimedOut = false;
-            useCooldownDeadline = 0;
+            hpPotionCooldownDeadline = mpPotionCooldownDeadline = 0;
             UpdatePotionCooldown();
             SetUseStatus(string.Empty);
             ClearLootNotice();
@@ -408,7 +415,8 @@ namespace Mmorpg.Client
 
         private bool CanUseSelectedItem()
         {
-            if (!IsOpen || !ItemUseAvailable || !hasSelectedItem || !ItemPresentation.IsPotion(selectedItemID, worldScreen.Content))
+            if (!IsOpen || !ItemUseAvailable || !hasSelectedItem || !ItemPresentation.IsPotion(selectedItemID, worldScreen.Content) ||
+                Time.unscaledTime < GetPotionCooldownDeadline(selectedItemID))
                 return false;
             foreach (InventoryItemView item in loginScreen.Data.GetInventory())
                 if (item.Slot == selectedSlot && item.ItemID == selectedItemID && item.Quantity > 0) return true;
@@ -423,7 +431,14 @@ namespace Mmorpg.Client
 
         private bool ItemUseAvailable => WorldAvailable && model != null && loginScreen != null &&
             loginScreen.Model == model && loginScreen.Data != null && hasInventoryResponse &&
-            !requestPending && !requestTimedOut && !usePending && Time.unscaledTime >= useCooldownDeadline;
+            !requestPending && !requestTimedOut && !usePending;
+
+        private float GetPotionCooldownDeadline(uint itemID)
+        {
+            var item = worldScreen == null || worldScreen.Content == null ? null : worldScreen.Content.GetItem(itemID);
+            if (item == null) return 0;
+            return item.hpRecovery > 0 ? hpPotionCooldownDeadline : item.mpRecovery > 0 ? mpPotionCooldownDeadline : 0;
+        }
 
         private bool QuickPotionAvailable => WorldAvailable && model != null && loginScreen != null &&
             loginScreen.Model == model && !IsOpen && (bazaarScreen == null || !bazaarScreen.IsOpen) &&
@@ -435,7 +450,7 @@ namespace Mmorpg.Client
         private void UseQuickPotionItem(uint itemID)
         {
             if (!QuickPotionAvailable || !Application.isFocused || !GameUiInput.CanUseWorldShortcuts() ||
-                requestPending || requestTimedOut || usePending || Time.unscaledTime < useCooldownDeadline) return;
+                requestPending || requestTimedOut || usePending || Time.unscaledTime < GetPotionCooldownDeadline(itemID)) return;
             if (!hasInventoryResponse)
             {
                 RequestInventory();
@@ -452,7 +467,7 @@ namespace Mmorpg.Client
 
         private void UsePotion(uint itemID)
         {
-            if (!ItemPresentation.IsPotion(itemID, worldScreen.Content)) return;
+            if (!ItemPresentation.IsPotion(itemID, worldScreen.Content) || Time.unscaledTime < GetPotionCooldownDeadline(itemID)) return;
             usePending = true;
             useTimedOut = false;
             useDeadline = Time.unscaledTime + RequestTimeoutSeconds;
@@ -483,7 +498,9 @@ namespace Mmorpg.Client
             string resource = worldScreen.Content.GetItem(itemID).hpRecovery > 0 ? "HP" : "MP";
             usePending = false;
             useTimedOut = false;
-            useCooldownDeadline = Time.unscaledTime + cooldownRemainingTicks * .05f;
+            float cooldownDeadline = Time.unscaledTime + cooldownRemainingTicks * .05f;
+            if (worldScreen.Content.GetItem(itemID).hpRecovery > 0) hpPotionCooldownDeadline = cooldownDeadline;
+            else mpPotionCooldownDeadline = cooldownDeadline;
             string result;
             switch (status)
             {
@@ -802,7 +819,7 @@ namespace Mmorpg.Client
             selectedItemID = item.ItemID;
             ApplySelection(item, card);
             if (useStatus != null && !usePending && !useTimedOut)
-                useStatus.text = ItemPresentation.IsPotion(item.ItemID, worldScreen.Content) && Time.unscaledTime < useCooldownDeadline
+                useStatus.text = ItemPresentation.IsPotion(item.ItemID, worldScreen.Content) && Time.unscaledTime < GetPotionCooldownDeadline(item.ItemID)
                     ? "Potion is on cooldown."
                     : ItemPresentation.UseDescription(item.ItemID, worldScreen.Content);
             UpdateControls();
@@ -889,7 +906,7 @@ namespace Mmorpg.Client
             else if (useStatus != null && !usePending &&
                 (potionNoticeDeadline == 0 || (hasSelectedItem && !selectedPotion)))
                 useStatus.text = hasSelectedItem
-                    ? (selectedPotion && Time.unscaledTime < useCooldownDeadline
+                    ? (selectedPotion && Time.unscaledTime < GetPotionCooldownDeadline(selectedItemID)
                         ? "Potion is on cooldown." : ItemPresentation.UseDescription(selectedItemID, worldScreen.Content))
                     : string.Empty;
             if (equipButton != null)
@@ -922,8 +939,8 @@ namespace Mmorpg.Client
                     foreach (InventoryItemView item in loginScreen.Data.GetInventory())
                         if (item.ItemID == 1) hpQuantity += item.Quantity;
                         else if (item.ItemID == 2) mpQuantity += item.Quantity;
-                UpdatePotionQuickSlot(potionQuickSlot, potionQuantity, hpQuantity, known);
-                UpdatePotionQuickSlot(mpPotionQuickSlot, mpPotionQuantity, mpQuantity, known);
+                UpdatePotionQuickSlot(potionQuickSlot, potionQuantity, hpQuantity, known, 1);
+                UpdatePotionQuickSlot(mpPotionQuickSlot, mpPotionQuantity, mpQuantity, known, 2);
                 if (potionQuickStatus != null)
                 {
                     if (requestTimedOut) potionQuickStatus.text = "Bag result unknown. Reconnect before checking potions.";
@@ -986,16 +1003,17 @@ namespace Mmorpg.Client
 
         private void UpdatePotionCooldown()
         {
-            int seconds = Mathf.Max(0, Mathf.CeilToInt(useCooldownDeadline - Time.unscaledTime));
+            int hpSeconds = Mathf.Max(0, Mathf.CeilToInt(hpPotionCooldownDeadline - Time.unscaledTime));
+            int mpSeconds = Mathf.Max(0, Mathf.CeilToInt(mpPotionCooldownDeadline - Time.unscaledTime));
             if (potionCooldown != null)
             {
-                potionCooldown.gameObject.SetActive(seconds > 0);
-                if (seconds > 0) potionCooldown.SetText("{0}s", seconds);
+                potionCooldown.gameObject.SetActive(hpSeconds > 0);
+                if (hpSeconds > 0) potionCooldown.SetText("{0}s", hpSeconds);
             }
             if (mpPotionCooldown != null)
             {
-                mpPotionCooldown.gameObject.SetActive(seconds > 0);
-                if (seconds > 0) mpPotionCooldown.SetText("{0}s", seconds);
+                mpPotionCooldown.gameObject.SetActive(mpSeconds > 0);
+                if (mpSeconds > 0) mpPotionCooldown.SetText("{0}s", mpSeconds);
             }
         }
 
@@ -1010,13 +1028,13 @@ namespace Mmorpg.Client
                 }
         }
 
-        private void UpdatePotionQuickSlot(UnityEngine.UI.Button button, TMP_Text quantityText, uint quantity, bool known)
+        private void UpdatePotionQuickSlot(UnityEngine.UI.Button button, TMP_Text quantityText, uint quantity, bool known, uint itemID)
         {
             if (button == null) return;
             button.gameObject.SetActive(WorldAvailable && model != null && loginScreen != null && loginScreen.Model == model);
             if (quantityText != null) quantityText.text = known ? quantity.ToString(CultureInfo.InvariantCulture) : "?";
             button.interactable = QuickPotionAvailable && !requestPending && !requestTimedOut &&
-                !usePending && Time.unscaledTime >= useCooldownDeadline && (!known || quantity > 0);
+                !usePending && Time.unscaledTime >= GetPotionCooldownDeadline(itemID) && (!known || quantity > 0);
         }
 
         private TMP_Text CreateText(string name, Transform parent, string value, float size, Color color,

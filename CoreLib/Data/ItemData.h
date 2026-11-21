@@ -1,39 +1,67 @@
 ﻿#pragma once
 
-#include <unordered_map>
 #include <cstdint>
-#include <stdexcept>
+#include <filesystem>
+#include <optional>
+#include <string>
+#include <unordered_map>
+#include <variant>
+#include "PotionType.h"
 
 namespace Data {
-    struct ItemData {
-        uint16_t  itemType;
-        const char* name;
-        uint32_t  weight;
-        uint32_t hpRecovery = 0;
+    // Existing marketplace categories; weapon and shield share category 2.
+    enum class ItemType : uint16_t {
+        Potion = 1,
+        WeaponShield = 2,
+        Armor = 3
+    };
+
+    enum class EquipmentSlot : uint8_t {
+        Weapon = 0,
+        Shield = 1,
+        Body = 2
+    };
+
+    inline constexpr bool IsValidEquipmentSlot(EquipmentSlot slot) {
+        return slot == EquipmentSlot::Weapon || slot == EquipmentSlot::Shield || slot == EquipmentSlot::Body;
+    }
+
+    struct ItemDataPotion {
+        PotionType type = PotionType::HP;
+        uint32_t recovery = 0;
         uint32_t cooldownTicks = 0;
-        uint32_t mpRecovery = 0;
-        uint16_t weaponAttackBonus = 0;
+    };
+
+    struct ItemDataWeapon {
+        uint16_t attackBonus = 0;
+    };
+
+    struct ItemDataShield {
         uint8_t defensePercent = 0;
     };
 
-    inline const std::unordered_map<uint32_t, ItemData> itemMap = [] {
-        std::unordered_map<uint32_t, ItemData> items = {
-        { 1, { 1, "HP포션",   5, 1500, 120 } },
-        { 2, { 1, "MP포션",   5, 0, 120, 500 } },
-        { 3, { 2, "철검",   150, 0, 0, 0, 2 } },
-        { 4, { 2, "철방패",  200, 0, 0, 0, 0, 2 } },
-        { 5, { 3, "가죽갑옷", 80, 0, 0, 0, 0, 3 } },
-        { 6, { 1, "중급HP포션", 5, 3000, 120 } },
-        { 7, { 1, "중급MP포션", 5, 0, 120, 1000 } },
-        { 8, { 1, "상급HP포션", 5, 4500, 120 } },
-        { 9, { 1, "상급MP포션", 5, 0, 120, 1500 } },
-        };
-        for (const auto& [id, item] : items) {
-            if (item.defensePercent > 99)
-                throw std::invalid_argument("Item defense must be in the range 0..99.");
-        }
-        if (static_cast<uint16_t>(items.at(4).defensePercent) + items.at(5).defensePercent > 99)
-            throw std::invalid_argument("Combined shield and body defense must not exceed 99 percent.");
-        return items;
-    }();
+    struct ItemDataArmor {
+        uint8_t defensePercent = 0;
+    };
+
+    struct ItemData {
+        std::string name;
+        uint32_t weight;
+        std::variant<ItemDataPotion, ItemDataWeapon, ItemDataShield, ItemDataArmor> details;
+
+        ItemType GetType() const;
+
+        std::optional<EquipmentSlot> GetEquipmentSlot() const;
+    };
+
+    bool IsValidItemData(const ItemData& item);
+
+    extern const std::unordered_map<uint32_t, ItemData>& itemMap;
+
+    std::unordered_map<uint32_t, ItemData> LoadItemData(const std::filesystem::path& directory);
+    void InitializeItemData(const std::filesystem::path& directory);
+
+    const ItemData* FindItem(uint32_t itemID);
+
+    bool CanEquip(EquipmentSlot slot, uint32_t itemID);
 }

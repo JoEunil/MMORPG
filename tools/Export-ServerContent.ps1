@@ -31,10 +31,15 @@ $arguments = @('/nologo', '/Y-', '/std:c++20', '/EHsc', '/W4', '/utf-8',
     ('/I' + (Join-Path $repository 'CoreLib')),
     ('/Fo' + $buildDirectory + '\'), ('/Fe' + $executable),
     (Join-Path $PSScriptRoot 'Export-ServerContent.cpp'),
-    (Join-Path $repository 'CoreLib/Data/SkillData.cpp'))
+    (Join-Path $repository 'CoreLib/Data/SkillData.cpp'),
+    (Join-Path $repository 'CoreLib/Data/ItemData.cpp'),
+    (Join-Path $repository 'CoreLib/Data/CsvReader.cpp'),
+    (Join-Path $repository 'CoreLib/Data/GrowthData.cpp'),
+    (Join-Path $repository 'CoreLib/Data/MonsterData.cpp'),
+    (Join-Path $repository 'CoreLib/Data/HuntingZoneData.cpp'))
 & $compiler @arguments
 if ($LASTEXITCODE -ne 0) { throw 'Server content exporter compilation failed.' }
 $resolvedOutput = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($OutputPath)
 $null = New-Item -ItemType Directory -Path (Split-Path -Parent $resolvedOutput) -Force
-& $executable $resolvedOutput
+& $executable $resolvedOutput (Join-Path $repository 'Data')
 if ($LASTEXITCODE -ne 0) { throw 'Server content export failed.' }

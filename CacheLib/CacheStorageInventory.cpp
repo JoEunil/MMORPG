@@ -8,6 +8,7 @@
 #include "DB/DBWorker.h"
 #include "CacheFlush.h"
 #include "InventoryCodec.h"
+#include <CoreLib/Data/ItemData.h>
 
 namespace Cache {
     bool CacheStorageInventory::RestoreEntry(uint64_t characterID, InventoryData& rec) {
@@ -208,7 +209,7 @@ namespace Cache {
     }
 
     Core::EquipmentStateResult CacheStorageInventory::EquipItem(uint64_t characterID, uint8_t slot, uint32_t itemID) {
-        if (slot > 2 || (itemID != 0 && itemID != static_cast<uint32_t>(slot) + 3))
+        if (!Data::CanEquip(static_cast<Data::EquipmentSlot>(slot), itemID))
             return {Core::EquipmentOperationStatus::Unsupported};
         const auto ready = GetEquipmentState(characterID);
         if (ready.status != Core::EquipmentOperationStatus::Success) return ready;

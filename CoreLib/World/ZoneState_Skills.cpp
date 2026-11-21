@@ -13,7 +13,9 @@ namespace Core {
 			if (character.hp <= 0) character.parryWindowTicks = 0;
             else if (character.parryWindowTicks != 0) --character.parryWindowTicks;
             if (character.parryCooldownTicks != 0) --character.parryCooldownTicks;
-            if (character.potionCooldownTicks != 0) --character.potionCooldownTicks;
+            for (auto& cooldown : character.potionCooldownTicks)
+                if (cooldown != 0)
+                    --cooldown;
 			for (int i = 0; i < character.skillSlotCnt; i++) {
 				if (character.skillSlot[i].skillCoolDownTick != 0)
 					character.skillSlot[i].skillCoolDownTick--;
@@ -49,6 +51,25 @@ namespace Core {
 		list.pop_back();
 	}
 
+    bool ZoneState::TryResolveSkillCaster(ActiveSkill& skill, std::optional<std::reference_wrapper<CharacterState>>& caster) {
+        if (skill.casterType == 0) {
+            auto* character = FindCharacter(skill.sessionId);
+            if (character == nullptr)
+                return false;
+            caster = *character;
+            skill.x = character->x;
+            skill.y = character->y;
+        }
+        else {
+            const auto& monster = m_monsters[skill.monsterId];
+            if (monster.hp == 0)
+                return false;
+            skill.x = monster.x;
+            skill.y = monster.y;
+        }
+        return true;
+    }
+
 	void ZoneState::ProcessCellActiveSkills(Cell& cell) {
 		for (int k = 0; k < cell.activeSkills.size(); k++)
 		{
@@ -58,31 +79,16 @@ namespace Core {
 				continue;
 			}
 			std::optional<std::reference_wrapper<CharacterState>> caster;
-			if (skill.casterType == 0) {
-				auto it = m_sessionToIndex.find(skill.sessionId);
-				if (it == m_sessionToIndex.end()) {
-					PopSkill(k, cell.activeSkills);
-					k--;
-					continue;
-				}
-				caster = m_chars[it->second];
-				skill.x = caster->get().x;
-				skill.y = caster->get().y;
-			}
-			else {
-				if (m_monsters[skill.monsterId].hp == 0) {
-					PopSkill(k, cell.activeSkills);
-					k--;
-					continue;
-				}
-				skill.x = m_monsters[skill.monsterId].x;
-				skill.y = m_monsters[skill.monsterId].y;
+			if (!TryResolveSkillCaster(skill, caster)) {
+				PopSkill(k, cell.activeSkills);
+				k--;
+				continue;
 			}
 			// Keep the timer list stable; resolve each phase around the caster's current position.
 			const auto [cellX, cellY] = GetCell(skill.x, skill.y, m_area);
 			const int effectCellIndex = cellY * CELLS_X + cellX;
 			auto actionID = skillData.phases[skill.currentPhase].actionID;
-			if (actionID == 1)
+			if (actionID == Data::SkillActionType::Hit)
 				ApplyHit(caster, skill, effectCellIndex);
 			m_cells[cellY][cellX].actionResults.emplace_back(
 			skill.casterType,
@@ -106,90 +112,93 @@ namespace Core {
 		}
 	}
 
-	void ZoneState::ApplyHit(std::optional<std::reference_wrapper<CharacterState>> c, ActiveSkill& skill, int idx) {
-		perfCollector->AddHitCnt(m_zoneID);
-		const auto& skillData = skill.casterType == 0 ? Data::skillList[skill.skillId] : Data::monsterSkillList[skill.skillId];
-		auto& phase = skillData.phases[skill.currentPhase];
-		bool AOE = skillData.flags & 0x02; // 광역기
-		if (skill.casterType == 0) { // 캐릭터 -> 몬스터
-			auto& caster = c.value().get();
-			for (auto& cellIdx : AOI[idx]) {
-				auto& cell = m_cells[cellIdx / CELLS_X][cellIdx % CELLS_X];
-				for (uint16_t mon : cell.monsterIndexes)
-				{
-					if (m_monsters[mon].hp == 0)
-						continue;
-					if (phase.range.InRangeAngle(skill.aimAngle, skill.x, skill.y, m_monsters[mon].x, m_monsters[mon].y))
-					{
-						auto damage = caster.EffectiveAttack() * phase.attack;
-						if (skillData.flags & 0x01) {
-							// critical 적용..
-							damage *= 2;
-						}
-						m_monsters[mon].hp -= damage;
-						if (m_monsters[mon].hp <= 0) {
-							m_monsters[mon].hp = 0;
-							// 일단 막타 친 사람만 보상.. 
-							// 보스몬스터의 경우 hitter list로 보상 분배하도록 처리해야됨.
-							caster.AddExperience(m_monsters[mon].data->reward.exp);
-                            if (m_monsters[mon].data->id <= 1) GrantMonsterReward(caster, m_monsters[mon].data->reward.gold);
-							m_cells[caster.cellY][caster.cellX].dirtyChar.push_back(caster.zoneInternalID);
-						}
-						m_monsters[mon].SetAggro(caster.zoneInternalID);
-						m_monsters[mon].dirtyBit |= 0x01; // hp
-						if (!AOE)
-							break;
-					}
-				}
-			}
-			
-		}
-		else { // 몬스터 -> 캐릭터
-			auto& caster = m_monsters[skill.monsterId];
-			for (auto& cellIdx : AOI[idx]) {
-				auto& cell = m_cells[cellIdx / CELLS_X][cellIdx % CELLS_X];
-				for (auto session : cell.charSessions) {
-					auto it = m_sessionToIndex.find(session);
-					if (it == m_sessionToIndex.end())
-						continue;
-					auto& character = m_chars[it->second];
+    void ZoneState::ApplyHit(std::optional<std::reference_wrapper<CharacterState>> c, ActiveSkill& skill, int idx) {
+        perfCollector->AddHitCnt(m_zoneID);
+        const auto& skillData = skill.casterType == 0 ? Data::skillList[skill.skillId] : Data::monsterSkillList[skill.skillId];
+        if (skill.casterType == 0)
+            ApplyPlayerHit(c.value().get(), skill, skillData, idx);
+        else
+            ApplyMonsterHit(skill, skillData, idx);
+    }
 
-					if (character.hp > 0 && phase.range.InRange(skill.dir, skill.x, skill.y, character.x, character.y))
-					{
-						uint64_t damage = static_cast<uint64_t>(caster.data->attack) * phase.attack;
-						if (skillData.flags & 0x01) {
-							// critical 적용..
-							damage = damage > UINT64_MAX / 2 ? UINT64_MAX : damage * 2;
-						}
-						// Skill 0 is the untelegraphed basic attack; it neither blocks nor consumes parry.
-                        if (skill.skillId != 0 && damage > 0 && character.parryWindowTicks != 0) {
-                            character.parryWindowTicks = 0;
-                            m_cells[character.cellY][character.cellX].actionResults.push_back({0, character.zoneInternalID, 0,
-                                Data::parrySkillSlot, character.dir, character.x, character.y, Data::parrySkillID, 1,
-                                character.dir == 0 ? 0.0f : character.dir == 1 ? 180.0f : character.dir == 2 ? 270.0f : 90.0f});
-                            if (!AOE) return; // This attack was consumed, including across adjacent AOI cells.
-                            continue;
-                        }
-                        damage = character.DamageAfterDefense(damage);
-                        character.hp = damage >= static_cast<uint64_t>(character.hp) ? 0 : character.hp - static_cast<int>(damage);
-						if (character.hp <= 0) {
-                            character.hp = 0;
-                            character.parryWindowTicks = 0;
-                        }
-						else
-							caster.aggroTick = 0; // 공격시에도 어그로 틱 초기화.
-						character.dirtyBit |= 0x01; // hp
-						cell.dirtyChar.push_back(character.zoneInternalID);
-						if (!AOE)
-							break;
-					}
-				}
-			}
-			
-		}
-		
-	}
+    void ZoneState::ApplyPlayerHit(CharacterState& caster, const ActiveSkill& skill, const Data::SkillData& skillData, int idx) {
+        auto& phase = skillData.phases[skill.currentPhase];
+        bool AOE = skillData.flags & Data::SkillFlags::AreaOfEffect;
+        for (auto& cellIdx : AOI[idx]) {
+            auto& cell = m_cells[cellIdx / CELLS_X][cellIdx % CELLS_X];
+            for (uint16_t mon : cell.monsterIndexes)
+            {
+                if (m_monsters[mon].hp == 0)
+                    continue;
+                if (phase.range.InRangeAngle(skill.aimAngle, skill.x, skill.y, m_monsters[mon].x, m_monsters[mon].y))
+                {
+                    auto damage = caster.EffectiveAttack() * phase.attack;
+                    if (skillData.flags & Data::SkillFlags::Critical) {
+                        // critical 적용..
+                        damage *= 2;
+                    }
+                    m_monsters[mon].hp -= damage;
+                    if (m_monsters[mon].hp <= 0) {
+                        m_monsters[mon].hp = 0;
+                        // 일단 막타 친 사람만 보상..
+                        // 보스몬스터의 경우 hitter list로 보상 분배하도록 처리해야됨.
+                        caster.AddExperience(m_monsters[mon].data->reward.exp);
+                        if (m_monsters[mon].data->id <= 1) GrantMonsterReward(caster, m_monsters[mon].data->reward.gold);
+                        m_cells[caster.cellY][caster.cellX].dirtyChar.push_back(caster.zoneInternalID);
+                    }
+                    m_monsters[mon].SetAggro(caster.zoneInternalID);
+                    m_monsters[mon].dirtyBit |= 0x01; // hp
+                    if (!AOE)
+                        break;
+                }
+            }
+        }
+    }
 
+    void ZoneState::ApplyMonsterHit(const ActiveSkill& skill, const Data::SkillData& skillData, int idx) {
+        auto& phase = skillData.phases[skill.currentPhase];
+        bool AOE = skillData.flags & Data::SkillFlags::AreaOfEffect;
+        auto& caster = m_monsters[skill.monsterId];
+        for (auto& cellIdx : AOI[idx]) {
+            auto& cell = m_cells[cellIdx / CELLS_X][cellIdx % CELLS_X];
+            for (auto session : cell.charSessions) {
+                auto it = m_sessionToIndex.find(session);
+                if (it == m_sessionToIndex.end())
+                    continue;
+                auto& character = m_chars[it->second];
+
+                if (character.hp > 0 && phase.range.InRange(skill.dir, skill.x, skill.y, character.x, character.y))
+                {
+                    uint64_t damage = static_cast<uint64_t>(caster.data->attack) * phase.attack;
+                    if (skillData.flags & Data::SkillFlags::Critical) {
+                        // critical 적용..
+                        damage = damage > UINT64_MAX / 2 ? UINT64_MAX : damage * 2;
+                    }
+                    // Skill 0 is the untelegraphed basic attack; it neither blocks nor consumes parry.
+                    if (skill.skillId != 0 && damage > 0 && character.parryWindowTicks != 0) {
+                        character.parryWindowTicks = 0;
+                        m_cells[character.cellY][character.cellX].actionResults.push_back({0, character.zoneInternalID, 0,
+                            Data::parrySkillSlot, character.dir, character.x, character.y, Data::parrySkillID, 1,
+                            character.dir == 0 ? 0.0f : character.dir == 1 ? 180.0f : character.dir == 2 ? 270.0f : 90.0f});
+                        if (!AOE) return; // This attack was consumed, including across adjacent AOI cells.
+                        continue;
+                    }
+                    damage = character.DamageAfterDefense(damage);
+                    character.hp = damage >= static_cast<uint64_t>(character.hp) ? 0 : character.hp - static_cast<int>(damage);
+                    if (character.hp <= 0) {
+                        character.hp = 0;
+                        character.parryWindowTicks = 0;
+                    }
+                    else
+                        caster.aggroTick = 0; // 공격시에도 어그로 틱 초기화.
+                    character.dirtyBit |= 0x01; // hp
+                    cell.dirtyChar.push_back(character.zoneInternalID);
+                    if (!AOE)
+                        break;
+                }
+            }
+        }
+    }
 
     void ZoneState::GrantMonsterReward(const CharacterState& character, uint64_t gold) {
         const auto sessionID = character.sessionID;

@@ -17,6 +17,7 @@
 #include "../Interface/IProfileCache.h"
 #include "../LoggerGlobal.h"
 #include "../Packet/PacketConfig.h"
+#include "../Data/ItemData.h"
 
 namespace Core {
     void NonSimulationHandler::Initialize(IServerResponseQueue& responseQueue, PacketWriter& packetWriter, ISessionAuth* s, const CacheCommandSender* commands, SessionManager* manager,
@@ -294,7 +295,7 @@ namespace Core {
         const bool write = opcode == OP::EQUIPMENT_SET;
         if (write) {
             const auto request = *parseBody<EquipmentSetRequestBody>(packet->GetPtr());
-            if (request.slot > 2)
+            if (!Data::IsValidEquipmentSlot(static_cast<Data::EquipmentSlot>(request.slot)))
                 return;
             requestID = request.requestID;
             epoch = request.ownershipEpoch;

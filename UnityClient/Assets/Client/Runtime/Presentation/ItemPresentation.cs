@@ -56,7 +56,7 @@ namespace Mmorpg.Client
                 uint recovery = item.hpRecovery > 0 ? item.hpRecovery : item.mpRecovery;
                 string resource = item.hpRecovery > 0 ? "HP" : "MP";
                 return "Restores " + recovery.ToString(CultureInfo.InvariantCulture) + " " + resource +
-                    ". Shares potion cooldown. Cannot use at full " + resource + " or while dead.";
+                    ". Shares potion cooldown with other " + resource + " potions. Cannot use at full " + resource + " or while dead.";
             }
             return "Equipment cannot be used as a consumable.";
         }

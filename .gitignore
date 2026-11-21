@@ -418,3 +418,6 @@ wal/
 /site-preview.zip
 !/site/media/releases/
 !/site/media/releases/**
+
+# macOS directory metadata.
+.DS_Store
