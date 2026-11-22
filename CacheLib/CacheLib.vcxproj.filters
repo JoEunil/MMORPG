@@ -122,4 +122,9 @@
       <Filter>헤더 파일</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="BazaarResult.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

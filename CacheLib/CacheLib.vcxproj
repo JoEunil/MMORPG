@@ -140,6 +140,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="BazaarResult.h" />
     <ClInclude Include="CacheFlush.h" />
     <ClInclude Include="CacheStorage.h" />
     <ClInclude Include="CacheStorageInventory.h" />

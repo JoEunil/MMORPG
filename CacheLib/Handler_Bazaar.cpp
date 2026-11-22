@@ -12,12 +12,7 @@
 #include <CoreLib/Data/ItemData.h>
 
 #include "DB/DBWorker.h"
-#include "BazaarSearchResult.h"
-#include "BazaarMyListResult.h"
-#include "BazaarClaimResult.h"
-#include "BazaarPurchaseResult.h"
-#include "BazaarCancelResult.h"
-#include "BazaarRegisterResult.h"
+#include "BazaarResult.h"
 
 namespace Cache {
     namespace {

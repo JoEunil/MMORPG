@@ -299,8 +299,7 @@ TEST(CacheWALRegression, NewNodeLsnExceedsTheLoadedDatabaseLsn) {
 }
 
 
-#include <CacheLib/BazaarSearchResult.h>
-#include <CacheLib/BazaarRegisterResult.h>
+#include <CacheLib/BazaarResult.h>
 #include <CacheLib/Handler.h>
 #include <CacheLib/DB/DBWorker.h>
 #include <CoreLib/Interface/IMessageQueue.h>
@@ -462,7 +461,6 @@ namespace Cache {
     }
 }
 
-#include <CacheLib/BazaarMyListResult.h>
 namespace {
     struct MyListRows {
         int count = 0;
@@ -667,7 +665,6 @@ namespace Cache {
     }
 }
 
-#include <CacheLib/BazaarClaimResult.h>
 namespace {
     struct ClaimRows {
         int64_t status = 1;
@@ -711,7 +708,6 @@ namespace Cache {
     }
 }
 
-#include <CacheLib/BazaarPurchaseResult.h>
 TEST(BazaarRegisterSafety, SqlOutcomeNeverRefundsAnUnknownCommitAndRestoresAtMostOnce) {
     // The product helper owns this decision boundary; no DB connection or durable writes are used.
     for (int scenario = 0; scenario < 7; ++scenario) {
