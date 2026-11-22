@@ -32,7 +32,18 @@ IOCP가 받은 데이터를 세션별 `ClientContext`에서 누적하고, `NetPa
 
 ![CacheLib 핵심 컴포넌트와 저장·복구 흐름](images/Architecture_CacheLib.png)
 
-AI Agent를 활용해 Clang 기반 C++ 의존성 분석기를 만들었다. [화면별 사용 안내](Resources/CppDependencyAnalyzer/README.md)에 WinForms 설정과 서버 분석 보고서의 실제 화면을 정리했다. 라이브러리 단위로 분석하고, 클래스 선택 목록·순환 의존·리팩터링 및 성능 후보에서 관계와 코드 위치를 확인할 수 있다.
+## CodeExplorer — 코드 구조 탐색기
+
+AI Agent를 활용해 만든 Clang 기반 C++ 코드 탐색 도구다. 서버 구조를 파악하고 리팩터링할 부분을 찾기 위해, 관심 클래스·메서드만 골라 관계와 코드 위치를 확인하도록 만들었다.
+
+[서버 코드 탐색하기](https://joeunil.github.io/MMORPG/reports/server-project-map.html) · [사용 안내](Resources/CodeExplorer/README.md)
+
+<a href="https://joeunil.github.io/MMORPG/reports/server-project-map.html">
+  <img src="Resources/CodeExplorer/Screenshots/selected-core-classes.png" alt="관심 클래스만 선택해 연결 관계를 확인한 CodeExplorer 예시 — 클릭하면 보고서로 이동" width="760">
+</a>
+
+- **구조 탐색**: 클래스 지도·메서드 지도·클래스 내부 멤버 지도에서 필요한 관계를 좁혀 본다.
+- **변경 후보 검토**: 순환 의존과 리팩터링·성능 개선 후보에서 관련 코드와 연결 근거를 확인한다.
 
 ## AI 활용과 클라이언트 개발
 

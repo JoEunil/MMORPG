@@ -566,7 +566,7 @@ def main(require_tour_media=False):
     build_tour(references, title, require_tour_media)
     report = SITE / "reports/server-project-map.html"
     report.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(ROOT / "Resources/CppDependencyAnalyzer/Reports/server-project-map.html", report)
+    shutil.copyfile(ROOT / "Resources/CodeExplorer/Reports/server-project-map.html", report)
     check_site()
     check_work_navigation(works)
     print(f"Built home and {len(works)} project pages with screen histories and the server dependency report")

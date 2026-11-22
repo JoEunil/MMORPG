@@ -400,18 +400,24 @@ wal/
 # Local Unity agent and Slack receiver scripts.
 /scripts/unity-client/
 
-# Local dependency analyzer runtime and latest analysis. Keep the bundled server report tracked.
-/Resources/CppDependencyAnalyzer/ServerDependencyAnalyzer.exe
-/Resources/CppDependencyAnalyzer/ServerDependencyAnalyzer.dll
-/Resources/CppDependencyAnalyzer/ServerDependencyAnalyzer.deps.json
-/Resources/CppDependencyAnalyzer/ServerDependencyAnalyzer.runtimeconfig.json
-/Resources/CppDependencyAnalyzer/clang/
-/Resources/CppDependencyAnalyzer/report.html
-/Resources/CppDependencyAnalyzer/SourceRoots.json
-/Resources/CppDependencyAnalyzer/Reanalysis/
-/Resources/CppDependencyAnalyzer/LocalService.json
-/Resources/CppDependencyAnalyzer/Reports/*.html
-!/Resources/CppDependencyAnalyzer/Reports/server-project-map.html
+# Publish CodeExplorer's guide, referenced screenshots and latest report only.
+# Keep implementation, build instructions and runtime files local.
+/Resources/CodeExplorer/*
+!/Resources/CodeExplorer/README.md
+!/Resources/CodeExplorer/Screenshots/
+!/Resources/CodeExplorer/Reports/
+/Resources/CodeExplorer/Screenshots/*
+!/Resources/CodeExplorer/Screenshots/winforms-startup.jpg
+!/Resources/CodeExplorer/Screenshots/winforms-project-scope.png
+!/Resources/CodeExplorer/Screenshots/selected-core-classes.png
+!/Resources/CodeExplorer/Screenshots/connection-expansion.png
+!/Resources/CodeExplorer/Screenshots/wal-method-map.png
+!/Resources/CodeExplorer/Screenshots/interface-boundaries.png
+!/Resources/CodeExplorer/Screenshots/filter-map.png
+!/Resources/CodeExplorer/Screenshots/namespace-map.png
+!/Resources/CodeExplorer/Screenshots/project-libraries.png
+/Resources/CodeExplorer/Reports/*
+!/Resources/CodeExplorer/Reports/server-project-map.html
 
 # Generated GitHub Pages preview output.
 /site/**/*.html

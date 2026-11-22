@@ -11,7 +11,7 @@ on:
       - docs/unity-client/portfolio/**
       - site/**
       - tools/site/**
-      - Resources/CppDependencyAnalyzer/Reports/server-project-map.html
+      - Resources/CodeExplorer/Reports/server-project-map.html
       - .github/workflows/pages.yml
   pull_request:
     paths:
@@ -22,7 +22,7 @@ on:
       - docs/unity-client/portfolio/**
       - site/**
       - tools/site/**
-      - Resources/CppDependencyAnalyzer/Reports/server-project-map.html
+      - Resources/CodeExplorer/Reports/server-project-map.html
       - .github/workflows/pages.yml
   workflow_dispatch:
 
