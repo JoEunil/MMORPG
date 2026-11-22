@@ -6,10 +6,12 @@ namespace Mmorpg.Client
     public enum SkillRange : byte { None, Circle, Rectangle, Boss1_1, Boss1_2, Boss2 }
     public enum SkillAction : byte { Charging, Hit }
 
-    // Client data imported from the server-owned static content tables.
+    // Runtime view of the shared CSV content used by the server.
     [UnityEngine.Scripting.APIUpdating.MovedFrom(true, sourceNamespace: "C02", sourceAssembly: "C02.Runtime", sourceClassName: "C14ServerContent")]
     public sealed class ServerContent : ScriptableObject
     {
+        public void LoadCsv(string dataDirectory) => ServerContentCsv.Load(this, dataDirectory);
+
         public Growth growth = new Growth();
         public RingSkill[] monsterSkills = Array.Empty<RingSkill>();
         public MonsterSpecies[] monsterSpecies = Array.Empty<MonsterSpecies>();
@@ -20,7 +22,7 @@ namespace Mmorpg.Client
         [Serializable]
         public sealed class MonsterSpecies
         {
-            public int id, zoneID;
+            public int id, zoneID, monsterType;
             public string name;
             public uint attack;
             public MonsterPhase[] phases;
@@ -97,7 +99,7 @@ namespace Mmorpg.Client
             public uint regularHp, strongHp, bossHp;
             public uint regularAttack, strongAttack, bossAttack;
             public uint regularExp, strongExp, bossExp;
-            public uint regularGold, strongGold;
+            public ulong regularGold, strongGold;
         }
 
         [Serializable]
@@ -105,6 +107,7 @@ namespace Mmorpg.Client
         {
             public uint itemID;
             public ushort itemType;
+            public int equipmentSlot = -1;
             public string name;
             public uint weight;
             public ushort weaponAttackBonus;

@@ -10,6 +10,7 @@ namespace Mmorpg.Client
     {
         private const float RouteLabelWidth = 124;
         private const int LandmarkCount = 6;
+        private const string RoutePrompt = "목표 지점을 클릭해 길 보기";
         private static readonly Color Gold = new Color32(235, 208, 145, 255);
         private static readonly Color White = new Color32(244, 239, 222, 255);
         private readonly Rect bounds;
@@ -17,6 +18,7 @@ namespace Mmorpg.Client
         private readonly RectTransform marker;
         private readonly TMP_Text location;
         private readonly TMP_Text routeStatus;
+        private readonly TMP_Text destinationDetails;
         private readonly TMP_Text fieldStatus;
         private readonly GameObject fieldBadge;
         private readonly MapAuthoring mapAuthor;
@@ -119,9 +121,11 @@ namespace Mmorpg.Client
             Stretch(Surface(marker, "Pin", new Color32(48, 227, 108, 255)).rectTransform,
                 new Vector2(2, 2), new Vector2(-2, -2));
             location = Label(root, "Location", "", 15, White, TextAlignmentOptions.MidlineLeft, font);
-            Anchor(location.rectTransform, Vector2.zero, Vector2.zero, new Vector2(34, 16), new Vector2(410, 32));
-            routeStatus = Label(root, "RouteStatus", "목표 지점을 클릭해 길 보기", 14, White, TextAlignmentOptions.MidlineRight, font);
-            Anchor(routeStatus.rectTransform, Vector2.right, Vector2.right, new Vector2(-34, 16), new Vector2(340, 32));
+            PlaceFooter(location, 0, .37f, 16);
+            routeStatus = Label(root, "RouteStatus", RoutePrompt, 14, White, TextAlignmentOptions.MidlineRight, font);
+            PlaceFooter(routeStatus, .37f, 1, 33);
+            destinationDetails = Label(root, "DestinationDetails", "", 13, Gold, TextAlignmentOptions.MidlineRight, font);
+            PlaceFooter(destinationDetails, .37f, 1, 9);
             var field = Surface(canvas, "FieldRouteStatus", new Color32(15, 37, 45, 235));
             Anchor(field.rectTransform, new Vector2(.5f, 1), new Vector2(.5f, 1), new Vector2(0, -68), new Vector2(350, 32));
             fieldStatus = Label(field.transform, "Destination", "", 17, new Color32(169, 240, 255, 255),
@@ -239,10 +243,12 @@ namespace Mmorpg.Client
                 button.targetGraphic = face;
                 button.onClick.AddListener(() =>
                 {
-                    destinationName = destinationName == label ? null : label;
+                    bool sameDestination = destinationName != null && destinationZone == zone && destination == position;
+                    destinationName = sameDestination ? null : label;
                     destination = position;
                     destinationZone = zone;
                     UpdateRoute();
+                    RefreshDestinationDetails();
                 });
             }
         }
@@ -260,6 +266,44 @@ namespace Mmorpg.Client
             return badge;
         }
 
+        private static void PlaceFooter(TMP_Text text, float leftAnchor, float rightAnchor, float bottom)
+        {
+            var rect = text.rectTransform;
+            rect.anchorMin = new Vector2(leftAnchor, 0);
+            rect.anchorMax = new Vector2(rightAnchor, 0);
+            rect.offsetMin = new Vector2(leftAnchor == 0 ? 34 : 8, bottom);
+            rect.offsetMax = new Vector2(rightAnchor == 1 ? -34 : -8, bottom + 24);
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 10;
+            text.fontSizeMax = text.fontSize;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            text.overflowMode = TextOverflowModes.Ellipsis;
+        }
+
+        private void RefreshDestinationDetails()
+        {
+            var zone = destinationName == null ? null : content?.GetHuntingZone(destinationZone);
+            if (zone == null)
+            {
+                destinationDetails.text = "";
+                return;
+            }
+            if (zone.minLevel == 0)
+            {
+                destinationDetails.text = "안전 구역";
+                return;
+            }
+
+            ServerContent.MonsterSpecies representative = null;
+            // The CSV defines the combat archetype independently of the species ID.
+            foreach (var species in content.monsterSpecies)
+                if (species != null && species.zoneID == destinationZone && species.monsterType == 0 &&
+                    (representative == null || species.id < representative.id))
+                    representative = species;
+            string levels = $"권장 Lv. {zone.minLevel}–{zone.maxLevel}";
+            destinationDetails.text = representative == null ? levels : levels + "  ·  " + representative.name;
+        }
+
         private void UpdateRoute()
         {
             route.Clear();
@@ -268,7 +312,7 @@ namespace Mmorpg.Client
             nextRouteSearch = Time.unscaledTime + .6f;
             refreshField = true;
             routeGraphic.SetRoute(route, bounds);
-            routeStatus.text = destinationName == null ? "목표 지점을 클릭해 길 보기" :
+            routeStatus.text = destinationName == null ? RoutePrompt :
                 found ? "안내 경로 · " + destinationName : "갈 수 있는 길을 찾지 못했습니다";
         }
 
@@ -369,7 +413,8 @@ namespace Mmorpg.Client
             route.Clear();
             nextRouteSearch = 0;
             routeGraphic.SetRoute(route, bounds);
-            routeStatus.text = "목표 지점을 클릭해 길 보기";
+            routeStatus.text = RoutePrompt;
+            destinationDetails.text = "";
         }
 
         internal void Destroy()

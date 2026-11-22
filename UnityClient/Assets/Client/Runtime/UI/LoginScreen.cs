@@ -32,6 +32,21 @@ namespace Mmorpg.Client
 
         private void OnEnable()
         {
+            var content = GetComponent<WorldScreen>()?.Content;
+            if (content != null)
+            {
+                try { content.LoadCsv(SharedGameData.DirectoryPath); }
+                catch (Exception error)
+                {
+                    statusText.text = "Game data could not be loaded.";
+                    loginButton.interactable = false;
+                    loginIdInput.interactable = false;
+                    passwordInput.interactable = false;
+                    Debug.LogError("Game data could not be loaded: " + error.Message, this);
+                    return;
+                }
+            }
+
             loginButton.onClick.AddListener(Submit);
             passwordInput.onSubmit.AddListener(SubmitPassword);
             Authenticated = false;

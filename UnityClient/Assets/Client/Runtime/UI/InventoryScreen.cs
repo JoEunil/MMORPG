@@ -70,7 +70,7 @@ namespace Mmorpg.Client
         public bool EquipmentMutationPending => equipmentSetPending || equipmentUncertain;
         public bool IsItemEquipped(uint itemID) => EquipmentKnown && itemID != 0 &&
             (equipmentState.WeaponID == itemID || equipmentState.ShieldID == itemID || equipmentState.BodyID == itemID);
-        public bool CanSellItem(uint itemID) => itemID < 3 || itemID > 5 ||
+        public bool CanSellItem(uint itemID) => !ItemPresentation.IsEquipment(itemID, worldScreen.Content) ||
             (EquipmentKnown && !EquipmentMutationPending && !IsItemEquipped(itemID));
         private bool hasSelectedItem;
         private byte selectedSlot;
@@ -319,9 +319,9 @@ namespace Mmorpg.Client
 
         private void ToggleEquipment()
         {
-            if (!IsOpen || !WorldAvailable || model == null || loginScreen.Model != model || !hasSelectedItem || selectedItemID < 3 || selectedItemID > 5 ||
+            if (!IsOpen || !WorldAvailable || model == null || loginScreen.Model != model || !hasSelectedItem || !ItemPresentation.IsEquipment(selectedItemID, worldScreen.Content) ||
                 !hasInventoryResponse || requestPending || !EquipmentKnown || equipmentReadPending || EquipmentMutationPending || !worldScreen.CanAct) return;
-            byte slot = (byte)(selectedItemID - 3);
+            byte slot = (byte)worldScreen.Content.GetItem(selectedItemID).equipmentSlot;
             uint target = IsItemEquipped(selectedItemID) ? 0U : selectedItemID;
             equipmentSetPending = true;
             equipmentDeadline = Time.unscaledTime + RequestTimeoutSeconds;
@@ -358,7 +358,7 @@ namespace Mmorpg.Client
                 EquipmentKnown = true;
                 equipmentState = equipment;
                 equipmentResult = equipmentUncertain ? "Equipment change result unknown. Reconnect before changing it." : null;
-                worldScreen.SetOwnWeaponVisible(equipment.WeaponID == 3);
+                worldScreen.SetOwnWeaponVisible(equipment.WeaponID != 0);
                 if (operation == 1) RefreshAfterDelivery();
             }
             else
@@ -800,7 +800,7 @@ namespace Mmorpg.Client
             quantity.rectTransform.anchoredPosition = quantityBadgeRect.anchoredPosition;
             quantity.rectTransform.sizeDelta = quantityBadgeRect.sizeDelta;
 
-            if (item.ItemID >= 3 && item.ItemID <= 5)
+            if (ItemPresentation.IsEquipment(item.ItemID, worldScreen.Content))
             {
                 var equipped = CreateText("EquippedItem" + item.ItemID.ToString(CultureInfo.InvariantCulture),
                     cardObject.transform, "EQUIPPED", 14, new Color32(229, 211, 163, 255), TextAlignmentOptions.MidlineLeft);
@@ -857,7 +857,7 @@ namespace Mmorpg.Client
             detailBadge.text = icon != null ? string.Empty : ItemPresentation.Badge(item.ItemID);
             detailBadge.color = ItemPresentation.Accent(item.ItemID);
             detailName.text = ItemPresentation.Name(item.ItemID, worldScreen.Content);
-            detailSlot.text = item.ItemID >= 3 && item.ItemID <= 5
+            detailSlot.text = ItemPresentation.IsEquipment(item.ItemID, worldScreen.Content)
                 ? ItemPresentation.EquipmentDescription(item.ItemID, worldScreen.Content)
                 : "Slot " + item.Slot.ToString(CultureInfo.InvariantCulture);
             detailQuantity.text = "Quantity " + item.Quantity.ToString(CultureInfo.InvariantCulture);
@@ -898,6 +898,7 @@ namespace Mmorpg.Client
             UpdatePotionCooldown();
             bool available = WorldAvailable && model != null && loginScreen != null && loginScreen.Model == model;
             bool selectedPotion = hasSelectedItem && ItemPresentation.IsPotion(selectedItemID, worldScreen.Content);
+            bool selectedEquipment = hasSelectedItem && ItemPresentation.IsEquipment(selectedItemID, worldScreen.Content);
             if (bagButton != null) bagButton.interactable = available;
             if (refreshButton != null) refreshButton.interactable = available && !requestPending && !requestTimedOut;
             if (closeButton != null) closeButton.interactable = true;
@@ -911,13 +912,13 @@ namespace Mmorpg.Client
                     : string.Empty;
             if (equipButton != null)
             {
-                equipButton.gameObject.SetActive(hasSelectedItem && selectedItemID >= 3 && selectedItemID <= 5);
+                equipButton.gameObject.SetActive(selectedEquipment);
                 equipButton.interactable = available && IsOpen && hasInventoryResponse && !requestPending && EquipmentKnown &&
                     !equipmentReadPending && !EquipmentMutationPending && worldScreen.CanAct;
                 var label = equipButton.GetComponentInChildren<TMP_Text>(true);
                 if (label != null) label.text = equipmentSetPending ? "CHANGING…" : IsItemEquipped(selectedItemID) ? "UNEQUIP" : "EQUIP";
             }
-            if (hasSelectedItem && selectedItemID >= 3 && selectedItemID <= 5 && useStatus != null)
+            if (selectedEquipment && useStatus != null)
                 useStatus.text = equipmentResult ?? (!EquipmentKnown ? "Equipment: --" :
                     "Weapon: " + (equipmentState.WeaponID != 0 ? "On" : "Off") + " · Shield: " +
                     (equipmentState.ShieldID != 0 ? "On" : "Off") + "\nArmor: " + (equipmentState.BodyID != 0 ? "On" : "Off") +
@@ -1019,12 +1020,13 @@ namespace Mmorpg.Client
 
         private void UpdateEquipmentMarkers()
         {
-            if (inventoryGridContent == null) return;
+            if (inventoryGridContent == null || worldScreen.Content == null) return;
             foreach (Transform card in inventoryGridContent)
-                for (uint itemID = 3; itemID <= 5; itemID++)
+                foreach (var item in worldScreen.Content.items)
                 {
-                    var marker = card.Find("EquippedItem" + itemID.ToString(CultureInfo.InvariantCulture));
-                    if (marker != null) marker.gameObject.SetActive(IsItemEquipped(itemID));
+                    if (item == null || item.equipmentSlot < 0 || item.equipmentSlot > 2) continue;
+                    var marker = card.Find("EquippedItem" + item.itemID.ToString(CultureInfo.InvariantCulture));
+                    if (marker != null) marker.gameObject.SetActive(IsItemEquipped(item.itemID));
                 }
         }
 

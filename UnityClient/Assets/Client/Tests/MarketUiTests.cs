@@ -159,6 +159,55 @@ namespace Mmorpg.Client.Tests
         }
 
         [Test]
+        [Category("CatalogEquipmentSale")]
+        public void CatalogEquipmentCannotBeRegisteredWhileEquippedUnknownOrChanging()
+        {
+            for (int slot = 0; slot < 3; slot++)
+                using (var f = new Fixture())
+                {
+                    uint itemID = (uint)(103 + slot);
+                    f.World.Content.items = new[] { new ServerContent.Item {
+                        itemID = itemID, name = "Catalog equipment", equipmentSlot = slot } };
+                    SetProperty(f.InventoryScreen, "EquipmentKnown", false);
+                    f.OpenMarket(); f.Receive(true); f.SellItems.onClick.Invoke();
+                    f.ReceiveInventory(new InventoryItem { itemID = itemID, quantity = 1, slot = 7 });
+                    f.Rows.GetChild(f.Rows.childCount - 1).GetComponent<Button>().onClick.Invoke();
+                    f.Quantity.text = "1"; f.Price.text = "100";
+                    Assert.That(f.Register.interactable, Is.False, "Unknown equipment must block registration.");
+                    Assert.That(f.SaleSummary.text, Does.Contain("confirmed equipment"));
+                    f.Register.onClick.Invoke(); f.Register.onClick.Invoke();
+                    Assert.That(f.Network.RegisterRequests, Is.Zero, "Submission must reject bypassed button events too.");
+
+                    SetProperty(f.InventoryScreen, "EquipmentKnown", true);
+                    f.Screen.RefreshEquipmentControls();
+                    Assert.That(f.Register.interactable, Is.True);
+                    f.Register.onClick.Invoke();
+                    Assert.That(Get<bool>(f.Screen, "registerConfirmation"), Is.True);
+                    var equipped = new EquipmentStateView();
+                    if (slot == 0) equipped.WeaponID = itemID;
+                    else if (slot == 1) equipped.ShieldID = itemID;
+                    else equipped.BodyID = itemID;
+                    Set(f.InventoryScreen, "equipmentState", equipped);
+                    f.Screen.RefreshEquipmentControls();
+                    Assert.That(f.Register.interactable, Is.False);
+                    Assert.That(Get<bool>(f.Screen, "registerConfirmation"), Is.False);
+                    Assert.That(f.SaleSummary.text, Does.Contain("Unequip"));
+                    f.Register.onClick.Invoke(); f.Register.onClick.Invoke();
+                    Assert.That(f.Network.RegisterRequests, Is.Zero);
+
+                    Set(f.InventoryScreen, "equipmentState", new EquipmentStateView());
+                    Set(f.InventoryScreen, "equipmentSetPending", true);
+                    f.Screen.RefreshEquipmentControls();
+                    Assert.That(f.Register.interactable, Is.False);
+                    Set(f.InventoryScreen, "equipmentSetPending", false);
+                    f.Screen.RefreshEquipmentControls();
+                    Assert.That(f.Register.interactable, Is.True);
+                    f.Register.onClick.Invoke(); f.Register.onClick.Invoke();
+                    Assert.That(f.Network.RegisterRequests, Is.EqualTo(1), "Confirmed unequipped equipment remains sellable.");
+                }
+        }
+
+        [Test]
         [Category("MarketSelectionPolish")]
         public void SelectingListingsClearsOnlyPendingConfirmationAndKeepsTransactionResults()
         {
@@ -1050,7 +1099,8 @@ namespace Mmorpg.Client.Tests
                 Set(InventoryScreen, "inventoryPanel", inventoryPanel);
                 Login = root.AddComponent<LoginScreen>();
                 World = root.AddComponent<WorldScreen>();
-                Set(World, "serverContent", itemContent);
+                Set(InventoryScreen, "worldScreen", World);
+                SetProperty(InventoryScreen, "EquipmentKnown", true);
                 Screen = root.AddComponent<MarketScreen>();
                 Combat = root.AddComponent<CombatScreen>();
                 Set(Login, "loginIdInput", Input("login id"));
@@ -1161,6 +1211,8 @@ namespace Mmorpg.Client.Tests
                 var client = CreateClient();
                 Set(Login, "client", client.Initializer);
                 root.SetActive(true);
+                // Keep synthetic test metadata separate from LoginScreen's production CSV reload.
+                Set(World, "serverContent", itemContent);
                 worldRoot.SetActive(true);
                 SetProperty(World, "Stage", WorldStage.InWorld);
                 SetProperty(World, "HasOwnFull", true);
