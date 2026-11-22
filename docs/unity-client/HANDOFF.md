@@ -37,3 +37,11 @@
 
 - 게시 직전 origin/master의 f600d70(서버 리팩터링 설명 문서만 변경)을 병합했다. 검증 대상 런타임 코드는 바뀌지 않아 통과 검사는 반복하지 않는다.
 - 게시 결과: https://github.com/JoEunil/MMORPG/pull/87 (open, master 대상). 다음 행동은 사용자 PR 검토와 해당 리뷰 대응이다.
+
+## 최종 마감 요청 — 2026-11-22
+- 사용자는 마지막 조작 확인만 수행하고 마감하도록 요청했다. 확률 드롭·보스 시간표를 현재·향후 계획에서 제외하며 새 기획을 추가하지 않는다. 현재 기획 정본은 BRIEF의 현재 작업 범위 확정이다. 과거 기록은 삭제하지 않는다.
+- 같은 CSV Windows 빌드와 서버를 기동했다. 기존 테스트 포트 10099는 Windows TCP 제외 범위 10068~10167에 들어 bind 실패했다. Windows 설정은 변경하지 않고 격리 런처 GamePort를 19999로 변경했으며 MainServer·LoginServer·게임이 정상 시작됐다.
+- 최신 런처 설정: ROOT/UnityClient/Builds/CsvClientIntegration/Live/tools/local-game/settings.json. 실행 상태: 같은 Live/UnityClient/Builds/LocalGame/Run/state.json.
+- 실제 게임 로그인 화면을 확인했고 사용자에게 test1 직접 로그인을 요청한 상태다. 입력 도구의 인증 화면 자동 조작 금지를 준수한다. 로그인 전 직접 조작 검증을 완료로 기록하지 않는다.
+- 남은 한 배치: 독립 실행판 가방·장비·거래소 화면/상태, 가능한 이동·전투·포션 조작 확인, 종료. 이미 통과한 빌드·자동 검사·실서버 조회를 반복하지 않는다.
+- 최종 검증 후 기본 BAT 설정 최신화 여부를 결정하고 이번 문서·결과를 PR #87에 반영한다. 아직 마감 완료가 아니다.
