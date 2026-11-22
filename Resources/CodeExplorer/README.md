@@ -1,6 +1,6 @@
 # 코드 구조 탐색기 사용 안내
 
-[서버 의존성 보고서 열기](https://joeunil.github.io/MMORPG/reports/server-project-map.html)
+[CodeExplorer — 코드 구조 탐색기 열기](https://joeunil.github.io/MMORPG/reports/server-project-map.html)
 
 클래스와 메서드의 관계를 살펴보고 리팩터링할 부분을 찾는 도구다. 전체 지도보다 **필터로 범위를 좁히고 필요한 항목만 선택해서** 사용하면 편하다.
 
@@ -137,6 +137,13 @@ namespace를 선택해 내부 관계를 확인한다. **외부 연결 표시**�
 반복 파라미터는 접기 제목에서 인자 묶음과 함수 수를 바로 확인할 수 있다.
 
 반복 파라미터는 관련 함수만 메서드 지도에 모으고, 내부 기능 묶음은 메서드·필드와 그룹을 내부 멤버 지도에 표시한다.
+
+아래는 이동과 아이템 관리 기능을 한 클래스에 둔 **검증용 예제**를 분석한 화면이다. 서로 다른 필드를 사용하는 메서드들이 두 묶음으로 나뉘어 클래스 책임 분리를 검토할 수 있다.
+
+![검증용 예제에서 이동과 아이템 관리 메서드가 서로 다른 필드에 연결되는 화면](Screenshots/cohesion-example.png)
+
+- `Move`·`Teleport`는 `position`을, `AddItem`·`RemoveItem`은 `items`를 사용한다.
+- 필드를 선택하면 해당 필드에 접근하는 메서드와 코드 위치를 확인한다.
 
 ### 책임 집중 후보
 

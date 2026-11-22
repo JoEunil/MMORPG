@@ -15,28 +15,18 @@ Tick 처리의 주요 목적은 다음과 같다.
 - CPU burst 방지
 
 ## 3. Tick 처리 흐름
-Zone 스레드는 Tick 단위로 다음과 같은 작업을 수행한다:
-1. Skill Cooldown 처리  
-	- Zone 내 모든 캐릭터의 스킬 쿨다운을 갱신
-	- 활성 스킬의 phase 틱 갱신
-2. 패킷 처리  
-	- Zone의 Work Queue에서 패킷을 처리
-	- 각 패킷에 대해 handler->Process() 호출 → 게임 상태 갱신
-3. 게임 상태 업데이트
-	- handler->ApplySkill(zoneID) : 스킬 적용
-	- handler->UpdateMonster(zoneID) : 몬스터 AI 처리
-	- handler->FlushCheat(zoneID) : 치트 상태 업데이트
-4. Snapshot 전송
-	- Full Snapshot: FULL_SNAPSHOT_TICK 주기
-	- Delta Snapshot: DELTA_SNAPSHOT_TICK 주기
-	- 시간 계산 후 적절한 Snapshot 전송
-5. Tick 지연 보정
-	- 현재 시간과 마지막 Tick 시간 차이를 계산
-	- 남은 시간 만큼 sleep_for 수행
-	- lastTick += GAME_TICK 으로 Tick 기준 보정
+`ZoneEventRouter`가 Zone별 `ZoneState`와 `ZoneThread`를 소유한다. 워커는 자기 상태를 `ZoneHandler::RunTick()`에 넘겨 다음 순서로 처리한다.
 
-> Windows 타이머 해상도는 약 15.6ms이므로, 그보다 작은 지연은 sleep_for 호출이 의미가 없고,  
-실제 보정은 16ms 이상 지연 발생 시만 수행된다.
+1. **지연 이벤트:** 기본 큐가 가득 찼을 때 별도 등록한 프로필 갱신·접속 종료 요청을 처리한다.
+2. **틱 시작:** 스킬 쿨다운·활성 스킬 phase를 갱신하고 이동 예산을 보충한다.
+3. **Zone 이벤트:** 기본 큐에서 최대 2,000개를 꺼낸다. 패킷뿐 아니라 Zone 이동·거절, 진입, 리스폰, 프로필 갱신, bootstrap, 접속 종료를 처리한다.
+4. **게임 상태:** `ZoneState`의 스킬 적용·몬스터 갱신·치트 집계를 실행한다.
+5. **Snapshot:** Full 주기가 되면 Full을, 아니면 Delta 주기를 확인해 Delta를 생성한다. Action Snapshot도 같은 경로에서 생성하며 송신은 Broadcast 워커에 맡긴다.
+6. **대기 보정:** 틱 소요 시간을 빼고 남은 시간이 15ms보다 크면 `sleep_for()`를 호출한다. `lastTick += GAME_TICK`으로 다음 기준을 유지한다.
+
+아이템 사용·장비 처리도 Zone 패킷 경로에서 실행한다. 가변 게임 상태는 담당 Zone 워커만 접근하므로 `ZoneState`에 mutex를 두지 않는다. 종료 시에는 남은 접속 종료 이벤트를 처리하고, 해당 Zone의 캐릭터 저장을 요청한 뒤 워커가 끝난다.
+
+`sleep_for()`의 실제 복귀 시점은 OS 스케줄링에 영향을 받는다. 위의 15ms는 현재 코드의 대기 조건이다.
 
 ## 4. 타이머 해상도
 
@@ -45,7 +35,7 @@ Zone 스레드는 Tick 단위로 다음과 같은 작업을 수행한다:
 이 프로젝트는 타이머 해상도를 조정하지 않고 Windows 기본값(약 15.6ms)을 그대로 사용한다.
 
 - Zone Tick은 `lastTick += GAME_TICK`으로 누적 보정하므로 드리프트가 쌓이지 않는다. 개별 틱 간격은 흔들려도 장기 평균은 유지되며, 5,000명 부하 테스트에서 TPS 19~21로 확인했다.  
-- NetTimer는 1ms 주기로 `steady_clock`을 캐시하려 했으나 `sleep_for(1ms)`가 다음 클럭 틱까지 자므로 실제 갱신은 약 15.6ms 간격(≈64Hz)이다. RTT는 송신·수신에서 두 번 읽으므로 오차가 최대 ~31ms까지 벌어진다. 현재 RTT 용도가 로깅과 클라이언트 표시뿐이라 이 정밀도로 충분하다고 판단했다.  
+- `External::CachedClock`은 `steady_clock`을 캐시하며 루프마다 `sleep_for(1ms)`를 호출한다. 실제 갱신 간격은 OS 스케줄링에 따라 더 길어질 수 있다. Ping은 `ICachedClock`으로 값을 읽으며 RTT는 로깅과 클라이언트 표시에 사용한다. 현재 구현의 갱신 간격을 별도로 재측정한 결과는 아니다.
 
 ### 해상도를 올리는 두 가지 방법
 
@@ -74,7 +64,7 @@ Zone 스레드는 Tick 단위로 다음과 같은 작업을 수행한다:
 
 | | RTT 오차 | 되감기 판정 |
 |---|---|---|
-| 현재 (캐시 시계 + 기본 해상도) | ~31ms | 50ms 틱 기준으로 스냅샷을 한 틱 이상 잘못 고를 수 있음 |
+| 캐시 갱신이 약 15.6ms 간격인 조건 | 두 시각을 읽을 때 ~31ms의 오차 예산 | 50ms 틱의 스냅샷 선택에도 영향을 줄 수 있음 |
 | HR waitable timer 적용 | ~2ms | 틱 내부 오차로 수렴 |
 
 즉 되감기를 도입하는 순간 타이머 해상도는 선택이 아니라 요구사항이 된다.
@@ -82,7 +72,7 @@ Zone 스레드는 Tick 단위로 다음과 같은 작업을 수행한다:
 ### 결론
 
 현재는 되감기 판정이 없고 RTT가 게임 로직에 관여하지 않으므로 적용하지 않는다.
-되감기를 도입하거나 RTT가 판정 경로에 들어가는 시점에 `NetTimer`의 대기를 `CREATE_WAITABLE_TIMER_HIGH_RESOLUTION` 기반으로 교체한다. `GetTimeMS()` 인터페이스는 그대로 두고 내부 대기만 바꾸면 되므로 호출부 변경은 없다.
+되감기나 RTT 기반 판정을 검토할 때는 `CachedClock`의 실제 갱신 간격과 호출부 요구 정밀도를 함께 확인한다. 고해상도 대기는 대안이며 현재 코드에는 적용하지 않았다.
 
 ## 5. 클라이언트 송신 틱과 수신 처리
 처음에는 수신도 서버 틱처럼 한 틱씩 순서대로 처리하면 화면이 자연스러워질 것으로 생각해 별도의 수신 큐와 50ms 처리 루프를 두었다. 이후 예측과 러버밴딩을 조정하면서 이 수신 지연은 남아 있었다. 하지만 네트워크 도착 간격은 일정하지 않고, 고정 대기는 패킷을 다시 묶어 처리할 뿐 서버의 원래 틱 간격을 복원하지 못한다. 따라서 수신 틱을 제거하고 기존 소켓 수신 핸들러로 통합했다.
@@ -94,6 +84,8 @@ Zone 스레드는 Tick 단위로 다음과 같은 작업을 수행한다:
 - **원격 엔티티:** 현재 AI Agent Unity 클라이언트는 최근 좌표 표본을 저장하고 과거 시각을 렌더하는 보간을 사용한다. 이전의 ‘마지막 좌표를 향한 스무딩만 사용’ 설명과 구분한다. 수신 틱 제거 단계에서는 보간을 바꾸지 않았고, 후속 개선에서 최근8개 좌표를150ms 지연해 보간하도록 조정했다. 메인 스레드 큐 대기 시간도 좌표 표본 시각에서 빼서 같은 프레임에 처리된 패킷의 수신 간격을 보존한다. 서버 시각이 없는 현재 패킷에서 네트워크 자체의 묶음 도착까지 복원하는 것은 아니다.
 
 ## 6. 참고
-- [ZoneThreadSet.cpp](CoreLib/ZoneThreadSet.cpp)
-- [NetTimer.h](NetLibrary/NetTimer.h)
+- [ZoneThread.cpp](CoreLib/World/ZoneThread.cpp)
+- [ZoneHandler.h](CoreLib/World/ZoneHandler.h) — 틱 처리 순서
+- [ZoneEventRouter.h](CoreLib/World/ZoneEventRouter.h) — Zone별 소유와 요청 경계
+- [CachedClock.h](ExternalLib/CachedClock.h) · [ICachedClock.h](CoreLib/Interface/ICachedClock.h)
 - [PingLoop](PingLoop.md) — RTT 측정 경로

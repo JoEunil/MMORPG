@@ -90,7 +90,7 @@ __예상 bps(bit per second)__
 | 현재 5x5 Grid의 경계 반영 (AOI 합 169) | 865.28 Mbps | 93.02 Mbps | 958.30 Mbps |
 
 단순 합은 Full 전송 시에도 Delta를 생략하지 않는다고 가정한 payload 예산이다.   
-현재 `ZoneThreadSet::WorkerFunc`는 Full을 전송한 틱에는 Delta를 생략한다.  
+현재 `ZoneThread::WorkerFunc`가 Full·Delta 주기를 선택하고 `ZoneHandler::RunTick`이 스냅샷을 생성한다. Full을 선택한 틱에는 Delta를 생략한다.
 따라서 지연 없이 1초에 Full 1회와 Delta 19회를 수행하는 명목 스케줄에서는 다음과 같다.  
 
 ```

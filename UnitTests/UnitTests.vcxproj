@@ -206,4 +206,7 @@ xcopy /Y "$(SolutionDir)External\libevent\bin\Release\*.dll" "$(OutDir)"</Comman
   </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <ItemGroup>
+    <None Include="CacheLib\ProfileCacheTest.cpp" />
+  </ItemGroup>
 </Project>

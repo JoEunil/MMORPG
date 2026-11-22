@@ -569,7 +569,7 @@ def main(require_tour_media=False):
     shutil.copyfile(ROOT / "Resources/CodeExplorer/Reports/server-project-map.html", report)
     check_site()
     check_work_navigation(works)
-    print(f"Built home and {len(works)} project pages with screen histories and the server dependency report")
+    print(f"Built home and {len(works)} project pages with screen histories and CodeExplorer")
 
 
 def check_work_navigation(works):

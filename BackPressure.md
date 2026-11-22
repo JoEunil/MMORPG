@@ -63,11 +63,11 @@ Blocking 방식은 degraded 상태를 유지하지 않는다. Consumer가 block�
 
 Chat은 Non-Blocking 방식을 사용한다. 일반 Chat과 session lifecycle은 Droppable, Zone Join과 Leave는 Important로 분류한다. Primary와 defer 사이의 순서 역전은 session별 Zone sequence로 걸러낸다.
 
-Cache InMemory와 NonZone은 Blocking 방식을 사용한다.
+Cache InMemory와 NonSimulation은 Blocking 방식을 사용한다.
 
-- Cache InMemory는 Disconnect에서 생성한 Character State 저장만 Important로 분류한다.  일반 변경 요청은 Droppable로 처리한다.
-- NonZone은 Disconnect를 Important로 분류하고, defer까지 가득 차면 호출 스레드에서 직접 처리한다.
-- 실제 캐릭터 상태 저장은 `StateManager -> Cache MQ` 경로에서 처리한다.
+- Cache InMemory는 캐릭터 상태 저장과 골드 입금을 Important로 분류하고, 나머지 알려진 요청은 Droppable로 처리한다.
+- NonSimulation은 Disconnect와 LobbyReturn을 Important로 분류하고, defer까지 가득 차면 호출 스레드에서 해당 핸들러를 실행한다.
+- 필드 캐릭터의 접속 종료는 Zone 이벤트로 전달한다. 담당 `ZoneHandler`가 상태를 꺼내 `CacheCommandSender → IMessageQueue → Cache InMemory`로 저장을 요청한다. 로비 캐릭터는 `NonSimulationHandler`에서 같은 저장 요청 경로를 사용한다.
 
 DBWorker와 CacheFlush는 BackPressure queue를 사용하지 않는다. Bounded `RingQueue`가 가득 차면 오류를 기록하고 호출부 상태를 복구한다. 자세한 worker 구성은 [Work Queue Policy](WorkQueue.md)에 정리한다.
 

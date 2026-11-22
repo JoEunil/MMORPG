@@ -24,6 +24,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "솔루션 항목", "솔루�
 		AI-AGENT.md = AI-AGENT.md
 		BUILD.md = BUILD.md
 		README.md = README.md
+		AGENTS.md = AGENTS.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Concept", "Concept", "{C8D5274F-AC00-46C7-1F8D-E88E81087A52}"
@@ -55,11 +56,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 		images\4000_grafana.png = images\4000_grafana.png
 		images\5000_grafana.png = images\5000_grafana.png
 		images\5000_Success.png = images\5000_Success.png
-		images\Architecture.png = images\Architecture.png
 		images\Architecture_future.png = images\Architecture_future.png
 		images\broadcast_drop.png = images\broadcast_drop.png
 		images\CacheLibArchitecture.png = images\CacheLibArchitecture.png
-		images\CacheUnitTest.png = images\CacheUnitTest.png
 		images\Ecore.png = images\Ecore.png
 		images\FloodCheckFlowChart.png = images\FloodCheckFlowChart.png
 		images\flushQueue.png = images\flushQueue.png
@@ -91,6 +90,26 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 		images\TripleBuffer.png = images\TripleBuffer.png
 		images\Write-Back.png = images\Write-Back.png
 		images\zeroWindow.png = images\zeroWindow.png
+		images\Architecture_CacheLib.png = images\Architecture_CacheLib.png
+		images\Architecture_CoreLib.png = images\Architecture_CoreLib.png
+		images\Architecture_CoreLib.svg = images\Architecture_CoreLib.svg
+		images\Architecture_NetLib.png = images\Architecture_NetLib.png
+		images\Architecture_Server.png = images\Architecture_Server.png
+		images\Architecture_current.png = images\Architecture_current.png
+		images\Bazaar.png = images\Bazaar.png
+		images\CacheDurabilityTest1.png = images\CacheDurabilityTest1.png
+		images\CacheDurabilityTest2.png = images\CacheDurabilityTest2.png
+		images\CacheIntegrationTest.png = images\CacheIntegrationTest.png
+		images\CacheIntegrationTest2.png = images\CacheIntegrationTest2.png
+		images\LLM_DecoderArchitecture.png = images\LLM_DecoderArchitecture.png
+		images\LLM_Linear_Nonlinear.png = images\LLM_Linear_Nonlinear.png
+		images\LLM_NeuralNetwork.png = images\LLM_NeuralNetwork.png
+		images\LLM_RNN_vs_Attention.png = images\LLM_RNN_vs_Attention.png
+		images\LLM_SelfAttention.png = images\LLM_SelfAttention.png
+		images\MonsterAI.png = images\MonsterAI.png
+		images\TestBazaar6-4.png = images\TestBazaar6-4.png
+		images\flushQueue1.png = images\flushQueue1.png
+		images\flushQueue2.png = images\flushQueue2.png
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Gif", "Gif", "{1EAD1855-C4A5-4C63-AC48-2766B77829DD}"
@@ -124,6 +143,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{C6CB27A9-D
 		DummyTest2.md = DummyTest2.md
 		DummyTest3.md = DummyTest3.md
 		Monitoring.md = Monitoring.md
+		Benchmark_WorkerQueue.md = Benchmark_WorkerQueue.md
+		Benchmark_ZoneTick.md = Benchmark_ZoneTick.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Refactor", "Refactor", "{FBE39A87-206D-4DA5-907E-619734B665F2}"
@@ -168,6 +189,34 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnitTests", "UnitTests\UnitTests.vcxproj", "{55BBB8A4-C0AD-42FB-B110-CB3457C1D240}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Benchmark", "Benchmark\Benchmark.vcxproj", "{8EAD7F31-5781-479D-A0C7-CFD8799CDAD7}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CodeExplorer", "CodeExplorer", "{FE4D8710-8AC9-53EF-96F2-17C8252F13D0}"
+	ProjectSection(SolutionItems) = preProject
+		Resources\CodeExplorer\README.md = Resources\CodeExplorer\README.md
+		Resources\CodeExplorer\Reports\server-project-map.html = Resources\CodeExplorer\Reports\server-project-map.html
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Screenshots", "Screenshots", "{D110FA9E-54A6-57B6-B8F3-4EA95FF0D7DA}"
+	ProjectSection(SolutionItems) = preProject
+		Resources\CodeExplorer\Screenshots\connection-expansion.png = Resources\CodeExplorer\Screenshots\connection-expansion.png
+		Resources\CodeExplorer\Screenshots\cohesion-example.png = Resources\CodeExplorer\Screenshots\cohesion-example.png
+		Resources\CodeExplorer\Screenshots\filter-map.png = Resources\CodeExplorer\Screenshots\filter-map.png
+		Resources\CodeExplorer\Screenshots\interface-boundaries.png = Resources\CodeExplorer\Screenshots\interface-boundaries.png
+		Resources\CodeExplorer\Screenshots\namespace-map.png = Resources\CodeExplorer\Screenshots\namespace-map.png
+		Resources\CodeExplorer\Screenshots\project-libraries.png = Resources\CodeExplorer\Screenshots\project-libraries.png
+		Resources\CodeExplorer\Screenshots\selected-core-classes.png = Resources\CodeExplorer\Screenshots\selected-core-classes.png
+		Resources\CodeExplorer\Screenshots\wal-method-map.png = Resources\CodeExplorer\Screenshots\wal-method-map.png
+		Resources\CodeExplorer\Screenshots\winforms-project-scope.png = Resources\CodeExplorer\Screenshots\winforms-project-scope.png
+		Resources\CodeExplorer\Screenshots\winforms-startup.jpg = Resources\CodeExplorer\Screenshots\winforms-startup.jpg
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Videos", "Videos", "{008B2D7A-9ED0-5432-9CCA-8DDAF1200F02}"
+	ProjectSection(SolutionItems) = preProject
+		images\2000.mp4 = images\2000.mp4
+		images\2000_2.mp4 = images\2000_2.mp4
+		images\3000.mp4 = images\3000.mp4
+		images\4000.mp4 = images\4000.mp4
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -378,6 +427,9 @@ Global
 		{FBE39A87-206D-4DA5-907E-619734B665F2} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 		{6C9964E0-7303-46E2-ABEB-A2CD3EBE4D43} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 		{C60890E3-6BC0-444C-8B3B-3846C03E623B} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
+		{FE4D8710-8AC9-53EF-96F2-17C8252F13D0} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
+		{D110FA9E-54A6-57B6-B8F3-4EA95FF0D7DA} = {FE4D8710-8AC9-53EF-96F2-17C8252F13D0}
+		{008B2D7A-9ED0-5432-9CCA-8DDAF1200F02} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1D7E6752-8BC7-4122-B538-33B39EB8EA38}

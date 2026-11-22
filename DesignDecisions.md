@@ -28,14 +28,14 @@
 ### 2.1 Zone별 틱
 
 같은 공간의 이동·전투·몬스터 갱신을 함께 처리하도록 Zone마다 전용 틱 스레드를 뒀다.  
-IOCP 워커가 받은 시뮬레이션 작업은 해당 Zone의 큐로 넘긴다.  
-진입·이탈·프로필 갱신은 아직 외부 스레드에서도 실행돼 관련 틱 로직에 mutex가 남아 있다.  
-이를 이벤트 큐로 옮기려면 Zone 간 이동에서 연결과 상태를 넘기는 순서도 함께 정해야 한다.  
+IOCP 워커가 받은 시뮬레이션 패킷과 진입·이동·리스폰·프로필 갱신·접속 종료 요청을 `ZoneEvent`로 전달한다.
+`ZoneEventRouter`가 Zone별 상태와 워커를 소유하고, 워커는 `ZoneHandler`에 자기 `ZoneState`를 넘겨 처리한다. 아이템 사용·장비 변경과 종료 시 캐릭터 저장도 담당 워커에서 수행해 `ZoneState`의 mutex를 제거했다.
+세션 인증·소속·`ownershipEpoch`는 `SessionManager`의 샤드 잠금으로, 로비의 대기 캐릭터는 `LobbyZone`의 mutex로 보호한다.
 
 ### 2.2 20Hz와 되감기
 
 한 틱에 많은 엔티티를 처리할 수 있도록 50ms의 예산을 잡았다.  
-내 캐릭터는 예측으로, 원격 엔티티는 마지막 수신 좌표를 따라가는 스무딩으로 화면을 보완한다.  
+현재 Unity 클라이언트는 내 캐릭터의 예측·보정과 원격 엔티티의 좌표 표본 보간으로 화면을 보완한다.
 FPS의 히트스캔은 쏜 순간에 보였던 위치가 중요하지만, 이 서버의 전투는 스킬 범위·시전 단계·지속시간에 걸쳐 판정한다.  
 보스 스킬도 여러 Phase에서 반복 판정하므로, 과거 좌표로 되감기보다 현재 틱의 월드 상태를 기준으로 처리했다.  
 현재 로직과 캐릭터 Delta 전파는 모두 20Hz다. 판정 해상도를 높여야 한다면 로직 틱과 전파 주기를 분리할 수 있다.  
@@ -55,10 +55,11 @@ Actor를 적용하더라도 이 상태 공유 범위에는 엔티티 하나보�
 
 ### 2.4 작업 큐와 Triple Buffer
 
-- **작업 전달.** Zone은 틱마다 Bounded MPMC Queue를 확인하고, Broadcast 워커는 별도 큐에서 패킷 Chunk를 꺼내 송신한다. 두 큐는 포화 시 drop을 집계한다.
+- **작업 전달.** Zone은 틱마다 `MPMCQueue<ZoneEvent>`를 확인한다. 기본 큐가 가득 차면 일반 이벤트는 거절하고, 프로필 갱신·접속 종료는 별도 지연 목록에 등록한다. 지연 목록 할당도 실패하면 접수를 거절한다.
+- **송신 큐.** Broadcast는 워커별 큐를 사용하며 전체 대기 작업 예산을 넘으면 drop을 집계한다. 같은 Zone의 작업은 같은 워커로 보낸다.
 - **송신 순서.** 같은 Zone의 작업은 같은 Broadcast 워커 큐에서 순서대로 송신한다. Delta는 변경 필드만 담으므로 오래된 패킷을 버리면 그 패킷에만 있던 변경이 누락될 수 있다.
 - **초기 계획.** 클라이언트에서 seq로 오래된 패킷을 거를 계획이었으며, 당시 seq 처리와 순서 역전 검증은 구현에 반영되지 않았다. [DummyTest2](DummyTest2.md)
-- **전송 대상.** Cell별 session ID 목록은 Triple Buffer로 공유한다. 기존 읽기 참조가 모두 반환된 뒤 새 읽기에서 최신 목록으로 교체한다.
+- **전송 대상.** Cell별 session ID 목록은 `ZoneState`가 Triple Buffer로 발행한다. Broadcast는 `ISessionSnapshotReader`를 통해 작업을 처리할 때 목록을 읽으며, `SessionManager`나 `ZoneState`를 직접 조회하지 않는다. 기존 읽기 참조가 모두 반환된 뒤 새 읽기에서 최신 목록으로 교체한다.
 
 → [작업 큐](WorkQueue.md), [Triple Buffer](TripleBuffer.md), [WorkerQueue 벤치마크](Benchmark_WorkerQueue.md)  
 
@@ -74,7 +75,17 @@ Actor를 적용하더라도 이 상태 공유 범위에는 엔티티 하나보�
 ### 2.6 컴포넌트 연결
 
 - 서버 시작 지점과 각 라이브러리의 Initializer에서 컴포넌트를 만들고 의존성을 연결한다. 내부 전용 객체는 소유자가 관리한다.
+- `PacketDispatcher`는 `IZonePacketQueue`·`INonSimulationQueue`로 요청을 보내고, `ISessionStatusReader`로 세션 상태를 읽는다. 역할별 인터페이스는 사용하는 기능의 범위에 맞췄다.
 - 스레드를 넘는 작업은 생산자 → 큐 → 소비자 → 반납 지점을 따라간다.
+
+![CoreLib 핵심 구성과 작업 전달](images/Architecture_CoreLib.png)
+
+### 2.7 Zone 이동과 초기 상태 전송
+
+- **비동기 이동.** 출발 Zone은 세션에 이동 대기 정보를 등록하고 도착 Zone에 이벤트를 보낸다. 도착 Zone의 수락·거절도 이벤트로 처리하며 다른 Zone 워커를 동기 대기하지 않는다.
+- **실패 복구.** 도착 이벤트 접수에 실패하면 출발 상태를 유지한다. 도착 후 진입에 실패하면 출발 Zone으로 복귀를 요청하고, 복귀를 접수하거나 처리할 수 없으면 로비 반환 경로를 사용한다.
+- **소속 확정.** `SessionManager`가 이동 대기 정보와 epoch를 확인해 새 소속을 확정한다. 처리 중 접속 종료로 확정이 거절되면 도착 Zone에 임시 등록한 캐릭터를 제거한다.
+- **ACK와 bootstrap.** `ServerResponseWorker`가 Zone 변경 ACK를 네트워크 계층에 넘긴 뒤 담당 Zone에 bootstrap을 요청한다. Zone에서 캡처한 bootstrap과 이후 Full·Delta는 같은 Broadcast 워커 큐로 보낸다. 이는 서버의 송신 요청 순서이며 클라이언트 수신 완료를 기다리는 절차는 아니다.
 
 ## 3. TCP와 종료 처리
 

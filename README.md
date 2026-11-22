@@ -6,6 +6,8 @@ C++20과 Windows IOCP로 만든 개인 프로젝트다. 이동, 스킬, 몬스�
 
 [포트폴리오 PPT](https://docs.google.com/presentation/d/1Sz7WlzlE4qYqyXO43ad0i0CYAFvzJMR2/edit?usp=sharing&ouid=104250523129405797740&rtpof=true&sd=true) · [2,000명 접속 시연 영상](https://youtu.be/2q2kZwI3uSQ) · [빌드 및 실행](BUILD.md)
 
+[서버 설계 결정](DesignDecisions.md) · [서버 리팩터링](ServerRefactoring.md) · [CodeExplorer](https://joeunil.github.io/MMORPG/reports/server-project-map.html)
+
 ## 구조
 
 ![전체 서버 라이브러리 구성과 의존 관계](images/Architecture_Server.png)
@@ -22,7 +24,7 @@ IOCP가 받은 데이터를 세션별 `ClientContext`에서 누적하고, `NetPa
 
 ### CoreLib — 게임 상태와 요청 처리
 
-`PacketDispatcher`가 요청을 Zone과 NonSimulation 처리 경로로 나눈다. `Core::SessionManager`는 세션과 Zone 소속을, `ZoneState`는 Zone의 게임 상태를 관리한다. 채팅과 스냅샷 전송은 별도 워커가 맡으며, `PacketWriter`는 패킷 구성을 담당한다.
+`PacketDispatcher`가 요청을 Zone과 NonSimulation 처리 경로로 나눈다. `ZoneEventRouter`가 Zone별 상태와 워커를 소유하고, `ZoneThread → ZoneHandler → ZoneState` 흐름으로 게임 상태를 갱신한다. `SessionManager`는 세션과 Zone 소속을 관리하며, 채팅과 스냅샷 전송은 별도 워커가 맡는다.
 
 ![CoreLib 핵심 컴포넌트와 게임 처리 흐름](images/Architecture_CoreLib.png)
 
@@ -36,7 +38,7 @@ IOCP가 받은 데이터를 세션별 `ClientContext`에서 누적하고, `NetPa
 
 AI Agent를 활용해 만든 Clang 기반 C++ 코드 탐색 도구다. 서버 구조를 파악하고 리팩터링할 부분을 찾기 위해, 관심 클래스·메서드만 골라 관계와 코드 위치를 확인하도록 만들었다.
 
-[서버 코드 탐색하기](https://joeunil.github.io/MMORPG/reports/server-project-map.html) · [사용 안내](Resources/CodeExplorer/README.md)
+[CodeExplorer — 코드 구조 탐색기 열기](https://joeunil.github.io/MMORPG/reports/server-project-map.html) · [사용 안내](Resources/CodeExplorer/README.md)
 
 <a href="https://joeunil.github.io/MMORPG/reports/server-project-map.html">
   <img src="Resources/CodeExplorer/Screenshots/selected-core-classes.png" alt="관심 클래스만 선택해 연결 관계를 확인한 CodeExplorer 예시 — 클릭하면 보고서로 이동" width="760">
@@ -44,6 +46,10 @@ AI Agent를 활용해 만든 Clang 기반 C++ 코드 탐색 도구다. 서버 �
 
 - **구조 탐색**: 클래스 지도·메서드 지도·클래스 내부 멤버 지도에서 필요한 관계를 좁혀 본다.
 - **변경 후보 검토**: 순환 의존과 리팩터링·성능 개선 후보에서 관련 코드와 연결 근거를 확인한다.
+
+아래는 이동과 아이템 관리를 한 클래스에 둔 **검증용 예제**다. 서로 다른 필드를 사용하는 메서드 묶음을 확인해 클래스 책임 분리를 검토한다.
+
+<img src="Resources/CodeExplorer/Screenshots/cohesion-example.png" alt="검증용 예제의 리팩터링 후보와 메서드·필드 연결 지도" width="960">
 
 ## AI 활용과 클라이언트 개발
 
@@ -59,6 +65,8 @@ AI Agent를 활용해 만든 Clang 기반 C++ 코드 탐색 도구다. 서버 �
 
 ## 주요 설계
 
+[서버 설계 결정](DesignDecisions.md)에 각 선택의 근거와 대안, 현재 보장 범위를 정리했다.
+
 ### 1. Cell 단위 스냅샷
 
 시야에 들어오는 엔티티가 많으면 수신자마다 패킷을 조립하는 일도 부담이 된다. Cell별로 한 번 만든 Chunk를 그 Cell을 보는 세션들이 공유하도록 했다. 주변 3×3 Cell에만 전파하고, 평소에는 변경된 필드만 Delta로 보낸다.  
@@ -70,7 +78,7 @@ AI Agent를 활용해 만든 Clang 기반 C++ 코드 탐색 도구다. 서버 �
 
 시뮬레이션 패킷과 Zone 이동·진입·리스폰·프로필 갱신·접속 종료 요청을 Zone 이벤트 큐로 전달하고, 담당 워커가 처리한다. 같은 공간에서 이동·스킬·몬스터 갱신이 계속 일어나므로 Zone을 실행 단위로 잡았다.
 브로드캐스트 전송은 별도 워커에서 처리한다. 패킷 Chunk는 작업 큐로 넘기고, Cell별 전송 대상 목록은 `ISessionSnapshotReader`를 통해 Triple Buffer에서 읽는다.
-아이템 사용·장비 처리와 종료 정리에는 외부 스레드의 Zone 접근이 남아 있어 mutex를 유지하고 있다. 큐 포화 처리는 요청 종류에 따라 거절·drop·지연 큐로 나뉜다.
+아이템 사용·장비 처리까지 Zone 워커로 모아 `ZoneState`의 mutex를 제거했다. 세션 샤드와 `LobbyZone`은 각 상태에 필요한 동기화를 유지한다. 큐 포화 처리는 요청 종류에 따라 거절·drop·지연 큐로 나뉜다.
 
 [설계 결정](DesignDecisions.md#2-시뮬레이션과-스레드-경계) · [작업 큐](WorkQueue.md) · [Triple Buffer](TripleBuffer.md)
 
@@ -80,6 +88,14 @@ AI Agent를 활용해 만든 Clang 기반 C++ 코드 탐색 도구다. 서버 �
 WAL은 성공 응답 전에 fsync를 기다리지 않는다. 마지막으로 디스크에 동기화된 이후의 변경은 유실될 수 있다. 골드는 일부 유실을 허용하는 설계로 WAL을 적용하지 않는다. 거래소 등록은 아이템 차감 후 매물을 만들기 전에 죽으면 아이템이 유실될 수 있다.
 
 [설계 결정](DesignDecisions.md#5-영속-데이터와-장애-복구) · [캐시](CacheLib.md) · [WAL](WAL.md) · [거래소](Bazaar.md)
+
+## 서버 리팩터링
+
+중복 처리와 클래스 책임, 의존성 경계를 점검하며 서버를 정리했다. [서버 리팩터링](ServerRefactoring.md)에 변경 내용과 판단 기준을 모았다.
+
+- `StateManager`의 Zone 작업과 세션 관리 책임을 나누고, 역할에 맞춰 `SessionManager`로 이름을 바꿨다.
+- 호출부가 필요한 기능을 인터페이스로 분리하고, 메시지·패킷 구성의 공통 처리를 모았다.
+- CodeExplorer로 관계를 좁혀 보며 순환 의존과 책임 분리 후보를 확인했다.
 
 ## 테스트
 

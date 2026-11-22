@@ -407,6 +407,7 @@ wal/
 !/Resources/CodeExplorer/Screenshots/
 !/Resources/CodeExplorer/Reports/
 /Resources/CodeExplorer/Screenshots/*
+!/Resources/CodeExplorer/Screenshots/cohesion-example.png
 !/Resources/CodeExplorer/Screenshots/winforms-startup.jpg
 !/Resources/CodeExplorer/Screenshots/winforms-project-scope.png
 !/Resources/CodeExplorer/Screenshots/selected-core-classes.png

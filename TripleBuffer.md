@@ -5,6 +5,14 @@
 초기에는 여러 Broadcast 워커가 같은 Zone의 전송 대상 목록을 읽도록 SPMC로 설계했다. 현재는 패킷 순서를 보장하기 위해 같은 Zone의 작업을 같은 Broadcast 워커 큐로 보낸다. 워커 수는 Zone 수와 독립적이며, 한 워커가 여러 Zone을 처리할 수 있다.  
 따라서 현재 서버 연결에서는 Zone별 단일 reader만 사용한다. 다중 reader를 위한 참조 카운트는 이 경로의 필수 조건이 아니지만, 기존 SPMC 구현은 아직 목록 스냅샷 교환에 사용한다. 아래 다중 reader 설명과 벤치마크는 자료구조 자체의 설계·검증 기록이다.  
 
+### 현재 CoreLib 연결
+
+- **발행:** `ZoneState`가 Cell별 session ID 목록과 쓰기 슬롯을 소유하고, 담당 Zone 워커에서 목록을 발행한다.
+- **조회:** `BroadcastThreadPool`은 `ISessionSnapshotReader`로 읽기 뷰를 받는다. 인터페이스는 `ZoneEventRouter`가 구현하므로 Broadcast가 `SessionManager`나 가변 `ZoneState`를 직접 참조하지 않는다.
+- **수명:** 읽기 뷰는 전송 작업 범위에서 유지한다. 종료 시 Zone 워커와 Broadcast 워커를 모두 멈춘 뒤 Router 소유의 상태와 버퍼를 파괴한다.
+
+→ [CoreLib 구조와 실행 경계](DesignDecisions.md#26-컴포넌트-연결)
+
 ## 2. Triple Buffer란?
 Triple Buffer는 공유 자원에 대해 읽기(Reader)와 쓰기(Writer) 작업이 빈번하게 발생하는 멀티스레드 환경에서,     
 Lock 경합을 최소화하고 데이터의 최신 상태(Snapshot)를 안전하고 빠르게 공유하기 위한 버퍼링 기법이다.  
