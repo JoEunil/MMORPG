@@ -158,6 +158,9 @@
     <ClInclude Include="World\MonsterState.h" />
     <ClInclude Include="NonSimulation\NonSimulationHandler.h" />
     <ClInclude Include="NonSimulation\NonSimulationThreadPool.h" />
+    <ClInclude Include="NonSimulation\NonSimulationEvent.h" />
+    <ClInclude Include="NonSimulation\ChatEvent.h" />
+    <ClInclude Include="World\ZoneEvent.h" />
     <ClInclude Include="World\BroadcastThreadPool.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="Cache\CacheConfig.h" />

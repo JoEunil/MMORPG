@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "NonSimulationHandler.h"
+#include "NonSimulationEvent.h"
 #include "../World/Interface/ILobbyReturnQueue.h"
 #include "Interface/INonSimulationQueue.h"
 #include "../Interface/IPacketView.h"
@@ -15,21 +16,8 @@
 namespace Core {
     // 게임틱 단위로 처리되지 않는 (zone 상태와 관련 없는) 요청 처리
     class NonSimulationThreadPool final : public INonSimulationQueue, public ILobbyReturnQueue {
-        enum class EventType : uint8_t {
-            Work,
-            Disconnect,
-            LobbyReturn,
-        };
-
-        struct Event {
-            EventType type = EventType::Work;
-            std::unique_ptr<IPacketView, PacketViewDeleter> work;
-            uint64_t sessionID = 0;
-            std::shared_ptr<ZoneTransfer> transfer;
-        };
-
         std::vector<std::thread> m_threads;
-        Base::BlockingBackPressureQueue<Event, NON_SIMULATION_EVENT_QUEUE_SIZE, NON_SIMULATION_DEFER_QUEUE_SIZE,true> m_eventQueue;
+        Base::BlockingBackPressureQueue<NonSimulationEvent, NON_SIMULATION_EVENT_QUEUE_SIZE, NON_SIMULATION_DEFER_QUEUE_SIZE,true> m_eventQueue;
 
         std::atomic<bool> m_running = false;
         

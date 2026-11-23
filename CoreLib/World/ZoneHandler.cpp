@@ -15,6 +15,50 @@
 #include <cmath>
 
 namespace Core {
+    size_t ZoneHandler::Process(ZoneState& zone, uint16_t zoneID, ZoneEvent& event) {
+        return std::visit(EventVisitor{*this, zone, zoneID}, event);
+    }
+
+    size_t ZoneHandler::EventVisitor::operator()(const ZonePacketEvent& event) const {
+        handler.Process(zone, event.packet.get(), zoneID);
+        return 1;
+    }
+
+    size_t ZoneHandler::EventVisitor::operator()(const ZoneTransferEvent& event) const {
+        handler.ProcessZoneTransfer(zone, event.transfer, false);
+        return 0;
+    }
+
+    size_t ZoneHandler::EventVisitor::operator()(const ZoneTransferRejectedEvent& event) const {
+        handler.ProcessZoneTransfer(zone, event.transfer, true);
+        return 0;
+    }
+
+    size_t ZoneHandler::EventVisitor::operator()(const ZoneProfileVersionEvent& event) const {
+        handler.ApplyProfileVersion(zone, event.update);
+        return 0;
+    }
+
+    size_t ZoneHandler::EventVisitor::operator()(const ZoneBootstrapEvent& event) const {
+        handler.ProcessBootstrap(zone, event);
+        return 0;
+    }
+
+    size_t ZoneHandler::EventVisitor::operator()(const ZoneLobbyEntryEvent& event) const {
+        handler.ProcessLobbyEntry(zone, event);
+        return 0;
+    }
+
+    size_t ZoneHandler::EventVisitor::operator()(const ZoneRespawnEvent& event) const {
+        handler.ProcessRespawn(zone, event);
+        return 0;
+    }
+
+    size_t ZoneHandler::EventVisitor::operator()(const ZoneDisconnectEvent& event) const {
+        handler.ProcessDisconnect(zone, zoneID, event);
+        return 0;
+    }
+
     void ZoneHandler::ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID) {
         if (!std::isfinite(action.aimAngle) || action.aimAngle < 0 || action.aimAngle >= 360)
             return;
@@ -27,7 +71,7 @@ namespace Core {
         zone.ApplyAction(sessionID, action, *zoneTransfer);
     }
 
-    void ZoneHandler::ProcessLobbyEntry(ZoneState& zone, const ZoneRequest& request) {
+    void ZoneHandler::ProcessLobbyEntry(ZoneState& zone, const ZoneLobbyEntryEvent& request) {
         const auto sessionID = request.sessionID;
         ZoneChangeResult result;
         const auto outcome = lobbyZone->EnterField(sessionID, request.ownershipEpoch, zone, result);
@@ -37,7 +81,7 @@ namespace Core {
             SendZoneChangeFailed(sessionID);
     }
 
-    void ZoneHandler::ProcessRespawn(ZoneState& zone, const ZoneRequest& request) {
+    void ZoneHandler::ProcessRespawn(ZoneState& zone, const ZoneRespawnEvent& request) {
         const auto sessionID = request.sessionID;
         const auto respawn = sessionManager->CheckRespawnRequest(sessionID, zone.GetZoneID(), request.ownershipEpoch);
         if (respawn.status == RespawnRequest::Status::Ignored)
@@ -61,13 +105,11 @@ namespace Core {
             SendZoneChange(sessionID, result);
     }
 
-    void ZoneHandler::ProcessZoneTransfer(ZoneState& zone, const ZoneEvent& event) {
-        const auto& transfer = event.transfer;
+    void ZoneHandler::ProcessZoneTransfer(ZoneState& zone, const std::shared_ptr<ZoneTransfer>& transfer, bool returning) {
         if (!transfer)
             return;
 
         const auto sessionID = transfer->character.sessionID;
-        const bool returning = event.type == ZoneEventType::TransferRejected;
         const auto snapshot = sessionManager->ReadZoneTransfer(transfer, zone.GetZoneID(), returning);
         if (!snapshot)
             return;
@@ -114,7 +156,7 @@ namespace Core {
             errorLogger->LogWarn("zone handler", "could not route profile version", "sessionID", update.sessionID, "zoneID", *route);
     }
 
-    void ZoneHandler::ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneRequest& request) {
+    void ZoneHandler::ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneDisconnectEvent& request) {
         std::shared_ptr<ZoneTransfer> pending;
         if (!sessionManager->CompleteZoneDisconnect(request.sessionID, zoneID, request.ownershipEpoch, pending))
             return;
@@ -130,7 +172,7 @@ namespace Core {
             gameLogger->LogWarn("zone handler", "disconnect character not found", "sessionID", request.sessionID, "zoneID", zoneID);
     }
 
-    void ZoneHandler::ProcessBootstrap(ZoneState& zone, const ZoneRequest& request) {
+    void ZoneHandler::ProcessBootstrap(ZoneState& zone, const ZoneBootstrapEvent& request) {
         const auto info = sessionManager->PrepareZoneBootstrap(request.sessionID, zone.GetZoneID(), request.ownershipEpoch, request.resendZoneChange);
         if (!info)
             return;

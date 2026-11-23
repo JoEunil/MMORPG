@@ -77,8 +77,8 @@ namespace Core {
         }
         ZoneEvent event;
         while (workQueue.Dequeue(event)) {
-            if (event.type == ZoneEventType::Disconnect)
-                handler->ProcessDisconnect(zone, zoneID, event.request);
+            if (const auto* disconnect = std::get_if<ZoneDisconnectEvent>(&event))
+                handler->ProcessDisconnect(zone, zoneID, *disconnect);
         }
         handler->SaveRemainingCharacters(zone);
     }
@@ -111,7 +111,7 @@ namespace Core {
 
     bool ZoneThread::CanEnqueue(const ZoneEvent& event) const {
         return perfCollector != nullptr &&
-            (event.type == ZoneEventType::Packet || running.load(std::memory_order_acquire));
+            (std::holds_alternative<ZonePacketEvent>(event) || running.load(std::memory_order_acquire));
     }
 
     bool ZoneThread::Enqueue(ZoneEvent& event) {

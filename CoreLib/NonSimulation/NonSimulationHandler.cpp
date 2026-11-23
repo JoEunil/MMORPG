@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include "NonSimulationHandler.h"
+#include <utility>
 
 #include "../Cache/CacheCommandSender.h"
 #include "../Packet/PacketTypes.h"
@@ -20,6 +21,24 @@
 #include "../Data/ItemData.h"
 
 namespace Core {
+    void NonSimulationHandler::Process(NonSimulationEvent& event) {
+        std::visit(EventVisitor{*this}, event);
+    }
+
+    void NonSimulationHandler::EventVisitor::operator()(NonSimulationWorkEvent& event) const {
+        handler.Process(std::move(event.work));
+        event.work.reset();
+    }
+
+    void NonSimulationHandler::EventVisitor::operator()(NonSimulationDisconnectEvent& event) const {
+        handler.Disconnect(event.sessionID);
+    }
+
+    void NonSimulationHandler::EventVisitor::operator()(NonSimulationLobbyReturnEvent& event) const {
+        handler.ReturnToLobby(event.transfer);
+        event.transfer.reset();
+    }
+
     void NonSimulationHandler::Initialize(IServerResponseQueue& responseQueue, PacketWriter& packetWriter, ISessionAuth* s, const CacheCommandSender* commands, SessionManager* manager,
         LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc, IZonePacketQueue& packets, IZoneRequestQueue& requests) {
         zonePackets = &packets;
@@ -221,8 +240,7 @@ namespace Core {
         uint8_t* startPtr = p->GetPtr() + sizeof(PacketStruct<ChatRequestBody>);
         auto session = p->GetSessionID();
         auto zoneID = sessionManager->GetZoneID(session);
-        ChatEvent event;
-        event.type = ChatEventType::CHAT;
+        ChatMessageEvent event{};
         event.senderSessionID = session;
         event.key.scope = body->scope;
         switch (body->scope) {
@@ -238,7 +256,8 @@ namespace Core {
             return;
         }
         event.message = std::string(reinterpret_cast<char*>(startPtr), body->messageLength);
-        chat->EnqueueChat(event);
+        ChatEvent queued = std::move(event);
+        chat->EnqueueChat(queued);
     }
 
     // 클라이언트가 모르는 profile_id 목록을 보내면 캐시에 있는 것만 돌려준다.

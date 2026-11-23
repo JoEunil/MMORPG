@@ -32,22 +32,10 @@ namespace Core {
         std::stringstream ss;
         ss << tid;
         sysLogger->LogInfo("non zone thread", "non zone thread started", "threadID", ss.str());
-        Event event;
+        NonSimulationEvent event;
         while (m_eventQueue.Dequeue(event))
         {
-            switch (event.type) {
-            case EventType::Work:
-                handler->Process(std::move(event.work));
-                event.work.reset();
-                break;
-            case EventType::Disconnect:
-                handler->Disconnect(event.sessionID);
-                break;
-            case EventType::LobbyReturn:
-                handler->ReturnToLobby(event.transfer);
-                event.transfer.reset();
-                break;
-            }
+            handler->Process(event);
         }
         sysLogger->LogInfo("non zone thread", "non zone worker stopped", "threadID", ss.str());
     }
@@ -56,9 +44,7 @@ namespace Core {
         if (!m_running.load(std::memory_order_relaxed))
             return;
 
-        Event event;
-        event.type = EventType::Work;
-        event.work = std::move(packet);
+        NonSimulationEvent event = NonSimulationWorkEvent{std::move(packet)};
         if (!m_eventQueue.Enqueue(event, Base::Priority::Droppable))
             errorLogger->LogWarn("non zone thread", "work queue full");
     }
@@ -67,9 +53,7 @@ namespace Core {
         if (!m_running.load(std::memory_order_relaxed))
             return; // SessionManager saves pending characters during shutdown.
 
-        Event event;
-        event.type = EventType::LobbyReturn;
-        event.transfer = transfer;
+        NonSimulationEvent event = NonSimulationLobbyReturnEvent{transfer};
         if (!m_eventQueue.Enqueue(event, Base::Priority::Important)) {
             errorLogger->LogWarn("non zone thread", "lobby return queue overflow");
             handler->ReturnToLobby(transfer);
@@ -80,9 +64,7 @@ namespace Core {
         if (!m_running.load(std::memory_order_relaxed))
             return;
 
-        Event event;
-        event.type = EventType::Disconnect;
-        event.sessionID = sessionID;
+        NonSimulationEvent event = NonSimulationDisconnectEvent{sessionID};
         if (!m_eventQueue.Enqueue(event, Base::Priority::Important)) {
             errorLogger->LogError("non zone thread", "disconnect queue overflow", "session", sessionID);
             handler->Disconnect(sessionID);
