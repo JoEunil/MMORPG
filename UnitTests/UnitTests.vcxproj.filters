@@ -105,4 +105,9 @@
       <Filter>CacheLib</Filter>
     </None>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="CoreLib\ZoneEventQueue.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+  </ItemGroup>
 </Project>

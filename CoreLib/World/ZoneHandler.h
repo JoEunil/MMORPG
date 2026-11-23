@@ -101,7 +101,7 @@ namespace Core {
             size_t packets = 0;
             {
                 ZoneEvent event;
-                while (processed < maxEvents && queue.pop(event)) {
+                while (processed < maxEvents && queue.Dequeue(event)) {
                     ++processed;
                     switch (event.type) {
                     case ZoneEventType::Packet:

@@ -90,6 +90,8 @@ BackPressure 정책은 Blocking/Non-Blocking 방식으로 나눠 적용한다.
 - `BlockingBackPressureQueue`: Primary/defer queue + `DrainableSemaphore`
 - `NonBlockingBackPressureQueue`: Primary/defer queue, tick 또는 batch polling
 
+`NonBlockingBackPressureQueue`의 `DeferSize=0`은 동적 지연 보관을 사용한다. Zone의 프로필 전파·Disconnect가 이 방식으로 `EnqueueDeferred()`되며, 별도 WAL은 기록하지 않는다. 일반 이벤트와 Transfer는 혼잡 시 `false`를 반환해 호출부의 거절·복구 경로를 사용한다.
+
 [Back Pressure Queue](BackPressure.md)
 
 ## 8. Worker별 적용
@@ -100,7 +102,7 @@ Cache 측 worker는 DB와 외부 I/O 대기가 처리 시간을 지배한다. Ho
 
 | Worker | Queue / Wake-up | 포화 정책 | Stop | 적용 이유 |
 | --- | --- | --- | --- | --- |
-| Zone | `MPMCQueue<ZoneEvent>` + game tick | 일반 이벤트 거절, ProfileVersion·Disconnect 지연 큐 | 틱 정지 후 Disconnect 처리 | 패킷과 내부 요청을 같은 Zone 워커에서 처리한다. 고정 tick이 실행 시점을 결정한다. |
+| Zone | `NonBlockingBackPressureQueue<ZoneEvent>` + game tick | 일반 이벤트·Transfer 거절, ProfileVersion·Disconnect 동적 defer | 틱 정지 후 남은 Disconnect 처리 | 공통 queue가 기본·지연 작업을 소비한다. 다른 Zone 워커를 기다리지 않고 접수 결과를 반환한다. |
 | Chat | `NonBlockingBackPressureQueue` + 15ms batch loop | Chat·Lifecycle drop, Zone Join·Leave defer | HardStop | Batch window 동안 dequeue가 block되면 안 된다. |
 | Broadcast | 워커별 `BlockingQueue` + Semaphore | 전체 대기 작업 512개 초과 시 drop | HardStop | 같은 Zone은 같은 워커 큐로 보내 송신 순서를 유지한다. 워커 수는 Zone 수와 독립적이다. Producer는 대기하지 않는다. |
 | NonSimulation | `BlockingBackPressureQueue` + Semaphore | Packet drop, Disconnect·LobbyReturn defer | Drain | Idle worker는 block한다. 접속 종료와 로비 복귀 요청을 지연 큐에 보관한다. |

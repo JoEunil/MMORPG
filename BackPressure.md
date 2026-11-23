@@ -25,15 +25,15 @@
 1. 정상 상태에서는 모든 작업을 primary queue에 넣는다.
 2. 병목 상태의 `Droppable` 작업은 버린다.
 3. 같은 상태의 `Important` 작업은 defer queue에 넣는다.
-4. Defer queue까지 가득 차면 durable log에 기록한다.
+4. 유한 defer queue까지 가득 차면 등록된 durable log 콜백을 호출한다. 콜백이 없거나 실패하면 `false`를 반환한다.
 
-Primary와 defer는 모두 bounded queue다. Important 작업도 무한히 쌓지 않고, 병목 시 처리 방식을 queue 정책으로 통일한다.
+Primary는 bounded queue다. Defer도 기본적으로 유한 용량을 사용하지만, `NonBlockingBackPressureQueue`의 `DeferSize=0`은 중요한 작업을 동적으로 보관한다. Zone의 프로필 변경 전파·Disconnect는 이 방식을 사용하며 별도 WAL은 추가하지 않는다. 동적 보관은 메모리 할당 실패 시 `false`를 반환한다.
 
 두 queue 사이의 전역 FIFO는 보장하지 않는다. 순서가 중요한 작업은 sequence 검증이나 최신 상태 우선 처리처럼 별도의 수렴 규칙이 필요하다.
 
 ## 4. Non-Blocking 방식
 
-`NonBlockingBackPressureQueue`는 primary와 defer에 `MPMCQueue`를 사용한다. Producer와 consumer 모두 대기하지 않으며, queue가 비거나 가득 차면 즉시 결과를 반환한다.
+`NonBlockingBackPressureQueue`의 primary와 유한 defer는 `MPMCQueue`를 사용한다. `DeferSize=0`인 경우 지연 작업을 공유 소유권을 가진 동적 노드에 보관한다. Consumer는 작업을 기다리지 않고 polling한다. 동적 노드의 `atomic<shared_ptr>`에는 lock-free 보장이 없다.
 
 ### Normal
 
@@ -44,6 +44,7 @@ Primary와 defer는 모두 bounded queue다. Important 작업도 무한히 쌓�
 
 - Droppable 입력은 버린다.
 - Important 입력은 defer queue에 넣는다.
+- 일반 작업은 `Enqueue()`, 보존할 작업은 `EnqueueDeferred()`로 호출한다. 각각 `Droppable`과 `Important`를 선택하며, 정상 상태에서는 둘 다 primary 용량을 먼저 사용한다.
 - Consumer는 primary queue를 먼저 비운 뒤 defer queue를 처리한다.
 - 두 queue가 모두 비면 normal 상태로 복구한다.
 

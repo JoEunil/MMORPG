@@ -13,7 +13,6 @@
 namespace Core {
     ZoneThread::~ZoneThread() {
         Stop();
-        ProcessDeferredEvents(nullptr);
     }
 
     void ZoneThread::Initialize(uint16_t id, ZoneHandler& zoneHandler, CorePerfCollector& perf) {
@@ -49,7 +48,6 @@ namespace Core {
 
         zone.InitializeMonster();
         while (running) {
-            ProcessDeferredEvents(&zone);
             handler->RunTick(zone, zoneID, workQueue, 2000, *perfCollector, [&] {
                 const auto now = std::chrono::steady_clock::now();
                 if (now - lastFullSnapshot >= FULL_SNAPSHOT_TICK) {
@@ -77,9 +75,8 @@ namespace Core {
 
             lastTick += GAME_TICK; // 틱 지연 보정
         }
-        ProcessDeferredEvents(&zone, true);
         ZoneEvent event;
-        while (workQueue.pop(event)) {
+        while (workQueue.Dequeue(event)) {
             if (event.type == ZoneEventType::Disconnect)
                 handler->ProcessDisconnect(zone, zoneID, event.request);
         }
@@ -112,41 +109,26 @@ namespace Core {
             sysLogger->LogInfo("zone thread", "zone thread stopped", "zoneID", zoneID);
     }
 
-    bool ZoneThread::Enqueue(ZoneEvent& event) {
-        if (perfCollector == nullptr)
-            return false;
-        if (event.type != ZoneEventType::Packet && !running.load(std::memory_order_acquire))
-            return false;
-        if (workQueue.push(event))
-            return true;
-        if (event.type == ZoneEventType::ProfileVersion || event.type == ZoneEventType::Disconnect) {
-            // Keep committed profile updates and disconnects when the regular queue is full.
-            auto* entry = new (std::nothrow) DeferredEvent;
-            if (entry == nullptr)
-                return false;
-            entry->event = std::move(event);
-            auto* head = deferredEvents.load(std::memory_order_relaxed);
-            do {
-                entry->next = head;
-            } while (!deferredEvents.compare_exchange_weak(head, entry, std::memory_order_release,
-                std::memory_order_relaxed));
-            return true;
-        }
-        perfCollector->AddZoneDropCnt(zoneID);
-        return false;
+    bool ZoneThread::CanEnqueue(const ZoneEvent& event) const {
+        return perfCollector != nullptr &&
+            (event.type == ZoneEventType::Packet || running.load(std::memory_order_acquire));
     }
 
-    void ZoneThread::ProcessDeferredEvents(ZoneState* zone, bool disconnectOnly) {
-        auto* entry = deferredEvents.exchange(nullptr, std::memory_order_acquire);
-        while (entry != nullptr) {
-            const std::unique_ptr<DeferredEvent> work(entry);
-            entry = entry->next;
-            if (zone == nullptr)
-                continue;
-            if (work->event.type == ZoneEventType::Disconnect)
-                handler->ProcessDisconnect(*zone, zoneID, work->event.request);
-            else if (!disconnectOnly)
-                handler->ApplyProfileVersion(*zone, work->event.profileVersion);
-        }
+    bool ZoneThread::Enqueue(ZoneEvent& event) {
+        if (!CanEnqueue(event))
+            return false;
+        const bool accepted = workQueue.Enqueue(event);
+        if (!accepted)
+            perfCollector->AddZoneDropCnt(zoneID);
+        return accepted;
+    }
+
+    bool ZoneThread::EnqueueDeferred(ZoneEvent& event) {
+        if (!CanEnqueue(event))
+            return false;
+        const bool accepted = workQueue.EnqueueDeferred(event);
+        if (!accepted)
+            perfCollector->AddZoneDropCnt(zoneID);
+        return accepted;
     }
 }

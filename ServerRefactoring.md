@@ -54,6 +54,7 @@
 - **세션과 Zone 소유.** `StateManager`의 역할을 나눴다. `SessionManager`는 인증·소속·이동 대기 정보를 관리하고, `ZoneEventRouter`가 Zone별 상태와 워커를 소유한다.
 - **요청별 인터페이스.** 패킷 전달, Zone 내부 요청, 이동, 세션 상태 조회, 스냅샷 읽기를 구분했다. `PacketDispatcher`와 Broadcast는 필요한 인터페이스를 받고, `Initializer`에서 구현 객체를 연결한다.
 - **Zone 워커의 상태 접근.** 패킷과 진입·이동·리스폰·프로필 갱신·접속 종료를 `ZoneEvent`로 전달한다. 아이템 사용·장비 처리와 종료 저장도 워커로 옮겨 `ZoneState`의 mutex를 제거했다. 세션 샤드와 로비의 잠금은 각 상태의 공유 범위에 맞춰 유지했다.
+- **공통 지연 큐 재사용.** ZoneThread의 별도 지연 목록을 `NonBlockingBackPressureQueue`로 통합했다. Transfer는 혼잡 시 실패를 반환하고, 프로필 전파·Disconnect는 동적으로 지연 보관한다. 전파 이벤트를 위한 별도 WAL은 추가하지 않았다.
 - **비동기 Zone 이동.** 출발·도착 Zone의 상태를 한 호출에서 함께 변경하던 경로를 이벤트 전달로 나눴다. 이동 대기 정보와 epoch를 확인해 소속을 확정하고, 접수·진입 실패는 출발 상태 유지·복귀·로비 반환으로 처리한다.
 - **응답과 초기 전파.** `ServerResponseWorker`가 Zone 변경 ACK를 송신 요청한 뒤 bootstrap을 Zone에 요청한다. Zone에서 만든 bootstrap과 이후 Full·Delta는 같은 Broadcast 워커 큐로 보낸다.
 - **진입과 직렬화 책임.** 캐릭터 진입을 검증·준비·등록으로 나누고 등록 실패 시 인덱스를 복구한다. ID·generation은 등록 성공 후 확정한다. Delta의 필드 기록은 `PacketWriter`에 모아 Zone의 스냅샷 수집과 분리했다.

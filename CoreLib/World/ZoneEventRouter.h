@@ -26,6 +26,7 @@ namespace Core {
         void Start();
         void Stop();
         bool TryEnqueue(uint16_t zoneID, ZoneEvent& event);
+        bool TryEnqueueDeferred(uint16_t zoneID, ZoneEvent& event);
 
         friend class Initializer;
     public:

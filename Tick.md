@@ -17,12 +17,11 @@ Tick 처리의 주요 목적은 다음과 같다.
 ## 3. Tick 처리 흐름
 `ZoneEventRouter`가 Zone별 `ZoneState`와 `ZoneThread`를 소유한다. 워커는 자기 상태를 `ZoneHandler::RunTick()`에 넘겨 다음 순서로 처리한다.
 
-1. **지연 이벤트:** 기본 큐가 가득 찼을 때 별도 등록한 프로필 갱신·접속 종료 요청을 처리한다.
-2. **틱 시작:** 스킬 쿨다운·활성 스킬 phase를 갱신하고 이동 예산을 보충한다.
-3. **Zone 이벤트:** 기본 큐에서 최대 2,000개를 꺼낸다. 패킷뿐 아니라 Zone 이동·거절, 진입, 리스폰, 프로필 갱신, bootstrap, 접속 종료를 처리한다.
-4. **게임 상태:** `ZoneState`의 스킬 적용·몬스터 갱신·치트 집계를 실행한다.
-5. **Snapshot:** Full 주기가 되면 Full을, 아니면 Delta 주기를 확인해 Delta를 생성한다. Action Snapshot도 같은 경로에서 생성하며 송신은 Broadcast 워커에 맡긴다.
-6. **대기 보정:** 틱 소요 시간을 빼고 남은 시간이 15ms보다 크면 `sleep_for()`를 호출한다. `lastTick += GAME_TICK`으로 다음 기준을 유지한다.
+1. **틱 시작:** 스킬 쿨다운·활성 스킬 phase를 갱신하고 이동 예산을 보충한다.
+2. **Zone 이벤트:** BackPressure queue의 `Dequeue()`로 기본·지연 작업을 합쳐 최대 2,000개 처리한다. 패킷뿐 아니라 Zone 이동·거절, 진입, 리스폰, 프로필 갱신, bootstrap, 접속 종료를 처리한다.
+3. **게임 상태:** `ZoneState`의 스킬 적용·몬스터 갱신·치트 집계를 실행한다.
+4. **Snapshot:** Full 주기가 되면 Full을, 아니면 Delta 주기를 확인해 Delta를 생성한다. Action Snapshot도 같은 경로에서 생성하며 송신은 Broadcast 워커에 맡긴다.
+5. **대기 보정:** 틱 소요 시간을 빼고 남은 시간이 15ms보다 크면 `sleep_for()`를 호출한다. `lastTick += GAME_TICK`으로 다음 기준을 유지한다.
 
 아이템 사용·장비 처리도 Zone 패킷 경로에서 실행한다. 가변 게임 상태는 담당 Zone 워커만 접근하므로 `ZoneState`에 mutex를 두지 않는다. 종료 시에는 남은 접속 종료 이벤트를 처리하고, 해당 Zone의 캐릭터 저장을 요청한 뒤 워커가 끝난다.
 

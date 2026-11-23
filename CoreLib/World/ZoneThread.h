@@ -3,10 +3,9 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
-#include <new>
 #include <thread>
 
-#include <BaseLib/MPMCQueue.h>
+#include <BaseLib/NonBlockingBackPressureQueue.h>
 
 #include "../Interface/IPacketView.h"
 #include "Interface/IZoneRequestQueue.h"
@@ -43,14 +42,11 @@ namespace Core {
         ZoneRequest request;
     };
 
+    using ZoneEventQueue = Base::NonBlockingBackPressureQueue<ZoneEvent, ZONE_QUEUE_SIZE, 0>;
+
     class alignas(std::hardware_destructive_interference_size) ZoneThread {
         std::thread thread;
-        Base::MPMCQueue<ZoneEvent, ZONE_QUEUE_SIZE> workQueue;
-        struct DeferredEvent {
-            ZoneEvent event;
-            DeferredEvent* next;
-        };
-        std::atomic<DeferredEvent*> deferredEvents = nullptr;
+        ZoneEventQueue workQueue;
         std::atomic<bool> running = false;
         uint16_t zoneID = 0;
         ZoneHandler* handler = nullptr;
@@ -60,8 +56,9 @@ namespace Core {
         bool IsReady() const;
         void Start(ZoneState& zone);
         void Stop();
+        bool CanEnqueue(const ZoneEvent& event) const;
         bool Enqueue(ZoneEvent& event);
-        void ProcessDeferredEvents(ZoneState* zone, bool disconnectOnly = false);
+        bool EnqueueDeferred(ZoneEvent& event);
         void WorkerFunc(ZoneState& zone);
 
         friend class ZoneEventRouter;

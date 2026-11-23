@@ -61,6 +61,12 @@ namespace Core {
         return zones[zoneID - 1].worker.Enqueue(event);
     }
 
+    bool ZoneEventRouter::TryEnqueueDeferred(uint16_t zoneID, ZoneEvent& event) {
+        if (zoneID == 0 || zoneID > zones.size())
+            return false;
+        return zones[zoneID - 1].worker.EnqueueDeferred(event);
+    }
+
     bool ZoneEventRouter::TryEnqueuePacket(uint16_t zoneID, std::unique_ptr<IPacketView, PacketViewDeleter> packet) {
         if (!packet)
             return false;
@@ -89,7 +95,7 @@ namespace Core {
     bool ZoneEventRouter::TryEnqueueProfileVersion(uint16_t zoneID, const ProfileVersionUpdate& update) {
         ZoneEvent event{ZoneEventType::ProfileVersion};
         event.profileVersion = update;
-        return TryEnqueue(zoneID, event);
+        return TryEnqueueDeferred(zoneID, event);
     }
 
     uint16_t ZoneEventRouter::FindDestination(uint16_t sourceZoneID, float x, float y) const {
@@ -99,7 +105,7 @@ namespace Core {
     bool ZoneEventRouter::TryEnqueueDisconnect(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch) {
         ZoneEvent event{ZoneEventType::Disconnect};
         event.request = {sessionID, ownershipEpoch};
-        return TryEnqueue(zoneID, event);
+        return TryEnqueueDeferred(zoneID, event);
     }
 
     bool ZoneEventRouter::TryEnqueueTransfer(uint16_t destinationID, const std::shared_ptr<ZoneTransfer>& transfer) {
