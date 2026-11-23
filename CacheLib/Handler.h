@@ -5,7 +5,6 @@
 #include <optional>
 #include <utility>
 
-#include <mysqlconn/include/mysql/jdbc.h>
 #include "Config.h"
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"

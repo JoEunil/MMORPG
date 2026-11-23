@@ -6,7 +6,6 @@
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/Cache/Message.h>
 #include <CoreLib/LoggerGlobal.h>
-#include <mysqlconn/include/mysql/jdbc.h>
 
 #include "CacheStorage.h"
 #include <CoreLib/Interface/IInventoryOperations.h>

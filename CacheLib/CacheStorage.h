@@ -13,7 +13,6 @@
 #include <iterator>
 #include <new>
 
-#include <mysqlconn/include/mysql/jdbc.h>
 #include "DB/DBConfig.h"
 #include "DB/DBWorker.h"
 #include <CoreLib/Interface/ICachedClock.h>

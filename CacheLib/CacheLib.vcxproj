@@ -150,6 +150,8 @@
     <ClInclude Include="Config.h" />
     <ClInclude Include="DB\Queries.h" />
     <ClInclude Include="DB\DBConnection.h" />
+    <ClInclude Include="DB\IResultReader.h" />
+    <ClInclude Include="DB\MySQLResultAdapter.h" />
     <ClInclude Include="DB\DBConfig.h" />
     <ClInclude Include="DB\StatementId.h" />
     <ClInclude Include="DB\DBConnectionPool.h" />
@@ -165,6 +167,9 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="CacheFlush.cpp" />
+    <ClCompile Include="DB\MySQLResultAdapter.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="CacheFlush_Currency.cpp" />
     <ClCompile Include="CacheFlush_Inventory.cpp" />
     <ClCompile Include="CacheStorageCurrency.cpp" />
