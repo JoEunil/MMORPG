@@ -249,7 +249,7 @@
       <button type="button" data-tab="project" aria-pressed="false">프로젝트</button>
       <button type="button" data-tab="paths" aria-pressed="false" hidden>의존성 검사</button>
       <button type="button" data-tab="refactoring" aria-pressed="false" aria-controls="inspections">리팩터링 후보</button>
-      <button type="button" data-tab="high-level" aria-pressed="false" hidden>고수준 모듈 후보</button>
+      <button type="button" data-tab="high-level" aria-pressed="false" hidden>고수준 후보</button>
       <button type="button" data-tab="performance" aria-pressed="false" aria-controls="inspections">성능 개선 후보</button>
       <button type="button" data-tab="diagnostics" aria-pressed="false">진단</button>
     </nav>
@@ -650,7 +650,7 @@ const viewGuides = {
   group: "Visual Studio 필터별로 클래스를 묶어 기능 영역 사이의 연결을 보여줍니다. 선의 숫자는 연결된 클래스 쌍의 수입니다. 선을 선택하면 개별 클래스와 코드 위치가 나오며, Interface 연결만 켜면 인터페이스를 향한 연결만 남습니다.",
   namespace: "선택한 namespace 안의 클래스 관계를 보여줍니다. 외부 연결 표시를 켜면 다른 namespace의 타입과 직접 연결된 부분도 볼 수 있습니다.",
   project: "프로젝트 참조와 외부 라이브러리 헤더 사용 관계를 보여줍니다. 선을 선택하면 참조 항목이나 include 위치를 확인할 수 있습니다. 설치된 라이브러리 전체나 모든 링크 의존성을 표시하는 목록은 아닙니다.",
-  "high-level": "의존 관계를 살펴보며 해당 클래스가 고수준 모듈로서 적절한 역할을 맡고 있는지 검토하는 기능입니다. 클래스의 책임과 의존 대상을 확인하고, 의존성 분리와 디자인 패턴 적용이 필요한지 판단하는 데 활용하세요.",
+  "high-level": "여기서 고수준은 상대적으로 안정적인 아키텍처 요소, 저수준은 더 자주 바뀌거나 변경 가능성이 큰 요소를 뜻합니다. DIP의 상위 정책·구체적 구현 구분과 혼동하지 않도록 변경 가능성을 기준으로 살펴보세요. 이 기능은 의존 관계로 후보를 모으며, 변경 이력이나 안정성을 자동 판정하지 않습니다. 후보의 변경 이유와 사용처에 미치는 영향을 확인하세요.",
   diagnostics: "Clang 분석 오류와 적용하지 못한 빌드 설정을 확인합니다. 오류가 있는 파일의 지도에는 일부 관계만 나타날 수 있고, 해당 파일은 리팩터링·성능 후보 수집에서 제외됩니다."
 };
 const inspectionGuides = {
@@ -1146,7 +1146,7 @@ function changeView(view, context = null) {
     get("map-context-summary").textContent = "관련 항목 " + context.nodes.length + "개 · 확인된 연결 " + context.edges.length + "개";
   }
   get("diagram-title").textContent = (inspectionView ? "후보 관계 지도" : null) ?? {
-    class: "전체 클래스 맵", method: "메서드 호출 지도", members: "클래스 내부 멤버 지도", "high-level": "고수준 모듈 후보 맵", namespace: "namespace별 클래스 맵",
+    class: "전체 클래스 맵", method: "메서드 호출 지도", members: "클래스 내부 멤버 지도", "high-level": "고수준 후보 맵", namespace: "namespace별 클래스 맵",
     project: "프로젝트 의존성", group: "Visual Studio 필터 지도"
   }[view];
   refreshGroupChecks();
