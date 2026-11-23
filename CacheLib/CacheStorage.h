@@ -91,6 +91,8 @@ namespace Cache {
         void RestoreEvictingEntryLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& result);
 
     public:
+        virtual ~CacheStorage() = default;
+
         void SetFlushFn(std::function<FlushEnqueueResult(const Key&, Result&)> f) {
             m_flushFn = f;
         }
