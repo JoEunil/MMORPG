@@ -55,7 +55,7 @@ namespace Core {
         std::shared_lock lock(shard.smutex);
         const auto found = shard.sessionMap.find(sessionID);
         const auto* session = found != shard.sessionMap.end() ? &found->second : nullptr;
-        if (!MatchesZoneTransfer(session, transfer) || returning != (zoneID == transfer->sourceZoneID))
+        if (!MatchesZoneTransferLocked(session, transfer) || returning != (zoneID == transfer->sourceZoneID))
             return std::nullopt;
         // Profile updates can change the pending record; admission uses a private copy.
         return *transfer;
@@ -68,7 +68,7 @@ namespace Core {
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock lock(shard.smutex);
         auto* session = FindSessionLocked(shard, sessionID);
-        if (!MatchesZoneTransfer(session, transfer) || returning != (zoneID == transfer->sourceZoneID))
+        if (!MatchesZoneTransferLocked(session, transfer) || returning != (zoneID == transfer->sourceZoneID))
             return std::nullopt;
 
         session->pendingZoneTransfer.reset();
@@ -248,7 +248,7 @@ namespace Core {
         ++session.ownershipEpoch;
     }
 
-    bool SessionManager::MatchesZoneTransfer(const SessionData* session, const std::shared_ptr<ZoneTransfer>& transfer) {
+    bool SessionManager::MatchesZoneTransferLocked(const SessionData* session, const std::shared_ptr<ZoneTransfer>& transfer) {
         return session && !session->disconnectQueued && session->pendingZoneTransfer == transfer && session->zoneID == transfer->sourceZoneID &&
                session->ownershipEpoch == transfer->ownershipEpoch;
     }

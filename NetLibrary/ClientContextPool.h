@@ -30,7 +30,7 @@ namespace Net {
             return true;
         }
         void Stop();
-        void FlushPending();
+        void FlushPendingLocked();
         
         friend class Initializer;
 public:

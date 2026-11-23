@@ -126,7 +126,7 @@ namespace Core {
             const auto found = shard.sessionMap.find(sessionID);
             return found != shard.sessionMap.end() ? &found->second : nullptr;
         }
-        static bool MatchesZoneTransfer(const SessionData* session, const std::shared_ptr<ZoneTransfer>& transfer);
+        static bool MatchesZoneTransferLocked(const SessionData* session, const std::shared_ptr<ZoneTransfer>& transfer);
 
         friend class Initializer;
         friend class ZoneBenchmarkAccess;

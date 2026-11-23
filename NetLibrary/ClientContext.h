@@ -61,11 +61,11 @@ namespace Net {
         inline static SessionManager* sessionManager;
         inline static Base::FixedObjectPool<PacketView, PACKETVIEWPOOL_SIZE> packetViewPool;
 
-        void BuildPacketView(PacketView* packet, uint32_t packetLen, uint8_t opcode);
-        bool DequeueRecvQ(std::optional<uint64_t>& pongRTT);
-        bool IsValidEnqueue(uint64_t expectedSessionID, uint8_t* ptr, size_t len);
+        void BuildPacketViewLocked(PacketView* packet, uint32_t packetLen, uint8_t opcode);
+        bool DequeueRecvQLocked(std::optional<uint64_t>& pongRTT);
+        bool IsValidEnqueueLocked(uint64_t expectedSessionID, uint8_t* ptr, size_t len);
         void EnqueueReleaseQ(PacketBufferInfo info);
-        void TryNotifyDisconnect();
+        void TryNotifyDisconnectLocked();
         uint16_t AdvancePosition(uint16_t origin, uint16_t change) const;
 
         static void Initialize(OverlappedExPool* o, SessionManager* s) {
@@ -133,7 +133,7 @@ namespace Net {
             std::lock_guard<std::recursive_mutex> lock(m_mutex);
             bool wasConnected = m_connected.exchange(false, std::memory_order_seq_cst);
             if (wasConnected)
-                TryNotifyDisconnect();
+                TryNotifyDisconnectLocked();
         }
         bool CheckGameSession() const {
             return m_gameSession.load(std::memory_order_acquire);
