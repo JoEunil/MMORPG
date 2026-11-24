@@ -31,6 +31,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Concept", "Concept", "{C8D5
 	ProjectSection(SolutionItems) = preProject
 		AI-REFLECTION.md = AI-REFLECTION.md
 		DesignDecisions.md = DesignDecisions.md
+		DesignPatterns.md = DesignPatterns.md
 		IOCP&epoll.md = IOCP&epoll.md
 		LLM.md = LLM.md
 		LockFreeQueue.md = LockFreeQueue.md
