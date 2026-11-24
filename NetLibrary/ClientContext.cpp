@@ -58,7 +58,7 @@ namespace Net {
         uint16_t len = m_buffer.TryAcquireBuffer(temp, RECV_BUFFER_SIZE);
         buffer = temp.startPtr;
         if (len == 0) {
-            Core::errorLogger->LogError("context", "can't allocate pending recv buffer", "sessionID", m_sessionID, "front", m_accBuf.GetFront(), "rear", m_accBuf.GetRear());
+            Core::errorLogger->LogError("context", "can't allocate pending recv buffer", {{"sessionID", m_sessionID}, {"front", m_accBuf.GetFront()}, {"rear", m_accBuf.GetRear()}});
             return 0;
         }
 
@@ -68,14 +68,14 @@ namespace Net {
 
     void ClientContext::CompleteRecvIO(uint64_t expectedSessionID) {
         if (m_sessionID != expectedSessionID) {
-            Core::errorLogger->LogError("context", "pending IO session mismatch", "expected", expectedSessionID, "actual", m_sessionID);
+            Core::errorLogger->LogError("context", "pending IO session mismatch", {{"expected", expectedSessionID}, {"actual", m_sessionID}});
             return;
         }
 
         int16_t previous = m_pendingIOCnt.fetch_sub(1, std::memory_order_seq_cst);
         if (previous <= 0) {
             m_pendingIOCnt.fetch_add(1, std::memory_order_seq_cst);
-            Core::errorLogger->LogError("context", "pending IO counter underflow", "sessionID", expectedSessionID, "previous", previous);
+            Core::errorLogger->LogError("context", "pending IO counter underflow", {{"sessionID", expectedSessionID}, {"previous", previous}});
             return;
         }
     }

@@ -27,8 +27,8 @@ namespace Core {
 
     bool CacheCommandSender::EnqueueCharacterStateUpdate(uint64_t sessionID, const CharacterState& character) const {
         if (queue == nullptr || writer == nullptr) {
-            errorLogger->LogError("cache command sender", "character state sender not initialized", "sessionID", sessionID, "characterID",
-                character.characterID);
+            errorLogger->LogError("cache command sender", "character state sender not initialized", {{"sessionID", sessionID}, {"characterID",
+                character.characterID}});
             return false;
         }
         Message msg(sizeof(MsgStruct<MsgCharacterStateUpdateBody>));
@@ -46,7 +46,7 @@ namespace Core {
             .y = character.y,
             .lastZone = static_cast<uint8_t>(character.lastZone)};
         if (!writer->Write(msg, {sessionID, MSG_CHARACTER_STATE_UPDATE}, body)) {
-            errorLogger->LogError("cache command sender", "could not encode character state", "sessionID", sessionID, "characterID", character.characterID);
+            errorLogger->LogError("cache command sender", "could not encode character state", {{"sessionID", sessionID}, {"characterID", character.characterID}});
             return false;
         }
         if (queue->EnqueueMessage(&msg))
@@ -54,7 +54,7 @@ namespace Core {
 
         std::vector<std::byte> bytes(msg.GetLength());
         std::memcpy(bytes.data(), msg.GetBuffer(), bytes.size());
-        errorLogger->LogError("cache command sender", "character state queue rejected", "sessionID", sessionID, "character state update message", bytes);
+        errorLogger->LogError("cache command sender", "character state queue rejected", {{"sessionID", sessionID}, {"character state update message", bytes}});
         return false;
     }
 

@@ -12,7 +12,7 @@ namespace Core {
         if (IsSimulationFlag(h->flags)) {
             int16_t zoneID = sessions->GetZoneID(sessionID);
             if (zoneID <= 0) {
-                errorLogger->LogWarn("packet dispatcher", "Invalid ZoneID", "zoneID", zoneID, "sessionID", pv->GetSessionID());
+                errorLogger->LogWarn("packet dispatcher", "Invalid ZoneID", {{"zoneID", zoneID}, {"sessionID", pv->GetSessionID()}});
                 return;
             }
             zonePackets->TryEnqueuePacket(zoneID, std::move(pv));

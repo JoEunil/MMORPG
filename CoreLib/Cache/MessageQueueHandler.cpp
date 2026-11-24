@@ -148,16 +148,16 @@ namespace Core {
 
     void MessageQueueHandler::ProfileRenameResponse(uint64_t sessionID, const MsgProfileRenameResBody* body) {
         if (body->resStatus != 1) {
-            gameLogger->LogInfo("mq handler", "profile rename failed", "sessionID", sessionID, "profile_id", body->profileId);
+            gameLogger->LogInfo("mq handler", "profile rename failed", {{"sessionID", sessionID}, {"profile_id", body->profileId}});
             return;
         }
         if (sessionManager == nullptr) {
-            errorLogger->LogError("mq handler", "sessionManager not initialized", "sessionID", sessionID);
+            errorLogger->LogError("mq handler", "sessionManager not initialized", {{"sessionID", sessionID}});
             return;
         }
         const ProfileVersionUpdate update{sessionID, body->profileId, body->version};
         const auto route = lobbyZone->ApplyProfileVersion(update);
         if (route && !zoneRequests->TryEnqueueProfileVersion(*route, update))
-            errorLogger->LogWarn("mq handler", "could not route profile version", "sessionID", sessionID, "zoneID", *route);
+            errorLogger->LogWarn("mq handler", "could not route profile version", {{"sessionID", sessionID}, {"zoneID", *route}});
     }
 }

@@ -24,7 +24,7 @@ namespace Cache {
 
             if (!res || !res->next()) {
                 TryEnqueueResponse(*msg, header, response);
-                Core::gameLogger->LogInfo("cache handler diamond", "diamond read failed", "sessionID", sessionID, "char_id", characterID);
+                Core::gameLogger->LogInfo("cache handler diamond", "diamond read failed", {{"sessionID", sessionID}, {"char_id", characterID}});
                 return;
             }
 
@@ -48,7 +48,7 @@ namespace Cache {
 
             if (affected <= 0) {
                 TryEnqueueResponse(*msg, header, response);
-                Core::gameLogger->LogInfo("cache handler diamond", "diamond deposit failed", "sessionID", sessionID, "char_id", request.characterID);
+                Core::gameLogger->LogInfo("cache handler diamond", "diamond deposit failed", {{"sessionID", sessionID}, {"char_id", request.characterID}});
                 return;
             }
 

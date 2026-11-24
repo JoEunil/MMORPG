@@ -334,7 +334,7 @@ namespace Cache {
 
         const int slot = FindStackOrEmptySlot(res.data, itemID);
         if (slot == -1) {
-            Core::gameLogger->LogInfo("cache5", "inventory full", "char_id", characterID);
+            Core::gameLogger->LogInfo("cache5", "inventory full", {{"char_id", characterID}});
             return {CACHE_STATUS::BLOCKED, 0, 0, 0};
         }
 
@@ -343,11 +343,11 @@ namespace Cache {
         const int32_t currentQuantity = exists ? itemSlot.quantity : 0;
         const int32_t newQuantity = currentQuantity + change;
         if (newQuantity < 0) {
-            Core::gameLogger->LogInfo("cache storage inventory", "not enough item", "char_id", characterID, "item_id", itemID);
+            Core::gameLogger->LogInfo("cache storage inventory", "not enough item", {{"char_id", characterID}, {"item_id", itemID}});
             return {CACHE_STATUS::BLOCKED, 0, 0, 0};
         }
         if (newQuantity > UINT16_MAX) {
-            Core::gameLogger->LogInfo("cache5", "quantity overflow", "char_id", characterID, "item_id", itemID);
+            Core::gameLogger->LogInfo("cache5", "quantity overflow", {{"char_id", characterID}, {"item_id", itemID}});
             return {CACHE_STATUS::BLOCKED, 0, 0, 0};
         }
 
@@ -404,7 +404,7 @@ namespace Cache {
         // 중복 방어. (head - tail) 구간만 탐색하기에는 outbox read -> deliver 처리를 원자적으로 수행할 수 없음.
         //(CLAIMED 후 head 전진으로 truncate된 event_id도 재배송될 수 있어 ring 전체를 검사)
         if (std::ranges::find(res.data.recentEventIds, event_id) != std::end(res.data.recentEventIds)) {
-            Core::gameLogger->LogInfo("cache5", "event duplicated", "char_id", characterID, "event_id", event_id);
+            Core::gameLogger->LogInfo("cache5", "event duplicated", {{"char_id", characterID}, {"event_id", event_id}});
             // 배송은 이미 반영됨. CLAIM은 flush 파이프라인 담당이므로 재flush만 유도
             MarkDirtyLocked(shard, key, res);
             return CACHE_STATUS::DUPLICATED;
@@ -412,21 +412,21 @@ namespace Cache {
 
         if (res.data.head == res.data.tail && res.data.lastOp) {
             // event ring full — CLAIM 되지 않은 event가 밀려나지 않도록 배송 차단 (backpressure)
-            Core::gameLogger->LogInfo("cache5", "event ring full", "char_id", characterID);
+            Core::gameLogger->LogInfo("cache5", "event ring full", {{"char_id", characterID}});
             return CACHE_STATUS::BLOCKED;
         }
 
 
         int slot = FindStackOrEmptySlot(res.data, itemID);
         if (slot == -1) {
-            Core::gameLogger->LogInfo("cache5", "inventory full", "char_id", characterID);
+            Core::gameLogger->LogInfo("cache5", "inventory full", {{"char_id", characterID}});
             return CACHE_STATUS::BLOCKED;
         }
 
         auto& itemSlot = res.data.items[slot];
         uint32_t newQuantity = (itemSlot.itemID == itemID ? itemSlot.quantity : 0) + quantity;
         if (newQuantity > UINT16_MAX) {
-            Core::gameLogger->LogInfo("cache5", "quantity overflow", "char_id", characterID, "item_id", itemID);
+            Core::gameLogger->LogInfo("cache5", "quantity overflow", {{"char_id", characterID}, {"item_id", itemID}});
             return CACHE_STATUS::BLOCKED;
         }
 

@@ -85,7 +85,7 @@ namespace Cache {
             if (!conn) {
                 storage.Rollback(shardIndex, key, command.generation);
                 Core::errorLogger->LogError("cache flush", "connection acquire failed",
-                    "stmtID", stmtID, "char_id", key.characterID);
+                    {{"stmtID", stmtID}, {"char_id", key.characterID}});
                 return false;
             }
 
@@ -95,7 +95,7 @@ namespace Cache {
             }
             catch (const sql::SQLException& e) {
                 Core::errorLogger->LogError("cache flush", "DB write exception",
-                    "stmtID", stmtID, "code", e.getErrorCode(), "msg", e.what());
+                    {{"stmtID", stmtID}, {"code", e.getErrorCode()}, {"msg", e.what()}});
                 storage.Rollback(shardIndex, key, command.generation);
                 return false;
             }
@@ -104,7 +104,7 @@ namespace Cache {
             if (affectedRows <= 0) {
                 storage.Rollback(shardIndex, key, command.generation);
                 Core::errorLogger->LogInfo("cache flush", "DB write failed",
-                    "stmtID", stmtID, "char_id", key.characterID);
+                    {{"stmtID", stmtID}, {"char_id", key.characterID}});
                 return false;
             }
             return true;

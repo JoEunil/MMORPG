@@ -43,7 +43,7 @@ namespace Net {
             const bool validPacket = validNetwork && ctx->CheckGameSession() && ctx->EnqueueRecvQ(sessionID, buf, len);
             if (!validPacket) {
                 sessionManager->SetContextInvalid(sock, sessionID);
-                Core::sysLogger->LogInfo("net handler", "game session died", "socket", sock);
+                Core::sysLogger->LogInfo("net handler", "game session died", {{"socket", sock}});
                 abortSocket->AbortSocket(sock, sessionID);
                 return;
             }

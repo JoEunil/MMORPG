@@ -11,7 +11,7 @@ namespace Net {
         auto tid = std::this_thread::get_id();
         std::stringstream ss;
         ss << tid;
-        Core::sysLogger->LogInfo( "ping manager", "Ping thread started", "threadID", ss.str());
+        Core::sysLogger->LogInfo( "ping manager", "Ping thread started", {{"threadID", ss.str()}});
         std::vector<PingStruct> clientList;
         // socket, session, rtt
         
@@ -35,7 +35,7 @@ namespace Net {
                         networkSender->SendDataUnique(st.session, std::move(p));
                     }
                     else {
-                        Core::errorLogger->LogInfo("ping manager", "not alive", "socket", st.socket);
+                        Core::errorLogger->LogInfo("ping manager", "not alive", {{"socket", st.socket}});
                         abortSocket->AbortSocket(st.socket, st.session);
                     }
                 }

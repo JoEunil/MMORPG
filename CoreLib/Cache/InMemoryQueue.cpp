@@ -8,7 +8,7 @@ namespace Core {
         auto tid = std::this_thread::get_id();
         std::stringstream ss;
         ss << tid;
-        sysLogger->LogInfo("core mq", "mq thread started", "threadID", ss.str());
+        sysLogger->LogInfo("core mq", "mq thread started", {{"threadID", ss.str()}});
         while (true)
         {
             CoreMessagePool::ScopedMessage work;
@@ -27,7 +27,7 @@ namespace Core {
 
             handler->Process(work.get());
         }
-        sysLogger->LogInfo("core mq", "mq thread stopped", "threadID", ss.str());
+        sysLogger->LogInfo("core mq", "mq thread stopped", {{"threadID", ss.str()}});
     }
 
     void InMemoryQueue::Start() {

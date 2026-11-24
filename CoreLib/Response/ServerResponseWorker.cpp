@@ -66,7 +66,7 @@ namespace Core {
     bool ServerResponseWorker::EnqueueWork(std::unique_ptr<Work> work) {
         const auto sessionID = work->sessionID;
         if (!work->packet) {
-            errorLogger->LogWarn("server response", "response packet unavailable", "sessionID", sessionID);
+            errorLogger->LogWarn("server response", "response packet unavailable", {{"sessionID", sessionID}});
             return false;
         }
         m_enqueuing.fetch_add(1);
@@ -82,7 +82,7 @@ namespace Core {
         if (m_enqueuing.fetch_sub(1) == 1)
             m_enqueuing.notify_all();
         if (!accepted)
-            errorLogger->LogWarn("server response", "response queue closed", "sessionID", sessionID);
+            errorLogger->LogWarn("server response", "response queue closed", {{"sessionID", sessionID}});
         return accepted;
     }
 
@@ -112,7 +112,7 @@ namespace Core {
             // Capture bootstrap on the owning Zone only after the ACK is submitted.
             const auto& request = *work.bootstrap;
             if (!zoneRequests->TryEnqueueBootstrap(request.zoneID, work.sessionID, request.ownershipEpoch, false))
-                errorLogger->LogWarn("server response", "bootstrap request rejected", "sessionID", work.sessionID, "zoneID", request.zoneID);
+                errorLogger->LogWarn("server response", "bootstrap request rejected", {{"sessionID", work.sessionID}, {"zoneID", request.zoneID}});
         }
     }
 

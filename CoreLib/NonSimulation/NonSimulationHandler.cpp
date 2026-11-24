@@ -165,7 +165,7 @@ namespace Core {
             GetProfileBatch(p);
             break;
         default:
-            errorLogger->LogInfo("non zone handler", "UnDefined OPCODE", "opcode", p->GetOpcode(), "header opcode", h->opcode, "sessionId", p->GetSessionID());
+            errorLogger->LogInfo("non zone handler", "UnDefined OPCODE", {{"opcode", p->GetOpcode()}, {"header opcode", h->opcode}, {"sessionId", p->GetSessionID()}});
             break;
         }
     }
@@ -176,7 +176,7 @@ namespace Core {
             return;
         if (request->zoneID != 0) {
             if (!zoneRequests->TryEnqueueDisconnect(request->zoneID, sessionID, request->ownershipEpoch))
-                errorLogger->LogError("non simulation handler", "could not queue zone disconnect", "sessionID", sessionID, "zoneID", request->zoneID);
+                errorLogger->LogError("non simulation handler", "could not queue zone disconnect", {{"sessionID", sessionID}, {"zoneID", request->zoneID}});
             return;
         }
         CharacterState character;
@@ -184,14 +184,14 @@ namespace Core {
         if (request->chatID == 0)
             lobbyZone->Disconnect(sessionID);
         if (!sessionManager->CompleteLobbyDisconnect(sessionID, request->ownershipEpoch))
-            errorLogger->LogError("non simulation handler", "lobby disconnect metadata changed", "sessionID", sessionID);
+            errorLogger->LogError("non simulation handler", "lobby disconnect metadata changed", {{"sessionID", sessionID}});
         if (save)
             cacheCommands->EnqueueCharacterStateUpdate(sessionID, character);
     }
 
     void NonSimulationHandler::RequestProfileRename(uint64_t sessionID, uint32_t profileId, const char* name, uint16_t nameLen) {
         if (profileId == INVALID_PROFILE_ID || name == nullptr || nameLen == 0 || nameLen >= MAX_CHARNAME_LEN) {
-            errorLogger->LogError("non zone handler", "profile rename invalid", "session", sessionID, "profile_id", profileId, "nameLen", nameLen);
+            errorLogger->LogError("non zone handler", "profile rename invalid", {{"session", sessionID}, {"profile_id", profileId}, {"nameLen", nameLen}});
             return;
         }
         cacheCommands->EnqueueProfileRename(sessionID, profileId, {name, nameLen});
@@ -251,7 +251,7 @@ namespace Core {
             event.key.id = static_cast<uint64_t>(zoneID);
         }
         if (p->GetLength() < sizeof(PacketStruct<ChatRequestBody>) + body->messageLength) {
-            errorLogger->LogError("non zone handler", "message length invalid", "session", session, "messageLength", body->messageLength);
+            errorLogger->LogError("non zone handler", "message length invalid", {{"session", session}, {"messageLength", body->messageLength}});
             Disconnect(session);
             return;
         }
@@ -266,20 +266,20 @@ namespace Core {
     void NonSimulationHandler::GetProfileBatch(IPacketView* p) {
         auto session = p->GetSessionID();
         if (profileCache == nullptr) {
-            errorLogger->LogError("non zone handler", "profileCache not initialized", "session", session);
+            errorLogger->LogError("non zone handler", "profileCache not initialized", {{"session", session}});
             return;
         }
         auto body = parseBody<ProfileBatchReqBody>(p->GetPtr());
 
         // count는 클라이언트가 보낸 값이라 그대로 믿고 인덱싱하면 버퍼를 넘는다.
         if (body->count == 0 || body->count > MAX_PROFILE_BATCH) {
-            errorLogger->LogError("non zone handler", "profile batch count invalid", "session", session, "count", body->count);
+            errorLogger->LogError("non zone handler", "profile batch count invalid", {{"session", session}, {"count", body->count}});
             Disconnect(session);
             return;
         }
         const size_t needed = sizeof(PacketHeader) + sizeof(body->count) + body->count * sizeof(uint32_t);
         if (p->GetLength() < needed) {
-            errorLogger->LogError("non zone handler", "profile batch length invalid", "session", session, "count", body->count, "length", p->GetLength());
+            errorLogger->LogError("non zone handler", "profile batch length invalid", {{"session", session}, {"count", body->count}, {"length", p->GetLength()}});
             Disconnect(session);
             return;
         }
@@ -302,7 +302,7 @@ namespace Core {
                 if (zonePackets->TryEnqueuePacket(zoneID, std::move(packet)))
                     return;
                 result.status = 6; // Existing Busy response; no item was consumed.
-                errorLogger->LogWarn("non simulation handler", "item request queue full", "sessionID", sessionID, "zoneID", zoneID);
+                errorLogger->LogWarn("non simulation handler", "item request queue full", {{"sessionID", sessionID}, {"zoneID", zoneID}});
             } else if (check == SessionRequestStatus::StaleOwnership || check == SessionRequestStatus::StaleRequest)
                 result.status = 7;
             responses->Enqueue(sessionID, writer->WriteItemUseResponse(result));
@@ -331,7 +331,7 @@ namespace Core {
             if (zonePackets->TryEnqueuePacket(zoneID, std::move(packet)))
                 return;
             result.status = static_cast<uint8_t>(EquipmentStatus::Busy);
-            errorLogger->LogWarn("non simulation handler", "equipment request queue full", "sessionID", sessionID, "zoneID", zoneID);
+            errorLogger->LogWarn("non simulation handler", "equipment request queue full", {{"sessionID", sessionID}, {"zoneID", zoneID}});
         } else if (check == SessionRequestStatus::StaleOwnership)
             result.status = static_cast<uint8_t>(EquipmentStatus::StaleOwnership);
         else if (check == SessionRequestStatus::StaleRequest)

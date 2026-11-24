@@ -68,7 +68,7 @@ namespace Net {
             auto tid = std::this_thread::get_id();
             std::stringstream ss;
             ss << tid;
-            Core::sysLogger->LogInfo("net perf", "Net perf collector thread started", "threadID", ss.str());
+            Core::sysLogger->LogInfo("net perf", "Net perf collector thread started", {{"threadID", ss.str()}});
             while (m_running.load(std::memory_order_relaxed)) 
             {
                 Flush();
@@ -89,18 +89,18 @@ namespace Net {
             Core::perfLogger->LogInfo(
                 "net perf",
                 "perf log per sec",
-                "connection", connection,
-                "packetPool", pPool,
-                "bigPacketPool", bPool,
-                "giantPacketPool", gPool,
-                "overlappedPool", oPool,
-                "contextPool", cPool,
-                "flushQueue", flush,
-                "jitter", jit
-            );
+                {{"connection", connection},
+                {"packetPool", pPool},
+                {"bigPacketPool", bPool},
+                {"giantPacketPool", gPool},
+                {"overlappedPool", oPool},
+                {"contextPool", cPool},
+                {"flushQueue", flush},
+                {"jitter", jit
+            }});
             for (int i = 0; i < IOCP_THREADPOOL_SIZE; i++)
             {
-                Core::perfLogger->LogInfo("net perf", "iocp worker log per sec", "index", i, "recv", m_recvCount[i].v.load(std::memory_order_relaxed));
+                Core::perfLogger->LogInfo("net perf", "iocp worker log per sec", {{"index", i}, {"recv", m_recvCount[i].v.load(std::memory_order_relaxed)}});
                 m_recvCount[i].v.store(0, std::memory_order_relaxed);
             }
             Core::perfLogger->Flush();
@@ -108,7 +108,7 @@ namespace Net {
         
         void AddRecvCnt(int index) {
             if (index >= IOCP_THREADPOOL_SIZE) {
-                Core::errorLogger->LogInfo("net perf", "AddRecvCnt index out of bound", "index", index);
+                Core::errorLogger->LogInfo("net perf", "AddRecvCnt index out of bound", {{"index", index}});
                 return;
             }
             m_recvCount[index].v.fetch_add(1, std::memory_order_relaxed);

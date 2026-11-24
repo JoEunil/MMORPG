@@ -46,7 +46,7 @@ namespace Cache {
             auto tid = std::this_thread::get_id();
             std::stringstream ss;
             ss << tid;
-            Core::sysLogger->LogInfo("cache flush dispatcher", "dispatcher thread started", "threadID", ss.str());
+            Core::sysLogger->LogInfo("cache flush dispatcher", "dispatcher thread started", {{"threadID", ss.str()}});
             while (m_running.load(std::memory_order_relaxed)) {
                 m_minTime = clock->GetTimeMS() + 30000;
                 cache_inventory->ForEachDirty([this](const InventoryKey& key, InventoryCacheItem& res) { return DirtyFlush5(key, res); });
@@ -57,7 +57,7 @@ namespace Cache {
                 m_wake.wait_for(lock, std::chrono::milliseconds(sleepDuration),
                     [this] { return !m_running.load(std::memory_order_relaxed); });
             }
-            Core::sysLogger->LogInfo("cache flush dispatcher", "dispatcher thread stopped", "threadID", ss.str());
+            Core::sysLogger->LogInfo("cache flush dispatcher", "dispatcher thread stopped", {{"threadID", ss.str()}});
         }
 
         void Initialize(CacheFlush* f, CacheStorageInventory* s, CacheStorageCurrency* c, Core::ICachedClock* cl) {

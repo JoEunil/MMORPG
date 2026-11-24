@@ -157,7 +157,7 @@ namespace Core {
             it->second.lastCheatTime = std::chrono::steady_clock::now();
             it->second.authenticated = authenticated;
             it->second.authCompleted = true;
-            Core::gameLogger->LogInfo("core session manager", "AddSession", "session", sessionID, "userID", userID);
+            Core::gameLogger->LogInfo("core session manager", "AddSession", {{"session", sessionID}, {"userID", userID}});
             return true;
         }
 
@@ -179,7 +179,7 @@ namespace Core {
             if (it == shard.sessionMap.end())
                 return;
             it->second.characterID = characterID;
-            Core::gameLogger->LogInfo("core session manager", "SetCharacterID", "session", sessionID, "characterID", characterID);
+            Core::gameLogger->LogInfo("core session manager", "SetCharacterID", {{"session", sessionID}, {"characterID", characterID}});
         }
 
         uint64_t GetCharacterID(uint64_t sessionID) const {
@@ -240,12 +240,12 @@ namespace Core {
             if (status.authenticated) {
                 res |= MASK_AUTHENTICATED;
             } else {
-                errorLogger->LogError("core session manager", "not authenticated", "sessionID", sessionID);
+                errorLogger->LogError("core session manager", "not authenticated", {{"sessionID", sessionID}});
             }
             if (status.cheatCount <= MAX_CHEAT_COUNT) {
                 res |= MASK_NOT_CHEAT;
             } else {
-                errorLogger->LogError("core session manager", "cheat detected", "sessionID", sessionID, "cheatCount", status.cheatCount);
+                errorLogger->LogError("core session manager", "cheat detected", {{"sessionID", sessionID}, {"cheatCount", status.cheatCount}});
             }
             return res;
         }

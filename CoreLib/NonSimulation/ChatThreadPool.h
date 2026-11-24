@@ -157,7 +157,7 @@ namespace Core {
             std::lock_guard<std::mutex> lock(m_zoneSequenceMutex);
             auto it = m_currentZoneSequence.find(session);
             if (it == m_currentZoneSequence.end()) {
-                errorLogger->LogError("chat thread", "zone transition before session add", "session", session, "zoneID", zoneID);
+                errorLogger->LogError("chat thread", "zone transition before session add", {{"session", session}, {"zoneID", zoneID}});
                 return;
             }
 
@@ -169,7 +169,7 @@ namespace Core {
                 return;
             }
 
-            errorLogger->LogError("chat thread", "zone transition queue overflow", "session", session, "zoneID", zoneID);
+            errorLogger->LogError("chat thread", "zone transition queue overflow", {{"session", session}, {"zoneID", zoneID}});
         }
 
         // EnqueueChat으로 같이 처리하면 코드가 복잡해짐

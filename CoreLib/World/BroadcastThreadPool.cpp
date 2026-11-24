@@ -11,7 +11,7 @@ namespace Core {
         auto tid = std::this_thread::get_id();
         std::stringstream ss;
         ss << tid;
-        sysLogger->LogInfo("broadcast thread", "broadcast thread started", "threadID", ss.str());
+        sysLogger->LogInfo("broadcast thread", "broadcast thread started", {{"threadID", ss.str()}});
 
         // Reuse each cell's chunk capacity across work items.
         std::vector<std::vector<std::shared_ptr<IPacket>>> cellChunks(CELLS_X * CELLS_Y);

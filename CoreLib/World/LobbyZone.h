@@ -49,7 +49,7 @@ namespace Core {
             if (!sessionManager->CompleteLobbyEntry(sessionID, zone.GetZoneID(), ownershipEpoch, loaded->second.profileId, result)) {
                 CharacterState discarded;
                 if (!zone.EmigrateChar(sessionID, discarded))
-                    errorLogger->LogError("lobby zone", "could not roll back field entry", "sessionID", sessionID);
+                    errorLogger->LogError("lobby zone", "could not roll back field entry", {{"sessionID", sessionID}});
                 return ZoneOperationResult::NoResponse;
             }
             m_chars.erase(loaded);
@@ -60,14 +60,14 @@ namespace Core {
             // db에서 load 후 변경되지 않은 상태
             std::lock_guard lock(m_mutex);
             if (m_chars.erase(sessionID) == 0)
-                gameLogger->LogWarn("lobby zone", "Character State not exist", "sessionID", sessionID);
+                gameLogger->LogWarn("lobby zone", "Character State not exist", {{"sessionID", sessionID}});
         }
 
         bool ImmigrateChar(uint64_t sessionID, const CharacterState& character) {
             std::lock_guard lock(m_mutex);
             const auto [entry, inserted] = m_chars.try_emplace(sessionID, character);
             if (!inserted) {
-                gameLogger->LogError("lobby zone", "ImmigrageChar Failed sessionID already exists", "sessionID", sessionID);
+                gameLogger->LogError("lobby zone", "ImmigrageChar Failed sessionID already exists", {{"sessionID", sessionID}});
                 return false;
             }
             if (!sessionManager->CompleteLobbyLoad(sessionID, character.characterID)) {
@@ -120,7 +120,7 @@ namespace Core {
             std::lock_guard lock(m_mutex);
             const auto it = m_chars.find(sessionID);
             if (it == m_chars.end()) {
-                gameLogger->LogError("lobby zone", "EmigrageChar Failed sessionID not exists", "sessionID", sessionID);
+                gameLogger->LogError("lobby zone", "EmigrageChar Failed sessionID not exists", {{"sessionID", sessionID}});
                 return false;
             }
             out = it->second;

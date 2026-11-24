@@ -31,13 +31,13 @@ namespace Core {
         auto tid = std::this_thread::get_id();
         std::stringstream ss;
         ss << tid;
-        sysLogger->LogInfo("non zone thread", "non zone thread started", "threadID", ss.str());
+        sysLogger->LogInfo("non zone thread", "non zone thread started", {{"threadID", ss.str()}});
         NonSimulationEvent event;
         while (m_eventQueue.Dequeue(event))
         {
             handler->Process(event);
         }
-        sysLogger->LogInfo("non zone thread", "non zone worker stopped", "threadID", ss.str());
+        sysLogger->LogInfo("non zone thread", "non zone worker stopped", {{"threadID", ss.str()}});
     }
 
     void NonSimulationThreadPool::EnqueuePacket(std::unique_ptr<IPacketView, PacketViewDeleter> packet) {
@@ -66,7 +66,7 @@ namespace Core {
 
         NonSimulationEvent event = NonSimulationDisconnectEvent{sessionID};
         if (!m_eventQueue.Enqueue(event, Base::Priority::Important)) {
-            errorLogger->LogError("non zone thread", "disconnect queue overflow", "session", sessionID);
+            errorLogger->LogError("non zone thread", "disconnect queue overflow", {{"session", sessionID}});
             handler->Disconnect(sessionID);
         }
     }

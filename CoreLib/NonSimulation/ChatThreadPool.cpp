@@ -33,7 +33,7 @@ namespace Core {
         auto tid = std::this_thread::get_id();
         std::stringstream ss;
         ss << tid;
-        sysLogger->LogInfo("chat thread", "chat thread started", "threadID", ss.str());
+        sysLogger->LogInfo("chat thread", "chat thread started", {{"threadID", ss.str()}});
         std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash> tempPackets;
         tempPackets.reserve(100);
 
@@ -184,7 +184,7 @@ namespace Core {
         std::lock_guard<std::mutex> lock(m_zoneSequenceMutex);
         auto sequenceIt = m_currentZoneSequence.find(event.senderSessionID);
         if (sequenceIt == m_currentZoneSequence.end()) {
-            errorLogger->LogError("chat thread", "zone transition before session add", "session", event.senderSessionID, "sequence", event.zoneSequence);
+            errorLogger->LogError("chat thread", "zone transition before session add", {{"session", event.senderSessionID}, {"sequence", event.zoneSequence}});
             return;
         }
 

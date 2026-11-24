@@ -40,15 +40,15 @@ namespace Net {
 
         bool CheckSession() const {
             if (m_contextStatus == false) {
-                Core::gameLogger->LogWarn("net session", "context invalid", "sessionID", m_sessionID);
+                Core::gameLogger->LogWarn("net session", "context invalid", {{"sessionID", m_sessionID}});
                 return false;
             }
             if (m_sessionPingCount >= PING_COUNT_LIMIT) {
-                Core::gameLogger->LogWarn("net session", "ping count exceed", "sessionID", m_sessionID, "pingCount", m_sessionPingCount);
+                Core::gameLogger->LogWarn("net session", "ping count exceed", {{"sessionID", m_sessionID}, {"pingCount", m_sessionPingCount}});
                 return false;
             }
             if (m_flood) {
-                Core::gameLogger->LogWarn("net session", "Net Traffic Flood", "sessionID", m_sessionID);
+                Core::gameLogger->LogWarn("net session", "Net Traffic Flood", {{"sessionID", m_sessionID}});
                 return false;
             }
             return true;

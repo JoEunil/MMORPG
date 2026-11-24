@@ -110,7 +110,7 @@ namespace Core {
             // 다만 어떤 타이밍으로도 나올 수 없는 거리는 조작으로 본다.
             // 틱 지연으로 생기는 일시적 초과는 여기 걸리지 않는다.
             if (distSq > MOVE_BUDGET_CAP * MOVE_BUDGET_CAP) {
-                gameLogger->LogInfo("zone state", "move exceeds budget", "sessionID", sessionID, "dist", std::sqrt(distSq), "budget", character.moveBudget);
+                gameLogger->LogInfo("zone state", "move exceeds budget", {{"sessionID", sessionID}, {"dist", std::sqrt(distSq)}, {"budget", character.moveBudget}});
                 m_cheatList.emplace_back(sessionID, 1);
             }
         }
@@ -153,7 +153,7 @@ namespace Core {
         }
         auto& character = *found;
         if (skillSlot >= character.skillSlotCnt || skillSlot >= character.skillSlot.size()) {
-            gameLogger->LogInfo("zone state", "invalid skill slot", "sessionID", sessionID, "skillSlot", skillSlot);
+            gameLogger->LogInfo("zone state", "invalid skill slot", {{"sessionID", sessionID}, {"skillSlot", skillSlot}});
             m_cheatList.emplace_back(sessionID, 1);
             return;
         }

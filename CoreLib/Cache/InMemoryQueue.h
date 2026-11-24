@@ -46,7 +46,7 @@ namespace Core {
             }
             if (m_threads.size() != MQ_THREADPOOL_SIZE) {
                 sysLogger->LogError("core mq", "invalid worker count",
-                    "expected", MQ_THREADPOOL_SIZE, "actual", m_threads.size());
+                    {{"expected", MQ_THREADPOOL_SIZE}, {"actual", m_threads.size()}});
                 return false;
             }
             return true;

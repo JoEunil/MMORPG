@@ -29,7 +29,7 @@ namespace Cache {
         auto bazaarConn = connectionPoolBazaar->AcquireScoped();
         if (!bazaarConn) {
             // 인벤토리 저장 결과는 유지하고 남은 claim은 다음 flush에서 재시도한다.
-            Core::errorLogger->LogError("cache flush", "bazaar connection acquire failed case 6", "char_id", key.characterID);
+            Core::errorLogger->LogError("cache flush", "bazaar connection acquire failed case 6", {{"char_id", key.characterID}});
             return true;
         }
 
@@ -43,13 +43,13 @@ namespace Cache {
         }
         catch (const sql::SQLException& e) {
             Core::errorLogger->LogError("cache flush", "outbox claim exception case 6",
-                "code", e.getErrorCode(), "msg", e.what(), "char_id", key.characterID);
+                {{"code", e.getErrorCode()}, {"msg", e.what()}, {"char_id", key.characterID}});
         }
         bazaarConn.reset();
 
         // WriteDone 전에 성공한 만큼 head를 전진시켜 다음 flush에서 저장되도록 한다.
         if (claimedCnt > 0 && !cache_inventory->AdvanceInboxHead(shardIndex, key, inventory.head, claimedCnt))
-            Core::gameLogger->LogInfo("cache flush", "inbox advance failed", "char_id", key.characterID);
+            Core::gameLogger->LogInfo("cache flush", "inbox advance failed", {{"char_id", key.characterID}});
         return claimedCnt < pendingCnt;
     }
 }

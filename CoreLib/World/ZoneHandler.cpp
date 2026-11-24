@@ -126,7 +126,7 @@ namespace Core {
             // Disconnect may have taken the pending record while admission was in progress.
             CharacterState discarded;
             if (!zone.EmigrateChar(sessionID, discarded))
-                errorLogger->LogError("zone handler", "could not roll back transfer admission", "sessionID", sessionID);
+                errorLogger->LogError("zone handler", "could not roll back transfer admission", {{"sessionID", sessionID}});
             return;
         }
         zone.UpdateProfileVersion(sessionID, committed->profileID, committed->profileVersion);
@@ -153,7 +153,7 @@ namespace Core {
         if (route && *route == 0)
             route = lobbyZone->ApplyProfileVersion(update);
         if (route && !zoneRequests->TryEnqueueProfileVersion(*route, update))
-            errorLogger->LogWarn("zone handler", "could not route profile version", "sessionID", update.sessionID, "zoneID", *route);
+            errorLogger->LogWarn("zone handler", "could not route profile version", {{"sessionID", update.sessionID}, {"zoneID", *route}});
     }
 
     void ZoneHandler::ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneDisconnectEvent& request) {
@@ -169,7 +169,7 @@ namespace Core {
         if (zone.EmigrateChar(request.sessionID, character))
             cacheCommands->EnqueueCharacterStateUpdate(request.sessionID, character);
         else
-            gameLogger->LogWarn("zone handler", "disconnect character not found", "sessionID", request.sessionID, "zoneID", zoneID);
+            gameLogger->LogWarn("zone handler", "disconnect character not found", {{"sessionID", request.sessionID}, {"zoneID", zoneID}});
     }
 
     void ZoneHandler::ProcessBootstrap(ZoneState& zone, const ZoneBootstrapEvent& request) {
@@ -257,7 +257,7 @@ namespace Core {
             ProcessAction(zone, *parseBody<ActionRequestBody>(p->GetPtr()), p->GetSessionID(), zoneID);
             break;
         default:
-            errorLogger->LogInfo("zone Handler", "UnDefined OPCODE", "zone", zoneID, "opcode", p->GetOpcode(), "session", p->GetSessionID());
+            errorLogger->LogInfo("zone Handler", "UnDefined OPCODE", {{"zone", zoneID}, {"opcode", p->GetOpcode()}, {"session", p->GetSessionID()}});
             break;
         }
     }

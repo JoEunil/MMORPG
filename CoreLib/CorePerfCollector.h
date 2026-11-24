@@ -73,7 +73,7 @@ namespace Core {
             auto tid = std::this_thread::get_id();
             std::stringstream ss;
             ss << tid;
-            sysLogger->LogInfo("core perf", "Core perf collector thread started", "threadID", ss.str());
+            sysLogger->LogInfo("core perf", "Core perf collector thread started", {{"threadID", ss.str()}});
             while (m_running.load(std::memory_order_relaxed))
             {
                 Flush();
@@ -82,7 +82,7 @@ namespace Core {
         }
         void AddPacketProcessCnt(uint16_t zoneID, size_t cnt) {
             if (zoneID-1 >= ZONE_COUNT) {
-                errorLogger->LogInfo("core perf", "AddPacketProcessCnt zoneID out of bound", "zoneID", zoneID);
+                errorLogger->LogInfo("core perf", "AddPacketProcessCnt zoneID out of bound", {{"zoneID", zoneID}});
                 return;
             }
             zones[zoneID-1].packetProcessed.fetch_add(cnt, std::memory_order_relaxed);
@@ -91,49 +91,49 @@ namespace Core {
         }
         void AddActionFieldCnt(uint16_t zoneID, size_t cnt) {
             if (zoneID-1 >= ZONE_COUNT) {
-                errorLogger->LogInfo("core perf", "AddActionPacketCnt zoneID out of bound", "zoneID", zoneID);
+                errorLogger->LogInfo("core perf", "AddActionPacketCnt zoneID out of bound", {{"zoneID", zoneID}});
                 return;
             }
             zones[zoneID-1].actionFieldCount.fetch_add(cnt, std::memory_order_relaxed);
         }
         void AddDeltaFieldCnt(uint16_t zoneID, size_t cnt) {
             if (zoneID-1 >= ZONE_COUNT) {
-                errorLogger->LogInfo("core perf", "AddDeltaPacketCnt zoneID out of bound", "zoneID", zoneID);
+                errorLogger->LogInfo("core perf", "AddDeltaPacketCnt zoneID out of bound", {{"zoneID", zoneID}});
                 return;
             }
             zones[zoneID - 1].deltaFieldCount.fetch_add(cnt, std::memory_order_relaxed);
         }
         void UpdateClientCnt(uint16_t zoneID, size_t cnt) {
             if (zoneID-1 >= ZONE_COUNT) {
-                errorLogger->LogInfo("core perf", "AddFullPacketCnt zoneID out of bound", "zoneID", zoneID);
+                errorLogger->LogInfo("core perf", "AddFullPacketCnt zoneID out of bound", {{"zoneID", zoneID}});
                 return;
             }
             zones[zoneID - 1].characterCount.store(cnt, std::memory_order_relaxed);
         }
         void AddMonsterDeltaFieldCnt(uint16_t zoneID, size_t cnt) {
             if (zoneID-1 >= ZONE_COUNT) {
-                errorLogger->LogInfo("core perf", "AddMonsterDeltaPacketCnt zoneID out of bound", "zoneID", zoneID);
+                errorLogger->LogInfo("core perf", "AddMonsterDeltaPacketCnt zoneID out of bound", {{"zoneID", zoneID}});
                 return;
             }
             zones[zoneID - 1].monsterDeltaFieldCount.fetch_add(cnt, std::memory_order_relaxed);
         }
         void UpdateMonsterCnt(uint16_t zoneID, size_t cnt) {
             if (zoneID-1 >= ZONE_COUNT) {
-                errorLogger->LogInfo("core perf", "AddMonsterFullPacketCnt zoneID out of bound", "zoneID", zoneID);
+                errorLogger->LogInfo("core perf", "AddMonsterFullPacketCnt zoneID out of bound", {{"zoneID", zoneID}});
                 return;
             }
             zones[zoneID - 1].monsterCount.store(cnt, std::memory_order_relaxed);
         }
         void AddHitCnt(uint16_t zoneID) {
             if (zoneID-1 >= ZONE_COUNT) {
-                errorLogger->LogInfo("core perf", "AddHitCnt zoneID out of bound", "zoneID", zoneID);
+                errorLogger->LogInfo("core perf", "AddHitCnt zoneID out of bound", {{"zoneID", zoneID}});
                 return;
             }
             zones[zoneID - 1].hitCount.fetch_add(1, std::memory_order_relaxed);
         }
         void AddZoneDropCnt(uint16_t zoneID) {
             if (zoneID - 1 >= ZONE_COUNT) {
-                errorLogger->LogInfo("core perf", "AddHitCnt zoneID out of bound", "zoneID", zoneID);
+                errorLogger->LogInfo("core perf", "AddHitCnt zoneID out of bound", {{"zoneID", zoneID}});
                 return;
             }
             zones[zoneID - 1].hitCount.fetch_add(1, std::memory_order_relaxed);
@@ -165,23 +165,23 @@ namespace Core {
             auto TbroadcastDropCnt = broadcastDropCnt.load(std::memory_order_relaxed);
             broadcastDropCnt.store(0, std::memory_order_relaxed);
 
-            perfLogger->LogInfo("core perf", "perf log per sec", "chatSendCnt", TchatSendCnt,
-            "broadcastEnqueuCnt", TbroadcastEnqueuCnt, "broadcastPopCnt", TbroadcastPopCnt,
-            "broadcastSendCnt", TbroadcastSendCnt, "brodcastWorkDropCnt", TbroadcastDropCnt);
+            perfLogger->LogInfo("core perf", "perf log per sec", {{"chatSendCnt", TchatSendCnt},
+            {"broadcastEnqueuCnt", TbroadcastEnqueuCnt}, {"broadcastPopCnt", TbroadcastPopCnt},
+            {"broadcastSendCnt", TbroadcastSendCnt}, {"brodcastWorkDropCnt", TbroadcastDropCnt}});
             for (int i = 0; i < ZONE_COUNT; i++)
             {
                 auto& curr = zones[i];
-                perfLogger->LogInfo("core perf", "zone thread per sec", "zoneID", i+1, 
-                    "packetProcessed", curr.packetProcessed.load(std::memory_order_relaxed),
-                    "tick", curr.tick.load(std::memory_order_relaxed),
-                    "actionFieldCount", curr.actionFieldCount.load(std::memory_order_relaxed),
-                    "deltaFieldCount", curr.deltaFieldCount.load(std::memory_order_relaxed),
-                    "characterCount", curr.characterCount.load(std::memory_order_relaxed),
-                    "monsterDeltaFieldCount", curr.monsterDeltaFieldCount.load(std::memory_order_relaxed),
-                    "monsterCount", curr.monsterCount.load(std::memory_order_relaxed),
-                    "hitCount", curr.hitCount.load(std::memory_order_relaxed),
-                    "zoneWorkDropCount", curr.zoneWorkDropCnt.load(std::memory_order_relaxed)
-                );
+                perfLogger->LogInfo("core perf", "zone thread per sec", {{"zoneID", i+1},
+                    {"packetProcessed", curr.packetProcessed.load(std::memory_order_relaxed)},
+                    {"tick", curr.tick.load(std::memory_order_relaxed)},
+                    {"actionFieldCount", curr.actionFieldCount.load(std::memory_order_relaxed)},
+                    {"deltaFieldCount", curr.deltaFieldCount.load(std::memory_order_relaxed)},
+                    {"characterCount", curr.characterCount.load(std::memory_order_relaxed)},
+                    {"monsterDeltaFieldCount", curr.monsterDeltaFieldCount.load(std::memory_order_relaxed)},
+                    {"monsterCount", curr.monsterCount.load(std::memory_order_relaxed)},
+                    {"hitCount", curr.hitCount.load(std::memory_order_relaxed)},
+                    {"zoneWorkDropCount", curr.zoneWorkDropCnt.load(std::memory_order_relaxed)
+                }});
                 curr.packetProcessed.store(0, std::memory_order_relaxed);
                 curr.tick.store(0, std::memory_order_relaxed);
                 curr.actionFieldCount.store(0, std::memory_order_relaxed);

@@ -74,7 +74,7 @@ namespace Cache {
             auto tid = std::this_thread::get_id();
             std::stringstream ss;
             ss << tid;
-            Core::sysLogger->LogInfo("DB worker thread", "DB worker thread started", "threadID", ss.str());
+            Core::sysLogger->LogInfo("DB worker thread", "DB worker thread started", {{"threadID", ss.str()}});
             
             while (true)
             {
@@ -92,7 +92,7 @@ namespace Cache {
                 ExecuteWork(work);
             }
 
-            Core::sysLogger->LogInfo("DB worker thread", "DB worker thread stopped", "threadID", ss.str());
+            Core::sysLogger->LogInfo("DB worker thread", "DB worker thread stopped", {{"threadID", ss.str()}});
         }
         void ExecuteWork(const QueuedWork& work) {
             T* conn = connectionPool->Acquire();
@@ -115,7 +115,7 @@ namespace Cache {
 
         bool TryExecuteWork(const QueuedWork& work, T* conn) {
             if (conn == nullptr) {
-                Core::errorLogger->LogError("DB worker thread", "work failed", "msg", "DB connection pool exhausted");
+                Core::errorLogger->LogError("DB worker thread", "work failed", {{"msg", "DB connection pool exhausted"}});
                 return false;
             }
 
@@ -124,7 +124,7 @@ namespace Cache {
                 return true;
             }
             catch (const std::exception& e) {
-                Core::errorLogger->LogError("DB worker thread", "work failed", "msg", e.what());
+                Core::errorLogger->LogError("DB worker thread", "work failed", {{"msg", e.what()}});
             }
             catch (...) {
                 Core::errorLogger->LogError("DB worker thread", "work failed with unknown exception");
@@ -137,7 +137,7 @@ namespace Cache {
                 conn.ClearResults();
             }
             catch (const std::exception& e) {
-                Core::errorLogger->LogError("DB worker thread", "clear results failed", "msg", e.what());
+                Core::errorLogger->LogError("DB worker thread", "clear results failed", {{"msg", e.what()}});
             }
             catch (...) {
                 Core::errorLogger->LogError("DB worker thread", "clear results failed with unknown exception");
@@ -180,7 +180,7 @@ namespace Cache {
                 const auto header = Core::parseMsgHeader(failedMessage->GetBuffer());
                 std::vector<std::byte> binary(failedMessage->GetLength());
                 std::memcpy(binary.data(), failedMessage->GetBuffer(), failedMessage->GetLength());
-                Core::errorLogger->LogError("DB worker thread", "queue full", "sessionID", header->sessionID, "messageType", header->messageType, "message", binary);
+                Core::errorLogger->LogError("DB worker thread", "queue full", {{"sessionID", header->sessionID}, {"messageType", header->messageType}, {"message", binary}});
                 return DBEnqueueResult::Rejected;
             }
 

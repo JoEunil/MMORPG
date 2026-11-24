@@ -14,7 +14,7 @@ namespace Cache {
             return;
         }
         catch (const std::exception& e) {
-            Core::errorLogger->LogError("cache flush", "flush command failed", "msg", e.what());
+            Core::errorLogger->LogError("cache flush", "flush command failed", {{"msg", e.what()}});
         }
         catch (...) {
             Core::errorLogger->LogError("cache flush", "flush command failed with unknown exception");
@@ -48,7 +48,7 @@ namespace Cache {
         auto tid = std::this_thread::get_id();
         std::stringstream ss;
         ss << tid;
-        Core::sysLogger->LogInfo("cache flush", "flush thread started", "threadID", ss.str());
+        Core::sysLogger->LogInfo("cache flush", "flush thread started", {{"threadID", ss.str()}});
         while (m_running.load(std::memory_order_relaxed)) {
             std::unique_lock<std::mutex> lock(m_mutex);
             m_cv.wait(lock,[&] {return !m_running || !m_flushQ->empty();});
@@ -66,7 +66,7 @@ namespace Cache {
                     m_drainCv.notify_all();
             }
         }
-        Core::sysLogger->LogInfo("cache flush", "flush thread stopped", "threadID", ss.str());
+        Core::sysLogger->LogInfo("cache flush", "flush thread stopped", {{"threadID", ss.str()}});
     }
 
     void CacheFlush::WaitUntilDrained() {
@@ -118,7 +118,7 @@ namespace Cache {
                 return FlushEnqueueResult::Queued;
             }
         }
-        if (command != nullptr) Core::errorLogger->LogError("cache flush", "queue full", "stmtID", static_cast<uint16_t>(command->stmtID));
+        if (command != nullptr) Core::errorLogger->LogError("cache flush", "queue full", {{"stmtID", static_cast<uint16_t>(command->stmtID)}});
         return FlushEnqueueResult::Failed;
     }
 }
