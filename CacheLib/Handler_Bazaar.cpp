@@ -1,7 +1,6 @@
 ﻿#include "pch.h"
 #include "Handler.h"
 
-#include <algorithm>
 #include <exception>
 #include <memory>
 
@@ -9,39 +8,12 @@
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
-#include <CoreLib/Data/ItemData.h>
 
 #include "DB/DBWorker.h"
 #include "BazaarResult.h"
+#include "BazaarRegistration.h"
 
 namespace Cache {
-    namespace {
-        // A valid selection carries the server-owned item ID, which is always nonzero.
-        struct BazaarRegistrationSelection {
-            uint8_t failureStatus;
-            uint32_t itemID = 0;
-        };
-
-        BazaarRegistrationSelection ValidateBazaarRegistration(
-            const Core::MsgBazaarRegisterBody& request, const InventoryCacheItem& inventory) {
-            if (request.inventorySlot >= MAX_INVENTORY || inventory.status != CACHE_STATUS::AVAILABLE)
-                return { 0 };
-
-            const auto& selected = inventory.data.items[request.inventorySlot];
-            if (selected.itemID == 0 || selected.slot != request.inventorySlot || request.quantity == 0 || request.price == 0)
-                return { 4 };
-            if (selected.quantity < request.quantity)
-                return { 2 };
-
-            // Inventory stacks by item ID, so duplicate IDs make slot-based removal ambiguous.
-            for (uint16_t slot = 0; slot < MAX_INVENTORY; ++slot) {
-                if (slot != request.inventorySlot && inventory.data.items[slot].itemID == selected.itemID)
-                    return { 4 };
-            }
-            return { 0, selected.itemID };
-        }
-    }
-
     template <typename Response, typename Work>
     void Handler::EnqueueBazaarQuery(Core::MsgHeader header, const Response& failureBody, const char* queueError, Work work) {
         const auto finish = [this, header, queueError](const Response& response) {
@@ -120,80 +92,16 @@ namespace Cache {
         if (!CheckMessageLength<Core::MsgBazaarRegisterBody>(msg.get()))
             return;
 
-        auto request = *body; // The response overwrites this buffer and the worker outlives this call.
+        const auto request = *body;
         const auto pending = std::make_shared<ScopedMessage>(std::move(msg));
-        const auto finish = [this, pending, sessionID, request](uint8_t status) {
+        const auto finish = [this, pending, sessionID, requestID = request.requestID, characterID = request.characterID](BazaarRegistrationStatus status) {
             auto owned = std::move(*pending);
             if (!owned) return;
-            const Core::MsgBazaarRegisterResBody response{ status, request.requestID, request.characterID };
-            if (!TryEnqueueResponse(*owned, { sessionID, Core::MSG_BAZAAR_REGISTER_RES }, response))
+            const Core::MsgBazaarRegisterResBody response{static_cast<uint8_t>(status), requestID, characterID};
+            if (!TryEnqueueResponse(*owned, {sessionID, Core::MSG_BAZAAR_REGISTER_RES}, response))
                 Core::errorLogger->LogError("cache handler bazaar", "register response queue rejected", {{"sessionID", sessionID}});
         };
-
-        const auto selection = ValidateBazaarRegistration(request, cache_inventory->Getter(request.characterID));
-        if (selection.itemID == 0) {
-            finish(selection.failureStatus);
-            return;
-        }
-        request.itemID = selection.itemID;
-        const auto* item = Data::FindItem(request.itemID);
-        constexpr uint64_t BAZAAR_FEE_MIN = 10;
-        constexpr uint64_t BAZAAR_FEE_RATE = 10;
-        const uint64_t fee = std::max(BAZAAR_FEE_MIN, request.price / BAZAAR_FEE_RATE);
-        const auto reportUnknown = [request, fee] {
-            Core::errorLogger->LogError("cache handler bazaar", "register result or compensation unknown; manual investigation required",
-                {{"char_id", request.characterID}, {"item_id", request.itemID}, {"quantity", request.quantity}, {"fee", fee}});
-        };
-        const auto restore = [this, request, fee] {
-            const auto inventoryStatus = std::get<0>(cache_inventory->PartialUpdate(request.characterID, request.itemID, 2, request.quantity));
-            const auto feeStatus = std::get<0>(cache_currency->DepositCurrency(request.characterID, fee));
-            return inventoryStatus == CACHE_STATUS::AVAILABLE && feeStatus == CACHE_STATUS::AVAILABLE;
-        };
-        try {
-            const auto failure = item == nullptr ? std::optional<uint8_t>{ 4 } : DeductBazaarRegistrationCosts(request, fee);
-            if (failure) {
-                if (*failure == 5)
-                    reportUnknown();
-                finish(*failure);
-                return;
-            }
-            const auto failed = [finish, reportUnknown] {
-                // The worker may fail before or after SQL; neither permits automatic compensation.
-                reportUnknown();
-                finish(5);
-            };
-            const auto outcome = dbWorkerBazaar->Enqueue([request, itemType = static_cast<uint16_t>(item->GetType()), finish, restore, reportUnknown](DBConnectionBazaar* conn) {
-                const auto status = ResolveBazaarRegister([conn, request, itemType] {
-                    return conn->ExecuteUpdate(StatementId::InsertBazaarListing, request.itemID, request.characterID, itemType, request.quantity, request.price);
-                }, restore, reportUnknown);
-                finish(status);
-            }, nullptr, failed);
-            if (outcome != DBEnqueueResult::Queued) {
-                // Rejection proves the worker never ran INSERT.
-                finish(ResolveBazaarRegister([] { return 0; }, restore, reportUnknown));
-            }
-        }
-        catch (...) {
-            // A cache mutation/enqueue/response exception can follow a partial effect. Do not retry it.
-            reportUnknown();
-            finish(5);
-        }
-    }
-
-    std::optional<uint8_t> Handler::DeductBazaarRegistrationCosts(const Core::MsgBazaarRegisterBody& request, uint64_t fee) {
-        const auto inventoryStatus = std::get<0>(cache_inventory->PartialUpdate(
-            request.characterID, request.itemID, 2, -static_cast<int32_t>(request.quantity)));
-        if (inventoryStatus != CACHE_STATUS::AVAILABLE)
-            return 2;
-
-        const auto feeStatus = std::get<0>(cache_currency->TryWithdrawCurrency(request.characterID, fee));
-        if (feeStatus == CACHE_STATUS::AVAILABLE)
-            return std::nullopt;
-
-        // The fee was never withdrawn, so restore only the item.
-        const auto restored = std::get<0>(cache_inventory->PartialUpdate(
-            request.characterID, request.itemID, 2, request.quantity));
-        return restored == CACHE_STATUS::AVAILABLE ? 3 : 5;
+        bazaarRegistration->Register({request.characterID, request.quantity, request.price, request.inventorySlot}, finish);
     }
 
     void Handler::BazaarCancel(ScopedMessage& msg, uint64_t sessionID, Core::MsgBazaarCancelBody* body) {

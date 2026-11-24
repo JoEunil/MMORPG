@@ -13,6 +13,7 @@
 #include "ProfileCache.h"
 #include "InmemoryQueue.h"
 #include "Handler.h"
+#include "BazaarRegistration.h"
 #include "DB/DBWorker.h"
 #include "WALManager.h"
 
@@ -37,6 +38,7 @@ namespace Cache {
         DBConnectionPool<DBConnectionBazaar> connectionPoolBazaar;
         DBWorker<DBConnectionGame> dbWorkerGame;
         DBWorker<DBConnectionBazaar> dbWorkerBazaar;
+        BazaarRegistration bazaarRegistration;
         WALManager walManager;
 
         // 테스트에서 Load/Unload/Rename까지 직접 두드리기 위한 concrete getter. friend으로만 접근.
@@ -61,6 +63,7 @@ namespace Cache {
             cache_inventory.Initialize(&dbWorkerGame, clock);
             cache_currency.Initialize(&dbWorkerGame, clock);
             cache_profile.Initialize(&dbWorkerGame);
+            bazaarRegistration.Initialize(&cache_inventory, &cache_currency, &dbWorkerBazaar);
             
             flush.Initialize(&connectionPoolGame, &connectionPoolBazaar, &cache_inventory, &cache_currency);
             flush.SetInvFlushedFn([this](uint64_t characterID, uint64_t flushedLsn) {
@@ -73,7 +76,7 @@ namespace Cache {
         
         void InjectDependencies(Core::IMessageQueue* sendMQ, Core::DurableLogger* durableLogger = nullptr)
         {
-            handler.Initialize(sendMQ, &messageWriter, &msgPool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile);
+            handler.Initialize(sendMQ, &messageWriter, &msgPool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile, &bazaarRegistration);
             recvMQ.Initialize(&handler, &msgPool, durableLogger);
             recvMQ.Start();
         }
@@ -85,6 +88,7 @@ namespace Cache {
                 or !cache_inventory.IsReady()
                 or !cache_currency.IsReady()
                 or !cache_profile.IsReady()
+                or !bazaarRegistration.IsReady()
                 or !handler.IsReady()
                 or !dbWorkerGame.IsReady()
                 or !dbWorkerBazaar.IsReady()

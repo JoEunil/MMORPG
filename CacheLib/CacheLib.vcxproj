@@ -158,6 +158,7 @@
     <ClInclude Include="DB\DBWorker.h" />
     <ClInclude Include="FlushDispatcher.h" />
     <ClInclude Include="Handler.h" />
+    <ClInclude Include="BazaarRegistration.h" />
     <ClInclude Include="Initializer.h" />
     <ClInclude Include="InMemoryQueue.h" />
     <ClInclude Include="WALManager.h" />
@@ -177,6 +178,7 @@
     <ClCompile Include="CacheStorageInventory.cpp" />
     <ClCompile Include="Handler.cpp" />
     <ClCompile Include="Handler_Bazaar.cpp" />
+    <ClCompile Include="BazaarRegistration.cpp" />
     <ClCompile Include="Handler_Currency.cpp" />
     <ClCompile Include="Handler_Diamond.cpp" />
     <ClCompile Include="Handler_Inventory.cpp" />

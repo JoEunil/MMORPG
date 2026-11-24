@@ -57,9 +57,6 @@
     <ClCompile Include="BaseLib\WAL.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="CacheLib\CacheStorageTest.cpp">
-      <Filter>CacheLib</Filter>
-    </ClCompile>
     <ClCompile Include="CoreLib\MonsterBehavior.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>

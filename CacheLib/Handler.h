@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <utility>
 
 #include "Config.h"
@@ -22,6 +21,8 @@ namespace Core {
 }
 
 namespace Cache {
+    class BazaarRegistration;
+
     class Handler {
         using ScopedMessage = CacheMessagePool::ScopedMessage;
         Core::IMessageQueue* messageQ;  // response
@@ -33,6 +34,7 @@ namespace Cache {
         Core::ILogger* logger = nullptr;
         DBWorker<DBConnectionGame>* dbWorkerGame = nullptr;
         DBWorker<DBConnectionBazaar>* dbWorkerBazaar = nullptr;
+        BazaarRegistration* bazaarRegistration = nullptr;
         template <typename Response, typename Work>
         void EnqueueBazaarQuery(Core::MsgHeader header, const Response& failureBody, const char* queueError, Work work);
 
@@ -57,7 +59,7 @@ namespace Cache {
             return messageWriter->Write(msg, header, body) && messageQ->EnqueueMessage(&msg);
         }
 
-        void Initialize(Core::IMessageQueue* mq, const Core::MessageWriter* writer, CacheMessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp) {
+        void Initialize(Core::IMessageQueue* mq, const Core::MessageWriter* writer, CacheMessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp, BazaarRegistration* registration) {
             messageQ = mq;
             messageWriter = writer;
             messagePool = mp;
@@ -66,8 +68,13 @@ namespace Cache {
             cache_inventory = ci;
             cache_currency = cc;
             cache_profile = cp;
+            bazaarRegistration = registration;
         }
         bool IsReady() {
+            if (bazaarRegistration == nullptr) {
+                Core::sysLogger->LogError("cache handler", "bazaar registration not initialized");
+                return false;
+            }
             if (messageQ == nullptr) {
                 Core::sysLogger->LogError("cache handler", "messageQ not initialized");
                 return false;
@@ -114,7 +121,6 @@ namespace Cache {
         void BazaarMyList(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarMyListBody* body);
         void BazaarSearch(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarSearchBody* body);
         void BazaarRegister(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarRegisterBody* body);
-        std::optional<uint8_t> DeductBazaarRegistrationCosts(const Core::MsgBazaarRegisterBody& request, uint64_t fee);
         void BazaarCancel(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarCancelBody* body);
         void BazaarBuy(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarBuyBody* body);
         void BazaarClaim(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarClaimBody* body);
