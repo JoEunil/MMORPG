@@ -11,8 +11,6 @@
 
 분리 범위는 조회 결과 읽기다. 연결·쿼리·바인딩과 SQL 예외 처리의 MySQL 의존성은 남아 있다.
 
-기존에도 로거와 세션 인증은 서버 인터페이스를 spdlog·Redis에 연결했다. IOCP 역시 서버의 전송 인터페이스를 구현해 Windows API를 감추는 경계 역할을 한다.
-
 <details>
 <summary>코드 보기</summary>
 

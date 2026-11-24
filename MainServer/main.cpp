@@ -17,6 +17,7 @@
 #include <CoreLib/LoggerGlobal.h>
 
 #include <ExternalLib/Logger.h>
+#include <ExternalLib/JsonUtility.h>
 #include <ExternalLib/SessionAuth.h>
 #include <ExternalLib/CachedClock.h>
 #include <External/spdlog/spdlog.h>
@@ -46,14 +47,15 @@ int main(int argc, char* argv[]) {
     SetConsoleCP(CP_UTF8);
     std::cout << " 서버 시작" << std::endl;
     External::Logger::Initialize();
+    const auto logFormatter = std::make_shared<External::JsonUtility>();
 
-    Core::sysLogger = std::make_unique<External::Logger>();
+    Core::sysLogger = std::make_unique<External::Logger>(logFormatter);
     Core::sysLogger->CreateSink("system");
-    Core::gameLogger = std::make_unique<External::Logger>();
+    Core::gameLogger = std::make_unique<External::Logger>(logFormatter);
     Core::gameLogger->CreateSink("game");
-    Core::errorLogger = std::make_unique<External::Logger>();
+    Core::errorLogger = std::make_unique<External::Logger>(logFormatter);
     Core::errorLogger->CreateSink("error");
-    Core::perfLogger = std::make_unique<External::Logger>();
+    Core::perfLogger = std::make_unique<External::Logger>(logFormatter);
     Core::perfLogger->CreateSink("perf");
     bool testBazaar = !Cache::GetEnvVar("TEST_BAZAAR").empty();
     bool testCache = !Cache::GetEnvVar("TEST_CACHE").empty();

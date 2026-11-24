@@ -80,7 +80,13 @@
     <ClInclude Include="Interface\INetworkSender.h">
       <Filter>Interface</Filter>
     </ClInclude>
+    <ClInclude Include="Interface\ILogFormatter.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
     <ClInclude Include="Interface\ILogger.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface\LogRecord.h">
       <Filter>Interface</Filter>
     </ClInclude>
     <ClInclude Include="Interface\ISessionAuth.h">

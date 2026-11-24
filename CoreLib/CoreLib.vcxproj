@@ -171,6 +171,8 @@
     <ClInclude Include="Cache\DurableLogger.h" />
     <ClInclude Include="Interface\INetworkSender.h" />
     <ClInclude Include="Interface\ILogger.h" />
+    <ClInclude Include="Interface\ILogFormatter.h" />
+    <ClInclude Include="Interface\LogRecord.h" />
     <ClInclude Include="Initializer.h" />
     <ClInclude Include="Cache\InMemoryQueue.h" />
     <ClInclude Include="Interface\IPacket.h" />

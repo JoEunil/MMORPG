@@ -3,22 +3,39 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/async.h>
 #include <spdlog/sinks/basic_file_sink.h>
-#include <nlohmann/json.hpp>
 #include <string>
 #include <memory>
 #include <atomic>
 #include <thread>
+#include <stdexcept>
+#include <utility>
 
 #include <CoreLib/Interface/ILogger.h>
-#include "JsonUtility.h"
 #include "Config.h"
+#include <CoreLib/Interface/ILogFormatter.h>
 
 namespace External {
     class Logger : public Core::ILogger
     {
         std::shared_ptr<spdlog::logger> m_logger;
         std::atomic<bool> m_running = false;
+        std::shared_ptr<const Core::ILogFormatter> m_formatter;
+
+        void WriteStructured(const Core::LogRecord& record) {
+            const auto message = m_formatter->Format(record);
+            switch (record.level) {
+            case Core::LogLevel::Info: LogInfo(message); break;
+            case Core::LogLevel::Warning: LogWarn(message); break;
+            case Core::LogLevel::Error: LogError(message); break;
+            }
+        }
     public:
+        explicit Logger(std::shared_ptr<const Core::ILogFormatter> formatter)
+            : m_formatter(std::move(formatter)) {
+            if (!m_formatter)
+                throw std::invalid_argument("Logger requires a formatter");
+        }
+
         static void Initialize() {
             spdlog::init_thread_pool(LOG_Q_SIZE, LOG_THREAD_SIZE);
         }
@@ -50,6 +67,18 @@ namespace External {
             if (m_running.load(std::memory_order_relaxed)) {
                 m_logger->info(msg);
             }
+        }
+        void LogInfo(const std::string& event, const std::string& msg,
+            std::initializer_list<Core::LogField> fields = {}) override {
+            WriteStructured({Core::LogLevel::Info, event, msg, {fields.begin(), fields.size()}});
+        }
+        void LogError(const std::string& event, const std::string& msg,
+            std::initializer_list<Core::LogField> fields = {}) override {
+            WriteStructured({Core::LogLevel::Error, event, msg, {fields.begin(), fields.size()}});
+        }
+        void LogWarn(const std::string& event, const std::string& msg,
+            std::initializer_list<Core::LogField> fields = {}) override {
+            WriteStructured({Core::LogLevel::Warning, event, msg, {fields.begin(), fields.size()}});
         }
         void Flush() override {
             if (m_running.load(std::memory_order_relaxed))  {
