@@ -13,7 +13,6 @@ namespace Core {
     class IPacketView;
     class IServerResponseQueue;
     class PacketWriter;
-    class IDBCache;
     class SessionManager;
     class LobbyZone;
     class ChatThreadPool;
@@ -55,7 +54,6 @@ namespace Core {
         PacketWriter* writer = nullptr;
         SessionManager* sessionManager = nullptr;
         ISessionAuth* auth = nullptr;
-        IDBCache* cache = nullptr;
         const CacheCommandSender* cacheCommands = nullptr;
         LobbyZone* lobbyZone = nullptr;
         ChatThreadPool* chat = nullptr;

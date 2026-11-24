@@ -17,7 +17,6 @@ namespace Core {
     class IPacketView;
     class IServerResponseQueue;
     class PacketWriter;
-    class IDBCache;
     class IMessageQueue;
     class LobbyZone;
     class IInventoryOperations;
