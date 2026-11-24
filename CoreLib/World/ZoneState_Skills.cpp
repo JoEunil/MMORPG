@@ -13,9 +13,7 @@ namespace Core {
 			if (character.hp <= 0) character.parryWindowTicks = 0;
             else if (character.parryWindowTicks != 0) --character.parryWindowTicks;
             if (character.parryCooldownTicks != 0) --character.parryCooldownTicks;
-            for (auto& cooldown : character.potionCooldownTicks)
-                if (cooldown != 0)
-                    --cooldown;
+            character.itemUse.AdvanceTick();
 			for (int i = 0; i < character.skillSlotCnt; i++) {
 				if (character.skillSlot[i].skillCoolDownTick != 0)
 					character.skillSlot[i].skillCoolDownTick--;

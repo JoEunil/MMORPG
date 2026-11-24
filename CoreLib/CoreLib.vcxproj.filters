@@ -209,6 +209,8 @@
     <ClInclude Include="World\Equipment.h">
       <Filter>World</Filter>
     </ClInclude>
+    <ClInclude Include="World\ItemUseState.h"><Filter>World</Filter></ClInclude>
+    <ClInclude Include="World\ItemUseProcessor.h"><Filter>World</Filter></ClInclude>
     <ClInclude Include="World\CharacterState.h">
       <Filter>World</Filter>
     </ClInclude>
@@ -325,6 +327,7 @@
     <ClCompile Include="World\Equipment.cpp">
       <Filter>World</Filter>
     </ClCompile>
+    <ClCompile Include="World\ItemUseProcessor.cpp"><Filter>World</Filter></ClCompile>
     <ClCompile Include="World\ZoneState_Actions.cpp">
       <Filter>World</Filter>
     </ClCompile>

@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <vector>
 #include <array>
-#include "../Data/PotionType.h"
+#include "ItemUseState.h"
 #include "../Data/GrowthData.h"
 #include "Equipment.h"
 
@@ -44,7 +44,7 @@ namespace Core {
         uint8_t skillSlotCnt; 
         std::vector<SkillSlotEntry> skillSlot;
 
-        std::array<uint32_t, static_cast<size_t>(Data::PotionType::Count)> potionCooldownTicks{};
+        ItemUseState itemUse;
         uint32_t parryWindowTicks = 0;
         uint32_t parryCooldownTicks = 0;
         ParryRequestHistory lastParry;

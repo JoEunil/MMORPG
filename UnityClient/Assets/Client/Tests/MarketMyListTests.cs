@@ -493,7 +493,7 @@ namespace Mmorpg.Client.Tests
             public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) { }
             public void RequestWallet(uint requestID) { }
             public Task Connect(string address, int port) => Task.CompletedTask; public void CharacterList() { } public void Enter(ulong id) { }
-            public void Chat(string message, byte scope, ulong target) { } public void Profiles(uint[] ids) { } public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
+            public void Chat(string message, byte scope, ulong target) { } public void Profiles(uint[] ids) { } public void RequestItemUse(ulong requestID, uint itemID) { }
             public void RequestEquipment(ulong requestID, ulong ownershipEpoch) { }
             public void RequestEquipItem(ulong requestID, ulong ownershipEpoch, byte slot, uint itemID) { }
             public void RequestParry(ulong requestID, ulong ownershipEpoch) { }

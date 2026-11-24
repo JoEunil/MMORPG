@@ -199,17 +199,10 @@ namespace Core {
         return zone.Parry(sessionID, request);
     }
 
-    void ZoneHandler::ProcessItemUse(ZoneState& zone, IPacketView* p, uint16_t zoneID) {
+    void ZoneHandler::ProcessItemUse(ZoneState& zone, IPacketView* p) {
         const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
-        ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
-        const auto check = sessionManager->CheckItemUse(p->GetSessionID(), zoneID, request, result);
-        if (check == SessionRequestStatus::Ready) {
-            if (const auto applied = zone.UseItem(p->GetSessionID(), request, inventory)) {
-                result = *applied;
-                sessionManager->RememberItemUse(p->GetSessionID(), zoneID, result);
-            }
-        } else if (check == SessionRequestStatus::StaleOwnership || check == SessionRequestStatus::StaleRequest)
-            result.status = 7;
+        const auto applied = zone.UseItem(p->GetSessionID(), request, inventory);
+        const auto result = applied.value_or(ItemUseResponseBody{request.requestID, request.itemID, 0, 0, 0});
         responses->Enqueue(p->GetSessionID(), writer->WriteItemUseResponse(result));
     }
 
@@ -248,7 +241,7 @@ namespace Core {
         PacketHeader* h = parseHeader(p->GetPtr());
         switch (p->GetOpcode()) {
         case OP::ITEM_USE:
-            ProcessItemUse(zone, p, zoneID);
+            ProcessItemUse(zone, p);
             break;
         case OP::EQUIPMENT_GET:
         case OP::EQUIPMENT_SET:

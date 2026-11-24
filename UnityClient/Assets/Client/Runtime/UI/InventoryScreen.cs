@@ -490,7 +490,7 @@ namespace Mmorpg.Client
             UpdateControls();
         }
 
-        private void ItemUseReceived(ulong requestID, ulong ownershipEpoch, uint itemID, byte status,
+        private void ItemUseReceived(ulong requestID, uint itemID, byte status,
             ushort remainingQuantity, uint cooldownRemainingTicks)
         {
             // ClientCore matches request ID and ownership before dispatching this event.
@@ -511,7 +511,7 @@ namespace Mmorpg.Client
                 case 4: result = "Potion is on cooldown."; break;
                 case 5: result = "No " + resource + " potions remain."; break;
                 case 6: result = "Another item operation is in progress."; break;
-                case 7: result = "World changed. Open the bag again."; break;
+                case 7: result = "Item request is outdated. Try again."; break;
                 case 8: result = "Item storage failed. Try again later."; break;
                 case 9: result = "This item cannot be used."; break;
                 default: result = "Unknown item use result."; break;

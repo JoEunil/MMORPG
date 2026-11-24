@@ -296,15 +296,10 @@ namespace Core {
         const auto opcode = packet->GetOpcode();
         if (opcode == OP::ITEM_USE) {
             const auto request = *parseBody<ItemUseRequestBody>(packet->GetPtr());
-            ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
-            const auto check = sessionManager->CheckItemUse(sessionID, zoneID, request, result);
-            if (check == SessionRequestStatus::Ready) {
-                if (zonePackets->TryEnqueuePacket(zoneID, std::move(packet)))
-                    return;
-                result.status = 6; // Existing Busy response; no item was consumed.
-                errorLogger->LogWarn("non simulation handler", "item request queue full", {{"sessionID", sessionID}, {"zoneID", zoneID}});
-            } else if (check == SessionRequestStatus::StaleOwnership || check == SessionRequestStatus::StaleRequest)
-                result.status = 7;
+            if (zonePackets->TryEnqueuePacket(zoneID, std::move(packet)))
+                return;
+            const ItemUseResponseBody result{request.requestID, request.itemID, 6, 0, 0};
+            errorLogger->LogWarn("non simulation handler", "item request queue full", {{"sessionID", sessionID}, {"zoneID", zoneID}});
             responses->Enqueue(sessionID, writer->WriteItemUseResponse(result));
             return;
         }

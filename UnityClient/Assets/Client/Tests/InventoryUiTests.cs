@@ -623,9 +623,9 @@ namespace Mmorpg.Client.Tests
                 Assert.That(useLabel.text, Is.EqualTo("USE HP POTION"));
                 fixture.InvokeScreen("UseSelectedItem");
                 Assert.That(fixture.Network.ItemUses, Is.EqualTo(1), "An MP request locks HP use too.");
-                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 1, 1, 1, 2, 40);
+                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 1, 1, 2, 40);
                 Assert.That((bool)GetPrivate(fixture.Screen, "usePending"), Is.True, "The other potion's reply cannot finish this request.");
-                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 1, 2, 1, 4, 40);
+                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 2, 1, 4, 40);
                 fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 3, slot = 0 },
                     new InventoryItem { itemID = 2, quantity = 4, slot = 1 });
                 Assert.That(mpQuantity.text, Is.EqualTo("4"));
@@ -658,7 +658,7 @@ namespace Mmorpg.Client.Tests
                 Assert.That(fixture.Network.ItemUses, Is.EqualTo(2));
                 Assert.That(quick.interactable, Is.False, "Bag use locks the same quick slot.");
                 Assert.That(mpQuick.interactable, Is.False);
-                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(2, 1, 1, 1, 2, 40);
+                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(2, 1, 1, 2, 40);
                 Assert.That(quantity.text, Is.EqualTo("?"), "A result triggers a shared fresh read, not a separate count cache.");
                 fixture.Receive(true, new InventoryItem { itemID = 1, quantity = 2, slot = 0 });
                 Assert.That(quantity.text, Is.EqualTo("2"));
@@ -842,9 +842,9 @@ namespace Mmorpg.Client.Tests
                 fixture.Cards[5].onClick.Invoke();
                 fixture.InvokeScreen("UseSelectedItem");
                 Assert.That(fixture.Network.LastUsedItemID, Is.EqualTo(9U), "Bag use sends the selected tier, not the base MP ID.");
-                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 1, 2, 1, 2, 120);
+                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 2, 1, 2, 120);
                 Assert.That((bool)GetPrivate(fixture.Screen, "usePending"), Is.True, "A base-potion reply cannot complete a tier request.");
-                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 1, 9, 1, 2, 120);
+                ((IViewModelNet)fixture.Login.Model).ItemUseReceived(1, 9, 1, 2, 120);
                 Assert.That((bool)GetPrivate(fixture.Screen, "usePending"), Is.False);
                 Assert.That((float)GetPrivate(fixture.Screen, "mpPotionCooldownDeadline"), Is.GreaterThan(Time.unscaledTime + 5f));
                 items[5].quantity = 2;
@@ -1073,7 +1073,7 @@ namespace Mmorpg.Client.Tests
             public void RequestEquipment(ulong requestID, ulong ownershipEpoch) { LastEquipmentRead = requestID; }
             public void RequestEquipItem(ulong requestID, ulong ownershipEpoch, byte slot, uint itemID) { LastEquipmentWrite = requestID; LastEquipmentSlot = slot; LastEquipmentItem = itemID; EquipmentSets++; }
             public void RequestParry(ulong requestID, ulong ownershipEpoch) { }
-            public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { ItemUses++; LastUsedItemID = itemID; }
+            public void RequestItemUse(ulong requestID, uint itemID) { ItemUses++; LastUsedItemID = itemID; }
             public void RequestInventory() => Requests++;
             public Task Connect(string address, int port) => Task.CompletedTask;
             public void CharacterList() { }

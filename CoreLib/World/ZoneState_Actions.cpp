@@ -8,6 +8,7 @@
 #include "../Packet/PacketWriter.h"
 #include "SessionManager.h"
 #include "WorldMap.h"
+#include "ItemUseProcessor.h"
 #include "Interface/IZoneTransfer.h"
 #include "../Interface/IInventoryOperations.h"
 #include "../Data/ItemData.h"
@@ -224,56 +225,13 @@ namespace Core {
     }
 
     std::optional<ItemUseResponseBody> ZoneState::UseItem(uint64_t sessionID, const ItemUseRequestBody& request, IInventoryOperations* inventory) {
-        ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
-        auto* found = FindCharacter(sessionID);
-        if (!found)
+        auto* character = FindCharacter(sessionID);
+        if (!character)
             return std::nullopt;
-        auto& character = *found;
-        const auto* item = Data::FindItem(request.itemID);
-        const auto* potion = item == nullptr ? nullptr : std::get_if<Data::ItemDataPotion>(&item->details);
-        if (potion == nullptr) {
-            result.status = 9;
-            return result;
-        }
-        auto& cooldown = character.potionCooldownTicks[static_cast<size_t>(potion->type)];
-        result.cooldownRemainingTicks = cooldown;
-        if (character.hp <= 0)
-            result.status = 2;
-        else if (potion->type == Data::PotionType::HP ? character.hp >= character.maxHp : character.mp >= character.maxMp)
-            result.status = 3;
-        else if (cooldown != 0)
-            result.status = 4;
-        else if (!inventory)
-            result.status = 8;
-        else {
-            const auto consumed = inventory->ConsumeItem(character.characterID, request.itemID);
-            result.remainingQuantity = consumed.remainingQuantity;
-            switch (consumed.status) {
-            case ItemOperationStatus::Success:
-                if (potion->type == Data::PotionType::HP)
-                    character.hp =
-                        static_cast<int>((std::min)(static_cast<int64_t>(character.maxHp), static_cast<int64_t>(character.hp) + potion->recovery));
-                if (potion->type == Data::PotionType::MP)
-                    character.mp =
-                        static_cast<int>((std::min)(static_cast<int64_t>(character.maxMp), static_cast<int64_t>(character.mp) + potion->recovery));
-                cooldown = potion->cooldownTicks;
-                character.dirtyBit |= 3;
-                m_cells[character.cellY][character.cellX].dirtyChar.push_back(character.zoneInternalID);
-                result.status = 1;
-                result.cooldownRemainingTicks = cooldown;
-                break;
-            case ItemOperationStatus::Missing:
-                result.status = 5;
-                break;
-            case ItemOperationStatus::Busy:
-                result.status = 6;
-                break;
-            default:
-                result.status = 8;
-                break;
-            }
-        }
-        return result;
+        const auto outcome = ItemUseProcessor::Apply(character->itemUse, *character, request, inventory);
+        if (outcome.changed)
+            m_cells[character->cellY][character->cellX].dirtyChar.push_back(character->zoneInternalID);
+        return outcome.response;
     }
 
     std::optional<EquipmentResponseBody> ZoneState::Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot,

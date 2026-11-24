@@ -143,6 +143,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="World\CharacterState.h" />
+    <ClInclude Include="World\ItemUseState.h" />
+    <ClInclude Include="World\ItemUseProcessor.h" />
     <ClInclude Include="World\Equipment.h" />
     <ClInclude Include="Response\ServerResponseWorker.h" />
     <ClInclude Include="Response\Interface\IServerResponseQueue.h" />
@@ -233,6 +235,7 @@
     <ClCompile Include="Data\SkillData_Range.cpp" />
     <ClCompile Include="World\ZoneHandler.cpp" />
     <ClCompile Include="World\ZoneState_Actions.cpp" />
+    <ClCompile Include="World\ItemUseProcessor.cpp" />
     <ClCompile Include="World\Equipment.cpp" />
     <ClCompile Include="Response\ServerResponseWorker.cpp" />
     <ClCompile Include="World\ZoneState_Monsters.cpp" />

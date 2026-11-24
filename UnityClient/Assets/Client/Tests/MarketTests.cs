@@ -350,7 +350,7 @@ namespace Mmorpg.Client.Tests
             public readonly List<uint> WalletIDs = new List<uint>();
             public void RequestWallet(uint requestID) => WalletIDs.Add(requestID);
             public Task Connect(string address, int port) => Task.CompletedTask; public void CharacterList() { } public void Enter(ulong id) { }
-            public void Chat(string message, byte scope, ulong target) { } public void Profiles(uint[] ids) { } public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) { }
+            public void Chat(string message, byte scope, ulong target) { } public void Profiles(uint[] ids) { } public void RequestItemUse(ulong requestID, uint itemID) { }
             public readonly List<ulong> EquipmentGets = new List<ulong>(), EquipmentSets = new List<ulong>();
             public void RequestEquipment(ulong requestID, ulong ownershipEpoch) { EquipmentGets.Add(requestID); }
             public void RequestEquipItem(ulong requestID, ulong ownershipEpoch, byte slot, uint itemID) { EquipmentSets.Add(requestID); }

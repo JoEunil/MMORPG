@@ -26,7 +26,6 @@ namespace Core {
         std::shared_ptr<ZoneTransfer> pendingZoneTransfer;
         uint64_t lastRespawnRequestEpoch = 0;
         uint64_t bootstrapSequence = 0;
-        ItemUseResponseBody lastItemUse = {};
         EquipmentResponseBody lastEquipmentSet = {};
         uint32_t lastEquipmentItemID = 0;
         uint64_t chatID = 0;
@@ -249,9 +248,6 @@ namespace Core {
             }
             return res;
         }
-        // cachedResponse is written only for Replay; handlers construct other responses.
-        SessionRequestStatus CheckItemUse(uint64_t sessionID, uint16_t zoneID, const ItemUseRequestBody& request, ItemUseResponseBody& cachedResponse) const;
-        void RememberItemUse(uint64_t sessionID, uint16_t zoneID, const ItemUseResponseBody& result);
         SessionRequestStatus CheckEquipment(uint64_t sessionID, uint16_t zoneID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot,
             uint32_t itemID, EquipmentResponseBody& cachedResponse) const;
         void RememberEquipment(uint64_t sessionID, uint16_t zoneID, uint32_t itemID, const EquipmentResponseBody& result);
