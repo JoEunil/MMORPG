@@ -77,6 +77,8 @@ namespace Core {
         }
 
         void ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID);
+        void ProcessItemUse(ZoneState& zone, IPacketView* packet, uint16_t zoneID);
+        void ProcessEquipment(ZoneState& zone, IPacketView* packet, uint16_t zoneID);
         ParryResponseBody ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request);
         void ProcessZoneTransfer(ZoneState& zone, const std::shared_ptr<ZoneTransfer>& transfer, bool returning);
         void ProcessLobbyEntry(ZoneState& zone, const ZoneLobbyEntryEvent& request);

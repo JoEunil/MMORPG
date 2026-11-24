@@ -199,55 +199,61 @@ namespace Core {
         return zone.Parry(sessionID, request);
     }
 
+    void ZoneHandler::ProcessItemUse(ZoneState& zone, IPacketView* p, uint16_t zoneID) {
+        const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
+        ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
+        const auto check = sessionManager->CheckItemUse(p->GetSessionID(), zoneID, request, result);
+        if (check == SessionRequestStatus::Ready) {
+            if (const auto applied = zone.UseItem(p->GetSessionID(), request, inventory)) {
+                result = *applied;
+                sessionManager->RememberItemUse(p->GetSessionID(), zoneID, result);
+            }
+        } else if (check == SessionRequestStatus::StaleOwnership || check == SessionRequestStatus::StaleRequest)
+            result.status = 7;
+        responses->Enqueue(p->GetSessionID(), writer->WriteItemUseResponse(result));
+    }
+
+    void ZoneHandler::ProcessEquipment(ZoneState& zone, IPacketView* p, uint16_t zoneID) {
+        const bool write = p->GetOpcode() == OP::EQUIPMENT_SET;
+        uint64_t requestID, epoch;
+        uint8_t slot = 0;
+        uint32_t itemID = 0;
+        if (write) {
+            const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
+            requestID = request.requestID;
+            epoch = request.ownershipEpoch;
+            slot = request.slot;
+            itemID = request.itemID;
+        } else {
+            const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
+            requestID = request.requestID;
+            epoch = request.ownershipEpoch;
+        }
+        EquipmentResponseBody result{requestID, epoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), slot};
+        const auto check = sessionManager->CheckEquipment(p->GetSessionID(), zoneID, requestID, epoch, write, slot, itemID, result);
+        if (check == SessionRequestStatus::Ready) {
+            if (const auto applied = zone.Equipment(p->GetSessionID(), requestID, epoch, write, slot, itemID, inventory)) {
+                result = *applied;
+                if (write)
+                    sessionManager->RememberEquipment(p->GetSessionID(), zoneID, itemID, result);
+            }
+        } else if (check == SessionRequestStatus::StaleOwnership)
+            result.status = static_cast<uint8_t>(EquipmentStatus::StaleOwnership);
+        else if (check == SessionRequestStatus::StaleRequest)
+            result.status = static_cast<uint8_t>(EquipmentStatus::StaleRequest);
+        responses->Enqueue(p->GetSessionID(), writer->WriteEquipmentResponse(result));
+    }
+
     void ZoneHandler::Process(ZoneState& zone, IPacketView* p, uint16_t zoneID) {
         PacketHeader* h = parseHeader(p->GetPtr());
         switch (p->GetOpcode()) {
-        case OP::ITEM_USE: {
-            const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
-            ItemUseResponseBody result{request.requestID, request.ownershipEpoch, request.itemID, 0, 0, 0};
-            const auto check = sessionManager->CheckItemUse(p->GetSessionID(), zoneID, request, result);
-            if (check == SessionRequestStatus::Ready) {
-                if (const auto applied = zone.UseItem(p->GetSessionID(), request, inventory)) {
-                    result = *applied;
-                    sessionManager->RememberItemUse(p->GetSessionID(), zoneID, result);
-                }
-            } else if (check == SessionRequestStatus::StaleOwnership || check == SessionRequestStatus::StaleRequest)
-                result.status = 7;
-            responses->Enqueue(p->GetSessionID(), writer->WriteItemUseResponse(result));
+        case OP::ITEM_USE:
+            ProcessItemUse(zone, p, zoneID);
             break;
-        }
         case OP::EQUIPMENT_GET:
-        case OP::EQUIPMENT_SET: {
-            const bool write = p->GetOpcode() == OP::EQUIPMENT_SET;
-            uint64_t requestID, epoch;
-            uint8_t slot = 0;
-            uint32_t itemID = 0;
-            if (write) {
-                const auto request = *parseBody<EquipmentSetRequestBody>(p->GetPtr());
-                requestID = request.requestID;
-                epoch = request.ownershipEpoch;
-                slot = request.slot;
-                itemID = request.itemID;
-            } else {
-                const auto request = *parseBody<EquipmentGetRequestBody>(p->GetPtr());
-                requestID = request.requestID;
-                epoch = request.ownershipEpoch;
-            }
-            EquipmentResponseBody result{requestID, epoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), slot};
-            const auto check = sessionManager->CheckEquipment(p->GetSessionID(), zoneID, requestID, epoch, write, slot, itemID, result);
-            if (check == SessionRequestStatus::Ready) {
-                if (const auto applied = zone.Equipment(p->GetSessionID(), requestID, epoch, write, slot, itemID, inventory)) {
-                    result = *applied;
-                    if (write)
-                        sessionManager->RememberEquipment(p->GetSessionID(), zoneID, itemID, result);
-                }
-            } else if (check == SessionRequestStatus::StaleOwnership)
-                result.status = static_cast<uint8_t>(EquipmentStatus::StaleOwnership);
-            else if (check == SessionRequestStatus::StaleRequest)
-                result.status = static_cast<uint8_t>(EquipmentStatus::StaleRequest);
-            responses->Enqueue(p->GetSessionID(), writer->WriteEquipmentResponse(result));
+        case OP::EQUIPMENT_SET:
+            ProcessEquipment(zone, p, zoneID);
             break;
-        }
         case OP::PARRY: {
             const auto result = ProcessParry(zone, p->GetSessionID(), zoneID, *parseBody<ParryRequestBody>(p->GetPtr()));
             responses->Enqueue(p->GetSessionID(), writer->WriteParryResponse(result));
