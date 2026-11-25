@@ -9,7 +9,7 @@
 #include "Interface/IReceiveContext.h"
 
 #include <CoreLib/Interface/IPacket.h>
-#include <CoreLib/Config.h>
+#include "Config.h"
 
 namespace Net {
     enum class IOOperation : uint8_t
@@ -36,9 +36,9 @@ namespace Net {
         std::vector<std::shared_ptr<Core::IPacket>> packetChunks;
 
         STOverlappedEx() {
-            wsaBuf.reserve(Core::AOICellCount);
-            originalBufs.reserve(Core::AOICellCount);
-            packetChunks.reserve(Core::AOICellCount);
+            wsaBuf.reserve(SEND_BUFFER_RESERVE);
+            originalBufs.reserve(SEND_BUFFER_RESERVE);
+            packetChunks.reserve(SEND_BUFFER_RESERVE);
         }
 
         void Reset()

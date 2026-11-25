@@ -241,6 +241,7 @@
     <ClInclude Include="ClientContext.h" />
     <ClInclude Include="ClientContextPool.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="CoreConfig.h" />
     <ClInclude Include="IOCP.h" />
     <ClInclude Include="Initializer.h" />
     <ClInclude Include="OverlappedExPool.h" />

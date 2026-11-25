@@ -3,8 +3,7 @@
 #include <winsock2.h>
 #include <cstdint>
 #include <chrono>
-#include <CoreLib/Packet/PacketConfig.h>
-#include <CoreLib/Packet/PacketTypes.h>
+#include "CoreConfig.h"
 
 namespace Net {
 	inline constexpr uint8_t IOCP_THREADPOOL_SIZE = 8; // IOCP 워커
@@ -16,9 +15,7 @@ namespace Net {
 	inline constexpr uint32_t NORMAL_PACKET_LENGTH = 512;
 	inline constexpr uint32_t BIG_PACKET_LENGTH = 32768;
 	inline constexpr uint32_t GIANT_PACKET_LENGTH = 256 * 1024;
-	static_assert(GIANT_PACKET_LENGTH >= sizeof(Core::PacketStruct<Core::FullSnapshotBody>));
-	static_assert(GIANT_PACKET_LENGTH >= sizeof(Core::PacketStruct<Core::MonsterFullSnapshotBody>));
-	static_assert(GIANT_PACKET_LENGTH >= Core::MAX_ZONE_CAPACITY * 10 * sizeof(Core::DeltaUpdateField));
+	static_assert(GIANT_PACKET_LENGTH >= REQUIRED_GIANT_PACKET_LENGTH);
 
 	inline constexpr uint32_t PACKETPOOL_SIZE = 30000;
 	inline constexpr uint32_t BPACKETPOOL_SIZE = 20000;
@@ -51,7 +48,7 @@ namespace Net {
 	inline constexpr uint32_t RING_BUFFER_SIZE_MASK = RING_BUFFER_SIZE - 1;
 	inline constexpr uint16_t MAX_PACKET_LEN = 4096; // PacketPool에서 미리 할당할 패킷 크기, 대용량 상태 동기화 패킷 처리를 위해 4KB로 설정
 
-	inline constexpr uint16_t RELEASE_Q_SIZE_MIN = RING_BUFFER_SIZE / sizeof(Core::PacketHeader) + 2;
+	inline constexpr uint16_t RELEASE_Q_SIZE_MIN = RING_BUFFER_SIZE / PACKET_HEADER_SIZE + 2;
 
 	inline constexpr uint16_t RELEASE_Q_SIZE = NextPowerOf2(RELEASE_Q_SIZE_MIN);
 	inline constexpr uint16_t RELEASE_Q_SIZE_MASK = RELEASE_Q_SIZE - 1;
