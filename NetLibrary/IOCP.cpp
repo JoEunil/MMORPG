@@ -211,8 +211,8 @@ namespace Net {
                 else {
                     CleanUpSocket(clientSocket, pOverlappedEx->sessionID); // RECV/SEND: 등록된 세션 정리
                 }
-                if (pOverlappedEx->op == IOOperation::RECV && pOverlappedEx->ownerContext != nullptr)
-                    pOverlappedEx->ownerContext->CompleteRecvIO(pOverlappedEx->sessionID);
+                if (pOverlappedEx->op == IOOperation::RECV && pOverlappedEx->receiveContext != nullptr)
+                    pOverlappedEx->receiveContext->CompleteRecvIO(pOverlappedEx->sessionID);
                 overlappedExPool->Return(pOverlappedEx);
                 continue;
             }
@@ -232,8 +232,8 @@ namespace Net {
             default:
                 break;
             }
-            if (pOverlappedEx->op == IOOperation::RECV && pOverlappedEx->ownerContext != nullptr)
-                pOverlappedEx->ownerContext->CompleteRecvIO(pOverlappedEx->sessionID);
+            if (pOverlappedEx->op == IOOperation::RECV && pOverlappedEx->receiveContext != nullptr)
+                pOverlappedEx->receiveContext->CompleteRecvIO(pOverlappedEx->sessionID);
             overlappedExPool->Return(pOverlappedEx);
         }
     }

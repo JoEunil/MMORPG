@@ -13,7 +13,7 @@
 #include "SessionState.h"
 #include "ClientContext.h"
 #include "STOverlappedEx.h"
-#include "IPongReceiver.h"
+#include "Interface/IPongReceiver.h"
 
 
 namespace Net{

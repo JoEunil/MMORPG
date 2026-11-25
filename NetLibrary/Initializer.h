@@ -16,7 +16,7 @@
 #include "ClientContextPool.h"
 #include "PacketPoolManager.h"
 #include "NetPacketFilter.h"
-#include "IAbortSocket.h"
+#include "Interface/IAbortSocket.h"
 #include "PingManager.h"
 #include "SessionManager.h"
 #include "NetPerfCollector.h"

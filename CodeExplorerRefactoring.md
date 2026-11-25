@@ -62,3 +62,4 @@
 - 패킷 뷰가 반납될 때까지 Context의 수명을 유지해야 하는 조건은 그대로다.
 
 - 같은 순환 의존 검사로 확인한 `ClientContext → SessionManager`의 PONG 통지 의존성도 인터페이스로 분리했다.
+- `STOverlappedEx`의 `ClientContext` 직접 참조도 `IReceiveContext` 수신 계약으로 분리했다.

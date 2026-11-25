@@ -45,6 +45,8 @@ TCP
 	- 수신은 소켓당 1개씩 체이닝 되기 때문에 경합은 낮음.
 
 ## 5. 동작
+IOCP와 NetHandler는 `IReceiveContext`로 수신 버퍼 확보·수신 처리·완료 통지를 요청한다. Overlapped의 `receiveContext`는 이 계약을 참조하며, 수신 완료까지 Context 재사용을 막는 기존 조건은 유지한다.
+
 1. 수신 데이터는 `EnqueueRecvQ()` 호출로 누적
 2. 패킷 분리가 완료되면 `PacketView`를 통해 외부로 전달
 3. 처리 완료 후 `ReleaseBuffer()`로 RingBuffer 반환

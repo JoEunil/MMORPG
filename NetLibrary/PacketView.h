@@ -5,7 +5,7 @@
 #include <CoreLib/Interface/IPacketView.h>
 #include <CoreLib/Packet/PacketTypes.h>
 #include "Config.h"
-#include "IBufferRelease.h"
+#include "Interface/IBufferRelease.h"
 
 namespace Net {
 	struct PacketBufferInfo {

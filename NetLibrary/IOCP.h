@@ -18,7 +18,7 @@
 #include <CoreLib/LoggerGlobal.h>
 
 #include "SendQueue.h"
-#include "IAbortSocket.h"
+#include "Interface/IAbortSocket.h"
 #include "Config.h"
 
 namespace Core {

@@ -6,13 +6,12 @@
 #include <vector>
 #include "Packet.h"
 #include "PacketPool.h"
+#include "Interface/IReceiveContext.h"
 
 #include <CoreLib/Interface/IPacket.h>
 #include <CoreLib/Config.h>
 
 namespace Net {
-    class ClientContext;
-
     enum class IOOperation : uint8_t
     {
         RECV, // 0
@@ -25,7 +24,7 @@ namespace Net {
         int totalBytes = 0;
         int sentBytes = 0;
         SOCKET          clientSocket = INVALID_SOCKET;     // 클라이언트 소켓
-        ClientContext*  ownerContext = nullptr; // RECV 버퍼를 소유한 Context. completion까지 재사용 금지
+        IReceiveContext* receiveContext = nullptr; // RECV 버퍼 소유자. completion까지 재사용 금지
         uint64_t        sessionID = 0;     // 등록 당시 세션. 소켓/Context 재사용 검증용
         std::vector<WSABUF> wsaBuf;           // 버퍼 정보를 담는 구조체,
         std::vector<WSABUF> originalBufs;    // 최초의 Send 시점의 Buffer, Partial Send 처리에 사용. 
@@ -48,7 +47,7 @@ namespace Net {
             totalBytes = 0;
             sentBytes = 0;
             clientSocket = INVALID_SOCKET;
-            ownerContext = nullptr;
+            receiveContext = nullptr;
             sessionID = 0;
 
             wsaBuf.clear();
