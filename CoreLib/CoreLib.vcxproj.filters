@@ -125,6 +125,18 @@
     <ClInclude Include="Cache\MessagePool.h">
       <Filter>Cache</Filter>
     </ClInclude>
+    <ClInclude Include="Interface\IMessage.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface\IMessagePool.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface\ICacheResponseWriter.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface\IDurableLog.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
     <ClInclude Include="Interface\IMessageQueue.h">
       <Filter>Interface</Filter>
     </ClInclude>

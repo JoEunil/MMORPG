@@ -243,6 +243,10 @@
     <ClCompile Include="World\ZoneState_Snapshots.cpp" />
     <ClCompile Include="World\ZoneEventRouter.cpp" />
     <ClCompile Include="World\ZoneThread.cpp" />
+    <ClInclude Include="Interface\IMessage.h" />
+    <ClInclude Include="Interface\IMessagePool.h" />
+    <ClInclude Include="Interface\ICacheResponseWriter.h" />
+    <ClInclude Include="Interface\IDurableLog.h" />
     <ClInclude Include="Interface\IMessageQueue.h">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClInclude>
