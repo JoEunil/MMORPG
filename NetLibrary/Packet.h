@@ -3,7 +3,6 @@
 #include <string>
 #include <cstdint>
 
-#include <CoreLib/Packet/PacketTypes.h>
 #include <CoreLib/Interface/IPacket.h>
 #include <CoreLib/Interface/IPacketPool.h>
 

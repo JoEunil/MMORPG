@@ -19,7 +19,6 @@
 #include "SendQueue.h"
 #include "Config.h"
 
-#include <CoreLib/Packet/PacketTypes.h>
 #include <BaseLib/FixedObjectPool.h>
 #include <BaseLib/RingQueue.h>
 

@@ -3,7 +3,6 @@
 
 #include "Config.h"
 
-#include <CoreLib/Packet/PacketTypes.h>
 #include <CoreLib/Interface/IPacketView.h>
 #include <CoreLib/LoggerGlobal.h>
 
@@ -17,7 +16,7 @@ namespace Net {
         packet->SetOwner(this);
     }
     bool ClientContext::DequeueRecvQLocked(std::optional<uint64_t>& pongRTT) {
-        Core::PacketHeader header;
+        PacketHeader header;
         PacketValidation valid = NetPacketFilter::HasCompletePacket(m_accBuf, header, m_sessionID);
         if (valid == PacketValidation::Incomplete) {
             return false;

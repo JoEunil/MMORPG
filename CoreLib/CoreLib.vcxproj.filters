@@ -62,6 +62,9 @@
     <ClInclude Include="Packet\PacketConfig.h">
       <Filter>Packet</Filter>
     </ClInclude>
+    <ClInclude Include="Packet\PacketHeader.h">
+      <Filter>Packet</Filter>
+    </ClInclude>
     <ClInclude Include="World\WorldConfig.h">
       <Filter>World</Filter>
     </ClInclude>

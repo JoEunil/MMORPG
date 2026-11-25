@@ -4,12 +4,11 @@
 
 #include <CoreLib/Interface/IPacketView.h>
 #include <CoreLib/Interface/IPacketDispatcher.h>
-#include <CoreLib/Packet/PacketConfig.h>
 #include "NetPerfCollector.h"
 
 namespace Net {
-    Core::PacketHeader NetPacketFilter::ParseHeader(AccumulatedBuffer& accBuf) {
-        Core::PacketHeader header;
+    PacketHeader NetPacketFilter::ParseHeader(AccumulatedBuffer& accBuf) {
+        PacketHeader header;
         const size_t firstPart = (std::min)(sizeof(header), static_cast<size_t>(RING_BUFFER_SIZE - accBuf.GetFront()));
         std::memcpy(&header, accBuf.GetFrontPtr(), firstPart);
         if (firstPart < sizeof(header))
@@ -17,7 +16,7 @@ namespace Net {
         return header; // wire의 uint32_t length를 검증 전에 축소하지 않는다.
     }
 
-    bool NetPacketFilter::CheckPacketValid(AccumulatedBuffer& accBuf, const Core::PacketHeader& header, uint64_t sessionID) {
+    bool NetPacketFilter::CheckPacketValid(AccumulatedBuffer& accBuf, const PacketHeader& header, uint64_t sessionID) {
         const auto magic = header.magic;
         const uint32_t packetLen = header.length;
         const auto opcode = header.opcode;
@@ -25,34 +24,34 @@ namespace Net {
         uint16_t front = accBuf.GetFront();
         uint16_t rear = accBuf.GetRear();
         uint16_t len = accBuf.GetLen();
-        if (magic != Core::MAGIC) {
+        if (magic != MAGIC) {
             Core::gameLogger->LogWarn("context", "packet Magic invalid", {{"session", sessionID}, {"magic", magic}, {"packetLen", packetLen}, {"opcode", opcode}, {"m_front", front}, {"m_rear", rear}, {"GetLen()", len}});
             return false;
         }
 
-        if (opcode == 0 || opcode > Core::MAX_DEFINED_OPCODE) {
+        if (opcode == 0 || opcode > MAX_DEFINED_OPCODE) {
             Core::gameLogger->LogWarn("context", "undefined opcode", {{"session", sessionID}, {"magic", magic}, {"packetLen", packetLen}, {"opcode", opcode}, {"m_front", front}, {"GetLen()", len}});
             return false;
         }
 
-        if (packetLen < sizeof(Core::PacketHeader) || packetLen > MAX_PACKET_LEN) {
+        if (packetLen < sizeof(PacketHeader) || packetLen > MAX_PACKET_LEN) {
             Core::gameLogger->LogWarn("context", "invalid packet length", {{"session", sessionID}, {"packetLen", packetLen}, {"opcode", opcode}});
             return false;
         }
-        const int32_t expectedLen = Core::GetReqPacketLen(opcode);
+        const int32_t expectedLen = GetReqPacketLen(opcode);
         if (expectedLen < 0)
             return false;
         const auto requiredLen = static_cast<uint32_t>(expectedLen);
-        if (Core::IsElasticReqPacket(opcode) ? packetLen < requiredLen : packetLen != requiredLen)
+        if (IsElasticReqPacket(opcode) ? packetLen < requiredLen : packetLen != requiredLen)
             return false;
 
-        if (Core::IsSimulationFlag(header.flags) != Core::IsSimulationOpcode(opcode))
+        if (IsSimulationFlag(header.flags) != IsSimulationOpcode(opcode))
             return false;
         return true;
     }
 
-    PacketValidation NetPacketFilter::HasCompletePacket(AccumulatedBuffer& accBuf,  Core::PacketHeader& header, uint64_t sessionID) {
-        if (accBuf.GetLen() < sizeof(Core::PacketHeader))
+    PacketValidation NetPacketFilter::HasCompletePacket(AccumulatedBuffer& accBuf,  PacketHeader& header, uint64_t sessionID) {
+        if (accBuf.GetLen() < sizeof(PacketHeader))
             return PacketValidation::Incomplete;
         header = ParseHeader(accBuf);
         
@@ -69,18 +68,19 @@ namespace Net {
         auto op = pv->GetOpcode();
         // 게임 세션 상태 확인. 
         uint8_t health = packetDispatcher->HealthCheck(session);
-        if (op == Core::OP::PONG) {
-            Core::Pong* body = Core::parseBody<Core::Pong>(pv->GetPtr());
+        if (op == PONG_OPCODE) {
+            Pong body;
+            std::memcpy(&body, pv->GetPtr() + PACKET_HEADER_SIZE, sizeof(body));
             uint64_t now = clock->GetTimeMS();
-            uint64_t rtt = body->serverTimeMs <= now ? now - body->serverTimeMs : 0;
+            uint64_t rtt = body.serverTimeMs <= now ? now - body.serverTimeMs : 0;
             if (rtt > jitter.RTO(rtt))
                 perfCollector->AddJitterCnt();
             pongRTT = rtt;
             return true;
         }
 
-        if (!(health & Core::MASK_EXIST)) {
-            if (op == Core::OP::AUTH) {
+        if (!(health & MASK_EXIST)) {
+            if (op == AUTH_OPCODE) {
                 packetDispatcher->Process(std::move(pv));
                 return true;
             }
@@ -88,19 +88,19 @@ namespace Net {
             return false;
         }
 
-        if (!(health & Core::MASK_NOT_CHEAT)) {
+        if (!(health & MASK_NOT_CHEAT)) {
             Core::gameLogger->LogWarn("net filter", "cheat detect", {{"session", session}});
             return false;
         }
-        if (!(health & Core::MASK_AUTHENTICATED)) {
+        if (!(health & MASK_AUTHENTICATED)) {
             Core::gameLogger->LogWarn("net filter", "session not authenticated", {{"session", session}});
             switch (op) {
-            case ::Core::OP::AUTH: {
+            case AUTH_OPCODE: {
                 packetDispatcher->Process(std::move(pv));
                 // 인증 실패를 바로 Disconnect 시키지 않기 때문에 재인증 허용
                 return true;
             }
-            case ::Core::OP::PONG: break;
+            case PONG_OPCODE: break;
             default: return false;
             }
         }
