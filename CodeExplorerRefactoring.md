@@ -40,5 +40,3 @@
 - 수정 후 다시 분석하고 **Interface 숨기기**를 적용하니 Core–Cache의 구현 클래스들이 분리된 영역으로 나타났다.
 
 ![인터페이스 분리 후, Interface를 숨긴 지도에서 Cache와 Core의 구현 클래스가 분리된 화면](images/code-explorer-refactoring/core-cache-after.png)
-
-
