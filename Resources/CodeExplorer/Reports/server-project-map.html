@@ -1640,16 +1640,16 @@ function clearPathResults() {
 function targetsInterface(edge) { return isInterface(byId.get(edge.to)); }
 
 function inspectDependencyCycles(edges) {
-  const cycles = findDependencyCycles(edges);
+  const { cycles, hasMore } = findDependencyCycles(edges);
   get("path-status").textContent = cycles.length
-    ? "순환 그룹 " + cycles.length + "개 · 그룹마다 예시 경로 1개"
+    ? "순환 경로 " + cycles.length + "개" + (hasMore ? " · 추가 경로 있음 (최대 10개 표시)" : "")
     : "분석된 관계에서 순환 경로를 찾지 못했습니다.";
   if (hasStudioFilters) get("path-status").append(get("path-interfaces").checked ? " · Interface 연결 제외" : " · Interface 연결 포함");
   const results = get("path-results");
-  for (const { members, path } of cycles) {
+  for (const [index, { members, path }] of cycles.entries()) {
     const heading = document.createElement("h3");
     heading.className = "direction-title";
-    heading.textContent = "순환 그룹 · 타입 " + members.length + "개";
+    heading.textContent = "순환 경로 " + (index + 1) + " · 타입 " + members.length + "개";
     const names = document.createElement("p");
     names.className = "muted path";
     names.textContent = members.map(id => byId.get(id).name).sort().join(", ");
@@ -1776,25 +1776,7 @@ function dependencyPathRow(path) {
   return row;
 }
 
-function exampleCycle(start, outgoing, members) {
-  const queue = [start];
-  const previous = new Map([[start, null]]);
-  for (let index = 0; index < queue.length; index++) {
-    for (const edge of outgoing.get(queue[index]) ?? []) {
-      if (!members.has(edge.to)) continue;
-      if (edge.to === start) {
-        const path = [edge];
-        for (let step = previous.get(edge.from); step; step = previous.get(step.from)) path.push(step);
-        return path.reverse();
-      }
-      if (previous.has(edge.to)) continue;
-      previous.set(edge.to, edge);
-      queue.push(edge.to);
-    }
-  }
-}
-
-function findDependencyCycles(edges) {
+function findCyclicComponents(edges) {
   const outgoing = groupByNamespace(edges, edge => edge.from);
   const incoming = groupByNamespace(edges, edge => edge.to);
   const nodes = new Set([...outgoing.keys(), ...incoming.keys()]);
@@ -1819,7 +1801,7 @@ function findDependencyCycles(edges) {
   }
 
   visited.clear();
-  const cycles = [];
+  const components = [];
   for (const start of finished.reverse()) {
     if (visited.has(start)) continue;
     visited.add(start);
@@ -1832,9 +1814,82 @@ function findDependencyCycles(edges) {
       }
     }
     if (members.length < 2) continue; // The analyzer omits self-edges.
-    cycles.push({ members, path: exampleCycle(start, outgoing, new Set(members)) });
+    components.push(members);
   }
-  return cycles.sort((a, b) => b.members.length - a.members.length);
+  return components;
+}
+
+// Enumerate simple directed cycles using Johnson's blocked search. The least-ranked
+// node is always the start, so rotations of a cycle cannot appear twice.
+function findDependencyCycles(edges, limit = 10) {
+  const outgoing = new Map();
+  for (const edge of edges) {
+    if (edge.from === edge.to) continue; // The analyzer omits self-edges.
+    if (!outgoing.has(edge.from)) outgoing.set(edge.from, new Map());
+    const targets = outgoing.get(edge.from);
+    // Different relation kinds between the same types describe the same cycle.
+    if (!targets.has(edge.to)) targets.set(edge.to, edge);
+  }
+  let remaining = [...outgoing.values()].flatMap(targets => [...targets.values()]);
+  const ids = [...new Set(remaining.flatMap(edge => [edge.from, edge.to]))].sort();
+  const rank = new Map(ids.map((id, index) => [id, index]));
+  const cycles = [];
+  while (remaining.length) {
+    let start, members, startRank = Infinity;
+    for (const component of findCyclicComponents(remaining)) {
+      for (const id of component) {
+        if (rank.get(id) >= startRank) continue;
+        start = id;
+        members = new Set(component);
+        startRank = rank.get(id);
+      }
+    }
+    if (!members) break;
+    const adjacency = groupByNamespace(remaining.filter(edge => members.has(edge.from) && members.has(edge.to)), edge => edge.from);
+    const blocked = new Set([start]);
+    const dependents = new Map([...members].map(id => [id, new Set()]));
+    const frames = [{ id: start, next: 0, found: false }];
+    const path = [];
+    // Explicit stacks also handle long dependency chains without JS recursion.
+    while (frames.length) {
+      const frame = frames[frames.length - 1];
+      const targets = adjacency.get(frame.id) ?? [];
+      if (frame.next < targets.length) {
+        const edge = targets[frame.next++];
+        if (edge.to === start) {
+          const cyclePath = [...path, edge];
+          if (cycles.length === limit) return { cycles, hasMore: true };
+          cycles.push({ members: cyclePath.map(step => step.from), path: cyclePath });
+          frame.found = true;
+        } else if (!blocked.has(edge.to)) {
+          blocked.add(edge.to);
+          path.push(edge);
+          frames.push({ id: edge.to, next: 0, found: false });
+        }
+        continue;
+      }
+      if (frame.found) {
+        const pending = [frame.id];
+        while (pending.length) {
+          const id = pending.pop();
+          if (!blocked.delete(id)) continue;
+          const waiting = dependents.get(id);
+          for (const other of waiting) pending.push(other);
+          waiting.clear();
+        }
+      } else {
+        for (const edge of targets) dependents.get(edge.to).add(frame.id);
+      }
+      frames.pop();
+      if (frames.length) {
+        frames[frames.length - 1].found ||= frame.found;
+        path.pop();
+      }
+    }
+    // Remove this start and recompute cyclic components before the next search.
+    remaining = remaining.filter(edge => rank.get(edge.from) > startRank && rank.get(edge.to) > startRank);
+  }
+  return { cycles, hasMore: false };
 }
 
 function createFilterGroups() {
