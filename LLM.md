@@ -8,7 +8,7 @@
 
 **딥러닝**은 여러 층의 신경망으로 데이터의 특징과 관계를 학습한다. Transformer는 생성형 LLM에 쓰이는 신경망 구조 중 하나다.
 
-![입력층, 하나의 은닉층, 출력층으로 구성된 간단한 신경망](images/LLM_NeuralNetwork.png)
+![이미지 로드 실패](images/LLM_NeuralNetwork.png)
 
 - **층의 역할.** 입력층은 숫자 데이터를 받고, 은닉층은 중간 표현을 만들며, 출력층은 이를 예측값으로 바꾼다.
 - **기본 연산.** 입력 벡터에 가중치 행렬을 곱하고 편향을 더한 뒤 활성화 함수를 적용한다. 학습에서 조정하는 가중치와 편향을 **파라미터**라고 한다.
@@ -18,7 +18,7 @@
 
 `Wx`는 **선형 변환**, 편향을 더한 `Wx + b`는 **아핀 변환**이다. 아핀 변환만 여러 번 합성하면 하나의 아핀 변환이 되므로, 층 사이에 **비선형 활성화 함수**를 넣어 복잡한 관계를 표현한다.
 
-![선형 변환 y=x와 비선형 변환 ReLU를 나란히 비교한 그래프](images/LLM_Linear_Nonlinear.png)
+![이미지 로드 실패](images/LLM_Linear_Nonlinear.png)
 
 **ReLU**는 `max(0, x)`다. 예를 들어 `x₁`, `x₂`가 각각 0 또는 1이면 `ReLU(x₁ + x₂ - 1)`은 두 특징이 모두 1일 때만 1이다.
 
@@ -47,7 +47,7 @@
 
 ### 3.1 RNN과 Self-Attention
 
-![RNN은 앞 위치의 은닉 상태를 기다리고, Self-Attention은 같은 계층의 여러 토큰 위치를 함께 계산하는 비교](images/LLM_RNN_vs_Attention.png)
+![이미지 로드 실패](images/LLM_RNN_vs_Attention.png)
 
 - **RNN(순환 신경망):** 앞에서 읽은 정보를 은닉 상태로 전달한다. 현재 위치를 계산하려면 이전 위치의 은닉 상태가 필요해 순서대로 처리한다.
 - **Self-Attention:** 각 위치가 참고할 다른 위치의 정보를 직접 결합한다. 같은 계층의 다른 위치가 내놓을 출력을 기다리지 않아, 입력이 주어진 여러 위치를 함께 계산할 수 있다.
@@ -58,7 +58,7 @@ RNN에도 Attention을 결합할 수 있다. Transformer는 블록 안에서 여
 
 Attention은 문맥에 따라 다른 위치의 정보를 서로 다른 비중으로 결합한다.
 
-![Self-Attention은 같은 입력에서 Q·K·V를 만들고, Cross-Attention은 서로 다른 입력에서 Q와 K·V를 만드는 비교도](images/LLM_SelfAttention.png)
+![이미지 로드 실패](images/LLM_SelfAttention.png)
 
 - **Query(Q):** 현재 위치에서 참고할 정보를 찾는 기준.
 - **Key(K):** Q와의 관련성을 비교하는 표현.
@@ -94,7 +94,7 @@ Attention은 문맥에 따라 다른 위치의 정보를 서로 다른 비중으
 
 **학습.** 앞선 토큰으로 다음 토큰을 예측한다. 텍스트에서 실제로 이어지는 토큰이 정답이며, 예측 오차로 임베딩·Attention·FFN 등의 파라미터를 조정한다.
 
-![Tokenization, Token Embedding, Transformer Blocks, Output Projection을 거쳐 다음 Token ID를 선택하고 생성을 반복하는 흐름](images/LLM_DecoderArchitecture.png)
+![이미지 로드 실패](images/LLM_DecoderArchitecture.png)
 
 그림의 토큰 ID와 벡터 값, 점수는 설명용 예시다.
 

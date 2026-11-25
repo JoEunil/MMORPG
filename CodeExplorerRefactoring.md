@@ -9,18 +9,18 @@
 - **Interface 숨기기**를 추가해 인터페이스를 제외한 구현 클래스 사이의 직접 의존성을 살펴봤다. 숨김 기준은 AST의 추상 클래스 판정이다.
 - Core–Cache는 구현 클래스들이 하나의 연결 영역으로 나타났다.
 
-![변경 전, Interface를 숨겨도 Core와 Cache의 구현 클래스가 연결된 지도](images/code-explorer-refactoring/core-cache-before.png)
+![이미지 로드 실패](images/code-explorer-refactoring/core-cache-before.png)
 
 - 같은 조건에서 Core–Net은 구현 클래스들이 서로 분리된 영역으로 나타났다. 두 경계를 비교하며 Core–Cache의 직접 의존성을 추적했다.
 
-![Interface를 숨긴 상태에서 Core와 Net의 구현 클래스가 분리되어 나타난 비교 지도](images/code-explorer-refactoring/core-net-separated.png)
+![이미지 로드 실패](images/code-explorer-refactoring/core-net-separated.png)
 
 ### 원인
 
 - 카드 보기와 코드 근거를 따라가니 Cache가 Core의 `Message`, `MessagePool`, `MessageWriter`, `DurableLogger`를 직접 사용하고 있었다.
 - 기존 `IMessageQueue`도 구체 타입인 `Message*`를 받았다. 메시지 처리뿐 아니라 버퍼·풀·응답 작성·내구성 기록 구현까지 연결되어 있었다.
 
-![카드 보기로 Message, MessagePool, MessageWriter, DurableLogger에 대한 직접 의존성을 확인한 화면](images/code-explorer-refactoring/core-cache-direct-dependencies.png)
+![이미지 로드 실패](images/code-explorer-refactoring/core-cache-direct-dependencies.png)
 
 ### 변경
 
@@ -39,7 +39,7 @@
 
 - 수정 후 다시 분석하고 **Interface 숨기기**를 적용하니 Core–Cache의 구현 클래스들이 분리된 영역으로 나타났다.
 
-![인터페이스 분리 후, Interface를 숨긴 지도에서 Cache와 Core의 구현 클래스가 분리된 화면](images/code-explorer-refactoring/core-cache-after.png)
+![이미지 로드 실패](images/code-explorer-refactoring/core-cache-after.png)
 
 ## 2. ClientContext–PacketView 버퍼 반납 의존성 분리
 
@@ -48,7 +48,7 @@
 - 순환 의존 검사에서 `ClientContext → PacketView → ClientContext` 경로를 확인했다.
 - `ClientContext`는 패킷 뷰를 구성하고 반납받으며, `PacketView::Release()`는 `ClientContext::ReleaseBuffer()`를 직접 호출했다.
 
-![순환 의존 검사에서 확인한 ClientContext와 PacketView의 왕복 호출](images/code-explorer-refactoring/client-context-packet-view-cycle.png)
+![이미지 로드 실패](images/code-explorer-refactoring/client-context-packet-view-cycle.png)
 
 ### 변경
 

@@ -31,7 +31,7 @@ __처리 방식__
 	- 짧은 batching latency가 추가되지만, Global / Zone 채팅의 fan-out 비용을 줄이는 편이 효과적이라고 판단  
 
 ## 5. 시연
- ![GIF 로드 실패](images/ChatWhisper.gif)
+ ![이미지 로드 실패](images/ChatWhisper.gif)
 > Whisper 채팅  
 UI 복잡도를 줄이기 위해 Whisper 창을 하나로 통합하였다.  
 채팅 메시지를 클릭하면 해당 대상을 Whisper 타겟으로 설정하여 메시지를 전송할 수 있다.
