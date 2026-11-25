@@ -10,6 +10,7 @@
 #include "NetPacketFilter.h"
 #include "TrafficFloodDetector.h"
 #include "PacketView.h"
+#include "IBufferRelease.h"
 #include "OverlappedExPool.h"
 #include "Jitter.h"
 #include "AccumulatedBuffer.h"
@@ -30,7 +31,7 @@ namespace Net {
     class SessionManager;
     inline const uint16_t EMPTY_SLOT = RING_BUFFER_SIZE;
     inline const std::pair<uint16_t, uint16_t> EMPTY_PAIR{ EMPTY_SLOT, EMPTY_SLOT };
-    class ClientContext {
+    class ClientContext : public IBufferRelease {
         uint32_t m_seq = 0;
 
         RingBuffer m_buffer{ RING_BUFFER_SIZE };
@@ -139,7 +140,7 @@ namespace Net {
             return m_gameSession.load(std::memory_order_acquire);
         }
         
-        void ReleaseBuffer(PacketView* pv);
+        void ReleaseBuffer(PacketView* pv) override;
         bool EnqueueRecvQ(uint64_t expectedSessionID, uint8_t* ptr, size_t len);
 
         EnqueueSendResult EnqueueSend(STOverlappedEx* work) {

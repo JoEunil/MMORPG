@@ -40,3 +40,23 @@
 - 수정 후 다시 분석하고 **Interface 숨기기**를 적용하니 Core–Cache의 구현 클래스들이 분리된 영역으로 나타났다.
 
 ![인터페이스 분리 후, Interface를 숨긴 지도에서 Cache와 Core의 구현 클래스가 분리된 화면](images/code-explorer-refactoring/core-cache-after.png)
+
+## 2. ClientContext–PacketView 버퍼 반납 의존성 분리
+
+### 발견
+
+- 순환 의존 검사에서 `ClientContext → PacketView → ClientContext` 경로를 확인했다.
+- `ClientContext`는 패킷 뷰를 구성하고 반납받으며, `PacketView::Release()`는 `ClientContext::ReleaseBuffer()`를 직접 호출했다.
+
+![순환 의존 검사에서 확인한 ClientContext와 PacketView의 왕복 호출](images/code-explorer-refactoring/client-context-packet-view-cycle.png)
+
+### 변경
+
+- 버퍼 반납 계약인 `IBufferRelease`를 분리하고 `ClientContext`가 구현하도록 했다.
+- `PacketView`는 `ClientContext*` 대신 인터페이스를 주입받아 반납을 요청한다.
+- 버퍼 반환 순서, 작업 수 감소, 패킷 뷰의 풀 반환과 접속 종료 통지는 기존 구현을 유지했다.
+
+### 결과
+
+- `PacketView`에서 구체 클래스인 `ClientContext`를 참조하는 의존성을 제거했다. 반납 요청은 `PacketView → IBufferRelease`로 연결된다.
+- 패킷 뷰가 반납될 때까지 Context의 수명을 유지해야 하는 조건은 그대로다.
