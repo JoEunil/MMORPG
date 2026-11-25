@@ -71,7 +71,7 @@ __Read-Through__
 ![이미지 로드 실패](images/Read-Through.png)
 
 
-캐시 미스 발생 시 DB에서 데이터를 읽어와 CacheStorage에 적재한 후 응답을 반환한다.  
+캐시 미스 발생 시 비동기 DB 적재를 요청하고, 현재 조회에는 `DB_READING`을 반환한다. DB 적재 완료 후 재조회하면 데이터를 얻을 수 있다. 완료 콜백을 받는 경로는 아래 사용자 접근 패턴에서 구분한다.
 CacheMQ는 수신 MQ, GameMQ는 캐시 서버 기준 응답 송신 MQ이다.
 
 
@@ -103,11 +103,20 @@ CacheMQ는 수신 MQ, GameMQ는 캐시 서버 기준 응답 송신 MQ이다.
 
 __Read__
 ```
-클라이언트 요청
-    → TryGet
-        → cache hit  → Getter → 응답
-        → cache miss → TrySetReading → LoadFromDB → Insert → Getter → 응답
+Getter → GetOrLoad → TryGet
+    → cache hit  → 데이터 복사 반환
+    → cache miss → LoadFromDB → 비동기 DB 작업 등록 → DB_READING 반환
+        → DB 작업 완료 → 캐시 적재 → 이후 재조회 시 데이터 반환
 ```
+
+- 조회 호출은 DB 적재 완료를 기다리지 않는다. `DB_READING`은 조회 실패가 아니라 적재 중 상태이며, DB 작업 등록이 거절되면 `EMPTY`를 반환한다.
+- `LoadEquipmentState`는 완료 콜백을 등록해 캐시 적재 후 결과를 받는 별도 경로다.
+
+__Zone 워커의 직접 접근__
+
+- Zone 워커는 `IInventoryOperations`를 통해 장비 상태 조회·장비 변경·아이템 소비를 동기 호출한다. 이 경로는 Cache 요청 메시지 큐를 거치지 않는다.
+- 캐시 내부의 샤드 mutex로 공유 상태를 보호하고, 조회 결과나 변경 결과를 반환한 뒤 Zone의 게임 상태 처리를 이어간다. 동기 호출이지만 DB 조회 완료까지 기다리는 방식은 아니며, 캐시가 준비되지 않으면 `Busy` 등의 상태를 반환한다.
+- 인벤토리 변경은 WAL append 후 캐시에 반영하고 dirty로 표시한다. DB write-back은 별도 워커에서 처리한다.
 
 __Update__
 ```
@@ -125,31 +134,11 @@ __종료 처리__
 
 이 순서는 **DB 저장 성공 시** 마지막 변경이 누락되지 않도록 하는 계약이다. DB 저장이 반복 실패하면 dirty를 버리지 않고 재시도 상한에서 종료하며, 인벤토리는 남은 WAL로 복구해야 한다. Gold는 WAL이 없어 이 상황의 복구를 보장하지 않는다. 비정상 종료에서는 20ms 비동기 fflush/fsync 정책상 아직 기록되지 않은 tail이 유실될 수 있다. 상세는 [WAL.md](WAL.md) 참고.
 
-### InnoDB 아키텍처와 비교
-
-![이미지 로드 실패](images/InnoDBArchitecture.png)
->InnoDB 아키텍처
+### CacheLib 아키텍처
 
 ![이미지 로드 실패](images/CacheLibArchitecture.png)
 >CacheLib 아키텍처
 
-CacheLib의 구조는 InnoDB 스토리지 엔진의 Buffer Pool과 유사한 설계 철학을 따른다.  
-
-__유사한 점__
-- Write-Ahead Logging(WAL) 기반 변경 기록
-- 메모리 캐싱 후 비동기 디스크 반영
-- LRU 기반 교체 정책
-- Dirty 데이터 관리 및 백그라운드 Flush
-
-__차이점__
-
-| 항목 | InnoDB Buffer Pool | CacheLib |
-|------|-------------------|----------|
-| 영속성 | Redo Log(WAL) + Checkpoint | WAL(Write-Ahead Log) + DB Write-Back |
-| 장애 복구 | Redo Log Replay | WAL Replay 후 Cache 복원 |
-| 데이터 접근 | B+Tree (범위/조건 탐색 지원) | Hash Table (O(1) point lookup) |
-| 메모리 관리 | Free List  | 미적용 — Hash Table 기반 동적 할당 구조 |
- 
 ## 5. 특징
 
 - __샤드 기반 lock 분리__ — CacheStorage 내부적으로 샤드 단위로 mutex를 분리하여 lock 경합을 최소화
