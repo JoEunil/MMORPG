@@ -59,14 +59,18 @@ namespace Core {
         }
     }
 
-    bool InMemoryQueue::EnqueueMessage(Core::Message* msg) {
+    bool InMemoryQueue::EnqueueMessage(const Core::IMessage* msg) {
         if (!m_running.load(std::memory_order_relaxed))
+            return false;
+        if (msg == nullptr || msg->GetLength() < sizeof(MsgHeader) || msg->GetLength() > msg->GetCapacity())
             return false;
         auto coreMsg = messagePool->AcquireScoped();
         if (coreMsg == nullptr) {
             errorLogger->LogWarn("core mq", "message pool empty");
             return false;
         }
+        if (coreMsg->GetCapacity() < msg->GetLength())
+            return false;
         std::memcpy(coreMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());
         coreMsg->SetLength(msg->GetLength());
 

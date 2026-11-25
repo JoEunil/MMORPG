@@ -8,6 +8,8 @@
 #include <Netlibrary/Initializer.h>
 #include <CoreLib/Initializer.h>
 #include <CoreLib/Cache/DurableLogger.h>
+#include <CoreLib/Cache/MessagePool.h>
+#include <CoreLib/Cache/MessageWriter.h>
 #include <CoreLib/Data/ItemData.h>
 #include <CoreLib/Data/GrowthData.h>
 #include <CoreLib/Data/SkillData.h>
@@ -98,6 +100,8 @@ int main(int argc, char* argv[]) {
 
         Core::DurableLogger durableLogger;
         durableLogger.Initialize();
+        Core::MessagePool<Cache::MSGPOOL_SIZE, Cache::MESSAGE_LEN> cacheMessagePool;
+        Core::MessageWriter cacheResponseWriter;
         Core::Initializer core;
         Net::Initializer net;
         Cache::Initializer cache;
@@ -126,7 +130,7 @@ int main(int argc, char* argv[]) {
         net.Initialize(&clock);
 
         core.InjectDependencies1(net.GetNetworkSender(), net.GetPacketPoolManager());
-        cache.InjectDependencies(core.GetMessageQueue(), &durableLogger);
+        cache.InjectDependencies(core.GetMessageQueue(), cacheMessagePool, cacheResponseWriter, &durableLogger);
         core.InjectDependencies2(net.GetNetworkSender(), &auth, cache.GetMessageQueue(), cache.GetProfileCache(), cache.GetInventoryOperations());
         net.InjectDependencies(core.GetPacketDispatcher(), core.GetPingPacketWriter());
 

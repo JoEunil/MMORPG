@@ -9,6 +9,8 @@
 
 #include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/Cache/Message.h>
+#include <CoreLib/Cache/MessagePool.h>
+#include <CoreLib/Cache/MessageWriter.h>
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CacheLib/Initializer.h>
 #include <CacheLib/Config.h>
@@ -39,9 +41,11 @@ namespace Cache {
 
 		MockMessageQueue mockMQ;
 		External::CachedClock clock;
+		Core::MessagePool<Cache::MSGPOOL_SIZE, Cache::MESSAGE_LEN> messagePool;
+		Core::MessageWriter responseWriter;
 		Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-durable/redo" };
 		init.Initialize(&clock);
-		init.InjectDependencies(&mockMQ);
+		init.InjectDependencies(&mockMQ, messagePool, responseWriter);
 		auto* recvMQ = init.GetMessageQueue();
 
 		// 캐시 채우기 + 이전 실행 잔재 정리 (정상 삭제 경로 — WAL에도 기록되어 안전)
@@ -109,9 +113,11 @@ namespace Cache {
 		{
 			MockMessageQueue mockMQ;
 			External::CachedClock clock;
+			Core::MessagePool<Cache::MSGPOOL_SIZE, Cache::MESSAGE_LEN> messagePool;
+			Core::MessageWriter responseWriter;
 			Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-durable/redo" };
 			init.Initialize(&clock); // Restore: WAL last image의 lsn > DB lastLsn -> 캐시 재적용
-			init.InjectDependencies(&mockMQ);
+			init.InjectDependencies(&mockMQ, messagePool, responseWriter);
 			auto* recvMQ = init.GetMessageQueue();
 
 			auto* res = PollInventoryUntilAvailable(recvMQ, mockMQ, DUR_CHAR_ID, 1);
@@ -140,9 +146,11 @@ namespace Cache {
 		{
 			MockMessageQueue mockMQ;
 			External::CachedClock clock;
+			Core::MessagePool<Cache::MSGPOOL_SIZE, Cache::MESSAGE_LEN> messagePool;
+			Core::MessageWriter responseWriter;
 			Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-durable/redo" };
 			init.Initialize(&clock); // Restore 재실행 — lsn > dbLSN 불충족 -> 스킵
-			init.InjectDependencies(&mockMQ);
+			init.InjectDependencies(&mockMQ, messagePool, responseWriter);
 			auto* recvMQ = init.GetMessageQueue();
 
 			auto* res = PollInventoryUntilAvailable(recvMQ, mockMQ, DUR_CHAR_ID, 2);

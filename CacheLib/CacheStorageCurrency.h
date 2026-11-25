@@ -5,7 +5,7 @@
 #include <vector>
 
 #include <CoreLib/Cache/MessageTypes.h>
-#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Interface/IMessage.h>
 #include <CoreLib/LoggerGlobal.h>
 
 #include "CacheStorage.h"

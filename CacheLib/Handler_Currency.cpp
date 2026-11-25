@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "Handler.h"
 
-#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Interface/IMessage.h>
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>

@@ -6,31 +6,31 @@
 
 #include <BaseLib/BlockingBackPressureQueue.h>
 #include <CoreLib/Interface/IMessageQueue.h>
-#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Interface/IMessage.h>
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
-#include <CoreLib/Cache/DurableLogger.h>
+#include <CoreLib/Interface/IDurableLog.h>
 #include "Config.h"
-#include <CoreLib/Cache/MessagePool.h>
+#include <CoreLib/Interface/IMessagePool.h>
 
 namespace Cache {
     class Handler;
     class InMemoryQueue :public Core::IMessageQueue {
         std::vector<std::thread> m_threads;
-        Base::BlockingBackPressureQueue<CacheMessagePool::ScopedMessage, MQ_SIZE, MQ_DEFER_SIZE, true> m_workQueue;
+        Base::BlockingBackPressureQueue<Core::ScopedMessage, MQ_SIZE, MQ_DEFER_SIZE, true> m_workQueue;
 
         std::atomic<bool> m_running = false;
         Handler* handler = nullptr;
-        CacheMessagePool* messagePool = nullptr;
-        Core::DurableLogger* durableLogger = nullptr;
+        Core::IMessagePool* messagePool = nullptr;
+        Core::IDurableLog* durableLogger = nullptr;
 
-        bool WriteDurable(Core::Message* message);
+        bool WriteDurable(const Core::IMessage* message);
         
-        void Initialize(Handler* h, CacheMessagePool* m, Core::DurableLogger* d) {
+        void Initialize(Handler* h, Core::IMessagePool* m, Core::IDurableLog* d) {
             handler = h;
             messagePool = m;
             durableLogger = d;
-            m_workQueue.SetDurableLog([this](const CacheMessagePool::ScopedMessage& message) {
+            m_workQueue.SetDurableLog([this](const Core::ScopedMessage& message) {
                 return WriteDurable(message.get());
             });
         }
@@ -65,6 +65,6 @@ namespace Cache {
         ~InMemoryQueue() {
             Stop();
         }
-        bool EnqueueMessage(Core::Message* msg) override;
+        bool EnqueueMessage(const Core::IMessage* msg) override;
     };
 }

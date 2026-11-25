@@ -15,7 +15,7 @@
 #include "DBConnectionPool.h"
 #include "DBConfig.h"
 #include <BaseLib/RingQueue.h>
-#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Interface/IMessage.h>
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
 
@@ -167,7 +167,7 @@ namespace Cache {
             Stop();
         }
 
-        DBEnqueueResult Enqueue(Work work, Core::Message* failedMessage = nullptr, std::function<void()> onFailure = {}) {
+        DBEnqueueResult Enqueue(Work work, const Core::IMessage* failedMessage = nullptr, std::function<void()> onFailure = {}) {
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 if (m_running.load(std::memory_order_relaxed) && m_queue->push(QueuedWork{ std::move(work), std::move(onFailure) })) {

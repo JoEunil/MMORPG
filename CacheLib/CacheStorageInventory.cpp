@@ -3,7 +3,7 @@
 
 #include <algorithm>
 #include <iterator>
-#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Interface/IMessage.h>
 #include "DB/DBWorker.h"
 #include "CacheFlush.h"
 #include "InventoryCodec.h"

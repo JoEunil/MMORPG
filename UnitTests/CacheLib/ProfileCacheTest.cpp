@@ -11,6 +11,8 @@
 
 #include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/Cache/Message.h>
+#include <CoreLib/Cache/MessagePool.h>
+#include <CoreLib/Cache/MessageWriter.h>
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CacheLib/Initializer.h>
 #include <CacheLib/ProfileCache.h>
@@ -32,7 +34,7 @@ namespace {
         std::queue<Core::Message*> m_received;
         std::vector<std::unique_ptr<Core::Message>> m_ownedResponses;
     public:
-        bool EnqueueMessage(Core::Message* msg) override {
+        bool EnqueueMessage(const Core::IMessage* msg) override {
             auto copy = std::make_unique<Core::Message>(msg->GetLength());
             std::memcpy(copy->GetBuffer(), msg->GetBuffer(), msg->GetLength());
             copy->SetLength(msg->GetLength());
@@ -76,6 +78,8 @@ class ProfileCacheTest : public ::testing::Test {
 protected:
     MockMessageQueue mockMQ;
     TestCachedClock clock;
+    Core::MessagePool<Cache::MSGPOOL_SIZE, Cache::MESSAGE_LEN> messagePool;
+    Core::MessageWriter responseWriter;
     Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/profile-cache-test/redo" };
     Core::IMessageQueue* recvMQ = nullptr;
     Cache::ProfileCache* cache = nullptr;
@@ -86,7 +90,7 @@ protected:
             GTEST_SKIP() << "Requires a seeded test DB; opt in with GAME_TEST_DATABASE=1";
         }
         init.Initialize(&clock);
-        init.InjectDependencies(&mockMQ);
+        init.InjectDependencies(&mockMQ, messagePool, responseWriter);
         recvMQ = init.GetMessageQueue();
         cache = init.GetProfileCacheImpl();
     }

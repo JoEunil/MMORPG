@@ -3,8 +3,9 @@
 #include "FlushDispatcher.h"
 #include "CacheFlush.h"
 #include "Config.h"
-#include <CoreLib/Cache/MessagePool.h>
-#include <CoreLib/Cache/MessageWriter.h>
+#include <CoreLib/Interface/IMessagePool.h>
+#include <CoreLib/Interface/ICacheResponseWriter.h>
+#include <CoreLib/Interface/IDurableLog.h>
 #include "DB/DBConfig.h"
 #include "DB/DBConnectionPool.h"
 #include "CacheStorage.h"
@@ -25,13 +26,11 @@ class ProfileCacheTest;
 
 namespace Cache {
 	class Initializer {
-        CacheMessagePool msgPool;
         CacheFlush flush;
         FlushDispatcher dispatcher;
         CacheStorageInventory cache_inventory;
         CacheStorageCurrency cache_currency;
         ProfileCache cache_profile;
-        Core::MessageWriter messageWriter;
         Handler handler;
         InMemoryQueue recvMQ;
         DBConnectionPool<DBConnectionGame> connectionPoolGame;
@@ -74,10 +73,11 @@ namespace Cache {
 
         }
         
-        void InjectDependencies(Core::IMessageQueue* sendMQ, Core::DurableLogger* durableLogger = nullptr)
+        void InjectDependencies(Core::IMessageQueue* sendMQ, Core::IMessagePool& messagePool,
+            const Core::ICacheResponseWriter& responseWriter, Core::IDurableLog* durableLogger = nullptr)
         {
-            handler.Initialize(sendMQ, &messageWriter, &msgPool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile, &bazaarRegistration);
-            recvMQ.Initialize(&handler, &msgPool, durableLogger);
+            handler.Initialize(sendMQ, &responseWriter, &messagePool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile, &bazaarRegistration);
+            recvMQ.Initialize(&handler, &messagePool, durableLogger);
             recvMQ.Start();
         }
         

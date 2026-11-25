@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "CacheStorageCurrency.h"
 
-#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Interface/IMessage.h>
 #include "DB/DBWorker.h"
 #include "CacheFlush.h"
 

@@ -4,7 +4,7 @@
 #include <exception>
 #include <memory>
 
-#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Interface/IMessage.h>
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
@@ -111,7 +111,7 @@ namespace Cache {
         // Cancellation and its return event commit together in the Bazaar DB.
         // Inventory capacity/cache availability can delay delivery, but cannot lose the item.
         const auto request = *body;
-        EnqueueMessageWork(dbWorkerBazaar, msg, [this, sessionID, request](DBConnectionBazaar* conn, Core::Message* msg) {
+        EnqueueMessageWork(dbWorkerBazaar, msg, [this, sessionID, request](DBConnectionBazaar* conn, Core::IMessage* msg) {
             uint64_t characterID = request.characterID;
             auto res = conn->ExecuteSelect(StatementId::CancelBazaarListing, request.listingID, characterID);
             uint8_t result = 0;

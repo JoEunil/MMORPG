@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -11,23 +11,23 @@
 #include "DB/DBWorker.h"
 #include "DB/DBConfig.h"
 #include <CoreLib/Interface/IMessageQueue.h>
-#include <CoreLib/Cache/MessagePool.h>
-#include <CoreLib/Cache/MessageWriter.h>
+#include <CoreLib/Interface/IMessagePool.h>
+#include <CoreLib/Interface/ICacheResponseWriter.h>
 
 #include <CoreLib/LoggerGlobal.h>
 namespace Core {
     class ILogger;
-    class Message;
+    class IMessage;
 }
 
 namespace Cache {
     class BazaarRegistration;
 
     class Handler {
-        using ScopedMessage = CacheMessagePool::ScopedMessage;
+        using ScopedMessage = Core::ScopedMessage;
         Core::IMessageQueue* messageQ;  // response
-        const Core::MessageWriter* messageWriter = nullptr;
-        CacheMessagePool* messagePool = nullptr;
+        const Core::ICacheResponseWriter* responseWriter = nullptr;
+        Core::IMessagePool* messagePool = nullptr;
         CacheStorageInventory* cache_inventory = nullptr;
         CacheStorageCurrency* cache_currency = nullptr;
         ProfileCache* cache_profile = nullptr;
@@ -49,19 +49,19 @@ namespace Cache {
         }
 
         template <typename T>
-        bool CheckMessageLength(const Core::Message* msg) {
+        bool CheckMessageLength(const Core::IMessage* msg) {
             return msg->GetLength() == sizeof(Core::MsgStruct<T>);
         }
 
         template <typename T>
-        bool TryEnqueueResponse(Core::Message& msg, Core::MsgHeader header, const T& body) {
+        bool TryEnqueueResponse(Core::IMessage& msg, Core::MsgHeader header, const T& body) {
             static_assert(sizeof(Core::MsgStruct<T>) <= MESSAGE_LEN);
-            return messageWriter->Write(msg, header, body) && messageQ->EnqueueMessage(&msg);
+            return responseWriter->WriteResponse(msg, header, body) && messageQ->EnqueueMessage(&msg);
         }
 
-        void Initialize(Core::IMessageQueue* mq, const Core::MessageWriter* writer, CacheMessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp, BazaarRegistration* registration) {
+        void Initialize(Core::IMessageQueue* mq, const Core::ICacheResponseWriter* writer, Core::IMessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp, BazaarRegistration* registration) {
             messageQ = mq;
-            messageWriter = writer;
+            responseWriter = writer;
             messagePool = mp;
             dbWorkerGame = dg;
             dbWorkerBazaar = db;
@@ -79,8 +79,8 @@ namespace Cache {
                 Core::sysLogger->LogError("cache handler", "messageQ not initialized");
                 return false;
             }
-            if (messageWriter == nullptr) {
-                Core::sysLogger->LogError("cache handler", "message writer not initialized");
+            if (responseWriter == nullptr) {
+                Core::sysLogger->LogError("cache handler", "cache response writer not initialized");
                 return false;
             }
             if (messagePool == nullptr) {

@@ -4,7 +4,7 @@
 
 namespace Cache {
     namespace {
-        Base::Priority GetMessagePriority(Core::Message* message) {
+        Base::Priority GetMessagePriority(const Core::IMessage* message) {
             if (message == nullptr || message->GetLength() < sizeof(Core::MsgHeader))
                 return Base::Priority::Droppable;
 
@@ -37,7 +37,7 @@ namespace Cache {
         }
     }
 
-    bool InMemoryQueue::WriteDurable(Core::Message* message) {
+    bool InMemoryQueue::WriteDurable(const Core::IMessage* message) {
         if (message == nullptr || message->GetLength() < sizeof(Core::MsgHeader)) {
             Core::errorLogger->LogError("cache mq", "durable write failed - invalid message");
             return false;
@@ -61,7 +61,7 @@ namespace Cache {
         std::stringstream ss;
         ss << tid;
         Core::sysLogger->LogInfo("cache mq", "mq thread started", {{"threadID", ss.str()}});
-        CacheMessagePool::ScopedMessage work;
+        Core::ScopedMessage work;
         while (m_workQueue.Dequeue(work))
         {
             handler->Process(std::move(work));
@@ -90,10 +90,10 @@ namespace Cache {
         }
     }
 
-    bool InMemoryQueue::EnqueueMessage(Core::Message* msg) {
+    bool InMemoryQueue::EnqueueMessage(const Core::IMessage* msg) {
         if (!m_running.load(std::memory_order_relaxed))
             return false;
-        if (msg == nullptr || msg->GetLength() < sizeof(Core::MsgHeader)) {
+        if (msg == nullptr || msg->GetLength() < sizeof(Core::MsgHeader) || msg->GetLength() > msg->GetCapacity()) {
             Core::errorLogger->LogWarn("cache mq", "invalid message");
             return false;
         }
@@ -102,6 +102,11 @@ namespace Cache {
         if (!cacheMsg) {
             if (priority == Base::Priority::Important && WriteDurable(msg)) return true;
             Core::errorLogger->LogError("cache mq", "message pool exhausted");
+            return false;
+        }
+        if (cacheMsg->GetCapacity() < msg->GetLength()) {
+            if (priority == Base::Priority::Important && WriteDurable(msg)) return true;
+            Core::errorLogger->LogError("cache mq", "message exceeds receiver capacity");
             return false;
         }
         std::memcpy(cacheMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());

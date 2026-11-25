@@ -358,8 +358,17 @@ namespace Core {
 		return reinterpret_cast<MsgHeader*>(data);
 	}
 
+    inline const MsgHeader* parseMsgHeader(const uint8_t* data) {
+        return reinterpret_cast<const MsgHeader*>(data);
+    }
+
 	template<typename T>
 	inline T* parseMsgBody(uint8_t* data) {
 		return reinterpret_cast<T*>(data + sizeof(MsgHeader));
 	}
+
+    template<typename T>
+    inline const T* parseMsgBody(const uint8_t* data) {
+        return reinterpret_cast<const T*>(data + sizeof(MsgHeader));
+    }
 }   

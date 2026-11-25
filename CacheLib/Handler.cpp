@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "Handler.h"
 
-#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Interface/IMessage.h>
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
@@ -83,7 +83,7 @@ namespace Cache {
             return;
 
         const auto request = *body;
-        EnqueueMessageWork(dbWorkerGame, msg, [this, sessionID, request](DBConnectionGame* conn, Core::Message* msg) {
+        EnqueueMessageWork(dbWorkerGame, msg, [this, sessionID, request](DBConnectionGame* conn, Core::IMessage* msg) {
             auto res = conn->ExecuteSelect(StatementId::SelectCharacterList, request.userID, request.channelID);
             const Core::MsgHeader header{ sessionID, Core::MSG_CHARACTER_LIST_RES };
             Core::MsgCharacterListResBody response{};

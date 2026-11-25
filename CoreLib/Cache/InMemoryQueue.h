@@ -61,6 +61,6 @@ namespace Core {
 		~InMemoryQueue() {
 			Stop();
 		}
-		bool EnqueueMessage(Message* msg) override;
+		bool EnqueueMessage(const IMessage* msg) override;
 	};
 }
