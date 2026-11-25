@@ -234,6 +234,7 @@
     <ClInclude Include="PingManager.h" />
     <ClInclude Include="IAbortSocket.h" />
     <ClInclude Include="IBufferRelease.h" />
+    <ClInclude Include="IPongReceiver.h" />
     <ClInclude Include="NetPacketFilter.h" />
     <ClInclude Include="SessionManager.h" />
     <ClInclude Include="ClientContext.h" />

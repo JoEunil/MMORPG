@@ -11,6 +11,7 @@
 #include "TrafficFloodDetector.h"
 #include "PacketView.h"
 #include "IBufferRelease.h"
+#include "IPongReceiver.h"
 #include "OverlappedExPool.h"
 #include "Jitter.h"
 #include "AccumulatedBuffer.h"
@@ -28,7 +29,6 @@ namespace Core {
 }
 
 namespace Net {
-    class SessionManager;
     inline const uint16_t EMPTY_SLOT = RING_BUFFER_SIZE;
     inline const std::pair<uint16_t, uint16_t> EMPTY_PAIR{ EMPTY_SLOT, EMPTY_SLOT };
     class ClientContext : public IBufferRelease {
@@ -59,7 +59,7 @@ namespace Net {
 		SendQueue m_sendQueue;
 
         inline static OverlappedExPool* overlappedExPool;
-        inline static SessionManager* sessionManager;
+        inline static IPongReceiver* pongReceiver;
         inline static Base::FixedObjectPool<PacketView, PACKETVIEWPOOL_SIZE> packetViewPool;
 
         void BuildPacketViewLocked(PacketView* packet, uint32_t packetLen, uint8_t opcode);
@@ -69,17 +69,17 @@ namespace Net {
         void TryNotifyDisconnectLocked();
         uint16_t AdvancePosition(uint16_t origin, uint16_t change) const;
 
-        static void Initialize(OverlappedExPool* o, SessionManager* s) {
+        static void Initialize(OverlappedExPool* o, IPongReceiver* p) {
             overlappedExPool = o;
-            sessionManager = s;
+            pongReceiver = p;
         }
         static bool IsReady() {
             if (overlappedExPool == nullptr) {
                 Core::errorLogger->LogError("context", "overlappedPool not Initialized");
                 return false;
             }
-            if (sessionManager == nullptr) {
-                Core::errorLogger->LogError("context", "sessionManager not initialized");
+            if (pongReceiver == nullptr) {
+                Core::errorLogger->LogError("context", "pongReceiver not initialized");
                 return false;
             }
             return true;
@@ -143,12 +143,6 @@ namespace Net {
         void ReleaseBuffer(PacketView* pv) override;
         bool EnqueueRecvQ(uint64_t expectedSessionID, uint8_t* ptr, size_t len);
 
-        EnqueueSendResult EnqueueSend(STOverlappedEx* work) {
-			return m_sendQueue.Enqueue(work);
-        }
-
-        STOverlappedEx* DequeueSend() {
-            return m_sendQueue.Dequeue();
-        }
+        SendQueue& GetSendQueue() { return m_sendQueue; }
     };
 }

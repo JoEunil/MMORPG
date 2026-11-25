@@ -7,11 +7,13 @@
 #include <new>
 #include <unordered_map>
 #include <functional>
+#include <utility>
 #include <CoreLib/Interface/ICachedClock.h>
 
 #include "SessionState.h"
 #include "ClientContext.h"
 #include "STOverlappedEx.h"
+#include "IPongReceiver.h"
 
 
 namespace Net{
@@ -32,7 +34,17 @@ namespace Net{
     };
     struct PingStruct;
     class ClientContextPool;
-    class SessionManager{
+
+    struct SendQueueAccess {
+    private:
+        std::unique_lock<std::mutex> m_lock;
+    public:
+        SendQueue* queue = nullptr;
+        SendQueueAccess(std::unique_lock<std::mutex> lock, SendQueue* target)
+            : m_lock(std::move(lock)), queue(target) {}
+    };
+
+    class SessionManager : public IPongReceiver {
         alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_connectionCnt = 0;
         alignas(std::hardware_destructive_interference_size) std::atomic<uint64_t> m_sessionGenerator = 1;
         char padding[std::hardware_destructive_interference_size - sizeof(uint64_t)];
@@ -125,7 +137,7 @@ namespace Net{
         }
 
         //session, reverse
-        void PongReceived(uint64_t session, uint64_t rtt) {
+        void PongReceived(uint64_t session, uint64_t rtt) override {
             SOCKET sock = GetSocket(session);
             if (sock == INVALID_SOCKET)
                 return;
@@ -143,22 +155,14 @@ namespace Net{
             return m_connectionCnt.load(std::memory_order_relaxed);
         }
 
-        EnqueueSendResult EnqueueSend(STOverlappedEx* overlappedEx) {
-            auto& shard = m_sessionShard[(overlappedEx->clientSocket >> 2) & SESSION_SHARD_MASK];
-            std::lock_guard lock(shard.mutex);
-            auto it = shard.sessions.find(overlappedEx->clientSocket);
-            if (it == shard.sessions.end())
-                return EnqueueSendResult::Failed;
-            return it->second.context->EnqueueSend(overlappedEx);
-        }
-
-        STOverlappedEx* DequeueSend(SOCKET sock) {
+        SendQueueAccess GetSendQueue(SOCKET sock, uint64_t expectedSessionID) const {
             auto& shard = m_sessionShard[(sock >> 2) & SESSION_SHARD_MASK];
-            std::lock_guard lock(shard.mutex);
+            std::unique_lock lock(shard.mutex);
             auto it = shard.sessions.find(sock);
-            if (it == shard.sessions.end())
-                return nullptr;
-            return it->second.context->DequeueSend();
+            SendQueue* queue = nullptr;
+            if (it != shard.sessions.end() && it->second.state.GetSessionID() == expectedSessionID)
+                queue = &it->second.context->GetSendQueue();
+            return {std::move(lock), queue};
         }
     };
 }

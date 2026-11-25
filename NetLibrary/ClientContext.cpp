@@ -1,6 +1,5 @@
 ﻿#include "pch.h"
 #include "ClientContext.h"
-#include "SessionManager.h"
 
 #include "Config.h"
 
@@ -106,7 +105,7 @@ namespace Net {
         // Context lock을 풀고 shard를 얻어 역순 잠금을 만들지 않는다.
         // 이 호출의 pending RECV 참조가 반환될 때까지 Context 재사용은 금지된다.
         if (pongRTT)
-            sessionManager->PongReceived(expectedSessionID, *pongRTT);
+            pongReceiver->PongReceived(expectedSessionID, *pongRTT);
         return valid;
     }
 

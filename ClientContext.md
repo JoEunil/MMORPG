@@ -56,9 +56,15 @@ TCP
 - ClientContext는 공통 헤더 검증과 스트림 분리를 담당한다. opcode별 body 길이 표, 송신 방향 제한, flags 허용 목록과 가변 payload 검사를 이 계층에 추가하지 않는다.
 - 정상적인 부분 수신은 다음 RECV를 기다린다. 성공한 파싱은 반드시 길이만큼 전진하므로, 잘못된 길이로 같은 입력을 반복 처리하지 않는다.
 - 재접속을 위해 `Clear()`할 때 sequence뿐 아니라 release index, release queue, 마지막 acquire/release 상태를 함께 초기화한다.
-- PONG의 RTT는 Context mutex 아래에서 계산하고 mutex를 해제한 뒤 SessionManager에 통지해 `Context → shard` 역순 잠금을 없앤다.
+- PONG의 RTT는 Context mutex 아래에서 계산하고 mutex를 해제한 뒤 `IPongReceiver`로 통지한다. `SessionManager`가 계약을 구현하며, `Context → shard` 역순 잠금을 피하는 순서는 유지한다.
 - 마지막 PacketView를 반납한 스레드가 종료 통지를 마치기 전까지 풀 재사용을 금지한다. 원자적 통지 상태를 사용해 종료 통지도 정확히 한 번 수행한다.
 - 반납/종료 처리는 Context mutex 아래에서 완료한다. 풀의 `CanRecycle()`은 같은 mutex를 `try_lock`하여 아직 실행 중인 반납 스택을 건너뛰므로, 풀 mutex 아래에서 종료 통지를 기다리지 않는다.
+
+### 송신 큐 접근
+
+- IOCP는 `SessionManager::GetSendQueue()`로 소켓과 세션 ID가 일치하는 송신 큐를 조회하고, 큐의 `Enqueue()`·`Dequeue()`를 직접 호출한다.
+- 조회 결과는 샤드 잠금을 함께 보유해 큐 접근 중 접속 종료·Context 재사용을 막는다. 큐 접근이 끝나면 잠금을 해제한 뒤 실제 송신을 요청한다.
+- `SessionManager`와 `ClientContext`의 송신 enqueue·dequeue 전달 메서드는 제거했다.
 
 ### 회귀 테스트의 검증 범위
 
