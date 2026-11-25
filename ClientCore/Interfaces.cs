@@ -80,7 +80,7 @@ public struct InventoryItemView
         event Action<bool> OnCharacterListReceived;
         event Action<byte, ulong, string, string> OnChatReceived;
         event Action<bool> OnInventoryReceived;
-        event Action<ulong, ulong, uint, byte, ushort, uint> OnItemUseReceived;
+        event Action<ulong, uint, byte, ushort, uint> OnItemUseReceived;
         event Action<ulong, ulong, byte, uint, uint> OnParryReceived;
         event Action<uint, ushort, ushort, byte> OnItemRewardReceived;
         event Action<byte> OnGoldRewardReceived;
@@ -136,7 +136,7 @@ public struct InventoryItemView
         void ChatReceived(Packet.Message message);
         void ProfilesReceived(ProfileEntry[] profiles);
         void InventoryReceived(byte resStatus, PacketHelper.InventoryItem[] items);
-        void ItemUseReceived(ulong requestID, ulong ownershipEpoch, uint itemID, byte status, ushort remainingQuantity, uint cooldownRemainingTicks);
+        void ItemUseReceived(ulong requestID, uint itemID, byte status, ushort remainingQuantity, uint cooldownRemainingTicks);
         void ParryReceived(ulong requestID, ulong ownershipEpoch, byte status, uint windowRemainingTicks, uint cooldownRemainingTicks);
         void ItemRewardReceived(uint itemID, ushort grantedQuantity, ushort remainingQuantity, byte status);
         void GoldRewardReceived(byte status);
@@ -220,7 +220,7 @@ namespace ClientCore.Services
         void Chat(string message, byte scope, ulong targetID);
         void Profiles(uint[] profileIds);
         void RequestInventory();
-        void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID);
+        void RequestItemUse(ulong requestID, uint itemID);
         void RequestParry(ulong requestID, ulong ownershipEpoch);
         void RequestEquipment(ulong requestID, ulong ownershipEpoch);
         void RequestEquipItem(ulong requestID, ulong ownershipEpoch, byte slot, uint itemID);

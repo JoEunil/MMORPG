@@ -43,7 +43,7 @@ namespace ClientCore.Services
         public void RequestEquipment(ulong requestID, ulong ownershipEpoch) => _sock.Send(Packet.SerializeEquipmentRequest(requestID, ownershipEpoch));
         public void RequestEquipItem(ulong requestID, ulong ownershipEpoch, byte slot, uint itemID) => _sock.Send(Packet.SerializeEquipItemRequest(requestID, ownershipEpoch, slot, itemID));
         public void RequestParry(ulong requestID, ulong ownershipEpoch) => _sock.Send(Packet.SerializeParryRequest(requestID, ownershipEpoch));
-        public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID) => _sock.Send(Packet.SerializeItemUseRequest(requestID, ownershipEpoch, itemID));
+        public void RequestItemUse(ulong requestID, uint itemID) => _sock.Send(Packet.SerializeItemUseRequest(requestID, itemID));
         public void RequestBazaar(uint requestID, ushort itemType, ushort page) =>
             _sock.Send(Packet.SerializeBazaarRequest(requestID, itemType, page));
         public void RequestBazaarRegister(uint requestID, byte inventorySlot, ushort quantity, ulong totalDiamondPrice) =>

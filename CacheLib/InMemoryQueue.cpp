@@ -4,7 +4,7 @@
 
 namespace Cache {
     namespace {
-        Base::Priority GetMessagePriority(Core::Message* message) {
+        Base::Priority GetMessagePriority(const Core::IMessage* message) {
             if (message == nullptr || message->GetLength() < sizeof(Core::MsgHeader))
                 return Base::Priority::Droppable;
 
@@ -31,13 +31,13 @@ namespace Cache {
             case Core::MSG_CHARACTER_STATE_UPDATE:
                 return Base::Priority::Important;
             default:
-                Core::errorLogger->LogWarn("cache mq", "unknown message priority", "messageType", Core::parseMsgHeader(message->GetBuffer())->messageType);
+                Core::errorLogger->LogWarn("cache mq", "unknown message priority", {{"messageType", Core::parseMsgHeader(message->GetBuffer())->messageType}});
                 return Base::Priority::Important;
             }
         }
     }
 
-    bool InMemoryQueue::WriteDurable(Core::Message* message) {
+    bool InMemoryQueue::WriteDurable(const Core::IMessage* message) {
         if (message == nullptr || message->GetLength() < sizeof(Core::MsgHeader)) {
             Core::errorLogger->LogError("cache mq", "durable write failed - invalid message");
             return false;
@@ -49,9 +49,9 @@ namespace Cache {
         if (header->messageType == Core::MSG_CHARACTER_STATE_UPDATE) {
             std::vector<std::byte> binary(message->GetLength());
             std::memcpy(binary.data(), message->GetBuffer(), message->GetLength());
-            Core::errorLogger->LogError("cache mq", "disconnect durable write failed", "sessionID", header->sessionID, "character state", binary);
+            Core::errorLogger->LogError("cache mq", "disconnect durable write failed", {{"sessionID", header->sessionID}, {"character state", binary}});
         } else {
-            Core::errorLogger->LogError("cache mq", "durable write failed", "sessionID", header->sessionID, "messageType", header->messageType);
+            Core::errorLogger->LogError("cache mq", "durable write failed", {{"sessionID", header->sessionID}, {"messageType", header->messageType}});
         }
         return false;
     }
@@ -60,13 +60,13 @@ namespace Cache {
         auto tid = std::this_thread::get_id();
         std::stringstream ss;
         ss << tid;
-        Core::sysLogger->LogInfo("cache mq", "mq thread started", "threadID", ss.str());
-        CacheMessagePool::ScopedMessage work;
+        Core::sysLogger->LogInfo("cache mq", "mq thread started", {{"threadID", ss.str()}});
+        Core::ScopedMessage work;
         while (m_workQueue.Dequeue(work))
         {
             handler->Process(std::move(work));
         }
-        Core::sysLogger->LogInfo("cache mq", "mq thread stopped", "threadID", ss.str());
+        Core::sysLogger->LogInfo("cache mq", "mq thread stopped", {{"threadID", ss.str()}});
     }
 
     void InMemoryQueue::Start() {
@@ -90,10 +90,10 @@ namespace Cache {
         }
     }
 
-    bool InMemoryQueue::EnqueueMessage(Core::Message* msg) {
+    bool InMemoryQueue::EnqueueMessage(const Core::IMessage* msg) {
         if (!m_running.load(std::memory_order_relaxed))
             return false;
-        if (msg == nullptr || msg->GetLength() < sizeof(Core::MsgHeader)) {
+        if (msg == nullptr || msg->GetLength() < sizeof(Core::MsgHeader) || msg->GetLength() > msg->GetCapacity()) {
             Core::errorLogger->LogWarn("cache mq", "invalid message");
             return false;
         }
@@ -104,15 +104,20 @@ namespace Cache {
             Core::errorLogger->LogError("cache mq", "message pool exhausted");
             return false;
         }
+        if (cacheMsg->GetCapacity() < msg->GetLength()) {
+            if (priority == Base::Priority::Important && WriteDurable(msg)) return true;
+            Core::errorLogger->LogError("cache mq", "message exceeds receiver capacity");
+            return false;
+        }
         std::memcpy(cacheMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());
         cacheMsg->SetLength(msg->GetLength());
 
         if (!m_running.load(std::memory_order_relaxed) || !m_workQueue.Enqueue(cacheMsg, priority)) {
             const auto messageType = Core::parseMsgHeader(cacheMsg->GetBuffer())->messageType;
             if (priority == Base::Priority::Important)
-                Core::errorLogger->LogError("cache mq", "queue rejected important message", "messageType", messageType);
+                Core::errorLogger->LogError("cache mq", "queue rejected important message", {{"messageType", messageType}});
             else
-                Core::errorLogger->LogWarn("cache mq", "queue rejected message", "messageType", messageType);
+                Core::errorLogger->LogWarn("cache mq", "queue rejected message", {{"messageType", messageType}});
             return false;
         }
 

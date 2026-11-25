@@ -112,9 +112,9 @@ namespace Net {
             HANDLE h = (HANDLE)m_threads[i].native_handle();
             int core = kIocpCores[i % kIocpCoreCount];
             if (SetThreadAffinityMask(h, (DWORD_PTR)1 << core) == 0)
-                Core::errorLogger->LogWarn("iocp", "SetThreadAffinityMask failed", "worker", i, "core", core, "err", (uint64_t)GetLastError());
+                Core::errorLogger->LogWarn("iocp", "SetThreadAffinityMask failed", {{"worker", i}, {"core", core}, {"err", (uint64_t)GetLastError()}});
             else
-                Core::sysLogger->LogInfo("iocp", "worker pinned", "worker", i, "core", core);
+                Core::sysLogger->LogInfo("iocp", "worker pinned", {{"worker", i}, {"core", core}});
         }
         return true;
     }
@@ -133,7 +133,7 @@ namespace Net {
         // 워커 스레드 수 만큼 더미 작업을 보냄
         for (int i = 0; i < IOCP_THREADPOOL_SIZE; i++) {
             if (!PostQueuedCompletionStatus(m_hIOCP, 0, 0, nullptr)) {
-                Core::errorLogger->LogError("iocp", "Failed to post dummy completion status.", "thread index", i);
+                Core::errorLogger->LogError("iocp", "Failed to post dummy completion status.", {{"thread index", i}});
             }
         }
 
@@ -155,7 +155,7 @@ namespace Net {
         auto tid = std::this_thread::get_id();
         std::stringstream ss;
         ss << tid;
-        Core::sysLogger->LogInfo("iocp", "iocp worker thread started", "threadID", ss.str(), "thread index", index);
+        Core::sysLogger->LogInfo("iocp", "iocp worker thread started", {{"threadID", ss.str()}, {"thread index", index}});
 
         int current_thread = GetCurrentThreadId();
         while (m_isRunning.load(std::memory_order_relaxed))
@@ -180,7 +180,7 @@ namespace Net {
 
             if (pOverlapped == nullptr)
             {
-                Core::errorLogger->LogError("iocp", "GQCS failed without completion", "error", GetLastError());
+                Core::errorLogger->LogError("iocp", "GQCS failed without completion", {{"error", GetLastError()}});
                 // GQCS 호출 자체가 실패해서 완료를 하나도 꺼내지 못한 경우
                 // 포트가 닫힌 경우여서 종료 처리
                 fatalError->store(true, std::memory_order_relaxed);
@@ -200,7 +200,7 @@ namespace Net {
                     err == ERROR_OPERATION_ABORTED && !m_isRunning.load(std::memory_order_relaxed) &&
                     !m_receiving.load(std::memory_order_relaxed);
                 if (!expectedShutdown)
-                    Core::errorLogger->LogWarn("iocp", "GetQueuedCompletionStatus failed", "error code", std::to_string(err), "socket", clientSocket);
+                    Core::errorLogger->LogWarn("iocp", "GetQueuedCompletionStatus failed", {{"error code", std::to_string(err)}, {"socket", clientSocket}});
 
                 if (pOverlappedEx->op == IOOperation::ACCEPT) {
                     overlappedExPool->ReturnAcceptBuf(pOverlappedEx->wsaBuf[0].buf);
@@ -242,10 +242,10 @@ namespace Net {
     {
         if (netHandler->OnDisConnect(clientSocket))
         {
-            Core::sysLogger->LogInfo("iocp", "Disconnect", "socket", clientSocket);
+            Core::sysLogger->LogInfo("iocp", "Disconnect", {{"socket", clientSocket}});
             if (!CancelIoEx((HANDLE)clientSocket, nullptr)) {
                 int err = GetLastError();
-                Core::errorLogger->LogWarn("iocp", "CancelIoEx failed", "socket", clientSocket, "error", err);
+                Core::errorLogger->LogWarn("iocp", "CancelIoEx failed", {{"socket", clientSocket}, {"error", err}});
             }
             closesocket(clientSocket);
         }
@@ -258,10 +258,10 @@ namespace Net {
             // 여러 스레드에서 동시에 호출될 수 있지만,
             // NetHandler가 Disconnect를 단일 책임으로 관리하여 멱등성이 보장됨.
             // 중복으로 CleanUp 요청이 와도 최초 1회만 true를 반환함.
-            Core::sysLogger->LogInfo("iocp", "Disconnect", "socket", clientSocket);
+            Core::sysLogger->LogInfo("iocp", "Disconnect", {{"socket", clientSocket}});
             if (!CancelIoEx((HANDLE)clientSocket, nullptr)) {
                 int err = GetLastError();
-                Core::errorLogger->LogWarn("iocp", "CancelIoEx failed", "socket", clientSocket, "error", err);
+                Core::errorLogger->LogWarn("iocp", "CancelIoEx failed", {{"socket", clientSocket}, {"error", err}});
             } // 취소 completion이 회수될 때까지 RECV Context는 pendingIOCnt로 유지
             closesocket(clientSocket);
         }
@@ -270,7 +270,7 @@ namespace Net {
     void IOCP::AbortSocket(SOCKET clientSocket, uint64_t expectedSessionID) {
         if (clientSocket == INVALID_SOCKET)
             return;
-        Core::sysLogger->LogInfo("iocp", "Abort Socket", "socket", clientSocket);
+        Core::sysLogger->LogInfo("iocp", "Abort Socket", {{"socket", clientSocket}});
         CleanUpSocket(clientSocket, expectedSessionID);
     }
 }

@@ -10,14 +10,14 @@
 
 
 namespace Net {
-    void ClientContext::BuildPacketView(PacketView* packet, uint32_t packetLen, uint8_t opcode) {
+    void ClientContext::BuildPacketViewLocked(PacketView* packet, uint32_t packetLen, uint8_t opcode) {
         packet->Clear();
         packet->SetBufferInfo({ m_seq++, m_accBuf.GetFront(), static_cast<uint16_t>((m_accBuf.GetFront() + packetLen - 1) & RING_BUFFER_SIZE_MASK) }, m_accBuf.GetStartPtr());
         packet->SetSessionId(m_sessionID);
         packet->SetOpcode(opcode);
         packet->SetOwner(this);
     }
-    bool ClientContext::DequeueRecvQ(std::optional<uint64_t>& pongRTT) {
+    bool ClientContext::DequeueRecvQLocked(std::optional<uint64_t>& pongRTT) {
         Core::PacketHeader header;
         PacketValidation valid = NetPacketFilter::HasCompletePacket(m_accBuf, header, m_sessionID);
         if (valid == PacketValidation::Incomplete) {
@@ -35,7 +35,7 @@ namespace Net {
             return false;
         }
 
-        BuildPacketView(packet, header.length, header.opcode);
+        BuildPacketViewLocked(packet, header.length, header.opcode);
         std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv(static_cast<Core::IPacketView*>(packet), Core::PacketViewDeleter{});
 
         m_accBuf.Pop(header.length);
@@ -58,7 +58,7 @@ namespace Net {
         uint16_t len = m_buffer.TryAcquireBuffer(temp, RECV_BUFFER_SIZE);
         buffer = temp.startPtr;
         if (len == 0) {
-            Core::errorLogger->LogError("context", "can't allocate pending recv buffer", "sessionID", m_sessionID, "front", m_accBuf.GetFront(), "rear", m_accBuf.GetRear());
+            Core::errorLogger->LogError("context", "can't allocate pending recv buffer", {{"sessionID", m_sessionID}, {"front", m_accBuf.GetFront()}, {"rear", m_accBuf.GetRear()}});
             return 0;
         }
 
@@ -68,19 +68,19 @@ namespace Net {
 
     void ClientContext::CompleteRecvIO(uint64_t expectedSessionID) {
         if (m_sessionID != expectedSessionID) {
-            Core::errorLogger->LogError("context", "pending IO session mismatch", "expected", expectedSessionID, "actual", m_sessionID);
+            Core::errorLogger->LogError("context", "pending IO session mismatch", {{"expected", expectedSessionID}, {"actual", m_sessionID}});
             return;
         }
 
         int16_t previous = m_pendingIOCnt.fetch_sub(1, std::memory_order_seq_cst);
         if (previous <= 0) {
             m_pendingIOCnt.fetch_add(1, std::memory_order_seq_cst);
-            Core::errorLogger->LogError("context", "pending IO counter underflow", "sessionID", expectedSessionID, "previous", previous);
+            Core::errorLogger->LogError("context", "pending IO counter underflow", {{"sessionID", expectedSessionID}, {"previous", previous}});
             return;
         }
     }
 
-    bool ClientContext::IsValidEnqueue(uint64_t expectedSessionID, uint8_t* ptr, size_t len) {
+    bool ClientContext::IsValidEnqueueLocked(uint64_t expectedSessionID, uint8_t* ptr, size_t len) {
         if (!m_connected.load(std::memory_order_seq_cst) or m_sessionID != expectedSessionID)
             return false;
         if (!m_gameSession.load(std::memory_order_acquire) or len == 0 or len > RECV_BUFFER_SIZE)
@@ -92,14 +92,14 @@ namespace Net {
 
     bool ClientContext::EnqueueRecvQ(uint64_t expectedSessionID, uint8_t* ptr, size_t len) {
         std::unique_lock<std::recursive_mutex> lock(m_mutex);
-        if (!IsValidEnqueue(expectedSessionID, ptr, len))
+        if (!IsValidEnqueueLocked(expectedSessionID, ptr, len))
             return false;
 
         uint16_t rear = m_accBuf.Push(len);
         m_buffer.ReleaseLeftOver(rear + 1, len != 0);
 
         std::optional<uint64_t> pongRTT;
-        while (DequeueRecvQ(pongRTT)) {}
+        while (DequeueRecvQLocked(pongRTT)) {}
         bool valid = m_gameSession.load(std::memory_order_acquire);
         lock.unlock();
         // Disconnect/BeginRecvIO는 shard -> Context 순서다. 수신 경로는
@@ -131,10 +131,10 @@ namespace Net {
         pv->Clear();
         packetViewPool.Deallocate(pv);
         if (previous == 1)
-            TryNotifyDisconnect();
+            TryNotifyDisconnectLocked();
     }
 
-    void ClientContext::TryNotifyDisconnect() {
+    void ClientContext::TryNotifyDisconnectLocked() {
         if (m_connected.load(std::memory_order_seq_cst) || m_workingCnt.load(std::memory_order_seq_cst) != 0)
             return;
         auto expected = DisconnectNotification::Waiting;

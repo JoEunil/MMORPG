@@ -93,7 +93,7 @@ namespace ClientCore
         public event Action<bool> OnCharacterListReceived;
         public event Action<byte, ulong, string, string> OnChatReceived;
         public event Action<bool> OnInventoryReceived;
-        public event Action<ulong, ulong, uint, byte, ushort, uint> OnItemUseReceived;
+        public event Action<ulong, uint, byte, ushort, uint> OnItemUseReceived;
         public event Action<ulong, ulong, byte, uint, uint> OnParryReceived;
         public event Action<uint, ushort, ushort, byte> OnItemRewardReceived;
         public event Action<byte> OnGoldRewardReceived;
@@ -951,7 +951,7 @@ namespace ClientCore
 
         public bool RequestItemUse(uint itemID)
         {
-            ulong requestID, ownershipEpoch;
+            ulong requestID;
             lock (_sessionGate)
             {
                 if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady || _zonePending || _awaitingZoneAck ||
@@ -960,11 +960,10 @@ namespace ClientCore
                 _itemUsePending = ++_itemUseRequestID;
                 _itemUsePendingItemID = itemID;
                 requestID = _itemUsePending;
-                ownershipEpoch = _ownershipEpoch;
             }
             // Socket receive dispatch holds its own gate before entering the session gate.
-            // Send outside this lock; the server rejects an epoch superseded while sending.
-            try { _network.RequestItemUse(requestID, ownershipEpoch, itemID); }
+            // Send outside this lock to preserve the socket/session lock order.
+            try { _network.RequestItemUse(requestID, itemID); }
             catch
             {
                 lock (_sessionGate)
@@ -974,20 +973,20 @@ namespace ClientCore
             return true;
         }
 
-        public void ItemUseReceived(ulong requestID, ulong ownershipEpoch, uint itemID, byte status,
+        public void ItemUseReceived(ulong requestID, uint itemID, byte status,
             ushort remainingQuantity, uint cooldownRemainingTicks)
         {
-            if (requestID == 0 || ownershipEpoch == 0 || itemID == 0 || status > 9) return;
+            if (requestID == 0 || itemID == 0 || status > 9) return;
             _threadDispatcher.Post(() =>
             {
                 lock (_sessionGate)
                 {
                     if (_lifetime.IsCancellationRequested || _connectionFailed || !_worldReady ||
-                        requestID != _itemUsePending || ownershipEpoch != _ownershipEpoch || itemID != _itemUsePendingItemID)
+                        requestID != _itemUsePending || itemID != _itemUsePendingItemID)
                         return;
                     _itemUsePending = 0;
                 }
-                OnItemUseReceived?.Invoke(requestID, ownershipEpoch, itemID, status, remainingQuantity, cooldownRemainingTicks);
+                OnItemUseReceived?.Invoke(requestID, itemID, status, remainingQuantity, cooldownRemainingTicks);
             });
         }
 

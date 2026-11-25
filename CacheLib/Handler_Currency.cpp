@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "Handler.h"
 
-#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Interface/IMessage.h>
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
@@ -39,9 +39,9 @@ namespace Cache {
                     static_cast<uint8_t>(status == CACHE_STATUS::AVAILABLE), gold, request.characterID
                 };
                 if (status != CACHE_STATUS::AVAILABLE)
-                    Core::errorLogger->LogWarn("cache handler", "currency deposit failed", "characterID", request.characterID, "status", status);
+                    Core::errorLogger->LogWarn("cache handler", "currency deposit failed", {{"characterID", request.characterID}, {"status", status}});
                 if (!TryEnqueueResponse(*owned, { sessionID, Core::MSG_CURRENCY_DEPOSIT_RES }, response))
-                    Core::errorLogger->LogError("cache handler", "currency deposit response rejected", "characterID", request.characterID, "status", status);
+                    Core::errorLogger->LogError("cache handler", "currency deposit response rejected", {{"characterID", request.characterID}, {"status", status}});
             });
     }
 }

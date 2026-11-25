@@ -49,7 +49,7 @@ namespace Mmorpg.Client.Tests
         [UnityTest, Timeout(30000)]
         public IEnumerator InvalidFrames_DisconnectWithoutDispatch()
         {
-            for (var kind = 0; kind < 10; kind++)
+            for (var kind = 0; kind < 12; kind++)
             {
                 var validation = CheckInvalidFrame(kind);
                 while (validation.MoveNext())
@@ -100,6 +100,36 @@ namespace Mmorpg.Client.Tests
             finally { socket.Dispose(); listener.Stop(); }
         }
 
+        [UnityTest, Timeout(30000)]
+        public IEnumerator ItemUseResponsesPassSplitAndCoalescedTcpBoundary()
+        {
+            var handler = new RecordingHandler();
+            var disconnected = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var keepOpen = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var socket = CreateSocket(handler);
+            socket.OnDisconnected += reason => disconnected.TrySetResult(reason);
+            var listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            var success = CreateItemUseResponse(1);
+            var failure = CreateItemUseResponse(0);
+            var server = SendSplitThenCombined(listener, success, failure, keepOpen.Task);
+            try
+            {
+                var connect = socket.Connect(IPAddress.Loopback.ToString(), ((IPEndPoint)listener.LocalEndpoint).Port);
+                yield return WaitFor(() => connect.IsCompleted, 5f);
+                if (connect.IsFaulted) throw connect.Exception;
+                yield return WaitFor(() => handler.Packets.Count == 2 || disconnected.Task.IsCompleted, 5f);
+                Assert.That(handler.Packets.Count, Is.EqualTo(2), "Valid item-use responses must reach the handler.");
+                Assert.That(handler.Packets[0], Is.EqualTo(success));
+                Assert.That(handler.Packets[1], Is.EqualTo(failure));
+                Assert.That(disconnected.Task.IsCompleted, Is.False);
+                keepOpen.TrySetResult(true);
+                yield return WaitFor(() => server.IsCompleted, 2f);
+                if (server.IsFaulted) throw server.Exception;
+            }
+            finally { keepOpen.TrySetResult(true); socket.Dispose(); listener.Stop(); }
+        }
+
         private IEnumerator CheckInvalidFrame(int kind)
         {
             var handler = new RecordingHandler();
@@ -137,7 +167,7 @@ namespace Mmorpg.Client.Tests
             Assert.That(condition(), Is.True, "Timed out waiting for loopback socket frame handling.");
         }
 
-        private static Task SendSplitThenCombined(TcpListener listener, byte[] first, byte[] second)
+        private static Task SendSplitThenCombined(TcpListener listener, byte[] first, byte[] second, Task keepOpen = null)
         {
             return Task.Run(async () =>
             {
@@ -152,7 +182,8 @@ namespace Mmorpg.Client.Tests
                     Buffer.BlockCopy(second, 0, restAndNext, first.Length - 2, second.Length);
                     await stream.WriteAsync(restAndNext, 0, restAndNext.Length);
                     await stream.FlushAsync();
-                    await Task.Delay(100);
+                    if (keepOpen == null) await Task.Delay(100);
+                    else await Task.WhenAny(keepOpen, Task.Delay(10000));
                 }
             });
         }
@@ -226,9 +257,25 @@ namespace Mmorpg.Client.Tests
                 case 9:
                     var badBazaarFlags = Header(15, 27); badBazaarFlags[7] = 1;
                     return badBazaarFlags;
+                case 10:
+                    return Header(35, 46);
+                case 11:
+                    var badItemUseFlags = Header(27, 46); badItemUseFlags[7] = 1;
+                    return badItemUseFlags;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(kind));
             }
+        }
+
+        private static byte[] CreateItemUseResponse(byte status)
+        {
+            var frame = Header(27, 46);
+            BitConverter.GetBytes(1UL).CopyTo(frame, 8);
+            BitConverter.GetBytes(100U).CopyTo(frame, 16);
+            frame[20] = status;
+            BitConverter.GetBytes((ushort)2).CopyTo(frame, 21);
+            BitConverter.GetBytes(5U).CopyTo(frame, 23);
+            return frame;
         }
 
         private static byte[] Header(int length, byte opcode)

@@ -150,12 +150,15 @@
     <ClInclude Include="Config.h" />
     <ClInclude Include="DB\Queries.h" />
     <ClInclude Include="DB\DBConnection.h" />
+    <ClInclude Include="DB\IResultReader.h" />
+    <ClInclude Include="DB\MySQLResultAdapter.h" />
     <ClInclude Include="DB\DBConfig.h" />
     <ClInclude Include="DB\StatementId.h" />
     <ClInclude Include="DB\DBConnectionPool.h" />
     <ClInclude Include="DB\DBWorker.h" />
     <ClInclude Include="FlushDispatcher.h" />
     <ClInclude Include="Handler.h" />
+    <ClInclude Include="BazaarRegistration.h" />
     <ClInclude Include="Initializer.h" />
     <ClInclude Include="InMemoryQueue.h" />
     <ClInclude Include="WALManager.h" />
@@ -165,6 +168,9 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="CacheFlush.cpp" />
+    <ClCompile Include="DB\MySQLResultAdapter.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="CacheFlush_Currency.cpp" />
     <ClCompile Include="CacheFlush_Inventory.cpp" />
     <ClCompile Include="CacheStorageCurrency.cpp" />
@@ -172,6 +178,7 @@
     <ClCompile Include="CacheStorageInventory.cpp" />
     <ClCompile Include="Handler.cpp" />
     <ClCompile Include="Handler_Bazaar.cpp" />
+    <ClCompile Include="BazaarRegistration.cpp" />
     <ClCompile Include="Handler_Currency.cpp" />
     <ClCompile Include="Handler_Diamond.cpp" />
     <ClCompile Include="Handler_Inventory.cpp" />

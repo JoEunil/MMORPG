@@ -11,6 +11,7 @@
 #include <External/mysqlconn/include/mysql/jdbc.h>
 #include <CoreLib/LoggerGlobal.h>
 #include "StatementId.h"
+#include "MySQLResultAdapter.h"
 
 
 namespace Cache {
@@ -74,7 +75,7 @@ namespace Cache {
 
     public:
         template<typename... Args>
-        std::unique_ptr<sql::ResultSet> ExecuteSelect(StatementId stmt_id, Args&&... args) {
+        std::unique_ptr<IResultReader> ExecuteSelect(StatementId stmt_id, Args&&... args) {
             auto it = m_stmts.find(stmt_id);
             if (it == m_stmts.end())
                 return nullptr;
@@ -86,7 +87,10 @@ namespace Cache {
                 return nullptr;
 
             try {
-                return std::unique_ptr<sql::ResultSet>(stmt->executeQuery());
+                auto result = std::unique_ptr<sql::ResultSet>(stmt->executeQuery());
+                if (!result)
+                    return nullptr;
+                return std::make_unique<MySQLResultAdapter>(std::move(result));
             }
             catch (const sql::SQLException& e) {
                 std::cerr << "SQL Exception: " << e.what() << "\n";

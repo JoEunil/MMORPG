@@ -1,11 +1,9 @@
-﻿#pragma once
+#pragma once
 
 #include <cstdint>
 #include <memory>
-#include <optional>
 #include <utility>
 
-#include <mysqlconn/include/mysql/jdbc.h>
 #include "Config.h"
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"
@@ -13,27 +11,30 @@
 #include "DB/DBWorker.h"
 #include "DB/DBConfig.h"
 #include <CoreLib/Interface/IMessageQueue.h>
-#include <CoreLib/Cache/MessagePool.h>
-#include <CoreLib/Cache/MessageWriter.h>
+#include <CoreLib/Interface/IMessagePool.h>
+#include <CoreLib/Interface/ICacheResponseWriter.h>
 
 #include <CoreLib/LoggerGlobal.h>
 namespace Core {
     class ILogger;
-    class Message;
+    class IMessage;
 }
 
 namespace Cache {
+    class BazaarRegistration;
+
     class Handler {
-        using ScopedMessage = CacheMessagePool::ScopedMessage;
+        using ScopedMessage = Core::ScopedMessage;
         Core::IMessageQueue* messageQ;  // response
-        const Core::MessageWriter* messageWriter = nullptr;
-        CacheMessagePool* messagePool = nullptr;
+        const Core::ICacheResponseWriter* responseWriter = nullptr;
+        Core::IMessagePool* messagePool = nullptr;
         CacheStorageInventory* cache_inventory = nullptr;
         CacheStorageCurrency* cache_currency = nullptr;
         ProfileCache* cache_profile = nullptr;
         Core::ILogger* logger = nullptr;
         DBWorker<DBConnectionGame>* dbWorkerGame = nullptr;
         DBWorker<DBConnectionBazaar>* dbWorkerBazaar = nullptr;
+        BazaarRegistration* bazaarRegistration = nullptr;
         template <typename Response, typename Work>
         void EnqueueBazaarQuery(Core::MsgHeader header, const Response& failureBody, const char* queueError, Work work);
 
@@ -48,33 +49,38 @@ namespace Cache {
         }
 
         template <typename T>
-        bool CheckMessageLength(const Core::Message* msg) {
+        bool CheckMessageLength(const Core::IMessage* msg) {
             return msg->GetLength() == sizeof(Core::MsgStruct<T>);
         }
 
         template <typename T>
-        bool TryEnqueueResponse(Core::Message& msg, Core::MsgHeader header, const T& body) {
+        bool TryEnqueueResponse(Core::IMessage& msg, Core::MsgHeader header, const T& body) {
             static_assert(sizeof(Core::MsgStruct<T>) <= MESSAGE_LEN);
-            return messageWriter->Write(msg, header, body) && messageQ->EnqueueMessage(&msg);
+            return responseWriter->WriteResponse(msg, header, body) && messageQ->EnqueueMessage(&msg);
         }
 
-        void Initialize(Core::IMessageQueue* mq, const Core::MessageWriter* writer, CacheMessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp) {
+        void Initialize(Core::IMessageQueue* mq, const Core::ICacheResponseWriter* writer, Core::IMessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp, BazaarRegistration* registration) {
             messageQ = mq;
-            messageWriter = writer;
+            responseWriter = writer;
             messagePool = mp;
             dbWorkerGame = dg;
             dbWorkerBazaar = db;
             cache_inventory = ci;
             cache_currency = cc;
             cache_profile = cp;
+            bazaarRegistration = registration;
         }
         bool IsReady() {
+            if (bazaarRegistration == nullptr) {
+                Core::sysLogger->LogError("cache handler", "bazaar registration not initialized");
+                return false;
+            }
             if (messageQ == nullptr) {
                 Core::sysLogger->LogError("cache handler", "messageQ not initialized");
                 return false;
             }
-            if (messageWriter == nullptr) {
-                Core::sysLogger->LogError("cache handler", "message writer not initialized");
+            if (responseWriter == nullptr) {
+                Core::sysLogger->LogError("cache handler", "cache response writer not initialized");
                 return false;
             }
             if (messagePool == nullptr) {
@@ -115,7 +121,6 @@ namespace Cache {
         void BazaarMyList(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarMyListBody* body);
         void BazaarSearch(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarSearchBody* body);
         void BazaarRegister(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarRegisterBody* body);
-        std::optional<uint8_t> DeductBazaarRegistrationCosts(const Core::MsgBazaarRegisterBody& request, uint64_t fee);
         void BazaarCancel(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarCancelBody* body);
         void BazaarBuy(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarBuyBody* body);
         void BazaarClaim(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarClaimBody* body);

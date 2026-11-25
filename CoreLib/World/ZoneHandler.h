@@ -4,6 +4,7 @@
 #include "../Interface/IPacketView.h"
 #include "../CorePerfCollector.h"
 #include "ZoneThread.h"
+#include "Interface/IZoneTransfer.h"
 
 #include "../Cache/MessageTypes.h"
 #include "../Cache/MessagePool.h"
@@ -16,7 +17,6 @@ namespace Core {
     class IPacketView;
     class IServerResponseQueue;
     class PacketWriter;
-    class IDBCache;
     class IMessageQueue;
     class LobbyZone;
     class IInventoryOperations;
@@ -76,13 +76,32 @@ namespace Core {
         }
 
         void ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID);
+        void ProcessItemUse(ZoneState& zone, IPacketView* packet);
+        void ProcessEquipment(ZoneState& zone, IPacketView* packet, uint16_t zoneID);
         ParryResponseBody ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request);
-        void ProcessZoneTransfer(ZoneState& zone, const ZoneEvent& event);
-        void ProcessLobbyEntry(ZoneState& zone, const ZoneRequest& request);
-        void ProcessRespawn(ZoneState& zone, const ZoneRequest& request);
-        void ProcessBootstrap(ZoneState& zone, const ZoneRequest& request);
+        void ProcessZoneTransfer(ZoneState& zone, const std::shared_ptr<ZoneTransfer>& transfer, bool returning);
+        void ProcessLobbyEntry(ZoneState& zone, const ZoneLobbyEntryEvent& request);
+        void ProcessRespawn(ZoneState& zone, const ZoneRespawnEvent& request);
+        void ProcessBootstrap(ZoneState& zone, const ZoneBootstrapEvent& request);
         void SendZoneChangeFailed(uint64_t sessionID);
         void SendZoneChange(uint64_t sessionID, const ZoneChangeResult& transition);
+
+        struct EventVisitor {
+            ZoneHandler& handler;
+            ZoneState& zone;
+            uint16_t zoneID;
+
+            size_t operator()(const ZonePacketEvent& event) const;
+            size_t operator()(const ZoneTransferEvent& event) const;
+            size_t operator()(const ZoneTransferRejectedEvent& event) const;
+            size_t operator()(const ZoneProfileVersionEvent& event) const;
+            size_t operator()(const ZoneBootstrapEvent& event) const;
+            size_t operator()(const ZoneLobbyEntryEvent& event) const;
+            size_t operator()(const ZoneRespawnEvent& event) const;
+            size_t operator()(const ZoneDisconnectEvent& event) const;
+        };
+
+        size_t Process(ZoneState& zone, uint16_t zoneID, ZoneEvent& event);
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
 
@@ -103,31 +122,7 @@ namespace Core {
                 ZoneEvent event;
                 while (processed < maxEvents && queue.Dequeue(event)) {
                     ++processed;
-                    switch (event.type) {
-                    case ZoneEventType::Packet:
-                        Process(zone, event.packet.get(), zoneID);
-                        ++packets;
-                        break;
-                    case ZoneEventType::Transfer:
-                    case ZoneEventType::TransferRejected:
-                        ProcessZoneTransfer(zone, event);
-                        break;
-                    case ZoneEventType::ProfileVersion:
-                        ApplyProfileVersion(zone, event.profileVersion);
-                        break;
-                    case ZoneEventType::Bootstrap:
-                        ProcessBootstrap(zone, event.request);
-                        break;
-                    case ZoneEventType::LobbyEntry:
-                        ProcessLobbyEntry(zone, event.request);
-                        break;
-                    case ZoneEventType::Respawn:
-                        ProcessRespawn(zone, event.request);
-                        break;
-                    case ZoneEventType::Disconnect:
-                        ProcessDisconnect(zone, zoneID, event.request);
-                        break;
-                    }
+                    packets += Process(zone, zoneID, event);
                 }
             }
             perf.AddPacketProcessCnt(zoneID, packets);
@@ -149,7 +144,7 @@ namespace Core {
 
         void SaveRemainingCharacters(ZoneState& zone);
         void Process(ZoneState& zone, IPacketView* p, uint16_t zoneID);
-        void ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneRequest& request);
+        void ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneDisconnectEvent& request);
         void ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update);
 
       private:

@@ -87,7 +87,7 @@ namespace Core {
                 auto chunk = writer->GetInitialChunk(true);
                 auto header = writer->GetDeltaHeader(m_zoneID, m_generation);
                 if (chunk == nullptr || header == nullptr) {
-                    sysLogger->LogError("zone state", "failed to acquire packet", "zoneID", m_zoneID, "cellX", j, "cellY", i);
+                    sysLogger->LogError("zone state", "failed to acquire packet", {{"zoneID", m_zoneID}, {"cellX", j}, {"cellY", i}});
                     continue;
                 }
                 chunks[idx] = chunk;
@@ -143,7 +143,7 @@ namespace Core {
                 auto chunk = writer->GetInitialChunk(true);
                 auto header = writer->GetFullHeader(m_zoneID, m_generation);
                 if (chunk == nullptr || header == nullptr) {
-                    sysLogger->LogError("zone state", "failed to acquire packet", "zoneID", m_zoneID, "cellX", j, "cellY", i);
+                    sysLogger->LogError("zone state", "failed to acquire packet", {{"zoneID", m_zoneID}, {"cellX", j}, {"cellY", i}});
                     continue;
                 }
                 chunks[idx] = chunk;
@@ -188,7 +188,7 @@ namespace Core {
                 auto chunk = writer->GetInitialChunk();
                 auto header = writer->GetMonsterDeltaHeader(m_zoneID, m_generation);
                 if (chunk == nullptr || header == nullptr) {
-                    sysLogger->LogError("zone state", "failed to acquire packet", "zoneID", m_zoneID, "cellX", j, "cellY", i);
+                    sysLogger->LogError("zone state", "failed to acquire packet", {{"zoneID", m_zoneID}, {"cellX", j}, {"cellY", i}});
                     continue;
                 }
                 chunks[idx] = chunk;
@@ -233,7 +233,7 @@ namespace Core {
                 auto header = writer->GetMonsterFullHeader(m_zoneID, m_generation);
                 if (chunk == nullptr || header == nullptr) {
                     complete = false;
-                    sysLogger->LogError("zone state", "failed to acquire packet", "zoneID", m_zoneID, "cellX", j, "cellY", i);
+                    sysLogger->LogError("zone state", "failed to acquire packet", {{"zoneID", m_zoneID}, {"cellX", j}, {"cellY", i}});
                     continue;
                 }
                 chunks[idx] = chunk;
@@ -277,7 +277,7 @@ namespace Core {
                 auto chunk = writer->GetInitialChunk();
                 auto header = writer->GetActionHeader(m_zoneID, m_generation);
                 if (chunk == nullptr || header == nullptr) {
-                    sysLogger->LogError("zone state", "failed to acquire packet", "zoneID", m_zoneID, "cellX", j, "cellY", i);
+                    sysLogger->LogError("zone state", "failed to acquire packet", {{"zoneID", m_zoneID}, {"cellX", j}, {"cellY", i}});
                     continue;
                 }
                 chunks[idx] = chunk;

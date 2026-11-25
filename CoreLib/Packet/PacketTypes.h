@@ -139,12 +139,10 @@ namespace Core {
 
     struct ItemUseRequestBody {
         uint64_t requestID;
-        uint64_t ownershipEpoch;
         uint32_t itemID;
     };
     struct ItemUseResponseBody {
         uint64_t requestID;
-        uint64_t ownershipEpoch;
         uint32_t itemID;
         uint8_t status;
         uint16_t remainingQuantity;

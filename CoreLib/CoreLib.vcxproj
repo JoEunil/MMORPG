@@ -143,6 +143,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="World\CharacterState.h" />
+    <ClInclude Include="World\ItemUseState.h" />
+    <ClInclude Include="World\ItemUseProcessor.h" />
     <ClInclude Include="World\Equipment.h" />
     <ClInclude Include="Response\ServerResponseWorker.h" />
     <ClInclude Include="Response\Interface\IServerResponseQueue.h" />
@@ -158,6 +160,9 @@
     <ClInclude Include="World\MonsterState.h" />
     <ClInclude Include="NonSimulation\NonSimulationHandler.h" />
     <ClInclude Include="NonSimulation\NonSimulationThreadPool.h" />
+    <ClInclude Include="NonSimulation\NonSimulationEvent.h" />
+    <ClInclude Include="NonSimulation\ChatEvent.h" />
+    <ClInclude Include="World\ZoneEvent.h" />
     <ClInclude Include="World\BroadcastThreadPool.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="Cache\CacheConfig.h" />
@@ -168,6 +173,8 @@
     <ClInclude Include="Cache\DurableLogger.h" />
     <ClInclude Include="Interface\INetworkSender.h" />
     <ClInclude Include="Interface\ILogger.h" />
+    <ClInclude Include="Interface\ILogFormatter.h" />
+    <ClInclude Include="Interface\LogRecord.h" />
     <ClInclude Include="Initializer.h" />
     <ClInclude Include="Cache\InMemoryQueue.h" />
     <ClInclude Include="Interface\IPacket.h" />
@@ -228,6 +235,7 @@
     <ClCompile Include="Data\SkillData_Range.cpp" />
     <ClCompile Include="World\ZoneHandler.cpp" />
     <ClCompile Include="World\ZoneState_Actions.cpp" />
+    <ClCompile Include="World\ItemUseProcessor.cpp" />
     <ClCompile Include="World\Equipment.cpp" />
     <ClCompile Include="Response\ServerResponseWorker.cpp" />
     <ClCompile Include="World\ZoneState_Monsters.cpp" />
@@ -235,6 +243,10 @@
     <ClCompile Include="World\ZoneState_Snapshots.cpp" />
     <ClCompile Include="World\ZoneEventRouter.cpp" />
     <ClCompile Include="World\ZoneThread.cpp" />
+    <ClInclude Include="Interface\IMessage.h" />
+    <ClInclude Include="Interface\IMessagePool.h" />
+    <ClInclude Include="Interface\ICacheResponseWriter.h" />
+    <ClInclude Include="Interface\IDurableLog.h" />
     <ClInclude Include="Interface\IMessageQueue.h">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClInclude>

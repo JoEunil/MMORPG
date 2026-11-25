@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "Handler.h"
 
-#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Interface/IMessage.h>
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
@@ -15,7 +15,7 @@ namespace Cache {
 
         const uint64_t characterID = body->characterID;
         const uint32_t requestID = body->requestID;
-        EnqueueMessageWork(dbWorkerBazaar, msg, [this, sessionID, characterID, requestID](DBConnectionBazaar* conn, Core::Message* msg) {
+        EnqueueMessageWork(dbWorkerBazaar, msg, [this, sessionID, characterID, requestID](DBConnectionBazaar* conn, Core::IMessage* msg) {
             auto res = conn->ExecuteSelect(StatementId::SelectDiamond, characterID);
             const Core::MsgHeader header{ sessionID, Core::MSG_DIAMOND_RES };
             Core::MsgDiamondResBody response{};
@@ -24,7 +24,7 @@ namespace Cache {
 
             if (!res || !res->next()) {
                 TryEnqueueResponse(*msg, header, response);
-                Core::gameLogger->LogInfo("cache handler diamond", "diamond read failed", "sessionID", sessionID, "char_id", characterID);
+                Core::gameLogger->LogInfo("cache handler diamond", "diamond read failed", {{"sessionID", sessionID}, {"char_id", characterID}});
                 return;
             }
 
@@ -41,14 +41,14 @@ namespace Cache {
             return;
 
         const auto request = *body;
-        EnqueueMessageWork(dbWorkerBazaar, msg, [this, sessionID, request](DBConnectionBazaar* conn, Core::Message* msg) {
+        EnqueueMessageWork(dbWorkerBazaar, msg, [this, sessionID, request](DBConnectionBazaar* conn, Core::IMessage* msg) {
             int affected = conn->ExecuteUpdate(StatementId::DepositDiamond, request.diamond, request.diamond, request.characterID);
             const Core::MsgHeader header{ sessionID, Core::MSG_DIAMOND_DEPOSIT_RES };
             Core::MsgDiamondDepositResBody response{};
 
             if (affected <= 0) {
                 TryEnqueueResponse(*msg, header, response);
-                Core::gameLogger->LogInfo("cache handler diamond", "diamond deposit failed", "sessionID", sessionID, "char_id", request.characterID);
+                Core::gameLogger->LogInfo("cache handler diamond", "diamond deposit failed", {{"sessionID", sessionID}, {"char_id", request.characterID}});
                 return;
             }
 

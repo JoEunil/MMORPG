@@ -55,7 +55,7 @@ namespace Core {
         std::shared_lock lock(shard.smutex);
         const auto found = shard.sessionMap.find(sessionID);
         const auto* session = found != shard.sessionMap.end() ? &found->second : nullptr;
-        if (!MatchesZoneTransfer(session, transfer) || returning != (zoneID == transfer->sourceZoneID))
+        if (!MatchesZoneTransferLocked(session, transfer) || returning != (zoneID == transfer->sourceZoneID))
             return std::nullopt;
         // Profile updates can change the pending record; admission uses a private copy.
         return *transfer;
@@ -68,7 +68,7 @@ namespace Core {
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock lock(shard.smutex);
         auto* session = FindSessionLocked(shard, sessionID);
-        if (!MatchesZoneTransfer(session, transfer) || returning != (zoneID == transfer->sourceZoneID))
+        if (!MatchesZoneTransferLocked(session, transfer) || returning != (zoneID == transfer->sourceZoneID))
             return std::nullopt;
 
         session->pendingZoneTransfer.reset();
@@ -192,33 +192,6 @@ namespace Core {
             session->pendingZoneTransfer.reset();
     }
 
-    SessionRequestStatus SessionManager::CheckItemUse(uint64_t sessionID, uint16_t zoneID, const ItemUseRequestBody& request,
-        ItemUseResponseBody& cachedResponse) const {
-        if (request.requestID == 0 || request.itemID == 0)
-            return SessionRequestStatus::Invalid;
-        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-        std::shared_lock sessionLock(shard.smutex);
-        const auto session = shard.sessionMap.find(sessionID);
-        if (session == shard.sessionMap.end() || session->second.disconnectQueued || !session->second.authenticated || !session->second.authCompleted ||
-            session->second.characterID == 0)
-            return SessionRequestStatus::Invalid;
-        auto& saved = session->second.lastItemUse;
-        if (request.requestID == saved.requestID) {
-            if (request.ownershipEpoch == saved.ownershipEpoch && request.itemID == saved.itemID) {
-                cachedResponse = saved;
-                return SessionRequestStatus::Replay;
-            }
-            return SessionRequestStatus::Invalid;
-        }
-        if (request.requestID < saved.requestID)
-            return SessionRequestStatus::StaleRequest;
-        if (request.ownershipEpoch != session->second.ownershipEpoch)
-            return SessionRequestStatus::StaleOwnership;
-        if (zoneID == 0 || session->second.zoneID != zoneID)
-            return SessionRequestStatus::Invalid;
-        return SessionRequestStatus::Ready;
-    }
-
     SessionRequestStatus SessionManager::CheckEquipment(uint64_t sessionID, uint16_t zoneID, uint64_t requestID, uint64_t ownershipEpoch, bool write,
         uint8_t slot, uint32_t itemID, EquipmentResponseBody& cachedResponse) const {
         if (requestID == 0 || ownershipEpoch == 0)
@@ -248,7 +221,7 @@ namespace Core {
         ++session.ownershipEpoch;
     }
 
-    bool SessionManager::MatchesZoneTransfer(const SessionData* session, const std::shared_ptr<ZoneTransfer>& transfer) {
+    bool SessionManager::MatchesZoneTransferLocked(const SessionData* session, const std::shared_ptr<ZoneTransfer>& transfer) {
         return session && !session->disconnectQueued && session->pendingZoneTransfer == transfer && session->zoneID == transfer->sourceZoneID &&
                session->ownershipEpoch == transfer->ownershipEpoch;
     }
@@ -284,14 +257,6 @@ namespace Core {
         shard.sessionMap.erase(it);
         lifecycleListener->OnSessionClosed(sessionID, zoneID);
         return true;
-    }
-
-    void SessionManager::RememberItemUse(uint64_t sessionID, uint16_t zoneID, const ItemUseResponseBody& result) {
-        auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
-        std::unique_lock lock(shard.smutex);
-        auto* session = FindSessionLocked(shard, sessionID);
-        if (session && session->zoneID == zoneID && session->ownershipEpoch == result.ownershipEpoch && result.requestID > session->lastItemUse.requestID)
-            session->lastItemUse = result;
     }
 
     void SessionManager::RememberEquipment(uint64_t sessionID, uint16_t zoneID, uint32_t itemID, const EquipmentResponseBody& result) {

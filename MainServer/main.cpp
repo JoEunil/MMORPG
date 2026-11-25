@@ -8,6 +8,8 @@
 #include <Netlibrary/Initializer.h>
 #include <CoreLib/Initializer.h>
 #include <CoreLib/Cache/DurableLogger.h>
+#include <CoreLib/Cache/MessagePool.h>
+#include <CoreLib/Cache/MessageWriter.h>
 #include <CoreLib/Data/ItemData.h>
 #include <CoreLib/Data/GrowthData.h>
 #include <CoreLib/Data/SkillData.h>
@@ -17,6 +19,7 @@
 #include <CoreLib/LoggerGlobal.h>
 
 #include <ExternalLib/Logger.h>
+#include <ExternalLib/JsonUtility.h>
 #include <ExternalLib/SessionAuth.h>
 #include <ExternalLib/CachedClock.h>
 #include <External/spdlog/spdlog.h>
@@ -46,14 +49,15 @@ int main(int argc, char* argv[]) {
     SetConsoleCP(CP_UTF8);
     std::cout << " 서버 시작" << std::endl;
     External::Logger::Initialize();
+    const auto logFormatter = std::make_shared<External::JsonUtility>();
 
-    Core::sysLogger = std::make_unique<External::Logger>();
+    Core::sysLogger = std::make_unique<External::Logger>(logFormatter);
     Core::sysLogger->CreateSink("system");
-    Core::gameLogger = std::make_unique<External::Logger>();
+    Core::gameLogger = std::make_unique<External::Logger>(logFormatter);
     Core::gameLogger->CreateSink("game");
-    Core::errorLogger = std::make_unique<External::Logger>();
+    Core::errorLogger = std::make_unique<External::Logger>(logFormatter);
     Core::errorLogger->CreateSink("error");
-    Core::perfLogger = std::make_unique<External::Logger>();
+    Core::perfLogger = std::make_unique<External::Logger>(logFormatter);
     Core::perfLogger->CreateSink("perf");
     bool testBazaar = !Cache::GetEnvVar("TEST_BAZAAR").empty();
     bool testCache = !Cache::GetEnvVar("TEST_CACHE").empty();
@@ -96,6 +100,8 @@ int main(int argc, char* argv[]) {
 
         Core::DurableLogger durableLogger;
         durableLogger.Initialize();
+        Core::MessagePool<Cache::MSGPOOL_SIZE, Cache::MESSAGE_LEN> cacheMessagePool;
+        Core::MessageWriter cacheResponseWriter;
         Core::Initializer core;
         Net::Initializer net;
         Cache::Initializer cache;
@@ -124,7 +130,7 @@ int main(int argc, char* argv[]) {
         net.Initialize(&clock);
 
         core.InjectDependencies1(net.GetNetworkSender(), net.GetPacketPoolManager());
-        cache.InjectDependencies(core.GetMessageQueue(), &durableLogger);
+        cache.InjectDependencies(core.GetMessageQueue(), cacheMessagePool, cacheResponseWriter, &durableLogger);
         core.InjectDependencies2(net.GetNetworkSender(), &auth, cache.GetMessageQueue(), cache.GetProfileCache(), cache.GetInventoryOperations());
         net.InjectDependencies(core.GetPacketDispatcher(), core.GetPingPacketWriter());
 

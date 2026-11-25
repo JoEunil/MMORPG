@@ -51,7 +51,7 @@ namespace ClientCore.Network
                         return;
                     case OP_CODE.ITEM_USE_RES:
                         var use = Packet.DeserializeItemUse(header, buffer);
-                        _viewModel.ItemUseReceived(use.requestID, use.ownershipEpoch, use.itemID, use.status, use.remainingQuantity, use.cooldownRemainingTicks);
+                        _viewModel.ItemUseReceived(use.requestID, use.itemID, use.status, use.remainingQuantity, use.cooldownRemainingTicks);
                         return;
                     case OP_CODE.GOLD_REWARD:
                         _viewModel.GoldRewardReceived(Packet.DeserializeGoldReward(header, buffer));

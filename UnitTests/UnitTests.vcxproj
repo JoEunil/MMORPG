@@ -165,9 +165,9 @@ xcopy /Y "$(SolutionDir)External\libevent\bin\Release\*.dll" "$(OutDir)"</Comman
     <ClCompile Include="CoreLib\CharacterGrowth.cpp" />
     <ClCompile Include="CoreLib\MonsterBehavior.cpp" />
     <ClCompile Include="CoreLib\ZoneEventQueue.cpp" />
+    <ClCompile Include="CoreLib\MessageContractsTest.cpp" />
     <ClCompile Include="CoreLib\WorldMap.cpp" />
     <ClCompile Include="CoreLib\SkillRange.cpp" />
-    <ClCompile Include="CacheLib\CacheStorageTest.cpp" />
     <ClCompile Include="BaseLib\FixedObjectPool.cpp" />
     <ClCompile Include="NetLib\AccumulatedBuffer.cpp" />
     <ClCompile Include="NetLib\ClientContext.cpp" />

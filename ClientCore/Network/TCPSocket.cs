@@ -69,7 +69,7 @@ namespace ClientCore.Network
                             if (header.opcode == 55 && (header.length != 46 || header.flags != 0) ||
                                 header.opcode == 52 && (header.length < 17 || header.length > 737 || header.flags != 0) ||
                                 header.opcode == 50 && (header.length != 9 || header.flags != 0) ||
-                                header.opcode == 46 && (header.length != 35 || header.flags != 0) ||
+                                header.opcode == 46 && (header.length != 27 || header.flags != 0) ||
                                 header.opcode == 47 && (header.length != 17 || header.flags != 0) ||
                                 header.opcode == 2 && (header.length != 9 || header.flags != 0) ||
                                 header.opcode == 14 && (header.length < 22 || header.flags != 0) ||

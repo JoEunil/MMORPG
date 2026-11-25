@@ -26,17 +26,17 @@ namespace Net {
         uint16_t rear = accBuf.GetRear();
         uint16_t len = accBuf.GetLen();
         if (magic != Core::MAGIC) {
-            Core::gameLogger->LogWarn("context", "packet Magic invalid", "session", sessionID, "magic", magic, "packetLen", packetLen, "opcode", opcode, "m_front", front, "m_rear", rear, "GetLen()", len);
+            Core::gameLogger->LogWarn("context", "packet Magic invalid", {{"session", sessionID}, {"magic", magic}, {"packetLen", packetLen}, {"opcode", opcode}, {"m_front", front}, {"m_rear", rear}, {"GetLen()", len}});
             return false;
         }
 
         if (opcode == 0 || opcode > Core::MAX_DEFINED_OPCODE) {
-            Core::gameLogger->LogWarn("context", "undefined opcode", "session", sessionID, "magic", magic, "packetLen", packetLen, "opcode", opcode, "m_front", front, "GetLen()", len);
+            Core::gameLogger->LogWarn("context", "undefined opcode", {{"session", sessionID}, {"magic", magic}, {"packetLen", packetLen}, {"opcode", opcode}, {"m_front", front}, {"GetLen()", len}});
             return false;
         }
 
         if (packetLen < sizeof(Core::PacketHeader) || packetLen > MAX_PACKET_LEN) {
-            Core::gameLogger->LogWarn("context", "invalid packet length", "session", sessionID, "packetLen", packetLen, "opcode", opcode);
+            Core::gameLogger->LogWarn("context", "invalid packet length", {{"session", sessionID}, {"packetLen", packetLen}, {"opcode", opcode}});
             return false;
         }
         const int32_t expectedLen = Core::GetReqPacketLen(opcode);
@@ -84,16 +84,16 @@ namespace Net {
                 packetDispatcher->Process(std::move(pv));
                 return true;
             }
-            Core::gameLogger->LogWarn("net filter", "session not exist", "session", session);
+            Core::gameLogger->LogWarn("net filter", "session not exist", {{"session", session}});
             return false;
         }
 
         if (!(health & Core::MASK_NOT_CHEAT)) {
-            Core::gameLogger->LogWarn("net filter", "cheat detect", "session", session);
+            Core::gameLogger->LogWarn("net filter", "cheat detect", {{"session", session}});
             return false;
         }
         if (!(health & Core::MASK_AUTHENTICATED)) {
-            Core::gameLogger->LogWarn("net filter", "session not authenticated", "session", session);
+            Core::gameLogger->LogWarn("net filter", "session not authenticated", {{"session", session}});
             switch (op) {
             case ::Core::OP::AUTH: {
                 packetDispatcher->Process(std::move(pv));

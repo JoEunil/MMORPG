@@ -15,7 +15,7 @@ namespace Net {
         }
         while (true) {
             std::unique_lock<std::mutex> lock(m_mutex);
-            FlushPending();
+            FlushPendingLocked();
             if (m_workingCnt.load(std::memory_order_relaxed) == 0 && m_flushQ.empty())
                 break;
             lock.unlock();
@@ -23,7 +23,7 @@ namespace Net {
         }
     }
 
-    void ClientContextPool::FlushPending() {
+    void ClientContextPool::FlushPendingLocked() {
         ClientContext* context = nullptr;
         while (m_flushQ.pop(context))
         {
@@ -58,7 +58,7 @@ namespace Net {
         m_workingCnt.fetch_add(1, std::memory_order_relaxed);
 
         if (m_flushQ.size() > FLUSH_CONTEXTPOOL)
-            FlushPending();
+            FlushPendingLocked();
         return ctx;
     }
 

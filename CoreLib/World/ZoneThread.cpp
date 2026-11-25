@@ -23,15 +23,15 @@ namespace Core {
 
     bool ZoneThread::IsReady() const {
         if (handler == nullptr) {
-            sysLogger->LogError("zone thread", "handler not initialized", "zoneID", zoneID);
+            sysLogger->LogError("zone thread", "handler not initialized", {{"zoneID", zoneID}});
             return false;
         }
         if (perfCollector == nullptr) {
-            sysLogger->LogError("zone thread", "perfCollector not initialized", "zoneID", zoneID);
+            sysLogger->LogError("zone thread", "perfCollector not initialized", {{"zoneID", zoneID}});
             return false;
         }
         if (!running.load(std::memory_order_relaxed)) {
-            sysLogger->LogError("zone thread", "zone worker not running", "zoneID", zoneID);
+            sysLogger->LogError("zone thread", "zone worker not running", {{"zoneID", zoneID}});
             return false;
         }
         return true;
@@ -44,7 +44,7 @@ namespace Core {
 
         std::stringstream ss;
         ss << std::this_thread::get_id();
-        sysLogger->LogInfo("zone thread", "zone thread started", "threadID", ss.str());
+        sysLogger->LogInfo("zone thread", "zone thread started", {{"threadID", ss.str()}});
 
         zone.InitializeMonster();
         while (running) {
@@ -65,8 +65,8 @@ namespace Core {
             const auto tickElapsed = std::chrono::steady_clock::now() - lastTick;
             const auto delay = tickElapsed - GAME_TICK;
             if (delay > std::chrono::milliseconds(50)) {
-                sysLogger->LogWarn("zone thread", "tick delayed", "zoneID", zoneID,
-                    "delay", std::chrono::duration_cast<std::chrono::milliseconds>(delay).count());
+                sysLogger->LogWarn("zone thread", "tick delayed", {{"zoneID", zoneID},
+                    {"delay", std::chrono::duration_cast<std::chrono::milliseconds>(delay).count()}});
             }
 
             const auto sleepDur = GAME_TICK - tickElapsed;
@@ -77,8 +77,8 @@ namespace Core {
         }
         ZoneEvent event;
         while (workQueue.Dequeue(event)) {
-            if (event.type == ZoneEventType::Disconnect)
-                handler->ProcessDisconnect(zone, zoneID, event.request);
+            if (const auto* disconnect = std::get_if<ZoneDisconnectEvent>(&event))
+                handler->ProcessDisconnect(zone, zoneID, *disconnect);
         }
         handler->SaveRemainingCharacters(zone);
     }
@@ -97,7 +97,7 @@ namespace Core {
 
         const DWORD_PTR mask = 1ull << ((zoneID - 1) * 2);
         if (SetThreadAffinityMask(thread.native_handle(), mask) == 0)
-            sysLogger->LogError("zone thread", "Failed to set thread affinity", "zoneID", zoneID);
+            sysLogger->LogError("zone thread", "Failed to set thread affinity", {{"zoneID", zoneID}});
     }
 
     void ZoneThread::Stop() {
@@ -106,12 +106,12 @@ namespace Core {
         if (thread.joinable())
             thread.join();
         if (sysLogger)
-            sysLogger->LogInfo("zone thread", "zone thread stopped", "zoneID", zoneID);
+            sysLogger->LogInfo("zone thread", "zone thread stopped", {{"zoneID", zoneID}});
     }
 
     bool ZoneThread::CanEnqueue(const ZoneEvent& event) const {
         return perfCollector != nullptr &&
-            (event.type == ZoneEventType::Packet || running.load(std::memory_order_acquire));
+            (std::holds_alternative<ZonePacketEvent>(event) || running.load(std::memory_order_acquire));
     }
 
     bool ZoneThread::Enqueue(ZoneEvent& event) {

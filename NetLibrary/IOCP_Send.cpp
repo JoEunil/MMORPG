@@ -26,7 +26,7 @@ namespace Net {
             overlappedExPool->Return(pOverlappedEx);
         }
         else if (status == EnqueueSendResult::QueueFull) {
-            Core::errorLogger->LogWarn("iocp", "send queue full, packet dropped", "session", sessionID);
+            Core::errorLogger->LogWarn("iocp", "send queue full, packet dropped", {{"session", sessionID}});
             overlappedExPool->Return(pOverlappedEx);
         }
     }
@@ -98,7 +98,7 @@ namespace Net {
                 uint64_t sessionID = pOverlappedEx->sessionID;
                 overlappedExPool->Return(pOverlappedEx);
                 CleanUpSocket(sock, sessionID);
-                Core::errorLogger->LogWarn("iocp", "WSASend failed: ", "socket", sock, "error message", std::to_string(err));
+                Core::errorLogger->LogWarn("iocp", "WSASend failed: ", {{"socket", sock}, {"error message", std::to_string(err)}});
             }
         }
     }

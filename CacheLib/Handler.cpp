@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "Handler.h"
 
-#include <CoreLib/Cache/Message.h>
+#include <CoreLib/Interface/IMessage.h>
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
@@ -83,13 +83,13 @@ namespace Cache {
             return;
 
         const auto request = *body;
-        EnqueueMessageWork(dbWorkerGame, msg, [this, sessionID, request](DBConnectionGame* conn, Core::Message* msg) {
+        EnqueueMessageWork(dbWorkerGame, msg, [this, sessionID, request](DBConnectionGame* conn, Core::IMessage* msg) {
             auto res = conn->ExecuteSelect(StatementId::SelectCharacterList, request.userID, request.channelID);
             const Core::MsgHeader header{ sessionID, Core::MSG_CHARACTER_LIST_RES };
             Core::MsgCharacterListResBody response{};
 
             if (!res || !res->next()) {
-                Core::gameLogger->LogInfo("cache handler", "character list read failed", "sessionID", sessionID, "user_id", request.userID, "channel_id", request.channelID);
+                Core::gameLogger->LogInfo("cache handler", "character list read failed", {{"sessionID", sessionID}, {"user_id", request.userID}, {"channel_id", request.channelID}});
                 TryEnqueueResponse(*msg, header, response);
                 return;
             }
@@ -125,7 +125,7 @@ namespace Cache {
             if (completed->exchange(true)) return;
             auto owned = std::move(*pending);
             if (!TryEnqueueResponse(*owned, { sessionID, Core::MSG_CHARACTER_STATE_RES }, response))
-                Core::errorLogger->LogError("cache handler", "character state response queue rejected", "sessionID", sessionID);
+                Core::errorLogger->LogError("cache handler", "character state response queue rejected", {{"sessionID", sessionID}});
         };
         const auto failed = [finish] { finish(Core::MsgCharacterStateResBody{}); };
         const auto outcome = dbWorkerGame->Enqueue([this, request, finish](DBConnectionGame* conn) {
@@ -178,8 +178,8 @@ namespace Cache {
             auto res = conn->ExecuteUpdate(StatementId::UpdateCharacterState, state.attack, state.level, state.exp, state.hp, state.mp, state.maxHp, state.maxMp, state.dir, state.x, state.y, state.lastZone, state.charID);
 
             if (!res) {
-                Core::gameLogger->LogInfo("cache handler", "character state update failed", "sessionID", sessionID, "char_id", state.charID, "level", state.level,
-                    "exp", state.exp, "hp", state.hp, "mp", state.mp, "max_hp", state.maxHp, "max_mp", state.maxMp, "dir", state.dir, "x", state.x, "y", state.y, "last_zone", state.lastZone);
+                Core::gameLogger->LogInfo("cache handler", "character state update failed", {{"sessionID", sessionID}, {"char_id", state.charID}, {"level", state.level},
+                    {"exp", state.exp}, {"hp", state.hp}, {"mp", state.mp}, {"max_hp", state.maxHp}, {"max_mp", state.maxMp}, {"dir", state.dir}, {"x", state.x}, {"y", state.y}, {"last_zone", state.lastZone}});
             }
         }, msg.get());
     }
@@ -198,12 +198,12 @@ namespace Cache {
         cache_profile->Rename(profileId, name, [this, sessionID, profileId](bool success, uint32_t version) {
             if (!success) {
                 Core::gameLogger->LogInfo("cache handler", "profile rename failed",
-                    "sessionID", sessionID, "profile_id", profileId);
+                    {{"sessionID", sessionID}, {"profile_id", profileId}});
             }
             auto res = messagePool->AcquireScoped();
             if (res == nullptr) {
                 Core::errorLogger->LogError("cache handler", "failed to acquire message for rename response",
-                    "sessionID", sessionID, "profile_id", profileId, "success", success);
+                    {{"sessionID", sessionID}, {"profile_id", profileId}, {"success", success}});
                 return;
             }
             const Core::MsgProfileRenameResBody response{ static_cast<uint8_t>(success), profileId, version };

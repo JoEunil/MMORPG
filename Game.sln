@@ -21,16 +21,17 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BaseLib", "BaseLib\BaseLib.
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "솔루션 항목", "솔루션 항목", "{2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}"
 	ProjectSection(SolutionItems) = preProject
+		AGENTS.md = AGENTS.md
 		AI-AGENT.md = AI-AGENT.md
 		BUILD.md = BUILD.md
 		README.md = README.md
-		AGENTS.md = AGENTS.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Concept", "Concept", "{C8D5274F-AC00-46C7-1F8D-E88E81087A52}"
 	ProjectSection(SolutionItems) = preProject
 		AI-REFLECTION.md = AI-REFLECTION.md
 		DesignDecisions.md = DesignDecisions.md
+		DesignPatterns.md = DesignPatterns.md
 		IOCP&epoll.md = IOCP&epoll.md
 		LLM.md = LLM.md
 		LockFreeQueue.md = LockFreeQueue.md
@@ -56,20 +57,43 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 		images\4000_grafana.png = images\4000_grafana.png
 		images\5000_grafana.png = images\5000_grafana.png
 		images\5000_Success.png = images\5000_Success.png
+		images\Architecture_CacheLib.png = images\Architecture_CacheLib.png
+		images\Architecture_CoreLib.png = images\Architecture_CoreLib.png
+		images\Architecture_CoreLib.svg = images\Architecture_CoreLib.svg
+		images\Architecture_current.png = images\Architecture_current.png
 		images\Architecture_future.png = images\Architecture_future.png
+		images\Architecture_NetLib.png = images\Architecture_NetLib.png
+		images\Architecture_Server.png = images\Architecture_Server.png
+		images\Bazaar.png = images\Bazaar.png
 		images\broadcast_drop.png = images\broadcast_drop.png
+		images\CacheDurabilityTest1.png = images\CacheDurabilityTest1.png
+		images\CacheDurabilityTest2.png = images\CacheDurabilityTest2.png
+		images\CacheIntegrationTest.png = images\CacheIntegrationTest.png
+		images\CacheIntegrationTest2.png = images\CacheIntegrationTest2.png
 		images\CacheLibArchitecture.png = images\CacheLibArchitecture.png
+		images\code-explorer-refactoring\core-cache-after.png = images\code-explorer-refactoring\core-cache-after.png
+		images\code-explorer-refactoring\core-cache-before.png = images\code-explorer-refactoring\core-cache-before.png
+		images\code-explorer-refactoring\core-cache-direct-dependencies.png = images\code-explorer-refactoring\core-cache-direct-dependencies.png
+		images\code-explorer-refactoring\core-net-separated.png = images\code-explorer-refactoring\core-net-separated.png
 		images\Ecore.png = images\Ecore.png
 		images\FloodCheckFlowChart.png = images\FloodCheckFlowChart.png
 		images\flushQueue.png = images\flushQueue.png
+		images\flushQueue1.png = images\flushQueue1.png
+		images\flushQueue2.png = images\flushQueue2.png
 		images\InnoDBArchitecture.png = images\InnoDBArchitecture.png
 		images\IOCPSend.png = images\IOCPSend.png
 		images\IOCPWorkerThreadRecv.png = images\IOCPWorkerThreadRecv.png
+		images\LLM_DecoderArchitecture.png = images\LLM_DecoderArchitecture.png
+		images\LLM_Linear_Nonlinear.png = images\LLM_Linear_Nonlinear.png
+		images\LLM_NeuralNetwork.png = images\LLM_NeuralNetwork.png
+		images\LLM_RNN_vs_Attention.png = images\LLM_RNN_vs_Attention.png
+		images\LLM_SelfAttention.png = images\LLM_SelfAttention.png
 		images\LockFreeQueue1.png = images\LockFreeQueue1.png
 		images\LockFreeQueue2.png = images\LockFreeQueue2.png
 		images\LockFreeQueue3.png = images\LockFreeQueue3.png
 		images\LockFreeQueue4.png = images\LockFreeQueue4.png
 		images\monitoring.png = images\monitoring.png
+		images\MonsterAI.png = images\MonsterAI.png
 		images\ParsingErrorLogs.png = images\ParsingErrorLogs.png
 		images\ParsingErrorLogs2.png = images\ParsingErrorLogs2.png
 		images\Pcore_Affinity.png = images\Pcore_Affinity.png
@@ -83,6 +107,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 		images\TestBazaar6-1.png = images\TestBazaar6-1.png
 		images\TestBazaar6-2.png = images\TestBazaar6-2.png
 		images\TestBazaar6-3.png = images\TestBazaar6-3.png
+		images\TestBazaar6-4.png = images\TestBazaar6-4.png
 		images\TestBazaar7.png = images\TestBazaar7.png
 		images\TestBazaar8-1.png = images\TestBazaar8-1.png
 		images\TestBazaar8-2.png = images\TestBazaar8-2.png
@@ -90,26 +115,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 		images\TripleBuffer.png = images\TripleBuffer.png
 		images\Write-Back.png = images\Write-Back.png
 		images\zeroWindow.png = images\zeroWindow.png
-		images\Architecture_CacheLib.png = images\Architecture_CacheLib.png
-		images\Architecture_CoreLib.png = images\Architecture_CoreLib.png
-		images\Architecture_CoreLib.svg = images\Architecture_CoreLib.svg
-		images\Architecture_NetLib.png = images\Architecture_NetLib.png
-		images\Architecture_Server.png = images\Architecture_Server.png
-		images\Architecture_current.png = images\Architecture_current.png
-		images\Bazaar.png = images\Bazaar.png
-		images\CacheDurabilityTest1.png = images\CacheDurabilityTest1.png
-		images\CacheDurabilityTest2.png = images\CacheDurabilityTest2.png
-		images\CacheIntegrationTest.png = images\CacheIntegrationTest.png
-		images\CacheIntegrationTest2.png = images\CacheIntegrationTest2.png
-		images\LLM_DecoderArchitecture.png = images\LLM_DecoderArchitecture.png
-		images\LLM_Linear_Nonlinear.png = images\LLM_Linear_Nonlinear.png
-		images\LLM_NeuralNetwork.png = images\LLM_NeuralNetwork.png
-		images\LLM_RNN_vs_Attention.png = images\LLM_RNN_vs_Attention.png
-		images\LLM_SelfAttention.png = images\LLM_SelfAttention.png
-		images\MonsterAI.png = images\MonsterAI.png
-		images\TestBazaar6-4.png = images\TestBazaar6-4.png
-		images\flushQueue1.png = images\flushQueue1.png
-		images\flushQueue2.png = images\flushQueue2.png
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Gif", "Gif", "{1EAD1855-C4A5-4C63-AC48-2766B77829DD}"
@@ -139,12 +144,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{C6CB27A9-D
 		ASAN.md = ASAN.md
 		Benchmark_TripleBuffer.md = Benchmark_TripleBuffer.md
 		Benchmark_WAL.md = Benchmark_WAL.md
+		Benchmark_WorkerQueue.md = Benchmark_WorkerQueue.md
+		Benchmark_ZoneTick.md = Benchmark_ZoneTick.md
 		DummyTest.md = DummyTest.md
 		DummyTest2.md = DummyTest2.md
 		DummyTest3.md = DummyTest3.md
 		Monitoring.md = Monitoring.md
-		Benchmark_WorkerQueue.md = Benchmark_WorkerQueue.md
-		Benchmark_ZoneTick.md = Benchmark_ZoneTick.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Refactor", "Refactor", "{FBE39A87-206D-4DA5-907E-619734B665F2}"
@@ -152,6 +157,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Refactor", "Refactor", "{FB
 		AOI.md = AOI.md
 		ChatRefactor.md = ChatRefactor.md
 		ClientContextRefactor.md = ClientContextRefactor.md
+		CodeExplorerRefactoring.md = CodeExplorerRefactoring.md
 		DBWorkerRefactor.md = DBWorkerRefactor.md
 		ObjectPool.md = ObjectPool.md
 		PingRefactor.md = PingRefactor.md
@@ -198,8 +204,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "CodeExplorer", "CodeExplore
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Screenshots", "Screenshots", "{D110FA9E-54A6-57B6-B8F3-4EA95FF0D7DA}"
 	ProjectSection(SolutionItems) = preProject
-		Resources\CodeExplorer\Screenshots\connection-expansion.png = Resources\CodeExplorer\Screenshots\connection-expansion.png
 		Resources\CodeExplorer\Screenshots\cohesion-example.png = Resources\CodeExplorer\Screenshots\cohesion-example.png
+		Resources\CodeExplorer\Screenshots\connection-expansion.png = Resources\CodeExplorer\Screenshots\connection-expansion.png
 		Resources\CodeExplorer\Screenshots\filter-map.png = Resources\CodeExplorer\Screenshots\filter-map.png
 		Resources\CodeExplorer\Screenshots\interface-boundaries.png = Resources\CodeExplorer\Screenshots\interface-boundaries.png
 		Resources\CodeExplorer\Screenshots\namespace-map.png = Resources\CodeExplorer\Screenshots\namespace-map.png
@@ -208,14 +214,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Screenshots", "Screenshots"
 		Resources\CodeExplorer\Screenshots\wal-method-map.png = Resources\CodeExplorer\Screenshots\wal-method-map.png
 		Resources\CodeExplorer\Screenshots\winforms-project-scope.png = Resources\CodeExplorer\Screenshots\winforms-project-scope.png
 		Resources\CodeExplorer\Screenshots\winforms-startup.jpg = Resources\CodeExplorer\Screenshots\winforms-startup.jpg
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Videos", "Videos", "{008B2D7A-9ED0-5432-9CCA-8DDAF1200F02}"
-	ProjectSection(SolutionItems) = preProject
-		images\2000.mp4 = images\2000.mp4
-		images\2000_2.mp4 = images\2000_2.mp4
-		images\3000.mp4 = images\3000.mp4
-		images\4000.mp4 = images\4000.mp4
 	EndProjectSection
 EndProject
 Global
@@ -429,7 +427,6 @@ Global
 		{C60890E3-6BC0-444C-8B3B-3846C03E623B} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 		{FE4D8710-8AC9-53EF-96F2-17C8252F13D0} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 		{D110FA9E-54A6-57B6-B8F3-4EA95FF0D7DA} = {FE4D8710-8AC9-53EF-96F2-17C8252F13D0}
-		{008B2D7A-9ED0-5432-9CCA-8DDAF1200F02} = {2A3A057F-5D22-31FD-628C-DF5EF75AEF1E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1D7E6752-8BC7-4122-B538-33B39EB8EA38}

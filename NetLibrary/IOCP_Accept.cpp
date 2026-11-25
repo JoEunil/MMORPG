@@ -30,7 +30,7 @@ namespace Net {
 
         uint64_t sessionID = sessionManager->GetSession(clientSocket);
         if (sessionID == 0 || !PostRecv(clientSocket, sessionID)) {
-            Core::errorLogger->LogWarn("iocp", "Post Receive Failed(accept)", "socket", clientSocket);
+            Core::errorLogger->LogWarn("iocp", "Post Receive Failed(accept)", {{"socket", clientSocket}});
             CleanUpSocket(clientSocket);
         }
         PostAccept();
@@ -90,7 +90,7 @@ namespace Net {
                     !m_receiving.load(std::memory_order_relaxed) &&
                     (err == ERROR_OPERATION_ABORTED || err == WSAENOTSOCK);
                 if (!expectedShutdown) {
-                    Core::errorLogger->LogError("iocp", "Critical: failed to post AcceptEx", "error", err);
+                    Core::errorLogger->LogError("iocp", "Critical: failed to post AcceptEx", {{"error", err}});
                     fatalError->store(true, std::memory_order_relaxed);
                     cv->notify_one();
                 }

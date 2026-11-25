@@ -6,6 +6,7 @@
 #include "Interface/ISessionSnapshotReader.h"
 #include "Interface/IZonePacketQueue.h"
 #include "Interface/IZoneRequestQueue.h"
+#include "Interface/IZoneTransfer.h"
 #include "ZoneThread.h"
 
 namespace Core {

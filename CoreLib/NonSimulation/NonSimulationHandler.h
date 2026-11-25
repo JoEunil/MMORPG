@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <memory>
 #include "../Interface/IPacketView.h"
+#include "NonSimulationEvent.h"
 
 namespace Core {
     class CacheCommandSender;
@@ -12,13 +13,20 @@ namespace Core {
     class IPacketView;
     class IServerResponseQueue;
     class PacketWriter;
-    class IDBCache;
     class SessionManager;
     class LobbyZone;
     class ChatThreadPool;
     class IProfileCache;
     struct ZoneTransfer;
     class NonSimulationHandler{
+        struct EventVisitor {
+            NonSimulationHandler& handler;
+
+            void operator()(NonSimulationWorkEvent& event) const;
+            void operator()(NonSimulationDisconnectEvent& event) const;
+            void operator()(NonSimulationLobbyReturnEvent& event) const;
+        };
+
         void Initialize(IServerResponseQueue& responseQueue, PacketWriter& packetWriter, ISessionAuth* s, const CacheCommandSender* commands, SessionManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc, IZonePacketQueue& packets, IZoneRequestQueue& requests);
         bool IsReady() const;
         void CheckSession(IPacketView* p);
@@ -46,13 +54,14 @@ namespace Core {
         PacketWriter* writer = nullptr;
         SessionManager* sessionManager = nullptr;
         ISessionAuth* auth = nullptr;
-        IDBCache* cache = nullptr;
         const CacheCommandSender* cacheCommands = nullptr;
         LobbyZone* lobbyZone = nullptr;
         ChatThreadPool* chat = nullptr;
         IProfileCache* profileCache = nullptr;
         friend class Initializer;
     public:
+        void Process(NonSimulationEvent& event);
+
         void Process(std::unique_ptr<IPacketView, PacketViewDeleter> packet);
         void Disconnect(uint64_t sessionID);
         void ReturnToLobby(const std::shared_ptr<ZoneTransfer>& transfer);

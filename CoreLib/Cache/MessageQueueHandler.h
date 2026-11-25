@@ -8,7 +8,7 @@
 #include "../LoggerGlobal.h"
 
 namespace Core {
-    class Message;
+    class IMessage;
     class IServerResponseQueue;
     class PacketWriter;
     class LobbyZone;
@@ -59,7 +59,7 @@ namespace Core {
         using ResponseWriter = std::unique_ptr<IPacket, PacketDeleter>(PacketWriter::*)(const T*);
 
         template<ResponseScope Scope = ResponseScope::Session, typename T>
-        void DispatchResponse(Message& msg, uint64_t sessionID, ResponseWriter<T> write);
+        void DispatchResponse(IMessage& msg, uint64_t sessionID, ResponseWriter<T> write);
 
         bool IsCurrentFieldCharacter(uint64_t sessionID, uint64_t characterID);
         void CharacterStateResponse(uint64_t sessionID, const MsgCharacterStateResBody* body);
@@ -69,6 +69,6 @@ namespace Core {
 
         friend class Initializer;
     public:
-        void Process(Message* m);
+        void Process(IMessage* m);
     };
 }

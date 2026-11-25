@@ -1,8 +1,9 @@
 ﻿#pragma once
 #include <cstdint>
+#include "../Interface/IMessage.h"
 
 namespace Core {
-    class Message {
+    class Message : public IMessage {
         uint8_t* m_buffer;
         uint16_t m_length; // data length
         uint16_t m_capacity; // buffer length
@@ -19,13 +20,14 @@ namespace Core {
             m_length = 0;
         };
         
-        ~Message() {
+        ~Message() override {
             delete[] m_buffer;
         }
 
-        uint8_t* GetBuffer() { return m_buffer; }
-        uint16_t GetLength() const { return m_length; }
-        uint16_t GetCapacity() const { return m_capacity; }
-        void SetLength(uint16_t len) { m_length = len; };
+        uint8_t* GetBuffer() override { return m_buffer; }
+        const uint8_t* GetBuffer() const override { return m_buffer; }
+        uint16_t GetLength() const override { return m_length; }
+        uint16_t GetCapacity() const override { return m_capacity; }
+        void SetLength(uint16_t len) override { m_length = len; };
     };
 }

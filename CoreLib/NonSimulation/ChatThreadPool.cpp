@@ -6,7 +6,7 @@
 
 namespace Core {
     uint64_t ChatThreadPool::OnSessionEnteredWorld(uint64_t sessionID, uint16_t zoneID, uint32_t profileID) {
-        const auto chatID = AddChatSession(sessionID, zoneID, profileID);
+        const auto chatID = AddChatSession(sessionID, profileID);
         EnqueueZoneJoin(sessionID, zoneID);
         return chatID;
     }
@@ -21,7 +21,7 @@ namespace Core {
     void ChatThreadPool::OnSessionClosed(uint64_t sessionID, uint16_t zoneID) {
         if (zoneID != 0)
             EnqueueZoneLeave(sessionID, zoneID);
-        DeleteChatSession(sessionID, zoneID);
+        DeleteChatSession(sessionID);
     }
 
     namespace {
@@ -33,7 +33,7 @@ namespace Core {
         auto tid = std::this_thread::get_id();
         std::stringstream ss;
         ss << tid;
-        sysLogger->LogInfo("chat thread", "chat thread started", "threadID", ss.str());
+        sysLogger->LogInfo("chat thread", "chat thread started", {{"threadID", ss.str()}});
         std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash> tempPackets;
         tempPackets.reserve(100);
 
@@ -65,36 +65,31 @@ namespace Core {
         if (!m_running.load(std::memory_order_relaxed))
             return false;
 
-        switch (curr.type) {
-        case ChatEventType::SESSION_ADD:
-            m_sessions.AddSession(curr.senderSessionID, curr.senderChatID, curr.senderProfileId);
-            return true;
-        case ChatEventType::ZONE_JOIN:
-        case ChatEventType::ZONE_LEAVE:
-            ProcessZoneTransition(std::move(curr));
-            return true;
-        }
-
-        const auto* user = m_sessions.FindSession(curr.senderSessionID);
-        if (!user) {
-            return true;
-        }
-        auto chatID = user->chatID;
-        auto profileId = user->profileId;
-
-        switch (curr.type) {
-        case ChatEventType::CHAT:
-            ProcesChat(curr, chatID, profileId, tempPackets);
-            break;
-
-        case ChatEventType::SESSION_DELETE:
-            m_sessions.DeleteSession(curr.senderSessionID);
-            break;
-        default:
-            errorLogger->LogInfo("chat thread", "undefined chat event", "chatID", chatID, "chat event type", (int)curr.type);
-            break;
-        }
+        std::visit(EventVisitor{*this, tempPackets}, curr);
         return true;
+    }
+
+    void ChatThreadPool::EventVisitor::operator()(const ChatSessionAddEvent& event) const {
+        pool.m_sessions.AddSession(event.senderSessionID, event.senderChatID, event.senderProfileId);
+    }
+
+    void ChatThreadPool::EventVisitor::operator()(const ChatZoneJoinEvent& event) const {
+        pool.ProcessZoneTransition(event);
+    }
+
+    void ChatThreadPool::EventVisitor::operator()(const ChatZoneLeaveEvent& event) const {
+        pool.ProcessZoneTransition(event);
+    }
+
+    void ChatThreadPool::EventVisitor::operator()(const ChatMessageEvent& event) const {
+        const auto* user = pool.m_sessions.FindSession(event.senderSessionID);
+        if (user)
+            pool.ProcesChat(event, user->chatID, user->profileId, tempPackets);
+    }
+
+    void ChatThreadPool::EventVisitor::operator()(const ChatSessionDeleteEvent& event) const {
+        if (pool.m_sessions.FindSession(event.senderSessionID))
+            pool.m_sessions.DeleteSession(event.senderSessionID);
     }
 
     void ChatThreadPool::FlushChatBatches(std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
@@ -105,7 +100,7 @@ namespace Core {
         tempPackets.clear();
     }
 
-    void ChatThreadPool::SendWhisper(const ChatEvent& event, uint64_t chatID, uint32_t profileId) {
+    void ChatThreadPool::SendWhisper(const ChatMessageEvent& event, uint64_t chatID, uint32_t profileId) {
         auto packet = writer->GetChatWhisperPacket(chatID, profileId, event.message);
         if (!packet)
             return;
@@ -154,7 +149,7 @@ namespace Core {
         perfCollector->AddChatSend(batch->chatCnt * recipientCount);
     }
 
-    void ChatThreadPool::ProcesChat(ChatEvent& curr, uint64_t chatID, uint32_t profileId,
+    void ChatThreadPool::ProcesChat(const ChatMessageEvent& curr, uint64_t chatID, uint32_t profileId,
         std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
         if (curr.key.scope == CHAT_SCOPE::Whisper) {
             SendWhisper(curr, chatID, profileId);
@@ -166,7 +161,7 @@ namespace Core {
         AppendToChatBatch(curr, chatID, profileId, tempPackets);
     }
 
-    void ChatThreadPool::AppendToChatBatch(const ChatEvent& curr, uint64_t chatID, uint32_t profileId,
+    void ChatThreadPool::AppendToChatBatch(const ChatMessageEvent& curr, uint64_t chatID, uint32_t profileId,
         std::unordered_map<ChatDestKey, std::shared_ptr<IPacket>, ChatDestKeyHash>& tempPackets) {
         auto it = tempPackets.find(curr.key);
         if (it != tempPackets.end()) {
@@ -184,11 +179,12 @@ namespace Core {
             tempPackets.emplace(curr.key, std::move(packet));
     }
 
-    void ChatThreadPool::ProcessZoneTransition(ChatEvent&& event) {
+    template<typename ZoneEvent>
+    void ChatThreadPool::ProcessZoneTransition(const ZoneEvent& event) {
         std::lock_guard<std::mutex> lock(m_zoneSequenceMutex);
         auto sequenceIt = m_currentZoneSequence.find(event.senderSessionID);
         if (sequenceIt == m_currentZoneSequence.end()) {
-            errorLogger->LogError("chat thread", "zone transition before session add", "session", event.senderSessionID, "sequence", event.zoneSequence);
+            errorLogger->LogError("chat thread", "zone transition before session add", {{"session", event.senderSessionID}, {"sequence", event.zoneSequence}});
             return;
         }
 
@@ -199,12 +195,12 @@ namespace Core {
         ApplyZoneTransition(event);
     }
 
-    void ChatThreadPool::ApplyZoneTransition(const ChatEvent& event) {
-        if (event.type == ChatEventType::ZONE_JOIN) {
-            m_sessions.JoinZone(event.senderSessionID, static_cast<uint16_t>(event.key.id));
-        } else if (event.type == ChatEventType::ZONE_LEAVE) {
-            m_sessions.LeaveZone(event.senderSessionID);
-        }
+    void ChatThreadPool::ApplyZoneTransition(const ChatZoneJoinEvent& event) {
+        m_sessions.JoinZone(event.senderSessionID, event.zoneID);
+    }
+
+    void ChatThreadPool::ApplyZoneTransition(const ChatZoneLeaveEvent& event) {
+        m_sessions.LeaveZone(event.senderSessionID);
     }
 
 }

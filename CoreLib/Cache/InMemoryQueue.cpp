@@ -8,7 +8,7 @@ namespace Core {
         auto tid = std::this_thread::get_id();
         std::stringstream ss;
         ss << tid;
-        sysLogger->LogInfo("core mq", "mq thread started", "threadID", ss.str());
+        sysLogger->LogInfo("core mq", "mq thread started", {{"threadID", ss.str()}});
         while (true)
         {
             CoreMessagePool::ScopedMessage work;
@@ -27,7 +27,7 @@ namespace Core {
 
             handler->Process(work.get());
         }
-        sysLogger->LogInfo("core mq", "mq thread stopped", "threadID", ss.str());
+        sysLogger->LogInfo("core mq", "mq thread stopped", {{"threadID", ss.str()}});
     }
 
     void InMemoryQueue::Start() {
@@ -59,14 +59,18 @@ namespace Core {
         }
     }
 
-    bool InMemoryQueue::EnqueueMessage(Core::Message* msg) {
+    bool InMemoryQueue::EnqueueMessage(const Core::IMessage* msg) {
         if (!m_running.load(std::memory_order_relaxed))
+            return false;
+        if (msg == nullptr || msg->GetLength() < sizeof(MsgHeader) || msg->GetLength() > msg->GetCapacity())
             return false;
         auto coreMsg = messagePool->AcquireScoped();
         if (coreMsg == nullptr) {
             errorLogger->LogWarn("core mq", "message pool empty");
             return false;
         }
+        if (coreMsg->GetCapacity() < msg->GetLength())
+            return false;
         std::memcpy(coreMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());
         coreMsg->SetLength(msg->GetLength());
 

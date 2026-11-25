@@ -13,7 +13,6 @@
 #include <iterator>
 #include <new>
 
-#include <mysqlconn/include/mysql/jdbc.h>
 #include "DB/DBConfig.h"
 #include "DB/DBWorker.h"
 #include <CoreLib/Interface/ICachedClock.h>
@@ -91,6 +90,8 @@ namespace Cache {
         void RestoreEvictingEntryLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& result);
 
     public:
+        virtual ~CacheStorage() = default;
+
         void SetFlushFn(std::function<FlushEnqueueResult(const Key&, Result&)> f) {
             m_flushFn = f;
         }

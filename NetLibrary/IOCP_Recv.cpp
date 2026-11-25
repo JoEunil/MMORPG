@@ -12,7 +12,7 @@ namespace Net {
             return;
         const SOCKET clientSocket = work->clientSocket;
         if (bytesTransferred == 0) {
-            Core::sysLogger->LogInfo("iocp", "Client FIN received", "socket", clientSocket);
+            Core::sysLogger->LogInfo("iocp", "Client FIN received", {{"socket", clientSocket}});
             CleanUpSocket(clientSocket, work->sessionID);
             return;
         }
@@ -22,7 +22,7 @@ namespace Net {
                 reinterpret_cast<uint8_t*>(work->wsaBuf[0].buf), bytesTransferred);
 
             if (work->ownerContext->IsSessionAlive(work->sessionID) && !PostRecv(clientSocket, work->sessionID)) {
-                Core::errorLogger->LogWarn("iocp", "Post Receive Failed(recv)", "socket", clientSocket);
+                Core::errorLogger->LogWarn("iocp", "Post Receive Failed(recv)", {{"socket", clientSocket}});
                 CleanUpSocket(clientSocket, work->sessionID);
             }
         }
@@ -42,13 +42,13 @@ namespace Net {
         uint8_t* buf = nullptr;
         ClientContext* ownerContext = sessionManager->GetContext(clientSocket);
         if (!ownerContext) {
-            Core::errorLogger->LogWarn("iocp", "PostRecv failed: ownerContext is null", "socket", clientSocket);
+            Core::errorLogger->LogWarn("iocp", "PostRecv failed: ownerContext is null", {{"socket", clientSocket}});
             overlappedExPool->Return(pOverlappedEx);
             return false;
         }
         uint16_t bufferLength = ownerContext->BeginRecvIO(sessionID, buf);
         if (bufferLength == 0) {
-            Core::errorLogger->LogWarn("iocp", "can't allocate buffer", "socket", clientSocket);
+            Core::errorLogger->LogWarn("iocp", "can't allocate buffer", {{"socket", clientSocket}});
             overlappedExPool->Return(pOverlappedEx);
             return false;
         }
@@ -62,7 +62,7 @@ namespace Net {
         if (result == SOCKET_ERROR) {
             int err = WSAGetLastError();
             if (err != WSA_IO_PENDING) {
-                Core::errorLogger->LogError("iocp", "WSAGetLastError ", "socket", clientSocket, "error message", std::to_string(err));
+                Core::errorLogger->LogError("iocp", "WSAGetLastError ", {{"socket", clientSocket}, {"error message", std::to_string(err)}});
                 ownerContext->CompleteRecvIO(sessionID);
                 overlappedExPool->Return(pOverlappedEx);
                 return false;

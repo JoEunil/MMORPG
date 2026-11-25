@@ -80,7 +80,13 @@
     <ClInclude Include="Interface\INetworkSender.h">
       <Filter>Interface</Filter>
     </ClInclude>
+    <ClInclude Include="Interface\ILogFormatter.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
     <ClInclude Include="Interface\ILogger.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface\LogRecord.h">
       <Filter>Interface</Filter>
     </ClInclude>
     <ClInclude Include="Interface\ISessionAuth.h">
@@ -118,6 +124,18 @@
     </ClInclude>
     <ClInclude Include="Cache\MessagePool.h">
       <Filter>Cache</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface\IMessage.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface\IMessagePool.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface\ICacheResponseWriter.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Interface\IDurableLog.h">
+      <Filter>Interface</Filter>
     </ClInclude>
     <ClInclude Include="Interface\IMessageQueue.h">
       <Filter>Interface</Filter>
@@ -170,6 +188,15 @@
     <ClInclude Include="NonSimulation\NonSimulationHandler.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
+    <ClInclude Include="NonSimulation\NonSimulationEvent.h">
+      <Filter>NonSimulation</Filter>
+    </ClInclude>
+    <ClInclude Include="NonSimulation\ChatEvent.h">
+      <Filter>NonSimulation</Filter>
+    </ClInclude>
+    <ClInclude Include="World\ZoneEvent.h">
+      <Filter>World</Filter>
+    </ClInclude>
     <ClInclude Include="NonSimulation\NonSimulationThreadPool.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
@@ -194,6 +221,8 @@
     <ClInclude Include="World\Equipment.h">
       <Filter>World</Filter>
     </ClInclude>
+    <ClInclude Include="World\ItemUseState.h"><Filter>World</Filter></ClInclude>
+    <ClInclude Include="World\ItemUseProcessor.h"><Filter>World</Filter></ClInclude>
     <ClInclude Include="World\CharacterState.h">
       <Filter>World</Filter>
     </ClInclude>
@@ -310,6 +339,7 @@
     <ClCompile Include="World\Equipment.cpp">
       <Filter>World</Filter>
     </ClCompile>
+    <ClCompile Include="World\ItemUseProcessor.cpp"><Filter>World</Filter></ClCompile>
     <ClCompile Include="World\ZoneState_Actions.cpp">
       <Filter>World</Filter>
     </ClCompile>

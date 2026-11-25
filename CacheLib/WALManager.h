@@ -104,7 +104,7 @@ namespace Cache {
 			auto tid = std::this_thread::get_id();
 			std::stringstream ss;
 			ss << tid;
-			Core::sysLogger->LogInfo("WAL manager", "WAL manager thread started", "threadID", ss.str());
+			Core::sysLogger->LogInfo("WAL manager", "WAL manager thread started", {{"threadID", ss.str()}});
 
 			std::optional<std::chrono::steady_clock::time_point> resumeAt;
 			auto nextTruncate = std::chrono::steady_clock::now() + TRUNCATE_INTERVAL;
@@ -135,7 +135,7 @@ namespace Cache {
 
 
 			m_wal->Fsync();
-			Core::sysLogger->LogInfo("WAL manager", "WAL manager thread stopped", "threadID", ss.str());
+			Core::sysLogger->LogInfo("WAL manager", "WAL manager thread stopped", {{"threadID", ss.str()}});
 		}
 
 		void Initialize(CacheStorageInventory* ci, DBConnectionPool<DBConnectionGame>* p) {

@@ -5,6 +5,10 @@
 최종 범위는 [현재 기획 기준](BRIEF.md#현재-작업-범위-확정--2026-11-22)을 따른다. 아래는 작성 당시 기록이며 현재 미완료 목록이 아니다. 검증·게시 상태는 [HANDOFF](HANDOFF.md)를 따른다.
 
 
+## 아이템 사용 계약 변경 — 2026-11-24
+
+아이템 사용 요청·응답에서 Zone 소유권 epoch를 제거했다. 요청은 전체 20바이트(requestID u64/itemID u32), 응답은 전체 27바이트(requestID u64/itemID u32/status u8/remainingQuantity u16/cooldownRemainingTicks u32)다. 중복 검사는 캐릭터의 ItemUseState에서 요청 ID·아이템 ID로 처리한다. Zone 전환 자체의 epoch 계약은 유지한다. 아래 11월 7일의 패킷 길이·epoch 설명은 변경 전 기록이다.
+
 ## 최신 소비·보상 연결 — 2026-11-07
 
 이 절은 현재 코드 계약이며 아래 최초 기획·당시 미실행 기록을 대체해 읽는다. 실제 적용·검증·입력 허용 상태는 HANDOFF를 따른다. 사용자 몬스터 AI·DB 스키마는 이번 범위에서 바꾸지 않는다.

@@ -3,8 +3,9 @@
 #include "FlushDispatcher.h"
 #include "CacheFlush.h"
 #include "Config.h"
-#include <CoreLib/Cache/MessagePool.h>
-#include <CoreLib/Cache/MessageWriter.h>
+#include <CoreLib/Interface/IMessagePool.h>
+#include <CoreLib/Interface/ICacheResponseWriter.h>
+#include <CoreLib/Interface/IDurableLog.h>
 #include "DB/DBConfig.h"
 #include "DB/DBConnectionPool.h"
 #include "CacheStorage.h"
@@ -13,6 +14,7 @@
 #include "ProfileCache.h"
 #include "InmemoryQueue.h"
 #include "Handler.h"
+#include "BazaarRegistration.h"
 #include "DB/DBWorker.h"
 #include "WALManager.h"
 
@@ -24,19 +26,18 @@ class ProfileCacheTest;
 
 namespace Cache {
 	class Initializer {
-        CacheMessagePool msgPool;
         CacheFlush flush;
         FlushDispatcher dispatcher;
         CacheStorageInventory cache_inventory;
         CacheStorageCurrency cache_currency;
         ProfileCache cache_profile;
-        Core::MessageWriter messageWriter;
         Handler handler;
         InMemoryQueue recvMQ;
         DBConnectionPool<DBConnectionGame> connectionPoolGame;
         DBConnectionPool<DBConnectionBazaar> connectionPoolBazaar;
         DBWorker<DBConnectionGame> dbWorkerGame;
         DBWorker<DBConnectionBazaar> dbWorkerBazaar;
+        BazaarRegistration bazaarRegistration;
         WALManager walManager;
 
         // 테스트에서 Load/Unload/Rename까지 직접 두드리기 위한 concrete getter. friend으로만 접근.
@@ -61,6 +62,7 @@ namespace Cache {
             cache_inventory.Initialize(&dbWorkerGame, clock);
             cache_currency.Initialize(&dbWorkerGame, clock);
             cache_profile.Initialize(&dbWorkerGame);
+            bazaarRegistration.Initialize(&cache_inventory, &cache_currency, &dbWorkerBazaar);
             
             flush.Initialize(&connectionPoolGame, &connectionPoolBazaar, &cache_inventory, &cache_currency);
             flush.SetInvFlushedFn([this](uint64_t characterID, uint64_t flushedLsn) {
@@ -71,10 +73,11 @@ namespace Cache {
 
         }
         
-        void InjectDependencies(Core::IMessageQueue* sendMQ, Core::DurableLogger* durableLogger = nullptr)
+        void InjectDependencies(Core::IMessageQueue* sendMQ, Core::IMessagePool& messagePool,
+            const Core::ICacheResponseWriter& responseWriter, Core::IDurableLog* durableLogger = nullptr)
         {
-            handler.Initialize(sendMQ, &messageWriter, &msgPool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile);
-            recvMQ.Initialize(&handler, &msgPool, durableLogger);
+            handler.Initialize(sendMQ, &responseWriter, &messagePool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile, &bazaarRegistration);
+            recvMQ.Initialize(&handler, &messagePool, durableLogger);
             recvMQ.Start();
         }
         
@@ -85,6 +88,7 @@ namespace Cache {
                 or !cache_inventory.IsReady()
                 or !cache_currency.IsReady()
                 or !cache_profile.IsReady()
+                or !bazaarRegistration.IsReady()
                 or !handler.IsReady()
                 or !dbWorkerGame.IsReady()
                 or !dbWorkerBazaar.IsReady()

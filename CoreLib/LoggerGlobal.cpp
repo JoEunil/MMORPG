@@ -8,6 +8,9 @@ namespace Core {
         void LogInfo(const std::string&) override {}
         void LogError(const std::string&) override {}
         void LogWarn(const std::string&) override {}
+        void LogInfo(const std::string&, const std::string&, std::initializer_list<LogField>) override {}
+        void LogError(const std::string&, const std::string&, std::initializer_list<LogField>) override {}
+        void LogWarn(const std::string&, const std::string&, std::initializer_list<LogField>) override {}
         void Flush() override {}
     };
     std::unique_ptr<ILogger> sysLogger = std::make_unique<NullLogger>();

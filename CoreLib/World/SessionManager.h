@@ -26,7 +26,6 @@ namespace Core {
         std::shared_ptr<ZoneTransfer> pendingZoneTransfer;
         uint64_t lastRespawnRequestEpoch = 0;
         uint64_t bootstrapSequence = 0;
-        ItemUseResponseBody lastItemUse = {};
         EquipmentResponseBody lastEquipmentSet = {};
         uint32_t lastEquipmentItemID = 0;
         uint64_t chatID = 0;
@@ -126,7 +125,7 @@ namespace Core {
             const auto found = shard.sessionMap.find(sessionID);
             return found != shard.sessionMap.end() ? &found->second : nullptr;
         }
-        static bool MatchesZoneTransfer(const SessionData* session, const std::shared_ptr<ZoneTransfer>& transfer);
+        static bool MatchesZoneTransferLocked(const SessionData* session, const std::shared_ptr<ZoneTransfer>& transfer);
 
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
@@ -157,7 +156,7 @@ namespace Core {
             it->second.lastCheatTime = std::chrono::steady_clock::now();
             it->second.authenticated = authenticated;
             it->second.authCompleted = true;
-            Core::gameLogger->LogInfo("core session manager", "AddSession", "session", sessionID, "userID", userID);
+            Core::gameLogger->LogInfo("core session manager", "AddSession", {{"session", sessionID}, {"userID", userID}});
             return true;
         }
 
@@ -179,7 +178,7 @@ namespace Core {
             if (it == shard.sessionMap.end())
                 return;
             it->second.characterID = characterID;
-            Core::gameLogger->LogInfo("core session manager", "SetCharacterID", "session", sessionID, "characterID", characterID);
+            Core::gameLogger->LogInfo("core session manager", "SetCharacterID", {{"session", sessionID}, {"characterID", characterID}});
         }
 
         uint64_t GetCharacterID(uint64_t sessionID) const {
@@ -240,18 +239,15 @@ namespace Core {
             if (status.authenticated) {
                 res |= MASK_AUTHENTICATED;
             } else {
-                errorLogger->LogError("core session manager", "not authenticated", "sessionID", sessionID);
+                errorLogger->LogError("core session manager", "not authenticated", {{"sessionID", sessionID}});
             }
             if (status.cheatCount <= MAX_CHEAT_COUNT) {
                 res |= MASK_NOT_CHEAT;
             } else {
-                errorLogger->LogError("core session manager", "cheat detected", "sessionID", sessionID, "cheatCount", status.cheatCount);
+                errorLogger->LogError("core session manager", "cheat detected", {{"sessionID", sessionID}, {"cheatCount", status.cheatCount}});
             }
             return res;
         }
-        // cachedResponse is written only for Replay; handlers construct other responses.
-        SessionRequestStatus CheckItemUse(uint64_t sessionID, uint16_t zoneID, const ItemUseRequestBody& request, ItemUseResponseBody& cachedResponse) const;
-        void RememberItemUse(uint64_t sessionID, uint16_t zoneID, const ItemUseResponseBody& result);
         SessionRequestStatus CheckEquipment(uint64_t sessionID, uint16_t zoneID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot,
             uint32_t itemID, EquipmentResponseBody& cachedResponse) const;
         void RememberEquipment(uint64_t sessionID, uint16_t zoneID, uint32_t itemID, const EquipmentResponseBody& result);

@@ -2,45 +2,17 @@
 
 #include <atomic>
 #include <cstdint>
-#include <memory>
 #include <thread>
 
 #include <BaseLib/NonBlockingBackPressureQueue.h>
 
-#include "../Interface/IPacketView.h"
-#include "Interface/IZoneRequestQueue.h"
-#include "Interface/IZoneTransfer.h"
+#include "ZoneEvent.h"
 #include "WorldConfig.h"
 
 namespace Core {
     class CorePerfCollector;
     class ZoneHandler;
     class ZoneState;
-
-    enum class ZoneEventType : uint8_t {
-        Packet,
-        Transfer,
-        TransferRejected,
-        ProfileVersion,
-        Bootstrap,
-        LobbyEntry,
-        Respawn,
-        Disconnect,
-    };
-
-    struct ZoneRequest {
-        uint64_t sessionID = 0;
-        uint64_t ownershipEpoch = 0;
-        bool resendZoneChange = false;
-    };
-
-    struct ZoneEvent {
-        ZoneEventType type = ZoneEventType::Packet;
-        std::unique_ptr<IPacketView, PacketViewDeleter> packet;
-        std::shared_ptr<ZoneTransfer> transfer;
-        ProfileVersionUpdate profileVersion;
-        ZoneRequest request;
-    };
 
     using ZoneEventQueue = Base::NonBlockingBackPressureQueue<ZoneEvent, ZONE_QUEUE_SIZE, 0>;
 

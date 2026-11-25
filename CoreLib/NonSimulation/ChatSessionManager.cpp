@@ -19,7 +19,7 @@ namespace Core {
     void ChatSessionManager::AddSession(uint64_t sessionID, uint64_t chatID, uint32_t profileId) {
         const bool inserted = m_sessionChatIdMap.try_emplace(sessionID, ChatUserInfo{chatID, profileId}).second;
         if (!inserted) {
-            errorLogger->LogInfo("chat thread", "chatID already exist", "chatID", chatID, "session", sessionID);
+            errorLogger->LogInfo("chat thread", "chatID already exist", {{"chatID", chatID}, {"session", sessionID}});
             return;
         }
         m_chatIdSessionMap.insert_or_assign(chatID, sessionID);
@@ -28,7 +28,7 @@ namespace Core {
     void ChatSessionManager::DeleteSession(uint64_t sessionID) {
         auto it = m_sessionChatIdMap.find(sessionID);
         if (it == m_sessionChatIdMap.end()) {
-            errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
+            errorLogger->LogInfo("chat thread", "chatID doesn't exist", {{"session", sessionID}});
             return;
         }
         RemoveFromZone(sessionID, it->second.zoneID);
@@ -42,7 +42,7 @@ namespace Core {
 
         auto sessionIt = m_sessionChatIdMap.find(sessionID);
         if (sessionIt == m_sessionChatIdMap.end()) {
-            errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
+            errorLogger->LogInfo("chat thread", "chatID doesn't exist", {{"session", sessionID}});
             return;
         }
 
@@ -58,7 +58,7 @@ namespace Core {
     void ChatSessionManager::LeaveZone(uint64_t sessionID) {
         auto sessionIt = m_sessionChatIdMap.find(sessionID);
         if (sessionIt == m_sessionChatIdMap.end()) {
-            errorLogger->LogInfo("chat thread", "chatID doesn't exist", "session", sessionID);
+            errorLogger->LogInfo("chat thread", "chatID doesn't exist", {{"session", sessionID}});
             return;
         }
 

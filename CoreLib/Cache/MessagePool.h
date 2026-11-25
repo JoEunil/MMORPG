@@ -6,19 +6,12 @@
 #include <BaseLib/FixedObjectPool.h>
 #include "CacheConfig.h"
 #include "Message.h"
+#include "../Interface/IMessagePool.h"
 
 namespace Core {
     template<std::size_t PoolSize, uint16_t MessageLength>
-    class MessagePool {
+    class MessagePool : public IMessagePool {
         Base::FixedObjectPool<Message, PoolSize> m_fixedPool{ MessageLength };
-
-        struct MessageDeleter {
-            MessagePool* pool;
-
-            void operator()(Message* msg) const noexcept {
-                pool->m_fixedPool.Deallocate(msg);
-            }
-        };
 
         bool IsReady() {
             return true;
@@ -26,10 +19,14 @@ namespace Core {
 
         friend class Initializer;
     public:
-        using ScopedMessage = std::unique_ptr<Message, MessageDeleter>;
+        using ScopedMessage = Core::ScopedMessage;
 
-        ScopedMessage AcquireScoped() {
+        ScopedMessage AcquireScoped() override {
             return ScopedMessage{ m_fixedPool.Allocate(), MessageDeleter{ this } };
+        }
+
+        void Return(IMessage* message) noexcept override {
+            m_fixedPool.Deallocate(static_cast<Message*>(message));
         }
 
     };

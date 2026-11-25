@@ -70,31 +70,27 @@ namespace Core {
     bool ZoneEventRouter::TryEnqueuePacket(uint16_t zoneID, std::unique_ptr<IPacketView, PacketViewDeleter> packet) {
         if (!packet)
             return false;
-        ZoneEvent event{ZoneEventType::Packet, std::move(packet)};
+        ZoneEvent event = ZonePacketEvent{std::move(packet)};
         return TryEnqueue(zoneID, event);
     }
 
     bool ZoneEventRouter::TryEnqueueLobbyEntry(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch) {
-        ZoneEvent event{ZoneEventType::LobbyEntry};
-        event.request = {sessionID, ownershipEpoch};
+        ZoneEvent event = ZoneLobbyEntryEvent{sessionID, ownershipEpoch};
         return TryEnqueue(zoneID, event);
     }
 
     bool ZoneEventRouter::TryEnqueueRespawn(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch) {
-        ZoneEvent event{ZoneEventType::Respawn};
-        event.request = {sessionID, ownershipEpoch};
+        ZoneEvent event = ZoneRespawnEvent{sessionID, ownershipEpoch};
         return TryEnqueue(zoneID, event);
     }
 
     bool ZoneEventRouter::TryEnqueueBootstrap(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch, bool resendZoneChange) {
-        ZoneEvent event{ZoneEventType::Bootstrap};
-        event.request = {sessionID, ownershipEpoch, resendZoneChange};
+        ZoneEvent event = ZoneBootstrapEvent{sessionID, ownershipEpoch, resendZoneChange};
         return TryEnqueue(zoneID, event);
     }
 
     bool ZoneEventRouter::TryEnqueueProfileVersion(uint16_t zoneID, const ProfileVersionUpdate& update) {
-        ZoneEvent event{ZoneEventType::ProfileVersion};
-        event.profileVersion = update;
+        ZoneEvent event = ZoneProfileVersionEvent{update};
         return TryEnqueueDeferred(zoneID, event);
     }
 
@@ -103,15 +99,14 @@ namespace Core {
     }
 
     bool ZoneEventRouter::TryEnqueueDisconnect(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch) {
-        ZoneEvent event{ZoneEventType::Disconnect};
-        event.request = {sessionID, ownershipEpoch};
+        ZoneEvent event = ZoneDisconnectEvent{sessionID, ownershipEpoch};
         return TryEnqueueDeferred(zoneID, event);
     }
 
     bool ZoneEventRouter::TryEnqueueTransfer(uint16_t destinationID, const std::shared_ptr<ZoneTransfer>& transfer) {
         if (!transfer || !acceptingTransfers.load(std::memory_order_acquire))
             return false;
-        ZoneEvent event{ZoneEventType::Transfer, nullptr, transfer};
+        ZoneEvent event = ZoneTransferEvent{transfer};
         return TryEnqueue(destinationID, event);
     }
 
@@ -122,7 +117,7 @@ namespace Core {
     bool ZoneEventRouter::TryEnqueueTransferRejected(const std::shared_ptr<ZoneTransfer>& transfer) {
         if (!transfer || !acceptingTransfers.load(std::memory_order_acquire))
             return false;
-        ZoneEvent event{ZoneEventType::TransferRejected, nullptr, transfer};
+        ZoneEvent event = ZoneTransferRejectedEvent{transfer};
         return TryEnqueue(transfer->sourceZoneID, event);
     }
 }

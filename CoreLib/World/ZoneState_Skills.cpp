@@ -13,9 +13,7 @@ namespace Core {
 			if (character.hp <= 0) character.parryWindowTicks = 0;
             else if (character.parryWindowTicks != 0) --character.parryWindowTicks;
             if (character.parryCooldownTicks != 0) --character.parryCooldownTicks;
-            for (auto& cooldown : character.potionCooldownTicks)
-                if (cooldown != 0)
-                    --cooldown;
+            character.itemUse.AdvanceTick();
 			for (int i = 0; i < character.skillSlotCnt; i++) {
 				if (character.skillSlot[i].skillCoolDownTick != 0)
 					character.skillSlot[i].skillCoolDownTick--;
@@ -203,7 +201,7 @@ namespace Core {
     void ZoneState::GrantMonsterReward(const CharacterState& character, uint64_t gold) {
         const auto sessionID = character.sessionID;
         if (!cacheCommands->EnqueueGoldDeposit(sessionID, character.characterID, gold)) {
-            errorLogger->LogError("monster reward", "gold deposit queue rejected", "characterID", character.characterID);
+            errorLogger->LogError("monster reward", "gold deposit queue rejected", {{"characterID", character.characterID}});
             responses->Enqueue(sessionID, writer->WriteGoldReward(0));
         }
     }

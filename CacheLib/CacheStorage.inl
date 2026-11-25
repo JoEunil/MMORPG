@@ -205,7 +205,7 @@ namespace Cache {
         RestoreEvictingEntryLocked(shard, key, it->second);
 
         if (it->second.rollbackCnt >= 3) {
-            Core::errorLogger->LogError("cache storage", "rollback limit exceeded", "detail", ResultToString(it->first, it->second));
+            Core::errorLogger->LogError("cache storage", "rollback limit exceeded", {{"detail", ResultToString(it->first, it->second)}});
             // 즉시 재시도 중단 — 데이터는 버리지 않고 다음 dirty flush pass에 위임한다.
             shard.dirty_list.insert(key);
             return;

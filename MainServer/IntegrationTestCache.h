@@ -15,6 +15,8 @@
 
 #include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/Cache/Message.h>
+#include <CoreLib/Cache/MessagePool.h>
+#include <CoreLib/Cache/MessageWriter.h>
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CacheLib/Initializer.h>
 #include <CacheLib/Config.h>
@@ -34,7 +36,7 @@ namespace Cache {
 		std::queue<Core::Message*> m_received;
 		std::vector<std::unique_ptr<Core::Message>> m_ownedResponses;
 	public:
-		bool EnqueueMessage(Core::Message * msg) override {
+		bool EnqueueMessage(const Core::IMessage* msg) override {
 			// The handler returns its message to the pool immediately after enqueue.
 			auto copy = std::make_unique<Core::Message>(msg->GetLength());
 			std::memcpy(copy->GetBuffer(), msg->GetBuffer(), msg->GetLength());
@@ -126,9 +128,11 @@ namespace Cache {
 	inline static int Test_Inventory_DBFetch() {
 		MockMessageQueue mockMQ;
 		External::CachedClock clock;
+		Core::MessagePool<Cache::MSGPOOL_SIZE, Cache::MESSAGE_LEN> messagePool;
+		Core::MessageWriter responseWriter;
 		Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
 		init.Initialize(&clock);
-		init.InjectDependencies(&mockMQ);
+		init.InjectDependencies(&mockMQ, messagePool, responseWriter);
 		auto* recvMQ = init.GetMessageQueue();
 
 		auto* res = PollInventoryUntilAvailable(recvMQ, mockMQ, TEST_CHAR_ID, 1);
@@ -150,9 +154,11 @@ namespace Cache {
 	inline static int Test_Inventory_CacheHit() {
 		MockMessageQueue mockMQ;
 		External::CachedClock clock;
+		Core::MessagePool<Cache::MSGPOOL_SIZE, Cache::MESSAGE_LEN> messagePool;
+		Core::MessageWriter responseWriter;
 		Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
 		init.Initialize(&clock);
-		init.InjectDependencies(&mockMQ);
+		init.InjectDependencies(&mockMQ, messagePool, responseWriter);
 		auto* recvMQ = init.GetMessageQueue();
 		
 		Core::MsgInventoryReqBody body{};
@@ -181,9 +187,11 @@ namespace Cache {
 	inline static int Test_InventoryUpdate_Sequence() {
 		MockMessageQueue mockMQ;
 		External::CachedClock clock;
+		Core::MessagePool<Cache::MSGPOOL_SIZE, Cache::MESSAGE_LEN> messagePool;
+		Core::MessageWriter responseWriter;
 		Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
 		init.Initialize(&clock);
-		init.InjectDependencies(&mockMQ);
+		init.InjectDependencies(&mockMQ, messagePool, responseWriter);
 		auto* recvMQ = init.GetMessageQueue();
 		// 캐시 채우기
 		PollInventoryUntilAvailable(recvMQ, mockMQ, TEST_CHAR_ID, 1);
@@ -261,9 +269,11 @@ namespace Cache {
 		{
 			MockMessageQueue mockMQ;
 			External::CachedClock clock;
+			Core::MessagePool<Cache::MSGPOOL_SIZE, Cache::MESSAGE_LEN> messagePool;
+			Core::MessageWriter responseWriter;
 			Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
 			init.Initialize(&clock);
-			init.InjectDependencies(&mockMQ);
+			init.InjectDependencies(&mockMQ, messagePool, responseWriter);
 			auto* recvMQ = init.GetMessageQueue();
 
 			PollInventoryUntilAvailable(recvMQ, mockMQ, TEST_CHAR_ID, 1);
@@ -287,9 +297,11 @@ namespace Cache {
 		{
 			MockMessageQueue mockMQ;
 			External::CachedClock clock;
+			Core::MessagePool<Cache::MSGPOOL_SIZE, Cache::MESSAGE_LEN> messagePool;
+			Core::MessageWriter responseWriter;
 			Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
 			init.Initialize(&clock);
-			init.InjectDependencies(&mockMQ);
+			init.InjectDependencies(&mockMQ, messagePool, responseWriter);
 			auto* recvMQ = init.GetMessageQueue();
 			{
 				auto* res = PollInventoryUntilAvailable(recvMQ, mockMQ, TEST_CHAR_ID, 2);
@@ -341,9 +353,11 @@ namespace Cache {
 		}
 		MockMessageQueue mockMQ;
 		External::CachedClock clock;
+		Core::MessagePool<Cache::MSGPOOL_SIZE, Cache::MESSAGE_LEN> messagePool;
+		Core::MessageWriter responseWriter;
 		Cache::Initializer init{ Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/cache-integration/redo" };
 		init.Initialize(&clock);
-		init.InjectDependencies(&mockMQ);
+		init.InjectDependencies(&mockMQ, messagePool, responseWriter);
 		auto* recvMQ = init.GetMessageQueue();
 
 		auto fetch = [&](uint64_t charID) {

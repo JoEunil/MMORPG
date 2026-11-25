@@ -6,7 +6,7 @@ C++20과 Windows IOCP로 만든 개인 프로젝트다. 이동, 스킬, 몬스�
 
 [포트폴리오 PPT](https://docs.google.com/presentation/d/1Sz7WlzlE4qYqyXO43ad0i0CYAFvzJMR2/edit?usp=sharing&ouid=104250523129405797740&rtpof=true&sd=true) · [2,000명 접속 시연 영상](https://youtu.be/2q2kZwI3uSQ) · [빌드 및 실행](BUILD.md)
 
-[서버 설계 결정](DesignDecisions.md) · [서버 리팩터링](ServerRefactoring.md) · [CodeExplorer](https://joeunil.github.io/MMORPG/reports/server-project-map.html)
+[서버 설계 결정](DesignDecisions.md) · [서버 리팩터링](ServerRefactoring.md) · [디자인 패턴 적용 사례](DesignPatterns.md) · [CodeExplorer](https://joeunil.github.io/MMORPG/reports/server-project-map.html)
 
 ## 구조
 
@@ -171,6 +171,7 @@ WAL은 성공 응답 전에 fsync를 기다리지 않는다. 마지막으로 디
 
 ### 리팩터링
 - [서버 리팩토링](ServerRefactoring.md)
+- [서버 디자인 패턴](DesignPatterns.md)
 - [Zone 스레드에서 채팅 분리](ChatRefactor.md)
 - [ClientContext와 세션 관리 분리](ClientContextRefactor.md)
 - [Ping 기반 연결 종료를 네트워크 계층으로 이관](PingRefactor.md)

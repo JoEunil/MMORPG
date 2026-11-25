@@ -1025,7 +1025,7 @@ namespace Mmorpg.Client.Tests
                     Assert.That(fixture.Network.ItemUseRequests, Is.EqualTo(1));
                     Assert.That(fixture.Network.LastItemUseID, Is.EqualTo(2U));
                     Assert.That(fixture.Network.ParryRequests, Is.EqualTo(1));
-                    ((IViewModelNet)fixture.Login.Model).ItemUseReceived(fixture.Network.LastItemUseRequestID, 1, 2, 3, 2, 0);
+                    ((IViewModelNet)fixture.Login.Model).ItemUseReceived(fixture.Network.LastItemUseRequestID, 2, 3, 2, 0);
                     InputSystem.QueueStateEvent(keyboard, new KeyboardState());
                     InputSystem.Update();
                     yield return null;
@@ -1391,7 +1391,7 @@ namespace Mmorpg.Client.Tests
             public void Enter(ulong characterId) { }
             public void Chat(string message, byte scope, ulong targetId) { }
             public void Profiles(uint[] profileIds) { }
-            public void RequestItemUse(ulong requestID, ulong ownershipEpoch, uint itemID)
+            public void RequestItemUse(ulong requestID, uint itemID)
             { ItemUseRequests++; LastItemUseRequestID = requestID; LastItemUseID = itemID; }
             public void RequestEquipment(ulong requestID, ulong ownershipEpoch) { }
             public void RequestEquipItem(ulong requestID, ulong ownershipEpoch, byte slot, uint itemID) { }

@@ -754,32 +754,30 @@ namespace ClientCore.PacketHelper
             return (requestID, epoch, status, window, cooldown);
         }
 
-        internal static byte[] SerializeItemUseRequest(ulong requestID, ulong ownershipEpoch, uint itemID)
+        internal static byte[] SerializeItemUseRequest(ulong requestID, uint itemID)
         {
-            if (requestID == 0 || ownershipEpoch == 0 || itemID == 0)
+            if (requestID == 0 || itemID == 0)
                 throw new ArgumentException("Invalid item use request.");
-            var result = new byte[28];
+            var result = new byte[20];
             BitConverter.GetBytes(MAGIC).CopyTo(result, 0);
-            BitConverter.GetBytes(28U).CopyTo(result, 2);
+            BitConverter.GetBytes(20U).CopyTo(result, 2);
             result[6] = (byte)OP_CODE.ITEM_USE;
             BitConverter.GetBytes(requestID).CopyTo(result, 8);
-            BitConverter.GetBytes(ownershipEpoch).CopyTo(result, 16);
-            BitConverter.GetBytes(itemID).CopyTo(result, 24);
+            BitConverter.GetBytes(itemID).CopyTo(result, 16);
             return result;
         }
 
-        internal static (ulong requestID, ulong ownershipEpoch, uint itemID, byte status, ushort remainingQuantity, uint cooldownRemainingTicks)
+        internal static (ulong requestID, uint itemID, byte status, ushort remainingQuantity, uint cooldownRemainingTicks)
             DeserializeItemUse(PacketHeader header, byte[] buffer)
         {
-            if (!HasExactResponse(header, buffer, OP_CODE.ITEM_USE_RES, 35))
+            if (!HasExactResponse(header, buffer, OP_CODE.ITEM_USE_RES, 27))
                 throw new ArgumentException("Invalid item use response.");
             ulong requestID = BitConverter.ToUInt64(buffer, 8);
-            ulong ownershipEpoch = BitConverter.ToUInt64(buffer, 16);
-            uint itemID = BitConverter.ToUInt32(buffer, 24);
-            byte status = buffer[28];
-            if (requestID == 0 || ownershipEpoch == 0 || itemID == 0 || status > 9)
+            uint itemID = BitConverter.ToUInt32(buffer, 16);
+            byte status = buffer[20];
+            if (requestID == 0 || itemID == 0 || status > 9)
                 throw new ArgumentException("Invalid item use result.");
-            return (requestID, ownershipEpoch, itemID, status, BitConverter.ToUInt16(buffer, 29), BitConverter.ToUInt32(buffer, 31));
+            return (requestID, itemID, status, BitConverter.ToUInt16(buffer, 21), BitConverter.ToUInt32(buffer, 23));
         }
 
         internal static (uint itemID, ushort grantedQuantity, ushort remainingQuantity, byte status)

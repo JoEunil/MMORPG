@@ -205,7 +205,7 @@ namespace Base {
 			return true;
 		}
 
-		bool RotateSegment(uint32_t minimumSegment = 0)
+		bool RotateSegmentLocked(uint32_t minimumSegment = 0)
 		{
 			if (!m_fp)
 				return OpenSegment(m_segment);
@@ -312,11 +312,11 @@ namespace Base {
 			size_t recordSize = sizeof(WALHeader) + len;
 			// 새로 기록할 LSN이 기존 인벤토리의 lastLsn보다 작아지는 것을 방지
 			if (((static_cast<uint64_t>(m_segment) << 32) | m_offset) <= minimumLsn) {
-				if ((minimumLsn >> 32) >= UINT32_MAX || !RotateSegment(static_cast<uint32_t>(minimumLsn >> 32) + 1))
+				if ((minimumLsn >> 32) >= UINT32_MAX || !RotateSegmentLocked(static_cast<uint32_t>(minimumLsn >> 32) + 1))
 					return 0;
 			}
 			if (m_offset + recordSize > LIMIT) {
-				if (!RotateSegment())
+				if (!RotateSegmentLocked())
 					return 0;
 			}
 

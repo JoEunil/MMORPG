@@ -27,7 +27,7 @@ namespace Net {
             assert(!reverse.socketMap.contains(session));
             reverse.socketMap.insert_or_assign(session, sock);
         }
-        Core::gameLogger->LogInfo("net session", "Session added", "sessionID", session, "socket", sock);
+        Core::gameLogger->LogInfo("net session", "Session added", {{"sessionID", session}, {"socket", sock}});
         return true;
     }
 
@@ -56,7 +56,7 @@ namespace Net {
             reverse.socketMap.erase(reverseIt);
             m_connectionCnt.fetch_sub(1, std::memory_order_relaxed);
         }
-        Core::gameLogger->LogInfo("net session", "Session disconnected", "sessionID", session, "socket", sock);
+        Core::gameLogger->LogInfo("net session", "Session disconnected", {{"sessionID", session}, {"socket", sock}});
         return true;
     }
 

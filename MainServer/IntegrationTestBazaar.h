@@ -16,6 +16,7 @@
 #include <CoreLib/Cache/Message.h>
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/Cache/MessagePool.h>
+#include <CoreLib/Cache/MessageWriter.h>
 #include <CoreLib/Data/ItemData.h>
 #include <CacheLib/Config.h>
 #include <CacheLib/DB/DBConfig.h>
@@ -47,7 +48,7 @@ namespace Test {
         std::condition_variable    m_cv;
         std::queue<ScopedMessage> m_received;
     public:
-        bool EnqueueMessage(Core::Message* msg) override {
+        bool EnqueueMessage(const Core::IMessage* msg) override {
             auto copy = g_msgPool().AcquireScoped();
             if (copy == nullptr)
                 return false;
@@ -112,12 +113,14 @@ namespace Test {
     struct CacheNode {
         External::CachedClock clock;
         MockMessageQueue   mq;
+        Core::MessagePool<Cache::MSGPOOL_SIZE, Cache::MESSAGE_LEN> messagePool;
+        Core::MessageWriter responseWriter;
         Cache::Initializer cache;
 
         explicit CacheNode(const std::string& nodeName = "single")
             : cache(Cache::DEFAULT_WAL_FSYNC_INTERVAL, "wal/bazaar-test/" + nodeName + "/redo") {
             cache.Initialize(&clock);
-            cache.InjectDependencies(&mq);
+            cache.InjectDependencies(&mq, messagePool, responseWriter);
         }
         ~CacheNode() {
         }
