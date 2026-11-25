@@ -12,6 +12,7 @@
 #include "PacketView.h"
 #include "IBufferRelease.h"
 #include "IPongReceiver.h"
+#include "IReceiveContext.h"
 #include "OverlappedExPool.h"
 #include "Jitter.h"
 #include "AccumulatedBuffer.h"
@@ -31,7 +32,7 @@ namespace Core {
 namespace Net {
     inline const uint16_t EMPTY_SLOT = RING_BUFFER_SIZE;
     inline const std::pair<uint16_t, uint16_t> EMPTY_PAIR{ EMPTY_SLOT, EMPTY_SLOT };
-    class ClientContext : public IBufferRelease {
+    class ClientContext : public IBufferRelease, public IReceiveContext {
         uint32_t m_seq = 0;
 
         RingBuffer m_buffer{ RING_BUFFER_SIZE };
@@ -92,12 +93,12 @@ namespace Net {
         }
   
 
-        uint16_t BeginRecvIO(uint64_t expectedSessionID, uint8_t*& buffer);
-        void CompleteRecvIO(uint64_t expectedSessionID);
+        uint16_t BeginRecvIO(uint64_t expectedSessionID, uint8_t*& buffer) override;
+        void CompleteRecvIO(uint64_t expectedSessionID) override;
         uint16_t GetWorkingCnt() const { return m_workingCnt.load(std::memory_order_relaxed); }
         uint16_t GetPendingIOCnt() const { return m_pendingIOCnt.load(std::memory_order_relaxed); }
         uint64_t GetSessionID() const { return m_sessionID; }
-        bool IsSessionAlive(uint64_t expectedSessionID) const {
+        bool IsSessionAlive(uint64_t expectedSessionID) const override {
             return m_connected.load(std::memory_order_acquire) && m_sessionID == expectedSessionID;
         }
         bool CanRecycle() const {
@@ -136,12 +137,12 @@ namespace Net {
             if (wasConnected)
                 TryNotifyDisconnectLocked();
         }
-        bool CheckGameSession() const {
+        bool CheckGameSession() const override {
             return m_gameSession.load(std::memory_order_acquire);
         }
         
         void ReleaseBuffer(PacketView* pv) override;
-        bool EnqueueRecvQ(uint64_t expectedSessionID, uint8_t* ptr, size_t len);
+        bool EnqueueRecvQ(uint64_t expectedSessionID, uint8_t* ptr, size_t len) override;
 
         SendQueue& GetSendQueue() { return m_sendQueue; }
     };
