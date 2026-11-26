@@ -10,13 +10,15 @@
 #include "NetPacketFilter.h"
 #include "TrafficFloodDetector.h"
 #include "PacketView.h"
+#include "Interface/IBufferRelease.h"
+#include "Interface/IPongReceiver.h"
+#include "Interface/IReceiveContext.h"
 #include "OverlappedExPool.h"
 #include "Jitter.h"
 #include "AccumulatedBuffer.h"
 #include "SendQueue.h"
 #include "Config.h"
 
-#include <CoreLib/Packet/PacketTypes.h>
 #include <BaseLib/FixedObjectPool.h>
 #include <BaseLib/RingQueue.h>
 
@@ -27,10 +29,9 @@ namespace Core {
 }
 
 namespace Net {
-    class SessionManager;
     inline const uint16_t EMPTY_SLOT = RING_BUFFER_SIZE;
     inline const std::pair<uint16_t, uint16_t> EMPTY_PAIR{ EMPTY_SLOT, EMPTY_SLOT };
-    class ClientContext {
+    class ClientContext : public IBufferRelease, public IReceiveContext {
         uint32_t m_seq = 0;
 
         RingBuffer m_buffer{ RING_BUFFER_SIZE };
@@ -58,7 +59,7 @@ namespace Net {
 		SendQueue m_sendQueue;
 
         inline static OverlappedExPool* overlappedExPool;
-        inline static SessionManager* sessionManager;
+        inline static IPongReceiver* pongReceiver;
         inline static Base::FixedObjectPool<PacketView, PACKETVIEWPOOL_SIZE> packetViewPool;
 
         void BuildPacketViewLocked(PacketView* packet, uint32_t packetLen, uint8_t opcode);
@@ -68,17 +69,17 @@ namespace Net {
         void TryNotifyDisconnectLocked();
         uint16_t AdvancePosition(uint16_t origin, uint16_t change) const;
 
-        static void Initialize(OverlappedExPool* o, SessionManager* s) {
+        static void Initialize(OverlappedExPool* o, IPongReceiver* p) {
             overlappedExPool = o;
-            sessionManager = s;
+            pongReceiver = p;
         }
         static bool IsReady() {
             if (overlappedExPool == nullptr) {
                 Core::errorLogger->LogError("context", "overlappedPool not Initialized");
                 return false;
             }
-            if (sessionManager == nullptr) {
-                Core::errorLogger->LogError("context", "sessionManager not initialized");
+            if (pongReceiver == nullptr) {
+                Core::errorLogger->LogError("context", "pongReceiver not initialized");
                 return false;
             }
             return true;
@@ -91,12 +92,12 @@ namespace Net {
         }
   
 
-        uint16_t BeginRecvIO(uint64_t expectedSessionID, uint8_t*& buffer);
-        void CompleteRecvIO(uint64_t expectedSessionID);
+        uint16_t BeginRecvIO(uint64_t expectedSessionID, uint8_t*& buffer) override;
+        void CompleteRecvIO(uint64_t expectedSessionID) override;
         uint16_t GetWorkingCnt() const { return m_workingCnt.load(std::memory_order_relaxed); }
         uint16_t GetPendingIOCnt() const { return m_pendingIOCnt.load(std::memory_order_relaxed); }
         uint64_t GetSessionID() const { return m_sessionID; }
-        bool IsSessionAlive(uint64_t expectedSessionID) const {
+        bool IsSessionAlive(uint64_t expectedSessionID) const override {
             return m_connected.load(std::memory_order_acquire) && m_sessionID == expectedSessionID;
         }
         bool CanRecycle() const {
@@ -135,19 +136,13 @@ namespace Net {
             if (wasConnected)
                 TryNotifyDisconnectLocked();
         }
-        bool CheckGameSession() const {
+        bool CheckGameSession() const override {
             return m_gameSession.load(std::memory_order_acquire);
         }
         
-        void ReleaseBuffer(PacketView* pv);
-        bool EnqueueRecvQ(uint64_t expectedSessionID, uint8_t* ptr, size_t len);
+        void ReleaseBuffer(PacketView* pv) override;
+        bool EnqueueRecvQ(uint64_t expectedSessionID, uint8_t* ptr, size_t len) override;
 
-        EnqueueSendResult EnqueueSend(STOverlappedEx* work) {
-			return m_sendQueue.Enqueue(work);
-        }
-
-        STOverlappedEx* DequeueSend() {
-            return m_sendQueue.Dequeue();
-        }
+        SendQueue& GetSendQueue() { return m_sendQueue; }
     };
 }

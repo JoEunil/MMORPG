@@ -232,12 +232,16 @@
     <ClInclude Include="SessionState.h" />
     <ClInclude Include="TrafficFloodDetector.h" />
     <ClInclude Include="PingManager.h" />
-    <ClInclude Include="IAbortSocket.h" />
+    <ClInclude Include="Interface\IAbortSocket.h" />
+    <ClInclude Include="Interface\IBufferRelease.h" />
+    <ClInclude Include="Interface\IPongReceiver.h" />
+    <ClInclude Include="Interface\IReceiveContext.h" />
     <ClInclude Include="NetPacketFilter.h" />
     <ClInclude Include="SessionManager.h" />
     <ClInclude Include="ClientContext.h" />
     <ClInclude Include="ClientContextPool.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="CoreConfig.h" />
     <ClInclude Include="IOCP.h" />
     <ClInclude Include="Initializer.h" />
     <ClInclude Include="OverlappedExPool.h" />

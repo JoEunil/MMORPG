@@ -7,7 +7,7 @@
 #include <CoreLib/LoggerGlobal.h>
 #include <CoreLib/Interface/INetworkSender.h>
 #include <CoreLib/Interface/IPingPacketWriter.h>
-#include "IAbortSocket.h"
+#include "Interface/IAbortSocket.h"
 
 namespace Net {
     class SessionManager;

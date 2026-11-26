@@ -18,7 +18,7 @@
 #include <CoreLib/LoggerGlobal.h>
 
 #include "SendQueue.h"
-#include "IAbortSocket.h"
+#include "Interface/IAbortSocket.h"
 #include "Config.h"
 
 namespace Core {
@@ -105,7 +105,7 @@ namespace Net {
         void PostAccept();
         bool PostRecv(SOCKET clientSocket, uint64_t expectedSessionID);
         STOverlappedEx* PrepareSend(uint64_t sessionID);
-        void PostSend(EnqueueSendResult status, STOverlappedEx* o, uint64_t sessionID);
+        void PostSend(STOverlappedEx* o, uint64_t sessionID);
         void HandleSendResult(STOverlappedEx* pOverlappedEx, int result);
 
         friend class Initializer;

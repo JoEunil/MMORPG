@@ -78,7 +78,7 @@ Actor를 적용하더라도 이 상태 공유 범위에는 엔티티 하나보�
 - `PacketDispatcher`는 `IZonePacketQueue`·`INonSimulationQueue`로 요청을 보내고, `ISessionStatusReader`로 세션 상태를 읽는다. 역할별 인터페이스는 사용하는 기능의 범위에 맞췄다.
 - 스레드를 넘는 작업은 생산자 → 큐 → 소비자 → 반납 지점을 따라간다.
 
-![CoreLib 핵심 구성과 작업 전달](images/Architecture_CoreLib.png)
+![이미지 로드 실패](images/Architecture_CoreLib.png)
 
 ### 2.7 Zone 이동과 초기 상태 전송
 

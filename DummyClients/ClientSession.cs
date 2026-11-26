@@ -56,6 +56,11 @@ namespace ClientCore
             get { lock (_lock) return _zoneInternalID; }
         }
 
+        public bool IsWorldReady
+        {
+            get { lock (_lock) return _worldReady; }
+        }
+
         public bool TryMarkReadyCounted()
         {
             lock (_lock)

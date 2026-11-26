@@ -5,6 +5,26 @@
 #include <NetLibrary/PacketView.h>
 #include <NetLibrary/OverlappedExPool.h>
 
+TEST(PacketViewReleaseTest, ReturnsToInjectedReleaserAndClearsOwner) {
+	class Releaser : public Net::IBufferRelease {
+	public:
+		Net::PacketView* returned = nullptr;
+		int count = 0;
+		void ReleaseBuffer(Net::PacketView* packet) override {
+			returned = packet;
+			++count;
+			packet->Clear();
+		}
+	} releaser;
+	Net::PacketView packet;
+	packet.SetOwner(&releaser);
+	packet.Release();
+	EXPECT_EQ(releaser.returned, &packet);
+	EXPECT_EQ(releaser.count, 1);
+	packet.Release();
+	EXPECT_EQ(releaser.count, 1);
+}
+
 class PacketViewTest : public ::testing::Test {
 protected:
 	PacketViewTest() {

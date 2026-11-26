@@ -123,10 +123,10 @@ AOI는 게임 시야를 기준으로 주변 3×3 Cell에 맞췄다. 내부 Cell 
 
 ## 6. 시연
 
- ![GIF 로드 실패](images/BeforeAOI.gif)
+ ![이미지 로드 실패](images/BeforeAOI.gif)
 >  AOI 적용 전 임시로 Cell 단위로 처리한 상태
 
- ![GIF 로드 실패](images/AfterAOI.gif)
+ ![이미지 로드 실패](images/AfterAOI.gif)
 >  AOI 적용 후  
 *분홍색 선은 Cell 경계를 나타낸 것이다.
 ## 7. 참고

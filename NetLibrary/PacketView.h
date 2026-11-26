@@ -3,11 +3,10 @@
 #include <vector>
 #include <cstdint>
 #include <CoreLib/Interface/IPacketView.h>
-#include <CoreLib/Packet/PacketTypes.h>
 #include "Config.h"
+#include "Interface/IBufferRelease.h"
 
 namespace Net {
-	class ClientContext;
 	struct PacketBufferInfo {
 		uint32_t seq = 0;            // 패킷 순서, release에 사용
 		uint16_t front = 0;
@@ -16,7 +15,7 @@ namespace Net {
 	class PacketView : public Core::IPacketView
 	{
 		uint64_t m_sessionId = 0;
-		ClientContext* owner = nullptr;
+		IBufferRelease* owner = nullptr;
 		uint8_t m_opcode = 0;
 
 		PacketBufferInfo m_bufferInfo{};
@@ -38,7 +37,7 @@ namespace Net {
 		}
 	public:
 		PacketView() {
-			m_copiedBuffer.reserve(Core::MAX_REQ_PACKET_LEN);
+			m_copiedBuffer.reserve(MAX_REQ_PACKET_LEN);
 		}
 
 		PacketView(const PacketView&) = delete;            // 복사 생성자 금지
@@ -58,7 +57,7 @@ namespace Net {
 		}	
 		void SetSessionId(uint64_t s) { m_sessionId = s; }
 		void SetOpcode(uint8_t opcode) { m_opcode = opcode; }
-		void SetOwner(ClientContext* o) { owner = o; }
+		void SetOwner(IBufferRelease* o) { owner = o; }
 		bool IsCopied() const { return m_isCopied; }
 
 		PacketBufferInfo GetBufferInfo() const { return m_bufferInfo; }

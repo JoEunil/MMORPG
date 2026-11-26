@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string_view>
 #include "PacketConfig.h"
+#include "PacketHeader.h"
 
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
@@ -94,14 +95,6 @@ namespace Core {
     };
 
 #pragma pack(push, 1)
-
-    //  네트워크 계층에서 패킷을 열어봐야한다면 htonl, htons로 변환해서 써야됨.
-    struct PacketHeader {
-        uint16_t magic = MAGIC;
-        uint32_t length;
-        uint8_t opcode;
-        uint8_t flags = 0x00; // 첫번째 비트는 시뮬레이션 로직인지 나타냄, 0x01 ~ 0x80
-    };
 
     enum class EquipmentStatus : uint8_t { Invalid, Success, Busy, Missing, Unsupported, Dead, StaleOwnership, StaleRequest, StorageFailure };
     struct EquipmentGetRequestBody { uint64_t requestID; uint64_t ownershipEpoch; };

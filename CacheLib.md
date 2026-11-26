@@ -53,11 +53,11 @@ Inventory 데이터를 기준으로 구체적인 캐시 동작을 설계하고 �
 ## 4. 구조
 ### 서버 동작 흐름
 
-| 색상 | 스레드 |
+| 색상 | 구분 |
 |---|---|
-| 흰색 | CacheMQ worker 스레드 |
-| 노란색 | FlushDispatcher 스레드 |
-| 파란색 | CacheFlush 스레드 |
+| 흰색 | 요청 처리·공유 저장소 |
+| 노란색 | FlushDispatcher |
+| 파란색 | DBWorker·CacheFlush |
 
 __Write-Back__
 
@@ -72,6 +72,7 @@ __Read-Through__
 
 
 캐시 미스 발생 시 비동기 DB 적재를 요청하고, 현재 조회에는 `DB_READING`을 반환한다. DB 적재 완료 후 재조회하면 데이터를 얻을 수 있다. 완료 콜백을 받는 경로는 아래 사용자 접근 패턴에서 구분한다.
+메시지 경로의 Handler는 `AVAILABLE`일 때만 성공 응답을 보내고, 미적재 상태에서는 실패 응답을 보낸다. DB 적재 완료가 원래 요청의 응답으로 이어지지 않으며, 호출자가 이후 polling으로 다시 조회한다.
 CacheMQ는 수신 MQ, GameMQ는 캐시 서버 기준 응답 송신 MQ이다.
 
 

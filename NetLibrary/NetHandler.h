@@ -7,8 +7,8 @@
 #include <array>
 
 #include "SessionManager.h"
-#include "IAbortSocket.h"
-#include "ClientContext.h"
+#include "Interface/IAbortSocket.h"
+#include "Interface/IReceiveContext.h"
 #include "Config.h"
 
 namespace Net {
@@ -36,7 +36,7 @@ namespace Net {
         bool OnAccept(SOCKET sock) const {
             return sessionManager->AddSession(sock);
         }
-        void OnRecv(ClientContext* ctx, uint64_t sessionID, SOCKET sock, uint8_t* buf, uint16_t len) const {
+        void OnRecv(IReceiveContext* ctx, uint64_t sessionID, SOCKET sock, uint8_t* buf, uint16_t len) const {
             if (ctx == nullptr || !ctx->IsSessionAlive(sessionID))
                 return;
             const bool validNetwork = sessionManager->UpdateFlood(sock, sessionID, len);

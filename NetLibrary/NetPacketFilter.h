@@ -3,9 +3,10 @@
 #include <tuple>
 #include <optional>
 
-#include <CoreLib/Packet/PacketDispatcher.h>
-#include <CoreLib/Packet/PacketTypes.h>
+#include <CoreLib/Interface/IPacketDispatcher.h>
 #include <CoreLib/Interface/ICachedClock.h>
+#include <CoreLib/LoggerGlobal.h>
+#include "Config.h"
 #include "Jitter.h"
 
 class ClientContextTest;
@@ -43,8 +44,8 @@ namespace Net {
             return true;
         }
 
-        static Core::PacketHeader ParseHeader(AccumulatedBuffer& accBuf);
-        static bool CheckPacketValid(AccumulatedBuffer& accBuf, const Core::PacketHeader& header, uint64_t sessionID);
+        static PacketHeader ParseHeader(AccumulatedBuffer& accBuf);
+        static bool CheckPacketValid(AccumulatedBuffer& accBuf, const PacketHeader& header, uint64_t sessionID);
 
         inline static Core::IPacketDispatcher* packetDispatcher;
         inline static NetPerfCollector* perfCollector;
@@ -53,7 +54,7 @@ namespace Net {
         friend class ::ClientContextTest;
 
     public:
-        static PacketValidation HasCompletePacket(AccumulatedBuffer& accBuf, Core::PacketHeader& header, uint64_t sessionId);
+        static PacketValidation HasCompletePacket(AccumulatedBuffer& accBuf, PacketHeader& header, uint64_t sessionId);
         static bool TryDispatch(std::unique_ptr<Core::IPacketView, Core::PacketViewDeleter> pv, Jitter& jitter, std::optional<uint64_t>& pongRTT);
         static void Disconnect(uint64_t sessionID) {
             packetDispatcher->Disconnect(sessionID);

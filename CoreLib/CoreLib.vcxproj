@@ -169,6 +169,7 @@
     <ClInclude Include="Cache\CacheCommandSender.h" />
     <ClInclude Include="NonSimulation\NonSimulationConfig.h" />
     <ClInclude Include="Packet\PacketConfig.h" />
+    <ClInclude Include="Packet\PacketHeader.h" />
     <ClInclude Include="World\WorldConfig.h" />
     <ClInclude Include="Cache\DurableLogger.h" />
     <ClInclude Include="Interface\INetworkSender.h" />

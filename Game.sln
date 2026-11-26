@@ -72,6 +72,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Images", "Images", "{1A6790
 		images\CacheIntegrationTest2.png = images\CacheIntegrationTest2.png
 		images\CacheLibArchitecture.png = images\CacheLibArchitecture.png
 		images\code-explorer-refactoring\core-cache-after.png = images\code-explorer-refactoring\core-cache-after.png
+		images\code-explorer-refactoring\client-context-packet-view-cycle.png = images\code-explorer-refactoring\client-context-packet-view-cycle.png
 		images\code-explorer-refactoring\core-cache-before.png = images\code-explorer-refactoring\core-cache-before.png
 		images\code-explorer-refactoring\core-cache-direct-dependencies.png = images\code-explorer-refactoring\core-cache-direct-dependencies.png
 		images\code-explorer-refactoring\core-net-separated.png = images\code-explorer-refactoring\core-net-separated.png

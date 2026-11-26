@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.IO.Pipelines;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -60,7 +61,8 @@ namespace ClientCore.Network
             }
             catch (SocketException ex)
             {
-                Console.WriteLine(ex.ToString());
+                LoadDiagnostics.RecordError("connect", ex, _index);
+                throw;
             }
         }
         public void Close()
@@ -79,10 +81,11 @@ namespace ClientCore.Network
             var pipe = new Pipe(PipeOpts);
             Task writing = FillPipeAsync(sock, pipe.Writer);
             Task reading = ReadPipeAsync(pipe.Reader);
-            await Task.WhenAll(reading, writing);
+            try { await Task.WhenAll(reading, writing); }
+            catch (Exception ex) { LoadDiagnostics.RecordError("receive-loop", ex, _index); }
         }
 
-        private static async Task FillPipeAsync(Socket socket, PipeWriter writer)
+        private async Task FillPipeAsync(Socket socket, PipeWriter writer)
         {
             const int minimumBufferSize = 16 * 1024;
             Exception error = null;
@@ -94,7 +97,11 @@ namespace ClientCore.Network
                 {
                     bytesRead = await socket.ReceiveAsync(memory, SocketFlags.None);
                 }
-                catch (SocketException ex) { error = ex; break; }
+                catch (SocketException ex) {
+                    error = ex;
+                    LoadDiagnostics.RecordError("receive-socket", ex, _index);
+                    break;
+                }
                 catch (ObjectDisposedException) { break; }
 
                 if (bytesRead == 0)
@@ -112,38 +119,41 @@ namespace ClientCore.Network
         private async Task ReadPipeAsync(PipeReader reader)
         {
             Exception error = null;
-            while (true)
+            try
             {
-                ReadResult result = await reader.ReadAsync();
-                ReadOnlySequence<byte> buffer = result.Buffer;
-
-                SequencePosition consumed = buffer.Start;
-                SequencePosition examined = buffer.End;
-                try
+                while (true)
                 {
-                    while (TryReadPacket(ref buffer, out byte[] packet))
+                    ReadResult result = await reader.ReadAsync();
+                    ReadOnlySequence<byte> buffer = result.Buffer;
+                    long started = Stopwatch.GetTimestamp();
+                    long bufferedBytes = buffer.Length;
+                    int packets = 0;
+                    try
                     {
-                        if (packet == null) continue;
-                        var session = Program.GetSession(_index);
-                        if (session != null && ReferenceEquals(session.GetSocket(), this))
-                            _handler.HandleResponse(_index, session, packet);
+                        while (TryReadPacket(ref buffer, out byte[] packet))
+                        {
+                            ++packets;
+                            if (packet == null) continue;
+                            var session = Program.GetSession(_index);
+                            if (session != null && ReferenceEquals(session.GetSocket(), this))
+                                _handler.HandleResponse(_index, session, packet);
+                        }
                     }
-                    consumed = buffer.Start;
-                    examined = buffer.End;
+                    finally
+                    {
+                        LoadDiagnostics.RecordReceiveBatch(started, bufferedBytes, buffer.Length, packets);
+                    }
+                    reader.AdvanceTo(buffer.Start, buffer.End);
+                    if (result.IsCompleted)
+                        break;
                 }
-                catch (Exception ex)
-                {
-                    error = ex;
-                    Console.WriteLine($"[{_index}] recv parse ex: {ex.Message}");
-                    break;
-                }
-
-                reader.AdvanceTo(consumed, examined);
-
-                if (result.IsCompleted)
-                    break;
             }
-            await reader.CompleteAsync(error);
+            catch (Exception ex)
+            {
+                error = ex;
+                LoadDiagnostics.RecordError("receive-parse", ex, _index);
+            }
+            finally { await reader.CompleteAsync(error); }
         }
 
         // 시퀀스 앞에서 완성된 패킷 1개를 떼어낸다. 헤더는 무복사(MemoryMarshal.Read)로 해석.
@@ -183,7 +193,11 @@ namespace ClientCore.Network
 
         public async Task Send(byte[] binary)
         {
+            bool pong = binary.Length > 6 && binary[6] == (byte)OP_CODE.PONG;
+            long waiting = Stopwatch.GetTimestamp();
+            LoadDiagnostics.RecordSendQueued(pong);
             await _sendLock.WaitAsync();
+            LoadDiagnostics.RecordSendWait(waiting, pong);
             try
             {
                 int sent = 0;
@@ -196,9 +210,9 @@ namespace ClientCore.Network
                     sent += written;
                 }
             }
-            catch (SocketException ex)
+            catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                LoadDiagnostics.RecordError("socket-send", ex, _index);
                 throw;
             }
             finally

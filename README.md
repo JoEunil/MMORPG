@@ -10,7 +10,7 @@ C++20과 Windows IOCP로 만든 개인 프로젝트다. 이동, 스킬, 몬스�
 
 ## 구조
 
-![전체 서버 라이브러리 구성과 의존 관계](images/Architecture_Server.png)
+![이미지 로드 실패](images/Architecture_Server.png)
 
 GameServer는 단일 프로세스로 실행한다. NetLibrary는 네트워크와 세션, CoreLib는 게임 로직, CacheLib는 캐시와 DB I/O를 담당한다. 공통 자료구조와 풀은 BaseLib, 로그와 세션 인증은 ExternalLib에 둔다. 로그인 서버는 Node.js, DB는 MySQL, 세션 저장소는 Redis를 사용한다.
 
@@ -20,19 +20,19 @@ GameServer는 단일 프로세스로 실행한다. NetLibrary는 네트워크와
 
 IOCP가 받은 데이터를 세션별 `ClientContext`에서 누적하고, `NetPacketFilter`를 거쳐 Core로 전달한다. Core의 송신 요청은 `INetworkSender`로 받고, 세션별 송신 순서와 버퍼 수명을 관리한다.
 
-![NetLibrary 핵심 컴포넌트와 송수신 흐름](images/Architecture_NetLib.png)
+![이미지 로드 실패](images/Architecture_NetLib.png)
 
 ### CoreLib — 게임 상태와 요청 처리
 
 `PacketDispatcher`가 요청을 Zone과 NonSimulation 처리 경로로 나눈다. `ZoneEventRouter`가 Zone별 상태와 워커를 소유하고, `ZoneThread → ZoneHandler → ZoneState` 흐름으로 게임 상태를 갱신한다. `SessionManager`는 세션과 Zone 소속을 관리하며, 채팅과 스냅샷 전송은 별도 워커가 맡는다.
 
-![CoreLib 핵심 컴포넌트와 게임 처리 흐름](images/Architecture_CoreLib.png)
+![이미지 로드 실패](images/Architecture_CoreLib.png)
 
 ### CacheLib — 캐시와 DB 저장
 
 `Handler`와 저장소가 조회·변경을 처리하고, DB 작업은 `DBWorker`에 넘긴다. 인벤토리·골드의 변경 항목은 `CacheFlush`가 별도 워커에서 모아 저장한다. 인벤토리는 WAL로 DB 저장 전 장애에 대비한다.
 
-![CacheLib 핵심 컴포넌트와 저장·복구 흐름](images/Architecture_CacheLib.png)
+![이미지 로드 실패](images/Architecture_CacheLib.png)
 
 ## CodeExplorer — 코드 구조 탐색기
 
@@ -115,6 +115,8 @@ WAL은 성공 응답 전에 fsync를 기다리지 않는다. 마지막으로 디
 | [5,000명 접속 부하와 송신 큐·연결 종료 문제 분석](DummyTest3.md) | i5-14400F, 게임 Zone 4개. 서버·DB·더미·모니터링을 같은 PC에서 실행한 loopback 시험이다. 접속·동작은 확인했지만 더미의 목표 액션 20Hz는 완전히 유지하지 못했다 |
 | [2,000명 밀집도·이동량별 Zone 틱 처리 시간 측정](Benchmark_ZoneTick.md) | 2,000명, 분산/밀집과 이동량을 바꾼 8조건에서 각각 1,200틱 측정. 50ms 초과는 없었다. 입력 대기·실제 네트워크 전송·여러 Zone 동시 실행은 제외했다 |
 | [ASan 부하·종료·단위 테스트의 메모리 오류 검사](ASAN.md) | 당시 2,000명 부하 시험과 단위 테스트에서 메모리 오류가 보고되지 않았다 |
+
+- **CPU 프로파일링**: 5,000명 더미테스트에서 CPU 병목은 관측되지 않았다. 성능 프로파일링 분석 결과 CPU 비용은 월드 스냅샷 전파의 `WSASend` 경로에 집중됐다. 
 
 ## 트러블슈팅 기록
 

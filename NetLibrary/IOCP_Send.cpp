@@ -12,13 +12,24 @@ namespace Net {
             ContinueSend(work);
             return;
         }
-        auto next = sessionManager->DequeueSend(work->clientSocket);
+        STOverlappedEx* next = nullptr;
+        {
+            SendQueueAccess target = sessionManager->GetSendQueue(work->clientSocket, work->sessionID);
+            if (target.queue)
+                next = target.queue->Dequeue();
+        }
         if (next)
             BeginSend(next);
         overlappedExPool->Return(work);
     }
 
-    void IOCP::PostSend(EnqueueSendResult status, STOverlappedEx* pOverlappedEx, uint64_t sessionID) {
+    void IOCP::PostSend(STOverlappedEx* pOverlappedEx, uint64_t sessionID) {
+        EnqueueSendResult status = EnqueueSendResult::Failed;
+        {
+            SendQueueAccess target = sessionManager->GetSendQueue(pOverlappedEx->clientSocket, sessionID);
+            if (target.queue)
+                status = target.queue->Enqueue(pOverlappedEx);
+        }
         if (status == EnqueueSendResult::Ready) {
             BeginSend(pOverlappedEx);
         }
@@ -55,8 +66,7 @@ namespace Net {
         pOverlappedEx->wsaBuf[0].len = packet->GetLength();
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
         pOverlappedEx->sharedPacket = packet;
-        EnqueueSendResult status = sessionManager->EnqueueSend(pOverlappedEx);
-        PostSend(status, pOverlappedEx, sessionID);
+        PostSend(pOverlappedEx, sessionID);
     }
 
     void IOCP::SendDataChunks(uint64_t sessionID, std::shared_ptr<Core::IPacket> packet, std::vector<std::shared_ptr<Core::IPacket>>& packetChunks)
@@ -72,8 +82,7 @@ namespace Net {
         {
             pOverlappedEx->wsaBuf.emplace_back(chunk->GetLength(), reinterpret_cast<char*>(chunk->GetBuffer()));
         }
-        EnqueueSendResult status = sessionManager->EnqueueSend(pOverlappedEx);
-        PostSend(status, pOverlappedEx, sessionID);
+        PostSend(pOverlappedEx, sessionID);
     }
 
     void IOCP::SendDataUnique(uint64_t sessionID, std::unique_ptr<Core::IPacket, Core::PacketDeleter> packet)
@@ -84,8 +93,7 @@ namespace Net {
         pOverlappedEx->wsaBuf[0].len = packet->GetLength();
         pOverlappedEx->wsaBuf[0].buf = reinterpret_cast<char*>(packet->GetBuffer());
         pOverlappedEx->uniquePacket = std::move(packet);
-        EnqueueSendResult status = sessionManager->EnqueueSend(pOverlappedEx);
-        PostSend(status, pOverlappedEx, sessionID);
+        PostSend(pOverlappedEx, sessionID);
     }
 
     void IOCP::HandleSendResult(STOverlappedEx* pOverlappedEx, int result) {

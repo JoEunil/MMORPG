@@ -63,8 +63,8 @@ HP에 따른 전투 Phase와 행동 상태는 별개다. Phase는 사용할 스�
 - 이동은 같은 Zone 안에서 좌표 기반으로 처리한다. Unity에서 내보낸 맵의 통행 가능 여부는 확인하지만, 장애물을 우회하는 길찾기는 하지 않는다.
 
 ## 4. 시연
-![gif 로드 실패](images/SkillAOI.gif)
-![gif 로드 실패](images/BossMonster.gif)
+![이미지 로드 실패](images/SkillAOI.gif)
+![이미지 로드 실패](images/BossMonster.gif)
 
 ## 5. 참고 
 

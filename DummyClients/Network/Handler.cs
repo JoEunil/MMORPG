@@ -2,6 +2,8 @@
 using ClientCore.PacketHelper;
 using ClientCore.Services;
 using System;
+using System.Buffers.Binary;
+using System.Diagnostics;
 
 using static ClientCore.Config;
 using static ClientCore.PacketHelper.Packet;
@@ -52,7 +54,9 @@ namespace ClientCore.Network
                         break;
 
                     case OP_CODE.PING:
-                        HandlePing(index, session, Packet.Deserialize<Ping>(header, buffer));
+                        long receivedTimestamp = Stopwatch.GetTimestamp();
+                        LoadDiagnostics.RecordPing();
+                        HandlePing(index, session, Packet.Deserialize<Ping>(header, buffer), receivedTimestamp);
                         break;
                     default:
                         break;
@@ -60,7 +64,7 @@ namespace ClientCore.Network
             }
             catch (Exception e)
             {
-                Console.WriteLine($"[{index}] handler ex: {e.Message}");
+                LoadDiagnostics.RecordError("handler", e, index);
             }
         }
 
@@ -138,16 +142,17 @@ namespace ClientCore.Network
             }
             bool ownFound = false;
             float ownX = 0, ownY = 0;
+            uint ownID = session.OwnZoneInternalID;
             int offset = packetHeaderSize + snapshotPrefixSize;
             for (int i = 0; i < count; i++, offset += fieldSize)
             {
+                // 각 항목의 첫 필드인 ID만 먼저 확인하고 자신의 상태만 읽는다.
+                if (BinaryPrimitives.ReadUInt32LittleEndian(buffer.AsSpan(offset, sizeof(uint))) != ownID)
+                    continue;
                 var state = Packet.ReadStruct<FullStateField>(buffer, offset);
-                if (session.OwnZoneInternalID == state.zoneInternalID)
-                {
-                    ownFound = true;
-                    ownX = state.x;
-                    ownY = state.y;
-                }
+                ownFound = true;
+                ownX = state.x;
+                ownY = state.y;
             }
             session.ObservePlayerFull(zoneID, generation, epoch, bootstrapID, bootstrapEnd != 0, ownFound, ownX, ownY);
             Program.CountReady(index, session);
@@ -169,16 +174,17 @@ namespace ClientCore.Network
             int offset = packetHeaderSize + snapshotPrefixSize;
             for (int i = 0; i < count; i++, offset += fieldSize)
             {
+                if (BinaryPrimitives.ReadUInt32LittleEndian(buffer.AsSpan(offset, sizeof(uint))) != ownID)
+                    continue;
                 var field = Packet.ReadStruct<DeltaUpdateField>(buffer, offset);
-                if (field.zoneInternalID != ownID) continue;
                 if (field.fieldID == 7) ownX = BitConverter.Int32BitsToSingle(unchecked((int)field.fieldVal));
                 else if (field.fieldID == 8) ownY = BitConverter.Int32BitsToSingle(unchecked((int)field.fieldVal));
             }
             session.ObserveDelta(zoneID, generation, ownID, ownX, ownY);
         }
-        public void HandlePing(int index, ClientSession session, STPacket<Ping> packet)
+        public void HandlePing(int index, ClientSession session, STPacket<Ping> packet, long receivedTimestamp)
         {
-            _viewModel.PingReceived(index, session, packet.body.serverTimeMs, packet.body.rtt);
+            _viewModel.PingReceived(index, session, packet.body.serverTimeMs, packet.body.rtt, receivedTimestamp);
         }
 
     }

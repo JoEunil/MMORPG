@@ -6,13 +6,13 @@ const { v4: uuidv4 } = require('uuid');
 
 
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const authenticateToken = require('../middleware/authenticateToken'); 
 
 require('dotenv').config();
 
 const configuredGamePort = process.env.MMORPG_GAME_PORT;
-const gameServerPort = configuredGamePort === undefined ? 9999 : Number(configuredGamePort);
+const gameServerPort = configuredGamePort === undefined ? 19999 : Number(configuredGamePort);
 if ((configuredGamePort !== undefined && !/^\d{1,5}$/.test(configuredGamePort)) ||
     !Number.isInteger(gameServerPort) || gameServerPort < 1 || gameServerPort > 65535) {
   throw new Error('MMORPG_GAME_PORT must be an integer from 1 to 65535.');
@@ -27,7 +27,7 @@ router.post('/login', (req, res) => {
     const ip_addr = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const user_agent = req.headers['user-agent'] || null;
 
-    db.execute(query, [login_id], (err, results) => {
+    db.execute(query, [login_id], async (err, results) => {
       if (err) {
         console.error('데이터베이스 쿼리 오류:', err);
         return res.status(500).send('서버 오류');
@@ -42,7 +42,14 @@ router.post('/login', (req, res) => {
       const user = results[0];
 
         // 비밀번호 비교
-      const isMatch = bcrypt.compareSync(password, user.password);
+      // 네이티브 비동기 검증으로 이벤트 루프에서 해시 계산을 분리한다.
+      let isMatch;
+      try {
+        isMatch = await bcrypt.compare(password, user.password);
+      } catch (error) {
+        console.error('비밀번호 검증 오류');
+        return res.status(500).send('서버 오류');
+      }
       if (!isMatch) {
           db.execute(logQuery, [login_id, false, ip_addr, user_agent], () => {});
           return res.status(400).send('비밀번호가 일치하지 않습니다.');

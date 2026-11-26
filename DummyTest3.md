@@ -89,6 +89,25 @@ BIOS 업데이트 이후 동일한 현상이 재현되지 않았다.
 * 더미 클라이언트는 초당 20회(20 FPS) 액션 전송을 목표로 하였으나, 동일한 PC에서 서버와 CPU 자원을 공유하는 환경에서는 목표치를 완전히 유지하지 못하였다.
 
 
+### 4.4 CPU 프로파일링
+
+5,000명 모두 준비를 마친 뒤 Action 부하를 실행하고, VisualStudio의 성능 프로파일러를 사용하여 CPU 사용량을 분석했다.
+
+![이미지 로드 실패](images/DummyTest_CPU_Profile.png)
+
+- **결과**: 측정한 테스트 시나리오에서 별도로 개선할 CPU 병목은 관측되지 않았다.
+- **주요 비용**: 월드 스냅샷을 전파하는 `BroadcastSnapshot → SendDataChunks → BeginSend → WSASend` 경로에 CPU 비용이 집중됐다.
+- **호출 트리**: `BeginSend`의 총 CPU는 약 71.92%, 셀프 CPU는 약 0.07%였다. 하위 `ws2_32.dll` 송신 호출은 약 70.95%로, 송신 준비 코드보다 소켓 송신 경로가 대부분을 차지했다.
+- **최적화**: AOI로 전송 범위를 제한하고, Cell별로 조립한 Chunk를 여러 수신자가 공유하는 구조다. Chunk는 `shared_ptr`로 송신 완료까지 수명을 유지해 수신자별 페이로드 재조립·복사를 줄이도록 설계했다.
+
+![이미지 로드 실패](images/DummyTest_CPU_SendPath.png)
+
+![이미지 로드 실패](images/DummyTest_CPU_Debug_Verification.png)
+
+> 성능 측정은 Release 빌드로 수행했다. `WSASend` 다음 줄인 `HandleSendResult`에 비용이 표시돼, 호출 위치를 확인하기 위해 Debug 빌드로 다시 프로파일링했다. 아래 캡처에서는 `WSASend` 줄에 비용이 집중되고 `HandleSendResult`의 비중은 작게 나타나, 주요 비용이 소켓 송신 경로에 있음을 확인했다.
+
+이번 테스트에서는 월드 스냅샷 전파에 따른 소켓 송신 경로가 CPU 비용의 대부분을 차지했다. 서버 코드에서 추가 최적화가 필요한 CPU 병목은 관측되지 않았다.
+
 ## 5. 참고 - P-Core와 E-Core
 
 P-Core(Performance Core)는 높은 IPC와 클럭을 바탕으로 단일 스레드 성능이 뛰어나며, Busy Spin이나 게임 Tick처럼 지연에 민감한 작업에 적합하다.   
