@@ -15,11 +15,12 @@ namespace ClientCore.Services
             try
             {
                 await session.GetSocket().Connect(address, port);
-                session.GetSocket().Send(PacketBuilder.CreateAuthPacket(session));
+                await session.GetSocket().Send(PacketBuilder.CreateAuthPacket(session));
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                LoadDiagnostics.RecordError("network", ex);
+                throw;
             }
         }
 
@@ -32,7 +33,7 @@ namespace ClientCore.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                LoadDiagnostics.RecordError("network", ex);
             }
         }
 
@@ -45,7 +46,7 @@ namespace ClientCore.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                LoadDiagnostics.RecordError("network", ex);
             }
         }
 
@@ -57,7 +58,7 @@ namespace ClientCore.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                LoadDiagnostics.RecordError("network", ex);
                 return false;
             }
             return true;
@@ -70,7 +71,7 @@ namespace ClientCore.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                LoadDiagnostics.RecordError("network", ex);
                 return false;
             }
             return true;
@@ -84,7 +85,7 @@ namespace ClientCore.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                LoadDiagnostics.RecordError("network", ex);
                 return false;
             }
             return true;
@@ -99,20 +100,26 @@ namespace ClientCore.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                LoadDiagnostics.RecordError("network", ex);
             }
         }
 
-        public async void Pong(TCPSocket? sock, ulong serverTimeMs)
+        public async void Pong(TCPSocket? sock, ulong serverTimeMs, long receivedTimestamp)
         {
-            if (sock == null) return;
+            if (sock == null) {
+                LoadDiagnostics.RecordPongFailed();
+                LoadDiagnostics.RecordError("pong-send", detail: "socket is null");
+                return;
+            }
             try
             {
                 await sock.Send(PacketBuilder.CreatePongPacket(serverTimeMs));
+                LoadDiagnostics.RecordPongCompleted(receivedTimestamp);
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                LoadDiagnostics.RecordPongFailed();
+                LoadDiagnostics.RecordError("pong-send", ex);
             }
         }
     }

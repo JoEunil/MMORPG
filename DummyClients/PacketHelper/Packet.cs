@@ -627,16 +627,13 @@ namespace ClientCore.PacketHelper
                 throw new ArgumentException("Invalid zone response identity.");
             return packet;
         }
-        public static T ReadStruct<T>(byte[] buffer, int offset) where T : struct
+        public static T ReadStruct<T>(byte[] buffer, int offset) where T : unmanaged
         {
-            int size = Marshal.SizeOf<T>();
-            byte[] slice = new byte[size];
-            Buffer.BlockCopy(buffer, offset, slice, 0, size);
-            return ByteArrayToStructure<T>(slice);
+            return MemoryMarshal.Read<T>(buffer.AsSpan(offset));
         }
 
         // 가변 길이 패킷, T는 필드 타입
-        public static (ushort count, T[] items) DeserializeVariablePacket<T> (PacketHeader header, byte[] buffer) where T : struct
+        public static (ushort count, T[] items) DeserializeVariablePacket<T> (PacketHeader header, byte[] buffer) where T : unmanaged
         {
             int offset = Marshal.SizeOf<PacketHeader>();
             int bodySize = (int)(header.length - offset);

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <algorithm>
 #include <cstddef>
@@ -8,7 +8,7 @@
 #include <CoreLib/Packet/PacketTypes.h>
 
 namespace Net {
-    // Core의 프로토콜·월드 정의를 Net에서 사용할 설정값으로 연결한다.
+    // Net에서 사용하는 Core 계약(타입·상수·프로토콜 규칙·용량)을 모아 연결하는 곳.
     using PacketHeader = Core::PacketHeader;
     using Pong = Core::Pong;
 

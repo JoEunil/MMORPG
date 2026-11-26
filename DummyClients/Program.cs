@@ -34,6 +34,7 @@ static class Program
     {
         if (ReferenceEquals(GetSession(index), session) && session.TryMarkReadyCounted())
             Interlocked.Increment(ref _ready);
+        LoadDiagnostics.SetSessionCounts(_count, Volatile.Read(ref _ready));
     }
     static public void Initialize(int count)
     {
@@ -51,7 +52,7 @@ static class Program
         }
         Console.WriteLine("Session initialized " + count);
     }
-    static public async Task Connect()
+    static public async Task Connect(int[]? retryIndices = null)
     {
         // 순차+Sleep 대신 동시 로그인 N개로 제한.
         int maxConcurrent = 100;
@@ -62,6 +63,13 @@ static class Program
         {
             try
             {
+                if (retryIndices != null)
+                {
+                    var previous = sessions[idx];
+                    if (previous?.IsWorldReady == true) return;
+                    previous?.GetSocket().Close();
+                    sessions[idx] = new ClientSession(new TCPSocket(idx));
+                }
                 for (int attempt = 1; attempt <= 3; attempt++)
                 {
                     var session = sessions[idx];
@@ -75,16 +83,17 @@ static class Program
                     }
                     catch (Exception e)
                     {
+                        LoadDiagnostics.RecordError("login-connect", e, idx);
+                        session.GetSocket().Close();
                         if (attempt == 3)
                         {
-                            Console.WriteLine($"connect fail {idx + 1}: {e.Message}");
+                            sessions[idx] = null;
                         }
                         else
                         {
                             // 소켓이 살아있으면 재시도가 안 되므로 소켓/세션을 새로 만들어 처음부터.
-                            session.GetSocket().Close();
                             sessions[idx] = new ClientSession(new TCPSocket(idx));
-                            await Task.Delay(100 * attempt);
+                            await Task.Delay(1000 * attempt + Random.Shared.Next(500));
                         }
                     }
                 }
@@ -92,28 +101,57 @@ static class Program
             finally { gate.Release(); }
         }
 
-        for (int idx = 0; idx < sessions.Length; idx++)
+        foreach (int idx in retryIndices ?? Enumerable.Range(0, sessions.Length).ToArray())
         {
-            var session = sessions[idx];
-            if (session == null) continue;
             await gate.WaitAsync();
             tasks.Add(One(idx));
         }
         await Task.WhenAll(tasks);
         Console.WriteLine("connect ");
     }
-    static public void StartAction()
+    static public async Task StartAction()
     {
-        int last = -1, stable = 0;
+        long retryAt = Environment.TickCount64 + 10000;
         while (true)
         {
-            int r = _ready;
-            Console.WriteLine($"ready={r}/{_count}");
-            if (r >= _count) break;
-            if (r == last) { if (++stable >= 5) { Console.WriteLine($"[start] {r} ready, {_count - r} failed -> 진행"); break; } }
-            else { last = r; stable = 0; }
-            Thread.Sleep(1000);
+            int ready = 0;
+            long now = Environment.TickCount64;
+            var unready = new List<int>();
+            for (int idx = 0; idx < sessions.Length; idx++)
+            {
+                var session = sessions[idx];
+                if (session?.IsWorldReady == true) ready++;
+                else
+                {
+                    unready.Add(idx);
+                    if (session != null) _ = MaintainBootstrapAsync(session, idx, now);
+                }
+            }
+            Interlocked.Exchange(ref _ready, ready);
+            LoadDiagnostics.SetSessionCounts(sessions.Count(session => session != null), ready);
+            long retryInSeconds = Math.Max(0, (retryAt - Environment.TickCount64 + 999) / 1000);
+            Console.WriteLine($"ready={ready}/{sessions.Length}, retry in {retryInSeconds}s");
+            if (ready == sessions.Length)
+            {
+                Console.WriteLine($"[start] all {ready} sessions ready");
+                return;
+            }
+            if (Environment.TickCount64 >= retryAt)
+            {
+                Console.WriteLine($"[retry] reconnecting up to {unready.Count} unready sessions (concurrency 100)");
+                await Connect(unready.ToArray());
+                retryAt = Environment.TickCount64 + 10000;
+            }
+            await Task.Delay(1000);
         }
+    }
+
+    static Task MaintainBootstrapAsync(ClientSession session, int idx, long now)
+    {
+        byte[]? resync = session.BuildBootstrapResyncPacket(now);
+        if (session.TakeBootstrapFailureReport(now))
+            LoadDiagnostics.RecordError("bootstrap", clientIndex: idx, detail: "3 resync attempts exhausted; actions disabled");
+        return resync != null ? SendPacketAsync(session, resync, idx) : Task.CompletedTask;
     }
     // Keep simulator requests below the server's per-tick movement budget.
     private const float MOVE_STEP = 0.2f;
@@ -136,17 +174,14 @@ static class Program
                 continue;
             alive++;
             long now = Environment.TickCount64;
-            byte[]? resync = session.BuildBootstrapResyncPacket(now);
-            if (resync != null)
-                _ = SendPacketAsync(session, resync, idx);
-            if (session.TakeBootstrapFailureReport(now))
-                Console.Error.WriteLine($"bootstrap failed after 3 resync attempts for session {idx + 1}; actions remain disabled");
+            _ = MaintainBootstrapAsync(session, idx, now);
             byte[] pkt = session.BuildMovePacket(dir, MOVE_STEP);
             if (pkt == null)
                 continue; // 아직 시작 좌표를 못 받은 세션
             _ = SendActionAsync(session, pkt, idx);
         }
         _count = alive;
+        LoadDiagnostics.SetSessionCounts(alive, Volatile.Read(ref _ready));
     }
     static async Task SendActionAsync(ClientSession session, byte[] pkt, int idx)
     {
@@ -253,28 +288,25 @@ static class Program
             Console.Error.WriteLine("Usage: DummyClients [--protocol-self-test]");
             return 2;
         }
-        // 하이브리드 CPU: P코어(논리 0~11)에만 배치 → tick/수신 continuation이 E코어로 강등돼 stall하는 것 방지.
-        try
-        {
-            nint pMask = (nint)0xFFF;
-            System.Diagnostics.Process.GetCurrentProcess().ProcessorAffinity = pMask;
-            Console.WriteLine($"client affinity set: 0x{(long)pMask:X}");
-        }
-        catch (Exception e) { Console.WriteLine("affinity set fail: " + e.Message); }
+        int clientCount = 5000;
+        using var diagnostics = LoadDiagnostics.Start(clientCount);
+        LoadDiagnostics.SetSessionCounts(clientCount, 0);
+        LoadDiagnostics.SetPhase("initializing");
 
         ThreadPool.SetMinThreads(12, 12);
 
-        int clientCount = 5000;
-
         Initialize(clientCount);
+        LoadDiagnostics.SetPhase("connecting");
         await Connect();
-        StartAction();
+        LoadDiagnostics.SetPhase("waiting-ready");
+        await StartAction();
 
         Console.WriteLine("Dummy clients running...");
+        LoadDiagnostics.SetPhase("actions");
         _clientTick.Start();
         while (true)
         {
-            Console.WriteLine($"alive={_count}");
+            Console.WriteLine($"session slots={_count} (not TCP connection count)");
             Thread.Sleep(10000);
         }
     }

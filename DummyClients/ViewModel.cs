@@ -23,7 +23,7 @@ namespace ClientCore
             if (success)
                 _network.CharacterList(session.GetSocket());
             else
-                Console.WriteLine("Auth request failed index: " + index);
+                LoadDiagnostics.RecordError("auth-response", clientIndex: index, detail: "authentication rejected");
         }
 
         public void ChatacterListReceived(int index, ClientSession session, byte resStatus, ushort count, PacketHelper.CharacterInfo[] characters)
@@ -35,7 +35,7 @@ namespace ClientCore
             } 
             else
             {
-                Console.WriteLine("CharacterList recv failed index: " + index);
+                LoadDiagnostics.RecordError("character-list-response", clientIndex: index, detail: "character list rejected or empty");
             }
         }
 
@@ -50,13 +50,13 @@ namespace ClientCore
             }
             else
             {
-                Console.WriteLine("Enter Failed index: " + index);
+                LoadDiagnostics.RecordError("enter-response", clientIndex: index, detail: "world entry rejected");
             }
 
         }
-        public void PingReceived(int index, ClientSession session, ulong servertimeMs, ulong rtt)
+        public void PingReceived(int index, ClientSession session, ulong servertimeMs, ulong rtt, long receivedTimestamp)
         {
-            _network.Pong(session.GetSocket(), servertimeMs);
+            _network.Pong(session.GetSocket(), servertimeMs, receivedTimestamp);
         }
     }
 }

@@ -9,7 +9,7 @@ namespace Net {
 	inline constexpr uint8_t IOCP_THREADPOOL_SIZE = 8; // IOCP 워커
 	inline constexpr uint16_t MAX_CLIENT_CONNECTION = 5000;
     inline constexpr const char* LISTEN_ADDRESS = "0.0.0.0"; // allow anywhere
-	inline constexpr uint16_t LISTEN_PORT = 9999;
+	inline constexpr uint16_t LISTEN_PORT = 19999;
     inline constexpr uint16_t PREPOSTED_ACCEPTS = 10; //worker threadpool * 2~4
 
 	inline constexpr uint32_t NORMAL_PACKET_LENGTH = 512;
