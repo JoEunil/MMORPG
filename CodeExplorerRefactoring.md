@@ -63,3 +63,30 @@
 
 - 같은 순환 의존 검사로 확인한 `ClientContext → SessionManager`의 PONG 통지 의존성도 인터페이스로 분리했다.
 - `STOverlappedEx`의 `ClientContext` 직접 참조도 `IReceiveContext` 수신 계약으로 분리했다.
+
+## 3. Handler 책임 분리
+
+### 발견
+
+- 책임 집중 후보에서 Cache의 `Handler`가 DB 워커, 저장소, 메시지 풀과 응답 작성까지 여러 의존성을 함께 가지고 있는 것을 확인했다.
+- 거래소·통화·인벤토리 처리를 소스 파일로 나눴지만, 같은 클래스 안에 있어 기능마다 필요한 의존성과 변경 책임은 분리되지 않았다.
+
+![책임 집중 후보에서 확인한 Cache Handler의 의존 관계](images/code-explorer-refactoring/handler-responsibility-candidates.png)
+
+### 변경
+
+- 기존 `Handler`를 `MessageDispatcher`로 바꾸고 메시지 길이 검사·요청 본문 읽기·담당 Handler 호출을 맡겼다.
+- 기능별 처리와 필요한 의존성을 다음 클래스로 옮겼다.
+
+| 분리한 클래스 | 역할 |
+| --- | --- |
+| `BazaarHandler` | 거래소 조회·등록·구매·정산 요청 처리 |
+| `CurrencyHandler`, `DiamondHandler` | 골드·다이아 조회와 입금 처리 |
+| `InventoryHandler` | 인벤토리 조회·갱신 처리 |
+| `CharacterHandler` | 캐릭터 목록·상태 조회와 저장, 이름 변경 처리 |
+| `CacheResponseSender` | 응답 메시지 확보·작성·큐 등록·풀 반환 |
+
+### 결과
+
+- `MessageDispatcher`는 DB 워커나 저장소를 직접 다루지 않고 기능별 Handler로 요청을 연결한다.
+- 각 Handler는 담당 기능에 필요한 의존성만 가지며, 공통 응답 전송 절차는 한곳에서 관리한다.

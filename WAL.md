@@ -181,4 +181,4 @@ WAL 기록(`fwrite`)이나 주기적 fsync가 실패하면(디스크 가득 참 
 - [Cache Durability Test](CacheDurabilityTest.md) — Crash 복구 검증
 - [WAL 성능 벤치마크](Benchmark_WAL.md) — fsync 주기 및 writer 경합에 따른 처리량 측정, 20ms 선택 근거
 - [WAL.h](BaseLib/WAL.h) 
-- [WALManager.h](CacheLib/WALManager.h)
+- [WALManager.h](CacheLib/Persistence/WALManager.h)
