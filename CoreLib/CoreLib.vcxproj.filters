@@ -191,6 +191,21 @@
     <ClInclude Include="NonSimulation\NonSimulationHandler.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
+    <ClInclude Include="NonSimulation\WorldEntryHandler.h">
+      <Filter>NonSimulation</Filter>
+    </ClInclude>
+    <ClInclude Include="NonSimulation\BazaarRequestHandler.h">
+      <Filter>NonSimulation</Filter>
+    </ClInclude>
+    <ClInclude Include="NonSimulation\ZoneRequestHandler.h">
+      <Filter>NonSimulation</Filter>
+    </ClInclude>
+    <ClInclude Include="NonSimulation\PlayerDataRequestHandler.h">
+      <Filter>NonSimulation</Filter>
+    </ClInclude>
+    <ClInclude Include="NonSimulation\ChatRequestHandler.h">
+      <Filter>NonSimulation</Filter>
+    </ClInclude>
     <ClInclude Include="NonSimulation\SessionLifecycleHandler.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
@@ -321,16 +336,22 @@
     <ClCompile Include="NonSimulation\NonSimulationHandler.cpp">
       <Filter>NonSimulation</Filter>
     </ClCompile>
+    <ClCompile Include="NonSimulation\WorldEntryHandler.cpp">
+      <Filter>NonSimulation</Filter>
+    </ClCompile>
+    <ClCompile Include="NonSimulation\BazaarRequestHandler.cpp">
+      <Filter>NonSimulation</Filter>
+    </ClCompile>
+    <ClCompile Include="NonSimulation\ZoneRequestHandler.cpp">
+      <Filter>NonSimulation</Filter>
+    </ClCompile>
+    <ClCompile Include="NonSimulation\PlayerDataRequestHandler.cpp">
+      <Filter>NonSimulation</Filter>
+    </ClCompile>
+    <ClCompile Include="NonSimulation\ChatRequestHandler.cpp">
+      <Filter>NonSimulation</Filter>
+    </ClCompile>
     <ClCompile Include="NonSimulation\SessionLifecycleHandler.cpp">
-      <Filter>NonSimulation</Filter>
-    </ClCompile>
-    <ClCompile Include="NonSimulation\NonSimulationHandler_Bazaar.cpp">
-      <Filter>NonSimulation</Filter>
-    </ClCompile>
-    <ClCompile Include="NonSimulation\NonSimulationHandler_WorldEntry.cpp">
-      <Filter>NonSimulation</Filter>
-    </ClCompile>
-    <ClCompile Include="NonSimulation\NonSimulationHandler_Zone.cpp">
       <Filter>NonSimulation</Filter>
     </ClCompile>
     <ClCompile Include="NonSimulation\NonSimulationThreadPool.cpp">

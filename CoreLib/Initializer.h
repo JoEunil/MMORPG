@@ -18,6 +18,11 @@
 #include "World/ZoneHandler.h"
 #include "NonSimulation/NonSimulationHandler.h"
 #include "NonSimulation/SessionLifecycleHandler.h"
+#include "NonSimulation/WorldEntryHandler.h"
+#include "NonSimulation/BazaarRequestHandler.h"
+#include "NonSimulation/ZoneRequestHandler.h"
+#include "NonSimulation/PlayerDataRequestHandler.h"
+#include "NonSimulation/ChatRequestHandler.h"
 #include "NonSimulation/NonSimulationThreadPool.h"
 #include "Packet/PacketDispatcher.h"
 #include "World/LobbyZone.h"
@@ -44,6 +49,11 @@ namespace Core {
         BroadcastThreadPool broadcastPool;
         ServerResponseWorker responses;
         SessionLifecycleHandler sessionLifecycleHandler;
+        WorldEntryHandler worldEntryHandler;
+        BazaarRequestHandler bazaarHandler;
+        ZoneRequestHandler zoneRequestHandler;
+        PlayerDataRequestHandler playerDataHandler;
+        ChatRequestHandler chatRequestsHandler;
         NonSimulationHandler nonSimulationHandler;
         NonSimulationThreadPool nonSimulationThreadPool;
         PacketDispatcher packetDispatcher;
@@ -82,7 +92,12 @@ namespace Core {
             ZoneState::Initialize(&broadcastPool, &writer, &sessionManager, &perfCollector, cacheCommandSender, responses);
             zoneHandler.Initialize(&sessionManager, responses, writer, zoneEventRouter, lobbyZone, cacheCommandSender, zoneEventRouter, inventory);
             sessionLifecycleHandler.Initialize(sessionManager, lobbyZone, zoneEventRouter, cacheCommandSender, responses, writer);
-            nonSimulationHandler.Initialize(responses, writer, session, &cacheCommandSender, &sessionManager, &lobbyZone, &chat, profileCache, zoneEventRouter, zoneEventRouter, sessionLifecycleHandler);
+            worldEntryHandler.Initialize(&responses, &writer, session, &cacheCommandSender, &sessionManager);
+            bazaarHandler.Initialize(&responses, &writer, &cacheCommandSender, &sessionManager);
+            zoneRequestHandler.Initialize(&responses, &writer, &sessionManager, &lobbyZone, &zoneEventRouter, &zoneEventRouter);
+            playerDataHandler.Initialize(&responses, &writer, &cacheCommandSender, &sessionManager, profileCache);
+            chatRequestsHandler.Initialize(&sessionManager, &chat);
+            nonSimulationHandler.Initialize(worldEntryHandler, bazaarHandler, zoneRequestHandler, playerDataHandler, chatRequestsHandler, sessionLifecycleHandler);
             zoneEventRouter.Start();
             chat.Start();
             perfCollector.Start();
@@ -96,6 +111,11 @@ namespace Core {
                 or !recvMQ.IsReady()
                 or !zoneHandler.IsReady()
                 or !sessionLifecycleHandler.IsReady()
+                or !worldEntryHandler.IsReady()
+                or !bazaarHandler.IsReady()
+                or !zoneRequestHandler.IsReady()
+                or !playerDataHandler.IsReady()
+                or !chatRequestsHandler.IsReady()
                 or !nonSimulationHandler.IsReady()
                 or !ZoneState::IsReady()
                 or !broadcastPool.IsReady()

@@ -1,24 +1,14 @@
 ﻿#include "pch.h"
 #include "NonSimulationHandler.h"
 #include "SessionLifecycleHandler.h"
-#include <utility>
-
-#include "../Cache/CacheCommandSender.h"
+#include "WorldEntryHandler.h"
+#include "BazaarRequestHandler.h"
+#include "ZoneRequestHandler.h"
+#include "PlayerDataRequestHandler.h"
+#include "ChatRequestHandler.h"
 #include "../Packet/PacketTypes.h"
-#include "../Interface/IPacketView.h"
-#include "../Interface/ISessionAuth.h"
-#include "../Response/Interface/IServerResponseQueue.h"
-#include "../Packet/PacketWriter.h"
-#include "../World/Interface/IZonePacketQueue.h"
-#include "../World/Interface/IZoneRequestQueue.h"
-#include "../Cache/MessageTypes.h"
-#include "../World/SessionManager.h"
-#include "../World/LobbyZone.h"
-#include "ChatThreadPool.h"
-#include "../Interface/IProfileCache.h"
 #include "../LoggerGlobal.h"
-#include "../Packet/PacketConfig.h"
-#include "../Data/ItemData.h"
+#include <utility>
 
 namespace Core {
     void NonSimulationHandler::Process(NonSimulationEvent& event) {
@@ -39,56 +29,38 @@ namespace Core {
         event.transfer.reset();
     }
 
-    void NonSimulationHandler::Initialize(IServerResponseQueue& responseQueue, PacketWriter& packetWriter, ISessionAuth* s, const CacheCommandSender* commands, SessionManager* manager,
-        LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc, IZonePacketQueue& packets, IZoneRequestQueue& requests, SessionLifecycleHandler& sessionLifecycle) {
+    void NonSimulationHandler::Initialize(WorldEntryHandler& worldEntryHandler, BazaarRequestHandler& bazaarHandler, ZoneRequestHandler& zoneHandler, PlayerDataRequestHandler& playerDataHandler, ChatRequestHandler& chatRequestsHandler, SessionLifecycleHandler& sessionLifecycle) {
+        worldEntry = &worldEntryHandler;
+        bazaar = &bazaarHandler;
+        zone = &zoneHandler;
+        playerData = &playerDataHandler;
+        chatRequests = &chatRequestsHandler;
         lifecycle = &sessionLifecycle;
-        zonePackets = &packets;
-        zoneRequests = &requests;
-        responses = &responseQueue;
-        writer = &packetWriter;
-        auth = s;
-        cacheCommands = commands;
-        sessionManager = manager;
-        lobbyZone = lobby;
-        chat = c;
-        profileCache = pc;
     }
 
     bool NonSimulationHandler::IsReady() const {
+        if (worldEntry == nullptr) {
+            sysLogger->LogError("non simulation handler", "worldEntry handler not initialized");
+            return false;
+        }
+        if (bazaar == nullptr) {
+            sysLogger->LogError("non simulation handler", "bazaar handler not initialized");
+            return false;
+        }
+        if (zone == nullptr) {
+            sysLogger->LogError("non simulation handler", "zone handler not initialized");
+            return false;
+        }
+        if (playerData == nullptr) {
+            sysLogger->LogError("non simulation handler", "playerData handler not initialized");
+            return false;
+        }
+        if (chatRequests == nullptr) {
+            sysLogger->LogError("non simulation handler", "chatRequests handler not initialized");
+            return false;
+        }
         if (lifecycle == nullptr) {
-            sysLogger->LogError("non simulation handler", "session lifecycle handler not initialized");
-            return false;
-        }
-        if (writer == nullptr) {
-            sysLogger->LogError("non simulation handler", "packet writer not initialized");
-            return false;
-        }
-        if (responses == nullptr) {
-            sysLogger->LogError("non simulation handler", "response queue not initialized");
-            return false;
-        }
-        if (auth == nullptr) {
-            sysLogger->LogError("non simulation handler", "session auth not initialized");
-            return false;
-        }
-        if (cacheCommands == nullptr) {
-            sysLogger->LogError("non simulation handler", "cache command sender not initialized");
-            return false;
-        }
-        if (sessionManager == nullptr) {
-            sysLogger->LogError("non simulation handler", "session manager not initialized");
-            return false;
-        }
-        if (lobbyZone == nullptr) {
-            sysLogger->LogError("non simulation handler", "lobby zone not initialized");
-            return false;
-        }
-        if (zonePackets == nullptr) {
-            sysLogger->LogError("non simulation handler", "zone packet queue not initialized");
-            return false;
-        }
-        if (zoneRequests == nullptr) {
-            sysLogger->LogError("non simulation handler", "zone request queue not initialized");
+            sysLogger->LogError("non simulation handler", "lifecycle handler not initialized");
             return false;
         }
         return true;
@@ -99,70 +71,71 @@ namespace Core {
             return;
         const auto opcode = packet->GetOpcode();
         if (opcode == OP::ITEM_USE || opcode == OP::EQUIPMENT_GET || opcode == OP::EQUIPMENT_SET) {
-            ForwardZoneRequest(std::move(packet));
+            zone->ForwardZoneRequest(std::move(packet));
             return;
         }
         auto* p = packet.get();
         PacketHeader* h = parseHeader(p->GetPtr());
         switch (p->GetOpcode()) {
         case OP::AUTH:
-            CheckSession(p);
+            worldEntry->CheckSession(p);
             break;
         case OP::CHARACTER_LIST:
-            GetCharacterList(p);
+            worldEntry->GetCharacterList(p);
             break;
         case OP::ENTER_WORLD:
-            GetCharacterState(p);
+            worldEntry->GetCharacterState(p);
             break;
         case OP::CHAT:
-            Chat(p);
-            break;
-        case OP::ZONE_CHANGE:
-            ZoneChange(p);
-            break;
-        case OP::ZONE_RESYNC:
-            if (p->GetLength() == sizeof(PacketStruct<ZoneResyncBody>)) {
-                const auto* body = parseBody<ZoneResyncBody>(p->GetPtr());
-                const auto route = sessionManager->GetBootstrapRoute(p->GetSessionID(), body->ownershipEpoch);
-                if (route)
-                    zoneRequests->TryEnqueueBootstrap(route->zoneID, p->GetSessionID(), route->ownershipEpoch, false);
+            if (!chatRequests->Chat(p)) {
+                NonSimulationEvent disconnectEvent = NonSimulationDisconnectEvent{p->GetSessionID()};
+                Process(disconnectEvent);
             }
             break;
+        case OP::ZONE_CHANGE:
+            zone->ZoneChange(p);
+            break;
+        case OP::ZONE_RESYNC:
+            zone->Resync(p);
+            break;
         case OP::RESPAWN_TO_TOWN:
-            RespawnToTown(p);
+            zone->RespawnToTown(p);
             break;
         case OP::INVENTORY_REQ:
-            GetInventory(p);
+            playerData->GetInventory(p);
             break;
         case OP::BAZAAR_BUY:
-            BazaarBuy(p);
+            bazaar->BazaarBuy(p);
             break;
         case OP::BAZAAR_OUTBOX_LIST:
-            BazaarOutboxList(p);
+            bazaar->BazaarOutboxList(p);
             break;
         case OP::BAZAAR_CHECK_OUTBOX:
-            BazaarCheckOutbox(p);
+            bazaar->BazaarCheckOutbox(p);
             break;
         case OP::BAZAAR_CANCEL_LISTING:
-            BazaarCancelListing(p);
+            bazaar->BazaarCancelListing(p);
             break;
         case OP::BAZAAR_CLAIM:
-            BazaarClaim(p);
+            bazaar->BazaarClaim(p);
             break;
         case OP::BAZAAR_MY_LIST:
-            BazaarMyList(p);
+            bazaar->BazaarMyList(p);
             break;
         case OP::BAZAAR_SEARCH:
-            BazaarSearch(p);
+            bazaar->BazaarSearch(p);
             break;
         case OP::BAZAAR_REGISTER:
-            BazaarRegister(p);
+            bazaar->BazaarRegister(p);
             break;
         case OP::WALLET_REQUEST:
-            WalletRequest(p);
+            playerData->WalletRequest(p);
             break;
         case OP::PROFILE_BATCH:
-            GetProfileBatch(p);
+            if (!playerData->GetProfileBatch(p)) {
+                NonSimulationEvent disconnectEvent = NonSimulationDisconnectEvent{p->GetSessionID()};
+                Process(disconnectEvent);
+            }
             break;
         default:
             errorLogger->LogInfo("non zone handler", "UnDefined OPCODE", {{"opcode", p->GetOpcode()}, {"header opcode", h->opcode}, {"sessionId", p->GetSessionID()}});
@@ -170,151 +143,4 @@ namespace Core {
         }
     }
 
-    void NonSimulationHandler::RequestProfileRename(uint64_t sessionID, uint32_t profileId, const char* name, uint16_t nameLen) {
-        if (profileId == INVALID_PROFILE_ID || name == nullptr || nameLen == 0 || nameLen >= MAX_CHARNAME_LEN) {
-            errorLogger->LogError("non zone handler", "profile rename invalid", {{"session", sessionID}, {"profile_id", profileId}, {"nameLen", nameLen}});
-            return;
-        }
-        cacheCommands->EnqueueProfileRename(sessionID, profileId, {name, nameLen});
-    }
-
-    void NonSimulationHandler::GetInventory(IPacketView* p) {
-        const auto sessionID = p->GetSessionID();
-        const auto characterID = sessionManager->GetCharacterID(sessionID);
-        if (characterID == 0)
-            return;
-
-        cacheCommands->EnqueueInventory(sessionID, characterID);
-    }
-
-    void NonSimulationHandler::WalletRequest(IPacketView* p) {
-        if (p->GetLength() != sizeof(PacketStruct<WalletRequestBody>))
-            return;
-        const auto* header = parseHeader(p->GetPtr());
-        const auto request = *parseBody<WalletRequestBody>(p->GetPtr());
-        if (header->magic != MAGIC || header->opcode != OP::WALLET_REQUEST || header->length != p->GetLength() || IsSimulationFlag(header->flags) ||
-            request.requestID == 0)
-            return;
-        const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
-        if (characterID == 0)
-            return;
-
-        if (!cacheCommands->EnqueueGoldBalance(p->GetSessionID(), characterID, request.requestID)) {
-            MsgCurrencyResBody failed{};
-            failed.requestID = request.requestID;
-            failed.characterID = characterID;
-            if (sessionManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
-                responses->Enqueue(p->GetSessionID(), writer->WriteWalletGoldResponse(&failed));
-        }
-
-        if (!cacheCommands->EnqueueDiamondBalance(p->GetSessionID(), characterID, request.requestID)) {
-            MsgDiamondResBody failed{};
-            failed.requestID = request.requestID;
-            failed.characterID = characterID;
-            if (sessionManager->GetFieldCharacterID(p->GetSessionID()) == characterID)
-                responses->Enqueue(p->GetSessionID(), writer->WriteWalletDiamondResponse(&failed));
-        }
-    }
-
-    void NonSimulationHandler::Chat(IPacketView* p) {
-        auto body = parseBody<ChatRequestBody>(p->GetPtr());
-        uint8_t* startPtr = p->GetPtr() + sizeof(PacketStruct<ChatRequestBody>);
-        auto session = p->GetSessionID();
-        auto zoneID = sessionManager->GetZoneID(session);
-        ChatMessageEvent event{};
-        event.senderSessionID = session;
-        event.key.scope = body->scope;
-        switch (body->scope) {
-        case CHAT_SCOPE::Whisper:
-            event.key.id = body->targetChatID;
-            break;
-        case CHAT_SCOPE::Zone:
-            event.key.id = static_cast<uint64_t>(zoneID);
-        }
-        if (p->GetLength() < sizeof(PacketStruct<ChatRequestBody>) + body->messageLength) {
-            errorLogger->LogError("non zone handler", "message length invalid", {{"session", session}, {"messageLength", body->messageLength}});
-            NonSimulationEvent disconnectEvent = NonSimulationDisconnectEvent{session};
-            Process(disconnectEvent);
-            return;
-        }
-        event.message = std::string(reinterpret_cast<char*>(startPtr), body->messageLength);
-        ChatEvent queued = std::move(event);
-        chat->EnqueueChat(queued);
-    }
-
-    // 클라이언트가 모르는 profile_id 목록을 보내면 캐시에 있는 것만 돌려준다.
-    // NonSimulation 스레드에서 처리하므로 zone 틱과 무관하고, write-through 캐시라
-    // DB를 기다릴 일이 없어 동기 조회로 충분하다.
-    void NonSimulationHandler::GetProfileBatch(IPacketView* p) {
-        auto session = p->GetSessionID();
-        if (profileCache == nullptr) {
-            errorLogger->LogError("non zone handler", "profileCache not initialized", {{"session", session}});
-            return;
-        }
-        auto body = parseBody<ProfileBatchReqBody>(p->GetPtr());
-
-        // count는 클라이언트가 보낸 값이라 그대로 믿고 인덱싱하면 버퍼를 넘는다.
-        if (body->count == 0 || body->count > MAX_PROFILE_BATCH) {
-            errorLogger->LogError("non zone handler", "profile batch count invalid", {{"session", session}, {"count", body->count}});
-            NonSimulationEvent disconnectEvent = NonSimulationDisconnectEvent{session};
-            Process(disconnectEvent);
-            return;
-        }
-        const size_t needed = sizeof(PacketHeader) + sizeof(body->count) + body->count * sizeof(uint32_t);
-        if (p->GetLength() < needed) {
-            errorLogger->LogError("non zone handler", "profile batch length invalid", {{"session", session}, {"count", body->count}, {"length", p->GetLength()}});
-            NonSimulationEvent disconnectEvent = NonSimulationDisconnectEvent{session};
-            Process(disconnectEvent);
-            return;
-        }
-
-        ProfileEntry entries[MAX_PROFILE_BATCH];
-        uint16_t found = profileCache->GetBatch(body->profileIds, body->count, entries);
-
-        responses->Enqueue(session, writer->WriteProfileBatchRes(entries, found));
-    }
-
-    void NonSimulationHandler::ForwardZoneRequest(std::unique_ptr<IPacketView, PacketViewDeleter> packet) {
-        const auto sessionID = packet->GetSessionID();
-        const auto zoneID = sessionManager->GetZoneID(sessionID);
-        const auto opcode = packet->GetOpcode();
-        if (opcode == OP::ITEM_USE) {
-            const auto request = *parseBody<ItemUseRequestBody>(packet->GetPtr());
-            if (zonePackets->TryEnqueuePacket(zoneID, std::move(packet)))
-                return;
-            const ItemUseResponseBody result{request.requestID, request.itemID, 6, 0, 0};
-            errorLogger->LogWarn("non simulation handler", "item request queue full", {{"sessionID", sessionID}, {"zoneID", zoneID}});
-            responses->Enqueue(sessionID, writer->WriteItemUseResponse(result));
-            return;
-        }
-        uint64_t requestID, epoch;
-        uint32_t itemID = 0;
-        uint8_t slot = 0;
-        const bool write = opcode == OP::EQUIPMENT_SET;
-        if (write) {
-            const auto request = *parseBody<EquipmentSetRequestBody>(packet->GetPtr());
-            if (!Data::IsValidEquipmentSlot(static_cast<Data::EquipmentSlot>(request.slot)))
-                return;
-            requestID = request.requestID;
-            epoch = request.ownershipEpoch;
-            slot = request.slot;
-            itemID = request.itemID;
-        } else {
-            const auto request = *parseBody<EquipmentGetRequestBody>(packet->GetPtr());
-            requestID = request.requestID;
-            epoch = request.ownershipEpoch;
-        }
-        EquipmentResponseBody result{requestID, epoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), slot};
-        const auto check = sessionManager->CheckEquipment(sessionID, zoneID, requestID, epoch, write, slot, itemID, result);
-        if (check == SessionRequestStatus::Ready) {
-            if (zonePackets->TryEnqueuePacket(zoneID, std::move(packet)))
-                return;
-            result.status = static_cast<uint8_t>(EquipmentStatus::Busy);
-            errorLogger->LogWarn("non simulation handler", "equipment request queue full", {{"sessionID", sessionID}, {"zoneID", zoneID}});
-        } else if (check == SessionRequestStatus::StaleOwnership)
-            result.status = static_cast<uint8_t>(EquipmentStatus::StaleOwnership);
-        else if (check == SessionRequestStatus::StaleRequest)
-            result.status = static_cast<uint8_t>(EquipmentStatus::StaleRequest);
-        responses->Enqueue(sessionID, writer->WriteEquipmentResponse(result));
-    }
 }

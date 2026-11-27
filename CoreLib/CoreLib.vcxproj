@@ -159,6 +159,11 @@
     <ClInclude Include="HuntingZoneData.h" />
     <ClInclude Include="World\MonsterState.h" />
     <ClInclude Include="NonSimulation\NonSimulationHandler.h" />
+    <ClInclude Include="NonSimulation\WorldEntryHandler.h" />
+    <ClInclude Include="NonSimulation\BazaarRequestHandler.h" />
+    <ClInclude Include="NonSimulation\ZoneRequestHandler.h" />
+    <ClInclude Include="NonSimulation\PlayerDataRequestHandler.h" />
+    <ClInclude Include="NonSimulation\ChatRequestHandler.h" />
     <ClInclude Include="NonSimulation\SessionLifecycleHandler.h" />
     <ClInclude Include="NonSimulation\NonSimulationThreadPool.h" />
     <ClInclude Include="NonSimulation\NonSimulationEvent.h" />
@@ -222,10 +227,12 @@
     <ClCompile Include="Cache\DurableLogger.cpp" />
     <ClCompile Include="LoggerGlobal.cpp" />
     <ClCompile Include="NonSimulation\NonSimulationHandler.cpp" />
+    <ClCompile Include="NonSimulation\WorldEntryHandler.cpp" />
+    <ClCompile Include="NonSimulation\BazaarRequestHandler.cpp" />
+    <ClCompile Include="NonSimulation\ZoneRequestHandler.cpp" />
+    <ClCompile Include="NonSimulation\PlayerDataRequestHandler.cpp" />
+    <ClCompile Include="NonSimulation\ChatRequestHandler.cpp" />
     <ClCompile Include="NonSimulation\SessionLifecycleHandler.cpp" />
-    <ClCompile Include="NonSimulation\NonSimulationHandler_Bazaar.cpp" />
-    <ClCompile Include="NonSimulation\NonSimulationHandler_WorldEntry.cpp" />
-    <ClCompile Include="NonSimulation\NonSimulationHandler_Zone.cpp" />
     <ClCompile Include="NonSimulation\NonSimulationThreadPool.cpp" />
     <ClCompile Include="World\BroadcastThreadPool.cpp" />
     <ClCompile Include="Packet\PacketDispatcher.cpp" />

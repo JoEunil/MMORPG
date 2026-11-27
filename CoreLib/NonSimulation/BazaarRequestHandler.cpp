@@ -1,15 +1,10 @@
-#include "pch.h"
-#include "NonSimulationHandler.h"
-
+﻿#include "pch.h"
+#include "BazaarRequestHandler.h"
 #include "../Cache/CacheCommandSender.h"
-#include "../Packet/PacketConfig.h"
-#include "../Interface/IPacketView.h"
-#include "../Cache/MessageTypes.h"
 #include "../Packet/PacketTypes.h"
 #include "../Response/Interface/IServerResponseQueue.h"
 #include "../Packet/PacketWriter.h"
 #include "../World/SessionManager.h"
-
 #include <optional>
 
 namespace Core {
@@ -34,7 +29,7 @@ namespace Core {
         }
     }
 
-    void NonSimulationHandler::BazaarBuy(IPacketView* p) {
+    void BazaarRequestHandler::BazaarBuy(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarBuyRequestBody>(*p, OP::BAZAAR_BUY);
         if (!request || request->listingID == 0)
             return;
@@ -52,7 +47,7 @@ namespace Core {
         responses->Enqueue(p->GetSessionID(), writer->WriteBazaarBuyResponse(&failed));
     }
 
-    void NonSimulationHandler::BazaarRegister(IPacketView* p) {
+    void BazaarRequestHandler::BazaarRegister(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarRegisterRequestBody>(*p, OP::BAZAAR_REGISTER);
         if (!request || request->inventorySlot >= MAX_INVENTORY_ITEMS
             || request->quantity == 0 || request->totalDiamondPrice == 0)
@@ -72,7 +67,7 @@ namespace Core {
         responses->Enqueue(p->GetSessionID(), writer->WriteBazaarRegisterResponse(&failed));
     }
 
-    void NonSimulationHandler::BazaarOutboxList(IPacketView* p) {
+    void BazaarRequestHandler::BazaarOutboxList(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarOutboxListRequestBody>(*p, OP::BAZAAR_OUTBOX_LIST);
         if (!request)
             return;
@@ -87,7 +82,7 @@ namespace Core {
         responses->Enqueue(p->GetSessionID(), writer->WriteBazaarOutboxListResponse(&failed));
     }
 
-    void NonSimulationHandler::BazaarCheckOutbox(IPacketView* p) {
+    void BazaarRequestHandler::BazaarCheckOutbox(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarCheckOutboxRequestBody>(*p, OP::BAZAAR_CHECK_OUTBOX);
         if (!request)
             return;
@@ -103,7 +98,7 @@ namespace Core {
         responses->Enqueue(p->GetSessionID(), writer->WriteBazaarCheckOutboxResponse(&failed));
     }
 
-    void NonSimulationHandler::BazaarCancelListing(IPacketView* p) {
+    void BazaarRequestHandler::BazaarCancelListing(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarCancelListingRequestBody>(*p, OP::BAZAAR_CANCEL_LISTING);
         if (!request || request->listingID == 0)
             return;
@@ -120,7 +115,7 @@ namespace Core {
         responses->Enqueue(p->GetSessionID(), writer->WriteBazaarCancelListingResponse(&failed));
     }
 
-    void NonSimulationHandler::BazaarClaim(IPacketView* p) {
+    void BazaarRequestHandler::BazaarClaim(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarClaimRequestBody>(*p, OP::BAZAAR_CLAIM);
         if (!request || request->listingID == 0)
             return;
@@ -137,7 +132,7 @@ namespace Core {
         responses->Enqueue(p->GetSessionID(), writer->WriteBazaarClaimResponse(&failed));
     }
 
-    void NonSimulationHandler::BazaarMyList(IPacketView* p) {
+    void BazaarRequestHandler::BazaarMyList(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarMyListRequestBody>(*p);
         if (!request)
             return;
@@ -154,7 +149,7 @@ namespace Core {
         responses->Enqueue(p->GetSessionID(), writer->WriteBazaarMyListResponse(&failed));
     }
 
-    void NonSimulationHandler::BazaarSearch(IPacketView* p) {
+    void BazaarRequestHandler::BazaarSearch(IPacketView* p) {
         const auto request = ParseBazaarRequest<BazaarSearchRequestBody>(*p);
         if (!request || request->itemType < 1 || request->itemType > 3
             || !sessionManager->IsFieldSession(p->GetSessionID()))
