@@ -180,7 +180,6 @@
     <ClCompile Include="ProfileCache.cpp" />
     <ClCompile Include="CacheStorageInventory.cpp" />
     <ClCompile Include="Handler.cpp" />
-    <ClCompile Include="Handler_Bazaar.cpp" />
     <ClCompile Include="BazaarHandler.cpp" />
     <ClCompile Include="BazaarRegistration.cpp" />
     <ClCompile Include="Handler_Currency.cpp" />

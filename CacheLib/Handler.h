@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include "Config.h"
@@ -36,6 +37,15 @@ namespace Cache {
         template <typename T>
         bool CheckMessageLength(const Core::IMessage* msg) {
             return msg->GetLength() == sizeof(Core::MsgStruct<T>);
+        }
+
+        template<typename Body>
+        std::optional<Body> ReadRequest(ScopedMessage& msg) {
+            if (!msg || !CheckMessageLength<Body>(msg.get()))
+                return std::nullopt;
+            const auto request = *Core::parseMsgBody<Body>(msg->GetBuffer());
+            msg.reset();
+            return request;
         }
 
         void Initialize(CacheResponseSender* sender, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp, BazaarHandler* bazaarHandler) {
@@ -87,15 +97,6 @@ namespace Cache {
         void CurrencyDeposit(ScopedMessage& msg, uint64_t sesionID, Core::MsgCurrencyDepositBody* body);
         void DiamondRequest(ScopedMessage& msg, uint64_t sesionID, Core::MsgDiamondReqBody* body);
         void DiamondDeposit(ScopedMessage& msg, uint64_t sesionID, Core::MsgDiamondDepositBody* body);
-        void BazaarMyList(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarMyListBody* body);
-        void BazaarSearch(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarSearchBody* body);
-        void BazaarRegister(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarRegisterBody* body);
-        void BazaarCancel(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarCancelBody* body);
-        void BazaarBuy(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarBuyBody* body);
-        void BazaarClaim(ScopedMessage& msg, uint64_t sesionID, Core::MsgBazaarClaimBody* body);
-        void BazaarOutboxList(ScopedMessage& msg, uint64_t sessionID, Core::MsgBazaarOutboxListBody* body);
-        void BazaarCheckOutbox(ScopedMessage& msg, uint64_t sessionID, Core::MsgBazaarCheckOutboxBody* body);
-        void BazaarCancelListing(ScopedMessage& msg, uint64_t sessionID, Core::MsgBazaarCancelListingBody* body);
         void ProfileRename(ScopedMessage& msg, uint64_t sessionID, Core::MsgProfileRenameBody* body);
 
         friend class Initializer;

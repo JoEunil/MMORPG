@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include "Handler.h"
+#include "BazaarHandler.h"
 #include "CacheResponseSender.h"
 
 #include <CoreLib/Interface/IMessage.h>
@@ -21,63 +22,73 @@ namespace Cache {
         }
 
         Core::MsgHeader* header = Core::parseMsgHeader(msg->GetBuffer());
+        const auto sessionID = header->sessionID;
         switch (header->messageType) {
         case Core::MSG_CHARACTER_LIST_REQ :
-            CharacterListRequest(msg, header->sessionID, Core::parseMsgBody<Core::MsgCharacterListReqBody>(msg->GetBuffer()));
+            CharacterListRequest(msg, sessionID, Core::parseMsgBody<Core::MsgCharacterListReqBody>(msg->GetBuffer()));
             break;
         case Core::MSG_CHARACTER_STATE_REQ:
-            CharacterStateRequest(msg, header->sessionID, Core::parseMsgBody<Core::MsgCharacterStateReqBody>(msg->GetBuffer()));
+            CharacterStateRequest(msg, sessionID, Core::parseMsgBody<Core::MsgCharacterStateReqBody>(msg->GetBuffer()));
             break;
         case Core::MSG_CHARACTER_STATE_UPDATE:
-            CharacterStateUpdate(msg, header->sessionID, Core::parseMsgBody<Core::MsgCharacterStateUpdateBody>(msg->GetBuffer()));
+            CharacterStateUpdate(msg, sessionID, Core::parseMsgBody<Core::MsgCharacterStateUpdateBody>(msg->GetBuffer()));
             break;
         case Core::MSG_INVENTORY_REQ:
-            InventoryRequest(msg, header->sessionID, Core::parseMsgBody<Core::MsgInventoryReqBody>(msg->GetBuffer()));
+            InventoryRequest(msg, sessionID, Core::parseMsgBody<Core::MsgInventoryReqBody>(msg->GetBuffer()));
             break;
         case Core::MSG_INVENTORY_UPDATE:
-            InventoryUpdate(msg, header->sessionID, Core::parseMsgBody<Core::MsgInventoryUpdateBody>(msg->GetBuffer()));
+            InventoryUpdate(msg, sessionID, Core::parseMsgBody<Core::MsgInventoryUpdateBody>(msg->GetBuffer()));
             break;
         case Core::MSG_CURRENCY_REQ:
-            CurrencyRequest(msg, header->sessionID, Core::parseMsgBody<Core::MsgCurrencyReqBody>(msg->GetBuffer()));
+            CurrencyRequest(msg, sessionID, Core::parseMsgBody<Core::MsgCurrencyReqBody>(msg->GetBuffer()));
             break;
         case Core::MSG_CURRENCY_DEPOSIT:
-            CurrencyDeposit(msg, header->sessionID, Core::parseMsgBody<Core::MsgCurrencyDepositBody>(msg->GetBuffer()));
+            CurrencyDeposit(msg, sessionID, Core::parseMsgBody<Core::MsgCurrencyDepositBody>(msg->GetBuffer()));
             break;
         case Core::MSG_DIAMOND_REQ:
-            DiamondRequest(msg, header->sessionID, Core::parseMsgBody<Core::MsgDiamondReqBody>(msg->GetBuffer()));
+            DiamondRequest(msg, sessionID, Core::parseMsgBody<Core::MsgDiamondReqBody>(msg->GetBuffer()));
             break;
         case Core::MSG_DIAMOND_DEPOSIT:
-            DiamondDeposit(msg, header->sessionID, Core::parseMsgBody<Core::MsgDiamondDepositBody>(msg->GetBuffer()));
+            DiamondDeposit(msg, sessionID, Core::parseMsgBody<Core::MsgDiamondDepositBody>(msg->GetBuffer()));
             break;
         case Core::MSG_BAZAAR_MY_LIST:
-            BazaarMyList(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarMyListBody>(msg->GetBuffer()));
+            if (const auto request = ReadRequest<Core::MsgBazaarMyListBody>(msg))
+                bazaar->MyList(sessionID, *request);
             break;
         case Core::MSG_BAZAAR_SEARCH:
-            BazaarSearch(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarSearchBody>(msg->GetBuffer()));
+            if (const auto request = ReadRequest<Core::MsgBazaarSearchBody>(msg))
+                bazaar->Search(sessionID, *request);
             break;
         case Core::MSG_BAZAAR_REGISTER:
-            BazaarRegister(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarRegisterBody>(msg->GetBuffer()));
+            if (const auto request = ReadRequest<Core::MsgBazaarRegisterBody>(msg))
+                bazaar->Register(sessionID, *request);
             break;
         case Core::MSG_BAZAAR_CANCEL:
-            BazaarCancel(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCancelBody>(msg->GetBuffer()));
+            if (const auto request = ReadRequest<Core::MsgBazaarCancelBody>(msg))
+                bazaar->Cancel(sessionID, *request);
             break;
         case Core::MSG_BAZAAR_BUY:
-            BazaarBuy(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarBuyBody>(msg->GetBuffer()));
+            if (const auto request = ReadRequest<Core::MsgBazaarBuyBody>(msg))
+                bazaar->Buy(sessionID, *request);
             break;
         case Core::MSG_BAZAAR_CLAIM:
-            BazaarClaim(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarClaimBody>(msg->GetBuffer()));
+            if (const auto request = ReadRequest<Core::MsgBazaarClaimBody>(msg))
+                bazaar->Claim(sessionID, *request);
             break;
         case Core::MSG_BAZAAR_OUTBOX_LIST:
-            BazaarOutboxList(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarOutboxListBody>(msg->GetBuffer()));
+            if (const auto request = ReadRequest<Core::MsgBazaarOutboxListBody>(msg))
+                bazaar->OutboxList(sessionID, *request);
             break;
         case Core::MSG_BAZAAR_CHECK_OUTBOX:
-            BazaarCheckOutbox(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCheckOutboxBody>(msg->GetBuffer()));
+            if (const auto request = ReadRequest<Core::MsgBazaarCheckOutboxBody>(msg))
+                bazaar->CheckOutbox(sessionID, *request);
             break;
         case Core::MSG_BAZAAR_CANCEL_LISTING:
-            BazaarCancelListing(msg, header->sessionID, Core::parseMsgBody<Core::MsgBazaarCancelListingBody>(msg->GetBuffer()));
+            if (const auto request = ReadRequest<Core::MsgBazaarCancelListingBody>(msg))
+                bazaar->CancelListing(sessionID, *request);
             break;
         case Core::MSG_PROFILE_RENAME:
-            ProfileRename(msg, header->sessionID, Core::parseMsgBody<Core::MsgProfileRenameBody>(msg->GetBuffer()));
+            ProfileRename(msg, sessionID, Core::parseMsgBody<Core::MsgProfileRenameBody>(msg->GetBuffer()));
             break;
         }
     }

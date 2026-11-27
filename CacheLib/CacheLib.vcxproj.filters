@@ -119,9 +119,6 @@
     <ClCompile Include="CacheStorageInventory.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Handler_Bazaar.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="BazaarHandler.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
