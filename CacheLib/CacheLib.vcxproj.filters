@@ -66,6 +66,9 @@
     <ClInclude Include="CurrencyHandler.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="InventoryHandler.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
     <ClInclude Include="CacheResponseSender.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -134,7 +137,7 @@
     <ClCompile Include="CacheStorageCurrency.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Handler_Inventory.cpp">
+    <ClCompile Include="InventoryHandler.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="CurrencyHandler.cpp">

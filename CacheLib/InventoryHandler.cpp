@@ -1,20 +1,17 @@
 ﻿#include "pch.h"
-#include "Handler.h"
+#include "InventoryHandler.h"
 #include "CacheResponseSender.h"
 
 #include <CoreLib/Interface/IMessage.h>
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
 
-#include "DB/DBWorker.h"
+#include "CacheStorageInventory.h"
 
 namespace Cache {
-    void Handler::InventoryRequest(ScopedMessage& msg, uint64_t sessionID, Core::MsgInventoryReqBody* body) {
-        if (!CheckMessageLength<Core::MsgInventoryReqBody>(msg.get()))
-            return;
+    void InventoryHandler::Request(uint64_t sessionID, Core::MsgInventoryReqBody request) {
 
-        const auto characterID = body->characterID;
-        msg.reset();
+        const auto characterID = request.characterID;
         InventoryCacheItem res = cache_inventory->Getter(characterID);
         Core::MsgInventoryResBody response{};
         if (res.status == CACHE_STATUS::AVAILABLE) {
@@ -32,12 +29,8 @@ namespace Cache {
         responses->Send({ sessionID, Core::MSG_INVENTORY_RES }, response);
     }
 
-    void Handler::InventoryUpdate(ScopedMessage& msg, uint64_t sessionID, Core::MsgInventoryUpdateBody* body) {
-        if (!CheckMessageLength<Core::MsgInventoryUpdateBody>(msg.get()))
-            return;
+    void InventoryHandler::Update(uint64_t sessionID, Core::MsgInventoryUpdateBody request) {
 
-        const auto request = *body;
-        msg.reset();
         const auto characterID = request.characterID;
         const auto [status, itemID, slot, quantity] = cache_inventory->PartialUpdate(characterID, request.itemID, request.op, request.change);
         const Core::MsgInventoryUpdateResBody response{

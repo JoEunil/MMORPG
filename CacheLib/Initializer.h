@@ -19,6 +19,7 @@
 #include "BazaarHandler.h"
 #include "CurrencyHandler.h"
 #include "DiamondHandler.h"
+#include "InventoryHandler.h"
 #include "DB/DBWorker.h"
 #include "WALManager.h"
 
@@ -39,6 +40,7 @@ namespace Cache {
         BazaarHandler bazaarHandler;
         CurrencyHandler currencyHandler;
         DiamondHandler diamondHandler;
+        InventoryHandler inventoryHandler;
         Handler handler;
         InMemoryQueue recvMQ;
         DBConnectionPool<DBConnectionGame> connectionPoolGame;
@@ -88,7 +90,8 @@ namespace Cache {
             bazaarHandler.Initialize(&responses, &dbWorkerBazaar, &cache_inventory, &bazaarRegistration);
             currencyHandler.Initialize(&responses, &cache_currency);
             diamondHandler.Initialize(&responses, &dbWorkerBazaar);
-            handler.Initialize(&responses, &dbWorkerGame, &cache_inventory, &cache_profile, &bazaarHandler, &currencyHandler, &diamondHandler);
+            inventoryHandler.Initialize(&responses, &cache_inventory);
+            handler.Initialize(&responses, &dbWorkerGame, &cache_inventory, &cache_profile, &bazaarHandler, &currencyHandler, &diamondHandler, &inventoryHandler);
             recvMQ.Initialize(&handler, &messagePool, durableLogger);
             recvMQ.Start();
         }
@@ -105,6 +108,7 @@ namespace Cache {
                 or !bazaarHandler.IsReady()
                 or !currencyHandler.IsReady()
                 or !diamondHandler.IsReady()
+                or !inventoryHandler.IsReady()
                 or !handler.IsReady()
                 or !dbWorkerGame.IsReady()
                 or !dbWorkerBazaar.IsReady()

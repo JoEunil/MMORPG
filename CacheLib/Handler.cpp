@@ -3,6 +3,7 @@
 #include "BazaarHandler.h"
 #include "CurrencyHandler.h"
 #include "DiamondHandler.h"
+#include "InventoryHandler.h"
 #include "CacheResponseSender.h"
 
 #include <CoreLib/Interface/IMessage.h>
@@ -36,10 +37,12 @@ namespace Cache {
             CharacterStateUpdate(msg, sessionID, Core::parseMsgBody<Core::MsgCharacterStateUpdateBody>(msg->GetBuffer()));
             break;
         case Core::MSG_INVENTORY_REQ:
-            InventoryRequest(msg, sessionID, Core::parseMsgBody<Core::MsgInventoryReqBody>(msg->GetBuffer()));
+            if (const auto request = ReadRequest<Core::MsgInventoryReqBody>(msg))
+                inventory->Request(sessionID, *request);
             break;
         case Core::MSG_INVENTORY_UPDATE:
-            InventoryUpdate(msg, sessionID, Core::parseMsgBody<Core::MsgInventoryUpdateBody>(msg->GetBuffer()));
+            if (const auto request = ReadRequest<Core::MsgInventoryUpdateBody>(msg))
+                inventory->Update(sessionID, *request);
             break;
         case Core::MSG_CURRENCY_REQ:
             if (const auto request = ReadRequest<Core::MsgCurrencyReqBody>(msg))

@@ -162,6 +162,7 @@
     <ClInclude Include="BazaarHandler.h" />
     <ClInclude Include="DiamondHandler.h" />
     <ClInclude Include="CurrencyHandler.h" />
+    <ClInclude Include="InventoryHandler.h" />
     <ClInclude Include="CacheResponseSender.h" />
     <ClInclude Include="BazaarRegistration.h" />
     <ClInclude Include="Initializer.h" />
@@ -186,7 +187,7 @@
     <ClCompile Include="BazaarRegistration.cpp" />
     <ClCompile Include="CurrencyHandler.cpp" />
     <ClCompile Include="DiamondHandler.cpp" />
-    <ClCompile Include="Handler_Inventory.cpp" />
+    <ClCompile Include="InventoryHandler.cpp" />
     <ClCompile Include="InMemoryQueue.cpp" />
   </ItemGroup>
   <ItemGroup>

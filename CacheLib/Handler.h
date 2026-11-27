@@ -22,6 +22,7 @@ namespace Cache {
     class BazaarHandler;
     class CurrencyHandler;
     class DiamondHandler;
+    class InventoryHandler;
     class CacheResponseSender;
 
     class Handler {
@@ -34,6 +35,7 @@ namespace Cache {
         BazaarHandler* bazaar = nullptr;
         CurrencyHandler* currency = nullptr;
         DiamondHandler* diamond = nullptr;
+        InventoryHandler* inventory = nullptr;
 
         template <typename T>
         bool CheckMessageLength(const Core::IMessage* msg) {
@@ -49,7 +51,7 @@ namespace Cache {
             return request;
         }
 
-        void Initialize(CacheResponseSender* sender, DBWorker<DBConnectionGame>* dg, CacheStorageInventory* ci, ProfileCache* cp, BazaarHandler* bazaarHandler, CurrencyHandler* currencyHandler, DiamondHandler* diamondHandler) {
+        void Initialize(CacheResponseSender* sender, DBWorker<DBConnectionGame>* dg, CacheStorageInventory* ci, ProfileCache* cp, BazaarHandler* bazaarHandler, CurrencyHandler* currencyHandler, DiamondHandler* diamondHandler, InventoryHandler* inventoryHandler) {
             responses = sender;
             dbWorkerGame = dg;
             cache_inventory = ci;
@@ -57,8 +59,13 @@ namespace Cache {
             bazaar = bazaarHandler;
             currency = currencyHandler;
             diamond = diamondHandler;
+            inventory = inventoryHandler;
         }
         bool IsReady() {
+            if (inventory == nullptr) {
+                Core::sysLogger->LogError("cache handler", "inventory handler not initialized");
+                return false;
+            }
             if (bazaar == nullptr) {
                 Core::sysLogger->LogError("cache handler", "bazaar handler not initialized");
                 return false;
@@ -92,8 +99,6 @@ namespace Cache {
         void CharacterListRequest(ScopedMessage& msg, uint64_t sesionID, Core::MsgCharacterListReqBody* body);
         void CharacterStateRequest(ScopedMessage& msg, uint64_t sesionID, Core::MsgCharacterStateReqBody* body);
         void CharacterStateUpdate(ScopedMessage& msg, uint64_t sessionID, Core::MsgCharacterStateUpdateBody* body);
-        void InventoryRequest(ScopedMessage& msg, uint64_t sesionID, Core::MsgInventoryReqBody* body);
-        void InventoryUpdate(ScopedMessage& msg, uint64_t sesionID, Core::MsgInventoryUpdateBody* body);
         void ProfileRename(ScopedMessage& msg, uint64_t sessionID, Core::MsgProfileRenameBody* body);
 
         friend class Initializer;
