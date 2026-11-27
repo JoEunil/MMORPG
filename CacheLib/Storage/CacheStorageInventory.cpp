@@ -4,10 +4,10 @@
 #include <algorithm>
 #include <iterator>
 #include <CoreLib/Interface/IMessage.h>
-#include "DB/DBWorker.h"
-#include "CacheFlush.h"
+#include "../DB/DBWorker.h"
+#include "../Persistence/CacheFlush.h"
 #include "InventoryCodec.h"
-#include "CoreConfig.h"
+#include "../CoreConfig.h"
 
 namespace Cache {
     bool CacheStorageInventory::RestoreEntry(uint64_t characterID, InventoryData& rec) {

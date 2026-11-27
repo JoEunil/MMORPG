@@ -6,7 +6,7 @@
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
 
-#include "CacheStorageInventory.h"
+#include "../Storage/CacheStorageInventory.h"
 
 namespace Cache {
     void InventoryHandler::Request(uint64_t sessionID, Core::MsgInventoryReqBody request) {

@@ -6,7 +6,7 @@
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
 
-#include "DB/DBWorker.h"
+#include "../DB/DBWorker.h"
 
 namespace Cache {
     void DiamondHandler::Request(uint64_t sessionID, Core::MsgDiamondReqBody request) {

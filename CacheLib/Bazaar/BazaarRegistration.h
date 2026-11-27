@@ -4,7 +4,7 @@
 #include <functional>
 #include <optional>
 #include <CoreLib/LoggerGlobal.h>
-#include "DB/DBConfig.h"
+#include "../DB/DBConfig.h"
 
 namespace Cache {
     class CacheStorageInventory;

@@ -6,7 +6,7 @@
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
 
-#include "CacheStorageCurrency.h"
+#include "../Storage/CacheStorageCurrency.h"
 #include <atomic>
 
 namespace Cache {

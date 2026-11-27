@@ -3,10 +3,10 @@
 
 #include <algorithm>
 #include "BazaarResult.h"
-#include "CacheStorageInventory.h"
-#include "CacheStorageCurrency.h"
-#include "DB/DBWorker.h"
-#include "CoreConfig.h"
+#include "../Storage/CacheStorageInventory.h"
+#include "../Storage/CacheStorageCurrency.h"
+#include "../DB/DBWorker.h"
+#include "../CoreConfig.h"
 #include <CoreLib/LoggerGlobal.h>
 
 namespace Cache {

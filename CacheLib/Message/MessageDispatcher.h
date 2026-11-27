@@ -5,7 +5,7 @@
 #include <optional>
 #include <utility>
 
-#include "Config.h"
+#include "../Config.h"
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/Interface/IMessagePool.h>
 

@@ -7,9 +7,9 @@
 
 #include <CoreLib/Cache/MessageTypes.h>
 
-#include "CacheStorage.h"
-#include "CacheStorageInventory.h"
-#include "Config.h"
+#include "../Storage/CacheStorage.h"
+#include "../Storage/CacheStorageInventory.h"
+#include "../Config.h"
 
 namespace Cache {
     static_assert(sizeof(Core::MsgStruct<Core::MsgBazaarSearchResBody>) <= MESSAGE_LEN);

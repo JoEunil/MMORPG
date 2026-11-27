@@ -9,8 +9,8 @@
 
 #include <BaseLib/WAL.h>
 #include <CoreLib/LoggerGlobal.h>
-#include <CacheLib/CacheStorageInventory.h>
-#include <CacheLib/InventoryCodec.h>
+#include <CacheLib/Storage/CacheStorageInventory.h>
+#include <CacheLib/Storage/InventoryCodec.h>
 #include <CacheLib/DB/DBConnectionPool.h>
 #include <CacheLib/DB/DBConfig.h>
 

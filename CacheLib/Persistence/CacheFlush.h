@@ -12,11 +12,11 @@
 
 #include <BaseLib/RingQueue.h>
 #include <CoreLib/LoggerGlobal.h>
-#include "CacheStorageInventory.h"
-#include "CacheStorageCurrency.h"
-#include "DB/DBConnectionPool.h"
-#include "DB/DBConfig.h"
-#include "Config.h"
+#include "../Storage/CacheStorageInventory.h"
+#include "../Storage/CacheStorageCurrency.h"
+#include "../DB/DBConnectionPool.h"
+#include "../DB/DBConfig.h"
+#include "../Config.h"
 
 namespace Cache {
     struct FlushCommand {

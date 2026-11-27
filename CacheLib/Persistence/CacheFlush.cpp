@@ -1,9 +1,9 @@
 ﻿#include "pch.h"
 #include "CacheFlush.h"
 
-#include "DB/DBConnectionPool.h"
+#include "../DB/DBConnectionPool.h"
 
-#include "Config.h"
+#include "../Config.h"
 #include <format>
 #include <chrono>
 

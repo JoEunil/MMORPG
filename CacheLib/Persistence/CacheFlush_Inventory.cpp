@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "CacheFlush.h"
-#include "InventoryCodec.h"
+#include "../Storage/InventoryCodec.h"
 
 namespace Cache {
     void CacheFlush::FlushInventory(FlushCommand* command) {

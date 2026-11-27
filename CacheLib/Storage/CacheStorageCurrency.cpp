@@ -2,8 +2,8 @@
 #include "CacheStorageCurrency.h"
 
 #include <CoreLib/Interface/IMessage.h>
-#include "DB/DBWorker.h"
-#include "CacheFlush.h"
+#include "../DB/DBWorker.h"
+#include "../Persistence/CacheFlush.h"
 
 namespace Cache {
     CACHE_STATUS CacheStorageCurrency::LoadFromDB(uint16_t shardIndex, const Key& key, bool claimed) {

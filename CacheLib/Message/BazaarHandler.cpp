@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include "BazaarHandler.h"
-#include "CacheStorageInventory.h"
+#include "../Storage/CacheStorageInventory.h"
 #include "CacheResponseSender.h"
 
 #include <exception>
@@ -11,9 +11,9 @@
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
 
-#include "DB/DBWorker.h"
-#include "BazaarResult.h"
-#include "BazaarRegistration.h"
+#include "../DB/DBWorker.h"
+#include "../Bazaar/BazaarResult.h"
+#include "../Bazaar/BazaarRegistration.h"
 
 namespace Cache {
     template <typename Response, typename Work>

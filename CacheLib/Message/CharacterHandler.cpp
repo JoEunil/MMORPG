@@ -1,10 +1,10 @@
 ﻿#include "pch.h"
 #include "CharacterHandler.h"
 #include "CacheResponseSender.h"
-#include "CacheStorageInventory.h"
-#include "ProfileCache.h"
-#include "DB/DBWorker.h"
-#include "DB/IResultReader.h"
+#include "../Storage/CacheStorageInventory.h"
+#include "../Storage/ProfileCache.h"
+#include "../DB/DBWorker.h"
+#include "../DB/IResultReader.h"
 
 #include <algorithm>
 #include <atomic>

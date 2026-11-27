@@ -1,6 +1,6 @@
 #pragma once
 #include "CacheStorageInventory.h"
-#include "CoreConfig.h"
+#include "../CoreConfig.h"
 #include <array>
 #include <cstring>
 #include <istream>

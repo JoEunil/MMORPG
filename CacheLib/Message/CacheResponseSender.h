@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Config.h"
+#include "../Config.h"
 #include <CoreLib/Interface/ICacheResponseWriter.h>
 #include <CoreLib/Interface/IMessagePool.h>
 #include <CoreLib/Interface/IMessageQueue.h>

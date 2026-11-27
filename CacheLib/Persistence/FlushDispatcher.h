@@ -8,8 +8,8 @@
 
 #include <CoreLib/LoggerGlobal.h>
 #include <CoreLib/Interface/ICachedClock.h>
-#include "CacheStorageInventory.h"
-#include "CacheStorageCurrency.h"
+#include "../Storage/CacheStorageInventory.h"
+#include "../Storage/CacheStorageCurrency.h"
 #include "CacheFlush.h"
 
 #undef min  

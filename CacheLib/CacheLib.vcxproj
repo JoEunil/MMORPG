@@ -78,6 +78,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -95,6 +96,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>
@@ -110,7 +112,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)External;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir);$(SolutionDir)External;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -129,7 +131,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)External;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(SolutionDir);$(SolutionDir)External;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -140,13 +142,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
-    <ClInclude Include="BazaarResult.h" />
-    <ClInclude Include="CacheFlush.h" />
-    <ClInclude Include="CacheStorage.h" />
-    <ClInclude Include="CacheStorageInventory.h" />
-    <ClInclude Include="CacheStorageCurrency.h" />
-    <ClInclude Include="InventoryCodec.h" />
-    <ClInclude Include="ProfileCache.h" />
+    <ClInclude Include="Bazaar\BazaarResult.h" />
+    <ClInclude Include="Persistence\CacheFlush.h" />
+    <ClInclude Include="Storage\CacheStorage.h" />
+    <ClInclude Include="Storage\CacheStorageInventory.h" />
+    <ClInclude Include="Storage\CacheStorageCurrency.h" />
+    <ClInclude Include="Storage\InventoryCodec.h" />
+    <ClInclude Include="Storage\ProfileCache.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="CoreConfig.h" />
     <ClInclude Include="DB\Queries.h" />
@@ -157,40 +159,40 @@
     <ClInclude Include="DB\StatementId.h" />
     <ClInclude Include="DB\DBConnectionPool.h" />
     <ClInclude Include="DB\DBWorker.h" />
-    <ClInclude Include="FlushDispatcher.h" />
-    <ClInclude Include="MessageDispatcher.h" />
-    <ClInclude Include="BazaarHandler.h" />
-    <ClInclude Include="DiamondHandler.h" />
-    <ClInclude Include="CurrencyHandler.h" />
-    <ClInclude Include="InventoryHandler.h" />
-    <ClInclude Include="CharacterHandler.h" />
-    <ClInclude Include="CacheResponseSender.h" />
-    <ClInclude Include="BazaarRegistration.h" />
+    <ClInclude Include="Persistence\FlushDispatcher.h" />
+    <ClInclude Include="Message\MessageDispatcher.h" />
+    <ClInclude Include="Message\BazaarHandler.h" />
+    <ClInclude Include="Message\DiamondHandler.h" />
+    <ClInclude Include="Message\CurrencyHandler.h" />
+    <ClInclude Include="Message\InventoryHandler.h" />
+    <ClInclude Include="Message\CharacterHandler.h" />
+    <ClInclude Include="Message\CacheResponseSender.h" />
+    <ClInclude Include="Bazaar\BazaarRegistration.h" />
     <ClInclude Include="Initializer.h" />
-    <ClInclude Include="InMemoryQueue.h" />
-    <ClInclude Include="WALManager.h" />
+    <ClInclude Include="Message\InMemoryQueue.h" />
+    <ClInclude Include="Persistence\WALManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="CacheFlush.cpp" />
+    <ClCompile Include="Persistence\CacheFlush.cpp" />
     <ClCompile Include="DB\MySQLResultAdapter.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="CacheFlush_Currency.cpp" />
-    <ClCompile Include="CacheFlush_Inventory.cpp" />
-    <ClCompile Include="CacheStorageCurrency.cpp" />
-    <ClCompile Include="ProfileCache.cpp" />
-    <ClCompile Include="CacheStorageInventory.cpp" />
-    <ClCompile Include="MessageDispatcher.cpp" />
-    <ClCompile Include="BazaarHandler.cpp" />
-    <ClCompile Include="BazaarRegistration.cpp" />
-    <ClCompile Include="CurrencyHandler.cpp" />
-    <ClCompile Include="DiamondHandler.cpp" />
-    <ClCompile Include="InventoryHandler.cpp" />
-    <ClCompile Include="CharacterHandler.cpp" />
-    <ClCompile Include="InMemoryQueue.cpp" />
+    <ClCompile Include="Persistence\CacheFlush_Currency.cpp" />
+    <ClCompile Include="Persistence\CacheFlush_Inventory.cpp" />
+    <ClCompile Include="Storage\CacheStorageCurrency.cpp" />
+    <ClCompile Include="Storage\ProfileCache.cpp" />
+    <ClCompile Include="Storage\CacheStorageInventory.cpp" />
+    <ClCompile Include="Message\MessageDispatcher.cpp" />
+    <ClCompile Include="Message\BazaarHandler.cpp" />
+    <ClCompile Include="Bazaar\BazaarRegistration.cpp" />
+    <ClCompile Include="Message\CurrencyHandler.cpp" />
+    <ClCompile Include="Message\DiamondHandler.cpp" />
+    <ClCompile Include="Message\InventoryHandler.cpp" />
+    <ClCompile Include="Message\CharacterHandler.cpp" />
+    <ClCompile Include="Message\InMemoryQueue.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\BaseLib\BaseLib.vcxproj">
@@ -201,7 +203,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="CacheStorage.inl" />
+    <None Include="Storage\CacheStorage.inl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

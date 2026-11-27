@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "DB/DBConfig.h"
+#include "../DB/DBConfig.h"
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
 

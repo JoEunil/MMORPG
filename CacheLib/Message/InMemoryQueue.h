@@ -10,7 +10,7 @@
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
 #include <CoreLib/Interface/IDurableLog.h>
-#include "Config.h"
+#include "../Config.h"
 #include <CoreLib/Interface/IMessagePool.h>
 
 namespace Cache {

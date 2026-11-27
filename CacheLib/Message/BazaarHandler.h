@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include "Config.h"
-#include "DB/DBConfig.h"
+#include "../Config.h"
+#include "../DB/DBConfig.h"
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
 

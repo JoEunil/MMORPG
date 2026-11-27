@@ -8,8 +8,8 @@
 #include <CoreLib/Config.h>
 #include <CoreLib/Interface/IProfileCache.h>
 
-#include "DB/DBWorker.h"
-#include "DB/DBConfig.h"
+#include "../DB/DBWorker.h"
+#include "../DB/DBConfig.h"
 
 namespace Cache {
     // 이름 조회용 write-through 캐시.

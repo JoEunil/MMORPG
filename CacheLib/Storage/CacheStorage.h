@@ -13,10 +13,10 @@
 #include <iterator>
 #include <new>
 
-#include "DB/DBConfig.h"
-#include "DB/DBWorker.h"
+#include "../DB/DBConfig.h"
+#include "../DB/DBWorker.h"
 #include <CoreLib/Interface/ICachedClock.h>
-#include "Config.h"
+#include "../Config.h"
 
 namespace Cache {
     enum class FlushEnqueueResult : uint8_t {
