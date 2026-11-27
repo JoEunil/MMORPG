@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <mutex>
+#include <shared_mutex>
 #include <unordered_map>
 #include <thread>
 #include <atomic>

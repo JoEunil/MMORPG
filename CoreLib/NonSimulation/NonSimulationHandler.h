@@ -8,9 +8,7 @@ namespace Core {
     class CacheCommandSender;
     class IZonePacketQueue;
     class IZoneRequestQueue;
-    class ILogger;
     class ISessionAuth;
-    class IPacketView;
     class IServerResponseQueue;
     class PacketWriter;
     class SessionManager;

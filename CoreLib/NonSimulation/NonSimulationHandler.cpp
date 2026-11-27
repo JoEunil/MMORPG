@@ -8,7 +8,6 @@
 #include "../Interface/ISessionAuth.h"
 #include "../Response/Interface/IServerResponseQueue.h"
 #include "../Packet/PacketWriter.h"
-#include "../World/ZoneState.h"
 #include "../World/Interface/IZonePacketQueue.h"
 #include "../World/Interface/IZoneRequestQueue.h"
 #include "../Cache/MessageTypes.h"
@@ -99,11 +98,6 @@ namespace Core {
         }
         auto* p = packet.get();
         PacketHeader* h = parseHeader(p->GetPtr());
-        uint16_t zoneID = 0;
-        if (p->GetOpcode() != OP::AUTH) {
-            zoneID = sessionManager->GetZoneID(p->GetSessionID());
-        }
-
         switch (p->GetOpcode()) {
         case OP::AUTH:
             CheckSession(p);
