@@ -148,6 +148,7 @@
     <ClInclude Include="InventoryCodec.h" />
     <ClInclude Include="ProfileCache.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="CoreConfig.h" />
     <ClInclude Include="DB\Queries.h" />
     <ClInclude Include="DB\DBConnection.h" />
     <ClInclude Include="DB\IResultReader.h" />

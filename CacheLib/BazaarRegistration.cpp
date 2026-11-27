@@ -6,7 +6,7 @@
 #include "CacheStorageInventory.h"
 #include "CacheStorageCurrency.h"
 #include "DB/DBWorker.h"
-#include <CoreLib/Data/ItemData.h>
+#include "CoreConfig.h"
 #include <CoreLib/LoggerGlobal.h>
 
 namespace Cache {
@@ -44,7 +44,7 @@ namespace Cache {
         }
 
         const auto itemID = selection.itemID;
-        const auto* item = Data::FindItem(itemID);
+        const auto itemType = FindItemType(itemID);
         constexpr uint64_t BAZAAR_FEE_MIN = 10;
         constexpr uint64_t BAZAAR_FEE_RATE = 10;
         const uint64_t fee = std::max(BAZAAR_FEE_MIN, request.price / BAZAAR_FEE_RATE);
@@ -58,7 +58,7 @@ namespace Cache {
             return inventoryStatus == CACHE_STATUS::AVAILABLE && feeStatus == CACHE_STATUS::AVAILABLE;
         };
         try {
-            const auto failure = item == nullptr
+            const auto failure = !itemType
                 ? std::optional<BazaarRegistrationStatus>{BazaarRegistrationStatus::InvalidRequest}
                 : DeductCosts(request, itemID, fee);
             if (failure) {
@@ -72,7 +72,7 @@ namespace Cache {
                 reportUnknown();
                 completed(BazaarRegistrationStatus::Unknown);
             };
-            const auto outcome = worker->Enqueue([request, itemID, itemType = static_cast<uint16_t>(item->GetType()), completed, restore, reportUnknown](DBConnectionBazaar* conn) {
+            const auto outcome = worker->Enqueue([request, itemID, itemType = *itemType, completed, restore, reportUnknown](DBConnectionBazaar* conn) {
                 const auto status = ResolveBazaarRegister([conn, request, itemID, itemType] {
                     return conn->ExecuteUpdate(StatementId::InsertBazaarListing, itemID, request.characterID, itemType, request.quantity, request.price);
                 }, restore, reportUnknown);

@@ -1,6 +1,6 @@
 #pragma once
 #include "CacheStorageInventory.h"
-#include <CoreLib/Data/ItemData.h>
+#include "CoreConfig.h"
 #include <array>
 #include <cstring>
 #include <istream>
@@ -55,9 +55,9 @@ namespace Cache {
             if (item.itemID == data.equippedBodyItemID) bodyOwned = true;
         }
         if (count != data.count || !weaponOwned || !shieldOwned || !bodyOwned
-            || !Data::CanEquip(Data::EquipmentSlot::Weapon, data.equippedWeaponItemID)
-            || !Data::CanEquip(Data::EquipmentSlot::Shield, data.equippedShieldItemID)
-            || !Data::CanEquip(Data::EquipmentSlot::Body, data.equippedBodyItemID))
+            || !CanEquipItem(WEAPON_SLOT, data.equippedWeaponItemID)
+            || !CanEquipItem(SHIELD_SLOT, data.equippedShieldItemID)
+            || !CanEquipItem(BODY_SLOT, data.equippedBodyItemID))
             throw std::runtime_error("Invalid inventory count or equipment slots.");
     }
 
