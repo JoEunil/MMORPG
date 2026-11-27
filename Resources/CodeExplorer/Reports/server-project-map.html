@@ -237,7 +237,7 @@
         <p><strong>클래스</strong> 연결 기준은 의존 관계에 따라 노드를 배치합니다. namespace별 지도는 클래스가 선언된 namespace를 따릅니다.</p>
         <p id="method-projects"><strong>프로젝트</strong> 프로젝트 묶음은 클래스가 속한 프로젝트를 따릅니다. 프로젝트 참조 지도는 <code>.vcxproj</code>의 참조 항목을 사용합니다.</p>
         <p id="method-external"><strong>외부 라이브러리</strong> 외부 코드 폴더에서 실제로 읽은 헤더를 근거로, 라이브러리마다 프로젝트 지도에 주황색 노드 하나를 표시합니다.</p>
-        <p id="method-filters"><strong>Visual Studio 필터</strong> 선언 파일을 <code>.vcxproj.filters</code>의 프로젝트·필터별로 묶습니다. 선의 숫자는 연결된 클래스 쌍 수입니다. 프로젝트 묶음에서 초록색 상속선은 다른 프로젝트의 <code>Interface</code> 필터에 속한 타입을 가리킵니다.</p>
+        <p id="method-filters"><strong>Visual Studio 필터</strong> 선언 파일을 <code>.vcxproj.filters</code>의 프로젝트·필터별로 묶습니다. 선의 숫자는 연결된 클래스 쌍 수입니다. 프로젝트 묶음에서 초록색 상속선은 다른 프로젝트의 AST상 추상 클래스를 가리킵니다.</p>
       </div>
     </details>
   </div>
@@ -290,9 +290,6 @@
       </div>
       <div id="struct-control" class="field" hidden>
         <label class="check"><input id="show-structs" type="checkbox">struct 표시</label>
-      </div>
-      <div id="high-level-filter" class="field" hidden>
-        <label class="check"><input id="exclude-abstract-candidates" type="checkbox">Interface·추상 타입 제외</label>
       </div>
       <div id="hide-abstract-control" class="field" hidden>
         <label class="check" title="Clang AST에서 추상 클래스로 판별한 타입과 그 연결을 숨깁니다. 이름이나 Visual Studio 필터명으로 판단하지 않습니다."><input id="hide-abstract" type="checkbox">Interface 숨기기</label>
@@ -747,6 +744,7 @@ const memberMap = data.memberMap ?? { enabled: false, nodes: [], edges: [] };
 const byId = new Map([...data.nodes, ...methods, ...memberMap.nodes].map(node => [node.id, node]));
 const classes = data.nodes.filter(node => node.kind === "class");
 const structIds = new Set(classes.filter(node => node.isStruct).map(node => node.id));
+const hasAbstractClasses = classes.some(isInterface);
 const projects = data.nodes.filter(node => node.kind === "project");
 const libraries = data.nodes.filter(node => node.kind === "library");
 const projectEdges = data.edges.filter(edge => edge.kind === "reference" || edge.kind === "external");
@@ -1012,7 +1010,6 @@ function bindControls() {
     refreshGroupChecks();
     renderFilteredMap();
   });
-  get("exclude-abstract-candidates").addEventListener("change", renderFilteredMap);
   get("hide-abstract").addEventListener("change", event => {
     state.hideAbstract = event.target.checked;
     refreshGroupChecks();
@@ -1256,7 +1253,6 @@ function changeView(view, context = null) {
   get("namespace-select").disabled = groups.size === 0;
   get("relation-control").hidden = !!context || view === "project" || detailMapView();
   get("struct-control").hidden = !!context || view === "project" || detailMapView() || !structIds.size;
-  get("high-level-filter").hidden = view !== "high-level";
   get("hide-abstract-control").hidden = view === "project" || detailMapView() || !isMap && !inspectionGroup;
   get("hide-abstract").checked = state.hideAbstract;
   get("high-level-guide").hidden = view !== "high-level";
@@ -1503,7 +1499,7 @@ function renderLegend() {
   const grouped = state.view === "group";
   const legend = state.mapContext ? [...new Set(state.mapContext.edges.map(edge => edge.kind))]
     : state.view === "members" ? ["call", "member-access"] : state.view === "method" ? ["call"] : state.view === "project" ? (libraries.length ? ["reference", "external"] : ["reference"]) : grouped ? ["aggregate", "boundary"]
-    : projectClassView() && hasStudioFilters ? [...classKinds, "boundary"] : classKinds;
+    : projectClassView() && hasAbstractClasses ? [...classKinds, "boundary"] : classKinds;
   get("legend").replaceChildren(...legend.map(kind => {
     const item = document.createElement("span");
     const line = document.createElement("i");
@@ -1622,7 +1618,7 @@ function distinctColors(ids) {
 }
 
 function isInterface(node) {
-  return node?.visualStudioFilter?.name?.toLowerCase().includes("interface") ?? false;
+  return node?.isAbstract === true;
 }
 
 function showsType(node) { return (state.showStructs || !node.isStruct) && (!state.hideAbstract || !node.isAbstract); }
@@ -1635,7 +1631,7 @@ function updatePathMode() {
   const tree = get("path-mode").value === "tree";
   get("tree-root-control").hidden = !tree;
   get("tree-root").disabled = !tree;
-  get("path-interface-control").hidden = tree || !hasStudioFilters;
+  get("path-interface-control").hidden = tree || !hasAbstractClasses;
   get("path-help").textContent = tree
     ? "기준 타입에서 들어오는 연결과 나가는 연결을 따라갑니다."
     : "화살표를 따라 출발 타입으로 돌아올 수 있는 그룹을 찾습니다.";
@@ -1654,7 +1650,7 @@ function inspectDependencyCycles(edges) {
   get("path-status").textContent = cycles.length
     ? "순환 경로 " + cycles.length + "개" + (hasMore ? " · 추가 경로 있음 (최대 10개 표시)" : "")
     : "분석된 관계에서 순환 경로를 찾지 못했습니다.";
-  if (hasStudioFilters) get("path-status").append(get("path-interfaces").checked ? " · Interface 연결 제외" : " · Interface 연결 포함");
+  if (hasAbstractClasses) get("path-status").append(get("path-interfaces").checked ? " · Interface 연결 제외" : " · Interface 연결 포함");
   const results = get("path-results");
   for (const [index, { members, path }] of cycles.entries()) {
     const heading = document.createElement("h3");
@@ -1973,7 +1969,7 @@ function renderMap(resetCamera) {
     button.setAttribute("aria-pressed", (button.dataset.presentation === "relationships") === relationshipView());
   get("layout-control").hidden = !!state.mapContext || state.view !== "class" || relationshipView();
   const inProjects = projectClassView();
-  const showInterfaces = state.view === "group" || (inProjects && hasStudioFilters);
+  const showInterfaces = hasAbstractClasses && (state.view === "group" || inProjects);
   get("interface-control").hidden = !!state.mapContext || !showInterfaces;
   get("interface-label").textContent = state.view === "group" ? "Interface 연결만"
     : "프로젝트 간 Interface 상속만";
@@ -2004,9 +2000,7 @@ function renderMap(resetCamera) {
     scopeEdges = result.edges;
   } else if (state.view === "high-level") {
     highLevelCandidates ??= findHighLevelCandidates(classEdges);
-    const excludeAbstract = get("exclude-abstract-candidates").checked;
-    const candidates = classes.filter(node => highLevelCandidates.has(node.id) && showsType(node)
-      && (!excludeAbstract || !(isInterface(node) || node.isAbstract)));
+    const candidates = classes.filter(node => highLevelCandidates.has(node.id) && showsType(node));
     const candidateIds = new Set(candidates.map(node => node.id));
     scopeEdges = eligibleEdges.filter(edge => candidateIds.has(edge.to));
     const users = new Set(scopeEdges.map(edge => edge.from));
@@ -2173,7 +2167,7 @@ function renderMap(resetCamera) {
     : state.view === "project" ? "프로젝트 " + projects.length + "개 · 외부 라이브러리 " + libraries.length + "개 · 연결 " + visibleEdges.length
     : state.view === "high-level" ? "후보 " + candidateCount + "개 · 직접 연결 " + visibleEdges.length + "개"
     : "표시 " + visibleNodes.length + "/" + total + "개 · 연결 " + visibleEdges.length
-      + (inProjects && hasStudioFilters ? " · Interface 상속 " + visibleEdges.filter(interfaceBoundary).length : "");
+      + (inProjects && hasAbstractClasses ? " · Interface 상속 " + visibleEdges.filter(interfaceBoundary).length : "");
   get("empty").hidden = visibleNodes.length > 0;
   if (inheritanceActive()) get("map-count").append(" · 상속 묶음 " + inheritanceMembers.size + "개");
   const methodSorting = detailMapView();
