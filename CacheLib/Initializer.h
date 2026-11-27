@@ -16,6 +16,7 @@
 #include "Handler.h"
 #include "CacheResponseSender.h"
 #include "BazaarRegistration.h"
+#include "BazaarHandler.h"
 #include "DB/DBWorker.h"
 #include "WALManager.h"
 
@@ -33,6 +34,7 @@ namespace Cache {
         CacheStorageCurrency cache_currency;
         ProfileCache cache_profile;
         CacheResponseSender responses;
+        BazaarHandler bazaarHandler;
         Handler handler;
         InMemoryQueue recvMQ;
         DBConnectionPool<DBConnectionGame> connectionPoolGame;
@@ -79,7 +81,8 @@ namespace Cache {
             const Core::ICacheResponseWriter& responseWriter, Core::IDurableLog* durableLogger = nullptr)
         {
             responses.Initialize(sendMQ, &responseWriter, &messagePool);
-            handler.Initialize(&responses, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile, &bazaarRegistration);
+            bazaarHandler.Initialize(&responses, &dbWorkerBazaar, &cache_inventory, &bazaarRegistration);
+            handler.Initialize(&responses, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile, &bazaarHandler);
             recvMQ.Initialize(&handler, &messagePool, durableLogger);
             recvMQ.Start();
         }
@@ -93,6 +96,7 @@ namespace Cache {
                 or !cache_profile.IsReady()
                 or !bazaarRegistration.IsReady()
                 or !responses.IsReady()
+                or !bazaarHandler.IsReady()
                 or !handler.IsReady()
                 or !dbWorkerGame.IsReady()
                 or !dbWorkerBazaar.IsReady()

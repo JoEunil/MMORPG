@@ -19,7 +19,7 @@ namespace Core {
 }
 
 namespace Cache {
-    class BazaarRegistration;
+    class BazaarHandler;
     class CacheResponseSender;
 
     class Handler {
@@ -31,27 +31,25 @@ namespace Cache {
         Core::ILogger* logger = nullptr;
         DBWorker<DBConnectionGame>* dbWorkerGame = nullptr;
         DBWorker<DBConnectionBazaar>* dbWorkerBazaar = nullptr;
-        BazaarRegistration* bazaarRegistration = nullptr;
-        template <typename Response, typename Work>
-        void EnqueueBazaarQuery(Core::MsgHeader header, const Response& failureBody, const char* queueError, Work work);
+        BazaarHandler* bazaar = nullptr;
 
         template <typename T>
         bool CheckMessageLength(const Core::IMessage* msg) {
             return msg->GetLength() == sizeof(Core::MsgStruct<T>);
         }
 
-        void Initialize(CacheResponseSender* sender, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp, BazaarRegistration* registration) {
+        void Initialize(CacheResponseSender* sender, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp, BazaarHandler* bazaarHandler) {
             responses = sender;
             dbWorkerGame = dg;
             dbWorkerBazaar = db;
             cache_inventory = ci;
             cache_currency = cc;
             cache_profile = cp;
-            bazaarRegistration = registration;
+            bazaar = bazaarHandler;
         }
         bool IsReady() {
-            if (bazaarRegistration == nullptr) {
-                Core::sysLogger->LogError("cache handler", "bazaar registration not initialized");
+            if (bazaar == nullptr) {
+                Core::sysLogger->LogError("cache handler", "bazaar handler not initialized");
                 return false;
             }
             if (responses == nullptr) {
