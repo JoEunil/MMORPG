@@ -9,7 +9,10 @@
 
 #include "DB/DBWorker.h"
 #include <atomic>
+#include <cstddef>
+#include <cstring>
 #include <memory>
+#include <vector>
 
 namespace Cache {
     void Handler::Process(ScopedMessage msg) {
@@ -162,7 +165,7 @@ namespace Cache {
                 response.equippedBodyItemID = equipment.bodyID;
                 finish(response); // Never publish a playable character before equipment is hydrated.
             });
-        }, nullptr, failed);
+        }, failed);
         if (outcome != DBEnqueueResult::Queued) failed();
     }
 
@@ -174,14 +177,21 @@ namespace Cache {
 
         cache_profile->Unload(body->profileId);
         const auto state = *body;
-        dbWorkerGame->Enqueue([state, sessionID](DBConnectionGame* conn) {
+        const auto outcome = dbWorkerGame->Enqueue([state, sessionID](DBConnectionGame* conn) {
             auto res = conn->ExecuteUpdate(StatementId::UpdateCharacterState, state.attack, state.level, state.exp, state.hp, state.mp, state.maxHp, state.maxMp, state.dir, state.x, state.y, state.lastZone, state.charID);
 
             if (!res) {
                 Core::gameLogger->LogInfo("cache handler", "character state update failed", {{"sessionID", sessionID}, {"char_id", state.charID}, {"level", state.level},
                     {"exp", state.exp}, {"hp", state.hp}, {"mp", state.mp}, {"max_hp", state.maxHp}, {"max_mp", state.maxMp}, {"dir", state.dir}, {"x", state.x}, {"y", state.y}, {"last_zone", state.lastZone}});
             }
-        }, msg.get());
+        });
+        if (outcome != DBEnqueueResult::Queued) {
+            const auto* header = Core::parseMsgHeader(msg->GetBuffer());
+            std::vector<std::byte> binary(msg->GetLength());
+            std::memcpy(binary.data(), msg->GetBuffer(), msg->GetLength());
+            Core::errorLogger->LogError("cache handler", "character state update queue rejected",
+                {{"sessionID", header->sessionID}, {"messageType", header->messageType}, {"message", binary}});
+        }
     }
 
     // 쓰기는 이 한 경로로만 들어온다. Rename 내부에서 profile_id당 in-flight를 1개로 제한하므로(ProfileCache.h 참고) 

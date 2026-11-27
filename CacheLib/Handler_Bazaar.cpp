@@ -45,7 +45,7 @@ namespace Cache {
         const auto failed = [finish, failureBody] { finish(failureBody); };
         const auto outcome = dbWorkerBazaar->Enqueue([finish, work = std::move(work)](DBConnectionBazaar* conn) {
             finish(work(*conn));
-        }, nullptr, failed);
+        }, failed);
         if (outcome != DBEnqueueResult::Queued)
             failed();
     }
@@ -154,7 +154,7 @@ namespace Cache {
             Core::MsgBazaarBuyResBody response{};
             ParseBazaarBuyResult(result.get(), response);
             finish(response);
-        }, nullptr, failed);
+        }, failed);
         if (outcome != DBEnqueueResult::Queued) failed();
     }
 
@@ -186,7 +186,7 @@ namespace Cache {
                 return cache_inventory->DeliverItem(characterID, eventID, itemID, quantity);
             }, response);
             finish(response);
-        }, nullptr, failed);
+        }, failed);
         if (outcome != DBEnqueueResult::Queued) failed();
     }
 
@@ -211,7 +211,7 @@ namespace Cache {
             Core::MsgBazaarClaimResBody response{};
             ParseBazaarClaimResult(result.get(), response);
             finish(response);
-        }, nullptr, failed);
+        }, failed);
         if (outcome != DBEnqueueResult::Queued)
             failed();
     }
@@ -237,7 +237,7 @@ namespace Cache {
             Core::MsgBazaarOutboxListResBody response{};
             ParseBazaarOutboxListResult(result.get(), inventory, response);
             finish(response);
-        }, nullptr, failed);
+        }, failed);
         if (outcome != DBEnqueueResult::Queued) failed();
     }
 
@@ -265,7 +265,7 @@ namespace Cache {
                 return status;
             }, response);
             finish(response); // Cache effects and event IDs flush together through the existing CacheFlush path.
-        }, nullptr, failed);
+        }, failed);
         if (outcome != DBEnqueueResult::Queued) failed();
     }
 

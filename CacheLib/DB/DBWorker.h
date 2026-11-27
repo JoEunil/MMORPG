@@ -9,14 +9,11 @@
 #include <sstream>
 #include <vector>
 #include <cstddef>
-#include <cstring>
 #include <exception>
 
 #include "DBConnectionPool.h"
 #include "DBConfig.h"
 #include <BaseLib/RingQueue.h>
-#include <CoreLib/Interface/IMessage.h>
-#include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
 
 namespace Cache {
@@ -167,21 +164,13 @@ namespace Cache {
             Stop();
         }
 
-        DBEnqueueResult Enqueue(Work work, const Core::IMessage* failedMessage = nullptr, std::function<void()> onFailure = {}) {
+        DBEnqueueResult Enqueue(Work work, std::function<void()> onFailure = {}) {
             {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 if (m_running.load(std::memory_order_relaxed) && m_queue->push(QueuedWork{ std::move(work), std::move(onFailure) })) {
                     m_cv.notify_one();
                     return DBEnqueueResult::Queued;
                 }
-            }
-
-            if (failedMessage != nullptr && failedMessage->GetLength() >= sizeof(Core::MsgHeader)) {
-                const auto header = Core::parseMsgHeader(failedMessage->GetBuffer());
-                std::vector<std::byte> binary(failedMessage->GetLength());
-                std::memcpy(binary.data(), failedMessage->GetBuffer(), failedMessage->GetLength());
-                Core::errorLogger->LogError("DB worker thread", "queue full", {{"sessionID", header->sessionID}, {"messageType", header->messageType}, {"message", binary}});
-                return DBEnqueueResult::Rejected;
             }
 
             Core::errorLogger->LogError("DB worker thread", "queue full");

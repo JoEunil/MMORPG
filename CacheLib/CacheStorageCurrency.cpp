@@ -23,7 +23,7 @@ namespace Cache {
             result.data.gold = res->next() ? static_cast<uint64_t>(res->getUInt64("gold")) : 0;
             result.rollbackCnt = 0;
             CompleteLoad(shardIndex, key, &result);
-            }, nullptr, [this, shardIndex, key] { CompleteLoad(shardIndex, key, nullptr); });
+            }, [this, shardIndex, key] { CompleteLoad(shardIndex, key, nullptr); });
         if (enqueueResult != DBEnqueueResult::Queued) {
             CompleteLoad(shardIndex, key, nullptr);
             return CACHE_STATUS::EMPTY;

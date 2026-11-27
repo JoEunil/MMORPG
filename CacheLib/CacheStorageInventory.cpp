@@ -54,7 +54,7 @@ namespace Cache {
             }
             result.rollbackCnt = 0;
             CompleteLoad(shardIndex, key, &result);
-        }, nullptr, [this, shardIndex, key] { CompleteLoad(shardIndex, key, nullptr); });
+        }, [this, shardIndex, key] { CompleteLoad(shardIndex, key, nullptr); });
         if (enqueueResult != DBEnqueueResult::Queued) {
             CompleteLoad(shardIndex, key, nullptr);
             return CACHE_STATUS::EMPTY;

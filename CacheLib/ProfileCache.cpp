@@ -70,7 +70,7 @@ namespace Cache {
             lock.unlock();
 
             onDone(success, success ? nextVersion : 0);
-            }, nullptr, onFailure);
+            }, onFailure);
         if (enqueueResult != DBEnqueueResult::Queued) {
             onFailure();
         }

@@ -77,7 +77,7 @@ namespace Cache {
                     return conn->ExecuteUpdate(StatementId::InsertBazaarListing, itemID, request.characterID, itemType, request.quantity, request.price);
                 }, restore, reportUnknown);
                 completed(static_cast<BazaarRegistrationStatus>(status));
-            }, nullptr, failed);
+            }, failed);
             if (outcome != DBEnqueueResult::Queued) {
                 // Rejection proves INSERT never ran, so compensation is permitted.
                 completed(static_cast<BazaarRegistrationStatus>(ResolveBazaarRegister([] { return 0; }, restore, reportUnknown)));
