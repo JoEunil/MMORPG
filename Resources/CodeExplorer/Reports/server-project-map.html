@@ -732,7 +732,7 @@ const viewGuides = {
 const inspectionGuides = {
   "parameter-groups": "이름·타입·순서가 같은 인자 3개 이상이 서로 다른 함수 3개 이상에서 반복되는 곳을 찾습니다. 함께 전달되는 값들이 한 개념이라면 구조체로 묶을 수 있는지 검토하세요.",
   "class-cohesion": "공유 필드와 내부 호출을 기준으로 분리된 메서드 묶음을 찾습니다. 내부 멤버 지도에서 묶음별 메서드·필드 관계를 살펴보고 클래스 책임 분리를 검토하세요.",
-  "responsibility-concentration": "선정 기준: struct·추상 클래스와 코드 위치가 없는 타입은 제외하고, 다른 비-struct 타입에 대한 멤버 선언 또는 정적으로 확인된 호출을 집계합니다. 최소 의존 그룹 수는 기본 5이며 이 화면에서 변경할 수 있습니다. 기준 이상인 클래스를 의존 그룹 수가 많은 순으로 정렬합니다. 같은 단일 직접 기반 타입을 공유하는 대상은 한 그룹으로 세고 실제 타입 수도 함께 표시합니다. 상속 관계 자체는 의존 개수에 넣지 않습니다. 책임 위반을 확정하는 검사가 아니라 검토 순서를 정하는 목록입니다.",
+  "responsibility-concentration": "선정 기준: struct·추상 클래스와 코드 위치가 없는 타입은 제외하고, 다른 비-struct 타입에 대한 멤버 선언 또는 정적으로 확인된 호출을 집계합니다. 최소 의존 그룹 수는 기본 5이며 이 화면에서 변경할 수 있습니다. 기준 이상인 클래스를 의존 그룹 수가 많은 순으로 정렬합니다. 같은 대상의 멤버 타입·호출 관계는 1개로 집계하고 지도에서도 선 하나로 합칩니다. 같은 단일 직접 기반 타입을 공유하는 대상은 한 그룹으로 세고 실제 타입 수도 함께 표시합니다. 상속 관계 자체는 의존 개수에 넣지 않습니다. 책임 위반을 확정하는 검사가 아니라 검토 순서를 정하는 목록입니다.",
   "loop-copy": "범위 기반 반복문에서 std::string 계열이나 std::vector를 복사하는 곳을 찾습니다. 원본을 읽기만 한다면 const 참조로 받을 수 있는지 확인하세요. 독립된 복사본이 필요한 경우도 있습니다.",
   "loop-search": "반복문 안에서 std::find 계열의 선형 검색을 호출하는 곳을 찾습니다. 데이터 크기와 반복 횟수를 확인하고, 검색을 반복문 밖으로 옮기거나 다른 자료구조를 쓸 필요가 있는지 검토하세요.",
   "loop-allocation": "반복문 안에서 new나 지원하는 표준 할당 함수를 호출하는 곳을 찾습니다. 실행 빈도와 측정 결과를 보고 미리 공간을 확보하거나 객체를 재사용할 필요가 있는지 검토하세요. 호출한 함수의 내부까지 추적하지는 않습니다."
@@ -754,6 +754,7 @@ const types = {
   external: { name: "외부 라이브러리", color: "#f4bd7a" },
   inherits: { name: "상속", color: "#72c5ff", description: "파생 타입에서 기반 타입으로 향하는 관계입니다." },
   field: { name: "멤버 타입", color: "#60dbbd", description: "멤버 변수로 보관하는 타입과의 관계입니다. 포인터·참조·컨테이너 내부 타입도 포함하며 객체 소유권을 뜻하지는 않습니다. 현재 static 멤버는 수집하지 않습니다." },
+  dependency: { name: "의존성", color: "#8dbfe0", description: "책임 집중 후보에서 같은 대상 클래스의 멤버 타입·호출 관계를 합친 의존성입니다. 원래 관계와 코드 위치는 상세 근거에서 확인합니다." },
   call: { name: "정적 호출", color: "#d3b1fc", description: "메서드 호출을 통해 사용하는 타입과의 관계입니다. 매개변수나 지역 변수를 통한 호출도 포함합니다. static 함수만 뜻하지 않으며, 가상 호출은 선언 타입 기준입니다." },
   "member-access": { name: "멤버 접근", color: "#C7B68B" },
   aggregate: { name: "필터 간 연결", color: "#acd1f3" },
@@ -1288,11 +1289,21 @@ function updateMemberClasses() {
   get("member-class").value = options.some(node => node.id === state.memberClassId) ? state.memberClassId : "";
 }
 
+function mergeResponsibilityEdges(edges) {
+  const groups = groupByNamespace(edges, edge => JSON.stringify([edge.from, edge.to]));
+  return [...groups.values()].map(relations => relations.length === 1 ? relations[0] : {
+    from: relations[0].from, to: relations[0].to, kind: "dependency",
+    evidence: relations.flatMap(edge => edge.evidence ?? []), relations
+  });
+}
+
 function openRelatedMap(map, title, evidence = []) {
   if (!map?.nodes?.length || !["class", "method", "members"].includes(map.view)) return;
   for (const node of map.nodes) if (!byId.has(node.id)) byId.set(node.id, node);
   const ids = new Set(map.nodes.map(node => node.id));
-  const edges = (map.edges ?? []).filter(edge => ids.has(edge.from) && ids.has(edge.to));
+  const relatedEdges = (map.edges ?? []).filter(edge => ids.has(edge.from) && ids.has(edge.to));
+  const responsibility = state.inspectionView && get("inspection-case").value === "responsibility-concentration";
+  const edges = responsibility ? mergeResponsibilityEdges(relatedEdges) : relatedEdges;
   const context = { ...map, edges, title, evidence, returnView: state.inspectionView ?? state.view,
     returnCase: state.inspectionView ? get("inspection-case").value : null,
     key: JSON.stringify([title, [...ids].sort(), edges.map(edge => [edge.from, edge.to, edge.kind])]) };
