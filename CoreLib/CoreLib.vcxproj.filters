@@ -182,6 +182,9 @@
     <ClInclude Include="World\ZoneHandler.h">
       <Filter>World</Filter>
     </ClInclude>
+    <ClInclude Include="World\ZoneEventHandler.h">
+      <Filter>World</Filter>
+    </ClInclude>
     <ClInclude Include="World\LobbyZone.h">
       <Filter>World</Filter>
     </ClInclude>
@@ -328,6 +331,9 @@
       <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="World\ZoneHandler.cpp">
+      <Filter>World</Filter>
+    </ClCompile>
+    <ClCompile Include="World\ZoneEventHandler.cpp">
       <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="Packet\PacketDispatcher.cpp">

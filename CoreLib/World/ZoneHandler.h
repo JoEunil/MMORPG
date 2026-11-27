@@ -10,10 +10,9 @@
 #include "../Packet/PacketTypes.h"
 
 namespace Core {
-    class CacheCommandSender;
     class IServerResponseQueue;
     class PacketWriter;
-    class LobbyZone;
+    class ZoneEventHandler;
 
     class ZoneHandler {
         IServerResponseQueue* responses = nullptr;
@@ -21,17 +20,15 @@ namespace Core {
         SessionManager* sessionManager = nullptr;
         IZoneTransfer* zoneTransfer = nullptr;
         IZoneRequestQueue* zoneRequests = nullptr;
-        const CacheCommandSender* cacheCommands = nullptr;
-        LobbyZone* lobbyZone = nullptr;
+        ZoneEventHandler* events = nullptr;
 
-        void Initialize(SessionManager* m, IServerResponseQueue& responseQueue, PacketWriter& packetWriter, IZoneTransfer& transfer, LobbyZone& lobby, const CacheCommandSender& commands, IZoneRequestQueue& requests) {
+        void Initialize(SessionManager* m, IServerResponseQueue& responseQueue, PacketWriter& packetWriter, IZoneTransfer& transfer, IZoneRequestQueue& requests, ZoneEventHandler& eventHandler) {
             sessionManager = m;
             responses = &responseQueue;
             writer = &packetWriter;
             zoneTransfer = &transfer;
             zoneRequests = &requests;
-            cacheCommands = &commands;
-            lobbyZone = &lobby;
+            events = &eventHandler;
         }
 
         bool IsReady() const {
@@ -55,12 +52,8 @@ namespace Core {
                 sysLogger->LogError("zone handler", "zone transfer not initialized");
                 return false;
             }
-            if (lobbyZone == nullptr) {
-                sysLogger->LogError("zone handler", "lobby zone not initialized");
-                return false;
-            }
-            if (cacheCommands == nullptr) {
-                sysLogger->LogError("zone handler", "cache command sender not initialized");
+            if (events == nullptr) {
+                sysLogger->LogError("zone handler", "zone event handler not initialized");
                 return false;
             }
             return true;
@@ -70,12 +63,6 @@ namespace Core {
         void ProcessItemUse(ZoneState& zone, IPacketView* packet);
         void ProcessEquipment(ZoneState& zone, IPacketView* packet, uint16_t zoneID);
         ParryResponseBody ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request);
-        void ProcessZoneTransfer(ZoneState& zone, const std::shared_ptr<ZoneTransfer>& transfer, bool returning);
-        void ProcessLobbyEntry(ZoneState& zone, const ZoneLobbyEntryEvent& request);
-        void ProcessRespawn(ZoneState& zone, const ZoneRespawnEvent& request);
-        void ProcessBootstrap(ZoneState& zone, const ZoneBootstrapEvent& request);
-        void SendZoneChangeFailed(uint64_t sessionID);
-        void SendZoneChange(uint64_t sessionID, const ZoneChangeResult& transition);
 
         struct EventVisitor {
             ZoneHandler& handler;
@@ -136,7 +123,6 @@ namespace Core {
         void SaveRemainingCharacters(ZoneState& zone);
         void Process(ZoneState& zone, IPacketView* p, uint16_t zoneID);
         void ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneDisconnectEvent& request);
-        void ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update);
 
       private:
         static void BroadcastDeltaState(ZoneState& zone) {
