@@ -7,7 +7,6 @@
 
 #include <CoreLib/Config.h>
 #include <CoreLib/Interface/IProfileCache.h>
-#include <CoreLib/Packet/PacketTypes.h>
 
 #include "DB/DBWorker.h"
 #include "DB/DBConfig.h"

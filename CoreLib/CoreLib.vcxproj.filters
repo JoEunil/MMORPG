@@ -271,6 +271,9 @@
     <ClInclude Include="Interface\IProfileCache.h">
       <Filter>Interface</Filter>
     </ClInclude>
+    <ClInclude Include="Interface\ProfileEntry.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
     <ClInclude Include="NonSimulation\ChatSessionManager.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>

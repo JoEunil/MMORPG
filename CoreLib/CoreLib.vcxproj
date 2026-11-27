@@ -253,6 +253,7 @@
     </ClInclude>
     <ClCompile Include="Cache\InMemoryQueue.cpp" />
     <ClInclude Include="Interface\IProfileCache.h" />
+    <ClInclude Include="Interface\ProfileEntry.h" />
     <ClInclude Include="Interface\IInventoryOperations.h" />
     <ClInclude Include="Cache\MessagePool.h" />
     <ClCompile Include="Cache\MessageQueueHandler.cpp" />

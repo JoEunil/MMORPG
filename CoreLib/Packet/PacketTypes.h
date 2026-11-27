@@ -4,6 +4,7 @@
 #include <string_view>
 #include "PacketConfig.h"
 #include "PacketHeader.h"
+#include "../Interface/ProfileEntry.h"
 
 namespace Core {
     constexpr inline const uint8_t FLAG_SIMULATION = 0x01;
@@ -470,12 +471,6 @@ namespace Core {
     struct ProfileBatchReqBody {
         uint16_t count;
         uint32_t profileIds[MAX_PROFILE_BATCH];
-    };
-
-    struct ProfileEntry {
-        uint32_t profileId;
-        uint32_t version;
-        uint8_t  name[MAX_CHARNAME_LEN];
     };
 
     // 캐시에 있는 값만 담는다. 요청했는데 응답에 없는 profile_id는 미접속 상태라

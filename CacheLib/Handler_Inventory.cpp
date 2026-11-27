@@ -16,7 +16,6 @@ namespace Cache {
         const auto characterID = body->characterID;
         InventoryCacheItem res = cache_inventory->Getter(characterID);
         Core::MsgInventoryResBody response{};
-        response.resStatus = Core::RES_STATUS::FAILED;
         if (res.status == CACHE_STATUS::AVAILABLE) {
             response.resStatus = 1;
             uint16_t n = 0;
