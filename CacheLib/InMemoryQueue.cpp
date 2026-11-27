@@ -1,6 +1,6 @@
 ﻿#include "pch.h"
 #include "InMemoryQueue.h"
-#include "Handler.h"
+#include "MessageDispatcher.h"
 
 namespace Cache {
     namespace {
@@ -64,7 +64,7 @@ namespace Cache {
         Core::ScopedMessage work;
         while (m_workQueue.Dequeue(work))
         {
-            handler->Process(std::move(work));
+            messageDispatcher->Process(std::move(work));
         }
         Core::sysLogger->LogInfo("cache mq", "mq thread stopped", {{"threadID", ss.str()}});
     }

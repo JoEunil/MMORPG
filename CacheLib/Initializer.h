@@ -13,13 +13,14 @@
 #include "CacheStorageCurrency.h"
 #include "ProfileCache.h"
 #include "InmemoryQueue.h"
-#include "Handler.h"
+#include "MessageDispatcher.h"
 #include "CacheResponseSender.h"
 #include "BazaarRegistration.h"
 #include "BazaarHandler.h"
 #include "CurrencyHandler.h"
 #include "DiamondHandler.h"
 #include "InventoryHandler.h"
+#include "CharacterHandler.h"
 #include "DB/DBWorker.h"
 #include "WALManager.h"
 
@@ -41,7 +42,8 @@ namespace Cache {
         CurrencyHandler currencyHandler;
         DiamondHandler diamondHandler;
         InventoryHandler inventoryHandler;
-        Handler handler;
+        CharacterHandler characterHandler;
+        MessageDispatcher messageDispatcher;
         InMemoryQueue recvMQ;
         DBConnectionPool<DBConnectionGame> connectionPoolGame;
         DBConnectionPool<DBConnectionBazaar> connectionPoolBazaar;
@@ -91,8 +93,9 @@ namespace Cache {
             currencyHandler.Initialize(&responses, &cache_currency);
             diamondHandler.Initialize(&responses, &dbWorkerBazaar);
             inventoryHandler.Initialize(&responses, &cache_inventory);
-            handler.Initialize(&responses, &dbWorkerGame, &cache_inventory, &cache_profile, &bazaarHandler, &currencyHandler, &diamondHandler, &inventoryHandler);
-            recvMQ.Initialize(&handler, &messagePool, durableLogger);
+            characterHandler.Initialize(&responses, &dbWorkerGame, &cache_inventory, &cache_profile);
+            messageDispatcher.Initialize(&bazaarHandler, &currencyHandler, &diamondHandler, &inventoryHandler, &characterHandler);
+            recvMQ.Initialize(&messageDispatcher, &messagePool, durableLogger);
             recvMQ.Start();
         }
         
@@ -109,7 +112,8 @@ namespace Cache {
                 or !currencyHandler.IsReady()
                 or !diamondHandler.IsReady()
                 or !inventoryHandler.IsReady()
-                or !handler.IsReady()
+                or !characterHandler.IsReady()
+                or !messageDispatcher.IsReady()
                 or !dbWorkerGame.IsReady()
                 or !dbWorkerBazaar.IsReady()
                 or !walManager.IsReady()) {

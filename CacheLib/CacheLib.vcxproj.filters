@@ -54,7 +54,7 @@
     <ClInclude Include="DB\DBConnectionPool.h">
       <Filter>DB</Filter>
     </ClInclude>
-    <ClInclude Include="Handler.h">
+    <ClInclude Include="MessageDispatcher.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="BazaarHandler.h">
@@ -67,6 +67,9 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="InventoryHandler.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="CharacterHandler.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="CacheResponseSender.h">
@@ -113,7 +116,7 @@
     <ClCompile Include="InMemoryQueue.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Handler.cpp">
+    <ClCompile Include="MessageDispatcher.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="CacheFlush.cpp">
@@ -138,6 +141,9 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="InventoryHandler.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="CharacterHandler.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="CurrencyHandler.cpp">

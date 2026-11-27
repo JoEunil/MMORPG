@@ -14,20 +14,20 @@
 #include <CoreLib/Interface/IMessagePool.h>
 
 namespace Cache {
-    class Handler;
+    class MessageDispatcher;
     class InMemoryQueue :public Core::IMessageQueue {
         std::vector<std::thread> m_threads;
         Base::BlockingBackPressureQueue<Core::ScopedMessage, MQ_SIZE, MQ_DEFER_SIZE, true> m_workQueue;
 
         std::atomic<bool> m_running = false;
-        Handler* handler = nullptr;
+        MessageDispatcher* messageDispatcher = nullptr;
         Core::IMessagePool* messagePool = nullptr;
         Core::IDurableLog* durableLogger = nullptr;
 
         bool WriteDurable(const Core::IMessage* message);
         
-        void Initialize(Handler* h, Core::IMessagePool* m, Core::IDurableLog* d) {
-            handler = h;
+        void Initialize(MessageDispatcher* h, Core::IMessagePool* m, Core::IDurableLog* d) {
+            messageDispatcher = h;
             messagePool = m;
             durableLogger = d;
             m_workQueue.SetDurableLog([this](const Core::ScopedMessage& message) {
@@ -44,8 +44,8 @@ namespace Cache {
                 Core::sysLogger->LogError("cache mq", "invalid thread size");
                 return false;
             }
-            if (handler == nullptr) {
-                Core::sysLogger->LogError("cache mq", "handler not initiailized");
+            if (messageDispatcher == nullptr) {
+                Core::sysLogger->LogError("cache mq", "message dispatcher not initialized");
                 return false;
             }
             if (messagePool == nullptr) {
