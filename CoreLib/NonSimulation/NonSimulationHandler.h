@@ -6,6 +6,7 @@
 
 namespace Core {
     class CacheCommandSender;
+    class SessionLifecycleHandler;
     class IZonePacketQueue;
     class IZoneRequestQueue;
     class ISessionAuth;
@@ -25,7 +26,7 @@ namespace Core {
             void operator()(NonSimulationLobbyReturnEvent& event) const;
         };
 
-        void Initialize(IServerResponseQueue& responseQueue, PacketWriter& packetWriter, ISessionAuth* s, const CacheCommandSender* commands, SessionManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc, IZonePacketQueue& packets, IZoneRequestQueue& requests);
+        void Initialize(IServerResponseQueue& responseQueue, PacketWriter& packetWriter, ISessionAuth* s, const CacheCommandSender* commands, SessionManager* manager, LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc, IZonePacketQueue& packets, IZoneRequestQueue& requests, SessionLifecycleHandler& sessionLifecycle);
         bool IsReady() const;
         void CheckSession(IPacketView* p);
         void ResponseSession(uint64_t sessionID, uint8_t resStatus, uint64_t userID);
@@ -46,6 +47,7 @@ namespace Core {
         void ZoneChange(IPacketView* p);
         void RespawnToTown(IPacketView* p);
         void GetProfileBatch(IPacketView* p);
+        SessionLifecycleHandler* lifecycle = nullptr;
         IZonePacketQueue* zonePackets = nullptr;
         IZoneRequestQueue* zoneRequests = nullptr;
         IServerResponseQueue* responses = nullptr;
@@ -61,8 +63,6 @@ namespace Core {
         void Process(NonSimulationEvent& event);
 
         void Process(std::unique_ptr<IPacketView, PacketViewDeleter> packet);
-        void Disconnect(uint64_t sessionID);
-        void ReturnToLobby(const std::shared_ptr<ZoneTransfer>& transfer);
 
         void RequestProfileRename(uint64_t sessionID, uint32_t profileId, const char* name, uint16_t nameLen);
     };

@@ -10,15 +10,6 @@
 #include "../World/Interface/IZoneRequestQueue.h"
 
 namespace Core {
-    void NonSimulationHandler::ReturnToLobby(const std::shared_ptr<ZoneTransfer>& transfer) {
-        const auto sessionID = transfer->character.sessionID;
-        const auto epoch = lobbyZone->ReturnZoneTransfer(transfer);
-        if (!epoch)
-            return;
-
-        responses->Enqueue(sessionID, writer->WriteZoneChangeLobby(*epoch));
-    }
-
     void NonSimulationHandler::ZoneChange(IPacketView* p) {
         const auto session = p->GetSessionID();
         if (p->GetLength() == sizeof(PacketStruct<ZoneChangeBody>)) {

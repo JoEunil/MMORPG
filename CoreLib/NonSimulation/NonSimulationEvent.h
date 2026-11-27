@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -21,6 +21,5 @@ namespace Core {
         std::shared_ptr<ZoneTransfer> transfer;
     };
 
-    using NonSimulationEvent = std::variant<NonSimulationWorkEvent,
-        NonSimulationDisconnectEvent, NonSimulationLobbyReturnEvent>;
+    using NonSimulationEvent = std::variant<NonSimulationWorkEvent, NonSimulationDisconnectEvent, NonSimulationLobbyReturnEvent>;
 }

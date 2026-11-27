@@ -159,6 +159,7 @@
     <ClInclude Include="HuntingZoneData.h" />
     <ClInclude Include="World\MonsterState.h" />
     <ClInclude Include="NonSimulation\NonSimulationHandler.h" />
+    <ClInclude Include="NonSimulation\SessionLifecycleHandler.h" />
     <ClInclude Include="NonSimulation\NonSimulationThreadPool.h" />
     <ClInclude Include="NonSimulation\NonSimulationEvent.h" />
     <ClInclude Include="NonSimulation\ChatEvent.h" />
@@ -221,6 +222,7 @@
     <ClCompile Include="Cache\DurableLogger.cpp" />
     <ClCompile Include="LoggerGlobal.cpp" />
     <ClCompile Include="NonSimulation\NonSimulationHandler.cpp" />
+    <ClCompile Include="NonSimulation\SessionLifecycleHandler.cpp" />
     <ClCompile Include="NonSimulation\NonSimulationHandler_Bazaar.cpp" />
     <ClCompile Include="NonSimulation\NonSimulationHandler_WorldEntry.cpp" />
     <ClCompile Include="NonSimulation\NonSimulationHandler_Zone.cpp" />

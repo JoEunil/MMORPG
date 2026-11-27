@@ -191,6 +191,9 @@
     <ClInclude Include="NonSimulation\NonSimulationHandler.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
+    <ClInclude Include="NonSimulation\SessionLifecycleHandler.h">
+      <Filter>NonSimulation</Filter>
+    </ClInclude>
     <ClInclude Include="NonSimulation\NonSimulationEvent.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
@@ -316,6 +319,9 @@
       <Filter>Packet</Filter>
     </ClCompile>
     <ClCompile Include="NonSimulation\NonSimulationHandler.cpp">
+      <Filter>NonSimulation</Filter>
+    </ClCompile>
+    <ClCompile Include="NonSimulation\SessionLifecycleHandler.cpp">
       <Filter>NonSimulation</Filter>
     </ClCompile>
     <ClCompile Include="NonSimulation\NonSimulationHandler_Bazaar.cpp">

@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include "NonSimulationHandler.h"
+#include "SessionLifecycleHandler.h"
 #include <utility>
 
 #include "../Cache/CacheCommandSender.h"
@@ -30,16 +31,17 @@ namespace Core {
     }
 
     void NonSimulationHandler::EventVisitor::operator()(NonSimulationDisconnectEvent& event) const {
-        handler.Disconnect(event.sessionID);
+        handler.lifecycle->Disconnect(event.sessionID);
     }
 
     void NonSimulationHandler::EventVisitor::operator()(NonSimulationLobbyReturnEvent& event) const {
-        handler.ReturnToLobby(event.transfer);
+        handler.lifecycle->ReturnToLobby(event.transfer);
         event.transfer.reset();
     }
 
     void NonSimulationHandler::Initialize(IServerResponseQueue& responseQueue, PacketWriter& packetWriter, ISessionAuth* s, const CacheCommandSender* commands, SessionManager* manager,
-        LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc, IZonePacketQueue& packets, IZoneRequestQueue& requests) {
+        LobbyZone* lobby, ChatThreadPool* c, IProfileCache* pc, IZonePacketQueue& packets, IZoneRequestQueue& requests, SessionLifecycleHandler& sessionLifecycle) {
+        lifecycle = &sessionLifecycle;
         zonePackets = &packets;
         zoneRequests = &requests;
         responses = &responseQueue;
@@ -53,6 +55,10 @@ namespace Core {
     }
 
     bool NonSimulationHandler::IsReady() const {
+        if (lifecycle == nullptr) {
+            sysLogger->LogError("non simulation handler", "session lifecycle handler not initialized");
+            return false;
+        }
         if (writer == nullptr) {
             sysLogger->LogError("non simulation handler", "packet writer not initialized");
             return false;
@@ -164,25 +170,6 @@ namespace Core {
         }
     }
 
-    void NonSimulationHandler::Disconnect(uint64_t sessionID) {
-        const auto request = sessionManager->BeginDisconnect(sessionID);
-        if (!request)
-            return;
-        if (request->zoneID != 0) {
-            if (!zoneRequests->TryEnqueueDisconnect(request->zoneID, sessionID, request->ownershipEpoch))
-                errorLogger->LogError("non simulation handler", "could not queue zone disconnect", {{"sessionID", sessionID}, {"zoneID", request->zoneID}});
-            return;
-        }
-        CharacterState character;
-        const bool save = request->chatID != 0 && lobbyZone->EmigrateChar(sessionID, character);
-        if (request->chatID == 0)
-            lobbyZone->Disconnect(sessionID);
-        if (!sessionManager->CompleteLobbyDisconnect(sessionID, request->ownershipEpoch))
-            errorLogger->LogError("non simulation handler", "lobby disconnect metadata changed", {{"sessionID", sessionID}});
-        if (save)
-            cacheCommands->EnqueueCharacterStateUpdate(sessionID, character);
-    }
-
     void NonSimulationHandler::RequestProfileRename(uint64_t sessionID, uint32_t profileId, const char* name, uint16_t nameLen) {
         if (profileId == INVALID_PROFILE_ID || name == nullptr || nameLen == 0 || nameLen >= MAX_CHARNAME_LEN) {
             errorLogger->LogError("non zone handler", "profile rename invalid", {{"session", sessionID}, {"profile_id", profileId}, {"nameLen", nameLen}});
@@ -246,7 +233,8 @@ namespace Core {
         }
         if (p->GetLength() < sizeof(PacketStruct<ChatRequestBody>) + body->messageLength) {
             errorLogger->LogError("non zone handler", "message length invalid", {{"session", session}, {"messageLength", body->messageLength}});
-            Disconnect(session);
+            NonSimulationEvent disconnectEvent = NonSimulationDisconnectEvent{session};
+            Process(disconnectEvent);
             return;
         }
         event.message = std::string(reinterpret_cast<char*>(startPtr), body->messageLength);
@@ -268,13 +256,15 @@ namespace Core {
         // count는 클라이언트가 보낸 값이라 그대로 믿고 인덱싱하면 버퍼를 넘는다.
         if (body->count == 0 || body->count > MAX_PROFILE_BATCH) {
             errorLogger->LogError("non zone handler", "profile batch count invalid", {{"session", session}, {"count", body->count}});
-            Disconnect(session);
+            NonSimulationEvent disconnectEvent = NonSimulationDisconnectEvent{session};
+            Process(disconnectEvent);
             return;
         }
         const size_t needed = sizeof(PacketHeader) + sizeof(body->count) + body->count * sizeof(uint32_t);
         if (p->GetLength() < needed) {
             errorLogger->LogError("non zone handler", "profile batch length invalid", {{"session", session}, {"count", body->count}, {"length", p->GetLength()}});
-            Disconnect(session);
+            NonSimulationEvent disconnectEvent = NonSimulationDisconnectEvent{session};
+            Process(disconnectEvent);
             return;
         }
 

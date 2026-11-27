@@ -17,6 +17,7 @@
 #include "World/ZoneEventRouter.h"
 #include "World/ZoneHandler.h"
 #include "NonSimulation/NonSimulationHandler.h"
+#include "NonSimulation/SessionLifecycleHandler.h"
 #include "NonSimulation/NonSimulationThreadPool.h"
 #include "Packet/PacketDispatcher.h"
 #include "World/LobbyZone.h"
@@ -42,6 +43,7 @@ namespace Core {
         SessionManager sessionManager;
         BroadcastThreadPool broadcastPool;
         ServerResponseWorker responses;
+        SessionLifecycleHandler sessionLifecycleHandler;
         NonSimulationHandler nonSimulationHandler;
         NonSimulationThreadPool nonSimulationThreadPool;
         PacketDispatcher packetDispatcher;
@@ -79,7 +81,8 @@ namespace Core {
             broadcastPool.Start();
             ZoneState::Initialize(&broadcastPool, &writer, &sessionManager, &perfCollector, cacheCommandSender, responses);
             zoneHandler.Initialize(&sessionManager, responses, writer, zoneEventRouter, lobbyZone, cacheCommandSender, zoneEventRouter, inventory);
-            nonSimulationHandler.Initialize(responses, writer, session, &cacheCommandSender, &sessionManager, &lobbyZone, &chat, profileCache, zoneEventRouter, zoneEventRouter);
+            sessionLifecycleHandler.Initialize(sessionManager, lobbyZone, zoneEventRouter, cacheCommandSender, responses, writer);
+            nonSimulationHandler.Initialize(responses, writer, session, &cacheCommandSender, &sessionManager, &lobbyZone, &chat, profileCache, zoneEventRouter, zoneEventRouter, sessionLifecycleHandler);
             zoneEventRouter.Start();
             chat.Start();
             perfCollector.Start();
@@ -92,6 +95,7 @@ namespace Core {
                 or !mqHandler.IsReady()
                 or !recvMQ.IsReady()
                 or !zoneHandler.IsReady()
+                or !sessionLifecycleHandler.IsReady()
                 or !nonSimulationHandler.IsReady()
                 or !ZoneState::IsReady()
                 or !broadcastPool.IsReady()
