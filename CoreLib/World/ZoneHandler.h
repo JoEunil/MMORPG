@@ -6,20 +6,14 @@
 #include "ZoneThread.h"
 #include "Interface/IZoneTransfer.h"
 
-#include "../Cache/MessageTypes.h"
-#include "../Cache/MessagePool.h"
 #include "SessionManager.h"
 #include "../Packet/PacketTypes.h"
 
 namespace Core {
     class CacheCommandSender;
-    class ISessionAuth;
-    class IPacketView;
     class IServerResponseQueue;
     class PacketWriter;
-    class IMessageQueue;
     class LobbyZone;
-    class IInventoryOperations;
 
     class ZoneHandler {
         IServerResponseQueue* responses = nullptr;
@@ -27,18 +21,15 @@ namespace Core {
         SessionManager* sessionManager = nullptr;
         IZoneTransfer* zoneTransfer = nullptr;
         IZoneRequestQueue* zoneRequests = nullptr;
-        IInventoryOperations* inventory = nullptr;
         const CacheCommandSender* cacheCommands = nullptr;
         LobbyZone* lobbyZone = nullptr;
 
-        void Initialize(SessionManager* m, IServerResponseQueue& responseQueue, PacketWriter& packetWriter, IZoneTransfer& transfer, LobbyZone& lobby,
-            const CacheCommandSender& commands, IZoneRequestQueue& requests, IInventoryOperations* items) {
+        void Initialize(SessionManager* m, IServerResponseQueue& responseQueue, PacketWriter& packetWriter, IZoneTransfer& transfer, LobbyZone& lobby, const CacheCommandSender& commands, IZoneRequestQueue& requests) {
             sessionManager = m;
             responses = &responseQueue;
             writer = &packetWriter;
             zoneTransfer = &transfer;
             zoneRequests = &requests;
-            inventory = items;
             cacheCommands = &commands;
             lobbyZone = &lobby;
         }

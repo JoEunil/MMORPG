@@ -89,8 +89,8 @@ namespace Core {
             packetDispatcher.Initialize(nonSimulationThreadPool, zoneEventRouter, sessionManager);
             nonSimulationThreadPool.Start();
             broadcastPool.Start();
-            ZoneState::Initialize(&broadcastPool, &writer, &sessionManager, &perfCollector, cacheCommandSender, responses);
-            zoneHandler.Initialize(&sessionManager, responses, writer, zoneEventRouter, lobbyZone, cacheCommandSender, zoneEventRouter, inventory);
+            ZoneState::Initialize(&broadcastPool, &writer, &sessionManager, &perfCollector, cacheCommandSender, responses, inventory);
+            zoneHandler.Initialize(&sessionManager, responses, writer, zoneEventRouter, lobbyZone, cacheCommandSender, zoneEventRouter);
             sessionLifecycleHandler.Initialize(sessionManager, lobbyZone, zoneEventRouter, cacheCommandSender, responses, writer);
             worldEntryHandler.Initialize(&responses, &writer, session, &cacheCommandSender, &sessionManager);
             bazaarHandler.Initialize(&responses, &writer, &cacheCommandSender, &sessionManager);

@@ -89,14 +89,16 @@ namespace Core {
         inline static SessionManager* sessionManager;
         inline static const CacheCommandSender* cacheCommands = nullptr;
         inline static IServerResponseQueue* responses = nullptr;
+        inline static IInventoryOperations* inventory = nullptr;
         inline static CorePerfCollector* perfCollector;
         static void Initialize(BroadcastThreadPool* b, PacketWriter* p, SessionManager* s, CorePerfCollector* pc, const CacheCommandSender& commands,
-            IServerResponseQueue& responseQueue) {
+            IServerResponseQueue& responseQueue, IInventoryOperations* items = nullptr) {
             broadcast = b;
             writer = p;
             sessionManager = s;
             cacheCommands = &commands;
             responses = &responseQueue;
+            inventory = items;
             perfCollector = pc;
         }
         static bool IsReady() {
@@ -187,9 +189,9 @@ namespace Core {
         bool DescribeZoneChange(uint64_t sessionID, uint64_t chatID, uint64_t ownershipEpoch, ZoneChangeResult& result);
         bool EnqueueBootstrap(uint64_t sessionID, uint64_t ownershipEpoch, uint64_t bootstrapID);
 
-        std::optional<ItemUseResponseBody> UseItem(uint64_t sessionID, const ItemUseRequestBody& request, IInventoryOperations* inventory);
+        std::optional<ItemUseResponseBody> UseItem(uint64_t sessionID, const ItemUseRequestBody& request);
         std::optional<EquipmentResponseBody> Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot,
-            uint32_t itemID, IInventoryOperations* inventory);
+            uint32_t itemID);
         bool TakeCharacter(CharacterState& out);
         void InitializeMonster();
         bool EmigrateChar(uint64_t sessionID, CharacterState& o);

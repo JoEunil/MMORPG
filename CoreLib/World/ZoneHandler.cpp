@@ -2,15 +2,10 @@
 #include "ZoneHandler.h"
 #include "../Cache/CacheCommandSender.h"
 
-#include "../Interface/IPacketView.h"
-#include "../Interface/ISessionAuth.h"
-#include "../Interface/IMessageQueue.h"
 #include "../Response/Interface/IServerResponseQueue.h"
 #include "../Packet/PacketWriter.h"
 #include "ZoneState.h"
 #include "LobbyZone.h"
-#include "../Cache/Message.h"
-#include "../Cache/MessagePool.h"
 #include "../LoggerGlobal.h"
 #include <cmath>
 
@@ -201,7 +196,7 @@ namespace Core {
 
     void ZoneHandler::ProcessItemUse(ZoneState& zone, IPacketView* p) {
         const auto request = *parseBody<ItemUseRequestBody>(p->GetPtr());
-        const auto applied = zone.UseItem(p->GetSessionID(), request, inventory);
+        const auto applied = zone.UseItem(p->GetSessionID(), request);
         const auto result = applied.value_or(ItemUseResponseBody{request.requestID, request.itemID, 0, 0, 0});
         responses->Enqueue(p->GetSessionID(), writer->WriteItemUseResponse(result));
     }
@@ -225,7 +220,7 @@ namespace Core {
         EquipmentResponseBody result{requestID, epoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), slot};
         const auto check = sessionManager->CheckEquipment(p->GetSessionID(), zoneID, requestID, epoch, write, slot, itemID, result);
         if (check == SessionRequestStatus::Ready) {
-            if (const auto applied = zone.Equipment(p->GetSessionID(), requestID, epoch, write, slot, itemID, inventory)) {
+            if (const auto applied = zone.Equipment(p->GetSessionID(), requestID, epoch, write, slot, itemID)) {
                 result = *applied;
                 if (write)
                     sessionManager->RememberEquipment(p->GetSessionID(), zoneID, itemID, result);
