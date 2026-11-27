@@ -188,7 +188,7 @@
     <ClInclude Include="Packet\PacketDispatcher.h">
       <Filter>Packet</Filter>
     </ClInclude>
-    <ClInclude Include="NonSimulation\NonSimulationHandler.h">
+    <ClInclude Include="NonSimulation\NonSimulationDispatcher.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
     <ClInclude Include="NonSimulation\WorldEntryHandler.h">
@@ -333,7 +333,7 @@
     <ClCompile Include="Packet\PacketDispatcher.cpp">
       <Filter>Packet</Filter>
     </ClCompile>
-    <ClCompile Include="NonSimulation\NonSimulationHandler.cpp">
+    <ClCompile Include="NonSimulation\NonSimulationDispatcher.cpp">
       <Filter>NonSimulation</Filter>
     </ClCompile>
     <ClCompile Include="NonSimulation\WorldEntryHandler.cpp">

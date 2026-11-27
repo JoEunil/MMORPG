@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "NonSimulationHandler.h"
+#include "NonSimulationDispatcher.h"
 #include "SessionLifecycleHandler.h"
 #include "WorldEntryHandler.h"
 #include "BazaarRequestHandler.h"
@@ -11,62 +11,25 @@
 #include <utility>
 
 namespace Core {
-    void NonSimulationHandler::Process(NonSimulationEvent& event) {
+    void NonSimulationDispatcher::Process(NonSimulationEvent& event) {
         std::visit(EventVisitor{*this}, event);
     }
 
-    void NonSimulationHandler::EventVisitor::operator()(NonSimulationWorkEvent& event) const {
-        handler.Process(std::move(event.work));
+    void NonSimulationDispatcher::EventVisitor::operator()(NonSimulationWorkEvent& event) const {
+        dispatcher.ProcessPacket(std::move(event.work));
         event.work.reset();
     }
 
-    void NonSimulationHandler::EventVisitor::operator()(NonSimulationDisconnectEvent& event) const {
-        handler.lifecycle->Disconnect(event.sessionID);
+    void NonSimulationDispatcher::EventVisitor::operator()(NonSimulationDisconnectEvent& event) const {
+        dispatcher.lifecycle->Disconnect(event.sessionID);
     }
 
-    void NonSimulationHandler::EventVisitor::operator()(NonSimulationLobbyReturnEvent& event) const {
-        handler.lifecycle->ReturnToLobby(event.transfer);
+    void NonSimulationDispatcher::EventVisitor::operator()(NonSimulationLobbyReturnEvent& event) const {
+        dispatcher.lifecycle->ReturnToLobby(event.transfer);
         event.transfer.reset();
     }
 
-    void NonSimulationHandler::Initialize(WorldEntryHandler& worldEntryHandler, BazaarRequestHandler& bazaarHandler, ZoneRequestHandler& zoneHandler, PlayerDataRequestHandler& playerDataHandler, ChatRequestHandler& chatRequestsHandler, SessionLifecycleHandler& sessionLifecycle) {
-        worldEntry = &worldEntryHandler;
-        bazaar = &bazaarHandler;
-        zone = &zoneHandler;
-        playerData = &playerDataHandler;
-        chatRequests = &chatRequestsHandler;
-        lifecycle = &sessionLifecycle;
-    }
-
-    bool NonSimulationHandler::IsReady() const {
-        if (worldEntry == nullptr) {
-            sysLogger->LogError("non simulation handler", "worldEntry handler not initialized");
-            return false;
-        }
-        if (bazaar == nullptr) {
-            sysLogger->LogError("non simulation handler", "bazaar handler not initialized");
-            return false;
-        }
-        if (zone == nullptr) {
-            sysLogger->LogError("non simulation handler", "zone handler not initialized");
-            return false;
-        }
-        if (playerData == nullptr) {
-            sysLogger->LogError("non simulation handler", "playerData handler not initialized");
-            return false;
-        }
-        if (chatRequests == nullptr) {
-            sysLogger->LogError("non simulation handler", "chatRequests handler not initialized");
-            return false;
-        }
-        if (lifecycle == nullptr) {
-            sysLogger->LogError("non simulation handler", "lifecycle handler not initialized");
-            return false;
-        }
-        return true;
-    }
-
-    void NonSimulationHandler::Process(std::unique_ptr<IPacketView, PacketViewDeleter> packet) {
+    void NonSimulationDispatcher::ProcessPacket(std::unique_ptr<IPacketView, PacketViewDeleter> packet) {
         if (!packet)
             return;
         const auto opcode = packet->GetOpcode();

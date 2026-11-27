@@ -158,7 +158,7 @@
     <ClInclude Include="Data\MonsterData.h" />
     <ClInclude Include="HuntingZoneData.h" />
     <ClInclude Include="World\MonsterState.h" />
-    <ClInclude Include="NonSimulation\NonSimulationHandler.h" />
+    <ClInclude Include="NonSimulation\NonSimulationDispatcher.h" />
     <ClInclude Include="NonSimulation\WorldEntryHandler.h" />
     <ClInclude Include="NonSimulation\BazaarRequestHandler.h" />
     <ClInclude Include="NonSimulation\ZoneRequestHandler.h" />
@@ -226,7 +226,7 @@
     <ClCompile Include="Cache\CacheCommandSender.cpp" />
     <ClCompile Include="Cache\DurableLogger.cpp" />
     <ClCompile Include="LoggerGlobal.cpp" />
-    <ClCompile Include="NonSimulation\NonSimulationHandler.cpp" />
+    <ClCompile Include="NonSimulation\NonSimulationDispatcher.cpp" />
     <ClCompile Include="NonSimulation\WorldEntryHandler.cpp" />
     <ClCompile Include="NonSimulation\BazaarRequestHandler.cpp" />
     <ClCompile Include="NonSimulation\ZoneRequestHandler.cpp" />
