@@ -11,6 +11,27 @@
 
 namespace Core {
     namespace {
+        CharacterState BuildCharacterState(uint64_t sessionID, const MsgCharacterStateResBody& body) {
+            CharacterState character;
+            character.profileId = body.profileId;
+            character.profileVersion = body.profileVersion;
+            character.characterID = body.charID;
+            character.dir = body.dir;
+            character.attack = body.attack;
+            character.equipment = Equipment(body.equippedWeaponItemID, body.equippedShieldItemID, body.equippedBodyItemID);
+            character.level = body.level;
+            character.exp = body.exp;
+            character.hp = body.hp;
+            character.mp = body.mp;
+            character.maxHp = body.maxHp;
+            character.maxMp = body.maxMp;
+            character.lastZone = body.currentZone;
+            character.sessionID = sessionID;
+            character.x = body.startX;
+            character.y = body.startY;
+            return character;
+        }
+
         template<typename T>
         const T* ReadResponse(IMessage& msg) {
             if (msg.GetLength() != sizeof(MsgStruct<T>))
@@ -111,26 +132,9 @@ namespace Core {
 
     void MessageQueueHandler::CharacterStateResponse(uint64_t sessionID, const MsgCharacterStateResBody* body) {
         //client에서는 full snapshot 받을 때 까지 로딩 화면
-        CharacterState temp;
         if (body->resStatus != 0) {
-            // 이름은 zone이 들고 있지 않는다. 자기 이름은 EnterWorld 응답으로만 내려간다.
-            temp.profileId = body->profileId;
-            temp.profileVersion = body->profileVersion;
-            temp.characterID = body->charID;
-            temp.dir = body->dir;
-            temp.attack = body->attack;
-            temp.equipment = Equipment(body->equippedWeaponItemID, body->equippedShieldItemID, body->equippedBodyItemID);
-            temp.level = body->level;
-            temp.exp = body->exp;
-            temp.hp = body ->hp;
-            temp.mp = body ->mp;
-            temp.maxHp = body->maxHp;
-            temp.maxMp = body->maxMp;
-            temp.lastZone = body->currentZone;
-            temp.sessionID = sessionID;
-            temp.x = body->startX;
-            temp.y = body->startY;
-            if (!lobbyZone->ImmigrateChar(sessionID, temp)) {
+            auto character = BuildCharacterState(sessionID, *body);
+            if (!lobbyZone->ImmigrateChar(sessionID, character)) {
                 errorLogger->LogError("mq handler", "Failed to enter lobby");
                 return;
             }
