@@ -14,6 +14,7 @@
 #include "ProfileCache.h"
 #include "InmemoryQueue.h"
 #include "Handler.h"
+#include "CacheResponseSender.h"
 #include "BazaarRegistration.h"
 #include "DB/DBWorker.h"
 #include "WALManager.h"
@@ -31,6 +32,7 @@ namespace Cache {
         CacheStorageInventory cache_inventory;
         CacheStorageCurrency cache_currency;
         ProfileCache cache_profile;
+        CacheResponseSender responses;
         Handler handler;
         InMemoryQueue recvMQ;
         DBConnectionPool<DBConnectionGame> connectionPoolGame;
@@ -76,7 +78,8 @@ namespace Cache {
         void InjectDependencies(Core::IMessageQueue* sendMQ, Core::IMessagePool& messagePool,
             const Core::ICacheResponseWriter& responseWriter, Core::IDurableLog* durableLogger = nullptr)
         {
-            handler.Initialize(sendMQ, &responseWriter, &messagePool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile, &bazaarRegistration);
+            responses.Initialize(sendMQ, &responseWriter, &messagePool);
+            handler.Initialize(&responses, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile, &bazaarRegistration);
             recvMQ.Initialize(&handler, &messagePool, durableLogger);
             recvMQ.Start();
         }
@@ -89,6 +92,7 @@ namespace Cache {
                 or !cache_currency.IsReady()
                 or !cache_profile.IsReady()
                 or !bazaarRegistration.IsReady()
+                or !responses.IsReady()
                 or !handler.IsReady()
                 or !dbWorkerGame.IsReady()
                 or !dbWorkerBazaar.IsReady()

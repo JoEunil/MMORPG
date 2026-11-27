@@ -1,9 +1,9 @@
 ﻿#include "pch.h"
 #include "Handler.h"
+#include "CacheResponseSender.h"
 
 #include <CoreLib/Interface/IMessage.h>
 #include <CoreLib/Cache/MessageTypes.h>
-#include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
 
 #include "DB/DBWorker.h"
@@ -14,6 +14,7 @@ namespace Cache {
             return;
 
         const auto characterID = body->characterID;
+        msg.reset();
         InventoryCacheItem res = cache_inventory->Getter(characterID);
         Core::MsgInventoryResBody response{};
         if (res.status == CACHE_STATUS::AVAILABLE) {
@@ -28,15 +29,17 @@ namespace Cache {
             }
             response.itemCount = n;
         }
-        TryEnqueueResponse(*msg, { sessionID, Core::MSG_INVENTORY_RES }, response);
+        responses->Send({ sessionID, Core::MSG_INVENTORY_RES }, response);
     }
 
     void Handler::InventoryUpdate(ScopedMessage& msg, uint64_t sessionID, Core::MsgInventoryUpdateBody* body) {
         if (!CheckMessageLength<Core::MsgInventoryUpdateBody>(msg.get()))
             return;
 
-        const auto characterID = body->characterID;
-        const auto [status, itemID, slot, quantity] = cache_inventory->PartialUpdate(characterID, body->itemID, body->op, body->change);
+        const auto request = *body;
+        msg.reset();
+        const auto characterID = request.characterID;
+        const auto [status, itemID, slot, quantity] = cache_inventory->PartialUpdate(characterID, request.itemID, request.op, request.change);
         const Core::MsgInventoryUpdateResBody response{
             .resStatus = static_cast<uint8_t>(status == CACHE_STATUS::AVAILABLE),
             .characterID = characterID,
@@ -44,6 +47,6 @@ namespace Cache {
             .itemQuantity = quantity,
             .slot = slot
         };
-        TryEnqueueResponse(*msg, { sessionID, Core::MSG_INVENTORY_UPDATE_RES }, response);
+        responses->Send({ sessionID, Core::MSG_INVENTORY_UPDATE_RES }, response);
     }
 }

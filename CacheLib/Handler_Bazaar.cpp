@@ -1,12 +1,13 @@
 ﻿#include "pch.h"
 #include "Handler.h"
+#include "CacheResponseSender.h"
 
 #include <exception>
+#include <atomic>
 #include <memory>
 
 #include <CoreLib/Interface/IMessage.h>
 #include <CoreLib/Cache/MessageTypes.h>
-#include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/LoggerGlobal.h>
 
 #include "DB/DBWorker.h"
@@ -17,16 +18,9 @@ namespace Cache {
     template <typename Response, typename Work>
     void Handler::EnqueueBazaarQuery(Core::MsgHeader header, const Response& failureBody, const char* queueError, Work work) {
         const auto finish = [this, header, queueError](const Response& response) {
-            auto message = messagePool->AcquireScoped();
-            if (!message) {
-                Core::errorLogger->LogError("cache handler bazaar", "response message pool exhausted",
-                    {{"sessionID", header.sessionID}, {"messageType", header.messageType}, {"requestID", response.requestID}});
-                return;
-            }
-
-            bool queued = false;
+            CacheResponseSender::Result result;
             try {
-                queued = TryEnqueueResponse(*message, header, response);
+                result = responses->Send(header, response);
             }
             catch (const std::exception& e) {
                 // The queue may already have accepted the response before throwing.
@@ -39,7 +33,12 @@ namespace Cache {
                     {{"sessionID", header.sessionID}, {"requestID", response.requestID}});
                 return;
             }
-            if (!queued)
+            if (result == CacheResponseSender::Result::PoolExhausted) {
+                Core::errorLogger->LogError("cache handler bazaar", "response message pool exhausted",
+                    {{"sessionID", header.sessionID}, {"messageType", header.messageType}, {"requestID", response.requestID}});
+                return;
+            }
+            if (result == CacheResponseSender::Result::Rejected)
                 Core::errorLogger->LogError("cache handler bazaar", queueError, {{"sessionID", header.sessionID}});
         };
         const auto failed = [finish, failureBody] { finish(failureBody); };
@@ -93,12 +92,13 @@ namespace Cache {
             return;
 
         const auto request = *body;
-        const auto pending = std::make_shared<ScopedMessage>(std::move(msg));
-        const auto finish = [this, pending, sessionID, requestID = request.requestID, characterID = request.characterID](BazaarRegistrationStatus status) {
-            auto owned = std::move(*pending);
-            if (!owned) return;
+        msg.reset();
+        const auto completed = std::make_shared<std::atomic_bool>(false);
+        const auto finish = [this, completed, sessionID, requestID = request.requestID, characterID = request.characterID](BazaarRegistrationStatus status) {
+            if (completed->exchange(true))
+                return;
             const Core::MsgBazaarRegisterResBody response{static_cast<uint8_t>(status), requestID, characterID};
-            if (!TryEnqueueResponse(*owned, {sessionID, Core::MSG_BAZAAR_REGISTER_RES}, response))
+            if (responses->Send({sessionID, Core::MSG_BAZAAR_REGISTER_RES}, response) != CacheResponseSender::Result::Queued)
                 Core::errorLogger->LogError("cache handler bazaar", "register response queue rejected", {{"sessionID", sessionID}});
         };
         bazaarRegistration->Register({request.characterID, request.quantity, request.price, request.inventorySlot}, finish);
@@ -111,7 +111,8 @@ namespace Cache {
         // Cancellation and its return event commit together in the Bazaar DB.
         // Inventory capacity/cache availability can delay delivery, but cannot lose the item.
         const auto request = *body;
-        EnqueueMessageWork(dbWorkerBazaar, msg, [this, sessionID, request](DBConnectionBazaar* conn, Core::IMessage* msg) {
+        msg.reset();
+        dbWorkerBazaar->Enqueue([this, sessionID, request](DBConnectionBazaar* conn) {
             uint64_t characterID = request.characterID;
             auto res = conn->ExecuteSelect(StatementId::CancelBazaarListing, request.listingID, characterID);
             uint8_t result = 0;
@@ -125,7 +126,7 @@ namespace Cache {
                 }
             }
             const Core::MsgBazaarCancelResBody response{ static_cast<uint8_t>(result == 1) };
-            TryEnqueueResponse(*msg, { sessionID, Core::MSG_BAZAAR_CANCEL_RES }, response);
+            responses->Send({ sessionID, Core::MSG_BAZAAR_CANCEL_RES }, response);
         });
     }
 
@@ -134,14 +135,15 @@ namespace Cache {
             return;
 
         const auto request = *body;
-        auto pending = std::make_shared<ScopedMessage>(std::move(msg));
-        const auto finish = [this, pending, sessionID, request](Core::MsgBazaarBuyResBody response) {
-            auto owned = std::move(*pending);
-            if (!owned) return;
+        msg.reset();
+        const auto completed = std::make_shared<std::atomic_bool>(false);
+        const auto finish = [this, completed, sessionID, request](Core::MsgBazaarBuyResBody response) {
+            if (completed->exchange(true))
+                return;
             response.requestID = request.requestID;
             response.listingID = request.listingID;
             response.characterID = request.characterID;
-            if (!TryEnqueueResponse(*owned, { sessionID, Core::MSG_BAZAAR_BUY_RES }, response))
+            if (responses->Send({ sessionID, Core::MSG_BAZAAR_BUY_RES }, response) != CacheResponseSender::Result::Queued)
                 Core::errorLogger->LogError("cache handler bazaar", "buy response queue rejected", {{"sessionID", sessionID}});
         };
         const auto failed = [finish] {
@@ -163,14 +165,15 @@ namespace Cache {
             return;
 
         const auto request = *body;
-        auto pending = std::make_shared<ScopedMessage>(std::move(msg));
-        const auto finish = [this, pending, sessionID, request](Core::MsgBazaarCancelListingResBody response) {
-            auto owned = std::move(*pending);
-            if (!owned) return;
+        msg.reset();
+        const auto completed = std::make_shared<std::atomic_bool>(false);
+        const auto finish = [this, completed, sessionID, request](Core::MsgBazaarCancelListingResBody response) {
+            if (completed->exchange(true))
+                return;
             response.requestID = request.requestID;
             response.listingID = request.listingID;
             response.characterID = request.characterID;
-            if (!TryEnqueueResponse(*owned, { sessionID, Core::MSG_BAZAAR_CANCEL_LISTING_RES }, response))
+            if (responses->Send({ sessionID, Core::MSG_BAZAAR_CANCEL_LISTING_RES }, response) != CacheResponseSender::Result::Queued)
                 Core::errorLogger->LogError("cache handler bazaar", "cancel response queue rejected", {{"sessionID", sessionID}});
         };
         const auto failed = [finish] {
@@ -195,14 +198,15 @@ namespace Cache {
             return;
 
         const auto request = *body;
-        auto pending = std::make_shared<ScopedMessage>(std::move(msg));
-        const auto finish = [this, pending, sessionID, request](Core::MsgBazaarClaimResBody response) {
-            auto owned = std::move(*pending);
-            if (!owned) return;
+        msg.reset();
+        const auto completed = std::make_shared<std::atomic_bool>(false);
+        const auto finish = [this, completed, sessionID, request](Core::MsgBazaarClaimResBody response) {
+            if (completed->exchange(true))
+                return;
             response.requestID = request.requestID;
             response.listingID = request.listingID;
             response.characterID = request.characterID;
-            if (!TryEnqueueResponse(*owned, { sessionID, Core::MSG_BAZAAR_CLAIM_RES }, response))
+            if (responses->Send({ sessionID, Core::MSG_BAZAAR_CLAIM_RES }, response) != CacheResponseSender::Result::Queued)
                 Core::errorLogger->LogError("cache handler bazaar", "claim response queue rejected", {{"sessionID", sessionID}});
         };
         const auto failed = [finish] { finish(Core::MsgBazaarClaimResBody{}); };
@@ -221,13 +225,14 @@ namespace Cache {
             return;
 
         const auto request = *body;
-        auto pending = std::make_shared<ScopedMessage>(std::move(msg));
-        const auto finish = [this, pending, sessionID, request](Core::MsgBazaarOutboxListResBody response) {
-            auto owned = std::move(*pending);
-            if (!owned) return;
+        msg.reset();
+        const auto completed = std::make_shared<std::atomic_bool>(false);
+        const auto finish = [this, completed, sessionID, request](Core::MsgBazaarOutboxListResBody response) {
+            if (completed->exchange(true))
+                return;
             response.requestID = request.requestID;
             response.characterID = request.characterID;
-            if (!TryEnqueueResponse(*owned, { sessionID, Core::MSG_BAZAAR_OUTBOX_LIST_RES }, response))
+            if (responses->Send({ sessionID, Core::MSG_BAZAAR_OUTBOX_LIST_RES }, response) != CacheResponseSender::Result::Queued)
                 Core::errorLogger->LogError("cache handler bazaar", "outbox list response queue rejected", {{"sessionID", sessionID}});
         };
         const auto failed = [finish] { finish(Core::MsgBazaarOutboxListResBody{}); };
@@ -246,13 +251,14 @@ namespace Cache {
             return;
 
         const auto request = *body;
-        auto pending = std::make_shared<ScopedMessage>(std::move(msg));
-        const auto finish = [this, pending, sessionID, request](Core::MsgBazaarCheckOutboxResBody response) {
-            auto owned = std::move(*pending);
-            if (!owned) return;
+        msg.reset();
+        const auto completed = std::make_shared<std::atomic_bool>(false);
+        const auto finish = [this, completed, sessionID, request](Core::MsgBazaarCheckOutboxResBody response) {
+            if (completed->exchange(true))
+                return;
             response.requestID = request.requestID;
             response.characterID = request.characterID;
-            if (!TryEnqueueResponse(*owned, { sessionID, Core::MSG_BAZAAR_CHECK_OUTBOX_RES }, response))
+            if (responses->Send({ sessionID, Core::MSG_BAZAAR_CHECK_OUTBOX_RES }, response) != CacheResponseSender::Result::Queued)
                 Core::errorLogger->LogError("cache handler bazaar", "outbox response queue rejected", {{"sessionID", sessionID}});
         };
         const auto failed = [finish] { finish(Core::MsgBazaarCheckOutboxResBody{}); };

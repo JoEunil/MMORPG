@@ -159,6 +159,7 @@
     <ClInclude Include="DB\DBWorker.h" />
     <ClInclude Include="FlushDispatcher.h" />
     <ClInclude Include="Handler.h" />
+    <ClInclude Include="CacheResponseSender.h" />
     <ClInclude Include="BazaarRegistration.h" />
     <ClInclude Include="Initializer.h" />
     <ClInclude Include="InMemoryQueue.h" />

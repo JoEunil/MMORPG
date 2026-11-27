@@ -10,9 +10,7 @@
 #include "ProfileCache.h"
 #include "DB/DBWorker.h"
 #include "DB/DBConfig.h"
-#include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/Interface/IMessagePool.h>
-#include <CoreLib/Interface/ICacheResponseWriter.h>
 
 #include <CoreLib/LoggerGlobal.h>
 namespace Core {
@@ -22,12 +20,11 @@ namespace Core {
 
 namespace Cache {
     class BazaarRegistration;
+    class CacheResponseSender;
 
     class Handler {
         using ScopedMessage = Core::ScopedMessage;
-        Core::IMessageQueue* messageQ;  // response
-        const Core::ICacheResponseWriter* responseWriter = nullptr;
-        Core::IMessagePool* messagePool = nullptr;
+        CacheResponseSender* responses = nullptr;
         CacheStorageInventory* cache_inventory = nullptr;
         CacheStorageCurrency* cache_currency = nullptr;
         ProfileCache* cache_profile = nullptr;
@@ -38,31 +35,13 @@ namespace Cache {
         template <typename Response, typename Work>
         void EnqueueBazaarQuery(Core::MsgHeader header, const Response& failureBody, const char* queueError, Work work);
 
-        template <typename Connection, typename Work>
-        void EnqueueMessageWork(DBWorker<Connection>* worker, ScopedMessage& msg, Work&& work) {
-            // DBWorker stores copyable callbacks, so their copies share one scoped handle.
-            auto owned = std::make_shared<ScopedMessage>(std::move(msg));
-            worker->Enqueue([owned, work = std::forward<Work>(work)](Connection* conn) {
-                auto message = std::move(*owned);
-                work(conn, message.get());
-            });
-        }
-
         template <typename T>
         bool CheckMessageLength(const Core::IMessage* msg) {
             return msg->GetLength() == sizeof(Core::MsgStruct<T>);
         }
 
-        template <typename T>
-        bool TryEnqueueResponse(Core::IMessage& msg, Core::MsgHeader header, const T& body) {
-            static_assert(sizeof(Core::MsgStruct<T>) <= MESSAGE_LEN);
-            return responseWriter->WriteResponse(msg, header, body) && messageQ->EnqueueMessage(&msg);
-        }
-
-        void Initialize(Core::IMessageQueue* mq, const Core::ICacheResponseWriter* writer, Core::IMessagePool* mp, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp, BazaarRegistration* registration) {
-            messageQ = mq;
-            responseWriter = writer;
-            messagePool = mp;
+        void Initialize(CacheResponseSender* sender, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp, BazaarRegistration* registration) {
+            responses = sender;
             dbWorkerGame = dg;
             dbWorkerBazaar = db;
             cache_inventory = ci;
@@ -75,16 +54,8 @@ namespace Cache {
                 Core::sysLogger->LogError("cache handler", "bazaar registration not initialized");
                 return false;
             }
-            if (messageQ == nullptr) {
-                Core::sysLogger->LogError("cache handler", "messageQ not initialized");
-                return false;
-            }
-            if (responseWriter == nullptr) {
-                Core::sysLogger->LogError("cache handler", "cache response writer not initialized");
-                return false;
-            }
-            if (messagePool == nullptr) {
-                Core::sysLogger->LogError("cache handler", "messagePool not initialized");
+            if (responses == nullptr) {
+                Core::sysLogger->LogError("cache handler", "response sender not initialized");
                 return false;
             }
             if (dbWorkerGame == nullptr) {
