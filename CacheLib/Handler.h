@@ -7,7 +7,6 @@
 
 #include "Config.h"
 #include "CacheStorageInventory.h"
-#include "CacheStorageCurrency.h"
 #include "ProfileCache.h"
 #include "DB/DBWorker.h"
 #include "DB/DBConfig.h"
@@ -21,18 +20,20 @@ namespace Core {
 
 namespace Cache {
     class BazaarHandler;
+    class CurrencyHandler;
+    class DiamondHandler;
     class CacheResponseSender;
 
     class Handler {
         using ScopedMessage = Core::ScopedMessage;
         CacheResponseSender* responses = nullptr;
         CacheStorageInventory* cache_inventory = nullptr;
-        CacheStorageCurrency* cache_currency = nullptr;
         ProfileCache* cache_profile = nullptr;
         Core::ILogger* logger = nullptr;
         DBWorker<DBConnectionGame>* dbWorkerGame = nullptr;
-        DBWorker<DBConnectionBazaar>* dbWorkerBazaar = nullptr;
         BazaarHandler* bazaar = nullptr;
+        CurrencyHandler* currency = nullptr;
+        DiamondHandler* diamond = nullptr;
 
         template <typename T>
         bool CheckMessageLength(const Core::IMessage* msg) {
@@ -48,14 +49,14 @@ namespace Cache {
             return request;
         }
 
-        void Initialize(CacheResponseSender* sender, DBWorker<DBConnectionGame>* dg, DBWorker<DBConnectionBazaar>* db, CacheStorageInventory* ci, CacheStorageCurrency* cc, ProfileCache* cp, BazaarHandler* bazaarHandler) {
+        void Initialize(CacheResponseSender* sender, DBWorker<DBConnectionGame>* dg, CacheStorageInventory* ci, ProfileCache* cp, BazaarHandler* bazaarHandler, CurrencyHandler* currencyHandler, DiamondHandler* diamondHandler) {
             responses = sender;
             dbWorkerGame = dg;
-            dbWorkerBazaar = db;
             cache_inventory = ci;
-            cache_currency = cc;
             cache_profile = cp;
             bazaar = bazaarHandler;
+            currency = currencyHandler;
+            diamond = diamondHandler;
         }
         bool IsReady() {
             if (bazaar == nullptr) {
@@ -70,16 +71,16 @@ namespace Cache {
                 Core::sysLogger->LogError("cache handler", "dbWorkerGame not initialized");
                 return false;
             }
-            if (dbWorkerBazaar == nullptr) {
-                Core::sysLogger->LogError("cache handler", "dbWorkerBazaar not initialized");
+            if (diamond == nullptr) {
+                Core::sysLogger->LogError("cache handler", "diamond handler not initialized");
                 return false;
             }
             if (cache_inventory == nullptr) {
                 Core::sysLogger->LogError("cache handler", "cache_inventory not initialized");
                 return false;
             }
-            if (cache_currency == nullptr) {
-                Core::sysLogger->LogError("cache handler", "cache_currency not initialized");
+            if (currency == nullptr) {
+                Core::sysLogger->LogError("cache handler", "currency handler not initialized");
                 return false;
             }
             if (cache_profile == nullptr) {
@@ -93,10 +94,6 @@ namespace Cache {
         void CharacterStateUpdate(ScopedMessage& msg, uint64_t sessionID, Core::MsgCharacterStateUpdateBody* body);
         void InventoryRequest(ScopedMessage& msg, uint64_t sesionID, Core::MsgInventoryReqBody* body);
         void InventoryUpdate(ScopedMessage& msg, uint64_t sesionID, Core::MsgInventoryUpdateBody* body);
-        void CurrencyRequest(ScopedMessage& msg, uint64_t sesionID, Core::MsgCurrencyReqBody* body);
-        void CurrencyDeposit(ScopedMessage& msg, uint64_t sesionID, Core::MsgCurrencyDepositBody* body);
-        void DiamondRequest(ScopedMessage& msg, uint64_t sesionID, Core::MsgDiamondReqBody* body);
-        void DiamondDeposit(ScopedMessage& msg, uint64_t sesionID, Core::MsgDiamondDepositBody* body);
         void ProfileRename(ScopedMessage& msg, uint64_t sessionID, Core::MsgProfileRenameBody* body);
 
         friend class Initializer;

@@ -17,6 +17,8 @@
 #include "CacheResponseSender.h"
 #include "BazaarRegistration.h"
 #include "BazaarHandler.h"
+#include "CurrencyHandler.h"
+#include "DiamondHandler.h"
 #include "DB/DBWorker.h"
 #include "WALManager.h"
 
@@ -35,6 +37,8 @@ namespace Cache {
         ProfileCache cache_profile;
         CacheResponseSender responses;
         BazaarHandler bazaarHandler;
+        CurrencyHandler currencyHandler;
+        DiamondHandler diamondHandler;
         Handler handler;
         InMemoryQueue recvMQ;
         DBConnectionPool<DBConnectionGame> connectionPoolGame;
@@ -82,7 +86,9 @@ namespace Cache {
         {
             responses.Initialize(sendMQ, &responseWriter, &messagePool);
             bazaarHandler.Initialize(&responses, &dbWorkerBazaar, &cache_inventory, &bazaarRegistration);
-            handler.Initialize(&responses, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile, &bazaarHandler);
+            currencyHandler.Initialize(&responses, &cache_currency);
+            diamondHandler.Initialize(&responses, &dbWorkerBazaar);
+            handler.Initialize(&responses, &dbWorkerGame, &cache_inventory, &cache_profile, &bazaarHandler, &currencyHandler, &diamondHandler);
             recvMQ.Initialize(&handler, &messagePool, durableLogger);
             recvMQ.Start();
         }
@@ -97,6 +103,8 @@ namespace Cache {
                 or !bazaarRegistration.IsReady()
                 or !responses.IsReady()
                 or !bazaarHandler.IsReady()
+                or !currencyHandler.IsReady()
+                or !diamondHandler.IsReady()
                 or !handler.IsReady()
                 or !dbWorkerGame.IsReady()
                 or !dbWorkerBazaar.IsReady()

@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "Handler.h"
+#include "DiamondHandler.h"
 #include "CacheResponseSender.h"
 
 #include <CoreLib/Interface/IMessage.h>
@@ -9,13 +9,10 @@
 #include "DB/DBWorker.h"
 
 namespace Cache {
-    void Handler::DiamondRequest(ScopedMessage& msg, uint64_t sessionID, Core::MsgDiamondReqBody* body) {
-        if (!CheckMessageLength<Core::MsgDiamondReqBody>(msg.get()))
-            return;
+    void DiamondHandler::Request(uint64_t sessionID, Core::MsgDiamondReqBody request) {
 
-        const uint64_t characterID = body->characterID;
-        const uint32_t requestID = body->requestID;
-        msg.reset();
+        const uint64_t characterID = request.characterID;
+        const uint32_t requestID = request.requestID;
         dbWorkerBazaar->Enqueue([this, sessionID, characterID, requestID](DBConnectionBazaar* conn) {
             auto res = conn->ExecuteSelect(StatementId::SelectDiamond, characterID);
             const Core::MsgHeader header{ sessionID, Core::MSG_DIAMOND_RES };
@@ -37,12 +34,8 @@ namespace Cache {
             });
     }
 
-    void Handler::DiamondDeposit(ScopedMessage& msg, uint64_t sessionID, Core::MsgDiamondDepositBody* body) {
-        if (!CheckMessageLength<Core::MsgDiamondDepositBody>(msg.get()))
-            return;
+    void DiamondHandler::Deposit(uint64_t sessionID, Core::MsgDiamondDepositBody request) {
 
-        const auto request = *body;
-        msg.reset();
         dbWorkerBazaar->Enqueue([this, sessionID, request](DBConnectionBazaar* conn) {
             int affected = conn->ExecuteUpdate(StatementId::DepositDiamond, request.diamond, request.diamond, request.characterID);
             const Core::MsgHeader header{ sessionID, Core::MSG_DIAMOND_DEPOSIT_RES };

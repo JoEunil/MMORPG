@@ -1,22 +1,19 @@
 ﻿#include "pch.h"
-#include "Handler.h"
+#include "CurrencyHandler.h"
 #include "CacheResponseSender.h"
 
 #include <CoreLib/Interface/IMessage.h>
 #include <CoreLib/Cache/MessageTypes.h>
 #include <CoreLib/LoggerGlobal.h>
 
-#include "DB/DBWorker.h"
+#include "CacheStorageCurrency.h"
 #include <atomic>
 
 namespace Cache {
-    void Handler::CurrencyRequest(ScopedMessage& msg, uint64_t sessionID, Core::MsgCurrencyReqBody* body) {
-        if (!CheckMessageLength<Core::MsgCurrencyReqBody>(msg.get()))
-            return;
+    void CurrencyHandler::Request(uint64_t sessionID, Core::MsgCurrencyReqBody request) {
 
-        const uint64_t characterID = body->characterID;
-        const uint32_t requestID = body->requestID;
-        msg.reset();
+        const uint64_t characterID = request.characterID;
+        const uint32_t requestID = request.requestID;
         const CurrencyCacheItem res = cache_currency->Getter(characterID);
         const bool available = res.status == CACHE_STATUS::AVAILABLE;
         const Core::MsgCurrencyResBody response{
@@ -28,12 +25,8 @@ namespace Cache {
         responses->Send({ sessionID, Core::MSG_CURRENCY_RES }, response);
     }
 
-    void Handler::CurrencyDeposit(ScopedMessage& msg, uint64_t sessionID, Core::MsgCurrencyDepositBody* body) {
-        if (!CheckMessageLength<Core::MsgCurrencyDepositBody>(msg.get()))
-            return;
+    void CurrencyHandler::Deposit(uint64_t sessionID, Core::MsgCurrencyDepositBody request) {
 
-        const auto request = *body;
-        msg.reset();
         const auto completed = std::make_shared<std::atomic_bool>(false);
         cache_currency->GrantCurrency(request.characterID, request.gold,
             [this, completed, request, sessionID](CACHE_STATUS status, uint64_t gold) {

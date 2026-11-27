@@ -1,6 +1,8 @@
 ﻿#include "pch.h"
 #include "Handler.h"
 #include "BazaarHandler.h"
+#include "CurrencyHandler.h"
+#include "DiamondHandler.h"
 #include "CacheResponseSender.h"
 
 #include <CoreLib/Interface/IMessage.h>
@@ -40,16 +42,20 @@ namespace Cache {
             InventoryUpdate(msg, sessionID, Core::parseMsgBody<Core::MsgInventoryUpdateBody>(msg->GetBuffer()));
             break;
         case Core::MSG_CURRENCY_REQ:
-            CurrencyRequest(msg, sessionID, Core::parseMsgBody<Core::MsgCurrencyReqBody>(msg->GetBuffer()));
+            if (const auto request = ReadRequest<Core::MsgCurrencyReqBody>(msg))
+                currency->Request(sessionID, *request);
             break;
         case Core::MSG_CURRENCY_DEPOSIT:
-            CurrencyDeposit(msg, sessionID, Core::parseMsgBody<Core::MsgCurrencyDepositBody>(msg->GetBuffer()));
+            if (const auto request = ReadRequest<Core::MsgCurrencyDepositBody>(msg))
+                currency->Deposit(sessionID, *request);
             break;
         case Core::MSG_DIAMOND_REQ:
-            DiamondRequest(msg, sessionID, Core::parseMsgBody<Core::MsgDiamondReqBody>(msg->GetBuffer()));
+            if (const auto request = ReadRequest<Core::MsgDiamondReqBody>(msg))
+                diamond->Request(sessionID, *request);
             break;
         case Core::MSG_DIAMOND_DEPOSIT:
-            DiamondDeposit(msg, sessionID, Core::parseMsgBody<Core::MsgDiamondDepositBody>(msg->GetBuffer()));
+            if (const auto request = ReadRequest<Core::MsgDiamondDepositBody>(msg))
+                diamond->Deposit(sessionID, *request);
             break;
         case Core::MSG_BAZAAR_MY_LIST:
             if (const auto request = ReadRequest<Core::MsgBazaarMyListBody>(msg))

@@ -60,6 +60,12 @@
     <ClInclude Include="BazaarHandler.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="DiamondHandler.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="CurrencyHandler.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
     <ClInclude Include="CacheResponseSender.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
@@ -131,10 +137,10 @@
     <ClCompile Include="Handler_Inventory.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Handler_Currency.cpp">
+    <ClCompile Include="CurrencyHandler.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Handler_Diamond.cpp">
+    <ClCompile Include="DiamondHandler.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="ProfileCache.cpp">
