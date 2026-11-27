@@ -15,7 +15,7 @@ namespace Core {
     class SessionManager;
     class IZoneRequestQueue;
 
-    class MessageQueueHandler {
+    class CacheResponseHandler {
         // 캐시 or db 요청 결과 처리
         LobbyZone* lobbyZone = nullptr;
         IServerResponseQueue* responses = nullptr;

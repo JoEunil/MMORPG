@@ -6,7 +6,7 @@
 #include "Response/ServerResponseWorker.h"
 #include "Cache/InMemoryQueue.h"
 #include "Cache/MessagePool.h"
-#include "Cache/MessageQueueHandler.h"
+#include "Cache/CacheResponseHandler.h"
 #include "Cache/MessageWriter.h"
 #include "World/ZoneState.h"
 #include "Packet/PacketWriter.h"
@@ -38,7 +38,7 @@ namespace Core {
     class Initializer {
         CoreMessagePool msgPool;
         InMemoryQueue recvMQ;
-        MessageQueueHandler mqHandler;
+        CacheResponseHandler cacheResponseHandler;
         PacketWriter writer;
         MessageWriter messageWriter;
         CacheCommandSender cacheCommandSender;
@@ -76,8 +76,8 @@ namespace Core {
             writer.Initialize(packetPoolManager);
             responses.Initialize(*networkSender, zoneEventRouter);
             responses.Start();
-            mqHandler.Initialize(responses, writer, &lobbyZone, &sessionManager, zoneEventRouter);
-            recvMQ.Initialize(&mqHandler, &msgPool);
+            cacheResponseHandler.Initialize(responses, writer, &lobbyZone, &sessionManager, zoneEventRouter);
+            recvMQ.Initialize(&cacheResponseHandler, &msgPool);
             recvMQ.Start();
             chat.Initialize(networkSender, &writer, &perfCollector);
         }
@@ -107,7 +107,7 @@ namespace Core {
             if (!writer.IsReady()
                 or !msgPool.IsReady()
                 or !responses.IsReady()
-                or !mqHandler.IsReady()
+                or !cacheResponseHandler.IsReady()
                 or !recvMQ.IsReady()
                 or !zoneHandler.IsReady()
                 or !sessionLifecycleHandler.IsReady()

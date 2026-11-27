@@ -1,5 +1,5 @@
 ﻿#include "pch.h"
-#include "MessageQueueHandler.h"
+#include "CacheResponseHandler.h"
 #include "../Interface/IMessage.h"
 #include "MessageTypes.h"
 #include "../Response/Interface/IServerResponseQueue.h"
@@ -40,12 +40,12 @@ namespace Core {
         }
     }
 
-    bool MessageQueueHandler::IsCurrentFieldCharacter(uint64_t sessionID, uint64_t characterID) {
+    bool CacheResponseHandler::IsCurrentFieldCharacter(uint64_t sessionID, uint64_t characterID) {
         return sessionManager && characterID != 0 && sessionManager->GetFieldCharacterID(sessionID) == characterID;
     }
 
-    template<MessageQueueHandler::ResponseScope Scope, typename T>
-    void MessageQueueHandler::DispatchResponse(IMessage& msg, uint64_t sessionID, ResponseWriter<T> write) {
+    template<CacheResponseHandler::ResponseScope Scope, typename T>
+    void CacheResponseHandler::DispatchResponse(IMessage& msg, uint64_t sessionID, ResponseWriter<T> write) {
         const auto* body = ReadResponse<T>(msg);
         if (!body)
             return;
@@ -61,7 +61,7 @@ namespace Core {
         responses->Enqueue(sessionID, (writer->*write)(body));
     }
 
-    void MessageQueueHandler::Process(IMessage* msg) {
+    void CacheResponseHandler::Process(IMessage* msg) {
         if (msg == nullptr) {
             errorLogger->LogError("mq handler", "Invlid IMessage");
             return;
@@ -130,7 +130,7 @@ namespace Core {
         }
     }
 
-    void MessageQueueHandler::CharacterStateResponse(uint64_t sessionID, const MsgCharacterStateResBody* body) {
+    void CacheResponseHandler::CharacterStateResponse(uint64_t sessionID, const MsgCharacterStateResBody* body) {
         //client에서는 full snapshot 받을 때 까지 로딩 화면
         if (body->resStatus != 0) {
             auto character = BuildCharacterState(sessionID, *body);
@@ -143,14 +143,14 @@ namespace Core {
         responses->Enqueue(sessionID, writer->WriteEnterWorldResponse(body));
     }
 
-    void MessageQueueHandler::GoldDepositResponse(uint64_t sessionID, const MsgCurrencyDepositResBody* body) {
+    void CacheResponseHandler::GoldDepositResponse(uint64_t sessionID, const MsgCurrencyDepositResBody* body) {
         if (!IsCurrentFieldCharacter(sessionID, body->characterID))
             return;
 
         responses->Enqueue(sessionID, writer->WriteGoldReward(body->resStatus));
     }
 
-    void MessageQueueHandler::ProfileRenameResponse(uint64_t sessionID, const MsgProfileRenameResBody* body) {
+    void CacheResponseHandler::ProfileRenameResponse(uint64_t sessionID, const MsgProfileRenameResBody* body) {
         if (body->resStatus != 1) {
             gameLogger->LogInfo("mq handler", "profile rename failed", {{"sessionID", sessionID}, {"profile_id", body->profileId}});
             return;

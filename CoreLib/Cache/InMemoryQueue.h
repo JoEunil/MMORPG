@@ -14,7 +14,7 @@
 #include "CacheConfig.h"
 
 namespace Core {
-	class MessageQueueHandler;
+	class CacheResponseHandler;
 	// 수신 큐
 	class InMemoryQueue :public IMessageQueue{
 		std::vector<std::thread> m_threads;
@@ -24,9 +24,9 @@ namespace Core {
 
 		std::atomic<bool> m_running = false;
 
-		MessageQueueHandler* handler = nullptr;
+		CacheResponseHandler* handler = nullptr;
         CoreMessagePool* messagePool = nullptr;
-		void Initialize(MessageQueueHandler* h, CoreMessagePool* m) {
+		void Initialize(CacheResponseHandler* h, CoreMessagePool* m) {
 			handler = h;
             messagePool = m;
 		}
