@@ -21,7 +21,7 @@ namespace Core {
 
     void ZoneEventHandler::ProcessRespawn(ZoneState& zone, const ZoneRespawnEvent& request) {
         const auto sessionID = request.sessionID;
-        const auto respawn = sessionManager->CheckRespawnRequest(sessionID, zone.GetZoneID(), request.ownershipEpoch);
+        const auto respawn = sessionManager->CheckRespawnRequest({sessionID, zone.GetZoneID(), request.ownershipEpoch});
         if (respawn.status == RespawnRequest::Status::Ignored)
             return;
         if (respawn.status == RespawnRequest::Status::Rejected) {
@@ -96,7 +96,7 @@ namespace Core {
 
     void ZoneEventHandler::ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneDisconnectEvent& request) {
         std::shared_ptr<ZoneTransfer> pending;
-        if (!sessionManager->CompleteZoneDisconnect(request.sessionID, zoneID, request.ownershipEpoch, pending))
+        if (!sessionManager->CompleteZoneDisconnect({request.sessionID, zoneID, request.ownershipEpoch}, pending))
             return;
 
         if (pending) {
@@ -111,7 +111,7 @@ namespace Core {
     }
 
     void ZoneEventHandler::ProcessBootstrap(ZoneState& zone, const ZoneBootstrapEvent& request) {
-        const auto info = sessionManager->PrepareZoneBootstrap(request.sessionID, zone.GetZoneID(), request.ownershipEpoch, request.resendZoneChange);
+        const auto info = sessionManager->PrepareZoneBootstrap({request.sessionID, zone.GetZoneID(), request.ownershipEpoch}, request.resendZoneChange);
         if (!info)
             return;
         if (request.resendZoneChange) {

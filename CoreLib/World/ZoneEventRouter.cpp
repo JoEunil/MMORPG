@@ -74,17 +74,20 @@ namespace Core {
         return TryEnqueue(zoneID, event);
     }
 
-    bool ZoneEventRouter::TryEnqueueLobbyEntry(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch) {
+    bool ZoneEventRouter::TryEnqueueLobbyEntry(const ZoneSessionContext& context) {
+        const auto& [sessionID, zoneID, ownershipEpoch] = context;
         ZoneEvent event = ZoneLobbyEntryEvent{sessionID, ownershipEpoch};
         return TryEnqueue(zoneID, event);
     }
 
-    bool ZoneEventRouter::TryEnqueueRespawn(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch) {
+    bool ZoneEventRouter::TryEnqueueRespawn(const ZoneSessionContext& context) {
+        const auto& [sessionID, zoneID, ownershipEpoch] = context;
         ZoneEvent event = ZoneRespawnEvent{sessionID, ownershipEpoch};
         return TryEnqueue(zoneID, event);
     }
 
-    bool ZoneEventRouter::TryEnqueueBootstrap(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch, bool resendZoneChange) {
+    bool ZoneEventRouter::TryEnqueueBootstrap(const ZoneSessionContext& context, bool resendZoneChange) {
+        const auto& [sessionID, zoneID, ownershipEpoch] = context;
         ZoneEvent event = ZoneBootstrapEvent{sessionID, ownershipEpoch, resendZoneChange};
         return TryEnqueue(zoneID, event);
     }
@@ -98,7 +101,8 @@ namespace Core {
         return WorldMap::FindTransitionZone(sourceZoneID, x, y);
     }
 
-    bool ZoneEventRouter::TryEnqueueDisconnect(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch) {
+    bool ZoneEventRouter::TryEnqueueDisconnect(const ZoneSessionContext& context) {
+        const auto& [sessionID, zoneID, ownershipEpoch] = context;
         ZoneEvent event = ZoneDisconnectEvent{sessionID, ownershipEpoch};
         return TryEnqueueDeferred(zoneID, event);
     }

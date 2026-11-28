@@ -18,7 +18,8 @@ namespace Core {
         return session->zoneID;
     }
 
-    std::optional<ZoneBootstrapInfo> SessionManager::PrepareZoneBootstrap(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, bool resendZoneChange) {
+    std::optional<ZoneBootstrapInfo> SessionManager::PrepareZoneBootstrap(const ZoneSessionContext& context, bool resendZoneChange) {
+        const auto& [sessionID, zoneID, ownershipEpoch] = context;
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock lock(shard.smutex);
         auto* session = FindSessionLocked(shard, sessionID);
@@ -94,7 +95,8 @@ namespace Core {
         return true;
     }
 
-    bool SessionManager::CompleteLobbyEntry(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, uint32_t profileID, ZoneChangeResult& result) {
+    bool SessionManager::CompleteLobbyEntry(const ZoneSessionContext& context, uint32_t profileID, ZoneChangeResult& result) {
+        const auto& [sessionID, zoneID, ownershipEpoch] = context;
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock lock(shard.smutex);
         auto* session = FindSessionLocked(shard, sessionID);
@@ -111,7 +113,8 @@ namespace Core {
         return true;
     }
 
-    RespawnRequest SessionManager::CheckRespawnRequest(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch) const {
+    RespawnRequest SessionManager::CheckRespawnRequest(const ZoneSessionContext& context) const {
+        const auto& [sessionID, zoneID, ownershipEpoch] = context;
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::shared_lock lock(shard.smutex);
         const auto found = shard.sessionMap.find(sessionID);
@@ -151,7 +154,8 @@ namespace Core {
         return true;
     }
 
-    bool SessionManager::CheckZoneAction(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, std::optional<ZoneRequestRoute>& resync) {
+    bool SessionManager::CheckZoneAction(const ZoneSessionContext& context, std::optional<ZoneRequestRoute>& resync) {
+        const auto& [sessionID, zoneID, ownershipEpoch] = context;
         resync.reset();
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock lock(shard.smutex);
@@ -246,7 +250,8 @@ namespace Core {
         return pending;
     }
 
-    bool SessionManager::CompleteZoneDisconnect(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, std::shared_ptr<ZoneTransfer>& pending) {
+    bool SessionManager::CompleteZoneDisconnect(const ZoneSessionContext& context, std::shared_ptr<ZoneTransfer>& pending) {
+        const auto& [sessionID, zoneID, ownershipEpoch] = context;
         auto& shard = m_shards[sessionID & SHARD_SIZE_MASK];
         std::unique_lock lock(shard.smutex);
         const auto it = shard.sessionMap.find(sessionID);

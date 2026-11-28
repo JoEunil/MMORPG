@@ -13,7 +13,7 @@ namespace Core {
         if (!request)
             return;
         if (request->zoneID != 0) {
-            if (!zoneRequests->TryEnqueueDisconnect(request->zoneID, sessionID, request->ownershipEpoch))
+            if (!zoneRequests->TryEnqueueDisconnect({sessionID, request->zoneID, request->ownershipEpoch}))
                 errorLogger->LogError("non simulation handler", "could not queue zone disconnect", {{"sessionID", sessionID}, {"zoneID", request->zoneID}});
             return;
         }

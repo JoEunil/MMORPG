@@ -57,9 +57,9 @@ namespace Core {
         if (!std::isfinite(action.aimAngle) || action.aimAngle < 0 || action.aimAngle >= 360)
             return;
         std::optional<ZoneRequestRoute> resync;
-        if (!sessionManager->CheckZoneAction(sessionID, zoneID, action.ownershipEpoch, resync)) {
+        if (!sessionManager->CheckZoneAction({sessionID, zoneID, action.ownershipEpoch}, resync)) {
             if (resync)
-                zoneRequests->TryEnqueueBootstrap(resync->zoneID, sessionID, resync->ownershipEpoch, true);
+                zoneRequests->TryEnqueueBootstrap({sessionID, resync->zoneID, resync->ownershipEpoch}, true);
             return;
         }
         zone.ApplyAction(sessionID, action, *zoneTransfer);

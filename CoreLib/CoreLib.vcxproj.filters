@@ -221,6 +221,9 @@
     <ClInclude Include="World\ZoneEvent.h">
       <Filter>World</Filter>
     </ClInclude>
+    <ClInclude Include="World\ZoneSessionContext.h">
+      <Filter>World</Filter>
+    </ClInclude>
     <ClInclude Include="NonSimulation\NonSimulationThreadPool.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>

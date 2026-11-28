@@ -14,6 +14,7 @@
 
 #include "ZoneState.h"
 #include "WorldConfig.h"
+#include "ZoneSessionContext.h"
 #include "../Packet/PacketConfig.h"
 #include "../Interface/IPacket.h"
 #include "Interface/ISessionStatusReader.h"
@@ -254,23 +255,23 @@ namespace Core {
         void RememberEquipment(uint64_t sessionID, uint16_t zoneID, uint32_t itemID, const EquipmentResponseBody& result);
         std::optional<DisconnectRequest> BeginDisconnect(uint64_t sessionID);
         bool CompleteLobbyDisconnect(uint64_t sessionID, uint64_t ownershipEpoch);
-        bool CompleteZoneDisconnect(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, std::shared_ptr<ZoneTransfer>& pending);
+        bool CompleteZoneDisconnect(const ZoneSessionContext& context, std::shared_ptr<ZoneTransfer>& pending);
         std::optional<LobbyEntryRequest> GetLobbyEntry(uint64_t sessionID, uint8_t op) const;
         std::optional<ZoneRequestRoute> GetRespawnRoute(uint64_t sessionID, uint64_t ownershipEpoch) const;
         std::optional<ZoneRequestRoute> GetBootstrapRoute(uint64_t sessionID, uint64_t ownershipEpoch) const;
 
-        bool CheckZoneAction(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, std::optional<ZoneRequestRoute>& resync);
+        bool CheckZoneAction(const ZoneSessionContext& context, std::optional<ZoneRequestRoute>& resync);
         bool BeginZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer);
         void CancelZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer);
-        RespawnRequest CheckRespawnRequest(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch) const;
+        RespawnRequest CheckRespawnRequest(const ZoneSessionContext& context) const;
         bool CompleteTownRespawn(uint64_t sessionID, uint64_t ownershipEpoch, ZoneChangeResult& result);
         std::optional<ZoneTransfer> ReadZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer, uint16_t zoneID, bool returning) const;
         std::optional<ZoneTransferCommit> CompleteZoneTransfer(const std::shared_ptr<ZoneTransfer>& transfer, uint16_t zoneID, bool returning);
         bool CompleteLobbyLoad(uint64_t sessionID, uint64_t characterID);
-        bool CompleteLobbyEntry(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, uint32_t profileID, ZoneChangeResult& result);
+        bool CompleteLobbyEntry(const ZoneSessionContext& context, uint32_t profileID, ZoneChangeResult& result);
 
         std::optional<uint16_t> RouteProfileVersion(const ProfileVersionUpdate& update);
-        std::optional<ZoneBootstrapInfo> PrepareZoneBootstrap(uint64_t sessionID, uint16_t zoneID, uint64_t ownershipEpoch, bool resendZoneChange);
+        std::optional<ZoneBootstrapInfo> PrepareZoneBootstrap(const ZoneSessionContext& context, bool resendZoneChange);
         std::optional<ParryStatus> GetParryRejection(uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request) const;
 
         void Cheat(uint64_t sessionID, uint16_t cheat, std::chrono::steady_clock::time_point time) {

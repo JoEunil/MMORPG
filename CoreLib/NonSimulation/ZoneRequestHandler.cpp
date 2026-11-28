@@ -16,7 +16,7 @@ namespace Core {
             const auto* body = parseBody<ZoneResyncBody>(p->GetPtr());
             const auto route = sessionManager->GetBootstrapRoute(p->GetSessionID(), body->ownershipEpoch);
             if (route)
-                zoneRequests->TryEnqueueBootstrap(route->zoneID, p->GetSessionID(), route->ownershipEpoch, false);
+                zoneRequests->TryEnqueueBootstrap({p->GetSessionID(), route->zoneID, route->ownershipEpoch}, false);
         }
     }
 
@@ -26,7 +26,7 @@ namespace Core {
             const auto request = sessionManager->GetLobbyEntry(session, parseBody<ZoneChangeBody>(p->GetPtr())->op);
             if (request) {
                 const auto destination = lobbyZone->FindEntryZone(session, request->characterID);
-                if (destination != 0 && zoneRequests->TryEnqueueLobbyEntry(destination, session, request->ownershipEpoch))
+                if (destination != 0 && zoneRequests->TryEnqueueLobbyEntry({session, destination, request->ownershipEpoch}))
                     return;
             }
         }
@@ -40,7 +40,7 @@ namespace Core {
                                  !IsSimulationFlag(parseHeader(p->GetPtr())->flags);
         if (validHeader) {
             const auto route = sessionManager->GetRespawnRoute(session, parseBody<RespawnToTownBody>(p->GetPtr())->ownershipEpoch);
-            if (route && (route->alreadyPending || zoneRequests->TryEnqueueRespawn(route->zoneID, session, route->ownershipEpoch)))
+            if (route && (route->alreadyPending || zoneRequests->TryEnqueueRespawn({session, route->zoneID, route->ownershipEpoch})))
                 return;
         }
         responses->Enqueue(session, writer->WriteZoneChangeFailed());
