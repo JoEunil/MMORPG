@@ -34,24 +34,25 @@ namespace Base
 			m_semaphore.Close();
 		}
 
-		bool Enqueue(T&& item, Priority priority) {
+		EnqueueResult Enqueue(T&& item, Priority priority) {
 			return Enqueue(item, priority);
 		}
 
-		bool Enqueue(T& item, Priority priority) {
+		EnqueueResult Enqueue(T& item, Priority priority) {
 			if (m_queue.push(item)) {
 				m_semaphore.Release();
-				return true;
+				return EnqueueResult::Queued;
 			}
 
 			if (priority == Priority::Droppable) {
-				return false;
+				return EnqueueResult::Rejected;
 			}
 			if (!m_deferQueue.push(item)) {
-				return m_durableLog && m_durableLog(item);
+				return m_durableLog && m_durableLog(item)
+					? EnqueueResult::RecordedForRecovery : EnqueueResult::Rejected;
 			}
 			m_semaphore.Release();
-			return true;
+			return EnqueueResult::Queued;
 		}
 
 		// 전체 FIFO는 보장하지 않는다.

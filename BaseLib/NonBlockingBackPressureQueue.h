@@ -70,28 +70,29 @@ namespace Base {
 		void SetDurableLog(std::function<bool(const T&)> durableLog) { m_durableLog = std::move(durableLog); }
 
 		// Use primary capacity first; preserve this work in defer under congestion.
-		bool EnqueueDeferred(T& item) { return Enqueue(item, Priority::Important); }
-		bool EnqueueDeferred(T&& item) { return Enqueue(item, Priority::Important); }
+		EnqueueResult EnqueueDeferred(T& item) { return Enqueue(item, Priority::Important); }
+		EnqueueResult EnqueueDeferred(T&& item) { return Enqueue(item, Priority::Important); }
 
-		bool Enqueue(T&& item, Priority priority = Priority::Droppable) {
+		EnqueueResult Enqueue(T&& item, Priority priority = Priority::Droppable) {
 			return Enqueue(item, priority);
 		}
 
-		bool Enqueue(T& item, Priority priority = Priority::Droppable) {
+		EnqueueResult Enqueue(T& item, Priority priority = Priority::Droppable) {
 			if (!m_degraded.load(std::memory_order_relaxed)) {
 				if (m_queue.push(item)) {
-					return true;
+					return EnqueueResult::Queued;
 				}
 				m_degraded.store(true, std::memory_order_relaxed);
 			}
 
 			if (priority == Priority::Droppable) {
-				return false;
+				return EnqueueResult::Rejected;
 			}
 			if (!m_deferQueue.push(item)) {
-				return m_durableLog && m_durableLog(item);
+				return m_durableLog && m_durableLog(item)
+					? EnqueueResult::RecordedForRecovery : EnqueueResult::Rejected;
 			}
-			return true;
+			return EnqueueResult::Queued;
 		}
 
 		// 전체 FIFO는 보장하지 않는다.

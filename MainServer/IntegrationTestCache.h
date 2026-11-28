@@ -36,7 +36,7 @@ namespace Cache {
 		std::queue<Core::Message*> m_received;
 		std::vector<std::unique_ptr<Core::Message>> m_ownedResponses;
 	public:
-		bool EnqueueMessage(const Core::IMessage* msg) override {
+		Base::EnqueueResult EnqueueMessage(const Core::IMessage* msg) override {
 			// The handler returns its message to the pool immediately after enqueue.
 			auto copy = std::make_unique<Core::Message>(msg->GetLength());
 			std::memcpy(copy->GetBuffer(), msg->GetBuffer(), msg->GetLength());
@@ -45,7 +45,7 @@ namespace Cache {
 			m_received.push(copy.get());
 			m_ownedResponses.push_back(std::move(copy));
 			m_cv.notify_one();
-			return true;
+			return Base::EnqueueResult::Queued;
 		}
 		    // 타임아웃(ms) 내에 응답 대기
 		Core::Message * WaitFor(int ms = 5000) {
@@ -97,7 +97,7 @@ namespace Cache {
 		Core::MsgInventoryReqBody request{};
 		request.characterID = characterID;
 		while (std::chrono::steady_clock::now() < deadline) {
-			if (!(requests->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_REQ, sessionID, request))))
+			if (requests->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_REQ, sessionID, request)) == Base::EnqueueResult::Rejected)
 			    throw std::runtime_error("Cache request enqueue failed");
 			auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
 				deadline - std::chrono::steady_clock::now()).count();
@@ -168,7 +168,7 @@ namespace Cache {
 		PollInventoryUntilAvailable(recvMQ, mockMQ, TEST_CHAR_ID, 1);
 		Block();
 			        // 2차: 캐시 히트
-		if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_REQ, 1, body))))
+		if (recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_REQ, 1, body)) == Base::EnqueueResult::Rejected)
 		    throw std::runtime_error("Cache request enqueue failed");
 		auto* res = WaitForResponse<Core::MsgInventoryResBody>(mockMQ, Core::MSG_INVENTORY_RES, 1);
 		auto* rb = Core::parseMsgBody<Core::MsgInventoryResBody>(res->GetBuffer());
@@ -203,7 +203,7 @@ namespace Cache {
 			body.itemID = TEST_ITEM_ID;
 			body.op = 1;
 			body.change = 5;
-			if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 2, body))))
+			if (recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 2, body)) == Base::EnqueueResult::Rejected)
 			    throw std::runtime_error("Cache request enqueue failed");
 			
 			auto* res = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ, Core::MSG_INVENTORY_UPDATE_RES, 2);
@@ -225,7 +225,7 @@ namespace Cache {
 			body.itemID = TEST_ITEM_ID;
 			body.op = 2;
 			body.change = 3; // update + 3
-			if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 3, body))))
+			if (recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 3, body)) == Base::EnqueueResult::Rejected)
 			    throw std::runtime_error("Cache request enqueue failed");
 			
 			auto* res = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ, Core::MSG_INVENTORY_UPDATE_RES, 3);
@@ -245,7 +245,7 @@ namespace Cache {
 			body.itemID = TEST_ITEM_ID;
 			body.op = 2;
 			body.change = -8;
-			if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 4, body))))
+			if (recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 4, body)) == Base::EnqueueResult::Rejected)
 			    throw std::runtime_error("Cache request enqueue failed");
 			
 			auto* res = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ, Core::MSG_INVENTORY_UPDATE_RES, 4);
@@ -282,7 +282,7 @@ namespace Cache {
 			body.itemID = 33;
 			body.op = 1;
 			body.change = 34;
-			if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 1, body))))
+			if (recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 1, body)) == Base::EnqueueResult::Rejected)
 			    throw std::runtime_error("Cache request enqueue failed");
 
 			auto* res = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ, Core::MSG_INVENTORY_UPDATE_RES, 1);
@@ -328,7 +328,7 @@ namespace Cache {
 				body.itemID = 33;
 				body.op = 2;
 				body.change = -34;
-				if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 2, body))))
+				if (recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 2, body)) == Base::EnqueueResult::Rejected)
 				    throw std::runtime_error("Cache request enqueue failed");
 
 				auto* res = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ, Core::MSG_INVENTORY_UPDATE_RES, 2);

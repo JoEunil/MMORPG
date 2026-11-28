@@ -37,7 +37,8 @@ namespace Cache {
                 };
                 if (status != CACHE_STATUS::AVAILABLE)
                     Core::errorLogger->LogWarn("cache handler", "currency deposit failed", {{"characterID", request.characterID}, {"status", status}});
-                if (responses->Send({ sessionID, Core::MSG_CURRENCY_DEPOSIT_RES }, response) != CacheResponseSender::Result::Queued)
+                if (const auto result = responses->Send({ sessionID, Core::MSG_CURRENCY_DEPOSIT_RES }, response);
+                result == CacheResponseSender::Result::PoolExhausted || result == CacheResponseSender::Result::Rejected)
                     Core::errorLogger->LogError("cache handler", "currency deposit response rejected", {{"characterID", request.characterID}, {"status", status}});
             });
     }

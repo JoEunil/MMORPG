@@ -90,37 +90,41 @@ namespace Cache {
         }
     }
 
-    bool InMemoryQueue::EnqueueMessage(const Core::IMessage* msg) {
+    Base::EnqueueResult InMemoryQueue::EnqueueMessage(const Core::IMessage* msg) {
         if (!m_running.load(std::memory_order_relaxed))
-            return false;
+            return Base::EnqueueResult::Rejected;
         if (msg == nullptr || msg->GetLength() < sizeof(Core::MsgHeader) || msg->GetLength() > msg->GetCapacity()) {
             Core::errorLogger->LogWarn("cache mq", "invalid message");
-            return false;
+            return Base::EnqueueResult::Rejected;
         }
         const Base::Priority priority = GetMessagePriority(msg);
         auto cacheMsg = messagePool->AcquireScoped();
         if (!cacheMsg) {
-            if (priority == Base::Priority::Important && WriteDurable(msg)) return true;
+            if (priority == Base::Priority::Important && WriteDurable(msg))
+                return Base::EnqueueResult::RecordedForRecovery;
             Core::errorLogger->LogError("cache mq", "message pool exhausted");
-            return false;
+            return Base::EnqueueResult::Rejected;
         }
         if (cacheMsg->GetCapacity() < msg->GetLength()) {
-            if (priority == Base::Priority::Important && WriteDurable(msg)) return true;
+            if (priority == Base::Priority::Important && WriteDurable(msg))
+                return Base::EnqueueResult::RecordedForRecovery;
             Core::errorLogger->LogError("cache mq", "message exceeds receiver capacity");
-            return false;
+            return Base::EnqueueResult::Rejected;
         }
         std::memcpy(cacheMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());
         cacheMsg->SetLength(msg->GetLength());
 
-        if (!m_running.load(std::memory_order_relaxed) || !m_workQueue.Enqueue(cacheMsg, priority)) {
+        const auto result = m_running.load(std::memory_order_relaxed)
+            ? m_workQueue.Enqueue(cacheMsg, priority) : Base::EnqueueResult::Rejected;
+        if (result == Base::EnqueueResult::Rejected) {
             const auto messageType = Core::parseMsgHeader(cacheMsg->GetBuffer())->messageType;
             if (priority == Base::Priority::Important)
                 Core::errorLogger->LogError("cache mq", "queue rejected important message", {{"messageType", messageType}});
             else
                 Core::errorLogger->LogWarn("cache mq", "queue rejected message", {{"messageType", messageType}});
-            return false;
+            return Base::EnqueueResult::Rejected;
         }
 
-        return true;
+        return result;
     }
 }

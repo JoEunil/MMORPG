@@ -34,7 +34,7 @@ namespace {
         std::queue<Core::Message*> m_received;
         std::vector<std::unique_ptr<Core::Message>> m_ownedResponses;
     public:
-        bool EnqueueMessage(const Core::IMessage* msg) override {
+        Base::EnqueueResult EnqueueMessage(const Core::IMessage* msg) override {
             auto copy = std::make_unique<Core::Message>(msg->GetLength());
             std::memcpy(copy->GetBuffer(), msg->GetBuffer(), msg->GetLength());
             copy->SetLength(msg->GetLength());
@@ -42,7 +42,7 @@ namespace {
             m_received.push(copy.get());
             m_ownedResponses.push_back(std::move(copy));
             m_cv.notify_one();
-            return true;
+            return Base::EnqueueResult::Queued;
         }
         Core::Message* WaitFor(int ms = 5000) {
             std::unique_lock lock(m_mutex);

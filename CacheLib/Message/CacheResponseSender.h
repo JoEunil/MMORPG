@@ -37,7 +37,7 @@ namespace Cache {
 
         friend class Initializer;
     public:
-        enum class Result { Queued, PoolExhausted, Rejected };
+        enum class Result { Queued, RecordedForRecovery, PoolExhausted, Rejected };
 
         template<typename Body>
         Result Send(Core::MsgHeader header, const Body& body) const {
@@ -45,9 +45,13 @@ namespace Cache {
             if (!message)
                 return Result::PoolExhausted;
             static_assert(sizeof(Core::MsgStruct<Body>) <= MESSAGE_LEN);
-            if (writer->WriteResponse(*message, header, body)
-                && messageQ->EnqueueMessage(message.get()))
-                return Result::Queued;
+            if (!writer->WriteResponse(*message, header, body))
+                return Result::Rejected;
+            switch (messageQ->EnqueueMessage(message.get())) {
+            case Base::EnqueueResult::Queued: return Result::Queued;
+            case Base::EnqueueResult::RecordedForRecovery: return Result::RecordedForRecovery;
+            case Base::EnqueueResult::Rejected: return Result::Rejected;
+            }
             return Result::Rejected;
         }
     };

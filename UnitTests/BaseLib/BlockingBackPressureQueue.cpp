@@ -1,4 +1,6 @@
 ﻿#include <gtest/gtest.h>
+#include <algorithm>
+#include <vector>
 
 #include <BaseLib/BlockingBackPressureQueue.h>
 
@@ -11,11 +13,11 @@ TEST(BlockingBackPressureQueueTest, DropsDroppableAndDefersImportant) {
 	int droppable = 4;
 	int nextImportant = 5;
 
-	EXPECT_TRUE(queue.Enqueue(one, Base::Priority::Droppable));
-	EXPECT_TRUE(queue.Enqueue(two, Base::Priority::Droppable));
-	EXPECT_TRUE(queue.Enqueue(important, Base::Priority::Important));
-	EXPECT_FALSE(queue.Enqueue(droppable, Base::Priority::Droppable));
-	EXPECT_TRUE(queue.Enqueue(nextImportant, Base::Priority::Important));
+	EXPECT_EQ(queue.Enqueue(one, Base::Priority::Droppable), Base::EnqueueResult::Queued);
+	EXPECT_EQ(queue.Enqueue(two, Base::Priority::Droppable), Base::EnqueueResult::Queued);
+	EXPECT_EQ(queue.Enqueue(important, Base::Priority::Important), Base::EnqueueResult::Queued);
+	EXPECT_EQ(queue.Enqueue(droppable, Base::Priority::Droppable), Base::EnqueueResult::Rejected);
+	EXPECT_EQ(queue.Enqueue(nextImportant, Base::Priority::Important), Base::EnqueueResult::Queued);
 
 	int out = 0;
 	ASSERT_TRUE(queue.Dequeue(out));
@@ -27,7 +29,7 @@ TEST(BlockingBackPressureQueueTest, DropsDroppableAndDefersImportant) {
 	ASSERT_TRUE(queue.Dequeue(out));
 	EXPECT_EQ(out, 2);
 
-	EXPECT_TRUE(queue.Enqueue(droppable, Base::Priority::Droppable));
+	EXPECT_EQ(queue.Enqueue(droppable, Base::Priority::Droppable), Base::EnqueueResult::Queued);
 	ASSERT_TRUE(queue.Dequeue(out));
 	EXPECT_EQ(out, 4);
 }
@@ -46,20 +48,30 @@ TEST(BlockingBackPressureQueueTest, DurableLog) {
 	int three = 3;
 	int four = 4;
 	int five = 5;
-	EXPECT_TRUE(queue.Enqueue(one, Base::Priority::Important));
-	EXPECT_TRUE(queue.Enqueue(two, Base::Priority::Important));
-	EXPECT_TRUE(queue.Enqueue(three, Base::Priority::Important));
-	EXPECT_TRUE(queue.Enqueue(four, Base::Priority::Important));
-	EXPECT_TRUE(queue.Enqueue(five, Base::Priority::Important));
+	EXPECT_EQ(queue.Enqueue(one, Base::Priority::Important), Base::EnqueueResult::Queued);
+	EXPECT_EQ(queue.Enqueue(two, Base::Priority::Important), Base::EnqueueResult::Queued);
+	EXPECT_EQ(queue.Enqueue(three, Base::Priority::Important), Base::EnqueueResult::Queued);
+	EXPECT_EQ(queue.Enqueue(four, Base::Priority::Important), Base::EnqueueResult::Queued);
+	EXPECT_EQ(queue.Enqueue(five, Base::Priority::Important), Base::EnqueueResult::RecordedForRecovery);
 	EXPECT_EQ(logged, 5);
+	queue.SetDurableLog([](const int&) { return false; });
+	EXPECT_EQ(queue.Enqueue(6, Base::Priority::Important), Base::EnqueueResult::Rejected);
+	queue.SetDurableLog({});
+	EXPECT_EQ(queue.Enqueue(7, Base::Priority::Important), Base::EnqueueResult::Rejected);
+	queue.Stop();
+	std::vector<int> received;
+	int out = 0;
+	while (queue.Dequeue(out)) received.push_back(out);
+	std::sort(received.begin(), received.end());
+	EXPECT_EQ(received, (std::vector<int>{1, 2, 3, 4}));
 }
 
 TEST(BlockingBackPressureQueueTest, Drain) {
 	Base::BlockingBackPressureQueue<int, 2, 2, true> queue;
 	int one = 1;
 	int two = 2;
-	EXPECT_TRUE(queue.Enqueue(one, Base::Priority::Important));
-	EXPECT_TRUE(queue.Enqueue(two, Base::Priority::Important));
+	EXPECT_EQ(queue.Enqueue(one, Base::Priority::Important), Base::EnqueueResult::Queued);
+	EXPECT_EQ(queue.Enqueue(two, Base::Priority::Important), Base::EnqueueResult::Queued);
 
 	queue.Stop();
 
@@ -74,7 +86,7 @@ TEST(BlockingBackPressureQueueTest, Drain) {
 TEST(BlockingBackPressureQueueTest, HardStop) {
 	Base::BlockingBackPressureQueue<int, 2, 2, false> queue;
 	int item = 1;
-	EXPECT_TRUE(queue.Enqueue(item, Base::Priority::Important));
+	EXPECT_EQ(queue.Enqueue(item, Base::Priority::Important), Base::EnqueueResult::Queued);
 
 	queue.Stop();
 

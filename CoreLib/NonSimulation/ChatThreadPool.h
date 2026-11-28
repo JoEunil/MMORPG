@@ -145,7 +145,7 @@ namespace Core {
             if (!m_running.load(std::memory_order_relaxed))
                 return false;
 
-            return m_chatQueue.Enqueue(event, priority);
+            return m_chatQueue.Enqueue(event, priority) != Base::EnqueueResult::Rejected;
         }
 
       private:

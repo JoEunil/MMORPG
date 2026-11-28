@@ -48,16 +48,16 @@ namespace Test {
         std::condition_variable    m_cv;
         std::queue<ScopedMessage> m_received;
     public:
-        bool EnqueueMessage(const Core::IMessage* msg) override {
+        Base::EnqueueResult EnqueueMessage(const Core::IMessage* msg) override {
             auto copy = g_msgPool().AcquireScoped();
             if (copy == nullptr)
-                return false;
+                return Base::EnqueueResult::Rejected;
             std::memcpy(copy->GetBuffer(), msg->GetBuffer(), msg->GetLength());
             copy->SetLength(msg->GetLength());
             std::lock_guard lock(m_mutex);
             m_received.push(std::move(copy));
             m_cv.notify_one();
-            return true;
+            return Base::EnqueueResult::Queued;
         }
         ScopedMessage WaitFor(int ms = 5000) {
             std::unique_lock lock(m_mutex);

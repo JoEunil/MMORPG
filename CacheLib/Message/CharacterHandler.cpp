@@ -48,7 +48,8 @@ namespace Cache {
         const auto finish = [this, sessionID, completed](const Core::MsgCharacterStateResBody& response) {
             if (completed->exchange(true))
                 return;
-            if (responses->Send({ sessionID, Core::MSG_CHARACTER_STATE_RES }, response) != CacheResponseSender::Result::Queued)
+            if (const auto result = responses->Send({ sessionID, Core::MSG_CHARACTER_STATE_RES }, response);
+                result == CacheResponseSender::Result::PoolExhausted || result == CacheResponseSender::Result::Rejected)
                 Core::errorLogger->LogError("cache handler", "character state response queue rejected", {{"sessionID", sessionID}});
         };
         const auto failed = [finish] { finish(Core::MsgCharacterStateResBody{}); };

@@ -59,18 +59,18 @@ namespace Core {
         }
     }
 
-    bool InMemoryQueue::EnqueueMessage(const Core::IMessage* msg) {
+    Base::EnqueueResult InMemoryQueue::EnqueueMessage(const Core::IMessage* msg) {
         if (!m_running.load(std::memory_order_relaxed))
-            return false;
+            return Base::EnqueueResult::Rejected;
         if (msg == nullptr || msg->GetLength() < sizeof(MsgHeader) || msg->GetLength() > msg->GetCapacity())
-            return false;
+            return Base::EnqueueResult::Rejected;
         auto coreMsg = messagePool->AcquireScoped();
         if (coreMsg == nullptr) {
             errorLogger->LogWarn("core mq", "message pool empty");
-            return false;
+            return Base::EnqueueResult::Rejected;
         }
         if (coreMsg->GetCapacity() < msg->GetLength())
-            return false;
+            return Base::EnqueueResult::Rejected;
         std::memcpy(coreMsg->GetBuffer(), msg->GetBuffer(), msg->GetLength());
         coreMsg->SetLength(msg->GetLength());
 
@@ -91,10 +91,10 @@ namespace Core {
         if (!enqueued) {
             if (queueFull)
                 errorLogger->LogWarn("core mq", "queue full");
-            return false;
+            return Base::EnqueueResult::Rejected;
         }
 
         m_workAvailable.notify_one();
-        return true;
+        return Base::EnqueueResult::Queued;
     }
 }

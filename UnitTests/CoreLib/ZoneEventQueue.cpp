@@ -8,18 +8,18 @@ TEST(ZoneEventQueueTest, FullQueueRejectsTransferButDefersProfileAndDisconnect) 
     auto queue = std::make_unique<Core::ZoneEventQueue>();
     for (uint32_t index = 0; index < Core::ZONE_QUEUE_SIZE; ++index) {
         Core::ZoneEvent event = Core::ZoneTransferRejectedEvent{};
-        ASSERT_TRUE(queue->Enqueue(event));
+        ASSERT_EQ(queue->Enqueue(event), Base::EnqueueResult::Queued);
     }
 
     Core::ZoneEvent transfer = Core::ZoneTransferEvent{std::make_shared<Core::ZoneTransfer>()};
     const auto* original = std::get<Core::ZoneTransferEvent>(transfer).transfer.get();
-    EXPECT_FALSE(queue->Enqueue(transfer));
+    EXPECT_EQ(queue->Enqueue(transfer), Base::EnqueueResult::Rejected);
     ASSERT_EQ(std::get<Core::ZoneTransferEvent>(transfer).transfer.get(), original);
 
     Core::ZoneEvent profile = Core::ZoneProfileVersionEvent{};
     Core::ZoneEvent disconnect = Core::ZoneDisconnectEvent{42};
-    ASSERT_TRUE(queue->EnqueueDeferred(profile));
-    ASSERT_TRUE(queue->EnqueueDeferred(disconnect));
+    ASSERT_EQ(queue->EnqueueDeferred(profile), Base::EnqueueResult::Queued);
+    ASSERT_EQ(queue->EnqueueDeferred(disconnect), Base::EnqueueResult::Queued);
 
     bool receivedProfile = false, receivedDisconnect = false;
     uint32_t received = 0;
@@ -35,7 +35,7 @@ TEST(ZoneEventQueueTest, FullQueueRejectsTransferButDefersProfileAndDisconnect) 
     EXPECT_EQ(received, Core::ZONE_QUEUE_SIZE + 2);
     EXPECT_TRUE(receivedProfile);
     EXPECT_TRUE(receivedDisconnect);
-    ASSERT_TRUE(queue->Enqueue(transfer));
+    ASSERT_EQ(queue->Enqueue(transfer), Base::EnqueueResult::Queued);
     EXPECT_EQ(std::get<Core::ZoneTransferEvent>(transfer).transfer, nullptr);
     ASSERT_TRUE(queue->Dequeue(event));
     EXPECT_EQ(std::get<Core::ZoneTransferEvent>(event).transfer.get(), original);

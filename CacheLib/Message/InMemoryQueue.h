@@ -65,6 +65,6 @@ namespace Cache {
         ~InMemoryQueue() {
             Stop();
         }
-        bool EnqueueMessage(const Core::IMessage* msg) override;
+        Base::EnqueueResult EnqueueMessage(const Core::IMessage* msg) override;
     };
 }

@@ -128,7 +128,7 @@ namespace Core {
     bool ZoneThread::Enqueue(ZoneEvent& event) {
         if (!CanEnqueue(event))
             return false;
-        const bool accepted = workQueue.Enqueue(event);
+        const bool accepted = workQueue.Enqueue(event) != Base::EnqueueResult::Rejected;
         if (!accepted)
             perfCollector->AddZoneDropCnt(zoneID);
         return accepted;
@@ -137,7 +137,7 @@ namespace Core {
     bool ZoneThread::EnqueueDeferred(ZoneEvent& event) {
         if (!CanEnqueue(event))
             return false;
-        const bool accepted = workQueue.EnqueueDeferred(event);
+        const bool accepted = workQueue.EnqueueDeferred(event) != Base::EnqueueResult::Rejected;
         if (!accepted)
             perfCollector->AddZoneDropCnt(zoneID);
         return accepted;

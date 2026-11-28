@@ -19,11 +19,11 @@ TEST(NonBlockingBackPressureQueueTest, DegradedPathDropsDroppableAndDefersImport
 	int droppable = 4;
 	int nextImportant = 5;
 
-	EXPECT_TRUE(queue.Enqueue(one, Base::Priority::Droppable));
-	EXPECT_TRUE(queue.Enqueue(two, Base::Priority::Droppable));
-	EXPECT_TRUE(queue.Enqueue(important, Base::Priority::Important));
-	EXPECT_FALSE(queue.Enqueue(droppable, Base::Priority::Droppable));
-	EXPECT_TRUE(queue.Enqueue(nextImportant, Base::Priority::Important));
+	EXPECT_EQ(queue.Enqueue(one, Base::Priority::Droppable), Base::EnqueueResult::Queued);
+	EXPECT_EQ(queue.Enqueue(two, Base::Priority::Droppable), Base::EnqueueResult::Queued);
+	EXPECT_EQ(queue.Enqueue(important, Base::Priority::Important), Base::EnqueueResult::Queued);
+	EXPECT_EQ(queue.Enqueue(droppable, Base::Priority::Droppable), Base::EnqueueResult::Rejected);
+	EXPECT_EQ(queue.Enqueue(nextImportant, Base::Priority::Important), Base::EnqueueResult::Queued);
 
 	std::vector<int> drained;
 	int out = 0;
@@ -34,7 +34,7 @@ TEST(NonBlockingBackPressureQueueTest, DegradedPathDropsDroppableAndDefersImport
 	EXPECT_EQ(drained, (std::vector<int>{ 1, 2, 3, 5 }));
 
 	int recovered = 6;
-	EXPECT_TRUE(queue.Enqueue(recovered, Base::Priority::Droppable));
+	EXPECT_EQ(queue.Enqueue(recovered, Base::Priority::Droppable), Base::EnqueueResult::Queued);
 	ASSERT_TRUE(queue.Dequeue(out));
 	EXPECT_EQ(out, 6);
 }
@@ -49,11 +49,11 @@ TEST(NonBlockingBackPressureQueueTest, DynamicDeferPreservesMoveOnlyWorkAndRecov
 	Base::NonBlockingBackPressureQueue<std::unique_ptr<int>, 2, 0> queue;
 	for (int value = 0; value < 34; ++value) {
 		auto item = std::make_unique<int>(value);
-		ASSERT_TRUE(queue.EnqueueDeferred(item));
+		ASSERT_EQ(queue.EnqueueDeferred(item), Base::EnqueueResult::Queued);
 		EXPECT_EQ(item, nullptr);
 	}
 	auto rejected = std::make_unique<int>(99);
-	EXPECT_FALSE(queue.Enqueue(rejected));
+	EXPECT_EQ(queue.Enqueue(rejected), Base::EnqueueResult::Rejected);
 	ASSERT_NE(rejected, nullptr);
 	EXPECT_EQ(*rejected, 99);
 
@@ -63,7 +63,7 @@ TEST(NonBlockingBackPressureQueueTest, DynamicDeferPreservesMoveOnlyWorkAndRecov
 	std::sort(received.begin(), received.end());
 	ASSERT_EQ(received.size(), 34);
 	for (int value = 0; value < 34; ++value) EXPECT_EQ(received[value], value);
-	ASSERT_TRUE(queue.Enqueue(rejected));
+	ASSERT_EQ(queue.Enqueue(rejected), Base::EnqueueResult::Queued);
 	ASSERT_TRUE(queue.Dequeue(item));
 	EXPECT_EQ(*item, 99);
 }
@@ -75,7 +75,7 @@ TEST(NonBlockingBackPressureQueueTest, DynamicDeferSupportsConcurrentProducersAn
 	std::array<std::atomic<int>, total> seen{};
 	std::atomic<int> consumed = 0;
 	std::atomic<bool> failed = false;
-	for (int value = 0; value < 2; ++value) ASSERT_TRUE(queue.EnqueueDeferred(std::make_unique<int>(value)));
+	for (int value = 0; value < 2; ++value) ASSERT_EQ(queue.EnqueueDeferred(std::make_unique<int>(value)), Base::EnqueueResult::Queued);
 	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
 	auto consume = [&] {
 		std::unique_ptr<int> item;
@@ -89,7 +89,7 @@ TEST(NonBlockingBackPressureQueueTest, DynamicDeferSupportsConcurrentProducersAn
 	std::thread firstConsumer(consume), secondConsumer(consume);
 	auto produce = [&](int producer) {
 		for (int offset = 0; offset < perProducer; ++offset)
-			if (!queue.EnqueueDeferred(std::make_unique<int>(2 + producer * perProducer + offset))) failed.store(true);
+			if (queue.EnqueueDeferred(std::make_unique<int>(2 + producer * perProducer + offset)) == Base::EnqueueResult::Rejected) failed.store(true);
 	};
 	std::thread firstProducer(produce, 0), secondProducer(produce, 1);
 	firstProducer.join(); secondProducer.join(); firstConsumer.join(); secondConsumer.join();
@@ -111,10 +111,19 @@ TEST(NonBlockingBackPressureQueueTest, DurableLog) {
 	int three = 3;
 	int four = 4;
 	int five = 5;
-	EXPECT_TRUE(queue.Enqueue(one, Base::Priority::Important));
-	EXPECT_TRUE(queue.Enqueue(two, Base::Priority::Important));
-	EXPECT_TRUE(queue.Enqueue(three, Base::Priority::Important));
-	EXPECT_TRUE(queue.Enqueue(four, Base::Priority::Important));
-	EXPECT_TRUE(queue.Enqueue(five, Base::Priority::Important));
+	EXPECT_EQ(queue.Enqueue(one, Base::Priority::Important), Base::EnqueueResult::Queued);
+	EXPECT_EQ(queue.Enqueue(two, Base::Priority::Important), Base::EnqueueResult::Queued);
+	EXPECT_EQ(queue.Enqueue(three, Base::Priority::Important), Base::EnqueueResult::Queued);
+	EXPECT_EQ(queue.Enqueue(four, Base::Priority::Important), Base::EnqueueResult::Queued);
+	EXPECT_EQ(queue.Enqueue(five, Base::Priority::Important), Base::EnqueueResult::RecordedForRecovery);
 	EXPECT_EQ(logged, 5);
+	queue.SetDurableLog([](const int&) { return false; });
+	EXPECT_EQ(queue.Enqueue(6, Base::Priority::Important), Base::EnqueueResult::Rejected);
+	queue.SetDurableLog({});
+	EXPECT_EQ(queue.Enqueue(7, Base::Priority::Important), Base::EnqueueResult::Rejected);
+	std::vector<int> received;
+	int out = 0;
+	while (queue.Dequeue(out)) received.push_back(out);
+	std::sort(received.begin(), received.end());
+	EXPECT_EQ(received, (std::vector<int>{1, 2, 3, 4}));
 }

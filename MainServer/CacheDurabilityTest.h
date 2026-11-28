@@ -64,7 +64,7 @@ namespace Cache {
 					del.itemID = DUR_ITEM_ID;
 					del.op = 2;
 					del.change = -static_cast<int16_t>(rb->items[i].quantity);
-					if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 1, del))))
+					if (recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 1, del)) == Base::EnqueueResult::Rejected)
 					    throw std::runtime_error("Cache request enqueue failed");
 					auto* waitedResponse = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ,
 						Core::MSG_INVENTORY_UPDATE_RES, 1);
@@ -84,7 +84,7 @@ namespace Cache {
 			body.itemID = DUR_ITEM_ID;
 			body.op = 1;
 			body.change = DUR_ITEM_QTY;
-			if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 2, body))))
+			if (recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 2, body)) == Base::EnqueueResult::Rejected)
 			    throw std::runtime_error("Cache request enqueue failed");
 
 			auto* res = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ, Core::MSG_INVENTORY_UPDATE_RES, 2);
@@ -176,7 +176,7 @@ namespace Cache {
 			del.itemID = DUR_ITEM_ID;
 			del.op = 2;
 			del.change = -static_cast<int16_t>(DUR_ITEM_QTY);
-			if (!(recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 3, del))))
+			if (recvMQ->EnqueueMessage(MakeMsg(Core::MSG_INVENTORY_UPDATE, 3, del)) == Base::EnqueueResult::Rejected)
 			    throw std::runtime_error("Cache request enqueue failed");
 			auto* waitedResponse = WaitForResponse<Core::MsgInventoryUpdateResBody>(mockMQ,
 				Core::MSG_INVENTORY_UPDATE_RES, 3);

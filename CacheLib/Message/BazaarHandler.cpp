@@ -87,7 +87,8 @@ namespace Cache {
             if (completed->exchange(true))
                 return;
             const Core::MsgBazaarRegisterResBody response{static_cast<uint8_t>(status), requestID, characterID};
-            if (responses->Send({sessionID, Core::MSG_BAZAAR_REGISTER_RES}, response) != CacheResponseSender::Result::Queued)
+            if (const auto result = responses->Send({sessionID, Core::MSG_BAZAAR_REGISTER_RES}, response);
+                result == CacheResponseSender::Result::PoolExhausted || result == CacheResponseSender::Result::Rejected)
                 Core::errorLogger->LogError("cache handler bazaar", "register response queue rejected", {{"sessionID", sessionID}});
         };
         bazaarRegistration->Register({request.characterID, request.quantity, request.price, request.inventorySlot}, finish);
@@ -124,7 +125,8 @@ namespace Cache {
             response.requestID = request.requestID;
             response.listingID = request.listingID;
             response.characterID = request.characterID;
-            if (responses->Send({ sessionID, Core::MSG_BAZAAR_BUY_RES }, response) != CacheResponseSender::Result::Queued)
+            if (const auto result = responses->Send({ sessionID, Core::MSG_BAZAAR_BUY_RES }, response);
+                result == CacheResponseSender::Result::PoolExhausted || result == CacheResponseSender::Result::Rejected)
                 Core::errorLogger->LogError("cache handler bazaar", "buy response queue rejected", {{"sessionID", sessionID}});
         };
         const auto failed = [finish] {
@@ -150,7 +152,8 @@ namespace Cache {
             response.requestID = request.requestID;
             response.listingID = request.listingID;
             response.characterID = request.characterID;
-            if (responses->Send({ sessionID, Core::MSG_BAZAAR_CANCEL_LISTING_RES }, response) != CacheResponseSender::Result::Queued)
+            if (const auto result = responses->Send({ sessionID, Core::MSG_BAZAAR_CANCEL_LISTING_RES }, response);
+                result == CacheResponseSender::Result::PoolExhausted || result == CacheResponseSender::Result::Rejected)
                 Core::errorLogger->LogError("cache handler bazaar", "cancel response queue rejected", {{"sessionID", sessionID}});
         };
         const auto failed = [finish] {
@@ -179,7 +182,8 @@ namespace Cache {
             response.requestID = request.requestID;
             response.listingID = request.listingID;
             response.characterID = request.characterID;
-            if (responses->Send({ sessionID, Core::MSG_BAZAAR_CLAIM_RES }, response) != CacheResponseSender::Result::Queued)
+            if (const auto result = responses->Send({ sessionID, Core::MSG_BAZAAR_CLAIM_RES }, response);
+                result == CacheResponseSender::Result::PoolExhausted || result == CacheResponseSender::Result::Rejected)
                 Core::errorLogger->LogError("cache handler bazaar", "claim response queue rejected", {{"sessionID", sessionID}});
         };
         const auto failed = [finish] { finish(Core::MsgBazaarClaimResBody{}); };
@@ -201,7 +205,8 @@ namespace Cache {
                 return;
             response.requestID = request.requestID;
             response.characterID = request.characterID;
-            if (responses->Send({ sessionID, Core::MSG_BAZAAR_OUTBOX_LIST_RES }, response) != CacheResponseSender::Result::Queued)
+            if (const auto result = responses->Send({ sessionID, Core::MSG_BAZAAR_OUTBOX_LIST_RES }, response);
+                result == CacheResponseSender::Result::PoolExhausted || result == CacheResponseSender::Result::Rejected)
                 Core::errorLogger->LogError("cache handler bazaar", "outbox list response queue rejected", {{"sessionID", sessionID}});
         };
         const auto failed = [finish] { finish(Core::MsgBazaarOutboxListResBody{}); };
@@ -223,7 +228,8 @@ namespace Cache {
                 return;
             response.requestID = request.requestID;
             response.characterID = request.characterID;
-            if (responses->Send({ sessionID, Core::MSG_BAZAAR_CHECK_OUTBOX_RES }, response) != CacheResponseSender::Result::Queued)
+            if (const auto result = responses->Send({ sessionID, Core::MSG_BAZAAR_CHECK_OUTBOX_RES }, response);
+                result == CacheResponseSender::Result::PoolExhausted || result == CacheResponseSender::Result::Rejected)
                 Core::errorLogger->LogError("cache handler bazaar", "outbox response queue rejected", {{"sessionID", sessionID}});
         };
         const auto failed = [finish] { finish(Core::MsgBazaarCheckOutboxResBody{}); };

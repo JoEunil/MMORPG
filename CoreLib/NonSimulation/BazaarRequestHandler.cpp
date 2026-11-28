@@ -36,7 +36,7 @@ namespace Core {
         const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (cacheCommands->EnqueueBazaarBuy({p->GetSessionID(), characterID, request->requestID}, request->listingID))
+        if (cacheCommands->EnqueueBazaarBuy({p->GetSessionID(), characterID, request->requestID}, request->listingID) != Base::EnqueueResult::Rejected)
             return;
         MsgBazaarBuyResBody failed{};
         failed.requestID = request->requestID;
@@ -56,7 +56,7 @@ namespace Core {
         if (characterID == 0) return;
 
         if (cacheCommands->EnqueueBazaarRegister({p->GetSessionID(), characterID, request->requestID}, request->quantity,
-                request->totalDiamondPrice, request->inventorySlot))
+                request->totalDiamondPrice, request->inventorySlot) != Base::EnqueueResult::Rejected)
             return;
 
         MsgBazaarRegisterResBody failed{};
@@ -73,7 +73,7 @@ namespace Core {
             return;
         const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
-        if (cacheCommands->EnqueueBazaarOutboxList({p->GetSessionID(), characterID, request->requestID}))
+        if (cacheCommands->EnqueueBazaarOutboxList({p->GetSessionID(), characterID, request->requestID}) != Base::EnqueueResult::Rejected)
             return;
         MsgBazaarOutboxListResBody failed{};
         failed.requestID = request->requestID;
@@ -89,7 +89,7 @@ namespace Core {
         const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (cacheCommands->EnqueueBazaarCheckOutbox({p->GetSessionID(), characterID, request->requestID}))
+        if (cacheCommands->EnqueueBazaarCheckOutbox({p->GetSessionID(), characterID, request->requestID}) != Base::EnqueueResult::Rejected)
             return;
         MsgBazaarCheckOutboxResBody failed{};
         failed.requestID = request->requestID;
@@ -104,7 +104,7 @@ namespace Core {
             return;
         const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
-        if (cacheCommands->EnqueueBazaarCancelListing({p->GetSessionID(), characterID, request->requestID}, request->listingID))
+        if (cacheCommands->EnqueueBazaarCancelListing({p->GetSessionID(), characterID, request->requestID}, request->listingID) != Base::EnqueueResult::Rejected)
             return;
         MsgBazaarCancelListingResBody failed{};
         failed.requestID = request->requestID;
@@ -122,7 +122,7 @@ namespace Core {
         const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (cacheCommands->EnqueueBazaarClaim({p->GetSessionID(), characterID, request->requestID}, request->listingID))
+        if (cacheCommands->EnqueueBazaarClaim({p->GetSessionID(), characterID, request->requestID}, request->listingID) != Base::EnqueueResult::Rejected)
             return;
         MsgBazaarClaimResBody failed{};
         failed.requestID = request->requestID;
@@ -139,7 +139,7 @@ namespace Core {
         const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (cacheCommands->EnqueueBazaarMyList({p->GetSessionID(), characterID, request->requestID}))
+        if (cacheCommands->EnqueueBazaarMyList({p->GetSessionID(), characterID, request->requestID}) != Base::EnqueueResult::Rejected)
             return;
         MsgBazaarMyListResBody failed{};
         failed.requestID = request->requestID;
@@ -155,7 +155,7 @@ namespace Core {
             || !sessionManager->IsFieldSession(p->GetSessionID()))
             return;
 
-        if (cacheCommands->EnqueueBazaarSearch(p->GetSessionID(), request->requestID, request->itemType, request->page))
+        if (cacheCommands->EnqueueBazaarSearch(p->GetSessionID(), request->requestID, request->itemType, request->page) != Base::EnqueueResult::Rejected)
             return;
         MsgBazaarSearchResBody failed{};
         failed.requestID = request->requestID;

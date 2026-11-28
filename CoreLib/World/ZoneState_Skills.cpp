@@ -200,7 +200,7 @@ namespace Core {
 
     void ZoneState::GrantMonsterReward(const CharacterState& character, uint64_t gold) {
         const auto sessionID = character.sessionID;
-        if (!cacheCommands->EnqueueGoldDeposit(sessionID, character.characterID, gold)) {
+        if (cacheCommands->EnqueueGoldDeposit(sessionID, character.characterID, gold) == Base::EnqueueResult::Rejected) {
             errorLogger->LogError("monster reward", "gold deposit queue rejected", {{"characterID", character.characterID}});
             responses->Enqueue(sessionID, writer->WriteGoldReward(0));
         }

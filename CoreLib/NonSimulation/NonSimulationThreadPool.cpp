@@ -45,7 +45,7 @@ namespace Core {
             return;
 
         NonSimulationEvent event = NonSimulationWorkEvent{std::move(packet)};
-        if (!m_eventQueue.Enqueue(event, Base::Priority::Droppable))
+        if (m_eventQueue.Enqueue(event, Base::Priority::Droppable) == Base::EnqueueResult::Rejected)
             errorLogger->LogWarn("non zone thread", "work queue full");
     }
 
@@ -54,7 +54,7 @@ namespace Core {
             return; // SessionManager saves pending characters during shutdown.
 
         NonSimulationEvent event = NonSimulationLobbyReturnEvent{transfer};
-        if (!m_eventQueue.Enqueue(event, Base::Priority::Important)) {
+        if (m_eventQueue.Enqueue(event, Base::Priority::Important) == Base::EnqueueResult::Rejected) {
             errorLogger->LogWarn("non zone thread", "lobby return queue overflow");
             dispatcher->Process(event);
         }
@@ -65,7 +65,7 @@ namespace Core {
             return;
 
         NonSimulationEvent event = NonSimulationDisconnectEvent{sessionID};
-        if (!m_eventQueue.Enqueue(event, Base::Priority::Important)) {
+        if (m_eventQueue.Enqueue(event, Base::Priority::Important) == Base::EnqueueResult::Rejected) {
             errorLogger->LogError("non zone thread", "disconnect queue overflow", {{"session", sessionID}});
             dispatcher->Process(event);
         }
