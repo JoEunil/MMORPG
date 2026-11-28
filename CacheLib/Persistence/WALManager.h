@@ -208,6 +208,7 @@ namespace Cache {
 		{
 			Stop();
 		}
+		// 반환 LSN은 append·fflush 성공 결과다. 요청별 디스크 fsync 완료를 기다리지 않는다.
 		uint64_t WriteInventory(uint64_t characterID, const InventoryData& data) {
 			// Keep append and reference registration indivisible with respect to truncate.
 			// Otherwise another writer can rotate the just-written segment before it is pinned.

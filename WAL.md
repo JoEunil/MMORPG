@@ -31,12 +31,14 @@ WAL은 DB 저장 전 장애의 유실 범위를 줄이고, write-back은 변경�
 
 표준적인 WAL은 "로그를 먼저 쓰고, 그 다음 데이터 페이지를 바꾼다"는 순서를 강제해 redo 가능성을 보장한다.  
 
-이 구현은 **캐시 변경(메모리)과 WAL 기록이 같은 shard critical section 안에서 연속으로 일어난다**   
-— 정확히는 캐시를 먼저 바꾸고, 그 직후 같은 락 안에서 WAL에 기록하는 순서다. 즉 로그가 캐시 변경보다 시간상 "먼저" 쓰이는 것은 아니다.  
+캐시 변경과 WAL 기록은 같은 shard 임계구역에서 처리하지만, 경로에 따라 순서가 다르다.
+
+- **소비·보상 추가·장착**: 복사한 이미지에 변경 → WAL append → 성공한 이미지를 캐시에 반영.
+- **일반 변경·거래소 배송·inbox 전진**: 캐시 변경 → WAL append 시도 → dirty 등록.
 
 그럼에도 Write-Ahead라 부르는 이유는 비교 대상이 캐시 변경이 아니라 DB 반영이기 때문이다.  
 로그 append는 해당 캐시 snapshot의 DB write-back보다 먼저 수행된다. write-back의 30초 조건은 마지막 변경 이후의 대기 정책이며, 최대 지연이나 최대 유실 시간의 상한은 아니다.
-DB 반영 전 크래시가 나면 파일에 남아 CRC 검증을 통과한 레코드까지 캐시 상태를 재구성할 수 있다. CRT 버퍼에만 있던 tail은 프로세스 종료 시 유실될 수 있다.
+DB 반영 전 크래시가 나면 파일에 남아 CRC 검증을 통과한 레코드까지 캐시 상태를 재구성할 수 있다. 현재 `Write()`는 `fflush()` 성공 후에만 LSN을 반환하므로 성공한 append의 CRT 버퍼 잔류로 인한 프로세스 크래시 유실 창은 제거한다. 실패한 append와 메모리 변경 후 append 전의 크래시 구간은 여전히 별개다.
 
 > 같은 shard 임계구역은 다른 스레드의 중간 상태 관측을 막는다. 프로세스 크래시나 I/O 실패에 대한 원자적 커밋을 의미하지는 않는다. 캐시 변경 뒤 append 전에 죽거나, append/fsync가 실패한 구간은 복구되지 않을 수 있다.
 
@@ -92,15 +94,14 @@ fflush()          ->  2. OS 페이지 캐시 (커널)   — 프로세스가 죽�
 FlushFileBuffers() ->  3. 디스크                 — 정전에도 생존
 ```
 
-`WAL::Write()`는 shard 락 안에서 호출되며 레코드 조립 + memcpy + buffered fwrite를 수행한다. 일반 경로는 버퍼 append이지만, CRT 버퍼가 가득 차면 OS write가 발생할 수 있고 세그먼트 rotation은 동기 fflush/fsync를 포함한다. 따라서 모든 Write가 I/O 대기 없이 끝난다는 보장은 없다.
-2,3 단계(`Fsync()`)는 별도 스레드가 **목표 20ms 간격**으로 일괄 처리한다.
-순서 보장(동기 Write)과 내구성 보장(비동기 fsync)을 분리해, 쓰기 경로의 레이턴시는 버퍼 append 수준으로 유지하면서 durability window를 fsync 간격으로 제어하는 구조다. 다만 `sleep_for()`의 실제 깨우기 지연, WAL mutex 경합, flush 소요 시간이 추가되므로 20ms는 엄밀한 최대치가 아니라 목표 대기 값이다.
-fflush로 OS 페이지 캐시까지만 올리면 프로세스 크래시는 방어되지만, 현재는 fflush와 `FlushFileBuffers()`를 모두 같은 20ms 목표 간격으로 배치한다. 따라서 프로세스 크래시와 OS 크래시의 유실 가능 구간을 하나의 정책으로 관리한다. 두 주기를 분리하면 프로세스 크래시 유실 창을 더 줄일 수 있지만, CRT dirty와 disk dirty 상태·rotation·종료 순서를 따로 관리해야 하므로 현재는 복구 정확성과 구현 단순성을 우선했다.
-주기는 [WAL 성능 벤치마크](Benchmark_WAL.md)를 근거로 선택했다. Google Benchmark로 fsync 주기와 writer 수를 함께 변경하며 writer-fflush contention과 writer-writer contention이 합산된 처리량을 측정했다.  
+- **Write**: `fwrite()`와 `fflush()` 성공 후 LSN을 반환한다. OS 페이지 캐시까지 전달하며, 디스크 영속화 완료를 뜻하지 않는다.
+- **Fsync**: 별도 스레드가 목표 20ms 간격으로 `FlushFileBuffers()`를 수행한다. 스케줄링·I/O 지연이 더해지므로 최대 유실 시간이 20ms로 제한되는 것은 아니다.
+
+처리량 비교와 주기 선택 근거는 [WAL 벤치마크 결과](Benchmark_WAL.md#3-fsync-주기별-벤치마크)를 참고한다.
 
 | 장애 종류 | 손실 범위 |
 |---|---|
-| 프로세스 크래시 (abort, 예외, 강제 종료) | 목표 fflush 간격 20ms + 스케줄링/경합 지연 — 아직 fflush 안 된 CRT 버퍼상의 tail 레코드 |
+| 프로세스 크래시 (abort, 예외, 강제 종료) | 성공한 append는 OS 페이지 캐시에 전달되어 CRT 잔류 창 없음. 메모리 변경 후 append 전 크래시, append 실패·차단 경로의 변경 유실 가능성은 남음 |
 | OS 크래시 / 정전 | 목표 fsync 간격 20ms + 스케줄링/경합 지연 — 아직 `FlushFileBuffers()` 안 된 tail 레코드만 (파일 전체 아님) |
 
 필요 시 fsync 간격을 줄이면 정전 손실 창까지 좁힐 수 있지만, 현재의 `sleep_for()` 기반 구현은 Windows 타이머 해상도보다 짧은 간격을 정확히 재현하지 못한다 (durability ↔ throughput 트레이드오프).
@@ -153,13 +154,11 @@ Restore와의 상호작용: 재기동 복구로 캐시에 되살린 key는 정�
 
 ## 10. 장애 대응 — Degraded Mode
 
-WAL 기록(`fwrite`)이나 주기적 fsync가 실패하면(디스크 가득 참 등) 곧바로 캐시를 막지 않는다. 대신 WAL 보호만 내려놓고(`blocked`) 서비스는 계속한다.
+WAL 기록에 실패하거나 일시 차단된 동안에도 인벤토리 작업은 계속 처리한다. 소비·보상 추가·장착·일반 변경·배송·inbox 전진 모두 메모리 변경과 dirty 등록을 유지하고, 기존 DB flush 경로로 저장한다. WAL 기록 실패만으로 `StorageFailure`를 반환하지 않는다.
 
-- `blocked` 동안 캐시의 `lastLsn`은 마지막으로 성공한 LSN에 동결된다. 이 구간의 변경은 WAL 없이 DB write-back으로만 보호된다(마지막 변경 이후 30초가 기준이며, 계속 변경되는 키의 최대 대기시간을 뜻하지 않음) (write-back 캐시 원래 수준으로 일시 하락).
-- 10초 후 자동으로 재시도한다.
-- 재개 후 첫 `Write` 성공은 그 시점의 전체 이미지를 싣고 가므로, blocked 구간에 누적된 변경까지 자동으로 메꿔진다.
-
-즉 "WAL 장애 = 서비스 중단"이 아니라 "durability 보장 수준의 일시적 하락"으로 대응한다. 
+- WAL 기록에 실패하면 기존 `lastLsn`을 유지한다. DB flush 전에 서버가 종료되면 WAL에 남지 않은 변경은 유실될 수 있다.
+- append 성공은 `fwrite()` + `fflush()` 성공을 뜻한다. 디스크 fsync는 기본 20ms 주기로 별도 수행한다.
+- 일시 차단은 10초 후 해제해 기록을 재시도한다. 이후 변경에서 append가 성공하면 그 시점의 전체 이미지가 기록된다.
 
 ## 11. Sharded Cache와 WAL — 병렬과 직렬이 맞물리는 지점
 
@@ -170,10 +169,10 @@ WAL 기록(`fwrite`)이나 주기적 fsync가 실패하면(디스크 가득 참 
 | | 성격 | 병렬성 |
 |---|---|---|
 | Cache 접근 (해시 테이블 조회, 뮤테이션) | 상대적으로 무겁고, shard별로 독립적이어야 함 | shard mutex로 병렬 |
-| WAL append (레코드 조립 → 버퍼 memcpy → `fwrite`) | 일반 경로는 buffered append, 버퍼 flush·rotation 시 I/O 가능 | 직렬 |
+| WAL append (레코드 조립 → 버퍼 memcpy → `fwrite` → `fflush`) | 호출마다 OS 페이지 캐시로 전달하며 I/O 대기 가능 | 직렬 |
 
-**무거운 부분(캐시 조작)은 병렬로 남기고, 가벼운 부분(로그 버퍼 append)만 직렬화**되는 구조라 자연스럽게 맞물린다.   
-주기적 fsync는 별도 스레드로 분리했고, `FlushFileBuffers()`는 WAL append mutex를 풀어놓은 뒤 실행한다. 다만 그 앞의 `fflush()`는 append와 같은 mutex를 잠시 사용하므로 fsync 빈도가 높으면 writer를 방해할 수 있다. [WAL 성능 벤치마크](Benchmark_WAL.md)는 이 간섭을 포함한 실제 처리량을 측정한다.
+캐시 조작은 shard별 병렬로 남고, WAL의 `fwrite()`와 `fflush()`는 같은 append mutex 안에서 직렬화된다. 따라서 writer 수를 늘려도 WAL 처리량이 함께 증가한다고 볼 수 없다.
+주기적 fsync는 별도 스레드로 분리했고, dirty 상태를 확인·조정하는 구간만 append mutex를 사용한다. `FlushFileBuffers()`는 그 mutex를 풀어놓은 뒤 실행하고 sync mutex로 rotation·종료 시 handle 수명을 보호한다. 주기적 fsync의 `fflush()`와 writer 사이의 경합은 제거됐지만 writer 간 경합과 저장장치 I/O 영향은 남는다. 주기별 처리량은 [WAL 성능 벤치마크](Benchmark_WAL.md)에서 비교한다.
 
 ## 12. 참고
 - [CacheLib](CacheLib.md) — Write-Back/Read-Through 구조, WAL이 얹히는 지점

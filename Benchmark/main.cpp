@@ -1,6 +1,20 @@
 ﻿#include <benchmark/benchmark.h>
+#include <cstring>
 
-BENCHMARK_MAIN();
+int RunWALWriteLatency(int argc, char** argv);
+
+int main(int argc, char** argv) {
+    if (argc > 1 && std::strcmp(argv[1], "--wal-latency") == 0) {
+        for (int index = 1; index + 1 < argc; ++index) argv[index] = argv[index + 1];
+        argv[--argc] = nullptr;
+        return RunWALWriteLatency(argc, argv);
+    }
+    benchmark::Initialize(&argc, argv);
+    if (benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
+    benchmark::RunSpecifiedBenchmarks();
+    benchmark::Shutdown();
+    return 0;
+}
 
 /*
 Google Benchmark 사용법

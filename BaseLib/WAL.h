@@ -52,6 +52,7 @@ namespace Base {
 		std::vector<uint8_t> m_writeBuf;
 
 		std::atomic<bool> dirty = false;  // fsync
+		bool m_tailRepairPending = false;
 		bool m_degraded = false; // 재기동 시 닫힌 세그먼트 손상으로 격리가 발생했는지
 
 		uint32_t LIMIT = 0;
@@ -181,8 +182,21 @@ namespace Base {
 			return { static_cast<uint32_t>(finalSeg) + 1, 0, true };
 		}
 
+        bool RepairTailLocked() {
+            if (!m_tailRepairPending)
+                return true;
+            std::error_code error;
+            std::filesystem::resize_file(m_fileName + "." + std::to_string(m_segment), m_offset, error);
+            if (error)
+                return false;
+            m_tailRepairPending = false;
+            return true;
+        }
+
 		bool OpenSegment(uint32_t segment)
 		{
+            if (!RepairTailLocked())
+                return false;
 			std::string path = m_fileName + "." + std::to_string(segment);
 
 			FILE* fp = nullptr;
@@ -285,8 +299,6 @@ namespace Base {
 				std::lock_guard<std::mutex> lock(m_mutex);
 				if (!m_fp)
 					return false;
-				if (fflush(m_fp) != 0)
-					return false;
 				dirty.store(false, std::memory_order_release);
 			}
 			{
@@ -299,6 +311,7 @@ namespace Base {
 			return true;
 		}
 
+		// 성공한 Write는 CRT 버퍼를 OS로 전달한다. 디스크 영속성은 Fsync가 별도로 확인한다.
 		// payload는 ( key + result ) 형태로 만들어서 넘기기
 		uint64_t Write(const uint8_t* payload, size_t len, uint16_t type, uint64_t minimumLsn = 0) {
 			if (len > UINT16_MAX - sizeof(WALHeader))
@@ -332,12 +345,18 @@ namespace Base {
 
 			// wal 기록 실패는 durability를 더이상 보장할 수 없는 상황 -> 추가 작업 block 
 			// seg가 1부터 시작이기 때문에 0을 Invalid lsn으로. 
-			if (fwrite(m_writeBuf.data(), recordSize, 1, m_fp) != 1) {
-				fflush(m_fp); // CRT 버퍼 flush (CRT 버퍼 -> OS 페이지 캐시)
-				_chsize_s(_fileno(m_fp), m_offset);   // OS 레벨 파일 자르기
-				clearerr(m_fp);
-				return 0;
-			}
+            if (fwrite(m_writeBuf.data(), recordSize, 1, m_fp) != 1 || fflush(m_fp) != 0) {
+                // fclose can retry buffered output, so close before truncating the unacknowledged tail.
+                {
+                    std::lock_guard syncLock(m_syncMutex);
+                    fclose(m_fp);
+                    m_fp = nullptr;
+                    m_handle = INVALID_HANDLE_VALUE;
+                }
+                m_tailRepairPending = true;
+                RepairTailLocked(); // A failed repair is retried before any subsequent append.
+                return 0;
+            }
 
 			m_offset += recordSize;
 			dirty.store(true, std::memory_order_release);

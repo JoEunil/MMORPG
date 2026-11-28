@@ -3,6 +3,8 @@
 #include <BaseLib/WAL.h>
 
 #include <algorithm>
+#include <atomic>
+#include <thread>
 
 #pragma pack(push,1) 
 struct WalRecordTestA {

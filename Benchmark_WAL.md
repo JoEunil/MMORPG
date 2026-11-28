@@ -1,97 +1,134 @@
 ﻿# WAL Benchmark
 
 ## 1. 개요
-WAL의 fsync 주기를 결정하기 위해, fsync 주기와 writer 수에 따른 처리량을 측정하였다. 
+WAL의 기록 방식을 선택하기 위해 Write만 수행하는 경우, 매 Write에 fflush를 수행하는 경우, 매 Write에 fsync까지 수행하는 경우의 처리량을 먼저 비교했다. 이후 선택한 방식에서 fsync 주기와 writer 수에 따른 처리량을 측정했다.
 
-### Fsync() 처리 구조
-이 문서에서 fsync 주기는 전용 thread가 WAL::Fsync()를 호출하는 주기를 의미한다. Fsync()는 dirty record가 있을 때 다음 두 단계로 처리한다.  
-현재 구현은 두 작업을 하나의 주기로 묶어 process crash와 OS crash의 durability window를 동일한 정책으로 관리한다.    
+## 2. Write 방식별 처리량 비교
 
-```cpp
-void Fsync() {
-    if (!dirty)
-        return;
+### 벤치마크 시나리오
 
-    {
-        std::lock_guard lock(m_mutex);
-        fflush(m_fp);                  // CRT buffer → OS page cache
-        dirty = false;
-    }
+단일 writer에서 64B·512B·4KiB payload를 기록하며 다음 세 가지 방식을 비교했다. 별도의 background fsync는 사용하지 않았다.
 
-    {
-        std::lock_guard lock(m_syncMutex);
-        FlushFileBuffers(m_handle);    // OS page cache → disk
-    }
-}
+| 방식 | 호출별 수행 작업 | 기록 완료 범위 |
+|---|---|---|
+| Write만 | fwrite | CRT 버퍼 기록 |
+| Write + fflush | fwrite → fflush | OS 페이지 캐시 전달 |
+| Write + fsync | fwrite → fflush → FlushFileBuffers | 디스크 동기화 |
+
+Release/x64에서 조건별 최대 5,000회 또는 2초 동안 실행하고, warmup 20회 후 3회 반복했다. 초기화·warmup·파일 정리는 제외하고, 마지막 디스크 동기화까지 포함한 총 시간으로 처리량을 계산했다. 전체 측정에는 약 22초가 걸렸다.
+
+### 결과 분석
+
+| 방식 | 64B (건/s) | 512B (건/s) | 4KiB (건/s) |
+|---|---:|---:|---:|
+| Write만 | 1,317,674 | 270,160 | 40,301 |
+| Write + fflush | 126,224 | 93,456 | 32,649 |
+| Write + fsync | 1,678 | 1,733 | 1,646 |
+
+작은 레코드에서는 buffering에 따른 처리량 차이가 컸다. 512B 테스트 조건에서 매 Write의 fflush는 약 93,456건/s였고, 매번 디스크 동기화까지 기다리면 약 1,733건/s로 낮아졌다.
+
+**매 Write에서 fflush까지 수행하고 디스크 fsync는 별도 주기로 처리하는 방식을 선택했다.** Write만 수행할 때보다 처리량은 낮지만, 성공한 기록을 OS 페이지 캐시까지 전달해 프로세스 종료 시 CRT 버퍼에 남은 데이터가 유실되는 구간을 없애는 이점이 크다고 판단했다.
+
+## 3. fsync 주기별 벤치마크
+
+현재 구현은 매 `Write()`에서 `fwrite()`와 `fflush()`를 수행하고, 별도 thread가 주기적으로 `Fsync()`를 호출한다.
+
+### Write와 Fsync 처리 구조
+
+```text
+Write: fwrite → fflush → LSN 반환
+                CRT buffer → OS page cache
+
+Fsync: FlushFileBuffers
+       OS page cache → disk
 ```
 
-fflush()는 writer와 동일한 write mutex를 사용하므로 이 구간에서 writer-fflush contention이 발생한다. 반면 FlushFileBuffers()는 write mutex를 해제한 뒤 실행하므로 일반적인 WAL::Write()를 직접 block하지 않는다. 이때 사용하는 sync mutex는 segment rotation이나 종료 과정에서 file handle이 교체되거나 닫히는 것을 방지한다.  
-따라서 fsync 주기를 짧게 설정할수록 fflush()가 write mutex를 획득하는 빈도와 disk flush 빈도가 함께 증가한다. 이 벤치마크는 fsync 주기와 writer 수를 변경하여 writer-fflush contention, writer-writer contention 및 disk flush의 영향을 모두 포함한 WAL 기록 처리량을 비교한다.  
+`Write()`는 하나의 mutex로 직렬화되며, `fflush()`까지 성공해야 LSN을 반환한다. 따라서 성공한 Write의 데이터는 CRT 버퍼에 남지 않지만, 디스크 영속화까지 완료된 것은 아니다.
+`Fsync()`의 디스크 동기화는 write mutex를 해제한 뒤 수행한다. 별도의 sync mutex는 segment 교체·종료 중 파일 핸들이 닫히는 것을 방지한다.
 
-## 2. 벤치마크 시나리오
-fsync 주기별로 WAL writer의 처리량을 측정한다.   
-writer 수는 1개, 3개를 각각 측정한다. 각 조건에서 writer가 `WAL::Write()`를 최소 1초 이상 반복 호출하도록 하고, WAL 기록 처리량을 측정한다. 이 측정을 조건별로 100회 반복하여 평균, 중앙값, 하위 1% 처리량(p01), 하위 5% 처리량(p05)을 집계한다.  
-또한 lock contention을 확인하기 위해, fsync 주기 25ms에서 writer 8개인 시나리오도 측정한다.  
+이 벤치마크는 fsync 빈도와 여러 writer의 경합이 최종 WAL 기록 처리량에 미치는 영향을 비교한다.
 
-fsync 주기와 writer contention에 측정 범위를 한정하기 위해 segment limit을 `UINT32_MAX`로 설정하여 segment rotation을 제외했다. 또한 15-byte fixed-size test payload를 사용하므로, 결과는 실서비스 `WalInventoryRecord`의 절대 처리량이 아니라 조건별 상대적인 처리량 변화로 해석한다.
+### 벤치마크 시나리오
 
-- writer 수를 고정하고 fsync 주기를 변경하여 fsync 빈도가 Write 처리량에 미치는 영향을 비교한다.
-- fsync 주기를 25ms로 고정하고 writer 수를 1개, 3개, 8개로 변경하여 writer contention이 처리량에 미치는 영향을 비교한다.
-- 현재 서버 설정과 동일한 writer 3개 결과를 기준으로, 짧은 유실 구간과 처리량 사이의 절충점을 선택한다.
+Release/x64에서 실제 `Base::WAL` 구현으로 측정했다. 각 조건을 최소 0.1초 동안 실행하고 100회 반복했다. 조건 순서를 무작위로 섞어 시간 경과에 따른 부하 변화가 한 조건에 몰리지 않도록 했다.
 
-이 결과는 writer-fflush contention과 writer-writer contention이 합산된 최종 처리량을 보여준다. mutex wait time을 각각 직접 측정하는 벤치마크는 아니므로, 개별 contention 비용을 정량적으로 분리하기보다 조건 간 처리량 변화로 영향을 판단한다.
+- **fsync 대기 설정**: 10·20·25·30·50·100ms.
+- **512B payload**: 현재 서버의 MQ worker 수와 같은 writer 3개로 주기별 처리량을 비교한다.
+- **15B payload**: writer 1개·3개를 비교하고, 25ms에서 writer 8개 조건을 추가해 writer 경합의 영향을 확인한다.
 
-## 3. 결과 분석
+현재 인벤토리 WAL 레코드는 헤더를 포함해 404B이므로, 512B 결과를 실제 환경과 비슷한 크기 조건으로 참고했다. 15B는 작은 고정 레코드의 비교 조건이다. 실제 인벤토리 처리 전체를 재현하는 시나리오는 아니다. Segment limit은 `UINT32_MAX`로 설정해 rotation을 제외했다.
 
-전체 측정 결과: [WAL_Result.txt](Benchmark/WAL_Result.txt)
+처리량은 성공한 Write 수를 마지막 Fsync까지 포함한 경과 시간으로 나누며, 아래 표는 반복별 처리량의 평균이다. 총 19개 조건을 100회씩 실행하는 데 약 4분 48초가 걸렸고, 쓰기·fsync 실패는 없었다. 반복당 측정 구간이 짧아 스케줄링·I/O 변동의 영향도 포함된다.
 
-### Writer 3개
+```bat
+x64\Release\Benchmark.exe --benchmark_filter=^BM_WalFsyncInterval/ --benchmark_min_time=0.1s --benchmark_enable_random_interleaving=true
+```
 
-현재 서버의 MQ worker 수와 동일한 writer 3개 조건의 결과는 다음과 같다.
+### 결과 분석
 
-| fsync 주기 | 평균 처리량 | p01 처리량 | 평균 대비 p01 | p05 처리량 | 평균 대비 p05 |
-|---:|---:|---:|---:|---:|---:|
-| 10ms | 166.4 MiB/s | 147.1 MiB/s | 88.4% | 151.8 MiB/s | 91.2% |
-| 20ms | 192.4 MiB/s | 173.4 MiB/s | 90.1% | 177.1 MiB/s | 92.0% |
-| 25ms | 189.0 MiB/s | 171.3 MiB/s | 90.6% | 175.3 MiB/s | 92.8% |
-| 30ms | 191.7 MiB/s | 172.8 MiB/s | 90.1% | 178.6 MiB/s | 93.2% |
-| 50ms | 206.2 MiB/s | 183.8 MiB/s | 89.1% | 187.8 MiB/s | 91.1% |
-| 100ms | 212.5 MiB/s | 187.5 MiB/s | 88.2% | 195.9 MiB/s | 92.2% |
+#### Writer 3개 — 512B payload
 
-fsync 주기가 길어질수록 처리량은 전반적으로 증가했지만, 주기가 길어지면 장애 시 유실 가능 구간도 함께 증가한다. 따라서 최고 처리량 자체보다 짧은 주기에서 평균과 하위 처리량이 크게 뒤처지지 않는 구간을 선택하는 것이 목적이다.  
-각 주기의 p01은 평균의 88.2%~90.6%, p05는 평균의 91.1%~93.2% 범위로, 하위 처리량의 상대적인 감소 폭은 주기별로 큰 차이가 없다.   
-20ms, 25ms, 30ms의 평균 처리량 차이는 최대 약 1.8%이며, p01 차이는 약 1.2%, p05 차이는 약 1.9%이다. 20ms는 세 조건 중 평균과 p01이 가장 높고, 30ms는 p05가 가장 높지만 차이가 작다.  
-**벤치마크 결과를 바탕으로 기본 fsync 대기 값을 20ms로 선택했다.** 20·25·30ms 결과의 차이가 작으므로 이 구간에서 유실 가능 구간이 더 짧은 20ms를 선택했다. 10ms는 유실 가능 구간을 더 줄일 수 있지만, 20ms보다 평균 처리량이 약 13.5% 낮다.
+현재 서버 설정과 같은 writer 3개에서 fsync 주기별 결과는 다음과 같다.
 
-### Writer 1개
+| fsync 대기 설정 | 평균 처리량 (건/s) | 중앙값 (건/s) | 반복 간 CV |
+|---:|---:|---:|---:|
+| 10ms | 77,123 | 75,136 | 10.22% |
+| 20ms | 76,979 | 76,567 | 6.29% |
+| 25ms | 79,141 | 76,519 | 11.22% |
+| 30ms | 80,387 | 78,275 | 10.19% |
+| 50ms | 77,206 | 76,748 | 7.23% |
+| 100ms | 77,699 | 77,107 | 8.78% |
 
-writer contention이 없는 writer 1개 결과는 다음과 같다.
+25ms는 20ms보다 평균 처리량이 약 2.8% 높았지만, 중앙값은 거의 같고 CV는 더 컸다. 이 결과만으로 25ms가 더 안정적이라고 판단하지 않는다.
 
-| fsync 주기 | 평균 처리량 | p01 처리량 | 평균 대비 p01 | p05 처리량 | 평균 대비 p05 |
-|---:|---:|---:|---:|---:|---:|
-| 10ms | 197.6 MiB/s | 174.2 MiB/s | 88.2% | 179.6 MiB/s | 90.9% |
-| 20ms | 214.4 MiB/s | 193.2 MiB/s | 90.1% | 198.3 MiB/s | 92.5% |
-| 25ms | 223.7 MiB/s | 203.1 MiB/s | 90.8% | 208.4 MiB/s | 93.2% |
-| 30ms | 226.8 MiB/s | 206.8 MiB/s | 91.2% | 209.0 MiB/s | 92.2% |
-| 50ms | 240.1 MiB/s | 213.6 MiB/s | 89.0% | 219.5 MiB/s | 91.4% |
-| 100ms | 241.4 MiB/s | 220.8 MiB/s | 91.4% | 221.2 MiB/s | 91.6% |
+CV는 반복별 처리량의 표본 표준편차를 평균으로 나눈 값이다. 호출별 지연시간 변동이나 장애율을 뜻하지 않는다.
 
-writer 1개에서는 fsync 주기가 길어질수록 평균 처리량이 대체로 증가한다. 다만 50ms에서 이미 100ms 평균 처리량의 약 99.5%에 도달하여, 50ms 이후에는 주기를 늘려도 추가 처리량 개선이 거의 없다. 20ms, 25ms, 30ms 사이에서는 주기가 길어질수록 평균 처리량이 증가하지만, 현재 서버의 writer는 3개이므로 fsync 주기 결정에는 위의 writer 3개 결과를 우선한다.
+#### 20ms·25ms 추가 비교
 
-### Writer contention
+짧은 측정 구간의 영향을 확인하기 위해, 512B·writer 3개에서 두 설정만 최소 0.5초씩 100회 추가 측정했다. 조건 순서는 무작위로 섞었고, 약 2분 27초가 걸렸다.
 
-동일한 25ms fsync 주기에서 writer 수에 따른 결과는 다음과 같다.
+| fsync 대기 설정 | 평균 처리량 (건/s) | 중앙값 (건/s) | 반복 간 CV |
+|---:|---:|---:|---:|
+| 20ms | 77,525 | 76,626 | 8.89% |
+| 25ms | 77,586 | 76,326 | 9.60% |
 
-| Writer 수 | 평균 처리량 | Writer 1개 대비 | p01 처리량 | 평균 대비 p01 | p05 처리량 | 평균 대비 p05 |
-|---:|---:|---:|---:|---:|---:|---:|
-| 1 | 223.7 MiB/s | 100.0% | 203.1 MiB/s | 90.8% | 208.4 MiB/s | 93.2% |
-| 3 | 189.0 MiB/s | 84.5% | 171.3 MiB/s | 90.6% | 175.3 MiB/s | 92.8% |
-| 8 | 91.5 MiB/s | 40.9% | 85.9 MiB/s | 93.9% | 86.8 MiB/s | 94.8% |
+평균 처리량 차이는 약 0.08%이며, 25ms의 CV가 더 작지도 않았다. **이번 측정에서는 25ms로 변경할 이점을 확인하지 못해 기본 20ms를 유지했다.**
 
-writer를 1개에서 3개로 늘리면 평균 처리량이 약 15.5% 감소하고, 3개에서 8개로 늘리면 추가로 약 51.6% 감소한다. writer 8개의 평균 처리량은 writer 1개의 약 40.9%이다. WAL의 `Write()` 경로는 하나의 mutex로 serialize되므로 writer를 추가해도 처리량이 증가하지 않고, thread 간 lock contention과 context switching 비용으로 오히려 감소한다.  
+```bat
+x64\Release\Benchmark.exe --benchmark_filter="^BM_WalFsyncInterval/fsync_ms:(20|25)/writers:3/payload_bytes:512" --benchmark_min_time=0.5s --benchmark_enable_random_interleaving=true
+```
+
+전체 측정과 추가 비교의 원본 출력은 [WAL_Result.txt](Benchmark/WAL_Result.txt)에 보관했다. 두 측정의 실행 시간 합은 약 7분 15초이며, 전체 2,100회에서 쓰기·fsync 실패는 없었다.
+
+#### Writer 1개·3개 — 15B payload
+
+작은 레코드에서 writer 수와 fsync 주기에 따른 결과는 다음과 같다.
+
+| fsync 대기 설정 | Writer 1개 (건/s) | CV | Writer 3개 (건/s) | CV |
+|---:|---:|---:|---:|---:|
+| 10ms | 132,937 | 21.46% | 95,328 | 9.21% |
+| 20ms | 138,544 | 21.11% | 101,888 | 11.70% |
+| 25ms | 134,977 | 20.57% | 97,702 | 8.31% |
+| 30ms | 137,334 | 20.81% | 97,636 | 7.45% |
+| 50ms | 140,837 | 20.43% | 98,713 | 11.13% |
+| 100ms | 141,297 | 19.39% | 97,814 | 9.51% |
+
+writer 1개에서 CV가 약 19~21%로 높았으며, 모든 조건에서 주기가 길수록 처리량이 증가하는 경향은 나타나지 않았다.
+
+#### Writer contention
+
+같은 15B payload와 25ms fsync 설정에서 writer 수에 따른 결과는 다음과 같다.
+
+| Writer 수 | 평균 처리량 (건/s) | Writer 1개 대비 | CV |
+|---:|---:|---:|---:|
+| 1 | 134,977 | 100.0% | 20.57% |
+| 3 | 97,702 | 72.4% | 8.31% |
+| 8 | 87,890 | 65.1% | 7.28% |
+
+writer가 늘어도 Write는 하나의 mutex로 직렬화된다. 이 측정에서는 writer 1개보다 3개·8개의 처리량이 낮았다. 다만 mutex 대기 시간과 I/O 비용을 각각 측정하지 않았으므로, 감소분 전체를 잠금 비용으로 해석하지는 않는다.
 
 ## 4. 결론
 
-- 이 벤치마크는 `fflush()`가 write mutex를 획득하면서 발생하는 writer-fflush contention과, 여러 writer가 동일한 write mutex를 획득하면서 발생하는 writer-writer contention을 함께 반영한다. writer 1개 결과는 writer contention이 없는 baseline이고, writer 3개 결과는 현재 서버 설정에서 두 contention이 반영된 처리량이며, writer 8개 결과는 writer contention이 커졌을 때의 한계를 보여준다.
-- 10ms는 fsync 빈도를 높여 유실 가능 구간을 가장 짧게 만들지만 writer 3개 평균 처리량이 20ms보다 약 13.5% 낮다. 반면 20ms, 25ms, 30ms는 평균과 하위 처리량 차이가 2% 이내이며, 50ms와 100ms는 처리량이 더 높지만 유실 가능 구간도 크게 늘어난다.
-- 기본 fsync 대기 값은 20ms이며, 생성자에서 변경할 수 있다. 20·25·30ms의 처리량 차이가 2% 이내여서, 이 구간 중 유실 가능 구간이 더 짧은 20ms를 선택했다. 이 수치는 실제 fsync 완료 간격이나 최대 유실 시간을 직접 측정한 값은 아니다.
+- 매 Write에서 `fflush()`까지 수행하고, 주기적인 Fsync는 디스크 동기화를 담당한다. Write 성공과 디스크 영속화 완료를 구분한다.
+- 100회 반복 결과에서는 25ms가 20ms보다 일관되게 안정적이라는 근거를 얻지 못했다. 기본 대기 값은 20ms를 유지했다.
+- 20ms는 thread의 목표 대기 값이다. 스케줄링·잠금·I/O 시간이 더해지므로 실제 동기화 완료 간격이나 최대 유실 시간을 뜻하지 않는다.

@@ -60,6 +60,7 @@ namespace Cache {
         using Key = InventoryKey;
         using KeyHash = InventoryKeyHash;
         using Result = InventoryCacheItem;
+        // WAL 기록 실패 시에도 메모리 변경·dirty 등록을 유지하고 DB flush로 저장한다.
         std::function<uint64_t(uint64_t, const InventoryData&)>  m_walFn;
 
         struct PendingReward {
@@ -71,7 +72,7 @@ namespace Cache {
         std::array<std::unordered_map<uint64_t, std::vector<std::function<void(Core::EquipmentStateResult)>>>, SHARD_SIZE> pendingEquipmentLoads;
         Core::ItemOperationResult ChangeItemLocked(uint16_t shardIndex, Key key, uint32_t itemID, int32_t quantity);
         bool AppendInventoryWal(uint64_t characterID, InventoryData& image);
-        bool TryCommitInventoryLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& entry, InventoryData& image);
+        void CommitInventoryLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& entry, InventoryData& image);
         void CompleteLoad(uint16_t shardIndex, Key key, const Result* loaded);
         CACHE_STATUS GetOrLoad(uint16_t shardIndex, const Key& key, Result& outResult);
         CACHE_STATUS LoadFromDB(uint16_t shardIndex, const Key& key);

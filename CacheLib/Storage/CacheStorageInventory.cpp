@@ -121,17 +121,11 @@ namespace Cache {
         return true;
     }
 
-    bool CacheStorageInventory::TryCommitInventoryLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& entry, InventoryData& image) {
-        try {
-            if (!AppendInventoryWal(key.characterID, image))
-                return false;
-        } catch (...) {
-            return false;
-        }
+    void CacheStorageInventory::CommitInventoryLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& entry, InventoryData& image) {
+        AppendInventoryWal(key.characterID, image);
 
         entry.data = image;
         MarkDirtyLocked(shard, key, entry);
-        return true;
     }
 
     Core::ItemOperationResult CacheStorageInventory::ChangeItemLocked(uint16_t shardIndex, Key key, uint32_t itemID, int32_t quantity) {
@@ -156,8 +150,7 @@ namespace Cache {
             if (item.itemID == 0) { item.itemID = itemID; item.slot = static_cast<uint8_t>(slot); ++image.count; }
             item.quantity = static_cast<uint16_t>(next);
         }
-        if (!TryCommitInventoryLocked(shard, key, result, image))
-            return {Core::ItemOperationStatus::StorageFailure, static_cast<uint16_t>(current)};
+        CommitInventoryLocked(shard, key, result, image);
         return {Core::ItemOperationStatus::Success, static_cast<uint16_t>(next)};
     }
 
@@ -230,8 +223,7 @@ namespace Cache {
         if (equipped == itemID)
             return {Core::EquipmentOperationStatus::Success, image.equippedWeaponItemID, image.equippedShieldItemID, image.equippedBodyItemID};
         equipped = itemID;
-        if (!TryCommitInventoryLocked(shard, found->first, result, image))
-            return {Core::EquipmentOperationStatus::StorageFailure};
+        CommitInventoryLocked(shard, found->first, result, image);
         return {Core::EquipmentOperationStatus::Success, image.equippedWeaponItemID, image.equippedShieldItemID, image.equippedBodyItemID};
     }
 

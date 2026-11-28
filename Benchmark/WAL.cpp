@@ -3,6 +3,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <cstring>
 #include <filesystem>
 #include <numeric>
 #include <string>
@@ -11,7 +12,6 @@
 #include <vector>
 
 #include <BaseLib/WAL.h>
-#include "Percentile.h"
 
 namespace {
 #pragma pack(push, 1)
@@ -22,6 +22,7 @@ namespace {
         uint8_t value8;
     };
 #pragma pack(pop)
+    static_assert(sizeof(WalRecord) == 15);
 
     constexpr uint16_t WAL_RECORD_TYPE = 1;
 
@@ -58,11 +59,13 @@ namespace {
         return directory / ( "wal_fsync_" + std::to_string(fsyncIntervalMs) + "ms_"  + std::to_string(writerCount) + "writers_" + std::to_string(nonce));
     }
 
-    void BM_WalFsyncInterval(benchmark::State& state) {
+    void RunWalFsyncInterval(benchmark::State& state) {
         const int64_t fsyncIntervalMs = state.range(0);
         const int64_t writerCount = state.range(1);
-        if (fsyncIntervalMs <= 0 || writerCount <= 0) {
-            state.SkipWithError("fsync interval and writer count must be positive");
+        const int64_t payloadBytes = state.range(2);
+        if (fsyncIntervalMs <= 0 || writerCount <= 0 || payloadBytes < static_cast<int64_t>(sizeof(WalRecord))
+            || payloadBytes > static_cast<int64_t>(UINT16_MAX - sizeof(Base::WALHeader))) {
+            state.SkipWithError("invalid fsync interval, writer count, or payload size");
             return;
         }
 
@@ -78,6 +81,7 @@ namespace {
 
         for (int64_t writerIndex = 0; writerIndex < writerCount; ++writerIndex) {
             writers.emplace_back([&, writerIndex] {
+                std::vector<uint8_t> payload(static_cast<size_t>(payloadBytes), 0x5a);
                 while (!started.load(std::memory_order_acquire) && running.load(std::memory_order_relaxed))
                     std::this_thread::yield();
 
@@ -91,10 +95,14 @@ namespace {
                         static_cast<uint16_t>(sequence),
                         static_cast<uint8_t>(sequence)
                     };
-                    if (wal.Write(reinterpret_cast<const uint8_t*>(&record), sizeof(record), WAL_RECORD_TYPE) != 0)
+                    std::memcpy(payload.data(), &record, sizeof(record));
+                    if (wal.Write(payload.data(), payload.size(), WAL_RECORD_TYPE) != 0) {
                         ++writes;
-                    else
+                    }
+                    else {
                         ++failures;
+                        running.store(false, std::memory_order_relaxed);
+                    }
                     sequence += static_cast<uint64_t>(writerCount);
                 }
 
@@ -104,44 +112,72 @@ namespace {
         }
 
         uint64_t fsyncAttempts = 0;
+        uint64_t fsyncFailures = 0;
         const auto fsyncInterval = std::chrono::milliseconds(fsyncIntervalMs);
 
+        const auto writeStart = std::chrono::steady_clock::now();
         started.store(true, std::memory_order_release);
         for (auto _ : state)  // MinTime 초과할 때 까지 반복
         { 
             std::this_thread::sleep_for(fsyncInterval);
-            wal.Fsync();
+            const bool synced = wal.Fsync();
             ++fsyncAttempts;
+            if (!synced) {
+                ++fsyncFailures;
+                running.store(false, std::memory_order_relaxed);
+            }
+            if (!running.load(std::memory_order_relaxed))
+                break;
         }
 
         running.store(false, std::memory_order_relaxed);
         for (auto& writer : writers)
             writer.join();
-        wal.Fsync();
+        const auto writeEnd = std::chrono::steady_clock::now();
+        const bool finalSynced = wal.Fsync();
+        if (!finalSynced)
+            ++fsyncFailures;
+        const auto syncEnd = std::chrono::steady_clock::now();
 
         const uint64_t writes = std::accumulate(successfulWrites.begin(), successfulWrites.end(), uint64_t{0});
         const uint64_t failures = std::accumulate(failedWrites.begin(), failedWrites.end(), uint64_t{0});
+        const double writeSeconds = std::chrono::duration<double>(writeEnd - writeStart).count();
+        const double syncSeconds = std::chrono::duration<double>(syncEnd - writeStart).count();
 
-        state.SetBytesProcessed(static_cast<int64_t>(writes * (sizeof(Base::WALHeader) + sizeof(WalRecord))));
+        state.counters["successful_writes"] = static_cast<double>(writes);
+        state.counters["write_ops_per_second"] = static_cast<double>(writes) / writeSeconds;
+        state.counters["write_ops_per_second_including_final_fsync"] = static_cast<double>(writes) / syncSeconds;
+        state.counters["write_wall_seconds"] = writeSeconds;
+        state.counters["wall_seconds_including_final_fsync"] = syncSeconds;
+        state.counters["payload_bytes"] = static_cast<double>(payloadBytes);
+        state.counters["writers"] = static_cast<double>(writerCount);
+        state.counters["fsync_failures"] = static_cast<double>(fsyncFailures);
+        state.counters["final_fsync_success"] = finalSynced ? 1.0 : 0.0;
+        state.SetBytesProcessed(static_cast<int64_t>(writes * (sizeof(Base::WALHeader) + payloadBytes)));
         state.counters["fsync_attempts"] = static_cast<double>(fsyncAttempts);
         state.counters["write_failures"] = static_cast<double>(failures);
+        if (failures != 0 || fsyncFailures != 0)
+            state.SkipWithError("WAL write or fsync failed");
+    }
+
+    void BM_WalFsyncInterval(benchmark::State& state) {
+        RunWalFsyncInterval(state);
     }
 
     void WalArguments(benchmark::Benchmark* benchmark) {
         for (const int64_t fsyncIntervalMs : {10, 20, 25, 30, 50, 100}) {
             for (const int64_t writerCount : {1, 3})
-                benchmark->Args({fsyncIntervalMs, writerCount});
+                benchmark->Args({fsyncIntervalMs, writerCount, sizeof(WalRecord)});
         }
-        benchmark->Args({ 25, 8 }); // lock contention stress
+        benchmark->Args({25, 8, sizeof(WalRecord)}); // lock contention stress
+        for (const int64_t fsyncIntervalMs : {10, 20, 25, 30, 50, 100})
+            benchmark->Args({fsyncIntervalMs, 3, 512});
     }
 }
-//BENCHMARK(BM_WalFsyncInterval)
-//->Apply(WalArguments)
-//->ArgNames({ "fsync_ms", "writers" })
-//->UseRealTime()
-//->Unit(benchmark::kMillisecond)
-//->MinTime(1.0)
-//->Repetitions(100)  // 반복
-//->ComputeStatistics("p01", P01)
-//->ComputeStatistics("p05", P05)
-//->DisplayAggregatesOnly(true); // 콘솔에 집계만 출력
+BENCHMARK(BM_WalFsyncInterval)
+->Apply(WalArguments)
+->ArgNames({"fsync_ms", "writers", "payload_bytes"})
+->UseRealTime()
+->Unit(benchmark::kMillisecond)
+->Repetitions(100)
+->ReportAggregatesOnly(false);

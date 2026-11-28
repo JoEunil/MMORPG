@@ -135,11 +135,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="ZoneTick.cpp" />
+    <ClCompile Include="ZoneTick.cpp">
+      <!-- Legacy fixture uses pre-refactoring APIs; its registration is already disabled. -->
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="WorkerQueue.cpp" />
     <ClCompile Include="TripleBufferSpin.cpp" />
     <ClCompile Include="TripleBufferThroughput.cpp" />
     <ClCompile Include="WAL.cpp" />
+    <ClCompile Include="WALWriteLatency.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Percentile.h" />

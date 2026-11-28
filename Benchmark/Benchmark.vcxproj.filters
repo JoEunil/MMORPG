@@ -33,6 +33,9 @@
     <ClCompile Include="TripleBufferThroughput.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="WALWriteLatency.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
     <ClCompile Include="WAL.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
