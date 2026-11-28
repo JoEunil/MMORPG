@@ -38,7 +38,7 @@ namespace Core {
         if (characterID == 0)
             return;
 
-        if (!cacheCommands->EnqueueGoldBalance(p->GetSessionID(), characterID, request.requestID)) {
+        if (!cacheCommands->EnqueueGoldBalance({p->GetSessionID(), characterID, request.requestID})) {
             MsgCurrencyResBody failed{};
             failed.requestID = request.requestID;
             failed.characterID = characterID;
@@ -46,7 +46,7 @@ namespace Core {
                 responses->Enqueue(p->GetSessionID(), writer->WriteWalletGoldResponse(&failed));
         }
 
-        if (!cacheCommands->EnqueueDiamondBalance(p->GetSessionID(), characterID, request.requestID)) {
+        if (!cacheCommands->EnqueueDiamondBalance({p->GetSessionID(), characterID, request.requestID})) {
             MsgDiamondResBody failed{};
             failed.requestID = request.requestID;
             failed.characterID = characterID;

@@ -36,7 +36,7 @@ namespace Core {
         const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (cacheCommands->EnqueueBazaarBuy(p->GetSessionID(), characterID, request->listingID, request->requestID))
+        if (cacheCommands->EnqueueBazaarBuy({p->GetSessionID(), characterID, request->requestID}, request->listingID))
             return;
         MsgBazaarBuyResBody failed{};
         failed.requestID = request->requestID;
@@ -55,8 +55,8 @@ namespace Core {
         const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
 
-        if (cacheCommands->EnqueueBazaarRegister(p->GetSessionID(), characterID, request->quantity,
-                request->totalDiamondPrice, request->requestID, request->inventorySlot))
+        if (cacheCommands->EnqueueBazaarRegister({p->GetSessionID(), characterID, request->requestID}, request->quantity,
+                request->totalDiamondPrice, request->inventorySlot))
             return;
 
         MsgBazaarRegisterResBody failed{};
@@ -73,7 +73,7 @@ namespace Core {
             return;
         const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
-        if (cacheCommands->EnqueueBazaarOutboxList(p->GetSessionID(), characterID, request->requestID))
+        if (cacheCommands->EnqueueBazaarOutboxList({p->GetSessionID(), characterID, request->requestID}))
             return;
         MsgBazaarOutboxListResBody failed{};
         failed.requestID = request->requestID;
@@ -89,7 +89,7 @@ namespace Core {
         const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (cacheCommands->EnqueueBazaarCheckOutbox(p->GetSessionID(), characterID, request->requestID))
+        if (cacheCommands->EnqueueBazaarCheckOutbox({p->GetSessionID(), characterID, request->requestID}))
             return;
         MsgBazaarCheckOutboxResBody failed{};
         failed.requestID = request->requestID;
@@ -104,7 +104,7 @@ namespace Core {
             return;
         const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0) return;
-        if (cacheCommands->EnqueueBazaarCancelListing(p->GetSessionID(), characterID, request->listingID, request->requestID))
+        if (cacheCommands->EnqueueBazaarCancelListing({p->GetSessionID(), characterID, request->requestID}, request->listingID))
             return;
         MsgBazaarCancelListingResBody failed{};
         failed.requestID = request->requestID;
@@ -122,7 +122,7 @@ namespace Core {
         const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (cacheCommands->EnqueueBazaarClaim(p->GetSessionID(), characterID, request->listingID, request->requestID))
+        if (cacheCommands->EnqueueBazaarClaim({p->GetSessionID(), characterID, request->requestID}, request->listingID))
             return;
         MsgBazaarClaimResBody failed{};
         failed.requestID = request->requestID;
@@ -139,7 +139,7 @@ namespace Core {
         const uint64_t characterID = sessionManager->GetFieldCharacterID(p->GetSessionID());
         if (characterID == 0)
             return;
-        if (cacheCommands->EnqueueBazaarMyList(p->GetSessionID(), characterID, request->requestID))
+        if (cacheCommands->EnqueueBazaarMyList({p->GetSessionID(), characterID, request->requestID}))
             return;
         MsgBazaarMyListResBody failed{};
         failed.requestID = request->requestID;

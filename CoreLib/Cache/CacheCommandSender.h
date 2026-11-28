@@ -4,6 +4,7 @@
 #include <string_view>
 
 #include "MessagePool.h"
+#include "CharacterRequestContext.h"
 
 namespace Core {
     class IMessageQueue;
@@ -35,17 +36,17 @@ namespace Core {
         bool EnqueueCharacterState(uint64_t sessionID, uint8_t channelID, uint64_t userID, uint64_t characterID) const;
         bool EnqueueProfileRename(uint64_t sessionID, uint32_t profileID, std::string_view name) const;
         bool EnqueueInventory(uint64_t sessionID, uint64_t characterID) const;
-        bool EnqueueGoldBalance(uint64_t sessionID, uint64_t characterID, uint32_t requestID) const;
-        bool EnqueueDiamondBalance(uint64_t sessionID, uint64_t characterID, uint32_t requestID) const;
+        bool EnqueueGoldBalance(const CharacterRequestContext& context) const;
+        bool EnqueueDiamondBalance(const CharacterRequestContext& context) const;
 
-        bool EnqueueBazaarBuy(uint64_t sessionID, uint64_t characterID, uint64_t listingID, uint32_t requestID) const;
-        bool EnqueueBazaarRegister(uint64_t sessionID, uint64_t characterID, uint16_t quantity,
-            uint64_t totalDiamondPrice, uint32_t requestID, uint8_t inventorySlot) const;
-        bool EnqueueBazaarOutboxList(uint64_t sessionID, uint64_t characterID, uint32_t requestID) const;
-        bool EnqueueBazaarCheckOutbox(uint64_t sessionID, uint64_t characterID, uint32_t requestID) const;
-        bool EnqueueBazaarCancelListing(uint64_t sessionID, uint64_t characterID, uint64_t listingID, uint32_t requestID) const;
-        bool EnqueueBazaarClaim(uint64_t sessionID, uint64_t characterID, uint64_t listingID, uint32_t requestID) const;
-        bool EnqueueBazaarMyList(uint64_t sessionID, uint64_t characterID, uint32_t requestID) const;
+        bool EnqueueBazaarBuy(const CharacterRequestContext& context, uint64_t listingID) const;
+        bool EnqueueBazaarRegister(const CharacterRequestContext& context, uint16_t quantity, uint64_t totalDiamondPrice,
+            uint8_t inventorySlot) const;
+        bool EnqueueBazaarOutboxList(const CharacterRequestContext& context) const;
+        bool EnqueueBazaarCheckOutbox(const CharacterRequestContext& context) const;
+        bool EnqueueBazaarCancelListing(const CharacterRequestContext& context, uint64_t listingID) const;
+        bool EnqueueBazaarClaim(const CharacterRequestContext& context, uint64_t listingID) const;
+        bool EnqueueBazaarMyList(const CharacterRequestContext& context) const;
         bool EnqueueBazaarSearch(uint64_t sessionID, uint32_t requestID, uint16_t itemType, uint16_t page) const;
     };
 }

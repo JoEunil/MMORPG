@@ -94,40 +94,49 @@ namespace Core {
         return EnqueuePooled(sessionID, MSG_INVENTORY_REQ, MsgInventoryReqBody{characterID});
     }
 
-    bool CacheCommandSender::EnqueueGoldBalance(uint64_t sessionID, uint64_t characterID, uint32_t requestID) const {
+    bool CacheCommandSender::EnqueueGoldBalance(const CharacterRequestContext& context) const {
+        const auto& [sessionID, characterID, requestID] = context;
         return EnqueuePooled(sessionID, MSG_CURRENCY_REQ, MsgCurrencyReqBody{characterID, requestID});
     }
 
-    bool CacheCommandSender::EnqueueDiamondBalance(uint64_t sessionID, uint64_t characterID, uint32_t requestID) const {
+    bool CacheCommandSender::EnqueueDiamondBalance(const CharacterRequestContext& context) const {
+        const auto& [sessionID, characterID, requestID] = context;
         return EnqueuePooled(sessionID, MSG_DIAMOND_REQ, MsgDiamondReqBody{characterID, requestID});
     }
 
-    bool CacheCommandSender::EnqueueBazaarBuy(uint64_t sessionID, uint64_t characterID, uint64_t listingID, uint32_t requestID) const {
+    bool CacheCommandSender::EnqueueBazaarBuy(const CharacterRequestContext& context, uint64_t listingID) const {
+        const auto& [sessionID, characterID, requestID] = context;
         return EnqueuePooled(sessionID, MSG_BAZAAR_BUY, MsgBazaarBuyBody{characterID, listingID, requestID});
     }
 
-    bool CacheCommandSender::EnqueueBazaarRegister(uint64_t sessionID, uint64_t characterID, uint16_t quantity, uint64_t totalDiamondPrice, uint32_t requestID,
+    bool CacheCommandSender::EnqueueBazaarRegister(const CharacterRequestContext& context, uint16_t quantity, uint64_t totalDiamondPrice,
         uint8_t inventorySlot) const {
+        const auto& [sessionID, characterID, requestID] = context;
         return EnqueuePooled(sessionID, MSG_BAZAAR_REGISTER, MsgBazaarRegisterBody{characterID, 0, quantity, totalDiamondPrice, requestID, inventorySlot});
     }
 
-    bool CacheCommandSender::EnqueueBazaarOutboxList(uint64_t sessionID, uint64_t characterID, uint32_t requestID) const {
+    bool CacheCommandSender::EnqueueBazaarOutboxList(const CharacterRequestContext& context) const {
+        const auto& [sessionID, characterID, requestID] = context;
         return EnqueuePooled(sessionID, MSG_BAZAAR_OUTBOX_LIST, MsgBazaarOutboxListBody{characterID, requestID});
     }
 
-    bool CacheCommandSender::EnqueueBazaarCheckOutbox(uint64_t sessionID, uint64_t characterID, uint32_t requestID) const {
+    bool CacheCommandSender::EnqueueBazaarCheckOutbox(const CharacterRequestContext& context) const {
+        const auto& [sessionID, characterID, requestID] = context;
         return EnqueuePooled(sessionID, MSG_BAZAAR_CHECK_OUTBOX, MsgBazaarCheckOutboxBody{characterID, requestID});
     }
 
-    bool CacheCommandSender::EnqueueBazaarCancelListing(uint64_t sessionID, uint64_t characterID, uint64_t listingID, uint32_t requestID) const {
+    bool CacheCommandSender::EnqueueBazaarCancelListing(const CharacterRequestContext& context, uint64_t listingID) const {
+        const auto& [sessionID, characterID, requestID] = context;
         return EnqueuePooled(sessionID, MSG_BAZAAR_CANCEL_LISTING, MsgBazaarCancelListingBody{characterID, listingID, requestID});
     }
 
-    bool CacheCommandSender::EnqueueBazaarClaim(uint64_t sessionID, uint64_t characterID, uint64_t listingID, uint32_t requestID) const {
+    bool CacheCommandSender::EnqueueBazaarClaim(const CharacterRequestContext& context, uint64_t listingID) const {
+        const auto& [sessionID, characterID, requestID] = context;
         return EnqueuePooled(sessionID, MSG_BAZAAR_CLAIM, MsgBazaarClaimBody{characterID, listingID, requestID});
     }
 
-    bool CacheCommandSender::EnqueueBazaarMyList(uint64_t sessionID, uint64_t characterID, uint32_t requestID) const {
+    bool CacheCommandSender::EnqueueBazaarMyList(const CharacterRequestContext& context) const {
+        const auto& [sessionID, characterID, requestID] = context;
         return EnqueuePooled(sessionID, MSG_BAZAAR_MY_LIST, MsgBazaarMyListBody{requestID, characterID});
     }
 

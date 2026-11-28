@@ -56,6 +56,9 @@
     <ClInclude Include="Cache\CacheCommandSender.h">
       <Filter>Cache</Filter>
     </ClInclude>
+    <ClInclude Include="Cache\CharacterRequestContext.h">
+      <Filter>Cache</Filter>
+    </ClInclude>
     <ClInclude Include="NonSimulation\NonSimulationConfig.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
