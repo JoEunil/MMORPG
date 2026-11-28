@@ -58,15 +58,14 @@ namespace Core {
             return true;
         }
 
-        void ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID);
+        void ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID);
         void ProcessItemUse(ZoneState& zone, IPacketView* packet);
-        void ProcessEquipment(ZoneState& zone, IPacketView* packet, uint16_t zoneID);
-        ParryResponseBody ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request);
+        void ProcessEquipment(ZoneState& zone, IPacketView* packet);
+        ParryResponseBody ProcessParry(ZoneState& zone, uint64_t sessionID, const ParryRequestBody& request);
 
         struct EventVisitor {
             ZoneHandler& handler;
             ZoneState& zone;
-            uint16_t zoneID;
 
             size_t operator()(const ZonePacketEvent& event) const;
             size_t operator()(const ZoneTransferEvent& event) const;
@@ -82,10 +81,10 @@ namespace Core {
         friend class ZoneBenchmarkAccess;
 
       public:
-        size_t ProcessEvent(ZoneState& zone, uint16_t zoneID, ZoneEvent& event);
+        size_t ProcessEvent(ZoneState& zone, ZoneEvent& event);
         void SaveRemainingCharacters(ZoneState& zone);
-        void Process(ZoneState& zone, IPacketView* p, uint16_t zoneID);
-        void ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneDisconnectEvent& request);
+        void Process(ZoneState& zone, IPacketView* p);
+        void ProcessDisconnect(ZoneState& zone, const ZoneDisconnectEvent& request);
 
     };
 }

@@ -9,12 +9,12 @@
 #include <cmath>
 
 namespace Core {
-    size_t ZoneHandler::ProcessEvent(ZoneState& zone, uint16_t zoneID, ZoneEvent& event) {
-        return std::visit(EventVisitor{*this, zone, zoneID}, event);
+    size_t ZoneHandler::ProcessEvent(ZoneState& zone, ZoneEvent& event) {
+        return std::visit(EventVisitor{*this, zone}, event);
     }
 
     size_t ZoneHandler::EventVisitor::operator()(const ZonePacketEvent& event) const {
-        handler.Process(zone, event.packet.get(), zoneID);
+        handler.Process(zone, event.packet.get());
         return 1;
     }
 
@@ -49,15 +49,15 @@ namespace Core {
     }
 
     size_t ZoneHandler::EventVisitor::operator()(const ZoneDisconnectEvent& event) const {
-        handler.events->ProcessDisconnect(zone, zoneID, event);
+        handler.events->ProcessDisconnect(zone, event);
         return 0;
     }
 
-    void ZoneHandler::ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID, uint16_t zoneID) {
+    void ZoneHandler::ProcessAction(ZoneState& zone, const ActionRequestBody& action, uint64_t sessionID) {
         if (!std::isfinite(action.aimAngle) || action.aimAngle < 0 || action.aimAngle >= 360)
             return;
         std::optional<ZoneRequestRoute> resync;
-        if (!sessionManager->CheckZoneAction({sessionID, zoneID, action.ownershipEpoch}, resync)) {
+        if (!sessionManager->CheckZoneAction({sessionID, zone.GetZoneID(), action.ownershipEpoch}, resync)) {
             if (resync)
                 zoneRequests->TryEnqueueBootstrap({sessionID, resync->zoneID, resync->ownershipEpoch}, true);
             return;
@@ -65,8 +65,8 @@ namespace Core {
         zone.ApplyAction(sessionID, action, *zoneTransfer);
     }
 
-    ParryResponseBody ZoneHandler::ProcessParry(ZoneState& zone, uint64_t sessionID, uint16_t zoneID, const ParryRequestBody& request) {
-        if (const auto rejection = sessionManager->GetParryRejection(sessionID, zoneID, request))
+    ParryResponseBody ZoneHandler::ProcessParry(ZoneState& zone, uint64_t sessionID, const ParryRequestBody& request) {
+        if (const auto rejection = sessionManager->GetParryRejection(sessionID, zone.GetZoneID(), request))
             return {request.requestID, request.ownershipEpoch, static_cast<uint8_t>(*rejection), 0, 0};
         return zone.Parry(sessionID, request);
     }
@@ -78,7 +78,8 @@ namespace Core {
         responses->Enqueue(p->GetSessionID(), writer->WriteItemUseResponse(result));
     }
 
-    void ZoneHandler::ProcessEquipment(ZoneState& zone, IPacketView* p, uint16_t zoneID) {
+    void ZoneHandler::ProcessEquipment(ZoneState& zone, IPacketView* p) {
+        const auto zoneID = zone.GetZoneID();
         const bool write = p->GetOpcode() == OP::EQUIPMENT_SET;
         uint64_t requestID, epoch;
         uint8_t slot = 0;
@@ -109,7 +110,7 @@ namespace Core {
         responses->Enqueue(p->GetSessionID(), writer->WriteEquipmentResponse(result));
     }
 
-    void ZoneHandler::Process(ZoneState& zone, IPacketView* p, uint16_t zoneID) {
+    void ZoneHandler::Process(ZoneState& zone, IPacketView* p) {
         PacketHeader* h = parseHeader(p->GetPtr());
         switch (p->GetOpcode()) {
         case OP::ITEM_USE:
@@ -117,24 +118,24 @@ namespace Core {
             break;
         case OP::EQUIPMENT_GET:
         case OP::EQUIPMENT_SET:
-            ProcessEquipment(zone, p, zoneID);
+            ProcessEquipment(zone, p);
             break;
         case OP::PARRY: {
-            const auto result = ProcessParry(zone, p->GetSessionID(), zoneID, *parseBody<ParryRequestBody>(p->GetPtr()));
+            const auto result = ProcessParry(zone, p->GetSessionID(), *parseBody<ParryRequestBody>(p->GetPtr()));
             responses->Enqueue(p->GetSessionID(), writer->WriteParryResponse(result));
             break;
         }
         case OP::ACTION:
-            ProcessAction(zone, *parseBody<ActionRequestBody>(p->GetPtr()), p->GetSessionID(), zoneID);
+            ProcessAction(zone, *parseBody<ActionRequestBody>(p->GetPtr()), p->GetSessionID());
             break;
         default:
-            errorLogger->LogInfo("zone Handler", "UnDefined OPCODE", {{"zone", zoneID}, {"opcode", p->GetOpcode()}, {"session", p->GetSessionID()}});
+            errorLogger->LogInfo("zone Handler", "UnDefined OPCODE", {{"zone", zone.GetZoneID()}, {"opcode", p->GetOpcode()}, {"session", p->GetSessionID()}});
             break;
         }
     }
 
-    void ZoneHandler::ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneDisconnectEvent& request) {
-        events->ProcessDisconnect(zone, zoneID, request);
+    void ZoneHandler::ProcessDisconnect(ZoneState& zone, const ZoneDisconnectEvent& request) {
+        events->ProcessDisconnect(zone, request);
     }
 
     void ZoneHandler::SaveRemainingCharacters(ZoneState& zone) {

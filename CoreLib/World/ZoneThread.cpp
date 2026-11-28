@@ -89,7 +89,7 @@ namespace Core {
         ZoneEvent event;
         while (workQueue.Dequeue(event)) {
             if (const auto* disconnect = std::get_if<ZoneDisconnectEvent>(&event))
-                handler->ProcessDisconnect(*zone, zoneID, *disconnect);
+                handler->ProcessDisconnect(*zone, *disconnect);
         }
         handler->SaveRemainingCharacters(*zone);
     }

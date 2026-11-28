@@ -94,7 +94,8 @@ namespace Core {
             errorLogger->LogWarn("zone handler", "could not route profile version", {{"sessionID", update.sessionID}, {"zoneID", *route}});
     }
 
-    void ZoneEventHandler::ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneDisconnectEvent& request) {
+    void ZoneEventHandler::ProcessDisconnect(ZoneState& zone, const ZoneDisconnectEvent& request) {
+        const auto zoneID = zone.GetZoneID();
         std::shared_ptr<ZoneTransfer> pending;
         if (!sessionManager->CompleteZoneDisconnect({request.sessionID, zoneID, request.ownershipEpoch}, pending))
             return;

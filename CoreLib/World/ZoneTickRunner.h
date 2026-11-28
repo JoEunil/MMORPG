@@ -23,7 +23,6 @@ namespace Core {
 
         template <class Queue, class SelectSnapshot>
         size_t RunTick(Queue& queue, size_t maxEvents, SelectSnapshot selectSnapshot) {
-            const auto zoneID = zone.GetZoneID();
             zone.SkillCoolDown();
             zone.ReplenishMoveBudget();
             size_t processed = 0;
@@ -32,10 +31,10 @@ namespace Core {
                 ZoneEvent event;
                 while (processed < maxEvents && queue.Dequeue(event)) {
                     ++processed;
-                    packets += handler.ProcessEvent(zone, zoneID, event);
+                    packets += handler.ProcessEvent(zone, event);
                 }
             }
-            perf.AddPacketProcessCnt(zoneID, packets);
+            perf.AddPacketProcessCnt(zone.GetZoneID(), packets);
             zone.ApplySkill();
             zone.UpdateMonster();
             zone.FlushCheat();

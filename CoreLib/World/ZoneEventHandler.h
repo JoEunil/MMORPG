@@ -74,7 +74,7 @@ namespace Core {
         void ProcessRespawn(ZoneState& zone, const ZoneRespawnEvent& request);
         void ProcessZoneTransfer(ZoneState& zone, const std::shared_ptr<ZoneTransfer>& transfer, bool returning);
         void ApplyProfileVersion(ZoneState& zone, const ProfileVersionUpdate& update);
-        void ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneDisconnectEvent& request);
+        void ProcessDisconnect(ZoneState& zone, const ZoneDisconnectEvent& request);
         void ProcessBootstrap(ZoneState& zone, const ZoneBootstrapEvent& request);
         void SaveRemainingCharacters(ZoneState& zone);
     };
