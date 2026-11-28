@@ -9,7 +9,7 @@
 #include <cmath>
 
 namespace Core {
-    size_t ZoneHandler::Process(ZoneState& zone, uint16_t zoneID, ZoneEvent& event) {
+    size_t ZoneHandler::ProcessEvent(ZoneState& zone, uint16_t zoneID, ZoneEvent& event) {
         return std::visit(EventVisitor{*this, zone, zoneID}, event);
     }
 

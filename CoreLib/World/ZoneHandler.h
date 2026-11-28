@@ -2,8 +2,7 @@
 #include "WorldConfig.h"
 #include <cstdint>
 #include "../Interface/IPacketView.h"
-#include "../CorePerfCollector.h"
-#include "ZoneThread.h"
+#include "ZoneEvent.h"
 #include "Interface/IZoneTransfer.h"
 
 #include "SessionManager.h"
@@ -79,61 +78,14 @@ namespace Core {
             size_t operator()(const ZoneDisconnectEvent& event) const;
         };
 
-        size_t Process(ZoneState& zone, uint16_t zoneID, ZoneEvent& event);
         friend class Initializer;
         friend class ZoneBenchmarkAccess;
 
       public:
-        enum class TickSnapshot {
-            None,
-            Delta,
-            Full
-        };
-
-        template <class Queue, class SelectSnapshot>
-        size_t RunTick(ZoneState& zone, uint16_t zoneID, Queue& queue, size_t maxEvents, CorePerfCollector& perf, SelectSnapshot selectSnapshot) {
-            zone.SkillCoolDown();
-            zone.ReplenishMoveBudget();
-            size_t processed = 0;
-            size_t packets = 0;
-            {
-                ZoneEvent event;
-                while (processed < maxEvents && queue.Dequeue(event)) {
-                    ++processed;
-                    packets += Process(zone, zoneID, event);
-                }
-            }
-            perf.AddPacketProcessCnt(zoneID, packets);
-            zone.ApplySkill();
-            zone.UpdateMonster();
-            zone.FlushCheat();
-            switch (selectSnapshot()) {
-            case TickSnapshot::Full:
-                BroadcastFullState(zone);
-                break;
-            case TickSnapshot::Delta:
-                BroadcastDeltaState(zone);
-                break;
-            case TickSnapshot::None:
-                break;
-            }
-            return processed;
-        }
-
+        size_t ProcessEvent(ZoneState& zone, uint16_t zoneID, ZoneEvent& event);
         void SaveRemainingCharacters(ZoneState& zone);
         void Process(ZoneState& zone, IPacketView* p, uint16_t zoneID);
         void ProcessDisconnect(ZoneState& zone, uint16_t zoneID, const ZoneDisconnectEvent& request);
 
-      private:
-        static void BroadcastDeltaState(ZoneState& zone) {
-            zone.DeltaSnapshot();
-            zone.DeltaSnapshotMonster();
-            zone.ActionSnapshot();
-        }
-        static void BroadcastFullState(ZoneState& zone) {
-            zone.FullSnapshot();
-            zone.FullSnapshotMonster();
-            zone.ActionSnapshot();
-        }
     };
 }

@@ -13,6 +13,7 @@ namespace Core {
     class CorePerfCollector;
     class ZoneHandler;
     class ZoneState;
+    class ZoneTickRunner;
 
     using ZoneEventQueue = Base::NonBlockingBackPressureQueue<ZoneEvent, ZONE_QUEUE_SIZE, 0>;
 
@@ -22,16 +23,18 @@ namespace Core {
         std::atomic<bool> running = false;
         uint16_t zoneID = 0;
         ZoneHandler* handler = nullptr;
+        ZoneState* zone = nullptr;
+        ZoneTickRunner* tickRunner = nullptr;
         CorePerfCollector* perfCollector = nullptr;
 
-        void Initialize(uint16_t id, ZoneHandler& zoneHandler, CorePerfCollector& perf);
+        void Initialize(ZoneState& state, ZoneTickRunner& runner, ZoneHandler& zoneHandler, CorePerfCollector& perf);
         bool IsReady() const;
-        void Start(ZoneState& zone);
+        void Start();
         void Stop();
         bool CanEnqueue(const ZoneEvent& event) const;
         bool Enqueue(ZoneEvent& event);
         bool EnqueueDeferred(ZoneEvent& event);
-        void WorkerFunc(ZoneState& zone);
+        void WorkerFunc();
 
         friend class ZoneEventRouter;
     public:

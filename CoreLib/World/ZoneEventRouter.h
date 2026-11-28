@@ -11,10 +11,12 @@
 
 namespace Core {
     class ILobbyReturnQueue;
+    class ZoneTickRunner;
 
     class ZoneEventRouter final : public IZonePacketQueue, public IZoneRequestQueue, public IZoneTransfer, public ISessionSnapshotReader {
         struct ZoneEntry {
             std::unique_ptr<ZoneState> state;
+            std::unique_ptr<ZoneTickRunner> tickRunner;
             ZoneThread worker;
         };
         std::array<ZoneEntry, ZONE_COUNT> zones;

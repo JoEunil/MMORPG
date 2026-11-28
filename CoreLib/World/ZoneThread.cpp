@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "ZoneThread.h"
 #include "ZoneHandler.h"
+#include "ZoneTickRunner.h"
 
 #include <windows.h>
 #undef min                  // Windows 매크로 제거
@@ -15,13 +16,23 @@ namespace Core {
         Stop();
     }
 
-    void ZoneThread::Initialize(uint16_t id, ZoneHandler& zoneHandler, CorePerfCollector& perf) {
-        zoneID = id;
+    void ZoneThread::Initialize(ZoneState& state, ZoneTickRunner& runner, ZoneHandler& zoneHandler, CorePerfCollector& perf) {
+        zoneID = state.GetZoneID();
+        zone = &state;
+        tickRunner = &runner;
         handler = &zoneHandler;
         perfCollector = &perf;
     }
 
     bool ZoneThread::IsReady() const {
+        if (zone == nullptr) {
+            sysLogger->LogError("zone thread", "zone state not initialized", {{"zoneID", zoneID}});
+            return false;
+        }
+        if (tickRunner == nullptr) {
+            sysLogger->LogError("zone thread", "tick runner not initialized", {{"zoneID", zoneID}});
+            return false;
+        }
         if (handler == nullptr) {
             sysLogger->LogError("zone thread", "handler not initialized", {{"zoneID", zoneID}});
             return false;
@@ -37,7 +48,7 @@ namespace Core {
         return true;
     }
 
-    void ZoneThread::WorkerFunc(ZoneState& zone) {
+    void ZoneThread::WorkerFunc() {
         auto lastTick = std::chrono::steady_clock::now();
         auto lastDeltaSnapshot = lastTick;
         auto lastFullSnapshot = lastTick;
@@ -46,20 +57,20 @@ namespace Core {
         ss << std::this_thread::get_id();
         sysLogger->LogInfo("zone thread", "zone thread started", {{"threadID", ss.str()}});
 
-        zone.InitializeMonster();
+        zone->InitializeMonster();
         while (running) {
-            handler->RunTick(zone, zoneID, workQueue, 2000, *perfCollector, [&] {
+            tickRunner->RunTick(workQueue, 2000, [&] {
                 const auto now = std::chrono::steady_clock::now();
                 if (now - lastFullSnapshot >= FULL_SNAPSHOT_TICK) {
                     lastFullSnapshot = now;
                     lastDeltaSnapshot = now;
-                    return ZoneHandler::TickSnapshot::Full;
+                    return ZoneTickRunner::TickSnapshot::Full;
                 }
                 if (now - lastDeltaSnapshot >= DELTA_SNAPSHOT_TICK) {
                     lastDeltaSnapshot = now;
-                    return ZoneHandler::TickSnapshot::Delta;
+                    return ZoneTickRunner::TickSnapshot::Delta;
                 }
-                return ZoneHandler::TickSnapshot::None;
+                return ZoneTickRunner::TickSnapshot::None;
             });
 
             const auto tickElapsed = std::chrono::steady_clock::now() - lastTick;
@@ -78,17 +89,17 @@ namespace Core {
         ZoneEvent event;
         while (workQueue.Dequeue(event)) {
             if (const auto* disconnect = std::get_if<ZoneDisconnectEvent>(&event))
-                handler->ProcessDisconnect(zone, zoneID, *disconnect);
+                handler->ProcessDisconnect(*zone, zoneID, *disconnect);
         }
-        handler->SaveRemainingCharacters(zone);
+        handler->SaveRemainingCharacters(*zone);
     }
 
-    void ZoneThread::Start(ZoneState& zone) {
+    void ZoneThread::Start() {
         if (running.exchange(true, std::memory_order_relaxed))
             return;
 
         try {
-            thread = std::thread([this, &zone] { WorkerFunc(zone); });
+            thread = std::thread(&ZoneThread::WorkerFunc, this);
         }
         catch (...) {
             running.store(false, std::memory_order_relaxed);

@@ -185,6 +185,9 @@
     <ClInclude Include="World\ZoneHandler.h">
       <Filter>World</Filter>
     </ClInclude>
+    <ClInclude Include="World\ZoneTickRunner.h">
+      <Filter>World</Filter>
+    </ClInclude>
     <ClInclude Include="World\ZoneEventHandler.h">
       <Filter>World</Filter>
     </ClInclude>

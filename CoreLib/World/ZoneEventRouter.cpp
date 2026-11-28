@@ -5,6 +5,7 @@
 #include "Interface/ILobbyReturnQueue.h"
 #include "../LoggerGlobal.h"
 #include "ZoneState.h"
+#include "ZoneTickRunner.h"
 
 namespace Core {
     ZoneEventRouter::ZoneEventRouter() = default;
@@ -18,7 +19,8 @@ namespace Core {
         for (std::size_t i = 0; i < zones.size(); ++i) {
             const auto zoneID = static_cast<uint16_t>(i + 1);
             zones[i].state = std::make_unique<ZoneState>(zoneID);
-            zones[i].worker.Initialize(zoneID, handler, perf);
+            zones[i].tickRunner = std::make_unique<ZoneTickRunner>(*zones[i].state, handler, perf);
+            zones[i].worker.Initialize(*zones[i].state, *zones[i].tickRunner, handler, perf);
         }
     }
 
@@ -36,7 +38,7 @@ namespace Core {
 
     void ZoneEventRouter::Start() {
         for (auto& zone : zones)
-            zone.worker.Start(*zone.state);
+            zone.worker.Start();
         acceptingTransfers.store(true, std::memory_order_release);
     }
 

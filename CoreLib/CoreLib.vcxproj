@@ -219,6 +219,7 @@
     <ClInclude Include="Data\Generated\WorldMap.inc" />
     <ClInclude Include="World\ZoneEventRouter.h" />
     <ClInclude Include="World\ZoneHandler.h" />
+    <ClInclude Include="World\ZoneTickRunner.h" />
     <ClInclude Include="World\ZoneEventHandler.h" />
     <ClInclude Include="World\ZoneState.h" />
     <ClInclude Include="World\ZoneThread.h" />
