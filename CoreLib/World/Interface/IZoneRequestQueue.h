@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "../ZoneSessionContext.h"
 
 namespace Core {
     struct ProfileVersionUpdate {
@@ -12,10 +13,10 @@ namespace Core {
     class IZoneRequestQueue {
     public:
         virtual ~IZoneRequestQueue() = default;
-        virtual bool TryEnqueueLobbyEntry(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch) = 0;
-        virtual bool TryEnqueueRespawn(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch) = 0;
-        virtual bool TryEnqueueBootstrap(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch, bool resendZoneChange) = 0;
+        virtual bool TryEnqueueLobbyEntry(const ZoneSessionContext& context) = 0;
+        virtual bool TryEnqueueRespawn(const ZoneSessionContext& context) = 0;
+        virtual bool TryEnqueueBootstrap(const ZoneSessionContext& context, bool resendZoneChange) = 0;
         virtual bool TryEnqueueProfileVersion(uint16_t zoneID, const ProfileVersionUpdate& update) = 0;
-        virtual bool TryEnqueueDisconnect(uint16_t zoneID, uint64_t sessionID, uint64_t ownershipEpoch) = 0;
+        virtual bool TryEnqueueDisconnect(const ZoneSessionContext& context) = 0;
     };
 }

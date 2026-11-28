@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <cstdint>
 
-#include "../Packet/PacketTypes.h"
+#include "ProfileEntry.h"
 
 namespace Core {
     class IProfileCache {

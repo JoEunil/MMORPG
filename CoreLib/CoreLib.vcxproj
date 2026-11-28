@@ -158,15 +158,23 @@
     <ClInclude Include="Data\MonsterData.h" />
     <ClInclude Include="HuntingZoneData.h" />
     <ClInclude Include="World\MonsterState.h" />
-    <ClInclude Include="NonSimulation\NonSimulationHandler.h" />
+    <ClInclude Include="NonSimulation\NonSimulationDispatcher.h" />
+    <ClInclude Include="NonSimulation\WorldEntryHandler.h" />
+    <ClInclude Include="NonSimulation\BazaarRequestHandler.h" />
+    <ClInclude Include="NonSimulation\ZoneRequestHandler.h" />
+    <ClInclude Include="NonSimulation\PlayerDataRequestHandler.h" />
+    <ClInclude Include="NonSimulation\ChatRequestHandler.h" />
+    <ClInclude Include="NonSimulation\SessionLifecycleHandler.h" />
     <ClInclude Include="NonSimulation\NonSimulationThreadPool.h" />
     <ClInclude Include="NonSimulation\NonSimulationEvent.h" />
     <ClInclude Include="NonSimulation\ChatEvent.h" />
     <ClInclude Include="World\ZoneEvent.h" />
+    <ClInclude Include="World\ZoneSessionContext.h" />
     <ClInclude Include="World\BroadcastThreadPool.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="Cache\CacheConfig.h" />
     <ClInclude Include="Cache\CacheCommandSender.h" />
+    <ClInclude Include="Cache\CharacterRequestContext.h" />
     <ClInclude Include="NonSimulation\NonSimulationConfig.h" />
     <ClInclude Include="Packet\PacketConfig.h" />
     <ClInclude Include="Packet\PacketHeader.h" />
@@ -195,7 +203,7 @@
     <ClInclude Include="Interface\ISessionAuth.h" />
     <ClInclude Include="World\LobbyZone.h" />
     <ClInclude Include="Cache\Message.h" />
-    <ClInclude Include="Cache\MessageQueueHandler.h" />
+    <ClInclude Include="Cache\CacheResponseHandler.h" />
     <ClInclude Include="Cache\MessageTypes.h" />
     <ClInclude Include="Cache\MessageWriter.h" />
     <ClInclude Include="Packet\PacketDispatcher.h" />
@@ -206,11 +214,14 @@
     <ClInclude Include="Data\SkillData.h" />
     <ClInclude Include="Data\GrowthData.h" />
     <ClInclude Include="World\SessionManager.h" />
+    <ClInclude Include="World\SessionZoneTransition.h" />
     <ClInclude Include="World\Cell.h" />
     <ClInclude Include="World\WorldMap.h" />
     <ClInclude Include="Data\Generated\WorldMap.inc" />
     <ClInclude Include="World\ZoneEventRouter.h" />
     <ClInclude Include="World\ZoneHandler.h" />
+    <ClInclude Include="World\ZoneTickRunner.h" />
+    <ClInclude Include="World\ZoneEventHandler.h" />
     <ClInclude Include="World\ZoneState.h" />
     <ClInclude Include="World\ZoneThread.h" />
   </ItemGroup>
@@ -220,10 +231,13 @@
     <ClCompile Include="Cache\CacheCommandSender.cpp" />
     <ClCompile Include="Cache\DurableLogger.cpp" />
     <ClCompile Include="LoggerGlobal.cpp" />
-    <ClCompile Include="NonSimulation\NonSimulationHandler.cpp" />
-    <ClCompile Include="NonSimulation\NonSimulationHandler_Bazaar.cpp" />
-    <ClCompile Include="NonSimulation\NonSimulationHandler_WorldEntry.cpp" />
-    <ClCompile Include="NonSimulation\NonSimulationHandler_Zone.cpp" />
+    <ClCompile Include="NonSimulation\NonSimulationDispatcher.cpp" />
+    <ClCompile Include="NonSimulation\WorldEntryHandler.cpp" />
+    <ClCompile Include="NonSimulation\BazaarRequestHandler.cpp" />
+    <ClCompile Include="NonSimulation\ZoneRequestHandler.cpp" />
+    <ClCompile Include="NonSimulation\PlayerDataRequestHandler.cpp" />
+    <ClCompile Include="NonSimulation\ChatRequestHandler.cpp" />
+    <ClCompile Include="NonSimulation\SessionLifecycleHandler.cpp" />
     <ClCompile Include="NonSimulation\NonSimulationThreadPool.cpp" />
     <ClCompile Include="World\BroadcastThreadPool.cpp" />
     <ClCompile Include="Packet\PacketDispatcher.cpp" />
@@ -235,6 +249,7 @@
     <ClCompile Include="Data\HuntingZoneData.cpp" />
     <ClCompile Include="Data\SkillData_Range.cpp" />
     <ClCompile Include="World\ZoneHandler.cpp" />
+    <ClCompile Include="World\ZoneEventHandler.cpp" />
     <ClCompile Include="World\ZoneState_Actions.cpp" />
     <ClCompile Include="World\ItemUseProcessor.cpp" />
     <ClCompile Include="World\Equipment.cpp" />
@@ -253,9 +268,10 @@
     </ClInclude>
     <ClCompile Include="Cache\InMemoryQueue.cpp" />
     <ClInclude Include="Interface\IProfileCache.h" />
+    <ClInclude Include="Interface\ProfileEntry.h" />
     <ClInclude Include="Interface\IInventoryOperations.h" />
     <ClInclude Include="Cache\MessagePool.h" />
-    <ClCompile Include="Cache\MessageQueueHandler.cpp" />
+    <ClCompile Include="Cache\CacheResponseHandler.cpp" />
     <ClCompile Include="Packet\PacketWriter.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -264,6 +280,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="World\SessionManager.cpp" />
+    <ClCompile Include="World\SessionZoneTransition.cpp" />
     <ClCompile Include="World\ZoneState.cpp" />
   </ItemGroup>
   <ItemGroup>

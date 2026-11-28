@@ -5,7 +5,7 @@
 #include <thread>
 #include <vector>
 
-#include "NonSimulationHandler.h"
+#include "NonSimulationDispatcher.h"
 #include "NonSimulationEvent.h"
 #include "../World/Interface/ILobbyReturnQueue.h"
 #include "Interface/INonSimulationQueue.h"
@@ -21,8 +21,8 @@ namespace Core {
 
         std::atomic<bool> m_running = false;
         
-        NonSimulationHandler* handler = nullptr;
-        void Initialize(NonSimulationHandler* h) { handler = h; }
+        NonSimulationDispatcher* dispatcher = nullptr;
+        void Initialize(NonSimulationDispatcher* h) { dispatcher = h; }
         void Start();
         void Stop();
         bool IsReady() {
@@ -30,8 +30,8 @@ namespace Core {
                 sysLogger->LogError("non zone thread", "m_threads not initialized");
                 return false;
             }
-            if (handler == nullptr) {
-                sysLogger->LogError("non zone thread", "handler not initialized");
+            if (dispatcher == nullptr) {
+                sysLogger->LogError("non zone thread", "dispatcher not initialized");
                 return false;
             }
             return true;

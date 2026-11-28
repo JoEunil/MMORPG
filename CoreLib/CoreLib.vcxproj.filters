@@ -56,6 +56,9 @@
     <ClInclude Include="Cache\CacheCommandSender.h">
       <Filter>Cache</Filter>
     </ClInclude>
+    <ClInclude Include="Cache\CharacterRequestContext.h">
+      <Filter>Cache</Filter>
+    </ClInclude>
     <ClInclude Include="NonSimulation\NonSimulationConfig.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
@@ -122,7 +125,7 @@
     <ClInclude Include="Cache\InMemoryQueue.h">
       <Filter>Cache</Filter>
     </ClInclude>
-    <ClInclude Include="Cache\MessageQueueHandler.h">
+    <ClInclude Include="Cache\CacheResponseHandler.h">
       <Filter>Cache</Filter>
     </ClInclude>
     <ClInclude Include="Cache\MessagePool.h">
@@ -144,6 +147,9 @@
       <Filter>Interface</Filter>
     </ClInclude>
     <ClInclude Include="World\SessionManager.h">
+      <Filter>World</Filter>
+    </ClInclude>
+    <ClInclude Include="World\SessionZoneTransition.h">
       <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="World\BroadcastThreadPool.h">
@@ -182,13 +188,37 @@
     <ClInclude Include="World\ZoneHandler.h">
       <Filter>World</Filter>
     </ClInclude>
+    <ClInclude Include="World\ZoneTickRunner.h">
+      <Filter>World</Filter>
+    </ClInclude>
+    <ClInclude Include="World\ZoneEventHandler.h">
+      <Filter>World</Filter>
+    </ClInclude>
     <ClInclude Include="World\LobbyZone.h">
       <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="Packet\PacketDispatcher.h">
       <Filter>Packet</Filter>
     </ClInclude>
-    <ClInclude Include="NonSimulation\NonSimulationHandler.h">
+    <ClInclude Include="NonSimulation\NonSimulationDispatcher.h">
+      <Filter>NonSimulation</Filter>
+    </ClInclude>
+    <ClInclude Include="NonSimulation\WorldEntryHandler.h">
+      <Filter>NonSimulation</Filter>
+    </ClInclude>
+    <ClInclude Include="NonSimulation\BazaarRequestHandler.h">
+      <Filter>NonSimulation</Filter>
+    </ClInclude>
+    <ClInclude Include="NonSimulation\ZoneRequestHandler.h">
+      <Filter>NonSimulation</Filter>
+    </ClInclude>
+    <ClInclude Include="NonSimulation\PlayerDataRequestHandler.h">
+      <Filter>NonSimulation</Filter>
+    </ClInclude>
+    <ClInclude Include="NonSimulation\ChatRequestHandler.h">
+      <Filter>NonSimulation</Filter>
+    </ClInclude>
+    <ClInclude Include="NonSimulation\SessionLifecycleHandler.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
     <ClInclude Include="NonSimulation\NonSimulationEvent.h">
@@ -198,6 +228,9 @@
       <Filter>NonSimulation</Filter>
     </ClInclude>
     <ClInclude Include="World\ZoneEvent.h">
+      <Filter>World</Filter>
+    </ClInclude>
+    <ClInclude Include="World\ZoneSessionContext.h">
       <Filter>World</Filter>
     </ClInclude>
     <ClInclude Include="NonSimulation\NonSimulationThreadPool.h">
@@ -271,6 +304,9 @@
     <ClInclude Include="Interface\IProfileCache.h">
       <Filter>Interface</Filter>
     </ClInclude>
+    <ClInclude Include="Interface\ProfileEntry.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
     <ClInclude Include="NonSimulation\ChatSessionManager.h">
       <Filter>NonSimulation</Filter>
     </ClInclude>
@@ -294,10 +330,13 @@
     <ClCompile Include="Cache\InMemoryQueue.cpp">
       <Filter>Cache</Filter>
     </ClCompile>
-    <ClCompile Include="Cache\MessageQueueHandler.cpp">
+    <ClCompile Include="Cache\CacheResponseHandler.cpp">
       <Filter>Cache</Filter>
     </ClCompile>
     <ClCompile Include="World\SessionManager.cpp">
+      <Filter>World</Filter>
+    </ClCompile>
+    <ClCompile Include="World\SessionZoneTransition.cpp">
       <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="World\ZoneEventRouter.cpp">
@@ -309,19 +348,31 @@
     <ClCompile Include="World\ZoneHandler.cpp">
       <Filter>World</Filter>
     </ClCompile>
+    <ClCompile Include="World\ZoneEventHandler.cpp">
+      <Filter>World</Filter>
+    </ClCompile>
     <ClCompile Include="Packet\PacketDispatcher.cpp">
       <Filter>Packet</Filter>
     </ClCompile>
-    <ClCompile Include="NonSimulation\NonSimulationHandler.cpp">
+    <ClCompile Include="NonSimulation\NonSimulationDispatcher.cpp">
       <Filter>NonSimulation</Filter>
     </ClCompile>
-    <ClCompile Include="NonSimulation\NonSimulationHandler_Bazaar.cpp">
+    <ClCompile Include="NonSimulation\WorldEntryHandler.cpp">
       <Filter>NonSimulation</Filter>
     </ClCompile>
-    <ClCompile Include="NonSimulation\NonSimulationHandler_WorldEntry.cpp">
+    <ClCompile Include="NonSimulation\BazaarRequestHandler.cpp">
       <Filter>NonSimulation</Filter>
     </ClCompile>
-    <ClCompile Include="NonSimulation\NonSimulationHandler_Zone.cpp">
+    <ClCompile Include="NonSimulation\ZoneRequestHandler.cpp">
+      <Filter>NonSimulation</Filter>
+    </ClCompile>
+    <ClCompile Include="NonSimulation\PlayerDataRequestHandler.cpp">
+      <Filter>NonSimulation</Filter>
+    </ClCompile>
+    <ClCompile Include="NonSimulation\ChatRequestHandler.cpp">
+      <Filter>NonSimulation</Filter>
+    </ClCompile>
+    <ClCompile Include="NonSimulation\SessionLifecycleHandler.cpp">
       <Filter>NonSimulation</Filter>
     </ClCompile>
     <ClCompile Include="NonSimulation\NonSimulationThreadPool.cpp">

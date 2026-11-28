@@ -1,5 +1,6 @@
 ﻿#include "pch.h"
 #include "IOCP.h"
+#include <Ws2tcpip.h>
 #include <CoreLib/LoggerGlobal.h>
 #include "OverlappedExPool.h"
 #include "NetHandler.h"
@@ -157,7 +158,6 @@ namespace Net {
         ss << tid;
         Core::sysLogger->LogInfo("iocp", "iocp worker thread started", {{"threadID", ss.str()}, {"thread index", index}});
 
-        int current_thread = GetCurrentThreadId();
         while (m_isRunning.load(std::memory_order_relaxed))
         {
             DWORD bytesTransferred;

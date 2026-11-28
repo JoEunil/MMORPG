@@ -35,7 +35,7 @@ namespace Core {
         NonSimulationEvent event;
         while (m_eventQueue.Dequeue(event))
         {
-            handler->Process(event);
+            dispatcher->Process(event);
         }
         sysLogger->LogInfo("non zone thread", "non zone worker stopped", {{"threadID", ss.str()}});
     }
@@ -56,7 +56,7 @@ namespace Core {
         NonSimulationEvent event = NonSimulationLobbyReturnEvent{transfer};
         if (!m_eventQueue.Enqueue(event, Base::Priority::Important)) {
             errorLogger->LogWarn("non zone thread", "lobby return queue overflow");
-            handler->ReturnToLobby(transfer);
+            dispatcher->Process(event);
         }
     }
 
@@ -67,7 +67,7 @@ namespace Core {
         NonSimulationEvent event = NonSimulationDisconnectEvent{sessionID};
         if (!m_eventQueue.Enqueue(event, Base::Priority::Important)) {
             errorLogger->LogError("non zone thread", "disconnect queue overflow", {{"session", sessionID}});
-            handler->Disconnect(sessionID);
+            dispatcher->Process(event);
         }
     }
 }

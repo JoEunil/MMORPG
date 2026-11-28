@@ -3,6 +3,7 @@
 #include <WinSock2.h>
 #include <memory>
 #include <cstdint>
+#include <vector>
 
 #include <CoreLib/Interface/IPacket.h>
 

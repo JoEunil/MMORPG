@@ -46,7 +46,7 @@ namespace Core {
             if (loaded == m_chars.end() || loaded->second.characterID != entry->characterID || EntryZone(loaded->second) != zone.GetZoneID() ||
                 !zone.AdmitLobbyCharacter(sessionID, loaded->second, result))
                 return ZoneOperationResult::Rejected;
-            if (!sessionManager->CompleteLobbyEntry(sessionID, zone.GetZoneID(), ownershipEpoch, loaded->second.profileId, result)) {
+            if (!sessionManager->CompleteLobbyEntry({sessionID, zone.GetZoneID(), ownershipEpoch}, loaded->second.profileId, result)) {
                 CharacterState discarded;
                 if (!zone.EmigrateChar(sessionID, discarded))
                     errorLogger->LogError("lobby zone", "could not roll back field entry", {{"sessionID", sessionID}});

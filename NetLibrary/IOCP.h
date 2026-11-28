@@ -7,23 +7,19 @@
 // 기본 socket 함수, windows.h 보다 먼저 와야됨
 #include <mswsock.h>
 // AcceptEx
-#include <Ws2tcpip.h>
-// 추가적인 tcp/ip 기능 getaddrinfo(), inet_pton()
 
 #include <thread>
 #include <atomic>
 #include <cstdint>
+#include <condition_variable>
+#include <memory>
+#include <vector>
 
 #include <CoreLib/Interface/INetworkSender.h>
 #include <CoreLib/LoggerGlobal.h>
 
-#include "SendQueue.h"
 #include "Interface/IAbortSocket.h"
 #include "Config.h"
-
-namespace Core {
-    class IPacket;
-}
 
 namespace Net {
     class NetHandler;

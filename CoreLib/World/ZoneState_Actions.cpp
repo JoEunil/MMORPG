@@ -224,18 +224,17 @@ namespace Core {
         m_cells[character.cellY][character.cellX].dirtyChar.push_back(character.zoneInternalID);
     }
 
-    std::optional<ItemUseResponseBody> ZoneState::UseItem(uint64_t sessionID, const ItemUseRequestBody& request, IInventoryOperations* inventory) {
+    std::optional<ItemUseResponseBody> ZoneState::UseItem(uint64_t sessionID, const ItemUseRequestBody& request) {
         auto* character = FindCharacter(sessionID);
         if (!character)
             return std::nullopt;
-        const auto outcome = ItemUseProcessor::Apply(character->itemUse, *character, request, inventory);
+        const auto outcome = ItemUseProcessor::Apply(*character, request, inventory);
         if (outcome.changed)
             m_cells[character->cellY][character->cellX].dirtyChar.push_back(character->zoneInternalID);
         return outcome.response;
     }
 
-    std::optional<EquipmentResponseBody> ZoneState::Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot,
-        uint32_t itemID, IInventoryOperations* inventory) {
+    std::optional<EquipmentResponseBody> ZoneState::Equipment(uint64_t sessionID, uint64_t requestID, uint64_t ownershipEpoch, bool write, uint8_t slot, uint32_t itemID) {
         EquipmentResponseBody result{requestID, ownershipEpoch, static_cast<uint8_t>(write ? 1 : 0), static_cast<uint8_t>(EquipmentStatus::Invalid), slot, 0, 0,
             0, 0, 0, 0, 0};
         auto* member = FindCharacter(sessionID);

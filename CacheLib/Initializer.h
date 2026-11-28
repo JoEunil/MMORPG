@@ -1,22 +1,28 @@
 ﻿#pragma once
 
-#include "FlushDispatcher.h"
-#include "CacheFlush.h"
+#include "Persistence/FlushDispatcher.h"
+#include "Persistence/CacheFlush.h"
 #include "Config.h"
 #include <CoreLib/Interface/IMessagePool.h>
 #include <CoreLib/Interface/ICacheResponseWriter.h>
 #include <CoreLib/Interface/IDurableLog.h>
 #include "DB/DBConfig.h"
 #include "DB/DBConnectionPool.h"
-#include "CacheStorage.h"
-#include "CacheStorageInventory.h"
-#include "CacheStorageCurrency.h"
-#include "ProfileCache.h"
-#include "InmemoryQueue.h"
-#include "Handler.h"
-#include "BazaarRegistration.h"
+#include "Storage/CacheStorage.h"
+#include "Storage/CacheStorageInventory.h"
+#include "Storage/CacheStorageCurrency.h"
+#include "Storage/ProfileCache.h"
+#include "Message/InMemoryQueue.h"
+#include "Message/MessageDispatcher.h"
+#include "Message/CacheResponseSender.h"
+#include "Bazaar/BazaarRegistration.h"
+#include "Message/BazaarHandler.h"
+#include "Message/CurrencyHandler.h"
+#include "Message/DiamondHandler.h"
+#include "Message/InventoryHandler.h"
+#include "Message/CharacterHandler.h"
 #include "DB/DBWorker.h"
-#include "WALManager.h"
+#include "Persistence/WALManager.h"
 
 #include <CoreLib/Interface/IMessageQueue.h>
 #include <CoreLib/Interface/ICachedClock.h>
@@ -31,7 +37,13 @@ namespace Cache {
         CacheStorageInventory cache_inventory;
         CacheStorageCurrency cache_currency;
         ProfileCache cache_profile;
-        Handler handler;
+        CacheResponseSender responses;
+        BazaarHandler bazaarHandler;
+        CurrencyHandler currencyHandler;
+        DiamondHandler diamondHandler;
+        InventoryHandler inventoryHandler;
+        CharacterHandler characterHandler;
+        MessageDispatcher messageDispatcher;
         InMemoryQueue recvMQ;
         DBConnectionPool<DBConnectionGame> connectionPoolGame;
         DBConnectionPool<DBConnectionBazaar> connectionPoolBazaar;
@@ -76,8 +88,14 @@ namespace Cache {
         void InjectDependencies(Core::IMessageQueue* sendMQ, Core::IMessagePool& messagePool,
             const Core::ICacheResponseWriter& responseWriter, Core::IDurableLog* durableLogger = nullptr)
         {
-            handler.Initialize(sendMQ, &responseWriter, &messagePool, &dbWorkerGame, &dbWorkerBazaar, &cache_inventory, &cache_currency, &cache_profile, &bazaarRegistration);
-            recvMQ.Initialize(&handler, &messagePool, durableLogger);
+            responses.Initialize(sendMQ, &responseWriter, &messagePool);
+            bazaarHandler.Initialize(&responses, &dbWorkerBazaar, &cache_inventory, &bazaarRegistration);
+            currencyHandler.Initialize(&responses, &cache_currency);
+            diamondHandler.Initialize(&responses, &dbWorkerBazaar);
+            inventoryHandler.Initialize(&responses, &cache_inventory);
+            characterHandler.Initialize(&responses, &dbWorkerGame, &cache_inventory, &cache_profile);
+            messageDispatcher.Initialize(&bazaarHandler, &currencyHandler, &diamondHandler, &inventoryHandler, &characterHandler);
+            recvMQ.Initialize(&messageDispatcher, &messagePool, durableLogger);
             recvMQ.Start();
         }
         
@@ -89,7 +107,13 @@ namespace Cache {
                 or !cache_currency.IsReady()
                 or !cache_profile.IsReady()
                 or !bazaarRegistration.IsReady()
-                or !handler.IsReady()
+                or !responses.IsReady()
+                or !bazaarHandler.IsReady()
+                or !currencyHandler.IsReady()
+                or !diamondHandler.IsReady()
+                or !inventoryHandler.IsReady()
+                or !characterHandler.IsReady()
+                or !messageDispatcher.IsReady()
                 or !dbWorkerGame.IsReady()
                 or !dbWorkerBazaar.IsReady()
                 or !walManager.IsReady()) {

@@ -1,6 +1,6 @@
 ﻿#pragma once
 #include <cstdint>
-#include <tuple>
+#include <memory>
 #include <optional>
 
 #include <CoreLib/Interface/IPacketDispatcher.h>
@@ -11,9 +11,6 @@
 
 class ClientContextTest;
 
-namespace Core {
-    class IPacketView;
-}
 namespace Net {
     class NetPerfCollector;
     class AccumulatedBuffer;

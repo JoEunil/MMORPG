@@ -111,7 +111,7 @@ namespace Core {
         if (work.bootstrap) {
             // Capture bootstrap on the owning Zone only after the ACK is submitted.
             const auto& request = *work.bootstrap;
-            if (!zoneRequests->TryEnqueueBootstrap(request.zoneID, work.sessionID, request.ownershipEpoch, false))
+            if (!zoneRequests->TryEnqueueBootstrap({work.sessionID, request.zoneID, request.ownershipEpoch}, false))
                 errorLogger->LogWarn("server response", "bootstrap request rejected", {{"sessionID", work.sessionID}, {"zoneID", request.zoneID}});
         }
     }

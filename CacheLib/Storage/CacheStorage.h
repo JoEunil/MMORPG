@@ -1,0 +1,108 @@
+﻿#pragma once
+
+#include <unordered_map>
+#include <list>
+#include <cstdint>
+#include <mutex>
+#include <set>
+#include <shared_mutex>
+#include <algorithm>
+#include <chrono>
+#include <functional>
+#include <deque>
+#include <iterator>
+#include <new>
+
+#include "../DB/DBConfig.h"
+#include "../DB/DBWorker.h"
+#include <CoreLib/Interface/ICachedClock.h>
+#include "../Config.h"
+
+namespace Cache {
+    enum class FlushEnqueueResult : uint8_t {
+        Queued,
+        Failed,
+    };
+
+    enum class CACHE_STATUS : uint8_t {
+        AVAILABLE, // 0
+        EVICTING, //  1
+        DB_READING, // 2
+        EMPTY, // 3
+        BLOCKED, // 4
+        DUPLICATED, // 5 - 이미 배송된 event. BLOCKED와 달리 재시도 불필요, 캐시 상태
+    };
+    template<typename T>
+    struct CacheItem {
+        uint64_t lastModified = 0;
+        CACHE_STATUS status = CACHE_STATUS::EMPTY; // 0: available, 1:evicting, 2: DB reading, 3: Empty
+        uint8_t rollbackCnt = 0;
+        bool flushInFlight = false;
+        uint64_t flushGeneration = 0;
+        T data{};
+    };
+
+    template<typename Key, typename Result, typename KeyHash>
+    struct alignas(std::hardware_destructive_interference_size) CacheShard {
+        std::unordered_map<Key, Result, KeyHash> cache_data;
+        std::list<Key> lru_list;
+        std::unordered_map<Key, typename std::list<Key>::iterator, KeyHash> lru_pos;
+        std::set<Key> dirty_list;
+        uint64_t nextFlushGeneration = 0;
+
+        std::mutex mutex;
+    };
+
+    template<typename Key, typename Result, typename KeyHash>
+    class CacheStorage {
+        void Initialize(DBWorker<DBConnectionGame>* d, Core::ICachedClock* clock);
+        bool IsReady() {
+            if (clock == nullptr) {
+                Core::sysLogger->LogError("cache storage", "clock not initialized");
+                return false;
+            }
+            if (m_flushFn == nullptr) {
+                Core::sysLogger->LogError("cache storage", "m_flushFn not initialized");
+                return false;
+            }
+            if (dbWorker == nullptr) {
+                Core::sysLogger->LogError("cache storage", "dbWorker not initialized");
+                return false;
+            }
+            return true;
+        }
+        friend class Initializer;
+    protected:
+        Core::ICachedClock* clock = nullptr;
+        DBWorker<DBConnectionGame>* dbWorker = nullptr;
+        std::deque<CacheShard<Key, Result, KeyHash>> m_shards;
+        std::function<FlushEnqueueResult(const Key&, Result&)> m_flushFn;
+
+        CACHE_STATUS TryGet(uint16_t shardIndex, const Key& key, Result& outResult);
+        void Insert(uint16_t shardIndex, const Key& key, const Result& result);
+        void InsertLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, const Result& result);
+        bool TryEvictAfterInsertLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& insertedKey);
+
+        CACHE_STATUS TrySetReading(uint16_t shardIndex, const Key& key);
+        void ApplyLoadResultLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, const Result* loaded);
+        void MarkDirtyLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& result);
+        FlushEnqueueResult QueueFlushLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& result);
+        void RestoreEvictingEntryLocked(CacheShard<Key, Result, KeyHash>& shard, const Key& key, Result& result);
+
+    public:
+        virtual ~CacheStorage() = default;
+
+        void SetFlushFn(std::function<FlushEnqueueResult(const Key&, Result&)> f) {
+            m_flushFn = f;
+        }
+        void ForEachDirty(std::function<bool(const Key&, Result&)> fn);
+        void Rollback(uint16_t shardIndex, const Key& key, uint64_t generation);
+        void WriteDone(uint16_t shardIndex, const Key& key, uint64_t generation, bool retryClaim = false);
+
+        virtual std::string ResultToString(const Key& key, const Result& result) {
+            return "null";
+        }
+    };
+
+}
+#include "CacheStorage.inl"

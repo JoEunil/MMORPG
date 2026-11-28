@@ -3,6 +3,7 @@
 #include <CoreLib/LoggerGlobal.h>
 #include "OverlappedExPool.h"
 #include "SessionManager.h"
+#include "SendQueue.h"
 #include <CoreLib/Interface/IPacket.h>
 
 namespace Net {
@@ -47,7 +48,6 @@ namespace Net {
         if (clientSocket == INVALID_SOCKET) {
             return nullptr;
         }
-        DWORD dwBytesSent = 0;
         STOverlappedEx* pOverlappedEx = overlappedExPool->Acquire();
         if (!pOverlappedEx)
             return nullptr;

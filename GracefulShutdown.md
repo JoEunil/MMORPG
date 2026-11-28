@@ -84,7 +84,7 @@ spdlog::shutdown();
 
 Cache InMemoryQueue의 중요 메시지는 기본 큐와 defer 큐가 모두 가득 차면 [DurableLogger](CoreLib/Cache/DurableLogger.cpp)에 기록한다.  
 이 로거는 append와 fsync를 수행하지만 초기화 시 전달하는 replay 콜백이 비어 있어, 재시작 후 저장 메시지를 자동으로 DB에 다시 적용하지 않는다.  
-따라서 정상 종료 순서, 실행 중 재시도, 재시작 복구는 구분해야 한다. 인벤토리의 재시작 복구는 별도의 [WALManager](CacheLib/WALManager.h)가 담당한다.
+따라서 정상 종료 순서, 실행 중 재시도, 재시작 복구는 구분해야 한다. 인벤토리의 재시작 복구는 별도의 [WALManager](CacheLib/Persistence/WALManager.h)가 담당한다.
 
 ### Queue 종료 정책
 

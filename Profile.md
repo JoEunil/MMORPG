@@ -59,6 +59,6 @@ __Zone 갱신에 기존 락을 쓴 이유 (한계)__
 - 검증은 캐시 레이어를 통한 통합테스트로 수행한다. (Google Test를 사용하기 위해서 UnitTests 프로젝트에 생성) 새로운 연결이 생겼을 때 로컬 캐시가 어떻게 반응하는지를 기준으로 확인한다.
 
 ## 6. 참고
-- [ProfileCache](CacheLib/ProfileCache.h)
+- [ProfileCache](CacheLib/Storage/ProfileCache.h)
 - [ProfileCache 통합테스트](UnitTests/CacheLib/ProfileCacheTest.cpp)
 - [Snapshot 설계 문서](Snapshot.md)

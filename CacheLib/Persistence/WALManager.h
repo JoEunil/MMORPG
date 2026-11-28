@@ -1,0 +1,240 @@
+﻿#pragma once
+
+#include <thread>
+#include <atomic>
+#include <chrono>
+#include <map>
+#include <optional>
+#include <stdexcept>
+
+#include <BaseLib/WAL.h>
+#include <CoreLib/LoggerGlobal.h>
+#include <CacheLib/Storage/CacheStorageInventory.h>
+#include <CacheLib/Storage/InventoryCodec.h>
+#include <CacheLib/DB/DBConnectionPool.h>
+#include <CacheLib/DB/DBConfig.h>
+
+namespace Cache {
+	inline constexpr std::chrono::milliseconds DEFAULT_WAL_FSYNC_INTERVAL{ 20 };
+
+	struct WalInventoryRecord {
+		uint64_t      characterID;
+		InventoryData data;   // lastLSN 포함
+	};
+	enum WalType : uint16_t {
+		INVENTORY_LEGACY = LEGACY_INVENTORY_WAL_TYPE,
+        INVENTORY_WEAPON = WEAPON_INVENTORY_WAL_TYPE,
+		INVENTORY = EQUIPMENT_INVENTORY_WAL_TYPE
+	};
+	class WALManager {
+		// cache flush, flush dispatcher 뒤에 초기화.
+		std::optional<Base::WAL> m_wal; // 생성 지연
+		std::thread m_fsyncThread;
+
+		std::unordered_map<uint32_t, uint32_t> m_segRefCnt;    // seg -> 보존 필요 레코드 수, 전역
+		std::unordered_map<uint64_t, uint64_t> m_unflushedInventory; // inventory 전용 (key = charID)
+		std::mutex m_mutex;
+
+		std::atomic<bool> m_blocked = false;
+		// file write 실패한 경우 일정 기간동안 Write를 block 하기 위함.
+		// 실패 시 drop, wal 없이 작업을 통과 시키도록.
+		std::atomic<bool> m_running = false;
+
+		std::chrono::milliseconds m_fsyncInterval;
+		std::string m_prefix;
+		inline static constexpr std::chrono::seconds RESUME_DELAY{ 10 };
+		inline static constexpr std::chrono::seconds TRUNCATE_INTERVAL{ 5 };
+
+		std::unordered_map<uint64_t, std::pair<uint64_t, WalInventoryRecord>> m_lastImageInventory;
+		CacheStorageInventory* cache_inventory = nullptr;
+		DBConnectionPool<DBConnectionGame>* connectionPoolGame = nullptr;
+
+        void CollectInventory(const Base::WALHeader& header, const uint8_t* payload) {
+            WalInventoryRecord rec{};
+            rec.data = DecodeInventoryWal(header.type, payload, header.length, rec.characterID);
+            m_lastImageInventory[rec.characterID] = {header.lsn, rec};
+        }
+        void Collect(const Base::WALHeader& header, const uint8_t* payload) {
+            switch (header.type) {
+            case WalType::INVENTORY_LEGACY:
+            case WalType::INVENTORY_WEAPON:
+            case WalType::INVENTORY: CollectInventory(header, payload); break;
+            default: throw std::runtime_error("Unsupported WAL record type.");
+            }
+        }
+
+		void RestoreInventory() {
+			if (m_lastImageInventory.empty())
+				return;
+			auto conn = connectionPoolGame->AcquireScoped();   // 부팅 시점 동기 접근 — 블로킹 OK
+			if (conn == nullptr)
+				throw std::runtime_error("Cannot read DB inventory during WAL recovery.");
+			for (auto& [key, val] : m_lastImageInventory) {
+				// DB blob 로드 → lastLSN 비교 
+				uint64_t lsn = val.first;
+
+				WalInventoryRecord rec = val.second;
+                auto res = conn->ExecuteSelect(StatementId::SelectInventory, key);
+                if (!res) throw std::runtime_error("Inventory recovery DB query failed.");
+                uint64_t dbLSN = 0;
+                if (res->next()) {
+                    std::unique_ptr<std::istream> blob(res->getBlob("inventory"));
+                    if (!blob) throw std::runtime_error("Inventory recovery DB blob is null.");
+                    dbLSN = ReadInventory(*blob).lastLsn;
+                }
+				// 레코드는 자기 lsn을 품을 수 없어(발급 전 복사) payload의 lastLsn은 한 세대 전 값.
+				// header lsn으로 보정해야 flush 정산과 재부팅 비교가 여기서 수렴한다.
+				rec.data.lastLsn = lsn;
+				if (lsn > dbLSN) {
+					if (!cache_inventory->RestoreEntry(key, rec.data))
+                        throw std::runtime_error("Cannot restore inventory WAL image into cache.");
+
+					std::lock_guard<std::mutex> lock(m_mutex);
+					m_unflushedInventory[key] = lsn;
+					m_segRefCnt[static_cast<uint32_t>(lsn >> 32)]++;
+				}
+			}
+			m_lastImageInventory.clear();
+		}
+		void Restore() {
+			RestoreInventory();
+		}
+
+		void ThreadFunc() {
+			auto tid = std::this_thread::get_id();
+			std::stringstream ss;
+			ss << tid;
+			Core::sysLogger->LogInfo("WAL manager", "WAL manager thread started", {{"threadID", ss.str()}});
+
+			std::optional<std::chrono::steady_clock::time_point> resumeAt;
+			auto nextTruncate = std::chrono::steady_clock::now() + TRUNCATE_INTERVAL;
+
+			while (m_running.load(std::memory_order_relaxed)) {
+				std::this_thread::sleep_for(m_fsyncInterval);
+				if (!m_wal->Fsync() && !m_blocked.exchange(true, std::memory_order_relaxed))
+					Core::errorLogger->LogError("WAL manager", "fsync failed; durability temporarily degraded");
+
+				const auto now = std::chrono::steady_clock::now();
+				if (m_blocked.load(std::memory_order_relaxed)) {
+					if (!resumeAt)
+						resumeAt = now + RESUME_DELAY;
+					else if (now >= *resumeAt) {
+						m_blocked.store(false, std::memory_order_relaxed);
+						resumeAt.reset();
+					}
+				}
+				else {
+					resumeAt.reset();
+				}
+
+				if (now >= nextTruncate) {
+					UpdateTruncate();
+					nextTruncate = now + TRUNCATE_INTERVAL;
+				}
+			}
+
+
+			m_wal->Fsync();
+			Core::sysLogger->LogInfo("WAL manager", "WAL manager thread stopped", {{"threadID", ss.str()}});
+		}
+
+		void Initialize(CacheStorageInventory* ci, DBConnectionPool<DBConnectionGame>* p) {
+			cache_inventory = ci;
+			connectionPoolGame = p;
+			m_wal.emplace(m_prefix, 1000000, [this](const Base::WALHeader& h, const uint8_t* p) { Collect(h, p); });
+			if (m_wal->ReplayDegraded()) {
+				// 손상 파일은 새 세그먼트에서 재개한다.
+				// 유실 범위는 "flush 안 된 변경분"으로 한정되고 DB 반영분은 무사하므로 로그를 남기고 서비스는 진행한다.  
+				Core::errorLogger->LogError("WAL manager",
+					"closed WAL segment corrupted on replay - quarantined, resuming on a fresh segment");
+			}
+			Restore();   // 수집된 last-image를 캐시에 적용
+			m_running.store(true, std::memory_order_relaxed);
+			m_fsyncThread = std::thread(&WALManager::ThreadFunc, this);
+			cache_inventory->SetWalFn([this](uint64_t id, const InventoryData& d) {
+				return this->WriteInventory(id, d);  
+				});
+		}
+
+		bool IsReady() {
+			if (!cache_inventory) {
+				Core::sysLogger->LogError("WAL manager", "cache_inventory not Initialized");
+				return false;
+			}
+			return true;
+		}
+		uint64_t Write(const uint8_t* payload, size_t len, uint16_t type, uint64_t minimumLsn) {
+			if (m_blocked.load(std::memory_order_relaxed))
+				return 0;
+			uint64_t lsn = m_wal->Write(payload, len, type, minimumLsn);
+			if (lsn == 0)
+				m_blocked.store(true, std::memory_order_relaxed);
+			return lsn;
+		}
+		void UpdateTruncate() {
+			// 활성 segment cnt가 0인 경우도 
+			// limit이 활성 segment로 설정되어서 커버됨.
+			uint32_t boundary;
+			{
+				std::lock_guard<std::mutex> lock(m_mutex);
+				boundary = m_wal->CurrentSegment();
+				for (auto& [seg, cnt] : m_segRefCnt)
+					if (cnt > 0 && seg < boundary)
+						boundary = seg;
+				// Pin the current segment while capturing the boundary. Future writes
+				// cannot reference an earlier segment, so slow deletion can run unlocked.
+				for (auto it = m_segRefCnt.begin(); it != m_segRefCnt.end(); )
+					it = (it->first < boundary) ? m_segRefCnt.erase(it) : std::next(it);
+			}
+			m_wal->TruncateBefore(boundary);
+		}
+		void Stop() {
+			if (!m_running.exchange(false, std::memory_order_relaxed))
+				return;
+
+			if (m_fsyncThread.joinable())
+				m_fsyncThread.join();
+		}
+		friend class Initializer;
+	public:
+		explicit WALManager(std::chrono::milliseconds fsyncInterval = DEFAULT_WAL_FSYNC_INTERVAL, std::string prefix = "redo")
+			: m_fsyncInterval(fsyncInterval), m_prefix(std::move(prefix)) {
+			if (m_fsyncInterval.count() <= 0)
+				throw std::invalid_argument("WAL fsync interval must be greater than zero");
+			if (m_prefix.empty())
+				throw std::invalid_argument("WAL prefix must not be empty");
+		}
+		~WALManager()
+		{
+			Stop();
+		}
+		uint64_t WriteInventory(uint64_t characterID, const InventoryData& data) {
+			// Keep append and reference registration indivisible with respect to truncate.
+			// Otherwise another writer can rotate the just-written segment before it is pinned.
+			std::lock_guard<std::mutex> lock(m_mutex);
+            const auto record = EncodeInventoryWal(characterID, data);
+            const uint64_t lsn = Write(record.data(), record.size(), WalType::INVENTORY, data.lastLsn);
+
+			if (lsn != 0) {
+				auto it = m_unflushedInventory.find(characterID);
+				if (it != m_unflushedInventory.end())
+					m_segRefCnt[static_cast<uint32_t>(it->second >> 32)]--;
+				m_unflushedInventory[characterID] = lsn;
+				m_segRefCnt[static_cast<uint32_t>(lsn >> 32)]++;
+			}
+			return lsn;
+		}
+		void OnInventoryFlushed(uint64_t characterID, uint64_t flushedLsn) {
+			std::lock_guard<std::mutex> lock(m_mutex);
+			auto it = m_unflushedInventory.find(characterID);
+			if (it == m_unflushedInventory.end())
+				return;                    // 이미 정산됨
+			if (it->second > flushedLsn) 
+				return;					// flush 중 재수정
+
+			uint32_t seg = static_cast<uint32_t>(it->second >> 32);
+			m_unflushedInventory.erase(it);
+			m_segRefCnt[seg]--;
+		}
+	};
+}

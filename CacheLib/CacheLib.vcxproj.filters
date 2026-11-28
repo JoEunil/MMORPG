@@ -16,6 +16,18 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Message">
+      <UniqueIdentifier>{12B15EDE-BD95-48A0-8E6C-C804C601D0A6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Storage">
+      <UniqueIdentifier>{E6BFDBC9-C2B4-4FC1-8037-A2494AD8F4CC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Persistence">
+      <UniqueIdentifier>{4E8F3877-39E7-44AA-A960-EFFF9F4E59E6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Bazaar">
+      <UniqueIdentifier>{044FD83A-00CE-4217-A374-5573FA7E60C7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -39,10 +51,13 @@
     <ClInclude Include="DB\StatementId.h">
       <Filter>DB</Filter>
     </ClInclude>
-    <ClInclude Include="CacheStorage.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="Storage\CacheStorage.h">
+      <Filter>Storage</Filter>
     </ClInclude>
     <ClInclude Include="Config.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="CoreConfig.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="DB\Queries.h">
@@ -51,38 +66,56 @@
     <ClInclude Include="DB\DBConnectionPool.h">
       <Filter>DB</Filter>
     </ClInclude>
-    <ClInclude Include="Handler.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="Message\MessageDispatcher.h">
+      <Filter>Message</Filter>
     </ClInclude>
-    <ClInclude Include="BazaarRegistration.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="Message\BazaarHandler.h">
+      <Filter>Message</Filter>
     </ClInclude>
-    <ClInclude Include="CacheFlush.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="Message\DiamondHandler.h">
+      <Filter>Message</Filter>
     </ClInclude>
-    <ClInclude Include="FlushDispatcher.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="Message\CurrencyHandler.h">
+      <Filter>Message</Filter>
     </ClInclude>
-    <ClInclude Include="CacheStorageInventory.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="Message\InventoryHandler.h">
+      <Filter>Message</Filter>
+    </ClInclude>
+    <ClInclude Include="Message\CharacterHandler.h">
+      <Filter>Message</Filter>
+    </ClInclude>
+    <ClInclude Include="Message\CacheResponseSender.h">
+      <Filter>Message</Filter>
+    </ClInclude>
+    <ClInclude Include="Bazaar\BazaarRegistration.h">
+      <Filter>Bazaar</Filter>
+    </ClInclude>
+    <ClInclude Include="Persistence\CacheFlush.h">
+      <Filter>Persistence</Filter>
+    </ClInclude>
+    <ClInclude Include="Persistence\FlushDispatcher.h">
+      <Filter>Persistence</Filter>
+    </ClInclude>
+    <ClInclude Include="Storage\CacheStorageInventory.h">
+      <Filter>Storage</Filter>
     </ClInclude>
     <ClInclude Include="DB\DBWorker.h">
       <Filter>DB</Filter>
     </ClInclude>
-    <ClInclude Include="CacheStorageCurrency.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="Storage\CacheStorageCurrency.h">
+      <Filter>Storage</Filter>
     </ClInclude>
-    <ClInclude Include="WALManager.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="Persistence\WALManager.h">
+      <Filter>Persistence</Filter>
     </ClInclude>
-    <ClInclude Include="ProfileCache.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="Storage\ProfileCache.h">
+      <Filter>Storage</Filter>
     </ClInclude>
-    <ClInclude Include="InMemoryQueue.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="Message\InMemoryQueue.h">
+      <Filter>Message</Filter>
     </ClInclude>
-    <ClInclude Include="InventoryCodec.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="Storage\InventoryCodec.h">
+      <Filter>Storage</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -92,54 +125,57 @@
     <ClCompile Include="DB\MySQLResultAdapter.cpp">
       <Filter>DB</Filter>
     </ClCompile>
-    <ClCompile Include="InMemoryQueue.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="Message\InMemoryQueue.cpp">
+      <Filter>Message</Filter>
     </ClCompile>
-    <ClCompile Include="Handler.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="Message\MessageDispatcher.cpp">
+      <Filter>Message</Filter>
     </ClCompile>
-    <ClCompile Include="CacheFlush.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="Persistence\CacheFlush.cpp">
+      <Filter>Persistence</Filter>
     </ClCompile>
-    <ClCompile Include="CacheFlush_Currency.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="Persistence\CacheFlush_Currency.cpp">
+      <Filter>Persistence</Filter>
     </ClCompile>
-    <ClCompile Include="CacheFlush_Inventory.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="Persistence\CacheFlush_Inventory.cpp">
+      <Filter>Persistence</Filter>
     </ClCompile>
-    <ClCompile Include="CacheStorageInventory.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="Storage\CacheStorageInventory.cpp">
+      <Filter>Storage</Filter>
     </ClCompile>
-    <ClCompile Include="Handler_Bazaar.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="Message\BazaarHandler.cpp">
+      <Filter>Message</Filter>
     </ClCompile>
-    <ClCompile Include="BazaarRegistration.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="Bazaar\BazaarRegistration.cpp">
+      <Filter>Bazaar</Filter>
     </ClCompile>
-    <ClCompile Include="CacheStorageCurrency.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="Storage\CacheStorageCurrency.cpp">
+      <Filter>Storage</Filter>
     </ClCompile>
-    <ClCompile Include="Handler_Inventory.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="Message\InventoryHandler.cpp">
+      <Filter>Message</Filter>
     </ClCompile>
-    <ClCompile Include="Handler_Currency.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="Message\CharacterHandler.cpp">
+      <Filter>Message</Filter>
     </ClCompile>
-    <ClCompile Include="Handler_Diamond.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="Message\CurrencyHandler.cpp">
+      <Filter>Message</Filter>
     </ClCompile>
-    <ClCompile Include="ProfileCache.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="Message\DiamondHandler.cpp">
+      <Filter>Message</Filter>
+    </ClCompile>
+    <ClCompile Include="Storage\ProfileCache.cpp">
+      <Filter>Storage</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="CacheStorage.inl">
-      <Filter>헤더 파일</Filter>
+    <None Include="Storage\CacheStorage.inl">
+      <Filter>Storage</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BazaarResult.h">
-      <Filter>헤더 파일</Filter>
+    <ClInclude Include="Bazaar\BazaarResult.h">
+      <Filter>Bazaar</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
