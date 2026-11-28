@@ -158,9 +158,16 @@
   #diagnostics, #inspections { padding: 12px 14px; }
   #cycle-controls .cycle-form { margin-block: 12px; }
   #cycle-controls .cycle-form .field { max-width: 430px; }
+  #cycle-limit { width: 100%; padding: 6px 8px; border: 1px solid #b8c9d8; border-radius: 6px; }
+  #cycle-algorithm { margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  #cycle-algorithm p + p { margin-top: 6px; }
+  .cycle-result { margin-top: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 7px; }
+  .cycle-result .direction-title { margin-top: 0; }
+  .cycle-result > .inspect-node { display: block; margin-top: 8px; }
   #inspections .field { max-width: 430px; margin-top: 12px; }
   #explorer.inspection-workspace #filters { display: none; }
-  #explorer.inspection-workspace #inspections { flex: 0 0 clamp(280px, 26vw, 410px); max-height: var(--workspace-height); overflow: auto; }
+  #explorer.inspection-workspace #inspections { flex: 0 0 clamp(280px, 26vw, 410px); max-height: min(var(--workspace-height), var(--inspection-height, 76vh)); overflow: auto; }
+  #explorer.inspection-workspace #diagram-panel, #explorer.inspection-workspace #inspector { height: min(var(--workspace-height), var(--inspection-height, 76vh)); }
   #inspection-candidates > li { position: relative; padding: 5px 7px; border-radius: 6px; }
   #inspection-candidates > li.selected-candidate { background: #eaf5fc; box-shadow: inset 3px 0 #519bc4; }
   #inspection-candidates summary.candidate-class { font-weight: 650; font-size: 12px; margin-top: 4px; padding-right: 75px; }
@@ -190,7 +197,7 @@
     #explorer.inspection-workspace #inspections { flex-basis: 280px; }
     #explorer { flex-wrap: wrap; }
     #diagram-panel { flex-basis: calc(100% - 205px); }
-    #inspector { flex-basis: 100%; height: auto; max-height: 420px; }
+    #inspector, #explorer.inspection-workspace #inspector { flex-basis: 100%; height: auto; max-height: 420px; }
   }
   @media (max-width: 680px) {
     #explorer.inspection-workspace #inspections { flex-basis: 100%; max-height: 320px; }
@@ -356,14 +363,32 @@
     </div>
     <div id="cycle-controls" hidden>
       <form id="cycle-form" class="cycle-form">
+        <div class="field">
+          <label for="cycle-limit">찾을 순환 경로 수</label>
+          <input id="cycle-limit" type="number" min="1" max="100" step="1" value="10" required>
+        </div>
         <div class="field" id="cycle-interface-control">
           <label class="check"><input id="cycle-interfaces" type="checkbox">Interface를 향하는 연결 제외</label>
         </div>
+        <details class="field">
+          <summary>클래스별 순환 검사 제외</summary>
+          <label for="cycle-exclusion-class">제외할 클래스</label>
+          <select id="cycle-exclusion-class"></select>
+          <div class="buttons"><button id="add-cycle-exclusion" type="button">제외 목록에 추가</button></div>
+          <ul id="cycle-exclusions" aria-label="순환 검사 제외 클래스"></ul>
+          <p class="muted">선택한 클래스에 연결된 관계만 순환 검사에서 제외합니다. 지도 원본은 유지하며 이 페이지를 새로 열면 초기화됩니다.</p>
+        </details>
         <div class="buttons"><button id="run-cycle-check" type="submit">순환 경로 찾기</button></div>
       </form>
-      <p class="muted">지도에서 숨긴 타입도 검사에 포함합니다. 순환 경로는 최대 10개 표시합니다.</p>
+      <p class="muted">지도에서 숨긴 타입도 검사에 포함합니다. 1~100개를 지정한 뒤 버튼을 눌러 다시 탐색합니다.</p>
       <p id="cycle-status" aria-live="polite"></p>
       <div id="cycle-results"></div>
+      <div id="cycle-algorithm">
+        <strong>순환 경로 탐색 방식</strong>
+        <p>먼저 Kosaraju 알고리즘으로 서로 도달할 수 있는 클래스 묶음(SCC)을 찾고, 그 안에서 Johnson 알고리즘으로 시작점에 돌아오는 개별 경로를 탐색합니다.</p>
+        <p>같은 클래스 간 관계는 하나로 합치며, 시작점만 다른 동일 순환은 한 번만 표시합니다. 경로나 방향이 다르면 별도 순환입니다.</p>
+        <p>지정한 수보다 한 경로를 더 찾으면 탐색을 멈추고 추가 경로가 있음을 표시합니다. 전체 순환 개수나 최단 경로 순위를 의미하지 않습니다.</p>
+      </div>
     </div>
     <div id="responsibility-threshold" class="field" hidden>
       <label for="responsibility-min-dependencies">최소 의존 그룹 수</label>
@@ -693,7 +718,7 @@ const viewGuides = {
   diagnostics: "Clang 분석 오류와 적용하지 못한 빌드 설정을 확인합니다. 오류가 있는 파일의 지도에는 일부 관계만 나타날 수 있고, 해당 파일은 리팩터링·성능 후보 수집에서 제외됩니다."
 };
 const inspectionGuides = {
-  "dependency-cycles": "클래스의 의존 관계를 따라 출발 타입으로 돌아오는 순환 경로를 찾습니다. 시작점만 다른 동일 순환은 하나로 묶고 최대 10개를 표시합니다. 지도에서 숨긴 타입도 포함하며, Interface를 향하는 연결은 선택해서 제외할 수 있습니다.",
+  "dependency-cycles": "클래스의 의존 관계를 따라 출발 타입으로 돌아오는 순환 경로를 찾습니다. 시작점만 다른 동일 순환은 하나로 묶습니다. 탐색 개수는 기본 10개, 최대 100개이며 버튼을 누를 때마다 다시 탐색합니다.",
   "parameter-groups": "이름·타입·순서가 같은 인자 3개 이상이 서로 다른 함수 4개 이상에서 반복되는 곳을 찾습니다. 함께 전달되는 값들이 한 개념이라면 구조체로 묶을 수 있는지 검토하세요.",
   "class-cohesion": "공유 필드와 내부 호출을 기준으로 분리된 메서드 묶음을 찾습니다. 내부 멤버 지도에서 묶음별 메서드·필드 관계를 살펴보고 클래스 책임 분리를 검토하세요.",
   "responsibility-concentration": "선정 기준: struct·추상 클래스와 코드 위치가 없는 타입은 제외하고, 다른 비-struct 타입에 대한 멤버 선언 또는 정적으로 확인된 호출을 집계합니다. 최소 의존 그룹 수는 기본 5이며 이 화면에서 변경할 수 있습니다. 기준 이상인 클래스를 의존 그룹 수가 많은 순으로 정렬합니다. 같은 대상의 멤버 타입·호출 관계는 1개로 집계하고 지도에서도 선 하나로 합칩니다. 같은 단일 직접 기반 타입을 공유하는 대상은 한 그룹으로 세고 실제 타입 수도 함께 표시합니다. 상속 관계 자체와 콜백 람다의 내부 타입은 의존 개수에 넣지 않습니다. 람다 안에서 사용하는 실제 클래스에 대한 의존성은 포함합니다. 책임 위반을 확정하는 검사가 아니라 검토 순서를 정하는 목록입니다.",
@@ -752,6 +777,7 @@ const state = {
 };
 const responsibilityStorageKey = "CodeExplorer:excluded-responsibility:" + data.directory;
 const excludedResponsibility = readResponsibilityExclusions();
+const excludedCycleClasses = new Set();
 const card = { width: 219, height: 37, stepX: 255, stepY: 62 };
 const fullLayout = classLayout(classes);
 const graph = get("graph");
@@ -897,9 +923,14 @@ function init() {
   }
   get("layout-mode").querySelector('[value="project"]').disabled = !projects.length;
   showIssues();
+  renderCycleExclusions();
   bindControls();
   changeView(state.view);
   new ResizeObserver(resizeViewport).observe(graph);
+  const inspectionSizeObserver = new ResizeObserver(resizeInspectionWorkspace);
+  inspectionSizeObserver.observe(document.querySelector("header"));
+  inspectionSizeObserver.observe(get("candidate-guide"));
+  window.addEventListener("resize", resizeInspectionWorkspace);
 }
 
 function bindControls() {
@@ -984,12 +1015,15 @@ function bindControls() {
     state.expandedInheritance.clear();
     renderMap(true);
   });
-  get("cycle-interfaces").addEventListener("change", () => {
-    if (get("inspection-case").value === "dependency-cycles") runCycleInspection();
-  });
   get("cycle-form").addEventListener("submit", event => {
     event.preventDefault();
     runCycleInspection();
+  });
+  get("add-cycle-exclusion").addEventListener("click", () => {
+    const id = get("cycle-exclusion-class").value;
+    if (!id) return;
+    excludedCycleClasses.add(id);
+    renderCycleExclusions();
   });
   for (const button of document.querySelectorAll("[data-presentation]")) {
     button.addEventListener("click", () => {
@@ -1317,7 +1351,9 @@ function showInspectionCandidates() {
     get("inspection-status").textContent = "";
     get("inspection-candidates").replaceChildren();
     get("inspection-candidates").hidden = true;
-    runCycleInspection();
+    get("cycle-interface-control").hidden = !hasAbstractClasses;
+    clearCycleResults();
+    get("cycle-status").textContent = "조건을 지정하고 순환 경로 찾기를 누르세요.";
     return;
   }
   clearCycleResults();
@@ -1487,7 +1523,7 @@ function renderLegend() {
     : state.view === "method" ? "호출자 → 호출 대상 · 선을 눌러 호출 위치 보기"
     : grouped ? "숫자는 연결된 클래스 쌍 수 · 선을 눌러 근거 보기"
     : "화살표는 의존 대상 방향 · 선을 눌러 근거 보기"
-      + (state.view === "class" ? " · 노드를 우클릭해 트리 펼치기" : "")));
+      + (state.view === "class" ? " · 노드를 우클릭해 숨기기" : "")));
   if (state.view === "members") {
     const present = new Set((state.mapContext?.nodes ?? memberMap.nodes).map(memberRole));
     for (const [role, style] of Object.entries(memberRoles)) {
@@ -1603,35 +1639,81 @@ function clearCycleResults() {
   get("cycle-results").replaceChildren();
 }
 
+function resizeInspectionWorkspace() {
+  const top = get("explorer").getBoundingClientRect().top + window.scrollY;
+  get("explorer").style.setProperty("--inspection-height", Math.max(220, window.innerHeight - top - 20) + "px");
+}
+
+function renderCycleExclusions() {
+  const selector = get("cycle-exclusion-class");
+  selector.replaceChildren();
+  for (const node of [...classes].sort((a, b) => a.name.localeCompare(b.name))) {
+    if (excludedCycleClasses.has(node.id)) continue;
+    const option = document.createElement("option");
+    option.value = node.id;
+    option.textContent = node.name;
+    selector.append(option);
+  }
+  get("add-cycle-exclusion").disabled = !selector.options.length;
+  const list = get("cycle-exclusions");
+  list.replaceChildren();
+  for (const id of excludedCycleClasses) {
+    const row = document.createElement("li");
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.textContent = "제외 해제";
+    remove.setAttribute("aria-label", byId.get(id).name + " 제외 해제");
+    remove.addEventListener("click", () => {
+      excludedCycleClasses.delete(id);
+      renderCycleExclusions();
+    });
+    row.append(byId.get(id).name + " ", remove);
+    list.append(row);
+  }
+  if (get("inspection-case").value === "dependency-cycles")
+    get("cycle-status").textContent = "제외 설정 변경 · 순환 경로 찾기를 눌러 적용하세요.";
+}
+
 function runCycleInspection() {
+  const input = get("cycle-limit");
+  if (!input.reportValidity()) return;
+  const limit = Number(input.value);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) return;
+  clearInspectionMap();
   clearCycleResults();
   get("cycle-interface-control").hidden = !hasAbstractClasses;
   if (!classes.length) {
     get("cycle-status").textContent = "검사 결과 없음 · 분석된 클래스가 없습니다.";
     return;
   }
-  inspectDependencyCycles(get("cycle-interfaces").checked
-    ? classEdges.filter(edge => !targetsInterface(edge)) : classEdges);
+  const edges = classEdges.filter(edge => !excludedCycleClasses.has(edge.from) && !excludedCycleClasses.has(edge.to)
+    && (!get("cycle-interfaces").checked || !targetsInterface(edge)));
+  inspectDependencyCycles(edges, limit);
 }
 
 function targetsInterface(edge) { return isInterface(byId.get(edge.to)); }
 
-function inspectDependencyCycles(edges) {
-  const { cycles, hasMore } = findDependencyCycles(edges);
+function inspectDependencyCycles(edges, limit) {
+  const { cycles, hasMore } = findDependencyCycles(edges, limit);
   get("cycle-status").textContent = cycles.length
-    ? "순환 경로 " + cycles.length + "개" + (hasMore ? " · 추가 경로 있음 (최대 10개 표시)" : "")
+    ? "순환 경로 " + cycles.length + "개" + (hasMore ? " · 추가 경로 있음 (최대 " + limit + "개 표시)" : "")
     : "분석된 관계에서 순환 경로를 찾지 못했습니다.";
   if (hasAbstractClasses) get("cycle-status").append(get("cycle-interfaces").checked ? " · Interface 연결 제외" : " · Interface 연결 포함");
+  if (excludedCycleClasses.size) get("cycle-status").append(" · 클래스 " + excludedCycleClasses.size + "개 제외");
   const results = get("cycle-results");
   for (const [index, { members, path }] of cycles.entries()) {
+    const result = document.createElement("article");
+    result.className = "cycle-result";
     const heading = document.createElement("h3");
     heading.className = "direction-title";
     heading.textContent = "순환 경로 " + (index + 1) + " · 타입 " + members.length + "개";
+    result.setAttribute("aria-label", heading.textContent);
     const names = document.createElement("p");
     names.className = "muted path";
     names.textContent = members.map(id => byId.get(id).name).sort().join(", ");
     const nodes = [...new Set(path.flatMap(edge => [edge.from, edge.to]))].map(id => byId.get(id));
-    results.append(heading, names, relatedMapButton({ view: "class", nodes, edges: path }, "순환 경로"), dependencyPathRow(path));
+    result.append(heading, names, dependencyPathRow(path), relatedMapButton({ view: "class", nodes, edges: path }, "순환 경로 " + (index + 1)));
+    results.append(result);
   }
 }
 
