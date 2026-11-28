@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "../Packet/PacketTypes.h"
 
 namespace Data {
@@ -7,7 +7,6 @@ namespace Data {
 
 namespace Core {
     struct CharacterState;
-    struct ItemUseState;
     class IInventoryOperations;
 
     struct ItemUseOutcome {
@@ -16,15 +15,11 @@ namespace Core {
     };
 
     class ItemUseProcessor {
-        static ItemUseOutcome ApplyHPPotion(ItemUseState& state, CharacterState& character,
-            const ItemUseRequestBody& request, const Data::ItemDataPotion& potion, IInventoryOperations* inventory);
-        static ItemUseOutcome ApplyMPPotion(ItemUseState& state, CharacterState& character,
-            const ItemUseRequestBody& request, const Data::ItemDataPotion& potion, IInventoryOperations* inventory);
-        static ItemUseOutcome ConsumePotion(ItemUseState& state, CharacterState& character,
-            const ItemUseRequestBody& request, const Data::ItemDataPotion& potion, IInventoryOperations* inventory, bool resourceFull);
+        static ItemUseOutcome ApplyHPPotion(CharacterState& character, const ItemUseRequestBody& request, const Data::ItemDataPotion& potion, IInventoryOperations* inventory);
+        static ItemUseOutcome ApplyMPPotion(CharacterState& character, const ItemUseRequestBody& request, const Data::ItemDataPotion& potion, IInventoryOperations* inventory);
+        static ItemUseOutcome ConsumePotion(CharacterState& character, const ItemUseRequestBody& request, const Data::ItemDataPotion& potion, IInventoryOperations* inventory, bool resourceFull);
 
     public:
-        static ItemUseOutcome Apply(ItemUseState& state, CharacterState& character,
-            const ItemUseRequestBody& request, IInventoryOperations* inventory);
+        static ItemUseOutcome Apply(CharacterState& character, const ItemUseRequestBody& request, IInventoryOperations* inventory);
     };
 }

@@ -228,7 +228,7 @@ namespace Core {
         auto* character = FindCharacter(sessionID);
         if (!character)
             return std::nullopt;
-        const auto outcome = ItemUseProcessor::Apply(character->itemUse, *character, request, inventory);
+        const auto outcome = ItemUseProcessor::Apply(*character, request, inventory);
         if (outcome.changed)
             m_cells[character->cellY][character->cellX].dirtyChar.push_back(character->zoneInternalID);
         return outcome.response;
