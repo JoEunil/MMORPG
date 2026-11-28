@@ -214,6 +214,7 @@
     <ClInclude Include="Data\SkillData.h" />
     <ClInclude Include="Data\GrowthData.h" />
     <ClInclude Include="World\SessionManager.h" />
+    <ClInclude Include="World\SessionZoneTransition.h" />
     <ClInclude Include="World\Cell.h" />
     <ClInclude Include="World\WorldMap.h" />
     <ClInclude Include="Data\Generated\WorldMap.inc" />
@@ -279,6 +280,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="World\SessionManager.cpp" />
+    <ClCompile Include="World\SessionZoneTransition.cpp" />
     <ClCompile Include="World\ZoneState.cpp" />
   </ItemGroup>
   <ItemGroup>

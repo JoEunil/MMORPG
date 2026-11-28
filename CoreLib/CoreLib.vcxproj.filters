@@ -149,6 +149,9 @@
     <ClInclude Include="World\SessionManager.h">
       <Filter>World</Filter>
     </ClInclude>
+    <ClInclude Include="World\SessionZoneTransition.h">
+      <Filter>World</Filter>
+    </ClInclude>
     <ClInclude Include="World\BroadcastThreadPool.h">
       <Filter>World</Filter>
     </ClInclude>
@@ -331,6 +334,9 @@
       <Filter>Cache</Filter>
     </ClCompile>
     <ClCompile Include="World\SessionManager.cpp">
+      <Filter>World</Filter>
+    </ClCompile>
+    <ClCompile Include="World\SessionZoneTransition.cpp">
       <Filter>World</Filter>
     </ClCompile>
     <ClCompile Include="World\ZoneEventRouter.cpp">
