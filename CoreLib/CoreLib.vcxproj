@@ -169,7 +169,6 @@
     <ClInclude Include="NonSimulation\NonSimulationEvent.h" />
     <ClInclude Include="NonSimulation\ChatEvent.h" />
     <ClInclude Include="World\ZoneEvent.h" />
-    <ClInclude Include="World\ZoneSessionContext.h" />
     <ClInclude Include="World\BroadcastThreadPool.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="Cache\CacheConfig.h" />

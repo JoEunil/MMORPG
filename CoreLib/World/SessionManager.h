@@ -14,7 +14,6 @@
 
 #include "ZoneState.h"
 #include "WorldConfig.h"
-#include "ZoneSessionContext.h"
 #include "SessionZoneTransition.h"
 #include "../Packet/PacketConfig.h"
 #include "../Interface/IPacket.h"
